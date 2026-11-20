@@ -1,10 +1,11 @@
-//! Card C-65 (user instructions 2026-11-16 and 2026-11-17): the repository line of the status
-//! line shows the cards of the project's local ledger right after the forge counts,
-//! `⬇️ 46 🔀 0 | 🗂️ 50 ▶️ 2 🔃 3 ✅ 12 | 📡 owner/repo | …`: `🗂️` cards created and
-//! remaining (`draft` + `ready` + `hold`), `▶️` cards being worked on (`active` without a waiting
-//! marker note), `🔃` cards pushed and waiting for integration (every `review` card and each
-//! `active` card whose newest marker note is a waiting one), `✅` cards `done` (user decision
-//! 2026-11-19: this order and these icons).
+//! Card C-65 (user instructions 2026-11-16 and 2026-11-17): the statusline shows the cards of
+//! the project's local ledger opening line 3, `🗂️ 50 ▶️ 2 🔃 3 ✅ 12` before the usage bars
+//! (the user's third instruction of 2026-11-20; was line 1, then line 2), and line 2 opens
+//! with the repository and its forge counts, `📡 owner/repo, ⬇️ 46 🔀 0 | 🅱️ …`:
+//! `🗂️` cards created and remaining (`draft` + `ready` + `hold`), `▶️` cards being worked on
+//! (`active` without a waiting marker note), `🔃` cards pushed and waiting for integration
+//! (every `review` card and each `active` card whose newest marker note is a waiting one),
+//! `✅` cards `done` (user decision 2026-11-19: this order and these icons).
 //!
 //! Every case runs the real binary through `TempHome` (a temporary HOME, nothing of the real
 //! environment but a PATH for git) against a ledger built in that HOME. The read is local and
@@ -169,26 +170,50 @@ impl Fixture {
     fn line2(&self) -> String {
         self.plain().lines().nth(1).unwrap_or_default().to_string()
     }
+
+    fn line3(&self) -> String {
+        self.plain().lines().nth(2).unwrap_or_default().to_string()
+    }
+
+    fn line1(&self) -> String {
+        self.plain().lines().next().unwrap_or_default().to_string()
+    }
 }
 
 /// `+1`: the project's untracked state folder.
-const WITHOUT_CARDS: &str = "⬇️ 46 🔀 0 | 📡 modu-ai/moai-adk | 🅱️ main +1";
+const WITHOUT_CARDS: &str = "📡 modu-ai/moai-adk, ⬇️ 46 🔀 0 | 🅱️ main +1";
+/// The card counts group that opens line 3 when the mix ledger is present.
+const CARDS_GROUP: &str = "🗂️ 50 ▶️ 2 🔃 3 ✅ 12";
 
 #[test]
-fn the_repository_line_shows_the_card_counts_after_the_forge_counts() {
+fn the_card_counts_open_line_three_before_the_usage_bars() {
     let f = fixture();
     let baseline = f.plain();
     assert_eq!(baseline.lines().nth(1), Some(WITHOUT_CARDS), "no ledger");
     assert_eq!(baseline.lines().count(), 3, "{baseline}");
+    assert!(
+        !baseline.lines().nth(2).unwrap().contains("🗂️"),
+        "no ledger: no card icons"
+    );
     f.with_mix();
     let with = f.plain();
     assert_eq!(
         with.lines().nth(1),
-        Some("⬇️ 46 🔀 0 | 🗂️ 50 ▶️ 2 🔃 3 ✅ 12 | 📡 modu-ai/moai-adk | 🅱️ main +1")
+        Some(WITHOUT_CARDS),
+        "line 2 keeps the repository, the forge counts, the branch"
     );
-    // Only the repository line differs from the render without a ledger.
+    assert!(
+        with.lines()
+            .nth(2)
+            .unwrap()
+            .starts_with(&format!("{CARDS_GROUP} | ")),
+        "the card counts open line 3: {}",
+        with.lines().nth(2).unwrap()
+    );
+    assert!(!f.line1().contains("🗂️"), "line 1 keeps no card counts");
+    // Lines 1 and 2 do not change from the render without a ledger.
     assert_eq!(with.lines().next(), baseline.lines().next());
-    assert_eq!(with.lines().nth(2), baseline.lines().nth(2));
+    assert_eq!(with.lines().nth(1), baseline.lines().nth(1));
     assert_eq!(with.lines().count(), 3);
 }
 
@@ -199,8 +224,32 @@ fn the_card_counts_keep_their_place_without_forge_counts() {
     std::fs::remove_file(f.project.join(FORGE_CACHE)).unwrap();
     assert_eq!(
         f.line2(),
-        "🗂️ 50 ▶️ 2 🔃 3 ✅ 12 | 📡 modu-ai/moai-adk | 🅱️ main +1"
+        "📡 modu-ai/moai-adk | 🅱️ main +1",
+        "without forge counts the repository name stands alone, no comma"
     );
+    assert!(
+        f.line3().starts_with(&format!("{CARDS_GROUP} | ")),
+        "{}",
+        f.line3()
+    );
+}
+
+/// SPEC-20261120-statusline-ahead: under M-Flow the local branch runs ahead of its upstream
+/// between releases, and the branch says so, before behind and dirty. With ahead 0 nothing
+/// appears — every other test here pins that byte-identical shape.
+#[test]
+fn the_branch_shows_the_ahead_count_against_the_upstream() {
+    let f = fixture();
+    common::git::git_in(
+        &f.project,
+        &["commit", "-q", "--allow-empty", "-m", "second"],
+    );
+    common::git::git_in(&f.project, &["branch", "base", "HEAD~1"]);
+    common::git::git_in(&f.project, &["branch", "--set-upstream-to=base"]);
+    let line = f.line2();
+    assert!(line.contains("🅱️ main ↑1"), "the ahead count: {line}");
+    assert!(!line.contains('↓'), "behind 0 stays hidden: {line}");
+    assert!(!line.contains("↑0"), "a zero ahead is never shown: {line}");
 }
 
 /// SPEC-20261120-statusline-line2-order REQ-8: the renderer shortens nothing and reads no
@@ -226,7 +275,15 @@ fn line_two_has_the_same_bytes_under_80_and_40_columns() {
         // shape is read from the plain render.
         assert_eq!(
             f.plain().lines().nth(1),
-            Some("⬇️ 46 🔀 0 | 🗂️ 50 ▶️ 2 🔃 3 ✅ 12 | 📡 modu-ai/moai-adk | 🅱️ main +1"),
+            Some(WITHOUT_CARDS),
+            "plain={plain}"
+        );
+        assert!(
+            f.plain()
+                .lines()
+                .nth(2)
+                .unwrap()
+                .starts_with(&format!("{CARDS_GROUP} | ")),
             "plain={plain}"
         );
     }
@@ -236,9 +293,11 @@ fn line_two_has_the_same_bytes_under_80_and_40_columns() {
 fn a_registered_ledger_without_cards_shows_zeros() {
     let f = fixture();
     f.register();
-    assert_eq!(
-        f.line2(),
-        "⬇️ 46 🔀 0 | 🗂️ 0 ▶️ 0 🔃 0 ✅ 0 | 📡 modu-ai/moai-adk | 🅱️ main +1"
+    assert_eq!(f.line2(), WITHOUT_CARDS);
+    assert!(
+        f.line3().starts_with("🗂️ 0 ▶️ 0 🔃 0 ✅ 0 | "),
+        "{}",
+        f.line3()
     );
 }
 
@@ -249,18 +308,10 @@ fn done_cards_are_counted_only_in_the_done_segment() {
     let f = fixture();
     f.register();
     f.add("done", 4);
-    assert!(
-        f.line2().contains("| 🗂️ 0 ▶️ 0 🔃 0 ✅ 4 |"),
-        "{}",
-        f.line2()
-    );
+    assert!(f.line3().contains("🗂️ 0 ▶️ 0 🔃 0 ✅ 4"), "{}", f.line3());
     f.add("active", 1);
     f.add("hold", 2);
-    assert!(
-        f.line2().contains("| 🗂️ 2 ▶️ 1 🔃 0 ✅ 4 |"),
-        "{}",
-        f.line2()
-    );
+    assert!(f.line3().contains("🗂️ 2 ▶️ 1 🔃 0 ✅ 4"), "{}", f.line3());
 }
 
 /// A ledger another process holds exclusively, a file that is not a database, a database cut
@@ -323,13 +374,23 @@ fn the_cards_option_hides_the_segment() {
     std::fs::write(&config, "statusline:\n  segments:\n    cards: false\n").unwrap();
     assert_eq!(f.plain(), baseline);
     std::fs::write(&config, "statusline:\n  segments:\n    cards: true\n").unwrap();
-    assert!(f.line2().contains("🗂️ 50 ▶️ 2 🔃 3 ✅ 12"), "{}", f.line2());
+    assert!(f.line3().contains("🗂️ 50 ▶️ 2 🔃 3 ✅ 12"), "{}", f.line3());
     std::fs::write(
         &config,
         "statusline:\n  segments:\n    github: false\n    git_branch: false\n",
     )
     .unwrap();
-    assert_eq!(f.line2(), "🗂️ 50 ▶️ 2 🔃 3 ✅ 12");
+    // Without forge counts and a branch line 2 is gone and the last line keeps the counts
+    // first.
+    let out = f.plain();
+    assert_eq!(out.lines().count(), 2, "{out}");
+    assert!(
+        out.lines()
+            .last()
+            .unwrap()
+            .starts_with(&format!("{CARDS_GROUP} | ")),
+        "{out}"
+    );
 }
 
 /// The project is the one the input names, not the working directory: from a folder outside
@@ -340,7 +401,13 @@ fn the_counts_follow_the_project_of_the_input_not_the_working_directory() {
     f.with_mix();
     let elsewhere = tempfile::tempdir().unwrap();
     let out = f.render_from(elsewhere.path(), &[("NO_COLOR", "1")]);
-    assert_eq!(out.lines().nth(1), Some("🗂️ 50 ▶️ 2 🔃 3 ✅ 12"), "{out}");
+    assert!(
+        out.lines()
+            .last()
+            .unwrap()
+            .contains("🗂️ 50 ▶️ 2 🔃 3 ✅ 12"),
+        "{out}"
+    );
 }
 
 /// With color the text is the same once the escapes are removed: each number keeps its icon.

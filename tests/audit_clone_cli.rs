@@ -381,3 +381,31 @@ fn bad_inputs_are_refused_before_anything_is_planned() {
         assert!(text.contains(needle), "{args:?}: {text}");
     }
 }
+
+/// The plan carries the rules for audit copies and the evidence cap, so an auditor reading
+/// only the plan knows not to copy the tree.
+#[test]
+fn rules_forbid_copying_the_tree_and_name_the_evidence_cap() {
+    let fx = fixture();
+    let v = plan(&fx, &[]);
+    assert_eq!(v["ok"], true, "{v}");
+    let r = &v["result"];
+    assert_eq!(r["evidence_cap_bytes"], 100 * 1024 * 1024);
+    let rules: Vec<&str> = r["rules"]
+        .as_array()
+        .unwrap_or_else(|| panic!("no rules: {r}"))
+        .iter()
+        .map(|x| x.as_str().unwrap())
+        .collect();
+    assert_eq!(rules.len(), 4, "{rules:?}");
+    for (rule, needle) in rules.iter().zip([
+        "never copy the repository",
+        "git worktree add --detach",
+        "node_modules",
+        "remove",
+    ]) {
+        assert!(rule.contains(needle), "{needle}: {rule}");
+    }
+    // The planning step itself still writes nothing.
+    assert_eq!(r["writes"], false);
+}

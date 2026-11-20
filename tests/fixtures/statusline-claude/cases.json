@@ -17,18 +17,18 @@
         "implementation": "Rust moai-cli",
         "variants": {
           "plain": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "pipe"
           },
           "ansi": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "PTY"
           },
           "ansi256": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "PTY"
           }
         }
@@ -51,17 +51,17 @@
         "variants": {
           "plain": {
             "version": "4.2647.0",
-            "sha256": "8ca812cb5b2fd79aa7cc77ebc53e9a4b4ff88859a6a4da45b459b5e945549c13",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "4.2647.0",
-            "sha256": "8ca812cb5b2fd79aa7cc77ebc53e9a4b4ff88859a6a4da45b459b5e945549c13",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "4.2647.0",
-            "sha256": "8ca812cb5b2fd79aa7cc77ebc53e9a4b4ff88859a6a4da45b459b5e945549c13",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "PTY"
           }
         }
@@ -79,18 +79,18 @@
         "implementation": "Rust moai-cli",
         "variants": {
           "plain": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "pipe"
           },
           "ansi": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "PTY"
           },
           "ansi256": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "PTY"
           }
         }
@@ -107,18 +107,18 @@
         "implementation": "Rust moai-cli",
         "variants": {
           "plain": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "pipe"
           },
           "ansi": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "PTY"
           },
           "ansi256": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "PTY"
           }
         }
@@ -140,18 +140,18 @@
         "implementation": "Rust moai-cli",
         "variants": {
           "plain": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "pipe"
           },
           "ansi": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "PTY"
           },
           "ansi256": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "PTY"
           }
         }
@@ -168,18 +168,18 @@
         "implementation": "Rust moai-cli",
         "variants": {
           "plain": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "pipe"
           },
           "ansi": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "PTY"
           },
           "ansi256": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "PTY"
           }
         }
@@ -197,18 +197,18 @@
         "implementation": "Rust moai-cli",
         "variants": {
           "plain": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "pipe"
           },
           "ansi": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "PTY"
           },
           "ansi256": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "95faa0ce69dc4aecfe58befa6bcc9a91e1f5c3c0be411d35a1c7efa1c61da400",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "PTY"
           }
         }
@@ -228,18 +228,18 @@
         "implementation": "Rust moai-cli",
         "variants": {
           "plain": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "pipe"
           },
           "ansi": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "PTY"
           },
           "ansi256": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "PTY"
           }
         }
@@ -256,18 +256,18 @@
         "implementation": "Rust moai-cli",
         "variants": {
           "plain": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "pipe"
           },
           "ansi": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "PTY"
           },
           "ansi256": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "PTY"
           }
         }
@@ -284,18 +284,18 @@
         "implementation": "Rust moai-cli",
         "variants": {
           "plain": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "pipe"
           },
           "ansi": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "PTY"
           },
           "ansi256": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "PTY"
           }
         }
@@ -313,17 +313,17 @@
         "variants": {
           "plain": {
             "version": "4.2647.0",
-            "sha256": "8ca812cb5b2fd79aa7cc77ebc53e9a4b4ff88859a6a4da45b459b5e945549c13",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "4.2647.0",
-            "sha256": "8ca812cb5b2fd79aa7cc77ebc53e9a4b4ff88859a6a4da45b459b5e945549c13",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "4.2647.0",
-            "sha256": "8ca812cb5b2fd79aa7cc77ebc53e9a4b4ff88859a6a4da45b459b5e945549c13",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "PTY"
           }
         }
@@ -340,18 +340,18 @@
         "implementation": "Rust moai-cli",
         "variants": {
           "plain": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "pipe"
           },
           "ansi": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "PTY"
           },
           "ansi256": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "PTY"
           }
         }
@@ -368,18 +368,18 @@
         "implementation": "Rust moai-cli",
         "variants": {
           "plain": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "pipe"
           },
           "ansi": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "PTY"
           },
           "ansi256": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "PTY"
           }
         }
@@ -396,18 +396,18 @@
         "implementation": "Rust moai-cli",
         "variants": {
           "plain": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "pipe"
           },
           "ansi": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "PTY"
           },
           "ansi256": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "PTY"
           }
         }
@@ -424,18 +424,18 @@
         "implementation": "Rust moai-cli",
         "variants": {
           "plain": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "pipe"
           },
           "ansi": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "PTY"
           },
           "ansi256": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "PTY"
           }
         }
@@ -468,18 +468,18 @@
         "implementation": "Rust moai-cli",
         "variants": {
           "plain": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "pipe"
           },
           "ansi": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "PTY"
           },
           "ansi256": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "PTY"
           }
         }
@@ -527,7 +527,7 @@
         }
       ],
       "covers": [
-        "ahead remains hidden despite local commit",
+        "ahead shown before behind and dirty (SPEC-20261120-statusline-ahead)",
         "dirty branch suffix",
         "modified and untracked counts"
       ],
@@ -535,18 +535,18 @@
         "implementation": "Rust moai-cli",
         "variants": {
           "plain": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "pipe"
           },
           "ansi": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "PTY"
           },
           "ansi256": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "PTY"
           }
         }
@@ -572,17 +572,17 @@
         "variants": {
           "plain": {
             "version": "4.2647.0",
-            "sha256": "8ca812cb5b2fd79aa7cc77ebc53e9a4b4ff88859a6a4da45b459b5e945549c13",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "4.2647.0",
-            "sha256": "8ca812cb5b2fd79aa7cc77ebc53e9a4b4ff88859a6a4da45b459b5e945549c13",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "4.2647.0",
-            "sha256": "8ca812cb5b2fd79aa7cc77ebc53e9a4b4ff88859a6a4da45b459b5e945549c13",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "PTY"
           }
         }
@@ -606,18 +606,18 @@
         "implementation": "Rust moai-cli",
         "variants": {
           "plain": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "pipe"
           },
           "ansi": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "PTY"
           },
           "ansi256": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "PTY"
           }
         }
@@ -642,18 +642,18 @@
         "implementation": "Rust moai-cli",
         "variants": {
           "plain": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "pipe"
           },
           "ansi": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "PTY"
           },
           "ansi256": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "PTY"
           }
         }
@@ -677,18 +677,18 @@
         "implementation": "Rust moai-cli",
         "variants": {
           "plain": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "pipe"
           },
           "ansi": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "PTY"
           },
           "ansi256": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "PTY"
           }
         }
@@ -712,18 +712,18 @@
         "implementation": "Rust moai-cli",
         "variants": {
           "plain": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "pipe"
           },
           "ansi": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "PTY"
           },
           "ansi256": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "PTY"
           }
         }
@@ -743,18 +743,18 @@
         "implementation": "Rust moai-cli",
         "variants": {
           "plain": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "pipe"
           },
           "ansi": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "PTY"
           },
           "ansi256": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "PTY"
           }
         }
@@ -774,18 +774,18 @@
         "implementation": "Rust moai-cli",
         "variants": {
           "plain": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "pipe"
           },
           "ansi": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "PTY"
           },
           "ansi256": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "PTY"
           }
         }
@@ -804,17 +804,17 @@
         "variants": {
           "plain": {
             "version": "4.2647.0",
-            "sha256": "8ca812cb5b2fd79aa7cc77ebc53e9a4b4ff88859a6a4da45b459b5e945549c13",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "4.2647.0",
-            "sha256": "8ca812cb5b2fd79aa7cc77ebc53e9a4b4ff88859a6a4da45b459b5e945549c13",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "4.2647.0",
-            "sha256": "8ca812cb5b2fd79aa7cc77ebc53e9a4b4ff88859a6a4da45b459b5e945549c13",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "PTY"
           }
         }
@@ -852,17 +852,17 @@
         "variants": {
           "plain": {
             "version": "4.2647.0",
-            "sha256": "8ca812cb5b2fd79aa7cc77ebc53e9a4b4ff88859a6a4da45b459b5e945549c13",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "4.2647.0",
-            "sha256": "8ca812cb5b2fd79aa7cc77ebc53e9a4b4ff88859a6a4da45b459b5e945549c13",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "4.2647.0",
-            "sha256": "8ca812cb5b2fd79aa7cc77ebc53e9a4b4ff88859a6a4da45b459b5e945549c13",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "PTY"
           }
         }
@@ -911,17 +911,17 @@
         "variants": {
           "plain": {
             "version": "4.2647.0",
-            "sha256": "8ca812cb5b2fd79aa7cc77ebc53e9a4b4ff88859a6a4da45b459b5e945549c13",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "4.2647.0",
-            "sha256": "8ca812cb5b2fd79aa7cc77ebc53e9a4b4ff88859a6a4da45b459b5e945549c13",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "4.2647.0",
-            "sha256": "8ca812cb5b2fd79aa7cc77ebc53e9a4b4ff88859a6a4da45b459b5e945549c13",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "PTY"
           }
         }
@@ -959,17 +959,17 @@
         "variants": {
           "plain": {
             "version": "4.2647.0",
-            "sha256": "8ca812cb5b2fd79aa7cc77ebc53e9a4b4ff88859a6a4da45b459b5e945549c13",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "4.2647.0",
-            "sha256": "8ca812cb5b2fd79aa7cc77ebc53e9a4b4ff88859a6a4da45b459b5e945549c13",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "4.2647.0",
-            "sha256": "8ca812cb5b2fd79aa7cc77ebc53e9a4b4ff88859a6a4da45b459b5e945549c13",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "PTY"
           }
         }
@@ -1007,17 +1007,17 @@
         "variants": {
           "plain": {
             "version": "4.2647.0",
-            "sha256": "8ca812cb5b2fd79aa7cc77ebc53e9a4b4ff88859a6a4da45b459b5e945549c13",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "4.2647.0",
-            "sha256": "8ca812cb5b2fd79aa7cc77ebc53e9a4b4ff88859a6a4da45b459b5e945549c13",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "4.2647.0",
-            "sha256": "8ca812cb5b2fd79aa7cc77ebc53e9a4b4ff88859a6a4da45b459b5e945549c13",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "PTY"
           }
         }
@@ -1073,17 +1073,17 @@
         "variants": {
           "plain": {
             "version": "4.2647.0",
-            "sha256": "8ca812cb5b2fd79aa7cc77ebc53e9a4b4ff88859a6a4da45b459b5e945549c13",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "4.2647.0",
-            "sha256": "8ca812cb5b2fd79aa7cc77ebc53e9a4b4ff88859a6a4da45b459b5e945549c13",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "4.2647.0",
-            "sha256": "8ca812cb5b2fd79aa7cc77ebc53e9a4b4ff88859a6a4da45b459b5e945549c13",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "PTY"
           }
         }
@@ -1132,17 +1132,17 @@
         "variants": {
           "plain": {
             "version": "4.2647.0",
-            "sha256": "8ca812cb5b2fd79aa7cc77ebc53e9a4b4ff88859a6a4da45b459b5e945549c13",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "4.2647.0",
-            "sha256": "8ca812cb5b2fd79aa7cc77ebc53e9a4b4ff88859a6a4da45b459b5e945549c13",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "4.2647.0",
-            "sha256": "8ca812cb5b2fd79aa7cc77ebc53e9a4b4ff88859a6a4da45b459b5e945549c13",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "PTY"
           }
         }
@@ -1162,17 +1162,17 @@
         "variants": {
           "plain": {
             "version": "4.2647.0",
-            "sha256": "8ca812cb5b2fd79aa7cc77ebc53e9a4b4ff88859a6a4da45b459b5e945549c13",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "4.2647.0",
-            "sha256": "8ca812cb5b2fd79aa7cc77ebc53e9a4b4ff88859a6a4da45b459b5e945549c13",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "4.2647.0",
-            "sha256": "8ca812cb5b2fd79aa7cc77ebc53e9a4b4ff88859a6a4da45b459b5e945549c13",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "PTY"
           }
         }
@@ -1190,18 +1190,18 @@
         "implementation": "Rust moai-cli",
         "variants": {
           "plain": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "pipe"
           },
           "ansi": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "PTY"
           },
           "ansi256": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "PTY"
           }
         }
@@ -1230,18 +1230,18 @@
         "implementation": "Rust moai-cli",
         "variants": {
           "plain": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "57b6a6759d1a46d3d6a4cf3d49784d673292418b1eeef1bc3c798ef2434d8e79",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "pipe"
           },
           "ansi": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "57b6a6759d1a46d3d6a4cf3d49784d673292418b1eeef1bc3c798ef2434d8e79",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "PTY"
           },
           "ansi256": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "57b6a6759d1a46d3d6a4cf3d49784d673292418b1eeef1bc3c798ef2434d8e79",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "PTY"
           }
         }
@@ -1269,18 +1269,18 @@
         "implementation": "Rust moai-cli",
         "variants": {
           "plain": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "57b6a6759d1a46d3d6a4cf3d49784d673292418b1eeef1bc3c798ef2434d8e79",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "pipe"
           },
           "ansi": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "57b6a6759d1a46d3d6a4cf3d49784d673292418b1eeef1bc3c798ef2434d8e79",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "PTY"
           },
           "ansi256": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "57b6a6759d1a46d3d6a4cf3d49784d673292418b1eeef1bc3c798ef2434d8e79",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "PTY"
           }
         }
@@ -1308,18 +1308,18 @@
         "implementation": "Rust moai-cli",
         "variants": {
           "plain": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "pipe"
           },
           "ansi": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "PTY"
           },
           "ansi256": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "PTY"
           }
         }
@@ -1342,18 +1342,18 @@
         "implementation": "Rust moai-cli",
         "variants": {
           "plain": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "57b6a6759d1a46d3d6a4cf3d49784d673292418b1eeef1bc3c798ef2434d8e79",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "pipe"
           },
           "ansi": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "57b6a6759d1a46d3d6a4cf3d49784d673292418b1eeef1bc3c798ef2434d8e79",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "PTY"
           },
           "ansi256": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "57b6a6759d1a46d3d6a4cf3d49784d673292418b1eeef1bc3c798ef2434d8e79",
+            "version": "4.2647.0",
+            "sha256": "e3e3c825936f3e4e72af401d76b4e39b0fc8aaa5acfe5bf0226c190a67b90c01",
             "stdout": "PTY"
           }
         }

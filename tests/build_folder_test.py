@@ -6,6 +6,11 @@ deletes that folder's cargo output when its task ends. `remove` deletes only the
 user picked from an `optimize-plan` preview. Every test uses a temporary HOME and a temporary
 git repository; the real HOME is never read or written.
 """
+import contextlib
+import errno
+import fcntl
+import importlib.util
+import io
 import json
 import os
 import shlex
@@ -13,6 +18,7 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parent.parent
 TOOL = ROOT / "tools" / "build_folder.py"
@@ -49,12 +55,13 @@ class Fixture:
         self.wt = base / "wts" / "agent-7"
         git(self.repo, "worktree", "add", "-q", "-b", "card/1-x", str(self.wt))
 
-    def run(self, *args, cwd=None, home=None):
+    def run(self, *args, cwd=None, home=None, extra_env=None):
         env = {
             "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
             "HOME": str(home if home is not None else self.home),
             "GIT_CONFIG_GLOBAL": "/dev/null",
             "GIT_CONFIG_SYSTEM": "/dev/null",
+            **(extra_env or {}),
         }
         return subprocess.run(
             ["python3", "-I", str(TOOL), *args],
@@ -288,6 +295,364 @@ class RemoveTest(unittest.TestCase):
         self.assertIn("is a link", out.stderr)
         self.assertTrue((elsewhere / "build" / "repo-gone" / "debug").is_dir())
         self.assertTrue((elsewhere / "build" / "repo-gone" / "CACHEDIR.TAG").is_file())
+
+
+def tree(folder):
+    """Every entry under `folder` with its bytes (links by target), for before/after checks."""
+    out = {}
+    base = Path(folder)
+
+    def visit(directory):
+        for entry in sorted(os.scandir(directory), key=lambda e: e.name):
+            path = Path(entry.path)
+            rel = str(path.relative_to(base))
+            if entry.is_symlink():
+                out[rel] = ("link", os.readlink(path))
+            elif entry.is_dir(follow_symlinks=False):
+                out[rel] = ("dir",)
+                visit(path)
+            else:
+                out[rel] = ("file", path.read_bytes())
+
+    visit(base)
+    return out
+
+
+class SeedTest(unittest.TestCase):
+    """`seed --from <name>`: the worktree's own folder starts as a copy-on-write clone of a lane's
+    built folder. Where the platform or filesystem cannot clone, the answer is `seeded: false`
+    with a reason and nothing is copied."""
+
+    def setUp(self):
+        self.fx = Fixture()
+        self.addCleanup(self.fx.close)
+        self.source = self.fx.folder("lane-src")
+        self.source.mkdir(parents=True)
+        cargo_output(self.source)
+        (self.source / "notes.md").write_text("lane evidence\n")
+        (self.source / ".moai-build.json").write_text(json.dumps(
+            {"schema_version": 1, "git_common_dir": "/lane/.git", "worktree": "/lane"}))
+        self.own = self.fx.folder("repo-agent-7")
+
+    def seed(self, name="lane-src", **kw):
+        return self.fx.run("seed", "--from", name, **kw)
+
+    def answer(self, out):
+        self.assertEqual(out.returncode, 0, out.stderr)
+        return json.loads(out.stdout)
+
+    def seeded(self):
+        """The answer of a seed that is expected to clone; skips where the filesystem cannot."""
+        got = self.answer(self.seed())
+        if not got["seeded"] and got["reason"] in ("unsupported", "clone_failed"):
+            self.skipTest(f"no copy-on-write clone here: {got}")
+        return got
+
+    def test_seed_clones_the_cargo_output_and_nothing_else(self):
+        got = self.seeded()
+        self.assertTrue(got["seeded"], got)
+        self.assertIn(got["method"], ("clonefile", "reflink"))
+        self.assertEqual(Path(got["folder"]), self.own)
+        self.assertEqual((self.own / "debug" / "deps" / "lib.rlib").read_bytes(), b"x" * 4096)
+        self.assertTrue((self.own / "CACHEDIR.TAG").is_file())
+        # Evidence stays with the lane, and the owner record is this worktree's, not the lane's.
+        self.assertFalse((self.own / "notes.md").exists())
+        record = json.loads((self.own / ".moai-build.json").read_text())
+        self.assertEqual(record["worktree"], os.path.realpath(self.fx.wt))
+        self.assertEqual(sorted(p.name for p in self.own.iterdir()),
+                         [".moai-build.json", "CACHEDIR.TAG", "debug", "tmp"])
+
+    def test_seed_leaves_the_source_unchanged(self):
+        before = tree(self.source)
+        self.seeded()
+        self.assertEqual(tree(self.source), before)
+
+    def test_seed_writes_nothing_of_its_own_into_the_clone(self):
+        self.seeded()
+        # A second seed finds the folder built and changes nothing.
+        before = tree(self.own)
+        got = self.answer(self.seed())
+        self.assertEqual((got["seeded"], got["reason"]), (False, "already_built"))
+        self.assertEqual(tree(self.own), before)
+
+    def test_seed_does_nothing_when_the_folder_is_already_built(self):
+        self.assertEqual(self.fx.run("env").returncode, 0)
+        cargo_output(self.own)
+        (self.own / "debug" / "deps" / "mine.rlib").write_bytes(b"mine")
+        before = tree(self.own)
+        got = self.answer(self.seed())
+        self.assertEqual((got["seeded"], got["reason"]), (False, "already_built"))
+        self.assertEqual(tree(self.own), before)
+
+    def test_seed_copies_nothing_when_cloning_is_switched_off(self):
+        got = self.answer(self.seed(extra_env={"BUILD_FOLDER_NO_COW": "1"}))
+        self.assertEqual((got["seeded"], got["reason"]), (False, "disabled"))
+        self.assertFalse((self.own / "debug").exists())
+        self.assertEqual(sorted(p.name for p in self.own.iterdir()), [".moai-build.json"])
+
+    def test_seed_does_not_clone_a_folder_that_is_being_built(self):
+        with open(self.source / "debug" / ".cargo-lock", "w") as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX)
+            got = self.answer(self.seed())
+        self.assertEqual((got["seeded"], got["reason"]), (False, "source_building"))
+        self.assertFalse((self.own / "debug").exists())
+
+    def test_seed_without_a_source_folder_says_so(self):
+        got = self.answer(self.seed("no-such-folder"))
+        self.assertEqual((got["seeded"], got["reason"]), (False, "source_missing"))
+        self.assertFalse((self.own / "debug").exists())
+
+    def test_seed_refuses_a_linked_source_and_names_that_are_not_one_folder(self):
+        elsewhere = self.fx.home / "elsewhere"
+        elsewhere.mkdir()
+        cargo_output(elsewhere)
+        os.symlink(elsewhere, self.fx.folder("linked"))
+        for name in ("linked", "../x", "a/b", "", ".."):
+            out = self.seed(name)
+            self.assertEqual(out.returncode, 1, (name, out.stdout, out.stderr))
+            self.assertEqual(out.stdout, "")
+        self.assertFalse(self.own.exists())
+
+    def test_seed_refuses_the_worktrees_own_folder(self):
+        self.assertEqual(self.fx.run("env").returncode, 0)
+        out = self.seed("repo-agent-7")
+        self.assertEqual(out.returncode, 1, out.stderr)
+
+    def test_seed_refuses_a_linked_build_root(self):
+        real = self.fx.home / "elsewhere-build"
+        real.mkdir()
+        shutil_rmtree(self.fx.home / ".moai" / "build")
+        os.symlink(real, self.fx.home / ".moai" / "build")
+        out = self.seed()
+        self.assertEqual(out.returncode, 1, out.stderr)
+
+    def test_seed_needs_a_source_name(self):
+        self.assertEqual(self.fx.run("seed").returncode, 2)
+        self.assertEqual(self.fx.run("seed", "--from").returncode, 2)
+
+    def in_the_way(self, prepare):
+        """Own folder with something already at a path the clone would take: nothing is cloned and
+        nothing that was there is touched."""
+        self.assertEqual(self.fx.run("env").returncode, 0)
+        prepare(self.own)
+        before = tree(self.own)
+        got = self.answer(self.seed())
+        self.assertEqual((got["seeded"], got["reason"]), (False, "target_in_the_way"), got)
+        self.assertEqual(tree(self.own), before)
+
+    def test_seed_leaves_a_file_that_is_in_the_way_alone(self):
+        # An evidence file named like a cargo folder is not cargo output, so it does not make the
+        # folder "already built"; it must survive a seed that cannot use its name.
+        self.in_the_way(lambda own: (own / "tmp").write_text("my evidence\n"))
+
+    def test_seed_leaves_a_folder_that_is_in_the_way_alone(self):
+        def prepare(own):
+            (own / "debug").mkdir()
+            (own / "debug" / "evidence.txt").write_text("my evidence\n")
+        self.in_the_way(prepare)
+
+    def test_seed_leaves_a_link_that_is_in_the_way_alone(self):
+        def prepare(own):
+            target = own.parent / "elsewhere.txt"
+            target.write_text("not mine to delete\n")
+            os.symlink(target, own / "debug")
+        self.in_the_way(prepare)
+        self.assertEqual((self.own.parent / "elsewhere.txt").read_text(), "not mine to delete\n")
+
+    def test_seed_says_nothing_was_cloned_when_the_source_has_no_cargo_output(self):
+        empty = self.fx.folder("lane-empty")
+        empty.mkdir()
+        (empty / "notes.md").write_text("only evidence\n")
+        got = self.answer(self.seed("lane-empty"))
+        self.assertEqual((got["seeded"], got["reason"]), (False, "source_empty"), got)
+        self.assertEqual(sorted(p.name for p in self.own.iterdir()), [".moai-build.json"])
+
+    def test_seed_refuses_the_own_folder_written_in_another_letter_case(self):
+        self.assertEqual(self.fx.run("env").returncode, 0)
+        if not self.fx.folder("REPO-AGENT-7").exists():
+            self.skipTest("this filesystem tells letter cases apart")
+        out = self.seed("REPO-AGENT-7")
+        self.assertEqual(out.returncode, 1, (out.stdout, out.stderr))
+        self.assertEqual(out.stdout, "")
+
+    def test_seed_names_the_cargo_home_condition_of_a_warm_start(self):
+        got = self.seeded()
+        self.assertIn("CARGO_HOME", got["note"], got)
+
+    def test_seed_without_a_build_root_is_not_an_error(self):
+        shutil_rmtree(self.fx.home / ".moai")
+        got = self.answer(self.seed())
+        self.assertEqual((got["seeded"], got["reason"]), (False, "source_missing"), got)
+
+    def test_clean_removes_a_clone_of_a_read_only_source(self):
+        deps = self.source / "debug" / "deps"
+        deps.chmod(0o555)
+        (deps / "lib.rlib").chmod(0o444)
+        self.addCleanup(lambda: deps.chmod(0o755))
+        self.seeded()
+        out = self.fx.run("clean")
+        self.assertEqual(out.returncode, 0, out.stderr)
+        self.assertFalse(self.own.exists())
+
+
+def load_tool():
+    spec = importlib.util.spec_from_file_location("build_folder_under_test", TOOL)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+class SeedRollbackTest(unittest.TestCase):
+    """A clone that fails part-way is taken back, and only what this run made. The failure is put
+    in by replacing `clone_entry` in a loaded copy of the tool."""
+
+    def setUp(self):
+        self.fx = Fixture()
+        self.addCleanup(self.fx.close)
+        self.source = self.fx.folder("lane-src")
+        self.source.mkdir(parents=True)
+        cargo_output(self.source)
+        (self.source / "notes.md").write_text("lane evidence\n")
+        self.own = self.fx.folder("repo-agent-7")
+        self.tool = load_tool()
+        self.real_clone = self.tool.clone_entry
+
+    def seed_with(self, clone):
+        env = {"HOME": str(self.fx.home), "GIT_CONFIG_GLOBAL": "/dev/null",
+               "GIT_CONFIG_SYSTEM": "/dev/null"}
+        out = io.StringIO()
+        old = os.getcwd()
+        os.chdir(self.fx.wt)
+        try:
+            with mock.patch.dict(os.environ, env), mock.patch.object(self.tool, "clone_entry", clone), \
+                    contextlib.redirect_stdout(out):
+                rc = self.tool.cmd_seed("lane-src")
+        finally:
+            os.chdir(old)
+        return rc, json.loads(out.getvalue())
+
+    def can_clone(self):
+        probe = self.fx.home / "probe-src"
+        probe.mkdir()
+        try:
+            self.real_clone(probe, self.fx.home / "probe-dst")
+        except OSError:
+            self.skipTest("no copy-on-write clone here")
+
+    def test_a_failure_after_the_first_entry_takes_back_that_entry_only(self):
+        self.can_clone()
+        before = tree(self.source)
+        calls = []
+
+        def clone(src, dst):
+            calls.append(Path(src).name)
+            if len(calls) == 2:
+                raise OSError(errno.ENOSPC, "injected: no space left")
+            return self.real_clone(src, dst)
+
+        rc, got = self.seed_with(clone)
+        self.assertEqual(rc, 0)
+        self.assertEqual((got["seeded"], got["reason"]), (False, "clone_failed"), got)
+        self.assertGreaterEqual(len(calls), 2)
+        self.assertEqual(sorted(p.name for p in self.own.iterdir()), [".moai-build.json"])
+        self.assertEqual(tree(self.source), before)
+
+    def test_a_half_written_entry_of_the_failed_clone_is_taken_back(self):
+        # `cp --reflink=always` can leave a part of the destination behind when it fails.
+        before = tree(self.source)
+
+        def clone(src, dst):
+            Path(dst).mkdir()
+            (Path(dst) / "half.o").write_text("half written\n")
+            raise OSError(errno.EIO, "injected: failed after writing a part")
+
+        rc, got = self.seed_with(clone)
+        self.assertEqual((rc, got["seeded"], got["reason"]), (0, False, "clone_failed"), got)
+        self.assertEqual(sorted(p.name for p in self.own.iterdir()), [".moai-build.json"])
+        self.assertEqual(tree(self.source), before)
+
+    def test_a_read_only_entry_of_the_failed_clone_is_taken_back(self):
+        # a clone keeps the read-only modes of its source: the same hook as `clean` removes it
+        def clone(src, dst):
+            Path(dst).mkdir()
+            (Path(dst) / "ro.o").write_text("read only\n")
+            os.chmod(Path(dst) / "ro.o", 0o444)
+            os.chmod(dst, 0o555)
+            raise OSError(errno.EIO, "injected: failed with a read-only part")
+
+        self.addCleanup(lambda: [os.chmod(p, 0o755) for p in self.own.iterdir() if p.is_dir()])
+        rc, got = self.seed_with(clone)
+        self.assertEqual((rc, got["seeded"], got["reason"]), (0, False, "clone_failed"), got)
+        self.assertNotIn("could not take back", got["detail"])
+        self.assertEqual(sorted(p.name for p in self.own.iterdir()), [".moai-build.json"])
+
+    def test_an_entry_that_cannot_be_taken_back_is_named_in_the_answer(self):
+        made = []
+
+        def clone(src, dst):
+            made.append(Path(dst).name)
+            Path(dst).mkdir()
+            raise OSError(errno.EIO, "injected: failed")
+
+        def stuck(*_args, **_kwargs):
+            raise PermissionError(errno.EACCES, "injected: cannot remove")
+
+        with mock.patch.object(self.tool.shutil, "rmtree", stuck):
+            rc, got = self.seed_with(clone)
+        self.assertEqual((rc, got["seeded"], got["reason"]), (0, False, "clone_failed"), got)
+        self.assertIn("injected: failed", got["detail"])
+        self.assertEqual(len(made), 1)
+        self.assertIn(f"could not take back: {made[0]}", got["detail"])
+
+    def test_the_linux_copy_messages_map_to_the_reasons(self):
+        def failing(stderr):
+            run = mock.Mock(return_value=mock.Mock(returncode=1, stderr=stderr))
+            with mock.patch.object(self.tool.sys, "platform", "linux"), \
+                    mock.patch.object(self.tool.subprocess, "run", run):
+                with self.assertRaises(OSError) as ctx:
+                    self.tool.clone_entry(self.source / "debug", self.own / "debug")
+            return ctx.exception.errno
+
+        self.assertEqual(failing("cp: failed to clone: Operation not supported"), errno.ENOTSUP)
+        self.assertEqual(failing("cp: failed to clone: Invalid cross-device link"), errno.ENOTSUP)
+        self.assertEqual(failing("cp: failed to clone: No space left on device"), errno.EIO)
+        self.assertEqual(failing(""), errno.EIO)
+
+    def test_the_source_stays_locked_while_it_is_cloned_and_is_free_afterwards(self):
+        self.can_clone()
+        lock = self.source / "debug" / ".cargo-lock"
+        during = []
+
+        def try_exclusive():
+            with open(lock, "w") as f:
+                try:
+                    fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    return "free"
+                except OSError:
+                    return "held"
+
+        def clone(src, dst):
+            during.append(try_exclusive())
+            return self.real_clone(src, dst)
+
+        rc, got = self.seed_with(clone)
+        self.assertEqual((rc, got["seeded"]), (0, True), got)
+        # A lane that starts to build while the clone is made has to wait for it.
+        self.assertEqual(set(during), {"held"}, during)
+        self.assertEqual(try_exclusive(), "free")
+
+    def test_a_platform_that_cannot_clone_is_told_apart_from_a_failed_clone(self):
+        for number in (errno.ENOTSUP, errno.EXDEV):
+            def clone(src, dst, number=number):
+                raise OSError(number, "injected")
+            rc, got = self.seed_with(clone)
+            self.assertEqual((rc, got["seeded"], got["reason"]), (0, False, "unsupported"), number)
+            self.assertEqual(sorted(p.name for p in self.own.iterdir()), [".moai-build.json"])
+
+
+def shutil_rmtree(path):
+    import shutil
+    shutil.rmtree(path)
 
 
 class ScriptsTest(unittest.TestCase):

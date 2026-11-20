@@ -44,6 +44,11 @@ const SETTINGS: &str = ".claude/settings.json";
 const SETTINGS_LOCAL: &str = ".claude/settings.local.json";
 /// The Go manifest of this checkout is about 180 KiB; this only refuses absurd inputs.
 const MANIFEST_LIMIT: u64 = 16 * 1024 * 1024;
+/// The one size limit of a go-state receipt: [`save_receipt`] refuses a receipt above it and
+/// [`read_receipt`] reads up to it. The 256 KiB `apply::RECEIPT_LIMIT` that every other target
+/// keeps does not apply: a project with 1,319 restored SPEC copies has a receipt of 262,362
+/// bytes, and the receipt grows with every copy the apply makes.
+const RECEIPT_MAX: u64 = MANIFEST_LIMIT;
 const FILE_LIMIT: u64 = 64 * 1024 * 1024;
 /// #2936 S1b: `.agents/` holds the Go skill mirror and the published command skills.
 const ROOTS: [&str; 3] = [".moai", ".claude", ".agents"];
@@ -1800,6 +1805,84 @@ pub(crate) fn nested_checkouts_under(project: &Path, rel: &str, limit: u64) -> O
     Some(nested)
 }
 
+/// Folders a stopped-walk reason names.
+const NAMED_FOLDERS: usize = 5;
+
+/// The first-level folders under `<project>/<rel>` with how many entries (files and folders at
+/// any depth, a nested checkout counted but not entered) each holds, counted up to `limit`: a
+/// folder over it shows `limit + 1`. Largest first, equal counts by name, at most
+/// [`NAMED_FOLDERS`]. Only the stopped-walk reason asks for it, so no preview pays for it.
+fn largest_entry_folders(project: &Path, rel: &str, limit: u64) -> Vec<(String, u64)> {
+    let Ok(entries) = fs::read_dir(project.join(rel)) else {
+        return Vec::new();
+    };
+    let mut folders: Vec<(String, u64)> = Vec::new();
+    for e in entries.flatten() {
+        let Ok(name) = e.file_name().into_string() else {
+            continue;
+        };
+        if !fs::symlink_metadata(e.path()).is_ok_and(|m| m.is_dir()) {
+            continue;
+        }
+        let mut count = 0u64;
+        let mut stack = vec![e.path()];
+        'walk: while let Some(dir) = stack.pop() {
+            let Ok(inner) = fs::read_dir(&dir) else {
+                continue;
+            };
+            for f in inner.flatten() {
+                count += 1;
+                if count > limit {
+                    break 'walk;
+                }
+                let p = f.path();
+                if fs::symlink_metadata(&p).is_ok_and(|m| m.is_dir())
+                    && fs::symlink_metadata(p.join(".git")).is_err()
+                {
+                    stack.push(p);
+                }
+            }
+        }
+        folders.push((name, count));
+    }
+    folders.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
+    folders.truncate(NAMED_FOLDERS);
+    folders
+}
+
+/// Why `.moai/` stays when its nested-checkout check passed the entry limit: the largest
+/// folders by name, and, when `reports` is one of them, the command that moves reports out.
+fn stopped_walk_reason(project: &Path, limit: u64) -> String {
+    let mut reason = format!(
+        "the .moai/ folder holds more than {limit} entries, so it was not fully checked for \
+         nested checkouts; the folder stays"
+    );
+    let folders = largest_entry_folders(project, MOAI_DIR, limit);
+    if folders.is_empty() {
+        return reason;
+    }
+    let named: Vec<String> = folders
+        .iter()
+        .map(|(name, n)| match n {
+            n if *n > limit => format!("{name} (more than {limit} entries)"),
+            1 => format!("{name} (1 entry)"),
+            n => format!("{name} ({n} entries)"),
+        })
+        .collect();
+    reason.push_str(&format!(
+        ". Largest folders under .moai/: {}.",
+        named.join(", ")
+    ));
+    if folders.iter().any(|(name, _)| name == "reports") {
+        reason.push_str(
+            " To make room, move the report files out of the project: `moai reports-move-plan .` \
+             previews moving the ones git does not track to ~/.moai/reports/<project>/; apply \
+             it, then run this preview again.",
+        );
+    }
+    reason
+}
+
 /// How many git worktrees of the project's repository are registered at or under
 /// `<project>/<rel>`; `None` when the project is a git checkout whose worktree list cannot be
 /// read. A folder that is not a git checkout has no registered worktrees.
@@ -2608,11 +2691,7 @@ pub fn plan(project: &Path) -> Result<GoStatePlan> {
                          their repositories off from them, so the .moai/ folder stays where it \
                          is and is not moved into a backup until they are moved out"
                     ),
-                    (_, None) => format!(
-                        "the .moai/ folder holds more than {} entries, so it was not fully \
-                         checked for nested checkouts; the folder stays",
-                        unrecorded_limit()
-                    ),
+                    (_, None) => stopped_walk_reason(&project, unrecorded_limit()),
                 }
             },
             "go_folder",
@@ -3364,10 +3443,20 @@ fn save_receipt(
     let rel = receipt_rel(base, &receipt.backup);
     refuse_linked(project, &rel)?;
     let bytes = serde_json::to_vec_pretty(receipt).map_err(|_| "encode failed")?;
+    // The writer keeps the limit its reader uses, before anything is created: a receipt that
+    // could not be read back is never written.
+    if bytes.len() as u64 > RECEIPT_MAX {
+        return Err(format!(
+            "receipt larger than {} MiB; refused; nothing was written",
+            RECEIPT_MAX / (1024 * 1024)
+        ));
+    }
     let path = project.join(&rel);
     match before {
         None => crate::apply::publish_exclusive_mode(&path, &bytes, Some(PRIVATE_FILE))?,
-        Some(b) => crate::apply::publish_replace(&path, Some(b), &bytes)?,
+        // The replace re-reads the old receipt: with the receipt's own limit, not the 256 KiB
+        // of an ordinary target (which reported a size as "target changed during apply").
+        Some(b) => crate::apply::publish_replace_limited(&path, Some(b), &bytes, RECEIPT_MAX)?,
     }
     Ok(bytes)
 }
@@ -4254,7 +4343,7 @@ fn read_receipt(project: &Path, backup: &str) -> Result<(Receipt, Vec<u8>, Strin
     let base = find_receipt_base(project, backup)
         .ok_or_else(|| format!("no go-state receipt for {backup}"))?;
     let rel = receipt_rel(&base, backup);
-    let text = read_bounded_text(project, &rel, MANIFEST_LIMIT)?
+    let text = read_bounded_text(project, &rel, RECEIPT_MAX)?
         .ok_or_else(|| format!("{rel}: no go-state receipt"))?;
     let receipt: Receipt =
         serde_json::from_str(&text).map_err(|_| format!("{rel}: unreadable receipt"))?;
@@ -4721,6 +4810,11 @@ pub fn revert(
     let project = PathBuf::from(&fresh.project);
     let (mut receipt, mut saved, mut base) = read_receipt(&project, backup)?;
     let moving = !receipt.go_backup.is_empty();
+    // Before the first write: prove the receipt can be saved by saving the unchanged receipt
+    // through the same replace every later step uses. A size, permission or space problem
+    // refuses here, with nothing moved or removed; a stop after this point is recorded in the
+    // receipt and the revert is run again (an already removed copy reads as `skip`).
+    saved = save_receipt(&project, &base, &receipt, Some(&saved))?;
     // AUDIT #3077 B2: a settings file written after the move is set aside first, before any
     // other write, into `<area>/replaced-by-revert/<UTC>/` (never overwritten, never deleted);
     // a stop later on reads the item as a plain `restore` on the next plan.
@@ -5562,6 +5656,44 @@ mod tests {
             empty,
             BTreeSet::from([".claude/rules".to_string()]),
             "`.claude` also holds the link, so it stays"
+        );
+    }
+
+    /// A receipt of exactly the shared limit is written; one byte more is refused before any
+    /// file or folder is created, and the message names the limit.
+    #[test]
+    fn a_receipt_over_the_limit_is_refused_before_any_write() {
+        let receipt = |pad: usize| Receipt {
+            schema_version: 1,
+            project: "/p".into(),
+            backup: "20261120T000000Z".into(),
+            plan_digest: "sha256:x".into(),
+            permission_reference: "r".repeat(pad),
+            state: "pending".into(),
+            moves: Vec::new(),
+            restored: Vec::new(),
+            go_backup: String::new(),
+            copied: Vec::new(),
+            marker: String::new(),
+            rust_aside: String::new(),
+            legacy_move: false,
+        };
+        let fixed = serde_json::to_vec_pretty(&receipt(0)).unwrap().len();
+        let pad = RECEIPT_MAX as usize - fixed;
+
+        let at_limit = tempfile::TempDir::new().unwrap();
+        let bytes = save_receipt(at_limit.path(), MOAI_DIR, &receipt(pad), None).unwrap();
+        assert_eq!(bytes.len() as u64, RECEIPT_MAX);
+
+        let over = tempfile::TempDir::new().unwrap();
+        let err = save_receipt(over.path(), MOAI_DIR, &receipt(pad + 1), None).unwrap_err();
+        assert_eq!(
+            err,
+            "receipt larger than 16 MiB; refused; nothing was written"
+        );
+        assert!(
+            fs::read_dir(over.path()).unwrap().next().is_none(),
+            "nothing was created"
         );
     }
 }

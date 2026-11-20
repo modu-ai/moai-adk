@@ -74,6 +74,10 @@ pub fn redact_secret_shapes(s: &str) -> String {
 ///
 /// It is a conservative shape filter, not a secret detector.
 pub fn redact_outgoing(s: &str) -> (String, usize) {
+    // The bytes handed to the shared screen: a caller that hands it the rest of a word at every
+    // separator makes this count grow with the square of the word.
+    #[cfg(test)]
+    work::add(s.len());
     let mut count = 0;
     let out: String = s
         .split_inclusive(char::is_whitespace)
@@ -90,6 +94,8 @@ pub fn redact_outgoing(s: &str) -> (String, usize) {
 }
 
 fn word_has_secret_shape(word: &str) -> bool {
+    #[cfg(test)]
+    work::add(word.len());
     let lower = word.to_ascii_lowercase();
     let anywhere =
         TOKEN_PREFIXES
@@ -129,6 +135,49 @@ fn word_has_secret_shape(word: &str) -> bool {
         return true;
     }
     core.starts_with("eyJ") && core.len() >= 30 && core.matches('.').count() >= 2
+}
+
+/// The work the card secret screen does, counted by the test build only
+/// (SPEC-20261120-card-screen-work-count): every pass of a scan, every byte lower-cased and every
+/// byte handed to the shared screen adds its units, so a test can bound the work in proportion to
+/// the text's length without a clock and gets the same answer on a loaded machine. The count is
+/// per thread — the parallel test threads would race on one process-wide counter — and stops a
+/// screen that passes its limit, so a square-time regression fails at once instead of running
+/// on. The product build carries none of it.
+#[cfg(test)]
+pub(crate) mod work {
+    use std::cell::Cell;
+
+    thread_local! {
+        static TAKEN: Cell<usize> = const { Cell::new(0) };
+        static LIMIT: Cell<usize> = const { Cell::new(usize::MAX) };
+    }
+
+    /// Starts a count on this thread: zero units so far, `limit` units at most.
+    pub(crate) fn start(limit: usize) {
+        TAKEN.with(|taken| taken.set(0));
+        LIMIT.with(|at_most| at_most.set(limit));
+    }
+
+    /// Counts `units` of work on this thread; a screen that passes the limit of `start` stops
+    /// here with a panic that names the count and the limit.
+    pub(crate) fn add(units: usize) {
+        let taken = TAKEN.with(|taken| {
+            let now = taken.get().saturating_add(units);
+            taken.set(now);
+            now
+        });
+        let limit = LIMIT.with(Cell::get);
+        assert!(
+            taken <= limit,
+            "the screen's work passed its limit: {taken} units, at most {limit}"
+        );
+    }
+
+    /// The units counted on this thread since `start`.
+    pub(crate) fn taken() -> usize {
+        TAKEN.with(Cell::get)
+    }
 }
 
 #[cfg(test)]

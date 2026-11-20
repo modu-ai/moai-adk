@@ -209,6 +209,7 @@ pub struct GitStatus {
     pub modified: i64,
     pub untracked: i64,
     pub behind: i64,
+    pub ahead: i64,
 }
 
 /// `Status` line parsing plus `parseStatusBranchHeader` (manager.go).
@@ -216,8 +217,9 @@ pub fn parse_porcelain(out: &str) -> GitStatus {
     let mut status = GitStatus::default();
     for line in out.split('\n') {
         if let Some(header) = line.strip_prefix("## ") {
-            let (branch, behind) = parse_branch_header(header);
+            let (branch, ahead, behind) = parse_branch_header(header);
             status.branch = branch;
+            status.ahead = ahead;
             status.behind = behind;
             continue;
         }
@@ -240,12 +242,18 @@ pub fn parse_porcelain(out: &str) -> GitStatus {
     status
 }
 
-fn parse_branch_header(header: &str) -> (String, i64) {
+fn parse_branch_header(header: &str) -> (String, i64, i64) {
     let mut rest = header.strip_prefix("No commits yet on ").unwrap_or(header);
+    let mut ahead = 0;
     let mut behind = 0;
     if let Some(idx) = rest.rfind(" [") {
         if rest.ends_with(']') {
             for part in rest[idx + 2..rest.len() - 1].split(", ") {
+                if let Some(value) = part.strip_prefix("ahead ") {
+                    if let Ok(n) = value.parse::<i64>() {
+                        ahead = n;
+                    }
+                }
                 if let Some(value) = part.strip_prefix("behind ") {
                     if let Ok(n) = value.parse::<i64>() {
                         behind = n;
@@ -259,9 +267,9 @@ fn parse_branch_header(header: &str) -> (String, i64) {
         rest = &rest[..idx];
     }
     if rest.contains([' ', '\t']) {
-        return (String::new(), behind);
+        return (String::new(), ahead, behind);
     }
-    (rest.to_string(), behind)
+    (rest.to_string(), ahead, behind)
 }
 
 /// `renderSubagentOutput`: one `{"id","content"}` line per row with a non-empty id.
@@ -468,6 +476,40 @@ mod tests {
             parse_porcelain("## feat/x...origin/feat/x\n").branch,
             "feat/x"
         );
+    }
+
+    /// The ahead count rides the same header the behind count already came from
+    /// (SPEC-20261120-statusline-ahead): no new git call, one more field.
+    #[test]
+    fn ahead_and_behind_parse_together() {
+        let s = parse_porcelain("## main...origin/main [ahead 5, behind 2]\n");
+        assert_eq!(s.ahead, 5);
+        assert_eq!(s.behind, 2);
+        assert_eq!(s.branch, "main");
+    }
+
+    #[test]
+    fn ahead_only_parses_and_behind_stays_zero() {
+        let s = parse_porcelain("## feat/x...origin/feat/x [ahead 7]\n");
+        assert_eq!(s.ahead, 7);
+        assert_eq!(s.behind, 0);
+        assert_eq!(s.branch, "feat/x");
+    }
+
+    #[test]
+    fn behind_only_leaves_ahead_zero() {
+        let s = parse_porcelain("## main...origin/main [behind 3]\n");
+        assert_eq!(s.ahead, 0);
+        assert_eq!(s.behind, 3);
+    }
+
+    #[test]
+    fn gone_and_missing_upstream_leave_both_zero() {
+        let s = parse_porcelain("## main...origin/main [gone]\n");
+        assert_eq!((s.ahead, s.behind), (0, 0));
+        assert_eq!(s.branch, "main");
+        let s = parse_porcelain("## main\n");
+        assert_eq!((s.ahead, s.behind), (0, 0));
     }
 
     #[test]

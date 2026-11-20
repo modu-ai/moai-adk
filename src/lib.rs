@@ -131,6 +131,7 @@ pub mod queue_query;
 pub mod recovery;
 pub mod redact;
 pub mod repo_scans;
+pub mod reports_move;
 pub mod review;
 pub mod run;
 pub mod scope;

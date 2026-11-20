@@ -480,6 +480,46 @@ fn a_migrated_project_keeps_the_reports_of_both_roots() {
     }
 }
 
+/// C-126: reports are saved under `<HOME>/.moai/reports/<project>` (outside the repository), so
+/// the plan lists that folder as a kept row beside the earlier in-repository one, never trimmed.
+/// With no such folder (every test above) no row appears.
+#[test]
+fn the_home_reports_folder_of_the_project_is_listed_and_kept() {
+    let fx = fixture();
+    let before = optimize(&fx, None, now_plus_days(8), &[]);
+    let rows_of = |r: &Value| -> Vec<String> {
+        r["rows"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|x| x["kind"] == "report")
+            .map(|x| x["path"].as_str().unwrap().to_string())
+            .collect()
+    };
+    assert_eq!(rows_of(&before), [".moai-cli/reports"], "{before}");
+
+    // The fixture's project folder is `repo`; the new place is `<HOME>/.moai/reports/repo`.
+    let home_reports = fx.home.join(".moai/reports/repo");
+    fs::create_dir_all(home_reports.join("sub")).unwrap();
+    fs::write(home_reports.join("sub/a.md"), "report\n").unwrap();
+    let r = optimize(&fx, None, now_plus_days(8), &[]);
+    let paths = rows_of(&r);
+    assert_eq!(paths.len(), 2, "{r}");
+    assert_eq!(paths[0], ".moai-cli/reports", "{r}");
+    assert_eq!(paths[1], home_reports.display().to_string(), "{r}");
+    let home_row = r["rows"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|x| x["kind"] == "report" && x["path"] == paths[1].as_str())
+        .unwrap();
+    assert_eq!(home_row["action"], "keep", "{home_row}");
+    assert_eq!(home_row["trim_paths"], json!([]), "{home_row}");
+    assert_eq!(home_row["reasons"], json!(["reports_kept"]), "{home_row}");
+    // `bytes` counts what the folder holds on disk (blocks), so only "more than nothing" is stable.
+    assert!(home_row["bytes"].as_u64().unwrap() > 0, "{home_row}");
+}
+
 fn snapshot(dir: &Path) -> Vec<(String, u64, std::time::SystemTime)> {
     let mut out = Vec::new();
     let mut stack = vec![dir.to_path_buf()];
