@@ -44,9 +44,9 @@ C-122 의 tier 2 감사(판정 노트 3297·3298·3357·3396)가 남긴 후속 �
 - AC-2 (REQ-5): `card reclaim` 의 사유에 이름-등호-값 꼴의 비밀 이름이 들면 거절(`invalid_input`, 비밀 모양 문구)되고, 깨끗한 사유는 그 검사를 그대로 통과해요.
   verify: `cargo test --locked --offline --test card_secret_followups reclaim_reason`
 - AC-3 (REQ-6, REQ-7): 열한 구분자 각각 뒤에 오는 자격 증명 모양 값이 네 표면에서 모두 거절되고, 구분자가 들어간 평범한 문장은 통과하며, 새 구분자가 섞인 긴 한 낱말이 시간 상한 안에 답해요.
-  verify: `cargo test --locked --offline --test card_secret_followups separators`
+  verify: `cargo test --locked --offline --test card_secret_followups separators`; a long name with a camel hump every two characters (64 KiB and just under 1 MiB, joined and spaced) answers in time too: `cargo test --locked --offline --test card_secret_followups camel_long_name`
 - AC-4 (REQ-8): SPEC-20261119-card-secret-screen 의 Result 가 두 통과 꼴을 사실대로 적어요.
-  manual: 문서 읽기(SPEC 폴더는 이 카드의 범위가 넓어진 뒤 수정; 아래 Result 에 시점을 적어요)
+  verify: `python3 -I -c "import pathlib; t=pathlib.Path('.moai/specs/SPEC-20261119-card-secret-screen/spec.md').read_text(encoding='utf-8'); assert '재감사 N8' in t and '거절에서 통과로 바뀌었어요' in t and '놓치는 키 모양은 없어요' in t"`
 
 ## Scope
 
@@ -75,4 +75,11 @@ C-122 의 tier 2 감사(판정 노트 3297·3298·3357·3396)가 남긴 후속 �
 - 구현(2026-11-19, agent-18): `src/card/input.rs` — REQ-1 `secret_words` 가 등호로 시작하는 낱말의 앞 낱말을 이름으로 읽어요; REQ-2 `secret_named_assignment` 가 이름의 따옴표를 벗겨요; REQ-3 `camel_hump_secret` 가 카멜 혹 뒤 비밀 낱말과 이어진 api·key 를 거절해요(복수형·올소문자 붙여쓰기는 기존 계약대로 통과); REQ-6·7 `word_is_refused` 의 구분자가 열한 글자 더해지고 점 이음 토큰은 점을 지켜 보는 둘째 훑기로 Whole 하게 봐요(세 점 토큰이 다른 구분자 뒤에서도 거절 — 점을 구분자에 넣는 첫 시도가 기존 card_cli 시험의 점 토큰 거부를 깨뜨려 둘째 훑기를 더했어요). `src/card/dispatch.rs` — REQ-5 `checked_reason` 이 `input::secret_words`·`secret_refusal` 로 같은 화면을 써요. `src/card/work.rs` — 주석 한 줄.
 - 시험: `tests/card_secret_followups.rs` 4건 — RED 먼저 관측(4 failed, 노트 3491: 노트 수락·reclaim 임대 검사로 넘어감·구분자 통과·긴 낱말 0) 뒤 GREEN(4 passed). 이웃: lib `card::` 95 passed, `card_cli` 22, `card_work_cli` 25, `card_dispatch_cli` 16, `card_reclaim_cli` 4, `card_scope_widen_followup_cli` 4, `spec_cli` 18 — 합계 115 passed 0 failed.
 - 검사: `cargo fmt --check` 0, `rustfmt --edition 2021 --check src/ops/*.rs` 0, `cargo clippy --locked --offline --all-targets -- -D warnings` 0, 파이썬 네 모듈(repo_scans·source_manifest·local_check·skill_references) 121 OK — repo_scans 는 `CARGO_TARGET_DIR`(빌드 폴더) 환경변수가 필요해요(첫 실행 19 실패는 바이너리 경로 문제). `spec check` errors 0 warnings 0.
-- 남은 것: AC-4(REQ-8, C-122 SPEC Result 문장 정정)는 그 SPEC 폴더가 C-122 예약(generation 4)에 있어 이 조각에서 하지 못했어요 — 리더가 범위를 넘겨 주면 한 줄 고침으로 이어요. 돌리지 않은 것: 전체 cargo test, CI(이 가지는 PR 없음), Windows.
+- (첫 판의 남은 것, 아래 수리로 닫음) AC-4(REQ-8, C-122 SPEC Result 문장 정정)는 그 SPEC 폴더가 C-122 예약(generation 4)에 있어 이 조각에서 하지 못했어요 — 리더가 범위를 넘겨 주면 한 줄 고침으로 이어요. 돌리지 않은 것: 전체 cargo test, CI(이 가지는 PR 없음), Windows.
+
+### 수리 (2026-11-20, tier 2 감사 FAIL 의 B1·B2·N-d)
+
+- B1 (제곱 시간): `camel_hump_secret` 가 혹마다 이름의 나머지를 새 문자열로 모았어요(`'aB'`×n 이름은 64 KiB 에서 한 분이 넘었어요). 이름을 한 번만 ASCII 소문자로 바꾸고(바이트 위치가 그대로라 혹의 위치로 그 사본을 둘로 가름) 혹마다 짧은 조각 둘만 비교해요. RED 먼저: 고치기 전 코드에서 `camel_long_name_stays_within_the_time_bound` 가 `size 65536 joined: no answer within 15 s` 로 실패(heavy-slot, 이 워크트리의 빌드 폴더) → 고친 뒤 `card_secret_followups` 5 passed(5.14초).
+- B2 (뮤턴트 생존 3곳): `myApikey=1`(apikey 갈래), `myapiKey=1`(소문자 api 뒤 Key 혹 갈래), 따옴표 이름 뒤 띄어 쓴 등호(`strip_quotes`)를 `name_forms_…` 시험의 거절 목록에 더했어요. 뮤턴트 3개(M1 apikey 갈래를 `false` 로, M2 둘째 갈래를 `false` 로, M3 `strip_quotes` 를 뺌)가 모두 사살됐어요 — 각각 `name_forms_blanks_quotes_and_camel_are_refused_on_every_surface` 가 패닉으로 실패(컴파일 오류 0)했고 복원 뒤 `git status` 가 깨끗했어요.
+- N-d (REQ-8, AC-4): C-122 SPEC 의 Result 문장은 이 수리의 팁 머지(`6a8fa9cacf`)가 이미 고쳐 둔 채로 들어왔어요(재감사 N8: 두 꼴이 거절에서 통과로 바뀌었고 진짜 키는 구분자를 품지 않아 놓치는 키 모양이 없다는 문장). 같은 문장을 중복으로 쓰지 않고 그 파일은 팁 그대로 두었어요(충돌은 팁 쪽 문장을 택해 풀었고, 머지 뒤 그 파일의 팁과의 차이는 0줄). AC-4 의 확인 명령은 팁 문장을 읽어요.
+- 돌리지 않은 것·남긴 것: N-a(띄어 쓴 꼴이 `=` 앞 낱말 전체를 이름으로 읽음)와 N-b(과잉 거절 `if token == null`, `token => x`, `maxTokens=4096`)는 감사가 막지 않는 항목이라 이번 수리에서 손대지 않았어요.
