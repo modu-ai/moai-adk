@@ -891,17 +891,22 @@ is left out together with its separator.
    AC-8), `🤖` Claude Code version and `🗿` MoAI version. The session time (`⏳`) and the
    output style are not shown; their `session_time` and `output_style` options are still
    accepted.
-2. Repository: `📡` owner/repo, available `⬇️` Issue / `🔀` PR counts, the card counts
-   `🗂️ <remaining> / ▶️ <working> / 🔃 <waiting> / ✅ <done>` of the project's local ledger
-   (card C-65, user instructions 2026-11-16 and 2026-11-17, card 85; icons, order and the
-   `🔃` number by the user's decision 2026-11-19, card C-121: `🗂️` cards created
+2. Repository: line 2 reads, in this order, the available `⬇️` Issue and `🔀` PR counts, the
+   card counts `🗂️ <remaining> ▶️ <working> 🔃 <waiting> ✅ <done>` of the project's local
+   ledger (card C-65, user instructions 2026-11-16 and 2026-11-17, card 85; icons, order and
+   the `🔃` number by the user's decision 2026-11-19, card C-121: `🗂️` cards created
    and remaining = `draft` + `ready` + `hold`, `▶️` cards being worked on, `🔃` cards pushed and
-   waiting for an audit or for integration, `✅` cards `done`, counted in none of the others;
-   `📡 owner/repo | ⬇️ 46 / 🔀 0 | 🗂️ 50 / ▶️ 2 / 🔃 3 / ✅ 12 | 🅱️ main | 🔗 #1234 pending`),
-   `🅱️` branch with its behind and dirty counts, `🔗 #N state` this
+   waiting for an audit or for integration, `✅` cards `done`, counted in none of the others),
+   `📡` owner/repo, `🅱️` branch with its behind and dirty counts, then `🔗 #N state` this
    branch's pull request (AC-7; an OSC 8 hyperlink to `pr.url` only when color is on and
-   the URL is plain `http(s)`). The worktree name is no longer on this line: it opens line 3
-   (item 3). The branch's `+N` is the only change count: there is no
+   the URL is plain `http(s)`):
+   `⬇️ 46 🔀 0 | 🗂️ 50 ▶️ 2 🔃 3 ✅ 12 | 📡 owner/repo | 🅱️ main | 🔗 #1234 pending`. The
+   groups are joined by ` | `; inside a group the items are one space apart and have no
+   slash, and every icon is followed by one space (user instruction 2026-11-19,
+   SPEC-20261120-statusline-line2-order; the two spaces of the user's example are the
+   terminal's drawing of the variation-selector icons, leader decision). The worktree name
+   is no longer on this line: it opens line 3 (item 3). The branch's `+N` is the only change
+   count: there is no
    `💾` file-change segment (leader decision 6862179411 on #2756; the `git_status`
    option is still accepted). Ahead arrows are hidden. Missing forge counts are omitted.
    The `pr` option turns its segment off.
@@ -918,16 +923,16 @@ is left out together with its separator.
    the project above the working directory), read-only: no folder, file or journal is
    made, no process is started and no network is used, and the ledger file is byte for
    byte the same afterwards. A registered ledger without cards shows
-   `🗂️ 0 / ▶️ 0 / 🔃 0 / ✅ 0`. When the notes cannot be read within the render budget the
-   segment keeps its place with three numbers, `🗂️ <remaining> / ▶️ <active + review> / ✅ <done>`,
+   `🗂️ 0 ▶️ 0 🔃 0 ✅ 0`. When the notes cannot be read within the render budget the
+   group keeps its place with three numbers, `🗂️ <remaining> ▶️ <active + review> ✅ <done>`,
    and no `🔃`, never a guess.
    With no registered ledger, no HOME, no project profile, a file that is not this
    project's ledger (corrupt, cut short, another project's, a link) or a ledger another
    process holds locked for more than 50 ms (`CARDS_BUSY_TIMEOUT`, or what is left of the
    render budget when that is less), all the numbers are absent, the rest of the line is
-   unchanged and the exit code stays 0. Without forge counts the card counts keep the same
-   place; without a repository name or a branch (or with `git_branch` off) they open the
-   line. The one option `cards` in `statusline.yaml` (`statusline.segments.cards: false`)
+   unchanged and the exit code stays 0. The forge counts and the repository need a repository
+   name and a git branch; without forge counts the card counts open the line, and without a
+   git branch (or with `git_branch` off) they are the only group on it. The one option `cards` in `statusline.yaml` (`statusline.segments.cards: false`)
    turns all the numbers off. `statusline.yaml` switches segments on and off only; it has
    no setting for their order. Each number carries its icon, so color is never the only
    signal. Tests: `tests/statusline_cards.rs`, the golden cases `b13-card-counts` and
@@ -958,7 +963,7 @@ is left out together with its separator.
    counts, and nothing is created. Example (lines 2 and 3 of the golden
    `b14-card-counts-waiting`):
 
-       📡 anthropics/claude-code | ⬇️ 46 / 🔀 0 | 🗂️ 50 / ▶️ 2 / 🔃 3 / ✅ 12 | 🅱️ main | 🔗 #1234 pending
+       ⬇️ 46 🔀 0 | 🗂️ 50 ▶️ 2 🔃 3 ✅ 12 | 📡 anthropics/claude-code | 🅱️ main | 🔗 #1234 pending
        🌳 feature-xyz | 🔋 CTX: ░░░░░░░░░░ 9% | 🔋 Week: ████░░░░░░ 41%
 
    Tests: `tests/statusline_worktree_label.rs` (the three shapes, a released reservation
