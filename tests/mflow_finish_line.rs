@@ -17,11 +17,11 @@ const PIECES: [(&str, &str); 10] = [
     ("2 lane merges, checks, MERGE-READY", "Lane: after PASS, makes the merge of its head onto the current LOCAL integration branch tip (the primary branch saved at first setup; v2026.11.0 here) in its own worktree, runs `moai check affected <tip>..<merge>` with the binary built in that worktree, and posts `MERGE-READY <card> merge=<40-hex> base=<40-hex> checks=<one line>` on the card."),
     ("3 fast-forward under a lock", "Fast-forward: one at a time under a lock (`~/.moai/locks/<project>-<branch>.lock`), the primary checkout of the integration branch is fast-forwarded with `git merge --ff-only` to that merge."),
     ("3 isolation and the allowed command", "Where the host isolates a lane session to its worktree (Claude Code), the leader's supervision round does this step and writes `MERGED-LOCAL`; where a moai primary-checkout guard is on, the single fixed command `git -C <primary> merge --ff-only refs/moai/lane-merge` is the one allowed (hook-config allow_commands)."),
-    ("3 base moved", "If the base moved, the lane redoes step 2 on the new tip (evidence reuse rules: the merge-queue card)."),
+    ("3 base moved", "If the base moved, the lane redoes step 2 on the new tip (a check result measured on an earlier tree is never copied to the new one)."),
     ("4 local test and install", "Local test and install: builds for local testing and installation are made from the verified LOCAL integration branch tip (not from the remote branch); the leader checks the local tip as a whole from time to time and repairs a broken tip with a revert commit."),
     ("4 statusline", "The statusline shows the branch with commits ahead (↑) and behind (↓) its upstream so local merges are visible."),
     ("5 release only", "Release: only for a real deployment the leader creates `release/v{head}.{yearweek}.{build}` from the local integration branch and opens one pull request to the remote integration branch (full CI on Linux, macOS and Windows, independent audit by a lane with no commits in the range). No pull request per card, per bundle or per integration."),
-    ("6 card done", "A card that landed locally is closed with `card done` on the local landing evidence (the card-done-under-M-Flow card), not a pull request."),
+    ("6 card done", "A card that landed locally is closed with `card done` on the local landing evidence (the merge on the local integration branch), not a pull request."),
 ];
 
 /// The files that tell a lane or the leader how a change ends.

@@ -51,11 +51,11 @@ M-Flow (user decisions 2026-11-20; one canonical text, put once per file):
    A `FAIL` in the checks line is not merged on a flaky claim alone: the lane reruns the full check on the same merge and posts the `PASS` line.
 3. Fast-forward: one at a time under a lock (`~/.moai/locks/<project>-<branch>.lock`), the primary checkout of the integration branch is fast-forwarded with `git merge --ff-only` to that merge.
    Where the host isolates a lane session to its worktree (Claude Code), the leader's supervision round does this step and writes `MERGED-LOCAL`; where a moai primary-checkout guard is on, the single fixed command `git -C <primary> merge --ff-only refs/moai/lane-merge` is the one allowed (hook-config allow_commands).
-   If the base moved, the lane redoes step 2 on the new tip (evidence reuse rules: the merge-queue card).
+   If the base moved, the lane redoes step 2 on the new tip (a check result measured on an earlier tree is never copied to the new one).
 4. Local test and install: builds for local testing and installation are made from the verified LOCAL integration branch tip (not from the remote branch); the leader checks the local tip as a whole from time to time and repairs a broken tip with a revert commit.
    The statusline shows the branch with commits ahead (↑) and behind (↓) its upstream so local merges are visible.
 5. Release: only for a real deployment the leader creates `release/v{head}.{yearweek}.{build}` from the local integration branch and opens one pull request to the remote integration branch (full CI on Linux, macOS and Windows, independent audit by a lane with no commits in the range). No pull request per card, per bundle or per integration.
-6. A card that landed locally is closed with `card done` on the local landing evidence (the card-done-under-M-Flow card), not a pull request.
+6. A card that landed locally is closed with `card done` on the local landing evidence (the merge on the local integration branch), not a pull request.
 
 The `pr-gate`, `merge-train` and `hand-off` steps below describe a pull request; under item 5 they apply only to a pull request the user or the leader asks for, never to a card that lands locally.
 
