@@ -603,11 +603,26 @@ fn reruns_without_a_per_file_step_for_a_file_both_sides_deleted() {
 #[test]
 fn answers_reuse_when_the_tip_adds_a_python_file_that_is_not_a_test() {
     let fx = Fixture::new();
-    let head = fx.candidate();
-    let tip = fx.branch("tip", &fx.base, &[("tests/update_helper.py", "#\n")]);
+    // The candidate adds a helper next to its edit; the tip adds another one.
+    let edited = MODELS.replacen("// 1\n", "// 1 edited\n", 1);
+    let head = fx.branch(
+        "cand",
+        &fx.base,
+        &[
+            ("src/update_models.rs", &edited),
+            ("tests/update_helper.py", "#\n"),
+        ],
+    );
+    let tip = fx.branch("tip", &fx.base, &[("tests/update_other.py", "#\n")]);
     let a = decide(&fx, &fx.base, &head, &tip);
     assert_eq!(a["decision"], "reuse", "{a}");
     assert_eq!(names(&a["rerun"]["python"]), Vec::<String>::new(), "{a}");
+    // Only the module that ends in `_test` is a test of the candidate's area.
+    assert_eq!(
+        names(&a["selection"]["new"]["python"]),
+        ["update_tux_tty_test"],
+        "{a}"
+    );
 }
 
 /// Audit: the candidate's paths are what its own branch changed since it left the base's history

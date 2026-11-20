@@ -544,18 +544,18 @@ mod tests {
     fn blobs_reads_a_large_answer_while_the_request_is_still_being_written() {
         let dir = tempfile::tempdir().unwrap();
         git_in(dir.path(), &["init", "-q"]);
-        std::fs::write(dir.path().join("big.txt"), "x".repeat(70_000)).unwrap();
+        std::fs::write(dir.path().join("big.txt"), "x".repeat(8_000)).unwrap();
         let sha = git_in(dir.path(), &["hash-object", "-w", "big.txt"]);
         let path = dir.path().to_path_buf();
         let (tx, rx) = std::sync::mpsc::channel();
         std::thread::spawn(move || {
-            let shas = vec![sha.as_str(); 2000];
+            let shas = vec![sha.as_str(); 8000];
             let _ = tx.send(blobs(&path, &shas).map(|t| (t.len(), t[0].len())));
         });
         let got = rx
             .recv_timeout(Duration::from_secs(60))
             .expect("blobs hung")
             .unwrap();
-        assert_eq!(got, (2000, 70_000));
+        assert_eq!(got, (8000, 8_000));
     }
 }
