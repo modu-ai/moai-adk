@@ -29,8 +29,9 @@ created: 2026-11-20
 - REQ-5 (REQ-4): IF a worktree has a tracked change, an untracked file, an ignored file that is not regenerable, a git lock, a live card lease or a process working inside it, THEN the preview shall list it as kept with every reason.
 - REQ-6: The preview shall include worktrees under `.claude/worktrees` and `.moai-cli/worktrees` and worktrees that sit inside another worktree's `target/` folder.
 - REQ-10: The preview shall keep every worktree of the Go generation's folder and of Codex as kept.
-- REQ-7: When picked worktrees are applied with the matching digest and a permission reference, `optimize-apply` shall remove each picked worktree with `git worktree remove` without force, the deepest path first, after a fresh check of that item.
-- REQ-8 (REQ-7): IF a picked item fails its fresh check or its removal, THEN `optimize-apply` shall leave that worktree, report the reason and go on to the next pick.
+- REQ-7: When picked worktrees are applied with each pick's item digest from the preview and a permission reference, `optimize-apply` shall remove each picked worktree with `git worktree remove` without force, the deepest path first, after a fresh check of that item.
+- REQ-8 (REQ-7): IF a picked item's digest differs from the fresh one, the item is no longer a candidate, or its removal fails, THEN `optimize-apply` shall leave that worktree, report the reason and go on to the next pick.
+- REQ-12: IF the permission reference is missing or unusable, THEN `optimize-apply` shall remove nothing.
 - REQ-9: When `optimize-apply` finishes, it shall write one record with the path, branch, HEAD and restore command of each removed worktree and report the reclaimed space as the change of the file system's free bytes.
 - REQ-11 (REQ-9): IF the record cannot be written, THEN `optimize-apply` shall report the failure together with the path of every worktree it removed.
 
@@ -41,7 +42,7 @@ created: 2026-11-20
 - AC-3 (REQ-4): 병합된 가지의 깨끗한 worktree 와 done 카드의 worktree 가 이유(`merged` 또는 `card_done`)와 할당 바이트와 위치와 함께 후보로 나오고, 병합되지 않았고 카드도 끝나지 않은 worktree 는 후보가 아니에요 · verify: `cargo test --locked --offline --test worktree_cap_cleanup finished_worktrees_are_candidates_with_reason_and_bytes`
 - AC-4 (REQ-5): 추적 변경, 추적 안 된 파일, 되살릴 수 없는 무시 파일, git 잠금, 살아 있는 카드 임대, 안에서 일하는 프로세스가 있는 worktree 는 각각 이유를 달고 유지로 나오고, 적용이 그 항목을 거절해요 · verify: `cargo test --locked --offline --test worktree_cap_cleanup an_unsafe_worktree_is_kept_with_every_reason`
 - AC-5 (REQ-6, REQ-10): `.claude/worktrees` 와 `.moai-cli/worktrees` 아래 worktree 가 후보로 나오고, 다른 worktree 의 `target/` 안에 중첩된 worktree 는 부모 이름(`nested_in`)과 함께 나오며, Go 세대 폴더와 Codex worktree 는 보존으로 남아요 · verify: `cargo test --locked --offline --test worktree_cap_cleanup old_locations_and_nested_worktrees_are_listed_and_preserved_ones_stay`
-- AC-6 (REQ-7, REQ-8): 고른 항목만 지워지고, 중첩된 worktree 는 부모보다 먼저 지워지고, 다이제스트나 허가 참조가 맞지 않으면 아무것도 지우지 않고, 미리보기 뒤에 더러워진 항목은 거절되며 다음 항목은 계속 처리돼요 · verify: `cargo test --locked --offline --test optimize_apply_cli apply_removes_only_the_picked_clean_worktrees_inside_out`
+- AC-6 (REQ-7, REQ-8, REQ-12): 고른 항목만 지워지고(`--pick 경로@항목다이제스트`), 중첩된 worktree 는 부모보다 먼저 지워지고, 허가 참조가 없으면 아무것도 지우지 않고, 항목 다이제스트가 다르면 그 항목만 `digest_mismatch` 로 거절되고, 미리보기 뒤에 더러워진 항목도 거절되며 다음 항목은 계속 처리되고, 가지는 모두 남아요 · verify: `cargo test --locked --offline --test optimize_apply_cli apply_removes_only_the_picked_clean_worktrees_inside_out`
 - AC-7 (REQ-9, REQ-11): 적용이 끝나면 지운 항목마다 경로·가지·HEAD·복구 명령이 든 기록 파일이 `.git` 아래에 생기고, 그 복구 명령으로 worktree 가 되살아나며, 회수한 공간은 `df` 여유 바이트의 변화로 나오고, 기록을 쓸 수 없으면 지운 경로를 모두 대며 실패를 알려요 · verify: `cargo test --locked --offline --test optimize_apply_cli apply_writes_a_record_that_restores_the_worktree`
 
 ## Scope
@@ -73,9 +74,9 @@ created: 2026-11-20
 | --- | --- | --- | --- |
 | D-1 | 기존 `worktree-gc-plan` 행을 재사용하고 새 층에서 다시 판정해요(`src/worktree_gc.rs` 를 고치지 않아요) | 그 파일이 다른 카드에 잡혀 있어요. 새로 만들면 판정 규칙이 둘이 돼요 | `worktree_gc.rs` 에 옛 위치 허용 인자를 더하고 새 층을 걷어내기 |
 | D-2 | 상한 설정은 프로필 키 `worktree_cap`(양의 정수, 없으면 40)로 하고, 범위가 열리기 전에는 `--worktree-cap` 으로만 받아요 | 카드 기준 2("설정에서 읽고 기본 40"); 프로필의 `archive_grace_days` 와 같은 모양 | 키를 빼고 플래그만 두기 |
-| D-3 | 옛 위치(`.claude/worktrees`, `.moai-cli/worktrees`)의 보존을 풀어요. Codex 와 Go 세대 폴더는 풀지 않아요 | 카드 본문의 사용자 결정(옛 위치 포함); 리더가 같은 기준으로 손으로 정리한 기록(카드 C-180 의 결과 노트) | 새 층에서 옛 위치 행을 다시 보존으로 되돌리기 |
-| D-4 | 적용의 "자기 토큰"은 미리보기의 `cleanup_digest` + 호출자가 준 허가 참조 + 고른 경로 목록이에요(`worktree-gc-apply` 의 `plan_digest` 와 허가 참조 방식을 따라요) | 기존 적용 명령의 계약; 허가 참조는 허가 검증기가 아니고 승인은 호스트와 사용자의 몫이에요 | 없음 |
-| D-5 | 되돌림 기록은 `<git 공통 폴더>/.moai-cli/worktree-cleanup/<UTC>-<digest12>.json` 에 써요(추적되지 않는 `.git` 아래) | 세션 레지스트리가 쓰는 `<공통 폴더>/.moai-cli/` 와 같은 자리; 보고서 폴더 이동 카드와 겹치지 않아요 | 보고서 폴더(`~/.moai/reports/<project>/`)로 옮기기 |
+| D-3 | 옛 위치(`.claude/worktrees`, `.moai-cli/worktrees`)의 보존을 풀어요. Codex 와 Go 세대 폴더는 풀지 않아요 | 카드 본문의 사용자 결정(옛 위치 포함); 리더가 같은 기준으로 손으로 정리한 기록(2026-11-20 리더 정리 보고) | 새 층에서 옛 위치 행을 다시 보존으로 되돌리기 |
+| D-4 | 적용의 "자기 토큰"은 미리보기가 후보마다 주는 `item_digest`(경로·가지·HEAD·이유·후보 종류에 묶여요) + 호출자가 준 허가 참조예요. 호출은 `--pick 경로@item_digest` 를 되풀이해요. 전체 계획 하나의 다이제스트로 묶지 않는 이유: 한 항목이 미리보기 뒤에 바뀌어도 나머지는 계속 처리해야 해서요 | 기존 `worktree-gc-apply` 는 계획 전체를 한 다이제스트로 묶어요; 이 명령은 사용자가 고른 항목마다 안전을 다시 보므로 항목 단위가 맞아요. 허가 참조는 허가 검증기가 아니고(`permission_reference_ok`) 승인은 호스트와 사용자의 몫이에요 | 없음 |
+| D-5 | 되돌림 기록은 `<git 공통 폴더>/.moai-cli/worktree-cleanup/<now_unix>-<digest12>.json` 에 써요(추적되지 않는 `.git` 아래; 시각은 읽은 시계의 Unix 초) | 세션 레지스트리가 쓰는 `<공통 폴더>/.moai-cli/` 와 같은 자리; 보고서 폴더 이동 카드와 겹치지 않아요 | 보고서 폴더(`~/.moai/reports/<project>/`)로 옮기기 |
 | D-6 | `git worktree remove` 는 `--force` 없이 써요. 되살릴 수 있는 무시 파일만 남은 worktree 는 `worktree_gc` 의 `ignored_safe` 판정을 따라요 | AGENTS.local.md 의 "never force" 와 `worktree_gc` 의 데이터 손실 방지 규칙 | 없음 |
 | D-7 | 상한은 보여 주기만 해요(만들기를 막지 않고 자동 삭제도 없어요) | 카드 기준 2("미리보기가 초과를 말해요") | 후속 카드로 상한 강제 |
 

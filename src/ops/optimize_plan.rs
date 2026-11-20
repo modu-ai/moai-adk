@@ -37,6 +37,11 @@ pub struct Args {
     /// `holds` {source, items [{issue}]}. A missing part keeps the rows that need it.
     #[arg(long)]
     observations: Option<PathBuf>,
+    /// Worktrees per project before the preview says the project is over (a whole number of
+    /// at least 1). Without it: `[worktrees] cap` in the HOME `hook-config.toml`, else 40. The
+    /// cap is only shown; it blocks and removes nothing.
+    #[arg(long, allow_hyphen_values = true)]
+    worktree_cap: Option<String>,
     /// Test seam: the current time in Unix seconds instead of the clock.
     #[arg(long, hide = true)]
     now_unix: Option<u64>,
@@ -57,15 +62,35 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
         }
     };
     let home = moai_cli::hooks::env_home();
-    moai_cli::optimize::plan(&moai_cli::optimize::Request {
+    // The cap is read first: an unusable setting refuses before any worktree is read.
+    let cap = moai_cli::worktree_cap::resolve_cap(args.worktree_cap.as_deref(), home.as_deref())?;
+    let recent = std::time::Duration::from_secs(args.recent_minutes.saturating_mul(60));
+    let budget = std::time::Duration::from_millis(args.budget_ms);
+    let mut plan = moai_cli::optimize::plan(&moai_cli::optimize::Request {
         project: &args.project,
         integration_ref: &args.integration_ref,
-        recent: std::time::Duration::from_secs(args.recent_minutes.saturating_mul(60)),
-        budget: std::time::Duration::from_millis(args.budget_ms),
+        recent,
+        budget,
         now_unix: args.now_unix,
         observations: &obs,
         build_roots: &args.build_roots,
         retention_days: args.retention_days,
         home: home.as_deref(),
-    })
+    })?;
+    // SPEC-20261120-worktree-cap-and-cleanup: the count against the cap and the cleanup
+    // candidates sit beside the existing rows; none of it enters `preview_digest`.
+    let (cap_report, cleanup) = moai_cli::worktree_cap::preview(
+        &args.project,
+        &args.integration_ref,
+        recent,
+        budget,
+        args.now_unix,
+        home.as_deref(),
+        &cap,
+    )?;
+    if let Some(map) = plan.as_object_mut() {
+        map.insert("worktree_cap".into(), cap_report);
+        map.insert("cleanup".into(), cleanup);
+    }
+    Ok(plan)
 }
