@@ -422,6 +422,42 @@ fn times_two_repairs_of_one_head_measure_the_span_to_the_claim_of_the_first() {
 }
 
 #[test]
+fn times_two_repairs_with_the_larger_head_first_still_use_the_first_repair() {
+    let w = world();
+    w.note(1, "lane-a", 1000, &request("C-1", H1));
+    w.note(
+        1,
+        "leader",
+        950,
+        &format!("AUDIT-CLAIM C-1 head={H1} by=audit-x"),
+    );
+    w.note(
+        1,
+        "leader",
+        900,
+        &format!("AUDIT-VERDICT C-1 head={H1} verdict=FAIL"),
+    );
+    w.note(1, "lane-a", 700, &format!("REPAIR C-1 head={H3} of={H1}"));
+    w.note(
+        1,
+        "leader",
+        640,
+        &format!("AUDIT-CLAIM C-1 head={H3} by=audit-x"),
+    );
+    w.note(1, "lane-a", 600, &format!("REPAIR C-1 head={H2} of={H1}"));
+    w.note(
+        1,
+        "leader",
+        590,
+        &format!("AUDIT-CLAIM C-1 head={H2} by=audit-x"),
+    );
+    let r = w.queue(&["--all"]);
+    let first = item(&r, "C-1", H1);
+    assert_eq!(first["times"]["verdict_to_repair_secs"], 200);
+    assert_eq!(first["times"]["repair_to_claim_secs"], 60, "{first}");
+}
+
+#[test]
 fn rules_a_done_card_and_an_import_note_are_not_listed() {
     let w = world();
     let done = w.done_card();
