@@ -379,6 +379,16 @@ fn finish_line_rule_is_stated_once_in_each_lane_workflow() {
             assert!(t.contains(phrase), "{path} must say `{phrase}`");
         }
     }
+    for phrase in [
+        "`MERGED-LOCAL <card> <new tip> head=<head>`",
+        "at audit tier 2 the card in `review` with its pushed head",
+        "a rule that closes such a card is not written yet",
+    ] {
+        assert!(
+            text("skills/moai/workflows/mode-agent.md").contains(phrase),
+            "mode-agent.md hand-off must say `{phrase}`"
+        );
+    }
     assert!(
         text("skills/moai/workflows/verify.md")
             .contains("the release pull request from the local integration branch to the remote one runs the full CI on Linux, macOS and Windows"),
