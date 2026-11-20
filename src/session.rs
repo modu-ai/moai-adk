@@ -576,6 +576,43 @@ fn lock_live(dir: &Path, n: u64) -> Result<fs::File, String> {
     Err(unavailable())
 }
 
+/// Takes the `<name>.live` lock for a session with a role (BOARD 03 (가),
+/// SPEC-20261120-launcher-liveness REQ-4): the launcher holds this exclusive lock for as long
+/// as the host runs — a numbered session through its `agent-<n>` name, a named session through
+/// the name it was given — so a read-only probe ([`live_lock_held`]) can tell a live launcher
+/// from an exited one. A symlink or a non-regular file at the path is refused; the name must
+/// be a safe registry name.
+pub fn lock_named_live(dir: &Path, name: &str) -> Result<fs::File, String> {
+    if !crate::lane_registry::valid_name(name) {
+        return Err(
+            "session live lock name is invalid: use 1 to 64 of A-Z a-z 0-9 . _ -".to_string(),
+        );
+    }
+    // The first named launch in a clone makes the sessions folder, as the numbered path does.
+    fs::create_dir_all(dir)
+        .map_err(|e| format!("session live lock {} write failed: {e}", dir.display()))?;
+    let path = dir.join(format!("{name}.live"));
+    refuse_unless_regular(&path)?;
+    let unavailable = || format!("session live lock {} unavailable", path.display());
+    let file = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .truncate(false)
+        .open(&path)
+        .map_err(|_| unavailable())?;
+    for _ in 0..LIVE_LOCK_TRIES {
+        match file.try_lock() {
+            Ok(()) => return Ok(file),
+            Err(fs::TryLockError::WouldBlock) => {
+                std::thread::sleep(std::time::Duration::from_millis(25));
+            }
+            Err(fs::TryLockError::Error(_)) => break,
+        }
+    }
+    Err(unavailable())
+}
+
 // @MX:WARN: [AUTO] cross-process critical section; a second launch blocks on `.lock` until the
 //   first holds the `.live` lock of its number.
 // @MX:REASON: two launches that both chose the same number would open one `agent-<n>`.
