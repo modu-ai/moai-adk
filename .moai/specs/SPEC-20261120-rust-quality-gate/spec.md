@@ -79,7 +79,7 @@ Go 의 gate 는 크기가 커서(핵심 약 4,000줄) 조각으로 나눠요.
 
 ## Risks
 
-- A `gate.yaml` outside the supported YAML subset (flow collections, sequences) is read as unreadable and gets the defaults plus a warning — Go would read it. The shipped file is block style.
+- A `gate.yaml` outside the supported YAML subset (flow collections, sequences) is read as unreadable and gets the defaults plus a warning — Go would read it. The shipped file is block style (corrected after the audit: it also carries `disabled_steps: {}`; the reader now accepts empty flow collections and skips block lists).
 - Until the wiring step the code is compiled by the tests only; a build of `moai-cli` has no `gate` word yet.
 - The parity table runs the Go build once on a developer machine; CI carries the recorded table, not the Go build.
 
@@ -103,3 +103,9 @@ Go 의 gate 는 크기가 커서(핵심 약 4,000줄) 조각으로 나눠요.
 아직 하지 않은 것(이름을 적고 건너뛰어요, 조용히 빼지 않아요): 노드 프로젝트의 eslint·biome·oxlint·typecheck·npm test(조각 3b), ast-grep·그래프 신선도(조각 3c), Windows 의 잠금·프로세스 그룹, 설정은 `gate.yaml` 만 읽어요(Go 는 모든 섹션을 읽어요), Go 가 실패 때 그리는 장식 상자.
 
 `src/main.rs`·`src/lib.rs`·`src/help.rs` 연결은 다른 카드가 쥐고 있어서 아직이에요: `moai gate` 와 `moai hook pre-push` 가 이 모듈을 부르려면 그 줄들이 필요해요.
+
+감사 뒤(같은 head 의 독립 감사가 B 2건과 N 10건을 냈어요):
+
+- B1 고침: Go 템플릿의 `gate.yaml` 은 `disabled_steps: {}` 를 담고 있어서, 옛 읽기는 파일 전체를 거부하고 사용자가 켠 `pre_commit.enabled` 를 버렸어요. 빈 `{}`·`[]` 와 블록 목록을 건너뛰도록 고쳤고, 실제 설정 184개가 모두 읽혀요. 이 SPEC 의 Risks 가 "배포 파일은 블록 스타일" 이라고 쓴 것은 틀렸어요. 아래 Risks 를 바로잡았어요.
+- N4 고침: 시간 제한 때 프로세스 그룹에 더해 직계 자식도 끝내요(`steps_timeout_ends_a_child_that_left_the_group`). N5: 절대 경로가 아닌 PATH 항목은 찾지 않아요. N6: 시간 제한 값은 1년으로 잘라요. N12: UTF-8 이 아닌 `gate.yaml` 은 경고를 적어요. N3(c): 언어가 하나도 없어도 안 옮긴 축 줄은 적어요.
+- 고치지 않고 기록: (N3 a·b·d) 그래프 신선도 `blocking: true`, 노드 프로젝트의 eslint·biome·oxlint·typecheck·npm test, ast-grep `block_on_error: true` 는 Go 는 커밋을 막고 이 빌드는 `not run — not ported yet` 로 통과시켜요. 이 설정을 쓰는 저장소(감사가 본 것: 설정에 `block_on_error: true` 가 있는 저장소 2곳)는 조각 3b·3c 가 들어오기 전에 Go 를 걷어내면 그 검사가 빠져요. 컷오버 순서는 리더가 정해 주세요. (N7) 따옴표 붙은 값(`enabled: "false"`)을 Go 는 설정 읽기 실패로 보고 기본값을 쓰는데, 이 빌드는 문자열 그대로 읽어요.

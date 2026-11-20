@@ -59,6 +59,7 @@ Go 빌드를 읽고 직접 돌려 본 결과(스크래치 저장소, 빈 HOME):
 - The built-in patterns are matched by hand, not by a regex engine; the recorded Go table and a differential test over generated subjects guard the equivalence.
 - Go picks a convention at random when two score equally in `auto` (map order); this build picks the first of `conventional-commits`, `angular`, `karma`. Since `conventional-commits` accepts everything the other two accept, its score is never lower.
 - Go gives up on the whole config when one value is refused and then enforces (no profile). This build does the same, silently, because Go prints nothing either; a typo in `git-convention.yaml` therefore turns a warning hook into an enforcing one.
+- The report quotes a subject like Go's `%q`. Rust's standard library has no table of assigned code points, so a code point Go calls unassigned (for example U+0378) is printed as it is where Go writes `\u0378`. Only the text of a violation report differs; the exit code does not.
 - A `git-strategy.yaml` outside the supported YAML subset reads as absent: the defaults (`warn`) then apply, with a warning on stderr; Go would read it.
 
 ## Decisions
@@ -69,6 +70,8 @@ Go 빌드를 읽고 직접 돌려 본 결과(스크래치 저장소, 빈 HOME):
 
 ## Result
 
+(독립 감사 PASS-WITH-FINDINGS 뒤 고친 것은 아래 "감사 뒤" 문단에 있어요.)
+
 `moai hook pre-push` 의 검사를 `src/quality_gate/pre_push.rs` 로 옮겼어요. 종료 코드는 모두 0 이에요.
 
 - `cargo test --offline --locked --test quality_gate_cli prepush`: 11 통과. `--test quality_gate_parity prepush`: 기록표 32개 시나리오 통과.
@@ -77,3 +80,11 @@ Go 빌드를 읽고 직접 돌려 본 결과(스크래치 저장소, 빈 HOME):
 - 알아낸 Go 동작: 설정 값 하나가 거부되면 Go 는 설정 전체를 버리고 `enforce` 로 가요(REQ-7). 같게 만들었고 조용히 해요(Go 도 아무것도 안 찍어요).
 
 아직 안 한 것: 바이너리에 `hook pre-push` 를 잇는 일(`src/main.rs` 를 다른 카드가 쥐고 있어요). 지금 Rust 는 이 이벤트를 0 으로 삼켜요.
+
+감사 뒤(같은 head 의 독립 감사가 B 2건과 N 10건을 냈어요):
+
+- B2 고침: Go 가 `git-convention.yaml` 에 쓰는 `custom:` 의 빈 `[]`·블록 목록 때문에 파일 전체가 거부되어 검사가 꺼지던 문제. 빈 `{}`·`[]` 와 블록 목록을 건너뛰는 읽기로 바꿨고, 이 Mac 의 실제 설정 184개(gate, git-convention, git-strategy)가 모두 읽혀요(`config_reads_every_real_file`, `MOAI_REAL_CONFIGS`).
+- N8·N9·N10 고침: 제목을 바이트로 다뤄서 길이는 들어온 바이트로 세고, `%q` 처럼 보이지 않는 글자는 `\u` 로, UTF-8 이 아닌 바이트는 `\x` 로 적어요. 설정은 작업 폴더에서, 커밋 이력은 `CLAUDE_PROJECT_DIR` 에서 읽어요(Go 와 같아요). `reads_input` 으로 호출하는 쪽이 표준 입력을 읽어도 되는지 먼저 물을 수 있어요.
+- N11 고침: 자동 감지 시나리오가 세 규약의 동점이라 Go 쪽이 무작위로 흔들렸어요. `revert` 로 한 규약만 이기게 바꿨어요.
+- 기록표 35개 시나리오가 Go 와 일치하고, 만든 제목 453개 × 규약 3개가 일치해요(`--ignored`).
+- 고치지 않음: 위 Risks 의 아직 배정 안 된 코드 포인트 글자 모양.

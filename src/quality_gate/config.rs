@@ -86,7 +86,8 @@ pub fn parse_lenient(text: &str) -> Option<Node> {
         let is_item = trimmed == "-" || trimmed.starts_with("- ");
         if let Some(d) = skipping {
             if !trimmed.is_empty() && !trimmed.starts_with('#') {
-                if indent > d || (indent == d && is_item) {
+                // A following item at the list's indent starts its own skip below.
+                if indent > d {
                     continue;
                 }
                 skipping = None;
@@ -124,15 +125,14 @@ pub fn load(project_dir: &Path) -> (GateConfig, Vec<String>) {
     let mut cfg = defaults();
     let mut warnings = Vec::new();
     let file = project_dir.join(".moai/config/sections/gate.yaml");
-    match std::fs::read(&file) {
-        Ok(bytes) => match String::from_utf8(bytes).ok().as_deref().and_then(parse_lenient) {
+    if let Ok(bytes) = std::fs::read(&file) {
+        match String::from_utf8(bytes).ok().as_deref().and_then(parse_lenient) {
             Some(root) => apply(&mut cfg, &root),
             None => warnings.push(format!(
                 "moai gate: {} is not UTF-8 or is outside the YAML subset this build reads; using the built-in defaults",
                 file.display()
             )),
-        },
-        Err(_) => {}
+        }
     }
     cfg.go_build_tags = read_build_tags(project_dir);
     (cfg, warnings)

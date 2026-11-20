@@ -754,7 +754,7 @@ fn prepush_quotes_like_go_and_counts_raw_bytes() {
     // 6 + 94 raw bytes is exactly the limit: no length violation although each lossy U+FFFD
     // would be three bytes.
     let mut at_limit = b"feat: ".to_vec();
-    at_limit.extend(std::iter::repeat(0xffu8).take(94));
+    at_limit.extend(std::iter::repeat_n(0xffu8, 94));
     at_limit.push(b'\n');
     let (code, out, err) = check_bytes(p.path(), None, env(), &at_limit);
     assert_eq!(code, 0);
