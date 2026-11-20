@@ -309,14 +309,13 @@ fn assert_walks_to_the_end(fx: &GoFx, expected: &[&str]) -> Walk {
 
 /// The order every shape runs: the settings clean-up, the move of the Go folder, then the
 /// install steps that have something to write (the MoAI files, the hook set, the host files).
-const ORDER: [&str; 7] = [
+const ORDER: [&str; 6] = [
     "go-settings",
     "go-state",
     "generation",
     "hooks",
     "codex-hooks",
     "codex-config",
-    "omp-hooks",
 ];
 
 #[test]
@@ -572,7 +571,7 @@ fn the_printed_undo_order_takes_the_chain_back_to_the_start_bytes() {
             .map(|c| c.as_str().unwrap().to_string())
             .collect()
     };
-    for step in ["omp-hooks", "codex-config", "codex-hooks"] {
+    for step in ["codex-config", "codex-hooks"] {
         let note = steps.iter().find(|s| s["step"] == step).unwrap()["note"].as_str();
         assert!(
             note.is_some_and(|n| n.contains("no revert command")),

@@ -16,10 +16,6 @@
 //!   (`-s workspace-write -a on-request` with `--permissions`), per
 //!   https://learn.chatgpt.com/docs/developer-commands?surface=cli. Codex has no session-name
 //!   flag, so the name travels in the first prompt.
-//!   2026-11-18). OMP has no session-name flag and takes the role line inside the session as
-//!   `/skill:moai --mode-agent`. A role session passes `--approval-mode yolo`, `--permissions`
-//!   passes `always-ask-cached`, a roleless session passes none (OMP's own default is `yolo`).
-//!   For a z.ai model the glm key reaches the process as `ZAI_API_KEY`, never in argv.
 //!
 //! Without a role (`moai-cli cc|glm|codex` with neither `-l` nor `-a`, Issue #2053) the launcher
 //! opens a plain host session: no role is guessed, no session name is added and no permission
@@ -38,9 +34,6 @@ use std::path::{Path, PathBuf};
 const ROLES: [&str; 2] = ["leader", "agent"];
 const HOSTS: [&str; 3] = ["claude", "glm", "codex"];
 const EFFORTS: [&str; 6] = ["low", "medium", "high", "xhigh", "max", "ultracode"];
-/// The efforts the launcher hands to OMP (`--thinking <value>`); OMP also takes `off`,
-/// `minimal` and `auto`, which are not efforts of the other launchers. `ultracode` is a Claude
-/// Code word and is not passed.
 /// The efforts the launcher hands to Codex (`-c model_reasoning_effort="<value>"`). Codex
 /// 0.169.0 reads all five from its source (`ReasoningEffort::from_str`, rust-v0.169.0) and its
 /// config reference lists them; which of them a model takes depends on the model. `ultracode`
@@ -55,10 +48,6 @@ pub const NOTE_ADVISOR_NOT_PASSED_CODEX: &str =
     "the advisor applies to Claude hosts only; it was not passed to codex";
 pub const NOTE_ADVISOR_OMITTED_GLM: &str =
     "--advisor omitted on glm: the advisor is Anthropic API only";
-pub const NOTE_EFFORT_NOT_PASSED_OMP: &str =
-    "--effort was not passed to omp: omp takes low|medium|high|xhigh|max here";
-pub const NOTE_ADVISOR_NOT_PASSED_OMP: &str =
-    "the advisor applies to Claude hosts only; it was not passed to omp";
 /// The first line of a `codex -a` first prompt: it enters agent mode inside the session (user
 /// decision 2026-11-18, card C-47 note 2092; one of the two spellings of #2286).
 pub const CODEX_AGENT_ENTRY: &str = "$moai --mode-agent";

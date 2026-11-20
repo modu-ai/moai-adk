@@ -569,8 +569,13 @@ pub fn revert(project: &Path, receipt_id: &str, permission: &str) -> Result<Valu
     let mut reverted = Vec::new();
     let mut skipped = Vec::new();
     for h in &receipt.hosts {
+        // R2 of the removal audit: a receipt an older binary wrote may name a host this
+        // version no longer installs for (OMP). The revert reads the same folders and files
+        // that binary wrote, so it recognizes the retired host exactly as before; only the
+        // plan-and-write list dropped it (the same decision as the agents receipts).
         let host = crate::hooks::HOSTS
             .iter()
+            .chain(std::iter::once(&"omp"))
             .find(|x| **x == h.host)
             .ok_or("hook receipt names an unknown host")?;
         let (files, dirs) = crate::hooks::written_files(&root, host)?;

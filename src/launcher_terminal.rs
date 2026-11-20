@@ -8,8 +8,7 @@
 //! host starts. Nothing here ever prints a key or token value: the envelope itself holds
 //! variable names only.
 use crate::session::{
-    NOTE_ADVISOR_NOT_PASSED_CODEX, NOTE_ADVISOR_NOT_PASSED_OMP, NOTE_ADVISOR_OMITTED_GLM,
-    NOTE_EFFORT_NOT_PASSED_CODEX, NOTE_EFFORT_NOT_PASSED_OMP,
+    NOTE_ADVISOR_NOT_PASSED_CODEX, NOTE_ADVISOR_OMITTED_GLM, NOTE_EFFORT_NOT_PASSED_CODEX,
 };
 use serde_json::Value;
 
@@ -31,12 +30,10 @@ pub fn startup_lines(composed: &Value, number_notes: &[String]) -> Vec<String> {
     // Decided in #3004 P9: the notes that say an option was dropped are limits the user must
     // see; the other notes (role defaults, model mapping, permission mode, key source) only
     // describe what the launcher chose and stay in the envelope.
-    const WARNINGS: [&str; 5] = [
+    const WARNINGS: [&str; 3] = [
         NOTE_ADVISOR_OMITTED_GLM,
         NOTE_EFFORT_NOT_PASSED_CODEX,
         NOTE_ADVISOR_NOT_PASSED_CODEX,
-        NOTE_EFFORT_NOT_PASSED_OMP,
-        NOTE_ADVISOR_NOT_PASSED_OMP,
     ];
     let mut lines: Vec<String> = number_notes.iter().map(|n| format!("moai: {n}")).collect();
     let notes = composed["notes"].as_array().into_iter().flatten();
@@ -191,8 +188,8 @@ pub fn report(v: &Value, human: bool) {
 mod tests {
     use super::*;
     use crate::session::{
-        AGENT_ONE_WARNING, NOTE_ADVISOR_NOT_PASSED_CODEX, NOTE_ADVISOR_NOT_PASSED_OMP,
-        NOTE_ADVISOR_OMITTED_GLM, NOTE_EFFORT_NOT_PASSED_CODEX, NOTE_EFFORT_NOT_PASSED_OMP,
+        AGENT_ONE_WARNING, NOTE_ADVISOR_NOT_PASSED_CODEX, NOTE_ADVISOR_OMITTED_GLM,
+        NOTE_EFFORT_NOT_PASSED_CODEX,
     };
     use serde_json::json;
 
@@ -305,8 +302,6 @@ mod tests {
             NOTE_ADVISOR_OMITTED_GLM,
             NOTE_EFFORT_NOT_PASSED_CODEX,
             NOTE_ADVISOR_NOT_PASSED_CODEX,
-            NOTE_EFFORT_NOT_PASSED_OMP,
-            NOTE_ADVISOR_NOT_PASSED_OMP,
             "codex sessions have no cross-session channel in RC1 (no ListAgents/SendMessage)",
         ]});
         let number = vec![
@@ -322,8 +317,6 @@ mod tests {
                 format!("moai: {NOTE_ADVISOR_OMITTED_GLM}"),
                 format!("moai: {NOTE_EFFORT_NOT_PASSED_CODEX}"),
                 format!("moai: {NOTE_ADVISOR_NOT_PASSED_CODEX}"),
-                format!("moai: {NOTE_EFFORT_NOT_PASSED_OMP}"),
-                format!("moai: {NOTE_ADVISOR_NOT_PASSED_OMP}"),
             ]
         );
         assert!(startup_lines(&json!({"notes": []}), &[]).is_empty());

@@ -71,16 +71,9 @@ const CODEX_LANE: Host = Host {
     fresh_args: &LANE_ARGS,
     entries: 4,
 };
-const OMP: Host = Host {
-    name: "omp",
-    file: ".omp/extensions/moai-hooks.ts",
-    receipt: ".moai-cli/manifests/omp-hooks.json",
-    fixture: "omp.moai-hooks.ts",
-    fixture_receipt: "omp.receipt.json",
-    fresh_args: &[],
-    entries: 1,
-};
-const ALL: [Host; 4] = [CLAUDE, CODEX, CODEX_LANE, OMP];
+// OMP support was removed (SPEC-20261120-drop-omp): the legacy table runs the three live
+// hosts; the retired host keeps its own skip-contract tests in hooks_cli.
+const ALL: [Host; 3] = [CLAUDE, CODEX, CODEX_LANE];
 
 /// One temporary world: `root/project`, `root/home` and the PATH folders `rust`, `go`.
 struct World {
@@ -448,7 +441,7 @@ fn mixed_and_receipt_less_installs_are_held() {
     assert_eq!(w.read(CLAUDE.file), before);
 
     // Codex and OMP: a whole-file receipt; an edited file or no receipt is a review.
-    for h in [CODEX, CODEX_LANE, OMP] {
+    for h in [CODEX, CODEX_LANE] {
         let w = world();
         w.write(h.file, &fixture(h.fixture));
         let before = w.read(h.file);
@@ -586,11 +579,6 @@ fn the_status_names_an_old_install_legacy_binary() {
         let p = plan(&w, h, &w.rust());
         assert_eq!(p["hook_status"]["configured"], json!("yes"), "{p}");
     }
-    let w = world();
-    w.install_legacy(OMP);
-    w.write(OMP.file, b"// something else\n");
-    let p = plan_envelope(&w, OMP, &w.rust());
-    assert!(p.to_string().contains("preservation review"), "{p}");
 }
 
 /// A file the receipt owns whole but that is neither the old nor the current set (an earlier
@@ -618,22 +606,4 @@ fn an_earlier_owned_set_is_replaced_whole_and_named() {
     assert_eq!(m["entries"], json!([]), "{p}");
     assert_eq!(m["replaced"][0]["reason"], json!("earlier_moai_set"), "{p}");
     assert!(!p.to_string().contains("--earlier"), "{p}");
-
-    // OMP: the receipt's sha256 matches a module that is not the old one.
-    let w = world();
-    let module = b"// an earlier moai module\n";
-    w.write(OMP.file, module);
-    let mut receipt: Value = serde_json::from_slice(&fixture(OMP.fixture_receipt)).unwrap();
-    receipt["sha256"] = json!(moai_cli::digest(module));
-    w.write(OMP.receipt, &serde_json::to_vec_pretty(&receipt).unwrap());
-    let p = plan(&w, OMP, &w.rust());
-    assert_eq!(p["action"], json!("update"), "{p}");
-    let m = &p["binary_migration"];
-    assert_eq!(m["state"], json!("rewrite"), "{p}");
-    assert_eq!(m["entries"], json!([]), "{p}");
-    assert_eq!(
-        m["replaced"][0]["reason"],
-        json!("earlier_moai_module"),
-        "{p}"
-    );
 }

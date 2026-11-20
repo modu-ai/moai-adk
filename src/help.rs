@@ -1716,12 +1716,12 @@ const ARG_HELP_KO: &[(&str, &str, &str)] = &[
     (
         "cc|codex|glm",
         "model",
-        "주 모델(Claude 호스트 기본 `opus`, codex·omp 는 정하지 않으면 자기 기본값)",
+        "주 모델(Claude 호스트 기본 `opus`, codex 는 정하지 않으면 자기 기본값)",
     ),
     (
         "cc|codex|glm",
         "effort",
-        "effort(Claude 기본 `medium`, codex·omp 는 지정할 때만 low|medium|high|xhigh|max, omp 는 `--thinking` 으로)",
+        "effort(Claude 기본 `medium`, codex 는 지정할 때만 low|medium|high|xhigh|max)",
     ),
     (
         "cc|codex|glm",
@@ -1738,8 +1738,8 @@ const ARG_HELP_KO: &[(&str, &str, &str)] = &[
         "cc|codex|glm",
         "permissions",
         "권한 질문 유지: `--dangerously-skip-permissions` 없음(Claude 호스트), codex 는 \
-         `workspace-write` / `on-request` sandbox, omp 는 `--approval-mode always-ask-cached`. 없으면 \
-         -l|-a 세션은 전체 접근(omp: `--approval-mode yolo`), 역할 없는 세션은 권한 플래그를 받지 않음",
+         `workspace-write` / `on-request` sandbox. 없으면 \
+         -l|-a 세션은 전체 접근, 역할 없는 세션은 권한 플래그를 받지 않음",
     ),
     (
         "cc|codex|glm",

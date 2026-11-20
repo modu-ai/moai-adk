@@ -1631,39 +1631,39 @@ fn the_host_hook_steps_print_their_apply_and_settle() {
     let fx = Fx::new();
     fx.with_profile(false);
     let plan = fx.plan();
-    for (name, host, file) in [
-        ("codex-hooks", "codex", ".codex/hooks.json"),
-        ("omp-hooks", "omp", ".omp/extensions/"),
-    ] {
-        let s = step(&plan, name);
-        assert_eq!(s["state"], "ready", "{name}: {s}");
-        let argv: Vec<&str> = s["apply"]["argv"]
-            .as_array()
+    // The omp step skips with the removal notice (SPEC-20261120-drop-omp): only codex prints
+    // an apply.
+    let s = step(&plan, "codex-hooks");
+    assert_eq!(s["state"], "ready", "{s}");
+    let argv: Vec<&str> = s["apply"]["argv"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|w| w.as_str().unwrap())
+        .collect();
+    assert_eq!(&argv[..2], ["moai", "hooks-apply"], "{argv:?}");
+    assert_eq!(argv[2], fx.p(), "{argv:?}");
+    let at = argv.iter().position(|w| *w == "--host").unwrap();
+    assert_eq!(argv[at + 1], "codex", "{argv:?}");
+    assert!(
+        s["preview"]["path"]
+            .as_str()
             .unwrap()
-            .iter()
-            .map(|w| w.as_str().unwrap())
-            .collect();
-        assert_eq!(&argv[..2], ["moai", "hooks-apply"], "{argv:?}");
-        assert_eq!(argv[2], fx.p(), "{argv:?}");
-        let at = argv.iter().position(|w| *w == "--host").unwrap();
-        assert_eq!(argv[at + 1], host, "{argv:?}");
-        assert!(
-            s["preview"]["path"].as_str().unwrap().starts_with(file),
-            "{name}: {s}"
-        );
-        assert!(s["plan_digest"].is_string(), "{name}: {s}");
-    }
-    for name in ["codex-hooks", "omp-hooks"] {
-        let out = fx.apply_step(step(&plan, name));
-        assert_eq!(out["ok"], json!(true), "{name}: {out}");
-    }
+            .starts_with(".codex/hooks.json"),
+        "{s}"
+    );
+    assert!(s["plan_digest"].is_string(), "{s}");
+    let omp = step(&plan, "omp-hooks");
+    assert_eq!(omp["state"], "skip", "{omp}");
+    assert!(omp["apply"].is_null(), "{omp}");
+    let out = fx.apply_step(step(&plan, "codex-hooks"));
+    assert_eq!(out["ok"], json!(true), "{out}");
     assert!(fx.root.join(".codex/hooks.json").is_file());
     let again = fx.plan();
-    for name in ["codex-hooks", "omp-hooks"] {
-        let s = step(&again, name);
-        assert_eq!(s["state"], "unchanged", "{name}: {s}");
-        assert_eq!(s["apply"], Value::Null, "{name}: {s}");
-    }
+    let s = step(&again, "codex-hooks");
+    assert_eq!(s["state"], "unchanged", "{s}");
+    assert_eq!(s["apply"], Value::Null, "{s}");
+    assert_eq!(step(&again, "omp-hooks")["state"], "skip", "{again}");
 }
 
 #[test]
@@ -1738,6 +1738,13 @@ fn host_steps_follow_the_profile_hosts() {
         }
         for (name, picked) in [("codex-hooks", codex_picked), ("omp-hooks", omp_picked)] {
             let s = step(&plan, name);
+            // The omp step is a skip with the removal notice (SPEC-20261120-drop-omp) no
+            // matter what the profile lists: it never has an apply.
+            if name == "omp-hooks" {
+                assert_eq!(s["state"], "skip", "{hosts}: {name}: {s}");
+                assert!(s["apply"].is_null(), "{hosts}: {name}: {s}");
+                continue;
+            }
             assert_eq!(s["state"] == "ready", picked, "{hosts}: {name}: {s}");
             assert_eq!(
                 s["apply"]["argv"].is_array(),
@@ -1818,11 +1825,13 @@ fn a_broken_profile_blocks_its_steps_and_not_the_host_hook_steps() {
     let plan = fx.plan();
     assert_eq!(step(&plan, "profile")["state"], "blocked", "{plan}");
     assert_eq!(step(&plan, "generation")["state"], "blocked", "{plan}");
-    for name in ["codex-hooks", "codex-config", "omp-hooks"] {
+    for name in ["codex-hooks", "codex-config"] {
         let s = step(&plan, name);
         assert_eq!(s["state"], "ready", "{name}: {s}");
         assert!(s["apply"]["argv"].is_array(), "{name}: {s}");
     }
+    // Both omp steps skip with the removal notice: the broken profile cannot unskip one.
+    assert_eq!(step(&plan, "omp-hooks")["state"], "skip", "{plan}");
     assert_eq!(step(&plan, "omp-config")["state"], "skip", "{plan}");
 }
 

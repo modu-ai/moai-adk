@@ -169,14 +169,14 @@ struct HostLaunch {
     /// Leader session.
     ///
     /// Names the session `leader` and sets its access. The role is entered inside the session
-    /// with `/moai --mode-leader` (Codex: `$moai --mode-leader`; OMP: `/skill:moai --mode-leader`).
+    /// with `/moai --mode-leader` (Codex: `$moai --mode-leader`).
     #[arg(short = 'l', long = "leader")]
     leader: bool,
     /// Agent session.
     ///
     /// Names the session `agent-N` (or `--name`) and sets its access. The role is entered
     /// inside the session with `/moai --mode-agent`; on Codex the first prompt starts with
-    /// `$moai --mode-agent`; on OMP the line typed inside the session is `/skill:moai --mode-agent`.
+    /// `$moai --mode-agent`.
     #[arg(short = 'a', long = "agent")]
     agent: bool,
     #[command(flatten)]

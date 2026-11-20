@@ -114,8 +114,15 @@ fn steps_in(
         } else {
             unlisted("codex-skill", "codex")
         },
+        // OMP support was removed (user decision 2026-11-20): the step is skipped with one
+        // notice, not blocked — a profile that lists omp must not stop the project update
+        // (SPEC-20261120-drop-omp R1).
         if omp {
-            hooks_step("omp-hooks", "omp", root, shown, home)
+            HostStep::bare(
+                "omp-hooks",
+                "skip",
+                "omp support was removed; the omp hook entry is ignored and nothing is written",
+            )
         } else {
             unlisted("omp-hooks", "omp")
         },
@@ -614,8 +621,14 @@ mod tests {
         .iter()
         .filter(|s| s.name.ends_with("-hooks"))
         {
-            assert_eq!(s.state, "blocked", "{}: {}", s.name, s.reason);
-            assert!(s.apply.is_none(), "{}", s.name);
+            // The omp-hooks step is a skip with the removal notice (R1); the codex one is
+            // blocked (the folder is the project itself).
+            if s.name == "omp-hooks" {
+                assert_eq!(s.state, "skip", "{}: {}", s.name, s.reason);
+            } else {
+                assert_eq!(s.state, "blocked", "{}: {}", s.name, s.reason);
+                assert!(s.apply.is_none(), "{}", s.name);
+            }
         }
         // The same folder as a project of a different HOME is previewed.
         let other = tempfile::tempdir().unwrap();
@@ -631,10 +644,10 @@ mod tests {
         .iter()
         .filter(|s| s.name.ends_with("-hooks"))
         {
-            // The omp-hooks step reads as blocked since OMP support was removed
-            // (SPEC-20261120-drop-omp): its host is no longer a hook host.
+            // The omp-hooks step is a skip with the removal notice (R1: a profile listing
+            // omp must not stop the update).
             if s.name == "omp-hooks" {
-                assert_eq!(s.state, "blocked", "{}: {}", s.name, s.reason);
+                assert_eq!(s.state, "skip", "{}: {}", s.name, s.reason);
                 continue;
             }
             assert_eq!(s.state, "ready", "{}: {}", s.name, s.reason);

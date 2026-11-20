@@ -313,7 +313,7 @@ fn a_go_moai_first_on_path_is_the_wrong_generation_and_no_hook_is_written() {
         assert_eq!(code, Some(0), "{v}");
         v["result"].clone()
     };
-    for host in ["claude", "codex", "omp"] {
+    for host in ["claude", "codex"] {
         let plan = plan_with(&go_first, host);
         assert_eq!(plan["hook_binary"]["name"], "moai", "{host}: {plan}");
         assert_eq!(
@@ -348,6 +348,11 @@ fn a_go_moai_first_on_path_is_the_wrong_generation_and_no_hook_is_written() {
             "{refused}"
         );
     }
+    // The retired host answers a skip plan (SPEC-20261120-drop-omp): no hooks, no gate.
+    let plan = plan_with(&go_first, "omp");
+    assert_eq!(plan["action"], "skip", "{plan}");
+    assert_eq!(plan["hooks_active"], false, "{plan}");
+    assert_eq!(plan["gate"]["allowed"], true, "{plan}");
     // Nothing was written for any host, and the Go `moai` heard `--version` only.
     for path in [".claude", ".codex", ".omp"] {
         assert!(!p.join(path).exists(), "{path} was written");

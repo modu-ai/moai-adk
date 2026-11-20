@@ -764,6 +764,11 @@ fn codex_receipt_bytes(
 /// Previews generating the MoAI hook set for `host` in PROJECT. Never writes. The returned
 /// `plan_digest` binds the current files and the result; `hooks-apply` requires it.
 pub fn plan(project: &Path, host: &str, home: Option<&Path>) -> Result<Value> {
+    // R1 of the removal audit: `moai hooks-plan --host omp` answers the skip notice too, so a
+    // profile naming omp never turns the plain plan into a refusal.
+    if host == "omp" {
+        return plan_with_replace(project, host, home, LaneLoop::Keep, false);
+    }
     plan_with(project, host, home, LaneLoop::Keep)
 }
 
@@ -857,6 +862,18 @@ pub fn plan_with_replace(
     lane: LaneLoop,
     replace: bool,
 ) -> Result<Value> {
+    // R1 of the removal audit: OMP support was removed, so the plan for omp is not an error
+    // but a skip answer — a project whose profile lists omp keeps finishing its update, with
+    // one notice, and nothing is written.
+    if host == "omp" {
+        return Ok(serde_json::json!({
+            "host": "omp",
+            "action": "skip",
+            "notice": "omp support was removed; the omp hook entry is ignored and nothing is written",
+            "path": null,
+            "skip": true,
+        }));
+    }
     check_host(host)?;
     check_replace(host, replace)?;
     check_lane(host, &lane)?;
@@ -1221,6 +1238,16 @@ pub fn status_with(
     path_env: &str,
     moai: Option<&Value>,
 ) -> Result<Value> {
+    // R1 of the removal audit: the plan command asks for the host's status before planning,
+    // so the retired host answers the skip notice here too instead of a refusal.
+    if host == "omp" {
+        return Ok(serde_json::json!({
+            "host": "omp",
+            "installed": false,
+            "skip": true,
+            "notice": "omp support was removed; the omp hook entry is ignored and nothing is written",
+        }));
+    }
     check_host(host)?;
     let root = project_root(project, home)?;
     // Compared directly, not through the plan: the Claude settings plan preserves a user's

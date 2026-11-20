@@ -1571,14 +1571,13 @@ fn dead_update_lock(root: &Path) -> Option<String> {
 /// generation step's `AGENTS.md` is still in place ("revert refused: AGENTS.md is conflict"), and
 /// the generation step's `AGENTS.md` is a second receipt (`agents_receipt`) that its own undo does
 /// not cover. Run in this order the project is back to its start bytes (what the steps added —
-/// receipts, `.moai.rust-<UTC>/`, the Codex and OMP files — stays). Each id is printed by the
-/// apply result of its step.
+/// receipts, `.moai.rust-<UTC>/`, the Codex files and any OMP files an older binary wrote —
+/// stays). Each id is printed by the apply result of its step.
 fn undo_order() -> Value {
     let none = "no revert command exists for this step; its files stay and do not block the commands below";
     json!({
         "rule": "undo the step applied last first; every command needs its own permission reference",
         "steps": [
-            {"step": "omp-hooks", "commands": [], "note": none},
             {"step": "codex-config", "commands": [], "note": none},
             {"step": "codex-hooks", "commands": [], "note": none},
             {"step": "hooks", "commands": [
@@ -1596,7 +1595,7 @@ fn undo_order() -> Value {
                 "moai go-settings-revert --receipt <receipt of the go-settings step> --permission-reference <reference> <PROJECT>",
             ]},
         ],
-        "stays": "what the commands above do not take away: the receipts under .moai-cli/receipts/, the Rust state's set-aside folder .moai.rust-<UTC>/, and what the three steps without a revert command wrote (.codex/, .omp/, .moai-cli/manifests/codex-config.json, codex-hooks.json, omp-hooks.json); remove those by hand only after reading them, nothing here deletes them",
+        "stays": "what the commands above do not take away: the receipts under .moai-cli/receipts/, the Rust state's set-aside folder .moai.rust-<UTC>/, what the two steps without a revert command wrote (.codex/, .moai-cli/manifests/codex-config.json, codex-hooks.json), and any OMP files an older binary wrote (.omp/, .moai-cli/manifests/omp-hooks.json); remove those by hand only after reading them, nothing here deletes them",
         "other_steps": "a step not listed (profile, claude-settings, github, the merge steps) prints its own revert or receipt in its apply result",
     })
 }

@@ -44,7 +44,9 @@ const OMP: H = H {
     file: ".omp/extensions/moai-hooks.ts",
     user: "// mine\nexport default function () {}\n",
 };
-const BOTH: [H; 2] = [CODEX, OMP];
+// OMP support was removed (SPEC-20261120-drop-omp): the replace-plan tests run codex only;
+// the retired host answers a skip plan (its skip-contract tests live in hooks_cli).
+const BOTH: [H; 1] = [CODEX];
 const BACKUPS: &str = ".moai-cli/backups";
 
 struct Fx {
@@ -397,24 +399,6 @@ fn plan_replace_reports_the_replacement_and_writes_nothing() {
     assert_eq!(before, fx.tree(), "the plan wrote something");
 }
 
-/// AC-1 (REQ-1): omp takes the same path and names a `.ts` backup.
-#[test]
-fn plan_replace_for_omp_names_the_ts_backup() {
-    let fx = Fx::with_user_file(OMP);
-    let plan = fx.plan(OMP, true);
-    assert_eq!(plan["action"], json!("replace"), "{plan}");
-    assert_eq!(plan["replaced"], json!([OMP.file]), "{plan}");
-    let path = backup_rel(&plan);
-    let hex = plan["expected_sha256"]
-        .as_str()
-        .unwrap()
-        .trim_start_matches("sha256:");
-    assert!(
-        path.ends_with(&format!("omp-hooks-{}.ts", &hex[..16])),
-        "{path}"
-    );
-}
-
 /// AC-1 (REQ-1): a file MoAI wrote and the user then edited is a replacement too.
 #[test]
 fn plan_replace_after_an_edit_of_an_owned_file() {
@@ -494,8 +478,8 @@ fn plan_replace_withholds_a_secret_shaped_line() {
     // Built at run time so this file holds no secret-shaped text of its own.
     let secret = format!("{}{}", "pass", "word=hunter2hunter2");
     let body = format!("// mine\n// {secret}\nexport default function () {{}}\n");
-    fx.write(OMP.file, &body);
-    let plan = fx.plan(OMP, true);
+    fx.write(CODEX.file, &body);
+    let plan = fx.plan(CODEX, true);
     let all = plan.to_string();
     assert!(
         !all.contains("hunter2"),
@@ -556,8 +540,8 @@ fn plan_replace_withholds_credential_names_and_key_shapes() {
         body.push('\n');
     }
     body.push_str("export default function () {}\n");
-    fx.write(OMP.file, &body);
-    let plan = fx.plan(OMP, true);
+    fx.write(CODEX.file, &body);
+    let plan = fx.plan(CODEX, true);
     let all = plan.to_string();
     for (_, value) in &lines {
         assert!(!all.contains(value), "the diff printed {value}: {all}");
@@ -577,16 +561,30 @@ fn plan_replace_withholds_credential_names_and_key_shapes() {
 fn plan_replace_diff_stops_at_forty_lines() {
     let fx = Fx::new();
     let body: String = (0..100).map(|i| format!("// line {i:03}\n")).collect();
-    fx.write(OMP.file, &body);
-    let plan = fx.plan(OMP, true);
+    fx.write(CODEX.file, &body);
+    let plan = fx.plan(CODEX, true);
     let diff = &plan["diff"];
     assert_eq!(diff["removed"].as_array().unwrap().len(), 40, "{plan}");
     assert!(diff["added"].as_array().unwrap().len() <= 40, "{plan}");
     assert_eq!(diff["truncated"]["removed"], json!(true), "{plan}");
-    let small = Fx::with_user_file(OMP);
+    let small = Fx::with_user_file(CODEX);
     assert_eq!(
-        small.plan(OMP, true)["diff"]["truncated"]["removed"],
+        small.plan(CODEX, true)["diff"]["truncated"]["removed"],
         json!(false)
+    );
+}
+
+/// The retired host answers a skip plan with its notice, whatever the replace flag asks for
+/// (SPEC-20261120-drop-omp): the replace path never runs for it.
+#[test]
+fn the_retired_host_answers_a_skip_plan_even_for_replace() {
+    // No user file: the retired host reads no folder at all.
+    let fx = Fx::new();
+    let plan = fx.plan(OMP, true);
+    assert_eq!(plan["action"], json!("skip"), "{plan}");
+    assert_eq!(
+        plan["notice"],
+        json!("omp support was removed; the omp hook entry is ignored and nothing is written")
     );
 }
 
@@ -622,20 +620,6 @@ fn apply_replace_writes_backup_then_file_then_receipt_and_settles() {
     assert_eq!(fx.backups().len(), 1);
 }
 
-/// AC-2 (REQ-3, REQ-7): the same for omp.
-#[test]
-fn apply_replace_for_omp_settles() {
-    let fx = Fx::with_user_file(OMP);
-    let plan = fx.plan(OMP, true);
-    let path = backup_rel(&plan);
-    let (code, out) = fx.apply(OMP, &digest(&plan), true);
-    assert_eq!(code, 0, "{out}");
-    assert_eq!(fx.read(&path), OMP.user.as_bytes());
-    assert_eq!(mode(&fx.root.join(&path)), 0o600);
-    assert_ne!(fx.read(OMP.file), OMP.user.as_bytes());
-    assert_eq!(fx.plan(OMP, false)["action"], json!("unchanged"));
-}
-
 /// AC-2 (REQ-8): an apply without the flag refuses the digest of a replace plan as a conflict and
 /// writes nothing.
 #[test]
@@ -650,24 +634,6 @@ fn apply_without_the_flag_refuses_the_replace_digest() {
         assert_eq!(before, fx.tree(), "the refusal wrote something");
         assert!(fx.backups().is_empty());
     }
-}
-
-/// AC-2 (REQ-4): a digest of a file that changed since is refused before any backup exists.
-#[test]
-fn apply_refuses_a_stale_replace_digest_after_the_file_changed() {
-    let fx = Fx::with_user_file(OMP);
-    let plan = fx.plan(OMP, true);
-    let changed = format!("{}// changed since the plan\n", OMP.user);
-    fx.write(OMP.file, &changed);
-    let before = fx.tree();
-    let (code, v) = fx.apply(OMP, &digest(&plan), true);
-    assert_ne!(code, 0, "{v}");
-    assert!(v.to_string().contains("stale or altered plan"), "{v}");
-    assert_eq!(before, fx.tree());
-    assert!(
-        fx.backups().is_empty(),
-        "no backup before the digest is checked"
-    );
 }
 
 /// AC-2 (REQ-5): a backup of the planned name holding other bytes is refused, and the hook file
@@ -928,7 +894,8 @@ fn step_commands_run_as_printed_and_settle() {
         assert_eq!(code, 0, "{}: {v}", h.name);
         assert_eq!(v["result"]["state"], json!("applied"), "{v}");
     }
-    assert_eq!(fx.backups().len(), 2);
+    // One replace host left (codex): the retired host's step writes no backup.
+    assert_eq!(fx.backups().len(), 1);
     let after = fx.update_plan();
     for h in BOTH {
         let s = step(&after, h.step);
@@ -960,8 +927,8 @@ fn step_without_a_replace_plan_stays_a_bare_conflict() {
     );
     assert!(s["preview"]["choices"].is_null(), "{s}");
     assert!(s["plan_digest"].is_null() && s["apply"].is_null(), "{s}");
-    // The omp step has no file of the user's: it is a plain create with its own command.
+    // The omp step is a skip with the removal notice (SPEC-20261120-drop-omp): no apply.
     let omp = step(&plan, OMP.step);
-    assert_eq!(omp["state"], json!("ready"), "{omp}");
-    assert!(omp["apply"]["argv"].is_array(), "{omp}");
+    assert_eq!(omp["state"], json!("skip"), "{omp}");
+    assert!(omp["apply"].is_null(), "{omp}");
 }
