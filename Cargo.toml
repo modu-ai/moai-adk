@@ -55,8 +55,10 @@ tempfile = "=3.27.0"
 # per project. `bundled` compiles the SQLite the crate ships, so `unixepoch()` (3.38+), `STRICT`
 # tables (3.37+) and the JSON functions exist on every machine and no system library is needed;
 # it needs a C compiler at build time (the `cc` build dependency). No default features: no
-# statement cache and no extra type conversions. MIT.
-rusqlite = { version = "=0.43.0", default-features = false, features = ["bundled"] }
+# statement cache and no extra type conversions. `hooks` compiles the query progress handler
+# that the card show note-events work test installs on its own connection to count the steps
+# the query really scans; nothing in the tool calls it, so the tool's behavior is unchanged.
+rusqlite = { version = "=0.43.0", default-features = false, features = ["bundled", "hooks"] }
 
 [target.'cfg(unix)'.dependencies]
 # Already locked transitively; O_NONBLOCK prevents FIFO opens from waiting.

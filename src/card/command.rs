@@ -476,7 +476,8 @@ mod tests {
     use super::*;
     use crate::ledger::schema;
 
-    fn ledger_with_events(events: &[(&str, i64, &str)]) -> Connection {
+    /// The empty v1 ledger with the two cards the event helpers write into.
+    fn ledger_base() -> Connection {
         let mut conn = Connection::open_in_memory().unwrap();
         schema::create_v1(&mut conn, "unit", "test").unwrap();
         conn.execute(
@@ -485,6 +486,11 @@ mod tests {
             [],
         )
         .unwrap();
+        conn
+    }
+
+    fn ledger_with_events(events: &[(&str, i64, &str)]) -> Connection {
+        let conn = ledger_base();
         for (key, card, payload) in events {
             conn.execute(
                 "INSERT INTO event (event_key, at, actor, card_id, kind, payload) \
@@ -557,6 +563,63 @@ mod tests {
                 .iter()
                 .all(|l| !l.contains("SUBQUERY") && !l.contains("event")),
             "the notes query leaves event alone: {notes:?}"
+        );
+    }
+
+    /// A ledger whose card `card` carries `count` `card.note` events, one per note, so the
+    /// work meter can watch the query at two sizes.
+    fn ledger_with_n_note_events(card: i64, count: usize) -> Connection {
+        let conn = ledger_base();
+        for i in 1..=count {
+            conn.execute(
+                "INSERT INTO event (event_key, at, actor, card_id, kind, payload) \
+                 VALUES (?1, 1, 'x', ?2, 'card.note', ?3)",
+                params![
+                    format!("k{card}-{i}"),
+                    card,
+                    format!(r#"{{"note_id":{i},"session":"s{i}"}}"#)
+                ],
+            )
+            .unwrap();
+        }
+        conn
+    }
+
+    /// REQ-1: the meter counts the virtual-machine progress steps of exactly one
+    /// `note_sessions` call — the handler goes up before the call and comes down right after,
+    /// so the number is the work of that call alone.
+    /// REQ-2: doubling the notes at most triples the counted work. The per-note lookup this
+    /// query replaced scanned the whole `event` table once per note, about four times the
+    /// work on doubling, so the bound fails that shape.
+    #[test]
+    fn the_note_events_work_grows_linearly_with_the_note_count() {
+        thread_local! {
+            static RUN_SHOW_WORK: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+        }
+        fn counted(conn: &mut Connection, card_id: i64) -> (u64, HashMap<i64, Option<String>>) {
+            RUN_SHOW_WORK.with(|w| w.set(0));
+            conn.progress_handler(
+                1,
+                Some(|| {
+                    RUN_SHOW_WORK.with(|w| w.set(w.get() + 1));
+                    false
+                }),
+            )
+            .unwrap();
+            let sessions = note_sessions(conn, card_id).unwrap();
+            conn.progress_handler(0, None::<fn() -> bool>).unwrap();
+            (RUN_SHOW_WORK.with(|w| w.get()), sessions)
+        }
+        let mut small = ledger_with_n_note_events(1, 32);
+        let (small_work, small_sessions) = counted(&mut small, 1);
+        assert_eq!(small_sessions.len(), 32, "every note gets its session");
+        let mut big = ledger_with_n_note_events(1, 64);
+        let (big_work, big_sessions) = counted(&mut big, 1);
+        assert_eq!(big_sessions.len(), 64, "every note gets its session");
+        assert!(small_work > 0, "the meter counted nothing: {small_work}");
+        assert!(
+            big_work <= small_work * 3,
+            "doubling the notes must not quadruple the work: {small_work} -> {big_work}"
         );
     }
 }
