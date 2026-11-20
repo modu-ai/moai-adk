@@ -634,3 +634,95 @@ pub fn revert(project: &Path, receipt_id: &str, permission: &str) -> Result<Valu
         json!({"state": "reverted", "receipt": receipt_id, "reverted": reverted, "skipped": skipped}),
     )
 }
+
+/// The dangerous-rm deny offer of `moai update` — the second of the three defense layers
+/// on the rm card (the MoAI hook stays the primary one; Claude Code's own
+/// possibly-empty-variable prompt is the third). The entries are exact strings: Claude
+/// Code's `permissions.deny` rules live in the `permissions` object and match
+/// `Bash(command:pattern)` shapes, with `deny` winning over `allow`
+/// (https://code.claude.com/docs/en/settings, https://code.claude.com/docs/en/permissions) —
+/// and a string pattern cannot see how the shell will expand a variable, so the offer
+/// names only the literal catastrophic commands and says so in the preview.
+pub const DENY_DOC: &str = "https://code.claude.com/docs/en/settings";
+
+/// The exact dangerous `rm` commands offered as Claude Code `permissions.deny` entries.
+pub fn deny_entries() -> Vec<&'static str> {
+    vec![
+        "Bash(rm -rf /)",
+        "Bash(rm -rf /*)",
+        "Bash(rm -rf ~)",
+        "Bash(rm -rf ~/*)",
+        "Bash(rm -rf $HOME)",
+        "Bash(rm -rf ${HOME})",
+        "Bash(rm -rf $HOME/*)",
+        "Bash(rm -rf ${HOME}/*)",
+        "Bash(rm -rf .)",
+        "Bash(rm -rf ..)",
+        "Bash(rm -rf *)",
+        "Bash(sudo rm -rf /)",
+        "Bash(find / -delete)",
+    ]
+}
+
+/// The preview text: the entries, the official docs the syntax comes from, the limit
+/// (exact strings only — variable and project-root shapes stay with the moai hook),
+/// and the Codex note. Codex's official rules file
+/// (https://learn.chatgpt.com/docs/agent-configuration/rules) is experimental and its
+/// config reference states "deny wins on conflicts" but no deny guarantee for
+/// full-access mode, so nothing is written there until its docs define it.
+pub fn deny_preview() -> String {
+    let mut text = String::from(
+        "offer: deny the dangerous rm commands in Claude Code settings (permissions.deny)\n",
+    );
+    for e in deny_entries() {
+        text.push_str(&format!("  {e}\n"));
+    }
+    text.push_str(&format!(
+        "  syntax and precedence from the official docs: {DENY_DOC}\n  (deny wins over allow; rules match Bash(command:pattern) — these are exact\n  strings, so variable and project-root shapes stay with the moai hook)\n"
+    ));
+    text.push_str(
+        "  codex: the official rules file (~/.codex/rules/, experimental,\n  https://learn.chatgpt.com/docs/agent-configuration/rules) states \"deny wins on\n  conflicts\" but no deny guarantee for full-access mode — nothing is written there\n  until its docs define it; the moai hook is the defense\n",
+    );
+    text
+}
+
+/// Merge the deny entries into a Claude Code settings file's `permissions.deny` — only
+/// when the user picked the offer; without the pick the file stays byte-identical.
+/// Entries already present keep their place; new ones append at the end; an existing
+/// sibling list (for example `permissions.allow`) is left as it is; a settings file with
+/// no `permissions` block grows one.
+pub fn deny_apply(settings_path: &Path, picked: bool) -> Result<Value> {
+    if !picked {
+        return Ok(json!({"state": "not-picked", "written": 0}));
+    }
+    let raw = fs::read(settings_path).ok();
+    let mut settings: Value = match &raw {
+        Some(bytes) => serde_json::from_slice(bytes)
+            .map_err(|e| format!("settings {} is not JSON: {e}", settings_path.display()))?,
+        None => json!({}),
+    };
+    if settings.pointer("/permissions").is_none() {
+        settings["permissions"] = json!({"deny": []});
+    } else if settings.pointer("/permissions/deny").is_none() {
+        settings["permissions"]["deny"] = json!([]);
+    }
+    let deny = settings
+        .pointer_mut("/permissions/deny")
+        .and_then(|d| d.as_array_mut())
+        .ok_or_else(|| format!("settings {} permissions.deny is not a list", settings_path.display()))?;
+    let mut written = 0usize;
+    for entry in deny_entries() {
+        if !deny.iter().any(|d| d.as_str() == Some(entry)) {
+            deny.push(json!(entry));
+            written += 1;
+        }
+    }
+    let after = serde_json::to_vec_pretty(&settings)
+        .map_err(|e| format!("cannot serialize settings: {e}"))?;
+    match raw {
+        Some(before) if before == after => {}
+        Some(before) => crate::apply::publish_replace(settings_path, Some(&before), &after)?,
+        None => crate::apply::publish_replace(settings_path, None, &after)?,
+    }
+    Ok(json!({"state": "applied", "written": written}))
+}
