@@ -5,10 +5,15 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-const MARKER: &str = "M-Flow finish line (user decision 2026-11-20)";
-const MERGE_ORDER: &str = "a lane works on its own card branch, gets its audit, pushes, and posts LANE-READY-INTEGRATION with the exact 40-hex head; the leader alone merges each READY head serially into the LOCAL integration branch (the one saved at first setup; v2026.11.0 here), verifies the merged tree, and fast-forwards the local branch.";
-const WORK_ENDS: &str = "That verified local branch is where normal work ends: nobody opens a pull request per card, per bundle or per integration round.";
-const RELEASE_ONLY: &str = "A pull request from the local integration branch to the remote one (head branch release/v{head}.{yearweek}.{build}, the full CI on Linux, macOS and Windows, an independent audit by a lane with no commits in the range) is opened only when the user calls a formal release or a production deploy.";
+const MARKER: &str = "M-Flow (user decision 2026-11-20, replaces the earlier wording)";
+// The leader's wording (user decision 2026-11-20 ~09:05Z) in five parts; a part never ends a
+// line in the middle of a word, so a line of at most 400 characters can carry each one.
+const MERGE_ORDER: &str = "a lane commits on its own card branch and pushes it; after its audit passes, the lane itself merges its head into the LOCAL integration branch (the primary branch saved at first setup; v2026.11.0 here)";
+const ONE_AT_A_TIME: &str = "one lane at a time, under a lock (`mkdir ~/.moai/locks/<project>-<integration>.lock`), the lane runs `git update-ref refs/moai/lane-merge <sha>` for a merge it made and tested in its own worktree, then `git -C <primary> merge --ff-only refs/moai/lane-merge`, then releases the lock.";
+const SETUP_ALLOWS: &str = "M-Flow's first setup writes that fixed command to `hook-config.toml` `[hooks.primary_checkout] allow_commands` (exact match, so a fixed ref, never a sha); every other primary-checkout command stays blocked.";
+const WORK_ENDS: &str = "The verified local integration branch is where normal work ends: nobody opens a pull request per card, per bundle or per integration.";
+const RELEASE_ONLY: &str = "Only for a real deployment does the leader create a release branch (release/v{head}.{yearweek}.{build}) from the local integration branch and open one pull request to the remote integration branch (full CI on Linux, macOS and Windows, independent audit by a lane with no commits in the range).";
+const TIP_CHECK: &str = "The leader runs a full check of the local tip from time to time and repairs a broken tip with a revert commit.";
 
 /// The files that tell a lane or the leader how a change ends.
 const NAMED_FILES: [&str; 6] = [
@@ -21,7 +26,13 @@ const NAMED_FILES: [&str; 6] = [
 ];
 
 /// Phrases that tell someone to open a pull request per card, per bundle or per integration.
-const OLD_PHRASES: [&str; 9] = [
+const OLD_PHRASES: [&str; 14] = [
+    "the ref moved with a compare-and-swap update-ref",
+    "the lane fast-forwards the primary checkout of the integration branch",
+    // The first wording of 2026-11-20 (the leader alone merges), replaced the same morning.
+    "M-Flow finish line (user decision 2026-11-20)",
+    "the leader alone merges each READY head serially",
+    "posts LANE-READY-INTEGRATION with the exact 40-hex head; the leader alone",
     "bundle PR",
     "bundle pull request",
     "one release PR",
@@ -47,8 +58,11 @@ fn agents_md_states_the_finish_line_once() {
     assert_eq!(text.matches(MARKER).count(), 1, "the marker is stated once");
     for (name, sentence) in [
         ("merge order", MERGE_ORDER),
+        ("one lane at a time", ONE_AT_A_TIME),
+        ("setup allows the fixed command", SETUP_ALLOWS),
         ("where work ends", WORK_ENDS),
         ("release only", RELEASE_ONLY),
+        ("tip check", TIP_CHECK),
     ] {
         assert!(text.contains(sentence), "AGENTS.md lacks the {name} sentence");
     }

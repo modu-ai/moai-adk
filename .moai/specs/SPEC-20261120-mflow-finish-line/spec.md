@@ -20,10 +20,12 @@ created: 2026-11-20
 
 ## Requirements
 
-- REQ-1: The `AGENTS.md` workflow shall state the M-Flow finish line once, in the sentence that opens with `M-Flow finish line (user decision 2026-11-20)`. · failure: none — a test counts that marker in the file.
-- REQ-2: The finish-line text shall say that the leader alone merges each READY head serially into the local integration branch, verifies the merged tree and fast-forwards that branch. · failure: none — a test reads the three clauses.
-- REQ-3: The finish-line text shall say that the verified local branch is where normal work ends and that nobody opens a pull request per card, per bundle or per integration round. · failure: none — a test reads both sentences.
-- REQ-4: The finish-line text shall say that a pull request from the local integration branch to the remote one, with head branch `release/v{head}.{yearweek}.{build}`, the full CI on Linux, macOS and Windows and an independent audit by a lane with no commits in the range, is opened only when the user calls a formal release or a production deploy. · failure: none — a test reads the sentence.
+- REQ-1: The `AGENTS.md` workflow shall state the M-Flow wording once, in the sentence that opens with `M-Flow (user decision 2026-11-20, replaces the earlier wording)`. · failure: none — a test counts that marker in the file.
+- REQ-2: The M-Flow wording shall say that a lane commits on its own card branch and pushes it, and after its audit passes merges its head itself into the local integration branch, one lane at a time under a lock, by setting the fixed ref `refs/moai/lane-merge` to a merge it made and tested and fast-forwarding the primary checkout to that ref. · failure: none — a test reads the two clauses.
+- REQ-3: The M-Flow wording shall say that the verified local integration branch is where normal work ends and that nobody opens a pull request per card, per bundle or per integration. · failure: none — a test reads the sentence.
+- REQ-4: The M-Flow wording shall say that only for a real deployment the leader creates a release branch `release/v{head}.{yearweek}.{build}` from the local integration branch and opens one pull request to the remote integration branch, with the full CI on Linux, macOS and Windows and an independent audit by a lane with no commits in the range. · failure: none — a test reads the sentence.
+- REQ-9: The M-Flow wording shall say that the leader runs a full check of the local tip from time to time and repairs a broken tip with a revert commit. · failure: none — a test reads the sentence.
+- REQ-10: The M-Flow wording shall say that the first setup writes the fixed merge command to `allow_commands` under `[hooks.primary_checkout]` in `hook-config.toml` by exact match and that every other primary-checkout command stays blocked. · failure: none — a test reads the sentence.
 - REQ-5: The `AGENTS.md` workflow shall give a lane no step that opens a pull request per Issue or per card. · failure: none — a test reads the file for the old step sentence.
 - REQ-6: While `AGENTS.md` carries the finish line, it shall stay under the 9 KiB budget and keep every sentence the repository tests pin. · failure: none — `repo_agents_md` and a size test read the file.
 - REQ-7: The guidance files that tell a lane or the leader how a change ends shall each state the finish line once, namely `AGENTS.md`, `AGENTS.local.md` and the mode-agent, mode-leader, sync and verify workflows. · failure: none — a test counts the marker in each file.
@@ -31,7 +33,7 @@ created: 2026-11-20
 
 ## Acceptance
 
-- AC-1 (REQ-1, REQ-2, REQ-3, REQ-4): `AGENTS.md` 에 끝선 표지 문장이 한 번 있고, 병합 순서·로컬 브랜치 끝·정식 릴리스 PR 조건 문장이 모두 있어요.
+- AC-1 (REQ-1, REQ-2, REQ-3, REQ-4, REQ-9, REQ-10): `AGENTS.md` 에 M-Flow 표지 문장이 한 번 있고, 레인 직접 병합(잠금·고정 ref·ff-only)·로컬 브랜치 끝·실제 배포 때만 릴리스 PR·tip 전체 검증·허용 설정 문장이 모두 있어요.
   verify: `cargo test --locked --offline --test mflow_finish_line agents_md_states_the_finish_line_once`
 - AC-2 (REQ-5): `AGENTS.md` 에 이슈마다 PR 을 연다는 옛 단계 문장이 없어요.
   verify: `cargo test --locked --offline --test mflow_finish_line agents_md_has_no_pull_request_per_issue_step`
@@ -65,7 +67,7 @@ created: 2026-11-20
 
 | Id | Decision | Basis | Undo |
 | --- | --- | --- | --- |
-| D-1 | 끝선 글은 카드가 준 영어 문장을 그대로 쓰고 한 줄 400자 제한 때문에 문장 경계에서만 나눠요 | 사용자 지시 2026-11-20; 파일마다 같은 글이어야 스캔이 쉬워요 | 글을 지워요 |
+| D-1 | 끝선 글은 리더가 준 영어 문장(2026-11-20 09:05Z, 먼저 준 '리더만 병합' 문구를 바꾼 것)을 그대로 쓰고, 한 줄 400자 제한 때문에 앞 문장 끝의 긴 줄표만 콜론으로 바꿔 둘로 나눠요 | 사용자 지시 2026-11-20; 파일마다 같은 글이어야 스캔이 쉬워요 | 글을 지워요 |
 | D-2 | 이슈마다 PR 을 여는 6단계는 끝선 문장으로 바꾸고 7단계의 PR 병합 문장은 정식 릴리스 PR 에만 걸어요 | 7단계 문장은 `repo_agents_md` 가 고정해서 글자는 그대로 둬요 | 옛 6단계 문장을 되돌려요 |
 | D-3 | 스캔 테스트는 이름 붙은 파일 모두를 보고, 남의 파일은 그 카드가 들어온 뒤에 통과해요 | 카드가 쥔 파일은 이 카드가 쓸 수 없어요 | 시험의 파일 목록을 줄여요 |
 

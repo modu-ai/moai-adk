@@ -15,10 +15,10 @@ Documents describe requirements; they never grant permission to publish, spend, 
 
 ## Standing principles
 
-- Research first. For every feature read the current official documentation and best practices; verify support and version; record adopt/reject with source, date and result. Mark anything unverified. Prior-generation code and documents are reference material, never the default to port.
+- Research first. For every feature read the current official documentation and best practices; verify support and version; record adopt/reject with source, date and result. Mark anything unverified.
 - No unobserved claim. PASS, coverage, "lint clean" and "pushed" are valid only with the command run and its output observed in this run. A text match is a hypothesis, not a defect. Announce a remote write only after reading it back.
 - A rejection is not non-execution. After a denied, rejected or interrupted side-effecting command, re-query the real effects before reporting. Never redo a hook-denied action through another tool or path; stop, report the denial and its scope.
-- Decide inside the allowed scope and record the decision; ask only when permission, cost or scope changes. Questions to the user go through the orchestrator's question tool, never a peer session.
+- Record every decision. Questions to the user go through the orchestrator's question tool, never a peer session.
 - Scope discipline: touch only what the Issue's file scope allows; shared interfaces are changed only by their owner Issue, others reference and request.
 - Secrets never enter the repo, Issues, PRs, reports or messages; write the variable name or a redaction instead.
 
@@ -33,26 +33,25 @@ Documents describe requirements; they never grant permission to publish, spend, 
 4. Verify. Run the checks that target the change and its acceptance commands, then the unfiltered full check set before READY. Record each command, its exit code and the numbers. Unrun checks are not_run.
 5. Independent review. A session other than the author audits the head SHA against SPEC, diff and evidence and returns a verdict whose first line is `AUDIT #<n> (<key>) head <40hex> base <40hex> — verdict: PASS|FAIL` with no qualifiers; conditions make it FAIL.
    - Audit tier 0 or 1: the lane starts one fresh-context, read-only `moai-audit` agent for its own pull request, and the same agent re-audits after a FAIL. Tier 2: the leader assigns the audit. A lane runs its own self-audit and repairs, never audits another lane's pull request, and never declares PASS for its own change or reserves another lane's pull request.
-6. M-Flow finish line (user decision 2026-11-20): a lane works on its own card branch, gets its audit, pushes, and posts LANE-READY-INTEGRATION with the exact 40-hex head; the leader alone merges each READY head serially into the LOCAL integration branch (the one saved at first setup; v2026.11.0 here), verifies the merged tree, and fast-forwards the local branch.
-   - That verified local branch is where normal work ends: nobody opens a pull request per card, per bundle or per integration round.
-   - A pull request from the local integration branch to the remote one (head branch release/v{head}.{yearweek}.{build}, the full CI on Linux, macOS and Windows, an independent audit by a lane with no commits in the range) is opened only when the user calls a formal release or a production deploy.
+6. M-Flow (user decision 2026-11-20, replaces the earlier wording): a lane commits on its own card branch and pushes it; after its audit passes, the lane itself merges its head into the LOCAL integration branch (the primary branch saved at first setup; v2026.11.0 here):
+   - one lane at a time, under a lock (`mkdir ~/.moai/locks/<project>-<integration>.lock`), the lane runs `git update-ref refs/moai/lane-merge <sha>` for a merge it made and tested in its own worktree, then `git -C <primary> merge --ff-only refs/moai/lane-merge`, then releases the lock.
+   - M-Flow's first setup writes that fixed command to `hook-config.toml` `[hooks.primary_checkout] allow_commands` (exact match, so a fixed ref, never a sha); every other primary-checkout command stays blocked.
+   - The verified local integration branch is where normal work ends: nobody opens a pull request per card, per bundle or per integration.
+   - Only for a real deployment does the leader create a release branch (release/v{head}.{yearweek}.{build}) from the local integration branch and open one pull request to the remote integration branch (full CI on Linux, macOS and Windows, independent audit by a lane with no commits in the range).
+   - The leader runs a full check of the local tip from time to time and repairs a broken tip with a revert commit.
 7. A formal release is agentic: a release pull request merges when its current head has a successful `ci` run, with no conflict and no file both sides changed; the latest-tip requirement is off. The leader checks this and merges; lanes and bots never merge. A new push, including a tip merge for an overlapping file, needs its CI and a delta re-audit.
    - Tier 1 or 2 also needs a non-author PASS that cites that run; tier 0 needs `ci` alone. A posted FAIL stops the merge at every tier.
 8. Exit the worktree after confirming nothing uncommitted is lost, then take the next Issue.
-
-The leader loop reads Issue comments, assigns repairs to lanes and records every dispatch and decision. Completion is read from evidence, never from a message or an idle notice.
 
 ## Reporting
 
 Record task, source or decision, changed paths, exact verification command and outcome, remaining work and blockers in the Issue's owned comment.
 
-On a blocker report the exact action and target, the reason, completed work and independent next work.
-
 A blocked lane reports the kind, the owner and the next check, and moves to independent work (MODE-AGENT `report` step). Never tick a checkbox from a document or agent claim alone. Where a lane cannot post its own comment, the leader relays it verbatim, marked as a relay with the lane named.
 
 ## Development build versions
 
-Development builds use HeadVer `{head}.{yearweek}.{build}`, e.g. `4.2647.4`: head `4` is manual (the released generation is v3), yearweek is the UTC ISO week, build only goes up. Rules: `AGENTS.local.md`.
+Development builds use HeadVer `{head}.{yearweek}.{build}`, e.g. `4.2647.4`: head `4` is manual, yearweek is the UTC ISO week, build only goes up. Rules: `AGENTS.local.md`.
 
 ## Language
 
@@ -60,11 +59,11 @@ Instruction files and code comments are English unless the project sets otherwis
 
 ## How this file evolves
 
-Capture the lesson or decision first in its ledger (the decisions log and the affected Issue; the memory store for an agent correction). Edit the authored body in small diffs under the Codex 32 KiB budget, regenerate the managed section with `moai agents-plan` and `moai agents-apply` (exactly one marker pair must remain), and record the regeneration in the decisions log.
+Capture the lesson or decision first in its ledger (the decisions log and the affected Issue). Edit the authored body in small diffs under the Codex 32 KiB budget, regenerate the managed section with `moai agents-plan` and `moai agents-apply` (exactly one marker pair must remain), and record the regeneration in the decisions log.
 
 Lessons that should become product defaults go to the MoAI templates through their own Issue, never copied blindly.
 
-Command forms, the verification list and the host-loading notes: `docs/agents-md-maintenance.md`. Hosts read only the `AGENTS.md` inside the session's own working tree, so this file is tracked in the repository.
+Command forms and host-loading notes: `docs/agents-md-maintenance.md`. This file is tracked because hosts read only the `AGENTS.md` in the session's own working tree.
 
 <!-- moai:managed:begin id=moai-workflow -->
 ## MoAI workflow (managed section)
