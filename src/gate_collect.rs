@@ -1226,4 +1226,48 @@ mod tests {
         // The tip's tree lacks it: not kept, so G6 stops on the overlap.
         assert!(!lib_mods_only_kept(d, &tree_of(&tip), &base, &head).unwrap());
     }
+
+    fn commit_file(dir: &Path, path: &str, text: &str, msg: &str) -> String {
+        let full = dir.join(path);
+        std::fs::create_dir_all(full.parent().unwrap()).unwrap();
+        std::fs::write(full, text).unwrap();
+        git_in(dir, &["add", "-A"]);
+        git_in(dir, &["commit", "-q", "-m", msg]);
+        git_in(dir, &["rev-parse", "HEAD"])
+    }
+
+    /// SPEC-20261120-test-weakening-detection REQ-8, REQ-9: the collector lists the findings of
+    /// the diff from the merge base to the head, an empty list for a diff that weakens nothing,
+    /// and `None` (unknown) for a diff it cannot read, never an empty list.
+    #[test]
+    fn the_collector_lists_weakened_tests_and_says_unknown_when_the_diff_is_unreadable() {
+        let tmp = tempfile::tempdir().unwrap();
+        let d = tmp.path();
+        git_in(d, &["init", "-q", "-b", "main"]);
+        let two = "#[test]\nfn one() {\n    assert!(true);\n}\n\n#[test]\nfn two() {\n    assert!(true);\n}\n";
+        let base = commit_file(d, "tests/a.rs", two, "base");
+
+        // Weakened: the second test is removed and the first gains a skip.
+        let ignore = ["#[", "ignore]"].concat();
+        let weak = format!("{ignore}\n#[test]\nfn one() {{\n    assert!(true);\n}}\n");
+        let head = commit_file(d, "tests/a.rs", &weak, "weaken");
+        let found = weakened_tests(d, &base, &head).expect("a readable diff");
+        let kinds: Vec<&str> = found.iter().filter_map(|l| l.split(' ').next()).collect();
+        assert!(kinds.contains(&"test_deleted"), "{found:?}");
+        assert!(kinds.contains(&"skip_added"), "{found:?}");
+        assert!(found.iter().all(|l| l.contains("tests/a.rs:")), "{found:?}");
+
+        // Nothing weakened: a new test with an assertion is an empty list, not unknown.
+        let more = commit_file(
+            d,
+            "tests/b.rs",
+            "#[test]\nfn b() {\n    assert!(true);\n}\n",
+            "add",
+        );
+        assert_eq!(weakened_tests(d, &head, &more), Some(vec![]));
+
+        // Unreadable: a revision that does not exist is unknown, never an empty list.
+        assert_eq!(weakened_tests(d, &"0".repeat(40), &head), None);
+        assert_eq!(weakened_tests(&d.join("no-such-dir"), &base, &head), None);
+    }
 }
