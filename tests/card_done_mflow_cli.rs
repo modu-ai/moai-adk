@@ -128,14 +128,16 @@ fn world(mflow: bool) -> (TempHome, String, i64, String) {
 fn last_event(home: &TempHome, kind: &str) -> Value {
     let ro = ledger::open_read_only(home.path(), "demo").unwrap();
     let conn = ro.conn();
-    let payload: String = conn
+    let (payload, actor): (String, String) = conn
         .query_row(
-            "SELECT payload FROM event WHERE kind = ?1 ORDER BY event_id DESC LIMIT 1",
+            "SELECT payload, actor FROM event WHERE kind = ?1 ORDER BY event_id DESC LIMIT 1",
             [kind],
-            |r| r.get(0),
+            |r| Ok((r.get(0)?, r.get(1)?)),
         )
         .unwrap();
-    serde_json::from_str(&payload).unwrap()
+    let mut v: Value = serde_json::from_str(&payload).unwrap();
+    v["actor"] = json!(actor);
+    v
 }
 
 /// AC-1: `card landed` records the event with the head, the by and the writing session.
@@ -160,6 +162,7 @@ fn landed_records_the_head_and_refuses_a_bad_head() {
     let event = last_event(&home, "card.landed");
     assert_eq!(event["head"], json!(head), "{event}");
     assert_eq!(event["by"], json!("leader"), "{event}");
+    assert_eq!(event["actor"], json!(S_A), "{event}");
     let bad = run(
         &home,
         &[

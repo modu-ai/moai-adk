@@ -39,8 +39,8 @@ created: 2026-11-20
 
 ## Scope
 
-- write: `src/ledger/workflow.rs`(land + done 가드), `src/card/work.rs`(done 명령의 m-flow 검사 + landed 명령), `src/card/dispatch.rs`(라우팅), `src/ops/card.rs`(Land 변형·도움말), `src/ledger/schema.rs`(card_done_guard 트리거 본문 — card.landed 예외 추가), `tests/card_done_mflow_cli.rs`(신설), `.moai/specs/SPEC-20261120-card-done-mflow/**`
-- read-only: `src/profile.rs`(work_flow 읽기), `src/ledger/schema.rs`, `tests/common/**`
+- write: `src/ledger/workflow.rs`(land + done 가드), `src/ledger/schema.rs`(card_done_guard 트리거 본문 — card.landed 예외 추가), `src/card/work.rs`(done 명령의 m-flow 검사 + landed 명령), `src/card/dispatch.rs`(라우팅), `src/ops/card.rs`(Land 변형·도움말), `tests/card_done_mflow_cli.rs`(신설), `tests/ledger_workflow.rs`(done 호출 시그니처), `tests/prop_reservation.rs`(동일), `.moai/specs/SPEC-20261120-card-done-mflow/**`
+- read-only: `src/profile.rs`(work_flow 읽기), `tests/common/**`
 - forbidden: card_link·event 스키마 변경, 실제 HOME, 카드 번호를 SPEC id·가지·커밋에 사용
 
 ## Plan

@@ -1066,7 +1066,17 @@ pub fn land(
     }
     one_line("the by", by, MAX_AUTHOR_CHARS).map_err(WorkflowError::InvalidInput)?;
     w.with_write_tx(|tx, now| {
-        let from = card_state(tx, card_id)?;
+        let from: Option<String> = tx
+            .query_row(
+                "SELECT state FROM card WHERE card_id = ?1",
+                [card_id],
+                |r| r.get(0),
+            )
+            .optional()?;
+        let from = match from {
+            Some(state) => state,
+            None => return Ok(Err(WorkflowError::CardNotFound(card_id))),
+        };
         if from != "review" {
             return Ok(Err(WorkflowError::WrongState {
                 card_id,
