@@ -2815,12 +2815,17 @@ mod tests {
         // The expected table is written out here, not read from TOKEN_SHAPES, so a wrong
         // minimum or word-start flag in the table fails this test instead of agreeing with
         // itself. Columns: prefix, minimum length, needs a word start.
-        let expected: [(&str, usize, bool); 13] = [
+        let expected: [(&str, usize, bool); 17] = [
             ("ghp_", 36, false),
             ("github_pat_", 22, false),
             ("gho_", 36, false),
             ("glpat-", 20, false),
             ("sk-", 32, true),
+            // SPEC-20261120-secret-project-keys: the minimum counts after the longer prefix.
+            ("sk-proj-", 40, true),
+            ("sk-svcacct-", 40, true),
+            ("sk-admin-", 40, true),
+            ("sk-ant-", 40, true),
             ("xoxb-", 10, true),
             ("xoxa-", 10, true),
             ("xoxp-", 10, true),
