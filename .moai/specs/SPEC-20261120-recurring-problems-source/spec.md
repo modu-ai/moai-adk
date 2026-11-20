@@ -69,4 +69,9 @@ created: 2026-11-20
 
 ## Result
 
-(채워요: RED, GREEN, 변이, 이웃, Not run)
+- RED: `cargo test --locked --offline --test recurring_problems_rule` 에서 규칙·출처 테스트 2개가 실패했고(크기 테스트만 통과), 한국어 용어 테스트를 더한 뒤 그 하나가 따로 실패했어요.
+- GREEN: 같은 대상 4개와 `repo_agents_md` 3개가 통과해요. `AGENTS.local.md` 는 32,695바이트로 한도(32,768)보다 73바이트 작아요.
+- 뮤턴트: 글에 일부러 넣은 흠 11개(금지 문장 삭제, 되풀이 종류 삭제, 센 곳 삭제, 규칙에 카드 번호 넣기, 출처 원인 삭제, 보고서 경로 삭제, 두 번 조건 약화, 개발자 용어 삭제, 직역 경고 삭제, 한국어 출처 줄 삭제, 크기 초과)를 모두 테스트가 잡았어요.
+- 이웃: `AGENTS.local.md` 를 읽는 테스트 13대상, `tools/repo_scans.json` 39개 명령(실패 0), `cargo test --lib`, `cargo test --bins`, 파이썬 `agents_local_build_folder_test`·`e2e_receipt_not_run_test`·`ci_scope_test`, READY 전 6종이 모두 exit 0 이에요.
+- 크기 여유를 만들려고 빌드 폴더 항목의 중복 괄호 설명 몇 곳을 줄였어요(테스트가 고정하지 않는 말, 폐기 규칙 문장과 출처 표 숫자는 그대로).
+- Not run: cfg(macos) 전용 테스트를 따로 가려 돌리지 않았어요(이 Mac 에서 도는 대상은 위 목록에 포함), 호스트에서 규칙이 실제로 지켜지는지는 확인하지 않았어요.
