@@ -370,6 +370,7 @@ fn the_documented_liveness_form_runs_without_a_name() {
 fn an_unsafe_name_runs_without_a_lock_and_answers_unknown() {
     use moai_cli::lane_registry::liveness_of_session;
     let f = Fixture::new();
+    // The dry run keeps succeeding for every unsafe name, as it always did.
     for name in ["영실이", "_x", &"x".repeat(65), "x/y"] {
         let out = Command::new(BIN)
             .args(["cc", "--name", name, "--dry-run", "--json"])
@@ -381,8 +382,45 @@ fn an_unsafe_name_runs_without_a_lock_and_answers_unknown() {
             .unwrap();
         assert_eq!(out.status.code(), Some(0), "{name}: {out:?}");
     }
-    // The run itself takes no lock: no `.live` file for any unsafe name, and the stub host
-    // runs. The live lock of a safe name that is absent answers unknown for that id.
+    // And the real run starts the host (a stub `claude` that exits at once) with no lock and
+    // no refusal — a mutant that refuses the unsafe name, or one that still locks it, fails
+    // here (R-N1 of the audit: the dry run alone left both alive).
+    let stub = f.home.join("stub-hosts");
+    fs::create_dir_all(&stub).unwrap();
+    let started = f.home.join("unsafe-host-started");
+    fs::write(
+        stub.join("claude"),
+        format!("#!/bin/sh\nprintf '%s' $$ > '{}'\n", started.display()),
+    )
+    .unwrap();
+    use std::os::unix::fs::PermissionsExt;
+    fs::set_permissions(stub.join("claude"), fs::Permissions::from_mode(0o755)).unwrap();
+    let mut path = stub.into_os_string();
+    path.push(":");
+    path.push(std::env::var_os("PATH").unwrap_or_default());
+    for name in ["영실이", "_x"] {
+        let started = started.clone();
+        let _ = fs::remove_file(&started);
+        let out = Command::new(BIN)
+            .args(["cc", "--name", name])
+            .current_dir(&f.repo)
+            .env("HOME", &f.home)
+            .env("GIT_CONFIG_GLOBAL", "/dev/null")
+            .env("GIT_CONFIG_SYSTEM", "/dev/null")
+            .env("PATH", &path)
+            .stdin(std::process::Stdio::null())
+            .output()
+            .unwrap();
+        assert_eq!(
+            out.status.code(),
+            Some(0),
+            "{name} runs: {}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        assert!(started.exists(), "{name}: the stub host started");
+    }
+    // No lock was taken for any unsafe name, and the live lock of a safe name that is absent
+    // answers unknown for that id.
     assert!(
         !f.repo
             .join(".git/.moai-cli/sessions")
