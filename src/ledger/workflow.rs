@@ -667,6 +667,117 @@ pub fn add_criteria_as(
     })?
 }
 
+// ---- withdraw ----------------------------------------------------------------------------------
+
+/// Why a card withdraw did not happen. Its own type: nothing outside this module matches it
+/// exhaustively, so the variants can grow without touching the callers' matches.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum WithdrawError {
+    CardNotFound(i64),
+    /// The card is past the withdrawable states (`draft`, `ready`).
+    WrongState {
+        card_id: i64,
+        state: String,
+    },
+    /// A live reservation holds the card.
+    Held {
+        card_id: i64,
+        holder: String,
+        generation: i64,
+    },
+    InvalidInput(String),
+    Ledger(LedgerError),
+}
+
+impl std::fmt::Display for WithdrawError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            WithdrawError::CardNotFound(id) => write!(f, "card not found: C-{id}"),
+            WithdrawError::WrongState { card_id, state } => write!(
+                f,
+                "the card C-{card_id} is `{state}`, only a `draft` or `ready` card can be withdrawn"
+            ),
+            WithdrawError::Held {
+                card_id,
+                holder,
+                generation,
+            } => write!(
+                f,
+                "the card C-{card_id} is held by {holder:?} at generation {generation}"
+            ),
+            WithdrawError::InvalidInput(why) => write!(f, "{why}"),
+            WithdrawError::Ledger(e) => write!(f, "{e}"),
+        }
+    }
+}
+
+impl std::error::Error for WithdrawError {}
+
+impl From<LedgerError> for WithdrawError {
+    fn from(e: LedgerError) -> Self {
+        WithdrawError::Ledger(e)
+    }
+}
+
+/// Withdraws a `draft` or `ready` card that nobody holds: the card moves to `hold` and one
+/// `card.withdraw` event records the reason and the by, with the session that wrote it
+/// (`None` without one) as the event's session. There is no `withdrawn` state value: the
+/// schema CHECK pins the six values the card table accepts, so a withdrawn card reuses
+/// `hold` and the marker is the event — `card take` refuses it naming the reason, and the
+/// default `card list` hides it. Nothing is deleted; input bounds are checked before
+/// anything is read.
+pub fn withdraw(
+    w: &mut WriteLedger,
+    card_id: i64,
+    reason: &str,
+    by: &str,
+    session: Option<&str>,
+) -> Result<(), WithdrawError> {
+    one_line("the reason", reason, MAX_LINE_CHARS).map_err(WithdrawError::InvalidInput)?;
+    one_line("the by", by, MAX_AUTHOR_CHARS).map_err(WithdrawError::InvalidInput)?;
+    if let Some(session) = session {
+        one_line("the session id", session, MAX_AUTHOR_CHARS)
+            .map_err(WithdrawError::InvalidInput)?;
+    }
+    w.with_write_tx(|tx, now| {
+        let state = match tx
+            .query_row(
+                "SELECT state FROM card WHERE card_id = ?1",
+                [card_id],
+                |r| r.get(0),
+            )
+            .optional()?
+        {
+            Some(state) => state,
+            None => return Ok(Err(WithdrawError::CardNotFound(card_id))),
+        };
+        if let Some(active) = reservation::current(tx, card_id)? {
+            return Ok(Err(WithdrawError::Held {
+                card_id,
+                holder: active.holder,
+                generation: active.generation,
+            }));
+        }
+        if state != "draft" && state != "ready" {
+            return Ok(Err(WithdrawError::WrongState { card_id, state }));
+        }
+        tx.execute(
+            "UPDATE card SET state = 'hold', updated_at = ?2 WHERE card_id = ?1",
+            params![card_id, now],
+        )?;
+        reservation::add_event(
+            tx,
+            now,
+            session.unwrap_or("user"),
+            card_id,
+            "card.withdraw",
+            &json!({"reason": reason, "by": by}),
+        )?;
+        Ok(Ok(()))
+    })
+    .map_err(WithdrawError::from)?
+}
+
 // ---- pull request link -------------------------------------------------------------------------
 
 /// The pull request a card is linked to, as the caller read it from the host.
@@ -930,14 +1041,72 @@ pub fn reopen(
     )?
 }
 
+/// The local landing evidence a M-Flow project closes on (SPEC-20261120-card-done-mflow):
+/// the landed head and the integration branch tip that contains it, checked at done time.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Landing {
+    pub head: String,
+    pub tip: String,
+}
+
+/// `card landed`: record that this card's head landed on the local integration branch
+/// (M-Flow). The card must be in `review`; one free-form `card.landed` event carries the head
+/// and the by, with the writing session as the actor.
+pub fn land(
+    w: &mut WriteLedger,
+    card_id: i64,
+    head: &str,
+    by: &str,
+    session: Option<&str>,
+) -> Result<(), WorkflowError> {
+    if !crate::gate::is_full_sha(head) {
+        return Err(WorkflowError::InvalidInput(
+            "the head must be 40 lowercase hex".to_string(),
+        ));
+    }
+    one_line("the by", by, MAX_AUTHOR_CHARS).map_err(WorkflowError::InvalidInput)?;
+    w.with_write_tx(|tx, now| {
+        let from: Option<String> = tx
+            .query_row(
+                "SELECT state FROM card WHERE card_id = ?1",
+                [card_id],
+                |r| r.get(0),
+            )
+            .optional()?;
+        let from = match from {
+            Some(state) => state,
+            None => return Ok(Err(WorkflowError::CardNotFound(card_id))),
+        };
+        if from != "review" {
+            return Ok(Err(WorkflowError::WrongState {
+                card_id,
+                state: from,
+                needs: "review",
+                action: "landed",
+            }));
+        }
+        reservation::add_event(
+            tx,
+            now,
+            session.unwrap_or("user"),
+            card_id,
+            "card.landed",
+            &json!({"head": head, "by": by}),
+        )?;
+        Ok(Ok(()))
+    })?
+}
+
 /// `review -> done`, as the current holder at `generation` (a live lease is not needed). Needs
-/// what `card_done_guard` needs: a met criterion, no open criterion and an active `pr` link
-/// whose state is `merged`. The reservation ends (`released`) in the same transaction.
+/// what `card_done_guard` needs: a met criterion, no open criterion and — unless the caller
+/// passes local [`Landing`] evidence (M-Flow) — an active `pr` link whose state is `merged`.
+/// The reservation ends (`released`) in the same transaction.
 pub fn done(
     w: &mut WriteLedger,
     card_id: i64,
     holder: &str,
     generation: i64,
+    landing: Option<Landing>,
 ) -> Result<Moved, WorkflowError> {
     reservation::fenced(
         w,
@@ -969,10 +1138,11 @@ pub fn done(
                 > 0
             {
                 Some("cannot close: an acceptance criterion is still open")
-            } else if count(
-                "SELECT count(*) FROM card_link WHERE from_card = ?1 AND kind = 'pr' \
-                 AND state = 'active' AND pr_state = 'merged'",
-            )? == 0
+            } else if landing.is_none()
+                && count(
+                    "SELECT count(*) FROM card_link WHERE from_card = ?1 AND kind = 'pr' \
+                     AND state = 'active' AND pr_state = 'merged'",
+                )? == 0
             {
                 Some("cannot close: no merged pull request is linked")
             } else {
@@ -996,7 +1166,10 @@ pub fn done(
                 holder,
                 card_id,
                 "card.done",
-                &json!({"from": from, "generation": generation, "closed_at": now}),
+                &json!({
+                    "from": from, "generation": generation, "closed_at": now,
+                    "mflow": landing.as_ref().map(|l| json!({"head": l.head, "tip": l.tip})),
+                }),
             )?;
             let reservation =
                 reservation::load_reservation(tx, card_id, generation)?.ok_or_else(|| {

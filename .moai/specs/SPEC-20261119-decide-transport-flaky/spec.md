@@ -1,12 +1,15 @@
 ---
 id: SPEC-20261119-decide-transport-flaky
 title: "decide transport: the slow-server test measures the server, not the transport"
-status: draft
+status: superseded
 revision: 1
 created: 2026-11-19
+approval: {by: user, at: 2026-11-21, basis: "superseded by SPEC-20261120-retire-decide — AskUserQuestion selection: 승인 (Recommended)", digest: "sha256:bf8357b17548f9216205455617aa0f48b4085f2d636fd0173084620d5c6ea783"}
 ---
 
 # decide transport: the slow-server test measures the server, not the transport
+
+> Superseded by SPEC-20261120-retire-decide (2026-11-21): the decision model library was removed.
 
 ## Intent
 
@@ -62,6 +65,10 @@ created: 2026-11-19
 | D-1 | 시간 상한을 늘리지 않고 순서로 증명한다 | C-99 규칙 2는 시험을 통과시키려는 sleep·재시도·건너뛰기를 막아요. 상한을 890 ms 에서 키우면 같은 모양의 약한 단언이 남아요 | 시험을 되돌리면 돼요 |
 | D-2 | 느린 서버 부분을 별도 시험으로 뺀다 | 한 시험이 여덟 가지를 보면 하나가 깨질 때 이름이 이유를 말해 주지 못해요 | 시험을 합치면 돼요 |
 | D-3 | 옛 시험의 이름을 바꾸지 않는다 | `SPEC-20261118-decide-round-trip` 의 `verify:` 줄(AC-4)이 그 이름을 불러요. 이름을 바꾸면 그 줄이 시험 0개를 돌리고 조용히 통과해요 | 그 SPEC 의 줄을 고치고 이름을 바꾸면 돼요 |
+
+## Interview
+
+- Q1: 결정 모델 라이브러리(`src/decide/`)를 지우고 이 SPEC 을 포함한 이전 SPEC 다섯 개를 superseded 로 표시할까요? → A: 승인 (Recommended) (사용자, 2026-11-21, SPEC-20261120-retire-decide revision 1·2 승인 선택)
 
 ## Plan
 

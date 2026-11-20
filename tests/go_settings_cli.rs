@@ -249,7 +249,7 @@ fn plan_apply_replan(fx: GoFx) {
         .iter()
         .map(|s| s["step"].as_str().unwrap())
         .collect();
-    assert_eq!(backup, ["go-settings", "go-state"], "{up}");
+    assert_eq!(backup, ["go-settings", "go-state", "reports"], "{up}");
     let step = step_in(&up, 0, "go-settings");
     assert_eq!(step["state"], "ready", "{step}");
     assert_eq!(step["plan_digest"], p["plan_digest"], "{step}");

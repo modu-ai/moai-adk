@@ -385,3 +385,4 @@ dist-ssr/
 # The `.moai/` line matches below the root only (`*/**/`), so it does not undo `!/.moai/specs/` above.
 .claude/
 */**/.moai/
+!.moai/project.yaml
