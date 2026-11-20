@@ -12,7 +12,7 @@ created: 2026-11-19
 
 사용자 지시(2026-11-19, 리더 대화): 로컬 보고서를 저장소 안에 두지 않아요. 기본 체크아웃에 보고서·스크립트·Issue 본문 사본 42개가 추적되지 않은 채 쌓였고(추적 파일은 137개 더 있어요) 개인적인 글이 들어갈 수 있는데 매일 커밋 대기 파일로 보였어요. 새 자리는 사용자 홈의 MoAI 폴더 아래 `~/.moai/reports/<project>/` 예요(`<project>` 는 worktree 경로가 쓰는 프로젝트 이름과 같아요).
 
-이 SPEC 은 카드 C-126 의 기준 1-4(경로 해석기·스캔 규칙·지침·결정 노트)예요. 기준 5(`/moai update` 가 옛 보고서를 옮김)는 이어진 SPEC `SPEC-20261119-update-moves-reports`(parent 가 이 SPEC)가 맡아요: 요구가 12개를 넘으면 나누라는 SPEC 형식 규칙 때문이고, 그 조각은 실제 HOME 에 쓰는 길이라 tier 2 감사가 따로 필요해서예요.
+이 SPEC 은 이 일의 카드가 가진 기준 1-4(경로 해석기·스캔 규칙·지침·결정 노트)예요. 기준 5(`/moai update` 가 옛 보고서를 옮김)는 이어진 SPEC `SPEC-20261119-update-moves-reports`(parent 가 이 SPEC)가 맡아요: 요구가 12개를 넘으면 나누라는 SPEC 형식 규칙 때문이고, 그 조각은 실제 HOME 에 쓰는 길이라 tier 2 감사가 따로 필요해서예요.
 
 기존 해석기를 그대로 써요(새로 만들지 않아요): MoAI 홈은 `home_workdir::home()`/`root(home)`, 프로젝트 이름은 `worktree_name` 이 쓰는 `safe_name(<기본 체크아웃 폴더 이름>)` 이에요.
 
@@ -21,7 +21,7 @@ created: 2026-11-19
 - 추적 파일 137개 지우기: 삭제는 사용자 선택이라 이 SPEC 은 목록과 묶음별 제안만 결정 노트로 남겨요(AC-6). 지우는 일은 별도 카드예요.
 - `.gitignore` 에 `.moai-cli/reports/` 더하기: 카드 4번 항목이 "추적 파일 처리 결정 뒤"라고 정했어요. 사용자 선택이 난 뒤 후속 카드에서 해요.
 - 옛 보고서 옮기기(`/moai update`): 이어진 SPEC 이 해요.
-- 기본 체크아웃의 다른 호스트 폴더 정리(C-106), Go 세대 도구가 쓰는 `~/.moai/reports` 의 옛 파일 손대기.
+- 기본 체크아웃의 다른 호스트 폴더 정리(따로 있는 카드), Go 세대 도구가 쓰는 `~/.moai/reports` 의 옛 파일 손대기.
 
 ## Requirements
 
@@ -32,7 +32,7 @@ created: 2026-11-19
 - REQ-5: The file `AGENTS.md` shall state in one sentence the place `<HOME>/.moai/reports/<project>/` and that a session never writes a report under the repository.
 - REQ-6: The moai skill shall state the same place in one sentence and carry the new hash of every changed skill file in the source manifest of the same commit.
 - REQ-7: The repository scans and the CI scope rule that name `.moai-cli/reports/` shall keep covering the tracked files under that folder until a later card removes them.
-- REQ-8: A decision note on card C-126 shall list every tracked file under `.moai-cli/reports/` by group with a keep or remove proposal while this change removes no tracked file.
+- REQ-8: A decision note on this change's card shall list every tracked file under `.moai-cli/reports/` by group with a keep or remove proposal while this change removes no tracked file.
 
 ## Acceptance
 
@@ -47,7 +47,7 @@ created: 2026-11-19
 - AC-5 (REQ-7): 추적된 보고서 파일이 남아 있는 동안 스캔·CI 범위 규칙이 계속 그 파일들을 덮고, 세 시험 모듈이 통과해요.
   verify: `python3 -m unittest tests.repo_scans_test tests.ci_scope_test tests.local_check_test`
 - AC-6 (REQ-8): 결정 노트가 추적 파일 137개를 묶음별로 나열하고(개수·크기·제안) 이 변경으로 지워진 추적 파일이 0개예요.
-  manual: 카드 C-126 의 결정 노트 번호를 Result 에 적고 `git ls-files .moai-cli/reports | wc -l` 이 137 임을 보인다.
+  manual: 이 카드의 결정 노트 번호를 Result 에 적고 `git ls-files .moai-cli/reports | wc -l` 이 137 임을 보인다.
 
 ## Scope
 
@@ -84,4 +84,10 @@ created: 2026-11-19
 
 ## Result
 
-(구현 뒤에 채워요.)
+구현됨(2026-11-20, 가지 `spec/20261119-reports-outside-repo`).
+
+- 보고서 자리는 `home_workdir::reports_dir` 가 `<HOME>/.moai/reports/<프로젝트>` 로 풀어요(AC-1). HOME 이름표의 `reports` 행은 이 세대가 쓰는 사용자 데이터(보존)이고 옛 분류 시험 두 곳(`src/home_retire.rs` 의 단위 시험, `tests/home_retire_cli.rs`)이 새 값을 지켜요(AC-2). `optimize-plan` 은 그 폴더를 `report`·`keep` 행으로 보여 주고 `trim_paths` 는 비어 있어요(AC-3).
+- `AGENTS.md` 는 `## Reporting` 의 겹친 두 문단을 항목 하나도 빼지 않고 한 문단으로 합쳐 9201 bytes(한도 9216)로 맞추고 한 문장 `Reports go to ~/.moai/reports/<project>/, never into the repo.` 를 더했어요. moai 스킬에도 한 문장을 더했고 매니페스트 해시를 같은 커밋에서 갱신했어요(AC-4).
+- 스캔·CI 범위 규칙은 바꾸지 않았고 추적된 보고서 파일이 남아 있는 동안 계속 덮어요. `tests.repo_scans_test`·`tests.ci_scope_test`·`tests.local_check_test` 통과(AC-5).
+- 추적 파일 137개의 묶음 제안은 카드 노트 3280 에 있고, 이 가지는 추적 파일을 하나도 지우지 않았어요(`git diff --diff-filter=D` 0개, `git ls-files .moai-cli/reports .moai/reports` 137개 그대로)(AC-6).
+- 증거는 `SPEC-20261119-update-moves-reports` 의 Result 에 같은 줄을 적었어요(head `0a6b335558`의 전체 검사 종료 코드). 돌리지 않은 것: 병합된 트리에서의 골든 실행, CI.

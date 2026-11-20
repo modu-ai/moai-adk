@@ -11,7 +11,7 @@ parent: SPEC-20261119-reports-outside-repo
 
 ## Intent
 
-사용자 지시(2026-11-19, 카드 C-126 결정 노트 3273): `/moai update` 가 프로젝트의 옛 보고서 폴더(`.moai-cli/reports`, 그리고 조사에서 나오는 `.moai/reports`)에 남은 파일을 새 자리 `~/.moai/reports/<project>/` 로 옮겨요. 조건: update 의 기존 미리보기(plan) → 적용(apply) 흐름 안에서 하고 미리보기에 옮길 파일 수와 목적지를 보여 줘요; 추적되지 않는 파일만 옮기고 git 이 추적하는 파일은 "추적 중, 건드리지 않음" 으로 수만 보여 줘요; 목적지에 같은 이름이 있으면 덮어쓰지 않고 건너뛰며 수를 알려요; 두 번 돌려도 같은 결과(멱등)예요; 폴더 구조를 유지하고 목적지 권한은 본인만이에요; 시험은 임시 HOME + 임시 프로젝트에서 옮김·추적 파일 유지·이름 충돌·재실행 네 경우예요.
+사용자 지시(2026-11-19, 이 일의 카드 결정 노트 3273): `/moai update` 가 프로젝트의 옛 보고서 폴더(`.moai-cli/reports`, 그리고 조사에서 나오는 `.moai/reports`)에 남은 파일을 새 자리 `~/.moai/reports/<project>/` 로 옮겨요. 조건: update 의 기존 미리보기(plan) → 적용(apply) 흐름 안에서 하고 미리보기에 옮길 파일 수와 목적지를 보여 줘요; 추적되지 않는 파일만 옮기고 git 이 추적하는 파일은 "추적 중, 건드리지 않음" 으로 수만 보여 줘요; 목적지에 같은 이름이 있으면 덮어쓰지 않고 건너뛰며 수를 알려요; 두 번 돌려도 같은 결과(멱등)예요; 폴더 구조를 유지하고 목적지 권한은 본인만이에요; 시험은 임시 HOME + 임시 프로젝트에서 옮김·추적 파일 유지·이름 충돌·재실행 네 경우예요.
 
 이 조각은 실제 HOME 에 쓰는 길이라 tier 2 감사예요. 목적지는 부모 SPEC 의 `home_workdir::reports_dir` 가 줘요(새 해석기를 만들지 않아요).
 
@@ -85,4 +85,11 @@ parent: SPEC-20261119-reports-outside-repo
 
 ## Result
 
-(구현 뒤에 채워요.)
+구현됨(2026-11-20, 가지 `spec/20261119-reports-outside-repo`).
+
+- 두 연산 `reports-move-plan`(읽기 전용 미리보기)과 `reports-move-apply`(digest·permission reference 를 확인하고 옮김)는 `src/reports_move.rs` 의 한 곳을 써요. 옛 폴더 이름(`.moai-cli/reports`, `.moai/reports`)은 `state_root` 의 이름 상수로 적어요(`project_state_dir_is_spelled_once` 와 허용 목록 시험 둘 다 통과).
+- `project-update-plan` 에 `reports` 단계가 수와 목적지를 보여 주고 apply 줄은 같은 미리보기의 digest 를 써요. 도움말 표·예시와 골든 네 개에 두 연산 줄이 들어갔고(한 줄 설명은 56자), 연산 문서 조각 두 개를 더했어요.
+- AC-1~AC-8 은 `tests/reports_move_cli.rs`·`tests/project_update_plan_cli.rs` 가 확인해요.
+- 증거(head `0a6b335558`, 모두 직접 돌린 종료 코드): diff-check 0, `cargo fmt --check` 0, clippy `--all-targets -D warnings` 0, `cargo test --lib --bins` 와 지정 대상 0, `product_cli skill_package` 0, 파이썬 5개 모듈 0, trailer-check 0, spec check 둘 0. 영역 접두 대상 63개(`go_*`·`help_*`·`home_*`·`optimize_*`·`project_*`·`reports_*`·`update_*` 와 macOS 전용 시험) `cargo test` 0, `tools/repo_scans.json` 의 검사 39개 0, 영역별 파이썬 9개 모듈 0.
+- 좁힌 시험이 놓친 것을 넓은 시험이 찾았고 고쳤어요: 철자 시험, 한 줄 설명 61자, `AGENTS.md` 크기 한도, `home_retire_cli` 의 `reports` 기대값.
+- 돌리지 않은 것: 병합된 트리에서의 골든 실행, CI(이 저장소의 PR CI 는 리눅스 x86_64 만 돌아요).
