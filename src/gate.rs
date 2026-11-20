@@ -272,6 +272,7 @@ pub const TIER2_PREFIXES: &[&str] = &[
     "tools/protected_checks.json",
     "tools/repo_scans.json",
     "tools/self_check.sh",
+    "tools/review_checklist.json",
     "src/audit_gate.rs",
     "REVIEW.md",
     "agents/audit.md",

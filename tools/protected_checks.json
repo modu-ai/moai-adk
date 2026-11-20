@@ -13,6 +13,7 @@
     "skills/moai/workflows/audit.md",
     "tools/repo_scans.json",
     "tools/self_check.sh",
+    "tools/review_checklist.json",
     "AGENTS.md"
   ]
 }

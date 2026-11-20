@@ -12,9 +12,12 @@ use serde_json::{json, Value};
 use std::path::PathBuf;
 
 /// The files that judge a pull request but sat in neither list before the SPEC.
-const JUDGING_FILES: [&str; 4] = [
+/// `tools/review_checklist.json` is listed before the file exists: the list is kept in one
+/// place, and the pull request that creates the file does not touch the gate.
+const JUDGING_FILES: [&str; 5] = [
     "tools/repo_scans.json",
     "tools/self_check.sh",
+    "tools/review_checklist.json",
     "skills/moai/workflows/audit.md",
     "AGENTS.md",
 ];
