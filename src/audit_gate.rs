@@ -296,7 +296,9 @@ pub fn decide(input: &Input) -> Value {
 const MAX_LISTED_COMMITS: u64 = 250;
 
 /// Reads one pull request into an [`Input`] (GET only). `head` is the commit the check is for;
-/// `None` takes the PR's current head.
+/// `None` takes the PR's current head. A renamed file counts by both of its names — `filename`
+/// and, when present, `previous_filename` — like check-guard reads them, so a rename cannot
+/// walk a protected path out of the tier judgment.
 pub fn collect<T: Transport>(
     owner: &str,
     repo: &str,
@@ -316,7 +318,12 @@ pub fn collect<T: Transport>(
         .ok()
         .map(|list| {
             list.iter()
-                .filter_map(|f| f["filename"].as_str().map(String::from))
+                .flat_map(|f| {
+                    ["filename", "previous_filename"]
+                        .iter()
+                        .filter_map(|k| f[*k].as_str().map(String::from))
+                        .collect::<Vec<_>>()
+                })
                 .collect()
         });
     let commit_messages = if p["commits"].as_u64().unwrap_or(u64::MAX) > MAX_LISTED_COMMITS {
@@ -737,5 +744,48 @@ mod tests {
         assert_eq!(t.remaining(), 0);
         assert_eq!(i.head, H);
         assert_eq!(decide(&i)["state"], "pass");
+    }
+
+    /// A PR that renames a tier 2 rule file under docs/ is judged by its old name too,
+    /// like check-guard reads `previous_filename` — the rename cannot lower the tier.
+    #[test]
+    fn collect_judges_a_rename_by_its_previous_filename_too() {
+        let api = "https://api.github.com/repos/o/r";
+        let ex = |url: String, body: Value| Exchange {
+            request: HttpRequest::new("GET", url),
+            response: HttpResponse::new(200).with_body(body),
+        };
+        let t = RecordedTransport::new(vec![
+            ex(
+                format!("{api}/pulls/9"),
+                json!({"head": {"sha": H}, "body": "audit-tier: 0", "commits": 1}),
+            ),
+            ex(
+                format!("{api}/pulls/9/files?per_page=100"),
+                json!([{"filename": "docs/local-check.md",
+                        "previous_filename": "tools/local_check.sh"}]),
+            ),
+            ex(
+                format!("{api}/pulls/9/commits?per_page=100"),
+                json!([{"commit": {"message": "x\n\nMoai-Session: agent-1"}}]),
+            ),
+            ex(
+                format!("{api}/issues/9/comments?per_page=100"),
+                json!([{"id": 5, "body": verdict(5, H, "PASS", "agent-7").body,
+                        "author_association": "MEMBER"}]),
+            ),
+        ]);
+        let i = collect("o", "r", 9, None, &t).unwrap();
+        assert_eq!(t.remaining(), 0);
+        assert_eq!(
+            i.files,
+            Some(vec![
+                "docs/local-check.md".into(),
+                "tools/local_check.sh".into()
+            ]),
+            "a renamed entry counts by both of its names"
+        );
+        let v = decide(&i);
+        assert_eq!(v["tier"], 2, "the rename cannot lower the tier: {v}");
     }
 }
