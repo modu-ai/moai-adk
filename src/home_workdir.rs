@@ -144,6 +144,33 @@ pub fn worktree_dir(home: &Path, project_root: &Path, id: &str) -> Result<PathBu
     Ok(worktrees_root(home).join(worktree_rel(project_root, id)?))
 }
 
+/// The two components a flat worktree folder moves to (SPEC-20261120-worktree-project-folder):
+/// `<project>/<id>`, where the flat spelling `<project>-<id>` loses its leading `<project>-`
+/// when the remainder is non-empty (`proj-c185` becomes `proj/c185`) and keeps the whole
+/// name otherwise. The project component must not be reserved, like [`worktree_rel`].
+pub fn flat_to_rel(project_root: &Path, flat_name: &str) -> Result<PathBuf> {
+    let project = project_root
+        .file_name()
+        .and_then(|n| n.to_str())
+        .and_then(safe_name)
+        .ok_or("project folder name has no usable characters")?;
+    if reserved(&project) {
+        return Err(format!(
+            "project folder name {project:?} is reserved under worktrees"
+        ));
+    }
+    let prefix = format!("{project}-");
+    let id = flat_name
+        .strip_prefix(&prefix)
+        .filter(|rest| !rest.is_empty())
+        .unwrap_or(flat_name);
+    let id = safe_name(id).ok_or("worktree id has no usable characters")?;
+    if reserved(&id) {
+        return Err(format!("worktree id {id:?} is reserved"));
+    }
+    Ok(Path::new(&project).join(id))
+}
+
 /// Where a worktree path sits (D3, D8): `home` (`<HOME>/.moai/worktrees/<name>` flat or
 /// `<HOME>/.moai/worktrees/<project>/<name>`), `go` (`<HOME>/.moai/worktrees/projects/
 /// <project>/<name>`), `project` (`<primary>/.moai-cli/worktrees/<name>`), `claude`

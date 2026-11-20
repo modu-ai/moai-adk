@@ -26,6 +26,10 @@ pub struct Args {
     /// The caller's reference for the user's approval of these moves.
     #[arg(long)]
     permission_reference: String,
+    /// The same `--relayout` the preview read: the flat worktrees under the root move into
+    /// the two-component `<project>/<name>` form.
+    #[arg(long)]
+    relayout: bool,
 }
 
 pub const OPERATION: &str = "worktree.move.apply";
@@ -38,5 +42,6 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
         &obs,
         &args.plan_digest,
         &args.permission_reference,
+        args.relayout,
     )
 }

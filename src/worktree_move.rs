@@ -172,7 +172,12 @@ fn old_root() -> Option<PathBuf> {
 }
 
 /// The plan for the clone holding `project`; `root` defaults to [`default_root`].
-pub fn plan(project: &Path, root: Option<&Path>, obs: &Observations) -> Result<Value> {
+pub fn plan(
+    project: &Path,
+    root: Option<&Path>,
+    obs: &Observations,
+    relayout: bool,
+) -> Result<Value> {
     let owned;
     let root = match root {
         Some(r) => r,
@@ -262,7 +267,7 @@ pub fn plan(project: &Path, root: Option<&Path>, obs: &Observations) -> Result<V
             .file_name()
             .map(|n| safe_name(&n.to_string_lossy()))
             .unwrap_or_else(|| "p".into());
-        let destination = project_root.join(
+        let mut destination = project_root.join(
             crate::home_workdir::worktree_rel(&primary, &base)
                 .unwrap_or_else(|_| PathBuf::from(format!("{}-{base}", safe_name(&name)))),
         );
@@ -283,11 +288,31 @@ pub fn plan(project: &Path, root: Option<&Path>, obs: &Observations) -> Result<V
         };
         let mut reasons: Vec<String> = Vec::new();
         let mut action = "move";
+        // --relayout (SPEC-20261120-worktree-project-folder): a flat worktree directly under
+        // the root is a candidate for the two-component form; a worktree already in that
+        // form stays.
+        let flat = relayout && location == "home" && path.parent() == Some(root_resolved.as_path());
+        if flat {
+            let raw = path
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or_default();
+            match crate::home_workdir::flat_to_rel(&primary, raw) {
+                Ok(rel) => destination = project_root.join(rel),
+                Err(e) => {
+                    action = "blocked";
+                    reasons.push(format!("no_destination: {e}"));
+                }
+            }
+        }
         if e.bare {
             reasons.push("bare".into());
         } else if i == 0 {
             reasons.push("main_worktree".into());
-        } else if path == destination || matches!(location, "home" | "go" | "old_root") {
+        } else if path == destination
+            || matches!(location, "go" | "old_root")
+            || (location == "home" && !flat)
+        {
             action = "keep";
         } else if e.prunable {
             reasons.push("missing".into());
@@ -449,11 +474,12 @@ pub fn apply(
     obs: &Observations,
     plan_digest: &str,
     permission_reference: &str,
+    relayout: bool,
 ) -> Result<Value> {
     if !crate::contract::permission_reference_ok(permission_reference) {
         return Err("permission reference required".into());
     }
-    let fresh = plan(project, root, obs)?;
+    let fresh = plan(project, root, obs, relayout)?;
     if fresh["plan_digest"].as_str() != Some(plan_digest) {
         return Err("stale or altered plan: the recomputed digest differs; re-preview required, nothing was written".into());
     }

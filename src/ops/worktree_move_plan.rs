@@ -25,11 +25,15 @@ pub struct Args {
     /// `hold_check_not_run`.
     #[arg(long)]
     observations: Option<PathBuf>,
+    /// Also offer the flat worktrees directly under the root a move into the two-component
+    /// `<project>/<name>` form; what is already in that form stays.
+    #[arg(long)]
+    relayout: bool,
 }
 
 pub const OPERATION: &str = "worktree.move.plan";
 
 pub fn run(args: Args) -> Result<serde_json::Value, String> {
     let obs = moai_cli::worktree_move::read_observations(args.observations.as_deref())?;
-    moai_cli::worktree_move::plan(&args.project, args.root.as_deref(), &obs)
+    moai_cli::worktree_move::plan(&args.project, args.root.as_deref(), &obs, args.relayout)
 }

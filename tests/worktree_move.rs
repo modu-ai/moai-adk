@@ -162,6 +162,136 @@ fn reasons(plan: &Value, path: &Path) -> Vec<String> {
         .collect()
 }
 
+fn home_root(fx: &Fixture) -> PathBuf {
+    fx.home.join(".moai/worktrees")
+}
+
+/// The plan at the home worktrees root: --relayout makes the flat worktrees directly under
+/// it the candidates (SPEC-20261120-worktree-project-folder).
+fn plan_at(fx: &Fixture, obs: Option<&Path>, relayout: bool) -> Value {
+    let repo = fx.repo.to_str().unwrap().to_string();
+    let root = home_root(fx).to_str().unwrap().to_string();
+    let mut args = vec!["worktree-move-plan", repo.as_str(), "--root", root.as_str()];
+    if relayout {
+        args.push("--relayout");
+    }
+    let o;
+    if let Some(p) = obs {
+        o = p.to_str().unwrap().to_string();
+        args.extend(["--observations", o.as_str()]);
+    }
+    let v = envelope(&run(fx, &args));
+    assert_eq!(v["ok"], json!(true), "{v}");
+    v["result"].clone()
+}
+
+fn plan_relayout(fx: &Fixture, obs: Option<&Path>) -> Value {
+    plan_at(fx, obs, true)
+}
+
+fn apply_relayout(fx: &Fixture, obs: &Path, digest: &str, permission: &str) -> Value {
+    envelope(&run(
+        fx,
+        &[
+            "worktree-move-apply",
+            fx.repo.to_str().unwrap(),
+            "--root",
+            home_root(fx).to_str().unwrap(),
+            "--relayout",
+            "--observations",
+            obs.to_str().unwrap(),
+            "--plan-digest",
+            digest,
+            "--permission-reference",
+            permission,
+        ],
+    ))
+}
+
+/// A worktree of the old flat spelling, directly under the home worktrees root.
+fn add_flat(fx: &Fixture, name: &str, branch: &str) -> PathBuf {
+    let wt = home_root(fx).join(name);
+    git(
+        fx.repo.as_path(),
+        &["worktree", "add", "-q", "-b", branch, wt.to_str().unwrap()],
+    );
+    wt
+}
+
+/// --relayout turns a flat `<root>/<project>-<id>` worktree into a move candidate whose
+/// destination spells the two-component form; the plan without the flag keeps it.
+#[test]
+fn relayout_moves_a_flat_home_worktree_to_two_components() {
+    let fx = fixture(&[]);
+    let flat = add_flat(&fx, "proj-c185", "issue/9-relayout");
+    pushed(&flat, "issue/9-relayout");
+    let obs = fx.obs(json!({"source": "fixture", "branches": []}));
+    let p = plan_relayout(&fx, Some(&obs));
+    let row = item(&p, &flat);
+    assert_eq!(row["action"], json!("move"), "{row}");
+    assert_eq!(
+        row["destination"],
+        json!(home_root(&fx)
+            .join("proj")
+            .join("c185")
+            .display()
+            .to_string()),
+        "{row}"
+    );
+    // Without the flag, at the same --root, the flat worktree stays where it is.
+    let plain = plan_at(&fx, Some(&obs), false);
+    assert_eq!(item(&plain, &flat)["action"], json!("keep"), "{plain}");
+}
+
+/// A flat worktree with left work is blocked with its reason, and a worktree already in the
+/// two-component form is kept — --relayout never moves what is already there.
+#[test]
+fn relayout_blocks_in_use_and_keeps_the_two_component_shape() {
+    let fx = fixture(&[]);
+    let dirty = add_flat(&fx, "proj-dirty", "issue/8-dirty");
+    // A tracked file with left work reads as uncommitted (a new file reads untracked).
+    fs::write(dirty.join("a.txt"), "changed\n").unwrap();
+    let two = add_flat(&fx, "proj/two", "issue/7-two");
+    let obs = fx.obs(json!({"source": "fixture", "branches": []}));
+    let p = plan_relayout(&fx, Some(&obs));
+    assert!(
+        reasons(&p, &dirty).iter().any(|r| r == "uncommitted"),
+        "{p}"
+    );
+    assert_eq!(item(&p, &dirty)["action"], json!("blocked"), "{p}");
+    assert_eq!(item(&p, &two)["action"], json!("keep"), "{p}");
+}
+
+/// --relayout apply moves the picked worktree into the project folder, and a rerun of the
+/// plan keeps what is already in the two-component form.
+#[test]
+fn relayout_apply_moves_and_a_rerun_keeps() {
+    let fx = fixture(&[]);
+    let flat = add_flat(&fx, "proj-gone", "issue/6-gone");
+    pushed(&flat, "issue/6-gone");
+    let obs = fx.obs(json!({"source": "fixture", "branches": []}));
+    let p = plan_relayout(&fx, Some(&obs));
+    let digest = p["plan_digest"].as_str().unwrap().to_string();
+    let a = apply_relayout(&fx, &obs, &digest, "user approved the relayout move");
+    assert_eq!(a["ok"], json!(true), "{a}");
+    assert_eq!(a["result"]["results"][0]["status"], json!("moved"), "{a}");
+    assert!(!flat.exists(), "{a}");
+    assert!(
+        home_root(&fx)
+            .join("proj")
+            .join("gone")
+            .join("a.txt")
+            .is_file(),
+        "{a}"
+    );
+    let again = plan_relayout(&fx, Some(&obs));
+    assert_eq!(
+        item(&again, &home_root(&fx).join("proj").join("gone"))["action"],
+        json!("keep"),
+        "{again}"
+    );
+}
+
 fn tree_digest(dir: &Path) -> Vec<(String, Vec<u8>)> {
     let mut out = Vec::new();
     let mut stack = vec![dir.to_path_buf()];
