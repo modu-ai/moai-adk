@@ -36,7 +36,7 @@ Go 와 이 SPEC 의 차이(조사 결과, 이유가 있어요): (1) 정규식 `[
 - Go 의 medium 분류 넷(path-traversal, ssrf, weak-crypto, insecure-random)과 L3 의 IDOR 휴리스틱: 뒤 조각이거나 퇴역이에요(계획서 3.2).
 - 생성 설정에 연결(PostToolUse 항목 추가, `go-hooks-plan` 의 Go 항목 교체, 골든 파일 갱신): 조각 S3 이에요. 이 조각은 `hooks-plan`·`hook_set` 의 출력을 바꾸지 않아요.
 - L2 Stop 알림, Codex 쓰기 가드 연결, ast-grep: 계획서의 S4·S5·S6 이에요.
-- 디스크에서 파일을 다시 읽는 일: 쓰기 도구 입력의 텍스트만 봐요(Claude 의 `content`·`new_string`·`new_source`·`edits[].new_string`, Codex 패치의 추가된 줄). 그래서 읽기 실패나 경쟁 상태가 없어요.
+- 디스크에서 파일 내용을 다시 읽는 일: 쓰기 도구 입력의 텍스트만 봐요(Claude 의 `content`·`new_string`·`new_source`·`edits[].new_string`, Codex 패치의 추가된 줄). 그래서 내용 읽기 실패나 경쟁 상태가 없어요. 예외 하나: 프로젝트 밖 판정에서 절대 경로가 프로젝트 폴더로 시작하지 않으면(`/var` 가 `/private/var` 로 이어지는 링크 같은 경우) 그 경로의 실제 위치를 한 번 풀어 봐요(내용은 안 읽어요).
 - OMP: 이 이벤트는 Claude Code 와 Codex 만이에요(OMP 에는 PostToolUse 연결이 없어요).
 - `src/main.rs` 의 `--event` 도움말 줄에 새 이벤트 이름을 더하는 일: 그 파일은 다른 카드가 예약 중이라서 이 조각에서는 못 고쳐요. `capabilities` 응답과 이 SPEC 이 새 이벤트를 문서화하고, 도움말 한 줄은 그 파일이 풀리는 뒤 조각에서 더해요.
 - 사용자가 직접 켜는 경로 규칙(`[hooks.outside_project_writes]`)과의 합치기: 별개예요.
