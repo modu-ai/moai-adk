@@ -94,7 +94,9 @@ fn shortened_agents_md_keeps_its_gate_and_hold_sentences() {
     ] {
         assert!(!text.contains(gone), "AGENTS.md still says `{gone}`");
     }
-    assert!(text.len() < 9 * 1024, "{} bytes", text.len());
+    // 32 KiB is Codex's default `project_doc_max_bytes`; the full six-item M-Flow text lives here
+    // (user decision 2026-11-20), so the old 9 KiB limit no longer applies.
+    assert!(text.len() < 32 * 1024, "{} bytes", text.len());
     let longest = text.lines().map(|l| l.chars().count()).max().unwrap();
     assert!(longest <= 400, "a line is {longest} characters");
     // The numbers live in the provenance table of AGENTS.local.md, next to the rule's source.
