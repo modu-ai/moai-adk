@@ -373,7 +373,7 @@ fn finish_line_rule_is_stated_once_in_each_lane_workflow() {
             "where the host isolates a lane session to its worktree",
             "`MERGED-LOCAL`",
             "from the verified tip of the local integration branch, not from the remote one",
-            "ahead (↑) and behind (↓) its upstream",
+            "how far the branch is behind (↓) its upstream",
             "nobody opens a pull request per card, per bundle or per integration round",
             "`release/v{head}.{yearweek}.{build}`",
             "only for a real deployment",
