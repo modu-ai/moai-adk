@@ -110,6 +110,46 @@ fn the_provenance_table_names_the_instruction_and_its_causes() {
     }
 }
 
+/// The Response language item of `## Machine notes`.
+fn response_language() -> String {
+    section(&text(), "Machine notes")
+        .lines()
+        .find(|l| l.starts_with("- Response language:"))
+        .unwrap_or_else(|| panic!("Machine notes has no Response language item"))
+        .to_string()
+}
+
+#[test]
+fn the_korean_wording_rule_and_its_provenance_row_are_there() {
+    let item = response_language();
+    for term in [
+        "테스트",
+        "브랜치",
+        "커밋",
+        "푸시",
+        "머지",
+        "리뷰",
+        "워크트리",
+        "뮤턴트",
+        "픽스처",
+        "골든 파일",
+        "플레이키 테스트",
+    ] {
+        assert!(item.contains(term), "the item lacks the term {term}");
+    }
+    assert!(
+        item.contains("never literal coinages such as 시험, 가지, 변이"),
+        "the item names no literal coinage: {item}"
+    );
+    let table = section(&text(), "Rule provenance");
+    let row = table
+        .lines()
+        .find(|l| l.contains("Machine notes: Korean text uses developer terms"))
+        .unwrap_or_else(|| panic!("Rule provenance has no row for the Korean wording rule"));
+    assert!(row.contains("user instruction 2026-11-20"), "{row}");
+    assert_eq!(row.matches(" | ").count(), 1, "{row}");
+}
+
 #[test]
 fn the_file_stays_inside_its_budget() {
     let len = text().len();
