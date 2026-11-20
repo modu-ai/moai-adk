@@ -17,6 +17,7 @@ import re
 import shutil
 import signal
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -625,6 +626,36 @@ class VerifyStepTest(unittest.TestCase):
         paragraph = text[start : end + len(last)]
         for area in (*TOOL.AREAS, "all"):
             self.assertIn(f"`{area}`", paragraph, f"the paragraph does not name `{area}`")
+
+
+class PlatformTest(unittest.TestCase):
+    """SPEC-20261120-windows-legs-green: `pwd` and `pty` exist only on POSIX, and the CI smoke step
+    runs on every leg. Without them the harness still loads and says why it does not run."""
+
+    def load_without_posix_modules(self):
+        # A `None` entry in `sys.modules` makes `import pwd` raise ImportError, as on Windows.
+        with mock.patch.dict(sys.modules, {"pwd": None, "pty": None}):
+            return load_tool()
+
+    def test_the_harness_loads_where_pwd_and_pty_do_not_exist(self):
+        tool = self.load_without_posix_modules()
+        self.assertEqual(tool.AREAS, TOOL.AREAS)
+
+    def test_without_them_it_prints_one_skip_line_with_a_reason_and_exits_zero(self):
+        tool = self.load_without_posix_modules()
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = tool.main(["install"])
+        lines = out.getvalue().splitlines()
+        self.assertEqual(code, 0)
+        self.assertEqual(len(lines), 1, out.getvalue())
+        self.assertTrue(lines[0].startswith("smoke: install skip"), lines[0])
+        self.assertIn("reason=", lines[0])
+
+    def test_where_they_exist_the_start_line_comes_first_as_before(self):
+        # REQ-3: the skip check must not change a run on a platform that has both modules.
+        self.assertIsNotNone(TOOL.pwd)
+        self.assertIsNotNone(TOOL.pty)
 
 
 if __name__ == "__main__":

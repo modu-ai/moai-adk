@@ -17,7 +17,8 @@ steps of the area and prints one trace line per step:
     stderr: ...
   smoke: update fail steps=2 failed=preview time=0.4s
 
-The last line is always `smoke: <area> pass|fail steps=<n> ...`. Exit codes: 0 = pass,
+The last line is always `smoke: <area> pass|fail steps=<n> ...`, or `smoke: <area> skip
+reason=...` on a platform without `pwd` and `pty` (Windows). Exit codes: 0 = pass or skip,
 1 = a step failed, 2 = usage error or a refused temporary base.
 
 Isolation: the environment of every step is built from nothing but HOME, PATH, TMPDIR, the
@@ -35,8 +36,6 @@ wrapper on PATH follows `$HOME/.moai-cli/path`, which an empty HOME does not hav
 import argparse
 import json
 import os
-import pwd
-import pty
 import re
 import select
 import shutil
@@ -46,6 +45,13 @@ import sys
 import tempfile
 import time
 from pathlib import Path
+
+try:
+    import pwd
+    import pty
+except ImportError:  # Windows has neither the account database nor pseudo-terminals
+    pwd = None
+    pty = None
 
 AREAS = ("install", "update", "project", "launcher")
 REPO = Path(__file__).resolve().parent.parent.parent
@@ -565,6 +571,16 @@ def main(argv=None) -> int:
     parser.add_argument("--repo", default=str(REPO), help="the checkout holding skills/ and agents/")
     parser.add_argument("--keep", action="store_true", help="keep the temporary root")
     args = parser.parse_args(argv)
+    if pwd is None or pty is None:
+        # The harness boots the binary through `/usr/bin`, a pseudo-terminal and the account
+        # entry, which only POSIX has; the CI smoke step runs on every leg, so it says why
+        # it does not run and succeeds before any step or file is touched.
+        print(
+            f"smoke: {args.area} skip reason=the harness needs pwd and pty, "
+            "which this platform does not have (POSIX only)",
+            flush=True,
+        )
+        return 0
     started = time.monotonic()
     try:
         if args.area != "all" and args.area not in AREAS:
