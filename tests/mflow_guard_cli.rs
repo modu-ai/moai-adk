@@ -97,8 +97,14 @@ fn deletion_is_refused_and_creation_is_allowed() {
     repo.commit("a");
     let tip = repo.commit("b");
     repo.install_hook("v2026.11.0");
+    repo.git(&["checkout", "-b", "side"]);
     let out = repo.git(&["update-ref", "-d", "refs/heads/v2026.11.0"]);
-    assert!(!out.status.success(), "the deletion ran");
+    assert!(!out.status.success(), "the deletion ran: {}", String::from_utf8_lossy(&out.stderr));
+    let err = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        err.contains("may not be deleted"),
+        "the hook names the deletion, not just a backward move: {err}"
+    );
     let out = repo.git(&["update-ref", "refs/heads/seedling", &tip]);
     assert!(
         out.status.success(),
