@@ -16,8 +16,9 @@ use std::fs;
 use std::io::{self, BufRead, Read, Write};
 use std::path::Path;
 
-/// The tools a person can pick, in question order. An OMP pick also sets `moai glm`.
-pub const TOOL_CHOICES: [&str; 3] = ["claude", "codex", "omp"];
+/// The tools a person can pick, in question order (user decision 2026-11-19: three tools only —
+/// claude, gpt, glm; the gpt tool is the codex key). A pick writes its own tool alone.
+pub const TOOL_CHOICES: [&str; 3] = ["claude", "codex", "glm"];
 /// Bad answers to one question before the loop gives up.
 const MAX_TRIES: usize = 3;
 /// The launcher settings file is small; a larger one is not read.
@@ -52,10 +53,10 @@ pub struct Question {
 
 fn tool_label(tool: &str) -> &'static str {
     match tool {
-        "claude" => "Claude Code",
-        "codex" => "Codex",
+        "claude" => "Claude",
+        "codex" => "GPT (Codex)",
         "omp" => "OMP",
-        "glm" => "moai glm",
+        "glm" => "GLM",
         _ => "",
     }
 }
@@ -369,11 +370,9 @@ fn canon(value: &Value) -> String {
 }
 
 fn targets(tool: &str) -> Vec<&str> {
-    if tool == "omp" {
-        vec!["omp", "glm"]
-    } else {
-        vec![tool]
-    }
+    // A pick writes its own tool alone (the earlier OMP pick also set glm; OMP is no longer
+    // offered, and a saved OMP entry stays supported through the table).
+    vec![tool]
 }
 
 /// Plans the picks on a launcher object. Refuses a structurally broken `launcher.models` and a
