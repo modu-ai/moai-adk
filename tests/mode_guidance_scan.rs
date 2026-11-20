@@ -1,4 +1,4 @@
-//! SPEC-20261120-mode-guidance-rules: the lane and leader workflows carry the six rules the
+//! SPEC-20261120-mode-guidance-rules: the lane and leader workflows carry the rules the
 //! day's supervision showed were missing. The test reads the two workflow files by path and
 //! checks the named words; it never walks the repository.
 
@@ -134,6 +134,45 @@ fn supervision_tools_are_named_in_the_leader_workflow() {
             "`moai lane-screen --scan`",
             "`moai card timeline <card>`",
             "follow MODE-AGENT `Long commands`",
+        ],
+    );
+}
+
+#[test]
+fn session_reset_follows_every_card_and_compact_follows_a_full_context() {
+    let a = agent();
+    has(
+        &a,
+        "mode-agent.md",
+        &[
+            "## Session reset",
+            "One context does not carry many cards",
+            "post `LANE-DONE`, then wait for the leader's `/clear`",
+            "If no `/clear` has arrived by your next wake",
+            "Claude Code: `/clear` starts a new conversation with empty context",
+            "`/compact [instructions]` summarizes the conversation so far",
+            "Codex CLI: `/clear` clears the terminal and starts a fresh chat",
+            "(`/new` starts one without clearing the terminal view)",
+            "`/compact` summarizes the visible chat to free tokens",
+            "At 80% or more of the context figure the host shows, post `LANE-COMPACT`",
+            "After a `/clear` the session id is new",
+            "after writing it, follow `Session reset` and go on in the same turn",
+        ],
+    );
+    // The old rule sent a lane to its next pick right after LANE-DONE, in the same context.
+    lacks(
+        &a,
+        "mode-agent.md",
+        &["after writing it, go to the next pick in the same turn"],
+    );
+    let l = leader();
+    has(
+        &l,
+        "mode-leader.md",
+        &[
+            "gets `/clear` once `moai lane-safe-to-reset` answers `safe`",
+            "its next dispatch as the first message after the reset",
+            "Claude Code and Codex CLI both take `/clear` and `/compact`",
         ],
     );
 }
