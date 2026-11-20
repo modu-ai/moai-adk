@@ -209,7 +209,7 @@ fn retire_preview_classifies_every_entry_by_the_table_and_writes_nothing() {
     // User data, unknown owners, the unknown name and the merge-candidate key stay.
     assert_eq!(act(&p, "specs"), ("keep".into(), "user_data".into()));
     assert_eq!(act(&p, "worktrees"), ("keep".into(), "user_data".into()));
-    assert_eq!(act(&p, "reports"), ("keep".into(), "owner_unknown".into()));
+    assert_eq!(act(&p, "reports"), ("keep".into(), "user_data".into()));
     assert_eq!(act(&p, "my notes"), ("keep".into(), "not_in_table".into()));
     assert_eq!(
         act(&p, ".env.glm"),
