@@ -32,12 +32,15 @@ This change adds one rule to the shipped workflow `skills/moai/workflows/update.
 - REQ-5: The update workflow shall forbid any applying command, `moai update --confirm` included, in a turn where the question has no answer.
 - REQ-6: The update workflow shall tell the model to report a cancelled, empty or unanswered question as open and never as a yes.
 - REQ-7: The update workflow shall state the rule before the first line that names `--confirm`.
+- REQ-8: The update workflow shall say that an undo the person asked for by name is not an apply of the preview and does not wait for the question.
+- REQ-9: The update workflow shall say that the question is the one ask of step 2 for the ready steps as a whole and, where the host cannot ask a selection, name the plain-text form that `internal/questions` describes.
 
 ## Acceptance
 
 - AC-1 (REQ-1, REQ-2, REQ-3, REQ-4): `skills/moai/workflows/update.md` holds one paragraph that starts with `**Always ask after the preview.**` and names the host's question tool, `/moai update` and `$moai update`, the words `nothing to apply — no change` and the blocked case with its reason and the rest · verify: `cargo test --test update_always_asks the_rule`
 - AC-2 (REQ-5, REQ-6): the same paragraph forbids `moai update --confirm`, `--confirm-cleanup`, `--confirm-home` and an apply of a step before an answer, and says that a cancelled, empty or unanswered question is open · verify: `cargo test --test update_always_asks no_apply`
 - AC-3 (REQ-7): the paragraph stands before the first line of the file that names `--confirm`, and no line before it runs an applying command · verify: `cargo test --test update_always_asks order`
+- AC-4 (REQ-8, REQ-9): the same paragraph names the undo of `moai models-revert` and step 6 as not waiting for the question, calls the question the one ask of step 2 for the ready steps, and gives numbered plain-text choices for Codex in Default mode · verify: `cargo test --test update_always_asks the_question_is_the_one_ask`
 
 ## Scope
 
@@ -52,7 +55,7 @@ Tests first (RED). `tests/update_always_asks.rs` reads the workflow as text, lik
 
 The paragraph (from the holder of the file, placed right before the paragraph that starts `The user layer —`, so that it comes before any line naming `--confirm`):
 
-`**Always ask after the preview.** Right after the preview is shown, in \`/moai update\` and in \`$moai update\` alike, ask the user one selection through the host's question tool, the recommended option first, and record the answer for the report. When something is ready the options are "Apply what is ready (recommended)" and "Leave everything as it is"; when nothing is to apply, say \`nothing to apply — no change\` and still ask, with "Nothing to do, finish (recommended)" first; when a step reads \`blocked\`, say \`blocked: <its reason>\` and ask whether to apply the rest, "Apply the rest (recommended)" first and "Stop here" second. Never run an applying command — \`moai update --confirm\`, \`--confirm-cleanup\`, \`--confirm-home\` or the apply of any step — in a turn where this question has no answer; a cancelled, empty or unanswered question is reported as open, never as a yes, and an earlier "continue" does not answer a new preview.`
+`**Always ask after the preview.** Right after the preview is shown, in \`/moai update\` and in \`$moai update\` alike, ask the user one selection through the host's question tool, the recommended option first, and record the answer for the report. When something is ready the options are "Apply what is ready (recommended)" and "Leave everything as it is"; when nothing is to apply, say \`nothing to apply — no change\` and still ask, with "Nothing to do, finish (recommended)" first; when a step reads \`blocked\`, say \`blocked: <its reason>\` and ask whether to apply the rest, "Apply the rest (recommended)" first and "Stop here" second. Never run an applying command — \`moai update --confirm\`, \`--confirm-cleanup\`, \`--confirm-home\` or the apply of any step — in a turn where this question has no answer; a cancelled, empty or unanswered question is reported as open, never as a yes, and an earlier "continue" does not answer a new preview. An undo the person asked for by name (\`moai models-revert\`, step 6) is not an apply of this preview and does not wait for this question. This question is the one ask of step 2 for the \`ready\` steps as a whole, never a second one, and where the host cannot ask it as a selection (Codex in Default mode) ask it as numbered plain-text choices with the recommended one first, as \`internal/questions\` says.`
 
 ## Risks
 
