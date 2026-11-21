@@ -143,10 +143,12 @@ fn the_go_backup_values_are_offered_as_defaults_and_never_written() {
     assert_eq!(
         suggested(&q),
         vec![
-            // The three asked items: the conversation language from the Go backup, its commit
-            // message language, and `documents` following the conversation language.
-            ("user_chat".into(), "ko".into()),
+            // The three asked items: the Go backup's commit-message language, the English
+            // default for instruction files, and `documents` following the conversation
+            // language, which the Go backup's record provides. The conversation itself is
+            // never asked; it arrives as `conversation_language`.
             ("commit_messages".into(), "ja".into()),
+            ("instruction_files".into(), "en".into()),
             ("documents".into(), "ko".into()),
         ]
     );
@@ -165,10 +167,11 @@ fn the_go_backup_values_are_offered_as_defaults_and_never_written() {
     let r = result(&stdout);
     assert_eq!(r["language"]["commit_messages"], json!("ja"), "{r}");
     assert_eq!(r["language"]["user_chat"], json!("ko"));
+    assert_eq!(r["language"]["instruction_files"], json!("en"));
     // The Go backup also names `code_comments` (zh) and others; they are offered nowhere and a
     // new profile gets no key for an item the setup does not ask.
     assert!(r["language"].get("code_comments").is_none(), "{r}");
-    assert_eq!(r["language"].as_object().unwrap().len(), 3, "{r}");
+    assert_eq!(r["language"].as_object().unwrap().len(), 4, "{r}");
     assert_eq!(r["profile_written"], json!(false));
 
     // An answer still wins over the Go value; an explicit --conversation over the Go one.
@@ -278,11 +281,12 @@ fn bad_or_hostile_input_offers_nothing_and_never_fails() {
     );
 }
 
-/// #2820 audit B1: a value the profile already stores wins over the Go backup's — in the
-/// suggested answers, the conversation language and the profile `--answers '{}'` returns;
-/// only the items the profile leaves empty take the Go value.
+/// #2820 audit B1, under the ask-once rules: a value the profile already stores wins over the
+/// Go backup's for the items, and only the items the profile leaves empty take the Go value.
+/// The profile's earlier `user_chat` is not a source of the conversation language any more:
+/// the Go backup's record decides, and the setup writes the resolved value over the stored one.
 #[test]
-fn the_profile_value_wins_over_the_go_backup() {
+fn the_profile_item_values_win_over_the_go_backup_and_user_chat_is_not_a_source() {
     let (_d, root) = migrated(
         Some("language:\n  conversation_language: ko\n  code_comments: zh\n  git_commit_messages: ja\n"),
         None,
@@ -297,20 +301,25 @@ fn the_profile_value_wins_over_the_go_backup() {
     let q = result(&setup(&root, &["--questions"], "").0);
     assert_eq!(
         q["questions"]["conversation_language"],
-        json!("en"),
-        "the profile's user_chat, not the Go conversation language: {q}"
+        json!("ko"),
+        "the profile's user_chat is not a source: the Go conversation language decides: {q}"
     );
     let s: std::collections::BTreeMap<_, _> = suggested(&q).into_iter().collect();
-    assert_eq!(s["user_chat"], "en");
     assert_eq!(s["commit_messages"], "ja", "empty in the profile: Go value");
+    assert_eq!(s["instruction_files"], "en", "the English default");
     assert_eq!(
-        s["documents"], "en",
-        "conversation default follows the profile"
+        s["documents"], "ko",
+        "conversation default follows the Go conversation language"
     );
     assert_eq!(s.len(), 3, "only the three asked items are offered");
 
     let r = result(&setup(&root, &["--answers"], "{}").0);
-    assert_eq!(r["language"]["user_chat"], json!("en"), "{r}");
-    assert_eq!(r["language"]["code_comments"], json!("en"));
+    // The resolved conversation is written over the profile's earlier user_chat.
+    assert_eq!(r["language"]["user_chat"], json!("ko"), "{r}");
+    assert_eq!(
+        r["language"]["code_comments"],
+        json!("en"),
+        "a stored item value beats the Go backup's"
+    );
     assert_eq!(r["language"]["commit_messages"], json!("ja"));
 }

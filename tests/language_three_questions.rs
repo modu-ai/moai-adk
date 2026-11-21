@@ -224,17 +224,20 @@ fn questions_list_exactly_three_items_with_their_values() {
     }
     assert_eq!(item(&q, "instruction_files")["suggested"], json!("en"));
     assert_eq!(item(&q, "instruction_files")["default"], json!("en"));
-    // A stored value is the item's current and suggested value.
+    // A stored value is the item's current and suggested value; the stored `user_chat` does
+    // not feed the conversation default any more, so the English default stands.
     let stored = project(Some(json!({"documents": "ja", "user_chat": "ko"})));
     let q = questions(&stored, h.path(), &[]);
     assert_eq!(item(&q, "documents")["current"], json!("ja"));
     assert_eq!(item(&q, "documents")["suggested"], json!("ja"));
     assert_eq!(item(&q, "commit_messages")["current"], json!(null));
-    assert_eq!(item(&q, "commit_messages")["suggested"], json!("ko"));
+    assert_eq!(item(&q, "commit_messages")["suggested"], json!("en"));
 }
 
 /// AC-2 (REQ-2): the language the installer saved is the conversation value with its source,
-/// ahead of the profile's earlier user_chat, and is not asked again from scratch.
+/// and is not asked again from scratch. A profile's earlier `user_chat` is not a source any
+/// more: with nothing in HOME the conversation resolves to English, and the profile's value
+/// stays as recorded data.
 #[test]
 fn the_installer_value_is_the_confirmed_conversation_default() {
     let root = project(None);
@@ -243,13 +246,13 @@ fn the_installer_value_is_the_confirmed_conversation_default() {
     assert_eq!(q["conversation_language"], json!("ko"), "{q}");
     assert_eq!(q["conversation_source"], json!("installer"), "{q}");
     assert_eq!(item(&q, "documents")["suggested"], json!("ko"));
-    // The profile's own earlier value answers when no install value was saved.
+    // A profile's earlier user_chat is not a source: English without an install value.
     let stored = project(Some(json!({"user_chat": "ja"})));
     let none = home(None);
     let q = questions(&stored, none.path(), &[]);
-    assert_eq!(q["conversation_language"], json!("ja"), "{q}");
-    assert_eq!(q["conversation_source"], json!("profile"), "{q}");
-    // The HOME value is ahead of the profile's earlier value.
+    assert_eq!(q["conversation_language"], json!("en"), "{q}");
+    assert_eq!(q["conversation_source"], json!("default"), "{q}");
+    // The value the installer saved in HOME decides over anything the profile holds.
     let q = questions(&stored, h.path(), &[]);
     assert_eq!(q["conversation_language"], json!("ko"), "{q}");
     assert_eq!(q["conversation_source"], json!("installer"), "{q}");
@@ -315,12 +318,20 @@ fn answers_name_the_three_items_and_keep_old_keys() {
     let q = questions(&old, home(None).path(), &[]);
     assert_eq!(item(&q, "documents")["current"], json!(null), "{q}");
     assert_eq!(item(&q, "documents")["suggested"], json!("ja"), "{q}");
-    // A re-run with no answers keeps every value and plans nothing new.
+    // A re-run with no answers and no HOME record moves the resolved user_chat to English once
+    // (the ask-once rule: the profile's stored value is not a source), and every re-run after
+    // that keeps every value.
     let first = setup_answers(&fresh, &json!({}), &["--conversation", "ko"]);
     apply_profile(&fresh, &first["profile"]);
     let again = setup_answers(&fresh, &json!({}), &[]);
-    assert_eq!(again["changed_items"], json!([]), "{again}");
-    assert_eq!(again["language"], first["language"]);
+    assert_eq!(again["changed_items"], json!(["user_chat"]), "{again}");
+    let mut moved = first["language"].clone();
+    moved["user_chat"] = json!("en");
+    assert_eq!(again["language"], moved);
+    apply_profile(&fresh, &again["profile"]);
+    let stable = setup_answers(&fresh, &json!({}), &[]);
+    assert_eq!(stable["changed_items"], json!([]), "{stable}");
+    assert_eq!(stable["language"], moved);
     // An answer for an item that is neither asked nor an old key is still refused.
     let refused = run(
         &["language-setup", path(&fresh), "--answers"],
@@ -507,12 +518,27 @@ fn a_profile_with_the_old_eight_items_plans_and_applies_without_conflict() {
         agents.contains("- Code comments: English (`en`)"),
         "{agents}"
     );
-    // The setup step over it keeps every old key and adds `documents`.
+    // The setup step over it keeps every old key and adds `documents` (the old `reports` value
+    // is its suggestion). The stored user_chat is not a source of the conversation any more, so
+    // the resolved English is written over it.
     let out = setup_answers(&root, &json!({}), &[]);
     for (k, v) in eight.as_object().unwrap() {
-        assert_eq!(out["language"][k], *v, "{k}: {out}");
+        if k == "user_chat" {
+            assert_eq!(out["language"][k], json!("en"), "{k}: {out}");
+        } else {
+            assert_eq!(out["language"][k], *v, "{k}: {out}");
+        }
     }
-    assert!(out["language"]["documents"].is_string(), "{out}");
+    assert_eq!(
+        out["language"]["documents"],
+        json!("ko"),
+        "{out}: the old reports value is its suggestion"
+    );
+    assert_eq!(
+        out["changed_items"],
+        json!(["user_chat", "documents"]),
+        "{out}"
+    );
 }
 
 fn github_notes(root: &Path, request: Value) -> String {

@@ -1,8 +1,9 @@
 //! #2935 L1: `language-set --home <code>` records the conversation language the installer
-//! asked for in the HOME state folder, once and never over a value that is already there, and
-//! `language-setup` reads that value as the conversation default after `--conversation` and the
-//! profile's `user_chat`. Every case runs the built binary inside a temporary HOME; the real
-//! HOME is never read or written.
+//! asked for in the HOME state folder; a later call replaces it with a valid code, and
+//! `--if-absent` — the installer's mode — never over a value that is already there.
+//! `language-setup` reads that value as the conversation default after `--conversation`.
+//! Every case runs the built binary inside a temporary HOME; the real HOME is never read or
+//! written.
 
 #![cfg(unix)]
 
@@ -138,6 +139,52 @@ fn a_second_run_replaces_the_value() {
             "{code}: the file holds the new value"
         );
     }
+}
+
+/// `--if-absent` is the installer's record-once mode: with no value it writes one, and a
+/// recorded value stays (`written: false`, `reason: exists`) while only the bare command
+/// replaces it. The refused code and the missing state folder behave like the bare command.
+#[test]
+fn if_absent_writes_once_and_keeps_the_recorded_value() {
+    let (_d, h) = home_with_state();
+    let path = h.join(".moai-cli").join(FILE);
+    let (status, json, _) = call(&h, &["language-set", "--home", "--if-absent", "ja"]);
+    assert_eq!(status, 0, "{json}");
+    let r = result(&json);
+    assert_eq!(r["written"], json!(true), "{json}");
+    assert_eq!(r["reason"], Value::Null, "{json}");
+    assert_eq!(
+        fs::read(&path).unwrap(),
+        b"language:\n  conversation_language: ja\n"
+    );
+    // A reinstall with another code keeps the recorded value.
+    let (status, json, _) = call(&h, &["language-set", "--home", "--if-absent", "ko"]);
+    assert_eq!(status, 0, "{json}");
+    let r = result(&json);
+    assert_eq!(r["written"], json!(false), "{json}");
+    assert_eq!(r["reason"], json!("exists"), "{json}");
+    assert_eq!(r["code"], json!("ko"), "{json}");
+    assert_eq!(
+        fs::read(&path).unwrap(),
+        b"language:\n  conversation_language: ja\n"
+    );
+    // A code outside the list is refused, like the bare command's.
+    let (status, _, stderr) = call(&h, &["language-set", "--home", "--if-absent", "pt-BR"]);
+    assert_eq!(status, 2, "{stderr}");
+    assert_eq!(
+        fs::read(&path).unwrap(),
+        b"language:\n  conversation_language: ja\n"
+    );
+    // Only the bare command replaces the recorded value.
+    let (status, json) = set(&h, "ko");
+    assert_eq!(status, 0, "{json}");
+    assert_eq!(result(&json)["reason"], json!("replaced"), "{json}");
+    // No HOME state folder: the same no_home_state answer, and nothing is created.
+    let (_d, bare) = home();
+    let (status, json, _) = call(&bare, &["language-set", "--home", "--if-absent", "ko"]);
+    assert_eq!(status, 0, "{json}");
+    assert_eq!(result(&json)["reason"], json!("no_home_state"), "{json}");
+    assert_eq!(fs::read_dir(&bare).unwrap().count(), 0);
 }
 
 /// A file the user wrote by hand (even in another shape, even empty) is replaced by a valid
@@ -457,9 +504,10 @@ fn home_file(h: &Path, bytes: &[u8]) {
     fs::write(h.join(".moai-cli").join(FILE), bytes).unwrap();
 }
 
-/// The HOME value comes after the flag and before the profile's earlier user_chat and English:
-/// the install value wins over a project profile that recorded something else before it.
-/// Order: `--conversation`, the HOME value, the profile's `user_chat`, `en`.
+/// The HOME value comes after the flag and before English; a profile's earlier `user_chat` is
+/// no longer a source: the install value wins over a project profile that recorded something
+/// else before it, and without a HOME value English answers. Order: `--conversation`, the
+/// HOME value, `en`.
 #[test]
 fn the_home_value_comes_after_the_flag_and_before_the_profile() {
     let (_h, h) = home_with_state();
@@ -486,12 +534,13 @@ fn the_home_value_comes_after_the_flag_and_before_the_profile() {
         "ko",
         "the flag beats HOME"
     );
-    // With no HOME value the profile's earlier value answers, then the built-in English.
+    // With no HOME value the profile's earlier user_chat is not a source: English answers, and
+    // the stored value stays as recorded data.
     let (_e, empty) = home_with_state();
     assert_eq!(
         conversation(&empty, &chat, &[]),
-        "zh",
-        "the profile answers without HOME"
+        "en",
+        "the profile does not answer without HOME"
     );
     assert_eq!(conversation(&empty, &none, &[]), "en");
     // The file `language-set` itself wrote is read back.

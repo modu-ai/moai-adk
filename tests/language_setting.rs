@@ -148,6 +148,36 @@ fn setup_answers(root: &TempDir, answers: &Value, extra: &[&str]) -> Value {
     ok(&run(&args, answers.to_string().as_bytes()))
 }
 
+/// `run` with a given HOME: the installed flow, where the HOME state folder holds the
+/// conversation value `language-set --home` recorded.
+fn run_with_home(args: &[&str], stdin: &[u8], home: &Path) -> Output {
+    let mut command = Command::new(EXE);
+    if args.first().is_some_and(|a| a.starts_with("language-")) {
+        command.env("HOME", home);
+    }
+    let mut child = command
+        .args(args)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    let mut pipe = child.stdin.take().unwrap();
+    match pipe.write_all(stdin) {
+        Ok(()) => {}
+        Err(e) if e.kind() == std::io::ErrorKind::BrokenPipe => {}
+        Err(e) => panic!("stdin write failed: {e}"),
+    }
+    drop(pipe);
+    child.wait_with_output().unwrap()
+}
+
+fn setup_answers_in(root: &TempDir, answers: &Value, extra: &[&str], home: &Path) -> Value {
+    let mut args = vec!["language-setup", path(root), "--answers"];
+    args.extend_from_slice(extra);
+    ok(&run_with_home(&args, answers.to_string().as_bytes(), home))
+}
+
 fn apply_profile(root: &TempDir, profile: &Value) -> Value {
     let plan = ok(&run(
         &["project-plan", path(root)],
@@ -168,15 +198,25 @@ fn apply_profile(root: &TempDir, profile: &Value) -> Value {
 }
 
 /// AC-2: answers become the profile's `language` through project-plan/apply only; a re-run
-/// with no answers keeps every value (plan `unchanged`, file bytes identical).
+/// with no answers keeps every value (plan `unchanged`, file bytes identical). The HOME here
+/// is the installed flow's: it holds the conversation value `language-set --home` recorded.
 #[test]
 fn setup_answers_reach_the_profile_and_rerun_keeps_them() {
     let root = project(None);
+    let home = tempfile::tempdir().unwrap();
+    fs::create_dir(home.path().join(".moai-cli")).unwrap();
+    let recorded = ok(&run_with_home(
+        &["language-set", "--home", "ko"],
+        b"",
+        home.path(),
+    ));
+    assert_eq!(recorded["written"], json!(true), "{recorded}");
     let before = fs::read(root.path().join(PROFILE)).unwrap();
-    let out = setup_answers(
+    let out = setup_answers_in(
         &root,
         &json!({"commit_messages": "ja"}),
         &["--conversation", "ko"],
+        home.path(),
     );
     // The step itself writes nothing.
     assert_eq!(fs::read(root.path().join(PROFILE)).unwrap(), before);
@@ -191,8 +231,8 @@ fn setup_answers_reach_the_profile_and_rerun_keeps_them() {
     assert_eq!(profile_value(root.path())["language"], expected);
     let applied = fs::read(root.path().join(PROFILE)).unwrap();
 
-    // Re-run: no answers, no --conversation. Every value is kept.
-    let again = setup_answers(&root, &json!({}), &[]);
+    // Re-run: no answers, no --conversation. Every value is kept: the HOME record answers.
+    let again = setup_answers_in(&root, &json!({}), &[], home.path());
     assert_eq!(again["changed_items"], json!([]));
     assert_eq!(again["language"], expected);
     let replan = ok(&run(
@@ -204,7 +244,11 @@ fn setup_answers_reach_the_profile_and_rerun_keeps_them() {
     assert_eq!(fs::read(root.path().join(PROFILE)).unwrap(), applied);
 
     // The question set lists the three items, with the stored values as current and suggested.
-    let q = ok(&run(&["language-setup", path(&root), "--questions"], b""));
+    let q = ok(&run_with_home(
+        &["language-setup", path(&root), "--questions"],
+        b"",
+        home.path(),
+    ));
     let items = q["questions"]["items"].as_array().unwrap();
     let ids: Vec<&str> = items.iter().map(|i| i["id"].as_str().unwrap()).collect();
     assert_eq!(ids, ["commit_messages", "instruction_files", "documents"]);
@@ -213,7 +257,7 @@ fn setup_answers_reach_the_profile_and_rerun_keeps_them() {
     assert_eq!(commits["suggested"], json!("ja"));
 
     // One changed answer changes exactly that item.
-    let third = setup_answers(&root, &json!({"documents": "en"}), &[]);
+    let third = setup_answers_in(&root, &json!({"documents": "en"}), &[], home.path());
     assert_eq!(third["changed_items"], json!(["documents"]));
     let plan = apply_profile(&root, &third["profile"]);
     assert_eq!(plan["delta"]["changed"], json!(["language"]));
@@ -221,6 +265,33 @@ fn setup_answers_reach_the_profile_and_rerun_keeps_them() {
         profile_value(root.path())["language"]["documents"],
         json!("en")
     );
+}
+
+/// The ask-once rule's migration: with no flag and no HOME record the conversation resolves to
+/// English, so a re-run moves a stored `user_chat` ko → en once (the stored item answers stay
+/// sticky), and every re-run after that keeps every value.
+#[test]
+fn without_a_home_record_the_rerun_moves_the_conversation_to_english() {
+    let root = project(None);
+    let out = setup_answers(
+        &root,
+        &json!({"commit_messages": "ja"}),
+        &["--conversation", "ko"],
+    );
+    let ko = json!({"commit_messages": "ja", "documents": "ko", "instruction_files": "en", "user_chat": "ko"});
+    assert_eq!(out["language"], ko);
+    apply_profile(&root, &out["profile"]);
+
+    let again = setup_answers(&root, &json!({}), &[]);
+    // The stored `documents` answer is sticky (a stored value is its own suggestion); only the
+    // resolved `user_chat` moves.
+    let en = json!({"commit_messages": "ja", "documents": "ko", "instruction_files": "en", "user_chat": "en"});
+    assert_eq!(again["changed_items"], json!(["user_chat"]));
+    assert_eq!(again["language"], en);
+    apply_profile(&root, &again["profile"]);
+    let stable = setup_answers(&root, &json!({}), &[]);
+    assert_eq!(stable["changed_items"], json!([]));
+    assert_eq!(stable["language"], en);
 }
 
 /// AC-2: without a question tool the step asks on the terminal: an empty line keeps the
@@ -436,4 +507,41 @@ fn a_migrated_project_names_its_own_profile_path() {
         .unwrap_or_else(|| panic!("{again}"))
         .clone();
     assert_eq!(agents["action"], json!("unchanged"), "{again}");
+}
+
+/// The explicit `--conversation` flag is checked like every other entry into the language
+/// settings: a code outside the list is refused with nothing offered or written, and a listed
+/// code answers as the flag source.
+#[test]
+fn a_conversation_flag_outside_the_list_is_refused() {
+    let root = project(None);
+    let before = fs::read(root.path().join(PROFILE)).unwrap();
+    let message = failed(&run(
+        &[
+            "language-setup",
+            path(&root),
+            "--questions",
+            "--conversation",
+            "xx",
+        ],
+        b"",
+    ));
+    assert!(
+        message.contains("invalid language setting"),
+        "the flag is checked: {message}"
+    );
+    assert!(!message.contains("xx"), "{message}");
+    assert_eq!(fs::read(root.path().join(PROFILE)).unwrap(), before);
+    let q = ok(&run(
+        &[
+            "language-setup",
+            path(&root),
+            "--questions",
+            "--conversation",
+            "ko",
+        ],
+        b"",
+    ));
+    assert_eq!(q["questions"]["conversation_language"], json!("ko"));
+    assert_eq!(q["questions"]["conversation_source"], json!("flag"));
 }
