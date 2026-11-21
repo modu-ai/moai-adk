@@ -50,7 +50,7 @@ Three things stand in the way of a plain deletion, and the design follows them:
 
 ## Scope
 
-- write: `src/session.rs`, `src/main.rs`, `src/launcher_init.rs`, `src/launcher_terminal.rs`, `src/model_effort_settings.rs`, `src/model_effort_questions.rs`, `src/update_models.rs`, `src/help.rs` (the launcher lines only), the tests named in the acceptance lines, `tests/product_cli.rs` (its Codex launcher cases), `tests/launcher_codex_effort.rs` (deleted), the eight help goldens under `tests/fixtures/help/`, a new `tests/codex_launcher_removed.rs`, and this SPEC folder
+- write: `src/session.rs`, `src/main.rs`, `src/launcher_init.rs`, `src/launcher_terminal.rs`, `src/model_effort_settings.rs`, `src/model_effort_questions.rs`, `src/update_models.rs`, `src/help.rs` (the launcher lines only), the tests named in the acceptance lines, `tests/product_cli.rs` (its Codex launcher cases), `tests/launcher_codex_effort.rs` (deleted), the eight help goldens under `tests/fixtures/help/`, the recorded usage error `tests/fixtures/protocol/v1/current/01-usage-unknown-subcommand.json`, `src/ui_text.rs` (the two `InitRemoved` texts and their test only, by a line-range agreement with the holder), a new `tests/codex_launcher_removed.rs`, and this SPEC folder
 - files held by other changes at the time of writing (asked for back by pair lines): `src/help.rs`, `src/update_models.rs`, `tests/product_cli.rs`, `tests/update_model_pick.rs`, `tests/launcher_codex_effort.rs`
 - read-only: `src/hooks.rs`, `src/hosts/*`, `src/ops/codex_*`, `src/go_state.rs`, `src/lane_loop.rs`, `src/host_home.rs`, `install/moai-switch.sh`
 - forbidden: the Go repository, the real HOME, any file under the user's Codex or agents folders in the home, any card number in a file name, SPEC id, branch or commit
@@ -72,4 +72,15 @@ Order of the change, as the research of the area gave it: first the read safety 
 
 ## Result
 
-(not yet written)
+Built tests first, one slice at a time: the red commit held the launcher, model-table and question cases (recorded with `moai tdd red`, `failure_class: test-failure`), the models-step slice has its own red and green commit, and the help words followed once `src/help.rs` was free. The branch then took the local tip, which already held the retired-host layer (SPEC-20261121-retired-hosts-read-safely): the three conflict spots of `src/model_effort_settings.rs` were resolved to its `retired(tool, active)` rule and this change's own `IGNORED_TOOLS` list is gone. That layer drops a retired key on the next save (leader decision D2), so REQ-6, AC-2 and the title of this SPEC were changed from "kept" to "left out of the written file", with the cases of `model_effort_settings`, `model_effort_questions` and `update_model_pick` following.
+
+- AC-1: met — `codex_launcher_removed` 5 passed (`moai codex` and its flags give the usage envelope and exit 2 with no stub host started; `-a codex` and `session --host codex` differ from an unknown word only by the word; the bare usage line and a session request hold no codex); `ui_text::` unit tests 10 passed (the `moai init` guidance names `moai cc` and `moai glm` and no codex).
+- AC-2: met — `model_effort_settings` 11 passed (table, defaults, refusal of a choice for `codex`, a saved value of five shapes read without error and not listed, the next write leaves it out and keeps every other key).
+- AC-3: met — `model_effort_questions` 16 and `update_model_pick` 11 passed (a home with `.claude` and `.codex` offers `claude` only, the command report holds six rows and none for codex, a saved Codex value of three shapes gives no error, is not quoted and is dropped by the next save).
+- AC-4: met — `launcher_auto_init` 18 and `launcher_skill_check` 4 passed.
+- AC-5: met — `help_layout` 10 passed after the goldens were written with `MOAI_HELP_GOLDEN_WRITE` and checked by a second run; `cargo test --lib help::` 18 passed before the tip merge. The `codex-*` commands keep their lines until their own removal.
+- AC-6: met — `launcher_agent_entry` 6, `launcher_agent_numbering` 25, `launcher_reads_models` 10, `launcher_roleless` 3, `launcher_advisor_setting` 7, `launcher_permissions_setting` 6, `launcher_terminal_output` 11, `omp_launcher` 17, `output_names_moai` 8, `cli_unknown_command` 4 passed; also `launcher_settings_receipt` 17, `models_revert_cli` 5, `update_always_asks` 11 and `product_cli` 79 (after its Codex argv case was replaced by the Claude prompt-note case and the recorded usage error was updated).
+
+Fail-to-pass, measured: the three launcher targets `cli_unknown_command`, `launcher_agent_entry` and `omp_launcher` and `update_model_pick` failed before their green commits (tdd red records and the first runs), and passed after.
+
+Not run: the check-affected chain (it runs next), mutants, Windows and Linux, and the `codex-*` command help lines (left by design).
