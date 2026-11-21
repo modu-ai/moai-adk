@@ -12,7 +12,7 @@ created: 2026-11-21
 
 - Q1: 무엇이 문제였나요? → A: 리더가 2026-11-21 에 빌드 13(4.2647.13, tip 041536fe07)으로 착지한 카드를 닫다가 발견했어요. 이 저장소에는 `.moai-cli/project.yaml`(work_flow 없음, 옛 파일)과 `.moai/project.yaml`(work_flow m-flow, 통합 브랜치 v2026.11.0)이 함께 있어요. 프로필 읽기는 상태 폴더를 `state_root::dir` 로 정하고, `.moai/` 에 유효한 표지가 없으면 옛 `.moai-cli` 를 골라요. 그래서 `card done` 의 M-Flow 착지 검사(`mflow_landing`)가 work_flow 없는 프로필을 읽고 조용히 `None` 을 돌려, `card landed` 로 착지를 기록한 카드도 "no merged pull request is linked" 로 거절돼요. 그 때문에 착지 카드 5장이 review 에 멈춰 있어요.
 - Q2: 어느 쪽을 읽어야 하나요? → A: 두 프로필이 모두 있는 섞인 배치에서는 새 배치(`.moai/`)의 프로필을 읽어요(리더 제안, 가역). 어느 한쪽만 있거나 배치가 이미 `rust` 이면 지금처럼 그 배치의 폴더를 읽어요. 쓰기는 이 SPEC 이 바꾸지 않아요(한 곳만 쓴다는 규칙 그대로).
-- Q3: 읽기에 실패하면요? → A: 지금은 `Err(_) => return Ok(None)` 이 읽기 오류를 모두 삼켜요. 프로필이 아예 없을 때만 병합된 PR 규칙을 그대로 쓰고, 있는데 못 읽으면 어떤 파일을 왜 못 읽었는지 말하며 거절해요. 프로필은 읽었는데 m-flow 가 아니어서 착지 기록을 못 쓴 경우에도 거절 문장이 읽은 프로필 경로와 이유를 말해요.
+- Q3: 읽기에 실패하면요? → A: 지금은 `Err(_) => return Ok(None)` 이 읽기 오류를 모두 삼켜요. 프로필이 스텁이어도(카드 명령이 id 만 쓴 프로필) PR 로 닫는 카드는 계속 닫혀야 하므로 규칙은 그대로 두고, 착지 기록이 있는 카드를 PR 규칙으로 거절할 때 어떤 프로필을 읽었고 왜(읽지 못했거나 m-flow 가 아니라서) 착지 기록을 쓰지 않았는지 거절 문장 끝에 붙여요.
 - Q4: 멈춘 카드 5장을 닫는 건요? → A: 이 SPEC 의 코드가 병합되고 설치된 CLI 가 새 빌드가 된 뒤의 운영 작업이라 SPEC 범위 밖이에요. 카드 본문이 "그다음 닫기"를 요청하므로 병합 뒤에 리더 지시로 해요.
 
 ## Intent
@@ -30,7 +30,7 @@ created: 2026-11-21
 - REQ-1: Where both `.moai/project.yaml` and `.moai-cli/project.yaml` are regular files and the state layout is not `rust`, the profile reader shall read `.moai/project.yaml`.
 - REQ-2: Where only one of the two profile files exists or the state layout is `rust`, the profile reader shall read the profile file of the layout's own state folder · failure: none
 - REQ-3 (REQ-1): IF `.moai/project.yaml` is chosen in a mixed layout and cannot be parsed or validated, THEN the reader shall return that error without falling back to `.moai-cli/project.yaml`.
-- REQ-4: IF the project profile exists but cannot be read, THEN `card done` shall refuse, name the project-relative profile path and the reason, change nothing and not apply the merged-pull-request rule.
+- REQ-4: IF the project profile exists but cannot be read and the card has a recorded landing, THEN the merged-pull-request refusal of `card done` shall name the project-relative profile path and the reason.
 - REQ-5: Where the readable profile names a flow other than m-flow and the card has no recorded landing, `card done` shall keep the plain merged-pull-request refusal without a profile hint · failure: none
 - REQ-6: When `card done` refuses a card with a `card.landed` event for lack of a merged pull request, the refusal shall name the project-relative profile path it read and why its work_flow was not used · failure: none
 - REQ-7: When `card done` runs in a mixed layout whose `.moai/project.yaml` names the m-flow work_flow with an integration branch and the newest landed head of the card is an ancestor of that branch's tip, the command shall close the card on the landing · failure: none
@@ -41,7 +41,7 @@ created: 2026-11-21
   verify: `cargo test --offline --locked --bin moai-cli mixed_layout`
 - AC-2 (REQ-7): temp-repo test: `.moai-cli/project.yaml` without work_flow and `.moai/project.yaml` with m-flow beside a card in review with a recorded landing inside the integration branch → `card done` closes and the `card.done` event names the head and the tip.
   verify: `cargo test --offline --locked --test card_done_mflow_cli`
-- AC-3 (REQ-4): temp-repo test: a profile with a valid project id whose work_flow names a flow that does not exist → `card done` refuses with the profile path (`.moai-cli/project.yaml`) and a reason, not with "no merged pull request", and the card stays in review with no `card.done` event.
+- AC-3 (REQ-4): temp-repo test: a profile with a valid project id whose work_flow names a flow that does not exist, with a landing on record → `card done` keeps the "no merged pull request is linked" refusal and adds that a local landing is recorded, the profile path (`.moai-cli/project.yaml`) and that it could not be read; the card stays in review with no `card.done` event; with a newer `.moai/project.yaml` that cannot be read the newer path is named and the earlier m-flow profile is no fallback.
   verify: `cargo test --offline --locked --test card_done_mflow_cli`
 - AC-4 (REQ-5, REQ-6): temp-repo tests: a readable profile without m-flow plus a recorded landing → the refusal keeps "no merged pull request is linked" and adds that a local landing is recorded, the profile path and why its work_flow was not used (no work_flow, or the flow's name); the same profile without a landing → the plain refusal with no hint.
   verify: `cargo test --offline --locked --test card_done_mflow_cli`
