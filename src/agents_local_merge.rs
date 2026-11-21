@@ -27,6 +27,11 @@
 //!
 //! A receipt written before the personal file moved holds `AGENTS.md` as its target; it has no
 //! `target_path`, and its revert still restores that file.
+//!
+//! The same engine has a second kind, [`Kind::Guidance`]: the text a person wrote in `AGENTS.md`
+//! (outside MoAI's managed section and outside blocks an earlier merge wrote) goes into `CLAUDE.md`,
+//! the team file, between `moai:merged-agents` markers, with the same preview, receipt and revert.
+//! `AGENTS.md` is never written. A `CLAUDE.md` that already imports `AGENTS.md` is `unchanged`.
 
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -35,12 +40,17 @@ use std::{fs, path::Path};
 type Result<T> = std::result::Result<T, String>;
 
 const TARGET: &str = "CLAUDE.local.md";
-/// The target of a receipt written before the personal file moved.
+/// The target of a receipt written before the personal file moved; also the source of the
+/// guidance kind.
 const LEGACY_TARGET: &str = "AGENTS.md";
 const LOCAL: &str = "AGENTS.local.md";
 const BEGIN: &str = "<!-- moai:merged-local sha256=";
 const BEGIN_TAIL: &str = " -->";
 const END: &str = "<!-- /moai:merged-local -->";
+const GUIDANCE_TARGET: &str = "CLAUDE.md";
+const GUIDANCE_BEGIN: &str = "<!-- moai:merged-agents sha256=";
+const GUIDANCE_END: &str = "<!-- /moai:merged-agents -->";
+const GUIDANCE_PREFIX: &str = "agents-md-migrate-";
 /// The start of this generation's managed-section markers (`agents.rs`); a source that holds it
 /// would be read as a second managed section.
 const MANAGED_MARKER: &str = "<!-- moai:managed";
@@ -51,6 +61,73 @@ const RECEIPT_PREFIX: &str = "agents-local-merge-";
 /// `project_update` forwards it under that name.
 pub const COMMIT_NOTICE: &str = "This text goes into CLAUDE.local.md, a personal file that is \
      not committed to the repository (keep it in .gitignore); AGENTS.local.md stays as it is.";
+/// The same line for the guidance kind: `CLAUDE.md` is the team file everyone reads.
+const GUIDANCE_COMMIT_NOTICE: &str =
+    "This text goes into CLAUDE.md, a team file that is committed \
+     to the repository and read by everyone who works on it; AGENTS.md stays as it is.";
+
+/// The two moves this engine makes. `Local`: the text of `AGENTS.local.md` goes into the personal
+/// file `CLAUDE.local.md`. `Guidance`: the text a person wrote in `AGENTS.md` goes into the team
+/// file `CLAUDE.md`.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Kind {
+    Local,
+    Guidance,
+}
+
+impl Kind {
+    /// The project-relative file the text is written into.
+    fn target(self) -> &'static str {
+        match self {
+            Kind::Local => TARGET,
+            Kind::Guidance => GUIDANCE_TARGET,
+        }
+    }
+
+    /// The project-relative file the text is read from.
+    fn source_name(self) -> &'static str {
+        match self {
+            Kind::Local => LOCAL,
+            Kind::Guidance => LEGACY_TARGET,
+        }
+    }
+
+    fn begin(self) -> &'static str {
+        match self {
+            Kind::Local => BEGIN,
+            Kind::Guidance => GUIDANCE_BEGIN,
+        }
+    }
+
+    fn end(self) -> &'static str {
+        match self {
+            Kind::Local => END,
+            Kind::Guidance => GUIDANCE_END,
+        }
+    }
+
+    /// How a block of this kind is named in a message.
+    fn label(self) -> &'static str {
+        match self {
+            Kind::Local => "merged-local",
+            Kind::Guidance => "merged-agents",
+        }
+    }
+
+    fn receipt_prefix(self) -> &'static str {
+        match self {
+            Kind::Local => RECEIPT_PREFIX,
+            Kind::Guidance => GUIDANCE_PREFIX,
+        }
+    }
+
+    fn commit_notice(self) -> &'static str {
+        match self {
+            Kind::Local => COMMIT_NOTICE,
+            Kind::Guidance => GUIDANCE_COMMIT_NOTICE,
+        }
+    }
+}
 
 /// Where the text to merge was read.
 struct Source {
@@ -58,7 +135,25 @@ struct Source {
     kind: &'static str,
     /// Project-relative path of the file read.
     rel: String,
+    /// The whole file read (the receipt keeps a copy of it).
     bytes: Vec<u8>,
+    /// The part that is merged: the whole file for `Kind::Local`, the person's text of
+    /// `AGENTS.md` for `Kind::Guidance`. The block's sha256 names these bytes.
+    text: Vec<u8>,
+    /// What the preview says about text that is not carried over.
+    notes: Vec<String>,
+}
+
+impl Source {
+    fn whole(kind: &'static str, rel: String, bytes: Vec<u8>) -> Source {
+        Source {
+            kind,
+            rel,
+            text: bytes.clone(),
+            bytes,
+            notes: Vec::new(),
+        }
+    }
 }
 
 enum Found {
@@ -99,8 +194,17 @@ fn hex(bytes: &[u8]) -> String {
         .to_string()
 }
 
+fn block_of_for(kind: Kind, sha_hex: &str, body: &str) -> String {
+    format!(
+        "{}{sha_hex}{BEGIN_TAIL}\n{body}{}\n",
+        kind.begin(),
+        kind.end()
+    )
+}
+
+#[cfg(test)]
 fn block_of(sha_hex: &str, body: &str) -> String {
-    format!("{BEGIN}{sha_hex}{BEGIN_TAIL}\n{body}{END}\n")
+    block_of_for(Kind::Local, sha_hex, body)
 }
 
 /// The block already in the target: the sha256 its marker names and the text between the marks.
@@ -110,23 +214,29 @@ struct Existing {
 }
 
 /// `Ok(None)`: no block. `Err`: a block that cannot be read as one (the plan is a conflict).
-fn find_block(agents: &str) -> std::result::Result<Option<Existing>, String> {
-    let starts: Vec<usize> = agents.match_indices(BEGIN).map(|(i, _)| i).collect();
+fn find_block_for(kind: Kind, agents: &str) -> std::result::Result<Option<Existing>, String> {
+    let (begin, end_marker, label) = (kind.begin(), kind.end(), kind.label());
+    let starts: Vec<usize> = agents.match_indices(begin).map(|(i, _)| i).collect();
     let start = match starts.as_slice() {
         // An end marker alone means the start marker was deleted: the text may still be
         // there, and merging again would double it (#2982 audit N5).
-        [] if agents.contains(END) => {
-            return Err("the merged-local end marker has no start marker".into())
+        [] if agents.contains(end_marker) => {
+            return Err(format!("the {label} end marker has no start marker"))
         }
         [] => return Ok(None),
         [one] => *one,
-        _ => return Err("CLAUDE.local.md holds more than one merged-local block".into()),
+        _ => {
+            return Err(format!(
+                "{} holds more than one {label} block",
+                kind.target()
+            ))
+        }
     };
     if start != 0 && !agents[..start].ends_with('\n') {
-        return Err("the merged-local marker is not at the start of a line".into());
+        return Err(format!("the {label} marker is not at the start of a line"));
     }
-    let after = &agents[start + BEGIN.len()..];
-    let damaged = || "the merged-local marker is damaged".to_string();
+    let after = &agents[start + begin.len()..];
+    let damaged = || format!("the {label} marker is damaged");
     let close = after.find(BEGIN_TAIL).ok_or_else(damaged)?;
     let sha = &after[..close];
     if sha.len() != 64 || !sha.bytes().all(|b| b.is_ascii_hexdigit()) {
@@ -135,18 +245,25 @@ fn find_block(agents: &str) -> std::result::Result<Option<Existing>, String> {
     let rest = after[close + BEGIN_TAIL.len()..]
         .strip_prefix('\n')
         .ok_or_else(damaged)?;
-    if rest.matches(END).count() != 1 {
-        return Err("the merged-local block needs exactly one end marker".into());
+    if rest.matches(end_marker).count() != 1 {
+        return Err(format!("the {label} block needs exactly one end marker"));
     }
-    let end = rest.find(END).ok_or_else(damaged)?;
+    let end = rest.find(end_marker).ok_or_else(damaged)?;
     let body = &rest[..end];
     if !(body.is_empty() || body.ends_with('\n')) {
-        return Err("the merged-local end marker is not at the start of a line".into());
+        return Err(format!(
+            "the {label} end marker is not at the start of a line"
+        ));
     }
     Ok(Some(Existing {
         sha: sha.to_ascii_lowercase(),
         body: body.to_string(),
     }))
+}
+
+#[cfg(test)]
+fn find_block(agents: &str) -> std::result::Result<Option<Existing>, String> {
+    find_block_for(Kind::Local, agents)
 }
 
 /// Lines of `text` shaped like a credential: `(line number, kind)`. The value is never kept.
@@ -288,17 +405,51 @@ pub(crate) fn secret_kind(line: &str) -> Option<&'static str> {
     None
 }
 
+/// `true` when `text` imports `AGENTS.md` the way Claude Code reads an import: a word `@AGENTS.md`
+/// (or `@./AGENTS.md`) outside a fenced code block and outside backticks.
+fn imports_agents_md(text: &str) -> bool {
+    let mut fenced = false;
+    for line in text.lines() {
+        let t = line.trim_start();
+        if t.starts_with("```") || t.starts_with("~~~") {
+            fenced = !fenced;
+            continue;
+        }
+        if !fenced
+            && line
+                .split_whitespace()
+                .any(|w| w == "@AGENTS.md" || w == "@./AGENTS.md")
+        {
+            return true;
+        }
+    }
+    false
+}
+
 /// The plan's decision from the two files and the credential scan. Pure.
-fn decide(agents: Option<&[u8]>, found: Found, suspects: &[(usize, &'static str)]) -> Decision {
+fn decide_for(
+    kind: Kind,
+    agents: Option<&[u8]>,
+    found: Found,
+    suspects: &[(usize, &'static str)],
+) -> Decision {
+    let target = kind.target();
     let src = match found {
         Found::Nothing(reason) => return Decision::of("none", reason),
         Found::Blocked(reason) => return Decision::of("blocked", reason),
         Found::Source(s) => s,
     };
-    let Ok(text) = std::str::from_utf8(&src.bytes) else {
+    let Ok(text) = std::str::from_utf8(&src.text) else {
         return Decision::of("blocked", format!("{} is not UTF-8 text", src.rel));
     };
-    if text.contains(BEGIN) || text.contains(END) || text.contains(MANAGED_MARKER) {
+    // The guidance kind also refuses the personal-file markers: a damaged one that stayed in the
+    // text would be copied into a file that another merge reads.
+    let foreign = kind == Kind::Guidance && (text.contains(BEGIN) || text.contains(END));
+    if text.contains(kind.begin())
+        || text.contains(kind.end())
+        || text.contains(MANAGED_MARKER)
+        || foreign
+    {
         return Decision::of(
             "blocked",
             format!(
@@ -310,14 +461,20 @@ fn decide(agents: Option<&[u8]>, found: Found, suspects: &[(usize, &'static str)
     // A missing target is created: it holds the block alone.
     let creates = agents.is_none();
     let Ok(agents) = std::str::from_utf8(agents.unwrap_or_default()) else {
-        return Decision::of("blocked", "CLAUDE.local.md is not UTF-8 text");
+        return Decision::of("blocked", format!("{target} is not UTF-8 text"));
     };
+    if kind == Kind::Guidance && imports_agents_md(agents) {
+        return Decision::of(
+            "unchanged",
+            format!("{target} already reads {LEGACY_TARGET} through an @{LEGACY_TARGET} import"),
+        );
+    }
     let body = normalized(text);
-    let sha = hex(&src.bytes);
-    match find_block(agents) {
+    let sha = hex(&src.text);
+    match find_block_for(kind, agents) {
         Err(reason) => Decision::of("conflict", format!("{reason}; nothing is written")),
         Ok(Some(e)) if e.sha == sha && e.body == body => {
-            Decision::of("unchanged", "CLAUDE.local.md already holds this text")
+            Decision::of("unchanged", format!("{target} already holds this text"))
         }
         Ok(Some(e)) if e.sha == sha => Decision::of(
             "conflict",
@@ -354,33 +511,38 @@ fn decide(agents: Option<&[u8]>, found: Found, suspects: &[(usize, &'static str)
             };
             let head = format!("{agents}{separator}");
             let starts_at_line = head.matches('\n').count() + 1;
-            let new_agents = format!("{head}{}", block_of(&sha, &body)).into_bytes();
-            // The plan, the revert and every later read of CLAUDE.local.md go through
+            let new_agents = format!("{head}{}", block_of_for(kind, &sha, &body)).into_bytes();
+            // The plan, the revert and every later read of the target go through
             // `apply::read_opt`, which refuses a file above this size (#2982 audit B1).
             if new_agents.len() as u64 > crate::apply::RECEIPT_LIMIT {
                 return Decision::of(
                     "blocked",
                     format!(
-                        "CLAUDE.local.md would grow to {} bytes with this text; the limit is {} bytes",
+                        "{target} would grow to {} bytes with this text; the limit is {} bytes",
                         new_agents.len(),
                         crate::apply::RECEIPT_LIMIT
                     ),
                 );
             }
+            let from = kind.source_name();
             Decision {
                 action: "merge",
                 reason: if creates {
-                    "CLAUDE.local.md does not exist; the text of AGENTS.local.md would create it"
+                    format!("{target} does not exist; the text of {from} would create it")
                 } else {
-                    "the text of AGENTS.local.md is not in CLAUDE.local.md yet"
-                }
-                .into(),
+                    format!("the text of {from} is not in {target} yet")
+                },
                 new_agents: Some(new_agents),
                 starts_at_line: Some(starts_at_line),
                 body: Some(body),
             }
         }
     }
+}
+
+#[cfg(test)]
+fn decide(agents: Option<&[u8]>, found: Found, suspects: &[(usize, &'static str)]) -> Decision {
+    decide_for(Kind::Local, agents, found, suspects)
 }
 
 /// What the personal file in place holds: text the user wrote, nothing, or MoAI's own text.
@@ -419,11 +581,11 @@ fn find_source(root: &Path) -> Result<Found> {
         Ok(None) => {}
         Ok(Some(bytes)) => match content_of(&bytes) {
             Content::Personal => {
-                return Ok(Found::Source(Source {
-                    kind: "in_place",
-                    rel: LOCAL.into(),
+                return Ok(Found::Source(Source::whole(
+                    "in_place",
+                    LOCAL.into(),
                     bytes,
-                }))
+                )))
             }
             Content::Blank => why_not = format!("{LOCAL} is empty"),
             Content::Generated => {
@@ -455,16 +617,105 @@ fn find_source(root: &Path) -> Result<Found> {
         )));
     }
     Ok(match content_of(&bytes) {
-        Content::Personal => Found::Source(Source {
-            kind: "backup",
-            rel: backed.rel,
-            bytes,
-        }),
+        Content::Personal => Found::Source(Source::whole("backup", backed.rel, bytes)),
         Content::Blank => Found::Nothing(format!("the backup copy of {LOCAL} is empty")),
         Content::Generated => Found::Nothing(format!(
             "the backup copy of {LOCAL} only holds the text MoAI generated"
         )),
     })
+}
+
+/// Removes the one block that opens with `begin` at the start of a line and closes on the line
+/// that holds `end`, and joins what was around it with one blank line. `None` when the text has
+/// no such block, a second one, or an end marker that is not its own (the caller keeps the text
+/// whole and the marker check blocks the plan).
+fn remove_block(text: &str, begin: &str, end: &str) -> Option<(String, usize)> {
+    let mut starts = text.match_indices(begin).map(|(i, _)| i);
+    let start = starts.next()?;
+    if starts.next().is_some() || text.matches(end).count() != 1 {
+        return None;
+    }
+    if start != 0 && !text[..start].ends_with('\n') {
+        return None;
+    }
+    let finish = start + text[start..].find(end)?;
+    let after = finish + end.len();
+    let stop = match text[after..].find('\n') {
+        Some(n) => after + n + 1,
+        None => text.len(),
+    };
+    let removed = &text[start..stop];
+    let lines = removed.matches('\n').count() + usize::from(!removed.ends_with('\n'));
+    let before = text[..start].trim_end_matches('\n');
+    let tail = text[stop..].trim_start_matches('\n');
+    let joined = match (before.is_empty(), tail.is_empty()) {
+        (true, _) => tail.to_string(),
+        (_, true) => format!("{before}\n"),
+        _ => format!("{before}\n\n{tail}"),
+    };
+    Some((joined, lines))
+}
+
+/// A text that is nothing but one `# title` line: the heading MoAI puts above its managed section
+/// when it creates an `AGENTS.md`.
+fn is_title_only(text: &str) -> bool {
+    let mut lines = text.lines().filter(|l| !l.trim().is_empty());
+    matches!((lines.next(), lines.next()), (Some(first), None) if first.starts_with("# "))
+}
+
+/// The guidance kind's source: the text of `AGENTS.md` outside MoAI's managed section and outside
+/// the blocks a personal-file merge wrote into it. Nothing is read from a backup.
+fn find_guidance(root: &Path) -> Result<Found> {
+    let bytes = match read_checked(root, LEGACY_TARGET) {
+        Err(reason) => return Ok(Found::Blocked(reason)),
+        Ok(None) => {
+            return Ok(Found::Nothing(format!(
+                "no {LEGACY_TARGET} in this project"
+            )))
+        }
+        Ok(Some(b)) => b,
+    };
+    let Ok(whole) = std::str::from_utf8(&bytes) else {
+        return Ok(Found::Blocked(format!("{LEGACY_TARGET} is not UTF-8 text")));
+    };
+    let mut own = whole.to_string();
+    let mut notes = Vec::new();
+    let (managed_begin, managed_end) =
+        crate::agents::markers(crate::agents::AGENTS_SECTION, "html");
+    if let Some((rest, lines)) = remove_block(&own, &managed_begin, &managed_end) {
+        notes.push(format!(
+            "MoAI's managed section of {LEGACY_TARGET} ({lines} lines) is not copied; the \
+             generation writes it into {GUIDANCE_TARGET}. Text you wrote inside that section is \
+             not carried over."
+        ));
+        own = rest;
+    }
+    if let Some((rest, lines)) = remove_block(&own, BEGIN, END) {
+        notes.push(format!(
+            "A block an earlier personal-file merge put into {LEGACY_TARGET} ({lines} lines) is \
+             not copied; it is personal text and belongs in CLAUDE.local.md."
+        ));
+        own = rest;
+    }
+    if own.trim().is_empty() || is_title_only(&own) {
+        return Ok(Found::Nothing(format!(
+            "{LEGACY_TARGET} holds no text of its own (only MoAI's section and a title line)"
+        )));
+    }
+    Ok(Found::Source(Source {
+        kind: "in_place",
+        rel: LEGACY_TARGET.into(),
+        text: normalized(&own).into_bytes(),
+        bytes,
+        notes,
+    }))
+}
+
+fn find_source_for(kind: Kind, root: &Path) -> Result<Found> {
+    match kind {
+        Kind::Local => find_source(root),
+        Kind::Guidance => find_guidance(root),
+    }
 }
 
 struct Inner {
@@ -496,14 +747,15 @@ fn hidden_agents_md_warning(root: &Path, action: &str, target_exists: bool) -> V
     Vec::new()
 }
 
-fn plan_inner(root: &Path) -> Result<Inner> {
+fn plan_inner(kind: Kind, root: &Path) -> Result<Inner> {
+    let target = kind.target();
     // A target that cannot be read as a plain file (a link, a path through one) blocks the plan.
-    let located = crate::apply::target(root, TARGET).and_then(|p| crate::apply::read_opt(&p));
+    let located = crate::apply::target(root, target).and_then(|p| crate::apply::read_opt(&p));
     let (before, target_error) = match located {
         Ok(bytes) => (bytes, None),
-        Err(e) => (None, Some(format!("{TARGET}: {e}"))),
+        Err(e) => (None, Some(format!("{target}: {e}"))),
     };
-    let found = find_source(root)?;
+    let found = find_source_for(kind, root)?;
     let suspects = match &found {
         Found::Source(s) => std::str::from_utf8(&s.bytes)
             .map(secret_suspects)
@@ -512,9 +764,20 @@ fn plan_inner(root: &Path) -> Result<Inner> {
     };
     let decision = match target_error {
         Some(reason) => Decision::of("blocked", reason),
-        None => decide(before.as_deref(), clone_found(&found), &suspects),
+        None => decide_for(kind, before.as_deref(), clone_found(&found), &suspects),
     };
-    let warnings = hidden_agents_md_warning(root, decision.action, before.is_some());
+    // Creating the personal file over an `AGENTS.md` hides that file from Claude Code; the
+    // guidance kind moves the text of `AGENTS.md` itself, so it has no such warning.
+    let mut warnings = if kind == Kind::Local {
+        hidden_agents_md_warning(root, decision.action, before.is_some())
+    } else {
+        Vec::new()
+    };
+    if decision.action == "merge" {
+        if let Found::Source(s) = &found {
+            warnings.extend(s.notes.iter().cloned());
+        }
+    }
     let source = match found {
         Found::Source(s) => Some(s),
         _ => None,
@@ -545,18 +808,20 @@ fn plan_inner(root: &Path) -> Result<Inner> {
         "reason": decision.reason,
         "source": source_json,
         "target": {
-            "path": TARGET,
+            "path": target,
             "exists": before.is_some(),
             "sha256_before": before.as_deref().map(crate::digest),
             "starts_at_line": decision.starts_at_line,
         },
-        "commit_notice": COMMIT_NOTICE,
+        "commit_notice": kind.commit_notice(),
         "warnings": warnings,
         "secret_suspects": suspects_json,
         "body": decision.body,
         "plan_digest": digest,
     });
-    json["next_actions"] = if decision.action == "merge" {
+    json["next_actions"] = if decision.action != "merge" {
+        json!([])
+    } else if kind == Kind::Local {
         json!([
             "show the user the body, the position, the commit_notice and any warnings; after \
              their yes run \
@@ -564,7 +829,11 @@ fn plan_inner(root: &Path) -> Result<Inner> {
              --permission-reference <ref> <project>`"
         ])
     } else {
-        json!([])
+        // No command carries this kind yet; the plan is applied by its digest.
+        json!([
+            "show the user the body, the position, the commit_notice and any warnings; apply this \
+             plan with its plan_digest only after their yes"
+        ])
     };
     Ok(Inner {
         json,
@@ -584,16 +853,23 @@ fn clone_found(found: &Found) -> Found {
             kind: s.kind,
             rel: s.rel.clone(),
             bytes: s.bytes.clone(),
+            text: s.text.clone(),
+            notes: s.notes.clone(),
         }),
         Found::Nothing(r) => Found::Nothing(r.clone()),
         Found::Blocked(r) => Found::Blocked(r.clone()),
     }
 }
 
-/// The read-only preview. Writes nothing.
-pub fn plan(project: &Path) -> Result<Value> {
+/// The read-only preview of one kind. Writes nothing.
+pub fn plan_for(kind: Kind, project: &Path) -> Result<Value> {
     let root = fs::canonicalize(project).map_err(|_| crate::contract::PROJECT_PATH_UNAVAILABLE)?;
-    plan_inner(&root).map(|i| i.json)
+    plan_inner(kind, &root).map(|i| i.json)
+}
+
+/// The read-only preview of the personal-file move. Writes nothing.
+pub fn plan(project: &Path) -> Result<Value> {
+    plan_for(Kind::Local, project)
 }
 
 #[derive(Serialize, Deserialize)]
@@ -670,7 +946,7 @@ fn write_private(path: &Path, bytes: &[u8]) -> Result<()> {
         .map_err(|_| "receipt write failed".into())
 }
 
-fn new_receipt_dir(root: &Path) -> Result<(String, std::path::PathBuf)> {
+fn new_receipt_dir(kind: Kind, root: &Path) -> Result<(String, std::path::PathBuf)> {
     let state = crate::state_root::path(root, "");
     crate::claude::refuse_symlink_dir(&state)?;
     fs::create_dir_all(&state).map_err(|_| "receipt folder unavailable")?;
@@ -680,7 +956,7 @@ fn new_receipt_dir(root: &Path) -> Result<(String, std::path::PathBuf)> {
         .map(|d| d.as_nanos())
         .unwrap_or(0);
     for n in 0..16 {
-        let id = format!("{RECEIPT_PREFIX}{nanos}-{n}");
+        let id = format!("{}{nanos}-{n}", kind.receipt_prefix());
         let dir = receipts.join(&id);
         if create_private_dir(&dir).is_ok() {
             return Ok((id, dir));
@@ -700,13 +976,20 @@ fn write_receipt(dir: &Path, r: &Receipt) -> Result<()> {
     }
 }
 
-/// Merges the text after the user confirmed the plan whose digest is `plan_digest`.
+/// Merges the text of the personal file after the user confirmed the plan whose digest is
+/// `plan_digest`.
 pub fn apply(project: &Path, plan_digest: &str, permission: &str) -> Result<Value> {
+    apply_for(Kind::Local, project, plan_digest, permission)
+}
+
+/// Merges the text of one kind after the user confirmed the plan whose digest is `plan_digest`.
+pub fn apply_for(kind: Kind, project: &Path, plan_digest: &str, permission: &str) -> Result<Value> {
+    let target = kind.target();
     if !crate::contract::permission_reference_ok(permission) {
         return Err("a permission reference is required; nothing was written".into());
     }
     let root = fs::canonicalize(project).map_err(|_| crate::contract::PROJECT_PATH_UNAVAILABLE)?;
-    let inner = plan_inner(&root)?;
+    let inner = plan_inner(kind, &root)?;
     if inner.json["plan_digest"].as_str() != Some(plan_digest) {
         return Err("stale or altered plan; re-preview required".into());
     }
@@ -721,21 +1004,21 @@ pub fn apply(project: &Path, plan_digest: &str, permission: &str) -> Result<Valu
     // `None`: the target does not exist and the apply creates it.
     let before = inner.before;
     if new_agents.len() as u64 > crate::apply::RECEIPT_LIMIT {
-        return Err(
-            "the merged CLAUDE.local.md would be larger than the limit; nothing was written".into(),
-        );
+        return Err(format!(
+            "the merged {target} would be larger than the limit; nothing was written"
+        ));
     }
-    let agents_path = crate::apply::target(&root, TARGET)?;
-    let (id, dir) = new_receipt_dir(&root)?;
+    let agents_path = crate::apply::target(&root, target)?;
+    let (id, dir) = new_receipt_dir(kind, &root)?;
     let keep = create_private_dirs(&dir, &["before"])?;
     if let Some(before) = &before {
-        write_private(&keep.join(TARGET), before)?;
+        write_private(&keep.join(target), before)?;
     }
     // A file in place stays; the receipt keeps the copy that serves as its backup. A moved
     // copy is already in its dated go-state backup.
     if source.kind == "in_place" {
         let copy = create_private_dirs(&dir, &["source"])?;
-        write_private(&copy.join(LOCAL), &source.bytes)?;
+        write_private(&copy.join(kind.source_name()), &source.bytes)?;
     }
     let mut receipt = Receipt {
         schema_version: 1,
@@ -748,11 +1031,11 @@ pub fn apply(project: &Path, plan_digest: &str, permission: &str) -> Result<Valu
         // Known before the write, so a revert can tell an interrupted apply that did write
         // from one that did not (#2982 audit N2).
         agents_after: Some(crate::digest(&new_agents)),
-        block_sha256: hex(&source.bytes),
+        block_sha256: hex(&source.text),
         source_kind: source.kind.into(),
         source_path: source.rel.clone(),
         source_sha256: crate::digest(&source.bytes),
-        target_path: TARGET.to_string(),
+        target_path: target.to_string(),
         target_existed: before.is_some(),
     };
     write_receipt(&dir, &receipt)?;
@@ -760,20 +1043,25 @@ pub fn apply(project: &Path, plan_digest: &str, permission: &str) -> Result<Valu
         receipt.status = "failed".into();
         receipt.agents_after = None;
         write_receipt(&dir, &receipt)?;
-        return Err(format!("{TARGET} was not written ({e})"));
+        return Err(format!("{target} was not written ({e})"));
     }
     receipt.status = "applied".into();
     write_receipt(&dir, &receipt)?;
+    let undo = if kind == Kind::Local {
+        format!(
+            "to undo: moai agents-merge-revert --receipt {id} --permission-reference <ref> <project>"
+        )
+    } else {
+        format!("to undo: revert receipt {id} with a permission reference")
+    };
     Ok(json!({
         "state": "applied",
         "project": root.display().to_string(),
         "source": {"kind": source.kind, "path": source.rel},
         "starts_at_line": inner.json["target"]["starts_at_line"],
         "receipt": id,
-        "writes": [TARGET],
-        "next_actions": [format!(
-            "to undo: moai agents-merge-revert --receipt {id} --permission-reference <ref> <project>"
-        )],
+        "writes": [target],
+        "next_actions": [undo],
     }))
 }
 
@@ -781,10 +1069,15 @@ pub fn apply(project: &Path, plan_digest: &str, permission: &str) -> Result<Valu
 /// gets its earlier bytes back, or is removed when the apply created it. The source file and its
 /// backup are not touched.
 pub fn revert(project: &Path, receipt_id: &str, permission: &str) -> Result<Value> {
+    revert_for(Kind::Local, project, receipt_id, permission)
+}
+
+/// `revert` for a receipt of `kind`; a receipt id of the other kind is unknown to it.
+pub fn revert_for(kind: Kind, project: &Path, receipt_id: &str, permission: &str) -> Result<Value> {
     if !crate::contract::permission_reference_ok(permission) {
         return Err("a permission reference is required; nothing was written".into());
     }
-    if !(receipt_id.starts_with(RECEIPT_PREFIX)
+    if !(receipt_id.starts_with(kind.receipt_prefix())
         && receipt_id.len() <= 64
         && receipt_id
             .bytes()
@@ -804,10 +1097,12 @@ pub fn revert(project: &Path, receipt_id: &str, permission: &str) -> Result<Valu
     let bytes =
         crate::claude::read_existing(&dir.join("receipt.json"))?.ok_or("receipt not found")?;
     let mut r: Receipt = serde_json::from_slice(&bytes).map_err(|_| "receipt is unreadable")?;
-    // The receipt names the file it wrote; only the two files this module ever wrote are valid.
-    let name: &str = match r.target_path.as_str() {
-        TARGET => TARGET,
-        LEGACY_TARGET => LEGACY_TARGET,
+    // The receipt names the file it wrote; only the files this kind ever wrote are valid. A
+    // personal-file receipt of the earlier generation names `AGENTS.md`.
+    let name: &str = match (kind, r.target_path.as_str()) {
+        (Kind::Local, TARGET) => TARGET,
+        (Kind::Local, LEGACY_TARGET) => LEGACY_TARGET,
+        (Kind::Guidance, GUIDANCE_TARGET) => GUIDANCE_TARGET,
         _ => return Err("the receipt names a file this command never writes".into()),
     };
     let agents_path = crate::apply::target(&root, name)?;
@@ -868,11 +1163,61 @@ mod tests {
     use super::*;
 
     fn src(text: &str) -> Found {
-        Found::Source(Source {
-            kind: "in_place",
-            rel: LOCAL.into(),
-            bytes: text.as_bytes().to_vec(),
-        })
+        Found::Source(Source::whole(
+            "in_place",
+            LOCAL.into(),
+            text.as_bytes().to_vec(),
+        ))
+    }
+
+    #[test]
+    fn remove_block_joins_with_one_blank_line_and_refuses_odd_markers() {
+        let (b, e) = ("<!-- b -->", "<!-- /b -->");
+        let text = format!("one\n\n{b}\nx\n{e}\n\ntwo\n");
+        assert_eq!(remove_block(&text, b, e), Some(("one\n\ntwo\n".into(), 3)));
+        // Only the block: nothing is left to join.
+        assert_eq!(
+            remove_block(&format!("{b}\nx\n{e}\n"), b, e),
+            Some((String::new(), 3))
+        );
+        // Text before the block only, and text after it only.
+        assert_eq!(
+            remove_block(&format!("one\n{b}\nx\n{e}\n"), b, e),
+            Some(("one\n".into(), 3))
+        );
+        assert_eq!(
+            remove_block(&format!("{b}\nx\n{e}\ntwo\n"), b, e),
+            Some(("two\n".into(), 3))
+        );
+        // No block, two blocks, an end marker alone, a start that is not at a line start.
+        assert_eq!(remove_block("one\n", b, e), None);
+        assert_eq!(remove_block(&format!("{b}\n{e}\n{b}\n{e}\n"), b, e), None);
+        assert_eq!(remove_block(&format!("one\n{e}\n"), b, e), None);
+        assert_eq!(remove_block(&format!("a {b}\nx\n{e}\n"), b, e), None);
+        // An end marker before the start marker is not a block.
+        assert_eq!(remove_block(&format!("{e}\n{b}\n"), b, e), None);
+    }
+
+    #[test]
+    fn a_title_alone_is_the_heading_moai_wrote() {
+        assert!(is_title_only("# my-project\n"));
+        assert!(is_title_only("\n# my-project\n\n"));
+        assert!(!is_title_only("# my-project\n\nmore\n"));
+        assert!(!is_title_only("## sub\n"));
+        assert!(!is_title_only("plain\n"));
+        assert!(!is_title_only(""));
+    }
+
+    #[test]
+    fn an_import_counts_only_outside_code() {
+        assert!(imports_agents_md("# Team\n\n@AGENTS.md\n"));
+        assert!(imports_agents_md("See @./AGENTS.md for the rules.\n"));
+        assert!(!imports_agents_md("```\n@AGENTS.md\n```\n"));
+        assert!(!imports_agents_md("~~~\n@AGENTS.md\n~~~\n"));
+        assert!(!imports_agents_md("Use `@AGENTS.md` to import.\n"));
+        assert!(!imports_agents_md("@AGENTS.md.bak\n"));
+        // A fence that closes ends the code.
+        assert!(imports_agents_md("```\ncode\n```\n@AGENTS.md\n"));
     }
 
     fn action(agents: Option<&str>, found: Found) -> &'static str {
