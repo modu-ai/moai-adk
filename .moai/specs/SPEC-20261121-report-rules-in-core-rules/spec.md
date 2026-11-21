@@ -74,4 +74,27 @@ The skill entry `skills/moai/SKILL.md` is meant to be the entry and the router: 
 
 ## Result
 
-(written after the checks)
+Filled in by the implementation lane on 2026-11-21; the audit checks it again. The SPEC is `1c56cfc447`; red `9b3036d00d`, green `51dbf6c90a`, the pointer fix `84697d1eb1` (the first green pointer named a package path, which `skill_package_frontmatter_is_host_neutral` refused; it now names the route table's `core_rules` entry), the lines of `tests/product_cli.rs` `78921658c5`, the three manifest rows `2509e156a4`; the local tip `42f5af0800` is merged in as `03fc31a63f` (the earlier tip as `9999b47943`, no conflict, `git merge-tree` exit 0). Evidence files are in this worktree's `target/notes/`.
+
+Red (`red1.out`, before the text): `the_core_rules_carry_the_moved_report_rules` and `the_skill_entry_points_to_the_core_rules_and_keeps_the_decision_order` FAILED on the tip text, 0 passed and 2 failed in `tests/report_rules_core.rs`.
+
+- AC-1: met — `cargo test --locked --offline --test report_rules_core` (`green4.out`, no name filter; again in `affected/06-test_targets.log`): 2 passed, 0 failed; the first test is `the_skill_entry_points_to_the_core_rules_and_keeps_the_decision_order`.
+- AC-2: met — same run, `the_core_rules_carry_the_moved_report_rules` (rules 23 and 24 word for word, `## Reports` after rule 22).
+- AC-3: met — `cargo test --locked --offline --test product_cli` in `affected/06-test_targets.log`: 79 passed, 0 failed; `open_questions_are_sorted_and_holds_name_five_categories` reads the four report sentences in the core rules and the decision sentences in the skill entry.
+- AC-4: met — `cargo test --locked --offline --test core_rules_2876` (`green4.out`, `affected/06-test_targets.log`): 6 passed; the cap is 5120.
+- AC-5: met — `python3 -I tools/source_manifest.py check` prints `{"conflicted": false, "changed": [], "dropped": [], "ok": true}` on the final head.
+- AC-6: met — `cargo test --locked --offline --test rule_history_guard` (`green4.out`): 6 passed, 0 failed.
+
+### Checks
+
+`moai check affected 42f5af0800..03fc31a63f` (the branch's own build of the binary, `--max 2`), summary line as printed: `check-affected base=42f5af0800fb head=03fc31a63f6d targets=43 py=8 scans=listed:42 diff_check=0 fmt=0 clippy=0 test_lib=0 test_bins=0 test_targets=0 build_cli=0 python=0 result=PASS`.
+
+Shared files: the lines of `tests/product_cli.rs` were committed on this branch only, after the holder's note that its own hunks do not overlap (the holder's hunks are in other functions) and the leader's pair approval; the card check refuses that path, so this is a pair commit and not an allowed write. The same holds for the three manifest rows (leader approval, decision note of 2026-11-21T13:42:14Z).
+
+Mutants (five, on the committed files, each restored, `restored: clean = True`; `mutate.out`): the completion sentence back in the skill entry, the time sentence of rule 24 dropped, rule 24 numbered 25, the decision record sentence dropped from the skill entry, the pointer naming a package path — each killed by a named test of `report_rules_core` or `core_rules_2876`.
+
+### Not run
+
+- The pointer text read by a host in a live session after a compaction: not run (the SPEC marks that premise as inference from the documents, not tested).
+- A second run of the same tests on the same tree: not repeated (each result above is the one run's output).
+
