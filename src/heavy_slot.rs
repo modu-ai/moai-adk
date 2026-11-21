@@ -485,6 +485,18 @@ pub fn default_dir() -> Result<PathBuf> {
     Ok(base.join("moai-cli").join("heavy-slots"))
 }
 
+/// The test-threads cap the wrapper applies to a wrapped `cargo test`/`cargo nextest run`:
+/// `limits.json`'s `test_threads` when it sets one, else the default. `check affected` names
+/// this value in its summary line while the caller has not pinned the runner's own knob.
+pub fn test_thread_cap(folder: Option<&Path>) -> u64 {
+    let folder = folder.map(Path::to_path_buf).or_else(|| default_dir().ok());
+    folder
+        .and_then(|d| read_limits_file(&d).ok())
+        .flatten()
+        .and_then(|f| f.test_threads)
+        .unwrap_or(DEFAULT_LIMITS.test_threads)
+}
+
 /// `load 1.23/0.98/0.75; disk free 41.2 GiB at <folder>` — what is known of the machine now.
 /// A value the system does not give is shown as `unknown`.
 pub fn machine_line(folder: &Path) -> String {

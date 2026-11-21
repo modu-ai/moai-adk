@@ -27,9 +27,11 @@ enum Action {
     /// The checkout must be at the head with no modified tracked file, otherwise nothing runs.
     /// Every step runs, a failure does not stop the rest; each cargo step holds one heavy slot.
     /// The answer has one `summary` line of `key=value` words in a fixed order: `check-affected`,
-    /// base, head, targets, py, scans, the exit status of each step in the order they ran, then
-    /// `result=PASS` when every status is 0 and `result=FAIL` otherwise. Writes the step logs
-    /// under `<dir>/target/check-affected-<head>` (or `--out`).
+    /// base, head, targets, py, scans, `test-threads=<n>` while the wrapper applies its cap
+    /// (a caller that pins `RUST_TEST_THREADS` wins, and the line names nothing), the exit
+    /// status of each step in the order they ran, then `result=PASS` when every status is 0
+    /// and `result=FAIL` otherwise. Writes the step logs under `<dir>/target/check-affected-<head>`
+    /// (or `--out`).
     Affected {
         /// The range, `<base>..<head>`.
         range: String,
