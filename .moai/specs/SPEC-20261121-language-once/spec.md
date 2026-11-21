@@ -23,10 +23,10 @@ parent: null
 
 - REQ-1: The project setup shall not ask the conversation language: it reads the value the install step saved in the HOME state folder and fills the profile's user_chat with it. · failure: none — with no saved value the setup fills en without asking.
 - REQ-2: The project setup shall ask exactly the commit-messages, documents and instruction-files items per project, one question each with the saved or defaulted suggestion. · failure: none — the asked set is the ITEMS table's flags.
-- REQ-3: One list rules the conversation codes everywhere: the install menu, the language-set command and the setup validation accept exactly en, ko, ja and zh. · failure: none — the list lives in the language module's CODES table and the install menu reads the same four.
-- REQ-4: The language-set command with --home shall replace a stored value with an accepted code, keeping the before bytes until the publish, and shall refuse a code outside the list without touching the tree. · failure: none — a refused code leaves the file and folder as they were.
-- REQ-5: The update screens shall follow the installed conversation language: ko renders Korean, and en and every code the screens do not translate (ja, zh) render English, without falling through to the locale or the project profile. · failure: none — the choice reads the HOME value once per stream.
-- REQ-6: The model questions shall follow the installed conversation language the same way. · failure: none — the wiring reads the same HOME value; its GREEN waits for the files the GLM key card holds.
+- REQ-3: The install menu and the language-set command and the setup validation shall accept exactly the conversation codes en, ko, ja and zh, from the one list the language module holds and the install menu reads too. · failure: none — the list lives in the language module's CODES table and the install menu reads the same four.
+- REQ-4: The language-set command with --home shall replace a stored value with an accepted code, keeping the before bytes until the publish, and refuse a code outside the list without touching the tree. · failure: none — a refused code leaves the file and folder as they were.
+- REQ-5: The update screens shall follow the installed conversation language, so a saved ko renders Korean and a saved ja or zh renders English without falling through to the locale or the project profile. · failure: none — the choice reads the HOME value once per stream.
+- REQ-6: The model questions shall follow the installed conversation language the same way, once the files they live in join this slice. · failure: none — the wiring reads the same HOME value.
 
 ## Acceptance
 
