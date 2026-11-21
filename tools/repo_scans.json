@@ -1004,6 +1004,27 @@
         }
       ],
       "rejects": "a file under tests/ that names std::os::unix outside a cfg(unix) item, so the windows-build job stops compiling the tests (C-110, SPEC-20261119-windows-unix-gate)"
+    },
+    {
+      "id": "style-banner-moai-mark",
+      "tests": [
+        "tests/style_banner_scan.rs (all 2)"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test style_banner_scan"
+      ],
+      "rules": [
+        "tests/style_banner_scan.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "templates/"
+        },
+        {
+          "prefix": "skills/moai/"
+        }
+      ],
+      "rejects": "the old banner wordings 'MoAI-Easy ★' or 'MoAI ★' left in shipped text; banners read '<emoji> MoAI 🗿 <name> ─…' (user instruction 2026-11-21)"
     }
   ]
 }

@@ -17,6 +17,7 @@
 //! is `invalid_input`.
 
 use super::command::{actor, open_for_write};
+use super::early_reclaim;
 use super::input::{self, CardRef};
 use super::spec_link;
 use crate::ledger::reservation::{self, Reservation};
@@ -498,6 +499,23 @@ fn reclaim_reason(reason: &str) -> Result<String> {
     checked_reason("reclaim", reason)
 }
 
+/// The reason of an early reclaim: the caller's reason, then the proof in brackets, as one line
+/// that still fits the reason limit (REQ-11). A reason that would not fit is refused before any
+/// write, naming how much the proof adds.
+fn early_reason(reason: &str, proof: &str) -> Result<String> {
+    let combined = format!("{reason} [{proof}]");
+    let (own, all) = (reason.chars().count(), combined.chars().count());
+    if all > reservation::MAX_REASON_LEN {
+        return Err(format!(
+            "card reclaim refused: --reason is {own} characters and the early-reclaim proof adds {}, \
+             over the limit of {}; shorten the reason",
+            all - own,
+            reservation::MAX_REASON_LEN
+        ));
+    }
+    checked_reason("reclaim", &combined)
+}
+
 /// What `card reclaim` was given.
 pub struct ReclaimRequest<'a> {
     /// The new holder: this session.
@@ -518,6 +536,12 @@ pub struct ReclaimRequest<'a> {
 /// links; one `card.reclaim` event names the old holder, the new one, `--by` and `--reason`. A
 /// live lease, another generation, a `done` card or a card that is not held is refused and
 /// nothing is written.
+///
+/// One exception to "a live lease is refused" (SPEC-20261120-reclaim-dead-holder, user decision
+/// 2026-11-20): when the holder session is proven gone ([`super::early_reclaim`]: its launcher
+/// has exited, its worktree is gone or clean and no process works in it) the reservation is
+/// reclaimed while its lease still runs, and the proof goes into the reason and the event. A
+/// missing or unreadable proof leaves the refusal as it was, with the missing part named.
 pub fn reclaim(
     project: &Path,
     home: &Path,
@@ -528,17 +552,44 @@ pub fn reclaim(
     let by = actor(Some(req.by), "reclaim")?;
     let reason = reclaim_reason(req.reason)?;
     takeover_gates(project, home, card_id, req.to_holder)?;
+    let early = early_reclaim::assess(project, home, card_id, req.to_holder);
+    let reason = match &early {
+        early_reclaim::Early::Proven(proof) => early_reason(&reason, &proof.text)?,
+        _ => reason,
+    };
     let (id, mut ledger) = open_for_write(project, home)?;
-    let out = reservation::reclaim(
-        &mut ledger,
-        card_id,
-        req.to_holder,
-        req.generation,
-        &by,
-        &reason,
-        req.lease_secs.unwrap_or(DEFAULT_LEASE_SECS),
-    )
-    .map_err(|e| e.to_string())?;
+    let lease_secs = req.lease_secs.unwrap_or(DEFAULT_LEASE_SECS);
+    let taken = match &early {
+        early_reclaim::Early::Proven(proof) => reservation::reclaim_early(
+            &mut ledger,
+            card_id,
+            req.to_holder,
+            req.generation,
+            &by,
+            &reason,
+            lease_secs,
+            &reservation::EarlyProof {
+                holder: &proof.holder,
+                detail: &proof.detail,
+            },
+        ),
+        _ => reservation::reclaim(
+            &mut ledger,
+            card_id,
+            req.to_holder,
+            req.generation,
+            &by,
+            &reason,
+            lease_secs,
+        ),
+    };
+    let out = taken.map_err(|e| match (&e, &early) {
+        // The lease is live and the proof is missing: say which part.
+        (reservation::ReclaimError::LeaseLive { .. }, early_reclaim::Early::Unproven(why)) => {
+            format!("{e}; an early reclaim needs proof that the holder is gone, and {why}")
+        }
+        _ => e.to_string(),
+    })?;
     Ok(json!({
         "action": "reclaim", "project_id": id,
         "reservation": reservation_json(&out.reservation),
@@ -583,13 +634,13 @@ fn takeover_gates(project: &Path, home: &Path, card_id: i64, to_holder: &str) ->
     if cur.holder == to_holder {
         return Ok(()); // a self-reclaim renews its own reservation
     }
-    worktree_gate(cur.worktree.as_deref())
+    worktree_gate(project, cur.worktree.as_deref())
 }
 
 /// REQ-1..3: refuse a worktree that exists and holds uncommitted or unpushed work, go on
 /// only when the path is known to be gone (nothing there can be orphaned), refuse as
 /// unverifiable when the path cannot be told apart from "gone" or git cannot be read.
-fn worktree_gate(worktree: Option<&str>) -> Result<()> {
+pub(super) fn worktree_gate(project: &Path, worktree: Option<&str>) -> Result<()> {
     let Some(wt) = worktree.filter(|w| !w.is_empty()) else {
         return Ok(());
     };
@@ -610,17 +661,15 @@ fn worktree_gate(worktree: Option<&str>) -> Result<()> {
         Ok(true) => {}
         Err(_) => return Err(unreadable()),
     }
-    // One changed or untracked path per line.
-    let uncommitted = git_output(
-        path,
-        &["status", "--porcelain=v1", "--untracked-files=normal"],
-    )
-    .ok_or_else(unreadable)?
-    .lines()
-    .filter(|l| !l.trim().is_empty())
-    .count() as u64;
-    let unpushed = git_output(path, &["rev-list", "--count", "HEAD", "--not", "--remotes"])
-        .and_then(|n| n.trim().parse::<u64>().ok())
+    // One changed or untracked path per line, every untracked file on its own line (a folder
+    // git would show as one entry could hide real work beside a tool cache). A listed tool
+    // cache file is not work (SPEC-20261120-reclaim-dead-holder REQ-12).
+    let uncommitted = git_output(path, &["status", "--porcelain=v1", "--untracked-files=all"])
+        .ok_or_else(unreadable)?
+        .lines()
+        .filter(|l| !l.trim().is_empty() && !super::early_reclaim::is_tool_cache_entry(path, l))
+        .count() as u64;
+    let unpushed = unpushed_commits(path, "HEAD", integration_ref(project, path).as_deref())
         .ok_or_else(unreadable)?;
     if uncommitted > 0 || unpushed > 0 {
         return Err(format!(
@@ -631,10 +680,43 @@ fn worktree_gate(worktree: Option<&str>) -> Result<()> {
     Ok(())
 }
 
+/// The integration branch the `m-flow` work flow of the profile in `dir` names, if any.
+fn mflow_integration_branch(dir: &Path) -> Option<String> {
+    let (profile, _) = crate::profile::read_profile(dir).ok()?;
+    profile
+        .work_flow
+        .filter(|w| w.flow == "m-flow")?
+        .integration_branch
+}
+
+/// The local integration branch of an m-flow project, as a full ref: the profile of the
+/// project folder names the `m-flow` work flow with an integration branch, else the profile of
+/// the recorded worktree does (a lane worktree has no state-root marker, so its own profile is
+/// the earlier one without a work flow), and that branch exists locally. The ref is looked up
+/// in the worktree, whose refs are the clone's. `None` for every other case (no profile, one
+/// that cannot be read, another flow, no branch named, a branch this clone lacks), which leaves
+/// the count of unpushed commits to the remote-tracking refs alone
+/// (SPEC-20261120-reclaim-dead-holder REQ-13).
+pub(super) fn integration_ref(project: &Path, worktree: &Path) -> Option<String> {
+    let branch =
+        mflow_integration_branch(project).or_else(|| mflow_integration_branch(worktree))?;
+    let full = format!("refs/heads/{branch}");
+    git_output(worktree, &["rev-parse", "--verify", "--quiet", &full])?;
+    Some(full)
+}
+
+/// How many commits of `tip` are on no remote-tracking ref and, when `integration` names a
+/// ref, are not in it either. `None` when git cannot answer.
+pub(super) fn unpushed_commits(dir: &Path, tip: &str, integration: Option<&str>) -> Option<u64> {
+    let mut args = vec!["rev-list", "--count", tip, "--not", "--remotes"];
+    args.extend(integration);
+    git_output(dir, &args)?.trim().parse().ok()
+}
+
 /// The standard output of one read-only git command in `dir`: the environment is scrubbed like
 /// every spawn (`identity::scrub_git_env`) and the meaning matches `lane_reset`'s probes — no
 /// fetch, untracked files counted, `None` on any failure.
-fn git_output(dir: &Path, args: &[&str]) -> Option<String> {
+pub(super) fn git_output(dir: &Path, args: &[&str]) -> Option<String> {
     // `MOAI_GIT_BIN` names the git program for a runner whose child carries no `PATH`
     // (the same seam as `MOAI_FORGE_GH_BIN`); everyone else spawns `git`.
     let program = std::env::var("MOAI_GIT_BIN").unwrap_or_else(|_| "git".to_string());
