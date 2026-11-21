@@ -51,7 +51,7 @@
   },
   "files": {
     "SKILL.md": {
-      "sha256": "fe5095210ce0c80d35b3ba7e7fadd3c9ff7b74a3d97493e358cfb72dee0e86fa",
+      "sha256": "b518758186b453345beba033067ac86024521ebfa12a40f2e4d9f0a304eb12a3",
       "origin": {
         "kind": "design-template",
         "template_id": "router-core",
@@ -165,7 +165,7 @@
       }
     },
     "references/internal/core-rules.md": {
-      "sha256": "9b4440adaaf0e93b694f2fb188650103a68c6ef4676d8ce6b664cbc8a6d577eb",
+      "sha256": "7a6040e3fa935f596090c4057ac2e30dc51c387a116e04244111aec219cecd95",
       "origin": {
         "kind": "go-generation",
         "template_id": "internal-core-rules",
@@ -408,7 +408,7 @@
       }
     },
     "references/rule-history.md": {
-      "sha256": "6ae5ad009ca55baa62223c852289d5b927937c1b1ef297447c697f0fb1f4dbc4",
+      "sha256": "d54378a964f1518ed2ce7d96a0c3826bed1db5f291552750cf60f0a6d17928e6",
       "origin": {
         "kind": "design-spec",
         "template_id": "rule-prune-history",
@@ -435,7 +435,7 @@
       }
     },
     "workflows/mode-leader.md": {
-      "sha256": "5a4f940ceb5680f7db820bb0e4cc90c06f3be48aae1bc579d65cc694da752eed",
+      "sha256": "85ea01acc7718a31ce086c9397159a59867a4f3c1a6849442de1d31492899221",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-mode-leader",
