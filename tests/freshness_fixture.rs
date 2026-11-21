@@ -76,7 +76,7 @@ fn cli(dir: &Path, op: &str) -> Value {
 }
 
 fn pointer_gen(dir: &Path) -> Option<String> {
-    let bytes = fs::read(dir.join(".moai-cli/index/current.json")).ok()?;
+    let bytes = fs::read(dir.join(".moai/index/current.json")).ok()?;
     let v: Value = serde_json::from_slice(&bytes).ok()?;
     v["generation_id"].as_str().map(str::to_string)
 }
@@ -283,7 +283,7 @@ fn judge(test: &str, case: &Value) -> Result<Option<String>, String> {
     }
     if case["expected"]["cache_scope"] == json!("per_worktree") {
         for (name, path) in &repo.worktrees {
-            if !path.join(".moai-cli/index/current.json").is_file() {
+            if !path.join(".moai/index/current.json").is_file() {
                 return Err(format!(
                     "{id}: worktree {name} has no index pointer of its own"
                 ));
@@ -547,7 +547,7 @@ fn prepare_failed_scan(case: &Value) -> Result<FailedScan, String> {
     assert_eq!(case["mutation"]["file_removed"], false);
     let repo = setup(case);
     cli(&repo.main, "index-build");
-    let pointer = fs::read(repo.main.join(".moai-cli/index/current.json")).unwrap();
+    let pointer = fs::read(repo.main.join(".moai/index/current.json")).unwrap();
     let generation = pointer_gen(&repo.main).unwrap();
     let records = records(&repo.main);
     assert_eq!(records["state"], "fresh");
@@ -577,7 +577,7 @@ impl FailedScan {
         );
         assert!(diagnostic.contains("read failed"), "{diagnostic}");
         let got = cli(dir, "index-query");
-        let pointer = fs::read(dir.join(".moai-cli/index/current.json")).unwrap();
+        let pointer = fs::read(dir.join(".moai/index/current.json")).unwrap();
         assert_eq!(pointer_gen(dir).as_deref(), Some(self.generation.as_str()));
         assert_eq!(got["generation_id"], self.generation);
         assert_eq!(
@@ -664,7 +664,7 @@ fn f08_recovery_clears_partial_after_read_access_returns() {
     assert!(!failure
         .repo
         .main
-        .join(".moai-cli/index/last-build.json")
+        .join(".moai/index/last-build.json")
         .exists());
 }
 

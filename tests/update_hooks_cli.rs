@@ -184,7 +184,7 @@ fn make_codex_hooks_four_event(f: &Fixture) {
     let mut bytes = serde_json::to_vec_pretty(&v).unwrap();
     bytes.push(b'\n');
     fs::write(&file, &bytes).unwrap();
-    let receipt_path = f.project.join(".moai-cli/manifests/codex-hooks.json");
+    let receipt_path = f.project.join(".moai/manifests/codex-hooks.json");
     let mut r: Value = serde_json::from_slice(&fs::read(&receipt_path).unwrap()).unwrap();
     r["sha256"] = json!(moai_cli::digest(&bytes));
     let mut rb = serde_json::to_vec_pretty(&r).unwrap();
@@ -642,7 +642,7 @@ fn the_hook_receipt_keeps_a_protected_settings_file_privately_under_any_umask() 
             "umask {umask}: {r}"
         );
 
-        let receipts = f.project.join(".moai-cli/receipts");
+        let receipts = f.project.join(".moai/receipts");
         let mut seen = Vec::new();
         modes_below(&receipts, &mut seen);
         let own = fs::symlink_metadata(&receipts)

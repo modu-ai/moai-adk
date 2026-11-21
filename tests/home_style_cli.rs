@@ -453,7 +453,7 @@ fn revert_refuses_a_linked_receipts_folder() {
         .as_str()
         .unwrap()
         .to_string();
-    let receipts = home.join(".moai-cli/home-style/receipts");
+    let receipts = home.join(".moai/home-style/receipts");
     fs::rename(&receipts, outside.join("receipts")).unwrap();
     std::os::unix::fs::symlink(outside.join("receipts"), &receipts).unwrap();
     let outside_receipt = outside.join("receipts").join(&id).join("receipt.json");

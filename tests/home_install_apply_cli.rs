@@ -88,7 +88,7 @@ impl Fx {
     }
 
     fn sessions(&self) -> PathBuf {
-        self.project.join(".git/.moai-cli/sessions")
+        self.project.join(".git/.moai/sessions")
     }
 }
 
@@ -635,6 +635,8 @@ fn vault_survives_the_move() {
     let dir = tempfile::tempdir().unwrap();
     let home = fs::canonicalize(dir.path()).unwrap();
     fs::create_dir(home.join("work")).unwrap();
+    // An earlier HOME: a HOME with no state at all now starts on `~/.moai` and has nothing to move.
+    fs::create_dir(home.join(".moai-cli")).unwrap();
     let (_p, project) = project_dir();
     let f = Fx {
         _home: dir,

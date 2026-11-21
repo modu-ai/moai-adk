@@ -364,7 +364,7 @@ mod links {
     fn a_linked_state_folder_blocks_the_project() {
         let f = fx();
         let out = elsewhere(&f);
-        let state = state_root::path(&f.project, "");
+        let state = f.project.join(".moai-cli");
         symlink(&out, state).unwrap();
         refused(&f, &out);
     }

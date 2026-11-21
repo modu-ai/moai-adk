@@ -1941,15 +1941,23 @@ mod tests {
         assert_eq!(mixed_flow(earlier.path()).as_deref(), Some("m-flow"));
         assert_eq!(read_rel(earlier.path()), format!("{EARLIER}/project.yaml"));
 
-        // Only the newer file and no marker: the layout is not `rust`, the earlier folder has no
-        // profile, so the reader still looks where it always did and finds none.
+        // Only the newer file, no marker and an earlier folder with no profile: the layout is not
+        // `rust`, so the reader still looks where it always did and finds none.
         let newer = tempfile::tempdir().unwrap();
         mixed_put(newer.path(), ".moai", MIXED_MFLOW);
+        fs::create_dir(newer.path().join(EARLIER)).unwrap();
         assert_eq!(
             read_profile(newer.path()).unwrap_err(),
             PROFILE_MISSING.to_string()
         );
         assert_eq!(read_rel(newer.path()), format!("{EARLIER}/project.yaml"));
+
+        // The same newer file with no earlier folder at all is a new tree: it resolves to
+        // `.moai` and the profile is read there.
+        let fresh = tempfile::tempdir().unwrap();
+        mixed_put(fresh.path(), ".moai", MIXED_MFLOW);
+        assert_eq!(read_rel(fresh.path()), ".moai/project.yaml");
+        assert!(read_profile(fresh.path()).is_ok());
 
         // A `rust` layout (valid marker) reads `.moai`, with or without the earlier file.
         for with_earlier in [false, true] {

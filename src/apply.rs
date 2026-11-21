@@ -712,8 +712,10 @@ mod tests {
 
     #[test]
     fn recover_guard_blocks_go_and_receipt_paths() {
-        // An earlier-root project (no `.moai/` marker): `.moai` is Go state.
+        // An earlier-root project (an earlier `.moai-cli`, no `.moai/` marker): `.moai` is Go
+        // state.
         let legacy = tempfile::tempdir().unwrap();
+        fs::create_dir(legacy.path().join(crate::PROJECT_STATE_DIR)).unwrap();
         let g = |rel: &str| guard_recoverable_path(legacy.path(), rel);
         assert!(g("AGENTS.md").is_ok());
         assert!(g(crate::project_state!("manifests/generation.json")).is_ok());
