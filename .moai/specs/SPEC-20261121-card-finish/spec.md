@@ -2,7 +2,7 @@
 id: SPEC-20261121-card-finish
 title: "card finish closes a landed or reported card in one step, and card next and card list stop offering a card that already landed"
 status: draft
-revision: 3
+revision: 4
 created: 2026-11-21
 ---
 
@@ -27,7 +27,7 @@ Revision 2 (leader decision of 2026-11-21, user order to repair card closing): g
 - REQ-1: When a leader runs finish on a code card whose landed head is an ancestor of the integration tip, the card finish command shall close the card in one transaction and record the head, the tip, the generation and the caller in one landing event and one finish event · failure: none — a head outside the tip, an unknown head, a profile without an integration branch, or on an m-flow profile a merged pull request link without a proven landing refuses and writes nothing.
 - REQ-2: When every open criterion of a card has one met option, the card finish command shall mark each of them met and close the card · failure: none — a met option that names a number that is not open or names a number twice refuses and writes nothing.
 - REQ-3: When an open criterion of a code card has no met option, the card finish command shall record the proven landing once for the leader or the holder and answer which criteria are open without any other change · failure: none — a head that git does not prove, a landing that is not recorded, or a caller that is neither the leader nor the holder refuses and writes nothing.
-- REQ-4: When another session holds a reservation whose lease has not ended, the card finish command shall refuse and leave the ledger unchanged · failure: none — a lease of the caller or a lease that has ended passes.
+- REQ-4: When another session holds a reservation whose lease has not ended and the card is not in review with a landing that git proves, the card finish command shall refuse and leave the ledger unchanged · failure: none — a lease of the caller, a lease that has ended, or a review card whose head git proves inside the tip passes (the holder's reservation is released in the same transaction).
 - REQ-5: When the card kind is research or audit, the card finish command shall accept an existing report file or a verdict note of the card as the evidence in place of a landed head · failure: none — a path that is not a regular file under the reports folder or the project folder, a note that is not a report or decision note, or an open criterion without a met option refuses and writes nothing.
 - REQ-6: When the card kind changes the repository, the card finish command shall accept only landing evidence and refuse report evidence · failure: none — the refusal writes nothing.
 - REQ-7: When the by option is missing or blank, the card finish command shall refuse and write nothing · failure: none — the by value is stored in both events when it is given.
@@ -46,7 +46,7 @@ Revision 2 (leader decision of 2026-11-21, user order to repair card closing): g
 - AC-5 (REQ-6): a code card refuses a report path and a note, and a research card refuses a head · verify: `cargo test --locked --offline --test card_finish_cli ac5_`
 - AC-6 (REQ-7): finish without by, and with a blank by, refuses, and the by value is stored in both events · verify: `cargo test --locked --offline --test card_finish_cli ac6_`
 - AC-7 (REQ-1, REQ-2, REQ-4, REQ-5, REQ-7, REQ-8, REQ-10): every refusal leaves every ledger table byte equal to its dump before the call, with no fence_reject event · verify: `cargo test --locked --offline --test card_finish_cli ac7_`
-- AC-8 (REQ-11): `card next` skips a ready card with a landed head inside the tip, with a merged pull request link and with a trailer of its linked SPEC reachable from the tip, keeps a card whose head is outside the tip, and reports `landing.checked` false with a reason for a profile that is not m-flow · verify: `cargo test --locked --offline --test card_finish_cli ac8_`
+- AC-8 (REQ-11): `card next` skips a ready card with a landed head inside the tip, with a merged pull request link and with keeps a card whose head is outside the tip and a card whose linked SPEC has a trailer commit on the tip (the trailer is a hint field `spec_trailer_hints` of the landing key, never the skip reason), and reports `landing.checked` false with a reason for a profile that is not m-flow · verify: `cargo test --locked --offline --test card_finish_cli ac8_`
 - AC-9 (REQ-11): `card list` keeps its keys and adds landed true for a card with a landing event or a merged link and false for the others · verify: `cargo test --locked --offline --test card_finish_cli ac9_`
 - AC-10 (REQ-1, REQ-11): the scenario of a landed card: it lands, its holder gives the reservation back or its lease ends, a new session reads `card next`, the landed card is skipped and the next real card is listed, `card finish` closes the landed card with one met option per criterion, and the new session takes the next real card · verify: `cargo test --locked --offline --test card_finish_cli ac10_`
 - AC-11 (REQ-1, REQ-11, REQ-12): the existing card tests that read the answer of `card next`, `card list` and `card release` still pass, run whole · verify: `cargo test --locked --offline --no-fail-fast --test card_work_cli --test card_dispatch_cli --test card_generated_scope --test card_spec_cli --test card_done_mflow_cli --test card_reclaim_cli --test card_line_lease_cli --test ledger_workflow`
@@ -60,6 +60,9 @@ Revision 2 (leader decision of 2026-11-21, user order to repair card closing): g
 - AC-19 (REQ-1, REQ-2): a code card whose SPEC fails the check refuses with every table unchanged, a card with no met criterion and no met option refuses, and a card with one criterion met earlier closes with no met option · verify: `cargo test --locked --offline --test card_finish_cli ac19_`
 - AC-20 (REQ-3, REQ-11): a landing-only call by a session that is neither the leader nor the holder refuses with every table unchanged, the leader (`--by leader`) and the holder pass, and `card next` does not hide a card whose recorded head is not on the tip · verify: `cargo test --locked --offline --test card_finish_cli ac20_`
 - AC-21 (REQ-1, REQ-11): a tag named like the integration branch and pointing elsewhere changes no proof: a head on the branch closes the card, a head only on the tag refuses, and `card next` reads the branch · verify: `cargo test --locked --offline --test card_finish_cli ac21_`
+- AC-22 (REQ-4): a review card held by another session with a live lease closes for the leader on a head that git proves inside the tip and the holder's reservation is released in the same call; an active card held by another live session still refuses with every table unchanged; a review card whose head git does not prove still refuses · verify: `cargo test --locked --offline --test card_finish_cli ac22_`
+- AC-23 (REQ-11): a two-slice card whose first slice carries its SPEC trailer on the tip stays in `ready` of `card next` (the hint names the trailer) and its release answer does not name `card finish` · verify: `cargo test --locked --offline --test card_finish_cli ac23_`
+- AC-24 (REQ-1): the SPEC of a card is read from the proven tip, not from the working tree: a SPEC that passes on the tip closes the card while the working-tree copy is damaged, and a SPEC that fails on the tip refuses while the working-tree copy passes · verify: `cargo test --locked --offline --test card_finish_cli ac24_`
 
 ## Scope
 
@@ -76,7 +79,7 @@ Revision 2 (leader decision of 2026-11-21, user order to repair card closing): g
 - D-4: The live-lease gate is a public pure function with an explicit now, so the edge at the moment the lease ends is tested without freezing the database clock. A caller without a session id passes only when the lease has ended.
 - D-5: Research and audit cards accept `--evidence-report PATH` or `--evidence-note REF`, exactly one of them, and refuse `--head`. Other kinds accept a head (or the newest recorded landed head) or a merged pull request link and refuse both evidence options. This follows the leader decision of 2026-11-21 and does not weaken code cards.
 - D-6: The report path must resolve to a regular file under the reports folder of the user level home or under the project folder. The reports folder comes from the home, not from the project folder name, because a worktree name does not match it. The path is one line of at most 500 characters.
-- D-7: `card next` decides `already_landed` only from proofs that name the card: the recorded landing head inside the tip, a merged pull request link, or the `Moai-Spec` trailer of the card's linked SPEC reachable from the tip, read in one `git log` pass with a named commit limit and a `truncated` flag. A card number in a commit message is never a proof (a text match is a hypothesis). A false positive costs one explicit `card take`, and the skip entry names the proof.
+- D-7: `card next` decides `already_landed` only from proofs that name the card: the recorded landing head inside the tip or a merged pull request link. The `Moai-Spec` trailer of the card's linked SPEC reachable from the tip is only a hint (`landing.spec_trailer_hints`, read in one `git log` pass with a named commit limit and a `truncated` flag), because one SPEC with several slices has a trailer after its first slice. A card number in a commit message is never a proof (a text match is a hypothesis). The skip entry names the proof.
 - D-8: `card list` shows only what is recorded (`landed` is a ledger fact, with no git call).
 - D-9: The SPEC check at finish runs for code kinds only and reads the SPEC from the project folder given by `--project`. Reading the SPEC at the integration tip instead is a follow-up.
 - D-10: `card landed` keeps accepting a review card only; finish is the one path that closes a ready or active card.
@@ -96,7 +99,7 @@ Revision 2 (leader decision of 2026-11-21, user order to repair card closing): g
 
 - `src/card/work.rs` and `src/ops/card.rs` are shared files; the `next` hunk stays small and the clap row goes in through the line lease.
 - The shape of the `card next` answer is pinned by several test files; the new `already_landed` entries and the `landing` key add to the answer and change no existing key.
-- A SPEC shared by several cards makes the trailer proof hide siblings; D-7 names the proof in the skip entry.
+- A SPEC with several slices, or shared by several cards, has a trailer on the tip before its last card is done; D-7 therefore makes the trailer a hint and never a proof.
 - Word-scan tests over the repository may trip on a new sentence; the sentences avoid the words of `contract::classify` that sort an error earlier.
 
 ## Result
