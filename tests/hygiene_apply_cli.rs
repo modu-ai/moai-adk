@@ -477,3 +477,190 @@ fn a_worktree_named_by_a_process_is_skipped_right_before_the_move() {
     assert_eq!(manifest.lines().count(), 2, "{manifest}");
     assert!(!manifest.contains("wt-merged"), "{manifest}");
 }
+
+// ---------------------------------------------------------------------------
+// The re-check right before each move (SPEC-20261121-process-scan-snapshot).
+// ---------------------------------------------------------------------------
+
+/// A `lsof` script that logs its arguments, one line per call, then runs `then`.
+fn stub_lsof(dir: &Path, log: &Path, then: &str) {
+    use std::os::unix::fs::PermissionsExt;
+    fs::create_dir_all(dir).unwrap();
+    let script = dir.join("lsof");
+    fs::write(
+        &script,
+        format!("#!/bin/sh\necho \"$*\" >> '{}'\n{then}\n", log.display()),
+    )
+    .unwrap();
+    fs::set_permissions(&script, fs::Permissions::from_mode(0o755)).unwrap();
+}
+
+/// Linux reads `/proc` and never calls `lsof`.
+fn reads_proc() -> bool {
+    Path::new("/proc/self/fd").exists()
+}
+
+fn run_stub(
+    fx: &Fx,
+    cmd: &str,
+    now: u64,
+    extra: &[&str],
+    stub: &Path,
+    env: &[(&str, &str)],
+) -> Value {
+    let out = Command::new(BIN)
+        .args([cmd, fx.repo.to_str().unwrap()])
+        .args([
+            "--integration-ref",
+            "main",
+            "--tmp",
+            fx.tmp.to_str().unwrap(),
+        ])
+        .args(["--now", &now.to_string()])
+        .args(extra)
+        .current_dir(&fx.repo)
+        .env("HOME", &fx.home)
+        .env("GIT_CONFIG_GLOBAL", "/dev/null")
+        .env("GIT_CONFIG_SYSTEM", "/dev/null")
+        .env("PATH", format!("{}:/usr/bin:/bin", stub.display()))
+        .envs(env.iter().copied())
+        .stdin(Stdio::null())
+        .output()
+        .unwrap();
+    serde_json::from_slice(&out.stdout).unwrap_or_else(|_| {
+        serde_json::json!({
+            "ok": false,
+            "no_envelope": String::from_utf8_lossy(&out.stderr),
+        })
+    })
+}
+
+/// The re-check right before each move runs its own scan: from the second scan on the stub
+/// table says a process is working inside `build-idle`. The fresh read keeps it in place —
+/// the start-of-command table (a cached one) would move it.
+#[test]
+fn the_hygiene_move_recheck_runs_its_own_scan() {
+    if reads_proc() {
+        return;
+    }
+    let fx = fixture();
+    let stub = fx.home.join("stub");
+    let log = fx.home.join("lsof.log");
+    let cnt = fx.home.join("cnt");
+    fs::create_dir_all(&cnt).unwrap();
+    let build = fx.build().display().to_string();
+    // The counter is per calling process ($PPID): each command's first scan is empty. After
+    // that, only the '-a -d cwd' call — the working-folder scan — gets the working folder
+    // inside build-idle; the machine listing keeps the harmless path, so a regression that
+    // reads the whole listing for a cwd question cannot pass this test.
+    stub_lsof(
+        &stub,
+        &log,
+        &format!(
+            "n=$(cat '{cnt}/'$PPID'.count' 2>/dev/null || echo 0); echo $((n+1)) > '{cnt}/'$PPID'.count'; if [ \"$n\" -eq 0 ]; then echo 'n/nowhere/at/all'; elif echo \"$*\" | grep -q -- '-a -d cwd'; then printf 'fcwd\\nn/%s\\n' '{build}'; else echo 'n/nowhere/at/all'; fi",
+            cnt = cnt.display(),
+        ),
+    );
+
+    let now = far(&fx);
+    let p = run_stub(&fx, "hygiene-plan", now, &[], &stub, &[]);
+    assert_eq!(p["ok"], serde_json::json!(true), "{p}");
+    let p = p["result"].clone();
+    let held_paths = held(&p);
+    assert!(
+        held_paths.contains(&fx.build().to_string_lossy().to_string()),
+        "{p}"
+    );
+    let digest = p["plan_digest"].as_str().unwrap().to_string();
+
+    let v = run_stub(
+        &fx,
+        "hygiene-apply",
+        now,
+        &[
+            "--plan-digest",
+            &digest,
+            "--permission-reference",
+            "fixture-approved",
+        ],
+        &stub,
+        &[],
+    );
+    assert_eq!(v["ok"], serde_json::json!(true), "{v}");
+
+    // The build folder became busy after the plan: the fresh re-check keeps it in place,
+    // with exactly the in_use reason — not file_open_in_use and not an unknown one.
+    assert!(fx.build().exists(), "the busy build folder was moved: {v}");
+    let skipped = v["result"]["skipped"]
+        .as_array()
+        .cloned()
+        .unwrap_or_default();
+    let kept = skipped.iter().find(|i| {
+        i["path"]
+            .as_str()
+            .is_some_and(|p| p == fx.build().display().to_string())
+    });
+    let kept = kept.unwrap_or_else(|| panic!("the busy folder is not in the result: {v}"));
+    assert_eq!(kept["reason"], "in_use", "{v}");
+
+    // And the re-checks ran scans of their own, not the command's start table.
+    let calls = fs::read_to_string(&log).unwrap_or_default().lines().count();
+    assert!(
+        calls >= 4,
+        "expected the plan's scan, the command's start scan and the per-item re-checks, got {calls}"
+    );
+}
+
+/// An `lsof` cut off by its time limit is an unknown table, and the hygiene re-check
+/// refuses — the items stay in place.
+#[test]
+fn an_lsof_cut_off_by_the_time_limit_refuses_the_hygiene_move() {
+    if reads_proc() || !cfg!(debug_assertions) {
+        return;
+    }
+    let fx = fixture();
+    let stub = fx.home.join("stub");
+    let cnt = fx.home.join("cnt");
+    fs::create_dir_all(&cnt).unwrap();
+    // The first scan of each command answers; every scan after it — the re-checks — prints
+    // a few lines (so the listing is not empty) and then hangs past the limit, which walks
+    // the stop-by-deadline path — not the empty-output one.
+    stub_lsof(
+        &stub,
+        &fx.home.join("lsof.log"),
+        &format!(
+            "n=$(cat '{cnt}/'$PPID'.count' 2>/dev/null || echo 0); echo $((n+1)) > '{cnt}/'$PPID'.count'; if [ \"$n\" -eq 0 ]; then echo 'n/nowhere/at/all'; else printf 'p1\\nfcwd\\nn/nowhere\\n'; exec sleep 20; fi",
+            cnt = cnt.display(),
+        ),
+    );
+
+    let now = far(&fx);
+    let p = run_stub(&fx, "hygiene-plan", now, &[], &stub, &[]);
+    assert_eq!(p["ok"], serde_json::json!(true), "{p}");
+    let p = p["result"].clone();
+    let digest = p["plan_digest"].as_str().unwrap().to_string();
+
+    let v = run_stub(
+        &fx,
+        "hygiene-apply",
+        now,
+        &[
+            "--plan-digest",
+            &digest,
+            "--permission-reference",
+            "fixture-approved",
+        ],
+        &stub,
+        &[("MOAI_CLI_TEST_LSOF_TIMEOUT_MS", "500")],
+    );
+    assert_eq!(v["ok"], serde_json::json!(true), "{v}");
+    // The unknown table refuses: every hold item stays in place (the holding folder and the
+    // manifest line are written before the move, so they exist either way).
+    assert!(fx.build().exists(), "the build folder stayed: {v}");
+    assert!(fx.wt().exists(), "the worktree stayed: {v}");
+    let report = serde_json::to_string(&v).unwrap();
+    assert!(
+        report.contains("_unknown") || report.contains("_unavailable"),
+        "the unknown table was not reported: {v}"
+    );
+}
