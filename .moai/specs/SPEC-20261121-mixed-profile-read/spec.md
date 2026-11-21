@@ -38,7 +38,7 @@ created: 2026-11-21
 ## Acceptance
 
 - AC-1 (REQ-1…REQ-3): unit tests with temporary project folders: both profiles → the reader returns the `.moai/` profile (a `work_flow` only the new file has is seen); only the earlier file → that file; only the new file with a `rust` layout marker → that file; a new profile that is invalid → its error and no fallback; a symlinked `.moai/project.yaml` is not chosen.
-  verify: `cargo test --offline --locked --bin moai-cli mixed_layout`
+  verify: `cargo test --offline --locked --lib mixed_layout`
 - AC-2 (REQ-7): temp-repo test: `.moai-cli/project.yaml` without work_flow and `.moai/project.yaml` with m-flow beside a card in review with a recorded landing inside the integration branch → `card done` closes and the `card.done` event names the head and the tip.
   verify: `cargo test --offline --locked --test card_done_mflow_cli`
 - AC-3 (REQ-4): temp-repo test: a profile with a valid project id whose work_flow names a flow that does not exist, with a landing on record → `card done` keeps the "no merged pull request is linked" refusal and adds that a local landing is recorded, the profile path (`.moai-cli/project.yaml`) and that it could not be read; the card stays in review with no `card.done` event; with a newer `.moai/project.yaml` that cannot be read the newer path is named and the earlier m-flow profile is no fallback.
@@ -94,4 +94,6 @@ created: 2026-11-21
   | 착지 기록 없이도 힌트 | `mflow_landing` | `without_a_landing_the_refusal_carries_no_profile_hint` |
 
 - 설계 변경 기록: 처음 초안은 읽을 수 없는 프로필을 거절로 만들었는데, 카드 명령이 id 만 쓴 스텁 프로필(`invalid profile` 로 읽힘)인 프로젝트에서 PR 로 닫는 카드가 모두 막혀 시험(`a_project_without_m_flow_keeps_the_pr_rule`)이 빨개졌어요. 그래서 거절 대신 PR 거절 문장에 이유를 붙이는 쪽으로 정했어요(REQ-4).
+- 수리(2026-11-21 감사의 B1–B5·N1–N3): B1 트레일러는 base 위 재커밋으로 교정(여섯 커밋 모두 `Moai-Spec: SPEC-20261121-mixed-profile-read`, `trailer-check` failing 0). B2 프로필 해석 거절이 파일 경로를 앞세운다(`{read_rel}: existing YAML requires preservation review`). B3 m-flow 무 `integration_branch` 힌트의 회귀 시험 추가. B4 혼합 배치의 쓰기가 읽기를 따른다(plan 이 새 프로필에 묶이고 apply 가 그 파일을 고치며 영수증이 실제 파일을 이름한다 — `work_flow` 는 사용자 편집 키라 REQ-03A-03대로 plan 델타에 없으므로 그 읽기는 위의 done 시험들이 핀). B5 AC-1 verify 가 `--lib`. N1 힌트는 랜딩 관련 거절에만 붙고, N2 읽는 파일을 메시지와 존재 검사가 이름한다(archive·github-templates·context·check-tree·identity·generation), N3 두 프로필의 `project_id` 불일치는 양쪽 파일과 id 를 이름해 거절. N5 는 후속 카드 몫으로 기록.
+- 수리 검증: `cargo test --locked --offline --lib` exit 0 (1556 passed), `--test card_done_mflow_cli` exit 0 (13 passed — 기존 9 + B2·B3·B4·N3 신규 4). fmt·clippy·`check affected`(머지 첫째 부모 base)·나머지 대상은 READY 노트의 요약 줄 그대로.
 - 점검(fmt·clippy·`check affected`·파이썬)은 READY 노트에 요약 줄 그대로 적어요.
