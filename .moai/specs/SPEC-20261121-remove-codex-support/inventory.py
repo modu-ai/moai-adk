@@ -88,8 +88,10 @@ def slice_of(area, path):
         # manifests and the rest are regenerated at merge (slice 3).
         return "2" if path.endswith("project.yaml") else "3"
     if area == "codex-only-files":
-        # Codex-only code and tests go with the project layer; docs and the rest with the text slice.
-        return "2" if path.startswith(("src/", "tests/", ".codex/")) else "3"
+        # Codex-only code and tests go with the project layer; docs, the tracked `.codex/` folder
+        # (leader decision 2026-11-21: the shipped-text slice deletes it) and the rest with the
+        # text slice.
+        return "2" if path.startswith(("src/", "tests/")) else "3"
     if area != "tests-and-fixtures":
         return SLICE_OF_AREA.get(area, "3")
     name = path.rsplit("/", 1)[-1].lower()
@@ -120,6 +122,16 @@ def grep(commit, *flags):
     return rows
 
 
+NAMED = re.compile(r"codex|(^|[/_.-])omp([/_.-]|$)", re.IGNORECASE)
+
+
+def named_files(commit):
+    """Tracked files of the commit whose path holds `codex`, or `omp` as a word of the path."""
+    out = subprocess.run(["/usr/bin/git", "ls-tree", "-r", "--name-only", commit],
+                         capture_output=True, text=True, check=True, cwd=top())
+    return [p for p in out.stdout.splitlines() if NAMED.search(p)]
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("commit")
@@ -132,12 +144,16 @@ def main():
     by_file = defaultdict(list)
     for path, number in sorted(hits):
         by_file[path].append(number)
+    # A file whose path names Codex or OMP counts even when its text never does (0 lines).
+    for path in named_files(commit):
+        by_file.setdefault(path, [])
     rows = sorted(((area_of(p), p, len(n), ",".join(map(str, n))) for p, n in by_file.items()),
                   key=lambda r: (AREA_ORDER.index(r[0]) if r[0] in AREA_ORDER else 99, r[1]))
     with open(args.out, "w", encoding="utf-8") as fh:
         fh.write(f"# commit {commit}\n# area\tslice\tpath\tlines\tline numbers\n")
         for area, path, count, numbers in rows:
-            fh.write(f"{area}\t{slice_of(area, path)}\t{path}\t{count}\t{numbers}\n")
+            # `-` for a file whose path, not its text, names Codex (no line numbers).
+            fh.write(f"{area}\t{slice_of(area, path)}\t{path}\t{count}\t{numbers or '-'}\n")
     totals = defaultdict(lambda: [0, 0])
     per_slice = defaultdict(lambda: [0, 0])
     for area, path, count, _ in rows:
