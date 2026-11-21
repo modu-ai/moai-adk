@@ -61,7 +61,10 @@ if log:
     with open(log, "a", encoding="utf-8") as f:
         f.write(json.dumps({"args": args, "cwd": os.getcwd(),
                             "marker": read("src/marker.txt"),
-                            "has_added": "fn added" in read("tests/a.rs")}) + "\\n")
+                            "has_added": "fn added" in read("tests/a.rs"),
+                            "target": os.environ.get("CARGO_TARGET_DIR"),
+                            "fresh": min(os.path.getmtime("tests/a.rs"),
+                                         os.path.getmtime("src/marker.txt")) > 1700000000}) + "\\n")
 if os.environ.get("F2P_FAKE_BUILD_ERROR"):
     sys.stderr.write("error[E0432]: unresolved import `x`\\n")
     sys.exit(101)
@@ -80,7 +83,8 @@ sys.exit(101 if failed else 0)
 
 def run_git(cwd, *args):
     env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
-    env.update({"GIT_CONFIG_NOSYSTEM": "1", "HOME": str(cwd)})
+    env.update({"GIT_CONFIG_NOSYSTEM": "1", "HOME": str(cwd),
+                "GIT_AUTHOR_DATE": "2020-01-01T00:00:00Z", "GIT_COMMITTER_DATE": "2020-01-01T00:00:00Z"})
     return subprocess.run(
         ["git", "-c", "user.name=t", "-c", "user.email=t@example.invalid", "-c", "commit.gpgsign=false"]
         + list(args),
@@ -144,11 +148,21 @@ class Fixture(unittest.TestCase):
         self.assertEqual(proc.stdout.count("\n"), 1, proc.stdout + proc.stderr)
         return json.loads(proc.stdout)
 
+    def files_of(self, folder):
+        # the temporary repository only; a plain recursion over iterdir
+        for p in sorted(folder.iterdir()):
+            if p.name == ".git":
+                continue
+            if p.is_dir():
+                for q in self.files_of(p):
+                    yield q
+            else:
+                yield p
+
     def snapshot(self):
         out = {}
-        for p in sorted(self.repo.rglob("*")):
-            if p.is_file() and ".git" not in p.relative_to(self.repo).parts:
-                out[str(p.relative_to(self.repo))] = p.read_bytes()
+        for p in self.files_of(self.repo):
+            out[str(p.relative_to(self.repo))] = p.read_bytes()
         out["HEAD"] = run_git(self.repo, "rev-parse", "HEAD")
         out["status"] = run_git(self.repo, "status", "--porcelain")
         return out
@@ -233,6 +247,77 @@ class RunTest(Fixture):
         proc = self.tool(fake={})
         self.assertEqual(proc.returncode, 1, proc.stdout + proc.stderr)
         self.assertEqual(self.report(proc)["summary"], "f2p=0 flagged=2")
+
+
+class GuardTest(Fixture):
+    def test_the_extracted_files_are_touched_so_cargo_does_not_reuse_an_old_build(self):
+        proc = self.tool(fake={"added": "FAILED", "old_one": "FAILED"})
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        self.assertTrue(self.calls()[0]["fresh"], "git archive keeps the commit time; the files must be touched")
+
+    def test_target_dir_becomes_cargo_target_dir_for_the_base_build(self):
+        target = Path(self.tmp) / "tgt"
+        proc = self.tool("--target-dir", str(target), fake={"added": "FAILED", "old_one": "FAILED"})
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        self.assertEqual(self.calls()[0]["target"], str(target))
+
+    def test_no_target_dir_leaves_cargo_target_dir_alone(self):
+        proc = self.tool(fake={"added": "FAILED", "old_one": "FAILED"})
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        self.assertEqual(self.calls()[0]["target"], os.environ.get("CARGO_TARGET_DIR"))
+
+    def test_a_test_file_in_a_sub_folder_of_tests_is_not_listed(self):
+        write(self.repo, "tests/sub/deep.rs", "#[test]\nfn deep_one() {}\n")
+        run_git(self.repo, "add", ".")
+        run_git(self.repo, "commit", "-q", "-m", "add sub")
+        head = run_git(self.repo, "rev-parse", "HEAD")
+        tests = self.report(self.tool("--list-only", head=head))["tests"]
+        self.assertNotIn("deep_one", [t["name"] for t in tests])
+
+    def test_a_brace_inside_a_string_does_not_cut_a_test_short(self):
+        base = "#[test]\nfn braces() {\n    let s = \"}\";\n    assert!(true);\n}\n"
+        write(self.repo, "tests/d.rs", base)
+        run_git(self.repo, "add", ".")
+        run_git(self.repo, "commit", "-q", "-m", "d base")
+        d_base = run_git(self.repo, "rev-parse", "HEAD")
+        write(self.repo, "tests/d.rs", base.replace("assert!(true)", "assert!(1 == 1)"))
+        run_git(self.repo, "add", ".")
+        run_git(self.repo, "commit", "-q", "-m", "d head")
+        d_head = run_git(self.repo, "rev-parse", "HEAD")
+        tests = self.report(self.tool("--list-only", base=d_base, head=d_head))["tests"]
+        self.assertEqual([(t["name"], t["kind"]) for t in tests], [("braces", "changed")])
+
+    def test_a_comment_or_a_char_literal_with_a_brace_does_not_cut_a_test_short(self):
+        base = "#[test]\nfn odd() {\n    let c = '}';\n    // } in a comment\n    assert!(true);\n}\n"
+        write(self.repo, "tests/e.rs", base)
+        run_git(self.repo, "add", ".")
+        run_git(self.repo, "commit", "-q", "-m", "e base")
+        e_base = run_git(self.repo, "rev-parse", "HEAD")
+        write(self.repo, "tests/e.rs", base.replace("assert!(true)", "assert!(1 == 1)"))
+        run_git(self.repo, "add", ".")
+        run_git(self.repo, "commit", "-q", "-m", "e head")
+        e_head = run_git(self.repo, "rev-parse", "HEAD")
+        tests = self.report(self.tool("--list-only", base=e_base, head=e_head))["tests"]
+        self.assertEqual([(t["name"], t["kind"]) for t in tests], [("odd", "changed")])
+
+    def test_a_whitespace_only_change_is_not_a_change(self):
+        write(self.repo, "tests/f.rs", "#[test]\nfn spaced() {\n    assert!(true);\n}\n")
+        run_git(self.repo, "add", ".")
+        run_git(self.repo, "commit", "-q", "-m", "f base")
+        f_base = run_git(self.repo, "rev-parse", "HEAD")
+        write(self.repo, "tests/f.rs", "#[test]\nfn spaced()   {\n\n        assert!(true);\n\n}\n")
+        run_git(self.repo, "add", ".")
+        run_git(self.repo, "commit", "-q", "-m", "f head")
+        f_head = run_git(self.repo, "rev-parse", "HEAD")
+        self.assertEqual(self.report(self.tool("--list-only", base=f_base, head=f_head))["tests"], [])
+
+    def test_an_added_attribute_between_test_and_fn_is_seen(self):
+        write(self.repo, "tests/g.rs", "#[test]\n#[ignore]\nfn attributed() {\n    assert!(true);\n}\n")
+        run_git(self.repo, "add", ".")
+        run_git(self.repo, "commit", "-q", "-m", "g")
+        g_head = run_git(self.repo, "rev-parse", "HEAD")
+        tests = self.report(self.tool("--list-only", base=self.head, head=g_head))["tests"]
+        self.assertEqual([(t["name"], t["kind"]) for t in tests], [("attributed", "new")])
 
 
 class ReasonTest(Fixture):
