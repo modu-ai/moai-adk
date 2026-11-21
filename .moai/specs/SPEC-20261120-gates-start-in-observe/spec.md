@@ -54,3 +54,10 @@ parent: null
 
 - 양식 줄이 생성되는 SPEC마다 등장해요: HTML 주석으로 넣어 렌더 결과가 읽기에 방해되지 않게 해요.
 - manifest 해시 갱신을 까먹으면 source_manifest_test 가 잡아요 — 그래서 REQ-3 으로 묶었어요.
+
+## Result
+
+- AC-1: met — `cargo test --locked --offline --test sdd_guidance` 7 개 통과(`new_blocking_gates_start_in_observe` 고정 시험 포함). RED 는 문장을 넣기 전에 같은 시험이 실패한 것으로 확인했어요. 구현 세션의 병합 준비 노트(`ready-integration`)와 tier 1 감사 노트(`verdict-b9111dcba1`)가 같은 수를 기록했어요.
+- AC-2: met — `python3 -m unittest tests.source_manifest_test` 통과. sdd.md 의 새 digest 가 source-manifest.json 에 반영돼 있어요(같은 두 노트).
+- AC-3: met — `cargo test --locked --offline --test agent_defs_package` 19 개 통과, `cargo fmt --check` 0. 이웃 검사는 구현 세션이 실행했어요(같은 노트).
+- 이 Result 를 적는 세션은 문서만 고치므로 위 검사를 다시 돌리지 않았어요(착지와 내용은 git 으로 실측: 규칙 head 는 로컬 통합 가지 tip 의 조상). 변이는 없어요(코드 변경 없음). 상태는 사용자 승인 전까지 draft 로 남아요.
