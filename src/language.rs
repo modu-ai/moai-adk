@@ -54,7 +54,9 @@ pub const ITEMS: &[Item] = &[
         label_en: "Conversation with the user",
         label_ko: "사용자 대화",
         default: DefaultSource::Conversation,
-        asked: true,
+        // The conversation language is asked once at install and lives in the HOME state
+        // folder; the project setup reads that value instead of asking again.
+        asked: false,
     },
     Item {
         id: "reports",
@@ -89,7 +91,7 @@ pub const ITEMS: &[Item] = &[
         label_en: "Instruction files (AGENTS.md, rules)",
         label_ko: "지침 파일(AGENTS.md, 규칙)",
         default: DefaultSource::English,
-        asked: false,
+        asked: true,
     },
     Item {
         id: "skill_instructions",
@@ -312,7 +314,7 @@ fn home_file_bytes(code: &str) -> Vec<u8> {
 pub fn set_home(home: &std::path::Path, code: &str) -> Result<Value> {
     use std::fs;
     use std::io::ErrorKind::{AlreadyExists, NotFound};
-    if !is_language_tag(code) {
+    if !is_code(code) {
         return Err(INVALID.into());
     }
     let root = crate::home_root::path(home);
@@ -352,7 +354,14 @@ pub fn set_home(home: &std::path::Path, code: &str) -> Result<Value> {
         Err(_) => Err("language-set refused: language.yaml cannot be read".to_string()),
     };
     if exists()? {
-        return Ok(report(false, Some("exists")));
+        // A later `language-set --home` with a valid code replaces the value: the before
+        // bytes go with the publish, so a failed replace leaves the old file.
+        let before = fs::read(&file)
+            .map_err(|_| "language-set refused: language.yaml cannot be read".to_string())?;
+        return match crate::apply::publish_replace(&file, Some(&before), &home_file_bytes(code)) {
+            Ok(()) => Ok(report(true, Some("replaced"))),
+            Err(e) => Err(e),
+        };
     }
     match crate::apply::publish_exclusive(&file, &home_file_bytes(code)) {
         Ok(()) => Ok(report(true, None)),

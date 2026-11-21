@@ -119,45 +119,52 @@ fn the_first_write_creates_config_and_one_file() {
     );
 }
 
-/// A second run, with the same or another code, writes nothing and keeps the bytes.
+/// A second run, with the same or another code, replaces the value (leader decision: a later
+/// `language-set --home` with a valid code rewrites it).
 #[test]
-fn a_second_run_writes_nothing() {
+fn a_second_run_replaces_the_value() {
     let (_d, h) = home_with_state();
     assert_eq!(set(&h, "ko").0, 0);
-    let before = tree(&h);
-    for code in ["ko", "ja", "en"] {
+    for code in ["en", "ja", "ko"] {
         let (status, json) = set(&h, code);
         assert_eq!(status, 0, "{json}");
         let r = result(&json);
-        assert_eq!(r["written"], json!(false), "{json}");
-        assert_eq!(r["reason"], json!("exists"), "{json}");
+        assert_eq!(r["written"], json!(true), "{json}");
+        assert_eq!(r["reason"], json!("replaced"), "{json}");
         assert_eq!(r["code"], json!(code));
         assert_eq!(
-            tree(&h),
-            before,
-            "bytes and tree are untouched after {code}"
+            fs::read(h.join(".moai-cli").join(FILE)).unwrap(),
+            format!("language:\n  conversation_language: {code}\n").into_bytes(),
+            "{code}: the file holds the new value"
         );
     }
 }
 
-/// A file the user wrote by hand (even in another shape) is never replaced.
+/// A file the user wrote by hand (even in another shape, even empty) is replaced by a valid
+/// set the same way.
 #[test]
-fn a_file_the_user_already_has_is_kept_byte_for_byte() {
+fn a_hand_written_file_is_replaced_by_a_valid_set() {
     let (_d, h) = home_with_state();
     fs::create_dir(h.join(".moai-cli/config")).unwrap();
     let mine = b"# mine\nlanguage:\n  conversation_language: zh\n  code_comments: en\n";
     fs::write(h.join(".moai-cli").join(FILE), mine).unwrap();
-    let before = tree(&h);
     let (status, json) = set(&h, "ja");
     assert_eq!(status, 0, "{json}");
-    assert_eq!(result(&json)["reason"], json!("exists"), "{json}");
-    assert_eq!(tree(&h), before);
+    assert_eq!(result(&json)["reason"], json!("replaced"), "{json}");
+    assert_eq!(result(&json)["written"], json!(true), "{json}");
+    assert_eq!(
+        fs::read(h.join(".moai-cli").join(FILE)).unwrap(),
+        b"language:\n  conversation_language: ja\n"
+    );
     // An empty file is a file too.
     fs::write(h.join(".moai-cli").join(FILE), b"").unwrap();
-    let (status, json) = set(&h, "ja");
+    let (status, json) = set(&h, "ko");
     assert_eq!(status, 0, "{json}");
-    assert_eq!(result(&json)["written"], json!(false), "{json}");
-    assert_eq!(fs::read(h.join(".moai-cli").join(FILE)).unwrap(), b"");
+    assert_eq!(result(&json)["written"], json!(true), "{json}");
+    assert_eq!(
+        fs::read(h.join(".moai-cli").join(FILE)).unwrap(),
+        b"language:\n  conversation_language: ko\n"
+    );
 }
 
 /// A HOME whose state folder is `~/.moai` (valid marker) is written there, not in `~/.moai-cli`.
@@ -225,28 +232,14 @@ fn longest() -> String {
     format!("ko{}-abcde", "-abcdefgh".repeat(3))
 }
 
-/// Any language-code-shaped text is stored, exactly as given: the grammar's last passing value
-/// at each edge (2 and 3 letters, a 2- and an 8-character group, 35 bytes in all) and the
-/// codes MoAI has names for. The file holds the two lines and nothing else.
+/// One list everywhere: the accepted conversation codes are stored exactly as given, and a
+/// well-formed code outside the list (fr, KO, pt-BR, es-419, kor, zh-Hant-TW, a 35-byte tag)
+/// is refused with the four-code message and the tree stays as it was.
 #[test]
-fn a_code_of_the_right_shape_is_stored_exactly_as_given() {
+fn the_accepted_codes_are_stored_exactly_as_given_and_others_are_refused() {
     let longest = longest();
     assert_eq!(longest.len(), 35);
-    for code in [
-        "en",
-        "ko",
-        "ja",
-        "zh",
-        "fr",
-        "kor",
-        "KO",
-        "pt-BR",
-        "es-419",
-        "ko-ab",
-        "ko-abcdefgh",
-        "zh-Hant-TW",
-        longest.as_str(),
-    ] {
+    for code in ["en", "ko", "ja", "zh"] {
         let (_d, h) = home_with_state();
         let (status, json) = set(&h, code);
         assert_eq!(status, 0, "{code}: {json}");
@@ -258,6 +251,17 @@ fn a_code_of_the_right_shape_is_stored_exactly_as_given() {
             format!("language:\n  conversation_language: {code}\n").into_bytes(),
             "{code}: written as given"
         );
+    }
+    for code in ["fr", "KO", "pt-BR", "es-419", "kor", "zh-Hant-TW", longest.as_str()] {
+        let (_d, h) = home_with_state();
+        let before = tree(&h);
+        let (status, _json, err) = call(&h, &["language-set", "--home", code]);
+        assert_ne!(status, 0, "{code}: refused");
+        assert!(
+            err.contains("en, ko, ja or zh"),
+            "{code}: the message names the list: {err}"
+        );
+        assert_eq!(tree(&h), before, "{code}: the tree is untouched");
     }
 }
 
@@ -496,11 +500,11 @@ fn the_home_value_beats_the_go_backup() {
     assert_eq!(conversation(&empty, &root, &[]), "zh");
 }
 
-/// A stored code that is well-formed but is not one MoAI has a name for (`fr`, `pt-BR`, `KO`) is
-/// not used by `language-setup`: no panic, and it falls through to the next source, the Go
-/// backup's value, and then `en`.
+/// A code that is well-formed but outside the list, hand-written into the HOME file (the
+/// command no longer stores one), is not used by `language-setup`: no panic, and it falls
+/// through to the next source, the Go backup's value, and then `en`.
 #[test]
-fn a_stored_code_without_a_name_falls_through_without_a_panic() {
+fn a_hand_written_code_without_a_name_falls_through_without_a_panic() {
     let (_p, none) = project(None);
     let (_b, backup) = project(None);
     let sections = backup.join(".moai-backup/config/sections");
@@ -512,8 +516,12 @@ fn a_stored_code_without_a_name_falls_through_without_a_panic() {
     .unwrap();
     for code in ["fr", "pt-BR", "es-419", "KO", "kor", "zh-Hant-TW"] {
         let (_h, h) = home_with_state();
-        let (status, json) = set(&h, code);
-        assert_eq!(status, 0, "{code}: {json}");
+        fs::create_dir_all(h.join(".moai-cli/config")).unwrap();
+        fs::write(
+            h.join(".moai-cli").join(FILE),
+            format!("language:\n  conversation_language: {code}\n"),
+        )
+        .unwrap();
         assert_eq!(conversation(&h, &none, &[]), "en", "{code}: next is en");
         assert_eq!(conversation(&h, &backup, &[]), "zh", "{code}: next is Go");
         // The explicit flag still wins over any stored value.
