@@ -74,9 +74,14 @@ fn out_text(out: &Output) -> String {
     )
 }
 
-/// REQ-1: `moai codex` is an unknown command: the usage envelope, exit 2, nothing started.
+/// The one line `moai codex` prints now (English; the terminal language is `C` here).
+const CODEX_REMOVED: &str =
+    "moai codex was removed: MoAI supports Claude Code and GLM only (moai cc | moai glm)";
+
+/// REQ-1: `moai codex` is gone: a one-line notice on stderr (no clap suggestion of the internal
+/// `codex-*` commands), the usage envelope with the same sentence, exit 2, nothing started.
 #[test]
-fn moai_codex_is_an_unknown_command() {
+fn moai_codex_says_it_was_removed() {
     let f = fixture();
     for args in [
         &["codex"][..],
@@ -96,12 +101,16 @@ fn moai_codex_is_an_unknown_command() {
                 "ok": false,
                 "error": {
                     "kind": "usage",
-                    "message": "unknown command; see --help",
+                    "message": CODEX_REMOVED,
                     "retryable": false
                 }
             }),
             "{args:?}"
         );
+        let stderr = String::from_utf8_lossy(&out.stderr);
+        assert!(stderr.contains(CODEX_REMOVED), "{args:?}: {stderr}");
+        assert!(!stderr.contains("codex-"), "{args:?}: {stderr}");
+        assert!(!stderr.contains("unrecognized"), "{args:?}: {stderr}");
         assert!(!started(&f), "{args:?}: a host was started");
     }
 }
