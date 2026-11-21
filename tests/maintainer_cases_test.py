@@ -475,9 +475,13 @@ class RefusalTest(Temp):
             self.assertEqual(claims.name, "claims.txt", claims)
             self.assertNotIn('"', claims.read_text(encoding="utf-8"), claims)
 
-    def test_an_input_path_that_leaves_the_root_is_refused(self):
-        for bad in ("../outside", "/etc", "in/../../outside"):
-            err = self.refused("escape " + bad, case_file("claims_in_diff", bad, "flag"))
+    def test_an_input_path_that_leaves_the_root_is_refused_even_when_it_exists(self):
+        # A complete input folder beside the root: only the path rule can refuse it.
+        write(self.cfg, "out/claims.txt", "")
+        write(self.cfg, "out/changed-files.txt", "")
+        for bad in ("../cfg/out", str(self.cfg / "out"), "in/../../cfg/out"):
+            err = self.refused("escape " + bad, case_file("claims_in_diff", bad, "clean"))
+            self.assertIn("inside the root", err)
             self.assertIn(bad, err)
 
     def test_a_case_file_with_no_cases(self):
