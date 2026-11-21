@@ -21,7 +21,7 @@ Order. A compatibility layer lands first and only adds: it filters retired hosts
 ## Non-goals
 
 - The launcher (`moai codex`, launcher roles, model questions) and the home update (`~/.codex`, `~/.agents/skills`, the Codex status line): another slice.
-- The shipped skill text, the docs, the install scripts and CI: another slice.
+- The shipped skill text, the docs, the install scripts and CI: another slice. This includes the host row of the interview in `skills/moai/references/internal/interview.md` and its test `tests/question_bank_hosts.rs` (the former REQ-9 and AC-9, moved to the shipped skill text slice, D-12).
 - The lane-loop, lane-stop-hook, goal and leader-round Codex parts: another slice (D9).
 - The compatibility layer itself: the profile filter, the retired launcher keys, the receipt skips of the home files, the manifest rule and the move of the backup helpers and the read limit.
 - Deleting or rewriting any card or SPEC that describes Codex work; deleting any file under a user's Codex home, `.codex/` or `.omp/`.
@@ -36,9 +36,8 @@ Order. A compatibility layer lands first and only adds: it filters retired hosts
 - REQ-4: The project-update-plan preview and apply shall leave every file under the .codex and .omp folders unchanged.
 - REQ-5: The project-skill-plan command shall filter a retired host out of its request and plan the rest.
 - REQ-6: The project-skill-revert command shall skip a receipt entry that names a retired host and report the skip.
-- REQ-7: The hook-dispatch command shall answer the host codex or omp with one line saying the host was removed and exit zero without allowing or blocking anything.
+- REQ-7: The hook-dispatch command shall answer the host codex or omp with one line on standard error saying the host was removed, nothing on standard output, and exit zero without allowing or blocking anything.
 - REQ-8: The generation shall write no file under the .codex folder and no projection for a host other than Claude Code.
-- REQ-9: The interview's host question shall offer Claude Code only.
 - REQ-10: The command registry shall carry no command named codex-config-plan or codex-config-apply or codex-projection-plan or codex-projection-apply or codex-doctor or agents-project-plan or agents-project-apply.
 - REQ-11: The project detection shall leave the .codex folder out of its MCP read and out of its code walk.
 - REQ-12: The go-state-plan command shall keep classifying Go-generation .codex files as leave.
@@ -51,9 +50,8 @@ Order. A compatibility layer lands first and only adds: it filters retired hosts
 - AC-4 (REQ-4): a project with `.codex/` and `.omp/` files keeps them byte for byte through plan and apply · verify: `cargo test --locked --offline --test project_update_plan_cli the_codex_and_omp_folders_stay_byte_identical`
 - AC-5 (REQ-5): a project-skill-plan request that lists claude and codex plans the claude copy only, and a request that lists only codex reads as claude · verify: `cargo test --locked --offline --test project_skill_links a_request_that_lists_codex_is_filtered_not_refused`
 - AC-6 (REQ-6): a hand-written receipt with a codex entry and a claude entry reverts the claude entry, skips the codex one and reports the skip · verify: `cargo test --locked --offline --test boundary_d3_skill_revert a_receipt_that_names_codex_is_skipped_and_reported`
-- AC-7 (REQ-7): `hook-dispatch --host codex` and `--host omp` print one line, exit 0 and write no decision · verify: `cargo test --locked --offline --test hook_dispatch_cli a_removed_host_gets_one_line_and_exit_zero`
+- AC-7 (REQ-7): `hook-dispatch --host codex` and `--host omp` print one line on standard error and nothing on standard output, exit 0 and write no decision or file · verify: `cargo test --locked --offline --test hook_dispatch_cli a_removed_host_gets_one_line_and_exit_zero`
 - AC-8 (REQ-8): a generation apply writes nothing under `.codex` and the manifest names no other host's projection · verify: `cargo test --locked --offline --test generation_apply_result_cli no_codex_projection_is_written`
-- AC-9 (REQ-9): the host row of the interview offers Claude Code only and a plan with another host in the profile is still accepted · verify: `cargo test --locked --offline --test question_bank_hosts the_host_row_offers_claude_code_only`
 - AC-10 (REQ-10): `moai help` and the command registry list none of the removed commands · verify: `cargo test --locked --offline --test help_layout no_codex_command_is_listed`
 - AC-11 (REQ-11): detection ignores `.codex/config.toml` MCP entries and does not walk `.codex` and `.omp` · verify: `cargo test --locked --offline --test project_detect_cli codex_folders_are_not_read_or_walked`
 - AC-12 (REQ-12): the Go-generation `.codex` classification still answers leave · verify: `cargo test --locked --offline --test go_state_codex_cli`
@@ -105,6 +103,10 @@ Order. A compatibility layer lands first and only adds: it filters retired hosts
 | D-7 | an API is deleted only after the compatibility layer has landed | leader instruction; the impact report orders it so the tip stays green | none needed |
 | D-8 | hook-dispatch for a removed host prints one line and exits zero | leader decision D5 | exit with an engine error |
 | D-9 | the repository's own profile files are regenerated with the new binary, not edited by hand | the impact report: the manifests hold their hashes | edit by hand |
+| D-10 | the retired-hosts step is always in the preview, with state skip and an empty file list when nothing is found, and it is not one of the waiting step names | a stable step list; the step reads no file content and a backup move cannot make it stale | list it only when files exist |
+| D-11 | the removed-host line of hook-dispatch goes to standard error and standard output stays empty | a leftover Codex or OMP hook would read plain text on standard output as a decision | print it on standard output |
+| D-12 | the interview host row and its test move to the shipped skill text slice | the SPEC's scope forbids the shipped skill text; that file needs the skill manifest regenerated, which other cards hold | widen this scope by an explicit decision |
+| D-13 | the host steps and `project_hosts` change in one commit that also edits every test naming the six steps; only an add-only preparation commit comes before it | deleting the steps with the tests left behind turns the tests red | none needed |
 
 ## Result
 
@@ -115,4 +117,4 @@ The RED lines below are the implementing agent's report of its own runs on the s
 - AC-5 met: `a_request_that_lists_codex_is_filtered_not_refused` failed first (left `["claude","codex"]`, right `["claude"]`) and passes now; `project_skill_links` 7 passed, `project_skill_apply_gate_cli` 10 passed, `skill_name_collision` 5 passed, `empty_parent_prune_cli` 5 passed, `project_skills_generation` 11 passed (run in this session, `cargo_exit=0`).
 - AC-6 met: `a_receipt_that_names_codex_is_skipped_and_reported` failed first (the revert returned no `skipped` key) and passes now; `boundary_d3_skill_revert` 4 passed.
 - AC-11 met: `codex_folders_are_not_read_or_walked` failed first (`mcp_servers` was `["docs"]`) and passes now; `project_detect_cli` 25 passed.
-- Not run in this stage: AC-1 to AC-4 and AC-7 to AC-10 (they need the compatibility layer first), AC-12 (the sources of `go_state` are unchanged), the whole suite, the unnarrowed affected set, clippy by this lane (the implementing agent reported it clean; not observed here), and the independent audit.
+- Not run in this stage: AC-1 to AC-4, AC-7, AC-8 and AC-10 (they need the compatibility layer first), AC-12 (the sources of `go_state` are unchanged), the whole suite, the unnarrowed affected set, clippy by this lane (the implementing agent reported it clean; not observed here), and the independent audit.
