@@ -1,3 +1,4 @@
+---
 id: SPEC-20261121-process-scan-snapshot
 title: "cwd questions read the cwd list, open files once per command, and the deletion re-check reads fresh"
 status: draft
@@ -53,6 +54,7 @@ created: 2026-11-21
 - AC-8: 이웃 시험과 이전 조각의 시험이 그대로 통과해요.
   verify: `cargo test --locked --offline --test process_scan_cost_cli --test home_state_plan --test home_state_selective --test worktree_gc --test worktree_gc_apply --test hygiene_apply_cli`
 - AC-9: 전후 측정이 기록돼요(조각 2 head 대 수리 head; `home_install_apply_cli`, HOME 명령 하나).
+  verify: `git grep -n "home-state-plan" .moai/specs/SPEC-20261121-process-scan-snapshot/spec.md`
 
 ## Scope
 
@@ -85,3 +87,9 @@ created: 2026-11-21
 ## Result
 
 - 조각 2(rev 1, head 92841d239f87ac8c2af3f48e2c67415cb5ccf92b)는 독립 감사에서 **FAIL**(리더 기록 2026-11-21T08:3xZ): B1 — cwd 질문이 기계 전체 `lsof -F fn` + 열린 파일 canonicalize 로 돌아가 성능 역행, B2 — 삭제 직전 재확인이 새로 읽는다는 시험 없음, B3 — 시간 한도로 끊긴 `lsof` 가 거절로 처리된다는 시험 없음. rev 2 는 그 수리예요.
+- 수리 커밋: 29a818668a9ec735a34005d105f5e9690f6ae9eb(base 92841d239f = HEAD^1), `src/worktree_gc.rs`, `tests/process_scan_snapshot_cli.rs`, 이 SPEC.
+- RED(수리 전 92841d239f, 시험 3 개 모두 실패): REQ-1 시험 — `lsof` 호출이 한 번(`-w -n -P -b -F fn` 단일)이라 기대 2 회와 첫 호출의 `-a -d cwd` 가 없어요. REQ-4 시험(B2) — 재확인이 계획의 스냅샷(빈 표)을 신뢰해 사용 중인 `b` 가 **removed**(기대 refused). REQ-8 시험(B3) — 재확인 `lsof` 가 0.5 초 한도에 걸려야 하는데 캐시 재사용으로 경로 미도달, `a` 가 **removed**(기대 refused).
+- GREEN: `cargo test --locked --offline --lib worktree_gc` 19 개, `--test process_scan_snapshot_cli` 5 개(REQ-1 갱신·주입·stuck·B2·B3), `--test process_scan_cost_cli` 2 개, 이웃 `home_state_plan` 10·`home_state_selective` 10·`worktree_gc` 9·`worktree_gc_apply` 14·`hygiene_apply_cli` 15 — 모두 통과. `cargo clippy --locked --offline --all-targets -- -D warnings` 0, `cargo fmt` 적용, `git diff --check` 0.
+- 변이 5/5 죽었어요(캐시 미저장→`once_cache` 단위 시험, `process_cwds` 캐시 우회→명령 캐시 시험, 재확인이 cwd 캐시 신뢰→B2, 재확인이 열린 파일 캐시 신뢰→B3, 열린 파일 목록 tuple 원복→실제 `lsof` 시험).
+- 측정(부하 10–25, 같은 기계 연속): `home_install_apply_cli` 41 개 before 98.91 s → after 95.87 s(test 실행; ≤ 60 s 목표는 조각 1·2 에서 이미 미달이고 이 조각에서는 실음 없이 유지). `home-state-plan` 3 회 before 1.85–2.74 s → after 2.47–3.61 s — 이 명령은 작업 폴더와 열린 파일을 **둘 다** 물어 cwd 스캔(0.44 s 실측)이 열린 파일 스캔(전체 목록 0.67–0.8 s + canonicalize) 뒤에 붙어요. cwd 만 묻는 `worktree-move-plan` 은 이 기계(수백 워크트리)에서 워크트리 점검이 85–112 s 로 전체를 지배해 `lsof` 개선이 측정에 안 보여요 — 스캔 자체 실측은 cwd 필터 0.44 s, 전체 목록 0.67–0.8 s.
+- 돌리지 않은 것: Linux 실행(`/proc` 경로는 분리해 두었고 CLI 시험 셋은 `/proc` 가 있으면 건너뛰어요), 전체 `moai check affected`(병합 준비 노트에 줄째로 적어요), 시험이 `.env` 로 주입 끄개를 쓰게 하는 일(다음 조각).
