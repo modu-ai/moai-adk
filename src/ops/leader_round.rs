@@ -14,7 +14,10 @@ use std::path::{Path, PathBuf};
 /// `clear_redispatch` at a card boundary that `lane-safe-to-reset` finds safe, `answer` for a
 /// `LANE-BLOCKED` line, `restart` with the loop line, or `leave` with the reason — and, from
 /// GitHub, the open Issues with a close table, the claims whose lease ended, the merge-gate
-/// command and the end condition. Reads only: git with `--no-optional-locks`, the session
+/// command and the end condition. From the project card ledger: one next action per card —
+/// `answer` for a pending inbox item, `reclaim` for a lease that ended, `stranded` for a
+/// holder session that is not live — and, with `--dispatch` over a card kind that changes the
+/// repository, a one-line warning. Reads only: git with `--no-optional-locks`, the session
 /// registry without writing, GitHub with GraphQL queries (at most 30 requests).
 #[derive(clap::Args)]
 pub struct Args {
@@ -36,6 +39,13 @@ pub struct Args {
     /// when absent.
     #[arg(long)]
     now: Option<String>,
+    /// The round's dispatch text: a prohibition word over a card kind that changes the
+    /// repository yields one warning line.
+    #[arg(long)]
+    dispatch: Option<String>,
+    /// The dispatched card's kind (fix, feature, docs, …) for the dispatch warning.
+    #[arg(long)]
+    card_kind: Option<String>,
 }
 
 pub const OPERATION: &str = "leader.round";
@@ -156,6 +166,21 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
         "api_calls": snap.as_ref().map_or(0, |s| s.api_calls),
         "writes": false,
     });
+    // The card ledger's own next actions (P6): read-only, one item per card.
+    out["cards"] = leader_round::card_actions(
+        moai_cli::key_vault::home().ok().as_deref(),
+        &args.project,
+        now,
+    );
+    // A dispatch that forbids the work it dispatches (P7): one line, nothing else changes.
+    if let Some(warning) = args
+        .dispatch
+        .as_deref()
+        .zip(args.card_kind.as_deref())
+        .and_then(|(dispatch, kind)| leader_round::dispatch_warning(dispatch, kind))
+    {
+        out["dispatch_warning"] = json!(warning);
+    }
     // Issue #3052: say which comments the fleet read left out because no member wrote them.
     if let Some(s) = snap.as_ref().filter(|s| !s.ignored.is_empty()) {
         out["ignored_control_lines"] = s.ignored.to_json();

@@ -13,6 +13,8 @@
 use crate::lane_next::Snapshot;
 use crate::lane_reset::{ClaimsObservation, CwdObservation};
 use crate::lane_status::{PaneState, MAX_LANES};
+use crate::ledger::LedgerError;
+use rusqlite::params;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::path::Path;
@@ -497,6 +499,87 @@ pub fn decide(
 
 fn not_run(reason: &str) -> Value {
     json!({"status": "not_run", "reason": reason})
+}
+
+/// The card-ledger part of the round (P6): read-only. The inbox's pending items become
+/// `answer` actions; a held reservation whose lease ended becomes a `reclaim` suggestion
+/// (decision L7: the user at any time, the leader after the lease), and one whose holder
+/// session is not live in the lane registry becomes a `stranded` report. A project without a
+/// ledger is one `not_run` item. Nothing here writes.
+pub fn card_actions(home: Option<&Path>, project: &Path, now: i64) -> Value {
+    let Some(home) = home else {
+        return not_run("no HOME: the card ledger lives there");
+    };
+    let mut items: Vec<Value> = Vec::new();
+    match crate::card::inbox::inbox(project, home, None) {
+        Ok(v) => {
+            for item in v["items"].as_array().into_iter().flatten() {
+                items.push(json!({
+                    "card": item["card"].clone(),
+                    "action": "answer",
+                    "why": format!(
+                        "inbox {} waits for an answer",
+                        item["family"].as_str().unwrap_or("request")
+                    ),
+                    "note_id": item["note_id"].clone(),
+                }));
+            }
+        }
+        Err(e) => return not_run(&format!("the card inbox could not be read: {e}")),
+    }
+    let id = match crate::ledger::command::project_id_of(project) {
+        Ok(id) => id,
+        Err(e) => return not_run(&e),
+    };
+    let ledger = match crate::ledger::open_read_only(home, &id) {
+        Ok(l) => l,
+        Err(LedgerError::Absent) => return not_run("no card ledger for this project"),
+        Err(e) => return not_run(&format!("the card ledger could not be read: {e}")),
+    };
+    let conn = ledger.conn();
+    let db = |e: rusqlite::Error| LedgerError::from(e).to_string();
+    let mut stmt = match conn.prepare(
+        "SELECT card_id, holder, lease_until FROM reservation \
+          WHERE status = 'held' AND lease_until <= ?1 ORDER BY lease_until",
+    ) {
+        Ok(s) => s,
+        Err(e) => return not_run(&db(e)),
+    };
+    let rows = match stmt.query_map(params![now], |r| {
+        Ok((
+            r.get::<_, i64>(0)?,
+            r.get::<_, String>(1)?,
+            r.get::<_, i64>(2)?,
+        ))
+    }) {
+        Ok(r) => r,
+        Err(e) => return not_run(&db(e)),
+    };
+    for row in rows {
+        let (card_id, holder, lease_until) = match row {
+            Ok(v) => v,
+            Err(_) => continue,
+        };
+        let live = crate::lane_registry::session_live(project, &holder, now);
+        let (action, why) = match live {
+            Some(false) => (
+                "stranded",
+                "the holder session is not live; the card waits for the user or the leader",
+            ),
+            _ => (
+                "reclaim",
+                "the lease has ended (decision L7: the user at any time, the leader after it)",
+            ),
+        };
+        items.push(json!({
+            "card": crate::card::input::card_name(card_id),
+            "action": action,
+            "why": why,
+            "holder": holder,
+            "lease_until": lease_until,
+        }));
+    }
+    json!({"status": "ok", "items": items, "writes": false})
 }
 
 /// The merge-gate pass the leader runs this round, as text (it is not run here).
