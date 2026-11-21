@@ -779,6 +779,20 @@ enum Action {
         #[arg(long)]
         home: Option<PathBuf>,
     },
+    /// Writes the git folder only. Guard the integration branch (run by git, never typed)
+    ///
+    /// Run by the `reference-transaction` hook, never by hand: git runs it with the state of a
+    /// reference transaction (`prepared` or `committed`) and the transaction's lines on standard
+    /// input. At `prepared` it refuses, with exit 1, every create, move or delete of the
+    /// integration branch that the intent record of `card land` (`moai/land-intent` in the common
+    /// git folder) does not name exactly, every case variant of the branch's name and every
+    /// symbolic alias of it; `pack-refs` and `gc` pass. The branch is the one the record
+    /// `moai/integration-branch` names. At `committed` it removes the intent record of a move that
+    /// went through. Any other state does nothing.
+    Guard {
+        /// The state git gives the hook: `prepared` or `committed`.
+        state: String,
+    },
     /// Writes the ledger. Extend the lease of a taken card
     ///
     /// Writes the ledger. The lease of this session's reservation at `--generation` ends
@@ -1301,6 +1315,13 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
                     by: &by,
                 },
             )
+        }
+        Action::Guard { state } => {
+            let mut input = String::new();
+            std::io::Read::read_to_string(&mut std::io::stdin(), &mut input)
+                .map_err(|e| format!("card guard refused: cannot read the transaction: {e}"))?;
+            moai_cli::card::guard::run(&state, &input)?;
+            Ok(serde_json::json!({"action": "guard", "state": state, "allowed": true}))
         }
         Action::Renew {
             card,
