@@ -752,3 +752,154 @@ fn a_mixed_layout_write_is_read_back_by_work_flow_plan() {
         "the written branch is reported: {w}"
     );
 }
+
+// ---- The r3 delta audit's M7·M12·M10·M11 tests. -----------------------------------------------
+
+/// Writes the rust-generation marker into `.moai/`, so the layout owns that folder.
+fn mark_rust(project: &Path) {
+    let moai = project.join(".moai");
+    std::fs::write(
+        moai.join(moai_cli::state_root::RUST_MARKER),
+        moai_cli::state_root::marker_bytes("test", &[]),
+    )
+    .unwrap();
+}
+
+/// A receipt JSON naming one path, crafted beside the receipts store (the guard fires before
+/// any file work, so the named file need not exist).
+fn craft_receipt(project: &Path, id: &str, path: &str) {
+    let receipts = project.join(".moai-cli/receipts");
+    std::fs::create_dir_all(&receipts).unwrap();
+    let receipt = json!({
+        "schema_version": 1,
+        "request_id": id,
+        "operation": "project.apply",
+        "clone_id": null, "workspace_id": null,
+        "entries": [{"path": path, "decision": "create", "before_sha256": null,
+                     "after_sha256": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+                     "published": true, "error": null}],
+        "status": "complete"
+    });
+    std::fs::write(
+        receipts.join(format!("{id}.json")),
+        serde_json::to_vec(&receipt).unwrap(),
+    )
+    .unwrap();
+}
+
+/// M7: the parse-refusal path prefix also fires in a single-profile layout — the mixed check
+/// never runs there and `card done`'s id lookup has its own wrap, so the reader's answer via
+/// work-flow-plan is what names the file.
+#[test]
+fn work_flow_plan_names_a_broken_single_profile_with_its_path() {
+    let (home, p, _head) = world_with_profiles(&[(".moai-cli/project.yaml", PROFILE_NOT_JSON)]);
+    let out = run_in(&home, Path::new(&p), &["work-flow-plan"]);
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stdout)
+    );
+    let text = String::from_utf8_lossy(&out.stdout).into_owned();
+    assert!(text.contains(".moai-cli/project.yaml"), "{text}");
+    assert!(
+        text.contains("existing YAML requires preservation review"),
+        "{text}"
+    );
+}
+
+/// M12: the io-refusal path prefix also fires in a single-profile layout.
+#[test]
+#[cfg(unix)]
+fn an_io_refusal_names_a_single_profile_path() {
+    use std::os::unix::fs::PermissionsExt;
+    let (home, p, _head) = world_with_profiles(&[(".moai-cli/project.yaml", PROFILE_MFLOW)]);
+    let file = Path::new(&p).join(".moai-cli/project.yaml");
+    std::fs::set_permissions(&file, std::fs::Permissions::from_mode(0o000)).unwrap();
+    let v = refusal(&done(&home, &p));
+    let message = message_of(&v);
+    assert!(message.contains(".moai-cli/project.yaml"), "{message}");
+    assert!(message.contains("target read failed"), "{message}");
+    std::fs::set_permissions(&file, std::fs::Permissions::from_mode(0o644)).unwrap();
+}
+
+/// M7 in the rust layout: `.moai` is the layout's own folder there, and the reader's prefix
+/// still names the broken file.
+#[test]
+fn a_broken_rust_layout_profile_names_its_path() {
+    let (home, p, _head) = world_with_profiles(&[(".moai/project.yaml", PROFILE_NOT_JSON)]);
+    let project = Path::new(&p).to_path_buf();
+    mark_rust(&project);
+    let v = refusal(&done(&home, &p));
+    let message = message_of(&v);
+    assert!(message.contains(".moai/project.yaml"), "{message}");
+    assert!(
+        message.contains("existing YAML requires preservation review"),
+        "{message}"
+    );
+}
+
+/// M12 in the rust layout.
+#[test]
+#[cfg(unix)]
+fn an_io_refusal_names_a_rust_layout_profile_path() {
+    use std::os::unix::fs::PermissionsExt;
+    let (home, p, _head) = world_with_profiles(&[(".moai/project.yaml", PROFILE_MFLOW)]);
+    let project = Path::new(&p).to_path_buf();
+    mark_rust(&project);
+    let file = project.join(".moai/project.yaml");
+    std::fs::set_permissions(&file, std::fs::Permissions::from_mode(0o000)).unwrap();
+    let v = refusal(&done(&home, &p));
+    let message = message_of(&v);
+    assert!(message.contains(".moai/project.yaml"), "{message}");
+    assert!(message.contains("target read failed"), "{message}");
+    std::fs::set_permissions(&file, std::fs::Permissions::from_mode(0o644)).unwrap();
+}
+
+/// M10: in a mixed layout only the newer profile path is recoverable — another `.moai/` path
+/// is still Go-generation state and stays refused.
+#[test]
+fn a_mixed_layout_keeps_other_moai_paths_refused() {
+    let (home, p, _head) = world_with_profiles(&[
+        (".moai-cli/project.yaml", PROFILE_PLAIN),
+        (".moai/project.yaml", PROFILE_MFLOW),
+    ]);
+    let project = Path::new(&p).to_path_buf();
+    craft_receipt(&project, "manual-mixed-x", ".moai/state/x.json");
+    let v = refusal(&run(
+        &home,
+        &[
+            "apply-recover",
+            &p,
+            "--receipt",
+            "manual-mixed-x",
+            "--permission-reference",
+            "fixture-approved",
+        ],
+    ));
+    let message = message_of(&v);
+    assert!(message.contains("go generation state path"), "{message}");
+    assert!(!project.join(".moai/state").exists(), "{message}");
+}
+
+/// M11: outside a mixed layout (no `.moai` file beside the own one) `.moai/project.yaml` stays
+/// refused even though a mixed layout would allow exactly that path.
+#[test]
+fn an_own_layout_still_refuses_the_moai_profile_path() {
+    let (home, p, _head) = world_with_profiles(&[(".moai-cli/project.yaml", PROFILE_PLAIN)]);
+    let project = Path::new(&p).to_path_buf();
+    craft_receipt(&project, "manual-own-moai", ".moai/project.yaml");
+    let v = refusal(&run(
+        &home,
+        &[
+            "apply-recover",
+            &p,
+            "--receipt",
+            "manual-own-moai",
+            "--permission-reference",
+            "fixture-approved",
+        ],
+    ));
+    let message = message_of(&v);
+    assert!(message.contains("go generation state path"), "{message}");
+    assert!(!project.join(".moai").exists(), "{message}");
+}

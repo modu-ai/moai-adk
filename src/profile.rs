@@ -487,9 +487,10 @@ fn profile_bytes(root: &Path) -> Result<Option<Vec<u8>>> {
     read(&read_target(root)?).map_err(|e| format!("{}: {e}", read_rel(root)))
 }
 
-/// In a mixed layout both profiles must name the same project: when both files parse and their
-/// `project_id`s differ, every profile read refuses, naming both files and both ids (the delta
-/// audit's N3). One profile, or two that agree, is fine.
+/// In a mixed layout both profiles belong to one check: each must read and parse (a failure is
+/// named `{folder}/project.yaml: reason`) and both must name the same `project_id` — anything
+/// else refuses the read, naming both files and both ids (the delta audit's N3). One profile,
+/// or two that agree, is fine; a rust layout owns `.moai` outright and has no twin to check.
 fn mixed_layout_ids(root: &Path) -> Result<()> {
     let root = root
         .canonicalize()
