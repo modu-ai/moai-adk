@@ -1,7 +1,9 @@
 //! SPEC-20261120-skill-text-citations: the files that ship to users carry no card number, no
 //! Issue or pull-request number, no citation of a user or leader decision and no name of a moai-adk
 //! development script. The scan reads the shipped files of this checkout (`skills/`, `agents/`,
-//! `templates/`, `install/`); nothing is run and no HOME is touched.
+//! `templates/`, `install/`); nothing is run and no HOME is touched. One folder is not read:
+//! `templates/bundle-packs/` holds ported third-party pack content with its own vocabulary (colour
+//! codes, upstream issue numbers, taxonomy ids) that cites nothing of this project's development.
 //!
 //! `PENDING` lists the shipped files that still carry such text. It can only shrink: a file that
 //! was cleaned must leave the list in the same change, so the scan keeps the rest clean.
