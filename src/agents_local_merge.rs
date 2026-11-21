@@ -261,11 +261,6 @@ fn find_block_for(kind: Kind, agents: &str) -> std::result::Result<Option<Existi
     }))
 }
 
-#[cfg(test)]
-fn find_block(agents: &str) -> std::result::Result<Option<Existing>, String> {
-    find_block_for(Kind::Local, agents)
-}
-
 /// Lines of `text` shaped like a credential: `(line number, kind)`. The value is never kept.
 fn secret_suspects(text: &str) -> Vec<(usize, &'static str)> {
     text.lines()
