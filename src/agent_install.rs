@@ -45,12 +45,32 @@ fn host_place(home: &Path, host: &str) -> Result<crate::host_home::Place> {
     crate::host_home::place(h, home, host_rel(host))
 }
 
-/// The agent folder below the host folder.
+/// The agent folder below the host folder. Claude Code gets its own `moai` folder inside
+/// `agents/`: the official page scans `~/.claude/agents/` recursively and names an agent by its
+/// `name` field only, so the five base agents keep their names and stay apart from the user's
+/// own agents (SPEC-20261121-base-agents-user-folder).
 fn host_rel(host: &str) -> &'static str {
     match host {
         "omp" => "agent/agents",
+        "claude" => "agents/moai",
         _ => "agents",
     }
+}
+
+/// Where the earlier layout kept the base agents: the folder above `moai/`. `None` for a host
+/// whose folder never moved.
+fn legacy_rel(host: &str) -> Option<&'static str> {
+    (host == "claude").then_some("agents")
+}
+
+/// The earlier flat folder of a host, with the same relocation rules as [`host_dir`].
+fn legacy_dir(home: &Path, host: &str) -> Result<Option<PathBuf>> {
+    let Some(rel) = legacy_rel(host) else {
+        return Ok(None);
+    };
+    let h = crate::host_home::Host::from_name(host)
+        .unwrap_or_else(|| unreachable!("unknown agent host {host}"));
+    Ok(Some(crate::host_home::place(h, home, rel)?.path()))
 }
 
 fn state_root(home: &Path) -> PathBuf {
@@ -71,6 +91,15 @@ pub struct FilePlan {
     pub baseline_sha256: Option<String>,
     pub current_sha256: Option<String>,
     pub new_sha256: Option<String>,
+    /// What the earlier flat layout left for this agent (Claude Code only; left out when there
+    /// is nothing): `remove` (ours, unedited: the apply removes it after writing the nested
+    /// copy), `kept_edited` (we wrote it, the user changed it) or `kept_foreign` (never ours).
+    /// The last two are never touched and block the nested copy.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub legacy: Option<String>,
+    /// The digest of that flat file, so a change between preview and apply is a stale plan.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub legacy_sha256: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
@@ -232,6 +261,13 @@ fn host_plan(home: &Path, host: &str, rendered: &[RenderedFile]) -> HostPlan {
             return plan;
         }
     };
+    let flat_dir = match legacy_dir(home, host) {
+        Ok(d) => d,
+        Err(e) => {
+            blocked(&mut plan, e);
+            return plan;
+        }
+    };
     for (file, text, notes) in rendered {
         if !notes.is_empty() {
             plan.not_supported.insert(file.clone(), notes.clone());
@@ -244,8 +280,34 @@ fn host_plan(home: &Path, host: &str, rendered: &[RenderedFile]) -> HostPlan {
             }
         };
         let new = sha(text.as_bytes());
-        let baseline = state.owned.get(file).cloned();
+        let owned = state.owned.get(file).cloned();
+        // The earlier flat layout: the same file name one folder up.
+        let flat = match &flat_dir {
+            None => None,
+            Some(d) => match current_file(&d.join(file)) {
+                Ok(c) => c.map(|b| sha(&b)),
+                Err(e) => {
+                    blocked(&mut plan, e);
+                    return plan;
+                }
+            },
+        };
+        let legacy = flat.as_deref().map(|f| match owned.as_deref() {
+            Some(o) if o == f => "remove",
+            Some(_) => "kept_edited",
+            None => "kept_foreign",
+        });
+        // A record made for the flat file is not the baseline of a nested file that is not
+        // there yet: that one is a fresh create.
+        let baseline = if current.is_none() && flat.is_some() {
+            None
+        } else {
+            owned
+        };
         let action = match decide(baseline.as_deref(), current.as_deref(), Some(&new)) {
+            // A flat file that is not ours to remove blocks the nested copy: two files of one
+            // scope with one name load only one of them.
+            _ if matches!(legacy, Some("kept_edited" | "kept_foreign")) => "conflict",
             Decision::KeepCurrent if current.as_deref() == Some(new.as_str()) => "unchanged",
             // The rendering did not change since our last apply: keep the user's edit.
             Decision::KeepCurrent => "preserved",
@@ -259,6 +321,8 @@ fn host_plan(home: &Path, host: &str, rendered: &[RenderedFile]) -> HostPlan {
             baseline_sha256: baseline,
             current_sha256: current,
             new_sha256: Some(new),
+            legacy: legacy.map(str::to_string),
+            legacy_sha256: flat,
         });
     }
     // Files we wrote before that the package no longer renders: never deleted, reported.
@@ -276,6 +340,8 @@ fn host_plan(home: &Path, host: &str, rendered: &[RenderedFile]) -> HostPlan {
             baseline_sha256: Some(owned_sha.clone()),
             current_sha256: current,
             new_sha256: None,
+            legacy: None,
+            legacy_sha256: None,
         });
     }
     plan.files.sort_by(|a, b| a.file.cmp(&b.file));
@@ -396,7 +462,7 @@ pub fn apply_for(
         .iter()
         .filter(|h| h.preflight == "ok")
         .flat_map(|h| h.files.iter().map(move |f| (h, f)))
-        .filter(|(_, f)| f.action == "create" || f.action == "update")
+        .filter(|(_, f)| writes_anything(f))
         .collect();
     if writes.is_empty() {
         return Ok(
@@ -434,31 +500,71 @@ pub fn apply_for(
                 target.display()
             ));
         }
-        if let Some(b) = &before {
-            let keep = receipt_dir.join("before").join(&host.host);
+        // The nested copy first: a stop after it leaves a duplicate that the next preview shows
+        // as a move again, never a missing agent (SPEC risk 2).
+        if file.action == "create" || file.action == "update" {
+            if let Some(b) = &before {
+                let keep = receipt_dir.join("before").join(&host.host);
+                fs::create_dir_all(&keep).map_err(|_| "agent receipt folder unavailable")?;
+                publish_exclusive(&keep.join(&file.file), b)?;
+            }
+            match &before {
+                Some(b) => publish_replace(&target, Some(b), text.as_bytes())?,
+                None => publish_exclusive(&target, text.as_bytes())?,
+            }
+            let after = sha(text.as_bytes());
+            receipt.entries.push(ReceiptEntry {
+                host: host.host.clone(),
+                file: file.file.clone(),
+                action: file.action.clone(),
+                before_sha256: before.as_deref().map(sha),
+                after_sha256: after.clone(),
+            });
+            write_json(&receipt_path, &receipt)?;
+            let mut state = read_state(&home, &host.host)?;
+            state.owned.insert(file.file.clone(), after);
+            write_json(
+                &state_root(&home).join(format!("{}.json", host.host)),
+                &state,
+            )?;
+            written.push(format!("{}:{}", host.host, file.file));
+        }
+        if file.legacy.as_deref() == Some("remove") {
+            let flat_dir = legacy_dir(&home, &host.host)?.ok_or("no earlier folder for the host")?;
+            let flat = flat_dir.join(&file.file);
+            let bytes = current_file(&flat)?;
+            if bytes.as_deref().map(sha) != file.legacy_sha256 {
+                return Err(format!(
+                    "{} changed since the plan; re-preview required",
+                    flat.display()
+                ));
+            }
+            let bytes = bytes.ok_or("earlier file missing")?;
+            let keep = receipt_dir.join("before").join(&host.host).join("legacy");
             fs::create_dir_all(&keep).map_err(|_| "agent receipt folder unavailable")?;
-            publish_exclusive(&keep.join(&file.file), b)?;
+            publish_exclusive(&keep.join(&file.file), &bytes)?;
+            fs::remove_file(&flat).map_err(|_| format!("{} not removed", flat.display()))?;
+            receipt.entries.push(ReceiptEntry {
+                host: host.host.clone(),
+                file: file.file.clone(),
+                action: "remove_legacy".into(),
+                before_sha256: Some(sha(&bytes)),
+                after_sha256: sha(&bytes),
+            });
+            write_json(&receipt_path, &receipt)?;
+            // The record follows the file: it names the nested bytes now.
+            let mut state = read_state(&home, &host.host)?;
+            if let Some(now) = current_file(&target)?.map(|b| sha(&b)) {
+                if Some(&now) == file.new_sha256.as_ref() {
+                    state.owned.insert(file.file.clone(), now);
+                    write_json(
+                        &state_root(&home).join(format!("{}.json", host.host)),
+                        &state,
+                    )?;
+                }
+            }
+            written.push(format!("{}:{} (moved)", host.host, file.file));
         }
-        match &before {
-            Some(b) => publish_replace(&target, Some(b), text.as_bytes())?,
-            None => publish_exclusive(&target, text.as_bytes())?,
-        }
-        let after = sha(text.as_bytes());
-        receipt.entries.push(ReceiptEntry {
-            host: host.host.clone(),
-            file: file.file.clone(),
-            action: file.action.clone(),
-            before_sha256: before.as_deref().map(sha),
-            after_sha256: after.clone(),
-        });
-        write_json(&receipt_path, &receipt)?;
-        let mut state = read_state(&home, &host.host)?;
-        state.owned.insert(file.file.clone(), after);
-        write_json(
-            &state_root(&home).join(format!("{}.json", host.host)),
-            &state,
-        )?;
-        written.push(format!("{}:{}", host.host, file.file));
     }
     receipt.status = "committed".into();
     write_json(&receipt_path, &receipt)?;
@@ -468,6 +574,12 @@ pub fn apply_for(
         "receipt": id,
         "written": written,
     }))
+}
+
+/// Whether the apply writes anything for this file: a nested create or update, or the removal
+/// of an earlier flat copy that is still ours and unedited.
+pub fn writes_anything(f: &FilePlan) -> bool {
+    f.action == "create" || f.action == "update" || f.legacy.as_deref() == Some("remove")
 }
 
 fn receipt_id_ok(id: &str) -> bool {
@@ -522,6 +634,48 @@ pub fn revert_in(
             skipped.push(serde_json::json!({"host": e.host, "file": e.file, "reason": format!("agent_folder_not_plain: {reason}")}));
             continue;
         }
+        let moved = |n: &ReceiptEntry| {
+            n.action == "remove_legacy" && n.host == e.host && n.file == e.file
+        };
+        if e.action == "remove_legacy" {
+            // The flat file goes back only when the nested copy of the same apply is going
+            // away too (unchanged since); a changed nested copy stays, with the flat file
+            // gone, so no two files of one scope share a name.
+            let made = receipt.entries.iter().find(|n| {
+                n.host == e.host
+                    && n.file == e.file
+                    && (n.action == "create" || n.action == "update")
+            });
+            if let Some(n) = made {
+                let nested = host_dir(&home, &e.host)?.join(&e.file);
+                if current_file(&nested)?.as_deref().map(sha) != Some(n.after_sha256.clone()) {
+                    skipped.push(serde_json::json!({"host": e.host, "file": e.file, "reason": "nested_changed_since_apply"}));
+                    continue;
+                }
+            }
+            let flat = legacy_dir(&home, &e.host)?
+                .ok_or("no earlier folder for the host")?
+                .join(&e.file);
+            if current_file(&flat)?.is_some() {
+                skipped.push(serde_json::json!({"host": e.host, "file": e.file, "reason": "earlier_path_occupied"}));
+                continue;
+            }
+            let kept = dir
+                .join("before")
+                .join(&e.host)
+                .join("legacy")
+                .join(&e.file);
+            let bytes = read_opt(&kept)?.ok_or("before bytes missing from the receipt")?;
+            if Some(sha(&bytes)) != e.before_sha256 {
+                return Err("before bytes do not match the receipt".into());
+            }
+            publish_exclusive(&flat, &bytes)?;
+            let mut state = read_state(&home, &e.host)?;
+            state.owned.insert(e.file.clone(), sha(&bytes));
+            write_json(&state_root(&home).join(format!("{}.json", e.host)), &state)?;
+            reverted.push(format!("{}:{} (restored)", e.host, e.file));
+            continue;
+        }
         let target = host_dir(&home, &e.host)?.join(&e.file);
         let current = current_file(&target)?;
         if current.as_deref().map(sha) != Some(e.after_sha256.clone()) {
@@ -534,7 +688,10 @@ pub fn revert_in(
             None => {
                 fs::remove_file(&target)
                     .map_err(|_| format!("{} not removed", target.display()))?;
-                state.owned.remove(&e.file);
+                // A restored flat file owns the record now.
+                if !receipt.entries.iter().any(moved) {
+                    state.owned.remove(&e.file);
+                }
             }
             Some(before_sha) => {
                 let before = read_opt(&dir.join("before").join(&e.host).join(&e.file))?
@@ -543,7 +700,9 @@ pub fn revert_in(
                     return Err("before bytes do not match the receipt".into());
                 }
                 publish_replace(&target, Some(&current), &before)?;
-                state.owned.insert(e.file.clone(), before_sha.clone());
+                if !receipt.entries.iter().any(moved) {
+                    state.owned.insert(e.file.clone(), before_sha.clone());
+                }
             }
         }
         write_json(&state_root(&home).join(format!("{}.json", e.host)), &state)?;
