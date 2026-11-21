@@ -327,6 +327,22 @@ fn done(home: &TempHome, p: &str) -> Output {
     )
 }
 
+/// `run` with stdin: the plan/apply dance feeds the desired profile and the plan.
+fn run_stdin(home: &TempHome, args: &[&str], stdin: &[u8]) -> Output {
+    let mut child = home
+        .command(args)
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .expect("spawn moai");
+    use std::io::Write as _;
+    let mut pipe = child.stdin.take().unwrap();
+    let _ = pipe.write_all(stdin);
+    drop(pipe);
+    child.wait_with_output().unwrap()
+}
+
 fn message_of(v: &Value) -> String {
     v["error"]["message"]
         .as_str()
@@ -437,4 +453,128 @@ fn without_a_landing_the_refusal_carries_no_profile_hint() {
         !message.contains("a local landing is recorded"),
         "{message}"
     );
+}
+
+// ---- The delta audit's B2, B3, B4 and N3 repairs. ---------------------------------------------
+
+/// An m-flow profile that never names an integration branch (the B3 hint's case).
+const PROFILE_MFLOW_NO_BRANCH: &str = "{\"schema_version\": 1, \"project_id\": \"demo\", \"purpose\": \"fixture\", \"tools\": [\"rust\"], \"development_methods\": [\"sdd\"], \"hosts\": [\"claude\"], \"work_flow\": {\"flow\": \"m-flow\"}}";
+/// A plain profile of a DIFFERENT project (the N3 mixed-layout disagreement).
+const PROFILE_OTHER_ID: &str = "{\"schema_version\": 1, \"project_id\": \"other\", \"purpose\": \"fixture\", \"tools\": [\"rust\"], \"development_methods\": [\"sdd\"], \"hosts\": [\"claude\"]}";
+/// Not JSON at all (the B2 path-naming case).
+const PROFILE_NOT_JSON: &str = "{not json";
+
+/// B3 regression: an m-flow work_flow with no integration_branch gets the landing hint on the
+/// landing-related refusal, naming the profile it read.
+#[test]
+fn an_m_flow_without_an_integration_branch_names_the_profile_in_the_hint() {
+    let (home, p, head) = world_with_profiles(&[
+        (".moai-cli/project.yaml", PROFILE_PLAIN),
+        (".moai/project.yaml", PROFILE_MFLOW_NO_BRANCH),
+    ]);
+    land(&home, &p, &head);
+    let v = refusal(&done(&home, &p));
+    let message = message_of(&v);
+    assert!(
+        message.contains("no merged pull request is linked"),
+        "{message}"
+    );
+    assert!(
+        message.contains(".moai/project.yaml"),
+        "the hint names the profile: {message}"
+    );
+    assert!(
+        message.contains("does not name the m-flow work_flow with an integration branch"),
+        "{message}"
+    );
+    assert_eq!(done_events(&home), 0);
+}
+
+/// B2 regression: a broken newer profile in a mixed layout is refused naming the file and the
+/// reason, not a bare preservation-review sentence.
+#[test]
+fn a_broken_newer_profile_is_refused_with_its_path() {
+    let (home, p, _head) = world_with_profiles(&[
+        (".moai-cli/project.yaml", PROFILE_PLAIN),
+        (".moai/project.yaml", PROFILE_NOT_JSON),
+    ]);
+    let v = refusal(&done(&home, &p));
+    let message = message_of(&v);
+    assert!(message.contains(".moai/project.yaml"), "{message}");
+    assert!(
+        message.contains("existing YAML requires preservation review"),
+        "{message}"
+    );
+}
+
+/// N3 regression: a mixed layout whose two profiles name different projects is refused, naming
+/// both files and both ids, by a card command.
+#[test]
+fn two_profiles_with_different_project_ids_are_refused() {
+    let (home, p, _head) = world_with_profiles(&[
+        (".moai-cli/project.yaml", PROFILE_OTHER_ID),
+        (".moai/project.yaml", PROFILE_MFLOW),
+    ]);
+    let v = refusal(&done(&home, &p));
+    let message = message_of(&v);
+    assert!(message.contains(".moai/project.yaml"), "{message}");
+    assert!(message.contains(".moai-cli/project.yaml"), "{message}");
+    assert!(message.contains("`demo`"), "{message}");
+    assert!(message.contains("`other`"), "{message}");
+    assert_eq!(done_events(&home), 0);
+}
+
+/// B4 regression: in a mixed layout a profile write follows the read — `project-apply` updates
+/// the newer `.moai/project.yaml` and leaves the older one untouched, and `language-setup`
+/// reads the written value back. (`work_flow` is a user-edited key: REQ-03A-03 keeps it out of
+/// a plan's delta, so its mixed-layout read is pinned by the done tests above.)
+#[test]
+fn a_mixed_layout_write_updates_the_newer_profile_and_is_read_back() {
+    let (home, p, _head) = world_with_profiles(&[
+        (".moai-cli/project.yaml", PROFILE_PLAIN),
+        (".moai/project.yaml", PROFILE_MFLOW),
+    ]);
+    let project = Path::new(&p).to_path_buf();
+    // The plan/apply dance writes the whole profile: the desired one (schema v2, what
+    // project-plan accepts) adds a managed `language` block and keeps the rest.
+    let desired = "{\"schema_version\": 2, \"project_id\": \"demo\", \"purpose\": \"fixture\", \"tools\": [\"rust\"], \"development_methods\": [\"sdd\"], \"hosts\": [\"claude\"], \"work_flow\": {\"flow\": \"m-flow\", \"integration_branch\": \"integ\"}, \"language\": {\"user_chat\": \"en\", \"commit_messages\": \"en\", \"documents\": \"ja\", \"instruction_files\": \"en\"}}";
+    let plan = result(&run_stdin(&home, &["project-plan", &p], desired.as_bytes()));
+    let _ = result(&run_stdin(
+        &home,
+        &[
+            "project-apply",
+            &p,
+            "--plan-digest",
+            plan["plan_digest"].as_str().unwrap(),
+            "--permission-reference",
+            "fixture-approved",
+        ],
+        plan.to_string().as_bytes(),
+    ));
+    let newer: Value =
+        serde_json::from_str(&std::fs::read_to_string(project.join(".moai/project.yaml")).unwrap())
+            .unwrap();
+    assert_eq!(
+        newer["language"]["documents"],
+        json!("ja"),
+        "the write landed in the newer profile: {newer}"
+    );
+    let older: Value = serde_json::from_str(
+        &std::fs::read_to_string(project.join(".moai-cli/project.yaml")).unwrap(),
+    )
+    .unwrap();
+    assert!(
+        older.get("language").is_none(),
+        "the older profile is untouched: {older}"
+    );
+    // The write is read back: language-setup reads the chosen (newer) profile.
+    let q = result(&run(&home, &["language-setup", &p, "--questions"]));
+    let documents = q["questions"]["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|i| i["id"] == "documents")
+        .unwrap()
+        .clone();
+    assert_eq!(documents["current"], json!("ja"), "{q}");
 }
