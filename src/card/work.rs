@@ -658,9 +658,14 @@ pub fn done(
     {
         return Err(format!("card done refused: {why}; nothing was changed"));
     }
-    let landing = mflow_landing(&mut ledger, project, card_id)?;
-    let moved = workflow::done(&mut ledger, card_id, holder, generation, landing)
-        .map_err(|e| refusal("done", e))?;
+    let (landing, hint) = mflow_landing(&mut ledger, project, card_id)?;
+    let moved = workflow::done(&mut ledger, card_id, holder, generation, landing).map_err(|e| {
+        let refused = refusal("done", e);
+        match &hint {
+            Some(h) => format!("{refused}; {h}"),
+            None => refused,
+        }
+    })?;
     Ok(moved_json("done", &id, &moved))
 }
 
@@ -668,32 +673,77 @@ pub fn done(
 /// project's profile names the m-flow work_flow with an integration branch, the newest
 /// `card.landed` event's head must be an ancestor of that branch's tip — checked here with
 /// git, because the ledger never spawns commands. `None` for any other flow, which keeps the
-/// merged-pull-request rule.
+/// merged-pull-request rule. The profile problem is never swallowed silently
+/// (SPEC-20261121-mixed-profile-read): the second value is a hint for the merged-pull-request
+/// refusal of a card with a landing on record whose profile could not be read, or was read but
+/// does not name the m-flow work_flow with an integration branch: which profile, and why. A
+/// project whose profile is only a stub (the card commands write one) keeps the old rule and
+/// closes through a merged pull request.
 fn mflow_landing(
     ledger: &mut ledger::WriteLedger,
     project: &Path,
     card_id: i64,
-) -> Result<Option<workflow::Landing>> {
+) -> Result<(Option<workflow::Landing>, Option<String>)> {
+    let newest_head = |ledger: &mut ledger::WriteLedger| -> Option<String> {
+        ledger
+            .conn()
+            .query_row(
+                "SELECT json_extract(payload, '$.head') FROM event \
+                 WHERE card_id = ?1 AND kind = 'card.landed' \
+                 ORDER BY event_id DESC LIMIT 1",
+                [card_id],
+                |r| r.get(0),
+            )
+            .ok()
+    };
+    let profile_rel = crate::profile::read_rel(project);
+    let recorded = |detail: String, ledger: &mut ledger::WriteLedger| -> Option<String> {
+        newest_head(ledger).map(|_| {
+            format!(
+                "a local landing is recorded for this card, but {detail}, so the landing was not \
+                 used"
+            )
+        })
+    };
     let profile = match crate::profile::read_profile(project) {
         Ok((p, _)) => p,
-        Err(_) => return Ok(None),
+        Err(e) if e == crate::profile::PROFILE_MISSING => return Ok((None, None)),
+        Err(e) => {
+            let hint = recorded(
+                format!("the project profile {profile_rel} could not be read ({e})"),
+                ledger,
+            );
+            return Ok((None, hint));
+        }
     };
-    let Some(wf) = profile.work_flow.filter(|w| w.flow == "m-flow") else {
-        return Ok(None);
+    let not_used = |why: String, ledger: &mut ledger::WriteLedger| -> Option<String> {
+        recorded(
+            format!(
+                "the project profile {profile_rel} does not name the m-flow work_flow with an \
+                 integration branch ({why})"
+            ),
+            ledger,
+        )
+    };
+    let wf = match profile.work_flow {
+        Some(w) if w.flow == "m-flow" => w,
+        Some(w) => {
+            let hint = not_used(format!("its work_flow is {}", w.flow), ledger);
+            return Ok((None, hint));
+        }
+        None => {
+            let hint = not_used("it has no work_flow".to_string(), ledger);
+            return Ok((None, hint));
+        }
     };
     let Some(branch) = wf.integration_branch else {
-        return Ok(None);
+        let hint = not_used(
+            "its m-flow work_flow has no integration_branch".to_string(),
+            ledger,
+        );
+        return Ok((None, hint));
     };
-    let head: Option<String> = ledger
-        .conn()
-        .query_row(
-            "SELECT json_extract(payload, '$.head') FROM event \
-             WHERE card_id = ?1 AND kind = 'card.landed' \
-             ORDER BY event_id DESC LIMIT 1",
-            [card_id],
-            |r| r.get(0),
-        )
-        .ok();
+    let head: Option<String> = newest_head(ledger);
     let Some(head) = head else {
         return Err(
             "card done refused: cannot close: no local landing is linked (`card landed` after \
@@ -732,7 +782,7 @@ fn mflow_landing(
              integration branch {branch}; nothing was changed"
         ));
     }
-    Ok(Some(workflow::Landing { head, tip }))
+    Ok((Some(workflow::Landing { head, tip }), None))
 }
 
 /// `card landed C-n --head <sha>`: record that this card's head landed on the local

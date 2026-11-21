@@ -371,22 +371,31 @@ fn an_unreadable_newer_profile_is_named_and_the_earlier_one_is_no_fallback() {
     land(&home, &p, &head);
     let v = refusal(&done(&home, &p));
     let message = message_of(&v);
+    assert!(
+        message.contains("no merged pull request is linked"),
+        "{message}"
+    );
+    assert!(message.contains("a local landing is recorded"), "{message}");
     assert!(message.contains(".moai/project.yaml"), "{message}");
-    assert!(!message.contains("no merged pull request"), "{message}");
-    assert!(message.contains("nothing was changed"), "{message}");
+    assert!(message.contains("could not be read"), "{message}");
     assert_eq!(done_events(&home), 0);
 }
 
-/// REQ-4: the only profile cannot be read; the refusal names it and the reason, not the PR rule.
+/// REQ-4: the only profile cannot be read; the merged-PR refusal keeps its words and names the
+/// profile and the reason.
 #[test]
 fn an_unreadable_profile_is_named_in_the_refusal() {
     let (home, p, head) = world_with_profiles(&[(".moai-cli/project.yaml", PROFILE_BROKEN)]);
     land(&home, &p, &head);
     let v = refusal(&done(&home, &p));
     let message = message_of(&v);
+    assert!(
+        message.contains("no merged pull request is linked"),
+        "{message}"
+    );
+    assert!(message.contains("a local landing is recorded"), "{message}");
     assert!(message.contains(".moai-cli/project.yaml"), "{message}");
     assert!(message.contains("could not be read"), "{message}");
-    assert!(!message.contains("no merged pull request"), "{message}");
     assert_eq!(done_events(&home), 0);
 }
 
@@ -416,9 +425,9 @@ fn a_profile_that_is_not_m_flow_is_named_when_a_landing_is_on_record() {
 /// REQ-5 + REQ-6 (no landing recorded): the plain merged-PR refusal stays as it was, with no hint.
 #[test]
 fn without_a_landing_the_refusal_carries_no_profile_hint() {
-    let (home, _p, _head) = world_with_profiles(&[(".moai-cli/project.yaml", PROFILE_PLAIN)]);
-    let p = home.project("demo");
-    let v = refusal(&done(&home, p.to_str().unwrap()));
+    // `TempHome::project` would rewrite the profile, so the path comes from the world itself.
+    let (home, p, _head) = world_with_profiles(&[(".moai-cli/project.yaml", PROFILE_PLAIN)]);
+    let v = refusal(&done(&home, &p));
     let message = message_of(&v);
     assert!(
         message.contains("no merged pull request is linked"),
