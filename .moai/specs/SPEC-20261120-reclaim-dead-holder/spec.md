@@ -28,9 +28,9 @@ created: 2026-11-20
 
 ## Requirements
 
-- REQ-1: The `card reclaim` command shall take over a held reservation whose lease has not ended when the liveness lookup of its holder session answers launcher-exited and its recorded worktree is gone or clean and no process has that worktree as its working folder.
+- REQ-1: The `card reclaim` command shall take over a held reservation whose lease has not ended when the liveness lookup of its holder session answers launcher-exited from a launcher lock file that exists and that no process holds and the registry lease of that session has ended and its recorded worktree is gone or clean and no process has that worktree as its working folder.
 - REQ-2: The `card reclaim` command shall refuse a reservation with a live lease and name the first missing proof when any of the three proofs is missing.
-- REQ-3: The worktree proof shall count a recorded path that is not absolute or cannot be read as unproven and refuse a worktree with uncommitted changes or unpushed commits.
+- REQ-3: The worktree proof shall count a recorded path that is not absolute or cannot be read as unproven and refuse a worktree with uncommitted changes or unpushed commits or a stash entry of its branch or unpushed commits on a local branch that no worktree has checked out or an ignored entry outside the list of regenerable entries.
 - REQ-4: The process proof shall read the working folders of the running processes without writing anything and count a platform or a tool that cannot answer or does not answer within twenty seconds as unproven.
 - REQ-5: The reclaim event of an early reclaim shall carry the proof in its reason and in its own payload field.
 - REQ-6: The ledger transaction of an early reclaim shall refuse the reclaim when the current holder is not the holder the proof was made for.
@@ -40,8 +40,6 @@ created: 2026-11-20
 - REQ-10: The proof shall read the registry and the ledger and the worktree and write none of them.
 - REQ-11: The `card reclaim` command shall refuse before any write a reason that is too long to carry the proof.
 - REQ-12: The worktree check shall count every changed tracked file and every untracked file except one named in the list of tool cache files, the statusline's GitHub counts under either state folder.
-- REQ-13: The early proof shall count a holder session's launcher as exited only when the launcher lock file of that session exists and no process holds it and the registry lease of that session has ended.
-- REQ-14: The early proof shall count a stash entry of the worktree's branch and unpushed commits on a local branch that no worktree has checked out and an ignored entry outside the list of regenerable entries as work that refuses the reclaim.
 
 ## Acceptance
 
@@ -65,9 +63,9 @@ created: 2026-11-20
   verify: `cargo test --locked --offline --test card_reclaim_early_cli reason_too_long`
 - AC-10 (REQ-12): a worktree whose only untracked file is the listed cache counts as clean, and another untracked file, an unlisted name beside the cache and a changed tracked file each keep it dirty with the count naming only the work.
   verify: `cargo test --locked --offline --test card_reclaim_early_cli a_listed_tool_cache` and `cargo test --locked --offline --lib only_an_untracked_listed_file_is_a_cache`
-- AC-11 (REQ-13): a session registered without a `.live` file keeps its live reservation even with a clean pushed worktree, an unlocked `.live` file with a registry lease that still runs keeps it too, and an unlocked `.live` file with an ended registry lease lets the reclaim through.
+- AC-11 (REQ-1, REQ-2): a session registered without a `.live` file keeps its live reservation even with a clean pushed worktree, an unlocked `.live` file with a registry lease that still runs keeps it too, and an unlocked `.live` file with an ended registry lease lets the reclaim through.
   verify: `cargo test --locked --offline --test card_reclaim_early_cli a_session_without_a_launcher_record_is_not_gone`
-- AC-12 (REQ-14): a stash entry of the worktree's branch, unpushed commits on a local branch nobody has checked out and an ignored entry outside the list each keep the live lease refused, while the log folder, the cargo output folder, a Python bytecode folder and another worktree's own unpushed branch do not.
+- AC-12 (REQ-3): a stash entry of the worktree's branch, unpushed commits on a local branch nobody has checked out and an ignored entry outside the list each keep the live lease refused, while the log folder, the cargo output folder, a Python bytecode folder and another worktree's own unpushed branch do not.
   verify: `cargo test --locked --offline --test card_reclaim_early_cli work_the_takeover_gate_misses` and `cargo test --locked --offline --lib only_listed_ignored_entries_are_regenerable`
 
 ## Scope
@@ -118,3 +116,7 @@ Head `5e18015bbb`, built on the pushed head `436f34c93f` of the launcher-livenes
 - AC-8: met — `card_reclaim_early_cli` and `card_reclaim_cli` both pass in the affected run
 - AC-9: met — `reason_too_long`
 - AC-10: met — `a_listed_tool_cache_is_not_work` and the lib test `only_an_untracked_listed_file_is_a_cache`
+- AC-11: met — `a_session_without_a_launcher_record_is_not_gone`
+- AC-12: met — `work_the_takeover_gate_misses_keeps_the_early_reclaim_refused` and the lib test `only_listed_ignored_entries_are_regenerable`
+
+Repair of the tier-2 audit FAIL (a running session registered without a launcher passed as exited), code head `77ca0149b3`: `cargo test --locked --offline --no-fail-fast --test card_reclaim_early_cli --test card_reclaim_cli` ended exit 0 (14 and 16 passed), `cargo test --locked --offline --lib early_reclaim` ended exit 0 (5 passed), run with `CLAUDE_CODE_SESSION_ID` removed. Three mutants of the early proof (the `.live` file check removed, the registry lease check removed, the extra work check not called) each turned `card_reclaim_early_cli` red; the file was restored and the tree was clean afterwards. The proof's own worktree check is now asked directly by `the_early_proof_checks_the_worktree_by_itself` (AC-3), and the `lsof` limit by `stdout_within_kills_a_command_that_overruns` (AC-4). Not done here: the card number in the body of the launcher-liveness branch's commit (that branch is another change's).

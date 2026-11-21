@@ -292,7 +292,7 @@ fn registered_name_of(project: &Path, session: &str) -> Option<String> {
 /// What the early reclaim needs on top of [`liveness_of_session`]: a missing `.live` file
 /// answers `LauncherExited` there (a session registered with `session-register` alone never had
 /// one), so a proof that a session is gone also needs the file and the end of the registry
-/// lease (SPEC-20261120-reclaim-dead-holder REQ-13).
+/// lease (SPEC-20261120-reclaim-dead-holder REQ-1).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LauncherTrace {
     /// The name whose entry registers the session id.

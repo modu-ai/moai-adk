@@ -628,7 +628,7 @@ fn reclaim_early_holder_must_match() {
     assert_eq!(count(&mut w), events + 1, "a refusal wrote an event");
 }
 
-/// REQ-13 (audit of the early reclaim, B1): a session registered with `session-register` alone
+/// REQ-1 (audit of the early reclaim, B1): a session registered with `session-register` alone
 /// has no `.live` file, and the lookup answers `launcher-exited` for it; that is no proof. A
 /// session that is running, with a clean and pushed worktree, keeps its reservation. A `.live`
 /// file nobody locks is still not enough while the registry lease runs; both together are the
@@ -668,7 +668,7 @@ fn a_session_without_a_launcher_record_is_not_gone() {
     assert_eq!(got["reservation"]["generation"], json!(2));
 }
 
-/// REQ-14 (audit of the early reclaim, N1): work the takeover gate leaves out keeps the live
+/// REQ-3 (audit of the early reclaim, N1): work the takeover gate leaves out keeps the live
 /// lease refused: a stash entry of the worktree's branch, unpushed commits on a local branch
 /// nobody has checked out, and an ignored entry that is not on the regenerable list. The
 /// regenerable ignored entries and another worktree's own unpushed branch are no work.

@@ -118,7 +118,7 @@ fn prove(project: &Path, cur: &reservation::Reservation, now: i64) -> Result<Pro
     // one registered with `session-register` alone (an Orca pane, a plain `claude`) never had a
     // launcher, and is not gone for that. The launcher counts only when its lock file exists
     // (and nobody holds it, the answer above) and the registry lease of the session has ended
-    // (SPEC-20261120-reclaim-dead-holder REQ-13; audit of C-189, B1).
+    // (SPEC-20261120-reclaim-dead-holder REQ-1; audit of the early reclaim, B1).
     let trace =
         crate::lane_registry::launcher_trace_of_session(project, &cur.holder).map_err(|e| {
             format!("the holder session's launcher record cannot be read, never a proof: {e}")
@@ -144,7 +144,7 @@ fn prove(project: &Path, cur: &reservation::Reservation, now: i64) -> Result<Pro
     let shape = if gone { "gone" } else { "clean" };
     if !gone {
         // A live lease makes a missed draft cost more than an expired one does, so the early
-        // path also counts what the takeover gate leaves out (REQ-14).
+        // path also counts what the takeover gate leaves out (REQ-3).
         remaining_work(path)?;
         let here = processes_in(path)?;
         if here > 0 {
@@ -181,7 +181,7 @@ fn is_regenerable_ignored(entry: &str) -> bool {
         || entry.contains("/__pycache__/")
 }
 
-/// What the early reclaim counts as work beyond the takeover gate (REQ-14): a stash entry of the
+/// What the early reclaim counts as work beyond the takeover gate (REQ-3): a stash entry of the
 /// worktree's own branch, unpushed commits on a local branch nobody has checked out (the
 /// checked-out ones are other worktrees' own work, and HEAD's is the gate's), and an ignored
 /// entry that is not on the regenerable list. `Err` names the first one found, or what could not
@@ -478,7 +478,7 @@ mod tests {
         assert!(stdout_within(missing, Duration::from_secs(1)).is_err());
     }
 
-    /// REQ-14: only the three named regenerable entries are not drafts.
+    /// REQ-3: only the three named regenerable entries are not drafts.
     #[test]
     fn only_listed_ignored_entries_are_regenerable() {
         for ok in [
