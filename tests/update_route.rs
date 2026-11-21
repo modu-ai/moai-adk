@@ -201,8 +201,15 @@ fn every_question_is_a_selection_through_the_hosts_question_tool() {
                 "`request_user_input`",
                 "At most 3 questions per call, 2 or 3 options each",
                 "`features.default_mode_request_user_input`",
-                // N1: true at this head — the launcher does not turn the feature on yet.
-                "(under development, off by default; the `moai codex` launcher is to turn it on — card C-52, not in this version): go by the tool list",
+                // G14 re-check 2026-11-21: the flag is still under development and off by
+                // default, and the launcher does not turn it on in this version.
+                "(under development, off by default; the `moai codex` launcher does not turn it on in this version): go by the tool list",
+                // The two Default-mode limits with their upstream citations, and the interview
+                // consequence: a no-answer is re-asked in plain text.
+                "`request_user_input is unavailable in Default mode`",
+                "resolves on its own after about a minute",
+                "openai/codex issues #29104, #37472",
+                "an interview question is re-asked in plain text, one per message, and waited for",
                 // B1: Codex's own Default-mode instruction must not decide a case-(2) question.
                 "continue with best judgment",
                 "for a case-(2) question never do that: no answer is not a pick (rule 3)",
@@ -244,6 +251,12 @@ fn every_question_is_a_selection_through_the_hosts_question_tool() {
             assert!(r.contains(t), "questions.md {host} row lacks {t:?}: {r}");
         }
     }
+    // G14: the Codex row carries no card-number attribution any more (the work it named has no
+    // card; see SPEC-20261121-codex-interview-select).
+    assert!(
+        !row("Codex CLI").contains("card C-52"),
+        "the Codex row still attributes the launcher flag to a card"
+    );
     // The routes that ask, and the question bank, name the reference.
     for file in [
         "workflows/update.md",
