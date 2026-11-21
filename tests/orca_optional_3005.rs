@@ -255,13 +255,13 @@ fn the_adapter_table_has_a_row_for_every_route_with_a_status_word() {
                 "row `{name}`, column {column} must start with works, replaced or unsupported: {cell}"
             );
         }
-        // The audit of #3018 (B1): an Orca profile moves the settings folder to
-        // `CLAUDE_CONFIG_DIR`, which `moai update` does not look at (Issue #2936), so SETUP and
-        // UPDATE are not "works" with Orca.
+        // An Orca profile moves the settings folder to `CLAUDE_CONFIG_DIR` (Issue #2936). The
+        // update preview and the skill copy follow that variable now, so SETUP and UPDATE work
+        // with Orca and the cell names the variable.
         if name == "SETUP" || name == "UPDATE" {
             assert!(
-                cells[1].starts_with("unsupported") && cells[1].contains("#2936"),
-                "row `{name}`, With Orca must start with unsupported and name Issue #2936: {}",
+                cells[1].starts_with("works") && cells[1].contains("CLAUDE_CONFIG_DIR"),
+                "row `{name}`, With Orca must start with works and name CLAUDE_CONFIG_DIR: {}",
                 cells[1]
             );
         }
