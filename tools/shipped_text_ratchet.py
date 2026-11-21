@@ -22,8 +22,9 @@ Neither command writes anything.
     token the baseline leaves out counts as 0). This catches a token that moves to another
     file while the total stays equal.
 A count below its baseline is not a failure: it is listed under `headroom`, so the next change
-can lower the baseline. A shipped file that is not valid UTF-8 is listed under `skipped` and
-not counted.
+can lower the baseline. A shipped file that is not valid UTF-8, and a symbolic link, is listed
+under `skipped` and not counted (a link is never followed). A `.git` folder is not walked. A
+shipped path that is absolute or holds `..` is refused.
 
 Refusals (exit 2, stdout empty, one line on stderr starting `shipped_text_ratchet: `): a missing
 or unreadable file, JSON that does not parse, a shape other than the documented one, a version
@@ -52,7 +53,7 @@ DEFAULT_BASELINE = REPO_ROOT / "tools" / "improve" / "shipped-text-baseline.json
 VERSION = 1
 # A pattern is refused when it matches the empty string anywhere in these probes; a match that
 # turns out empty while a file is read is refused too.
-EMPTY_PROBES = ("", "a", " ", "0", "-", "#", ".", "\n", "a b", "C-1 x")
+EMPTY_PROBES = ("", "a", " ", "0", "-", "#", ".", "\n", "a b", "x-1 x")
 
 
 class Refusal(Exception):
@@ -97,6 +98,9 @@ def load_tokens(path):
     paths = data["paths"]
     if not (isinstance(paths, list) and paths and all(isinstance(p, str) and p for p in paths)):
         refuse("token file: paths must be a non-empty list of non-empty strings")
+    for glob in paths:
+        if Path(glob).is_absolute() or ".." in Path(glob).parts:
+            refuse("token file: the path %s leaves the root" % glob)
     tokens = data["tokens"]
     if not (isinstance(tokens, list) and tokens):
         refuse("token file: tokens must be a non-empty list")
@@ -180,10 +184,10 @@ def shipped_files(root, globs):
     for glob in globs:
         rx = glob_regex(glob)
         start = Path(root) / literal_prefix(glob)
-        if start.is_file() and not start.is_symlink():
+        if start.is_symlink() or start.is_file():
             rel = start.relative_to(root).as_posix()
             if rx.fullmatch(rel):
-                found.add(rel)
+                found.add(rel)  # a symlink is listed here and reported as skipped when counted
             continue
         if not start.is_dir():
             continue
@@ -191,7 +195,7 @@ def shipped_files(root, globs):
             dirnames[:] = sorted(d for d in dirnames if d != ".git")
             for name in filenames:
                 path = Path(dirpath) / name
-                if path.is_symlink() or not path.is_file():
+                if not (path.is_symlink() or path.is_file()):
                     continue
                 rel = path.relative_to(root).as_posix()
                 if rx.fullmatch(rel):
@@ -204,6 +208,9 @@ def count_tokens(root, globs, tokens):
     per_file = {}
     skipped = []
     for rel in shipped_files(root, globs):
+        if (Path(root) / rel).is_symlink():
+            skipped.append(rel)  # never followed: a link can point outside the shipped paths
+            continue
         try:
             text = (Path(root) / rel).read_bytes().decode("utf-8")
         except UnicodeDecodeError:
