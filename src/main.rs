@@ -2230,6 +2230,11 @@ const UNKNOWN_COMMAND: &str = "unknown command; see --help";
 /// #2935 L3 (user instruction 2026-11-14T12:05Z): `init` is gone; its envelope names the
 /// launcher flow that replaces it, and stderr says it in the terminal's language.
 const INIT_REMOVED: &str = "moai init was removed; in a project folder run moai cc or moai glm";
+/// `moai codex` is gone with the Codex launcher (SPEC-20261121-codex-launcher-and-models-removed):
+/// the same shape as [`INIT_REMOVED`], one line, so a person is not shown clap's suggestion of
+/// the internal `codex-*` commands.
+const CODEX_REMOVED: &str =
+    "moai codex was removed: MoAI supports Claude Code and GLM only (moai cc | moai glm)";
 
 /// True when clap refused `first` as a subcommand and `first` is a bare word that names no
 /// command (nor `help`): `moai no-such-command`. An option, `help <word>` or a known command
@@ -2264,6 +2269,22 @@ fn usage_error(e: clap::Error) -> ExitCode {
                 UNKNOWN_COMMAND_OPERATION,
                 contract::Kind::Usage,
                 INIT_REMOVED
+            )
+        );
+        return ExitCode::from(2);
+    }
+    if first.as_deref() == Some("codex") && names_no_command(&e, "codex") {
+        let lang = moai_cli::ui::ui_lang(moai_cli::ui::Stream::Stderr);
+        eprintln!(
+            "{}",
+            moai_cli::ui_text::text(moai_cli::ui_text::Msg::CodexRemoved, lang)
+        );
+        println!(
+            "{}",
+            contract::failure(
+                UNKNOWN_COMMAND_OPERATION,
+                contract::Kind::Usage,
+                CODEX_REMOVED
             )
         );
         return ExitCode::from(2);

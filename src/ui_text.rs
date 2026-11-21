@@ -203,11 +203,13 @@ pub enum Msg {
     PathFirstNote,
     /// #2935 L3: what `moai init` says now that the command is gone — the launcher flow.
     InitRemoved,
+    /// What `moai codex` says now that the launcher is gone (SPEC-20261121-codex-launcher-and-models-removed).
+    CodexRemoved,
 }
 
 impl Msg {
     /// Every variant, for the tests that walk the table.
-    pub const ALL: [Msg; 46] = [
+    pub const ALL: [Msg; 47] = [
         Msg::WordOk,
         Msg::WordWarning,
         Msg::WordError,
@@ -254,6 +256,7 @@ impl Msg {
         Msg::UsageOther,
         Msg::PathFirstNote,
         Msg::InitRemoved,
+        Msg::CodexRemoved,
     ];
 }
 
@@ -372,6 +375,12 @@ pub fn text(msg: Msg, lang: Lang) -> &'static str {
             "moai init 은 없어졌어요. 프로젝트 폴더를 만들고 그 안에서 moai cc 나 moai glm 을 \
              실행하세요(리더·에이전트 세션은 -l, -a). 첫 실행이 폴더를 준비하고, 그 세션의 \
              /moai project 가 프로젝트를 설정해요."
+        }
+        (CodexRemoved, En) => {
+            "moai codex was removed: MoAI supports Claude Code and GLM only (moai cc | moai glm)"
+        }
+        (CodexRemoved, Ko) => {
+            "moai codex 는 없어졌어요: MoAI 는 Claude Code 와 GLM 만 지원해요 (moai cc | moai glm)"
         }
     }
 }
@@ -683,6 +692,19 @@ mod tests {
                 !t.contains("codex"),
                 "{lang:?} names a removed launcher: {t}"
             );
+        }
+    }
+
+    /// The `moai codex` notice names the two launchers left in both languages; its English text
+    /// is the envelope message of `src/main.rs`.
+    #[test]
+    fn codex_notice_names_the_launchers_left_in_every_language() {
+        for lang in [Lang::En, Lang::Ko] {
+            let t = text(Msg::CodexRemoved, lang);
+            for p in ["moai codex", "Claude Code", "GLM", "moai cc", "moai glm"] {
+                assert!(t.contains(p), "{lang:?} must name `{p}`: {t}");
+            }
+            assert!(!t.contains('\n'), "{lang:?} is one line: {t}");
         }
     }
 

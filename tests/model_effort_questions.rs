@@ -3,7 +3,8 @@
 //! settings file given by path. Every file lives in a temporary folder.
 //!
 //! SPEC-20261121-codex-launcher-and-models-removed: the tool question offers Claude and GLM only;
-//! a `codex` value saved by an earlier version is ignored by the plan and kept in the file.
+//! a `codex` value saved by an earlier version is ignored by the plan and left out of the file
+//! the next save writes (leader decision D2).
 #![cfg(unix)]
 use serde_json::{json, Map, Value};
 use std::fs;

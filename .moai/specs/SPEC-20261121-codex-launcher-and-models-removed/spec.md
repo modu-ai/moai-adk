@@ -14,8 +14,8 @@ The user decided on 2026-11-21 that moai-adk supports Claude Code and GLM only (
 
 Three things stand in the way of a plain deletion, and the design follows them:
 
-- The model settings refuse a whole `launcher.yaml` that names a tool they do not know. An earlier `moai update` offered Codex as a default candidate, so a saved `launcher.models.codex.*` is likely in real files. Removing `codex` from the tool list alone would make every Claude and GLM role launch fail on such a file. The saved Codex value must be ignored on read and left in the file (moai never deletes a user file for this change).
-- `moai codex` becomes an unknown command. The word list of the installed switch script (`install/moai-switch.sh`) names `codex`; that script is pinned by a hash and belongs to another change, so it stays as it is.
+- The model settings refuse a whole `launcher.yaml` that names a tool they do not know. An earlier `moai update` offered Codex as a default candidate, so a saved `launcher.models.codex.*` is likely in real files. Removing `codex` from the tool list alone would make every Claude and GLM role launch fail on such a file. The saved Codex value must be ignored on read and left out of the file the next save writes (leader decision D2; moai deletes no user file for this change, it only stops writing the value).
+- `moai codex` stops launching and says in one line that it was removed (the same shape as the removed `moai init`), not clap's generic unknown-subcommand text with a suggestion of the internal `codex-*` commands. The word list of the installed switch script (`install/moai-switch.sh`) names `codex`; that script is pinned by a hash and belongs to another change, so it stays as it is.
 - Codex stays a host elsewhere (hooks, project files, doctor): those belong to other changes. This change cuts only the launcher entry, the Codex command line, the Codex rows of the model table and question, and the Codex entry of the update's models step.
 
 ## Non-goals
@@ -27,7 +27,7 @@ Three things stand in the way of a plain deletion, and the design follows them:
 
 ## Requirements
 
-- REQ-1: The launcher shall offer the tools `cc`, `glm` and `omp` and no `codex` subcommand, so that `moai codex` is an unknown command.
+- REQ-1: The launcher shall offer the tools `cc`, `glm` and `omp` and no `codex` subcommand, so that `moai codex` prints the one-line removal notice `moai codex was removed: MoAI supports Claude Code and GLM only (moai cc | moai glm)` in English and Korean and exits 2.
 - REQ-2: When the host word after `-a` is `codex`, the launcher shall refuse it with the usage error that lists `cc`, `glm` and `omp`. · failure: none — the refusal is the required behavior
 - REQ-3: The launcher shall build no Codex command line, so that a session request names no Codex program and the Codex argument notes are gone.
 - REQ-4: The model settings shall hold a table and defaults for `claude`, `omp` and `glm` only.
@@ -41,7 +41,7 @@ Three things stand in the way of a plain deletion, and the design follows them:
 
 ## Acceptance
 
-- AC-1 (REQ-1, REQ-2, REQ-3): `moai codex` exits 2 with the usage envelope `unknown command; see --help`; `moai -a codex` and `moai session --host codex` are refused exactly like an unknown word (same exit code, same message shape) and the message lists `cc|glm|omp`; the bare-run usage line and the `moai init` guidance name no `codex`; a session request holds no Codex program name · verify: `cargo test --test codex_launcher_removed`
+- AC-1 (REQ-1, REQ-2, REQ-3): `moai codex` (alone or with flags) exits 2, prints the removal sentence once on stderr with no clap text and no suggestion of a `codex-*` command, and the usage envelope on stdout carries the same sentence; `moai -a codex` and `moai session --host codex` are refused exactly like an unknown word (same exit code, same message shape) and the message lists `cc|glm|omp`; the bare-run usage line and the `moai init` guidance name no `codex`; a session request holds no Codex program name · verify: `cargo test --test codex_launcher_removed`
 - AC-2 (REQ-4, REQ-5, REQ-6, REQ-11): `supported("codex")` and `default_choice("codex", …)` are `None`, `TOOLS` has no `codex`, a `with_choice` for `codex` is refused; `resolve` for `claude` and `glm` works with a `launcher.models.codex` value of every shape (a valid old entry, a malformed one, a secret-looking text) and `unsupported_entries` lists none of it; writing a Claude choice leaves the Codex value out of the written file and keeps every other key · verify: `cargo test --test model_effort_settings`
 - AC-3 (REQ-7, REQ-8): the question tools are `claude` and `glm`; the installed tools of a home with `.claude` and `.codex` folders are `claude` only; a saved Codex value does not make the model step report an error · verify: `cargo test --test model_effort_questions --test update_model_pick`
 - AC-4 (REQ-9): the first-run profile of `moai cc` and `moai glm` names its own host only and the missing-skill check refuses a `codex` word like any unknown host · verify: `cargo test --test launcher_auto_init --test launcher_skill_check`
