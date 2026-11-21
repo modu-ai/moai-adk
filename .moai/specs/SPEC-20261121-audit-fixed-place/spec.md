@@ -84,7 +84,7 @@ created: 2026-11-21
 
 `python3 -I tools/build_folder.py audit-place --name <n> --head <40자 SHA>` 가 생겼어요. 첫 호출은 `<HOME>/.moai/worktrees/<project>/audit-<n>` 을 그 head 의 분리된 워크트리로 만들고 같은 이름의 빌드 폴더(`<project>-audit-<n>`)와 소유 기록을 만들어요. 다음 호출은 같은 워크트리를 새 head 로 옮겨요(`git checkout --detach --force`, 지우고 다시 받지 않아요). 옮긴 뒤에는 트리 해시가 head 의 것과 같고 `git status` 가 비었는지 확인하고, 편집된 추적 파일과 git 이 무시하지 않는 추적 안 된 파일은 되돌리거나 지우며(몇 개인지 `taken_back` 에 적어요), 무시되는 파일(증거 폴더 `target/` 같은 것)은 그대로 둬요. cargo 가 빌드 폴더의 잠금을 쥐고 있으면 `place_busy` 로 거절해요. 쓰인 `CARGO_HOME` 을 빌드 폴더의 `.moai-audit-place.json` 에 적고, 다음 호출에서 값이 다르면 `cargo_home_changed` 와 이전 값을 알려요.
 
-측정(2026-11-21, 이 Mac, APFS, `CARGO_HOME=/tmp/moai-rc-cargo-agent-1`, 대상 `--lib --test card_inbox_cli --test card_show_notes_cli` 의 `cargo test --no-run`). 머리 A = 지역 통합 가지 끝 `b4681b3a6f`, 머리 B = A 위에 시험 파일 `tests/card_inbox_cli.rs` 에 주석 한 줄만 더한 가지 없는 임시 커밋 `9b996deb7b`. 감사 자리 `audit-measure278` 의 빌드 폴더는 첫 호출 뒤 레인 폴더에서 `seed` 로 시작했어요(`seeded: true`, `clonefile`).
+측정(2026-11-21, 이 Mac, APFS, `CARGO_HOME=/tmp/moai-rc-cargo-agent-1`, 대상 `--lib --test card_inbox_cli --test card_show_notes_cli` 의 `cargo test --no-run`). 머리 A = 지역 통합 가지 끝 `b4681b3a6f`, 머리 B = A 위에 시험 파일 `tests/card_inbox_cli.rs` 에 주석 한 줄만 더한 가지 없는 임시 커밋 `9b996deb7b`. 측정용 감사 자리 `audit-measure` 의 빌드 폴더는 첫 호출 뒤 레인 폴더에서 `seed` 로 시작했어요(`seeded: true`, `clonefile`).
 - 첫 감사(자리에서 A): 37.57초(벽시계), user 117.44 + sys 5.09 = 122.5 CPU초. 작업공간 crate 가 처음 빌드돼요(경로가 처음이라).
 - 옮김 A→B(`moved_files: 1`) 뒤 둘째 감사: 0.68초, user 0.57 + sys 0.25 = 0.82 CPU초.
 - 같은 B 를 한 번 더(`moved_files: 0`): 0.12초, `Compiling` 줄 0개.
@@ -114,5 +114,7 @@ created: 2026-11-21
 - N10(고친 `.gitignore`·추적 안 된 `.gitignore` 가 규칙을 바꿈): 무시된 파일이 있을 때 자리의 상태 목록에 `.gitignore` 가 있어도 `ignore_rules_changed` 로 거절해요(REQ-12). 시험 `test_an_edited_or_untracked_gitignore_counts_as_a_rule_change`. 옛 도구가 만든 자리(기록에 `place` 키 없음)는 소유 기록이 없다고 거절되는데, 그 자리는 지우고 다시 만들면 돼요(문서에 남겨요).
 - 생존 변이(만들기 전 빌드 폴더 기록 확인 제거)는 이미 있는 자리에서는 같은 결과가 아니었어요. 시험 `test_a_foreign_build_folder_record_refuses_before_an_existing_place_moves` 가 고정해요.
 - N11(SPEC 글의 이름에 카드 번호): 감사자·측정 폴더 이름을 번호 없는 말로 바꿨어요. N12(옛 글줄): AC-1 개수와 "9개 중 8개" 줄을 고쳤어요. 이동 뒤에 거절하는 경우의 시험은 N10 시험이 앞단에서 막는 것으로 바뀌었어요.
+
+둘째 델타 감사(같은 감사자, head `b38b7d0fef`): PASS-WITH-FINDINGS, 막는 결함 없음. N8·N9·N10·생존 변이는 감사자의 따로 만든 확인으로 고쳐졌음을 봤고, N11 의 남은 이름 하나(`audit-measure278`)는 이 SPEC 에서 번호 없는 이름으로 바꿨어요(SPEC 글만 바뀜). 남은 비차단: (1) 중첩 저장소 안의 자체 `.gitignore` 가 숨긴 파일은 `clean -ffd` 가 중첩 저장소와 함께 지워요(REQ-4 가 중첩 저장소를 되돌린다고 한 것과 같은 결과), (2) 지운 추적 `.gitignore` 는 거절하지 않지만 체크아웃이 되살려 파일은 남아요, (3) 이동 뒤 "깨끗하지 않음" 거절(REQ-3)은 시험이 닿지 않아요(앞단 거절로 대부분 대체됨).
 
 아직 안 한 것: 감사 에이전트 지침·감사 워크플로·`skills/moai/references/internal/build-folder.md` 에 이 도구를 쓰라는 문장, `moai audit-clone-plan` 명령 목록(다음 조각), 독립 감사, Linux 시험.
