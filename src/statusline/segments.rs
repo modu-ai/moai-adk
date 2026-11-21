@@ -99,7 +99,7 @@ pub fn collect_memory(cw: Option<ContextReading>, size_override: i64, auto_compa
     if size_override > 0 {
         size = size_override;
     }
-    let budget = size * auto_compact / 100;
+    let budget = size.saturating_mul(auto_compact) / 100;
     let full = |tokens_used| Memory {
         tokens_used,
         token_budget: budget,
@@ -115,12 +115,14 @@ pub fn collect_memory(cw: Option<ContextReading>, size_override: i64, auto_compa
     if cw.used > 0 || cw.total > 0 {
         return Memory {
             tokens_used: cw.used,
-            token_budget: cw.total * auto_compact / 100,
+            token_budget: cw.total.saturating_mul(auto_compact) / 100,
             context_window_size: size,
             available: true,
         };
     }
-    full(0)
+    // The window names no percentage, no usage and no totals: nothing was read, so the reading
+    // is unavailable and the screen says `CTX n/a`, never a guessed zero (REQ-9).
+    Memory::default()
 }
 
 /// `usagePercent`: truncated, capped at 100, 0 for an empty budget.
@@ -128,7 +130,7 @@ pub fn usage_percent(used: i64, total: i64) -> i64 {
     if total <= 0 {
         return 0;
     }
-    (used * 100 / total).min(100)
+    (used.saturating_mul(100) / total).min(100)
 }
 
 /// `cacheHitPercent`: read / (read + creation), omitted when creation ≤ 0.
@@ -136,11 +138,11 @@ pub fn cache_hit_percent(read: i64, creation: i64) -> Option<i64> {
     if creation <= 0 {
         return None;
     }
-    let denom = read + creation;
+    let denom = read.saturating_add(creation);
     if denom <= 0 {
         return None;
     }
-    Some(read * 100 / denom)
+    Some((read.saturating_mul(100) / denom).min(100))
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

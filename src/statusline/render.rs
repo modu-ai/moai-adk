@@ -52,10 +52,6 @@ pub struct Theme {
     pub cards_waiting: &'static str,
     /// `✅` cards done (teal).
     pub cards_done: &'static str,
-    /// `(⚠️ /clear)` soft handoff warning (yellow).
-    pub warn: &'static str,
-    /// `(🛑/clear!)` hard handoff warning (red).
-    pub alert: &'static str,
 }
 
 pub const MOCHA: Theme = Theme {
@@ -73,8 +69,6 @@ pub const MOCHA: Theme = Theme {
     cards_posted: "#F5E0DC",
     cards_waiting: "#74C7EC",
     cards_done: "#94E2D5",
-    warn: "#F9E2AF",
-    alert: "#F38BA8",
 };
 
 pub const LATTE: Theme = Theme {
@@ -92,8 +86,6 @@ pub const LATTE: Theme = Theme {
     cards_posted: "#DC8A78",
     cards_waiting: "#209FB5",
     cards_done: "#179299",
-    warn: "#DF8E1D",
-    alert: "#D20F39",
 };
 
 /// `NewTheme`: `catppuccin-latte`, anything else is Mocha.
@@ -1681,10 +1673,9 @@ mod tests {
         out
     }
 
-    fn segment_colors(t: &Theme) -> [&'static str; 10] {
+    fn segment_colors(t: &Theme) -> [&'static str; 8] {
         [
-            t.model, t.effort, t.cache, t.version, t.repo, t.issues, t.prs, t.branch, t.warn,
-            t.alert,
+            t.model, t.effort, t.cache, t.version, t.repo, t.issues, t.prs, t.branch,
         ]
     }
 

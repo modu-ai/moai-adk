@@ -1,5 +1,5 @@
 //! Card C-65 (user instructions 2026-11-16 and 2026-11-17): the statusline shows the cards of
-//! the project's local ledger opening line 3, `🗂️ 50 ▶️ 2 🔃 3 ✅ 12` before the usage bars
+//! the project's local ledger opening line 3, `🗂️ 50 ▶️ 2 🔃 3 ✅ 12` before the usage windows
 //! (the user's third instruction of 2026-11-20; was line 1, then line 2), and line 2 opens
 //! with the repository and its forge counts, `📡 owner/repo, ⬇️ 46 🔀 0 | 🅱️ …`:
 //! `🗂️` cards created and remaining (`draft` + `ready` + `hold`), `▶️` cards being worked on
@@ -186,7 +186,7 @@ const WITHOUT_CARDS: &str = "📡 modu-ai/moai-adk, ⬇️ 46 🔀 0 | 🅱️ m
 const CARDS_GROUP: &str = "🗂️ 50 ▶️ 2 🔃 3 ✅ 12";
 
 #[test]
-fn the_card_counts_open_line_three_before_the_usage_bars() {
+fn the_card_counts_open_line_three_before_the_usage_windows() {
     let f = fixture();
     let baseline = f.plain();
     assert_eq!(baseline.lines().nth(1), Some(WITHOUT_CARDS), "no ledger");

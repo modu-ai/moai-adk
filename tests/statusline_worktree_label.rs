@@ -1,4 +1,4 @@
-//! User instruction 2026-11-19: the status line opens line 3 (the bars line) with the worktree,
+//! User instruction 2026-11-19: the status line opens line 3 (the usage line) with the worktree,
 //! written `🌳 WT-c<card>-<name>`: `<card>` is the number of the card whose held reservation names
 //! the session's worktree folder, `<name>` comes from that reservation's branch
 //! (`spec/20260101-demo-work` gives `demo-work`). Without such a reservation the segment is the
@@ -143,8 +143,8 @@ fn line(out: &str, n: usize) -> String {
     out.lines().nth(n).unwrap_or_default().to_string()
 }
 
-/// The whole of line 3 after the label moved to line 2: the bars, unchanged by the label.
-const BARS: &str = "CTX n/a";
+/// The whole of line 3 after the label moved to line 2: the usage windows, unchanged by the label.
+const WINDOWS: &str = "CTX n/a";
 
 #[test]
 fn a_held_card_closes_line_2_as_wt_c_card_name() {
@@ -154,25 +154,25 @@ fn a_held_card_closes_line_2_as_wt_c_card_name() {
     assert_eq!(card, 1);
     let out = f.plain(Some(&wt));
     // The picked layout of 2026-11-20T21:5x: the label closes line 2, line 3 keeps the
-    // counts and the bars.
+    // counts and the usage windows.
     assert!(line(&out, 1).ends_with(" | 🌳 WT-c1-demo-work"), "{out}");
     assert_eq!(
         line(&out, 2),
-        format!("🗂️ 0 ▶️ 1 🔃 0 ✅ 0 | {BARS}"),
+        format!("🗂️ 0 ▶️ 1 🔃 0 ✅ 0 | {WINDOWS}"),
         "{out}"
     );
     assert_eq!(out.lines().count(), 3, "{out}");
 }
 
 #[test]
-fn only_the_segment_moves_line_1_and_the_bars_stay() {
+fn only_the_segment_moves_line_1_and_the_windows_stay() {
     let f = fixture();
     let wt = f.worktree("demo-1-work", "spec/20260101-demo-work");
     let without = f.plain(Some(&wt));
     f.reserve("active", "held", &wt.dir, "spec/20260101-demo-work");
     let with = f.plain(Some(&wt));
     // The card counts open line 3 (a registered ledger shows the group even at zero) and
-    // the bars close it; the worktree label closes line 2 in both renders.
+    // the usage windows close it; the worktree label closes line 2 in both renders.
     assert!(
         line(&with, 2).starts_with("🗂️ 0 ▶️ 1 🔃 0 ✅ 0 | "),
         "{with}"
@@ -188,7 +188,7 @@ fn only_the_segment_moves_line_1_and_the_bars_stay() {
         line(&without, 1).ends_with(" | 🌳 demo-1-work"),
         "{without}"
     );
-    assert!(line(&with, 2).ends_with(BARS), "{with}");
+    assert!(line(&with, 2).ends_with(WINDOWS), "{with}");
     // Line 1 holds no worktree and no card counts in either render.
     assert_eq!(line(&with, 0), line(&without, 0));
     assert!(!line(&with, 0).contains('🌳'), "{with}");
@@ -247,7 +247,7 @@ fn the_main_checkout_has_no_worktree_segment() {
     let out = f.plain(None);
     assert_eq!(
         line(&out, 2),
-        format!("🗂️ 0 ▶️ 0 🔃 0 ✅ 0 | {BARS}"),
+        format!("🗂️ 0 ▶️ 0 🔃 0 ✅ 0 | {WINDOWS}"),
         "{out}"
     );
     assert!(!out.contains('🌳'), "{out}");
@@ -264,7 +264,7 @@ fn the_worktree_option_off_hides_the_segment_on_every_line() {
     let out = f.plain(Some(&wt));
     assert_eq!(
         line(&out, 2),
-        format!("🗂️ 0 ▶️ 1 🔃 0 ✅ 0 | {BARS}"),
+        format!("🗂️ 0 ▶️ 1 🔃 0 ✅ 0 | {WINDOWS}"),
         "{out}"
     );
     assert!(!out.contains('🌳'), "{out}");
