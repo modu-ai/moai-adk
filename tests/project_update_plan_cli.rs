@@ -2438,7 +2438,7 @@ fn the_backup_phase_lists_go_settings_before_go_state() {
         .iter()
         .map(|s| s["step"].as_str().unwrap())
         .collect();
-    assert_eq!(names, ["go-settings", "go-state"], "{plan}");
+    assert_eq!(names, ["go-settings", "go-state", "reports"], "{plan}");
     let gs = step(&plan, "go-settings");
     assert_eq!(gs["state"], "unchanged", "{gs}");
     assert_eq!(gs["apply"], Value::Null, "{gs}");
@@ -2494,6 +2494,40 @@ fn a_ready_go_settings_step_holds_the_later_steps_until_it_is_applied() {
     let go = step(&again, "go-state");
     assert_eq!(go["state"], "needs_decision", "{go}");
     assert_eq!(words(go)[1], "go-state-apply", "{go}");
+}
+
+/// Audit B3 (reports step): moving the untracked report files out changes the report listing the
+/// go-state preview reads, so while the reports step has a command the go-state step waits for a
+/// new preview and names the reports step; once the reports are moved go-state offers its own.
+#[test]
+fn a_ready_reports_step_holds_the_go_state_command_until_it_is_applied() {
+    let fx = go_project_with_go_made_plans_key(false);
+    // The reports step asks git which files are tracked: the project is a repository.
+    common::git::git_ok(&fx.root, &["init", "-q"]);
+    let gs = step(&fx.plan(), "go-settings").clone();
+    assert_eq!(fx.apply_step(&gs)["ok"], json!(true));
+    let before = fx.plan();
+    let go = step(&before, "go-state");
+    assert_eq!(go["state"], "needs_decision", "{go}");
+    assert_eq!(words(go)[1], "go-state-apply", "{go}");
+    assert_eq!(step(&before, "reports")["state"], "unchanged", "{before}");
+
+    fx.write(".moai/reports/earlier.md", "an earlier report");
+    let plan = fx.plan();
+    let reports = step(&plan, "reports");
+    assert_eq!(reports["state"], "ready", "{reports}");
+    assert_eq!(words(reports)[1], "reports-move-apply", "{reports}");
+    let go = step(&plan, "go-state");
+    assert_eq!(go["state"], "blocked", "{go}");
+    assert_eq!(go["reason"], "re-run after the reports apply", "{go}");
+    assert_eq!(go["apply"], Value::Null, "{go}");
+
+    let out = fx.apply_step(reports);
+    assert_eq!(out["ok"], json!(true), "{out}");
+    let again = fx.plan();
+    assert_eq!(step(&again, "reports")["state"], "unchanged", "{again}");
+    let go = step(&again, "go-state");
+    assert_ne!(go["reason"], "re-run after the reports apply", "{go}");
 }
 
 /// #2936 L2a: when the Go manifest proves the settings file the earlier generation's, the file

@@ -4,7 +4,7 @@
 
 use super::color::{hex_rgb, Profile};
 use super::segments::{self, HandoffStage};
-use super::state::{CacheTimer, DisplayConfig, Status};
+use super::state::{DisplayConfig, Status};
 use std::collections::BTreeMap;
 
 const BAR_WIDTH: i64 = 10;
@@ -133,9 +133,13 @@ impl Renderer {
     /// `Render`: the layout, or `MoAI` when every line is empty, then the base color.
     /// #2756 (user instruction 2026-11-13): line 1 is the running environment, line 2 the
     /// repository, line 3 the usage bars; #2928 (user instruction 6878415244, 2026-11-14): the
-    /// `leader`/`agent` tag opens line 1; user instruction 2026-11-19: the worktree opens the
-    /// bars line. A line with nothing in it is left out, so the numbers above shift up by one
-    /// for each empty line before it.
+    /// `leader`/`agent` tag opens line 1. The user's three instructions of 2026-11-20
+    /// (SPEC-20261120-statusline-layout): line 1 is tag, model, effort, the Claude Code
+    /// version and the MoAI version; line 2 is the repository with its forge counts in one
+    /// segment and the branch; line 3 opens with the card counts, carries the usage bars, and
+    /// closes with the worktree label. The cache segment is not in the layout. A line with
+    /// nothing in it is left out, so the numbers above shift up by one for each empty line
+    /// before it.
     pub fn render(&self, status: &Status) -> String {
         let lines: Vec<String> = [
             self.info_line(status),
@@ -197,22 +201,13 @@ impl Renderer {
                 _ => {}
             }
         }
-        if self.enabled("cache_hit") {
-            let hit = s
-                .cache
-                .and_then(|(read, creation)| segments::cache_hit_percent(read, creation))
-                .map(|pct| format!(" {pct}%"));
-            // #2756 AC-8 (user choice 2026-11-13): how long the prompt cache stays warm, next
-            // to the hit ratio; `🧊` once it is cold.
-            let timer = s.cache_timer.map(|t| match t {
-                CacheTimer::Warm(minutes) => format!(" ⏱️ {minutes}m"),
-                CacheTimer::Cold => " 🧊".to_string(),
-            });
-            if hit.is_some() || timer.is_some() {
-                let text = format!("♻️{}{}", hit.unwrap_or_default(), timer.unwrap_or_default());
-                segs.push(self.paint(self.theme.cache, &text));
-            }
-        }
+        // D-1 of SPEC-20261120-statusline-layout (user instruction 2026-11-20): the `♻️` cache
+        // segment is not in the layout. The `cache_hit` option name is still accepted in
+        // configs, it just shows nothing — like `session_time` and `output_style` — and the
+        // cache value and its warm or cold timer stay in the collected state. The card counts
+        // open line 3 and the worktree label closes it ([`Renderer::bars_line`], the user's
+        // third instruction of 2026-11-20); the Claude Code version stands on line 1 between
+        // the effort and the MoAI version.
         if self.enabled("claude_version") && !s.claude_version.is_empty() {
             segs.push(self.paint(self.theme.version, &format!("🤖 v{}", s.claude_version)));
         }
@@ -234,12 +229,12 @@ impl Renderer {
 
     fn bars_line(&self, s: &Status) -> String {
         let mut segs = Vec::new();
-        // #2928 (user instruction 6878415244, 2026-11-14): line 3 is the bars alone; the tag
-        // moved to the front of line 1.
-        // User instruction 2026-11-19 (was #2756 AC-9 at the end of line 2): which worktree the
-        // session is in opens line 3; absent in the main checkout.
-        if self.enabled("worktree") && !s.worktree.is_empty() {
-            segs.push(self.paint(self.theme.branch, &worktree_text(s)));
+        // #2928 (user instruction 6878415244, 2026-11-14): line 3 is the bars; the tag moved
+        // to the front of line 1. The user's third instruction of 2026-11-20: the card counts
+        // open this line (they read the project's local ledger, not git), and the worktree
+        // label closes it (was: it opened the line, user instruction 2026-11-19).
+        if let Some(cards) = self.cards(s) {
+            segs.push(cards);
         }
         if self.enabled("context") {
             if s.memory.available && s.memory.token_budget > 0 {
@@ -270,6 +265,11 @@ impl Renderer {
             if let Some(w) = s.seven_day {
                 segs.push(self.usage_bar("Week:", w.used_percentage.unwrap_or(0.0) as i64));
             }
+        }
+        // The worktree label closes line 3 (the user's third instruction of 2026-11-20); in
+        // the main checkout it is absent.
+        if self.enabled("worktree") && !s.worktree.is_empty() {
+            segs.push(self.paint(self.theme.branch, &worktree_text(s)));
         }
         // The renderer never shortens a segment and does not read `COLUMNS`, which Claude
         // Code sets; whether an overlong line is cut or wraps is left open by the host docs
@@ -311,23 +311,18 @@ impl Renderer {
 
     fn git_line(&self, s: &Status) -> String {
         let mut segs = Vec::new();
-        // Card C-137 (user instruction 2026-11-19): the git counts, the card counts, the
-        // repository, then the branch (was: repository, forge counts, cards, branch). The card
-        // counts come from the local ledger, not from the repository, so without a branch (or
-        // with `git_branch` off) they stand on the line on their own.
-        let cards = self.cards(s);
-        match self
+        // SPEC-20261120-statusline-layout (user instruction 2026-11-20): line 2 opens with the
+        // repository and its forge counts in one segment, then the branch; the card counts
+        // open line 3 ([`Renderer::bars_line`], the user's third instruction of 2026-11-20).
+        if let Some(g) = self
             .enabled("git_branch")
             .then(|| self.repo_groups(s))
             .flatten()
         {
-            Some(g) => {
-                segs.extend(g.forge);
-                segs.extend(cards);
-                segs.extend(g.repo);
-                segs.push(g.branch);
+            if let Some(repo) = g.repo_with_forge {
+                segs.push(repo);
             }
-            None => segs.extend(cards),
+            segs.push(g.branch);
         }
         // #2756 AC-7 (user choice 2026-11-13): this branch's pull request, linked to its URL.
         if self.enabled("pr") {
@@ -347,7 +342,9 @@ impl Renderer {
     }
 
     /// Card C-65 (user instructions 2026-11-16 and 2026-11-17, card 85; order and icons by the
-    /// user's decision 2026-11-19; one space between the items and no slash, card C-137):
+    /// user's decision 2026-11-19; one space between the items and no slash, card C-137): it
+    /// opens line 3 since the user's third instruction of 2026-11-20
+    /// (SPEC-20261120-statusline-layout, was: line 1, then line 2),
     /// `🗂️ <remaining> ▶️ <working> 🔃 <waiting for integration> ✅ <done>` from the project's
     /// local ledger, under the one `cards` option;
     /// `🔃` is left out when the notes could not be read. A ledger without cards shows zeros;
@@ -378,7 +375,12 @@ impl Renderer {
     fn repo_groups(&self, s: &Status) -> Option<RepoGroups> {
         let git = s.git.as_ref().filter(|g| !g.branch.is_empty())?;
         let mut branch = format!("🅱️{BRANCH_ICON_GAP}{}", git.branch);
-        // Ahead is deliberately hidden; behind and dirty counts remain visible.
+        // Under M-Flow the merges land on the local integration branch first and the remote
+        // moves at a release, so the ahead count is the number that shows them landing
+        // (SPEC-20261120-statusline-ahead); the order is `↑N ↓N +N`, each hidden at 0.
+        if git.ahead > 0 {
+            branch.push_str(&format!(" ↑{}", git.ahead));
+        }
         if git.behind > 0 {
             branch.push_str(&format!(" ↓{}", git.behind));
         }
@@ -393,8 +395,7 @@ impl Renderer {
             .filter(|(o, n)| !o.is_empty() && !n.is_empty())
         else {
             return Some(RepoGroups {
-                forge: None,
-                repo: None,
+                repo_with_forge: None,
                 branch,
             });
         };
@@ -409,18 +410,24 @@ impl Renderer {
                 )
             });
         let repo = self.paint(self.theme.repo, &format!("📡{REPO_ICON_GAP}{owner}/{name}"));
+        // SPEC-20261120-statusline-layout (user instruction 2026-11-20): the forge counts join
+        // the repository in one segment, the comma right after the name; without them the name
+        // stands alone. Each part keeps its own color.
+        let repo_with_forge = match forge {
+            Some(f) => format!("{repo}, {f}"),
+            None => repo,
+        };
         Some(RepoGroups {
-            forge,
-            repo: Some(repo),
+            repo_with_forge: Some(repo_with_forge),
             branch,
         })
     }
 }
 
-/// The groups of line 2 that follow the `git_branch` switch, each already painted (card C-137).
+/// The groups of line 2 that follow the `git_branch` switch, each already painted
+/// (SPEC-20261120-statusline-layout: the repository and its forge counts are one segment).
 struct RepoGroups {
-    forge: Option<String>,
-    repo: Option<String>,
+    repo_with_forge: Option<String>,
     branch: String,
 }
 
@@ -480,7 +487,7 @@ fn apply_base_color(text: &str, base: &str) -> String {
 mod tests {
     use super::*;
     use crate::statusline::input::{self, RateWindow};
-    use crate::statusline::state::{self, CardCounts, Context, GitHubCounts, Version};
+    use crate::statusline::state::{self, CacheTimer, CardCounts, Context, GitHubCounts, Version};
 
     fn plain(status: &Status, disabled: &[&str]) -> String {
         let config = DisplayConfig {
@@ -534,15 +541,99 @@ mod tests {
     }
 
     /// #2756 AC-1–AC-2 (user instructions 2026-11-13) and #2928 (user instruction 6878415244,
-    /// 2026-11-14): the tag and the environment, the repository, then the usage bars, each line
-    /// joined by ` | `.
+    /// 2026-11-14), reordered by the user instruction 2026-11-20: line 1 is the tag, the
+    /// environment and the MoAI version, line 2 opens with the repository and its forge counts
+    /// and line 3 is the usage bars ending with the Claude Code version, each line joined by
+    /// ` | `. The cache segment is not in the layout (D-1 of SPEC-20261120-statusline-layout).
+    /// Under M-Flow the merges land locally first, so the ahead count shows before behind
+    /// (SPEC-20261120-statusline-ahead).
     #[test]
-    fn full_main_layout_has_three_ordered_lines_without_reset_or_ahead() {
+    fn full_main_layout_has_three_ordered_lines_with_ahead_before_behind() {
         assert_eq!(
             plain(&full_status(), &[]),
-            "🏷️ agent | 🧠 Opus | 🤔 high·t | ♻️ 75% | 🤖 v2.1.293 | 🗿 v2.0 -> 🗿 v3.0\n\
-             ⬇️ 7 🔀 3 | 📡 owner/repo | 🅱️ main ↓2 +3\n\
+            "🏷️ agent | 🧠 Opus | 🤔 high·t | 🤖 v2.1.293 | 🗿 v2.0 -> 🗿 v3.0\n\
+             📡 owner/repo, ⬇️ 7 🔀 3 | 🅱️ main ↑5 ↓2 +3\n\
              🔋 CTX: █████░░░░░ 50% | 🪫 Week: ███████░░░ 75%"
+        );
+    }
+
+    /// With ahead 0 the line is byte-identical to what it renders without the feature (no
+    /// `↑`, nothing else moves).
+    #[test]
+    fn ahead_zero_keeps_the_line_byte_identical() {
+        let mut status = full_status();
+        status.git = Some(segments::parse_porcelain(
+            "## main...origin/main [behind 2]\n M a\nA  b\n?? c\n",
+        ));
+        let line = plain(&status, &[]).lines().nth(1).unwrap().to_string();
+        assert_eq!(line, "📡 owner/repo, ⬇️ 7 🔀 3 | 🅱️ main ↓2 +3");
+        assert!(!line.contains('↑'), "{line}");
+    }
+
+    /// Ahead without behind: only `↑N` appears, and dirty stays last.
+    #[test]
+    fn ahead_without_behind_shows_only_up() {
+        let mut status = full_status();
+        status.git = Some(segments::parse_porcelain(
+            "## main...origin/main [ahead 4]\n M a\n?? b\n",
+        ));
+        let line = plain(&status, &[]).lines().nth(1).unwrap().to_string();
+        assert_eq!(line, "📡 owner/repo, ⬇️ 7 🔀 3 | 🅱️ main ↑4 +2");
+    }
+
+    /// The user's example (leader conversation, 2026-11-20): every segment present gives
+    /// exactly these three lines in plain output. The cache data is in the input and, by D-1,
+    /// shows nothing; the main checkout carries no worktree label.
+    fn example_status() -> Status {
+        Status {
+            model: "Opus 5.5".into(),
+            effort: Some("high".into()),
+            thinking: Some(true),
+            cache: Some((90, 10)),
+            claude_version: "2.1.325".into(),
+            version: Some(Version {
+                current: "4.2647.10".into(),
+                latest: None,
+            }),
+            session_name: "leader".into(),
+            leader: true,
+            memory: segments::Memory {
+                tokens_used: 22,
+                token_budget: 100,
+                context_window_size: 200_000,
+                available: true,
+            },
+            seven_day: Some(RateWindow {
+                used_percentage: Some(60.0),
+                resets_at: None,
+            }),
+            repo: Some(("modu-ai".into(), "moai-adk".into())),
+            github: GitHubCounts {
+                available: true,
+                open_issues: 0,
+                open_prs: 0,
+                ..Default::default()
+            },
+            git: Some(segments::parse_porcelain(
+                "## v2026.11.0\n M a\n M b\n M c\n M d\n M e\nA  f\nA  g\n?? h\n?? i\n?? j\n",
+            )),
+            cards: Some(CardCounts {
+                in_progress: 19,
+                waiting: Some(18),
+                remaining: 90,
+                done: 75,
+            }),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn the_user_example_gives_exactly_the_three_lines() {
+        assert_eq!(
+            plain(&example_status(), &[]),
+            "🏷️ Leader | 🧠 Opus 5.5 | 🤔 high·t | 🤖 v2.1.325 | 🗿 v4.2647.10\n\
+             📡 modu-ai/moai-adk, ⬇️ 0 🔀 0 | 🅱️ v2026.11.0 +10\n\
+             🗂️ 90 ▶️ 19 🔃 18 ✅ 75 | 🔋 CTX: ██░░░░░░░░ 22% | 🔋 Week: ██████░░░░ 60%"
         );
     }
 
@@ -599,7 +690,7 @@ mod tests {
         let out = Renderer::new(&config, None).render(&status);
         assert!(!out.contains("5H"), "{out}");
         assert!(!out.contains('💾'), "{out}");
-        assert!(out.contains("🅱️ main ↓2 +3"), "{out}");
+        assert!(out.contains("🅱️ main ↑5 ↓2 +3"), "{out}");
     }
 
     #[test]
@@ -650,7 +741,7 @@ mod tests {
         let out = plain(&status, &[]);
         assert_eq!(
             out.lines().next(),
-            Some("🏷️ agent | 🧠 Opus | 🤔 high·t | ♻️ 75% | 🤖 v2.1.293 | 🗿 v2.0 -> 🗿 v3.0")
+            Some("🏷️ agent | 🧠 Opus | 🤔 high·t | 🤖 v2.1.293 | 🗿 v2.0 -> 🗿 v3.0")
         );
         assert_eq!(
             out.lines().nth(2),
@@ -684,7 +775,7 @@ mod tests {
         );
         let mut full = full_status();
         let bars = "🔋 CTX: █████░░░░░ 50% | 🪫 Week: ███████░░░ 75%";
-        let env = "🧠 Opus | 🤔 high·t | ♻️ 75% | 🤖 v2.1.293 | 🗿 v2.0 -> 🗿 v3.0";
+        let env = "🧠 Opus | 🤔 high·t | 🤖 v2.1.293 | 🗿 v2.0 -> 🗿 v3.0";
         assert_eq!(
             plain(&full, &[]).lines().next(),
             Some(format!("🏷️ agent | {env}").as_str())
@@ -701,7 +792,12 @@ mod tests {
         ];
         let only_tag = plain(&full, &line_one_off);
         assert_eq!(only_tag.lines().next(), Some("🏷️ agent"), "{only_tag}");
-        assert_eq!(only_tag.lines().nth(2), Some(bars), "{only_tag}");
+        // `claude_version` is off in this list, so line 3 ends with the bars.
+        assert_eq!(
+            only_tag.lines().nth(2),
+            Some("🔋 CTX: █████░░░░░ 50% | 🪫 Week: ███████░░░ 75%"),
+            "{only_tag}"
+        );
         full.leader = true;
         assert_eq!(
             plain(&full, &[]).lines().next(),
@@ -728,7 +824,7 @@ mod tests {
             plain(&status, &[]).lines().next().unwrap().to_string()
         };
         let line = |tag: &str| {
-            format!("🏷️ {tag} | 🧠 Opus | 🤔 high·t | ♻️ 75% | 🤖 v2.1.293 | 🗿 v2.0 -> 🗿 v3.0")
+            format!("🏷️ {tag} | 🧠 Opus | 🤔 high·t | 🤖 v2.1.293 | 🗿 v2.0 -> 🗿 v3.0")
         };
         for (name, want) in [
             ("agent-27", "Agent-27"),
@@ -799,7 +895,7 @@ mod tests {
             let out = plain(&status, &[]);
             assert_eq!(
                 out.lines().next(),
-                Some("🏷️ agent | 🧠 Opus | 🤔 high·t | ♻️ 75% | 🤖 v2.1.293 | 🗿 v2.0 -> 🗿 v3.0"),
+                Some("🏷️ agent | 🧠 Opus | 🤔 high·t | 🤖 v2.1.293 | 🗿 v2.0 -> 🗿 v3.0"),
                 "{name:?}"
             );
             let colored = colored("mocha", Profile::TrueColor, &status);
@@ -825,7 +921,7 @@ mod tests {
         let want_plain = tail(&base_plain);
         assert_eq!(
             want_plain,
-            "⬇️ 7 🔀 3 | 📡 owner/repo | 🅱️ main ↓2 +3\n\
+            "📡 owner/repo, ⬇️ 7 🔀 3 | 🅱️ main ↑5 ↓2 +3\n\
              🔋 CTX: █████░░░░░ 50% | 🪫 Week: ███████░░░ 75%"
         );
         let base_colored = colored("mocha", Profile::TrueColor, &base);
@@ -869,13 +965,13 @@ mod tests {
             ..Default::default()
         };
         let with_zero = plain(&status, &[]);
-        assert!(with_zero.contains("⬇️ 0 🔀 0 | 📡 owner/repo | 🅱️ main ↓2 +3"));
+        assert!(with_zero.contains("📡 owner/repo, ⬇️ 0 🔀 0 | 🅱️ main ↑5 ↓2 +3"));
         // #2559: icons, not the old letter labels.
         assert!(!with_zero.contains("I: ") && !with_zero.contains("PR: "));
         status.github.available = false;
         let absent = plain(&status, &[]);
         assert!(
-            absent.contains("📡 owner/repo | 🅱️ main ↓2 +3\n"),
+            absent.contains("📡 owner/repo | 🅱️ main ↑5 ↓2 +3\n"),
             "{absent}"
         );
         assert!(!absent.contains("-/-"));
@@ -887,21 +983,23 @@ mod tests {
         assert!(!plain(&status, &["git_branch"]).contains("📡"));
         assert!(!plain(&status, &["git_status"]).contains("💾"));
         status.repo = None;
-        assert!(plain(&status, &[]).contains("\n🅱️ main ↓2 +3\n"));
+        assert!(plain(&status, &[]).contains("\n🅱️ main ↑5 ↓2 +3\n"));
     }
 
-    /// Card C-65 (user instructions 2026-11-16 and 2026-11-17, card 85):
-    /// `🗂️ remaining ▶️ in progress ✅ done` as one group right after the forge counts; zero is
-    /// shown, and absent counts leave the line as it was.
+    /// Card C-65 (user instructions 2026-11-16 and 2026-11-17, card 85), moved to line 3 by the
+    /// user's third instruction of 2026-11-20: `🗂️ remaining ▶️ in progress ✅ done` opens
+    /// line 3 before the usage bars; zero is shown, and absent counts leave line 3 as it was.
     #[test]
-    fn card_counts_follow_the_forge_counts_as_one_segment() {
-        let line = |s: &Status, off: &[&str]| plain(s, off).lines().nth(1).unwrap().to_string();
+    fn the_card_counts_open_line_three_before_the_usage_bars() {
+        // The last line: line 3 in the full render, and the same line one up when the git
+        // line is gone.
+        let line3 = |s: &Status, off: &[&str]| plain(s, off).lines().last().unwrap().to_string();
         let mut status = full_status();
         let without = plain(&status, &[]);
         assert_eq!(
-            line(&status, &[]),
-            "⬇️ 7 🔀 3 | 📡 owner/repo | 🅱️ main ↓2 +3",
-            "no counts: no segment"
+            line3(&status, &[]),
+            "🔋 CTX: █████░░░░░ 50% | 🪫 Week: ███████░░░ 75%",
+            "no counts: the bars alone"
         );
         status.cards = Some(CardCounts {
             in_progress: 5,
@@ -910,37 +1008,43 @@ mod tests {
             done: 12,
         });
         assert_eq!(
-            line(&status, &[]),
-            "⬇️ 7 🔀 3 | 🗂️ 50 ▶️ 5 ✅ 12 | 📡 owner/repo | 🅱️ main ↓2 +3"
+            line3(&status, &[]),
+            "🗂️ 50 ▶️ 5 ✅ 12 | 🔋 CTX: █████░░░░░ 50% | 🪫 Week: ███████░░░ 75%"
         );
-        // Lines 1 and 3 do not change.
+        // Lines 1 and 2 do not change.
         let with = plain(&status, &[]);
         assert_eq!(with.lines().next(), without.lines().next());
-        assert_eq!(with.lines().nth(2), without.lines().nth(2));
+        assert_eq!(with.lines().nth(1), without.lines().nth(1));
         assert_eq!(with.lines().count(), 3);
-        // The `cards` option hides both parts and nothing else.
+        // The `cards` option hides the group and nothing else.
         assert_eq!(plain(&status, &["cards"]), without);
-        // Without forge counts (absent, suppressed or switched off) the cards keep the place.
-        let alone = "🗂️ 50 ▶️ 5 ✅ 12 | 📡 owner/repo | 🅱️ main ↓2 +3";
-        assert_eq!(line(&status, &["github"]), alone);
+        // The counts come from the ledger, not from git: forge counts, the repository and the
+        // branch change line 2, never the place of the group on line 3.
+        let with_cards = with.lines().nth(2).unwrap().to_string();
+        assert_eq!(line3(&status, &["github"]), with_cards);
         status.github.suppressed = true;
-        assert_eq!(line(&status, &[]), alone);
+        assert_eq!(line3(&status, &[]), with_cards);
         status.github = GitHubCounts::default();
-        assert_eq!(line(&status, &[]), alone);
+        assert_eq!(line3(&status, &[]), with_cards);
+        status.repo = None;
+        assert_eq!(line3(&status, &[]), with_cards);
+        status.git = None;
+        assert_eq!(line3(&status, &[]), with_cards);
         // An empty ledger is not an absent one.
         status.cards = Some(CardCounts::default());
         assert_eq!(
-            line(&status, &[]),
-            "🗂️ 0 ▶️ 0 ✅ 0 | 📡 owner/repo | 🅱️ main ↓2 +3"
+            line3(&status, &[]),
+            "🗂️ 0 ▶️ 0 ✅ 0 | 🔋 CTX: █████░░░░░ 50% | 🪫 Week: ███████░░░ 75%"
         );
     }
 
-    /// SPEC-20261120-statusline-line2-order (user instruction 2026-11-19): line 2 reads git counts,
-    /// card counts, repository, branch, then the pull request, groups joined by ` | `, and no
-    /// group has a slash in it: the items of a group, the two git counts too, are one space
-    /// apart. Every pair of the groups keeps that order when the others are left out.
+    /// SPEC-20261120-statusline-layout (user instruction 2026-11-20): line 2 opens with one
+    /// segment `📡 owner/repo, ⬇️ n 🔀 n` — the comma right after the repository name, the
+    /// forge counts in the same segment — then the branch, then the pull request, groups
+    /// joined by ` | `, and no group has a slash in it. The card counts stand on line 3
+    /// (the user's third instruction of 2026-11-20).
     #[test]
-    fn line_two_reads_git_counts_then_cards_then_repository_then_branch() {
+    fn line_two_reads_the_repository_with_the_forge_counts_then_the_branch_then_the_pr() {
         let line = |s: &Status, off: &[&str]| plain(s, off).lines().nth(1).unwrap().to_string();
         let mut status = full_status();
         status.cards = Some(CardCounts {
@@ -957,35 +1061,51 @@ mod tests {
         let full = line(&status, &[]);
         assert_eq!(
             full,
-            "⬇️ 7 🔀 3 | 🗂️ 50 ▶️ 5 🔃 15 ✅ 65 | 📡 owner/repo | 🅱️ main ↓2 +3 | 🔗 #42 pending"
+            "📡 owner/repo, ⬇️ 7 🔀 3 | 🅱️ main ↑5 ↓2 +3 | 🔗 #42 pending"
         );
         assert!(
             !full.replace("owner/repo", "").contains('/'),
             "no slash inside a group: {full}"
         );
         let at = |icon: &str| full.find(icon).unwrap();
-        assert!(at("⬇️") < at("🔀") && at("🔀") < at("🗂️") && at("🗂️") < at("▶️"));
-        assert!(at("▶️") < at("🔃") && at("🔃") < at("✅") && at("✅") < at("📡"));
-        assert!(at("📡") < at("🅱️") && at("🅱️") < at("🔗"));
+        assert!(at("📡") < at("⬇️") && at("⬇️") < at("🔀") && at("🔀") < at("🅱️"));
+        assert!(at("🅱️") < at("🔗"));
+        // The comma sits right after the repository name, inside the segment: no separator
+        // between the repository and the forge counts.
+        assert!(full.contains("owner/repo, ⬇️ 7 🔀 3 | "), "{full}");
+        // Line 1 keeps no card counts: the effort group runs into the Claude Code version and
+        // then the MoAI version.
+        assert_eq!(
+            plain(&status, &[]).lines().next().unwrap(),
+            "🏷️ agent | 🧠 Opus | 🤔 high·t | 🤖 v2.1.293 | 🗿 v2.0 -> 🗿 v3.0"
+        );
+        // Line 3 opens with the card counts, and the waiting count takes its own number
+        // between the working and the done number.
+        assert_eq!(
+            plain(&status, &[]).lines().nth(2).unwrap(),
+            "🗂️ 50 ▶️ 5 🔃 15 ✅ 65 | 🔋 CTX: █████░░░░░ 50% | 🪫 Week: ███████░░░ 75%"
+        );
         // Notes unreadable: the same place, three items.
         status.cards.as_mut().unwrap().waiting = None;
         assert_eq!(
-            line(&status, &[]),
-            "⬇️ 7 🔀 3 | 🗂️ 50 ▶️ 5 ✅ 65 | 📡 owner/repo | 🅱️ main ↓2 +3 | 🔗 #42 pending"
+            plain(&status, &[]).lines().nth(2).unwrap(),
+            "🗂️ 50 ▶️ 5 ✅ 65 | 🔋 CTX: █████░░░░░ 50% | 🪫 Week: ███████░░░ 75%"
         );
-        // Each group on its own switch leaves the other three in order.
         status.cards.as_mut().unwrap().waiting = Some(15);
+        // Without the forge counts the repository name stands alone, with no comma.
         assert_eq!(
             line(&status, &["github"]),
-            "🗂️ 50 ▶️ 5 🔃 15 ✅ 65 | 📡 owner/repo | 🅱️ main ↓2 +3 | 🔗 #42 pending"
+            "📡 owner/repo | 🅱️ main ↑5 ↓2 +3 | 🔗 #42 pending"
         );
+        // The `cards` switch hides the group and nothing else.
         assert_eq!(
-            line(&status, &["cards"]),
-            "⬇️ 7 🔀 3 | 📡 owner/repo | 🅱️ main ↓2 +3 | 🔗 #42 pending"
+            plain(&status, &["cards"]).lines().nth(2).unwrap(),
+            "🔋 CTX: █████░░░░░ 50% | 🪫 Week: ███████░░░ 75%"
         );
+        // The pull request keeps the last place of line 2.
         assert_eq!(
             line(&status, &["pr"]),
-            "⬇️ 7 🔀 3 | 🗂️ 50 ▶️ 5 🔃 15 ✅ 65 | 📡 owner/repo | 🅱️ main ↓2 +3"
+            "📡 owner/repo, ⬇️ 7 🔀 3 | 🅱️ main ↑5 ↓2 +3"
         );
     }
 
@@ -995,8 +1115,10 @@ mod tests {
     /// done number; `None` (notes unreadable) gives the three-number form without it, and
     /// `cards` off hides all of it.
     #[test]
-    fn waiting_cards_get_their_own_number_and_none_gives_the_three_number_form() {
-        let line = |s: &Status, off: &[&str]| plain(s, off).lines().nth(1).unwrap().to_string();
+    fn waiting_cards_get_their_own_number_on_line_three_and_none_gives_the_three_number_form() {
+        // The last line: line 3 in the full render, and the same line one up when the git
+        // line is gone.
+        let line3 = |s: &Status, off: &[&str]| plain(s, off).lines().last().unwrap().to_string();
         let mut status = full_status();
         status.worktree = "wt".into();
         status.cards = Some(CardCounts {
@@ -1005,22 +1127,29 @@ mod tests {
             remaining: 50,
             done: 12,
         });
-        // The worktree opens line 3 (user instruction 2026-11-19), so line 2 is the cards alone.
-        assert_eq!(line(&status, &["git_branch"]), "🗂️ 50 ▶️ 2 🔃 26 ✅ 12");
-        // With nothing else on line 2 the line is gone and the bars line is the second one.
-        assert!(line(&status, &["git_branch", "cards"]).starts_with("🌳 wt | 🔋 CTX:"));
+        // The counts read the ledger, not git: with `git_branch` off they still open line 3.
+        assert_eq!(
+            line3(&status, &["git_branch"]),
+            "🗂️ 50 ▶️ 2 🔃 26 ✅ 12 | 🔋 CTX: █████░░░░░ 50% | 🪫 Week: ███████░░░ 75% | 🌳 wt"
+        );
+        // Without the ledger notes the four-number form becomes the three-number one.
         status.cards = Some(CardCounts {
             in_progress: 28,
             waiting: None,
             remaining: 50,
             done: 12,
         });
-        assert_eq!(line(&status, &["git_branch"]), "🗂️ 50 ▶️ 28 ✅ 12");
+        assert_eq!(
+            line3(&status, &["git_branch"]),
+            "🗂️ 50 ▶️ 28 ✅ 12 | 🔋 CTX: █████░░░░░ 50% | 🪫 Week: ███████░░░ 75% | 🌳 wt"
+        );
     }
 
     #[test]
     fn card_counts_do_not_need_the_repository_or_the_branch() {
-        let line = |s: &Status, off: &[&str]| plain(s, off).lines().nth(1).unwrap().to_string();
+        // The last line: line 3 in the full render, and the same line one up when the git
+        // line is gone.
+        let line3 = |s: &Status, off: &[&str]| plain(s, off).lines().last().unwrap().to_string();
         let mut status = full_status();
         status.cards = Some(CardCounts {
             in_progress: 1,
@@ -1029,13 +1158,32 @@ mod tests {
             done: 3,
         });
         status.worktree = "wt".into();
-        assert_eq!(line(&status, &["git_branch"]), "🗂️ 2 ▶️ 1 ✅ 3");
+        let bars = "🔋 CTX: █████░░░░░ 50% | 🪫 Week: ███████░░░ 75%";
+        // Without a branch and a repository line 2 is gone; line 3 keeps the counts first,
+        // the worktree last.
         status.repo = None;
-        assert_eq!(line(&status, &[]), "🗂️ 2 ▶️ 1 ✅ 3 | 🅱️ main ↓2 +3");
+        assert_eq!(
+            line3(&status, &["git_branch"]),
+            format!("🗂️ 2 ▶️ 1 ✅ 3 | {bars} | 🌳 wt")
+        );
         status.git = None;
-        assert_eq!(line(&status, &[]), "🗂️ 2 ▶️ 1 ✅ 3");
+        assert_eq!(
+            line3(&status, &["git_branch"]),
+            format!("🗂️ 2 ▶️ 1 ✅ 3 | {bars} | 🌳 wt")
+        );
+        let out = plain(&status, &[]);
+        assert_eq!(out.lines().count(), 2, "{out}");
+        assert_eq!(
+            out.lines().nth(1).unwrap(),
+            format!("🗂️ 2 ▶️ 1 ✅ 3 | {bars} | 🌳 wt")
+        );
         status.worktree.clear();
-        assert_eq!(line(&status, &[]), "🗂️ 2 ▶️ 1 ✅ 3");
+        let out = plain(&status, &[]);
+        assert_eq!(out.lines().count(), 2, "{out}");
+        assert_eq!(
+            out.lines().nth(1).unwrap(),
+            format!("🗂️ 2 ▶️ 1 ✅ 3 | {bars}")
+        );
     }
 
     /// Card C-65: color is never the only signal. Each number keeps its icon, the three parts
@@ -1066,12 +1214,12 @@ mod tests {
                 }
             }
             let colors = [
-                t.prs,
+                t.effort,
                 t.cards_waiting,
                 t.cards_active,
                 t.cards_posted,
                 t.cards_done,
-                t.branch,
+                t.version,
             ];
             for pair in colors.windows(2) {
                 assert_ne!(pair[0], pair[1], "{name}: neighbours share a color");
@@ -1117,37 +1265,40 @@ mod tests {
         assert!(output.contains("🔗 #987 approved"), "{output:?}");
     }
 
-    /// User instruction 2026-11-19: the worktree opens line 3 as `🌳 WT-c<card>-<name>`, as
-    /// `🌳 WT-c<card>` when the label has no name, and as the host's name alone without a
-    /// label; the bars follow it unchanged and `worktree` off removes it.
+    /// The user's third instruction of 2026-11-20: the worktree closes line 3, as
+    /// `🌳 WT-c<card>-<name>`, as `🌳 WT-c<card>` when the label has no name, and as the
+    /// host's name alone without a label; the bars before it are unchanged and `worktree`
+    /// off removes it.
     #[test]
-    fn the_worktree_label_opens_line_3_in_three_shapes() {
+    fn the_worktree_label_closes_line_3_in_three_shapes() {
         let bars = |s: &Status, off: &[&str]| plain(s, off).lines().nth(2).unwrap().to_string();
         let mut status = full_status();
         let rest = bars(&status, &[]);
         status.worktree = "host-name".into();
-        assert_eq!(bars(&status, &[]), format!("🌳 host-name | {rest}"));
+        assert_eq!(bars(&status, &[]), format!("{rest} | 🌳 host-name"));
         status.worktree_label = Some(state::WorktreeLabel {
             card: 103,
             name: "statusline-waiting-cards".into(),
         });
         assert_eq!(
             bars(&status, &[]),
-            format!("🌳 WT-c103-statusline-waiting-cards | {rest}")
+            format!("{rest} | 🌳 WT-c103-statusline-waiting-cards")
         );
         status.worktree_label = Some(state::WorktreeLabel {
             card: 7,
             name: String::new(),
         });
-        assert_eq!(bars(&status, &[]), format!("🌳 WT-c7 | {rest}"));
+        assert_eq!(bars(&status, &[]), format!("{rest} | 🌳 WT-c7"));
         assert_eq!(bars(&status, &["worktree"]), rest);
         // The main checkout (no host name) has no segment, whatever a label says.
         status.worktree.clear();
         assert_eq!(bars(&status, &[]), rest);
     }
 
-    /// #2756 AC-7–AC-9: the cache timer sits in the `♻️` segment, the worktree and the pull
-    /// request on the repository line, each left out with its separator when absent.
+    /// #2756 AC-7–AC-9, reworked by the user instruction 2026-11-20 (D-1 of
+    /// SPEC-20261120-statusline-layout): the cache segment is not in the layout — the value
+    /// and the warm or cold timer show nothing wherever they used to stand — the worktree and
+    /// the pull request stay on their lines, and the Claude Code version ends line 3.
     #[test]
     fn cache_timer_worktree_and_pr_segments() {
         let mut status = full_status();
@@ -1161,25 +1312,34 @@ mod tests {
         let out = plain(&status, &[]);
         let lines: Vec<_> = out.lines().collect();
         assert_eq!(
-            lines[0],
-            "🏷️ agent | 🧠 Opus | 🤔 high·t | ♻️ 75% ⏱️ 4m | 🤖 v2.1.293 | 🗿 v2.0 -> 🗿 v3.0"
+            lines[0], "🏷️ agent | 🧠 Opus | 🤔 high·t | 🤖 v2.1.293 | 🗿 v2.0 -> 🗿 v3.0",
+            "no cache segment: {}",
+            lines[0]
         );
         assert_eq!(
             lines[1],
-            "⬇️ 7 🔀 3 | 📡 owner/repo | 🅱️ main ↓2 +3 | 🔗 #42 pending"
+            "📡 owner/repo, ⬇️ 7 🔀 3 | 🅱️ main ↑5 ↓2 +3 | 🔗 #42 pending"
         );
-        // The worktree opens line 3 (user instruction 2026-11-19), before the bars.
-        assert!(lines[2].starts_with("🌳 wt | 🔋 CTX:"), "{}", lines[2]);
+        // The card counts would open line 3 (none here), the bars follow, and the worktree
+        // label closes the line (the user's third instruction of 2026-11-20); the Claude
+        // Code version is on line 1.
+        assert!(lines[2].starts_with("🔋 CTX:"), "{}", lines[2]);
+        assert!(lines[2].ends_with(" | 🌳 wt"), "{}", lines[2]);
         assert!(
             !out.contains('\x1b'),
             "plain output carries no link escape: {out:?}"
         );
+        // The warm and cold markers never appear, with or without a value, and with the
+        // `cache_hit` option left enabled.
         status.cache_timer = Some(CacheTimer::Cold);
-        assert!(plain(&status, &[]).starts_with("🏷️ agent | 🧠 Opus | 🤔 high·t | ♻️ 75% 🧊 | "));
+        let cold = plain(&status, &[]);
+        assert!(!cold.contains('♻'), "{cold}");
+        assert!(!cold.contains('⏱') && !cold.contains('🧊'), "{cold}");
         status.cache = None;
+        let timer_alone = plain(&status, &[]);
         assert!(
-            plain(&status, &[]).contains("| ♻️ 🧊 |"),
-            "a timer alone keeps the segment"
+            !timer_alone.contains('♻') && !timer_alone.contains('🧊'),
+            "{timer_alone}"
         );
         status.cache_timer = None;
         assert!(
@@ -1194,7 +1354,7 @@ mod tests {
         status.worktree.clear();
         assert_eq!(
             plain(&status, &[]).lines().nth(1),
-            Some("⬇️ 7 🔀 3 | 📡 owner/repo | 🅱️ main ↓2 +3"),
+            Some("📡 owner/repo, ⬇️ 7 🔀 3 | 🅱️ main ↑5 ↓2 +3"),
             "no empty `| |`"
         );
     }
@@ -1242,6 +1402,7 @@ mod tests {
         assert_eq!(plain(&full_status(), &disabled), "MoAI");
         let output = plain(&full_status(), &["session", "usage_5h", "usage_7d"]);
         assert_eq!(output.lines().count(), 3);
+        // The Claude Code version keeps line 3 non-empty without the bars.
         assert_eq!(output.lines().nth(2), Some("🔋 CTX: █████░░░░░ 50%"));
         // #2756: with the repository line hidden, the bars line moves up to second.
         let output = plain(&full_status(), &["git_branch", "git_status"]);
@@ -1339,13 +1500,14 @@ mod tests {
                 for (hex, text) in [
                     (t.model, "🧠 Opus"),
                     (t.effort, "🤔 high·t"),
-                    (t.cache, "♻️ 75%"),
+                    // D-1: the cache segment is not in the layout, so nothing paints
+                    // `theme.cache` any more; the palette entry itself stays distinct (below).
                     (t.version, "🤖 v2.1.293"),
                     (t.version, "🗿 v2.0 -> 🗿 v3.0"),
                     (t.repo, "📡 owner/repo"),
                     (t.issues, "⬇️ 7"),
                     (t.prs, "🔀 3"),
-                    (t.branch, "🅱️ main ↓2 +3"),
+                    (t.branch, "🅱️ main ↑5 ↓2 +3"),
                 ] {
                     assert!(
                         out.contains(&profile.paint(hex, text)),

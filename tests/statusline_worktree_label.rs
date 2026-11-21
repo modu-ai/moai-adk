@@ -155,7 +155,7 @@ fn a_held_card_opens_line_3_as_wt_c_card_name() {
     let out = f.plain(Some(&wt));
     assert_eq!(
         line(&out, 2),
-        format!("🌳 WT-c1-demo-work | {BARS}"),
+        format!("🗂️ 0 ▶️ 1 🔃 0 ✅ 0 | {BARS} | 🌳 WT-c1-demo-work"),
         "{out}"
     );
     assert!(
@@ -172,24 +172,31 @@ fn only_the_segment_moves_line_1_and_the_bars_stay() {
     let without = f.plain(Some(&wt));
     f.reserve("active", "held", &wt.dir, "spec/20260101-demo-work");
     let with = f.plain(Some(&wt));
-    assert_eq!(line(&with, 0), line(&without, 0));
-    assert!(line(&with, 2).ends_with(&format!(" | {BARS}")), "{with}");
+    // The card counts open line 3 (a registered ledger shows the group even at zero), the
+    // bars follow, and the worktree label closes the line.
     assert!(
-        line(&without, 2).ends_with(&format!(" | {BARS}")),
+        line(&with, 2).starts_with("🗂️ 0 ▶️ 1 🔃 0 ✅ 0 | "),
+        "{with}"
+    );
+    assert!(
+        line(&without, 2).starts_with("🗂️ 0 ▶️ 0 🔃 0 ✅ 0 | "),
         "{without}"
     );
-    // Line 2 holds no worktree in either render, and apart from the card counts (a card now
-    // exists) it is the same.
-    let after_cards = |out: &str| {
-        line(out, 1)
-            .split(" | ")
-            .skip(1)
-            .collect::<Vec<_>>()
-            .join(" | ")
-    };
-    assert_eq!(after_cards(&with), after_cards(&without));
-    assert!(!line(&with, 1).contains('🌳'), "{with}");
-    assert!(!line(&without, 1).contains('🌳'), "{without}");
+    assert!(
+        line(&with, 2).ends_with(&format!(" | {BARS} | 🌳 WT-c1-demo-work")),
+        "{with}"
+    );
+    // Without the reservation the label is the host's name alone; the bars stand between
+    // the group and the label in both renders.
+    assert!(
+        line(&without, 2).ends_with(&format!(" | {BARS} | 🌳 demo-1-work")),
+        "{without}"
+    );
+    assert!(line(&with, 2).contains(&format!(" | {BARS} | ")), "{with}");
+    // Line 1 holds no worktree and no card counts in either render.
+    assert_eq!(line(&with, 0), line(&without, 0));
+    assert!(!line(&with, 0).contains('🌳'), "{with}");
+    assert!(!line(&without, 0).contains('🌳'), "{without}");
 }
 
 #[test]
@@ -197,7 +204,11 @@ fn no_reservation_shows_the_host_name_alone_on_line_3() {
     let f = fixture();
     let wt = f.worktree("demo-1-work", "spec/20260101-demo-work");
     let out = f.plain(Some(&wt));
-    assert_eq!(line(&out, 2), format!("🌳 demo-1-work | {BARS}"), "{out}");
+    assert_eq!(
+        line(&out, 2),
+        format!("🗂️ 0 ▶️ 0 🔃 0 ✅ 0 | {BARS} | 🌳 demo-1-work"),
+        "{out}"
+    );
     assert!(!line(&out, 1).contains('🌳'), "{out}");
 }
 
@@ -207,7 +218,11 @@ fn a_released_reservation_is_not_a_holder() {
     let wt = f.worktree("demo-1-work", "spec/20260101-demo-work");
     f.reserve("ready", "released", &wt.dir, "spec/20260101-demo-work");
     let out = f.plain(Some(&wt));
-    assert_eq!(line(&out, 2), format!("🌳 demo-1-work | {BARS}"), "{out}");
+    assert_eq!(
+        line(&out, 2),
+        format!("🗂️ 1 ▶️ 0 🔃 0 ✅ 0 | {BARS} | 🌳 demo-1-work"),
+        "{out}"
+    );
 }
 
 #[test]
@@ -220,7 +235,7 @@ fn two_cards_holding_one_folder_show_the_lowest_number() {
     let out = f.plain(Some(&wt));
     assert_eq!(
         line(&out, 2),
-        format!("🌳 WT-c1-demo-work | {BARS}"),
+        format!("🗂️ 0 ▶️ 2 🔃 0 ✅ 0 | {BARS} | 🌳 WT-c1-demo-work"),
         "{out}"
     );
 }
@@ -231,7 +246,11 @@ fn a_branch_of_another_shape_takes_the_rest_of_the_folder_name() {
     let wt = f.worktree("demo-1-hooks", "m-flow/bundle-20260101-6");
     f.reserve("active", "held", &wt.dir, "m-flow/bundle-20260101-6");
     let out = f.plain(Some(&wt));
-    assert_eq!(line(&out, 2), format!("🌳 WT-c1-hooks | {BARS}"), "{out}");
+    assert_eq!(
+        line(&out, 2),
+        format!("🗂️ 0 ▶️ 1 🔃 0 ✅ 0 | {BARS} | 🌳 WT-c1-hooks"),
+        "{out}"
+    );
 }
 
 #[test]
@@ -240,14 +259,22 @@ fn a_folder_that_keeps_no_rest_gives_the_card_alone() {
     let wt = f.worktree("demo-1", "work-branch");
     f.reserve("active", "held", &wt.dir, "work-branch");
     let out = f.plain(Some(&wt));
-    assert_eq!(line(&out, 2), format!("🌳 WT-c1 | {BARS}"), "{out}");
+    assert_eq!(
+        line(&out, 2),
+        format!("🗂️ 0 ▶️ 1 🔃 0 ✅ 0 | {BARS} | 🌳 WT-c1"),
+        "{out}"
+    );
 }
 
 #[test]
 fn the_main_checkout_has_no_worktree_segment() {
     let f = fixture();
     let out = f.plain(None);
-    assert_eq!(line(&out, 2), BARS, "{out}");
+    assert_eq!(
+        line(&out, 2),
+        format!("🗂️ 0 ▶️ 0 🔃 0 ✅ 0 | {BARS}"),
+        "{out}"
+    );
     assert!(!out.contains('🌳'), "{out}");
 }
 
@@ -260,6 +287,10 @@ fn the_worktree_option_off_hides_the_segment_on_every_line() {
     std::fs::create_dir_all(config.parent().unwrap()).unwrap();
     std::fs::write(&config, "statusline:\n  segments:\n    worktree: false\n").unwrap();
     let out = f.plain(Some(&wt));
-    assert_eq!(line(&out, 2), BARS, "{out}");
+    assert_eq!(
+        line(&out, 2),
+        format!("🗂️ 0 ▶️ 1 🔃 0 ✅ 0 | {BARS}"),
+        "{out}"
+    );
     assert!(!out.contains('🌳'), "{out}");
 }

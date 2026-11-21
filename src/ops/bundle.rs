@@ -47,9 +47,10 @@ enum Action {
         /// The repository to read.
         #[arg(long, default_value = ".")]
         dir: PathBuf,
-        /// The branch bundles are merged into.
-        #[arg(long, default_value = "origin/v2026.11.0")]
-        tip: String,
+        /// The branch bundles are merged into; without it the profile's m-flow
+        /// integration branch becomes origin/<branch>, else origin/v2026.11.0.
+        #[arg(long)]
+        tip: Option<String>,
     },
     /// Reads only. Judge heads: every check, all findings in one answer
     ///
@@ -74,9 +75,10 @@ enum Action {
         /// The repository to read.
         #[arg(long, default_value = ".")]
         dir: PathBuf,
-        /// The branch bundles are merged into.
-        #[arg(long, default_value = "origin/v2026.11.0")]
-        tip: String,
+        /// The branch bundles are merged into; without it the profile's m-flow
+        /// integration branch becomes origin/<branch>, else origin/v2026.11.0.
+        #[arg(long)]
+        tip: Option<String>,
     },
     /// Reads only. Writes one new file with --out. Write the bundle pull request body
     ///
@@ -111,9 +113,10 @@ enum Action {
         /// The repository to read.
         #[arg(long, default_value = ".")]
         dir: PathBuf,
-        /// The branch bundles are merged into.
-        #[arg(long, default_value = "origin/v2026.11.0")]
-        tip: String,
+        /// The branch bundles are merged into; without it the profile's m-flow
+        /// integration branch becomes origin/<branch>, else origin/v2026.11.0.
+        #[arg(long)]
+        tip: Option<String>,
     },
     /// Writes a new branch and worktree. Merge heads, one merge commit each
     ///
@@ -141,9 +144,10 @@ enum Action {
         /// The repository to build in.
         #[arg(long, default_value = ".")]
         dir: PathBuf,
-        /// The branch bundles are merged into.
-        #[arg(long, default_value = "origin/v2026.11.0")]
-        tip: String,
+        /// The branch bundles are merged into; without it the profile's m-flow
+        /// integration branch becomes origin/<branch>, else origin/v2026.11.0.
+        #[arg(long)]
+        tip: Option<String>,
     },
     /// Runs commands. Run the check list on a bundle branch
     ///
@@ -200,9 +204,10 @@ enum Action {
         /// The repository to read.
         #[arg(long, default_value = ".")]
         dir: PathBuf,
-        /// The branch bundles are merged into.
-        #[arg(long, default_value = "origin/v2026.11.0")]
-        tip: String,
+        /// The branch bundles are merged into; without it the profile's m-flow
+        /// integration branch becomes origin/<branch>, else origin/v2026.11.0.
+        #[arg(long)]
+        tip: Option<String>,
     },
     /// Writes the user HOME. Install an opt-in pack's entries into the user folders and record
     /// the selection in the user-assets manifest (the Go output contract rides in `result.text`)
@@ -224,22 +229,52 @@ enum Action {
 
 pub const OPERATION: &str = "bundle";
 
+const DEFAULT_TIP: &str = "origin/v2026.11.0";
+
+/// The tip an action judges: an explicit `--tip` wins; without one, the project
+/// profile's m-flow integration branch becomes `origin/<branch>` (the stored
+/// value drives the integration ref), and without a recorded branch today's
+/// default stays, so every other repository keeps its answer.
+fn resolve_tip(project: &std::path::Path, tip: Option<&str>) -> Result<String, String> {
+    if let Some(t) = tip {
+        return Ok(t.to_string());
+    }
+    let work_flow = moai_cli::profile::read_profile(project)
+        .ok()
+        .and_then(|(p, _)| p.work_flow);
+    if work_flow.as_ref().is_some_and(|w| w.flow == "m-flow") {
+        if let Some(branch) = work_flow
+            .and_then(|w| w.integration_branch)
+            .filter(|b| !b.trim().is_empty())
+        {
+            return Ok(format!("origin/{branch}"));
+        }
+    }
+    Ok(DEFAULT_TIP.to_string())
+}
+
 pub fn run(args: Args) -> Result<serde_json::Value, String> {
     use moai_cli::bundle as b;
     use moai_cli::ledger::command::resolve_home;
+    let tip = match &args.action {
+        Action::Ready { project, tip, .. }
+        | Action::Check { project, tip, .. }
+        | Action::Body { project, tip, .. }
+        | Action::Build { project, tip, .. }
+        | Action::Verify { project, tip, .. } => resolve_tip(project, tip.as_deref())?,
+        // The user-assets actions name no tip: they never judge a ref.
+        Action::Add { .. } | Action::Remove { .. } | Action::List => String::new(),
+    };
     match args.action {
         Action::Ready {
-            project,
-            home,
-            dir,
-            tip,
+            project, home, dir, ..
         } => b::ready(&project, &resolve_home(home)?, &dir, &tip),
         Action::Check {
             heads,
             project,
             home,
             dir,
-            tip,
+            ..
         } => b::check(&project, &resolve_home(home)?, &dir, &tip, &heads),
         Action::Body {
             heads,
@@ -249,7 +284,7 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             project,
             home,
             dir,
-            tip,
+            ..
         } => b::body(
             &project,
             &resolve_home(home)?,
@@ -266,7 +301,7 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             project,
             home,
             dir,
-            tip,
+            ..
         } => b::build::build(
             &project,
             &resolve_home(home)?,
@@ -288,7 +323,7 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             project,
             home,
             dir,
-            tip,
+            ..
         } => b::verify::verify(
             &project,
             &resolve_home(home)?,

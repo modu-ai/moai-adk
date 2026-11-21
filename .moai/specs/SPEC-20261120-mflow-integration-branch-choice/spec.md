@@ -27,6 +27,14 @@ M-Flow 첫 설정(/moai project 인터뷰의 `work_flow` 단계)에서 통합 �
 - REQ-4: The operation shall print a remote ref outside the standard branch namespaces — a pull-request candidate such as `refs/remotes/origin/pr/<n>` — as `canonical: false` with a `candidate` label, so it is visible but never recommended as the integration target. · failure: none — labeling only; a `canonical: false` ref is never recommended nor deleted.
 - REQ-5: The operation shall report a recorded integration target it cannot integrate into with the safe choices — a `missing-target` state with the safe-choice wording when the recorded branch is absent from the repository, an `occupied-worktree` state naming the path when a worktree other than the project folder has it checked out — creating no branch, no worktree, no file and no ref itself. · failure: none — reporting and an unchanged ref state are the whole behavior.
 - REQ-6: The operation's documentation fragment shall describe the read-only behavior and the states, its installed help beginning with `Reads only.`. · failure: none — wording only.
+- REQ-7: The bundle operations shall resolve an unset `--tip` as the project profile's m-flow integration branch joined to `origin/`, keeping today's `origin/v2026.11.0` default when the profile records no integration branch or cannot be read. · failure: none — an unreadable profile keeps the old default, and an explicit `--tip` always wins.
+- REQ-8: The discovery rules shall never name a release-prefixed branch as the recommended branch — a release pull request is for the formal release only — while such a branch stays visible as a candidate, and a recorded value stays the user's own answer. · failure: none — excluding is the whole behavior.
+- REQ-9: When `origin/HEAD` names a pull-request candidate namespace or a ref no fetch ever brought, the remote-default rule shall be skipped in favour of the next fallback. · failure: none — skipping is the whole behavior.
+- REQ-10: When the project profile exists but cannot be read, the answer shall carry a `profile-unreadable` state with the safe-choice wording, the discovery recommendation still present. · failure: none — the state reports and nothing else changes.
+- REQ-11: On the later slice the first-setup flow shall record exactly the lane-merge allow line in the user's hook-config.toml after previewing it to the user, beside the lock folder, with every other primary-checkout command staying refused. · failure: none — the removal targets the line the flow itself added.
+- REQ-12: On the later slice the first-setup flow shall remove only the allow line it recorded when the user asks for the undo, leaving every other line of the file untouched. · failure: none — the removal targets the line the flow itself added.
+
+The lane-merge allow line of REQ-11 is the exact fixed command `git -C <primary> merge --ff-only refs/moai/lane-merge` under `[hooks.primary_checkout].allow_commands`, and the lock folder is `~/.moai/locks/<project>-<integration>.lock`. The permit serves the moai primary guard only — a machine without a hook-config.toml keeps that guard off, so the lane-merge step is not blocked by moai there; the lane sessions' own refusal was the host's worktree isolation, a different guard (note 4140). The leader decision and its undo live on note 4138; the M-Flow guidance wording of the procedure goes to the C-204 card.
 
 ## Acceptance
 
@@ -41,6 +49,10 @@ M-Flow 첫 설정(/moai project 인터뷰의 `work_flow` 단계)에서 통합 �
 - AC-5: the wider READY set around the change passes.
   verify: `cargo test --locked --offline --bins`
   verify: `cargo test --locked --offline --lib`
+- AC-6 (REQ-7): with the profile recording an m-flow integration branch, `bundle ready` without `--tip` judges `origin/<branch>`; with no recorded branch it keeps `origin/v2026.11.0`.
+  verify: `cargo test --test bundle_ready_cli`
+- AC-7 (REQ-8, REQ-9, REQ-10): a release/v* branch is never the discovery recommendation (the fallbacks answer instead); origin/HEAD naming the pr namespace or a broken ref is skipped for the current-branch fallback; an unreadable profile file reports `profile-unreadable` with the safe-choice wording and the recommendation kept.
+  verify: `cargo test --test work_flow_plan_cli`
 
 ## Scope
 
@@ -63,9 +75,10 @@ M-Flow 첫 설정(/moai project 인터뷰의 `work_flow` 단계)에서 통합 �
 
 | Id | Decision | Basis | Undo |
 | --- | --- | --- | --- |
-| D-1 | 이 조각은 src/profile.rs·src/ops/bundle.rs·src/bundle.rs 를 제외해요 — C-105·C-181·C-141 예약 충돌(노트 3990); remote_target 필드와 bundle --tip 프로필 기본은 그들이 착지한 뒤 같은 카드에서. | 예약 충돌 세 번 관찰 | 예약 풀림 |
+| D-1 | 조각 1 은 src/profile.rs·src/ops/bundle.rs·src/bundle.rs 를 제외했어요 — 예약 충돌(노트 3990). 조각 1b(리더 선택 (a), 노트 4048)는 bundle --tip 프로필 기본을 풀린 src/ops/bundle.rs 와 bundle_ready 시험에 착지해요; remote_target 필드는 profile.rs 의 카드, src/bundle.rs 는 자기 카드 대기. | 예약 충돌 세 번 관찰, 리더 결정 | 예약 풀림 |
 | D-2 | 추천 이유는 로컬 git 근거만(네트워크 없음); 풀 요청 대상 조사는 인터뷰 에이전트 몫. | 읽기 전용·오프라인 원칙 | 문구 갱신 |
 | D-3 | REQ-4·AC-4(interview.md 문구와 문서 pin 시험)는 뒤 조각으로 — 문구 편집이 원장이 잠근 sha256 을 바꾸고 원장은 지금 acc-auto-link 카드 예약 중. 문구 초안은 레인 보관(/tmp/c183-interview.patch). | repo_scans.json 이 `source_manifest_covers_every_package_file`(stale sha256 거절)을 돌림 | 원장 풀림 |
+| D-4 | REQ-11·12(레인 병합 허용 줄과 잠금 폴더의 미리보기·확인 뒤 기록·되돌리기)는 뒤 조각으로 — 노트 4138 의 사용자 결정('허용' + m-flow 지침 업데이트는 C-204). 허용 줄은 moai primary 가드용 — hook-config.toml 이 없는 기계는 그 가드가 꺼져 있어 영향 없고, 레인 세션의 거부는 호스트(Claude Code) 격리로 별개(노트 4140). | 노트 4138 사용자 결정 | undo 로 줄 삭제 |
 
 ## Result
 

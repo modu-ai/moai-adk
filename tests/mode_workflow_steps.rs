@@ -1550,10 +1550,10 @@ fn orca_mail_is_checked_for_delivery_and_focus_is_never_switched() {
     for p in [
         "Never run `orca terminal switch` to read another session",
         "`orca terminal read --terminal <handle> --screen`",
-        "A message sent as Orca mail is not delivered until its `delivered_at` is set",
-        "Read `delivered_at` once after the send",
-        "send the same text with `orca terminal send` under items 1 and 2",
-        "Never resend a mail whose `delivered_at` is set",
+        "The pages do not document `delivered_at` or any mail state",
+        "read a `null` `delivered_at` as not yet known",
+        "A reader that only watches a mailbox uses `orca orchestration check --peek` or `--all`",
+        "never resend the mail as a new mail",
     ] {
         assert!(
             leader.contains(p),

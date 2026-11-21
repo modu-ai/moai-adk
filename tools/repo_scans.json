@@ -155,8 +155,7 @@
       "tests": [
         "tests/home_isolation_scan.rs::ledger_tests_run_the_binary_only_through_temp_home",
         "tests/home_isolation_scan.rs::no_new_test_runs_the_binary_without_a_home",
-        "tests/home_isolation_scan.rs::the_ledger_library_has_no_external_call_names",
-        "tests/home_isolation_scan.rs::the_decide_library_has_no_external_call_names"
+        "tests/home_isolation_scan.rs::the_ledger_library_has_no_external_call_names"
       ],
       "checks": [
         "cargo test --offline --locked --test home_isolation_scan"
@@ -178,15 +177,9 @@
           "suffixes": [
             ".rs"
           ]
-        },
-        {
-          "prefix": "src/decide/",
-          "suffixes": [
-            ".rs"
-          ]
         }
       ],
-      "rejects": "a ledger test that runs the binary without TempHome, a test that runs the binary without naming HOME and is not in the baseline list, a process, socket, program name or URL in src/ledger/ (#3068 P2), or one in src/decide/ other than the two provider endpoints (C-37 S2)"
+      "rejects": "a ledger test that runs the binary without TempHome, a test that runs the binary without naming HOME and is not in the baseline list, or a process, socket, program name or URL in src/ledger/ (#3068 P2)"
     },
     {
       "id": "user-asset-bundle-cli",

@@ -4,7 +4,9 @@ operation `bundle` · 코드 `src/ops/bundle.rs`, `src/bundle.rs`, `src/bundle/b
 
 `bundle <동작>` 은 M-Flow 묶음 PR 을 조립하는 리더를 돕는다. 레인이 카드에 `LANE-READY-INTEGRATION` 줄을 남긴 head 를 읽고, head 마다 검사하고, 묶음 PR 본문을 사실에서 만들고, 묶음 가지를 만든다. 봉투의 `operation` 은 항상 `bundle`, 동작은 결과의 `action` 으로 나간다. `ready`·`check`·`body` 의 도움말 첫 문장은 `Reads only.` 로 시작한다(`body --out` 만 `Writes one new file.` 을 덧붙인다). `build` 는 가지와 worktree 를 쓰는 동작이고 도움말 첫 문장이 `Writes a new branch and worktree.` 다. `verify` 는 명령을 실행하는 동작이고 도움말 첫 문장이 `Runs commands.` 다. **어떤 동작도 fetch, push, PR 열기·고치기·병합, 카드 노트와 원장 행 쓰기, 설정 바꾸기를 하지 않는다. `ready`·`check`·`body` 는 ref·가지도 쓰지 않고, `build` 는 새 가지·새 worktree·병합 커밋만 쓴다.** head 고르기, push, PR 은 리더의 몫이고 CI·독립 감사·ruleset 은 그대로다. `build` 를 뺀 동작의 git 은 ref·색인·작업 트리를 쓰지 않는 명령만, 환경을 비운 채 부른다(`audit_delta::command`). 다만 `check`·`body` 가 쓰는 `git merge-tree --write-tree`(git 2.38 이상)는 어느 ref 도 가리키지 않는 tree·blob 객체를 객체 저장소에 남긴다(`git gc` 가 지운다).
 
-## `bundle ready [--project .] [--home H] [--dir .] [--tip origin/v2026.11.0]`
+## `bundle ready [--project .] [--home H] [--dir .] [--tip <tip>]`
+
+`--tip` 을 비우면 통합 대상은 프로필이 정해요: m-flow 이고 `work_flow.integration_branch` 가 기록돼 있으면 `origin/<branch>`, 기록이 없거나 프로필을 읽을 수 없으면 `origin/v2026.11.0`, 명시한 `--tip` 이 항상 이긴다(SPEC-20261120-mflow-integration-branch-choice).
 
 카드마다 첫 줄이 `LANE-READY-INTEGRATION` 으로 시작하는 노트 중 번호가 가장 큰 것(가장 새 줄)을 읽는다. 읽히는 모양은 `LANE-READY-INTEGRATION C-<n> head=<40자리 소문자 16진수>` 다음에 줄 끝이나 공백이 오는 것이고, head 바로 뒤에 ` spec=<SPEC id>` 가 올 수 있다(없어도 된다). 노트가 놓인 카드와 줄의 카드가 같아야 한다. 가장 새 줄이 읽히지 않으면 그 카드는 `unreadable`(카드, 노트 번호)에 올라가고, 더 오래된 줄의 head 는 쓰지 않는다. 결과: `heads[]`(`card`, `note_id`, `head`, `spec`, `specs`(`<tip>..<head>` 의 `Moai-Spec` trailer), `present`, `on_origin`, `already_in_tip`, `ready_lines`), `unreadable[]`, `tip`(이름, SHA, 커밋 시각). 도구는 fetch 하지 않는다: git 은 worktree 가 함께 쓰는 fetch 시각을 남기지 않으므로 tip 의 SHA 와 커밋 시각을 보여 주고, 부르기 전에 fetch 하는 것은 부르는 쪽이다.
 

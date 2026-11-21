@@ -167,7 +167,7 @@ pub const HOME_TABLE: &[Entry] = &[
     row("user-assets.acquire-guard.guard", RustUse::None, true, ToolAsset, GoRetires, NO, "Go lock_guard_unix.go:24 asset lock"),
     row(".migrate-tx-*.json", RustUse::None, true, ToolAsset, GoRetires, NO, "Go migrate_home_state.go:331 migration journals"),
     row("specs", RustUse::None, true, UserData, UserDataKeep, NO, "user SPECs (D-M1 item 3)"),
-    row("reports", RustUse::None, true, Unknown, UnknownKeep, NO, "Go paths.go:464 (Z2: owner unknown, kept and reported)"),
+    row("reports", Writes, true, UserData, UserDataKeep, NO, "C-126: `reports/<project>/` holds the reports a session saves outside the repository (home_workdir.rs reports_dir); Go paths.go:464 shares the folder name, so it is kept as user data and never retired"),
     row("handoffs", RustUse::None, true, Unknown, UnknownKeep, NO, "no current writer"),
     row("kanban", RustUse::None, true, Unknown, UnknownKeep, NO, "no current writer"),
     row("backup", RustUse::None, true, Unknown, UnknownKeep, NO, "no current writer"),
@@ -270,6 +270,7 @@ mod tests {
         "path",
         "projects",
         "receipts",
+        "reports",
         "schedule",
         "state",
         "vault",
@@ -393,7 +394,7 @@ mod tests {
     /// §2 (나)/(라)); the other mismatch names say what the code does.
     #[test]
     fn the_names_of_design_3009_match_what_the_code_does() {
-        for name in ["projects", "worktrees"] {
+        for name in ["projects", "worktrees", "reports"] {
             let e = lookup(name).unwrap();
             assert_eq!(
                 (e.rust, e.go, e.class, e.rule),
@@ -473,7 +474,7 @@ mod tests {
             ("projects", UserData, UserDataKeep, true),
             ("claude-profiles", Unknown, UnknownKeep, true),
             ("integrations", Unknown, UnknownKeep, true),
-            ("reports", Unknown, UnknownKeep, true),
+            ("reports", UserData, UserDataKeep, true),
             // hygiene.rs writes `holding/<UTC date>/`; the name is this generation's.
             ("holding", Class::Rust, RustName, false),
         ];
