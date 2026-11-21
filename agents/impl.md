@@ -39,7 +39,7 @@ Assume no conversation context beyond this block. Do not start other agents.
 ## Steps
 
 1. If you run in a separate worktree, it may start from the default branch, not from the parent's commit: check out `base` first and confirm `git rev-parse HEAD` equals it. Then read the `refs` and the files in `scope` that the task names.
-2. Make the smallest change that does the task. Follow the style of the file you edit.
+2. Make the smallest change that does the task. Follow the style of the file you edit. Where the change leaves something a later reader must know, add a `@cc:` comment of the fitting kind (`@cc:later`, `@cc:careful` or `@cc:proves`); tools link it automatically.
 3. Run the checks the task or the refs name for this change. Record each command and its exit code.
 4. Do not commit, push, or open a pull request unless the task says so.
 

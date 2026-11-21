@@ -298,11 +298,11 @@ pub fn next(conn: &Connection, holder: Option<&str>) -> Result<Next, LedgerError
         let reason = if scope.is_empty() {
             Some(SkipReason::EmptyScope)
         } else {
-            reservation::find_overlap(conn, card_id, &scope)?.map(|(other_card, mine, theirs)| {
+            reservation::find_overlap(conn, now, card_id, &scope)?.map(|o| {
                 SkipReason::ScopeOverlap {
-                    other_card,
-                    mine,
-                    theirs,
+                    other_card: o.other_card,
+                    mine: o.mine,
+                    theirs: o.theirs,
                 }
             })
         };

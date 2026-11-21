@@ -178,6 +178,9 @@ fn ops_named_by_the_mode_workflows_exist_with_their_flags() {
             // `queue-free`, `scope-check`): `card take`, `card check`, `card renew`, `card done`,
             // `card note` and `card next` replace them (tests/mode_cards_53.rs pins each).
             "card",
+            // The no-waiting rule: the lane names `check` in `Long commands`, the leader reads
+            // the lanes with `lane-screen --scan` and clears one only on `lane-safe-to-reset`.
+            "check",
             // Until C-53 S3 the commit guard answers `allowed` on a card branch (named, not run).
             "claim-verify --hook",
             "gate-check",
@@ -203,7 +206,9 @@ fn ops_named_by_the_mode_workflows_exist_with_their_flags() {
             "lane-loop-line",
             "lane-loop-line --host",
             // #2900 (#2899 G2): the leader clears a lane only on `safe`.
+            "lane-safe-to-reset",
             "lane-safe-to-reset --lane",
+            "lane-screen --scan",
             // #2902 O3b: the leader's round, one action per lane.
             // #3005 P9: its `idle_lanes` list names the lanes that stopped at `idle_limit`.
             // #3015 C5: the leader's periodic round instruction.
@@ -462,7 +467,7 @@ fn the_round_keeps_going_until_its_end_condition() {
     assert_says(
         &agent,
         "report",
-        &["A `LANE-DONE` line is a progress record, not a stop: after writing it, go to the next pick in the same turn"],
+        &["A `LANE-DONE` line is a progress record, not a stop: after writing it, follow `Session reset` and go on in the same turn"],
     );
     // (iii) arm a wake before ending a turn.
     assert_says(
@@ -827,7 +832,6 @@ fn skill_requests_delegation_with_each_hosts_subagent_tool() {
         "`## Base agents`",
         "`spawn_agent` and then `wait_agent` in Codex CLI",
         "the agent tool in Claude Code",
-        "the task tool in OMP",
         "do the step in this session and say so",
     ] {
         assert!(skill.contains(needle), "SKILL.md lacks {needle}");
@@ -872,7 +876,7 @@ fn blocked_lines_name_kind_owner_and_next_check() {
             // C-53 S5 repair N1: `host` for a host that cannot take a card (OMP, no session id).
             "A `LANE-BLOCKED` line names the kind (`decision`, `ci`, `audit`, `pr-slot`, `claim`, `tip-red`, `outside`, `host`)",
             "who unblocks it (`owner=<leader|user|lane|author>`)",
-            "the next check (`next=<what, and when or on which event>`), then the lane takes other work in the same turn",
+            "the next check (`next=<what, and when or on which event>`), then the lane follows `Waiting is switching`",
         ],
     );
     assert_says(
@@ -1107,8 +1111,8 @@ fn waiting_is_a_line_and_the_next_job_and_an_armed_watch_is_idle() {
             // C-53 S5: on the card (was: on the Issue or pull request).
             "While you wait for CI, an audit, a shell or a reply, leave one line `waiting: <what> since <UTC>` on the card (`card note`) or the pull request",
             "the UTC from `date -u`, never typed from memory",
-            "take the next job in the same turn",
-            "when the reply comes, go back to it",
+            "once the card has nothing else to do, follow `Waiting is switching`",
+            "when the reply comes, the card is dispatched again",
             "`waiting: done` clears the line",
         ],
     );
@@ -1551,10 +1555,10 @@ fn orca_mail_is_checked_for_delivery_and_focus_is_never_switched() {
     for p in [
         "Never run `orca terminal switch` to read another session",
         "`orca terminal read --terminal <handle> --screen`",
-        "A message sent as Orca mail is not delivered until its `delivered_at` is set",
-        "Read `delivered_at` once after the send",
-        "send the same text with `orca terminal send` under items 1 and 2",
-        "Never resend a mail whose `delivered_at` is set",
+        "The pages do not document `delivered_at` or any mail state",
+        "read a `null` `delivered_at` as not yet known",
+        "A reader that only watches a mailbox uses `orca orchestration check --peek` or `--all`",
+        "never resend the mail as a new mail",
     ] {
         assert!(
             leader.contains(p),
@@ -1648,12 +1652,10 @@ fn omp_has_an_entry_spelling_and_a_wake_that_a_lane_can_end() {
         std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai/SKILL.md"),
     )
     .unwrap();
-    for p in [
-        "`/skill:moai project` in OMP",
-        "`/skill:moai optimize` in OMP",
-        "`/skill:moai --mode-agent …` in OMP, which hands the text after the skill name to the skill as plain text, not as a flag of its own",
-    ] {
-        assert!(skill.contains(p), "SKILL.md must say `{p}`");
+    // SKILL.md no longer names OMP (the 2026-11-20 guidance sweep); the workflow files below keep
+    // their OMP lines until the cards that hold them take them out.
+    for p in ["in OMP", "the task tool in OMP"] {
+        assert!(!skill.contains(p), "SKILL.md must not say `{p}` any more");
     }
     let agent = workflow("mode-agent.md");
     let leader = workflow("mode-leader.md");
@@ -1668,7 +1670,6 @@ fn omp_has_an_entry_spelling_and_a_wake_that_a_lane_can_end() {
     for (file, key) in [
         ("project.md", "`/skill:moai project` in OMP"),
         ("update.md", "`/skill:moai update` in OMP"),
-        ("optimize.md", "`/skill:moai optimize` in OMP"),
     ] {
         assert!(workflow(file).contains(key), "{file} must say `{key}`");
     }

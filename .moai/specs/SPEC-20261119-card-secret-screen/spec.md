@@ -8,6 +8,8 @@ created: 2026-11-19
 
 # Card text screen refuses secret-named assignments on note, title, body and criterion text
 
+> 안내(2026-11-21): src/decide/ 는 SPEC-20261120-retire-decide 에서 삭제됐어요. 아래 읽기 전용 참조는 기록이에요.
+
 ## Intent
 
 사용자가 2026-11-19 에 카드 C-122 의 선택지 3("비밀 이름이면 모두 거절")을 골랐어요(카드 결정 노트 3143, 계획 노트 3106). 지금의 노트 화면(C-68, `src/card/work.rs` 의 `blank_prose`)은 `--password` 나 `--token` 같은 옵션 이름 뒤에 등호와 평범한 값이 오면 통과시키고, `card add` 의 제목·본문·`--ac` 기준 글에는 비밀 검사가 아예 없어요(C-108 감사 N4, base 부터 있던 틈). 이 조각은 두 곳을 같은 규칙 하나로 묶어요: 이름을 하이픈(`-`)과 밑줄(`_`)로 자른 조각 가운데 `password`, `token`, `secret` 이 있거나 `api` 와 `key` 가 나란히 있으면, 이름-등호-값 꼴은 값이 무엇이든(빈 값도) 거절해요. 알려진 대가는 무해한 한도 숫자나 참·거짓 값(옵션 이름에 token 이 든 꼴)도 거절된다는 것이고, 값을 띄어 쓰면 통과해요. 사용자가 고르지 않은 두 질문은 계획의 기본값대로예요: 소문자 낱말을 하이픈으로 이은 `sk-` 덩어리는 통과를 유지하고, 기준 글·본문·제목에도 검사를 걸어요. `card criterion-add`(C-108)는 로컬 v2026.11.0 에 병합되어 기준 글을 공용 함수 `criterion_texts` 로 받으므로, 그 함수 안에 검사를 두면 `card add --ac` 와 같은 화면을 받아요.

@@ -33,7 +33,7 @@ Skip this section when you are a base agent yourself: base agents never start ot
 - Use only what the host itself offers. Never stand in for a missing feature with extra sessions, folders or scripts: name the feature as not supported on this host, with the reason, and use the fallback given below.
 - When the agent is not installed on this host, do the step in this session and say so.
 
-PLAN may hand the draft to one `moai-plan` at a time, read-only, and may first fan out `moai-research` for open facts as the READ workflow describes. The agent drafts steps and an AC table; approval and the decisions in steps 4 and 5 stay with this session and the user. Read-only is enforced only where the installed agent file can carry it (not on Codex CLI or OMP); confirm afterwards that nothing changed.
+PLAN may hand the draft to one `moai-plan` at a time, read-only, and may first fan out `moai-research` for open facts as the READ workflow describes. The agent drafts steps and an AC table; approval and the decisions in steps 4 and 5 stay with this session and the user. Read-only is enforced only where the installed agent file can carry it (not on Codex CLI); confirm afterwards that nothing changed.
 
 ## Exceptions and Permissions
 

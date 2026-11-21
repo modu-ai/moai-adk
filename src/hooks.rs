@@ -593,7 +593,7 @@ struct CodexState {
     /// A file no receipt matches is replaced (`--replace-with-backup`): the apply keeps `backup`
     /// first. Never set without the flag (SPEC-20261120-hooks-conflict-choices).
     replaced: bool,
-    backup: Option<crate::hosts::codex_config::Backup>,
+    backup: Option<crate::hosts::config_backup::Backup>,
 }
 
 fn codex_render(lane: Option<&Lane>) -> Result<Vec<u8>> {
@@ -655,12 +655,12 @@ fn codex_state(root: &Path, fh: &FileHost, want: &LaneLoop, replace: bool) -> Re
                 return Err(format!("existing {} requires preservation review", fh.file));
             }
             crate::claude::refuse_symlink_dir(
-                &state_dir.join(crate::hosts::codex_config::BACKUP_DIR),
+                &state_dir.join(crate::hosts::config_backup::BACKUP_DIR),
             )
             .map_err(|_| {
                 format!(
                     "the backups folder {} is a link; replacement refused",
-                    crate::state_root::rel(root, crate::hosts::codex_config::BACKUP_DIR)
+                    crate::state_root::rel(root, crate::hosts::config_backup::BACKUP_DIR)
                 )
             })?;
             replaced = true;
@@ -711,11 +711,11 @@ fn codex_state(root: &Path, fh: &FileHost, want: &LaneLoop, replace: bool) -> Re
                 .unwrap_or("bak");
             let name = format!(
                 "{}/{}-hooks-{}.{ext}",
-                crate::hosts::codex_config::BACKUP_DIR,
+                crate::hosts::config_backup::BACKUP_DIR,
                 fh.host,
                 sha.trim_start_matches("sha256:").get(..16).unwrap_or("0")
             );
-            Some(crate::hosts::codex_config::Backup {
+            Some(crate::hosts::config_backup::Backup {
                 rel: crate::state_root::rel(root, &name),
                 path: state_dir.join(&name),
                 bytes: bytes.clone(),
@@ -999,7 +999,7 @@ pub fn apply_with_replace(
         applied_lane = s.lane.clone();
         // The copy comes first: whatever stops the apply later, the user's bytes are kept.
         if let Some(backup) = &s.backup {
-            crate::hosts::codex_config::write_backup(backup)?;
+            crate::hosts::config_backup::write_backup(backup)?;
         }
         let rel = crate::state_root::rel(&root, fh.receipt);
         let rendered_sha = crate::digest(&s.rendered);

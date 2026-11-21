@@ -40,7 +40,7 @@ use tempfile::TempDir;
 
 const EXE: &str = crate::common::MOAI_BIN;
 const REF: &str = "test-permission-ref";
-/// `hosts::codex_config::CONFIG_LIMIT`.
+/// `hosts::config_backup::CONFIG_LIMIT`.
 const CONFIG_LIMIT: usize = 262_144;
 /// A command that opened a FIFO would wait for a writer forever; this ends the test instead.
 const DEADLINE: Duration = Duration::from_secs(120);

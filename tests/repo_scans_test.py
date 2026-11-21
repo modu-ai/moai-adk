@@ -1,9 +1,8 @@
-"""Tests for tools/repo_scans.json (#2681) and its judge `moai-cli repo-scans` (#2708).
+"""Tests for tools/repo_scans.json (#2681).
 
-The Python judge tools/repo_scans.py is gone (leader decision 6863668555); until then every case
-ran through both judges and they agreed (#2786). `judge_run()` runs the Rust command with the
-table given as `--table` and returns its envelope `result`, the object the Python judge printed.
-Unknown options are usage errors (exit 2) there, not a fail-safe report.
+The judge `moai-cli repo-scans` (#2708) is tested through the built binary in
+tests/repo_scans_cli.rs (SPEC-20261120-python-binary-tests-to-rust); this module keeps the cases
+that read the table and the repository's test files and run no binary.
 
 The table lists tests whose input is the checked-in tree. RepoScansTableTest keeps it complete:
 a test file that names the repository root and walks a directory must be in the table or in
@@ -13,10 +12,7 @@ EXEMPT with a reason. The heuristic sees direct walks only; a scan hidden inside
 """
 
 import json
-import os
 import re
-import subprocess
-import tempfile
 import unittest
 from pathlib import Path
 
@@ -47,8 +43,13 @@ EXEMPT = {
     "tests/mutate_test.py": "ls-files and scandir on temporary clones",
     "tests/project_flow_closing.rs": "reads only the named skills/moai/workflows/project.md; "
                                     "`git ls-files --error-unmatch` runs in TempDir repos",
+    "tests/retired_hosts_layer.rs": "read_dir of temporary homes (before/after trees of a host "
+                                    "folder); reads the named src files of the backup move and "
+                                    "the skills/moai and agents packages",
     "tests/status_line_cli.rs": "read_dir of a TempDir settings-backups folder",
-    "tests/update_route.rs": "walks its TempDir project; reads the named update.md and routes.json",
+    "tests/ui_korean_terminal_cli.rs": "read_dir of the TempDir project it set up; reads the "
+                                       "named golden screens under tests/fixtures/ui",
+    "tests/update_route.rs":"walks its TempDir project; reads the named update.md and routes.json",
     "tests/worktree_report.rs": "read_dir of temporary worktrees",
 }
 
@@ -57,21 +58,6 @@ RUST_WALK = re.compile(r"read_dir\(|ls-files|package_digest\(|stage_package\(|pa
                        r"|walk_files\(|package_files\(")
 PY_ROOT = re.compile(r"__file__|REPO_ROOT")
 PY_WALK = re.compile(r"\.rglob\(|\.glob\(|os\.walk\(|ls-files|\"grep\", \"-r")
-
-# The incident (#2681 body): #2642 added a walk of src/**/*.rs, #2632 added a file it rejects.
-PR_2642 = ["src/agents.rs", "src/apply.rs", "src/archive.rs", "src/claude.rs", "src/contract.rs",
-           "src/decision.rs", "src/decision_log.rs", "src/forge/audit_status.rs",
-           "src/forge/report.rs", "src/generation.rs", "src/github_templates.rs", "src/hooks.rs",
-           "src/hosts/codex.rs", "src/hosts/codex_config.rs", "src/key_vault.rs", "src/layout.rs",
-           "src/message.rs", "src/migrate.rs", "src/profile.rs", "src/recovery.rs",
-           "src/update.rs", "src/worktree_gc.rs"]
-PR_2632 = ["docs/design-review/appendix/operations/agents_home_apply.md",
-           "docs/design-review/appendix/operations/agents_home_plan.md",
-           "docs/design-review/appendix/operations/agents_home_revert.md",
-           "src/agent_install.rs", "src/lib.rs", "src/ops/agents_home_apply.rs",
-           "src/ops/agents_home_plan.rs", "src/ops/agents_home_revert.rs",
-           "tests/agents_home_cli.rs"]
-
 
 def flagged():
     files = (list(REPO_ROOT.glob("tests/*.rs")) + list(REPO_ROOT.glob("src/**/*.rs"))
@@ -95,33 +81,6 @@ def named_files(scans):
         for test in scan["tests"]:
             names.add(test.split("::")[0].split(" (")[0])
     return names
-
-
-def rust_bin():
-    explicit = os.environ.get("MOAI_CLI_BIN")
-    if explicit:
-        return Path(explicit)
-    target = os.environ.get("CARGO_TARGET_DIR")
-    return (Path(target) if target else REPO_ROOT / "target") / "debug" / "moai-cli"
-
-
-def run_rust(args, stdin, cwd, env, table):
-    binary = rust_bin()
-    if not binary.exists():
-        raise AssertionError(f"moai-cli not built at {binary}; run cargo build first")
-    return subprocess.run([str(binary), "repo-scans", "--repo", str(cwd), "--table", str(table),
-                           *args], input=stdin, capture_output=True, text=True, cwd=cwd, env=env)
-
-
-def judge_run(args=(), stdin="", cwd=REPO_ROOT, env=None, table=TABLE):
-    """The `moai-cli repo-scans` report (the envelope `result`); the judge always exits 0."""
-    rs = run_rust(args, stdin, cwd, env, table)
-    if rs.returncode != 0:
-        raise AssertionError(f"repo-scans exit {rs.returncode}: {rs.stdout!r} {rs.stderr[-300:]!r}")
-    envelope = json.loads(rs.stdout)
-    if envelope.get("ok") is not True:
-        raise AssertionError(f"repo-scans exit 0 without ok: {rs.stdout!r}")
-    return envelope["result"]
 
 
 class RepoScansTableTest(unittest.TestCase):
@@ -204,234 +163,6 @@ class RepoScansTableTest(unittest.TestCase):
     def test_exemptions_are_not_stale(self):
         stale = sorted(set(EXEMPT) - flagged())
         self.assertEqual(stale, [], "EXEMPT names a file the heuristic no longer flags")
-
-
-class JudgeTest(unittest.TestCase):
-    def setUp(self):
-        self.scans = load()
-
-    def judge(self, pr, tip):
-        report = judge_run(stdin=json.dumps({"pr": pr, "tip": tip}))
-        return report["remerge"], report["hits"]
-
-    def test_the_2642_2632_incident_requires_a_remerge_either_way_round(self):
-        for pr, tip, rules_side in ((PR_2642, PR_2632, "pr"), (PR_2632, PR_2642, "tip")):
-            remerge, hits = self.judge(pr, tip)
-            self.assertTrue(remerge)
-            hit = [h for h in hits if h["id"] == "permission-reference-one-copy"]
-            self.assertEqual(len(hit), 1, hits)
-            self.assertEqual(hit[0]["rules_side"], rules_side)
-            self.assertEqual(hit[0]["rules"], ["src/contract.rs"])
-            self.assertIn("src/agent_install.rs", hit[0]["scope"])
-
-    def test_scope_on_both_sides_without_a_rule_change_needs_no_remerge(self):
-        self.assertEqual(self.judge(["src/agent_install.rs"], ["src/update_x.rs"]), (False, []))
-
-    def test_a_rule_change_alone_needs_no_remerge(self):
-        self.assertEqual(self.judge(["src/contract.rs"], ["README.md"]), (False, []))
-        self.assertEqual(self.judge(["src/contract.rs"], []), (False, []))
-
-    def test_scope_boundaries(self):
-        # suffix filter: a non-.rs file under src/ is outside the permission scan
-        remerge, hits = self.judge(["src/contract.rs"], ["src/notes.md"])
-        self.assertNotIn("permission-reference-one-copy", [h["id"] for h in hits])
-        # prefix is a path prefix: "srcx/" is not "src/"
-        remerge, hits = self.judge(["src/contract.rs"], ["srcx/a.rs"])
-        self.assertNotIn("permission-reference-one-copy", [h["id"] for h in hits])
-        # one level deeper still counts
-        remerge, hits = self.judge(["src/contract.rs"], ["src/forge/new.rs"])
-        self.assertIn("permission-reference-one-copy", [h["id"] for h in hits])
-        # the prefix anchors at the start: "src/" inside a path is not "src/" (#2708 mutant M2)
-        remerge, hits = self.judge(["src/contract.rs"], ["lib/src/a.rs"])
-        self.assertNotIn("permission-reference-one-copy", [h["id"] for h in hits])
-
-    def test_hit_paths_are_sorted(self):
-        # input order does not reach the report (#2708 mutant M9)
-        remerge, hits = self.judge(["tools/repo_scans.json", "tests/repo_scans_test.py"],
-                                   ["tests/zz_test.py", "src/b.rs", "src/a.rs"])
-        hit = next(h for h in hits if h["id"] == "repo-scans-table")
-        self.assertEqual(hit["rules"], ["tests/repo_scans_test.py", "tools/repo_scans.json"])
-        self.assertEqual(hit["scope"], ["src/a.rs", "src/b.rs", "tests/zz_test.py"])
-
-    def test_an_expected_set_file_counts_as_a_rule(self):
-        remerge, hits = self.judge(["skills/moai/references/source-manifest.json"],
-                                   ["skills/moai/workflows/plan.md"])
-        self.assertTrue(remerge)
-        self.assertIn("skill-package-files", [h["id"] for h in hits])
-
-    def test_empty_input_needs_no_remerge(self):
-        self.assertEqual(self.judge([], []), (False, []))
-        self.assertEqual(self.judge([""], [""]), (False, []))
-
-    def test_checks_are_the_hit_scans_in_table_order_without_duplicates(self):
-        checks = judge_run(stdin=json.dumps({"pr": PR_2642, "tip": PR_2632}))["checks"]
-        self.assertIn("cargo test --offline --locked --lib permission_reference_rule_has_one_copy",
-                      checks)
-        self.assertEqual(len(checks), len(set(checks)))
-        order = [c for s in self.scans for c in s["checks"]]
-        self.assertEqual(checks, sorted(checks, key=order.index))
-        # two hits of one scan (both directions) give its checks once
-        both_ways = judge_run(stdin=json.dumps({"pr": ["tests/repo_scans_test.py"],
-                                                "tip": ["tests/repo_scans_test.py"]}))
-        table_hits = [h for h in both_ways["hits"] if h["id"] == "repo-scans-table"]
-        self.assertEqual(len(table_hits), 2, both_ways["hits"])
-        self.assertEqual(both_ways["checks"].count("python3 -m unittest tests.repo_scans_test"), 1)
-        # no hit, no check
-        self.assertEqual(judge_run(stdin=json.dumps({"pr": ["README.md"], "tip": []}))["checks"],
-                         [])
-
-
-class CliTest(unittest.TestCase):
-    def test_incident_through_stdin(self):
-        report = judge_run(stdin=json.dumps({"pr": PR_2642, "tip": PR_2632}))
-        self.assertTrue(report["remerge"])
-        self.assertIn("permission-reference-one-copy", [h["id"] for h in report["hits"]])
-
-    def test_disjoint_change_sets_pass(self):
-        self.assertEqual(judge_run(stdin=json.dumps({"pr": ["README.md"], "tip": ["notes/x.txt"]})),
-                         {"remerge": False, "hits": [], "checks": [], "reasons": []})
-
-    def test_refs_read_the_change_sets_from_git(self):
-        # the same commit on both sides: nothing changed since the merge-base
-        self.assertEqual(judge_run(["--refs", "HEAD", "HEAD"]),
-                         {"remerge": False, "hits": [], "checks": [], "reasons": []})
-
-    def test_bad_input_fails_safe_with_every_check(self):
-        every = [c for s in load() for c in s["checks"]]
-        every = [c for i, c in enumerate(every) if c not in every[:i]]
-        cases = [("", []), ("not json", []), (json.dumps({"pr": "src/a.rs", "tip": []}), []),
-                 (json.dumps({"pr": []}), []), ("", ["--refs", "HEAD"]),
-                 ("", ["--refs", "no-such-ref-2681", "HEAD"]),
-                 ("", ["--refs", "HEAD", "HEAD", "HEAD"])]
-        for stdin, args in cases:
-            report = judge_run(args, stdin)
-            self.assertTrue(report["remerge"], (stdin, args))
-            self.assertEqual(report["checks"], every, (stdin, args))
-            self.assertTrue(report["reasons"][0].startswith("judge internal error"), (stdin, args))
-
-    def test_an_unknown_option(self):
-        # an unknown option, or a ref that looks like one, is a usage error: no report at all
-        for args in (["--bogus"], ["--refs", "-x", "HEAD"]):
-            rs = run_rust(args, "", REPO_ROOT, None, TABLE)
-            envelope = json.loads(rs.stdout)
-            self.assertEqual((rs.returncode, envelope["ok"], envelope["error"]["kind"]),
-                             (2, False, "usage"), args)
-            self.assertNotIn("result", envelope, args)
-
-    def test_two_scans_sharing_a_command(self):
-        # both scans hit; "y" once, at its first place
-        with tempfile.TemporaryDirectory(prefix="repo-scans-shared-") as tmp:
-            scope = [{"prefix": "s/"}]
-            table = Path(tmp) / "repo_scans.json"
-            table.write_text(json.dumps({"scans": [
-                {"id": "a", "rules": ["r"], "scope": scope, "checks": ["x", "y"]},
-                {"id": "b", "rules": ["r"], "scope": scope, "checks": ["y", "z"]}]}))
-            report = judge_run(stdin=json.dumps({"pr": ["s/1"], "tip": ["r"]}), cwd=Path(tmp),
-                               table=table)
-            self.assertEqual(report["checks"], ["x", "y", "z"])
-            self.assertEqual([(h["id"], h["rules_side"]) for h in report["hits"]],
-                             [("a", "tip"), ("b", "tip")])
-
-
-GIT_ENV = {"GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1",
-           "GIT_AUTHOR_DATE": "2026-11-13T00:00:00Z", "GIT_COMMITTER_DATE": "2026-11-13T00:00:00Z"}
-INCIDENT_CHECK = "cargo test --offline --locked --lib permission_reference_rule_has_one_copy"
-
-
-class RefsTableTest(unittest.TestCase):
-    """#2693 audit B1: with --refs the table comes from both refs, not from the checkout that
-    runs the judge, so a scan added by the pull request itself is judged."""
-
-    def setUp(self):
-        self.tmp = tempfile.TemporaryDirectory(prefix="repo-scans-refs-")
-        self.repo = Path(self.tmp.name) / "repo"
-        self.repo.mkdir()
-        self.env = dict(os.environ, **GIT_ENV)
-        self.git("init", "-q", "-b", "base")
-        full = load()
-        self.entry = next(s for s in full if s["id"] == "permission-reference-one-copy")
-        self.without = [s for s in full if s["id"] != "permission-reference-one-copy"]
-        self.write("src/lib.rs", "")
-        self.write_table(self.without)
-        self.commit("base")
-        # tip side = #2632: a new file in src/ (the scope)
-        self.git("checkout", "-q", "-b", "tip")
-        self.write("src/agent_install.rs", "// a copy of the rule\n")
-        self.commit("tip")
-        # pull request side = #2642: the scanning test and its table entry
-        # (a branch named "head" would be HEAD on a case-insensitive disk)
-        self.git("checkout", "-q", "-b", "pull", "base")
-        self.write("src/contract.rs", "// the walking test\n")
-        self.write_table(self.without + [self.entry])
-        self.commit("head")
-
-    def tearDown(self):
-        self.tmp.cleanup()
-
-    def git(self, *args):
-        subprocess.run(["git", "-c", "user.name=fixture", "-c", "user.email=fixture@example.invalid",
-                        "-c", "commit.gpgsign=false", *args], cwd=self.repo, env=self.env,
-                       check=True, capture_output=True)
-
-    def write(self, rel, text):
-        path = self.repo / rel
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(text, encoding="utf-8")
-
-    def write_table(self, scans):
-        self.write("tools/repo_scans.json", json.dumps({"scans": scans}, indent=2) + "\n")
-
-    def commit(self, message):
-        self.git("add", "-A")
-        self.git("commit", "-q", "-m", message)
-
-    def judge(self, tip, head, table=None):
-        """Judge with the checkout's own table as the fallback, unless `table` is given."""
-        return judge_run(["--refs", tip, head], cwd=self.repo, env=self.env,
-                         table=table or self.repo / "tools" / "repo_scans.json")
-
-    def test_a_scan_the_pull_request_adds_is_judged_from_any_checkout(self):
-        for checkout in ("tip", "pull", "base"):
-            self.git("checkout", "-q", checkout)
-            report = self.judge("tip", "pull")
-            self.assertTrue(report["remerge"], checkout)
-            self.assertIn("permission-reference-one-copy", [h["id"] for h in report["hits"]],
-                          checkout)
-            self.assertIn(INCIDENT_CHECK, report["checks"], checkout)
-
-    def test_a_scan_only_the_tip_has_is_judged_too(self):
-        # reverse roles: the tip carries the scan, the pull request adds the file
-        report = self.judge("pull", "tip")
-        self.assertIn(INCIDENT_CHECK, report["checks"])
-
-    def test_refs_without_any_table_fall_back_to_the_given_table(self):
-        self.git("checkout", "-q", "-b", "old", "base")
-        self.git("rm", "-q", "tools/repo_scans.json")
-        self.write("src/contract.rs", "// rule\n")
-        self.commit("old head without a table")
-        self.git("checkout", "-q", "-b", "old-tip", "base")
-        self.git("rm", "-q", "tools/repo_scans.json")
-        self.write("src/agent_install.rs", "// copy\n")
-        self.commit("old tip without a table")
-        # the gate's own (current) table has the entry
-        report = self.judge("old-tip", "old", table=TABLE)
-        self.assertIn(INCIDENT_CHECK, report["checks"])
-
-    def test_a_broken_table_at_a_ref_fails_safe(self):
-        self.git("checkout", "-q", "pull")
-        self.write("tools/repo_scans.json", "{ not json")
-        self.commit("broken table")
-        report = self.judge("tip", "pull", table=TABLE)
-        self.assertTrue(report["remerge"])
-        self.assertTrue(report["reasons"][0].startswith("judge internal error"))
-        self.assertIn(INCIDENT_CHECK, report["checks"])
-
-    def test_no_readable_table_at_all_says_hold(self):
-        # N1: no table to fall back to and bad input: nothing to run, hold the merge
-        missing = Path(self.tmp.name) / "lone" / "repo_scans.json"
-        report = judge_run(stdin="not json", cwd=self.repo, env=self.env, table=missing)
-        self.assertEqual((report["remerge"], report["checks"]), (True, []))
-        self.assertTrue(report["reasons"][-1].endswith("hold the merge"), report["reasons"])
 
 
 if __name__ == "__main__":

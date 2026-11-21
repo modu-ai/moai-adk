@@ -207,7 +207,11 @@ impl World {
             Some(S_A),
             &["pr", &name, "7", "--generation", "1", "--repo", "octo/demo"],
         ));
-        result(&self.card(Some(S_A), &["review", &name, "--generation", "1"]));
+        // `--keep`: the reclaim cases need the reservation to outlive the review.
+        result(&self.card(
+            Some(S_A),
+            &["review", &name, "--generation", "1", "--keep", "apps/bo/"],
+        ));
         self.end_lease(1);
         name
     }
@@ -316,10 +320,10 @@ fn reclaim_lets_the_new_holder_close_a_review_card() {
     let w = world();
     let card = w.stuck_review_card();
 
-    // The commands that were blocked for the stuck cards still are, for the old holder.
-    let (kind, message) = refusal(&w.card(Some(S_A), &["renew", &card, "--generation", "1"]));
-    assert_eq!(kind, "conflict", "{message}");
-    assert!(message.contains("the lease ended"), "{message}");
+    // The commands that were blocked for the stuck cards still are, for the old holder. `renew`
+    // is not among them any more: the holder of an ended lease that nobody reclaimed renews it
+    // (SPEC-20261121-card-lease-yield, `ledger_lease_yield renew_`); it is not run here because
+    // it would give the card a live lease and end the stuck state this test reclaims from.
     let (kind, message) = refusal(&w.card(Some(S_A), &["release", &card, "--generation", "1"]));
     assert_eq!(kind, "conflict", "{message}");
     assert!(message.contains("is `review`"), "{message}");

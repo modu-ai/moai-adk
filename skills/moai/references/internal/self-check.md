@@ -8,14 +8,14 @@ In the moai-adk repository, `tools/self_check.sh` runs the machine items in one 
 
 1. Limits: every limit the change enforces has tests at N (passes), N+1 (fails) and empty (`internal/test-design`).
 2. Guards: one mutation per new guard, the riskiest first; at most 5 for audit tier 1 and 12 for tier 2. Each must turn a test red; a surviving mutant is a missing test.
-3. Whole binaries: `cargo test --offline --locked --bin moai` and `cargo test --offline --locked --bin moai-cli`, whole: never with a test-name filter. The help rules test every command there, and a filtered run misses them.
+3. Whole binaries: `cargo test --offline --locked --bin moai` and `cargo test --offline --locked --bin moai-cli`, whole: never with a test-name filter. The help rules test every command there, and a filtered run misses them. The set before READY is never narrowed: also `cargo test --offline --locked --lib` whole, every test target (`--test <name>`) whose name shares the first word of the changed `src/` area, every check listed in `tools/repo_scans.json`, the Python tests of the area, and the macOS-only (`cfg(target_os)`) tests this host can run. Write each command with its exit code in the READY note, and read every failing CI leg before you repair it.
 4. Lint: `cargo clippy --offline --locked --all-targets -- -D warnings`, `cargo fmt --check`, and `rustfmt --check --edition 2021 src/ops/*.rs`: `build.rs` generates the module list of the operation files, so `cargo fmt` never sees them.
 5. Files tests read: for each document or skill file you changed, `grep -rn '<path>' tests/` and run the tests that read it; `moai repo-scans --refs <tip> HEAD` lists the repo-wide scans the change set needs.
 6. Python: the unittest files of the tests and tools you changed, plus `tests/skill_references_test.py`, which reads every `skills/...` path in a tracked file; CI runs `python3 -m unittest discover -s tests -p '*_test.py'` (`--full-python`).
 7. Git: a new git spawn in `src/` goes through `scrub_git_env` (`--test git_env_scrub`); a test that runs git uses `tests/common/git.rs` (`--test ac_command_lint`).
 8. HOME: every test that runs the binary uses a temporary HOME (`--test home_isolation_scan`).
 9. Paths: a new file read or write has tests for a symlink, a FIFO, a missing parent and a folder without permission; it refuses rather than follows.
-10. Platform: a change to pty, process or signal code runs its macOS-only tests locally; pull request CI runs Linux x86_64 only.
+10. Platform: a change to pty, process or signal code runs its macOS-only tests locally. An ordinary pull request's CI runs the light Linux matrix; the release pull request runs the full CI on Linux, macOS and Windows before it merges.
 
 ## Package and documents
 
@@ -28,6 +28,6 @@ In the moai-adk repository, `tools/self_check.sh` runs the machine items in one 
 
 15. Scope: `git diff --name-only <base>...HEAD` lists only paths inside the write scope, and nothing touches a held item.
 16. Whitespace: `git diff --check <base>...HEAD` prints nothing, as in CI.
-17. Commits: `git interpret-trailers --parse` on each new commit shows the attribution last, after the claim token where the branch has a claim; card branches carry no claim token until C-53 S3.
+17. Commits: `git interpret-trailers --parse` on each new commit shows the `Moai-Spec` and `Moai-Session` trailers with the attribution last; no commit message, branch name or pull request title carries a card number.
 18. Body: the first line is `audit-tier: 0|1|2 <reason>`; `## Self-Audit` lists every command with its exit code and every item not run with its reason; check it with `moai pr-self-audit-check --file BODY.md`.
 19. Acceptance criteria: each row is ticked with its evidence (command and exit code, or a comment link).

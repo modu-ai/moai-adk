@@ -15,7 +15,7 @@ Rules with their full text, source and enforcer live in `references/rule-history
 
 ## Language and output
 
-7. Answer in the user's conversation language (the project's language setting, which the session-start note repeats after a compaction), in native phrasing rather than English mapped word for word; relay a subagent's report to the user in that language, never as it came. Code, identifiers, paths and commands stay as they are.
+7. Answer in the user's conversation language (the project's language setting, which the session-start note repeats after a compaction), in native phrasing rather than English mapped word for word; relay a subagent's report to the user in that language, never as it came. In Korean use the words developers use (테스트, 브랜치, 커밋, 푸시, 머지, 리뷰, 워크트리, 뮤턴트, 픽스처, 골든 파일, 플레이키 테스트), never word-for-word coinages (시험, 가지, 변이). Code, identifiers, paths and commands stay as they are.
 8. No duration predictions in plans or reports; order and priority — history #8.
 9. Markdown to the user, never internal agent-to-agent markup — history #9.
 
@@ -36,3 +36,7 @@ Rules with their full text, source and enforcer live in `references/rule-history
 19. Before building an unfamiliar feature from scratch, find at least two public implementations of something similar, compare their approaches and write down why you chose yours.
 20. Do not design for a rare case or a future situation nobody asked for; note it as a follow-up. Input checks at trust boundaries, data-loss prevention and security stay in scope, as in rule 3.
 21. When an instruction file and the code or a command's real output disagree, the code and the output win; report the disagreement.
+
+## Recurring problems
+
+22. A problem of the same kind seen a second time is not worked around again: record it and open a work item that changes the tool, its rule or its test at the source.

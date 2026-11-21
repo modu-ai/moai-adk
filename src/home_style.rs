@@ -18,6 +18,7 @@
 
 use crate::agents::{assert_single_block, markers, section_plan, splice};
 use crate::apply::{publish_exclusive, publish_replace, read_opt};
+use crate::retired_hosts::retired;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
 use std::{
@@ -716,6 +717,17 @@ fn revert_setting(path: &Path, dir: &Path, e: &ReceiptEntry) -> std::result::Res
 /// changed one gets its before bytes back, the `outputStyle` key is removed. A target changed
 /// since is skipped.
 pub fn revert(home: &Path, receipt_id: &str, permission: &str) -> Result<Value> {
+    revert_in(&HOSTS, home, receipt_id, permission)
+}
+
+/// [`revert`] for a place whose active hosts are `active`: a receipt entry of a retired host is
+/// skipped and reported (reason `host_retired`), the other entries are reverted.
+pub fn revert_in(
+    active: &[&str],
+    home: &Path,
+    receipt_id: &str,
+    permission: &str,
+) -> Result<Value> {
     validate_permission(permission)?;
     if !receipt_id_ok(receipt_id) {
         return Err("unknown style receipt id".into());
@@ -737,6 +749,12 @@ pub fn revert(home: &Path, receipt_id: &str, permission: &str) -> Result<Value> 
     let mut reverted = Vec::new();
     let mut skipped = Vec::new();
     for e in receipt.entries.iter().rev() {
+        if retired(&e.host, active) {
+            skipped.push(
+                json!({"target": format!("{}:{}", e.host, e.kind), "reason": "host_retired"}),
+            );
+            continue;
+        }
         if !matches!(
             (e.host.as_str(), e.kind.as_str()),
             ("claude", "style_file") | ("claude", "setting") | ("codex", "block")
