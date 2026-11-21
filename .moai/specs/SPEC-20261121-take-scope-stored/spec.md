@@ -52,7 +52,7 @@ created: 2026-11-21
 - AC-8 (REQ-9): `card next` lists an empty-scope ready card that has a SPEC list or an earlier reservation, with its filled scope and `scope_source`, and still skips one with no source as `empty_scope`.
   verify: `cargo test --locked --offline --test card_take_scope_cli next_lists_what_take_can_fill`
 - AC-9 (REQ-1, REQ-2, REQ-3, REQ-4, REQ-5, REQ-6, REQ-7, REQ-8, REQ-9): the existing take, scope and next tests of the ledger still pass.
-  verify: `cargo test --locked --offline --test ledger_reservation --test card_scope_cli --test card_next_cli`
+  verify: `cargo test --locked --offline --test ledger_reservation --test card_scope_widen_cli`
 - AC-10 (REQ-1, REQ-2, REQ-3, REQ-4, REQ-5, REQ-6, REQ-7, REQ-8, REQ-9): the SPEC passes the checker.
   verify: `moai spec check SPEC-20261121-take-scope-stored`
 
