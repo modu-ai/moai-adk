@@ -131,4 +131,17 @@ MODE-LEADER `supervise` step, after the sentence about a lane waiting on CI or a
 
 ## Result
 
-(written after the checks)
+Checks (2026-11-21, head `e433afdb0d`, base `efedc6608d`, the audited mode-file head the branch merged):
+
+- `moai-cli check affected efedc6608dce..e433afdb0df7` in the worktree under a heavy slot: first line `result=PASS`, `targets=42 py=8 scans=listed:41 diff_check=0 fmt=0 clippy=0`, exit 0. Its log (`06-test_targets.log`) shows `mode_guidance_scan` running 7 tests, all ok, and `agent_defs_package` 19 passed.
+- Red before: the same scan strings were looked up in the base files with a script (no cargo run): every one of the 7 tests has missing words in `efedc6608d`'s `mode-agent.md` and `mode-leader.md` (3 to 15 missing words per test), so each test fails on the base.
+- `python3 -I tools/source_manifest.py check`: ok after `write` changed only the two workflow rows.
+- `git diff --check`, `rustfmt --check tests/mode_guidance_scan.rs` and `spec check` printed no error.
+
+- AC-1: met — `agent_runs_long_commands_in_the_background` ok in the check log; `Long commands` is in MODE-AGENT and the foreground-wait sentence of the watch step now says `as a background task`.
+- AC-2: met — `waiting_is_switching_and_the_leader_answers_it` and `compact_request_is_posted_by_the_lane_and_answered_by_the_leader` ok; the waiting rule is `Waiting is switching` (RESUME note, give the reservation back, `SWITCH` line, the leader's `/clear` or `/new`, three cards at most) in MODE-AGENT and the answer to a `SWITCH` line in MODE-LEADER.
+- AC-3: met — `no_hand_written_times_in_notes`, `supervision_tools_are_named_in_the_leader_workflow` and `repair_evidence_is_asked_for_in_the_report_step` ok.
+- AC-4: met — `session_reset_follows_every_card_and_compact_follows_a_full_context` ok; Claude Code `/clear`, `/compact`; Codex CLI `/new` (and `/clear`), `/compact`, from the documents read on 2026-11-20.
+- AC-5: met — the whole `mode_guidance_scan` target (7 tests) and `agent_defs_package` (19 tests) pass in the same check.
+
+Not done: no live lane was sent `/clear` or `/new` (the leader's round code reads the `SWITCH` line later); the two workflow files still carry older issue and decision citations that the citation SPEC removes when it lands, and the train merge resolves the overlap.
