@@ -3,6 +3,27 @@
 # `moai trailer-check --card-numbers-since` runs on a range, judging the draft
 # message git hands this hook (SPEC-20261120-commit-message-card-numbers).
 # Install: copy or link this file into .git/hooks/ (or your core.hooksPath folder)
-# as commit-msg and make it executable. Bypass of the host's own tool hooks is a
-# separate matter; git runs this hook on every commit once installed.
-exec "${MOAI_BIN:-$HOME/.moai-cli/path/moai-cli}" trailer-check --message-file "$1"
+# as commit-msg and make it executable — `moai project-update` offers the same
+# install as its git-hook step when no hook is there. Bypass of the host's own
+# tool hooks is a separate matter; git runs this hook on every commit once
+# installed.
+MOAI="${MOAI_BIN:-$HOME/.moai-cli/path/moai-cli}"
+# A missing install must not block commits: skip with a warning.
+if ! command -v "$MOAI" >/dev/null 2>&1; then
+  echo "commit-msg: $MOAI is missing; the card-number check is skipped" >&2
+  exit 0
+fi
+out=$("$MOAI" trailer-check --message-file "$1")
+code=$?
+# 0 pass, 1 the scan found a card number (refuse with the findings), 2 a usage
+# error (an older installed moai that has no --message-file yet): skip instead of
+# refusing — an older install never blocks a commit.
+if [ "$code" -eq 2 ]; then
+  echo "commit-msg: the installed moai has no --message-file check; skipping" >&2
+  exit 0
+fi
+if [ "$code" -ne 0 ]; then
+  printf '%s\n' "$out" >&2
+  exit 1
+fi
+exit 0

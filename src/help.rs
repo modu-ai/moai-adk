@@ -40,6 +40,7 @@ pub const GROUPS: &[Group] = &[
             ("language-set", false),
             ("index-build", true),
             ("check-tree", false),
+            ("git-hook-apply", false),
             ("check", false),
             ("ledger-status", false),
             ("card", false),
@@ -312,6 +313,7 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("language-set", &["language-set --home ko"]),
     ("index-build", &["index-build . < request.json"]),
     ("check-tree", &["check-tree ."]),
+    ("git-hook-apply", &["git-hook-apply --dir ."]),
     (
         "check",
         &[

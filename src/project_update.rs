@@ -1023,6 +1023,64 @@ fn hooks_step(root: &Path, shown: &str, claude: bool) -> Result<Step> {
     })
 }
 
+/// The git commit-msg hook (SPEC-20261120-commit-message-card-numbers, repair slices): the
+/// step offers the shipped hook's install when the project's hook folder holds none, stays
+/// `unchanged` with the shipped bytes already installed, and answers `needs_decision` with a
+/// different hook — a user's own hook is never replaced. The judgement is
+/// `git_hooks::plan`; the apply prints `git-hook-apply --dir <project>`, which re-judges the
+/// plan itself, so a hook that appeared between the plan and the apply is refused, not
+/// overwritten.
+fn git_hook_step(root: &Path, shown: &str) -> Result<Step> {
+    let plan = crate::git_hooks::plan(root)
+        .map_err(|e| format!("the git hook folder could not be judged: {e}"))?;
+    let preview = json!({
+        "action": plan["action"],
+        "hooks_dir": plan["hooks_dir"],
+    });
+    let (state, reason) = match plan["action"].as_str() {
+        Some("install") => (
+            "ready",
+            "no commit-msg hook is installed; the shipped one is offered".to_string(),
+        ),
+        Some("unchanged") => (
+            "unchanged",
+            "the shipped commit-msg hook is already installed".to_string(),
+        ),
+        Some("needs_decision") => (
+            "needs_decision",
+            "a different commit-msg hook is there; the user decides outside this route".to_string(),
+        ),
+        _ => (
+            "unchanged",
+            plan["reason"]
+                .as_str()
+                .unwrap_or("no hooks folder")
+                .to_string(),
+        ),
+    };
+    let apply = (state == "ready")
+        .then(|| {
+            Ok::<_, String>((
+                vec![
+                    "moai".to_string(),
+                    "git-hook-apply".to_string(),
+                    "--dir".to_string(),
+                    shown.to_string(),
+                ],
+                Value::Null,
+            ))
+        })
+        .transpose()?;
+    Ok(Step {
+        name: "git_hook",
+        state,
+        reason,
+        preview,
+        plan_digest: None,
+        apply,
+    })
+}
+
 /// #2936 S-CYCLE (OQ2 H1): the Go settings moved into a backup (a committed `go-state-apply`
 /// whose receipt is not reverted holds them), so the Go hook entries are gone with them and
 /// `go-hooks-apply` has nothing to replace, yet the new settings carry no hook set. The step
@@ -1240,12 +1298,14 @@ fn github_step(root: &Path, shown: &str) -> Result<Step> {
 }
 
 /// The install steps in the order they are printed and applied; `hooks` follows
-/// `claude-settings` (#2936 R-B), the host steps follow `github` (#2936 R9 S5a).
-const INSTALL: [&str; 11] = [
+/// `claude-settings` (#2936 R-B), the git hook follows `hooks` (the hook folders are
+/// neighbours), and the host steps follow `github` (#2936 R9 S5a).
+const INSTALL: [&str; 12] = [
     "profile",
     "generation",
     "claude-settings",
     "hooks",
+    "git_hook",
     "github",
     "codex-hooks",
     "codex-config",
@@ -1289,6 +1349,7 @@ fn install_steps(
             steps.push(Step::waiting("generation", "blocked", &e));
             steps.push(or_blocked("claude-settings", settings_step(root, shown)));
             steps.push(or_blocked("hooks", hooks_step(root, shown, false)));
+            push_git_hook_step(&mut steps, root, shown);
             steps.push(or_blocked("github", github_step(root, shown)));
             steps.extend(host_steps(root, shown, None));
             hooks_after_settings(&mut steps);
@@ -1307,8 +1368,9 @@ fn install_steps(
         generation,
         or_blocked("claude-settings", settings_step(root, shown)),
         or_blocked("hooks", hooks_step(root, shown, claude)),
-        or_blocked("github", github_step(root, shown)),
     ];
+    push_git_hook_step(&mut steps, root, shown);
+    steps.push(or_blocked("github", github_step(root, shown)));
     steps.extend(host_steps(root, shown, Some(&profile.hosts)));
     hooks_after_settings(&mut steps);
     steps
@@ -1330,6 +1392,16 @@ fn hooks_after_settings(steps: &mut [Step]) {
         .find(|s| s.name == "hooks" && s.apply.is_some())
     {
         *hooks = Step::waiting("hooks", "blocked", AFTER_SETTINGS);
+    }
+}
+
+/// The git-hook step, unless the project is not a git repository at all: a non-repository
+/// gets no such step (REQ-6), any other judgement error is that step's `blocked`.
+fn push_git_hook_step(steps: &mut Vec<Step>, root: &Path, shown: &str) {
+    match git_hook_step(root, shown) {
+        Ok(step) => steps.push(step),
+        Err(e) if e.contains("not a git repository") => {}
+        Err(e) => steps.push(Step::waiting("git_hook", "blocked", &e)),
     }
 }
 

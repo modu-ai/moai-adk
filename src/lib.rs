@@ -50,6 +50,7 @@ pub mod gate_loop;
 pub mod gate_merge;
 pub mod gate_schedule;
 pub mod generation;
+pub mod git_hooks;
 pub mod github_templates;
 pub mod go_hooks;
 pub mod go_settings;
