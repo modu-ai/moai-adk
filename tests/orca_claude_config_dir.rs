@@ -257,13 +257,17 @@ fn adapter_rows_unsupported_list_drops_the_profile_settings_folder() {
     );
 }
 
-/// REQ-7: what the measurement did not verify is named, with the page it rests on.
+/// REQ-7: what the measurement did not verify is named, with the pages it rests on: Claude Code's
+/// folder page for the variable, Orca's settings page for the per-account folder.
 #[test]
 fn adapter_unverified_names_the_live_profile_session_and_its_page() {
     let text = flat(&adapter());
     for phrase in [
         "no live Orca profile session was run",
         "https://code.claude.com/docs/en/claude-directory.md",
+        "Orca's pages say each Claude account keeps its own config folder but never name `CLAUDE_CONFIG_DIR`",
+        "that Orca sets it is unverified",
+        "https://orca.dev/docs/settings",
     ] {
         assert!(text.contains(phrase), "the adapter must say {phrase:?}");
     }

@@ -22,14 +22,14 @@ This change measures the whole flow in a temporary Orca-style profile (preview, 
 - REQ-4: The `update-plan` operation shall plan the Claude Code skill copy in the `.claude/skills/moai` folder of the home when `CLAUDE_CONFIG_DIR` is not set.
 - REQ-5: The Orca adapter text shall say that SETUP and UPDATE work with Orca because the skill copy follows `CLAUDE_CONFIG_DIR`.
 - REQ-6: The Orca adapter text shall not list the settings folder of an Orca profile among the unsupported items.
-- REQ-7: The Orca adapter text shall name what the measurement did not verify: a live Orca profile session that reads the moved folder.
+- REQ-7: The Orca adapter text shall name what the measurement did not verify: a live Orca profile session that reads the moved folder, and that Orca sets `CLAUDE_CONFIG_DIR`, which Orca's pages never name.
 
 ## Acceptance
 
 - AC-1 (REQ-1, REQ-2, REQ-3): in a temporary profile with `CLAUDE_CONFIG_DIR` set, the preview names the moved folder, the apply writes `SKILL.md` there and nothing in the `.claude` folder of the home, and the second preview has nothing to apply · verify: `cargo test --locked --offline --test orca_claude_config_dir profile_`
 - AC-2 (REQ-4): without the variable the skill goes to the `.claude/skills/moai` folder of the home and the profile folder stays untouched · verify: `cargo test --locked --offline --test orca_claude_config_dir without_`
 - AC-3 (REQ-5, REQ-6): the SETUP and UPDATE rows of the adapter table start with `works` for Orca and name `CLAUDE_CONFIG_DIR`, and the unsupported list no longer names the settings folder · verify: `cargo test --locked --offline --test orca_claude_config_dir adapter_rows_`
-- AC-4 (REQ-7): the adapter text names the unverified live session and the page it rests on · verify: `cargo test --locked --offline --test orca_claude_config_dir adapter_unverified_`
+- AC-4 (REQ-7): the adapter text names the unverified live session, the unverified Orca setting of the variable, and the pages they rest on · verify: `cargo test --locked --offline --test orca_claude_config_dir adapter_unverified_`
 - AC-5 (REQ-5, REQ-6): the test that pins the adapter table follows the new rows · verify: `cargo test --locked --offline --test orca_optional_3005`
 
 ## Scope
