@@ -92,7 +92,7 @@ fn put_on(project: &Path, branch: &str, parent: &str, path: &str, content: &str)
     fs::remove_file(&blob_file).unwrap();
     let index = project.join(".git/put-on-index");
     let with_index = |args: &[&str]| -> String {
-        let out = Command::new("git")
+        let out = common::git::command()
             .arg("-C")
             .arg(project)
             .args(args)
@@ -2788,7 +2788,7 @@ fn ac24_the_spec_is_read_from_the_proven_tip_and_not_from_the_checkout() {
     let tip = put_on(&w.project, "integ", &step, &bad_path, broken);
     // The checkout holds the opposite copies.
     fs::write(w.project.join(&good_path), broken).unwrap();
-    fs::write(w.project.join(&bad_path), &good_text.replace(&good, &bad)).unwrap();
+    fs::write(w.project.join(&bad_path), good_text.replace(&good, &bad)).unwrap();
 
     let before = w.dump();
     let args = ["--head", &w.head, "--met", "1=r1", "--by", "leader"];
