@@ -54,9 +54,11 @@ This change measures the whole flow in a temporary Orca-style profile (preview, 
 
 ## Result
 
-- AC-1: not yet — tests not yet run.
-- AC-2: not yet — tests not yet run.
-- AC-3: not yet — text not yet changed.
-- AC-4: not yet — text not yet changed.
-- AC-5: not yet — text not yet changed.
-- AC-6: not yet — the file is held by another card.
+Head `587827cf6d`. `cargo test --locked --offline --no-fail-fast --test orca_claude_config_dir --test orca_optional_3005` ended with exit 0: 8 passed in `orca_claude_config_dir`, 5 passed in `orca_optional_3005`, in the build folder of this worktree after the two test sources were touched (a first run read the adapter of another worktree through a stale test binary and failed; the rerun's binary names this worktree). Not run here: clippy, the unfiltered affected set, the Python tests and the audit; no live Orca profile session was run.
+
+- AC-1: met — `profile_plan_targets_the_moved_folder`, `profile_apply_puts_the_skill_where_the_session_reads_it` and `profile_second_plan_has_nothing_to_apply`
+- AC-2: met — `without_the_variable_the_skill_goes_to_home_claude`
+- AC-3: met — `adapter_rows_setup_and_update_work_with_orca_through_the_moved_folder` and `adapter_rows_unsupported_list_drops_the_profile_settings_folder`
+- AC-4: met — `adapter_unverified_names_the_live_profile_session_and_its_page`
+- AC-5: met — `adapter_automations_reuse_is_not_a_single_leader_guarantee`
+- AC-6: met — `the_adapter_table_has_a_row_for_every_route_with_a_status_word` in `orca_optional_3005`, whose block now expects `works` and `CLAUDE_CONFIG_DIR`
