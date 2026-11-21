@@ -65,4 +65,27 @@ created: 2026-11-21
 
 ## Result
 
-(written after the checks)
+Filled in by the implementation lane on 2026-11-21 (`date -u`); the audit checks it again. The SPEC is `429a55e16e`; red `1e3e8ca66e`, green `379a15e31b`, the manifest rows `fc3507a86b`; the local tip `42f5af0800` is merged in as `e6c041ddb2` (no conflict). Evidence files are in this worktree's `target/notes/`.
+
+Red (`red.out`, before the text): `tests/loop_leader_session.rs` 1 passed, 2 failed (the two tests of the new rule; the lane-line test passes on the tip text, as it should).
+
+- AC-1: met — `cargo test --locked --offline --test loop_leader_session` (`green.out`): 3 passed, 0 failed; `the_leader_workflow_arms_the_loop_only_in_a_confirmed_leader_session` is the test of AC-1. The rule sits at the end of the `mode-channel` step of `skills/moai/workflows/mode-leader.md`.
+- AC-2: met — same run, `the_orca_adapter_says_the_same_for_the_leader_row`.
+- AC-3: met — same run, `the_lane_loop_line_is_left_as_it_is`.
+- AC-4: met — `python3 -I tools/source_manifest.py check` prints `{"conflicted": false, "changed": [], "dropped": [], "ok": true}` on the final head.
+
+### Checks
+
+`moai check affected 42f5af0800..fc3507a86b` (the branch's own build of the binary, `--max 2`), summary line as printed: `check-affected base=42f5af0800fb head=fc3507a86b95 targets=43 py=8 scans=listed:42 diff_check=0 fmt=0 clippy=0 test_lib=0 test_bins=0 test_targets=0 build_cli=0 python=0 result=PASS`.
+
+Targeted run before the manifest commit (`green.out`, 8 targets, no name filter, exit 0): `agent_defs_package` 19, `close_step_2903` 2, `flaky_followups` 3, `lane_rules_2879` 5, `loop_leader_session` 3, `mode_cards_53` 9, `mode_guidance_scan` 8, `mode_workflow_steps` 43 passed.
+
+Mutants (five, on the committed text, each restored, `restored: clean = True`; `mutate.out`): the limit sentence losing its condition, the confirmation naming the other mode, an unconfirmed session arming the loop, the Orca row dropping the limit, the lane workflow losing its fixed loop line — each killed by the named test of the matching AC.
+
+Shared files: `skills/moai/references/source-manifest.json` (two rows) was committed on this branch under the leader's standing pair approval for the card's own manifest keys (decision notes 5617, 5623, 5658); the card check refuses that path.
+
+### Not run
+
+- A leader session of a real project reading the new rule in a host: not run; the text is pinned by words only.
+- The code that arms the lane's loop (`src/lane_loop.rs`) and the lane workflow: unchanged on purpose (decision D-1, leader note 5595).
+- A second run of the same tests on the same tree: not repeated.
