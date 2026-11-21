@@ -638,7 +638,8 @@ fn line_lease_wait_secs_has_its_edges() {
     let cmd = append_command(&file, "pub mod b;");
     let before = w.dump();
     // 601 is over the limit and refused before anything is written.
-    let (kind, message) = refusal(&w.lease(S_B, &b, "src/lib.rs", Some("601"), &as_refs(&cmd)));
+    // A free path: without the limit the command would run and succeed at once.
+    let (kind, message) = refusal(&w.lease(S_B, &b, "src/free601.rs", Some("601"), &as_refs(&cmd)));
     assert_eq!(kind, "invalid_input", "{message}");
     assert!(message.contains("600"), "names the limit: {message}");
     assert_unchanged(&before, &w.dump(), "an over-limit wait writes nothing");
