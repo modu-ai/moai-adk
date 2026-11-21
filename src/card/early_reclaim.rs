@@ -138,14 +138,15 @@ fn prove(project: &Path, cur: &reservation::Reservation, now: i64) -> Result<Pro
     }
     // The clean-or-gone gate every takeover passes: a path that exists with uncommitted or
     // unpushed work, or that cannot be told apart from "gone", is refused.
-    worktree_gate(Some(worktree)).map_err(|e| e.replace("card conflict in ", ""))?;
+    worktree_gate(project, Some(worktree)).map_err(|e| e.replace("card conflict in ", ""))?;
     let path = Path::new(worktree);
     let gone = !path.try_exists().unwrap_or(true);
     let shape = if gone { "gone" } else { "clean" };
     if !gone {
         // A live lease makes a missed draft cost more than an expired one does, so the early
-        // path also counts what the takeover gate leaves out (REQ-3).
-        remaining_work(path)?;
+        // path also counts what the takeover gate leaves out (REQ-3): a stash entry, the
+        // reserved branch and an ignored draft.
+        remaining_work(project, path, cur.branch.as_deref())?;
         let here = processes_in(path)?;
         if here > 0 {
             return Err(format!(
@@ -182,11 +183,16 @@ fn is_regenerable_ignored(entry: &str) -> bool {
 }
 
 /// What the early reclaim counts as work beyond the takeover gate (REQ-3): a stash entry of the
-/// worktree's own branch, unpushed commits on a local branch nobody has checked out (the
-/// checked-out ones are other worktrees' own work, and HEAD's is the gate's), and an ignored
-/// entry that is not on the regenerable list. `Err` names the first one found, or what could not
-/// be read: unreadable is unproven, never "none".
-fn remaining_work(path: &Path) -> Result<(), String> {
+/// worktree's own branch, unpushed commits on the branch the reservation names (HEAD's are the
+/// gate's; every other local branch of the clone belongs to nobody here and is not counted), and
+/// an ignored entry that is not on the regenerable list. A commit that is in the local
+/// integration branch of an m-flow project is not unpushed (REQ-13). `Err` names the first one
+/// found, or what could not be read: unreadable is unproven, never "none".
+fn remaining_work(
+    project: &Path,
+    path: &Path,
+    reserved_branch: Option<&str>,
+) -> Result<(), String> {
     let unreadable = |what: &str| format!("git could not read {what} of the worktree");
     let git = |args: &[&str], what: &str| {
         super::dispatch::git_output(path, args).ok_or_else(|| unreadable(what))
@@ -211,31 +217,20 @@ fn remaining_work(path: &Path) -> Result<(), String> {
              would orphan"
         ));
     }
-    let checked_out: Vec<String> = git(&["worktree", "list", "--porcelain"], "the worktree list")?
-        .lines()
-        .filter_map(|l| l.strip_prefix("branch refs/heads/"))
-        .map(str::to_string)
-        .collect();
-    let branches = git(
-        &["for-each-ref", "refs/heads", "--format=%(refname:short)"],
-        "the branches",
-    )?;
-    for local in branches
-        .lines()
-        .filter(|b| !checked_out.iter().any(|c| c == b))
-    {
-        let ahead = git(
-            &["rev-list", "--count", local, "--not", "--remotes"],
-            "a branch",
-        )?
-        .trim()
-        .parse::<u64>()
-        .map_err(|_| unreadable("a branch"))?;
-        if ahead > 0 {
-            return Err(format!(
-                "the local branch {local} holds {ahead} unpushed commit(s) and no worktree has it \
-                 checked out, which a reclaim would orphan"
-            ));
+    // The reservation's own branch, when this clone has it: it may not be the one HEAD is on.
+    if let Some(own) = reserved_branch.filter(|b| !b.is_empty()) {
+        let full = format!("refs/heads/{own}");
+        if super::dispatch::git_output(path, &["rev-parse", "--verify", "--quiet", &full]).is_some()
+        {
+            let integration = super::dispatch::integration_ref(project, path);
+            let ahead = super::dispatch::unpushed_commits(path, &full, integration.as_deref())
+                .ok_or_else(|| unreadable("the reserved branch"))?;
+            if ahead > 0 {
+                return Err(format!(
+                    "the reservation's branch {own} holds {ahead} unpushed commit(s), which a \
+                     reclaim would orphan"
+                ));
+            }
         }
     }
     let ignored = git(
@@ -295,7 +290,8 @@ const LSOF_LIMIT: std::time::Duration = std::time::Duration::from_secs(20);
 /// The standard output of `cmd`, or `Err` when it cannot start or has not ended within `limit`
 /// (it is killed then). The output is read on a thread of its own so a long answer never fills
 /// the pipe and looks like a hang; the exit code is not looked at, as `lsof`'s is no answer.
-#[cfg(any(target_os = "macos", test))]
+/// Compiled exactly where it is called: the macOS process probe and the unix-only tests below.
+#[cfg(any(target_os = "macos", all(test, unix)))]
 fn stdout_within(
     mut cmd: std::process::Command,
     limit: std::time::Duration,

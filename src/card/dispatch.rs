@@ -634,13 +634,13 @@ fn takeover_gates(project: &Path, home: &Path, card_id: i64, to_holder: &str) ->
     if cur.holder == to_holder {
         return Ok(()); // a self-reclaim renews its own reservation
     }
-    worktree_gate(cur.worktree.as_deref())
+    worktree_gate(project, cur.worktree.as_deref())
 }
 
 /// REQ-1..3: refuse a worktree that exists and holds uncommitted or unpushed work, go on
 /// only when the path is known to be gone (nothing there can be orphaned), refuse as
 /// unverifiable when the path cannot be told apart from "gone" or git cannot be read.
-pub(super) fn worktree_gate(worktree: Option<&str>) -> Result<()> {
+pub(super) fn worktree_gate(project: &Path, worktree: Option<&str>) -> Result<()> {
     let Some(wt) = worktree.filter(|w| !w.is_empty()) else {
         return Ok(());
     };
@@ -669,8 +669,7 @@ pub(super) fn worktree_gate(worktree: Option<&str>) -> Result<()> {
         .lines()
         .filter(|l| !l.trim().is_empty() && !super::early_reclaim::is_tool_cache_entry(path, l))
         .count() as u64;
-    let unpushed = git_output(path, &["rev-list", "--count", "HEAD", "--not", "--remotes"])
-        .and_then(|n| n.trim().parse::<u64>().ok())
+    let unpushed = unpushed_commits(path, "HEAD", integration_ref(project, path).as_deref())
         .ok_or_else(unreadable)?;
     if uncommitted > 0 || unpushed > 0 {
         return Err(format!(
@@ -679,6 +678,39 @@ pub(super) fn worktree_gate(worktree: Option<&str>) -> Result<()> {
         ));
     }
     Ok(())
+}
+
+/// The integration branch the `m-flow` work flow of the profile in `dir` names, if any.
+fn mflow_integration_branch(dir: &Path) -> Option<String> {
+    let (profile, _) = crate::profile::read_profile(dir).ok()?;
+    profile
+        .work_flow
+        .filter(|w| w.flow == "m-flow")?
+        .integration_branch
+}
+
+/// The local integration branch of an m-flow project, as a full ref: the profile of the
+/// project folder names the `m-flow` work flow with an integration branch, else the profile of
+/// the recorded worktree does (a lane worktree has no state-root marker, so its own profile is
+/// the earlier one without a work flow), and that branch exists locally. The ref is looked up
+/// in the worktree, whose refs are the clone's. `None` for every other case (no profile, one
+/// that cannot be read, another flow, no branch named, a branch this clone lacks), which leaves
+/// the count of unpushed commits to the remote-tracking refs alone
+/// (SPEC-20261120-reclaim-dead-holder REQ-13).
+pub(super) fn integration_ref(project: &Path, worktree: &Path) -> Option<String> {
+    let branch =
+        mflow_integration_branch(project).or_else(|| mflow_integration_branch(worktree))?;
+    let full = format!("refs/heads/{branch}");
+    git_output(worktree, &["rev-parse", "--verify", "--quiet", &full])?;
+    Some(full)
+}
+
+/// How many commits of `tip` are on no remote-tracking ref and, when `integration` names a
+/// ref, are not in it either. `None` when git cannot answer.
+pub(super) fn unpushed_commits(dir: &Path, tip: &str, integration: Option<&str>) -> Option<u64> {
+    let mut args = vec!["rev-list", "--count", tip, "--not", "--remotes"];
+    args.extend(integration);
+    git_output(dir, &args)?.trim().parse().ok()
 }
 
 /// The standard output of one read-only git command in `dir`: the environment is scrubbed like
