@@ -354,6 +354,67 @@ impl World {
         message
     }
 
+    /// The common git folder of the fixture repository.
+    fn common(&self) -> PathBuf {
+        self.project.join(".git")
+    }
+
+    /// The guard's hook, its record folder and the moai the hook finds in `$HOME/.moai/bin`,
+    /// and a path for the git calls of the command that holds the tools the hook needs.
+    fn install_guard(&self) {
+        let hooks = self.common().join("hooks");
+        fs::create_dir_all(&hooks).unwrap();
+        common::write_executable(
+            &hooks.join("reference-transaction"),
+            moai_cli::card::guard::hook_text(),
+        );
+        let bin = self.home.path().join(".moai/bin");
+        fs::create_dir_all(&bin).unwrap();
+        std::os::unix::fs::symlink(common::MOAI_BIN, bin.join("moai")).unwrap();
+        let git_dir = git_executable().parent().unwrap().to_path_buf();
+        let path =
+            std::env::join_paths([git_dir, PathBuf::from("/usr/bin"), PathBuf::from("/bin")])
+                .unwrap();
+        self.extra_env
+            .borrow_mut()
+            .push(("PATH".to_string(), path.to_string_lossy().into_owned()));
+    }
+
+    /// A git wrapper that runs `before` (shell text) just before the real `update-ref` and
+    /// `after` just after it, then returns the real exit code.
+    fn wrap_update_ref(&self, name: &str, before: &str, after: &str) {
+        let wrapper = self.dir.path().join(name);
+        common::write_executable(
+            &wrapper,
+            &format!(
+                "#!/bin/sh\nfor a in \"$@\"; do\n  if [ \"$a\" = update-ref ]; then\n    {before}\n    '{git}' \"$@\"\n    rc=$?\n    {after}\n    exit $rc\n  fi\ndone\nexec '{git}' \"$@\"\n",
+                git = git_executable().display(),
+            ),
+        );
+        *self.git_bin.borrow_mut() = wrapper;
+    }
+
+    /// A card of kind `task` that is ready and held by nobody; returns its name.
+    fn ready_card(&self, criteria: &[&str]) -> String {
+        let mut args = vec![
+            "add",
+            "--title",
+            "ready card",
+            "--kind",
+            "task",
+            "--scope",
+            "apps/a/",
+        ];
+        for text in criteria {
+            args.push("--ac");
+            args.push(text);
+        }
+        let added = result(&self.card(None, &args));
+        let name = added["name"].as_str().unwrap().to_string();
+        result(&self.card(None, &["ready", &name]));
+        name
+    }
+
     /// A draft SPEC with every placeholder filled, so `spec check` passes it; returns its id.
     fn draft_spec(&self, slug: &str) -> String {
         let out = self.run(
@@ -1003,4 +1064,278 @@ fn ac18_an_update_ref_failure_that_is_no_move_is_not_called_tip_moved() {
     let message = w.refuse(&out, "invalid_input", &["git refused"], &before, &w.tip);
     assert!(!message.contains("tip_moved"), "{message}");
     assert!(message.contains("lock"), "git's reason is named: {message}");
+}
+
+// ---- slice 1b: the guard and the ledger row ------------------------------------------------
+
+/// AC-7 (SPEC-20261121-ref-guard): `card land` under the guard moves the branch, the intent record
+/// exists before the update and is gone after, a record left by a stopped call is replaced, and a
+/// move the guard refuses answers with the guard's message and moves nothing.
+#[test]
+fn ac19_the_landing_command_moves_the_branch_under_the_guard() {
+    let w = World::new();
+    w.install_guard();
+    let side = w.dir.path().join("intent-seen");
+    let intent = w.common().join("moai/land-intent");
+    w.wrap_update_ref(
+        "git-copies-intent",
+        &format!(
+            "[ -f '{i}' ] && cp '{i}' '{s}'",
+            i = intent.display(),
+            s = side.display()
+        ),
+        "",
+    );
+    let card = w.review_card(&["one"]);
+    let candidate = w.candidate();
+    // A record left by a stopped call that names another move is replaced by this call.
+    fs::create_dir_all(w.common().join("moai")).unwrap();
+    fs::write(
+        &intent,
+        "{\"ref\":\"refs/heads/integ\",\"old\":\"1\",\"new\":\"2\"}",
+    )
+    .unwrap();
+    let got = result(&w.land(
+        &card,
+        &["--head", &candidate, "--met", "1=x", "--by", "leader"],
+    ));
+    assert_eq!(got["moved"], json!(true), "{got}");
+    assert_eq!(w.integ(), candidate);
+    let seen: Value = serde_json::from_str(&fs::read_to_string(&side).unwrap()).unwrap();
+    assert_eq!(seen["ref"], json!("refs/heads/integ"), "{seen}");
+    assert_eq!(seen["old"], json!(w.tip), "{seen}");
+    assert_eq!(seen["new"], json!(candidate), "{seen}");
+    assert!(!intent.exists(), "the record stays after the call");
+    assert_eq!(
+        fs::read_to_string(w.common().join("moai/integration-branch")).unwrap(),
+        "refs/heads/integ\n",
+        "the lander seeds the record from the profile"
+    );
+
+    // A move the guard refuses: the record is removed just before the update.
+    let second = w.review_card(&["one"]);
+    let next = commit_with(&w.project, &candidate, &[&candidate], "the next lane head");
+    w.wrap_update_ref(
+        "git-loses-intent",
+        &format!("rm -f '{}'", intent.display()),
+        "",
+    );
+    let out = w.land(
+        &second,
+        &["--head", &next, "--met", "1=x", "--by", "leader"],
+    );
+    assert_eq!(
+        out.status.code(),
+        Some(1),
+        "{}",
+        String::from_utf8_lossy(&out.stdout)
+    );
+    let v = envelope(&out);
+    let message = v["error"]["message"].as_str().unwrap().to_string();
+    assert!(
+        message.contains("moai ref guard"),
+        "the guard's message is lost: {message}"
+    );
+    assert!(!message.contains("tip_moved"), "{message}");
+    assert_eq!(w.integ(), candidate, "the guard let the branch move");
+    assert_eq!(w.events(&second, "card.landed"), 0);
+}
+
+/// AC-8: the start row is written before the landing event and names branch, tip, head and
+/// caller; a call that refuses writes no row; a rerun for the same card, head and tip writes no
+/// second row; a close refused after the move leaves the row.
+#[test]
+fn ac20_the_start_row_comes_before_the_move_and_once() {
+    let w = World::new();
+    // A landing: the row first, the landing event after.
+    let card = w.review_card(&["one"]);
+    let candidate = w.candidate();
+    result(&w.land(
+        &card,
+        &["--head", &candidate, "--met", "1=x", "--by", "leader"],
+    ));
+    let row = |card: &str| -> Vec<(i64, Value)> {
+        let l = ledger::open_read_only(w.home.path(), "demo").unwrap();
+        let mut st = l
+            .conn()
+            .prepare(
+                "SELECT event_id, payload FROM event WHERE card_id = ?1 \
+                 AND kind = 'card.land_started' ORDER BY event_id",
+            )
+            .unwrap();
+        st.query_map([number(card)], |r| {
+            Ok((
+                r.get::<_, i64>(0)?,
+                serde_json::from_str(&r.get::<_, String>(1)?).unwrap(),
+            ))
+        })
+        .unwrap()
+        .map(Result::unwrap)
+        .collect()
+    };
+    let rows = row(&card);
+    assert_eq!(rows.len(), 1, "{rows:?}");
+    let landed_id = w.count(&format!(
+        "SELECT event_id FROM event WHERE card_id = {} AND kind = 'card.landed'",
+        number(&card)
+    ));
+    assert!(rows[0].0 < landed_id, "the row does not come first");
+    assert_eq!(rows[0].1["branch"], json!("integ"), "{:?}", rows[0].1);
+    assert_eq!(rows[0].1["tip"], json!(w.tip), "{:?}", rows[0].1);
+    assert_eq!(rows[0].1["head"], json!(candidate), "{:?}", rows[0].1);
+    assert_eq!(rows[0].1["by"], json!("leader"), "{:?}", rows[0].1);
+
+    // A card that cannot finish refuses before any row.
+    let waiting = w.ready_card(&["one"]);
+    let next = commit_with(&w.project, &candidate, &[&candidate], "another lane head");
+    let out = w.land(
+        &waiting,
+        &["--head", &next, "--generation", "7", "--by", "leader"],
+    );
+    assert_eq!(out.status.code(), Some(1));
+    assert_eq!(row(&waiting).len(), 0);
+    assert_eq!(w.integ(), candidate);
+
+    // A stop between the row and the move (the guard refuses), then the same call: one row.
+    let held = w.review_card(&["one"]);
+    w.install_guard();
+    let intent = w.common().join("moai/land-intent");
+    w.wrap_update_ref(
+        "git-loses-intent",
+        &format!("rm -f '{}'", intent.display()),
+        "",
+    );
+    let out = w.land(&held, &["--head", &next, "--met", "1=x", "--by", "leader"]);
+    assert_eq!(out.status.code(), Some(1));
+    assert_eq!(row(&held).len(), 1, "the refused move left no row");
+    assert_eq!(w.integ(), candidate);
+    *w.git_bin.borrow_mut() = git_executable();
+    result(&w.land(&held, &["--head", &next, "--met", "1=x", "--by", "leader"]));
+    assert_eq!(row(&held).len(), 1, "the rerun wrote a second row");
+    assert_eq!(w.integ(), next);
+
+    // A close refused after the move leaves the row: another session marks the criterion met
+    // right after the update.
+    let raced = w.review_card(&["one"]);
+    let after = commit_with(&w.project, &next, &[&next], "the last lane head");
+    w.wrap_update_ref(
+        "git-races-the-ledger",
+        "",
+        &format!(
+            "CLAUDE_CODE_SESSION_ID={holder} HOME='{home}' '{moai}' card criterion {raced} 1 --generation 1 --met --evidence raced --project '{project}' --home '{home}' >/dev/null 2>&1",
+            holder = S_A,
+            home = w.home.path().display(),
+            moai = common::MOAI_BIN,
+            project = w.project.display(),
+        ),
+    );
+    let out = w.land(
+        &raced,
+        &["--head", &after, "--met", "1=x", "--by", "leader"],
+    );
+    assert_eq!(
+        out.status.code(),
+        Some(1),
+        "{}",
+        String::from_utf8_lossy(&out.stdout)
+    );
+    assert_eq!(w.integ(), after);
+    assert_eq!(row(&raced).len(), 1, "the refused close lost the row");
+}
+
+/// AC-11: a lane takes the ready card between the checks and the close while the call carries a
+/// generation: the refusal after the move names the cause and the moved branch and does not say
+/// that nothing was changed.
+#[test]
+fn ac21_a_take_between_the_checks_and_the_close_is_named_after_the_move() {
+    let w = World::new();
+    let card = w.ready_card(&["one"]);
+    let candidate = w.candidate();
+    w.wrap_update_ref(
+        "git-takes-the-card",
+        "",
+        &format!(
+            "CLAUDE_CODE_SESSION_ID={holder} HOME='{home}' '{moai}' card take {card} --project '{project}' --home '{home}' >/dev/null 2>&1",
+            holder = S_A,
+            home = w.home.path().display(),
+            moai = common::MOAI_BIN,
+            project = w.project.display(),
+        ),
+    );
+    let out = w.land(
+        &card,
+        &[
+            "--head",
+            &candidate,
+            "--met",
+            "1=x",
+            "--generation",
+            "0",
+            "--by",
+            "leader",
+        ],
+    );
+    assert_eq!(
+        out.status.code(),
+        Some(1),
+        "{}",
+        String::from_utf8_lossy(&out.stdout)
+    );
+    let message = envelope(&out)["error"]["message"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    assert!(
+        message.contains("does not match"),
+        "the cause is not named: {message}"
+    );
+    assert!(
+        message.contains(&format!("already moved to {candidate}")),
+        "the moved branch is not named: {message}"
+    );
+    assert!(
+        !message.contains("nothing was changed"),
+        "the refusal says nothing changed after the move: {message}"
+    );
+    assert_eq!(w.integ(), candidate);
+}
+
+/// AC-14: the answer names a case variant that already exists, and a profile that names another
+/// integration branch than the record is reported while the recorded branch is the one moved.
+#[test]
+fn ac22_the_answer_reports_a_variant_and_a_disagreeing_profile() {
+    let w = World::new();
+    // A packed variant of the branch's name, made before the call.
+    git(&w.project, &["update-ref", "refs/heads/INTEG", &w.tip]);
+    git(&w.project, &["pack-refs", "--all"]);
+    // The record exists and the profile names another branch.
+    fs::create_dir_all(w.common().join("moai")).unwrap();
+    fs::write(
+        w.common().join("moai/integration-branch"),
+        "refs/heads/integ\n",
+    )
+    .unwrap();
+    w.set_profile(
+        &String::from_utf8_lossy(MFLOW_PROFILE)
+            .replace(
+                "\"integration_branch\": \"integ\"",
+                "\"integration_branch\": \"other\"",
+            )
+            .into_bytes(),
+    );
+    let card = w.review_card(&["one"]);
+    let candidate = w.candidate();
+    let got = result(&w.land(
+        &card,
+        &["--head", &candidate, "--met", "1=x", "--by", "leader"],
+    ));
+    assert_eq!(got["moved"], json!(true), "{got}");
+    assert_eq!(
+        got["branch"],
+        json!("integ"),
+        "the recorded branch is the one moved: {got}"
+    );
+    assert_eq!(got["profile_disagrees"], json!("other"), "{got}");
+    assert_eq!(got["variants"], json!(["refs/heads/INTEG"]), "{got}");
+    assert_eq!(w.integ(), candidate);
 }
