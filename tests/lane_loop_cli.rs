@@ -112,6 +112,80 @@ fn host_lines_match_goldens() {
     assert_ne!(code, 0, "{bad}");
 }
 
+/// SPEC lane-goal-leader-codex-removed AC-1: the WHOLE answer of `lane-loop-line --host claude`
+/// is pinned with literal strings (not the source constants), for the default duty and for a
+/// custom `--duty`, so removing the Codex and OMP parts cannot change what a running Claude lane
+/// reads: the envelope and the result with their keys in order, every value, the one prompt line
+/// and the note.
+#[test]
+fn the_claude_answer_is_pinned_whole() {
+    let dir = tempfile::tempdir().unwrap();
+    let note = "/loop 5m fires only while the session is idle and expires after seven days";
+    let cases = [
+        (
+            vec!["lane-loop-line", "--host", "claude", "--lane", "agent-1"],
+            "agent-1",
+            "/loop 5m /moai --mode-agent 레인 agent-1 — 순환 계속, self-pick (1)부터. compact·clear 뒤 첫 행동은 내 카드 Issue 의 moai-resume 메모 읽기",
+        ),
+        (
+            vec![
+                "lane-loop-line",
+                "--host",
+                "claude",
+                "--lane",
+                "agent-2",
+                "--duty",
+                "맡은 카드 마무리, 그 뒤 self-pick",
+            ],
+            "agent-2",
+            "/loop 5m /moai --mode-agent 레인 agent-2 — 맡은 카드 마무리, 그 뒤 self-pick",
+        ),
+    ];
+    for (args, lane, prompt) in cases {
+        let (code, v) = run(&args, dir.path());
+        assert_eq!(code, 0, "{v}");
+        let envelope: Vec<&str> = v.as_object().unwrap().keys().map(String::as_str).collect();
+        assert_eq!(
+            envelope,
+            ["protocol_version", "operation", "ok", "result"],
+            "{v}"
+        );
+        assert_eq!(v["protocol_version"], json!(1), "{v}");
+        assert_eq!(v["operation"], json!("lane.loop_line"), "{v}");
+        assert_eq!(v["ok"], json!(true), "{v}");
+        let result = v["result"].as_object().unwrap();
+        let keys: Vec<&str> = result.keys().map(String::as_str).collect();
+        assert_eq!(
+            keys,
+            ["host", "lane", "writes", "lines", "verified", "note"],
+            "{v}"
+        );
+        assert_eq!(result["host"], json!("claude"), "{v}");
+        assert_eq!(result["lane"], json!(lane), "{v}");
+        assert_eq!(result["writes"], json!(false), "{v}");
+        assert_eq!(
+            result["lines"],
+            json!([{"kind": "prompt", "text": prompt}]),
+            "{v}"
+        );
+        assert_eq!(result["verified"], json!("documented"), "{v}");
+        assert_eq!(result["note"], json!(note), "{v}");
+        // The whole result at once: no key may be added or dropped.
+        assert_eq!(
+            v["result"],
+            json!({
+                "host": "claude",
+                "lane": lane,
+                "writes": false,
+                "lines": [{"kind": "prompt", "text": prompt}],
+                "verified": "documented",
+                "note": note,
+            }),
+            "{v}"
+        );
+    }
+}
+
 /// AC-4: no lane Stop hook in the project's `.codex/hooks.json` → a `LANE-BLOCKED … wake` line;
 /// the lane's own hook → none, with trust left `unknown`.
 #[test]
