@@ -559,6 +559,47 @@ fn classify_inner(
     }
 }
 
+/// What an `unknown` verdict (a `.moai/` that holds files and no marker, none of them Go
+/// markers) means for the folder being resolved.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Unknown {
+    /// Ours: a project's tracked part of a worktree (SPECs, evals, `project.yaml`) or a git
+    /// common folder, where no other tool writes.
+    Ours,
+    /// Ours only when every first-level name is one this generation writes (a HOME that a
+    /// writer started before any marker); any other name may belong to another tool, such as a
+    /// Go HOME whose items [`crate::home_state::home_go_markers`] does not list.
+    OnlyRustNames,
+}
+
+/// First-level names under a HOME's `.moai` that this generation writes and
+/// [`crate::home_layout::HOME_TABLE`] does not list. The slice that owns the HOME move adds them
+/// to the table; until then they must not make the HOME look foreign.
+const RUST_NAMES_NOT_IN_THE_TABLE: &[&str] = &["build", "edit-diagnostics"];
+
+/// Every entry directly inside `moai` is a name this generation writes (a marker name, a
+/// `Writes` row of the HOME table, or one of [`RUST_NAMES_NOT_IN_THE_TABLE`]); Finder's
+/// `.DS_Store` is ignored. An unreadable folder answers no.
+fn only_rust_names(moai: &Path) -> bool {
+    let Ok(entries) = fs::read_dir(moai) else {
+        return false;
+    };
+    entries.into_iter().all(|e| {
+        let Ok(e) = e else {
+            return false;
+        };
+        let name = e.file_name();
+        let Some(name) = name.to_str() else {
+            return false;
+        };
+        name == ".DS_Store"
+            || is_marker_name(name)
+            || RUST_NAMES_NOT_IN_THE_TABLE.contains(&name)
+            || crate::home_layout::lookup(name)
+                .is_some_and(|row| row.rust == crate::home_layout::RustUse::Writes)
+    })
+}
+
 /// The one rule of the three resolvers ([`dir`], [`crate::home_root::dir`],
 /// [`crate::clone_root::dir`]; SPEC-20261121-path-root-moai-default): does `root` resolve to
 /// `.moai`? `generation` is the verdict of the classification of `root/.moai`.
@@ -566,16 +607,28 @@ fn classify_inner(
 /// | verdict | earlier folder present | answer |
 /// | --- | --- | --- |
 /// | `rust`, `rust-first` | either | `.moai` |
-/// | `none`, `empty`, `unknown` | no | `.moai` |
+/// | `none`, `empty` | no | `.moai` |
+/// | `unknown` | no | `.moai` when [`Unknown`] says so, else the earlier folder |
 /// | `none`, `empty`, `unknown` | yes | `.moai-cli` (a legacy tree keeps every path it had) |
 /// | `go`, `mixed`, `interrupted`, `refuse` | either | `.moai-cli` (Go's folder is never written) |
 ///
 /// The earlier folder is present when `root/<earlier>` exists in any form; a link counts and
-/// is never followed. Reads only.
-pub(crate) fn resolves_to_moai(generation: &str, root: &Path, earlier: &str) -> bool {
+/// is never followed. A tree that a writer started on `.moai` before any marker (its entries make
+/// the verdict `unknown`) must keep resolving to `.moai`, or the state it just wrote would be
+/// stranded; that is why only a foreign-looking HOME falls back. Reads only.
+pub(crate) fn resolves_to_moai(
+    generation: &str,
+    root: &Path,
+    earlier: &str,
+    unknown: Unknown,
+) -> bool {
+    let earlier_absent = || fs::symlink_metadata(root.join(earlier)).is_err();
     match generation {
         "rust" | "rust-first" => true,
-        "none" | "empty" | "unknown" => fs::symlink_metadata(root.join(earlier)).is_err(),
+        "none" | "empty" => earlier_absent(),
+        "unknown" => {
+            earlier_absent() && (unknown == Unknown::Ours || only_rust_names(&root.join(MOAI_DIR)))
+        }
         _ => false,
     }
 }
@@ -587,7 +640,12 @@ pub(crate) fn resolves_to_moai(generation: &str, root: &Path, earlier: &str) -> 
 /// before, and a new project, a worktree without a marker included, never gets `.moai-cli`
 /// from this function.
 pub fn dir(root: &Path) -> &'static str {
-    if resolves_to_moai(classify(root).generation, root, crate::PROJECT_STATE_DIR) {
+    if resolves_to_moai(
+        classify(root).generation,
+        root,
+        crate::PROJECT_STATE_DIR,
+        Unknown::Ours,
+    ) {
         MOAI_DIR
     } else {
         crate::PROJECT_STATE_DIR

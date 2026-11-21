@@ -239,6 +239,34 @@ fn home_with_both_folders_and_no_marker_stays_on_the_earlier_one() {
 }
 
 #[test]
+fn home_with_unrecognised_files_in_moai_and_no_earlier_folder_stays_on_the_earlier_name() {
+    // A Go-like HOME whose items the HOME Go markers do not list: not ours to write into.
+    let h = TempHome::new();
+    write(h.path(), ".moai/config.yaml", "generation: go\n");
+    write(h.path(), ".moai/cache/blob", "go state bytes");
+    assert_eq!(state_root::classify_home(h.path()).generation, "unknown");
+    assert_eq!(home_root::dir(h.path()), EARLIER);
+    assert_eq!(home_root::path(h.path()), h.path().join(".moai-cli"));
+}
+
+#[test]
+fn home_with_only_names_this_generation_writes_in_moai_resolves_to_moai() {
+    // A first write on a fresh HOME made .moai before any marker; the next call must find it.
+    let h = TempHome::new();
+    write(h.path(), ".moai/home-style/receipts/r.json", "{}");
+    write(h.path(), ".moai/installations/i.json", "{}");
+    write(h.path(), ".moai/projects/p/ledger.db", "x");
+    write(h.path(), ".moai/build/b", "x");
+    write(h.path(), ".moai/edit-diagnostics/e", "x");
+    assert_eq!(state_root::classify_home(h.path()).generation, "unknown");
+    assert_eq!(home_root::dir(h.path()), NOW);
+    assert_eq!(home_root::path(h.path()), h.path().join(".moai"));
+    // One name that is not this generation's is enough to leave it alone.
+    write(h.path(), ".moai/kanban/k", "x");
+    assert_eq!(home_root::dir(h.path()), EARLIER);
+}
+
+#[test]
 fn home_with_a_go_state_folder_and_no_earlier_folder_stays_on_the_earlier_name() {
     let h = TempHome::new();
     h.make_go_generation();
@@ -346,6 +374,16 @@ fn clone_with_a_marker_resolves_to_moai() {
         NOW,
         "marker beside the earlier folder"
     );
+}
+
+#[test]
+fn clone_with_files_in_moai_and_no_marker_and_no_earlier_folder_resolves_to_moai() {
+    // The common folder is inside .git: no other tool writes there, and a first write that
+    // started on .moai before any marker must be found again by the next call.
+    let c = TempHome::new();
+    write(c.path(), ".moai/sessions/agent-1.live", "x\n");
+    assert_eq!(state_root::classify(c.path()).generation, "unknown");
+    assert_eq!(clone_root::dir(c.path()), NOW);
 }
 
 #[test]

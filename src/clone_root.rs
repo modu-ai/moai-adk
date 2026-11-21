@@ -19,6 +19,7 @@ pub fn dir(common: &Path) -> &'static str {
         crate::state_root::classify(common).generation,
         common,
         crate::CLONE_STATE_DIR,
+        crate::state_root::Unknown::Ours,
     ) {
         crate::state_root::MOAI_DIR
     } else {

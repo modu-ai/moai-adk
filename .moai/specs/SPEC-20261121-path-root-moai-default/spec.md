@@ -25,7 +25,10 @@ The rule decided here, for a project, a HOME and a git common folder alike. "Ear
 | `rust` (valid marker) | either | `.moai` (unchanged) |
 | `rust-first` (HOME, schema-2 marker) | either | the layout root under `.moai` (unchanged) |
 | any other | yes | `.moai-cli` (unchanged: a legacy tree keeps every path it had) |
-| `none`, `empty`, `unknown` (a `.moai/` with files that are neither Go markers nor a marker; a specs-only `.moai/` reads as `none`) | no | `.moai` (new) |
+| `none`, `empty` (a specs-only project `.moai/` reads as `none`) | no | `.moai` (new) |
+| `unknown` (a `.moai/` with files that are neither Go markers nor a marker), a project or a git common folder | no | `.moai` (new: the tracked part of a worktree, or state a first write started before any marker) |
+| `unknown`, a HOME whose first-level names are all names this generation writes (the HOME table's `Writes` rows, a marker name, `build`, `edit-diagnostics`) | no | `.moai` (new: a first write on a fresh HOME that no marker covers yet) |
+| `unknown`, a HOME with any other first-level name | no | `.moai-cli` (unchanged: the files may belong to another tool, a Go HOME whose items the HOME markers do not list) |
 | `go`, `mixed`, `interrupted`, `refuse` | no | `.moai-cli` (unchanged: Go's folder is never written) |
 
 Consequences:
@@ -48,9 +51,9 @@ What stays with other work: the project-side move step of `/moai update` with pr
 
 - REQ-1: The project resolver shall return `.moai` for a project whose `.moai` holds a valid Rust marker, whether or not `.moai-cli` exists.
 - REQ-2: The project resolver shall return `.moai-cli` for a project that has `.moai-cli` and no valid Rust marker, so that every path of a legacy project stays as it was.
-- REQ-3: The project resolver shall return `.moai` for a project that has no `.moai-cli` and whose `.moai` is absent, empty, holds only `specs/` or holds files that are neither Go markers nor a Rust marker.
+- REQ-3: The project resolver shall return `.moai` for a project that has no `.moai-cli` and whose `.moai` is absent, empty, holds only `specs/` or holds files that are neither Go markers nor a Rust marker (a worktree without a marker is such a project).
 - REQ-4: The project resolver shall return `.moai-cli` for a project that has no `.moai-cli` and whose `.moai` is Go's, mixed, a stopped migration, a link or another non-folder, so that no Go file is written.
-- REQ-5: The HOME resolver shall give the same answers as the project resolver for the rows of the table, keeping the layout root of a schema-2 marker.
+- REQ-5: The HOME resolver shall give the same answers as the project resolver for the rows of the table, keeping the layout root of a schema-2 marker and leaving a `.moai` that holds a name this generation does not write on the earlier folder.
 - REQ-6: The clone resolver shall give the same answers as the project resolver for the rows of the table, over the git common folder.
 - REQ-7: The three resolvers shall read only, so that a call changes no file, folder or link under the tree. · failure: none — a read changes nothing
 - REQ-8: When `.moai-cli` is a link, the resolvers shall count it as present without following it. · failure: none — a link is only looked at, never opened
@@ -91,7 +94,7 @@ Readers of the resolvers and of the earlier name (files, counted as above) for t
 | D-1 | A Go, mixed, interrupted or refused `.moai` with no `.moai-cli` still resolves to `.moai-cli` | The Go folder must never be written (dispatch rule: legacy isolation first); this is today's answer | Flip the one row once the Rust-only switch has removed Go |
 | D-2 | `.moai-cli` counts as present in any form, a link included, and is never followed | Same link rule as every marker read in `state_root.rs` | none |
 | D-3 | `src/lib.rs` is not edited in this slice | Another change holds it; the resolvers need no new constant | Edit the doc comments when that change lands |
-| D-4 | An `unknown` `.moai/` with no `.moai-cli` resolves to `.moai` | A worktree of a repository that tracks files under `.moai/` is this case; resolving it to `.moai-cli` is what the dispatch calls the bug | Read it as `.moai-cli` again in one match arm |
+| D-4 | An `unknown` `.moai/` with no `.moai-cli` resolves to `.moai` for a project and for a git common folder; for a HOME only when every first-level name is one this generation writes | A worktree of a repository that tracks files under `.moai/` is the project case and resolving it to `.moai-cli` is what the dispatch calls the bug. Resolving a HOME's unknown folder to `.moai-cli` flips a fresh HOME's first write away from where it was just written (`home_style_cli` caught it), and resolving it to `.moai` writes into a Go HOME whose items the HOME markers do not list (`e2e_host_fixture` caught it), so the names decide | Change the `Unknown` policy of one call |
 | D-5 | The installer is not changed | It reads `install-inspect`, which follows the resolver (measured) | none |
 
 ## Result

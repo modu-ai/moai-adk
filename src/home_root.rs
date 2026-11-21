@@ -4,7 +4,7 @@
 //! `~/.moai/moai-cli.json`, [`crate::state_root::LEGACY_MARKER`]), otherwise the earlier
 //! `~/.moai-cli` ([`crate::HOME_STATE_DIR`]). Read both, one writes: a HOME that has `~/.moai-cli`
 //! and no marker keeps exactly the paths it had, a HOME with neither (or with a `~/.moai` that
-//! holds no Go state and no marker) resolves to `~/.moai`, and the Go generation's `~/.moai` is
+//! holds no files at all) resolves to `~/.moai`, and the Go generation's `~/.moai` is
 //! never written here ([`crate::state_root::resolves_to_moai`],
 //! SPEC-20261121-path-root-moai-default).
 //! A schema-2 marker (#2871 I2 R1, [`crate::state_root::classify_home`]) makes the HOME
@@ -23,6 +23,7 @@ pub fn dir(home: &Path) -> &'static str {
         crate::state_root::classify_home(home).generation,
         home,
         crate::HOME_STATE_DIR,
+        crate::state_root::Unknown::OnlyRustNames,
     ) {
         MOAI_DIR
     } else {
@@ -36,7 +37,12 @@ pub fn path(home: &Path) -> PathBuf {
     let generation = crate::state_root::classify_home(home).generation;
     if generation == "rust-first" {
         crate::home_layout::rust_path(home, "")
-    } else if crate::state_root::resolves_to_moai(generation, home, crate::HOME_STATE_DIR) {
+    } else if crate::state_root::resolves_to_moai(
+        generation,
+        home,
+        crate::HOME_STATE_DIR,
+        crate::state_root::Unknown::OnlyRustNames,
+    ) {
         home.join(MOAI_DIR)
     } else {
         home.join(crate::HOME_STATE_DIR)
