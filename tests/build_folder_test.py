@@ -650,6 +650,177 @@ class SeedRollbackTest(unittest.TestCase):
             self.assertEqual(sorted(p.name for p in self.own.iterdir()), [".moai-build.json"])
 
 
+class AuditPlaceTest(unittest.TestCase):
+    """`audit-place --name <n> --head <sha>`: one fixed audit worktree and its build folder, moved
+    to each audited head instead of cloned again, so files that did not change keep their
+    modification times and cargo rebuilds only the crates that did."""
+
+    def setUp(self):
+        self.fx = Fixture()
+        self.addCleanup(self.fx.close)
+        repo = self.fx.repo
+        (repo / ".gitignore").write_text("target/\n")
+        (repo / "b.txt").write_text("b1\n")
+        git(repo, "add", "-A")
+        git(repo, "commit", "-q", "-m", "one")
+        self.c1 = git(repo, "rev-parse", "HEAD").strip()
+        (repo / "b.txt").write_text("b2\n")
+        git(repo, "commit", "-q", "-am", "two")
+        self.c2 = git(repo, "rev-parse", "HEAD").strip()
+        (repo / "b.txt").write_text("b3\n")
+        (repo / "c.txt").write_text("c3\n")
+        git(repo, "add", "-A")
+        git(repo, "commit", "-q", "-m", "three")
+        self.c3 = git(repo, "rev-parse", "HEAD").strip()
+        self.place = self.fx.home / ".moai" / "worktrees" / "repo" / "audit-a1"
+        self.folder = self.fx.folder("repo-audit-a1")
+
+    def call(self, head, name="a1", **kw):
+        return self.fx.run("audit-place", "--name", name, "--head", head, **kw)
+
+    def answer(self, out):
+        self.assertEqual(out.returncode, 0, out.stderr)
+        return json.loads(out.stdout)
+
+    def head_in_place(self):
+        return git(self.place, "rev-parse", "HEAD").strip()
+
+    def test_a_first_call_makes_the_place_and_its_build_folder(self):
+        got = self.answer(self.call(self.c1))
+        self.assertTrue(got["created"], got)
+        self.assertIsNone(got["previous"])
+        self.assertEqual(Path(got["place"]), self.place)
+        self.assertEqual(Path(got["folder"]), self.folder)
+        self.assertEqual(got["head"], self.c1)
+        self.assertEqual(got["tree"], git(self.fx.repo, "rev-parse", f"{self.c1}^{{tree}}").strip())
+        self.assertEqual(self.head_in_place(), self.c1)
+        self.assertEqual(git(self.place, "branch", "--show-current").strip(), "")  # detached
+        record = json.loads((self.folder / ".moai-build.json").read_text())
+        self.assertEqual(record["worktree"], os.path.realpath(self.place))
+        self.assertEqual((self.place / "b.txt").read_text(), "b1\n")
+
+    def test_a_second_call_moves_the_same_folder_and_keeps_unchanged_files_as_they_are(self):
+        self.answer(self.call(self.c2))
+        old = 1_000_000_000
+        os.utime(self.place / "a.txt", (old, old))
+        inode = os.stat(self.place / "a.txt").st_ino
+        got = self.answer(self.call(self.c3))
+        self.assertFalse(got["created"], got)
+        self.assertEqual(got["previous"], self.c2)
+        self.assertEqual(got["head"], self.c3)
+        self.assertEqual(got["moved_files"], 2)  # b.txt changed, c.txt added
+        self.assertEqual(self.head_in_place(), self.c3)
+        self.assertEqual((self.place / "b.txt").read_text(), "b3\n")
+        # The file that did not change was not rewritten: same modification time, same inode.
+        self.assertEqual(int(os.stat(self.place / "a.txt").st_mtime), old)
+        self.assertEqual(os.stat(self.place / "a.txt").st_ino, inode)
+
+    def test_the_same_head_twice_changes_nothing(self):
+        self.answer(self.call(self.c2))
+        old = 1_000_000_000
+        os.utime(self.place / "b.txt", (old, old))
+        got = self.answer(self.call(self.c2))
+        self.assertFalse(got["created"])
+        self.assertEqual(got["moved_files"], 0)
+        self.assertEqual(got["taken_back"], 0)
+        self.assertEqual(int(os.stat(self.place / "b.txt").st_mtime), old)
+
+    def test_a_move_takes_back_edits_and_strays_but_not_ignored_files(self):
+        self.answer(self.call(self.c1))
+        (self.place / "a.txt").write_text("edited\n")  # a tracked file changed
+        (self.place / "stray_test.rs").write_text("fn main() {}\n")  # would be a test crate
+        (self.place / "target").mkdir()
+        (self.place / "target" / "evidence.txt").write_text("keep\n")  # ignored
+        got = self.answer(self.call(self.c2))
+        self.assertEqual(got["taken_back"], 2, got)
+        self.assertEqual((self.place / "a.txt").read_text(), "a\n")
+        self.assertFalse((self.place / "stray_test.rs").exists())
+        self.assertEqual((self.place / "target" / "evidence.txt").read_text(), "keep\n")
+        self.assertEqual(git(self.place, "status", "--porcelain").strip(), "")
+        self.assertEqual(got["tree"], git(self.place, "rev-parse", "HEAD^{tree}").strip())
+
+    def test_a_bad_head_or_name_is_refused_and_writes_nothing(self):
+        for head in ["abc", self.c1.upper(), "0" * 40, self.c1 + "0", "--help", ""]:
+            out = self.call(head)
+            self.assertEqual(out.returncode, 1, (head, out.stdout, out.stderr))
+            self.assertEqual(out.stdout, "")
+        for name in ["a/b", "..", "a b", "", "-x"]:
+            out = self.call(self.c1, name=name)
+            self.assertEqual(out.returncode, 1, (name, out.stdout, out.stderr))
+        self.assertFalse((self.fx.home / ".moai" / "worktrees").exists())
+        self.assertFalse((self.fx.home / ".moai" / "build").exists())
+
+    def test_a_place_that_is_a_link_a_file_or_not_a_worktree_is_refused(self):
+        self.place.parent.mkdir(parents=True)
+        elsewhere = self.fx.home / "elsewhere"
+        elsewhere.mkdir()
+        os.symlink(elsewhere, self.place)
+        out = self.call(self.c1)
+        self.assertEqual(out.returncode, 1, out.stderr)
+        self.assertTrue(os.path.islink(self.place))
+        self.assertEqual(list(elsewhere.iterdir()), [])
+        os.unlink(self.place)
+        self.place.write_text("a file\n")
+        out = self.call(self.c1)
+        self.assertEqual(out.returncode, 1, out.stderr)
+        self.assertEqual(self.place.read_text(), "a file\n")
+        self.place.unlink()
+        self.place.mkdir()
+        (self.place / "mine.txt").write_text("not a worktree\n")
+        out = self.call(self.c1)
+        self.assertEqual(out.returncode, 1, out.stderr)
+        self.assertEqual((self.place / "mine.txt").read_text(), "not a worktree\n")
+
+    def test_a_held_cargo_lock_stops_the_move(self):
+        self.answer(self.call(self.c1))
+        cargo_output(self.folder)
+        fd = os.open(self.folder / "debug" / ".cargo-lock", os.O_RDWR)
+        self.addCleanup(os.close, fd)
+        fcntl.flock(fd, fcntl.LOCK_EX)
+        out = self.call(self.c2)
+        self.assertEqual(out.returncode, 1, out.stdout)
+        self.assertIn("place_busy", out.stderr)
+        self.assertEqual(self.head_in_place(), self.c1)
+        self.assertEqual((self.place / "b.txt").read_text(), "b1\n")
+
+    def test_cargo_home_is_recorded_and_a_change_is_reported_once(self):
+        got = self.answer(self.call(self.c1, extra_env={"CARGO_HOME": "/cargo/one"}))
+        self.assertEqual(got["cargo_home"], "/cargo/one")
+        self.assertNotIn("cargo_home_changed", got)
+        got = self.answer(self.call(self.c1, extra_env={"CARGO_HOME": "/cargo/two"}))
+        self.assertTrue(got["cargo_home_changed"], got)
+        self.assertEqual(got["cargo_home"], "/cargo/two")
+        self.assertEqual(got["cargo_home_was"], "/cargo/one")
+        got = self.answer(self.call(self.c1, extra_env={"CARGO_HOME": "/cargo/two"}))
+        self.assertNotIn("cargo_home_changed", got)
+        got = self.answer(self.call(self.c1))
+        self.assertEqual(got["cargo_home"], str(self.fx.home / ".cargo"))
+        self.assertTrue(got["cargo_home_changed"])
+
+    def test_the_calling_checkout_and_the_cargo_output_are_left_alone(self):
+        self.answer(self.call(self.c1))
+        cargo_output(self.folder)
+        before = tree(self.folder / "debug")
+        wt_before = tree(self.fx.wt)
+        self.answer(self.call(self.c3))
+        self.assertEqual(tree(self.folder / "debug"), before)
+        self.assertEqual(tree(self.fx.wt), wt_before)
+        self.assertTrue(self.place.is_dir())
+
+    def test_a_clean_in_the_place_still_removes_only_cargo_output(self):
+        self.answer(self.call(self.c1))
+        cargo_output(self.folder)
+        out = subprocess.run(
+            ["python3", "-I", str(TOOL), "clean"], cwd=self.place, capture_output=True, text=True,
+            env={"PATH": os.environ.get("PATH", "/usr/bin:/bin"), "HOME": str(self.fx.home),
+                 "GIT_CONFIG_GLOBAL": "/dev/null", "GIT_CONFIG_SYSTEM": "/dev/null"})
+        self.assertEqual(out.returncode, 0, out.stderr)
+        self.assertFalse((self.folder / "debug").exists())
+        self.assertTrue(self.place.is_dir())
+        # The place's own state record is not cargo output, so the folder and the record stay.
+        self.assertTrue((self.folder / ".moai-audit-place.json").is_file())
+
+
 def shutil_rmtree(path):
     import shutil
     shutil.rmtree(path)

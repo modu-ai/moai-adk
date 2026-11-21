@@ -17,6 +17,17 @@ cargo output when the task ends; skills/moai/references/internal/build-folder.md
                                            answer is `{"seeded": false, "reason": ...}` and no
                                            byte is copied: build cold. BUILD_FOLDER_NO_COW=1
                                            switches cloning off; the source is only read
+  python3 -I tools/build_folder.py audit-place --name <n> --head <40-digit commit id>
+                                           one fixed audit worktree `<HOME>/.moai/worktrees/
+                                           <project>/audit-<n>` and its build folder: made at the
+                                           head on the first call, moved to the head (never
+                                           cloned again) on the next, so files that did not change
+                                           keep their modification times and cargo rebuilds only
+                                           the crates that did. Edits and untracked files git does
+                                           not ignore are taken back, the tree hash is checked, a
+                                           held cargo lock refuses (`place_busy`), and the
+                                           CARGO_HOME it was built with is recorded and a change
+                                           reported. Nothing is deleted but those strays
   python3 -I tools/build_folder.py remove --preview <optimize-plan JSON> [--moai <bin>] <name>...
                                            delete the cargo output of folders the user picked
                                            from the preview; every name must be a `trim` row of
@@ -365,6 +376,121 @@ def cmd_seed(name):
     return answer(True, method=method, entries=[p.name for p in made], note=CARGO_HOME_NOTE)
 
 
+PLACE_RECORD = ".moai-audit-place.json"  # in the place's build folder: the CARGO_HOME it was built with
+SHA40 = re.compile(r"[0-9a-f]{40}")
+
+
+def project_name(common):
+    primary = common.parent if common.name == ".git" else common
+    return safe(primary.name[:-4] if primary.name.endswith(".git") else primary.name)
+
+
+def registered_worktrees(cwd):
+    """The real paths git lists as worktrees of this repository."""
+    paths = set()
+    for line in git(cwd, "worktree", "list", "--porcelain").splitlines():
+        if line.startswith("worktree "):
+            paths.add(os.path.realpath(line[len("worktree "):]))
+    return paths
+
+
+def status_lines(place):
+    """What `git status --porcelain` lists: changed tracked files and untracked files that git does
+    not ignore, one line per file."""
+    return [l for l in git(place, "status", "--porcelain", "--untracked-files=all").splitlines() if l]
+
+
+def read_place_record(folder):
+    try:
+        data = json.loads((folder / PLACE_RECORD).read_text())
+    except (OSError, ValueError, UnicodeDecodeError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def write_place_record(folder, doc):
+    tmp = folder / (PLACE_RECORD + ".tmp")
+    if os.path.lexists(tmp):
+        raise Refused(f"{tmp} is in the way")
+    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(fd, "w") as f:
+        json.dump(doc, f)
+    os.replace(tmp, folder / PLACE_RECORD)
+
+
+def cmd_audit_place(name, head):
+    """One fixed audit worktree per auditor, moved to each audited head instead of cloned again, and
+    its build folder: files that did not change keep their modification times, so cargo rebuilds
+    only the crates that did."""
+    if safe(name) != name or name.startswith("-"):
+        raise Refused(f"{name!r} is not one usable audit place name")
+    if not SHA40.fullmatch(head):
+        raise Refused(f"{head!r} is not a full 40-digit lowercase commit id")
+    common, _, _ = owner()
+    if git(".", "rev-parse", "--verify", "--quiet", f"{head}^{{commit}}") != head:
+        raise Refused(f"{head} is not a commit of this repository")
+    tree = git(".", "rev-parse", f"{head}^{{tree}}")
+    project = project_name(common)
+    root = home()
+    place = root / ".moai" / "worktrees" / project / f"audit-{name}"
+    parents = [root / ".moai", root / ".moai" / "worktrees", root / ".moai" / "worktrees" / project]
+    for parent in parents:
+        if not real_dir(parent, create=False):
+            break  # the rest is made below, after every refusal has been checked
+    created = not os.path.lexists(place)
+    if not created:
+        if os.path.islink(place) or not os.path.isdir(place):
+            raise Refused(f"{place} is a link or not a folder; it is not followed")
+        if os.path.realpath(place) not in registered_worktrees("."):
+            raise Refused(f"{place} is not a worktree of this repository; nothing was changed")
+    previous = None
+    held = []
+    try:
+        if created:
+            for parent in parents:
+                real_dir(parent, create=True)
+            git(".", "worktree", "add", "--detach", str(place), head)
+            taken_back = 0
+        else:
+            os.chdir(place)
+            _, _, folder, folder_exists = folder_path(create=False)
+            if folder_exists:
+                got = hold_source(folder)
+                if got is None:
+                    raise Refused(f"place_busy: a cargo run holds the lock of {folder}; "
+                                  "nothing was changed")
+                held = got
+            previous = git(place, "rev-parse", "HEAD")
+            taken_back = len(status_lines(place))
+            git(place, "checkout", "--detach", "--force", head)
+            git(place, "clean", "-fd")
+        os.chdir(place)
+        if git(place, "rev-parse", "HEAD") != head or git(place, "rev-parse", "HEAD^{tree}") != tree:
+            raise Refused(f"{place} is not at the tree of {head}")
+        left = status_lines(place)
+        if left:
+            raise Refused(f"{place} is not clean after the move: {left[0]}")
+        moved = None
+        if previous is not None:
+            moved = len([l for l in git(place, "diff", "--name-only", "--no-renames", previous, head)
+                         .splitlines() if l])
+        folder = ensure_folder()
+        wanted = os.environ.get("CARGO_HOME") or str(root / ".cargo")
+        old = read_place_record(folder).get("cargo_home")
+        write_place_record(folder, {"schema_version": 1, "cargo_home": wanted, "head": head})
+    finally:
+        for fd in held:
+            os.close(fd)
+    doc = {"place": str(place), "folder": str(folder), "head": head, "tree": tree,
+           "created": created, "previous": previous, "moved_files": moved,
+           "taken_back": taken_back, "cargo_home": wanted}
+    if old is not None and old != wanted:
+        doc["cargo_home_changed"] = True
+        doc["cargo_home_was"] = old
+    print(json.dumps(doc))
+    return 0
+
+
 def trim_paths(doc):
     """The `agent_build_folder` rows marked `trim` in an optimize-plan answer (or its result)."""
     result = doc.get("result") if isinstance(doc, dict) and "result" in doc else doc
@@ -435,6 +561,9 @@ def main(argv):
         action = cmd_clean
     elif argv[:2] == ["seed", "--from"] and len(argv) == 3:
         action = lambda: cmd_seed(argv[2])  # noqa: E731
+    elif argv[:1] == ["audit-place"] and len(argv) == 5 and {argv[1], argv[3]} == {"--name", "--head"}:
+        given = {argv[1]: argv[2], argv[3]: argv[4]}
+        action = lambda: cmd_audit_place(given["--name"], given["--head"])  # noqa: E731
     elif argv[:2] == ["remove", "--preview"] and len(argv) >= 4:
         rest, moai = argv[3:], "moai"
         if rest[:1] == ["--moai"] and len(rest) >= 3:
@@ -442,6 +571,7 @@ def main(argv):
         action = lambda: cmd_remove(argv[2], moai, rest)  # noqa: E731
     else:
         print("usage: build_folder.py env | clean | seed --from <lane folder name> | "
+              "audit-place --name <audit place name> --head <40-digit commit id> | "
               "remove --preview <file> [--moai <bin>] <name>...", file=sys.stderr)
         return 2
     try:
