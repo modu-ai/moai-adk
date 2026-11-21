@@ -453,12 +453,12 @@
       }
     },
     "workflows/project.md": {
-      "sha256": "997cdb87fa0234bffbcb87cf98d60b343b2b4631f17a7f630508b2fd2faeb3db",
+      "sha256": "263e214722bfaa6595985114fca55da990465f16dcb69d202eeeacdb7391b441",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-project",
         "adoption": "new",
-        "reason": "Written for rc.2 #2496 from user decisions 16 = B and 17 = all three (#1975 comment 6815357071) and the gap analysis #2286 6811414257; no design-22 template exists for PROJECT. Go `/moai project` was read as reference only; its product/structure/tech documents are not ported (decision 16 = B). Step 2 says the root instruction files are moved, not copied, into the backup's root-files/ and that a not-copied restore says why (#2936 S1b repair, audit 6879582411 B2). Step 2 adds the staying-layout backup_ignore stop and the re-proposal of reverted Go settings (#2936 S-AGENTS-STAY, decision 6901387505)."
+        "reason": "Written for rc.2 #2496 from user decisions 16 = B and 17 = all three (#1975 comment 6815357071) and the gap analysis #2286 6811414257; no design-22 template exists for PROJECT. Go `/moai project` was read as reference only; its product/structure/tech documents are not ported (decision 16 = B). Step 2 says the root instruction files are moved, not copied, into the backup's root-files/ and that a not-copied restore says why (#2936 S1b repair, audit 6879582411 B2). Step 2 adds the staying-layout backup_ignore stop and the re-proposal of reverted Go settings (#2936 S-AGENTS-STAY, decision 6901387505). Step 3's work-ledger bullet names the fixed place of the ledger-register pick and the Completion Check gains its paragraph (install-flow survey 2026-11-21 finding G13; leader decision 2026-11-20T23:28Z)."
       }
     },
     "workflows/read.md": {
