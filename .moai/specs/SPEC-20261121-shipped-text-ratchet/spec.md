@@ -2,7 +2,7 @@
 id: SPEC-20261121-shipped-text-ratchet
 title: "A repository scan fails when the shipped text gains one more maintainer-only token than its baseline"
 status: draft
-revision: 2
+revision: 3
 created: 2026-11-21
 ---
 
@@ -29,20 +29,20 @@ The scan is repository-only. It reads two files kept under `tools/improve/` (the
 - REQ-3 (REQ-2): IF a token total is above its baseline total, THEN the scan shall exit 1 and name the token with both numbers.
 - REQ-4 (REQ-2): IF a file holds a token more often than the baseline records for that file, THEN the scan shall exit 1 and name the file and the token with both numbers.
 - REQ-5: The scan shall report every count below its baseline as headroom while it exits 0 for it.
-- REQ-6: IF the token file or the baseline is missing, is not JSON or has another shape than the documented one, THEN the scan shall exit 2 with the reason on stderr and nothing on stdout.
+- REQ-6: IF the token file or the baseline is missing, is not JSON, has another shape than the documented one or names a shipped path that is absolute or holds `..`, THEN the scan shall exit 2 with the reason on stderr and nothing on stdout.
 - REQ-7: IF a token pattern is not a valid regular expression or can match the empty string, THEN the scan shall exit 2 with the token named on stderr.
 - REQ-8: The scan shall write no file.
-- REQ-9: The scan shall skip a file that is not valid UTF-8 and list it as skipped.
+- REQ-9: The scan shall skip a file that is not valid UTF-8 or is a symbolic link and list it as skipped.
 - REQ-10: The scan of the checked-in tree shall exit 0 with the baseline file of this change.
 - REQ-11: The tool and its two data files and its test shall lie outside `skills/moai/` and `agents/` and outside the package source manifest.
 - REQ-12: The table `tools/repo_scans.json` shall list the test of the scan with the shipped paths as its scope.
 
 ## Acceptance
 
-- AC-1 (REQ-1, REQ-9): on a temporary tree with known matches per token in a nested file, a top-level file and a file outside the shipped paths, `baseline` prints the counts of the files under the shipped paths only (the exact baseline file shape, nothing else on stdout); `check` lists a file holding a byte that is not UTF-8 under `skipped` and does not count it · verify: `python3 -m unittest tests.shipped_text_ratchet_test.CountTest`
+- AC-1 (REQ-1, REQ-9): on a temporary tree with known matches per token in a nested file, a top-level file and a file outside the shipped paths, `baseline` prints the counts of the files under the shipped paths only (the exact baseline file shape, nothing else on stdout); `check` lists a file holding a byte that is not UTF-8 and a symbolic link under `skipped` and does not count them; a `.git` folder under a shipped path is not walked · verify: `python3 -m unittest tests.shipped_text_ratchet_test.CountTest`
 - AC-2 (REQ-2, REQ-3, REQ-4): with the baseline taken from a temporary tree, the same tree exits 0; one more match of one token in a file that already holds it exits 1 and names the file token and numbers; one more match in a file the baseline does not list exits 1; a match moved from one file to another with an equal total exits 1 on the per-file rule; a total one above with every file at or below cannot arise, so the total rule is shown by a baseline whose total is lower than its files add up to · verify: `python3 -m unittest tests.shipped_text_ratchet_test.BoundaryTest`
 - AC-3 (REQ-5): one match fewer than the baseline exits 0 and lists the file and the token under `headroom` with both numbers · verify: `python3 -m unittest tests.shipped_text_ratchet_test.HeadroomTest`
-- AC-4 (REQ-6, REQ-7): a missing token file, a missing baseline, a file that is not JSON, an extra top-level key, a negative or non-integer count, a baseline naming a token the token file lacks, an invalid pattern and a pattern that matches the empty string each exit 2 with stderr text and empty stdout · verify: `python3 -m unittest tests.shipped_text_ratchet_test.RefusalTest`
+- AC-4 (REQ-6, REQ-7): a missing token file, a missing baseline, a file that is not JSON, an extra top-level key, a negative or non-integer count, a baseline naming a token the token file lacks, an invalid pattern, a pattern that matches the empty string at load, one that matches it only while a file is read, a boolean version and a shipped path outside the root each exit 2 with stderr text and empty stdout · verify: `python3 -m unittest tests.shipped_text_ratchet_test.RefusalTest`
 - AC-5 (REQ-8): a hash of every file of the temporary tree and of the repository checkout paths the scan reads is equal before and after `check` and `baseline` · verify: `python3 -m unittest tests.shipped_text_ratchet_test.ReadOnlyTest`
 - AC-6 (REQ-10, REQ-11): `check` on the repository root exits 0 with the checked-in token file and baseline; none of the four files is under the shipped paths or named in `skills/moai/references/source-manifest.json` · verify: `python3 -m unittest tests.shipped_text_ratchet_test.RepoTreeTest`
 - AC-7 (REQ-12): the table lists the scan with its test, its check command and a scope that reaches `skills/moai/`, `agents/` and `src/help.rs`, and the table's own completeness test passes · verify: `python3 -m unittest tests.repo_scans_test`
@@ -70,11 +70,12 @@ Tokens (first list, each a pattern and a reason): `card-number` `\bC-[0-9]+\b`; 
 - A branch can raise the baseline instead of fixing its text. The baseline is a checked-in file, so the raise is a diff the audit reads; the scan alone cannot tell a reasoned raise from a hidden one.
 - A match is a shape, not a meaning. a card-number shape used as an example in a user-facing help line counts the same as a real card number; the baseline absorbs the existing ones and the scan will flag a new one, which the author then rewrites.
 - A new line in the shipped text now fails this scan on every branch that touches it (the scan is in the repo-scans table). That is the aim, and it means a branch written before this scan landed can fail at its merge.
+- A new shipped file that is not valid UTF-8 and is full of tokens passes with `ok` true and appears only under `skipped` (REQ-9); a check that read `skipped` could refuse it, and this one does not.
 - `tools/repo_scans.json` is held by another card at the time of writing; the entry (REQ-12) waits for it.
 
 ## Result
 
-Built tests first. The first RED run of `python3 -m unittest tests.shipped_text_ratchet_test` (tool absent) gave 35 assertion failures; one more test (an empty-matching pattern refused at load) was added after the tool, so the final state is `Ran 36 tests ... OK` on Python 3.14.2 and on the system `/usr/bin/python3` 3.9.6 (both re-run for this Result).
+Built tests first. The first RED run of `python3 -m unittest tests.shipped_text_ratchet_test` (tool absent) gave 35 assertion failures; one more test (an empty-matching pattern refused at load) was added after the tool, so the first green state was `Ran 36 tests ... OK` on Python 3.14.2 and on the system `/usr/bin/python3` 3.9.6; the repair round below raised it to 42.
 
 - AC-1: met — `CountTest` passes: `baseline` prints the counts of the shipped paths only and `check` lists a non-UTF-8 file under `skipped` without counting it.
 - AC-2: met — `BoundaryTest` passes: the same tree exits 0; one more match in a listed file, in an unlisted file, or moved to another file with an equal total each exit 1 and name the file, token and both numbers; the total rule is shown by a baseline whose total is below its files' sum.
@@ -93,3 +94,5 @@ Other checks run: `python3 -m unittest tests.ci_scope_test tests.skill_reference
 Effect on other branches: any branch that adds a card number, an issue number, a repository link or the local-rules file name to `skills/moai/**`, `agents/*.md` or `src/help.rs` now fails this scan (the scan is in the repo-scans table). A branch written before this scan landed can fail at its merge and then removes the token or, with a reasoned note, raises the baseline file.
 
 Not run: the Rust test suites (no Rust file changed), Windows and Linux, a scan of files outside the three shipped paths, and the later engine wiring.
+
+Repair round (an independent audit of the first head gave one blocking finding and non-blocking ones): the blocking finding was that the refusal of an empty match found while a file is read had no test (a mutant that deleted it left all 36 tests green); `test_a_runtime_empty_match_is_refused_and_names_the_token_and_the_file` now pins it with a pattern that passes the load-time probes. Six tests were added in all (the final run is `Ran 42 tests ... OK` on Python 3.14.2 and on 3.9.6: `BoundaryTest` 7, `CountTest` 6, `HeadroomTest` 2, `ReadOnlyTest` 3, `RefusalTest` 21, `RepoTreeTest` 3). Two behaviours changed with their tests written first (RED: 2 failures): a symbolic link is listed under `skipped` and never followed, and a shipped path that is absolute or holds `..` is refused with exit 2 (it was a traceback with exit 1, the code of "a count rose"). Tests also pin that a `.git` folder is not walked and that a boolean version is refused in both files. The synthetic fixtures no longer contain the card-number shape (the tests build their own token with another prefix). Mutants of the repair round, each caught: the runtime empty-match refusal removed, symbolic links followed, a `.git` folder walked, a boolean version accepted, a path outside the root allowed (5 of 5); the first eight were run again and all caught. A new non-UTF-8 file full of tokens still passes (REQ-9) and is now a named risk.
