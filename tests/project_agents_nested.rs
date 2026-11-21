@@ -6,9 +6,15 @@
 #![cfg(unix)]
 
 mod common;
-use common::cli::{cli, ok_result};
+use common::cli::ok_result;
 use serde_json::{json, Value};
-use std::{fs, path::Path};
+use std::{
+    fs,
+    io::Write,
+    path::Path,
+    process::{Command, Stdio},
+    sync::OnceLock,
+};
 use tempfile::TempDir;
 
 const PURPOSE: &str = "Fix lint and test failures";
@@ -38,6 +44,35 @@ fn build_request(roles: &[&str]) -> Value {
         "native_roles": roles,
         "skill_projections": []
     })
+}
+
+/// One temporary HOME for every case of this file: the binary never sees the real one.
+fn home() -> &'static Path {
+    static HOME: OnceLock<TempDir> = OnceLock::new();
+    HOME.get_or_init(|| TempDir::new().unwrap()).path()
+}
+
+/// Runs `moai ARGS` with `input` (JSON) on stdin and the temporary HOME.
+fn cli(args: &[&str], input: &Value) -> std::process::Output {
+    let mut child = Command::new(common::MOAI_BIN)
+        .args(args)
+        .env("HOME", home())
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    match child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(input.to_string().as_bytes())
+    {
+        Ok(()) => {}
+        Err(e) if e.kind() == std::io::ErrorKind::BrokenPipe => {}
+        Err(e) => panic!("stdin write failed: {e}"),
+    }
+    child.wait_with_output().unwrap()
 }
 
 fn plan(root: &TempDir, request: &Value) -> std::process::Output {

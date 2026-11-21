@@ -254,7 +254,10 @@ fn an_edited_or_foreign_flat_file_stays_and_blocks_its_nested_copy() {
         .find(|p| p.is_file())
         .expect("the agent state file of the claude host");
     let mut json: Value = serde_json::from_slice(&fs::read(&state).unwrap()).unwrap();
-    json["owned"].as_object_mut().unwrap().remove("moai-plan.md");
+    json["owned"]
+        .as_object_mut()
+        .unwrap()
+        .remove("moai-plan.md");
     fs::write(&state, serde_json::to_vec_pretty(&json).unwrap()).unwrap();
     fs::write(fx.flat("plan"), "someone else's plan agent\n").unwrap();
 
@@ -274,8 +277,14 @@ fn an_edited_or_foreign_flat_file_stays_and_blocks_its_nested_copy() {
         fs::read(fx.flat("plan")).unwrap(),
         b"someone else's plan agent\n"
     );
-    assert!(!fx.nested("impl").exists(), "nested copy of the edited file");
-    assert!(!fx.nested("plan").exists(), "nested copy of the foreign file");
+    assert!(
+        !fx.nested("impl").exists(),
+        "nested copy of the edited file"
+    );
+    assert!(
+        !fx.nested("plan").exists(),
+        "nested copy of the foreign file"
+    );
     assert!(fx.nested("audit").is_file());
     assert!(!fx.flat("audit").exists());
 }
@@ -357,7 +366,10 @@ fn claude_code_finds_both_kinds() {
     );
     assert!(text.contains("Available agents:"), "{text}");
     for role in BASE {
-        assert!(text.contains(&format!("moai-{role}")), "moai-{role}: {text}");
+        assert!(
+            text.contains(&format!("moai-{role}")),
+            "moai-{role}: {text}"
+        );
     }
     assert!(text.contains("prj-probe"), "{text}");
 }

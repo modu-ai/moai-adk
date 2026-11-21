@@ -1813,9 +1813,9 @@ fn count_hosts(p: &crate::home_style::Plan) -> usize {
 }
 
 fn agents_write_anything(p: &crate::agent_install::Plan) -> bool {
-    p.hosts.iter().any(|h| {
-        h.preflight == "ok" && h.files.iter().any(crate::agent_install::writes_anything)
-    })
+    p.hosts
+        .iter()
+        .any(|h| h.preflight == "ok" && h.files.iter().any(crate::agent_install::writes_anything))
 }
 
 fn routing_writes_anything(p: &crate::home_routing::Plan) -> bool {
