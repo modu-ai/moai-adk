@@ -2,7 +2,7 @@
 id: SPEC-20261121-card-land
 title: "card land moves the integration branch to a candidate commit and closes the card in one call"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-21
 ---
 
@@ -25,7 +25,7 @@ The command is an action of `moai card` (decision D-1 of the flow skeleton). Unt
 
 ## Requirements
 
-- REQ-1: When the leader runs the card land command with a candidate commit that has the integration tip on its first-parent line, the card land command shall move the integration branch to the candidate by one compare-and-swap reference update and then close the card as the card finish command does · failure: none — a branch that moved since the tip was read, a refused close or any refusal below leaves the ledger as it was, and a refused close after the move leaves the branch moved and says so without saying that nothing was changed, and a reference update that git refuses while the branch has not moved is reported with git's reason and not as tip_moved.
+- REQ-1: When the leader runs the card land command with a candidate commit that has the integration tip on its first-parent line, the card land command shall move the integration branch to the candidate by one compare-and-swap reference update and then close the card as the card finish command does · failure: none — a branch that moved since the tip was read, a refused update, a refused close or any refusal below leaves the ledger as it was apart from the start row that SPEC-20261121-ref-guard writes before the update, and a refused close after the move leaves the branch moved and says so without saying that nothing was changed, and a reference update that git refuses while the branch has not moved is reported with git's reason and not as tip_moved.
 - REQ-2: When the candidate is already inside the integration tip, the card land command shall skip the reference update and close the card with the candidate as its landed head · failure: none — a card already done with the same head answers done and writes nothing, and a card already done with another head refuses.
 - REQ-3: IF the integration tip is not on the first-parent line of the candidate, THEN the card land command shall refuse with the reason stale_base that names the tip and the candidate · failure: none — nothing is written and the branch stays where it is.
 - REQ-4: When the card land command is called, the card land command shall make every check that the card finish command would make before it moves the branch · failure: none — a card in a state that cannot be finished, a generation that does not match, a met option that names no open criterion or names one twice, a SPEC that fails at the candidate, or a card that closes on a report (a research or audit card is `card finish`'s) refuses before the branch moves.
@@ -40,7 +40,7 @@ The command is an action of `moai card` (decision D-1 of the flow skeleton). Unt
 ## Acceptance
 
 - AC-1 (REQ-1): a card in review whose candidate is a merge commit with the tip as its first parent lands in one call: the branch points at the candidate, the card is done, its reservation is released, the answer names the old tip, the new tip and the moved flag, and the reference log names the candidate · verify: `cargo test --locked --offline --test card_land_cli ac1_`
-- AC-2 (REQ-1): a branch moved by another process between the read of the tip and the update leaves the branch where that process put it and every table as it was, and the answer names tip_moved · verify: `cargo test --locked --offline --test card_land_cli ac2_`
+- AC-2 (REQ-1): a branch moved by another process between the read of the tip and the update leaves the branch where that process put it and every table as it was apart from the start row of SPEC-20261121-ref-guard, and the answer names tip_moved · verify: `cargo test --locked --offline --test card_land_cli ac2_`
 - AC-3 (REQ-2): a candidate already inside the tip closes the card with no reference update, and a second call on the done card answers done with nothing written while another head refuses · verify: `cargo test --locked --offline --test card_land_cli ac3_`
 - AC-4 (REQ-3): a candidate that branched from an older tip refuses with stale_base naming both commits, and so does a candidate that holds the tip only on a second parent, with the branch and the ledger unchanged · verify: `cargo test --locked --offline --test card_land_cli ac4_`
 - AC-5 (REQ-4): a card in a state that cannot be finished, a wrong generation, a met option for a criterion that is not open, a met option named twice and a SPEC with errors at the candidate each refuse with the branch and the ledger unchanged · verify: `cargo test --locked --offline --test card_land_cli ac5_`

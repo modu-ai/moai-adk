@@ -2,7 +2,7 @@
 id: SPEC-20261121-ref-guard
 title: "a reference-transaction guard keeps the integration branch moving only through the landing command"
 status: draft
-revision: 3
+revision: 4
 created: 2026-11-21
 ---
 
@@ -34,7 +34,7 @@ Measured on this machine in scratch repositories (git 2.54.0, `reference-transac
 - REQ-4: IF a reference transaction makes a ref under refs/heads symbolic to the integration branch or to a case variant of its name, or makes the integration branch itself symbolic, THEN the reference guard shall refuse it · failure: none — a worktree's HEAD that points at the integration branch is not a ref under refs/heads and stays allowed.
 - REQ-5: When git runs the hook, the hook text shall start the guard only for a transaction that has a line naming a ref under refs/heads whose name equals the recorded name ignoring case or begins with it and a slash, or a line with a symbolic value, at the prepared and committed states, and refuse that transaction naming the cause when the moai program cannot be found or cannot run · failure: none — every other transaction and every other state exits 0 without starting any program, a repository with no record is not protected and passes, and a guard that is missing never lets a transaction on the recorded branch pass unchecked.
 - REQ-6: When the card land command moves the integration branch, the card land command shall write the intent record before the reference update and remove it when the call ends · failure: none — a record left by a stopped call is replaced by the next call, and a move the guard refuses is reported with the guard's own message and not as a moved tip.
-- REQ-7: When the card land command has made every check of the close, the card land command shall write one ledger row that names the branch, the tip read, the candidate and the caller before it moves the branch · failure: none — a call that refuses writes no row, a rerun for the same card, candidate and tip writes no second row, and a close refused after the move leaves the row as the ledger record of the move.
+- REQ-7: When the card land command has made every check of the close, the card land command shall write one ledger row that names the branch, the tip read, the candidate and the caller before it moves the branch · failure: none — a call that refuses before the move writes no row, an update that git or the guard refuses leaves the row and nothing else, a rerun for the same card, candidate and tip writes no second row, and a close refused after the move leaves the row as the ledger record of the move.
 - REQ-8: When the reference guard or the landing command needs the integration branch's name, the reference guard module shall read it from the record in the common git folder through one function, which takes the profile's value only for a repository that has no record and then writes it as the record · failure: none — no record and no profile value leaves nothing to protect, and a profile that disagrees with the record is reported and never obeyed.
 - REQ-9: When a transaction that the intent record allowed has committed, the reference guard shall remove the record · failure: none — the same record cannot allow a second move, and a transaction that aborted leaves the record to the lander that wrote it.
 - REQ-10: When the installer asks for the hook, the reference guard module shall provide the hook text as bytes of a POSIX shell script · failure: none — the text holds no spelling of any branch name and finds moai on the path and then in the user's moai folder.
@@ -59,7 +59,7 @@ Measured on this machine in scratch repositories (git 2.54.0, `reference-transac
 
 ## Scope
 
-- write: `.moai/specs/SPEC-20261121-ref-guard/spec.md`
+- write: `.moai/specs/SPEC-20261121-ref-guard/spec.md`, `.moai/specs/SPEC-20261121-card-land/spec.md` (the wording of its REQ-1 and AC-2: a refused update leaves the start row)
 - write: `src/card/guard.rs`, `src/card/land.rs`, `src/card/landed.rs`, `src/card/mod.rs`, `src/ledger/workflow.rs`
 - write: `tests/card_guard_cli.rs`, `tests/card_land_cli.rs`, `docs/design-review/appendix/operations/card.md`
 - last step: the clap lines of the `card guard` action in `src/ops/card.rs` only (the subcommand and its dispatch arm), by the pair approval the other landing lines had, and the pair request that adds the hook as a managed name in the go-path-removal module when that module is on the tip.
@@ -77,6 +77,7 @@ Measured on this machine in scratch repositories (git 2.54.0, `reference-transac
 - D-9: The order of a landing call becomes: checks, the start row, the intent record, the reference update, removal of the record, the close. A stop at any point leaves one of: nothing moved, a row without a move (the next call proceeds), or a move with its row (the next call closes).
 - D-10: The hook filters in shell before it starts anything: it reads the recorded name, lower-cases it and each ref name of a transaction line with the ASCII lower-casing of `tr`, and starts the guard only for an equal name, a name that begins with it and a slash, or a symbolic value (a new value that begins with `ref:`). The guard repeats the comparison in full; the filter may only start the guard too often, never too rarely, for ASCII names.
 - D-11: The record is one file in the common git folder, `moai/integration-branch`, holding the full reference (`refs/heads/<name>`) on one line, written by a temporary file and a rename. It is written by the landing command and by the setup that installs the hook, from the profile read in the primary worktree, and only when it is absent; a lane's checked-out profile never writes it. A profile that disagrees with it is reported on the guard's refusal and in the answer of `card land`, and the record wins. Changing the record is the action of the later rename.
+- D-12: The start row is written before the update, so a refused update (the branch moved, a lock file, the guard) leaves exactly that one row; the landing command's earlier tests that asserted an unchanged ledger after such a refusal assert one new event of that kind instead.
 
 ## Plan
 
