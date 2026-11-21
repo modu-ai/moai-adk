@@ -463,7 +463,11 @@ fn default_profile(folder: &str, host: &str) -> Result<profile::Profile, String>
         "tools": ["unspecified"],
         "development_methods": ["unspecified"],
         "hosts": [host],
+        // One `source: default` decision per value the launcher invents is the placeholder
+        // marker: the project interview asks every topic that still carries one, whatever value
+        // the profile holds for it (SPEC-20261121-placeholder-markers).
         "decisions": [
+            {"id": "auto-init-purpose", "topic": "purpose", "value": "unspecified", "source": "default", "scope": "project"},
             {"id": "auto-init-tools", "topic": "tools", "value": "unspecified", "source": "default", "scope": "project"},
             {"id": "auto-init-methods", "topic": "development_methods", "value": "unspecified", "source": "default", "scope": "project"},
             {"id": "auto-init-hosts", "topic": "hosts", "value": host, "source": "default", "scope": "project"}

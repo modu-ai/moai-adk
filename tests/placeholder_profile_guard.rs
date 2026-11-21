@@ -122,6 +122,7 @@ fn placeholder() -> Value {
         "purpose": "Created by moai-cli on first launch; refine it in the project interview",
         "tools": ["unspecified"], "development_methods": ["unspecified"], "hosts": ["claude"],
         "decisions": [
+            {"id": "auto-init-purpose", "topic": "purpose", "value": "unspecified", "source": "default", "scope": "project"},
             {"id": "auto-init-tools", "topic": "tools", "value": "unspecified", "source": "default", "scope": "project"},
             {"id": "auto-init-methods", "topic": "development_methods", "value": "unspecified", "source": "default", "scope": "project"},
             {"id": "auto-init-hosts", "topic": "hosts", "value": "claude", "source": "default", "scope": "project"}
