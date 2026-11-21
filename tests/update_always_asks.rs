@@ -121,6 +121,29 @@ fn the_rule_tells_the_model_to_ask_the_user_and_to_record_the_answer() {
 }
 
 #[test]
+fn an_undo_the_person_asked_for_does_not_wait_for_the_question() {
+    let text = rule();
+    for phrase in [
+        "An undo the person asked for by name (`moai models-revert`, step 6)",
+        "is not an apply of this preview and does not wait for this question",
+    ] {
+        assert!(text.contains(phrase), "the rule lacks {phrase:?}: {text}");
+    }
+}
+
+#[test]
+fn the_question_is_the_one_ask_of_step_two_and_has_a_plain_text_form_for_codex() {
+    let text = rule();
+    for phrase in [
+        "This question is the one ask of step 2 for the `ready` steps as a whole, never a second one",
+        "where the host cannot ask it as a selection (Codex in Default mode)",
+        "numbered plain-text choices with the recommended one first, as `internal/questions` says",
+    ] {
+        assert!(text.contains(phrase), "the rule lacks {phrase:?}: {text}");
+    }
+}
+
+#[test]
 fn the_options_of_each_case_are_named_with_the_recommended_one_first() {
     let text = rule();
     let at = |needle: &str| {
