@@ -49,7 +49,7 @@ MoAI 가 만드는 규칙 파일은 `AGENTS.md`(팀 규칙)와 `AGENTS.local.md`
 
 ## Scope
 
-- write: 이 SPEC, `tests/agents_md_import_cli.rs`(새), `src/agents.rs`(계획 행·적용·`render_agents` 지시문·길이 경고), `schemas/protocol/v1/agents-request.schema.json`
+- write: 이 SPEC, `tests/agents_md_import_cli.rs`(새), `src/agents.rs`(계획 행·적용·`render_agents` 지시문·길이 경고), `src/claude.rs`(`@AGENTS.md` 불러오기 검사를 글 조각에도 쓰게 하는 작은 함수 하나), `schemas/protocol/v1/agents-request.schema.json`, `tests/agents_choices_step_cli.rs`(선택지 id 목록을 못 박은 기존 시험에 새 id 한 줄)
 - 기다려요(2026-11-21 예약 읽음): `src/agents.rs` 는 다른 카드가 쥐고 있어서 구현 조각은 그 카드가 돌려줄 때까지 못 시작해요. 선택지 목록과 워크플로 글(`src/project_update.rs`·`src/update.rs`·`src/ops/project_update_plan.rs`·`skills/moai/workflows/project.md`·`update.md`)도 다른 카드가 쥐고 있어서 후속 조각이에요.
 - read-only: `tests/common/`, `src/worktree_include.rs`
 - forbidden: `CLAUDE.md`·`AGENTS.md` 의 사용자 줄을 바꾸는 코드, 파일 안의 카드 번호, 카드 번호를 SPEC id·가지·커밋·PR 에 쓰는 것
