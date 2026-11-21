@@ -79,7 +79,6 @@ fn install(f: &Fixture, extra: &[&str]) -> (Value, Value) {
 }
 
 const LANE: [&str; 4] = ["--lane-loop", "agent-1", "--repo", "o/r"];
-const COMMAND: &str = "moai lane-stop-hook --lane agent-1 --repo o/r";
 
 fn fixture(name: &str) -> String {
     Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -88,67 +87,6 @@ fn fixture(name: &str) -> String {
         .to_str()
         .unwrap()
         .to_string()
-}
-
-/// AC-2: preview → apply → `--lane-loop-off` back to the base bytes; a plan without the flags
-/// keeps the lane (what `update` does), and `lane-loop-line` reads it as installed.
-#[test]
-fn codex_lane_hook_plan_apply_revert() {
-    let f = setup();
-    install(&f, &[]);
-    let file = f.project.join(".codex/hooks.json");
-    let base = fs::read(&file).unwrap();
-    let p = f.project.to_str().unwrap();
-
-    // The preview names the lane and writes nothing.
-    let mut args = vec!["hooks-plan", p, "--host", "codex"];
-    args.extend(LANE);
-    let preview = ok(&f, &args);
-    assert_eq!(preview["action"], json!("update"));
-    assert_eq!(preview["writes"], json!(false));
-    assert_eq!(
-        preview["lane_loop"],
-        json!({"lane": "agent-1", "repo": "o/r"})
-    );
-    assert_eq!(fs::read(&file).unwrap(), base);
-
-    let (_, applied) = install(&f, &LANE);
-    assert_eq!(applied["state"], json!("applied"), "{applied}");
-    let v: Value = serde_json::from_slice(&fs::read(&file).unwrap()).unwrap();
-    let stop = v["hooks"]["Stop"].as_array().unwrap();
-    // #2936 R9 S1: the base set has no `Stop` event, so the lane group is the only one; it is
-    // created, not skipped.
-    assert_eq!(stop.len(), 1, "{v}");
-    assert_eq!(
-        stop[0],
-        json!({"hooks": [{"type": "command", "command": COMMAND, "timeout": 120}]})
-    );
-
-    // A plan without the flags keeps the lane; the hook state is `configured: yes`.
-    let keep = ok(&f, &["hooks-plan", p, "--host", "codex"]);
-    assert_eq!(keep["action"], json!("unchanged"), "{keep}");
-    assert_eq!(keep["hook_status"]["configured"], json!("yes"));
-    let line = ok(
-        &f,
-        &[
-            "lane-loop-line",
-            "--host",
-            "codex",
-            "--lane",
-            "agent-1",
-            "--repo",
-            "o/r",
-        ],
-    );
-    assert_eq!(line["stop_hook"]["state"], json!("installed"), "{line}");
-    assert_eq!(line["blocked_line"], Value::Null);
-
-    // The revert: the same preview → apply, with --lane-loop-off.
-    install(&f, &["--lane-loop-off"]);
-    assert_eq!(fs::read(&file).unwrap(), base);
-    let after = ok(&f, &["hooks-plan", p, "--host", "codex"]);
-    assert_eq!(after["action"], json!("unchanged"));
-    assert!(after.get("lane_loop").is_none(), "{after}");
 }
 
 /// The flags go together, `--lane-loop-off` excludes them, and a lane is Codex only.

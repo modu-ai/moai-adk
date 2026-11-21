@@ -1,15 +1,7 @@
-//! A lane's own wake line per host, and the resume note each card keeps on its Issue (#2904,
-//! O5 of the #2899 orchestration redesign, section B; user decision D-O2: a Codex lane keeps
-//! one session with `/goal` plus a trusted `Stop` hook).
+//! A lane's own wake line, and the resume note each card keeps on its Issue.
 //!
 //! - Claude Code: `/loop 5m /moai --mode-agent <duty>` — a fixed five-minute loop that fires
-//!   only while the session is idle.
-//! - Codex CLI: `/goal <end condition>` (enabled with `codex features enable goals`; at most
-//!   4,000 characters) and a `Stop` hook whose `decision: "block"` makes Codex continue with the
-//!   reason as the next prompt (docs/design-review/host-session-events-2026-11-09.md, Stop
-//!   row). The hook is read here, never installed: when it is missing the lane reports
-//!   `LANE-BLOCKED <lane> wake …`.
-//! - OMP: `--goal "<end condition>"`, not measured (`verified: not_run`).
+//!   only while the session is idle. Claude Code is the only host.
 //!
 //! The resume note is one keyed first line, `moai-resume: lane= issue= claim= lease_until=
 //! branch= head= uncommitted=0`, then `next:` lines and an optional `wait: … clears=<who>`.
@@ -30,23 +22,20 @@ pub const RESUME_FIRST: &str = "compact·clear 뒤 첫 행동은 내 카드 Issu
 /// The key of a resume note's first line.
 pub const RESUME_KEY: &str = "moai-resume:";
 
-/// The subcommand a lane's Codex `Stop` hook runs.
+/// The subcommand a lane's `Stop` hook runs.
 pub const STOP_HOOK_SUBCOMMAND: &str = "lane-stop-hook";
-
-/// The Codex `/goal` limit (follow-goals, "4,000자 이하").
-pub const CODEX_GOAL_LIMIT: usize = 4000;
 
 /// Who clears a wait.
 pub const CLEARS: &[&str] = &["leader", "user", "lane", "author"];
 
-/// Seconds Codex may run the lane Stop hook (its handler `timeout`).
+/// Seconds the host may run the lane Stop hook (its handler `timeout`).
 pub const STOP_HOOK_TIMEOUT_SECS: u64 = 120;
 
 /// The longest GitHub read of one Stop answer, inside [`STOP_HOOK_TIMEOUT_SECS`]; past it the
 /// reading is unknown.
 pub const STOP_READ_SECS: u64 = 90;
 
-/// Bytes of the Codex Stop input read (and dropped).
+/// Bytes of the Stop input read (and dropped).
 pub const STOP_STDIN_LIMIT: u64 = 64 * 1024;
 
 /// Blocks in a row for one next task before the hook lets the turn end (#2904 Q1 (a): the lane
@@ -61,25 +50,19 @@ pub const STOP_TOTAL_CAP: u32 = 96;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Host {
     Claude,
-    Codex,
-    Omp,
 }
 
 impl Host {
     pub fn parse(s: &str) -> Result<Host, String> {
         match s {
             "claude" => Ok(Host::Claude),
-            "codex" => Ok(Host::Codex),
-            "omp" => Ok(Host::Omp),
-            other => Err(format!("unknown host {other:?}: claude, codex or omp")),
+            other => Err(format!("unknown host {other:?}: claude is the only host")),
         }
     }
 
     fn name(self) -> &'static str {
         match self {
             Host::Claude => "claude",
-            Host::Codex => "codex",
-            Host::Omp => "omp",
         }
     }
 }
@@ -139,12 +122,8 @@ pub fn duty(lane: &str, duty: Option<&str>) -> String {
     }
 }
 
-/// The command a lane's Codex `Stop` hook runs.
-pub fn stop_hook_command(lane: &str, repo: &str) -> String {
-    stop_hook_command_with(crate::hooks::HOOK_BINARY, lane, repo)
-}
-
-/// [`stop_hook_command`] for any binary name (the legacy spelling is `LEGACY_BINARY`).
+/// The command a lane's `Stop` hook runs, for any binary name (the legacy spelling is
+/// `LEGACY_BINARY`).
 pub fn stop_hook_command_with(binary: &str, lane: &str, repo: &str) -> String {
     format!("{binary} {STOP_HOOK_SUBCOMMAND} --lane {lane} --repo {repo}")
 }
@@ -180,88 +159,8 @@ pub fn lines(
             out["note"] =
                 json!("/loop 5m fires only while the session is idle and expires after seven days");
         }
-        Host::Codex => {
-            let repo = repo.ok_or("--repo is required for codex (its Stop hook names it)")?;
-            if duty.is_some() {
-                return Err("codex takes no duty: its /goal is the end condition".into());
-            }
-            let goal = format!(
-                "/goal {END_CONDITION} — 레인 {lane}: 매 회차 $moai --mode-agent 로 self-pick (1)부터. {RESUME_FIRST}"
-            );
-            out["lines"] = json!([
-                line("shell", "codex features enable goals".into()),
-                line("prompt", goal),
-            ]);
-            out["stop_hook"] = json!({
-                "event": "Stop",
-                "file": ".codex/hooks.json",
-                "command": stop_hook_command(lane, repo),
-            });
-            out["verified"] = json!("not_run");
-            out["note"] =
-                json!("a live Codex session with /goal and this Stop hook is not measured yet");
-        }
-        Host::Omp => {
-            out["lines"] = json!([line("flag", format!("--goal \"{END_CONDITION}\""))]);
-            out["verified"] = json!("not_run");
-            out["note"] = json!("OMP goal mode is not measured yet");
-        }
     }
     Ok(out)
-}
-
-/// The lane's Codex `Stop` hook in `<project>/.codex/hooks.json`: `installed`,
-/// `installed_legacy` (the same hook spelled with the `moai-cli` name of the releases before
-/// #3004 P4-2: it still runs, so it is not a block), `missing` (no file), `no_lane_hook`,
-/// `other_lane` (a lane Stop hook of another lane, in either spelling) or `unreadable`. Trust is
-/// Codex's own record and is never read here.
-pub fn codex_hook_state(project: &Path, lane: &str, repo: &str) -> &'static str {
-    let path = project.join(".codex/hooks.json");
-    if matches!(std::fs::symlink_metadata(&path), Err(e) if e.kind() == std::io::ErrorKind::NotFound)
-    {
-        return "missing";
-    }
-    // Only a regular file at most READ_LIMIT long is read (a FIFO would block the open).
-    let Ok(bytes) = read_bounded(&path) else {
-        return "unreadable";
-    };
-    let Ok(v) = serde_json::from_slice::<Value>(&bytes) else {
-        return "unreadable";
-    };
-    let mine = stop_hook_command(lane, repo);
-    let mine_legacy = stop_hook_command_with(crate::hooks::LEGACY_BINARY, lane, repo);
-    let prefixes = [crate::hooks::HOOK_BINARY, crate::hooks::LEGACY_BINARY]
-        .map(|b| format!("{b} {STOP_HOOK_SUBCOMMAND} "));
-    let (mut other, mut legacy) = (false, false);
-    for group in v["hooks"]["Stop"].as_array().into_iter().flatten() {
-        for h in group["hooks"].as_array().into_iter().flatten() {
-            let cmd = h["command"].as_str().unwrap_or("").trim();
-            if cmd == mine {
-                return "installed";
-            }
-            legacy |= cmd == mine_legacy;
-            other |= prefixes.iter().any(|p| cmd.starts_with(p.as_str()));
-        }
-    }
-    if legacy {
-        "installed_legacy"
-    } else if other {
-        "other_lane"
-    } else {
-        "no_lane_hook"
-    }
-}
-
-/// The line a Codex lane reports when its `Stop` hook is not in place (`state` from
-/// [`codex_hook_state`]); none when it is. Installing the hook is the person's step: the hook
-/// file is reviewed and trusted in Codex's own `/hooks`.
-pub fn codex_blocked_line(lane: &str, state: &str) -> Option<String> {
-    (!matches!(state, "installed" | "installed_legacy")).then(|| {
-        format!(
-            "LANE-BLOCKED {lane} wake codex Stop hook {state} · kind=outside owner=user \
-             next=install the lane Stop hook in .codex/hooks.json and trust it in Codex /hooks"
-        )
-    })
 }
 
 /// What a lane's Stop hook read: a snapshot, or nothing it can trust (a failed or timed-out
@@ -461,7 +360,7 @@ fn save_state_home(home: &Path, path: &Path, state: &StopState) -> Result<(), ()
     Ok(())
 }
 
-/// The Codex Stop answer of `lane` in the project `root`: `{"decision":"block","reason":…}`,
+/// The Stop answer of `lane` in the project `root`: `{"decision":"block","reason":…}`,
 /// or empty to let the turn end. A block whose count cannot be saved (no state root, a link)
 /// is not sent: an uncounted block could not be bounded.
 pub fn stop_hook(root: &Path, lane: &str, repo: &str, reading: &Reading) -> String {
@@ -758,35 +657,19 @@ mod tests {
             custom["lines"][0]["text"],
             json!("/loop 5m /moai --mode-agent 레인 agent-10 — #2904 먼저")
         );
-        let x = lines(Host::Codex, "agent-10", Some("modu-ai/moai-adk"), None).unwrap();
-        let texts: Vec<&str> = x["lines"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .map(|l| l["text"].as_str().unwrap())
-            .collect();
-        assert_eq!(texts[0], "codex features enable goals");
-        assert!(texts[1].starts_with("/goal ") && texts[1].contains(END_CONDITION));
-        assert!(texts[1].contains("$moai --mode-agent") && texts[1].contains(RESUME_FIRST));
-        assert!(texts[1].chars().count() <= CODEX_GOAL_LIMIT);
-        assert_eq!(
-            x["stop_hook"]["command"],
-            json!("moai lane-stop-hook --lane agent-10 --repo modu-ai/moai-adk")
-        );
-        let o = lines(Host::Omp, "agent-10", None, None).unwrap();
-        assert_eq!(
-            o["lines"][0]["text"],
-            json!(format!("--goal \"{END_CONDITION}\""))
-        );
-        assert_eq!(o["verified"], json!("not_run"));
-        // Codex needs the repository for its hook; a bad lane or repository is refused.
-        assert!(lines(Host::Codex, "agent-10", None, None).is_err());
-        assert!(lines(Host::Codex, "agent-10", Some("no-slash"), None).is_err());
+        // A bad lane or repository is refused.
+        assert!(lines(Host::Claude, "agent-10", Some("no-slash"), None).is_err());
         assert!(lines(Host::Claude, "agent 10", None, None).is_err());
         assert!(lines(Host::Claude, "", None, None).is_err());
         assert!(lines(Host::Claude, &"a".repeat(65), None, None).is_err());
         assert!(lines(Host::Claude, &"a".repeat(64), None, None).is_ok());
         assert!(Host::parse("cursor").is_err());
+        // Claude Code is the only host: a removed host word is refused and the line names claude.
+        assert_eq!(Host::parse("claude"), Ok(Host::Claude));
+        for word in ["codex", "omp"] {
+            let e = Host::parse(word).unwrap_err();
+            assert!(e.contains("claude is the only host"), "{e}");
+        }
     }
 
     /// The end condition is goal_block's lane-wide condition, so the two never drift apart.
@@ -802,113 +685,50 @@ mod tests {
     }
 
     #[test]
-    fn a_long_duty_cannot_push_the_codex_goal_over_its_limit() {
-        // Codex has no duty; the goal is fixed text, under the limit for the longest lane name.
-        let x = lines(Host::Codex, &"a".repeat(64), Some("o/r"), None).unwrap();
-        assert!(x["lines"][1]["text"].as_str().unwrap().chars().count() <= CODEX_GOAL_LIMIT);
-        // A duty is one line.
+    fn a_duty_is_one_line() {
         assert!(lines(Host::Claude, "a", None, Some("x\ny")).is_err());
+        assert!(lines(Host::Claude, "a", None, Some("  ")).is_err());
+        assert!(lines(Host::Claude, "a", None, Some("x")).is_ok());
     }
 
-    #[test]
-    fn the_codex_hook_state_reads_the_project_file() {
-        let dir = tempfile::tempdir().unwrap();
-        let p = dir.path();
-        assert_eq!(codex_hook_state(p, "agent-10", "o/r"), "missing");
-        std::fs::create_dir(p.join(".codex")).unwrap();
-        let file = p.join(".codex/hooks.json");
-        std::fs::write(&file, "{").unwrap();
-        assert_eq!(codex_hook_state(p, "agent-10", "o/r"), "unreadable");
-        let with = |cmd: &str| {
-            json!({"hooks": {"Stop": [{"hooks": [
-                {"type": "command", "command": "moai-cli hook-receipt --host codex", "timeout": 10},
-            ]}, {"hooks": [{"type": "command", "command": cmd, "timeout": 120}]}]}})
-            .to_string()
-        };
-        std::fs::write(&file, with("echo hi")).unwrap();
-        assert_eq!(codex_hook_state(p, "agent-10", "o/r"), "no_lane_hook");
-        std::fs::write(&file, with(&stop_hook_command("agent-9", "o/r"))).unwrap();
-        assert_eq!(codex_hook_state(p, "agent-10", "o/r"), "other_lane");
-        std::fs::write(&file, with(&stop_hook_command("agent-10", "o/x"))).unwrap();
-        assert_eq!(codex_hook_state(p, "agent-10", "o/r"), "other_lane");
-        std::fs::write(&file, with(&stop_hook_command("agent-10", "o/r"))).unwrap();
-        assert_eq!(codex_hook_state(p, "agent-10", "o/r"), "installed");
-        // #3004 P4-2: the same hook spelled with the old `moai-cli` name still runs; it is its
-        // own state, not "installed", and a lane or repository that differs is `other_lane` in
-        // both spellings.
-        let old = |lane: &str, repo: &str| {
-            stop_hook_command_with(crate::hooks::LEGACY_BINARY, lane, repo)
-        };
-        assert_eq!(
-            old("agent-10", "o/r"),
-            "moai-cli lane-stop-hook --lane agent-10 --repo o/r"
-        );
-        std::fs::write(&file, with(&old("agent-10", "o/r"))).unwrap();
-        assert_eq!(codex_hook_state(p, "agent-10", "o/r"), "installed_legacy");
-        std::fs::write(&file, with(&old("agent-9", "o/r"))).unwrap();
-        assert_eq!(codex_hook_state(p, "agent-10", "o/r"), "other_lane");
-        std::fs::write(&file, with(&old("agent-10", "o/x"))).unwrap();
-        assert_eq!(codex_hook_state(p, "agent-10", "o/r"), "other_lane");
-        // Both spellings of the lane present: the current one wins.
-        let both = json!({"hooks": {"Stop": [
-            {"hooks": [{"type": "command", "command": old("agent-10", "o/r")}]},
-            {"hooks": [{"type": "command", "command": stop_hook_command("agent-10", "o/r")}]},
-        ]}});
-        std::fs::write(&file, both.to_string()).unwrap();
-        assert_eq!(codex_hook_state(p, "agent-10", "o/r"), "installed");
-        // A command that only starts like the old hook is not the lane's hook.
-        std::fs::write(&file, with(&format!("{} --extra", old("agent-10", "o/r")))).unwrap();
-        assert_eq!(codex_hook_state(p, "agent-10", "o/r"), "other_lane");
-        // The hook under another event is not a Stop hook.
-        let pre = json!({"hooks": {"PreToolUse": [{"hooks": [{"type": "command",
-            "command": stop_hook_command("agent-10", "o/r")}]}]}});
-        std::fs::write(&file, pre.to_string()).unwrap();
-        assert_eq!(codex_hook_state(p, "agent-10", "o/r"), "no_lane_hook");
-    }
-
-    /// A FIFO or a folder at the hook file's path is not opened (a FIFO would block the read).
+    /// A FIFO or a folder at a path is not opened (a FIFO would block the read).
     #[cfg(unix)]
     #[test]
-    fn a_fifo_or_a_folder_at_the_hook_path_is_unreadable_without_blocking() {
+    fn a_fifo_or_a_folder_is_refused_by_the_bounded_read_without_blocking() {
         let dir = tempfile::tempdir().unwrap();
-        let p = dir.path();
-        std::fs::create_dir_all(p.join(".codex/hooks.json")).unwrap();
-        assert_eq!(codex_hook_state(p, "a", "o/r"), "unreadable");
-        let q = tempfile::tempdir().unwrap();
-        std::fs::create_dir(q.path().join(".codex")).unwrap();
-        let fifo = q.path().join(".codex/hooks.json");
+        let folder = dir.path().join("folder");
+        std::fs::create_dir(&folder).unwrap();
+        assert_eq!(read_bounded(&folder).unwrap_err(), "not a regular file");
+        let fifo = dir.path().join("fifo");
         let made = std::process::Command::new("mkfifo")
             .arg(&fifo)
             .status()
             .unwrap();
         assert!(made.success());
-        assert_eq!(codex_hook_state(q.path(), "a", "o/r"), "unreadable");
+        assert_eq!(read_bounded(&fifo).unwrap_err(), "not a regular file");
     }
 
-    /// AUDIT #2917 I1: a file over the cap is refused whole, never judged on its first MiB.
+    /// A file over the cap is refused whole, never judged on its first MiB.
     #[test]
-    fn a_hook_file_over_the_cap_is_unreadable_and_at_the_cap_is_read() {
+    fn a_file_over_the_cap_is_refused_and_at_the_cap_is_read() {
         let dir = tempfile::tempdir().unwrap();
-        let p = dir.path();
-        std::fs::create_dir(p.join(".codex")).unwrap();
-        let hook = json!({"hooks": {"Stop": [{"hooks": [{"type": "command",
-            "command": stop_hook_command("a", "o/r")}]}]}})
-        .to_string();
+        let file = dir.path().join("body.json");
         let pad = |total: usize| {
-            let mut s = hook.clone();
-            s.push_str(&" ".repeat(total - hook.len()));
+            let mut s = String::from("{}");
+            s.push_str(&" ".repeat(total - s.len()));
             s
         };
-        let file = p.join(".codex/hooks.json");
         std::fs::write(&file, pad(READ_LIMIT as usize)).unwrap();
-        assert_eq!(codex_hook_state(p, "a", "o/r"), "installed");
+        assert_eq!(read_bounded(&file).unwrap().len(), READ_LIMIT as usize);
         std::fs::write(&file, pad(READ_LIMIT as usize + 1)).unwrap();
-        assert_eq!(codex_hook_state(p, "a", "o/r"), "unreadable");
+        assert_eq!(
+            read_bounded(&file).unwrap_err(),
+            "file is over 1048576 bytes"
+        );
         // The case the audit probed: valid JSON first, garbage after the cap.
         let mut over = pad(READ_LIMIT as usize + 10);
         over.push_str("GARBAGE");
         std::fs::write(&file, over).unwrap();
-        assert_eq!(codex_hook_state(p, "a", "o/r"), "unreadable");
         assert_eq!(
             read_bounded(&file).unwrap_err(),
             "file is over 1048576 bytes"
@@ -924,22 +744,8 @@ mod tests {
         assert!(!lane_ok("--help"));
         assert!(!lane_ok("-a"));
         assert!(lane_ok("a-"));
-        assert!(lines(Host::Codex, "a", Some("-o/r"), None).is_err());
-        assert!(lines(Host::Codex, "a", Some("o/-r"), None).is_err());
-    }
-
-    #[test]
-    fn only_a_missing_hook_gives_the_blocked_line() {
-        assert_eq!(codex_blocked_line("agent-10", "installed"), None);
-        // The old spelling still runs (#3004 P4-2): it is no block.
-        assert_eq!(codex_blocked_line("agent-10", "installed_legacy"), None);
-        for state in ["missing", "no_lane_hook", "other_lane", "unreadable"] {
-            let l = codex_blocked_line("agent-10", state).unwrap();
-            assert!(l.starts_with(&format!(
-                "LANE-BLOCKED agent-10 wake codex Stop hook {state} · "
-            )));
-            assert!(l.contains("kind=outside owner=user next="), "{l}");
-        }
+        assert!(lines(Host::Claude, "a", Some("-o/r"), None).is_err());
+        assert!(lines(Host::Claude, "a", Some("o/-r"), None).is_err());
     }
 
     fn snap(v: Value) -> Reading {

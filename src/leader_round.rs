@@ -25,8 +25,8 @@ pub const MAX_AGE_SECS: i64 = crate::lane_reset::SCREEN_MAX_AGE_SECS;
 pub const CLEAR_CONTEXT_PCT: u32 = 85;
 /// Highest `context_used_pct` accepted.
 pub const MAX_CONTEXT_PCT: u32 = 100;
-/// Host bullets in front of an assistant line: Claude Code `⏺`, Codex `•` (decision Q2).
-pub const BULLETS: [char; 2] = ['⏺', '•'];
+/// The host bullet in front of an assistant line: Claude Code `⏺`.
+pub const BULLETS: [char; 1] = ['⏺'];
 /// The five lane markers, each counted only at the start of a line. `LANE-IDLE` is the line a
 /// lane prints once when `lane-next --max-empty` answered `idle_limit` (#3005 P9).
 pub const MARKER_WORDS: [(&str, MarkerKind); 5] = [
@@ -43,10 +43,9 @@ pub const IDLE_REASON: &str = "lane_idle";
 pub const CLAIM_TEXT: &str = "moai-claim:";
 /// The line a `restart` sends.
 pub const RESTART_LINE: &str = "순환 계속 — self-pick (1)부터";
-/// Marks a host draws in front of a line typed into it (Claude Code `>`, Codex `›`, `❯`) and
-/// the bullets: one is taken off before the last screen line is compared with
-/// [`RESTART_LINE`].
-pub const PROMPT_MARKS: [char; 5] = ['>', '›', '❯', '⏺', '•'];
+/// Marks Claude Code draws in front of a line typed into it (`>`, `❯`) and the bullet: one is
+/// taken off before the last screen line is compared with [`RESTART_LINE`].
+pub const PROMPT_MARKS: [char; 3] = ['>', '❯', '⏺'];
 /// The first line of a close table comment (`lane-next` reads the same words).
 pub const CLOSE_TABLE: &str = "CLOSE-TABLE";
 
@@ -63,7 +62,7 @@ pub struct ObservationFile {
 #[serde(deny_unknown_fields)]
 pub struct LaneObservation {
     pub lane: String,
-    /// `claude`, `codex` or `omp` (`lane_duty::HOSTS`).
+    /// `claude`, the only host (`lane_duty::HOSTS`).
     pub host: String,
     /// `YYYY-MM-DDTHH:MM:SSZ`, when the terminal was read.
     pub read_at: String,
@@ -217,7 +216,7 @@ pub fn parse(text: &str) -> Result<ObservationFile, String> {
         }
         if !crate::lane_duty::HOSTS.iter().any(|(h, _)| *h == l.host) {
             return Err(format!(
-                "observations file is invalid: lane `{}` host `{}` (use claude, codex or omp)",
+                "observations file is invalid: lane `{}` host `{}` (claude is the only host)",
                 l.lane, l.host
             ));
         }
@@ -809,7 +808,7 @@ mod tests {
     #[test]
     fn markers_count_bullets_lane_keys_and_report_with_done() {
         let tail = "  ⏺ LANE-WAIT agent-29 usage-limit until 2026-11-14T10:00:00Z\n\
-                    • LANE-BLOCKED lane=agent-29 decision needed\n\
+                    ⏺ LANE-BLOCKED lane=agent-29 decision needed\n\
                     LANE-REPORT agent-29: LANE-DONE agent-29 PR #2912 MERGED\n\
                     ⏺ LANE-REPORT agent-29 progress only";
         let m = markers(tail, "agent-29");
@@ -833,6 +832,17 @@ mod tests {
     }
 
     #[test]
+    fn the_codex_bullet_is_no_marker_prefix() {
+        let m = markers(
+            "• LANE-BLOCKED lane=agent-29 decision needed\n⏺ LANE-DONE agent-29 PR MERGED",
+            "agent-29",
+        );
+        assert_eq!(m.found.len(), 1, "{:?}", m.found);
+        assert_eq!(m.found[0].kind, MarkerKind::Done);
+        assert!(m.ignored.is_empty());
+    }
+
+    #[test]
     fn a_fence_opened_with_a_language_still_hides_its_lines() {
         let m = markers(
             "```text\nLANE-DONE agent-29 inside\n```\nLANE-DONE agent-29 outside",
@@ -845,7 +855,7 @@ mod tests {
     // #3005 P9: a lane that stopped itself with `LANE-IDLE` (the `lane-next` `idle_limit` line)
     // is an idle lane, a card the leader can hand it, not a loop to restart.
 
-    const IDLE_LINE: &str = "LANE-IDLE lane=agent-29 checks=6 last=2026-11-14T09:19:00Z restart=enter MODE-AGENT again as lane agent-29 (`/moai --mode-agent` in Claude Code, `$moai --mode-agent` in Codex CLI)";
+    const IDLE_LINE: &str = "LANE-IDLE lane=agent-29 checks=6 last=2026-11-14T09:19:00Z restart=enter MODE-AGENT again as lane agent-29 (`/moai --mode-agent` in Claude Code)";
 
     #[test]
     fn a_lane_idle_line_is_a_marker_of_its_own_lane_only() {
@@ -1110,7 +1120,6 @@ mod tests {
     fn the_restart_line_is_never_sent_twice() {
         for tail in [
             format!("⏺ idle\n> {RESTART_LINE}"),
-            format!("⏺ idle\n› {RESTART_LINE}\n\n  \n"),
             format!("⏺ idle\n{RESTART_LINE}"),
             format!("  ❯  {RESTART_LINE}  "),
         ] {
@@ -1127,6 +1136,8 @@ mod tests {
             format!("> {RESTART_LINE}\n⏺ Nothing startable; LANE-REPORT agent-29 idle"),
             format!("> {RESTART_LINE} please"),
             format!(">> {RESTART_LINE}"),
+            // The Codex prompt mark is no host mark any more.
+            format!("› {RESTART_LINE}"),
         ] {
             let a = safe(&with_tail(&tail));
             assert_eq!(a.action, Act::Restart, "{tail:?}");

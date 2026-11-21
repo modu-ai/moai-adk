@@ -8,8 +8,8 @@
 //! Rules the output carries (decision 3=A): a pulse whose turn did not start is reported, not
 //! sent again; the command never creates a terminal or a session.
 //!
-//! Measured on a live Codex leader: not yet (AC-5 needs a signed-in Codex session), so the
-//! receipt of `orca terminal send --json` is not interpreted here.
+//! Measured on a live leader session: not yet, so the receipt of `orca terminal send --json`
+//! is not interpreted here.
 
 use serde_json::{json, Value};
 

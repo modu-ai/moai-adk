@@ -59,15 +59,6 @@ fn the_line_is_the_fixed_wording_for_each_host() {
     let slash = format!("/moai --mode-agent 레인 3 — {BODY}");
     assert_eq!(line(&["--lane", "3"]), slash, "claude is the default host");
     assert_eq!(line(&["--lane", "3", "--host", "claude"]), slash);
-    // OMP takes the skill only as `/skill:moai` (SPEC-20261118-omp-launcher REQ-22; audit #3203 B1).
-    assert_eq!(
-        line(&["--lane", "3", "--host", "omp"]),
-        format!("/skill:moai --mode-agent 레인 3 — {BODY}")
-    );
-    assert_eq!(
-        line(&["--lane", "3", "--host", "codex"]),
-        format!("$moai --mode-agent 레인 3 — {BODY}")
-    );
 }
 
 #[test]
@@ -77,8 +68,15 @@ fn first_task_is_appended_after_the_body() {
         format!("/moai --mode-agent 레인 agent-1 — {BODY} 먼저: #2902 O3a 구현")
     );
     assert_eq!(
-        line(&["--lane", "3", "--host", "codex", "--first", "PR #2824 감사"]),
-        format!("$moai --mode-agent 레인 3 — {BODY} 먼저: PR #2824 감사")
+        line(&[
+            "--lane",
+            "3",
+            "--host",
+            "claude",
+            "--first",
+            "PR #2824 감사"
+        ]),
+        format!("/moai --mode-agent 레인 3 — {BODY} 먼저: PR #2824 감사")
     );
 }
 
@@ -87,6 +85,15 @@ fn an_unknown_host_is_a_usage_error() {
     let out = run(&["--lane", "3", "--host", "cursor"]);
     assert_eq!(out.status.code(), Some(2));
     assert_eq!(envelope(&out)["error"]["kind"], "usage");
+    // The removed hosts are still in the command's value list, so the refusal comes from the
+    // line itself: no line, one message that names claude as the only host.
+    for host in ["codex", "omp"] {
+        let message = refused(&["--lane", "3", "--host", host]);
+        assert!(message.contains("claude"), "{host}: {message}");
+        assert!(!message.contains('\n'), "{host}: {message}");
+        let with_task = refused(&["--lane", "3", "--host", host, "--first", "x"]);
+        assert_eq!(with_task, message, "{host}");
+    }
 }
 
 /// The name rule is `lane_registry::valid_name`: 64 characters pass, 65 are refused.

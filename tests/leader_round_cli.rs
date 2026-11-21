@@ -445,3 +445,25 @@ fn an_idle_lane_is_left_for_a_dispatch_and_named_in_the_round() {
     assert_eq!(act(&r), (Some("restart"), Some("continue")), "{r}");
     assert_eq!(r["idle_lanes"], json!([]), "{r}");
 }
+
+/// Claude Code is the only host: an observation whose host is `codex` or `omp` is refused with a
+/// message that names claude, and no action list is built.
+#[test]
+fn a_removed_host_observation_is_refused() {
+    let f = fixture();
+    for host in ["codex", "omp"] {
+        let mut obs = observations(&f);
+        obs["lanes"][0]["host"] = json!(host);
+        let args = inputs(&f, &obs, None);
+        let args: Vec<&str> = args.iter().map(String::as_str).collect();
+        let v = moai(&f, &args);
+        assert_eq!(v["ok"], false, "{host}: {v}");
+        assert!(v.get("result").is_none(), "{host}: {v}");
+        let message = v["error"]["message"].as_str().unwrap();
+        assert!(message.contains(&format!("host `{host}`")), "{message}");
+        assert!(message.contains("claude"), "{message}");
+    }
+    // The same file with the host claude is read.
+    let r = round(&f, &observations(&f), None);
+    assert_eq!(r["lanes"][0]["lane"], json!(LANE), "{r}");
+}
