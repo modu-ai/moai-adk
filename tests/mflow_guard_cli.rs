@@ -481,3 +481,148 @@ fn the_guard_leaves_other_branches_and_commands_alone() {
         assert_eq!(guard_rule(cmd, branch, cwd), None, "{cmd} is not refused");
     }
 }
+
+/// Audit R-N1: `git -C <dir> reset --hard` is judged on the branch checked out in `<dir>`. A
+/// folder whose branch cannot be read is refused: the unreadable path must not stand in for the
+/// branch name, and the caller's own lane branch must not stand in for it either.
+#[test]
+fn an_unreadable_dash_c_folder_is_refused_for_a_hard_reset() {
+    let branch = "v2026.11.0";
+    let lane = Some("spec/some-lane-20261121");
+    let plain = Repo::init_on("main");
+    let not_a_repo =
+        std::env::temp_dir().join(format!("mflow-guard-not-a-repo-{}", std::process::id()));
+    fs::create_dir_all(&not_a_repo).unwrap();
+    let missing = "/no/such/folder/for/the/guard";
+    let not_a_repo = not_a_repo.display().to_string();
+    let other_branch = plain.0.display().to_string();
+    for dir in [missing, not_a_repo.as_str()] {
+        for reset in ["reset --hard HEAD~1", "reset --keep HEAD~1"] {
+            let cmd = format!("git -C {dir} {reset}");
+            assert!(
+                guard_rule(&cmd, branch, lane).is_some(),
+                "{cmd} is refused: the branch of that folder cannot be read"
+            );
+        }
+        // A command that does not read the branch is left alone.
+        for cmd in [
+            format!("git -C {dir} status"),
+            format!("git -C {dir} push origin v2026.11.0"),
+            format!("git -C {dir} reset --soft HEAD~1"),
+        ] {
+            assert_eq!(guard_rule(&cmd, branch, lane), None, "{cmd} is not refused");
+        }
+    }
+    // A readable folder on another branch is not the integration branch, even when the caller
+    // stands on it.
+    assert_eq!(
+        guard_rule(
+            &format!("git -C {other_branch} reset --hard HEAD~1"),
+            branch,
+            Some(branch)
+        ),
+        None,
+        "-C names a checkout of another branch"
+    );
+    let _ = fs::remove_dir_all(&not_a_repo);
+}
+
+/// Audit R-N2: the branch comes from the work tree the folder belongs to, so a subfolder of
+/// the integration checkout counts as that checkout.
+#[test]
+fn a_subfolder_of_the_integration_checkout_is_the_integration_branch() {
+    let branch = "v2026.11.0";
+    let lane = Some("spec/some-lane-20261121");
+    let primary = Repo::new();
+    let sub = primary.0.join("src").join("deep");
+    fs::create_dir_all(&sub).unwrap();
+    let (root, sub) = (primary.0.display().to_string(), sub.display().to_string());
+    for cmd in [
+        format!("cd {root} && git reset --hard HEAD~1"),
+        format!("cd {sub} && git reset --hard HEAD~1"),
+        format!("git -C {sub} reset --hard HEAD~1"),
+        format!("git -C {sub} reset --keep HEAD~1"),
+    ] {
+        assert!(
+            guard_rule(&cmd, branch, lane).is_some(),
+            "{cmd} is refused: the folder is inside the integration checkout"
+        );
+    }
+    // A subfolder of a checkout of another branch is not the integration branch.
+    let side = Repo::init_on("side");
+    let side_sub = side.0.join("src");
+    fs::create_dir_all(&side_sub).unwrap();
+    let side_sub = side_sub.display().to_string();
+    for cmd in [
+        format!("cd {side_sub} && git reset --hard HEAD~1"),
+        format!("git -C {side_sub} reset --hard HEAD~1"),
+    ] {
+        assert_eq!(
+            guard_rule(&cmd, branch, Some(branch)),
+            None,
+            "{cmd} runs on another branch"
+        );
+    }
+}
+
+/// Audit R-N3: git reads a unique prefix of a long option and a bundle of short ones, so the
+/// guard reads them the same way.
+#[test]
+fn abbreviated_and_bundled_options_are_read_the_way_git_reads_them() {
+    let branch = "v2026.11.0";
+    let here = Some(branch);
+    for cmd in [
+        "git reset --har HEAD~1",
+        "git reset --ha HEAD~1",
+        "git reset --ke HEAD~1",
+        "git push -fu origin v2026.11.0",
+        "git push -uf origin v2026.11.0",
+        "git push --forc origin v2026.11.0",
+        "git push -o ci.skip -f origin v2026.11.0",
+        "git branch -C other v2026.11.0",
+        "git branch --copy --force other v2026.11.0",
+        "git branch -mf other v2026.11.0",
+        "git branch --forc v2026.11.0 main",
+        "git branch --delete v2026.11.0",
+        "git branch -d v2026.11.0",
+    ] {
+        assert!(
+            guard_rule(cmd, branch, here).is_some(),
+            "{cmd} is refused on the integration branch"
+        );
+    }
+    for cmd in [
+        "git reset --soft HEAD~1",
+        "git reset --mixed HEAD~1",
+        "git push -u origin v2026.11.0",
+        "git push -o ci.skip origin v2026.11.0",
+        "git push -f origin other",
+        "git branch -C v2026.11.0 other",
+        "git branch -d other",
+    ] {
+        assert_eq!(guard_rule(cmd, branch, here), None, "{cmd} is not refused");
+    }
+}
+
+/// Audit R-N5: `git branch -f <name> <start-point>` moves `<name>`; the start point is only a
+/// place to start from, so naming the integration branch there moves nothing of it.
+#[test]
+fn a_force_branch_that_only_starts_from_the_integration_branch_passes() {
+    let branch = "v2026.11.0";
+    let none: Option<&str> = None;
+    for cmd in [
+        "git branch -f other v2026.11.0",
+        "git branch --force other v2026.11.0",
+        "git branch -f other origin/v2026.11.0",
+    ] {
+        assert_eq!(
+            guard_rule(cmd, branch, none),
+            None,
+            "{cmd} moves another branch"
+        );
+    }
+    assert!(
+        guard_rule("git branch -f v2026.11.0 other", branch, none).is_some(),
+        "moving the integration branch itself is refused"
+    );
+}

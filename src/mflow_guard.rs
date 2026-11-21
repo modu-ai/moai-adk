@@ -143,29 +143,30 @@ pub fn guard_rule(
         }
         for sub in crate::claim_verify::git_subcommands(&args) {
             // The folder `git -C <dir>` names replaces the caller's checked-out branch, and a
-            // shell `cd` replaces it too; an unreadable folder falls back to the integration
-            // branch, which errs toward refusing.
-            let here = sub
+            // shell `cd` replaces it too. The branch is read from the work tree the folder
+            // belongs to, so a subfolder counts as its checkout (audit R-N2). A folder whose
+            // branch cannot be read is no branch at all: it is never replaced by a path or by
+            // the caller's own branch, and a hard reset there is refused (audit R-N1).
+            let folder = sub
                 .global
                 .iter()
-                .position(|g| g == "-C")
+                .rposition(|g| g == "-C")
                 .and_then(|i| sub.global.get(i + 1))
-                .map(|dir| {
-                    crate::hook_guards::work_tree_branch(Path::new(dir)).unwrap_or_else(|| {
-                        cwd.clone()
-                            .unwrap_or_else(|| integration_branch.to_string())
-                    })
-                })
-                .or_else(|| {
-                    cwd.as_ref().map(|dir| {
-                        crate::hook_guards::work_tree_branch(Path::new(dir)).unwrap_or_else(|| {
-                            current_branch.unwrap_or(integration_branch).to_string()
-                        })
-                    })
-                })
-                .or_else(|| current_branch.map(str::to_string));
+                .map(|dir| resolve_dir(dir, cwd.as_deref()))
+                .or_else(|| cwd.as_deref().map(|dir| resolve_dir(dir, None)));
+            let here: Result<Option<String>, ()> = match folder {
+                Some(dir) => branch_in_dir(&dir).map(Some).ok_or(()),
+                None => Ok(current_branch.map(str::to_string)),
+            };
             let warned = match sub.verb.as_str() {
-                "reset" => reset_rule(&sub, integration_branch, here.as_deref()),
+                "reset" => match here {
+                    Ok(branch) => reset_rule(&sub, integration_branch, branch.as_deref()),
+                    Err(()) => is_hard_reset(&sub).then(|| {
+                        "m-flow guard: git reset --hard/--keep runs in a folder whose branch \
+                         cannot be read; run it where the checked-out branch can be read"
+                            .to_string()
+                    }),
+                },
                 "push" => push_rule(&sub, integration_branch),
                 "branch" => branch_rule(&sub, integration_branch),
                 _ => None,
@@ -183,8 +184,7 @@ pub fn guard_rule(
 /// `HEAD~1` or another name makes no difference (audit B2's own incident). Without a resolved
 /// branch the command is refused only when it names the integration branch.
 fn reset_rule(sub: &GitSub, integration_branch: &str, here: Option<&str>) -> Option<String> {
-    let hard = sub.rest.iter().any(|a| a == "--hard" || a == "--keep");
-    if !hard {
+    if !is_hard_reset(sub) {
         return None;
     }
     let touches = match here {
@@ -199,6 +199,65 @@ fn reset_rule(sub: &GitSub, integration_branch: &str, here: Option<&str>) -> Opt
     })
 }
 
+/// git's long options of `git reset` (`git reset --git-completion-helper-all`, git 2.54.0),
+/// without `--` and `=`; git takes any prefix that no other one shares (audit R-N3).
+const RESET_LONG: &[&str] = &[
+    "quiet",
+    "no-refresh",
+    "mixed",
+    "soft",
+    "hard",
+    "merge",
+    "keep",
+    "recurse-submodules",
+    "patch",
+    "auto-advance",
+    "unified",
+    "inter-hunk-context",
+    "intent-to-add",
+    "pathspec-from-file",
+    "pathspec-file-nul",
+    "refresh",
+    "no-quiet",
+    "no-recurse-submodules",
+    "no-patch",
+    "no-auto-advance",
+    "no-intent-to-add",
+    "no-pathspec-from-file",
+    "no-pathspec-file-nul",
+];
+
+/// `git reset --hard` or `--keep`, spelled in full or as the shortest prefix git accepts.
+fn is_hard_reset(sub: &GitSub) -> bool {
+    sub.rest.iter().any(|a| {
+        crate::hook_guards::long_opt(a, "hard", RESET_LONG)
+            || crate::hook_guards::long_opt(a, "keep", RESET_LONG)
+    })
+}
+
+/// The folder a `cd <dir>` or `git -C <dir>` names as an absolute path: relative to the folder an
+/// earlier `cd` named, else to the folder the guard runs in.
+fn resolve_dir(dir: &str, base: Option<&str>) -> std::path::PathBuf {
+    let path = Path::new(dir);
+    if path.is_absolute() {
+        return path.to_path_buf();
+    }
+    let start = base
+        .map(|b| resolve_dir(b, None))
+        .or_else(|| std::env::current_dir().ok())
+        .unwrap_or_default();
+    start.join(path)
+}
+
+/// The branch checked out in the work tree that holds `dir`: the nearest folder at or above it
+/// with a `.git`. `None` when no work tree holds it, its `.git` cannot be read or its HEAD is
+/// detached: the guard cannot tell which branch a hard reset there would move, so the caller
+/// refuses it rather than guessing.
+fn branch_in_dir(dir: &Path) -> Option<String> {
+    let top = dir.ancestors().find(|a| a.join(".git").exists())?;
+    crate::hook_guards::work_tree_branch(top)
+}
+
 /// The branch a push refspec or a branch word names: the `+` and the `refs/heads/` prefix go,
 /// and for a refspec the destination — the part after the last `:` — is the branch.
 fn names_branch(word: &str, integration_branch: &str) -> bool {
@@ -208,10 +267,12 @@ fn names_branch(word: &str, integration_branch: &str) -> bool {
 /// `git push` with a force in play and the integration branch among the destination refspecs.
 /// A `+` before the refspec is a force of its own: it refuses without a force flag.
 fn push_rule(sub: &GitSub, integration_branch: &str) -> Option<String> {
+    // `-f` also inside a bundle (`-fu`, `-uf`); `-o` takes the next word as its value.
     let forced = sub
         .rest
         .iter()
-        .any(|a| crate::hook_guards::push_force_option(a) || a == "-f");
+        .any(|a| crate::hook_guards::push_force_option(a))
+        || crate::hook_guards::short_letters(&sub.rest, &['o']).contains(&'f');
     let hits = crate::hook_guards::push_positionals(&sub.rest)
         .iter()
         .skip(1)
@@ -228,24 +289,47 @@ fn push_rule(sub: &GitSub, integration_branch: &str) -> Option<String> {
     })
 }
 
-/// `git branch -f|-M` moves the branch its first positional names (`-M` may also overwrite the
-/// integration branch as the rename target), so the guard refuses when a `-f|-M` positional is
-/// the integration branch; `-D` deletes, so any positional naming it is refused.
+/// `git branch` commands that move, overwrite or delete the integration branch (audit R-N3):
+/// - `-f <name> [<start>]` moves `<name>`, the first positional; the start point is only a
+///   place to start from, so naming the integration branch there moves nothing (audit R-N5);
+/// - a rename (`-M`, or `-m` with a force) takes the old name away and may overwrite the new
+///   one, so any positional naming the integration branch is refused;
+/// - a copy (`-C`, or `-c` with a force) only overwrites its destination, the last positional;
+/// - a delete (`-d`, `-D`, `--delete`) of the integration branch is refused.
+///
+/// Short letters are read as bundles (`-mf`) and long options as git reads their prefixes.
 fn branch_rule(sub: &GitSub, integration_branch: &str) -> Option<String> {
-    let letters = crate::hook_guards::short_letters(&sub.rest, &[]);
-    let long_force = sub.rest.iter().any(|a| a == "--force");
+    let letters = crate::hook_guards::short_letters(&sub.rest, &['u']);
+    let long = |name: &str| {
+        sub.rest
+            .iter()
+            .any(|a| crate::hook_guards::long_opt(a, name, crate::hook_guards::BRANCH_LONG))
+    };
+    let force = letters.contains(&'f') || long("force");
     let positionals: Vec<&String> = sub.rest.iter().filter(|a| !a.starts_with('-')).collect();
     let named: Vec<bool> = positionals
         .iter()
         .map(|p| names_branch(p, integration_branch))
         .collect();
-    let moves = (letters.contains(&'f') || long_force) && named.first().is_some_and(|hit| *hit);
-    let renames = letters.contains(&'M') && named.iter().any(|hit| *hit);
-    let deletes = letters.contains(&'D') && named.iter().any(|hit| *hit);
-    (moves || renames || deletes).then(|| {
+    let any_named = named.iter().any(|hit| *hit);
+    let first_named = named.first().is_some_and(|hit| *hit);
+    let last_named = named.last().is_some_and(|hit| *hit);
+    let rename = letters.contains(&'M') || ((letters.contains(&'m') || long("move")) && force);
+    let copy = letters.contains(&'C') || ((letters.contains(&'c') || long("copy")) && force);
+    let delete = letters.contains(&'D') || letters.contains(&'d') || long("delete");
+    let moves = if rename {
+        any_named
+    } else if copy {
+        last_named
+    } else if delete {
+        any_named
+    } else {
+        force && first_named
+    };
+    moves.then(|| {
         format!(
-            "m-flow guard: git branch -f/-D/-M on the integration branch {integration_branch} is \
-             refused; move it forward with a commit on top"
+            "m-flow guard: git branch -f/-d/-D/-M/-C on the integration branch \
+             {integration_branch} is refused; move it forward with a commit on top"
         )
     })
 }
