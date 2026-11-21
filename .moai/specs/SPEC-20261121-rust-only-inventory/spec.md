@@ -85,4 +85,18 @@ created: 2026-11-21
 
 ## Result
 
-(감사 뒤에 채워요.)
+### 조각 1 — head 43b24c02bfa0d3b96406b9e63382ca5cfe417bc7
+
+- 만든 것: `inventory.md`(파일별 판정표 84행, Rust 쪽 줄 목록, 셸·워크플로의 파이썬 목록, 여섯 도구의 위험 순서, 결정 목록, 지우는 조각의 제약)와 이 SPEC. 합계는 port 65, covered 2, drop 17이에요.
+- 방법: `git ls-files` 의 84개를 `ast` 로 크기·시험 수를 세고, 추적 파일 전체에서 각 파일 이름을 찾아 부르는 곳을 정리하고, 머리말과 시험 이름을 읽어 보호 내용을 적었어요. Rust 쪽은 `git grep -n -E '\.py\b|python3?\b|unittest|_test\.py'` 94줄을, 셸·워크플로는 같은 패턴 75줄을 읽었어요.
+- AC-1: met — 확인 명령이 아무것도 내지 않고 `git ls-files -- '*.py'` 는 84줄이에요(2026-11-21T19:29Z, 이 head).
+- AC-2: met — 확인 명령이 아무것도 내지 않아요. `Command::new("python` 으로 잡히는 시험 파일은 6개이고, 표의 3-1 은 셸 문자열로 파이썬을 부르는 `tests/lane_env_cli.rs` 까지 7곳을 담아요.
+- AC-3: met — 확인 명령이 아무것도 내지 않아요.
+- AC-4: met — 확인 명령이 아무것도 내지 않아요(순서표 5행이 여섯 도구를 덮어요).
+- AC-5: met — 확인 명령이 아무것도 내지 않아요(drop 행 17개).
+- AC-6: met — `git diff --name-status <merge-base>..HEAD` 에서 SPEC 폴더의 추가(`A`) 두 개 말고는 없어요.
+- AC-7: met — 확인 명령이 7을 내요.
+- 돌린 것: 위 확인 명령 일곱 개, `moai spec check SPEC-20261121-rust-only-inventory`(오류 0, 경고 0), `git diff --check`(통과), `moai trailer-check <merge-base>..HEAD`(실패 0).
+- 돌리지 않은 것: 이 조각은 문서만 바꿔서 빌드와 `cargo` 시험은 돌리지 않았어요(바뀐 코드가 없어요). `check affected` 는 병합 후보에서 돌려요.
+- 열린 것: 결정 D1~D7(기본값이 있고 리더가 기한 전에 바꿀 수 있어요). 판정은 시험 본문을 사례별로 대조한 값이 아니라서, 조각 2·3 이 옮기기 전에 대조해요.
+- 판정표에서 눈여겨볼 곳: `tests/self_audit_run.py` 는 시험이 아니라 실행 도우미이고(drop, 세 시험과 함께), `tests/github_inventory_collect.py` 는 시험 폴더에 있는 수집기예요(drop).
