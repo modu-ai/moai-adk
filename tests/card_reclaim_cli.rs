@@ -207,7 +207,11 @@ impl World {
             Some(S_A),
             &["pr", &name, "7", "--generation", "1", "--repo", "octo/demo"],
         ));
-        result(&self.card(Some(S_A), &["review", &name, "--generation", "1"]));
+        // `--keep`: the reclaim cases need the reservation to outlive the review.
+        result(&self.card(
+            Some(S_A),
+            &["review", &name, "--generation", "1", "--keep", "apps/bo/"],
+        ));
         self.end_lease(1);
         name
     }

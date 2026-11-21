@@ -17,4 +17,4 @@ operation `key.set` · 코드 `src/ops/key_set.rs`, `src/key_prompt.rs` · #2393
 - Unix 가 아니면(`termios` 없음) 거절한다: 값을 파이프로 넣으라고 알려 준다.
 - 에이전트 세션의 셸 도구에는 터미널이 없으므로 `--prompt` 는 사용자가 자기 터미널 창에서 실행한다. 세션은 그 뒤 `key-status` 로 확인한다.
 
-시험: `tests/key_set_prompt_tty_test.py`(pty), `tests/key_vault_cli.rs`, `src/key_prompt.rs` 의 단위 시험.
+시험: `tests/key_set_prompt_terminal_cli.rs`(pty), `tests/key_vault_cli.rs`, `src/key_prompt.rs` 의 단위 시험.
