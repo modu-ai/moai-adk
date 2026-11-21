@@ -165,6 +165,13 @@ pub fn worktree_dir(project_root: &Path, id: &str) -> Result<PathBuf> {
         .join(worktree_name(project_root, id)?))
 }
 
+/// Makes sure the repository's local exclude file lists the project's worktree folder, so a
+/// worktree made there does not show in the main tree's status (REQ-10). Placeholder: the
+/// body comes with the change that makes the tests pass.
+pub fn ensure_place_ignored(_project: &Path) -> Result<()> {
+    Ok(())
+}
+
 /// Where a worktree path sits (D3, D8): `home` (`<HOME>/.moai/worktrees/<name>`), `go`
 /// (`<HOME>/.moai/worktrees/projects/<project>/<name>`), `project` (`<primary>/.moai-cli/
 /// worktrees/<name>`), `claude` (`<primary>/.claude/worktrees/<name>`) or `other`. Compares
