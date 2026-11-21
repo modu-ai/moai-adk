@@ -77,4 +77,12 @@ SPEC-20261121-cheap-process-scan 이 `lsof` 를 싸게 했지만(기계 전체 6
 
 ## Result
 
-(구현 뒤에 채워요.)
+- AC-1: met — `cargo test --locked --offline --test process_scan_snapshot_cli one_lsof_call_serves_both_checks` 통과(가짜 `lsof` 의 호출 기록이 한 줄이고 `-w -n -P -b` 와 `-F fn` 을 가져요). 고치기 전에는 호출이 `-w -n -P -b -a -d cwd -Fn` 과 `-w -n -P -b -Fn` 두 줄이어서 실패했어요(RED).
+- AC-2: met — `cargo test --locked --offline --lib worktree_gc` 18 개 통과(`a_second_question_within_the_age_reuses_the_snapshot`: 한도 안의 두 번째 질문은 읽기를 더하지 않고, 한도 0 은 읽기를 더하고, 실패한 읽기는 남지 않아요). 처음 짠 이 시험은 "실패한 읽기가 이전 스냅샷을 지우지 않는다"는 동작을 잘못 기대해 한 번 실패했고, 새 캐시로 확인하게 고쳤어요.
+- AC-3: met — `… one_listing_gives_the_answers_of_the_two_earlier_scans_in_twelve_situations` 통과(열한 가지 상황을 옛 두 파서와 새 파서에 같은 입력으로 먹여 작업 폴더·열린 파일·접두어 판단이 같고, 열두 번째로 빈 출력과 중간에 잘린 출력이 안전해요).
+- AC-4: met — `cargo test --locked --offline --test process_scan_snapshot_cli an_injected_table_file_drives_the_decisions_without_lsof` 통과(`cwd` 줄은 `in_use`, `open` 줄만이면 `file_open_in_use` 만, 형제 경로·밖의 경로는 막힘 없음, 가짜 `lsof` 는 한 번도 불리지 않음). 고치기 전에는 표 파일을 읽지 않아 실패했어요.
+- AC-5: met — `… a_stuck_lsof_is_stopped_and_the_check_reports_unavailable` 통과(20 초 멈추는 가짜 `lsof` 를 한도 0.5 초로 끝내고 `process_check_unavailable`). 고치기 전에는 41 초 걸려 실패했어요(호출 둘이 각각 20 초).
+- AC-6: met — `cargo test --locked --offline --test process_scan_cost_cli --test home_state_plan --test home_state_selective --test worktree_gc --test worktree_gc_apply --test hygiene_apply_cli` 통과(2·10·10·9·14·15 개), `cargo clippy --locked --offline --all-targets -- -D warnings` 0, `cargo fmt` 적용. 이전 조각의 시험 하나(`the_process_scans_run_lsof_without_name_lookups_or_blocking_calls`)는 "호출이 둘 이상"이라는 기대를 "한 번 이상, 모두 이 옵션"으로 고쳤어요(호출이 하나로 줄었기 때문이에요).
+- 변이 5 개 모두 시험이 잡았어요(스냅샷 한도 0, 작업 폴더 줄을 표시하지 않기, 열린 파일에서 경로 아닌 이름 걸러내기 빼기, `lsof` 를 끝내지 않기, 표 파일의 `open` 줄 무시). 컴파일은 모두 됐고 복원은 `git checkout --` 로 했어요.
+- 측정: `lsof` 호출은 한 명령에 2 회에서 1 회로 줄었어요(AC-1 이 고정). 시간은 **확정하지 못했어요**: 측정 중 기계 부하 평균이 53~134 로 치솟아(같은 시간대의 변이·시험 실행과 다른 레인) 조각 1 때(부하 17~40)와 조건이 달라요. `home_install_apply_cli` 41 개 통과 105.90 초(조각 1 의 81.84 초와 비교 불가), HOME 명령 하나는 조각 1 바이너리 3.4~15.2 초 대 이 조각 2.8~9.1 초로 부하에 따라 요동쳤어요. 보고서 목표(`home_install_apply_cli` ≤ 60 초, HOME 명령 < 1 초)는 확인하지 못했어요.
+- 돌리지 않은 것: 조용한 기계에서의 전후 시간(부하 평균이 낮아지면 같은 스크립트로 다시 재요), 전체 `moai check affected`(병합 준비 노트에 줄째로 적어요), `src/hygiene.rs`·`src/home_state.rs` 의 호출 지점 정리(다른 카드가 쥔 파일이라 건드리지 않았어요: 두 파일의 호출은 이름 그대로 새 스냅샷에서 답해요), 시험이 끄개를 쓰게 하는 일(시험이 환경을 비우고 실행해서 시험마다 `.env` 가 필요해요: 다음 조각), Linux 에서의 실행(`/proc` 경로는 한 번에 읽도록 바꿨고 새 통합 시험 셋은 `/proc` 가 있으면 건너뛰어요).
