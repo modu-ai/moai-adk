@@ -5,7 +5,9 @@
 
 #![cfg(unix)]
 
-use moai_cli::agents_local_merge::{apply_for, plan_for, revert_for, Kind};
+use moai_cli::agents_local_merge::{
+    agents_md_state, apply_for, plan_for, revert_for, AgentsMdState, Kind,
+};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::{fs, os::unix::fs::symlink, path::PathBuf};
@@ -253,6 +255,63 @@ fn a_link_blocks_and_a_stale_digest_writes_nothing() {
     assert!(err.contains("stale"), "{err}");
     assert!(!fx.root.join("CLAUDE.md").exists());
     assert!(apply_for(Kind::Guidance, &fx.root, &digest, "").is_err());
+}
+
+/// The guard that keeps a first `CLAUDE.md` from hiding `AGENTS.md` asks what the file holds: no
+/// file, only MoAI's own section, text of its own, or something that blocks (SPEC
+/// SPEC-20261121-claude-md-generation, plan step 1).
+#[test]
+fn the_agents_md_state_tells_the_guard_what_the_file_holds() {
+    let state = |fx: &Fx| agents_md_state(&fx.root);
+
+    let fx = Fx::new();
+    assert!(matches!(state(&fx), AgentsMdState::Absent));
+
+    // MoAI's section alone, and with the one title line MoAI writes above it, is not the
+    // person's text.
+    fx.write("AGENTS.md", MOAI_BLOCK);
+    assert!(matches!(state(&fx), AgentsMdState::OnlyMoai));
+    fx.write("AGENTS.md", &format!("# my-project\n\n{MOAI_BLOCK}"));
+    assert!(matches!(state(&fx), AgentsMdState::OnlyMoai));
+
+    // Text of the person's own, with or without MoAI's section.
+    fx.write("AGENTS.md", TEXT);
+    assert!(matches!(state(&fx), AgentsMdState::HasText));
+    fx.write("AGENTS.md", &format!("{TEXT}\n{MOAI_BLOCK}"));
+    assert!(matches!(state(&fx), AgentsMdState::HasText));
+
+    // A credential-shaped line, a stray marker and a file that is not text each block, and the
+    // reason never carries the value.
+    let secret = format!("{}{}", "sk-", "q".repeat(32));
+    fx.write("AGENTS.md", &format!("{TEXT}token: {secret}\n"));
+    match state(&fx) {
+        AgentsMdState::Blocked(why) => assert!(!why.contains(&secret), "{why}"),
+        other => panic!("expected Blocked, got {other:?}"),
+    }
+    fx.write(
+        "AGENTS.md",
+        &format!("{TEXT}<!-- moai:managed:end id=moai-workflow -->\n"),
+    );
+    assert!(matches!(state(&fx), AgentsMdState::Blocked(_)));
+    fs::write(fx.root.join("AGENTS.md"), [0xff, 0xfe, 0x00, 0x41]).unwrap();
+    assert!(matches!(state(&fx), AgentsMdState::Blocked(_)));
+}
+
+/// A link as `AGENTS.md` blocks, even a dangling one.
+#[test]
+fn a_linked_agents_md_blocks_the_state() {
+    let fx = Fx::new();
+    fx.write("real.md", TEXT);
+    symlink(fx.root.join("real.md"), fx.root.join("AGENTS.md")).unwrap();
+    assert!(matches!(
+        agents_md_state(&fx.root),
+        AgentsMdState::Blocked(_)
+    ));
+    fs::remove_file(fx.root.join("real.md")).unwrap();
+    assert!(matches!(
+        agents_md_state(&fx.root),
+        AgentsMdState::Blocked(_)
+    ));
 }
 
 /// The two kinds keep their receipts apart: a receipt id of one kind is unknown to the other.

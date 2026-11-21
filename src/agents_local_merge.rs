@@ -718,6 +718,66 @@ fn find_source_for(kind: Kind, root: &Path) -> Result<Found> {
     }
 }
 
+/// What a project's `AGENTS.md` holds, for the guard that keeps a first `CLAUDE.md` or
+/// `CLAUDE.local.md` from hiding it (Claude Code reads `AGENTS.md` only while neither exists).
+#[derive(Debug)]
+pub enum AgentsMdState {
+    /// No `AGENTS.md`.
+    Absent,
+    /// Only MoAI's own section, with at most the one `# title` line MoAI writes above it.
+    OnlyMoai,
+    /// Text the person wrote: the migration has something to carry over.
+    HasText,
+    /// A link, a file that is not UTF-8 text or is too large, a credential-shaped line or a stray
+    /// MoAI marker. The reason never carries a value.
+    Blocked(String),
+}
+
+/// Reads `AGENTS.md` the way the guidance migration does and says what it holds. Writes nothing.
+pub fn agents_md_state(root: &Path) -> AgentsMdState {
+    if fs::symlink_metadata(root.join(LEGACY_TARGET)).is_err() {
+        return AgentsMdState::Absent;
+    }
+    let found = match find_guidance(root) {
+        Ok(found) => found,
+        Err(reason) => return AgentsMdState::Blocked(reason),
+    };
+    let suspects = match &found {
+        Found::Source(s) => std::str::from_utf8(&s.bytes)
+            .map(secret_suspects)
+            .unwrap_or_default(),
+        _ => Vec::new(),
+    };
+    // A missing `CLAUDE.md` is the case that matters: the decision is what a create would do.
+    let decision = decide_for(Kind::Guidance, None, found, &suspects);
+    match decision.action {
+        "merge" => AgentsMdState::HasText,
+        "none" => AgentsMdState::OnlyMoai,
+        _ => AgentsMdState::Blocked(decision.reason),
+    }
+}
+
+/// The notice and the warning for a personal file git already tracks: it is committed whatever
+/// `.gitignore` says, and this move does not untrack it.
+const TRACKED_NOTICE: &str =
+    "This text goes into CLAUDE.local.md, which git already tracks, so it \
+     will be committed with your next commit; this move does not untrack it. AGENTS.local.md \
+     stays as it is.";
+const TRACKED_WARNING: &str = "CLAUDE.local.md is already tracked by git, so this text will be \
+     committed and shared; MoAI does not untrack it. Run git rm --cached CLAUDE.local.md yourself \
+     if you want it out of the repository.";
+
+/// The one line the personal file adds to `.gitignore`, and the file it goes into.
+const IGNORE_LINE: &str = "CLAUDE.local.md";
+const GITIGNORE: &str = ".gitignore";
+
+/// The `.gitignore` write a plan carries: the bytes the file holds now (`None`: it does not
+/// exist) and the bytes after the one line is added.
+struct IgnoreWrite {
+    before: Option<Vec<u8>>,
+    new_bytes: Vec<u8>,
+}
+
 struct Inner {
     json: Value,
     action: &'static str,
