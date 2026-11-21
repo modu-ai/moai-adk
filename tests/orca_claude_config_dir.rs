@@ -272,3 +272,23 @@ fn adapter_unverified_names_the_live_profile_session_and_its_page() {
         assert!(text.contains(phrase), "the adapter must say {phrase:?}");
     }
 }
+
+/// REQ-8: reuse is not a single-leader guarantee; what the automations page leaves out is named;
+/// a leader checks for a running leader before it starts one.
+#[test]
+fn adapter_automations_reuse_is_not_a_single_leader_guarantee() {
+    let text = adapter();
+    let line = text
+        .lines()
+        .find(|l| l.starts_with("Automations."))
+        .expect("the adapter has an `Automations.` paragraph");
+    let line = flat(line);
+    for phrase in [
+        "`--reuse-session` only continues in the previous live automation terminal",
+        "https://orca.dev/docs/cli/automations, read 2026-11-21T01:31:19Z",
+        "says nothing about a manual run that overlaps a running one, a restart, a sleeping machine or the missed-run grace window",
+        "a leader checks whether a leader already runs before it starts one by a manual run or after a restart",
+    ] {
+        assert!(line.contains(phrase), "the paragraph must say {phrase:?}");
+    }
+}
