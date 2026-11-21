@@ -84,4 +84,32 @@ created: 2026-11-21
 
 ## Result
 
-(written after the checks)
+Filled in by the implementation lane on 2026-11-21 (`date -u`); the audit checks it again. The SPEC is `47b38bdcc5`; red `cb06eb8cbc`, green `a6e3562514`, the manifest rows `a6d168181b`; the base is the local tip `42f5af0800` (this branch was started on it, so no merge commit is needed). Evidence files are in this worktree's `target/notes/`.
+
+Red (`red.out`, before the text): `tests/work_flow_branching.rs` 0 passed, 6 failed on the tip text.
+
+First green run (`green.out`, 18 targets, no name filter) was red in four targets, each read and repaired: `agent_defs_package` (its flow-section assertion pinned the old interview wording "push the branch and open a pull request (recommended)" and "one SPEC, one branch, one pull request"; the leader decided to correct that wording, so the assertion now pins the M-Flow wording), `claim_verify_cli::claim_order_docs_agree` (my first claim sentence dropped the words "then take the card in it"; the text was fixed, not the test), `mode_workflow_steps::ops_named_by_the_mode_workflows_exist_with_their_flags` (the lane workflow now names `moai work-flow-plan --project`; the expected op list gained it), and `product_cli::skill_package::source_manifest_covers_every_package_file` (the manifest rows were rewritten). Two pinned expectations of the old branch name `card/<n>-<slug>` were changed with the text (`mode_cards_53`, `lane_rules_2879`).
+
+- AC-1: met — `cargo test --locked --offline --test work_flow_branching` (`green2.out`, and again in `affected/06-test_targets.log`): 6 passed, 0 failed; `the_state_step_reads_the_flow_and_gives_m_flow_a_local_base` is one of them.
+- AC-2: met — same run, `the_claim_step_starts_from_the_local_tip_and_names_no_card_number` (no `card/<n>` is left in `mode-agent.md`).
+- AC-3: met — same run, `the_m_flow_clauses_carry_no_pull_request_or_origin_instruction`.
+- AC-4: met — same run, `the_pull_request_sentences_stay_under_their_label`.
+- AC-5: met — same run, `the_pull_request_only_at_a_formal_release_is_said_in_both_places`.
+- AC-6: met — same run, `the_m_flow_merge_text_is_pointed_to_and_not_copied`.
+- AC-7: met — `green2.out` and `affected/06-test_targets.log`: `mode_workflow_steps` 43, `mode_cards_53` 9, `lane_rules_2879` 5, `agent_defs_package` 19, `claim_verify_cli` 39, `product_cli` 79 passed; the other targets of the list (`lane_rules_2401` 4, `lane_rules_2836` 2, `mode_guidance_scan` 8, `flaky_followups` 3, `close_step_2903` 2, `claim_renew_doc_3042` 1, `lane_next_rules` 3, `generic_flow_questions` 10, `orca_alignment` 10, `orca_optional_3005` 5, `project_decide_model` 4) passed in the first run `green.out`, before the claim sentence and the two expectation edits; they are in the affected set run on the final head below.
+- AC-8: met — `python3 -I tools/source_manifest.py check` prints `{"conflicted": false, "changed": [], "dropped": [], "ok": true}` on the final head.
+
+### Checks
+
+`moai check affected 42f5af0800..a6d168181b` (the branch's own build of the binary, `--max 2`), summary line as printed: `check-affected base=42f5af0800fb head=a6d168181b7b targets=46 py=8 scans=listed:42 diff_check=0 fmt=0 clippy=0 test_lib=0 test_bins=0 test_targets=0 build_cli=0 python=0 result=PASS`.
+
+Mutants (five, on the committed `mode-agent.md`, each restored, `restored: only manifest modified = True`; `mutate.out`, `mutate5.out`): the m-flow `pr-gate` clause opening a pull request again, the m-flow `hand-off` clause allowing a force push, the m-flow `state` clause comparing with `origin`, the `merge-train` step without its label, the `claim` step naming the card number again — each killed by a named test of `work_flow_branching`. The fifth mutant did not apply at the first run (its pattern had a stray backtick: a script error, not a text error) and was run again with the corrected pattern.
+
+Shared files: `skills/moai/references/source-manifest.json` (two rows) was committed on this branch under the leader's standing pair approval for the card's own manifest keys (decision notes 5602, 5623, 5658); the card check refuses that path. The four test files edited in the green commit are in the card's scope.
+
+### Not run
+
+- A lane of a real m-flow project following the new text in a host: not run; the text is pinned by words only.
+- The flows `trunk-based` and `git-flow`: they follow the pull request flows' text as before; no clause was added for them.
+- The cause of the earlier force push: not verified (the SPEC says inference); this change removes the instruction that could have led to it, it does not prove the cause.
+- A second run of the same tests on the same tree: not repeated.
