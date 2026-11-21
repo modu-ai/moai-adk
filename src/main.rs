@@ -639,20 +639,18 @@ enum Command {
     },
     /// Answer a Codex lane's Stop hook
     ///
-    /// The Stop hook a Codex lane installs with `hooks-plan --host codex --lane-loop` (#2904):
-    /// reads the Stop input on stdin (64 KiB, dropped), reads the lane's next task once
-    /// (`lane-next`, or `--snapshot`) and prints only the Codex answer — `{"decision":"block",
-    /// "reason":…}` while the lane has work or open pull requests remain, nothing at the end
-    /// condition, after 48 blocks in a row for one task or 96 blocks since the last pass, or
-    /// on the second unknown reading.
+    /// The Codex host was removed. A Stop hook an earlier release wrote still calls this
+    /// command: it prints one line on standard error saying so, nothing on standard output,
+    /// exits 0 and writes nothing. Every flag is accepted and ignored, and standard input is
+    /// not read.
     LaneStopHook {
-        /// The lane name as it appears in claims (`session=<lane>`).
+        /// The lane name an old hook passes. Accepted and ignored.
         #[arg(long)]
         lane: String,
-        /// `OWNER/REPO`.
+        /// `OWNER/REPO` an old hook passes. Accepted and ignored.
         #[arg(long)]
         repo: String,
-        /// Decide from a saved `lane-next` snapshot (JSON) instead of reading GitHub.
+        /// A saved `lane-next` snapshot an old hook may pass. Accepted and ignored.
         #[arg(long)]
         snapshot: Option<PathBuf>,
     },
@@ -2523,34 +2521,16 @@ fn hook_dispatch_main(host: &str, event: &str) -> ExitCode {
     ExitCode::from(answer.exit)
 }
 
-/// `lane-stop-hook` (#2904): prints exactly the Codex Stop answer — one
-/// `{"decision":"block",…}` line or nothing — and exits 0. The Stop input is read (bounded) and
-/// dropped: `stop_hook_active` is not used (Q1 (a)) and bad JSON changes nothing. A refused
-/// lane or repository is a non-blocking hook error (exit 1, stdout empty).
-fn lane_stop_hook_main(lane: &str, repo: &str, snapshot: Option<&std::path::Path>) -> ExitCode {
-    use moai_cli::lane_loop as l;
-    use std::io::IsTerminal as _;
-    if !l::lane_ok(lane) || !l::repo_ok(repo) {
-        eprintln!(
-            "moai lane-stop-hook: --lane must be 1-64 of A-Z a-z 0-9 . _ - and --repo OWNER/REPO"
-        );
-        return ExitCode::from(HOOK_NON_BLOCKING_ERROR);
-    }
-    if !io::stdin().is_terminal() {
-        let _ = io::copy(&mut io::stdin().take(l::STOP_STDIN_LIMIT), &mut io::sink());
-    }
-    let Ok(cwd) = std::env::current_dir() else {
-        eprintln!("moai lane-stop-hook: working directory unavailable; the turn ends");
-        return ExitCode::SUCCESS;
-    };
-    let reading = match snapshot {
-        Some(file) => l::read_snapshot(file),
-        None => l::read_github(lane, repo),
-    };
-    let answer = l::stop_hook(&cwd, lane, repo, &reading);
-    if !answer.is_empty() {
-        println!("{answer}");
-    }
+/// `lane-stop-hook`: the Codex host was removed, so a Stop hook an earlier release wrote gets one
+/// line on standard error, nothing on standard output and exit 0 (it neither blocks nor fails).
+/// Standard input is not read, so a host that leaves it open cannot hold the hook, and no file
+/// or folder is written. The flags (`--lane`, `--repo`, `--snapshot`) are parsed and ignored.
+fn lane_stop_hook_main() -> ExitCode {
+    use std::io::Write as _;
+    let _ = writeln!(
+        io::stderr(),
+        "moai lane-stop-hook: the Codex lane Stop hook was removed; MoAI serves Claude Code only"
+    );
     ExitCode::SUCCESS
 }
 
@@ -2774,13 +2754,8 @@ pub(crate) fn main() -> ExitCode {
     if let Some(Command::HookDispatch { host, event }) = &cli.command {
         return hook_dispatch_main(host, event);
     }
-    if let Some(Command::LaneStopHook {
-        lane,
-        repo,
-        snapshot,
-    }) = &cli.command
-    {
-        return lane_stop_hook_main(lane, repo, snapshot.as_deref());
+    if let Some(Command::LaneStopHook { .. }) = &cli.command {
+        return lane_stop_hook_main();
     }
     if let Some(Command::HeavySlotAcquire {
         max,
@@ -3834,13 +3809,8 @@ mod help_rules {
     }
 
     /// Commands `main` answers before the internal dispatch; each reads standard input there
-    /// (`statusline`, `pr-self-audit-check`, `hook_dispatch_main` and `lane_stop_hook_main`).
-    const READ_BEFORE_DISPATCH: [&str; 4] = [
-        "hook-dispatch",
-        "lane-stop-hook",
-        "pr-self-audit-check",
-        "statusline",
-    ];
+    /// (`statusline`, `pr-self-audit-check` and `hook_dispatch_main`).
+    const READ_BEFORE_DISPATCH: [&str; 3] = ["hook-dispatch", "pr-self-audit-check", "statusline"];
 
     /// Source text that reads standard input: a typed request or plan, or `stdin()` used for
     /// more than asking whether it is a terminal.

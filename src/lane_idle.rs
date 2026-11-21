@@ -246,7 +246,7 @@ pub fn save(anchor: &Path, file: &Path, state: &IdleState) -> Result<(), String>
 /// `idle_limit`. The leader's round reads it as an idle lane.
 pub fn idle_line(lane: &str, checks: u64, last: &str) -> String {
     format!(
-        "LANE-IDLE lane={lane} checks={checks} last={last} restart=enter MODE-AGENT again as lane {lane} (`/moai --mode-agent` in Claude Code, `$moai --mode-agent` in Codex CLI)"
+        "LANE-IDLE lane={lane} checks={checks} last={last} restart=enter MODE-AGENT again as lane {lane} (`/moai --mode-agent` in Claude Code)"
     )
 }
 

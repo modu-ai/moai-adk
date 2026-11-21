@@ -13,6 +13,8 @@
 use crate::lane_next::Snapshot;
 use crate::lane_reset::{ClaimsObservation, CwdObservation};
 use crate::lane_status::{PaneState, MAX_LANES};
+use crate::ledger::LedgerError;
+use rusqlite::params;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::path::Path;
@@ -25,8 +27,8 @@ pub const MAX_AGE_SECS: i64 = crate::lane_reset::SCREEN_MAX_AGE_SECS;
 pub const CLEAR_CONTEXT_PCT: u32 = 85;
 /// Highest `context_used_pct` accepted.
 pub const MAX_CONTEXT_PCT: u32 = 100;
-/// Host bullets in front of an assistant line: Claude Code `⏺`, Codex `•` (decision Q2).
-pub const BULLETS: [char; 2] = ['⏺', '•'];
+/// The host bullet in front of an assistant line: Claude Code `⏺`.
+pub const BULLETS: [char; 1] = ['⏺'];
 /// The five lane markers, each counted only at the start of a line. `LANE-IDLE` is the line a
 /// lane prints once when `lane-next --max-empty` answered `idle_limit` (#3005 P9).
 pub const MARKER_WORDS: [(&str, MarkerKind); 5] = [
@@ -43,10 +45,9 @@ pub const IDLE_REASON: &str = "lane_idle";
 pub const CLAIM_TEXT: &str = "moai-claim:";
 /// The line a `restart` sends.
 pub const RESTART_LINE: &str = "순환 계속 — self-pick (1)부터";
-/// Marks a host draws in front of a line typed into it (Claude Code `>`, Codex `›`, `❯`) and
-/// the bullets: one is taken off before the last screen line is compared with
-/// [`RESTART_LINE`].
-pub const PROMPT_MARKS: [char; 5] = ['>', '›', '❯', '⏺', '•'];
+/// Marks Claude Code draws in front of a line typed into it (`>`, `❯`) and the bullet: one is
+/// taken off before the last screen line is compared with [`RESTART_LINE`].
+pub const PROMPT_MARKS: [char; 3] = ['>', '❯', '⏺'];
 /// The first line of a close table comment (`lane-next` reads the same words).
 pub const CLOSE_TABLE: &str = "CLOSE-TABLE";
 
@@ -63,7 +64,7 @@ pub struct ObservationFile {
 #[serde(deny_unknown_fields)]
 pub struct LaneObservation {
     pub lane: String,
-    /// `claude`, `codex` or `omp` (`lane_duty::HOSTS`).
+    /// `claude`, the only host (`lane_duty::HOSTS`).
     pub host: String,
     /// `YYYY-MM-DDTHH:MM:SSZ`, when the terminal was read.
     pub read_at: String,
@@ -217,7 +218,7 @@ pub fn parse(text: &str) -> Result<ObservationFile, String> {
         }
         if !crate::lane_duty::HOSTS.iter().any(|(h, _)| *h == l.host) {
             return Err(format!(
-                "observations file is invalid: lane `{}` host `{}` (use claude, codex or omp)",
+                "observations file is invalid: lane `{}` host `{}` (claude is the only host)",
                 l.lane, l.host
             ));
         }
@@ -499,6 +500,87 @@ fn not_run(reason: &str) -> Value {
     json!({"status": "not_run", "reason": reason})
 }
 
+/// The card-ledger part of the round (P6): read-only. The inbox's pending items become
+/// `answer` actions; a held reservation whose lease ended becomes a `reclaim` suggestion
+/// (decision L7: the user at any time, the leader after the lease), and one whose holder
+/// session is not live in the lane registry becomes a `stranded` report. A project without a
+/// ledger is one `not_run` item. Nothing here writes.
+pub fn card_actions(home: Option<&Path>, project: &Path, now: i64) -> Value {
+    let Some(home) = home else {
+        return not_run("no HOME: the card ledger lives there");
+    };
+    let mut items: Vec<Value> = Vec::new();
+    match crate::card::inbox::inbox(project, home, None) {
+        Ok(v) => {
+            for item in v["items"].as_array().into_iter().flatten() {
+                items.push(json!({
+                    "card": item["card"].clone(),
+                    "action": "answer",
+                    "why": format!(
+                        "inbox {} waits for an answer",
+                        item["family"].as_str().unwrap_or("request")
+                    ),
+                    "note_id": item["note_id"].clone(),
+                }));
+            }
+        }
+        Err(e) => return not_run(&format!("the card inbox could not be read: {e}")),
+    }
+    let id = match crate::ledger::command::project_id_of(project) {
+        Ok(id) => id,
+        Err(e) => return not_run(&e),
+    };
+    let ledger = match crate::ledger::open_read_only(home, &id) {
+        Ok(l) => l,
+        Err(LedgerError::Absent) => return not_run("no card ledger for this project"),
+        Err(e) => return not_run(&format!("the card ledger could not be read: {e}")),
+    };
+    let conn = ledger.conn();
+    let db = |e: rusqlite::Error| LedgerError::from(e).to_string();
+    let mut stmt = match conn.prepare(
+        "SELECT card_id, holder, lease_until FROM reservation \
+          WHERE status = 'held' AND lease_until <= ?1 ORDER BY lease_until",
+    ) {
+        Ok(s) => s,
+        Err(e) => return not_run(&db(e)),
+    };
+    let rows = match stmt.query_map(params![now], |r| {
+        Ok((
+            r.get::<_, i64>(0)?,
+            r.get::<_, String>(1)?,
+            r.get::<_, i64>(2)?,
+        ))
+    }) {
+        Ok(r) => r,
+        Err(e) => return not_run(&db(e)),
+    };
+    for row in rows {
+        let (card_id, holder, lease_until) = match row {
+            Ok(v) => v,
+            Err(_) => continue,
+        };
+        let live = crate::lane_registry::session_live(project, &holder, now);
+        let (action, why) = match live {
+            Some(false) => (
+                "stranded",
+                "the holder session is not live; the card waits for the user or the leader",
+            ),
+            _ => (
+                "reclaim",
+                "the lease has ended (decision L7: the user at any time, the leader after it)",
+            ),
+        };
+        items.push(json!({
+            "card": crate::card::input::card_name(card_id),
+            "action": action,
+            "why": why,
+            "holder": holder,
+            "lease_until": lease_until,
+        }));
+    }
+    json!({"status": "ok", "items": items, "writes": false})
+}
+
 /// The merge-gate pass the leader runs this round, as text (it is not run here).
 pub fn gate_line(repo: &str, project: &Path) -> String {
     format!(
@@ -603,10 +685,57 @@ pub fn round(snap: Option<&Snapshot>, repo: Option<&str>, project: &Path, now: i
     })
 }
 
+/// The prohibition words a dispatch text can carry (P7): a dispatch that says the work is
+/// read-only or change-free must not dispatch a card whose kind changes the repository.
+const PROHIBITIONS: [&str; 6] = [
+    "read-only",
+    "read only",
+    "읽기 전용",
+    "변경 없이",
+    "nothing is written",
+    "writes nothing",
+];
+
+/// `Some` with the one-line warning when a dispatch text carries a prohibition word and the
+/// dispatched card's kind changes the repository; `None` when the two agree.
+pub fn dispatch_warning(dispatch: &str, card_kind: &str) -> Option<String> {
+    if !matches!(card_kind, "fix" | "feature") {
+        return None;
+    }
+    let lower = dispatch.to_lowercase();
+    PROHIBITIONS
+        .iter()
+        .find(|word| lower.contains(*word))
+        .map(|word| {
+            format!(
+                "dispatch warning: the dispatch says {word:?} but the card is a {card_kind} card \
+                 that changes the repository; check which side is wrong before sending"
+            )
+        })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::forge::policy::parse_utc;
+
+    #[test]
+    fn a_read_only_dispatch_over_a_repo_card_warns_and_others_do_not() {
+        let warning = dispatch_warning("read-only survey of the code; nothing is written", "fix");
+        assert!(
+            warning
+                .as_deref()
+                .is_some_and(|w| w.contains("changes the repository")),
+            "{warning:?}"
+        );
+        assert_eq!(
+            dispatch_warning("read-only survey of the code", "docs"),
+            None
+        );
+        assert_eq!(dispatch_warning("implement the guard", "fix"), None);
+        let ko = dispatch_warning("읽기 전용 조사예요", "feature");
+        assert!(ko.is_some(), "the korean prohibition is caught");
+    }
 
     const WORKING: &str = include_str!("../tests/fixtures/leader_round/working.json");
     const INPUT_PRESENT: &str = include_str!("../tests/fixtures/leader_round/input_present.json");
@@ -809,7 +938,7 @@ mod tests {
     #[test]
     fn markers_count_bullets_lane_keys_and_report_with_done() {
         let tail = "  ⏺ LANE-WAIT agent-29 usage-limit until 2026-11-14T10:00:00Z\n\
-                    • LANE-BLOCKED lane=agent-29 decision needed\n\
+                    ⏺ LANE-BLOCKED lane=agent-29 decision needed\n\
                     LANE-REPORT agent-29: LANE-DONE agent-29 PR #2912 MERGED\n\
                     ⏺ LANE-REPORT agent-29 progress only";
         let m = markers(tail, "agent-29");
@@ -833,6 +962,17 @@ mod tests {
     }
 
     #[test]
+    fn the_codex_bullet_is_no_marker_prefix() {
+        let m = markers(
+            "• LANE-BLOCKED lane=agent-29 decision needed\n⏺ LANE-DONE agent-29 PR MERGED",
+            "agent-29",
+        );
+        assert_eq!(m.found.len(), 1, "{:?}", m.found);
+        assert_eq!(m.found[0].kind, MarkerKind::Done);
+        assert!(m.ignored.is_empty());
+    }
+
+    #[test]
     fn a_fence_opened_with_a_language_still_hides_its_lines() {
         let m = markers(
             "```text\nLANE-DONE agent-29 inside\n```\nLANE-DONE agent-29 outside",
@@ -845,7 +985,7 @@ mod tests {
     // #3005 P9: a lane that stopped itself with `LANE-IDLE` (the `lane-next` `idle_limit` line)
     // is an idle lane, a card the leader can hand it, not a loop to restart.
 
-    const IDLE_LINE: &str = "LANE-IDLE lane=agent-29 checks=6 last=2026-11-14T09:19:00Z restart=enter MODE-AGENT again as lane agent-29 (`/moai --mode-agent` in Claude Code, `$moai --mode-agent` in Codex CLI)";
+    const IDLE_LINE: &str = "LANE-IDLE lane=agent-29 checks=6 last=2026-11-14T09:19:00Z restart=enter MODE-AGENT again as lane agent-29 (`/moai --mode-agent` in Claude Code)";
 
     #[test]
     fn a_lane_idle_line_is_a_marker_of_its_own_lane_only() {
@@ -1110,7 +1250,6 @@ mod tests {
     fn the_restart_line_is_never_sent_twice() {
         for tail in [
             format!("⏺ idle\n> {RESTART_LINE}"),
-            format!("⏺ idle\n› {RESTART_LINE}\n\n  \n"),
             format!("⏺ idle\n{RESTART_LINE}"),
             format!("  ❯  {RESTART_LINE}  "),
         ] {
@@ -1127,6 +1266,8 @@ mod tests {
             format!("> {RESTART_LINE}\n⏺ Nothing startable; LANE-REPORT agent-29 idle"),
             format!("> {RESTART_LINE} please"),
             format!(">> {RESTART_LINE}"),
+            // The Codex prompt mark is no host mark any more.
+            format!("› {RESTART_LINE}"),
         ] {
             let a = safe(&with_tail(&tail));
             assert_eq!(a.action, Act::Restart, "{tail:?}");
