@@ -293,8 +293,30 @@ pub fn squash_merged(primary: &Path, head: &str, tip: &str) -> Option<bool> {
     }
 }
 
+/// The `lsof` options both process scans share: no warnings, no host or port name lookups and no
+/// kernel calls that may block. The names of open files and working folders are the same; on a
+/// loaded Mac the whole-machine scan drops from about 6 s to under 1 s with them.
+const LSOF_CHEAP: [&str; 4] = ["-w", "-n", "-P", "-b"];
+
+/// Test builds only: `MOAI_CLI_TEST_PROCESS_TABLE=empty` makes both scans answer "no process
+/// uses anything" without running `lsof`, so a test that does not need the process table does
+/// not pay for reading it.
+fn injected_empty_table() -> bool {
+    #[cfg(debug_assertions)]
+    {
+        std::env::var_os("MOAI_CLI_TEST_PROCESS_TABLE").is_some_and(|v| v == "empty")
+    }
+    #[cfg(not(debug_assertions))]
+    {
+        false
+    }
+}
+
 /// Working directories of the processes this user can see; `None` without a source.
 pub fn process_cwds() -> Option<Vec<PathBuf>> {
+    if injected_empty_table() {
+        return Some(Vec::new());
+    }
     if Path::new("/proc/self/cwd").exists() {
         let mut out = Vec::new();
         for e in fs::read_dir("/proc").ok()?.flatten() {
@@ -305,7 +327,8 @@ pub fn process_cwds() -> Option<Vec<PathBuf>> {
         return Some(out);
     }
     let o = Command::new("lsof")
-        .args(["-w", "-a", "-d", "cwd", "-Fn"])
+        .args(LSOF_CHEAP)
+        .args(["-a", "-d", "cwd", "-Fn"])
         .env("LC_ALL", "C")
         .output()
         .ok()?;
@@ -326,6 +349,9 @@ pub fn process_cwds() -> Option<Vec<PathBuf>> {
 /// `lsof -Fn` elsewhere), canonicalised; `None` without a source. Only `apply` reads this,
 /// right before it deletes (#2498; the plan reads working directories only).
 pub(crate) fn open_file_paths() -> Option<Vec<PathBuf>> {
+    if injected_empty_table() {
+        return Some(Vec::new());
+    }
     let mut out = Vec::new();
     if Path::new("/proc/self/fd").exists() {
         for e in fs::read_dir("/proc").ok()?.flatten() {
@@ -335,7 +361,8 @@ pub(crate) fn open_file_paths() -> Option<Vec<PathBuf>> {
         }
     } else {
         let o = Command::new("lsof")
-            .args(["-w", "-Fn"])
+            .args(LSOF_CHEAP)
+            .arg("-Fn")
             .env("LC_ALL", "C")
             .output()
             .ok()?;
@@ -1248,6 +1275,41 @@ mod tests {
             has_build_output: true,
             ..Default::default()
         }
+    }
+
+    /// SPEC-20261121-cheap-process-scan REQ-3: the cheap `lsof` options still see a file another
+    /// process holds open and the working folder of another process (a real `lsof` or `/proc`).
+    #[test]
+    fn the_cheap_scans_still_see_a_held_file_and_a_working_folder() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = fs::canonicalize(dir.path()).unwrap();
+        let held = root.join("held.txt");
+        let work = root.join("work");
+        fs::write(&held, "x").unwrap();
+        fs::create_dir(&work).unwrap();
+        let script = format!(
+            "exec 3<'{}'; cd '{}'; exec sleep 30",
+            held.display(),
+            work.display()
+        );
+        let mut child = Command::new("sh")
+            .args(["-c", &script])
+            .stdout(std::process::Stdio::null())
+            .spawn()
+            .unwrap();
+        let start = Instant::now();
+        let (mut file_seen, mut cwd_seen) = (false, false);
+        while start.elapsed() < Duration::from_secs(20) && !(file_seen && cwd_seen) {
+            file_seen = open_file_paths().is_some_and(|v| v.iter().any(|p| p == &held));
+            cwd_seen = process_cwds().is_some_and(|v| {
+                v.iter()
+                    .any(|p| fs::canonicalize(p).unwrap_or(p.clone()) == work)
+            });
+        }
+        let _ = child.kill();
+        let _ = child.wait();
+        assert!(file_seen, "the held file was not listed");
+        assert!(cwd_seen, "the working folder was not listed");
     }
 
     #[test]
