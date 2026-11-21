@@ -23,6 +23,7 @@ This change measures the whole flow in a temporary Orca-style profile (preview, 
 - REQ-5: The Orca adapter text shall say that SETUP and UPDATE work with Orca because the skill copy follows `CLAUDE_CONFIG_DIR`.
 - REQ-6: The Orca adapter text shall not list the settings folder of an Orca profile among the unsupported items.
 - REQ-7: The Orca adapter text shall name what the measurement did not verify: a live Orca profile session that reads the moved folder, and that Orca sets `CLAUDE_CONFIG_DIR`, which Orca's pages never name.
+- REQ-8: The Orca adapter text shall say that `--reuse-session` only continues in the previous live automation terminal, that the automations page says nothing about a manual run that overlaps a running one, a restart, a sleeping machine or the missed-run grace window, and that a leader checks whether a leader already runs before it starts one by a manual run or after a restart.
 
 ## Acceptance
 
@@ -30,7 +31,8 @@ This change measures the whole flow in a temporary Orca-style profile (preview, 
 - AC-2 (REQ-4): without the variable the skill goes to the `.claude/skills/moai` folder of the home and the profile folder stays untouched · verify: `cargo test --locked --offline --test orca_claude_config_dir without_`
 - AC-3 (REQ-5, REQ-6): the SETUP and UPDATE rows of the adapter table start with `works` for Orca and name `CLAUDE_CONFIG_DIR`, and the unsupported list no longer names the settings folder · verify: `cargo test --locked --offline --test orca_claude_config_dir adapter_rows_`
 - AC-4 (REQ-7): the adapter text names the unverified live session, the unverified Orca setting of the variable, and the pages they rest on · verify: `cargo test --locked --offline --test orca_claude_config_dir adapter_unverified_`
-- AC-5 (REQ-5, REQ-6): the test that pins the adapter table follows the new rows · verify: `cargo test --locked --offline --test orca_optional_3005`
+- AC-5 (REQ-8): the adapter text carries the automation reuse meaning, what the page leaves out and the leader check · verify: `cargo test --locked --offline --test orca_claude_config_dir adapter_automations_`
+- AC-6 (REQ-5, REQ-6): the test that pins the adapter table follows the new rows · verify: `cargo test --locked --offline --test orca_optional_3005`
 
 ## Scope
 
@@ -56,4 +58,5 @@ This change measures the whole flow in a temporary Orca-style profile (preview, 
 - AC-2: not yet — tests not yet run.
 - AC-3: not yet — text not yet changed.
 - AC-4: not yet — text not yet changed.
-- AC-5: not yet — the file is held by another card.
+- AC-5: not yet — text not yet changed.
+- AC-6: not yet — the file is held by another card.
