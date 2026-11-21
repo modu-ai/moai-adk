@@ -139,6 +139,7 @@ Lane and leader
   leader-tick             Run one leader supervision tick
   leader-pulse            Print the periodic round instruction and its orca
                           command
+  leader-run              Take, end or read the supervision lease of a project
   leader-round            Build the leader's per-lane action list
   lane-next               Find the lane's next task
   lane-loop-line          Print a lane's wake line for its host

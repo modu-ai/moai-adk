@@ -29,6 +29,16 @@ Never invent a flag from memory. Resolve the executable the way Orca's skill stu
 
 The full session-control rules for lanes and the leader are in the MODE-AGENT and MODE-LEADER workflows. Orca present is what puts the leader in the command mode, whatever host it runs on; the leader clears a lane only under the clear contract of MODE-LEADER's `supervise` step (Issue #2899 G2, G4).
 
+## What Orca's pages say, and what they leave out
+
+Read on 2026-11-20 (UTC, from `date -u` in the same step as each read): https://orca.dev/docs/cli/orchestration (2026-11-20T22:46:19Z), https://orca.dev/docs/cli/reference (2026-11-20T22:46:24Z), https://orca.dev/docs/agents/native-chat (2026-11-20T22:46:39Z) and https://orca.dev/docs/cli/automations (2026-11-20T22:46:40Z). None of the four pages names a version; `orca --version` printed 1.4.267 on this machine (2026-11-20T22:47:36Z), so a line below that cites the local help is the installed CLI's own text, not a document.
+
+- Mail and `check`: the orchestration page says "Default check is the bound Run's oldest unacked Delivery (FIFO)" and "--peek / --all do not consume mail" (https://orca.dev/docs/cli/orchestration). The local help of `orca orchestration check --help` adds that a consuming check marks the batch it returns as handled, that no `--ack` is needed, and that a script that only watches an inbox must use `--peek` and never `--ack`, or it takes mail the agent never sees; a lost answer is replayed with the `--retry-request` id it printed.
+- The pages do not document `delivered_at`, any mail state (stored, delivered, turn start, work done) or what happens to Runs, Tasks and mail after an Orca restart, and the local help of `orca orchestration send --help` does not mention `delivered_at` either. A rule that needs one of them is written as measured on this machine and marked unverified; a null `delivered_at` is never a reason to type the same text again.
+- Tracked work and one-off prompts: the orchestration page says to use a Run, Tasks and workers "when you need ownership, completion tracking, or a DAG" and "For one-off prompts, use orca terminal send" (https://orca.dev/docs/cli/orchestration). So supervised work goes as a Run, a Task and a Dispatch, a plain notice goes as mail, and a typed line to a lane you are watching goes through `orca terminal send` after the read-before-send lines above.
+- Unverified facts. A missing `hostScope`, native chat and sleep or restore are unverified, because the reference page says "Treat a missing host identity or scope as unverifiable, not local" and the native-chat page says of sleep only that "closed chats or sleeping workspaces wait until reopened or awakened" (https://orca.dev/docs/cli/reference, https://orca.dev/docs/agents/native-chat). A missing `hostScope` is not proof that a lane's terminal exited, and a lane keeps its card and its reservation while a fact is unverified; an unverified fact never authorises a recovery.
+- Screens: a screen read is the frame that is rendered now, and a cursor of `terminal read` is a position in the output stream: "Use --screen when you need the currently rendered frame" and "Save nextCursor from one stream read, then pass it back with --cursor" (https://orca.dev/docs/cli/reference); the pages report no caret position.
+
 ## When Orca is missing
 
 Use `git worktree` and the host's own terminal instead, and record the Orca step as `not_run` with the reason (`orca` not on PATH, or the runtime not reachable).
@@ -55,4 +65,5 @@ Unsupported today, tracked in Issue #3005: a Codex or OMP leader's periodic run 
 ## Sources
 
 - https://orca.dev/docs/cli/overview and https://orca.dev/docs/cli/skills (read 2026-11-13; `onorca.dev` redirects there).
+- The four pages above and, of orca 1.4.267 on this machine, `orca --version`, `orca orchestration check --help`, `orca orchestration send --help` and `orca skills get orchestration` (read 2026-11-20; the times are in the section above).
 - `orca --help`, `orca skills list`, `orca skills get orca-cli` and `orca agent-context --json` of orca 1.4.257 on this machine (read 2026-11-13). `agent-context` is in the CLI but not on the web pages read.
