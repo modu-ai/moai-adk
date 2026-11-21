@@ -28,7 +28,7 @@ stays live when code, a hook or a gate reads it, or when it is the single copy o
 `tests/rule_history_guard.rs` fails when a row lacks its field, a heading lacks its tip, a named
 test file is missing, or a history entry is still word for word in the live file it left.
 
-## Live inventory — core-rules.md (21 rules)
+## Live inventory — core-rules.md (24 rules)
 
 | # | Rule (short) | Source | Enforcer |
 | --- | --- | --- | --- |
@@ -53,6 +53,9 @@ test file is missing, or a history entry is still word for word in the live file
 | 19 | two public implementations first | #2876 | `core_rules_2876.rs` (verbatim) |
 | 20 | no design for unasked rare cases | #2876 | `core_rules_2876.rs` (verbatim) |
 | 21 | code and output win over instruction text | #2876 | `core_rules_2876.rs` (verbatim) |
+| 22 | a second sighting of a problem opens a work item at the source | SPEC-20261120-guidance-sweep-core | text only |
+| 23 | completion needs an independent audit; the report file lives in the user home | moved from `SKILL.md` by SPEC-20261121-report-rules-in-core-rules | `report_rules_core.rs` (verbatim) |
+| 24 | every number, state and time comes from a named command | moved from `SKILL.md` by SPEC-20261121-report-rules-in-core-rules | `report_rules_core.rs` (verbatim), `product_cli.rs` (`open_questions_are_sorted_and_holds_name_five_categories`) |
 
 Judgement summary, from the counts below (read at tip e84d7c46ce). `workflows/audit.md` and
 `workflows/mode-agent.md` carry their source inline (nearly every rule line cites its Issue),
