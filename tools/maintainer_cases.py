@@ -79,6 +79,14 @@ def claims_in_diff(root, path):
     return "clean", "all %d claimed path(s) are in the changed files" % len(claims)
 
 
+def raw_start(text, i):
+    """True when the `r` at i opens a raw string (`r"`, `r#"`, `br"`), not the end of a word."""
+    before = text[i - 1] if i else ""
+    if before == "b":
+        before = text[i - 2] if i > 1 else ""
+    return not (before.isalnum() or before == "_")
+
+
 def blank_rust(text):
     """The text with comments and the inside of string and char literals blanked, same length."""
     out = list(text)
@@ -109,7 +117,7 @@ def blank_rust(text):
                     j += 1
             blank(i, j)
             i = j
-        elif c == "r" and (i == 0 or not (text[i - 1].isalnum() or text[i - 1] == "_")):
+        elif c == "r" and raw_start(text, i):
             m = re.compile(r'r(#*)"').match(text, i)
             if not m:
                 i += 1
@@ -140,7 +148,7 @@ def blank_rust(text):
     return "".join(out)
 
 
-RUST_TEST_ATTR = re.compile(r"#\[\s*(?:\w+::)*test\s*\]")
+RUST_TEST_ATTR = re.compile(r"#\[\s*(?:\w+::)*test(?:\s*\([^\]]*\))?\s*\]")
 RUST_AFTER_ATTR = re.compile(
     r"\s*(?:#\[[^\]]*\]\s*)*(?:pub(?:\([^)]*\))?\s+)?(?:async\s+)?(?:unsafe\s+)?fn\s+(\w+)"
 )
@@ -156,9 +164,19 @@ def no_clock_in_tests(root, path):
         head = RUST_AFTER_ATTR.match(code, attr.end())
         if not head:
             continue
-        start = code.find("{", head.end())
-        semi = code.find(";", head.end())
-        if start < 0 or (0 <= semi < start):
+        start, depth = -1, 0
+        for k in range(head.end(), len(code)):
+            ch = code[k]
+            if ch in "([":
+                depth += 1
+            elif ch in ")]":
+                depth -= 1
+            elif depth <= 0 and ch == "{":
+                start = k
+                break
+            elif depth <= 0 and ch == ";":
+                break  # a declaration without a body
+        if start < 0:
             continue
         depth, j = 0, start
         while j < len(code):
@@ -210,7 +228,7 @@ def stage_order(root, path):
     round_line, round_pos = stage_line(root, spec.get("round"), "round")
     at, bad = round_pos, []
     for stage in stages:
-        m = re.compile(r"(?<![\w])%s(?![\w])" % re.escape(stage)).search(round_line, at)
+        m = re.compile(r"(?<![\w-])%s(?![\w-])" % re.escape(stage)).search(round_line, at)
         if m:
             at = m.end()
         else:
@@ -224,34 +242,43 @@ RUST_FN = re.compile(r"(?:pub(?:\([^)]*\))?\s+)?(?:async\s+)?(?:unsafe\s+)?fn\s+
 PY_DEF = re.compile(r"(?:async\s+)?def\s+(\w+)")
 
 
+TEST_ATTR = re.compile(r"#\[\s*(?:\w+::)*test\b")
+
+
 def unscoped_test_deletion(root, path):
-    """A test removed outside what the change was allowed to remove is a weaker suite."""
+    """A test removed outside what the change was allowed to remove is a weaker suite.
+
+    A `git diff` keeps an unchanged `#[test]` line as context, so the marker is tracked per side:
+    a context marker counts for both the removed and the added function that follows it. A
+    function that is added back counts only when it is a test too."""
     allowed = set(string_list(read_json(path / "allowed.json"), "%s/allowed.json" % path))
-    removed, added, pending = set(), set(), False
+    removed, added = set(), set()
+    mark_removed = mark_added = False
     for line in read_text(path / "diff.patch").splitlines():
         if line.startswith(("--- ", "+++ ", "diff ", "index ", "@@")):
-            pending = False
-        elif line.startswith("-"):
-            s = line[1:].strip()
-            if re.match(r"#\[\s*(?:\w+::)*test\b", s):
-                pending = True
-            elif s == "" or s.startswith(("#[", "///")):
-                continue
-            else:
-                m = RUST_FN.match(s)
-                if m and pending:
-                    removed.add(m.group(1))
-                py = PY_DEF.match(s)
-                if py and py.group(1).startswith("test"):
-                    removed.add(py.group(1))
-                pending = False
-        elif line.startswith("+"):
-            s = line[1:].strip()
-            m = RUST_FN.match(s) or PY_DEF.match(s)
-            if m:
-                added.add(m.group(1))
+            mark_removed = mark_added = False
+            continue
+        side = line[:1] if line[:1] in ("-", "+") else " "
+        s = line[1:].strip()
+        if TEST_ATTR.match(s):
+            mark_removed = mark_removed or side in "- "
+            mark_added = mark_added or side in "+ "
+            rest = re.match(r"#\[[^\]]*\]\s*(.*)", s)
+            s = rest.group(1) if rest else ""
+        if s == "" or s.startswith(("#[", "//")):
+            continue  # attributes and comments keep the marker
+        rust, py = RUST_FN.match(s), PY_DEF.match(s)
+        py_test = py is not None and py.group(1).startswith("test")
+        if side == "-":
+            if (rust and mark_removed) or py_test:
+                removed.add((rust or py).group(1))
+            mark_removed = False
+        elif side == "+":
+            if (rust and mark_added) or py_test:
+                added.add((rust or py).group(1))
+            mark_added = False
         else:
-            pending = False
+            mark_removed = mark_added = False
     flagged = sorted(removed - added - allowed)
     if flagged:
         return "flag", "removed test(s) outside the allowed list: " + ", ".join(flagged)
