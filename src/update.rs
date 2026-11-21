@@ -2243,19 +2243,52 @@ pub fn update_command_switch(
         allow_older,
         ask,
     )?;
-    // A preview keeps exactly the keys it had (#2872 stage 2); only an applied result is extended.
-    if out["mode"] != json!("applied") {
+    // A preview keeps exactly the keys it had (#2872 stage 2); only an applied result is
+    // extended. One preview is also extended: the one that has nothing to apply, on a person's
+    // terminal with no saved model setting, because the model step still has to be reachable
+    // there (SPEC-20261121-model-step-reachable).
+    let nothing_to_apply =
+        out["mode"] == json!("preview") && out["nothing_to_apply"] == json!(true);
+    if out["mode"] != json!("applied") && !nothing_to_apply {
         return Ok(out);
     }
     let wrote = out["applied"] == json!(true);
-    out["models"] =
-        if !scripted && wrote && crate::update_tux::human() && crate::update_tux::can_ask() {
-            let stdin = std::io::stdin();
-            crate::update_models::stage(home, &mut stdin.lock(), &mut std::io::stderr())
-        } else {
-            crate::update_models::report(home)
-        };
+    let terminal = crate::update_tux::human() && crate::update_tux::can_ask();
+    let opens = model_step_opens(scripted, terminal, wrote, models_saved(home));
+    if nothing_to_apply && !opens {
+        return Ok(out);
+    }
+    out["models"] = if opens {
+        let stdin = std::io::stdin();
+        crate::update_models::stage(home, &mut stdin.lock(), &mut std::io::stderr())
+    } else {
+        crate::update_models::report(home)
+    };
     Ok(out)
+}
+
+/// Whether the terminal model step opens after the update part: never on a scripted run
+/// (`--confirm…`) or without a person's terminal; on a terminal when this run wrote files, and
+/// also when no model setting is saved, so a person whose earlier run applied everything (the
+/// installer's scripted `--confirm`) can still reach the questions
+/// (SPEC-20261121-model-step-reachable).
+pub fn model_step_opens(scripted: bool, terminal: bool, wrote: bool, models_saved: bool) -> bool {
+    !scripted && terminal && (wrote || !models_saved)
+}
+
+/// Whether the user launcher settings under `home` save at least one model setting
+/// (`launcher.models` is a non-empty object). A file that cannot be read, or whose `models` is
+/// not an object, counts as saved: the step reports that damage and is not forced open over it.
+/// It reads the file and never writes it.
+pub fn models_saved(home: &Path) -> bool {
+    match crate::model_effort_questions::read_launcher(&crate::update_models::settings_path(home)) {
+        Ok(launcher) => match launcher.get("models") {
+            None => false,
+            Some(serde_json::Value::Object(models)) => !models.is_empty(),
+            Some(_) => true,
+        },
+        Err(_) => true,
+    }
 }
 
 /// True when confirming `plan` would write at least one file (#2540): some host is not
