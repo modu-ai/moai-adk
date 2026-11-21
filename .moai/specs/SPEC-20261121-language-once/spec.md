@@ -71,4 +71,10 @@ parent: null
 
 ## Result
 
-(status draft — written when the slice lands)
+- AC-1: met — head 6780397d6b 에서 `cargo test --locked --offline --test language_setting` exit 0 (9 passed): 설치가 저장한 값으로 세 물음만 묻고 user_chat 을 채우며, 기록된 HOME 이 있는 재실행은 모든 값을 지켜요.
+- AC-2: met — `cargo test --locked --offline --test language_three_questions` exit 0 (12 passed): 정확히 세 물음·네 코드 옵션·터미널 세 프롬프트.
+- AC-3: met — `cargo test --locked --offline --test language_set_cli` exit 0 (19 passed): 네 코드 그대로 저장, 교체는 reason replaced, 목록 밖 코드는 트리 무변화 거절, --if-absent 는 기록값을 지켜요.
+- AC-4: withdrawn — 모델 질문 배선은 다른 예약이 쓰는 파일에 있어 이 슬라이스에서 빠져요(AC-4 의 verify 줄이 기록). REQ-5 가 계약을 유지하고 파일이 풀리면 같은 가지에서 이어져요.
+- AC-5: 부분 — `cargo test --locked --offline --lib` exit 0 (1542 passed), `--bins` exit 0 (28 passed), `cargo clippy --offline --locked --all-targets -- -D warnings` exit 0, 언어 네 대상(go_settings_defaults 4·language_set_cli 19·language_setting 9·language_three_questions 12) 전부 통과, `git diff --check`·`cargo fmt --check`·ops rustfmt·`sh -n install.sh` 0. 아직 남은 것: tests/install_script_test.py 의 ps1클래스 메뉴 핀 7개가 install.ps1 의 네 항목 메뉴 수정을 기다려요(카드 조율 노트 참조) — 수정 착지 뒤 이 줄을 최종 숫자로 갱신하고 `moai check affected` 를 push 전에 돌려요.
+
+(status draft — 승인과 completed 는 병합 절차가 기록해요)
