@@ -510,6 +510,120 @@ pub(crate) fn shown(s: &str) -> String {
         .collect()
 }
 
+/// What the project profile says a lane's base is (SPEC-20261121-integration-base-sha).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum IntegrationBase {
+    /// No m-flow policy; `reason` is a stable word: `profile_unreadable`, `no_flow`,
+    /// `flow_not_m_flow` or `no_integration_branch`.
+    NoPolicy { reason: &'static str },
+    /// The m-flow integration branch and the commit `refs/heads/<branch>` names.
+    Local { branch: String, sha: String },
+}
+
+/// The local commit an m-flow lane starts from: the profile's `work_flow.integration_branch`
+/// resolved through `refs/heads/<branch>` and nothing else — never a tag, never a remote-tracking
+/// ref, so a diverged `origin` cannot stand in for it. A missing local branch is an error that
+/// names the next step. A profile that is not m-flow (or cannot be read) is no policy.
+pub fn integration_base(dir: &Path) -> Result<IntegrationBase> {
+    let Ok((profile, _)) = crate::profile::read_profile(dir) else {
+        return Ok(IntegrationBase::NoPolicy {
+            reason: "profile_unreadable",
+        });
+    };
+    let Some(flow) = profile.work_flow else {
+        return Ok(IntegrationBase::NoPolicy { reason: "no_flow" });
+    };
+    if flow.flow != "m-flow" {
+        return Ok(IntegrationBase::NoPolicy {
+            reason: "flow_not_m_flow",
+        });
+    }
+    let Some(branch) = flow.integration_branch.filter(|b| !b.trim().is_empty()) else {
+        return Ok(IntegrationBase::NoPolicy {
+            reason: "no_integration_branch",
+        });
+    };
+    let reference = format!("refs/heads/{branch}^{{commit}}");
+    match git(
+        dir,
+        &[
+            "rev-parse",
+            "--verify",
+            "--quiet",
+            "--end-of-options",
+            &reference,
+        ],
+    ) {
+        Ok(sha) if is_commit_id(&sha) => Ok(IntegrationBase::Local { branch, sha }),
+        _ => Err(format!(
+            "integration base: the local branch {branch} was not found (refs/heads/{branch}); \
+             nothing was read from origin. Next: create it from the commit you intend, for \
+             example `git branch {branch} <commit>`, or change work_flow.integration_branch in \
+             the project profile, then run this again"
+        )),
+    }
+}
+
+fn is_commit_id(s: &str) -> bool {
+    s.len() == 40
+        && s.bytes()
+            .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+}
+
+/// What a worktree holds of the local integration commit.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WorktreeBase {
+    pub head: String,
+    pub branch: Option<String>,
+    /// The local integration commit is an ancestor of (or equal to) `head`.
+    pub contains_base: bool,
+    /// `branch.<branch>.moai-base-sha` of the worktree's branch, when it holds a commit id.
+    pub recorded_sha: Option<String>,
+    /// `recorded_sha` equals the local integration commit.
+    pub matches_recorded: bool,
+}
+
+/// Reads the worktree at `path` against `base`, the local integration commit. Reads only.
+pub fn worktree_base(path: &Path, base: &str) -> Result<WorktreeBase> {
+    let not_a_worktree =
+        || "integration-base refused: the path is not a git worktree with a commit".to_string();
+    let head = git(
+        path,
+        &[
+            "rev-parse",
+            "--verify",
+            "--quiet",
+            "--end-of-options",
+            "HEAD^{commit}",
+        ],
+    )
+    .ok()
+    .filter(|h| is_commit_id(h))
+    .ok_or_else(not_a_worktree)?;
+    let branch = git(path, &["symbolic-ref", "--quiet", "--short", "HEAD"])
+        .ok()
+        .filter(|b| !b.is_empty());
+    let contains_base = git(path, &["merge-base", "--is-ancestor", base, &head]).is_ok();
+    let recorded_sha = branch
+        .as_ref()
+        .and_then(|b| {
+            git(
+                path,
+                &["config", "--get", &format!("branch.{b}.moai-base-sha")],
+            )
+            .ok()
+        })
+        .filter(|r| is_commit_id(r));
+    let matches_recorded = recorded_sha.as_deref() == Some(base);
+    Ok(WorktreeBase {
+        head,
+        branch,
+        contains_base,
+        recorded_sha,
+        matches_recorded,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
