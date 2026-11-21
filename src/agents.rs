@@ -49,8 +49,40 @@ pub struct AgentsRequest {
 
 /// The ids a request's `picks` may hold. `append-managed` appends the managed section to an
 /// AGENTS.md whose block was removed; `skip-conflicts` leaves each conflicting file as it is;
-/// `claude-import` adds the `@AGENTS.md` line to a CLAUDE.md that shadows AGENTS.md.
-pub const PICKS: [&str; 3] = ["append-managed", "skip-conflicts", "claude-import"];
+/// `claude-import` adds the `@AGENTS.md` line to a CLAUDE.md that shadows AGENTS.md;
+/// `claude-agents-import` plans a managed CLAUDE.md block holding that line instead
+/// (SPEC-20261121-claude-agents-md-import).
+pub const PICKS: [&str; 4] = [
+    "append-managed",
+    "skip-conflicts",
+    "claude-import",
+    CLAUDE_AGENTS_PICK,
+];
+/// The pick id that plans the managed CLAUDE.md block holding the `@AGENTS.md` line.
+const CLAUDE_AGENTS_PICK: &str = "claude-agents-import";
+/// The CLAUDE.md section that block is written under, and the file it goes into.
+pub const CLAUDE_SECTION: &str = "moai-claude-import";
+const CLAUDE_FILE: &str = "CLAUDE.md";
+
+/// The managed CLAUDE.md block: the one `@AGENTS.md` line between the HTML markers.
+fn render_claude_import() -> String {
+    let (begin, end) = markers(CLAUDE_SECTION, "html");
+    format!("{begin}\n@AGENTS.md\n{end}\n")
+}
+
+/// Whether text the user wrote, everything outside this tool's own block, already imports
+/// AGENTS.md. The block's own line is never counted, so a second plan finds it `unchanged`.
+/// Malformed markers are not looked through: the section plan reports those as a conflict.
+fn user_imports_agents(text: &str) -> bool {
+    let (begin, end) = markers(CLAUDE_SECTION, "html");
+    match find_block(text, &begin, &end) {
+        Ok(Some((s, e, _))) => {
+            crate::claude::imports_agents_in(&format!("{}{}", &text[..s], &text[e..]))
+        }
+        Ok(None) => crate::claude::imports_agents_in(text),
+        Err(_) => false,
+    }
+}
 
 fn picked(r: &AgentsRequest, id: &str) -> bool {
     r.picks.iter().any(|p| p == id)
@@ -378,7 +410,21 @@ Read only the workflow you need from `{wf}`.\n\
             wf = r.workflow_reference,
         )
     };
+    let body = format!("{body}{}", personal_rules_lines(lang, &r.local_file));
     format!("{begin}\n{body}{end}\n")
+}
+
+/// The two lines that point every agent at the personal file (SPEC-20261121-claude-agents-md-import):
+/// the instruction, which Codex follows by opening the file, and the bare import line, which
+/// Claude Code expands itself. Only for a project that uses the personal file: the host does not
+/// say what a missing import target does, so a `none` project keeps the block it always had.
+/// The import line stands alone and no code span holds an `@`: the host skips code spans.
+fn personal_rules_lines(lang: &str, local_file: &str) -> &'static str {
+    match (lang, local_file) {
+        (_, "none") => "",
+        ("ko", _) => "개인 규칙: 프로젝트 루트에 `AGENTS.local.md` 가 있으면 세션을 시작할 때 읽고 사용자의 개인 규칙으로 따른다. 이 파일의 팀 안전 규칙과 충돌하면 팀 규칙이 우선한다.\n@AGENTS.local.md\n",
+        _ => "Personal rules: when `AGENTS.local.md` exists at the project root, read it at session start and follow it as the user's personal rules; the team safety rules in this file win on conflict.\n@AGENTS.local.md\n",
+    }
 }
 
 fn render_local(r: &AgentsRequest) -> String {
@@ -1382,6 +1428,19 @@ pub(crate) fn agents_plan_for(
             warnings
                 .push("AGENTS.md may exceed the 32 KiB default instruction budget of Codex".into());
         }
+        // Claude Code advises under 200 lines per instruction file: the lines AGENTS.md would
+        // have after the apply, counted on the text the apply would publish.
+        if agents_file.action != "conflict" {
+            let prefix = format!("# {}\n\n", profile.project_id);
+            let lines = splice(agents.as_deref(), &b, &e, &agents_rendered, &prefix)
+                .map(|out| out.iter().filter(|c| **c == b'\n').count())
+                .unwrap_or(0);
+            if lines > 200 {
+                warnings.push(format!(
+                    "AGENTS.md would have {lines} lines, over the 200 lines Claude Code advises per instruction file"
+                ));
+            }
+        }
     }
 
     if let Some(review) = render_review(&profile, &request) {
@@ -1465,9 +1524,45 @@ pub(crate) fn agents_plan_for(
     // `claude-import`: the one line that makes a shadowing CLAUDE.md load AGENTS.md. Not a
     // managed section: the file stays the user's (no baseline, never recorded as owned).
     let shadow = claude_shadow(&root, &profile.hosts);
+    // `claude-agents-import` (SPEC-20261121-claude-agents-md-import): one managed CLAUDE.md block
+    // holding the `@AGENTS.md` line, for a profile that targets Claude Code. A line the user
+    // wrote outside the block that already imports AGENTS.md leaves nothing to plan.
+    let claude_block =
+        picked(&request, CLAUDE_AGENTS_PICK) && profile.hosts.iter().any(|h| h == "claude");
+    if claude_block {
+        let current = read_opt(&target(&root, CLAUDE_FILE)?)?;
+        let text = match &current {
+            Some(b) => Some(std::str::from_utf8(b).map_err(|_| "target is not UTF-8")?),
+            None => None,
+        };
+        if !text.is_some_and(user_imports_agents) {
+            let (begin, end) = markers(CLAUDE_SECTION, "html");
+            let rendered = render_claude_import();
+            let mut plan = section_plan(
+                CLAUDE_FILE,
+                true,
+                CLAUDE_SECTION,
+                "html",
+                current.as_deref(),
+                baseline_for(m, CLAUDE_FILE),
+                &rendered,
+            )?;
+            if matches!(plan.action.as_str(), "create" | "append" | "merge") {
+                plan.detail = Some(block_line_preview(
+                    current.as_deref(),
+                    &begin,
+                    &end,
+                    &rendered,
+                ));
+            }
+            files.push(plan);
+        }
+    }
+    // The older `claude-import` pick appends the same line unmanaged; with the block picked it
+    // would write the line twice, so the block wins.
     if let Some(s) = shadow
         .as_ref()
-        .filter(|_| picked(&request, "claude-import"))
+        .filter(|_| picked(&request, "claude-import") && !claude_block)
     {
         let current = read_opt(&target(&root, &s.path)?)?;
         files.push(FilePlan {
@@ -1782,6 +1877,18 @@ pub(crate) fn agents_apply_amended_for(
                 (out, Some(IGNORE_SECTION))
             }
             "AGENTS.local.md" => (render_local(&p.request).into_bytes(), None),
+            // `claude-agents-import`: only the managed block; a plan without the pick, or for a
+            // profile that does not target Claude Code, cannot name the file.
+            CLAUDE_FILE
+                if picked(&p.request, CLAUDE_AGENTS_PICK)
+                    && profile.hosts.iter().any(|h| h == "claude") =>
+            {
+                let (b, e) = markers(CLAUDE_SECTION, "html");
+                let rendered = render_claude_import();
+                let out = splice(before.as_deref(), &b, &e, &rendered, "")?;
+                assert_single_block(&out, &b, &e, &rendered)?;
+                (out, Some(CLAUDE_SECTION))
+            }
             // `claude-import`: only the import line, after every earlier byte. The path is
             // checked against the shadow this tool finds now, so a plan cannot name another file.
             path if p.request.picks.iter().any(|x| x == "claude-import")
@@ -1887,6 +1994,12 @@ pub(crate) fn agents_apply_amended_for(
                     Some(ignore_kind(ignore_has_rule(block))),
                 );
             }
+            Some(CLAUDE_SECTION) => record_owned(
+                &mut owned,
+                &f.path,
+                CLAUDE_SECTION,
+                render_claude_import().as_bytes(),
+            ),
             // The user's own CLAUDE.md gained a line: it is neither owned nor created once.
             Some(CLAUDE_IMPORT) => {}
             _ => {

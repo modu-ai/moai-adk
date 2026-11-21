@@ -180,8 +180,14 @@ pub(crate) fn imports_agents(path: &Path) -> bool {
     let Some(bytes) = read_bounded(path) else {
         return false;
     };
+    imports_agents_in(&String::from_utf8_lossy(&bytes))
+}
+
+/// [`imports_agents`] for text already read, so a caller can leave out a part of the file (the
+/// managed block it owns) before asking.
+pub(crate) fn imports_agents_in(text: &str) -> bool {
     let mut fenced = false;
-    String::from_utf8_lossy(&bytes).lines().any(|line| {
+    text.lines().any(|line| {
         if line.trim_start().starts_with("```") {
             fenced = !fenced;
             return false;
