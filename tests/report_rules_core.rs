@@ -76,3 +76,36 @@ fn the_skill_entry_points_to_the_core_rules_and_keeps_the_decision_order() {
         assert!(entry.contains(kept), "SKILL.md lost {kept:?}");
     }
 }
+
+#[test]
+fn no_other_file_points_to_the_skill_entry_for_the_moved_rules() {
+    // The rule history lists the completion rule as a copy that stands alone: it is rule 23
+    // of the core rules now, not a sentence of the skill entry.
+    let history = skill("references/rule-history.md");
+    let row = history
+        .lines()
+        .find(|l| l.starts_with("- Never report a verification or external effect"))
+        .expect("rule-history.md keeps the entry of the completion rule");
+    assert!(
+        !row.contains("`SKILL.md`"),
+        "rule-history.md still names the skill entry as the copy: {row}"
+    );
+    assert!(
+        row.contains("rule 23"),
+        "rule-history.md does not name rule 23 of the core rules: {row}"
+    );
+    // The leader workflow cites the report-number rule: rule 24 of the core rules.
+    let leader = skill("workflows/mode-leader.md");
+    let line = leader
+        .lines()
+        .find(|l| l.starts_with("Every row of a status, close or decision table you post"))
+        .expect("mode-leader.md keeps the source rule of table rows");
+    assert!(
+        !line.contains("(SKILL.md, Issue #2678)"),
+        "mode-leader.md still cites the skill entry for the report-number rule: {line}"
+    );
+    assert!(
+        line.contains("rule 24 of the core rules"),
+        "mode-leader.md does not cite rule 24 of the core rules: {line}"
+    );
+}
