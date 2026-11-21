@@ -247,13 +247,12 @@ fn the_same_session_renews_its_unexpired_lease() {
 #[test]
 fn status_reads_and_writes_nothing() {
     let w = World::new();
+    // No lock file and no folder either: the list of the project's files is the same before
+    // and after the very first status on a project that never had a lease.
+    let empty_before = project_files(&w.project);
     let r = ok(&w.run(&["status", "--now", "1000"]));
     assert_eq!(r["lease"], Value::Null, "{r}");
     assert!(!w.lease_file().exists());
-    // No lock file and no folder either: the list of the project's files is the same before
-    // and after a status on a project that never had a lease.
-    let empty_before = project_files(&w.project);
-    ok(&w.run(&["status", "--now", "1000"]));
     assert_eq!(
         project_files(&w.project),
         empty_before,
