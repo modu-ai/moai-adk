@@ -178,6 +178,9 @@ fn ops_named_by_the_mode_workflows_exist_with_their_flags() {
             // `queue-free`, `scope-check`): `card take`, `card check`, `card renew`, `card done`,
             // `card note` and `card next` replace them (tests/mode_cards_53.rs pins each).
             "card",
+            // The no-waiting rule: the lane names `check` in `Long commands`, the leader reads
+            // the lanes with `lane-screen --scan` and clears one only on `lane-safe-to-reset`.
+            "check",
             // Until C-53 S3 the commit guard answers `allowed` on a card branch (named, not run).
             "claim-verify --hook",
             "gate-check",
@@ -203,7 +206,9 @@ fn ops_named_by_the_mode_workflows_exist_with_their_flags() {
             "lane-loop-line",
             "lane-loop-line --host",
             // #2900 (#2899 G2): the leader clears a lane only on `safe`.
+            "lane-safe-to-reset",
             "lane-safe-to-reset --lane",
+            "lane-screen --scan",
             // #2902 O3b: the leader's round, one action per lane.
             // #3005 P9: its `idle_lanes` list names the lanes that stopped at `idle_limit`.
             // #3015 C5: the leader's periodic round instruction.
@@ -871,7 +876,7 @@ fn blocked_lines_name_kind_owner_and_next_check() {
             // C-53 S5 repair N1: `host` for a host that cannot take a card (OMP, no session id).
             "A `LANE-BLOCKED` line names the kind (`decision`, `ci`, `audit`, `pr-slot`, `claim`, `tip-red`, `outside`, `host`)",
             "who unblocks it (`owner=<leader|user|lane|author>`)",
-            "the next check (`next=<what, and when or on which event>`), then the lane takes other work in the same turn",
+            "the next check (`next=<what, and when or on which event>`), then the lane follows `Waiting is switching`",
         ],
     );
     assert_says(

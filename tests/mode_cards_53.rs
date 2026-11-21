@@ -16,7 +16,7 @@ const TITLE: &str = "Cards are the work ledger";
 const WINS: &str = "GitHub Issues are no longer the work ledger; the project's local cards are \
                     (user decision 2026-11-16, card C-53)";
 /// The actions a round uses. `export` is not one of them.
-const ACTIONS: [&str; 18] = [
+const ACTIONS: [&str; 17] = [
     "list",
     "show",
     "add",
@@ -34,8 +34,11 @@ const ACTIONS: [&str; 18] = [
     "done",
     "renew",
     "check",
-    "timeline",
 ];
+
+/// Actions only the leader workflow shows (the lanes never need them): allowed in a code span,
+/// not required of both files.
+const LEADER_ONLY: [&str; 1] = ["timeline"];
 
 fn workflow(name: &str) -> String {
     fs::read_to_string(
@@ -124,7 +127,7 @@ fn help_has(help: &str, flag: &str) -> bool {
 fn unknown(home: &TempHome, text: &str) -> Vec<(String, String)> {
     let mut bad = Vec::new();
     for (action, flags) in card_spans(text) {
-        if !ACTIONS.contains(&action.as_str()) {
+        if !ACTIONS.contains(&action.as_str()) && !LEADER_ONLY.contains(&action.as_str()) {
             bad.push((action, String::new()));
             continue;
         }
