@@ -44,7 +44,7 @@ parent: null
 
 ## Scope
 
-- write: `.moai/specs/SPEC-20261121-language-once/**`, `install/install.sh`, `src/language.rs`, `src/ops/language_set.rs`, `tests/language_set_cli.rs`, `tests/language_three_questions.rs`, `tests/language_setting.rs`
+- write: `.moai/specs/SPEC-20261121-language-once/**`, `install/install.sh`, `install/install.ps1`, `src/language.rs`, `src/hook_engine.rs`, `src/ops/language_set.rs`, `src/ops/language_setup.rs`, `src/ui_text.rs`, `tests/language_set_cli.rs`, `tests/language_three_questions.rs`, `tests/language_setting.rs`, `tests/hook_dispatch_cli.rs`, `tests/session_check_language_cli.rs`, `tests/go_settings_defaults.rs`, `tests/install_script_test.py`
 - read-only: `src/model_effort_questions.rs`, `src/update_models.rs`(GLM 키 카드 예약 — 착지 뒤 REQ-5 배선에 예약 추가)
 - forbidden: UI 문자의 ja·zh 번역 추가, 커밋·문서 목록 변경, 카드 번호의 출력 사용
 

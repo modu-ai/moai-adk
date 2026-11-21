@@ -2027,10 +2027,11 @@ fn a_compacted_session_is_told_how_to_check_not_that_instructions_are_done() {
     assert!(!compact.contains("-k"), "{compact}");
 }
 
-/// Card C-87 S1 (SPEC-20261117-language-reach AC-3): every session start, resume and compaction
-/// names the conversation language the user chose — the project's `language.user_chat`, else
-/// the one recorded in HOME — so a compacted session keeps it; with neither (or an unreadable
-/// profile and nothing in HOME) no language is named, and the hook still answers.
+/// SPEC-20261117-language-reach AC-3, under the ask-once rules (the language
+/// card's delta audit B6): every session start, resume and compaction names the conversation
+/// language recorded in HOME — the one source, set at install and changed with
+/// `language-set --home`. A project profile's earlier `user_chat` stays data and never
+/// outranks it; with nothing in HOME no language is named, and the hook still answers.
 #[test]
 fn session_check_names_the_conversation_language() {
     let (_d, root) = repo("issue/77-k");
@@ -2063,8 +2064,8 @@ fn session_check_names_the_conversation_language() {
         let ctx = session_context("claude", &root, Some(json!(source)));
         assert!(ctx.contains(&home_line), "{source}: {ctx}");
     }
-    // The project's choice comes first; the compacted text keeps it ahead of the compaction
-    // sentences.
+    // A profile's stored user_chat stays data: the HOME record decides for every source, and
+    // the compacted text keeps the language ahead of the compaction sentences.
     let profile = |language: Value| {
         let mut p = json!({"schema_version": 2, "project_id": "demo", "purpose": "x",
             "tools": ["Rust"], "development_methods": ["TDD"], "hosts": ["claude"]});
@@ -2077,19 +2078,16 @@ fn session_check_names_the_conversation_language() {
         .unwrap();
     };
     profile(json!({"user_chat": "ko", "code_comments": "en"}));
-    let project_line = sentence("Korean", "ko", "the project's `language.user_chat`");
     let plain = session_context("claude", &root, Some(json!("startup")));
     let compact = session_context("claude", &root, Some(json!("compact")));
-    assert!(plain.ends_with(&project_line), "{plain}");
+    assert!(plain.contains(&home_line), "{plain}");
+    assert!(!plain.contains("Korean"), "{plain}");
     assert!(compact.starts_with(&plain), "{compact}");
     assert!(
         compact.contains("This session was just compacted."),
         "{compact}"
     );
-    assert!(!compact.contains("Japanese"), "{compact}");
-    let codex = session_context("codex", &root, Some(json!("compact")));
-    assert!(codex.contains(&project_line), "{codex}");
-    // A profile that names no conversation language falls back to HOME.
+    // A profile that names no conversation language: the HOME record again.
     profile(json!({"code_comments": "en"}));
     let ctx = session_context("claude", &root, Some(json!("startup")));
     assert!(ctx.contains(&home_line), "{ctx}");
@@ -2098,11 +2096,13 @@ fn session_check_names_the_conversation_language() {
     assert!(session_context("claude", &root, Some(json!("startup"))).contains(&home_line));
     profile(json!({"user_chat": "fr"}));
     assert!(session_context("claude", &root, Some(json!("startup"))).contains(&home_line));
-    // Nothing in HOME either: no language is named, and the hook answers as usual.
+    // Nothing in HOME either: no language is named even with a profile that holds one.
     fs::remove_dir_all(root.join("home")).unwrap();
     fs::create_dir_all(root.join("home")).unwrap();
+    profile(json!({"user_chat": "ko"}));
     let ctx = session_context("claude", &root, Some(json!("compact")));
     assert!(!ctx.contains("Conversation language"), "{ctx}");
+    assert!(!ctx.contains("Korean"), "{ctx}");
 }
 
 #[test]

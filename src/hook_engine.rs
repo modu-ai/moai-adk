@@ -568,7 +568,7 @@ const COMPACTED: &str =
 /// has not been shown to keep (whether `/goal` survives a compaction is not measured).
 const COMPACTED_CODEX_GOAL: &str = "Check the active /goal before you continue.";
 
-/// The conversation language the user chose, as one sentence for session-check (card C-87 S1):
+/// The conversation language the user chose, as one sentence for session-check:
 /// the code recorded in HOME (`language-set --home`, the installer's choice) — the one source
 /// of the conversation language: it is set at install and changed only by a later
 /// `language-set --home`, so a later change reaches every existing session (the delta audit's
@@ -617,7 +617,7 @@ fn session_check(host: Host, input: &Value, cwd: &Path) -> Verdict {
         env!("CARGO_PKG_VERSION"),
         crate::state_root::dir(cwd),
     );
-    // Card C-87 S1: on every start, resume and compaction, so a compacted session keeps the
+    // On every start, resume and compaction, so a compacted session keeps the
     // conversation language the user chose.
     if let Some(line) = conversation_line(std::env::var_os("HOME").as_deref().map(Path::new)) {
         text.push(' ');
