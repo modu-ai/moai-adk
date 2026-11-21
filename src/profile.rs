@@ -466,7 +466,29 @@ fn decide(
     }
 }
 
-fn compute_delta(baseline: Option<&Value>, current: Option<&Value>, desired: &Value) -> Delta {
+/// Whether the saved `hosts` still hold a retired host and the desired list is exactly the saved
+/// one without it: such a key is MoAI-owned state moving off a retired host, never a user edit.
+fn retired_hosts_update(active: &[&str], current: Option<&Value>, desired: Option<&Value>) -> bool {
+    let names = |v: Option<&Value>| -> Option<Vec<String>> {
+        v?.as_array()?
+            .iter()
+            .map(|h| h.as_str().map(str::to_string))
+            .collect()
+    };
+    let (Some(saved), Some(wanted)) = (names(current), names(desired)) else {
+        return false;
+    };
+    let mut filtered = saved.clone();
+    crate::retired_hosts::retire_hosts(&mut filtered, active);
+    filtered != saved && filtered == wanted
+}
+
+fn compute_delta(
+    active: &[&str],
+    baseline: Option<&Value>,
+    current: Option<&Value>,
+    desired: &Value,
+) -> Delta {
     let empty = Map::new();
     let desired_map = desired.as_object().unwrap_or(&empty);
     let current_map = current.and_then(Value::as_object);
@@ -489,6 +511,8 @@ fn compute_delta(baseline: Option<&Value>, current: Option<&Value>, desired: &Va
             } else {
                 KeyDecision::Apply
             }
+        } else if key == "hosts" && retired_hosts_update(active, c, d) {
+            KeyDecision::Apply
         } else {
             decide(b, c, d)
         };
@@ -546,7 +570,14 @@ fn plan_digest(p: &Plan) -> String {
         .expect("typed plan"),
     )
 }
-pub fn plan(root: &Path, mut profile: Profile) -> Result<Plan> {
+pub fn plan(root: &Path, profile: Profile) -> Result<Plan> {
+    plan_in(&KNOWN_HOSTS, root, profile)
+}
+
+/// [`plan`] for a place whose active hosts are `active`: retired hosts in the input are filtered
+/// like a read, and a saved profile that still holds one gets the filtered `hosts` as an update.
+pub fn plan_in(active: &[&str], root: &Path, mut profile: Profile) -> Result<Plan> {
+    crate::retired_hosts::retire_hosts(&mut profile.hosts, active);
     if profile.project_id.is_empty() {
         profile.project_id = match existing_project_id(root)? {
             Some(id) => id,
@@ -572,7 +603,7 @@ pub fn plan(root: &Path, mut profile: Profile) -> Result<Plan> {
     };
     let baseline = read_baseline(root)?;
     let desired = serde_json::to_value(&profile).expect("typed profile");
-    let delta = compute_delta(baseline.as_ref(), current.as_ref(), &desired);
+    let delta = compute_delta(active, baseline.as_ref(), current.as_ref(), &desired);
     let drift = compute_drift(baseline.as_ref(), current.as_ref());
     let action = if !delta.conflict.is_empty() {
         "conflict"
@@ -834,11 +865,22 @@ fn write_baseline(
 }
 
 pub fn apply(root: &Path, p: Plan, confirmed: &str, permission: &str) -> Result<Value> {
+    apply_in(&KNOWN_HOSTS, root, p, confirmed, permission)
+}
+
+/// [`apply`] for a place whose active hosts are `active`.
+pub fn apply_in(
+    active: &[&str],
+    root: &Path,
+    p: Plan,
+    confirmed: &str,
+    permission: &str,
+) -> Result<Value> {
     // Caller authorization remains host-owned; this reference is not an authorization verifier.
     if !crate::contract::permission_reference_ok(permission) {
         return Err("permission reference required".into());
     }
-    let current_plan = plan(root, p.profile.clone())?;
+    let current_plan = plan_in(active, root, p.profile.clone())?;
     if p.protocol_version != 1
         || confirmed != p.plan_digest
         || plan_digest(&p) != p.plan_digest
@@ -1048,6 +1090,12 @@ pub(crate) fn existing_project_id(root: &Path) -> Result<Option<String>> {
 /// Reads the existing profile, keeping only known keys. Unknown user keys are left in the
 /// file untouched; the raw bytes are returned so callers can bind to the exact revision.
 pub fn read_profile(root: &Path) -> Result<(Profile, Vec<u8>)> {
+    read_profile_in(&KNOWN_HOSTS, root)
+}
+
+/// [`read_profile`] for a place whose active hosts are `active`: retired hosts leave `hosts`, and
+/// a list they emptied reads as `["claude"]` (the file is not changed by a read).
+pub fn read_profile_in(active: &[&str], root: &Path) -> Result<(Profile, Vec<u8>)> {
     let bytes = read(&target(root)?)?.ok_or("project profile missing")?;
     let value: Value =
         serde_json::from_slice(&bytes).map_err(|_| "existing YAML requires preservation review")?;
@@ -1060,35 +1108,11 @@ pub fn read_profile(root: &Path) -> Result<(Profile, Vec<u8>)> {
         .filter(|(k, _)| managed_keys().any(|m| m == k.as_str()))
         .map(|(k, v)| (k.clone(), v.clone()))
         .collect();
-    let profile: Profile =
+    let mut profile: Profile =
         serde_json::from_value(Value::Object(filtered)).map_err(|_| "invalid profile")?;
+    crate::retired_hosts::retire_hosts(&mut profile.hosts, active);
     validate(&profile)?;
     Ok((profile, bytes))
-}
-
-/// [`read_profile`] for a place whose active hosts are `active`: retired hosts leave `hosts`.
-pub fn read_profile_in(active: &[&str], root: &Path) -> Result<(Profile, Vec<u8>)> {
-    let _ = active;
-    read_profile(root)
-}
-
-/// [`plan`] for a place whose active hosts are `active`: retired hosts in the input are filtered
-/// like a read, and a saved profile that holds one gets the filtered `hosts` as an update.
-pub fn plan_in(active: &[&str], root: &Path, profile: Profile) -> Result<Plan> {
-    let _ = active;
-    plan(root, profile)
-}
-
-/// [`apply`] for a place whose active hosts are `active`.
-pub fn apply_in(
-    active: &[&str],
-    root: &Path,
-    p: Plan,
-    confirmed: &str,
-    permission: &str,
-) -> Result<Value> {
-    let _ = active;
-    apply(root, p, confirmed, permission)
 }
 
 #[cfg(test)]
@@ -1248,11 +1272,16 @@ mod tests {
                 .iter()
                 .any(|l| l.contains(&"scopes".to_string()))
         };
-        assert!(!listed(&compute_delta(Some(&base), Some(&base), &base)));
+        assert!(!listed(&compute_delta(
+            &KNOWN_HOSTS,
+            Some(&base),
+            Some(&base),
+            &base
+        )));
         let mut desired = base.clone();
         desired["scopes"] = serde_json::json!([{"name": "web", "paths": ["apps/web"]}]);
         assert_eq!(
-            compute_delta(Some(&base), Some(&base), &desired).added,
+            compute_delta(&KNOWN_HOSTS, Some(&base), Some(&base), &desired).added,
             vec!["scopes"]
         );
         let with = |name: &str, paths: &[&str]| Profile {
@@ -1312,11 +1341,16 @@ mod tests {
                 .iter()
                 .any(|l| l.contains(&"versioning".to_string()))
         };
-        assert!(!listed(&compute_delta(Some(&base), Some(&base), &base)));
+        assert!(!listed(&compute_delta(
+            &KNOWN_HOSTS,
+            Some(&base),
+            Some(&base),
+            &base
+        )));
         let mut desired = base.clone();
         desired["versioning"] = serde_json::json!({"scheme": "calver", "format": "YYYY.0M.MICRO"});
         assert_eq!(
-            compute_delta(Some(&base), Some(&base), &desired).added,
+            compute_delta(&KNOWN_HOSTS, Some(&base), Some(&base), &desired).added,
             vec!["versioning"]
         );
 
@@ -1412,7 +1446,7 @@ mod tests {
         let mut desired = base.clone();
         desired["work_flow"] = json!({"flow": "m-flow", "integration_branch": "main"});
         assert_eq!(
-            compute_delta(Some(&base), Some(&base), &desired).added,
+            compute_delta(&KNOWN_HOSTS, Some(&base), Some(&base), &desired).added,
             vec!["work_flow"]
         );
         let tmp = tempfile::tempdir().unwrap();
@@ -1515,11 +1549,16 @@ mod tests {
                 .iter()
                 .any(|l| l.contains(&"language".to_string()))
         };
-        assert!(!all(&compute_delta(Some(&base), Some(&base), &base)));
+        assert!(!all(&compute_delta(
+            &KNOWN_HOSTS,
+            Some(&base),
+            Some(&base),
+            &base
+        )));
         let mut desired = base.clone();
         desired["language"] = serde_json::json!({"code_comments": "en"});
         assert_eq!(
-            compute_delta(Some(&base), Some(&base), &desired).added,
+            compute_delta(&KNOWN_HOSTS, Some(&base), Some(&base), &desired).added,
             vec!["language"]
         );
         let with = |pairs: &[(&str, &str)]| Profile {
@@ -1686,7 +1725,7 @@ mod tests {
         let mut desired = baseline.clone();
         desired["tools"] = serde_json::json!(["Python"]);
         desired["interview_revision"] = serde_json::json!("r1");
-        let delta = compute_delta(Some(&baseline), Some(&current), &desired);
+        let delta = compute_delta(&KNOWN_HOSTS, Some(&baseline), Some(&current), &desired);
         assert!(delta.added.is_empty() && delta.removed.is_empty() && delta.conflict.is_empty());
         assert_eq!(delta.changed, vec!["interview_revision", "tools"]);
         // purpose keeps the user value (desired == baseline), the unknown key is not managed.
@@ -1709,10 +1748,15 @@ mod tests {
                 .any(|l| l.contains(&"leader".to_string()))
         };
         // Absent everywhere: in no list, so an old profile plans exactly as before.
-        assert!(!all(&compute_delta(Some(&base), Some(&base), &base)));
+        assert!(!all(&compute_delta(
+            &KNOWN_HOSTS,
+            Some(&base),
+            Some(&base),
+            &base
+        )));
         let mut desired = base.clone();
         desired["leader"] = serde_json::json!({"pr_check_interval_secs": 60});
-        let delta = compute_delta(Some(&base), Some(&base), &desired);
+        let delta = compute_delta(&KNOWN_HOSTS, Some(&base), Some(&base), &desired);
         assert_eq!(delta.added, vec!["leader"]);
         let mut p = v2();
         p.leader = Some(LeaderSettings {
