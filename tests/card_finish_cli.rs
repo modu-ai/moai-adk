@@ -2568,6 +2568,11 @@ fn ac19_a_spec_with_errors_on_the_tip_and_a_card_with_nothing_met_refuse_and_an_
         !message.contains("is absent"),
         "the SPEC is on the tip and fails its check: {message}"
     );
+    // The tip put back to the one that holds no copy of the SPEC at all: absent, which refuses
+    // too (the checkout's good copy does not count).
+    git(&w.project, &["update-ref", "refs/heads/integ", &w.tip]);
+    let out = w.finish(Some(S_L), &broken, &args);
+    w.refuse(&out, "invalid_input", &["is absent"], &before);
 
     let withdrawn = w.card_named("task", "apps/b/", &["one"]);
     result(&w.card(Some(S_A), &["take", &withdrawn]));

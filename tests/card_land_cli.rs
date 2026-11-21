@@ -166,6 +166,8 @@ struct World {
     project: PathBuf,
     p: String,
     git_bin: RefCell<PathBuf>,
+    /// Variables the next `moai` children get on top of the clean environment.
+    extra_env: RefCell<Vec<(String, String)>>,
     profile: RefCell<Vec<u8>>,
     head: String,
     tip: String,
@@ -195,6 +197,7 @@ impl World {
                 .unwrap(),
             project,
             git_bin: RefCell::new(git_executable()),
+            extra_env: RefCell::new(Vec::new()),
             profile: RefCell::new(MFLOW_PROFILE.to_vec()),
             head,
             tip,
@@ -215,6 +218,9 @@ impl World {
     fn run(&self, session: Option<&str>, args: &[&str]) -> Output {
         let mut cmd: Command = self.home.command(args);
         cmd.env("MOAI_GIT_BIN", &*self.git_bin.borrow());
+        for (key, value) in self.extra_env.borrow().iter() {
+            cmd.env(key, value);
+        }
         if let Some(id) = session {
             cmd.env(SESSION_VAR, id);
         }
@@ -262,13 +268,15 @@ impl World {
         name
     }
 
-    /// A candidate: a commit with `tip` as its first parent (and no change to the tree).
+    /// A candidate: a merge commit with `tip` as its first parent and a lane commit as its second
+    /// (no change to the tree), the shape the leader lands.
     fn candidate(&self) -> String {
+        let lane = commit_with(&self.project, &self.head, &[&self.head], "the lane head");
         commit_with(
             &self.project,
             &self.tip,
-            &[&self.tip],
-            "the lane head on the tip",
+            &[&self.tip, &lane],
+            "merge the lane head on the tip",
         )
     }
 
@@ -551,7 +559,12 @@ fn ac5_every_refusal_of_finish_comes_before_the_move() {
             "leader",
         ],
     );
-    w.refuse(&out, "invalid_input", &["generation"], &before, &before_ref);
+    let message = w.refuse(&out, "invalid_input", &["generation"], &before, &before_ref);
+    assert_eq!(
+        message.matches("nothing was changed").count(),
+        1,
+        "the refusal says it twice: {message}"
+    );
 
     // A met option for a criterion that is not open, and one named twice.
     let out = w.land(
@@ -771,4 +784,223 @@ fn ac10_a_tag_path_and_a_git_that_cannot_run_refuse_before_any_write() {
         &before,
         &w.tip,
     );
+}
+
+// ---- the repairs of the audit of the first slice ---------------------------------------------
+
+/// B-1, G: a close refused after the branch moved says the branch moved and never that nothing was
+/// changed; the same call run again closes the card. A call that gets in between is made by the
+/// git wrapper: after the real `update-ref` it marks criterion 1 met as the holder, so the close
+/// names a criterion that is no longer open.
+#[test]
+fn ac13_a_close_refused_after_the_move_says_the_branch_moved() {
+    let w = World::new();
+    let card = w.review_card(&["one"]);
+    let candidate = w.candidate();
+    let real = git_executable();
+    let wrapper = w.dir.path().join("git-races-the-ledger");
+    common::write_executable(
+        &wrapper,
+        &format!(
+            "#!/bin/sh\nfor a in \"$@\"; do\n  if [ \"$a\" = update-ref ]; then\n    '{git}' \"$@\"\n    rc=$?\n    CLAUDE_CODE_SESSION_ID={holder} HOME='{home}' '{moai}' card criterion {card} 1 --generation 1 --met --evidence raced --project '{project}' --home '{home}' >/dev/null 2>&1\n    exit $rc\n  fi\ndone\nexec '{git}' \"$@\"\n",
+            git = real.display(),
+            holder = S_A,
+            home = w.home.path().display(),
+            moai = common::MOAI_BIN,
+            card = card,
+            project = w.project.display(),
+        ),
+    );
+    *w.git_bin.borrow_mut() = wrapper;
+    let out = w.land(
+        &card,
+        &[
+            "--head",
+            &candidate,
+            "--met",
+            "1=the test",
+            "--by",
+            "leader",
+        ],
+    );
+    assert_eq!(
+        out.status.code(),
+        Some(1),
+        "{}",
+        String::from_utf8_lossy(&out.stdout)
+    );
+    let v = envelope(&out);
+    assert_eq!(v["ok"], json!(false), "{v}");
+    let message = v["error"]["message"].as_str().unwrap().to_string();
+    assert!(message.contains("not an open criterion"), "{message}");
+    assert!(
+        message.contains(&format!("already moved to {candidate}")),
+        "the refusal does not say the branch moved: {message}"
+    );
+    assert!(
+        !message.contains("nothing was changed"),
+        "the refusal says nothing changed after the branch moved: {message}"
+    );
+    assert_eq!(w.integ(), candidate, "the branch moved");
+    assert_eq!(w.events(&card, "card.landed"), 0);
+    // The same call again, with git running as it should: no move, the card closes.
+    *w.git_bin.borrow_mut() = git_executable();
+    let again = result(&w.land(&card, &["--head", &candidate, "--by", "leader"]));
+    assert_eq!(again["moved"], json!(false), "{again}");
+    assert_eq!(again["closed"], json!(true), "{again}");
+}
+
+/// D: the SPEC is read at the candidate and not at the old tip: a good SPEC on the tip and a
+/// broken one at the candidate refuses, and a broken one on the tip with a good one at the
+/// candidate lands.
+#[test]
+fn ac14_the_spec_is_read_at_the_candidate_and_not_at_the_old_tip() {
+    let w = World::new();
+    let spec = w.draft_spec("land-candidate");
+    let spec_path = format!(".moai/specs/{spec}/spec.md");
+    let good = fs::read_to_string(w.project.join(&spec_path)).unwrap();
+    let card = w.review_card(&["one"]);
+    result(&w.card(None, &["spec", &card, &spec]));
+    let good_tip = put_on(&w.project, &w.tip, &spec_path, &good);
+    git(&w.project, &["update-ref", "refs/heads/integ", &good_tip]);
+    let broken_candidate = put_on(&w.project, &good_tip, &spec_path, "not a spec\n");
+    let before = w.dump();
+    let out = w.land(
+        &card,
+        &[
+            "--head",
+            &broken_candidate,
+            "--met",
+            "1=x",
+            "--by",
+            "leader",
+        ],
+    );
+    w.refuse(&out, "invalid_input", &["error(s)"], &before, &good_tip);
+    // The other way round: the old tip is broken, the candidate is good.
+    let broken_tip = put_on(&w.project, &w.tip, &spec_path, "not a spec\n");
+    git(&w.project, &["update-ref", "refs/heads/integ", &broken_tip]);
+    let good_candidate = put_on(&w.project, &broken_tip, &spec_path, &good);
+    let got = result(&w.land(
+        &card,
+        &["--head", &good_candidate, "--met", "1=x", "--by", "leader"],
+    ));
+    assert_eq!(got["closed"], json!(true), "{got}");
+    assert_eq!(w.integ(), good_candidate);
+}
+
+/// F: the landing event records the head and the new tip (the candidate after a move, the tip
+/// that was read when the head was already inside).
+#[test]
+fn ac15_the_landing_event_records_the_head_and_the_new_tip() {
+    let w = World::new();
+    let moved_card = w.review_card(&["one"]);
+    let candidate = w.candidate();
+    result(&w.land(
+        &moved_card,
+        &["--head", &candidate, "--met", "1=x", "--by", "leader"],
+    ));
+    let payload = |card: &str| -> Value {
+        let text = w.text(&format!(
+            "SELECT payload FROM event WHERE card_id = {} AND kind = 'card.landed' \
+             ORDER BY event_id DESC LIMIT 1",
+            number(card)
+        ));
+        serde_json::from_str(&text).unwrap()
+    };
+    let landed = payload(&moved_card);
+    assert_eq!(landed["head"], json!(candidate), "{landed}");
+    assert_eq!(landed["tip"], json!(candidate), "{landed}");
+    assert_eq!(landed["by"], json!("leader"), "{landed}");
+    // A head already inside the tip: the tip is the one that was read, not the head.
+    let inside_card = w.review_card(&["one"]);
+    result(&w.land(
+        &inside_card,
+        &["--head", &w.head, "--met", "1=x", "--by", "leader"],
+    ));
+    let landed = payload(&inside_card);
+    assert_eq!(landed["head"], json!(w.head), "{landed}");
+    assert_eq!(landed["tip"], json!(candidate), "{landed}");
+}
+
+/// N: a card that closes on a report is `card finish`'s, and nothing moves.
+#[test]
+fn ac16_a_research_card_is_refused_and_nothing_moves() {
+    let w = World::new();
+    let added = result(&w.card(
+        None,
+        &[
+            "add",
+            "--title",
+            "a question",
+            "--kind",
+            "research",
+            "--scope",
+            "apps/r/",
+            "--ac",
+            "one",
+        ],
+    ));
+    let card = added["name"].as_str().unwrap().to_string();
+    result(&w.card(None, &["ready", &card]));
+    let candidate = w.candidate();
+    let before = w.dump();
+    let out = w.land(
+        &card,
+        &["--head", &candidate, "--met", "1=x", "--by", "leader"],
+    );
+    let message = w.refuse(
+        &out,
+        "invalid_input",
+        &["closes on a report"],
+        &before,
+        &w.tip,
+    );
+    assert!(message.contains("card finish"), "{message}");
+}
+
+/// H: a hostile git environment of the caller changes nothing: the command runs git through the
+/// scrub, so a repository named by `GIT_DIR` and the like is never the one it works in.
+#[test]
+fn ac17_a_hostile_git_environment_is_ignored() {
+    let w = World::new();
+    let card = w.review_card(&["one"]);
+    let candidate = w.candidate();
+    let nowhere = w.dir.path().join("nowhere");
+    for (key, value) in [
+        ("GIT_DIR", nowhere.join("git-dir")),
+        ("GIT_WORK_TREE", nowhere.join("work-tree")),
+        ("GIT_INDEX_FILE", nowhere.join("index")),
+    ] {
+        w.extra_env
+            .borrow_mut()
+            .push((key.to_string(), value.to_str().unwrap().to_string()));
+    }
+    w.extra_env
+        .borrow_mut()
+        .push(("GIT_NAMESPACE".to_string(), "hostile".to_string()));
+    let got = result(&w.land(
+        &card,
+        &["--head", &candidate, "--met", "1=x", "--by", "leader"],
+    ));
+    assert_eq!(got["moved"], json!(true), "{got}");
+    assert_eq!(w.integ(), candidate);
+}
+
+/// N-1: a reference update that git refuses for another reason than a moved branch (a stale lock
+/// file here) is reported with git's reason, not as `tip_moved`.
+#[test]
+fn ac18_an_update_ref_failure_that_is_no_move_is_not_called_tip_moved() {
+    let w = World::new();
+    let card = w.review_card(&["one"]);
+    let candidate = w.candidate();
+    fs::write(w.project.join(".git/refs/heads/integ.lock"), "").unwrap();
+    let before = w.dump();
+    let out = w.land(
+        &card,
+        &["--head", &candidate, "--met", "1=x", "--by", "leader"],
+    );
+    let message = w.refuse(&out, "invalid_input", &["git refused"], &before, &w.tip);
+    assert!(!message.contains("tip_moved"), "{message}");
+    assert!(message.contains("lock"), "git's reason is named: {message}");
 }
