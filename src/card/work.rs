@@ -577,7 +577,14 @@ pub fn line_lease(
         }
         Err(e) => Err(e.to_string()),
     };
-    let mut ledger = open_for_write(project, home)?.1;
+    let mut ledger = open_for_write(project, home)
+        .map_err(|e| {
+            format!(
+                "{e}; the command has already run, so do not run it again, and the lease of {} may still be in the reservation: `card give-back` frees it",
+                leased.added.join(", ")
+            )
+        })?
+        .1;
     let released =
         scope_return::lease_release(&mut ledger, card_id, holder, generation, &leased.added)
             .map_err(|e| {
@@ -591,7 +598,7 @@ pub fn line_lease(
             "card line-lease refused: could not start `{program}`: {why}; the paths were given back"
         )),
         Ok(status) if !status.success() => Err(format!(
-            "card line-lease refused: the command exited with status {}; the paths were given back",
+            "card line-lease refused: the command ended with status {}; the paths were given back",
             status
                 .code()
                 .map_or_else(|| "none (a signal ended it)".to_string(), |c| c.to_string())

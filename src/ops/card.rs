@@ -550,8 +550,9 @@ enum Action {
     ///
     /// Writes the ledger. The holder removes the named `--path`s from the reservation of this
     /// `--generation`; a path given back is free for any card at once. A path the reservation
-    /// does not hold, a stale generation or another session is refused and nothing is written.
-    /// One `card.scope` event names the paths. A reopened card widens its scope again with
+    /// does not hold, a stale generation or another session is refused and no reservation, scope
+    /// or card changes (a stale generation or another session leaves the ledger's usual
+    /// `fence_reject` event). One `card.scope` event names the paths. A reopened card widens its scope again with
     /// `card scope` and a reason.
     GiveBack {
         /// `C-12`.
@@ -578,7 +579,9 @@ enum Action {
     /// nothing. The command's standard output goes to standard error, so the answer stays one
     /// JSON envelope. A command that exits non-zero or cannot start is refused with its status
     /// named, after the lease gives the paths back. A path given back is free for any card at
-    /// once.
+    /// once. If this process is killed while the command runs, the leased paths stay in the
+    /// reservation until `card give-back` frees them. A reopened card widens its scope again
+    /// with `card scope` and a reason.
     LineLease {
         /// `C-12`.
         card: String,

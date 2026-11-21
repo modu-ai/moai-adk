@@ -573,6 +573,155 @@ fn line_lease_leaves_a_path_the_card_already_holds_in_its_scope() {
     assert_eq!(w.scope_of(&a), ["src/lib.rs"], "a held path stays held");
 }
 
+/// Expire the lease of a held card, the way a long run does.
+fn end_lease(w: &World, card: &str) {
+    let id: i64 = card.trim_start_matches("C-").parse().unwrap();
+    let mut l = ledger::open_write(w.home.path(), "demo").unwrap();
+    l.with_write_tx(|tx, _| {
+        tx.execute_batch(&format!(
+            "UPDATE reservation SET lease_until = unixepoch() - 5 \
+             WHERE card_id = {id} AND status = 'held'"
+        ))?;
+        Ok(())
+    })
+    .unwrap();
+}
+
+#[test]
+fn a_mixed_list_of_known_and_unknown_paths_removes_nothing() {
+    let w = world();
+    let a = w.held(S_A, "writer", &["src/a.rs", "docs/a.md"]);
+    let before = w.dump();
+    for paths in [["src/a.rs", "src/never.rs"], ["src/never.rs", "src/a.rs"]] {
+        let (kind, message) = refusal(&w.card(
+            Some(S_A),
+            &[
+                "give-back",
+                &a,
+                "--generation",
+                "1",
+                "--path",
+                paths[0],
+                "--path",
+                paths[1],
+            ],
+        ));
+        assert_eq!(kind, "conflict", "{message}");
+        assert!(message.contains("src/never.rs"), "{message}");
+    }
+    let (kind, message) = refusal(&w.card(
+        Some(S_A),
+        &[
+            "review",
+            &a,
+            "--generation",
+            "1",
+            "--keep",
+            "src/a.rs",
+            "--keep",
+            "src/never.rs",
+        ],
+    ));
+    assert_eq!(kind, "conflict", "{message}");
+    assert_unchanged(&before, &w.dump(), "a mixed list changes nothing");
+    let mut scope = w.scope_of(&a);
+    scope.sort();
+    assert_eq!(scope, ["docs/a.md", "src/a.rs"]);
+}
+
+#[test]
+fn line_lease_wait_secs_has_its_edges() {
+    let w = world();
+    let owner = w.held(S_C, "long reservation", &["src/lib.rs"]);
+    let b = w.held(S_B, "needs one line", &["src/b.rs"]);
+    let file = Path::new(&w.project).join("lib.rs");
+    let cmd = append_command(&file, "pub mod b;");
+    let before = w.dump();
+    // 601 is over the limit and refused before anything is written.
+    let (kind, message) = refusal(&w.lease(S_B, &b, "src/lib.rs", Some("601"), &as_refs(&cmd)));
+    assert_eq!(kind, "invalid_input", "{message}");
+    assert!(message.contains("600"), "names the limit: {message}");
+    assert_unchanged(&before, &w.dump(), "an over-limit wait writes nothing");
+    // 0 does not wait: the overlap is refused at once and names the other card.
+    let started = Instant::now();
+    let (kind, message) = refusal(&w.lease(S_B, &b, "src/lib.rs", Some("0"), &as_refs(&cmd)));
+    assert_eq!(kind, "conflict", "{message}");
+    assert!(message.contains(&owner), "{message}");
+    assert!(
+        started.elapsed() < Duration::from_secs(3),
+        "a wait of 0 refuses at once"
+    );
+    assert!(!file.exists(), "the command did not run");
+    // 600 is accepted: a free path needs no wait and the command runs.
+    let done = result(&w.lease(S_B, &b, "src/free.rs", Some("600"), &as_refs(&cmd)));
+    assert_eq!(done["exit_code"], json!(0), "{done}");
+}
+
+#[test]
+fn line_lease_waits_for_its_limit_and_no_longer() {
+    let w = world();
+    w.held(S_C, "long reservation", &["src/lib.rs"]);
+    let b = w.held(S_B, "needs one line", &["src/b.rs"]);
+    let file = Path::new(&w.project).join("lib.rs");
+    let cmd = append_command(&file, "pub mod b;");
+    let started = Instant::now();
+    let (kind, _) = refusal(&w.lease(S_B, &b, "src/lib.rs", Some("2"), &as_refs(&cmd)));
+    let waited = started.elapsed();
+    assert_eq!(kind, "conflict");
+    assert!(waited >= Duration::from_millis(1900), "waited {waited:?}");
+    assert!(waited < Duration::from_secs(5), "waited {waited:?}");
+}
+
+#[test]
+fn review_and_line_lease_need_a_live_lease_and_give_back_does_not() {
+    let w = world();
+    let a = w.held(S_A, "writer", &["src/a.rs", "docs/a.md"]);
+    end_lease(&w, &a);
+    let before = w.dump();
+    let file = Path::new(&w.project).join("lib.rs");
+    let cmd = append_command(&file, "pub mod a;");
+    let (kind, message) = refusal(&w.lease(S_A, &a, "src/lib.rs", None, &as_refs(&cmd)));
+    assert_eq!(kind, "conflict", "{message}");
+    assert!(!file.exists(), "the command did not run");
+    let (kind, message) = refusal(&w.card(Some(S_A), &["review", &a, "--generation", "1"]));
+    assert_eq!(kind, "conflict", "{message}");
+    // Each refusal leaves the ledger's `fence_reject` event and nothing else.
+    assert_only_fence_events_added(&before, &w.dump(), "an expired lease changes nothing", 2);
+    let mut scope = w.scope_of(&a);
+    scope.sort();
+    assert_eq!(scope, ["docs/a.md", "src/a.rs"]);
+    // A holder whose lease ran out can still free a file.
+    let done = result(&w.card(
+        Some(S_A),
+        &["give-back", &a, "--generation", "1", "--path", "docs/a.md"],
+    ));
+    assert_eq!(strings(&done["given_back"]), ["docs/a.md"], "{done}");
+    assert_eq!(w.scope_of(&a), ["src/a.rs"]);
+}
+
+#[test]
+fn line_lease_sends_the_command_output_to_standard_error() {
+    let w = world();
+    let a = w.held(S_A, "writer", &["src/a.rs"]);
+    let out = w.lease(
+        S_A,
+        &a,
+        "src/lib.rs",
+        None,
+        &["sh", "-c", "echo marker-in-the-output"],
+    );
+    let done = result(&out);
+    assert_eq!(done["action"], json!("line-lease"), "{done}");
+    assert!(
+        !String::from_utf8_lossy(&out.stdout).contains("marker-in-the-output"),
+        "standard output stays one JSON envelope"
+    );
+    assert!(
+        String::from_utf8_lossy(&out.stderr).contains("marker-in-the-output"),
+        "the command's output goes to standard error"
+    );
+}
+
 // ---- help --------------------------------------------------------------------------------------
 
 fn help(w: &World, sub: &str) -> String {
@@ -607,6 +756,8 @@ fn help_names_the_rules_of_the_three_commands() {
         "gives the paths back",
         "standard error",
         "status",
+        "is killed",
+        "card scope",
     ] {
         assert!(
             lease.contains(phrase),

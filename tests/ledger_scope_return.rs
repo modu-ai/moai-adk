@@ -203,3 +203,23 @@ fn a_line_lease_on_a_path_another_card_holds_is_an_overlap_that_names_that_card(
     let leased = scope_return::lease_take(&mut w, a, A, g, &paths(&["src/lib.rs"])).unwrap();
     assert_eq!(leased.added, ["src/lib.rs"]);
 }
+
+#[test]
+fn a_mixed_list_of_known_and_unknown_paths_removes_nothing() {
+    let (_home, mut w) = setup();
+    let (a, g) = taken(&mut w, A, &["src/a.rs", "docs/a.md"]);
+    for list in [
+        &["src/a.rs", "src/never.rs"][..],
+        &["src/never.rs", "src/a.rs"][..],
+    ] {
+        assert!(matches!(
+            scope_return::give_back(&mut w, a, A, g, &paths(list), "give-back"),
+            Err(GiveBackError::Scope(
+                ScopeReturnError::NotInReservation { .. }
+            ))
+        ));
+    }
+    let mut scope = scope_of(&w, a);
+    scope.sort();
+    assert_eq!(scope, ["docs/a.md", "src/a.rs"], "nothing was removed");
+}
