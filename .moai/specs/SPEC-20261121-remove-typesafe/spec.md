@@ -57,4 +57,3 @@ approval: {by: user, at: 2026-11-21, basis: "AskUserQuestion selection r2: 승�
 - AC-3: met — `shasum -a 256` 의 manager-todo.md 값 86e7dbc70086b9ca226200aabf6691e815497e6e0d1cc8c17b3a64e0b1d0e3ad 가 packs.json 의 manager-todo 항목 sha256 과 같음
 - AC-4: met — `cargo test --locked --offline --lib home_` exit 0 (107 passed); `cargo test --locked --offline --test home_retire_cli` exit 0 (24 passed); `grep -c -i typesafe src/home_layout.rs src/home_retire.rs tests/home_retire_cli.rs` 각각 0
 - AC-5: met — `git grep -n -i -E 'typesafe|\bjev\b' -- src tests templates` 결과가 `tests/project_decide_model.rs`(호환 시험)와 `tests/fixtures/atlas-tag/go-corpus.txt`(Go 코드 모음 fixture)뿐; `git diff --check` exit 0 (구현 에이전트); `cargo fmt --check` exit 0 (구현 에이전트); `moai check affected f058985534..14349c5654` PASS (targets=49 py=9, 구현 에이전트)
-
