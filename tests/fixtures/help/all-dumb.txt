@@ -1,11 +1,10 @@
 MoAI-ADK <version> — agentic development kit
 
 Usage: moai <command> [options]
-       moai cc|codex|glm|omp -l|-a    lead or agent session
+       moai cc|glm|omp -l|-a    lead or agent session
 
 Start
   cc                      Start a Claude Code session
-  codex                   Start a Codex CLI session
   glm                     Start a Claude Code session on z.ai GLM
   omp                     Start an Oh My Pi (OMP) session
 Project
@@ -242,26 +241,23 @@ Internal
 Options:
   -l, --leader             Start a leader session on the default host (cc); the role is entered
                            inside it with `/moai --mode-leader`
-  -a, --agent [<HOST>]     Start an agent session on HOST (cc|glm|codex|omp; default cc); the role
-                           is entered inside it with `/moai --mode-agent` (codex: `$moai
-                           --mode-agent`, sent as its first prompt; omp: `/skill:moai --mode-agent`)
+  -a, --agent [<HOST>]     Start an agent session on HOST (cc|glm|omp; default cc); the role is
+                           entered inside it with `/moai --mode-agent` (omp: `/skill:moai
+                           --mode-agent`)
       --color <WHEN>       Color on a terminal: auto, always (even with NO_COLOR or TERM=dumb) or
                            never; put it before the command
       --name <NAME>        Session name (default `leader` for -l, the project's next `agent-N` for
                            -a; none without a role)
-      --model <MODEL>      Main model (Claude hosts default `opus`; codex uses its own default
-                           unless set)
-      --effort <EFFORT>    Effort (Claude default `medium`; codex only when set:
-                           low|medium|high|xhigh|max)
+      --model <MODEL>      Main model (Claude hosts default `opus`)
+      --effort <EFFORT>    Effort (Claude default `medium`)
       --advisor <ADVISOR>  Advisor model on Claude hosts (fable|opus|sonnet or a full claude-* id).
                            None by default; the user setting `launcher.advisor` can turn it on. May
                            bill to usage credits
       --no-advisor         Pass no `--advisor` even when the user setting `launcher.advisor` turns
                            it on
       --permissions        Keep permission prompts: no `--dangerously-skip-permissions` (Claude
-                           hosts) and the `workspace-write` / `on-request` sandbox on codex. Without
-                           it a -l|-a session has full access; a session without a role never gets a
-                           permission flag
+                           hosts). Without it a -l|-a session has full access; a session without a
+                           role never gets a permission flag
       --dry-run            Print the composed command as JSON instead of starting the host [aliases:
                            --print-command]
   -h, --help               Print help

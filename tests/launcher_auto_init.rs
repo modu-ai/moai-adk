@@ -1,11 +1,11 @@
-//! #2481 (user decisions 6810797000 and 6810818827, 2026-11-12): the first `cc|glm|codex`
+//! #2481 (user decisions 6810797000 and 6810818827, 2026-11-12): the first `cc|glm|omp`
 //! launch in a folder that is not a git repository initializes it without asking — `git init`,
 //! then the MoAI project settings (`.moai/project.yaml` with its marker, #2696 C2b) and `AGENTS.md` through the
 //! existing `project-apply` and `generation-apply` code — and says so on one stderr line. Files
 //! that already exist are never touched. HOME itself and the file-system root are never
 //! initialized (guidance, exit 1). Without git on PATH the launcher prints the install guidance
 //! for this OS (exit 1). `--dry-run` creates nothing and reports what it would initialize.
-//! Every launch runs in a temporary folder with a temporary HOME and stub `claude` / `codex`
+//! Every launch runs in a temporary folder with a temporary HOME and stub `claude` / `omp`
 //! executables on PATH; no real host starts.
 #![cfg(unix)]
 mod common;
@@ -27,7 +27,7 @@ struct Fixture {
 
 fn fixture() -> Fixture {
     let bin = tempfile::tempdir().unwrap();
-    for host in ["claude", "codex", "omp"] {
+    for host in ["claude", "omp"] {
         let path = bin.path().join(host);
         fs::write(&path, STUB).unwrap();
         fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).unwrap();
@@ -188,12 +188,7 @@ fn profile(dir: &Path) -> Value {
 
 #[test]
 fn the_first_launch_outside_git_initializes_the_folder_on_every_host() {
-    for (host, profile_host) in [
-        ("cc", "claude"),
-        ("glm", "claude"),
-        ("codex", "codex"),
-        ("omp", "omp"),
-    ] {
+    for (host, profile_host) in [("cc", "claude"), ("glm", "claude"), ("omp", "omp")] {
         let f = fixture();
         let plain = tempfile::tempdir().unwrap();
         let dir = plain.path().join("My Project");
@@ -232,7 +227,7 @@ fn the_first_launch_outside_git_initializes_the_folder_on_every_host() {
 
 #[test]
 fn leader_and_roleless_launches_initialize_too() {
-    for args in [&["cc", "-l"][..], &["codex"][..]] {
+    for args in [&["cc", "-l"][..], &["omp"][..]] {
         let f = fixture();
         let plain = tempfile::tempdir().unwrap();
         let out = run_in(&f, plain.path(), args);
@@ -279,7 +274,7 @@ fn a_project_that_has_settings_is_left_exactly_as_it_was() {
 
 #[test]
 fn home_itself_is_never_initialized_also_through_a_symlinked_home() {
-    for args in [&["cc", "-a"][..], &["cc"][..], &["codex", "-l"][..]] {
+    for args in [&["cc", "-a"][..], &["cc"][..], &["glm", "-l"][..]] {
         let f = fixture();
         let home = f.home.path().to_path_buf();
         let before = entries(&home);
@@ -321,7 +316,7 @@ fn the_file_system_root_is_never_initialized_through_the_cli() {
     );
     for args in [
         &["cc", "-a", "--dry-run"][..],
-        &["codex", "-l", "--dry-run"][..],
+        &["glm", "-l", "--dry-run"][..],
     ] {
         let f = fixture();
         let home_before = entries(f.home.path());
@@ -340,7 +335,7 @@ fn the_file_system_root_is_never_initialized_through_the_cli() {
 
 #[test]
 fn without_git_on_path_the_launcher_prints_install_guidance_for_this_os() {
-    for args in [&["cc", "-a"][..], &["cc"][..], &["codex", "-l"][..]] {
+    for args in [&["cc", "-a"][..], &["cc"][..], &["glm", "-l"][..]] {
         let f = fixture();
         let plain = tempfile::tempdir().unwrap();
         let only_stubs = f.bin.path().display().to_string();

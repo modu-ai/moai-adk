@@ -457,7 +457,14 @@ fn guard_recoverable_path(root: &Path, rel: &str) -> Result<()> {
         (legacy.as_str(), "receipt store path"),
     ];
     if crate::state_root::dir(root) != crate::state_root::MOAI_DIR {
-        blocked.push((crate::state_root::MOAI_DIR, "go generation state path"));
+        // In a mixed layout a write follows the read (SPEC-20261121-mixed-profile-read): the
+        // receipt's own `.moai/project.yaml` is this apply's publish and stays recoverable,
+        // with its before bytes; every other `.moai/` path is still the Go generation's state.
+        let own_profile =
+            rel == "project.yaml" || rel == format!("{}/project.yaml", crate::state_root::MOAI_DIR);
+        if !(own_profile && crate::profile::reads_newer_profile(root)) {
+            blocked.push((crate::state_root::MOAI_DIR, "go generation state path"));
+        }
     }
     for (prefix, why) in blocked {
         if rel == prefix || rel.starts_with(&format!("{prefix}/")) {

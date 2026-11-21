@@ -40,3 +40,8 @@ Rules with their full text, source and enforcer live in `references/rule-history
 ## Recurring problems
 
 22. A problem of the same kind seen a second time is not worked around again: record it and open a work item that changes the tool, its rule or its test at the source.
+
+## Reports
+
+23. Report completion only after verifying the actual changes and confirming an independent AUDIT result. A command acknowledgement or the existence of a file is not success. A local report file is saved under `~/.moai/reports/<project>/` in the user-level MoAI home, never under the repository.
+24. Take every number and state in a report from a command run for that report, and name the command next to it. An empty output is not zero: say whether the command prints nothing for "none" or also on a failure, and count a paged list only after reading every page. After a write, read the written thing back and report what the read shows, not what was sent. Write a time only from a clock read in the same step (`date -u`).
