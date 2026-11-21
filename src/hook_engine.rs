@@ -569,22 +569,18 @@ const COMPACTED: &str =
 const COMPACTED_CODEX_GOAL: &str = "Check the active /goal before you continue.";
 
 /// The conversation language the user chose, as one sentence for session-check (card C-87 S1):
-/// the project's `language.user_chat` (`ui_text::profile_chat`: the profile of the project that
-/// holds `cwd`, below HOME), else the code the user recorded in HOME (`language-set --home`,
-/// the installer's choice). Never guessed: with neither, or a profile that does not read (an
-/// unsupported code makes it unreadable) and nothing in HOME, there is no sentence.
-fn conversation_line(cwd: &Path, home: Option<&Path>) -> Option<String> {
-    let (code, from) = match crate::ui_text::profile_chat(cwd, home) {
-        Some(code) => (code, "the project's `language.user_chat`"),
-        None => (
-            crate::language::home_conversation_supported(home?)?,
-            "the language recorded in HOME",
-        ),
-    };
+/// the code recorded in HOME (`language-set --home`, the installer's choice) — the one source
+/// of the conversation language: it is set at install and changed only by a later
+/// `language-set --home`, so a later change reaches every existing session (the delta audit's
+/// B6: the profile's earlier `user_chat` never outranks it). The profile's stored value stays
+/// as recorded data and does not decide it. Never guessed: with nothing in HOME, or an
+/// unsupported code, there is no sentence.
+fn conversation_line(home: Option<&Path>) -> Option<String> {
+    let code = crate::language::home_conversation_supported(home?)?;
     let name = crate::language::english_name(&code)?;
     Some(format!(
-        "Conversation language: {name} (`{code}`), from {from}: talk with the user in it and \
-         relay subagent reports to the user in it."
+        "Conversation language: {name} (`{code}`), from the language recorded in HOME: talk \
+         with the user in it and relay subagent reports to the user in it."
     ))
 }
 
@@ -623,7 +619,7 @@ fn session_check(host: Host, input: &Value, cwd: &Path) -> Verdict {
     );
     // Card C-87 S1: on every start, resume and compaction, so a compacted session keeps the
     // conversation language the user chose.
-    if let Some(line) = conversation_line(cwd, std::env::var_os("HOME").as_deref().map(Path::new)) {
+    if let Some(line) = conversation_line(std::env::var_os("HOME").as_deref().map(Path::new)) {
         text.push(' ');
         text.push_str(&line);
     }
