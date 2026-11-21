@@ -23,8 +23,9 @@ test-load-redesign 보고서(`/Users/goos/.moai/reports/moai-adk/test-load-redes
   (2) `worktree-gc-plan`은 검사한 후보의 `trim_paths`·`preserved_in_target`은 내놓지만,
   "자기 `target/`을 쥔 워크트리"가 몇 개인지의 상시 요약이 없어요 — S8이 잰 70 → 0을 재는
   숫자가 어디에도 없어요.
-- `owner.name`은 워크트리 폴더 이름이어서(`src/lane_env.rs:255-265`), 워크트리의 빌드 폴더는
-  `<HOME>/.moai/build/<워크트리 폴더 이름>`이에요 — heavy-slot이 런타임에 계산하는 것과 같은 값.
+- 빌드 폴더 이름은 `lane_env::folder_name`(210-232 줄)이 정해요: 기본 모양의 워크트리는
+  `<project>-<id>`라 그대로 쓰이고, 그 밖의 이름은 프로젝트 접두사가 붙어요 — heavy-slot이
+  런타임에 `owner.name`으로 계산하는 것과 같은 값이라 plan 과 레인이 같은 폴더를 봐요.
 
 관계: `src/heavy_slot.rs`는 카드 C-192가, `src/lane_env.rs`는 카드 C-227이 예약 중이라
 (2026-11-21T03:3xZ 기준) 이 조각은 쓰지 않고 `lane_env::build_folder`를 호출로만 재사용해요.
@@ -32,8 +33,8 @@ test-load-redesign 보고서(`/Users/goos/.moai/reports/moai-adk/test-load-redes
 
 ## Requirements
 
-- REQ-1: When worktree-plan previews a worktree with a known HOME, the plan shall name the worktree's shared build folder — the `lane_env::build_folder` value `<HOME>/.moai/build/<worktree folder name>` — beside the path, leaving the field null without a known HOME. · failure: none — the plan writes nothing; an unknown HOME is today's existing refusal path for the default location.
-- REQ-2: When worktree-apply creates the worktree, it shall create that build folder with mode 0700, refuse a link in its place, and report a creation failure in the answer as `build_folder_error` instead of failing the apply. · failure: none — a creation failure is itself part of the behavior above: it is reported in the answer, never silent.
+- REQ-1: When worktree-plan previews a worktree with a known HOME, the plan shall name the worktree's shared build folder — the `lane_env::build_folder` value of the name `lane_env::folder_name` gives the worktree, so the value is the same one heavy-slot computes at runtime — beside the path, leaving the field null without a known HOME or a usable folder name. · failure: none — the plan writes nothing; an unknown HOME is today's existing refusal path for the default location.
+- REQ-2: When worktree-apply creates the worktree, it shall create that build folder — and its missing parents under the HOME root — with mode 0700 at every level it makes, refuse a link or a regular file in an occupied slot, and report any such refusal in the answer as `build_folder_error` instead of failing the apply. · failure: none — a creation failure is itself part of the behavior above: it is reported in the answer, never silent.
 - REQ-3: When worktree-gc-plan examines worktrees, the plan shall report `in_worktree_targets` — the count of examined worktrees holding their own `target/`, the summed trim bytes of those worktrees and up to five example paths — marking the sum with `bytes_partial` when a counted worktree was skipped before its bytes were measured.
 - REQ-4 (REQ-3): IF no examined worktree holds a `target/`, THEN the plan shall report the count as 0 with an empty example list.
 
@@ -49,8 +50,8 @@ test-load-redesign 보고서(`/Users/goos/.moai/reports/moai-adk/test-load-redes
 - AC-3 (REQ-3, REQ-4): verify: `cargo test --offline --locked --test worktree_build_root` —
   `target/`을 심은 워크트리가 있는 저장소의 gc plan은 그 워크트리를 세고 예시 경로에 넣고,
   없는 저장소는 0과 빈 예시를 내놔요.
-- AC-4 (REQ-1…REQ-4): verify: `./target/debug/moai spec check SPEC-20261121-shared-build-root`
-  → errors 0, warnings 0.
+- AC-4 (REQ-1…REQ-4): verify: `moai spec check SPEC-20261121-shared-build-root` → errors 0,
+  warnings 0(이 트리를 공유 빌드 루트에 빌드한 바이너리로 — 워크트리 안 `target/` 이 아니라).
 
 ## Scope
 

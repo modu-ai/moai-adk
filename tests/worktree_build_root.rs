@@ -7,6 +7,7 @@
 #![cfg(unix)]
 
 mod common;
+use common::CleanEnv;
 use serde_json::{json, Value};
 use std::{
     fs,
@@ -21,8 +22,7 @@ const KEY_A: &str = "aaaaaaaaaaaaaaaa";
 const COMMENT_ID: i64 = 6_721_450_649;
 
 fn git(dir: &Path, args: &[&str]) -> String {
-    let out = Command::new("git")
-        .args(["-c", "gc.auto=0", "-c", "maintenance.auto=false"])
+    let out = common::git::command()
         .args([
             "-c",
             "user.email=test@example.invalid",
@@ -31,8 +31,6 @@ fn git(dir: &Path, args: &[&str]) -> String {
         ])
         .args(args)
         .current_dir(dir)
-        .env("GIT_CONFIG_GLOBAL", "/dev/null")
-        .env("GIT_CONFIG_SYSTEM", "/dev/null")
         .output()
         .unwrap();
     assert!(
@@ -247,6 +245,82 @@ fn worktree_apply_reports_a_link_at_the_build_folder() {
     assert!(
         fs::read_dir(&elsewhere).unwrap().count() == 0,
         "the link's target stayed empty"
+    );
+}
+
+/// REQ-1: without a known HOME the plan answers with an explicit --path and leaves the
+/// build folder field null (the apply-side slot stays unguarded too).
+#[test]
+fn worktree_plan_without_home_leaves_the_field_null() {
+    let f = fixture();
+    let explicit = f._tmp.path().join("wt-explicit");
+    let args: Vec<String> = [
+        "worktree-plan".to_string(),
+        f.repo.to_string_lossy().into(),
+        "--branch-prefix".into(),
+        "lane".into(),
+        "--path".into(),
+        explicit.to_string_lossy().into(),
+    ]
+    .into_iter()
+    .chain(f.source.iter().cloned())
+    .collect();
+    let out = Command::new(BIN)
+        .args(args)
+        .clean_env()
+        .env("GIT_CONFIG_GLOBAL", "/dev/null")
+        .env("GIT_CONFIG_SYSTEM", "/dev/null")
+        .output()
+        .unwrap();
+    let env = envelope(&out);
+    assert_eq!(env["ok"], true, "{env}");
+    assert_eq!(
+        env["result"]["build_folder"],
+        Value::Null,
+        "no HOME means no named build folder: {env}"
+    );
+    assert!(!explicit.exists(), "planning created nothing");
+}
+
+/// REQ-2: a regular file occupying the <HOME>/.moai/build slot is reported; the apply stays
+/// created.
+#[test]
+fn worktree_apply_reports_a_file_at_the_home_moai_slot() {
+    let f = fixture();
+    fs::create_dir_all(f.home.join(".moai")).unwrap();
+    fs::write(f.home.join(".moai/build"), "not a folder\n").unwrap();
+
+    let p = plan(&f);
+    let digest = p["plan_digest"].as_str().unwrap().to_string();
+    let env = apply(&f, &digest);
+    assert_eq!(env["result"]["decision"], json!("created"), "{env}");
+    let err = env["result"]["build_folder_error"]
+        .as_str()
+        .unwrap_or_else(|| panic!("the occupied slot is reported: {env}"));
+    assert!(err.contains("is not a folder"), "{err}");
+}
+
+/// REQ-2: a regular file occupying the build folder's own slot is reported; the apply
+/// stays created and the file is never touched.
+#[test]
+fn worktree_apply_reports_a_file_at_the_leaf_slot() {
+    let f = fixture();
+    fs::create_dir_all(f.home.join(".moai/build")).unwrap();
+    let leaf = f.home.join(".moai/build/primary-7-06-C");
+    fs::write(&leaf, "not a folder\n").unwrap();
+
+    let p = plan(&f);
+    let digest = p["plan_digest"].as_str().unwrap().to_string();
+    let env = apply(&f, &digest);
+    assert_eq!(env["result"]["decision"], json!("created"), "{env}");
+    let err = env["result"]["build_folder_error"]
+        .as_str()
+        .unwrap_or_else(|| panic!("the occupied leaf is reported: {env}"));
+    assert!(err.contains("is not a folder"), "{err}");
+    assert_eq!(
+        fs::read(&leaf).unwrap(),
+        b"not a folder\n".to_vec(),
+        "the occupying file keeps its bytes"
     );
 }
 
