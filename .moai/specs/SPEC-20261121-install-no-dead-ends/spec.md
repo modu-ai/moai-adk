@@ -46,39 +46,27 @@ HOW는 리더 노트(카드 노트 4684, 2026-11-20T23:28:27Z)로 기록되어 �
 "답을 읽을 곳"은 설치기의 것과 같은 규칙이에요: stdin이 터미널이면 stdin, 아니면 열 수 있는
 /dev/tty, 둘 다 아니면 없음(SPEC-20261117-installer-tty REQ 정의).
 
-- REQ-1: When the installer reaches the skill-install question with no answer source and no
-  `--yes`, it shall print the exact non-interactive command that completes the install — the
-  working-directory change, the binary path and `update --confirm <plan digest>` the installer
-  itself would run — instead of naming the interactive `moai update` alone, and shall keep
-  naming `--yes` as the alternative.
-- REQ-2: When the linked command folder is not on PATH, the installer shall print the PATH
-  notice with the exact export line before the next-steps list that names `moai` commands.
-- REQ-3: When the update preview meets a skills/moai folder the install receipt does not own,
-  it shall offer the guided backup-and-replace — the plan names its
-  `--confirm-backup-replace <token>` apply flag — and an apply without that flag shall leave
-  every file of that folder untouched.
-- REQ-4: When a role session (`-l`/`-a`) would start with full access because neither
-  `launcher.role_access` nor an explicit `--permissions` choice exists, the product shall
-  surface exactly one guarded question with the recommended option first (keep full access),
-  persist the answer to `launcher.role_access`, and never ask again while the key exists; the
-  non-interactive dry-run answer shall report the pending pick as `role_access_pick: "pending"`.
-- REQ-5 (REQ-4): IF no answer source exists, THEN the product shall ask nothing and keep
-  today's behavior (full access by default with the launcher's warning line).
-- REQ-6: The Go-era guidance text shall name the existing `--confirm-backup-replace` path
-  instead of telling the person to wait for it.
+- REQ-1: When the installer reaches the skill-install question with no answer source and no `--yes`, the installer shall print the exact non-interactive command that completes the install — the working-directory change, the binary path and `update --confirm <plan digest>` it would run itself — instead of naming the interactive `moai update` alone, with `--yes` named as the alternative. · failure: none — the plan digest is already in hand there, and its absence is the existing update_failed path.
+- REQ-2: When the linked command folder is not on PATH, the installer shall print the PATH notice with the exact export line before the next-steps list that names `moai` commands. · failure: none — the notice prints on every such install; the export line is the person's own next step.
+- REQ-3: When the update preview meets a skills/moai folder the install receipt does not own, the update flow shall offer the guided backup-and-replace by naming its `--confirm-backup-replace <token>` apply flag in the plan.
+- REQ-4: When a role session (`-l`/`-a`) would start with full access because neither `launcher.role_access` nor an explicit `--permissions` choice exists, the product shall surface exactly one guarded question with the recommended option first (keep full access), persist the answer to `launcher.role_access`, and never ask again while the key exists.
+- REQ-5 (REQ-4): IF no answer source exists, THEN the product shall ask nothing and keep today's behavior (full access by default with the launcher's warning line).
+- REQ-6: The Go-era guidance text shall name the existing `--confirm-backup-replace` path instead of telling the person to wait for it.
+- REQ-7 (REQ-3): IF the apply runs without `--confirm-backup-replace <token>`, THEN the update flow shall leave every file of the unmanaged folder untouched.
+- REQ-8 (REQ-4): When the same launch runs as a non-interactive dry-run with the pick still pending, the launcher shall report the field `role_access_pick: pending` in the dry-run answer, with no such field once an answer is recorded. · failure: none — a dry-run writes nothing; the field is the report itself.
 
-실패 경로: REQ-1 → 계획 요약이 없는 기존 실패 경로(update_failed). REQ-4 → REQ-5.
+실패 경로: REQ-4 → REQ-5, REQ-3 → REQ-7.
 
 ## Acceptance
 
 - AC-1 (REQ-1, REQ-2): verify: `python3 -m unittest -k install_no_dead_ends tests/install_script_test.py`
   — 터미널 없는 설치(--yes 없음)의 출력이 digest가 들어간 update --confirm 명령을 이름으로 말하고,
   PATH 알림이 export 줄과 함께 다음 단계보다 먼저 나와요. (install.sh 조각이 착지할 때 met)
-- AC-2 (REQ-3): verify: `cargo test --offline --locked --test install_no_dead_ends` — 미리보기가
+- AC-2 (REQ-3, REQ-7): verify: `cargo test --offline --locked --test install_no_dead_ends` — 미리보기가
   claude 호스트의 blocked 이유와 `--confirm-backup-replace backup-replace:claude:<16hex>` 플래그를
   제안하고, 플래그 없는 confirm이 외부 폴더의 바이트를 그대로 둬요. (이 조각에서 met)
-- AC-3 (REQ-4, REQ-5): verify: `cargo test --offline --locked --test install_no_dead_ends` —
-  신규 HOME의 dry-run 답이 `role_access_pick: "pending"`을 갖고, `launcher.role_access`가 있으면
+- AC-3 (REQ-4, REQ-5, REQ-8): verify: `cargo test --offline --locked --test install_no_dead_ends` —
+  신규 HOME의 dry-run 답이 `role_access_pick: pending`을 갖고, `launcher.role_access`가 있으면
   갖지 않아요. 대화형 질문 자체는 답을 읽을 곳이 필요해 pty 시험(install_script_test.py의 방식)으로
   session.rs 조각이 착지할 때 met.
 - AC-4 (REQ-6): verify: `cargo test --offline --locked --test install_no_dead_ends` — 안내 문구
