@@ -1,7 +1,7 @@
 ---
 id: SPEC-20261121-remove-typesafe
 title: "Remove TypeSafe and the Jev skills from the shipped assets"
-status: approved
+status: completed
 revision: 2
 created: 2026-11-21
 approval: {by: user, at: 2026-11-21, basis: "AskUserQuestion selection r2: 승인 (Recommended)", digest: "sha256:9abd86572f0bc895dc07fcadd3a8a509c1971204e8f04687c88b89b5e7c4ba07"}
