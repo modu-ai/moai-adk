@@ -6,7 +6,7 @@
 /// Check one round instruction for the leader's own terminal and print it with the interval and
 /// the `orca terminal send` command line (#3015 C5). It runs nothing: the skill waits the
 /// interval and runs the command once per round. It never creates a terminal, and a pulse whose
-/// turn did not start is reported, not sent again. Live Codex rounds are not measured
+/// turn did not start is reported, not sent again. Live rounds are not measured
 /// (`verified: not_run`). Writes nothing.
 #[derive(clap::Args)]
 pub struct Args {

@@ -5,14 +5,12 @@
 //! an Issue may also carry `title`, `labels`, `body`, `open_children` and `blocked_by`) and
 //! `keep_set` (each `{number, reason}`) — it builds the leader's milestone-wide condition,
 //! the agent's lane-wide `loop_line` (no open PR and no startable Issue, #2515) with the
-//! card-scoped `goal_lines`, and the Codex line with its caveat. Which open Issues are
+//! card-scoped `goal_lines`. Which open Issues are
 //! startable is [`crate::startable::judge`], the judgment `lane-next` uses (#2901): `startable`,
 //! `held` (each with its reason) and `end_condition`; once it is met there is no loop line. Open entries are sorted by
 //! number, so any input order gives the same block. The model cannot type `/goal` itself; the
 //! user pastes the line (`model_can_input: false`). Reads and writes nothing else.
 use serde_json::{json, Map, Value};
-
-const CODEX_NOTE: &str = "Codex /goal의 진행 강제 여부는 미확인 — 효과를 보장하지 않는다(docs/host-support-matrix.md goal 행, 2026-11-09 확인)";
 
 fn invalid(reason: &str) -> String {
     format!("invalid fixture: {reason}")
@@ -243,7 +241,6 @@ pub fn build(fixture: &Value) -> Result<Value, String> {
     Ok(json!({
         "leader": {"goal_line": leader_line, "condition": condition},
         "agent": {"loop_line": loop_line, "goal_lines": goal_lines},
-        "codex": {"goal_line": leader_line, "note": CODEX_NOTE},
         "counts": {
             "open_issues": issues.len(),
             "open_prs": prs.len(),

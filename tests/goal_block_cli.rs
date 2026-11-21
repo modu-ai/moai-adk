@@ -9,7 +9,6 @@ mod common;
 use common::pty::{env_with, piped_with};
 use serde_json::{json, Value};
 
-const NOTE: &str = "Codex /goal의 진행 강제 여부는 미확인 — 효과를 보장하지 않는다(docs/host-support-matrix.md goal 행, 2026-11-09 확인)";
 const LOOP: &str =
     "/goal 저장소에 열린 PR이 0이고 시작할 수 있는 Issue가 0임(milestone rc.2, HOLD·needs:decision 제외)";
 
@@ -92,7 +91,6 @@ fn snapshot_issues_only() {
             "agent": {"loop_line": LOOP, "goal_lines": [
                 "/goal #202의 PR이 병합되거나 blocked로 보고됨",
                 "/goal #204의 PR이 병합되거나 blocked로 보고됨"]},
-            "codex": {"goal_line": "/goal milestone rc.2의 열린 Issue가 모두 병합되거나 종료됨", "note": NOTE},
             "counts": {"open_issues": 2, "open_prs": 0, "keep_set": 0},
             "keep_set_excluded": [], "model_can_input": false, "writes": false,
             "startable": [202, 204], "held": [],
@@ -110,7 +108,6 @@ fn snapshot_prs_only() {
                 "goal_line": "/goal milestone rc.2의 열린 PR이 모두 병합되거나 종료됨",
                 "condition": "milestone rc.2의 열린 PR이 모두 병합되거나 종료됨"},
             "agent": {"loop_line": LOOP, "goal_lines": null},
-            "codex": {"goal_line": "/goal milestone rc.2의 열린 PR이 모두 병합되거나 종료됨", "note": NOTE},
             "counts": {"open_issues": 0, "open_prs": 2, "keep_set": 0},
             "keep_set_excluded": [], "model_can_input": false, "writes": false,
             "startable": [], "held": [],
@@ -129,7 +126,6 @@ fn snapshot_keep_set_included() {
             "leader": {"goal_line": goal, "condition": condition},
             "agent": {"loop_line": format!("{LOOP} — 다음은 제외: #2016(운영자 보유), #2017(운영자 보유)"),
                       "goal_lines": ["/goal #202의 PR이 병합되거나 blocked로 보고됨"]},
-            "codex": {"goal_line": goal, "note": NOTE},
             "counts": {"open_issues": 1, "open_prs": 1, "keep_set": 2},
             "keep_set_excluded": [{"number": 2016, "reason": "운영자 보유"},
                                   {"number": 2017, "reason": "운영자 보유"}],
@@ -151,7 +147,7 @@ fn no_open_items_does_not_offer_an_already_satisfied_goal() {
     ] {
         let out = run_generator(&fixture);
         assert!(out["leader"]["goal_line"].is_null(), "{fixture}");
-        assert!(out["codex"]["goal_line"].is_null(), "{fixture}");
+        assert!(out.get("codex").is_none(), "{fixture}");
         assert!(out["agent"]["goal_lines"].is_null(), "{fixture}");
         assert!(out["agent"]["loop_line"].is_null(), "{fixture}");
         assert!(
