@@ -68,13 +68,18 @@ pub struct Limits {
     /// Lowest memory free percentage (`kern.memorystatus_level`) at which a run still starts.
     /// macOS only (card C-88).
     pub min_mem_free_pct: u64,
+    /// Test threads a wrapped `cargo test` or `cargo nextest run` runs with (the card's
+    /// test-parallelism cap). A caller that set the runner's own knob keeps its value.
+    pub test_threads: u64,
 }
 
-/// The leader's numbers (comment 6850581277); `min_mem_free_pct` 10 is card C-88's.
+/// The leader's numbers (comment 6850581277); `min_mem_free_pct` 10 is card C-88's. The
+/// test-threads cap is the 2026-11-21 card's (four threads a wrapped test run starts with).
 pub const DEFAULT_LIMITS: Limits = Limits {
     min_free_gb: 50,
     max_swap_pct: 80,
     min_mem_free_pct: 10,
+    test_threads: 4,
 };
 
 /// `kern.memorystatus_vm_pressure_level` values: 1 normal, 2 warn, 4 critical (the
@@ -98,6 +103,7 @@ pub struct LimitsFile {
     pub min_free_gb: Option<u64>,
     pub max_swap_pct: Option<u64>,
     pub min_mem_free_pct: Option<u64>,
+    pub test_threads: Option<u64>,
 }
 
 /// The limits file in `folder`: `None` when there is none. A path that is not a plain file
@@ -218,12 +224,18 @@ pub fn effective(
         Some(c) => c,
         None => base_mem_free,
     };
+    // The test-threads cap has no caller flag: `limits.json` sets it (the card's contract),
+    // and the machine's number is what a wrapped test run starts with.
+    let test_threads = file
+        .and_then(|f| f.test_threads)
+        .unwrap_or(DEFAULT_LIMITS.test_threads);
     (
         max,
         Limits {
             min_free_gb,
             max_swap_pct,
             min_mem_free_pct,
+            test_threads,
         },
         notes,
     )
@@ -846,10 +858,30 @@ mod sys {
         if let Some(line) = low_space_line(measured(&cwd).free, limits.min_free_gb, &cwd) {
             eprintln!("heavy-slot: {line}");
         }
-        run_holding(slot, file, name, command, &cwd)
+        run_holding(slot, file, name, command, &cwd, limits)
     }
 
-    fn run_holding(slot: usize, mut file: File, name: &str, command: &[String], cwd: &Path) -> u8 {
+    /// Whether the wrapped command is a test run the card's cap applies to: a `cargo`
+    /// invocation that runs tests — `cargo test …` (libtest) or `cargo nextest run …`.
+    /// Builds, fmt, clippy and everything else keep their behaviour.
+    fn wrapped_test_run(command: &[String]) -> bool {
+        command
+            .first()
+            .is_some_and(|p| Path::new(p).file_name().is_some_and(|n| n == "cargo"))
+            && command
+                .iter()
+                .skip(1)
+                .any(|a| a == "test" || a == "nextest")
+    }
+
+    fn run_holding(
+        slot: usize,
+        mut file: File,
+        name: &str,
+        command: &[String],
+        cwd: &Path,
+        limits: Limits,
+    ) -> u8 {
         // Forwarded signals are blocked before the command starts, so none lands in a gap
         // where the wrapper dies and leaves the command running; a waiter thread receives them
         // with sigwait and passes them on. The command unblocks them before it execs.
@@ -873,7 +905,22 @@ mod sys {
         let _ = file.set_len(0);
         let _ = file.seek(SeekFrom::Start(0));
         let _ = writeln!(file, "{record}");
-        println!("heavy-slot: slot {slot} taken by {name}");
+        // The card's test-parallelism cap (2026-11-21): a wrapped `cargo test` runs libtest
+        // with the capped threads (`RUST_TEST_THREADS`), a wrapped `cargo nextest run` gets
+        // `-j <threads>` — unless the caller set the runner's own knob, which always wins.
+        let applied =
+            if wrapped_test_run(command) && std::env::var_os("RUST_TEST_THREADS").is_none() {
+                Some(limits.test_threads)
+            } else {
+                None
+            };
+        println!(
+            "heavy-slot: slot {slot} taken by {name}{}",
+            match applied {
+                Some(threads) => format!(" test-threads={threads}"),
+                None => String::new(),
+            }
+        );
         // The command inherits the locked file: clear close-on-exec on it.
         let fd = file.as_raw_fd();
         // SAFETY: fcntl on a descriptor this function owns.
@@ -883,8 +930,21 @@ mod sys {
                 libc::fcntl(fd, libc::F_SETFD, fl & !libc::FD_CLOEXEC);
             }
         }
-        let mut cmd = std::process::Command::new(&command[0]);
-        cmd.args(&command[1..]);
+        let mut argv: Vec<String> = command.to_vec();
+        if applied.is_some()
+            && command.iter().any(|a| a == "nextest")
+            && !command.iter().any(|a| a == "-j")
+        {
+            if let Some(at) = argv.iter().position(|a| a == "run") {
+                argv.insert(at + 1, limits.test_threads.to_string());
+                argv.insert(at + 1, "-j".into());
+            }
+        }
+        let mut cmd = std::process::Command::new(&argv[0]);
+        cmd.args(&argv[1..]);
+        if let Some(threads) = applied {
+            cmd.env("RUST_TEST_THREADS", threads.to_string());
+        }
         let unblock = set;
         // SAFETY: pthread_sigmask is async-signal-safe; nothing else runs between fork and exec.
         unsafe {
@@ -1455,6 +1515,7 @@ mod limits_tests {
             min_free_gb: free,
             max_swap_pct: swap,
             min_mem_free_pct: None,
+            test_threads: Some(4),
         }
     }
 

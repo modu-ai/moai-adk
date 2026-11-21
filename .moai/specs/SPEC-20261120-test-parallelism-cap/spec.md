@@ -118,4 +118,7 @@ the binary share `tests/common/mod.rs`; `cargo`'s libtest reads `RUST_TEST_THREA
 
 ## Result
 
-구현 에이전트가 채워요 — 이 커밋은 SPEC 과 계획까지예요.
+- AC-2: met (REQ-2) — `moai heavy-slot-acquire` 의 래퍼가 감싼 `cargo test` 에 `RUST_TEST_THREADS`(limits.json 의 `test_threads`, 기본 4)를 주입하고 감싼 `cargo nextest run` 에는 `-j <threads>` 를 `run` 뒤에 더하며, 호출자가 자기 knob(`RUST_TEST_THREADS`)을 이미 설정했으면 아무것도 하지 않고 `slot taken` 줄에 적용한 값을 `test-threads=<n>` 으로 이름해요. `tests/heavy_slot_thread_cap_cli.rs` — 4 passed(스텁 cargo 가 기록한 환경·인자로 검증 — cap 적용·caller 존중·nextest -j·build 무영향). `cargo test --offline --locked --bins --lib` 전체 통과·clippy 0.
+- AC-3: met (REQ-3) — 스폰 시험 세마포어 — `tests/common/spawn_cap.rs`·`tests/spawn_cap_test.rs` 2 passed(조각 4, 이미 병합된 커밋에 착지).
+- AC-4: met (REQ-4) — `.metadata_never_index`(lane-env 빌드 폴더·temp HOME) — 조각 5, 이미 병합된 커밋에 착지.
+- Not run: AC-1(REQ-1 — `src/check_affected.rs`·`src/ops/check.rs` 가 다른 카드(check-affected-two-modes, lease 유효)의 예약 — 반환되면 같은 규칙의 check affected 쪽 슬라이스로 이어가요)·AC-5(REQ-5 — probe 실측은 한산 창(1 분 부하 20 미만)에서 — 감시가 상태를 보고 있어요). closure_status: draft — 승인은 병합 시 사용자 선택 뒤예요.
