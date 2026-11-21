@@ -1,8 +1,8 @@
 ---
 id: SPEC-20261121-remove-codex-project-layer
-title: "The project layer, the hook adapters, the generation and the interview's host choices serve Claude Code only; Codex and OMP entries in an existing profile load and are ignored"
+title: "The project layer, the hook adapters, the generation and the interview's host choices serve Claude Code only; retired host entries in existing files are read and skipped"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-21
 ---
 
@@ -12,30 +12,34 @@ created: 2026-11-21
 
 User decision of 2026-11-21: moai-adk stops supporting Codex (and the OMP host) and keeps Claude Code, with GLM as a model choice that runs through the Claude Code launcher. The cards and SPECs that describe Codex work stay as history, so the work can be restored; the code, tests and generated files go.
 
-This SPEC is the project-layer slice of that removal: the host steps of `project-update-plan` (codex-hooks, codex-config, codex-skill, omp-hooks, omp-config, omp-agents), the project copy of the skill, the Codex and OMP hook adapters, the generation of `.codex/*` and of the projections for other hosts, and the host choices the interview offers. The launcher and the home update, the shipped skill text, the docs and the install scripts are other slices of the same decision; `SPEC-20261121-remove-codex-support` holds the inventory and marks each file with its slice, and this SPEC takes the files marked slice 2.
+This SPEC is the project-layer slice of that removal: the host steps of `project-update-plan` (codex-hooks, codex-config, codex-skill, omp-hooks, omp-config, omp-agents), the project copy of the skill, the Codex and OMP hook adapters, the generation of `.codex/*` and of the projections for other hosts, and the host choices the interview offers. The launcher and the home update, the shipped skill text, the docs and the install scripts, and the lane, goal and leader code belong to sibling slices of the same decision. The impact report of 2026-11-21 (`~/.moai/reports/moai-adk/codex-removal-impact-2026-11-21.md`) lists what breaks per area and the decisions D1 to D9 this SPEC follows.
 
-Nothing here deletes user data. `~/.codex` and a project's `.codex/` or `.omp/` stay as they are; moai stops managing them, and the preview says so. An existing project profile that lists `codex` or `omp` under `hosts` still loads; those entries are ignored with a note, so no project is locked out by the upgrade.
+Nothing here deletes user data. A user's `~/.codex`, and a project's `.codex/` and `.omp/` folders, stay as they are; moai stops managing them, and the preview says so with one information step. A retired host that an existing file still names (a profile, a receipt, a generation manifest) never makes a command fail: the entry is read and skipped.
+
+Order. A compatibility layer lands first and only adds: it filters retired hosts when a profile is read, ignores retired launcher model keys, lets revert skip retired receipt entries, drops retired manifest entries without a conflict, and moves the shared backup helpers and the read limit out of `src/hosts/codex_config.rs`. This slice deletes an API only after that layer has landed. Before then it takes the SPEC and the files that need no removed API.
 
 ## Non-goals
 
 - The launcher (`moai codex`, launcher roles, model questions) and the home update (`~/.codex`, `~/.agents/skills`, the Codex status line): another slice.
-- The shipped skill text, the docs, the install scripts and CI: another slice. Where a test pins skill text that this SPEC's behaviour changes, the test is edited here only for the lines it pins.
-- Deleting or rewriting any card or SPEC that describes Codex work; deleting any file under `~/.codex`, `.codex/` or `.omp/`.
-- The Go-generation migration's read-only classification of `.codex` files (`go_state`): it answers `leave` and stays.
-- Lane-loop and leader-round wording that mentions Codex: the slice that owns the lane tooling.
+- The shipped skill text, the docs, the install scripts and CI: another slice.
+- The lane-loop, lane-stop-hook, goal and leader-round Codex parts: another slice (D9).
+- The compatibility layer itself: the profile filter, the retired launcher keys, the receipt skips of the home files, the manifest rule and the move of the backup helpers and the read limit.
+- Deleting or rewriting any card or SPEC that describes Codex work; deleting any file under a user's Codex home, `.codex/` or `.omp/`.
+- Keeping the repository's own profile files in step: they are regenerated with the new binary after the removal, together with their manifests.
+- Kept on purpose (D6): the Go-generation `.codex` classification of `go_state`, the `~/.codex` handling of `update_cleanup` as read-only detection, the protection of the Codex worktree folder in `worktree_gc` and of `.codex/` in `gate`, the stored-record variants of `decision` and the slugs of `user_assets`.
 
 ## Requirements
 
 - REQ-1: The project-update-plan preview shall list no step named codex-hooks or codex-config or codex-skill or omp-hooks or omp-config or omp-agents.
 - REQ-2: A project profile that lists codex or omp under hosts shall load and plan without refusal.
-- REQ-3: The project-update-plan preview shall name every ignored host in an ignored_hosts list with the note that moai no longer manages it.
+- REQ-3: The project-update-plan preview shall carry one information step named retired-hosts that lists the files of a retired host and writes nothing.
 - REQ-4: The project-update-plan preview and apply shall leave every file under the .codex and .omp folders unchanged.
-- REQ-5: The project-skill-plan command shall refuse the host codex and name the host as no longer managed.
-- REQ-6: The project-skill-revert command shall restore a copy that an earlier receipt recorded for codex.
-- REQ-7: The hooks-plan command shall refuse the host flags codex and omp and plan only the Claude Code hook set.
+- REQ-5: The project-skill-plan command shall filter a retired host out of its request and plan the rest.
+- REQ-6: The project-skill-revert command shall skip a receipt entry that names a retired host and report the skip.
+- REQ-7: The hook-dispatch command shall answer the host codex or omp with one line saying the host was removed and exit zero without allowing or blocking anything.
 - REQ-8: The generation shall write no file under the .codex folder and no projection for a host other than Claude Code.
 - REQ-9: The interview's host question shall offer Claude Code only.
-- REQ-10: The command registry shall carry no command named codex-config-plan or codex-config-apply or codex-projection-plan or codex-projection-apply or codex-doctor or lane-stop-hook.
+- REQ-10: The command registry shall carry no command named codex-config-plan or codex-config-apply or codex-projection-plan or codex-projection-apply or codex-doctor or agents-project-plan or agents-project-apply.
 - REQ-11: The project detection shall leave the .codex folder out of its MCP read and out of its code walk.
 - REQ-12: The go-state-plan command shall keep classifying Go-generation .codex files as leave.
 
@@ -43,66 +47,72 @@ Nothing here deletes user data. `~/.codex` and a project's `.codex/` or `.omp/` 
 
 - AC-1 (REQ-1): the preview of a project with a full profile lists the Claude steps and none of the six host steps, and the printed undo order names none of them · verify: `cargo test --locked --offline --test project_update_plan_cli no_codex_or_omp_step_is_planned`
 - AC-2 (REQ-2): a profile with `hosts: [claude, codex, omp]` plans without refusal and its profile bytes are not rewritten · verify: `cargo test --locked --offline --test project_update_plan_cli a_profile_that_lists_codex_and_omp_still_loads`
-- AC-3 (REQ-3): the same preview carries `ignored_hosts` with one entry per ignored host, each with the folder it left alone and the note · verify: `cargo test --locked --offline --test project_update_plan_cli ignored_hosts_names_codex_and_omp`
+- AC-3 (REQ-3): the same preview carries the retired-hosts step with action info and the paths it found, and no apply command · verify: `cargo test --locked --offline --test project_update_plan_cli the_retired_hosts_step_only_informs`
 - AC-4 (REQ-4): a project with `.codex/` and `.omp/` files keeps them byte for byte through plan and apply · verify: `cargo test --locked --offline --test project_update_plan_cli the_codex_and_omp_folders_stay_byte_identical`
-- AC-5 (REQ-5): a project-skill-plan request that lists codex is refused with the host named · verify: `cargo test --locked --offline --test project_skill_links codex_host_is_refused`
-- AC-6 (REQ-6): a hand-written receipt that recorded a Codex copy still reverts · verify: `cargo test --locked --offline --test boundary_d3_skill_revert a_receipt_that_names_codex_still_reverts`
-- AC-7 (REQ-7): `hooks-plan --host codex` and `--host omp` are refused and the Claude hook plan is unchanged · verify: `cargo test --locked --offline --test hooks_cli the_codex_and_omp_hosts_are_refused`
+- AC-5 (REQ-5): a project-skill-plan request that lists claude and codex plans the claude copy only, and a request that lists only codex reads as claude · verify: `cargo test --locked --offline --test project_skill_links a_request_that_lists_codex_is_filtered_not_refused`
+- AC-6 (REQ-6): a hand-written receipt with a codex entry and a claude entry reverts the claude entry, skips the codex one and reports the skip · verify: `cargo test --locked --offline --test boundary_d3_skill_revert a_receipt_that_names_codex_is_skipped_and_reported`
+- AC-7 (REQ-7): `hook-dispatch --host codex` and `--host omp` print one line, exit 0 and write no decision · verify: `cargo test --locked --offline --test hook_dispatch_cli a_removed_host_gets_one_line_and_exit_zero`
 - AC-8 (REQ-8): a generation apply writes nothing under `.codex` and the manifest names no other host's projection · verify: `cargo test --locked --offline --test generation_apply_result_cli no_codex_projection_is_written`
 - AC-9 (REQ-9): the host row of the interview offers Claude Code only and a plan with another host in the profile is still accepted · verify: `cargo test --locked --offline --test question_bank_hosts the_host_row_offers_claude_code_only`
-- AC-10 (REQ-10): `moai help` and the command registry list none of the six removed commands · verify: `cargo test --locked --offline --test help_layout no_codex_command_is_listed`
+- AC-10 (REQ-10): `moai help` and the command registry list none of the removed commands · verify: `cargo test --locked --offline --test help_layout no_codex_command_is_listed`
 - AC-11 (REQ-11): detection ignores `.codex/config.toml` MCP entries and does not walk `.codex` and `.omp` · verify: `cargo test --locked --offline --test project_detect_cli codex_folders_are_not_read_or_walked`
 - AC-12 (REQ-12): the Go-generation `.codex` classification still answers leave · verify: `cargo test --locked --offline --test go_state_codex_cli`
 
 ## Scope
 
 - write: `.moai/specs/SPEC-20261121-remove-codex-project-layer/**`
-- write: `src/project_hosts.rs`, `src/project_update.rs`, `src/project_skills.rs`, `src/project_detect.rs`, `src/profile.rs`, `src/lib.rs`
+- write: `src/project_hosts.rs`, `src/project_update.rs`, `src/project_skills.rs`, `src/project_detect.rs`, `src/lib.rs`
 - write: `src/hooks.rs`, `src/hook_engine.rs`, `src/hook_guards.rs`, `src/hook_legacy.rs`, `src/hook_config.rs`, `src/update_hooks.rs`
-- write: `src/generation.rs`, `src/agents.rs`, `src/agent_defs.rs`, `src/agent_install.rs`, `src/omp_agents.rs`, `src/ops/codex_*.rs`, `src/ops/agents_project_*.rs`
-- write: `src/model_effort_questions.rs`, `src/model_effort_settings.rs`, `src/ui_text.rs`, `src/ui_summary.rs`, `src/help.rs`, `src/main.rs`, `src/go_state.rs` (one constant)
-- write: `.moai/project.yaml` and `.moai-cli/project.yaml` (this repository's own profile: the hosts list and the purpose line), `schemas/protocol/v1/profile.schema.json` (the hosts values and a legacy note)
-- write: the tests and fixtures the inventory of `SPEC-20261121-remove-codex-support` marks slice 2, and `docs/cli-text-rationale.md` (the `src/project_hosts.rs` section only)
+- write: `src/generation.rs`, `src/agents.rs`, `src/omp_agents.rs`, `src/ops/codex_*.rs`, `src/ops/agents_project_*.rs`, `src/skills_legacy.rs`, `src/ops/skills_legacy.rs`
+- write: `src/help.rs`, `src/main.rs`, `schemas/protocol/v1/profile.schema.json`, `docs/cli-text-rationale.md`
+- write: the tests and fixtures that call an API this slice removes, and the Codex-only test files of the project layer and the hook adapters, listed in the impact report (sections 2.3 and 2.5)
+- write: the entries of `tools/repo_scans.json` and `tests/cli_text_citations.rs` that name a file this slice removes, in the same commit as that file
 - read-only: every other file, and the `.codex/` and `.omp/` folders of any project
-- read-only: `src/hosts/**` (the sibling slice that removes the shipped adapters holds it; this slice only stops depending on it, see Plan step 3)
-- forbidden: the launcher and home-update sources of the other slice, the shipped skill text, install scripts, any card or SPEC that describes Codex work
+- read-only: `src/hosts/**` until the sibling slice that removes the shipped adapters and the compatibility layer have landed
+- forbidden: the launcher and home-update sources of the other slice, the lane and goal sources, the shipped skill text, install scripts, the repository's own profile and generation files, any card or SPEC that describes Codex work
 
 ## Plan
 
-1. SPEC first (this file), crossed with the inventory of `SPEC-20261121-remove-codex-support`: every slice-2 row is either a requirement here, a deleted test, or named under Risks.
-2. RED: the new tests of the acceptance lines, run first and shown to fail for the right reason.
-3. Compatibility before deletion: `profile.rs` keeps loading legacy hosts and gains the managed and ignored views; `go_state.rs` stops reading a constant of `src/hosts/`.
-4. Project layer: drop the six host steps, add `ignored_hosts`, narrow the project skill copy to Claude Code with a revert-only lookup for the Codex receipt, drop the `.codex` MCP read.
-5. Hook adapters and generation: remove the Codex and OMP paths of the hook commands, the `.codex` generation, the projection commands and the `lane-stop-hook` command; keep the Claude hook behaviour.
-6. Question bank and help: the host row offers Claude Code only; the help table and the command registry drop the removed commands.
-7. Delete the tests and fixtures that only exercised removed code; edit the ones that also pin Claude behaviour.
-8. The unnarrowed affected set on each commit, clippy, rustfmt, `spec check`, then the independent audit (tier 1).
-
-Staging. Other cards hold some of the files at the time of writing, and a lane takes none of them over. Stage 1 takes the files nobody else holds: the project skill copy, the detection, the profile files and schema, the Go-generation constant, the hook adapters, the generation and the question bank. Stage 2 takes `src/project_update.rs` and `src/profile.rs` when their holders release them: it deletes `src/project_hosts.rs`, the host steps and the undo entries, and adds `ignored_hosts` and the managed view. Until then `src/project_hosts.rs` stays with its steps compiled out to an empty list, so the preview already lists none. Stage 3 takes `src/help.rs` and `src/hook_config.rs` for the removed commands once their holders release them. A stage that waits for a holder is named in the card, not waited on.
+1. SPEC first (this file), crossed with the inventory of `SPEC-20261121-remove-codex-support` and with the impact report: every row of the project-layer, hook and generation areas is a requirement here, a deleted test, or named under Risks.
+2. Before the compatibility layer lands: this SPEC, and the files that need no removed API: the project skill copy (REQ-5, REQ-6) and the detection (REQ-11), with their tests.
+3. After it has landed, in one commit per area so the crate compiles at each step: the host steps and `src/project_hosts.rs` with the `retired-hosts` step; the hook adapters (`hooks.rs`, `hook_engine.rs`, `hook_legacy.rs`, `hook_guards.rs`); the generation and `omp_agents.rs` with the projection and doctor commands; each with the tests that call what it removes, and with the help table, golden files and scan entries that name a removed file.
+4. The codex skill host and the omp agent host go in the same commit (the skill host mapping in `update.rs` binds both).
+5. The unnarrowed affected set on each commit, clippy with all targets, rustfmt, `spec check`, then the independent audit (tier 1).
 
 ## Risks
 
-- A removal in one file breaks a test another slice owns. Mitigation: each commit runs the affected set; a test that pins removed behaviour is edited in the same commit as the code it pins.
-- `src/help.rs`, `src/main.rs` and `tests/cli_text_citations.rs` are edited by other slices too. Mitigation: edit only the lines of the removed commands and merge the tip once on overlap.
-- `src/agents.rs` reads `profile.hosts` raw and prints it into the generated AGENTS.md. Mitigation: switch it to the managed view in the same commit that adds the view.
-- A profile that lists only codex has an empty managed view. Mitigation: the hooks step goes by the Claude flag, not by the list, and the preview names the ignored host.
-- Files other cards hold: `src/project_update.rs`, `src/profile.rs`, `src/hook_config.rs`, `src/help.rs`, `src/hosts/*` and one test file. Mitigation: the Staging paragraph of the Plan; a held file is asked for through the holder's card, never taken.
-- The sibling slice deletes `src/hosts/*` while `src/go_state.rs` reads a constant of it. Mitigation: this slice's `go_state` edit lands first, and the sibling merges after it; if the order flips the crate stops compiling, so the order is a note on both cards.
-- The inventory marks `tests/go_state_codex_cli.rs` (268 lines) as slice 2 and codex-only, while D-5 keeps the Go-generation `.codex` classification and its tests. Mitigation: keep it until the leader decides; deleting both later is one commit.
-- The inventory matches `omp` without a word boundary, so words such as "completed" count: `src/progress.rs` has one real Codex mention (a comment citing a past review) among its matches, and `src/statusline/counts.rs` has one comment of the same kind. Mitigation: those two comments stay (history, not support); the inventory owner should match whole words before slice counts are quoted.
-- Dropping the `.codex/config.toml` MCP read changes `detected.mcp_servers` once for a project that had a Codex MCP config. Mitigation: D-4, reversible.
+- The compatibility layer is not on the tip yet. Mitigation: nothing that deletes an API is committed before it lands; the merge order is a note on the card.
+- A removal in one file breaks a test another slice owns. Mitigation: a test that calls a removed API changes in the same commit as that API.
+- `src/help.rs`, `src/main.rs` and `tests/cli_text_citations.rs` are edited by sibling slices too. Mitigation: edit only the lines of the removed commands and merge the tip once on overlap.
+- Files other cards hold at the time of writing: `src/project_update.rs`, `src/profile.rs`, `src/hook_config.rs`, `src/help.rs`, `src/hosts/*`, `src/lib.rs` and one test file. Mitigation: a held file is asked for through the holder's card, never taken.
+- `src/agents.rs` prints the profile hosts into the generated AGENTS.md. Mitigation: after the profile filter lands the section changes once and the next plan shows an update, which is expected.
+- `tests/go_state_codex_cli.rs` stays (D6); the inventory marks it for removal. Mitigation: D-5.
+- The inventory matches `omp` without a word boundary. Mitigation: those counts are not quoted; `src/progress.rs` and `src/statusline/counts.rs` keep their comments.
+- `hooks.rs` uses the backup helpers of `src/hosts/codex_config.rs`. Mitigation: the compatibility layer moves them first.
+- `tests/project_skills_generation.rs` pins the `.agents/skills` and codex host behaviour of `src/generation.rs`. It is green now and goes red when the generation stage lands. Mitigation: that stage edits it in the same commit.
+- `.moai-cli/manifests/profile-baseline.json` holds the repository profile's purpose and hosts. Mitigation: it is refreshed together with the two profile files after the regeneration.
 
 ## Decisions
 
 | Id | Decision | Basis | Undo |
 | --- | --- | --- | --- |
-| D-1 | OMP is removed together with Codex in this slice | the card body of the removal names "Codex (and OMP)"; the OMP steps sit in the same module as the Codex steps | restore the OMP steps from history |
-| D-2 | a profile that lists codex or omp loads; the entries are ignored with a note and the file bytes are not rewritten | the user decision keeps existing projects usable; rewriting a user's profile needs its own decision | add a profile migration later |
-| D-3 | a project-skill-plan request that lists codex is refused, and revert of an old Codex receipt keeps working | a refusal says what changed; a revert must still undo what an older moai wrote | accept and drop with a warning |
-| D-4 | the `.codex/config.toml` MCP read is removed from detection | moai no longer manages Codex files, and reading one for Claude's profile would still be a Codex dependency | keep the read |
-| D-5 | the Go-generation `.codex` classification in `go_state` stays | it only answers leave and protects user files | remove with the migration itself |
-| D-6 | `ignored_hosts` is a new top-level key of the preview and the existing `leftovers` lists are not reused | tests pin exact `leftovers` lists for fixtures that list codex and omp | fold into `leftovers` later |
+| D-1 | OMP is removed together with Codex in this slice | the removal decision names Codex and OMP; the OMP steps sit beside the Codex steps | restore the OMP steps from history |
+| D-2 | a retired host in a profile is filtered out when it is read, never refused; an empty list reads as claude; the next save drops it | leader decision D1 | refuse instead, which breaks every profile that lists codex |
+| D-3 | a receipt entry that names a retired host is skipped at revert and reported | leader decision D3 | revert it as before |
+| D-4 | the `.codex/config.toml` MCP read of the detection is removed and the `.codex` and `.omp` skip list stays | the impact report: the skip list keeps leftover folders out of the source count | keep the read |
+| D-5 | the Go-generation `.codex` classification of `go_state` and its test stay | leader decision D6; it only answers leave | remove with the migration |
+| D-6 | the preview carries one information step named retired-hosts and the existing leftovers lists are not reused | tests pin exact leftovers lists | fold into leftovers |
+| D-7 | an API is deleted only after the compatibility layer has landed | leader instruction; the impact report orders it so the tip stays green | none needed |
+| D-8 | hook-dispatch for a removed host prints one line and exits zero | leader decision D5 | exit with an engine error |
+| D-9 | the repository's own profile files are regenerated with the new binary, not edited by hand | the impact report: the manifests hold their hashes | edit by hand |
 
 ## Result
 
-Not started: SPEC only.
+Stage before the compatibility layer, on this branch: REQ-5, REQ-6 and REQ-11 are coded and tested; the rest waits for the compatibility layer (D-7).
+
+The RED lines below are the implementing agent's report of its own runs on the sources before the change (not re-run here); the passes are this lane's own run.
+
+- AC-5 met: `a_request_that_lists_codex_is_filtered_not_refused` failed first (left `["claude","codex"]`, right `["claude"]`) and passes now; `project_skill_links` 7 passed, `project_skill_apply_gate_cli` 10 passed, `skill_name_collision` 5 passed, `empty_parent_prune_cli` 5 passed, `project_skills_generation` 11 passed (run in this session, `cargo_exit=0`).
+- AC-6 met: `a_receipt_that_names_codex_is_skipped_and_reported` failed first (the revert returned no `skipped` key) and passes now; `boundary_d3_skill_revert` 4 passed.
+- AC-11 met: `codex_folders_are_not_read_or_walked` failed first (`mcp_servers` was `["docs"]`) and passes now; `project_detect_cli` 25 passed.
+- Not run in this stage: AC-1 to AC-4 and AC-7 to AC-10 (they need the compatibility layer first), AC-12 (the sources of `go_state` are unchanged), the whole suite, the unnarrowed affected set, clippy by this lane (the implementing agent reported it clean; not observed here), and the independent audit.
