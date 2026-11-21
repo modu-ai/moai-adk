@@ -472,10 +472,12 @@ pub fn plan(
     };
     refuse_in_build_folder(&path, "worktree path")?;
     // The worktree's build folder under the shared build root (S8, the C-82 convention):
-    // the same value heavy-slot computes at runtime from the worktree's folder name.
+    // named exactly as heavy-slot names it at runtime, through the same `folder_name`
+    // (the project prefix is part of that name for a worktree outside the default shape).
     let build_folder = home.and_then(|h| {
-        path.file_name()
-            .map(|n| crate::lane_env::build_folder(h, &n.to_string_lossy()))
+        crate::lane_env::folder_name(&primary.join(".git"), &path)
+            .ok()
+            .map(|n| crate::lane_env::build_folder(h, &n))
     });
     let content = json!({
         "task_key": rec.task_key,
@@ -544,6 +546,46 @@ fn conflict(rec: &ClaimRecord, reason: &str, plan: &Value, existing: Vec<Value>)
         out["next"] = json!(next);
     }
     out
+}
+
+/// Creates `dir` and its missing parents under the HOME root — the build tree the lane's
+/// lane-env expects — with the private mode at every level it makes (S8: the whole tree is
+/// 0700, like lane_env's prepare). A link or a regular file in any occupied slot is an
+/// error naming that path; existing folders are left as they are.
+fn make_private_dir(dir: &Path) -> Result<()> {
+    // <HOME>/.moai/build/<name>: stop at the third ancestor (the HOME root), never touch
+    // anything outside the build tree.
+    let stop = dir.ancestors().nth(3).unwrap_or(dir);
+    let mut chain: Vec<PathBuf> = Vec::new();
+    let mut cur = Some(dir);
+    while let Some(p) = cur {
+        if p == stop {
+            break;
+        }
+        chain.push(p.to_path_buf());
+        cur = p.parent();
+    }
+    for p in chain.iter().rev() {
+        match fs::symlink_metadata(p) {
+            Ok(m) if m.file_type().is_symlink() => {
+                return Err(format!("{} is a link; it is not followed", p.display()));
+            }
+            Ok(m) if m.is_dir() => continue,
+            Ok(_) => {
+                return Err(format!(
+                    "{} is not a folder; it is not followed",
+                    p.display()
+                ))
+            }
+            Err(_) => {
+                let mut b = fs::DirBuilder::new();
+                #[cfg(unix)]
+                std::os::unix::fs::DirBuilderExt::mode(&mut b, 0o700);
+                b.create(p).map_err(|e| format!("{}: {e}", p.display()))?;
+            }
+        }
+    }
+    Ok(())
 }
 
 /// REQ-06C-02/03: create the worktree, or report the existing owner; the add is never forced.
@@ -637,26 +679,8 @@ pub fn apply(
                 Ok(m) if m.file_type().is_symlink() => {
                     Some(format!("{} is a link; it is not followed", dir.display()))
                 }
-                Ok(_) => None,
-                Err(_) => {
-                    // The parents (<HOME>/.moai/build) may not exist yet; only the leaf
-                    // gets the private mode, like lane_env's real_dir.
-                    let made = dir
-                        .parent()
-                        .map(fs::create_dir_all)
-                        .unwrap_or(Ok(()))
-                        .and_then(|()| {
-                            let mut b = fs::DirBuilder::new();
-                            #[cfg(unix)]
-                            std::os::unix::fs::DirBuilderExt::mode(&mut b, 0o700);
-                            b.create(dir)
-                        });
-                    match made {
-                        Ok(()) => None,
-                        Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => None,
-                        Err(e) => Some(format!("{}: {e}", dir.display())),
-                    }
-                }
+                Ok(m) if m.is_dir() => None,
+                _ => make_private_dir(dir).err(),
             }
         }
         None => None,
