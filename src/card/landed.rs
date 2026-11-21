@@ -14,8 +14,9 @@
 //! several cards share lets the trailer proof hide a sibling, so the skip entry names its proof
 //! and one explicit `card take` still works.
 //!
-//! The git proofs need the profile's m-flow integration branch. Without it (or when git cannot
-//! read it) only the recorded proofs are used and the answer says so in `landing`. Every git
+//! The git proofs need the integration branch ([`integration_branch`]: the record in the common
+//! git folder, then the profile's m-flow value). Without it (or when git cannot read it) only the
+//! recorded proofs are used and the answer says so in `landing`. Every git
 //! command runs through `scrub_git_env` and takes its program from `MOAI_GIT_BIN` when that is
 //! set, like the other card commands; all of them are read-only except [`move_branch`], the one
 //! reference update of `card land` (SPEC-20261121-card-land).
@@ -117,9 +118,20 @@ fn git(project: &Path, args: &[&str]) -> Result<Output, String> {
         .map_err(|e| format!("git could not run: {e}"))
 }
 
-/// The profile's integration branch, or the reason there is none: only an m-flow profile with
-/// an `integration_branch` has one.
+/// The integration branch of the repository, or the reason there is none: the record in the
+/// common git folder first (one value for every worktree, SPEC-20261121-ref-guard), and for a
+/// repository with no record the profile's value.
 pub fn integration_branch(project: &Path) -> Result<String, String> {
+    if let Some(recorded) = super::guard::recorded_branch(project) {
+        return Ok(recorded);
+    }
+    profile_branch(project)
+}
+
+/// The profile's integration branch, or the reason there is none: only an m-flow profile with
+/// an `integration_branch` has one. The profile is a tracked file, so this is the value of the
+/// worktree's own branch; [`integration_branch`] prefers the record.
+pub fn profile_branch(project: &Path) -> Result<String, String> {
     let Ok((profile, _)) = crate::profile::read_profile(project) else {
         return Err("the project profile cannot be read".to_string());
     };

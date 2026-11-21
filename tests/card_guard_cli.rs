@@ -716,8 +716,8 @@ fn ac9_the_record_is_the_one_value_and_the_profile_only_seeds_it() {
 // ---- AC-10: the hook text and the aborted transaction ------------------------------------------
 
 /// AC-10: the hook text is a shell script that holds the guard's command and no branch name and
-/// reads the record, and a transaction the guard refuses as a whole leaves the intent record where
-/// it was.
+/// reads the record, and a transaction that the guard allows and git then aborts leaves the intent
+/// record where it was.
 #[test]
 fn ac10_the_hook_text_has_no_branch_name_and_an_aborted_transaction_keeps_the_record() {
     let text = guard::hook_text();
@@ -734,13 +734,17 @@ fn ac10_the_hook_text_has_no_branch_name_and_an_aborted_transaction_keeps_the_re
     w.install();
     let (a, b) = (w.a.clone(), w.b.clone());
     w.write_intent("refs/heads/Integ", &a, &b);
-    // One transaction: the allowed move of the integration branch and a variant's creation.
+    // One transaction the guard allows and git then aborts: the record must stay.
     let out = w.try_git_stdin(
         &w.repo,
         &["update-ref", "--stdin"],
-        &format!("start\nupdate refs/heads/Integ {b} {a}\ncreate refs/heads/integ {b}\nprepare\ncommit\n"),
+        &format!("start\nupdate refs/heads/Integ {b} {a}\nprepare\nabort\n"),
     );
-    w.refused(&out);
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
     tree_clean(&w);
     assert!(
         w.intent_exists(),

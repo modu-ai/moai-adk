@@ -1497,6 +1497,53 @@ fn finish_plan(
     }))
 }
 
+/// The ledger row `card land` writes before it moves the integration branch (SPEC-20261121-ref-guard,
+/// D-8): the free event kind `card.land_started` with the branch, the tip that was read, the
+/// candidate head and the caller. It is written in one transaction that runs every check of
+/// [`finish`], so it is refused for the same reasons and a refused call leaves no row; one row
+/// exists per card, head and tip (a rerun finds it and writes none). Returns whether a row was
+/// written. A close refused after the move leaves the row as the ledger's record of the move.
+#[allow(clippy::too_many_arguments)]
+pub fn record_land_started(
+    w: &mut WriteLedger,
+    card_id: i64,
+    session: Option<&str>,
+    by: &str,
+    evidence: &FinishEvidence<'_>,
+    met: &[(i64, String)],
+    generation: Option<i64>,
+    branch: &str,
+    from_tip: &str,
+) -> Result<bool, WorkflowError> {
+    finish_input_checks(by, met, evidence)?;
+    w.with_write_tx(|tx, now| {
+        if let Err(e) = finish_plan(tx, card_id, session, by, evidence, met, generation, now)? {
+            return Ok(Err(e));
+        }
+        let FinishEvidence::Landing { head, .. } = evidence else {
+            return Ok(Ok(false));
+        };
+        let exists: bool = tx.query_row(
+            "SELECT EXISTS (SELECT 1 FROM event WHERE card_id = ?1 AND kind = 'card.land_started' \
+             AND json_extract(payload, '$.head') = ?2 AND json_extract(payload, '$.tip') = ?3)",
+            params![card_id, head, from_tip],
+            |r| r.get(0),
+        )?;
+        if exists {
+            return Ok(Ok(false));
+        }
+        reservation::add_event(
+            tx,
+            now,
+            session.unwrap_or("user"),
+            card_id,
+            "card.land_started",
+            &json!({"branch": branch, "tip": from_tip, "head": head, "by": by}),
+        )?;
+        Ok(Ok(true))
+    })?
+}
+
 /// What [`finish`] would refuse before its first write, asked without writing anything: the same
 /// checks, run against the ledger as it is now. `Ok(())` is no promise: a call that gets in
 /// between can change the ledger, and the write transaction checks again. `card land` uses it so

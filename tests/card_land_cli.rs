@@ -415,6 +415,62 @@ impl World {
         name
     }
 
+    /// Asserts a refusal of the move itself: exit 1, `ok` false, the error kind, a reason that
+    /// holds one of `any_of`, `integ` still at `integ_before`, every table but `event` equal to
+    /// `before` and exactly one more event than before, the start row of `card` (SPEC-20261121-
+    /// ref-guard: the row is written before the move, so a refused update leaves it). Returns the
+    /// message.
+    fn refuse_the_move(
+        &self,
+        out: &Output,
+        kind: &str,
+        any_of: &[&str],
+        before: &[String],
+        integ_before: &str,
+        card: &str,
+    ) -> String {
+        assert_eq!(
+            out.status.code(),
+            Some(1),
+            "{}",
+            String::from_utf8_lossy(&out.stdout)
+        );
+        let v = envelope(out);
+        assert_eq!(v["ok"], json!(false), "{v}");
+        assert_eq!(v["error"]["kind"], json!(kind), "{v}");
+        let message = v["error"]["message"].as_str().unwrap().to_string();
+        assert!(
+            any_of.iter().any(|needle| message.contains(needle)),
+            "the reason names none of {any_of:?}: {message}"
+        );
+        assert_eq!(self.integ(), integ_before, "the refused call moved integ");
+        let split = |d: &[String]| {
+            let rest: Vec<String> = d
+                .iter()
+                .filter(|l| !l.starts_with("event:"))
+                .cloned()
+                .collect();
+            (rest, d.len() - rest_len(d))
+        };
+        fn rest_len(d: &[String]) -> usize {
+            d.iter().filter(|l| !l.starts_with("event:")).count()
+        }
+        let (after_rest, after_events) = split(&self.dump());
+        let (before_rest, before_events) = split(before);
+        assert_eq!(
+            after_rest, before_rest,
+            "the refused move wrote beyond the start row"
+        );
+        assert_eq!(after_events, before_events + 1, "expected one new event");
+        assert_eq!(
+            self.events(card, "card.land_started"),
+            1,
+            "the start row is missing"
+        );
+        assert_eq!(self.events(card, "card.landed"), 0);
+        message
+    }
+
     /// A draft SPEC with every placeholder filled, so `spec check` passes it; returns its id.
     fn draft_spec(&self, slug: &str) -> String {
         let out = self.run(
@@ -530,7 +586,7 @@ fn ac2_a_branch_that_moved_under_the_call_refuses_with_tip_moved() {
             "leader",
         ],
     );
-    w.refuse(&out, "conflict", &["tip_moved"], &before, &other);
+    w.refuse_the_move(&out, "conflict", &["tip_moved"], &before, &other, &card);
 }
 
 // ---- AC-3: a candidate already inside the tip ------------------------------------------------
@@ -1061,7 +1117,14 @@ fn ac18_an_update_ref_failure_that_is_no_move_is_not_called_tip_moved() {
         &card,
         &["--head", &candidate, "--met", "1=x", "--by", "leader"],
     );
-    let message = w.refuse(&out, "invalid_input", &["git refused"], &before, &w.tip);
+    let message = w.refuse_the_move(
+        &out,
+        "invalid_input",
+        &["git refused"],
+        &before,
+        &w.tip,
+        &card,
+    );
     assert!(!message.contains("tip_moved"), "{message}");
     assert!(message.contains("lock"), "git's reason is named: {message}");
 }
@@ -1305,7 +1368,9 @@ fn ac21_a_take_between_the_checks_and_the_close_is_named_after_the_move() {
 #[test]
 fn ac22_the_answer_reports_a_variant_and_a_disagreeing_profile() {
     let w = World::new();
-    // A packed variant of the branch's name, made before the call.
+    // A packed variant of the branch's name, made before the call: the branch is packed first,
+    // because on a case-insensitive file system a loose variant is the branch's own file.
+    git(&w.project, &["pack-refs", "--all"]);
     git(&w.project, &["update-ref", "refs/heads/INTEG", &w.tip]);
     git(&w.project, &["pack-refs", "--all"]);
     // The record exists and the profile names another branch.
