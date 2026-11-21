@@ -61,6 +61,7 @@ Nothing here deletes user data. `~/.codex` and a project's `.codex/` or `.omp/` 
 - write: `src/hooks.rs`, `src/hook_engine.rs`, `src/hook_guards.rs`, `src/hook_legacy.rs`, `src/hook_config.rs`, `src/update_hooks.rs`
 - write: `src/generation.rs`, `src/agents.rs`, `src/agent_defs.rs`, `src/agent_install.rs`, `src/omp_agents.rs`, `src/hosts/**`, `src/ops/codex_*.rs`, `src/ops/agents_project_*.rs`
 - write: `src/model_effort_questions.rs`, `src/model_effort_settings.rs`, `src/ui_text.rs`, `src/ui_summary.rs`, `src/help.rs`, `src/main.rs`, `src/go_state.rs` (one constant)
+- write: `.moai/project.yaml` and `.moai-cli/project.yaml` (this repository's own profile: the hosts list and the purpose line), `schemas/protocol/v1/profile.schema.json` (the hosts values and a legacy note)
 - write: the tests and fixtures the inventory of `SPEC-20261121-remove-codex-support` marks slice 2, and `docs/cli-text-rationale.md` (the `src/project_hosts.rs` section only)
 - read-only: every other file, and the `.codex/` and `.omp/` folders of any project
 - forbidden: the launcher and home-update sources of the other slice, the shipped skill text, install scripts, any card or SPEC that describes Codex work
@@ -82,6 +83,8 @@ Nothing here deletes user data. `~/.codex` and a project's `.codex/` or `.omp/` 
 - `src/help.rs`, `src/main.rs` and `tests/cli_text_citations.rs` are edited by other slices too. Mitigation: edit only the lines of the removed commands and merge the tip once on overlap.
 - `src/agents.rs` reads `profile.hosts` raw and prints it into the generated AGENTS.md. Mitigation: switch it to the managed view in the same commit that adds the view.
 - A profile that lists only codex has an empty managed view. Mitigation: the hooks step goes by the Claude flag, not by the list, and the preview names the ignored host.
+- The inventory marks `tests/go_state_codex_cli.rs` (268 lines) as slice 2 and codex-only, while D-5 keeps the Go-generation `.codex` classification and its tests. Mitigation: keep it until the leader decides; deleting both later is one commit.
+- The inventory matches `omp` without a word boundary, so words such as "completed" count: `src/progress.rs` has one real Codex mention (a comment citing a past review) among its matches, and `src/statusline/counts.rs` has one comment of the same kind. Mitigation: those two comments stay (history, not support); the inventory owner should match whole words before slice counts are quoted.
 - Dropping the `.codex/config.toml` MCP read changes `detected.mcp_servers` once for a project that had a Codex MCP config. Mitigation: D-4, reversible.
 
 ## Decisions
