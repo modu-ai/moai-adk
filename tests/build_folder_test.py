@@ -789,6 +789,115 @@ class AuditPlaceTest(unittest.TestCase):
         self.assertTrue(os.path.islink(self.place))
         self.assertEqual(git(self.fx.wt, "rev-parse", "HEAD").strip(), before)
 
+    def test_a_head_that_changes_a_gitignore_is_refused_while_ignored_files_are_there(self):
+        # Audit N1: `clean` after the move reads the new head's rules, which would delete files the
+        # old rules ignored. The move is refused and nothing changes.
+        repo = self.fx.repo
+        git(repo, "rm", "-q", ".gitignore")
+        git(repo, "commit", "-q", "-m", "drop the ignore file")
+        no_ignore = git(repo, "rev-parse", "HEAD").strip()
+        self.answer(self.call(self.c3))
+        (self.place / "target").mkdir()
+        (self.place / "target" / "evidence.log").write_text("keep\n")
+        out = self.call(no_ignore)
+        self.assertEqual(out.returncode, 1, out.stdout)
+        self.assertIn("ignore_rules_changed", out.stderr)
+        self.assertEqual(self.head_in_place(), self.c3)
+        self.assertEqual((self.place / "target" / "evidence.log").read_text(), "keep\n")
+        # Without ignored files the same move is allowed.
+        (self.place / "target" / "evidence.log").unlink()
+        (self.place / "target").rmdir()
+        got = self.answer(self.call(no_ignore))
+        self.assertEqual(got["head"], no_ignore)
+
+    def test_a_place_whose_git_file_points_at_another_repository_is_refused(self):
+        # Audit N2: the path is registered here, but its `.git` leads to a clone's worktree.
+        self.answer(self.call(self.c1))
+        clone = self.fx.home / "clone"
+        git(self.fx.home, "clone", "-q", str(self.fx.repo), str(clone))
+        other = self.fx.home / "other-wt"
+        git(clone, "worktree", "add", "-q", "--detach", str(other), self.c1)
+        (self.place / ".git").write_text((other / ".git").read_text())
+        out = self.call(self.c3)
+        self.assertEqual(out.returncode, 1, out.stdout)
+        self.assertIn("another repository", out.stderr)
+        self.assertEqual(git(other, "rev-parse", "HEAD").strip(), self.c1)
+        self.assertEqual(git(other, "status", "--porcelain").strip(), "")
+
+    def test_a_refusal_after_the_worktree_was_made_takes_it_back(self):
+        # Audit N3: a build folder of another worktree, and a file in the way of the owner record.
+        other = self.folder
+        other.mkdir(parents=True)
+        (other / ".moai-build.json").write_text(json.dumps(
+            {"schema_version": 1, "git_common_dir": "/x/.git", "worktree": "/some/other/worktree"}))
+        out = self.call(self.c1)
+        self.assertEqual(out.returncode, 1, out.stdout)
+        self.assertFalse(self.place.exists())
+        self.assertEqual(len(git(self.fx.repo, "worktree", "list", "--porcelain").split("worktree ")), 3)
+        (other / ".moai-build.json").unlink()
+        (other / ".moai-build.json.tmp").write_text("in the way")
+        out = self.call(self.c1)
+        self.assertEqual(out.returncode, 1, out.stdout)
+        self.assertFalse(self.place.exists(), "a place made by a refused run is taken back")
+        self.assertEqual(len(git(self.fx.repo, "worktree", "list", "--porcelain").split("worktree ")), 3)
+        (other / ".moai-build.json.tmp").unlink()
+        self.assertEqual(self.answer(self.call(self.c1))["head"], self.c1)  # not stuck
+
+    def test_a_linked_build_root_refuses_before_a_place_is_made(self):
+        elsewhere = self.fx.home / "elsewhere"
+        elsewhere.mkdir()
+        (self.fx.home / ".moai").mkdir()
+        os.symlink(elsewhere, self.fx.home / ".moai" / "build")
+        out = self.call(self.c1)
+        self.assertEqual(out.returncode, 1, out.stdout)
+        self.assertFalse(self.place.exists())
+        self.assertEqual(list(elsewhere.iterdir()), [])
+
+    def test_an_untracked_nested_repository_is_taken_back_too(self):
+        # Audit N4: `git clean -fd` keeps a nested repository and the place would be stuck.
+        self.answer(self.call(self.c1))
+        nested = self.place / "nested"
+        nested.mkdir()
+        git(nested, "init", "-q")
+        (nested / "f.txt").write_text("x\n")
+        got = self.answer(self.call(self.c2))
+        self.assertGreaterEqual(got["taken_back"], 1)
+        self.assertFalse(nested.exists())
+        self.assertEqual(git(self.place, "status", "--porcelain").strip(), "")
+
+    def test_only_a_detached_place_made_by_audit_place_is_moved(self):
+        # Audit N5: a branch checked out in the place, or a worktree someone else made there.
+        self.answer(self.call(self.c1))
+        git(self.place, "checkout", "-q", "-b", "feat")
+        (self.place / "a.txt").write_text("edited\n")
+        out = self.call(self.c2)
+        self.assertEqual(out.returncode, 1, out.stdout)
+        self.assertIn("branch checked out", out.stderr)
+        self.assertEqual((self.place / "a.txt").read_text(), "edited\n")
+        git(self.place, "checkout", "-q", "--detach", "-f", self.c1)
+        marker = self.folder / ".moai-audit-place.json"
+        marker.unlink()
+        out = self.call(self.c2)
+        self.assertEqual(out.returncode, 1, out.stdout)
+        self.assertIn("not made by audit-place", out.stderr)
+        self.assertEqual(self.head_in_place(), self.c1)
+
+    def test_a_place_folder_deleted_by_hand_is_made_again(self):
+        # Audit N6: git still lists the deleted folder as a worktree.
+        import shutil
+        self.answer(self.call(self.c1))
+        shutil.rmtree(self.place)
+        got = self.answer(self.call(self.c2))
+        self.assertTrue(got["created"], got)
+        self.assertEqual(self.head_in_place(), self.c2)
+
+    def test_the_owner_marker_names_the_place(self):
+        self.answer(self.call(self.c1, extra_env={"CARGO_HOME": "/cargo/one"}))
+        mark = json.loads((self.folder / ".moai-audit-place.json").read_text())
+        self.assertEqual(mark["place"], os.path.realpath(self.place))
+        self.assertEqual(mark["cargo_home"], "/cargo/one")
+        self.assertEqual(mark["head"], self.c1)
+
     def test_a_held_cargo_lock_stops_the_move(self):
         self.answer(self.call(self.c1))
         cargo_output(self.folder)

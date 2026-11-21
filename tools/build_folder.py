@@ -433,16 +433,48 @@ def cmd_audit_place(name, head):
     project = project_name(common)
     root = home()
     place = root / ".moai" / "worktrees" / project / f"audit-{name}"
+    place_real = os.path.realpath(place)
     parents = [root / ".moai", root / ".moai" / "worktrees", root / ".moai" / "worktrees" / project]
     for parent in parents:
         if not real_dir(parent, create=False):
             break  # the rest is made below, after every refusal has been checked
     created = not os.path.lexists(place)
+    if created and place_real in registered_worktrees("."):
+        git(".", "worktree", "prune")  # the folder was deleted by hand: forget its registration
+    # The build folder is looked at before anything is made or moved: a link on its path or a
+    # record of another worktree refuses while nothing has changed yet.
+    wt_name = safe(place.name)
+    folder_name = wt_name if wt_name == project or wt_name.startswith(project + "-") \
+        else f"{project}-{wt_name}"
+    build_root = root / ".moai" / "build"
+    wanted_folder = build_root / folder_name
+    if real_dir(root / ".moai", create=False) and real_dir(build_root, create=False):
+        if real_dir(wanted_folder, create=False):
+            record = read_record(wanted_folder)
+            if record is not None and record.get("worktree") not in (None, place_real):
+                raise Refused(f"{wanted_folder} belongs to the worktree {record.get('worktree')}")
     if not created:
         if os.path.islink(place) or not os.path.isdir(place):
             raise Refused(f"{place} is a link or not a folder; it is not followed")
-        if os.path.realpath(place) not in registered_worktrees("."):
-            raise Refused(f"{place} is not a worktree of this repository; nothing was changed")
+        if place_real not in registered_worktrees("."):
+            raise Refused(f"{place} is not a worktree of this repository (names are compared in "
+                          "letter case); nothing was changed")
+        place_common = Path(git(place, "rev-parse", "--git-common-dir"))
+        if not place_common.is_absolute():
+            place_common = place / place_common
+        if os.path.realpath(place_common) != str(common):
+            raise Refused(f"{place} belongs to another repository; nothing was changed")
+        try:
+            git(place, "symbolic-ref", "-q", "HEAD")
+        except Refused:
+            pass  # a detached HEAD, as a place always is
+        else:
+            raise Refused(f"{place} has a branch checked out; it is not an audit place")
+        mine = read_place_record(wanted_folder) if os.path.isdir(wanted_folder) else {}
+        if mine.get("place") != place_real:
+            raise Refused(f"{place} was not made by audit-place (no record in {wanted_folder}); "
+                          "remove it with `git worktree remove` or use another name")
+    start = os.getcwd()
     previous = None
     held = []
     try:
@@ -461,9 +493,17 @@ def cmd_audit_place(name, head):
                                   "nothing was changed")
                 held = got
             previous = git(place, "rev-parse", "HEAD")
+            changed = [l for l in git(place, "diff", "--name-only", "--no-renames", previous, head)
+                       .splitlines() if l]
+            # Files git ignores stay; they stay safe only while the ignore rules do not change,
+            # because `clean` after the move reads the new head's rules.
+            if git(place, "ls-files", "--others", "--ignored", "--exclude-standard", "--directory") \
+                    and any(c == ".gitignore" or c.endswith("/.gitignore") for c in changed):
+                raise Refused(f"ignore_rules_changed: {head} changes a .gitignore while {place} "
+                              "holds ignored files; nothing was changed")
             taken_back = len(status_lines(place))
             git(place, "checkout", "--detach", "--force", head)
-            git(place, "clean", "-fd")
+            git(place, "clean", "-ffd")
         os.chdir(place)
         if git(place, "rev-parse", "HEAD") != head or git(place, "rev-parse", "HEAD^{tree}") != tree:
             raise Refused(f"{place} is not at the tree of {head}")
@@ -477,7 +517,18 @@ def cmd_audit_place(name, head):
         folder = ensure_folder()
         wanted = os.environ.get("CARGO_HOME") or str(root / ".cargo")
         old = read_place_record(folder).get("cargo_home")
-        write_place_record(folder, {"schema_version": 1, "cargo_home": wanted, "head": head})
+        write_place_record(folder, {"schema_version": 1, "place": place_real,
+                                    "cargo_home": wanted, "head": head})
+    except BaseException:
+        if created and os.path.lexists(place):
+            # This run made the place: a refusal after that takes it back, so a later call is
+            # not stuck on a half-made place.
+            os.chdir(start)
+            try:
+                git(start, "worktree", "remove", "--force", str(place))
+            except Refused:
+                pass
+        raise
     finally:
         for fd in held:
             os.close(fd)
