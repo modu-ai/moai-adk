@@ -204,11 +204,11 @@ fn file_hash(path: &Path) -> Option<String> {
 
 /// Whether git tracks the path in this project (one listing, never per file).
 fn tracked_paths(project: &Path) -> BTreeSet<String> {
-    let out = std::process::Command::new("git")
-        .arg("-C")
-        .arg(project)
-        .args(["ls-files", "-z"])
-        .output();
+    let mut cmd = std::process::Command::new("git");
+    cmd.arg("-C").arg(project).args(["ls-files", "-z"]);
+    // Every git subprocess in src runs with the scrubbed environment (#2598).
+    crate::identity::scrub_git_env(&mut cmd);
+    let out = cmd.output();
     match out {
         Ok(o) if o.status.success() => String::from_utf8_lossy(&o.stdout)
             .split('\0')
@@ -334,8 +334,9 @@ pub fn survey(project: &Path) -> Survey {
             suggested_action: if marker { "archive" } else { "keep" },
         });
     }
-    // Earlier-generation folders kept whole.
-    for folder in [".moai-cli", ".moai-backups"] {
+    // Earlier-generation folders kept whole. The earlier root's name is spelled only in
+    // lib.rs; every other file takes the constant (#2725 S1).
+    for folder in [crate::PROJECT_STATE_DIR, ".moai-backups"] {
         let rel = folder.to_string();
         if fs::symlink_metadata(project.join(folder)).is_ok_and(|m| m.is_dir()) {
             items.push(Item {
