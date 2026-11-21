@@ -59,11 +59,12 @@ Nothing here deletes user data. `~/.codex` and a project's `.codex/` or `.omp/` 
 - write: `.moai/specs/SPEC-20261121-remove-codex-project-layer/**`
 - write: `src/project_hosts.rs`, `src/project_update.rs`, `src/project_skills.rs`, `src/project_detect.rs`, `src/profile.rs`, `src/lib.rs`
 - write: `src/hooks.rs`, `src/hook_engine.rs`, `src/hook_guards.rs`, `src/hook_legacy.rs`, `src/hook_config.rs`, `src/update_hooks.rs`
-- write: `src/generation.rs`, `src/agents.rs`, `src/agent_defs.rs`, `src/agent_install.rs`, `src/omp_agents.rs`, `src/hosts/**`, `src/ops/codex_*.rs`, `src/ops/agents_project_*.rs`
+- write: `src/generation.rs`, `src/agents.rs`, `src/agent_defs.rs`, `src/agent_install.rs`, `src/omp_agents.rs`, `src/ops/codex_*.rs`, `src/ops/agents_project_*.rs`
 - write: `src/model_effort_questions.rs`, `src/model_effort_settings.rs`, `src/ui_text.rs`, `src/ui_summary.rs`, `src/help.rs`, `src/main.rs`, `src/go_state.rs` (one constant)
 - write: `.moai/project.yaml` and `.moai-cli/project.yaml` (this repository's own profile: the hosts list and the purpose line), `schemas/protocol/v1/profile.schema.json` (the hosts values and a legacy note)
 - write: the tests and fixtures the inventory of `SPEC-20261121-remove-codex-support` marks slice 2, and `docs/cli-text-rationale.md` (the `src/project_hosts.rs` section only)
 - read-only: every other file, and the `.codex/` and `.omp/` folders of any project
+- read-only: `src/hosts/**` (the sibling slice that removes the shipped adapters holds it; this slice only stops depending on it, see Plan step 3)
 - forbidden: the launcher and home-update sources of the other slice, the shipped skill text, install scripts, any card or SPEC that describes Codex work
 
 ## Plan
@@ -77,12 +78,16 @@ Nothing here deletes user data. `~/.codex` and a project's `.codex/` or `.omp/` 
 7. Delete the tests and fixtures that only exercised removed code; edit the ones that also pin Claude behaviour.
 8. The unnarrowed affected set on each commit, clippy, rustfmt, `spec check`, then the independent audit (tier 1).
 
+Staging. Other cards hold some of the files at the time of writing, and a lane takes none of them over. Stage 1 takes the files nobody else holds: the project skill copy, the detection, the profile files and schema, the Go-generation constant, the hook adapters, the generation and the question bank. Stage 2 takes `src/project_update.rs` and `src/profile.rs` when their holders release them: it deletes `src/project_hosts.rs`, the host steps and the undo entries, and adds `ignored_hosts` and the managed view. Until then `src/project_hosts.rs` stays with its steps compiled out to an empty list, so the preview already lists none. Stage 3 takes `src/help.rs` and `src/hook_config.rs` for the removed commands once their holders release them. A stage that waits for a holder is named in the card, not waited on.
+
 ## Risks
 
 - A removal in one file breaks a test another slice owns. Mitigation: each commit runs the affected set; a test that pins removed behaviour is edited in the same commit as the code it pins.
 - `src/help.rs`, `src/main.rs` and `tests/cli_text_citations.rs` are edited by other slices too. Mitigation: edit only the lines of the removed commands and merge the tip once on overlap.
 - `src/agents.rs` reads `profile.hosts` raw and prints it into the generated AGENTS.md. Mitigation: switch it to the managed view in the same commit that adds the view.
 - A profile that lists only codex has an empty managed view. Mitigation: the hooks step goes by the Claude flag, not by the list, and the preview names the ignored host.
+- Files other cards hold: `src/project_update.rs`, `src/profile.rs`, `src/hook_config.rs`, `src/help.rs`, `src/hosts/*` and one test file. Mitigation: the Staging paragraph of the Plan; a held file is asked for through the holder's card, never taken.
+- The sibling slice deletes `src/hosts/*` while `src/go_state.rs` reads a constant of it. Mitigation: this slice's `go_state` edit lands first, and the sibling merges after it; if the order flips the crate stops compiling, so the order is a note on both cards.
 - The inventory marks `tests/go_state_codex_cli.rs` (268 lines) as slice 2 and codex-only, while D-5 keeps the Go-generation `.codex` classification and its tests. Mitigation: keep it until the leader decides; deleting both later is one commit.
 - The inventory matches `omp` without a word boundary, so words such as "completed" count: `src/progress.rs` has one real Codex mention (a comment citing a past review) among its matches, and `src/statusline/counts.rs` has one comment of the same kind. Mitigation: those two comments stay (history, not support); the inventory owner should match whole words before slice counts are quoted.
 - Dropping the `.codex/config.toml` MCP read changes `detected.mcp_servers` once for a project that had a Codex MCP config. Mitigation: D-4, reversible.
