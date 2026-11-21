@@ -37,10 +37,10 @@ This change adds one rule to the shipped workflow `skills/moai/workflows/update.
 
 ## Acceptance
 
-- AC-1 (REQ-1, REQ-2, REQ-3, REQ-4): `skills/moai/workflows/update.md` holds one paragraph that starts with `**Always ask after the preview.**` and names the host's question tool, `/moai update` and `$moai update`, the words `nothing to apply — no change` and the blocked case with its reason and the rest · verify: `cargo test --test update_always_asks the_rule`
-- AC-2 (REQ-5, REQ-6): the same paragraph forbids `moai update --confirm`, `--confirm-cleanup`, `--confirm-home` and an apply of a step before an answer, and says that a cancelled, empty or unanswered question is open · verify: `cargo test --test update_always_asks no_apply`
-- AC-3 (REQ-7): the paragraph stands before the first line of the file that names `--confirm`, and no line before it runs an applying command · verify: `cargo test --test update_always_asks order`
-- AC-4 (REQ-8, REQ-9): the same paragraph names the undo of `moai models-revert` and step 6 as not waiting for the question, calls the question the one ask of step 2 for the ready steps, and gives numbered plain-text choices for Codex in Default mode · verify: `cargo test --test update_always_asks the_question_is_the_one_ask`
+- AC-1 (REQ-1, REQ-2, REQ-3, REQ-4): `skills/moai/workflows/update.md` holds one paragraph that starts with `**Always ask after the preview.**` and names the host's question tool, `/moai update` and `$moai update`, the words `nothing to apply — no change` and the blocked case with its reason and the rest · verify: `cargo test --test update_always_asks`
+- AC-2 (REQ-5, REQ-6): the same paragraph forbids `moai update --confirm`, `--confirm-cleanup`, `--confirm-home` and an apply of a step before an answer, and says that a cancelled, empty or unanswered question is open · verify: `cargo test --test update_always_asks`
+- AC-3 (REQ-7): the paragraph stands before the first line of the file that names `--confirm`, and no line before it runs an applying command · verify: `cargo test --test update_always_asks`
+- AC-4 (REQ-8, REQ-9): the same paragraph names the undo of `moai models-revert` and step 6 as not waiting for the question, calls the question the one ask of step 2 for the ready steps, and gives numbered plain-text choices for Codex in Default mode · verify: `cargo test --test update_always_asks`
 
 ## Scope
 
