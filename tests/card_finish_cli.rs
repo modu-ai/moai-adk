@@ -1084,7 +1084,7 @@ fn ac3_a_live_lease_of_the_caller_passes() {
 #[test]
 fn ac4_a_research_card_closes_with_a_report_file_and_refuses_the_others() {
     let w = World::new();
-    let research = w.card_named("research", "docs/r/", &["report written"]);
+    let research = w.card_named("research", "study/r/", &["report written"]);
     let report = w.report_file("demo/answer.md");
     let reports = w.reports_root();
 
@@ -1185,7 +1185,7 @@ fn ac4_a_research_card_closes_with_a_report_file_and_refuses_the_others() {
     );
 
     // A report file under the project folder is accepted as well.
-    let second = w.card_named("research", "docs/s/", &["report written"]);
+    let second = w.card_named("research", "study/s/", &["report written"]);
     let notes = w.project.join("notes");
     fs::create_dir_all(&notes).unwrap();
     fs::write(notes.join("report.md"), "findings\n").unwrap();
@@ -1210,7 +1210,7 @@ fn ac4_a_research_card_closes_with_a_report_file_and_refuses_the_others() {
 #[test]
 fn ac4_a_report_path_of_500_characters_passes_and_501_refuses() {
     let w = World::new();
-    let research = w.card_named("research", "docs/r/", &["report written"]);
+    let research = w.card_named("research", "study/r/", &["report written"]);
     let base = w.reports_root().join("demo");
     // `<reports>/demo/<dir>/<stem>.md`, `n` characters in all.
     let file_of = |n: usize| -> String {
@@ -1262,8 +1262,8 @@ fn ac4_a_report_path_of_500_characters_passes_and_501_refuses() {
 #[test]
 fn ac4_an_audit_card_closes_with_a_verdict_note_and_refuses_the_others() {
     let w = World::new();
-    let audit = w.card_named("audit", "docs/a/", &["verdict written"]);
-    let other = w.card_named("audit", "docs/b/", &["verdict written"]);
+    let audit = w.card_named("audit", "study/a/", &["verdict written"]);
+    let other = w.card_named("audit", "study/b/", &["verdict written"]);
     w.note(&audit, "comment", "chatter", "just talking");
     w.note(&other, "decision", "theirs", "a verdict of the other card");
     w.note(&audit, "decision", "verdict", "pass: nothing found");
@@ -1304,7 +1304,7 @@ fn ac4_an_audit_card_closes_with_a_verdict_note_and_refuses_the_others() {
     assert_eq!(newest[1].1["note"], json!("verdict"), "{newest:?}");
 
     // A report note is accepted as well.
-    let third = w.card_named("audit", "docs/c/", &["verdict written"]);
+    let third = w.card_named("audit", "study/c/", &["verdict written"]);
     w.note(&third, "report", "findings", "the findings");
     let got = result(&w.finish(
         Some(S_L),
@@ -1327,8 +1327,8 @@ fn ac4_an_audit_card_closes_with_a_verdict_note_and_refuses_the_others() {
 #[test]
 fn ac4_a_research_or_audit_card_with_an_open_criterion_and_no_met_option_refuses() {
     let w = World::new();
-    let research = w.card_named("research", "docs/r/", &["found", "written"]);
-    let audit = w.card_named("audit", "docs/a/", &["checked"]);
+    let research = w.card_named("research", "study/r/", &["found", "written"]);
+    let audit = w.card_named("audit", "study/a/", &["checked"]);
     let report = w.report_file("demo/answer.md");
     w.note(&audit, "decision", "verdict", "pass: nothing found");
     let before = w.dump();
@@ -1379,7 +1379,7 @@ fn ac4_a_research_or_audit_card_with_an_open_criterion_and_no_met_option_refuses
 fn ac5_a_code_card_refuses_report_evidence_and_a_research_card_refuses_a_head() {
     let w = World::new();
     let code = w.card_named("fix", "apps/a/", &["one"]);
-    let research = w.card_named("research", "docs/r/", &["report written"]);
+    let research = w.card_named("research", "study/r/", &["report written"]);
     let report = w.report_file("demo/answer.md");
     w.note(&code, "decision", "verdict", "a verdict on a code card");
     w.note(&research, "decision", "verdict", "a verdict");
@@ -1535,7 +1535,7 @@ fn ac7_every_kind_of_refusal_leaves_the_ledger_as_it_was() {
     let w = World::new();
     let code = w.card_named("task", "apps/a/", &["one", "two"]);
     let held = w.card_named("task", "apps/b/", &["one"]);
-    let research = w.card_named("research", "docs/r/", &["report written"]);
+    let research = w.card_named("research", "study/r/", &["report written"]);
     let finished = w.card_named("task", "apps/d/", &["one"]);
     result(&w.card(Some(S_A), &["take", &held]));
     result(&w.finish(
