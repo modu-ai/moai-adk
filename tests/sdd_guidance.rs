@@ -339,7 +339,10 @@ fn stage_order_is_written_once() {
     }
     files.push("skills/moai/references/chains/index.md".into());
     files.push("skills/moai/SKILL.md".into());
-    let with_order: Vec<&String> = files.iter().filter(|rel| read(rel).contains(ORDER)).collect();
+    let with_order: Vec<&String> = files
+        .iter()
+        .filter(|rel| read(rel).contains(ORDER))
+        .collect();
     assert_eq!(
         with_order,
         ["skills/moai/references/internal/sdd.md"],
