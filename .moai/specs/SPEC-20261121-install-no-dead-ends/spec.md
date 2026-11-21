@@ -23,9 +23,13 @@ HOW는 리더 노트(카드 노트 4684, 2026-11-20T23:28:27Z)로 기록되어 �
 - `install/install.sh:570-577` — PATH 알림이 export 줄과 함께 다음 단계 목록보다 먼저 인쇄돼요.
   이 동작은 이미 맞아요 — 시험으로 고정만 하면 돼요.
 - `src/update.rs:1340-1390` — 내 소유 아닌 skills/moai 패키지에 `--confirm-backup-replace
-  <token>` 지우개 플래그를 미리보기가 제안하는 기계가 이미 있어요(#2483). 그런데 이 경로를
-  잡는 시험이 하나도 없어요(`src/`, `tests/`에서 confirm-backup-replace를 읽는 파일이 시험 없음).
-  이 조각의 시험이 관찰한 실제 동작(2026-11-21): 미리보기는 claude 호스트를 blocked로 두고,
+  <token>` 지우개 플래그를 미리보기가 제안하는 기계가 이미 있어요(#2483). 이 경로는 base에서
+  이미 시험으로 잡혀 있어요: `tests/update_backup_replace.rs`(288 미리보기 무기록, 353 토큰
+  없음·틀림 무변경, 378 확인 적용, 432 호스트별 토큰)와 `tests/update_route.rs`(117),
+  `tests/update_unmanaged_failclosed.rs`(blocked apply 무기록). 이 조각의 시험은 같은 계약을
+  설치기의 각도에서 다시 잠가요: 설치된 versions 폴더 배치를 자동 발견으로 쓰고(설치 뒤의 실제
+  모양), 확인은 `install/install.sh:492`가 파싱하는 것과 같은 `confirm_with` 요약 필드에서
+  뽑아 적용해요. 관찰한 실제 동작(2026-11-21): 미리보기는 claude 호스트를 blocked로 두고,
   플래그 없는 apply는 그 호스트를 `status: "blocked"`, `files: []`로 두고 사유 안내가
   "confirm with --confirm-backup-replace backup-replace:claude:<16hex>"까지 이름으로 말하며
   다른 호스트는 그대로 적용돼요(호스트별 독립). 안내 문구(`GO_ERA_GUIDANCE`, 76-78 줄)의
