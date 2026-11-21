@@ -1,8 +1,9 @@
 //! #2935 L1: `language-set --home <code>` records the conversation language the installer
-//! asked for in the HOME state folder, once and never over a value that is already there, and
-//! `language-setup` reads that value as the conversation default after `--conversation` and the
-//! profile's `user_chat`. Every case runs the built binary inside a temporary HOME; the real
-//! HOME is never read or written.
+//! asked for in the HOME state folder; a later call replaces it with a valid code, and
+//! `--if-absent` — the installer's mode — never over a value that is already there.
+//! `language-setup` reads that value as the conversation default after `--conversation`.
+//! Every case runs the built binary inside a temporary HOME; the real HOME is never read or
+//! written.
 
 #![cfg(unix)]
 
@@ -119,45 +120,98 @@ fn the_first_write_creates_config_and_one_file() {
     );
 }
 
-/// A second run, with the same or another code, writes nothing and keeps the bytes.
+/// A second run, with the same or another code, replaces the value (leader decision: a later
+/// `language-set --home` with a valid code rewrites it).
 #[test]
-fn a_second_run_writes_nothing() {
+fn a_second_run_replaces_the_value() {
     let (_d, h) = home_with_state();
     assert_eq!(set(&h, "ko").0, 0);
-    let before = tree(&h);
-    for code in ["ko", "ja", "en"] {
+    for code in ["en", "ja", "ko"] {
         let (status, json) = set(&h, code);
         assert_eq!(status, 0, "{json}");
         let r = result(&json);
-        assert_eq!(r["written"], json!(false), "{json}");
-        assert_eq!(r["reason"], json!("exists"), "{json}");
+        assert_eq!(r["written"], json!(true), "{json}");
+        assert_eq!(r["reason"], json!("replaced"), "{json}");
         assert_eq!(r["code"], json!(code));
         assert_eq!(
-            tree(&h),
-            before,
-            "bytes and tree are untouched after {code}"
+            fs::read(h.join(".moai-cli").join(FILE)).unwrap(),
+            format!("language:\n  conversation_language: {code}\n").into_bytes(),
+            "{code}: the file holds the new value"
         );
     }
 }
 
-/// A file the user wrote by hand (even in another shape) is never replaced.
+/// `--if-absent` is the installer's record-once mode: with no value it writes one, and a
+/// recorded value stays (`written: false`, `reason: exists`) while only the bare command
+/// replaces it. The refused code and the missing state folder behave like the bare command.
 #[test]
-fn a_file_the_user_already_has_is_kept_byte_for_byte() {
+fn if_absent_writes_once_and_keeps_the_recorded_value() {
+    let (_d, h) = home_with_state();
+    let path = h.join(".moai-cli").join(FILE);
+    let (status, json, _) = call(&h, &["language-set", "--home", "--if-absent", "ja"]);
+    assert_eq!(status, 0, "{json}");
+    let r = result(&json);
+    assert_eq!(r["written"], json!(true), "{json}");
+    assert_eq!(r["reason"], Value::Null, "{json}");
+    assert_eq!(
+        fs::read(&path).unwrap(),
+        b"language:\n  conversation_language: ja\n"
+    );
+    // A reinstall with another code keeps the recorded value.
+    let (status, json, _) = call(&h, &["language-set", "--home", "--if-absent", "ko"]);
+    assert_eq!(status, 0, "{json}");
+    let r = result(&json);
+    assert_eq!(r["written"], json!(false), "{json}");
+    assert_eq!(r["reason"], json!("exists"), "{json}");
+    assert_eq!(r["code"], json!("ko"), "{json}");
+    assert_eq!(
+        fs::read(&path).unwrap(),
+        b"language:\n  conversation_language: ja\n"
+    );
+    // A code outside the list is refused, like the bare command's.
+    let (status, _, stderr) = call(&h, &["language-set", "--home", "--if-absent", "pt-BR"]);
+    assert_eq!(status, 2, "{stderr}");
+    assert_eq!(
+        fs::read(&path).unwrap(),
+        b"language:\n  conversation_language: ja\n"
+    );
+    // Only the bare command replaces the recorded value.
+    let (status, json) = set(&h, "ko");
+    assert_eq!(status, 0, "{json}");
+    assert_eq!(result(&json)["reason"], json!("replaced"), "{json}");
+    // No HOME state folder: the same no_home_state answer, and nothing is created.
+    let (_d, bare) = home();
+    let (status, json, _) = call(&bare, &["language-set", "--home", "--if-absent", "ko"]);
+    assert_eq!(status, 0, "{json}");
+    assert_eq!(result(&json)["reason"], json!("no_home_state"), "{json}");
+    assert_eq!(fs::read_dir(&bare).unwrap().count(), 0);
+}
+
+/// A file the user wrote by hand (even in another shape, even empty) is replaced by a valid
+/// set the same way.
+#[test]
+fn a_hand_written_file_is_replaced_by_a_valid_set() {
     let (_d, h) = home_with_state();
     fs::create_dir(h.join(".moai-cli/config")).unwrap();
     let mine = b"# mine\nlanguage:\n  conversation_language: zh\n  code_comments: en\n";
     fs::write(h.join(".moai-cli").join(FILE), mine).unwrap();
-    let before = tree(&h);
     let (status, json) = set(&h, "ja");
     assert_eq!(status, 0, "{json}");
-    assert_eq!(result(&json)["reason"], json!("exists"), "{json}");
-    assert_eq!(tree(&h), before);
+    assert_eq!(result(&json)["reason"], json!("replaced"), "{json}");
+    assert_eq!(result(&json)["written"], json!(true), "{json}");
+    assert_eq!(
+        fs::read(h.join(".moai-cli").join(FILE)).unwrap(),
+        b"language:\n  conversation_language: ja\n"
+    );
     // An empty file is a file too.
     fs::write(h.join(".moai-cli").join(FILE), b"").unwrap();
-    let (status, json) = set(&h, "ja");
+    let (status, json) = set(&h, "ko");
     assert_eq!(status, 0, "{json}");
-    assert_eq!(result(&json)["written"], json!(false), "{json}");
-    assert_eq!(fs::read(h.join(".moai-cli").join(FILE)).unwrap(), b"");
+    assert_eq!(result(&json)["written"], json!(true), "{json}");
+    assert_eq!(
+        fs::read(h.join(".moai-cli").join(FILE)).unwrap(),
+        b"language:\n  conversation_language: ko\n"
+    );
 }
 
 /// A HOME whose state folder is `~/.moai` (valid marker) is written there, not in `~/.moai-cli`.
@@ -225,28 +279,14 @@ fn longest() -> String {
     format!("ko{}-abcde", "-abcdefgh".repeat(3))
 }
 
-/// Any language-code-shaped text is stored, exactly as given: the grammar's last passing value
-/// at each edge (2 and 3 letters, a 2- and an 8-character group, 35 bytes in all) and the
-/// codes MoAI has names for. The file holds the two lines and nothing else.
+/// One list everywhere: the accepted conversation codes are stored exactly as given, and a
+/// well-formed code outside the list (fr, KO, pt-BR, es-419, kor, zh-Hant-TW, a 35-byte tag)
+/// is refused with the four-code message and the tree stays as it was.
 #[test]
-fn a_code_of_the_right_shape_is_stored_exactly_as_given() {
+fn the_accepted_codes_are_stored_exactly_as_given_and_others_are_refused() {
     let longest = longest();
     assert_eq!(longest.len(), 35);
-    for code in [
-        "en",
-        "ko",
-        "ja",
-        "zh",
-        "fr",
-        "kor",
-        "KO",
-        "pt-BR",
-        "es-419",
-        "ko-ab",
-        "ko-abcdefgh",
-        "zh-Hant-TW",
-        longest.as_str(),
-    ] {
+    for code in ["en", "ko", "ja", "zh"] {
         let (_d, h) = home_with_state();
         let (status, json) = set(&h, code);
         assert_eq!(status, 0, "{code}: {json}");
@@ -258,6 +298,25 @@ fn a_code_of_the_right_shape_is_stored_exactly_as_given() {
             format!("language:\n  conversation_language: {code}\n").into_bytes(),
             "{code}: written as given"
         );
+    }
+    for code in [
+        "fr",
+        "KO",
+        "pt-BR",
+        "es-419",
+        "kor",
+        "zh-Hant-TW",
+        longest.as_str(),
+    ] {
+        let (_d, h) = home_with_state();
+        let before = tree(&h);
+        let (status, _json, err) = call(&h, &["language-set", "--home", code]);
+        assert_ne!(status, 0, "{code}: refused");
+        assert!(
+            err.contains("en, ko, ja or zh"),
+            "{code}: the message names the list: {err}"
+        );
+        assert_eq!(tree(&h), before, "{code}: the tree is untouched");
     }
 }
 
@@ -445,9 +504,12 @@ fn home_file(h: &Path, bytes: &[u8]) {
     fs::write(h.join(".moai-cli").join(FILE), bytes).unwrap();
 }
 
-/// Order: `--conversation`, the profile's `user_chat`, the HOME value, `en`.
+/// The HOME value comes after the flag and before English; a profile's earlier `user_chat` is
+/// no longer a source: the install value wins over a project profile that recorded something
+/// else before it, and without a HOME value English answers. Order: `--conversation`, the
+/// HOME value, `en`.
 #[test]
-fn the_home_value_comes_after_the_flag_and_the_profile_and_before_english() {
+fn the_home_value_comes_after_the_flag_and_before_the_profile() {
     let (_h, h) = home_with_state();
     home_file(&h, b"language:\n  conversation_language: ja\n");
     let (_p, none) = project(None);
@@ -457,19 +519,29 @@ fn the_home_value_comes_after_the_flag_and_the_profile_and_before_english() {
         "ja",
         "HOME beats the built-in en"
     );
-    assert_eq!(conversation(&h, &chat, &[]), "zh", "the profile beats HOME");
+    assert_eq!(
+        conversation(&h, &chat, &[]),
+        "ja",
+        "HOME beats the profile's earlier value"
+    );
     assert_eq!(
         conversation(&h, &chat, &["--conversation", "ko"]),
         "ko",
-        "the flag beats the profile"
+        "the flag beats HOME"
     );
     assert_eq!(
         conversation(&h, &none, &["--conversation", "ko"]),
         "ko",
         "the flag beats HOME"
     );
-    // With no HOME value the built-in English stays.
+    // With no HOME value the profile's earlier user_chat is not a source: English answers, and
+    // the stored value stays as recorded data.
     let (_e, empty) = home_with_state();
+    assert_eq!(
+        conversation(&empty, &chat, &[]),
+        "en",
+        "the profile does not answer without HOME"
+    );
     assert_eq!(conversation(&empty, &none, &[]), "en");
     // The file `language-set` itself wrote is read back.
     let (_w, written) = home_with_state();
@@ -496,11 +568,11 @@ fn the_home_value_beats_the_go_backup() {
     assert_eq!(conversation(&empty, &root, &[]), "zh");
 }
 
-/// A stored code that is well-formed but is not one MoAI has a name for (`fr`, `pt-BR`, `KO`) is
-/// not used by `language-setup`: no panic, and it falls through to the next source, the Go
-/// backup's value, and then `en`.
+/// A code that is well-formed but outside the list, hand-written into the HOME file (the
+/// command no longer stores one), is not used by `language-setup`: no panic, and it falls
+/// through to the next source, the Go backup's value, and then `en`.
 #[test]
-fn a_stored_code_without_a_name_falls_through_without_a_panic() {
+fn a_hand_written_code_without_a_name_falls_through_without_a_panic() {
     let (_p, none) = project(None);
     let (_b, backup) = project(None);
     let sections = backup.join(".moai-backup/config/sections");
@@ -512,8 +584,12 @@ fn a_stored_code_without_a_name_falls_through_without_a_panic() {
     .unwrap();
     for code in ["fr", "pt-BR", "es-419", "KO", "kor", "zh-Hant-TW"] {
         let (_h, h) = home_with_state();
-        let (status, json) = set(&h, code);
-        assert_eq!(status, 0, "{code}: {json}");
+        fs::create_dir_all(h.join(".moai-cli/config")).unwrap();
+        fs::write(
+            h.join(".moai-cli").join(FILE),
+            format!("language:\n  conversation_language: {code}\n"),
+        )
+        .unwrap();
         assert_eq!(conversation(&h, &none, &[]), "en", "{code}: next is en");
         assert_eq!(conversation(&h, &backup, &[]), "zh", "{code}: next is Go");
         // The explicit flag still wins over any stored value.
