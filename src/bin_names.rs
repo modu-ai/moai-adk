@@ -161,8 +161,7 @@ pub fn plan_for(home: &Path, exe: &Path) -> Result<Plan> {
     // A separate `moai` of this same build (the release bundle carries both binaries) is
     // replaced by the link; anything else is not this tool's to touch.
     let line = crate::install::probe_version(&alias);
-    let mine = format!("moai-cli {}", crate::VERSION_SIGNATURE);
-    if line.as_deref() == Some(mine.as_str()) {
+    if is_this_build(line.as_deref()) {
         finish(
             "replace_copy",
             None,
@@ -261,4 +260,37 @@ pub fn apply_for(
         "moved_aside": aside.map(|a| a.to_string_lossy().into_owned()),
         "written": [alias.to_string_lossy()],
     }))
+}
+
+/// Whether a `--version` first line is this same build: the version signature with either
+/// binary name. This build prints `moai <sig>` (the rename of the temporary name), an
+/// install older than the rename printed `moai-cli <sig>`, and the check accepts both names
+/// on read — a separate copy of this build is replaced either way, never mistaken for
+/// another program.
+fn is_this_build(line: Option<&str>) -> bool {
+    let sig = crate::VERSION_SIGNATURE;
+    line == Some(format!("moai {sig}").as_str()) || line == Some(format!("moai-cli {sig}").as_str())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The rename of the temporary name keeps both names accepted on read: this build under
+    /// either name is this build, and a Go `moai` or a different build is not.
+    #[test]
+    fn the_same_build_check_accepts_both_binary_names() {
+        let sig = crate::VERSION_SIGNATURE;
+        assert!(is_this_build(Some(&format!("moai {sig}"))));
+        assert!(is_this_build(Some(&format!("moai-cli {sig}"))));
+        assert!(
+            !is_this_build(Some("moai 3.2.0")),
+            "the Go binary is not this build"
+        );
+        assert!(
+            !is_this_build(Some("moai-cli 9.9.9 (rust)")),
+            "another build"
+        );
+        assert!(!is_this_build(None), "no output is not this build");
+    }
 }
