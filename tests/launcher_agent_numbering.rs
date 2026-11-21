@@ -365,7 +365,7 @@ fn a_registry_entry_with_an_over_lease_is_dead() {
 fn live_sessions_are_never_overlapped_and_the_next_number_follows_the_highest() {
     for (i, host) in HOSTS.iter().enumerate() {
         let f = fixture();
-        let other = HOSTS[(i + 1) % 3];
+        let other = HOSTS[(i + 1) % HOSTS.len()];
         let h1 = Held::hold(&f, "one", &[host, "-a"]);
         let h2 = Held::hold(&f, "two", &[other, "-a"]);
         assert_eq!(lives(&f), ["agent-1.live", "agent-2.live"], "{host}");
@@ -441,7 +441,7 @@ fn concurrent_launches_never_share_a_number() {
                 &f,
                 f.project.path(),
                 &format!("c{i}"),
-                &[HOSTS[i % 3], "-a"],
+                &[HOSTS[i % HOSTS.len()], "-a"],
                 Some("150"),
             )
         })

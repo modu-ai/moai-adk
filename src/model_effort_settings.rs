@@ -5,12 +5,19 @@
 //!
 //! The module reads and writes no file. Refusals name the key path and never quote saved text, so
 //! a secret pasted into the file cannot reach a message. Model ids and efforts come from the
-//! research file of SPEC-20261118-install-model-per-tool (read 2026-11-18); `ultra` (Codex) and
-//! `ultracode` (Claude Code) are not offered.
+//! research file of SPEC-20261118-install-model-per-tool (read 2026-11-18); `ultracode` (Claude
+//! Code) is not offered.
+//!
+//! Codex is not a tool any more (SPEC-20261121-codex-launcher-and-models-removed). A
+//! `launcher.models.codex` value that an earlier version saved is ignored on every read and kept
+//! as it was in every write: it is never validated, listed or resolved.
 use serde_json::{json, Map, Value};
 
 /// The tools that take a choice. `glm` is the `moai glm` launcher and shares the OMP table.
-pub const TOOLS: [&str; 4] = ["claude", "codex", "omp", "glm"];
+pub const TOOLS: [&str; 3] = ["claude", "omp", "glm"];
+/// Tool names an earlier version saved that this version no longer supports: their
+/// `launcher.models.<name>` value is skipped on read and left in the file.
+const IGNORED_TOOLS: [&str; 1] = ["codex"];
 /// The two roles: the leader entry (`-l`) and the agent entry (`-a`).
 pub const ROLES: [&str; 2] = ["leader", "agent"];
 
@@ -41,24 +48,6 @@ const CLAUDE: &[ModelRow] = &[
         efforts: FIVE_EFFORTS,
     },
 ];
-const CODEX: &[ModelRow] = &[
-    ModelRow {
-        id: "gpt-6.1-sol",
-        efforts: FIVE_EFFORTS,
-    },
-    ModelRow {
-        id: "gpt-6.1-terra",
-        efforts: FIVE_EFFORTS,
-    },
-    ModelRow {
-        id: "gpt-6.2-sol",
-        efforts: FIVE_EFFORTS,
-    },
-    ModelRow {
-        id: "gpt-6-luna",
-        efforts: FIVE_EFFORTS,
-    },
-];
 const GLM: &[ModelRow] = &[
     ModelRow {
         id: "zai/glm-5.3",
@@ -74,7 +63,6 @@ const GLM: &[ModelRow] = &[
 pub fn supported(tool: &str) -> Option<&'static [ModelRow]> {
     match tool {
         "claude" => Some(CLAUDE),
-        "codex" => Some(CODEX),
         "omp" | "glm" => Some(GLM),
         _ => None,
     }
@@ -95,14 +83,12 @@ pub enum Source {
 }
 
 /// The default of a tool and role (decision D-4 of SPEC-20261118-model-effort-settings; the
-/// claude-leader effort and the gpt-leader model changed by the user decision of 2026-11-19,
-/// from the research note of SPEC-20261120-update-three-tool-models).
+/// claude-leader effort changed by the user decision of 2026-11-19, from the research note of
+/// SPEC-20261120-update-three-tool-models).
 pub fn default_choice(tool: &str, role: &str) -> Option<Choice> {
     let (model, effort) = match (tool, role) {
         ("claude", "leader") => ("claude-opus-5-5", "high"),
         ("claude", "agent") => ("claude-sonnet-5-5", "high"),
-        ("codex", "leader") => ("gpt-6.2-sol", "high"),
-        ("codex", "agent") => ("gpt-6.1-terra", "xhigh"),
         ("omp" | "glm", "leader") => ("zai/glm-5.3", "high"),
         ("omp" | "glm", "agent") => ("zai/glm-5.3-flash", "max"),
         _ => return None,
@@ -133,6 +119,9 @@ fn models_of(launcher: &Map<String, Value>) -> Result<Option<&Map<String, Value>
 /// tool and role level. Names are printed only after they matched a known name.
 fn check_structure(models: &Map<String, Value>) -> Result<(), String> {
     for (tool, per_tool) in models {
+        if IGNORED_TOOLS.contains(&tool.as_str()) {
+            continue;
+        }
         if !TOOLS.contains(&tool.as_str()) {
             return Err("launcher.models names a tool this version does not know".into());
         }
@@ -190,6 +179,9 @@ fn check_entry(tool: &str, role: &str, entry: &Value) -> Result<(), String> {
 fn validate(models: &Map<String, Value>) -> Result<(), String> {
     check_structure(models)?;
     for (tool, per_tool) in models {
+        if IGNORED_TOOLS.contains(&tool.as_str()) {
+            continue;
+        }
         if let Value::Object(roles) = per_tool {
             for (role, entry) in roles {
                 check_entry(tool, role, entry)?;
@@ -210,6 +202,9 @@ pub fn unsupported_entries(launcher: &Map<String, Value>) -> Result<Vec<String>,
     check_structure(models)?;
     let mut listed = Vec::new();
     for (tool, per_tool) in models {
+        if IGNORED_TOOLS.contains(&tool.as_str()) {
+            continue;
+        }
         if let Value::Object(roles) = per_tool {
             for (role, entry) in roles {
                 if check_entry(tool, role, entry).is_err() {

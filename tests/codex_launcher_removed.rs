@@ -106,12 +106,12 @@ fn moai_codex_is_an_unknown_command() {
     }
 }
 
-/// REQ-2: the host word after `-a` and `-l` refuses `codex` exactly as it refuses any unknown
+/// REQ-2: the host word after `-a` (`-l` takes none) refuses `codex` exactly as it refuses any unknown
 /// word: same exit code, same message shape, listing `cc|glm|omp` and no `codex`.
 #[test]
 fn the_codex_host_word_is_refused_like_any_unknown_host() {
     let f = fixture();
-    for flag in ["-a", "-l"] {
+    for flag in ["-a"] {
         let nope = run(&f, f.project.path(), &[flag, "nope", "--dry-run"]);
         let codex = run(&f, f.project.path(), &[flag, "codex", "--dry-run"]);
         assert_ne!(nope.status.code(), Some(0), "{flag} nope: {nope:?}");
