@@ -47,9 +47,6 @@ pub struct Inputs {
     /// Whether the stream is a terminal.
     pub terminal: bool,
     pub moai_lang: Option<String>,
-    /// The conversation language the install step saved in the HOME state folder (G6: asked
-    /// once at install). A code the screens do not translate means English here.
-    pub home_conversation: Option<String>,
     /// The profile's `language.user_chat`, when a project profile was read.
     pub profile_chat: Option<String>,
     pub lc_all: Option<String>,
@@ -64,12 +61,6 @@ pub fn choose(i: &Inputs) -> Lang {
     }
     if let Some(l) = i.moai_lang.as_deref().and_then(Lang::from_code) {
         return l;
-    }
-    if let Some(code) = i.home_conversation.as_deref() {
-        // The install value decides: Korean when it is Korean, English for every other code
-        // (ja, zh — the screens are not translated that far), without falling through to the
-        // locale or the profile.
-        return if code == "ko" { Lang::Ko } else { Lang::En };
     }
     if let Some(code) = i.profile_chat.as_deref() {
         // The profile made a choice: Korean when it is Korean, English for every other code
@@ -100,7 +91,6 @@ pub fn for_stream(
     choose(&Inputs {
         terminal,
         moai_lang: read(&|| var("MOAI_LANG")),
-        home_conversation: read(&|| home.and_then(crate::language::home_conversation)),
         profile_chat: read(&|| cwd.and_then(|c| profile_chat(c, home))),
         lc_all: read(&|| var("LC_ALL")),
         lc_messages: read(&|| var("LC_MESSAGES")),

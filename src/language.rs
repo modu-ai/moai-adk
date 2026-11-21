@@ -1,13 +1,15 @@
 //! Per-project writing language (Issue #2293): the `language` key of `.moai-cli/project.yaml`,
 //! the setup input step, and the sentences the AGENTS.md managed section renders from it.
 //!
-//! The setup asks three questions: the conversation language (`user_chat`; the AGENTS.md and
-//! REVIEW.md managed sections are written in it), the commit-message language and the document
-//! language (`documents`: reports and SPEC documents). Everything else is English without asking:
-//! instruction files, skills and rules, messages between agents, code comments, issue and PR
-//! records. The older profile items (`reports`, `issue_pr_records`, `agent_messages`,
-//! `instruction_files`, `skill_instructions`, `code_comments`) are still accepted and, when a
-//! profile sets one, still mean what they meant; the setup neither asks for them nor adds them.
+//! The setup asks three questions: the commit-message language, the instruction-file language
+//! (`instruction_files`) and the document language (`documents`: reports and SPEC documents).
+//! The conversation language (`user_chat`; the AGENTS.md and REVIEW.md managed sections are
+//! written in it) is asked once at install and recorded in the HOME state folder: the setup
+//! reads that value and never asks it. Everything else is English without asking: skills and
+//! rules, messages between agents, code comments, issue and PR records. The older profile items
+//! (`reports`, `issue_pr_records`, `agent_messages`, `skill_instructions`, `code_comments`) are
+//! still accepted and, when a profile sets one, still mean what they meant; the setup neither
+//! asks for them nor adds them.
 //!
 //! The item list, the accepted language codes and each item's default live in the two
 //! tables below and nowhere else. The defaults are stated values chosen for the product,
@@ -30,7 +32,7 @@ pub enum DefaultSource {
     /// English (`en`).
     English,
     /// The conversation language: the managed-section request language when rendering,
-    /// the `--conversation` code (or the profile's `user_chat`) in the input step.
+    /// the resolved conversation code of the input step.
     Conversation,
 }
 
@@ -305,13 +307,26 @@ fn home_file_bytes(code: &str) -> Vec<u8> {
 }
 
 /// `language-set --home <code>` (#2935 L1): records `code` in [`HOME_FILE`] below the HOME state
-/// folder, once. Never overwrites (an existing file gives `written: false, reason: "exists"`),
-/// never creates the state folder itself (`reason: "no_home_state"`; the installer only
+/// folder, replacing a value that is already there with a valid code (`written: true, reason:
+/// "replaced"`; the before bytes go with the publish, so a failed replace leaves the old file).
+/// Never creates the state folder itself (`reason: "no_home_state"`; the installer only
 /// reports it) and creates nothing but `config/`. A `config` or target that is a link or the
 /// wrong file type is refused before any write. A state folder that is a link to a folder is
-/// followed like every other HOME path; a dangling link is no folder. `code` is any
-/// [`is_language_tag`] text and is written exactly as given (`pt-BR` stays `pt-BR`).
+/// followed like every other HOME path; a dangling link is no folder. `code` is one of the
+/// accepted conversation codes ([`is_code`]) and is written exactly as given.
 pub fn set_home(home: &std::path::Path, code: &str) -> Result<Value> {
+    set_home_mode(home, code, true)
+}
+
+/// [`set_home`] in the installer's record-once shape: a value that is already recorded is never
+/// overwritten (`written: false, reason: "exists"`), so a reinstall keeps the user's recorded
+/// conversation language; only an explicit `language-set --home` replaces it. Everything else
+/// matches [`set_home`].
+pub fn set_home_if_absent(home: &std::path::Path, code: &str) -> Result<Value> {
+    set_home_mode(home, code, false)
+}
+
+fn set_home_mode(home: &std::path::Path, code: &str, replace: bool) -> Result<Value> {
     use std::fs;
     use std::io::ErrorKind::{AlreadyExists, NotFound};
     if !is_code(code) {
@@ -354,6 +369,9 @@ pub fn set_home(home: &std::path::Path, code: &str) -> Result<Value> {
         Err(_) => Err("language-set refused: language.yaml cannot be read".to_string()),
     };
     if exists()? {
+        if !replace {
+            return Ok(report(false, Some("exists")));
+        }
         // A later `language-set --home` with a valid code replaces the value: the before
         // bytes go with the publish, so a failed replace leaves the old file.
         let before = fs::read(&file)
@@ -429,8 +447,8 @@ fn questions_with(
         .collect();
     json!({
         "conversation_language": conversation,
-        // Where the conversation language came from: `flag`, `profile`, `installer` (the value
-        // the installer saved: a confirmation, not a new question), `go_backup` or `default`.
+        // Where the conversation language came from: `flag`, `installer` (the value the
+        // installer saved: a confirmation, not a new question), `go_backup` or `default`.
         "conversation_source": source,
         "items": items,
         "options": options,
@@ -482,8 +500,9 @@ pub enum SetupMode {
 /// `project-plan`. Writes nothing; `project-apply` stays the only writer of the profile.
 ///
 /// `home` is the user's HOME when the caller has one (#2935 L1): the conversation language
-/// `language-set` recorded there is the default after `conversation`, before the profile's
-/// earlier `user_chat`, the Go backup's value and English.
+/// `language-set` recorded there decides after `conversation`, before the Go backup's value and
+/// English. A profile's earlier `user_chat` stays as recorded data but does not decide the
+/// conversation language; the setup writes the resolved value over it.
 pub fn setup<R: BufRead, W: Write>(
     root: &std::path::Path,
     home: Option<&std::path::Path>,
@@ -497,20 +516,20 @@ pub fn setup<R: BufRead, W: Write>(
     // #2817: the Go backup's values come after the profile's and before the built-in ones.
     let go = crate::go_settings::read(root);
     let home_chat = home.and_then(home_conversation_supported);
-    let profile_value = current
-        .as_ref()
-        .and_then(|c| c.get("user_chat"))
-        .filter(|c| is_code(c))
-        .cloned();
+    // The explicit flag is checked like every other entry into the language settings: a code
+    // outside the accepted list is refused and nothing is read further or written.
+    if let Some(code) = conversation {
+        if !is_code(code) {
+            return Err(INVALID.into());
+        }
+    }
     // The conversation language, in order: the explicit flag, the value the installer saved in
-    // the HOME state folder, the profile's earlier user_chat (installs older than the home
-    // record), the Go backup's value, then English. A code outside the accepted list skips its
-    // source.
-    let (conversation, source) = match (conversation, &home_chat, profile_value, &go.conversation) {
-        (Some(code), _, _, _) => (code.to_string(), "flag".to_string()),
-        (None, Some(code), _, _) => (code.clone(), "installer".to_string()),
-        (None, None, Some(code), _) => (code, "profile".to_string()),
-        (None, None, None, Some(code)) if is_code(code) => (code.clone(), "go_backup".to_string()),
+    // the HOME state folder, the Go backup's value, then English. A profile's earlier user_chat
+    // is not a source: it stays as recorded data, and the resolved value is written over it.
+    let (conversation, source) = match (conversation, &home_chat, &go.conversation) {
+        (Some(code), _, _) => (code.to_string(), "flag".to_string()),
+        (None, Some(code), _) => (code.clone(), "installer".to_string()),
+        (None, None, Some(code)) if is_code(code) => (code.clone(), "go_backup".to_string()),
         _ => ("en".to_string(), "default".to_string()),
     };
     let base = with_go(current.as_ref(), &go.items);
@@ -907,6 +926,44 @@ mod tests {
             b"language:\n  conversation_language: ko\n"
         );
         assert_eq!(home_conversation(home.path()).as_deref(), Some("ko"));
+    }
+
+    /// The installer's record-once shape: an existing value stays, an absent one is written,
+    /// and the replacing shape is the bare command's alone.
+    #[test]
+    fn set_home_if_absent_keeps_a_recorded_value_and_writes_an_absent_one() {
+        let home = home_with(None);
+        let file = state(home.path()).join("config/language.yaml");
+        let first = set_home_if_absent(home.path(), "ja").unwrap();
+        assert_eq!(first["written"], true);
+        assert_eq!(first["reason"], Value::Null);
+        assert_eq!(
+            std::fs::read(&file).unwrap(),
+            b"language:\n  conversation_language: ja\n"
+        );
+        // A reinstall with another code keeps the recorded value.
+        let second = set_home_if_absent(home.path(), "ko").unwrap();
+        assert_eq!(second["written"], false);
+        assert_eq!(second["reason"], "exists");
+        assert_eq!(
+            std::fs::read(&file).unwrap(),
+            b"language:\n  conversation_language: ja\n"
+        );
+        assert_eq!(home_conversation(home.path()).as_deref(), Some("ja"));
+        // The record-once shape checks the code like the bare command.
+        assert!(set_home_if_absent(home.path(), "pt-BR").is_err());
+        assert_eq!(home_conversation(home.path()).as_deref(), Some("ja"));
+        // Only the bare command replaces.
+        let replaced = set_home(home.path(), "ko").unwrap();
+        assert_eq!(replaced["written"], true);
+        assert_eq!(replaced["reason"], "replaced");
+        assert_eq!(home_conversation(home.path()).as_deref(), Some("ko"));
+        // No HOME state folder: the same answer as the replacing shape, and nothing is made.
+        let bare = tempfile::tempdir().unwrap();
+        let none = set_home_if_absent(bare.path(), "ko").unwrap();
+        assert_eq!(none["written"], false);
+        assert_eq!(none["reason"], "no_home_state");
+        assert_eq!(std::fs::read_dir(bare.path()).unwrap().count(), 0);
     }
 
     #[test]
