@@ -283,7 +283,12 @@ fn run_hook(
     stdin: Option<&str>,
 ) -> (i32, String, String) {
     let mut cmd = Command::new(hook_path);
-    cmd.args(args).current_dir(root).env("PATH", env_path);
+    cmd.args(args)
+        .current_dir(root)
+        // The hook execs `moai` from env_path; give that child a temporary HOME inside the
+        // fixture so the run never touches the real one.
+        .env("HOME", root.join("home"))
+        .env("PATH", env_path);
     match stdin {
         Some(text) => {
             cmd.stdin(Stdio::piped())
