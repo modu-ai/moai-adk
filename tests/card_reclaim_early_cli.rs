@@ -871,9 +871,15 @@ fn one_commit_outside_the_integration_branch_still_stops_an_early_reclaim() {
 /// branch, a branch the clone does not have and a profile that cannot be read.
 #[test]
 fn without_a_usable_integration_branch_an_early_reclaim_counts_every_unpushed_commit() {
-    let cases: [(&str, Option<String>); 5] = [
+    let cases: [(&str, Option<String>); 6] = [
         ("no profile", None),
         ("another work flow", Some(flow_profile("github-flow", None))),
+        // The branch is named and exists locally, but the flow is not m-flow: only the flow
+        // check keeps this branch out of the count.
+        (
+            "another work flow that names an integration branch",
+            Some(flow_profile("github-flow", Some("integ"))),
+        ),
         (
             "m-flow without a branch",
             Some(flow_profile("m-flow", None)),

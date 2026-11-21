@@ -1168,9 +1168,15 @@ fn one_commit_outside_the_project_folders_integration_branch_still_stops_a_takeo
 #[test]
 fn without_a_usable_integration_branch_the_takeover_gate_counts_every_unpushed_commit() {
     let w = world();
-    let cases: [(&str, Option<String>); 5] = [
+    let cases: [(&str, Option<String>); 6] = [
         ("no profile", None),
         ("another work flow", Some(flow_profile("github-flow", None))),
+        // The branch is named and exists locally, but the flow is not m-flow: only the flow
+        // check keeps this branch out of the count.
+        (
+            "another work flow that names an integration branch",
+            Some(flow_profile("github-flow", Some("integ"))),
+        ),
         (
             "m-flow without a branch",
             Some(flow_profile("m-flow", None)),
