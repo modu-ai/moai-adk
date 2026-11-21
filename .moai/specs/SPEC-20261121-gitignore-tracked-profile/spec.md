@@ -51,4 +51,5 @@ created: 2026-11-21
 
 ## Result
 
-(구현 뒤에 채워요.)
+- AC-1: met — `cargo test --locked --offline --test gitignore_block_cli` 32 개 통과(대상 시험 `the_repository_gitignore_tracks_specs_and_ignores_the_rest` 포함). 고치기 전에는 같은 시험이 tip 에서 `.moai/project.yaml is not ignored` 로 실패했어요(RED 를 같은 시험 본문으로 확인).
+- 돌리지 않은 것: 변이(시험 기대만 옮긴 변경이라 코드가 없어요. 옛 기대로 되돌린 것이 곧 RED 예요), 전체 `moai check affected` 는 병합 준비 노트에 줄째로 적어요.
