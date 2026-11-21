@@ -277,3 +277,155 @@ fn a_project_without_m_flow_keeps_the_pr_rule() {
     let message = v["error"]["message"].as_str().unwrap();
     assert!(message.contains("no merged pull request is linked"), "{v}");
 }
+
+// ---- SPEC-20261121-mixed-profile-read: which profile `card done` reads, and what it says when it
+// cannot use one. -------------------------------------------------------------------------------
+
+const PROFILE_PLAIN: &str = "{\"schema_version\": 1, \"project_id\": \"demo\", \"purpose\": \"fixture\", \"tools\": [\"rust\"], \"development_methods\": [\"sdd\"], \"hosts\": [\"claude\"]}";
+const PROFILE_MFLOW: &str = "{\"schema_version\": 1, \"project_id\": \"demo\", \"purpose\": \"fixture\", \"tools\": [\"rust\"], \"development_methods\": [\"sdd\"], \"hosts\": [\"claude\"], \"work_flow\": {\"flow\": \"m-flow\", \"integration_branch\": \"integ\"}}";
+const PROFILE_GITHUB: &str = "{\"schema_version\": 1, \"project_id\": \"demo\", \"purpose\": \"fixture\", \"tools\": [\"rust\"], \"development_methods\": [\"sdd\"], \"hosts\": [\"claude\"], \"work_flow\": {\"flow\": \"github-flow\", \"integration_branch\": \"integ\"}}";
+/// A profile whose project id is fine (so the card commands find the ledger) but whose
+/// `work_flow` names a flow that does not exist: `read_profile` refuses it.
+const PROFILE_BROKEN: &str = "{\"schema_version\": 1, \"project_id\": \"demo\", \"purpose\": \"fixture\", \"tools\": [\"rust\"], \"development_methods\": [\"sdd\"], \"hosts\": [\"claude\"], \"work_flow\": {\"flow\": \"bogus-flow\"}}";
+
+/// A world without a profile of its own (the card is in review) plus the profile files named:
+/// `(project-relative path, bytes)`. Every earlier profile file is removed first, so the
+/// layout is exactly what the case asks for.
+fn world_with_profiles(files: &[(&str, &str)]) -> (TempHome, String, String) {
+    let (home, p, _card, head) = world(false);
+    let project = Path::new(&p).to_path_buf();
+    let _ = std::fs::remove_file(project.join(".moai-cli/project.yaml"));
+    for (rel, bytes) in files {
+        let path = project.join(rel);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, bytes).unwrap();
+    }
+    (home, p, head)
+}
+
+fn land(home: &TempHome, p: &str, head: &str) {
+    result(&run(
+        home,
+        &[
+            "card",
+            "landed",
+            "C-1",
+            "--head",
+            head,
+            "--by",
+            "leader",
+            "--project",
+            p,
+        ],
+    ));
+}
+
+fn done(home: &TempHome, p: &str) -> Output {
+    run(
+        home,
+        &["card", "done", "C-1", "--generation", "1", "--project", p],
+    )
+}
+
+fn message_of(v: &Value) -> String {
+    v["error"]["message"]
+        .as_str()
+        .unwrap_or_default()
+        .to_string()
+}
+
+fn done_events(home: &TempHome) -> i64 {
+    let ro = ledger::open_read_only(home.path(), "demo").unwrap();
+    ro.conn()
+        .query_row(
+            "SELECT COUNT(*) FROM event WHERE kind = 'card.done'",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap()
+}
+
+/// REQ-1 + REQ-7: the earlier profile has no work_flow, the newer one names m-flow; done reads the
+/// newer one and closes on the landing.
+#[test]
+fn a_mixed_layout_reads_the_newer_profile_and_closes_on_the_landing() {
+    let (home, p, head) = world_with_profiles(&[
+        (".moai-cli/project.yaml", PROFILE_PLAIN),
+        (".moai/project.yaml", PROFILE_MFLOW),
+    ]);
+    land(&home, &p, &head);
+    let v = result(&done(&home, &p));
+    assert_eq!(v["name"], json!("C-1"), "{v}");
+    let event = last_event(&home, "card.done");
+    assert_eq!(event["mflow"]["head"], json!(head), "{event}");
+}
+
+/// REQ-3: a newer profile that cannot be read is named; the earlier m-flow profile is not a
+/// fallback (falling back would close the card).
+#[test]
+fn an_unreadable_newer_profile_is_named_and_the_earlier_one_is_no_fallback() {
+    let (home, p, head) = world_with_profiles(&[
+        (".moai-cli/project.yaml", PROFILE_MFLOW),
+        (".moai/project.yaml", PROFILE_BROKEN),
+    ]);
+    land(&home, &p, &head);
+    let v = refusal(&done(&home, &p));
+    let message = message_of(&v);
+    assert!(message.contains(".moai/project.yaml"), "{message}");
+    assert!(!message.contains("no merged pull request"), "{message}");
+    assert!(message.contains("nothing was changed"), "{message}");
+    assert_eq!(done_events(&home), 0);
+}
+
+/// REQ-4: the only profile cannot be read; the refusal names it and the reason, not the PR rule.
+#[test]
+fn an_unreadable_profile_is_named_in_the_refusal() {
+    let (home, p, head) = world_with_profiles(&[(".moai-cli/project.yaml", PROFILE_BROKEN)]);
+    land(&home, &p, &head);
+    let v = refusal(&done(&home, &p));
+    let message = message_of(&v);
+    assert!(message.contains(".moai-cli/project.yaml"), "{message}");
+    assert!(message.contains("could not be read"), "{message}");
+    assert!(!message.contains("no merged pull request"), "{message}");
+    assert_eq!(done_events(&home), 0);
+}
+
+/// REQ-6: a readable profile that is not m-flow, with a landing on record: the refusal keeps the
+/// merged-PR wording and adds which profile was read and why it was not used.
+#[test]
+fn a_profile_that_is_not_m_flow_is_named_when_a_landing_is_on_record() {
+    for (bytes, why) in [
+        (PROFILE_PLAIN, "no work_flow"),
+        (PROFILE_GITHUB, "github-flow"),
+    ] {
+        let (home, p, head) = world_with_profiles(&[(".moai-cli/project.yaml", bytes)]);
+        land(&home, &p, &head);
+        let v = refusal(&done(&home, &p));
+        let message = message_of(&v);
+        assert!(
+            message.contains("no merged pull request is linked"),
+            "{message}"
+        );
+        assert!(message.contains("a local landing is recorded"), "{message}");
+        assert!(message.contains(".moai-cli/project.yaml"), "{message}");
+        assert!(message.contains(why), "{why}: {message}");
+        assert_eq!(done_events(&home), 0);
+    }
+}
+
+/// REQ-5 + REQ-6 (no landing recorded): the plain merged-PR refusal stays as it was, with no hint.
+#[test]
+fn without_a_landing_the_refusal_carries_no_profile_hint() {
+    let (home, _p, _head) = world_with_profiles(&[(".moai-cli/project.yaml", PROFILE_PLAIN)]);
+    let p = home.project("demo");
+    let v = refusal(&done(&home, p.to_str().unwrap()));
+    let message = message_of(&v);
+    assert!(
+        message.contains("no merged pull request is linked"),
+        "{message}"
+    );
+    assert!(
+        !message.contains("a local landing is recorded"),
+        "{message}"
+    );
+}
