@@ -80,3 +80,16 @@ RED(05:1xZ): 직전 head `392a087c79`에서 장면 3장 실패 — 삭제가 허
 - AC-2: met — override 통과 후 REQ-4 기록 1줄(7필드, UTC 20자, 변수=노트·참조·보유값→밀어넣은 값), malformed(`=1`, 개행 포함) 거부와 무기록, 빈 override 거부와 무기록
 - AC-3: met — 같은 파일의 가드 장면: 나열된 명령 12개(reset --hard/--keep·git -C·cd·절대 경로 push --force·--force-with-lease·`+` refspec·branch -f/-M/-D) 전부 거절, 다른 가지와 substring 이웃 11개 전부 통과
 - AC-4: met — `moai check affected 64faee764cd..22c1a1ce94`에서 8단계 중 7단계 exit 0(diff_check·fmt·test_lib·test_bins·test_targets 48·build_cli·python 9), clippy만 101 — wip 가 남긴 미사용 import 라서 `659eccae62`에서 제거 후 `cargo clippy --locked --offline --all-targets -- -D warnings` 통과(48.49s Finished)와 장면 13 재확인. 뮤테이션 4종(위상 게이트·생성 허용 반전·참조 필터 제거·override 형태 검사 제거) 전부 FAILED로 사망(`22c1a1ce94`, 변이별 복원 true — 전역 refs 스냅샷은 실행 창의 리더 번들 병합과 어긋나 source_unchanged=false 로 기록, HEAD·인덱스·트리 불변을 직접 확인)
+
+### 수리 2 — 델타 감사 FAIL(T1·R-N1·R-N2·R-N3·R-N5)
+
+새 가지 `spec/mflow-forward-guard-20261121-r2`(강제 push 없음, 옛 가지 head `1731eba56a` 는 그대로 둠). 2026-11-21 에 다른 세션이 채웠고 감사가 다시 확인해요.
+
+- T1 met — 트레일러 수리: 실패한 세 커밋(`22c1a1ce94`·`659eccae62`·`1731eba56a`)의 `Moai-Session` 작업 키가 32 hex 였어요(규칙은 12 hex). 앞선 커밋 7개는 그대로 두고(`392a087c79` 까지 sha 가 같아요) 그 세 커밋을 키 `776033fb0369` 로 고쳐 다시 얹었어요. 얹은 직후 트리는 옛 head 와 같아요(`git rev-parse HEAD^{tree}` 와 `1731eba56a^{tree}` 가 같은 값). `trailer-check 33a5846038..HEAD` 는 커밋 10개에 failing 0.
+- R-N1 met — `git -C <dir> reset --hard|--keep` 에서 `<dir>` 의 가지를 못 읽으면 거절해요(없는 폴더, `.git` 이 없는 폴더, 분리된 HEAD). 경로와 호출자의 가지가 가지 이름 자리에 들어가지 않아요. `status`·`push`·`reset --soft` 는 가지를 읽을 필요가 없어서 그대로 통과해요. 시험 `an_unreadable_dash_c_folder_is_refused_for_a_hard_reset`.
+- R-N2 met — `cd`·`-C` 가 가리키는 폴더의 가지를 그 폴더가 속한 작업 트리(위로 올라가며 처음 만나는 `.git`)에서 읽어요. 하위 폴더도 그 체크아웃으로 쳐요. 시험 `a_subfolder_of_the_integration_checkout_is_the_integration_branch`(다른 가지 체크아웃의 하위 폴더는 통과).
+- R-N3 met — `reset --har`·`--ha`·`--ke`(다른 옵션과 겹치지 않는 접두는 git 도 받아요), `push -fu`·`-uf`·`-o x -f`·`--forc`, `branch -C`(복사 대상)·`-mf`·`--copy --force`·`--forc`·`-d`·`--delete` 를 git 이 읽는 대로 읽어요. 모두 `hook_guards` 의 기존 해석기(`long_opt`·`short_letters`·`push_force_option`·`BRANCH_LONG`)를 쓰고, `git reset` 의 긴 옵션 표(`RESET_LONG`, git 2.54.0 의 `--git-completion-helper-all`)만 이 모듈이 가져요. 시험 `abbreviated_and_bundled_options_are_read_the_way_git_reads_them`.
+- R-N5 met — `branch -f <다른 가지> v2026.11.0` 은 통과(시작점이지 움직이는 가지가 아니에요), `branch -f v2026.11.0 <다른 가지>` 는 거절. 시험 `a_force_branch_that_only_starts_from_the_integration_branch_passes`.
+- 후속(리더 결정): R-N4(`ps` 의존)와 감사 노트의 N2·N3 는 배선 조각(B1: 훅 설치 단계·PreToolUse 디스패치·m-flow 판별·`hooksPath`)에서 다뤄요. 이 조각의 코드는 바꾸지 않았어요.
+- 시험: `cargo test --locked --offline --test mflow_guard_cli` 17 개 통과(새 4개 포함).
+- 변이 시험 5개 전부 사망(커밋 `4d3feb0736` 에서 변이마다 파일을 복원하고 시험, 복원 true): R-N1 안 거절(M1), R-N2 폴더 그대로 읽기(M2), `reset` 접두 안 읽기(M3), `push -fu` 안 읽기(M4), `branch -f` 의 시작점도 이름으로 침(M5).
