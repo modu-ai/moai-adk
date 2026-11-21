@@ -278,8 +278,8 @@ fn the_agent_section_maps_each_step_of_the_round_to_a_card_command() {
             // Find, take, keep (S2: `each writer then takes`, `card renew` before the lease
             // ends, `card check … before each write`).
             "`moai card next`",
-            "`moai card take <card> --scope <p> --worktree <w> --branch card/<n>-<slug>`",
-            "under `~/.moai/worktrees/<project>-<n>` on branch `card/<n>-<slug>`",
+            "`moai card take <card> --scope <p> --worktree <w> --branch spec/<slug>-<yyyymmdd>`",
+            "under `~/.moai/worktrees/<project>-<n>` on branch `spec/<slug>-<yyyymmdd>`",
             "Every writer takes the `--generation <g>` that `card take` answered",
             "run `card renew <card> --generation <g>` before the lease ends",
             "run `moai card check <card> --generation <g> --path <p>` with every path the change \

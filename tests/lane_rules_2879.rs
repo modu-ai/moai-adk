@@ -55,7 +55,7 @@ fn the_never_delete_rule_names_the_card_cleanup_as_its_exception() {
         // C-53 S5: the cleanup is self-pick item (3) since the pre-audit item left (was (4)).
         &[
             "Never delete files, branches or worktrees — except the cleanup in `self-pick` (3): `moai worktree-gc-apply` on your own merged card's worktree, with that plan's `plan_digest` (Issue #2879), and a refused take's unused worktree and branch (`claim` step) — never touch the real HOME",
-            "On `conflict` (held by another session, a scope overlap, not `ready`) remove the unused worktree and its branch (`git worktree remove <w>`, `git branch -D card/<n>-<slug>`, that branch only), then take the next candidate",
+            "On `conflict` (held by another session, a scope overlap, not `ready`) remove the unused worktree and its branch (`git worktree remove <w>`, `git branch -D spec/<slug>-<yyyymmdd>`, that branch only), then take the next candidate",
         ],
     );
 }

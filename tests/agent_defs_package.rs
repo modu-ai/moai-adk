@@ -706,11 +706,13 @@ fn work_flow_row_offers_m_flow_first_and_the_bank_states_each_flow() {
         "- **trunk-based**",
         "- **git-flow**",
         "`worktree.baseRef: head`",
-        "push the branch and open a pull request (recommended)",
+        "push the branch and post the READY note",
         "`{\"flow\": \"m-flow\" | \"github-flow\" | \"trunk-based\" | \"git-flow\"",
-        // Audit B1 (decision 2026-11-17): one SPEC = one branch = one pull request.
+        // Audit B1 (decision 2026-11-17): one SPEC = one branch; the M-Flow decisions of
+        // 2026-11-20 replace the pull request per SPEC with a pull request only for a formal release.
         "branch `spec/<slug>-<yyyymmdd>`",
-        "one SPEC, one branch, one pull request",
+        "one SPEC, one branch, and no card number",
+        "a pull request is opened only for a formal release",
     ] {
         assert!(section.contains(text), "the flow section lacks {text:?}");
     }

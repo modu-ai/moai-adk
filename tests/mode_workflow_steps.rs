@@ -232,6 +232,8 @@ fn ops_named_by_the_mode_workflows_exist_with_their_flags() {
             // `moai wait` (`lane-next` finds a lane's pull request only by an Issue claim trailer).
             "wait",
             "wait --repo",
+            // The lane reads the project's work flow with this read-only op in the `state` step.
+            "work-flow-plan --project",
             "worktree-gc-apply",
             "worktree-gc-plan --integration-ref"
         ],
