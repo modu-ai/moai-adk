@@ -691,17 +691,14 @@ mod tests {
     }
 
     /// REQ-2 and REQ-3: a repository whose name or remote cannot be resolved and forge
-    /// counts that cannot be read say `미확인` — never a zero and never a hidden segment.
+    /// counts that cannot be read say `n/a` — never a zero and never a hidden segment.
     #[test]
     fn lookup_failures_show_unknown_not_zero() {
         let mut status = full_status();
         status.repo = None;
         status.github.available = false;
         let line = plain(&status, &[]).lines().nth(1).unwrap().to_string();
-        assert_eq!(
-            line, "📡 미확인, ⬇️ 미확인 🔀 미확인 | 🅱️ main ↑5 ↓2 +3",
-            "{line}"
-        );
+        assert_eq!(line, "📡 n/a, ⬇️ n/a 🔀 n/a | 🅱️ main ↑5 ↓2 +3", "{line}");
         assert!(
             !line.contains("⬇️ 0"),
             "a failed lookup is never zero: {line}"
@@ -799,19 +796,117 @@ mod tests {
     }
 
     #[test]
-    fn rate_windows_are_optional_but_present_windows_keep_zero_percent() {
+    fn rate_windows_are_optional_and_an_unknown_window_says_n_a() {
         let mut status = Status::default();
-        assert_eq!(plain(&status, &["session"]), "🪫 CTX 미확인");
+        assert_eq!(plain(&status, &["session"]), "CTX n/a");
         status.seven_day = Some(RateWindow::default());
-        assert_eq!(plain(&status, &["session"]), "🪫 CTX 미확인 | 🔋 Week 0%");
+        assert_eq!(plain(&status, &["session"]), "CTX n/a | Week n/a");
+        assert_eq!(plain(&status, &["session", "context"]), "Week n/a");
+        assert_eq!(plain(&status, &["session", "usage_7d"]), "CTX n/a");
+        // A window that reports a real zero keeps it, with its icon.
+        status.seven_day = Some(RateWindow {
+            used_percentage: Some(0.0),
+            resets_at: None,
+        });
         assert_eq!(plain(&status, &["session", "context"]), "🔋 Week 0%");
-        assert_eq!(plain(&status, &["session", "usage_7d"]), "🪫 CTX 미확인");
     }
 
-    /// #2559 AC-1: the bar's thresholds pinned at N/N+1 — the battery icon turns at 70/71 and
-    /// a cell fills at each tenth (9/10). Plain output, so only the threshold decides.
+    /// REQ-9: a window whose percentage is unavailable says `n/a` with no battery icon and never
+    /// `0%`; the reset countdown of an unknown week still follows it.
     #[test]
-    fn bar_thresholds_hold_at_their_boundaries() {
+    fn an_unknown_window_says_n_a_without_a_battery_icon() {
+        let unknown_ctx = Status::default();
+        let line = plain(&unknown_ctx, &["session"]);
+        assert_eq!(line, "CTX n/a", "{line}");
+        assert!(!line.contains('🪫') && !line.contains('🔋'), "{line}");
+        let no_budget = Status {
+            memory: segments::Memory {
+                tokens_used: 5,
+                token_budget: 0,
+                context_window_size: 200_000,
+                available: true,
+            },
+            ..Status::default()
+        };
+        assert_eq!(plain(&no_budget, &["session"]), "CTX n/a");
+        let week = Status {
+            seven_day: Some(RateWindow {
+                used_percentage: None,
+                resets_at: None,
+            }),
+            ..Status::default()
+        };
+        let line = plain(&week, &["session", "context"]);
+        assert_eq!(line, "Week n/a", "{line}");
+        assert!(
+            !line.contains("0%") && !line.contains('🪫') && !line.contains('🔋'),
+            "{line}"
+        );
+    }
+
+    /// REQ-10: a window's percentage is shown from 0 to 100 and no further, at the edges too.
+    #[test]
+    fn window_percentages_stay_between_zero_and_one_hundred() {
+        let week = |pct: f64| {
+            let status = Status {
+                seven_day: Some(RateWindow {
+                    used_percentage: Some(pct),
+                    resets_at: None,
+                }),
+                ..Status::default()
+            };
+            plain(&status, &["context", "session"])
+        };
+        assert_eq!(week(-5.0), "🔋 Week 0%");
+        assert_eq!(week(0.0), "🔋 Week 0%");
+        assert_eq!(week(1.0), "🔋 Week 1%");
+        assert_eq!(week(99.0), "🪫 Week 99%");
+        assert_eq!(week(100.0), "🪫 Week 100%");
+        assert_eq!(week(101.0), "🪫 Week 100%");
+        assert_eq!(week(1_000_000.0), "🪫 Week 100%");
+        let ctx = |used: i64| {
+            let status = Status {
+                memory: segments::Memory {
+                    tokens_used: used,
+                    token_budget: 100,
+                    context_window_size: 200_000,
+                    available: true,
+                },
+                ..Status::default()
+            };
+            plain(&status, &["session", "usage_7d"])
+        };
+        assert_eq!(ctx(0), "🔋 CTX 0%");
+        assert_eq!(ctx(100), "🪫 CTX 100%");
+        assert_eq!(ctx(101), "🪫 CTX 100%");
+        assert_eq!(ctx(5_000), "🪫 CTX 100%");
+    }
+
+    /// REQ-11: the screen is English only — nothing a render prints holds a Hangul letter, with
+    /// the values known, unknown or failed to read, in plain and in colored output.
+    #[test]
+    fn no_line_of_the_screen_carries_korean_text() {
+        let is_hangul = |c: char| matches!(c, '\u{1100}'..='\u{11FF}' | '\u{3130}'..='\u{318F}' | '\u{AC00}'..='\u{D7A3}');
+        let mut failed = full_status();
+        failed.repo = None;
+        failed.github.available = false;
+        failed.seven_day = Some(RateWindow::default());
+        failed.memory.available = false;
+        let mut detached = full_status();
+        detached.git = Some(segments::parse_porcelain("## HEAD (no branch)\n"));
+        let screens = [Status::default(), full_status(), failed, detached];
+        for status in &screens {
+            let out = plain(status, &[]);
+            assert!(!out.chars().any(is_hangul), "plain: {out}");
+            let out = colored("mocha", Profile::TrueColor, status);
+            assert!(!out.chars().any(is_hangul), "colored: {out:?}");
+        }
+    }
+
+    /// #2559 AC-1: the window icon's thresholds pinned at N/N+1 — the battery icon turns at
+    /// 70/71. Plain output, so only the threshold decides.
+    #[test]
+    fn window_icon_thresholds_hold_at_their_boundaries() {
         let at = |pct: f64| {
             let status = Status {
                 seven_day: Some(RateWindow {
@@ -850,13 +945,13 @@ mod tests {
     #[test]
     fn the_tag_is_the_first_segment_of_line_one() {
         let mut status = Status::default();
-        assert_eq!(plain(&status, &[]), "🏷️ agent\n🪫 CTX 미확인");
+        assert_eq!(plain(&status, &[]), "🏷️ agent\nCTX n/a");
         status.seven_day = Some(RateWindow::default());
-        assert_eq!(plain(&status, &[]), "🏷️ agent\n🪫 CTX 미확인 | 🔋 Week 0%");
+        assert_eq!(plain(&status, &[]), "🏷️ agent\nCTX n/a | Week n/a");
         status.leader = true;
-        assert_eq!(plain(&status, &[]), "🏷️ Leader\n🪫 CTX 미확인 | 🔋 Week 0%");
+        assert_eq!(plain(&status, &[]), "🏷️ Leader\nCTX n/a | Week n/a");
         assert_eq!(plain(&status, &["usage_7d", "context"]), "🏷️ Leader");
-        assert_eq!(plain(&status, &["session"]), "🪫 CTX 미확인 | 🔋 Week 0%");
+        assert_eq!(plain(&status, &["session"]), "CTX n/a | Week n/a");
         let mut full = full_status();
         let bars = "🔋 CTX 50% | 🪫 Week 75%";
         let env = "🧠 Opus | 🤔 high·t | 🤖 v2.1.293 | 🗿 v2.0 -> 🗿 v3.0";

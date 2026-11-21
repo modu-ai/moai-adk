@@ -146,13 +146,13 @@ fn a_stale_cache_is_refreshed_in_the_background_and_the_go_file_is_left_alone() 
     let go = r#"{"open_issues":7,"open_prs":3,"fetched_at":1}"#;
     write(&f.repo, GO_CACHE, go);
     // AC-3: a count fetched long ago is not shown as current; the unavailable window says
-    // `미확인` (SPEC-20261121-statusline-detached REQ-3) — never the stale numbers.
+    // `n/a` (SPEC-20261121-statusline-detached REQ-3) — never the stale numbers.
     let (first, _) = render(&f);
     assert!(
         !first.contains("⬇️ 7") && !first.contains("🔀 3"),
         "stale counts shown: {first}"
     );
-    assert!(first.contains("미확인"), "the failed read says so: {first}");
+    assert!(first.contains("n/a"), "the failed read says so: {first}");
     assert!(
         wait_for(|| cache(&f).is_some_and(|c| c["open_issues"] == 12)),
         "no refresh: {:?}",

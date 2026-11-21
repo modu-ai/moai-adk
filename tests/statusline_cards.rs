@@ -222,11 +222,11 @@ fn the_card_counts_keep_their_place_without_fresh_forge_counts() {
     let f = fixture();
     f.with_mix();
     std::fs::remove_file(f.project.join(FORGE_CACHE)).unwrap();
-    // SPEC-20261121-statusline-detached REQ-3: a failed forge read says `미확인` in place —
+    // SPEC-20261121-statusline-detached REQ-3: a failed forge read says `n/a` in place —
     // never a zero and never a hidden segment.
     assert_eq!(
         f.line2(),
-        "📡 modu-ai/moai-adk, ⬇️ 미확인 🔀 미확인 | 🅱️ main +1",
+        "📡 modu-ai/moai-adk, ⬇️ n/a 🔀 n/a | 🅱️ main +1",
         "without fresh forge counts the slots say unknown, with the comma kept"
     );
     assert!(
