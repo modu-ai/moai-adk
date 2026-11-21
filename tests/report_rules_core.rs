@@ -50,11 +50,18 @@ fn the_skill_entry_points_to_the_core_rules_and_keeps_the_decision_order() {
     ] {
         assert!(!entry.contains(moved), "SKILL.md still carries {moved:?}");
     }
-    // One line says where they went.
+    // One line says where they went, by the route table's entry and not by a package path (the
+    // skill entry names only the route table: `skill_package_frontmatter_is_host_neutral`).
     let pointer = entry
         .lines()
-        .find(|l| l.contains("rules 23 and 24 of `references/internal/core-rules.md`"))
+        .find(|l| {
+            l.contains("rules 23 and 24 of the core rules (the route table's `core_rules` entry)")
+        })
         .expect("SKILL.md points to rules 23 and 24 of the core rules");
+    assert!(
+        !pointer.contains("references/"),
+        "the pointer names no package path: {pointer}"
+    );
     assert!(
         pointer.len() < 260,
         "the pointer is one short line: {pointer}"

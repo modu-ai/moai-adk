@@ -21,7 +21,7 @@ The skill entry `skills/moai/SKILL.md` is meant to be the entry and the router: 
 
 ## Requirements
 
-- REQ-1: The skill entry shall say in one line that the report rules are rules 23 and 24 of `references/internal/core-rules.md`.
+- REQ-1: The skill entry shall say in one line that the report rules are rules 23 and 24 of the core rules, named by the route table's `core_rules` entry and not by a package path.
 - REQ-2: The core rules shall carry the completion-report rule and the report-number rule as rules 23 and 24 with the words the skill entry carried.
 - REQ-3: The skill entry shall keep the decision order, the HOLD categories and the decision record fields.
 - REQ-4: The size cap of the core rules shall rise by no more than the bytes of the two moved rules and their section line.
@@ -70,6 +70,7 @@ The skill entry `skills/moai/SKILL.md` is meant to be the entry and the router: 
 | D-2 | The moved rules keep their words | The decision test pins them; a reworded rule would need a new decision | Reword in a later SPEC |
 | D-3 | The core-rules cap rises from 4608 to 5120 bytes | The same bytes leave the skill entry; the cap was already raised once for added rules | Lower it after the rules move back |
 | D-4 | The rules go in a section of their own, `## Reports`, after rule 22 | Rule numbers are fixed and the numbering test needs no gaps | Move them into another section |
+| D-5 | The pointer line names the route table's `core_rules` entry, not the file path | A skill package test lets the skill entry name only the route table as a package path (one hop) | Name the path and change that test with a decision |
 
 ## Result
 
