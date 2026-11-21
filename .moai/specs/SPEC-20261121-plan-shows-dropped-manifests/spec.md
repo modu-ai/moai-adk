@@ -21,22 +21,25 @@ created: 2026-11-21
 
 ## Requirements
 
-- REQ-1: When the profile plan applies the `detected` key over a recorded profile, the plan shall carry `dropped_manifests`, the sorted `detected.manifests` entries of the recorded profile that the new `detected.manifests` leaves out, and shall leave the field out when none is left out.
-- REQ-2: The plan digest shall cover `dropped_manifests` when it is not empty and shall be computed as before when it is empty.
-- REQ-3: When the update plan's profile step has dropped manifests, the step `reason` shall say how many would drop and the step `preview` shall carry the list.
-- REQ-4 (REQ-2): IF a plan's `dropped_manifests` is not what the current files give, THEN `project-apply` shall refuse the plan as stale or altered and write nothing.
+- REQ-1: The profile plan that applies the `detected` key over a recorded profile shall carry `dropped_manifests`, the sorted recorded `detected.manifests` entries that the new list leaves out.
+- REQ-2: The profile plan shall leave `dropped_manifests` out when no recorded manifest is left out.
+- REQ-3: The plan digest shall cover `dropped_manifests` when it is not empty.
+- REQ-4: The plan digest shall keep its earlier value when `dropped_manifests` is empty.
+- REQ-5: The profile step of the update plan shall say in its `reason` how many recorded manifests would drop.
+- REQ-6: The profile step of the update plan shall carry the dropped list in its `preview`.
+- REQ-7 (REQ-3): IF a plan's `dropped_manifests` is not what the current files give, THEN `project-apply` shall refuse the plan as stale or altered and write nothing.
 
 ## Acceptance
 
 - AC-1 (REQ-1): 기록된 `detected.manifests` 가 `apps/a/package.json`, `apps/b/go.mod`, `package.json` 일 때 새 목록이 `package.json` 뿐이면 `project-plan` 이 `dropped_manifests` 로 앞의 둘을 정렬해 보여요.
   verify: `cargo test --locked --offline --test project_update_drops_cli the_project_plan_names_the_recorded_manifests_a_smaller_detected_list_drops`
-- AC-2 (REQ-3): 같은 상황에서 `project-update-plan` 의 `profile` 단계가 `ready` 이고 `reason` 에 "2 recorded manifests would drop" 이 있고 `preview.dropped_manifests` 가 그 둘이에요.
+- AC-2 (REQ-5, REQ-6): 같은 상황에서 `project-update-plan` 의 `profile` 단계가 `ready` 이고 `reason` 에 "2 recorded manifests would drop" 이 있고 `preview.dropped_manifests` 가 그 둘이에요.
   verify: `cargo test --locked --offline --test project_update_drops_cli the_update_plan_profile_step_says_how_many_manifests_would_drop`
-- AC-3 (REQ-1): 목록이 그대로이거나 늘기만 하면 `dropped_manifests` 가 계획에 없고 `reason` 은 전과 같아요.
+- AC-3 (REQ-2, REQ-4): 목록이 그대로이거나 늘기만 하면 `dropped_manifests` 가 계획에 없고 `reason` 은 전과 같아요.
   verify: `cargo test --locked --offline --test project_update_drops_cli a_list_that_only_grows_or_stays_drops_nothing`
-- AC-4 (REQ-2, REQ-4): `dropped_manifests` 를 지운 계획은 `project-apply` 가 "stale or altered plan" 으로 거절하고 프로필 파일이 그대로예요.
+- AC-4 (REQ-3, REQ-7): `dropped_manifests` 를 지운 계획은 `project-apply` 가 "stale or altered plan" 으로 거절하고 프로필 파일이 그대로예요.
   verify: `cargo test --locked --offline --test project_update_drops_cli a_plan_with_the_dropped_list_removed_is_refused_at_apply`
-- AC-5 (REQ-1): 사용자가 손으로 고쳐서 충돌인 `detected` 키는 `dropped_manifests` 가 없어요.
+- AC-5 (REQ-2): 사용자가 손으로 고쳐서 충돌인 `detected` 키는 `dropped_manifests` 가 없어요.
   verify: `cargo test --locked --offline --test project_update_drops_cli a_hand_edited_detected_key_drops_nothing`
 - AC-6: 이웃 시험이 그대로 통과해요.
   verify: `cargo test --locked --offline --test profile_apply_engine --test profile_plan_cli --test project_update_plan_cli`
