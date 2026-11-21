@@ -2814,6 +2814,7 @@ mod skill_package {
             adapters,
             [
                 "references/adapters/aside.md",
+                "references/adapters/herdr.md",
                 "references/adapters/orca.md"
             ]
         );
