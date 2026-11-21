@@ -697,7 +697,7 @@ pub fn generation_plan_in(
     for role in &request.native_roles {
         let (rel, rendered) = match role.host.as_str() {
             "claude" => (
-                format!(".claude/agents/{}.md", role.role_id),
+                format!(".claude/agents/moai/{}.md", role.role_id),
                 render_claude_role(role),
             ),
             _ => (
@@ -934,6 +934,58 @@ pub fn generation_plan_in(
             baseline_sha256: Some(baseline),
             rendered_sha256: None,
             source_refs: vec![project_profile_rel(&root)],
+            kind: Some(kind),
+            detail,
+        });
+    }
+
+    // Claude Code roles an earlier version wrote flat at `.claude/agents/<id>.md`: the nested
+    // copy replaces them (SPEC-20261121-base-agents-user-folder). A flat file nobody edited is
+    // planned `remove` after the nested copy; an edited one is a conflict that stops the apply,
+    // so its nested copy is not written either. Same checks as the project skills above.
+    for role in request.native_roles.iter().filter(|r| r.host == "claude") {
+        let flat = format!(".claude/agents/{}.md", role.role_id);
+        let kind = format!("generation:native-role:claude:{}", role.role_id);
+        let baseline = manifest
+            .get("owned_files")
+            .and_then(Value::as_array)
+            .and_then(|list| {
+                list.iter().find(|f| {
+                    f.get("path").and_then(Value::as_str) == Some(flat.as_str())
+                        && f.get("section_id").and_then(Value::as_str) == Some(kind.as_str())
+                })
+            })
+            .and_then(|f| f.get("baseline_sha256")?.as_str().map(str::to_string));
+        let Some(baseline) = baseline else {
+            continue;
+        };
+        let refused = link_on_path(&root, &flat)
+            .map(|l| format!("{l} is a symbolic link; nothing removed through it"));
+        let current = if refused.is_some() {
+            None
+        } else {
+            fs::read(root.join(&flat)).ok()
+        };
+        let edited = current.as_deref().is_some_and(|c| digest(c) != baseline);
+        let detail = refused.or_else(|| {
+            edited.then_some(
+                "earlier flat role file was edited after generation; kept, and its nested copy is not written"
+                    .to_string(),
+            )
+        });
+        files.push(GenerationFilePlan {
+            path: flat,
+            action: if detail.is_some() {
+                "conflict"
+            } else {
+                "remove"
+            }
+            .into(),
+            tracked_by_default: false,
+            expected_sha256: current.as_deref().map(digest),
+            baseline_sha256: Some(baseline),
+            rendered_sha256: None,
+            source_refs: Vec::new(),
             kind: Some(kind),
             detail,
         });
