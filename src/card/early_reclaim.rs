@@ -115,7 +115,7 @@ fn prove(project: &Path, cur: &reservation::Reservation, now: i64) -> Result<Pro
         }
     }
     // The lookup above answers `launcher-exited` for every session that has no `.live` file:
-    // one registered with `session-register` alone (an Orca pane, a plain `claude`) never had a
+    // one registered with `session-register` alone (a pane of a session manager, a plain `claude`) never had a
     // launcher, and is not gone for that. The launcher counts only when its lock file exists
     // (and nobody holds it, the answer above) and the registry lease of the session has ended
     // (SPEC-20261120-reclaim-dead-holder REQ-1; audit of the early reclaim, B1).
