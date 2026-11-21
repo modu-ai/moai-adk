@@ -2,7 +2,7 @@
 id: SPEC-20261122-worktree-place
 title: "New worktrees live in the project's .claude/worktrees and the home worktree folder is retired"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-22
 parent: null
 ---
@@ -11,34 +11,38 @@ parent: null
 
 ## Intent
 
-사용자 결정(2026-11-22): 홈 워크트리 폴더는 더 이상 쓰지 않고, 새 워크트리는 프로젝트 자체 폴더 안의 Claude Code 기본 자리 `.claude/worktrees/<name>/` 으로 통일해요. 빌드는 각 워크트리 안의 도구 기본 폴더를 쓰고, 별도 빌드 홈을 새 워크트리에 고르지 않아요. 이는 새 워크트리를 홈 moai 폴더 아래 두던 규칙(홈 워크디렉터 설계 D1–D8)을 대체해요. 기존 워크트리는 있는 자리에서 브랜치가 끝날 때까지 그대로 동작하고, 이 카드는 그것을 옮기거나 지우지 않아요. 삭제는 언제나 사용자 픽이 필요해요.
+사용자 결정(2026-11-22): 홈 워크트리 폴더는 더 이상 쓰지 않고, 새 워크트리는 프로젝트 자체 폴더 안의 Claude Code 기본 자리 `.claude/worktrees/<name>/` 으로 통일해요. 빌드는 각 워크트리 안의 도구 기본 폴더를 쓰고, 별도 빌드 홈을 새 워크트리에 고르지 않아요. 이는 새 워크트리를 홈 moai 폴더 아래 두던 규칙(홈 워크디렉터 설계 D1–D8)을 대체해요. 기존 워크트리는 있는 자리에서 브랜치가 끝날 때까지 그대로 동작하고, 이 카드는 그것을 옮기거나 지우지 않아요. 삭제는 언제나 사용자 선택이 필요해요.
 
 이 슬라이스(조각 1)는 SPEC 만 써요. 코드는 뒤 조각이 써요.
 
 ## Non-goals
 
 - 기존 워크트리의 이동이나 삭제. 홈·Go·과거 프로젝트 폴더의 워크트리는 분류기에서 계속 인식되고, 브랜치가 끝날 때까지 그대로 동작해요.
-- 워크트리 삭제·정리의 사용자 픽 절차 변경: guarded 규칙은 그대로예요.
+- 워크트리 삭제·정리의 사용자 선택 절차 변경: guarded 규칙은 그대로예요.
 - 도구 폴더의 Python·셸 파일 정리: 다른 카드가 Rust 이관과 함께 처리해요.
-- 통합 브랜치 이름과 리펙 가드: 다른 결정 노트가 소유해요.
+- 통합 브랜치 이름과 참조 가드: 다른 결정 노트가 소유해요.
 
 ## Requirements
 
 - REQ-1: Every moai path that creates a new worktree shall create it inside the project's `.claude/worktrees/<name>/` folder.
 - REQ-2: A worktree creation or a worktree path check shall refuse a new-worktree path outside that folder and name the new place in the refusal.
-- REQ-3: The folder name of a new worktree shall stay the name `home_workdir::worktree_name` builds today, the safe `<project>-<id>` form.
-- REQ-4: The tool shall stop choosing a separate build home for new worktrees, whose builds then use the tool's default build folder inside that worktree.
-- REQ-5: Repository-wide scans and the test selection shall skip every path under `.claude/worktrees/`.
-- REQ-6: The Claude Code settings moai ships shall set the worktree base to the local head, so a new worktree starts at the local integration branch.
-- REQ-7: The worktree classifier shall keep recognising worktrees in the old places — the home folder, the Go generation folder and the earlier project state folder — and keep every command working on them.
-- REQ-8: Instruction texts and shipped documents shall name only the new place for new worktrees and stop ordering a new worktree under the home worktree folder.
+- REQ-3: The folder name of a worktree that moai creates shall stay the name `home_workdir::worktree_name` builds today, the safe `<project>-<id>` form.
+- REQ-4: A worktree that Claude Code or Orca made under the project's `.claude/worktrees/` shall be accepted with whatever folder name it has — the name rule of REQ-3 applying only to worktrees moai creates — with the branch of such a host-made worktree named by the card take or the submit that uses it, not by the folder.
+- REQ-5: The tool shall stop choosing a separate build home for new worktrees, whose builds then use the tool's default build folder inside that worktree.
+- REQ-6: Repository-wide scans and the test selection shall skip every path under `.claude/worktrees/`.
+- REQ-7: The Claude Code settings moai ships shall set the worktree base to the head of the session that makes the worktree, so a host-made worktree starts from that session's local history instead of the remote default branch, while moai's own creation passes the integration branch explicitly and the base read at submit time is what counts.
+- REQ-8: The worktree classifier shall keep recognising worktrees in the old places — the home folder, the Go generation folder and the earlier project state folder — and keep every command working on them.
+- REQ-9: Instruction texts and shipped documents shall name only the new place for new worktrees and stop ordering a new worktree under the home worktree folder.
 
 ## Acceptance
 
-- AC-1 (REQ-1, REQ-2, REQ-3): a new worktree made by every moai path lands in the project's `.claude/worktrees/<name>/` and a path elsewhere is refused with the new place named · verify: a temp-project test of the worktree command, the bundle build worktree and the launcher creation
-- AC-2 (REQ-4, REQ-5): a new worktree holds no separate build home and builds use the default folder inside it; the repository scans and the affected-test selection contain no `.claude/worktrees/` path · verify: a scan fixture test and a worktree test
-- AC-3 (REQ-6): the shipped settings carry the local-head worktree base · verify: the settings plan test
-- AC-4 (REQ-7, REQ-8): a worktree in an old place keeps working in the classifier and the commands, and no instruction text orders the home folder for new worktrees · verify: a repository text scan and a classifier test
+- AC-1 (REQ-1, REQ-2, REQ-3): a new worktree made by every moai path lands in the project's `.claude/worktrees/<name>/` and a path elsewhere is refused with the new place named · verify: `cargo test --offline --locked --test worktree_place_cli worktree_place_creation_` and `worktree_place_refusal_`
+- AC-2 (REQ-4): a worktree that Claude Code or Orca made is accepted with any folder name and its branch comes from the card take or the submit · verify: `cargo test --offline --locked --test worktree_place_cli worktree_place_host_made_`
+- AC-3 (REQ-5): a new worktree holds no separate build home and builds use the default folder inside it · verify: `cargo test --offline --locked --test worktree_place_cli worktree_place_build_folder_`
+- AC-4 (REQ-6): the scans and the affected-test selection contain no `.claude/worktrees/` path · verify: `cargo test --offline --locked --test worktree_place_cli worktree_place_scans_`
+- AC-5 (REQ-7): the shipped settings carry the maker-head worktree base · verify: `cargo test --offline --locked --test worktree_place_cli worktree_place_settings_base_`
+- AC-6 (REQ-8): a worktree in an old place keeps working in the classifier and the commands · verify: `cargo test --offline --locked --test worktree_place_cli worktree_place_old_places_`
+- AC-7 (REQ-9): no instruction text orders the home folder for new worktrees · verify: `cargo test --offline --locked --test worktree_place_cli worktree_place_texts_`
 
 ## Scope
 
@@ -61,6 +65,7 @@ The survey read the worktree-path lines of every source file that mentions workt
 ## Risks
 
 - `.claude/worktrees/` sits inside the repository: every scan, test selector and packaging list must skip it, or the tool starts reading worktrees as project content.
+- 측정 사실(리더, 2026-11-22): 루트 Cargo.toml 에 workspace 절이 없고, 이 저장소의 기존 `.claude/worktrees/<name>/` 안에서 cargo metadata 는 exit 0 — 겹친 워크트리도 자체적으로 빌드돼요. 스캔 빠뜨림 위험 선은 그대로 유지해요.
 - The classifier vocabulary (home, go, project, claude, other) is used by the guard, the clean-up and the move: a new place changes the default, not the words, so old places keep their names.
 - The home folder retire touches texts in the skill and the managed templates; a missed text keeps ordering the old place.
 
