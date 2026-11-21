@@ -2,21 +2,23 @@
 //! partial (SPEC-20261121-detect-walk-breadth), through the binary in temporary folders only.
 
 mod common;
+use common::home::TempHome;
 use serde_json::{json, Value};
 use std::{
     fs,
     io::Write,
     path::Path,
-    process::{Command, Output, Stdio},
+    process::{Output, Stdio},
 };
 use tempfile::TempDir;
 
-const EXE: &str = crate::common::MOAI_BIN;
 const PARTIAL: &str = "manifest list is partial";
 
 fn run(args: &[&str]) -> Output {
-    let mut child = Command::new(EXE)
-        .args(args)
+    // A temporary HOME, so the run never reads the real one.
+    let home = TempHome::new();
+    let mut child = home
+        .command(args)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())

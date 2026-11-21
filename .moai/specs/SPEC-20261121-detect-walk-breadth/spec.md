@@ -78,4 +78,5 @@ created: 2026-11-21
 - AC-5: met — `cargo test --locked --offline --test project_detect_cli` 24 개 통과, `cargo test --locked --offline --lib project_detect` 7 개 통과, `cargo clippy --locked --offline --all-targets -- -D warnings` 0, `cargo fmt` 적용.
 - 실측: 보고된 저장소를 읽기만 하는 `project-detect` 로 돌리면 고치기 전 `manifests` 가 1 개, 고친 뒤 55 개(`manifest_walk` `{complete: true, over_cap: 0}`)예요. 이 저장소에서 실패의 원인은 `apps/` 앞의 숨김 폴더 세 개(`.moai-backup`, `.moai-backups`, `.vercel`, 합쳐 약 15 만 항목)가 예산을 다 쓰는 것이었어요.
 - 변이 5 개 모두 시험이 잡았어요(숨김 건너뛰기 빼기, `complete` 항상 true, 상한 계산 어긋남, 안내 조건 `||` 를 `&&` 로, 폭 우선을 깊이 우선으로 되돌리기). 각 변이는 컴파일되고 시험이 실패했어요.
+- 병합 검사에서 `home_isolation_scan` 이 새 시험 파일을 막았어요(바이너리를 `HOME` 없이 실행): `TempHome` 으로 실행하게 고쳤고 `cargo test --locked --offline --test project_detect_walk_cli --test home_isolation_scan` 통과(4 개와 14 개).
 - 돌리지 않은 것: 전체 `moai check affected`(병합 준비 노트에 줄째로 적어요), `code_languages` 의 예산(바꾸지 않았어요), 프로필 계획이 줄어드는 manifest 를 보여 주는 것(다음 조각).
