@@ -71,4 +71,24 @@ created: 2026-11-21
 
 ## Result
 
-(written after the checks)
+Filled in by the implementation lane on 2026-11-21; the audit checks it again. Base `53cce6c580` (the tip when the SPEC was written); the green text is committed as `b5c0de7d9c`, and the local tip `174d8fcecf9a` is merged in as `d9190111e8` (tree equal to the `git merge-tree` result, no conflict). Evidence files are in this worktree's `target/notes/`.
+
+Red (before the text): the previous lane pinned the four tests and showed each one red on the tip text by a script over the file (no cargo run then); the first cargo run is the green one below.
+
+- AC-1: met — `cargo test --locked --offline --test update_closing_commit` (`green1.out`): 4 passed, 0 failed, exit 0; `closing_commit_is_the_last_step` is one of the four. Step 7 sits after steps 5 and 6 and before `## Exceptions and Permissions`; the completion check ends with the closing-commit sentence.
+- AC-2: met — same run, `closing_commit_lists_marks_and_warns` (listing under the apply, `git ls-files` marking, kept-local folders, the "comes back" warning, the two-choice question, index read, per-path `git add`, `git commit -- <path>`, the way back, no push, secret-looking names).
+- AC-3: met — same run, `m_flow_commits_on_a_branch_of_its_own` (also asserts the text does not use `moai spec take`).
+- AC-4: met — same run, `go_generation_leftovers_are_read_out` (the four residue classes, `tracked`/`resurrected`, the `claude-md` choices, the leftovers).
+- AC-5: met — `python3 -I tools/source_manifest.py check` prints `{"conflicted": false, "changed": [], "dropped": [], "ok": true}` on the merged tree; `cargo test --locked --offline --test update_route --test agent_defs_package --test product_cli` (same `green1.out`): 9, 19 and 79 passed.
+
+### Checks
+
+`moai check affected 174d8fcecf9a..HEAD` (the branch's own build of the binary, `--max 2`, head `d9190111e8`), summary line as printed: `check-affected base=174d8fcecf9a head=d9190111e862 targets=42 py=8 scans=listed:41 diff_check=0 fmt=0 clippy=0 test_lib=0 test_bins=0 test_targets=0 build_cli=0 python=1 result=FAIL`. The one failing step is `tests.repo_scans_test … test_every_walking_test_file_is_listed_or_exempt` (log `target/notes/affected/08-python.log`): `tests/update_closing_commit.rs` is read as a test that walks the repository (it names `CARGO_MANIFEST_DIR` and the pinned words `git ls-files`), while it reads only the one named `skills/moai/workflows/update.md`. The way out is one line in the EXEMPT table of `tests/repo_scans_test.py`, a file another change holds; the lane asked the leader how it lands (card note on the decision). Until that line is in, this SPEC's own checks are green and the full check stays red on that one step.
+
+Mutants (five, on the committed `skills/moai/workflows/update.md`, each restored, `restored: True`; `target/notes/mutate.out`): the "comes back" warning dropped, `git commit -- <path>` turned into a plain `git commit`, the m-flow branch rule dropped, the `go_marker` class dropped, the completion sentence dropped — each killed by the named test of the matching AC.
+
+### Not run
+
+- The route on a real Go-generation project (`/moai update` in a host): not run; the text is pinned by words only, and the host check stays `not_run` as the workflow says.
+- The code slices this text names (`go-residue`, `claude-md` steps): they are other changes; the text reads them only "when the plan has the step".
+- A second run of the same tests on the same tree: not repeated (each result above is the one run's output).
