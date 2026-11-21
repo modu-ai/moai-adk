@@ -148,7 +148,8 @@ fn state_dir(project: &Path) -> Result<PathBuf, String> {
     if !project.is_dir() {
         return Err("<project> must be the folder path of an existing project".into());
     }
-    Ok(project.join(moai_cli::PROJECT_STATE_DIR).join(STATE_FOLDER))
+    // The project's state folder is asked of `state_root`, never spelled here.
+    Ok(moai_cli::state_root::path(project, STATE_FOLDER))
 }
 
 /// The lease in `dir`, `None` when there is no file; a file that is not a lease is refused and

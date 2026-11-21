@@ -25,10 +25,7 @@ impl World {
     }
 
     fn lease_file(&self) -> PathBuf {
-        self.project
-            .join(moai_cli::PROJECT_STATE_DIR)
-            .join("state")
-            .join("leader-run.lease")
+        moai_cli::state_root::path(&self.project, "state").join("leader-run.lease")
     }
 
     fn run(&self, args: &[&str]) -> Output {
