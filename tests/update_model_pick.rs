@@ -118,7 +118,10 @@ fn enter_selects_the_defaults_and_the_preview_shows_them() {
     for expected in ["claude-opus-5-5", "claude-sonnet-5-5"] {
         assert!(out.contains(expected), "{expected} in the preview: {out}");
     }
-    assert!(!out.contains("gpt-6"), "no Codex model in the preview: {out}");
+    assert!(
+        !out.contains("gpt-6"),
+        "no Codex model in the preview: {out}"
+    );
     assert_eq!(result["changes"].as_array().unwrap().len(), 2, "{result}");
     assert!(
         !settings_path(&h.path).exists(),

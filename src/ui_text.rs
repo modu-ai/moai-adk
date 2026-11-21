@@ -679,7 +679,10 @@ mod tests {
             ] {
                 assert!(t.contains(p), "{lang:?} must name `{p}`: {t}");
             }
-            assert!(!t.contains("codex"), "{lang:?} names a removed launcher: {t}");
+            assert!(
+                !t.contains("codex"),
+                "{lang:?} names a removed launcher: {t}"
+            );
         }
     }
 

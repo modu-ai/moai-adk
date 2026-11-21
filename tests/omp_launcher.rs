@@ -341,23 +341,22 @@ fn omp_key_reaches_the_process_for_a_glm_model_only() {
 /// never sees `ZAI_API_KEY` (audit #3211 N2).
 #[test]
 fn the_key_is_given_to_omp_only() {
-    for host in ["claude"] {
-        let f = Fixture::new();
-        f.store_shared_key(VAULT_KEY);
-        let stub = f.bin.path().join(host);
-        fs::write(&stub, STUB).unwrap();
-        fs::set_permissions(&stub, fs::Permissions::from_mode(0o755)).unwrap();
-        let mut c = f.command(&["cc", "-l", "--model", GLM_MODEL]);
-        c.env("ANTHROPIC_AUTH_TOKEN", ENV_KEY);
-        let out = c.output().unwrap();
-        assert!(out.status.success(), "{host}: {out:?}");
-        assert!(f.started(), "{host}");
-        assert_eq!(
-            f.zai_seen_by_host(),
-            "<unset>",
-            "{host} must not get the key"
-        );
-    }
+    let host = "claude";
+    let f = Fixture::new();
+    f.store_shared_key(VAULT_KEY);
+    let stub = f.bin.path().join(host);
+    fs::write(&stub, STUB).unwrap();
+    fs::set_permissions(&stub, fs::Permissions::from_mode(0o755)).unwrap();
+    let mut c = f.command(&["cc", "-l", "--model", GLM_MODEL]);
+    c.env("ANTHROPIC_AUTH_TOKEN", ENV_KEY);
+    let out = c.output().unwrap();
+    assert!(out.status.success(), "{host}: {out:?}");
+    assert!(f.started(), "{host}");
+    assert_eq!(
+        f.zai_seen_by_host(),
+        "<unset>",
+        "{host} must not get the key"
+    );
 }
 
 /// AC-6: for a z.ai model the OMP process gets exactly one more variable than for any other

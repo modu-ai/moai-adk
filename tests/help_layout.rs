@@ -344,7 +344,10 @@ fn help_all_lists_every_command_and_the_root_a_subset() {
         }
     }
     assert!(root.contains("  cc, glm, omp "), "{root}");
-    assert!(!root.contains("codex, glm") && !root.contains("cc|codex"), "{root}");
+    assert!(
+        !root.contains("codex, glm") && !root.contains("cc|codex"),
+        "{root}"
+    );
 }
 
 /// #2824 re-audit B3: a wide `COLUMNS` never takes a help line past 100 columns — the grouped
