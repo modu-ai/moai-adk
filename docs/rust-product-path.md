@@ -959,7 +959,8 @@ is left out together with its separator.
    There is no graph and no colon; the battery icon is `🪫` above 70% and `🔋` otherwise; a
    percentage is shown from 0 to 100; and there is no `/clear` hint on any line (the user's final
    call of 2026-11-21, SPEC-20261121-statusline-detached). A window whose percentage is
-   unavailable says `CTX n/a` or `Week n/a` with no battery icon and never `0%`, and every value
+   unavailable (the window is absent, its percentage is `null`, or its object is empty) says
+   `CTX n/a` or `Week n/a` with no battery icon and never `0%`, and every value
    that cannot be read says `n/a` (the screen is English only). `Week` ends with
    `(resets in <d>d <h>h)` at a day or more, `(resets in <h>h <m>m)` under a day and
    `(resets in <m>m)` under an hour, measured from the render's clock, when Claude Code gives a

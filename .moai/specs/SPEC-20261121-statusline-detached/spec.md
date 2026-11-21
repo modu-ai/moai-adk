@@ -62,7 +62,7 @@ SHA, 저장소·remote·개수 조회 실패는 그 항목만 `n/a`(0으로 표�
 - AC-9 (REQ-11): verify: `cargo test --offline --locked no_line_of_the_screen_carries_korean_text` — 모르는 값·조회 실패·세 줄 전부를 그린 화면 어디에도 한글이 없어요.
 - AC-10 (REQ-12): verify: `cargo test --offline --locked --test statusline_numbers_only the_renderer_sources_carry_no_bar_leftovers_and_no_card_numbers` — `render.rs`·`segments.rs` 에 막대 문자와 막대 낱말이 없고 `render.rs` 주석에 카드 번호가 없어요.
 - AC-11 (REQ-5, REQ-7): verify: `cargo test --offline --locked --test statusline_numbers_only the_statusline_doc_describes_the_numbers_only_look` — 제품 문서의 3줄 설명이 숫자만 모습(막대·콜론·`/clear` 안내 없음, 리셋 카운트다운)을 말해요.
-- AC-12 (REQ-9): verify: `cargo test --offline --locked --test statusline_numbers_only a_context_window_with_a_null_percentage_says_ctx_n_a` — 사용률이 `null` 이거나 비어 있는 `context_window` 가 stdin 으로 오면 실제 바이너리가 `CTX n/a` 를 그리고 `0%` 도 배터리 아이콘도 없어요. 단위 시험 `a_context_window_with_no_percentage_and_no_usage_is_unavailable` 가 읽기 값 쪽을 고정하고, 골든 사례 `a16-context-percentage-null` 이 화면을 고정해요.
+- AC-12 (REQ-9): verify: `cargo test --offline --locked --test statusline_numbers_only a_context_window_with_a_null_percentage_says_ctx_n_a` — 사용률이 `null` 이거나 비어 있는 `context_window` 가 stdin 으로 오면 실제 바이너리가 `CTX n/a` 를 그리고 `0%` 도 배터리 아이콘도 없어요. 단위 시험 `a_context_window_with_no_percentage_and_no_usage_is_unavailable` 가 읽기 값 쪽을 고정하고, 골든 사례 `a18-context-percentage-null` 이 화면을 고정해요.
 - AC-13 (REQ-10): verify: `cargo test --offline --locked --lib huge_context_numbers_do_not_overflow` — 아주 큰 토큰 수·창 크기·사용률이 들어와도 디버그 빌드에서 죽지 않고 퍼센트가 0..100 에 머물러요.
 - AC-14 (REQ-12): verify: `cargo test --offline --locked --test statusline_numbers_only the_statusline_test_files_carry_no_bar_wording` — 상태줄 시험 파일 머리말·주석에도 막대 낱말이 없어요.
 
