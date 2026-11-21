@@ -65,7 +65,9 @@ fn the_renderer_sources_carry_no_bar_leftovers_and_no_card_numbers() {
 
 /// The part of the product document that describes line 3.
 fn line_three_section() -> &'static str {
-    let from = DOC.find("3. Usage and worktree:").expect("the line 3 item");
+    let from = DOC
+        .find("3. Usage windows and card counts:")
+        .expect("the line 3 item");
     let rest = &DOC[from..];
     &rest[..rest.find("shortens nothing").expect("the end of the item")]
 }

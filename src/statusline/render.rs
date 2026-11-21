@@ -1177,7 +1177,7 @@ mod tests {
     /// user's third instruction of 2026-11-20: `🗂️ remaining ▶️ in progress ✅ done` opens
     /// line 3 before the usage windows; zero is shown, and absent counts leave line 3 as it was.
     #[test]
-    fn the_card_counts_open_line_three_before_the_usage_bars() {
+    fn the_card_counts_open_line_three_before_the_usage_windows() {
         // The last line: line 3 in the full render, and the same line one up when the git
         // line is gone.
         let line3 = |s: &Status, off: &[&str]| plain(s, off).lines().last().unwrap().to_string();
