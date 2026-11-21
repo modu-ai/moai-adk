@@ -1,4 +1,30 @@
-# cargo-nextest configuration (CI runs `cargo nextest run`, .github/workflows/ci.yml).
+# cargo-nextest configuration (CI runs `cargo nextest run`, .github/workflows/ci.yml; `moai check
+# affected` runs its test steps through it too when `cargo nextest --version` answers 0.9.85 or
+# later, and through `cargo test` otherwise).
+#
+# Tests that start the product binary in temporary HOMEs (the `home_*`, `update_*_cli` and
+# `statusline_golden` binaries) run at most two at a time, so that many of them do not start
+# dozens of processes at once. Binaries are matched by glob, the default matcher of `binary()`.
+[test-groups]
+spawning = { max-threads = 2 }
+
+[[profile.default.overrides]]
+filter = 'binary(home_*) | binary(update_*_cli) | binary(statusline_golden)'
+test-group = 'spawning'
+
+# `statusline_golden` is one test of minutes under load: it gets a longer limit than the rest.
+[[profile.default.overrides]]
+filter = 'binary(statusline_golden)'
+slow-timeout = { period = "60s", terminate-after = 12 }
+
+[profile.default]
+# A test running past five periods of 60 seconds ends with its whole process group: nextest
+# sends SIGTERM to the group, waits its grace period (10 s by default), then sends SIGKILL.
+slow-timeout = { period = "60s", terminate-after = 5 }
+# A failed test is retried twice. A pass on a retry is labelled FLAKY by nextest and stays a
+# pass; `moai check affected` counts the FLAKY lines in its summary (flaky-result is not set).
+retries = 2
+
 #
 # #2661: every test in tests/ac_command_lint.rs runs tools/check_ac_commands.py, which calls
 # `cargo test --offline --locked --test <name> -- --list`. Even when nothing needs rebuilding,

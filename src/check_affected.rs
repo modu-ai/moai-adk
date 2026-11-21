@@ -272,9 +272,145 @@ fn step(label: &str, program: &str, args: &[&str], heavy: bool) -> Step {
     }
 }
 
+/// The program that runs the test steps (SPEC-20261121-nextest-local-checks): `cargo test`, or
+/// `cargo nextest run` when nextest answers a version at or above [`NEXTEST_FLOOR`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Runner {
+    Cargo,
+    Nextest,
+}
+
+impl Runner {
+    pub fn word(self) -> &'static str {
+        match self {
+            Runner::Cargo => "cargo",
+            Runner::Nextest => "nextest",
+        }
+    }
+}
+
+/// How the test steps run: the program, and the test threads nextest may use at once.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct TestRun {
+    pub runner: Runner,
+    pub threads: u32,
+}
+
+impl TestRun {
+    /// `cargo test` with the default thread count: what the steps were before nextest.
+    pub fn cargo() -> TestRun {
+        TestRun {
+            runner: Runner::Cargo,
+            threads: DEFAULT_TEST_THREADS,
+        }
+    }
+}
+
+/// The first nextest version that can run the test steps as planned: the one whose
+/// `--no-tests` default is `fail`, so that `--no-tests=pass` means something (0.9.85).
+const NEXTEST_FLOOR: [u64; 3] = [0, 9, 85];
+
+/// The test thread count when `RUST_TEST_THREADS` is not a positive whole number.
+const DEFAULT_TEST_THREADS: u32 = 4;
+
+/// Whether `cargo nextest --version` answered with a usable version: its first line is
+/// `cargo-nextest <major>.<minor>.<patch> …` and the three numbers reach [`NEXTEST_FLOOR`].
+pub fn nextest_usable(answer: &str) -> bool {
+    let mut words = answer.lines().next().unwrap_or("").split_whitespace();
+    if words.next() != Some("cargo-nextest") {
+        return false;
+    }
+    let Some(version) = words.next() else {
+        return false;
+    };
+    let mut numbers = [0u64; 3];
+    let mut parts = version.split('.');
+    for n in numbers.iter_mut() {
+        let Some(part) = parts.next() else {
+            return false;
+        };
+        let digits: String = part.chars().take_while(char::is_ascii_digit).collect();
+        let Ok(value) = digits.parse() else {
+            return false;
+        };
+        *n = value;
+    }
+    numbers >= NEXTEST_FLOOR
+}
+
+/// The test thread count: a positive whole number as given, else [`DEFAULT_TEST_THREADS`].
+pub fn test_thread_cap(var: Option<&str>) -> u32 {
+    var.and_then(|v| v.trim().parse::<u32>().ok())
+        .filter(|n| *n > 0)
+        .unwrap_or(DEFAULT_TEST_THREADS)
+}
+
+/// Pick the runner for `dir`: ask `cargo nextest --version` once. A query that cannot start,
+/// fails or does not answer a usable version means `cargo test`. The thread count is read
+/// from `RUST_TEST_THREADS`.
+pub fn detect_test_run(dir: &Path) -> TestRun {
+    let threads = test_thread_cap(std::env::var("RUST_TEST_THREADS").ok().as_deref());
+    let answer = Command::new("cargo")
+        .args(["nextest", "--version"])
+        .current_dir(dir)
+        .stdin(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .output();
+    let usable = match answer {
+        Ok(o) if o.status.success() => nextest_usable(&String::from_utf8_lossy(&o.stdout)),
+        _ => false,
+    };
+    TestRun {
+        runner: if usable {
+            Runner::Nextest
+        } else {
+            Runner::Cargo
+        },
+        threads,
+    }
+}
+
+/// One test step: `cargo test --locked --offline --no-fail-fast <selectors>` or, with
+/// nextest, `cargo nextest run --locked --offline --no-fail-fast --no-tests=pass
+/// --test-threads <n> <selectors>`.
+fn test_step(label: &str, run: &TestRun, selectors: &[&str]) -> Step {
+    let mut rest = vec!["--no-fail-fast".to_string()];
+    let sub: &[&str] = match run.runner {
+        Runner::Cargo => &["test"],
+        Runner::Nextest => {
+            rest.push("--no-tests=pass".to_string());
+            rest.push("--test-threads".to_string());
+            rest.push(run.threads.to_string());
+            &["nextest", "run"]
+        }
+    };
+    rest.extend(selectors.iter().map(|s| s.to_string()));
+    let refs: Vec<&str> = rest.iter().map(String::as_str).collect();
+    cargo_step(label, sub, &refs)
+}
+
+/// The tests a nextest log names as FLAKY: the lines `FLAKY <try>/<tries> [<time>] <binary>
+/// <test>`, each test once (a test nextest lists again at the end of the run counts once).
+fn flaky_in(log: &str) -> usize {
+    log.lines()
+        .filter_map(|l| {
+            let l = l.trim_start();
+            l.strip_prefix("FLAKY ")?;
+            Some(l.split_once("] ").map_or(l, |(_, test)| test).trim())
+        })
+        .collect::<BTreeSet<&str>>()
+        .len()
+}
+
 /// The steps of a selection, in the order the summary names them (REQ-4, REQ-7). `present` are
 /// the changed paths that exist in the checkout.
-pub fn steps(sel: &Selection, present: &[String], range: &str, target_dir: &str) -> Vec<Step> {
+pub fn steps(
+    sel: &Selection,
+    present: &[String],
+    range: &str,
+    target_dir: &str,
+    run: &TestRun,
+) -> Vec<Step> {
     let mut out = vec![
         step("diff_check", "git", &["diff", "--check", range], false),
         step("fmt", "cargo", &["fmt", "--all", "--", "--check"], false),
@@ -306,24 +442,15 @@ pub fn steps(sel: &Selection, present: &[String], range: &str, target_dir: &str)
         &["clippy"],
         &["--all-targets", "--", "-D", "warnings"],
     ));
-    out.push(cargo_step(
-        "test_lib",
-        &["test"],
-        &["--no-fail-fast", "--lib"],
-    ));
-    out.push(cargo_step(
-        "test_bins",
-        &["test"],
-        &["--no-fail-fast", "--bins"],
-    ));
+    out.push(test_step("test_lib", run, &["--lib"]));
+    out.push(test_step("test_bins", run, &["--bins"]));
     if !sel.rust.is_empty() {
-        let mut rest = vec!["--no-fail-fast".to_string()];
+        let mut selectors: Vec<&str> = Vec::new();
         for t in &sel.rust {
-            rest.push("--test".to_string());
-            rest.push(t.clone());
+            selectors.push("--test");
+            selectors.push(t);
         }
-        let refs: Vec<&str> = rest.iter().map(String::as_str).collect();
-        out.push(cargo_step("test_targets", &["test"], &refs));
+        out.push(test_step("test_targets", run, &selectors));
     }
     if !sel.python.is_empty() {
         out.push(cargo_step("build_cli", &["build"], &["--bin", "moai-cli"]));
@@ -504,11 +631,13 @@ pub fn list(dir: &Path, range: &str) -> Result<serde_json::Value> {
         host_os(),
     );
     let target = target_dir(&facts.root).to_string_lossy().into_owned();
+    let test_run = detect_test_run(&facts.root);
     let planned = steps(
         &sel,
         &facts.present,
         &format!("{}...{}", facts.base, facts.head),
         &target,
+        &test_run,
     );
     Ok(serde_json::json!({
         "action": "affected",
@@ -517,6 +646,7 @@ pub fn list(dir: &Path, range: &str) -> Result<serde_json::Value> {
         "head": facts.head,
         "changed": facts.changed.len(),
         "host_os": host_os(),
+        "runner": test_run.runner.word(),
         "scans": sel.scans.word(),
         "rust_targets": sel.rust,
         "python_modules": sel.python,
@@ -643,11 +773,15 @@ pub fn run(dir: &Path, range: &str, opts: &RunOptions) -> Result<serde_json::Val
         host_os(),
     );
     let target = target_dir(&std::fs::canonicalize(dir).unwrap_or_else(|_| dir.to_path_buf()));
+    // The one process asked before the steps run: after every refusal, so a refused run starts
+    // nothing.
+    let test_run = detect_test_run(dir);
     let planned = steps(
         &sel,
         &facts.present,
         &format!("{}...{}", facts.base, facts.head),
         &target.to_string_lossy(),
+        &test_run,
     );
     let out = opts
         .out
@@ -661,6 +795,7 @@ pub fn run(dir: &Path, range: &str, opts: &RunOptions) -> Result<serde_json::Val
     })?;
     let mut results: Vec<(String, i32)> = Vec::new();
     let mut records = Vec::new();
+    let mut flaky = 0usize;
     for (i, s) in planned.iter().enumerate() {
         let log = out.join(format!(
             "{:02}-{}.log",
@@ -668,6 +803,12 @@ pub fn run(dir: &Path, range: &str, opts: &RunOptions) -> Result<serde_json::Val
             s.label.replace([':', '/'], "_")
         ));
         let code = run_step(dir, s, opts, &log);
+        if test_run.runner == Runner::Nextest
+            && matches!(s.label.as_str(), "test_lib" | "test_bins" | "test_targets")
+        {
+            let text = std::fs::read(&log).unwrap_or_default();
+            flaky += flaky_in(&String::from_utf8_lossy(&text));
+        }
         results.push((s.label.clone(), code));
         records.push(serde_json::json!({
             "label": s.label, "exit": code, "log": log.to_string_lossy(),
@@ -685,12 +826,20 @@ pub fn run(dir: &Path, range: &str, opts: &RunOptions) -> Result<serde_json::Val
     for (k, c) in summary_words(&results) {
         line.push_str(&format!(" {k}={c}"));
     }
+    // Words only when nextest ran the tests: the summary of a `cargo test` run stays as it was.
+    // The result is decided by the exit statuses alone, whatever the FLAKY count is.
+    let nextest = test_run.runner == Runner::Nextest;
+    if nextest {
+        line.push_str(&format!(" runner=nextest flaky={flaky}"));
+    }
     line.push_str(if pass { " result=PASS" } else { " result=FAIL" });
     Ok(serde_json::json!({
         "action": "affected",
         "mode": "run",
         "summary": line,
         "result": if pass { "PASS" } else { "FAIL" },
+        "runner": test_run.runner.word(),
+        "flaky": if nextest { serde_json::json!(flaky) } else { serde_json::Value::Null },
         "steps": records,
         "out": out.to_string_lossy(),
         "writes": true,
@@ -864,7 +1013,7 @@ mod tests {
     #[test]
     fn the_steps_always_hold_lib_bins_and_the_fixed_checks() {
         let sel = select(&paths(&["README.md"]), &[], None, "linux");
-        let planned = steps(&sel, &[], "a...b", "/t");
+        let planned = steps(&sel, &[], "a...b", "/t", &TestRun::cargo());
         let labels: Vec<&str> = planned.iter().map(|s| s.label.as_str()).collect();
         assert_eq!(
             labels,
@@ -885,13 +1034,124 @@ mod tests {
             "linux",
         );
         let present = paths(&["src/ops/x.rs", "tools/a.sh"]);
-        let planned = steps(&sel, &present, "a...b", "/t");
+        let planned = steps(&sel, &present, "a...b", "/t", &TestRun::cargo());
         let ops = planned.iter().find(|s| s.label == "ops_rustfmt").unwrap();
         assert_eq!(ops.args, ["--edition", "2021", "--check", "src/ops/x.rs"]);
         assert!(planned.iter().any(|s| s.label == "bash_n:tools/a.sh"));
         let python = planned.iter().find(|s| s.label == "python").unwrap();
         assert_eq!(python.args, ["-m", "unittest", "tests.x_test"]);
         assert!(planned.iter().any(|s| s.label == "build_cli"));
+    }
+
+    #[test]
+    fn the_nextest_version_floor_is_read_from_the_version_line() {
+        // The floor (0.9.85) and everything above it.
+        for ok in [
+            "cargo-nextest 0.9.151 (abc1234 2026-11-01)",
+            "cargo-nextest 0.9.85",
+            "cargo-nextest 0.9.100-rc.1 (x)",
+            "cargo-nextest 0.10.0",
+            "cargo-nextest 1.0.0 (x)\nrelease: 1.0.0\n",
+        ] {
+            assert!(nextest_usable(ok), "{ok:?}");
+        }
+        // Below it, and every line that is not a version line.
+        for bad in [
+            "cargo-nextest 0.9.84 (abc1234 2026-01-01)",
+            "cargo-nextest 0.8.200",
+            "cargo-nextest 0.9",
+            "cargo-nextest 0.9.x",
+            "cargo-nextest",
+            "nextest 0.9.151",
+            "garbage",
+            "",
+            "\ncargo-nextest 0.9.151",
+        ] {
+            assert!(!nextest_usable(bad), "{bad:?}");
+        }
+    }
+
+    #[test]
+    fn the_thread_cap_reads_a_positive_whole_number_else_four() {
+        assert_eq!(test_thread_cap(Some("3")), 3);
+        assert_eq!(test_thread_cap(Some(" 12 ")), 12);
+        for other in [
+            None,
+            Some(""),
+            Some("0"),
+            Some("-2"),
+            Some("2.5"),
+            Some("abc"),
+            Some("99999999999"),
+        ] {
+            assert_eq!(test_thread_cap(other), 4, "{other:?}");
+        }
+    }
+
+    #[test]
+    fn the_test_steps_differ_only_in_the_runner_words() {
+        let sel = select(
+            &paths(&["src/update_models.rs"]),
+            &[rust("update_x", &[], &[])],
+            None,
+            "linux",
+        );
+        let cargo = steps(&sel, &[], "a...b", "/t", &TestRun::cargo());
+        let nextest = steps(
+            &sel,
+            &[],
+            "a...b",
+            "/t",
+            &TestRun {
+                runner: Runner::Nextest,
+                threads: 6,
+            },
+        );
+        let line = |p: &[Step], l: &str| {
+            let s = p.iter().find(|s| s.label == l).unwrap();
+            s.args.join(" ")
+        };
+        assert_eq!(
+            line(&cargo, "test_lib"),
+            "test --locked --offline --no-fail-fast --lib"
+        );
+        assert_eq!(
+            line(&nextest, "test_lib"),
+            "nextest run --locked --offline --no-fail-fast --no-tests=pass --test-threads 6 --lib"
+        );
+        assert_eq!(
+            line(&nextest, "test_targets"),
+            "nextest run --locked --offline --no-fail-fast --no-tests=pass --test-threads 6 --test update_x"
+        );
+        // The other steps and the labels are the same whichever runner runs the tests.
+        let others = |p: &[Step]| -> Vec<(String, String, bool)> {
+            p.iter()
+                .filter(|s| !s.label.starts_with("test_"))
+                .map(|s| (s.label.clone(), s.args.join(" "), s.heavy))
+                .collect()
+        };
+        assert_eq!(others(&cargo), others(&nextest));
+        assert!(nextest
+            .iter()
+            .filter(|s| s.label.starts_with("test_"))
+            .all(|s| s.heavy));
+    }
+
+    #[test]
+    fn flaky_tests_are_counted_once_each_whatever_else_the_log_says() {
+        let log = "\
+        TRY 1 FAIL [   0.003s] bin::a test_one
+        TRY 2 PASS [   0.002s] bin::a test_one
+       FLAKY 2/3 [   0.002s] bin::a test_one
+        PASS [   0.001s] bin::a a_flaky_pass_is_not_a_flaky_line
+------------
+     Summary [   0.021s] 4 tests run: 4 passed (2 flaky), 25 skipped
+       FLAKY 2/3 [   0.002s] bin::a test_one
+       FLAKY 3/3 [   0.400s] bin::b test_two
+";
+        assert_eq!(flaky_in(log), 2);
+        assert_eq!(flaky_in(""), 0);
+        assert_eq!(flaky_in("FLAKY_NOT 1\nxFLAKY 2/3 [ 1s] a b\n"), 0);
     }
 
     #[test]

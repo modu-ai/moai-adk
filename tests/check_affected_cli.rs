@@ -135,11 +135,24 @@ fn slot_dir_with(max: u32) -> tempfile::TempDir {
 
 /// The whole answer: `(ok, result or error)`.
 fn affected(fx: &Fixture, extra: &[&str], tools: Option<(&Tools, &str)>) -> (bool, Value) {
+    affected_with(fx, extra, tools, &[])
+}
+
+/// `affected` with more environment variables for the command. `RUST_TEST_THREADS` is removed
+/// first, so the machine's own value never reaches the thread count a test reads.
+fn affected_with(
+    fx: &Fixture,
+    extra: &[&str],
+    tools: Option<(&Tools, &str)>,
+    env: &[(&str, &str)],
+) -> (bool, Value) {
     let mut cmd = Command::new(BIN);
     cmd.args(["check", "affected", &fx.range(), "--dir"])
         .arg(fx.root())
         .args(extra)
         .env_remove("MOAI_HOME")
+        .env_remove("RUST_TEST_THREADS")
+        .envs(env.iter().copied())
         .stdin(Stdio::null());
     if let Some((t, fail)) = tools {
         cmd.env("PATH", t.path())
@@ -562,4 +575,238 @@ fn a_checkout_that_is_not_the_head_runs_nothing() {
         "{v}"
     );
     assert_eq!(tools.calls_text(), "", "no step may have run");
+}
+
+// SPEC-20261121-nextest-local-checks: the test steps run through nextest when it answers.
+
+/// Fake `cargo`, `python3` and `rustfmt` whose `cargo` also answers `nextest --version` with
+/// the shell fragment `version_cmd` (empty: no answer at all, like the plain fakes), and whose
+/// `nextest run` prints `flaky_lines` lines nextest labels FLAKY, plus one line that only
+/// has the word in a test name.
+fn nextest_tools(version_cmd: &str, flaky_lines: usize) -> Tools {
+    let tools = Tools::new(&["cargo", "python3", "rustfmt"]);
+    // An empty answer is the shell's no-op: the query exits 0 and prints nothing.
+    let version_cmd = if version_cmd.is_empty() {
+        ":"
+    } else {
+        version_cmd
+    };
+    let script = format!(
+        "#!/bin/sh\necho \"cargo $*\" >> \"$FAKE_CALLS\"\n\
+         echo \"cargo env CTD=$CARGO_TARGET_DIR MB=$MOAI_CLI_BIN\" >> \"$FAKE_CALLS\"\n\
+         case \"$1 $2\" in\n\
+           'nextest --version') {version_cmd}; exit 0 ;;\n\
+           'nextest run') i=0; while [ $i -lt {flaky_lines} ]; do i=$((i+1)); \
+         echo \"        FLAKY 2/3 [   0.100s] bin::name test_$i\"; done; \
+         echo \"        PASS [   0.012s] bin::name a_flaky_pass_is_not_a_flaky_line\" ;;\n\
+         esac\n\
+         case \"$FAKE_FAIL\" in\n  '') ;;\n  *) case \" $* \" in *\" $FAKE_FAIL \"*) exit 3 ;; esac ;;\nesac\nexit 0\n"
+    );
+    let path = tools.dir.path().join("cargo");
+    fs::write(&path, script).unwrap();
+    tools
+}
+
+const NEXTEST_ANSWER: &str = "echo 'cargo-nextest 0.9.151 (abc1234 2026-11-01)'";
+
+fn slot_arg() -> (tempfile::TempDir, String) {
+    let slots = slot_dir();
+    let slot = slots.path().to_string_lossy().to_string();
+    (slots, slot)
+}
+
+#[test]
+fn the_test_steps_run_through_nextest_when_it_answers_a_version() {
+    let fx = Fixture::new(true, &[("src/update_models.rs", "// b\n")]);
+    let (_slots, slot) = slot_arg();
+    let args = ["--slot-dir", slot.as_str()];
+
+    // No thread variable: 4. Every test step has the same fixed words, then the selection.
+    let tools = nextest_tools(NEXTEST_ANSWER, 0);
+    let (ok, r) = affected(&fx, &args, Some((&tools, "")));
+    assert!(ok, "{r}");
+    let calls = tools.calls_text();
+    let head =
+        "cargo nextest run --locked --offline --no-fail-fast --no-tests=pass --test-threads 4";
+    assert!(calls.contains(&format!("{head} --lib\n")), "{calls}");
+    assert!(calls.contains(&format!("{head} --bins\n")), "{calls}");
+    let targets = calls
+        .lines()
+        .find(|l| l.starts_with(head) && l.contains("--test update_command_cli"))
+        .unwrap_or_else(|| panic!("the targets step in {calls}"));
+    assert!(targets.contains("--test home_isolation_scan"), "{targets}");
+    // The steps that are not test steps keep their cargo subcommand.
+    assert!(
+        calls.contains("cargo clippy --locked --offline --all-targets"),
+        "{calls}"
+    );
+    assert!(
+        calls.contains("cargo build --locked --offline --bin moai-cli"),
+        "{calls}"
+    );
+    assert!(
+        !calls.contains("cargo test --locked --offline --no-fail-fast"),
+        "no test step may use cargo test: {calls}"
+    );
+
+    // A positive whole number in RUST_TEST_THREADS is the thread count; anything else is 4.
+    for (value, want) in [
+        ("3", "3"),
+        ("12", "12"),
+        ("abc", "4"),
+        ("0", "4"),
+        ("", "4"),
+        ("-2", "4"),
+        ("2.5", "4"),
+    ] {
+        let tools = nextest_tools(NEXTEST_ANSWER, 0);
+        let (ok, r) = affected_with(
+            &fx,
+            &args,
+            Some((&tools, "")),
+            &[("RUST_TEST_THREADS", value)],
+        );
+        assert!(ok, "{r}");
+        let calls = tools.calls_text();
+        assert!(
+            calls.contains(&format!("--no-tests=pass --test-threads {want} --lib\n")),
+            "RUST_TEST_THREADS={value:?} wants {want}: {calls}"
+        );
+    }
+}
+
+#[test]
+fn without_a_usable_nextest_the_steps_and_the_summary_are_as_before() {
+    let fx = Fixture::new(true, &[("src/update_models.rs", "// b\n")]);
+    let (_slots, slot) = slot_arg();
+    let args = ["--slot-dir", slot.as_str()];
+    // No answer, a version below 0.9.85, a line without a version and a failing query.
+    for answer in [
+        "",
+        "echo 'cargo-nextest 0.9.84 (abc1234 2026-01-01)'",
+        "echo garbage",
+        "echo 'cargo-nextest 0.9.151' >&2; exit 1",
+    ] {
+        let tools = nextest_tools(answer, 2);
+        let (ok, r) = affected(&fx, &args, Some((&tools, "")));
+        assert!(ok, "{answer}: {r}");
+        let calls = tools.calls_text();
+        assert!(
+            calls.contains("cargo test --locked --offline --no-fail-fast --lib\n"),
+            "{answer}: {calls}"
+        );
+        assert!(
+            calls.contains("cargo test --locked --offline --no-fail-fast --bins\n"),
+            "{answer}: {calls}"
+        );
+        assert!(
+            calls.contains("--test update_command_cli"),
+            "{answer}: {calls}"
+        );
+        assert!(!calls.contains("nextest run"), "{answer}: {calls}");
+        let line = r["summary"].as_str().unwrap();
+        assert!(line.ends_with(" python=0 result=PASS"), "{answer}: {line}");
+        assert!(
+            !line.contains("runner=") && !line.contains("flaky="),
+            "{answer}: {line}"
+        );
+        assert!(r.get("runner").is_none_or(|v| v == "cargo"), "{r}");
+    }
+}
+
+#[test]
+fn flaky_tests_are_counted_in_the_summary_and_never_change_the_result() {
+    let fx = Fixture::new(true, &[("src/update_models.rs", "// b\n")]);
+    let (_slots, slot) = slot_arg();
+    let args = ["--slot-dir", slot.as_str()];
+
+    // Each of the three test steps prints one FLAKY line; the line that only has the word in a
+    // test name is not counted.
+    let tools = nextest_tools(NEXTEST_ANSWER, 1);
+    let (ok, r) = affected(&fx, &args, Some((&tools, "")));
+    assert!(ok, "{r}");
+    let line = r["summary"].as_str().unwrap();
+    assert!(
+        line.ends_with(" python=0 runner=nextest flaky=3 result=PASS"),
+        "{line}"
+    );
+    assert_eq!(r["result"], "PASS");
+
+    // A failed step stays FAIL, the count stays.
+    let tools = nextest_tools(NEXTEST_ANSWER, 1);
+    let (ok, r) = affected(&fx, &args, Some((&tools, "fmt")));
+    assert!(ok, "{r}");
+    let line = r["summary"].as_str().unwrap();
+    assert!(line.contains(" fmt=3 "), "{line}");
+    assert!(
+        line.ends_with(" runner=nextest flaky=3 result=FAIL"),
+        "{line}"
+    );
+
+    // No FLAKY line: the count is 0 and the words are still there.
+    let tools = nextest_tools(NEXTEST_ANSWER, 0);
+    let (ok, r) = affected(&fx, &args, Some((&tools, "")));
+    assert!(ok, "{r}");
+    let line = r["summary"].as_str().unwrap();
+    assert!(
+        line.ends_with(" python=0 runner=nextest flaky=0 result=PASS"),
+        "{line}"
+    );
+    assert_eq!(r["runner"], "nextest");
+    assert_eq!(r["flaky"], 0);
+}
+
+#[test]
+fn list_names_the_runner_and_changes_nothing() {
+    let fx = Fixture::new(true, &[("src/update_models.rs", "// b\n")]);
+    let before = (
+        git(fx.root(), &["status", "--porcelain", "--ignored"]),
+        git(fx.root(), &["for-each-ref"]),
+    );
+
+    let tools = nextest_tools(NEXTEST_ANSWER, 0);
+    let (ok, r) = affected(&fx, &["--list"], Some((&tools, "")));
+    assert!(ok, "{r}");
+    assert_eq!(r["runner"], "nextest");
+    let lib = r["steps"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|s| s["label"] == "test_lib")
+        .unwrap();
+    assert_eq!(
+        lib["command"],
+        serde_json::json!([
+            "cargo",
+            "nextest",
+            "run",
+            "--locked",
+            "--offline",
+            "--no-fail-fast",
+            "--no-tests=pass",
+            "--test-threads",
+            "4",
+            "--lib"
+        ])
+    );
+    assert_eq!(r["writes"], false);
+
+    let tools = nextest_tools("", 0);
+    let (ok, r) = affected(&fx, &["--list"], Some((&tools, "")));
+    assert!(ok, "{r}");
+    assert_eq!(r["runner"], "cargo");
+    let lib = r["steps"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|s| s["label"] == "test_lib")
+        .unwrap();
+    assert_eq!(lib["command"][1], "test", "{lib}");
+
+    let after = (
+        git(fx.root(), &["status", "--porcelain", "--ignored"]),
+        git(fx.root(), &["for-each-ref"]),
+    );
+    assert_eq!(before, after);
+    assert!(!fx.root().join("target").exists());
 }
