@@ -33,14 +33,14 @@ The agent-facing detail stays: the flow section still states the four flows, the
 - REQ-5: The flow section of the question bank shall tell the model to describe m-flow to the user in plain words before the user picks it.
 - REQ-6: The options of the `autonomy` row shall name what is asked first as what is hard to undo or touches money, secrets or deletion.
 - REQ-7: The question and the options of the `autonomy` row shall not contain `case (2)` or `SKILL.md`.
-- REQ-8: The PROJECT workflow shall ask the `work_flow` row with GitHub flow first and recommended.
+- REQ-8: The PROJECT workflow shall ask the `work_flow` row with GitHub flow first and recommended and with m-flow described to the user as the choice for when several AI agents work at the same time.
 
 ## Acceptance
 
 - AC-1 (REQ-1, REQ-2, REQ-3): the options cell of the `work_flow` row starts with `GitHub flow (recommended)`, holds the phrase `when several AI agents work at the same time` in the m-flow option, still holds trunk-based and git-flow, and holds none of the five words · verify: `cargo test --test generic_flow_questions work_flow_row`
 - AC-2 (REQ-4, REQ-5): the section `## Git work flow` names GitHub flow as the recommended default, no longer calls m-flow the recommended default, and holds one sentence that tells the model to describe m-flow in plain words and to keep SPEC, worktree, audit and leader words for after the pick · verify: `cargo test --test generic_flow_questions flow_section`
 - AC-3 (REQ-6, REQ-7): the question cell and the options cell of the `autonomy` row hold `hard to undo, or touches money, secrets or deletion` and neither `case (2)` nor `SKILL.md`; the sorting rule for the model is a sentence outside the table · verify: `cargo test --test generic_flow_questions autonomy_row`
-- AC-4 (REQ-8): `skills/moai/workflows/project.md` names GitHub flow first and recommended where it asks the `work_flow` row and no longer says m-flow first and recommended · verify: `cargo test --test generic_flow_questions project_workflow`
+- AC-4 (REQ-8): `skills/moai/workflows/project.md` names GitHub flow first and recommended where it asks the `work_flow` row, describes m-flow there as `when several AI agents work at the same time`, and no longer says m-flow first and recommended · verify: `cargo test --test generic_flow_questions project_workflow`
 - AC-5 (REQ-1, REQ-6): no regression, the existing pin test of the row reads the new order, and the tests that read the bank for branch names and the decision rows stay green · verify: `cargo test --test agent_defs_package --test spec_branch_name_first --test project_decide_model`
 
 ## Scope

@@ -148,4 +148,10 @@ fn project_workflow_asks_the_work_flow_row_with_github_flow_first() {
         !line.contains("m-flow first and recommended"),
         "project.md still asks m-flow first and recommended: {line}"
     );
+    assert!(
+        line.contains(
+            "m-flow (described to the user as \"when several AI agents work at the same time\")"
+        ),
+        "project.md must tell the model to describe m-flow in plain words: {line}"
+    );
 }
