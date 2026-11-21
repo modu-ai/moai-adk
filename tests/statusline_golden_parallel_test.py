@@ -141,6 +141,7 @@ class ParallelGoldenTest(unittest.TestCase):
         for out in (out_one, out_four):
             self.assertIn("FAIL case-3 ansi: golden differs", out)
             self.assertEqual(out.count("FAIL "), 1, out)
+            self.assertIn(f"checked {len(CASES) * len(VARIANTS) - 1} golden outputs", out)
         self.assertEqual(
             [l for l in out_one.splitlines() if not l.startswith("binary sha256")],
             [l for l in out_four.splitlines() if not l.startswith("binary sha256")])
