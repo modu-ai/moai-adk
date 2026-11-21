@@ -23,9 +23,12 @@ enum Action {
     /// source. A project without a ledger has no cards (`ledger: "absent"`, exit 0) and nothing is
     /// created.
     List {
-        /// The project folder (its profile holds the project id).
+        /// The project folder as the positional word (compatibility; `--project` wins).
         #[arg(default_value = ".")]
         project: PathBuf,
+        /// The project folder (its profile holds the project id); wins over the positional word.
+        #[arg(long = "project", value_name = "PROJECT")]
+        project_flag: Option<PathBuf>,
         /// Only cards in this state (`draft`, `ready`, `active`, `review`, `done`, `hold`).
         #[arg(long)]
         state: Option<String>,
@@ -281,9 +284,12 @@ enum Action {
         /// Who withdraws it (one line, 1..=200 characters).
         #[arg(long)]
         by: String,
-        /// The project folder (its profile holds the project id).
+        /// The project folder as the positional word (compatibility; `--project` wins).
         #[arg(default_value = ".")]
         project: PathBuf,
+        /// The project folder (its profile holds the project id); wins over the positional word.
+        #[arg(long = "project", value_name = "PROJECT")]
+        project_flag: Option<PathBuf>,
         /// The HOME to use (default `$HOME`). Tests pass a temporary folder.
         #[arg(long)]
         home: Option<PathBuf>,
@@ -430,9 +436,12 @@ enum Action {
     /// approved SPEC. A project without a ledger has no cards (`ledger: "absent"`, exit 0) and
     /// nothing is created.
     Next {
-        /// The project folder (its profile holds the project id).
+        /// The project folder as the positional word (compatibility; `--project` wins).
         #[arg(default_value = ".")]
         project: PathBuf,
+        /// The project folder (its profile holds the project id); wins over the positional word.
+        #[arg(long = "project", value_name = "PROJECT")]
+        project_flag: Option<PathBuf>,
         /// The HOME to read (default `$HOME`). Tests pass a temporary folder.
         #[arg(long)]
         home: Option<PathBuf>,
@@ -448,9 +457,12 @@ enum Action {
     /// their age in seconds; `LANE-NOTE` progress lines are not requests. A project without a
     /// ledger has nothing waiting (`ledger: "absent"`, exit 0) and nothing is created.
     Inbox {
-        /// The project folder (its profile holds the project id).
+        /// The project folder as the positional word (compatibility; `--project` wins).
         #[arg(default_value = ".")]
         project: PathBuf,
+        /// The project folder (its profile holds the project id); wins over the positional word.
+        #[arg(long = "project", value_name = "PROJECT")]
+        project_flag: Option<PathBuf>,
         /// The author name of the leader's notes (default `leader`).
         #[arg(long)]
         leader: Option<String>,
@@ -798,12 +810,13 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
     match args.action {
         Action::List {
             project,
+            project_flag,
             state,
             title_prefix,
             all,
             home,
         } => c::list_filtered(
-            &project,
+            project_flag.as_ref().unwrap_or(&project),
             &resolve_home(home)?,
             state.as_deref(),
             title_prefix.as_deref(),
@@ -896,8 +909,15 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             reason,
             by,
             project,
+            project_flag,
             home,
-        } => c::withdraw(&project, &resolve_home(home)?, &card, &reason, &by),
+        } => c::withdraw(
+            project_flag.as_ref().unwrap_or(&project),
+            &resolve_home(home)?,
+            &card,
+            &reason,
+            &by,
+        ),
         Action::Landed {
             card,
             head,
@@ -987,16 +1007,25 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
                 lease_secs,
             },
         ),
-        Action::Next { project, home } => w::next(
-            &project,
+        Action::Next {
+            project,
+            project_flag,
+            home,
+        } => w::next(
+            project_flag.as_ref().unwrap_or(&project),
             &resolve_home(home)?,
             d::session_holder("next", env).ok().as_deref(),
         ),
         Action::Inbox {
             project,
+            project_flag,
             leader,
             home,
-        } => moai_cli::card::inbox::inbox(&project, &resolve_home(home)?, leader.as_deref()),
+        } => moai_cli::card::inbox::inbox(
+            project_flag.as_ref().unwrap_or(&project),
+            &resolve_home(home)?,
+            leader.as_deref(),
+        ),
         Action::Note {
             card,
             kind,

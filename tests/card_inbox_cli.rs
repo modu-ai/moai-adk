@@ -306,6 +306,77 @@ fn the_leader_name_and_imported_notes_decide_what_counts() {
 }
 
 #[test]
+fn the_reader_commands_accept_the_project_flag() {
+    let w = world();
+    w.cards(&["one", "two"]);
+    // `card next` skips a card without a scope, so the card it names carries one and is ready.
+    let added = result(
+        &w.home
+            .command(&[
+                "card",
+                "add",
+                "--title",
+                "start here",
+                "--scope",
+                "apps/demo/",
+                "--project",
+                &w.project,
+            ])
+            .output()
+            .unwrap(),
+    );
+    let name = added["name"].as_str().unwrap().to_string();
+    result(
+        &w.home
+            .command(&["card", "ready", &name, "--project", &w.project])
+            .output()
+            .unwrap(),
+    );
+    w.lane(1, "LANE-BLOCKED agent-1 C-1", 100);
+    // `card list` with `--project` only: the answer carries the cards array.
+    let list = result(
+        &w.home
+            .command(&["card", "list", "--project", &w.project])
+            .output()
+            .unwrap(),
+    );
+    assert!(list["cards"].is_array(), "{list}");
+    // `card next` with `--project` only: the scoped ready card.
+    let next = result(
+        &w.home
+            .command(&["card", "next", "--project", &w.project])
+            .output()
+            .unwrap(),
+    );
+    assert_eq!(next["next"], json!(name), "{next}");
+    // `card withdraw` with `--project` only.
+    let mut wd = w.home.command(&[
+        "card",
+        "withdraw",
+        "C-2",
+        "--reason",
+        "not needed",
+        "--by",
+        "tester",
+        "--project",
+        &w.project,
+    ]);
+    wd.env(
+        "CLAUDE_CODE_SESSION_ID",
+        "aaaaaaaa-0000-4000-8000-00000000000a",
+    );
+    result(&wd.output().unwrap());
+    // `card inbox` with `--project` only: the withdrawn card holds no request.
+    let inbox = result(
+        &w.home
+            .command(&["card", "inbox", "--project", &w.project])
+            .output()
+            .unwrap(),
+    );
+    assert_eq!(inbox["count"], json!(1), "{inbox}");
+}
+
+#[test]
 fn the_inbox_reads_only_and_an_absent_ledger_is_empty() {
     let w = world();
     w.cards(&["one"]);

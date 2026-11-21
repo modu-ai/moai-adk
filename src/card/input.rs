@@ -198,12 +198,13 @@ fn has_control(text: &str) -> bool {
 /// `api` followed by `key` is the fourth (SPEC-20261119-card-secret-screen D-1, D-2).
 const SECRET_PIECES: [&str; 3] = ["password", "token", "secret"];
 
-/// What a refusal says after the field it names: the count and the reason, never the text.
+/// What a refusal says after the field it names: the count and the reason, never the text, and
+/// how to reword a value that was never a secret (the stand-ins of [`stand_in_value`]).
 pub fn secret_refusal(words: usize) -> String {
     format!(
         "{words} word(s) with the shape of a secret (a token, a key, a secret-named \
          `name=value`); a card text is kept for good and written out by `card export`, so take \
-         them out"
+         them out (write a stand-in value like <value> or $NAME, or name the field differently)"
     )
 }
 
@@ -211,7 +212,9 @@ pub fn secret_refusal(words: usize) -> String {
 /// SPEC-20261120-card-secret-followups REQ-1..7): how many words of `text` it refuses. A word is
 /// refused once, whatever is wrong with it:
 /// - it holds a `name=value` whose name has a secret piece ([`SECRET_PIECES`], or `api` and `key`
-///   side by side), whatever the value is, an empty one included;
+///   side by side), whatever the value is, an empty one included — except when the value is one
+///   obvious stand-in ([`stand_in_value`]: `<value>`, `***`, `$NAME`), which the person
+///   wrote to say "not the real one", so the word passes (the card-CLI pass REQ-2);
 /// - or the equals sign starts its own word and the word before it is such a name, spaces and
 ///   tabs between the two notwithstanding (follow-ups REQ-1);
 /// - or its name sits in quotes right before the equals sign, which are read stripped
@@ -240,13 +243,51 @@ pub fn secret_words(text: &str) -> usize {
         }
         // Follow-ups REQ-1: `name = value`, the equals sign starting its own word — the word
         // before it is the name (read as written, quotes stripped like any assignment name).
+        // A stand-in value keeps the name from being counted, the same rule the joined word
+        // reads (the card-CLI pass REQ-2).
         if written.get(i + 1).is_some_and(|next| next.starts_with('='))
             && name_is_secret(strip_quotes(word))
+            && !tail_value_is_stand_in(i + 1, &written)
         {
             count += 1;
         }
     }
     count
+}
+
+/// The value of a split assignment: the tails after the equals signs of the `=` word, else the
+/// word after it (`name`, `=`, `value`). A stand-in there keeps the name word from being
+/// counted, the same rule the joined word reads.
+fn tail_value_is_stand_in(at: usize, written: &[&str]) -> bool {
+    let tail = written[at].trim_start_matches('=');
+    if !tail.is_empty() {
+        return stand_in_value(tail);
+    }
+    written
+        .get(at + 1)
+        .is_some_and(|v| stand_in_value(strip_quotes(v)))
+}
+
+/// The value shapes any person writes to say "not the real one": wrapped in angle brackets
+/// (`<value>`, `<redacted>`), all asterisks from three (`***`), a dollar name (`$TOKEN`,
+/// `${NAME}`), or the ellipsis stand-ins `...` and `…`. The whole value must be one shape — a
+/// shape with something attached after it is a real value (`<value` alone, `<>`, `**`, a bare
+/// `$`). A bare `x` is NOT one: the audit-pinned case `"password" = x` keeps refusing, because
+/// a single letter is exactly what a person types to try the screen (the card-CLI pass D-4).
+fn stand_in_value(value: &str) -> bool {
+    if value.is_empty() {
+        return false;
+    }
+    if value.chars().all(|c| c == '*') && value.chars().count() >= 3 {
+        return true;
+    }
+    if value.starts_with('$') && value.chars().count() > 1 {
+        return true;
+    }
+    if value.starts_with('<') && value.ends_with('>') && value.chars().count() >= 3 {
+        return true;
+    }
+    matches!(value, "..." | "…")
 }
 
 /// The quote characters a person may wrap an assignment name in (follow-ups REQ-2).
@@ -257,6 +298,14 @@ fn strip_quotes(word: &str) -> &str {
 /// `written` is the word as the user typed it, `blanked` the same word with the plain `sk` names
 /// blanked.
 fn word_is_refused(written: &str, blanked: &str) -> bool {
+    // A stand-in value is prose the person wrote on purpose: a secret-named assignment whose
+    // value is one stand-in passes the whole word (nothing else in it can hide a shape — the
+    // value is the stand-in itself).
+    if let Some((_, value)) = written.split_once('=') {
+        if stand_in_value(value) {
+            return false;
+        }
+    }
     if secret_named_assignment(written) {
         return true;
     }

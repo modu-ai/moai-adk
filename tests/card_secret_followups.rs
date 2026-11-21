@@ -330,3 +330,37 @@ fn separators_values_are_refused_on_every_surface() {
         }
     }
 }
+
+/// A stand-in value is prose the person wrote on purpose (`<value>`, stars, `$NAME`, `x`,
+/// `xx`, `xxx`): a secret-named assignment carrying one passes the screen, an empty value and
+/// a real shape still refuse, and the refusal now says how to reword (REQ-2 and REQ-3 of the
+/// card-CLI pass). The secret-named pieces are joined here so this file holds none.
+#[test]
+fn a_stand_in_value_passes_and_the_refusal_suggests_rewording() {
+    let (home, project) = with_seed_card();
+    let note = |text: &str| note_with(&home, &project, text);
+    // Stand-ins pass: the angle-wrapped one, a dollar name, and the ellipsis.
+    for value in [
+        words(&["tok", "en=", "<redacted>"]).to_string(),
+        words(&["tok", "en=$MY", "_TOKEN"]).to_string(),
+        words(&["tok", "en=..."]).to_string(),
+    ] {
+        let out = note(&value);
+        assert_eq!(
+            out.status.code(),
+            Some(0),
+            "stand-in {value}: {} {}",
+            String::from_utf8_lossy(&out.stdout),
+            String::from_utf8_lossy(&out.stderr)
+        );
+    }
+    // The empty value still refuses (the boundary of REQ-2), and so does a real shape.
+    let (kind, message) = refusal(&note(&words(&["tok", "en="])));
+    assert_eq!(kind, "invalid_input", "{message}");
+    let real = words(&["tok", "en=", "9f2c81aa", "7b104e55"]);
+    let (kind, message) = refusal(&note(&real));
+    assert_eq!(kind, "invalid_input", "{message}");
+    // REQ-3: the refusal names the rewording; the pinned shape phrase stays.
+    assert!(message.contains("stand-in"), "{message}");
+    assert!(message.contains("shape of a secret"), "{message}");
+}
