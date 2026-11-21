@@ -71,4 +71,4 @@ The leader round still speaks of open pull requests, a pull-request cap and `LAN
 
 ## Result
 
-Not yet written: the code is blocked on the rename card (same files). Recorded here: the SPEC and the twelve screens are in this branch.
+Not yet written: the code is blocked on the rename card (same files). Recorded here: the SPEC and the sixteen screens (`tests/fixtures/leader_round/screens/synthetic-*.json`) are in this branch. `tests/fixtures/leader_round/screens/expected.json`, which the criteria name, is not in this branch yet: it is written together with `tests/leader_round_signals.rs` in step 2 of the plan, and an earlier commit body that said "expected.json for every screen" was wrong about this head.
