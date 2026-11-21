@@ -346,9 +346,8 @@ impl World {
     }
 
     fn worktree_of(&self, n: u32) -> PathBuf {
-        self.home
-            .path()
-            .join(".moai")
+        self.work
+            .join(".claude")
             .join("worktrees")
             .join(format!("work-bundle-{n}"))
     }
@@ -469,6 +468,10 @@ fn heads_that_cannot_be_used_are_refused_before_anything_is_created() {
         assert!(
             !w.home.path().join(".moai").join("worktrees").exists(),
             "no worktrees folder was made"
+        );
+        assert!(
+            !w.work.join(".claude").join("worktrees").exists(),
+            "no worktrees folder was made in the project either"
         );
         assert_eq!(w.repo_state(), before, "no ref, no status change");
     };
