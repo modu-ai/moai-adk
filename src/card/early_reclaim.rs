@@ -19,20 +19,22 @@ use crate::ledger::{self, reservation};
 use serde_json::{json, Value};
 use std::path::Path;
 
-/// Files a tool rewrites by itself on its next run, so one left in a worktree is no work
-/// (SPEC-20261120-reclaim-dead-holder REQ-12): the statusline's GitHub counts, under either
-/// state folder name. A name is listed here or it is work; nothing is matched by pattern.
-const TOOL_CACHE_FILES: &[&str] = &[
-    crate::project_state!("state/github/counts.json"),
-    ".moai/state/github/counts.json",
-];
+/// The statusline's GitHub counts file, relative to a state folder. A tool rewrites it by itself
+/// on its next run, so one left in a worktree is no work (SPEC-20261120-reclaim-dead-holder
+/// REQ-12). A name is listed or it is work; nothing is matched by pattern.
+const GITHUB_COUNTS: &str = "state/github/counts.json";
 
-/// True when one `git status --porcelain=v1 --untracked-files=all` line is an untracked file
-/// from [`TOOL_CACHE_FILES`]. A changed tracked file, an untracked file that is not listed and
-/// a line that is quoted or unreadable are never a cache: they stay work.
-pub(super) fn is_tool_cache_entry(line: &str) -> bool {
+/// The earlier (Go) generation's cache of the same counts, which the statusline still reads.
+const GO_GITHUB_COUNTS: &str = ".moai/state/github/counts.json";
+
+/// True when one `git status --porcelain=v1 --untracked-files=all` line of the worktree `root`
+/// is an untracked tool cache file: the counts file under the state folder `root` uses now, or
+/// the earlier generation's. A changed tracked file, an untracked file that is not listed and a
+/// line that is quoted or unreadable are never a cache: they stay work.
+pub(super) fn is_tool_cache_entry(root: &Path, line: &str) -> bool {
+    let current = crate::state_root::rel(root, GITHUB_COUNTS);
     line.strip_prefix("?? ")
-        .is_some_and(|path| TOOL_CACHE_FILES.contains(&path))
+        .is_some_and(|path| path == current || path == GO_GITHUB_COUNTS)
 }
 
 /// A complete proof, about one holder.
@@ -277,27 +279,27 @@ mod tests {
 mod cache_tests {
     use super::is_tool_cache_entry;
 
-    /// AC-10 (REQ-12): only an untracked, listed cache file is a cache.
+    /// AC-10 (REQ-12): only an untracked, listed cache file is a cache. The folder name the
+    /// worktree uses comes from its own state root, here a worktree with no marker.
     #[test]
     fn only_an_untracked_listed_file_is_a_cache() {
-        assert!(is_tool_cache_entry("?? .moai-cli/state/github/counts.json"));
-        assert!(is_tool_cache_entry("?? .moai/state/github/counts.json"));
+        let tmp = tempfile::tempdir().unwrap();
+        let root = tmp.path();
+        let current = crate::state_root::rel(root, "state/github/counts.json");
+        let is = |line: &str| is_tool_cache_entry(root, line);
+        assert!(is(&format!("?? {current}")));
+        assert!(is("?? .moai/state/github/counts.json"));
         // A changed tracked file of the same name is work.
-        assert!(!is_tool_cache_entry(
-            " M .moai-cli/state/github/counts.json"
-        ));
-        assert!(!is_tool_cache_entry(
-            "A  .moai-cli/state/github/counts.json"
-        ));
+        assert!(!is(&format!(" M {current}")));
+        assert!(!is(&format!("A  {current}")));
         // An unlisted name, a folder and a path that only ends alike are work.
-        assert!(!is_tool_cache_entry("?? .moai-cli/state/github/other.json"));
-        assert!(!is_tool_cache_entry("?? .moai-cli/state/"));
-        assert!(!is_tool_cache_entry(
-            "?? sub/.moai-cli/state/github/counts.json"
-        ));
-        assert!(!is_tool_cache_entry(
-            "?? .moai-cli/state/github/counts.json.bak"
-        ));
-        assert!(!is_tool_cache_entry(""));
+        assert!(!is(&format!("?? {}", current.replace("counts", "other"))));
+        assert!(!is(&format!(
+            "?? {}/",
+            crate::state_root::rel(root, "state")
+        )));
+        assert!(!is(&format!("?? sub/{current}")));
+        assert!(!is(&format!("?? {current}.bak")));
+        assert!(!is(""));
     }
 }
