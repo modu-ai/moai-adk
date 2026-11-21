@@ -73,4 +73,24 @@ The second part is a gap report for the Orca guidance. `orca skills get orca-cli
 
 ## Result
 
-(구현 뒤에 채워요)
+### Orca 안내와 설치된 orca-cli 공식 스킬의 차이 (REQ-7)
+
+기준: `orca --version` = 1.4.267, `orca skills get orca-cli` 를 2026-11-21T06:20Z 에 읽었어요(399줄, 아래 "공식 L"은 그 출력의 줄 번호). MoAI 쪽 줄 번호는 이 가지의 기준 커밋(`53cce6c580`)이에요. 이 SPEC 은 이 파일들을 고치지 않아요(D-3): `adapters/orca.md` 는 다른 작업이 쥐고 있고, 두 워크플로의 메시지 규칙은 Orca 1.4.267 맞춤 작업 몫이에요.
+
+| # | 파일:줄 | MoAI 의 지금 문장 | 공식 문장 | 바꿀 문장 |
+| --- | --- | --- | --- | --- |
+| G1 | `skills/moai/workflows/mode-agent.md:116` 과 `mode-leader.md:70` (Session control 7번) | 메일의 `delivered_at` 이 `null` 이고 대상 화면이 비어 있으면 같은 글을 `orca terminal send` 로 보낸다 | L103 "If mail is refused, follow the refusal or tell the user. Never fall back to `terminal send`." 그리고 L301 "Never use it to message another agent or answer its prompts, even when mail is refused; use `orchestration send`" | 그 대체 경로를 빼고 "영수증의 `recipient_delivery_held` 경고를 읽고, 그 터미널의 코디네이터에게 보내거나 사람에게 알린다. `terminal send` 로 되돌리지 않는다"로 바꿔요 |
+| G2 | `mode-agent.md:110` 과 `mode-leader.md:64` (1번) | "Read before sending: `orca terminal read --screen` must show a live session waiting for input" | L298 `terminal read` 는 `terminal send` 앞에 쓰는 것이고, L301 `terminal send` 는 셸·개발 서버·REPL·자기 창용이에요. 다른 에이전트에게는 메일만 | 이 규칙을 "셸과 자기 터미널에 보내기 전"으로 좁히고, 에이전트에게는 `orchestration send` 와 `orca agent list/show/read` 로 상태를 읽는다고 적어요 |
+| G3 | `skills/moai/references/adapters/orca.md:8` | "reading and sending to lane terminals" | L301 (G1 과 같아요) | "reading lane terminals and messaging lanes with `orchestration send`" |
+| G4 | `adapters/orca.md:24` | "Read a terminal before sending to it, and never overwrite another session's unsubmitted input." | L298·L301 | "Read a shell or your own terminal before sending to it; message another agent only with `orchestration send`." |
+| G5 | `adapters/orca.md:58` 과 `tests/product_cli.rs` 의 `"orca 1.4.257"` 고정 | 출처를 orca 1.4.257, 2026-11-13 으로 적어요 | 설치된 것은 1.4.267 | 1.4.267, 읽은 날 2026-11-21 로 바꾸고 시험의 고정 문자열도 함께 바꿔요 |
+| G6 | `mode-agent.md:111` (2번), `mode-leader.md:65` | "`accepted: true` proves only that the input was accepted ... for a plain shell Orca cannot report delivery" | L302~L306 텍스트와 Enter 를 함께 보내면 영수증에 `input_accepted` 다음 `turn_started` 단계가 있고 `--wait-submit`, `--retry-request <id>` 가 있어요 | 셸 입력에만 해당함을 밝히고, 에이전트 쪽은 메일 영수증(`stored`, 읽음 아님)과 `agent read` 로 확인한다고 적어요 |
+| G7 | `adapters/orca.md` (없음) | 에이전트를 어떻게 찾는지 한 줄도 없어요 | L76~L82 `agent list/show/read` 는 `orca_session_id` 로 찾고 화면이 아니라 대화 기록을 읽어요. L294~L295 터미널의 `title` 로 다시 찾지 말고 `worktree ps` 의 `agents[].paneKey` 를 `terminal list` 의 `tabId:leafId` 에 이어 핸들을 얻어요 | 어댑터의 "Lines MoAI keeps"에 두 줄로 옮겨요 |
+| G8 | `adapters/orca.md:16` | `orca skills get orca-cli` 만 적어요 | L388 필요한 참조는 `orca skills get orca-cli --reference references/<file>.md`, 안 되면 `--full` | "참조 문서는 `--reference`, 안 되면 `--full`, 그것도 안 되면 `--help` 만 믿고 flag 를 지어내지 않는다" 한 줄 |
+
+차이가 없는 것(같은 뜻이라 손대지 않아요): `terminal read --screen` 으로 화면을 읽는다(L299), 터미널은 핸들로 지목한다(L207), Orca 재시작 뒤에는 새 핸들 하나만 쓴다(L207), `terminal switch` 는 사람이 시킬 때만(MoAI 는 더 엄격해요, L296), 사람의 권한 질문에 대신 답하지 않는다(L303), Task/Run 은 감독형 조정에만 쓴다(L34, MoAI 의 리더는 감독이라 Run 이 맞아요), 리더가 자기 터미널에 라운드 지시를 치는 `leader-pulse`(L301 "your own pane").
+
+### 결과 요약
+
+- 만든 것: `skills/moai/references/adapters/herdr.md`(읽기 전용: 세션 식별과 상태 읽기, 금지 명령 전부, 없을 때 `not_run`), 매니페스트 항목, `tests/herdr_reference_cli.rs` 8개.
+- 아직 안 한 것: Orca 차이 G1~G8 의 실제 편집(파일을 쥔 작업 몫), `tests/product_cli.rs` 의 어댑터 목록 고정 편집(범위 확대 요청 중), 열린 herdr 워크스페이스에서의 실제 읽기(서버가 꺼져 있었고 사람이 워크스페이스를 알려 줘야 해요).
