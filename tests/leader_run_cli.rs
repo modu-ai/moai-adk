@@ -116,7 +116,7 @@ fn a_second_session_is_skipped_and_nothing_changes() {
 /// `skipped`, whoever is first; repeated in fresh projects.
 #[test]
 fn two_overlapping_begins_give_one_taken_and_one_skipped() {
-    for round in 0..6 {
+    for round in 0..20 {
         let w = World::new();
         let project = w.project.to_str().unwrap().to_string();
         let mut kids = Vec::new();
@@ -345,8 +345,9 @@ fn a_damaged_lease_file_is_refused_and_kept() {
     assert_eq!(fs::read_to_string(w.lease_file()).unwrap(), "not json");
 }
 
-/// The command writes only the lease file inside the project's state folder: nothing under HOME
-/// and nothing else in the project.
+/// The command writes only the lease file and its lock file (`leader-run.guard`, held while a
+/// call decides) inside the project's state folder: nothing under HOME and nothing else in the
+/// project.
 #[test]
 fn only_the_lease_file_is_written() {
     let w = World::new();
@@ -358,8 +359,12 @@ fn only_the_lease_file_is_written() {
         .iter()
         .filter(|f| !project_before.contains(f))
         .collect();
-    assert_eq!(added.len(), 1, "{added:?}");
-    assert!(added[0].ends_with("leader-run.lease"), "{added:?}");
+    let mut names: Vec<&str> = added
+        .iter()
+        .map(|f| f.rsplit('/').next().unwrap())
+        .collect();
+    names.sort();
+    assert_eq!(names, ["leader-run.guard", "leader-run.lease"], "{added:?}");
     let home_after = w.home.snapshot();
     let new_outside: Vec<_> = home_after
         .iter()
