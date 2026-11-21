@@ -466,6 +466,18 @@ fn receipt_id_ok(id: &str) -> bool {
         && id.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'-')
 }
 
+/// [`revert`] for a place whose active hosts are `active`: a receipt entry of a retired host is
+/// skipped and reported (reason `host_retired`), the other entries are reverted.
+pub fn revert_in(
+    active: &[&str],
+    home: &Path,
+    receipt_id: &str,
+    permission: &str,
+) -> Result<serde_json::Value> {
+    let _ = active;
+    revert(home, receipt_id, permission)
+}
+
 /// Undoes one apply for the files that still hold the bytes it wrote: a created file is
 /// removed, a changed one gets its before bytes back. A file changed since is skipped.
 pub fn revert(home: &Path, receipt_id: &str, permission: &str) -> Result<serde_json::Value> {

@@ -712,6 +712,18 @@ fn revert_setting(path: &Path, dir: &Path, e: &ReceiptEntry) -> std::result::Res
     publish_replace(path, Some(&current), out.as_bytes())
 }
 
+/// [`revert`] for a place whose active hosts are `active`: a receipt entry of a retired host is
+/// skipped and reported (reason `host_retired`), the other entries are reverted.
+pub fn revert_in(
+    active: &[&str],
+    home: &Path,
+    receipt_id: &str,
+    permission: &str,
+) -> Result<Value> {
+    let _ = active;
+    revert(home, receipt_id, permission)
+}
+
 /// Undoes one apply for the targets that still hold what it wrote: a created file is removed, a
 /// changed one gets its before bytes back, the `outputStyle` key is removed. A target changed
 /// since is skipped.

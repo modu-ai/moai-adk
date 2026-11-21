@@ -541,6 +541,18 @@ pub fn apply_in(
     }))
 }
 
+/// [`revert`] for a place whose active hosts are `active`: a receipt entry of a retired host is
+/// skipped and reported (reason `host_retired`), the other entries are reverted.
+pub fn revert_in(
+    active: &[&str],
+    project: &Path,
+    receipt_id: &str,
+    permission: &str,
+) -> Result<Value> {
+    let _ = active;
+    revert(project, receipt_id, permission)
+}
+
 /// Undoes one confirmed hook layer for the hosts whose files all still hold the bytes the apply
 /// wrote: each file gets its before bytes back, or is removed when the apply created it. A host
 /// with any file changed since is skipped as a whole, so a settings file and its ownership

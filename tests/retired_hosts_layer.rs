@@ -225,3 +225,220 @@ mod model_settings {
         assert_eq!(saved["models"]["omp"], launcher["models"]["omp"]);
     }
 }
+
+// ---- receipts of a retired host (REQ-7) ----------------------------------------------------
+
+mod receipts {
+    use moai_cli::{agent_install, home_routing, home_style, update_hooks};
+    use serde_json::{json, Value};
+    use std::collections::BTreeSet;
+    use std::fs;
+    use std::path::{Path, PathBuf};
+
+    const PERM: &str = "test-permission";
+    const AFTER: [&str; 1] = ["claude"];
+
+    fn package() -> PathBuf {
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai")
+    }
+
+    fn agents() -> PathBuf {
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("agents")
+    }
+
+    fn home() -> (tempfile::TempDir, PathBuf) {
+        let dir = tempfile::tempdir().unwrap();
+        let path = fs::canonicalize(dir.path()).unwrap();
+        (dir, path)
+    }
+
+    fn tree(root: &Path) -> BTreeSet<(String, Vec<u8>)> {
+        fn walk(dir: &Path, root: &Path, out: &mut BTreeSet<(String, Vec<u8>)>) {
+            let Ok(entries) = fs::read_dir(dir) else {
+                return;
+            };
+            for e in entries {
+                let p = e.unwrap().path();
+                if p.is_dir() {
+                    walk(&p, root, out);
+                } else {
+                    let rel = p.strip_prefix(root).unwrap().to_string_lossy().to_string();
+                    out.insert((rel, fs::read(&p).unwrap()));
+                }
+            }
+        }
+        let mut out = BTreeSet::new();
+        walk(root, root, &mut out);
+        out
+    }
+
+    #[test]
+    fn a_routing_receipt_skips_the_retired_host_and_reverts_the_other() {
+        let (_t, home) = home();
+        fs::create_dir_all(home.join(".claude")).unwrap();
+        fs::write(home.join(".claude/CLAUDE.md"), "mine\n").unwrap();
+        let p = home_routing::plan(&home, &package()).unwrap();
+        let r = home_routing::apply(&home, &package(), &p.plan_digest, PERM).unwrap();
+        let id = r["receipt"].as_str().unwrap().to_string();
+        let codex_before = fs::read(home.join(".codex/AGENTS.md")).unwrap();
+        let v = home_routing::revert_in(&AFTER, &home, &id, PERM).unwrap();
+        assert_eq!(v["state"], "reverted", "{v}");
+        assert_eq!(v["reverted"], json!(["claude"]), "{v}");
+        assert_eq!(
+            v["skipped"],
+            json!([{"host": "codex", "reason": "host_retired"}]),
+            "{v}"
+        );
+        assert_eq!(
+            fs::read_to_string(home.join(".claude/CLAUDE.md")).unwrap(),
+            "mine\n"
+        );
+        assert_eq!(
+            fs::read(home.join(".codex/AGENTS.md")).unwrap(),
+            codex_before,
+            "the retired host's file is left alone"
+        );
+    }
+
+    #[test]
+    fn a_routing_receipt_reverts_both_hosts_while_both_are_active() {
+        let (_t, home) = home();
+        let p = home_routing::plan(&home, &package()).unwrap();
+        let r = home_routing::apply(&home, &package(), &p.plan_digest, PERM).unwrap();
+        let id = r["receipt"].as_str().unwrap().to_string();
+        let v = home_routing::revert_in(&["claude", "codex"], &home, &id, PERM).unwrap();
+        let mut reverted: Vec<String> = serde_json::from_value(v["reverted"].clone()).unwrap();
+        reverted.sort();
+        assert_eq!(reverted, ["claude", "codex"], "{v}");
+        assert_eq!(v["skipped"], json!([]), "{v}");
+    }
+
+    #[test]
+    fn a_style_receipt_skips_the_retired_host_and_reverts_the_other() {
+        let (_t, home) = home();
+        let p = home_style::plan(&home, &package()).unwrap();
+        let r = home_style::apply(&home, &package(), &p.plan_digest, PERM).unwrap();
+        let id = r["receipt"].as_str().unwrap().to_string();
+        let codex_before = fs::read(home.join(".codex/AGENTS.md")).unwrap();
+        let v = home_style::revert_in(&AFTER, &home, &id, PERM).unwrap();
+        assert_eq!(v["state"], "reverted", "{v}");
+        assert_eq!(
+            v["skipped"],
+            json!([{"target": "codex:block", "reason": "host_retired"}]),
+            "{v}"
+        );
+        let reverted: Vec<String> = serde_json::from_value(v["reverted"].clone()).unwrap();
+        assert!(!reverted.is_empty(), "{v}");
+        assert!(reverted.iter().all(|t| t.starts_with("claude:")), "{v}");
+        assert_eq!(
+            fs::read(home.join(".codex/AGENTS.md")).unwrap(),
+            codex_before
+        );
+    }
+
+    #[test]
+    fn an_agent_receipt_skips_the_retired_hosts_and_reverts_claude() {
+        let (_t, home) = home();
+        let p = agent_install::plan(&home, &package(), &agents()).unwrap();
+        let r = agent_install::apply(&home, &package(), &agents(), &p.plan_digest, PERM).unwrap();
+        let id = r["receipt"].as_str().unwrap().to_string();
+        let codex_before = tree(&home.join(".codex"));
+        let omp_before = tree(&home.join(".omp"));
+        assert!(!codex_before.is_empty() && !omp_before.is_empty());
+        let v = agent_install::revert_in(&AFTER, &home, &id, PERM).unwrap();
+        assert_eq!(v["state"], "reverted", "{v}");
+        let reverted: Vec<String> = serde_json::from_value(v["reverted"].clone()).unwrap();
+        assert!(!reverted.is_empty(), "{v}");
+        assert!(reverted.iter().all(|t| t.starts_with("claude:")), "{v}");
+        let skipped = v["skipped"].as_array().unwrap();
+        assert!(!skipped.is_empty(), "{v}");
+        assert!(skipped.iter().all(|s| s["reason"] == "host_retired"), "{v}");
+        let hosts: BTreeSet<&str> = skipped
+            .iter()
+            .map(|s| s["host"].as_str().unwrap())
+            .collect();
+        assert_eq!(hosts, BTreeSet::from(["codex", "omp"]), "{v}");
+        assert_eq!(tree(&home.join(".codex")), codex_before);
+        assert_eq!(tree(&home.join(".omp")), omp_before);
+    }
+
+    /// A hand-written hook receipt: absent before and after for every file of the hosts, so a
+    /// host the revert handles has nothing to restore.
+    fn hook_receipt(project: &Path, hosts: &[&str]) -> String {
+        let id = "hooks-retired-1";
+        let entries: Vec<Value> = hosts
+            .iter()
+            .map(|h| {
+                let (files, _) = moai_cli::hooks::written_files(project, h).unwrap();
+                let files: Vec<Value> = files
+                    .iter()
+                    .map(|f| json!({"path": f, "before_sha256": null, "after_sha256": null}))
+                    .collect();
+                json!({"host": h, "files": files})
+            })
+            .collect();
+        let dir = moai_cli::state_root::path(project, "receipts").join(id);
+        fs::create_dir_all(&dir).unwrap();
+        let receipt = json!({
+            "schema_version": 1, "id": id, "plan_digest": "x",
+            "permission_reference": "x", "status": "committed", "hosts": entries
+        });
+        fs::write(dir.join("receipt.json"), receipt.to_string()).unwrap();
+        id.to_string()
+    }
+
+    #[test]
+    fn a_hook_receipt_skips_the_retired_hosts_and_reverts_the_other() {
+        let tmp = tempfile::tempdir().unwrap();
+        let project = fs::canonicalize(tmp.path()).unwrap();
+        let id = hook_receipt(&project, &["claude", "codex", "omp"]);
+        let v = update_hooks::revert_in(&AFTER, &project, &id, PERM).unwrap();
+        assert_eq!(v["state"], "reverted", "{v}");
+        assert_eq!(v["reverted"], json!(["claude"]), "{v}");
+        assert_eq!(
+            v["skipped"],
+            json!([
+                {"host": "codex", "reason": "host_retired"},
+                {"host": "omp", "reason": "host_retired"}
+            ]),
+            "{v}"
+        );
+    }
+
+    #[test]
+    fn a_hook_receipt_of_retired_hosts_only_is_reverted_not_left_unchanged() {
+        let tmp = tempfile::tempdir().unwrap();
+        let project = fs::canonicalize(tmp.path()).unwrap();
+        let id = hook_receipt(&project, &["codex"]);
+        let v = update_hooks::revert_in(&AFTER, &project, &id, PERM).unwrap();
+        assert_eq!(v["state"], "reverted", "{v}");
+        assert_eq!(v["reverted"], json!([]), "{v}");
+        assert_eq!(
+            v["skipped"],
+            json!([{"host": "codex", "reason": "host_retired"}]),
+            "{v}"
+        );
+        // A second revert says so, like any receipt.
+        assert!(update_hooks::revert_in(&AFTER, &project, &id, PERM)
+            .unwrap_err()
+            .contains("already"));
+    }
+
+    #[test]
+    fn a_hook_receipt_naming_an_unknown_host_is_still_refused() {
+        let tmp = tempfile::tempdir().unwrap();
+        let project = fs::canonicalize(tmp.path()).unwrap();
+        let id = hook_receipt(&project, &["claude"]);
+        let path = moai_cli::state_root::path(&project, "receipts")
+            .join(&id)
+            .join("receipt.json");
+        let text = fs::read_to_string(&path).unwrap();
+        fs::write(
+            &path,
+            text.replace("\"host\":\"claude\"", "\"host\":\"gemini\""),
+        )
+        .unwrap();
+        let err = update_hooks::revert_in(&AFTER, &project, &id, PERM).unwrap_err();
+        assert!(err.contains("unknown host"), "{err}");
+    }
+}
