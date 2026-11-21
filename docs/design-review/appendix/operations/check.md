@@ -20,7 +20,8 @@ operation `check.affected` · 코드 `src/ops/check.rs`, `src/check_affected.rs`
 
 - `--list`: 선택과 단계만 보여 주고 아무것도 돌리지도 쓰지도 않아요(`writes: false`).
 - 돌리기: 체크아웃이 범위의 head 이고 추적 파일이 고쳐지지 않았을 때만 돌아요. 어느 한 단계가 실패해도 나머지를 끝까지 돌리고, 단계마다 로그를 빌드 폴더(호출한 쪽의 `CARGO_TARGET_DIR`, 없으면 `<저장소>/target`)의 `check-affected-<head 12자>/`(`--out` 으로 바꿈)에 남겨요. 파이썬 단계도 같은 폴더의 `debug/moai-cli` 를 가리켜서, 바로 앞 `build_cli` 가 만든 바이너리를 써요. `--dir` 은 저장소 안의 어느 폴더든 되고, 바뀐 경로는 `--no-renames -z` 로 읽어서 이름이 바뀐 파일은 옛 경로도 세고 한글 이름도 따옴표 없이 읽어요.
-- 답의 `summary` 한 줄: `check-affected base=<12> head=<12> targets=<n> py=<n> scans=<none|listed:n|unreadable> <단계>=<종료 코드>… result=PASS|FAIL`. 같은 이름 단계(`bash_n:…`)는 첫 실패 코드 하나로 모아요. 시작하지 못한 프로그램은 127, 슬롯이 단계를 시작하지 않으면 슬롯의 코드(125 거절, 75 기계가 바쁨)가 남고 결과는 FAIL 이에요. `result=PASS` 는 모든 종료 코드가 0 일 때만이에요.
+- 시험 단계 러너: `cargo nextest --version` 이 0.9.85 이상을 답하면 `test_lib`·`test_bins`·`test_targets` 를 `cargo nextest run --locked --offline --no-fail-fast --no-tests=pass --test-threads <n> …` 로 돌려요(`<n>` 은 양의 정수인 `RUST_TEST_THREADS`, 아니면 4). 없거나 오래됐거나 답이 읽히지 않으면 지금까지처럼 `cargo test` 예요. 시험 묶음·시간 한도·재시도는 `.config/nextest.toml` 에 있고, `--list` 의 `runner` 가 어느 쪽인지 알려 줘요.
+- 답의 `summary` 한 줄: `check-affected base=<12> head=<12> targets=<n> py=<n> scans=<none|listed:n|unreadable> <단계>=<종료 코드>… [runner=nextest flaky=<n>] result=PASS|FAIL`. 대괄호 안의 두 낱말은 nextest 로 돌렸을 때만 붙고, `flaky` 는 다시 돌려 통과한 시험(`FLAKY`)의 수예요: 결과는 바꾸지 않지만 0 이 아니면 READY 노트에 적어요. 같은 이름 단계(`bash_n:…`)는 첫 실패 코드 하나로 모아요. 시작하지 못한 프로그램은 127, 슬롯이 단계를 시작하지 않으면 슬롯의 코드(125 거절, 75 기계가 바쁨)가 남고 결과는 FAIL 이에요. `result=PASS` 는 모든 종료 코드가 0 일 때만이에요.
 - 거절(아무것도 돌지 않음): 범위가 `<base>..<head>` 꼴이 아님, base·head 를 읽을 수 없음, 체크아웃이 head 가 아님, 추적 파일이 고쳐짐.
 
 하지 않는 것: PASS 를 선언(독립 감사와 CI 는 그대로), 시험이나 도구를 고치거나 설치, 한 시험 안의 케이스 고르기, 실제 HOME 읽기.

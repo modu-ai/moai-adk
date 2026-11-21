@@ -34,7 +34,7 @@ created: 2026-11-21
 - REQ-5: The project's nextest profile shall run the tests of the binaries that start the product binary through one test group of at most two threads · failure: none.
 - REQ-6: The project's nextest profile shall end a test that runs past five periods of 60 seconds by stopping its whole process group · failure: none — nextest signals the group, then waits its grace period.
 - REQ-7: The project's nextest profile shall retry a failed test twice so that nextest labels a test that passed on a retry FLAKY · failure: none.
-- REQ-8: When a nextest test step's log holds lines that begin with `FLAKY`, the summary line shall show `runner=nextest` and `flaky=<count>` before `result=` · failure: none — a run without a nextest step shows neither word.
+- REQ-8: When the runner uses nextest, the summary line shall show `runner=nextest` and `flaky=<count>` before `result=`, the count being the tests that lines beginning with `FLAKY` in the logs of its test steps name once each · failure: none — a run without nextest shows neither word.
 - REQ-9: The result of a run shall stay decided by the exit status of every step alone, whatever the FLAKY count is · failure: none.
 - REQ-10: When `--list` is given, the command shall name the runner it would use and show the nextest commands it would run · failure: none — the version query is the only process it starts and it writes nothing.
 
@@ -69,6 +69,7 @@ created: 2026-11-21
 - **시간 한도가 부하 때문에 멀쩡한 시험을 끝낼 수 있어요.** 기본 한도는 300초(60초 × 5)고 `statusline_golden` 처럼 오래 걸리는 시험은 따로 더 길게 줘요. 그래도 기계가 아주 바쁘면 시간 초과가 나올 수 있고, 그 경우 nextest 가 TIMEOUT 으로 실패시켜요(숨기지 않아요).
 - **`--no-tests=pass` 는 0.9.85 부터 쓸 수 있어요.** 그 아래 버전은 `cargo test` 로 돌아가는 바닥으로 정했어요(REQ-2). CI 는 0.9.151 이에요.
 - **시험 스레드 상한을 정하는 변경이 아직 합쳐지지 않았어요.** 이 변경은 상한을 읽는 함수 하나(환경 변수, 기본 4)만 두고, 그 카드가 합쳐질 때 같은 함수가 머신별 값을 읽게 바뀌어요. 같은 파일을 두 카드가 고쳐서 병합 때 충돌할 수 있어요: 함수는 작고 이름이 분명해서 합치기 쉽게 했어요.
+- **진짜로 실패하는 시험은 세 번 돌아요.** 재시도가 둘이라 실패가 그대로인 시험은 시간이 세 배 걸려요. 고장 난 시험이 많은 때는 검사가 그만큼 길어져요: 불안정한 시험을 드러내는 값이라고 보고 받아들였어요.
 - **재시도는 시험이 실제로 불안정할 때 그 사실을 가려 줄 수 있어요.** 그래서 FLAKY 를 요약 줄에 따로 세고 READY 노트에 적게 했어요(결과를 PASS 로만 두지 않아요). 개수가 0 이 아니면 감사가 이름을 보게 돼요.
 - doctest 는 지금도 `check affected` 의 단계에 없어요(`--lib` 와 `--bins` 와 `--test` 만 돌아요). 이 변경도 그 선을 그대로 둬요.
 
