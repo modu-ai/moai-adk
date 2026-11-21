@@ -2,7 +2,7 @@
 id: SPEC-20261121-go-path-removal
 title: "moai drops the Go path: inventory refresh, Go-link removal in update, name-switch retirement"
 status: draft
-revision: 3
+revision: 4
 created: 2026-11-21
 ---
 
@@ -27,9 +27,9 @@ created: 2026-11-21
 - 실제 HOME 에 쓰기: 읽기만 한다.
 - Go 하위 명령 실행: `--help` 없이는 실행하지 않는다(이 기계엔 Go moai 가 없어 실행 자체가 불가능하다).
 
-조각 본체(구현, 리더 결정 노트 20 기준): 피처 모듈은 `src/git_hooks/`(신규 폴더 — Go 세대 훅 인식·미리보기·적용·되돌리기), 훅 텍스트는 `install/git-hooks/`(commit-msg·pre-commit·pre-push), 시험은 `tests/git_hooks_cli.rs`(임시 저장소, `#[path]` 포함으로 배선 없이 단독 검증 — quality_gate 조각 선례), 그리고 `install/commit-msg` 는 plain `moai` 를 부르게 고친다. 이 조각이 편집하는 파일은 이 네 가지와 SPEC 폴더뿐이다. `src/update.rs` 와 `src/lib.rs` 는 C-307 이, `src/main.rs` 는 C-313 이 쥐고 있어 pair request 노트를 남겼고(카드 C-307 노트 5800, C-313 노트 5801), update 레이어 연결과 `git-hooks-plan|apply|revert` 명령어 연결은 홀더와 조율해 붙인다. pre-push 는 리더가 받은 기본안으로 정한다: 밀린 범위의 trailer-check(카드 번호 스캔 포함), 100ms 안쪽, moai 가 PATH 에 없으면 안내문과 함께 통과. 12개 저장소의 막힌 pre-commit 을 레인이 손대는 일은 없다(리더가 사용자에게 보고).
+조각 본체(구현, 리더 결정 노트 20 기준): 피처 모듈은 `src/git_hooks/`(신규 폴더 — Go 세대 훅 인식·미리보기·적용·되돌리기), 훅 텍스트는 `install/git-hooks/`(pre-commit·pre-push), 시험은 `tests/git_hooks_cli.rs`(임시 저장소, `#[path]` 포함으로 배선 없이 단독 검증 — quality_gate 조각 선례), 그리고 `install/commit-msg` 는 plain `moai` 를 부르게 고친다. `src/update.rs` 와 `src/lib.rs` 는 update를 고치는 레인이, `src/main.rs` 는 명령 연결 레인이 쥐고 있어 pair request 노트를 남겼고(각 홀더 카드의 노트 5800·5801), update 레이어 연결과 `git-hooks-plan|apply|revert` 명령어 연결은 홀더와 조율해 붙인다. pre-push 는 리더가 받은 기본안으로 정한다: 밀린 범위의 trailer-check(카드 번호 스캔 포함), 100ms 안쪽, moai 가 PATH 에 없으면 안내문과 함께 통과. 12개 저장소의 막힌 pre-commit 을 레인이 손대는 일은 없다(리더가 사용자에게 보고).
 
-연결 revision(3, 리더 지시 "같은 조각을 끝까지"): 이 조각이 이름 붙이고 편집하는 파일은 다음과 같다. (1) `src/lib.rs` — 정렬된 모듈 목록에 `pub mod git_hooks;` 한 줄(C-307 ACK 노트 5803 승인). (2) `src/git_hooks/update.rs`(신규, 내 모듈 안의 하위 모듈) — update 흐름의 Layer(전용 토큰 --confirm-git-hooks, 미리보기 JSON 부분, 적용·되돌리기 위임). (3) `src/update.rs` — switch 레이어 옆의 새 한 줄들: UserLayerPlan 필드, plan 호출, 생성자 줄, asks 토큰 경로와 적용 순서 목록(C-307 범위 안이라 정확한 줄을 노트 5820 로 요청, 답 오는 대로 반영), 그 밖의 summary·JSON·적용 발동·되돌리기는 C-307 범위 밖에 새로 넣는다. (4) `src/ops/git_hooks_plan.rs`·`git_hooks_apply.rs`·`git_hooks_revert.rs`(신규) — build.rs 가 src/ops/*.rs 를 자동 수집해 명령이 생기므로 main.rs 편집이 필요 없어졌고(C-313 ACK 노트 5812 는 적용되지 않음), 각 명령의 문서 조각 `docs/design-review/appendix/operations/git_hooks_<word>.md`(신규 3개)가 전수 검사의 요구다. (5) `tests/update_git_hooks_cli.rs`(신규) — 임시 저장소에서 명령과 update 레이어를 검증. help.rs 행은 C-307 몫으로 같은 노트에 선택 요청 — 빠지면 이 revision 이 기록한다.
+연결 revision(3, 리더 지시 "같은 조각을 끝까지"): 이 조각이 이름 붙이고 편집하는 파일은 다음과 같다. (1) `src/lib.rs` — 정렬된 모듈 목록에 `pub mod git_hooks;` 한 줄(update 레인 ACK 노트 5803 승인). (2) `src/git_hooks/update.rs`(신규, 내 모듈 안의 하위 모듈) — update 흐름의 Layer(전용 토큰 --confirm-git-hooks, 미리보기 JSON 부분, 적용·되돌리기 위임). (3) `src/update.rs` — switch 레이어 옆의 새 한 줄들: UserLayerPlan 필드, plan 호출, 생성자 줄, asks 토큰 경로와 적용 순서 목록(홀더 범위 안이라 정확한 줄을 노트 5820 로 요청, ACK 5822 로 반영), 그 밖의 summary·JSON·적용 발동·되돌리기는 홀더 범위 밖에 새로 넣는다. (4) `src/ops/git_hooks_plan.rs`·`git_hooks_apply.rs`·`git_hooks_revert.rs`(신규) — build.rs 가 src/ops/*.rs 를 자동 수집해 명령이 생기므로 main.rs 편집이 필요 없어졌고(main.rs 홀더 ACK 노트 5812 는 적용되지 않음), 각 명령의 문서 조각 `docs/design-review/appendix/operations/git_hooks_<word>.md`(신규 3개)가 전수 검사의 요구다. (5) `tests/update_git_hooks_cli.rs`(신규) — 임시 저장소에서 명령과 update 레이어를 검증. help.rs 행은 update 레인 몫으로 같은 노트에 선택 요청 — 빠지면 이 revision 이 기록한다.
 
 ## Risks
 
@@ -75,9 +75,9 @@ created: 2026-11-21
 
 ## Scope
 
-- write: `.moai/specs/SPEC-20261121-go-path-removal/**`, `src/git_hooks/**`, `tests/git_hooks_cli.rs`, `install/commit-msg`, `install/git-hooks/**`, `src/ops/git_hooks_plan.rs`, `src/ops/git_hooks_apply.rs`, `src/ops/git_hooks_revert.rs`, `docs/design-review/appendix/operations/git_hooks_plan.md`, `docs/design-review/appendix/operations/git_hooks_apply.md`, `docs/design-review/appendix/operations/git_hooks_revert.md`, `tests/update_git_hooks_cli.rs`, and the pair-approved lines of `src/lib.rs` and `src/update.rs` (C-307 ACK note 5803 + the named lines of note 5820)
+- write: `.moai/specs/SPEC-20261121-go-path-removal/**`, `src/git_hooks/**`, `tests/git_hooks_cli.rs`, `install/commit-msg`, `install/git-hooks/**`, `src/ops/git_hooks_plan.rs`, `src/ops/git_hooks_apply.rs`, `src/ops/git_hooks_revert.rs`, `docs/design-review/appendix/operations/git_hooks_plan.md`, `docs/design-review/appendix/operations/git_hooks_apply.md`, `docs/design-review/appendix/operations/git_hooks_revert.md`, `tests/update_git_hooks_cli.rs`, `tests/update_switch_layer.rs`, `tools/repo_scans.json`, `tests/fixtures/help/**`, `src/help.rs`, `src/main.rs`, and the pair-approved lines of `src/lib.rs` and `src/update.rs` (the update lane's ACK note 5803 + the named lines of note 5820, and the main.rs and help.rs holders' ACKs on their cards)
 - read-only: the rest of `src/`, `tests/`, `install/`, `docs/`, `skills/`, `tools/`, `templates/`, the installed Rust binary (read-only probes, temporary HOME), and this machine's state
-- forbidden: `src/main.rs` and `src/help.rs` (the ops registry needs no main.rs edit; help rows are C-307's optional ask), the 12 repositories' hook folders on this machine, any write in the real HOME, any run of a Go subcommand
+- forbidden: the 12 repositories' hook folders on this machine, any write in the real HOME, any run of a Go subcommand
 
 ## Plan
 

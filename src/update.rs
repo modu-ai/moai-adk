@@ -2159,6 +2159,15 @@ fn update_command_core(
     let home_part = home_token.map(|t| part(crate::update_home::apply(home, t, PERMISSION)));
     // C-33 S3: the confirmed switch part, last; an error is reported beside the rest.
     let switch_part = switch_token.map(|t| part(switch::apply(home, t, &crate::audit::utc_now())));
+    // SPEC-20261121-go-path-removal: the confirmed git-hook part; an error is reported beside
+    // the rest, and the hooks of the project the update runs in are the ones that change.
+    let git_hooks_part = git_hooks_token.map(|t| {
+        part((|| {
+            let cwd =
+                std::env::current_dir().map_err(|_| "current directory unavailable".to_string())?;
+            crate::git_hooks::update::apply(&cwd, t, &crate::audit::utc_now())
+        })())
+    });
     let revert = |op: &str, r: &serde_json::Value| {
         r["receipt"]
             .as_str()
@@ -2201,6 +2210,10 @@ fn update_command_core(
     if let Some(s) = switch_part {
         out["revert"]["switch"] = s["revert"].clone();
         out["switch_result"] = s;
+    }
+    if let Some(g) = git_hooks_part {
+        out["revert"]["git_hooks"] = g["revert"].clone();
+        out["git_hooks_result"] = g;
     }
     out["revert_order"] = json!(revert_order(&out["revert"]));
     Ok(out)

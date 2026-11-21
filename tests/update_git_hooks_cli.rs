@@ -19,8 +19,14 @@ use tempfile::TempDir;
 
 const NOW: &str = "2026-11-21T20:10:00Z";
 const GO_PRE_COMMIT: &str = "#!/bin/sh\n# MoAI-ADK pre-commit hook - fast subset\nexit 0\n";
-const HASH_LINE: &str =
-    "3c3446a3dbd7d918a7d6465c0765ae66b2dafe3231b9be11cd3181737b6658ac  pre-commit\n";
+
+/// The sha256 hex of `bytes`, for hash-file fixtures that must actually match the bytes.
+fn sha_hex(bytes: &[u8]) -> String {
+    use sha2::{Digest, Sha256};
+    let mut h = Sha256::new();
+    h.update(bytes);
+    h.finalize().iter().map(|b| format!("{b:02x}")).collect()
+}
 
 fn make_repo() -> (TempDir, PathBuf) {
     let dir = tempfile::TempDir::new().expect("temp dir");
@@ -38,7 +44,11 @@ fn put_go_hook(root: &Path) {
     let path = hooks_dir(root).join("pre-commit");
     fs::write(&path, GO_PRE_COMMIT).expect("write hook");
     fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).expect("chmod");
-    fs::write(hooks_dir(root).join(".moai-pre-commit.sha256"), HASH_LINE).expect("write hash file");
+    fs::write(
+        hooks_dir(root).join(".moai-pre-commit.sha256"),
+        format!("{}  pre-commit\n", sha_hex(GO_PRE_COMMIT.as_bytes())),
+    )
+    .expect("write hash file");
 }
 
 /// Runs one verb of the built binary in the repository; answers (exit code, envelope).
@@ -115,8 +125,12 @@ fn verbs_plan_previews_and_apply_needs_the_token() {
         "the shipped text is installed"
     );
     assert!(
-        hooks_dir(&root).join("commit-msg").exists(),
+        hooks_dir(&root).join("pre-push").exists(),
         "the free managed name is installed"
+    );
+    assert!(
+        !hooks_dir(&root).join("commit-msg").exists(),
+        "the product ships no commit-msg hook"
     );
 }
 
@@ -166,7 +180,7 @@ fn verbs_revert_restores_the_retired_hooks() {
         "the hash file comes back"
     );
     assert!(
-        !hooks_dir(&root).join("commit-msg").exists(),
+        !hooks_dir(&root).join("pre-push").exists(),
         "the installed hook goes away"
     );
 }
@@ -285,4 +299,66 @@ fn update_json_part_carries_git_hooks() {
     );
     assert_eq!(part["go_hooks"][0]["name"], "pre-commit");
     assert!(part["confirm_token"].as_str().is_some());
+}
+
+#[test]
+fn update_applies_the_hook_step_with_both_confirm_flags() {
+    // The digest-confirmed run applies the token parts too: the hook step must not be dropped
+    // when --confirm and --confirm-git-hooks arrive together.
+    let (_dir, root) = make_repo();
+    put_go_hook(&root);
+    let tmp = TempDir::new().expect("home");
+    let home = tmp.path().join("home");
+    fs::create_dir_all(&home).expect("home folder");
+    stage_home(&home);
+    let exe = home.join(".moai-cli/versions/a/bin/moai-cli");
+    let run = |args: &[&str]| -> Value {
+        let out = Command::new(&exe)
+            .args(args)
+            .current_dir(&root)
+            .env("PATH", "/usr/sbin:/usr/bin:/bin:/sbin")
+            .env("HOME", &home)
+            .env("LC_ALL", "C")
+            .stdin(Stdio::null())
+            .output()
+            .expect("run update");
+        serde_json::from_slice(&out.stdout).expect("envelope")
+    };
+    let preview = run(&["update", "--json"]);
+    let digest = preview["result"]["plan_digest"]
+        .as_str()
+        .expect("digest")
+        .to_string();
+    let token = preview["result"]["git_hooks"]["confirm_token"]
+        .as_str()
+        .expect("token")
+        .to_string();
+    let applied = run(&[
+        "update",
+        "--json",
+        "--confirm",
+        &digest,
+        "--confirm-git-hooks",
+        &token,
+    ]);
+    assert_eq!(applied["ok"], true, "the confirmed run succeeds: {applied}");
+    let result = &applied["result"];
+    assert_eq!(
+        result["git_hooks_result"]["state"], "applied",
+        "the hook step applied: {}",
+        result["git_hooks_result"]
+    );
+    assert_eq!(
+        fs::read_to_string(hooks_dir(&root).join("pre-commit")).expect("installed"),
+        moai_cli::git_hooks::PRE_COMMIT_TEXT,
+        "the hook step really replaced the hook"
+    );
+    let stamp = result["git_hooks_result"]["stamp"]
+        .as_str()
+        .expect("stamp")
+        .to_string();
+    assert_eq!(
+        result["revert"]["git_hooks"].as_str(),
+        Some(format!("moai git-hooks-revert {stamp}").as_str()),
+    );
 }
