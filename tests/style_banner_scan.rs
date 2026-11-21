@@ -42,7 +42,7 @@ mod style_banner {
             let Ok(text) = fs::read_to_string(&path) else {
                 continue;
             };
-            let mut hits: Vec<&str> = OLD_BANNERS
+            let hits: Vec<&str> = OLD_BANNERS
                 .into_iter()
                 .filter(|old| text.contains(old))
                 .collect();
