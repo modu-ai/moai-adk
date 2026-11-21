@@ -6,6 +6,8 @@
 #![cfg(unix)]
 
 mod common;
+#[path = "common/spawn_cap.rs"]
+mod spawn_cap;
 use common::CleanEnv;
 
 use serde_json::{json, Value};
@@ -74,6 +76,8 @@ fn go_items(home: &Path) {
 }
 
 fn run(exe: &Path, home: &Path, args: &[&str]) -> Output {
+    // REQ-3: one spawn permit per running child, so the child count stays bounded.
+    let _permit = spawn_cap::acquire();
     Command::new(exe)
         .args(args)
         .clean_env()

@@ -4,6 +4,8 @@
 #![cfg(unix)]
 
 mod common;
+#[path = "common/spawn_cap.rs"]
+mod spawn_cap;
 use serde_json::{json, Value};
 use std::fs;
 use std::os::unix::fs::{MetadataExt, PermissionsExt};
@@ -51,6 +53,8 @@ fn go_home() -> (tempfile::TempDir, PathBuf) {
 }
 
 fn call(args: &[&str], envs: &[(&str, &str)]) -> Value {
+    // REQ-3: one spawn permit per running child, so the binary's child count stays bounded.
+    let _permit = spawn_cap::acquire();
     let out = Command::new(BIN)
         .args(args)
         .env_remove("MOAI_HOME")

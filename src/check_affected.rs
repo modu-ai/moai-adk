@@ -682,6 +682,13 @@ pub fn run(dir: &Path, range: &str, opts: &RunOptions) -> Result<serde_json::Val
         sel.python.len(),
         sel.scans.word()
     );
+    // The card's test-parallelism cap (2026-11-21): name the threads a wrapped test run
+    // starts with — but only when the wrapper applies it; a caller that pinned the runner's
+    // own knob wins, and the honest line then names nothing.
+    if std::env::var_os("RUST_TEST_THREADS").is_none() {
+        let cap = crate::heavy_slot::test_thread_cap(opts.slot_dir.as_deref());
+        line.push_str(&format!(" test-threads={cap}"));
+    }
     for (k, c) in summary_words(&results) {
         line.push_str(&format!(" {k}={c}"));
     }

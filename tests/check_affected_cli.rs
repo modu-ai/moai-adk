@@ -83,7 +83,7 @@ impl Tools {
         let dir = tempfile::tempdir().unwrap();
         for n in names {
             let script = format!(
-                "#!/bin/sh\necho \"{n} $*\" >> \"$FAKE_CALLS\"\necho \"{n} env CTD=$CARGO_TARGET_DIR MB=$MOAI_CLI_BIN\" >> \"$FAKE_CALLS\"\ncase \"$FAKE_FAIL\" in\n  '') ;;\n  *) case \" $* \" in *\" $FAKE_FAIL \"*) exit 3 ;; esac ;;\nesac\nexit 0\n"
+                "#!/bin/sh\necho \"{n} $*\" >> \"$FAKE_CALLS\"\necho \"{n} env CTD=$CARGO_TARGET_DIR MB=$MOAI_CLI_BIN RT=$RUST_TEST_THREADS\" >> \"$FAKE_CALLS\"\ncase \"$FAKE_FAIL\" in\n  '') ;;\n  *) case \" $* \" in *\" $FAKE_FAIL \"*) exit 3 ;; esac ;;\nesac\nexit 0\n"
             );
             let path = dir.path().join(n);
             fs::write(&path, script).unwrap();
@@ -438,6 +438,9 @@ fn a_failed_step_does_not_stop_the_rest_and_the_summary_says_fail() {
             "targets",
             "py",
             "scans",
+            // The test-parallelism cap: named while the wrapper applies it, which this run's
+            // environment does (no RUST_TEST_THREADS of its own).
+            "test-threads",
             "diff_check",
             "fmt",
             "clippy",
@@ -562,4 +565,61 @@ fn a_checkout_that_is_not_the_head_runs_nothing() {
         "{v}"
     );
     assert_eq!(tools.calls_text(), "", "no step may have run");
+}
+
+// SPEC-20261120-test-parallelism-cap REQ-1: the test run runs with the wrapper's cap and the
+// summary line names it; a caller that pins the runner's own knob wins, and nothing is named.
+#[test]
+fn the_test_step_runs_capped_and_the_summary_names_the_cap() {
+    let fx = Fixture::new(true, &[("tests/solo_cli.rs", "fn main() { /* b */ }\n")]);
+    let tools = Tools::new(&["cargo", "python3", "rustfmt"]);
+    let slot = slot_dir();
+    let (ok, r) = affected(
+        &fx,
+        &["--slot-dir", slot.path().to_str().unwrap()],
+        Some((&tools, "")),
+    );
+    assert!(ok, "{r}");
+    let line = r["summary"].as_str().unwrap();
+    assert!(
+        line.contains(" test-threads=4 "),
+        "the cap is not named: {line}"
+    );
+    let calls = tools.calls_text();
+    assert!(
+        calls.contains("RT=4"),
+        "the cargo test step did not get the capped threads: {calls}"
+    );
+}
+
+#[test]
+fn a_caller_pinned_test_threads_wins_and_the_summary_names_nothing() {
+    let fx = Fixture::new(true, &[("tests/solo_cli.rs", "fn main() { /* b */ }\n")]);
+    let tools = Tools::new(&["cargo", "python3", "rustfmt"]);
+    let slot = slot_dir();
+    let out = Command::new(BIN)
+        .args(["check", "affected", &fx.range(), "--dir"])
+        .arg(fx.root())
+        .arg("--slot-dir")
+        .arg(slot.path())
+        .env_remove("MOAI_HOME")
+        .env("RUST_TEST_THREADS", "11")
+        .env("PATH", tools.path())
+        .env("FAKE_CALLS", tools.calls())
+        .env("FAKE_FAIL", "")
+        .stdin(Stdio::null())
+        .output()
+        .unwrap();
+    let v: Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(v["ok"], true, "{v}");
+    let line = v["result"]["summary"].as_str().unwrap();
+    assert!(
+        !line.contains("test-threads"),
+        "the pin is not honoured: {line}"
+    );
+    let calls = tools.calls_text();
+    assert!(
+        calls.contains("RT=11"),
+        "the caller's pin did not win: {calls}"
+    );
 }
