@@ -390,6 +390,53 @@ mod tests {
         assert!(!collect_memory(None, 0, 85).available);
     }
 
+    /// A context window that names a size but gives no percentage and no usage is unknown,
+    /// never a reading of zero (REQ-9 of SPEC-20261121-statusline-detached); a real zero stays
+    /// a reading.
+    #[test]
+    fn a_context_window_with_no_percentage_and_no_usage_is_unavailable() {
+        let sized = ContextReading {
+            context_window_size: 200_000,
+            ..Default::default()
+        };
+        assert!(!collect_memory(Some(sized), 0, 85).available);
+        assert!(!collect_memory(Some(ContextReading::default()), 0, 85).available);
+        let zero_percentage = ContextReading {
+            used_percentage: Some(0.0),
+            context_window_size: 200_000,
+            ..Default::default()
+        };
+        assert!(collect_memory(Some(zero_percentage), 0, 85).available);
+        let zero_usage = ContextReading {
+            context_window_size: 200_000,
+            current_usage_tokens: Some(0),
+            ..Default::default()
+        };
+        assert!(collect_memory(Some(zero_usage), 0, 85).available);
+    }
+
+    /// Numbers far beyond any real window must not overflow a debug build (REQ-10).
+    #[test]
+    fn huge_context_numbers_do_not_overflow() {
+        let by_percentage = ContextReading {
+            used_percentage: Some(1e300),
+            context_window_size: i64::MAX,
+            ..Default::default()
+        };
+        let m = collect_memory(Some(by_percentage), 0, 85);
+        assert!((0..=100).contains(&usage_percent(m.tokens_used, m.token_budget)));
+        let by_total = ContextReading {
+            used: i64::MAX,
+            total: i64::MAX,
+            ..Default::default()
+        };
+        let m = collect_memory(Some(by_total), 0, 85);
+        assert_eq!(usage_percent(m.tokens_used, m.token_budget), 100);
+        assert_eq!(usage_percent(i64::MAX, 1), 100);
+        let hit = cache_hit_percent(i64::MAX, i64::MAX);
+        assert!(hit.is_some_and(|p| (0..=100).contains(&p)));
+    }
+
     #[test]
     fn handoff_stage_bands() {
         let m = |used, size| Memory {
