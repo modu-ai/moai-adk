@@ -1,12 +1,13 @@
-//! `agents-merge-plan|apply|revert` (#2936 R10, user decision 6880117157): when a project
-//! has an `AGENTS.local.md` with text the user wrote, `/moai update` merges that text into
-//! `AGENTS.md`, outside the managed section, once.
+//! `agents-merge-plan|apply|revert` (#2936 R10): when a project has an `AGENTS.local.md` with
+//! text the user wrote, `/moai update` moves that text into `CLAUDE.local.md`, the personal file
+//! Claude Code reads and the project keeps out of git, once. A missing `CLAUDE.local.md` is
+//! created; its revert removes it again. The text never goes into a shared file.
 //!
 //! Where the text comes from: the file in place when it holds more than the text MoAI
 //! generates (`agents::is_generated_local`); otherwise the copy a committed `go-state-apply`
 //! moved into its backup's `root-files/`. Nothing is moved or deleted here: a file in place
 //! stays and a copy goes into the receipt folder; the moved copy is already in its dated
-//! backup. The text lands at the end of `AGENTS.md` between two marker lines:
+//! backup. The text lands at the end of `CLAUDE.local.md` between two marker lines:
 //!
 //! ```text
 //! <!-- moai:merged-local sha256=<sha256 of the source bytes> -->
@@ -18,7 +19,14 @@
 //! since the merge, is a `conflict`: nothing is overwritten. The preview shows the whole text,
 //! its position and that it goes into a committed file; a line shaped like a credential makes
 //! the plan `blocked` (the value is never printed). `plan_digest` binds the source bytes, the
-//! `AGENTS.md` bytes and the action.
+//! `CLAUDE.local.md` bytes and the action.
+//!
+//! Claude Code reads `AGENTS.md` only while no `CLAUDE.md`, `.claude/CLAUDE.md` or
+//! `CLAUDE.local.md` exists. A merge that creates `CLAUDE.local.md` over an `AGENTS.md` hides that
+//! file, so the plan carries a warning the user sees before they confirm.
+//!
+//! A receipt written before the personal file moved holds `AGENTS.md` as its target; it has no
+//! `target_path`, and its revert still restores that file.
 
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -26,7 +34,9 @@ use std::{fs, path::Path};
 
 type Result<T> = std::result::Result<T, String>;
 
-const TARGET: &str = "AGENTS.md";
+const TARGET: &str = "CLAUDE.local.md";
+/// The target of a receipt written before the personal file moved.
+const LEGACY_TARGET: &str = "AGENTS.md";
 const LOCAL: &str = "AGENTS.local.md";
 const BEGIN: &str = "<!-- moai:merged-local sha256=";
 const BEGIN_TAIL: &str = " -->";
@@ -37,9 +47,10 @@ const MANAGED_MARKER: &str = "<!-- moai:managed";
 /// The most a source file may hold.
 const SOURCE_LIMIT: usize = 128 * 1024;
 const RECEIPT_PREFIX: &str = "agents-local-merge-";
-/// The one line the preview shows about where the text goes (user decision 6880117157).
-pub const COMMIT_NOTICE: &str = "This text goes into AGENTS.md, a file that is committed to the \
-     repository; AGENTS.local.md may be a personal file.";
+/// The one line the preview shows about where the text goes. The key is still `commit_notice`:
+/// `project_update` forwards it under that name.
+pub const COMMIT_NOTICE: &str = "This text goes into CLAUDE.local.md, a personal file that is \
+     not committed to the repository (keep it in .gitignore); AGENTS.local.md stays as it is.";
 
 /// Where the text to merge was read.
 struct Source {
@@ -92,7 +103,7 @@ fn block_of(sha_hex: &str, body: &str) -> String {
     format!("{BEGIN}{sha_hex}{BEGIN_TAIL}\n{body}{END}\n")
 }
 
-/// The block already in `AGENTS.md`: the sha256 its marker names and the text between the marks.
+/// The block already in the target: the sha256 its marker names and the text between the marks.
 struct Existing {
     sha: String,
     body: String,
@@ -109,7 +120,7 @@ fn find_block(agents: &str) -> std::result::Result<Option<Existing>, String> {
         }
         [] => return Ok(None),
         [one] => *one,
-        _ => return Err("AGENTS.md holds more than one merged-local block".into()),
+        _ => return Err("CLAUDE.local.md holds more than one merged-local block".into()),
     };
     if start != 0 && !agents[..start].ends_with('\n') {
         return Err("the merged-local marker is not at the start of a line".into());
@@ -296,21 +307,17 @@ fn decide(agents: Option<&[u8]>, found: Found, suspects: &[(usize, &'static str)
             ),
         );
     }
-    let Some(agents) = agents else {
-        return Decision::of(
-            "blocked",
-            "AGENTS.md does not exist yet; re-run after the install phase",
-        );
-    };
-    let Ok(agents) = std::str::from_utf8(agents) else {
-        return Decision::of("blocked", "AGENTS.md is not UTF-8 text");
+    // A missing target is created: it holds the block alone.
+    let creates = agents.is_none();
+    let Ok(agents) = std::str::from_utf8(agents.unwrap_or_default()) else {
+        return Decision::of("blocked", "CLAUDE.local.md is not UTF-8 text");
     };
     let body = normalized(text);
     let sha = hex(&src.bytes);
     match find_block(agents) {
         Err(reason) => Decision::of("conflict", format!("{reason}; nothing is written")),
         Ok(Some(e)) if e.sha == sha && e.body == body => {
-            Decision::of("unchanged", "AGENTS.md already holds this text")
+            Decision::of("unchanged", "CLAUDE.local.md already holds this text")
         }
         Ok(Some(e)) if e.sha == sha => Decision::of(
             "conflict",
@@ -348,13 +355,13 @@ fn decide(agents: Option<&[u8]>, found: Found, suspects: &[(usize, &'static str)
             let head = format!("{agents}{separator}");
             let starts_at_line = head.matches('\n').count() + 1;
             let new_agents = format!("{head}{}", block_of(&sha, &body)).into_bytes();
-            // The plan, the revert and every later read of AGENTS.md go through
+            // The plan, the revert and every later read of CLAUDE.local.md go through
             // `apply::read_opt`, which refuses a file above this size (#2982 audit B1).
             if new_agents.len() as u64 > crate::apply::RECEIPT_LIMIT {
                 return Decision::of(
                     "blocked",
                     format!(
-                        "AGENTS.md would grow to {} bytes with this text; the limit is {} bytes",
+                        "CLAUDE.local.md would grow to {} bytes with this text; the limit is {} bytes",
                         new_agents.len(),
                         crate::apply::RECEIPT_LIMIT
                     ),
@@ -362,7 +369,12 @@ fn decide(agents: Option<&[u8]>, found: Found, suspects: &[(usize, &'static str)
             }
             Decision {
                 action: "merge",
-                reason: "the text of AGENTS.local.md is not in AGENTS.md yet".into(),
+                reason: if creates {
+                    "CLAUDE.local.md does not exist; the text of AGENTS.local.md would create it"
+                } else {
+                    "the text of AGENTS.local.md is not in CLAUDE.local.md yet"
+                }
+                .into(),
                 new_agents: Some(new_agents),
                 starts_at_line: Some(starts_at_line),
                 body: Some(body),
@@ -464,9 +476,33 @@ struct Inner {
     source: Option<Source>,
 }
 
+/// Claude Code reads `AGENTS.md` only while none of `CLAUDE.md`, `.claude/CLAUDE.md` and
+/// `CLAUDE.local.md` exists (the memory page, "When Claude Code reads AGENTS.md"). The warning
+/// applies when this merge would create the first of them over an `AGENTS.md`.
+fn hidden_agents_md_warning(root: &Path, action: &str, target_exists: bool) -> Vec<String> {
+    let exists = |rel: &str| fs::symlink_metadata(root.join(rel)).is_ok();
+    if action == "merge"
+        && !target_exists
+        && exists(LEGACY_TARGET)
+        && !exists("CLAUDE.md")
+        && !exists(".claude/CLAUDE.md")
+    {
+        return vec![format!(
+            "Claude Code reads {LEGACY_TARGET} only while no CLAUDE.md or CLAUDE.local.md exists; \
+             creating {TARGET} makes it stop reading this project's {LEGACY_TARGET}. Move that \
+             text into a CLAUDE.md first, or confirm that {LEGACY_TARGET} will no longer be read."
+        )];
+    }
+    Vec::new()
+}
+
 fn plan_inner(root: &Path) -> Result<Inner> {
-    let agents_path = crate::apply::target(root, TARGET)?;
-    let before = crate::apply::read_opt(&agents_path)?;
+    // A target that cannot be read as a plain file (a link, a path through one) blocks the plan.
+    let located = crate::apply::target(root, TARGET).and_then(|p| crate::apply::read_opt(&p));
+    let (before, target_error) = match located {
+        Ok(bytes) => (bytes, None),
+        Err(e) => (None, Some(format!("{TARGET}: {e}"))),
+    };
     let found = find_source(root)?;
     let suspects = match &found {
         Found::Source(s) => std::str::from_utf8(&s.bytes)
@@ -474,7 +510,11 @@ fn plan_inner(root: &Path) -> Result<Inner> {
             .unwrap_or_default(),
         _ => Vec::new(),
     };
-    let decision = decide(before.as_deref(), clone_found(&found), &suspects);
+    let decision = match target_error {
+        Some(reason) => Decision::of("blocked", reason),
+        None => decide(before.as_deref(), clone_found(&found), &suspects),
+    };
+    let warnings = hidden_agents_md_warning(root, decision.action, before.is_some());
     let source = match found {
         Found::Source(s) => Some(s),
         _ => None,
@@ -496,6 +536,7 @@ fn plan_inner(root: &Path) -> Result<Inner> {
         "source": source_json,
         "agents_sha256": before.as_deref().map(crate::digest),
         "secret_suspects": suspects_json,
+        "warnings": warnings,
     });
     let digest = crate::digest(&serde_json::to_vec(&bound).map_err(|_| "encode failed")?);
     let mut json = json!({
@@ -510,13 +551,15 @@ fn plan_inner(root: &Path) -> Result<Inner> {
             "starts_at_line": decision.starts_at_line,
         },
         "commit_notice": COMMIT_NOTICE,
+        "warnings": warnings,
         "secret_suspects": suspects_json,
         "body": decision.body,
         "plan_digest": digest,
     });
     json["next_actions"] = if decision.action == "merge" {
         json!([
-            "show the user the body, the position and the commit_notice; after their yes run \
+            "show the user the body, the position, the commit_notice and any warnings; after \
+             their yes run \
              `moai agents-merge-apply --plan-digest <plan_digest> \
              --permission-reference <ref> <project>`"
         ])
@@ -568,6 +611,21 @@ struct Receipt {
     source_kind: String,
     source_path: String,
     source_sha256: String,
+    /// The project-relative file the apply wrote. A receipt of the earlier generation has no
+    /// such field and names `AGENTS.md`.
+    #[serde(default = "legacy_target")]
+    target_path: String,
+    /// False when the apply created the file; the revert then removes it.
+    #[serde(default = "target_existed_default")]
+    target_existed: bool,
+}
+
+fn legacy_target() -> String {
+    LEGACY_TARGET.to_string()
+}
+
+fn target_existed_default() -> bool {
+    true
 }
 
 fn receipts_dir(root: &Path) -> std::path::PathBuf {
@@ -657,20 +715,22 @@ pub fn apply(project: &Path, plan_digest: &str, permission: &str) -> Result<Valu
         "none" | "unchanged" => return Ok(json!({"state": "unchanged", "writes": []})),
         other => return Err(format!("the plan is {other}: {}", inner.reason)),
     }
-    let (Some(before), Some(new_agents), Some(source)) =
-        (inner.before, inner.new_agents, inner.source)
-    else {
+    let (Some(new_agents), Some(source)) = (inner.new_agents, inner.source) else {
         return Err("the plan holds no merge".into());
     };
+    // `None`: the target does not exist and the apply creates it.
+    let before = inner.before;
     if new_agents.len() as u64 > crate::apply::RECEIPT_LIMIT {
         return Err(
-            "the merged AGENTS.md would be larger than the limit; nothing was written".into(),
+            "the merged CLAUDE.local.md would be larger than the limit; nothing was written".into(),
         );
     }
     let agents_path = crate::apply::target(&root, TARGET)?;
     let (id, dir) = new_receipt_dir(&root)?;
     let keep = create_private_dirs(&dir, &["before"])?;
-    write_private(&keep.join(TARGET), &before)?;
+    if let Some(before) = &before {
+        write_private(&keep.join(TARGET), before)?;
+    }
     // A file in place stays; the receipt keeps the copy that serves as its backup. A moved
     // copy is already in its dated go-state backup.
     if source.kind == "in_place" {
@@ -684,7 +744,7 @@ pub fn apply(project: &Path, plan_digest: &str, permission: &str) -> Result<Valu
         plan_digest: plan_digest.to_string(),
         permission_reference: permission.to_string(),
         status: "pending".into(),
-        agents_before: crate::digest(&before),
+        agents_before: crate::digest(before.as_deref().unwrap_or_default()),
         // Known before the write, so a revert can tell an interrupted apply that did write
         // from one that did not (#2982 audit N2).
         agents_after: Some(crate::digest(&new_agents)),
@@ -692,13 +752,15 @@ pub fn apply(project: &Path, plan_digest: &str, permission: &str) -> Result<Valu
         source_kind: source.kind.into(),
         source_path: source.rel.clone(),
         source_sha256: crate::digest(&source.bytes),
+        target_path: TARGET.to_string(),
+        target_existed: before.is_some(),
     };
     write_receipt(&dir, &receipt)?;
-    if let Err(e) = crate::apply::publish_replace(&agents_path, Some(&before), &new_agents) {
+    if let Err(e) = crate::apply::publish_replace(&agents_path, before.as_deref(), &new_agents) {
         receipt.status = "failed".into();
         receipt.agents_after = None;
         write_receipt(&dir, &receipt)?;
-        return Err(format!("AGENTS.md was not written ({e})"));
+        return Err(format!("{TARGET} was not written ({e})"));
     }
     receipt.status = "applied".into();
     write_receipt(&dir, &receipt)?;
@@ -715,8 +777,9 @@ pub fn apply(project: &Path, plan_digest: &str, permission: &str) -> Result<Valu
     }))
 }
 
-/// Undoes one merge while `AGENTS.md` still holds the bytes the apply wrote: it gets its
-/// earlier bytes back. The source file and its backup are not touched.
+/// Undoes one merge while the file it wrote still holds the bytes the apply wrote: the file
+/// gets its earlier bytes back, or is removed when the apply created it. The source file and its
+/// backup are not touched.
 pub fn revert(project: &Path, receipt_id: &str, permission: &str) -> Result<Value> {
     if !crate::contract::permission_reference_ok(permission) {
         return Err("a permission reference is required; nothing was written".into());
@@ -741,45 +804,62 @@ pub fn revert(project: &Path, receipt_id: &str, permission: &str) -> Result<Valu
     let bytes =
         crate::claude::read_existing(&dir.join("receipt.json"))?.ok_or("receipt not found")?;
     let mut r: Receipt = serde_json::from_slice(&bytes).map_err(|_| "receipt is unreadable")?;
-    let agents_path = crate::apply::target(&root, TARGET)?;
+    // The receipt names the file it wrote; only the two files this module ever wrote are valid.
+    let name: &str = match r.target_path.as_str() {
+        TARGET => TARGET,
+        LEGACY_TARGET => LEGACY_TARGET,
+        _ => return Err("the receipt names a file this command never writes".into()),
+    };
+    let agents_path = crate::apply::target(&root, name)?;
     match r.status.as_str() {
         "applied" => {}
         "reverted" => return Ok(json!({"state": "unchanged", "writes": []})),
-        // An apply that was interrupted: AGENTS.md holds either the bytes it was about to
-        // write (undo like an applied one) or its earlier bytes (it wrote nothing).
+        // An apply that was interrupted: the file holds either the bytes it was about to write
+        // (undo like an applied one) or its earlier state (it wrote nothing).
         "pending" => {
-            let now = crate::apply::read_opt(&agents_path)?.ok_or("AGENTS.md is missing")?;
-            let held = crate::digest(&now);
-            if held == r.agents_before {
+            let now = crate::apply::read_opt(&agents_path)?;
+            let wrote_nothing = match &now {
+                None => !r.target_existed,
+                Some(b) => r.target_existed && crate::digest(b) == r.agents_before,
+            };
+            if wrote_nothing {
                 r.status = "failed".into();
                 r.agents_after = None;
                 write_receipt(&dir, &r)?;
                 return Ok(json!({"state": "unchanged", "writes": []}));
             }
-            // Any other bytes fall to the check below: AGENTS.md changed; nothing is written.
+            // Any other bytes fall to the check below: the file changed; nothing is written.
         }
         _ => return Err("that apply wrote nothing; there is nothing to undo".into()),
     }
-    let now = crate::apply::read_opt(&agents_path)?.ok_or("AGENTS.md is missing")?;
+    let now = crate::apply::read_opt(&agents_path)?.ok_or_else(|| format!("{name} is missing"))?;
     if r.agents_after.as_deref() != Some(crate::digest(&now).as_str()) {
-        return Err("AGENTS.md changed since the merge; nothing was written".into());
+        return Err(format!(
+            "{name} changed since the merge; nothing was written"
+        ));
     }
-    crate::claude::refuse_symlink_dir(&dir.join("before"))?;
-    let before = crate::claude::read_existing(&dir.join("before").join(TARGET))?
-        .ok_or("the receipt has no copy of the earlier AGENTS.md")?;
-    if crate::digest(&before) != r.agents_before {
-        return Err(
-            "the receipt's copy of the earlier AGENTS.md was altered; nothing was written".into(),
-        );
+    if r.target_existed {
+        crate::claude::refuse_symlink_dir(&dir.join("before"))?;
+        let before = crate::claude::read_existing(&dir.join("before").join(name))?
+            .ok_or_else(|| format!("the receipt has no copy of the earlier {name}"))?;
+        if crate::digest(&before) != r.agents_before {
+            return Err(format!(
+                "the receipt's copy of the earlier {name} was altered; nothing was written"
+            ));
+        }
+        crate::apply::publish_replace(&agents_path, Some(&now), &before)?;
+    } else {
+        // The apply created the file and it still holds exactly those bytes: remove it, so the
+        // project is as it was (an empty `CLAUDE.local.md` would still count for Claude Code).
+        fs::remove_file(&agents_path).map_err(|_| format!("{name} could not be removed"))?;
     }
-    crate::apply::publish_replace(&agents_path, Some(&now), &before)?;
     r.status = "reverted".into();
     write_receipt(&dir, &r)?;
     Ok(json!({
         "state": "reverted",
         "project": root.display().to_string(),
         "receipt": receipt_id,
-        "writes": [TARGET],
+        "writes": [name],
     }))
 }
 
@@ -888,8 +968,22 @@ mod tests {
     fn nothing_to_merge_and_waiting_cases() {
         assert_eq!(action(Some("a\n"), Found::Nothing("none".into())), "none");
         assert_eq!(action(Some("a\n"), Found::Blocked("why".into())), "blocked");
-        assert_eq!(action(None, src("mine")), "blocked");
         assert_eq!(action(Some("a\n"), src("a\u{0}b")), "merge");
+    }
+
+    /// A missing target is created: the new file holds the block alone, from line 1.
+    #[test]
+    fn a_missing_target_is_created_with_the_block_alone() {
+        let d = decide(None, src("mine"), &[]);
+        assert_eq!(d.action, "merge");
+        assert_eq!(d.starts_at_line, Some(1));
+        let sha = hex(b"mine");
+        assert_eq!(
+            String::from_utf8(d.new_agents.unwrap()).unwrap(),
+            format!("{BEGIN}{sha}{BEGIN_TAIL}\nmine\n{END}\n")
+        );
+        // Nothing to merge still means nothing, with or without the target.
+        assert_eq!(action(None, Found::Nothing("none".into())), "none");
     }
 
     #[test]

@@ -1,6 +1,7 @@
-//! #2936 R10 (user decision 6880117157): `AGENTS.local.md` merges into `AGENTS.md` outside the
-//! managed section — preview, apply, revert. Temporary projects and a temporary HOME only; no
-//! host session. Credential-shaped text is built at run time so no fixture here is a secret.
+//! `AGENTS.local.md` moves into `CLAUDE.local.md`, the git-ignored personal file Claude Code
+//! reads: preview, apply, revert. A missing `CLAUDE.local.md` is created and its revert removes
+//! it. Temporary projects and a temporary HOME only; no host session. Credential-shaped text is
+//! built at run time so no fixture here is a secret.
 
 #![cfg(unix)]
 
@@ -43,13 +44,21 @@ impl Fx {
         }
     }
 
-    /// A project with `AGENTS.md` (and `AGENTS.local.md` when `local` is given).
-    fn with(agents: &str, local: Option<&str>) -> Fx {
+    /// A project whose `CLAUDE.local.md` already holds `target` (and `AGENTS.local.md` when
+    /// `local` is given).
+    fn with(target: &str, local: Option<&str>) -> Fx {
         let fx = Fx::new();
-        fx.write("AGENTS.md", agents);
+        fx.write("CLAUDE.local.md", target);
         if let Some(l) = local {
             fx.write("AGENTS.local.md", l);
         }
+        fx
+    }
+
+    /// A project with no `CLAUDE.local.md` yet; `AGENTS.local.md` holds `local`.
+    fn fresh(local: &str) -> Fx {
+        let fx = Fx::new();
+        fx.write("AGENTS.local.md", local);
         fx
     }
 
@@ -166,11 +175,11 @@ fn empty_blank_and_generated_files_merge_nothing() {
             p["reason"].as_str().unwrap().contains(word),
             "{body:?}: {p}"
         );
-        assert_eq!(fx.read("AGENTS.md"), RULES);
+        assert_eq!(fx.read("CLAUDE.local.md"), RULES);
     }
 }
 
-/// R10-3, R10-4, R10-8: the text lands once at the end of `AGENTS.md`; the preview shows the
+/// R10-3, R10-4, R10-8: the text lands once at the end of `CLAUDE.local.md`; the preview shows the
 /// whole text, the position and the commit line; a second run is `unchanged`.
 #[test]
 fn personal_text_merges_once_and_a_rerun_changes_nothing() {
@@ -180,15 +189,20 @@ fn personal_text_merges_once_and_a_rerun_changes_nothing() {
     assert_eq!(p["source"]["kind"], json!("in_place"));
     assert_eq!(p["body"], json!(MINE));
     assert_eq!(p["target"]["starts_at_line"], json!(5), "{p}");
+    assert_eq!(p["target"]["path"], json!("CLAUDE.local.md"), "{p}");
+    let notice = p["commit_notice"].as_str().unwrap();
     assert!(
-        p["commit_notice"].as_str().unwrap().contains("committed"),
+        notice.contains("CLAUDE.local.md") && notice.contains("not committed"),
         "{p}"
     );
     assert_eq!(p["secret_suspects"], json!([]));
 
     let applied = fx.merge();
     assert_eq!(applied["state"], json!("applied"), "{applied}");
-    assert_eq!(fx.read("AGENTS.md"), format!("{RULES}\n{}", block(MINE)));
+    assert_eq!(
+        fx.read("CLAUDE.local.md"),
+        format!("{RULES}\n{}", block(MINE))
+    );
     // The personal file stays where it is; the receipt keeps a copy.
     assert_eq!(fx.read("AGENTS.local.md"), MINE);
     let id = applied["receipt"].as_str().unwrap();
@@ -197,7 +211,7 @@ fn personal_text_merges_once_and_a_rerun_changes_nothing() {
         MINE
     );
     assert_eq!(
-        fx.read(&format!(".moai-cli/receipts/{id}/before/AGENTS.md")),
+        fx.read(&format!(".moai-cli/receipts/{id}/before/CLAUDE.local.md")),
         RULES
     );
 
@@ -210,7 +224,7 @@ fn personal_text_merges_once_and_a_rerun_changes_nothing() {
     assert_eq!(tree_state(&fx.root), before);
 }
 
-/// R10-9: a wrong digest, a missing permission reference and an `AGENTS.md` that changed after
+/// R10-9: a wrong digest, a missing permission reference and an `CLAUDE.local.md` that changed after
 /// the preview write nothing.
 #[test]
 fn a_stale_digest_or_no_permission_writes_nothing() {
@@ -227,7 +241,10 @@ fn a_stale_digest_or_no_permission_writes_nothing() {
     }
     assert_eq!(tree_state(&fx.root), before);
 
-    fx.write("AGENTS.md", &format!("{RULES}\nAdded after the preview.\n"));
+    fx.write(
+        "CLAUDE.local.md",
+        &format!("{RULES}\nAdded after the preview.\n"),
+    );
     let moved = tree_state(&fx.root);
     let v = fx.apply_with(&digest, REF);
     assert_eq!(v["ok"], json!(false), "{v}");
@@ -240,10 +257,13 @@ fn a_stale_digest_or_no_permission_writes_nothing() {
 fn edits_and_forged_markers_are_conflicts() {
     let fx = Fx::with(RULES, Some(MINE));
     fx.merge();
-    let merged = fx.read("AGENTS.md");
+    let merged = fx.read("CLAUDE.local.md");
 
     // The block text edited by hand.
-    fx.write("AGENTS.md", &merged.replace("small commits", "big commits"));
+    fx.write(
+        "CLAUDE.local.md",
+        &merged.replace("small commits", "big commits"),
+    );
     let p = fx.plan();
     assert_eq!(p["action"], json!("conflict"), "{p}");
     let edited = tree_state(&fx.root);
@@ -252,16 +272,16 @@ fn edits_and_forged_markers_are_conflicts() {
     assert_eq!(tree_state(&fx.root), edited);
 
     // The personal file changed after the merge: the old block is kept.
-    fx.write("AGENTS.md", &merged);
+    fx.write("CLAUDE.local.md", &merged);
     fx.write("AGENTS.local.md", &format!("{MINE}One more line.\n"));
     let p = fx.plan();
     assert_eq!(p["action"], json!("conflict"), "{p}");
     assert!(p["reason"].as_str().unwrap().contains("changed"), "{p}");
-    assert_eq!(fx.read("AGENTS.md"), merged);
+    assert_eq!(fx.read("CLAUDE.local.md"), merged);
 
     // A marker whose hash is not 64 hex digits is damaged, not trusted.
     fx.write("AGENTS.local.md", MINE);
-    fx.write("AGENTS.md", &merged.replace("sha256=", "sha256=zz"));
+    fx.write("CLAUDE.local.md", &merged.replace("sha256=", "sha256=zz"));
     assert_eq!(fx.plan()["action"], json!("conflict"));
 }
 
@@ -280,10 +300,10 @@ fn a_credential_shaped_line_blocks_without_printing_it() {
     let v = fx.apply_with(p["plan_digest"].as_str().unwrap(), REF);
     assert_eq!(v["ok"], json!(false), "{v}");
     assert!(!v.to_string().contains(&secret));
-    assert_eq!(fx.read("AGENTS.md"), RULES);
+    assert_eq!(fx.read("CLAUDE.local.md"), RULES);
 }
 
-/// R10-11: the size limit, a link, a missing `AGENTS.md` and a source that holds a MoAI marker.
+/// R10-11: the size limit, a link, a missing `CLAUDE.local.md` and a source that holds a MoAI marker.
 #[test]
 fn limits_links_and_markers_block_the_plan() {
     // 128 KiB exactly merges; one byte more is blocked.
@@ -311,12 +331,12 @@ fn limits_links_and_markers_block_the_plan() {
     let p = fx.plan();
     assert_eq!(p["action"], json!("blocked"), "{p}");
 
-    // No AGENTS.md yet: wait for the install phase.
+    // A `CLAUDE.local.md` that is a link is never followed or written through.
     let fx = Fx::with(RULES, Some(MINE));
-    fs::remove_file(fx.root.join("AGENTS.md")).unwrap();
+    fs::rename(fx.root.join("CLAUDE.local.md"), fx.root.join("real.md")).unwrap();
+    symlink(fx.root.join("real.md"), fx.root.join("CLAUDE.local.md")).unwrap();
     let p = fx.plan();
     assert_eq!(p["action"], json!("blocked"), "{p}");
-    assert!(p["reason"].as_str().unwrap().contains("install"), "{p}");
 
     // A source that holds a managed-section marker would be read as a second section.
     let marked = format!("{MINE}<!-- moai:managed:begin id=x -->\n");
@@ -324,30 +344,30 @@ fn limits_links_and_markers_block_the_plan() {
     assert_eq!(fx.plan()["action"], json!("blocked"));
 }
 
-/// R10-10: the revert puts the earlier `AGENTS.md` back, only while it still holds what the apply
+/// R10-10: the revert puts the earlier `CLAUDE.local.md` back, only while it still holds what the apply
 /// wrote; it never touches the personal file.
 #[test]
 fn revert_restores_agents_md_only_while_it_is_unchanged() {
     let fx = Fx::with(RULES, Some(MINE));
     let id = fx.merge()["receipt"].as_str().unwrap().to_string();
-    let merged = fx.read("AGENTS.md");
+    let merged = fx.read("CLAUDE.local.md");
 
     let v = fx.revert_with(&id, "");
     assert_eq!(v["ok"], json!(false), "{v}");
     let v = fx.revert_with("agents-local-merge-../x", REF);
     assert_eq!(v["ok"], json!(false), "{v}");
-    assert_eq!(fx.read("AGENTS.md"), merged);
+    assert_eq!(fx.read("CLAUDE.local.md"), merged);
 
     // Edited after the merge: refused, nothing written.
-    fx.write("AGENTS.md", &format!("{merged}\nlater\n"));
+    fx.write("CLAUDE.local.md", &format!("{merged}\nlater\n"));
     let v = fx.revert_with(&id, REF);
     assert_eq!(v["ok"], json!(false), "{v}");
-    assert_eq!(fx.read("AGENTS.md"), format!("{merged}\nlater\n"));
+    assert_eq!(fx.read("CLAUDE.local.md"), format!("{merged}\nlater\n"));
 
-    fx.write("AGENTS.md", &merged);
+    fx.write("CLAUDE.local.md", &merged);
     let v = fx.revert_with(&id, REF);
     assert_eq!(v["result"]["state"], json!("reverted"), "{v}");
-    assert_eq!(fx.read("AGENTS.md"), RULES);
+    assert_eq!(fx.read("CLAUDE.local.md"), RULES);
     assert_eq!(fx.read("AGENTS.local.md"), MINE);
     // A second revert is a no-op; the text can be merged again.
     let v = fx.revert_with(&id, REF);
@@ -390,7 +410,8 @@ fn a_go_state_backup_copy_is_the_source() {
     let backup = applied["result"]["backup"].as_str().unwrap().to_string();
     assert!(!fx.root.join("AGENTS.local.md").exists());
 
-    // The install step wrote a new AGENTS.md and a new generated personal file.
+    // The install step wrote a new guidance file and a new generated personal file; there is
+    // no `CLAUDE.local.md` yet, so the merge creates it.
     fx.write("AGENTS.md", RULES);
     fx.write("AGENTS.local.md", GENERATED);
     let p = fx.plan();
@@ -402,7 +423,12 @@ fn a_go_state_backup_copy_is_the_source() {
     );
     let applied = fx.merge();
     assert_eq!(applied["source"]["kind"], json!("backup"));
-    assert_eq!(fx.read("AGENTS.md"), format!("{RULES}\n{}", block(MINE)));
+    assert_eq!(fx.read("CLAUDE.local.md"), block(MINE));
+    assert_eq!(
+        fx.read("AGENTS.md"),
+        RULES,
+        "the guidance file is not touched"
+    );
     // The generated file in place and the backup copy are not touched.
     assert_eq!(fx.read("AGENTS.local.md"), GENERATED);
     assert_eq!(
@@ -472,14 +498,25 @@ fn regenerating_the_managed_section_keeps_the_merged_block() {
         REF,
     ]);
     assert_eq!(applied["ok"], json!(true), "{applied}");
-    let merged = fs::read_to_string(root.path().join("AGENTS.md")).unwrap();
-    assert!(merged.ends_with(&block(MINE)), "{merged}");
+    let merged = fs::read_to_string(root.path().join("CLAUDE.local.md")).unwrap();
+    assert_eq!(merged, block(MINE), "the missing personal file was created");
 
+    // The guidance file that generation owns (`GUIDANCE`) is regenerated; the personal file
+    // is not part of that and keeps its one merged block.
+    const GUIDANCE: &str = "AGENTS.md";
+    let guidance_before = fs::read_to_string(root.path().join(GUIDANCE)).unwrap();
     agents("ko");
-    let regenerated = fs::read_to_string(root.path().join("AGENTS.md")).unwrap();
-    assert_ne!(regenerated, merged, "the managed section was regenerated");
-    assert!(regenerated.ends_with(&block(MINE)), "{regenerated}");
-    assert_eq!(regenerated.matches("moai:merged-local sha256=").count(), 1);
+    let guidance_after = fs::read_to_string(root.path().join(GUIDANCE)).unwrap();
+    assert_ne!(
+        guidance_after, guidance_before,
+        "the managed section was regenerated"
+    );
+    let personal = fs::read_to_string(root.path().join("CLAUDE.local.md")).unwrap();
+    assert_eq!(
+        personal, merged,
+        "regenerating does not touch the personal file"
+    );
+    assert_eq!(personal.matches("moai:merged-local sha256=").count(), 1);
     let again = merge(&["agents-merge-plan", p]);
     assert_eq!(again["result"]["action"], json!("unchanged"), "{again}");
 }
@@ -552,7 +589,7 @@ fn receipt_folders_and_files_are_owner_only_under_any_umask() {
         }
         for f in [
             dir.join("receipt.json"),
-            dir.join("before/AGENTS.md"),
+            dir.join("before/CLAUDE.local.md"),
             dir.join("source/AGENTS.local.md"),
         ] {
             assert_eq!(mode_of(&f), 0o600, "umask {umask}: {}", f.display());
@@ -578,7 +615,7 @@ fn receipt_folders_and_files_are_owner_only_under_any_umask() {
     }
 }
 
-/// #2982 audit B1: the merged `AGENTS.md` may be 262144 bytes (the limit every later read
+/// #2982 audit B1: the merged `CLAUDE.local.md` may be 262144 bytes (the limit every later read
 /// accepts) and not one byte more; at the limit the merge and its revert both work.
 #[test]
 fn the_merged_file_stops_at_the_receipt_limit() {
@@ -588,12 +625,12 @@ fn the_merged_file_stops_at_the_receipt_limit() {
 
     let fx = Fx::with(&agents_of(0), Some(MINE));
     let applied = fx.merge();
-    assert_eq!(fx.read("AGENTS.md").len(), LIMIT);
+    assert_eq!(fx.read("CLAUDE.local.md").len(), LIMIT);
     let id = applied["receipt"].as_str().unwrap().to_string();
     assert_eq!(fx.plan()["action"], json!("unchanged"));
     let r = fx.revert_with(&id, REF);
     assert_eq!(r["result"]["state"], json!("reverted"), "{r}");
-    assert_eq!(fx.read("AGENTS.md"), agents_of(0));
+    assert_eq!(fx.read("CLAUDE.local.md"), agents_of(0));
 
     let fx = Fx::with(&agents_of(1), Some(MINE));
     let p = fx.plan();
@@ -606,26 +643,26 @@ fn the_merged_file_stops_at_the_receipt_limit() {
 }
 
 /// #2982 audit N2: an apply killed before it finished leaves a `pending` receipt; the revert
-/// undoes it when `AGENTS.md` was written, calls it a no-op when it was not, and refuses when
+/// undoes it when `CLAUDE.local.md` was written, calls it a no-op when it was not, and refuses when
 /// the file is neither.
 #[test]
 fn a_pending_receipt_is_reverted_by_what_agents_md_holds() {
-    // Written: AGENTS.md holds the merged bytes.
+    // Written: CLAUDE.local.md holds the merged bytes.
     let fx = Fx::with(RULES, Some(MINE));
     let id = fx.merge()["receipt"].as_str().unwrap().to_string();
     fx.set_status(&id, "pending");
     let v = fx.revert_with(&id, REF);
     assert_eq!(v["result"]["state"], json!("reverted"), "{v}");
-    assert_eq!(fx.read("AGENTS.md"), RULES);
+    assert_eq!(fx.read("CLAUDE.local.md"), RULES);
 
-    // Not written: AGENTS.md holds its earlier bytes; the receipt becomes `failed`.
+    // Not written: CLAUDE.local.md holds its earlier bytes; the receipt becomes `failed`.
     let fx = Fx::with(RULES, Some(MINE));
     let id = fx.merge()["receipt"].as_str().unwrap().to_string();
     fx.set_status(&id, "pending");
-    fx.write("AGENTS.md", RULES);
+    fx.write("CLAUDE.local.md", RULES);
     let v = fx.revert_with(&id, REF);
     assert_eq!(v["result"]["state"], json!("unchanged"), "{v}");
-    assert_eq!(fx.read("AGENTS.md"), RULES);
+    assert_eq!(fx.read("CLAUDE.local.md"), RULES);
     let again = fx.revert_with(&id, REF);
     assert_eq!(
         again["ok"],
@@ -637,19 +674,19 @@ fn a_pending_receipt_is_reverted_by_what_agents_md_holds() {
     let fx = Fx::with(RULES, Some(MINE));
     let id = fx.merge()["receipt"].as_str().unwrap().to_string();
     fx.set_status(&id, "pending");
-    fx.write("AGENTS.md", "# something else\n");
+    fx.write("CLAUDE.local.md", "# something else\n");
     let v = fx.revert_with(&id, REF);
     assert_eq!(v["ok"], json!(false), "{v}");
-    assert_eq!(fx.read("AGENTS.md"), "# something else\n");
+    assert_eq!(fx.read("CLAUDE.local.md"), "# something else\n");
 
-    // A `failed` receipt is never undone, even when AGENTS.md holds the merged bytes.
+    // A `failed` receipt is never undone, even when CLAUDE.local.md holds the merged bytes.
     let fx = Fx::with(RULES, Some(MINE));
     let id = fx.merge()["receipt"].as_str().unwrap().to_string();
-    let merged = fx.read("AGENTS.md");
+    let merged = fx.read("CLAUDE.local.md");
     fx.set_status(&id, "failed");
     let v = fx.revert_with(&id, REF);
     assert_eq!(v["ok"], json!(false), "{v}");
-    assert_eq!(fx.read("AGENTS.md"), merged);
+    assert_eq!(fx.read("CLAUDE.local.md"), merged);
 }
 
 /// #2982 audit M16–M18: only a well-formed receipt id is looked up, and a link anywhere on the
@@ -658,7 +695,7 @@ fn a_pending_receipt_is_reverted_by_what_agents_md_holds() {
 fn revert_refuses_odd_ids_and_links() {
     let fx = Fx::with(RULES, Some(MINE));
     let id = fx.merge()["receipt"].as_str().unwrap().to_string();
-    let merged = fx.read("AGENTS.md");
+    let merged = fx.read("CLAUDE.local.md");
     let long = format!("agents-local-merge-{}", "1".repeat(64));
     for bad in [
         "agents-local-merge-a/b",
@@ -671,7 +708,7 @@ fn revert_refuses_odd_ids_and_links() {
         let v = fx.revert_with(bad, REF);
         assert_eq!(v["ok"], json!(false), "{bad:?}: {v}");
     }
-    assert_eq!(fx.read("AGENTS.md"), merged);
+    assert_eq!(fx.read("CLAUDE.local.md"), merged);
 
     // `before/` as a link to a real copy.
     let dir = fx.receipt_path(&id);
@@ -679,7 +716,7 @@ fn revert_refuses_odd_ids_and_links() {
     symlink(fx.root.join("elsewhere"), dir.join("before")).unwrap();
     let v = fx.revert_with(&id, REF);
     assert_eq!(v["ok"], json!(false), "{v}");
-    assert_eq!(fx.read("AGENTS.md"), merged);
+    assert_eq!(fx.read("CLAUDE.local.md"), merged);
     fs::remove_file(dir.join("before")).unwrap();
     fs::rename(fx.root.join("elsewhere"), dir.join("before")).unwrap();
 
@@ -689,15 +726,15 @@ fn revert_refuses_odd_ids_and_links() {
     symlink(&real, &dir).unwrap();
     let v = fx.revert_with(&id, REF);
     assert_eq!(v["ok"], json!(false), "{v}");
-    assert_eq!(fx.read("AGENTS.md"), merged);
+    assert_eq!(fx.read("CLAUDE.local.md"), merged);
     fs::remove_file(&dir).unwrap();
     fs::rename(&real, &dir).unwrap();
 
     // The receipt's own copy of the earlier file was altered.
-    fs::write(dir.join("before/AGENTS.md"), "# altered\n").unwrap();
+    fs::write(dir.join("before/CLAUDE.local.md"), "# altered\n").unwrap();
     let v = fx.revert_with(&id, REF);
     assert_eq!(v["ok"], json!(false), "{v}");
-    assert_eq!(fx.read("AGENTS.md"), merged);
+    assert_eq!(fx.read("CLAUDE.local.md"), merged);
 }
 
 /// #2982 audit M30: the plan digest binds the source bytes: a personal file changed after the
@@ -712,7 +749,7 @@ fn the_digest_binds_the_source_bytes() {
     let v = fx.apply_with(p["plan_digest"].as_str().unwrap(), REF);
     assert_eq!(v["ok"], json!(false), "{v}");
     assert!(v.to_string().contains("stale"), "{v}");
-    assert_eq!(fx.read("AGENTS.md"), RULES);
+    assert_eq!(fx.read("CLAUDE.local.md"), RULES);
     assert_ne!(fx.plan()["plan_digest"], p["plan_digest"]);
 }
 
@@ -722,20 +759,20 @@ fn the_digest_binds_the_source_bytes() {
 fn a_deleted_start_marker_is_a_conflict() {
     let fx = Fx::with(RULES, Some(MINE));
     fx.merge();
-    let merged = fx.read("AGENTS.md");
+    let merged = fx.read("CLAUDE.local.md");
     let without_start: String = merged
         .lines()
         .filter(|l| !l.starts_with("<!-- moai:merged-local sha256="))
         .map(|l| format!("{l}\n"))
         .collect();
-    fx.write("AGENTS.md", &without_start);
+    fx.write("CLAUDE.local.md", &without_start);
     let p = fx.plan();
     assert_eq!(p["action"], json!("conflict"), "{p}");
 }
 
-/// #2982 audit O27/O09: when `AGENTS.md` cannot be written, the apply fails, the receipt says
+/// #2982 audit O27/O09: when `CLAUDE.local.md` cannot be written, the apply fails, the receipt says
 /// `failed` (it was written first as `pending`, with the earlier copy beside it), and
-/// `AGENTS.md` is untouched; a revert of that receipt writes nothing.
+/// `CLAUDE.local.md` is untouched; a revert of that receipt writes nothing.
 #[test]
 fn a_failed_write_leaves_a_failed_receipt_and_changes_nothing() {
     use std::os::unix::fs::PermissionsExt;
@@ -743,7 +780,7 @@ fn a_failed_write_leaves_a_failed_receipt_and_changes_nothing() {
     fs::create_dir_all(fx.root.join(".moai-cli")).unwrap();
     let plan = fx.plan();
     let digest = plan["plan_digest"].as_str().unwrap().to_string();
-    // A project folder nobody can add files to: AGENTS.md cannot be replaced there.
+    // A project folder nobody can add files to: CLAUDE.local.md cannot be replaced there.
     fs::set_permissions(&fx.root, fs::Permissions::from_mode(0o555)).unwrap();
     let probe = fs::write(fx.root.join("probe"), "x");
     let blocked = probe.is_err();
@@ -757,7 +794,7 @@ fn a_failed_write_leaves_a_failed_receipt_and_changes_nothing() {
         return;
     }
     assert_eq!(v["ok"], json!(false), "{v}");
-    assert_eq!(fx.read("AGENTS.md"), RULES);
+    assert_eq!(fx.read("CLAUDE.local.md"), RULES);
     let receipts: Vec<_> = fs::read_dir(fx.root.join(".moai-cli/receipts"))
         .unwrap()
         .map(|e| e.unwrap().file_name().into_string().unwrap())
@@ -768,12 +805,12 @@ fn a_failed_write_leaves_a_failed_receipt_and_changes_nothing() {
     assert_eq!(r["status"], json!("failed"), "{r}");
     assert_eq!(r["agents_after"], Value::Null, "{r}");
     assert_eq!(
-        fs::read_to_string(dir.join("before/AGENTS.md")).unwrap(),
+        fs::read_to_string(dir.join("before/CLAUDE.local.md")).unwrap(),
         RULES
     );
     let v = fx.revert_with(&receipts[0], REF);
     assert_eq!(v["ok"], json!(false), "{v}");
-    assert_eq!(fx.read("AGENTS.md"), RULES);
+    assert_eq!(fx.read("CLAUDE.local.md"), RULES);
     // The same text still merges once the folder is writable again.
     assert_eq!(fx.plan()["action"], json!("merge"));
 }
@@ -784,7 +821,7 @@ fn a_failed_write_leaves_a_failed_receipt_and_changes_nothing() {
 fn a_receipt_id_is_checked_by_prefix_characters_and_length() {
     let fx = Fx::with(RULES, Some(MINE));
     let id = fx.merge()["receipt"].as_str().unwrap().to_string();
-    let merged = fx.read("AGENTS.md");
+    let merged = fx.read("CLAUDE.local.md");
     let prefix = "agents-local-merge-";
     let at = |n: usize| format!("{prefix}{}", "1".repeat(n - prefix.len()));
     // 64 bytes passes the id check (and then finds no receipt); 65 is refused as an id.
@@ -801,7 +838,126 @@ fn a_receipt_id_is_checked_by_prefix_characters_and_length() {
         let v = fx.revert_with(&bad, REF);
         assert!(v.to_string().contains("unknown receipt id"), "{bad:?}: {v}");
     }
-    assert_eq!(fx.read("AGENTS.md"), merged);
+    assert_eq!(fx.read("CLAUDE.local.md"), merged);
     let v = fx.revert_with(&id, REF);
     assert_eq!(v["result"]["state"], json!("reverted"), "{v}");
+}
+
+fn digest_of(text: &str) -> String {
+    use sha2::{Digest, Sha256};
+    format!("sha256:{:x}", Sha256::digest(text.as_bytes()))
+}
+
+/// SPEC REQ-2, REQ-4: a project without `CLAUDE.local.md` gets one that holds exactly the block;
+/// its receipt keeps no copy of a file that did not exist, and the revert removes the file, but
+/// only while it still holds the bytes the apply wrote.
+#[test]
+fn a_missing_personal_file_is_created_and_the_revert_removes_it() {
+    let fx = Fx::fresh(MINE);
+    let p = fx.plan();
+    assert_eq!(p["action"], json!("merge"), "{p}");
+    assert_eq!(p["target"]["path"], json!("CLAUDE.local.md"), "{p}");
+    assert_eq!(p["target"]["exists"], json!(false), "{p}");
+    assert_eq!(p["target"]["starts_at_line"], json!(1), "{p}");
+
+    let applied = fx.merge();
+    assert_eq!(applied["writes"], json!(["CLAUDE.local.md"]), "{applied}");
+    assert_eq!(fx.read("CLAUDE.local.md"), block(MINE));
+    assert_eq!(fx.read("AGENTS.local.md"), MINE, "the source stays");
+    assert!(
+        !fx.root.join("AGENTS.md").exists(),
+        "no AGENTS.md is created"
+    );
+    let id = applied["receipt"].as_str().unwrap().to_string();
+    assert!(
+        !fx.receipt_path(&id).join("before/CLAUDE.local.md").exists(),
+        "there is no earlier file to copy"
+    );
+
+    // Edited after the merge: the revert refuses and the file stays.
+    let merged = fx.read("CLAUDE.local.md");
+    fx.write("CLAUDE.local.md", &format!("{merged}\nmine too\n"));
+    let v = fx.revert_with(&id, REF);
+    assert_eq!(v["ok"], json!(false), "{v}");
+    assert_eq!(fx.read("CLAUDE.local.md"), format!("{merged}\nmine too\n"));
+
+    // Untouched: the revert removes the file the apply created.
+    fx.write("CLAUDE.local.md", &merged);
+    let v = fx.revert_with(&id, REF);
+    assert_eq!(v["result"]["state"], json!("reverted"), "{v}");
+    assert!(!fx.root.join("CLAUDE.local.md").exists(), "{v}");
+    assert_eq!(fx.read("AGENTS.local.md"), MINE);
+    // A second revert is a no-op and the text can be merged again.
+    let v = fx.revert_with(&id, REF);
+    assert_eq!(v["result"]["state"], json!("unchanged"), "{v}");
+    assert_eq!(fx.plan()["action"], json!("merge"));
+}
+
+/// SPEC REQ-5: Claude Code reads `AGENTS.md` only while no `CLAUDE.md`, `.claude/CLAUDE.md` or
+/// `CLAUDE.local.md` exists, so creating `CLAUDE.local.md` over an `AGENTS.md` hides that file.
+/// The preview says so; it stays silent when nothing changes for the reader.
+#[test]
+fn the_plan_warns_when_agents_md_would_stop_being_read() {
+    let warns = |p: &Value| {
+        p["warnings"]
+            .as_array()
+            .map(|w| w.iter().any(|x| x.as_str().unwrap().contains("AGENTS.md")))
+            .unwrap_or(false)
+    };
+
+    let fx = Fx::fresh(MINE);
+    fx.write("AGENTS.md", RULES);
+    let p = fx.plan();
+    assert!(warns(&p), "{p}");
+    assert_eq!(p["action"], json!("merge"));
+
+    // A CLAUDE.md already wins over AGENTS.md: nothing is hidden by the new file.
+    fx.write("CLAUDE.md", "# Team\n");
+    assert!(!warns(&fx.plan()));
+    fs::remove_file(fx.root.join("CLAUDE.md")).unwrap();
+    fx.write(".claude/CLAUDE.md", "# Team\n");
+    assert!(!warns(&fx.plan()));
+    fs::remove_file(fx.root.join(".claude/CLAUDE.md")).unwrap();
+    assert!(warns(&fx.plan()));
+
+    // No AGENTS.md: nothing to hide.
+    fs::remove_file(fx.root.join("AGENTS.md")).unwrap();
+    assert!(!warns(&fx.plan()));
+
+    // CLAUDE.local.md already exists: AGENTS.md is already not read, the merge changes nothing
+    // for the reader.
+    let fx = Fx::with(RULES, Some(MINE));
+    fx.write("AGENTS.md", RULES);
+    assert!(!warns(&fx.plan()));
+}
+
+/// SPEC REQ-4 for an older receipt: a merge applied before the personal file moved wrote into
+/// `AGENTS.md`; its receipt has no `target_path`, and the revert still restores `AGENTS.md`.
+#[test]
+fn a_receipt_of_the_earlier_generation_still_reverts_agents_md() {
+    let fx = Fx::fresh(MINE);
+    let merged = format!("{RULES}\n{}", block(MINE));
+    fx.write("AGENTS.md", &merged);
+    let id = "agents-local-merge-1700000000000000000-0";
+    let dir = fx.receipt_path(id);
+    fs::create_dir_all(dir.join("before")).unwrap();
+    fs::write(dir.join("before/AGENTS.md"), RULES).unwrap();
+    let receipt = json!({
+        "schema_version": 1, "id": id, "at": "2026-11-01T00:00:00Z",
+        "plan_digest": "sha256:old", "permission_reference": REF, "status": "applied",
+        "agents_before": digest_of(RULES), "agents_after": digest_of(&merged),
+        "block_sha256": "x", "source_kind": "in_place",
+        "source_path": "AGENTS.local.md", "source_sha256": digest_of(MINE),
+    });
+    fs::write(
+        dir.join("receipt.json"),
+        serde_json::to_vec_pretty(&receipt).unwrap(),
+    )
+    .unwrap();
+
+    let v = fx.revert_with(id, REF);
+    assert_eq!(v["result"]["state"], json!("reverted"), "{v}");
+    assert_eq!(v["result"]["writes"], json!(["AGENTS.md"]), "{v}");
+    assert_eq!(fx.read("AGENTS.md"), RULES);
+    assert!(!fx.root.join("CLAUDE.local.md").exists());
 }
