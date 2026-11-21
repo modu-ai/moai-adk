@@ -668,15 +668,17 @@ mod tests {
     #[test]
     fn merge_answers_names_the_three_asked_items_and_keeps_older_ones() {
         let current = settings(&[("code_comments", "ja")]);
-        let answers = json!({"user_chat": "zh"});
+        let answers = json!({});
         let out = merge_answers(Some(&current), answers.as_object().unwrap(), "ko").unwrap();
         // The three asked items are named; an older item is carried only because the profile
-        // already had it; an older item the profile never set gets no key.
+        // already had it; an older item the profile never set gets no key. The profile's
+        // user_chat is filled by the setup from the resolved conversation, not by the merge.
         assert_eq!(out.len(), 4, "{out:?}");
-        assert_eq!(out["user_chat"], "zh");
         assert_eq!(out["commit_messages"], "ko");
+        assert_eq!(out["instruction_files"], "en");
         assert_eq!(out["documents"], "ko");
         assert_eq!(out["code_comments"], "ja");
+        assert!(!out.contains_key("user_chat"));
         assert!(!out.contains_key("reports"));
         assert!(!out.contains_key("agent_messages"));
         for bad in [
@@ -690,14 +692,14 @@ mod tests {
 
     #[test]
     fn interactive_keeps_on_empty_and_eof_and_retries_bad_codes() {
-        // The three asked items, in table order: user_chat, commit_messages, documents.
+        // The three asked items, in table order: commit_messages, instruction_files, documents.
         let mut prompt = Vec::new();
         let mut input = "ko\n\nxx\nja\n".as_bytes();
         let out = interactive(None, "en", &mut input, &mut prompt).unwrap();
         assert_eq!(out.len(), 3, "{out:?}");
-        assert_eq!(out["user_chat"], "ko");
-        // An empty line keeps the suggested value (the conversation language, `en` here).
-        assert_eq!(out["commit_messages"], "en");
+        assert_eq!(out["commit_messages"], "ko");
+        // An empty line keeps the suggested value (the item default, `en` here).
+        assert_eq!(out["instruction_files"], "en");
         // A bad code is asked again; the next line is the answer.
         assert_eq!(out["documents"], "ja");
         assert!(String::from_utf8(prompt)
@@ -706,8 +708,8 @@ mod tests {
         // End of input keeps the suggested value for every remaining item.
         let mut input = "ko\n".as_bytes();
         let out = interactive(None, "en", &mut input, &mut Vec::new()).unwrap();
-        assert_eq!(out["user_chat"], "ko");
-        assert_eq!(out["commit_messages"], "en");
+        assert_eq!(out["commit_messages"], "ko");
+        assert_eq!(out["instruction_files"], "en");
         assert_eq!(out["documents"], "en");
         assert_eq!(out.len(), 3);
     }
@@ -718,7 +720,7 @@ mod tests {
         assert!(interactive(None, "en", &mut input, &mut Vec::new()).is_err());
         let mut input = "xx\nyy\nko\n".as_bytes();
         let out = interactive(None, "en", &mut input, &mut Vec::new()).unwrap();
-        assert_eq!(out["user_chat"], "ko");
+        assert_eq!(out["commit_messages"], "ko");
     }
 
     /// #2935 L1: `--conversation`, then `user_chat`, then the HOME value, then `en`.
@@ -895,13 +897,16 @@ mod tests {
             b"language:\n  conversation_language: ja\n"
         );
         assert_eq!(home_conversation(home.path()).as_deref(), Some("ja"));
+        // A later call with a valid code replaces the value (leader decision): the before
+        // bytes are kept until the publish, so the file always holds a whole record.
         let second = set_home(home.path(), "ko").unwrap();
-        assert_eq!(second["written"], false);
-        assert_eq!(second["reason"], "exists");
+        assert_eq!(second["written"], true);
+        assert_eq!(second["reason"], "replaced");
         assert_eq!(
             std::fs::read(&file).unwrap(),
-            b"language:\n  conversation_language: ja\n"
+            b"language:\n  conversation_language: ko\n"
         );
+        assert_eq!(home_conversation(home.path()).as_deref(), Some("ko"));
     }
 
     #[test]
@@ -919,21 +924,27 @@ mod tests {
         assert!(!state(home.path()).join("config/language.yaml").exists());
     }
 
-    /// Another language is stored exactly as given and read back as stored, but
-    /// `language-setup` does not use it.
+    /// A language outside the list is refused without a write; a listed one is stored exactly
+    /// as given, read back, and named by the supported resolver.
     #[test]
     fn set_home_stores_another_language_exactly_as_given() {
         let home = home_with(None);
         let file = state(home.path()).join("config/language.yaml");
-        let r = set_home(home.path(), "pt-BR").unwrap();
+        let r = set_home(home.path(), "pt-BR");
+        assert!(r.is_err(), "pt-BR is outside the list: {r:?}");
+        assert!(!file.exists(), "nothing was written");
+        let r = set_home(home.path(), "zh").unwrap();
         assert_eq!(r["written"], true);
-        assert_eq!(r["code"], "pt-BR");
+        assert_eq!(r["code"], "zh");
         assert_eq!(
             std::fs::read(&file).unwrap(),
-            b"language:\n  conversation_language: pt-BR\n"
+            b"language:\n  conversation_language: zh\n"
         );
-        assert_eq!(home_conversation(home.path()).as_deref(), Some("pt-BR"));
-        assert_eq!(home_conversation_supported(home.path()), None);
+        assert_eq!(home_conversation(home.path()).as_deref(), Some("zh"));
+        assert_eq!(
+            home_conversation_supported(home.path()).as_deref(),
+            Some("zh")
+        );
     }
 
     /// Card C-87 S1: the lines name only the items the profile sets; an item it leaves out gets
