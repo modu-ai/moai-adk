@@ -99,3 +99,129 @@ fn manifest_entries_of_other_shapes_are_never_retired() {
         assert!(!owned_entry_retired(id, &AFTER), "{id}");
     }
 }
+
+// ---- model settings (REQ-5, REQ-6) -------------------------------------------------------
+
+mod model_settings {
+    use moai_cli::model_effort_settings::{
+        resolve_in, unsupported_entries_in, with_choice_in, Source, TOOLS,
+    };
+    use serde_json::{json, Map, Value};
+
+    /// A secret-looking marker: it is put into every refused value, and no refusal may contain it.
+    const SECRET: &str = "SECRET-saved-text";
+    const AFTER: [&str; 2] = ["claude", "glm"];
+
+    fn object(value: Value) -> Map<String, Value> {
+        match value {
+            Value::Object(map) => map,
+            other => panic!("test fixture must be an object, got {other}"),
+        }
+    }
+
+    /// A launcher object saved by an earlier version: a valid Claude entry, a valid old Codex
+    /// entry, an OMP entry and a sibling key.
+    fn old_launcher() -> Map<String, Value> {
+        object(json!({
+            "advisor": "keep-me",
+            "models": {
+                "claude": {"leader": {"model": "claude-sonnet-5-5", "effort": "low"}},
+                "codex": {"leader": {"model": "gpt-6.2-sol", "effort": "high"}},
+                "omp": {"agent": {"model": "zai/glm-5.3-flash", "effort": "max"}}
+            }
+        }))
+    }
+
+    #[test]
+    fn retired_tool_keys_of_any_shape_are_skipped_on_read() {
+        for shape in [
+            json!({"leader": {"model": "gpt-6.2-sol", "effort": "high"}}),
+            json!({"leader": {"model": SECRET, "effort": SECRET}}),
+            json!({"no-such-role": 3}),
+            json!(SECRET),
+            json!([SECRET]),
+            json!(null),
+        ] {
+            let launcher = object(json!({
+                "models": {
+                    "claude": {"leader": {"model": "claude-sonnet-5-5", "effort": "low"}},
+                    "codex": shape.clone(),
+                    "omp": shape.clone()
+                }
+            }));
+            let listed = unsupported_entries_in(&AFTER, &launcher)
+                .unwrap_or_else(|e| panic!("{shape}: refused: {e}"));
+            assert!(listed.is_empty(), "{shape}: {listed:?}");
+            let (choice, source) = resolve_in(&AFTER, "claude", "leader", Some(&launcher))
+                .unwrap_or_else(|e| panic!("{shape}: refused: {e}"));
+            assert_eq!(source, Source::Saved, "{shape}");
+            assert_eq!(choice.model, "claude-sonnet-5-5", "{shape}");
+        }
+    }
+
+    #[test]
+    fn an_unknown_tool_name_is_still_refused_without_its_text() {
+        let launcher = object(json!({
+            "models": {
+                "claude": {"leader": {"model": "claude-sonnet-5-5", "effort": "low"}},
+                "codex": {},
+                SECRET: {}
+            }
+        }));
+        let err = resolve_in(&AFTER, "claude", "leader", Some(&launcher)).unwrap_err();
+        assert!(!err.contains(SECRET), "{err}");
+        let err = unsupported_entries_in(&AFTER, &launcher).unwrap_err();
+        assert!(!err.contains(SECRET), "{err}");
+    }
+
+    #[test]
+    fn while_the_tools_are_active_a_malformed_value_is_refused_as_before() {
+        let launcher = object(json!({"models": {"codex": SECRET}}));
+        let err = resolve_in(&TOOLS, "claude", "leader", Some(&launcher)).unwrap_err();
+        assert!(!err.contains(SECRET), "{err}");
+        let err = unsupported_entries_in(&TOOLS, &launcher).unwrap_err();
+        assert!(!err.contains(SECRET), "{err}");
+    }
+
+    #[test]
+    fn saving_a_choice_leaves_retired_tool_keys_out_and_keeps_the_rest() {
+        let launcher = old_launcher();
+        let saved = with_choice_in(
+            &AFTER,
+            &launcher,
+            "claude",
+            "agent",
+            "claude-haiku-5-5",
+            "high",
+        )
+        .unwrap();
+        assert_eq!(saved["advisor"], json!("keep-me"));
+        assert_eq!(
+            saved["models"],
+            json!({
+                "claude": {
+                    "leader": {"model": "claude-sonnet-5-5", "effort": "low"},
+                    "agent": {"model": "claude-haiku-5-5", "effort": "high"}
+                }
+            })
+        );
+        // The input is not changed.
+        assert_eq!(launcher, old_launcher());
+    }
+
+    #[test]
+    fn saving_a_choice_while_the_tools_are_active_keeps_every_tool_key() {
+        let launcher = old_launcher();
+        let saved = with_choice_in(
+            &TOOLS,
+            &launcher,
+            "claude",
+            "agent",
+            "claude-haiku-5-5",
+            "high",
+        )
+        .unwrap();
+        assert_eq!(saved["models"]["codex"], launcher["models"]["codex"]);
+        assert_eq!(saved["models"]["omp"], launcher["models"]["omp"]);
+    }
+}

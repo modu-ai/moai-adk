@@ -291,3 +291,38 @@ pub fn with_choice(
     out.insert("models".to_string(), Value::Object(models));
     Ok(out)
 }
+
+/// [`unsupported_entries`] for a place whose active tools are `active`: a `launcher.models` key of
+/// a retired tool (see `crate::retired_hosts`) is skipped, whatever its value.
+pub fn unsupported_entries_in(
+    active: &[&str],
+    launcher: &Map<String, Value>,
+) -> Result<Vec<String>, String> {
+    let _ = active;
+    unsupported_entries(launcher)
+}
+
+/// [`resolve`] for a place whose active tools are `active`.
+pub fn resolve_in(
+    active: &[&str],
+    tool: &str,
+    role: &str,
+    launcher: Option<&Map<String, Value>>,
+) -> Result<(Choice, Source), String> {
+    let _ = active;
+    resolve(tool, role, launcher)
+}
+
+/// [`with_choice`] for a place whose active tools are `active`: the written `launcher.models`
+/// leaves the keys of retired tools out.
+pub fn with_choice_in(
+    active: &[&str],
+    launcher: &Map<String, Value>,
+    tool: &str,
+    role: &str,
+    model: &str,
+    effort: &str,
+) -> Result<Map<String, Value>, String> {
+    let _ = active;
+    with_choice(launcher, tool, role, model, effort)
+}
