@@ -71,7 +71,7 @@ created: 2026-11-21
 
 ## Result
 
-Filled in by the implementation lane on 2026-11-21; the audit checks it again. Base `53cce6c580` (the tip when the SPEC was written); the green text is committed as `b5c0de7d9c`, and the local tip `174d8fcecf9a` is merged in as `d9190111e8` (tree equal to the `git merge-tree` result, no conflict). Evidence files are in this worktree's `target/notes/`.
+Filled in by the implementation lane on 2026-11-21; the audit checks it again. Base `53cce6c580` (the tip when the SPEC was written); the green text is committed as `b5c0de7d9c`, and the local tip `174d8fcecf9a` is merged in as `d9190111e8` (tree equal to the `git merge-tree` result, no conflict); the tip `42f5af0800` is merged in as `74b9ca01e1` (no conflict), and the one line of the scan table that lists the test is `2c92acc35c`. Evidence files are in this worktree's `target/notes/`.
 
 Red (before the text): the previous lane pinned the four tests and showed each one red on the tip text by a script over the file (no cargo run then); the first cargo run is the green one below.
 
@@ -83,7 +83,7 @@ Red (before the text): the previous lane pinned the four tests and showed each o
 
 ### Checks
 
-`moai check affected 174d8fcecf9a..HEAD` (the branch's own build of the binary, `--max 2`, head `d9190111e8`), summary line as printed: `check-affected base=174d8fcecf9a head=d9190111e862 targets=42 py=8 scans=listed:41 diff_check=0 fmt=0 clippy=0 test_lib=0 test_bins=0 test_targets=0 build_cli=0 python=1 result=FAIL`. The one failing step is `tests.repo_scans_test … test_every_walking_test_file_is_listed_or_exempt` (log `target/notes/affected/08-python.log`): `tests/update_closing_commit.rs` is read as a test that walks the repository (it names `CARGO_MANIFEST_DIR` and the pinned words `git ls-files`), while it reads only the one named `skills/moai/workflows/update.md`. The way out is one line in the EXEMPT table of `tests/repo_scans_test.py`, a file another change holds; the lane asked the leader how it lands (card note on the decision). Until that line is in, this SPEC's own checks are green and the full check stays red on that one step.
+`moai check affected 42f5af0800..2c92acc35c` (the branch's own build of the binary, `--max 2`), summary line as printed: `check-affected base=42f5af0800fb head=2c92acc35c51 targets=43 py=8 scans=listed:43 diff_check=0 fmt=0 clippy=0 test_lib=0 test_bins=0 test_targets=0 build_cli=0 python=0 result=PASS`. The earlier run on the previous tip had one red step (`tests.repo_scans_test … test_every_walking_test_file_is_listed_or_exempt`: the new test file was not listed, `python=1`); it is repaired by listing `tests/update_closing_commit.rs` in the `skill-package-agents` scan of `tools/repo_scans.json` (three lines: the test, its rule and its check), so `scans=listed` went from 42 to 43. The scan table was held by another card; the line was committed under the leader's pair approval (decision note of 2026-11-21T14:38:24Z), and the card check refuses that path.
 
 Mutants (five, on the committed `skills/moai/workflows/update.md`, each restored, `restored: True`; `target/notes/mutate.out`): the "comes back" warning dropped, `git commit -- <path>` turned into a plain `git commit`, the m-flow branch rule dropped, the `go_marker` class dropped, the completion sentence dropped — each killed by the named test of the matching AC.
 
@@ -92,3 +92,4 @@ Mutants (five, on the committed `skills/moai/workflows/update.md`, each restored
 - The route on a real Go-generation project (`/moai update` in a host): not run; the text is pinned by words only, and the host check stays `not_run` as the workflow says.
 - The code slices this text names (`go-residue`, `claude-md` steps): they are other changes; the text reads them only "when the plan has the step".
 - A second run of the same tests on the same tree: not repeated (each result above is the one run's output).
+- The whole `check affected` after the SPEC Result commit that follows `2c92acc35c`: not repeated (one docs file changes).
