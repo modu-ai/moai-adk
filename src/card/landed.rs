@@ -131,9 +131,15 @@ pub fn integration_branch(project: &Path) -> Result<String, String> {
 
 /// The commit the integration branch points at now.
 pub fn tip_of(project: &Path, branch: &str) -> Result<String, String> {
-    // `refs/heads/` names the branch: a tag with the same name would win a bare name.
-    let full = if branch.starts_with("refs/") {
+    // `refs/heads/` names the branch: a tag with the same name would win a bare name, and a
+    // profile that names any other `refs/` path (a tag) names no branch.
+    let full = if branch.starts_with("refs/heads/") {
         branch.to_string()
+    } else if branch.starts_with("refs/") {
+        return Err(format!(
+            "the integration branch {branch} is not a branch name: only a name under refs/heads/ \
+             or a plain branch name is read as a branch"
+        ));
     } else {
         format!("refs/heads/{branch}")
     };

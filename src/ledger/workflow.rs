@@ -1373,10 +1373,12 @@ pub fn finish(
         let previous = reservation::current(tx, card_id)?;
         if let Some(held) = &previous {
             // A lane holds its review card with a live lease right after it reported the merge
-            // ready, and that is when the leader closes it: a landing git proved passes, and the
-            // holder's reservation is released below like any other.
+            // ready, and that is when the leader closes it: a landing git proved passes for the
+            // leader word or the holder session, and the holder's reservation is released below
+            // like any other.
+            let owner = by == LEADER_BY || session == Some(held.holder.as_str());
             let proven_review =
-                from == "review" && matches!(evidence, FinishEvidence::Landing { .. });
+                from == "review" && owner && matches!(evidence, FinishEvidence::Landing { .. });
             if !proven_review {
                 if let Err(e) = finish_gate(held, session, now) {
                     return Ok(Err(e));
