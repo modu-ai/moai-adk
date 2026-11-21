@@ -16,6 +16,8 @@ mod common;
 
 use common::home::TempHome;
 use moai_cli::ledger;
+use moai_cli::ledger::reservation::Reservation;
+use moai_cli::ledger::workflow::{finish_gate, WorkflowError};
 use rusqlite::Connection;
 use serde_json::{json, Value};
 use std::cell::RefCell;
@@ -825,7 +827,66 @@ fn ac2_a_met_reference_of_500_characters_passes_and_501_refuses() {
 
 // ---- AC-3: the reservation gate -----------------------------------------------------------
 
-// ac3 gate edges: added with the function in the code step
+/// A held reservation of `holder` whose lease ends at second `lease_until`.
+fn held_until(holder: &str, lease_until: i64) -> Reservation {
+    Reservation {
+        reservation_id: 1,
+        card_id: 1,
+        generation: 1,
+        holder: holder.to_string(),
+        status: "held".to_string(),
+        acquired_at: 0,
+        lease_until,
+        updated_at: 0,
+        worktree: None,
+        branch: None,
+        write_scope: Vec::new(),
+    }
+}
+
+/// AC-3 (N and N+1): the gate passes another session's lease that ends at the very second of the
+/// call and refuses one that ends a second later; the caller's own lease passes either way.
+#[test]
+fn ac3_the_gate_passes_a_lease_that_ends_now_and_refuses_one_that_ends_a_second_later() {
+    let now = 1_000;
+    assert_eq!(
+        finish_gate(&held_until(S_A, now), Some(S_L), now),
+        Ok(()),
+        "a lease that ends at the moment of the call has ended"
+    );
+    assert_eq!(
+        finish_gate(&held_until(S_A, now - 1), Some(S_L), now),
+        Ok(())
+    );
+    let refused = finish_gate(&held_until(S_A, now + 1), Some(S_L), now).unwrap_err();
+    assert!(
+        matches!(&refused, WorkflowError::FinishHeld { holder, .. } if holder == S_A),
+        "{refused:?}"
+    );
+    let text = refused.to_string();
+    assert!(
+        text.contains("is held by") && text.contains(S_A) && text.contains("an ended lease"),
+        "{text}"
+    );
+    assert_eq!(
+        finish_gate(&held_until(S_L, now + 1), Some(S_L), now),
+        Ok(()),
+        "the caller's own live lease passes"
+    );
+}
+
+/// AC-3: a caller without a session id holds nothing, so it passes only when the lease has
+/// ended (also at the very second it ends).
+#[test]
+fn ac3_a_caller_without_a_session_id_passes_only_when_the_lease_has_ended() {
+    let now = 1_000;
+    assert_eq!(finish_gate(&held_until(S_A, now), None, now), Ok(()));
+    assert_eq!(finish_gate(&held_until(S_A, now - 1), None, now), Ok(()));
+    assert!(matches!(
+        finish_gate(&held_until(S_A, now + 1), None, now),
+        Err(WorkflowError::FinishHeld { .. })
+    ));
+}
 
 /// AC-3: a live lease of another session refuses naming the holder (also for a caller with no
 /// session id), an ended lease of another session passes, a live lease of the caller passes.
@@ -1015,6 +1076,59 @@ fn ac4_a_research_card_closes_with_a_report_file_and_refuses_the_others() {
         ],
     ));
     assert_eq!(got["state"], json!("done"), "{got}");
+}
+
+/// AC-4 (N and N+1): a report path typed in 500 characters passes the length rule and one typed
+/// in 501 is refused naming the limit; both name a regular file under the reports folder, so only
+/// the length decides, and the refusal writes nothing.
+#[test]
+fn ac4_a_report_path_of_500_characters_passes_and_501_refuses() {
+    let w = World::new();
+    let research = w.card_named("research", "docs/r/", &["report written"]);
+    let base = w.reports_root().join("demo");
+    // `<reports>/demo/<dir>/<stem>.md`, `n` characters in all.
+    let file_of = |n: usize| -> String {
+        let used = base.to_str().unwrap().len() + 2 + ".md".len();
+        let free = n - used;
+        let dir = base.join("d".repeat(free / 2));
+        fs::create_dir_all(&dir).unwrap();
+        let file = dir.join(format!("{}.md", "f".repeat(free - free / 2)));
+        fs::write(&file, "x\n").unwrap();
+        let text = file.to_str().unwrap().to_string();
+        assert_eq!(text.len(), n);
+        text
+    };
+    let n = file_of(500);
+    let n_plus_1 = file_of(501);
+    let by_path = |path: &str| {
+        w.finish(
+            Some(S_L),
+            &research,
+            &[
+                "--evidence-report",
+                path,
+                "--met",
+                "1=report written",
+                "--by",
+                "leader",
+            ],
+        )
+    };
+
+    let before = w.dump();
+    let refused = by_path(&n_plus_1);
+    let message = w.refuse(&refused, "invalid_input", &["500"], &before);
+    assert!(
+        message.contains("501"),
+        "the refusal names the length: {message}"
+    );
+
+    let got = result(&by_path(&n));
+    assert_eq!(got["state"], json!("done"), "{got}");
+    assert!(
+        got["report"].as_str().unwrap().ends_with(".md"),
+        "the report is stored: {got}"
+    );
 }
 
 /// AC-4: an audit card closes with a verdict note of its own (a decision or a report note) and
@@ -1573,7 +1687,7 @@ fn landed_card_scenario(release: bool) {
     // The next real card is the new session's to take.
     let taken = result(&w.card(Some(S_B), &["take", &b]));
     assert_eq!(taken["action"], json!("take"), "{taken}");
-    assert_eq!(taken["name"], json!(b), "{taken}");
+    assert_eq!(taken["reservation"]["name"], json!(b), "{taken}");
     let after = w.next(S_B);
     assert_eq!(after["next"], json!(b), "{after}");
     assert_eq!(after["next_is"], json!("mine"), "{after}");

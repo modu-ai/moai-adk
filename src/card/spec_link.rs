@@ -53,6 +53,23 @@ pub fn kind_and_spec(
     .optional()
 }
 
+/// The SPEC id each card that is not `done` names now, as (card number, SPEC id) in card order;
+/// a card that names none is left out.
+pub fn linked_specs(conn: &Connection) -> rusqlite::Result<Vec<(i64, String)>> {
+    let mut stmt = conn.prepare(&format!(
+        "SELECT card_id, {LINKED_COLUMN} FROM card WHERE state <> 'done' ORDER BY card_id"
+    ))?;
+    let rows = stmt.query_map([], |r| {
+        Ok((r.get::<_, i64>(0)?, r.get::<_, Option<String>>(1)?))
+    })?;
+    let mut out = Vec::new();
+    for row in rows {
+        let (card_id, spec) = row?;
+        out.extend(spec.map(|s| (card_id, s)));
+    }
+    Ok(out)
+}
+
 /// The cards that name `spec_id` now, by number: name, title, kind and state.
 pub fn cards_of(conn: &Connection, spec_id: &str) -> rusqlite::Result<Vec<Value>> {
     let mut stmt = conn.prepare(&format!(
