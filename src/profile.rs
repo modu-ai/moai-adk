@@ -409,6 +409,127 @@ fn state_path(root: &Path, rel: &str) -> Result<PathBuf> {
 fn target(root: &Path) -> Result<PathBuf> {
     state_path(root, "project.yaml")
 }
+
+/// The words `read_profile` fails with when the project has no profile file at all.
+pub const PROFILE_MISSING: &str = "project profile missing";
+
+/// The folder (`.moai` or `.moai-cli`) whose `project.yaml` a READER opens
+/// (SPEC-20261121-mixed-profile-read). A writer follows the read in a mixed layout (the delta
+/// audit's B4): `project-apply` updates the newer profile and the older one is left untouched,
+/// so what a write changes is what every reader then sees. A reader takes the newer layout's
+/// profile when both `.moai/project.yaml` and `.moai-cli/project.yaml` are regular files
+/// (neither the file nor the `.moai` folder a link) and the layout is not yet `rust` (its
+/// marker may be missing, e.g. a worktree where the marker is ignored by git); otherwise the
+/// layout's own folder, exactly as before.
+fn read_dir(root: &Path) -> Result<&'static str> {
+    let root = root
+        .canonicalize()
+        .map_err(|_| "project directory unavailable")?;
+    let own = crate::state_root::dir(&root);
+    let regular = |dir: &str| {
+        let folder = root.join(dir);
+        fs::symlink_metadata(&folder).is_ok_and(|m| m.file_type().is_dir())
+            && fs::symlink_metadata(folder.join("project.yaml"))
+                .is_ok_and(|m| m.file_type().is_file())
+    };
+    if own != crate::state_root::MOAI_DIR
+        && regular(crate::state_root::MOAI_DIR)
+        && regular(crate::state_root::EARLIER_PROJECT_DIR)
+    {
+        Ok(crate::state_root::MOAI_DIR)
+    } else {
+        Ok(own)
+    }
+}
+
+/// The project-relative path of the profile a reader opens, for messages (`.moai/project.yaml`).
+pub fn read_rel(root: &Path) -> String {
+    format!(
+        "{}/project.yaml",
+        read_dir(root).unwrap_or(crate::state_root::EARLIER_PROJECT_DIR)
+    )
+}
+
+fn read_target(root: &Path) -> Result<PathBuf> {
+    // `target` keeps the symlink and directory refusals of the layout's own folder.
+    let own = target(root)?;
+    let dir = read_dir(root)?;
+    if dir == crate::state_root::MOAI_DIR && crate::state_root::dir(root) != dir {
+        Ok(root
+            .canonicalize()
+            .map_err(|_| "project directory unavailable")?
+            .join(dir)
+            .join("project.yaml"))
+    } else {
+        Ok(own)
+    }
+}
+
+/// Whether a reader — and, since the delta audit's B4, a writer — picks the newer `.moai`
+/// profile: both profiles are regular files and the layout is not `rust` (the mixed branch of
+/// [`read_dir`]). Recovery uses it to keep exactly the profile path a mixed-layout apply wrote
+/// (src/apply.rs).
+pub fn reads_newer_profile(root: &Path) -> bool {
+    crate::state_root::dir(root) != crate::state_root::MOAI_DIR
+        && read_dir(root).is_ok_and(|d| d == crate::state_root::MOAI_DIR)
+}
+
+/// The bytes of the profile a reader opens ([`read_target`]): `Ok(None)` when the chosen file
+/// is not there. The existence checks of readers that only want to know whether a profile is
+/// there use this, so they look at the folder that is actually read (the delta audit's N2).
+pub fn chosen_profile(root: &Path) -> Result<Option<Vec<u8>>> {
+    profile_bytes(root)
+}
+
+/// The bytes at [`read_target`], with the read's own errors named by the file (`target read
+/// failed` and `target metadata unavailable` said neither before — the delta audit's R2).
+fn profile_bytes(root: &Path) -> Result<Option<Vec<u8>>> {
+    read(&read_target(root)?).map_err(|e| format!("{}: {e}", read_rel(root)))
+}
+
+/// In a mixed layout both profiles belong to one check: each must read and parse (a failure is
+/// named `{folder}/project.yaml: reason`) and both must name the same `project_id` — anything
+/// else refuses the read, naming both files and both ids (the delta audit's N3). One profile,
+/// or two that agree, is fine; a rust layout owns `.moai` outright and has no twin to check.
+fn mixed_layout_ids(root: &Path) -> Result<()> {
+    let root = root
+        .canonicalize()
+        .map_err(|_| "project directory unavailable")?;
+    // A rust layout owns `.moai` outright: the earlier folder is legacy data, not a twin, and
+    // the check lives only where both files exist (the mixed branch of `read_dir`).
+    if crate::state_root::dir(&root) == crate::state_root::MOAI_DIR {
+        return Ok(());
+    }
+    let regular = |dir: &str| {
+        let folder = root.join(dir);
+        fs::symlink_metadata(&folder).is_ok_and(|m| m.file_type().is_dir())
+            && fs::symlink_metadata(folder.join("project.yaml"))
+                .is_ok_and(|m| m.file_type().is_file())
+    };
+    if !(regular(crate::state_root::MOAI_DIR) && regular(crate::state_root::EARLIER_PROJECT_DIR)) {
+        return Ok(());
+    }
+    let mut ids: Vec<(&'static str, String)> = Vec::new();
+    for name in [
+        crate::state_root::MOAI_DIR,
+        crate::state_root::EARLIER_PROJECT_DIR,
+    ] {
+        let path = root.join(name).join("project.yaml");
+        let bytes = read(&path)
+            .map_err(|e| format!("{name}/project.yaml: {e}"))?
+            .ok_or_else(|| format!("{name}/project.yaml: {PROFILE_MISSING}"))?;
+        let id = crate::project_id::of_profile_bytes(&bytes)
+            .map_err(|e| format!("{name}/project.yaml: {e}"))?;
+        ids.push((name, id));
+    }
+    match ids.as_slice() {
+        [(a_name, a), (b_name, b)] if a != b => Err(format!(
+            "the two profiles name different projects: {a_name}/project.yaml has `{a}`, \
+             {b_name}/project.yaml has `{b}`"
+        )),
+        _ => Ok(()),
+    }
+}
 fn baseline_path(root: &Path) -> Result<PathBuf> {
     state_path(root, "manifests/profile-baseline.json")
 }
@@ -588,7 +709,7 @@ pub fn plan_in(active: &[&str], root: &Path, mut profile: Profile) -> Result<Pla
     if profile.schema_version != 2 {
         return Err("invalid or nonportable profile; no values were logged".into());
     }
-    let old = read(&target(root)?)?;
+    let old = profile_bytes(root)?;
     let current = match &old {
         None => None,
         Some(bytes) => {
@@ -615,7 +736,7 @@ pub fn plan_in(active: &[&str], root: &Path, mut profile: Profile) -> Result<Pla
         "update"
     };
     let binding = digest(
-        target(root)?
+        read_target(root)?
             .to_str()
             .ok_or("non UTF-8 project path")?
             .as_bytes(),
@@ -893,7 +1014,9 @@ pub fn apply_in(
     if p.action == "create" {
         crate::state_root::adopt_new(root, "project-apply")?;
     }
-    let target_rel = crate::state_root::rel(root, "project.yaml");
+    // Writes follow reads in a mixed layout (the delta audit's B4): the receipt names the
+    // profile that was actually written.
+    let target_rel = read_rel(root);
     let baseline_rel = crate::state_root::rel(root, "manifests/profile-baseline.json");
     if p.action == "conflict" {
         // REQ-03A-03: the user-edited keys are named, never their values; nothing is
@@ -926,7 +1049,7 @@ pub fn apply_in(
     let mut receipt = crate::apply::Receipt::new(&request_id, "project.apply", root);
     if p.action == "unchanged" {
         // REQ-01B-10: a re-run writes nothing; the receipt records zero publishes.
-        let bytes = read(&target(root)?)?.unwrap_or_default();
+        let bytes = profile_bytes(root)?.unwrap_or_default();
         receipt.entry(
             &target_rel,
             "unchanged",
@@ -957,7 +1080,7 @@ pub fn apply_in(
         "update" => {
             // REQ-03A-05: replace only when the file still hashes to the plan's expectation.
             let current =
-                read(&target(root)?)?.ok_or("stale or altered plan; re-preview required")?;
+                profile_bytes(root)?.ok_or("stale or altered plan; re-preview required")?;
             if Some(digest(&current)) != p.expected_sha256 {
                 return Err("stale or altered plan; re-preview required".into());
             }
@@ -965,11 +1088,11 @@ pub fn apply_in(
         }
         _ => return Err("unknown plan action; re-preview required".into()),
     };
-    let path = target(root)?;
+    let path = read_target(root)?;
     fs::create_dir_all(path.parent().expect("target parent"))
         .map_err(|_| "project state directory unavailable")?;
-    let path = target(root)?;
-    let before = read(&path)?;
+    let path = read_target(root)?;
+    let before = read(&path).map_err(|e| format!("{}: {e}", read_rel(root)))?;
     let before_digest = before.as_deref().map(digest);
     // REQ-01B-08: keep the before bytes before publishing so recovery can restore
     // content; a created file needs no backup (recovery removes it).
@@ -1081,9 +1204,12 @@ pub fn apply_in(
 /// has no profile, an error when it has one that is not a JSON object with a usable
 /// `project_id` (the file is left alone). Reads only.
 pub(crate) fn existing_project_id(root: &Path) -> Result<Option<String>> {
-    match read(&target(root)?)? {
+    mixed_layout_ids(root)?;
+    match profile_bytes(root)? {
         None => Ok(None),
-        Some(bytes) => crate::project_id::of_profile_bytes(&bytes).map(Some),
+        Some(bytes) => crate::project_id::of_profile_bytes(&bytes)
+            .map(Some)
+            .map_err(|e| format!("{}: {e}", read_rel(root))),
     }
 }
 
@@ -1096,10 +1222,17 @@ pub fn read_profile(root: &Path) -> Result<(Profile, Vec<u8>)> {
 /// [`read_profile`] for a place whose active hosts are `active`: retired hosts leave `hosts`, and
 /// a list they emptied reads as `["claude"]` (the file is not changed by a read).
 pub fn read_profile_in(active: &[&str], root: &Path) -> Result<(Profile, Vec<u8>)> {
-    let bytes = read(&target(root)?)?.ok_or("project profile missing")?;
-    let value: Value =
-        serde_json::from_slice(&bytes).map_err(|_| "existing YAML requires preservation review")?;
-    let map = value.as_object().ok_or("invalid profile object")?;
+    mixed_layout_ids(root)?;
+    let bytes = profile_bytes(root)?.ok_or(PROFILE_MISSING)?;
+    let value: Value = serde_json::from_slice(&bytes).map_err(|_| {
+        format!(
+            "{}: existing YAML requires preservation review",
+            read_rel(root)
+        )
+    })?;
+    let map = value
+        .as_object()
+        .ok_or_else(|| format!("{}: invalid profile object", read_rel(root)))?;
     if map.get("package_pin").is_some_and(Value::is_null) {
         return Err("explicit null pin is invalid".into());
     }
@@ -1770,5 +1903,90 @@ mod tests {
             validate(&p).unwrap_err(),
             "leader pr_check_interval_secs must be a positive number"
         );
+    }
+
+    // ---- SPEC-20261121-mixed-profile-read: which profile file a reader opens. ----------------
+
+    const EARLIER: &str = crate::state_root::EARLIER_PROJECT_DIR;
+    const MIXED_PLAIN: &str = r#"{"schema_version": 1, "project_id": "demo", "purpose": "fixture", "tools": ["rust"], "development_methods": ["sdd"], "hosts": ["claude"]}"#;
+    const MIXED_MFLOW: &str = r#"{"schema_version": 1, "project_id": "demo", "purpose": "fixture", "tools": ["rust"], "development_methods": ["sdd"], "hosts": ["claude"], "work_flow": {"flow": "m-flow", "integration_branch": "integ"}}"#;
+    const MIXED_BROKEN: &str = r#"{"schema_version": 1, "project_id": "demo", "purpose": "fixture", "tools": ["rust"], "development_methods": ["sdd"], "hosts": ["claude"], "work_flow": {"flow": "bogus-flow"}}"#;
+
+    fn mixed_put(root: &Path, dir: &str, bytes: &str) {
+        fs::create_dir_all(root.join(dir)).unwrap();
+        fs::write(root.join(dir).join("project.yaml"), bytes).unwrap();
+    }
+
+    fn mixed_flow(root: &Path) -> Option<String> {
+        read_profile(root).unwrap().0.work_flow.map(|w| w.flow)
+    }
+
+    #[test]
+    fn mixed_layout_reads_the_newer_profile_when_both_exist() {
+        let t = tempfile::tempdir().unwrap();
+        mixed_put(t.path(), EARLIER, MIXED_PLAIN);
+        mixed_put(t.path(), ".moai", MIXED_MFLOW);
+        assert_eq!(mixed_flow(t.path()).as_deref(), Some("m-flow"));
+        assert_eq!(read_rel(t.path()), ".moai/project.yaml");
+        assert_eq!(
+            existing_project_id(t.path()).unwrap().as_deref(),
+            Some("demo")
+        );
+    }
+
+    #[test]
+    fn mixed_layout_keeps_the_layouts_own_folder_when_only_one_profile_exists() {
+        let earlier = tempfile::tempdir().unwrap();
+        mixed_put(earlier.path(), EARLIER, MIXED_MFLOW);
+        assert_eq!(mixed_flow(earlier.path()).as_deref(), Some("m-flow"));
+        assert_eq!(read_rel(earlier.path()), format!("{EARLIER}/project.yaml"));
+
+        // Only the newer file and no marker: the layout is not `rust`, the earlier folder has no
+        // profile, so the reader still looks where it always did and finds none.
+        let newer = tempfile::tempdir().unwrap();
+        mixed_put(newer.path(), ".moai", MIXED_MFLOW);
+        assert_eq!(
+            read_profile(newer.path()).unwrap_err(),
+            PROFILE_MISSING.to_string()
+        );
+        assert_eq!(read_rel(newer.path()), format!("{EARLIER}/project.yaml"));
+
+        // A `rust` layout (valid marker) reads `.moai`, with or without the earlier file.
+        for with_earlier in [false, true] {
+            let t = tempfile::tempdir().unwrap();
+            mixed_put(t.path(), ".moai", MIXED_MFLOW);
+            fs::write(
+                t.path().join(".moai").join(crate::state_root::RUST_MARKER),
+                crate::state_root::marker_bytes("test", &[]),
+            )
+            .unwrap();
+            if with_earlier {
+                mixed_put(t.path(), EARLIER, MIXED_PLAIN);
+            }
+            assert_eq!(mixed_flow(t.path()).as_deref(), Some("m-flow"));
+            assert_eq!(read_rel(t.path()), ".moai/project.yaml");
+        }
+    }
+
+    #[test]
+    fn mixed_layout_newer_profile_that_cannot_be_read_is_no_reason_to_fall_back() {
+        let t = tempfile::tempdir().unwrap();
+        mixed_put(t.path(), EARLIER, MIXED_MFLOW);
+        mixed_put(t.path(), ".moai", MIXED_BROKEN);
+        assert!(read_profile(t.path()).is_err());
+        assert_eq!(read_rel(t.path()), ".moai/project.yaml");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn mixed_layout_a_linked_newer_profile_is_not_chosen() {
+        let t = tempfile::tempdir().unwrap();
+        mixed_put(t.path(), EARLIER, MIXED_PLAIN);
+        fs::create_dir_all(t.path().join(".moai")).unwrap();
+        let real = t.path().join("elsewhere.yaml");
+        fs::write(&real, MIXED_MFLOW).unwrap();
+        std::os::unix::fs::symlink(&real, t.path().join(".moai").join("project.yaml")).unwrap();
+        assert_eq!(read_rel(t.path()), format!("{EARLIER}/project.yaml"));
+        assert_eq!(mixed_flow(t.path()), None);
     }
 }

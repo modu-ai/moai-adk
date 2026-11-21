@@ -224,6 +224,7 @@ fn ops_named_by_the_mode_workflows_exist_with_their_flags() {
             // #2928: MODE-LEADER registers itself as the leader for the status line tag
             // (`--name <n> --mode=leader`; the `=` keeps clear of the retired `/moai` mode
             // spelling that tests/product_cli.rs scans the package for).
+            "session-register --liveness-of",
             "session-register --name",
             "session-register --release",
             "usage-limit",
@@ -664,7 +665,7 @@ fn bottleneck_rules_are_pinned_in_both_mode_workflows() {
         &[
             "A card changes hands only through its holder's `card handoff --to <session>`",
             "the leader writes no handoff line and edits no reservation",
-            "an ended lease alone never transfers a card: reclaim is the user's at any time and the leader's after the lease ends (decision L7)",
+            "an ended lease alone never transfers a card: reclaim (`card reclaim`, three per card, ever) is the user's at any time and the leader's after the lease ends",
         ],
     );
     // 15. operating numbers change together; N from D7.
@@ -1020,7 +1021,7 @@ fn timeout_takeover_without_a_terminal_list_uses_claim_timeout_check() {
     assert_says(
         &leader,
         "handoff-line",
-        &["no command does it yet (C-53 S6), so report the card to the user"],
+        &["liveness first (`moai session-register --liveness-of <session-id>`; `unknown` goes to the user, never an automatic reclaim)"],
     );
     assert_says(
         &leader,

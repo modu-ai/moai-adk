@@ -2,7 +2,7 @@
 
 ## Input
 
-An approved SPEC, a plan, a base, a write scope, and an owner. RUN follows the SPEC as `internal/sdd` says: only its Scope, and never while a `[NEEDS CLARIFICATION …]` question is open. The order is PLAN → RUN → VERIFY → SYNC → AUDIT → merge.
+An approved SPEC, a plan, a base, a write scope, and an owner. RUN follows the SPEC as `internal/sdd` says: only its Scope, and never while a `[NEEDS CLARIFICATION …]` question is open. The order of the stages is the one `internal/sdd` gives.
 
 ## Output
 

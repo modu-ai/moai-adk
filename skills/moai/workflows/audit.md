@@ -11,7 +11,7 @@ Findings from an independent context and an evidence-bound verdict.
 ## Procedure
 
 1. Give only the necessary review package to a host-native context kept separate from the implementation: the approved SPEC digest, the exact candidate commit and diff, the verification commands, and an instruction to stay read-only.
-2. Cross-check sources, digests, test traces, unrun checks, and the allowed scope directly. AUDIT comes after SYNC in the order PLAN → RUN → VERIFY → SYNC → AUDIT → merge (`internal/sdd`): it reads only, and any drift between the SPEC (its Scope, requirements and `## Result`), the code, the tests, the documents and the `@cc:` comments is a FAIL finding, never a fix.
+2. Cross-check sources, digests, test traces, unrun checks, and the allowed scope directly. AUDIT comes after SYNC (the order of the stages is the one `internal/sdd` gives): it reads only, and any drift between the SPEC (its Scope, requirements and `## Result`), the code, the tests, the documents and the `@cc:` comments is a FAIL finding, never a fix.
 3. Record functional, security, consistency, and maintainability findings, with the conditions for fixing each.
 4. Have a deterministic admission step confirm the must-pass conditions and their evidence.
 5. If the reviewer changes code, verify the result again as a new candidate.

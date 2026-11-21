@@ -1163,7 +1163,7 @@ fn launcher_role_flags_are_kept_without_a_deprecation_warning() {
         &["-l", "--dry-run"][..],
         &["-a", "--name", "agent-7", "--dry-run"][..],
         &["cc", "-l", "--dry-run"][..],
-        &["codex", "-a", "--dry-run"][..],
+        &["cc", "-a", "--dry-run"][..],
         &["cc", "--dry-run"][..],
     ] {
         let out = launcher(args, None);
@@ -1241,70 +1241,15 @@ fn launcher_glm_requires_token_name_only() {
     assert!(v["notes"].to_string().contains("--advisor omitted on glm"));
 }
 #[test]
-fn launcher_codex_argv() {
-    // Full access since #2359 (user decision 2026-11-10), leader and agent alike.
-    let v = launched(&launcher(&["codex", "-l", "--dry-run"], None));
-    assert_eq!(
-        v["argv"],
-        json!([
-            "codex",
-            "-s",
-            "danger-full-access",
-            "-a",
-            "never",
-            "MoAI session name: leader"
-        ])
-    );
-    assert_eq!(v["host"], json!("codex"));
-    assert!(v["notes"].to_string().contains("cross-session"));
-    let v = launched(&launcher(
-        &[
-            "-a",
-            "codex",
-            "--name",
-            "agent-2",
-            "--model",
-            "some-model",
-            "--dry-run",
-        ],
-        None,
-    ));
-    assert_eq!(
-        v["argv"],
-        json!([
-            "codex",
-            "-s",
-            "danger-full-access",
-            "-a",
-            "never",
-            "-m",
-            "some-model",
-            // SPEC-20261118-launcher-agent-entry: `codex -a` starts agent mode.
-            "$moai --mode-agent\nMoAI session name: agent-2"
-        ])
-    );
-    let v = launched(&launcher(
-        &[
-            "codex",
-            "-a",
-            "--name",
-            "agent-5",
-            "--dry-run",
-            "first task",
-        ],
-        None,
-    ));
-    assert_eq!(
-        v["argv"].as_array().unwrap().last().unwrap(),
-        &json!("$moai --mode-agent\nMoAI session name: agent-5\nfirst task")
-    );
-    assert!(!v["argv"].to_string().contains("dangerously"));
+fn launcher_prompt_is_not_passed_to_a_claude_host() {
+    // The Codex launcher cases of this test went with the Codex launcher
+    // (SPEC-20261121-codex-launcher-and-models-removed); `moai codex` is an unknown command.
     // A PROMPT on a Claude host is not passed on, and the output says so.
     let v = launched(&launcher(&["cc", "-l", "--dry-run", "first task"], None));
     assert!(!v["argv"].to_string().contains("first task"));
     assert!(v["notes"]
         .to_string()
-        .contains("PROMPT is used by codex only"));
+        .contains("PROMPT was not passed to the Claude host"));
 }
 
 /// Fixture repo: a Go-style baseline commit with `.claude` and template `.claude`, then an
@@ -2686,14 +2631,26 @@ mod skill_package {
             "pushing a tag or publishing a release is case (2) at every autonomy level, `full` included",
             "Independent audit and the CI gate are never delegated.",
             "its options, the default, whether it is reversible, its category (`none`, `guarded` or one of the five), its deadline and who decided; a decision without a record does not count.",
-            // #2678: a reported figure comes from a named command, and silence is not zero.
+        ] {
+            assert!(skill.contains(line), "SKILL.md lacks: {line}");
+        }
+        // #2678, moved by SPEC-20261121-report-rules-in-core-rules: a reported figure comes
+        // from a named command, and silence is not zero. The skill entry points to rules 23 and 24.
+        let core = fs::read_to_string(root().join("references/internal/core-rules.md")).unwrap();
+        for line in [
             "Take every number and state in a report from a command run for that report, and name the command next to it.",
             "An empty output is not zero: say whether the command prints nothing for \"none\" or also on a failure, and count a paged list only after reading every page.",
             "After a write, read the written thing back and report what the read shows, not what was sent.",
             "Write a time only from a clock read in the same step (`date -u`).",
         ] {
-            assert!(skill.contains(line), "SKILL.md lacks: {line}");
+            assert!(core.contains(line), "core-rules.md lacks: {line}");
         }
+        assert!(
+            skill.contains(
+                "rules 23 and 24 of the core rules (the route table's `core_rules` entry)"
+            ),
+            "SKILL.md points to the report rules"
+        );
         let leader = mode_workflow("MODE-LEADER");
         let agent = mode_workflow("MODE-AGENT");
         for body in [&leader, &agent] {
@@ -2814,6 +2771,7 @@ mod skill_package {
             adapters,
             [
                 "references/adapters/aside.md",
+                "references/adapters/herdr.md",
                 "references/adapters/orca.md"
             ]
         );
