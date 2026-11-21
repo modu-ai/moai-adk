@@ -1,23 +1,30 @@
 #!/bin/sh
 # MoAI pre-push hook (Rust): the commit-message convention scan (`moai trailer-check`) on the
-# pushed range — the commits the remote does not have yet. Installed by the MoAI git-hook
-# feature (`moai update --confirm-git-hooks <token>`).
+# pushed range — the commits the remote holds that the push would add to. Installed by the
+# MoAI git-hook feature (`moai update --confirm-git-hooks <token>`).
 # Git feeds this hook one "<local-ref> <local-sha> <remote-ref> <remote-sha>" line per pushed
-# ref on stdin; any failing line fails the push. A new remote branch has no pushed range, so
-# it passes with a note. When `moai` is not on PATH the hook lets the push through and says so.
+# ref on stdin; any failing line fails the push. A remote tip the repository does not hold
+# (a force push over it, or a sha256 remote on a sha1 clone) cannot form a range, so it passes
+# with a note; a push that deletes a ref passes too. When `moai` is not on PATH the hook lets
+# the push through and says so.
 if ! command -v moai >/dev/null 2>&1; then
     printf '[pre-push] moai not on PATH -- pushed commits not checked\n' >&2
     exit 0
 fi
-ZERO=0000000000000000000000000000000000000000
 fail=0
 while read -r local_ref local_sha remote_ref remote_sha; do
     [ -n "$local_sha" ] || continue
-    if [ "$local_sha" = "$ZERO" ]; then
+    # A deleted ref pushes no commits; all zeros name absence in every hash algorithm.
+    case "$local_sha" in *[!0]*) ;; *) continue ;; esac
+    case "$remote_sha" in *[!0]*) ;; *)
+        printf '[pre-push] %s has no remote range to check\n' "$local_ref" >&2
         continue
-    fi
-    if [ "$remote_sha" = "$ZERO" ]; then
-        printf '[pre-push] new branch %s -- no remote range to check\n' "$local_ref" >&2
+        ;;
+    esac
+    # The range needs the remote tip's objects; a force push over a tip this repository does
+    # not hold cannot form one, so it is noted and passed (a known limit).
+    if ! git rev-parse --verify -q "${remote_sha}^{commit}" >/dev/null 2>&1; then
+        printf '[pre-push] %s: the remote tip is not held locally -- range not checked\n' "$local_ref" >&2
         continue
     fi
     if ! moai trailer-check "$remote_sha..$local_sha" --card-numbers-since "$remote_sha"; then

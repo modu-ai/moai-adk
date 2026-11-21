@@ -20,9 +20,9 @@
 //! The apply saves every retired byte (hook and hash file) with its original mode in
 //! `.git/hooks/moai-retired-<stamp>/`; that folder is the revert record, and the revert moves
 //! the bytes back only over hooks this feature installed (byte-equal to its own texts) or that
-//! were absent; hooks the user holds or edited stay as they are. The update layer and the CLI
-//! verbs wire this module later (pair requests on the cards that hold `src/update.rs`,
-//! `src/lib.rs` and `src/main.rs`); the tests compile it by path, so it stands alone on `std`,
+//! were absent; hooks the user holds or edited stay as they are. The update layer (`update`)
+//! and the CLI verbs `git-hooks-plan`, `git-hooks-apply` and `git-hooks-revert` wire this
+//! module; the feature tests also compile it by path, so it stands alone on `std`,
 //! `serde_json` and `sha2`.
 
 use serde_json::{json, Value};
@@ -214,7 +214,11 @@ fn recognize(folder: &Path, name: &str) -> Found {
         .map(|b| String::from_utf8_lossy(b).to_string())
         .unwrap_or_default();
     let hash_present = folder.join(format!(".moai-{name}.sha256")).exists();
-    let (kind, evidence, reason) = if hash_present {
+    let (kind, evidence, reason) = if !exists {
+        // Absence comes before every pin: a hash file for a hook that is not there names a
+        // leftover, never a kept or edited hook.
+        (Kind::Absent, "", "")
+    } else if hash_present {
         // The pin is authoritative: it matches the bytes read back, so the hook is the
         // Go-generation one; it does not, so somebody edited the hook after the pin and the
         // hook is the user's now.
@@ -229,8 +233,6 @@ fn recognize(folder: &Path, name: &str) -> Found {
         }
     } else if go_proof(name, &text) {
         (Kind::GoGeneration, "header", "")
-    } else if !exists {
-        (Kind::Absent, "", "")
     } else if bytes.as_deref() == Some(text_of(name).as_bytes()) {
         (Kind::Current, "", "")
     } else if bytes.is_none() {
@@ -292,6 +294,26 @@ pub fn plan(repo_root: &Path) -> Result<Value> {
     let mut current_hooks = Vec::new();
     let mut hash_leftovers = Vec::new();
     let mut facts = Vec::new();
+    // SPEC-20261121-go-path-removal: a commit message hook carrying the product's marker is
+    // named as unmanaged, so a stranded one is never silent in the preview.
+    let mut unmanaged = Vec::new();
+    let marker_msg = folder.join("commit-msg");
+    if fs::symlink_metadata(&marker_msg).is_ok() {
+        let text = read_bounded(&marker_msg)
+            .map(|b| String::from_utf8_lossy(&b).to_string())
+            .unwrap_or_default();
+        let header: String = text
+            .lines()
+            .take(HEADER_LINES)
+            .collect::<Vec<_>>()
+            .join("\n");
+        if header.contains("MoAI") && header.contains("(Rust") {
+            unmanaged.push(json!({
+                "name": "commit-msg",
+                "note": "a commit message hook is not managed; its scan belongs to the repositories that own the rule",
+            }));
+        }
+    }
     for name in MANAGED {
         let found = recognize(&folder, name);
         let digest = found
@@ -338,10 +360,12 @@ pub fn plan(repo_root: &Path) -> Result<Value> {
                 install.push(name);
             }
         }
+        // A hash file whose hook is absent is a leftover, whether or not the name is then
+        // installed; a hash file beside a hook the user edited stays that hook's pin.
         for name in MANAGED {
-            let is_retired =
-                go_hooks.iter().any(|g| g["name"] == json!(name)) || install.contains(&name);
-            if !is_retired && folder.join(format!(".moai-{name}.sha256")).exists() {
+            if recognize(&folder, name).kind == Kind::Absent
+                && folder.join(format!(".moai-{name}.sha256")).exists()
+            {
                 hash_leftovers.push(json!({"name": name}));
             }
         }
@@ -361,6 +385,7 @@ pub fn plan(repo_root: &Path) -> Result<Value> {
         "current_hooks": current_hooks,
         "kept": kept,
         "hash_leftovers": hash_leftovers,
+        "unmanaged": unmanaged,
         "install": install,
         "writes": writes,
         "confirm_token": token,
@@ -369,10 +394,23 @@ pub fn plan(repo_root: &Path) -> Result<Value> {
     }))
 }
 
-/// Apply the previewed change: retire the Go hooks (and the replaced ones) into
-/// `moai-retired-<stamp>/`, install the free managed names, and report what was kept. Every
-/// condition is checked before the first write.
+/// Apply the previewed change: retire the Go hooks into `moai-retired-<stamp>/`, install the
+/// managed names that are free, and report what was kept. Every condition the preview names is
+/// checked before the first write; a name that fills during the run is refused and the error
+/// names the revert command.
 pub fn apply(repo_root: &Path, token: &str, now: &str) -> Result<Value> {
+    apply_with_pause(repo_root, token, now, &mut || {})
+}
+
+/// [`apply`] with a seam: `pause` runs after the retire moves and before the first install, the
+/// one moment a name can fill between the preview and the write. Production passes a no-op; a
+/// test fills the name there to prove the apply refuses and tells how to undo.
+pub fn apply_with_pause(
+    repo_root: &Path,
+    token: &str,
+    now: &str,
+    pause: &mut dyn FnMut(),
+) -> Result<Value> {
     let stamp = compact_utc(now)
         .ok_or("the clock is not a UTC time (YYYY-MM-DDTHH:MM:SSZ); nothing written")?;
     let fresh = plan(repo_root)?;
@@ -471,10 +509,11 @@ pub fn apply(repo_root: &Path, token: &str, now: &str) -> Result<Value> {
         let name = row["name"].as_str().ok_or("the preview is malformed")?;
         let hash = folder.join(format!(".moai-{name}.sha256"));
         if hash.exists() {
+            let hash_mode = mode_of(&hash);
             let hash_bytes =
                 fs::read(&hash).map_err(|e| format!("reading the hash file of {name}: {e}"))?;
             let hash_saved = retire.join(format!(".moai-{name}.sha256"));
-            create_new(&hash_saved, &hash_bytes)
+            create_new_mode(&hash_saved, &hash_bytes, hash_mode)
                 .map_err(|e| format!("saving {}: {e}", hash_saved.display()))?;
             fs::remove_file(&hash).map_err(|e| {
                 format!(
@@ -485,6 +524,7 @@ pub fn apply(repo_root: &Path, token: &str, now: &str) -> Result<Value> {
             hash_moved.push(json!({"name": name}));
         }
     }
+    pause();
     let install_rows = fresh["install"].as_array().cloned().unwrap_or_default();
     let mut installed = Vec::new();
     for row in &install_rows {
@@ -492,7 +532,8 @@ pub fn apply(repo_root: &Path, token: &str, now: &str) -> Result<Value> {
         let target = folder.join(name);
         if !absent(&target) {
             return Err(format!(
-                "{name} appeared after the preview; nothing written, preview again"
+                "{name} appeared after the preview and was left as it is; the retired hooks are saved in {} (undo with moai git-hooks-revert {stamp}), preview again",
+                retire.display()
             ));
         }
         create_new(&target, text_of(name).as_bytes()).map_err(|e| {
@@ -540,6 +581,9 @@ pub fn revert(repo_root: &Path, stamp: &str) -> Result<Value> {
     // What the folder holds: hook files by their managed names, hash files by theirs.
     let mut saved_hooks: Vec<String> = Vec::new();
     let mut saved_hashes: Vec<String> = Vec::new();
+    // A commit-msg hook an earlier generation of this feature retired: it goes back only to an
+    // absent name; a name that holds anything now keeps its entry and the saved copy stays.
+    let mut saved_legacy: Vec<String> = Vec::new();
     for entry in fs::read_dir(&retire).map_err(|e| format!("reading {}: {e}", retire.display()))? {
         let entry = entry.map_err(|e| format!("reading {}: {e}", retire.display()))?;
         let name = entry.file_name().to_string_lossy().to_string();
@@ -547,6 +591,8 @@ pub fn revert(repo_root: &Path, stamp: &str) -> Result<Value> {
             saved_hashes.push(name);
         } else if MANAGED.contains(&name.as_str()) {
             saved_hooks.push(name);
+        } else if name == "commit-msg" {
+            saved_legacy.push(name);
         } else {
             return Err(format!(
                 "{} holds a file this feature did not save ({name}); nothing changed",
@@ -554,18 +600,34 @@ pub fn revert(repo_root: &Path, stamp: &str) -> Result<Value> {
             ));
         }
     }
-    // Every check, before any move.
+    // Every check, before any move. A retired name the user has since replaced blocks only its
+    // own restore when their bytes are readable — the saved copy stays in the folder beside the
+    // report — and bytes the feature cannot read block the whole revert: nothing is deleted
+    // unread.
+    let mut blocked = Vec::new();
     for name in &saved_hooks {
         let target = folder.join(name);
         match read_bounded(&target) {
-            None => {}
-            Some(bytes) if bytes == text_of(name).as_bytes() => {}
-            Some(_) => {
+            None if absent(&target) => {}
+            None => {
                 return Err(format!(
-                    "the hook at {} is not the one this feature installed; nothing changed",
+                    "the hook at {} cannot be read; nothing moved, nothing deleted",
                     target.display()
                 ))
             }
+            Some(bytes) if bytes == text_of(name).as_bytes() => {}
+            Some(_) => blocked.push(json!({
+                "name": name,
+                "reason": "the name now holds the user's own hook; the saved copy stays in the folder",
+            })),
+        }
+    }
+    for name in &saved_legacy {
+        if !absent(&folder.join(name)) {
+            blocked.push(json!({
+                "name": name,
+                "reason": "the name now holds a hook; the saved copy stays in the folder",
+            }));
         }
     }
     for name in &saved_hashes {
@@ -594,29 +656,50 @@ pub fn revert(repo_root: &Path, stamp: &str) -> Result<Value> {
             Some(_) => kept_hooks.push(json!({"name": name})),
         }
     }
-    // The moves.
+    // The moves. A blocked name keeps the user's file and its saved copy both.
     for name in &saved_hooks {
+        if blocked.iter().any(|b| b["name"] == json!(name)) {
+            continue;
+        }
         let target = folder.join(name);
         if target.exists() {
             fs::remove_file(&target).map_err(|e| format!("making room for {name}: {e}"))?;
         }
         fs::rename(retire.join(name), &target).map_err(|e| format!("putting {name} back: {e}"))?;
     }
+    for name in &saved_legacy {
+        if blocked.iter().any(|b| b["name"] == json!(name)) {
+            continue;
+        }
+        fs::rename(retire.join(name), folder.join(name))
+            .map_err(|e| format!("putting {name} back: {e}"))?;
+    }
     for name in &saved_hashes {
         let target = folder.join(name);
-        fs::rename(retire.join(name), &target).map_err(|e| format!("putting {name} back: {e}"))?;
+        if blocked.is_empty() {
+            fs::rename(retire.join(name), &target)
+                .map_err(|e| format!("putting {name} back: {e}"))?;
+        }
     }
     for row in &removed {
         let name = row["name"].as_str().unwrap_or_default();
         fs::remove_file(folder.join(name)).map_err(|e| format!("removing {name}: {e}"))?;
     }
-    fs::remove_dir(&retire).map_err(|e| format!("removing {}: {e}", retire.display()))?;
+    if blocked.is_empty() {
+        fs::remove_dir(&retire).map_err(|e| format!("removing {}: {e}", retire.display()))?;
+    }
     Ok(json!({
         "state": "reverted",
         "stamp": stamp,
-        "restored": saved_hooks,
-        "hash_files_restored": saved_hashes,
+        "restored": saved_hooks
+            .iter()
+            .chain(saved_legacy.iter())
+            .filter(|n| !blocked.iter().any(|b| b["name"] == json!(n)))
+            .collect::<Vec<_>>(),
+        "hash_files_restored": if blocked.is_empty() { saved_hashes.clone() } else { Vec::new() },
         "removed": removed,
         "kept": kept_hooks,
+        "blocked": blocked,
+        "folder": retire.display().to_string(),
     }))
 }

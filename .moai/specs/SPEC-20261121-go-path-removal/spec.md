@@ -2,7 +2,7 @@
 id: SPEC-20261121-go-path-removal
 title: "moai drops the Go path: inventory refresh, Go-link removal in update, name-switch retirement"
 status: draft
-revision: 4
+revision: 5
 created: 2026-11-21
 ---
 
@@ -36,6 +36,7 @@ created: 2026-11-21
 - 기계 상태는 하루 안에도 움직였다(11-19 목록 이후 shim 고아화, Go 바이너리 퇴장, 자산 번들 착지, 공유 훅 교체). 목록의 수는 읽은 시점의 것이고, 조각 2·3 실행 전에 관련 행을 다시 세야 한다.
 - 판정을 갈린 호출자 수에 의존한다. 게이트 호출 12곳처럼 실시간으로 막힌 경로는 목록이 아니라 수리(슬라이스)가 닫는다 — 목록만으로 커밋 막힘이 풀리지 않는다.
 - 폴더·파일 제거는 사용자 파일을 다룬다(shim 보관 사본, Go 세대 훅). 조용한 삭제 없이 미리보기·토큰·되돌리기 기록이 없는 조각은 착지하면 안 된다.
+- 알려진 한계(안전한 쪽으로 틀린다): (a) 이 기계에서 찾은 Go 세대 변형 중 다음은 알아보지 못해 사용자 것으로 둔다 — 빠른 부분집합 머리글의 pre-commit(복사 사본들), 명령 줄이 없는 pre-push(여러 저장소), 손으로 깐 Rust pre-commit(출하본과 해시가 다름, 약 14곳). 못 알아본 훅은 지워지지 않고 `kept` 로 보고된다. (b) pre-push 는 새 브랜치·새 태그를 훑지 않는다(범위가 없어서). 원격 끝이 로컬에 없는 강제 푸시도 범위를 못 만들어 안내만 하고 통과시킨다. sha256 저장소의 새 브랜치도 같은 이유로 안내와 함께 통과한다. (c) 읽을 수 있는 사용자 편집이 은퇴한 이름 위에 있으면 그 이름만 되돌리지 않고 `blocked` 로 보고하며 보관본을 폴더에 남긴다.
 
 ## Requirements
 
@@ -49,6 +50,8 @@ created: 2026-11-21
 - REQ-8: When the slice installs hooks, it shall provide a pre-push hook that runs trailer-check on the pushed range under 100 ms and lets the push through with a message when moai is absent. · failure: none
 - REQ-9: When the update layer lands through the pair, moai update shall run this feature's retire and install step with its own confirm token and a revert record. · failure: none
 - REQ-10: When the git-hook verbs are built, the standalone commands git-hooks-plan git-hooks-apply and git-hooks-revert shall preview apply and revert the feature for any project, each with its appendix fragment. · failure: none
+- REQ-11: When the update screen shows the git-hook part, it shall name the part and its --confirm-git-hooks command and, once the step ran, the retire folder with the revert command or, when the step did not finish, that it did not finish. · failure: none
+- REQ-12: When the revert meets a retired name that holds anything but the bytes this feature installed, it shall leave that entry untouched and report it, whether or not the entry can be read. · failure: none
 
 ## Acceptance
 
@@ -61,21 +64,31 @@ created: 2026-11-21
 - AC-4 (REQ-4): the execution-path table has rows for installer, update, launcher, hooks, statusline, commit-msg, bundle-packs and the tests.
   verify: `for p in installer update launcher hooks statusline commit-msg bundle-packs tests; do awk '/^## Execution paths/{f=1;next} f&&/^\| '"$p"'/{found=1} END{exit !found}' .moai/specs/SPEC-20261121-go-path-removal/inventory.md || { echo "missing $p"; exit 1; }; done`
 - AC-5 (REQ-5): the change touches only the paths this SPEC names.
-  verify: `git diff --name-only $(git merge-base HEAD v2026.11.0) HEAD | grep -v -e '^\.moai/specs/SPEC-20261121-go-path-removal/' -e '^src/git_hooks/' -e '^tests/git_hooks_cli\.rs$' -e '^install/git-hooks/' -e '^install/commit-msg$' | wc -l`
+  verify: `git diff --name-only $(git merge-base HEAD v2026.11.0) HEAD | grep -v -e '^\.moai/specs/SPEC-20261121-go-path-removal/' -e '^src/git_hooks/' -e '^tests/git_hooks_cli\.rs$' -e '^install/git-hooks/' -e '^install/commit-msg$' -e '^src/ops/git_hooks_' -e '^docs/design-review/appendix/operations/git_hooks_' -e '^tests/update_git_hooks_cli\.rs$' -e '^tests/update_switch_layer\.rs$' -e '^tests/update_tux_git_hooks\.rs$' -e '^tools/repo_scans\.json$' -e '^tests/fixtures/help/' -e '^src/help\.rs$' -e '^src/main\.rs$' -e '^src/lib\.rs$' -e '^src/update\.rs$' -e '^src/update_tux\.rs$' | wc -l` prints 0.
 - AC-6 (REQ-6): the recognition cases pass: Go-generation by hash file, by header text, Rust hook, and a user hook kept.
   verify: `cargo test --offline --locked --test git_hooks_cli recognition`
 - AC-7 (REQ-7): the lifecycle cases pass: retire-and-replace, a user hook kept byte for byte, a mixed folder, a second run that changes nothing, and a revert that restores.
   verify: `cargo test --offline --locked --test git_hooks_cli lifecycle`
-- AC-8 (REQ-8): the hook-text cases pass: commit-msg refuses a card number and passes a clean, a trailer-less and a merge-subject message; pre-push checks the pushed range and passes when moai is absent.
+- AC-8 (REQ-8): the hook-text cases pass: pre-push checks the pushed range, passes a new branch, a deleted ref, a forced push over a tip the repository does not hold and a sha256 repository's new branch with a note that names the pushed ref, and passes when moai is absent; the managed set is pre-commit and pre-push only, so the product ships no commit-msg hook.
   verify: `cargo test --offline --locked --test git_hooks_cli hook_text`
 - AC-9 (REQ-10): the verb cases pass: git-hooks-plan previews a fixture repository, git-hooks-apply applies only with the preview's token, and git-hooks-revert restores, all in temporary repositories.
   verify: `cargo test --offline --locked --test update_git_hooks_cli verbs`
 - AC-10 (REQ-9): the update-layer cases pass: the update preview carries the git_hooks part with its token, a confirmed run retires and installs, and the revert restores.
   verify: `cargo test --offline --locked --test update_git_hooks_cli layer`
+- AC-11 (REQ-9): a run with only the git-hook token (no digest) applies the hook step, and a run with both applies it too.
+  verify: `cargo test --offline --locked --test update_git_hooks_cli update_applies`
+- AC-12 (REQ-11): the update screens name the git-hook part with its confirm command, after the step the retire folder and the revert command, and a step that did not finish as not finished.
+  verify: `cargo test --offline --locked --test update_tux_git_hooks`
+- AC-13 (REQ-12): the revert keeps an entry it cannot read and a readable user text at a retired name, loses no byte, and restores the saved modes.
+  verify: `cargo test --offline --locked --test git_hooks_cli lifecycle_revert`
+- AC-14 (REQ-6, REQ-7): the header window is ten lines (line 10 is inside, line 11 is outside), a stale hash file for an absent hook is a leftover and not a kept hook, saved copies keep their modes, a name that appears during the apply is kept and named with the revert command, and a stranded commit-msg is named in the preview.
+  verify: `cargo test --offline --locked --test git_hooks_cli recognition lifecycle`
+- AC-15 (REQ-5): no shipped text or source comment still describes the retired commit-msg install or the replaced-hook flow.
+  verify: `cargo test --offline --locked --test git_hooks_cli the_spec_and_shipped_texts_carry_no_stale_claims`
 
 ## Scope
 
-- write: `.moai/specs/SPEC-20261121-go-path-removal/**`, `src/git_hooks/**`, `tests/git_hooks_cli.rs`, `install/commit-msg`, `install/git-hooks/**`, `src/ops/git_hooks_plan.rs`, `src/ops/git_hooks_apply.rs`, `src/ops/git_hooks_revert.rs`, `docs/design-review/appendix/operations/git_hooks_plan.md`, `docs/design-review/appendix/operations/git_hooks_apply.md`, `docs/design-review/appendix/operations/git_hooks_revert.md`, `tests/update_git_hooks_cli.rs`, `tests/update_switch_layer.rs`, `tools/repo_scans.json`, `tests/fixtures/help/**`, `src/help.rs`, `src/main.rs`, and the pair-approved lines of `src/lib.rs` and `src/update.rs` (the update lane's ACK note 5803 + the named lines of note 5820, and the main.rs and help.rs holders' ACKs on their cards)
+- write: `.moai/specs/SPEC-20261121-go-path-removal/**`, `src/git_hooks/**`, `tests/git_hooks_cli.rs`, `install/commit-msg`, `install/git-hooks/**`, `src/ops/git_hooks_plan.rs`, `src/ops/git_hooks_apply.rs`, `src/ops/git_hooks_revert.rs`, `docs/design-review/appendix/operations/git_hooks_plan.md`, `docs/design-review/appendix/operations/git_hooks_apply.md`, `docs/design-review/appendix/operations/git_hooks_revert.md`, `tests/update_git_hooks_cli.rs`, `tests/update_switch_layer.rs`, `tools/repo_scans.json`, `tests/fixtures/help/**`, `src/help.rs`, `src/main.rs`, `src/update_tux.rs`, `tests/update_tux_git_hooks.rs`, and the pair-approved lines of `src/lib.rs` and `src/update.rs` (the update lane's ACK note 5803 + the named lines of note 5820, and the main.rs and help.rs holders' ACKs on their cards)
 - read-only: the rest of `src/`, `tests/`, `install/`, `docs/`, `skills/`, `tools/`, `templates/`, the installed Rust binary (read-only probes, temporary HOME), and this machine's state
 - forbidden: the 12 repositories' hook folders on this machine, any write in the real HOME, any run of a Go subcommand
 

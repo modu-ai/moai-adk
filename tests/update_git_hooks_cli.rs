@@ -1,9 +1,8 @@
 //! The git-hook verbs (`git-hooks-plan|apply|revert`) and the update layer of
 //! SPEC-20261121-go-path-removal: temporary repositories and HOME folders only, never the real
 //! ones. The verbs run the built binary; the layer runs at library level, the way
-//! `tests/update_switch_layer.rs` drives the switch layer. The `moai update` JSON-part test
-//! stays ignored until the wiring lines of `src/update.rs` land (pair with the card that
-//! holds that file, answer to note 5820).
+//! `tests/update_switch_layer.rs` drives the switch layer; the `moai update` runs use a staged
+//! temporary HOME.
 
 #![cfg(unix)]
 
@@ -18,7 +17,11 @@ use std::process::{Command, Stdio};
 use tempfile::TempDir;
 
 const NOW: &str = "2026-11-21T20:10:00Z";
-const GO_PRE_COMMIT: &str = "#!/bin/sh\n# MoAI-ADK pre-commit hook - fast subset\nexit 0\n";
+// The real Go-generation text (header line and gate command line), as the Go build wrote it.
+const GO_PRE_COMMIT: &str = "#!/bin/sh\n\
+# MoAI-ADK pre-commit hook — fast subset (gofmt + go vet) + opt-in heavy gate (moai gate)\n\
+# Bypass via: SKIP_MOAI_PRECOMMIT=1 git commit\n\
+if ! MOAI_PRECOMMIT=1 moai gate; then\n    exit 1\nfi\nexit 0\n";
 
 /// The sha256 hex of `bytes`, for hash-file fixtures that must actually match the bytes.
 fn sha_hex(bytes: &[u8]) -> String {
@@ -299,6 +302,45 @@ fn update_json_part_carries_git_hooks() {
     );
     assert_eq!(part["go_hooks"][0]["name"], "pre-commit");
     assert!(part["confirm_token"].as_str().is_some());
+}
+
+#[test]
+fn update_applies_the_hook_step_with_the_token_alone() {
+    // A run with only the git-hook token (no digest) applies the hook step and nothing else.
+    let (_dir, root) = make_repo();
+    put_go_hook(&root);
+    let tmp = TempDir::new().expect("home");
+    let home = tmp.path().join("home");
+    fs::create_dir_all(&home).expect("home folder");
+    stage_home(&home);
+    let exe = home.join(".moai-cli/versions/a/bin/moai-cli");
+    let run = |args: &[&str]| -> Value {
+        let out = Command::new(&exe)
+            .args(args)
+            .current_dir(&root)
+            .env("PATH", "/usr/sbin:/usr/bin:/bin:/sbin")
+            .env("HOME", &home)
+            .env("LC_ALL", "C")
+            .stdin(Stdio::null())
+            .output()
+            .expect("run update");
+        serde_json::from_slice(&out.stdout).expect("envelope")
+    };
+    let preview = run(&["update", "--json"]);
+    let token = preview["result"]["git_hooks"]["confirm_token"]
+        .as_str()
+        .expect("token")
+        .to_string();
+    let applied = run(&["update", "--json", "--confirm-git-hooks", &token]);
+    assert_eq!(
+        applied["result"]["git_hooks_result"]["state"], "applied",
+        "the token-only run applied the hook step: {applied}"
+    );
+    assert_eq!(
+        fs::read_to_string(hooks_dir(&root).join("pre-commit")).expect("installed"),
+        moai_cli::git_hooks::PRE_COMMIT_TEXT,
+        "the hook was really replaced"
+    );
 }
 
 #[test]
