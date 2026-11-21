@@ -432,7 +432,7 @@ fn read_dir(root: &Path) -> Result<&'static str> {
     };
     if own != crate::state_root::MOAI_DIR
         && regular(crate::state_root::MOAI_DIR)
-        && regular(crate::PROJECT_STATE_DIR)
+        && regular(crate::state_root::EARLIER_PROJECT_DIR)
     {
         Ok(crate::state_root::MOAI_DIR)
     } else {
@@ -444,7 +444,7 @@ fn read_dir(root: &Path) -> Result<&'static str> {
 pub fn read_rel(root: &Path) -> String {
     format!(
         "{}/project.yaml",
-        read_dir(root).unwrap_or(crate::PROJECT_STATE_DIR)
+        read_dir(root).unwrap_or(crate::state_root::EARLIER_PROJECT_DIR)
     )
 }
 
@@ -1758,6 +1758,7 @@ mod tests {
 
     // ---- SPEC-20261121-mixed-profile-read: which profile file a reader opens. ----------------
 
+    const EARLIER: &str = crate::state_root::EARLIER_PROJECT_DIR;
     const MIXED_PLAIN: &str = r#"{"schema_version": 1, "project_id": "demo", "purpose": "fixture", "tools": ["rust"], "development_methods": ["sdd"], "hosts": ["claude"]}"#;
     const MIXED_MFLOW: &str = r#"{"schema_version": 1, "project_id": "demo", "purpose": "fixture", "tools": ["rust"], "development_methods": ["sdd"], "hosts": ["claude"], "work_flow": {"flow": "m-flow", "integration_branch": "integ"}}"#;
     const MIXED_BROKEN: &str = r#"{"schema_version": 1, "project_id": "demo", "purpose": "fixture", "tools": ["rust"], "development_methods": ["sdd"], "hosts": ["claude"], "work_flow": {"flow": "bogus-flow"}}"#;
@@ -1774,7 +1775,7 @@ mod tests {
     #[test]
     fn mixed_layout_reads_the_newer_profile_when_both_exist() {
         let t = tempfile::tempdir().unwrap();
-        mixed_put(t.path(), ".moai-cli", MIXED_PLAIN);
+        mixed_put(t.path(), EARLIER, MIXED_PLAIN);
         mixed_put(t.path(), ".moai", MIXED_MFLOW);
         assert_eq!(mixed_flow(t.path()).as_deref(), Some("m-flow"));
         assert_eq!(read_rel(t.path()), ".moai/project.yaml");
@@ -1787,9 +1788,9 @@ mod tests {
     #[test]
     fn mixed_layout_keeps_the_layouts_own_folder_when_only_one_profile_exists() {
         let earlier = tempfile::tempdir().unwrap();
-        mixed_put(earlier.path(), ".moai-cli", MIXED_MFLOW);
+        mixed_put(earlier.path(), EARLIER, MIXED_MFLOW);
         assert_eq!(mixed_flow(earlier.path()).as_deref(), Some("m-flow"));
-        assert_eq!(read_rel(earlier.path()), ".moai-cli/project.yaml");
+        assert_eq!(read_rel(earlier.path()), format!("{EARLIER}/project.yaml"));
 
         // Only the newer file and no marker: the layout is not `rust`, the earlier folder has no
         // profile, so the reader still looks where it always did and finds none.
@@ -1799,7 +1800,7 @@ mod tests {
             read_profile(newer.path()).unwrap_err(),
             PROFILE_MISSING.to_string()
         );
-        assert_eq!(read_rel(newer.path()), ".moai-cli/project.yaml");
+        assert_eq!(read_rel(newer.path()), format!("{EARLIER}/project.yaml"));
 
         // A `rust` layout (valid marker) reads `.moai`, with or without the earlier file.
         for with_earlier in [false, true] {
@@ -1811,7 +1812,7 @@ mod tests {
             )
             .unwrap();
             if with_earlier {
-                mixed_put(t.path(), ".moai-cli", MIXED_PLAIN);
+                mixed_put(t.path(), EARLIER, MIXED_PLAIN);
             }
             assert_eq!(mixed_flow(t.path()).as_deref(), Some("m-flow"));
             assert_eq!(read_rel(t.path()), ".moai/project.yaml");
@@ -1821,7 +1822,7 @@ mod tests {
     #[test]
     fn mixed_layout_newer_profile_that_cannot_be_read_is_no_reason_to_fall_back() {
         let t = tempfile::tempdir().unwrap();
-        mixed_put(t.path(), ".moai-cli", MIXED_MFLOW);
+        mixed_put(t.path(), EARLIER, MIXED_MFLOW);
         mixed_put(t.path(), ".moai", MIXED_BROKEN);
         assert!(read_profile(t.path()).is_err());
         assert_eq!(read_rel(t.path()), ".moai/project.yaml");
@@ -1831,12 +1832,12 @@ mod tests {
     #[test]
     fn mixed_layout_a_linked_newer_profile_is_not_chosen() {
         let t = tempfile::tempdir().unwrap();
-        mixed_put(t.path(), ".moai-cli", MIXED_PLAIN);
+        mixed_put(t.path(), EARLIER, MIXED_PLAIN);
         fs::create_dir_all(t.path().join(".moai")).unwrap();
         let real = t.path().join("elsewhere.yaml");
         fs::write(&real, MIXED_MFLOW).unwrap();
         std::os::unix::fs::symlink(&real, t.path().join(".moai").join("project.yaml")).unwrap();
-        assert_eq!(read_rel(t.path()), ".moai-cli/project.yaml");
+        assert_eq!(read_rel(t.path()), format!("{EARLIER}/project.yaml"));
         assert_eq!(mixed_flow(t.path()), None);
     }
 }
