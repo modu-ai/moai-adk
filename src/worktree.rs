@@ -436,8 +436,8 @@ fn valid_prefix(p: &str) -> bool {
 //   Issue); it still differs from 06-A's `claim_branch_suffix` (`c<issue>-<comment_id>`)
 // @MX:UPGRADE: when the user decides the prefix and its relation to the 06-A suffix
 /// The plan for a claim's worktree (REQ-06C-01): no git change, byte-identical for equal input.
-/// `home` is the user's home (`crate::home_workdir::home`); it is needed only when `path` is
-/// `None` and names the default `<HOME>/.moai/worktrees/<project>-<issue>-<logical_key>`.
+/// Without an explicit `path` the worktree lands in the project's
+/// `.claude/worktrees/<project>-<issue>-<logical_key>`; `home` only feeds the build folder.
 pub fn plan(
     project: &Path,
     rec: &ClaimRecord,
@@ -464,11 +464,9 @@ pub fn plan(
     let path = match path {
         Some(p) if p.is_absolute() => p.to_path_buf(),
         Some(p) => primary.join(p),
-        None => crate::home_workdir::worktree_dir(
-            home.ok_or("home directory missing; pass --path for the worktree")?,
-            &primary,
-            &format!("{issue}-{}", rec.logical_key),
-        )?,
+        None => {
+            crate::home_workdir::worktree_dir(&primary, &format!("{issue}-{}", rec.logical_key))?
+        }
     };
     refuse_in_build_folder(&path, "worktree path")?;
     // The worktree's build folder under the shared build root (S8, the C-82 convention):

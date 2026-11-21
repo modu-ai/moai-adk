@@ -169,7 +169,7 @@ fn m_flow_refs(git: &Git) -> Result<HashSet<String>> {
 
 /// REQ-5: the lowest `n` whose branch (local and `origin`), registered worktree and folder are
 /// all unused. Returns `(n, branch, folder)`.
-fn number(git: &Git, dir: &Path, home: &Path, date: &str) -> Result<(u32, String, PathBuf)> {
+fn number(git: &Git, dir: &Path, date: &str) -> Result<(u32, String, PathBuf)> {
     let entries = worktree::worktrees(dir)?;
     let primary = entries
         .first()
@@ -182,7 +182,7 @@ fn number(git: &Git, dir: &Path, home: &Path, date: &str) -> Result<(u32, String
     let refs = m_flow_refs(git)?;
     for n in 1..=999u32 {
         let branch = format!("m-flow/bundle-{date}-{n}");
-        let folder = home_workdir::worktree_dir(home, &primary, &format!("bundle-{n}"))?;
+        let folder = home_workdir::worktree_dir(&primary, &format!("bundle-{n}"))?;
         let taken = refs.contains(&format!("refs/heads/{branch}"))
             || refs.contains(&format!("refs/remotes/origin/{branch}"))
             || registered.contains(&worktree::resolve_existing(&folder))
@@ -304,7 +304,7 @@ pub fn build(
     let git = Git { dir };
     let tip = tip_of(&git, tip)?;
     let wanted = resolve(&git, project, home, &tip, &args)?;
-    let (n, branch, folder) = number(&git, dir, home, &date)?;
+    let (n, branch, folder) = number(&git, dir, &date)?;
     create(dir, &branch, &folder, &tip.sha)?;
 
     let wt = Git { dir: &folder };
