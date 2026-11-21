@@ -1,4 +1,4 @@
-//! #3004 P9: after `moai cc|glm|codex -l|-a` the host exits and the launcher used to print one
+//! #3004 P9: after `moai cc|glm -l|-a` the host exits and the launcher used to print one
 //! JSON line (`executed:true`) even on a terminal. On a terminal without `--json` it now prints
 //! nothing after a normal exit, a line or two on stderr after a failed one, and a readable
 //! summary for `--dry-run`; a pipe, a file and `--json` keep the envelope byte for byte.

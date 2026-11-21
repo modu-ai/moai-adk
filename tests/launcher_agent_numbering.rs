@@ -1,12 +1,12 @@
 //! #2359 (user decision 2026-11-10, comment 6760976883; resolves #2361), changed by #2971:
 //! `-a` without `--name` is named `agent-N`. N is counted per project (one clone, all its
-//! worktrees), shared across `cc`, `glm` and `codex`. A session is alive while its launcher holds
+//! worktrees), shared across `cc` and `glm`. A session is alive while its launcher holds
 //! an exclusive lock on `<sessions dir>/agent-<n>.live` (the OS drops it on any exit, SIGKILL
 //! included) or while a registry entry `agent-<n>.json` has a running lease. The next number is
 //! the highest live one plus 1, or 1 when none is live; a gap below a live number is not
 //! filled. Two concurrent launches never get the same number. `--dry-run`, `--name` and `-l`
 //! take no number, and an unusable file is an error, never a silent `agent-1`. Real launches run
-//! stub `claude` / `codex` executables from a temporary PATH in a temporary git project; no real
+//! a stub `claude` executable from a temporary PATH in a temporary git project; no real
 //! host starts. A stub started with `MOAI_TEST_HOLD_UNTIL` stays alive until that file appears.
 #![cfg(unix)]
 mod common;
@@ -57,7 +57,7 @@ fn fixture() -> Fixture {
     fs::create_dir(project.path().join(".moai-cli")).unwrap();
     fs::write(project.path().join(".moai-cli/project.yaml"), "{}\n").unwrap();
     let bin = tempfile::tempdir().unwrap();
-    for host in ["claude", "codex"] {
+    for host in ["claude"] {
         let path = bin.path().join(host);
         fs::write(&path, STUB).unwrap();
         fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).unwrap();
@@ -288,7 +288,7 @@ impl Drop for Held {
     }
 }
 
-const HOSTS: [&str; 3] = ["cc", "glm", "codex"];
+const HOSTS: [&str; 2] = ["cc", "glm"];
 
 // ---- AC1: no live session means agent-1 ------------------------------------------------------
 
@@ -298,14 +298,13 @@ fn numbers_restart_at_1_after_every_session_ended_and_live_in_the_clone_common_d
     let names: Vec<String> = [
         &["cc", "-a"][..],
         &["glm", "-a"][..],
-        &["codex", "-a"][..],
-        &["-a", "codex"][..],
+        &["-a", "cc"][..],
         &["cc", "-a"][..],
     ]
     .iter()
     .map(|args| name(&run(&f, args)))
     .collect();
-    assert_eq!(names, ["agent-1"; 5]);
+    assert_eq!(names, ["agent-1"; 4]);
     // The old counter is neither created nor read.
     assert_eq!(stored(&f), None);
     // The lock files sit under `.git`, so git never lists them: only the fixture's settings show.
@@ -315,13 +314,6 @@ fn numbers_restart_at_1_after_every_session_ended_and_live_in_the_clone_common_d
         .output()
         .unwrap();
     assert_eq!(String::from_utf8_lossy(&status.stdout), "?? .moai-cli/\n");
-    // codex carries the name in its first prompt, after the line that enters agent mode
-    // (SPEC-20261118-launcher-agent-entry).
-    let v: Value = serde_json::from_slice(&run(&f, &["codex", "-a"]).stdout).unwrap();
-    assert_eq!(
-        v["argv"].as_array().unwrap().last().unwrap(),
-        "$moai --mode-agent\nMoAI session name: agent-1"
-    );
 }
 
 #[test]
@@ -425,7 +417,7 @@ fn a_malformed_registry_entry_refuses_the_launch_instead_of_giving_agent_1() {
         let f = fixture();
         fs::create_dir_all(sessions(&f)).unwrap();
         fs::write(sessions(&f).join("agent-4.json"), bad).unwrap();
-        for args in [&["cc", "-a"][..], &["codex", "-a", "--dry-run"][..]] {
+        for args in [&["cc", "-a"][..], &["glm", "-a", "--dry-run"][..]] {
             let err = refused(&run(&f, args));
             assert!(err.contains("agent-4.json"), "{bad:?}: {err}");
         }
@@ -478,8 +470,8 @@ fn worktrees_of_one_clone_share_the_live_numbers() {
         &["worktree", "add", "-q", "-b", "lane", "wt"],
     );
     let held = Held::hold(&f, "main", &["cc", "-a"]);
-    assert_eq!(name(&run_in(&f, &wt, &["codex", "-a"])), "agent-2");
-    let held_wt = Held::spawn_in(&f, &wt, "wt", &["codex", "-a"], None);
+    assert_eq!(name(&run_in(&f, &wt, &["glm", "-a"])), "agent-2");
+    let held_wt = Held::spawn_in(&f, &wt, "wt", &["glm", "-a"], None);
     held_wt.wait_ready();
     assert_eq!(name(&run(&f, &["glm", "-a"])), "agent-3");
     assert_eq!(name(&held.finish()), "agent-1");
@@ -492,7 +484,7 @@ fn worktrees_of_one_clone_share_the_live_numbers() {
 #[test]
 fn killing_the_launcher_frees_its_number() {
     let f = fixture();
-    let mut held = Held::hold(&f, "k", &["codex", "-a"]);
+    let mut held = Held::hold(&f, "k", &["glm", "-a"]);
     assert_eq!(name(&run(&f, &["cc", "-a"])), "agent-2");
     held.kill_launcher();
     // The lock died with the launcher, whatever the stub host does next.
@@ -513,7 +505,7 @@ fn dry_run_creates_nothing_and_takes_no_number() {
     // With a live session: a dry run reads, takes nothing and leaves the files as they were.
     let _lock = hold_live(&f, 2);
     let before = tree(&sessions(&f));
-    assert_eq!(name(&run(&f, &["codex", "-a", "--dry-run"])), "agent-3");
+    assert_eq!(name(&run(&f, &["glm", "-a", "--dry-run"])), "agent-3");
     assert_eq!(tree(&sessions(&f)), before);
 }
 
@@ -568,7 +560,7 @@ fn the_number_one_carries_the_claim_warning_and_other_numbers_do_not() {
 fn a_folder_outside_git_previews_agent_1_with_the_warning() {
     let f = fixture();
     let plain = tempfile::tempdir().unwrap();
-    let preview = notes(&run_in(&f, plain.path(), &["codex", "-a", "--dry-run"]));
+    let preview = notes(&run_in(&f, plain.path(), &["glm", "-a", "--dry-run"]));
     assert!(warned(&preview), "{preview:?}");
     assert!(!plain.path().join(".git").exists());
 }
@@ -577,7 +569,7 @@ fn a_folder_outside_git_previews_agent_1_with_the_warning() {
 fn name_leader_and_roleless_take_no_number() {
     let f = fixture();
     assert_eq!(name(&run(&f, &["cc", "-a", "--name", "x"])), "x");
-    assert_eq!(name(&run(&f, &["codex", "-l"])), "leader");
+    assert_eq!(name(&run(&f, &["glm", "-l"])), "leader");
     assert_eq!(name(&run(&f, &["-l"])), "leader");
     assert_eq!(name(&run(&f, &["glm"])), "");
     assert!(!sessions(&f).exists());
@@ -611,7 +603,7 @@ fn a_live_path_that_is_a_symlink_is_refused_and_nothing_is_written() {
         fs::create_dir_all(sessions(&f)).unwrap();
         std::os::unix::fs::symlink(&real, live_path(&f, n)).unwrap();
         let before = tree(&sessions(&f));
-        for args in [&["cc", "-a"][..], &["codex", "-a", "--dry-run"][..]] {
+        for args in [&["cc", "-a"][..], &["glm", "-a", "--dry-run"][..]] {
             let err = refused(&run(&f, args));
             assert!(err.contains("symlink"), "{n}: {err}");
         }
@@ -676,7 +668,7 @@ fn outside_a_git_project_the_first_launch_initializes_it_and_a_given_name_works(
     let f = fixture();
     let plain = tempfile::tempdir().unwrap();
     assert_eq!(
-        name(&run_in(&f, plain.path(), &["codex", "-a", "--dry-run"])),
+        name(&run_in(&f, plain.path(), &["glm", "-a", "--dry-run"])),
         "agent-1"
     );
     assert!(!plain.path().join(".git").exists());
@@ -697,7 +689,7 @@ fn launcher_config(f: &Fixture) -> PathBuf {
 }
 
 fn assert_config_refusal_before_side_effects(f: &Fixture) {
-    for host in ["cc", "glm", "codex"] {
+    for host in ["cc", "glm"] {
         for role in [&["-l"][..], &["-a"][..], &[][..]] {
             for cli in [false, true] {
                 let mut args = vec![host];
@@ -783,7 +775,7 @@ fn valid_launcher_settings_execute_fake_hosts_and_allocate_normally() {
         .unwrap();
         // Each session ends before the next starts, so every launch is agent-1; the old store
         // is neither read nor changed.
-        for host in ["cc", "glm", "codex"] {
+        for host in ["cc", "glm"] {
             assert_eq!(name(&run(&f, &[host, "-a"])), "agent-1");
             assert_eq!(stored(&f).as_deref(), Some("00041\n"));
             assert_eq!(
@@ -825,19 +817,11 @@ fn name_and_leader_launch_the_decided_full_access_argv_and_take_no_number() {
             "--dangerously-skip-permissions",
         ]
     };
-    let codex = |prompt: &'static str| -> Vec<&'static str> {
-        vec!["codex", "-s", "danger-full-access", "-a", "never", prompt]
-    };
-    let cases: [(&[&str], Vec<&str>); 6] = [
+    let cases: [(&[&str], Vec<&str>); 4] = [
         (&["cc", "-l"], claude("leader")),
         (&["glm", "-l"], claude("leader")),
-        (&["codex", "-l"], codex("MoAI session name: leader")),
         (&["cc", "-a", "--name", "x"], claude("x")),
         (&["glm", "-a", "--name", "x"], claude("x")),
-        (
-            &["codex", "-a", "--name", "x"],
-            codex("$moai --mode-agent\nMoAI session name: x"),
-        ),
     ];
     for (args, want) in cases {
         let out = run(&f, args);
