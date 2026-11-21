@@ -1,322 +1,188 @@
-//! #2904 stage 2 (O5, #2899 B, user decision D-O2): a Codex lane's Stop hook. `hooks-plan` /
-//! `hooks-apply --host codex --lane-loop L --repo O/R` add a second `Stop` group to
-//! `.codex/hooks.json`, `--lane-loop-off` returns the file to the base set, and the generated
-//! command (`lane-stop-hook`) answers a Stop with `{"decision":"block",…}` until the end
-//! condition. Everything runs in a temporary project and HOME, with saved `lane-next`
-//! snapshots: no git, no network.
+//! SPEC-20261121-codex-loop-ledger: `moai lane-stop-hook` — the Codex lane Stop hook's
+//! decision, read from the project's card ledger only (no GitHub request), so installing the
+//! hook cannot stop a lane on a missing token or a slow read. A lane with a held card is
+//! blocked with its next step; a lane with nothing held but a `ready` card is blocked with
+//! the take; a `hold` card is never offered; a lane with nothing to work on is allowed to
+//! stop. Every command runs against a temporary HOME and a temporary project.
+
 mod common;
 
-use common::CleanEnv;
+use common::home::TempHome;
+use moai_cli::ledger;
 use serde_json::{json, Value};
-use std::fs;
-use std::io::Write as _;
-use std::path::{Path, PathBuf};
-use std::process::{Command, Output, Stdio};
+use std::path::PathBuf;
+use std::process::Output;
 
-struct Fixture {
-    _tmp: tempfile::TempDir,
-    home: PathBuf,
-    project: PathBuf,
+const S: &str = "aaaaaaaa-0000-4000-8000-00000000000a";
+const T: &str = "bbbbbbbb-0000-4000-8000-00000000000b";
+
+fn as_session(home: &TempHome, session: &str, args: &[&str]) -> Output {
+    home.command(args)
+        .env("CLAUDE_CODE_SESSION_ID", session)
+        .output()
+        .expect("run moai")
 }
 
-fn setup() -> Fixture {
-    let tmp = tempfile::tempdir().unwrap();
-    let root = fs::canonicalize(tmp.path()).unwrap();
-    let (home, project) = (root.join("home"), root.join("project"));
-    fs::create_dir_all(&home).unwrap();
-    fs::create_dir_all(&project).unwrap();
-    Fixture {
-        _tmp: tmp,
-        home,
-        project,
-    }
+fn envelope(out: &Output) -> Value {
+    serde_json::from_slice(&out.stdout).unwrap_or_else(|e| {
+        panic!(
+            "stdout is not JSON ({e}): {} {}",
+            String::from_utf8_lossy(&out.stdout),
+            String::from_utf8_lossy(&out.stderr)
+        )
+    })
 }
 
-fn run_in(f: &Fixture, exe: &str, args: &[&str], stdin: &[u8]) -> Output {
-    let mut child = Command::new(exe)
-        .clean_env()
-        .env("HOME", &f.home)
-        .env("PATH", "/usr/bin:/bin")
-        .current_dir(&f.project)
-        .args(args)
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .unwrap();
-    child.stdin.take().unwrap().write_all(stdin).unwrap();
-    child.wait_with_output().unwrap()
-}
-
-fn ok(f: &Fixture, args: &[&str]) -> Value {
-    let out = run_in(f, common::MOAI_BIN, args, b"");
-    let v: Value = serde_json::from_slice(&out.stdout)
-        .unwrap_or_else(|_| panic!("not JSON: {}", String::from_utf8_lossy(&out.stderr)));
+/// `(exit code, envelope)` of `moai card …` (envelope commands).
+fn card(home: &TempHome, session: &str, args: &[&str], _project: &str) -> Value {
+    let out = as_session(home, session, args);
+    assert_eq!(
+        out.status.code(),
+        Some(0),
+        "{} {}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let v = envelope(&out);
     assert_eq!(v["ok"], json!(true), "{v}");
     v["result"].clone()
 }
 
-/// Plans then applies the Codex hook set with `extra` flags on both calls.
-fn install(f: &Fixture, extra: &[&str]) -> (Value, Value) {
-    let p = f.project.to_str().unwrap();
-    let mut plan_args = vec!["hooks-plan", p, "--host", "codex"];
-    plan_args.extend(extra);
-    let plan = ok(f, &plan_args);
-    let digest = plan["plan_digest"].as_str().unwrap().to_string();
-    let mut apply_args = vec![
-        "hooks-apply",
-        p,
-        "--host",
-        "codex",
-        "--plan-digest",
-        &digest,
-        "--permission-reference",
-        "test-approval",
-    ];
-    apply_args.extend(extra);
-    let applied = ok(f, &apply_args);
-    (plan, applied)
+/// The Stop hook's raw answer: `(exit code, stdout)` — a block is the decision JSON on
+/// stdout; an allow is an empty stdout (the hook prints nothing when the lane may stop).
+fn hook(home: &TempHome, session: &str, project: &str) -> (i32, Value) {
+    let out = as_session(home, session, &["lane-stop-hook", "--project", project]);
+    let stdout = String::from_utf8_lossy(&out.stdout).into_owned();
+    let v: Value = serde_json::from_str(stdout.trim()).unwrap_or_else(|e| {
+        panic!(
+            "stdout is not a decision ({e}): {stdout:?} {}",
+            String::from_utf8_lossy(&out.stderr)
+        )
+    });
+    (out.status.code().unwrap_or(-1), v)
 }
 
-const LANE: [&str; 4] = ["--lane-loop", "agent-1", "--repo", "o/r"];
-const COMMAND: &str = "moai lane-stop-hook --lane agent-1 --repo o/r";
-
-fn fixture(name: &str) -> String {
-    Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("tests/fixtures/lane_loop")
-        .join(name)
-        .to_str()
-        .unwrap()
-        .to_string()
-}
-
-/// AC-2: preview → apply → `--lane-loop-off` back to the base bytes; a plan without the flags
-/// keeps the lane (what `update` does), and `lane-loop-line` reads it as installed.
-#[test]
-fn codex_lane_hook_plan_apply_revert() {
-    let f = setup();
-    install(&f, &[]);
-    let file = f.project.join(".codex/hooks.json");
-    let base = fs::read(&file).unwrap();
-    let p = f.project.to_str().unwrap();
-
-    // The preview names the lane and writes nothing.
-    let mut args = vec!["hooks-plan", p, "--host", "codex"];
-    args.extend(LANE);
-    let preview = ok(&f, &args);
-    assert_eq!(preview["action"], json!("update"));
-    assert_eq!(preview["writes"], json!(false));
-    assert_eq!(
-        preview["lane_loop"],
-        json!({"lane": "agent-1", "repo": "o/r"})
-    );
-    assert_eq!(fs::read(&file).unwrap(), base);
-
-    let (_, applied) = install(&f, &LANE);
-    assert_eq!(applied["state"], json!("applied"), "{applied}");
-    let v: Value = serde_json::from_slice(&fs::read(&file).unwrap()).unwrap();
-    let stop = v["hooks"]["Stop"].as_array().unwrap();
-    // #2936 R9 S1: the base set has no `Stop` event, so the lane group is the only one; it is
-    // created, not skipped.
-    assert_eq!(stop.len(), 1, "{v}");
-    assert_eq!(
-        stop[0],
-        json!({"hooks": [{"type": "command", "command": COMMAND, "timeout": 120}]})
-    );
-
-    // A plan without the flags keeps the lane; the hook state is `configured: yes`.
-    let keep = ok(&f, &["hooks-plan", p, "--host", "codex"]);
-    assert_eq!(keep["action"], json!("unchanged"), "{keep}");
-    assert_eq!(keep["hook_status"]["configured"], json!("yes"));
-    let line = ok(
-        &f,
-        &[
-            "lane-loop-line",
-            "--host",
-            "codex",
-            "--lane",
-            "agent-1",
-            "--repo",
-            "o/r",
-        ],
-    );
-    assert_eq!(line["stop_hook"]["state"], json!("installed"), "{line}");
-    assert_eq!(line["blocked_line"], Value::Null);
-
-    // The revert: the same preview → apply, with --lane-loop-off.
-    install(&f, &["--lane-loop-off"]);
-    assert_eq!(fs::read(&file).unwrap(), base);
-    let after = ok(&f, &["hooks-plan", p, "--host", "codex"]);
-    assert_eq!(after["action"], json!("unchanged"));
-    assert!(after.get("lane_loop").is_none(), "{after}");
-}
-
-/// The flags go together, `--lane-loop-off` excludes them, and a lane is Codex only.
-#[test]
-fn lane_loop_flags_are_checked() {
-    let f = setup();
-    let p = f.project.to_str().unwrap();
-    for args in [
-        vec!["hooks-plan", p, "--host", "codex", "--lane-loop", "agent-1"],
-        vec!["hooks-plan", p, "--host", "codex", "--repo", "o/r"],
-        vec![
-            "hooks-plan",
-            p,
-            "--host",
-            "codex",
-            "--lane-loop",
-            "agent-1",
-            "--repo",
-            "o/r",
-            "--lane-loop-off",
-        ],
-    ] {
-        let out = run_in(&f, common::MOAI_BIN, &args, b"");
-        assert_ne!(out.status.code(), Some(0), "{args:?}");
-    }
-    let out = run_in(
-        &f,
-        common::MOAI_BIN,
-        &[
-            "hooks-plan",
-            p,
-            "--host",
-            "claude",
-            "--lane-loop",
-            "a",
-            "--repo",
-            "o/r",
-        ],
-        b"",
-    );
-    assert_eq!(out.status.code(), Some(1));
-    assert!(String::from_utf8_lossy(&out.stdout).contains("--host codex only"));
-}
-
-/// Runs the command line the hook file carries, with `--snapshot` added.
-fn stop(f: &Fixture, snapshot: &str, stdin: &[u8]) -> (i32, String) {
-    let v: Value =
-        serde_json::from_slice(&fs::read(f.project.join(".codex/hooks.json")).unwrap()).unwrap();
-    let cmd = v["hooks"]["Stop"][0]["hooks"][0]["command"]
-        .as_str()
-        .unwrap()
-        .to_string();
-    let mut words = cmd.split_whitespace();
-    assert_eq!(words.next(), Some("moai"));
-    let mut args: Vec<String> = words.map(str::to_string).collect();
-    args.extend(["--snapshot".to_string(), fixture(snapshot)]);
-    let args: Vec<&str> = args.iter().map(String::as_str).collect();
-    let out = run_in(f, common::MOAI_BIN, &args, stdin);
+/// `(exit code, stdout)` of the hook when the answer may be empty (an allow).
+fn hook_raw(home: &TempHome, session: &str, project: &str) -> (i32, String) {
+    let out = as_session(home, session, &["lane-stop-hook", "--project", project]);
     (
         out.status.code().unwrap_or(-1),
-        String::from_utf8(out.stdout).unwrap(),
+        String::from_utf8_lossy(&out.stdout).into_owned(),
     )
 }
 
-const STOP_INPUT: &[u8] = br#"{"session_id":"s","transcript_path":null,"cwd":".","hook_event_name":"Stop","model":"m","turn_id":"t","stop_hook_active":true}"#;
+fn sql(home: &TempHome, statement: &str) {
+    let mut w = ledger::open_write(home.path(), "demo").unwrap();
+    w.with_write_tx(|tx, _| {
+        tx.execute_batch(statement)?;
+        Ok(())
+    })
+    .unwrap();
+}
 
-fn block_reason(out: &str) -> String {
-    assert!(out.ends_with('\n') && out.lines().count() == 1, "{out:?}");
-    let v: Value = serde_json::from_str(out).unwrap();
+fn project_with_a_ready_card(home: &TempHome) -> (PathBuf, String) {
+    let p = home.project("demo");
+    ledger::register(home.path(), "demo").unwrap();
+    card(
+        home,
+        "leader",
+        &[
+            "card",
+            "add",
+            "--title",
+            "The next card of the lane",
+            "--priority",
+            "p1",
+            "--scope",
+            "src/a.rs",
+            "--project",
+            p.to_str().unwrap(),
+        ],
+        p.to_str().unwrap(),
+    );
+    card(
+        home,
+        "leader",
+        &["card", "ready", "C-1", "--project", p.to_str().unwrap()],
+        p.to_str().unwrap(),
+    );
+    (p, "C-1".to_string())
+}
+
+#[test]
+fn a_lane_with_a_held_card_is_blocked_with_its_next_step() {
+    let home = TempHome::new();
+    let (p, name) = project_with_a_ready_card(&home);
+    card(
+        &home,
+        S,
+        &["card", "take", &name, "--project", p.to_str().unwrap()],
+        p.to_str().unwrap(),
+    );
+    let (code, v) = hook(&home, S, p.to_str().unwrap());
+    assert_eq!(code, 0, "{v}");
     assert_eq!(v["decision"], json!("block"), "{v}");
-    assert_eq!(v.as_object().unwrap().len(), 2, "{v}");
-    v["reason"].as_str().unwrap().to_string()
+    let reason = v["reason"].as_str().unwrap();
+    assert!(reason.contains("continue C-1 (active)"), "{reason}");
+    assert!(reason.contains("the lane holds this card"), "{reason}");
 }
 
-fn state_file(f: &Fixture) -> PathBuf {
-    moai_cli::lane_loop::stop_state_path(&f.project, "agent-1")
-}
-
-/// AC-2a: the generated Stop command blocks while the lane has work or open pull requests
-/// remain, passes at the end condition, and passes an unknown reading the second time.
 #[test]
-fn generated_stop_command_blocks_until_end_condition() {
-    let f = setup();
-    install(&f, &LANE);
-    // stop_hook_active is ignored (Q1 (a)).
-    let (code, out) = stop(&f, "work.json", STOP_INPUT);
-    assert_eq!(code, 0);
-    let reason = block_reason(&out);
-    assert!(reason.contains("lane-next: P2 pick_issue #7"), "{reason}");
+fn a_lane_with_a_ready_card_is_blocked_with_the_take() {
+    let home = TempHome::new();
+    let (p, name) = project_with_a_ready_card(&home);
+    let (code, v) = hook(&home, T, p.to_str().unwrap());
+    assert_eq!(code, 0, "{v}");
+    assert_eq!(v["decision"], json!("block"), "{v}");
+    let reason = v["reason"].as_str().unwrap();
     assert!(
-        reason.contains("moai lane-next --lane agent-1 --repo o/r"),
+        reason.starts_with(&format!("take {name} (p1): ")),
         "{reason}"
     );
-    // No text read from GitHub (the Issue title) reaches the reason.
-    assert!(!reason.contains("nobody claims"), "{reason}");
-    // Bad or empty stdin still gets an answer.
-    for input in [&b"not json"[..], b""] {
-        let (code, out) = stop(&f, "work.json", input);
-        assert_eq!(code, 0);
-        block_reason(&out);
-    }
-    let (_, out) = stop(&f, "wait_prs.json", STOP_INPUT);
-    let reason = block_reason(&out);
-    assert!(
-        reason.contains("moai lane-next --lane agent-1 --repo o/r --wait 1800"),
-        "{reason}"
-    );
-    // The end condition: nothing on stdout, exit 0.
-    assert_eq!(stop(&f, "end.json", STOP_INPUT), (0, String::new()));
-    // Unknown (a partial read, an unreadable snapshot): block once, then pass.
-    for snapshot in ["partial.json", "missing.json"] {
-        block_reason(&stop(&f, snapshot, STOP_INPUT).1);
-        assert_eq!(stop(&f, snapshot, STOP_INPUT), (0, String::new()));
-    }
-    // A malformed command line is a non-blocking hook error: exit 1, stdout empty.
-    let out = run_in(
-        &f,
-        common::MOAI_BIN,
-        &["lane-stop-hook", "--lane", "a"],
-        b"",
-    );
-    assert_eq!(out.status.code(), Some(1));
-    assert!(out.stdout.is_empty());
-    let out = run_in(
-        &f,
-        common::MOAI_BIN,
-        &["lane-stop-hook", "--lane", "a b", "--repo", "o/r"],
-        b"",
-    );
-    assert_eq!(out.status.code(), Some(1));
-    assert!(out.stdout.is_empty());
+    assert!(reason.contains("The next card of the lane"), "{reason}");
 }
 
-/// The cap: 48 blocks in a row for one next task, the 49th stop passes; a new next task
-/// starts the count again.
 #[test]
-fn generated_stop_command_passes_after_48_blocks_in_a_row() {
-    let f = setup();
-    install(&f, &LANE);
-    block_reason(&stop(&f, "work.json", STOP_INPUT).1);
-    let path = state_file(&f);
-    let mut st: Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
-    assert_eq!(st["blocks"], json!(1));
-    st["blocks"] = json!(46);
-    fs::write(&path, st.to_string()).unwrap();
-    block_reason(&stop(&f, "work.json", STOP_INPUT).1); // 47th
-    block_reason(&stop(&f, "work.json", STOP_INPUT).1); // 48th
-    assert_eq!(stop(&f, "work.json", STOP_INPUT), (0, String::new())); // 49th
-    let st: Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
-    assert_eq!(st["blocks"], json!(48));
-    let reason = block_reason(&stop(&f, "work_other.json", STOP_INPUT).1);
-    assert!(reason.contains("#8"), "{reason}");
-    let st: Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
-    assert_eq!(st["blocks"], json!(1));
+fn an_ended_lease_on_the_held_card_asks_for_a_reclaim() {
+    let home = TempHome::new();
+    let (p, name) = project_with_a_ready_card(&home);
+    card(
+        &home,
+        S,
+        &["card", "take", &name, "--project", p.to_str().unwrap()],
+        p.to_str().unwrap(),
+    );
+    sql(
+        &home,
+        "UPDATE reservation SET lease_until = unixepoch() - 5 WHERE status = 'held'",
+    );
+    let (code, v) = hook(&home, S, p.to_str().unwrap());
+    assert_eq!(code, 0, "{v}");
+    assert_eq!(v["decision"], json!("block"), "{v}");
+    let reason = v["reason"].as_str().unwrap();
+    assert!(reason.contains("re-claim C-1"), "{reason}");
+    assert!(reason.contains("generation + 1"), "{reason}");
 }
 
-/// #2926 audit B1: two next tasks that alternate block 96 stops, and the 97th passes.
 #[test]
-fn alternating_next_tasks_pass_after_96_blocks() {
-    let f = setup();
-    install(&f, &LANE);
-    let snapshots = ["work.json", "work_other.json"];
-    for i in 0..96 {
-        block_reason(&stop(&f, snapshots[i % 2], STOP_INPUT).1);
-    }
-    let path = state_file(&f);
-    let st: Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
-    assert_eq!(st["since_pass"], json!(96));
-    assert_eq!(stop(&f, "work.json", STOP_INPUT), (0, String::new())); // 97th
-    block_reason(&stop(&f, "work_other.json", STOP_INPUT).1);
+fn a_hold_card_is_never_offered() {
+    let home = TempHome::new();
+    let (p, _name) = project_with_a_ready_card(&home);
+    sql(
+        &home,
+        "UPDATE card SET state = 'hold' WHERE title = 'The next card of the lane'",
+    );
+    // The hold card is not a `ready` card, so the lane may stop: the hook prints nothing.
+    let (code, stdout) = hook_raw(&home, T, p.to_str().unwrap());
+    assert_eq!(code, 0, "{stdout}");
+    assert_eq!(stdout, "", "an allow prints nothing: {stdout:?}");
+}
+
+#[test]
+fn a_project_without_a_ledger_allows_the_stop() {
+    let home = TempHome::new();
+    let p = home.project("demo");
+    let (code, stdout) = hook_raw(&home, T, p.to_str().unwrap());
+    assert_eq!(code, 0, "{stdout}");
+    assert_eq!(stdout, "", "an allow prints nothing: {stdout:?}");
 }

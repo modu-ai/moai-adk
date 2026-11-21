@@ -646,15 +646,19 @@ enum Command {
     /// condition, after 48 blocks in a row for one task or 96 blocks since the last pass, or
     /// on the second unknown reading.
     LaneStopHook {
-        /// The lane name as it appears in claims (`session=<lane>`).
+        /// The lane name as it appears in claims (`session=<lane>`); the ledger judgement
+        /// does not read it — the deciding session is the hook's own environment.
         #[arg(long)]
-        lane: String,
-        /// `OWNER/REPO`.
+        lane: Option<String>,
+        /// `OWNER/REPO`; ignored by the ledger judgement like `lane`.
         #[arg(long)]
-        repo: String,
-        /// Decide from a saved `lane-next` snapshot (JSON) instead of reading GitHub.
+        repo: Option<String>,
+        /// A saved `lane-next` snapshot (JSON); ignored by the ledger judgement.
         #[arg(long)]
         snapshot: Option<PathBuf>,
+        /// The project whose card ledger is read (default: the working folder).
+        #[arg(long, value_name = "DIR")]
+        project: Option<PathBuf>,
     },
     /// Undo the hook set one update applied
     ///
@@ -2494,27 +2498,35 @@ fn hook_dispatch_main(host: &str, event: &str) -> ExitCode {
 /// `{"decision":"block",…}` line or nothing — and exits 0. The Stop input is read (bounded) and
 /// dropped: `stop_hook_active` is not used (Q1 (a)) and bad JSON changes nothing. A refused
 /// lane or repository is a non-blocking hook error (exit 1, stdout empty).
-fn lane_stop_hook_main(lane: &str, repo: &str, snapshot: Option<&std::path::Path>) -> ExitCode {
-    use moai_cli::lane_loop as l;
+fn lane_stop_hook_main(
+    lane: Option<&str>,
+    repo: Option<&str>,
+    _snapshot: Option<&std::path::Path>,
+    project: Option<&std::path::Path>,
+) -> ExitCode {
     use std::io::IsTerminal as _;
-    if !l::lane_ok(lane) || !l::repo_ok(repo) {
-        eprintln!(
-            "moai lane-stop-hook: --lane must be 1-64 of A-Z a-z 0-9 . _ - and --repo OWNER/REPO"
-        );
-        return ExitCode::from(HOOK_NON_BLOCKING_ERROR);
-    }
+    // The installed command line names the lane and repository (hooks-plan, #2904); the
+    // ledger judgement reads neither — it reads the deciding session and the project's card
+    // ledger (SPEC-20261121-codex-loop-ledger), so a missing token or a slow GitHub read
+    // cannot stop a lane.
+    let _ = (lane, repo, _snapshot);
     if !io::stdin().is_terminal() {
-        let _ = io::copy(&mut io::stdin().take(l::STOP_STDIN_LIMIT), &mut io::sink());
+        let _ = io::copy(
+            &mut io::stdin().take(moai_cli::lane_loop::STOP_STDIN_LIMIT),
+            &mut io::sink(),
+        );
     }
-    let Ok(cwd) = std::env::current_dir() else {
+    let cwd = std::env::current_dir();
+    let project = project.map(std::path::PathBuf::from).or(cwd.ok());
+    let Some(project) = project else {
         eprintln!("moai lane-stop-hook: working directory unavailable; the turn ends");
         return ExitCode::SUCCESS;
     };
-    let reading = match snapshot {
-        Some(file) => l::read_snapshot(file),
-        None => l::read_github(lane, repo),
-    };
-    let answer = l::stop_hook(&cwd, lane, repo, &reading);
+    let answer = lane_stop_hook_ledger_answer(&project).unwrap_or_else(|e| {
+        eprintln!("{e}");
+        // An unread ledger is a non-blocking hook error: the turn ends instead of hanging.
+        String::new()
+    });
     if !answer.is_empty() {
         println!("{answer}");
     }
@@ -2570,6 +2582,65 @@ fn lane_env(lane: &str, base: Option<&std::path::Path>) -> ExitCode {
             ExitCode::from(1)
         }
     }
+}
+
+/// The session variables a lane's session sets, in the order they are read.
+const LANE_STOP_SESSION_VARS: [&str; 2] = ["CLAUDE_CODE_SESSION_ID", "CODEX_THREAD_ID"];
+
+/// `lane-stop-hook`'s answer from the project's card ledger only (SPEC-20261121-codex-loop-
+/// ledger): `card::work::next`, the same view `moai card next` prints — the block JSON while
+/// the session holds a card (continue, or re-claim a lease that ended) or a `ready` card
+/// exists to take, and empty when the lane may stop. The session is the hook's own
+/// environment (`CLAUDE_CODE_SESSION_ID` or `CODEX_THREAD_ID`), never typed.
+fn lane_stop_hook_ledger_answer(project: &std::path::Path) -> Result<String, String> {
+    use serde_json::json;
+    let holder = LANE_STOP_SESSION_VARS
+        .iter()
+        .find_map(|v| std::env::var(v).ok());
+    let home = moai_cli::ledger::command::resolve_home(None)
+        .map_err(|e| format!("lane-stop-hook: {e}"))?;
+    let next = moai_cli::card::work::next(project, &home, holder.as_deref())
+        .map_err(|e| format!("lane-stop-hook: {e}"))?;
+    if let Some(m) = next["mine"].as_array().and_then(|a| a.first()) {
+        let name = m["name"].as_str().unwrap_or("?");
+        let state = m["state"].as_str().unwrap_or("");
+        let reason = if m["lease_live"] == json!(true) {
+            format!(
+                "continue {name} ({state}): the lane holds this card; finish the work, report \
+                 it, and let the card land before the turn stops"
+            )
+        } else {
+            format!(
+                "re-claim {name} ({state}): the lease on the lane's card ended — take it again \
+                 (generation + 1) and continue"
+            )
+        };
+        return Ok(json!({ "decision": "block", "reason": reason }).to_string());
+    }
+    // The held cards are answered above; the collector's `next` names the first `ready` card
+    // the session could take (the collector already skipped the held-by-others, the scope
+    // overlaps and the empty scopes, with the reason in `skipped`).
+    if next["next_is"].as_str() == Some("ready") {
+        let name = next["next"].as_str().unwrap_or("?");
+        let first = next["ready"]
+            .as_array()
+            .and_then(|r| r.iter().find(|c| c["name"].as_str() == Some(name)))
+            .cloned()
+            .unwrap_or_default();
+        let priority = first["priority"].as_str().unwrap_or("");
+        let title: String = first["title"]
+            .as_str()
+            .unwrap_or("")
+            .chars()
+            .take(70)
+            .collect();
+        return Ok(json!({
+            "decision": "block",
+            "reason": format!("take {name} ({priority}): {title}"),
+        })
+        .to_string());
+    }
+    Ok(String::new())
 }
 
 fn pr_self_audit_check(reaudit: bool, file: Option<&std::path::Path>) -> ExitCode {
@@ -2745,9 +2816,15 @@ pub(crate) fn main() -> ExitCode {
         lane,
         repo,
         snapshot,
+        project,
     }) = &cli.command
     {
-        return lane_stop_hook_main(lane, repo, snapshot.as_deref());
+        return lane_stop_hook_main(
+            lane.as_deref(),
+            repo.as_deref(),
+            snapshot.as_deref(),
+            project.as_deref(),
+        );
     }
     if let Some(Command::HeavySlotAcquire {
         max,
