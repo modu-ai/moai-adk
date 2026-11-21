@@ -63,15 +63,22 @@ fn agent_runs_long_commands_in_the_background() {
 }
 
 #[test]
-fn waiting_lanes_take_the_next_card_and_the_leader_dispatches_them() {
+fn waiting_is_switching_and_the_leader_answers_it() {
     let a = agent();
     has(
         &a,
         "mode-agent.md",
         &[
-            "`LANE-WAIT <lane> on=check|audit|merge card=<C-n>`",
-            "second worktree",
-            "at most two cards at once",
+            "## Waiting is switching",
+            "Never wait.",
+            "(1) leave a `RESUME` note on the card",
+            "(2) give the reservation back with `card release`",
+            "(3) print `SWITCH <card> → <next>` as the last line of the screen",
+            "(4) wait for the leader to send `/clear` (Claude Code) or `/new` (Codex CLI)",
+            "Ending the turn is not waiting and is forbidden.",
+            "the leader dispatches the earlier card again",
+            "reads its `RESUME` note and takes the card again",
+            "at most three cards at once and renews the lease of each",
         ],
     );
     let l = leader();
@@ -79,9 +86,10 @@ fn waiting_lanes_take_the_next_card_and_the_leader_dispatches_them() {
         &l,
         "mode-leader.md",
         &[
-            "`LANE-WAIT on=check|audit|merge`",
-            "give it the next ready card",
-            "two cards with a worktree",
+            "posted `SWITCH <card> → <next>` gets `/clear` (Claude Code) or `/new` (Codex CLI)",
+            "`moai lane-safe-to-reset` answers `safe` and its reservation of that card is gone",
+            "dispatch the earlier card again",
+            "count the `SWITCH` lines in the round summary",
         ],
     );
 }
@@ -151,10 +159,10 @@ fn session_reset_follows_every_card_and_compact_follows_a_full_context() {
             "If no `/clear` has arrived by your next wake",
             "Claude Code: `/clear` starts a new conversation with empty context",
             "`/compact [instructions]` summarizes the conversation so far",
-            "Codex CLI: `/clear` clears the terminal and starts a fresh chat",
-            "(`/new` starts one without clearing the terminal view)",
+            "Codex CLI: `/new` starts a new chat in the same session",
+            "(`/clear` also starts one and clears the terminal view first)",
             "`/compact` summarizes the visible chat to free tokens",
-            "At 80% or more of the context figure the host shows, post `LANE-COMPACT`",
+            "At 80% or more of the context figure the host shows, post `LANE-COMPACT <lane>",
             "After a `/clear` the session id is new",
             "after writing it, follow `Session reset` and go on in the same turn",
         ],
@@ -170,9 +178,8 @@ fn session_reset_follows_every_card_and_compact_follows_a_full_context() {
         &l,
         "mode-leader.md",
         &[
-            "gets `/clear` once `moai lane-safe-to-reset` answers `safe`",
-            "its next dispatch as the first message after the reset",
-            "Claude Code and Codex CLI both take `/clear` and `/compact`",
+            "gets `/clear` (Claude Code) or `/new` (Codex CLI) once `moai lane-safe-to-reset` answers `safe`, and its next dispatch as the first message after the reset",
+            "Claude Code and Codex CLI both take `/clear` or `/new` and `/compact`",
         ],
     );
 }

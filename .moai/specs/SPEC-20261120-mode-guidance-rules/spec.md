@@ -13,7 +13,7 @@ created: 2026-11-20
 사용자 지시(2026-11-20): 리더·에이전트 모드와 워크플로에서 고칠 부분을 찾아 스킬과 지침을 고쳐요. 오늘 레인을 지켜본 기록(보고서 `skills-agents-gap-2026-11-20.md` §6)에서 되풀이된 일이 여섯 가지고, 같은 날 사용자가 일곱 번째를 더했어요.
 
 1. `mode-agent.md` 가 기다릴 때 "`moai wait` 를 앞에서 돌리고 턴을 끝내지 말라"고 해서, 레인이 앞선 명령에 화면을 몇 시간 쥐고(한 레인 3시간, 다른 레인 24분) 리더가 보낸 메시지가 쌓였다가 사라졌어요. 규칙: 2분 넘게 걸릴 명령은 호스트 백그라운드 작업으로 돌리고 레인은 다른 일을 이어 가요. 앞에서 도는 명령은 120초 이하의 시간 제한을 둬요.
-2. 검사·감사·병합을 기다리는 레인은 놀고 있는 레인이에요(오늘 30~60분을 배차 없이 기다렸어요). 다음 카드를 두 번째 워크트리에서 잡고(동시에 둘까지) `LANE-WAIT` 를 적어요. 리더는 기다리는 레인을 배차 후보로 읽어요.
+2. 검사·감사·병합·파일 반환·짝 줄·열차 차례를 기다리는 레인은 놀고 있는 레인이에요(오늘 30~60분을 배차 없이 기다렸어요). 사용자 지시(2026-11-21): 기다리지 않고 전환해요. 기다리게 된 카드에 `RESUME` 노트를 남기고, 예약을 반환하고(`/clear` 뒤에는 세션 id 가 바뀌어 옛 예약을 못 다뤄요), `SWITCH <카드> → <다음>` 한 줄을 남기면, 리더가 `/clear`(Claude Code) 또는 `/new`(Codex CLI)와 다음 카드를 보내요. 기다리던 신호가 오면 리더가 그 카드를 다시 배차하고 새 세션이 `RESUME` 노트를 읽고 다시 잡아요. 한 레인이 동시에 쥐는 카드는 셋까지이고 카드마다 임대를 갱신해요. 턴을 끝내는 것은 기다리는 것이 아니고 금지예요.
 3. 맥락이 한도(호스트가 알려 주는 값의 80% 이상)에 가까운 레인은 `LANE-COMPACT` 를 적고, 리더가 `/compact` 와 이어 가기 줄을 보내요.
 4. 노트에 손으로 시각을 적지 않아요. 레인이 한국 시각에 `Z` 를 붙여(1~9시간 어긋남) 단계 시간 계산을 깨뜨렸어요. `date -u` 출력을 붙여 넣거나 시각을 빼요.
 5. 리더의 감독 단계가 `moai lane-screen --scan` 과 `moai card timeline` 을 이름으로 가리켜요.
@@ -32,15 +32,15 @@ created: 2026-11-20
 
 - REQ-1: The MODE-AGENT workflow shall tell a lane to run a command expected to take longer than two minutes as a host background task and to give a command it runs in the foreground a timeout of at most 120 seconds. · failure: none
 - REQ-2: The MODE-AGENT workflow shall no longer tell a lane to run `moai wait` in the foreground. · failure: none
-- REQ-3: The MODE-AGENT workflow shall tell a lane that waits for a check, an audit or a merge to take the next card in a second worktree, at most two cards at once, and to post `LANE-WAIT <lane> on=check|audit|merge`. · failure: none
-- REQ-4: The MODE-LEADER workflow shall tell the leader to give a lane that posted `LANE-WAIT` the next ready card unless it already holds two cards with a worktree. · failure: none
+- REQ-3: The MODE-AGENT workflow shall tell a lane whose card would wait for a check, an audit, a file another card holds, a pair line or a train turn to leave a `RESUME` note, give the reservation back, print `SWITCH <card> → <next>`, wait for the leader's `/clear` and never end the turn, holding at most three cards whose leases it renews. · failure: none
+- REQ-4: The MODE-LEADER workflow shall tell the leader to answer a `SWITCH` line with `/clear` (Claude Code) or `/new` (Codex CLI) and the next card, and to dispatch the earlier card again when the awaited signal arrives. · failure: none
 - REQ-5: The MODE-AGENT workflow shall tell a lane near its context limit to post `LANE-COMPACT` once its resume note is current and to start again with an `ACK <lane> resume` line. · failure: none
 - REQ-6: The MODE-LEADER workflow shall tell the leader to answer `LANE-COMPACT` with `/compact` and one resume line, and to count the lane as working only after it has read the ACK. · failure: none
 - REQ-7: The MODE-AGENT workflow shall forbid typing a time into a card note, a report line or a resume note and tell the lane to paste the output of `date -u` or leave the time out. · failure: none
 - REQ-8: The MODE-LEADER `supervise` step shall name `moai lane-screen --scan` and `moai card timeline` as the tools to read the lanes and a card's history. · failure: none
 - REQ-9: The MODE-AGENT `report` step shall tell a lane that a repair READY line carries, for each finding, the reproduction before and after the fix and lists work outside the write scope under `Not done` with the holder of those files and the handoff note. · failure: none
 - REQ-10: The MODE-AGENT workflow shall tell a lane that finishes a card (its `READY` or `MERGE-READY` note posted, its resume note current, nothing uncommitted or unpushed in its worktrees) to post `LANE-DONE` and wait for the leader's `/clear` before it takes a card from `moai card next`, and to go on with `self-pick` in the same context when no `/clear` has arrived by its next wake. · failure: none
-- REQ-11: The MODE-AGENT workflow shall name the reset and compact commands of both hosts, Claude Code `/clear` and `/compact`, Codex CLI `/clear` (or `/new`) and `/compact`, with the context limit at 80% or more of the figure the host shows. · failure: none
+- REQ-11: The MODE-AGENT workflow shall name the reset and compact commands of both hosts, Claude Code `/clear` and `/compact`, Codex CLI `/new` (or `/clear`) and `/compact`, with the context limit at 80% or more of the figure the host shows. · failure: none
 - REQ-12: The MODE-LEADER workflow shall tell the leader to answer a `LANE-DONE` line with `/clear` and the next dispatch when `moai lane-safe-to-reset` answers `safe`, to answer `LANE-COMPACT` with `/compact` and one resume line, and to read the lane's `ACK … resume` line before it counts the lane as working. · failure: none
 
 ## Acceptance
@@ -48,7 +48,7 @@ created: 2026-11-20
 - AC-1 (REQ-1, REQ-2): the long-command rule is in MODE-AGENT and the foreground-wait sentence is gone.
   verify: `cargo test --locked --offline --test mode_guidance_scan agent_runs_long_commands`
 - AC-2 (REQ-3, REQ-4, REQ-5, REQ-6): the waiting-lane and compact rules are in both workflows.
-  verify: `cargo test --locked --offline --test mode_guidance_scan waiting_lanes`
+  verify: `cargo test --locked --offline --test mode_guidance_scan waiting_is_switching`
   verify: `cargo test --locked --offline --test mode_guidance_scan compact_request`
 - AC-3 (REQ-7, REQ-8, REQ-9): no hand-written times, the supervision tools by name, the repair evidence line.
   verify: `cargo test --locked --offline --test mode_guidance_scan no_hand_written_times`
@@ -82,11 +82,17 @@ MODE-AGENT, new section `## Long commands` after `## Watching on your own`:
 - A command you run in the foreground carries a timeout of at most 120 seconds.
 - Never type a time into a card note, a report line or a resume note: paste the output of `date -u` from the same step, or leave the time out. Lanes wrote local times with a trailing `Z`, 1 to 9 hours off, and that broke stage timing; the ledger's `created_at` is the time of a note.
 
-MODE-AGENT, new section `## Session reset` after `## Long commands`:
+MODE-AGENT, new section `## Waiting is switching` after `## Long commands`:
+
+- Never wait. When a card of yours would have to wait for a check, an audit, a file another card holds, a pair line or a train turn, do these in order: (1) leave a `RESUME` note on the card with what it waits for, the watch id, the next step, the worktree, the branch and the head; (2) give the reservation back with `card release`, because `/clear` gives the session a new id that cannot touch the old reservation; (3) print `SWITCH <card> → <next>` as the last line of the screen and add it as a note on the card; (4) wait for the leader to send `/clear` (Claude Code) or `/new` (Codex CLI) and the next card. Ending the turn is not waiting and is forbidden.
+- When the signal you waited for comes, the leader dispatches the earlier card again, and the new session reads its `RESUME` note and takes the card again.
+- A lane holds at most three cards at once and renews the lease of each (`card renew`).
+
+MODE-AGENT, new section `## Session reset` after `## Waiting is switching`:
 
 - One context does not carry many cards. A card is finished for this session when its `READY` or `MERGE-READY` note is posted, its resume note is current and each of its worktrees shows nothing uncommitted or unpushed: post `LANE-DONE`, then wait for the leader's `/clear` and take the next card only afterwards, from the leader's dispatch or from `moai card next`.
 - If no `/clear` has arrived by your next wake (`wake` step), go on with `self-pick` in the same context, so the wait never leaves the lane idle.
-- Claude Code: `/clear` starts a new conversation with empty context, and `/compact [instructions]` summarizes the conversation so far. Codex CLI: `/clear` clears the terminal and starts a fresh chat (`/new` starts one without clearing the terminal view), and `/compact` summarizes the visible chat to free tokens. At 80% or more of the context figure the host shows, post `LANE-COMPACT` (`self-pick` step).
+- Claude Code: `/clear` starts a new conversation with empty context, and `/compact [instructions]` summarizes the conversation so far. Codex CLI: `/new` starts a new chat in the same session (`/clear` also starts one and clears the terminal view first), and `/compact` summarizes the visible chat to free tokens. At 80% or more of the context figure the host shows, post `LANE-COMPACT` (`self-pick` step).
 - After a `/clear` the session id is new: read `moai card list`, the `RESUME` notes of your cards and the dispatch, and make your first line `ACK <lane> resume <ref> <UTC>`.
 
 MODE-AGENT `report` step: "A `LANE-DONE` line is a progress record, not a stop: after writing it, follow `Session reset` and go on in the same turn, and never make it the turn's last line unless the `keep-going` step lets the turn end."
@@ -95,14 +101,14 @@ MODE-AGENT `Watching on your own`, third rung: "(3) in the turn, run `moai wait`
 
 MODE-AGENT `self-pick`, after the resume-note paragraph:
 
-- A lane that waits for a check, an audit or a merge is an idle lane. After its resume point it takes the next card of `moai card next` in a second worktree (at most two cards at once) and posts `LANE-WAIT <lane> on=check|audit|merge card=<C-n>` once, on the card and on its screen.
+- Waiting is switching (new section `## Waiting is switching` after `## Long commands`): see the sentences of that section below.
 - A lane whose context is at 80% or more of the figure the host shows posts `LANE-COMPACT <lane> card=<C-n> resume=<note ref>` at a card boundary, once its resume note is current, then waits for the leader's `/compact` and resume line; its first line afterwards is `ACK <lane> resume <ref> <UTC>`.
 
 MODE-AGENT `report` step, appended: "A repair READY line, after a FAIL, carries for each finding the reproduction before and after the fix (the command and its result on the failing head and on the repaired head), and lists work outside the write scope under `Not done` with the holder of those files and the handoff note you wrote."
 
 MODE-LEADER `supervise` step, after the sentence about a lane waiting on CI or a local check:
 
-- A lane that posted `LANE-WAIT on=check|audit|merge` is waiting on its first card: give it the next ready card unless it already holds two cards with a worktree, and count the waiting lanes in the round summary.
+- A lane that posted `SWITCH <card> → <next>` gets `/clear` (Claude Code) or `/new` (Codex CLI) once `moai lane-safe-to-reset` answers `safe` and its reservation of that card is gone, and then, as the first message after the reset, the next card from the urgent queue or `moai card next`; when the awaited signal arrives, dispatch the earlier card again (its `RESUME` note says where it stopped), and count the `SWITCH` lines in the round summary.
 - A lane that posted `LANE-COMPACT` gets `/compact` when its input box is empty and `moai lane-safe-to-reset` does not answer `not_safe`, then one resume line that names its resume note; count it as working only after you have read its `ACK … resume` line.
 - A lane that posted `LANE-DONE` for a card at `READY` or `MERGE-READY` gets `/clear` once `moai lane-safe-to-reset` answers `safe`, and its next dispatch as the first message after the reset (`clear_redispatch`); a `not_safe` or `unknown` answer is a line to the lane that names what to push or note first. Claude Code and Codex CLI both take `/clear` and `/compact` (MODE-AGENT `Session reset`).
 - Read the lanes with `moai lane-screen --scan` (one state per terminal) and a card's history with `moai card timeline <card>` before you give an action. The commands you run yourself follow MODE-AGENT `Long commands`.
@@ -111,14 +117,14 @@ MODE-LEADER `supervise` step, after the sentence about a lane waiting on CI or a
 
 - The two workflow files and the manifest are held by another card; the sentences wait for it, and the RED test stays red until they are applied. If that card changes the same lines, its text and this one are merged by hand, with the scan test as the check.
 - A lane that cannot type `/clear` into its own session depends on the leader sending it; REQ-10 therefore ends the wait at the lane's next wake instead of blocking.
-- Substring scans pin wording, not behaviour; a reworded sentence has to keep the named words (`LANE-WAIT`, `LANE-COMPACT`, `Long commands`, the tool names).
+- Substring scans pin wording, not behaviour; a reworded sentence has to keep the named words (`SWITCH`, `LANE-COMPACT`, `Long commands`, the tool names).
 
 ## Decisions
 
 | Id | Decision | Basis | Undo |
 | --- | --- | --- | --- |
 | D-1 | A new `## Long commands` section, not a change inside a step | One place a lane reads before any wait; the steps stay untouched | Move the text into `heavy-checks` |
-| D-2 | At most two cards at once for a waiting lane | The card's rule (limit two); a third card makes the resume notes unreadable | Change the number in one sentence |
+| D-2 | A lane holds at most three cards at once and gives a waiting card back before it switches | User instruction 2026-11-21: after `/clear` the session id is new and an old reservation cannot be handled, so the card is released with a `RESUME` note first | Change the number in one sentence |
 | D-3 | Hand the `SKILL.md` sentence over as a note | The file is held by another card | Apply it after its holder releases |
 | D-4 | After every finished card the leader sends `/clear`; at 80% of the context the leader sends `/compact`; both hosts, same words | User instruction 2026-11-20. Command names read in the vendors' own pages on 2026-11-20 between the clock reads 21:02:34Z and 21:03:32Z (`date -u`) and 21:04:36Z. Claude Code, code.claude.com/docs/en/commands: "`/clear [name]` Start a new conversation with empty context." and "`/compact [instructions]` Free up context by summarizing the conversation so far." Codex CLI, learn.chatgpt.com/docs/cli/slash-commands (also reached from developers.openai.com/codex/cli/slash-commands): "Clear the terminal and start a fresh chat." (`/clear`), "Start a new chat inside the same CLI session." (`/new`), "Summarize the visible chat to free tokens." (`/compact`). The Codex page shows `/clear` and `/new` with a name argument but `/compact` with none, so the text sends the resume line as a message after a Codex `/compact` | Reword one sentence if either vendor renames a command |
 | D-5 | After `/clear` a lane continues from its resume notes and its `ACK` line; early takeover of a reservation held under the old session id is not in this SPEC | Taking over a reservation early is the work of the card that adds that path; this text names only paths that exist (`card handoff`, `card reclaim` after the lease ends) | Add one sentence when the path ships |
