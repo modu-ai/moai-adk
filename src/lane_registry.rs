@@ -286,6 +286,48 @@ pub fn liveness_of_session(project: &Path, session: &str) -> (Liveness, Value) {
 /// the audit — the link must not leave the clone), a symlinked or non-regular entry, an entry
 /// over the size bound, a path the clone does not own.
 fn registered_name_of(project: &Path, session: &str) -> Option<String> {
+    registered_entry_of(project, session).map(|(_, name)| name)
+}
+
+/// What the early reclaim needs on top of [`liveness_of_session`]: a missing `.live` file
+/// answers `LauncherExited` there (a session registered with `session-register` alone never had
+/// one), so a proof that a session is gone also needs the file and the end of the registry
+/// lease (SPEC-20261120-reclaim-dead-holder REQ-13).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LauncherTrace {
+    /// The name whose entry registers the session id.
+    pub name: String,
+    /// The `lease_until` of that entry, as stored.
+    pub lease_until: i64,
+    /// Whether `<name>.live` exists as a regular file in the sessions folder.
+    pub live_file: bool,
+}
+
+/// The entry that registers `session` and whether its `.live` file exists. Reads only; `Err`
+/// names what could not be read, and no entry for the session is an `Err` too, never a trace.
+pub fn launcher_trace_of_session(project: &Path, session: &str) -> Result<LauncherTrace, String> {
+    let Some((lease_until, name)) = registered_entry_of(project, session) else {
+        return Err("no registry entry names this session id".to_string());
+    };
+    let dir = registry_dir(project)?;
+    let live_file = match fs::symlink_metadata(dir.join(format!("{name}.live"))) {
+        Ok(meta) => meta.file_type().is_file(),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => false,
+        Err(e) => {
+            return Err(format!(
+                "the launcher lock file of {name} cannot be read: {e}"
+            ))
+        }
+    };
+    Ok(LauncherTrace {
+        name,
+        lease_until,
+        live_file,
+    })
+}
+
+/// [`registered_name_of`] with the lease of the entry it picked.
+fn registered_entry_of(project: &Path, session: &str) -> Option<(i64, String)> {
     // N5: the unlinked check walks the path below the clone and refuses a link at any step,
     // so a symlinked sessions folder can never send the scan outside the clone.
     let dir = registry_dir_unlinked(project).ok()?;
@@ -335,7 +377,7 @@ fn registered_name_of(project: &Path, session: &str) -> Option<String> {
             best = Some((lease, name));
         }
     }
-    best.map(|(_, name)| name)
+    best
 }
 
 /// An entry's `mode` when it is exactly `leader` or `agent`; any other text — a made-up word,

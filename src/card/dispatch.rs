@@ -684,7 +684,7 @@ pub(super) fn worktree_gate(worktree: Option<&str>) -> Result<()> {
 /// The standard output of one read-only git command in `dir`: the environment is scrubbed like
 /// every spawn (`identity::scrub_git_env`) and the meaning matches `lane_reset`'s probes — no
 /// fetch, untracked files counted, `None` on any failure.
-fn git_output(dir: &Path, args: &[&str]) -> Option<String> {
+pub(super) fn git_output(dir: &Path, args: &[&str]) -> Option<String> {
     // `MOAI_GIT_BIN` names the git program for a runner whose child carries no `PATH`
     // (the same seam as `MOAI_FORGE_GH_BIN`); everyone else spawns `git`.
     let program = std::env::var("MOAI_GIT_BIN").unwrap_or_else(|_| "git".to_string());

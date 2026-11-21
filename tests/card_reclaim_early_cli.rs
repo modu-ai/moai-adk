@@ -118,6 +118,24 @@ impl World {
         );
     }
 
+    /// The state of a session whose launcher really ran and has exited: registered under
+    /// `name`, a `.live` file nobody locks, and a registry lease that has ended. Nothing but
+    /// this state is a proof that a session is gone (audit of the early reclaim, B1).
+    fn register_gone(&self, name: &str, session: &str) {
+        self.register(name, Some(session));
+        fs::write(self.sessions_dir().join(format!("{name}.live")), b"").unwrap();
+        self.set_registry_lease(name, -60);
+    }
+
+    /// Moves the registry lease of `name` to `offset` seconds from now (negative: ended).
+    fn set_registry_lease(&self, name: &str, offset: i64) {
+        let file = self.sessions_dir().join(format!("{name}.json"));
+        let mut entry: Value = serde_json::from_str(&fs::read_to_string(&file).unwrap()).unwrap();
+        let now = self.rows("SELECT unixepoch()")[0][0].as_i64().unwrap();
+        entry["lease_until"] = json!(now + offset);
+        fs::write(&file, serde_json::to_vec(&entry).unwrap()).unwrap();
+    }
+
     /// A ready card taken by `holder` with the worktree `worktree` (none: no worktree).
     fn taken(&self, holder: &str, worktree: Option<&Path>, scope: &str) -> String {
         let added = result(&self.card(None, &["add", "--title", "t", "--scope", scope]));
@@ -267,7 +285,7 @@ fn sleeper_in(dir: &Path) -> Child {
 fn early_reclaim_succeeds() {
     let w = world();
     let card = w.taken(&sid(1), Some(&w.wt), "src/early/");
-    w.register(NAME, Some(&sid(1)));
+    w.register_gone(NAME, &sid(1));
     let lease_before = w.rows("SELECT lease_until FROM reservation WHERE generation = 1");
     let now = w.rows("SELECT unixepoch()")[0][0].as_i64().unwrap();
     assert!(
@@ -297,7 +315,7 @@ fn early_reclaim_with_a_gone_worktree() {
     let w = world();
     let gone = w.host.path().join("not-here");
     let card = w.taken(&sid(1), Some(&gone), "src/gone/");
-    w.register(NAME, Some(&sid(1)));
+    w.register_gone(NAME, &sid(1));
     let got = result(&w.reclaim(&sid(2), &card, "1"));
     let reason = got["reason"].as_str().unwrap();
     assert!(
@@ -347,7 +365,7 @@ fn refused_without_the_liveness_proof() {
 fn refused_without_the_worktree_proof() {
     let w = world();
     let card = w.taken(&sid(1), Some(&w.wt), "src/dirty/");
-    w.register(NAME, Some(&sid(1)));
+    w.register_gone(NAME, &sid(1));
     let before = w.dump();
 
     fs::write(w.wt.join("new.txt"), "x\n").unwrap();
@@ -361,7 +379,7 @@ fn refused_without_the_worktree_proof() {
 
     // No worktree recorded: nothing shows that no work is left.
     let other = w.taken(&sid(3), None, "src/nowt/");
-    w.register("agent-4", Some(&sid(3)));
+    w.register_gone("agent-4", &sid(3));
     let before = w.dump();
     let m = w.refused_and_unchanged(w.reclaim(&sid(4), &other, "1"), "lease", &before);
     assert!(m.contains("records no worktree"), "{m}");
@@ -373,7 +391,7 @@ fn refused_without_the_worktree_proof() {
 fn process_in_the_worktree() {
     let w = world();
     let card = w.taken(&sid(1), Some(&w.wt), "src/proc/");
-    w.register(NAME, Some(&sid(1)));
+    w.register_gone(NAME, &sid(1));
     let before = w.dump();
 
     let mut inside = sleeper_in(&w.wt);
@@ -398,7 +416,7 @@ fn process_in_the_worktree() {
 fn a_listed_tool_cache_is_not_work() {
     let w = world();
     let card = w.taken(&sid(1), Some(&w.wt), "src/cache/");
-    w.register(NAME, Some(&sid(1)));
+    w.register_gone(NAME, &sid(1));
     let before = w.dump();
 
     let cache_dir = w.wt.join(".moai-cli/state/github");
@@ -439,7 +457,7 @@ fn a_listed_tool_cache_is_not_work() {
 fn event_names_the_proof() {
     let w = world();
     let card = w.taken(&sid(1), Some(&w.wt), "src/event/");
-    w.register(NAME, Some(&sid(1)));
+    w.register_gone(NAME, &sid(1));
     let schema = |w: &World| {
         (
             w.rows("SELECT type, name FROM sqlite_master ORDER BY 1, 2"),
@@ -467,6 +485,8 @@ fn event_names_the_proof() {
         json!({
             "liveness": "launcher-exited",
             "session_name": NAME,
+            "live_file": true,
+            "registry_lease_ended": true,
             "worktree": "clean",
             "processes_in_worktree": 0
         }),
@@ -500,7 +520,7 @@ fn early_reclaim_counts() {
     let w = world();
     let card = w.taken(&sid(1), Some(&w.wt), "src/limit/");
     for n in 1..=4u64 {
-        w.register(&format!("agent-{n}"), Some(&sid(n)));
+        w.register_gone(&format!("agent-{n}"), &sid(n));
     }
     for n in 1..=3u64 {
         let g = n.to_string();
@@ -521,7 +541,7 @@ fn early_reclaim_counts() {
 fn own_live_lease_is_not_an_early_reclaim() {
     let w = world();
     let card = w.taken(&sid(1), Some(&w.wt), "src/own/");
-    w.register(NAME, Some(&sid(1)));
+    w.register_gone(NAME, &sid(1));
     let before = w.dump();
     w.refused_and_unchanged(w.reclaim(&sid(1), &card, "1"), "lease", &before);
 }
@@ -532,7 +552,7 @@ fn own_live_lease_is_not_an_early_reclaim() {
 fn reason_too_long() {
     let w = world();
     let card = w.taken(&sid(1), Some(&w.wt), "src/long/");
-    w.register(NAME, Some(&sid(1)));
+    w.register_gone(NAME, &sid(1));
     let suffix =
         " [early reclaim: launcher exited (session agent-1); worktree clean; no process in it]";
     let room = 500 - suffix.chars().count();
@@ -606,4 +626,133 @@ fn reclaim_early_holder_must_match() {
     let plain = reservation::reclaim(&mut w, card, "other", 2, "leader", "r", 3600).unwrap_err();
     assert!(matches!(plain, ReclaimError::LeaseLive { .. }), "{plain}");
     assert_eq!(count(&mut w), events + 1, "a refusal wrote an event");
+}
+
+/// REQ-13 (audit of the early reclaim, B1): a session registered with `session-register` alone
+/// has no `.live` file, and the lookup answers `launcher-exited` for it; that is no proof. A
+/// session that is running, with a clean and pushed worktree, keeps its reservation. A `.live`
+/// file nobody locks is still not enough while the registry lease runs; both together are the
+/// dead state, and only that is reclaimed.
+#[test]
+fn a_session_without_a_launcher_record_is_not_gone() {
+    let w = world();
+    let card = w.taken(&sid(1), Some(&w.wt), "src/live/");
+    let before = w.dump();
+
+    // The probe of the audit: a running lease, no `.live` file, a clean pushed worktree.
+    w.register(NAME, Some(&sid(1)));
+    let bytes = w.registry_bytes();
+    let m = w.refused_and_unchanged(w.reclaim(&sid(2), &card, "1"), "lease", &before);
+    assert!(m.contains("no launcher lock file"), "{m}");
+    assert_eq!(
+        w.registry_bytes(),
+        bytes,
+        "the proof wrote into the registry"
+    );
+
+    // The lock file exists and nobody holds it, but the registry lease has not ended.
+    fs::write(w.sessions_dir().join(format!("{NAME}.live")), b"").unwrap();
+    let bytes = w.registry_bytes();
+    let m = w.refused_and_unchanged(w.reclaim(&sid(2), &card, "1"), "lease", &before);
+    assert!(m.contains("registry lease"), "{m}");
+    assert!(m.contains("has not ended"), "{m}");
+    assert_eq!(
+        w.registry_bytes(),
+        bytes,
+        "the proof wrote into the registry"
+    );
+
+    // The lease ends too: the dead state, reclaimed.
+    w.set_registry_lease(NAME, -1);
+    let got = result(&w.reclaim(&sid(2), &card, "1"));
+    assert_eq!(got["reservation"]["generation"], json!(2));
+}
+
+/// REQ-14 (audit of the early reclaim, N1): work the takeover gate leaves out keeps the live
+/// lease refused: a stash entry of the worktree's branch, unpushed commits on a local branch
+/// nobody has checked out, and an ignored entry that is not on the regenerable list. The
+/// regenerable ignored entries and another worktree's own unpushed branch are no work.
+#[test]
+fn work_the_takeover_gate_misses_keeps_the_early_reclaim_refused() {
+    let w = world();
+    fs::write(w.wt.join(".gitignore"), "scratch/\n.moai/logs/\ntarget/\n").unwrap();
+    git_in(&w.wt, &["add", ".gitignore"]);
+    git_in(&w.wt, &["commit", "-q", "-m", "ignore list"]);
+    git_in(&w.wt, &["push", "-q", "origin", "main"]);
+    let card = w.taken(&sid(1), Some(&w.wt), "src/work/");
+    w.register_gone(NAME, &sid(1));
+    let before = w.dump();
+
+    // Regenerable ignored entries sit there the whole time and block nothing.
+    for dir in ["target", ".moai/logs"] {
+        fs::create_dir_all(w.wt.join(dir)).unwrap();
+        fs::write(w.wt.join(dir).join("out.txt"), "x\n").unwrap();
+    }
+
+    // A stash entry of this worktree's branch.
+    fs::write(w.wt.join("a.txt"), "draft\n").unwrap();
+    git_in(&w.wt, &["stash", "push", "-q", "-m", "draft"]);
+    let m = w.refused_and_unchanged(w.reclaim(&sid(2), &card, "1"), "stash", &before);
+    assert!(m.contains("branch main"), "{m}");
+    git_in(&w.wt, &["stash", "drop", "-q"]);
+
+    // Unpushed commits on a local branch that no worktree has checked out.
+    git_in(&w.wt, &["checkout", "-q", "-b", "other"]);
+    fs::write(w.wt.join("o.txt"), "o\n").unwrap();
+    git_in(&w.wt, &["add", "o.txt"]);
+    git_in(&w.wt, &["commit", "-q", "-m", "on other"]);
+    git_in(&w.wt, &["checkout", "-q", "main"]);
+    let m = w.refused_and_unchanged(w.reclaim(&sid(2), &card, "1"), "branch other", &before);
+    assert!(m.contains("unpushed"), "{m}");
+    git_in(&w.wt, &["push", "-q", "origin", "other"]);
+
+    // An ignored file that is not on the regenerable list.
+    fs::create_dir_all(w.wt.join("scratch")).unwrap();
+    fs::write(w.wt.join("scratch/draft.md"), "x\n").unwrap();
+    let m = w.refused_and_unchanged(w.reclaim(&sid(2), &card, "1"), "ignored entry", &before);
+    assert!(m.contains("scratch/"), "{m}");
+    fs::remove_file(w.wt.join("scratch/draft.md")).unwrap();
+    fs::remove_dir(w.wt.join("scratch")).unwrap();
+
+    // Another worktree's own branch with an unpushed commit is that worktree's work.
+    let side = w.host.path().join("wt-side");
+    git_in(
+        &w.wt,
+        &[
+            "worktree",
+            "add",
+            "-q",
+            "-b",
+            "side",
+            side.to_str().unwrap(),
+        ],
+    );
+    fs::write(side.join("s.txt"), "s\n").unwrap();
+    git_in(&side, &["add", "s.txt"]);
+    git_in(&side, &["commit", "-q", "-m", "on side"]);
+
+    let got = result(&w.reclaim(&sid(2), &card, "1"));
+    assert_eq!(got["reservation"]["generation"], json!(2));
+}
+
+/// N4 of the audit: the proof's own worktree check is what refuses a dirty worktree, not the
+/// takeover gate that runs before it. Asked directly, without that gate, a clean worktree is
+/// proven and the same worktree with an untracked file is not.
+#[test]
+fn the_early_proof_checks_the_worktree_by_itself() {
+    use moai_cli::card::early_reclaim::{assess, Early};
+    let w = world();
+    let card = w.taken(&sid(1), Some(&w.wt), "src/own/");
+    w.register_gone(NAME, &sid(1));
+    let id: i64 = card.trim_start_matches("C-").parse().unwrap();
+
+    match assess(&w.project, w.home.path(), id, &sid(2)) {
+        Early::Proven(proof) => assert_eq!(proof.detail["worktree"], json!("clean")),
+        other => panic!("a clean worktree is proven: {other:?}"),
+    }
+    fs::write(w.wt.join("draft.txt"), "x\n").unwrap();
+    match assess(&w.project, w.home.path(), id, &sid(2)) {
+        Early::Unproven(why) => assert!(why.contains("worktree dirty"), "{why}"),
+        other => panic!("a dirty worktree is not proven: {other:?}"),
+    }
 }

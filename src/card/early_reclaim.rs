@@ -84,14 +84,15 @@ pub fn assess(project: &Path, home: &Path, card_id: i64, to_holder: &str) -> Ear
     if reservation::lease_ended(cur.lease_until, now) {
         return Early::NotNeeded;
     }
-    match prove(project, &cur) {
+    match prove(project, &cur, now) {
         Ok(proof) => Early::Proven(proof),
         Err(why) => Early::Unproven(why),
     }
 }
 
-/// The three proofs for one live reservation, in the order the refusal names them.
-fn prove(project: &Path, cur: &reservation::Reservation) -> Result<Proof, String> {
+/// The three proofs for one live reservation, in the order the refusal names them. `now` is the
+/// ledger's clock, the one the reservation lease is read against.
+fn prove(project: &Path, cur: &reservation::Reservation, now: i64) -> Result<Proof, String> {
     let Some(worktree) = cur.worktree.as_deref().filter(|w| !w.is_empty()) else {
         return Err(
             "the reservation records no worktree, so nothing shows that no work is \
@@ -113,6 +114,28 @@ fn prove(project: &Path, cur: &reservation::Reservation) -> Result<Proof, String
             ));
         }
     }
+    // The lookup above answers `launcher-exited` for every session that has no `.live` file:
+    // one registered with `session-register` alone (an Orca pane, a plain `claude`) never had a
+    // launcher, and is not gone for that. The launcher counts only when its lock file exists
+    // (and nobody holds it, the answer above) and the registry lease of the session has ended
+    // (SPEC-20261120-reclaim-dead-holder REQ-13; audit of C-189, B1).
+    let trace =
+        crate::lane_registry::launcher_trace_of_session(project, &cur.holder).map_err(|e| {
+            format!("the holder session's launcher record cannot be read, never a proof: {e}")
+        })?;
+    if !trace.live_file {
+        return Err(format!(
+            "the holder session {name} has no launcher lock file (.live), so nothing shows that a \
+             launcher ever ran for it; a session registered with session-register alone is never \
+             proven gone"
+        ));
+    }
+    if trace.lease_until > now {
+        return Err(format!(
+            "the registry lease of the holder session {name} has not ended ({} s left)",
+            trace.lease_until - now
+        ));
+    }
     // The clean-or-gone gate every takeover passes: a path that exists with uncommitted or
     // unpushed work, or that cannot be told apart from "gone", is refused.
     worktree_gate(Some(worktree)).map_err(|e| e.replace("card conflict in ", ""))?;
@@ -120,6 +143,9 @@ fn prove(project: &Path, cur: &reservation::Reservation) -> Result<Proof, String
     let gone = !path.try_exists().unwrap_or(true);
     let shape = if gone { "gone" } else { "clean" };
     if !gone {
+        // A live lease makes a missed draft cost more than an expired one does, so the early
+        // path also counts what the takeover gate leaves out (REQ-14).
+        remaining_work(path)?;
         let here = processes_in(path)?;
         if here > 0 {
             return Err(format!(
@@ -135,10 +161,120 @@ fn prove(project: &Path, cur: &reservation::Reservation) -> Result<Proof, String
         detail: json!({
             "liveness": "launcher-exited",
             "session_name": name,
+            "live_file": true,
+            "registry_lease_ended": true,
             "worktree": shape,
             "processes_in_worktree": 0,
         }),
     })
+}
+
+/// Ignored entries of a worktree that a tool rebuilds by itself, so one left behind is no draft:
+/// the log folder, the cargo output folder and a Python bytecode folder. Every other ignored
+/// entry is a file somebody chose to keep out of git, so it counts as work. `entry` is a folder
+/// entry of `git status` (it ends with a slash) or a single file below one; a folder name counts
+/// as a whole component, so `my__pycache__/` and `src/target/` are not on the list.
+fn is_regenerable_ignored(entry: &str) -> bool {
+    entry.starts_with(".moai/logs/")
+        || entry.starts_with("target/")
+        || entry.starts_with("__pycache__/")
+        || entry.contains("/__pycache__/")
+}
+
+/// What the early reclaim counts as work beyond the takeover gate (REQ-14): a stash entry of the
+/// worktree's own branch, unpushed commits on a local branch nobody has checked out (the
+/// checked-out ones are other worktrees' own work, and HEAD's is the gate's), and an ignored
+/// entry that is not on the regenerable list. `Err` names the first one found, or what could not
+/// be read: unreadable is unproven, never "none".
+fn remaining_work(path: &Path) -> Result<(), String> {
+    let unreadable = |what: &str| format!("git could not read {what} of the worktree");
+    let git = |args: &[&str], what: &str| {
+        super::dispatch::git_output(path, args).ok_or_else(|| unreadable(what))
+    };
+    let head = git(&["rev-parse", "--abbrev-ref", "HEAD"], "its branch")?;
+    let head = head.trim();
+    let branch = if head == "HEAD" { "(no branch)" } else { head };
+    let stashes = git(&["stash", "list", "--format=%gs"], "the stash list")?
+        .lines()
+        .filter(|l| {
+            l.strip_prefix("WIP on ")
+                .or_else(|| l.strip_prefix("On "))
+                .is_some_and(|rest| {
+                    rest.strip_prefix(branch)
+                        .is_some_and(|r| r.starts_with(':'))
+                })
+        })
+        .count();
+    if stashes > 0 {
+        return Err(format!(
+            "the worktree holds {stashes} stash entr(ies) of branch {branch}, which a reclaim \
+             would orphan"
+        ));
+    }
+    let checked_out: Vec<String> = git(&["worktree", "list", "--porcelain"], "the worktree list")?
+        .lines()
+        .filter_map(|l| l.strip_prefix("branch refs/heads/"))
+        .map(str::to_string)
+        .collect();
+    let branches = git(
+        &["for-each-ref", "refs/heads", "--format=%(refname:short)"],
+        "the branches",
+    )?;
+    for local in branches
+        .lines()
+        .filter(|b| !checked_out.iter().any(|c| c == b))
+    {
+        let ahead = git(
+            &["rev-list", "--count", local, "--not", "--remotes"],
+            "a branch",
+        )?
+        .trim()
+        .parse::<u64>()
+        .map_err(|_| unreadable("a branch"))?;
+        if ahead > 0 {
+            return Err(format!(
+                "the local branch {local} holds {ahead} unpushed commit(s) and no worktree has it \
+                 checked out, which a reclaim would orphan"
+            ));
+        }
+    }
+    let ignored = git(
+        &["status", "--porcelain=v1", "--ignored=traditional"],
+        "the ignored files",
+    )?;
+    for entry in ignored.lines().filter_map(|l| l.strip_prefix("!! ")) {
+        if is_regenerable_ignored(entry) {
+            continue;
+        }
+        // git folds a folder that holds nothing but ignored files into one entry (`.moai/` when
+        // only its log folder is ignored); look inside it, file by file, before calling it work.
+        let draft = if entry.ends_with('/') {
+            let files = git(
+                &[
+                    "ls-files",
+                    "--others",
+                    "--ignored",
+                    "--exclude-standard",
+                    "--",
+                    entry,
+                ],
+                "the ignored files",
+            )?;
+            files
+                .lines()
+                .find(|f| !is_regenerable_ignored(f))
+                .map(str::to_string)
+        } else {
+            Some(entry.to_string())
+        };
+        if let Some(draft) = draft {
+            return Err(format!(
+                "the worktree holds an ignored entry that may be a draft ({draft}), which a \
+                 reclaim would orphan"
+            ));
+        }
+    }
+    Ok(())
 }
 
 /// How many running processes have `dir`, or a folder below it, as their working folder.
@@ -151,16 +287,62 @@ pub fn processes_in(dir: &Path) -> Result<usize, String> {
     Ok(cwds.iter().filter(|c| c.starts_with(&dir)).count())
 }
 
+/// How long the process check waits for `lsof`: a wedged `lsof` (it can stall on a hung network
+/// mount) must make the answer "unproven", never hang `card reclaim`.
+#[cfg(target_os = "macos")]
+const LSOF_LIMIT: std::time::Duration = std::time::Duration::from_secs(20);
+
+/// The standard output of `cmd`, or `Err` when it cannot start or has not ended within `limit`
+/// (it is killed then). The output is read on a thread of its own so a long answer never fills
+/// the pipe and looks like a hang; the exit code is not looked at, as `lsof`'s is no answer.
+#[cfg(any(target_os = "macos", test))]
+fn stdout_within(
+    mut cmd: std::process::Command,
+    limit: std::time::Duration,
+) -> Result<Vec<u8>, String> {
+    use std::io::Read;
+    let mut child = cmd
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::null())
+        .spawn()
+        .map_err(|e| e.to_string())?;
+    let mut pipe = child.stdout.take().ok_or("no output pipe")?;
+    let reader = std::thread::spawn(move || {
+        let mut bytes = Vec::new();
+        let _ = pipe.read_to_end(&mut bytes);
+        bytes
+    });
+    let deadline = std::time::Instant::now() + limit;
+    loop {
+        match child.try_wait() {
+            Ok(Some(_)) => break,
+            Ok(None) if std::time::Instant::now() < deadline => {
+                std::thread::sleep(std::time::Duration::from_millis(20));
+            }
+            Ok(None) => {
+                let _ = child.kill();
+                let _ = child.wait();
+                let _ = reader.join();
+                return Err(format!("it did not end within {} s", limit.as_secs_f32()));
+            }
+            Err(e) => return Err(e.to_string()),
+        }
+    }
+    reader
+        .join()
+        .map_err(|_| "its output could not be read".to_string())
+}
+
 /// The working folder of every process this user can see.
 #[cfg(target_os = "macos")]
 fn working_folders() -> Result<Vec<std::path::PathBuf>, String> {
     // `lsof` has a fixed home on macOS; a child without a PATH must still find it.
-    let out = std::process::Command::new("/usr/sbin/lsof")
-        .args(["-a", "-d", "cwd", "-Fn"])
-        .stdin(std::process::Stdio::null())
-        .output()
+    let mut cmd = std::process::Command::new("/usr/sbin/lsof");
+    cmd.args(["-a", "-d", "cwd", "-Fn"]);
+    let stdout = stdout_within(cmd, LSOF_LIMIT)
         .map_err(|e| format!("the process check could not run lsof: {e}"))?;
-    let text = String::from_utf8_lossy(&out.stdout);
+    let text = String::from_utf8_lossy(&stdout);
     // `-Fn` prints one `n<path>` line for every cwd it could read; a process it may not read
     // (another user's) is skipped by lsof itself and makes it exit 1, so the exit code alone
     // is no answer. An empty answer cannot be right: this very process has a folder.
@@ -262,6 +444,67 @@ mod tests {
             let _ = c.wait();
         }
         assert_eq!(processes_in(&tree).unwrap(), 0, "after they end");
+    }
+
+    /// N3 of the audit (REQ-4): a command that does not end within the limit is killed and the
+    /// answer is an error (unproven), a command that ends in time gives its whole output, even
+    /// when it is longer than a pipe holds.
+    #[test]
+    fn stdout_within_kills_a_command_that_overruns() {
+        use std::time::{Duration, Instant};
+        let started = Instant::now();
+        let mut slow = Command::new("sleep");
+        slow.arg("30");
+        let err = stdout_within(slow, Duration::from_millis(300)).unwrap_err();
+        assert!(err.contains("did not end within"), "{err}");
+        assert!(
+            started.elapsed() < Duration::from_secs(10),
+            "the command was not stopped at the limit"
+        );
+        let mut echo = Command::new("echo");
+        echo.arg("hi");
+        assert_eq!(
+            stdout_within(echo, Duration::from_secs(20)).unwrap(),
+            b"hi\n"
+        );
+        let mut long = Command::new("head");
+        long.args(["-c", "300000", "/dev/zero"]);
+        assert_eq!(
+            stdout_within(long, Duration::from_secs(20)).unwrap().len(),
+            300_000,
+            "a long answer filled the pipe"
+        );
+        let missing = Command::new("/nonexistent/moai-probe");
+        assert!(stdout_within(missing, Duration::from_secs(1)).is_err());
+    }
+
+    /// REQ-14: only the three named regenerable entries are not drafts.
+    #[test]
+    fn only_listed_ignored_entries_are_regenerable() {
+        for ok in [
+            ".moai/logs/",
+            "target/",
+            "tests/__pycache__/",
+            "__pycache__/",
+            ".moai/logs/a.log",
+            "target/debug/moai",
+            "tools/__pycache__/x.pyc",
+        ] {
+            assert!(is_regenerable_ignored(ok), "{ok}");
+        }
+        for work in [
+            "scratch/",
+            "draft.md",
+            "target",
+            ".moai/",
+            ".moai/other.txt",
+            ".moai/logs",
+            "src/target/",
+            "my__pycache__/",
+            "notes/__pycache__",
+        ] {
+            assert!(!is_regenerable_ignored(work), "{work}");
+        }
     }
 
     #[test]
