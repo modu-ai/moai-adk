@@ -30,7 +30,7 @@ created: 2026-11-21
 - AC-1 (REQ-1, REQ-2, REQ-3): the test reads the manifest's markdown files and the five agent definitions, and finds the order only in `references/internal/sdd.md`; a copy placed in `references/internal/review.md` and a copy placed in `agents/audit.md` each make it fail.
   verify: `cargo test --locked --offline --test sdd_guidance stage_order_is_written_once`
 - AC-2 (REQ-3): the repository-scan list still holds: no walking test is added.
-  verify: `python3 -I -m unittest tests.repo_scans_test`
+  verify: `python3 -m unittest tests.repo_scans_test`
 - AC-3 (REQ-4): the manifest matches the package.
   verify: `python3 -I tools/source_manifest.py check`
 
@@ -61,4 +61,21 @@ created: 2026-11-21
 
 ## Result
 
-(written after the checks)
+Filled in by the implementation lane on 2026-11-21 (`date -u`); the audit checks it again. The SPEC is `05a7a626e6`, the test `32e7f515ac`, both on the local tip `6c395a170b` (the branch was started on it; the later tip `f8b0b9c152` changes no file this branch changes, so no merge commit is needed). Evidence files are in this worktree's `target/notes/`.
+
+Gap shown first (`gap.out`, on the tip's narrow test, files restored after each run): a copy of the full order added to `skills/moai/references/internal/review.md` — the narrow test passed (not caught); the same copy in `agents/audit.md` — passed (not caught).
+
+- AC-1: met — `cargo test --locked --offline --test sdd_guidance` (`green1.out`, no name filter): 12 passed, 0 failed; `stage_order_is_written_once` is one of them. The same two copies against the widened test (`gap2.out`): each makes `stage_order_is_written_once` fail (exit 101, caught), files restored (`restored: clean = True`).
+- AC-2: met — `python3 -m unittest tests.repo_scans_test` (`repo_scans.out`): 6 tests, OK. The first call of mine used `-I`, which hides the working folder from the import path and failed with `No module named 'tests'`; the repository's own call form has no `-I`, and this SPEC's verify line was corrected to it.
+- AC-3: met — `python3 -I tools/source_manifest.py check` prints `{"conflicted": false, "changed": [], "dropped": [], "ok": true}` on the final head.
+
+### Checks
+
+`moai check affected 6c395a170b..32e7f515ac` (the branch's own build of the binary, `--max 2`, `CLAUDE_CODE_SESSION_ID` unset), summary line as printed: `check-affected base=6c395a170b77 head=32e7f515acee targets=43 py=8 scans=listed:42 diff_check=0 fmt=0 clippy=0 test_lib=0 test_bins=0 test_targets=0 build_cli=0 python=0 result=PASS`. After that head only this Result and the verify line were added (one docs commit).
+
+No skill text, agent definition or manifest row changed, so the wider test passes on the tip as it is. The test names the five base agent definitions; a sixth agent definition is not read until its name is added (the Risks line says so).
+
+### Not run
+
+- Walking the repository for markdown files outside the manifest's list and `agents/`: not done on purpose (the repository-scan table would need an entry); a markdown file added to the package is listed in the manifest by the manifest check, so the test reads it.
+- A second run of the same tests on the same tree: not repeated.
