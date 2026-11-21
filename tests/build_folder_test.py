@@ -910,6 +910,83 @@ class AuditPlaceTest(unittest.TestCase):
         self.assertTrue(got["created"], got)
         self.assertEqual(self.head_in_place(), self.c2)
 
+    def test_forgetting_a_deleted_place_leaves_other_missing_worktrees_registered(self):
+        # Audit N9: only the place's own registration may be forgotten; another worktree whose
+        # folder is away for a moment (an unplugged disk) stays registered.
+        import shutil
+        self.answer(self.call(self.c1))
+        shutil.rmtree(self.place)
+        lane = self.fx.home.parent / "lane"
+        git(self.fx.repo, "worktree", "add", "-q", "--detach", str(lane), self.c1)
+        away = self.fx.home.parent / "lane-away"
+        lane.rename(away)
+        got = self.answer(self.call(self.c2))
+        self.assertTrue(got["created"], got)
+        self.assertIn(f"worktree {lane}\n", git(self.fx.repo, "worktree", "list", "--porcelain"))
+        away.rename(lane)
+        self.assertEqual(git(lane, "rev-parse", "--is-inside-work-tree").strip(), "true")
+
+    def test_a_refusal_never_removes_a_place_that_another_run_made(self):
+        # Audit N8: the clean-up after a refusal removes only a place this run's own
+        # `worktree add` made; here another run wins the creation and this run's add fails.
+        tool = load_tool()
+        real_git = tool.git
+
+        def racing(cwd, *args):
+            if args[:2] == ("worktree", "add"):
+                real_git(cwd, "worktree", "add", "--detach", args[-2], self.c2)  # the other run
+                raise tool.Refused("git worktree add failed: lost the race")
+            return real_git(cwd, *args)
+
+        env = {"HOME": str(self.fx.home), "GIT_CONFIG_GLOBAL": "/dev/null",
+               "GIT_CONFIG_SYSTEM": "/dev/null"}
+        start = os.getcwd()
+        os.chdir(self.fx.wt)
+        try:
+            with mock.patch.dict(os.environ, env), mock.patch.object(tool, "git", racing):
+                with self.assertRaises(tool.Refused):
+                    tool.cmd_audit_place("a1", self.c1)
+        finally:
+            os.chdir(start)
+        self.assertEqual(self.head_in_place(), self.c2)
+
+    def test_an_edited_or_untracked_gitignore_counts_as_a_rule_change(self):
+        # Audit N10: the rules in force are the working files, not only the two heads.
+        self.answer(self.call(self.c2))
+        (self.place / "target").mkdir()
+        (self.place / "target" / "e.log").write_text("keep\n")
+        (self.place / ".gitignore").write_text("target/\nevidence/\n")
+        (self.place / "evidence").mkdir()
+        (self.place / "evidence" / "e.log").write_text("keep\n")
+        out = self.call(self.c3)
+        self.assertEqual(out.returncode, 1, out.stdout)
+        self.assertIn("ignore_rules_changed", out.stderr)
+        self.assertEqual(self.head_in_place(), self.c2)
+        self.assertEqual((self.place / "evidence" / "e.log").read_text(), "keep\n")
+        import shutil
+        shutil.rmtree(self.place / "evidence")
+        (self.place / ".gitignore").write_text("target/\n")
+        (self.place / "sub").mkdir()
+        (self.place / "sub" / ".gitignore").write_text("*.log\n")
+        (self.place / "sub" / "e.log").write_text("keep\n")
+        out = self.call(self.c3)
+        self.assertEqual(out.returncode, 1, out.stdout)
+        self.assertIn("ignore_rules_changed", out.stderr)
+        self.assertEqual(self.head_in_place(), self.c2)
+        self.assertEqual((self.place / "sub" / "e.log").read_text(), "keep\n")
+
+    def test_a_foreign_build_folder_record_refuses_before_an_existing_place_moves(self):
+        # Audit survivor: the pre-check of the build folder record also guards a place that
+        # already exists.
+        self.answer(self.call(self.c1))
+        path = self.folder / ".moai-build.json"
+        record = json.loads(path.read_text())
+        record["worktree"] = "/some/other/worktree"
+        path.write_text(json.dumps(record))
+        out = self.call(self.c2)
+        self.assertEqual(out.returncode, 1, out.stdout)
+        self.assertEqual(self.head_in_place(), self.c1)
+
     def test_the_owner_marker_names_the_place(self):
         self.answer(self.call(self.c1, extra_env={"CARGO_HOME": "/cargo/one"}))
         mark = json.loads((self.folder / ".moai-audit-place.json").read_text())

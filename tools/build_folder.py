@@ -439,8 +439,9 @@ def cmd_audit_place(name, head):
         if not real_dir(parent, create=False):
             break  # the rest is made below, after every refusal has been checked
     created = not os.path.lexists(place)
-    if created and place_real in registered_worktrees("."):
-        git(".", "worktree", "prune")  # the folder was deleted by hand: forget its registration
+    # A folder deleted by hand stays registered: `worktree add --force` takes that one entry over
+    # and leaves every other registration (a disk that is unplugged for a moment) alone.
+    stale = created and place_real in registered_worktrees(".")
     # The build folder is looked at before anything is made or moved: a link on its path or a
     # record of another worktree refuses while nothing has changed yet.
     wt_name = safe(place.name)
@@ -477,11 +478,14 @@ def cmd_audit_place(name, head):
     start = os.getcwd()
     previous = None
     held = []
+    made = False
     try:
         if created:
             for parent in parents:
                 real_dir(parent, create=True)
-            git(".", "worktree", "add", "--detach", str(place), head)
+            add = ["worktree", "add", "--detach"] + (["--force"] if stale else [])
+            git(".", *add, str(place), head)
+            made = True  # only from here on is the place this run's own
             taken_back = 0
         else:
             os.chdir(place)
@@ -496,12 +500,19 @@ def cmd_audit_place(name, head):
             changed = [l for l in git(place, "diff", "--name-only", "--no-renames", previous, head)
                        .splitlines() if l]
             # Files git ignores stay; they stay safe only while the ignore rules do not change,
-            # because `clean` after the move reads the new head's rules.
+            # because `clean` after the move reads the new head's rules. The rules in force are
+            # the files in the place too: an edited or an untracked .gitignore counts.
+            def is_rule_file(path):
+                return path == ".gitignore" or path.endswith("/.gitignore")
+
+            before = status_lines(place)
             if git(place, "ls-files", "--others", "--ignored", "--exclude-standard", "--directory") \
-                    and any(c == ".gitignore" or c.endswith("/.gitignore") for c in changed):
-                raise Refused(f"ignore_rules_changed: {head} changes a .gitignore while {place} "
-                              "holds ignored files; nothing was changed")
-            taken_back = len(status_lines(place))
+                    and (any(is_rule_file(c) for c in changed)
+                         or any(is_rule_file(l.strip().partition(" ")[2].strip().strip('"'))
+                                for l in before)):
+                raise Refused(f"ignore_rules_changed: {head} or the files of {place} change a "
+                              ".gitignore while it holds ignored files; nothing was changed")
+            taken_back = len(before)
             git(place, "checkout", "--detach", "--force", head)
             git(place, "clean", "-ffd")
         os.chdir(place)
@@ -520,9 +531,9 @@ def cmd_audit_place(name, head):
         write_place_record(folder, {"schema_version": 1, "place": place_real,
                                     "cargo_home": wanted, "head": head})
     except BaseException:
-        if created and os.path.lexists(place):
-            # This run made the place: a refusal after that takes it back, so a later call is
-            # not stuck on a half-made place.
+        if made and os.path.lexists(place):
+            # This run's own `worktree add` made the place: a refusal after that takes it back, so
+            # a later call is not stuck on a half-made place.
             os.chdir(start)
             try:
                 git(start, "worktree", "remove", "--force", str(place))
