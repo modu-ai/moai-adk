@@ -38,8 +38,7 @@ fn put_go_hook(root: &Path) {
     let path = hooks_dir(root).join("pre-commit");
     fs::write(&path, GO_PRE_COMMIT).expect("write hook");
     fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).expect("chmod");
-    fs::write(hooks_dir(root).join(".moai-pre-commit.sha256"), HASH_LINE)
-        .expect("write hash file");
+    fs::write(hooks_dir(root).join(".moai-pre-commit.sha256"), HASH_LINE).expect("write hash file");
 }
 
 /// Runs one verb of the built binary in the repository; answers (exit code, envelope).

@@ -505,16 +505,25 @@ fn revert_switch_runs_alone_and_is_refused_beside_a_confirming_flag() {
         [None, None, None, Some("x")],
     ];
     for [c, cc, ch, cs] in flags {
-        let e =
-            update_command_switch(&h.root, c, cc, ch, cs, None, Some(STAMP), false, ask)
-                .unwrap_err();
+        let e = update_command_switch(&h.root, c, cc, ch, cs, None, Some(STAMP), false, ask)
+            .unwrap_err();
         assert!(e.contains("cannot be combined"), "{e}");
         assert_eq!(h.read(), V2, "nothing changed");
         assert!(h.saved(STAMP).exists());
     }
     // Alone it runs without any installed package: only the saved copy and `moai` are read.
-    let r = update_command_switch(&h.root, None, None, None, None, None, Some(STAMP), false, ask)
-        .unwrap();
+    let r = update_command_switch(
+        &h.root,
+        None,
+        None,
+        None,
+        None,
+        None,
+        Some(STAMP),
+        false,
+        ask,
+    )
+    .unwrap();
     assert_eq!(r["mode"], json!("revert_switch"), "{r}");
     assert_eq!(r["switch_result"]["state"], json!("reverted"), "{r}");
     assert_eq!(h.read(), V1);
