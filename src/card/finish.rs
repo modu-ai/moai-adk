@@ -10,9 +10,13 @@
 //!   file under the reports folder of the user level home or under the project folder) or
 //!   `--evidence-note REF` (a report or decision note of the card), and refuses `--head`.
 //!
-//! Every open criterion needs one `--met N=REF`. All checks come before the first write (the git
-//! proof and the files here, the criteria, the reservation and the notes in
-//! [`workflow::finish`]), so a refusal leaves every ledger table as it was.
+//! Every open criterion needs one `--met N=REF` to close the card. A card that changes the
+//! repository whose open criterion has no met option still has its proven landing recorded (once)
+//! and the answer says `closed: false` and which criteria are open; a research or audit card
+//! refuses instead. `--generation N` is checked against the card's newest reservation. All checks
+//! come before the first write (the git proof and the files here, the criteria, the generation,
+//! the reservation and the notes in [`workflow::finish`]), so a refusal leaves every ledger table
+//! as it was.
 
 use super::command::open_for_write;
 use super::input::{self, CardRef};
@@ -42,6 +46,8 @@ pub struct FinishRequest<'a> {
     pub evidence_report: Option<&'a str>,
     /// `--evidence-note`: the `ref` of a note of the card.
     pub evidence_note: Option<&'a str>,
+    /// `--generation`: the generation of the card's newest reservation the caller expects.
+    pub generation: Option<i64>,
     /// `--by`: who finishes the card.
     pub by: &'a str,
 }
@@ -301,25 +307,36 @@ pub fn finish(
     };
 
     let evidence = proven.evidence();
-    let done = workflow::finish(&mut ledger, card_id, req.session, req.by, &evidence, &met)
-        .map_err(|e| match e {
-            WorkflowError::InvalidInput(why) => refused(why),
-            other => other.to_string(),
-        })?;
+    let done = workflow::finish(
+        &mut ledger,
+        card_id,
+        req.session,
+        req.by,
+        &evidence,
+        &met,
+        req.generation,
+    )
+    .map_err(|e| match e {
+        WorkflowError::InvalidInput(why) => refused(why),
+        other => other.to_string(),
+    })?;
     let (via, head, tip, report, note) = match &proven {
         Proven::Landing { head, tip } => ("landing", Some(head), Some(tip), None, None),
         Proven::MergedPr => ("merged_pr", None, None, None, None),
         Proven::Report { path } => ("report", None, None, Some(path), None),
         Proven::Note { reference } => ("note", None, None, None, Some(reference)),
     };
+    // A landing-only call applied no met option, so it reports none.
+    let applied: &[(i64, String)] = if done.closed { &met } else { &[] };
     Ok(json!({
         "action": "finish", "project_id": id,
         "name": input::card_name(card_id), "card_id": card_id,
-        "from": done.from, "state": "done", "rev": done.rev, "closed_at": done.closed_at,
+        "from": done.from, "state": done.state, "rev": done.rev, "closed_at": done.closed_at,
+        "closed": done.closed, "open_criteria": done.open_criteria,
         "via": via, "head": head, "tip": tip, "report": report, "note": note,
-        "met": met.iter().map(|(seq, text)| json!({"seq": seq, "evidence": text})).collect::<Vec<_>>(),
+        "met": applied.iter().map(|(seq, text)| json!({"seq": seq, "evidence": text})).collect::<Vec<_>>(),
         "by": req.by, "session": req.session,
         "previous": previous_json(&done.previous), "released": done.released,
-        "events": done.events, "writes": true,
+        "events": done.events, "writes": done.events > 0,
     }))
 }

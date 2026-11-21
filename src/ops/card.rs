@@ -701,11 +701,18 @@ enum Action {
     /// it holds is released, with one `card.landed` and one `card.finish` event naming `--by`.
     /// A card that changes the repository needs a landing: `--head`, else its merged pull request
     /// link, else the head `card landed` recorded, and git must show that head inside the
-    /// profile's integration branch (`work_flow` m-flow). A `research` or `audit` card gives
-    /// exactly one of `--evidence-report` (a file under `<HOME>/.moai/reports` or the project
-    /// folder) or `--evidence-note` (a report or decision note of the card) and no `--head`.
-    /// Another session's reservation whose lease has not ended is refused; your own, or one that
-    /// has ended, passes. Every refusal writes nothing.
+    /// profile's integration branch (`work_flow` m-flow). When an open criterion of such a card
+    /// has no `--met`, the proven landing is recorded once (one `card.landed` event with the
+    /// head, the tip, the generation and `--by`), nothing else changes, and the answer says
+    /// `closed` false and lists `open_criteria`. A `research` or `audit` card gives exactly one
+    /// of `--evidence-report` (a file under `<HOME>/.moai/reports` or the project folder) or
+    /// `--evidence-note` (a report or decision note of the card) and no `--head`, and every open
+    /// criterion needs its `--met`. Another session's reservation whose lease has not ended is
+    /// refused; your own, or one that has ended, passes. With `--generation N` the call is
+    /// refused before any write unless N is the generation of the card's newest reservation (0
+    /// for a card that never had one). A card that is already `done` is refused, and when two
+    /// calls reach one card at the same time one closes it and the other is refused. Every
+    /// refusal writes nothing.
     Finish {
         /// The card to close (`C-12`).
         card: String,
@@ -723,6 +730,10 @@ enum Action {
         /// The `ref` of a report or decision note of the card (research and audit cards only).
         #[arg(long)]
         evidence_note: Option<String>,
+        /// The generation of the card's newest reservation you expect (0 when it never had
+        /// one); another number refuses the call before any write. Not checked when absent.
+        #[arg(long)]
+        generation: Option<i64>,
         /// Who finishes the card (one line, 1..=200 characters).
         #[arg(long)]
         by: String,
@@ -1211,6 +1222,7 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             met,
             evidence_report,
             evidence_note,
+            generation,
             by,
             project,
             home,
@@ -1227,6 +1239,7 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
                     met: &met,
                     evidence_report: evidence_report.as_deref(),
                     evidence_note: evidence_note.as_deref(),
+                    generation,
                     by: &by,
                 },
             )

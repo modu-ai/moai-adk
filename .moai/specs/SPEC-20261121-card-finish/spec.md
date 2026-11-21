@@ -60,7 +60,7 @@ Revision 2 (leader decision of 2026-11-21, user order to repair card closing): g
 ## Scope
 
 - write: `.moai/specs/SPEC-20261121-card-finish/spec.md`
-- write: `src/card/finish.rs`, `src/card/landed.rs`, `src/card/mod.rs`, `src/card/command.rs`, `src/card/work.rs`, `src/card/spec_link.rs`, `src/ledger/workflow.rs`, `src/spec_close.rs`
+- write: `src/card/finish.rs`, `src/card/landed.rs`, `src/card/mod.rs`, `src/card/command.rs`, `src/card/work.rs`, `src/card/dispatch.rs`, `src/card/spec_link.rs`, `src/ledger/workflow.rs`, `src/spec_close.rs`
 - write: `tests/card_finish_cli.rs`, `docs/design-review/appendix/operations/card.md`
 - last step: the clap lines of the finish command in `src/ops/card.rs` only (the subcommand and its dispatch arm, with the generation option of REQ-10); another card holds that file and the leader approved these lines as a pair
 

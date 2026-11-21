@@ -1239,14 +1239,23 @@ pub struct Finished {
     pub card_id: i64,
     /// The state the card had before the call.
     pub from: String,
+    /// Whether the call closed the card. `false` for a landing-only call: an open criterion had
+    /// no met option, so only the landing was recorded and [`Finished::open_criteria`] names
+    /// what is still open.
+    pub closed: bool,
+    /// The state the card has after the call (`done` when it closed, `from` otherwise).
+    pub state: String,
     pub rev: i64,
-    pub closed_at: i64,
+    /// When the card closed; `None` for a landing-only call.
+    pub closed_at: Option<i64>,
+    /// The numbers of the criteria that are still open after the call (empty when it closed).
+    pub open_criteria: Vec<i64>,
     /// The reservation the card had before the call, when it had one.
     pub previous: Option<Reservation>,
     /// Whether that reservation was marked `released` by the call.
     pub released: bool,
     /// The events the call wrote: the landing event (unless the same head is already recorded
-    /// or a merged pull request is the evidence) and the finish event.
+    /// or a merged pull request is the evidence) and, when the card closed, the finish event.
     pub events: i64,
 }
 
@@ -1276,11 +1285,24 @@ pub fn finish_gate(
 /// marked met with the reference `met` gives for it, the evidence is recorded, the card walks
 /// the rows of the transition table to `done`, a held reservation is marked `released`, and two
 /// events are written (`card.landed` and `card.finish`; only the finish event when the same head
-/// is already recorded or a merged pull request is the evidence).
+/// is already recorded or a merged pull request is the evidence). The landing event records the
+/// head, the tip, the generation of the card's newest reservation and `by`.
+///
+/// When an open criterion has no met option and the evidence is a landing (a `Landing` head or
+/// a `MergedPr` link: a card that changes the repository), the call is a landing-only call: it
+/// writes the landing event once (nothing when the same head is already recorded), changes
+/// nothing else and answers `closed: false` with the open criteria. Report and note evidence
+/// keep the refusal. A met option that names a criterion that is not open, or one twice, is
+/// refused in both cases.
+///
+/// `generation`, when given, must equal the generation of the card's newest reservation (0 for a
+/// card that never had one); another number is refused before any write.
 ///
 /// This is not a fenced write: a fence refusal commits a `fence_reject` event and a finish
-/// refusal must write nothing, so every check comes before the first write. A `ready` card has
-/// no reservation, so none is made and no generation is spent.
+/// refusal must write nothing, so every check comes before the first write, inside the one
+/// write transaction that takes the write lock first (`BEGIN IMMEDIATE`): of two calls that
+/// reach one card at the same time the second reads the first one's result and is refused. A
+/// `ready` card has no reservation, so none is made and no generation is spent.
 pub fn finish(
     w: &mut WriteLedger,
     card_id: i64,
@@ -1288,6 +1310,7 @@ pub fn finish(
     by: &str,
     evidence: &FinishEvidence<'_>,
     met: &[(i64, String)],
+    generation: Option<i64>,
 ) -> Result<Finished, WorkflowError> {
     one_line("the by", by, MAX_AUTHOR_CHARS).map_err(WorkflowError::InvalidInput)?;
     for (n, (seq, text)) in met.iter().enumerate() {
@@ -1328,6 +1351,21 @@ pub fn finish(
                 action: "finished",
             }));
         }
+        // The generation of the newest reservation, released and expired ones included (a ready
+        // card keeps the number of the reservation it had; a card that never had one is at 0).
+        let newest_generation: i64 = tx.query_row(
+            "SELECT COALESCE(MAX(generation), 0) FROM reservation WHERE card_id = ?1",
+            [card_id],
+            |r| r.get(0),
+        )?;
+        if let Some(given) = generation {
+            if given != newest_generation {
+                return refused(format!(
+                    "--generation {given} does not match generation {newest_generation}, the \
+                     card's newest reservation (0 when it never had one); nothing was changed"
+                ));
+            }
+        }
         let previous = reservation::current(tx, card_id)?;
         if let Some(held) = &previous {
             if let Err(e) = finish_gate(held, session, now) {
@@ -1347,21 +1385,32 @@ pub fn finish(
                 "criterion {seq} is not an open criterion of C-{card_id}; --met names open criteria only"
             ));
         }
-        if let Some(seq) = open
+        // An open criterion with no met option: a card that closes on a landing records the
+        // landing and says what is open; a report or a verdict closes the card or nothing.
+        let uncovered: Vec<i64> = open
             .iter()
-            .find(|seq| !met.iter().any(|(named, _)| named == *seq))
-        {
+            .copied()
+            .filter(|seq| !met.iter().any(|(named, _)| named == seq))
+            .collect();
+        let landing_only = !uncovered.is_empty()
+            && matches!(
+                evidence,
+                FinishEvidence::Landing { .. } | FinishEvidence::MergedPr
+            );
+        if let (false, Some(seq)) = (landing_only, uncovered.first()) {
             return refused(format!(
                 "criterion {seq} is an open criterion and no --met names it; every open criterion needs one --met N=REF"
             ));
         }
-        let already_met: i64 = tx.query_row(
-            "SELECT count(*) FROM card_ac WHERE card_id = ?1 AND status = 'met'",
-            [card_id],
-            |r| r.get(0),
-        )?;
-        if already_met + (met.len() as i64) == 0 {
-            return refused("the card has no acceptance criterion that is met".into());
+        if !landing_only {
+            let already_met: i64 = tx.query_row(
+                "SELECT count(*) FROM card_ac WHERE card_id = ?1 AND status = 'met'",
+                [card_id],
+                |r| r.get(0),
+            )?;
+            if already_met + (met.len() as i64) == 0 {
+                return refused("the card has no acceptance criterion that is met".into());
+            }
         }
         // The evidence the card layer could not check against the ledger.
         let mut record_landing = true;
@@ -1412,14 +1461,7 @@ pub fn finish(
             FinishEvidence::Report { .. } => {}
         }
 
-        // The writes.
-        for (seq, text) in met {
-            tx.execute(
-                "UPDATE card_ac SET status = 'met', evidence_ref = ?1, withdrawn_reason = NULL, \
-                 updated_at = ?2 WHERE card_id = ?3 AND seq = ?4 AND status = 'open'",
-                params![text, now, card_id, seq],
-            )?;
-        }
+        // The writes. A landing-only call writes the landing event and nothing else.
         let actor = session.unwrap_or("user");
         let (via, head, tip, report, note) = match evidence {
             FinishEvidence::Landing { head, tip } => {
@@ -1429,7 +1471,7 @@ pub fn finish(
             FinishEvidence::Report { path } => ("report", None, None, Some(*path), None),
             FinishEvidence::Note { reference } => ("note", None, None, None, Some(*reference)),
         };
-        let mut events = 1;
+        let mut events = 0;
         if record_landing {
             reservation::add_event(
                 tx,
@@ -1438,11 +1480,33 @@ pub fn finish(
                 card_id,
                 "card.landed",
                 &json!({
-                    "head": head, "report": report, "note": note, "by": by,
+                    "head": head, "tip": tip, "generation": newest_generation, "by": by,
+                    "report": report, "note": note,
                     "via": "finish", "no_code": head.is_none(),
                 }),
             )?;
             events += 1;
+        }
+        if landing_only {
+            return Ok(Ok(Finished {
+                card_id,
+                state: from.clone(),
+                from,
+                closed: false,
+                rev: card_rev(tx, card_id)?,
+                closed_at: None,
+                open_criteria: uncovered,
+                previous,
+                released: false,
+                events,
+            }));
+        }
+        for (seq, text) in met {
+            tx.execute(
+                "UPDATE card_ac SET status = 'met', evidence_ref = ?1, withdrawn_reason = NULL, \
+                 updated_at = ?2 WHERE card_id = ?3 AND seq = ?4 AND status = 'open'",
+                params![text, now, card_id, seq],
+            )?;
         }
         let steps: &[&str] = match from.as_str() {
             "ready" => &["active", "review", "done"],
@@ -1487,11 +1551,15 @@ pub fn finish(
                 "released": released, "closed_at": now,
             }),
         )?;
+        events += 1;
         Ok(Ok(Finished {
             card_id,
             from,
+            closed: true,
+            state: "done".to_string(),
             rev: card_rev(tx, card_id)?,
-            closed_at: now,
+            closed_at: Some(now),
+            open_criteria: Vec::new(),
             previous,
             released,
             events,

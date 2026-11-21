@@ -17,13 +17,14 @@ mod common;
 use common::home::TempHome;
 use moai_cli::ledger;
 use moai_cli::ledger::reservation::Reservation;
-use moai_cli::ledger::workflow::{finish_gate, WorkflowError};
+use moai_cli::ledger::workflow::{self, finish_gate, FinishEvidence, WorkflowError};
 use rusqlite::Connection;
 use serde_json::{json, Value};
 use std::cell::RefCell;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::{Output, Stdio};
+use std::process::{Child, Command, Output, Stdio};
+use std::sync::{Arc, Barrier};
 
 const SESSION_VAR: &str = "CLAUDE_CODE_SESSION_ID";
 const S_A: &str = "aaaaaaaa-0000-4000-8000-00000000000a";
@@ -275,8 +276,8 @@ impl World {
         fs::write(&cfg, &*self.profile.borrow()).unwrap();
     }
 
-    /// `moai <args>` as `session`, with the stub `gh` and an absolute `git` named.
-    fn run(&self, session: Option<&str>, args: &[&str]) -> Output {
+    /// `moai <args>` as `session`, with the stub `gh` and an absolute `git` named, not yet run.
+    fn command(&self, session: Option<&str>, args: &[&str]) -> Command {
         let mut cmd = self.home.command(args);
         cmd.env("MOAI_FORGE_GH_BIN", &self.gh);
         if let Some(git) = &self.git_bin {
@@ -285,7 +286,27 @@ impl World {
         if let Some(id) = session {
             cmd.env(SESSION_VAR, id);
         }
-        cmd.stdin(Stdio::null()).output().expect("run moai")
+        cmd.stdin(Stdio::null());
+        cmd
+    }
+
+    /// `moai <args>` as `session`, run to its end.
+    fn run(&self, session: Option<&str>, args: &[&str]) -> Output {
+        self.command(session, args).output().expect("run moai")
+    }
+
+    /// `card finish` as `session`, started and not waited for (the profile written last), so two
+    /// of them can run at the same time.
+    fn spawn_finish(&self, session: &str, card: &str, extra: &[&str]) -> Child {
+        self.write_profile();
+        let mut all = vec!["card", "finish", card];
+        all.extend_from_slice(extra);
+        all.extend_from_slice(&["--project", &self.p]);
+        self.command(Some(session), &all)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .expect("run moai")
     }
 
     /// `moai card <args> --project <project>`, as `session`.
@@ -542,6 +563,43 @@ impl World {
     }
 }
 
+/// The tables other than `event`: a call that only records a landing leaves all of them as they
+/// were.
+const STATE_TABLES: [&str; 6] = [
+    "card",
+    "card_ac",
+    "card_note",
+    "card_link",
+    "reservation",
+    "reservation_scope",
+];
+
+/// The lines of one table in a dump.
+fn table_lines(dump: &[String], table: &str) -> Vec<String> {
+    let prefix = format!("{table}:");
+    dump.iter()
+        .filter(|l| l.starts_with(&prefix))
+        .cloned()
+        .collect()
+}
+
+/// Asserts that `after` differs from `before` by exactly `added` new `event` rows and by nothing
+/// in any other table.
+fn assert_only_events_added(before: &[String], after: &[String], added: usize) {
+    for table in STATE_TABLES {
+        assert_eq!(
+            table_lines(after, table),
+            table_lines(before, table),
+            "the call changed the table {table}"
+        );
+    }
+    assert_eq!(
+        table_lines(after, "event").len(),
+        table_lines(before, "event").len() + added,
+        "the call wrote another number of events than {added}"
+    );
+}
+
 // ---- AC-1: the landing proof --------------------------------------------------------------
 
 /// AC-1: a ready card with two open criteria and a head inside the integration tip (behind
@@ -635,6 +693,85 @@ fn ac1_a_ready_card_with_a_head_inside_the_tip_closes_to_done() {
     );
 }
 
+/// AC-1: the landing event carries the head, the tip that contained it when the call ran, the
+/// generation of the card's newest reservation and the caller; a card that never had a
+/// reservation is at generation 0, and one that had one keeps the number it had.
+#[test]
+fn ac1_the_landing_event_carries_the_head_the_tip_the_generation_and_the_caller() {
+    let w = World::new();
+    let never = w.card_named("task", "apps/a/", &["one"]);
+    let given_back = w.card_named("task", "apps/b/", &["one"]);
+    result(&w.card(Some(S_A), &["take", &given_back]));
+    result(&w.card(Some(S_A), &["release", &given_back, "--generation", "1"]));
+    assert_eq!(
+        w.text("SELECT state FROM card WHERE card_id = 2")
+            .as_deref(),
+        Some("ready"),
+        "the fixture gave the card back"
+    );
+
+    for (card, generation) in [(&never, 0), (&given_back, 1)] {
+        let got = result(&w.finish(
+            Some(S_L),
+            card,
+            &["--head", &w.head, "--met", "1=r1", "--by", "leader"],
+        ));
+        assert_eq!(got["state"], json!("done"), "{got}");
+        assert_eq!(got["events"], json!(2), "{got}");
+        let newest = w.newest_events(2);
+        assert_eq!(newest[0].0, "card.finish", "{newest:?}");
+        assert_eq!(newest[1].0, "card.landed", "{newest:?}");
+        let landed = &newest[1].1;
+        assert_eq!(landed["head"], json!(w.head), "{newest:?}");
+        assert_eq!(landed["tip"], json!(w.tip), "{newest:?}");
+        assert_eq!(landed["generation"], json!(generation), "{newest:?}");
+        assert_eq!(landed["by"], json!("leader"), "{newest:?}");
+        assert_eq!(landed["actor"], json!(S_L), "{newest:?}");
+    }
+}
+
+/// AC-1: the head was fast-forwarded onto the integration branch and the ledger write never
+/// happened (no landing event in the ledger at all): the same evidence closes the card and the
+/// call records the landing itself.
+#[test]
+fn ac1_a_head_on_the_integration_branch_with_no_landing_event_closes_the_card() {
+    let w = World::new();
+    let card = w.card_named("task", "apps/a/", &["one", "two"]);
+    assert_eq!(
+        w.count("SELECT count(*) FROM event WHERE kind = 'card.landed'"),
+        0,
+        "the ledger has no landing event yet"
+    );
+    assert_eq!(
+        git(
+            &w.project,
+            &["merge-base", "--is-ancestor", &w.head, "integ"]
+        ),
+        "",
+        "the head is already on the integration branch"
+    );
+
+    let got = result(&w.finish(
+        Some(S_L),
+        &card,
+        &[
+            "--head", &w.head, "--met", "1=r1", "--met", "2=r2", "--by", "leader",
+        ],
+    ));
+    assert_eq!(got["state"], json!("done"), "{got}");
+    assert_eq!(got["via"], json!("landing"), "{got}");
+    assert_eq!(
+        w.count("SELECT count(*) FROM event WHERE kind = 'card.landed' AND card_id = 1"),
+        1,
+        "finish recorded the landing"
+    );
+    assert_eq!(
+        w.text("SELECT json_extract(payload, '$.head') FROM event WHERE kind = 'card.landed'")
+            .as_deref(),
+        Some(w.head.as_str())
+    );
+}
+
 /// AC-1, AC-7: a head that is not an ancestor of the integration tip is refused, naming the
 /// rule, and nothing is written.
 #[test]
@@ -718,25 +855,14 @@ fn ac1_a_profile_without_an_integration_branch_refuses() {
 
 // ---- AC-2: one met option per open criterion ----------------------------------------------
 
-/// AC-2: two open criteria need two met options; a duplicate number and a number that is not
-/// an open criterion are refused too, each naming its cause, with every table unchanged.
+/// AC-2: two open criteria with two met options close the card; a duplicate number and a number
+/// that is not an open criterion are refused, each naming its cause, with every table unchanged.
+/// (One met option for two open criteria is a landing-only call: AC-13.)
 #[test]
-fn ac2_each_open_criterion_needs_exactly_one_met_option() {
+fn ac2_two_met_options_close_two_open_criteria_and_a_duplicate_or_a_stranger_refuses() {
     let w = World::new();
     let card = w.card_named("task", "apps/a/", &["one", "two"]);
     let before = w.dump();
-
-    let one = w.finish(
-        Some(S_L),
-        &card,
-        &["--head", &w.head, "--met", "1=r1", "--by", "leader"],
-    );
-    w.refuse(
-        &one,
-        "invalid_input",
-        &["open criterion", "open criteria", "criterion 2"],
-        &before,
-    );
 
     let twice = w.finish(
         Some(S_L),
@@ -1195,6 +1321,55 @@ fn ac4_an_audit_card_closes_with_a_verdict_note_and_refuses_the_others() {
     assert_eq!(got["state"], json!("done"), "{got}");
 }
 
+/// AC-4: a research card and an audit card with an open criterion that has no met option refuse
+/// (no landing-only answer for them: their evidence is a report or a verdict), with every table
+/// unchanged, whether one criterion of two or all of them lack the option.
+#[test]
+fn ac4_a_research_or_audit_card_with_an_open_criterion_and_no_met_option_refuses() {
+    let w = World::new();
+    let research = w.card_named("research", "docs/r/", &["found", "written"]);
+    let audit = w.card_named("audit", "docs/a/", &["checked"]);
+    let report = w.report_file("demo/answer.md");
+    w.note(&audit, "decision", "verdict", "pass: nothing found");
+    let before = w.dump();
+    let open_criterion = ["open criterion", "open criteria", "criterion"];
+
+    let one_of_two = w.finish(
+        Some(S_L),
+        &research,
+        &[
+            "--evidence-report",
+            &report,
+            "--met",
+            "1=found",
+            "--by",
+            "leader",
+        ],
+    );
+    w.refuse(&one_of_two, "invalid_input", &open_criterion, &before);
+
+    let none_of_two = w.finish(
+        Some(S_L),
+        &research,
+        &["--evidence-report", &report, "--by", "leader"],
+    );
+    w.refuse(&none_of_two, "invalid_input", &open_criterion, &before);
+
+    let audit_none = w.finish(
+        Some(S_L),
+        &audit,
+        &["--evidence-note", "verdict", "--by", "leader"],
+    );
+    w.refuse(&audit_none, "invalid_input", &open_criterion, &before);
+    for card in [1, 2] {
+        assert_eq!(
+            w.text(&format!("SELECT state FROM card WHERE card_id = {card}"))
+                .as_deref(),
+            Some("ready")
+        );
+    }
+}
+
 // ---- AC-5: the evidence kind follows the card kind ------------------------------------------
 
 /// AC-5: a code card (kind fix) refuses report evidence and note evidence even with a good head;
@@ -1351,16 +1526,23 @@ fn ac6_finish_needs_a_by_and_stores_it_in_both_events() {
 // ---- AC-7: a refusal writes nothing ---------------------------------------------------------
 
 /// AC-7: one refusal of each kind (landing proof, met options, reservation gate, report
-/// evidence, `--by`) leaves every table byte equal to its dump before the call and writes no
-/// `fence_reject` event. The refusal helper also checks the exit code, the error kind and the
-/// reason, so the check cannot pass on a command that does not exist.
+/// evidence, `--by`, a card that is already done, a stale generation) leaves every table byte
+/// equal to its dump before the call and writes no `fence_reject` event. The refusal helper also
+/// checks the exit code, the error kind and the reason, so the check cannot pass on a command
+/// that does not exist.
 #[test]
 fn ac7_every_kind_of_refusal_leaves_the_ledger_as_it_was() {
     let w = World::new();
     let code = w.card_named("task", "apps/a/", &["one", "two"]);
     let held = w.card_named("task", "apps/b/", &["one"]);
     let research = w.card_named("research", "docs/r/", &["report written"]);
+    let finished = w.card_named("task", "apps/d/", &["one"]);
     result(&w.card(Some(S_A), &["take", &held]));
+    result(&w.finish(
+        Some(S_L),
+        &finished,
+        &["--head", &w.head, "--met", "1=r1", "--by", "leader"],
+    ));
     let before = w.dump();
 
     let landing = w.finish(
@@ -1380,14 +1562,9 @@ fn ac7_every_kind_of_refusal_leaves_the_ledger_as_it_was() {
     let met = w.finish(
         Some(S_L),
         &code,
-        &["--head", &w.head, "--met", "1=r1", "--by", "leader"],
+        &["--head", &w.head, "--met", "9=r9", "--by", "leader"],
     );
-    w.refuse(
-        &met,
-        "invalid_input",
-        &["open criterion", "open criteria", "criterion 2"],
-        &before,
-    );
+    w.refuse(&met, "invalid_input", &["not an open criterion"], &before);
 
     let lease = w.finish(
         Some(S_L),
@@ -1430,6 +1607,31 @@ fn ac7_every_kind_of_refusal_leaves_the_ledger_as_it_was() {
         ],
     );
     w.refuse(&by, "invalid_input", &["--by"], &before);
+
+    let done = w.finish(
+        Some(S_L),
+        &finished,
+        &["--head", &w.head, "--met", "1=r1", "--by", "leader"],
+    );
+    w.refuse(&done, "conflict", &["`done`"], &before);
+
+    let stale = w.finish(
+        Some(S_L),
+        &code,
+        &[
+            "--head",
+            &w.head,
+            "--met",
+            "1=r1",
+            "--met",
+            "2=r2",
+            "--generation",
+            "4",
+            "--by",
+            "leader",
+        ],
+    );
+    w.refuse(&stale, "invalid_input", &["generation"], &before);
 }
 
 // ---- AC-8: card next skips a card that already landed --------------------------------------
@@ -1735,10 +1937,15 @@ fn ac12_the_help_and_the_card_document_name_the_finish_command() {
         "--met",
         "--evidence-report",
         "--evidence-note",
+        "--generation",
         "--by",
     ] {
         assert!(text.contains(option), "the help names {option}: {text}");
     }
+    assert!(
+        text.contains("open_criteria") && text.contains("Writes the ledger"),
+        "the help says it writes the ledger and what a landing-only call answers: {text}"
+    );
 
     let doc = fs::read_to_string(concat!(
         env!("CARGO_MANIFEST_DIR"),
@@ -1750,6 +1957,8 @@ fn ac12_the_help_and_the_card_document_name_the_finish_command() {
         "already_landed",
         "--evidence-report",
         "--evidence-note",
+        "--generation",
+        "open_criteria",
     ]
     .into_iter()
     .filter(|word| !doc.contains(word))
@@ -1758,4 +1967,476 @@ fn ac12_the_help_and_the_card_document_name_the_finish_command() {
         missing.is_empty(),
         "the card operations document lacks: {missing:?}"
     );
+}
+
+// ---- AC-13: an open criterion without a met option records the landing only -----------------
+
+/// AC-13: a code card with two open criteria and one met option records one landing event and
+/// changes nothing else (state, criteria, reservation, generation, rev); the answer says closed
+/// false and names the open criterion; a second identical call writes nothing; with no met option
+/// at all both criteria are named; with a reservation of the caller the reservation and its
+/// generation stay.
+#[test]
+fn ac13_an_open_criterion_without_a_met_option_records_the_landing_once_and_closes_nothing() {
+    let w = World::new();
+    let card = w.card_named("task", "apps/a/", &["one", "two"]);
+    let held = w.card_named("task", "apps/b/", &["one", "two"]);
+    let before = w.dump();
+
+    let args = ["--head", &w.head, "--met", "1=r1", "--by", "leader"];
+    let got = result(&w.finish(Some(S_L), &card, &args));
+    assert_eq!(got["action"], json!("finish"), "{got}");
+    assert_eq!(got["closed"], json!(false), "{got}");
+    assert_eq!(got["open_criteria"], json!([2]), "{got}");
+    assert_eq!(got["state"], json!("ready"), "{got}");
+    assert_eq!(got["events"], json!(1), "{got}");
+    assert_eq!(got["writes"], json!(true), "{got}");
+    assert_eq!(got["via"], json!("landing"), "{got}");
+    assert_eq!(got["head"], json!(w.head), "{got}");
+    assert_eq!(got["tip"], json!(w.tip), "{got}");
+    assert_eq!(got["by"], json!("leader"), "{got}");
+    let after = w.dump();
+    assert_only_events_added(&before, &after, 1);
+    let newest = w.newest_events(1);
+    assert_eq!(newest[0].0, "card.landed", "{newest:?}");
+    assert_eq!(newest[0].1["head"], json!(w.head), "{newest:?}");
+    assert_eq!(newest[0].1["tip"], json!(w.tip), "{newest:?}");
+    assert_eq!(newest[0].1["generation"], json!(0), "{newest:?}");
+    assert_eq!(newest[0].1["by"], json!("leader"), "{newest:?}");
+    assert_eq!(
+        w.count("SELECT count(*) FROM event WHERE kind = 'card.finish'"),
+        0
+    );
+    assert_eq!(
+        w.text(
+            "SELECT group_concat(status, ',') FROM \
+             (SELECT status FROM card_ac WHERE card_id = 1 ORDER BY seq)"
+        )
+        .as_deref(),
+        Some("open,open"),
+        "the met option is not applied by a landing-only call"
+    );
+
+    // The same call again: the landing of this head is recorded already, nothing is written.
+    let again = result(&w.finish(Some(S_L), &card, &args));
+    assert_eq!(again["closed"], json!(false), "{again}");
+    assert_eq!(again["open_criteria"], json!([2]), "{again}");
+    assert_eq!(again["events"], json!(0), "{again}");
+    assert_eq!(again["writes"], json!(false), "{again}");
+    assert_eq!(w.dump(), after, "the second call wrote to the ledger");
+
+    // No met option at all: both open criteria are named.
+    let none = result(&w.finish(Some(S_L), &card, &["--head", &w.head, "--by", "leader"]));
+    assert_eq!(none["closed"], json!(false), "{none}");
+    assert_eq!(none["open_criteria"], json!([1, 2]), "{none}");
+    assert_eq!(w.dump(), after, "the call without a met option wrote");
+
+    // The caller's own reservation stays, with its generation.
+    result(&w.card(Some(S_L), &["take", &held]));
+    let before_held = w.dump();
+    let got = result(&w.finish(
+        Some(S_L),
+        &held,
+        &["--head", &w.head, "--met", "2=r2", "--by", "leader"],
+    ));
+    assert_eq!(got["closed"], json!(false), "{got}");
+    assert_eq!(got["open_criteria"], json!([1]), "{got}");
+    assert_eq!(got["state"], json!("active"), "{got}");
+    assert_eq!(got["events"], json!(1), "{got}");
+    assert_only_events_added(&before_held, &w.dump(), 1);
+    assert_eq!(
+        w.count("SELECT count(*) FROM reservation WHERE card_id = 2 AND status = 'held'"),
+        1
+    );
+    assert_eq!(w.newest_events(1)[0].1["generation"], json!(1));
+}
+
+/// AC-13: a card with no proven head refuses (no head given, no landing recorded, no merged link;
+/// or a head that git does not prove), and a met option that names a number that is not open or
+/// names one twice refuses even when the call would only record a landing; every table is
+/// unchanged.
+#[test]
+fn ac13_a_card_with_no_proven_head_or_a_bad_met_option_refuses_and_writes_nothing() {
+    let w = World::new();
+    let card = w.card_named("task", "apps/a/", &["one", "two"]);
+    let before = w.dump();
+
+    let no_head = w.finish(Some(S_L), &card, &["--met", "1=r1", "--by", "leader"]);
+    w.refuse(
+        &no_head,
+        "invalid_input",
+        &["no landing is recorded"],
+        &before,
+    );
+
+    let orphan = w.finish(
+        Some(S_L),
+        &card,
+        &["--head", &w.orphan, "--met", "1=r1", "--by", "leader"],
+    );
+    w.refuse(
+        &orphan,
+        "invalid_input",
+        &["not contained in the integration branch"],
+        &before,
+    );
+
+    let stranger = w.finish(
+        Some(S_L),
+        &card,
+        &["--head", &w.head, "--met", "3=r3", "--by", "leader"],
+    );
+    w.refuse(
+        &stranger,
+        "invalid_input",
+        &["not an open criterion"],
+        &before,
+    );
+
+    let twice = w.finish(
+        Some(S_L),
+        &card,
+        &[
+            "--head", &w.head, "--met", "1=r1", "--met", "1=again", "--by", "leader",
+        ],
+    );
+    w.refuse(&twice, "invalid_input", &["twice"], &before);
+}
+
+// ---- AC-14: a done card is not finished again; a retry closes it once -------------------------
+
+/// AC-14: a second finish on a done card refuses naming `done`, writes nothing and leaves one
+/// landing event and one finish event.
+#[test]
+fn ac14_a_second_finish_on_a_done_card_refuses_naming_done_and_writes_nothing() {
+    let w = World::new();
+    let card = w.card_named("task", "apps/a/", &["one"]);
+    let args = ["--head", &w.head, "--met", "1=r1", "--by", "leader"];
+    let got = result(&w.finish(Some(S_L), &card, &args));
+    assert_eq!(got["state"], json!("done"), "{got}");
+
+    let before = w.dump();
+    let again = w.finish(Some(S_L), &card, &args);
+    let message = w.refuse(&again, "conflict", &["`done`"], &before);
+    assert!(message.contains("done"), "{message}");
+    for (kind, expected) in [("card.finish", 1), ("card.landed", 1), ("card.done", 0)] {
+        assert_eq!(
+            w.count(&format!(
+                "SELECT count(*) FROM event WHERE kind = '{kind}' AND card_id = 1"
+            )),
+            expected,
+            "events of kind {kind}"
+        );
+    }
+}
+
+/// AC-14: a call that refuses before any write (a met option that names a number that is not
+/// open) is followed by one correct call that closes the card, with exactly one finish event.
+#[test]
+fn ac14_a_call_that_failed_before_any_write_is_followed_by_one_call_that_closes_the_card_once() {
+    let w = World::new();
+    let card = w.card_named("task", "apps/a/", &["one"]);
+    let before = w.dump();
+    let failed = w.finish(
+        Some(S_L),
+        &card,
+        &["--head", &w.head, "--met", "9=r9", "--by", "leader"],
+    );
+    w.refuse(
+        &failed,
+        "invalid_input",
+        &["not an open criterion"],
+        &before,
+    );
+
+    let got = result(&w.finish(
+        Some(S_L),
+        &card,
+        &["--head", &w.head, "--met", "1=r1", "--by", "leader"],
+    ));
+    assert_eq!(got["state"], json!("done"), "{got}");
+    assert_eq!(
+        w.count("SELECT count(*) FROM event WHERE kind = 'card.finish' AND card_id = 1"),
+        1
+    );
+    assert_eq!(
+        w.count("SELECT count(*) FROM event WHERE kind = 'card.landed' AND card_id = 1"),
+        1
+    );
+}
+
+// ---- AC-15: two callers at once close a card once ---------------------------------------------
+
+/// How many rounds the race tests run, each on a card of its own.
+const RACE_ROUNDS: usize = 20;
+
+/// AC-15 (in process): two writers, each with its own connection to the same ledger file, call
+/// `workflow::finish` on one ready card at the same moment (a barrier). Exactly one succeeds; the
+/// other is refused (the card is done, or the ledger is busy) and is never a silent success; the
+/// card has one finish event and no release event.
+#[test]
+fn ac15_two_writers_on_one_ledger_close_a_card_once() {
+    let w = World::new();
+    for i in 0..RACE_ROUNDS {
+        w.card_named("task", &format!("apps/r{i}/"), &["one"]);
+    }
+    for round in 0..RACE_ROUNDS {
+        let card_id = round as i64 + 1;
+        let barrier = Arc::new(Barrier::new(2));
+        let handles: Vec<_> = (0..2)
+            .map(|_| {
+                let barrier = Arc::clone(&barrier);
+                let home = w.home.path().to_path_buf();
+                let (head, tip) = (w.head.clone(), w.tip.clone());
+                std::thread::spawn(move || {
+                    let mut own = ledger::open_write(&home, "demo").unwrap();
+                    barrier.wait();
+                    workflow::finish(
+                        &mut own,
+                        card_id,
+                        Some(S_L),
+                        "leader",
+                        &FinishEvidence::Landing {
+                            head: &head,
+                            tip: &tip,
+                        },
+                        &[(1, "r1".to_string())],
+                        None,
+                    )
+                })
+            })
+            .collect();
+        let results: Vec<_> = handles.into_iter().map(|h| h.join().unwrap()).collect();
+        let ok = results.iter().filter(|r| r.is_ok()).count();
+        assert_eq!(
+            ok, 1,
+            "round {round}: exactly one call succeeds: {results:?}"
+        );
+        for refused in results.iter().filter_map(|r| r.as_ref().err()) {
+            assert!(
+                matches!(refused, WorkflowError::WrongState { state, .. } if state == "done")
+                    || matches!(refused, WorkflowError::Ledger(_)),
+                "round {round}: the other call is refused, not a silent success: {refused:?}"
+            );
+        }
+        assert_eq!(
+            w.count(&format!(
+                "SELECT count(*) FROM event WHERE kind = 'card.finish' AND card_id = {card_id}"
+            )),
+            1,
+            "round {round}: one finish event"
+        );
+        assert_eq!(
+            w.count(&format!(
+                "SELECT count(*) FROM event WHERE kind LIKE '%release%' AND card_id = {card_id}"
+            )),
+            0,
+            "round {round}: no release event"
+        );
+        assert_eq!(
+            w.text(&format!("SELECT state FROM card WHERE card_id = {card_id}"))
+                .as_deref(),
+            Some("done")
+        );
+    }
+}
+
+/// AC-15 (two processes): two `card finish` processes started together on one card give exactly
+/// one exit 0 and one refusal, with one finish event and one landing event.
+#[test]
+fn ac15_two_processes_that_finish_one_card_at_once_give_one_success_and_one_refusal() {
+    let w = World::new();
+    let cards: Vec<String> = (0..RACE_ROUNDS)
+        .map(|i| w.card_named("task", &format!("apps/p{i}/"), &["one"]))
+        .collect();
+    for (round, card) in cards.iter().enumerate() {
+        let card_id = round as i64 + 1;
+        let args = ["--head", &w.head, "--met", "1=r1", "--by", "leader"];
+        let first = w.spawn_finish(S_L, card, &args);
+        let second = w.spawn_finish(S_L, card, &args);
+        let outs = [
+            first.wait_with_output().unwrap(),
+            second.wait_with_output().unwrap(),
+        ];
+        let codes: Vec<Option<i32>> = outs.iter().map(|o| o.status.code()).collect();
+        assert_eq!(
+            codes.iter().filter(|c| **c == Some(0)).count(),
+            1,
+            "round {round}: exactly one process succeeds: {codes:?}"
+        );
+        let refused = outs.iter().find(|o| o.status.code() != Some(0)).unwrap();
+        assert!(refused.status.code().is_some(), "the loser was killed");
+        assert_eq!(envelope(refused)["ok"], json!(false), "round {round}");
+        assert_eq!(
+            w.count(&format!(
+                "SELECT count(*) FROM event WHERE kind = 'card.finish' AND card_id = {card_id}"
+            )),
+            1,
+            "round {round}: one finish event"
+        );
+        assert_eq!(
+            w.count(&format!(
+                "SELECT count(*) FROM event WHERE kind = 'card.landed' AND card_id = {card_id}"
+            )),
+            1,
+            "round {round}: one landing event"
+        );
+        assert_eq!(
+            w.count(&format!(
+                "SELECT count(*) FROM event WHERE kind LIKE '%release%' AND card_id = {card_id}"
+            )),
+            0,
+            "round {round}: no release event"
+        );
+    }
+}
+
+// ---- AC-16: --generation ---------------------------------------------------------------------
+
+/// `base` and `--generation <generation>`.
+fn with_generation<'a>(base: &[&'a str], generation: &'a str) -> Vec<&'a str> {
+    let mut args = base.to_vec();
+    args.extend_from_slice(&["--generation", generation]);
+    args
+}
+
+/// AC-16: a generation lower or higher than the generation of the card's newest reservation
+/// refuses with one line naming both numbers, every table unchanged and no fence_reject event;
+/// the current generation passes; a call without the option passes. A card that never had a
+/// reservation is at generation 0.
+#[test]
+fn ac16_a_generation_that_is_not_the_cards_refuses_and_writes_nothing() {
+    let w = World::new();
+    // Taken and given back once: ready, newest reservation at generation 1 (released).
+    let given_back = w.card_named("task", "apps/a/", &["one"]);
+    result(&w.card(Some(S_A), &["take", &given_back]));
+    result(&w.card(Some(S_A), &["release", &given_back, "--generation", "1"]));
+    // Never reserved: generation 0.
+    let never = w.card_named("task", "apps/b/", &["one"]);
+    let absent = w.card_named("task", "apps/c/", &["one"]);
+    let base = ["--head", &w.head, "--met", "1=r1", "--by", "leader"];
+
+    let before = w.dump();
+    for (card, given, expected) in [
+        (&given_back, "0", "1"),
+        (&given_back, "2", "1"),
+        (&never, "1", "0"),
+    ] {
+        let out = w.finish(Some(S_L), card, &with_generation(&base, given));
+        let message = w.refuse(&out, "invalid_input", &["generation"], &before);
+        assert!(
+            message.contains(&format!("generation {given}"))
+                && message.contains(&format!("generation {expected}")),
+            "the refusal names both numbers: {message}"
+        );
+        assert_eq!(message.lines().count(), 1, "one line: {message}");
+    }
+
+    let got = result(&w.finish(Some(S_L), &given_back, &with_generation(&base, "1")));
+    assert_eq!(got["state"], json!("done"), "{got}");
+    let got = result(&w.finish(Some(S_L), &never, &with_generation(&base, "0")));
+    assert_eq!(got["state"], json!("done"), "{got}");
+    let got = result(&w.finish(Some(S_L), &absent, &base));
+    assert_eq!(got["state"], json!("done"), "{got}");
+    assert_eq!(
+        w.count("SELECT count(*) FROM event WHERE kind = 'fence_reject'"),
+        0
+    );
+}
+
+// ---- AC-17: release answers landed ------------------------------------------------------------
+
+/// AC-17: releasing a card that has a landing event, and one that has a merged pull request link,
+/// answers `landed` true and a `next_step` that names `card finish`; releasing a card with no
+/// landing keeps the old answer (no new key); no version control command runs (a stand-in that
+/// records its call and fails replaces the real one).
+#[test]
+fn ac17_releasing_a_landed_card_answers_landed_and_names_the_finish_command() {
+    let w = World::new();
+    let landed = w.card_named("task", "apps/a/", &["one"]);
+    let merged = w.card_named("task", "apps/b/", &["one"]);
+    let plain = w.card_named("task", "apps/c/", &["one"]);
+    let marker = w.dir.join("vcs-was-called");
+    let stub = w.dir.join("vcs-stub");
+    common::write_executable(
+        &stub,
+        &format!("#!/bin/sh\ntouch '{}'\nexit 1\n", marker.display()),
+    );
+    // `release` as `S_A` with a stand-in that must never run.
+    let release = |card: &str| -> Value {
+        let out = w
+            .command(
+                Some(S_A),
+                &[
+                    "card",
+                    "release",
+                    card,
+                    "--generation",
+                    "1",
+                    "--project",
+                    &w.p,
+                ],
+            )
+            .env("MOAI_GIT_BIN", &stub)
+            .output()
+            .unwrap();
+        result(&out)
+    };
+
+    result(&w.card(Some(S_A), &["take", &landed]));
+    result(&w.card(Some(S_A), &["review", &landed, "--generation", "1"]));
+    result(&w.card(
+        Some(S_A),
+        &["landed", &landed, "--head", &w.head, "--by", "leader"],
+    ));
+    result(&w.card(Some(S_A), &["reopen", &landed, "--generation", "1"]));
+    let got = release(&landed);
+    assert_eq!(got["action"], json!("release"), "{got}");
+    assert_eq!(got["state"], json!("ready"), "{got}");
+    assert_eq!(got["writes"], json!(true), "{got}");
+    assert_eq!(got["landed"], json!(true), "{got}");
+    let step = got["next_step"].as_str().unwrap_or("");
+    assert!(
+        step.contains("card finish") && step.contains(&landed),
+        "next_step names the finish command: {got}"
+    );
+
+    w.host_merged_pr(7);
+    result(&w.card(Some(S_A), &["take", &merged]));
+    result(&w.card(
+        Some(S_A),
+        &[
+            "pr",
+            &merged,
+            "7",
+            "--generation",
+            "1",
+            "--repo",
+            "octo/demo",
+        ],
+    ));
+    let got = release(&merged);
+    assert_eq!(got["landed"], json!(true), "{got}");
+    assert!(
+        got["next_step"]
+            .as_str()
+            .is_some_and(|s| s.contains("card finish")),
+        "{got}"
+    );
+
+    result(&w.card(Some(S_A), &["take", &plain]));
+    let got = release(&plain);
+    let mut keys: Vec<&str> = got
+        .as_object()
+        .unwrap()
+        .keys()
+        .map(String::as_str)
+        .collect();
+    keys.sort_unstable();
+    assert_eq!(
+        keys,
+        vec!["action", "project_id", "reservation", "state", "writes"],
+        "a card with no landing keeps the old answer: {got}"
+    );
+    assert!(!marker.exists(), "release ran a version control command");
 }
