@@ -31,6 +31,12 @@ pub enum Family {
     Blocked,
     ReadyForIntegration,
     DecisionQuestion,
+    /// A lane's `READY …` note (the M-Flow bundle flow).
+    Ready,
+    /// A lane's `MERGE-READY …` note.
+    MergeReady,
+    /// A lane's `CANDIDATE …` note (the lane-merge pair lines).
+    Candidate,
 }
 
 impl Family {
@@ -41,6 +47,9 @@ impl Family {
             Family::Blocked => "blocked",
             Family::ReadyForIntegration => "ready_for_integration",
             Family::DecisionQuestion => "decision_question",
+            Family::Ready => "ready",
+            Family::MergeReady => "merge_ready",
+            Family::Candidate => "candidate",
         }
     }
 }
@@ -59,6 +68,12 @@ pub fn family_of(first_line: &str) -> Option<Family> {
         Some(Family::ReadyForIntegration)
     } else if line.starts_with("DECISION-QUESTION") {
         Some(Family::DecisionQuestion)
+    } else if line.starts_with("READY") {
+        Some(Family::Ready)
+    } else if line.starts_with("MERGE-READY") {
+        Some(Family::MergeReady)
+    } else if line.starts_with("CANDIDATE") {
+        Some(Family::Candidate)
     } else {
         None
     }
@@ -239,6 +254,18 @@ mod tests {
             ("LANE-NOTE agent-1 C-33 question?", None),
             ("see LANE-BLOCKED in the middle", None),
             ("lane-blocked in lower case", None),
+            // The M-Flow families the flow report asked for (READY, MERGE-READY, CANDIDATE).
+            (
+                "READY C-7 head=abc six light checks ok",
+                Some(Family::Ready),
+            ),
+            (
+                "MERGE-READY C-7 head=abc base=def",
+                Some(Family::MergeReady),
+            ),
+            ("CANDIDATE pair head=abc base=def", Some(Family::Candidate)),
+            ("ready in lower case is not a request", None),
+            ("see MERGE-READY later in the line", None),
             ("", None),
         ] {
             assert_eq!(family_of(line), want, "{line:?}");
@@ -256,6 +283,28 @@ mod tests {
         // The leader's note on another card answers nothing here.
         let other = [row(1, 10, "agent-1", blocked), row(2, 11, "leader", "x")];
         assert_eq!(ids(&other, "leader"), vec![(10, Family::Blocked)]);
+    }
+
+    #[test]
+    fn the_new_families_follow_the_answer_and_newest_rules() {
+        // A leader note written after a READY note answers it, whatever its family.
+        let answered = [
+            row(1, 10, "agent-1", "READY C-1 head=abc"),
+            row(1, 11, "leader", "MERGED-LOCAL C-1"),
+        ];
+        assert_eq!(ids(&answered, "leader"), vec![]);
+        // A READY note written after the last leader note waits.
+        let open = [
+            row(1, 10, "leader", "x"),
+            row(1, 11, "agent-1", "MERGE-READY C-1 head=abc"),
+        ];
+        assert_eq!(ids(&open, "leader"), vec![(11, Family::MergeReady)]);
+        // Only the newest CANDIDATE of a card is listed.
+        let superseded = [
+            row(1, 10, "agent-1", "CANDIDATE old head=abc"),
+            row(1, 11, "agent-1", "CANDIDATE new head=def"),
+        ];
+        assert_eq!(ids(&superseded, "leader"), vec![(11, Family::Candidate)]);
     }
 
     #[test]

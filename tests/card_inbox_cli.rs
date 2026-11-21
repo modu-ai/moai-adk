@@ -164,15 +164,18 @@ fn the_inbox_lists_each_request_family_in_note_order() {
         "DECISION-QUESTION agent-1 C-1 (reversible): a or b",
         1006,
     ); // 7
-       // C-2: the hand-off form of an audit request.
+    w.lane(1, "READY C-1 head=abc six light checks ok", 1007); // 8
+    w.lane(1, "MERGE-READY C-1 head=abc base=def", 1008); // 9
+    w.lane(1, "CANDIDATE pair head=abc base=def", 1009); // 10
+                                                         // C-2: the hand-off form of an audit request.
     w.lane(
         2,
         "LANE-DONE agent-2 C-2 PR #8 head abc — audit requested",
         1010,
-    ); // 8
+    ); // 11
        // C-3: nothing asked. C-4 is done: its request is not the leader's work any more.
-    w.lane(3, "LANE-DONE agent-3 C-3 PR #9 head abc — done", 1020); // 9
-    w.lane(4, "LANE-BLOCKED agent-4 C-4 old", 1030); // 10
+    w.lane(3, "LANE-DONE agent-3 C-3 PR #9 head abc — done", 1020); // 12
+    w.lane(4, "LANE-BLOCKED agent-4 C-4 old", 1030); // 13
 
     let r = result(&w.inbox(&[]));
     assert_eq!(r["action"], json!("inbox"));
@@ -186,10 +189,13 @@ fn the_inbox_lists_each_request_family_in_note_order() {
             row("C-1", "blocked", 5),
             row("C-1", "ready_for_integration", 6),
             row("C-1", "decision_question", 7),
-            row("C-2", "audit_request", 8),
+            row("C-1", "ready", 8),
+            row("C-1", "merge_ready", 9),
+            row("C-1", "candidate", 10),
+            row("C-2", "audit_request", 11),
         ]
     );
-    assert_eq!(r["count"], json!(5));
+    assert_eq!(r["count"], json!(8));
     let now = r["now"].as_i64().unwrap();
     assert!(now > 1_700_000_000, "{now}");
     for item in r["items"].as_array().unwrap() {
@@ -236,6 +242,7 @@ fn a_later_leader_note_answers_and_a_newer_note_supersedes() {
     w.lane(5, "감사 요청 tier 2 head=abc", 141); // 11
     w.leader(5, "LEADER answer to both", 142); // 12
     w.lane(5, "LANE-READY-INTEGRATION C-5 head=abc", 143); // 13
+    w.lane(5, "MERGE-READY C-5 head=abc base=def", 144); // 14: after the answer, so it waits.
 
     let r = result(&w.inbox(&[]));
     assert_eq!(
@@ -245,6 +252,7 @@ fn a_later_leader_note_answers_and_a_newer_note_supersedes() {
             row("C-3", "blocked", 7),
             row("C-4", "blocked", 9),
             row("C-5", "ready_for_integration", 13),
+            row("C-5", "merge_ready", 14),
         ]
     );
 }
