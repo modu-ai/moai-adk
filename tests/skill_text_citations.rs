@@ -14,6 +14,12 @@ use std::{
 /// The shipped folders, relative to the checkout.
 const SHIPPED: [&str; 4] = ["skills", "agents", "templates", "install"];
 
+/// Shipped folders the scan does not read: ported third-party pack content with its own
+/// vocabulary (colour codes like `#788C5D`, upstream issue numbers, taxonomy ids like `C-12`),
+/// none of which cites this project's development. Keep this list to whole folders of content
+/// that is not written here; a file of this project's own text goes in `PENDING` or is cleaned.
+const EXEMPT_PREFIXES: [&str; 1] = ["templates/bundle-packs/"];
+
 /// Shipped files that still carry citations, sorted. Remove an entry when its file is cleaned.
 const PENDING: [&str; 17] = [
     "install/README.md",
@@ -269,7 +275,7 @@ fn scan_flags_each_kind_and_leaves_markers_alone() {
 fn scan_shipped_files_outside_the_pending_list_are_clean() {
     let mut bad = Vec::new();
     for (path, text) in shipped() {
-        if PENDING.contains(&path.as_str()) {
+        if PENDING.contains(&path.as_str()) || EXEMPT_PREFIXES.iter().any(|p| path.starts_with(p)) {
             continue;
         }
         let found = citations(&text);
@@ -287,6 +293,26 @@ fn scan_shipped_files_outside_the_pending_list_are_clean() {
         "shipped files with citations:\n{}",
         bad.join("\n")
     );
+}
+
+/// AC-1: an exempt prefix names a shipped folder that exists, and no pending entry sits under it
+/// (a file is either pending or exempt, so the list of what is still to clean stays honest).
+#[test]
+fn scan_exempt_prefixes_name_existing_folders_apart_from_the_pending_list() {
+    let files = shipped();
+    for prefix in EXEMPT_PREFIXES {
+        assert!(prefix.ends_with('/'), "{prefix} names a folder");
+        assert!(
+            files.iter().any(|(p, _)| p.starts_with(prefix)),
+            "{prefix} holds no shipped file"
+        );
+        for pending in PENDING {
+            assert!(
+                !pending.starts_with(prefix),
+                "{pending} is pending and exempt at once"
+            );
+        }
+    }
 }
 
 /// AC-1: the pending list is sorted, names shipped files, and only files that still carry
