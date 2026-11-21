@@ -78,4 +78,42 @@ MoAI 가 만드는 규칙 파일은 `AGENTS.md`(팀 규칙)와 `AGENTS.local.md`
 
 ## Result
 
-(아직 구현 전이에요.)
+이 조각(조각 1: 계획·적용·`AGENTS.md` 지시문·길이 경고·스키마)의 근거예요. 코드 head `5b95a6cea9`. 카드는 부분 READY 로 열어 두어요: 사용자에게 `claude-agents-import` 선택지를 내놓는 일(`/moai project`·`moai update` 의 선택지 목록과 두 워크플로 글)과 이 저장소 자신의 `CLAUDE.md`·`AGENTS.md` 에 같은 블록을 받게 하는 일은 이 조각에 없고 후속(조각 2)이에요. 그 파일들을 다른 카드가 쥐고 있어요. 그래서 이 조각만으로는 요청에 `picks` 로 직접 넣을 때만 `CLAUDE.md` 블록이 계획돼요. `AGENTS.md` 지시문은 `local_file` 이 `ignored`·`tracked` 인 계획이면 선택 없이 들어가요.
+
+알려진 한계: 파일이 없는데 `@AGENTS.local.md` 를 불러오면 호스트가 어떻게 하는지 공식 문서에 없어서 확인하지 못했어요(D-2). 개인 파일을 쓰기로 했다가 나중에 지운 프로젝트에서의 동작은 확인하지 않았어요. `.claude/CLAUDE.md` 만 있는 프로젝트에는 이 조각이 블록을 만들지 않고 루트 `CLAUDE.md` 만 다뤄요. Codex 쪽 인용은 카드 본문의 것을 썼고 이 조각에서 다시 읽지 않았어요.
+
+TDD: 시험을 먼저 올려서 구현 전에 9개 중 8개가 실패하는 것을 확인했어요(`agents_md_is_unchanged_when_no_local_file_is_chosen` 만 통과: 구현 전에는 아무것도 바뀌지 않았으니까요). 구현 뒤 9개 모두 통과했어요.
+
+### 변형 시험(커밋한 뒤, 한 번에 하나씩 바꾸고 `git checkout` 으로 되돌림)
+
+| 변형 | 바꾼 것 | 잡은 시험 |
+| --- | --- | --- |
+| M1 | `none` 에도 개인 규칙 두 줄을 넣음 | `agents_md_is_unchanged_when_no_local_file_is_chosen` |
+| M2 | 사용자의 `@AGENTS.md` 불러오기를 못 봄 | `a_claude_md_that_already_imports_agents_md_gets_no_block` |
+| M3 | 블록 자신의 줄도 사용자 불러오기로 셈 | `applying_appends_after_the_user_text_and_a_second_plan_is_unchanged` |
+| M4 | 줄 수 경계 200 을 201 로 | `the_plan_warns_when_agents_md_passes_two_hundred_lines` |
+| M5 | `claude` 호스트가 아니어도 계획 | `without_the_pick_or_the_claude_host_there_is_no_claude_md_row` |
+
+다섯 변형 모두 시험이 실패해서 잡혔어요(생존 0). 변형 뒤 `git status` 로 `src/agents.rs` 가 깨끗한 것을 확인했어요.
+
+### 기존 시험을 고친 곳
+
+`tests/agents_choices_step_cli.rs` 는 요청 스키마의 선택지 id 목록을 못 박은 시험이에요. 새 id `claude-agents-import` 한 줄을 더했어요. 첫 READY 실행에서 이 시험 하나만 실패했고(영역 268 통과·1 실패), 고친 뒤 처음부터 다시 돌려 모두 통과했어요.
+
+### Acceptance 결과
+
+- AC-1: met — `--test agents_md_import_cli the_pick_plans_a_claude_md_block_with_only_the_import_line`(`create`, 미리보기 `+ @AGENTS.md`, 계획은 파일을 안 씀, 적용하면 블록만 든 파일) 통과
+- AC-2: met — `--test agents_md_import_cli applying_appends_after_the_user_text_and_a_second_plan_is_unchanged`(CRLF·마지막 줄바꿈 없음, 다시 계획하면 `unchanged`) 통과
+- AC-3: met — `--test agents_md_import_cli a_claude_md_that_already_imports_agents_md_gets_no_block`(`@AGENTS.md`·`See @AGENTS.md for…` 는 행 없음, 코드 스팬 안은 불러오기가 아니라 행 있음) 통과
+- AC-4: met — `--test agents_md_import_cli without_the_pick_or_the_claude_host_there_is_no_claude_md_row` 통과
+- AC-5: met — `--test agents_md_import_cli agents_md_tells_every_agent_to_read_the_local_file_and_imports_it`(`en`·`ko`, `ignored`·`tracked`) 통과
+- AC-6: met — `--test agents_md_import_cli agents_md_is_unchanged_when_no_local_file_is_chosen` 통과
+- AC-7: met — `--test agents_md_import_cli the_rendered_blocks_have_no_at_sign_inside_a_code_span` 통과
+- AC-8: met — `--test agents_md_import_cli the_plan_warns_when_agents_md_passes_two_hundred_lines`(199·200 줄은 경고 없음, 201 줄은 경고) 통과
+- AC-9: met — `--test agents_md_import_cli the_pick_is_a_known_id_and_an_unknown_one_is_refused` 와 `--test agents_choices_step_cli schema_describes_picks_claude_shadow_and_the_skip_action` 통과
+
+### 검사 결과(필터 없이, 고친 뒤 처음부터 다시 돌린 것)
+
+`git diff --check`, `cargo fmt --check`, `rustfmt --edition 2021 --check src/ops/*.rs`, `cargo clippy --all-targets -- -D warnings`, `--lib`(1541 통과), `--bins`(56 통과), 영역 시험(`agents_*`·`project_*`·`worktree_include_guard`·`bundle_user_assets_cli`·`claude_*`, 269 통과), 저장소 전체 훑기 시험(`git_env_scrub`·`home_isolation_scan`·`windows_unix_gate_scan`·`product_cli`), macOS 전용 시험, `tools/repo_scans.json` 의 검사 41개(실패 0), 파이썬 시험 148개, `trailer-check 041536fe07..HEAD` 모두 종료 코드 0 이에요.
+
+돌리지 않은 것: 조각 2(선택지 목록·워크플로 글)가 없어서 `/moai project`·`moai update` 의 실제 화면 흐름은 확인하지 않았어요. 이 저장소 자신의 `CLAUDE.md`·`AGENTS.md` 에 블록이 들어가는지도 확인하지 않았어요(후속).
