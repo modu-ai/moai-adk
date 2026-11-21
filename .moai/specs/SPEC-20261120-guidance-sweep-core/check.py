@@ -76,6 +76,7 @@ SENTENCES = {
     ],
     "workflows/sync.md": [
         "A card that landed locally is closed with `card done` on the local landing evidence, not a pull request.",
+        "No pull request per card, per bundle or per integration.",
     ],
 }
 
