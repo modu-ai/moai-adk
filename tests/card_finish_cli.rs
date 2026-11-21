@@ -2524,10 +2524,13 @@ fn ac18_on_an_m_flow_profile_a_merged_link_alone_does_not_close_the_card() {
     assert_eq!(got["events"], json!(1), "only the finish event: {got}");
 }
 
-/// AC-19: the SPEC a card names must pass the check at finish; a card with no criterion met and
-/// none named refuses; a card with a criterion met earlier closes with no met option.
+/// AC-19: the SPEC a card names must pass the check at finish, read from the tip: one the tip
+/// holds with errors refuses with its error count (not for being absent); a card with no
+/// criterion met and none named refuses with the finish wording; a card with a criterion met
+/// earlier closes with no met option.
 #[test]
-fn ac19_a_failing_spec_and_a_card_with_nothing_met_refuse_and_an_earlier_met_closes() {
+fn ac19_a_spec_with_errors_on_the_tip_and_a_card_with_nothing_met_refuse_and_an_earlier_met_closes()
+{
     let w = World::new();
     let broken = w.card_named("task", "apps/a/", &["one"]);
     let made = w.run(
@@ -2549,12 +2552,23 @@ fn ac19_a_failing_spec_and_a_card_with_nothing_met_refuse_and_an_earlier_met_clo
     let spec_file = w.project.join(".moai/specs").join(&id).join("spec.md");
     fs::write(&spec_file, filled(&fs::read_to_string(&spec_file).unwrap())).unwrap();
     result(&w.card(None, &["spec", &broken, &id, "--by", "leader"]));
-    // The link is made while the SPEC passes; the SPEC is damaged afterwards.
-    fs::write(&spec_file, "not a SPEC: no front matter, no requirements\n").unwrap();
+    // The link is made while the SPEC passes; the tip then holds a damaged copy and the checkout
+    // keeps the good one, so only a read of the tip can refuse.
+    put_on(
+        &w.project,
+        "integ",
+        &w.tip,
+        &format!(".moai/specs/{id}/spec.md"),
+        "not a SPEC: no front matter, no requirements\n",
+    );
     let before = w.dump();
     let args = ["--head", &w.head, "--met", "1=r1", "--by", "leader"];
     let out = w.finish(Some(S_L), &broken, &args);
-    w.refuse(&out, "invalid_input", &["its SPEC"], &before);
+    let message = w.refuse(&out, "invalid_input", &["error(s)"], &before);
+    assert!(
+        !message.contains("is absent"),
+        "the SPEC is on the tip and fails its check: {message}"
+    );
 
     let withdrawn = w.card_named("task", "apps/b/", &["one"]);
     result(&w.card(Some(S_A), &["take", &withdrawn]));
@@ -2578,11 +2592,15 @@ fn ac19_a_failing_spec_and_a_card_with_nothing_met_refuse_and_an_earlier_met_clo
         &withdrawn,
         &["--head", &w.head, "--by", "leader"],
     );
-    w.refuse(
+    let message = w.refuse(
         &out,
         "invalid_input",
         &["no acceptance criterion that is met"],
         &before,
+    );
+    assert!(
+        message.contains("card finish refused: the card has no acceptance criterion"),
+        "the refusal comes from the finish guard, not from the schema trigger: {message}"
     );
 
     let earlier = w.card_named("task", "apps/c/", &["one"]);
@@ -2797,4 +2815,113 @@ fn ac24_the_spec_is_read_from_the_proven_tip_and_not_from_the_checkout() {
     let got = result(&w.finish(Some(S_L), &on_good, &args));
     assert_eq!(got["closed"], json!(true), "{got}");
     assert_eq!(got["tip"], json!(tip), "{got}");
+}
+
+/// AC-25: a review card held with a live lease refuses non-landing evidence and a third session
+/// that gives neither `--by leader` nor the holder session; the leader word and the holder close
+/// it and the reservation is released. Every refusal leaves every table unchanged.
+#[test]
+fn ac25_the_review_exception_is_for_a_proven_landing_and_the_leader_or_the_holder() {
+    let w = World::new();
+    let research = w.card_named("research", "study/r/", &["found"]);
+    result(&w.card(Some(S_A), &["take", &research]));
+    result(&w.card(Some(S_A), &["review", &research, "--generation", "1"]));
+    let third = w.card_named("task", "apps/a/", &["one"]);
+    result(&w.card(Some(S_A), &["take", &third]));
+    result(&w.card(Some(S_A), &["review", &third, "--generation", "1"]));
+    let by_holder = w.card_named("task", "apps/b/", &["one"]);
+    result(&w.card(Some(S_A), &["take", &by_holder]));
+    result(&w.card(Some(S_A), &["review", &by_holder, "--generation", "1"]));
+    let by_leader = w.card_named("task", "apps/c/", &["one"]);
+    result(&w.card(Some(S_A), &["take", &by_leader]));
+    result(&w.card(Some(S_A), &["review", &by_leader, "--generation", "1"]));
+
+    let before = w.dump();
+    let report = w.report_file("c1/found.md");
+    let out = w.finish(
+        Some(S_L),
+        &research,
+        &[
+            "--evidence-report",
+            &report,
+            "--met",
+            "1=r1",
+            "--by",
+            "leader",
+        ],
+    );
+    w.refuse(&out, "conflict", &["is held by"], &before);
+    let args = ["--head", &w.head, "--met", "1=r1", "--by", "agent-b"];
+    let out = w.finish(Some(S_B), &third, &args);
+    w.refuse(&out, "conflict", &["is held by"], &before);
+
+    let got = result(&w.finish(Some(S_A), &by_holder, &args));
+    assert_eq!(got["closed"], json!(true), "{got}");
+    let leader_args = ["--head", &w.head, "--met", "1=r1", "--by", "leader"];
+    let got = result(&w.finish(Some(S_B), &by_leader, &leader_args));
+    assert_eq!(got["closed"], json!(true), "{got}");
+    for card in [3, 4] {
+        assert_eq!(
+            w.text(&format!(
+                "SELECT status FROM reservation WHERE card_id = {card} \
+                 ORDER BY generation DESC LIMIT 1"
+            ))
+            .as_deref(),
+            Some("released"),
+            "the reservation of C-{card} is released in the same call"
+        );
+    }
+}
+
+/// AC-26: the owner of a landing-only call is the leader word or the holder session: a session
+/// that is not the holder refuses on a review card held live and on an active card whose lease
+/// ended, and the holder passes on the one whose lease ended.
+#[test]
+fn ac26_the_landing_only_owner_is_the_leader_word_or_the_holder_session() {
+    let w = World::new();
+    let review = w.card_named("task", "apps/a/", &["one", "two"]);
+    result(&w.card(Some(S_A), &["take", &review]));
+    result(&w.card(Some(S_A), &["review", &review, "--generation", "1"]));
+    let ended = w.card_named("task", "apps/b/", &["one", "two"]);
+    result(&w.card(Some(S_A), &["take", &ended]));
+    w.end_lease(2);
+
+    let args = ["--head", &w.head, "--met", "1=r1", "--by", "agent-b"];
+    let before = w.dump();
+    let out = w.finish(Some(S_B), &review, &args);
+    w.refuse(&out, "conflict", &["is held by"], &before);
+    let out = w.finish(Some(S_B), &ended, &args);
+    w.refuse(
+        &out,
+        "invalid_input",
+        &["the leader or the holder"],
+        &before,
+    );
+
+    let holder_args = ["--head", &w.head, "--met", "1=r1", "--by", "agent-a"];
+    let got = result(&w.finish(Some(S_A), &ended, &holder_args));
+    assert_eq!(got["closed"], json!(false), "{got}");
+    assert_eq!(got["events"], json!(1), "{got}");
+}
+
+/// AC-27: the profile's integration branch is read as a branch name only: `refs/heads/integ`
+/// and `integ` name the branch, `refs/tags/integ` names a tag and refuses with every table
+/// unchanged.
+#[test]
+fn ac27_the_integration_branch_is_a_branch_name_and_never_a_tag() {
+    let w = World::new();
+    git(&w.project, &["tag", "integ", &w.tip]);
+    let text = String::from_utf8(MFLOW_PROFILE.to_vec()).unwrap();
+    let card = w.card_named("task", "apps/a/", &["one"]);
+    let args = ["--head", &w.head, "--met", "1=r1", "--by", "leader"];
+
+    w.set_profile(text.replace("\"integ\"", "\"refs/tags/integ\"").as_bytes());
+    let before = w.dump();
+    let out = w.finish(Some(S_L), &card, &args);
+    w.refuse(&out, "invalid_input", &["integration branch"], &before);
+
+    w.set_profile(text.replace("\"integ\"", "\"refs/heads/integ\"").as_bytes());
+    let got = result(&w.finish(Some(S_L), &card, &args));
+    assert_eq!(got["closed"], json!(true), "{got}");
+    assert_eq!(got["tip"], json!(w.tip), "{got}");
 }
