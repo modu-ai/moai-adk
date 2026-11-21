@@ -180,5 +180,9 @@ fn the_plan_writes_nothing() {
     let fx = Fx::new(true);
     let before = fx.home.snapshot();
     fx.plan();
-    assert_eq!(fx.home.snapshot(), before, "no file, folder or time changed");
+    assert_eq!(
+        fx.home.snapshot(),
+        before,
+        "no file, folder or time changed"
+    );
 }
