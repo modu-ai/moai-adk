@@ -59,6 +59,7 @@ pub mod generation;
 pub mod git_hooks;
 pub mod github_templates;
 pub mod go_hooks;
+pub mod go_residue;
 pub mod go_settings;
 pub mod go_settings_clean;
 pub mod go_state;
