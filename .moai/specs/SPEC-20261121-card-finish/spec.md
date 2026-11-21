@@ -2,7 +2,7 @@
 id: SPEC-20261121-card-finish
 title: "card finish closes a landed or reported card in one step, and card next and card list stop offering a card that already landed"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-21
 ---
 
@@ -12,49 +12,57 @@ created: 2026-11-21
 
 A card whose change already landed on the integration branch can come back to `ready` with no reservation and open criteria (its holder gave an ended reservation back, or the session restarted). The next dispatch then hands the same work out a second time. Today the only way to close such a card is take, review, landed, criterion, done, and a card that has no commit (research, audit) has no way to close at all. Two changes fix this: a `card finish` command closes a ready, active or review card in one transaction when the landing is proven, or when a research or audit card names its report or verdict note as the evidence, and `card next` and `card list` mark a card that already landed so it is not offered again.
 
+Revision 2 (leader decision of 2026-11-21, user order to repair card closing): git and the ledger are not one transaction, so a call has to be safe to repeat and to race. A second call on a closed card is refused and writes nothing, two callers close it once, a stale generation is refused, and a landing that cannot close the card yet (an open criterion without evidence) is still recorded and the answer says what is open. A landed card that is given back is answered as landed and names the finish command.
+
 ## Non-goals
 
 - A schema change or a change of the lease rules: both belong to other work.
-- A change of `card landed`, `card done` or `card take`.
+- A change of `card landed`, `card done` or `card take`; `card release` only adds the landed answer of REQ-12 and keeps its effect.
+- Writing the real ledger from a test: every test runs with a temporary home.
 - Closing a card that has a code change but no landing (a card still in review waits for its merge as today).
 - Reading the SPEC at the integration tip instead of the project folder (D-9, a follow-up).
 
 ## Requirements
 
-- REQ-1: When a leader runs finish on a code card whose landed head is an ancestor of the integration tip, the card finish command shall close the card in one transaction with one landing event and one finish event.
-- REQ-2 (REQ-1): IF the head is not an ancestor of the integration tip or the profile names no integration branch, THEN the card finish command shall refuse and write nothing.
-- REQ-3: When a card has open criteria, the card finish command shall close the card only if one met option names each open criterion.
-- REQ-4 (REQ-3): IF an open criterion has no met option or a met option names a number that is not an open criterion or a number is named twice, THEN the card finish command shall refuse and write nothing.
-- REQ-5: When another session holds a reservation whose lease has not ended, the card finish command shall refuse and leave the ledger unchanged · failure: none — a lease of the caller or a lease that has ended passes.
-- REQ-6: When the card kind is research or audit, the card finish command shall accept an existing report file or a verdict note of the card as the evidence in place of a landed head.
-- REQ-7 (REQ-6): IF the report path is not a regular file under the reports folder of the user level home or under the project folder or the note is not a report or decision note of the card, THEN the card finish command shall refuse and write nothing.
-- REQ-8: When the card kind changes the repository, the card finish command shall accept only landing evidence and refuse report evidence · failure: none — the refusal writes nothing.
-- REQ-9: When the by option is missing or blank, the card finish command shall refuse and write nothing · failure: none — the by value is stored in both events when it is given.
-- REQ-10: When a ready card has a landing proof, the card next command shall list the card under skipped with the reason already_landed and the proof that found it.
-- REQ-11 (REQ-10): IF the profile is not m-flow or the integration branch cannot be read, THEN the card next command shall say in its landing key that git proofs were not checked and use only the recorded proofs.
-- REQ-12: When the card list command lists a card, it shall add a landed key that is true when a landing event or a merged pull request link is recorded and leave every existing key as it is · failure: none — the key reads the ledger only and runs no git command.
+- REQ-1: When a leader runs finish on a code card whose landed head is an ancestor of the integration tip, the card finish command shall close the card in one transaction and record the head, the tip, the generation and the caller in one landing event and one finish event · failure: none — a head outside the tip, an unknown head or a profile without an integration branch refuses and writes nothing.
+- REQ-2: When every open criterion of a card has one met option, the card finish command shall mark each of them met and close the card · failure: none — a met option that names a number that is not open or names a number twice refuses and writes nothing.
+- REQ-3: When an open criterion of a code card has no met option, the card finish command shall record the proven landing once and answer which criteria are open without any other change · failure: none — a head that git does not prove or a landing that is not recorded refuses and writes nothing.
+- REQ-4: When another session holds a reservation whose lease has not ended, the card finish command shall refuse and leave the ledger unchanged · failure: none — a lease of the caller or a lease that has ended passes.
+- REQ-5: When the card kind is research or audit, the card finish command shall accept an existing report file or a verdict note of the card as the evidence in place of a landed head · failure: none — a path that is not a regular file under the reports folder or the project folder, a note that is not a report or decision note, or an open criterion without a met option refuses and writes nothing.
+- REQ-6: When the card kind changes the repository, the card finish command shall accept only landing evidence and refuse report evidence · failure: none — the refusal writes nothing.
+- REQ-7: When the by option is missing or blank, the card finish command shall refuse and write nothing · failure: none — the by value is stored in both events when it is given.
+- REQ-8: When finish is called for a card that is already done, the card finish command shall refuse naming that state and write no second landing, finish or release event · failure: none — a retry after a call that wrote nothing closes the card once.
+- REQ-9: When two finish calls reach one card at the same time, the card finish command shall close it exactly once and refuse the other call · failure: none — the checks and the writes of one call share one write transaction.
+- REQ-10: When the generation option is given and differs from the generation of the card's reservation, the card finish command shall refuse and write nothing, not even a fence_reject event · failure: none — a call without the option is not checked.
+- REQ-11: When a ready card has a landing proof, the card next command and the card list command shall mark it as already landed, skipped with the reason already_landed and landed true · failure: none — a profile that is not m-flow or an integration branch that cannot be read says in the landing key that git proofs were not checked and uses only the recorded proofs.
+- REQ-12: When a card with a recorded landing is released, the card release command shall answer that the card is landed and name the finish command · failure: none — the answer reads the ledger only and runs no git command.
 
 ## Acceptance
 
-- AC-1 (REQ-1, REQ-2): a ready card with two open criteria and a head inside the integration tip closes to `done` with events `card.landed` and `card.finish` and no held reservation, and a head outside the tip, an unknown head and a profile without an integration branch each refuse with every table unchanged · verify: `cargo test --locked --offline --test card_finish_cli ac1_`
-- AC-2 (REQ-3, REQ-4): two open criteria with one met option refuse, with two succeed, with the same number twice or a number that is not open refuse, and a met reference of 500 characters passes and 501 refuses (N and N+1) · verify: `cargo test --locked --offline --test card_finish_cli ac2_`
-- AC-3 (REQ-5): the gate passes a lease that ends at the moment of the call and refuses one that ends a second later (a pure function with an explicit now), a live lease of another session refuses, an ended lease of another session and a live lease of the caller pass · verify: `cargo test --locked --offline --test card_finish_cli ac3_`
-- AC-4 (REQ-6, REQ-7): a research card closes with a report file under the reports folder, an audit card closes with a verdict note, and a missing file, a directory, a path outside both folders and a note of another kind each refuse with every table unchanged · verify: `cargo test --locked --offline --test card_finish_cli ac4_`
-- AC-5 (REQ-8): a code card refuses a report path and a note, and a research card refuses a head · verify: `cargo test --locked --offline --test card_finish_cli ac5_`
-- AC-6 (REQ-9): finish without by, and with a blank by, refuses, and the by value is stored in both events · verify: `cargo test --locked --offline --test card_finish_cli ac6_`
-- AC-7 (REQ-2, REQ-4, REQ-5, REQ-7, REQ-9): every refusal leaves every ledger table byte equal to its dump before the call, with no fence_reject event · verify: `cargo test --locked --offline --test card_finish_cli ac7_`
-- AC-8 (REQ-10, REQ-11): `card next` skips a ready card with a landed head inside the tip, with a merged pull request link and with a trailer of its linked SPEC reachable from the tip, keeps a card whose head is outside the tip, and reports `landing.checked` false with a reason for a profile that is not m-flow · verify: `cargo test --locked --offline --test card_finish_cli ac8_`
-- AC-9 (REQ-12): `card list` keeps its keys and adds landed true for a card with a landing event or a merged link and false for the others · verify: `cargo test --locked --offline --test card_finish_cli ac9_`
-- AC-10 (REQ-1, REQ-10): the scenario of a landed card: it lands, its holder gives the reservation back or its lease ends, a new session reads `card next`, the landed card is skipped and the next real card is listed, `card finish` closes the landed card with one met option per criterion, and the new session takes the next real card · verify: `cargo test --locked --offline --test card_finish_cli ac10_`
-- AC-11 (REQ-1, REQ-10, REQ-12): the existing card tests that read the answer of `card next` and `card list` still pass, run whole · verify: `cargo test --locked --offline --no-fail-fast --test card_work_cli --test card_dispatch_cli --test card_generated_scope --test card_spec_cli --test card_done_mflow_cli --test card_reclaim_cli --test card_line_lease_cli --test ledger_workflow`
-- AC-12 (REQ-1, REQ-6, REQ-10): the card operations document names the finish command, its two evidence kinds and the already_landed reason, and the help of the command says that it writes the ledger · verify: `cargo test --locked --offline --test card_finish_cli ac12_`
+- AC-1 (REQ-1): a ready card with two open criteria and a head inside the integration tip closes to `done` with events `card.landed` and `card.finish` and no held reservation, the landing event carries the head, the tip, the generation and the caller, a head outside the tip, an unknown head and a profile without an integration branch each refuse with every table unchanged, and a head that was fast-forwarded before any ledger write closes from the same evidence · verify: `cargo test --locked --offline --test card_finish_cli ac1_`
+- AC-2 (REQ-2): two open criteria with two met options succeed, the same number twice or a number that is not open refuses, and a met reference of 500 characters passes and 501 refuses (N and N+1) · verify: `cargo test --locked --offline --test card_finish_cli ac2_`
+- AC-3 (REQ-4): the gate passes a lease that ends at the moment of the call and refuses one that ends a second later (a pure function with an explicit now), a live lease of another session refuses, an ended lease of another session and a live lease of the caller pass · verify: `cargo test --locked --offline --test card_finish_cli ac3_`
+- AC-4 (REQ-5): a research card closes with a report file under the reports folder, an audit card closes with a verdict note, and a missing file, a directory, a path outside both folders, a note of another kind and an open criterion without a met option each refuse with every table unchanged · verify: `cargo test --locked --offline --test card_finish_cli ac4_`
+- AC-5 (REQ-6): a code card refuses a report path and a note, and a research card refuses a head · verify: `cargo test --locked --offline --test card_finish_cli ac5_`
+- AC-6 (REQ-7): finish without by, and with a blank by, refuses, and the by value is stored in both events · verify: `cargo test --locked --offline --test card_finish_cli ac6_`
+- AC-7 (REQ-1, REQ-2, REQ-4, REQ-5, REQ-7, REQ-8, REQ-10): every refusal leaves every ledger table byte equal to its dump before the call, with no fence_reject event · verify: `cargo test --locked --offline --test card_finish_cli ac7_`
+- AC-8 (REQ-11): `card next` skips a ready card with a landed head inside the tip, with a merged pull request link and with a trailer of its linked SPEC reachable from the tip, keeps a card whose head is outside the tip, and reports `landing.checked` false with a reason for a profile that is not m-flow · verify: `cargo test --locked --offline --test card_finish_cli ac8_`
+- AC-9 (REQ-11): `card list` keeps its keys and adds landed true for a card with a landing event or a merged link and false for the others · verify: `cargo test --locked --offline --test card_finish_cli ac9_`
+- AC-10 (REQ-1, REQ-11): the scenario of a landed card: it lands, its holder gives the reservation back or its lease ends, a new session reads `card next`, the landed card is skipped and the next real card is listed, `card finish` closes the landed card with one met option per criterion, and the new session takes the next real card · verify: `cargo test --locked --offline --test card_finish_cli ac10_`
+- AC-11 (REQ-1, REQ-11, REQ-12): the existing card tests that read the answer of `card next`, `card list` and `card release` still pass, run whole · verify: `cargo test --locked --offline --no-fail-fast --test card_work_cli --test card_dispatch_cli --test card_generated_scope --test card_spec_cli --test card_done_mflow_cli --test card_reclaim_cli --test card_line_lease_cli --test ledger_workflow`
+- AC-12 (REQ-1, REQ-5, REQ-11): the card operations document names the finish command, its two evidence kinds, the landing-only answer and the already_landed reason, and the help of the command says that it writes the ledger · verify: `cargo test --locked --offline --test card_finish_cli ac12_`
+- AC-13 (REQ-3): a code card with two open criteria and one met option records one landing event, keeps its state, its criteria, its reservation and its generation, answers closed false and the open number, and a second identical call records no second landing event; a card with no proven head refuses with every table unchanged · verify: `cargo test --locked --offline --test card_finish_cli ac13_`
+- AC-14 (REQ-8): a second finish on a done card refuses naming `done` with every table unchanged and no second done or release event, and a call that failed before any write is followed by one call that closes the card once · verify: `cargo test --locked --offline --test card_finish_cli ac14_`
+- AC-15 (REQ-9): two processes that call finish on one card at once give exactly one success and one refusal, one done event and one release event · verify: `cargo test --locked --offline --test card_finish_cli ac15_`
+- AC-16 (REQ-10): a generation lower or higher than the card's refuses with every table unchanged and no fence_reject event, the current generation passes, and a call without the option passes · verify: `cargo test --locked --offline --test card_finish_cli ac16_`
+- AC-17 (REQ-12): releasing a card that has a landing event answers landed true and names `card finish`, releasing one without a landing keeps the old answer, and no git command runs · verify: `cargo test --locked --offline --test card_finish_cli ac17_`
 
 ## Scope
 
 - write: `.moai/specs/SPEC-20261121-card-finish/spec.md`
 - write: `src/card/finish.rs`, `src/card/landed.rs`, `src/card/mod.rs`, `src/card/command.rs`, `src/card/work.rs`, `src/card/spec_link.rs`, `src/ledger/workflow.rs`, `src/spec_close.rs`
 - write: `tests/card_finish_cli.rs`, `docs/design-review/appendix/operations/card.md`
-- last step: one clap row for the finish command in `src/ops/card.rs`, added with the card line-lease command because another card holds that file for a long time
+- last step: the clap lines of the finish command in `src/ops/card.rs` only (the subcommand and its dispatch arm, with the generation option of REQ-10); another card holds that file and the leader approved these lines as a pair
 
 ## Decisions
 
@@ -68,14 +76,17 @@ A card whose change already landed on the integration branch can come back to `r
 - D-8: `card list` shows only what is recorded (`landed` is a ledger fact, with no git call).
 - D-9: The SPEC check at finish runs for code kinds only and reads the SPEC from the project folder given by `--project`. Reading the SPEC at the integration tip instead is a follow-up.
 - D-10: `card landed` keeps accepting a review card only; finish is the one path that closes a ready or active card.
+- D-11: Open criteria without a met option are a landing-only call for a code card (leader decision): the landing event is recorded once, nothing else changes, and the answer is `ok` with `closed` false and the open numbers. A research or audit card keeps the refusal, because its evidence is a report or a verdict and a landing event without a head is not a landing. Reversible: the call can refuse again.
+- D-12: `--generation` is compared with the generation of the card's newest reservation (a ready card keeps the number of the reservation it had); a mismatch refuses before any write and never goes through the fenced path, so no fence_reject event is written. A card that never had a reservation has generation 0.
+- D-13: The landing event records `head`, `tip`, `generation` and `by` (the tip is the one that contained the head when the call ran); the finish event keeps the criteria. The evidence is checked in git before the transaction, and the transaction re-reads the card state, so git and the ledger never need one transaction: a landing proven in git and not yet written is simply proven again by the next call.
+- D-14: The release answer adds `landed` and `next_step` only when the card has a `card.landed` event or a merged pull request link, read from the ledger; every existing key and the effect of release stay as they are.
 
 ## Plan
 
-1. Tests first (RED): `tests/card_finish_cli.rs` with the cases of AC-1 to AC-10 and AC-12 on a copy ledger and a temporary repository with an integration branch; see them fail on the unchanged code.
-2. `src/ledger/workflow.rs`: the gate function, the evidence type, `finish` and a read-only function that lists the recorded landing facts of the non-done cards; two new error variants with sentences that `contract::classify` sorts as conflict and invalid input.
-3. `src/card/finish.rs` (argument checks, secret screen, landing proof, kind rules, report path rule) and `src/card/landed.rs` (the tip, one trailer pass, one ancestor check per distinct head), then the `next` hunk in `src/card/work.rs` and the `landed` column in `src/card/command.rs`.
-4. The card operations document and the help layout; run the card and ledger tests whole, the repository scans, `--lib`, `--bins`, clippy, then audit and write the Result.
-5. Last, with the line lease: the clap row in `src/ops/card.rs`.
+1. Revision 1 is built and committed on this branch (the clap lines included, merged with the tip); revision 2 starts from it.
+2. Tests first (RED): AC-13 to AC-17 and the additions to AC-1, AC-4 and AC-7 in `tests/card_finish_cli.rs`, on a temporary home and a temporary repository; the old tests that expected a refusal for an open criterion change to the new answer. See them fail on the unchanged code.
+3. `src/ledger/workflow.rs` (landing event payload, the landing-only outcome, the generation check, the done refusal kept) and `src/card/finish.rs` (the `--generation` argument, the answer), the clap lines, the release answer in the card layer, then the card operations document and the help.
+4. Light checks first, mutants (at most five, after the commit), one affected run, then the READY note; the canonical text of the closing path is slice 2 after the READY.
 
 ## Risks
 
@@ -86,29 +97,4 @@ A card whose change already landed on the integration branch can come back to `r
 
 ## Result
 
-Every line below was read from a run on the working tree of commit `5c4952ce55` plus the staged clap row of `src/ops/card.rs`. That row is not committed yet (the file is reserved by another card; the row exists as a patch of 65 added lines), so the committed head alone does not pass the tests that call the command. Nothing here was run on a committed head that has the row.
-
-- AC-1: met — `cargo test --locked --offline --test card_finish_cli ac1_` (4 tests) passed: a ready card with two open criteria and a head inside the integration tip closes to `done` with the events `card.landed` and `card.finish` and no held reservation; a head outside the tip, an unknown head and a profile without an integration branch each refuse with the reason named and every table unchanged.
-- AC-2: met — `ac2_` (2 tests) passed: one met option for two open criteria refuses, two succeed, a repeated number and a number that is not open refuse, a reference of 500 characters passes and 501 refuses.
-- AC-3: met — `ac3_` (4 tests) passed: a live lease of another session refuses naming the holder, an ended lease of another session and a live lease of the caller pass, and the pure gate passes at `lease_until == now` and refuses at `now + 1`; a call without a session id passes only when the lease has ended.
-- AC-4: met — `ac4_` (3 tests) passed: a research card closes with a report file under the reports folder, an audit card closes with a verdict note, a missing file, a directory, a path outside both folders, a `..` escape, a symlink out and a note of another kind each refuse; a typed path of 500 characters passes and 501 refuses.
-- AC-5: met — `ac5_` (1 test) passed: a code card refuses a report path and a note, and a research card refuses a head.
-- AC-6: met — `ac6_` (1 test) passed: finish without `--by` and with a blank `--by` refuses, and the by value is stored in both events.
-- AC-7: met — `ac7_` (1 test) passed, and every refusal test of AC-1 to AC-6 compares the dump of all seven ledger tables before and after and checks that no `fence_reject` event was written.
-- AC-8: met — `ac8_` (4 tests) passed: `card next` skips a ready card by a recorded head inside the tip, by a merged pull request link and by the `Moai-Spec` trailer of its linked SPEC, keeps a card whose head is outside the tip in the same test, and reports `landing.checked` false with a reason for a profile that is not m-flow; the trailer test also keeps a card whose number appears in a commit message but that has no trailer (a card number in a message is never a proof).
-- AC-9: met — `ac9_` (1 test) passed: `card list` keeps its keys and adds `landed`.
-- AC-10: met — `ac10_` (2 tests) passed: the scenario with the reservation given back and the one with the lease ended by SQL; in the second, the card is held and so is absent from `ready`, and the skip reason `already_landed` is shown only for the given-back card (a card that still holds a reservation is skipped as `held` before the landing check).
-- AC-11: met — `cargo test --locked --offline --no-fail-fast --test card_work_cli --test card_dispatch_cli --test card_generated_scope --test card_spec_cli --test card_done_mflow_cli --test card_reclaim_cli --test card_line_lease_cli --test ledger_workflow --test card_finish_cli` exited 0: 26, 25, 8, 11, 4, 16, 16, 29 and 24 tests passed.
-- AC-12: met — `ac12_` (1 test) passed: the help of `card finish` starts with `Writes the ledger.` and the card operations document names `card finish`, `already_landed`, `--evidence-report` and `--evidence-note`.
-
-Mutants (all killed, the files restored byte for byte, `git diff --stat` empty afterwards):
-
-| Mutant | Killed by |
-| --- | --- |
-| lease end read as `lease_until < now` | the gate edge test and the no-session test of AC-3 |
-| a live lease of the caller no longer passes | the gate edge test and the caller test of AC-3 |
-| every probed head counts as inside the tip | the AC-8 test that keeps a card with a head outside the tip |
-| the trailer pass limit read as `>` instead of `>=` | the unit test of the limit boundary in `landed.rs` |
-| the one-line limit 501 instead of 500 | the 500/501 tests of AC-2 and AC-4 |
-
-Known and left as it is: `card done` reads the newest `card.landed` event and decodes `head` as text, so a newest event without a head (the report close writes one) makes `card done` refuse with "no local landing is linked". A report-closed card is already `done` and nothing reopens it, so no command reaches this today; the function is not changed here. The stored report path is the resolved path and may pass 500 characters (`/var` resolves to `/private/var` on macOS); the 500-character limit applies to the typed path. Not run on this tree: clippy, `--lib` and `--bins` as a whole, the repository scans, the python tests and a Windows build; the unit tests of `landed.rs` ran only inside the mutant run of the limit boundary.
+Revision 2 is in progress. The lines of revision 1 were read from a run before the clap lines were committed and before these requirements existed; they are written again from the runs of this revision.
