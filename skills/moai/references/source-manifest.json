@@ -69,12 +69,12 @@
       }
     },
     "references/adapters/herdr.md": {
-      "sha256": "c5ced59e75d848603a0d84022aa3ebff57ec37638f7302f1a9b36369d15fe6a4",
+      "sha256": "076b4331aab44980514abe655a1da3cc4f1f8569a7b4ab45ead27a4c68c808a1",
       "origin": {
         "kind": "design-spec",
         "template_id": "adapter-herdr",
         "adoption": "new",
-        "reason": "Written for the optional-tool references (user-confirmed 2026-11-21, SPEC-20261121-herdr-reference-orca-gap): when MoAI uses herdr (only in a workspace the user names, read-only), the commands that print the installed version's guide (herdr --skill, herdr api schema, herdr status --json), the read-only commands, every typing, creating, closing, moving, reporting and installing command it forbids, and the not_run fallback when herdr is missing. Checked against the herdr 0.8.2 binary on this machine and the 0.8.2 and latest (0.9.5) CLI reference and socket API pages (read 2026-11-21). No herdr server was running, so no live workspace was read."
+        "reason": "Written for the optional-tool references (user-confirmed 2026-11-21, SPEC-20261121-herdr-reference-orca-gap): when MoAI uses herdr (only inside a herdr pane, in a workspace the user names, read-only), the commands that print the installed version's guide (herdr --skill, herdr api schema, herdr status --json), the read-only commands, every typing, creating, closing, moving, reporting and installing command it forbids, and the not_run fallback when herdr is missing. Checked against the herdr 0.8.2 binary on this machine and the 0.8.2 and latest (0.9.5) CLI reference and socket API pages (read 2026-11-21). No herdr server was running, so no live workspace was read."
       }
     },
     "references/adapters/orca.md": {
