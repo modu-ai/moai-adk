@@ -18,7 +18,8 @@ pub struct Args {
     #[arg(long)]
     answers: bool,
     /// Conversation language code for the conversation-default items; else the value
-    /// `language-set --home` saved, else the profile's `language.user_chat`, else `en`.
+    /// `language-set --home` saved, else `en`. A profile's earlier `user_chat` is kept as
+    /// data but does not decide it.
     #[arg(long)]
     conversation: Option<String>,
 }

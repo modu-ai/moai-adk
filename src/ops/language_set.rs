@@ -1,6 +1,6 @@
 //! `language-set` (#2935 L1): the installer records the conversation language the user chose,
 //! and a later call replaces it with a valid code. Writes at most one small file in HOME; the
-//! logic is `moai_cli::language::set_home`.
+//! logic is `moai_cli::language::set_home` (or `set_home_if_absent` with `--if-absent`).
 
 use clap::builder::PossibleValue;
 use std::ffi::OsStr;
@@ -21,6 +21,11 @@ pub struct Args {
     /// scope can be added.
     #[arg(long)]
     home: bool,
+    /// Only write when no value is recorded yet: the installer's mode, so a reinstall keeps
+    /// the recorded language (`written: false`, `reason: exists`). Without it a valid code
+    /// replaces the value.
+    #[arg(long)]
+    if_absent: bool,
     /// Language code: one of en, ko, ja, zh
     #[arg(value_parser = Code, hide_possible_values = true)]
     code: String,
@@ -71,5 +76,9 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
     }
     let home = moai_cli::key_vault::home()
         .map_err(|_| "home directory missing; language-set requires HOME".to_string())?;
-    moai_cli::language::set_home(&home, &args.code)
+    if args.if_absent {
+        moai_cli::language::set_home_if_absent(&home, &args.code)
+    } else {
+        moai_cli::language::set_home(&home, &args.code)
+    }
 }
