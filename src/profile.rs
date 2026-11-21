@@ -1066,6 +1066,31 @@ pub fn read_profile(root: &Path) -> Result<(Profile, Vec<u8>)> {
     Ok((profile, bytes))
 }
 
+/// [`read_profile`] for a place whose active hosts are `active`: retired hosts leave `hosts`.
+pub fn read_profile_in(active: &[&str], root: &Path) -> Result<(Profile, Vec<u8>)> {
+    let _ = active;
+    read_profile(root)
+}
+
+/// [`plan`] for a place whose active hosts are `active`: retired hosts in the input are filtered
+/// like a read, and a saved profile that holds one gets the filtered `hosts` as an update.
+pub fn plan_in(active: &[&str], root: &Path, profile: Profile) -> Result<Plan> {
+    let _ = active;
+    plan(root, profile)
+}
+
+/// [`apply`] for a place whose active hosts are `active`.
+pub fn apply_in(
+    active: &[&str],
+    root: &Path,
+    p: Plan,
+    confirmed: &str,
+    permission: &str,
+) -> Result<Value> {
+    let _ = active;
+    apply(root, p, confirmed, permission)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

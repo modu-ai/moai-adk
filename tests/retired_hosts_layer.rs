@@ -632,3 +632,125 @@ mod generation_manifest {
         );
     }
 }
+
+// ---- profile hosts (REQ-2, REQ-3, REQ-4) ---------------------------------------------------
+
+mod profile_hosts {
+    use moai_cli::profile::{apply, apply_in, plan, plan_in, read_profile_in, Profile};
+    use serde_json::{json, Value};
+    use std::fs;
+    use std::path::Path;
+
+    const TODAY: [&str; 3] = ["claude", "codex", "omp"];
+    const AFTER: [&str; 1] = ["claude"];
+    const PERM: &str = "fixture-approved";
+
+    fn profile(hosts: Value) -> Profile {
+        serde_json::from_value(json!({
+            "schema_version": 2, "project_id": "demo", "purpose": "Build a small editor",
+            "tools": ["Rust"], "development_methods": ["TDD"], "hosts": hosts,
+            "interview_revision": "r1"
+        }))
+        .unwrap()
+    }
+
+    fn file(root: &Path) -> std::path::PathBuf {
+        moai_cli::state_root::path(root, "project.yaml")
+    }
+
+    fn baseline(root: &Path) -> std::path::PathBuf {
+        moai_cli::state_root::path(root, "manifests/profile-baseline.json")
+    }
+
+    fn read_json(path: &Path) -> Value {
+        serde_json::from_slice(&fs::read(path).unwrap()).unwrap()
+    }
+
+    /// A project whose profile an earlier version wrote with `claude` and `codex`, applied
+    /// through the real engine so a baseline equal to the file exists.
+    fn applied() -> tempfile::TempDir {
+        let tmp = tempfile::tempdir().unwrap();
+        let root = fs::canonicalize(tmp.path()).unwrap();
+        let p = plan(&root, profile(json!(["claude", "codex"]))).unwrap();
+        apply(&root, p.clone(), &p.plan_digest, PERM).unwrap();
+        tmp
+    }
+
+    #[test]
+    fn a_read_removes_retired_hosts_only_when_the_place_no_longer_lists_them() {
+        let tmp = applied();
+        let root = fs::canonicalize(tmp.path()).unwrap();
+        let (kept, _) = read_profile_in(&TODAY, &root).unwrap();
+        assert_eq!(kept.hosts, ["claude", "codex"]);
+        let (read, _) = read_profile_in(&AFTER, &root).unwrap();
+        assert_eq!(read.hosts, ["claude"]);
+        // A file that only names retired hosts reads as claude.
+        let mut value = read_json(&file(&root));
+        value["hosts"] = json!(["omp", "codex"]);
+        fs::write(file(&root), value.to_string()).unwrap();
+        let (read, _) = read_profile_in(&AFTER, &root).unwrap();
+        assert_eq!(read.hosts, ["claude"]);
+    }
+
+    #[test]
+    fn a_plan_input_naming_a_retired_host_is_filtered_not_refused() {
+        let tmp = tempfile::tempdir().unwrap();
+        let root = fs::canonicalize(tmp.path()).unwrap();
+        let planned = plan_in(&AFTER, &root, profile(json!(["codex", "omp"]))).unwrap();
+        assert_eq!(planned.profile.hosts, ["claude"]);
+        let kept = plan_in(&TODAY, &root, profile(json!(["codex"]))).unwrap();
+        assert_eq!(kept.profile.hosts, ["codex"]);
+        assert!(plan_in(&AFTER, &root, profile(json!(["gemini"]))).is_err());
+    }
+
+    /// The saved file keeps `codex`; the filtered desired profile is an update, never a conflict,
+    /// whatever the baseline holds, and applying it writes `hosts` and nothing else.
+    fn assert_update_to_claude(root: &Path, case: &str) {
+        let before = read_json(&file(root));
+        assert_eq!(before["hosts"], json!(["claude", "codex"]), "{case}");
+        let (desired, _) = read_profile_in(&AFTER, root).unwrap();
+        let planned = plan_in(&AFTER, root, desired).unwrap();
+        assert_eq!(planned.action, "update", "{case}: {:?}", planned.delta);
+        assert!(planned.delta.conflict.is_empty(), "{case}");
+        assert_eq!(planned.delta.changed, ["hosts"], "{case}");
+        apply_in(&AFTER, root, planned.clone(), &planned.plan_digest, PERM)
+            .unwrap_or_else(|e| panic!("{case}: {e}"));
+        let after = read_json(&file(root));
+        let mut expected = before.clone();
+        expected["hosts"] = json!(["claude"]);
+        assert_eq!(after, expected, "{case}: only hosts changes");
+    }
+
+    #[test]
+    fn a_saved_retired_host_is_updated_when_the_baseline_equals_the_file() {
+        let tmp = applied();
+        assert_update_to_claude(&fs::canonicalize(tmp.path()).unwrap(), "baseline == file");
+    }
+
+    #[test]
+    fn a_saved_retired_host_is_updated_when_there_is_no_baseline() {
+        let tmp = applied();
+        let root = fs::canonicalize(tmp.path()).unwrap();
+        fs::remove_file(baseline(&root)).unwrap();
+        assert_update_to_claude(&root, "no baseline");
+    }
+
+    #[test]
+    fn a_saved_retired_host_is_updated_when_the_baseline_was_edited_by_hand() {
+        let tmp = applied();
+        let root = fs::canonicalize(tmp.path()).unwrap();
+        let mut record = read_json(&baseline(&root));
+        record["profile"]["hosts"] = json!(["claude"]);
+        fs::write(baseline(&root), record.to_string()).unwrap();
+        assert_update_to_claude(&root, "baseline hand-edited");
+    }
+
+    #[test]
+    fn while_the_hosts_are_active_the_saved_profile_plans_unchanged() {
+        let tmp = applied();
+        let root = fs::canonicalize(tmp.path()).unwrap();
+        let (desired, _) = read_profile_in(&TODAY, &root).unwrap();
+        let planned = plan_in(&TODAY, &root, desired).unwrap();
+        assert_eq!(planned.action, "unchanged", "{:?}", planned.delta);
+    }
+}
