@@ -2,9 +2,9 @@
 id: SPEC-20261121-remove-typesafe
 title: "Remove TypeSafe and the Jev skills from the shipped assets"
 status: approved
-revision: 1
+revision: 2
 created: 2026-11-21
-approval: {by: user, at: 2026-11-21, basis: "AskUserQuestion selection: 승인 (Recommended)", digest: "sha256:14c81a4072f9e86d6c35c43202c97cab756e3ce071f797388e84c7c119fa709e"}
+approval: {by: user, at: 2026-11-21, basis: "AskUserQuestion selection r2: 승인 (Recommended)", digest: "sha256:9abd86572f0bc895dc07fcadd3a8a509c1971204e8f04687c88b89b5e7c4ba07"}
 ---
 
 # Remove TypeSafe and the Jev skills from the shipped assets
@@ -27,7 +27,7 @@ approval: {by: user, at: 2026-11-21, basis: "AskUserQuestion selection: 승인 (
 - AC-2 (REQ-3): `grep -c -i -E 'jev|typesafe' templates/bundle-packs/.claude/agents/moai/manager-todo.md` 가 head 에서 0. 큐 규칙 문단(`Serial-cycle contract`, `Judgment Sub-Role`, `Model/effort escalation`)이 그대로 있음. verify: `grep -c -E '^## (Judgment Sub-Role|Model/effort escalation)' ...manager-todo.md` 가 2
 - AC-3 (REQ-4): `packs.json` 의 manager-todo 항목 sha256 이 파일의 sha256 과 같음. verify: `shasum -a 256 templates/bundle-packs/.claude/agents/moai/manager-todo.md` 와 `grep -A5 '"name": "manager-todo"' templates/bundle-packs/packs.json`
 - AC-4 (REQ-5): 소스 시험이 통과하고 해당 파일들에 `typesafe` 가 없음. verify: `cargo test --locked --offline --lib home_`; `cargo test --locked --offline --test home_retire_cli`; `grep -c -i typesafe src/home_layout.rs src/home_retire.rs tests/home_retire_cli.rs` 가 각각 0
-- AC-5: 실제 코드 호출처가 없음을 한 번 더 확인하고 가벼운 검사 통과. verify: `git grep -n -i -E 'typesafe|\bjev\b' -- src tests templates` 의 결과가 `tests/project_decide_model.rs` 와 `src/shim_check.rs` 의 시험 글뿐; `git diff --check`; `cargo fmt --check`; `moai check affected <base>..<head>` PASS
+- AC-5: 실제 코드 호출처가 없음을 한 번 더 확인하고 가벼운 검사 통과. verify: `git grep -n -i -E 'typesafe|\bjev\b' -- src tests templates` 의 결과가 `tests/project_decide_model.rs`(호환 시험)와 `tests/fixtures/atlas-tag/go-corpus.txt`(Go 코드 모음 fixture)뿐; `git diff --check`; `cargo fmt --check`; `moai check affected <base>..<head>` PASS
 
 ## Scope
 
@@ -40,6 +40,8 @@ approval: {by: user, at: 2026-11-21, basis: "AskUserQuestion selection: 승인 (
 - Q1: 남은 TypeSafe 와 결정 모델을 어떻게 할까요? → A: "TypeSafe 더이상 사용하지 않는다. 제거", "결정모드 모두 다 제거 해라" (사용자, 2026-11-21 대화)
 - Q2: 위 범위(스킬 3개·packs.json 항목·manager-todo 의 Jev 규칙 제거, .env.typesafe 예시 이름 교체; 호환 시험·Go 세대 분류표·과거 기록·Go 저장소·실제 HOME 은 유지)로 승인할까요? → A: 승인 (Recommended)
 
+- Q3: 구현 뒤 AC-5 의 남은 언급 목록이 실제와 달라요(shim_check.rs 는 안 나오고 go-corpus fixture 가 나와요). AC-5 문장만 고쳐 리비전 2 로 승인할까요? → A: 승인 (Recommended)
+
 ## Plan
 
 1. 세 스킬 폴더를 `git rm` 으로 지우고 `packs.json` 에서 항목 3개(commands 묶음의 moai-fetch-web, ops-tools 묶음의 나머지 둘)를 빼요. ops-tools 설명에서 "Jev," 를 빼요.
@@ -47,3 +49,12 @@ approval: {by: user, at: 2026-11-21, basis: "AskUserQuestion selection: 승인 (
 3. `src/home_layout.rs`, `src/home_retire.rs`, `tests/home_retire_cli.rs` 에서 `.env.typesafe` 예시를 `.env.legacy` 로 바꾸고 주석에서 TypeSafe 를 빼요. `.env*` 행과 결정(`SecretRenameOnly`)은 그대로예요.
 4. `bundle_user_assets_cli`, `home_` lib 시험, `home_retire_cli`, 가벼운 검사, `moai check affected` 를 돌려요.
 5. 독립 감사 뒤 병합해요.
+
+## Result
+
+- AC-1: met — head 14349c5654 에서 `grep -c -E 'moai-fetch-web|moai-jev-skill-suggestion|moai-ref-jev-question-design' templates/bundle-packs/packs.json` 0; `find templates/bundle-packs \( -iname '*jev*' -o -iname '*fetch-web*' \) | wc -l` 0; packs.json 은 JSON 으로 읽힘; `cargo test --locked --offline --test bundle_user_assets_cli` exit 0 (6 passed, 구현 에이전트와 제가 각각 실행)
+- AC-2: met — `grep -c -i -E 'jev|typesafe' templates/bundle-packs/.claude/agents/moai/manager-todo.md` 0; `grep -c -E '^## (Judgment Sub-Role|Model/effort escalation)'` 2
+- AC-3: met — `shasum -a 256` 의 manager-todo.md 값 86e7dbc70086b9ca226200aabf6691e815497e6e0d1cc8c17b3a64e0b1d0e3ad 가 packs.json 의 manager-todo 항목 sha256 과 같음
+- AC-4: met — `cargo test --locked --offline --lib home_` exit 0 (107 passed); `cargo test --locked --offline --test home_retire_cli` exit 0 (24 passed); `grep -c -i typesafe src/home_layout.rs src/home_retire.rs tests/home_retire_cli.rs` 각각 0
+- AC-5: met — `git grep -n -i -E 'typesafe|\bjev\b' -- src tests templates` 결과가 `tests/project_decide_model.rs`(호환 시험)와 `tests/fixtures/atlas-tag/go-corpus.txt`(Go 코드 모음 fixture)뿐; `git diff --check` exit 0 (구현 에이전트); `cargo fmt --check` exit 0 (구현 에이전트); `moai check affected f058985534..14349c5654` PASS (targets=49 py=9, 구현 에이전트)
+
