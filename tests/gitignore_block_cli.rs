@@ -338,7 +338,9 @@ fn an_issue_project_block_without_specs_gets_the_line_as_a_merge() {
 /// SPEC-20261117-sdd-foundation REQ-7, REQ-8, REQ-9: this repository's own `.gitignore`, read
 /// by git in a temporary repository without global rules, keeps the SPECs in git, ignores the
 /// rest of the root `.moai/` and every `.moai/` below the root, and ignores credential and
-/// secret-shaped files even under `.moai/specs/`.
+/// secret-shaped files even under `.moai/specs/`. SPEC-20261121-gitignore-tracked-profile REQ-1:
+/// the project profile `.moai/project.yaml` is tracked too (the user chose it with `/moai
+/// project`, and the `.gitignore` says so with `!.moai/project.yaml`).
 #[test]
 fn the_repository_gitignore_tracks_specs_and_ignores_the_rest() {
     let tmp = TempDir::new().unwrap();
@@ -364,6 +366,7 @@ fn the_repository_gitignore_tracks_specs_and_ignores_the_rest() {
         ".moai/specs/SPEC-x/spec.md",
         ".moai/specs/SPEC-x/notes/design.md",
         ".moai/specs/README.md",
+        ".moai/project.yaml",
     ] {
         assert!(!ignored(rel), "{rel} is ignored");
     }
@@ -375,7 +378,6 @@ fn the_repository_gitignore_tracks_specs_and_ignores_the_rest() {
         ".moai/docs/a.md",
         ".moai/manifests/m.json",
         ".moai/reports/plan-audit/a.md",
-        ".moai/project.yaml",
         ".moai/state/s.json",
         ".moai/specs.md",
         "sub/.moai/x",
