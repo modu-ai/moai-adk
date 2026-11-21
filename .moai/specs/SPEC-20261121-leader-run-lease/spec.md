@@ -52,5 +52,6 @@ Orca's automations page (https://orca.dev/docs/cli/automations, read 2026-11-21T
 
 ## Result
 
-- AC-1: not yet — nothing written.
-- AC-2: not yet — nothing written.
+- AC-1: met — `cargo test --test leader_run_cli`: 12 passed on head c54a81a118 (twelve were red before the command existed): the take, the skip with holder and age, 20 rounds of two overlapping begins with one `taken` and one `skipped` each, the takeover of an ended lease and the edge at the lease end, idle at 0 ready and under a HOLD and the 0-to-1 take, the holder-only end, the renewal, status, the limits, a damaged lease file kept, and only the lease file and its lock file written. Five mutants (lease ends early, idle only on a hold, end by any session, shared lock, renewal restarts) were each caught. `cargo clippy --all-targets -D warnings` exit 0.
+- AC-2: not yet — the MODE-LEADER text is held by another card of this lane until that card merges; the rule is written after it and its test is `leader_run_cli mode_text`.
+- Not run: a live Claude Code or Codex leader tick; the checks used a temporary project and HOME and the `--now` clock. The `--lib`, `--bins`, scan and python sets are not run on this head yet.
