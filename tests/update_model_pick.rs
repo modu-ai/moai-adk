@@ -8,7 +8,7 @@ mod common;
 use common::CleanEnv;
 
 use moai_cli::model_effort_questions::tool_question;
-use moai_cli::update_models::{installed_tools, report, settings_path, stage};
+use moai_cli::update_models::{installed_tools_with, report, settings_path, stage, stage_with};
 use serde_json::{json, Value};
 use std::fs;
 use std::io::{BufReader, Cursor, Read};
@@ -38,8 +38,11 @@ fn write_settings(home: &Path, body: &str) -> PathBuf {
 }
 
 fn run_stage(home: &Path, input: &str) -> (Value, String) {
+    // The detection is pinned to the home folders: the test run's own `CLAUDE_CONFIG_DIR`
+    // (a Claude Code session's environment) must not leak into what the questions see.
+    let tools = installed_tools_with(home, Some(home), |_| None);
     let mut out = Vec::new();
-    let result = stage(home, &mut Cursor::new(input.to_string()), &mut out);
+    let result = stage_with(home, &mut Cursor::new(input.to_string()), &mut out, &tools);
     (result, String::from_utf8(out).unwrap())
 }
 
@@ -243,18 +246,56 @@ fn a_broken_or_changed_settings_file_is_an_error_and_stays_as_it_was() {
 #[test]
 fn the_installed_tools_follow_the_home_folders() {
     let h = home();
-    assert!(installed_tools(&h.path).is_empty());
+    let account = Some(h.path.as_path());
+    let get = |_: &str| None;
+    assert!(installed_tools_with(&h.path, account, get).is_empty());
     fs::create_dir_all(h.path.join(".claude")).unwrap();
-    assert_eq!(installed_tools(&h.path), ["claude"]);
+    assert_eq!(installed_tools_with(&h.path, account, get), ["claude"]);
     fs::write(h.path.join(".codex"), "a file, not a folder").unwrap();
     assert_eq!(
-        installed_tools(&h.path),
+        installed_tools_with(&h.path, account, get),
         ["claude"],
         "a file is not a folder"
     );
     fs::remove_file(h.path.join(".codex")).unwrap();
     fs::create_dir_all(h.path.join(".codex")).unwrap();
-    assert_eq!(installed_tools(&h.path), ["claude", "codex"]);
+    assert_eq!(
+        installed_tools_with(&h.path, account, get),
+        ["claude", "codex"]
+    );
+}
+
+/// CLAUDE_CONFIG_DIR relocates Claude's folder: the detection finds the host there and a
+/// `.claude` folder under the home stops counting once the variable names a folder that is
+/// not there. The getter is injected, so the test run's own environment never leaks in
+/// (SPEC-20261121-install-docs-match-code, host detection follows the host home resolver).
+#[test]
+fn the_installed_tools_follow_claude_config_dir() {
+    let h = home();
+    let moved = h.path.join("claude-elsewhere");
+    fs::create_dir_all(&moved).unwrap();
+    let get = |k: &str| {
+        if k == "CLAUDE_CONFIG_DIR" {
+            Some(std::ffi::OsString::from(&moved))
+        } else {
+            None
+        }
+    };
+    let account = Some(h.path.as_path());
+    fs::create_dir_all(h.path.join(".claude")).unwrap();
+    assert_eq!(
+        installed_tools_with(&h.path, account, get),
+        ["claude"],
+        "the relocated folder is what the detection sees"
+    );
+    // Only the account home's own `.claude` folder stops counting: another `.claude` beside
+    // the relocated one is invisible to the detection by design.
+    fs::remove_dir_all(h.path.join(".claude")).unwrap();
+    assert_eq!(installed_tools_with(&h.path, account, get), ["claude"]);
+    // The variable unset again reads the home folder — empty, so no tool.
+    let unset = |_: &str| None;
+    let empty: Vec<&'static str> = Vec::new();
+    assert_eq!(installed_tools_with(&h.path, account, unset), empty);
 }
 
 // The command: a run without a terminal asks nothing and reports the values.

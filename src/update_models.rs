@@ -32,14 +32,32 @@ pub fn settings_path(home: &Path) -> PathBuf {
     crate::home_root::path(home).join("config/launcher.yaml")
 }
 
-/// The tools whose folder exists under the home: `claude` for `~/.claude`, `codex` for `~/.codex`.
-/// A link or a file of that name is not a folder.
+/// The tools whose folder exists under the home: `claude` follows the host home resolver
+/// (`CLAUDE_CONFIG_DIR` relocates the folder when it belongs to the account home — the same
+/// rule `host_home` resolves everywhere else), `codex` for `~/.codex`. A link or a file of
+/// that name is not a folder. A resolver refusal falls back to the home folder, so the
+/// detection never loses a host because of an odd variable. The variables come from this
+/// process's environment; tests call [`installed_tools_with`] with their own getter.
 pub fn installed_tools(home: &Path) -> Vec<&'static str> {
-    [("claude", ".claude"), ("codex", ".codex")]
+    let get = |k: &str| std::env::var_os(k);
+    // `stage` runs against the user's own HOME, so the home is the account home and the
+    // variable counts (`resolve_with`'s own rule).
+    installed_tools_with(home, Some(home), get)
+}
+
+/// [`installed_tools`] with the account home and the variable getter given, so a test pins
+/// the relocation without touching the test run's own environment.
+pub fn installed_tools_with(
+    home: &Path,
+    account: Option<&Path>,
+    get: impl Fn(&str) -> Option<std::ffi::OsString>,
+) -> Vec<&'static str> {
+    let claude = crate::host_home::resolve_with(crate::host_home::Host::Claude, home, account, get)
+        .unwrap_or_else(|_| home.join(".claude"));
+    let codex = home.join(".codex");
+    [("claude", claude), ("codex", codex)]
         .into_iter()
-        .filter(|(_, folder)| {
-            fs::symlink_metadata(home.join(folder)).is_ok_and(|m| m.file_type().is_dir())
-        })
+        .filter(|(_, folder)| fs::symlink_metadata(folder).is_ok_and(|m| m.file_type().is_dir()))
         .map(|(tool, _)| tool)
         .collect()
 }
@@ -127,13 +145,25 @@ fn preview<W: Write>(out: &mut W, plan: &Plan) -> std::io::Result<()> {
 /// `declined`, `applied` (with `changes`) or `error` (with `message`). Nothing is written before
 /// a yes, and a refusal of the apply leaves the file as it was.
 pub fn stage<R: BufRead, W: Write>(home: &Path, input: &mut R, out: &mut W) -> Value {
+    stage_with(home, input, out, &installed_tools(home))
+}
+
+/// [`stage`] with the detected tools given, so a test pins the question flow without touching
+/// the test run's own environment (the detection now follows `CLAUDE_CONFIG_DIR`, which a
+/// test run may carry).
+pub fn stage_with<R: BufRead, W: Write>(
+    home: &Path,
+    input: &mut R,
+    out: &mut W,
+    tools: &[&'static str],
+) -> Value {
     let path = settings_path(home);
     // The saved choices are the defaults of the questions; an unusable file ends the stage here.
     let launcher = match questions::read_launcher(&path) {
         Ok(launcher) => launcher,
         Err(message) => return error(&message),
     };
-    let picks = match questions::run_with(input, out, &installed_tools(home), &launcher) {
+    let picks = match questions::run_with(input, out, tools, &launcher) {
         Ok(Outcome::Picks(picks)) if picks.is_empty() => return json!({"state": "nothing_picked"}),
         Ok(Outcome::Picks(picks)) => picks,
         Ok(Outcome::Cancelled) => return json!({"state": "cancelled"}),
