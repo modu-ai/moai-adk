@@ -563,18 +563,23 @@ fn profile_step(
 /// "the section is there" no longer means "the personal file is listed". What the section
 /// lists is its recorded `kind`; a section recorded before the kind existed listed the file.
 fn local_file(root: &Path, manifest: &Value) -> Result<&'static str> {
-    const LOCAL: &str = "AGENTS.local.md";
+    // The personal file is recorded under either of its names (`AGENTS.local.md` before Claude
+    // Code became the target, `CLAUDE.local.md` after it).
+    let is_local = |v: &Value| {
+        v.as_str()
+            .is_some_and(|name| crate::agents::LOCAL_NAMES.contains(&name))
+    };
     let created = manifest["created_once"]
         .as_array()
         .into_iter()
         .flatten()
-        .any(|p| p == LOCAL)
+        .any(is_local)
         // Manifests written before `created_once` recorded the file in owned_files.
         || manifest["owned_files"]
             .as_array()
             .into_iter()
             .flatten()
-            .any(|f| f["path"] == LOCAL && f["section_id"].is_null());
+            .any(|f| is_local(&f["path"]) && f["section_id"].is_null());
     // `Some(listed)` when the section is recorded: whether it lists the personal file.
     let section: Option<bool> = manifest["owned_files"]
         .as_array()
@@ -589,7 +594,7 @@ fn local_file(root: &Path, manifest: &Value) -> Result<&'static str> {
         let user_rule = ignore
             .as_deref()
             .and_then(|b| std::str::from_utf8(b).ok())
-            .is_some_and(crate::agents::ignore_has_rule);
+            .is_some_and(crate::agents::ignore_has_any_local_rule);
         if user_rule {
             Err(unknown.into())
         } else {

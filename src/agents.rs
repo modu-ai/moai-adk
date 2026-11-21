@@ -956,11 +956,28 @@ fn block_line_preview(current: Option<&[u8]>, begin: &str, end: &str, rendered: 
     out
 }
 
-pub(crate) fn ignore_has_rule(text: &str) -> bool {
+/// The names the personal file has had: `AGENTS.local.md` before Claude Code became the target,
+/// `CLAUDE.local.md` after it. Claude Code reads the second and never the first, so a project
+/// may hold either record; the readers accept both.
+pub(crate) const LOCAL_NAMES: [&str; 2] = ["AGENTS.local.md", "CLAUDE.local.md"];
+
+fn ignore_names(text: &str, name: &str) -> bool {
     text.lines().any(|l| {
         let t = l.trim();
-        t == "AGENTS.local.md" || t == "/AGENTS.local.md"
+        t == name || t.strip_prefix('/') == Some(name)
     })
+}
+
+/// `true` when a rule in `text` names the personal file this version generates
+/// (`AGENTS.local.md`); a rule for the other name is not a rule for that file.
+pub(crate) fn ignore_has_rule(text: &str) -> bool {
+    ignore_names(text, LOCAL_NAMES[0])
+}
+
+/// `true` when a rule in `text` names the personal file under either of its names; for what a
+/// recorded block lists, whichever name that generation wrote.
+pub(crate) fn ignore_has_any_local_rule(text: &str) -> bool {
+    LOCAL_NAMES.iter().any(|name| ignore_names(text, name))
 }
 
 fn read_manifest(root: &Path, project_id: &str) -> Result<Option<Manifest>> {
@@ -976,10 +993,18 @@ fn read_manifest(root: &Path, project_id: &str) -> Result<Option<Manifest>> {
 }
 
 fn created_once(m: Option<&Manifest>, path: &str) -> bool {
+    // The personal file counts under either of its names; any other path under its own.
+    let names: &[&str] = if LOCAL_NAMES.contains(&path) {
+        &LOCAL_NAMES
+    } else {
+        &[path]
+    };
     m.is_some_and(|m| {
-        m.created_once.iter().any(|p| p == path)
+        m.created_once.iter().any(|p| names.contains(&p.as_str()))
             // Manifests written before `created_once` existed recorded the personal file in owned_files.
-            || m.owned_files.iter().any(|f| f.path == path && f.section_id.is_none())
+            || m.owned_files
+                .iter()
+                .any(|f| names.contains(&f.path.as_str()) && f.section_id.is_none())
     })
 }
 
@@ -1173,7 +1198,7 @@ fn adopt_unchanged(
                 let block = &bytes[s..end];
                 if digest(block) == rendered {
                     if section == IGNORE_SECTION {
-                        let lists = std::str::from_utf8(block).is_ok_and(ignore_has_rule);
+                        let lists = std::str::from_utf8(block).is_ok_and(ignore_has_any_local_rule);
                         record_owned_kind(owned, &f.path, section, block, Some(ignore_kind(lists)));
                     } else {
                         record_owned(owned, &f.path, section, block);
@@ -1909,7 +1934,7 @@ pub(crate) fn agents_apply_amended_for(
                     &f.path,
                     IGNORE_SECTION,
                     block.as_bytes(),
-                    Some(ignore_kind(ignore_has_rule(block))),
+                    Some(ignore_kind(ignore_has_any_local_rule(block))),
                 );
             }
             // The user's own CLAUDE.md gained a line: it is neither owned nor created once.
@@ -2511,6 +2536,95 @@ mod tests {
         assert!(find_block(&format!("{b}\nbody\n"), &b, &e).is_err());
         assert!(find_block(&format!("{e}\n{b}\n"), &b, &e).is_err());
         assert!(find_block("plain", &b, &e).unwrap().is_none());
+    }
+
+    /// A manifest that records only `created`/`owned` entries for the personal file.
+    fn manifest_with(created: &[&str], owned: &[(&str, Option<&str>)]) -> Manifest {
+        Manifest {
+            schema_version: 1,
+            generator_version: "t".into(),
+            template_version: "t".into(),
+            project_id: "demo".into(),
+            profile_sha256: "sha256:p".into(),
+            interview_revision: None,
+            workflow_id: None,
+            workflow_reference: "skills/moai/workflows/".into(),
+            source_kind: "t".into(),
+            sources: Vec::new(),
+            canonical_sha256: None,
+            projections: Vec::new(),
+            owned_files: owned
+                .iter()
+                .map(|(path, section)| OwnedFile {
+                    path: (*path).into(),
+                    section_id: section.map(String::from),
+                    baseline_sha256: "sha256:b".into(),
+                    kind: None,
+                })
+                .collect(),
+            created_once: created.iter().map(|s| s.to_string()).collect(),
+            activation_status: "t".into(),
+        }
+    }
+
+    /// Either name of the personal file counts as "created once": a project that moved to
+    /// `CLAUDE.local.md` must not get an `AGENTS.local.md` made for it again, and the other way
+    /// round. Any other path keeps its own record only.
+    #[test]
+    fn either_personal_file_name_counts_as_created_once() {
+        for recorded in LOCAL_NAMES {
+            let m = manifest_with(&[recorded], &[]);
+            for asked in LOCAL_NAMES {
+                assert!(
+                    created_once(Some(&m), asked),
+                    "{recorded} recorded, {asked} asked"
+                );
+            }
+            // The earlier manifest shape: the file as an owned entry without a section.
+            let old = manifest_with(&[], &[(recorded, None)]);
+            for asked in LOCAL_NAMES {
+                assert!(
+                    created_once(Some(&old), asked),
+                    "{recorded} owned, {asked} asked"
+                );
+            }
+        }
+        let other = manifest_with(&["REVIEW.md"], &[]);
+        assert!(!created_once(Some(&other), "AGENTS.local.md"));
+        assert!(!created_once(Some(&other), "CLAUDE.local.md"));
+        assert!(created_once(Some(&other), "REVIEW.md"));
+        assert!(!created_once(None, "AGENTS.local.md"));
+        // A managed section of that path is an owned block, not a personal file.
+        let sectioned = manifest_with(&[], &[("AGENTS.local.md", Some("moai-workflow"))]);
+        assert!(!created_once(Some(&sectioned), "CLAUDE.local.md"));
+    }
+
+    /// The ignore readers: what the block lists is read under either name, but the user-rule
+    /// check for the file this version generates stays with that file's name, so a rule for the
+    /// other name never hides the file that is actually written.
+    #[test]
+    fn ignore_rules_are_read_per_name_and_across_both() {
+        assert!(ignore_has_rule("AGENTS.local.md\n"));
+        assert!(ignore_has_rule("/AGENTS.local.md\n"));
+        assert!(!ignore_has_rule("CLAUDE.local.md\n"));
+        assert!(!ignore_has_rule("# AGENTS.local.md\n"));
+        for text in [
+            "AGENTS.local.md\n",
+            "/AGENTS.local.md\n",
+            "CLAUDE.local.md\n",
+            "  /CLAUDE.local.md  \n",
+        ] {
+            assert!(ignore_has_any_local_rule(text), "{text:?}");
+        }
+        for text in [
+            "",
+            "# CLAUDE.local.md\n",
+            "CLAUDE.local.md.bak\n",
+            "docs/CLAUDE.local.md\n",
+            "*.local.md\n",
+        ] {
+            assert!(!ignore_has_any_local_rule(text), "{text:?}");
+        }
     }
 
     // relative_paths_are_bounded moved to src/apply.rs with the shared helper.

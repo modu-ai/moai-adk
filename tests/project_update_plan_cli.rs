@@ -1012,6 +1012,38 @@ fn the_recorded_block_kind_tells_the_personal_file_choice() {
     }
 }
 
+/// Generation moves to `CLAUDE.local.md`: a manifest that records the personal file under the
+/// new name reads like one that records it under the old name. Without that the record "file
+/// seen once, block lists it" is half a record and the update asks the user again.
+#[test]
+fn a_manifest_that_names_claude_local_md_gives_the_same_choice() {
+    let fx = Fx::new();
+    fx.with_profile(false);
+    let mut request = step(&fx.plan(), "generation")["apply"]["stdin"]["request"].clone();
+    request["local_file"] = json!("ignored");
+    fx.generate(&request);
+    let manifest_path = fx.generation_manifest(&fx.plan());
+    let mut manifest: Value = serde_json::from_slice(&fs::read(&manifest_path).unwrap()).unwrap();
+    let recorded = manifest["created_once"].as_array_mut().unwrap();
+    assert!(
+        recorded.iter().any(|p| p == "AGENTS.local.md"),
+        "the apply records the personal file: {recorded:?}"
+    );
+    for p in recorded.iter_mut() {
+        if *p == "AGENTS.local.md" {
+            *p = json!("CLAUDE.local.md");
+        }
+    }
+    fs::write(
+        &manifest_path,
+        serde_json::to_vec_pretty(&manifest).unwrap(),
+    )
+    .unwrap();
+    let plan = fx.plan();
+    let generation = step(&plan, "generation");
+    assert_ne!(generation["state"], "needs_decision", "{generation}");
+}
+
 /// #2953 F3: a `ready` profile step holds the generation step until the preview is re-run.
 #[test]
 fn profile_first() {
