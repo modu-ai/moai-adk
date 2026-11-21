@@ -476,20 +476,31 @@ pub fn chosen_profile(root: &Path) -> Result<Option<Vec<u8>>> {
 /// `project_id`s differ, every profile read refuses, naming both files and both ids (the delta
 /// audit's N3). One profile, or two that agree, is fine.
 fn mixed_layout_ids(root: &Path) -> Result<()> {
-    let dir = read_dir(root)?;
-    if dir != crate::state_root::MOAI_DIR {
-        return Ok(());
-    }
     let root = root
         .canonicalize()
         .map_err(|_| "project directory unavailable")?;
+    // A rust layout owns `.moai` outright: the earlier folder is legacy data, not a twin, and
+    // the check lives only where both files exist (the mixed branch of `read_dir`).
+    if crate::state_root::dir(&root) == crate::state_root::MOAI_DIR {
+        return Ok(());
+    }
+    let regular = |dir: &str| {
+        let folder = root.join(dir);
+        fs::symlink_metadata(&folder).is_ok_and(|m| m.file_type().is_dir())
+            && fs::symlink_metadata(folder.join("project.yaml"))
+                .is_ok_and(|m| m.file_type().is_file())
+    };
+    if !(regular(crate::state_root::MOAI_DIR) && regular(crate::state_root::EARLIER_PROJECT_DIR)) {
+        return Ok(());
+    }
     let mut ids: Vec<(&'static str, String)> = Vec::new();
     for name in [
         crate::state_root::MOAI_DIR,
         crate::state_root::EARLIER_PROJECT_DIR,
     ] {
         let path = root.join(name).join("project.yaml");
-        let bytes = read(&path)?.ok_or(PROFILE_MISSING)?;
+        let bytes =
+            read(&path)?.ok_or_else(|| format!("{name}/project.yaml: {PROFILE_MISSING}"))?;
         let id = crate::project_id::of_profile_bytes(&bytes)
             .map_err(|e| format!("{name}/project.yaml: {e}"))?;
         ids.push((name, id));
