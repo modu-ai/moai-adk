@@ -76,6 +76,8 @@ REPORTS_PREFIX = ".moai-cli/reports/"
 PLATFORM_EXACT = {
     "src/launcher_terminal.rs": "pty/terminal",
     "tests/help_layout.rs": "pty/terminal",
+    "tests/common/pty.rs": "pty/terminal",
+    "tests/pty_helper.rs": "pty/terminal",
     "src/heavy_slot.rs": "process/signal",
     "tools/heavy_check_slot.py": "process/signal",
     "tests/heavy_slot_cli.rs": "process/signal",
@@ -125,6 +127,8 @@ PLATFORM_PREFIX = (
 )
 PLATFORM_SUFFIX = (
     ("_tty_test.py", "pty/terminal"),
+    # The Rust tests that run the binary on a pseudo terminal (SPEC-20261120-python-binary-tests-to-rust).
+    ("_terminal_cli.rs", "pty/terminal"),
 )
 
 
