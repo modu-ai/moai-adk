@@ -64,4 +64,17 @@ Then the tool: parse `#[test]` functions of `tests/*.rs` at base and head with a
 
 ## Result
 
-(not yet written)
+Built tests first. The first RED run of `python3 -m unittest tests.f2p_evidence_test` (tool absent) gave 24 assertion failures; after the tool the 24 passed, and 8 more tests (touch, target dir, sub-folders, brace lexing, whitespace, attribute lines) were added in a second commit, so the final state is `Ran 32 tests ... OK` on Python 3.14.2 and on the system `/usr/bin/python3` 3.9.6.
+
+- AC-1: met — `ListTest` passes: the head's added test is `new`, the changed one is `changed`, the unchanged test and an untouched file are absent, a deleted test is absent, a new test file lists all its tests as `new`; with `--list-only` the fake cargo log stays empty.
+- AC-2: met — `RunTest` passes: one failing and one passing test on the base give `f2p=1 flagged=1` and exit 1; the head's test file runs on the base source (the fake cargo reads `src/marker.txt` as `base-source` and finds `fn added` in `tests/a.rs`), one cargo call per test file with the names after `--exact`; a base that does not build gives `f2p=2 flagged=0` with the reason `build_error` on each.
+- AC-3: met — `ReasonTest` passes: with `--reason` the same run exits 0, `flagged` is 0 and the report holds the reason; without it exit is 1 and the report has no `reason`; an empty reason is refused.
+- AC-4: met — `RefusalTest` and `CleanTest` pass: unknown base, unknown head, missing directory, a base that is not an ancestor, a missing cargo program and a run with no verdict for a listed test each exit 2 with the `f2p_evidence: ` prefix and empty stdout; a before/after snapshot of the fixture repository (files, HEAD, `git status`) is equal after a run and after a list, and the folder the fake cargo ran in is gone, also after a build error.
+
+Real data: `python3 -I tools/f2p_evidence.py --list-only` over the merge base of the local tip and the `spec/update-always-asks-20261121` branch printed `listed=11` and the file `tests/update_always_asks.rs` as `new`, which is that branch's new test file. A real run that builds the base was not made here (it costs a heavy slot); its first use is the train.
+
+Mutants (12, one guard each, run on the committed tool by `mutants_f2p.py` in the lane scratch folder, the tool restored after each and read back): `changed` as equal, `new` inverted, sub-folders of `tests/` listed, no touch of the extracted files, `--exact` dropped, `--target-dir` ignored, a reason that does not clear the flag, exit always 0, the ancestor check removed, the temporary folder kept, string literals not skipped by the brace counter, whitespace kept in the compared text. All 12 were killed (the failures per mutant range from 1 to 26).
+
+Other checks run: `python3 -m unittest tests.repo_scans_test` → 6 tests OK (the first run failed because the test's own `rglob` over its temporary repository looked like a walk of the repository tree; the helper now recurses with `iterdir`); `python3 -m unittest tests.ci_scope_test` → 47 tests OK; `git diff --check` over the branch exits 0; `spec check` on this SPEC reports 0 errors.
+
+Not run: the Rust test suites (no Rust file changed), Windows and Linux, the wiring of the summary into `moai check affected` and the audits (a pair line to the holder of `src/check_affected.rs`), Python tests and unit tests inside `src/` (a stated limit), and a real base build.
