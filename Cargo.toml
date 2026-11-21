@@ -62,6 +62,18 @@ rusqlite = { version = "=0.43.0", default-features = false, features = ["bundled
 # Already locked transitively; O_NONBLOCK prevents FIFO opens from waiting.
 libc = "=0.2.189"
 
+# Dev and test builds keep only line tables in their debug info (user decision 2026-11-21):
+# backtraces still carry file names and line numbers, while variable and type info is dropped,
+# so the .o files and the incremental cache stay small and stop feeding fseventsd tens of
+# thousands of file events per test run. Release-side profiles (release, dist) are untouched.
+[profile.dev]
+debug = "line-tables-only"
+
+# The built-in test profile inherits dev; naming it keeps the value visible where a reader
+# looks for it instead of relying on the inheritance rule.
+[profile.test]
+debug = "line-tables-only"
+
 # Debug builds hash the running moai-cli binary on every update/recovery operation
 # (`update::current_install_id`, ~28 MB in debug). Unoptimized sha2 made that ~2.2 s of CPU
 # per launch, which a loaded machine stretched to minutes per test (Issue #2507). Optimizing
