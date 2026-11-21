@@ -93,35 +93,39 @@ created: 2026-11-21
 | D-6 | The interview m-flow entry is corrected in this SPEC | Leader decision; it contradicts `sync.md` step 5 | Revert the entry |
 | D-7 | A rule both flows read stands outside both blocks; where the old text kept it inside the pull request clause, the PR-only part stays in its block and the rule is said in a new sentence ("In either flow, …": taking the card in the worktree, the round going on after a push, the audit start) | Audit finding on the unended label: the shared rules read as pull request only; leader notes 5676 and 5679 | Put the sentences back into the blocks |
 | D-8 | The introduction, `keep-going` and `self-pick` name what an m-flow lane reads in place of a pull request: its pushed branch, until the leader's fast-forward lands | Leader note 5679 (lines 15, 92 and 93); no new behaviour, a reading rule | Remove the m-flow blocks |
+| D-9 | The SPEC keeps its 15 requirements although `spec check` warns `size_requirements` (more than 12) | The audit repair (REQ-12 to REQ-15) belongs to the same change as the first round; splitting it into a parent and a child SPEC after the audit would move the audited text out of the SPEC the audit read | Split the SPEC into linked SPECs in a later change |
 
 ## Result
 
-Filled in by the implementation lane on 2026-11-21 (`date -u`); the audit checks it again. The SPEC is `47b38bdcc5`; red `cb06eb8cbc`, green `a6e3562514`, the manifest rows `a6d168181b`; the base is the local tip `42f5af0800` (this branch was started on it, so no merge commit is needed). Evidence files are in this worktree's `target/notes/`.
+Filled in by the implementation lane on 2026-11-21 (`date -u`); the audit checks it again. First round: SPEC `47b38bdcc5`, red `cb06eb8cbc`, green `a6e3562514`, manifest `a6d168181b`, Result `87507aaabe`; the audit of that head failed (leader notes 5676 and 5679): the label of the pull request flows had no end, so the rules both flows read looked pull-request only. Repair on the same branch (no force push): red `fd3f2dcb61`, green `ac16230046` (the lane workflow, `sync.md`, the SPEC and the manifest), the local tip `6c395a170b` merged in as `2f4c386588` (`sync.md` and the manifest changed on both sides; `git merge-tree` exit 0, no conflict). Evidence files are in this worktree's `target/notes/`.
 
-Red (`red.out`, before the text): `tests/work_flow_branching.rs` 0 passed, 6 failed on the tip text.
+Red of the repair (`red3.out`, before the text): `tests/work_flow_branching.rs` 0 passed, 9 failed. Green of the repair (`green3.out`, six targets, no name filter, exit 0): `work_flow_branching` 9, `mode_workflow_steps` 43, `mode_cards_53` 9, `lane_rules_2879` 5, `agent_defs_package` 19, `claim_verify_cli` 39 passed. The repair changed no pinned pull request sentence: `mode_cards_53`, `lane_rules_2879` and `mode_workflow_steps` pass without an edit; the only test expectation edited is the claim-order one, which kept its words (the shared sentence says "then take the card in it").
 
-First green run (`green.out`, 18 targets, no name filter) was red in four targets, each read and repaired: `agent_defs_package` (its flow-section assertion pinned the old interview wording "push the branch and open a pull request (recommended)" and "one SPEC, one branch, one pull request"; the leader decided to correct that wording, so the assertion now pins the M-Flow wording), `claim_verify_cli::claim_order_docs_agree` (my first claim sentence dropped the words "then take the card in it"; the text was fixed, not the test), `mode_workflow_steps::ops_named_by_the_mode_workflows_exist_with_their_flags` (the lane workflow now names `moai work-flow-plan --project`; the expected op list gained it), and `product_cli::skill_package::source_manifest_covers_every_package_file` (the manifest rows were rewritten). Two pinned expectations of the old branch name `card/<n>-<slug>` were changed with the text (`mode_cards_53`, `lane_rules_2879`).
-
-- AC-1: met — `cargo test --locked --offline --test work_flow_branching` (`green2.out`, and again in `affected/06-test_targets.log`): 6 passed, 0 failed; `the_state_step_reads_the_flow_and_gives_m_flow_a_local_base` is one of them.
-- AC-2: met — same run, `the_claim_step_starts_from_the_local_tip_and_names_no_card_number` (no `card/<n>` is left in `mode-agent.md`).
-- AC-3: met — same run, `the_m_flow_blocks_carry_no_pull_request_or_origin_instruction`.
+- AC-1: met — `cargo test --locked --offline --test work_flow_branching` (`green3.out`): 9 passed, 0 failed; `the_state_step_reads_the_flow_and_gives_m_flow_a_local_base` is one of them (the flow is read outside both blocks).
+- AC-2: met — same run, `the_claim_step_starts_from_the_local_tip_and_names_no_card_number`.
+- AC-3: met — same run, `the_m_flow_blocks_carry_no_pull_request_or_origin_instruction` (the five steps, the introduction, `keep-going` and `self-pick`; the `hand-off` block cleans up against the local integration branch).
 - AC-4: met — same run, `the_pull_request_sentences_stay_inside_their_blocks`.
 - AC-5: met — same run, `the_pull_request_only_at_a_formal_release_is_said_in_both_places`.
 - AC-6: met — same run, `the_m_flow_merge_text_is_pointed_to_and_not_copied`.
-- AC-7: met — `green2.out` and `affected/06-test_targets.log`: `mode_workflow_steps` 43, `mode_cards_53` 9, `lane_rules_2879` 5, `agent_defs_package` 19, `claim_verify_cli` 39, `product_cli` 79 passed; the other targets of the list (`lane_rules_2401` 4, `lane_rules_2836` 2, `mode_guidance_scan` 8, `flaky_followups` 3, `close_step_2903` 2, `claim_renew_doc_3042` 1, `lane_next_rules` 3, `generic_flow_questions` 10, `orca_alignment` 10, `orca_optional_3005` 5, `project_decide_model` 4) passed in the first run `green.out`, before the claim sentence and the two expectation edits; they are in the affected set run on the final head below.
+- AC-7: met — `green3.out`: `mode_workflow_steps` 43, `mode_cards_53` 9, `lane_rules_2879` 5, `agent_defs_package` 19, `claim_verify_cli` 39 passed; the other targets of the list run in the affected set below.
 - AC-8: met — `python3 -I tools/source_manifest.py check` prints `{"conflicted": false, "changed": [], "dropped": [], "ok": true}` on the final head.
+- AC-9: met — same run, `the_flow_blocks_open_and_close_in_pairs_and_do_not_nest`.
+- AC-10: met — same run, `the_rules_both_flows_share_stand_outside_both_blocks` (the audit's four lines 83, 85, 88 and 90 and the sentences named under them).
+- AC-11: met — same run, `the_sync_workflow_names_the_branch_like_the_lane_workflow`.
 
 ### Checks
 
-`moai check affected 42f5af0800..a6d168181b` (the branch's own build of the binary, `--max 2`), summary line as printed: `check-affected base=42f5af0800fb head=a6d168181b7b targets=46 py=8 scans=listed:42 diff_check=0 fmt=0 clippy=0 test_lib=0 test_bins=0 test_targets=0 build_cli=0 python=0 result=PASS`.
+`moai check affected 6c395a170b..2f4c386588` (the branch's own build of the binary, `--max 2`, `CLAUDE_CODE_SESSION_ID` unset), summary line as printed: `check-affected base=6c395a170b77 head=2f4c386588a8 targets=46 py=8 scans=listed:42 diff_check=0 fmt=0 clippy=0 test_lib=0 test_bins=0 test_targets=0 build_cli=0 python=0 result=PASS`. After that head only this Result was added (one docs commit); `git diff --check`, the trailer check and `spec check` are run on the final head before the push.
 
-Mutants (five, on the committed `mode-agent.md`, each restored, `restored: only manifest modified = True`; `mutate.out`, `mutate5.out`): the m-flow `pr-gate` clause opening a pull request again, the m-flow `hand-off` clause allowing a force push, the m-flow `state` clause comparing with `origin`, the `merge-train` step without its label, the `claim` step naming the card number again — each killed by a named test of `work_flow_branching`. The fifth mutant did not apply at the first run (its pattern had a stray backtick: a script error, not a text error) and was run again with the corrected pattern.
+Mutants (five, on the committed files, each restored, `restored: clean = True`; `mutate6.out`): the `pr-gate` block losing its end so that the push checks fall inside it, the `hand-off` cleanup naming `origin/<base>` again, the m-flow `pr-gate` block opening a pull request, the `claim` step losing its shared take sentence, `sync.md` calling the branch a card branch again — each killed by a named test of `work_flow_branching`.
 
-Shared files: `skills/moai/references/source-manifest.json` (two rows) was committed on this branch under the leader's standing pair approval for the card's own manifest keys (decision notes 5602, 5623, 5658); the card check refuses that path. The four test files edited in the green commit are in the card's scope.
+Shared files: `skills/moai/references/source-manifest.json` was committed on this branch under the leader's standing pair approval for the card's own manifest keys (notes 5602, 5623, 5658); the card check refuses that path. `skills/moai/workflows/sync.md` and the four test files edited in the first round are in the card scope.
+
+The incident cause (the earlier force push) is an inference, not a finding: this change removes the instruction that could have led to it and does not prove the cause.
 
 ### Not run
 
 - A lane of a real m-flow project following the new text in a host: not run; the text is pinned by words only.
-- The flows `trunk-based` and `git-flow`: they follow the pull request flows' text as before; no clause was added for them.
-- The cause of the earlier force push: not verified (the SPEC says inference); this change removes the instruction that could have led to it, it does not prove the cause.
+- The flows `trunk-based` and `git-flow`: they follow the pull request blocks' text as before; no block was added for them.
+- Reading the introduction, `keep-going` and `self-pick` m-flow readings in a host: not run; the readings are pinned by words only.
 - A second run of the same tests on the same tree: not repeated.
