@@ -138,6 +138,36 @@ class ClockTest(Temp):
         row = self.rust("#[test]\nfn t() {\n    // Instant::now() would be flaky here\n}\n")
         self.assertEqual(row["verdict"], "clean")
 
+    def test_a_test_attribute_with_arguments_still_counts(self):
+        row = self.rust(
+            '#[tokio::test(flavor = "multi_thread")]\nasync fn t() {\n    let _ = Instant::now();\n}\n'
+        )
+        self.assertEqual(row["verdict"], "flag")
+
+    def test_a_semicolon_in_the_return_type_does_not_hide_the_body(self):
+        row = self.rust(
+            "#[test]\nfn t() -> Result<[u8; 4], ()> {\n    let _ = Instant::now();\n    Ok([0; 4])\n}\n"
+        )
+        self.assertEqual(row["verdict"], "flag")
+
+    def test_a_raw_byte_string_holding_a_brace_and_a_quote_does_not_end_the_body(self):
+        row = self.rust('#[test]\nfn t() {\n    let s = br#"} " {"#;\n    let _ = Instant::now();\n}\n')
+        self.assertEqual(row["verdict"], "flag")
+
+    def test_a_raw_string_holding_a_brace_does_not_end_the_body(self):
+        row = self.rust('#[test]\nfn t() {\n    let s = r##"a"} "#"##;\n    let _ = Instant::now();\n}\n')
+        self.assertEqual(row["verdict"], "flag")
+
+    def test_char_literals_holding_a_brace_or_a_quote_do_not_end_the_body(self):
+        row = self.rust(
+            "#[test]\nfn t<'a>(x: &'a str) {\n    let (a, b, c) = ('{', '\"', '\\'');\n    let _ = Instant::now();\n}\n"
+        )
+        self.assertEqual(row["verdict"], "flag")
+
+    def test_a_nested_block_comment_naming_a_clock_is_clean(self):
+        row = self.rust("#[test]\nfn t() {\n    /* a /* b */ Instant::now() */\n    let _ = 1;\n}\n")
+        self.assertEqual(row["verdict"], "clean")
+
     def test_the_clock_of_a_later_function_does_not_flag_an_earlier_test(self):
         row = self.rust(
             "#[test]\nfn fast() {\n    assert!(true);\n}\nfn helper() {\n    let _ = Instant::now();\n}\n"
@@ -185,6 +215,11 @@ class StageOrderTest(Temp):
     def test_a_stage_name_inside_a_longer_word_does_not_count(self):
         row = self.stages("One round runs PLAN → RUN → VERIFY → RESYNCED → AUDIT → merge")
         self.assertEqual(row["verdict"], "flag")
+
+    def test_a_stage_name_followed_by_a_hyphen_does_not_count(self):
+        row = self.stages("One round runs PLAN → RUN-time → VERIFY → SYNC → AUDIT → merge")
+        self.assertEqual(row["verdict"], "flag")
+        self.assertIn("RUN", row["detail"])
 
     def test_a_phrase_that_is_not_in_the_file_is_refused(self):
         write(self.root, "chain.md", "no such line\n")
@@ -236,6 +271,35 @@ class DeletionTest(Temp):
         row = self.diff(patch)
         self.assertEqual(row["verdict"], "flag")
         self.assertIn("test_gone", row["detail"])
+
+    def test_a_renamed_test_in_a_real_diff_counts_as_removed(self):
+        # `git diff` keeps the unchanged `#[test]` line as context: the attribute is not in a - line.
+        patch = (
+            "--- a/tests/x.rs\n+++ b/tests/x.rs\n@@ -1,4 +1,4 @@\n #[test]\n-fn old_name() {\n"
+            "+fn new_name() {\n     assert!(true);\n }\n"
+        )
+        row = self.diff(patch)
+        self.assertEqual(row["verdict"], "flag")
+        self.assertIn("old_name", row["detail"])
+        self.assertNotIn("new_name", row["detail"])
+
+    def test_a_comment_between_the_attribute_and_the_name_still_counts(self):
+        patch = "--- a/tests/x.rs\n+++ b/tests/x.rs\n@@ -1,4 +0,0 @@\n-#[test]\n-// why\n-fn gone_c() {\n-}\n"
+        self.assertEqual(self.diff(patch)["verdict"], "flag")
+
+    def test_an_attribute_and_name_on_one_line_still_counts(self):
+        patch = "--- a/tests/x.rs\n+++ b/tests/x.rs\n@@ -1,1 +0,0 @@\n-#[test] fn gone_one() {}\n"
+        row = self.diff(patch)
+        self.assertEqual(row["verdict"], "flag")
+        self.assertIn("gone_one", row["detail"])
+
+    def test_a_removed_async_test_with_a_path_attribute_flags(self):
+        patch = "--- a/tests/x.rs\n+++ b/tests/x.rs\n@@ -1,3 +0,0 @@\n-#[tokio::test]\n-async fn gone_a() {\n-}\n"
+        self.assertEqual(self.diff(patch)["verdict"], "flag")
+
+    def test_a_function_of_the_same_name_that_is_not_a_test_does_not_put_it_back(self):
+        patch = self.REMOVED + "+fn gone_test() {\n+}\n"
+        self.assertEqual(self.diff(patch)["verdict"], "flag")
 
     def test_a_diff_that_only_adds_is_clean(self):
         patch = "--- a/tests/x.rs\n+++ b/tests/x.rs\n@@ -0,0 +1,3 @@\n+#[test]\n+fn new_test() {\n+}\n"
@@ -410,6 +474,11 @@ class RefusalTest(Temp):
         for claims in (IMPROVE / "cases" / "false-repair-claim").rglob("claims.*"):
             self.assertEqual(claims.name, "claims.txt", claims)
             self.assertNotIn('"', claims.read_text(encoding="utf-8"), claims)
+
+    def test_an_input_path_that_leaves_the_root_is_refused(self):
+        for bad in ("../outside", "/etc", "in/../../outside"):
+            err = self.refused("escape " + bad, case_file("claims_in_diff", bad, "flag"))
+            self.assertIn(bad, err)
 
     def test_a_case_file_with_no_cases(self):
         self.refused("no cases", {"version": 1, "cases": []})
