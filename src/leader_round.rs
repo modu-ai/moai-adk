@@ -603,10 +603,57 @@ pub fn round(snap: Option<&Snapshot>, repo: Option<&str>, project: &Path, now: i
     })
 }
 
+/// The prohibition words a dispatch text can carry (P7): a dispatch that says the work is
+/// read-only or change-free must not dispatch a card whose kind changes the repository.
+const PROHIBITIONS: [&str; 6] = [
+    "read-only",
+    "read only",
+    "읽기 전용",
+    "변경 없이",
+    "nothing is written",
+    "writes nothing",
+];
+
+/// `Some` with the one-line warning when a dispatch text carries a prohibition word and the
+/// dispatched card's kind changes the repository; `None` when the two agree.
+pub fn dispatch_warning(dispatch: &str, card_kind: &str) -> Option<String> {
+    if !matches!(card_kind, "fix" | "feature") {
+        return None;
+    }
+    let lower = dispatch.to_lowercase();
+    PROHIBITIONS
+        .iter()
+        .find(|word| lower.contains(*word))
+        .map(|word| {
+            format!(
+                "dispatch warning: the dispatch says {word:?} but the card is a {card_kind} card \
+                 that changes the repository; check which side is wrong before sending"
+            )
+        })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::forge::policy::parse_utc;
+
+    #[test]
+    fn a_read_only_dispatch_over_a_repo_card_warns_and_others_do_not() {
+        let warning = dispatch_warning("read-only survey of the code; nothing is written", "fix");
+        assert!(
+            warning
+                .as_deref()
+                .is_some_and(|w| w.contains("changes the repository")),
+            "{warning:?}"
+        );
+        assert_eq!(
+            dispatch_warning("read-only survey of the code", "docs"),
+            None
+        );
+        assert_eq!(dispatch_warning("implement the guard", "fix"), None);
+        let ko = dispatch_warning("읽기 전용 조사예요", "feature");
+        assert!(ko.is_some(), "the korean prohibition is caught");
+    }
 
     const WORKING: &str = include_str!("../tests/fixtures/leader_round/working.json");
     const INPUT_PRESENT: &str = include_str!("../tests/fixtures/leader_round/input_present.json");
