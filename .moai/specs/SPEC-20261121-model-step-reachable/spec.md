@@ -38,7 +38,7 @@ created: 2026-11-21
 
 ## Scope
 
-- write: `src/update.rs`, `tests/update_model_step_reachable.rs`, `tests/update_model_pick.rs`, `.moai/specs/SPEC-20261121-model-step-reachable/**`
+- write: `src/update.rs`, `tests/update_model_step_reachable.rs`, `tests/update_model_pick.rs`, `tests/update_command_cli.rs` (two terminal cases), `.moai/specs/SPEC-20261121-model-step-reachable/**`
 - read-only: `src/update_models.rs`, `src/model_effort_questions.rs`, `src/update_tux.rs`, `src/main.rs`
 - forbidden: keys and the real HOME, card numbers in a SPEC id, branch or commit, writes to another card's branch
 
@@ -58,6 +58,7 @@ created: 2026-11-21
 ## Decisions
 
 - 2026-11-21: this SPEC covers the terminal part only; the session part needs a plan and apply command first and goes to the leader as its own piece. Reversible, category `none`, decided by agent-17.
+- 2026-11-21: two terminal cases of `tests/update_command_cli.rs` (`in_a_terminal_nothing_to_write_asks_nothing`, `in_a_terminal_an_already_applied_package_asks_nothing`) assumed that a terminal run with nothing to write asks nothing; they now save a model setting first, because with none saved the model step opens (REQ-1). Reversible, category `none`, decided by the leader.
 - 2026-11-21: an unreadable or damaged settings file counts as saved, so a damaged file is reported by the step and never forced open. Reversible, category `none`, decided by agent-17.
 
 ## Result

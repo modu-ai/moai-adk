@@ -786,12 +786,26 @@ fn run_in_terminal_unanswered(exe: &Path, home: &Path) -> String {
     s.text
 }
 
+/// A model setting saved the way the model step saves one. The model questions open on a terminal
+/// when none is saved (SPEC-20261121-model-step-reachable), so a terminal case that is about
+/// something else saves one first.
+fn with_a_saved_model_setting(home: &Path) {
+    let path = moai_cli::update_models::settings_path(home);
+    fs::create_dir_all(path.parent().unwrap()).unwrap();
+    fs::write(
+        path,
+        r#"{"launcher":{"models":{"claude":{"leader":{"model":"claude-opus-5-5","effort":"high"}}}}}"#,
+    )
+    .unwrap();
+}
+
 // #2540 AC-3: in a terminal, a plan with every host blocked is shown without the question.
 #[test]
 fn in_a_terminal_nothing_to_write_asks_nothing() {
     let f = fx();
     let a = install_version(&f.home, "a", &v1());
     foreign_skill_in_both_hosts(&f.home);
+    with_a_saved_model_setting(&f.home);
     let before = state(&f.home);
     let text = run_in_terminal_unanswered(&a, &f.home);
     assert!(!text.contains("[y/N]"), "{text}");
@@ -808,6 +822,7 @@ fn in_a_terminal_nothing_to_write_asks_nothing() {
 #[test]
 fn in_a_terminal_an_already_applied_package_asks_nothing() {
     let (f, a) = applied_once();
+    with_a_saved_model_setting(&f.home);
     let before = state(&f.home);
     let text = run_in_terminal_unanswered(&a, &f.home);
     assert!(!text.contains("[y/N]"), "{text}");
