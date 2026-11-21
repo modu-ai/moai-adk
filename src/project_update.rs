@@ -1075,9 +1075,7 @@ fn hooks_after_settings_move(
                 "unchanged",
                 format!(
                     "no MoAI hook set is installed in .claude/settings.json (hooks-plan reads \
-                     {}); this step prints no command here, to install it run `moai hooks-plan \
-                     {shown} --host claude`, then `moai hooks-apply {shown} --host claude` with \
-                     its plan_digest",
+                     {})",
                     plan["action"].as_str().unwrap_or("update")
                 ),
             )
