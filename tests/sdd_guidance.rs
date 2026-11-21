@@ -146,7 +146,8 @@ fn the_reference_names_only_commands_this_build_has() {
 }
 
 /// Audit B2: the two user rules no test held — existing code changes start from committed
-/// characterization tests, and agents never add `@cc:` comments on their own.
+/// characterization tests, and agents and tools add and link `@cc:` comments automatically
+/// (the second rule replaced "agents never add them" on 2026-11-20).
 #[test]
 fn preserve_then_change_and_the_cc_rule_are_stated() {
     for (rel, phrase) in [
@@ -162,19 +163,104 @@ fn preserve_then_change_and_the_cc_rule_are_stated() {
         ),
         (
             "skills/moai/references/internal/sdd.md",
-            "Agents never add them on their own; SYNC keeps the existing ones true to the code.",
+            "Agents and tools add them and link them automatically; SYNC keeps them true to the code.",
         ),
         (
             "skills/moai/workflows/sync.md",
-            "keeps the existing `@cc:` comments true to the code (it never adds new ones)",
+            "keeps the `@cc:` comments true to the code and adds those the change calls for",
         ),
         (
             "agents/docs.md",
-            "change only existing `@cc:` comment lines, never add one.",
+            "add or change only `@cc:` comment lines, where the change calls for them.",
+        ),
+        (
+            "skills/moai/references/chains/index.md",
+            "`@cc:` comments (agents and tools add and link them automatically)",
+        ),
+        (
+            "skills/moai/references/internal/quality.md",
+            "which agents and tools add and link automatically",
         ),
     ] {
         assert!(read(rel).contains(phrase), "{rel} lacks {phrase:?}");
     }
+    // SPEC-20261120-acc-auto-link REQ-7: the name, the marker, the kinds and the read-only
+    // rule for the old tags are unchanged.
+    let text = sdd();
+    for phrase in [
+        "Agent Context Comments in code: `@cc:later`, `@cc:careful`, `@cc:proves`.",
+        "Old `@MX:` and `@MOAI:` tags are read, never written.",
+    ] {
+        assert!(text.contains(phrase), "sdd.md lacks {phrase:?}");
+    }
+}
+
+/// SPEC-20261120-acc-auto-link AC-3: the documentation agent may add `@cc:` comments and the
+/// implementation agent is told to.
+#[test]
+fn the_agents_may_add_cc_comments() {
+    let impl_agent = read("agents/impl.md");
+    for kind in ["`@cc:later`", "`@cc:careful`", "`@cc:proves`"] {
+        assert!(impl_agent.contains(kind), "agents/impl.md lacks {kind}");
+    }
+    assert!(
+        impl_agent.contains("tools link it automatically"),
+        "agents/impl.md does not say the link is automatic"
+    );
+}
+
+/// SPEC-20261120-acc-auto-link AC-4: the three sentences that forbade adding `@cc:` comments
+/// are in no rule text, agent definition or workflow.
+#[test]
+fn the_old_cc_sentences_are_gone() {
+    let old = [
+        "Agents never add them on their own",
+        "`@cc:` comment lines, never add one",
+        "it never adds new ones",
+    ];
+    let mut files: Vec<String> = ["sdd", "quality", "interview", "questions", "test-design"]
+        .iter()
+        .map(|n| format!("skills/moai/references/internal/{n}.md"))
+        .collect();
+    files.push("skills/moai/references/chains/index.md".into());
+    files.push("skills/moai/SKILL.md".into());
+    for wf in ["run", "verify", "sync", "audit", "plan"] {
+        files.push(format!("skills/moai/workflows/{wf}.md"));
+    }
+    for agent in ["plan", "research", "impl", "audit", "docs"] {
+        files.push(format!("agents/{agent}.md"));
+    }
+    for rel in files {
+        let text = read(&rel);
+        for phrase in old {
+            assert!(!text.contains(phrase), "{rel} still says {phrase:?}");
+        }
+    }
+}
+
+/// SPEC-20261120-acc-auto-link AC-1: the decisions log has the 2026-11-20 row that names the
+/// 2026-11-17 ACC row and supersedes its clause; that row is left as it was.
+#[test]
+fn the_decisions_log_supersedes_the_acc_clause() {
+    let log = read("docs/decisions-2026-11-08.md");
+    let row = log
+        .lines()
+        .find(|l| l.starts_with("| ") && l.contains("(11-20)") && l.contains("ACC @cc"))
+        .expect("a 2026-11-20 ACC row");
+    for phrase in [
+        "2026-11-17",
+        "ACC 코드 표식",
+        "대체",
+        "달고 자동으로 연결한다",
+        "SPEC-20261120-acc-auto-link",
+    ] {
+        assert!(row.contains(phrase), "the new row lacks {phrase:?}: {row}");
+    }
+    assert!(
+        log.lines()
+            .any(|l| l.contains("(11-17)") && l.contains("에이전트는 자동 생성하지 않는다")),
+        "the 2026-11-17 row was changed"
+    );
 }
 
 #[test]

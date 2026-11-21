@@ -831,7 +831,6 @@ fn skill_requests_delegation_with_each_hosts_subagent_tool() {
         "`## Base agents`",
         "`spawn_agent` and then `wait_agent` in Codex CLI",
         "the agent tool in Claude Code",
-        "the task tool in OMP",
         "do the step in this session and say so",
     ] {
         assert!(skill.contains(needle), "SKILL.md lacks {needle}");
@@ -1652,12 +1651,10 @@ fn omp_has_an_entry_spelling_and_a_wake_that_a_lane_can_end() {
         std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai/SKILL.md"),
     )
     .unwrap();
-    for p in [
-        "`/skill:moai project` in OMP",
-        "`/skill:moai optimize` in OMP",
-        "`/skill:moai --mode-agent …` in OMP, which hands the text after the skill name to the skill as plain text, not as a flag of its own",
-    ] {
-        assert!(skill.contains(p), "SKILL.md must say `{p}`");
+    // SKILL.md no longer names OMP (the 2026-11-20 guidance sweep); the workflow files below keep
+    // their OMP lines until the cards that hold them take them out.
+    for p in ["in OMP", "the task tool in OMP"] {
+        assert!(!skill.contains(p), "SKILL.md must not say `{p}` any more");
     }
     let agent = workflow("mode-agent.md");
     let leader = workflow("mode-leader.md");
@@ -1672,7 +1669,6 @@ fn omp_has_an_entry_spelling_and_a_wake_that_a_lane_can_end() {
     for (file, key) in [
         ("project.md", "`/skill:moai project` in OMP"),
         ("update.md", "`/skill:moai update` in OMP"),
-        ("optimize.md", "`/skill:moai optimize` in OMP"),
     ] {
         assert!(workflow(file).contains(key), "{file} must say `{key}`");
     }
