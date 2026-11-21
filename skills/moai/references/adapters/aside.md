@@ -10,7 +10,7 @@ Aside is a Chromium browser that a person and an AI agent share, with a CLI that
 
 ## CLI only, never MCP
 
-MoAI uses Aside through its CLI only (user decision, Issue #2634 comment 6845653775). MoAI never runs `aside mcp`, never registers it in a host's MCP settings and offers no path to add it; an MCP entry the user added on their own is theirs, so leave it as it is.
+MoAI uses Aside through its CLI only (user decision). MoAI never runs `aside mcp`, never registers it in a host's MCP settings and offers no path to add it; an MCP entry the user added on their own is theirs, so leave it as it is.
 
 ## Open the version-matched guide first
 

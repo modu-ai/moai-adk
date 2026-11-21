@@ -36,6 +36,10 @@ const ACTIONS: [&str; 17] = [
     "check",
 ];
 
+/// Actions only the leader workflow shows (the lanes never need them): allowed in a code span,
+/// not required of both files.
+const LEADER_ONLY: [&str; 2] = ["timeline", "reclaim"];
+
 fn workflow(name: &str) -> String {
     fs::read_to_string(
         Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -123,7 +127,7 @@ fn help_has(help: &str, flag: &str) -> bool {
 fn unknown(home: &TempHome, text: &str) -> Vec<(String, String)> {
     let mut bad = Vec::new();
     for (action, flags) in card_spans(text) {
-        if !ACTIONS.contains(&action.as_str()) {
+        if !ACTIONS.contains(&action.as_str()) && !LEADER_ONLY.contains(&action.as_str()) {
             bad.push((action, String::new()));
             continue;
         }
@@ -439,7 +443,7 @@ fn the_round_keeps_audits_with_the_leader_and_moves_on_from_a_card_in_review() {
     assert!(step("mode-agent.md", "claim").contains(REVIEW_WAITS));
     assert!(pick.contains(REVIEW_WAITS));
     assert!(step("mode-agent.md", "hand-off")
-        .contains("Then start the next round without waiting for the merge"));
+        .contains("Then do not wait for the merge: a card in `review` keeps this session"));
     // N1 (re-audit N-r1: the line has the `owner=` and `next=` the report step asks for).
     assert!(step("mode-agent.md", "session-id").contains(
         "refuses a session without one: there (OMP) report `LANE-BLOCKED <lane> card-take no \

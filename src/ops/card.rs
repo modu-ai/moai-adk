@@ -572,23 +572,88 @@ enum Action {
         #[arg(long)]
         home: Option<PathBuf>,
     },
-    /// Writes the ledger. Send a taken card to review
+    /// Writes the ledger. Send a taken card to review and give its paths back
     ///
     /// Writes the ledger. An `active` card becomes `review`, with one `card.review` event. As
-    /// this session, holding the card at `--generation` with a live lease; the reservation
-    /// stays.
+    /// this session, holding the card at `--generation` with a live lease. Every path of the
+    /// reservation that no `--keep` names is given back in the same transaction, so it is free
+    /// for any card at once; the answer lists `given_back` and `kept`. A `--keep` path the
+    /// reservation does not hold is refused and nothing is written. A card sent back with
+    /// `card reopen` widens its scope again with `card scope` and a reason.
     Review {
         /// `C-12`.
         card: String,
         /// The generation `take` or `handoff` answered with.
         #[arg(long)]
         generation: i64,
+        /// A path of the reservation to keep for the review (repeat for more); the others are
+        /// given back.
+        #[arg(long)]
+        keep: Vec<String>,
         /// The project folder (its profile holds the project id).
         #[arg(long, default_value = ".")]
         project: PathBuf,
         /// The HOME holding the ledger (default `$HOME`). Tests pass a temporary folder.
         #[arg(long)]
         home: Option<PathBuf>,
+    },
+    /// Writes the ledger. Give paths of a held card back
+    ///
+    /// Writes the ledger. The holder removes the named `--path`s from the reservation of this
+    /// `--generation`; a path given back is free for any card at once. A path the reservation
+    /// does not hold, a stale generation or another session is refused and no reservation, scope
+    /// or card changes (a stale generation or another session leaves the ledger's usual
+    /// `fence_reject` event). One `card.scope` event names the paths. A reopened card widens its scope again with
+    /// `card scope` and a reason.
+    GiveBack {
+        /// `C-12`.
+        card: String,
+        /// The generation `take` or `handoff` answered with.
+        #[arg(long)]
+        generation: i64,
+        /// A path of the reservation to give back (repeat for more).
+        #[arg(long = "path", required = true)]
+        paths: Vec<String>,
+        /// The project folder (its profile holds the project id).
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// The HOME holding the ledger (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+    },
+    /// Writes the ledger. Lease a shared file for one command
+    ///
+    /// Writes the ledger. Adds the named `--path`s to the reservation, runs the command given
+    /// after `--` and gives the added paths back in one call: a short lease for a line in a
+    /// shared file. While another card's reservation covers a path the call retries until
+    /// `--wait-secs` (default 60, at most 600), then is refused naming that card and writes
+    /// nothing. The command's standard output goes to standard error, so the answer stays one
+    /// JSON envelope. A command that exits non-zero or cannot start is refused with its status
+    /// named, after the lease gives the paths back. A path given back is free for any card at
+    /// once. If this process is killed while the command runs, the leased paths stay in the
+    /// reservation until `card give-back` frees them. A reopened card widens its scope again
+    /// with `card scope` and a reason.
+    LineLease {
+        /// `C-12`.
+        card: String,
+        /// The generation `take` or `handoff` answered with.
+        #[arg(long)]
+        generation: i64,
+        /// A path to lease (repeat for more).
+        #[arg(long = "path", required = true)]
+        paths: Vec<String>,
+        /// The longest wait for another card's reservation, in seconds.
+        #[arg(long)]
+        wait_secs: Option<u64>,
+        /// The project folder (its profile holds the project id).
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// The HOME holding the ledger (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+        /// The command to run while the lease is held, after `--`.
+        #[arg(last = true, required = true)]
+        command: Vec<String>,
     },
     /// Writes the ledger. Take a card in review back to active
     ///
@@ -1034,14 +1099,48 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
         Action::Review {
             card,
             generation,
+            keep,
             project,
             home,
-        } => w::review(
+        } => w::review_keeping(
             &project,
             &resolve_home(home)?,
             &card,
             &d::session_holder("review", env)?,
             generation,
+            &keep,
+        ),
+        Action::GiveBack {
+            card,
+            generation,
+            paths,
+            project,
+            home,
+        } => w::give_back(
+            &project,
+            &resolve_home(home)?,
+            &card,
+            &d::session_holder("give-back", env)?,
+            generation,
+            &paths,
+        ),
+        Action::LineLease {
+            card,
+            generation,
+            paths,
+            wait_secs,
+            project,
+            home,
+            command,
+        } => w::line_lease(
+            &project,
+            &resolve_home(home)?,
+            &card,
+            &d::session_holder("line-lease", env)?,
+            generation,
+            &paths,
+            wait_secs,
+            &command,
         ),
         Action::Reopen {
             card,

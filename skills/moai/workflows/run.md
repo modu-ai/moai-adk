@@ -2,7 +2,7 @@
 
 ## Input
 
-An approved SPEC, a plan, a base, a write scope, and an owner. RUN follows the SPEC as `internal/sdd` says: only its Scope, and never while a `[NEEDS CLARIFICATION …]` question is open. The order is PLAN → RUN → VERIFY → SYNC → AUDIT → merge.
+An approved SPEC, a plan, a base, a write scope, and an owner. RUN follows the SPEC as `internal/sdd` says: only its Scope, and never while a `[NEEDS CLARIFICATION …]` question is open. The order of the stages is the one `internal/sdd` gives.
 
 ## Output
 
@@ -12,7 +12,7 @@ A patch, receipts from actual verification (the internal `run-verify` operation 
 
 1. Preflight the project and worktree, the dirty snapshot, and permissions; read the owner and epoch from the claim journal (`claim-show`) before writing, and claim through it when nobody holds the task.
 2. Read only the sources the task needs, and choose a change strategy. Gather them with `context-bundle` under an explicit budget and re-check them with `context-verify` before citing; read a `stale` range again. Record context usage from the host's own source (Claude Code statusline `context_window`, Codex `model_context_window` or `/status`); a `bytes_div_4` figure is an estimate.
-3. For new behaviour (TDD), confirm why RED fails before moving to GREEN and refactoring. For a change to existing code (preserve-then-change), first commit characterization tests that pass on the base and pin the behaviour the change must keep, then make the change and show they still pass. Add a test to a file of its own under `tests/` (or to the file that already tests the same module), not to a shared catch-all such as `tests/product_cli.rs`: two pull requests that both append there overlap, and the later one waits for an update-branch, its CI and a delta re-audit (20 such update-branches on 2026-11-13, Issue #2401 comment 6864202133).
+3. For new behaviour (TDD), confirm why RED fails before moving to GREEN and refactoring. For a change to existing code (preserve-then-change), first commit characterization tests that pass on the base and pin the behaviour the change must keep, then make the change and show they still pass. Add a test to a file of its own under `tests/` (or to the file that already tests the same module), not to a shared catch-all such as `tests/product_cli.rs`: two pull requests that both append there overlap, and the later one waits for an update-branch, its CI and a delta re-audit (20 such update-branches on 2026-11-13).
 4. Change only the allowed scope with the host's native tools, and repeat actual verification.
 5. When the base or the SPEC changes, mark existing receipts stale. After a stalled or interrupted attempt, do not re-send anything: read the owner and effects back (`claim-show`, `effects-reconcile`) and resume only on what the records prove.
 6. Hand the verified exact candidate to VERIFY, then to SYNC on the same branch, and only then to a separate AUDIT.
@@ -34,9 +34,8 @@ Skip this section when you are a base agent yourself: base agents never start ot
 RUN hands one planned change at a time to `moai-impl`: in its own worktree where the host offers that, otherwise in this worktree, and always in sequence. Do not write in its scope while it runs.
 
 - Claude Code: the installed agent file sets `isolation: worktree`. That worktree starts from the default branch, so pass `base`; the agent checks it out and confirms `git rev-parse HEAD` before writing.
-- OMP: start it with the task tool's `isolated: true` when the user's settings enable task isolation; the result comes back as a patch or a branch, which you read and then apply in this worktree. With isolation off, use the fallback.
 - Codex CLI, Kiro and Cursor CLI document no subagent worktree isolation. Fallback: the agent works in this worktree, one change at a time, and you wait for its result before the next step.
-- Cleanup (Issue #3054): the agent deletes only the build output it made in its own worktree, from inside that worktree and by relative path (`rm -rf target/debug`), never by an absolute path, and reports in its `Cleanup` section what it could not delete. Read that section before you take the worktree's result.
+- Cleanup: the agent deletes only the build output it made in its own worktree, from inside that worktree and by relative path (`rm -rf target/debug`), never by an absolute path, and reports in its `Cleanup` section what it could not delete. Read that section before you take the worktree's result.
 
 ## Web pages
 
@@ -50,7 +49,7 @@ Keep the browser's default permission mode; use a wider mode only when the user 
 
 Never lower acceptance to hide a failure. A provider acknowledgement, an agent's statement that it finished, or a result from another worktree is not evidence of success.
 
-Before adding a dependency, look its exact name and version up in its registry and cite the output. An automatic CI repair runs at most three rounds, each as a new commit without a force-push; it never patches a semantic failure (a race, a deadlock, a panic, a failed assertion) and never edits secret or credential files or the CI definitions (#2876, from the Go generation's coding standards and CI repair protocol).
+Before adding a dependency, look its exact name and version up in its registry and cite the output. An automatic CI repair runs at most three rounds, each as a new commit without a force-push; it never patches a semantic failure (a race, a deadlock, a panic, a failed assertion) and never edits secret or credential files or the CI definitions.
 
 ## Completion Check
 

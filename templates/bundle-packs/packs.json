@@ -71,17 +71,6 @@
      "depends_skills": []
     },
     {
-     "name": "moai-fetch-web",
-     "kind": "skill",
-     "root": "claude-skills",
-     "path": ".claude/skills/moai-fetch-web",
-     "sha256": "45baada9685949ccadac4f413054233833b5e67f140449b01be1903bf45abac2",
-     "depends_skills": [
-      "moai",
-      "moai-workflow-ddd"
-     ]
-    },
-    {
      "name": "moai-codemaps",
      "kind": "skill",
      "root": "agents-skills",
@@ -245,7 +234,7 @@
      "kind": "agent",
      "root": "claude-agents",
      "path": ".claude/agents/moai/manager-todo.md",
-     "sha256": "7b1b374a398a8cde072d643f4afc178e0c35807cdd0378062eeabab2b204e9f6",
+     "sha256": "86e7dbc70086b9ca226200aabf6691e815497e6e0d1cc8c17b3a64e0b1d0e3ad",
      "depends_skills": []
     },
     {
@@ -420,7 +409,7 @@
    ]
   },
   "ops-tools": {
-   "description": "Operations and tooling skills outside the L0 surface (harness builders, Jev, loop, docs-claim-check)",
+   "description": "Operations and tooling skills outside the L0 surface (harness builders, loop, docs-claim-check)",
    "depends_on": [],
    "entries": [
     {
@@ -440,14 +429,6 @@
      "depends_skills": []
     },
     {
-     "name": "moai-jev-skill-suggestion",
-     "kind": "skill",
-     "root": "claude-skills",
-     "path": ".claude/skills/moai-jev-skill-suggestion",
-     "sha256": "65bc06796226a5aabba9f0780286f1b99696c43f6ebaaab1a2f8c49f99646ca2",
-     "depends_skills": []
-    },
-    {
      "name": "moai-meta-harness",
      "kind": "skill",
      "root": "claude-skills",
@@ -461,14 +442,6 @@
      "root": "claude-skills",
      "path": ".claude/skills/moai-ref-aside-browser",
      "sha256": "653940540ae35059faa4dcdd7d4f2bf4d7b4960de023f6da405e9632c0030b5f",
-     "depends_skills": []
-    },
-    {
-     "name": "moai-ref-jev-question-design",
-     "kind": "skill",
-     "root": "claude-skills",
-     "path": ".claude/skills/moai-ref-jev-question-design",
-     "sha256": "8921b54c4752ddcd83b995c69d0c6261ac610266e8d4d717700ee973272c2490",
      "depends_skills": []
     },
     {

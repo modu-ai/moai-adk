@@ -16,11 +16,12 @@
 //! checked before the host is asked, so a refused caller causes no request.
 
 use super::command::{actor, open_for_write, ABSENT_HINT};
-use super::dispatch::{reservation_json, DEFAULT_LEASE_SECS};
+use super::dispatch::{checked_scope, reservation_json, DEFAULT_LEASE_SECS};
 use super::input::{self, CardRef};
 use super::spec_link;
 use crate::forge::connector::{HostConnector, HostKind, PrPhase, ProjectRef};
 use crate::ledger::reservation;
+use crate::ledger::scope_return;
 use crate::ledger::workflow::{self, CriterionChange, PrTarget, SkipReason, WorkflowError};
 use crate::ledger::{self, LedgerError};
 use serde_json::{json, Value};
@@ -428,7 +429,8 @@ fn moved_json(action: &str, id: &str, moved: &workflow::Moved) -> Value {
     })
 }
 
-/// `card review C-n`: `active` becomes `review`; the reservation stays.
+/// `card review C-n`: `active` becomes `review`; the reservation stays, and every path of its
+/// scope is given back (no `--keep`, SPEC-20261120-card-shared-line-lease).
 pub fn review(
     project: &Path,
     home: &Path,
@@ -436,11 +438,189 @@ pub fn review(
     holder: &str,
     generation: i64,
 ) -> Result<Value> {
+    review_keeping(project, home, reference, holder, generation, &[])
+}
+
+/// `card review C-n [--keep PATH]…`: `active` becomes `review` and every path of the reservation
+/// that no `--keep` names is given back in the same transaction, so another card can take it
+/// the moment the review is recorded. A `--keep` path the reservation does not hold refuses the
+/// call and writes nothing. The answer lists `given_back` and `kept`; the `card.review` event
+/// names both. A card sent back with `card reopen` widens its scope again with `card scope`.
+pub fn review_keeping(
+    project: &Path,
+    home: &Path,
+    reference: &str,
+    holder: &str,
+    generation: i64,
+    keep: &[String],
+) -> Result<Value> {
     let card_id = card_id("review", reference)?;
+    let keep = checked_scope("review", keep)?;
     let (id, mut ledger) = open_for_write(project, home)?;
-    let moved = workflow::review(&mut ledger, card_id, holder, generation)
-        .map_err(|e| refusal("review", e))?;
-    Ok(moved_json("review", &id, &moved))
+    let (moved, given_back, kept) =
+        scope_return::review_keeping(&mut ledger, card_id, holder, generation, &keep).map_err(
+            |e| match e {
+                scope_return::ReviewKeepError::Workflow(w) => refusal("review", w),
+                scope_return::ReviewKeepError::Scope(s) => s.to_string(),
+            },
+        )?;
+    let mut answer = moved_json("review", &id, &moved);
+    answer["given_back"] = json!(given_back);
+    answer["kept"] = json!(kept);
+    Ok(answer)
+}
+
+/// `card give-back C-n --path P…`: the holder gives paths of its reservation back; they are free
+/// for any card at once. A path the reservation does not hold, a stale generation or another
+/// session is refused and nothing is written. One `card.scope` event names the paths.
+pub fn give_back(
+    project: &Path,
+    home: &Path,
+    reference: &str,
+    holder: &str,
+    generation: i64,
+    paths: &[String],
+) -> Result<Value> {
+    let card_id = card_id("give-back", reference)?;
+    let paths = checked_scope("give-back", paths)?;
+    if paths.is_empty() {
+        return Err("card give-back refused: give at least one --path".to_string());
+    }
+    let (id, mut ledger) = open_for_write(project, home)?;
+    let given = scope_return::give_back(
+        &mut ledger,
+        card_id,
+        holder,
+        generation,
+        &paths,
+        "give-back",
+    )
+    .map_err(|e| e.to_string())?;
+    Ok(json!({
+        "action": "give-back", "project_id": id,
+        "name": input::card_name(card_id), "card_id": card_id,
+        "generation": generation, "holder": holder,
+        "given_back": given.given_back, "from": given.from,
+        "write_scope": given.reservation.write_scope,
+        "reservation": reservation_json(&given.reservation),
+        "events": 1, "writes": true,
+    }))
+}
+
+/// The longest wait for another card's reservation `card line-lease` accepts, in seconds.
+pub const MAX_LEASE_WAIT_SECS: u64 = 600;
+/// The wait `card line-lease` uses without `--wait-secs`, in seconds.
+pub const DEFAULT_LEASE_WAIT_SECS: u64 = 60;
+
+/// `card line-lease C-n --path P… [--wait-secs N] -- COMMAND…`: a short lease of a shared file in
+/// which a card needs one line. The paths the reservation does not hold are added (retried every
+/// quarter second while another card's reservation covers them, up to `wait_secs`; then the call
+/// is refused naming that card and writes nothing), `command` runs with its standard output sent
+/// to standard error (the answer stays one JSON envelope), and the added paths are given back
+/// whatever the command's status was. A command that exits non-zero or cannot start is refused
+/// with its status named, after the paths were given back.
+#[allow(clippy::too_many_arguments)]
+pub fn line_lease(
+    project: &Path,
+    home: &Path,
+    reference: &str,
+    holder: &str,
+    generation: i64,
+    paths: &[String],
+    wait_secs: Option<u64>,
+    command: &[String],
+) -> Result<Value> {
+    use std::process::{Command, Stdio};
+    use std::time::{Duration, Instant};
+    let card_id = card_id("line-lease", reference)?;
+    let paths = checked_scope("line-lease", paths)?;
+    if paths.is_empty() {
+        return Err("card line-lease refused: give at least one --path".to_string());
+    }
+    let Some((program, args)) = command.split_first() else {
+        return Err("card line-lease refused: give the command to run after `--`".to_string());
+    };
+    let wait = wait_secs.unwrap_or(DEFAULT_LEASE_WAIT_SECS);
+    if wait > MAX_LEASE_WAIT_SECS {
+        return Err(format!(
+            "card line-lease refused: --wait-secs is 0 to {MAX_LEASE_WAIT_SECS}, not {wait}"
+        ));
+    }
+    let started = Instant::now();
+    let (id, mut ledger) = open_for_write(project, home)?;
+    let leased = loop {
+        match scope_return::lease_take(&mut ledger, card_id, holder, generation, &paths) {
+            Ok(leased) => break leased,
+            Err(scope_return::LeaseError::Overlap(text)) => {
+                if started.elapsed() >= Duration::from_secs(wait) {
+                    return Err(format!("{text}; waited {wait} s for it and wrote nothing"));
+                }
+                std::thread::sleep(Duration::from_millis(250));
+            }
+            Err(other) => return Err(other.to_string()),
+        }
+    };
+    let waited_ms = started.elapsed().as_millis() as i64;
+    // No handle is kept while the command runs: it may take a while and others write the ledger.
+    drop(ledger);
+    let outcome = Command::new(program)
+        .args(args)
+        .stdin(Stdio::inherit())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::inherit())
+        .spawn()
+        .and_then(|child| child.wait_with_output());
+    let status = match &outcome {
+        Ok(out) => {
+            use std::io::Write;
+            let _ = std::io::stderr().write_all(&out.stdout);
+            Ok(out.status)
+        }
+        Err(e) => Err(e.to_string()),
+    };
+    let mut ledger = open_for_write(project, home)
+        .map_err(|e| {
+            format!(
+                "{e}; the command has already run, so do not run it again, and the lease of {} may still be in the reservation: `card give-back` frees it",
+                leased.added.join(", ")
+            )
+        })?
+        .1;
+    let released =
+        scope_return::lease_release(&mut ledger, card_id, holder, generation, &leased.added)
+            .map_err(|e| {
+                format!(
+                "{e}; the lease of {} may still be in the reservation: `card give-back` frees it",
+                leased.added.join(", ")
+            )
+            })?;
+    match status {
+        Err(why) => Err(format!(
+            "card line-lease refused: could not start `{program}`: {why}; the paths were given back"
+        )),
+        Ok(status) if !status.success() => Err(format!(
+            "card line-lease refused: the command ended with status {}; the paths were given back",
+            status
+                .code()
+                .map_or_else(|| "none (a signal ended it)".to_string(), |c| c.to_string())
+        )),
+        Ok(_) => {
+            let reservation = released
+                .as_ref()
+                .map(|g| g.reservation.clone())
+                .unwrap_or(leased.reservation);
+            Ok(json!({
+                "action": "line-lease", "project_id": id,
+                "name": input::card_name(card_id), "card_id": card_id,
+                "generation": generation, "holder": holder,
+                "paths": paths, "added": leased.added,
+                "given_back": released.map(|g| g.given_back).unwrap_or_default(),
+                "exit_code": 0, "waited_ms": waited_ms,
+                "reservation": reservation_json(&reservation),
+                "writes": !leased.added.is_empty(),
+            }))
+        }
+    }
 }
 
 /// `card reopen C-n`: `review` becomes `active` again; the reservation stays.
@@ -478,9 +658,17 @@ pub fn done(
     {
         return Err(format!("card done refused: {why}; nothing was changed"));
     }
-    let landing = mflow_landing(&mut ledger, project, card_id)?;
-    let moved = workflow::done(&mut ledger, card_id, holder, generation, landing)
-        .map_err(|e| refusal("done", e))?;
+    let (landing, hint) = mflow_landing(&mut ledger, project, card_id)?;
+    let moved = workflow::done(&mut ledger, card_id, holder, generation, landing).map_err(|e| {
+        let refused = refusal("done", e);
+        // The hint explains the landing: it belongs on the landing-related refusal only
+        // (the delta audit's N1) — a card refused for an open criterion or a missing
+        // reservation reads its own reason, not the profile's.
+        match (&hint, refused.contains("no merged pull request is linked")) {
+            (Some(h), true) => format!("{refused}; {h}"),
+            _ => refused,
+        }
+    })?;
     Ok(moved_json("done", &id, &moved))
 }
 
@@ -488,32 +676,77 @@ pub fn done(
 /// project's profile names the m-flow work_flow with an integration branch, the newest
 /// `card.landed` event's head must be an ancestor of that branch's tip — checked here with
 /// git, because the ledger never spawns commands. `None` for any other flow, which keeps the
-/// merged-pull-request rule.
+/// merged-pull-request rule. The profile problem is never swallowed silently
+/// (SPEC-20261121-mixed-profile-read): the second value is a hint for the merged-pull-request
+/// refusal of a card with a landing on record whose profile could not be read, or was read but
+/// does not name the m-flow work_flow with an integration branch: which profile, and why. A
+/// project whose profile is only a stub (the card commands write one) keeps the old rule and
+/// closes through a merged pull request.
 fn mflow_landing(
     ledger: &mut ledger::WriteLedger,
     project: &Path,
     card_id: i64,
-) -> Result<Option<workflow::Landing>> {
+) -> Result<(Option<workflow::Landing>, Option<String>)> {
+    let newest_head = |ledger: &mut ledger::WriteLedger| -> Option<String> {
+        ledger
+            .conn()
+            .query_row(
+                "SELECT json_extract(payload, '$.head') FROM event \
+                 WHERE card_id = ?1 AND kind = 'card.landed' \
+                 ORDER BY event_id DESC LIMIT 1",
+                [card_id],
+                |r| r.get(0),
+            )
+            .ok()
+    };
+    let profile_rel = crate::profile::read_rel(project);
+    let recorded = |detail: String, ledger: &mut ledger::WriteLedger| -> Option<String> {
+        newest_head(ledger).map(|_| {
+            format!(
+                "a local landing is recorded for this card, but {detail}, so the landing was not \
+                 used"
+            )
+        })
+    };
     let profile = match crate::profile::read_profile(project) {
         Ok((p, _)) => p,
-        Err(_) => return Ok(None),
+        Err(e) if e == crate::profile::PROFILE_MISSING => return Ok((None, None)),
+        Err(e) => {
+            let hint = recorded(
+                format!("the project profile {profile_rel} could not be read ({e})"),
+                ledger,
+            );
+            return Ok((None, hint));
+        }
     };
-    let Some(wf) = profile.work_flow.filter(|w| w.flow == "m-flow") else {
-        return Ok(None);
+    let not_used = |why: String, ledger: &mut ledger::WriteLedger| -> Option<String> {
+        recorded(
+            format!(
+                "the project profile {profile_rel} does not name the m-flow work_flow with an \
+                 integration branch ({why})"
+            ),
+            ledger,
+        )
+    };
+    let wf = match profile.work_flow {
+        Some(w) if w.flow == "m-flow" => w,
+        Some(w) => {
+            let hint = not_used(format!("its work_flow is {}", w.flow), ledger);
+            return Ok((None, hint));
+        }
+        None => {
+            let hint = not_used("it has no work_flow".to_string(), ledger);
+            return Ok((None, hint));
+        }
     };
     let Some(branch) = wf.integration_branch else {
-        return Ok(None);
+        let hint = not_used(
+            "its m-flow work_flow has no integration_branch".to_string(),
+            ledger,
+        );
+        return Ok((None, hint));
     };
-    let head: Option<String> = ledger
-        .conn()
-        .query_row(
-            "SELECT json_extract(payload, '$.head') FROM event \
-             WHERE card_id = ?1 AND kind = 'card.landed' \
-             ORDER BY event_id DESC LIMIT 1",
-            [card_id],
-            |r| r.get(0),
-        )
-        .ok();
+    let head: Option<String> = newest_head(ledger);
     let Some(head) = head else {
         return Err(
             "card done refused: cannot close: no local landing is linked (`card landed` after \
@@ -552,7 +785,7 @@ fn mflow_landing(
              integration branch {branch}; nothing was changed"
         ));
     }
-    Ok(Some(workflow::Landing { head, tip }))
+    Ok((Some(workflow::Landing { head, tip }), None))
 }
 
 /// `card landed C-n --head <sha>`: record that this card's head landed on the local

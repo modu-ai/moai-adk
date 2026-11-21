@@ -22,6 +22,7 @@ pub mod open;
 pub mod recover;
 pub mod reservation;
 pub mod schema;
+pub mod scope_return;
 pub mod summary;
 pub mod workflow;
 

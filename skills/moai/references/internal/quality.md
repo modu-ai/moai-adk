@@ -33,7 +33,7 @@ The guides live under `references/languages/` of this skill. A language the dete
 ## Tracing: requirement, criterion, check, test
 
 - Each acceptance criterion (`AC-<n>`) of the SPEC names the requirements it covers (`(REQ-…)`) and one `verify:` command, or a `manual:` or `unknown:` reason. `moai spec check` refuses an AC without one.
-- A test written for a criterion names it where `grep` finds it: in the test's name, or in a comment on the line above the test, as `<SPEC-ID> AC-<n>`. The ACC `@cc:proves` marker replaces that comment once its own SPEC lands.
+- A test written for a criterion names it where `grep` finds it: in the test's name, or in a comment on the line above the test, as `<SPEC-ID> AC-<n>`. The ACC `@cc:proves` marker, which agents and tools add and link automatically, replaces that comment once its own SPEC lands.
 - At VERIFY, run every `verify:` command of the SPEC and record its exit code next to the AC. A criterion whose command did not run is `not_run`, never `met`.
 - A changed test that drops an assertion, gains a skip (`#[ignore]`, `@pytest.mark.skip`, `t.Skip`, `.skip(`), or is deleted is a finding: name it and the AC it proved.
 
