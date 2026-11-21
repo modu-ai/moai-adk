@@ -72,4 +72,32 @@ created: 2026-11-21
 
 ## Result
 
-(구현 뒤에 채워요)
+### 만든 것 (head bd63d4a6941f8c5109e33002e3a8c8efa5bd990c)
+
+- `src/ledger/schema.rs`: `TRIGGERS` 를 `card_done_guard` 앞(`TRIGGERS_BEFORE_GUARD`)·그 트리거(`CARD_DONE_GUARD`)·뒤(`TRIGGERS_AFTER_GUARD`)로 나눴어요. 새 원장과 이주가 같은 글자를 써요.
+- `src/ledger/migrate.rs`: `done_guard_status`(읽기 전용), `upgrade_done_guard` 와 실패 지점을 끼우는 `upgrade_done_guard_with`, `ledger.db.bak-<UTC>` 복사(`create_new`, 0600)와 읽어 확인(`quick_check`, `application_id`, `user_version`), `meta` 행 `done_guard_landed`.
+- `src/ledger/open.rs`: `open_write` 가 연 직후 이주를 부르고 `WriteLedger::done_guard_upgrade()` 로 백업 경로를 알려 줘요.
+- 시험: `tests/ledger_card_landed_migration_cli.rs` 10개, `ledger::migrate` 단위 시험 2개 추가.
+
+### 증거 (이 head 에서 돌린 것, 2026-11-21)
+
+- `cargo test --offline --locked --test ledger_card_landed_migration_cli`: 10 passed. RED: 구현 전에는 새 함수가 없어서 시험이 컴파일되지 않았어요.
+- `cargo test --offline --locked --lib ledger::migrate`: 3 passed. `cargo fmt --check` 0, `cargo clippy --offline --locked --all-targets -- -D warnings` 0.
+- 이웃 14개 대상(`ledger_schema`, `ledger_open`, `ledger_recover`, `ledger_recover_cli`, `ledger_reservation`, `ledger_workflow`, `ledger_import`, `ledger_cli`, `ledger_readonly_cli`, `ledger_folders`, `ledger_scope_return`, `card_done_mflow_cli`, `card_spec_cli`, `card_cli`): 261 passed, 0 failed.
+- 실제 원장의 사본(읽기 전용 `sqlite3 -readonly ... .backup` 으로 임시 HOME 에 복사)에서 실행: 복사본은 `user_version` 1, 카드 288장, `card_done_guard` 에 `card.landed` 없음(리더가 읽은 것과 같음). `card note` 쓰기 한 번으로 이주가 돌았고, 백업 파일의 데이터 표 덤프 해시가 이주 전 덤프와 같고(`5efbfd2c26eb910698b6d075d430414bcf7836d7`), 이주된 사본은 시험 삼아 쓴 노트 한 줄과 그 사건 한 줄만 다르며, 트리거에 예외가 생겼고, `integrity_check` 가 ok, `user_version` 1 이에요. 실제 `~/.moai/projects/moai-adk/ledger.db` 는 건드리지 않았고(예외 없음, 백업 파일 없음을 다시 읽어 확인) 이주는 새 빌드를 쓰는 첫 쓰기가 해요.
+- 변형 7개(상한 12): 상태가 늘 `NeedsMigration`, 백업 확인이 늘 ok, 실패해도 백업 남김, commit 이 훅 오류를 무시, 백업 덮어쓰기 허용, `meta` 키 변경, `open_write` 가 이주를 안 부름 — 전부 시험 `FAILED` 로 죽었고 컴파일 실패로 센 것은 없어요. 변형 뒤 트리는 변경 0 으로 복원했어요. 시험으로 못 죽이는 것은 하나 알고 있어요: 트랜잭션 안에서 상태를 다시 읽는 줄(동시에 두 프로세스가 같은 옛 원장을 열 때만 쓰임)을 빼는 변형은 결정적으로 시험할 길이 없어서(저장소가 고정 sleep 시험을 금지) 돌리지 않았어요.
+
+### 수용 기준 결과
+
+- AC-1: met — `migrates_an_old_ledger` 통과(백업 한 개, 트리거 글자가 새 원장과 같음, `meta` 행, 백업의 행·옛 트리거·pragma, 0600).
+- AC-2: met — `rows_and_close_rules` 통과(행 덤프 같음, landed 카드와 병합 PR 카드는 닫히고 둘 다 없는 카드는 거절).
+- AC-3: met — `second_open_is_a_noop` 와 `a_fresh_ledger_is_left_alone` 통과(백업 한 개 그대로, 파일 바이트 같음).
+- AC-4: met — `failure_rolls_back` 통과(훅이 트리거를 지운 뒤 실패해도 옛 트리거·행·`integrity_check`, 백업 없음, 다음 열기에서 이주).
+- AC-5: met — `backup_failure_refuses`(폴더 쓰기 금지)와 `an_existing_backup_name_is_never_overwritten` 통과.
+- AC-6: met — `status_is_read_only` 통과(읽기 전용 열기에서 `NeedsMigration`, 파일 바이트 같음, 이주 뒤 `Current`).
+
+### 남은 것
+
+- `moai ledger-migrate --dry-run` 명령: `done_guard_status` 를 부르는 명령은 `src/ledger/command.rs`·`src/main.rs` 몫이라 이 카드 범위 밖이에요(후속).
+- 복구(`recover`)가 찾는 `ledger.db.bak` 과 이름이 달라 새 백업은 복구 순서에 끼지 않아요. 복구가 `.bak-<UTC>` 도 읽게 하는 일은 후속.
+- 사용자가 새 빌드를 적용하면 첫 쓰기에서 이주가 돌아요(적용은 리더가 사용자에게 먼저 물어요). 그 뒤 `~/.moai/projects/<id>/` 에 `ledger.db.bak-<UTC>` 가 하나 생겨요.
