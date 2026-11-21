@@ -3802,7 +3802,7 @@ fn generation_native_roles_render_official_shapes() {
         .contains("cannot create a sandbox"));
     ok_result(&generation_apply_cli(&root, &plan));
     let claude_role = String::from_utf8_lossy(
-        &fs::read(root.path().join(".claude/agents/prj-fixer.md")).unwrap(),
+        &fs::read(root.path().join(".claude/agents/moai/prj-fixer.md")).unwrap(),
     )
     .into_owned();
     assert!(claude_role.contains("name: prj-fixer"));
@@ -3831,7 +3831,7 @@ fn generation_project_agent_keeps_hand_edits_and_never_takes_a_base_name() {
     ]);
     let plan = ok_result(&generation_plan_cli(&root, &request));
     ok_result(&generation_apply_cli(&root, &plan));
-    let claude = root.path().join(".claude/agents/prj-demo-tester.md");
+    let claude = root.path().join(".claude/agents/moai/prj-demo-tester.md");
     let codex = root.path().join(".codex/agents/prj-demo-tester.toml");
     assert!(fs::read_to_string(&claude).unwrap().contains(purpose));
     assert!(fs::read_to_string(&codex)
@@ -3851,7 +3851,7 @@ fn generation_project_agent_keeps_hand_edits_and_never_takes_a_base_name() {
     let kept = ok_result(&generation_plan_cli(&root, &request));
     assert!(actions_of(&kept)
         .iter()
-        .any(|(p, a)| p == ".claude/agents/prj-demo-tester.md" && a == "unchanged"));
+        .any(|(p, a)| p == ".claude/agents/moai/prj-demo-tester.md" && a == "unchanged"));
     ok_result(&generation_apply_cli(&root, &kept));
     assert_eq!(fs::read_to_string(&claude).unwrap(), edited);
     // The answers changed too: both sides moved, so it is a conflict and nothing is written.
@@ -3859,7 +3859,7 @@ fn generation_project_agent_keeps_hand_edits_and_never_takes_a_base_name() {
     let after_edit = ok_result(&generation_plan_cli(&root, &request));
     assert!(actions_of(&after_edit)
         .iter()
-        .any(|(p, a)| p == ".claude/agents/prj-demo-tester.md" && a == "conflict"));
+        .any(|(p, a)| p == ".claude/agents/moai/prj-demo-tester.md" && a == "conflict"));
     let out = generation_apply_cli(&root, &after_edit);
     assert!(!out.status.success());
     let failure: Value = serde_json::from_slice(&out.stdout).unwrap();
@@ -4095,7 +4095,7 @@ fn generation_manifest_entries_carry_kind() {
     assert_eq!(by_kind("native-role").len(), 1);
     assert_eq!(
         by_kind("native-role")[0]["path"],
-        json!(".claude/agents/prj-fixer.md")
+        json!(".claude/agents/moai/prj-fixer.md")
     );
     // The agents-owned entries stay kind-less: their section_id already carries the
     // managed section they belong to.
