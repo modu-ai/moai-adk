@@ -85,3 +85,34 @@ SHA, 저장소·remote·개수 조회 실패는 그 항목만 `n/a`(0으로 표�
 | D-1 | 모르는 창에는 배터리 아이콘을 붙이지 않고 `CTX n/a`·`Week n/a` 로 쓴다 | 감사 N2(모르는 CTX 에 아이콘 없음)와 N1(퍼센트 없는 Week 는 `Week n/a`) | 아이콘을 다시 붙이기 |
 | D-2 | 렌더러 주석의 카드 번호는 `render.rs` 만 지운다 | 감사 N6 이 `render.rs` 줄을 지목했고, 다른 파일의 옛 주석까지 지우면 이 수리의 범위를 넘어요(후속) | 다른 파일도 지우기 |
 | D-3 | 막대 잔재 시험은 막대 문자·`gradient`·`CTX bar` 같은 낱말 목록으로 고정한다 | 감사 N3 | 낱말 목록 줄이기 |
+
+## Result
+
+Filled in by the implementation lane on 2026-11-21T20:23:09Z (`date -u`); the audit checks it again. Branch `spec/20261121-statusline-detached-r2`, worktree `/Users/goos/.moai/worktrees/moai-adk/statusline-numbers`; the audited head of the first repair round was `c969197d2e` (audit FAIL, B1 and B2 and N1..N6). This round adds, on top of the local tip `6e1bedb4f3`: the tip merge `7a5ab2dc32`, this SPEC `3c279bd13f`, the red tests `b64000ae4d`, the code `f99c775900`, the goldens `6c8333bf03`, the product document `201182d73d` and one fix commit `1497aa98ee`. Evidence files are in this worktree's `target/notes/`.
+
+Red first (`red.out`, the six integration targets, no name filter): the new `statusline_numbers_only` tests and the sibling suites failed as planned (cards 1, counts_refresh 1, git_env 2, numbers_only 2, worktree_label 4 failed; tag_order passed).
+
+- AC-1: met — the unit tests of `statusline::` pass after the change: `cargo test --locked --offline --lib -- statusline::` 151 passed, 0 failed (`golden-train.out`, head `f99c775900`); the same tests are inside the passing `check affected` below.
+- AC-2: met — `lookup_failures_show_unknown_not_zero` expects `📡 n/a, ⬇️ n/a 🔀 n/a | 🅱️ main ↑5 ↓2 +3` and passes; the four sibling suites that said the Korean word now say `n/a` and pass.
+- AC-3: met — `the_user_example_gives_exactly_the_three_lines` passes unchanged in the `statusline::` run.
+- AC-4: met — `the_reset_countdown_uses_the_three_formats` passes unchanged in the `statusline::` run.
+- AC-5: met — the Rust test `statusline_matches_every_claude_golden` passes inside `check affected`; the goldens were rewritten with the existing `tools/statusline_golden.py --write` switch (`golden-write.out`, exit 0) and all 48 changed golden files were read: 16 cases times three variants (plain, ansi, ansi256): `a01-minimal`, `a03-context-null`, `a06-invalid-json`, `a09-top-level-null`, `a10-unpaired-surrogate`, `a12-invalid-utf8`, `a13-duplicate-top-level-keys`, `a15-case-folded-keys`, `b04-template-version`, `b05-task-state` lose the battery icon of the unknown CTX and say `CTX n/a`; `b01-git-clean`, `b02-git-dirty-ahead`, `d01-leader-mode`, `d02-leader-expired`, `d03-title-name`, `d04-agent-name` say `n/a` where they said the Korean word. In the colored variants only that icon and that word differ (the color codes are the same, checked on `a01-minimal.ansi` and by a mapped diff of all colored files). `cases.json` changed only by the recorded sha256 of the binary that wrote the goldens.
+- AC-6: met — `spec check SPEC-20261121-statusline-detached` reports 0 errors and 0 warnings; `spec check --closure` leaves only `closure_status`.
+- AC-7: met — `an_unknown_window_says_n_a_without_a_battery_icon` and `rate_windows_are_optional_and_an_unknown_window_says_n_a` pass; mutants M1 (the icon back on an unknown window) and M3 (a week without a percentage shows `0%` again) are killed by them.
+- AC-8: met — `window_percentages_stay_between_zero_and_one_hundred` passes (-5, 0, 1, 99, 100, 101, 1000000 for Week and 0, 100, 101, 5000 tokens for CTX); mutant M2 (no clamp) is killed.
+- AC-9: met — `no_line_of_the_screen_carries_korean_text` passes over four statuses in plain and colored output; mutant M4 (the unknown text Korean again) is killed by several tests; no mutant was written for this test alone.
+- AC-10: met — `the_renderer_sources_carry_no_bar_leftovers_and_no_card_numbers` passes (no block characters, none of `gradient`, `10-cell`, `CTX bar`, `context bar`, `stops`, no whole word `bar` or `bars`, no card number in `render.rs`); mutant M5 (a card number back in a comment) is killed. The unused theme field `stops` is removed.
+- AC-11: met — `the_statusline_doc_describes_the_numbers_only_look` passes; the doc test has no mutant of its own.
+
+### Checks
+
+`check affected` (the branch's own build, `--max 2`, `CLAUDE_CODE_SESSION_ID` unset): first run on head `201182d73d` FAILED (diff_check=2 for a blank line at the end of this SPEC, test_targets=101 for two of my own new tests: the doc test still looked for the old item title and `render.rs` still had a test named with the word bars); fixed in `1497aa98ee`. Second run, base `f566ebf268` (the tip when it started; the tip has moved since, see below), head `1497aa98ee`: `check-affected base=f566ebf268fd head=1497aa98eec8 targets=51 py=9 scans=listed:42 diff_check=0 fmt=0 clippy=0 test_lib=0 test_bins=0 test_targets=0 build_cli=0 python=0 result=PASS`. Five mutants, one at a time on the committed file with the bytes restored from memory (`target/notes/mutants.out`): 5 of 5 killed, last line `restored: clean = True`. `git diff --check 6e1bedb4f3 HEAD` is 0 and `cargo fmt --check` is 0.
+
+Two commits of this round were made with the single-command pre-commit override `SKIP_MOAI_PRECOMMIT=1` because the shared hook ran a command the installed `moai` did not have (notes 5780 and 5784): `7a5ab2dc32` and `3c279bd13f`. No Go file was staged and the heavy gate was opted out, so no check that used to run was skipped. Every later commit went through the hook.
+
+### Not run
+
+- The statusline in a real Claude Code session with live data: not run.
+- The old card-number comments in `state.rs`, `counts.rs` and the test files are not removed (D-2); `미확인` in `src/goal_block.rs`, `src/close_check.rs` and `tests/goal_block_cli.rs` belongs to other features and is untouched.
+- `check affected` was not run again on a merge with the tip as it is now (`a01c444e9a`): the tip moved after the run by 15 files and none of them is a file of this change; the PASS above is cited for the merge (no overlap).
+- A second run of the same tests on the same tree: not repeated, except the one rerun that the failed first run made necessary.
