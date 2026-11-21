@@ -68,6 +68,15 @@
         "reason": "Written for rc.2 #2636 (parent #2634, leader final design of 2026-11-13): when MoAI uses Aside, the commands that print Aside's version-matched guides (aside guide, aside skills), the permission lines (Guard by default, full-access only with the user's confirmation), CLI only and never MCP (user decision #2634 6845653775), and the fallback when Aside is missing. Checked against https://docs.aside.com/help/developers and /help/security and the Aside CLI 1.26.1111.1046 help (read 2026-11-13). No design-22 template exists for adapters."
       }
     },
+    "references/adapters/herdr.md": {
+      "sha256": "c5ced59e75d848603a0d84022aa3ebff57ec37638f7302f1a9b36369d15fe6a4",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "adapter-herdr",
+        "adoption": "new",
+        "reason": "Written for the optional-tool references (user-confirmed 2026-11-21, SPEC-20261121-herdr-reference-orca-gap): when MoAI uses herdr (only in a workspace the user names, read-only), the commands that print the installed version's guide (herdr --skill, herdr api schema, herdr status --json), the read-only commands, every typing, creating, closing, moving, reporting and installing command it forbids, and the not_run fallback when herdr is missing. Checked against the herdr 0.8.2 binary on this machine and the 0.8.2 and latest (0.9.5) CLI reference and socket API pages (read 2026-11-21). No herdr server was running, so no live workspace was read."
+      }
+    },
     "references/adapters/orca.md": {
       "sha256": "6c70926478f31c80cf8994b1e141c23d31724c53484cd7e1f225d058bdbb8a70",
       "origin": {
