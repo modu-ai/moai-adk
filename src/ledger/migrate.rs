@@ -428,17 +428,17 @@ mod tests {
     #[test]
     fn a_half_made_backup_is_removed_with_its_journal_and_nothing_else() {
         let dir = tempfile::tempdir().unwrap();
-        let backup = dir.path().join("ledger.db.bak-20261121T000000Z");
-        let journal = dir.path().join("ledger.db.bak-20261121T000000Z-journal");
-        let neighbour = dir.path().join("ledger.db.bak-20261121T000001Z");
-        let ledger = dir.path().join("ledger.db");
+        let backup = dir.path().join("main.db.bak-20261121T000000Z");
+        let journal = dir.path().join("main.db.bak-20261121T000000Z-journal");
+        let neighbour = dir.path().join("main.db.bak-20261121T000001Z");
+        let ledger = dir.path().join("main.db");
         for f in [&backup, &journal, &neighbour, &ledger] {
             std::fs::write(f, b"x").unwrap();
         }
         remove_backup_files(&backup);
         assert_eq!(
             files_in(dir.path()),
-            ["ledger.db", "ledger.db.bak-20261121T000001Z"],
+            ["main.db", "main.db.bak-20261121T000001Z"],
             "only the backup and its journal go"
         );
         // Nothing there: no error, nothing changes.
