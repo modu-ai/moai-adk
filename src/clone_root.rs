@@ -3,7 +3,9 @@
 //! once [`crate::state_root::classify`] says `rust` there (a valid marker
 //! `<common>/.moai/moai.json`, or the earlier name `<common>/.moai/moai-cli.json`), otherwise the earlier
 //! `<common>/.moai-cli`
-//! ([`crate::CLONE_STATE_DIR`]). Read both, one writes.
+//! ([`crate::CLONE_STATE_DIR`]) where that folder exists; a common folder with neither resolves
+//! to `.moai` ([`crate::state_root::resolves_to_moai`], SPEC-20261121-path-root-moai-default).
+//! Read both, one writes.
 //!
 //! Nothing moves this state and nothing writes that marker yet (decision D-C4-1 default,
 //! #2696 6867006943): running lanes keep their claims and sessions in `.moai-cli` until the
@@ -13,7 +15,11 @@ use std::path::{Path, PathBuf};
 
 /// `.moai` when `common/.moai` is this generation's (verdict `rust`), else `.moai-cli`.
 pub fn dir(common: &Path) -> &'static str {
-    if crate::state_root::classify(common).generation == "rust" {
+    if crate::state_root::resolves_to_moai(
+        crate::state_root::classify(common).generation,
+        common,
+        crate::CLONE_STATE_DIR,
+    ) {
         crate::state_root::MOAI_DIR
     } else {
         crate::CLONE_STATE_DIR
@@ -34,11 +40,7 @@ mod tests {
     fn the_marker_alone_moves_clone_state_to_moai() {
         let common = tempfile::tempdir().unwrap();
         let c = common.path();
-        assert_eq!(
-            dir(c),
-            crate::CLONE_STATE_DIR,
-            "no marker: the earlier root"
-        );
+        assert_eq!(dir(c), ".moai", "nothing there: the new root");
         fs::create_dir_all(c.join(crate::CLONE_STATE_DIR).join("claims")).unwrap();
         fs::create_dir(c.join(".moai")).unwrap();
         assert_eq!(dir(c), crate::CLONE_STATE_DIR, "an empty .moai is not ours");

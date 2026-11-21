@@ -559,12 +559,35 @@ fn classify_inner(
     }
 }
 
+/// The one rule of the three resolvers ([`dir`], [`crate::home_root::dir`],
+/// [`crate::clone_root::dir`]; SPEC-20261121-path-root-moai-default): does `root` resolve to
+/// `.moai`? `generation` is the verdict of the classification of `root/.moai`.
+///
+/// | verdict | earlier folder present | answer |
+/// | --- | --- | --- |
+/// | `rust`, `rust-first` | either | `.moai` |
+/// | `none`, `empty`, `unknown` | no | `.moai` |
+/// | `none`, `empty`, `unknown` | yes | `.moai-cli` (a legacy tree keeps every path it had) |
+/// | `go`, `mixed`, `interrupted`, `refuse` | either | `.moai-cli` (Go's folder is never written) |
+///
+/// The earlier folder is present when `root/<earlier>` exists in any form; a link counts and
+/// is never followed. Reads only.
+pub(crate) fn resolves_to_moai(generation: &str, root: &Path, earlier: &str) -> bool {
+    match generation {
+        "rust" | "rust-first" => true,
+        "none" | "empty" | "unknown" => fs::symlink_metadata(root.join(earlier)).is_err(),
+        _ => false,
+    }
+}
+
 /// The project-relative folder that holds `root`'s state now (#2725 S2b): `.moai` once
-/// [`classify`] says `rust`, otherwise the earlier `.moai-cli` (decision D7: both are read,
-/// one writes). A project gets `.moai/` only through a migration that writes the marker last,
-/// so every project without a valid marker keeps exactly the paths it had before.
+/// [`classify`] says `rust`, or when the project has no earlier `.moai-cli` and no Go state
+/// ([`resolves_to_moai`]); otherwise the earlier `.moai-cli` (decision D7: both are read, one
+/// writes). A project that has `.moai-cli` and no valid marker keeps exactly the paths it had
+/// before, and a new project, a worktree without a marker included, never gets `.moai-cli`
+/// from this function.
 pub fn dir(root: &Path) -> &'static str {
-    if classify(root).generation == "rust" {
+    if resolves_to_moai(classify(root).generation, root, crate::PROJECT_STATE_DIR) {
         MOAI_DIR
     } else {
         crate::PROJECT_STATE_DIR

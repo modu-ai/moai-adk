@@ -2,8 +2,11 @@
 //! [`crate::state_root::dir`]. `~/.moai` once [`crate::state_root::classify_with`] with the
 //! HOME's Go markers says `rust` (a valid marker `~/.moai/moai.json`, or the earlier name
 //! `~/.moai/moai-cli.json`, [`crate::state_root::LEGACY_MARKER`]), otherwise the earlier
-//! `~/.moai-cli` ([`crate::HOME_STATE_DIR`]). Read both, one writes: a HOME without the marker
-//! keeps exactly the paths it had, and the Go generation's `~/.moai` is never written here.
+//! `~/.moai-cli` ([`crate::HOME_STATE_DIR`]). Read both, one writes: a HOME that has `~/.moai-cli`
+//! and no marker keeps exactly the paths it had, a HOME with neither (or with a `~/.moai` that
+//! holds no Go state and no marker) resolves to `~/.moai`, and the Go generation's `~/.moai` is
+//! never written here ([`crate::state_root::resolves_to_moai`],
+//! SPEC-20261121-path-root-moai-default).
 //! A schema-2 marker (#2871 I2 R1, [`crate::state_root::classify_home`]) makes the HOME
 //! `rust-first`: `~/.moai` is this generation's even beside Go markers, laid out by
 //! [`crate::home_layout`]. Reads only.
@@ -16,19 +19,27 @@ pub const MOAI_DIR: &str = crate::state_root::MOAI_DIR;
 /// `.moai` when `home/.moai` is this generation's (verdict `rust`, or `rust-first` for a
 /// schema-2 marker, #2871 I2 R1), else `.moai-cli`.
 pub fn dir(home: &Path) -> &'static str {
-    match crate::state_root::classify_home(home).generation {
-        "rust" | "rust-first" => MOAI_DIR,
-        _ => crate::HOME_STATE_DIR,
+    if crate::state_root::resolves_to_moai(
+        crate::state_root::classify_home(home).generation,
+        home,
+        crate::HOME_STATE_DIR,
+    ) {
+        MOAI_DIR
+    } else {
+        crate::HOME_STATE_DIR
     }
 }
 
 /// `home/<dir(home)>`; a `rust-first` HOME resolves to the layout's root
 /// ([`crate::home_layout::rust_path`], user decision D-M1).
 pub fn path(home: &Path) -> PathBuf {
-    match crate::state_root::classify_home(home).generation {
-        "rust-first" => crate::home_layout::rust_path(home, ""),
-        "rust" => home.join(MOAI_DIR),
-        _ => home.join(crate::HOME_STATE_DIR),
+    let generation = crate::state_root::classify_home(home).generation;
+    if generation == "rust-first" {
+        crate::home_layout::rust_path(home, "")
+    } else if crate::state_root::resolves_to_moai(generation, home, crate::HOME_STATE_DIR) {
+        home.join(MOAI_DIR)
+    } else {
+        home.join(crate::HOME_STATE_DIR)
     }
 }
 
@@ -70,11 +81,14 @@ mod tests {
     fn the_marker_alone_moves_home_state_to_moai() {
         let home = tempfile::tempdir().unwrap();
         let h = home.path();
+        assert_eq!(dir(h), MOAI_DIR, "an empty HOME starts on .moai");
+        fs::create_dir(h.join(crate::HOME_STATE_DIR)).unwrap();
         assert_eq!(
             dir(h),
             crate::HOME_STATE_DIR,
-            "empty HOME keeps the earlier root"
+            "a HOME with the earlier folder keeps it"
         );
+        fs::remove_dir(h.join(crate::HOME_STATE_DIR)).unwrap();
         // The Go generation's `~/.moai` is not this generation's.
         fs::create_dir_all(h.join(".moai/state")).unwrap();
         fs::write(h.join(".moai/state/active-sessions.json"), "{}").unwrap();
