@@ -165,11 +165,83 @@ pub fn worktree_dir(project_root: &Path, id: &str) -> Result<PathBuf> {
         .join(worktree_name(project_root, id)?))
 }
 
+/// The line this module adds to a repository's local exclude file, anchored at the root.
+const PLACE_EXCLUDE_LINE: &str = "/.claude/worktrees/";
+
+/// One git call in `dir` with the inherited git variables removed; the exit code (when the
+/// process ran and was not killed) and the trimmed stdout.
+fn git_code(dir: &Path, args: &[&str]) -> Option<(i32, String)> {
+    let mut cmd = std::process::Command::new("git");
+    crate::identity::scrub_git_env(&mut cmd);
+    let out = cmd.args(args).current_dir(dir).output().ok()?;
+    Some((
+        out.status.code()?,
+        String::from_utf8_lossy(&out.stdout).trim().to_string(),
+    ))
+}
+
 /// Makes sure the repository's local exclude file lists the project's worktree folder, so a
-/// worktree made there does not show in the main tree's status (REQ-10). Placeholder: the
-/// body comes with the change that makes the tests pass.
-pub fn ensure_place_ignored(_project: &Path) -> Result<()> {
-    Ok(())
+/// worktree made there does not show in the main tree's status (REQ-10). Does nothing when git
+/// already ignores the folder (a tracked ignore file, the user's own list or an earlier call).
+/// The line goes to `<common git dir>/info/exclude`, which every linked worktree shares and
+/// which is never committed; a link in the way is not followed and is an error that names the
+/// exclude file (REQ-11). The folder itself is not created.
+pub fn ensure_place_ignored(project: &Path) -> Result<()> {
+    match git_code(project, &["check-ignore", "-q", "--", ".claude/worktrees/"]) {
+        Some((0, _)) => return Ok(()),
+        Some((1, _)) => {}
+        _ => return Err("local exclude file not changed: git could not say whether the worktree folder is ignored".into()),
+    }
+    let common = match git_code(
+        project,
+        &["rev-parse", "--path-format=absolute", "--git-common-dir"],
+    ) {
+        Some((0, dir)) if !dir.is_empty() => PathBuf::from(dir),
+        _ => return Err("local exclude file not changed: the git common folder is unknown".into()),
+    };
+    let info = common.join("info");
+    match std::fs::symlink_metadata(&info) {
+        Ok(m) if m.is_dir() => {}
+        Ok(_) => {
+            return Err("local exclude file not written: info is a link or not a folder".into())
+        }
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => std::fs::create_dir(&info)
+            .map_err(|e| format!("local exclude file not written: info folder: {e}"))?,
+        Err(e) => return Err(format!("local exclude file not written: info folder: {e}")),
+    }
+    let exclude = info.join("exclude");
+    let mut existing = Vec::new();
+    match std::fs::symlink_metadata(&exclude) {
+        Ok(m) if m.is_file() => {
+            existing = std::fs::read(&exclude)
+                .map_err(|e| format!("local exclude file not written: read: {e}"))?;
+        }
+        Ok(_) => {
+            return Err("local exclude file not written: exclude is a link or not a file".into())
+        }
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+        Err(e) => return Err(format!("local exclude file not written: exclude: {e}")),
+    }
+    let mut line = Vec::new();
+    if !existing.is_empty() && !existing.ends_with(b"\n") {
+        line.push(b'\n');
+    }
+    line.extend_from_slice(PLACE_EXCLUDE_LINE.as_bytes());
+    line.push(b'\n');
+    let mut options = std::fs::OpenOptions::new();
+    options.append(true).create(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.custom_flags(libc::O_NOFOLLOW);
+    }
+    let mut file = options
+        .open(&exclude)
+        .map_err(|e| format!("local exclude file not written: open: {e}"))?;
+    use std::io::Write;
+    file.write_all(&line)
+        .and_then(|()| file.sync_data())
+        .map_err(|e| format!("local exclude file not written: write: {e}"))
 }
 
 /// Where a worktree path sits (D3, D8): `home` (`<HOME>/.moai/worktrees/<name>`), `go`
