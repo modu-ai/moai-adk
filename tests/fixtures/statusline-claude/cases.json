@@ -792,6 +792,35 @@
       }
     },
     {
+      "name": "a18-context-percentage-null",
+      "class": "a",
+      "stdin": "stdin/a18-context-percentage-null.json",
+      "covers": [
+        "context_window with a size and a null percentage -> CTX n/a, no icon, never 0%",
+        "absent usage windows hidden"
+      ],
+      "recorded_with": {
+        "implementation": "Rust moai-cli",
+        "variants": {
+          "plain": {
+            "version": "4.2647.0",
+            "sha256": "e78d66b340d367b54b96f4f37222175feebfa249a6009a07564babec2e33b06c",
+            "stdout": "pipe"
+          },
+          "ansi": {
+            "version": "4.2647.0",
+            "sha256": "e78d66b340d367b54b96f4f37222175feebfa249a6009a07564babec2e33b06c",
+            "stdout": "PTY"
+          },
+          "ansi256": {
+            "version": "4.2647.0",
+            "sha256": "e78d66b340d367b54b96f4f37222175feebfa249a6009a07564babec2e33b06c",
+            "stdout": "PTY"
+          }
+        }
+      }
+    },
+    {
       "name": "b08-forge-zero-counts",
       "class": "b",
       "stdin": "../statusline/stdin/a02-doc-full.json",
