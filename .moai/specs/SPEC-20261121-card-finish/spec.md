@@ -86,4 +86,29 @@ A card whose change already landed on the integration branch can come back to `r
 
 ## Result
 
-(not written yet)
+Every line below was read from a run on the working tree of commit `5c4952ce55` plus the staged clap row of `src/ops/card.rs`. That row is not committed yet (the file is reserved by another card; the row exists as a patch of 65 added lines), so the committed head alone does not pass the tests that call the command. Nothing here was run on a committed head that has the row.
+
+- AC-1: met — `cargo test --locked --offline --test card_finish_cli ac1_` (4 tests) passed: a ready card with two open criteria and a head inside the integration tip closes to `done` with the events `card.landed` and `card.finish` and no held reservation; a head outside the tip, an unknown head and a profile without an integration branch each refuse with the reason named and every table unchanged.
+- AC-2: met — `ac2_` (2 tests) passed: one met option for two open criteria refuses, two succeed, a repeated number and a number that is not open refuse, a reference of 500 characters passes and 501 refuses.
+- AC-3: met — `ac3_` (4 tests) passed: a live lease of another session refuses naming the holder, an ended lease of another session and a live lease of the caller pass, and the pure gate passes at `lease_until == now` and refuses at `now + 1`; a call without a session id passes only when the lease has ended.
+- AC-4: met — `ac4_` (3 tests) passed: a research card closes with a report file under the reports folder, an audit card closes with a verdict note, a missing file, a directory, a path outside both folders, a `..` escape, a symlink out and a note of another kind each refuse; a typed path of 500 characters passes and 501 refuses.
+- AC-5: met — `ac5_` (1 test) passed: a code card refuses a report path and a note, and a research card refuses a head.
+- AC-6: met — `ac6_` (1 test) passed: finish without `--by` and with a blank `--by` refuses, and the by value is stored in both events.
+- AC-7: met — `ac7_` (1 test) passed, and every refusal test of AC-1 to AC-6 compares the dump of all seven ledger tables before and after and checks that no `fence_reject` event was written.
+- AC-8: met — `ac8_` (4 tests) passed: `card next` skips a ready card by a recorded head inside the tip, by a merged pull request link and by the `Moai-Spec` trailer of its linked SPEC, keeps a card whose head is outside the tip in the same test, and reports `landing.checked` false with a reason for a profile that is not m-flow; the trailer test also keeps a card whose number appears in a commit message but that has no trailer (a card number in a message is never a proof).
+- AC-9: met — `ac9_` (1 test) passed: `card list` keeps its keys and adds `landed`.
+- AC-10: met — `ac10_` (2 tests) passed: the scenario with the reservation given back and the one with the lease ended by SQL; in the second, the card is held and so is absent from `ready`, and the skip reason `already_landed` is shown only for the given-back card (a card that still holds a reservation is skipped as `held` before the landing check).
+- AC-11: met — `cargo test --locked --offline --no-fail-fast --test card_work_cli --test card_dispatch_cli --test card_generated_scope --test card_spec_cli --test card_done_mflow_cli --test card_reclaim_cli --test card_line_lease_cli --test ledger_workflow --test card_finish_cli` exited 0: 26, 25, 8, 11, 4, 16, 16, 29 and 24 tests passed.
+- AC-12: met — `ac12_` (1 test) passed: the help of `card finish` starts with `Writes the ledger.` and the card operations document names `card finish`, `already_landed`, `--evidence-report` and `--evidence-note`.
+
+Mutants (all killed, the files restored byte for byte, `git diff --stat` empty afterwards):
+
+| Mutant | Killed by |
+| --- | --- |
+| lease end read as `lease_until < now` | the gate edge test and the no-session test of AC-3 |
+| a live lease of the caller no longer passes | the gate edge test and the caller test of AC-3 |
+| every probed head counts as inside the tip | the AC-8 test that keeps a card with a head outside the tip |
+| the trailer pass limit read as `>` instead of `>=` | the unit test of the limit boundary in `landed.rs` |
+| the one-line limit 501 instead of 500 | the 500/501 tests of AC-2 and AC-4 |
+
+Known and left as it is: `card done` reads the newest `card.landed` event and decodes `head` as text, so a newest event without a head (the report close writes one) makes `card done` refuse with "no local landing is linked". A report-closed card is already `done` and nothing reopens it, so no command reaches this today; the function is not changed here. The stored report path is the resolved path and may pass 500 characters (`/var` resolves to `/private/var` on macOS); the 500-character limit applies to the typed path. Not run on this tree: clippy, `--lib` and `--bins` as a whole, the repository scans, the python tests and a Windows build; the unit tests of `landed.rs` ran only inside the mutant run of the limit boundary.
