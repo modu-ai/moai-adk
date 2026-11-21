@@ -86,7 +86,17 @@ created: 2026-11-21
 
 ## Result
 
-- 조각 2(rev 1, head 92841d239f87ac8c2af3f48e2c67415cb5ccf92b)는 독립 감사에서 **FAIL**(리더 기록 2026-11-21T08:3xZ): B1 — cwd 질문이 기계 전체 `lsof -F fn` + 열린 파일 canonicalize 로 돌아가 성능 역행, B2 — 삭제 직전 재확인이 새로 읽는다는 시험 없음, B3 — 시간 한도로 끊긴 `lsof` 가 거절로 처리된다는 시험 없음. rev 2 는 그 수리예요.
+- AC-1: met — `the_cwd_check_asks_only_cwd_descriptors_and_the_open_check_the_machine_listing` 통과: 작업 폴더 질문이 `-w -n -P -b -a -d cwd -F fn` (cwd 기술자만) 으로 돌고 열린 파일을 읽지 않아요. RED 에서는 호출이 한 번(machine listing 단일)이었어요.
+- AC-2: met — `a_second_question_answers_from_the_command_cache` 와 `once_cache_answers_without_a_second_read_and_drops_a_failed_read` 통과: 심어 둔 값이 두 번째 질문으로 그대로 나오고(실제 스캔이었다면 나올 수 없어요), 열린 파일 목록의 cwd 가 다른 캐시를 채워요. 실패한 읽기는 남지 않아요.
+- AC-3: met — `the_deletion_recheck_runs_its_own_scan` (worktree-gc) 과 `the_hygiene_move_recheck_runs_its_own_scan` (hygiene 이동) 통과: 두 번째 스캔부터 사용 중 표가 오면 새로 읽은 쪽이 항목을 유지해요. RED 에서는 시작 표(캐시)를 신뢰해 사용 중 폴더가 옮겨졌고 lsof 호출이 세 번이었어요.
+- AC-4: met — `an_lsof_cut_off_by_the_time_limit_refuses_the_removal` (worktree-gc) 과 `an_lsof_cut_off_by_the_time_limit_refuses_the_hygiene_move` (hygiene 이동) 통과: 한도 0.5 초 뒤 끊긴 `lsof` 는 알 수 없음으로 거절하고 항목이 제자리에 남아요. RED 에서는 캐시 재사용으로 한도 경로에 못 갔어요.
+- AC-5: met — `one_listing_gives_the_answers_of_the_two_earlier_scans_in_twelve_situations` 통과(열두 상황에서 새 파서가 옛 두 파서와 같은 답).
+- AC-6: met — `an_injected_table_file_drives_the_decisions_without_lsof` 통과(cwd 줄→in_use, open 줄→file_open_in_use 만, 밖의 경로→막힘 없음, 가짜 lsof 미호출).
+- AC-7: met — `a_stuck_lsof_is_stopped_and_the_check_reports_unavailable` 통과(20 초 멈춘 lsof 를 0.5 초에 끝내고 process_check_unavailable).
+- AC-8: met — 이웃 시험 통과: `--lib worktree_gc` 19, `process_scan_cost_cli` 2, `home_state_plan` 10, `home_state_selective` 10, `worktree_gc` 9, `worktree_gc_apply` 14, `hygiene_apply_cli` 11, `process_scan_snapshot_cli` 5; clippy --all-targets -D warnings 0, fmt, git diff --check 0.
+- AC-9: met — 전후 측정이 이 Result 와 카드 노트에 기록돼요(조각 2 head 92841d239f 대 수리 head): home_install_apply_cli 41 개 98.91 s → 95.87 s(부하 14–25), home-state-plan 1.85–2.74 s → 2.47–3.61 s(cwd 스캔 0.44 s 가 열린 파일 스캔 0.67–0.8 s 뒤에 더해짐 — 이 명령은 둘 다 물어요), cwd 만 묻는 worktree-move-plan 은 수백 워크트리 기계에서 워크트리 점검 85–112 s 가 지배해 lsof 개선이 측정에 안 보임.
+- 돌리지 않은 것: Linux 실행(CLI 시험 셋은 `/proc` 가 있으면 건너뛰어요), 전체 `moai check affected`(병합 준비 노트에 줄째로), 시험의 `.env` 주입 끄개 채택(다음 조각).
+- 조각 2(rev 1, head 92841d239f)의 감사 FAIL(리더 기록 2026-11-21T08:3xZ: B1 성능 역행, B2·B3 시험 미고정)의 수리와, 델타 감사 FAIL(2026-11-21T14:11:35Z: B2' hygiene 이동 재확인이 명령 캐시 사용, B3 hygiene 경로 미고정, B4 AC 줄 없음)의 수리가 이 rev 2 에 들어가요.
 - 수리 커밋: 29a818668a9ec735a34005d105f5e9690f6ae9eb(base 92841d239f = HEAD^1), `src/worktree_gc.rs`, `tests/process_scan_snapshot_cli.rs`, 이 SPEC.
 - RED(수리 전 92841d239f, 시험 3 개 모두 실패): REQ-1 시험 — `lsof` 호출이 한 번(`-w -n -P -b -F fn` 단일)이라 기대 2 회와 첫 호출의 `-a -d cwd` 가 없어요. REQ-4 시험(B2) — 재확인이 계획의 스냅샷(빈 표)을 신뢰해 사용 중인 `b` 가 **removed**(기대 refused). REQ-8 시험(B3) — 재확인 `lsof` 가 0.5 초 한도에 걸려야 하는데 캐시 재사용으로 경로 미도달, `a` 가 **removed**(기대 refused).
 - GREEN: `cargo test --locked --offline --lib worktree_gc` 19 개, `--test process_scan_snapshot_cli` 5 개(REQ-1 갱신·주입·stuck·B2·B3), `--test process_scan_cost_cli` 2 개, 이웃 `home_state_plan` 10·`home_state_selective` 10·`worktree_gc` 9·`worktree_gc_apply` 14·`hygiene_apply_cli` 15 — 모두 통과. `cargo clippy --locked --offline --all-targets -- -D warnings` 0, `cargo fmt` 적용, `git diff --check` 0.

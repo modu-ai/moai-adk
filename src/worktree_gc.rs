@@ -521,6 +521,18 @@ pub(crate) fn open_file_paths() -> Option<Vec<PathBuf>> {
     Some(open.to_vec())
 }
 
+/// Fresh reads for other modules' right-before-it-moves checks: the same scans [`busy_now`]
+/// runs for its own deletions — never the command cache, which holds the table the command
+/// read at its start.
+pub(crate) fn process_cwds_fresh() -> Option<Vec<PathBuf>> {
+    read_cwds()
+}
+
+/// The open files read now, not from the command cache (see [`process_cwds_fresh`]).
+pub(crate) fn open_file_paths_fresh() -> Option<Vec<PathBuf>> {
+    read_open().map(|(open, _)| open)
+}
+
 fn unix_secs(t: SystemTime) -> Option<u64> {
     t.duration_since(UNIX_EPOCH).ok().map(|d| d.as_secs())
 }
