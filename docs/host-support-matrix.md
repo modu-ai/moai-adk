@@ -117,10 +117,10 @@ Codex 공식 문서는 Desktop 앱, CLI, IDE 확장을 함께 설명한다. 세 
 
 | feature | claude | codex | omp | evidence | gap |
 | --- | --- | --- | --- | --- | --- |
-| 론처 하위 명령 `moai <host> -l\|-a` | yes | yes | yes | `src/main.rs::Omp(HostLaunch)` | - |
-| 론처 도움말과 사용법 줄 | yes | yes | yes | `src/help.rs::LAUNCHERS` | - |
-| 론처 첫 실행의 프로젝트 설정 | yes | yes | yes | `src/launcher_init.rs::default_profile` | - |
-| 세션 등록의 host 목록 | yes | yes | yes | `src/session.rs::HOSTS` (list) | - |
+| 론처 하위 명령 `moai <host> -l\|-a` | yes | n/a | yes | `src/main.rs::Omp(HostLaunch)` | - |
+| 론처 도움말과 사용법 줄 | yes | n/a | yes | `src/help.rs::LAUNCHERS` | - |
+| 론처 첫 실행의 프로젝트 설정 | yes | n/a | yes | `src/launcher_init.rs::default_profile` | - |
+| 세션 등록의 host 목록 | yes | n/a | yes | `src/session.rs::HOSTS` (list) | - |
 | glm 키가 세션에 닿는 길 | yes | n/a | yes | `src/session.rs::read_here` | - |
 | 프로필이 적을 수 있는 host | yes | yes | yes | `src/profile.rs::KNOWN_HOSTS` (list) | - |
 | 에이전트 정의 렌더링 | yes | yes | yes | `src/agent_defs.rs::HOSTS` (list) | - |
