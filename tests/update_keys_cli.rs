@@ -9,6 +9,8 @@
 #![cfg(unix)]
 
 mod common;
+#[path = "common/spawn_cap.rs"]
+mod spawn_cap;
 use common::CleanEnv;
 
 use serde_json::{json, Value};
@@ -97,6 +99,8 @@ fn command(f: &Fixture, cwd: &Path, args: &[&str]) -> Command {
 }
 
 fn run(f: &Fixture, args: &[&str]) -> Output {
+    // REQ-3: one spawn permit per running child, so the child count stays bounded.
+    let _permit = spawn_cap::acquire();
     command(f, &f.work, args)
         .stdin(Stdio::null())
         .output()
@@ -355,6 +359,7 @@ fn keys_revert_removes_imported_entry() {
     assert_eq!(row_for(&p, &glm)["action"], json!("import"), "{p}");
     let r = confirm(&f, p["plan_digest"].as_str().unwrap());
     let id = r["keys_result"]["receipt"].as_str().unwrap().to_string();
+    let _permit = spawn_cap::acquire();
     let mut child = command(&f, &f.work, &["key-set", "glm", "--shared"])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
