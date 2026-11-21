@@ -28,12 +28,16 @@ created: 2026-11-21
 - REQ-1: When `build_folder.py audit-place --name <n> --head <sha>` runs and the place `<HOME>/.moai/worktrees/<project>/audit-<n>` does not exist, the tool shall create it as a detached worktree of this repository at `<sha>`, make its build folder with the owner record as `env` does, and print `created: true`. · failure: none
 - REQ-2: When the place exists and is a worktree of this repository, the tool shall move it to `<sha>` without removing its folder, so that files which did not change keep their modification times, and print `created: false` with the previous head and the new head. · failure: none
 - REQ-3: When the tool has created or moved the place, it shall print the tree hash of `<sha>` and check that the tree of the place's HEAD equals it and that `git status --porcelain` lists nothing, else refuse with exit 1. · failure: none
-- REQ-4: While the place holds changes to tracked files or untracked files that git does not ignore, the tool shall reset the tracked files and remove those untracked files, print how many it took back, and leave the files git ignores alone. · failure: none
+- REQ-4: While the place holds changes to tracked files or untracked files that git does not ignore, the tool shall reset the tracked files and remove those untracked files, nested repositories included, print how many it took back, and leave the files git ignores alone. · failure: none
 - REQ-5: IF a cargo run holds the cargo lock of the place's build folder, THEN the tool shall refuse with exit 1 and the reason `place_busy` and change nothing.
 - REQ-6: IF `<sha>` is not 40 lowercase hexadecimal digits or names no commit of this repository, or `<n>` is not one safe folder name, THEN the tool shall refuse with exit 1 and write nothing.
-- REQ-7: IF the place path exists but is a link, is not a folder, or is not a worktree of this repository, THEN the tool shall refuse with exit 1 and change nothing.
+- REQ-7: IF the place path exists but is a link, is not a folder, is not a worktree of this repository, has its git common folder in another repository, has a branch checked out, or has no owner record of this tool in its build folder, THEN the tool shall refuse with exit 1 and change nothing.
 - REQ-8: When the tool runs, it shall record `CARGO_HOME` (the environment value, else `<HOME>/.cargo`) in the build folder's `.moai-audit-place.json`. · failure: none
 - REQ-11: IF a run sees a `CARGO_HOME` other than the recorded one, THEN the tool shall print `cargo_home_changed: true` with the earlier value as `cargo_home_was`.
+- REQ-12: IF the new head changes a `.gitignore` while the place holds files that git ignores, THEN the tool shall refuse with exit 1 and the reason `ignore_rules_changed` and change nothing.
+- REQ-13: IF a step after the tool made the place refuses, THEN the tool shall remove the place that run made.
+- REQ-14: When the place's folder is gone but git still lists it as a worktree, the tool shall forget that registration and make the place again. · failure: none
+- REQ-15: IF the build folder of the place holds a record of another worktree or a link is on its path, THEN the tool shall refuse with exit 1 before it makes or moves anything.
 - REQ-9: The tool shall print one JSON line that names the `place`, the build `folder`, the `head`, the `tree`, `created`, the `previous` head, the number of files that differ between the previous and the new head (`moved_files`), `taken_back` and `cargo_home`. · failure: none
 - REQ-10: The tool shall change nothing in the checkout it runs in and delete neither the place nor the cargo output of its build folder. · failure: none
 
@@ -91,7 +95,17 @@ created: 2026-11-21
 
 - AC-1: met — `python3 -m unittest tests.build_folder_test.AuditPlaceTest` 11개 통과(첫 호출이 자리와 폴더와 기록을 만들고 트리 해시를 답해요).
 - AC-2: met — 같은 시험 묶음: 옮긴 뒤 바뀌지 않은 파일의 수정 시각과 inode 가 그대로이고, 고친 추적 파일과 추적 안 된 파일은 되돌려지고(`taken_back` 2), 무시된 파일은 남아요.
-- AC-3: met — `python3 -m unittest tests.build_folder_test` 53개 통과(잘못된 head·이름, 링크·파일·워크트리가 아닌 폴더·클론·다른 워크트리를 가리키는 링크 거절, 잡힌 cargo 잠금 `place_busy`, `CARGO_HOME` 기록과 변경 알림, 호출한 체크아웃과 cargo 산출물이 그대로임). 변이 16개 중 14개를 시험이 잡았어요(`mut-place.py`); 살아남은 P9(40자 형식 검사 제거)와 P17(옮긴 뒤 HEAD·트리 재확인 제거)은 같은 일을 하는 다른 검사(`rev-parse` 결과가 입력과 같은지, 옮긴 뒤 `git status` 가 비었는지)가 이미 있어서 겉으로 보이는 동작이 같아요(등가).
+- AC-3: met — `python3 -m unittest tests.build_folder_test` 62개 통과(수리 뒤. 처음 판은 53개였어요. 잘못된 head·이름, 링크·파일·워크트리가 아닌 폴더·클론·다른 워크트리를 가리키는 링크 거절, 잡힌 cargo 잠금 `place_busy`, `CARGO_HOME` 기록과 변경 알림, 호출한 체크아웃과 cargo 산출물이 그대로임). 변이 16개 중 14개를 시험이 잡았어요(`mut-place.py`); 살아남은 P9(40자 형식 검사 제거)와 P17(옮긴 뒤 HEAD·트리 재확인 제거)은 같은 일을 하는 다른 검사(`rev-parse` 결과가 입력과 같은지, 옮긴 뒤 `git status` 가 비었는지)가 이미 있어서 겉으로 보이는 동작이 같아요(등가).
 - AC-4: met — 위 측정: 둘째 감사 rustc 1번(바뀐 시험 crate 하나), 자리는 지우고 다시 받지 않고 재사용.
+
+감사 수리(독립 감사 `audit-c278` 이 head `400035542e` 에서 PASS-WITH-FINDINGS, 막는 결함 없음, 비차단 N1~N7): 지적마다 수리 전·후의 재현은 같은 시험을 옛 도구(`400035542e` 의 `tools/build_folder.py`)와 수리한 도구에 돌린 결과예요 — 새 시험 9개 중 8개가 옛 도구에서 실패(7 FAIL, 1 ERROR)하고 수리한 도구에서 통과해요(`python3 -m unittest tests.build_folder_test.AuditPlaceTest`, 하위 `.gitignore` 시험 1개는 그 뒤에 더했어요).
+- N1(무시 규칙이 바뀌면 증거 삭제): `ignore_rules_changed` 로 거절하고 아무것도 바꾸지 않아요(REQ-12). 시험 `test_a_head_that_changes_a_gitignore_is_refused_while_ignored_files_are_there`, `test_a_changed_gitignore_in_a_subfolder_counts_too`. 무시된 파일이 없으면 같은 이동은 허용돼요.
+- N2(다른 저장소를 가리키는 `.git` 파일): 자리의 git 공통 폴더가 이 저장소의 것인지 확인해 다르면 거절해요(REQ-7). 시험 `test_a_place_whose_git_file_points_at_another_repository_is_refused`.
+- N3(거절한 뒤 자리가 남음): 빌드 폴더의 다른 워크트리 기록·링크는 만들기 전에 보고(REQ-15), 만든 뒤의 단계가 거절하면 이 실행이 만든 자리를 지워요(REQ-13). 시험 `test_a_refusal_after_the_worktree_was_made_takes_it_back`, `test_a_linked_build_root_refuses_before_a_place_is_made`.
+- N4(추적 안 된 중첩 저장소로 막힘): `git clean -ffd` 로 중첩 저장소도 되돌려요(REQ-4). 시험 `test_an_untracked_nested_repository_is_taken_back_too`.
+- N5(브랜치가 있거나 이 도구가 만들지 않은 자리): 분리된 HEAD 이고 빌드 폴더의 `.moai-audit-place.json` 에 이 자리가 적혀 있을 때만 옮겨요(REQ-7). 시험 `test_only_a_detached_place_made_by_audit_place_is_moved`, `test_the_owner_marker_names_the_place`.
+- N6(손으로 지운 자리의 등록이 남음): `git worktree prune` 으로 등록을 잊고 다시 만들어요(REQ-14). 시험 `test_a_place_folder_deleted_by_hand_is_made_again`.
+- N7(증거 파일 없음, 큰 소리 없는 한계): 측정 명령은 이 Result 에 적었고(`cargo test -v --offline --locked --no-run --lib --test card_inbox_cli --test card_show_notes_cli`, 자리를 A→B→A→B 로 옮기며 rustc 실행 수와 `Fresh` 줄 수를 셈), 변이 목록은 아래에 적었어요. 잠금은 cargo 가 컴파일하는 동안만 잡혀서, 잠금이 풀린 뒤 시험이 자리의 파일을 읽는 동안의 이동은 못 막아요(Risks 에 있음).
+변이 24개(수리한 코드 기준: 이동 `--force`, `clean -ff`, `clean` 없음, 되돌린 수, 이동 없음, 잠금 무시, 등록 확인, 링크 확인, 이름 앞 `-`, 소유 기록, `CARGO_HOME` 알림, `moved_files`, `created`, `chdir`, `status`, 무시 규칙 변경 거절(최상위·하위), 공통 폴더, 만든 자리 되돌리기, 브랜치, 소유 기록 요구, `prune`, 빌드 폴더 기록 먼저 보기, 무시된 파일 감지) 중 21개를 시험이 잡았고, 살아남은 셋은 같은 일을 하는 다른 검사가 막아서 겉으로 보이는 동작이 같아요: 등록 확인 제거(공통 폴더·소유 기록·브랜치 검사가 같은 경우를 거절), 링크 확인 제거(소유 기록이 링크 이름의 폴더에 없어서 거절), 만들기 전 빌드 폴더 기록 확인 제거(만든 뒤 거절하면 자리를 지워서 결과가 같아요). 첫 판의 변이 중 살아남은 둘(40자 형식 검사 제거, 이동 뒤 HEAD·트리 재확인 제거)도 같은 이유의 등가예요.
 
 아직 안 한 것: 감사 에이전트 지침·감사 워크플로·`skills/moai/references/internal/build-folder.md` 에 이 도구를 쓰라는 문장, `moai audit-clone-plan` 명령 목록(다음 조각), 독립 감사, Linux 시험.

@@ -810,6 +810,25 @@ class AuditPlaceTest(unittest.TestCase):
         got = self.answer(self.call(no_ignore))
         self.assertEqual(got["head"], no_ignore)
 
+    def test_a_changed_gitignore_in_a_subfolder_counts_too(self):
+        repo = self.fx.repo
+        (repo / "sub").mkdir()
+        (repo / "sub" / ".gitignore").write_text("*.log\n")
+        (repo / "sub" / "x.txt").write_text("x\n")
+        git(repo, "add", "-A")
+        git(repo, "commit", "-q", "-m", "sub ignore")
+        with_rule = git(repo, "rev-parse", "HEAD").strip()
+        (repo / "sub" / ".gitignore").write_text("")
+        git(repo, "commit", "-q", "-am", "sub ignore dropped")
+        without_rule = git(repo, "rev-parse", "HEAD").strip()
+        self.answer(self.call(with_rule))
+        (self.place / "sub" / "evidence.log").write_text("keep\n")  # ignored by sub/.gitignore
+        out = self.call(without_rule)
+        self.assertEqual(out.returncode, 1, out.stdout)
+        self.assertIn("ignore_rules_changed", out.stderr)
+        self.assertEqual((self.place / "sub" / "evidence.log").read_text(), "keep\n")
+        self.assertEqual(self.head_in_place(), with_rule)
+
     def test_a_place_whose_git_file_points_at_another_repository_is_refused(self):
         # Audit N2: the path is registered here, but its `.git` leads to a clone's worktree.
         self.answer(self.call(self.c1))
