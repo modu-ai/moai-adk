@@ -1,10 +1,9 @@
 //! Project-unit `moai` skill copy (Issue #2242, EP-I / P04 HOLD).
 //!
 //! 04-B `update.rs` copies the `moai` skill package into the HOME skill
-//! folders only; project-level copies (`.claude/skills/moai`,
-//! `.agents/skills/moai` inside a project) are the P04 HOLD. This module
-//! designs and exercises plan/apply/revert for those project copies with two
-//! hard limits:
+//! folders only; project-level copies (`.claude/skills/moai` inside a
+//! project) are the P04 HOLD. This module designs and exercises
+//! plan/apply/revert for those project copies with two hard limits:
 //!
 //! - REQ-I5-01: every operation carries `opt_in` and refuses before touching
 //!   anything unless it is `true`. The default is off: nothing is written
@@ -17,11 +16,15 @@
 //!
 //! Reading order (AC-2): when both the home copy and the project copy
 //! exist, the project copy is what a session in that project reads — Claude
-//! documents project skills taking precedence over personal ones and Codex
-//! walks from the working directory up toward `$HOME/.agents/skills`, so
-//! the nearest copy wins. Both copies stay independent per host (independent
-//! copy per host; symlinks refused — design textonly §4 L166). The plan reports
-//! the duplication instead of guessing.
+//! documents project skills taking precedence over personal ones, so the
+//! nearest copy wins. Both copies stay independent (symlinks refused —
+//! design textonly §4 L166). The plan reports the duplication instead of
+//! guessing.
+//!
+//! Hosts: only Claude Code is managed. A request that lists `codex` or `omp` has that host
+//! filtered out with a warning (a list left empty reads as `claude`). At revert, a receipt entry
+//! that names one of them is skipped and reported under `skipped`; its folder is left alone and
+//! every other entry is still reverted.
 //!
 //! Rollback (AC-1 revert): apply stores the before bytes of every
 //! replaced folder under `<project>/.moai-cli/project-skill-rollback/
@@ -50,9 +53,29 @@ fn opt_in_error() -> String {
 fn host_folder(host: &str) -> Result<&'static str> {
     match host {
         "claude" => Ok(".claude/skills"),
-        "codex" => Ok(".agents/skills"),
-        other => Err(format!("unknown host {other}; supported: claude, codex")),
+        other if retired(other) => Err(format!("host {other} is retired; not managed")),
+        other => Err(format!("unknown host {other}; supported: claude")),
     }
+}
+
+/// Hosts moai no longer manages. A request that lists one has it filtered out; a receipt
+/// entry that names one is skipped and reported at revert. Its folder is never touched.
+fn retired(host: &str) -> bool {
+    matches!(host, "codex" | "omp")
+}
+
+/// The reason a skipped receipt entry carries.
+const RETIRED_REASON: &str = "retired host; not managed";
+
+/// The hosts of a request that moai manages, and the retired ones it dropped. A list that is
+/// empty after the filter reads as `["claude"]`.
+fn managed_hosts(hosts: &[String]) -> (Vec<String>, Vec<String>) {
+    let (dropped, mut kept): (Vec<String>, Vec<String>) =
+        hosts.iter().cloned().partition(|h| retired(h));
+    if kept.is_empty() {
+        kept.push("claude".into());
+    }
+    (kept, dropped)
 }
 
 /// Plan/apply/revert request (#2242). The project root and home are
@@ -68,7 +91,7 @@ pub struct ProjectSkillRequest {
     pub project_root: PathBuf,
     /// Caller-supplied home root; omitted means the home state is not scanned.
     pub home: Option<PathBuf>,
-    /// claude | codex — which host folders to plan or copy.
+    /// claude — which host folders to plan or copy; codex and omp are retired and filtered out.
     pub hosts: Vec<String>,
     /// Staged `moai` skill package source directory (caller-owned).
     pub source_dir: PathBuf,
@@ -150,10 +173,15 @@ fn validate(req: &ProjectSkillRequest) -> Result<()> {
         return Err("unsupported protocol_version; supported: 1".into());
     }
     if req.hosts.is_empty() || req.hosts.len() > 2 {
-        return Err("hosts must list one or two entries of claude, codex".into());
+        return Err("hosts must list one or two entries of claude".into());
     }
-    if !req.hosts.iter().all(|h| host_folder(h).is_ok()) {
-        return Err("unknown host in hosts; supported: claude, codex".into());
+    // A retired host (codex, omp) is accepted here and filtered by the plan.
+    if !req
+        .hosts
+        .iter()
+        .all(|h| retired(h) || host_folder(h).is_ok())
+    {
+        return Err("unknown host in hosts; supported: claude".into());
     }
     if req.source_dir.as_os_str().is_empty() {
         return Err("source directory missing".into());
@@ -181,7 +209,13 @@ pub fn project_skill_plan(req: &ProjectSkillRequest) -> Result<ProjectSkillPlan>
     let staged = crate::update::stage_package(&req.source_dir)?;
     let mut entries = Vec::new();
     let mut warnings = Vec::new();
-    for host in &req.hosts {
+    let (hosts, dropped) = managed_hosts(&req.hosts);
+    for host in &dropped {
+        warnings.push(format!(
+            "host {host} is retired; not managed by moai, so no copy is planned for it"
+        ));
+    }
+    for host in &hosts {
         let folder = host_folder(host)?;
         let project_dir = project_skill_dir(&req.project_root, host)?;
         // #2936 R9 S4: a linked (or non-folder) skill or rollback folder is blocked, never
@@ -750,7 +784,15 @@ pub fn project_skill_revert(req: &ProjectSkillRevertRequest) -> Result<Value> {
         .map_err(|_| "receipt not found; inspect the rollback directory".to_string())?;
     let receipt: ProjectSkillApplyReceipt = serde_json::from_slice(&bytes)
         .map_err(|_| "receipt unreadable; inspect the rollback directory".to_string())?;
-    for a in &receipt.applied {
+    // An entry that names a retired host (codex, omp) is skipped and reported: moai no longer
+    // manages that folder, so it is neither read nor changed. The other entries revert.
+    let (retired_entries, managed): (Vec<&AppliedCopy>, Vec<&AppliedCopy>) =
+        receipt.applied.iter().partition(|a| retired(&a.host));
+    let skipped: Vec<Value> = retired_entries
+        .iter()
+        .map(|a| json!({"host": a.host, "reason": RETIRED_REASON}))
+        .collect();
+    for a in &managed {
         if let Some(why) = linked_parent(&root, &a.host)? {
             return Err(format!("{why}; nothing reverted"));
         }
@@ -760,7 +802,7 @@ pub fn project_skill_revert(req: &ProjectSkillRevertRequest) -> Result<Value> {
     // digest cannot read — is never removed, and the whole revert is refused before anything
     // moves, so no host is left half reverted.
     let mut changed = Vec::new();
-    for a in receipt.applied.iter().filter(|a| a.action == "create") {
+    for a in managed.iter().filter(|a| a.action == "create") {
         let dest = project_skill_dir(&root, &a.host)?;
         if dest.is_dir() && installed_digest(&dest).ok().flatten() != a.after_sha256 {
             changed.push(a.host.clone());
@@ -774,7 +816,7 @@ pub fn project_skill_revert(req: &ProjectSkillRevertRequest) -> Result<Value> {
         ));
     }
     let mut reverted = Vec::new();
-    for a in receipt.applied.iter().rev() {
+    for a in managed.iter().rev() {
         let dest = project_skill_dir(&root, &a.host)?;
         match a.action.as_str() {
             "create" => {
@@ -808,12 +850,16 @@ pub fn project_skill_revert(req: &ProjectSkillRevertRequest) -> Result<Value> {
             other => return Err(format!("unknown action {other} in the receipt")),
         }
     }
-    Ok(json!({
+    let mut result = json!({
         "state": "reverted",
         "request_id": request_id.clone(),
         "reverted": reverted,
         "network": "none",
-    }))
+    });
+    if !skipped.is_empty() {
+        result["skipped"] = Value::Array(skipped);
+    }
+    Ok(result)
 }
 
 #[cfg(test)]
@@ -1010,9 +1056,12 @@ mod tests {
         let source = tempfile::TempDir::new().unwrap();
         write_source(source.path());
         let mut req = request(project.path(), None, source.path(), true);
-        req.hosts = vec!["claude".into(), "codex".into()];
-        let late = |host: &str| {
-            if host == "codex" {
+        // One host is managed, so the second copy is a second listing of it.
+        req.hosts = vec!["claude".into(), "claude".into()];
+        let copies = std::cell::Cell::new(0);
+        let late = |_host: &str| {
+            copies.set(copies.get() + 1);
+            if copies.get() == 2 {
                 fs::write(source.path().join("references/a.md"), b"late").unwrap();
             }
         };
@@ -1026,7 +1075,6 @@ mod tests {
             .path()
             .join(".claude/skills/moai/SKILL.md")
             .is_file());
-        assert!(!project.path().join(".agents/skills/moai").exists());
         let receipts: Vec<_> = fs::read_dir(crate::state_root::path(
             project.path(),
             "project-skill-rollback",
@@ -1184,13 +1232,16 @@ mod tests {
         let mut req = request(project.path(), Some(home.path()), source.path(), true);
         req.hosts = vec!["claude".into(), "codex".into()];
         let plan = project_skill_plan(&req).unwrap();
+        assert_eq!(plan.entries.len(), 1, "the retired host is filtered out");
         assert!(plan.entries.iter().all(|e| e.path.ends_with("/moai")));
         assert!(plan.entries.iter().all(|e| e.action == "create"));
         assert!(plan.entries.iter().all(|e| !e.duplicated_with_home));
         assert_eq!(project_skill_apply(&req).unwrap().status, "complete");
-        for host in [".claude/skills", ".agents/skills"] {
-            assert!(project.path().join(host).join("moai/SKILL.md").is_file());
-        }
+        assert!(project
+            .path()
+            .join(".claude/skills/moai/SKILL.md")
+            .is_file());
+        assert!(!project.path().join(".agents").exists());
         for (go, before) in go_trees {
             assert_eq!(crate::tree_digest(&go, &[]).unwrap(), before);
         }

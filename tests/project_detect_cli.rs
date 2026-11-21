@@ -172,8 +172,8 @@ fn symbolic_links_are_not_followed() {
     assert_eq!(d["project_kind"], "new", "{d}");
 }
 
-/// #2496 pre-audit B1/B2: no read leaves the project — a symlinked middle folder (`prisma`,
-/// `.codex`), a symlinked file (`Cargo.toml`, `.mcp.json`, `requirements.txt`) and a symlink
+/// #2496 pre-audit B1/B2: no read leaves the project — a symlinked middle folder (`prisma`), a
+/// symlinked file (`Cargo.toml`, `.mcp.json`, `requirements.txt`) and a symlink
 /// loop all count for nothing, while the same files in real folders are found.
 #[cfg(unix)]
 #[test]
@@ -185,11 +185,6 @@ fn symlinked_folders_and_files_never_lead_outside() {
         o,
         "prisma/schema.prisma",
         "datasource db {\n  provider = \"mysql\"\n}\n",
-    );
-    write(
-        o,
-        ".codex/config.toml",
-        "[mcp_servers.leaked]\ncommand = \"x\"\n",
     );
     write(
         o,
@@ -206,7 +201,6 @@ fn symlinked_folders_and_files_never_lead_outside() {
     let root = TempDir::new().unwrap();
     let r = root.path();
     symlink(o.join("prisma"), r.join("prisma")).unwrap();
-    symlink(o.join(".codex"), r.join(".codex")).unwrap();
     symlink(o.join("Cargo.toml"), r.join("Cargo.toml")).unwrap();
     symlink(o.join("mcp.json"), r.join(".mcp.json")).unwrap();
     symlink(o.join("requirements.txt"), r.join("requirements.txt")).unwrap();
@@ -221,12 +215,7 @@ fn symlinked_folders_and_files_never_lead_outside() {
 
     // Positive control: the same files inside the project are found.
     let real = TempDir::new().unwrap();
-    for rel in [
-        "prisma/schema.prisma",
-        ".codex/config.toml",
-        "Cargo.toml",
-        "requirements.txt",
-    ] {
+    for rel in ["prisma/schema.prisma", "Cargo.toml", "requirements.txt"] {
         write(real.path(), rel, &fs::read_to_string(o.join(rel)).unwrap());
     }
     write(
@@ -240,7 +229,7 @@ fn symlinked_folders_and_files_never_lead_outside() {
         json!(["mysql", "postgres", "sqlite"]),
         "{d}"
     );
-    assert_eq!(d["mcp_servers"], json!(["leaked", "leaked2"]), "{d}");
+    assert_eq!(d["mcp_servers"], json!(["leaked2"]), "{d}");
 }
 
 /// AC-3: MCP server names and database kinds are recorded in `project.yaml`; MCP files are
@@ -254,13 +243,6 @@ fn detected_facts_are_recorded_without_mcp_writes_or_secrets() {
         ".mcp.json",
         &json!({"mcpServers": {"github": {"command": "npx", "env": {"GITHUB_TOKEN": TOKEN}}}})
             .to_string(),
-    );
-    write(
-        root.path(),
-        ".codex/config.toml",
-        &format!(
-            "[mcp_servers.docs]\ncommand = \"docs-server\"\nenv = {{ API_KEY = \"{TOKEN}\" }}\n"
-        ),
     );
     write(
         root.path(),
@@ -285,7 +267,7 @@ fn detected_facts_are_recorded_without_mcp_writes_or_secrets() {
     let result = ok(&out);
     assert_eq!(tree(root.path()), before, "project-detect writes nothing");
     let d = &result["detected"];
-    assert_eq!(d["mcp_servers"], json!(["docs", "github"]));
+    assert_eq!(d["mcp_servers"], json!(["github"]));
     assert_eq!(
         d["databases"],
         json!(["mongodb", "mysql", "postgres", "sqlite"])
@@ -300,13 +282,10 @@ fn detected_facts_are_recorded_without_mcp_writes_or_secrets() {
     let stored: Value = serde_json::from_str(&yaml).unwrap();
     assert_eq!(&stored["detected"], d);
     // The MCP files are unchanged and no new MCP configuration exists.
-    for rel in [".mcp.json", ".codex/config.toml"] {
-        assert_eq!(
-            fs::read(root.path().join(rel)).unwrap(),
-            before[rel],
-            "{rel}"
-        );
-    }
+    assert_eq!(
+        fs::read(root.path().join(".mcp.json")).unwrap(),
+        before[".mcp.json"]
+    );
     let after = tree(root.path());
     let added: Vec<&String> = after.keys().filter(|k| !before.contains_key(*k)).collect();
     assert!(
@@ -414,8 +393,8 @@ fn nested_manifests_are_listed_but_databases_stay_at_the_root() {
 }
 
 /// #2535 AC-2 (item 4): `project_kind` speaks of code only. A folder holding nothing but a
-/// Prisma schema and a Codex MCP configuration is `new`, and its database and server names are
-/// still recorded as configuration facts.
+/// Prisma schema and an MCP configuration is `new`, and its database and server names are still
+/// recorded as configuration facts.
 #[test]
 fn a_configuration_only_folder_is_new_with_its_facts() {
     let root = TempDir::new().unwrap();
@@ -426,8 +405,8 @@ fn a_configuration_only_folder_is_new_with_its_facts() {
     );
     write(
         root.path(),
-        ".codex/config.toml",
-        "[mcp_servers.docs]\ncommand = \"x\"\n",
+        ".mcp.json",
+        &json!({"mcpServers": {"docs": {"command": "x"}}}).to_string(),
     );
     let d = detect(&root)["detected"].clone();
     assert_eq!(d["project_kind"], "new");
@@ -861,6 +840,33 @@ fn the_host_folders_are_not_the_projects_code() {
             "{dir} was read as project code: {found}"
         );
     }
+}
+
+/// moai no longer manages Codex or OMP: detection does not read `.codex/config.toml` for MCP
+/// server names and does not walk `.codex` or `.omp` for code. A `.mcp.json` beside them is
+/// still read, and a folder holding only those files is `new`.
+#[test]
+fn codex_folders_are_not_read_or_walked() {
+    let root = TempDir::new().unwrap();
+    write(
+        root.path(),
+        ".codex/config.toml",
+        "[mcp_servers.docs]\ncommand = \"docs-server\"\n",
+    );
+    write(root.path(), ".codex/hooks/run.py", "print('x')\n");
+    write(root.path(), ".omp/extensions/hook.ts", "export {};\n");
+    let d = detect(&root)["detected"].clone();
+    assert_eq!(d["mcp_servers"], json!([]), "{d}");
+    assert_eq!(d["languages"], json!([]), "{d}");
+    assert_eq!(d["project_kind"], "new", "{d}");
+
+    write(
+        root.path(),
+        ".mcp.json",
+        &json!({"mcpServers": {"github": {"command": "npx"}}}).to_string(),
+    );
+    let d = detect(&root)["detected"].clone();
+    assert_eq!(d["mcp_servers"], json!(["github"]), "{d}");
 }
 
 /// C-61 AC-1 (REQ-1, REQ-3, REQ-4): manifests below the root are found and listed by their

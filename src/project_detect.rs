@@ -592,8 +592,8 @@ fn prisma_database(root: &Path) -> Option<String> {
     }
 }
 
-/// MCP server names from the project's `.mcp.json` (`mcpServers`) and
-/// `.codex/config.toml` (`[mcp_servers.<name>]`). Values are never read further.
+/// MCP server names from the project's `.mcp.json` (`mcpServers`). The `.codex` folder is not
+/// read: moai no longer manages it. Values are never read further.
 fn mcp_servers(root: &Path) -> BTreeSet<String> {
     let mut names = BTreeSet::new();
     if let Some(v) =
@@ -602,9 +602,6 @@ fn mcp_servers(root: &Path) -> BTreeSet<String> {
         if let Some(map) = v["mcpServers"].as_object() {
             names.extend(map.keys().cloned());
         }
-    }
-    if let Some(doc) = read_in(root, &[".codex", "config.toml"]).and_then(|t| toml_doc(&t)) {
-        names.extend(table_keys(doc.get("mcp_servers")));
     }
     names
 }
