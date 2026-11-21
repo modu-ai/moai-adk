@@ -720,3 +720,286 @@ fn a_package_changed_after_the_preview_is_refused_with_nothing_written() {
     );
     assert_eq!(state(&home), before, "nothing was written");
 }
+
+// --- the Codex status line layer (SPEC-20261120-codex-statusline) ---
+
+/// The moai preset as the SPEC pins it (D-2): identity, repository and branch, usage, with the
+/// worktree name (`thread-name`, the 🌳) last, the way the Claude layout keeps it at line 3's end.
+const PRESET: [&str; 10] = [
+    "model",
+    "reasoning",
+    "codex-version",
+    "project-name",
+    "git-branch",
+    "branch-changes",
+    "pull-request-number",
+    "context-remaining",
+    "weekly-limit",
+    "thread-name",
+];
+
+/// Like [`run`], plus `MOAI_ACCOUNT_HOME` so a `CODEX_HOME` the test sets counts (host_home
+/// only honors the variables of the account's own home).
+fn run_codex(exe: &Path, home: &Path, args: &[&str], codex_home: Option<&Path>) -> Output {
+    let mut cmd = Command::new(exe);
+    cmd.args(args)
+        .clean_env()
+        .env("PATH", "/usr/bin:/bin")
+        .env("HOME", home)
+        .env("MOAI_ACCOUNT_HOME", home)
+        .env("LC_ALL", "C")
+        .current_dir(home)
+        .stdin(Stdio::null());
+    if let Some(dir) = codex_home {
+        cmd.env("CODEX_HOME", dir);
+    }
+    cmd.output().unwrap()
+}
+
+fn user_config(home: &Path, text: &str) {
+    let dir = home.join(".codex");
+    fs::create_dir_all(&dir).unwrap();
+    fs::write(dir.join("config.toml"), text).unwrap();
+}
+
+/// AC-1: a config without the key is previewed as an install, and the yes writes the preset,
+/// keeps every other byte, keeps a private copy and prints the command that restores the key.
+#[test]
+fn an_absent_status_line_key_is_installed_after_the_yes() {
+    let (_t, home, exe, _) = setup();
+    user_config(&home, "[tui]\nmouse = true\n\n# a user comment\n");
+    let before = fs::read(home.join(".codex/config.toml")).unwrap();
+    let p = result(&run_codex(&exe, &home, &["update"], None));
+    let sl = &p["status_line"];
+    assert_eq!(sl["action"], json!("install"), "{p}");
+    assert_eq!(sl["current"], json!(null));
+    assert_eq!(sl["proposed"], json!(PRESET), "{sl}");
+    let path = sl["config_path"].as_str().unwrap();
+    assert!(path.ends_with(".codex/config.toml"), "{path}");
+    assert!(sl["plan_digest"].as_str().is_some(), "{sl}");
+    let top = p["plan_digest"].as_str().unwrap().to_string();
+    let r = result(&run_codex(
+        &exe,
+        &home,
+        &["update", "--confirm", &top],
+        None,
+    ));
+    let res = &r["status_line_result"];
+    assert_eq!(res["state"], json!("applied"), "{r}");
+    assert_eq!(res["config_path"], sl["config_path"], "{res}");
+    let backup = res["backup"]["path"].as_str().unwrap_or_default();
+    assert!(!backup.is_empty(), "{res}");
+    let revert = r["revert"]["status_line"].as_str().unwrap_or_default();
+    assert!(revert.contains(backup), "{revert}");
+    assert!(revert.contains("config.toml"), "{revert}");
+    // REQ-12: status_line sits between hooks and style in REVERT_ORDER; this home prints no
+    // hooks entry (no project hook set applied here), so its absence is not a failure.
+    let order: Vec<&str> = r["revert_order"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| v.as_str().unwrap())
+        .collect();
+    let at = order
+        .iter()
+        .position(|k| *k == "status_line")
+        .expect("{order:?}");
+    let style = order.iter().position(|k| *k == "style").expect("{order:?}");
+    assert!(at < style, "{order:?}");
+    if let Some(hooks) = order.iter().position(|k| *k == "hooks") {
+        assert!(hooks < at, "{order:?}");
+    }
+    // The file: the preset in, every other byte kept.
+    let now = fs::read_to_string(home.join(".codex/config.toml")).unwrap();
+    assert!(now.contains("mouse = true"), "{now}");
+    assert!(now.contains("# a user comment"), "{now}");
+    let doc: Value = {
+        // The written list, read back through the preview of the next run (no TOML parser here).
+        let p2 = result(&run_codex(&exe, &home, &["update"], None));
+        p2["status_line"]["current"].clone()
+    };
+    assert_eq!(doc, json!(PRESET), "{doc}");
+    // The copy is private and holds the bytes as they were.
+    let meta = fs::metadata(home.join(backup)).unwrap();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        assert_eq!(meta.permissions().mode() & 0o777, 0o600, "{backup}");
+    }
+    assert_eq!(fs::read(home.join(backup)).unwrap(), before, "{backup}");
+    // Running the printed command gives the key (and the file) back.
+    let out = Command::new("/bin/sh")
+        .arg("-c")
+        .arg(&revert)
+        .env("PATH", "/usr/bin:/bin")
+        .output()
+        .unwrap();
+    assert!(out.status.success(), "{revert}: {out:?}");
+    assert_eq!(fs::read(home.join(".codex/config.toml")).unwrap(), before);
+}
+
+/// AC-2: a value the user set is shown with the proposal and never written, confirmed or not.
+#[test]
+fn a_user_status_line_is_shown_and_never_written() {
+    let (_t, home, exe, _) = setup();
+    let text = "[tui]\nstatus_line = [\"model-with-reasoning\", \"run-state\"]\nmouse = true\n";
+    user_config(&home, text);
+    let before = fs::read(home.join(".codex/config.toml")).unwrap();
+    let p = result(&run_codex(&exe, &home, &["update"], None));
+    let sl = &p["status_line"];
+    assert_eq!(sl["action"], json!("keep_user"), "{p}");
+    assert_eq!(sl["current"], json!(["model-with-reasoning", "run-state"]));
+    assert_eq!(sl["proposed"], json!(PRESET));
+    let top = p["plan_digest"].as_str().unwrap().to_string();
+    let r = result(&run_codex(
+        &exe,
+        &home,
+        &["update", "--confirm", &top],
+        None,
+    ));
+    assert_eq!(r["status_line_result"]["state"], json!("kept"), "{r}");
+    assert_eq!(
+        fs::read(home.join(".codex/config.toml")).unwrap(),
+        before,
+        "the user's bytes survive a confirmed run"
+    );
+}
+
+/// AC-3: a value MoAI wrote and the file still holds plans as unchanged or update; once the
+/// user edits it, it is a user value again and stays unowned.
+#[test]
+fn an_owned_status_line_follows_the_record_and_a_drift_is_the_user_s() {
+    let (_t, home, exe, _) = setup();
+    user_config(&home, "[tui]\nmouse = true\n");
+    let p = result(&run_codex(&exe, &home, &["update"], None));
+    let top = p["plan_digest"].as_str().unwrap().to_string();
+    result(&run_codex(
+        &exe,
+        &home,
+        &["update", "--confirm", &top],
+        None,
+    ));
+    // Owned and current: the part plans nothing.
+    let p = result(&run_codex(&exe, &home, &["update"], None));
+    assert_eq!(p["status_line"]["action"], json!("unchanged"), "{p}");
+    // The user edits it: a user value again, shown but never written.
+    fs::write(
+        home.join(".codex/config.toml"),
+        "[tui]\nmouse = true\nstatus_line = [\"run-state\"]\n",
+    )
+    .unwrap();
+    let edited = fs::read(home.join(".codex/config.toml")).unwrap();
+    let p = result(&run_codex(&exe, &home, &["update"], None));
+    assert_eq!(p["status_line"]["action"], json!("keep_user"), "{p}");
+    assert_eq!(p["status_line"]["current"], json!(["run-state"]));
+    let top = p["plan_digest"].as_str().unwrap().to_string();
+    let r = result(&run_codex(
+        &exe,
+        &home,
+        &["update", "--confirm", &top],
+        None,
+    ));
+    assert_eq!(fs::read(home.join(".codex/config.toml")).unwrap(), edited);
+    assert_eq!(r["status_line_result"]["state"], json!("kept"), "{r}");
+}
+
+/// AC-4: without a config file the part offers nothing (no file is created for a HOME that
+/// does not use Codex), and the rest of the layer applies as before.
+#[test]
+fn a_missing_codex_config_skips_the_status_line_part() {
+    let (_t, home, exe, _) = setup();
+    fs::create_dir_all(home.join(".codex")).unwrap();
+    let p = result(&run_codex(&exe, &home, &["update"], None));
+    assert!(p["status_line"].is_null(), "{p}");
+    let top = p["plan_digest"].as_str().unwrap().to_string();
+    let r = result(&run_codex(
+        &exe,
+        &home,
+        &["update", "--confirm", &top],
+        None,
+    ));
+    assert!(r["status_line_result"].is_null(), "{r}");
+    assert!(!home.join(".codex/config.toml").exists());
+    assert!(!r["revert_order"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|v| *v == json!("status_line")));
+}
+
+/// AC-5 (digest binding): the combined digest covers the key, so a hand edit between the
+/// preview and the confirm is refused before anything is written.
+#[test]
+fn a_status_line_edit_after_the_preview_is_refused_as_stale() {
+    let (_t, home, exe, _) = setup();
+    user_config(&home, "[tui]\nmouse = true\n");
+    let p = result(&run_codex(&exe, &home, &["update"], None));
+    let top = p["plan_digest"].as_str().unwrap().to_string();
+    fs::write(
+        home.join(".codex/config.toml"),
+        "[tui]\nmouse = true\nstatus_line = [\"run-state\"]\n",
+    )
+    .unwrap();
+    let before = fs::read(home.join(".codex/config.toml")).unwrap();
+    let out = run_codex(&exe, &home, &["update", "--confirm", &top], None);
+    assert!(!out.status.success(), "{out:?}");
+    let v: Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert!(
+        v["error"]["message"].as_str().unwrap().contains("stale"),
+        "{v}"
+    );
+    assert_eq!(fs::read(home.join(".codex/config.toml")).unwrap(), before);
+}
+
+/// R1 evidence: a relocated `CODEX_HOME` counts when the home is the account's own, and a
+/// relative value is refused by name without stopping the rest of the update.
+#[test]
+fn a_relocated_codex_home_is_honored_and_a_relative_one_is_named() {
+    let (_t, home, exe, _) = setup();
+    let named = TempDir::new().unwrap();
+    let dir = fs::canonicalize(named.path()).unwrap();
+    fs::create_dir_all(&dir).unwrap();
+    fs::write(dir.join("config.toml"), "[tui]\nmouse = true\n").unwrap();
+    let p = result(&run_codex(&exe, &home, &["update"], Some(&dir)));
+    let path = p["status_line"]["config_path"].as_str().unwrap();
+    assert!(
+        path.contains("config.toml") && path.starts_with(dir.to_str().unwrap()),
+        "{p}"
+    );
+    let top = p["plan_digest"].as_str().unwrap().to_string();
+    let r = result(&run_codex(
+        &exe,
+        &home,
+        &["update", "--confirm", &top],
+        Some(&dir),
+    ));
+    assert_eq!(r["status_line_result"]["state"], json!("applied"), "{r}");
+    let now = fs::read_to_string(dir.join("config.toml")).unwrap();
+    assert!(now.contains("status_line"), "{now}");
+    // A relative value: the part names the variable and writes nothing; the layer applies.
+    let (_t2, home2, exe2, _) = setup();
+    user_config(&home2, "[tui]\nmouse = true\n");
+    let before = fs::read(home2.join(".codex/config.toml")).unwrap();
+    let p = result(&run_codex(
+        &exe2,
+        &home2,
+        &["update"],
+        Some(Path::new("relative/codex")),
+    ));
+    assert_eq!(p["status_line"]["action"], json!("blocked"), "{p}");
+    assert!(
+        p["status_line"]["reason"]
+            .as_str()
+            .unwrap()
+            .contains("CODEX_HOME"),
+        "{p}"
+    );
+    let top = p["plan_digest"].as_str().unwrap().to_string();
+    result(&run_codex(
+        &exe2,
+        &home2,
+        &["update", "--confirm", &top],
+        Some(Path::new("relative/codex")),
+    ));
+    assert_eq!(fs::read(home2.join(".codex/config.toml")).unwrap(), before);
+}

@@ -114,9 +114,9 @@ pub const CODEX_STATUS_LINE_ITEMS: [&str; 41] = [
 
 /// `"tui.status_line": "moai"` (#2928 S-5): the Claude Code status-line elements Codex 0.169.0
 /// can show, in Claude Code order (line 1 model, effort, host version; line 2 repository,
-/// branch, changes, then the PR number where Claude Code shows `🔗 #n`, after the branch and
-/// worktree; line 3 name tag, context, week). The mapping and what Codex cannot show:
-/// `docs/codex-adapter-contract.md` "상태줄 (#2928 S-5)".
+/// branch, changes, then the PR number where Claude Code shows `🔗 #n`; line 3 context, week,
+/// and the worktree name last, the way the layout keeps 🌳 at line 3's end — C-203/C-212). The
+/// mapping and what Codex cannot show: `docs/codex-adapter-contract.md` "상태줄 (#2928 S-5)".
 pub const MOAI_STATUS_LINE_PRESET: [&str; 10] = [
     "model",
     "reasoning",
@@ -125,9 +125,9 @@ pub const MOAI_STATUS_LINE_PRESET: [&str; 10] = [
     "git-branch",
     "branch-changes",
     "pull-request-number",
-    "thread-name",
     "context-remaining",
     "weekly-limit",
+    "thread-name",
 ];
 
 /// Replaces a preset name given as the `tui.status_line` value with its list. Returns the
@@ -832,6 +832,311 @@ pub fn config_apply_with(
     Ok(result)
 }
 
+// --- the user config's status line layer (SPEC-20261120-codex-statusline) ---
+
+/// The ownership record of the user config's status line, under the home state root's
+/// manifests folder: the value MoAI last wrote and the digest of the file as it was then.
+const USER_RECORD: &str = "manifests/codex-statusline.json";
+
+/// The proposed list, as the record stores it.
+fn preset_value() -> Value {
+    Value::Array(MOAI_STATUS_LINE_PRESET.iter().map(|s| json!(s)).collect())
+}
+
+/// One row of the update's Codex status line part: what the user config holds for
+/// `tui.status_line` and what MoAI proposes. `writes()` names the rows a confirmed run
+/// applies; the JSON and the summary line show key and values, never the rest of the file
+/// (it can hold secrets).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct UserStatusLineLayer {
+    /// `install` (key missing), `update` (MoAI's value, not the preset), `unchanged`
+    /// (MoAI's value, already the preset), `keep_user` (a user value — proposal only,
+    /// nothing is ever written), `removed` (MoAI's key removed by hand — not put back),
+    /// `skip` (no config file: nothing offered), `blocked` (the Codex folder cannot be
+    /// resolved — the reason names the variable).
+    pub action: &'static str,
+    pub reason: Option<String>,
+    pub config_path: String,
+    pub current: Value,
+    pub proposed: Value,
+    pub plan_digest: String,
+}
+
+impl UserStatusLineLayer {
+    /// True when confirming would write the key.
+    pub fn writes(&self) -> bool {
+        matches!(self.action, "install" | "update")
+    }
+
+    /// The preview JSON; `None` for a part that offers nothing (`skip`), so the preview
+    /// keeps its shape and the update UI goldens stay as they are.
+    pub fn to_json(&self) -> Option<Value> {
+        if self.action == "skip" {
+            return None;
+        }
+        let mut out = json!({
+            "action": self.action,
+            "config_path": self.config_path,
+            "current": self.current,
+            "proposed": self.proposed,
+            "plan_digest": self.plan_digest,
+        });
+        if let Some(reason) = &self.reason {
+            out["reason"] = json!(reason);
+        }
+        Some(out)
+    }
+
+    /// The terminal question's lines for this part; empty when it offers nothing.
+    pub fn summary(&self) -> String {
+        if self.action == "skip" {
+            return String::new();
+        }
+        let items = |v: &Value| {
+            v.as_array()
+                .map(|a| {
+                    a.iter()
+                        .filter_map(|i| i.as_str())
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                })
+                .unwrap_or_default()
+        };
+        let mut out = String::from("codex status line\n");
+        match self.action {
+            "keep_user" => out.push_str(&format!(
+                "  tui.status_line: yours — {} (kept; moai would write: {})\n",
+                items(&self.current),
+                items(&self.proposed),
+            )),
+            _ => out.push_str(&format!(
+                "  tui.status_line: {action} — {}\n",
+                items(&self.proposed),
+                action = self.action,
+            )),
+        }
+        out
+    }
+}
+
+/// The status line part of one `moai update` preview for the user config of `home`.
+pub fn user_status_line_plan(home: &Path) -> UserStatusLineLayer {
+    user_status_line_layer(
+        home,
+        crate::host_home::resolve(crate::host_home::Host::Codex, home).map(Some),
+    )
+}
+
+/// [`user_status_line_plan`] with the Codex folder given (tests pass a temporary one; the
+/// env-dependent wrapper above is its only production caller).
+pub(crate) fn user_status_line_plan_in(
+    home: &Path,
+    codex_dir: Option<&Path>,
+) -> UserStatusLineLayer {
+    user_status_line_layer(home, Ok(codex_dir.map(Path::to_path_buf)))
+}
+
+fn user_status_line_layer(
+    home: &Path,
+    codex_dir: std::result::Result<Option<PathBuf>, String>,
+) -> UserStatusLineLayer {
+    let proposed = preset_value();
+    let blocked = |message: String, config_path: &str| UserStatusLineLayer {
+        action: "blocked",
+        reason: Some(message),
+        config_path: config_path.to_string(),
+        current: Value::Null,
+        proposed: proposed.clone(),
+        plan_digest: String::new(),
+    };
+    let skip = || UserStatusLineLayer {
+        action: "skip",
+        reason: None,
+        config_path: String::new(),
+        current: Value::Null,
+        proposed: proposed.clone(),
+        plan_digest: String::new(),
+    };
+    let dir: PathBuf = match codex_dir {
+        Ok(Some(dir)) => dir,
+        Ok(None) => return skip(),
+        Err(message) => return blocked(message, ""),
+    };
+    let config = dir.join("config.toml");
+    let config_path = config.to_string_lossy().into_owned();
+    let before = match read_existing(&config) {
+        Ok(Some(bytes)) => bytes,
+        Ok(None) => return skip(),
+        Err(e) => return blocked(e, &config_path),
+    };
+    let doc = match std::str::from_utf8(&before)
+        .ok()
+        .and_then(|t| t.parse::<DocumentMut>().ok())
+    {
+        Some(doc) => doc,
+        None => return blocked(review(), &config_path),
+    };
+    let key = "tui.status_line".to_string();
+    let current = read_keys(&doc, &[&key])
+        .ok()
+        .and_then(|mut m| m.remove(&key))
+        .unwrap_or(Value::Null);
+    let record_before = read_existing(&record_path(home)).unwrap_or(None);
+    let owned: Option<Value> = record_before.as_deref().and_then(|bytes| {
+        serde_json::from_slice::<Value>(bytes)
+            .ok()
+            .filter(|r| r["schema_version"] == json!(1))
+            .map(|r| r["owned"]["tui.status_line"].clone())
+    });
+    let action = match (&current, &owned) {
+        (Value::Null, None) => "install",
+        (Value::Null, Some(_)) => "removed",
+        (value, Some(owned)) if value == owned => {
+            if value == &proposed {
+                "unchanged"
+            } else {
+                "update"
+            }
+        }
+        _ => "keep_user",
+    };
+    let digest = crate::digest(
+        &serde_json::to_vec(&(
+            1,
+            crate::digest(&before),
+            record_before.as_deref().map(crate::digest),
+            &current,
+            &proposed,
+        ))
+        .unwrap_or_default(),
+    );
+    UserStatusLineLayer {
+        action,
+        reason: None,
+        config_path,
+        current,
+        proposed,
+        plan_digest: digest,
+    }
+}
+
+fn record_path(home: &Path) -> PathBuf {
+    crate::home_root::path(home).join(USER_RECORD)
+}
+
+fn user_record_bytes(owned: &Value, config_sha256: &str) -> Vec<u8> {
+    let r = json!({
+        "schema_version": 1,
+        "key": "tui.status_line",
+        "owned": {"tui.status_line": owned},
+        "config_sha256": config_sha256,
+    });
+    let mut bytes = serde_json::to_vec_pretty(&r).expect("record");
+    bytes.push(b'\n');
+    bytes
+}
+
+/// Applies the previewed status line part: re-plans, requires the same digest, and writes
+/// the preset into the key only for `install` and `update`. A private (0600) copy of the
+/// file as it was is kept first, so the printed command restores every key, and the record
+/// moves to the value MoAI wrote. A user value is never written (`kept`, no copy, no record
+/// change); `skip`, `unchanged` and `removed` write nothing either.
+pub fn user_status_line_apply(home: &Path, plan_digest: &str, permission: &str) -> Result<Value> {
+    if !crate::contract::permission_reference_ok(permission) {
+        return Err("permission reference required".into());
+    }
+    let dir = crate::host_home::resolve(crate::host_home::Host::Codex, home)?;
+    user_status_line_apply_in(home, Some(&dir), plan_digest, permission)
+}
+
+/// [`user_status_line_apply`] with the Codex folder given (tests pass a temporary one).
+pub(crate) fn user_status_line_apply_in(
+    home: &Path,
+    codex_dir: Option<&Path>,
+    plan_digest: &str,
+    permission: &str,
+) -> Result<Value> {
+    if !crate::contract::permission_reference_ok(permission) {
+        return Err("permission reference required".into());
+    }
+    let layer = user_status_line_plan_in(home, codex_dir);
+    if layer.plan_digest != plan_digest {
+        return Err("stale or altered plan; re-preview required".into());
+    }
+    let base = json!({
+        "state": "kept",
+        "config_path": layer.config_path,
+        "action": layer.action,
+    });
+    match layer.action {
+        "install" | "update" => {}
+        "keep_user" => return Ok(base),
+        "unchanged" | "removed" | "skip" => {
+            let mut out = base;
+            out["state"] = json!("unchanged");
+            return Ok(out);
+        }
+        _ => {
+            let mut out = base;
+            out["state"] = json!("blocked");
+            out["reason"] = layer.reason.clone().into();
+            return Ok(out);
+        }
+    }
+    let config = PathBuf::from(&layer.config_path);
+    let before = read_existing(&config).map_err(|e| format!("user config unreadable: {e}"))?;
+    let Some(before) = before else {
+        return Err("the config file disappeared since the preview; nothing applied".into());
+    };
+    // The state folders the copy and the record need, under the home state root, made the
+    // way every other home-layer folder is: links refused, then created.
+    let root = crate::home_root::path(home);
+    for dir in [root.join("backups"), root.join("manifests")] {
+        crate::update::refuse_state_symlinks(&dir, "user config state")?;
+        fs::create_dir_all(&dir).map_err(|_| "user config state directory unavailable")?;
+    }
+    // The copy first: it exists whenever the config or the record holds MoAI's value.
+    let sha = crate::digest(&before);
+    let name = format!(
+        "codex-statusline-{}.toml",
+        sha.trim_start_matches("sha256:").get(..16).unwrap_or("0")
+    );
+    let backup_path = root.join("backups").join(&name);
+    crate::update::refuse_state_symlinks(&backup_path, "backup")?;
+    let backup = Backup {
+        rel: backup_path.to_string_lossy().into_owned(),
+        path: backup_path.clone(),
+        bytes: before.clone(),
+    };
+    write_backup(&backup)?;
+    let mut doc = std::str::from_utf8(&before)
+        .ok()
+        .and_then(|t| t.parse::<DocumentMut>().ok())
+        .ok_or_else(|| "the config stopped being readable; nothing applied".to_string())?;
+    set_key(&mut doc, "tui.status_line", &layer.proposed)?;
+    let after = doc.to_string().into_bytes();
+    let after_sha = crate::digest(&after);
+    crate::agents::write_replace(&config, Some(&before), &after)?;
+    let record = user_record_bytes(&layer.proposed, &after_sha);
+    let record_file = record_path(home);
+    let record_before = read_existing(&record_file)?;
+    if let Err(e) = crate::agents::write_replace(&record_file, record_before.as_deref(), &record) {
+        return Err(format!(
+            "partial apply: applied [{}]; failed at {}: {e}",
+            layer.config_path,
+            record_file.display(),
+        ));
+    }
+    Ok(json!({
+        "state": "applied",
+        "action": layer.action,
+        "config_path": layer.config_path,
+        "files_changed": [layer.config_path],
+        "backup": {"path": backup.rel, "sha256": crate::digest(&backup.bytes)},
+        "revert": format!("cp '{}' '{}'", backup.rel, layer.config_path),
+    }))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -874,5 +1179,170 @@ mod tests {
         for (message, kind) in cases {
             assert_eq!(classify(&message), kind, "{message}");
         }
+    }
+
+    // --- the user config's status line layer (SPEC-20261120-codex-statusline) ---
+
+    /// REQ-8: the preset keeps the Claude layout's order with the worktree name last.
+    #[test]
+    fn the_preset_keeps_the_worktree_name_last() {
+        assert_eq!(MOAI_STATUS_LINE_PRESET.len(), 10);
+        assert_eq!(MOAI_STATUS_LINE_PRESET.first(), Some(&"model"));
+        assert_eq!(MOAI_STATUS_LINE_PRESET.last(), Some(&"thread-name"));
+        assert_eq!(preset_value()[7], json!("context-remaining"));
+        assert_eq!(preset_value()[8], json!("weekly-limit"));
+    }
+
+    fn layer_in(home: &Path, dir: &Path) -> UserStatusLineLayer {
+        user_status_line_plan_in(home, Some(dir))
+    }
+
+    fn apply_in(home: &Path, dir: &Path, digest: &str) -> Result<Value> {
+        user_status_line_apply_in(home, Some(dir), digest, "fixture permission reference")
+    }
+
+    /// A missing file skips; a key-less file installs; a user value is shown and the apply
+    /// refuses it without writing a byte.
+    #[test]
+    fn the_plan_reads_the_states_of_the_user_config() {
+        let t = tempfile::tempdir().unwrap();
+        let home = t.path().join("home");
+        fs::create_dir_all(&home).unwrap();
+        let codex = t.path().join("codex-conf");
+        fs::create_dir_all(&codex).unwrap();
+        assert_eq!(layer_in(&home, &codex).action, "skip");
+        fs::write(codex.join("config.toml"), "[tui]\nmouse = true\n").unwrap();
+        let layer = layer_in(&home, &codex);
+        assert_eq!(layer.action, "install");
+        assert_eq!(layer.proposed, preset_value());
+        fs::write(
+            codex.join("config.toml"),
+            "[tui]\nstatus_line = [\"run-state\"]\n",
+        )
+        .unwrap();
+        let layer = layer_in(&home, &codex);
+        assert_eq!(layer.action, "keep_user");
+        assert_eq!(layer.current, json!(["run-state"]));
+        let applied = apply_in(&home, &codex, &layer.plan_digest).unwrap();
+        assert_eq!(applied["state"], json!("kept"), "{applied}");
+        assert_eq!(
+            fs::read_to_string(codex.join("config.toml")).unwrap(),
+            "[tui]\nstatus_line = [\"run-state\"]\n"
+        );
+    }
+
+    /// The apply installs the preset beside the user's other bytes, keeps a private copy,
+    /// records ownership, and the copy restores the exact bytes.
+    #[test]
+    fn the_apply_installs_records_and_restores() {
+        let t = tempfile::tempdir().unwrap();
+        let home = t.path().join("home");
+        let codex = t.path().join("codex-conf");
+        fs::create_dir_all(&codex).unwrap();
+        fs::write(
+            codex.join("config.toml"),
+            "[tui]\nmouse = true\n\n# a user comment\n",
+        )
+        .unwrap();
+        let before = fs::read(codex.join("config.toml")).unwrap();
+        let layer = layer_in(&home, &codex);
+        assert_eq!(layer.action, "install");
+        let applied = apply_in(&home, &codex, &layer.plan_digest).unwrap();
+        assert_eq!(applied["state"], json!("applied"), "{applied}");
+        let now = fs::read_to_string(codex.join("config.toml")).unwrap();
+        assert!(now.contains("mouse = true"), "{now}");
+        assert!(now.contains("# a user comment"), "{now}");
+        assert!(now.contains("thread-name"), "{now}");
+        // The record: the next plan reads unchanged.
+        assert_eq!(layer_in(&home, &codex).action, "unchanged");
+        // The copy is private and holds the bytes as they were; restoring gives them back.
+        let backup = applied["backup"]["path"].as_str().unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            assert_eq!(
+                fs::metadata(backup).unwrap().permissions().mode() & 0o777,
+                0o600,
+                "{backup}"
+            );
+        }
+        assert_eq!(fs::read(backup).unwrap(), before);
+        fs::write(codex.join("config.toml"), "overwritten").unwrap();
+        fs::copy(backup, codex.join("config.toml")).unwrap();
+        assert_eq!(fs::read(codex.join("config.toml")).unwrap(), before);
+    }
+
+    /// An owned value that is not the preset plans an update and the apply writes the
+    /// preset; a key MoAI wrote that the user removed stays removed.
+    #[test]
+    fn an_owned_old_value_updates_and_a_removed_key_stays_removed() {
+        let t = tempfile::tempdir().unwrap();
+        let home = t.path().join("home");
+        let codex = t.path().join("codex-conf");
+        fs::create_dir_all(&codex).unwrap();
+        let old = json!([
+            "model",
+            "reasoning",
+            "codex-version",
+            "project-name",
+            "git-branch",
+            "branch-changes",
+            "pull-request-number",
+            "thread-name",
+            "context-remaining",
+            "weekly-limit",
+        ]);
+        let items: Vec<&str> = old
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|s| s.as_str().unwrap())
+            .collect();
+        fs::write(
+            codex.join("config.toml"),
+            format!("[tui]\nstatus_line = {items:?}\n"),
+        )
+        .unwrap();
+        let state_root = crate::home_root::path(&home);
+        let record_dir = state_root.join("manifests");
+        fs::create_dir_all(&record_dir).unwrap();
+        fs::write(
+            record_dir.join("codex-statusline.json"),
+            user_record_bytes(&old, ""),
+        )
+        .unwrap();
+        let layer = layer_in(&home, &codex);
+        assert_eq!(layer.action, "update");
+        let applied = apply_in(&home, &codex, &layer.plan_digest).unwrap();
+        assert_eq!(applied["state"], json!("applied"), "{applied}");
+        let now = fs::read_to_string(codex.join("config.toml")).unwrap();
+        assert!(now.contains("weekly-limit"), "{now}");
+        // The record moved: unchanged now.
+        assert_eq!(layer_in(&home, &codex).action, "unchanged");
+        // The user removes the key: it stays removed, and the apply writes nothing.
+        fs::write(codex.join("config.toml"), "[tui]\nmouse = true\n").unwrap();
+        let layer = layer_in(&home, &codex);
+        assert_eq!(layer.action, "removed");
+        let applied = apply_in(&home, &codex, &layer.plan_digest).unwrap();
+        assert_eq!(applied["state"], json!("unchanged"), "{applied}");
+        assert!(!fs::read_to_string(codex.join("config.toml"))
+            .unwrap()
+            .contains("status_line"));
+    }
+
+    /// A stale digest is refused before anything is written.
+    #[test]
+    fn a_stale_digest_is_refused() {
+        let t = tempfile::tempdir().unwrap();
+        let home = t.path().join("home");
+        let codex = t.path().join("codex-conf");
+        fs::create_dir_all(&codex).unwrap();
+        fs::write(codex.join("config.toml"), "[tui]\nmouse = true\n").unwrap();
+        let err = apply_in(&home, &codex, "sha256:stale").unwrap_err();
+        assert!(err.contains("stale"), "{err}");
+        assert_eq!(
+            fs::read_to_string(codex.join("config.toml")).unwrap(),
+            "[tui]\nmouse = true\n"
+        );
     }
 }

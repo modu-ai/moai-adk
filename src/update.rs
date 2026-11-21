@@ -1542,6 +1542,9 @@ pub struct UserLayerPlan {
     /// C-33 S3: the name-switch script `path/moai` (v1 -> v2) that only `--confirm-switch
     /// <token>` replaces. Not part of `plan_digest`, like `home`.
     pub switch: switch::Layer,
+    /// The Codex status line part (SPEC-20261120-codex-statusline): `tui.status_line` in the
+    /// user config, installed after the user's yes; a user value is shown and never written.
+    pub status_line: crate::hosts::codex_config::UserStatusLineLayer,
     /// Agent, routing and style hosts left out because their skill copy is blocked.
     pub skipped: Vec<serde_json::Value>,
     /// One digest over the seven plan digests; the only value `--confirm` accepts.
@@ -1621,6 +1624,7 @@ fn user_layer_plan_in(
     let keys = crate::update_keys::plan(home)?;
     let home_layer = crate::update_home::plan(home)?;
     let switch_layer = switch::plan(home)?;
+    let status_line = crate::hosts::codex_config::user_status_line_plan(home);
     // One snapshot: what the agents and the section were rendered from is the staged package.
     if agents.package_digest != staged.digest
         || routing.package_digest != staged.digest
@@ -1636,7 +1640,8 @@ fn user_layer_plan_in(
             bin_names.plan_digest,
             hooks.plan_digest,
             style.plan_digest,
-            keys.plan_digest
+            keys.plan_digest,
+            status_line.plan_digest
         ]))
         .map_err(|_| "encode failed")?,
     );
@@ -1654,6 +1659,7 @@ fn user_layer_plan_in(
         keys,
         home: home_layer,
         switch: switch_layer,
+        status_line,
         skipped,
         plan_digest,
         cleanup,
@@ -1728,8 +1734,16 @@ fn run_cleanup(
 /// reverting routing first is skipped as `user_changed_since_apply` and style then leaves the
 /// routing block behind for good. Only the commands that exist are listed. The terminal screen and
 /// the JSON result both take the order from here.
-pub const REVERT_ORDER: [&str; 8] = [
-    "switch", "home", "cleanup", "keys", "hooks", "style", "routing", "agents",
+pub const REVERT_ORDER: [&str; 9] = [
+    "switch",
+    "home",
+    "cleanup",
+    "keys",
+    "hooks",
+    "status_line",
+    "style",
+    "routing",
+    "agents",
 ];
 
 pub fn revert_order(revert: &serde_json::Value) -> Vec<&'static str> {
@@ -1869,6 +1883,7 @@ pub fn layer_summary(p: &UserLayerPlan) -> String {
     out.push_str(&p.keys.summary());
     out.push_str(&p.home.summary());
     out.push_str(&p.switch.summary());
+    out.push_str(&p.status_line.summary());
     for s in &p.skipped {
         out.push_str(&format!(
             "  skipped {} {}: {}\n",
@@ -1942,7 +1957,8 @@ fn update_command_core(
         || crate::home_style::writes_anything(&layer.style)
         || layer.bin_names.writes()
         || layer.hooks.writes()
-        || layer.keys.writes();
+        || layer.keys.writes()
+        || layer.status_line.writes();
     let cleanup = cleanup_token(&layer, confirm_cleanup)?;
     let home_token = crate::update_home::check_token(&layer.home, confirm_home)?;
     // C-33 S3: its own token, like the home part; the file it writes (`path/moai`) is no item of
@@ -1975,9 +1991,14 @@ fn update_command_core(
                 layer.plan_digest
             ),
         });
-        // #2871 I2 S3: only a HOME with legacy key files has a `keys` part.
+        // Only a HOME with legacy key files has a `keys` part.
         if !layer.keys.rows.is_empty() {
             out["keys"] = layer.keys.to_json();
+        }
+        // SPEC-20261120-codex-statusline: only a config that offers something has a part;
+        // a HOME without a Codex config file keeps the preview as it was.
+        if let Some(s) = layer.status_line.to_json() {
+            out["status_line"] = s;
         }
         if let Some(c) = &layer.cleanup {
             out["cleanup"] = c.clone();
@@ -2104,6 +2125,13 @@ fn update_command_core(
             &crate::audit::utc_now(),
         )
     })());
+    // SPEC-20261120-codex-statusline: the user config's status line, independent of the
+    // skill copies; its plan was confirmed (a user value is never written here).
+    let status_line = part(crate::hosts::codex_config::user_status_line_apply(
+        home,
+        &fresh.status_line.plan_digest,
+        PERMISSION,
+    ));
     // #2853: the project's hook set, independent of the skill copies; its plan was confirmed.
     let hooks = part(crate::update_hooks::apply(
         home,
@@ -2120,6 +2148,7 @@ fn update_command_core(
         || routing["state"] == json!("applied")
         || style["state"] == json!("applied")
         || bin_names["state"] == json!("applied")
+        || status_line["state"] == json!("applied")
         || matches!(hooks["state"].as_str(), Some("applied" | "partial"));
     // #2872 stage 2: the confirmed cleanup, after the layer; an error is reported beside it.
     let cleanup = cleanup.map(|t| part(run_cleanup(home, &staged, t, PERMISSION)));
@@ -2157,6 +2186,14 @@ fn update_command_core(
     if !fresh.keys.rows.is_empty() {
         out["revert"]["keys"] = json!(revert("keys-revert", &keys));
         out["keys_result"] = keys;
+    }
+    // SPEC-20261120-codex-statusline: the part's result beside the others, and its cp-back
+    // command only where the part wrote (a kept user value prints no revert).
+    if fresh.status_line.to_json().is_some() {
+        out["status_line_result"] = status_line.clone();
+    }
+    if let Some(rv) = status_line["revert"].as_str() {
+        out["revert"]["status_line"] = json!(rv);
     }
     if let Some(c) = cleanup {
         out["revert"]["cleanup"] = json!(cleanup_revert(&c));
