@@ -2440,3 +2440,204 @@ fn ac17_releasing_a_landed_card_answers_landed_and_names_the_finish_command() {
     );
     assert!(!marker.exists(), "release ran a version control command");
 }
+
+// ---- AC-18 to AC-21: the repairs of the first audit -----------------------------------------
+
+/// AC-18: on an m-flow profile a merged pull request link alone is not evidence, the same as for
+/// `card done`: the call is refused with every table unchanged, and the same card closes on a
+/// head that git proves. On a profile that is not m-flow the link alone still closes the card.
+#[test]
+fn ac18_on_an_m_flow_profile_a_merged_link_alone_does_not_close_the_card() {
+    let w = World::new();
+    let linked = w.card_named("task", "apps/a/", &["one"]);
+    w.link_merged_pr(&linked, 7);
+    let before = w.dump();
+    let out = w.finish(Some(S_L), &linked, &["--met", "1=r1", "--by", "leader"]);
+    let message = w.refuse(&out, "invalid_input", &["no landing is recorded"], &before);
+    assert!(
+        message.contains("merged pull request link alone"),
+        "the reason says the link is not enough: {message}"
+    );
+    assert_eq!(
+        w.count("SELECT count(*) FROM event WHERE kind IN ('card.landed', 'card.finish')"),
+        0
+    );
+
+    let args = ["--head", &w.head, "--met", "1=r1", "--by", "leader"];
+    let got = result(&w.finish(Some(S_L), &linked, &args));
+    assert_eq!(got["closed"], json!(true), "{got}");
+    assert_eq!(got["via"], json!("landing"), "{got}");
+
+    let other = w.card_named("task", "apps/b/", &["one"]);
+    w.link_merged_pr(&other, 8);
+    w.set_profile(PLAIN_PROFILE);
+    let got = result(&w.finish(Some(S_L), &other, &["--met", "1=r1", "--by", "leader"]));
+    assert_eq!(got["closed"], json!(true), "{got}");
+    assert_eq!(got["via"], json!("merged_pr"), "{got}");
+    assert_eq!(got["events"], json!(1), "only the finish event: {got}");
+}
+
+/// AC-19: the SPEC a card names must pass the check at finish; a card with no criterion met and
+/// none named refuses; a card with a criterion met earlier closes with no met option.
+#[test]
+fn ac19_a_failing_spec_and_a_card_with_nothing_met_refuse_and_an_earlier_met_closes() {
+    let w = World::new();
+    let broken = w.card_named("task", "apps/a/", &["one"]);
+    let made = w.run(
+        None,
+        &[
+            "spec",
+            "new",
+            "broken-fix",
+            "--title",
+            "t",
+            "--minimal",
+            "--date",
+            "2026-11-21",
+            "--project",
+            &w.p,
+        ],
+    );
+    let id = result(&made)["id"].as_str().unwrap().to_string();
+    let spec_file = w.project.join(".moai/specs").join(&id).join("spec.md");
+    fs::write(&spec_file, filled(&fs::read_to_string(&spec_file).unwrap())).unwrap();
+    result(&w.card(None, &["spec", &broken, &id, "--by", "leader"]));
+    // The link is made while the SPEC passes; the SPEC is damaged afterwards.
+    fs::write(&spec_file, "not a SPEC: no front matter, no requirements\n").unwrap();
+    let before = w.dump();
+    let args = ["--head", &w.head, "--met", "1=r1", "--by", "leader"];
+    let out = w.finish(Some(S_L), &broken, &args);
+    w.refuse(&out, "invalid_input", &["its SPEC"], &before);
+
+    let withdrawn = w.card_named("task", "apps/b/", &["one"]);
+    result(&w.card(Some(S_A), &["take", &withdrawn]));
+    result(&w.card(
+        Some(S_A),
+        &[
+            "criterion",
+            &withdrawn,
+            "1",
+            "--generation",
+            "1",
+            "--withdraw",
+            "--reason",
+            "not needed",
+        ],
+    ));
+    result(&w.card(Some(S_A), &["release", &withdrawn, "--generation", "1"]));
+    let before = w.dump();
+    let out = w.finish(
+        Some(S_L),
+        &withdrawn,
+        &["--head", &w.head, "--by", "leader"],
+    );
+    w.refuse(
+        &out,
+        "invalid_input",
+        &["no acceptance criterion that is met"],
+        &before,
+    );
+
+    let earlier = w.card_named("task", "apps/c/", &["one"]);
+    result(&w.card(Some(S_A), &["take", &earlier]));
+    result(&w.card(
+        Some(S_A),
+        &[
+            "criterion",
+            &earlier,
+            "1",
+            "--generation",
+            "1",
+            "--met",
+            "--evidence",
+            "r1",
+        ],
+    ));
+    result(&w.card(Some(S_A), &["release", &earlier, "--generation", "1"]));
+    let got = result(&w.finish(Some(S_L), &earlier, &["--head", &w.head, "--by", "leader"]));
+    assert_eq!(got["closed"], json!(true), "{got}");
+    assert_eq!(got["state"], json!("done"), "{got}");
+}
+
+/// AC-20: a landing-only call is for the leader (`--by leader`) or the holder of the card; a
+/// third session is refused with every table unchanged. `card next` still shows a card whose
+/// recorded head is not on the integration branch.
+#[test]
+fn ac20_a_landing_only_call_is_for_the_leader_or_the_holder() {
+    let w = World::new();
+    let card = w.card_named("task", "apps/a/", &["one", "two"]);
+    let before = w.dump();
+    let args = ["--head", &w.head, "--met", "1=r1", "--by", "agent-b"];
+    let out = w.finish(Some(S_B), &card, &args);
+    w.refuse(
+        &out,
+        "invalid_input",
+        &["the leader or the holder"],
+        &before,
+    );
+    let listing = w.next(S_B);
+    assert!(
+        skipped_entry(&listing, &card).is_none(),
+        "a refused landing hides nothing: {listing}"
+    );
+
+    let by_leader = ["--head", &w.head, "--met", "1=r1", "--by", "leader"];
+    let got = result(&w.finish(Some(S_L), &card, &by_leader));
+    assert_eq!(got["closed"], json!(false), "{got}");
+    assert_eq!(got["events"], json!(1), "{got}");
+
+    let held = w.card_named("task", "apps/b/", &["one", "two"]);
+    result(&w.card(Some(S_A), &["take", &held]));
+    let by_holder = ["--head", &w.head, "--met", "1=r1", "--by", "agent-a"];
+    let got = result(&w.finish(Some(S_A), &held, &by_holder));
+    assert_eq!(got["closed"], json!(false), "{got}");
+    assert_eq!(got["events"], json!(1), "{got}");
+
+    let stray = w.card_named("task", "apps/c/", &["one"]);
+    w.land(&stray, &w.orphan, true);
+    let listing = w.next(S_B);
+    assert!(
+        skipped_entry(&listing, &stray).is_none(),
+        "a head outside the tip is no proof: {listing}"
+    );
+    assert!(
+        names(&listing["ready"]).contains(&stray),
+        "the card is still offered: {listing}"
+    );
+}
+
+/// AC-21: a tag named like the integration branch changes no proof: the branch is read as
+/// `refs/heads/<branch>`. A head only on the tag refuses, a head on the branch closes the card,
+/// and `card next` proves a landed card against the branch.
+#[test]
+fn ac21_a_tag_named_like_the_integration_branch_does_not_win() {
+    let w = World::new();
+    git(&w.project, &["tag", "integ", &w.orphan]);
+    let on_tag = w.card_named("task", "apps/a/", &["one"]);
+    let before = w.dump();
+    let out = w.finish(
+        Some(S_L),
+        &on_tag,
+        &["--head", &w.orphan, "--met", "1=r1", "--by", "leader"],
+    );
+    w.refuse(
+        &out,
+        "invalid_input",
+        &["not contained in the integration branch"],
+        &before,
+    );
+
+    let on_branch = w.card_named("task", "apps/b/", &["one"]);
+    let got = result(&w.finish(
+        Some(S_L),
+        &on_branch,
+        &["--head", &w.tip, "--met", "1=r1", "--by", "leader"],
+    ));
+    assert_eq!(got["closed"], json!(true), "{got}");
+    assert_eq!(got["tip"], json!(w.tip), "{got}");
+
+    let landed = w.card_named("task", "apps/c/", &["one"]);
+    w.land(&landed, &w.tip, true);
+    let listing = w.next(S_B);
+    assert_already_landed(&listing, &landed);
+}
