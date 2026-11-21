@@ -268,6 +268,8 @@ fn adapter_unverified_names_the_live_profile_session_and_its_page() {
         "Orca's pages say each Claude account keeps its own config folder but never name `CLAUDE_CONFIG_DIR`",
         "that Orca sets it is unverified",
         "https://orca.dev/docs/settings",
+        "say nothing on whether a managed account's session sees skills in the default Claude home or whether a skill install lands in each account's folder",
+        "https://orca.dev/docs/cli/skills, read 2026-11-21T01:34:31Z",
     ] {
         assert!(text.contains(phrase), "the adapter must say {phrase:?}");
     }
