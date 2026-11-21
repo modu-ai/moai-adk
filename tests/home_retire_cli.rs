@@ -34,7 +34,7 @@ fn go_home() -> (tempfile::TempDir, PathBuf) {
     write(&home, ".moai/state/active-sessions.json", "[]");
     write(&home, ".moai/credentials.yaml", "token: PLACEHOLDER\n");
     write(&home, ".moai/.env.glm", "GLM_API_KEY=PLACEHOLDER\n");
-    write(&home, ".moai/.env.typesafe", "KEY=PLACEHOLDER\n");
+    write(&home, ".moai/.env.legacy", "KEY=PLACEHOLDER\n");
     write(&home, ".moai/cache/a.bin", "x");
     write(&home, ".moai/Logs/go.log", "x\n");
     write(&home, ".moai/run/x.pid", "1\n");
@@ -213,7 +213,7 @@ fn retire_preview_classifies_every_entry_by_the_table_and_writes_nothing() {
         "run",
         "config",
         "credentials.yaml",
-        ".env.typesafe",
+        ".env.legacy",
     ] {
         assert_eq!(act(&p, name).0, "retire", "{name}: {p}");
     }
@@ -269,7 +269,7 @@ fn retire_apply_moves_only_the_retire_entries_and_changes_no_byte() {
     assert_eq!(
         moved,
         [
-            ".env.typesafe",
+            ".env.legacy",
             "Logs",
             "cache",
             "config",
