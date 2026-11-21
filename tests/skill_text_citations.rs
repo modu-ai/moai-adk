@@ -2,8 +2,9 @@
 //! Issue or pull-request number, no citation of a user or leader decision and no name of a moai-adk
 //! development script. The scan reads the shipped files of this checkout (`skills/`, `agents/`,
 //! `templates/`, `install/`); nothing is run and no HOME is touched. One folder is not read:
-//! `templates/bundle-packs/` holds ported third-party pack content with its own vocabulary (colour
-//! codes, upstream issue numbers, taxonomy ids) that cites nothing of this project's development.
+//! `templates/bundle-packs/` holds ported pack content, written for the earlier generation, with
+//! its own vocabulary (colour codes, upstream issue numbers, taxonomy ids) that cites nothing of
+//! this project's development.
 //!
 //! `PENDING` lists the shipped files that still carry such text. It can only shrink: a file that
 //! was cleaned must leave the list in the same change, so the scan keeps the rest clean.
@@ -16,10 +17,11 @@ use std::{
 /// The shipped folders, relative to the checkout.
 const SHIPPED: [&str; 4] = ["skills", "agents", "templates", "install"];
 
-/// Shipped folders the scan does not read: ported third-party pack content with its own
-/// vocabulary (colour codes like `#788C5D`, upstream issue numbers, taxonomy ids like `C-12`),
-/// none of which cites this project's development. Keep this list to whole folders of content
-/// that is not written here; a file of this project's own text goes in `PENDING` or is cleaned.
+/// Shipped folders the scan does not read: ported pack content written for the earlier
+/// generation, with its own vocabulary (colour codes like `#788C5D`, upstream issue numbers,
+/// taxonomy ids like `C-12`), none of which cites this project's development. The list is exactly
+/// that one folder (a test pins it); a file of this project's own text goes in `PENDING` or is
+/// cleaned.
 const EXEMPT_PREFIXES: [&str; 1] = ["templates/bundle-packs/"];
 
 /// Shipped files that still carry citations, sorted. Remove an entry when its file is cleaned.
@@ -297,17 +299,22 @@ fn scan_shipped_files_outside_the_pending_list_are_clean() {
     );
 }
 
-/// AC-1: an exempt prefix names a shipped folder that exists, and no pending entry sits under it
-/// (a file is either pending or exempt, so the list of what is still to clean stays honest).
+/// AC-1: the exempt list is exactly the one pack folder, a prefix names a folder, no pending
+/// entry sits under it (a file is either pending or exempt, so the list of what is still to clean
+/// stays honest), and a folder that is present holds a shipped file. The folder may be absent
+/// from a tree that has not received it yet; the other checks hold there too.
 #[test]
-fn scan_exempt_prefixes_name_existing_folders_apart_from_the_pending_list() {
+fn scan_exempt_list_is_the_one_pack_folder_apart_from_the_pending_list() {
+    assert_eq!(EXEMPT_PREFIXES, ["templates/bundle-packs/"]);
     let files = shipped();
     for prefix in EXEMPT_PREFIXES {
         assert!(prefix.ends_with('/'), "{prefix} names a folder");
-        assert!(
-            files.iter().any(|(p, _)| p.starts_with(prefix)),
-            "{prefix} holds no shipped file"
-        );
+        if root().join(prefix).is_dir() {
+            assert!(
+                files.iter().any(|(p, _)| p.starts_with(prefix)),
+                "{prefix} holds no shipped file"
+            );
+        }
         for pending in PENDING {
             assert!(
                 !pending.starts_with(prefix),
