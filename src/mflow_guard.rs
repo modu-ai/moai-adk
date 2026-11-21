@@ -3,11 +3,11 @@
 //! refuses. The integration branch and its name come from the project profile's `work_flow`.
 //!
 //! The generated script is self-contained: the branch, the override variable and the log path are
-//! baked in at install time, so the guard runs where the tool is not on PATH. `prepared` is the
-//! only transaction phase it judges — refusing there aborts the transaction — and
-//! `git merge-base --is-ancestor` decides whether the branch moves forward. An update is an
-//! exception only when the override variable names a decision note, and every exception appends
-//! one record line to the guard log.
+//! baked in at install time, so the guard runs where the tool is not on PATH. Only the
+//! `preparing` and `prepared` transaction phases are judged — refusing there aborts the
+//! transaction — and `git merge-base --is-ancestor` decides whether the branch moves forward.
+//! An update is an exception only when the override variable names a decision note, and every
+//! exception appends one record line to the guard log.
 
 use crate::claim_verify::GitSub;
 use crate::ledger::LedgerError;
@@ -16,13 +16,16 @@ use std::path::Path;
 /// The variable whose value names the decision note of an exception.
 pub const OVERRIDE_ENV: &str = "MOAI_MFLOW_FORWARD_OVERRIDE";
 
-/// The project-relative guard log the exceptions append to.
+/// The guard log the exceptions append to, read relative to the folder the hook runs in. The
+/// install step bakes the primary checkout's state root — the absolute path of the primary's
+/// `.moai` folder — so linked worktrees share one log; a relative path gives each worktree its
+/// own log (audit N3).
 pub const LOG_FILE: &str = ".moai/mflow-forward.log";
 
 /// The reference-transaction hook script for one integration branch. The branch, the override
 /// variable and the log path are baked in, shell-quoted; the script reads nothing else at run
-/// time. The log path should be the primary checkout's state root, so the linked worktrees
-/// share one log.
+/// time. The log path must be the primary checkout's state root (see `LOG_FILE`), so the
+/// linked worktrees share one log.
 ///
 /// The old value comes from `git rev-parse --verify` on the branch, not from the transaction
 /// line: this git reports the line's old value as zeros for an `update-ref`, which would read
@@ -53,10 +56,35 @@ while read -r old new name; do
     [ "$name" = "$ref" ] || continue
     if [ "$new" = "$zero" ]; then
         # pack-refs and maintenance remove the loose ref while the packed one keeps the
-        # value: the parent command names the maintenance task (audit B3).
+        # value: the parent's git subcommand names the task (audit B3). The subcommand is
+        # the first word after git that is not an option, and the options that take a
+        # separate value word (-c gc.auto=0 and friends) are read past — a substring match
+        # on the whole command line would let any guarded call through.
+        set -f
         parent=$(ps -o command= -p "$PPID" 2>/dev/null || echo "")
-        case "$parent" in
-            *pack-refs*|*maintenance*|*" gc"*) continue ;;
+        sub=""
+        seen_git=""
+        skip_value=""
+        for word in $parent; do
+            if [ -z "$seen_git" ]; then
+                case "$word" in
+                    git|*/git) seen_git=1 ;;
+                esac
+                continue
+            fi
+            if [ -n "$skip_value" ]; then
+                skip_value=""
+                continue
+            fi
+            case "$word" in
+                -c|-C|--git-dir|--work-tree|--namespace|--super-prefix|--attr-source)
+                    skip_value=1 ;;
+                -*) ;;
+                *) sub="$word" ; break ;;
+            esac
+        done
+        case "$sub" in
+            pack-refs|gc|maintenance) continue ;;
         esac
         if [ -n "$value" ]; then
             old_now=$(git rev-parse --verify "$ref" 2>/dev/null || echo "$zero")
@@ -73,6 +101,7 @@ while read -r old new name; do
         continue
     fi
     if [ -n "$value" ]; then
+        [ "$state" = "prepared" ] && mkdir -p "$(dirname "$LOG")" 2>/dev/null || true
         [ "$state" = "prepared" ] && printf '%s override %s=%s %s %s -> %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$OVERRIDE_NAME" "$value" "$ref" "$old_now" "$new" >> "$LOG"
         continue
     fi
@@ -124,14 +153,15 @@ pub fn guard_rule(
                 .and_then(|i| sub.global.get(i + 1))
                 .map(|dir| {
                     crate::hook_guards::work_tree_branch(Path::new(dir)).unwrap_or_else(|| {
-                        cwd.clone().unwrap_or_else(|| integration_branch.to_string())
+                        cwd.clone()
+                            .unwrap_or_else(|| integration_branch.to_string())
                     })
                 })
                 .or_else(|| {
                     cwd.as_ref().map(|dir| {
-                        crate::hook_guards::work_tree_branch(Path::new(dir)).unwrap_or_else(
-                            || current_branch.unwrap_or(integration_branch).to_string(),
-                        )
+                        crate::hook_guards::work_tree_branch(Path::new(dir)).unwrap_or_else(|| {
+                            current_branch.unwrap_or(integration_branch).to_string()
+                        })
                     })
                 })
                 .or_else(|| current_branch.map(str::to_string));
@@ -210,14 +240,13 @@ fn branch_rule(sub: &GitSub, integration_branch: &str) -> Option<String> {
         .iter()
         .map(|p| names_branch(p, integration_branch))
         .collect();
-    let moves = (letters.contains(&'f') || long_force)
-        && named.first().is_some_and(|hit| *hit);
+    let moves = (letters.contains(&'f') || long_force) && named.first().is_some_and(|hit| *hit);
     let renames = letters.contains(&'M') && named.iter().any(|hit| *hit);
     let deletes = letters.contains(&'D') && named.iter().any(|hit| *hit);
     (moves || renames || deletes).then(|| {
         format!(
             "m-flow guard: git branch -f/-D/-M on the integration branch {integration_branch} is \
-             refused; use git branch -d once it is merged"
+             refused; move it forward with a commit on top"
         )
     })
 }

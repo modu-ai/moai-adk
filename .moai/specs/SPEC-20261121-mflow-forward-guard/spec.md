@@ -2,7 +2,7 @@
 id: SPEC-20261121-mflow-forward-guard
 title: "The integration branch only moves forward: a reference-transaction hook and a tool guard with a recorded override"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-20
 parent: null
 ---
@@ -11,7 +11,7 @@ parent: null
 
 ## Intent
 
-오늘 한 세션이 primary 에서 로컬 통합 가지를 뒤로 돌렸어요(reflog: 06:47 reset → 06:48 → 06:50 재병합) — 그 사이 열차 후보들이 그 tip 위에 쌓여 있어서 뒤로 이동은 쌓인 작업을 조용히 무효로 만들고 커밋을 잃을 수 있어요. 이 조각은 M-Flow 프로젝트(프로필의 work_flow 가 m-flow, 통합 가지 이름은 같은 프로필의 integration_branch)에서 통합 가지의 뒤로 이동을 두 겹으로 막아요: (1) git reference-transaction 훅 — 설치 시 생성되는 셸 스크립트로, prepared 단계에서 통합 가지의 비조상 갱신과 삭제를 한 줄 사유와 함께 거절해요(된다면 그 위에 되돌림 커밋); (2) 도구 가드 — 통합 가지를 겨냥한 reset --hard/--keep·push --force/--force-with-lease·branch -f/-D 를 명령이 도는 전에 거절해요. 예외는 기록되는 것뿐이에요: 가드 환경 변수에 결정 노트 참조를 담면 통과하고 한 줄을 기록 파일에 남겨요 — 묵음 없음. ff 와 병합 커밋은 그대로 통과해요. 배선(훅 설치 단계와 도구 가드 디스패치)은 점거 중인 파일의 카드 착지 뒤 조각이고, 이 조각은 판정 엔진·스크립트 생성기·규칙·임시 저장소 시험까지를 만들어요.
+오늘 한 세션이 primary 에서 로컬 통합 가지를 뒤로 돌렸어요(reflog: 06:47 reset → 06:48 → 06:50 재병합) — 그 사이 열차 후보들이 그 tip 위에 쌓여 있어서 뒤로 이동은 쌓인 작업을 조용히 무효로 만들고 커밋을 잃을 수 있어요. 이 조각은 M-Flow 프로젝트(프로필의 work_flow 가 m-flow, 통합 가지 이름은 같은 프로필의 integration_branch)에서 통합 가지의 뒤로 이동을 두 겹으로 막아요: (1) git reference-transaction 훅 — 설치 시 생성되는 셸 스크립트로, preparing 과 prepared 위상에서 통합 가지의 비조상 갱신과 삭제를 한 줄 사유와 함께 거절해요(된다면 그 위에 되돌림 커밋); (2) 도구 가드 — 통합 가지를 겨냥한 reset --hard/--keep·push --force/--force-with-lease·branch -f/-D 를 명령이 도는 전에 거절해요. 예외는 기록되는 것뿐이에요: 가드 환경 변수에 결정 노트 참조를 담면 통과하고 한 줄을 기록 파일에 남겨요 — 묵음 없음. ff 와 병합 커밋은 그대로 통과해요. 배선(훅 설치 단계와 도구 가드 디스패치)은 점거 중인 파일의 카드 착지 뒤 조각이고, 이 조각은 판정 엔진·스크립트 생성기·규칙·임시 저장소 시험까지를 만들어요.
 
 ## Non-goals
 
@@ -22,7 +22,7 @@ parent: null
 
 ## Requirements
 
-- REQ-1: The generated reference-transaction hook shall refuse, while the transaction is prepared, an update of the integration branch whose new value is not a descendant of its old value, and it prints a one-line reason that names the forward-only way of a revert commit on top. · failure: none — the refusal is one exit with one line, nothing else is written.
+- REQ-1: The generated reference-transaction hook shall refuse, while the transaction is preparing or prepared, an update of the integration branch whose new value is not a descendant of its old value, and it prints a one-line reason that names the forward-only way of a revert commit on top. · failure: none — the refusal is one exit with one line, nothing else is written.
 - REQ-2: The hook shall refuse the deletion of the integration branch and allow its creation from the zero value. · failure: none — the zero values are the git conventions for deletion and creation.
 - REQ-3: The hook shall allow a fast-forward update and a merge commit on the integration branch, and it leaves every other reference unjudged. · failure: none — the judgement reads the transaction lines and nothing outside them.
 - REQ-4: The hook shall treat the update as an exception only when the guard environment variable names a decision note, and it appends one record line with the note reference, the old and new values and the command stamp to the guard log. · failure: none — without the variable the refusal stands.
