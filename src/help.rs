@@ -350,8 +350,8 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
         "card",
         &[
             "card add --title fix-login --ac login-works --scope src/login/ --project .",
+            "card ready C-1 --project .",
             "card note C-1 --kind report --project . < note.md",
-            "card guard prepared < transaction.txt",
         ],
     ),
     (
