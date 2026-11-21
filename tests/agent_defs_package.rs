@@ -670,8 +670,9 @@ fn interview_question_bank_covers_the_project_axes() {
     assert!(bank.contains("\"source\": \"user\""));
 }
 
-/// Card C-70 AC-1/AC-4: the `work_flow` row comes after the versioning rows, offers m-flow
-/// first and recommended with three alternatives, and the bank states each flow in a few lines;
+/// Card C-70 AC-1/AC-4: the `work_flow` row comes after the versioning rows, offers GitHub flow
+/// first and recommended (user decision 2026-11-20) with three alternatives, and the bank states
+/// each flow in a few lines;
 /// the PROJECT workflow previews the worktree base write and applies it only after the pick.
 #[test]
 fn work_flow_row_offers_m_flow_first_and_the_bank_states_each_flow() {
@@ -690,8 +691,11 @@ fn work_flow_row_offers_m_flow_first_and_the_bank_states_each_flow() {
         .map(|c| c.trim().to_string())
         .collect();
     assert_eq!(cells[1], "the profile has no `work_flow`");
-    assert!(cells[3].starts_with("m-flow (recommended)"), "{cells:?}");
-    for alt in ["GitHub flow", "trunk-based", "git-flow"] {
+    assert!(
+        cells[3].starts_with("GitHub flow (recommended)"),
+        "{cells:?}"
+    );
+    for alt in ["m-flow", "trunk-based", "git-flow"] {
         assert!(cells[3].contains(alt), "{alt}");
     }
     assert_eq!(cells[4], "profile `work_flow`");
