@@ -190,7 +190,12 @@ fn a_stuck_lsof_is_stopped_and_the_check_reports_unavailable() {
     let home = go_home();
     let stub = home.path().join("stub");
     let log = home.path().join("lsof.log");
-    stub_lsof(&stub, &log, "exec sleep 20");
+    // A few lines and then a hang: the stop-by-deadline path, not the empty-output one.
+    stub_lsof(
+        &stub,
+        &log,
+        "printf 'p1\\nfcwd\\nn/nowhere\\n'; exec sleep 20",
+    );
     let start = Instant::now();
     let p = plan(&home, &stub, &[("MOAI_CLI_TEST_LSOF_TIMEOUT_MS", "500")]);
     let took = start.elapsed();
@@ -437,7 +442,7 @@ fn an_lsof_cut_off_by_the_time_limit_refuses_the_removal() {
     fs::write(
         stub.join("lsof"),
         format!(
-            "#!/bin/sh\nn=$(cat '{cnt}/'$PPID'.count' 2>/dev/null || echo 0)\necho $((n+1)) > '{cnt}/'$PPID'.count'\nif [ \"$n\" -eq 0 ]; then echo 'n/nowhere/at/all'; else exec sleep 20; fi\n",
+            "#!/bin/sh\nn=$(cat '{cnt}/'$PPID'.count' 2>/dev/null || echo 0)\necho $((n+1)) > '{cnt}/'$PPID'.count'\nif [ \"$n\" -eq 0 ]; then echo 'n/nowhere/at/all'; else printf 'p1\\nfcwd\\nn/nowhere\\n'; exec sleep 20; fi\n",
             cnt = cnt.display(),
         ),
     )

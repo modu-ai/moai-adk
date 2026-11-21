@@ -549,13 +549,15 @@ fn the_hygiene_move_recheck_runs_its_own_scan() {
     let cnt = fx.home.join("cnt");
     fs::create_dir_all(&cnt).unwrap();
     let build = fx.build().display().to_string();
-    // The counter is per calling process ($PPID): each command's first scan is empty, every
-    // scan after it — the per-item re-checks — sees a working folder inside build-idle.
+    // The counter is per calling process ($PPID): each command's first scan is empty. After
+    // that, only the '-a -d cwd' call — the working-folder scan — gets the working folder
+    // inside build-idle; the machine listing keeps the harmless path, so a regression that
+    // reads the whole listing for a cwd question cannot pass this test.
     stub_lsof(
         &stub,
         &log,
         &format!(
-            "n=$(cat '{cnt}/'$PPID'.count' 2>/dev/null || echo 0); echo $((n+1)) > '{cnt}/'$PPID'.count'; if [ \"$n\" -eq 0 ]; then echo 'n/nowhere/at/all'; else printf 'fcwd\\nn/%s\\n' '{build}'; fi",
+            "n=$(cat '{cnt}/'$PPID'.count' 2>/dev/null || echo 0); echo $((n+1)) > '{cnt}/'$PPID'.count'; if [ \"$n\" -eq 0 ]; then echo 'n/nowhere/at/all'; elif echo \"$*\" | grep -q -- '-a -d cwd'; then printf 'fcwd\\nn/%s\\n' '{build}'; else echo 'n/nowhere/at/all'; fi",
             cnt = cnt.display(),
         ),
     );
@@ -586,10 +588,20 @@ fn the_hygiene_move_recheck_runs_its_own_scan() {
     );
     assert_eq!(v["ok"], serde_json::json!(true), "{v}");
 
-    // The build folder became busy after the plan: the fresh re-check keeps it in place.
+    // The build folder became busy after the plan: the fresh re-check keeps it in place,
+    // with exactly the in_use reason — not file_open_in_use and not an unknown one.
     assert!(fx.build().exists(), "the busy build folder was moved: {v}");
-    let report = serde_json::to_string(&v).unwrap();
-    assert!(report.contains("in_use"), "no in_use refusal: {v}");
+    let skipped = v["result"]["skipped"]
+        .as_array()
+        .cloned()
+        .unwrap_or_default();
+    let kept = skipped.iter().find(|i| {
+        i["path"]
+            .as_str()
+            .is_some_and(|p| p == fx.build().display().to_string())
+    });
+    let kept = kept.unwrap_or_else(|| panic!("the busy folder is not in the result: {v}"));
+    assert_eq!(kept["reason"], "in_use", "{v}");
 
     // And the re-checks ran scans of their own, not the command's start table.
     let calls = fs::read_to_string(&log).unwrap_or_default().lines().count();
@@ -610,13 +622,14 @@ fn an_lsof_cut_off_by_the_time_limit_refuses_the_hygiene_move() {
     let stub = fx.home.join("stub");
     let cnt = fx.home.join("cnt");
     fs::create_dir_all(&cnt).unwrap();
-    // The first scan of each command answers; every scan after it — the re-checks — hangs
-    // past the limit.
+    // The first scan of each command answers; every scan after it — the re-checks — prints
+    // a few lines (so the listing is not empty) and then hangs past the limit, which walks
+    // the stop-by-deadline path — not the empty-output one.
     stub_lsof(
         &stub,
         &fx.home.join("lsof.log"),
         &format!(
-            "n=$(cat '{cnt}/'$PPID'.count' 2>/dev/null || echo 0); echo $((n+1)) > '{cnt}/'$PPID'.count'; if [ \"$n\" -eq 0 ]; then echo 'n/nowhere/at/all'; else exec sleep 20; fi",
+            "n=$(cat '{cnt}/'$PPID'.count' 2>/dev/null || echo 0); echo $((n+1)) > '{cnt}/'$PPID'.count'; if [ \"$n\" -eq 0 ]; then echo 'n/nowhere/at/all'; else printf 'p1\\nfcwd\\nn/nowhere\\n'; exec sleep 20; fi",
             cnt = cnt.display(),
         ),
     );
