@@ -8,7 +8,6 @@ use common::{git, MOAI_BIN};
 use serde_json::{json, Value};
 use std::{
     fs,
-    os::unix::fs::PermissionsExt,
     path::{Path, PathBuf},
     process::Command,
     time::{Duration, Instant},
@@ -44,7 +43,11 @@ fn stub_lsof(dir: &Path, log: &Path, then: &str) {
         format!("#!/bin/sh\necho \"$*\" >> '{}'\n{then}\n", log.display()),
     )
     .unwrap();
-    fs::set_permissions(&script, fs::Permissions::from_mode(0o755)).unwrap();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        fs::set_permissions(&script, fs::Permissions::from_mode(0o755)).unwrap();
+    }
 }
 
 fn plan(home: &TempHome, stub_dir: &Path, env: &[(&str, &str)]) -> Value {
@@ -393,7 +396,11 @@ fn the_deletion_recheck_runs_its_own_scan() {
         ),
     )
     .unwrap();
-    fs::set_permissions(stub.join("lsof"), fs::Permissions::from_mode(0o755)).unwrap();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        fs::set_permissions(stub.join("lsof"), fs::Permissions::from_mode(0o755)).unwrap();
+    }
 
     let now = later();
     let p = gc_plan(&fx, now, Some(&stub), &[]);
@@ -447,7 +454,11 @@ fn an_lsof_cut_off_by_the_time_limit_refuses_the_removal() {
         ),
     )
     .unwrap();
-    fs::set_permissions(stub.join("lsof"), fs::Permissions::from_mode(0o755)).unwrap();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        fs::set_permissions(stub.join("lsof"), fs::Permissions::from_mode(0o755)).unwrap();
+    }
 
     let now = later();
     let p = gc_plan(&fx, now, Some(&stub), &[]);
