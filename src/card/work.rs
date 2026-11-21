@@ -661,9 +661,12 @@ pub fn done(
     let (landing, hint) = mflow_landing(&mut ledger, project, card_id)?;
     let moved = workflow::done(&mut ledger, card_id, holder, generation, landing).map_err(|e| {
         let refused = refusal("done", e);
-        match &hint {
-            Some(h) => format!("{refused}; {h}"),
-            None => refused,
+        // The hint explains the landing: it belongs on the landing-related refusal only
+        // (the delta audit's N1) — a card refused for an open criterion or a missing
+        // reservation reads its own reason, not the profile's.
+        match (&hint, refused.contains("no merged pull request is linked")) {
+            (Some(h), true) => format!("{refused}; {h}"),
+            _ => refused,
         }
     })?;
     Ok(moved_json("done", &id, &moved))
