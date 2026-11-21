@@ -29,16 +29,17 @@ created: 2026-11-21
 
 - REQ-1: `check affected --flaky-history <path>` shall append one history line per test invocation of a target, carrying the head, the target name, the exit code and the seconds it took.
 - REQ-2: The flaky score of a target shall count its fail-then-pass transitions recorded against the same head.
-- REQ-3: The answer shall carry the flaky targets with their scores, flakiest first, and the summary shall end with the total flaky count before the result word.
-- REQ-4: The flaky score shall be computed from the history file alone, so the CLI test can seed and read it without running the real tools.
+- REQ-3: The answer shall carry the flaky targets with their scores, flakiest first.
+- REQ-4: The summary shall end with the total flaky count before the result word.
+- REQ-5: The flaky score shall be computed from the history file alone, so the CLI test can seed and read it without running the real tools.
 
 ## Acceptance
 
-- AC-1 (REQ-1, REQ-4): 가짜 도구로 두 번 실행 — 첫 실행은 한 대상이 실패(종료 3)하고 이력 파일에
+- AC-1 (REQ-1, REQ-5): 가짜 도구로 두 번 실행 — 첫 실행은 한 대상이 실패(종료 3)하고 이력 파일에
   head·대상·종료 코드·초가 줄로 쌓여요; 둘째 실행(같은 트리, 전부 통과)이 그 이력을 읽어 점수를
   내요.
   verify: `cargo test --locked --offline --test check_affected_cli a_flaky_history_records_targets_and_scores_a_fail_then_pass`
-- AC-2 (REQ-2, REQ-3): 둘째 실행의 결과에 flakiest-first 배열(해당 대상 점수 1)과 요약의
+- AC-2 (REQ-2…REQ-4): 둘째 실행의 결과에 flakiest-first 배열(해당 대상 점수 1)과 요약의
   ` flaky=1 ` 이 있어요.
   verify: 같은 시험
 - AC-3: 이웃 검사.
