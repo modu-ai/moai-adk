@@ -2,7 +2,7 @@
 id: SPEC-20261121-card-finish
 title: "card finish closes a landed or reported card in one step, and card next and card list stop offering a card that already landed"
 status: draft
-revision: 2
+revision: 3
 created: 2026-11-21
 ---
 
@@ -24,9 +24,9 @@ Revision 2 (leader decision of 2026-11-21, user order to repair card closing): g
 
 ## Requirements
 
-- REQ-1: When a leader runs finish on a code card whose landed head is an ancestor of the integration tip, the card finish command shall close the card in one transaction and record the head, the tip, the generation and the caller in one landing event and one finish event · failure: none — a head outside the tip, an unknown head or a profile without an integration branch refuses and writes nothing.
+- REQ-1: When a leader runs finish on a code card whose landed head is an ancestor of the integration tip, the card finish command shall close the card in one transaction and record the head, the tip, the generation and the caller in one landing event and one finish event · failure: none — a head outside the tip, an unknown head, a profile without an integration branch, or on an m-flow profile a merged pull request link without a proven landing refuses and writes nothing.
 - REQ-2: When every open criterion of a card has one met option, the card finish command shall mark each of them met and close the card · failure: none — a met option that names a number that is not open or names a number twice refuses and writes nothing.
-- REQ-3: When an open criterion of a code card has no met option, the card finish command shall record the proven landing once and answer which criteria are open without any other change · failure: none — a head that git does not prove or a landing that is not recorded refuses and writes nothing.
+- REQ-3: When an open criterion of a code card has no met option, the card finish command shall record the proven landing once for the leader or the holder and answer which criteria are open without any other change · failure: none — a head that git does not prove, a landing that is not recorded, or a caller that is neither the leader nor the holder refuses and writes nothing.
 - REQ-4: When another session holds a reservation whose lease has not ended, the card finish command shall refuse and leave the ledger unchanged · failure: none — a lease of the caller or a lease that has ended passes.
 - REQ-5: When the card kind is research or audit, the card finish command shall accept an existing report file or a verdict note of the card as the evidence in place of a landed head · failure: none — a path that is not a regular file under the reports folder or the project folder, a note that is not a report or decision note, or an open criterion without a met option refuses and writes nothing.
 - REQ-6: When the card kind changes the repository, the card finish command shall accept only landing evidence and refuse report evidence · failure: none — the refusal writes nothing.
@@ -56,6 +56,10 @@ Revision 2 (leader decision of 2026-11-21, user order to repair card closing): g
 - AC-15 (REQ-9): two processes that call finish on one card at once give exactly one success and one refusal, one done event and one release event · verify: `cargo test --locked --offline --test card_finish_cli ac15_`
 - AC-16 (REQ-10): a generation lower or higher than the card's refuses with every table unchanged and no fence_reject event, the current generation passes, and a call without the option passes · verify: `cargo test --locked --offline --test card_finish_cli ac16_`
 - AC-17 (REQ-12): releasing a card that has a landing event answers landed true and names `card finish`, releasing one without a landing keeps the old answer, and no git command runs · verify: `cargo test --locked --offline --test card_finish_cli ac17_`
+- AC-18 (REQ-1): on an m-flow profile a merged pull request link whose merge commit is not in the repository refuses with every table unchanged and the answer of `card done` for the same card, the same card closes with a proven head, and on a github-flow profile the link alone still closes · verify: `cargo test --locked --offline --test card_finish_cli ac18_`
+- AC-19 (REQ-1, REQ-2): a code card whose SPEC fails the check refuses with every table unchanged, a card with no met criterion and no met option refuses, and a card with one criterion met earlier closes with no met option · verify: `cargo test --locked --offline --test card_finish_cli ac19_`
+- AC-20 (REQ-3, REQ-11): a landing-only call by a session that is neither the leader nor the holder refuses with every table unchanged, the leader (`--by leader`) and the holder pass, and `card next` does not hide a card whose recorded head is not on the tip · verify: `cargo test --locked --offline --test card_finish_cli ac20_`
+- AC-21 (REQ-1, REQ-11): a tag named like the integration branch and pointing elsewhere changes no proof: a head on the branch closes the card, a head only on the tag refuses, and `card next` reads the branch · verify: `cargo test --locked --offline --test card_finish_cli ac21_`
 
 ## Scope
 
