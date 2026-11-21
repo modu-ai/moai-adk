@@ -109,6 +109,15 @@ pub struct Classified {
 }
 
 impl Classified {
+    /// This generation owns the project's state: the verdict is `rust`, or `mixed` with a valid
+    /// `moai.json` — git brought Go markers back beside the marker (SPEC-20261121-resurrected-marker).
+    /// The older marker name `moai-cli.json` beside Go markers owns nothing. The verdict name
+    /// stays `mixed`, which go-state and the HOME code read as before.
+    pub fn rust_owned(&self) -> bool {
+        self.generation == "rust"
+            || (self.generation == "mixed" && self.marker_file == Some("moai.json"))
+    }
+
     pub fn to_json(&self) -> Value {
         let mut v = json!({
             "generation": self.generation,
@@ -564,7 +573,7 @@ fn classify_inner(
 /// one writes). A project gets `.moai/` only through a migration that writes the marker last,
 /// so every project without a valid marker keeps exactly the paths it had before.
 pub fn dir(root: &Path) -> &'static str {
-    if classify(root).generation == "rust" {
+    if classify(root).rust_owned() {
         MOAI_DIR
     } else {
         crate::PROJECT_STATE_DIR

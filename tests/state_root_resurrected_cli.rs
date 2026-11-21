@@ -115,7 +115,7 @@ fn card_commands_work_when_go_markers_came_back_beside_a_valid_marker() {
         &fx.p,
     ]);
     let name = added["name"].as_str().unwrap().to_string();
-    let listed = fx.ok(&["card", "list", "--project", &fx.p]);
+    let listed = fx.ok(&["card", "list", &fx.p]);
     assert!(listed.to_string().contains(&name), "{listed}");
     let shown = fx.ok(&["card", "show", &name, "--project", &fx.p]);
     assert!(shown.to_string().contains("\"t\""), "{shown}");
@@ -124,8 +124,10 @@ fn card_commands_work_when_go_markers_came_back_beside_a_valid_marker() {
 #[test]
 fn go_markers_without_a_valid_marker_keep_failing_the_way_they_do() {
     let fx = Fx::new(false);
-    let v = fx.run(&["card", "list", "--project", &fx.p]);
+    let v = fx.run(&["card", "list", &fx.p]);
     assert_eq!(v["ok"], json!(false), "{v}");
+    let message = v["error"]["message"].as_str().unwrap();
+    assert!(message.contains("project profile missing"), "{v}");
     let plan = fx.plan();
     assert_eq!(plan["state_root"]["generation"], json!("go"), "{plan}");
     assert!(step(&plan, "go-residue").is_none(), "{plan}");
