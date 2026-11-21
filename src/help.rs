@@ -492,7 +492,7 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("lane-resume-check", &["lane-resume-check --file comment.md"]),
     (
         "lane-stop-hook",
-        &["lane-stop-hook --lane agent-1 --repo modu-ai/moai-adk < stop.json"],
+        &["lane-stop-hook --lane agent-1 --repo modu-ai/moai-adk"],
     ),
     (
         "lane-duty-line",

@@ -7,8 +7,9 @@ mod common;
 use common::CleanEnv;
 use serde_json::{json, Value};
 use std::fs;
+use std::io::Write as _;
 use std::path::Path;
-use std::process::Command;
+use std::process::{Command, Stdio};
 
 const HEAD: &str = "0123456789abcdef0123456789abcdef01234567";
 
@@ -280,4 +281,98 @@ fn resume_note_render_then_check() {
         .as_str()
         .unwrap()
         .contains("uncommitted"));
+}
+
+/// Every file, folder and link under `dir` with its bytes (a link with its target), sorted, so a
+/// run can be compared with what was there before it.
+fn tree_listing(dir: &Path) -> Vec<(String, String)> {
+    let mut out = Vec::new();
+    let mut stack = vec![dir.to_path_buf()];
+    while let Some(d) = stack.pop() {
+        for entry in fs::read_dir(&d).unwrap() {
+            let path = entry.unwrap().path();
+            let rel = path.strip_prefix(dir).unwrap().display().to_string();
+            let meta = fs::symlink_metadata(&path).unwrap();
+            if meta.is_dir() {
+                out.push((rel, "dir".to_string()));
+                stack.push(path);
+            } else if meta.is_file() {
+                out.push((rel, format!("file {:?}", fs::read(&path).unwrap())));
+            } else {
+                out.push((rel, format!("other {:?}", fs::read_link(&path).ok())));
+            }
+        }
+    }
+    out.sort();
+    out
+}
+
+/// SPEC lane-goal-leader-codex-removed AC-5: the `lane-stop-hook` command that an old Codex Stop
+/// hook still calls answers with one line on standard error saying the host was removed, prints
+/// nothing on standard output, exits 0 and writes nothing, whatever it is given: a closed input,
+/// an empty pipe, 64 KiB of input, or the old `--snapshot` flag with a file that does not exist.
+/// Both names of the binary are run, in a temporary project with a temporary HOME of its own.
+#[test]
+fn the_lane_stop_hook_command_answers_one_line_and_exit_zero() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = fs::canonicalize(tmp.path()).unwrap();
+    let (home, project) = (root.join("home"), root.join("project"));
+    fs::create_dir_all(&home).unwrap();
+    fs::create_dir_all(&project).unwrap();
+    let missing = root.join("no-such-folder").join("snapshot.json");
+    let missing = missing.to_str().unwrap();
+    let base = ["lane-stop-hook", "--lane", "agent-1", "--repo", "o/r"];
+    let with_snapshot = [&base[..], &["--snapshot", missing]].concat();
+    let big = vec![b'x'; 64 * 1024];
+
+    // (name, arguments, input): `None` is a closed input, `Some` is a pipe that gets the bytes.
+    type Case<'a> = (&'a str, &'a [&'a str], Option<&'a [u8]>);
+    let cases: Vec<Case> = vec![
+        ("closed input", &base, None),
+        ("empty pipe", &base, Some(b"")),
+        ("64 KiB on the pipe", &base, Some(&big)),
+        ("the old snapshot flag", &with_snapshot, None),
+        ("snapshot flag and input", &with_snapshot, Some(&big)),
+    ];
+    let before = (tree_listing(&home), tree_listing(&project));
+    let mut answers = Vec::new();
+    for exe in [common::MOAI_BIN, common::MOAI_CLI_BIN] {
+        for (name, args, input) in &cases {
+            let mut child = Command::new(exe)
+                .clean_env()
+                .env("HOME", &home)
+                .env("PATH", "/usr/bin:/bin")
+                .current_dir(&project)
+                .args(*args)
+                .stdin(if input.is_some() {
+                    Stdio::piped()
+                } else {
+                    Stdio::null()
+                })
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .spawn()
+                .unwrap();
+            if let Some(mut pipe) = child.stdin.take() {
+                // The command may exit before it reads: a refused write is no failure.
+                let _ = pipe.write_all(input.unwrap());
+            }
+            let out = child.wait_with_output().unwrap();
+            let stderr = String::from_utf8_lossy(&out.stderr).into_owned();
+            assert_eq!(out.status.code(), Some(0), "{name}: {stderr:?}");
+            assert!(out.stdout.is_empty(), "{name}: {:?}", out.stdout);
+            assert!(stderr.ends_with('\n'), "{name}: {stderr:?}");
+            assert_eq!(stderr.trim_end().lines().count(), 1, "{name}: {stderr:?}");
+            assert!(stderr.contains("removed"), "{name}: {stderr:?}");
+            answers.push(stderr);
+            assert_eq!(
+                (tree_listing(&home), tree_listing(&project)),
+                before,
+                "{name}: the HOME or the project changed"
+            );
+        }
+    }
+    // The same answer every time, and nothing was there to begin with or appeared.
+    assert!(answers.windows(2).all(|w| w[0] == w[1]), "{answers:?}");
+    assert!(before.0.is_empty() && before.1.is_empty(), "{before:?}");
 }
