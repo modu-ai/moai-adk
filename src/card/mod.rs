@@ -18,6 +18,7 @@
 
 pub mod command;
 pub mod dispatch;
+pub mod early_reclaim;
 pub mod export_db;
 pub mod export_dir;
 pub mod export_format;

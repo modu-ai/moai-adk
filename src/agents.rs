@@ -6,6 +6,7 @@
 //! overwriting. AGENTS.local.md is created once and never modified afterwards.
 
 use crate::apply::{self, decide, read_opt, relative_ok, root_of, target, Decision};
+use crate::retired_hosts::owned_entry_retired;
 use crate::state_root;
 use crate::{digest, read_profile, Profile};
 use serde::{Deserialize, Serialize};
@@ -1119,7 +1120,7 @@ fn lists_local(request: &AgentsRequest, ignore_text: Option<&str>) -> bool {
 /// it belongs to the last generation apply), the owned sections, and the personal files seen
 /// once (a legacy entry without a section becomes created-once).
 type Carried = (Option<String>, Option<String>, Vec<OwnedFile>, Vec<String>);
-fn carried(previous: Option<Manifest>) -> Carried {
+fn carried(active: &[&str], previous: Option<Manifest>) -> Carried {
     let Some(m) = previous else {
         return (None, None, Vec::new(), Vec::new());
     };
@@ -1132,7 +1133,11 @@ fn carried(previous: Option<Manifest>) -> Carried {
     let owned = m
         .owned_files
         .into_iter()
-        .filter(|f| f.section_id.is_some())
+        .filter(|f| {
+            f.section_id
+                .as_deref()
+                .is_some_and(|id| !owned_entry_retired(id, active))
+        })
         .collect();
     (m.workflow_id, m.interview_revision, owned, created)
 }
@@ -1218,6 +1223,7 @@ fn manifest_bytes_of(m: &Manifest) -> Vec<u8> {
 /// file other than the manifest is `unchanged` (#2936 Q3 B). Rows of any other action are not
 /// modelled, so a caller asks only in that case.
 fn predict_manifest(
+    active: &[&str],
     root: &Path,
     profile: &Profile,
     profile_bytes: &[u8],
@@ -1226,7 +1232,7 @@ fn predict_manifest(
     files: &[FilePlan],
 ) -> Result<Manifest> {
     let manifest_rel = manifest_rel(root);
-    let mut carried = carried(previous);
+    let mut carried = carried(active, previous);
     for f in files {
         if f.path == manifest_rel || f.action != "unchanged" {
             continue;
@@ -1244,6 +1250,7 @@ fn predict_manifest(
 
 /// [`predict_manifest`] for generation (#2936 Q3 B): the value its apply hook then amends.
 pub(crate) fn predicted_manifest_value(
+    active: &[&str],
     root: &Path,
     request: &AgentsRequest,
     files: &[FilePlan],
@@ -1251,7 +1258,15 @@ pub(crate) fn predicted_manifest_value(
     let root = root_of(root)?;
     let (profile, profile_bytes) = read_profile(&root)?;
     let previous = read_manifest(&root, &profile.project_id)?;
-    let m = predict_manifest(&root, &profile, &profile_bytes, previous, request, files)?;
+    let m = predict_manifest(
+        active,
+        &root,
+        &profile,
+        &profile_bytes,
+        previous,
+        request,
+        files,
+    )?;
     Ok(serde_json::to_value(&m).expect("typed manifest"))
 }
 
@@ -1505,6 +1520,7 @@ pub(crate) fn agents_plan_for(
                 .iter()
                 .all(|f| f.action == "unchanged" || f.action == "skip")
                 && manifest_bytes_of(&predict_manifest(
+                    &crate::generation::HOSTS,
                     &root,
                     &profile,
                     &profile_bytes,
@@ -1621,12 +1637,21 @@ pub(crate) fn agents_apply_amended(
     permission: &str,
     amend: &mut dyn FnMut(&Path, &mut Value) -> Result<()>,
 ) -> Result<Value> {
-    agents_apply_amended_for(root, p, confirmed, permission, false, amend)
+    agents_apply_amended_for(
+        &crate::generation::HOSTS,
+        root,
+        p,
+        confirmed,
+        permission,
+        false,
+        amend,
+    )
 }
 
 /// `agents_apply_amended` whose re-plan uses `agents_plan_for`: generation passes `true`
 /// only when its own `amend` hook writes the `workflow_reference` directory (#2274).
 pub(crate) fn agents_apply_amended_for(
+    active: &[&str],
     root: &Path,
     p: AgentsPlan,
     confirmed: &str,
@@ -1680,7 +1705,7 @@ pub(crate) fn agents_apply_amended_for(
     let previous = read_manifest(&root, &profile.project_id)?;
     // #2127: the generation linkage belongs to the last generation apply; an
     // agents-only apply carries it forward instead of resetting it.
-    let (workflow_id, interview_revision, mut owned, mut created) = carried(previous);
+    let (workflow_id, interview_revision, mut owned, mut created) = carried(active, previous);
     let mut applied = Vec::new();
     let step = |applied: &[String], path: &str, e: String| {
         format!(

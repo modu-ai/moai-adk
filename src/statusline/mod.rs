@@ -39,7 +39,13 @@ pub fn render(stdin: &[u8], ctx: &state::Context) -> String {
     let profile = (!ctx.no_color())
         .then(|| color::Profile::from_colorterm(ctx.var("COLORTERM").unwrap_or("")));
     let status = state::collect(input.as_ref(), ctx);
-    render::Renderer::new(&config, profile).render(&status) + "\n"
+    // The weekly reset countdown measures against the render's clock (the --now-unix seam,
+    // SPEC-20261121-statusline-detached REQ-6): without it the renderer would count from
+    // epoch 0 (audit B1 on the slice head).
+    render::Renderer::new(&config, profile)
+        .with_now(ctx.now)
+        .render(&status)
+        + "\n"
 }
 
 /// Largest accepted stdin payload. One extra byte is read so an oversized stream

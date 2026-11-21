@@ -261,6 +261,70 @@ fn procedure_snapshots_the_status_around_every_apply() {
     }
 }
 
+/// The work-ledger bullet of step 3, up to the next bullet or the next unindented line.
+fn work_ledger_bullet() -> String {
+    let text = skill_text("workflows/project.md");
+    let mut out = String::new();
+    let mut inside = false;
+    for line in text.lines() {
+        if line.starts_with("   - Work ledger") {
+            inside = true;
+        } else if inside && (line.starts_with("   - ") || !line.starts_with(' ')) {
+            break;
+        }
+        if inside {
+            out.push_str(line);
+            out.push('\n');
+        }
+    }
+    assert!(!out.is_empty(), "project.md has no `- Work ledger` step");
+    out
+}
+
+/// The paragraph of the Completion Check section that fixes the card-ledger registration
+/// pick's place, up to the next blank line.
+fn ledger_pick_paragraph() -> String {
+    let text = skill_text("workflows/project.md");
+    let start = position(&text, "**The card-ledger registration pick.**");
+    assert!(
+        position(&text, "## Completion Check") < start,
+        "the pick paragraph sits inside the Completion Check section"
+    );
+    let tail = &text[start..];
+    let end = tail.find("\n\n").unwrap_or(tail.len());
+    tail[..end].to_string()
+}
+
+/// The pick's fixed place (survey finding G13): the work-ledger bullet keeps its pinned
+/// preview sentence and names the fixed place, and the Completion Check section carries one
+/// paragraph that says where in the check's offer the pick sits, preview first, apply only
+/// after the user picks it.
+#[test]
+fn the_ledger_register_pick_has_a_fixed_place_in_the_completion_check() {
+    let bullet = work_ledger_bullet();
+    let pinned = "Which ledger is used is what is not asked; creating it writes under the real HOME and waits for its own pick after the read-only `moai ledger-register-plan <project>` preview";
+    assert!(bullet.contains(pinned), "pinned sentence kept: {bullet}");
+    for text in ["fixed place", "completion check"] {
+        assert!(bullet.contains(text), "{text:?} is missing from: {bullet}");
+    }
+    let para = ledger_pick_paragraph();
+    for text in [
+        "**The card-ledger registration pick.**",
+        "The pick of the work-ledger bullet",
+        "`moai ledger-register-plan <project>`",
+        "`moai ledger-register-apply`",
+        "after the plan steps",
+        "before the closing-commit offer of step 8",
+        "only after the user picks it",
+        "no registered card ledger",
+        "left the pick out",
+        "already registered",
+        "cancelled, empty or unanswered",
+    ] {
+        assert!(para.contains(text), "{text:?} is missing from: {para}");
+    }
+}
+
 /// The name rule the text states for step 8: a secret-looking name anywhere in the path.
 fn looks_secret(path: &str) -> bool {
     path.split('/').any(|part| {

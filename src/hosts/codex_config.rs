@@ -18,6 +18,7 @@
 //! changes only when the user left it as MoAI owned it. Everything else in the file — other
 //! keys, tables, comments, blank lines, order — is kept byte for byte (`toml_edit`). Trust is
 //! never written: it lives in the user config, which is the home, and the home is blocked.
+use crate::hosts::config_backup::{write_backup, Backup, BACKUP_DIR, CONFIG_LIMIT};
 use serde_json::{json, Map, Value};
 use std::{
     fs,
@@ -52,8 +53,6 @@ const PROJECT_IGNORED: [&str; 10] = [
 const CONFIG_FILE: &str = ".codex/config.toml";
 /// Ownership receipt under the project state root, the same shape as the Claude settings one.
 const CONFIG_RECEIPT: &str = "manifests/codex-config.json";
-/// Size bound for the config file, its receipt and the rendered result.
-pub const CONFIG_LIMIT: u64 = 262_144;
 /// Upper bound MoAI accepts for `project_doc_max_bytes` (the reference states none).
 pub const MAX_DOC_BYTES: i64 = 1024 * 1024;
 const MAX_LIST: usize = 32;
@@ -381,18 +380,6 @@ struct ConfigState {
     digest: String,
 }
 
-/// The copy of the config a replacement keeps (SPEC-20261119-codex-conflict-choices). The hook
-/// files keep theirs the same way (SPEC-20261120-hooks-conflict-choices), so the writer is shared.
-pub(crate) struct Backup {
-    pub(crate) rel: String,
-    pub(crate) path: PathBuf,
-    pub(crate) bytes: Vec<u8>,
-}
-
-/// The folder of the copies, under the project state folder, which the managed `.gitignore`
-/// block already ignores; a copy is named by the digest of the bytes it holds.
-pub(crate) const BACKUP_DIR: &str = "backups";
-
 fn config_state(
     project: &Path,
     home: &Path,
@@ -677,21 +664,6 @@ pub fn config_plan_with(
         });
     }
     Ok(plan)
-}
-
-/// Keeps the copy of the config before a replacement. A copy of the same bytes left by an
-/// interrupted run is reused; a file of that name with other bytes is never overwritten.
-pub(crate) fn write_backup(b: &Backup) -> Result<()> {
-    match read_existing(&b.path)? {
-        Some(held) if held == b.bytes => Ok(()),
-        Some(_) => Err(format!(
-            "backup {} holds other bytes; exclusive create refused",
-            b.rel
-        )),
-        // Private: the config can hold secrets (an MCP server's `env`), and the copy must not
-        // be more readable than the file it keeps, whatever the original's mode was.
-        None => crate::apply::publish_exclusive_mode(&b.path, &b.bytes, Some(0o600)),
-    }
 }
 
 fn receipt_bytes(
