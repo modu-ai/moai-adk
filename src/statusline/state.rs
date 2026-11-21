@@ -1650,7 +1650,7 @@ mod tests {
     #[test]
     fn a_backup_is_read_only_after_the_move_to_the_new_state_folder() {
         let tmp = tempfile::tempdir().unwrap();
-        std::fs::create_dir_all(tmp.path().join(".moai-cli")).unwrap();
+        std::fs::create_dir_all(tmp.path().join(crate::fixed_state!())).unwrap();
         // The project is found by its `.moai/` folder, which has no Rust marker: the state is still
         // in the earlier folder, and the backup beside it is nobody's business.
         std::fs::create_dir_all(tmp.path().join(".moai")).unwrap();
