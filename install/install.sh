@@ -150,11 +150,10 @@ choose_language() {
     echo "  2) 한국어"
     echo "  3) 日本語"
     echo "  4) 中文"
-    echo "  5) Other (type a language code, for example fr or pt-BR)"
     tries=0
     while [ "$tries" -lt 3 ]; do
         tries=$((tries + 1))
-        printf 'Choose 1-5 [default: %s]: ' "$default"
+        printf 'Choose 1-4 [default: %s]: ' "$default"
         if ! ask_line; then
             echo ""
             break
@@ -165,19 +164,7 @@ choose_language() {
             2) LANGUAGE_CODE="ko"; return 0 ;;
             3) LANGUAGE_CODE="ja"; return 0 ;;
             4) LANGUAGE_CODE="zh"; return 0 ;;
-            5)
-                printf 'Language code: '
-                if ! ask_line; then
-                    echo ""
-                    break
-                fi
-                if valid_language "$answer"; then
-                    LANGUAGE_CODE="$answer"
-                    return 0
-                fi
-                print_warning "That is not a language code (for example en, ko, fr, pt-BR)."
-                ;;
-            *) print_warning "Please type a number from 1 to 5." ;;
+            *) print_warning "Please type a number from 1 to 4." ;;
         esac
     done
     LANGUAGE_CODE="$default"

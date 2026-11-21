@@ -175,14 +175,15 @@ fn setup_answers_reach_the_profile_and_rerun_keeps_them() {
     let before = fs::read(root.path().join(PROFILE)).unwrap();
     let out = setup_answers(
         &root,
-        &json!({"commit_messages": "ja", "user_chat": "ko"}),
+        &json!({"commit_messages": "ja"}),
         &["--conversation", "ko"],
     );
     // The step itself writes nothing.
     assert_eq!(fs::read(root.path().join(PROFILE)).unwrap(), before);
     assert_eq!(out["profile_written"], json!(false));
-    // The three asked items; `documents` was not answered, so it takes the conversation language.
-    let expected = json!({"commit_messages": "ja", "documents": "ko", "user_chat": "ko"});
+    // The three asked items; `documents` was not answered, so it takes the conversation
+    // language, and the saved conversation fills the profile's user_chat.
+    let expected = json!({"commit_messages": "ja", "documents": "ko", "instruction_files": "en", "user_chat": "ko"});
     assert_eq!(out["language"], expected);
     let plan = apply_profile(&root, &out["profile"]);
     assert_eq!(plan["action"], json!("update"));
@@ -206,7 +207,7 @@ fn setup_answers_reach_the_profile_and_rerun_keeps_them() {
     let q = ok(&run(&["language-setup", path(&root), "--questions"], b""));
     let items = q["questions"]["items"].as_array().unwrap();
     let ids: Vec<&str> = items.iter().map(|i| i["id"].as_str().unwrap()).collect();
-    assert_eq!(ids, ["user_chat", "commit_messages", "documents"]);
+    assert_eq!(ids, ["commit_messages", "instruction_files", "documents"]);
     let commits = items.iter().find(|i| i["id"] == "commit_messages").unwrap();
     assert_eq!(commits["current"], json!("ja"));
     assert_eq!(commits["suggested"], json!("ja"));
@@ -227,16 +228,16 @@ fn setup_answers_reach_the_profile_and_rerun_keeps_them() {
 #[test]
 fn interactive_setup_reads_one_answer_per_item() {
     let root = project(Some(json!({"commit_messages": "zh"})));
-    // Three prompts, in order: user_chat, commit_messages, documents.
-    let out = ok(&run(&["language-setup", path(&root)], b"ko\n\nfr\nja\n"));
+    // Three prompts, in order: commit_messages, instruction_files, documents.
+    let out = ok(&run(&["language-setup", path(&root)], b"ja\n\nfr\nko\n"));
     let l = &out["language"];
-    assert_eq!(l["user_chat"], json!("ko"));
-    // An empty line keeps the stored value.
-    assert_eq!(l["commit_messages"], json!("zh"));
+    assert_eq!(l["commit_messages"], json!("ja"));
+    // An empty line keeps the stored value; instruction_files has none, so it is English.
+    assert_eq!(l["instruction_files"], json!("en"));
     // A bad code is asked again; the next line answers the third item.
-    assert_eq!(l["documents"], json!("ja"));
-    // Nothing else is asked, and no key is added for an item the setup does not ask.
-    assert_eq!(l.as_object().unwrap().len(), 3, "{l}");
+    assert_eq!(l["documents"], json!("ko"));
+    // Nothing else is asked; the resolved conversation fills the profile's user_chat.
+    assert_eq!(l.as_object().unwrap().len(), 4, "{l}");
     let stderr = String::from_utf8(run(&["language-setup", path(&root)], b"fr\n").stderr).unwrap();
     assert!(stderr.contains("unsupported language code"), "{stderr}");
     let refused = run(&["language-setup", path(&root)], b"fr\nde\nes\n");

@@ -197,10 +197,10 @@ fn questions_list_exactly_three_items_with_their_values() {
     let q = questions(&root, h.path(), &[]);
     assert_eq!(
         ids(&q),
-        ["user_chat", "commit_messages", "documents"],
+        ["commit_messages", "instruction_files", "documents"],
         "{q}"
     );
-    for id in ["user_chat", "commit_messages", "documents"] {
+    for id in ["commit_messages", "instruction_files", "documents"] {
         let i = item(&q, id);
         for key in ["current", "suggested", "default"] {
             assert!(i.get(key).is_some(), "{id} has no {key}: {i}");
@@ -212,12 +212,18 @@ fn questions_list_exactly_three_items_with_their_values() {
             "{id}: no conversation language yet"
         );
     }
-    // With a conversation language the three items suggest it.
+    // The conversation language is never asked here: it comes from the install step, and the
+    // items above are the whole set.
+    assert_eq!(q["items"].as_array().unwrap().len(), 3, "{q}");
+    // With a conversation language the three items suggest it; the item whose default is
+    // English keeps that default.
     let q = questions(&root, h.path(), &["--conversation", "ko"]);
-    for id in ["user_chat", "commit_messages", "documents"] {
+    for id in ["commit_messages", "documents"] {
         assert_eq!(item(&q, id)["suggested"], json!("ko"), "{id}");
         assert_eq!(item(&q, id)["default"], json!("ko"), "{id}");
     }
+    assert_eq!(item(&q, "instruction_files")["suggested"], json!("en"));
+    assert_eq!(item(&q, "instruction_files")["default"], json!("en"));
     // A stored value is the item's current and suggested value.
     let stored = project(Some(json!({"documents": "ja", "user_chat": "ko"})));
     let q = questions(&stored, h.path(), &[]);
@@ -227,8 +233,8 @@ fn questions_list_exactly_three_items_with_their_values() {
     assert_eq!(item(&q, "commit_messages")["suggested"], json!("ko"));
 }
 
-/// AC-2 (REQ-2): the language the installer saved is shown as the confirmed default, with its
-/// source, and is not asked again from scratch.
+/// AC-2 (REQ-2): the language the installer saved is the conversation value with its source,
+/// ahead of the profile's earlier user_chat, and is not asked again from scratch.
 #[test]
 fn the_installer_value_is_the_confirmed_conversation_default() {
     let root = project(None);
@@ -236,13 +242,17 @@ fn the_installer_value_is_the_confirmed_conversation_default() {
     let q = questions(&root, h.path(), &[]);
     assert_eq!(q["conversation_language"], json!("ko"), "{q}");
     assert_eq!(q["conversation_source"], json!("installer"), "{q}");
-    assert_eq!(item(&q, "user_chat")["suggested"], json!("ko"));
     assert_eq!(item(&q, "documents")["suggested"], json!("ko"));
-    // The profile's own value is ahead of it.
+    // The profile's own earlier value answers when no install value was saved.
     let stored = project(Some(json!({"user_chat": "ja"})));
-    let q = questions(&stored, h.path(), &[]);
+    let none = home(None);
+    let q = questions(&stored, none.path(), &[]);
     assert_eq!(q["conversation_language"], json!("ja"), "{q}");
     assert_eq!(q["conversation_source"], json!("profile"), "{q}");
+    // The HOME value is ahead of the profile's earlier value.
+    let q = questions(&stored, h.path(), &[]);
+    assert_eq!(q["conversation_language"], json!("ko"), "{q}");
+    assert_eq!(q["conversation_source"], json!("installer"), "{q}");
     // The explicit flag is ahead of both.
     let q = questions(&stored, h.path(), &["--conversation", "zh"]);
     assert_eq!(q["conversation_source"], json!("flag"), "{q}");
@@ -282,21 +292,22 @@ fn answers_name_the_three_items_and_keep_old_keys() {
     let fresh = project(None);
     let out = setup_answers(
         &fresh,
-        &json!({"documents": "en", "user_chat": "ko"}),
+        &json!({"documents": "en"}),
         &["--conversation", "ko"],
     );
     assert_eq!(
         out["language"],
-        json!({"commit_messages": "ko", "documents": "en", "user_chat": "ko"}),
+        json!({"commit_messages": "ko", "documents": "en", "instruction_files": "en",
+               "user_chat": "ko"}),
         "{out}"
     );
     assert_eq!(out["profile_written"], json!(false));
     let old = project(Some(json!({"code_comments": "ja", "reports": "ko"})));
-    let out = setup_answers(&old, &json!({"user_chat": "ko"}), &["--conversation", "ko"]);
+    let out = setup_answers(&old, &json!({}), &["--conversation", "ko"]);
     assert_eq!(
         out["language"],
         json!({"code_comments": "ja", "commit_messages": "ko", "documents": "ko",
-               "reports": "ko", "user_chat": "ko"}),
+               "instruction_files": "en", "reports": "ko", "user_chat": "ko"}),
         "{out}"
     );
     // The old reports value is the suggestion for documents, not a copy of the key's meaning.
@@ -326,7 +337,8 @@ fn the_terminal_step_asks_three_prompts() {
     let l = ok(&out)["language"].clone();
     assert_eq!(
         l,
-        json!({"commit_messages": "en", "documents": "ja", "user_chat": "ko"}),
+        json!({"commit_messages": "ko", "documents": "ja", "instruction_files": "en",
+               "user_chat": "en"}),
         "{l}"
     );
     let stderr = String::from_utf8_lossy(&out.stderr).into_owned();

@@ -482,8 +482,8 @@ pub enum SetupMode {
 /// `project-plan`. Writes nothing; `project-apply` stays the only writer of the profile.
 ///
 /// `home` is the user's HOME when the caller has one (#2935 L1): the conversation language
-/// `language-set` recorded there is the default after `conversation` and the profile's
-/// `user_chat`, before the Go backup's and before English.
+/// `language-set` recorded there is the default after `conversation`, before the profile's
+/// earlier `user_chat`, the Go backup's value and English.
 pub fn setup<R: BufRead, W: Write>(
     root: &std::path::Path,
     home: Option<&std::path::Path>,
@@ -496,20 +496,22 @@ pub fn setup<R: BufRead, W: Write>(
     let current = profile.language.clone();
     // #2817: the Go backup's values come after the profile's and before the built-in ones.
     let go = crate::go_settings::read(root);
-    let profile_chat = current.as_ref().and_then(|c| c.get("user_chat")).is_some();
     let home_chat = home.and_then(home_conversation_supported);
-    let (conversation, source) = match (conversation, profile_chat, &home_chat, &go.conversation) {
-        (None, false, None, Some(code)) => (code.clone(), "go_backup"),
-        (explicit, _, _, _) => {
-            let code = conversation_language_in(explicit, current.as_ref(), home_chat.as_deref())?;
-            let source = match (explicit, profile_chat, &home_chat) {
-                (Some(_), _, _) => "flag",
-                (None, true, _) => "profile",
-                (None, false, Some(_)) => "installer",
-                (None, false, None) => "default",
-            };
-            (code, source)
-        }
+    let profile_value = current
+        .as_ref()
+        .and_then(|c| c.get("user_chat"))
+        .filter(|c| is_code(c))
+        .cloned();
+    // The conversation language, in order: the explicit flag, the value the installer saved in
+    // the HOME state folder, the profile's earlier user_chat (installs older than the home
+    // record), the Go backup's value, then English. A code outside the accepted list skips its
+    // source.
+    let (conversation, source) = match (conversation, &home_chat, profile_value, &go.conversation) {
+        (Some(code), _, _, _) => (code.to_string(), "flag".to_string()),
+        (None, Some(code), _, _) => (code.clone(), "installer".to_string()),
+        (None, None, Some(code), _) => (code, "profile".to_string()),
+        (None, None, None, Some(code)) if is_code(code) => (code.clone(), "go_backup".to_string()),
+        _ => ("en".to_string(), "default".to_string()),
     };
     let base = with_go(current.as_ref(), &go.items);
     let base_ref = (!base.is_empty()).then_some(&base);
@@ -519,7 +521,7 @@ pub fn setup<R: BufRead, W: Write>(
     let mut answered: Vec<String> = Vec::new();
     let mut chosen = match mode {
         SetupMode::Questions => {
-            let mut out = json!({"questions": questions_with(current.as_ref(), &go.items, &conversation, source)});
+            let mut out = json!({"questions": questions_with(current.as_ref(), &go.items, &conversation, &source)});
             if go.found {
                 out["go_backup"] = go.to_json();
             }
@@ -546,6 +548,9 @@ pub fn setup<R: BufRead, W: Write>(
     for (k, v) in &own {
         chosen.entry(k.clone()).or_insert_with(|| v.clone());
     }
+    // The profile carries the resolved conversation language in its user_chat: the setup
+    // never asks it, and the home value wins over an earlier profile value.
+    chosen.insert("user_chat".to_string(), conversation.clone());
     let changed: Vec<&str> = ITEMS
         .iter()
         .filter(|i| current.as_ref().and_then(|c| c.get(i.id)) != chosen.get(i.id))

@@ -252,7 +252,15 @@ fn the_accepted_codes_are_stored_exactly_as_given_and_others_are_refused() {
             "{code}: written as given"
         );
     }
-    for code in ["fr", "KO", "pt-BR", "es-419", "kor", "zh-Hant-TW", longest.as_str()] {
+    for code in [
+        "fr",
+        "KO",
+        "pt-BR",
+        "es-419",
+        "kor",
+        "zh-Hant-TW",
+        longest.as_str(),
+    ] {
         let (_d, h) = home_with_state();
         let before = tree(&h);
         let (status, _json, err) = call(&h, &["language-set", "--home", code]);
@@ -449,9 +457,11 @@ fn home_file(h: &Path, bytes: &[u8]) {
     fs::write(h.join(".moai-cli").join(FILE), bytes).unwrap();
 }
 
-/// Order: `--conversation`, the profile's `user_chat`, the HOME value, `en`.
+/// The HOME value comes after the flag and before the profile's earlier user_chat and English:
+/// the install value wins over a project profile that recorded something else before it.
+/// Order: `--conversation`, the HOME value, the profile's `user_chat`, `en`.
 #[test]
-fn the_home_value_comes_after_the_flag_and_the_profile_and_before_english() {
+fn the_home_value_comes_after_the_flag_and_before_the_profile() {
     let (_h, h) = home_with_state();
     home_file(&h, b"language:\n  conversation_language: ja\n");
     let (_p, none) = project(None);
@@ -461,19 +471,28 @@ fn the_home_value_comes_after_the_flag_and_the_profile_and_before_english() {
         "ja",
         "HOME beats the built-in en"
     );
-    assert_eq!(conversation(&h, &chat, &[]), "zh", "the profile beats HOME");
+    assert_eq!(
+        conversation(&h, &chat, &[]),
+        "ja",
+        "HOME beats the profile's earlier value"
+    );
     assert_eq!(
         conversation(&h, &chat, &["--conversation", "ko"]),
         "ko",
-        "the flag beats the profile"
+        "the flag beats HOME"
     );
     assert_eq!(
         conversation(&h, &none, &["--conversation", "ko"]),
         "ko",
         "the flag beats HOME"
     );
-    // With no HOME value the built-in English stays.
+    // With no HOME value the profile's earlier value answers, then the built-in English.
     let (_e, empty) = home_with_state();
+    assert_eq!(
+        conversation(&empty, &chat, &[]),
+        "zh",
+        "the profile answers without HOME"
+    );
     assert_eq!(conversation(&empty, &none, &[]), "en");
     // The file `language-set` itself wrote is read back.
     let (_w, written) = home_with_state();
