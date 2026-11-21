@@ -1066,9 +1066,9 @@ fn launcher_leader_default_claude() {
         "--name",
         "leader",
         "--model",
-        "opus",
+        "claude-opus-5-5",
         "--effort",
-        "medium",
+        "high",
         "--dangerously-skip-permissions"
     ]);
     for args in [
@@ -1117,7 +1117,16 @@ fn launcher_flags_can_be_disabled() {
     ));
     assert_eq!(
         v["argv"],
-        json!(["claude", "--name", "agent-3", "--model", "opus", "--effort", "medium"])
+        // The agent default of the one table (SPEC-20261121-model-defaults-one-table).
+        json!([
+            "claude",
+            "--name",
+            "agent-3",
+            "--model",
+            "claude-sonnet-5-5",
+            "--effort",
+            "high"
+        ])
     );
     let v = launched(&launcher(
         &[
@@ -1225,9 +1234,9 @@ fn launcher_glm_requires_token_name_only() {
             "--name",
             "leader",
             "--model",
-            "opus",
+            "glm-5.3",
             "--effort",
-            "medium",
+            "high",
             "--dangerously-skip-permissions"
         ])
     );
@@ -1252,6 +1261,11 @@ fn launcher_codex_argv() {
             "danger-full-access",
             "-a",
             "never",
+            // The leader default of the one table (SPEC-20261121-model-defaults-one-table).
+            "-m",
+            "gpt-6.2-sol",
+            "-c",
+            "model_reasoning_effort=\"high\"",
             "MoAI session name: leader"
         ])
     );
@@ -1279,6 +1293,9 @@ fn launcher_codex_argv() {
             "never",
             "-m",
             "some-model",
+            // The flag replaces only the model; the effort is the agent default of the table.
+            "-c",
+            "model_reasoning_effort=\"xhigh\"",
             // SPEC-20261118-launcher-agent-entry: `codex -a` starts agent mode.
             "$moai --mode-agent\nMoAI session name: agent-2"
         ])
