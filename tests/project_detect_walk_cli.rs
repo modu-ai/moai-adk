@@ -69,11 +69,11 @@ fn partial_lines(result: &Value) -> usize {
         .count()
 }
 
-/// More entries than the walk's budget (5000) sit in one folder four levels down that sorts
+/// More entries than the walk budget (5000) sit in one folder three levels down that sorts
 /// before `apps/`.
 fn a_project_with_a_large_early_folder() -> TempDir {
     let root = TempDir::new().unwrap();
-    let big = root.path().join("aaa/b/c/d");
+    let big = root.path().join("aaa/b/c");
     fs::create_dir_all(&big).unwrap();
     for i in 0..6000 {
         fs::write(big.join(format!("f{i:05}.txt")), "x").unwrap();

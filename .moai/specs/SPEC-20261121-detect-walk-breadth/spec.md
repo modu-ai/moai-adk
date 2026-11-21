@@ -31,7 +31,7 @@ created: 2026-11-21
 
 ## Acceptance
 
-- AC-1 (REQ-1): 알파벳 순으로 앞서는 큰 폴더(깊이 4 에 파일 6000 개)가 있어도 뒤따르는 `apps/x/package.json` 이 나열되고 `manifest_walk.complete` 는 false 예요.
+- AC-1 (REQ-1): 알파벳 순으로 앞서는 큰 폴더(깊이 3 에 파일 6000 개)가 있어도 뒤따르는 `apps/x/package.json` 이 나열되고 `manifest_walk.complete` 는 false 예요.
   verify: `cargo test --locked --offline --test project_detect_walk_cli a_large_early_folder_does_not_hide_a_later_packages_manifest`
 - AC-2 (REQ-2): `.cache/pkg/package.json`, `.vercel/x/package.json`, `.moai-backup/y/go.mod` 는 나열되지 않고 `apps/x/package.json` 은 나열돼요.
   verify: `cargo test --locked --offline --test project_detect_walk_cli hidden_folders_are_not_walked_for_manifests`

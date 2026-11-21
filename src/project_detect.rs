@@ -24,6 +24,7 @@ use std::{
     collections::{BTreeMap, BTreeSet},
     fs,
     path::{Path, PathBuf},
+    rc::Rc,
 };
 
 type Result<T> = std::result::Result<T, String>;
@@ -381,7 +382,8 @@ fn last_matching<'a>(lines: &'a [IgnoreLine], path: &str, is_file: bool) -> Opti
 /// The ignore lists the manifest walk has collected: one entry per folder entered, judging
 /// paths from its own folder down (`base` is that folder's depth in components). The deepest
 /// list with a matching line wins, as git reads nested `.gitignore` files.
-struct IgnoreStack(Vec<(usize, Vec<IgnoreLine>)>);
+#[derive(Clone)]
+struct IgnoreStack(Vec<(usize, Rc<Vec<IgnoreLine>>)>);
 
 impl IgnoreStack {
     /// Whether the folder or file at `parts` (components from the project root) is excluded.
@@ -420,64 +422,90 @@ fn root_ignore_lines(root: &Path) -> Vec<IgnoreLine> {
 
 /// Manifest files below the root (C-61 AC-1): folder depth at most [`MAX_DEPTH`], names only —
 /// a nested manifest's bytes are never read — no symbolic link followed (the walk looks at
-/// `DirEntry::file_type`, which does not follow one), folders [`SKIP_DIRS`] names and folders
-/// the ignore lists exclude never entered. An ignore list that cannot be read (a link, over
-/// [`MAX_FILE`], not UTF-8) counts as no lines, so that failure can only read more, never
-/// less. The `seen` budget mirrors the code walk's [`MAX_ENTRIES`].
-fn nested_manifests(root: &Path) -> BTreeSet<String> {
+/// `DirEntry::file_type`, which does not follow one), folders [`SKIP_DIRS`] names, folders whose
+/// name starts with a dot (tool, cache and backup state: SPEC-20261121-detect-walk-breadth
+/// REQ-2) and folders the ignore lists exclude never entered. An ignore list that cannot be
+/// read (a link, over [`MAX_FILE`], not UTF-8) counts as no lines, so that failure can only
+/// read more, never less. The walk reads every folder of one depth before any folder one level
+/// deeper (REQ-1), so when the `seen` budget ([`MAX_ENTRIES`], like the code walk's) runs out
+/// the shallow manifests are already found and `complete` is false.
+fn nested_manifests(root: &Path) -> ManifestWalk {
     let mut found = BTreeSet::new();
     let mut seen = 0usize;
-    let mut stack = IgnoreStack(vec![(0, root_ignore_lines(root))]);
-    walk_manifests(root, &[], &mut stack, &mut found, &mut seen);
-    found
+    let mut complete = true;
+    let mut level: Vec<(PathBuf, Vec<String>, IgnoreStack)> = vec![(
+        root.to_path_buf(),
+        Vec::new(),
+        IgnoreStack(vec![(0, Rc::new(root_ignore_lines(root)))]),
+    )];
+    'levels: while !level.is_empty() {
+        let mut next = Vec::new();
+        for (dir, rel, stack) in level {
+            let Ok(entries) = fs::read_dir(&dir) else {
+                continue;
+            };
+            let mut entries: Vec<_> = entries.flatten().collect();
+            entries.sort_by_key(|e| e.file_name());
+            for entry in entries {
+                seen += 1;
+                if seen > MAX_ENTRIES {
+                    complete = false;
+                    break 'levels;
+                }
+                let Ok(kind) = entry.file_type() else {
+                    continue;
+                };
+                let name = entry.file_name();
+                let name = name.to_string_lossy();
+                let mut parts = rel.clone();
+                parts.push(name.to_string());
+                let parts_ref: Vec<&str> = parts.iter().map(String::as_str).collect();
+                if kind.is_dir() {
+                    if SKIP_DIRS.contains(&name.as_ref())
+                        || name.starts_with('.')
+                        || stack.excludes(&parts_ref, false)
+                    {
+                        continue;
+                    }
+                    if rel.len() < MAX_DEPTH {
+                        let mut below = stack.clone();
+                        below.0.push((
+                            parts.len(),
+                            Rc::new(
+                                read_in(&dir, &[&name, ".gitignore"])
+                                    .map(|t| ignore_lines(&t))
+                                    .unwrap_or_default(),
+                            ),
+                        ));
+                        next.push((entry.path(), parts, below));
+                    }
+                } else if kind.is_file()
+                    && MANIFESTS.iter().any(|(file, _)| *file == name)
+                    && !stack.excludes(&parts_ref, true)
+                {
+                    found.insert(parts.join("/"));
+                }
+            }
+        }
+        level = next;
+    }
+    ManifestWalk { found, complete }
 }
 
-fn walk_manifests(
-    dir: &Path,
-    rel: &[String],
-    stack: &mut IgnoreStack,
-    found: &mut BTreeSet<String>,
-    seen: &mut usize,
-) {
-    let Ok(entries) = fs::read_dir(dir) else {
-        return;
-    };
-    let mut entries: Vec<_> = entries.flatten().collect();
-    entries.sort_by_key(|e| e.file_name());
-    for entry in entries {
-        *seen += 1;
-        if *seen > MAX_ENTRIES {
-            return;
-        }
-        let Ok(kind) = entry.file_type() else {
-            continue;
-        };
-        let name = entry.file_name();
-        let name = name.to_string_lossy();
-        let mut parts = rel.to_vec();
-        parts.push(name.to_string());
-        let parts_ref: Vec<&str> = parts.iter().map(String::as_str).collect();
-        if kind.is_dir() {
-            if SKIP_DIRS.contains(&name.as_ref()) || stack.excludes(&parts_ref, false) {
-                continue;
-            }
-            if rel.len() < MAX_DEPTH {
-                stack.0.push((
-                    parts.len(),
-                    read_in(dir, &[&name, ".gitignore"])
-                        .map(|t| ignore_lines(&t))
-                        .unwrap_or_default(),
-                ));
-                walk_manifests(&entry.path(), &parts, stack, found, seen);
-                stack.0.pop();
-            }
-        } else if kind.is_file()
-            && MANIFESTS.iter().any(|(file, _)| *file == name)
-            && !stack.excludes(&parts_ref, true)
-        {
-            found.insert(parts.join("/"));
-        }
-    }
+/// What the manifest walk below the root found, and whether it read everything it could.
+struct ManifestWalk {
+    found: BTreeSet<String>,
+    complete: bool,
+}
+
+/// How complete `detected.manifests` is (SPEC-20261121-detect-walk-breadth REQ-3), reported
+/// beside `detected` and never recorded in it: `complete` is false when the walk stopped at
+/// [`MAX_ENTRIES`]; `over_cap` counts the manifests found that the list leaves out because of
+/// [`MAX_ITEMS`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+pub struct ManifestWalkFact {
+    pub complete: bool,
+    pub over_cap: usize,
 }
 
 /// The tools the detected manifest names imply (C-61 AC-2), beside `detected` and never inside
@@ -638,6 +666,11 @@ pub fn manifest_languages(root: &Path) -> Vec<String> {
 }
 
 pub fn detect(root: &Path) -> Result<Detected> {
+    detect_with_walk(root).map(|(detected, _)| detected)
+}
+
+/// [`detect`] and how complete its manifest list is.
+pub fn detect_with_walk(root: &Path) -> Result<(Detected, ManifestWalkFact)> {
     let meta = fs::symlink_metadata(root).map_err(|_| "project directory unavailable")?;
     if !meta.is_dir() {
         return Err("project must be a directory (not a symbolic link)".into());
@@ -650,10 +683,10 @@ pub fn detect(root: &Path) -> Result<Detected> {
             languages.insert((*lang).to_string());
         }
     }
-    let nested = nested_manifests(root);
+    let walk = nested_manifests(root);
     let code = code_languages(root);
-    let existing = !manifests.is_empty() || !nested.is_empty() || !code.is_empty();
-    manifests.extend(nested);
+    let existing = !manifests.is_empty() || !walk.found.is_empty() || !code.is_empty();
+    manifests.extend(walk.found);
     languages.extend(code);
     let lsp: BTreeSet<String> = languages
         .iter()
@@ -670,14 +703,20 @@ pub fn detect(root: &Path) -> Result<Detected> {
         .map(|(_, kind)| (*kind).to_string())
         .collect();
     databases.extend(prisma_database(root));
-    Ok(Detected {
+    let recordable_manifests = manifests.iter().filter(|p| recordable_relpath(p)).count();
+    let fact = ManifestWalkFact {
+        complete: walk.complete,
+        over_cap: recordable_manifests.saturating_sub(MAX_ITEMS),
+    };
+    let detected = Detected {
         project_kind: if existing { "existing" } else { "new" }.into(),
         manifests: capped_paths(manifests),
         languages: capped(languages),
         lsp: capped(lsp),
         mcp_servers: capped(mcp_servers(root)),
         databases: capped(databases),
-    })
+    };
+    Ok((detected, fact))
 }
 
 /// Accepts a `detected` value as `detect` produces it.
@@ -857,7 +896,7 @@ fn go_state_fact(root: &Path) -> Value {
 /// `project-detect`: the facts, and — when the project has a profile — that profile with
 /// `detected` set, ready for `project-plan`. Writes nothing.
 pub fn detect_cli(root: &Path) -> Result<Value> {
-    let detected = detect(root)?;
+    let (detected, walk) = detect_with_walk(root)?;
     // C-61 AC-2: the tools the manifest names imply, beside `detected` for the tools question.
     let tools = tools_fact(&detected.manifests);
     let shown = root.display();
@@ -908,9 +947,28 @@ pub fn detect_cli(root: &Path) -> Result<Value> {
     };
     let mut next_actions = vec![first, index];
     next_actions.extend(go_step);
+    // SPEC-20261121-detect-walk-breadth REQ-4: a partial list is said so, once.
+    if !walk.complete || walk.over_cap > 0 {
+        let mut why = Vec::new();
+        if !walk.complete {
+            why.push(format!("the walk stopped at {MAX_ENTRIES} folder entries"));
+        }
+        if walk.over_cap > 0 {
+            why.push(format!(
+                "{} more manifests than the {MAX_ITEMS} the list holds",
+                walk.over_cap
+            ));
+        }
+        next_actions.push(format!(
+            "manifest list is partial ({}): do not record it over an earlier detected.manifests list without showing the user which entries would drop",
+            why.join("; ")
+        ));
+    }
     Ok(json!({
         "detected": detected,
         "tools": tools,
+        // SPEC-20261121-detect-walk-breadth REQ-3: how complete `detected.manifests` is.
+        "manifest_walk": walk,
         "profile": profile,
         "profile_written": false,
         "go_state": go_state,
@@ -1023,16 +1081,16 @@ mod tests {
         // The stack: the deepest list with a matching line decides — a deeper "!old" overrides
         // a shallower "old/" for the folder, and the walk reads the file under it.
         let stack = IgnoreStack(vec![
-            (0, ignore_lines("old/\n")),
-            (1, ignore_lines("!old\n")),
+            (0, ignore_lines("old/\n").into()),
+            (1, ignore_lines("!old\n").into()),
         ]);
         assert!(!stack.excludes(&["pkg", "old"], false));
         assert!(!stack.excludes(&["pkg", "old", "package.json"], true));
         // A folder the root list excludes is never entered, whatever a deeper list says about
         // the files inside it.
         let stack = IgnoreStack(vec![
-            (0, ignore_lines("old/\n")),
-            (1, ignore_lines("!old/**\n")),
+            (0, ignore_lines("old/\n").into()),
+            (1, ignore_lines("!old/**\n").into()),
         ]);
         assert!(stack.excludes(&["pkg", "old"], false));
     }
