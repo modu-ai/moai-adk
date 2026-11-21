@@ -186,6 +186,29 @@ fn take_yields_the_paths_of_an_ended_lease() {
     assert_eq!(state, "active");
 }
 
+/// A card sent to review keeps a `held` reservation, so once its lease has ended its paths are
+/// yielded like any other (the holder of such a card is gone far more often than it is slow).
+#[test]
+fn take_yields_a_card_in_the_review_state_whose_lease_ended() {
+    let (_home, mut w) = setup();
+    let old = taken(&mut w, A, &["src/a/**"]);
+    sql(
+        &mut w,
+        &format!("UPDATE card SET state = 'review' WHERE card_id = {old}"),
+    );
+    end_lease(&mut w, old);
+    let new = add_card(&mut w, "[]");
+    try_take(&mut w, new, B, &["src/a/x.rs"]).unwrap();
+    assert_eq!(scope_of(&w, old), Vec::<String>::new());
+    let state: String = w
+        .conn()
+        .query_row("SELECT state FROM card WHERE card_id = ?1", [old], |r| {
+            r.get(0)
+        })
+        .unwrap();
+    assert_eq!(state, "review", "the card keeps its state");
+}
+
 #[test]
 fn take_refuses_a_live_lease_and_names_the_card_the_holder_and_the_lease_end() {
     let (_home, mut w) = setup();
@@ -213,7 +236,7 @@ fn take_refuses_a_live_lease_and_names_the_card_the_holder_and_the_lease_end() {
 }
 
 #[test]
-fn take_refuses_a_review_reservation_even_when_its_lease_ended() {
+fn take_refuses_a_recovered_reservation_even_when_its_lease_ended() {
     let (_home, mut w) = setup();
     let old = taken(&mut w, A, &["src/a/**"]);
     end_lease(&mut w, old);
@@ -296,7 +319,7 @@ fn widen_refuses_a_live_lease_and_names_the_card_the_holder_and_the_lease_end() 
 }
 
 #[test]
-fn widen_refuses_a_review_reservation_even_when_its_lease_ended() {
+fn widen_refuses_a_recovered_reservation_even_when_its_lease_ended() {
     let (_home, mut w) = setup();
     let old = taken(&mut w, A, &["src/a/**"]);
     end_lease(&mut w, old);
@@ -466,7 +489,7 @@ fn next_skips_a_ready_card_that_a_live_lease_overlaps() {
 }
 
 #[test]
-fn next_skips_a_ready_card_that_a_review_or_an_expired_candidate_overlaps() {
+fn next_skips_a_ready_card_that_a_recovered_or_an_expired_candidate_reservation_overlaps() {
     for status in ["held_for_review", "expired_candidate"] {
         let (_home, mut w) = setup();
         let old = taken(&mut w, A, &["src/a/**"]);

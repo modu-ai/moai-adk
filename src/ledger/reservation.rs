@@ -776,9 +776,9 @@ pub fn lease_ended(lease_until: i64, now: i64) -> bool {
 }
 
 /// Whether a reservation keeps other cards off its paths at ledger-clock second `now`: a `held`
-/// reservation whose lease has ended does not (a take or a widening yields its paths), and a
-/// reservation in review or an expired candidate always does, because an audit or a merge may
-/// still need its files.
+/// reservation whose lease has ended does not (a take or a widening yields its paths; a card in
+/// the `review` state has such a reservation too), and a `held_for_review` one (what `recover`
+/// leaves for a row it could not confirm) or an expired candidate always does.
 pub fn blocks_new_claims(status: &str, lease_until: i64, now: i64) -> bool {
     status != "held" || !lease_ended(lease_until, now)
 }
