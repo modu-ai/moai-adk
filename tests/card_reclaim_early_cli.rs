@@ -138,13 +138,18 @@ impl World {
 
     /// A ready card taken by `holder` with the worktree `worktree` (none: no worktree).
     fn taken(&self, holder: &str, worktree: Option<&Path>, scope: &str) -> String {
+        self.taken_on(holder, worktree, scope, "main")
+    }
+
+    /// The same, with the reservation naming the branch `branch`.
+    fn taken_on(&self, holder: &str, worktree: Option<&Path>, scope: &str, branch: &str) -> String {
         let added = result(&self.card(None, &["add", "--title", "t", "--scope", scope]));
         let name = added["name"].as_str().unwrap().to_string();
         result(&self.card(None, &["ready", &name]));
         let wt = worktree.map(|w| w.to_str().unwrap().to_string());
         let mut args = vec!["take", name.as_str()];
         if let Some(w) = wt.as_deref() {
-            args.extend_from_slice(&["--worktree", w, "--branch", "main"]);
+            args.extend_from_slice(&["--worktree", w, "--branch", branch]);
         }
         result(&self.card(Some(holder), &args));
         name
@@ -450,7 +455,7 @@ fn a_listed_tool_cache_is_not_work() {
     );
 }
 
-/// AC-5 (REQ-5, REQ-8): the event keeps its kind, carries the proof in its own field, and the
+/// AC-5 (REQ-5, REQ-7): the event keeps its kind, carries the proof in its own field, and the
 /// ledger tables and the schema version are what they were; an ordinary reclaim of an ended
 /// lease carries no such field.
 #[test]
@@ -669,9 +674,10 @@ fn a_session_without_a_launcher_record_is_not_gone() {
 }
 
 /// REQ-3 (audit of the early reclaim, N1): work the takeover gate leaves out keeps the live
-/// lease refused: a stash entry of the worktree's branch, unpushed commits on a local branch
-/// nobody has checked out, and an ignored entry that is not on the regenerable list. The
-/// regenerable ignored entries and another worktree's own unpushed branch are no work.
+/// lease refused: a stash entry of the worktree's branch and an ignored entry that is not on
+/// the regenerable list. The regenerable ignored entries, a stash entry of another branch, an
+/// unrelated local branch with unpushed commits that is checked out nowhere and another
+/// worktree's own unpushed branch are no work (the reservation's own branch is the next test).
 #[test]
 fn work_the_takeover_gate_misses_keeps_the_early_reclaim_refused() {
     let w = world();
@@ -696,15 +702,15 @@ fn work_the_takeover_gate_misses_keeps_the_early_reclaim_refused() {
     assert!(m.contains("branch main"), "{m}");
     git_in(&w.wt, &["stash", "drop", "-q"]);
 
-    // Unpushed commits on a local branch that no worktree has checked out.
+    // An unrelated local branch with an unpushed commit, checked out nowhere: not this
+    // reservation's work. A stash entry of that other branch is not either.
     git_in(&w.wt, &["checkout", "-q", "-b", "other"]);
     fs::write(w.wt.join("o.txt"), "o\n").unwrap();
     git_in(&w.wt, &["add", "o.txt"]);
     git_in(&w.wt, &["commit", "-q", "-m", "on other"]);
+    fs::write(w.wt.join("o.txt"), "o draft\n").unwrap();
+    git_in(&w.wt, &["stash", "push", "-q", "-m", "draft of other"]);
     git_in(&w.wt, &["checkout", "-q", "main"]);
-    let m = w.refused_and_unchanged(w.reclaim(&sid(2), &card, "1"), "branch other", &before);
-    assert!(m.contains("unpushed"), "{m}");
-    git_in(&w.wt, &["push", "-q", "origin", "other"]);
 
     // An ignored file that is not on the regenerable list.
     fs::create_dir_all(w.wt.join("scratch")).unwrap();
@@ -755,4 +761,278 @@ fn the_early_proof_checks_the_worktree_by_itself() {
         Early::Unproven(why) => assert!(why.contains("worktree dirty"), "{why}"),
         other => panic!("a dirty worktree is not proven: {other:?}"),
     }
+}
+
+// ---- the local integration branch (REQ-13) ----
+
+/// A project profile with the given work flow and, when named, its integration branch.
+fn flow_profile(flow: &str, integration: Option<&str>) -> String {
+    let branch = integration.map_or(String::new(), |b| {
+        format!(", \"integration_branch\": \"{b}\"")
+    });
+    format!(
+        "{{\"schema_version\": 1, \"project_id\": \"demo\", \"purpose\": \"fixture\", \
+         \"tools\": [\"rust\"], \"development_methods\": [\"sdd\"], \"hosts\": [\"claude\"], \
+         \"work_flow\": {{\"flow\": \"{flow}\"{branch}}}}}"
+    )
+}
+
+/// One new commit in `dir` that adds the file `name`.
+fn commit_file(dir: &Path, name: &str) {
+    fs::write(dir.join(name), format!("{name}\n")).unwrap();
+    git_in(dir, &["add", name]);
+    git_in(dir, &["commit", "-q", "-m", name]);
+}
+
+impl World {
+    /// Writes `profile` as the project profile of the worktree and commits and pushes it, so
+    /// the worktree stays clean and nothing is ahead of the remote.
+    fn commit_profile(&self, profile: &str) {
+        let dir = self.wt.join(".moai-cli");
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(dir.join("project.yaml"), profile).unwrap();
+        git_in(&self.wt, &["add", ".moai-cli/project.yaml"]);
+        git_in(&self.wt, &["commit", "-q", "-m", "profile"]);
+        git_in(&self.wt, &["push", "-q", "origin", "main"]);
+    }
+
+    /// `n` commits on a new branch `lane`, which the worktree has checked out afterwards.
+    fn lane_commits(&self, n: u32) {
+        git_in(&self.wt, &["checkout", "-q", "-b", "lane"]);
+        for i in 1..=n {
+            commit_file(&self.wt, &format!("lane-{i}.txt"));
+        }
+    }
+
+    /// How many commits of HEAD are on no remote-tracking ref.
+    fn ahead_of_remotes(&self) -> String {
+        common::git::git(
+            &self.wt,
+            &["rev-list", "--count", "HEAD", "--not", "--remotes"],
+        )
+    }
+}
+
+/// AC-13 (REQ-13): the field case. A clean worktree with four commits ahead of the remote, all
+/// four already in the local integration branch the m-flow profile names, has no work left:
+/// the takeover gate and the early proof both let the live lease be reclaimed.
+#[test]
+fn commits_inside_the_integration_branch_do_not_stop_an_early_reclaim() {
+    use moai_cli::card::early_reclaim::{assess, Early};
+    let w = world();
+    w.commit_profile(&flow_profile("m-flow", Some("integ")));
+    let card = w.taken(&sid(1), Some(&w.wt), "src/landed/");
+    w.register_gone(NAME, &sid(1));
+    w.lane_commits(4);
+    git_in(&w.wt, &["branch", "integ", "HEAD"]);
+    assert_eq!(
+        w.ahead_of_remotes(),
+        "4",
+        "four commits ahead of the remote"
+    );
+    let id: i64 = card.trim_start_matches("C-").parse().unwrap();
+
+    match assess(&w.project, w.home.path(), id, &sid(2)) {
+        Early::Proven(proof) => assert_eq!(proof.detail["worktree"], json!("clean")),
+        other => panic!("commits inside the integration branch are no work: {other:?}"),
+    }
+    let got = result(&w.reclaim(&sid(2), &card, "1"));
+    assert_eq!(got["reservation"]["generation"], json!(2));
+}
+
+/// AC-13 (REQ-13), N and N+1: four contained commits pass, a fifth that is not in the
+/// integration branch refuses and the count names exactly that one; once it lands there too the
+/// same reclaim goes through.
+#[test]
+fn one_commit_outside_the_integration_branch_still_stops_an_early_reclaim() {
+    let w = world();
+    w.commit_profile(&flow_profile("m-flow", Some("integ")));
+    let card = w.taken(&sid(1), Some(&w.wt), "src/outside/");
+    w.register_gone(NAME, &sid(1));
+    w.lane_commits(4);
+    git_in(&w.wt, &["branch", "integ", "HEAD"]);
+    commit_file(&w.wt, "lane-5.txt");
+    assert_eq!(w.ahead_of_remotes(), "5");
+    let before = w.dump();
+
+    let m = w.refused_and_unchanged(w.reclaim(&sid(2), &card, "1"), "worktree dirty", &before);
+    assert!(
+        m.contains("holds 0 uncommitted change(s) and 1 unpushed commit(s)"),
+        "{m}"
+    );
+
+    git_in(&w.wt, &["branch", "-f", "integ", "HEAD"]);
+    let got = result(&w.reclaim(&sid(2), &card, "1"));
+    assert_eq!(got["reservation"]["generation"], json!(2));
+}
+
+/// AC-13 (REQ-13): without a usable integration branch every commit that is on no
+/// remote-tracking ref stays unpushed work: no profile, another work flow, m-flow without a
+/// branch, a branch the clone does not have and a profile that cannot be read.
+#[test]
+fn without_a_usable_integration_branch_an_early_reclaim_counts_every_unpushed_commit() {
+    let cases: [(&str, Option<String>); 5] = [
+        ("no profile", None),
+        ("another work flow", Some(flow_profile("github-flow", None))),
+        (
+            "m-flow without a branch",
+            Some(flow_profile("m-flow", None)),
+        ),
+        (
+            "m-flow with a branch that is not local",
+            Some(flow_profile("m-flow", Some("absent"))),
+        ),
+        ("an unreadable profile", Some("{not json".to_string())),
+    ];
+    for (label, profile) in cases {
+        eprintln!("case: {label}");
+        let w = world();
+        if let Some(p) = &profile {
+            w.commit_profile(p);
+        }
+        let card = w.taken(&sid(1), Some(&w.wt), "src/unusable/");
+        w.register_gone(NAME, &sid(1));
+        w.lane_commits(4);
+        // A local branch with those commits exists, but the profile does not name it.
+        git_in(&w.wt, &["branch", "integ", "HEAD"]);
+        let before = w.dump();
+        let m = w.refused_and_unchanged(w.reclaim(&sid(2), &card, "1"), "worktree dirty", &before);
+        assert!(
+            m.contains("holds 0 uncommitted change(s) and 4 unpushed commit(s)"),
+            "{label}: {m}"
+        );
+    }
+}
+
+/// AC-12, AC-13 (REQ-3, REQ-13): the branch the reservation names, which the worktree does not
+/// have checked out, is checked with the same rule as HEAD: unpushed commits on it that are not
+/// in the integration branch keep the lease refused and the refusal names the branch; once they
+/// are inside the integration branch the reclaim goes through.
+#[test]
+fn the_reserved_branch_ahead_only_inside_the_integration_branch_is_not_work() {
+    let w = world();
+    w.commit_profile(&flow_profile("m-flow", Some("integ")));
+    let card = w.taken_on(&sid(1), Some(&w.wt), "src/branches/", "side");
+    w.register_gone(NAME, &sid(1));
+    // `integ` holds two commits that no remote has; `side` is `integ` plus one more commit.
+    git_in(&w.wt, &["checkout", "-q", "-b", "integ"]);
+    commit_file(&w.wt, "integ-1.txt");
+    commit_file(&w.wt, "integ-2.txt");
+    git_in(&w.wt, &["branch", "side", "integ"]);
+    git_in(&w.wt, &["checkout", "-q", "side"]);
+    commit_file(&w.wt, "side-1.txt");
+    git_in(&w.wt, &["checkout", "-q", "main"]);
+    assert_eq!(w.ahead_of_remotes(), "0", "the worktree itself is pushed");
+    let before = w.dump();
+
+    let m = w.refused_and_unchanged(w.reclaim(&sid(2), &card, "1"), "branch side", &before);
+    assert!(m.contains("1 unpushed commit(s)"), "{m}");
+
+    // The commit lands in the integration branch: the reserved branch is contained in it.
+    git_in(&w.wt, &["branch", "-f", "integ", "side"]);
+    let got = result(&w.reclaim(&sid(2), &card, "1"));
+    assert_eq!(got["reservation"]["generation"], json!(2));
+}
+
+/// AC-12 (REQ-3): a clone has many local branches that belong to nobody here (backups, old
+/// work). None of them is this reservation's work, so they never block an early reclaim of a
+/// clean, dead-holder worktree, with an m-flow profile or without one.
+#[test]
+fn an_unrelated_local_branch_with_unpushed_commits_does_not_stop_an_early_reclaim() {
+    let w = world();
+    let card = w.taken(&sid(1), Some(&w.wt), "src/unrelated/");
+    w.register_gone(NAME, &sid(1));
+    for name in ["backup-1", "old-2", "wip-3"] {
+        git_in(&w.wt, &["checkout", "-q", "-b", name]);
+        commit_file(&w.wt, &format!("{name}.txt"));
+        git_in(&w.wt, &["checkout", "-q", "main"]);
+    }
+    assert_eq!(w.ahead_of_remotes(), "0", "the worktree itself is pushed");
+    let got = result(&w.reclaim(&sid(2), &card, "1"));
+    assert_eq!(got["reservation"]["generation"], json!(2));
+}
+
+// A lane worktree has no state-root marker (the marker is ignored by git), so its own profile
+// is the earlier `.moai-cli/project.yaml`, which has no work flow; the m-flow profile with the
+// integration branch is the project folder's. REQ-13 reads the project folder first.
+
+impl World {
+    /// Gives the project folder (not the worktree) the m-flow profile with `integration` as its
+    /// integration branch, at the state root a marked project reads: the marker file and
+    /// `.moai/project.yaml`. Written last, after the card commands that may rewrite a profile.
+    fn mflow_project(&self, integration: &str) {
+        let moai = self.project.join(".moai");
+        fs::create_dir_all(&moai).unwrap();
+        fs::write(
+            moai.join("moai.json"),
+            moai_cli::state_root::marker_bytes("test", &[]),
+        )
+        .unwrap();
+        fs::write(
+            moai.join("project.yaml"),
+            flow_profile("m-flow", Some(integration)),
+        )
+        .unwrap();
+    }
+}
+
+/// The worktree's own profile: valid, and without a work flow.
+fn plain_profile() -> String {
+    "{\"schema_version\": 1, \"project_id\": \"demo\", \"purpose\": \"fixture\", \
+     \"tools\": [\"rust\"], \"development_methods\": [\"sdd\"], \"hosts\": [\"claude\"]}"
+        .to_string()
+}
+
+/// AC-13 (REQ-13): the shape of a real lane. The m-flow profile with the integration branch is
+/// the project folder's, the lane worktree's own profile has no work flow, and four commits
+/// ahead of the remote are all inside the local integration branch: the takeover gate and the
+/// early proof both let the live lease be reclaimed.
+#[test]
+fn the_project_folders_integration_branch_counts_when_the_worktree_profile_has_no_work_flow() {
+    use moai_cli::card::early_reclaim::{assess, Early};
+    let w = world();
+    w.commit_profile(&plain_profile());
+    let card = w.taken(&sid(1), Some(&w.wt), "src/projectflow/");
+    w.register_gone(NAME, &sid(1));
+    w.mflow_project("integ");
+    w.lane_commits(4);
+    git_in(&w.wt, &["branch", "integ", "HEAD"]);
+    assert_eq!(
+        w.ahead_of_remotes(),
+        "4",
+        "four commits ahead of the remote"
+    );
+    let id: i64 = card.trim_start_matches("C-").parse().unwrap();
+
+    match assess(&w.project, w.home.path(), id, &sid(2)) {
+        Early::Proven(proof) => assert_eq!(proof.detail["worktree"], json!("clean")),
+        other => panic!("commits inside the project's integration branch are no work: {other:?}"),
+    }
+    let got = result(&w.reclaim(&sid(2), &card, "1"));
+    assert_eq!(got["reservation"]["generation"], json!(2));
+}
+
+/// AC-13 (REQ-13), N and N+1 for the same shape: four contained commits pass, one more that is
+/// outside the integration branch refuses and the count names exactly that one.
+#[test]
+fn one_commit_outside_the_project_folders_integration_branch_still_stops_an_early_reclaim() {
+    let w = world();
+    w.commit_profile(&plain_profile());
+    let card = w.taken(&sid(1), Some(&w.wt), "src/projectoutside/");
+    w.register_gone(NAME, &sid(1));
+    w.mflow_project("integ");
+    w.lane_commits(4);
+    git_in(&w.wt, &["branch", "integ", "HEAD"]);
+    commit_file(&w.wt, "lane-5.txt");
+    let before = w.dump();
+
+    let m = w.refused_and_unchanged(w.reclaim(&sid(2), &card, "1"), "worktree dirty", &before);
+    assert!(
+        m.contains("holds 0 uncommitted change(s) and 1 unpushed commit(s)"),
+        "{m}"
+    );
+
+    git_in(&w.wt, &["branch", "-f", "integ", "HEAD"]);
+    let got = result(&w.reclaim(&sid(2), &card, "1"));
+    assert_eq!(got["reservation"]["generation"], json!(2));
 }
