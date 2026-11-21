@@ -72,4 +72,11 @@ parent: null
 
 ## Result
 
-(status draft — written when the slice lands)
+구현 에이전트가 2026-11-21에 채웠어요. 감사가 다시 확인해요. 기준 `64faee764cd`(배차 시 로컬 tip), 수리 커밋 `22c1a1ce94`·`659eccae62`, 이 worktree의 `target/`, macOS arm64.
+
+RED(05:1xZ): 직전 head `392a087c79`에서 장면 3장 실패 — 삭제가 허용됨(부모 명령 판별이 부분 문자열 매칭이라 픽스처의 방어 플래그 `-c gc.auto=0 -c maintenance.auto=false`에 걸림), override 기록 파일 없음(뒤로 가기 경로에 mkdir 누락), golden 단언 실패(헤더 주석의 가지는 따옴표로 베이크돼 꺾쇠 없는 리터럴이 없음). 통과 05:2xZ(13 passed).
+
+- AC-1: met — `cargo test --offline --locked --test mflow_guard_cli` 13 passed(`22c1a1ce94`에서 1.71s, `659eccae62`에서 2.36s 재확인): 뒤로 가기 거절과 사유, 삭제 거절, 통합 가지 생성, ff·병합 통과, 다른 가지 자유, pack-refs/maintenance/gc 통과와 거절 유지, 위상 게이트(빈 stdin 대신 실제 줄 입력), REQ-6 바이트 golden
+- AC-2: met — override 통과 후 REQ-4 기록 1줄(7필드, UTC 20자, 변수=노트·참조·보유값→밀어넣은 값), malformed(`=1`, 개행 포함) 거부와 무기록, 빈 override 거부와 무기록
+- AC-3: met — 같은 파일의 가드 장면: 나열된 명령 12개(reset --hard/--keep·git -C·cd·절대 경로 push --force·--force-with-lease·`+` refspec·branch -f/-M/-D) 전부 거절, 다른 가지와 substring 이웃 11개 전부 통과
+- AC-4: met — `moai check affected 64faee764cd..22c1a1ce94`에서 8단계 중 7단계 exit 0(diff_check·fmt·test_lib·test_bins·test_targets 48·build_cli·python 9), clippy만 101 — wip 가 남긴 미사용 import 라서 `659eccae62`에서 제거 후 `cargo clippy --locked --offline --all-targets -- -D warnings` 통과(48.49s Finished)와 장면 13 재확인. 뮤테이션 4종(위상 게이트·생성 허용 반전·참조 필터 제거·override 형태 검사 제거) 전부 FAILED로 사망(`22c1a1ce94`, 변이별 복원 true — 전역 refs 스냅샷은 실행 창의 리더 번들 병합과 어긋나 source_unchanged=false 로 기록, HEAD·인덱스·트리 불변을 직접 확인)
