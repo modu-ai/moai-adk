@@ -356,10 +356,21 @@ pub fn take(r: &Request<'_>) -> Result<Value> {
         .and_then(|(p, _)| p.work_flow)
         .and_then(|w| w.integration_branch)
         .filter(|b| !b.trim().is_empty());
+    // SPEC-20261121-integration-base-sha: an m-flow profile starts a fresh branch from the exact
+    // commit of the LOCAL integration branch (`start`), never from a remote-tracking ref; a
+    // missing local branch stops here. Another flow keeps the name-based profile base.
+    let mut start: Option<String> = None;
     let (base, base_source) = if let Some(b) = r.base {
         (b.to_string(), "given")
     } else if let Some(b) = recorded.as_ref().filter(|_| exists) {
         (b.clone(), "recorded")
+    } else if let Some(local) = match integration_base(dir) {
+        Ok(IntegrationBase::Local { branch, sha }) => Some((branch, sha)),
+        Ok(IntegrationBase::NoPolicy { .. }) => None,
+        Err(e) => return Err(refuse(format!("{e}; nothing was changed"))),
+    } {
+        start = Some(local.1);
+        (local.0, "local-integration")
     } else if let Some(pb) = profile_base.as_ref() {
         (pb.clone(), "profile")
     } else if current != "HEAD" && current != branch {
@@ -406,10 +417,20 @@ pub fn take(r: &Request<'_>) -> Result<Value> {
             (false, true)
         }
     } else {
-        git(dir, &["switch", "--quiet", "-c", &branch, &base]).map_err(refuse)?;
+        let from = start.as_deref().unwrap_or(&base);
+        git(dir, &["switch", "--quiet", "-c", &branch, from]).map_err(refuse)?;
         (true, true)
     };
     let base_changed = recorded.as_deref() != Some(base.as_str());
+    if let (Some(sha), true) = (start.as_deref(), created) {
+        git(
+            dir,
+            &["config", &format!("branch.{branch}.moai-base-sha"), sha],
+        )
+        .map_err(|e| {
+            format!("spec take: {branch} was taken, but its base commit was not recorded: {e}")
+        })?;
+    }
     if base_changed {
         git(
             dir,
@@ -490,7 +511,7 @@ pub fn take(r: &Request<'_>) -> Result<Value> {
     }
     Ok(json!({
         "action": "take", "spec": r.id, "status": doc.status, "branch": branch, "base": base,
-        "base_source": base_source,
+        "base_source": base_source, "base_sha": start,
         "created": created, "switched": switched, "base_recorded": base_changed,
         "card": card, "next": next, "pushed": pushed, "draft_pr": draft_pr,
         "writes": created || switched || base_changed || card_changed || pushed,

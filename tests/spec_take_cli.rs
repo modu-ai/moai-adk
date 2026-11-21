@@ -131,6 +131,11 @@ impl World {
     /// (C-105 slice 1). A full valid profile — `read_profile` parses it whole, so the
     /// required keys (purpose, tools, methods, hosts, a decision) are all there.
     fn profile_flow(&self, integration_branch: &str) {
+        self.profile_flow_of("m-flow", integration_branch);
+    }
+
+    /// [`World::profile_flow`] with the flow named.
+    fn profile_flow_of(&self, flow: &str, integration_branch: &str) {
         let body = format!(
             "{{\"schema_version\":2,\"project_id\":\"demo\",\
              \"purpose\":\"Fixture\",\
@@ -139,7 +144,7 @@ impl World {
              \"hosts\":[\"claude\"],\
              \"decisions\":[{{\"id\":\"d1\",\"topic\":\"tools\",\"value\":\"Rust\",\
              \"source\":\"user\",\"scope\":\"project\"}}],\
-             \"work_flow\":{{\"flow\":\"m-flow\",\"integration_branch\":\
+             \"work_flow\":{{\"flow\":\"{flow}\",\"integration_branch\":\
              \"{integration_branch}\"}}}}"
         );
         let path = self.project.join(".moai-cli").join("project.yaml");
@@ -193,13 +198,132 @@ fn take_without_base_reads_the_profile_integration_branch() {
     let id = w.draft_spec("login-fix");
     let r = ok(&w.take(&id, &[], &[]));
     assert_eq!(r["base"], "m-flow/integration", "{r}");
-    assert_eq!(r["base_source"], "profile", "{r}");
+    assert_eq!(r["base_source"], "local-integration", "{r}");
+    assert_eq!(r["base_sha"], integration.as_str(), "{r}");
     assert_eq!(w.branch(), BRANCH);
     assert_eq!(w.git(&["rev-parse", "HEAD"]), integration);
     assert_eq!(
         w.git(&["config", &format!("branch.{BRANCH}.moai-base")]),
         "m-flow/integration"
     );
+    assert_eq!(
+        w.git(&["config", &format!("branch.{BRANCH}.moai-base-sha")]),
+        integration
+    );
+}
+
+#[test]
+fn a_diverged_origin_never_moves_the_start_of_a_new_branch() {
+    // SPEC-20261121-integration-base-sha REQ-4: the local integration commit is the start,
+    // even when `origin/<branch>` is somewhere else.
+    let w = World::new();
+    let bare = w.home.path().join("origin.git");
+    common::git::git_ok(
+        w.home.path(),
+        &["init", "-q", "--bare", "-b", "main", bare.to_str().unwrap()],
+    );
+    w.git(&["remote", "add", "origin", bare.to_str().unwrap()]);
+    w.git(&["push", "-q", "origin", "main"]);
+    fs::write(w.project.join("local.txt"), "l\n").unwrap();
+    w.git(&["add", "-A"]);
+    w.commit("local only");
+    let other = w.home.path().join("other");
+    common::git::git_ok(
+        w.home.path(),
+        &[
+            "clone",
+            "-q",
+            bare.to_str().unwrap(),
+            other.to_str().unwrap(),
+        ],
+    );
+    fs::write(other.join("remote.txt"), "r\n").unwrap();
+    common::git::git_ok(&other, &["add", "-A"]);
+    common::git::git_ok(
+        &other,
+        &[
+            "-c",
+            "user.name=fixture",
+            "-c",
+            "user.email=fixture@example.invalid",
+            "-c",
+            "commit.gpgsign=false",
+            "commit",
+            "-q",
+            "-m",
+            "remote only",
+        ],
+    );
+    common::git::git_ok(&other, &["push", "-q", "origin", "main"]);
+    w.git(&["fetch", "-q", "origin"]);
+    w.profile_flow("main");
+    let local = w.git(&["rev-parse", "refs/heads/main"]);
+    let remote = w.git(&["rev-parse", "origin/main"]);
+    assert_ne!(local, remote);
+    let id = w.draft_spec("login-fix");
+    w.git(&["add", "-A"]);
+    w.commit("spec");
+    let local = w.git(&["rev-parse", "refs/heads/main"]);
+    let r = ok(&w.take(&id, &[], &[]));
+    assert_eq!(r["base_source"], "local-integration", "{r}");
+    assert_eq!(r["base_sha"], local.as_str(), "{r}");
+    assert_eq!(w.git(&["rev-parse", "HEAD"]), local);
+    assert_eq!(
+        w.git(&["config", &format!("branch.{BRANCH}.moai-base-sha")]),
+        local
+    );
+}
+
+#[test]
+fn a_missing_local_integration_branch_refuses_and_never_falls_back() {
+    // REQ-5: only `origin/<branch>` exists; no branch, no recorded base, no fallback to the
+    // current branch.
+    let w = World::new();
+    let bare = w.home.path().join("origin.git");
+    common::git::git_ok(
+        w.home.path(),
+        &["init", "-q", "--bare", "-b", "main", bare.to_str().unwrap()],
+    );
+    w.git(&["remote", "add", "origin", bare.to_str().unwrap()]);
+    w.git(&["branch", "m-flow/integration"]);
+    w.git(&["push", "-q", "origin", "m-flow/integration"]);
+    w.git(&["branch", "-q", "-D", "m-flow/integration"]);
+    w.git(&["fetch", "-q", "origin"]);
+    w.git(&["tag", "m-flow/integration"]);
+    w.profile_flow("m-flow/integration");
+    let id = w.draft_spec("login-fix");
+    let before = w.state();
+    let why = refused(&w.take(&id, &[], &[]));
+    assert!(why.contains("m-flow/integration"), "{why}");
+    assert!(why.contains("git branch"), "the next step: {why}");
+    assert!(why.contains("nothing was changed"), "{why}");
+    assert_eq!(w.state(), before);
+    // `git config --get-regexp` exits 1 when nothing matches: no base was recorded.
+    let recorded = common::git::git_raw(
+        &w.project,
+        &["config", "--get-regexp", "^branch\\..*moai-base"],
+    );
+    assert!(
+        !recorded.success && recorded.stdout.is_empty(),
+        "{}",
+        recorded.stdout
+    );
+}
+
+#[test]
+fn a_flow_that_is_not_m_flow_keeps_the_name_based_profile_base() {
+    let w = World::new();
+    w.git(&["switch", "-q", "-c", "develop"]);
+    fs::write(w.project.join("b.txt"), "b\n").unwrap();
+    w.git(&["add", "-A"]);
+    w.commit("develop");
+    w.git(&["switch", "-q", "main"]);
+    w.profile_flow_of("github-flow", "develop");
+    let id = w.draft_spec("login-fix");
+    let r = ok(&w.take(&id, &[], &[]));
+    assert_eq!(r["base"], "develop", "{r}");
+    assert_eq!(r["base_source"], "profile", "{r}");
+    assert_eq!(r["base_sha"], serde_json::Value::Null, "{r}");
 }
 
 #[test]
@@ -239,7 +363,8 @@ fn a_profile_base_that_is_not_a_commit_is_refused_and_changes_nothing() {
     let id = w.draft_spec("login-fix");
     let before = w.state();
     let why = refused(&w.take(&id, &[], &[]));
-    assert!(why.contains("is not a commit"), "{why}");
+    assert!(why.contains("not-a-commit"), "{why}");
+    assert!(why.contains("nothing was changed"), "{why}");
     assert_eq!(w.state(), before);
 }
 
