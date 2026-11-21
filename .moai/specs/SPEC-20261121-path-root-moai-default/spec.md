@@ -12,6 +12,8 @@ created: 2026-11-21
 
 The leader dispatch of 2026-11-21 (user order to carry every audit repair) asks that `.moai` (a project) and `~/.moai` (a HOME) are the default roots, and that `.moai-cli` and `~/.moai-cli` are read only where they already exist and by a later migration step. This SPEC is slice 1: the three resolvers and their tests. No data moves, nothing is deleted, no installer or shell file changes, and no test reads or writes the real HOME.
 
+Why the temporary name survived (read in this worktree): the constant `PROJECT_STATE_DIR` in `src/lib.rs` is documented as the state folder of the Rust release candidate while the Go generation keeps `.moai/`, with both coexisting "until the user performs the final rename in a later step" (`src/lib.rs` lines 241-242 at the tip). The resolvers were written for that coexistence: `.moai` only once a marker proves it is this generation's, `.moai-cli` for every other tree, and the clone resolver says nothing writes its marker until the leader picks the time for an explicit move (`src/clone_root.rs` lines 10-12 at the tip). The marker was only ever written for a project or HOME with no state at all (`adopt_new`, `is_new_project`), so every tree that already had state, and every tree where a worktree or HOME had never been adopted, kept the temporary name by default. The installer follows `install-inspect`, which reports the resolver, so it spelled nothing itself. The reason for the temporary name was the coexistence with Go; the user's decision of 2026-11-21 removes Go, so the default flips here and the earlier name is kept only where it already exists.
+
 What the tree does today (read at tip 6e1bedb4f3a4 in this worktree):
 
 - `src/state_root.rs` `dir` returns `.moai` only when `classify` says `rust` (a valid marker file `.moai/moai.json`, or the earlier `.moai/moai-cli.json`); every other verdict returns `.moai-cli` (`PROJECT_STATE_DIR`). `src/home_root.rs` `dir` and `src/clone_root.rs` `dir` do the same for `~` and for the git common folder. A tree that never wrote a marker therefore resolves to `.moai-cli` even when it never had that folder. A fresh worktree of this repository is such a tree: its `.moai/` holds the tracked `specs/`, `evals/` and `project.yaml`, no marker and no `.moai-cli`.
@@ -37,6 +39,8 @@ Consequences:
 - A tree that has `.moai-cli` keeps working unchanged until its migration step runs; nothing here moves or reads it any differently.
 - A Go-generation `.moai/` with no `.moai-cli` still resolves to `.moai-cli`, so no Go file is overwritten. This is the one row that keeps creating the earlier name; it is a decision of this SPEC (D-1) that the leader can reverse once Go is gone.
 - The sites that spell the earlier name directly (`project_state!`, `fixed_state!` and the constants) are not changed in this slice. A tree that a resolver sends to `.moai` and a direct writer then gives a `.moai-cli` resolves to `.moai-cli` from then on, so state a resolver-based writer put under `.moai` earlier would be stranded. The direct sites are the next slice, and the marker (written by `adopt_new` for a new tree) keeps `.moai` in front where it exists.
+
+Known gap, accepted in D-4: a HOME or a git common folder whose `.moai` holds only names that the Go generation writes too (`state`, `config`, `projects`) and none of the three Go markers cannot be told from a fresh Rust HOME by its names (both write `state/last-model.txt`), so it resolves to `.moai`. A real Go HOME carries a marker (`state/active-sessions.json`, `credentials.yaml` or `user-assets.json`) and reads as `go`. Fixtures that model "a Go-looking `.moai` beside Rust state in the earlier folder" create the earlier folder, as a legacy tree has it. A marker-first install (a later slice) closes the case for every HOME that goes through the installer or `moai update`.
 
 What stays with other work: the project-side move step of `/moai update` with preview, confirm token, receipt and revert (and the clone-shared and HOME follow-ups it names) is the project state move card; the Rust-only switch and the retirement of the Go commands is the Rust-only card. This SPEC changes neither the Go verdict rows nor any migration code.
 
@@ -71,6 +75,7 @@ What stays with other work: the project-side move step of `/moai update` with pr
 ## Scope
 
 - write: `src/state_root.rs`, `src/home_root.rs`, `src/clone_root.rs` (the resolvers and their unit tests), new `tests/path_root_default.rs`, and this SPEC folder
+- write, test fixtures only (the lines that built an empty tree and expected the earlier folder): `src/apply.rs`, `src/message.rs`, `src/profile.rs`, `src/project_home.rs`, `tests/freshness_fixture.rs`, `tests/home_install_apply_cli.rs`, `tests/home_style_cli.rs`, `tests/message_cli.rs`, `tests/omp_agents.rs`, `tests/update_hooks_cli.rs`; and by pair note with the holder's ACK, one test-only line each in `src/statusline/state.rs` (ACK given), `src/lane_idle.rs`, `src/lane_loop.rs`, `src/project_update.rs`, `tests/launcher_auto_init.rs`, `tests/statusline_home_state.rs` and `tests/statusline_counts_refresh.rs` (answers pending)
 - read-only: `src/lib.rs` (held by another change; its constants and doc comments stay), `src/identity.rs`, `install/install.sh`, every direct site named above
 - forbidden: the Go repository, the real HOME, any move or delete of state, installer or shell profile changes, any card number in a file name, SPEC id, branch or commit
 
@@ -85,6 +90,7 @@ Readers of the resolvers and of the earlier name (files, counted as above) for t
 - A tree that a resolver now sends to `.moai` can gain a `.moai-cli` from a direct writer, which makes it resolve to `.moai-cli` and strands the earlier `.moai` state. Slice 1 keeps the resolvers read-only and pins the stranding in a test comment; the direct sites are the next slice, and a new tree's marker keeps `.moai` first.
 - Tests that wrote into an empty temporary tree through a resolver and then looked under `.moai-cli` change their expected folder; `check affected` finds them. Any such file held by another change goes through a pair note before a one-line follow.
 - The unit tests of the three resolvers stated the old answer for an empty tree; they move with the code.
+- The narrower HOME rule that counts only names the Go generation never writes was tried and dropped: it strands the first write of every Rust writer that starts on a fresh HOME (`state`, `config`, `logs`), and 29 library tests that write then read back failed. The wide rule's price is the known gap above.
 - `.moai/` of a repository can track files (this repository tracks `project.yaml`, `evals/` and `specs/`); state written there needs an ignore rule. `.moai/state/` is ignored already; other state folders are not part of this slice.
 
 ## Decisions
@@ -95,8 +101,19 @@ Readers of the resolvers and of the earlier name (files, counted as above) for t
 | D-2 | `.moai-cli` counts as present in any form, a link included, and is never followed | Same link rule as every marker read in `state_root.rs` | none |
 | D-3 | `src/lib.rs` is not edited in this slice | Another change holds it; the resolvers need no new constant | Edit the doc comments when that change lands |
 | D-4 | An `unknown` `.moai/` with no `.moai-cli` resolves to `.moai` for a project and for a git common folder; for a HOME only when every first-level name is one this generation writes | A worktree of a repository that tracks files under `.moai/` is the project case and resolving it to `.moai-cli` is what the dispatch calls the bug. Resolving a HOME's unknown folder to `.moai-cli` flips a fresh HOME's first write away from where it was just written (`home_style_cli` caught it), and resolving it to `.moai` writes into a Go HOME whose items the HOME markers do not list (`e2e_host_fixture` caught it), so the names decide | Change the `Unknown` policy of one call |
+| D-6 | The HOME rule counts a name when the HOME table says this generation writes it, shared names included | The narrow rule (only names Go never writes) failed 29 library tests that write then read a fresh HOME; the wide rule failed one fixture that models a partial Go folder, which now names the earlier folder | Narrow the rule in `only_rust_names` once writers adopt a marker on first write |
 | D-5 | The installer is not changed | It reads `install-inspect`, which follows the resolver (measured) | none |
 
 ## Result
 
-(to be written at the end of the change)
+Built tests first: `tests/path_root_default.rs` was written before the code (red commit `707a69dc30`, `Moai-Phase: red`), then `src/state_root.rs`, `src/home_root.rs` and `src/clone_root.rs` were changed (`7eb5e44fd2`, refined in `560db074e2`). The tests and fixtures that named the earlier folder for an empty tree follow in their own commits.
+
+- AC-1: met — `path_root_default` 25 passed in all (the `project_` cases cover a marker, only `.moai-cli`, both folders, neither, specs-only, a worktree-like `.moai/`, Go state, a stopped or refused `.moai`, a link as `.moai-cli`, and the new-project marker written once).
+- AC-2: met — the `home_` cases of the same run (empty HOME, earlier folder only, both folders, a Go state folder, only names this generation writes, a foreign name, schema-1 and schema-2 markers, a link as the earlier folder) and `install-inspect` in an empty temporary HOME reporting `.moai`.
+- AC-3: met — the `clone_` cases of the same run (nothing, only `.moai-cli`, a marker, an empty `.moai`, files and no marker).
+- AC-4: met — `reads_only` in the same run: a snapshot of the temporary tree before and after the calls is equal and no `.moai-cli` appears.
+- AC-5: not yet met — the library built and 1559 of 1562 library tests passed, `home_install_apply_cli` 41, `e2e_host_fixture` 6, `message_cli` 32, `home_style_cli` 16, `update_hooks_cli` 11, `freshness_fixture` 10, `omp_agents` 15 and `statusline::` 149 passed, and the SPEC checks clean; nine tests in six files that other changes hold wait for their holders' ACK and one line each (lane_idle 1, lane_loop 1, project_update 1, launcher_auto_init 2, statusline_home_state 1, statusline_counts_refresh 3) — the exact lines are in the pair notes of this change.
+
+Mutants (5, one row of `resolves_to_moai` each, run on the committed text, each restored with `git checkout` and the tree read clean): a marked tree is not on `.moai` → 4 failed; an empty tree ignores the earlier folder → 7 failed; an unknown tree ignores the earlier folder → 2 failed; `go`, `mixed`, `interrupted` and `refuse` resolve to `.moai` → 4 failed; a HOME with foreign names counts as ours → 2 failed.
+
+Not run: Windows and Linux; the whole test suite on one run (only `check affected` and the targets named above); any real HOME, real project state or installer — every case uses a temporary HOME and a temporary project.
