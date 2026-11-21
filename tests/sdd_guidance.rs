@@ -320,25 +320,35 @@ const POINTER: &str = "order of the stages is the one `internal/sdd` gives";
 /// workflow the route table names, the chain table and the internal references.
 #[test]
 fn stage_order_is_written_once() {
-    let routes: serde_json::Value =
-        serde_json::from_str(&read("skills/moai/references/routes.json")).unwrap();
-    let mut files: Vec<String> = routes["routes"]
+    // Every markdown file of the skill package, from the files the source manifest lists (no
+    // folder walk), and the five base agent definitions, which live outside the package.
+    let manifest: serde_json::Value =
+        serde_json::from_str(&read("skills/moai/references/source-manifest.json")).unwrap();
+    let mut files: Vec<String> = manifest["files"]
         .as_object()
-        .unwrap()
-        .values()
-        .map(|r| {
-            let rel = r["reference"].as_str().unwrap();
-            format!(
-                "skills/moai/{}",
-                rel.strip_prefix("../").expect("route reference")
-            )
-        })
+        .expect("the source manifest has a files map")
+        .keys()
+        .filter(|rel| rel.ends_with(".md"))
+        .map(|rel| format!("skills/moai/{rel}"))
         .collect();
-    for name in ["sdd", "interview", "questions", "test-design", "core-rules"] {
-        files.push(format!("skills/moai/references/internal/{name}.md"));
+    for name in ["plan", "research", "impl", "audit", "docs"] {
+        files.push(format!("agents/{name}.md"));
     }
-    files.push("skills/moai/references/chains/index.md".into());
-    files.push("skills/moai/SKILL.md".into());
+    // A list that lost its files would pass for the wrong reason: the files that must be read
+    // are in it.
+    for must in [
+        "skills/moai/SKILL.md",
+        "skills/moai/references/internal/sdd.md",
+        "skills/moai/references/internal/review.md",
+        "skills/moai/references/chains/index.md",
+        "skills/moai/workflows/mode-agent.md",
+        "agents/audit.md",
+    ] {
+        assert!(
+            files.iter().any(|f| f == must),
+            "the list of files to read lost {must}"
+        );
+    }
     let with_order: Vec<&String> = files
         .iter()
         .filter(|rel| read(rel).contains(ORDER))
