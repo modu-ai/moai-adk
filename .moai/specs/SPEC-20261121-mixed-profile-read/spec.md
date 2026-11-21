@@ -77,4 +77,21 @@ created: 2026-11-21
 
 ## Result
 
-(구현 뒤에 적어요.)
+구현 결과예요(2026-11-21, 머리 5f8baeb181).
+
+- AC-1: met — `cargo test --offline --locked --lib mixed_layout` exit 0 (4 passed: 두 프로필이 있으면 `.moai/` 를 읽고 `work_flow` 와 `project_id` 를 봄, 한쪽만 있거나 배치가 `rust` 면 그 폴더, 새 프로필이 읽히지 않으면 오류이고 옛 프로필로 대신하지 않음, 링크인 새 프로필은 고르지 않음). 고치기 전에는 이 시험이 없었어요.
+- AC-2: met — `cargo test --offline --locked --test card_done_mflow_cli` exit 0 (9 passed)의 `a_mixed_layout_reads_the_newer_profile_and_closes_on_the_landing`: 옛 프로필(work_flow 없음)과 새 프로필(m-flow)이 함께 있어도 착지 기록으로 닫히고 `card.done` 이벤트가 head 를 남겨요. 고치기 전(읽기 규칙만 없을 때)에는 "no merged pull request is linked" 로 거절돼 실패했어요.
+- AC-3: met — 같은 실행의 `an_unreadable_profile_is_named_in_the_refusal` 과 `an_unreadable_newer_profile_is_named_and_the_earlier_one_is_no_fallback`: "no merged pull request is linked" 는 그대로이고 "a local landing is recorded", 프로필 경로(`.moai-cli/project.yaml`, 새 프로필이 깨지면 `.moai/project.yaml`)와 "could not be read" 가 붙고, 카드는 review 로 남고 `card.done` 이벤트는 0개예요.
+- AC-4: met — 같은 실행의 `a_profile_that_is_not_m_flow_is_named_when_a_landing_is_on_record`(work_flow 없음, github-flow 두 경우)와 `without_a_landing_the_refusal_carries_no_profile_hint`(착지 기록 없으면 힌트 없음), 기존 `a_project_without_m_flow_keeps_the_pr_rule` 통과. 고치기 전에는 힌트 시험 3개가 실패했어요(4개 실패 중 읽기 규칙으로 1개, 거절 문장으로 3개가 초록).
+- AC-5: met — 변형 5개를 하나씩 적용해 `cargo test --offline --locked --no-fail-fast --lib mixed_layout` 와 `--test card_done_mflow_cli` 를 돌렸고 모두 빨갛게 바뀐 뒤(컴파일 오류 없음) 파일을 복원했어요(`git diff` 깨끗).
+
+  | 변형 | 바꾼 곳 | 잡은 시험 |
+  | --- | --- | --- |
+  | 옛 프로필 존재 조건 제거 | `read_dir` | `mixed_layout_keeps_the_layouts_own_folder_when_only_one_profile_exists` |
+  | 새 프로필 존재 조건 제거 | `read_dir` | `mixed_layout` 시험 2개와 `card_done_mflow_cli` 시험 여러 개 |
+  | 읽기 오류를 모두 삼킴 | `mflow_landing` | `an_unreadable_profile_is_named_in_the_refusal`, `an_unreadable_newer_profile_is_named_and_the_earlier_one_is_no_fallback` |
+  | 힌트를 만들지 않음 | `mflow_landing` | 읽을 수 없는 프로필 시험 2개와 m-flow 아닌 프로필 시험 |
+  | 착지 기록 없이도 힌트 | `mflow_landing` | `without_a_landing_the_refusal_carries_no_profile_hint` |
+
+- 설계 변경 기록: 처음 초안은 읽을 수 없는 프로필을 거절로 만들었는데, 카드 명령이 id 만 쓴 스텁 프로필(`invalid profile` 로 읽힘)인 프로젝트에서 PR 로 닫는 카드가 모두 막혀 시험(`a_project_without_m_flow_keeps_the_pr_rule`)이 빨개졌어요. 그래서 거절 대신 PR 거절 문장에 이유를 붙이는 쪽으로 정했어요(REQ-4).
+- 점검(fmt·clippy·`check affected`·파이썬)은 READY 노트에 요약 줄 그대로 적어요.
