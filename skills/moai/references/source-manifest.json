@@ -222,7 +222,7 @@
       }
     },
     "references/internal/questions.md": {
-      "sha256": "b5243550b336a43fbf07f90aa1f7100bda31df06776133e2685cdf1db118012a",
+      "sha256": "2bd011c52a360ced78d0c8b8138bf8d1d13818177b99c94fe8159e3c8354492e",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-questions",
