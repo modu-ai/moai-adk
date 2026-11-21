@@ -21,7 +21,7 @@ created: 2026-11-21
 
 ## Non-goals
 
-- 프로필·상태 쓰기 위치 변경, 배치 판정(`classify`) 변경, 옛 `.moai-cli/project.yaml` 삭제나 이동. 정리는 사용자가 정해요.
+- 프로필 쓰기 위치의 전면 변경(옛 `.moai-cli` → `.moai` 이동과 `classify` 변경은 C-175 몫) — 다만 혼합 배치에서는 쓰기가 읽기를 따라 새 프로필을 갱신해요(수리 B4: "writes follow reads in a mixed layout"). 옛 `.moai-cli/project.yaml` 의 삭제나 이동은 여전히 아니요, 정리는 사용자가 정해요.
 - 멈춘 카드 5장을 닫는 운영 작업(Q4).
 - `card done` 의 다른 거절 문장, `card landed` 의 규칙, 병합된 PR 규칙 자체.
 
@@ -52,7 +52,7 @@ created: 2026-11-21
 
 - write: `.moai/specs/SPEC-20261121-mixed-profile-read/**`, `src/profile.rs` (the read-path rule and its tests only), `src/card/work.rs` (`mflow_landing` and the refusal), `tests/card_done_mflow_cli.rs`
 - read-only: `src/state_root.rs`, `src/card/spec_link.rs`, `src/ledger/workflow.rs`, `.moai/specs/SPEC-20261120-card-done-mflow/spec.md`
-- forbidden: profile writes (`apply`, `write`, baseline files), `src/state_root.rs` classification, the real HOME and ledger, the five stuck cards' ledger rows
+- forbidden: baseline files, `src/state_root.rs` classification, the real HOME and ledger, the five stuck cards' ledger rows — the profile write itself joined the scope with the delta audit's B4: writes follow reads in a mixed layout (`plan` binds and `apply` publishes the newer profile)
 - 읽은 사실(2026-11-21, tip `041536fe07`): `src/profile.rs:388-413` `state_path` 가 `crate::state_root::path(&root, "")` 로 폴더를 정하고 `read_profile`(`src/profile.rs:1050`)이 `target(root)` 를 읽어요. `src/state_root.rs:566` `dir` 는 `classify(root).generation == "rust"` 일 때만 `.moai` 예요. `src/card/work.rs:492-498` `mflow_landing` 은 `read_profile` 의 어떤 오류도 `Ok(None)` 으로 바꿔요. `profile.rs` 는 다른 카드가 예약 중이라 읽기 경로 한 곳만 짧게 잡아요.
 
 ## Plan
@@ -66,7 +66,7 @@ created: 2026-11-21
 각 결정은 (무엇 · 선택지 · 기본값 · 되돌릴 수 있음 · 범주 · 기한 · 결정자) 순서예요. 모두 제안이고 승인은 SPEC 이 병합될 때 사용자·리더가 골라요.
 
 - D1 (제안, 되돌릴 수 있음, 범주 none): 섞인 배치에서는 `.moai/` 프로필을 읽어요. 대안: 두 파일을 말하며 거절. 기본값: `.moai/` 읽기(리더 제안, 이 저장소의 카드가 막히지 않아요). 되돌리기: 규칙 한 곳.
-- D2 (제안, 되돌릴 수 있음, 범주 none): 읽기만 바꾸고 쓰기 위치는 그대로예요. 이유: 쓰기까지 옮기면 마이그레이션 의미가 바뀌어요.
+- D2 (제안, 되돌릴 수 있음, 범주 none): 혼합 배치에서는 쓰기가 읽기를 따라요 — plan 과 apply 가 새 `.moai/` 프로필에 묶이고 옛 파일은 그대로예요(writes follow reads in a mixed layout; 수리 B4). 이유: 쓰인 값을 모든 읽기가 다시 봐야 하고, 옮기기까지의 마이그레이션 의미는 C-175 가 가져요. 전면 이동(모든 배치에서 `.moai` 로 쓰기)은 여전히 아니요.
 - D3 (제안, 되돌릴 수 있음, 범주 none): "프로필 파일이 없음"은 오류가 아니라 정책 없음으로 남겨요(`mflow_landing` 안에서). `card done` 은 그 전에 프로필의 project_id 로 장부를 찾기 때문에 프로필이 없으면 거기서 먼저 멈추고, 이 SPEC 의 시험은 그 경로를 만들 수 없어요(시험 대상 아님).
 
 ## Risks
@@ -94,6 +94,7 @@ created: 2026-11-21
   | 착지 기록 없이도 힌트 | `mflow_landing` | `without_a_landing_the_refusal_carries_no_profile_hint` |
 
 - 설계 변경 기록: 처음 초안은 읽을 수 없는 프로필을 거절로 만들었는데, 카드 명령이 id 만 쓴 스텁 프로필(`invalid profile` 로 읽힘)인 프로젝트에서 PR 로 닫는 카드가 모두 막혀 시험(`a_project_without_m_flow_keeps_the_pr_rule`)이 빨개졌어요. 그래서 거절 대신 PR 거절 문장에 이유를 붙이는 쪽으로 정했어요(REQ-4).
-- 수리(2026-11-21 감사의 B1–B5·N1–N3): B1 트레일러는 base 위 재커밋으로 교정(여섯 커밋 모두 `Moai-Spec: SPEC-20261121-mixed-profile-read`, `trailer-check` failing 0). B2 프로필 해석 거절이 파일 경로를 앞세운다(`{read_rel}: existing YAML requires preservation review`). B3 m-flow 무 `integration_branch` 힌트의 회귀 시험 추가. B4 혼합 배치의 쓰기가 읽기를 따른다(plan 이 새 프로필에 묶이고 apply 가 그 파일을 고치며 영수증이 실제 파일을 이름한다 — `work_flow` 는 사용자 편집 키라 REQ-03A-03대로 plan 델타에 없으므로 그 읽기는 위의 done 시험들이 핀). B5 AC-1 verify 가 `--lib`. N1 힌트는 랜딩 관련 거절에만 붙고, N2 읽는 파일을 메시지와 존재 검사가 이름한다(archive·github-templates·context·check-tree·identity·generation), N3 두 프로필의 `project_id` 불일치는 양쪽 파일과 id 를 이름해 거절. N5 는 후속 카드 몫으로 기록.
+- 수리(2026-11-21 감사의 B1–B5·N1–N3): B1 트레일러는 base 위 재커밋으로 교정(여섯 커밋 모두 `Moai-Spec: SPEC-20261121-mixed-profile-read`, `trailer-check` failing 0). B2 프로필 해석 거절이 파일 경로를 앞세운다(`{read_rel}: existing YAML requires preservation review`). B3 m-flow 무 `integration_branch` 힌트의 회귀 시험 추가. B4 혼합 배치의 쓰기가 읽기를 따른다(plan 이 새 프로필에 묶이고 apply 가 그 파일을 고치며 영수증이 실제 파일을 이름한다). B5 AC-1 verify 가 `--lib`. N1 힌트는 랜딩 관련 거절에만 붙고, N2 읽는 파일을 메시지와 존재 검사가 이름한다(archive·github-templates·context·check-tree·identity·generation), N3 두 프로필의 `project_id` 불일치는 양쪽 파일과 id 를 이름해 거절. N5 는 후속 카드 몫으로 기록.
+- r2 델타 감사의 R1–R5: R1 recover 는 자기 영수증이 쓴 `.moai/project.yaml`(과 그 before 바이트)만 되돌리고 나머지 `.moai/` 는 계속 거절 — write → recover → 바이트 동일 시험. R2 io 읽기 오류도 경로를 이름한다(mode 000 의 card done 시험). R3 다른 거절(열린 기준)에는 랜딩 힌트가 붙지 않는다(변이 M6 잡는 시험). R4 work-flow-plan 의 JSON 거절도 경로 접두어를 핀(변이 M7). R5 work-flow-plan 의 읽기-복귀 시험(없던 `work_flow` 키의 추가는 적용되어 기록된 integration_branch 를 되돌려 준다 — 값의 편집은 REQ-03A-03 사용자 편집 충돌). N-c identity 의 profile_status 는 고정 단어(missing/present/unreadable)로 두고 경로·이유는 별도 `profile_note` 필드에. N-d 이 SPEC 의 Non-goals·Scope·D2 를 "writes follow reads in a mixed layout" 로 정정. N-a mixed_layout_ids 문서는 코드(양쪽 경로를 이름해 거절)와 일치.
 - 수리 검증: `cargo test --locked --offline --lib` exit 0 (1556 passed), `--test card_done_mflow_cli` exit 0 (13 passed — 기존 9 + B2·B3·B4·N3 신규 4). fmt·clippy·`check affected`(머지 첫째 부모 base)·나머지 대상은 READY 노트의 요약 줄 그대로.
 - 점검(fmt·clippy·`check affected`·파이썬)은 READY 노트에 요약 줄 그대로 적어요.

@@ -343,6 +343,13 @@ fn run_stdin(home: &TempHome, args: &[&str], stdin: &[u8]) -> Output {
     child.wait_with_output().unwrap()
 }
 
+/// `run` with the project as the working folder: the cwd-driven commands (work-flow-plan).
+fn run_in(home: &TempHome, cwd: &Path, args: &[&str]) -> Output {
+    let mut command = home.command(args);
+    command.current_dir(cwd);
+    command.output().expect("run moai")
+}
+
 fn message_of(v: &Value) -> String {
     v["error"]["message"]
         .as_str()
@@ -526,8 +533,9 @@ fn two_profiles_with_different_project_ids_are_refused() {
 
 /// B4 regression: in a mixed layout a profile write follows the read — `project-apply` updates
 /// the newer `.moai/project.yaml` and leaves the older one untouched, and `language-setup`
-/// reads the written value back. (`work_flow` is a user-edited key: REQ-03A-03 keeps it out of
-/// a plan's delta, so its mixed-layout read is pinned by the done tests above.)
+/// reads the written value back. (A work_flow edit on an existing value stays a user-edit
+/// conflict per REQ-03A-03; the work_flow read-back is pinned by the R5 test below, which adds
+/// the key, and by the done tests above.)
 #[test]
 fn a_mixed_layout_write_updates_the_newer_profile_and_is_read_back() {
     let (home, p, _head) = world_with_profiles(&[
@@ -577,4 +585,170 @@ fn a_mixed_layout_write_updates_the_newer_profile_and_is_read_back() {
         .unwrap()
         .clone();
     assert_eq!(documents["current"], json!("ja"), "{q}");
+}
+
+/// R1 regression: recovery accepts exactly the profile path the receipt wrote in a mixed
+/// layout — write (B4), then recover, and the newer profile is back at its before bytes.
+#[test]
+fn recover_reverts_the_mixed_layout_profile_its_receipt_wrote() {
+    let (home, p, _head) = world_with_profiles(&[
+        (".moai-cli/project.yaml", PROFILE_PLAIN),
+        (".moai/project.yaml", PROFILE_MFLOW),
+    ]);
+    let project = Path::new(&p).to_path_buf();
+    let before = std::fs::read_to_string(project.join(".moai/project.yaml")).unwrap();
+    let desired = "{\"schema_version\": 2, \"project_id\": \"demo\", \"purpose\": \"fixture\", \"tools\": [\"rust\"], \"development_methods\": [\"sdd\"], \"hosts\": [\"claude\"], \"work_flow\": {\"flow\": \"m-flow\", \"integration_branch\": \"integ\"}, \"language\": {\"user_chat\": \"en\", \"commit_messages\": \"en\", \"documents\": \"ja\", \"instruction_files\": \"en\"}}";
+    let plan = result(&run_stdin(&home, &["project-plan", &p], desired.as_bytes()));
+    let applied = result(&run_stdin(
+        &home,
+        &[
+            "project-apply",
+            &p,
+            "--plan-digest",
+            plan["plan_digest"].as_str().unwrap(),
+            "--permission-reference",
+            "fixture-approved",
+        ],
+        plan.to_string().as_bytes(),
+    ));
+    let receipt = applied["receipt"].as_str().unwrap().to_string();
+    let recovered = result(&run(
+        &home,
+        &[
+            "apply-recover",
+            &p,
+            "--receipt",
+            &receipt,
+            "--permission-reference",
+            "fixture-approved",
+        ],
+    ));
+    assert_eq!(recovered["state"], json!("reverted"), "{recovered}");
+    assert!(recovered["reverted"]
+        .to_string()
+        .contains(".moai/project.yaml"));
+    let now = std::fs::read_to_string(project.join(".moai/project.yaml")).unwrap();
+    assert_eq!(now, before, "the newer profile is back at its before bytes");
+}
+
+/// R2 regression: a read failure (io, not parse) names the file too — mode 000 on the newer
+/// profile and every card command refuses with the path and the reason.
+#[test]
+#[cfg(unix)]
+fn an_io_refusal_names_the_profile_path() {
+    use std::os::unix::fs::PermissionsExt;
+    let (home, p, _head) = world_with_profiles(&[
+        (".moai-cli/project.yaml", PROFILE_PLAIN),
+        (".moai/project.yaml", PROFILE_MFLOW),
+    ]);
+    let newer = Path::new(&p).join(".moai/project.yaml");
+    std::fs::set_permissions(&newer, std::fs::Permissions::from_mode(0o000)).unwrap();
+    let v = refusal(&done(&home, &p));
+    let message = message_of(&v);
+    assert!(message.contains(".moai/project.yaml"), "{message}");
+    assert!(message.contains("target read failed"), "{message}");
+    std::fs::set_permissions(&newer, std::fs::Permissions::from_mode(0o644)).unwrap();
+}
+
+/// R3 regression (mutant M6): the landing hint rides the landing refusal only — a card
+/// refused for an open criterion, with a landing hint available, reads its own reason alone.
+#[test]
+fn an_open_criterion_refusal_carries_no_landing_hint() {
+    let (home, p, head) = world_with_profiles(&[
+        (".moai-cli/project.yaml", PROFILE_PLAIN),
+        (".moai/project.yaml", PROFILE_MFLOW_NO_BRANCH),
+    ]);
+    land(&home, &p, &head);
+    // The criterion goes back to open, so done refuses for that reason, with a hint available.
+    let mut w = ledger::open_write(home.path(), "demo").unwrap();
+    w.with_write_tx(|tx, _| {
+        Ok(tx.execute(
+            "UPDATE card_ac SET status = 'open', evidence_ref = NULL \
+             WHERE card_id = 1 AND seq = 1",
+            [],
+        )?)
+    })
+    .unwrap();
+    drop(w);
+    let v = refusal(&done(&home, &p));
+    let message = message_of(&v);
+    assert!(
+        message.contains("no acceptance criterion that is met"),
+        "{message}"
+    );
+    assert!(
+        !message.contains("a local landing is recorded"),
+        "the hint is not attached to another refusal: {message}"
+    );
+    assert_eq!(done_events(&home), 0);
+}
+
+/// R4 regression (mutant M7): the path prefix on a JSON parse error reaches the other readers
+/// of the profile — work-flow-plan's answer names the file and the reason (it reports a
+/// present-but-unreadable profile as its own state and exits 0), not the bare sentence.
+#[test]
+fn work_flow_plan_names_a_broken_profile_with_its_path() {
+    let (home, p, _head) = world_with_profiles(&[
+        (".moai-cli/project.yaml", PROFILE_PLAIN),
+        (".moai/project.yaml", PROFILE_NOT_JSON),
+    ]);
+    let out = run_in(&home, Path::new(&p), &["work-flow-plan"]);
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stdout)
+    );
+    let text = String::from_utf8_lossy(&out.stdout).into_owned();
+    assert!(text.contains(".moai/project.yaml"), "{text}");
+    assert!(
+        text.contains("existing YAML requires preservation review"),
+        "{text}"
+    );
+}
+
+/// R5 regression: a mixed-layout write is read back by work-flow-plan — the desired profile
+/// ADDS a work_flow (the key was absent, so the add applies), and the recorded integration
+/// branch the plan reports is the written one.
+#[test]
+fn a_mixed_layout_write_is_read_back_by_work_flow_plan() {
+    let (home, p, _head) = world_with_profiles(&[
+        (".moai-cli/project.yaml", PROFILE_PLAIN),
+        (".moai/project.yaml", PROFILE_PLAIN),
+    ]);
+    let project = Path::new(&p).to_path_buf();
+    let desired = "{\"schema_version\": 2, \"project_id\": \"demo\", \"purpose\": \"fixture\", \"tools\": [\"rust\"], \"development_methods\": [\"sdd\"], \"hosts\": [\"claude\"], \"work_flow\": {\"flow\": \"m-flow\", \"integration_branch\": \"integ\"}}";
+    let plan = result(&run_stdin(&home, &["project-plan", &p], desired.as_bytes()));
+    let _ = result(&run_stdin(
+        &home,
+        &[
+            "project-apply",
+            &p,
+            "--plan-digest",
+            plan["plan_digest"].as_str().unwrap(),
+            "--permission-reference",
+            "fixture-approved",
+        ],
+        plan.to_string().as_bytes(),
+    ));
+    let newer: Value =
+        serde_json::from_str(&std::fs::read_to_string(project.join(".moai/project.yaml")).unwrap())
+            .unwrap();
+    assert_eq!(
+        newer["work_flow"]["integration_branch"],
+        json!("integ"),
+        "the add landed in the newer profile: {newer}"
+    );
+    let older: Value = serde_json::from_str(
+        &std::fs::read_to_string(project.join(".moai-cli/project.yaml")).unwrap(),
+    )
+    .unwrap();
+    assert!(
+        older.get("work_flow").is_none(),
+        "the older profile is untouched: {older}"
+    );
+    let w = result(&run_in(&home, Path::new(&p), &["work-flow-plan"]));
+    assert!(
+        w.to_string().contains("integ"),
+        "the written branch is reported: {w}"
+    );
 }

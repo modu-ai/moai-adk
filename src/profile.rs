@@ -465,11 +465,26 @@ fn read_target(root: &Path) -> Result<PathBuf> {
     }
 }
 
+/// Whether a reader — and, since the delta audit's B4, a writer — picks the newer `.moai`
+/// profile: both profiles are regular files and the layout is not `rust` (the mixed branch of
+/// [`read_dir`]). Recovery uses it to keep exactly the profile path a mixed-layout apply wrote
+/// (src/apply.rs).
+pub fn reads_newer_profile(root: &Path) -> bool {
+    crate::state_root::dir(root) != crate::state_root::MOAI_DIR
+        && read_dir(root).is_ok_and(|d| d == crate::state_root::MOAI_DIR)
+}
+
 /// The bytes of the profile a reader opens ([`read_target`]): `Ok(None)` when the chosen file
 /// is not there. The existence checks of readers that only want to know whether a profile is
 /// there use this, so they look at the folder that is actually read (the delta audit's N2).
 pub fn chosen_profile(root: &Path) -> Result<Option<Vec<u8>>> {
-    read(&read_target(root)?)
+    profile_bytes(root)
+}
+
+/// The bytes at [`read_target`], with the read's own errors named by the file (`target read
+/// failed` and `target metadata unavailable` said neither before — the delta audit's R2).
+fn profile_bytes(root: &Path) -> Result<Option<Vec<u8>>> {
+    read(&read_target(root)?).map_err(|e| format!("{}: {e}", read_rel(root)))
 }
 
 /// In a mixed layout both profiles must name the same project: when both files parse and their
@@ -499,8 +514,9 @@ fn mixed_layout_ids(root: &Path) -> Result<()> {
         crate::state_root::EARLIER_PROJECT_DIR,
     ] {
         let path = root.join(name).join("project.yaml");
-        let bytes =
-            read(&path)?.ok_or_else(|| format!("{name}/project.yaml: {PROFILE_MISSING}"))?;
+        let bytes = read(&path)
+            .map_err(|e| format!("{name}/project.yaml: {e}"))?
+            .ok_or_else(|| format!("{name}/project.yaml: {PROFILE_MISSING}"))?;
         let id = crate::project_id::of_profile_bytes(&bytes)
             .map_err(|e| format!("{name}/project.yaml: {e}"))?;
         ids.push((name, id));
@@ -692,7 +708,7 @@ pub fn plan_in(active: &[&str], root: &Path, mut profile: Profile) -> Result<Pla
     if profile.schema_version != 2 {
         return Err("invalid or nonportable profile; no values were logged".into());
     }
-    let old = read(&read_target(root)?)?;
+    let old = profile_bytes(root)?;
     let current = match &old {
         None => None,
         Some(bytes) => {
@@ -1032,7 +1048,7 @@ pub fn apply_in(
     let mut receipt = crate::apply::Receipt::new(&request_id, "project.apply", root);
     if p.action == "unchanged" {
         // REQ-01B-10: a re-run writes nothing; the receipt records zero publishes.
-        let bytes = read(&read_target(root)?)?.unwrap_or_default();
+        let bytes = profile_bytes(root)?.unwrap_or_default();
         receipt.entry(
             &target_rel,
             "unchanged",
@@ -1063,7 +1079,7 @@ pub fn apply_in(
         "update" => {
             // REQ-03A-05: replace only when the file still hashes to the plan's expectation.
             let current =
-                read(&read_target(root)?)?.ok_or("stale or altered plan; re-preview required")?;
+                profile_bytes(root)?.ok_or("stale or altered plan; re-preview required")?;
             if Some(digest(&current)) != p.expected_sha256 {
                 return Err("stale or altered plan; re-preview required".into());
             }
@@ -1075,7 +1091,7 @@ pub fn apply_in(
     fs::create_dir_all(path.parent().expect("target parent"))
         .map_err(|_| "project state directory unavailable")?;
     let path = read_target(root)?;
-    let before = read(&path)?;
+    let before = read(&path).map_err(|e| format!("{}: {e}", read_rel(root)))?;
     let before_digest = before.as_deref().map(digest);
     // REQ-01B-08: keep the before bytes before publishing so recovery can restore
     // content; a created file needs no backup (recovery removes it).
@@ -1188,7 +1204,7 @@ pub fn apply_in(
 /// `project_id` (the file is left alone). Reads only.
 pub(crate) fn existing_project_id(root: &Path) -> Result<Option<String>> {
     mixed_layout_ids(root)?;
-    match read(&read_target(root)?)? {
+    match profile_bytes(root)? {
         None => Ok(None),
         Some(bytes) => crate::project_id::of_profile_bytes(&bytes)
             .map(Some)
@@ -1206,7 +1222,7 @@ pub fn read_profile(root: &Path) -> Result<(Profile, Vec<u8>)> {
 /// a list they emptied reads as `["claude"]` (the file is not changed by a read).
 pub fn read_profile_in(active: &[&str], root: &Path) -> Result<(Profile, Vec<u8>)> {
     mixed_layout_ids(root)?;
-    let bytes = read(&read_target(root)?)?.ok_or(PROFILE_MISSING)?;
+    let bytes = profile_bytes(root)?.ok_or(PROFILE_MISSING)?;
     let value: Value = serde_json::from_slice(&bytes).map_err(|_| {
         format!(
             "{}: existing YAML requires preservation review",

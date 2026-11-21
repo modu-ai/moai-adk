@@ -156,6 +156,7 @@ fn empty(status: &str, reason: &str, home: Value) -> Value {
         "workspace_id": null,
         "project_id": null,
         "profile_status": null,
+        "profile_note": null,
         "project_state_root": null,
         "home_state_root": home,
         "id_derivation": ID_DERIVATION,
@@ -219,29 +220,31 @@ pub fn identity(path: &Path) -> Result<Value> {
         (false, Some(_)) if common == git_dir => "primary",
         (false, Some(_)) => "linked",
     };
-    let (project_root, project_id, profile_status) = match &work_tree {
+    let (project_root, project_id, profile_status, profile_note) = match &work_tree {
         Some(top) => {
             let root = crate::state_root::path(top, "");
             refuse_symlink(&root, "project state root")?;
-            // The status names the file that is actually read and, when it cannot be read,
-            // why (the delta audit's N2): the mixed-layout chooser, not one fixed folder.
-            let (id, status) = match crate::profile::chosen_profile(top) {
+            // The status stays a fixed word (the delta audit's N-c); the file that was actually
+            // read and the reason travel beside it in `profile_note` (the delta audit's N2).
+            let (id, status, note) = match crate::profile::chosen_profile(top) {
                 Err(e) => (
                     Value::Null,
-                    format!("unreadable: {} ({e})", crate::profile::read_rel(top)),
+                    "unreadable",
+                    Some(format!("{} ({e})", crate::profile::read_rel(top))),
                 ),
-                Ok(None) => (Value::Null, "missing".to_string()),
+                Ok(None) => (Value::Null, "missing", None),
                 Ok(Some(_)) => match read_profile(top) {
-                    Ok((p, _)) => (json!(p.project_id), "present".to_string()),
+                    Ok((p, _)) => (json!(p.project_id), "present", None),
                     Err(e) => (
                         Value::Null,
-                        format!("unreadable: {} ({e})", crate::profile::read_rel(top)),
+                        "unreadable",
+                        Some(format!("{} ({e})", crate::profile::read_rel(top))),
                     ),
                 },
             };
-            (json!(text(&root)?), id, json!(status))
+            (json!(text(&root)?), id, json!(status), note)
         }
-        None => (Value::Null, Value::Null, Value::Null),
+        None => (Value::Null, Value::Null, Value::Null, None),
     };
     Ok(json!({
         "identity_status": "ok",
@@ -254,6 +257,7 @@ pub fn identity(path: &Path) -> Result<Value> {
         "workspace_id": path_id(&git_dir)?,
         "project_id": project_id,
         "profile_status": profile_status,
+        "profile_note": profile_note,
         "project_state_root": project_root,
         "home_state_root": home,
         "id_derivation": ID_DERIVATION,
