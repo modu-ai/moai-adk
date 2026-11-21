@@ -694,6 +694,45 @@ enum Action {
         #[arg(long)]
         home: Option<PathBuf>,
     },
+    /// Writes the ledger. Close a ready, active or review card whose landing or report is proven
+    ///
+    /// Writes the ledger. Closes the card in one transaction: every open criterion is marked met
+    /// with its `--met N=REF` (one per open criterion), the card becomes `done` and a reservation
+    /// it holds is released, with one `card.landed` and one `card.finish` event naming `--by`.
+    /// A card that changes the repository needs a landing: `--head`, else its merged pull request
+    /// link, else the head `card landed` recorded, and git must show that head inside the
+    /// profile's integration branch (`work_flow` m-flow). A `research` or `audit` card gives
+    /// exactly one of `--evidence-report` (a file under `<HOME>/.moai/reports` or the project
+    /// folder) or `--evidence-note` (a report or decision note of the card) and no `--head`.
+    /// Another session's reservation whose lease has not ended is refused; your own, or one that
+    /// has ended, passes. Every refusal writes nothing.
+    Finish {
+        /// The card to close (`C-12`).
+        card: String,
+        /// The head that landed (40 lowercase hex); not for a research or audit card.
+        #[arg(long)]
+        head: Option<String>,
+        /// One open criterion and its evidence, `N=REF` (repeat for each open criterion; REF is
+        /// one line of 1..=500 characters).
+        #[arg(long = "met")]
+        met: Vec<String>,
+        /// A report file under `<HOME>/.moai/reports` or the project folder (research and audit
+        /// cards only; a relative path is read from the project folder).
+        #[arg(long)]
+        evidence_report: Option<String>,
+        /// The `ref` of a report or decision note of the card (research and audit cards only).
+        #[arg(long)]
+        evidence_note: Option<String>,
+        /// Who finishes the card (one line, 1..=200 characters).
+        #[arg(long)]
+        by: String,
+        /// The project folder (its profile holds the project id and the integration branch).
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// The HOME holding the ledger (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+    },
     /// Writes the ledger. Extend the lease of a taken card
     ///
     /// Writes the ledger. The lease of this session's reservation at `--generation` ends
@@ -1166,6 +1205,32 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             &d::session_holder("done", env)?,
             generation,
         ),
+        Action::Finish {
+            card,
+            head,
+            met,
+            evidence_report,
+            evidence_note,
+            by,
+            project,
+            home,
+        } => {
+            // No session id is not a refusal: the call passes the gate only on an ended lease.
+            let session = d::session_holder("finish", env).ok();
+            moai_cli::card::finish::finish(
+                &project,
+                &resolve_home(home)?,
+                &card,
+                &moai_cli::card::finish::FinishRequest {
+                    session: session.as_deref(),
+                    head: head.as_deref(),
+                    met: &met,
+                    evidence_report: evidence_report.as_deref(),
+                    evidence_note: evidence_note.as_deref(),
+                    by: &by,
+                },
+            )
+        }
         Action::Renew {
             card,
             generation,
