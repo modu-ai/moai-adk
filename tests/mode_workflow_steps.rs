@@ -224,6 +224,7 @@ fn ops_named_by_the_mode_workflows_exist_with_their_flags() {
             // #2928: MODE-LEADER registers itself as the leader for the status line tag
             // (`--name <n> --mode=leader`; the `=` keeps clear of the retired `/moai` mode
             // spelling that tests/product_cli.rs scans the package for).
+            "session-register --liveness-of",
             "session-register --name",
             "session-register --release",
             "usage-limit",
@@ -664,7 +665,7 @@ fn bottleneck_rules_are_pinned_in_both_mode_workflows() {
         &[
             "A card changes hands only through its holder's `card handoff --to <session>`",
             "the leader writes no handoff line and edits no reservation",
-            "an ended lease alone never transfers a card: reclaim is the user's at any time and the leader's after the lease ends (decision L7)",
+            "an ended lease alone never transfers a card: reclaim (`card reclaim`, three per card, ever) is the user's at any time and the leader's after the lease ends",
         ],
     );
     // 15. operating numbers change together; N from D7.
@@ -831,7 +832,6 @@ fn skill_requests_delegation_with_each_hosts_subagent_tool() {
         "`## Base agents`",
         "`spawn_agent` and then `wait_agent` in Codex CLI",
         "the agent tool in Claude Code",
-        "the task tool in OMP",
         "do the step in this session and say so",
     ] {
         assert!(skill.contains(needle), "SKILL.md lacks {needle}");
@@ -1021,7 +1021,7 @@ fn timeout_takeover_without_a_terminal_list_uses_claim_timeout_check() {
     assert_says(
         &leader,
         "handoff-line",
-        &["no command does it yet (C-53 S6), so report the card to the user"],
+        &["liveness first (`moai session-register --liveness-of <session-id>`; `unknown` goes to the user, never an automatic reclaim)"],
     );
     assert_says(
         &leader,
@@ -1652,12 +1652,10 @@ fn omp_has_an_entry_spelling_and_a_wake_that_a_lane_can_end() {
         std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai/SKILL.md"),
     )
     .unwrap();
-    for p in [
-        "`/skill:moai project` in OMP",
-        "`/skill:moai optimize` in OMP",
-        "`/skill:moai --mode-agent …` in OMP, which hands the text after the skill name to the skill as plain text, not as a flag of its own",
-    ] {
-        assert!(skill.contains(p), "SKILL.md must say `{p}`");
+    // SKILL.md no longer names OMP (the 2026-11-20 guidance sweep); the workflow files below keep
+    // their OMP lines until the cards that hold them take them out.
+    for p in ["in OMP", "the task tool in OMP"] {
+        assert!(!skill.contains(p), "SKILL.md must not say `{p}` any more");
     }
     let agent = workflow("mode-agent.md");
     let leader = workflow("mode-leader.md");
@@ -1672,7 +1670,6 @@ fn omp_has_an_entry_spelling_and_a_wake_that_a_lane_can_end() {
     for (file, key) in [
         ("project.md", "`/skill:moai project` in OMP"),
         ("update.md", "`/skill:moai update` in OMP"),
-        ("optimize.md", "`/skill:moai optimize` in OMP"),
     ] {
         assert!(workflow(file).contains(key), "{file} must say `{key}`");
     }

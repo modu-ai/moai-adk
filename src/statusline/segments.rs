@@ -205,6 +205,9 @@ pub fn session_time(ms: i64) -> String {
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct GitStatus {
     pub branch: String,
+    /// The short HEAD SHA when the branch name is empty (detached HEAD,
+    /// SPEC-20261121-statusline-detached); empty otherwise.
+    pub head_sha: String,
     pub staged: i64,
     pub modified: i64,
     pub untracked: i64,

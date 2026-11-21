@@ -42,6 +42,7 @@ use crate::apply::{
     decide, new_request_id, publish_exclusive, publish_replace, read_opt, root_of,
     save_before_bytes, Decision, Receipt,
 };
+use crate::retired_hosts::owned_entry_retired;
 use crate::{digest, read_profile};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -364,6 +365,9 @@ fn source_reviewed(root: &Path, source_url: &str) -> Result<Option<(String, Stri
     Ok(None)
 }
 
+/// The hosts a generation request may name.
+pub const HOSTS: [&str; 2] = ["claude", "codex"];
+
 pub(crate) fn toml_string(s: &str) -> String {
     let mut out = String::from("\"");
     for c in s.chars() {
@@ -614,6 +618,16 @@ fn reference_is_own_output(root: &Path, request: &GenerationRequest) -> bool {
 }
 
 pub fn generation_plan(root: &Path, request: GenerationRequest) -> Result<GenerationPlan> {
+    generation_plan_in(&HOSTS, root, request)
+}
+
+/// [`generation_plan`] for a place whose active hosts are `active`: a recorded file of a retired
+/// host plans no conflict and no removal.
+pub fn generation_plan_in(
+    active: &[&str],
+    root: &Path,
+    request: GenerationRequest,
+) -> Result<GenerationPlan> {
     let mut request = request;
     request.workflow_reference = normalize_workflow_reference(&request.workflow_reference);
     validate(&request)?;
@@ -879,6 +893,10 @@ pub fn generation_plan(root: &Path, request: GenerationRequest) -> Result<Genera
         })
         .unwrap_or_default();
     for (kind, rel, baseline) in owned {
+        // A file of a retired host: no conflict, no removal; the entry only leaves the manifest.
+        if owned_entry_retired(&kind, active) {
+            continue;
+        }
         if requested.contains(&kind) || files.iter().any(|f| f.path == rel) {
             continue;
         }
@@ -946,8 +964,12 @@ pub fn generation_plan(root: &Path, request: GenerationRequest) -> Result<Genera
             .iter()
             .all(|f| f.path == manifest_rel || f.action == "unchanged");
         let same = others_unchanged && {
-            let mut value =
-                crate::agents::predicted_manifest_value(&root, &agents_request, &agents.files)?;
+            let mut value = crate::agents::predicted_manifest_value(
+                active,
+                &root,
+                &agents_request,
+                &agents.files,
+            )?;
             let (profile, profile_bytes) = read_profile(&root)?;
             record_generation(&mut value, &plan, &profile, &profile_bytes);
             let disk = read_opt(&root.join(&manifest_rel))?;
@@ -1151,6 +1173,18 @@ pub fn generation_apply(
     confirmed: &str,
     permission: &str,
 ) -> Result<Value> {
+    generation_apply_in(&HOSTS, root, p, confirmed, permission)
+}
+
+/// [`generation_apply`] for a place whose active hosts are `active`: the manifest it publishes
+/// drops the recorded entries of a retired host and leaves their files alone.
+pub fn generation_apply_in(
+    active: &[&str],
+    root: &Path,
+    p: GenerationPlan,
+    confirmed: &str,
+    permission: &str,
+) -> Result<Value> {
     if !crate::contract::permission_reference_ok(permission) {
         return Err("permission reference required".into());
     }
@@ -1158,7 +1192,7 @@ pub fn generation_apply(
     // the raw spelling then fails the digest re-check and must re-preview.
     let mut p = p;
     p.request.workflow_reference = normalize_workflow_reference(&p.request.workflow_reference);
-    let current = generation_plan(root, p.request.clone())?;
+    let current = generation_plan_in(active, root, p.request.clone())?;
     if p.protocol_version != 1
         || confirmed != p.plan_digest
         || plan_digest(&p) != p.plan_digest
@@ -1320,6 +1354,7 @@ pub fn generation_apply(
             .map_err(|e| format!("published files but the receipt was not recorded: {e}"))
     };
     let agents_result = agents_apply_amended_for(
+        active,
         &root,
         agents_plan.clone(),
         &agents_plan.plan_digest,

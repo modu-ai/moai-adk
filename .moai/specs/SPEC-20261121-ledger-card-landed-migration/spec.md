@@ -86,15 +86,18 @@ created: 2026-11-21
 - `src/ledger/schema.rs`: `TRIGGERS` 를 `card_done_guard` 앞(`TRIGGERS_BEFORE_GUARD`)·그 트리거(`CARD_DONE_GUARD`)·뒤(`TRIGGERS_AFTER_GUARD`)로 나눴어요. 새 원장과 이주가 같은 글자를 써요.
 - `src/ledger/migrate.rs`: `done_guard_status`(읽기 전용), `upgrade_done_guard` 와 실패 지점을 끼우는 `upgrade_done_guard_with`, `ledger.db.bak-<UTC>` 백업(이름을 `create_new` 0600 으로 먼저 잡고 두 번째 SQLite 연결의 `VACUUM INTO` 로 채움 — 원장 파일을 `std::fs` 로 열지 않음)과 읽어 확인(`quick_check`, `application_id`, `user_version`), `meta` 행 `done_guard_landed`, 실패했을 때 트리거를 다시 읽어 롤백이 보일 때만 백업을 지우는 `settle_failed`, 거절 문구의 해결 방법(`BACKUP_HELP`), 시험이 볼 수 있는 세 지점 `Stage`.
 - `src/ledger/open.rs`: `open_write` 가 연 직후 이주를 부르고 `WriteLedger::done_guard_upgrade()` 로 백업 경로를 알려 주고, 이주가 실제로 돌았을 때만 한 줄을 한 번 알려요(백업 경로 포함).
-- 시험: `tests/ledger_card_landed_migration_cli.rs` 15개(두 프로세스 잠금 시험, 8프로세스 동시 열기 시험, 거절 문구 시험 포함), `ledger::migrate` 단위 시험 5개.
+- 시험: `tests/ledger_card_landed_migration_cli.rs` 15개(두 프로세스 잠금 시험, 8프로세스 동시 열기 시험, 거절 문구 시험 포함), `ledger::migrate` 단위 시험 8개(실패한 백업과 그 `-journal` 을 지우는 시험 3개 포함).
 
 ### 증거 (2026-11-21)
 
 이번 head(수리 뒤 작업 트리)에서 돌린 것:
 
-- `cargo test --offline --locked --test ledger_card_landed_migration_cli`: 15 passed. `cargo test --offline --locked --lib ledger::migrate`: 5 passed. `rustfmt --edition 2021 --check`(고친 3개 파일) 0, `git diff --check` 0, `cargo clippy --offline --locked --all-targets -- -D warnings` 0.
+- `cargo test --offline --locked --test ledger_card_landed_migration_cli`: 15 passed. `cargo test --offline --locked --lib ledger::migrate`: 8 passed(M1 수리 뒤). `rustfmt --edition 2021 --check`(고친 3개 파일) 0, `git diff --check` 0, `cargo clippy --offline --locked --all-targets -- -D warnings` 0.
 - 감사가 3/3 으로 재현한 결함의 회귀 시험: `the_write_lock_is_held_from_the_lock_to_the_commit` 은 업그레이드의 세 지점(`Locked`, `BackedUp`, `GuardDropped`)에서 다른 *프로세스*(이 시험 바이너리를 다시 실행한 자식)가 `BEGIN IMMEDIATE` 를 못 잡고 `busy` 를 받으며, 커밋 뒤에는 `got` 임을 확인해요. `concurrent_opens_upgrade_once_and_every_open_succeeds` 는 프로세스 8개가 동시에 열어도 모두 성공하고, 이주 1·백업 1·알림 1이며 행 덤프가 같고 `integrity_check` ok 임을 확인해요.
 - 변형 5개(상한 12): N1 `Immediate`→`Deferred`(감사에서 살아남았던 것), N2 잠금 중 `std::fs::File::open(원장)`(감사가 찾은 결함을 되살림), N3 트랜잭션 안 재확인 제거, N4 커밋됐는데도 백업 삭제, N5 알림 제거 — 전부 `FAILED` 로 죽었고 컴파일 실패로 센 것은 없어요(`target/mutants2.py`, 변형 뒤 `git diff` 가 의도한 4개 파일뿐임을 확인).
+- 변형 2개(M1 수리, 단위 시험만): J1 `-journal` 이름을 틀리게, J2 롤백 경로가 예전처럼 본 파일만 지움 — 둘 다 `FAILED` 로 죽었어요(`target/mutants3.py`). M1 의 `-journal` 은 번들 SQLite 로 두 가지 실패(원본이 데이터베이스가 아님, 원본이 독점 잠김)를 만들어도 남지 않아서 결정적으로 재현하지 못했어요. 그래서 수리는 실패한 백업의 파일과 `<백업>-journal` 을 지우는 함수(`remove_backup_files`)를 두 실패 경로에 쓰게 하고 그 함수를 직접 시험해요.
+
+감사(델타 tier 2 PASS, 감사자 보고 숫자): 복사본 두 개에서 12개 동시 열기 × 8회 — 백업 1·알림 1줄·`integrity_check` ok·`disk I/O error`/`File exists` 0; `ledger_*` 14개 대상 + `card_done_mflow_cli` 245 passed; `--lib ledger::` 29 passed. 병합 검사(레인): `check affected` 52c65fc49a(base f00cf2b126) PASS — targets=56 py=8 scans=listed:41, 모든 단계 exit 0.
 
 이전 head 에서 잰 것(백업 방식이 `std::fs` 복사였을 때; 이번 head 에서 다시 돌리지 않았어요):
 

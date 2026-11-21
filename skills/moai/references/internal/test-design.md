@@ -8,3 +8,5 @@ When to read: before you write or change a test, as `moai-impl` writing the test
 4. Prove each test with a mutation. Commit first, then change the guarded code or delete the pinned sentence itself — not an introduction around it — run the test and expect FAILED, restore the bytes, and confirm the tree is clean before the next mutation. A mutation that survives means the test pins the wrong thing.
 5. A run that selected no test (`0 passed`) is not_run, never a pass. A test-name filter applies to every target of the call, so a filtered run names exactly one target.
 6. Tests must not depend on the clock, the network, the real HOME or another worktree's build folder.
+7. An expected value comes from the source of truth (the constant, the function or the file the product reads), never from a literal copied into the test: changing the source then changes what the test expects.
+8. A test of product behaviour is written in Rust. A Python test is for a tool script, and only while that tool is being ported.

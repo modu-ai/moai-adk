@@ -192,12 +192,21 @@ enum Settled {
 fn settle_failed(conn: &Connection, backup: &Path) -> Settled {
     match done_guard_status(conn) {
         Ok(DoneGuard::NeedsMigration) => {
-            let _ = std::fs::remove_file(backup);
+            remove_backup_files(backup);
             Settled::RolledBack
         }
         Ok(DoneGuard::Current) => Settled::Committed,
         Err(_) => Settled::Unknown,
     }
+}
+
+/// Removes a backup this call made and could not use: the file and the `<backup>-journal` a
+/// `VACUUM INTO` that stopped half way leaves beside it. Only these two names are touched.
+fn remove_backup_files(backup: &Path) {
+    let _ = std::fs::remove_file(backup);
+    let mut journal = backup.as_os_str().to_owned();
+    journal.push("-journal");
+    let _ = std::fs::remove_file(PathBuf::from(journal));
 }
 
 /// `<ledger>.bak-<stamp>` in the ledger's own folder.
@@ -255,7 +264,7 @@ fn make_backup(from: &Path, to: &Path) -> Result<(), LedgerError> {
             .map_err(|e| e.to_string())
     })();
     if let Err(e) = copied {
-        let _ = std::fs::remove_file(to);
+        remove_backup_files(to);
         return Err(io("could not be written:", &e));
     }
     Ok(())
@@ -382,6 +391,77 @@ mod tests {
             !to.exists(),
             "a file this call made and could not fill is removed"
         );
+    }
+
+    /// Names of the files in `dir`, sorted.
+    fn files_in(dir: &Path) -> Vec<String> {
+        let mut names: Vec<String> = std::fs::read_dir(dir)
+            .unwrap()
+            .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+            .collect();
+        names.sort();
+        names
+    }
+
+    #[test]
+    fn a_failed_backup_leaves_no_file_beside_the_ledger() {
+        // Source is not a database.
+        let dir = tempfile::tempdir().unwrap();
+        let from = dir.path().join("from");
+        std::fs::write(&from, vec![7u8; 4096]).unwrap();
+        assert!(make_backup(&from, &dir.path().join("to")).is_err());
+        assert_eq!(files_in(dir.path()), ["from"], "not a database");
+
+        // Source is a database that another connection holds exclusively: the backup waits
+        // for the busy timeout and gives up.
+        let dir = tempfile::tempdir().unwrap();
+        let from = dir.path().join("from");
+        small_ledger(&from);
+        let held = Connection::open(&from).unwrap();
+        held.execute_batch("PRAGMA locking_mode = EXCLUSIVE; BEGIN EXCLUSIVE;")
+            .unwrap();
+        assert!(make_backup(&from, &dir.path().join("to")).is_err());
+        drop(held);
+        assert_eq!(files_in(dir.path()), ["from"], "source held exclusively");
+    }
+
+    #[test]
+    fn a_half_made_backup_is_removed_with_its_journal_and_nothing_else() {
+        let dir = tempfile::tempdir().unwrap();
+        let backup = dir.path().join("main.db.bak-20261121T000000Z");
+        let journal = dir.path().join("main.db.bak-20261121T000000Z-journal");
+        let neighbour = dir.path().join("main.db.bak-20261121T000001Z");
+        let ledger = dir.path().join("main.db");
+        for f in [&backup, &journal, &neighbour, &ledger] {
+            std::fs::write(f, b"x").unwrap();
+        }
+        remove_backup_files(&backup);
+        assert_eq!(
+            files_in(dir.path()),
+            ["main.db", "main.db.bak-20261121T000001Z"],
+            "only the backup and its journal go"
+        );
+        // Nothing there: no error, nothing changes.
+        remove_backup_files(&backup);
+        assert_eq!(files_in(dir.path()).len(), 2);
+    }
+
+    #[test]
+    fn a_rolled_back_upgrade_removes_the_journal_of_its_backup_too() {
+        let dir = tempfile::tempdir().unwrap();
+        let backup = dir.path().join("backup");
+        let journal = dir.path().join("backup-journal");
+        let old = dir.path().join("old.db");
+        let c = Connection::open(&old).unwrap();
+        c.execute_batch(
+            "CREATE TABLE card (state); \
+             CREATE TRIGGER card_done_guard BEFORE UPDATE OF state ON card BEGIN SELECT 1; END;",
+        )
+        .unwrap();
+        std::fs::write(&backup, b"b").unwrap();
+        std::fs::write(&journal, b"j").unwrap();
+        assert_eq!(settle_failed(&c, &backup), Settled::RolledBack);
+        assert!(!backup.exists() && !journal.exists());
     }
 
     #[test]
