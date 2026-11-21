@@ -16,9 +16,9 @@ use std::fs;
 use std::io::{self, BufRead, Read, Write};
 use std::path::Path;
 
-/// The tools a person can pick, in question order (user decision 2026-11-19: three tools only —
-/// claude, gpt, glm; the gpt tool is the codex key). A pick writes its own tool alone.
-pub const TOOL_CHOICES: [&str; 3] = ["claude", "codex", "glm"];
+/// The tools a person can pick, in question order (user decision 2026-11-21: Claude Code and GLM
+/// only; Codex support is withdrawn). A pick writes its own tool alone.
+pub const TOOL_CHOICES: [&str; 2] = ["claude", "glm"];
 /// Bad answers to one question before the loop gives up.
 const MAX_TRIES: usize = 3;
 /// The launcher settings file is small; a larger one is not read.
@@ -54,7 +54,6 @@ pub struct Question {
 fn tool_label(tool: &str) -> &'static str {
     match tool {
         "claude" => "Claude",
-        "codex" => "GPT (Codex)",
         "omp" => "OMP",
         "glm" => "GLM",
         _ => "",
