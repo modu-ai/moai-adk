@@ -33,7 +33,7 @@ created: 2026-11-21
 
 - AC-1 (REQ-1, REQ-2, REQ-3, REQ-4): the decision function answers true exactly for a terminal run that is not scripted and either wrote or has no saved model; every one of the sixteen input combinations is tested. verify: `cargo test --locked --offline --test update_model_step_reachable`
 - AC-2 (REQ-5): `models_saved` answers false for no file, a file without `models` and an empty `models`; true for a saved entry, a damaged `models` and an unreadable file; the file is the same bytes afterwards. verify: `cargo test --locked --offline --test update_model_step_reachable`
-- AC-3 (REQ-1, REQ-4): a run on a pseudo-terminal with nothing to apply and an empty HOME state asks the tool pick; a run on a pipe still reports without asking and keeps the preview's keys. verify: `python3 -I -m unittest tests.update_model_step_reachable_tty_test`; `cargo test --locked --offline --test update_model_pick`
+- AC-3 (REQ-1, REQ-4): a run on a pseudo-terminal with nothing to apply and an empty HOME state asks the tool pick; a run on a pipe still reports without asking and keeps the preview's keys. verify: `cargo test --locked --offline --test update_model_step_reachable_tty`; `cargo test --locked --offline --test update_model_pick`
 - AC-4: light checks. verify: `git diff --check`; `cargo fmt --check`; `cargo clippy --locked --offline --all-targets -- -D warnings`
 
 ## Scope
@@ -46,7 +46,7 @@ created: 2026-11-21
 
 1. Test first: `tests/update_model_step_reachable.rs` holds the sixteen-combination test of `model_step_opens` and the saved-models cases of `models_saved`; both fail to compile before the functions exist (RED).
 2. `src/update.rs`: add the two functions; `update_command_switch` extends a preview that has nothing to apply, on a person's terminal with no saved model, with the model step, and keeps every other preview as it was.
-3. A pseudo-terminal run for the end to end proof (AC-3); a committed copy needs `tests/update_model_step_reachable_tty_test.py`, which is outside this card's reservation until the leader adds it.
+3. A pseudo-terminal run for the end to end proof (AC-3), as a Rust test in `tests/update_model_step_reachable_tty.rs` (macOS only, like the other terminal tests; the leader chose Rust-only tests).
 4. Run the checks and write each command and exit code into Result.
 
 ## Risks

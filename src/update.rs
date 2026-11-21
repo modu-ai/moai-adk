@@ -2278,8 +2278,8 @@ pub fn model_step_opens(scripted: bool, terminal: bool, wrote: bool, models_save
 
 /// Whether the user launcher settings under `home` save at least one model setting
 /// (`launcher.models` is a non-empty object). A file that cannot be read, or whose `models` is
-/// not an object, counts as saved: the step reports that damage and is not forced open over it.
-/// It reads the file and never writes it.
+/// not an object, counts as saved: a run with nothing to apply then does not force the step
+/// open over it and says nothing about the damage. It reads the file and never writes it.
 pub fn models_saved(home: &Path) -> bool {
     match crate::model_effort_questions::read_launcher(&crate::update_models::settings_path(home)) {
         Ok(launcher) => match launcher.get("models") {
