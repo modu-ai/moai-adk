@@ -51,7 +51,7 @@ Orca is optional for every workflow. Nothing in the `moai` tool runs `orca`, and
 |---|---|---|---|
 | READ | works (Orca not used) | works | parallel reads: Claude Code several agents in one message |
 | PROJECT | works | works | entry `/moai project` |
-| UPDATE | unsupported: an Orca profile starts Claude Code with `CLAUDE_CONFIG_DIR` set to its own folder, and `moai update` does not see the settings folder of an Orca profile | works | files go to the host's own settings folder, which an Orca profile can move away from `~/.claude` |
+| UPDATE | works: an Orca profile can move the Claude settings folder with `CLAUDE_CONFIG_DIR`, and the update preview and the skill copy follow that variable, so `/moai` lands in the profile's own folder and with the variable set the preview names that folder and the next preview has nothing left to apply (measured in a temporary profile; no live Orca profile session was run) | works | files go to the host's own settings folder, which an Orca profile can move away from `~/.claude` |
 | PLAN | works | works | the `moai-plan` agent runs through the host's own subagent tool |
 | RUN | works (Orca terminals and worktrees are not used) | works | isolation: Claude Code `isolation: worktree` |
 | AUDIT | works | works | read-only is enforced by the agent file on Claude Code only; the verdict's first line has one format on every host |
@@ -59,7 +59,7 @@ Orca is optional for every workflow. Nothing in the `moai` tool runs `orca`, and
 | WORK | works (Orca not used) | works | none |
 | LEADER | works: the host's message tool carries the dispatch first, and `moai lane-send` (a lane terminal read and a send) is the fallback, with `/clear` and screen reads | replaced: the host's message tool carries the dispatch | the cross-session message has no `moai` command on any host yet |
 
-Unsupported today, and left for the leader to track: the settings folder of an Orca profile (`CLAUDE_CONFIG_DIR`), which `moai update` does not see, so UPDATE is unsupported with Orca until that repair lands. A workflow without a row, or a row without one of the three words, fails the repository scan.
+Nothing is unsupported with Orca today. The settings folder of an Orca profile (`CLAUDE_CONFIG_DIR`) is followed by the update preview and the skill copy (host-folder resolver; measured with `update-plan` and `update-apply` in a temporary profile with a clean environment: the preview names the profile's folder, `SKILL.md` lands there, nothing is created in the home's `.claude` folder and the second preview has nothing to apply); no live Orca profile session was run, so that Claude Code in such a session reads the moved folder rests on https://code.claude.com/docs/en/claude-directory.md, the page the resolver cites. A workflow without a row, or a row without one of the three words, fails the repository scan.
 
 ## Sources
 
