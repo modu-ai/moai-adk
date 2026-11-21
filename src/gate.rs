@@ -573,9 +573,6 @@ pub fn accepted_auto_delta(s: &Snapshot) -> Option<&AutoDelta> {
     .then_some(d)
 }
 
-/// G1: the last verdict is a PASS on the current head with a 40-hex base, or a PASS on an
-/// earlier head the current one is a mechanical delta of (#2833). Returns the base and the
-/// head the verdict judged.
 /// The G1 reason when no comment carries a verdict line: it names what was read instead of
 /// stopping silently (the 2026-11-21 mo.ai.kr report — a member comment that starts
 /// `AUDIT PASS …` is the usual cause: a verdict line is `AUDIT #<pr> (<title>) head <40hex>
@@ -590,11 +587,14 @@ fn no_verdict_reason(s: &Snapshot) -> String {
     let closest = s
         .comments
         .iter()
-        .filter(|c| c.author_association == "MEMBER")
+        .filter(|c| crate::comment_authority::is_member(&c.author_association))
         .filter_map(|c| c.body.lines().next())
         .rfind(|l| l.trim_start().starts_with("AUDIT") && !l.starts_with("AUDIT #"))
         .map(|l| {
-            let head: String = l.chars().take(60).collect();
+            // A comment can carry a credential-shaped line: mask it before it is named at all,
+            // then cut — the cut never sees the secret's own characters (audit B1).
+            let masked = crate::redact::redact_secret_shapes(l);
+            let head: String = masked.chars().take(60).collect();
             format!(
                 "; the member comment that looks closest starts \"{head}\" — a verdict line \
                  starts \"AUDIT #<pr> (<title>) head <40hex> base <40hex> — verdict: \
@@ -1191,14 +1191,10 @@ pub fn reads_summary(s: &Snapshot) -> serde_json::Value {
         .iter()
         .filter(|c| c.body.trim_start().starts_with("AUDIT") && verdict_line(&c.body).is_none())
         .map(|c| {
-            let first: String = c
-                .body
-                .lines()
-                .next()
-                .unwrap_or("")
-                .chars()
-                .take(60)
-                .collect();
+            // A comment can carry a credential-shaped line: mask it before it is named at all,
+            // then cut — the cut never sees the secret's own characters (audit B1).
+            let masked = crate::redact::redact_secret_shapes(c.body.lines().next().unwrap_or(""));
+            let first: String = masked.chars().take(60).collect();
             serde_json::json!({
                 "comment_id": c.id,
                 "author_association": c.author_association,
@@ -1214,7 +1210,9 @@ pub fn reads_summary(s: &Snapshot) -> serde_json::Value {
         "verdict_lines": verdict_lines,
         "member_first_lines_that_are_not_verdict_lines": lookalike
             .iter()
-            .filter(|l| l["author_association"] == "MEMBER")
+            .filter(|l| crate::comment_authority::is_member(
+                l["author_association"].as_str().unwrap_or_default(),
+            ))
             .count(),
         "lookalike_first_lines": lookalike,
         "check_runs": s.checks.len(),
