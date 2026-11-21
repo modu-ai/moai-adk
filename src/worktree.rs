@@ -471,6 +471,12 @@ pub fn plan(
         )?,
     };
     refuse_in_build_folder(&path, "worktree path")?;
+    // The worktree's build folder under the shared build root (S8, the C-82 convention):
+    // the same value heavy-slot computes at runtime from the worktree's folder name.
+    let build_folder = home.and_then(|h| {
+        path.file_name()
+            .map(|n| crate::lane_env::build_folder(h, &n.to_string_lossy()))
+    });
     let content = json!({
         "task_key": rec.task_key,
         "logical_key": rec.logical_key,
@@ -478,6 +484,7 @@ pub fn plan(
         "epoch": rec.epoch,
         "branch": branch,
         "path": path.to_string_lossy(),
+        "build_folder": build_folder.as_ref().map(|p| p.to_string_lossy().into_owned()),
         "base_sha": rec.base_revision,
         "primary": primary.to_string_lossy(),
         "lock_reason": format!("moai claim {} e{}", rec.task_key, rec.epoch),
@@ -620,6 +627,40 @@ pub fn apply(
         ],
     )?;
     let id = identity(&target)?;
+    // The created worktree builds under the shared build root (S8, the C-82 convention).
+    // A creation failure is reported in the answer, never silent, and never fails the apply:
+    // the worktree itself already exists, so the lane keeps its claim and re-runs lane-env.
+    let build_folder_error = match p["build_folder"].as_str() {
+        Some(dir) => {
+            let dir = Path::new(dir);
+            match fs::symlink_metadata(dir) {
+                Ok(m) if m.file_type().is_symlink() => {
+                    Some(format!("{} is a link; it is not followed", dir.display()))
+                }
+                Ok(_) => None,
+                Err(_) => {
+                    // The parents (<HOME>/.moai/build) may not exist yet; only the leaf
+                    // gets the private mode, like lane_env's real_dir.
+                    let made = dir
+                        .parent()
+                        .map(fs::create_dir_all)
+                        .unwrap_or(Ok(()))
+                        .and_then(|()| {
+                            let mut b = fs::DirBuilder::new();
+                            #[cfg(unix)]
+                            std::os::unix::fs::DirBuilderExt::mode(&mut b, 0o700);
+                            b.create(dir)
+                        });
+                    match made {
+                        Ok(()) => None,
+                        Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => None,
+                        Err(e) => Some(format!("{}: {e}", dir.display())),
+                    }
+                }
+            }
+        }
+        None => None,
+    };
     // WT-5: warn when the project's worktrees hold more than the warning line. The size
     // walk is bounded; a partial total is a lower bound and says so.
     let measured = crate::worktree_report::project_bytes(project, CAPACITY_BUDGET);
@@ -632,12 +673,13 @@ pub fn apply(
         "warning": measured.is_some_and(|m| over_warning(m.0, capacity.warn_bytes)),
         "override": capacity.is_override(),
     });
-    Ok(json!({
+    let mut out = json!({
         "decision": "created",
         "capacity": capacity_json,
         "plan_digest": plan_digest,
         "branch": branch,
         "path": target_s,
+        "build_folder": p["build_folder"],
         "locked": reason,
         "identity": id,
         "record_update_request": {
@@ -646,7 +688,11 @@ pub fn apply(
             "worktree": id,
         },
         "record_update_owner": RECORD_UPDATE_OWNER,
-    }))
+    });
+    if let Some(err) = build_folder_error {
+        out["build_folder_error"] = json!(err);
+    }
+    Ok(out)
 }
 
 #[cfg(test)]
