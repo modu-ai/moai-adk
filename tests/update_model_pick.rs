@@ -357,7 +357,11 @@ fn a_non_terminal_run_asks_nothing_and_reports_the_values() {
     let models = &r["models"];
     assert_eq!(models["state"], json!("ok"), "{r}");
     let values = models["values"].as_array().unwrap();
-    assert_eq!(values.len(), 8, "{models}");
+    assert_eq!(values.len(), 6, "{models}");
+    assert!(
+        values.iter().all(|v| v["tool"] != json!("codex")),
+        "no Codex row in the report: {models}"
+    );
     let find = |tool: &str, role: &str| -> Value {
         values
             .iter()
