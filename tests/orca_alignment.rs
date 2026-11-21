@@ -129,7 +129,10 @@ fn adapter_names_the_pages_the_local_version_and_what_is_not_documented() {
         .split(|c: char| !(c.is_ascii_digit() || c == ':' || c == 'Z' || c == '-' || c == 'T'))
         .filter(|t| t.len() == 20 && t.starts_with("2026-11-20T22:4") && t.ends_with('Z'))
         .count();
-    assert!(times >= 4, "the adapter names the read times of the pages: {times}");
+    assert!(
+        times >= 4,
+        "the adapter names the read times of the pages: {times}"
+    );
 }
 
 #[test]
@@ -171,7 +174,10 @@ fn cites_the_new_rules_name_a_page_or_the_local_help_and_no_card_or_issue() {
             });
             let card = words.windows(2).any(|w| {
                 (w[0] == "card" || w[0] == "Issue" || w[0] == "decision")
-                    && w[1].trim_matches(['(', ')', ',', '.']).chars().any(|c| c.is_ascii_digit())
+                    && w[1]
+                        .trim_matches(['(', ')', ',', '.'])
+                        .chars()
+                        .any(|c| c.is_ascii_digit())
             });
             assert!(!hash && !card, "{file} cites a card or an Issue: {line}");
             assert!(
