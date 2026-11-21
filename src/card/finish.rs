@@ -287,13 +287,20 @@ pub fn finish(
                 )));
             }
         }
-        // The SPEC the card names must pass what `card done` asks of it.
-        if let Some(why) =
-            spec_link::done_refusal(project, &input::card_name(card_id), spec.as_deref())
-        {
+        let proven = landing_evidence(project, ledger.conn(), card_id, req.head)?;
+        // The SPEC the card names must pass what `card done` asks of it: read from the tip git
+        // proved the landing against, because the checkout may not have moved to it yet.
+        let name = input::card_name(card_id);
+        let refusal = match &proven {
+            Proven::Landing { tip, .. } => {
+                spec_link::done_refusal_at_tip(project, &name, spec.as_deref(), tip)
+            }
+            _ => spec_link::done_refusal(project, &name, spec.as_deref()),
+        };
+        if let Some(why) = refusal {
             return Err(unchanged(why));
         }
-        landing_evidence(project, ledger.conn(), card_id, req.head)?
+        proven
     } else {
         if req.head.is_some() {
             return Err(unchanged(format!(

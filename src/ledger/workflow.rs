@@ -1372,8 +1372,15 @@ pub fn finish(
         }
         let previous = reservation::current(tx, card_id)?;
         if let Some(held) = &previous {
-            if let Err(e) = finish_gate(held, session, now) {
-                return Ok(Err(e));
+            // A lane holds its review card with a live lease right after it reported the merge
+            // ready, and that is when the leader closes it: a landing git proved passes, and the
+            // holder's reservation is released below like any other.
+            let proven_review =
+                from == "review" && matches!(evidence, FinishEvidence::Landing { .. });
+            if !proven_review {
+                if let Err(e) = finish_gate(held, session, now) {
+                    return Ok(Err(e));
+                }
             }
         }
         // Every open criterion is named by exactly one met option, and only open ones are.

@@ -39,8 +39,6 @@ pub enum Proof {
     Head { head: String },
     /// An active merged pull request link of the card.
     MergedPr { pr: String, merge_ref: String },
-    /// The card's linked SPEC is the `Moai-Spec` trailer of this commit, reachable from the tip.
-    SpecTrailer { spec: String, commit: String },
 }
 
 impl Proof {
@@ -48,7 +46,6 @@ impl Proof {
         match self {
             Proof::Head { .. } => "landed_head",
             Proof::MergedPr { .. } => "merged_pull_request",
-            Proof::SpecTrailer { .. } => "spec_trailer",
         }
     }
 }
@@ -66,14 +63,29 @@ pub struct Report {
     pub note: Option<String>,
     /// The proof of each card that landed, by card number.
     pub proofs: BTreeMap<i64, Proof>,
+    /// The card's linked SPEC is the `Moai-Spec` trailer of this commit, reachable from the tip:
+    /// by card number, the SPEC and the commit. A hint only: a SPEC with several slices has a
+    /// trailer on the tip before its last card is done, so it never marks a card landed.
+    pub spec_trailer_hints: BTreeMap<i64, (String, String)>,
 }
 
 impl Report {
     /// The `landing` key of the `card next` answer.
     pub fn json(&self) -> Value {
+        let hints: Vec<Value> = self
+            .spec_trailer_hints
+            .iter()
+            .map(|(card_id, (spec, commit))| {
+                json!({
+                    "name": input::card_name(*card_id), "card_id": card_id,
+                    "spec": spec, "commit": commit,
+                })
+            })
+            .collect();
         json!({
             "checked": self.checked, "branch": self.branch,
             "truncated": self.truncated, "note": self.note,
+            "spec_trailer_hints": hints,
         })
     }
 }
@@ -83,6 +95,7 @@ pub fn absent_json() -> Value {
     json!({
         "checked": false, "branch": null, "truncated": false,
         "note": "the project has no ledger, so no card was looked at",
+        "spec_trailer_hints": [],
     })
 }
 
@@ -133,6 +146,18 @@ pub fn tip_of(project: &Path, branch: &str) -> Result<String, String> {
         Err(format!(
             "the integration branch {branch} does not point at a commit of this repository"
         ))
+    }
+}
+
+/// The text of `path` (relative to the project folder) as `commit` holds it, or `None` when the
+/// commit has no such file.
+pub fn show_at(project: &Path, commit: &str, path: &str) -> Result<Option<String>, String> {
+    let spec = format!("{commit}:./{path}");
+    let out = git(project, &["show", &spec])?;
+    if out.status.success() {
+        Ok(Some(String::from_utf8_lossy(&out.stdout).into_owned()))
+    } else {
+        Ok(None)
     }
 }
 
@@ -253,6 +278,7 @@ pub fn find(project: &Path, conn: &Connection, candidates: &[i64]) -> Result<Rep
         truncated: false,
         note: None,
         proofs: BTreeMap::new(),
+        spec_trailer_hints: BTreeMap::new(),
     };
     // The proof that needs no git.
     let mut pending: Vec<(i64, Option<String>, Option<String>)> = Vec::new();
@@ -331,13 +357,9 @@ pub fn find(project: &Path, conn: &Connection, candidates: &[i64]) -> Result<Rep
                         continue;
                     }
                     if let Some(commit) = commits.get(spec) {
-                        report.proofs.insert(
-                            *card_id,
-                            Proof::SpecTrailer {
-                                spec: spec.clone(),
-                                commit: commit.clone(),
-                            },
-                        );
+                        report
+                            .spec_trailer_hints
+                            .insert(*card_id, (spec.clone(), commit.clone()));
                     }
                 }
             }
@@ -373,10 +395,6 @@ pub fn take_landed(found: &mut Next, report: &Report) -> Vec<Value> {
             Proof::MergedPr { pr, merge_ref } => {
                 v["pr"] = json!(pr);
                 v["merge_ref"] = json!(merge_ref);
-            }
-            Proof::SpecTrailer { spec, commit } => {
-                v["spec"] = json!(spec);
-                v["commit"] = json!(commit);
             }
         }
         taken.push((card_id, v));
