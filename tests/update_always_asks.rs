@@ -110,6 +110,65 @@ fn order_the_rule_stands_before_the_first_line_that_names_confirm() {
 }
 
 #[test]
+fn the_rule_tells_the_model_to_ask_the_user_and_to_record_the_answer() {
+    let text = rule();
+    for phrase in [
+        "ask the user one selection through the host's question tool",
+        "and record the answer for the report",
+    ] {
+        assert!(text.contains(phrase), "the rule lacks {phrase:?}: {text}");
+    }
+}
+
+#[test]
+fn the_options_of_each_case_are_named_with_the_recommended_one_first() {
+    let text = rule();
+    let at = |needle: &str| {
+        text.find(needle)
+            .unwrap_or_else(|| panic!("the rule lacks {needle:?}: {text}"))
+    };
+    assert!(
+        at("\"Apply what is ready (recommended)\"") < at("\"Leave everything as it is\""),
+        "ready case: the recommended option must come first: {text}"
+    );
+    assert!(
+        text.contains("with \"Nothing to do, finish (recommended)\" first"),
+        "the nothing-to-apply case lacks its recommended option first: {text}"
+    );
+    assert!(
+        at("\"Apply the rest (recommended)\" first") < at("\"Stop here\" second"),
+        "blocked case: the recommended option must come first: {text}"
+    );
+    assert!(
+        !text.contains("\"Leave everything as it is (recommended)\"")
+            && !text.contains("\"Stop here (recommended)\""),
+        "a stopping option must not be the recommended one: {text}"
+    );
+}
+
+#[test]
+fn no_line_before_the_rule_names_a_command_that_applies_or_undoes() {
+    let all = lines();
+    let found = rule_lines(&all);
+    assert_eq!(found.len(), 1, "update.md has no single rule paragraph");
+    for (i, line) in all.iter().enumerate().take(found[0].0) {
+        for word in [
+            "--confirm",
+            "update-apply",
+            "-revert",
+            "--permission-reference",
+        ] {
+            assert!(
+                !line.contains(word),
+                "line {} names {word:?} before the rule at line {}: {line}",
+                i + 1,
+                found[0].0 + 1
+            );
+        }
+    }
+}
+
+#[test]
 fn order_the_steps_that_apply_come_after_the_rule() {
     let all = lines();
     let found = rule_lines(&all);
