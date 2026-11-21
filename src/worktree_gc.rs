@@ -298,12 +298,6 @@ pub fn squash_merged(primary: &Path, head: &str, tip: &str) -> Option<bool> {
 /// loaded Mac the whole-machine scan drops from about 6 s to under 1 s with them.
 const LSOF_CHEAP: [&str; 4] = ["-w", "-n", "-P", "-b"];
 
-/// How long a process snapshot answers later questions without a new `lsof`: the working-folder
-/// check and the open-file check of one command come one right after the other and share one
-/// listing. A question later than this reads the table again, so the re-check right before a
-/// deletion or a move is as fresh as a scan takes (0.7 to 6 s) plus this.
-const SNAPSHOT_MAX_AGE: Duration = Duration::from_secs(1);
-
 /// The longest an `lsof` may run. It takes 0.7 to 6 s on a loaded Mac; a stuck one is stopped and
 /// the table is reported as unavailable, which every caller treats as "in use" (it refuses).
 const LSOF_TIMEOUT: Duration = Duration::from_secs(60);
@@ -383,14 +377,14 @@ fn lsof_timeout() -> Duration {
     LSOF_TIMEOUT
 }
 
-/// One `lsof -F fn` listing of the whole machine. `None` when it cannot start, prints nothing
-/// or does not answer within the time limit (it is stopped then). lsof exits 1 when some
+/// One `lsof` listing with the given extra arguments. `None` when it cannot start, prints
+/// nothing or does not answer within the time limit (it is stopped then). lsof exits 1 when some
 /// processes cannot be read; its listing is still usable, so the exit code is not looked at.
-fn lsof_listing() -> Option<String> {
+fn lsof_listing(args: &[&str]) -> Option<String> {
     use std::io::Read;
     let mut child = Command::new("lsof")
         .args(LSOF_CHEAP)
-        .args(["-F", "fn"])
+        .args(args)
         .env("LC_ALL", "C")
         .stdin(std::process::Stdio::null())
         .stdout(std::process::Stdio::piped())
@@ -425,82 +419,106 @@ fn lsof_listing() -> Option<String> {
     Some(String::from_utf8_lossy(&bytes).into_owned())
 }
 
-/// Reads the table now: `/proc` on Linux, one `lsof` elsewhere. A Linux open file is a
-/// descriptor link, so its working folder is not among them.
-fn read_snapshot() -> Option<Snapshot> {
-    let (cwds, open) = if Path::new("/proc/self/fd").exists() {
-        let (mut cwds, mut open) = (Vec::new(), Vec::new());
+/// Reads the working folders now: the `/proc` cwd pass on Linux, the cwd descriptors of one
+/// `lsof` elsewhere. The open files are not read and their paths are not canonicalised here —
+/// the working-folder check never pays for them.
+fn read_cwds() -> Option<Vec<PathBuf>> {
+    if let Some(injected) = injected_table() {
+        return injected.map(|s| s.cwds);
+    }
+    if Path::new("/proc/self/fd").exists() {
+        let mut cwds = Vec::new();
         for e in fs::read_dir("/proc").ok()?.flatten() {
             if let Ok(p) = fs::read_link(e.path().join("cwd")) {
                 cwds.push(p);
             }
+        }
+        return Some(cwds);
+    }
+    let (cwds, _) = parse_listing(&lsof_listing(&["-a", "-d", "cwd", "-F", "fn"])?);
+    Some(cwds)
+}
+
+/// Reads the open files now, canonicalised: the `/proc` fd pass on Linux, one machine-wide
+/// `lsof` elsewhere. Its listing also names the working folders, which seed the command cache
+/// of the working-folder check (a command that asks for both never scans twice for them).
+fn read_open() -> Option<(Vec<PathBuf>, Vec<PathBuf>)> {
+    let (open, cwds) = if let Some(injected) = injected_table() {
+        let s = injected?;
+        (s.open, s.cwds)
+    } else if Path::new("/proc/self/fd").exists() {
+        let mut open = Vec::new();
+        for e in fs::read_dir("/proc").ok()?.flatten() {
             if let Ok(fds) = fs::read_dir(e.path().join("fd")) {
                 open.extend(fds.flatten().filter_map(|fd| fs::read_link(fd.path()).ok()));
             }
         }
-        (cwds, open)
+        (open, Vec::new())
     } else {
-        parse_listing(&lsof_listing()?)
+        // parse_listing answers `(working folders, open files)`; here the open files lead.
+        let (listing_cwds, open) = parse_listing(&lsof_listing(&["-F", "fn"])?);
+        (open, listing_cwds)
     };
     let open = open
         .into_iter()
         .map(|p| fs::canonicalize(&p).unwrap_or(p))
         .collect();
-    Some(Snapshot { cwds, open })
+    Some((open, cwds))
 }
 
-/// The last snapshot and when it was read. The lock is held while reading, so threads wait for
-/// one scan instead of starting several.
-struct SnapshotCache {
-    slot: std::sync::Mutex<Option<(Instant, std::sync::Arc<Snapshot>)>>,
+/// One answer per command: the slot holds the last successful read, and a later question of
+/// the same command answers from it without a new scan. A failed read is not kept, so the
+/// next question reads again.
+struct OnceCache<T> {
+    slot: std::sync::Mutex<Option<std::sync::Arc<T>>>,
 }
 
-impl SnapshotCache {
-    const fn new() -> SnapshotCache {
-        SnapshotCache {
+impl<T> OnceCache<T> {
+    const fn new() -> OnceCache<T> {
+        OnceCache {
             slot: std::sync::Mutex::new(None),
         }
     }
 
-    /// The last snapshot when it is younger than `max_age`, else a new one from `scan`. A scan
-    /// that fails is not kept.
-    fn get(
-        &self,
-        max_age: Duration,
-        scan: impl FnOnce() -> Option<Snapshot>,
-    ) -> Option<std::sync::Arc<Snapshot>> {
+    /// The last read when there is one, else a new one from `scan`.
+    fn get(&self, scan: impl FnOnce() -> Option<T>) -> Option<std::sync::Arc<T>> {
         let mut slot = self.slot.lock().unwrap_or_else(|e| e.into_inner());
-        if let Some((at, snap)) = slot.as_ref() {
-            if at.elapsed() < max_age {
-                return Some(snap.clone());
-            }
+        if let Some(v) = slot.as_ref() {
+            return Some(v.clone());
         }
-        let snap = std::sync::Arc::new(scan()?);
-        *slot = Some((Instant::now(), snap.clone()));
-        Some(snap)
+        let v = std::sync::Arc::new(scan()?);
+        *slot = Some(v.clone());
+        Some(v)
     }
 }
 
-static SNAPSHOT: SnapshotCache = SnapshotCache::new();
+static CWDS_CACHE: OnceCache<Vec<PathBuf>> = OnceCache::new();
+static OPEN_CACHE: OnceCache<(Vec<PathBuf>, Vec<PathBuf>)> = OnceCache::new();
 
-/// The process table as the working-folder and open-file checks see it.
-fn snapshot() -> Option<std::sync::Arc<Snapshot>> {
-    if let Some(injected) = injected_table() {
-        return injected.map(std::sync::Arc::new);
-    }
-    SNAPSHOT.get(SNAPSHOT_MAX_AGE, read_snapshot)
-}
-
-/// Working directories of the processes this user can see; `None` without a source.
+/// Working directories of the processes this user can see; `None` without a source. The scan
+/// reads only the cwd descriptors and runs once per command: the command cache answers the
+/// later questions of the same command.
 pub fn process_cwds() -> Option<Vec<PathBuf>> {
-    snapshot().map(|s| s.cwds.clone())
+    CWDS_CACHE.get(read_cwds).map(|v| v.to_vec())
 }
 
 /// Paths of the files the processes this user can see hold open (`/proc/*/fd` on Linux,
-/// `lsof` elsewhere), canonicalised; `None` without a source. Only `apply` reads this,
-/// right before it deletes (#2498; the plan reads working directories only).
+/// `lsof` elsewhere), canonicalised; `None` without a source. Read only when a caller asks
+/// for open files, once per command (the command cache answers a later question of the same
+/// command). Only `apply` reads this, right before it deletes (#2498; the plan reads working
+/// directories only).
 pub(crate) fn open_file_paths() -> Option<Vec<PathBuf>> {
-    snapshot().map(|s| s.open.clone())
+    let pair = OPEN_CACHE.get(read_open)?;
+    let (open, cwds) = &*pair;
+    // The machine listing also names the working folders: seed the other cache with them,
+    // so one command that asks for both never runs two scans for the same information.
+    if !cwds.is_empty() {
+        let mut slot = CWDS_CACHE.slot.lock().unwrap_or_else(|e| e.into_inner());
+        if slot.is_none() {
+            *slot = Some(std::sync::Arc::new(cwds.clone()));
+        }
+    }
+    Some(open.to_vec())
 }
 
 fn unix_secs(t: SystemTime) -> Option<u64> {
@@ -1174,7 +1192,8 @@ fn validate_permission(permission: &str) -> Result<()> {
 /// outside the cargo build output. An unknown fact refuses too.
 /// `primary` is the primary checkout, for the copy check of the ignored files when removing.
 pub(crate) fn busy_now(wt: &Path, removing: bool, primary: Option<&Path>) -> Option<&'static str> {
-    let cwds = match process_cwds() {
+    // Fresh reads, never the command cache: this runs right before each deletion or move.
+    let cwds = match read_cwds() {
         Some(v) => v,
         None => return Some("process_check_unavailable"),
     };
@@ -1185,7 +1204,7 @@ pub(crate) fn busy_now(wt: &Path, removing: bool, primary: Option<&Path>) -> Opt
     {
         return Some("process_in_use");
     }
-    match open_file_paths() {
+    match read_open().map(|(open, _)| open) {
         Some(paths) if paths.iter().any(|p| p.starts_with(wt)) => return Some("file_open_in_use"),
         Some(_) => {}
         None => return Some("open_file_check_unavailable"),
@@ -1383,6 +1402,16 @@ pub fn apply(
 mod tests {
     use super::*;
 
+    /// Serialises the tests that touch the process environment or run the scans: a stub
+    /// `lsof` on the `PATH` and a filled command cache must not leak into each other.
+    static ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+    /// Empties the two command caches, so a test starts its own scans.
+    fn test_clear_process_caches() {
+        *CWDS_CACHE.slot.lock().unwrap_or_else(|e| e.into_inner()) = None;
+        *OPEN_CACHE.slot.lock().unwrap_or_else(|e| e.into_inner()) = None;
+    }
+
     fn eligible() -> Facts {
         Facts {
             merged: Some(true),
@@ -1400,6 +1429,9 @@ mod tests {
     /// process holds open and the working folder of another process (a real `lsof` or `/proc`).
     #[test]
     fn the_cheap_scans_still_see_a_held_file_and_a_working_folder() {
+        let _env = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        // A fresh scan each round: the command cache is per command, and this loop of one
+        // test process is not one command (the file is only held open after a moment).
         let dir = tempfile::tempdir().unwrap();
         let root = fs::canonicalize(dir.path()).unwrap();
         let held = root.join("held.txt");
@@ -1419,6 +1451,7 @@ mod tests {
         let start = Instant::now();
         let (mut file_seen, mut cwd_seen) = (false, false);
         while start.elapsed() < Duration::from_secs(20) && !(file_seen && cwd_seen) {
+            test_clear_process_caches();
             file_seen = open_file_paths().is_some_and(|v| v.iter().any(|p| p == &held));
             cwd_seen = process_cwds().is_some_and(|v| {
                 v.iter()
@@ -1621,30 +1654,67 @@ mod tests {
         assert!(!open.iter().any(|p| p.starts_with("/w/proj")));
     }
 
-    /// REQ-2, REQ-3: a question within the age is answered from the snapshot, an older one reads
-    /// the table again, and a failed read is not kept.
+    /// The command cache answers every question of one command from one read, and a failed
+    /// read is not kept (the next question reads again).
     #[test]
-    fn a_second_question_within_the_age_reuses_the_snapshot() {
-        let cache = SnapshotCache::new();
+    fn once_cache_answers_without_a_second_read_and_drops_a_failed_read() {
+        let cache = OnceCache::<Vec<PathBuf>>::new();
         let reads = std::cell::Cell::new(0u32);
         let scan = || {
             reads.set(reads.get() + 1);
-            Some(Snapshot {
-                cwds: vec![],
-                open: vec![],
-            })
+            Some(Vec::<PathBuf>::new())
         };
-        let age = Duration::from_secs(30);
-        assert!(cache.get(age, scan).is_some());
-        assert!(cache.get(age, scan).is_some());
+        assert!(cache.get(scan).is_some());
+        assert!(cache.get(scan).is_some());
         assert_eq!(reads.get(), 1, "the second question read the table again");
-        assert!(cache.get(Duration::ZERO, scan).is_some());
-        assert_eq!(reads.get(), 2, "an older snapshot was reused");
         // A failed read gives no answer and leaves nothing behind: the next question reads again.
-        let fresh = SnapshotCache::new();
-        assert!(fresh.get(age, || None).is_none());
-        assert!(fresh.get(age, scan).is_some());
-        assert_eq!(reads.get(), 3, "a failed read was kept");
+        let fresh = OnceCache::<Vec<PathBuf>>::new();
+        assert!(fresh.get(|| None).is_none());
+        assert!(fresh.get(scan).is_some());
+        assert_eq!(reads.get(), 2, "a failed read was kept");
+    }
+
+    /// REQ-3: a second question of the same command answers from the command cache. A value
+    /// planted in the cache comes back for the second question — a real scan would return
+    /// something else — and the machine listing of the open-file scan seeds the other cache,
+    /// so a command that asks for both never scans twice for the same information.
+    #[test]
+    fn a_second_question_answers_from_the_command_cache() {
+        let _env = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        test_clear_process_caches();
+
+        // The working-folder cache answers both questions from the planted value.
+        let planted_cwds = vec![PathBuf::from("/nowhere/wt/a")];
+        *CWDS_CACHE.slot.lock().unwrap_or_else(|e| e.into_inner()) =
+            Some(std::sync::Arc::new(planted_cwds.clone()));
+        let a = process_cwds().unwrap();
+        let b = process_cwds().unwrap();
+        assert_eq!(a, planted_cwds, "the first question did not read the cache");
+        assert_eq!(b, a, "the second question ran a new scan");
+
+        // The open-file cache answers both questions, and its listing seeds the working-folder
+        // cache of the same command.
+        let planted_open = vec![PathBuf::from("/nowhere/open")];
+        let listing_cwds = vec![PathBuf::from("/nowhere/wt/b")];
+        *OPEN_CACHE.slot.lock().unwrap_or_else(|e| e.into_inner()) = Some(std::sync::Arc::new((
+            planted_open.clone(),
+            listing_cwds.clone(),
+        )));
+        *CWDS_CACHE.slot.lock().unwrap_or_else(|e| e.into_inner()) = None;
+        let o1 = open_file_paths().unwrap();
+        let o2 = open_file_paths().unwrap();
+        assert_eq!(
+            o1, planted_open,
+            "the first open question did not read the cache"
+        );
+        assert_eq!(o2, o1, "the second open question ran a new scan");
+        let seeded = process_cwds().unwrap();
+        assert_eq!(
+            seeded, listing_cwds,
+            "the open listing did not seed the cwd cache"
+        );
+
+        test_clear_process_caches();
     }
 
     #[test]
