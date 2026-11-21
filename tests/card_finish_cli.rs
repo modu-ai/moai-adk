@@ -83,6 +83,45 @@ fn commit_on(project: &Path, branch: &str, parent: &str, paragraphs: &[&str]) ->
     sha
 }
 
+/// A commit on `branch` (moved to it without a checkout) that adds `path` with `content` to the
+/// tree of `parent`; returns the new commit.
+fn put_on(project: &Path, branch: &str, parent: &str, path: &str, content: &str) -> String {
+    let blob_file = project.join("put-on-blob.tmp");
+    fs::write(&blob_file, content).unwrap();
+    let blob = git(project, &["hash-object", "-w", "put-on-blob.tmp"]);
+    fs::remove_file(&blob_file).unwrap();
+    let index = project.join(".git/put-on-index");
+    let with_index = |args: &[&str]| -> String {
+        let out = Command::new("git")
+            .arg("-C")
+            .arg(project)
+            .args(args)
+            .env("GIT_INDEX_FILE", &index)
+            .output()
+            .unwrap();
+        assert!(out.status.success(), "git {args:?}");
+        String::from_utf8_lossy(&out.stdout).trim().to_string()
+    };
+    with_index(&["read-tree", parent]);
+    with_index(&[
+        "update-index",
+        "--add",
+        "--cacheinfo",
+        &format!("100644,{blob},{path}"),
+    ]);
+    let tree = with_index(&["write-tree"]);
+    fs::remove_file(&index).unwrap();
+    let sha = git(
+        project,
+        &["commit-tree", &tree, "-p", parent, "-m", "docs: add a file"],
+    );
+    git(
+        project,
+        &["update-ref", &format!("refs/heads/{branch}"), &sha],
+    );
+    sha
+}
+
 /// An absolute `git` on this runner's `PATH`, for the child that has none.
 fn git_executable() -> Option<PathBuf> {
     let path = std::env::var_os("PATH")?;
@@ -1685,12 +1724,12 @@ fn ac8_next_skips_a_ready_card_with_a_merged_pull_request_link() {
     assert_eq!(names(&listing["ready"]), vec![plain], "{listing}");
 }
 
-/// AC-8: a ready card whose linked SPEC id is the `Moai-Spec` trailer of a commit reachable from
-/// the tip is skipped as already_landed; a card whose SPEC's trailer sits only on a commit
-/// outside the tip, and a card whose number appears in a commit message but has no trailer,
-/// stay in ready (a card number in a message is never a proof).
+/// AC-8: a `Moai-Spec` trailer of a card's linked SPEC on the tip is a hint, never a proof: the
+/// card stays in ready and the landing key names the trailer commit; a card whose SPEC's trailer
+/// sits only on a commit outside the tip, and a card whose number appears in a commit message
+/// but has no trailer, stay in ready with no hint (a card number in a message is never a proof).
 #[test]
-fn ac8_next_skips_a_ready_card_whose_spec_trailer_is_reachable_from_the_tip() {
+fn ac8_next_reports_a_spec_trailer_on_the_tip_as_a_hint_and_never_skips_for_it() {
     let w = World::new();
     let shipped_spec = w.draft_spec("shipped-fix");
     let unmerged_spec = w.draft_spec("unmerged-fix");
@@ -1705,7 +1744,7 @@ fn ac8_next_skips_a_ready_card_whose_spec_trailer_is_reachable_from_the_tip() {
         Some(S_L),
         &["spec", &unmerged, &unmerged_spec, "--by", "leader"],
     ));
-    commit_on(
+    let shipped_commit = commit_on(
         &w.project,
         "integ",
         &w.tip,
@@ -1732,12 +1771,20 @@ fn ac8_next_skips_a_ready_card_whose_spec_trailer_is_reachable_from_the_tip() {
     );
 
     let listing = w.next(S_B);
-    assert_already_landed(&listing, &shipped);
+    assert!(
+        skipped_entry(&listing, &shipped).is_none(),
+        "a trailer is no proof: {listing}"
+    );
     assert_eq!(
         names(&listing["ready"]),
-        vec![unmerged.clone(), mentioned.clone()],
+        vec![shipped.clone(), unmerged.clone(), mentioned.clone()],
         "{listing}"
     );
+    let hints = listing["landing"]["spec_trailer_hints"].as_array().unwrap();
+    assert_eq!(hints.len(), 1, "{listing}");
+    assert_eq!(hints[0]["name"], json!(shipped), "{listing}");
+    assert_eq!(hints[0]["spec"], json!(shipped_spec), "{listing}");
+    assert_eq!(hints[0]["commit"], json!(shipped_commit), "{listing}");
     assert_eq!(listing["landing"]["checked"], json!(true), "{listing}");
 }
 
@@ -2640,4 +2687,114 @@ fn ac21_a_tag_named_like_the_integration_branch_does_not_win() {
     w.land(&landed, &w.tip, true);
     let listing = w.next(S_B);
     assert_already_landed(&listing, &landed);
+}
+
+/// AC-22: a review card whose lease another session holds closes for the leader on a head that
+/// git proves, and the holder's reservation is released in the same call; an active card held by
+/// another live session still refuses, and so does a review card whose head git does not prove.
+#[test]
+fn ac22_a_review_card_with_a_live_lease_closes_on_a_proven_head() {
+    let w = World::new();
+    let review = w.card_named("task", "apps/a/", &["one"]);
+    result(&w.card(Some(S_A), &["take", &review]));
+    result(&w.card(Some(S_A), &["review", &review, "--generation", "1"]));
+    let active = w.card_named("task", "apps/b/", &["one"]);
+    result(&w.card(Some(S_A), &["take", &active]));
+    let unproven = w.card_named("task", "apps/c/", &["one"]);
+    result(&w.card(Some(S_A), &["take", &unproven]));
+    result(&w.card(Some(S_A), &["review", &unproven, "--generation", "1"]));
+
+    let by_leader = |card: &str, head: &str| {
+        w.finish(
+            Some(S_L),
+            card,
+            &["--head", head, "--met", "1=r1", "--by", "leader"],
+        )
+    };
+    let before = w.dump();
+    let out = by_leader(&active, &w.head);
+    w.refuse(&out, "conflict", &["is held by"], &before);
+    let out = by_leader(&unproven, &w.orphan);
+    w.refuse(
+        &out,
+        "invalid_input",
+        &["not contained in the integration branch"],
+        &before,
+    );
+
+    let got = result(&by_leader(&review, &w.head));
+    assert_eq!(got["closed"], json!(true), "{got}");
+    assert_eq!(got["from"], json!("review"), "{got}");
+    assert_eq!(
+        w.text("SELECT status FROM reservation WHERE card_id = 1 ORDER BY generation DESC LIMIT 1")
+            .as_deref(),
+        Some("released"),
+        "the holder's reservation is released in the same call"
+    );
+    assert_eq!(
+        w.text("SELECT state FROM card WHERE card_id = 2")
+            .as_deref(),
+        Some("active")
+    );
+}
+
+/// AC-23: one SPEC with two slices: after the first slice its trailer is on the tip, and the
+/// card stays offered by `card next`; releasing it does not name `card finish`.
+#[test]
+fn ac23_a_two_slice_card_stays_offered_after_its_first_slice() {
+    let w = World::new();
+    let spec = w.draft_spec("two-slices");
+    let card = w.card_named("task", "apps/a/", &["slice one", "slice two"]);
+    result(&w.card(Some(S_L), &["spec", &card, &spec, "--by", "leader"]));
+    commit_on(
+        &w.project,
+        "integ",
+        &w.tip,
+        &["feat: slice one", &format!("Moai-Spec: {spec}")],
+    );
+    let listing = w.next(S_B);
+    assert!(
+        skipped_entry(&listing, &card).is_none(),
+        "the first slice does not land the card: {listing}"
+    );
+    assert!(names(&listing["ready"]).contains(&card), "{listing}");
+
+    result(&w.card(Some(S_A), &["take", &card]));
+    let got = result(&w.card(Some(S_A), &["release", &card, "--generation", "1"]));
+    assert!(
+        got.get("landed").is_none() && got.get("next_step").is_none(),
+        "release names no finish step: {got}"
+    );
+}
+
+/// AC-24: the SPEC is read from the proven tip. A SPEC that passes on the tip closes the card
+/// while the checkout holds a damaged copy; a SPEC that fails on the tip refuses while the
+/// checkout holds a good copy.
+#[test]
+fn ac24_the_spec_is_read_from_the_proven_tip_and_not_from_the_checkout() {
+    let w = World::new();
+    let good = w.draft_spec("good-on-tip");
+    let bad = w.draft_spec("bad-on-tip");
+    let good_path = format!(".moai/specs/{good}/spec.md");
+    let bad_path = format!(".moai/specs/{bad}/spec.md");
+    let good_text = fs::read_to_string(w.project.join(&good_path)).unwrap();
+    let broken = "not a SPEC: no front matter, no requirements\n";
+    let on_good = w.card_named("task", "apps/a/", &["one"]);
+    let on_bad = w.card_named("task", "apps/b/", &["one"]);
+    result(&w.card(Some(S_L), &["spec", &on_good, &good, "--by", "leader"]));
+    result(&w.card(Some(S_L), &["spec", &on_bad, &bad, "--by", "leader"]));
+    // The tip holds the SPEC files as they are now: the first good, the second damaged.
+    let step = put_on(&w.project, "integ", &w.tip, &good_path, &good_text);
+    let tip = put_on(&w.project, "integ", &step, &bad_path, broken);
+    // The checkout holds the opposite copies.
+    fs::write(w.project.join(&good_path), broken).unwrap();
+    fs::write(w.project.join(&bad_path), &good_text.replace(&good, &bad)).unwrap();
+
+    let before = w.dump();
+    let args = ["--head", &w.head, "--met", "1=r1", "--by", "leader"];
+    let out = w.finish(Some(S_L), &on_bad, &args);
+    w.refuse(&out, "invalid_input", &["its SPEC"], &before);
+    let got = result(&w.finish(Some(S_L), &on_good, &args));
+    assert_eq!(got["closed"], json!(true), "{got}");
+    assert_eq!(got["tip"], json!(tip), "{got}");
 }
