@@ -7,13 +7,26 @@
 //!   exception the current `card_done_guard` trigger. `open_write` runs it on every writable
 //!   open; a ledger that already has the exception is not touched.
 //!
-//! The upgrade runs in one `BEGIN IMMEDIATE` transaction. Inside it, after the trigger was read
-//! again under the lock, the ledger file is copied to `ledger.db.bak-<UTC>` beside it (the
-//! reserved lock keeps every other writer out and nothing has been written yet, so the copy is
-//! consistent) and the copy is read back; only then is the trigger replaced and a `meta` row
-//! written. Any error rolls the transaction back and removes the copy this call made. No row of
-//! any data table is touched. `PRAGMA user_version` stays 1 (SPEC decision D-1), so an older
-//! build still opens the file.
+//! The upgrade runs in one `BEGIN IMMEDIATE` transaction, and the lock that statement takes is
+//! held until the commit. Inside it, after the trigger was read again under the lock, SQLite
+//! itself makes the backup: a second SQLite connection runs `VACUUM INTO` a new file
+//! `ledger.db.bak-<UTC>` beside the ledger (the reserved lock keeps every other writer out and
+//! nothing has been written yet, so the copy is a consistent snapshot), and the copy is read
+//! back; only then is the trigger replaced and a `meta` row written. Only the process holding the
+//! lock makes a backup, so concurrent opens leave one backup and one upgrade.
+//!
+//! **Never open the ledger file with `std::fs` while a connection holds a lock on it.** POSIX
+//! record locks belong to the process, not to the file descriptor: closing any descriptor of the
+//! file drops every lock the process holds on it, which would let another process write in the
+//! middle of the transaction (https://www.sqlite.org/howtocorrupt.html, section 2.2, read
+//! 2026-11-21). SQLite's own connections are safe because they share one lock state per file
+//! inside a process and keep the descriptor open until the last lock goes. The backup file
+//! itself is a different file, so `std::fs` may create and flush it.
+//!
+//! Any error rolls the transaction back. The backup this call made is removed only after the
+//! trigger is read again and shows the rollback; if the commit may have happened, or the file
+//! cannot be read to tell, the backup stays. No row of any data table is touched.
+//! `PRAGMA user_version` stays 1 (SPEC decision D-1), so an older build still opens the file.
 
 use super::{schema, LedgerError, APPLICATION_ID, SCHEMA_VERSION};
 use rusqlite::{Connection, OpenFlags, Transaction, TransactionBehavior};
@@ -54,6 +67,18 @@ pub struct Upgraded {
     pub backup: PathBuf,
 }
 
+/// The points of an upgrade at which a test may look or fail; each one is inside the write
+/// transaction, so the lock must be held at every one of them.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Stage {
+    /// The lock is taken and the trigger was read again; nothing is written or copied yet.
+    Locked,
+    /// The backup exists and reads back; the trigger is still the old one.
+    BackedUp,
+    /// The old trigger is dropped and the new one is not created yet.
+    GuardDropped,
+}
+
 /// Reads the trigger text and says whether it carries the `card.landed` exception. Writes nothing,
 /// so it works on a read-only connection too.
 pub fn done_guard_status(conn: &Connection) -> Result<DoneGuard, LedgerError> {
@@ -77,17 +102,17 @@ pub fn upgrade_done_guard(
     conn: &mut Connection,
     ledger: &Path,
 ) -> Result<Option<Upgraded>, LedgerError> {
-    upgrade_done_guard_with(conn, ledger, |_| Ok(()))
+    upgrade_done_guard_with(conn, ledger, |_, _| Ok(()))
 }
 
 /// Gives the ledger at `ledger` (open as `conn`, writable) the current `card_done_guard`.
-/// `Ok(None)` means it already had it and nothing was written. `after_drop` runs in the
-/// transaction right after the old trigger was dropped and before the new one is created, so a
-/// test can make the upgrade fail at its most exposed point; an `Err` from it rolls back.
+/// `Ok(None)` means it already had it and nothing was written. `hook` runs at each [`Stage`]
+/// inside the transaction, so a test can look at the lock or make the upgrade fail at its most
+/// exposed point; an `Err` from it rolls back.
 pub fn upgrade_done_guard_with(
     conn: &mut Connection,
     ledger: &Path,
-    after_drop: impl FnOnce(&Transaction<'_>) -> Result<(), LedgerError>,
+    mut hook: impl FnMut(Stage, &Transaction<'_>) -> Result<(), LedgerError>,
 ) -> Result<Option<Upgraded>, LedgerError> {
     // The common case reads once and returns: no lock, no write.
     if done_guard_status(conn)? == DoneGuard::Current {
@@ -104,11 +129,16 @@ pub fn upgrade_done_guard_with(
         |r| Ok((r.get(0)?, r.get(1)?)),
     )?;
     let backup = backup_path(ledger, &stamp)?;
-    copy_ledger(ledger, &backup)?;
-    let upgraded = (|| -> Result<(), LedgerError> {
+    let mut made = false;
+    let work = (|| -> Result<(), LedgerError> {
+        hook(Stage::Locked, &tx)?;
+        // A refused name (one that exists) is an error before anything is made.
+        make_backup(ledger, &backup)?;
+        made = true;
         check_backup(&backup)?;
+        hook(Stage::BackedUp, &tx)?;
         tx.execute_batch("DROP TRIGGER IF EXISTS card_done_guard;")?;
-        after_drop(&tx)?;
+        hook(Stage::GuardDropped, &tx)?;
         tx.execute_batch(schema::CARD_DONE_GUARD)?;
         let name = backup
             .file_name()
@@ -120,14 +150,53 @@ pub fn upgrade_done_guard_with(
         )?;
         Ok(())
     })();
-    match upgraded.and_then(|()| tx.commit().map_err(LedgerError::from)) {
-        Ok(()) => Ok(Some(Upgraded { backup })),
+    let outcome = match work {
+        Ok(()) => tx.commit().map_err(LedgerError::from),
         Err(e) => {
-            // The transaction rolled back (the `Transaction` drop or a failed commit); the copy
-            // this call made is no use to anyone, and it is the only file removed.
-            let _ = std::fs::remove_file(&backup);
+            drop(tx); // rolls back
             Err(e)
         }
+    };
+    match outcome {
+        Ok(()) => Ok(Some(Upgraded { backup })),
+        Err(e) => {
+            if !conn.is_autocommit() {
+                let _ = conn.execute_batch("ROLLBACK");
+            }
+            if !made {
+                return Err(e);
+            }
+            match settle_failed(conn, &backup) {
+                Settled::RolledBack | Settled::Unknown => Err(e),
+                // The failed call after all committed: the ledger has the trigger and the
+                // backup is its record.
+                Settled::Committed => Ok(Some(Upgraded { backup })),
+            }
+        }
+    }
+}
+
+/// What the file shows after a failed upgrade.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Settled {
+    /// The old trigger is still there: the backup this call made is removed.
+    RolledBack,
+    /// The new trigger is there: the commit happened, the backup is kept.
+    Committed,
+    /// The file could not be read to tell: the backup is kept.
+    Unknown,
+}
+
+/// Reads the trigger again and removes `backup` only when it shows the rollback. A backup that
+/// may belong to a committed upgrade is never deleted.
+fn settle_failed(conn: &Connection, backup: &Path) -> Settled {
+    match done_guard_status(conn) {
+        Ok(DoneGuard::NeedsMigration) => {
+            let _ = std::fs::remove_file(backup);
+            Settled::RolledBack
+        }
+        Ok(DoneGuard::Current) => Settled::Committed,
+        Err(_) => Settled::Unknown,
     }
 }
 
@@ -139,10 +208,19 @@ fn backup_path(ledger: &Path, stamp: &str) -> Result<PathBuf, LedgerError> {
     Ok(ledger.with_file_name(format!("{}.bak-{stamp}", name.to_string_lossy())))
 }
 
-/// Copies `from` to the new file `to` (never an existing one), private to the owner, and flushes it.
-fn copy_ledger(from: &Path, to: &Path) -> Result<(), LedgerError> {
-    let io = |what: &str, e: std::io::Error| {
-        LedgerError::Io(format!("ledger backup {what} {}: {e}", to.display()))
+/// What to do about a backup that cannot be made. The ledger itself was not changed.
+const BACKUP_HELP: &str = "free some disk space, make the ledger's folder writable for you, or check its path, then open the ledger again; the ledger itself was not changed";
+
+/// Makes the new file `to` (never an existing one, private to the owner) hold a consistent copy
+/// of the ledger `from`, through SQLite: a second SQLite connection runs `VACUUM INTO`. The
+/// ledger file is never opened with `std::fs` (see the module doc); `to` is another file and is
+/// created and flushed with it. A file this call created and could not fill is removed.
+fn make_backup(from: &Path, to: &Path) -> Result<(), LedgerError> {
+    let io = |what: &str, e: &dyn std::fmt::Display| {
+        LedgerError::Io(format!(
+            "ledger backup {} {what} {e}; {BACKUP_HELP}",
+            to.display()
+        ))
     };
     let mut options = std::fs::OpenOptions::new();
     options.write(true).create_new(true);
@@ -151,22 +229,46 @@ fn copy_ledger(from: &Path, to: &Path) -> Result<(), LedgerError> {
         use std::os::unix::fs::OpenOptionsExt;
         options.mode(0o600).custom_flags(libc::O_NOFOLLOW);
     }
-    let mut dest = options.open(to).map_err(|e| io("cannot be created:", e))?;
-    let copied = (|| {
-        let mut src = std::fs::File::open(from)?;
-        std::io::copy(&mut src, &mut dest)?;
-        dest.sync_all()
+    // `VACUUM INTO` accepts a file that exists and is empty, so the name is taken first.
+    drop(options.open(to).map_err(|e| {
+        let why = if e.kind() == std::io::ErrorKind::AlreadyExists {
+            "cannot be created, a file of that name exists (move it away or wait one second):"
+        } else {
+            "cannot be created:"
+        };
+        io(why, &e)
+    })?);
+    let copied = (|| -> Result<(), String> {
+        let to_text = to.to_str().ok_or("the path is not UTF-8")?;
+        let src = Connection::open_with_flags(
+            from,
+            OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX,
+        )
+        .map_err(|e| e.to_string())?;
+        src.busy_timeout(super::open::BUSY_TIMEOUT)
+            .map_err(|e| e.to_string())?;
+        src.execute("VACUUM INTO ?1", [to_text])
+            .map_err(|e| e.to_string())?;
+        drop(src);
+        std::fs::File::open(to)
+            .and_then(|f| f.sync_all())
+            .map_err(|e| e.to_string())
     })();
     if let Err(e) = copied {
         let _ = std::fs::remove_file(to);
-        return Err(io("could not be written:", e));
+        return Err(io("could not be written:", &e));
     }
     Ok(())
 }
 
 /// The copy opens read-only as a MoAI ledger of this version and passes SQLite's quick check.
 fn check_backup(backup: &Path) -> Result<(), LedgerError> {
-    let bad = |why: String| LedgerError::Io(format!("ledger backup {}: {why}", backup.display()));
+    let bad = |why: String| {
+        LedgerError::Io(format!(
+            "ledger backup {}: {why}; {BACKUP_HELP}",
+            backup.display()
+        ))
+    };
     let conn = Connection::open_with_flags(
         backup,
         OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX,
@@ -228,18 +330,93 @@ mod tests {
         assert!(check_backup(&good).is_ok());
     }
 
+    /// A small database with this build's identity pragmas and one row.
+    fn small_ledger(path: &Path) {
+        Connection::open(path)
+            .unwrap()
+            .execute_batch(&format!(
+                "CREATE TABLE t (a); INSERT INTO t VALUES (42); \
+                 PRAGMA application_id = {APPLICATION_ID}; PRAGMA user_version = {SCHEMA_VERSION};"
+            ))
+            .unwrap();
+    }
+
     #[test]
-    fn a_backup_is_never_written_over_an_existing_file() {
+    fn a_backup_is_never_made_over_an_existing_file_and_reads_back_private() {
         let dir = tempfile::tempdir().unwrap();
         let from = dir.path().join("from");
         let to = dir.path().join("to");
-        std::fs::write(&from, b"ledger bytes").unwrap();
+        small_ledger(&from);
         std::fs::write(&to, b"already here").unwrap();
-        assert!(copy_ledger(&from, &to).is_err());
+        let err = make_backup(&from, &to).unwrap_err().to_string();
+        assert!(err.contains("exists"), "{err}");
+        assert!(
+            err.contains("free some disk space"),
+            "the refusal says what to do: {err}"
+        );
         assert_eq!(std::fs::read(&to).unwrap(), b"already here");
         std::fs::remove_file(&to).unwrap();
-        copy_ledger(&from, &to).unwrap();
-        assert_eq!(std::fs::read(&to).unwrap(), b"ledger bytes");
+        make_backup(&from, &to).unwrap();
+        check_backup(&to).unwrap();
+        let n: i64 = Connection::open(&to)
+            .unwrap()
+            .query_row("SELECT a FROM t", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(n, 42);
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mode = std::fs::metadata(&to).unwrap().permissions().mode() & 0o777;
+            assert_eq!(mode, 0o600);
+        }
+    }
+
+    #[test]
+    fn a_backup_of_something_that_is_not_a_database_is_removed() {
+        let dir = tempfile::tempdir().unwrap();
+        let from = dir.path().join("from");
+        let to = dir.path().join("to");
+        std::fs::write(&from, vec![7u8; 4096]).unwrap();
+        assert!(make_backup(&from, &to).is_err());
+        assert!(
+            !to.exists(),
+            "a file this call made and could not fill is removed"
+        );
+    }
+
+    #[test]
+    fn a_failed_upgrade_removes_its_backup_only_when_the_rollback_is_shown() {
+        let dir = tempfile::tempdir().unwrap();
+        let backup = dir.path().join("backup");
+        // Old trigger still there: rolled back, backup removed.
+        let old = dir.path().join("old.db");
+        let c = Connection::open(&old).unwrap();
+        c.execute_batch(
+            "CREATE TABLE card (state); \
+             CREATE TRIGGER card_done_guard BEFORE UPDATE OF state ON card BEGIN SELECT 1; END;",
+        )
+        .unwrap();
+        std::fs::write(&backup, b"b").unwrap();
+        assert_eq!(settle_failed(&c, &backup), Settled::RolledBack);
+        assert!(!backup.exists());
+        // New trigger there: the commit happened, the backup stays.
+        let new = dir.path().join("new.db");
+        let c = Connection::open(&new).unwrap();
+        c.execute_batch(
+            "CREATE TABLE card (state); \
+             CREATE TRIGGER card_done_guard BEFORE UPDATE OF state ON card \
+             WHEN 'card.landed' = 'card.landed' BEGIN SELECT 1; END;",
+        )
+        .unwrap();
+        std::fs::write(&backup, b"b").unwrap();
+        assert_eq!(settle_failed(&c, &backup), Settled::Committed);
+        assert!(backup.exists());
+        // A file that cannot be read to tell: the backup stays.
+        let junk = dir.path().join("junk.db");
+        std::fs::write(&junk, vec![7u8; 4096]).unwrap();
+        let c = Connection::open(&junk).unwrap();
+        assert_eq!(settle_failed(&c, &backup), Settled::Unknown);
+        assert!(backup.exists(), "never deleted on a guess");
     }
 
     #[test]

@@ -149,6 +149,14 @@ pub fn open_write(home: &Path, project_id: &str) -> Result<WriteLedger, LedgerEr
     let (mut conn, _) = open_at(&path, project_id, true)?;
     let done_guard_upgrade =
         migrate::upgrade_done_guard(&mut conn, &path)?.map(|upgraded| upgraded.backup);
+    // One line, only when the upgrade really ran (a later open finds nothing to do): the person
+    // learns that the ledger changed and where its backup is.
+    if let Some(backup) = &done_guard_upgrade {
+        eprintln!(
+            "moai: the ledger's close guard now accepts a card that landed on the local branch; the old ledger is kept at {}",
+            backup.display()
+        );
+    }
     Ok(WriteLedger {
         conn,
         project_id: project_id.to_string(),

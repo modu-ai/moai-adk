@@ -6,10 +6,12 @@
 mod common;
 
 use common::home::TempHome;
-use moai_cli::ledger::{self, migrate, LedgerError};
+use moai_cli::ledger::{self, migrate, migrate::Stage, LedgerError};
 use rusqlite::{Connection, OpenFlags};
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::process::{Command, Stdio};
+use std::time::{Duration, Instant};
 
 /// `card_done_guard` as every ledger made before the M-Flow exception holds it.
 const OLD_GUARD: &str = r"
@@ -249,7 +251,10 @@ fn failure_rolls_back() {
     let guard_before = guard_sql(&raw(&path)).unwrap();
 
     let mut conn = raw(&path);
-    let result = migrate::upgrade_done_guard_with(&mut conn, &path, |tx| {
+    let result = migrate::upgrade_done_guard_with(&mut conn, &path, |stage, tx| {
+        if stage != Stage::GuardDropped {
+            return Ok(());
+        }
         // The trigger is already dropped here: prove it, then fail.
         let n: i64 = tx
             .query_row(
@@ -395,4 +400,203 @@ fn a_fresh_ledger_is_left_alone() {
     assert!(backups(&path).is_empty());
     assert_eq!(meta(&path, "done_guard_landed"), None);
     assert_eq!(fs::read(&path).unwrap(), bytes);
+}
+
+// ---- the write lock, with a second process ------------------------------------------------
+//
+// POSIX record locks belong to the process: closing any descriptor of the ledger file in the
+// process that holds the write lock frees the lock for everyone. These tests ask a second
+// process, so a copy or a read made with `std::fs` inside the transaction would show.
+
+const PROBE_ENV: &str = "MOAI_LEDGER_PROBE_PATH";
+const OPEN_HOME_ENV: &str = "MOAI_LEDGER_OPEN_HOME";
+const OPEN_GO_ENV: &str = "MOAI_LEDGER_OPEN_GO";
+
+/// The text after `marker` on a line (the test harness puts `test <name> ... ` before a child's
+/// own output, so the marker is not always at the start of the line).
+fn marked(line: &str, marker: &str) -> Option<String> {
+    line.split_once(marker).map(|(_, rest)| rest.to_string())
+}
+
+/// This test binary run again for one test, which does nothing unless its variable is set.
+fn child_of(test: &str) -> Command {
+    let mut c = Command::new(std::env::current_exe().unwrap());
+    c.args(["--exact", test, "--nocapture", "--test-threads=1"]);
+    c
+}
+
+/// Child side: try to take the write lock without waiting and say what happened.
+#[test]
+fn child_try_to_take_the_write_lock() {
+    let Some(path) = std::env::var_os(PROBE_ENV) else {
+        return;
+    };
+    let c = Connection::open(path).unwrap();
+    c.busy_timeout(Duration::ZERO).unwrap();
+    match c.execute_batch("BEGIN IMMEDIATE") {
+        Ok(()) => {
+            c.execute_batch("ROLLBACK").unwrap();
+            println!("PROBE:got");
+        }
+        Err(rusqlite::Error::SqliteFailure(e, _))
+            if e.code == rusqlite::ErrorCode::DatabaseBusy =>
+        {
+            println!("PROBE:busy")
+        }
+        Err(e) => println!("PROBE:error {e}"),
+    }
+}
+
+/// Parent side: `busy` when another process holds the write lock, `got` when it was free.
+fn probe(path: &Path) -> String {
+    let out = child_of("child_try_to_take_the_write_lock")
+        .env(PROBE_ENV, path)
+        .stdin(Stdio::null())
+        .output()
+        .unwrap();
+    assert!(out.status.success(), "{out:?}");
+    String::from_utf8_lossy(&out.stdout)
+        .lines()
+        .find_map(|l| marked(l, "PROBE:"))
+        .unwrap_or_else(|| panic!("no probe answer: {out:?}"))
+}
+
+/// The write lock is taken before anything is copied or written and stays until the commit:
+/// at every stage of the upgrade a second process cannot take it, and afterwards it can.
+#[test]
+fn the_write_lock_is_held_from_the_lock_to_the_commit() {
+    let (_home, path) = old_ledger();
+    let mut conn = raw(&path);
+    let mut seen: Vec<(Stage, String)> = Vec::new();
+    let upgraded = migrate::upgrade_done_guard_with(&mut conn, &path, |stage, _tx| {
+        seen.push((stage, probe(&path)));
+        Ok(())
+    })
+    .expect("the upgrade runs");
+    assert!(upgraded.is_some());
+    drop(conn);
+
+    let stages: Vec<Stage> = seen.iter().map(|(s, _)| *s).collect();
+    assert_eq!(
+        stages,
+        [Stage::Locked, Stage::BackedUp, Stage::GuardDropped]
+    );
+    for (stage, answer) in &seen {
+        assert_eq!(answer, "busy", "another process wrote at {stage:?}");
+    }
+    assert_eq!(probe(&path), "got", "the lock is free after the commit");
+    assert_eq!(backups(&path).len(), 1);
+}
+
+/// Child side of the concurrent open: wait for the start signal, open for writing, report.
+#[test]
+fn child_open_for_writing() {
+    let Some(home) = std::env::var_os(OPEN_HOME_ENV) else {
+        return;
+    };
+    let go = PathBuf::from(std::env::var_os(OPEN_GO_ENV).unwrap());
+    let started = Instant::now();
+    while !go.exists() {
+        assert!(
+            started.elapsed() < Duration::from_secs(60),
+            "no start signal"
+        );
+        std::thread::sleep(Duration::from_millis(2));
+    }
+    match ledger::open_write(Path::new(&home), "demo") {
+        Ok(w) => println!(
+            "OPEN:{}",
+            if w.done_guard_upgrade().is_some() {
+                "upgraded"
+            } else {
+                "unchanged"
+            }
+        ),
+        Err(e) => println!("OPEN:error {e}"),
+    }
+}
+
+/// Several processes open the same old ledger at once: every open succeeds, exactly one of them
+/// upgrades it and makes the one backup, and no row changes. (Before the lock stayed held, a
+/// run of this showed two backups, `disk I/O error` and `File exists`.)
+#[test]
+fn concurrent_opens_upgrade_once_and_every_open_succeeds() {
+    let (home, path) = old_ledger();
+    let before = dump(&path);
+    let go = home.path().join("go-signal");
+    let kids: Vec<_> = (0..8)
+        .map(|_| {
+            child_of("child_open_for_writing")
+                .env(OPEN_HOME_ENV, home.path())
+                .env(OPEN_GO_ENV, &go)
+                .stdin(Stdio::null())
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .spawn()
+                .unwrap()
+        })
+        .collect();
+    fs::write(&go, b"").unwrap();
+    let mut answers = Vec::new();
+    let mut notices = Vec::new();
+    for kid in kids {
+        let out = kid.wait_with_output().unwrap();
+        assert!(out.status.success(), "{out:?}");
+        notices.extend(
+            String::from_utf8_lossy(&out.stderr)
+                .lines()
+                .filter(|l| l.contains("the old ledger is kept at"))
+                .map(str::to_string),
+        );
+        let text = String::from_utf8_lossy(&out.stdout).into_owned();
+        let answer = text
+            .lines()
+            .find_map(|l| marked(l, "OPEN:"))
+            .unwrap_or_else(|| panic!("no answer: {text}"));
+        answers.push(answer);
+    }
+    assert!(
+        answers.iter().all(|a| a == "upgraded" || a == "unchanged"),
+        "{answers:?}"
+    );
+    assert_eq!(
+        answers.iter().filter(|a| *a == "upgraded").count(),
+        1,
+        "{answers:?}"
+    );
+    assert_eq!(backups(&path).len(), 1, "one backup, not one per process");
+    let kept = backups(&path)[0].display().to_string();
+    assert_eq!(notices.len(), 1, "one notice in all: {notices:?}");
+    assert!(
+        notices[0].contains(&kept),
+        "the notice names the backup: {notices:?}"
+    );
+    assert!(guard_sql(&raw(&path)).unwrap().contains("card.landed"));
+    assert_eq!(dump(&path), before);
+    let check: String = raw(&path)
+        .query_row("PRAGMA integrity_check", [], |r| r.get(0))
+        .unwrap();
+    assert_eq!(check, "ok");
+}
+
+/// A backup that cannot be made says what to do about it (disk space, folder rights, path).
+#[cfg(unix)]
+#[test]
+fn a_refused_backup_says_what_to_do() {
+    use std::os::unix::fs::PermissionsExt;
+    if unsafe { libc::geteuid() } == 0 {
+        return;
+    }
+    let (home, path) = old_ledger();
+    let dir = path.parent().unwrap().to_path_buf();
+    fs::set_permissions(&dir, fs::Permissions::from_mode(0o500)).unwrap();
+    let result = ledger::open_write(home.path(), "demo");
+    fs::set_permissions(&dir, fs::Permissions::from_mode(0o700)).unwrap();
+    let text = match result {
+        Ok(_) => panic!("the open must refuse"),
+        Err(e) => e.to_string(),
+    };
+    for hint in ["free some disk space", "writable", "path", "not changed"] {
+        assert!(text.contains(hint), "no `{hint}` in: {text}");
+    }
 }
