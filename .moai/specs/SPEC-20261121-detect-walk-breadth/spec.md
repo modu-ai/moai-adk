@@ -71,4 +71,11 @@ created: 2026-11-21
 
 ## Result
 
-(구현 뒤에 채워요.)
+- AC-1: met — `cargo test --locked --offline --test project_detect_walk_cli a_large_early_folder_does_not_hide_a_later_packages_manifest` 통과(깊이 3 에 파일 6000 개가 있어도 `apps/id/go.mod`·`apps/x/package.json` 나열, `complete` false). 처음 짠 시험은 큰 폴더를 깊이 4 에 둬서 옛 코드도 통과했어요(깊이 한도 밖이라 읽히지 않아요): 깊이 3 으로 고쳐 옛 코드에서 실패하는 것을 확인했어요(RED 4 개 모두 실패).
+- AC-2: met — `… hidden_folders_are_not_walked_for_manifests` 통과(`.cache`·`.vercel`·`.moai-backup` 안 manifest 는 없고 `apps/x/package.json` 과 루트 `package.json` 만).
+- AC-3: met — `… the_manifest_walk_fact_reports_completeness_and_the_cap` 통과(작은 프로젝트 `{complete: true, over_cap: 0}`, manifest 70 개는 64 개 나열에 `over_cap` 6).
+- AC-4: met — `… a_partial_list_adds_one_next_action_and_a_complete_one_adds_none` 통과(예산 소진 1 줄, 상한 초과 1 줄, 완전한 목록 0 줄).
+- AC-5: met — `cargo test --locked --offline --test project_detect_cli` 24 개 통과, `cargo test --locked --offline --lib project_detect` 7 개 통과, `cargo clippy --locked --offline --all-targets -- -D warnings` 0, `cargo fmt` 적용.
+- 실측: 보고된 저장소를 읽기만 하는 `project-detect` 로 돌리면 고치기 전 `manifests` 가 1 개, 고친 뒤 55 개(`manifest_walk` `{complete: true, over_cap: 0}`)예요. 이 저장소에서 실패의 원인은 `apps/` 앞의 숨김 폴더 세 개(`.moai-backup`, `.moai-backups`, `.vercel`, 합쳐 약 15 만 항목)가 예산을 다 쓰는 것이었어요.
+- 변이 5 개 모두 시험이 잡았어요(숨김 건너뛰기 빼기, `complete` 항상 true, 상한 계산 어긋남, 안내 조건 `||` 를 `&&` 로, 폭 우선을 깊이 우선으로 되돌리기). 각 변이는 컴파일되고 시험이 실패했어요.
+- 돌리지 않은 것: 전체 `moai check affected`(병합 준비 노트에 줄째로 적어요), `code_languages` 의 예산(바꾸지 않았어요), 프로필 계획이 줄어드는 manifest 를 보여 주는 것(다음 조각).
