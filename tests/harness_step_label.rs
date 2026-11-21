@@ -115,7 +115,13 @@ fn workflow_text_tells_to_translate_and_keeps_the_id_for_tools() {
         "skills/moai/workflows/update.md",
         "skills/moai/workflows/project.md",
     ] {
-        let line = naming_line(rel).unwrap_or_else(|| panic!("{rel} has no naming line"));
+        let whole = naming_line(rel).unwrap_or_else(|| panic!("{rel} has no naming line"));
+        // The step line may name the id `generation` elsewhere, so read the sentence itself:
+        // from its start to the end of the line (the sentence is the last one of the line).
+        let start = whole
+            .find("Call the generation step")
+            .unwrap_or_else(|| panic!("{rel}: the naming line has no `Call the generation step`"));
+        let line = &whole[start..];
         assert!(
             line.contains("translate"),
             "{rel}: the naming line must tell to translate the name for another language: {line}"
