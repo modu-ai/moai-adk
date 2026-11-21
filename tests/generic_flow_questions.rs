@@ -41,6 +41,11 @@ fn work_flow_row_lists_github_flow_first_and_recommended() {
         options.starts_with("GitHub flow (recommended)"),
         "the work_flow options must start with `GitHub flow (recommended)`: {options}"
     );
+    assert_eq!(
+        options.matches("(recommended)").count(),
+        1,
+        "exactly one work_flow option carries the recommended mark: {options}"
+    );
 }
 
 #[test]
@@ -123,7 +128,7 @@ fn flow_section_tells_the_model_to_describe_m_flow_in_plain_words_first() {
 fn autonomy_row_says_what_is_asked_first_in_plain_words() {
     let cells = row("autonomy");
     assert!(
-        cells[3].contains("hard to undo, or touches money, secrets or deletion"),
+        cells[3].contains("hard to undo, or touches money, secrets or deletion, is asked first"),
         "the autonomy options must name what is asked first in plain words: {}",
         cells[3]
     );
