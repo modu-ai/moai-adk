@@ -43,6 +43,9 @@ EXEMPT = {
     "tests/mutate_test.py": "ls-files and scandir on temporary clones",
     "tests/project_flow_closing.rs": "reads only the named skills/moai/workflows/project.md; "
                                     "`git ls-files --error-unmatch` runs in TempDir repos",
+    "tests/retired_hosts_layer.rs": "read_dir of temporary homes (before/after trees of a host "
+                                    "folder); reads the named src files of the backup move and "
+                                    "the skills/moai and agents packages",
     "tests/status_line_cli.rs": "read_dir of a TempDir settings-backups folder",
     "tests/ui_korean_terminal_cli.rs": "read_dir of the TempDir project it set up; reads the "
                                        "named golden screens under tests/fixtures/ui",

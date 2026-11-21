@@ -68,7 +68,7 @@ const WIRING_TEMP: &str = ".codexwiring-";
 /// The reason of an item that S1c-2 will move; S1c-1 only classifies it.
 const MOVES_LATER: &str = "classified; moves in S1c-2";
 /// The size bound of a Codex config file, shared with `codex-config-plan`.
-const CODEX_READ_LIMIT: u64 = crate::hosts::codex_config::CONFIG_LIMIT;
+const CODEX_READ_LIMIT: u64 = crate::hosts::config_backup::CONFIG_LIMIT;
 /// The handler commands the Go wiring owns (`moaiHandlerPrefix`, `isMoaiNamespaceCommand`).
 const GO_HANDLER_PREFIX: &str = "moai hook ";
 const GO_HANDLER_NAMESPACE: &str = "/.codex/hooks/moai/";
