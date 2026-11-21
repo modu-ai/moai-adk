@@ -364,14 +364,14 @@ pub fn text(msg: Msg, lang: Lang) -> &'static str {
              PATH 맨 앞에 둔 뒤에야 hooks-apply 가 hook 을 써요(바꾼 것 없음)"
         }
         (InitRemoved, En) => {
-            "moai init was removed. Make a project folder, go into it and run moai cc, moai glm \
-             or moai codex (add -l or -a for a lead or agent session); the first launch prepares \
-             the folder, and /moai project in that session sets the project up."
+            "moai init was removed. Make a project folder, go into it and run moai cc or moai glm \
+             (add -l or -a for a lead or agent session); the first launch prepares the folder, \
+             and /moai project in that session sets the project up."
         }
         (InitRemoved, Ko) => {
-            "moai init 은 없어졌어요. 프로젝트 폴더를 만들고 그 안에서 moai cc, moai glm, \
-             moai codex 중 하나를 실행하세요(리더·에이전트 세션은 -l, -a). 첫 실행이 폴더를 \
-             준비하고, 그 세션의 /moai project 가 프로젝트를 설정해요."
+            "moai init 은 없어졌어요. 프로젝트 폴더를 만들고 그 안에서 moai cc 나 moai glm 을 \
+             실행하세요(리더·에이전트 세션은 -l, -a). 첫 실행이 폴더를 준비하고, 그 세션의 \
+             /moai project 가 프로젝트를 설정해요."
         }
     }
 }
@@ -673,13 +673,13 @@ mod tests {
                 "moai init",
                 "moai cc",
                 "moai glm",
-                "moai codex",
                 "-l",
                 "-a",
                 "/moai project",
             ] {
                 assert!(t.contains(p), "{lang:?} must name `{p}`: {t}");
             }
+            assert!(!t.contains("codex"), "{lang:?} names a removed launcher: {t}");
         }
     }
 
