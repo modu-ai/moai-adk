@@ -443,7 +443,7 @@ fn the_round_keeps_audits_with_the_leader_and_moves_on_from_a_card_in_review() {
     assert!(step("mode-agent.md", "claim").contains(REVIEW_WAITS));
     assert!(pick.contains(REVIEW_WAITS));
     assert!(step("mode-agent.md", "hand-off")
-        .contains("Then do not wait for the merge: follow `Waiting is switching`"));
+        .contains("Then do not wait for the merge: a card in `review` keeps this session"));
     // N1 (re-audit N-r1: the line has the `owner=` and `next=` the report step asks for).
     assert!(step("mode-agent.md", "session-id").contains(
         "refuses a session without one: there (OMP) report `LANE-BLOCKED <lane> card-take no \
