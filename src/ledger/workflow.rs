@@ -1281,6 +1281,10 @@ pub fn finish_gate(
     }
 }
 
+/// The `--by` of the leader: only it, or the holder of the card, may record a landing that
+/// closes nothing (`card finish` with an open criterion and no met option for it).
+pub const LEADER_BY: &str = "leader";
+
 /// Closes a `ready`, `active` or `review` card in one write transaction: each open criterion is
 /// marked met with the reference `met` gives for it, the evidence is recorded, the card walks
 /// the rows of the transition table to `done`, a held reservation is marked `released`, and two
@@ -1397,6 +1401,18 @@ pub fn finish(
                 evidence,
                 FinishEvidence::Landing { .. } | FinishEvidence::MergedPr
             );
+        if landing_only {
+            let holder = previous
+                .as_ref()
+                .is_some_and(|held| session == Some(held.holder.as_str()));
+            if by != LEADER_BY && !holder {
+                return refused(format!(
+                    "a call that records a landing and closes nothing is for the leader or the \
+                     holder of the card: give --by {LEADER_BY}, or call with the holder's session; \
+                     nothing was changed"
+                ));
+            }
+        }
         if let (false, Some(seq)) = (landing_only, uncovered.first()) {
             return refused(format!(
                 "criterion {seq} is an open criterion and no --met names it; every open criterion needs one --met N=REF"

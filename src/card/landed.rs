@@ -118,7 +118,13 @@ pub fn integration_branch(project: &Path) -> Result<String, String> {
 
 /// The commit the integration branch points at now.
 pub fn tip_of(project: &Path, branch: &str) -> Result<String, String> {
-    let spec = format!("{branch}^{{commit}}");
+    // `refs/heads/` names the branch: a tag with the same name would win a bare name.
+    let full = if branch.starts_with("refs/") {
+        branch.to_string()
+    } else {
+        format!("refs/heads/{branch}")
+    };
+    let spec = format!("{full}^{{commit}}");
     let out = git(project, &["rev-parse", "--verify", "--quiet", &spec])?;
     let tip = String::from_utf8_lossy(&out.stdout).trim().to_string();
     if out.status.success() && crate::gate::is_full_sha(&tip) {

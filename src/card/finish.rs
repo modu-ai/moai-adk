@@ -132,9 +132,10 @@ fn parse_met(entries: &[String]) -> Result<Vec<(i64, String)>> {
     Ok(met)
 }
 
-/// The evidence of a card that changes the repository: a landing that git proves, or the merged
-/// pull request link the card already has. An explicit `--head` comes first, then a merged link,
-/// then the newest head `card landed` recorded.
+/// The evidence of a card that changes the repository: a landing that git proves, or, off an
+/// m-flow profile, the merged pull request link the card already has. An explicit `--head` comes
+/// first, then a merged link, then the newest head `card landed` recorded. On an m-flow profile
+/// the link alone is no evidence, the same as for `card done`: a landing git proves is needed.
 fn landing_evidence(
     project: &Path,
     conn: &rusqlite::Connection,
@@ -145,6 +146,7 @@ fn landing_evidence(
     let head = match head {
         Some(head) => head.to_string(),
         None => {
+            let mflow = landed::integration_branch(project).is_ok();
             let linked: i64 = conn
                 .query_row(
                     "SELECT count(*) FROM card_link WHERE from_card = ?1 AND kind = 'pr' \
@@ -153,7 +155,7 @@ fn landing_evidence(
                     |r| r.get(0),
                 )
                 .map_err(sql_err)?;
-            if linked > 0 {
+            if linked > 0 && !mflow {
                 return Ok(Proven::MergedPr);
             }
             let recorded: Option<String> = conn
@@ -168,10 +170,18 @@ fn landing_evidence(
                 .optional()
                 .map_err(sql_err)?;
             recorded.ok_or_else(|| {
-                unchanged(
-                    "no landing is recorded for the card: give the landed commit as --head <sha>, \
-                     or link its merged pull request",
-                )
+                if mflow {
+                    unchanged(
+                        "no landing is recorded for the card (`card landed` after the merge, or \
+                         give the landed commit as --head <sha>); a merged pull request link alone \
+                         does not close a card on an m-flow profile",
+                    )
+                } else {
+                    unchanged(
+                        "no landing is recorded for the card: give the landed commit as --head \
+                         <sha>, or link its merged pull request",
+                    )
+                }
             })?
         }
     };
