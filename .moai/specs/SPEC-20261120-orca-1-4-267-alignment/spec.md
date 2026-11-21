@@ -59,8 +59,10 @@ This change removes the resend rule from the adapter text and the two mode texts
 
 ## Result
 
-- AC-1: not yet — nothing written.
-- AC-2: not yet — nothing written.
-- AC-3: not yet — nothing written.
-- AC-4: not yet — nothing written.
-- AC-5: not yet — nothing written.
+- AC-1: met — `cargo test --test orca_alignment resend_`: the two mode texts no longer carry the resend rule and say a `null` `delivered_at` is read as not yet known (2 passed).
+- AC-2: met — `cargo test --test orca_alignment rules_`: mail states, the peek rule, the Run Task Dispatch and mail split and the request-id rule are in both mode texts (4 passed).
+- AC-3: met — `cargo test --test orca_alignment adapter_`: the adapter text names the four pages with their read times, the local version, the undocumented list, the unverified facts with ownership kept, and the screen and cursor meaning (3 passed).
+- AC-4: met — `cargo test --test orca_alignment cites_` passed, and the scan and reader tests of the three files passed: the 19 test files that read the mode texts (`mode_workflow_steps`, `orca_optional_3005`, `lane_rules_*`, `workflow_size_budget`, `core_rules_2876`, `cli_text_citations` and the rest) and 8 python files (`ci_scope_test`, `source_manifest_test`, `repo_scans_test` and others), all ok.
+- AC-5: met — `cargo test --test mode_workflow_steps`: 43 passed with the four pinned phrases changed to the new rule; `src/lane_send.rs` needed no change (D-6), and `cargo test --lib --bins` passed (1541, 28, 28).
+- Mutants: five rule texts broken one at a time (resend rule back, peek rule removed, request id removed, unverified ownership removed, a card number cited); each was caught by its test, and the tree was restored.
+- Not run here: a live Orca session; every rule rests on the pages and the local help named in the texts, and the facts the pages leave out are written as unverified.
