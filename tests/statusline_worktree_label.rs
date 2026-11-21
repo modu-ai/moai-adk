@@ -144,7 +144,7 @@ fn line(out: &str, n: usize) -> String {
 }
 
 /// The whole of line 3 after the label moved to line 2: the bars, unchanged by the label.
-const BARS: &str = "CTX: ░░░░░░░░░░ n/a";
+const BARS: &str = "🪫 CTX 미확인";
 
 #[test]
 fn a_held_card_closes_line_2_as_wt_c_card_name() {
