@@ -1,4 +1,4 @@
-//! First-launch project initialization for `cc|glm|codex|omp` (Issue #2481; user decisions
+//! First-launch project initialization for `cc|glm|omp` (Issue #2481; user decisions
 //! 6810797000 and 6810818827, 2026-11-12).
 //!
 //! A launch in a folder that is not a git repository runs `git init` there without asking,
@@ -47,7 +47,7 @@ pub struct Prepared {
     pub git_pending: bool,
 }
 
-/// Initializes `cwd` for a launch on `host` (`claude`, `glm` or `codex`). Refuses — before any
+/// Initializes `cwd` for a launch on `host` (`claude`, `glm` or `omp`). Refuses — before any
 /// write — when git is missing from PATH, or when `cwd` is not a repository and is HOME itself
 /// or the file-system root. Under `dry_run` it writes nothing and reports the plan. A missing
 /// skill copy for the host ([`missing_skill`]) adds its warning as a second line of the note.
@@ -69,7 +69,6 @@ pub fn prepare(cwd: &Path, host: &str, dry_run: bool) -> Result<Prepared, String
 pub fn missing_skill(host: &str) -> Option<String> {
     let (skill_host, name) = match host {
         "claude" | "glm" => ("claude", "Claude Code"),
-        "codex" => ("codex", "Codex"),
         _ => return None,
     };
     let home = crate::key_vault::home().ok()?;
@@ -452,7 +451,6 @@ fn default_profile(folder: &str, host: &str) -> Result<profile::Profile, String>
     let named = crate::key_vault::folder_name(None, folder, "");
     let project_id = named.strip_suffix('-').unwrap_or(&named).to_string();
     let host = match host {
-        "codex" => "codex",
         "omp" => "omp",
         _ => "claude",
     };
@@ -498,13 +496,16 @@ mod tests {
         let w = skill_warning("Claude Code", Err(why.clone())).expect("a warning");
         assert!(w.contains("Claude Code") && w.contains(&why), "{w}");
         let dir = tempfile::tempdir().unwrap();
-        let w = skill_warning("Codex", Ok(dir.path().to_path_buf())).expect("a warning");
+        let w = skill_warning("Claude Code", Ok(dir.path().to_path_buf())).expect("a warning");
         assert!(
             w.contains("has no SKILL.md") && w.contains("moai update"),
             "{w}"
         );
         std::fs::write(dir.path().join("SKILL.md"), "x").unwrap();
-        assert_eq!(skill_warning("Codex", Ok(dir.path().to_path_buf())), None);
+        assert_eq!(
+            skill_warning("Claude Code", Ok(dir.path().to_path_buf())),
+            None
+        );
     }
 
     #[test]
@@ -530,9 +531,12 @@ mod tests {
         let p = default_profile("My Project", "glm").unwrap();
         assert_eq!(p.project_id, "my-project");
         assert_eq!(p.hosts, ["claude"]);
-        let p = default_profile("___", "codex").unwrap();
+        let p = default_profile("___", "omp").unwrap();
         assert_eq!(p.project_id, "project");
-        assert_eq!(p.hosts, ["codex"]);
+        assert_eq!(p.hosts, ["omp"]);
+        // A host word this version does not know falls back to Claude Code, never to Codex.
+        let p = default_profile("___", "codex").unwrap();
+        assert_eq!(p.hosts, ["claude"]);
     }
 
     #[test]

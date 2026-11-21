@@ -2,7 +2,7 @@
 //! a Claude session gets no `--advisor` unless CLI `--advisor <model>` or the user-only
 //! `~/.moai-cli/config/launcher.yaml` key `launcher.advisor` asks for one. Precedence is
 //! `--no-advisor` / `--advisor` > `launcher.advisor` > none. Every home is a temporary
-//! directory; real launches run stub `claude` / `codex` executables from a temporary PATH.
+//! directory; real launches run a stub `claude` executable from a temporary PATH.
 #![cfg(unix)]
 mod common;
 use serde_json::Value;
@@ -13,7 +13,7 @@ use std::{
     process::{Command, Output},
 };
 
-const HOSTS: [&str; 3] = ["cc", "glm", "codex"];
+const HOSTS: [&str; 2] = ["cc", "glm"];
 const ROLES: [&[&str]; 3] = [&["-l"], &["-a"], &[]];
 /// Rejected `launcher.advisor` values and broken files. `SECRET` must never reach stderr.
 const INVALID: [&str; 14] = [
@@ -51,15 +51,13 @@ fn fixture() -> Fixture {
         .unwrap()
         .success());
     let bin = tempfile::tempdir().unwrap();
-    for host in ["claude", "codex"] {
-        let path = bin.path().join(host);
-        fs::write(
-            &path,
-            "#!/bin/sh\nprintf started > \"$MOAI_TEST_HOST_MARKER\"\nexit 0\n",
-        )
-        .unwrap();
-        fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).unwrap();
-    }
+    let path = bin.path().join("claude");
+    fs::write(
+        &path,
+        "#!/bin/sh\nprintf started > \"$MOAI_TEST_HOST_MARKER\"\nexit 0\n",
+    )
+    .unwrap();
+    fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).unwrap();
     Fixture {
         project,
         bin,
@@ -152,24 +150,6 @@ fn plain(host: &str, role: usize) -> Vec<&'static str> {
             "--dangerously-skip-permissions",
         ],
         ("cc" | "glm", 2) => vec!["claude", "--model", "opus", "--effort", "medium"],
-        ("codex", 0) => vec![
-            "codex",
-            "-s",
-            "danger-full-access",
-            "-a",
-            "never",
-            "MoAI session name: leader",
-        ],
-        ("codex", 1) => vec![
-            "codex",
-            "-s",
-            "danger-full-access",
-            "-a",
-            "never",
-            // SPEC-20261118-launcher-agent-entry: `codex -a` starts agent mode.
-            "$moai --mode-agent\nMoAI session name: agent-1",
-        ],
-        ("codex", 2) => vec!["codex"],
         _ => unreachable!(),
     }
 }
@@ -221,7 +201,7 @@ fn args_for<'a>(host: &'a str, flags: &[&'a str], extra: &[&'a str]) -> Vec<&'a 
     args
 }
 
-/// AC-1: no setting file → no `--advisor` on cc/glm for `-l`, `-a` and no role; codex as before.
+/// AC-1: no setting file → no `--advisor` on cc/glm for `-l`, `-a` and no role.
 /// A file without the key, or `none`, gives byte-identical output.
 #[test]
 fn no_setting_means_no_advisor_on_every_host_and_role() {
@@ -262,7 +242,7 @@ fn no_setting_means_no_advisor_on_every_host_and_role() {
 }
 
 /// AC-2: `--advisor` and `launcher.advisor` each attach the advisor; CLI beats the setting;
-/// `--no-advisor` switches the setting off; glm drops it and codex never takes it.
+/// `--no-advisor` switches the setting off; glm drops it.
 #[test]
 fn cli_and_setting_enable_the_advisor_with_cli_precedence() {
     let f = fixture();
@@ -289,14 +269,10 @@ fn cli_and_setting_enable_the_advisor_with_cli_precedence() {
         // `--no-advisor` over setting.
         let v = dry(&f, &args_for("cc", flags, &["--no-advisor"]));
         assert_eq!(v["argv"], serde_json::json!(plain("cc", role)));
-        // glm: the advisor is Anthropic API only; codex: Claude hosts only.
+        // glm: the advisor is Anthropic API only.
         let v = dry(&f, &args_for("glm", flags, &[]));
         assert_eq!(v["argv"], serde_json::json!(plain("glm", role)));
         assert!(v["notes"].to_string().contains("--advisor omitted on glm"));
-        assert_eq!(
-            dry(&f, &args_for("codex", flags, &[]))["argv"],
-            serde_json::json!(plain("codex", role))
-        );
     }
     // A full id from the setting, and the legacy top-level `-l` / `-a cc` forms.
     config(

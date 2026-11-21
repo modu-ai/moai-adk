@@ -110,19 +110,19 @@ fn only_supported_values_are_offered_and_an_unknown_saved_value_is_kept() {
 fn enter_selects_the_defaults_and_the_preview_shows_them() {
     let h = home();
     fs::create_dir_all(h.path.join(".claude")).unwrap();
+    // A `.codex` folder is no installed tool any more: the pick offers `claude` only.
     fs::create_dir_all(h.path.join(".codex")).unwrap();
-    // Tool pick, then four questions for each of the two tools, then no save answer.
-    let (result, out) = run_stage(&h.path, &enters(9));
+    // Tool pick, then four questions for the one tool, then no save answer.
+    let (result, out) = run_stage(&h.path, &enters(5));
     assert_eq!(result["state"], json!("declined"), "{result}");
-    for expected in [
-        "claude-opus-5-5",
-        "claude-sonnet-5-5",
-        "gpt-6.2-sol",
-        "gpt-6.1-terra",
-    ] {
+    for expected in ["claude-opus-5-5", "claude-sonnet-5-5"] {
         assert!(out.contains(expected), "{expected} in the preview: {out}");
     }
-    assert_eq!(result["changes"].as_array().unwrap().len(), 4, "{result}");
+    assert!(
+        !out.contains("gpt-6"),
+        "no Codex model in the preview: {out}"
+    );
+    assert_eq!(result["changes"].as_array().unwrap().len(), 2, "{result}");
     assert!(
         !settings_path(&h.path).exists(),
         "the preview was shown and nothing is written yet"
@@ -132,7 +132,7 @@ fn enter_selects_the_defaults_and_the_preview_shows_them() {
 #[test]
 fn the_choice_is_written_through_the_digest_bound_apply_and_read_back() {
     let h = home();
-    fs::create_dir_all(h.path.join(".codex")).unwrap();
+    fs::create_dir_all(h.path.join(".claude")).unwrap();
     let path = write_settings(&h.path, r#"{"keep":1,"launcher":{"advisor":"x"}}"#);
     let (result, _) = run_stage(&h.path, &format!("{}y\n", enters(5)));
     assert_eq!(result["state"], json!("applied"), "{result}");
@@ -140,18 +140,52 @@ fn the_choice_is_written_through_the_digest_bound_apply_and_read_back() {
     assert_eq!(saved["keep"], json!(1));
     assert_eq!(saved["launcher"]["advisor"], json!("x"));
     assert_eq!(
-        saved["launcher"]["models"]["codex"]["agent"],
-        json!({"model": "gpt-6.1-terra", "effort": "xhigh"})
+        saved["launcher"]["models"]["claude"]["agent"],
+        json!({"model": "claude-sonnet-5-5", "effort": "high"})
     );
     // The report reads the same file back.
     let reported = report(&h.path);
-    let codex_agent = reported["values"]
+    let claude_agent = reported["values"]
         .as_array()
         .unwrap()
         .iter()
-        .find(|v| v["tool"] == json!("codex") && v["role"] == json!("agent"))
+        .find(|v| v["tool"] == json!("claude") && v["role"] == json!("agent"))
         .unwrap();
-    assert_eq!(codex_agent["source"], json!("saved"), "{reported}");
+    assert_eq!(claude_agent["source"], json!("saved"), "{reported}");
+}
+
+/// SPEC-20261121-codex-launcher-and-models-removed REQ-5, REQ-6, REQ-8: a saved
+/// `launcher.models.codex` value, whatever its shape, is no error of the model step, is not
+/// listed as unsupported, and is left out of the file once a Claude choice is written (leader
+/// decision D2).
+#[test]
+fn a_saved_codex_value_is_ignored_and_dropped_on_the_next_save() {
+    for codex in [
+        r#"{"agent":{"model":"gpt-6.1-terra","effort":"xhigh"}}"#,
+        r#"{"agent":"SECRET-CODEX-MODEL"}"#,
+        r#""SECRET-CODEX-MODEL""#,
+    ] {
+        let h = home();
+        fs::create_dir_all(h.path.join(".claude")).unwrap();
+        fs::create_dir_all(h.path.join(".codex")).unwrap();
+        let body = format!(r#"{{"launcher":{{"models":{{"codex":{codex}}}}}}}"#);
+        let path = write_settings(&h.path, &body);
+        let (result, out) = run_stage(&h.path, &enters(5));
+        assert_eq!(result["state"], json!("declined"), "{codex}: {result}");
+        assert!(
+            !out.contains("launcher.models.codex") && !out.contains("SECRET-CODEX-MODEL"),
+            "{codex}: the saved Codex value is not listed or quoted: {out}"
+        );
+        assert_eq!(fs::read_to_string(&path).unwrap(), body, "nothing written");
+        let (result, _) = run_stage(&h.path, &format!("{}y\n", enters(5)));
+        assert_eq!(result["state"], json!("applied"), "{codex}: {result}");
+        let saved: Value = serde_json::from_str(&fs::read_to_string(&path).unwrap()).unwrap();
+        assert!(
+            saved["launcher"]["models"].get("codex").is_none(),
+            "{codex}: the Codex value stayed: {saved}"
+        );
+        assert!(saved["launcher"]["models"]["claude"].is_object(), "{saved}");
+    }
 }
 
 #[test]
@@ -254,7 +288,11 @@ fn the_installed_tools_follow_the_home_folders() {
     );
     fs::remove_file(h.path.join(".codex")).unwrap();
     fs::create_dir_all(h.path.join(".codex")).unwrap();
-    assert_eq!(installed_tools(&h.path), ["claude", "codex"]);
+    assert_eq!(
+        installed_tools(&h.path),
+        ["claude"],
+        "a `.codex` folder is no installed tool"
+    );
 }
 
 // The command: a run without a terminal asks nothing and reports the values.
@@ -325,7 +363,11 @@ fn a_non_terminal_run_asks_nothing_and_reports_the_values() {
     let models = &r["models"];
     assert_eq!(models["state"], json!("ok"), "{r}");
     let values = models["values"].as_array().unwrap();
-    assert_eq!(values.len(), 8, "{models}");
+    assert_eq!(values.len(), 6, "{models}");
+    assert!(
+        values.iter().all(|v| v["tool"] != json!("codex")),
+        "no Codex row in the report: {models}"
+    );
     let find = |tool: &str, role: &str| -> Value {
         values
             .iter()
