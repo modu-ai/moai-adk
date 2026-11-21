@@ -25,7 +25,7 @@ TOKENS = {
     "version": 1,
     "paths": ["shipped/**", "agents/*.md", "src/help.rs"],
     "tokens": [
-        {"id": "card", "pattern": r"\bC-[0-9]+\b", "why": "card number"},
+        {"id": "card", "pattern": r"\bK-[0-9]+\b", "why": "card number"},
         {"id": "link", "pattern": "example/repo", "why": "tracker link"},
     ],
 }
@@ -38,12 +38,12 @@ TOKENS = {
 # Outside the shipped paths and so never counted: agents/deep/y.md (agents/*.md is one level),
 # other/z.md. shipped/bin.dat is not UTF-8 and is skipped.
 TREE = {
-    "shipped/a.md": "C-1 and C-2 and example/repo\n",
-    "shipped/sub/b.md": "see C-3\n",
-    "src/help.rs": "// C-4\n",
+    "shipped/a.md": "K-1 and K-2 and example/repo\n",
+    "shipped/sub/b.md": "see K-3\n",
+    "src/help.rs": "// K-4\n",
     "agents/x.md": "no tokens here\n",
-    "agents/deep/y.md": "C-9\n",
-    "other/z.md": "C-5 C-6 example/repo\n",
+    "agents/deep/y.md": "K-9\n",
+    "other/z.md": "K-5 K-6 example/repo\n",
 }
 
 BASELINE = {
@@ -126,15 +126,31 @@ class CountTest(TreeCase):
         self.assertEqual(first, json.dumps(json.loads(first), indent=2, sort_keys=True) + "\n")
 
     def test_check_lists_a_file_that_is_not_utf8_as_skipped_and_does_not_count_it(self):
-        write(self.root, "shipped/bin.dat", b"\xff\xfe C-7 C-8")
+        write(self.root, "shipped/bin.dat", b"\xff\xfe K-7 K-8")
         code, result = self.check_json()
         self.assertEqual(code, 0)
         self.assertEqual(result["skipped"], ["shipped/bin.dat"])
         self.assertEqual(result["failures"], [])
 
+    def test_a_symlinked_file_is_not_followed_and_is_listed_as_skipped(self):
+        (self.root / "shipped" / "link.md").symlink_to(self.root / "shipped" / "a.md")
+        code, result = self.check_json()
+        self.assertEqual(code, 0)
+        self.assertEqual(result["skipped"], ["shipped/link.md"])
+        self.assertEqual(result["failures"], [])
+        printed = json.loads(run("baseline", "--root", self.root, "--tokens", self.tokens)[1])
+        self.assertNotIn("shipped/link.md", printed["files"])
+
+    def test_a_git_folder_under_a_shipped_path_is_not_scanned(self):
+        write(self.root, "shipped/.git/inner.md", "K-50 K-51 example/repo\n")
+        code, result = self.check_json()
+        self.assertEqual((code, result["skipped"], result["failures"]), (0, [], []))
+        printed = json.loads(run("baseline", "--root", self.root, "--tokens", self.tokens)[1])
+        self.assertEqual(printed, BASELINE)
+
     def test_a_file_outside_the_shipped_paths_is_never_counted(self):
-        write(self.root, "other/new.md", "C-10 C-11 C-12 example/repo")
-        write(self.root, "agents/deeper/more.md", "C-13")
+        write(self.root, "other/new.md", "K-10 K-11 K-12 example/repo")
+        write(self.root, "agents/deeper/more.md", "K-13")
         code, result = self.check_json()
         self.assertEqual((code, result["failures"]), (0, []))
 
@@ -147,7 +163,7 @@ class BoundaryTest(TreeCase):
         self.assertEqual((result["failures"], result["headroom"], result["skipped"]), ([], [], []))
 
     def test_one_more_match_in_a_listed_file_fails_and_names_it(self):
-        self.append("shipped/a.md", "and C-8\n")
+        self.append("shipped/a.md", "and K-8\n")
         code, result = self.check_json()
         self.assertEqual(code, 1)
         self.assertFalse(result["ok"])
@@ -160,7 +176,7 @@ class BoundaryTest(TreeCase):
         )
 
     def test_one_match_in_a_file_the_baseline_does_not_list_fails(self):
-        write(self.root, "shipped/new.md", "C-8\n")
+        write(self.root, "shipped/new.md", "K-8\n")
         code, result = self.check_json()
         self.assertEqual(code, 1)
         self.assertIn(
@@ -178,8 +194,8 @@ class BoundaryTest(TreeCase):
         )
 
     def test_a_match_moved_between_files_fails_on_the_file_rule_alone(self):
-        write(self.root, "shipped/a.md", "C-1 and example/repo\n")  # card 2 -> 1
-        self.append("shipped/sub/b.md", "and C-10\n")  # card 1 -> 2: the total stays 4
+        write(self.root, "shipped/a.md", "K-1 and example/repo\n")  # card 2 -> 1
+        self.append("shipped/sub/b.md", "and K-10\n")  # card 1 -> 2: the total stays 4
         code, result = self.check_json()
         self.assertEqual(code, 1)
         self.assertEqual(
@@ -215,7 +231,7 @@ class BoundaryTest(TreeCase):
 
 class HeadroomTest(TreeCase):
     def test_one_match_fewer_passes_and_is_listed_as_headroom(self):
-        write(self.root, "shipped/a.md", "C-1 and example/repo\n")
+        write(self.root, "shipped/a.md", "K-1 and example/repo\n")
         code, result = self.check_json()
         self.assertEqual((code, result["ok"], result["failures"]), (0, True, []))
         self.assertIn(
@@ -319,6 +335,31 @@ class RefusalTest(TreeCase):
         self.assertEqual((code, out), (2, ""))
         self.assertTrue(err.startswith(REFUSAL_PREFIX) and "link" in err, err)
 
+    def test_a_runtime_empty_match_is_refused_and_names_the_token_and_the_file(self):
+        # `(?<=Q)` passes the load-time probes and still matches the empty string after a Q.
+        self.tokens_with(lambda d: d["tokens"][1].update({"id": "after", "pattern": "(?<=Q)"}))
+        write(self.root, "shipped/q.md", "Q\n")
+        code, out, err = run("baseline", "--root", self.root, "--tokens", self.tokens)
+        self.assertEqual((code, out), (2, ""))
+        self.assertTrue(err.startswith(REFUSAL_PREFIX), err)
+        self.assertIn("after", err)
+        self.assertIn("shipped/q.md", err)
+        self.assertIn("empty match", err)
+
+    def test_a_boolean_version_is_refused_in_the_baseline(self):
+        self.baseline_with(lambda d: d.update({"version": True}))
+        self.refused("boolean baseline version")
+
+    def test_a_boolean_version_is_refused_in_the_token_file(self):
+        self.tokens_with(lambda d: d.update({"version": True}))
+        self.refused("boolean token file version")
+
+    def test_a_shipped_path_outside_the_root_is_refused_not_a_crash(self):
+        for bad in ("/etc/**", "../**", "shipped/../../x"):
+            self.tokens_with(lambda d: d.update({"paths": [bad]}))
+            err = self.refused("path outside the root: " + bad)
+            self.assertIn(bad, err)
+
     def test_paths_that_are_not_a_list_of_strings(self):
         self.tokens_with(lambda d: d.update({"paths": "shipped/**"}))
         self.refused("paths shape")
@@ -351,7 +392,7 @@ class ReadOnlyTest(TreeCase):
         passed = run("check", "--root", self.root, "--tokens", self.tokens, "--baseline", self.baseline)
         printed = run("baseline", "--root", self.root, "--tokens", self.tokens)
         self.assertEqual((passed[0], printed[0]), (0, 0))
-        self.append("shipped/a.md", "C-99\n")
+        self.append("shipped/a.md", "K-99\n")
         mid = (tree_hash(self.root), tree_hash(self.cfg))
         failed = run("check", "--root", self.root, "--tokens", self.tokens, "--baseline", self.baseline)
         self.assertEqual(failed[0], 1)
