@@ -83,4 +83,8 @@ Built tests first, one slice at a time: the red commit held the launcher, model-
 
 Fail-to-pass, measured: the three launcher targets `cli_unknown_command`, `launcher_agent_entry` and `omp_launcher` and `update_model_pick` failed before their green commits (tdd red records and the first runs), and passed after.
 
-Not run: the check-affected chain (it runs next), mutants, Windows and Linux, and the `codex-*` command help lines (left by design).
+Check-affected chain (base `a840fa32fa`, head `e78275d388`, the tip that holds the retired-host layer): `diff_check`, `fmt`, `clippy` (`--all-targets -D warnings`), `test_lib` (1546 passed), `test_bins` (28 + 28 passed), `test_targets` (81 targets, none failed), `build_cli` and `python` (185 tests OK) all exit 0. The first two runs of the chain failed on `fmt` (three assert lines) and on `clippy` (four `for` loops over one element left by the removal of the codex host in `tests/omp_launcher.rs`, `tests/codex_launcher_removed.rs`, `tests/launcher_agent_numbering.rs`, `tests/launcher_advisor_setting.rs` and `tests/launcher_skill_check.rs`); both were fixed in test text only and the whole chain was run again on the final head.
+
+Mutants (5, one rule each, run on the committed text, each restored with `git checkout` and the tree read clean): `installed_tools` lists `.codex` again → `update_model_pick` 1 failed; `supported()` has a codex row again → `model_effort_settings` 1 failed; `host_of` accepts the word `codex` → `codex_launcher_removed` 1 failed; the `moai init` guidance names `moai codex` again → `ui_text::` 1 failed; the retired-key skip dropped from `check_structure` → `model_effort_settings` 2 failed. All five are killed.
+
+Not run: Windows and Linux, mutants of the help words and the launcher notes (the goldens and `help_layout` hold them), and the `codex-*` command help lines (left by design).
