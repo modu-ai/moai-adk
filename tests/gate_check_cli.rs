@@ -1881,9 +1881,10 @@ fn g1_masks_a_secret_shaped_member_line_before_naming_it() {
     );
 }
 
-/// Audit N2 (M3, M4): the 60-character cut is pinned at its boundary — a line of exactly 60
-/// characters is named in full, its 61st character is not; and the associations the answer
-/// names are the deciding snapshot's own (members only), with the lookalike count.
+/// Audit N2 (M3): the reason's 60-character cut is pinned at its boundary — a line of exactly
+/// 60 characters is named in full, its 61st character is not; and the associations the answer
+/// names are the deciding snapshot's own (members only), with the lookalike count. The
+/// summary's own cut is pinned separately (M4 — `the_reads_summary_cuts_…` below).
 #[test]
 fn g1_cuts_the_named_line_at_sixty_characters_and_counts_the_lookalike() {
     let mut s = passing();
@@ -1942,5 +1943,91 @@ fn a_passing_answer_names_what_it_read_too() {
             "ci / linux-x86_64",
             "windows-build"
         ])
+    );
+}
+
+/// Audit follow-ups (merge-train note 4830): the member treatment is `comment_authority::
+/// is_member`, so an OWNER and a COLLABORATOR comment that looks like a verdict gets the same
+/// naming — and the answer's associations keep who was who.
+#[test]
+fn an_owner_comment_lookalike_is_named_and_counted() {
+    let mut s = passing();
+    s["comments"] = json!([
+        {"id": 7, "author_association": "OWNER", "body": "AUDIT PASS 72225828140168a0560d988694c7fac7430f3f7f merged by hand\n"},
+    ]);
+    let v = gate(&s);
+    let r = &v["result"];
+    assert_eq!(r["rule"], json!("G1"), "{r}");
+    let reason = r["reason"].as_str().unwrap();
+    assert!(reason.contains("1 member comment(s) read"), "{reason}");
+    assert!(reason.contains("AUDIT PASS 72225828"), "{reason}");
+    let reads = &r["reads"];
+    assert_eq!(reads["comments"], json!(1));
+    assert_eq!(
+        reads["lookalike_first_lines"][0]["author_association"],
+        json!("OWNER")
+    );
+    assert_eq!(
+        reads["member_first_lines_that_are_not_verdict_lines"],
+        json!(1)
+    );
+}
+
+#[test]
+fn a_collaborator_comment_lookalike_is_named_and_counted() {
+    let mut s = passing();
+    s["comments"] = json!([
+        {"id": 8, "author_association": "COLLABORATOR", "body": "AUDIT PASS 5ea8173a899a2f7ea81a254d3880bb835f7a180e merged by hand\n"},
+    ]);
+    let v = gate(&s);
+    let r = &v["result"];
+    assert_eq!(r["rule"], json!("G1"), "{r}");
+    let reason = r["reason"].as_str().unwrap();
+    assert!(reason.contains("AUDIT PASS 5ea8173a"), "{reason}");
+    let reads = &r["reads"];
+    assert_eq!(
+        reads["lookalike_first_lines"][0]["author_association"],
+        json!("COLLABORATOR")
+    );
+    assert_eq!(
+        reads["member_first_lines_that_are_not_verdict_lines"],
+        json!(1)
+    );
+}
+
+/// Audit follow-up M4: the `reads` summary cuts its named line at the same 60 characters the
+/// reason does — the 61st character of the comment's first line is not in the answer.
+#[test]
+fn the_reads_summary_cuts_its_named_line_at_sixty_characters() {
+    let mut s = passing();
+    let long_line = format!(
+        "AUDIT PASS {} beyond sixty the wording continues here",
+        "a".repeat(16)
+    );
+    s["comments"] = json!([
+        {"id": 9, "author_association": "MEMBER", "body": format!("{long_line}\n")},
+    ]);
+    let v = gate(&s);
+    let first = &v["result"]["reads"]["lookalike_first_lines"][0]["first_line"];
+    assert_eq!(first.as_str().unwrap(), &long_line[..60], "{first}");
+    assert_eq!(first.as_str().unwrap().chars().count(), 60);
+}
+
+/// Audit follow-up M11: the summary masks before it cuts — the named line is the masked line
+/// cut to sixty characters, exactly (a cut-first order would leave the tail's own characters
+/// in the named line).
+#[test]
+fn the_reads_summary_masks_before_it_cuts() {
+    let mut s = passing();
+    let line = "AUDIT PASS ghp_abcdefghijklmnopqrstuvwxyz123456789012345 token=supersecretvalue1234567890abcdef conclusion=success";
+    s["comments"] =
+        json!([{"id": 10, "author_association": "MEMBER", "body": format!("{line}\n")}]);
+    let v = gate(&s);
+    let first = &v["result"]["reads"]["lookalike_first_lines"][0]["first_line"];
+    // Masked first: both credentials are `[redacted]`, and the whole tail survives the cut —
+    // cutting first would name `conclusion=` without its value instead.
+    assert_eq!(
+        first.as_str().unwrap(),
+        "AUDIT PASS [redacted] [redacted] conclusion=success"
     );
 }
