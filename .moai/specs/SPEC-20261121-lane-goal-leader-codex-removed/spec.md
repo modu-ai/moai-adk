@@ -97,4 +97,21 @@ The goal block stays, with its Codex part removed. The official Claude Code docu
 
 ## Result
 
-Not started.
+Stage 1 of the Plan (steps 2 and 3): the baseline pin, then the removal in the free files. The `lane-stop-hook` command, its Stop machinery and the help text of that command are the next stage (they wait for the files of another card), so REQ-5, REQ-6 and part of REQ-10 are not done.
+
+Every number below is from `moai check affected 6e1bedb4f3a4..97982d2a389a` run once on this branch (63 integration targets, the whole lib and both bins; logs in the build folder `check-affected-97982d2a389a`) or from the mutant runs of this lane.
+
+- AC-1 met: `the_claude_answer_is_pinned_whole` passes unchanged after the removal (`lane_loop_cli` 5 passed). It was committed green before any deletion; three mutants of the Claude arm (interval, `verified`, `writes`) each failed it.
+- AC-2 met: `a_retired_host_is_refused_with_one_line` passes (`lane_loop_cli` 5 passed); a mutant that lets `Host::parse` accept `codex` failed it.
+- AC-3 met: the whole lib passed (1561 passed, 0 failed) and `lane_loop_cli` `resume_note_render_then_check` passes.
+- AC-4 met: `lane_duty_line` 8 passed; a mutant that lets the duty line accept any host failed `an_unknown_host_is_a_usage_error`.
+- AC-7 met: `goal_block_cli` 10 passed; the exact answers carry no `codex` key.
+- AC-8 met: `a_removed_host_observation_is_refused` passes (`leader_round_cli` 8 passed); a mutant that skips the host check failed it, and mutants that bring back the Codex bullet and the Codex prompt mark failed `the_codex_bullet_is_no_marker_prefix` and `the_restart_line_is_never_sent_twice`.
+- AC-9 met: the lib tests of `lane_idle` are inside the 1561 passed and `lane_next_cli` 59 passed, so the prefix of the idle line is unchanged.
+- AC-5 not met: not started; the command still runs the Stop machinery.
+- AC-6 not met: the Stop machinery stays until the command is reduced; clippy with all targets is clean (exit 0) and finds no dead code.
+- AC-10 not met yet: `cli_text_citations` 5 passed and the six operation pages are rewritten, but the help text and the goldens of `lane-stop-hook` and the clap `--host` lists are the next stage; `help_layout` was not in the affected set (the goldens did not change).
+
+The python step of the affected run: 193 tests, 1 failure, `test_a_list_row_agrees_with_the_hosts_in_the_code` for `src/session.rs::HOSTS` (the launcher slice took `codex` out of that list on the tip while `docs/host-support-matrix.md` still says `yes`). Neither file is in this change; the tip carries the same mismatch (read from its two files, the test was not run on the tip). One stale method of `tests/omp_host_survey_test.py`, `test_the_lane_duty_row_follows_the_omp_entry_spelling`, and one Codex-only test of `tests/lane_stop_hook_cli.rs`, `codex_lane_hook_plan_apply_revert`, are deleted because they read the host that is removed.
+
+Not run: Windows type check, `tools/self_check.sh`, the independent audit.
