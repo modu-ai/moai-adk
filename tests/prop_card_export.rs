@@ -224,6 +224,21 @@ fn check_round_trip(render: &Render, parse: &Parse, rng: &mut Rng) -> Result<(),
     if canonical(&canon).as_ref() != Ok(&canon) {
         return Err("canonical order is not stable".into());
     }
+    // The order itself, stated apart from `canonical`: every kind of row ascends by its own id.
+    let ascending = |name: &str, ids: Vec<i64>| -> Result<(), String> {
+        if ids.windows(2).all(|pair| pair[0] < pair[1]) {
+            Ok(())
+        } else {
+            Err(format!(
+                "the {name} rows are not in ascending id order: {ids:?}"
+            ))
+        }
+    };
+    ascending("card", read.cards.iter().map(|r| r.card_id).collect())?;
+    ascending("criterion", read.acs.iter().map(|r| r.ac_id).collect())?;
+    ascending("note", read.notes.iter().map(|r| r.note_id).collect())?;
+    ascending("link", read.links.iter().map(|r| r.link_id).collect())?;
+    ascending("event", read.events.iter().map(|r| r.event_id).collect())?;
     let again = render(&read).map_err(|e| format!("the rows read were not rendered: {e}"))?;
     if again != written {
         return Err("rendering the rows read gave other bytes than were read".into());

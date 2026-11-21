@@ -10,7 +10,7 @@ created: 2026-11-21
 
 ## Intent
 
-카드 C-172 의 첫 번째 갈래예요. 병합 게이트가 읽는 줄(감사 판정 줄), 감사 독립성을 가르는 줄(커밋 트레일러), 되돌려 읽혀야 하는 파일(카드 내보내기)에는 짝이 되는 쓰기와 읽기가 있는데 예시 시험만 있어요. 첫 파도의 시드 생성기(`tests/common/prop.rs`, 새 의존성 없음)로 세 곳에 속성 시험을 걸어요: 쓰고 읽으면 같은 값, 읽는 쪽 둘은 한 줄을 같이 읽지 않음, 순서를 바꿔도 같은 바이트, 망가진 입력은 조용히 받아들여지지 않음. 속성마다 1000 사례 이상, 일부러 넣은 결함을 잡는 카나리 하나씩.
+속성 시험 두 번째 파도 카드의 첫 번째 갈래예요. 병합 게이트가 읽는 줄(감사 판정 줄), 감사 독립성을 가르는 줄(커밋 트레일러), 되돌려 읽혀야 하는 파일(카드 내보내기)에는 짝이 되는 쓰기와 읽기가 있는데 예시 시험만 있어요. 첫 파도의 시드 생성기(`tests/common/prop.rs`, 새 의존성 없음)로 세 곳에 속성 시험을 걸어요: 쓰고 읽으면 같은 값, 읽는 쪽 둘은 한 줄을 같이 읽지 않음, 순서를 바꿔도 같은 바이트, 망가진 입력은 조용히 받아들여지지 않음. 속성마다 1000 사례 이상, 일부러 넣은 결함을 잡는 카나리 하나씩.
 
 ## Non-goals
 
@@ -87,7 +87,7 @@ created: 2026-11-21
 | D-1 | Only the first half of the card is built here. | The other half needs files other cards hold (`src/gate.rs`, `src/review.rs`, `mode-agent.md`, the source list). | The leader splits a follow-up card. |
 | D-2 | Checkers take the function under test as a parameter. | A canary needs to feed the same checker a broken variant. | Hard-wire the real functions. |
 | D-3 | Canaries count failures over 1000 cases and require at least one. | A rare mutation (one case in twenty) still has to be seen. | Fixed-size canary. |
-| D-4 | The hex-tail injection test stays ignored and AC-2 stays open (`partly`). | The real reader violates REQ-15 for that input and `src/trailers.rs` is outside this SPEC's scope; hiding it by weakening the property would be a false green. | When the reader marks such a record garbled, remove the `#[ignore]` and mark AC-2 `met`. |
+| D-4 | The hex-tail injection test stays ignored and AC-2 stays open (`partly`). | The real reader violates REQ-15 for that input and `src/trailers.rs` is outside this SPEC's scope; hiding it by weakening the property would be a false green. | When the reader catches such a record (a garbled mark for a hex-only tail; for the last tail value, which is a complete fake record, a log format that carries a count or length), remove the `#[ignore]` and mark AC-2 `met`. A fix of the garbled rule alone does not turn the test green. |
 
 ## Result
 

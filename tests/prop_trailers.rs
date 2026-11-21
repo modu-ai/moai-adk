@@ -319,12 +319,18 @@ fn a_separator_followed_by_text_is_never_read_silently() {
     });
 }
 
-/// The hole (observed, not fixed here): a separator whose tail looks like a commit id (hex
-/// only, or nothing) turns the rest of a record into a second, ungarbled "commit" that takes
-/// over the fields after it, and the commit it was injected into loses them. `src/trailers.rs`
-/// is outside this suite's scope (another card holds it), so the replay is recorded on the card
-/// and the test stays ignored until the reader marks such a record garbled. Run it with
-/// `cargo test --test prop_trailers -- --ignored`.
+/// The hole (observed, not fixed here): a separator whose tail is hex only turns the rest of a
+/// record into a second, ungarbled "commit" that takes over the fields after it, and the commit
+/// it was injected into loses them. An empty tail is a different loss: the record has no sha
+/// and is dropped, so the fields before the separator are kept but the ones after it vanish
+/// without a trace. `src/trailers.rs` is outside this suite's scope, so the replay is recorded
+/// on the card and the test stays ignored. Run it with `cargo test --test prop_trailers --
+/// --ignored`.
+///
+/// The last `HEX_TAILS` value is a complete fake record (a hex id and every field after it).
+/// No change to the garbled rule alone can tell it from a real commit; it needs a change of
+/// the log format (a count or length frame). So the test cannot turn green by a reader fix of
+/// the garbled rule only: drop that value, or change the format, before removing the `#[ignore]`.
 #[test]
 #[ignore = "finding: a separator in a message followed by hex-looking text is read silently; \
             fails at case 6 with the default seed (PROP_ONLY=6)"]
