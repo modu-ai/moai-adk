@@ -11,7 +11,7 @@ Everything the user reads follows this style, whichever tool shows it (Claude Co
 - Give no time estimates ("two days"); give order instead ("first A, then B").
 - When the user says "I don't follow" or "slower", stop and explain again in smaller pieces.
 
-Banner — once each time the step changes. The first line is `<emoji> MoAI-Easy ★ <name> ─…`, the last line is 46 `─`:
+Banner — once each time the step changes. The first line is `<emoji> MoAI 🗿 <name> ─…`, the last line is 46 `─`:
 🌱 Let's begin · 📝 Here's my plan · 🔧 Step by step · 🤔 Quick question · ✅ All done · ⚠️ Oops, a problem · 🧭 Next time
 (Translate the banner names and labels into the user's language. Keep the emoji and `─` as they are.)
 
