@@ -2,7 +2,7 @@
 id: SPEC-20261122-worktree-place
 title: "New worktrees live in the project's .claude/worktrees and the home worktree folder is retired"
 status: draft
-revision: 2
+revision: 3
 created: 2026-11-22
 parent: null
 ---
@@ -33,6 +33,8 @@ parent: null
 - REQ-7: The Claude Code settings moai ships shall set the worktree base to the head of the session that makes the worktree, so a host-made worktree starts from that session's local history instead of the remote default branch, while moai's own creation passes the integration branch explicitly and the base read at submit time is what counts.
 - REQ-8: The worktree classifier shall keep recognising worktrees in the old places — the home folder, the Go generation folder and the earlier project state folder — and keep every command working on them.
 - REQ-9: Instruction texts and shipped documents shall name only the new place for new worktrees and stop ordering a new worktree under the home worktree folder.
+- REQ-10: When moai creates a worktree inside the project's `.claude/worktrees/` folder, the creation shall leave that folder listed in the repository's local exclude file unless git already ignores it, so that the status of the main tree does not change.
+- REQ-11 (REQ-10): IF the repository's local exclude file cannot be written, THEN the creation shall still succeed and name the error in its answer.
 
 ## Acceptance
 
@@ -43,12 +45,14 @@ parent: null
 - AC-5 (REQ-7): the shipped settings carry the maker-head worktree base · verify: `cargo test --offline --locked --test worktree_place_cli worktree_place_settings_base_`
 - AC-6 (REQ-8): a worktree in an old place keeps working in the classifier and the commands · verify: `cargo test --offline --locked --test worktree_place_cli worktree_place_old_places_`
 - AC-7 (REQ-9): no instruction text orders the home folder for new worktrees · verify: `cargo test --offline --locked --test worktree_place_cli worktree_place_texts_`
+- AC-8 (REQ-10, REQ-11): a creation leaves the main tree's status as it was in a repository that does not ignore the folder, adds the one exclude line only once, and writes nothing when git already ignores the folder, and an exclude file that cannot be written leaves the creation done with the error named · verify: `cargo test --offline --locked --test worktree_place_cli worktree_place_status_`
 
 ## Scope
 
 The survey read the worktree-path lines of every source file that mentions worktrees and grouped them by the role this SPEC gives them.
 
 - The path keystone (the functions the others call): `src/home_workdir.rs` (worktree_dir, worktrees_root, worktree_name, location_of, location_in, the reserved names), `src/lib.rs` (the WORKTREES_DIR constant of the earlier state folder).
+- The local exclude helper (one function every creator calls): `src/home_workdir.rs`; it reads `git rev-parse --git-common-dir` and `git check-ignore` and appends to `info/exclude` only when git does not ignore the folder.
 - Creators of new worktrees: `src/worktree.rs` (the worktree command: the create path and the `git worktree add` spawn), `src/bundle/build.rs` (the bundle build worktree and its folder), `src/claude.rs` (the launcher's worktree settings and their validation), `src/main.rs` (the command dispatch).
 - Checkers and guards: `src/hooks.rs` (the hook path check against the home worktrees root), `src/hook_guards.rs` (the worktree path guard), `src/worktree_include.rs` (the worktree include list), `src/audit_clone.rs` (the probe advice text that names the home folder).
 - Move, clean-up and report: `src/worktree_gc.rs`, `src/worktree_move.rs`, `src/worktree_report.rs`, `src/ops/worktree_gc_plan.rs`, `src/ops/worktree_gc_apply.rs`, `src/ops/worktree_move_plan.rs`, `src/ops/worktree_move_apply.rs`, `src/ops/worktree_report.rs`, `src/optimize.rs` (the leftover worktree judge).
@@ -75,6 +79,7 @@ The survey read the worktree-path lines of every source file that mentions workt
 | --- | --- | --- | --- |
 | D-1 | The one place for new worktrees is `.claude/worktrees/<name>/` inside the project, and the home worktree folder stops taking new ones. | user decision 2026-11-22, the worktree-place card | a later user decision |
 | D-2 | The classifier keeps recognising the old places and nothing moves or deletes them. | the same decision, the guarded-deletion rule | a later user decision |
+| D-3 | The main tree's status stays clean through the repository's local exclude file (`<common dir>/info/exclude`), not through `.gitignore` | A tracked `.gitignore` is the user's file and a worktree-only change must not edit it; the exclude file is local, never committed and shared by every linked worktree; a bundle build scene (a temporary repository with no ignore rule) failed on an untracked `.claude/` entry | write the line into `.gitignore` after the user's pick |
 
 ## Result
 
