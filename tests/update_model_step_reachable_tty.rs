@@ -17,14 +17,17 @@ use std::{
     io::{Read as _, Write as _},
     path::{Path, PathBuf},
     process::{Command, Stdio},
-    thread::sleep,
-    time::Duration,
+    sync::mpsc::{self, RecvTimeoutError},
+    thread::{self, sleep},
+    time::{Duration, Instant},
 };
 use tempfile::TempDir;
 
 const EXE: &str = common::MOAI_BIN;
 const TOOL_QUESTION: &str = "Which coding tools do you want to set up?";
 const SAVE_QUESTION: &str = "Save these model settings? [y/N]";
+/// The longest one terminal run may take; a debug binary hashes itself, so this is generous.
+const RUN_LIMIT: Duration = Duration::from_secs(90);
 
 struct Fx {
     _tmp: TempDir,
@@ -104,7 +107,9 @@ fn envelope(out: &std::process::Output) -> Value {
 
 /// `moai-cli update` on a pseudo terminal (stdin, stdout and stderr all on it). The answers are
 /// typed only after `wait_for` is on screen, as a person would; `None` types nothing and waits for
-/// the run to end by itself. A run that never shows `wait_for` ends the read with its output.
+/// the run to end by itself. A run that never shows `wait_for` fails with its output. A run that
+/// is still waiting after `RUN_LIMIT` (a question nobody answers) is killed and fails with what it
+/// showed, so a regression is a failing test and never a stuck one.
 fn on_a_terminal(fx: &Fx, wait_for: Option<&str>, answers: &str) -> String {
     let mut child = base_command(fx, "/usr/bin/script")
         .args(["-q", "/dev/null"])
@@ -116,26 +121,51 @@ fn on_a_terminal(fx: &Fx, wait_for: Option<&str>, answers: &str) -> String {
         .spawn()
         .unwrap();
     let mut stdout = child.stdout.take().unwrap();
-    let mut seen = Vec::new();
-    let mut buf = [0u8; 4096];
-    if let Some(question) = wait_for {
-        while !String::from_utf8_lossy(&seen).contains(question) {
-            let n = stdout.read(&mut buf).unwrap();
-            assert!(
-                n > 0,
-                "no {question:?} on screen: {}",
-                String::from_utf8_lossy(&seen)
-            );
-            seen.extend_from_slice(&buf[..n]);
+    let (tx, rx) = mpsc::channel::<Vec<u8>>();
+    thread::spawn(move || {
+        let mut buf = [0u8; 4096];
+        while let Ok(n @ 1..) = stdout.read(&mut buf) {
+            if tx.send(buf[..n].to_vec()).is_err() {
+                break;
+            }
         }
-    }
-    let mut stdin = child.stdin.take().unwrap();
-    stdin.write_all(answers.as_bytes()).unwrap();
+    });
     // The write end stays open until the run has ended: closing it early is an end of input
     // (Ctrl-D) at the question, which cancels the step.
-    stdout.read_to_end(&mut seen).unwrap();
+    let mut stdin = child.stdin.take().unwrap();
+    let deadline = Instant::now() + RUN_LIMIT;
+    let mut seen = Vec::new();
+    let mut typed = false;
+    loop {
+        let left = deadline.saturating_duration_since(Instant::now());
+        match rx.recv_timeout(left) {
+            Ok(chunk) => seen.extend_from_slice(&chunk),
+            Err(RecvTimeoutError::Disconnected) => break,
+            Err(RecvTimeoutError::Timeout) => {
+                let _ = child.kill();
+                let _ = child.wait();
+                panic!(
+                    "still waiting after {RUN_LIMIT:?}: {}",
+                    String::from_utf8_lossy(&seen)
+                );
+            }
+        }
+        if let Some(question) = wait_for {
+            if !typed && String::from_utf8_lossy(&seen).contains(question) {
+                stdin.write_all(answers.as_bytes()).unwrap();
+                typed = true;
+            }
+        }
+    }
     drop(stdin);
     child.wait().unwrap();
+    if let Some(question) = wait_for {
+        assert!(
+            typed,
+            "no {question:?} on screen: {}",
+            String::from_utf8_lossy(&seen)
+        );
+    }
     String::from_utf8_lossy(&seen).replace('\r', "")
 }
 
