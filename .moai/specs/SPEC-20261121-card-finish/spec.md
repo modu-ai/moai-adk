@@ -2,7 +2,7 @@
 id: SPEC-20261121-card-finish
 title: "card finish closes a landed or reported card in one step, and card next and card list stop offering a card that already landed"
 status: draft
-revision: 5
+revision: 6
 created: 2026-11-21
 ---
 
@@ -21,6 +21,8 @@ Revision 2 (leader decision of 2026-11-21, user order to repair card closing): g
 - Writing the real ledger from a test: every test runs with a temporary home.
 - Closing a card that has a code change but no landing (a card still in review waits for its merge as today).
 - Reading the SPEC of a card whose evidence is a merged pull request link off m-flow at any place but the project folder (D-9).
+
+Revision 6 (the non-blocking findings of the audit of revision 5, carried by SPEC-20261121-card-land): the tag refusal test asserts the words of the refusal itself, the AC-19 line says what the code and its test say, and no text compares the SPEC check with `card done` without saying that the SPEC is read from the proven tip.
 
 ## Requirements
 
@@ -57,7 +59,7 @@ Revision 2 (leader decision of 2026-11-21, user order to repair card closing): g
 - AC-16 (REQ-10): a generation lower or higher than the card's refuses with every table unchanged and no fence_reject event, the current generation passes, and a call without the option passes · verify: `cargo test --locked --offline --test card_finish_cli ac16_`
 - AC-17 (REQ-12): releasing a card that has a landing event answers landed true and names `card finish`, releasing one without a landing keeps the old answer, and no git command runs · verify: `cargo test --locked --offline --test card_finish_cli ac17_`
 - AC-18 (REQ-1): on an m-flow profile a merged pull request link whose merge commit is not in the repository refuses with every table unchanged and the reason that a merged pull request link alone is not enough, the same card closes with a proven head, and on a github-flow profile the link alone still closes · verify: `cargo test --locked --offline --test card_finish_cli ac18_`
-- AC-19 (REQ-1, REQ-2): a code card whose SPEC fails the check refuses with every table unchanged, a card with no met criterion and no met option refuses, and a card with one criterion met earlier closes with no met option · verify: `cargo test --locked --offline --test card_finish_cli ac19_`
+- AC-19 (REQ-1, REQ-2): a code card whose SPEC fails the check at the tip the landing is proven against (the SPEC is read from that tip, not from the working tree, and one absent on the tip refuses too) refuses with every table unchanged, a card with no met criterion and no met option refuses with the words of the finish guard (`card finish refused: …`), and a card with one criterion met earlier closes with no met option · verify: `cargo test --locked --offline --test card_finish_cli ac19_`
 - AC-20 (REQ-3, REQ-11): a landing-only call by a session that is neither the leader nor the holder refuses with every table unchanged, the leader (`--by leader`) and the holder pass, and `card next` does not hide a card whose recorded head is not on the tip · verify: `cargo test --locked --offline --test card_finish_cli ac20_`
 - AC-21 (REQ-1, REQ-11): a tag named like the integration branch and pointing elsewhere changes no proof: a head on the branch closes the card, a head only on the tag refuses, and `card next` reads the branch · verify: `cargo test --locked --offline --test card_finish_cli ac21_`
 - AC-22 (REQ-4): a review card held by another session with a live lease closes for the leader (`--by leader`) or the holder session on a head that git proves inside the tip and the holder's reservation is released in the same call; an active card held by another live session still refuses with every table unchanged; a review card whose head git does not prove still refuses · verify: `cargo test --locked --offline --test card_finish_cli ac22_`

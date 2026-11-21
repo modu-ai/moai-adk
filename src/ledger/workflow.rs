@@ -1285,6 +1285,239 @@ pub fn finish_gate(
 /// closes nothing (`card finish` with an open criterion and no met option for it).
 pub const LEADER_BY: &str = "leader";
 
+/// What the checks of a finish decided: everything the writes need, and nothing written.
+#[derive(Debug, Clone)]
+struct FinishPlan {
+    from: String,
+    newest_generation: i64,
+    previous: Option<Reservation>,
+    uncovered: Vec<i64>,
+    landing_only: bool,
+    record_landing: bool,
+}
+
+/// The checks of [`finish`] that need no ledger: the shape of `by`, of each met option and of the
+/// evidence.
+fn finish_input_checks(
+    by: &str,
+    met: &[(i64, String)],
+    evidence: &FinishEvidence<'_>,
+) -> Result<(), WorkflowError> {
+    one_line("the by", by, MAX_AUTHOR_CHARS).map_err(WorkflowError::InvalidInput)?;
+    for (n, (seq, text)) in met.iter().enumerate() {
+        if *seq < 1 {
+            return Err(WorkflowError::InvalidInput(
+                "a criterion number is 1 or more".into(),
+            ));
+        }
+        one_line("the evidence", text, MAX_LINE_CHARS).map_err(WorkflowError::InvalidInput)?;
+        if met[..n].iter().any(|(earlier, _)| earlier == seq) {
+            return Err(WorkflowError::FinishRefused(format!(
+                "criterion {seq} is named twice by --met; each open criterion takes one"
+            )));
+        }
+    }
+    let screened = match evidence {
+        // The path is stored in its resolved form, which a link or a symlinked parent (`/var` on
+        // macOS) can make longer than the 500 characters the caller was typed; the caller
+        // applies that limit to what was typed.
+        FinishEvidence::Report { path: given } => {
+            one_line("the report path", given, MAX_STORED_PATH_CHARS)
+        }
+        FinishEvidence::Note { reference } => one_line("the note ref", reference, MAX_LINE_CHARS),
+        FinishEvidence::Landing { .. } | FinishEvidence::MergedPr => Ok(()),
+    };
+    screened.map_err(WorkflowError::InvalidInput)?;
+    Ok(())
+}
+
+/// Every ledger check of [`finish`], in one place and with no write: the write transaction runs
+/// it first, and [`finish_preflight`] runs it with nothing held, so the two cannot drift.
+#[allow(clippy::too_many_arguments)]
+fn finish_plan(
+    conn: &Connection,
+    card_id: i64,
+    session: Option<&str>,
+    by: &str,
+    evidence: &FinishEvidence<'_>,
+    met: &[(i64, String)],
+    generation: Option<i64>,
+    now: i64,
+) -> Result<Result<FinishPlan, WorkflowError>, LedgerError> {
+    let refused = |why: String| Ok(Err(WorkflowError::FinishRefused(why)));
+    if !card_exists(conn, card_id)? {
+        return Ok(Err(WorkflowError::CardNotFound(card_id)));
+    }
+    let from = card_state(conn, card_id)?;
+    if !matches!(from.as_str(), "ready" | "active" | "review") {
+        return Ok(Err(WorkflowError::WrongState {
+            card_id,
+            state: from,
+            needs: "ready, active or review",
+            action: "finished",
+        }));
+    }
+    // The generation of the newest reservation, released and expired ones included (a ready
+    // card keeps the number of the reservation it had; a card that never had one is at 0).
+    let newest_generation: i64 = conn.query_row(
+        "SELECT COALESCE(MAX(generation), 0) FROM reservation WHERE card_id = ?1",
+        [card_id],
+        |r| r.get(0),
+    )?;
+    if let Some(given) = generation {
+        if given != newest_generation {
+            return refused(format!(
+                "--generation {given} does not match generation {newest_generation}, the \
+                 card's newest reservation (0 when it never had one); nothing was changed"
+            ));
+        }
+    }
+    let previous = reservation::current(conn, card_id)?;
+    if let Some(held) = &previous {
+        // A lane holds its review card with a live lease right after it reported the merge
+        // ready, and that is when the leader closes it: a landing git proved passes for the
+        // leader word or the holder session, and the holder's reservation is released below
+        // like any other.
+        let owner = by == LEADER_BY || session == Some(held.holder.as_str());
+        let proven_review =
+            from == "review" && owner && matches!(evidence, FinishEvidence::Landing { .. });
+        if !proven_review {
+            if let Err(e) = finish_gate(held, session, now) {
+                return Ok(Err(e));
+            }
+        }
+    }
+    // Every open criterion is named by exactly one met option, and only open ones are.
+    let open: Vec<i64> = {
+        let mut stmt = conn.prepare(
+            "SELECT seq FROM card_ac WHERE card_id = ?1 AND status = 'open' ORDER BY seq",
+        )?;
+        let rows = stmt.query_map([card_id], |r| r.get(0))?;
+        rows.collect::<Result<_, _>>()?
+    };
+    if let Some((seq, _)) = met.iter().find(|(seq, _)| !open.contains(seq)) {
+        return refused(format!(
+            "criterion {seq} is not an open criterion of C-{card_id}; --met names open criteria only"
+        ));
+    }
+    // An open criterion with no met option: a card that closes on a landing records the
+    // landing and says what is open; a report or a verdict closes the card or nothing.
+    let uncovered: Vec<i64> = open
+        .iter()
+        .copied()
+        .filter(|seq| !met.iter().any(|(named, _)| named == seq))
+        .collect();
+    let landing_only = !uncovered.is_empty()
+        && matches!(
+            evidence,
+            FinishEvidence::Landing { .. } | FinishEvidence::MergedPr
+        );
+    if landing_only {
+        let holder = previous
+            .as_ref()
+            .is_some_and(|held| session == Some(held.holder.as_str()));
+        if by != LEADER_BY && !holder {
+            return refused(format!(
+                "a call that records a landing and closes nothing is for the leader or the \
+                 holder of the card: give --by {LEADER_BY}, or call with the holder's session; \
+                 nothing was changed"
+            ));
+        }
+    }
+    if let (false, Some(seq)) = (landing_only, uncovered.first()) {
+        return refused(format!(
+            "criterion {seq} is an open criterion and no --met names it; every open criterion needs one --met N=REF"
+        ));
+    }
+    if !landing_only {
+        let already_met: i64 = conn.query_row(
+            "SELECT count(*) FROM card_ac WHERE card_id = ?1 AND status = 'met'",
+            [card_id],
+            |r| r.get(0),
+        )?;
+        if already_met + (met.len() as i64) == 0 {
+            return refused("the card has no acceptance criterion that is met".into());
+        }
+    }
+    // The evidence the card layer could not check against the ledger.
+    let mut record_landing = true;
+    match evidence {
+        FinishEvidence::Landing { head, .. } => {
+            let recorded: i64 = conn.query_row(
+                "SELECT count(*) FROM event WHERE card_id = ?1 AND kind = 'card.landed' \
+                 AND json_extract(payload, '$.head') = ?2",
+                params![card_id, head],
+                |r| r.get(0),
+            )?;
+            record_landing = recorded == 0;
+        }
+        FinishEvidence::MergedPr => {
+            let linked: i64 = conn.query_row(
+                "SELECT count(*) FROM card_link WHERE from_card = ?1 AND kind = 'pr' \
+                 AND state = 'active' AND pr_state = 'merged'",
+                [card_id],
+                |r| r.get(0),
+            )?;
+            if linked == 0 {
+                return refused("no merged pull request is linked to the card".into());
+            }
+            record_landing = false;
+        }
+        FinishEvidence::Note { reference } => {
+            let kind: Option<String> = conn
+                .query_row(
+                    "SELECT kind FROM card_note WHERE card_id = ?1 AND ref = ?2",
+                    params![card_id, reference],
+                    |r| r.get(0),
+                )
+                .optional()?;
+            match kind.as_deref() {
+                None => {
+                    return refused(format!(
+                        "the card has no note with ref {reference:?}; --evidence-note names a report or decision note of this card"
+                    ))
+                }
+                Some("report" | "decision") => {}
+                Some(other) => {
+                    return refused(format!(
+                        "note {reference:?} is a {other} note; --evidence-note needs a report or decision note of this card"
+                    ))
+                }
+            }
+        }
+        FinishEvidence::Report { .. } => {}
+    }
+    Ok(Ok(FinishPlan {
+        from,
+        newest_generation,
+        previous,
+        uncovered,
+        landing_only,
+        record_landing,
+    }))
+}
+
+/// What [`finish`] would refuse before its first write, asked without writing anything: the same
+/// checks, run against the ledger as it is now. `Ok(())` is no promise: a call that gets in
+/// between can change the ledger, and the write transaction checks again. `card land` uses it so
+/// that a refusal comes before the integration branch moves.
+pub fn finish_preflight(
+    conn: &Connection,
+    card_id: i64,
+    session: Option<&str>,
+    by: &str,
+    evidence: &FinishEvidence<'_>,
+    met: &[(i64, String)],
+    generation: Option<i64>,
+) -> Result<(), WorkflowError> {
+    finish_input_checks(by, met, evidence)?;
+    let now: i64 = conn
+        .query_row("SELECT unixepoch()", [], |r| r.get(0))
+        .map_err(LedgerError::from)?;
+    finish_plan(conn, card_id, session, by, evidence, met, generation, now)??;
+    Ok(())
+}
+
 /// Closes a `ready`, `active` or `review` card in one write transaction: each open criterion is
 /// marked met with the reference `met` gives for it, the evidence is recorded, the card walks
 /// the rows of the transition table to `done`, a held reservation is marked `released`, and two
@@ -1316,175 +1549,19 @@ pub fn finish(
     met: &[(i64, String)],
     generation: Option<i64>,
 ) -> Result<Finished, WorkflowError> {
-    one_line("the by", by, MAX_AUTHOR_CHARS).map_err(WorkflowError::InvalidInput)?;
-    for (n, (seq, text)) in met.iter().enumerate() {
-        if *seq < 1 {
-            return Err(WorkflowError::InvalidInput(
-                "a criterion number is 1 or more".into(),
-            ));
-        }
-        one_line("the evidence", text, MAX_LINE_CHARS).map_err(WorkflowError::InvalidInput)?;
-        if met[..n].iter().any(|(earlier, _)| earlier == seq) {
-            return Err(WorkflowError::FinishRefused(format!(
-                "criterion {seq} is named twice by --met; each open criterion takes one"
-            )));
-        }
-    }
-    let screened = match evidence {
-        // The path is stored in its resolved form, which a link or a symlinked parent (`/var` on
-        // macOS) can make longer than the 500 characters the caller was typed; the caller
-        // applies that limit to what was typed.
-        FinishEvidence::Report { path: given } => {
-            one_line("the report path", given, MAX_STORED_PATH_CHARS)
-        }
-        FinishEvidence::Note { reference } => one_line("the note ref", reference, MAX_LINE_CHARS),
-        FinishEvidence::Landing { .. } | FinishEvidence::MergedPr => Ok(()),
-    };
-    screened.map_err(WorkflowError::InvalidInput)?;
-    let refused = |why: String| Ok(Err(WorkflowError::FinishRefused(why)));
+    finish_input_checks(by, met, evidence)?;
     w.with_write_tx(|tx, now| {
-        if !card_exists(tx, card_id)? {
-            return Ok(Err(WorkflowError::CardNotFound(card_id)));
-        }
-        let from = card_state(tx, card_id)?;
-        if !matches!(from.as_str(), "ready" | "active" | "review") {
-            return Ok(Err(WorkflowError::WrongState {
-                card_id,
-                state: from,
-                needs: "ready, active or review",
-                action: "finished",
-            }));
-        }
-        // The generation of the newest reservation, released and expired ones included (a ready
-        // card keeps the number of the reservation it had; a card that never had one is at 0).
-        let newest_generation: i64 = tx.query_row(
-            "SELECT COALESCE(MAX(generation), 0) FROM reservation WHERE card_id = ?1",
-            [card_id],
-            |r| r.get(0),
-        )?;
-        if let Some(given) = generation {
-            if given != newest_generation {
-                return refused(format!(
-                    "--generation {given} does not match generation {newest_generation}, the \
-                     card's newest reservation (0 when it never had one); nothing was changed"
-                ));
-            }
-        }
-        let previous = reservation::current(tx, card_id)?;
-        if let Some(held) = &previous {
-            // A lane holds its review card with a live lease right after it reported the merge
-            // ready, and that is when the leader closes it: a landing git proved passes for the
-            // leader word or the holder session, and the holder's reservation is released below
-            // like any other.
-            let owner = by == LEADER_BY || session == Some(held.holder.as_str());
-            let proven_review =
-                from == "review" && owner && matches!(evidence, FinishEvidence::Landing { .. });
-            if !proven_review {
-                if let Err(e) = finish_gate(held, session, now) {
-                    return Ok(Err(e));
-                }
-            }
-        }
-        // Every open criterion is named by exactly one met option, and only open ones are.
-        let open: Vec<i64> = {
-            let mut stmt = tx.prepare(
-                "SELECT seq FROM card_ac WHERE card_id = ?1 AND status = 'open' ORDER BY seq",
-            )?;
-            let rows = stmt.query_map([card_id], |r| r.get(0))?;
-            rows.collect::<Result<_, _>>()?
+        let FinishPlan {
+            from,
+            newest_generation,
+            previous,
+            uncovered,
+            landing_only,
+            record_landing,
+        } = match finish_plan(tx, card_id, session, by, evidence, met, generation, now)? {
+            Ok(plan) => plan,
+            Err(e) => return Ok(Err(e)),
         };
-        if let Some((seq, _)) = met.iter().find(|(seq, _)| !open.contains(seq)) {
-            return refused(format!(
-                "criterion {seq} is not an open criterion of C-{card_id}; --met names open criteria only"
-            ));
-        }
-        // An open criterion with no met option: a card that closes on a landing records the
-        // landing and says what is open; a report or a verdict closes the card or nothing.
-        let uncovered: Vec<i64> = open
-            .iter()
-            .copied()
-            .filter(|seq| !met.iter().any(|(named, _)| named == seq))
-            .collect();
-        let landing_only = !uncovered.is_empty()
-            && matches!(
-                evidence,
-                FinishEvidence::Landing { .. } | FinishEvidence::MergedPr
-            );
-        if landing_only {
-            let holder = previous
-                .as_ref()
-                .is_some_and(|held| session == Some(held.holder.as_str()));
-            if by != LEADER_BY && !holder {
-                return refused(format!(
-                    "a call that records a landing and closes nothing is for the leader or the \
-                     holder of the card: give --by {LEADER_BY}, or call with the holder's session; \
-                     nothing was changed"
-                ));
-            }
-        }
-        if let (false, Some(seq)) = (landing_only, uncovered.first()) {
-            return refused(format!(
-                "criterion {seq} is an open criterion and no --met names it; every open criterion needs one --met N=REF"
-            ));
-        }
-        if !landing_only {
-            let already_met: i64 = tx.query_row(
-                "SELECT count(*) FROM card_ac WHERE card_id = ?1 AND status = 'met'",
-                [card_id],
-                |r| r.get(0),
-            )?;
-            if already_met + (met.len() as i64) == 0 {
-                return refused("the card has no acceptance criterion that is met".into());
-            }
-        }
-        // The evidence the card layer could not check against the ledger.
-        let mut record_landing = true;
-        match evidence {
-            FinishEvidence::Landing { head, .. } => {
-                let recorded: i64 = tx.query_row(
-                    "SELECT count(*) FROM event WHERE card_id = ?1 AND kind = 'card.landed' \
-                     AND json_extract(payload, '$.head') = ?2",
-                    params![card_id, head],
-                    |r| r.get(0),
-                )?;
-                record_landing = recorded == 0;
-            }
-            FinishEvidence::MergedPr => {
-                let linked: i64 = tx.query_row(
-                    "SELECT count(*) FROM card_link WHERE from_card = ?1 AND kind = 'pr' \
-                     AND state = 'active' AND pr_state = 'merged'",
-                    [card_id],
-                    |r| r.get(0),
-                )?;
-                if linked == 0 {
-                    return refused("no merged pull request is linked to the card".into());
-                }
-                record_landing = false;
-            }
-            FinishEvidence::Note { reference } => {
-                let kind: Option<String> = tx
-                    .query_row(
-                        "SELECT kind FROM card_note WHERE card_id = ?1 AND ref = ?2",
-                        params![card_id, reference],
-                        |r| r.get(0),
-                    )
-                    .optional()?;
-                match kind.as_deref() {
-                    None => {
-                        return refused(format!(
-                            "the card has no note with ref {reference:?}; --evidence-note names a report or decision note of this card"
-                        ))
-                    }
-                    Some("report" | "decision") => {}
-                    Some(other) => {
-                        return refused(format!(
-                            "note {reference:?} is a {other} note; --evidence-note needs a report or decision note of this card"
-                        ))
-                    }
-                }
-            }
-            FinishEvidence::Report { .. } => {}
-        }
 
         // The writes. A landing-only call writes the landing event and nothing else.
         let actor = session.unwrap_or("user");

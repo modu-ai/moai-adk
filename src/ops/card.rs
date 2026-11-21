@@ -744,6 +744,41 @@ enum Action {
         #[arg(long)]
         home: Option<PathBuf>,
     },
+    /// Writes the ledger and the integration branch. Move the branch to a candidate commit and close the card
+    ///
+    /// Writes the ledger and, when the candidate is not inside the tip yet, the profile's
+    /// integration branch (`work_flow` m-flow): one `git update-ref` that moves the branch to
+    /// `--head` only while it still points at the tip that was read, then the same close as `card
+    /// finish` with `--head` as the landed head. Only `--by leader` lands until the typed verdict
+    /// exists. Everything `card finish` would refuse is refused before the branch moves; so is a
+    /// candidate that is no commit, a branch checked out in a worktree, a SPEC that fails at the
+    /// candidate and a candidate that does not have the tip on its first-parent line
+    /// (`stale_base`). A branch that moved in between is refused as `tip_moved`. A close refused
+    /// after the move leaves the branch moved and says so; the same call run again skips the move
+    /// and closes. A card already `done` with the same head answers done and writes nothing.
+    Land {
+        /// The card to land (`C-12`).
+        card: String,
+        /// The candidate commit (40 lowercase hex) that has the integration tip on its
+        /// first-parent line.
+        #[arg(long)]
+        head: String,
+        /// One open criterion and its evidence, `N=REF`, as for `card finish`.
+        #[arg(long = "met")]
+        met: Vec<String>,
+        /// The generation of the card's newest reservation you expect; not checked when absent.
+        #[arg(long)]
+        generation: Option<i64>,
+        /// Who lands the card: only `leader` is accepted.
+        #[arg(long)]
+        by: String,
+        /// The project folder (its profile holds the project id and the integration branch).
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// The HOME holding the ledger (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+    },
     /// Writes the ledger. Extend the lease of a taken card
     ///
     /// Writes the ledger. The lease of this session's reservation at `--generation` ends
@@ -1239,6 +1274,29 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
                     met: &met,
                     evidence_report: evidence_report.as_deref(),
                     evidence_note: evidence_note.as_deref(),
+                    generation,
+                    by: &by,
+                },
+            )
+        }
+        Action::Land {
+            card,
+            head,
+            met,
+            generation,
+            by,
+            project,
+            home,
+        } => {
+            let session = d::session_holder("land", env).ok();
+            moai_cli::card::land::land(
+                &project,
+                &resolve_home(home)?,
+                &card,
+                &moai_cli::card::land::LandRequest {
+                    session: session.as_deref(),
+                    head: &head,
+                    met: &met,
                     generation,
                     by: &by,
                 },

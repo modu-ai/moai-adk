@@ -2490,9 +2490,8 @@ fn ac17_releasing_a_landed_card_answers_landed_and_names_the_finish_command() {
 
 // ---- AC-18 to AC-21: the repairs of the first audit -----------------------------------------
 
-/// AC-18: on an m-flow profile a merged pull request link alone is not evidence, the same as for
-/// `card done`: the call is refused with every table unchanged, and the same card closes on a
-/// head that git proves. On a profile that is not m-flow the link alone still closes the card.
+/// AC-18: on an m-flow profile a merged pull request link alone is not evidence: the call is
+/// refused with every table unchanged, and the same card closes on a head that git proves. On a profile that is not m-flow the link alone still closes the card.
 #[test]
 fn ac18_on_an_m_flow_profile_a_merged_link_alone_does_not_close_the_card() {
     let w = World::new();
@@ -2569,6 +2568,11 @@ fn ac19_a_spec_with_errors_on_the_tip_and_a_card_with_nothing_met_refuse_and_an_
         !message.contains("is absent"),
         "the SPEC is on the tip and fails its check: {message}"
     );
+    // The tip put back to the one that holds no copy of the SPEC at all: absent, which refuses
+    // too (the checkout's good copy does not count).
+    git(&w.project, &["update-ref", "refs/heads/integ", &w.tip]);
+    let out = w.finish(Some(S_L), &broken, &args);
+    w.refuse(&out, "invalid_input", &["is absent"], &before);
 
     let withdrawn = w.card_named("task", "apps/b/", &["one"]);
     result(&w.card(Some(S_A), &["take", &withdrawn]));
@@ -2918,7 +2922,9 @@ fn ac27_the_integration_branch_is_a_branch_name_and_never_a_tag() {
     w.set_profile(text.replace("\"integ\"", "\"refs/tags/integ\"").as_bytes());
     let before = w.dump();
     let out = w.finish(Some(S_L), &card, &args);
-    w.refuse(&out, "invalid_input", &["integration branch"], &before);
+    // The words of the `refs/` arm of `tip_of` itself: a test that names only the integration
+    // branch passes when that arm is removed and a tag path fails later for another reason.
+    w.refuse(&out, "invalid_input", &["is not a branch name"], &before);
 
     w.set_profile(text.replace("\"integ\"", "\"refs/heads/integ\"").as_bytes());
     let got = result(&w.finish(Some(S_L), &card, &args));

@@ -16,8 +16,9 @@
 //!
 //! The git proofs need the profile's m-flow integration branch. Without it (or when git cannot
 //! read it) only the recorded proofs are used and the answer says so in `landing`. Every git
-//! command is read-only, runs through `scrub_git_env` and takes its program from `MOAI_GIT_BIN`
-//! when that is set, like the other card commands.
+//! command runs through `scrub_git_env` and takes its program from `MOAI_GIT_BIN` when that is
+//! set, like the other card commands; all of them are read-only except [`move_branch`], the one
+//! reference update of `card land` (SPEC-20261121-card-land).
 
 use super::input;
 use super::spec_link;
@@ -129,20 +130,25 @@ pub fn integration_branch(project: &Path) -> Result<String, String> {
         .ok_or_else(|| "the profile's m-flow work_flow names no integration_branch".to_string())
 }
 
-/// The commit the integration branch points at now.
-pub fn tip_of(project: &Path, branch: &str) -> Result<String, String> {
-    // `refs/heads/` names the branch: a tag with the same name would win a bare name, and a
-    // profile that names any other `refs/` path (a tag) names no branch.
-    let full = if branch.starts_with("refs/heads/") {
-        branch.to_string()
+/// The full reference of the integration branch `branch`: `refs/heads/` names the branch (a tag
+/// with the same name would win a bare name), and a profile that names any other `refs/` path (a
+/// tag) names no branch.
+pub fn branch_ref(branch: &str) -> Result<String, String> {
+    if branch.starts_with("refs/heads/") {
+        Ok(branch.to_string())
     } else if branch.starts_with("refs/") {
-        return Err(format!(
+        Err(format!(
             "the integration branch {branch} is not a branch name: only a name under refs/heads/ \
              or a plain branch name is read as a branch"
-        ));
+        ))
     } else {
-        format!("refs/heads/{branch}")
-    };
+        Ok(format!("refs/heads/{branch}"))
+    }
+}
+
+/// The commit the integration branch points at now.
+pub fn tip_of(project: &Path, branch: &str) -> Result<String, String> {
+    let full = branch_ref(branch)?;
     let spec = format!("{full}^{{commit}}");
     let out = git(project, &["rev-parse", "--verify", "--quiet", &spec])?;
     let tip = String::from_utf8_lossy(&out.stdout).trim().to_string();
@@ -194,6 +200,108 @@ pub fn contained(project: &Path, head: &str, tip: &str) -> Result<Containment, S
             "git could not tell whether {head} is inside {tip}: {}",
             String::from_utf8_lossy(&out.stderr).trim()
         )),
+    }
+}
+
+/// Where a candidate sits against the integration tip, for a landing (SPEC-20261121-card-land).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Standing {
+    /// The candidate is the tip or an ancestor of it: there is nothing to move.
+    Inside,
+    /// The tip is on the candidate's first-parent line: the branch can move to the candidate.
+    OnTip,
+    /// The tip is not on the first-parent line (the candidate branched from an older tip, or
+    /// holds the tip only on a second parent).
+    Stale,
+}
+
+/// [`Standing`] of `candidate` (40 lowercase hex, a commit) against `tip`. With the tip an
+/// ancestor of the candidate, the oldest commit of `git rev-list --first-parent <tip>..<candidate>`
+/// has the tip as its first parent exactly when the tip is on the first-parent line.
+pub fn standing(project: &Path, candidate: &str, tip: &str) -> Result<Standing, String> {
+    let inside = git(project, &["merge-base", "--is-ancestor", candidate, tip])?;
+    match inside.status.code() {
+        Some(0) => return Ok(Standing::Inside),
+        Some(1) => {}
+        _ => {
+            return Err(format!(
+                "git could not tell whether {candidate} is inside {tip}: {}",
+                String::from_utf8_lossy(&inside.stderr).trim()
+            ))
+        }
+    }
+    let range = format!("{tip}..{candidate}");
+    let listed = git(project, &["rev-list", "--first-parent", &range])?;
+    if !listed.status.success() {
+        return Err(format!(
+            "git could not list {range}: {}",
+            String::from_utf8_lossy(&listed.stderr).trim()
+        ));
+    }
+    let text = String::from_utf8_lossy(&listed.stdout).into_owned();
+    let Some(oldest) = text.lines().last().map(str::trim).filter(|l| !l.is_empty()) else {
+        return Ok(Standing::Stale);
+    };
+    let parent = git(
+        project,
+        &["rev-parse", "--verify", "--quiet", &format!("{oldest}^1")],
+    )?;
+    let parent = String::from_utf8_lossy(&parent.stdout).trim().to_string();
+    Ok(if parent == tip {
+        Standing::OnTip
+    } else {
+        Standing::Stale
+    })
+}
+
+/// The paths of the worktrees that have `full_ref` (a `refs/heads/…` name) checked out.
+pub fn checked_out_at(project: &Path, full_ref: &str) -> Result<Vec<String>, String> {
+    let out = git(project, &["worktree", "list", "--porcelain"])?;
+    if !out.status.success() {
+        return Err(format!(
+            "git could not list the worktrees: {}",
+            String::from_utf8_lossy(&out.stderr).trim()
+        ));
+    }
+    let text = String::from_utf8_lossy(&out.stdout).into_owned();
+    let mut found = Vec::new();
+    let mut path = String::new();
+    for line in text.lines() {
+        if let Some(p) = line.strip_prefix("worktree ") {
+            path = p.to_string();
+        } else if line.strip_prefix("branch ") == Some(full_ref) {
+            found.push(path.clone());
+        }
+    }
+    Ok(found)
+}
+
+/// What a compare-and-swap of a branch reference came to.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum RefMove {
+    Moved,
+    /// Git refused: the reference was not at the expected commit any more (or could not be
+    /// written); the text is git's reason.
+    Lost(String),
+}
+
+/// Moves `full_ref` to `new` only while it still points at `old` (`git update-ref`'s own
+/// compare-and-swap), with `message` as the reference-log entry. Unlike every other command here
+/// this one writes, in the repository's own reference store and nowhere else.
+pub fn move_branch(
+    project: &Path,
+    full_ref: &str,
+    new: &str,
+    old: &str,
+    message: &str,
+) -> Result<RefMove, String> {
+    let out = git(project, &["update-ref", "-m", message, full_ref, new, old])?;
+    if out.status.success() {
+        Ok(RefMove::Moved)
+    } else {
+        Ok(RefMove::Lost(
+            String::from_utf8_lossy(&out.stderr).trim().to_string(),
+        ))
     }
 }
 
