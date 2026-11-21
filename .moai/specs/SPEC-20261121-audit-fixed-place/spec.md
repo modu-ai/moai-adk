@@ -78,4 +78,20 @@ created: 2026-11-21
 
 ## Result
 
-(written after the checks)
+`python3 -I tools/build_folder.py audit-place --name <n> --head <40자 SHA>` 가 생겼어요. 첫 호출은 `<HOME>/.moai/worktrees/<project>/audit-<n>` 을 그 head 의 분리된 워크트리로 만들고 같은 이름의 빌드 폴더(`<project>-audit-<n>`)와 소유 기록을 만들어요. 다음 호출은 같은 워크트리를 새 head 로 옮겨요(`git checkout --detach --force`, 지우고 다시 받지 않아요). 옮긴 뒤에는 트리 해시가 head 의 것과 같고 `git status` 가 비었는지 확인하고, 편집된 추적 파일과 git 이 무시하지 않는 추적 안 된 파일은 되돌리거나 지우며(몇 개인지 `taken_back` 에 적어요), 무시되는 파일(증거 폴더 `target/` 같은 것)은 그대로 둬요. cargo 가 빌드 폴더의 잠금을 쥐고 있으면 `place_busy` 로 거절해요. 쓰인 `CARGO_HOME` 을 빌드 폴더의 `.moai-audit-place.json` 에 적고, 다음 호출에서 값이 다르면 `cargo_home_changed` 와 이전 값을 알려요.
+
+측정(2026-11-21, 이 Mac, APFS, `CARGO_HOME=/tmp/moai-rc-cargo-agent-1`, 대상 `--lib --test card_inbox_cli --test card_show_notes_cli` 의 `cargo test --no-run`). 머리 A = 지역 통합 가지 끝 `b4681b3a6f`, 머리 B = A 위에 시험 파일 `tests/card_inbox_cli.rs` 에 주석 한 줄만 더한 가지 없는 임시 커밋 `9b996deb7b`. 감사 자리 `audit-measure278` 의 빌드 폴더는 첫 호출 뒤 레인 폴더에서 `seed` 로 시작했어요(`seeded: true`, `clonefile`).
+- 첫 감사(자리에서 A): 37.57초(벽시계), user 117.44 + sys 5.09 = 122.5 CPU초. 작업공간 crate 가 처음 빌드돼요(경로가 처음이라).
+- 옮김 A→B(`moved_files: 1`) 뒤 둘째 감사: 0.68초, user 0.57 + sys 0.25 = 0.82 CPU초.
+- 같은 B 를 한 번 더(`moved_files: 0`): 0.12초, `Compiling` 줄 0개.
+- 대조(새 경로 `measure278-fresh` 의 B, 빌드 폴더는 자리의 폴더에서 `seed`): 43.71초, user 123.92 + sys 4.80 = 128.7 CPU초.
+- `cargo test -v` 로 rustc 실행을 세었어요(`measure-place2.sh`): 자리를 A→B→A→B 로 옮길 때마다 rustc 는 정확히 1번(`--crate-name card_inbox_cli`), 나머지 85개 단위는 `Fresh` 였어요. `Compiling` 줄은 패키지 하나(`moai-cli`)만 세어서 crate 수를 가르지 못해요.
+- 바뀐 것: 둘째 감사는 새 경로보다 벽시계로 약 64배(43.71 / 0.68), CPU 로 약 157배(128.7 / 0.82) 덜 들었어요. 이 숫자는 바뀐 파일이 시험 파일 하나일 때예요. `src/` 파일이 바뀌면 lib 와 그것에 기대는 모든 시험 crate 가 다시 빌드되어 새 경로와 같아져요(재지 않았어요).
+- 재지 않은 것: 기계 부하를 맞춘 반복(각 1회만 쟀어요), Linux, 같은 head 의 감사가 아니라 `src/` 가 바뀐 두 head 사이의 비용, 전체 시험 바이너리(`--no-run` 대상은 위 3개).
+
+- AC-1: met — `python3 -m unittest tests.build_folder_test.AuditPlaceTest` 11개 통과(첫 호출이 자리와 폴더와 기록을 만들고 트리 해시를 답해요).
+- AC-2: met — 같은 시험 묶음: 옮긴 뒤 바뀌지 않은 파일의 수정 시각과 inode 가 그대로이고, 고친 추적 파일과 추적 안 된 파일은 되돌려지고(`taken_back` 2), 무시된 파일은 남아요.
+- AC-3: met — `python3 -m unittest tests.build_folder_test` 53개 통과(잘못된 head·이름, 링크·파일·워크트리가 아닌 폴더·클론·다른 워크트리를 가리키는 링크 거절, 잡힌 cargo 잠금 `place_busy`, `CARGO_HOME` 기록과 변경 알림, 호출한 체크아웃과 cargo 산출물이 그대로임). 변이 16개 중 14개를 시험이 잡았어요(`mut-place.py`); 살아남은 P9(40자 형식 검사 제거)와 P17(옮긴 뒤 HEAD·트리 재확인 제거)은 같은 일을 하는 다른 검사(`rev-parse` 결과가 입력과 같은지, 옮긴 뒤 `git status` 가 비었는지)가 이미 있어서 겉으로 보이는 동작이 같아요(등가).
+- AC-4: met — 위 측정: 둘째 감사 rustc 1번(바뀐 시험 crate 하나), 자리는 지우고 다시 받지 않고 재사용.
+
+아직 안 한 것: 감사 에이전트 지침·감사 워크플로·`skills/moai/references/internal/build-folder.md` 에 이 도구를 쓰라는 문장, `moai audit-clone-plan` 명령 목록(다음 조각), 독립 감사, Linux 시험.
