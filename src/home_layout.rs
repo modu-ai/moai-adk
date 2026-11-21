@@ -146,7 +146,7 @@ pub const HOME_TABLE: &[Entry] = &[
     // Go names (survey §1, PLAN v2 table A).
     row("settings.json", RustUse::None, true, ConfigGuide, GoRetires, MERGE, "Go paths.go:130. No Rust key receives it in rc.2 (leader decision 6903832699 item 1): home-retire moves the file to the Go backup and the manifest names it, so a user restores it by hand; the merge flag only marks it as a candidate in the preview"),
     // The pattern stands before the exact name on purpose: `lookup` must still pick the exact row.
-    row(".env*", RustUse::None, true, Secret, SecretRenameOnly, NO, "Go key files such as .env.typesafe (defs/dirs.go:404)"),
+    row(".env*", RustUse::None, true, Secret, SecretRenameOnly, NO, "Go key files such as .env.legacy (defs/dirs.go:404)"),
     row(".env.glm", Reads, true, Secret, SecretRenameOnly, MERGE, "Go defs/dirs.go:401; key_vault.rs:773 reads it as a legacy source (merge: vault import only, the value never shown)"),
     row("credentials*", RustUse::None, true, Secret, SecretRenameOnly, NO, "Go paths.go:451 credentials.yaml(.bak)"),
     row("secrets", RustUse::None, true, Secret, SecretRenameOnly, NO, "Go secrets (no current writer, home_state.rs:71)"),
@@ -367,8 +367,8 @@ mod tests {
         }
         // The exact name wins over the pattern it sits under.
         assert!(lookup(".ENV.GLM").unwrap().merge);
-        assert!(!lookup(".env.typesafe").unwrap().merge);
-        assert_eq!(lookup(".env.typesafe").unwrap().name, ".env*");
+        assert!(!lookup(".env.legacy").unwrap().merge);
+        assert_eq!(lookup(".env.legacy").unwrap().name, ".env*");
     }
 
     /// #2871 (decision 6887464608): the update step's table (`home_state::SELECTIVE_TABLE`) and
@@ -465,7 +465,7 @@ mod tests {
             ("user-assets.json", ToolAsset, GoRetires, true),
             ("settings.json", ConfigGuide, GoRetires, true),
             (".env.glm", Secret, SecretRenameOnly, true),
-            (".env.typesafe", Secret, SecretRenameOnly, true),
+            (".env.legacy", Secret, SecretRenameOnly, true),
             ("credentials", Secret, SecretRenameOnly, true),
             ("credentials.yaml.bak", Secret, SecretRenameOnly, true),
             ("secrets", Secret, SecretRenameOnly, true),

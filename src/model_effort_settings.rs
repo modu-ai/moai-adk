@@ -9,15 +9,14 @@
 //! Code) is not offered.
 //!
 //! Codex is not a tool any more (SPEC-20261121-codex-launcher-and-models-removed). A
-//! `launcher.models.codex` value that an earlier version saved is ignored on every read and kept
-//! as it was in every write: it is never validated, listed or resolved.
+//! `launcher.models.codex` value that an earlier version saved is ignored on every read and left
+//! out of every write: it is never validated, listed or resolved. The skip is the shared
+//! retired-host rule (`crate::retired_hosts`), which also covers `omp` once it is retired.
+use crate::retired_hosts::retired;
 use serde_json::{json, Map, Value};
 
 /// The tools that take a choice. `glm` is the `moai glm` launcher and shares the OMP table.
 pub const TOOLS: [&str; 3] = ["claude", "omp", "glm"];
-/// Tool names an earlier version saved that this version no longer supports: their
-/// `launcher.models.<name>` value is skipped on read and left in the file.
-const IGNORED_TOOLS: [&str; 1] = ["codex"];
 /// The two roles: the leader entry (`-l`) and the agent entry (`-a`).
 pub const ROLES: [&str; 2] = ["leader", "agent"];
 
@@ -117,12 +116,12 @@ fn models_of(launcher: &Map<String, Value>) -> Result<Option<&Map<String, Value>
 
 /// The structure of `launcher.models`: known tool names, known role names, and objects at the
 /// tool and role level. Names are printed only after they matched a known name.
-fn check_structure(models: &Map<String, Value>) -> Result<(), String> {
+fn check_structure(active: &[&str], models: &Map<String, Value>) -> Result<(), String> {
     for (tool, per_tool) in models {
-        if IGNORED_TOOLS.contains(&tool.as_str()) {
+        if retired(tool, active) {
             continue;
         }
-        if !TOOLS.contains(&tool.as_str()) {
+        if !active.contains(&tool.as_str()) {
             return Err("launcher.models names a tool this version does not know".into());
         }
         let Value::Object(roles) = per_tool else {
@@ -176,10 +175,10 @@ fn check_entry(tool: &str, role: &str, entry: &Value) -> Result<(), String> {
 
 /// Checks every saved entry, not only the one asked for, so a broken file is never skipped
 /// silently.
-fn validate(models: &Map<String, Value>) -> Result<(), String> {
-    check_structure(models)?;
+fn validate(active: &[&str], models: &Map<String, Value>) -> Result<(), String> {
+    check_structure(active, models)?;
     for (tool, per_tool) in models {
-        if IGNORED_TOOLS.contains(&tool.as_str()) {
+        if retired(tool, active) {
             continue;
         }
         if let Value::Object(roles) = per_tool {
@@ -196,13 +195,22 @@ fn validate(models: &Map<String, Value>) -> Result<(), String> {
 /// unknown tool or role name, a level that is not an object, `models` not an object) is refused
 /// instead of listed, because it cannot be named without quoting saved text.
 pub fn unsupported_entries(launcher: &Map<String, Value>) -> Result<Vec<String>, String> {
+    unsupported_entries_in(&TOOLS, launcher)
+}
+
+/// [`unsupported_entries`] for a place whose active tools are `active`: a `launcher.models` key of
+/// a retired tool (see `crate::retired_hosts`) is skipped, whatever its value.
+pub fn unsupported_entries_in(
+    active: &[&str],
+    launcher: &Map<String, Value>,
+) -> Result<Vec<String>, String> {
     let Some(models) = models_of(launcher)? else {
         return Ok(Vec::new());
     };
-    check_structure(models)?;
+    check_structure(active, models)?;
     let mut listed = Vec::new();
     for (tool, per_tool) in models {
-        if IGNORED_TOOLS.contains(&tool.as_str()) {
+        if retired(tool, active) {
             continue;
         }
         if let Value::Object(roles) = per_tool {
@@ -235,12 +243,22 @@ pub fn resolve(
     role: &str,
     launcher: Option<&Map<String, Value>>,
 ) -> Result<(Choice, Source), String> {
+    resolve_in(&TOOLS, tool, role, launcher)
+}
+
+/// [`resolve`] for a place whose active tools are `active`.
+pub fn resolve_in(
+    active: &[&str],
+    tool: &str,
+    role: &str,
+    launcher: Option<&Map<String, Value>>,
+) -> Result<(Choice, Source), String> {
     let default = default_choice(tool, role)
         .ok_or_else(|| "model settings: unknown tool or role".to_string())?;
     let Some(models) = launcher.map(models_of).transpose()?.flatten() else {
         return Ok((default, Source::Default));
     };
-    validate(models)?;
+    validate(active, models)?;
     let saved = models
         .get(tool)
         .and_then(|per_tool| per_tool.get(role))
@@ -266,7 +284,20 @@ pub fn with_choice(
     model: &str,
     effort: &str,
 ) -> Result<Map<String, Value>, String> {
-    if default_choice(tool, role).is_none() {
+    with_choice_in(&TOOLS, launcher, tool, role, model, effort)
+}
+
+/// [`with_choice`] for a place whose active tools are `active`: the written `launcher.models`
+/// leaves the keys of retired tools out, and a retired tool is refused like an unknown one.
+pub fn with_choice_in(
+    active: &[&str],
+    launcher: &Map<String, Value>,
+    tool: &str,
+    role: &str,
+    model: &str,
+    effort: &str,
+) -> Result<Map<String, Value>, String> {
+    if retired(tool, active) || default_choice(tool, role).is_none() {
         return Err("model settings: unknown tool or role".into());
     }
     if !offers(tool, model, effort) {
@@ -275,6 +306,7 @@ pub fn with_choice(
         ));
     }
     let mut models = models_of(launcher)?.cloned().unwrap_or_default();
+    models.retain(|saved_tool, _| !retired(saved_tool, active));
     let per_tool = models
         .entry(tool.to_string())
         .or_insert_with(|| Value::Object(Map::new()));

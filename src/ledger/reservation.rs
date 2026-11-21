@@ -5,15 +5,20 @@
 //! generation (`card.generation + 1`), records the holder, the lease and the write scope, and
 //! moves the card `ready -> active`, all in one `BEGIN IMMEDIATE` transaction. The unique index
 //! `reservation_one_active` makes a second holder of the same card impossible, and the scope
-//! check runs in the same transaction against every other card's active reservation. It asks
+//! check runs in the same transaction against every other card's active reservation, except that
+//! a `held` reservation whose lease has ended gives the overlapping paths up to the new take or
+//! widening (`yield_overlaps`, one `card.yield` event); a live lease, a recovered reservation and
+//! an expired candidate still refuse. It asks
 //! [`crate::scope::card_overlap`]: [`crate::scope::overlap`] ("could both write this path",
 //! case folded) minus a pair in which one side is exactly a generated shared path (case kept),
 //! which two cards may both list.
 //!
 //! The generation is the fence: [`renew`], [`release`], [`handoff`] and [`fence`] accept only
 //! the current generation, held by the offered holder, with a lease that has not ended (a
-//! release does not need a live lease). A lower generation, another holder, a reservation that
-//! is no longer `held` or an ended lease is rejected with a [`FenceError`], and the rejection is
+//! release and a renew do not need a live lease: the holder of an ended lease that nobody
+//! reclaimed renews it at the same generation). A lower generation, another holder, a
+//! reservation that is no longer `held` or, for [`handoff`] and [`fence`], an ended lease is
+//! rejected with a [`FenceError`], and the rejection is
 //! written to `event` (kind `fence_reject`) in the same transaction that finds it, which then
 //! commits: the record survives the rejection.
 //!
@@ -106,6 +111,10 @@ pub enum ReserveError {
         other_card: i64,
         mine: String,
         theirs: String,
+        /// Who holds that reservation, its lease end (Unix seconds) and its status.
+        holder: String,
+        lease_until: i64,
+        status: String,
     },
     /// The ledger itself failed (busy, unavailable, constraint ...).
     Ledger(LedgerError),
@@ -152,9 +161,13 @@ impl std::fmt::Display for ReserveError {
                 other_card,
                 mine,
                 theirs,
+                holder,
+                lease_until,
+                status,
             } => write!(
                 f,
-                "reservation conflict in write scope: {mine:?} could be written under {theirs:?} reserved for card C-{other_card}"
+                "reservation conflict in write scope: {mine:?} could be written under {theirs:?} reserved for card C-{other_card} ({})",
+                holder_text(holder, *lease_until, status)
             ),
             ReserveError::Ledger(e) => e.fmt(f),
         }
@@ -477,31 +490,144 @@ pub(super) fn add_event(
     Ok(())
 }
 
+/// The reservation that blocks a pattern of a new claim: who holds it, until when, and the pair
+/// of patterns that overlap.
+pub(super) struct Overlap {
+    pub other_card: i64,
+    pub mine: String,
+    pub theirs: String,
+    pub holder: String,
+    pub lease_until: i64,
+    pub status: String,
+}
+
 /// The first pair of a pattern in `mine` and a pattern of another card's active reservation
 /// that [`crate::scope::card_overlap`] says could be written under both, in card and pattern
 /// order: [`crate::scope::overlap`] without the pairs that name a generated shared file (C-118).
+/// A reservation that [`blocks_new_claims`] does not block at `now` (a `held` one whose lease has
+/// ended) is not looked at here; [`yield_overlaps`] takes its paths.
 pub(super) fn find_overlap(
     conn: &Connection,
+    now: i64,
     card_id: i64,
     mine: &[String],
-) -> Result<Option<(i64, String, String)>, LedgerError> {
+) -> Result<Option<Overlap>, LedgerError> {
     let mut stmt = conn.prepare(&format!(
-        "SELECT r.card_id, s.pattern FROM reservation r \
+        "SELECT r.card_id, s.pattern, r.holder, r.lease_until, r.status FROM reservation r \
          JOIN reservation_scope s ON s.reservation_id = r.reservation_id \
          WHERE r.status IN {ACTIVE_STATUSES} AND r.card_id <> ?1 \
          ORDER BY r.card_id, s.pattern"
     ))?;
-    let theirs: Vec<(i64, String)> = stmt
-        .query_map([card_id], |r| Ok((r.get(0)?, r.get(1)?)))?
+    let theirs: Vec<(i64, String, String, i64, String)> = stmt
+        .query_map([card_id], |r| {
+            Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?))
+        })?
         .collect::<Result<_, _>>()?;
-    for (other, pattern) in theirs {
+    for (other, pattern, holder, lease_until, status) in theirs {
+        if !blocks_new_claims(&status, lease_until, now) {
+            continue;
+        }
         for m in mine {
             if crate::scope::card_overlap(m, &pattern) {
-                return Ok(Some((other, m.clone(), pattern)));
+                return Ok(Some(Overlap {
+                    other_card: other,
+                    mine: m.clone(),
+                    theirs: pattern,
+                    holder,
+                    lease_until,
+                    status,
+                }));
             }
         }
     }
     Ok(None)
+}
+
+/// Removes, from every `held` reservation of another card whose lease has ended at `now`, the
+/// patterns that overlap a pattern in `mine`, and writes one `card.yield` event on each such
+/// card: the paths, its scope before and after, its holder, generation and lease end, and who
+/// took the paths (`by`, card `taker`) and how (`how`: a take or a widening). The reservation
+/// keeps its generation, holder and status; the card keeps its notes and its state. Call it
+/// only after [`find_overlap`] found nothing, in the transaction that goes on to claim the paths.
+fn yield_overlaps(
+    tx: &Connection,
+    now: i64,
+    taker: i64,
+    by: &str,
+    how: &str,
+    mine: &[String],
+) -> Result<(), LedgerError> {
+    let mut stmt = tx.prepare(
+        "SELECT r.card_id, r.reservation_id, r.holder, r.generation, r.lease_until, s.pattern \
+         FROM reservation r JOIN reservation_scope s ON s.reservation_id = r.reservation_id \
+         WHERE r.status = 'held' AND r.card_id <> ?1 AND r.lease_until <= ?2 \
+         ORDER BY r.card_id, s.pattern",
+    )?;
+    let rows: Vec<(i64, i64, String, i64, i64, String)> = stmt
+        .query_map(params![taker, now], |r| {
+            Ok((
+                r.get(0)?,
+                r.get(1)?,
+                r.get(2)?,
+                r.get(3)?,
+                r.get(4)?,
+                r.get(5)?,
+            ))
+        })?
+        .collect::<Result<_, _>>()?;
+    let mut i = 0;
+    while i < rows.len() {
+        let (card, reservation_id, holder, generation, lease_until, _) = rows[i].clone();
+        let mut from: Vec<String> = Vec::new();
+        while i < rows.len() && rows[i].0 == card {
+            from.push(rows[i].5.clone());
+            i += 1;
+        }
+        let yielded: Vec<String> = from
+            .iter()
+            .filter(|p| mine.iter().any(|m| crate::scope::card_overlap(m, p)))
+            .cloned()
+            .collect();
+        if yielded.is_empty() {
+            continue;
+        }
+        for path in &yielded {
+            tx.execute(
+                "DELETE FROM reservation_scope WHERE reservation_id = ?1 AND pattern = ?2",
+                params![reservation_id, path],
+            )?;
+        }
+        tx.execute(
+            "UPDATE reservation SET updated_at = ?1 WHERE reservation_id = ?2",
+            params![now, reservation_id],
+        )?;
+        let to: Vec<String> = from
+            .iter()
+            .filter(|p| !yielded.contains(p))
+            .cloned()
+            .collect();
+        add_event(
+            tx,
+            now,
+            by,
+            card,
+            "card.yield",
+            &json!({
+                "yielded": yielded,
+                "from": from,
+                "to": to,
+                "holder": holder,
+                "generation": generation,
+                "lease_until": lease_until,
+                "by": by,
+                "taken_by_card": taker,
+                "reason": format!(
+                    "the lease had ended (lease until {lease_until}); the paths went to {how}"
+                ),
+            }),
+        )?;
+    }
+    Ok(())
 }
 
 /// Takes a `ready` card: next generation, a `held` reservation for `holder` with a lease of
@@ -614,13 +740,17 @@ fn reserve_in_tx(
                 withdraw_reason,
             }));
         }
-        if let Some((other_card, mine, theirs)) = find_overlap(tx, card_id, &scope)? {
+        if let Some(o) = find_overlap(tx, now, card_id, &scope)? {
             return Ok(Err(ReserveError::ScopeOverlap {
-                other_card,
-                mine,
-                theirs,
+                other_card: o.other_card,
+                mine: o.mine,
+                theirs: o.theirs,
+                holder: o.holder,
+                lease_until: o.lease_until,
+                status: o.status,
             }));
         }
+        yield_overlaps(tx, now, card_id, holder, "a new reservation", &scope)?;
         let next = generation + 1;
         tx.execute(
             "UPDATE card SET generation = ?1, state = 'active' WHERE card_id = ?2",
@@ -675,6 +805,24 @@ fn reserve_in_tx(
 /// report as not live.
 pub fn lease_ended(lease_until: i64, now: i64) -> bool {
     lease_until <= now
+}
+
+/// Whether a reservation keeps other cards off its paths at ledger-clock second `now`: a `held`
+/// reservation whose lease has ended does not (a take or a widening yields its paths; a card in
+/// the `review` state has such a reservation too), and a `held_for_review` one (what `recover`
+/// leaves for a row it could not confirm) or an expired candidate always does.
+pub fn blocks_new_claims(status: &str, lease_until: i64, now: i64) -> bool {
+    status != "held" || !lease_ended(lease_until, now)
+}
+
+/// The part of an overlap refusal that says who holds the other reservation and until when.
+fn holder_text(holder: &str, lease_until: i64, status: &str) -> String {
+    let until = crate::baseline::utc_from_epoch(lease_until);
+    if status == "held" {
+        format!("held by {holder}, lease until {lease_until} = {until}")
+    } else {
+        format!("held by {holder}, status {status}, lease until {lease_until} = {until}")
+    }
 }
 
 /// The shared check of renew, release, handoff and fence: the offered `(holder, generation)`
@@ -774,7 +922,9 @@ pub(super) fn fenced<T>(
 
 /// Extends the lease of the current `held` reservation of `holder` at `generation`: the new
 /// `lease_until` is the DB clock plus `lease_secs`, but never earlier than the lease it
-/// already has. Needs a live lease.
+/// already has. The lease may have ended as long as nobody reclaimed the reservation (the
+/// generation is still the current one and the status `held`): the holder then keeps its card
+/// at the same generation instead of reclaiming it from itself.
 pub fn renew(
     w: &mut WriteLedger,
     card_id: i64,
@@ -790,8 +940,9 @@ pub fn renew(
         card_id,
         holder,
         generation,
-        true,
+        false,
         |tx, now, row| {
+            let was_ended = lease_ended(row.lease_until, now);
             let until = row.lease_until.max(now + lease_secs);
             tx.execute(
             "UPDATE reservation SET lease_until = ?1, updated_at = ?2 WHERE reservation_id = ?3",
@@ -803,7 +954,7 @@ pub fn renew(
                 holder,
                 card_id,
                 "renew",
-                &json!({"generation": generation, "holder": holder, "lease_until": until}),
+                &json!({"generation": generation, "holder": holder, "lease_until": until, "was_ended": was_ended}),
             )?;
             load_reservation(tx, card_id, generation)?
                 .ok_or_else(|| LedgerError::Sql("the renewed reservation cannot be read".into()))
@@ -833,6 +984,10 @@ pub enum WidenError {
         other_card: i64,
         mine: String,
         theirs: String,
+        /// Who holds that reservation, its lease end (Unix seconds) and its status.
+        holder: String,
+        lease_until: i64,
+        status: String,
     },
     /// A pattern is malformed or the list is over its limits.
     InvalidInput(String),
@@ -864,10 +1019,14 @@ impl std::fmt::Display for WidenError {
                 other_card,
                 mine,
                 theirs,
+                holder,
+                lease_until,
+                status,
             } => write!(
                 f,
                 "reservation conflict in write scope: {mine:?} could be written under \
-                 {theirs:?} reserved for card C-{other_card}"
+                 {theirs:?} reserved for card C-{other_card} ({})",
+                holder_text(holder, *lease_until, status)
             ),
             WidenError::InvalidInput(why) => write!(f, "invalid reservation input: {why}"),
         }
@@ -923,13 +1082,17 @@ pub fn widen_in_tx(
         }
         seen.push((key, pattern));
     }
-    if let Some((other_card, mine, theirs)) = find_overlap(tx, card_id, &added)? {
+    if let Some(o) = find_overlap(tx, now, card_id, &added)? {
         return Ok(Err(WidenError::ScopeOverlap {
-            other_card,
-            mine,
-            theirs,
+            other_card: o.other_card,
+            mine: o.mine,
+            theirs: o.theirs,
+            holder: o.holder,
+            lease_until: o.lease_until,
+            status: o.status,
         }));
     }
+    yield_overlaps(tx, now, card_id, by, "a scope widening", &added)?;
     for pattern in &added {
         tx.execute(
             "INSERT INTO reservation_scope (reservation_id, pattern) VALUES (?1, ?2)",
@@ -1542,6 +1705,9 @@ mod tests {
                     other_card: 2,
                     mine: "src/".into(),
                     theirs: "src/a".into(),
+                    holder: "h".into(),
+                    lease_until: 1,
+                    status: "held".into(),
                 },
                 "scope_overlap",
                 Kind::Conflict,
