@@ -576,6 +576,41 @@ pub fn accepted_auto_delta(s: &Snapshot) -> Option<&AutoDelta> {
 /// G1: the last verdict is a PASS on the current head with a 40-hex base, or a PASS on an
 /// earlier head the current one is a mechanical delta of (#2833). Returns the base and the
 /// head the verdict judged.
+/// The G1 reason when no comment carries a verdict line: it names what was read instead of
+/// stopping silently (the 2026-11-21 mo.ai.kr report — a member comment that starts
+/// `AUDIT PASS …` is the usual cause: a verdict line is `AUDIT #<pr> (<title>) head <40hex>
+/// base <40hex> — verdict: PASS|FAIL`, printed by `moai audit-verdict-line`).
+fn no_verdict_reason(s: &Snapshot) -> String {
+    if s.comments.is_empty() {
+        return "no AUDIT verdict: no member comments were read at all (0); the gate reads a \
+                first line `AUDIT #<pr> (<title>) head <40hex> base <40hex> — verdict: \
+                PASS|FAIL`"
+            .into();
+    }
+    let closest = s
+        .comments
+        .iter()
+        .filter(|c| c.author_association == "MEMBER")
+        .filter_map(|c| c.body.lines().next())
+        .rfind(|l| l.trim_start().starts_with("AUDIT") && !l.starts_with("AUDIT #"))
+        .map(|l| {
+            let head: String = l.chars().take(60).collect();
+            format!(
+                "; the member comment that looks closest starts \"{head}\" — a verdict line \
+                 starts \"AUDIT #<pr> (<title>) head <40hex> base <40hex> — verdict: \
+                 PASS|FAIL\" (moai audit-verdict-line prints it)"
+            )
+        })
+        .unwrap_or_default();
+    format!(
+        "no AUDIT verdict: {} member comment(s) read, none carries a verdict line{closest}",
+        s.comments.len()
+    )
+}
+
+/// G1: the last verdict is a PASS on the current head with a 40-hex base, or a PASS on an
+/// earlier head the current one is a mechanical delta of (#2833). Returns the base and the
+/// head the verdict judged.
 fn g1(s: &Snapshot) -> Result<(String, String), Stop> {
     let last = s
         .comments
@@ -583,7 +618,7 @@ fn g1(s: &Snapshot) -> Result<(String, String), Stop> {
         .filter_map(|c| verdict_line(&c.body).map(|l| (c.id, l)))
         .max_by_key(|(id, _)| *id);
     let stop = |reason: String| Stop { rule: "G1", reason };
-    let (_, line) = last.ok_or_else(|| stop("no AUDIT verdict".into()))?;
+    let (_, line) = last.ok_or_else(|| stop(no_verdict_reason(s)))?;
     let (head, base, verdict) = verdict_of(s, line).ok_or_else(|| {
         stop(
             "the last verdict line does not read `head <40hex> base <40hex> — verdict: <V>`".into(),
@@ -1133,6 +1168,58 @@ pub fn ci_info(s: &Snapshot) -> String {
         ("success", Some(n)) => format!("ci={state} attempt={n}"),
         _ => format!("ci={state}"),
     }
+}
+
+/// What the gate could read, named in the answer (the 2026-11-21 mo.ai.kr report: a G1 whose
+/// every input was read but no verdict line existed had to say so — how many comments, with
+/// which associations, and the member first lines that look like a verdict but are not one).
+/// Information only: no rule reads it.
+pub fn reads_summary(s: &Snapshot) -> serde_json::Value {
+    let mut associations: std::collections::BTreeMap<&str, usize> = Default::default();
+    for c in &s.comments {
+        *associations
+            .entry(c.author_association.as_str())
+            .or_default() += 1;
+    }
+    let verdict_lines = s
+        .comments
+        .iter()
+        .filter(|c| verdict_line(&c.body).is_some())
+        .count();
+    let lookalike: Vec<serde_json::Value> = s
+        .comments
+        .iter()
+        .filter(|c| c.body.trim_start().starts_with("AUDIT") && verdict_line(&c.body).is_none())
+        .map(|c| {
+            let first: String = c
+                .body
+                .lines()
+                .next()
+                .unwrap_or("")
+                .chars()
+                .take(60)
+                .collect();
+            serde_json::json!({
+                "comment_id": c.id,
+                "author_association": c.author_association,
+                "first_line": first,
+            })
+        })
+        .collect();
+    let names: std::collections::BTreeSet<&str> =
+        s.checks.iter().map(|c| c.name.as_str()).collect();
+    serde_json::json!({
+        "comments": s.comments.len(),
+        "author_associations": associations,
+        "verdict_lines": verdict_lines,
+        "member_first_lines_that_are_not_verdict_lines": lookalike
+            .iter()
+            .filter(|l| l["author_association"] == "MEMBER")
+            .count(),
+        "lookalike_first_lines": lookalike,
+        "check_runs": s.checks.len(),
+        "check_run_names": names,
+    })
 }
 
 /// G6: a clean merge with the tip; files both the PR and the tip (since the verdict's base)

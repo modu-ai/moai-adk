@@ -765,10 +765,13 @@ fn ci_info_names_the_attempt_of_a_re_run_that_succeeded_and_the_verdict_does_not
     ] {
         let v = with_attempt(name, attempt.clone());
         assert_eq!(v["result"]["ci_info"], json!(info), "{name} {attempt}: {v}");
-        // Everything but the info line is what the plain snapshot answered.
+        // Everything but the info line is what the plain snapshot answered — the `reads`
+        // summary excepted, for this case swaps the check runs the summary names.
         let (mut got, mut want) = (v.clone(), plain.clone());
         got["result"]["ci_info"] = Value::Null;
         want["result"]["ci_info"] = Value::Null;
+        got["result"]["reads"] = Value::Null;
+        want["result"]["reads"] = Value::Null;
         assert_eq!(got, want, "{name} {attempt}");
     }
     // A `ci` that succeeded on its attempt two while another job failed: the state is failure, and
@@ -1789,4 +1792,59 @@ fn a_posted_fail_stops_a_tier_0_merge_until_the_same_auditor_passes() {
         verdict(300, "agent-10", OTHER, "FAIL")
     ]);
     assert_eq!(stopped(&gate(&s)), (false, "G3".into()), "{}", gate(&s));
+}
+
+/// The 2026-11-21 mo.ai.kr report: every input was read, yet G1 stopped silently — the gate
+/// must name what it read (the comments, their associations, the member line that looks like
+/// a verdict but is not one) and the verdict line's real shape.
+#[test]
+fn g1_names_what_it_read_when_a_member_line_is_not_a_verdict() {
+    let mut s = passing();
+    s["comments"] = json!([
+        {"id": 1, "author_association": "NONE", "body": "[vc]: preview comment\n"},
+        {"id": 2, "author_association": "MEMBER", "body": "AUDIT PASS 72225828140168a0560d988694c7fac7430f3f7f ci-run=44831965524 conclusion=success\n"},
+    ]);
+    s["checks"] = json!([{"name": "build", "conclusion": "success", "head_sha": H}]);
+    let v = gate(&s);
+    let r = &v["result"];
+    assert_eq!(r["pass"], json!(false), "{r}");
+    assert_eq!(r["rule"], json!("G1"));
+    let reason = r["reason"].as_str().unwrap();
+    assert!(reason.contains("1 member comment(s) read"), "{reason}");
+    assert!(reason.contains("none carries a verdict line"), "{reason}");
+    assert!(
+        reason.contains("AUDIT PASS 72225828"),
+        "the member line that is not a verdict is named: {reason}"
+    );
+    assert!(
+        reason.contains("AUDIT #"),
+        "the verdict line's real shape is named: {reason}"
+    );
+    // The answer names every input it read, so ci=none and an empty comment list are
+    // distinguishable from a read failure. The non-member comment is already counted on the
+    // `ignored_control_lines` side: the deciding snapshot carries members only.
+    assert_eq!(r["reads"]["comments"], json!(1));
+    assert_eq!(r["reads"]["verdict_lines"], json!(0));
+    assert_eq!(
+        r["reads"]["lookalike_first_lines"][0]["comment_id"],
+        json!(2)
+    );
+    assert_eq!(r["reads"]["check_runs"], json!(1));
+    assert_eq!(r["reads"]["check_run_names"], json!(["build"]));
+    assert_eq!(r["ci_info"], json!("ci=none"));
+}
+
+#[test]
+fn g1_names_an_empty_comment_list_as_the_missing_input() {
+    let mut s = passing();
+    s["comments"] = json!([]);
+    let v = gate(&s);
+    let r = &v["result"];
+    assert_eq!(r["rule"], json!("G1"), "{}", gate(&s));
+    let reason = r["reason"].as_str().unwrap();
+    assert!(
+        reason.contains("no member comments were read at all"),
+        "{reason}"
+    );
+    assert_eq!(r["reads"]["comments"], json!(0));
 }
