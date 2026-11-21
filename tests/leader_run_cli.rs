@@ -1,5 +1,5 @@
 //! SPEC-20261121-leader-run-lease: one supervising leader run per project. `leader-run begin`
-//! takes a lease (a file in the project's state folder, created exclusively), `skipped` tells a
+//! takes a lease (a file in the project's state folder, written under a file lock), `skipped` tells a
 //! second tick who holds it, an ended lease is taken over, nothing ready or a HOLD gives `idle`
 //! without a lease, and `end` releases only the holder's lease. Every command runs in a clean
 //! environment with a temporary HOME and a temporary project; times are given with `--now`.
@@ -250,13 +250,28 @@ fn status_reads_and_writes_nothing() {
     let r = ok(&w.run(&["status", "--now", "1000"]));
     assert_eq!(r["lease"], Value::Null, "{r}");
     assert!(!w.lease_file().exists());
+    // No lock file and no folder either: the list of the project's files is the same before
+    // and after a status on a project that never had a lease.
+    let empty_before = project_files(&w.project);
+    ok(&w.run(&["status", "--now", "1000"]));
+    assert_eq!(
+        project_files(&w.project),
+        empty_before,
+        "status created a file"
+    );
     w.begin("lead-a", 1, 1000, &[]);
     let before = fs::read(w.lease_file()).unwrap();
+    let files_before = project_files(&w.project);
     let r = ok(&w.run(&["status", "--now", "1100"]));
     assert_eq!(r["lease"]["session"], "lead-a", "{r}");
     assert_eq!(r["lease"]["age_secs"], 100, "{r}");
     assert_eq!(r["lease"]["ended"], Value::Bool(true), "{r}");
     assert_eq!(fs::read(w.lease_file()).unwrap(), before);
+    assert_eq!(
+        project_files(&w.project),
+        files_before,
+        "status changed a file"
+    );
 }
 
 /// Limits: a session name that is empty, longer than 80 characters or holds a control character,
@@ -310,6 +325,11 @@ fn bad_input_is_refused_before_anything_is_written() {
         ]));
         assert_eq!(r["result"], "taken", "lease {secs}: {r}");
     }
+    // The session name has the same edge: 80 characters are accepted, 81 are refused above.
+    let w = World::new();
+    let edge = "x".repeat(80);
+    let r = w.begin(&edge, 1, 1000, &[]);
+    assert_eq!(r["result"], "taken", "an 80 character session name: {r}");
     let out = w.run(&["begin", "--session", "lead-a", "--now", "1000"]);
     assert_eq!(
         out.status.code(),
