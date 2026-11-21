@@ -141,6 +141,26 @@ class CountTest(TreeCase):
         printed = json.loads(run("baseline", "--root", self.root, "--tokens", self.tokens)[1])
         self.assertNotIn("shipped/link.md", printed["files"])
 
+    def test_a_shipped_path_named_literally_that_is_a_link_is_skipped_not_walked(self):
+        # A link to a folder would be walked and counted, a dangling link would vanish unreported:
+        # both are listed under `skipped` and never followed.
+        (self.root / "lit").mkdir()
+        (self.root / "lit" / "dir-link").symlink_to(self.root / "other")
+        (self.root / "lit" / "dangling").symlink_to(self.root / "missing.md")
+        tokens = dict(TOKENS, paths=["lit/dir-link", "lit/dangling"])
+        write(self.cfg, "lit-tokens.json", json.dumps(tokens))
+        write(self.cfg, "lit-baseline.json", json.dumps({"version": 1, "tokens": {}, "files": {}}))
+        code, out, err = run(
+            "check",
+            "--root", self.root,
+            "--tokens", self.cfg / "lit-tokens.json",
+            "--baseline", self.cfg / "lit-baseline.json",
+        )
+        self.assertEqual((code, err), (0, ""))
+        result = json.loads(out)
+        self.assertEqual(result["skipped"], ["lit/dangling", "lit/dir-link"])
+        self.assertEqual(result["failures"], [])
+
     def test_a_git_folder_under_a_shipped_path_is_not_scanned(self):
         write(self.root, "shipped/.git/inner.md", "K-50 K-51 example/repo\n")
         code, result = self.check_json()
