@@ -442,3 +442,193 @@ mod receipts {
         assert!(err.contains("unknown host"), "{err}");
     }
 }
+
+// ---- generation manifest entries of a retired host (REQ-8) -----------------------------------
+
+mod generation_manifest {
+    use moai_cli::generation::{
+        generation_apply, generation_apply_in, generation_plan, generation_plan_in, GenerationPlan,
+        GenerationRequest,
+    };
+    use serde_json::{json, Value};
+    use std::fs;
+    use std::path::Path;
+
+    const TODAY: [&str; 2] = ["claude", "codex"];
+    const AFTER: [&str; 1] = ["claude"];
+    const PERM: &str = "fixture-approved";
+    const CLAUDE_CHECKS: &str = ".claude/skills/prj-checks/SKILL.md";
+    const CODEX_CHECKS: &str = ".agents/skills/prj-checks/SKILL.md";
+    const CLAUDE_EXTRA: &str = ".claude/skills/prj-extra/SKILL.md";
+    const CODEX_EXTRA: &str = ".agents/skills/prj-extra/SKILL.md";
+    const PROJECTION: &str = ".agents/skills/prj-proj/SKILL.md";
+    const MANIFEST: &str = ".moai-cli/manifests/generation.json";
+
+    fn project() -> tempfile::TempDir {
+        let root = tempfile::tempdir().unwrap();
+        fs::create_dir_all(root.path().join("skills/moai/workflows")).unwrap();
+        fs::create_dir_all(root.path().join(".moai-cli")).unwrap();
+        let decision = |id: &str, value: &str, source: &str| json!({"id": id, "topic": id, "value": value, "source": source, "scope": "project"});
+        let profile = json!({"schema_version": 2, "project_id": "demo",
+        "purpose": "Build a small editor", "tools": ["Rust"],
+        "development_methods": ["TDD"], "hosts": ["claude", "codex"],
+        "interview_revision": "r1", "decisions": [
+            decision("test_command", "cargo test --locked", "user"),
+            decision("review_blocks", "a change without a test", "user"),
+            decision("protected", "the billing module", "user"),
+            decision("build_command", "HOLD", "default"),
+        ]});
+        let mut bytes = serde_json::to_vec_pretty(&profile).unwrap();
+        bytes.push(b'\n');
+        fs::write(root.path().join(".moai-cli/project.yaml"), bytes).unwrap();
+        root
+    }
+
+    fn request(skills: Value, roles: Value) -> GenerationRequest {
+        serde_json::from_value(json!({
+            "protocol_version": 1, "language": "en",
+            "workflow_reference": "skills/moai/workflows", "local_file": "none",
+            "workflow_id": "review-flow", "native_roles": roles, "skill_projections": [],
+            "project_skills": skills
+        }))
+        .unwrap()
+    }
+
+    fn both_skills() -> Value {
+        json!([
+            {"id": "prj-checks", "purpose": "How this project is checked"},
+            {"id": "prj-extra", "purpose": "Something extra"}
+        ])
+    }
+
+    fn codex_role() -> Value {
+        json!([{"role_id": "prj-reviewer", "host": "codex", "purpose": "Reviews changes"}])
+    }
+
+    fn manifest(root: &Path) -> Value {
+        serde_json::from_slice(&fs::read(root.join(MANIFEST)).unwrap()).unwrap()
+    }
+
+    fn section_ids(root: &Path) -> Vec<String> {
+        manifest(root)["owned_files"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter_map(|f| f["section_id"].as_str().map(str::to_string))
+            .collect()
+    }
+
+    /// A project written by an earlier version: two project skills for both hosts, a Codex
+    /// native role, and a skill projection entry recorded for Codex.
+    fn applied() -> tempfile::TempDir {
+        let root = project();
+        let r = root.path();
+        let plan = generation_plan(r, request(both_skills(), codex_role())).unwrap();
+        generation_apply(r, plan.clone(), &plan.plan_digest, PERM).unwrap();
+        let mut value = manifest(r);
+        let baseline = moai_cli::digest(b"projection");
+        fs::create_dir_all(r.join(".agents/skills/prj-proj")).unwrap();
+        fs::write(r.join(PROJECTION), b"projection").unwrap();
+        value["owned_files"].as_array_mut().unwrap().push(json!({
+            "path": PROJECTION, "kind": "skill-projection",
+            "section_id": "generation:skill-projection:codex:prj-proj",
+            "baseline_sha256": baseline
+        }));
+        let mut bytes = serde_json::to_vec_pretty(&value).unwrap();
+        bytes.push(b'\n');
+        fs::write(r.join(MANIFEST), bytes).unwrap();
+        root
+    }
+
+    fn checks_for_claude_only() -> GenerationRequest {
+        request(
+            json!([{"id": "prj-checks", "purpose": "How this project is checked",
+                "hosts": ["claude"]}]),
+            json!([]),
+        )
+    }
+
+    fn action(plan: &GenerationPlan, path: &str) -> Option<String> {
+        plan.files
+            .iter()
+            .find(|f| f.path == path)
+            .map(|f| f.action.clone())
+    }
+
+    #[test]
+    fn while_codex_is_active_its_recorded_skills_are_planned_for_removal_as_before() {
+        let root = applied();
+        let plan = generation_plan_in(&TODAY, root.path(), checks_for_claude_only()).unwrap();
+        assert_eq!(action(&plan, CODEX_CHECKS).as_deref(), Some("remove"));
+        assert_eq!(action(&plan, CODEX_EXTRA).as_deref(), Some("remove"));
+        assert_eq!(action(&plan, CLAUDE_EXTRA).as_deref(), Some("remove"));
+    }
+
+    #[test]
+    fn a_retired_hosts_recorded_skills_plan_no_conflict_and_no_removal() {
+        let root = applied();
+        let plan = generation_plan_in(&AFTER, root.path(), checks_for_claude_only()).unwrap();
+        assert_eq!(action(&plan, CODEX_CHECKS), None, "{:?}", plan.files);
+        assert_eq!(action(&plan, CODEX_EXTRA), None, "{:?}", plan.files);
+        assert_eq!(action(&plan, CLAUDE_EXTRA).as_deref(), Some("remove"));
+        assert!(
+            plan.files.iter().all(|f| f.action != "conflict"),
+            "{:?}",
+            plan.files
+        );
+    }
+
+    #[test]
+    fn an_apply_drops_the_retired_entries_from_the_manifest_and_leaves_their_files() {
+        let root = applied();
+        let r = root.path();
+        let ids_before = section_ids(r);
+        for kind in ["project-skill", "native-role", "skill-projection"] {
+            assert!(
+                ids_before
+                    .iter()
+                    .any(|id| id.starts_with(&format!("generation:{kind}:codex:"))),
+                "{kind}: {ids_before:?}"
+            );
+        }
+        let plan = generation_plan_in(&AFTER, r, checks_for_claude_only()).unwrap();
+        generation_apply_in(&AFTER, r, plan.clone(), &plan.plan_digest, PERM).unwrap();
+        let ids = section_ids(r);
+        assert!(
+            ids.iter().all(|id| !id.contains(":codex:")),
+            "no entry of the retired host stays: {ids:?}"
+        );
+        assert!(
+            ids.iter()
+                .any(|id| id == "generation:project-skill:claude:prj-checks"),
+            "{ids:?}"
+        );
+        for kept in [CODEX_CHECKS, CODEX_EXTRA, PROJECTION] {
+            assert!(r.join(kept).exists(), "{kept} is left alone");
+        }
+        assert!(r.join(CLAUDE_CHECKS).exists());
+        assert!(
+            !r.join(CLAUDE_EXTRA).exists(),
+            "an active host still removes"
+        );
+    }
+
+    #[test]
+    fn while_codex_is_active_an_apply_keeps_the_native_role_and_projection_entries() {
+        let root = applied();
+        let r = root.path();
+        let plan = generation_plan_in(&TODAY, r, checks_for_claude_only()).unwrap();
+        generation_apply_in(&TODAY, r, plan.clone(), &plan.plan_digest, PERM).unwrap();
+        let ids = section_ids(r);
+        assert!(
+            ids.iter()
+                .any(|id| id == "generation:native-role:codex:prj-reviewer"),
+            "{ids:?}"
+        );
+        assert!(
+            ids.iter()
+                .any(|id| id == "generation:skill-projection:codex:prj-proj"),
+            "{ids:?}"
+        );
+    }
+}

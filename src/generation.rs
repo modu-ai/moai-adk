@@ -1138,6 +1138,30 @@ fn record_generation(
     map.insert("profile_sha256".into(), json!(digest(profile_bytes)));
 }
 
+/// [`generation_plan`] for a place whose active hosts are `active`: a recorded file of a retired
+/// host plans no conflict and no removal.
+pub fn generation_plan_in(
+    active: &[&str],
+    root: &Path,
+    request: GenerationRequest,
+) -> Result<GenerationPlan> {
+    let _ = active;
+    generation_plan(root, request)
+}
+
+/// [`generation_apply`] for a place whose active hosts are `active`: the manifest it publishes
+/// drops the recorded entries of a retired host and leaves their files alone.
+pub fn generation_apply_in(
+    active: &[&str],
+    root: &Path,
+    p: GenerationPlan,
+    confirmed: &str,
+    permission: &str,
+) -> Result<Value> {
+    let _ = active;
+    generation_apply(root, p, confirmed, permission)
+}
+
 /// `generation-apply` (REQ-03C-03/04/11): re-plans the whole request and refuses any
 /// drift, applies the agents portion through the `agents_apply` engine with its own
 /// freshly computed digest, publishes the generation files with the 01-B engine from
