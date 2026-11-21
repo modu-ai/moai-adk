@@ -16,7 +16,7 @@ const TITLE: &str = "Cards are the work ledger";
 const WINS: &str = "GitHub Issues are no longer the work ledger; the project's local cards are \
                     (user decision 2026-11-16, card C-53)";
 /// The actions a round uses. `export` is not one of them.
-const ACTIONS: [&str; 17] = [
+const ACTIONS: [&str; 18] = [
     "list",
     "show",
     "add",
@@ -34,6 +34,7 @@ const ACTIONS: [&str; 17] = [
     "done",
     "renew",
     "check",
+    "timeline",
 ];
 
 fn workflow(name: &str) -> String {
@@ -439,7 +440,7 @@ fn the_round_keeps_audits_with_the_leader_and_moves_on_from_a_card_in_review() {
     assert!(step("mode-agent.md", "claim").contains(REVIEW_WAITS));
     assert!(pick.contains(REVIEW_WAITS));
     assert!(step("mode-agent.md", "hand-off")
-        .contains("Then start the next round without waiting for the merge"));
+        .contains("Then do not wait for the merge: follow `Waiting is switching`"));
     // N1 (re-audit N-r1: the line has the `owner=` and `next=` the report step asks for).
     assert!(step("mode-agent.md", "session-id").contains(
         "refuses a session without one: there (OMP) report `LANE-BLOCKED <lane> card-take no \

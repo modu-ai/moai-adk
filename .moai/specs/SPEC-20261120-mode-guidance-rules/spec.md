@@ -32,7 +32,7 @@ created: 2026-11-20
 
 - REQ-1: The MODE-AGENT workflow shall tell a lane to run a command expected to take longer than two minutes as a host background task and to give a command it runs in the foreground a timeout of at most 120 seconds. · failure: none
 - REQ-2: The MODE-AGENT workflow shall no longer tell a lane to run `moai wait` in the foreground. · failure: none
-- REQ-3: The MODE-AGENT workflow shall tell a lane whose card would wait for a check, an audit, a file another card holds, a pair line or a train turn to leave a `RESUME` note, give the reservation back, print `SWITCH <card> → <next>`, wait for the leader's `/clear` and never end the turn, holding at most three cards whose leases it renews. · failure: none
+- REQ-3: The MODE-AGENT workflow shall tell a lane whose card would wait for a check, an audit, a file another card holds, a pair line or a train turn to leave a `RESUME` note and stop its own background jobs, give the reservation back (a card in `review` stays held), print `SWITCH <card> → <next>` as the one line a turn may end on while a card waits, and wait for the leader's `/clear`, holding at most three cards whose leases it renews. · failure: none
 - REQ-4: The MODE-LEADER workflow shall tell the leader to answer a `SWITCH` line with `/clear` (Claude Code) or `/new` (Codex CLI) and the next card, and to dispatch the earlier card again when the awaited signal arrives. · failure: none
 - REQ-5: The MODE-AGENT workflow shall tell a lane near its context limit to post `LANE-COMPACT` once its resume note is current and to start again with an `ACK <lane> resume` line. · failure: none
 - REQ-6: The MODE-LEADER workflow shall tell the leader to answer `LANE-COMPACT` with `/compact` and one resume line, and to count the lane as working only after it has read the ACK. · failure: none
@@ -62,7 +62,7 @@ created: 2026-11-20
 
 ## Scope
 
-- write: `.moai/specs/SPEC-20261120-mode-guidance-rules/**`, `tests/mode_guidance_scan.rs`, `skills/moai/workflows/mode-agent.md`, `skills/moai/workflows/mode-leader.md`, `skills/moai/references/source-manifest.json` (regenerated after the two workflow edits)
+- write: `.moai/specs/SPEC-20261120-mode-guidance-rules/**`, `tests/mode_guidance_scan.rs`, `tests/mode_workflow_steps.rs` and `tests/mode_cards_53.rs` (existing tests that pin sentences this change rewrites, and the card action list that lacked `timeline`), `skills/moai/workflows/mode-agent.md`, `skills/moai/workflows/mode-leader.md`, `skills/moai/references/source-manifest.json` (regenerated after the two workflow edits)
 - read-only: `skills/moai/SKILL.md`, `src/lane_screen*.rs`, `src/card/timeline.rs`
 - forbidden: a card, Issue or pull request number in the sentences this change adds, and any edit of a file another card holds (the card that holds the two workflow files and the manifest must have released them first)
 
@@ -84,7 +84,8 @@ MODE-AGENT, new section `## Long commands` after `## Watching on your own`:
 
 MODE-AGENT, new section `## Waiting is switching` after `## Long commands`:
 
-- Never wait. When a card of yours would have to wait for a check, an audit, a file another card holds, a pair line or a train turn, do these in order: (1) leave a `RESUME` note on the card with what it waits for, the watch id, the next step, the worktree, the branch and the head; (2) give the reservation back with `card release`, because `/clear` gives the session a new id that cannot touch the old reservation; (3) print `SWITCH <card> → <next>` as the last line of the screen and add it as a note on the card; (4) wait for the leader to send `/clear` (Claude Code) or `/new` (Codex CLI) and the next card. Ending the turn is not waiting and is forbidden.
+- Never wait. When a card of yours would have to wait for a check, an audit, a file another card holds, a pair line or a train turn, first finish whatever else the card still has, then do these in order: (1) leave a `RESUME` note on the card with what it waits for, the watch id, the next step, the worktree, the branch and the head, and stop your own background jobs and watches (the note names them, the next session arms them again), because `moai lane-safe-to-reset` answers `not_safe` while one runs; (2) give the reservation back with `card release`, because `/clear` gives the session a new id that cannot touch the old reservation — a card in `review` is refused by `card release`, so it stays held and you write `review` after its name in the next line; (3) print `SWITCH <card> → <next>` as the last line of the screen and add it as a note on the card; (4) end the turn on that line and wait for the leader to send `/clear` (Claude Code) or `/new` (Codex CLI) and the next card, which the host runs only after the turn has ended. The `SWITCH` line is the only line a turn may end on while a card waits; ending a turn on a wait without it is forbidden.
+- If no `/clear` or `/new` has arrived by your next wake, go on with `self-pick` in the same context and skip the cards you gave back until the signal they wait for has come.
 - When the signal you waited for comes, the leader dispatches the earlier card again, and the new session reads its `RESUME` note and takes the card again.
 - A lane holds at most three cards at once and renews the lease of each (`card renew`).
 
@@ -97,7 +98,9 @@ MODE-AGENT, new section `## Session reset` after `## Waiting is switching`:
 
 MODE-AGENT `report` step: "A `LANE-DONE` line is a progress record, not a stop: after writing it, follow `Session reset` and go on in the same turn, and never make it the turn's last line unless the `keep-going` step lets the turn end."
 
-MODE-AGENT `Watching on your own`, third rung: "(3) in the turn, run `moai wait` as a background task (`Long commands`) and do not end the turn".
+MODE-AGENT `Watching on your own`, third rung: "(3) in the turn, run `moai wait` as a background task (`Long commands`), go on with other work in the same turn and do not end the turn on it; when nothing else is left, follow `Waiting is switching`".
+
+MODE-AGENT, old sentences that told a lane to take other work at once (the audit found them next to the new rule): the `claim` step's reply wait (`go on with other work of the card in the same turn, or follow Waiting is switching when it has none`), the `heavy-checks` step (`run it as a background task, go on with other work of the card … follow Waiting is switching when only the wait is left: a wait is not work`), the `keep-going` step's `waiting:` line (`once the card has nothing else to do, follow Waiting is switching; when the reply comes, the card is dispatched again`), the `hand-off` step (`Then do not wait for the merge: follow Waiting is switching`, a card in `review` stays held) and the `report` step's `LANE-BLOCKED` sentence (`then the lane follows Waiting is switching`).
 
 MODE-AGENT `self-pick`, after the resume-note paragraph:
 
@@ -108,7 +111,7 @@ MODE-AGENT `report` step, appended: "A repair READY line, after a FAIL, carries 
 
 MODE-LEADER `supervise` step, after the sentence about a lane waiting on CI or a local check:
 
-- A lane that posted `SWITCH <card> → <next>` gets `/clear` (Claude Code) or `/new` (Codex CLI) once `moai lane-safe-to-reset` answers `safe` and its reservation of that card is gone, and then, as the first message after the reset, the next card from the urgent queue or `moai card next`; when the awaited signal arrives, dispatch the earlier card again (its `RESUME` note says where it stopped), and count the `SWITCH` lines in the round summary.
+- A lane that posted `SWITCH <card> → <next>` gets `/clear` (Claude Code) or `/new` (Codex CLI) once `moai lane-safe-to-reset` answers `safe` and the card the line names is released or, when the line says `review`, still held in `review` (the ledger refuses to release a card in `review`), and then, as the first message after the reset, the next card from the urgent queue or `moai card next`; when the awaited signal arrives, dispatch the earlier card again (its `RESUME` note says where it stopped), and count the `SWITCH` lines in the round summary.
 - A lane that posted `LANE-COMPACT` gets `/compact` when its input box is empty and `moai lane-safe-to-reset` does not answer `not_safe`, then one resume line that names its resume note; count it as working only after you have read its `ACK … resume` line.
 - A lane that posted `LANE-DONE` for a card at `READY` or `MERGE-READY` gets `/clear` once `moai lane-safe-to-reset` answers `safe`, and its next dispatch as the first message after the reset (`clear_redispatch`); a `not_safe` or `unknown` answer is a line to the lane that names what to push or note first. Claude Code and Codex CLI both take `/clear` and `/compact` (MODE-AGENT `Session reset`).
 - Read the lanes with `moai lane-screen --scan` (one state per terminal) and a card's history with `moai card timeline <card>` before you give an action. The commands you run yourself follow MODE-AGENT `Long commands`.

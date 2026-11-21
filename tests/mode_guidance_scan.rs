@@ -72,10 +72,15 @@ fn waiting_is_switching_and_the_leader_answers_it() {
             "## Waiting is switching",
             "Never wait.",
             "(1) leave a `RESUME` note on the card",
+            "and stop your own background jobs and watches",
+            "`moai lane-safe-to-reset` answers `not_safe` while one runs",
             "(2) give the reservation back with `card release`",
+            "a card in `review` is refused by `card release`, so it stays held",
             "(3) print `SWITCH <card> → <next>` as the last line of the screen",
-            "(4) wait for the leader to send `/clear` (Claude Code) or `/new` (Codex CLI)",
-            "Ending the turn is not waiting and is forbidden.",
+            "(4) end the turn on that line and wait for the leader to send `/clear` (Claude Code) or `/new` (Codex CLI)",
+            "The `SWITCH` line is the only line a turn may end on while a card waits",
+            "If no `/clear` or `/new` has arrived by your next wake, go on with `self-pick`",
+            "follow `Waiting is switching`",
             "the leader dispatches the earlier card again",
             "reads its `RESUME` note and takes the card again",
             "at most three cards at once and renews the lease of each",
@@ -87,7 +92,7 @@ fn waiting_is_switching_and_the_leader_answers_it() {
         "mode-leader.md",
         &[
             "posted `SWITCH <card> → <next>` gets `/clear` (Claude Code) or `/new` (Codex CLI)",
-            "`moai lane-safe-to-reset` answers `safe` and its reservation of that card is gone",
+            "`moai lane-safe-to-reset` answers `safe` and the card the line names is released or, when the line says `review`, still held in `review`",
             "dispatch the earlier card again",
             "count the `SWITCH` lines in the round summary",
         ],
@@ -173,6 +178,16 @@ fn session_reset_follows_every_card_and_compact_follows_a_full_context() {
         "mode-agent.md",
         &["after writing it, go to the next pick in the same turn"],
     );
+    // The old way to spend a wait took another job at once, which no `/clear` could precede.
+    lacks(
+        &a,
+        "mode-agent.md",
+        &[
+            "take other work in the same turn",
+            "take the next job in the same turn",
+            "Then start the next round without waiting for the merge",
+        ],
+    );
     let l = leader();
     has(
         &l,
@@ -180,6 +195,49 @@ fn session_reset_follows_every_card_and_compact_follows_a_full_context() {
         &[
             "gets `/clear` (Claude Code) or `/new` (Codex CLI) once `moai lane-safe-to-reset` answers `safe`, and its next dispatch as the first message after the reset",
             "Claude Code and Codex CLI both take `/clear` or `/new` and `/compact`",
+        ],
+    );
+}
+
+#[test]
+fn the_waiting_steps_come_in_order_and_the_safety_words_stay() {
+    let a = agent();
+    // (1) note, (2) release, (3) SWITCH line, (4) end the turn on it: a swapped order is a bug.
+    let at = |needle: &str| {
+        a.find(needle)
+            .unwrap_or_else(|| panic!("mode-agent.md is missing `{needle}`"))
+    };
+    assert!(at("(1) leave a `RESUME` note") < at("(2) give the reservation back"));
+    assert!(at("(2) give the reservation back") < at("(3) print `SWITCH"));
+    assert!(at("(3) print `SWITCH") < at("(4) end the turn on that line"));
+    has(
+        &a,
+        "mode-agent.md",
+        &[
+            "nothing uncommitted or unpushed",
+            "once the resume note is current",
+            "`moai check affected`, an audit agent, `moai wait`",
+            "go on with other work of the card in the same turn, or follow `Waiting is switching` when it has none",
+            "once the card has nothing else to do, follow `Waiting is switching`",
+        ],
+    );
+    let l = leader();
+    has(
+        &l,
+        "mode-leader.md",
+        &[
+            "count it as working only after you have read its `ACK … resume` line",
+            "its context is at 80% or more at a card boundary",
+            "then give the lane `/clear` (Claude Code) or `/new` (Codex CLI) and its next task",
+        ],
+    );
+    lacks(
+        &l,
+        "mode-leader.md",
+        &[
+            "its context is at 85% or more",
+            "or let the lane continue its own pick order (MODE-AGENT workflow, `self-pick` step)",
+            "takes its own next card (MODE-AGENT `keep-going`)",
         ],
     );
 }

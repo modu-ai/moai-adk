@@ -461,7 +461,7 @@ fn the_round_keeps_going_until_its_end_condition() {
     assert_says(
         &agent,
         "report",
-        &["A `LANE-DONE` line is a progress record, not a stop: after writing it, go to the next pick in the same turn"],
+        &["A `LANE-DONE` line is a progress record, not a stop: after writing it, follow `Session reset` and go on in the same turn"],
     );
     // (iii) arm a wake before ending a turn.
     assert_says(
@@ -1106,8 +1106,8 @@ fn waiting_is_a_line_and_the_next_job_and_an_armed_watch_is_idle() {
             // C-53 S5: on the card (was: on the Issue or pull request).
             "While you wait for CI, an audit, a shell or a reply, leave one line `waiting: <what> since <UTC>` on the card (`card note`) or the pull request",
             "the UTC from `date -u`, never typed from memory",
-            "take the next job in the same turn",
-            "when the reply comes, go back to it",
+            "once the card has nothing else to do, follow `Waiting is switching`",
+            "when the reply comes, the card is dispatched again",
             "`waiting: done` clears the line",
         ],
     );
