@@ -50,7 +50,7 @@ const BACKUP_REASON: &str = "the Go-generation .moai/ and the earlier .moai-cli/
      Go tool files under .claude/ and .agents/, settings and instruction files \
      (go-state-plan); .codex files are classified in the preview and nothing under .codex \
      moves yet (#2936 S1c-2)";
-const INSTALL_REASON: &str = "profile, generation (AGENTS.md managed section and generated \
+const INSTALL_REASON: &str = "profile, project harness (AGENTS.md managed section and generated \
      files), Claude Code settings, Claude Code hooks, GitHub templates, the Codex and OMP hook \
      sets; the Codex config and skill copy and the OMP agents are a later slice (#2936 R9 S5b)";
 /// Why the merge step waits while the generation step has files to write: the merge reads and
