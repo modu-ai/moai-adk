@@ -48,6 +48,7 @@ pub struct ReadLedger {
 pub struct WriteLedger {
     conn: Connection,
     project_id: String,
+    done_guard_upgrade: Option<std::path::PathBuf>,
 }
 
 impl ReadLedger {
@@ -71,6 +72,12 @@ impl WriteLedger {
     }
     pub fn project_id(&self) -> &str {
         &self.project_id
+    }
+
+    /// The backup file made when this open gave an older ledger the current `card_done_guard`
+    /// trigger ([`migrate::upgrade_done_guard`]); `None` when the ledger already had it.
+    pub fn done_guard_upgrade(&self) -> Option<&Path> {
+        self.done_guard_upgrade.as_deref()
     }
 
     /// Runs `f` in one `BEGIN IMMEDIATE` transaction and commits it when `f` returns `Ok`; an
@@ -132,14 +139,20 @@ pub fn open_read_only_within(
     })
 }
 
-/// Opens an existing ledger for writing. Never creates a folder or a file.
+/// Opens an existing ledger for writing. Creates no folder and no ledger file. A ledger made
+/// before the `card.landed` exception of the done guard is first given the current trigger, with
+/// a backup copy beside it ([`migrate::upgrade_done_guard`]); the open fails, and the ledger is
+/// left as it was, when that cannot be done.
 pub fn open_write(home: &Path, project_id: &str) -> Result<WriteLedger, LedgerError> {
     let path = location::ledger_path(home, project_id)?;
     super::folders::refuse_links(home, project_id)?;
-    let (conn, _) = open_at(&path, project_id, true)?;
+    let (mut conn, _) = open_at(&path, project_id, true)?;
+    let done_guard_upgrade =
+        migrate::upgrade_done_guard(&mut conn, &path)?.map(|upgraded| upgraded.backup);
     Ok(WriteLedger {
         conn,
         project_id: project_id.to_string(),
+        done_guard_upgrade,
     })
 }
 
