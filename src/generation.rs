@@ -226,7 +226,11 @@ fn validate(r: &GenerationRequest) -> Result<()> {
     // A refusal names the field and the limit and never a value of the request.
     for (field, len, limit) in [
         ("native_roles", r.native_roles.len(), MAX_ROLES),
-        ("skill_projections", r.skill_projections.len(), MAX_PROJECTIONS),
+        (
+            "skill_projections",
+            r.skill_projections.len(),
+            MAX_PROJECTIONS,
+        ),
         ("project_skills", r.project_skills.len(), MAX_PROJECTIONS),
     ] {
         if len > limit {

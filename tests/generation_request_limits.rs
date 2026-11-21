@@ -122,15 +122,24 @@ fn limit_seventeen_skills_are_refused_with_the_field_and_the_limit() {
     let msg = refusal(&fx.plan(&request(vec![], skills(LIMIT + 1))));
     assert!(msg.contains("project_skills"), "{msg}");
     assert!(msg.contains("16"), "{msg}");
-    assert!(!msg.contains("prj-skill-"), "no value of the request: {msg}");
+    assert!(
+        !msg.contains("prj-skill-"),
+        "no value of the request: {msg}"
+    );
 }
 
 #[test]
 fn unsafe_a_name_without_the_prefix_is_refused_with_its_field_and_index() {
     let fx = fixture();
-    let msg = refusal(&fx.plan(&request(vec![role("prj-fine"), role("shadow-agent")], vec![])));
+    let msg = refusal(&fx.plan(&request(
+        vec![role("prj-fine"), role("shadow-agent")],
+        vec![],
+    )));
     assert!(msg.contains("native_roles[1].role_id"), "{msg}");
-    assert!(!msg.contains("shadow-agent"), "no value of the request: {msg}");
+    assert!(
+        !msg.contains("shadow-agent"),
+        "no value of the request: {msg}"
+    );
     let msg = refusal(&fx.plan(&request(vec![], vec![skill("prj-fine"), skill("../x")])));
     assert!(msg.contains("project_skills[1].id"), "{msg}");
     assert!(!msg.contains("../x"), "no value of the request: {msg}");
