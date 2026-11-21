@@ -44,7 +44,7 @@ created: 2026-11-21
 - AC-5 (REQ-8, REQ-9): `--jobs` 가 없으면 `MOAI_SPAWN_TEST_CAP`(없으면 4)을 쓰고, 0·음수·글자는 아무것도 돌리기 전에 거절돼요 · verify: `python3 -I -m unittest tests.statusline_golden_parallel_test`
 - AC-6 (REQ-10): 골든 시험이 실제 바이너리로 통과해요 · verify: `cargo test --locked --offline --test statusline_golden`
 - AC-7 (REQ-11): Result 에 전후 시간 표가 있어요 · verify: `grep -n "전후 시간" .moai/specs/SPEC-20261121-event-waits-and-parallel-golden/spec.md`
-- AC-8 (REQ-12): 바뀐 시험 파일에서 `#[test]` 개수가 같고 `weakened_in` 검사가 약화를 찾지 않아요 · verify: `moai-cli gate-check --base b4681b3a6f`
+- AC-8 (REQ-12): 바뀐 시험 파일에서 지워진 줄 가운데 `#[test]` 나 `assert` 가 든 줄이 없어요 · verify: `git diff b4681b3a6f..HEAD -- tests/go_state_classes_cli.rs tests/index_cli.rs tests/update_moved_receipts.rs tests/update_version_folders.rs | grep -E '^-' | grep -vE '^---' | grep -cE '#\[test\]|assert'` 가 0 을 찍어요(없으면 grep 이 1 로 끝나요)
 
 ## Scope
 
@@ -76,4 +76,45 @@ created: 2026-11-21
 
 ## Result
 
-(아직 구현 전이에요.)
+조각 1(네 파일의 고정 잠을 시계 대기로)까지 끝났어요. 조각 2(골든 병렬화와 `update_command_cli.rs` 의 잠 한 곳)는 그 파일을 쥔 카드들이 돌려주면 해요. 그래서 이 Result 는 부분이고, AC-4·AC-5·AC-6 은 아직 닫지 않았어요.
+
+### 이번에 한 것
+
+- `tests/clock_wait/mod.rs`(새): `wait_for_next_second()` — 시계의 Unix 초가 바뀔 때까지 5 ms 간격으로 읽고, 3초 안에 안 바뀌면 `wait_for_next_second: the clock stayed at Unix second <n> for 3s` 로 시험을 실패시켜요.
+- 네 파일(`go_state_classes_cli`, `index_cli`, `update_moved_receipts`, `update_version_folders`)의 `from_millis(1100)` 을 그 함수 호출로 바꿨어요. 단언은 하나도 바꾸지 않았고(시험 개수 71·23·8·11 그대로) 쓰지 않게 된 `thread::sleep`·`Duration` 가져오기만 지웠어요.
+- `tests/no_fixed_second_sleeps.rs`(새, 시험 2개): 도우미를 실제·가짜 시계로 시험하고, 목록의 파일이 1100 ms 잠을 갖지 않고 시계 대기를 부르는지 파일 내용으로 확인해요.
+
+### AC 결과
+
+- AC-1 met: `cargo test --locked --offline --test no_fixed_second_sleeps` → 2 passed (실제 시계 대기가 1.1초 미만, 가짜 시계 통과, 멈춘 시계·되돌린 시계는 이름이 든 메시지로 실패).
+- AC-2 met(목록은 네 파일, 다섯째는 조각 2): 같은 시험 `the_listed_files_hold_no_fixed_1100_ms_sleep` 통과.
+- AC-3 met(네 파일): `cargo test --locked --offline --test go_state_classes_cli --test index_cli --test update_moved_receipts --test update_version_folders` → 71·23·8·11 passed, 실패 0. `update_command_cli` 는 조각 2.
+- AC-4 not yet: 골든 하네스 병렬화는 조각 2.
+- AC-5 not yet: 조각 2.
+- AC-6 not yet: 조각 2.
+- AC-7 met(부분): 아래 전후 시간 표.
+- AC-8 met(조각 1): 위 명령이 0 을 찍었어요. 지워진 줄은 모두 8줄(고정 잠 4줄, 쓰지 않게 된 가져오기 4줄)이고 `#[test]`·`assert` 줄은 없어요. 시험 개수도 그대로예요(71·23·8·11). 이 저장소 tip 에는 시험 약화 감지기가 아직 없어서 그 검사는 돌리지 않았어요.
+
+### 전후 시간 (각 3회, `cargo test --test <대상>` 의 "finished in", 초)
+
+측정 도구: `target/notes/measure277.py`(회마다 시각·기계 부하·git head 기록). 전: head `e0d5e47a6e`(시험 코드는 `b4681b3a6f` 와 같음), 2026-11-21T03:33Z~03:46Z, 부하(1분) 46~108. 후: head `7e252e216b`, 04:21Z~04:23Z, 부하(1분) 105~123 으로 전보다 더 바빴어요.
+
+| 대상 | 전(3회) | 전 중앙값 | 후(3회) | 후 중앙값 |
+| --- | --- | --- | --- | --- |
+| go_state_classes_cli | 13.71, 14.23, 14.74 | 14.23 | 12.51, 13.48, 13.89 | 13.48 |
+| index_cli | 5.10, 7.12, 20.82 | 7.12 | 5.74, 6.77, 11.41 | 6.77 |
+| update_moved_receipts | 13.28, 13.95, 18.14 | 13.95 | 5.82, 6.62, 6.79 | 6.62 |
+| update_version_folders | 11.72, 12.73, 18.04 | 12.73 | 8.70, 8.92, 9.11 | 8.92 |
+| update_command_cli (조각 2) | 19.17, 21.71, 24.46 | 21.71 | 아직 | 아직 |
+| statusline_golden (조각 2) | 144.27, 155.89, 185.48 | 155.89 | 아직 | 아직 |
+
+읽는 법: 부하가 달라서 이 숫자는 정확한 비교가 아니에요. 줄어든 몫은 잠을 부른 횟수와 같아요(`update_moved_receipts` 는 `install` 이 11번이라 한 번에 평균 0.6초씩, `update_version_folders` 는 18번 호출). `go_state_classes_cli` 의 잠은 4번뿐이라 차이가 부하 흔들림 안에 있어요. 부하가 더 높았는데도 네 대상 모두 중앙값이 줄었어요.
+
+### 돌리지 않은 것
+
+- 골든 병렬화, `update_command_cli.rs` 의 잠, 그 둘의 후 측정(조각 2).
+- 후 측정은 부하가 높은 때 한 번(3회)이라 같은 부하에서 다시 재지 않았어요.
+
+### 검사 (head `7e252e216b` 기준, 전부 줄이지 않고)
+
+diff-check·fmt·ops-rustfmt·clippy(`--all-targets -D warnings`)·`--lib`·`--bins`·영역 시험 31개·저장소 스캔 시험 4개·macOS 시험 6개 exit 0, `tools/repo_scans.json` 검사 41개 중 실패 0, 파이썬 시험 129개 OK, trailer-check exit 0. 뮤턴트 5개 모두 잡힘(`tests/clock_wait/mod.rs` 3개, 두 파일의 시계 대기 제거 2개 — 후자는 파일 내용 시험이 잡아요).
