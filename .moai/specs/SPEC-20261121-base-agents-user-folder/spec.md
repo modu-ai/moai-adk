@@ -60,7 +60,7 @@ Consequences for the design:
 ## Scope
 
 - write: `src/agent_install.rs`, `src/update.rs` (the agent summary and the write test only), `src/generation.rs` (the native role path and its move only), the tests named in the acceptance lines, `tests/fixtures/update_tux/`, new `tests/base_agents_nested.rs` and `tests/project_agents_nested.rs`, and this SPEC folder
-- files held by other changes at the time of writing (one-line follows by pair notes): `tests/update_user_layer_cli.rs`, `tests/update_tux_golden.rs`, `tests/install_script_test.py`
+- files held by other changes at the time of writing (one-line follows by pair notes): `tests/update_user_layer_cli.rs`, `tests/update_tux_golden.rs`, `tests/install_script_test.py`, `tests/product_cli.rs` (five role-path lines), `tests/repo_scans_test.py` (one EXEMPT line)
 - read-only: `src/agents.rs`, `src/agents_local_merge.rs`, `src/ops/agents_*`, `src/agent_defs.rs`, `src/omp_agents.rs`, `src/host_home.rs`
 - forbidden: the Go repository, the real HOME, any file under the user's agents, Codex or OMP folders in the home, any card number in a file name, SPEC id, branch or commit
 
@@ -77,6 +77,7 @@ Order, one commit group each with its full target list run before the next: (1) 
 - `host_folders_plain` checks every level from the host folder down; `agents/moai` joins the checked levels, so a link named `moai` blocks the host instead of being followed.
 - The update summary and the TUX golden count file actions; a removal without a nested write must still count as a write (`agents_write_anything`).
 - `tests/update_user_layer_cli.rs`, `tests/update_tux_golden.rs` and `tests/install_script_test.py` are held by other changes: the follow is one path line each, agreed by pair notes.
+- A receipt written by the flat layout is skipped at revert (its folder is not the nested one), with the reason on the line; it is not harmful, and the earlier flat files stay where the earlier layout wrote them until the next update moves them.
 
 ## Decisions
 
@@ -89,4 +90,15 @@ Order, one commit group each with its full target list run before the next: (1) 
 
 ## Result
 
-(to be written at the end of the change)
+Built tests first, one slice at a time: `tests/base_agents_nested.rs` (home folder) and `tests/project_agents_nested.rs` (project roles) were written before the code, each in a red commit that carries `Moai-Phase: red` (`bb881d9d1a` and `1a3876a17c`), then made green by `src/agent_install.rs` + `src/update.rs` and by `src/generation.rs`. The tests that name the flat path follow in their own commits.
+
+- AC-1: met — `base_agents_nested` 5 passed and `agents_home_cli` 7 passed (`base_agents_install_only_inside_the_moai_folder`: the five base agents land under `.claude/agents/moai/`, none directly under `.claude/agents/`, each starts with `name: moai-<role>`, a personal `agents/mine.md` and `agents/moai/mine.md` keep their bytes).
+- AC-2: met — `base_agents_nested` 5 passed: `an_unedited_flat_install_of_the_earlier_layout_moves_into_the_moai_folder` (its second apply reports `unchanged`), `an_edited_or_foreign_flat_file_stays_and_blocks_its_nested_copy` and `the_revert_of_a_move_restores_the_flat_files_and_skips_a_changed_one`.
+- AC-3: met — `project_agents_nested` 3 passed (`a_claude_role_is_written_inside_the_moai_folder`, `an_unedited_flat_role_moves_into_the_moai_folder`, `an_edited_flat_role_stays_and_blocks_the_nested_copy`); `product_cli` 79 passed after its five role-path lines followed.
+- AC-4: met — `base_agents_nested::claude_code_finds_both_kinds` ran with the real `claude` 2.1.330 on PATH in a temporary home and project: `claude --agent <unknown name> -p hi` exited 1 before any model call and its `Available agents:` list held the five base agents and the project roles. The test prints a skip message and passes when `claude` is not on PATH.
+- AC-5: met — `agents_home_cli` 7, `host_home_cli` 12, `update_user_layer_cli` 11, `update_tux_golden` 14, `retired_hosts_layer` 32, `omp_agents` 15, `update_cleanup_cli` 13, `agents_apply_linkage` 1 passed, and the one path in `install_script_test.py` (python, run from `tests/`).
+- AC-6: met — the library and binaries built and clippy was clean in `moai-cli check affected`; its result is in the ready note of this change, not here. `home_isolation_scan` 14 passed after the project role cases were given a temporary HOME, `repo_scans_test` 6 passed after the one EXEMPT line.
+
+Mutants (5, one rule each, run on the committed text, each restored with `git checkout` and the tree read clean): the Claude Code host folder is `agents` again → `base_agents_nested` 4 failed; an edited flat file counts as ours → 1 failed (`an_edited_or_foreign_flat_file_stays_and_blocks_its_nested_copy`); the move leaves the flat file in place → 2 failed; the project role path is flat again → `project_agents_nested` 3 failed; an edited flat role is planned `remove` → 1 failed (`an_edited_flat_role_stays_and_blocks_the_nested_copy`). All five died.
+
+Not run: Windows and Linux; mutants of the receipt revert rules beyond these five; the real HOME and the user's agents folder were never read or written (every case uses a temporary HOME).
