@@ -740,7 +740,7 @@ class AuditPlaceTest(unittest.TestCase):
         self.assertEqual(got["tree"], git(self.place, "rev-parse", "HEAD^{tree}").strip())
 
     def test_a_bad_head_or_name_is_refused_and_writes_nothing(self):
-        for head in ["abc", self.c1.upper(), "0" * 40, self.c1 + "0", "--help", ""]:
+        for head in ["abc", self.c1.upper(), "0" * 40, self.c1 + "0", self.c1[:12], "--help", ""]:
             out = self.call(head)
             self.assertEqual(out.returncode, 1, (head, out.stdout, out.stderr))
             self.assertEqual(out.stdout, "")
@@ -770,6 +770,24 @@ class AuditPlaceTest(unittest.TestCase):
         out = self.call(self.c1)
         self.assertEqual(out.returncode, 1, out.stderr)
         self.assertEqual((self.place / "mine.txt").read_text(), "not a worktree\n")
+
+    def test_a_clone_or_a_link_to_another_worktree_is_never_moved(self):
+        # A full clone has every commit, so only the worktree registry tells it is not a place.
+        self.place.parent.mkdir(parents=True)
+        git(self.fx.home, "clone", "-q", str(self.fx.repo), str(self.place))
+        git(self.place, "checkout", "-q", "--detach", self.c1)
+        out = self.call(self.c3)
+        self.assertEqual(out.returncode, 1, out.stderr)
+        self.assertEqual(self.head_in_place(), self.c1)
+        # A link to a real worktree of this repository must not move that worktree either.
+        import shutil
+        shutil.rmtree(self.place)
+        os.symlink(self.fx.wt, self.place)
+        before = git(self.fx.wt, "rev-parse", "HEAD").strip()
+        out = self.call(self.c3)
+        self.assertEqual(out.returncode, 1, out.stderr)
+        self.assertTrue(os.path.islink(self.place))
+        self.assertEqual(git(self.fx.wt, "rev-parse", "HEAD").strip(), before)
 
     def test_a_held_cargo_lock_stops_the_move(self):
         self.answer(self.call(self.c1))
