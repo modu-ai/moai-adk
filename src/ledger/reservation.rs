@@ -5,15 +5,20 @@
 //! generation (`card.generation + 1`), records the holder, the lease and the write scope, and
 //! moves the card `ready -> active`, all in one `BEGIN IMMEDIATE` transaction. The unique index
 //! `reservation_one_active` makes a second holder of the same card impossible, and the scope
-//! check runs in the same transaction against every other card's active reservation. It asks
+//! check runs in the same transaction against every other card's active reservation, except that
+//! a `held` reservation whose lease has ended gives the overlapping paths up to the new take or
+//! widening (`yield_overlaps`, one `card.yield` event); a live lease, a recovered reservation and
+//! an expired candidate still refuse. It asks
 //! [`crate::scope::card_overlap`]: [`crate::scope::overlap`] ("could both write this path",
 //! case folded) minus a pair in which one side is exactly a generated shared path (case kept),
 //! which two cards may both list.
 //!
 //! The generation is the fence: [`renew`], [`release`], [`handoff`] and [`fence`] accept only
 //! the current generation, held by the offered holder, with a lease that has not ended (a
-//! release does not need a live lease). A lower generation, another holder, a reservation that
-//! is no longer `held` or an ended lease is rejected with a [`FenceError`], and the rejection is
+//! release and a renew do not need a live lease: the holder of an ended lease that nobody
+//! reclaimed renews it at the same generation). A lower generation, another holder, a
+//! reservation that is no longer `held` or, for [`handoff`] and [`fence`], an ended lease is
+//! rejected with a [`FenceError`], and the rejection is
 //! written to `event` (kind `fence_reject`) in the same transaction that finds it, which then
 //! commits: the record survives the rejection.
 //!

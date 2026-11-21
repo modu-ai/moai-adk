@@ -293,6 +293,24 @@ fn widen_yields_the_paths_of_an_ended_lease() {
     assert_eq!(now_mine, ["src/a/x.rs", "tests/b/**"]);
 }
 
+/// A holder whose own lease ended and who widens under its own pattern does not yield to itself:
+/// its pattern stays, nothing is written as a yield. (Without the exclusion of the card's own
+/// reservation in the yield, the holder would delete its own `src/a/**`.)
+#[test]
+fn widen_under_the_own_pattern_of_an_ended_lease_removes_nothing() {
+    let (_home, mut w) = setup();
+    let mine = taken(&mut w, A, &["src/a/**"]);
+    end_lease(&mut w, mine);
+    let widened = widen(&mut w, mine, A, &["src/a/**", "src/a/x.rs"]);
+    assert!(widened.is_ok(), "{widened:?}");
+    let scope = scope_of(&w, mine);
+    assert!(
+        scope.contains(&"src/a/**".to_string()),
+        "the own pattern is kept: {scope:?}"
+    );
+    assert!(events(&w, "card.yield").is_empty(), "no yield to oneself");
+}
+
 #[test]
 fn widen_refuses_a_live_lease_and_names_the_card_the_holder_and_the_lease_end() {
     let (_home, mut w) = setup();
