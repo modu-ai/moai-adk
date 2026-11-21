@@ -370,7 +370,7 @@ impl World {
         );
         let bin = self.home.path().join(".moai/bin");
         fs::create_dir_all(&bin).unwrap();
-        std::os::unix::fs::symlink(common::MOAI_BIN, bin.join("moai")).unwrap();
+        link_moai(&bin);
         let git_dir = git_executable().parent().unwrap().to_path_buf();
         let path =
             std::env::join_paths([git_dir, PathBuf::from("/usr/bin"), PathBuf::from("/bin")])
@@ -1403,4 +1403,16 @@ fn ac22_the_answer_reports_a_variant_and_a_disagreeing_profile() {
     assert_eq!(got["profile_disagrees"], json!("other"), "{got}");
     assert_eq!(got["variants"], json!(["refs/heads/INTEG"]), "{got}");
     assert_eq!(w.integ(), candidate);
+}
+
+/// Links the moai under test as `bin/moai`, where the hook looks for it. The hook is a shell
+/// script, so the guard tests run on unix only.
+fn link_moai(bin: &Path) {
+    #[cfg(unix)]
+    std::os::unix::fs::symlink(common::MOAI_BIN, bin.join("moai")).unwrap();
+    #[cfg(not(unix))]
+    {
+        let _ = bin;
+        panic!("the guard hook is a shell script: unix only");
+    }
 }

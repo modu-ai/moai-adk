@@ -14,6 +14,7 @@
 mod common;
 
 use common::home::TempHome;
+use common::CleanEnv;
 use moai_cli::card::guard;
 use serde_json::json;
 use std::fs;
@@ -149,7 +150,7 @@ impl Repo {
                 "maintenance.auto=false",
             ])
             .args(args)
-            .env_clear()
+            .clean_env()
             .env("HOME", self.home.path())
             .env("PATH", self.path_var())
             .env("LC_ALL", "C")
