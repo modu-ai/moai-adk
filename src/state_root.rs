@@ -1285,6 +1285,48 @@ mod tests {
         assert!(!is_new_project(tmp.path()));
     }
 
+    /// SPEC-20261121-resurrected-marker: a valid `moai.json` keeps the project Rust-owned when
+    /// the Go markers come back, whichever Go marker it is; every other shape is as before.
+    #[test]
+    fn a_valid_rust_marker_owns_the_state_folder_when_go_markers_come_back() {
+        let go_markers: [(&str, &str); 3] = [
+            (".moai/manifest.json", "{}"),
+            (".moai/config/config.yaml", "x: 1\n"),
+            (".moai/config/sections/system.yaml", SYSTEM_YAML),
+        ];
+        for (rel, text) in go_markers {
+            let tmp = tempfile::tempdir().unwrap();
+            put(tmp.path(), "moai.json", &body("moai", 1));
+            write(tmp.path(), rel, text);
+            let c = classify(tmp.path());
+            assert_eq!(c.generation, "mixed", "{rel}");
+            assert_eq!(c.marker_file, Some("moai.json"), "{rel}");
+            assert_eq!(dir(tmp.path()), MOAI_DIR, "{rel}");
+
+            // The same Go marker without the Rust marker: the Go generation, the earlier folder.
+            let tmp = tempfile::tempdir().unwrap();
+            write(tmp.path(), rel, text);
+            assert_eq!(classify(tmp.path()).generation, "go", "{rel}");
+            assert_eq!(dir(tmp.path()), crate::PROJECT_STATE_DIR, "{rel}");
+
+            // The older marker name beside the Go marker: still `mixed`, not owned.
+            let tmp = tempfile::tempdir().unwrap();
+            put(tmp.path(), "moai-cli.json", &body("moai-cli", 1));
+            write(tmp.path(), rel, text);
+            assert_eq!(classify(tmp.path()).generation, "mixed", "{rel}");
+            assert_eq!(dir(tmp.path()), crate::PROJECT_STATE_DIR, "{rel}");
+
+            // A newer or unreadable `moai.json` is refused and owns nothing.
+            for bad in [body("moai", 99), "not json".to_string()] {
+                let tmp = tempfile::tempdir().unwrap();
+                put(tmp.path(), "moai.json", &bad);
+                write(tmp.path(), rel, text);
+                assert_eq!(classify(tmp.path()).generation, "refuse", "{rel} {bad}");
+                assert_eq!(dir(tmp.path()), crate::PROJECT_STATE_DIR, "{rel} {bad}");
+            }
+        }
+    }
+
     /// The name and the generation travel together: either mismatch is not a marker.
     #[test]
     fn a_name_with_the_other_generation_is_refused() {
