@@ -28,29 +28,39 @@ created: 2026-11-21
 - REQ-5: The `pr-gate` step shall tell an m-flow lane to open no pull request, to push its branch and to post the `READY` note.
 - REQ-6: The `merge-train` step shall give an m-flow lane a pointer to step 5 of the sync workflow instead of a restatement of that step.
 - REQ-7: The `hand-off` step shall tell an m-flow lane to close its card on the local landing evidence and to force-push no branch.
-- REQ-8: Each branching step shall keep its pull request sentences word for word under the label `github-flow and the other pull request flows`, except for the branch name of REQ-4.
+- REQ-8: Each branching step shall keep its pull request sentences word for word inside one bounded block that opens with `PR flow only, for `github-flow and the other pull request flows`:` and closes with `End of PR flow.`, except for the branch name of REQ-4.
 - REQ-9: The introduction line that says pull requests stay on GitHub shall say that a project in m-flow opens a pull request only for a formal release.
 - REQ-10: The m-flow entry of `references/internal/interview.md` shall say that a pull request is opened only for a formal release and not for each SPEC.
 - REQ-11: The skill's source manifest shall match the files after the change.
+- REQ-12: Each branching step shall keep the rules that both flows read outside both flow blocks, each block closing with `End of M-Flow.` or `End of PR flow.`.
+- REQ-13: The m-flow block of the `hand-off` step shall clean up the card's worktree with the local integration branch as the integration reference and not with `origin/<base>`.
+- REQ-14: The lane workflow shall say in an m-flow block on its introduction line and on its `keep-going` and `self-pick` lines what an m-flow lane reads in place of a pull request.
+- REQ-15: The sync workflow shall name the branch of a lane `spec/<slug>-<yyyymmdd>`.
 
 ## Acceptance
 
-- AC-1 (REQ-1, REQ-2): the `state` step reads the flow with the command and gives the m-flow base without `origin/<base`.
+- AC-1 (REQ-1, REQ-2): the `state` step reads the flow with the command outside both blocks and gives the m-flow base without `origin/<base`.
   verify: `cargo test --locked --offline --test work_flow_branching the_state_step_reads_the_flow_and_gives_m_flow_a_local_base`
 - AC-2 (REQ-3, REQ-4): the `claim` step starts an m-flow worktree from the local integration tip and no step names a branch with the card number.
   verify: `cargo test --locked --offline --test work_flow_branching the_claim_step_starts_from_the_local_tip_and_names_no_card_number`
-- AC-3 (REQ-5, REQ-6, REQ-7): `pr-gate`, `merge-train` and `hand-off` each have an m-flow clause; the m-flow clauses carry no `gh pr`, `card pr` or `origin/<` instruction, and the `hand-off` clause forbids a force push.
-  verify: `cargo test --locked --offline --test work_flow_branching the_m_flow_clauses_carry_no_pull_request_or_origin_instruction`
-- AC-4 (REQ-8): every `origin/<base>`, `gh pr create` and `card pr` of the five steps sits after the label for the pull request flows.
-  verify: `cargo test --locked --offline --test work_flow_branching the_pull_request_sentences_stay_under_their_label`
-- AC-5 (REQ-9, REQ-10): the introduction line and the interview entry say a pull request only for a formal release.
+- AC-3 (REQ-5, REQ-6, REQ-7, REQ-13, REQ-14): `pr-gate`, `merge-train` and `hand-off` each have an m-flow block; the m-flow blocks (of those steps, the introduction, `keep-going` and `self-pick`) carry no `gh pr`, `card pr`, `origin/<` or `--force`, and the `hand-off` block forbids a force push and cleans up against the local integration branch.
+  verify: `cargo test --locked --offline --test work_flow_branching the_m_flow_blocks_carry_no_pull_request_or_origin_instruction`
+- AC-4 (REQ-8): every `origin/<base`, `gh pr ` and `card pr ` of the five steps sits inside a pull request block, and the label of the pull request flows is named only by such a block.
+  verify: `cargo test --locked --offline --test work_flow_branching the_pull_request_sentences_stay_inside_their_blocks`
+- AC-5 (REQ-9, REQ-10): the introduction line holds the GitHub sentence in a pull request block and says in an m-flow block that a pull request is opened only for a formal release, and the interview entry says the same.
   verify: `cargo test --locked --offline --test work_flow_branching the_pull_request_only_at_a_formal_release_is_said_in_both_places`
 - AC-6 (REQ-6): the merge-train pointer names the sync workflow and the M-Flow text is not restated in the lane workflow.
   verify: `cargo test --locked --offline --test work_flow_branching the_m_flow_merge_text_is_pointed_to_and_not_copied`
-- AC-7 (REQ-8): the tests that pin these steps still pass (the pull request sentences are unchanged).
+- AC-7 (REQ-8): the tests that pin these steps still pass (the pull request sentences are unchanged, only bounded).
   verify: `cargo test --locked --offline --test mode_workflow_steps --test mode_cards_53 --test lane_rules_2879 --test lane_rules_2401 --test lane_rules_2836 --test mode_guidance_scan --test flaky_followups --test agent_defs_package --test close_step_2903 --test claim_renew_doc_3042`
 - AC-8 (REQ-11): the manifest matches the package.
   verify: `python3 -I tools/source_manifest.py check`
+- AC-9 (REQ-8, REQ-12): the blocks open and close in pairs, do not nest, and every branching step has one block for each flow.
+  verify: `cargo test --locked --offline --test work_flow_branching the_flow_blocks_open_and_close_in_pairs_and_do_not_nest`
+- AC-10 (REQ-12): the rules both flows read stand outside both blocks (the state summary and the standing goal, the dispatch and conflict rules and the lease, the checks before a push and the round going on, the criteria, the audit start, the lease in `review`, the FAIL repair, the leader's confirmation and the build folder).
+  verify: `cargo test --locked --offline --test work_flow_branching the_rules_both_flows_share_stand_outside_both_blocks`
+- AC-11 (REQ-15): the sync workflow names the branch `spec/<slug>-<yyyymmdd>` and no longer calls it a card branch.
+  verify: `cargo test --locked --offline --test work_flow_branching the_sync_workflow_names_the_branch_like_the_lane_workflow`
 
 ## Scope
 
@@ -76,11 +86,13 @@ created: 2026-11-21
 | Id | Decision | Basis | Undo |
 | --- | --- | --- | --- |
 | D-1 | Step numbers and names stay; each branching step gets a clause, not a new step | `procedure_keys` and the step tests pin the list | Add a flow step in a later SPEC with the tests |
-| D-2 | The pull request sentences stay byte for byte under a label; only the branch name changes | The pinned tests and the audit rules read those words | Reword in a later SPEC |
+| D-2 | The pull request sentences stay byte for byte inside a bounded block; only the branch name changes and the block markers are new | The pinned tests and the audit rules read those words | Reword in a later SPEC |
 | D-3 | A failed or empty read of the flow is reported unread and not guessed; a profile without `work_flow` follows the pull request path | The interview asks for the flow only when none is recorded; guessing m-flow would drop the CI gate | Make the unread case a blocked card |
 | D-4 | The m-flow clauses point to `sync.md` step 5 and do not copy it | One canonical text, put once per file (user decisions of 2026-11-20) | Copy the text and keep both in step by a test |
 | D-5 | The branch name is `spec/<slug>-<yyyymmdd>` in both flows | Leader decision: no card number in a branch; the m-flow definition already uses it | Name it with the card number again |
 | D-6 | The interview m-flow entry is corrected in this SPEC | Leader decision; it contradicts `sync.md` step 5 | Revert the entry |
+| D-7 | A rule both flows read stands outside both blocks; where the old text kept it inside the pull request clause, the PR-only part stays in its block and the rule is said in a new sentence ("In either flow, …": taking the card in the worktree, the round going on after a push, the audit start) | Audit finding on the unended label: the shared rules read as pull request only; leader notes 5676 and 5679 | Put the sentences back into the blocks |
+| D-8 | The introduction, `keep-going` and `self-pick` name what an m-flow lane reads in place of a pull request: its pushed branch, until the leader's fast-forward lands | Leader note 5679 (lines 15, 92 and 93); no new behaviour, a reading rule | Remove the m-flow blocks |
 
 ## Result
 
@@ -92,8 +104,8 @@ First green run (`green.out`, 18 targets, no name filter) was red in four target
 
 - AC-1: met — `cargo test --locked --offline --test work_flow_branching` (`green2.out`, and again in `affected/06-test_targets.log`): 6 passed, 0 failed; `the_state_step_reads_the_flow_and_gives_m_flow_a_local_base` is one of them.
 - AC-2: met — same run, `the_claim_step_starts_from_the_local_tip_and_names_no_card_number` (no `card/<n>` is left in `mode-agent.md`).
-- AC-3: met — same run, `the_m_flow_clauses_carry_no_pull_request_or_origin_instruction`.
-- AC-4: met — same run, `the_pull_request_sentences_stay_under_their_label`.
+- AC-3: met — same run, `the_m_flow_blocks_carry_no_pull_request_or_origin_instruction`.
+- AC-4: met — same run, `the_pull_request_sentences_stay_inside_their_blocks`.
 - AC-5: met — same run, `the_pull_request_only_at_a_formal_release_is_said_in_both_places`.
 - AC-6: met — same run, `the_m_flow_merge_text_is_pointed_to_and_not_copied`.
 - AC-7: met — `green2.out` and `affected/06-test_targets.log`: `mode_workflow_steps` 43, `mode_cards_53` 9, `lane_rules_2879` 5, `agent_defs_package` 19, `claim_verify_cli` 39, `product_cli` 79 passed; the other targets of the list (`lane_rules_2401` 4, `lane_rules_2836` 2, `mode_guidance_scan` 8, `flaky_followups` 3, `close_step_2903` 2, `claim_renew_doc_3042` 1, `lane_next_rules` 3, `generic_flow_questions` 10, `orca_alignment` 10, `orca_optional_3005` 5, `project_decide_model` 4) passed in the first run `green.out`, before the claim sentence and the two expectation edits; they are in the affected set run on the final head below.
