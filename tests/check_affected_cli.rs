@@ -563,3 +563,68 @@ fn a_checkout_that_is_not_the_head_runs_nothing() {
     );
     assert_eq!(tools.calls_text(), "", "no step may have run");
 }
+
+/// The per-target history and the flaky score (SPEC-20261121-check-history-flaky-score): one
+/// JSON Lines record per test invocation with the head, the target, the exit code and the
+/// seconds, and a fail-then-pass transition of one target on one head counted as one flaky
+/// event, shown flakiest first in the result and as a total in the summary line.
+#[test]
+fn a_flaky_history_records_targets_and_scores_a_fail_then_pass() {
+    let fx = Fixture::new(true, &[("src/update_models.rs", "// b\n")]);
+    let tools = Tools::new(&["cargo", "python3", "rustfmt"]);
+    let slots = slot_dir();
+    let slot = slots.path().to_string_lossy().to_string();
+    let hist = tempfile::tempdir().unwrap();
+    let history = hist.path().join("check-history.jsonl");
+    let extra = ["--slot-dir", slot.as_str(), "--flaky-history", ""];
+    let extra = [extra[0], extra[1], extra[2], history.to_str().unwrap()];
+
+    // First run: the fake cargo call that names the target exits 3, everything else passes.
+    let (ok, r) = affected(&fx, &extra, Some((&tools, "update_command_cli")));
+    assert!(ok, "{r}");
+    let first = fs::read_to_string(&history).unwrap();
+    let rows: Vec<Value> = first
+        .lines()
+        .map(|l| serde_json::from_str(l).unwrap_or_else(|e| panic!("{e}: {l}")))
+        .collect();
+    assert!(
+        rows.iter()
+            .any(|row| row["target"] == "update_command_cli" && row["exit"] == 3),
+        "{first}"
+    );
+    for row in &rows {
+        assert_eq!(row["head"], json_head(&fx), "{row}");
+        assert!(
+            row["secs"].as_f64().is_some_and(|s| s >= 0.0),
+            "secs missing: {row}"
+        );
+    }
+
+    // Second run on the same tree, everything passing: the failed target counts flaky once.
+    let (ok, r) = affected(&fx, &extra, Some((&tools, "")));
+    assert!(ok, "{r}");
+    let flaky = r["flaky"].as_array().unwrap();
+    assert_eq!(flaky[0]["target"], "update_command_cli", "{flaky:?}");
+    assert_eq!(flaky[0]["score"], 1, "{flaky:?}");
+    for pair in flaky.windows(2) {
+        assert!(
+            pair[0]["score"].as_i64().unwrap() >= pair[1]["score"].as_i64().unwrap(),
+            "flakiest first: {flaky:?}"
+        );
+    }
+    let line = r["summary"].as_str().unwrap();
+    assert!(line.contains(" flaky=1 "), "{line}");
+    assert!(line.contains(" result=PASS"), "{line}");
+
+    // The history file only grew: nothing about the first run was rewritten.
+    let second = fs::read_to_string(&history).unwrap();
+    assert!(
+        second.lines().count() > first.lines().count(),
+        "{second} / {first}"
+    );
+    assert!(second.starts_with(&first), "records are append-only");
+}
+
+fn json_head(fx: &Fixture) -> Value {
+    Value::String(fx.head.clone())
+}
