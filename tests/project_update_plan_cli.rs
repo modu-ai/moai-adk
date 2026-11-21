@@ -20,6 +20,7 @@ use tempfile::TempDir;
 const EXE: &str = crate::common::MOAI_BIN;
 const REF: &str = "test:2936";
 const PLACEHOLDER: &str = "<permission-reference>";
+const CONFIRM_PLACEHOLDER: &str = "<warning-confirmation>";
 const BLOCKED_BY_BACKUP: &str = "re-run after the backup phase";
 
 struct Fx {
@@ -253,14 +254,32 @@ impl Fx {
             .map(|w| w.as_str().unwrap().to_string())
             .collect();
         assert_eq!(argv[0], "moai", "{argv:?}");
+        // The permission reference is the only placeholder, plus the confirmation token of a
+        // plan that carries a warning (the step then says so in its preview).
+        let wants_token = step["preview"]["needs_confirmation"] == json!(true);
+        let expected: Vec<&str> = if wants_token {
+            vec![CONFIRM_PLACEHOLDER, PLACEHOLDER]
+        } else {
+            vec![PLACEHOLDER]
+        };
         assert_eq!(
-            argv.iter().filter(|w| w.contains('<')).collect::<Vec<_>>(),
-            vec![PLACEHOLDER],
-            "the only placeholder is the permission reference: {argv:?}"
+            argv.iter()
+                .filter(|w| w.contains('<'))
+                .map(String::as_str)
+                .collect::<Vec<_>>(),
+            expected,
+            "placeholders of the printed command: {argv:?}"
         );
+        let token = step["preview"]["confirm_token"]
+            .as_str()
+            .unwrap_or_default();
         let args: Vec<&str> = argv[1..]
             .iter()
-            .map(|w| if w == PLACEHOLDER { REF } else { w.as_str() })
+            .map(|w| match w.as_str() {
+                PLACEHOLDER => REF,
+                CONFIRM_PLACEHOLDER => token,
+                other => other,
+            })
             .collect();
         let stdin = match &step["apply"]["stdin"] {
             Value::Null => Vec::new(),
@@ -1218,6 +1237,75 @@ fn the_merge_step_offers_the_personal_file_and_settles_after_the_apply() {
         "{after}"
     );
     assert_eq!(after["all_unchanged"], json!(true), "{after}");
+}
+
+/// The audit of the personal-file move: the preview says in plain words that Claude Code stops
+/// reading `AGENTS.md`, and the apply writes nothing until the confirmation token comes with it.
+#[test]
+fn the_merge_preview_warns_and_the_apply_waits_for_the_confirmation() {
+    let fx = Fx::new();
+    fx.settled();
+    fx.write("AGENTS.local.md", "# My notes\n\nReply in Korean.\n");
+    let plan = fx.plan();
+    let merge = step(&plan, "agents-local-merge");
+    assert_eq!(merge["state"], "needs_decision", "{merge}");
+    let warnings = merge["preview"]["warnings"].to_string();
+    assert!(
+        warnings.contains("AGENTS.md") && warnings.contains("claude-md-and-agents-md"),
+        "the warning names the file and the setting that keeps both read: {merge}"
+    );
+    assert_eq!(
+        merge["preview"]["needs_confirmation"],
+        json!(true),
+        "{merge}"
+    );
+    assert!(merge["preview"]["confirm_token"].is_string(), "{merge}");
+
+    // The printed command without the token and its flag: refused, the project is unchanged.
+    let argv: Vec<String> = merge["apply"]["argv"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|w| w.as_str().unwrap().to_string())
+        .collect();
+    let at = argv.iter().position(|w| w == "--confirm-warnings").unwrap();
+    let without: Vec<&str> = argv[1..]
+        .iter()
+        .enumerate()
+        .filter(|(i, _)| *i + 1 != at && *i + 1 != at + 1)
+        .map(|(_, w)| if w == PLACEHOLDER { REF } else { w.as_str() })
+        .collect();
+    let before = fx.tree();
+    let refused = fx.run(&without, b"");
+    assert_eq!(refused["ok"], json!(false), "{refused}");
+    assert_eq!(before, fx.tree(), "a refused apply wrote something");
+    assert!(!fx.root.join("CLAUDE.local.md").exists());
+
+    // With the token the merge is applied.
+    assert_eq!(fx.apply_step(merge)["ok"], json!(true), "{merge}");
+    assert!(fx.root.join("CLAUDE.local.md").exists());
+}
+
+/// The audit of the personal-file move: in a git project the preview shows the one `.gitignore`
+/// line and the apply writes it.
+#[test]
+fn the_merge_step_adds_the_ignore_line_in_a_git_project() {
+    let fx = Fx::new();
+    fx.settled();
+    let init = Command::new("/usr/bin/git")
+        .args(["init", "-q"])
+        .arg(&fx.root)
+        .clean_env()
+        .status()
+        .unwrap();
+    assert!(init.success());
+    fx.write("AGENTS.local.md", "# My notes\n\nReply in Korean.\n");
+    let plan = fx.plan();
+    let merge = step(&plan, "agents-local-merge");
+    assert_eq!(merge["preview"]["gitignore"]["action"], "add", "{merge}");
+    assert_eq!(fx.apply_step(merge)["ok"], json!(true), "{merge}");
+    let ignore = fs::read_to_string(fx.root.join(".gitignore")).unwrap();
+    assert!(ignore.lines().any(|l| l == "CLAUDE.local.md"), "{ignore}");
 }
 
 /// #2936 R10: while the generation step still has files to write, the merge waits: that step's

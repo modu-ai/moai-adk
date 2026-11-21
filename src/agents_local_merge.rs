@@ -785,26 +785,159 @@ struct Inner {
     before: Option<Vec<u8>>,
     new_agents: Option<Vec<u8>>,
     source: Option<Source>,
+    ignore: Option<IgnoreWrite>,
 }
 
-/// Claude Code reads `AGENTS.md` only while none of `CLAUDE.md`, `.claude/CLAUDE.md` and
-/// `CLAUDE.local.md` exists (the memory page, "When Claude Code reads AGENTS.md"). The warning
-/// applies when this merge would create the first of them over an `AGENTS.md`.
+/// Claude Code reads `AGENTS.md` and `.claude/AGENTS.md` only while none of `CLAUDE.md`,
+/// `.claude/CLAUDE.md` and `CLAUDE.local.md` exists (the memory page, "When Claude Code reads
+/// AGENTS.md"). The warning applies when this merge would create the first of them over such a
+/// file; it names the official setting that keeps both read.
 fn hidden_agents_md_warning(root: &Path, action: &str, target_exists: bool) -> Vec<String> {
     let exists = |rel: &str| fs::symlink_metadata(root.join(rel)).is_ok();
+    let hidden: Vec<&str> = [LEGACY_TARGET, ".claude/AGENTS.md"]
+        .into_iter()
+        .filter(|f| exists(f))
+        .collect();
     if action == "merge"
         && !target_exists
-        && exists(LEGACY_TARGET)
+        && !hidden.is_empty()
         && !exists("CLAUDE.md")
         && !exists(".claude/CLAUDE.md")
     {
+        let files = hidden.join(" and ");
         return vec![format!(
-            "Claude Code reads {LEGACY_TARGET} only while no CLAUDE.md or CLAUDE.local.md exists; \
-             creating {TARGET} makes it stop reading this project's {LEGACY_TARGET}. Move that \
-             text into a CLAUDE.md first, or confirm that {LEGACY_TARGET} will no longer be read."
+            "Claude Code reads {files} only while no CLAUDE.md, .claude/CLAUDE.md or \
+             CLAUDE.local.md exists; creating {TARGET} makes it stop reading {files} in this \
+             project. Move that text into a CLAUDE.md first, or confirm that {files} will no \
+             longer be read. To keep both read, set Project instructions to \
+             claude-md-and-agents-md in /config (Claude Code's own setting)."
         )];
     }
     Vec::new()
+}
+
+/// The exit code of `git -C <root> <args>`, or `None` when git cannot run. Nothing is printed.
+fn git_code(root: &Path, args: &[&str]) -> Option<i32> {
+    use std::process::{Command, Stdio};
+    let mut cmd = Command::new("git");
+    crate::identity::scrub_git_env(&mut cmd);
+    cmd.arg("-C")
+        .arg(root)
+        .args(args)
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .ok()
+        .and_then(|s| s.code())
+}
+
+/// What git says about the personal file, and the `.gitignore` write that follows from it.
+struct IgnoreFacts {
+    json: Value,
+    write: Option<IgnoreWrite>,
+    /// Git already tracks `CLAUDE.local.md`: it is committed whatever `.gitignore` says.
+    tracked: bool,
+    /// A sentence for the plan's warnings, when the file is neither ignored nor made ignored.
+    warning: Option<String>,
+}
+
+fn plan_ignore(root: &Path) -> IgnoreFacts {
+    let line = IGNORE_LINE;
+    let skip = |why: &str, exists: bool, warning: Option<String>, tracked: bool| IgnoreFacts {
+        json: json!({
+            "path": GITIGNORE, "line": line, "action": "skip", "exists": exists, "note": why,
+        }),
+        write: None,
+        tracked,
+        warning,
+    };
+    match git_code(root, &["rev-parse", "--is-inside-work-tree"]) {
+        None => {
+            return skip(
+                "git is not available, so .gitignore was not checked",
+                false,
+                None,
+                false,
+            )
+        }
+        Some(0) => {}
+        Some(_) => {
+            return skip(
+                "this folder is not a git repository, so there is no .gitignore line to add",
+                false,
+                None,
+                false,
+            )
+        }
+    }
+    let tracked = git_code(root, &["ls-files", "--error-unmatch", "--", line]) == Some(0);
+    let ignored = git_code(root, &["check-ignore", "-q", "--", line]) == Some(0);
+    let located = crate::apply::target(root, GITIGNORE).and_then(|p| crate::apply::read_opt(&p));
+    let existing = match located {
+        Ok(bytes) => bytes,
+        Err(e) => {
+            let why = format!("{GITIGNORE} cannot be changed ({e})");
+            let warning = (!ignored).then(|| {
+                format!("{line} is not ignored by git and {GITIGNORE} cannot be changed here; add the line yourself so the file is not committed")
+            });
+            return skip(&why, true, warning, tracked);
+        }
+    };
+    let exists = existing.is_some();
+    if ignored {
+        return IgnoreFacts {
+            json: json!({"path": GITIGNORE, "line": line, "action": "present", "exists": exists, "note": null}),
+            write: None,
+            tracked,
+            warning: None,
+        };
+    }
+    let old = existing.clone().unwrap_or_default();
+    let eol = if old.windows(2).any(|w| w == b"\r\n") {
+        "\r\n"
+    } else {
+        "\n"
+    };
+    let separator = if old.is_empty() || old.ends_with(b"\n") {
+        ""
+    } else {
+        eol
+    };
+    let mut new_bytes = old;
+    new_bytes.extend_from_slice(format!("{separator}{line}{eol}").as_bytes());
+    if new_bytes.len() as u64 > crate::apply::RECEIPT_LIMIT {
+        return skip(&format!("{GITIGNORE} is too large to change here"), exists, Some(format!("{line} is not ignored by git and {GITIGNORE} is too large to change here; add the line yourself so the file is not committed")), tracked);
+    }
+    IgnoreFacts {
+        json: json!({"path": GITIGNORE, "line": line, "action": "add", "exists": exists, "note": null}),
+        write: Some(IgnoreWrite {
+            before: existing,
+            new_bytes,
+        }),
+        tracked,
+        warning: None,
+    }
+}
+
+/// `true` when `bytes` holds a CRLF line ending.
+fn has_crlf(bytes: &[u8]) -> bool {
+    bytes.windows(2).any(|w| w == b"\r\n")
+}
+
+/// A text moved by an earlier generation into `AGENTS.md`: the same bytes in a `moai:merged-local`
+/// block there. Merging them again would put the personal text in two files.
+fn merged_into_agents_md(root: &Path, source: &Source) -> Option<String> {
+    let bytes = read_checked(root, LEGACY_TARGET).ok()??;
+    let agents = std::str::from_utf8(&bytes).ok()?;
+    let text = std::str::from_utf8(&source.text).ok()?;
+    let existing = find_block_for(Kind::Local, agents).ok()??;
+    (existing.sha == hex(&source.text) && existing.body == normalized(text)).then(|| {
+        format!(
+            "the text of {LOCAL} is already in {LEGACY_TARGET}, in a block an earlier generation \
+             merged there; moving that block belongs to the {GUIDANCE_TARGET} migration"
+        )
+    })
 }
 
 fn plan_inner(kind: Kind, root: &Path) -> Result<Inner> {
@@ -822,22 +955,64 @@ fn plan_inner(kind: Kind, root: &Path) -> Result<Inner> {
             .unwrap_or_default(),
         _ => Vec::new(),
     };
-    let decision = match target_error {
+    let mut decision = match target_error {
         Some(reason) => Decision::of("blocked", reason),
         None => decide_for(kind, before.as_deref(), clone_found(&found), &suspects),
     };
+    // Text an earlier generation merged into `AGENTS.md` is not merged a second time.
+    if kind == Kind::Local && decision.action == "merge" {
+        if let Found::Source(s) = &found {
+            if let Some(reason) = merged_into_agents_md(root, s) {
+                decision = Decision::of("unchanged", reason);
+            }
+        }
+    }
     // Creating the personal file over an `AGENTS.md` hides that file from Claude Code; the
-    // guidance kind moves the text of `AGENTS.md` itself, so it has no such warning.
-    let mut warnings = if kind == Kind::Local {
+    // guidance kind moves the text of `AGENTS.md` itself, so it has no such warning. The apply
+    // refuses a plan with this warning unless the caller passes the token derived from it.
+    let hidden = if kind == Kind::Local {
         hidden_agents_md_warning(root, decision.action, before.is_some())
     } else {
         Vec::new()
     };
+    let confirm_token =
+        (!hidden.is_empty()).then(|| hex(hidden.join("\n").as_bytes())[..16].to_string());
+    let mut warnings = hidden;
+    // What git says about the personal file: ignored or made ignored by one `.gitignore` line,
+    // or tracked (committed whatever `.gitignore` says).
+    let ignore = (kind == Kind::Local && decision.action == "merge").then(|| plan_ignore(root));
+    let mut notice = kind.commit_notice();
+    if let Some(facts) = &ignore {
+        if facts.tracked {
+            notice = TRACKED_NOTICE;
+            warnings.push(TRACKED_WARNING.to_string());
+        }
+        warnings.extend(facts.warning.iter().cloned());
+    }
     if decision.action == "merge" {
         if let Found::Source(s) = &found {
             warnings.extend(s.notes.iter().cloned());
         }
     }
+    let crlf: Vec<String> = [
+        before
+            .as_deref()
+            .filter(|b| has_crlf(b))
+            .map(|_| target.to_string()),
+        match &found {
+            Found::Source(s) if has_crlf(&s.text) => Some(s.rel.clone()),
+            _ => None,
+        },
+    ]
+    .into_iter()
+    .flatten()
+    .collect();
+    let line_endings = (decision.action == "merge" && !crlf.is_empty()).then(|| {
+        format!(
+            "{} use CRLF line endings; the marker lines are written with LF and the text keeps its own",
+            crlf.join(" and ")
+        )
+    });
     let source = match found {
         Found::Source(s) => Some(s),
         _ => None,
@@ -854,12 +1029,20 @@ fn plan_inner(kind: Kind, root: &Path) -> Result<Inner> {
         .iter()
         .map(|(line, kind)| json!({"line": line, "kind": kind}))
         .collect();
+    let ignore_json = ignore.as_ref().map(|f| f.json.clone());
+    let ignore_before = ignore
+        .as_ref()
+        .and_then(|f| f.write.as_ref())
+        .map(|w| w.before.as_deref().map(crate::digest));
     let bound = json!({
         "action": decision.action,
         "source": source_json,
         "agents_sha256": before.as_deref().map(crate::digest),
         "secret_suspects": suspects_json,
         "warnings": warnings,
+        "gitignore": ignore_json,
+        "gitignore_sha256": ignore_before,
+        "confirm_token": confirm_token,
     });
     let digest = crate::digest(&serde_json::to_vec(&bound).map_err(|_| "encode failed")?);
     let mut json = json!({
@@ -873,8 +1056,12 @@ fn plan_inner(kind: Kind, root: &Path) -> Result<Inner> {
             "sha256_before": before.as_deref().map(crate::digest),
             "starts_at_line": decision.starts_at_line,
         },
-        "commit_notice": kind.commit_notice(),
+        "gitignore": ignore_json,
+        "commit_notice": notice,
         "warnings": warnings,
+        "needs_confirmation": confirm_token.is_some(),
+        "confirm_token": confirm_token,
+        "line_endings": line_endings,
         "secret_suspects": suspects_json,
         "body": decision.body,
         "plan_digest": digest,
@@ -886,7 +1073,9 @@ fn plan_inner(kind: Kind, root: &Path) -> Result<Inner> {
             "show the user the body, the position, the commit_notice and any warnings; after \
              their yes run \
              `moai agents-merge-apply --plan-digest <plan_digest> \
-             --permission-reference <ref> <project>`"
+             --permission-reference <ref> <project>`; when needs_confirmation is true, add \
+             `--confirm-warnings <confirm_token>` only after the user has read the warning and \
+             said yes to it"
         ])
     } else {
         // No command carries this kind yet; the plan is applied by its digest.
@@ -902,6 +1091,7 @@ fn plan_inner(kind: Kind, root: &Path) -> Result<Inner> {
         before,
         new_agents: decision.new_agents,
         source,
+        ignore: ignore.and_then(|f| f.write),
     })
 }
 
@@ -954,6 +1144,16 @@ struct Receipt {
     /// False when the apply created the file; the revert then removes it.
     #[serde(default = "target_existed_default")]
     target_existed: bool,
+    /// The `.gitignore` the apply wrote the one line into; absent when it wrote none.
+    #[serde(default)]
+    gitignore_path: Option<String>,
+    /// False when the apply created `.gitignore`; the revert then removes it.
+    #[serde(default = "target_existed_default")]
+    gitignore_existed: bool,
+    #[serde(default)]
+    gitignore_before: Option<String>,
+    #[serde(default)]
+    gitignore_after: Option<String>,
 }
 
 fn legacy_target() -> String {
@@ -1042,8 +1242,31 @@ pub fn apply(project: &Path, plan_digest: &str, permission: &str) -> Result<Valu
     apply_for(Kind::Local, project, plan_digest, permission)
 }
 
+/// Puts a file this module wrote back: its earlier bytes, or no file when there were none. The
+/// file must still hold `current`.
+fn restore_file(path: &Path, current: &[u8], earlier: Option<&[u8]>) -> Result<()> {
+    match earlier {
+        Some(bytes) => crate::apply::publish_replace(path, Some(current), bytes),
+        None => fs::remove_file(path).map_err(|_| "the created file could not be removed".into()),
+    }
+}
+
 /// Merges the text of one kind after the user confirmed the plan whose digest is `plan_digest`.
+/// A plan that carries the warning about `AGENTS.md` is refused here; `apply_confirmed` takes the
+/// token that answers it.
 pub fn apply_for(kind: Kind, project: &Path, plan_digest: &str, permission: &str) -> Result<Value> {
+    apply_confirmed(kind, project, plan_digest, permission, None)
+}
+
+/// `apply_for` with the confirmation token of the plan: the user's yes to the warning that Claude
+/// Code would stop reading `AGENTS.md`.
+pub fn apply_confirmed(
+    kind: Kind,
+    project: &Path,
+    plan_digest: &str,
+    permission: &str,
+    confirmation: Option<&str>,
+) -> Result<Value> {
     let target = kind.target();
     if !crate::contract::permission_reference_ok(permission) {
         return Err("a permission reference is required; nothing was written".into());
@@ -1058,8 +1281,23 @@ pub fn apply_for(kind: Kind, project: &Path, plan_digest: &str, permission: &str
         "none" | "unchanged" => return Ok(json!({"state": "unchanged", "writes": []})),
         other => return Err(format!("the plan is {other}: {}", inner.reason)),
     }
+    if let Some(token) = inner.json["confirm_token"].as_str() {
+        if confirmation != Some(token) {
+            return Err(
+                "the plan carries a warning that needs your explicit confirmation: read \
+                        it, then pass --confirm-warnings with the confirmation token printed \
+                        with the plan; nothing was written"
+                    .into(),
+            );
+        }
+    }
     let (Some(new_agents), Some(source)) = (inner.new_agents, inner.source) else {
         return Err("the plan holds no merge".into());
+    };
+    let ignore = inner.ignore;
+    let ignore_path = match &ignore {
+        Some(_) => Some(crate::apply::target(&root, GITIGNORE)?),
+        None => None,
     };
     // `None`: the target does not exist and the apply creates it.
     let before = inner.before;
@@ -1073,6 +1311,9 @@ pub fn apply_for(kind: Kind, project: &Path, plan_digest: &str, permission: &str
     let keep = create_private_dirs(&dir, &["before"])?;
     if let Some(before) = &before {
         write_private(&keep.join(target), before)?;
+    }
+    if let Some(Some(earlier)) = ignore.as_ref().map(|g| g.before.as_ref()) {
+        write_private(&keep.join(GITIGNORE), earlier)?;
     }
     // A file in place stays; the receipt keeps the copy that serves as its backup. A moved
     // copy is already in its dated go-state backup.
@@ -1097,11 +1338,32 @@ pub fn apply_for(kind: Kind, project: &Path, plan_digest: &str, permission: &str
         source_sha256: crate::digest(&source.bytes),
         target_path: target.to_string(),
         target_existed: before.is_some(),
+        gitignore_path: ignore.as_ref().map(|_| GITIGNORE.to_string()),
+        gitignore_existed: ignore.as_ref().is_none_or(|g| g.before.is_some()),
+        gitignore_before: ignore
+            .as_ref()
+            .and_then(|g| g.before.as_deref().map(crate::digest)),
+        gitignore_after: ignore.as_ref().map(|g| crate::digest(&g.new_bytes)),
     };
     write_receipt(&dir, &receipt)?;
+    // `.gitignore` first: when it cannot be written nothing else has changed.
+    if let (Some(g), Some(path)) = (&ignore, &ignore_path) {
+        if let Err(e) = crate::apply::publish_replace(path, g.before.as_deref(), &g.new_bytes) {
+            receipt.status = "failed".into();
+            receipt.agents_after = None;
+            receipt.gitignore_after = None;
+            write_receipt(&dir, &receipt)?;
+            return Err(format!("{GITIGNORE} was not written ({e})"));
+        }
+    }
     if let Err(e) = crate::apply::publish_replace(&agents_path, before.as_deref(), &new_agents) {
+        if let (Some(g), Some(path)) = (&ignore, &ignore_path) {
+            // Best effort: the line goes back so the project is as it was.
+            let _ = restore_file(path, &g.new_bytes, g.before.as_deref());
+        }
         receipt.status = "failed".into();
         receipt.agents_after = None;
+        receipt.gitignore_after = None;
         write_receipt(&dir, &receipt)?;
         return Err(format!("{target} was not written ({e})"));
     }
@@ -1120,7 +1382,7 @@ pub fn apply_for(kind: Kind, project: &Path, plan_digest: &str, permission: &str
         "source": {"kind": source.kind, "path": source.rel},
         "starts_at_line": inner.json["target"]["starts_at_line"],
         "receipt": id,
-        "writes": [target],
+        "writes": if ignore.is_some() { json!([GITIGNORE, target]) } else { json!([target]) },
         "next_actions": [undo],
     }))
 }
@@ -1130,6 +1392,49 @@ pub fn apply_for(kind: Kind, project: &Path, plan_digest: &str, permission: &str
 /// backup are not touched.
 pub fn revert(project: &Path, receipt_id: &str, permission: &str) -> Result<Value> {
     revert_for(Kind::Local, project, receipt_id, permission)
+}
+
+/// Puts the `.gitignore` the apply changed back, only while it still holds the bytes the apply
+/// wrote. `None`: the receipt wrote none. `"reverted"`, `"unchanged"` (it is already as it was) or
+/// `"kept"` (it changed since, so it is left alone).
+fn revert_gitignore(root: &Path, dir: &Path, r: &Receipt) -> Result<Option<&'static str>> {
+    let Some(rel) = r.gitignore_path.as_deref() else {
+        return Ok(None);
+    };
+    if rel != GITIGNORE {
+        return Err("the receipt names a file this command never writes".into());
+    }
+    let path = crate::apply::target(root, rel)?;
+    let now = crate::apply::read_opt(&path)?;
+    let now_digest = now.as_deref().map(crate::digest);
+    let as_before = if r.gitignore_existed {
+        now_digest.as_deref() == r.gitignore_before.as_deref()
+    } else {
+        now.is_none()
+    };
+    if as_before {
+        return Ok(Some("unchanged"));
+    }
+    let (Some(now), Some(after)) = (now, r.gitignore_after.as_deref()) else {
+        return Ok(Some("kept"));
+    };
+    if crate::digest(&now) != after {
+        return Ok(Some("kept"));
+    }
+    if r.gitignore_existed {
+        crate::claude::refuse_symlink_dir(&dir.join("before"))?;
+        let earlier = crate::claude::read_existing(&dir.join("before").join(GITIGNORE))?
+            .ok_or_else(|| format!("the receipt has no copy of the earlier {GITIGNORE}"))?;
+        if Some(crate::digest(&earlier).as_str()) != r.gitignore_before.as_deref() {
+            return Err(format!(
+                "the receipt's copy of the earlier {GITIGNORE} was altered; nothing was written"
+            ));
+        }
+        restore_file(&path, &now, Some(&earlier))?;
+    } else {
+        restore_file(&path, &now, None)?;
+    }
+    Ok(Some("reverted"))
 }
 
 /// `revert` for a receipt of `kind`; a receipt id of the other kind is unknown to it.
@@ -1178,10 +1483,17 @@ pub fn revert_for(kind: Kind, project: &Path, receipt_id: &str, permission: &str
                 Some(b) => r.target_existed && crate::digest(b) == r.agents_before,
             };
             if wrote_nothing {
+                // `.gitignore` is written first, so an interrupted apply may have changed it.
+                let gitignore = revert_gitignore(&root, &dir, &r)?;
                 r.status = "failed".into();
                 r.agents_after = None;
                 write_receipt(&dir, &r)?;
-                return Ok(json!({"state": "unchanged", "writes": []}));
+                let writes = if gitignore == Some("reverted") {
+                    json!([GITIGNORE])
+                } else {
+                    json!([])
+                };
+                return Ok(json!({"state": "unchanged", "writes": writes, "gitignore": gitignore}));
             }
             // Any other bytes fall to the check below: the file changed; nothing is written.
         }
@@ -1193,6 +1505,9 @@ pub fn revert_for(kind: Kind, project: &Path, receipt_id: &str, permission: &str
             "{name} changed since the merge; nothing was written"
         ));
     }
+    // The copy of the earlier file is checked before anything is written; `.gitignore` goes back
+    // first (it is the one that may stay as it is), then the file itself.
+    let gitignore;
     if r.target_existed {
         crate::claude::refuse_symlink_dir(&dir.join("before"))?;
         let before = crate::claude::read_existing(&dir.join("before").join(name))?
@@ -1202,19 +1517,27 @@ pub fn revert_for(kind: Kind, project: &Path, receipt_id: &str, permission: &str
                 "the receipt's copy of the earlier {name} was altered; nothing was written"
             ));
         }
+        gitignore = revert_gitignore(&root, &dir, &r)?;
         crate::apply::publish_replace(&agents_path, Some(&now), &before)?;
     } else {
+        gitignore = revert_gitignore(&root, &dir, &r)?;
         // The apply created the file and it still holds exactly those bytes: remove it, so the
         // project is as it was (an empty `CLAUDE.local.md` would still count for Claude Code).
         fs::remove_file(&agents_path).map_err(|_| format!("{name} could not be removed"))?;
     }
     r.status = "reverted".into();
     write_receipt(&dir, &r)?;
+    let writes = if gitignore == Some("reverted") {
+        json!([GITIGNORE, name])
+    } else {
+        json!([name])
+    };
     Ok(json!({
         "state": "reverted",
         "project": root.display().to_string(),
         "receipt": receipt_id,
-        "writes": [name],
+        "writes": writes,
+        "gitignore": gitignore,
     }))
 }
 

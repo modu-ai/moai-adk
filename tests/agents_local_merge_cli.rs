@@ -117,11 +117,16 @@ impl Fx {
         ])
     }
 
-    /// Plan and apply; the apply must succeed. Returns the apply result.
+    /// Plan and apply; the apply must succeed. Returns the apply result. A plan that carries a
+    /// warning is applied with the confirmation token printed with it (the user's yes).
     fn merge(&self) -> Value {
         let p = self.plan();
         assert_eq!(p["action"], json!("merge"), "{p}");
-        let v = self.apply_with(p["plan_digest"].as_str().unwrap(), REF);
+        let digest = p["plan_digest"].as_str().unwrap();
+        let v = match p["confirm_token"].as_str() {
+            Some(token) => self.apply_confirmed(digest, token),
+            None => self.apply_with(digest, REF),
+        };
         assert_eq!(v["ok"], json!(true), "{v}");
         v["result"].clone()
     }
@@ -489,6 +494,9 @@ fn regenerating_the_managed_section_keeps_the_merged_block() {
     };
     let plan = merge(&["agents-merge-plan", p]);
     assert_eq!(plan["result"]["action"], json!("merge"), "{plan}");
+    // Generation wrote an AGENTS.md, so the plan warns it would stop being read and needs the
+    // token that answers the warning.
+    let token = plan["result"]["confirm_token"].as_str().unwrap();
     let applied = merge(&[
         "agents-merge-apply",
         p,
@@ -496,6 +504,8 @@ fn regenerating_the_managed_section_keeps_the_merged_block() {
         plan["result"]["plan_digest"].as_str().unwrap(),
         "--permission-reference",
         REF,
+        "--confirm-warnings",
+        token,
     ]);
     assert_eq!(applied["ok"], json!(true), "{applied}");
     let merged = fs::read_to_string(root.path().join("CLAUDE.local.md")).unwrap();
@@ -960,4 +970,285 @@ fn a_receipt_of_the_earlier_generation_still_reverts_agents_md() {
     assert_eq!(v["result"]["writes"], json!(["AGENTS.md"]), "{v}");
     assert_eq!(fx.read("AGENTS.md"), RULES);
     assert!(!fx.root.join("CLAUDE.local.md").exists());
+}
+
+// ---- audit repair: the warning needs a yes, `.gitignore` gets one line, and the preview is honest ----
+
+impl Fx {
+    /// A git repository in the project (no commit is needed for `check-ignore` or `ls-files`).
+    fn git_init(&self) {
+        self.git(&["init", "-q"]);
+    }
+
+    fn git(&self, args: &[&str]) -> String {
+        let out = Command::new("/usr/bin/git")
+            .arg("-C")
+            .arg(&self.root)
+            .args(args)
+            .clean_env()
+            .env("HOME", &self.home)
+            .env("PATH", "/usr/bin:/bin")
+            .env("LC_ALL", "C")
+            .output()
+            .unwrap();
+        assert!(out.status.success(), "git {args:?}: {out:?}");
+        String::from_utf8_lossy(&out.stdout).into_owned()
+    }
+
+    fn apply_confirmed(&self, digest: &str, token: &str) -> Value {
+        self.run(&[
+            "agents-merge-apply",
+            self.p(),
+            "--plan-digest",
+            digest,
+            "--permission-reference",
+            REF,
+            "--confirm-warnings",
+            token,
+        ])
+    }
+
+    /// The receipt of the one apply that ran.
+    fn receipt(&self, id: &str) -> Value {
+        serde_json::from_slice(&fs::read(self.receipt_path(id).join("receipt.json")).unwrap())
+            .unwrap()
+    }
+}
+
+/// SPEC REQ-5 and REQ-9: the warning names every file that stops being read and the official
+/// setting that keeps both read, and the plan then needs the token printed with it.
+#[test]
+fn the_warning_names_the_files_and_the_setting_and_needs_a_token() {
+    let fx = Fx::fresh(MINE);
+    fx.write("AGENTS.md", RULES);
+    let p = fx.plan();
+    let text = p["warnings"][0].as_str().unwrap();
+    assert!(text.contains("AGENTS.md"), "{text}");
+    assert!(text.contains("claude-md-and-agents-md"), "{text}");
+    assert!(text.contains("Project instructions"), "{text}");
+    assert_eq!(p["needs_confirmation"], json!(true), "{p}");
+    let token = p["confirm_token"].as_str().unwrap();
+    assert!(
+        token.len() >= 12 && token.bytes().all(|b| b.is_ascii_hexdigit()),
+        "{token}"
+    );
+
+    // `.claude/AGENTS.md` is read the same way, so it counts.
+    let fx = Fx::fresh(MINE);
+    fx.write(".claude/AGENTS.md", RULES);
+    let p = fx.plan();
+    assert_eq!(p["needs_confirmation"], json!(true), "{p}");
+    assert!(
+        p["warnings"][0]
+            .as_str()
+            .unwrap()
+            .contains(".claude/AGENTS.md"),
+        "{p}"
+    );
+
+    // Nothing to hide: no warning, no token, and the apply needs no yes.
+    let fx = Fx::fresh(MINE);
+    let p = fx.plan();
+    assert_eq!(p["needs_confirmation"], json!(false), "{p}");
+    assert_eq!(p["confirm_token"], Value::Null, "{p}");
+    assert_eq!(fx.merge()["state"], json!("applied"));
+}
+
+/// SPEC REQ-9: without the token, or with another one, the apply writes nothing.
+#[test]
+fn an_apply_without_the_token_writes_nothing() {
+    let fx = Fx::fresh(MINE);
+    fx.write("AGENTS.md", RULES);
+    let p = fx.plan();
+    let digest = p["plan_digest"].as_str().unwrap().to_string();
+    let token = p["confirm_token"].as_str().unwrap().to_string();
+    let before = tree_state(&fx.root);
+
+    let v = fx.apply_with(&digest, REF);
+    assert_eq!(v["ok"], json!(false), "{v}");
+    assert!(
+        v["error"]["message"].as_str().unwrap().contains("confirm"),
+        "{v}"
+    );
+    assert_eq!(tree_state(&fx.root), before, "nothing is written");
+
+    let v = fx.apply_confirmed(&digest, "0123456789abcdef");
+    assert_eq!(v["ok"], json!(false), "{v}");
+    assert_eq!(tree_state(&fx.root), before, "a wrong token writes nothing");
+
+    let v = fx.apply_confirmed(&digest, &token);
+    assert_eq!(v["ok"], json!(true), "{v}");
+    assert_eq!(fx.read("CLAUDE.local.md"), block(MINE));
+    assert_eq!(fx.read("AGENTS.md"), RULES, "AGENTS.md itself is untouched");
+}
+
+/// SPEC REQ-10: in a git project that does not ignore the file, the same plan adds the one line
+/// `CLAUDE.local.md` to `.gitignore`; the receipt keeps the earlier file and the revert puts it
+/// back (or removes the file the apply created).
+#[test]
+fn a_git_project_gets_one_ignore_line_through_the_same_receipt() {
+    // No `.gitignore` yet: the apply creates it with the one line, the revert removes it.
+    let fx = Fx::fresh(MINE);
+    fx.git_init();
+    let p = fx.plan();
+    assert_eq!(p["gitignore"]["action"], json!("add"), "{p}");
+    assert_eq!(p["gitignore"]["path"], json!(".gitignore"), "{p}");
+    assert_eq!(p["gitignore"]["line"], json!("CLAUDE.local.md"), "{p}");
+    assert_eq!(p["gitignore"]["exists"], json!(false), "{p}");
+    let applied = fx.merge();
+    assert_eq!(
+        applied["writes"],
+        json!([".gitignore", "CLAUDE.local.md"]),
+        "{applied}"
+    );
+    assert_eq!(fx.read(".gitignore"), "CLAUDE.local.md\n");
+    assert_eq!(
+        fx.git(&["check-ignore", "CLAUDE.local.md"]).trim(),
+        "CLAUDE.local.md"
+    );
+    let id = applied["receipt"].as_str().unwrap().to_string();
+    let r = fx.receipt(&id);
+    assert_eq!(r["gitignore_path"], json!(".gitignore"), "{r}");
+    assert_eq!(r["gitignore_existed"], json!(false), "{r}");
+    assert_eq!(r["target_existed"], json!(false), "{r}");
+    let v = fx.revert_with(&id, REF);
+    assert_eq!(v["result"]["state"], json!("reverted"), "{v}");
+    assert_eq!(v["result"]["gitignore"], json!("reverted"), "{v}");
+    assert!(!fx.root.join(".gitignore").exists());
+    assert!(!fx.root.join("CLAUDE.local.md").exists());
+
+    // An existing `.gitignore` without a final newline: only the one line is added, every other
+    // byte stays, and the revert restores the exact earlier bytes.
+    let fx = Fx::fresh(MINE);
+    fx.git_init();
+    let earlier = "target/\nnode_modules";
+    fx.write(".gitignore", earlier);
+    let applied = fx.merge();
+    assert_eq!(
+        fx.read(".gitignore"),
+        format!("{earlier}\nCLAUDE.local.md\n")
+    );
+    let id = applied["receipt"].as_str().unwrap().to_string();
+    assert_eq!(fx.receipt(&id)["gitignore_existed"], json!(true));
+    let v = fx.revert_with(&id, REF);
+    assert_eq!(v["result"]["gitignore"], json!("reverted"), "{v}");
+    assert_eq!(fx.read(".gitignore"), earlier);
+
+    // A `.gitignore` edited after the apply is kept as it is; the personal file still reverts.
+    let fx = Fx::fresh(MINE);
+    fx.git_init();
+    let applied = fx.merge();
+    let id = applied["receipt"].as_str().unwrap().to_string();
+    let edited = format!("{}build/\n", fx.read(".gitignore"));
+    fx.write(".gitignore", &edited);
+    let v = fx.revert_with(&id, REF);
+    assert_eq!(v["result"]["state"], json!("reverted"), "{v}");
+    assert_eq!(v["result"]["gitignore"], json!("kept"), "{v}");
+    assert_eq!(fx.read(".gitignore"), edited);
+    assert!(!fx.root.join("CLAUDE.local.md").exists());
+}
+
+/// SPEC REQ-10: a file git already ignores, by this or by a wider pattern, gets no line; a folder
+/// that is not a git repository gets no line and a note; neither changes the notice's truth.
+#[test]
+fn an_ignored_file_gets_no_line_and_a_folder_without_git_gets_a_note() {
+    for pattern in ["CLAUDE.local.md\n", "*.local.md\n"] {
+        let fx = Fx::fresh(MINE);
+        fx.git_init();
+        fx.write(".gitignore", pattern);
+        let p = fx.plan();
+        assert_eq!(p["gitignore"]["action"], json!("present"), "{p}");
+        let applied = fx.merge();
+        assert_eq!(applied["writes"], json!(["CLAUDE.local.md"]), "{applied}");
+        assert_eq!(
+            fx.read(".gitignore"),
+            pattern,
+            "an ignored file adds no line"
+        );
+    }
+
+    let fx = Fx::fresh(MINE);
+    let p = fx.plan();
+    assert_eq!(p["gitignore"]["action"], json!("skip"), "{p}");
+    assert!(
+        p["gitignore"]["note"]
+            .as_str()
+            .unwrap()
+            .contains("not a git repository"),
+        "{p}"
+    );
+    let applied = fx.merge();
+    assert_eq!(applied["writes"], json!(["CLAUDE.local.md"]), "{applied}");
+    assert!(!fx.root.join(".gitignore").exists());
+}
+
+/// SPEC REQ-11: a personal file git already tracks stays tracked; the plan says so instead of
+/// claiming the text is not committed, and the apply does not untrack it.
+#[test]
+fn a_tracked_personal_file_is_warned_about_and_not_untracked() {
+    let fx = Fx::with(RULES, Some(MINE));
+    fx.git_init();
+    fx.git(&["add", "CLAUDE.local.md"]);
+    let p = fx.plan();
+    let notice = p["commit_notice"].as_str().unwrap();
+    assert!(notice.contains("tracks"), "{notice}");
+    assert!(!notice.contains("not committed"), "{notice}");
+    assert!(
+        p["warnings"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|w| w.as_str().unwrap().contains("tracked")),
+        "{p}"
+    );
+    fx.merge();
+    assert_eq!(
+        fx.git(&["ls-files", "CLAUDE.local.md"]).trim(),
+        "CLAUDE.local.md",
+        "the file is still tracked"
+    );
+}
+
+/// SPEC REQ-12: text an earlier generation already merged into `AGENTS.md` (the same bytes) is
+/// not merged a second time; a block with other text is a different source and merges.
+#[test]
+fn text_already_merged_into_agents_md_is_unchanged() {
+    let fx = Fx::fresh(MINE);
+    fx.write("AGENTS.md", &format!("{RULES}\n{}", block(MINE)));
+    let p = fx.plan();
+    assert_eq!(p["action"], json!("unchanged"), "{p}");
+    assert!(p["reason"].as_str().unwrap().contains("AGENTS.md"), "{p}");
+    assert_eq!(
+        p["warnings"],
+        json!([]),
+        "an unchanged plan hides nothing: {p}"
+    );
+
+    let fx = Fx::fresh(MINE);
+    fx.write(
+        "AGENTS.md",
+        &format!("{RULES}\n{}", block("# Other notes\n")),
+    );
+    assert_eq!(fx.plan()["action"], json!("merge"));
+
+    // The right text under a marker whose sha256 names other bytes is not "already merged".
+    let real = digest_of(MINE).trim_start_matches("sha256:").to_string();
+    let forged = block(MINE).replace(&real, &"a".repeat(64));
+    assert_ne!(forged, block(MINE));
+    let fx = Fx::fresh(MINE);
+    fx.write("AGENTS.md", &format!("{RULES}\n{forged}"));
+    assert_eq!(fx.plan()["action"], json!("merge"));
+}
+
+/// The preview says in one line when line endings differ from the marker lines.
+#[test]
+fn the_preview_has_one_line_about_crlf() {
+    let fx = Fx::fresh(MINE);
+    assert_eq!(fx.plan()["line_endings"], Value::Null);
+    let fx = Fx::fresh("# Notes\r\n\r\nReply in Korean.\r\n");
+    let p = fx.plan();
+    assert!(p["line_endings"].as_str().unwrap().contains("CRLF"), "{p}");
+    let fx = Fx::with("# Rules\r\n", Some(MINE));
+    let p = fx.plan();
+    assert!(p["line_endings"].as_str().unwrap().contains("CRLF"), "{p}");
 }

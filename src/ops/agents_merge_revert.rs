@@ -5,8 +5,11 @@ use std::path::PathBuf;
 
 /// Undo an AGENTS.local.md merge
 ///
-/// Undo one `agents-merge-apply` (#2936 R10) while `AGENTS.md` still holds the bytes the
-/// apply wrote: it gets its earlier bytes back. The source file and its backup are not touched.
+/// Undo one `agents-merge-apply` (#2936 R10) while `CLAUDE.local.md` still holds the bytes the
+/// apply wrote: it gets its earlier bytes back, or is removed when the apply created it. The
+/// `.gitignore` line the apply added is taken back too, unless that file changed since (it is then
+/// kept as it is). The source file and its backup are not touched. A receipt of an earlier
+/// generation, which wrote into `AGENTS.md`, still restores `AGENTS.md`.
 #[derive(clap::Args)]
 pub struct Args {
     /// The receipt id the apply printed (`agents-local-merge-…`).

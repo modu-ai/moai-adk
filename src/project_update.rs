@@ -27,6 +27,10 @@ type Result<T> = std::result::Result<T, String>;
 
 /// The one placeholder a printed command carries.
 pub const PERMISSION_PLACEHOLDER: &str = "<permission-reference>";
+/// The second placeholder, printed only by a step whose plan carries a warning that needs the
+/// user's explicit yes (the personal-file merge over an `AGENTS.md` Claude Code would stop
+/// reading): the confirmation token of that plan.
+pub const CONFIRM_PLACEHOLDER: &str = "<warning-confirmation>";
 /// Why an install step waits when the project has no profile (Q5: never created here).
 pub const NO_PROFILE: &str = "run /moai project";
 /// Why every install step waits while the backup phase has a move to make: its preview
@@ -1475,8 +1479,26 @@ fn agents_local_merge_step(root: &Path, shown: &str) -> Result<Step> {
         Some("conflict") => "conflict",
         _ => "blocked",
     };
+    // A plan that warns Claude Code would stop reading `AGENTS.md` prints one more placeholder,
+    // the confirmation token of that plan; the caller fills it in only after the user said yes
+    // to the warning, and the apply refuses without it. It sits before the permission
+    // reference, which stays the last word.
+    let needs_confirmation = plan["needs_confirmation"].as_bool() == Some(true);
     let apply = match (&digest, state) {
-        (Some(d), "needs_decision") => Some((argv("agents-merge-apply", shown, d), Value::Null)),
+        (Some(d), "needs_decision") => {
+            let mut words = argv("agents-merge-apply", shown, d);
+            if needs_confirmation {
+                let at = words.len() - 2;
+                words.splice(
+                    at..at,
+                    [
+                        "--confirm-warnings".to_string(),
+                        CONFIRM_PLACEHOLDER.to_string(),
+                    ],
+                );
+            }
+            Some((words, Value::Null))
+        }
         _ => None,
     };
     Ok(Step {
@@ -1487,8 +1509,13 @@ fn agents_local_merge_step(root: &Path, shown: &str) -> Result<Step> {
             "action": plan["action"],
             "source": plan["source"],
             "target": plan["target"],
+            "gitignore": plan["gitignore"],
             "body": plan["body"],
             "commit_notice": plan["commit_notice"],
+            "warnings": plan["warnings"],
+            "needs_confirmation": plan["needs_confirmation"],
+            "confirm_token": plan["confirm_token"],
+            "line_endings": plan["line_endings"],
             "secret_suspects": plan["secret_suspects"],
         }),
         plan_digest: digest,
