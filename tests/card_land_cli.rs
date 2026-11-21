@@ -1,0 +1,774 @@
+//! `moai card land` (SPEC-20261121-card-land): the leader moves the integration branch to a
+//! candidate commit by one compare-and-swap and closes the card in the one transaction
+//! `card finish` uses. Every test runs on a temporary home and a temporary repository whose
+//! integration branch is `integ`; nothing here touches the real ledger.
+//!
+//! The repository: `main` holds two commits; `head` is the second (the card's change), `integ`
+//! points at `tip`, a child of `head`, and a candidate is a commit made with `commit-tree` so the
+//! working tree never changes.
+
+mod common;
+
+use common::home::TempHome;
+use moai_cli::ledger;
+use rusqlite::Connection;
+use serde_json::{json, Value};
+use std::cell::RefCell;
+use std::fs;
+use std::path::{Path, PathBuf};
+use std::process::{Command, Output, Stdio};
+
+const SESSION_VAR: &str = "CLAUDE_CODE_SESSION_ID";
+const S_A: &str = "aaaaaaaa-0000-4000-8000-00000000000a";
+const UNKNOWN_HEAD: &str = "fedcba9876543210fedcba9876543210fedcba98";
+
+/// The profile of an m-flow project whose integration branch is `integ`.
+const MFLOW_PROFILE: &[u8] = b"{\"schema_version\": 1, \"project_id\": \"demo\", \"purpose\": \"fixture\", \"tools\": [\"rust\"], \"development_methods\": [\"sdd\"], \"hosts\": [\"claude\"], \"work_flow\": {\"flow\": \"m-flow\", \"integration_branch\": \"integ\"}}";
+/// The same profile with an integration branch that names a tag path.
+const TAG_PROFILE: &[u8] = b"{\"schema_version\": 1, \"project_id\": \"demo\", \"purpose\": \"fixture\", \"tools\": [\"rust\"], \"development_methods\": [\"sdd\"], \"hosts\": [\"claude\"], \"work_flow\": {\"flow\": \"m-flow\", \"integration_branch\": \"refs/tags/v1\"}}";
+
+fn git(dir: &Path, args: &[&str]) -> String {
+    let mut all = vec![
+        "-c",
+        "user.name=fixture",
+        "-c",
+        "user.email=fixture@example.invalid",
+    ];
+    all.extend_from_slice(args);
+    common::git::git(dir, &all)
+}
+
+/// A commit with the tree of `tree_of`, the given parents in order and one message; no ref moves.
+fn commit_with(project: &Path, tree_of: &str, parents: &[&str], message: &str) -> String {
+    let tree = git(project, &["rev-parse", &format!("{tree_of}^{{tree}}")]);
+    let mut args = vec!["commit-tree", tree.as_str()];
+    for parent in parents {
+        args.push("-p");
+        args.push(parent);
+    }
+    args.push("-m");
+    args.push(message);
+    git(project, &args)
+}
+
+/// A commit on top of `parent` that adds `path` with `content`; no ref moves.
+fn put_on(project: &Path, parent: &str, path: &str, content: &str) -> String {
+    let blob_file = project.join("put-on-blob.tmp");
+    fs::write(&blob_file, content).unwrap();
+    let blob = git(project, &["hash-object", "-w", "put-on-blob.tmp"]);
+    fs::remove_file(&blob_file).unwrap();
+    let index = project.join(".git/put-on-index");
+    let with_index = |args: &[&str]| -> String {
+        let out = common::git::command()
+            .arg("-C")
+            .arg(project)
+            .args(args)
+            .env("GIT_INDEX_FILE", &index)
+            .output()
+            .unwrap();
+        assert!(out.status.success(), "git {args:?}");
+        String::from_utf8_lossy(&out.stdout).trim().to_string()
+    };
+    with_index(&["read-tree", parent]);
+    with_index(&[
+        "update-index",
+        "--add",
+        "--cacheinfo",
+        &format!("100644,{blob},{path}"),
+    ]);
+    let tree = with_index(&["write-tree"]);
+    fs::remove_file(&index).unwrap();
+    git(
+        project,
+        &["commit-tree", &tree, "-p", parent, "-m", "docs: add a file"],
+    )
+}
+
+fn git_executable() -> PathBuf {
+    let path = std::env::var_os("PATH").expect("PATH");
+    std::env::split_paths(&path)
+        .map(|dir| dir.join("git"))
+        .find(|p| p.is_file())
+        .expect("a git on PATH")
+}
+
+fn envelope(out: &Output) -> Value {
+    serde_json::from_slice(&out.stdout).unwrap_or_else(|e| {
+        panic!(
+            "stdout is not JSON ({e}): {} {}",
+            String::from_utf8_lossy(&out.stdout),
+            String::from_utf8_lossy(&out.stderr)
+        )
+    })
+}
+
+/// Asserts exit 0 and a success envelope, and unwraps the result.
+fn result(out: &Output) -> Value {
+    assert_eq!(
+        out.status.code(),
+        Some(0),
+        "{} {}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let v = envelope(out);
+    assert_eq!(v["ok"], json!(true), "{v}");
+    v["result"].clone()
+}
+
+fn dump_tables(conn: &Connection, tables: &[&str]) -> Vec<String> {
+    let mut out = Vec::new();
+    for table in tables {
+        let mut st = conn
+            .prepare(&format!("SELECT * FROM {table} ORDER BY 1, 2"))
+            .unwrap();
+        let n = st.column_count();
+        let lines: Vec<String> = st
+            .query_map([], |r| {
+                let mut line = format!("{table}:");
+                for i in 0..n {
+                    line.push_str(&format!("{:?}|", r.get_ref(i)?));
+                }
+                Ok(line)
+            })
+            .unwrap()
+            .map(Result::unwrap)
+            .collect();
+        out.extend(lines);
+    }
+    out
+}
+
+/// A template's text with every `<...>` placeholder filled with the word `filled`.
+fn filled(text: &str) -> String {
+    let mut out = String::new();
+    let mut rest = text;
+    while let Some(open) = rest.find('<') {
+        let Some(close) = rest[open..].find('>') else {
+            break;
+        };
+        out.push_str(&rest[..open]);
+        out.push_str("filled");
+        rest = &rest[open + close + 1..];
+    }
+    out.push_str(rest);
+    out
+}
+
+/// The card number of a name like `C-12`.
+fn number(name: &str) -> i64 {
+    name.trim_start_matches("C-").parse().unwrap()
+}
+
+struct World {
+    home: TempHome,
+    dir: tempfile::TempDir,
+    project: PathBuf,
+    p: String,
+    git_bin: RefCell<PathBuf>,
+    profile: RefCell<Vec<u8>>,
+    head: String,
+    tip: String,
+}
+
+impl World {
+    fn new() -> Self {
+        let home = TempHome::new();
+        let project = home.project("demo");
+        ledger::register(home.path(), "demo").unwrap();
+        git(&project, &["init", "-q", "-b", "main"]);
+        fs::write(project.join("a.txt"), "a\n").unwrap();
+        git(&project, &["add", "a.txt"]);
+        git(&project, &["commit", "-q", "-m", "init"]);
+        fs::write(project.join("b.txt"), "b\n").unwrap();
+        git(&project, &["add", "b.txt"]);
+        git(&project, &["commit", "-q", "-m", "the card's change"]);
+        let head = git(&project, &["rev-parse", "HEAD"]);
+        let tip = commit_with(&project, &head, &[&head], "integration moved on");
+        git(&project, &["update-ref", "refs/heads/integ", &tip]);
+        World {
+            p: project.to_str().unwrap().to_string(),
+            home,
+            dir: tempfile::Builder::new()
+                .prefix("moai-test-land-")
+                .tempdir()
+                .unwrap(),
+            project,
+            git_bin: RefCell::new(git_executable()),
+            profile: RefCell::new(MFLOW_PROFILE.to_vec()),
+            head,
+            tip,
+        }
+    }
+
+    fn set_profile(&self, bytes: &[u8]) {
+        *self.profile.borrow_mut() = bytes.to_vec();
+    }
+
+    fn write_profile(&self) {
+        let cfg = self.project.join(".moai-cli/project.yaml");
+        fs::create_dir_all(cfg.parent().unwrap()).unwrap();
+        fs::write(&cfg, &*self.profile.borrow()).unwrap();
+    }
+
+    /// `moai <args>` as `session`, with the git program named.
+    fn run(&self, session: Option<&str>, args: &[&str]) -> Output {
+        let mut cmd: Command = self.home.command(args);
+        cmd.env("MOAI_GIT_BIN", &*self.git_bin.borrow());
+        if let Some(id) = session {
+            cmd.env(SESSION_VAR, id);
+        }
+        cmd.stdin(Stdio::null());
+        cmd.output().expect("run moai")
+    }
+
+    /// `moai card <args> --project <project>` with the profile written last.
+    fn card(&self, session: Option<&str>, args: &[&str]) -> Output {
+        self.write_profile();
+        let mut all = vec!["card"];
+        all.extend_from_slice(args);
+        all.extend_from_slice(&["--project", &self.p]);
+        self.run(session, &all)
+    }
+
+    /// `moai card land <card> <extra>` as the leader (no session of its own).
+    fn land(&self, card: &str, extra: &[&str]) -> Output {
+        let mut all = vec!["land", card];
+        all.extend_from_slice(extra);
+        self.card(None, &all)
+    }
+
+    /// A card of `kind` `task` with one write scope and one open criterion per text, taken by
+    /// `S_A` and sent to review (the reservation stays held with a live lease); returns its name.
+    fn review_card(&self, criteria: &[&str]) -> String {
+        let mut args = vec![
+            "add",
+            "--title",
+            "fixture card",
+            "--kind",
+            "task",
+            "--scope",
+            "apps/a/",
+        ];
+        for text in criteria {
+            args.push("--ac");
+            args.push(text);
+        }
+        let added = result(&self.card(None, &args));
+        let name = added["name"].as_str().unwrap().to_string();
+        result(&self.card(None, &["ready", &name]));
+        result(&self.card(Some(S_A), &["take", &name]));
+        result(&self.card(Some(S_A), &["review", &name, "--generation", "1"]));
+        name
+    }
+
+    /// A candidate: a commit with `tip` as its first parent (and no change to the tree).
+    fn candidate(&self) -> String {
+        commit_with(
+            &self.project,
+            &self.tip,
+            &[&self.tip],
+            "the lane head on the tip",
+        )
+    }
+
+    /// The commit `integ` points at now.
+    fn integ(&self) -> String {
+        git(&self.project, &["rev-parse", "refs/heads/integ"])
+    }
+
+    fn dump(&self) -> Vec<String> {
+        let l = ledger::open_read_only(self.home.path(), "demo").unwrap();
+        dump_tables(
+            l.conn(),
+            &[
+                "card",
+                "card_ac",
+                "card_note",
+                "card_link",
+                "reservation",
+                "reservation_scope",
+                "event",
+            ],
+        )
+    }
+
+    fn count(&self, sql: &str) -> i64 {
+        let l = ledger::open_read_only(self.home.path(), "demo").unwrap();
+        l.conn().query_row(sql, [], |r| r.get(0)).unwrap()
+    }
+
+    fn text(&self, sql: &str) -> String {
+        let l = ledger::open_read_only(self.home.path(), "demo").unwrap();
+        l.conn().query_row(sql, [], |r| r.get(0)).unwrap()
+    }
+
+    fn events(&self, card: &str, kind: &str) -> i64 {
+        self.count(&format!(
+            "SELECT count(*) FROM event WHERE card_id = {} AND kind = '{kind}'",
+            number(card)
+        ))
+    }
+
+    /// Asserts a refusal that wrote nothing: exit 1, `ok` false, the error kind, a reason that
+    /// holds one of `any_of`, every table equal to `before`, `integ` still at `integ_before` and
+    /// no `fence_reject` event. Returns the message.
+    fn refuse(
+        &self,
+        out: &Output,
+        kind: &str,
+        any_of: &[&str],
+        before: &[String],
+        integ_before: &str,
+    ) -> String {
+        assert_eq!(
+            out.status.code(),
+            Some(1),
+            "{} {}",
+            String::from_utf8_lossy(&out.stdout),
+            String::from_utf8_lossy(&out.stderr)
+        );
+        let v = envelope(out);
+        assert_eq!(v["ok"], json!(false), "{v}");
+        assert_eq!(v["error"]["kind"], json!(kind), "{v}");
+        let message = v["error"]["message"].as_str().unwrap().to_string();
+        assert!(
+            any_of.iter().any(|needle| message.contains(needle)),
+            "the reason names none of {any_of:?}: {message}"
+        );
+        assert_eq!(&self.dump(), before, "the refused call wrote to the ledger");
+        assert_eq!(self.integ(), integ_before, "the refused call moved integ");
+        assert_eq!(
+            self.count("SELECT count(*) FROM event WHERE kind = 'fence_reject'"),
+            0,
+            "the call left a fence_reject event"
+        );
+        message
+    }
+
+    /// A draft SPEC with every placeholder filled, so `spec check` passes it; returns its id.
+    fn draft_spec(&self, slug: &str) -> String {
+        let out = self.run(
+            None,
+            &[
+                "spec",
+                "new",
+                slug,
+                "--title",
+                "t",
+                "--minimal",
+                "--date",
+                "2026-11-21",
+                "--project",
+                &self.p,
+            ],
+        );
+        let id = result(&out)["id"].as_str().unwrap().to_string();
+        let path = self.project.join(".moai/specs").join(&id).join("spec.md");
+        fs::write(&path, filled(&fs::read_to_string(&path).unwrap())).unwrap();
+        id
+    }
+}
+
+// ---- AC-1: the move and the close in one call ----------------------------------------------
+
+/// AC-1: a card in review whose candidate is a commit on the tip lands in one call.
+#[test]
+fn ac1_a_candidate_on_the_tip_moves_the_branch_and_closes_the_card() {
+    let w = World::new();
+    let card = w.review_card(&["one"]);
+    let candidate = w.candidate();
+    let out = w.land(
+        &card,
+        &[
+            "--head",
+            &candidate,
+            "--met",
+            "1=the test",
+            "--by",
+            "leader",
+        ],
+    );
+    let got = result(&out);
+    assert_eq!(got["action"], json!("land"), "{got}");
+    assert_eq!(got["moved"], json!(true), "{got}");
+    assert_eq!(got["branch"], json!("integ"), "{got}");
+    assert_eq!(got["from_tip"], json!(w.tip), "{got}");
+    assert_eq!(got["to_tip"], json!(candidate), "{got}");
+    assert_eq!(got["closed"], json!(true), "{got}");
+    assert_eq!(got["state"], json!("done"), "{got}");
+    assert_eq!(w.integ(), candidate);
+    let id = number(&card);
+    assert_eq!(
+        w.text(&format!("SELECT state FROM card WHERE card_id = {id}")),
+        "done"
+    );
+    assert_eq!(
+        w.text(&format!(
+            "SELECT status FROM reservation WHERE card_id = {id} ORDER BY generation DESC LIMIT 1"
+        )),
+        "released"
+    );
+    assert_eq!(w.events(&card, "card.landed"), 1);
+    assert_eq!(w.events(&card, "card.finish"), 1);
+    // The reference log names the candidate and no card number.
+    let log = git(
+        &w.project,
+        &[
+            "reflog",
+            "show",
+            "--format=%gs",
+            "-n",
+            "1",
+            "refs/heads/integ",
+        ],
+    );
+    assert!(log.contains(&candidate[..12]), "{log}");
+    assert!(!log.contains("C-"), "{log}");
+}
+
+// ---- AC-2: a branch that moved under the call ------------------------------------------------
+
+/// AC-2: another process moves the branch between the read of the tip and the update, so the
+/// compare-and-swap refuses and everything stays as it was.
+#[test]
+fn ac2_a_branch_that_moved_under_the_call_refuses_with_tip_moved() {
+    let w = World::new();
+    let card = w.review_card(&["one"]);
+    let candidate = w.candidate();
+    let other = commit_with(&w.project, &w.tip, &[&w.tip], "somebody else landed first");
+    let real = git_executable();
+    let wrapper = w.dir.path().join("git-moves-integ");
+    common::write_executable(
+        &wrapper,
+        &format!(
+            "#!/bin/sh\nfor a in \"$@\"; do\n  if [ \"$a\" = update-ref ]; then\n    '{git}' -C '{project}' update-ref refs/heads/integ {other}\n  fi\ndone\nexec '{git}' \"$@\"\n",
+            git = real.display(),
+            project = w.project.display(),
+            other = other,
+        ),
+    );
+    *w.git_bin.borrow_mut() = wrapper;
+    let before = w.dump();
+    let out = w.land(
+        &card,
+        &[
+            "--head",
+            &candidate,
+            "--met",
+            "1=the test",
+            "--by",
+            "leader",
+        ],
+    );
+    w.refuse(&out, "conflict", &["tip_moved"], &before, &other);
+}
+
+// ---- AC-3: a candidate already inside the tip ------------------------------------------------
+
+/// AC-3: a candidate that is already inside the tip closes the card with no reference update; a
+/// second call answers done and writes nothing, and another head refuses.
+#[test]
+fn ac3_a_candidate_inside_the_tip_closes_the_card_without_a_move() {
+    let w = World::new();
+    let card = w.review_card(&["one"]);
+    let out = w.land(
+        &card,
+        &["--head", &w.head, "--met", "1=the test", "--by", "leader"],
+    );
+    let got = result(&out);
+    assert_eq!(got["moved"], json!(false), "{got}");
+    assert_eq!(got["closed"], json!(true), "{got}");
+    assert_eq!(got["to_tip"], json!(w.tip), "{got}");
+    assert_eq!(w.integ(), w.tip);
+    // The same call again: done, nothing written.
+    let before = w.dump();
+    let again = result(&w.land(
+        &card,
+        &["--head", &w.head, "--met", "1=the test", "--by", "leader"],
+    ));
+    assert_eq!(again["state"], json!("done"), "{again}");
+    assert_eq!(again["moved"], json!(false), "{again}");
+    assert_eq!(w.dump(), before, "a call on a done card wrote");
+    // Another head on the done card refuses.
+    let out = w.land(
+        &card,
+        &["--head", &w.tip, "--met", "1=the test", "--by", "leader"],
+    );
+    w.refuse(&out, "invalid_input", &["is done"], &before, &w.tip);
+}
+
+// ---- AC-4: stale base --------------------------------------------------------------------------
+
+/// AC-4: a candidate that does not have the tip on its first-parent line refuses with stale_base.
+#[test]
+fn ac4_a_candidate_without_the_tip_on_its_first_parent_line_is_stale() {
+    let w = World::new();
+    let card = w.review_card(&["one"]);
+    let before = w.dump();
+    // Branched from an older commit: the tip is not even an ancestor.
+    let older = commit_with(&w.project, &w.head, &[&w.head], "from an older tip");
+    let out = w.land(
+        &card,
+        &["--head", &older, "--met", "1=the test", "--by", "leader"],
+    );
+    let message = w.refuse(&out, "conflict", &["stale_base"], &before, &w.tip);
+    assert!(
+        message.contains(&w.tip) && message.contains(&older),
+        "{message}"
+    );
+    // The tip only on a second parent: its first-parent line is another history.
+    let second = commit_with(&w.project, &w.head, &[&w.head, &w.tip], "the tip merged in");
+    let out = w.land(
+        &card,
+        &["--head", &second, "--met", "1=the test", "--by", "leader"],
+    );
+    w.refuse(&out, "conflict", &["stale_base"], &before, &w.tip);
+}
+
+// ---- AC-5: every check of finish comes before the move --------------------------------------
+
+/// AC-5: what `card finish` would refuse is refused before the branch moves.
+#[test]
+fn ac5_every_refusal_of_finish_comes_before_the_move() {
+    let w = World::new();
+    let candidate = w.candidate();
+    let before_ref = w.tip.clone();
+
+    // A wrong generation.
+    let card = w.review_card(&["one"]);
+    let before = w.dump();
+    let out = w.land(
+        &card,
+        &[
+            "--head",
+            &candidate,
+            "--met",
+            "1=x",
+            "--generation",
+            "7",
+            "--by",
+            "leader",
+        ],
+    );
+    w.refuse(&out, "invalid_input", &["generation"], &before, &before_ref);
+
+    // A met option for a criterion that is not open, and one named twice.
+    let out = w.land(
+        &card,
+        &["--head", &candidate, "--met", "9=x", "--by", "leader"],
+    );
+    w.refuse(
+        &out,
+        "invalid_input",
+        &["not an open criterion"],
+        &before,
+        &before_ref,
+    );
+    let out = w.land(
+        &card,
+        &[
+            "--head", &candidate, "--met", "1=a", "--met", "1=b", "--by", "leader",
+        ],
+    );
+    w.refuse(
+        &out,
+        "invalid_input",
+        &["named twice"],
+        &before,
+        &before_ref,
+    );
+
+    // A card in a state that cannot be finished: a draft.
+    let added = result(&w.card(
+        None,
+        &[
+            "add", "--title", "a draft", "--kind", "task", "--scope", "apps/b/", "--ac", "one",
+        ],
+    ));
+    let draft = added["name"].as_str().unwrap().to_string();
+    let before = w.dump();
+    let out = w.land(
+        &draft,
+        &["--head", &candidate, "--met", "1=x", "--by", "leader"],
+    );
+    w.refuse(&out, "conflict", &["draft"], &before, &before_ref);
+
+    // A SPEC with errors at the candidate: the checkout copy is good, the candidate's is not.
+    let spec = w.draft_spec("land-fixture");
+    let spec_path = format!(".moai/specs/{spec}/spec.md");
+    let good = fs::read_to_string(w.project.join(&spec_path)).unwrap();
+    let card = w.review_card(&["one"]);
+    result(&w.card(None, &["spec", &card, &spec]));
+    let broken_tip = put_on(&w.project, &w.tip, &spec_path, "not a spec\n");
+    git(&w.project, &["update-ref", "refs/heads/integ", &broken_tip]);
+    let candidate = commit_with(&w.project, &broken_tip, &[&broken_tip], "on a broken SPEC");
+    assert_ne!(good, "not a spec\n");
+    let before = w.dump();
+    let out = w.land(
+        &card,
+        &["--head", &candidate, "--met", "1=x", "--by", "leader"],
+    );
+    w.refuse(
+        &out,
+        "invalid_input",
+        &["error(s)", "SPEC"],
+        &before,
+        &broken_tip,
+    );
+}
+
+// ---- AC-6: a checked-out branch and a head that is no commit ----------------------------------
+
+/// AC-6: the integration branch checked out in another worktree refuses and names it, and a
+/// candidate that is no commit refuses; both before any write.
+#[test]
+fn ac6_a_checked_out_branch_and_a_head_that_is_no_commit_refuse_before_the_move() {
+    let w = World::new();
+    let card = w.review_card(&["one"]);
+    let candidate = w.candidate();
+    let before = w.dump();
+    let out = w.land(
+        &card,
+        &["--head", UNKNOWN_HEAD, "--met", "1=x", "--by", "leader"],
+    );
+    w.refuse(&out, "invalid_input", &["not a commit"], &before, &w.tip);
+
+    let tree = w.dir.path().join("integ-checkout");
+    git(
+        &w.project,
+        &["worktree", "add", "-q", tree.to_str().unwrap(), "integ"],
+    );
+    let out = w.land(
+        &card,
+        &["--head", &candidate, "--met", "1=x", "--by", "leader"],
+    );
+    let message = w.refuse(&out, "conflict", &["checked out"], &before, &w.tip);
+    assert!(
+        message.contains("integ-checkout"),
+        "the refusal names the worktree: {message}"
+    );
+}
+
+// ---- AC-7: the caller ---------------------------------------------------------------------------
+
+/// AC-7: a caller word other than the leader word refuses.
+#[test]
+fn ac7_a_caller_other_than_the_leader_refuses() {
+    let w = World::new();
+    let card = w.review_card(&["one"]);
+    let candidate = w.candidate();
+    let before = w.dump();
+    let out = w.land(
+        &card,
+        &["--head", &candidate, "--met", "1=x", "--by", "agent-16"],
+    );
+    let message = w.refuse(&out, "invalid_input", &["leader"], &before, &w.tip);
+    assert!(message.contains("typed verdict"), "{message}");
+    // The holder's own session is no leader either.
+    w.write_profile();
+    let out = w.card(
+        Some(S_A),
+        &[
+            "land", &card, "--head", &candidate, "--met", "1=x", "--by", "agent-1",
+        ],
+    );
+    w.refuse(&out, "invalid_input", &["leader"], &before, &w.tip);
+}
+
+// ---- AC-8: a landing that closes nothing ---------------------------------------------------------
+
+/// AC-8: an open criterion with no met option moves the branch, records one landing event and
+/// leaves the card open; the same call with the met options closes it with no second move.
+#[test]
+fn ac8_an_open_criterion_with_no_met_option_lands_and_leaves_the_card_open() {
+    let w = World::new();
+    let card = w.review_card(&["one", "two"]);
+    let candidate = w.candidate();
+    let got = result(&w.land(
+        &card,
+        &["--head", &candidate, "--met", "1=x", "--by", "leader"],
+    ));
+    assert_eq!(got["moved"], json!(true), "{got}");
+    assert_eq!(got["closed"], json!(false), "{got}");
+    assert_eq!(got["open_criteria"], json!([2]), "{got}");
+    assert_eq!(w.integ(), candidate);
+    assert_eq!(w.events(&card, "card.landed"), 1);
+    assert_eq!(w.events(&card, "card.finish"), 0);
+    assert_eq!(
+        w.text(&format!(
+            "SELECT state FROM card WHERE card_id = {}",
+            number(&card)
+        )),
+        "review"
+    );
+    let done = result(&w.land(
+        &card,
+        &[
+            "--head", &candidate, "--met", "1=x", "--met", "2=y", "--by", "leader",
+        ],
+    ));
+    assert_eq!(done["moved"], json!(false), "{done}");
+    assert_eq!(done["closed"], json!(true), "{done}");
+    assert_eq!(w.events(&card, "card.landed"), 1);
+    assert_eq!(w.events(&card, "card.finish"), 1);
+}
+
+// ---- AC-9: a rerun after a stop -------------------------------------------------------------------
+
+/// AC-9: the branch was moved by hand to the candidate and the card is still open; one call
+/// closes it with one landing event and one finish event.
+#[test]
+fn ac9_a_rerun_after_a_stop_between_the_move_and_the_close_closes_the_card() {
+    let w = World::new();
+    let card = w.review_card(&["one"]);
+    let candidate = w.candidate();
+    git(&w.project, &["update-ref", "refs/heads/integ", &candidate]);
+    let got = result(&w.land(
+        &card,
+        &["--head", &candidate, "--met", "1=x", "--by", "leader"],
+    ));
+    assert_eq!(got["moved"], json!(false), "{got}");
+    assert_eq!(got["closed"], json!(true), "{got}");
+    assert_eq!(w.integ(), candidate);
+    assert_eq!(w.events(&card, "card.landed"), 1);
+    assert_eq!(w.events(&card, "card.finish"), 1);
+}
+
+// ---- AC-10: the profile branch and git ---------------------------------------------------------------
+
+/// AC-10: a profile whose integration branch names a tag path refuses with the words "is not a
+/// branch name", and a git that cannot run refuses before any write.
+#[test]
+fn ac10_a_tag_path_and_a_git_that_cannot_run_refuse_before_any_write() {
+    let w = World::new();
+    let card = w.review_card(&["one"]);
+    let candidate = w.candidate();
+    let before = w.dump();
+    w.set_profile(TAG_PROFILE);
+    let out = w.land(
+        &card,
+        &["--head", &candidate, "--met", "1=x", "--by", "leader"],
+    );
+    w.refuse(
+        &out,
+        "invalid_input",
+        &["is not a branch name"],
+        &before,
+        &w.tip,
+    );
+
+    w.set_profile(MFLOW_PROFILE);
+    *w.git_bin.borrow_mut() = w.dir.path().join("no-such-git");
+    let out = w.land(
+        &card,
+        &["--head", &candidate, "--met", "1=x", "--by", "leader"],
+    );
+    w.refuse(
+        &out,
+        "invalid_input",
+        &["git could not run"],
+        &before,
+        &w.tip,
+    );
+}
