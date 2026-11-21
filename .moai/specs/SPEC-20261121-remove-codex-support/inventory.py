@@ -80,7 +80,41 @@ TEST_WORDS = [
 ]
 
 
+# Files the leader's decision D6 keeps (Go-era `.codex` handling, `~/.codex/worktrees` guard, protected
+# paths, readers of old records) and the tests that exercise them: no removal slice edits them.
+KEPT_BY_DECISION = {
+    "src/go_state.rs", "src/update_cleanup.rs", "src/worktree_gc.rs", "src/gate.rs",
+    "src/decision.rs", "src/user_assets.rs", "src/migrate.rs",
+    "tests/go_state_codex_cli.rs", "tests/go_state_classes_cli.rs", "tests/go_state_cli.rs",
+    "tests/update_cleanup_cli.rs", "tests/gate_check_cli.rs", "tests/migrate_cli.rs",
+    "tests/worktree_gc_install_dir.rs", "tests/decision_append_cli.rs",
+}
+# Where the impact report's own card assignment (section 2 and 6) differs from what the area rule
+# or the test-name words give. `1>2`: slice 1 edits first, slice 2 takes the file after it.
+SLICE_OVERRIDES = {
+    "src/host_home.rs": "1>2",  # slice 1 drops the users, slice 2 drops the Codex and OMP variants last
+    "src/audit.rs": "2", "src/contract.rs": "2", "tests/audit_admission.rs": "2",
+    "src/labels_check.rs": "3",
+    # The Codex session id (`CODEX_THREAD_ID`) goes with the lane and card tooling, after no lane
+    # session runs on Codex (D-6); the report put it with the project layer.
+    "src/session_current.rs": "4", "src/ops/session_current.rs": "4",
+    "tests/session_current_cli.rs": "4",
+    "tests/migration_fixture.rs": "2",
+    "tests/project_skill_apply_gate_cli.rs": "2",
+    "tests/ci_scope_test.py": "3", "tests/mode_cards_53.rs": "3",
+    "tests/host_matrix_test.py": "3", "tests/support_matrix_test.py": "3",
+    "tests/host_live_harness_test.py": "3",
+    "tests/fixtures/update_tux/preview-blocked.json": "1",
+    "tests/fixtures/update_tux/preview-changes.json": "1",
+    "tests/fixtures/update_tux/preview-latest.json": "1",
+}
+
+
 def slice_of(area, path):
+    if path in KEPT_BY_DECISION:
+        return "keep"
+    if path in SLICE_OVERRIDES:
+        return SLICE_OVERRIDES[path]
     if path == "schemas/protocol/v1/profile.schema.json":
         return "2"  # the profile's host list changes together with the profile code
     if area == "project-state-files":

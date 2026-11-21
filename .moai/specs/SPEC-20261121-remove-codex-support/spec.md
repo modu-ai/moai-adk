@@ -42,7 +42,7 @@ created: 2026-11-21
 - AC-1 (REQ-1, REQ-2): 목록의 파일 수가 기준 커밋의 `git grep` 과 맞아요 · verify: `python3 -I .moai/specs/SPEC-20261121-remove-codex-support/inventory.py 53cce6c580 --out /dev/null --check 592`
 - AC-2 (REQ-1): `codex` 를 담은 파일은 576개예요(여기에 `OMP` 낱말만 담은 13개와 경로 이름에만 Codex 가 있는 3개를 더해 AC-1 의 592) · verify: `git grep -Iil codex 53cce6c580 | wc -l` 이 576 을 찍어요
 - AC-3 (REQ-3): 모든 행의 소유 조각이 허용 값이에요 · verify: `awk -F'\t' 'substr($1,1,1)!="#" && $2 !~ "^(1|2|3|4|1>2|keep)$"' .moai/specs/SPEC-20261121-remove-codex-support/inventory.tsv | wc -l` 이 0 을 찍어요
-- AC-4 (REQ-4): 두 조각이 쓰는 파일은 `1>2` 두 개(`src/main.rs`, `src/help.rs`)뿐이에요 · verify: `awk -F'\t' 'substr($1,1,1)!="#" && $2=="1>2" {print $3}' .moai/specs/SPEC-20261121-remove-codex-support/inventory.tsv` 가 그 두 경로를 찍어요
+- AC-4 (REQ-4): 두 조각이 쓰는 파일은 `1>2` 세 개(`src/host_home.rs`, `src/help.rs`, `src/main.rs`)뿐이에요 · verify: `awk -F'\t' 'substr($1,1,1)!="#" && $2=="1>2" {print $3}' .moai/specs/SPEC-20261121-remove-codex-support/inventory.tsv` 가 그 세 경로를 찍어요
 - AC-5 (REQ-8, REQ-9): 복원 기록에 Codex·OMP 를 담은 SPEC 폴더 57개가 있어요 · verify: `wc -l < .moai/specs/SPEC-20261121-remove-codex-support/restore-record.txt` 가 57 을 찍어요
 - AC-6 (REQ-7): 사용자에게 보일 한 줄이 SPEC 에 있어요 · verify: `grep -c "moai no longer manages Codex files" .moai/specs/SPEC-20261121-remove-codex-support/spec.md` 가 1 이상이에요
 - AC-7 (REQ-10, REQ-11, REQ-12): 조각 순서 표에 조각 1·2·3·4·5 와 시작 조건이 있어요 · verify: `grep -c "^| 조각 [1-5] " .moai/specs/SPEC-20261121-remove-codex-support/spec.md` 가 5 를 찍어요
@@ -82,26 +82,34 @@ created: 2026-11-21
 
 | 조각 | 파일 | 줄 | 그 가운데 src | tests | 담당 영역 |
 | --- | --- | --- | --- | --- | --- |
-| 1 | 91 | 993 | 25 | 66 | launcher-and-session, home-layer 와 그 시험 |
-| 1>2 | 2 | 135 | 2 | 0 | `src/main.rs`, `src/help.rs`(조각 1 이 먼저, 끝나면 조각 2) |
-| 2 | 92 | 1809 | 33 | 56 | hooks, project-layer, statusline, codex-only 파일(src·tests), other-src, 프로필 스키마, 이 저장소 프로필 |
-| 3 | 241 | 2319 | 0 | 63 | 스킬·템플릿 글, 문서, 설치·CI·도구, 생성 매니페스트, 이 저장소의 `.codex/` 폴더(추적 파일 2개, 리더 결정), 남는 시험 |
-| 4 | 48 | 400 | 29 | 19 | lane-and-card-tooling 과 그 시험 |
-| keep | 118 | 847 | 0 | 0 | 손대지 않아요 |
+| 1 | 84 | 1095 | 19 | 65 | launcher-and-session(`session_current` 제외), home-layer(`host_home`·`update_cleanup`·`user_assets`·`migrate` 제외) 와 그 시험 |
+| 1>2 | 3 | 169 | 3 | 0 | `src/main.rs`, `src/help.rs`, `src/host_home.rs`(조각 1 이 쓰는 곳을 먼저 지우고, 끝나면 조각 2 가 호스트 variant·명령·도움말 줄을 지워요) |
+| 2 | 91 | 1424 | 34 | 54 | hooks, project-layer, statusline, codex-only 파일(src·tests), other-src, `audit.rs`·`contract.rs`, 프로필 스키마, 이 저장소 프로필 |
+| 3 | 245 | 2360 | 1 | 66 | 스킬·템플릿 글, 문서, 설치·CI·도구, `labels_check.rs`, 생성 매니페스트, 이 저장소의 `.codex/` 폴더(추적 파일 2개, 리더 결정), 문서·도구를 보는 시험 |
+| 4 | 36 | 198 | 25 | 11 | lane·goal·leader 와 카드 도구(`lane_*`, `leader_*`, `goal_block`, 카드 세션 ID `CODEX_THREAD_ID`: `session_current`, `card/*`, `trailers`)와 그 시험 |
+| keep | 133 | 1257 | 7 | 8 | 손대지 않아요: 지난 기록·SPEC·리포트 118개 파일과, 리더 결정(D-15)이 남기라고 한 코드·시험 15개 |
 
-시험은 이름의 낱말로 소유를 처음 정했어요(`inventory.py` 의 `TEST_WORDS`). 시험이 부르는 코드를 지우는 조각이 그 시험도 같이 고쳐요. 이름만으로 틀리게 정해진 시험은 그 조각이 `cargo test --no-run` 에서 깨지는 것으로 알게 되고, 소유를 바꾸면 그 조각의 Result 에 적어요.
+`keep` 의 코드·시험 15개: `src/go_state.rs`, `src/update_cleanup.rs`, `src/worktree_gc.rs`, `src/gate.rs`, `src/decision.rs`, `src/user_assets.rs`, `src/migrate.rs` 와 `tests/go_state_codex_cli.rs`, `go_state_classes_cli.rs`, `go_state_cli.rs`, `update_cleanup_cli.rs`, `gate_check_cli.rs`, `migrate_cli.rs`, `worktree_gc_install_dir.rs`, `decision_append_cli.rs`. 이 파일들은 어느 제거 조각도 고치지 않지만, 호환 층 카드가 `go_state.rs` 의 상수 한 줄(`CONFIG_LIMIT` 옮기기)을 고쳐요. 낱말은 그대로 남으므로 마지막 낱말 검사의 허용 목록에 들어가요(D-15).
+
+시험은 먼저 `src` 의 소유를 따르는 첫 추정으로 정했어요(`inventory.py` 의 `TEST_WORDS`, `SLICE_OVERRIDES`, `KEPT_BY_DECISION`). 규칙은 제거 영향 보고서 §2·§6 의 카드 배정을 따라요. 부르는 API 를 지우는 조각이 그 시험도 **같은 커밋에서** 고쳐요(순수 삭제만 하는 시험은 아무 때나 지워도 컴파일은 깨지지 않아요). 이름만으로 틀리게 정해진 시험은 그 조각이 `cargo test --no-run` 에서 깨지는 것으로 알게 되고, 소유를 바꾸면 그 조각의 Result 에 적어요.
 
 ## Plan
 
-| 조각 | 무엇 | 언제 시작해요 | 같이 돌 수 있는 조각 |
-| --- | --- | --- | --- |
-| 조각 1 | 실행기·모델 질문·홈 업데이트 | 지금 | 2, 3 |
-| 조각 2 | 프로젝트 단계·훅 어댑터·`.codex/*` 생성·호스트 질문·프로필·Codex 전용 파일 | 지금(`src/main.rs`·`src/help.rs` 는 조각 1 이 반환한 뒤에 잡아요) | 1, 3 |
-| 조각 3 | 스킬·문서·설치·CI·도구·템플릿·생성 매니페스트·이 저장소의 `.codex/` 폴더(와 `.worktreeinclude`·`.gitignore` 의 `.codex` 줄)·남는 시험 | 지금(생성 매니페스트와 `source-manifest.json` 해시는 병합 직전에 다시 만들어요) | 1, 2 |
-| 조각 4 | 레인·카드 도구의 Codex 경로(카드 세션 ID, 레인 루프 Stop 훅) | 조각 1·2·3 이 모두 착지한 뒤, 그리고 Codex 에서 도는 레인이 하나도 없다고 리더가 확인한 뒤(REQ-11, D-6) | 없음 |
-| 조각 5 | 마지막 검사: 저장소 검사에 `codex`·`omp` 가 허용 목록 밖에 없다는 규칙을 더하고 남은 한 줄을 정리 | 조각 4 가 착지한 뒤 | 없음 |
+병합 순서는 제거 영향 보고서 §6 과 리더 결정을 따라요: 이 SPEC → 호환 층 → 조각 1 → 조각 2 → 조각 3 → 새 binary 로 이 저장소 자신의 프로필·`generation.json` 다시 만들기 → `clippy --all-targets` → 조각 4 → 조각 5. 한 단계가 착지해 통합 가지의 tip 이 초록인 것을 확인한 뒤에 다음 단계가 병합해요.
 
-각 조각은 `--no-ff` 병합 한 번으로 통합 가지에 들어가요(REQ-12). 조각 3 이 낱말 규칙(조각 5)을 먼저 켜면 아직 안 지운 조각이 모두 실패하므로, 규칙은 마지막이에요.
+| 단계 | 카드 | 무엇 | 언제 시작해요 |
+| --- | --- | --- | --- |
+| 호환 층 | C-312 | 더하기만 하는 층(기존 동작은 그대로): 프로필의 `codex`·`omp` 를 읽을 때 걸러요(D-10), `launcher.models.codex/omp` 를 은퇴 키로 읽고 무시해요(D-11), 옛 receipt 의 은퇴 호스트 항목은 되돌릴 때 건너뛰고 보고해요(D-12), 생성 manifest 의 Codex 항목은 manifest 에서만 빼요(D-13). 아울러 `codex_config` 의 `Backup`·`BACKUP_DIR`·`write_backup` 과 `CONFIG_LIMIT` 를 공유 모듈로 먼저 옮겨요(`src/hooks.rs`·`src/go_state.rs` 가 쓰기 때문이에요) | 이 SPEC 이 통합 가지에 병합된 뒤 가장 먼저 |
+| 조각 1 | C-290 | 실행기(`main`·`session`·`launcher_*`)·모델 질문과 표·홈 업데이트(`update.rs` 의 `HOSTS`, `skill_host_of`, `agent_defs`·`agent_install` 을 **한 커밋에서**, `home_routing`·`home_style`·`update_models`)·`host_home` 의 사용처, 그리고 부르는 시험·도움말 표·도움말과 update 골든을 같은 커밋에 | 호환 층 착지 뒤 |
+| 조각 2 | C-291 | 프로젝트 단계(`project_hosts`·`project_update`·`project_skills`·`generation`)·훅(`hooks`·`hook_engine`·`hook_legacy`)·`omp_agents`·`hosts/codex*`·`ops` 9개 삭제, 같은 커밋에 컴파일이 깨지는 시험 줄·Codex 전용 시험 파일·`repo_scans.json`·`ci_scope.py`·`cli_text_citations.rs` 항목, 마지막에 `host_home` 의 Codex·OMP variant | 조각 1 착지 뒤(`src/main.rs`·`src/help.rs` 와 `src/host_home.rs` 는 조각 1 이 반환한 뒤에 잡아요) |
+| 조각 3 | C-292 | 스킬 글 → `rule-history`·`source-manifest` 다시 만들기 → 글 시험, 문서+파이썬 시험+src 배열, 설치 스크립트+시험, GitHub 양식+manifest+labels(`host:codex` 는 `not_used` 로 옮겨요), README+`Cargo.toml`, bundle-packs 14개+`packs.json`+`.gitignore` 를 한 커밋에, 이 저장소의 `.codex/` 폴더 | 조각 2 착지 뒤(글만 하는 준비는 먼저 해도 되지만 병합은 뒤예요) |
+| 재생성 | 조각 3 의 카드가 이어서 | 새 binary 로 이 저장소 자신의 프로필(`.moai/project.yaml`, `.moai-cli/project.yaml`), `generation.json`·`profile-baseline.json`·`AGENTS.md` managed section 다시 만들기, 그다음 `cargo clippy --all-targets -D warnings`(죽은 코드) | 조각 3 착지 뒤 |
+| 조각 4 | C-313 | 레인·goal·leader 의 Codex 경로(`lane_loop` 의 Codex·OMP arm, `lane-stop-hook` 명령, `lane_duty`, `goal_block` 은 Claude Code 가 쓰는 경우만 남겨요, `leader_round`)와 카드 세션 ID(`CODEX_THREAD_ID`) | 재생성 뒤, 그리고 Codex 에서 도는 레인이 하나도 없다고 리더가 확인한 뒤(REQ-11, D-6) |
+| 조각 5 | 새 카드 필요 | 마지막 검사: 저장소 검사에 `codex`·`omp` 가 허용 목록 밖에 없다는 규칙을 더해요. 허용 목록 = D-15 로 남긴 파일, D-16 의 번들 자산, 호환 층이 남긴 읽기 코드, 사용자에게 보이는 한 줄 | 조각 4 착지 뒤 |
+
+각 조각은 `--no-ff` 병합 한 번으로 통합 가지에 들어가요(REQ-12). 낱말 검사(조각 5)를 먼저 켜면 아직 안 지운 조각이 모두 실패하므로, 검사는 마지막이에요. `build.rs` 는 `src/ops/*.rs` 와 `packs.json` 을 자동 등록하므로 파일을 지우는 커밋이 도움말 표·`repo_scans.json`·`ci_scope.py`·`cli_text_citations.rs`(`CLEANED` 17→16)·`packs.json` 을 같은 커밋에서 고쳐요. GLM 이 쓰는 코드(모델 표의 `glm` arm, `glm_token`·`KeySource`, `launcher_terminal` 의 GLM 상수, 세션의 `zai/` 접두어 떼기)는 어느 조각도 지우지 않아요(D-9, 보고서 §4).
+
+조각 1 과 2 의 경계에서 보고서(§2.2)와 리더 노트가 `update.rs` 를 서로 다른 조각에 적어 두었어요. 이 SPEC 은 보고서 표대로 `update.rs`·`agent_defs.rs`·`agent_install.rs` 를 조각 1 에 두되, 리더가 조각 2 로 옮기면 `inventory.py` 의 `SLICE_OVERRIDES` 한 줄로 바꿔요(D-19).
 
 ### 조각마다 지켜야 하는 것
 
@@ -129,8 +137,10 @@ Codex 쪽 일을 언젠가 되살릴 때를 위해 아래를 남기고, 어느 �
 
 ## Risks
 
-- 카드 세션 ID 는 `CODEX_THREAD_ID` 도 읽어요(`src/card/dispatch.rs` 의 holder 와 `src/session.rs`). 지금 일부 레인이 Codex 로 도는 중이면, 그 코드를 지우는 순간 그 레인은 카드를 잡거나 놓을 수 없어요. 그래서 조각 4 를 마지막으로 미뤘고 시작 조건에 "Codex 레인 없음"을 넣었어요(D-6).
-- `src/main.rs`·`src/help.rs` 는 조각 1 과 2 가 모두 건드려요. 한꺼번에 고치면 충돌이라 소유를 `1>2` 로 나눴어요(조각 1 이 반환하면 조각 2 가 잡아요).
+- 카드 세션 ID 는 `CODEX_THREAD_ID` 도 읽어요(`src/session_current.rs`, `src/card/dispatch.rs` 의 holder, `src/trailers.rs`). 지금 일부 레인이 Codex 로 도는 중이면, 그 코드를 지우는 순간 그 레인은 카드를 잡거나 놓을 수 없어요. 그래서 조각 4 를 마지막으로 미뤘고 시작 조건에 "Codex 레인 없음"을 넣었어요(D-6, D-18).
+- 호환 층(C-312)이 먼저 착지하지 않고 조각 1 이 `launcher.models.codex` 를 검증 대상에서 빼면, 이미 GPT 를 고른 사용자의 `moai cc`·`moai glm` 과 update 의 모델 단계가 거부로 멈춰요(고칠 길까지 같이 막혀요). 그래서 호환 층이 첫 단계예요(D-11).
+- 이 SPEC 의 소유 열은 제거 영향 보고서(읽기 전용 조사, 빌드·시험은 돌리지 않았어요)의 카드 배정을 따른 추정이에요. 각 조각이 첫 빌드에서 틀린 곳을 알게 되면 그 조각의 Result 에 소유 변경을 적고 `SLICE_OVERRIDES` 를 고쳐요.
+- `src/main.rs`·`src/help.rs`·`src/host_home.rs` 는 조각 1 과 2 가 모두 건드려요. 한꺼번에 고치면 충돌이라 소유를 `1>2` 로 나눴어요(조각 1 이 반환하면 조각 2 가 잡아요).
 - 프로필에 이미 `codex`·`omp` 가 적힌 프로젝트: 읽을 때 무시하고 안내 한 줄만 보이게 해요(D-2). 그러면 프로필 스키마와 그 읽기 코드에 `codex` 낱말이 한 곳 남아서, 조각 5 의 허용 목록에 그 한 곳과 사용자에게 보이는 한 줄을 넣어요.
 - 시험 소유를 이름의 낱말로 처음 정해서 틀리게 정해진 시험이 있을 수 있어요. 그 조각이 첫 빌드에서 알게 되고 Result 에 소유 변경을 적어요.
 - 생성된 매니페스트와 도움말 고정 파일은 병합 순서에 따라 해시가 달라져요. 그래서 각 조각이 병합 직전에 다시 만들어요(조각 3 만의 일이 아니에요).
@@ -146,9 +156,19 @@ Codex 쪽 일을 언젠가 되살릴 때를 위해 아래를 남기고, 어느 �
 | D-4 | 카드와 SPEC 은 철회해서 두고 지우지 않아요. 카드 철회는 리더가 해요 | 사용자 결정 "언젠가 codex 가 쓸만해지면 사용하도록" | 철회 풀기 |
 | D-5 | 기준 커밋에 이름 있는 가지(태그 아님) 하나를 리더가 만들어 두기를 요청해요. 기본값은 만들지 않음 | 병합 커밋 되돌리기만으로도 복원은 되지만, 기준 커밋을 찾는 일이 쉬워져요. 가지를 밀어 올리는 일은 레인이 하지 않아요 | 만들지 않기 |
 | D-6 | 조각 4(카드 세션 ID, 레인 루프 Codex 경로)는 Codex 에서 도는 레인이 없다고 리더가 확인한 뒤에 시작해요 | 레인 도구가 Codex 세션 ID 를 읽는 동안 지우면 그 레인이 카드를 못 다뤄요. 기본값은 대기, 되돌릴 수 있고 분류는 none 이에요 | 조건 없이 시작 |
-| D-7 | 조각 4 와 조각 5 는 새 카드가 필요해요(리더가 만들어요). 지금 있는 카드는 조각 1(C-290)·2(C-291)·3(C-292)뿐이에요 | 목록에서 레인·카드 도구가 4 조각만큼(48 파일) 커서 3 조각에 못 넣어요 | 조각 3 에 합치기 |
+| D-7 | 카드: 호환 층 C-312, 조각 1 C-290, 조각 2 C-291, 조각 3 C-292, 조각 4 C-313(리더가 만들었어요). 조각 5(낱말 검사)만 아직 카드가 없어요 | 리더 노트 5221 | 조각 5 를 조각 4 에 합치기 |
 | D-8 | 이 저장소가 추적하는 `.codex/agents/prj-local-check.toml`·`prj-reviewer.toml` 과 `.codex/` 폴더, `.worktreeinclude`·`.gitignore` 의 `.codex` 줄, 그 파일을 읽는 시험·매니페스트는 조각 3 이 지워요. 사용자 프로젝트의 `.codex/` 는 D-3 대로 건드리지 않아요 | 리더 결정(C-292 노트, 사용자 지시 2026-11-21). 저장소 안의 추적 파일은 사용자 파일이 아니라 소스예요 | 조각 3 병합 되돌리기 |
-| D-9 | GLM 이 쓰는 코드는 Codex 와 함께 지우지 않아요. 호스트 값 `glm` 과 모델 선택 코드는 모든 조각에서 남아요 | 리더 결정(C-289 노트 5151). GLM 은 Claude Code 실행기를 거치는 모델 선택이라 Codex 제거와 따로예요 | 없음 |
+| D-9 | GLM 이 쓰는 코드는 Codex 와 함께 지우지 않아요. 호스트 값 `glm` 과 모델 선택 코드는 모든 조각에서 남아요. `omp_key`·`is_zai_model`·`OMP_KEY_VAR` 만 지워요 | 리더 결정(C-289 노트 5151, 5221). GLM 은 Claude Code 실행기를 거치는 모델 선택이라 Codex 제거와 따로예요(보고서 §4) | 없음 |
+| D-10 | 프로필 `hosts` 의 `codex`·`omp`: 읽을 때 걸러 내요(거부하지 않아요). 거르고 나서 비면 `[claude]` 로 읽어요. 다음 저장 때 사라져요 | 리더 결정 D1(노트 5221, 보고서 §1-2·§5) | 거부로 바꾸기 |
+| D-11 | `launcher.models.codex`·`omp`: 은퇴 키로 읽고 무시해요, 다음 저장 때 지워요(선례: `model_effort_questions.rs` 의 OMP 처리). 이게 가장 큰 위험이에요 — 없으면 `moai cc`·`moai glm` 과 update 의 모델 단계가 멈춰요(`session.rs` 의 `apply_saved_choice`, `update_models.rs`) | 리더 결정 D2 | 키를 거부로 바꾸기 |
+| D-12 | 옛 receipt 의 은퇴 호스트 항목: 되돌릴 때 건너뛰고 건너뛴 것을 보고해요(`home_routing.rs`, `update_hooks.rs` 의 "unknown host" 거부 제거) | 리더 결정 D3 | 거부로 바꾸기 |
+| D-13 | 생성 manifest 의 Codex 항목: manifest 에서만 빼고 파일은 그대로 두어요. "recorded path is not the path of its skill" 충돌이 나지 않아야 해요(`generation.rs`) | 리더 결정 D4 | 없음 |
+| D-14 | `hook-dispatch --host codex\|omp`: 한 줄 "host removed" 오류를 내고 호출한 hook 에는 종료 코드 0 을 돌려줘요(충돌하지 않고, 무언가를 조용히 허용하지도 않아요) | 리더 결정 D5(노트 5221). 이 SPEC 의 번호는 D-10~D-18 이 리더 노트의 D1~D9 와 차례로 같아요(D-10=D1 … D-18=D9) | 조용한 통과로 바꾸기 |
+| D-15 | 남기는 코드(리더 D6): Go 시절 `.codex` 분류(`go_state.rs`), `update_cleanup.rs` 의 `~/.codex/agents` 읽기 전용 감지, `worktree_gc.rs` 의 `~/.codex/worktrees` 보호, `gate.rs` 보호 경로, `decision.rs` 의 `Host::Codex` 와 `user_assets.rs` 의 slug(옛 기록을 읽는 데 써요). 이 파일과 그 시험 15개는 인벤토리의 `keep` 이고, 호환 층 카드만 `go_state.rs` 의 상수 한 줄을 고쳐요 | 리더 결정 D6, 보고서 §1-5·§2.3 | 일부를 지우기(사용자 기록이 안 읽힐 수 있어요) |
+| D-16 | 번들 팩의 `.claude` 자산에 있는 Codex 언급(`templates/bundle-packs`, Go 바이트 스냅샷)은 바이트 그대로 두고 마지막 낱말 검사의 허용 목록에 올려요. 단, `.agents/skills` 14개와 `packs.json` 항목, `.gitignore` 블록은 조각 3 이 한 커밋에서 지워요(`build.rs` 가 `packs.json` 으로 표를 만들어서 따로 지우면 빌드가 실패해요) | 리더 결정 D7, 보고서 §2.4 | 자산도 고치기(Go 설치가 새로고침 대신 충돌이 돼요) |
+| D-17 | `lane-loop-line`: Claude 만 남겨요(`/loop` 줄). Codex `/goal` 과 Stop hook 줄은 지워요. `goal_block` 은 Claude Code 가 쓰는 경우에만 남기고, 안 쓰면 조각 4(C-313)에서 지워요(Claude Code 문서로 확인하는 일은 그 카드의 몫이에요) | 리더 결정 D8 | 명령 삭제로 바꾸기 |
+| D-18 | 레인·goal·leader 의 Codex 소스(`lane_loop`, `lane-stop-hook`, `lane_duty`, `goal_block`, `leader_round` 의 Codex 부분)는 새 카드 C-313(조각 4)이 맡아요. 이 SPEC 은 카드 세션 ID(`CODEX_THREAD_ID`)도 같은 조각 4 에 두어요 — 보고서 §2.3 은 프로젝트 조각에 적었지만, 지금 Codex 로 도는 레인이 있으면 지우는 순간 카드를 못 다루기 때문이에요(D-6) | 리더 결정 D9, 노트 5221 | 세션 ID 를 조각 2 로 옮기기 |
+| D-19 | 조각 1 과 2 의 경계: `update.rs`·`agent_defs.rs`·`agent_install.rs` 는 조각 1 이에요(보고서 §2.2 표). 리더가 조각 2 로 옮기면 `inventory.py` 의 `SLICE_OVERRIDES` 한 줄로 바꿔요. 같은 커밋에서 codex 스킬 호스트와 omp agent 호스트를 함께 지워요(`skill_host_of` 가 claude 가 아닌 모든 agent 호스트를 codex 사본에 묶어서 따로 지우면 안 돼요) | 보고서 §2.2·§2.3 과 노트 5221 사이의 차이를 숨기지 않으려고 | 소유 바꾸기 |
 
 ## Result
 
@@ -157,10 +177,10 @@ Codex 쪽 일을 언젠가 되살릴 때를 위해 아래를 남기고, 어느 �
 - AC-1 met: `python3 -I .moai/specs/SPEC-20261121-remove-codex-support/inventory.py 53cce6c580 --out /dev/null --check 592` → 종료 0, 영역 15개와 조각 6개의 파일·줄 합계가 인쇄되고 총 592 파일 6503 줄.
 - AC-2 met: `git grep -Iil codex 53cce6c580 | wc -l` → 576. 같은 방법으로 센 `OMP` 낱말만 담은 파일은 13개(`comm` 으로 576개 목록과 겹치지 않는 것만 센 값), 경로 이름에만 Codex 가 있는 파일은 3개(`git ls-tree -r --name-only` 로 찾은 `.codex/agents/*.toml` 2개와 `docs/design-review/codex-statusline-official-scope-2026-11-10-sources.json`)이고 576+13+3=592 예요.
 - AC-3 met: `awk` 로 허용 값 밖의 소유 조각 행을 센 값이 0.
-- AC-4 met: `1>2` 행은 `src/help.rs`, `src/main.rs` 두 개.
+- AC-4 met: `1>2` 행은 `src/host_home.rs`, `src/help.rs`, `src/main.rs` 세 개.
 - AC-5 met: `restore-record.txt` 57줄.
 - AC-6 met: `grep -c "moai no longer manages Codex files" spec.md` → 2(영어 한 줄과 SPEC 안에서 그 줄을 말하는 문장).
 - AC-7 met: 표의 `| 조각 1 ` … `| 조각 5 ` 행 5개.
-- 보조: 파일 소유별 src 25+2+33+29 = 89(= `codex` 86 + OMP 만 3), tests 66+56+63+19 = 204(= 198 + OMP 만 6).
+- 보조: 소유 조각별 파일은 1:84, 1>2:3, 2:91, 3:245, 4:36, keep:133 = 592. src 19+3+34+1+25+7 = 89(= `codex` 86 + OMP 만 3), tests 65+0+54+66+11+8 = 204(= 198 + OMP 만 6). 리더 결정 D1~D9(노트 5221)는 D-10~D-18 로, 제거 영향 보고서 §6 의 순서는 Plan 표로 옮겼어요.
 
 돌리지 않은 것: 조각 1~5 의 코드 제거(각 조각의 SPEC 이 맡아요), 카드 철회, 기준 가지 만들기(리더의 몫, D-4·D-5), 영역·조각 규칙이 시험 이름의 낱말에 기대는 부분이 실제 빌드에서 맞는지(각 조각이 첫 빌드에서 확인해요).
