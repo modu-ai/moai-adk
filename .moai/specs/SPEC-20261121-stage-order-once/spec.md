@@ -68,4 +68,24 @@ The order PLAN → RUN → VERIFY → SYNC → AUDIT → merge is written out in
 
 ## Result
 
-(written after the checks)
+Filled in by the implementation lane on 2026-11-21; the audit checks it again. The SPEC is `186c3aad4d`; red `fae26aa734`, green `3fd0306b99`; the local tip `42f5af0800` is merged in as `0d74395003` (the earlier tips as `c4ce5f1c4b` and `3145f287fb`, no conflict each time, `git merge-tree` exit 0); the five manifest rows are `d48ffb4b42`; the formatting commit is `56506f1712`. Evidence files are in this worktree's `target/notes/`.
+
+Red (`red1.out`, before the text): `every_place_states_one_order` and `stage_order_is_written_once` FAILED on the tip text, 10 passed and 2 failed in `tests/sdd_guidance.rs`; `each_stage_workflow_keeps_its_own_duty` passed on the tip because it guards what must stay.
+
+- AC-1: met — `cargo test --locked --offline --test sdd_guidance` (`green1.out`, and again in `affected/06-test_targets.log`): 12 passed, 0 failed; `stage_order_is_written_once` is one of them and finds the full order only in `references/internal/sdd.md` and the pointer in the five files.
+- AC-2: met — same run, `each_stage_workflow_keeps_its_own_duty`.
+- AC-3: met — `cargo test --locked --offline --test agent_defs_package --test mode_workflow_steps` (`green1.out`): 19 and 43 passed; `agent_defs_package` 19 passed again in `affected/06-test_targets.log`.
+- AC-4: met — `python3 -I tools/source_manifest.py check` prints `{"conflicted": false, "changed": [], "dropped": [], "ok": true}` on the final head; `product_cli` 79 passed in `affected/06-test_targets.log`.
+
+### Checks
+
+`moai check affected 42f5af0800..0d74395003` (the branch's own build of the binary, `--max 2`), summary line as printed: `check-affected base=42f5af0800fb head=0d743950031d targets=43 py=8 scans=listed:42 diff_check=0 fmt=1 clippy=0 test_lib=0 test_bins=0 test_targets=0 build_cli=0 python=0 result=FAIL`. The one failing step was `fmt` (`affected/02-fmt.log`): `tests/sdd_guidance.rs` was not rustfmt-clean. It is fixed in `56506f1712` (formatting only); afterwards `rustfmt --edition 2021 --check` is clean on every changed Rust file and `cargo test --locked --offline --test sdd_guidance` (`fmtfix.out`) passes 12. The whole `check affected` was not repeated on the final head.
+
+Mutants (five, on the committed files, each restored, `restored: clean = True`; `mutate.out`): the full order written out again in `run.md`, the pointer dropped from `verify.md`, the `sync` duty sentence dropped, the full order removed from the reference, the chain rule writing the order out — each killed by a named test of `sdd_guidance`.
+
+### Not run
+
+- `moai check affected` on the final head `56506f1712`: not run again (a formatting-only commit follows the run; its own check is the `fmt --check` and the target above).
+- `mode_workflow_steps` inside the `check affected` run: it was not in the affected set; its 43 passes are from `green1.out` on the green commit.
+- A second run of the same tests on the same tree: not repeated.
+
