@@ -71,7 +71,7 @@ fn reads_proc() -> bool {
     Path::new("/proc/self/fd").exists()
 }
 
-/// REQ-1, REQ-2: both scans leave out name lookups and blocking kernel calls.
+/// REQ-1, REQ-2: the scan leaves out name lookups and blocking kernel calls.
 #[test]
 fn the_process_scans_run_lsof_without_name_lookups_or_blocking_calls() {
     if reads_proc() {
@@ -84,7 +84,7 @@ fn the_process_scans_run_lsof_without_name_lookups_or_blocking_calls() {
     plan(&home, &stub, &[]);
     let calls = fs::read_to_string(&log).unwrap_or_default();
     let calls: Vec<&str> = calls.lines().collect();
-    assert!(calls.len() >= 2, "{calls:?}");
+    assert!(!calls.is_empty(), "{calls:?}");
     for call in &calls {
         let words: Vec<&str> = call.split_whitespace().collect();
         for flag in ["-w", "-n", "-P", "-b"] {
@@ -94,8 +94,6 @@ fn the_process_scans_run_lsof_without_name_lookups_or_blocking_calls() {
             );
         }
     }
-    assert!(calls.iter().any(|c| c.contains("-d cwd")), "{calls:?}");
-    assert!(calls.iter().any(|c| !c.contains("-d cwd")), "{calls:?}");
 }
 
 /// REQ-4: an injected empty table is read without running `lsof` and blocks nothing.

@@ -298,90 +298,209 @@ pub fn squash_merged(primary: &Path, head: &str, tip: &str) -> Option<bool> {
 /// loaded Mac the whole-machine scan drops from about 6 s to under 1 s with them.
 const LSOF_CHEAP: [&str; 4] = ["-w", "-n", "-P", "-b"];
 
-/// Test builds only: `MOAI_CLI_TEST_PROCESS_TABLE=empty` makes both scans answer "no process
-/// uses anything" without running `lsof`, so a test that does not need the process table does
-/// not pay for reading it.
-fn injected_empty_table() -> bool {
+/// How long a process snapshot answers later questions without a new `lsof`: the working-folder
+/// check and the open-file check of one command come one right after the other and share one
+/// listing. A question later than this reads the table again, so the re-check right before a
+/// deletion or a move is as fresh as a scan takes (0.7 to 6 s) plus this.
+const SNAPSHOT_MAX_AGE: Duration = Duration::from_secs(1);
+
+/// The longest an `lsof` may run. It takes 0.7 to 6 s on a loaded Mac; a stuck one is stopped and
+/// the table is reported as unavailable, which every caller treats as "in use" (it refuses).
+const LSOF_TIMEOUT: Duration = Duration::from_secs(60);
+
+/// What the processes this user can see use at one moment: their working folders as written and
+/// the files they hold open, canonicalised (`lsof` lists a working folder among the open files).
+pub(crate) struct Snapshot {
+    cwds: Vec<PathBuf>,
+    open: Vec<PathBuf>,
+}
+
+/// The working folders and the open files of one `lsof -F fn` listing: a `f` line names the
+/// descriptor (`cwd` for a working folder) and the `n` line after it the file. Only names that
+/// are absolute paths count as open files; sockets and pipes carry other names.
+fn parse_listing(text: &str) -> (Vec<PathBuf>, Vec<PathBuf>) {
+    let (mut cwds, mut open) = (Vec::new(), Vec::new());
+    let mut in_cwd = false;
+    for line in text.lines() {
+        if let Some(fd) = line.strip_prefix('f') {
+            in_cwd = fd == "cwd";
+        } else if let Some(name) = line.strip_prefix('n') {
+            if in_cwd {
+                cwds.push(PathBuf::from(name));
+            }
+            if name.starts_with('/') {
+                open.push(PathBuf::from(name));
+            }
+            in_cwd = false;
+        } else if line.starts_with('p') {
+            in_cwd = false;
+        }
+    }
+    (cwds, open)
+}
+
+/// Test builds only: `MOAI_CLI_TEST_PROCESS_TABLE` replaces the real table. `empty` is a table
+/// nobody uses anything in; any other value is a file with the lines `cwd <path>` (a working
+/// folder, also counted as an open file as `lsof` does) and `open <path>`. The outer `Some` says
+/// a table was injected; the inner `None` is a table that cannot be read (unavailable).
+#[cfg(debug_assertions)]
+fn injected_table() -> Option<Option<Snapshot>> {
+    let v = std::env::var_os("MOAI_CLI_TEST_PROCESS_TABLE")?;
+    if v == "empty" {
+        return Some(Some(Snapshot {
+            cwds: Vec::new(),
+            open: Vec::new(),
+        }));
+    }
+    Some(fs::read_to_string(&v).ok().map(|text| {
+        let (mut cwds, mut open) = (Vec::new(), Vec::new());
+        for line in text.lines() {
+            if let Some(p) = line.strip_prefix("cwd ") {
+                cwds.push(PathBuf::from(p));
+                open.push(PathBuf::from(p));
+            } else if let Some(p) = line.strip_prefix("open ") {
+                open.push(PathBuf::from(p));
+            }
+        }
+        Snapshot { cwds, open }
+    }))
+}
+
+#[cfg(not(debug_assertions))]
+fn injected_table() -> Option<Option<Snapshot>> {
+    None
+}
+
+/// The time limit of one `lsof`; a debug build lets a test shorten it.
+fn lsof_timeout() -> Duration {
     #[cfg(debug_assertions)]
+    if let Some(ms) = std::env::var("MOAI_CLI_TEST_LSOF_TIMEOUT_MS")
+        .ok()
+        .and_then(|v| v.parse::<u64>().ok())
     {
-        std::env::var_os("MOAI_CLI_TEST_PROCESS_TABLE").is_some_and(|v| v == "empty")
+        return Duration::from_millis(ms);
     }
-    #[cfg(not(debug_assertions))]
-    {
-        false
+    LSOF_TIMEOUT
+}
+
+/// One `lsof -F fn` listing of the whole machine. `None` when it cannot start, prints nothing
+/// or does not answer within the time limit (it is stopped then). lsof exits 1 when some
+/// processes cannot be read; its listing is still usable, so the exit code is not looked at.
+fn lsof_listing() -> Option<String> {
+    use std::io::Read;
+    let mut child = Command::new("lsof")
+        .args(LSOF_CHEAP)
+        .args(["-F", "fn"])
+        .env("LC_ALL", "C")
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::null())
+        .spawn()
+        .ok()?;
+    let mut pipe = child.stdout.take()?;
+    // Read while it runs: a listing is megabytes and a full pipe would stop it.
+    let reader = std::thread::spawn(move || {
+        let mut bytes = Vec::new();
+        let _ = pipe.read_to_end(&mut bytes);
+        bytes
+    });
+    let deadline = Instant::now() + lsof_timeout();
+    loop {
+        match child.try_wait() {
+            Ok(Some(_)) => break,
+            Ok(None) if Instant::now() < deadline => {
+                std::thread::sleep(Duration::from_millis(10));
+            }
+            _ => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return None;
+            }
+        }
     }
+    let bytes = reader.join().ok()?;
+    if bytes.is_empty() {
+        return None;
+    }
+    Some(String::from_utf8_lossy(&bytes).into_owned())
+}
+
+/// Reads the table now: `/proc` on Linux, one `lsof` elsewhere. A Linux open file is a
+/// descriptor link, so its working folder is not among them.
+fn read_snapshot() -> Option<Snapshot> {
+    let (cwds, open) = if Path::new("/proc/self/fd").exists() {
+        let (mut cwds, mut open) = (Vec::new(), Vec::new());
+        for e in fs::read_dir("/proc").ok()?.flatten() {
+            if let Ok(p) = fs::read_link(e.path().join("cwd")) {
+                cwds.push(p);
+            }
+            if let Ok(fds) = fs::read_dir(e.path().join("fd")) {
+                open.extend(fds.flatten().filter_map(|fd| fs::read_link(fd.path()).ok()));
+            }
+        }
+        (cwds, open)
+    } else {
+        parse_listing(&lsof_listing()?)
+    };
+    let open = open
+        .into_iter()
+        .map(|p| fs::canonicalize(&p).unwrap_or(p))
+        .collect();
+    Some(Snapshot { cwds, open })
+}
+
+/// The last snapshot and when it was read. The lock is held while reading, so threads wait for
+/// one scan instead of starting several.
+struct SnapshotCache {
+    slot: std::sync::Mutex<Option<(Instant, std::sync::Arc<Snapshot>)>>,
+}
+
+impl SnapshotCache {
+    const fn new() -> SnapshotCache {
+        SnapshotCache {
+            slot: std::sync::Mutex::new(None),
+        }
+    }
+
+    /// The last snapshot when it is younger than `max_age`, else a new one from `scan`. A scan
+    /// that fails is not kept.
+    fn get(
+        &self,
+        max_age: Duration,
+        scan: impl FnOnce() -> Option<Snapshot>,
+    ) -> Option<std::sync::Arc<Snapshot>> {
+        let mut slot = self.slot.lock().unwrap_or_else(|e| e.into_inner());
+        if let Some((at, snap)) = slot.as_ref() {
+            if at.elapsed() < max_age {
+                return Some(snap.clone());
+            }
+        }
+        let snap = std::sync::Arc::new(scan()?);
+        *slot = Some((Instant::now(), snap.clone()));
+        Some(snap)
+    }
+}
+
+static SNAPSHOT: SnapshotCache = SnapshotCache::new();
+
+/// The process table as the working-folder and open-file checks see it.
+fn snapshot() -> Option<std::sync::Arc<Snapshot>> {
+    if let Some(injected) = injected_table() {
+        return injected.map(std::sync::Arc::new);
+    }
+    SNAPSHOT.get(SNAPSHOT_MAX_AGE, read_snapshot)
 }
 
 /// Working directories of the processes this user can see; `None` without a source.
 pub fn process_cwds() -> Option<Vec<PathBuf>> {
-    if injected_empty_table() {
-        return Some(Vec::new());
-    }
-    if Path::new("/proc/self/cwd").exists() {
-        let mut out = Vec::new();
-        for e in fs::read_dir("/proc").ok()?.flatten() {
-            if let Ok(p) = fs::read_link(e.path().join("cwd")) {
-                out.push(p);
-            }
-        }
-        return Some(out);
-    }
-    let o = Command::new("lsof")
-        .args(LSOF_CHEAP)
-        .args(["-a", "-d", "cwd", "-Fn"])
-        .env("LC_ALL", "C")
-        .output()
-        .ok()?;
-    // lsof exits 1 when some processes cannot be read; its listing is still usable.
-    if o.stdout.is_empty() {
-        return None;
-    }
-    Some(
-        String::from_utf8_lossy(&o.stdout)
-            .lines()
-            .filter_map(|l| l.strip_prefix('n'))
-            .map(PathBuf::from)
-            .collect(),
-    )
+    snapshot().map(|s| s.cwds.clone())
 }
 
 /// Paths of the files the processes this user can see hold open (`/proc/*/fd` on Linux,
-/// `lsof -Fn` elsewhere), canonicalised; `None` without a source. Only `apply` reads this,
+/// `lsof` elsewhere), canonicalised; `None` without a source. Only `apply` reads this,
 /// right before it deletes (#2498; the plan reads working directories only).
 pub(crate) fn open_file_paths() -> Option<Vec<PathBuf>> {
-    if injected_empty_table() {
-        return Some(Vec::new());
-    }
-    let mut out = Vec::new();
-    if Path::new("/proc/self/fd").exists() {
-        for e in fs::read_dir("/proc").ok()?.flatten() {
-            if let Ok(fds) = fs::read_dir(e.path().join("fd")) {
-                out.extend(fds.flatten().filter_map(|fd| fs::read_link(fd.path()).ok()));
-            }
-        }
-    } else {
-        let o = Command::new("lsof")
-            .args(LSOF_CHEAP)
-            .arg("-Fn")
-            .env("LC_ALL", "C")
-            .output()
-            .ok()?;
-        if o.stdout.is_empty() {
-            return None;
-        }
-        out.extend(
-            String::from_utf8_lossy(&o.stdout)
-                .lines()
-                .filter_map(|l| l.strip_prefix('n'))
-                .filter(|l| l.starts_with('/'))
-                .map(PathBuf::from),
-        );
-    }
-    Some(
-        out.into_iter()
-            .map(|p| fs::canonicalize(&p).unwrap_or(p))
-            .collect(),
-    )
+    snapshot().map(|s| s.open.clone())
 }
 
 fn unix_secs(t: SystemTime) -> Option<u64> {
@@ -1305,11 +1424,227 @@ mod tests {
                 v.iter()
                     .any(|p| fs::canonicalize(p).unwrap_or(p.clone()) == work)
             });
+            std::thread::sleep(Duration::from_millis(200));
         }
         let _ = child.kill();
         let _ = child.wait();
         assert!(file_seen, "the held file was not listed");
         assert!(cwd_seen, "the working folder was not listed");
+    }
+
+    /// A process of a listing: its id and its descriptors as `(descriptor, name)`.
+    type Proc = (u32, Vec<(&'static str, &'static str)>);
+
+    /// The one listing now read (`lsof -F fn`).
+    fn render_now(procs: &[Proc]) -> String {
+        let mut out = String::new();
+        for (pid, files) in procs {
+            out.push_str(&format!("p{pid}\n"));
+            for (fd, name) in files {
+                out.push_str(&format!("f{fd}\nn{name}\n"));
+            }
+        }
+        out
+    }
+
+    /// What the earlier working-folder scan read (`lsof -a -d cwd -Fn`).
+    fn render_old_cwd(procs: &[Proc]) -> String {
+        let mut out = String::new();
+        for (pid, files) in procs {
+            out.push_str(&format!("p{pid}\n"));
+            for (_, name) in files.iter().filter(|(fd, _)| *fd == "cwd") {
+                out.push_str(&format!("n{name}\n"));
+            }
+        }
+        out
+    }
+
+    /// What the earlier open-file scan read (`lsof -Fn`: every descriptor, working folder too).
+    fn render_old_open(procs: &[Proc]) -> String {
+        let mut out = String::new();
+        for (pid, files) in procs {
+            out.push_str(&format!("p{pid}\n"));
+            for (_, name) in files {
+                out.push_str(&format!("n{name}\n"));
+            }
+        }
+        out
+    }
+
+    /// The two earlier parsers, as they were.
+    fn old_cwds(text: &str) -> Vec<PathBuf> {
+        text.lines()
+            .filter_map(|l| l.strip_prefix('n'))
+            .map(PathBuf::from)
+            .collect()
+    }
+
+    fn old_open(text: &str) -> Vec<PathBuf> {
+        text.lines()
+            .filter_map(|l| l.strip_prefix('n'))
+            .filter(|l| l.starts_with('/'))
+            .map(PathBuf::from)
+            .collect()
+    }
+
+    /// SPEC-20261121-process-scan-snapshot REQ-4, REQ-5, REQ-9: twelve situations, each read the
+    /// earlier way (two listings) and the new way (one), and judged against a folder by path
+    /// prefix: the same working folders, the same open files and the same verdicts.
+    #[test]
+    fn one_listing_gives_the_answers_of_the_two_earlier_scans_in_twelve_situations() {
+        // (what a process does, the folder judged, working folder inside, open file inside)
+        let situations: Vec<(&str, Vec<Proc>, &str, bool, bool)> = vec![
+            (
+                "a working folder inside",
+                vec![(1, vec![("cwd", "/w/proj/src"), ("txt", "/bin/sh")])],
+                "/w/proj",
+                true,
+                true,
+            ),
+            (
+                "an open file inside",
+                vec![(1, vec![("cwd", "/"), ("3r", "/w/proj/f.txt")])],
+                "/w/proj",
+                false,
+                true,
+            ),
+            (
+                "both",
+                vec![(1, vec![("cwd", "/w/proj"), ("4w", "/w/proj/log")])],
+                "/w/proj",
+                true,
+                true,
+            ),
+            (
+                "neither",
+                vec![(1, vec![("cwd", "/elsewhere"), ("3r", "/etc/hosts")])],
+                "/w/proj",
+                false,
+                false,
+            ),
+            (
+                "a path with a space",
+                vec![(1, vec![("cwd", "/w/my proj/src")])],
+                "/w/my proj",
+                true,
+                true,
+            ),
+            (
+                "a link path is not the canonical one",
+                vec![(1, vec![("cwd", "/tmp/proj/x")])],
+                "/private/tmp/proj",
+                false,
+                false,
+            ),
+            (
+                "a sibling whose name only starts the same",
+                vec![(
+                    1,
+                    vec![("cwd", "/w/proj-other/x"), ("3r", "/w/proj-other/y")],
+                )],
+                "/w/proj",
+                false,
+                false,
+            ),
+            (
+                "the parent is the working folder",
+                vec![(1, vec![("cwd", "/w")])],
+                "/w/proj",
+                false,
+                false,
+            ),
+            (
+                "the root is the working folder",
+                vec![(1, vec![("cwd", "/")])],
+                "/w/proj",
+                false,
+                false,
+            ),
+            (
+                "sockets and arrows beside a socket file inside",
+                vec![(
+                    1,
+                    vec![
+                        ("cwd", "/"),
+                        ("5u", "*:8080"),
+                        ("6u", "->0xabc"),
+                        ("7u", "/w/proj/s.sock"),
+                    ],
+                )],
+                "/w/proj",
+                false,
+                true,
+            ),
+            (
+                "several processes hold one file",
+                vec![
+                    (1, vec![("3r", "/w/proj/f")]),
+                    (2, vec![("3r", "/w/proj/f")]),
+                    (3, vec![("cwd", "/x")]),
+                ],
+                "/w/proj",
+                false,
+                true,
+            ),
+        ];
+        assert_eq!(situations.len(), 11);
+        for (what, procs, folder, cwd_hit, open_hit) in &situations {
+            let (cwds, open) = parse_listing(&render_now(procs));
+            assert_eq!(
+                cwds,
+                old_cwds(&render_old_cwd(procs)),
+                "{what}: working folders"
+            );
+            assert_eq!(
+                open,
+                old_open(&render_old_open(procs)),
+                "{what}: open files"
+            );
+            let folder = Path::new(folder);
+            assert_eq!(
+                cwds.iter().any(|c| c.starts_with(folder)),
+                *cwd_hit,
+                "{what}"
+            );
+            assert_eq!(
+                open.iter().any(|p| p.starts_with(folder)),
+                *open_hit,
+                "{what}"
+            );
+        }
+        // The twelfth: nothing listed, and a listing cut off in the middle of a line.
+        assert_eq!(parse_listing(""), (vec![], vec![]));
+        let cut = "p1\nfcwd\nn/w/pr";
+        let (cwds, open) = parse_listing(cut);
+        assert_eq!(cwds, old_cwds("p1\nn/w/pr"));
+        assert_eq!(open, old_open("p1\nn/w/pr"));
+        assert!(!open.iter().any(|p| p.starts_with("/w/proj")));
+    }
+
+    /// REQ-2, REQ-3: a question within the age is answered from the snapshot, an older one reads
+    /// the table again, and a failed read is not kept.
+    #[test]
+    fn a_second_question_within_the_age_reuses_the_snapshot() {
+        let cache = SnapshotCache::new();
+        let reads = std::cell::Cell::new(0u32);
+        let scan = || {
+            reads.set(reads.get() + 1);
+            Some(Snapshot {
+                cwds: vec![],
+                open: vec![],
+            })
+        };
+        let age = Duration::from_secs(30);
+        assert!(cache.get(age, scan).is_some());
+        assert!(cache.get(age, scan).is_some());
+        assert_eq!(reads.get(), 1, "the second question read the table again");
+        assert!(cache.get(Duration::ZERO, scan).is_some());
+        assert_eq!(reads.get(), 2, "an older snapshot was reused");
+        // A failed read gives no answer and leaves nothing behind: the next question reads again.
+        let fresh = SnapshotCache::new();
+        assert!(fresh.get(age, || None).is_none());
+        assert!(fresh.get(age, scan).is_some());
+        assert_eq!(reads.get(), 3, "a failed read was kept");
     }
 
     #[test]
