@@ -97,4 +97,39 @@ Revision 2 (leader decision of 2026-11-21, user order to repair card closing): g
 
 ## Result
 
-Revision 2 is in progress. The lines of revision 1 were read from a run before the clap lines were committed and before these requirements existed; they are written again from the runs of this revision.
+Slice 1 of revision 2 (the code, the clap lines and the tests). The canonical text of the closing path is slice 2 and is not part of this result.
+
+Every number below is from one run of `moai check affected 6e1bedb4f3a4..74bf6302cfda` on a copy of the tip merged into this branch (81 integration targets, the whole lib and both bins; logs in the build folder `check-affected-74bf6302cfda`) or from the runs named. The tests use a temporary home and never the real ledger.
+
+- AC-1 met: `ac1_` (6 tests) passed: the landing event carries `head`, `tip`, `generation` and `by`; a head already on the integration branch with no landing event in the ledger (the fast-forward done, the ledger write not) closes the card from the same evidence; a head outside the tip, an unknown head and a profile without an integration branch refuse with every table unchanged.
+- AC-2 met: `ac2_` (2 tests) passed: two met options close two open criteria, a number twice and a number that is not open refuse, a reference of 500 characters passes and 501 refuses.
+- AC-3 met: `ac3_` (4 tests) passed, unchanged from the first revision.
+- AC-4 met: `ac4_` (4 tests) passed: the report and verdict closes, the refusals, and a research card with an open criterion and no met option refuses with every table unchanged.
+- AC-5 met: `ac5_` (1 test) passed. AC-6 met: `ac6_` (1 test) passed.
+- AC-7 met: `ac7_` (1 test) passed: every refusal, including the closed card and the stale generation, leaves all seven tables byte equal and writes no `fence_reject` event.
+- AC-8 met: `ac8_` (4 tests) passed. AC-9 met: `ac9_` (1 test) passed. AC-10 met: `ac10_` (2 tests) passed.
+- AC-11 met: in the same affected run `card_work_cli` 26, `card_dispatch_cli` 25, `card_generated_scope` 8, `card_spec_cli` 11, `card_done_mflow_cli` 24, `card_reclaim_cli` 21, `card_line_lease_cli` 16 and `ledger_workflow` 29 tests passed, none failed.
+- AC-12 met: `ac12_` (1 test) passed: the help names `--generation` and `open_criteria`, and the card operations document names the finish command, both evidence kinds, the landing-only answer and `already_landed`.
+- AC-13 met: `ac13_` (2 tests) passed: one landing event, state, criteria, reservation and generation unchanged, the answer is `closed` false with the open numbers, and a repeat records no second landing event.
+- AC-14 met: `ac14_` (2 tests) passed: a second finish on a done card refuses naming `done` with every table unchanged, and a refused call followed by a correct one closes the card with one finish event.
+- AC-15 met: `ac15_` (2 tests) passed: two writers on one ledger file behind a barrier and two processes, 20 rounds each, give one success, one refusal and one finish event. These two tests already passed before the change, because the write transaction takes the write lock first; they pin it.
+- AC-16 met: `ac16_` (1 test) passed: a lower and a higher generation refuse with no `fence_reject` event, the current one and an absent option pass.
+- AC-17 met: `ac17_` (1 test) passed: releasing a card with a landing event or a merged link answers `landed` true and names `card finish`, a plain card keeps its old keys, and a stand-in for git that fails when called is never called.
+
+Mutants (all killed, the files restored byte for byte, the tree clean afterwards):
+
+| Mutant | Killed by |
+| --- | --- |
+| a lower generation passes the check | `ac16_` |
+| an open criterion refuses again for a landing | `ac13_` |
+| a repeated head records a second landing event | `ac13_` |
+| the release answer misses the landing event | `ac17_` |
+| the landing event records generation 0 | `ac1_` and `ac13_` |
+
+Other results of this stage: `clippy` with all targets, `fmt`, the operations `rustfmt` and `diff --check` exited 0 in the affected run. Its Python step ran 185 tests and one failed: `test_every_referenced_docs_path_is_denied`, because five fake card scopes in this branch's tests read `docs/…`; they now read `study/…` (commit `5a2535a55f`), and afterwards `ci_scope_test` passed (47 tests) and `card_finish_cli` passed (35 tests, none ignored). The affected run was not repeated after that rename.
+
+Two choices a reviewer may reverse: a merged pull request link as the evidence with an open criterion and no met option answers `ok` with `closed` false and no event written (its landing is already in the ledger); and the generation check runs before the lease gate.
+
+Scope notes: the release answer is built in `src/card/dispatch.rs`, which was added to this card's scope; `src/ops/card.rs` changed only in the lines of the finish subcommand and its dispatch arm, under the leader's pair approval.
+
+Not run: the independent audit, the Windows type check, `tools/self_check.sh`, a second affected run after the rename, and any test against the real ledger.
