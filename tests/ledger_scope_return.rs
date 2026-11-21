@@ -205,7 +205,7 @@ fn a_line_lease_on_a_path_another_card_holds_is_an_overlap_that_names_that_card(
 }
 
 #[test]
-fn a_mixed_list_of_known_and_unknown_paths_removes_nothing() {
+fn give_back_with_a_mixed_list_removes_nothing() {
     let (_home, mut w) = setup();
     let (a, g) = taken(&mut w, A, &["src/a.rs", "docs/a.md"]);
     for list in [

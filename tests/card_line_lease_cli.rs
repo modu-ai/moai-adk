@@ -539,7 +539,12 @@ fn line_lease_refuses_after_the_wait_limit_naming_the_other_card() {
 fn line_lease_gives_the_path_back_when_the_command_fails_or_cannot_start() {
     let w = world();
     let a = w.held(S_A, "writer", &["src/a.rs"]);
-    let (_, message) = refusal(&w.lease(S_A, &a, "src/lib.rs", None, &["sh", "-c", "exit 7"]));
+    let out = w.lease(S_A, &a, "src/lib.rs", None, &["sh", "-c", "exit 7"]);
+    let retryable = envelope(&out)["error"]["retryable"].clone();
+    let (kind, message) = refusal(&out);
+    // Never `io` or retryable: a retry would run the command a second time.
+    assert_ne!(kind, "io", "{message}");
+    assert_eq!(retryable, json!(false), "{message}");
     assert!(
         message.contains("status 7"),
         "the command's status is named: {message}"
@@ -588,7 +593,7 @@ fn end_lease(w: &World, card: &str) {
 }
 
 #[test]
-fn a_mixed_list_of_known_and_unknown_paths_removes_nothing() {
+fn give_back_with_a_mixed_list_removes_nothing() {
     let w = world();
     let a = w.held(S_A, "writer", &["src/a.rs", "docs/a.md"]);
     let before = w.dump();
