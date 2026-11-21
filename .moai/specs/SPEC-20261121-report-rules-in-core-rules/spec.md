@@ -97,4 +97,3 @@ Mutants (five, on the committed files, each restored, `restored: clean = True`; 
 
 - The pointer text read by a host in a live session after a compaction: not run (the SPEC marks that premise as inference from the documents, not tested).
 - A second run of the same tests on the same tree: not repeated (each result above is the one run's output).
-
