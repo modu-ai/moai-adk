@@ -5,7 +5,8 @@
 //! - a card that changes the repository (every kind but `research` and `audit`) closes on a
 //!   landing: `--head <sha>` (or the newest head `card landed` recorded, or a merged pull request
 //!   link) that git proves is an ancestor of the profile's integration branch tip, and, when the
-//!   card names a SPEC, that SPEC passes the same check `card done` makes;
+//!   card names a SPEC, that SPEC passes `spec_link::judge`, the check `card done` makes, read
+//!   from the tip git proved the landing against (not from the working tree);
 //! - a `research` or `audit` card closes on exactly one of `--evidence-report PATH` (a regular
 //!   file under the reports folder of the user level home or under the project folder) or
 //!   `--evidence-note REF` (a report or decision note of the card), and refuses `--head`.
@@ -103,29 +104,31 @@ fn check_by(by: &str) -> Result<()> {
     Ok(())
 }
 
-/// Each `--met N=REF` as (criterion number, reference). The reference is cut at the first `=`,
-/// so it may hold another; its length and line rules are the ledger's, its secret screen is the
-/// one every card text passes.
-fn parse_met(entries: &[String]) -> Result<Vec<(i64, String)>> {
+/// Each `--met N=REF` as (criterion number, reference); the error is the bare reason, so each
+/// command puts its own refusal prefix on it. The reference is cut at the first `=`, so it may
+/// hold another; its length and line rules are the ledger's, its secret screen is the one every
+/// card text passes.
+pub(super) fn parse_met(entries: &[String]) -> Result<Vec<(i64, String)>> {
     let mut met = Vec::with_capacity(entries.len());
     for entry in entries {
         let Some((number, reference)) = entry.split_once('=') else {
-            return Err(refused(
-                "--met takes N=REF: a criterion number, an equals sign and the evidence",
-            ));
+            return Err(
+                "--met takes N=REF: a criterion number, an equals sign and the evidence"
+                    .to_string(),
+            );
         };
         let seq = number
             .trim()
             .parse::<i64>()
             .ok()
             .filter(|n| *n >= 1)
-            .ok_or_else(|| refused("--met names a criterion by a number of 1 or more"))?;
+            .ok_or_else(|| "--met names a criterion by a number of 1 or more".to_string())?;
         let words = input::secret_words(reference);
         if words > 0 {
-            return Err(refused(format!(
+            return Err(format!(
                 "the --met reference of criterion {seq} has {}",
                 input::secret_refusal(words)
-            )));
+            ));
         }
         met.push((seq, reference.to_string()));
     }
@@ -250,7 +253,7 @@ fn report_path(project: &Path, home: &Path, given: &str) -> Result<String> {
     Ok(canonical.to_string_lossy().into_owned())
 }
 
-fn previous_json(previous: &Option<Reservation>) -> Value {
+pub(super) fn previous_json(previous: &Option<Reservation>) -> Value {
     match previous {
         Some(p) => json!({
             "holder": p.holder, "generation": p.generation, "lease_until": p.lease_until,
@@ -269,7 +272,7 @@ pub fn finish(
 ) -> Result<Value> {
     let card_id = card_id(reference)?;
     check_by(req.by)?;
-    let met = parse_met(req.met)?;
+    let met = parse_met(req.met).map_err(refused)?;
     let (id, mut ledger) = open_for_write(project, home)?;
     let (kind, spec) = spec_link::kind_and_spec(ledger.conn(), card_id)
         .map_err(|e| LedgerError::from(e).to_string())?
