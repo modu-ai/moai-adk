@@ -13,6 +13,7 @@
 
 use crate::agent_defs::{package_agents, render, HOSTS};
 use crate::apply::{decide, publish_exclusive, publish_replace, read_opt, Decision};
+use crate::retired_hosts::retired;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::BTreeMap,
@@ -475,6 +476,12 @@ fn receipt_id_ok(id: &str) -> bool {
         && id.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'-')
 }
 
+/// Undoes one apply for the files that still hold the bytes it wrote: a created file is
+/// removed, an updated one gets its before bytes back. A file changed since is skipped.
+pub fn revert(home: &Path, receipt_id: &str, permission: &str) -> Result<serde_json::Value> {
+    revert_in(&HOSTS, home, receipt_id, permission)
+}
+
 /// [`revert`] for a place whose active hosts are `active`: a receipt entry of a retired host is
 /// skipped and reported (reason `host_retired`), the other entries are reverted.
 pub fn revert_in(
@@ -483,13 +490,6 @@ pub fn revert_in(
     receipt_id: &str,
     permission: &str,
 ) -> Result<serde_json::Value> {
-    let _ = active;
-    revert(home, receipt_id, permission)
-}
-
-/// Undoes one apply for the files that still hold the bytes it wrote: a created file is
-/// removed, an updated one gets its before bytes back. A file changed since is skipped.
-pub fn revert(home: &Path, receipt_id: &str, permission: &str) -> Result<serde_json::Value> {
     validate_permission(permission)?;
     if !receipt_id_ok(receipt_id) {
         return Err("unknown agent receipt id".into());
@@ -507,6 +507,12 @@ pub fn revert(home: &Path, receipt_id: &str, permission: &str) -> Result<serde_j
     let mut reverted = Vec::new();
     let mut skipped = Vec::new();
     for e in receipt.entries.iter().rev() {
+        if retired(&e.host, active) {
+            skipped.push(
+                serde_json::json!({"host": e.host, "file": e.file, "reason": "host_retired"}),
+            );
+            continue;
+        }
         if !HOSTS.contains(&e.host.as_str()) || e.file.contains('/') || e.file.contains('\\') {
             return Err("agent receipt names a path outside the agent folders".into());
         }

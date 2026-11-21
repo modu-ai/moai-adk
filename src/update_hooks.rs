@@ -14,6 +14,7 @@
 //! uses. A confirmed apply keeps the bytes it replaced under a receipt, and `hooks-revert`
 //! restores a host only while both of its files still hold what the apply wrote.
 
+use crate::retired_hosts::retired;
 use crate::Result;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -541,6 +542,14 @@ pub fn apply_in(
     }))
 }
 
+/// Undoes one confirmed hook layer for the hosts whose files all still hold the bytes the apply
+/// wrote: each file gets its before bytes back, or is removed when the apply created it. A host
+/// with any file changed since is skipped as a whole, so a settings file and its ownership
+/// receipt never disagree.
+pub fn revert(project: &Path, receipt_id: &str, permission: &str) -> Result<Value> {
+    revert_in(crate::hooks::HOSTS, project, receipt_id, permission)
+}
+
 /// [`revert`] for a place whose active hosts are `active`: a receipt entry of a retired host is
 /// skipped and reported (reason `host_retired`), the other entries are reverted.
 pub fn revert_in(
@@ -549,15 +558,6 @@ pub fn revert_in(
     receipt_id: &str,
     permission: &str,
 ) -> Result<Value> {
-    let _ = active;
-    revert(project, receipt_id, permission)
-}
-
-/// Undoes one confirmed hook layer for the hosts whose files all still hold the bytes the apply
-/// wrote: each file gets its before bytes back, or is removed when the apply created it. A host
-/// with any file changed since is skipped as a whole, so a settings file and its ownership
-/// receipt never disagree.
-pub fn revert(project: &Path, receipt_id: &str, permission: &str) -> Result<Value> {
     if !crate::contract::permission_reference_ok(permission) {
         return Err("permission reference required".into());
     }
@@ -581,6 +581,10 @@ pub fn revert(project: &Path, receipt_id: &str, permission: &str) -> Result<Valu
     let mut reverted = Vec::new();
     let mut skipped = Vec::new();
     for h in &receipt.hosts {
+        if retired(&h.host, active) {
+            skipped.push(json!({"host": h.host, "reason": "host_retired"}));
+            continue;
+        }
         let host = crate::hooks::HOSTS
             .iter()
             .find(|x| **x == h.host)
@@ -635,7 +639,8 @@ pub fn revert(project: &Path, receipt_id: &str, permission: &str) -> Result<Valu
     }
     // Nothing restored (every host changed since): the receipt stays usable, so a revert after
     // the user puts the files back still works (#2868 audit N1).
-    if reverted.is_empty() {
+    let only_retired = !skipped.is_empty() && skipped.iter().all(|s| s["reason"] == "host_retired");
+    if reverted.is_empty() && !only_retired {
         return Ok(
             json!({"state": "unchanged", "receipt": receipt_id, "reverted": reverted, "skipped": skipped}),
         );
