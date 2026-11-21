@@ -4,6 +4,7 @@
 //! the previous generation and marks partial) and AC-2 (mixed generations 0 — the
 //! pointer is the only resolution path, atomic swap, orphan temp dirs ignored) are all
 //! exercised in isolation. No watcher: every case is command-driven.
+mod clock_wait;
 mod common;
 use serde_json::{json, Value};
 use std::{
@@ -332,7 +333,7 @@ fn identical_rebuild_across_seconds_keeps_generation_and_manifest() {
         .join("manifest.json");
     let before = fs::read(&manifest).unwrap();
 
-    std::thread::sleep(std::time::Duration::from_millis(1100));
+    clock_wait::wait_for_next_second();
 
     let second = build(&project);
     assert!(second.status.success());

@@ -9,6 +9,7 @@
 
 #![cfg(unix)]
 
+mod clock_wait;
 mod common;
 use common::CleanEnv;
 use serde_json::{json, Value};
@@ -2929,7 +2930,7 @@ fn a_linked_backups_gitignore_is_refused_as_before() {
 
 /// Two applies need two backup stamps, and a stamp has a one-second resolution.
 fn next_utc_second() {
-    std::thread::sleep(Duration::from_millis(1100));
+    clock_wait::wait_for_next_second();
 }
 
 /// The Rust settings receipt the install step wrote, as text; it owns the status line.

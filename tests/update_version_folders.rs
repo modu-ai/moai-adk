@@ -7,6 +7,7 @@
 
 #![cfg(unix)]
 
+mod clock_wait;
 mod common;
 use common::CleanEnv;
 
@@ -17,8 +18,6 @@ use std::{
     os::unix::fs::symlink,
     path::{Path, PathBuf},
     process::{Command, Output, Stdio},
-    thread::sleep,
-    time::Duration,
 };
 use tempfile::TempDir;
 
@@ -162,7 +161,7 @@ fn install(exe: &Path, home: &Path, stage: &Path) {
         assert_eq!(o["status"], json!("applied"), "{r}");
     }
     // Receipts carry second-resolution timestamps; keep the order of installs observable.
-    sleep(Duration::from_millis(1100));
+    clock_wait::wait_for_next_second();
 }
 
 fn host<'a>(plan: &'a Value, name: &str) -> &'a Value {

@@ -38,7 +38,7 @@ created: 2026-11-21
 ## Acceptance
 
 - AC-1 (REQ-1, REQ-2): 시계 대기 도우미가 초가 바뀌면 끝나고 1.1초를 넘지 않으며, 시계가 안 바뀌면 이름이 든 메시지로 실패해요 · verify: `cargo test --locked --offline --test no_fixed_second_sleeps the_clock_wait_ends_when_the_second_changes_and_fails_when_it_does_not`
-- AC-2 (REQ-3): 다섯 파일에 `from_millis(1100)` 이 없어요 · verify: `cargo test --locked --offline --test no_fixed_second_sleeps the_five_files_hold_no_fixed_1100_ms_sleep`
+- AC-2 (REQ-3): 목록에 든 파일에 `from_millis(1100)` 이 없고 시계 대기를 불러요(목록은 조각 1에서 네 파일, 조각 2에서 `update_command_cli.rs` 가 더해져 다섯 파일) · verify: `cargo test --locked --offline --test no_fixed_second_sleeps the_listed_files_hold_no_fixed_1100_ms_sleep`
 - AC-3 (REQ-1): 바꾼 시험이 모두 같은 단언으로 통과해요 · verify: `cargo test --locked --offline --test go_state_classes_cli --test index_cli --test update_command_cli --test update_moved_receipts --test update_version_folders`
 - AC-4 (REQ-4, REQ-5, REQ-6, REQ-7): 작은 가짜 바이너리와 가짜 케이스로 `--jobs 4` 와 `--jobs 1` 의 출력(줄 순서)과 종료 코드가 같고, 다른 골든은 두 방식 모두 `FAIL <case> <variant>` 로 1 을 내고, 색상·입력 경계 검사는 한 번만 돌아요 · verify: `python3 -I -m unittest tests.statusline_golden_parallel_test`
 - AC-5 (REQ-8, REQ-9): `--jobs` 가 없으면 `MOAI_SPAWN_TEST_CAP`(없으면 4)을 쓰고, 0·음수·글자는 아무것도 돌리기 전에 거절돼요 · verify: `python3 -I -m unittest tests.statusline_golden_parallel_test`
@@ -48,7 +48,7 @@ created: 2026-11-21
 
 ## Scope
 
-- write: 이 SPEC, `tests/go_state_classes_cli.rs`, `tests/index_cli.rs`, `tests/update_moved_receipts.rs`, `tests/update_version_folders.rs`, `tests/no_fixed_second_sleeps.rs`(새)
+- write: 이 SPEC, `tests/go_state_classes_cli.rs`, `tests/index_cli.rs`, `tests/update_moved_receipts.rs`, `tests/update_version_folders.rs`, `tests/clock_wait/mod.rs`(새), `tests/no_fixed_second_sleeps.rs`(새)
 - 기다려요(2026-11-21 예약 읽음): `tests/update_command_cli.rs` 는 다른 카드가 쥐고 있고, `tools/statusline_golden.py` 도 다른 카드가 쥐고 있어요(그 카드의 임대는 만료됐지만 반납되지 않았어요). 골든 병렬화(조각 2: `tools/statusline_golden.py`, `tests/statusline_golden.rs`, `tests/statusline_golden_parallel_test.py`(새))와 `update_command_cli.rs` 의 잠 한 곳은 그 파일들이 풀린 뒤에 해요.
 - read-only: `tests/fixtures/statusline-claude/`, `tests/common/`
 - forbidden: `tests/common/mod.rs`, 골든 파일과 `cases.json`, 제품 코드
@@ -70,7 +70,7 @@ created: 2026-11-21
 | Id | Decision | Basis | Undo |
 | --- | --- | --- | --- |
 | D-1 | 시각을 주입하지 않고 시계의 초가 바뀔 때까지 기다려요(조건 대기, 3초 한도) | 시각 주입 `--now-unix` 는 상태줄만 있어요. 영수증·백업·색인은 제품이 시스템 시계를 직접 읽고, `update.rs` 는 같은 초에 끝난 설치 둘을 막아요. 그래서 시험이 지켜야 하는 것은 "다음 설치는 더 늦은 초"이고, 기다림이 그 조건 자체예요. 설치 직후 호출 시점의 초가 영수증의 초보다 늦거나 같으므로, 그 초가 지나면 다음 설치는 반드시 더 늦은 초예요 | 고정 잠으로 되돌리기 |
-| D-2 | 도우미를 시험 파일마다 작은 함수로 두어요(다섯 군데, 열 줄 안팎). `tests/common/mod.rs` 에는 넣지 않아요 | 그 파일을 바꾸면 모든 시험 crate 가 다시 빌드되고 `check affected` 가 거의 모든 시험을 골라요(조사 보고서 §2·§3.5). 시험 `no_fixed_second_sleeps.rs` 가 도우미 한 벌을 직접 시험해요 | `common` 으로 모으기 |
+| D-2 | 도우미는 새 폴더 `tests/clock_wait/mod.rs` 한 곳에 두고 쓰는 파일이 `mod clock_wait;` 로 불러요. `tests/common/` 에는 넣지 않아요 | `tests/common/` 아래를 바꾸면 `mod common;` 을 가진 거의 모든 시험이 다시 돌아요(`check affected` 는 `tests/<폴더>/…` 변경에 그 폴더를 `mod` 로 부르는 시험을 골라요, `src/check_affected.rs` `select`). 별도 폴더면 그 폴더를 부르는 시험만 골라져요. 시험 `no_fixed_second_sleeps.rs` 가 도우미 한 벌을 실제·가짜 시계로 직접 시험해요 | `common` 으로 모으기 |
 | D-3 | 골든 병렬 작업 수의 기본값은 `MOAI_SPAWN_TEST_CAP`(없으면 4)이고 `--jobs N` 으로 바꿔요 | 시험 스레드 상한을 4 로 두는 결정(스폰 시험 세마포어)과 맞춰요. 한 시험 바이너리가 프로세스를 마음대로 늘리지 않게 하려는 거예요 | 상한 값 변경 |
 | D-4 | 병렬은 파이썬 하네스 안에서 해요(ThreadPoolExecutor). 러너가 `--case` 를 나눠 여러 프로세스를 띄우는 방식은 쓰지 않아요 | `main` 이 매번 색상·입력 경계 검사를 이어서 돌려서, 나눠 띄우면 그 검사가 프로세스 수만큼 되풀이돼요(REQ-7) | 서로 다른 `--case` 로 나눠 띄우기 |
 
