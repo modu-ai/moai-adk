@@ -86,4 +86,27 @@ created: 2026-11-21
 
 ## Result
 
-(구현 뒤 채워요.)
+구현 에이전트가 2026-11-21에 채웠어요. 감사가 다시 확인해요. 기준 `dcd2a2651b`(작업 시작 때의 로컬 tip), 코드 커밋 `8d0ffd25c6`, 문서·SPEC 커밋 `e7cf139078`, 이 worktree 의 `target/notes/`, macOS arm64.
+
+빨강(코드를 쓰기 전, 같은 시험): 설정 시험은 설정에 `[test-groups]` 가 없어서 `tests/nextest_local_checks_cli.rs:32` 에서 실패(`red1.out`: 0 passed, 1 failed). 러너 시험은 새 4개가 실패하고 기존 13개가 통과(`red2.out`: 13 passed, 4 failed). 그 4개 중 `without_a_usable_nextest…` 는 처음에 가짜 `cargo` 스크립트의 문법 오류(버전 답이 빈 문자열일 때 `; exit 0`)로 모든 단계가 2 로 끝나서 실패했고, 도우미를 고친 뒤 `a_*` 와 함께 초록이 됐어요.
+
+- AC-1: met — `cargo test --locked --offline --test check_affected_cli the_test_steps_run_through_nextest_when_it_answers_a_version` 이 포함된 `green-it.out`: check_affected_cli 17 passed, nextest_local_checks_cli 1 passed, exit 0. `test_lib`·`test_bins`·`test_targets` 가 `cargo nextest run --locked --offline --no-fail-fast --no-tests=pass --test-threads 4 …` 로 불리고 `RUST_TEST_THREADS` 가 3·12 면 그 값, `abc`·`0`·빈 값·`-2`·`2.5` 면 4, clippy·build 단계는 `cargo clippy`·`cargo build` 그대로, `cargo test --no-fail-fast` 줄이 없어요.
+- AC-2: met — 같은 실행의 `without_a_usable_nextest_the_steps_and_the_summary_are_as_before`: 답 없음·`0.9.84`·`garbage`·종료 1(stderr 에만 버전)의 네 경우 모두 `cargo test --locked --offline --no-fail-fast …` 이고 요약이 `… python=0 result=PASS` 로 끝나며 `runner=`·`flaky=` 가 없고 `runner` 필드는 `cargo`.
+- AC-3: met — `flaky_tests_are_counted_in_the_summary_and_never_change_the_result`: 세 시험 단계가 한 줄씩 FLAKY 를 찍으면 `… python=0 runner=nextest flaky=3 result=PASS`, 이름에 flaky 가 든 PASS 줄은 세지 않음, `fmt` 를 실패시키면 같은 `flaky=3` 에 `result=FAIL`, FLAKY 줄이 없으면 `flaky=0`.
+- AC-4: met — `list_names_the_runner_and_changes_nothing`: `runner` 가 `nextest` 일 때 `test_lib` 명령이 `cargo nextest run … --test-threads 4 --lib`, 답이 없으면 `cargo` 와 `cargo test`, 저장소 상태(status·ref)와 `target/` 불변.
+- AC-5: met — `cargo test --locked --offline --test nextest_local_checks_cli the_profile_groups_the_spawning_binaries_ends_slow_tests_and_retries_twice` 1 passed(`green-it.out`): 시험 그룹 하나(`max-threads = 2`)에 세 이름 글롭, 기본 `slow-timeout` 60s×5, `statusline_golden` 은 12, `retries = 2`, `flaky-result` 없음, 기존 `ac_command_lint` 의 `threads-required` 유지.
+- AC-6: met — `cargo test --locked --offline --lib check_affected::` (`green-lib.out`) 15 passed, exit 0: `…the_nextest_version_floor_is_read_from_the_version_line`(0.9.85 되고 0.9.84·`0.8.200`·`0.9`·낱말만·빈 줄·첫 줄이 빈 답은 안 됨), `…the_thread_cap_reads_a_positive_whole_number_else_four`, `…flaky_tests_are_counted_once_each_whatever_else_the_log_says`, `…the_test_steps_differ_only_in_the_runner_words`.
+- AC-7: met — `grep -n "runner=nextest" docs/design-review/appendix/operations/check.md` 가 24번 줄을 찍어요(exit 0).
+
+### 검사
+
+`moai check affected dcd2a2651b..HEAD`(자기 가지 빌드의 binary, 헤드 `e7cf139078`, `--max 2`)의 요약 줄 그대로: `check-affected base=dcd2a2651bbd head=e7cf139078a9 targets=44 py=12 scans=listed:41 diff_check=0 fmt=0 clippy=0 test_lib=0 test_bins=0 test_targets=0 build_cli=0 python=0 result=PASS` (출력 파일은 `target/notes/affected.json`·`target/notes/affected/`). `trailer-check dcd2a2651b..HEAD` → 커밋 3개 failing 0. `spec check` 오류 0·경고 0, `--closure` 는 `closure_status` 하나만 남아요(승인·완료는 레인이 쓰지 않아요).
+
+변이 시험 5개(`target/notes/mutate.py`, 커밋된 `8d0ffd25c6` 위, 변이마다 파일을 복원하고 `restored: True` 확인) 모두 죽었어요: M1 버전 바닥을 0.9.84 로 내림 → 버전 바닥 단위 시험, M2 `--no-tests=pass` 를 뺌 → 러너 낱말 단위 시험, M3 0 스레드를 받아들임 → 스레드 상한 단위 시험, M4 같은 FLAKY 시험을 두 번 셈 → FLAKY 한 번 세기 단위 시험, M5 요약 낱말을 뺌 → FLAKY 요약 통합 시험.
+
+### 돌리지 않은 것
+
+- 실제 `cargo-nextest` 로 돌려 본 것: 이 Mac 에 설치돼 있지 않아요(`cargo nextest --version` 이 없다고 답해요). 가짜 `cargo` 로 우리가 부르는 인자와 요약을, 설정 키는 공식 문서(retries·slow-tests·test-groups·running 쪽, 2026-11-21 읽음)와 대조만 했어요. 설치한 뒤 한 번 실제로 돌려 `FLAKY`·`TIMEOUT` 표시와 `binary(home_*)` 글롭 묶음이 문서대로인지 보는 일이 관리자 단계로 남아요.
+- 실행 시간의 이득: 재지 않았고 이 SPEC 에서 주장하지 않아요.
+- 설정의 시간 한도·재시도가 실제 시험 묶음에서 멀쩡한 시험을 끝내는지: 실제 nextest 가 없어서 보지 못했어요.
+- 시험 스레드 상한을 정하는 다른 변경과의 병합: 아직 합쳐지지 않았어요. 같은 파일을 고치면 병합 때 `test_thread_cap` 주변을 사람이 합쳐야 해요.
