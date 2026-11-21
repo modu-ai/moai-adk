@@ -38,7 +38,7 @@ created: 2026-11-20
 - REQ-8: The test-design reference shall say that expected values come from the source of truth and not from copied literals, and that a product behaviour test is written in Rust with Python only for a tool script while the tools are being ported.
 - REQ-9: The versioning reference shall say that a release goes through one release pull request whose head branch is named after the release version and which runs the full CI on three platforms before it merges, and that the release tag goes on its merge commit on the integration branch.
 - REQ-10: Every adapter and chain and workflow file named in the scope shall carry no OMP row or sentence and no card or Issue number apart from the sentences owned by the ACC card and the OMP lines that the Orca pinning test still holds.
-- REQ-11: The SYNC workflow shall say that a lane's work ends at its pushed head and its READY report and that only the leader opens the release pull request, and name the integration branch generically.
+- REQ-11: The SYNC workflow shall state the M-Flow rules: a lane commits on its own card branch and pushes it and gets the independent audit; after a PASS the lane merges its head onto the LOCAL integration branch tip in its own worktree and posts the MERGE-READY note; the primary checkout is fast-forwarded one landing at a time; a release pull request is opened only by the leader for a real deployment; and a card that landed locally is closed with `card done` on the local landing evidence.
 - REQ-12: Each pinning test of a changed sentence and the skill source manifest shall change in the same commit as that sentence and pass.
 
 ## Acceptance
