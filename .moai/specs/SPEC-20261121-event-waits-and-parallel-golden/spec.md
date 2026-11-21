@@ -76,7 +76,7 @@ created: 2026-11-21
 
 ## Result
 
-조각 1(네 파일의 고정 잠을 시계 대기로)과 조각 2(골든 하네스의 병렬 실행)까지 끝났어요. 남은 것은 `update_command_cli.rs` 의 잠 한 곳뿐이고, 그 파일을 쥔 다른 카드가 돌려주면 해요. 그래서 이 Result 는 부분이에요(AC-1~8 모두 met, 다만 REQ-3 의 다섯째 파일과 AC-2 목록이 네 파일이에요).
+조각 1(네 파일의 고정 잠을 시계 대기로)과 조각 2(골든 하네스의 병렬 실행, 다섯째 파일 `update_command_cli.rs` 의 잠 교체)까지 모두 끝났어요. 다섯째 파일은 리더가 그 파일을 쥔 카드를 회수한 뒤(2026-11-21 06:44Z 의 `card list` 로 쥔 카드 없음을 확인) 이 카드의 범위에 더해 잠 한 곳을 바꿨어요(커밋 `13f9a2b2e2`). AC-1~8 모두 met.
 
 ### 이번에 한 것
 
@@ -87,12 +87,12 @@ created: 2026-11-21
 ### AC 결과
 
 - AC-1 met: `cargo test --locked --offline --test no_fixed_second_sleeps` → 2 passed (실제 시계 대기가 1.1초 미만, 가짜 시계 통과, 멈춘 시계·되돌린 시계는 이름이 든 메시지로 실패).
-- AC-2 met(목록은 네 파일, 다섯째는 조각 2): 같은 시험 `the_listed_files_hold_no_fixed_1100_ms_sleep` 통과.
-- AC-3 met(네 파일): `cargo test --locked --offline --test go_state_classes_cli --test index_cli --test update_moved_receipts --test update_version_folders` → 71·23·8·11 passed, 실패 0. `update_command_cli` 는 조각 2.
+- AC-2 met(다섯 파일): 같은 시험 `the_listed_files_hold_no_fixed_1100_ms_sleep` 통과(목록에 `update_command_cli.rs` 가 더해져 다섯 파일, 전체 체인 `area` 단계 exit 0).
+- AC-3 met(다섯 파일): 네 파일은 71·23·8·11 passed, 실패 0(`7e252e216b`). 다섯째 `cargo test --locked --offline --test update_command_cli` → 27 passed, 실패 0(`13f9a2b2e2`, 3회 모두).
 - AC-4 met(조각 2): `python3 -m unittest tests.statusline_golden_parallel_test` → 8 OK. `--jobs 4` 와 `--jobs 1` 의 출력 줄과 순서·종료 코드가 같고, 바뀐 골든 하나는 두 방식 모두 `FAIL case-3 ansi: golden differs` 한 줄에 `checked 23 golden outputs`·종료 1, 색상·입력 경계 계약은 `--jobs` 가 1·4·16 일 때 모두 한 번씩(2회 호출)만 돌아요. 동시에 도는 수의 최대값도 `--jobs 1` 이면 1, `--jobs 4` 이면 4 로 관측했어요.
 - AC-5 met(조각 2): 같은 시험 — `--jobs` 가 없으면 환경값 `MOAI_SPAWN_TEST_CAP=2` 면 2, 없으면 4, `--jobs 3` 이 환경값보다 앞서요. `--jobs=0`·`abc`·`-1`·`2.5`·빈 값과 `MOAI_SPAWN_TEST_CAP=0` 은 종료 2 와 값 출처를 적은 메시지로 거절되고 어떤 케이스도 돌리지 않아요(호출 수 0).
 - AC-6 met(조각 2): `cargo test --locked --offline --test statusline_golden` → 1 passed, 3회 모두(아래 표). 시험은 `--jobs` 를 주지 않아 하네스 기본값(환경값 또는 4)이 쓰여요.
-- AC-7 met(부분): 아래 전후 시간 표.
+- AC-7 met: 아래 전후 시간 표(다섯째 파일은 부하 차이로 이득을 주장하지 않아요).
 - AC-8 met(조각 1): 위 명령이 0 을 찍었어요. 지워진 줄은 모두 8줄(고정 잠 4줄, 쓰지 않게 된 가져오기 4줄)이고 `#[test]`·`assert` 줄은 없어요. 시험 개수도 그대로예요(71·23·8·11). 이 저장소 tip 에는 시험 약화 감지기가 아직 없어서 그 검사는 돌리지 않았어요.
 
 ### 전후 시간 (각 3회, `cargo test --test <대상>` 의 "finished in", 초)
@@ -105,19 +105,21 @@ created: 2026-11-21
 | index_cli | 5.10, 7.12, 20.82 | 7.12 | 5.74, 6.77, 11.41 | 6.77 |
 | update_moved_receipts | 13.28, 13.95, 18.14 | 13.95 | 5.82, 6.62, 6.79 | 6.62 |
 | update_version_folders | 11.72, 12.73, 18.04 | 12.73 | 8.70, 8.92, 9.11 | 8.92 |
-| update_command_cli (다섯째 잠, 아직) | 19.17, 21.71, 24.46 | 21.71 | 아직 | 아직 |
+| update_command_cli (다섯째 잠) | 19.17, 21.71, 24.46 | 21.71 | 49.21, 29.38, 29.82 | 29.82 |
 | statusline_golden | 144.27, 155.89, 185.48 | 155.89 | 32.32, 29.58, 32.93 | 32.32 |
 
 `statusline_golden` 의 후 측정은 커밋된 head `ed6cb08c6d`, 2026-11-21T04:35Z~04:37Z, 부하(1분) 36~80 에서 쟀고, 전은 부하 46~108 이었어요. 같은 하네스를 커밋 전 작업본(head `43bf7b2b7d` 위에 고친 파일)으로 먼저 잰 값(42.11, 42.02, 39.48초, 부하 35~76)도 같은 방향이었어요. 목표(보고서 제안) 40초 이하를 커밋된 head 의 3회 모두 만족해요.
+
+다섯째 파일 `update_command_cli` 의 후 측정은 head `13f9a2b2e2`, 2026-11-21T06:49Z~06:50Z, 부하(1분) 86~132 에서 쟀어요. 전(부하 46~108)보다 훨씬 바쁜 기계라 시간이 오히려 늘어 보여요(중앙값 21.71 → 29.82). 이 파일에 대해서는 시간 이득을 주장하지 않아요: 바뀐 것은 "고정 1100 ms 잠이 시계 대기로 바뀌었다"는 점이고, 이득은 같은 부하에서 다시 재야 말할 수 있어요.
 
 읽는 법: 부하가 달라서 이 숫자는 정확한 비교가 아니에요. 줄어든 몫은 잠을 부른 횟수와 같아요(`update_moved_receipts` 는 `install` 이 11번이라 한 번에 평균 0.6초씩, `update_version_folders` 는 18번 호출). `go_state_classes_cli` 의 잠은 4번뿐이라 차이가 부하 흔들림 안에 있어요. 부하가 더 높았는데도 네 대상 모두 중앙값이 줄었어요.
 
 ### 돌리지 않은 것
 
-- `tests/update_command_cli.rs` 의 `confirm()` 잠 한 곳과 그 후 측정: 다른 카드가 그 파일을 쥐고 있어서(2026-11-21T04:36Z 의 `card show` 로 확인) 아직 안 했어요. 그래서 REQ-3 의 "다섯 파일" 중 네 파일만 닫혔고, AC-2 의 시험 목록도 네 파일이에요. 파일이 풀리면 한 줄 교체와 시험 목록 한 줄·측정이 남아요.
-- 후 측정은 부하가 흔들리는 때 한 번(3회씩)이라 같은 부하에서 다시 재지 않았어요.
+- 다섯째 파일(`13f9a2b2e2`)의 변이 시험: 돌리지 않았어요(리더의 과부하 공지로 변이·전체 시험은 꼭 필요한 것만 하기로 했어요). 대신 `the_listed_files_hold_no_fixed_1100_ms_sleep` 이 그 파일의 내용을 읽어 `from_millis(1100)` 이 없고 시계 대기를 부르는지 확인해요.
+- 후 측정은 부하가 흔들리는 때 한 번(3회씩)이라 같은 부하에서 다시 재지 않았어요. 다섯째 파일의 후 측정은 부하가 더 높아 시간 이득을 말할 수 없어요.
 - 병렬 하네스를 macOS 가 아닌 곳(샌드박스 없는 Linux)에서는 돌리지 않았어요(이 Mac 에서만).
 
-### 검사 (head `7e252e216b` 기준, 전부 줄이지 않고)
+### 검사 (head `13f9a2b2e2` 기준, 전부 줄이지 않고)
 
-diff-check·fmt·ops-rustfmt·clippy(`--all-targets -D warnings`)·`--lib`·`--bins`·영역 시험 31개·저장소 스캔 시험 4개·macOS 시험 6개 exit 0, `tools/repo_scans.json` 검사 41개 중 실패 0, 파이썬 시험 129개 OK, trailer-check exit 0. 뮤턴트 5개 모두 잡힘(`tests/clock_wait/mod.rs` 3개, 두 파일의 시계 대기 제거 2개 — 후자는 파일 내용 시험이 잡아요).
+`target/notes/ready277.sh` 를 head `13f9a2b2e2` 에서 처음부터 다시 돌렸고(종료 코드를 한 줄씩 `target/notes/ready2.out` 에 적어요) diff-check·fmt·ops-rustfmt·clippy(`--all-targets -D warnings`)·`--lib`·`--bins`·영역 시험 `update_*`·`go_state*`·`index_*`·`no_fixed_second_sleeps`·`statusline_golden*`(64개 대상, 다섯째 파일 포함)·저장소 스캔 시험 4개·macOS 시험 12개 대상 모두 exit 0, `tools/repo_scans.json` 검사 41개 중 실패 0, 파이썬 시험(`repo_scans`·`source_manifest`·`local_check`·`check_guard`·`statusline_golden_parallel`) exit 0, trailer-check exit 0. 이전 head `7e252e216b` 의 같은 체인도 모두 exit 0 이었어요(영역 시험 31개, 파이썬 129개 OK). 뮤턴트 5개 모두 잡힘(`tests/clock_wait/mod.rs` 3개, 두 파일의 시계 대기 제거 2개 — 후자는 파일 내용 시험이 잡아요).
