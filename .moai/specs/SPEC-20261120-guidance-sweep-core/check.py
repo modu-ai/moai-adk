@@ -36,6 +36,13 @@ STALE = re.compile(r"(#[0-9]{3,5}\b|\bC-[0-9]+\b|\bOMP\b|\bomp\b|/skill:moai|\bI
 EXCEPTIONS = {
     # the worktree path sentence belongs to the worktree-path card
     "references/internal/git-safety.md": ["3. Work in your own worktree"],
+    # the Orca table's unsupported rows and the tracked-gaps paragraph are pinned by
+    # tests/orca_optional_3005.rs; the sweep keeps them as the requirement names
+    "references/adapters/orca.md": [
+        "| SETUP | unsupported:",
+        "| UPDATE | unsupported:",
+        "Unsupported today, tracked in Issue",
+    ],
     # the `@cc:` sentences belong to the ACC card; none of these files holds a number there
 }
 
@@ -68,7 +75,7 @@ SENTENCES = {
         "`release/v{head}.{yearweek}.{build}` for HeadVer",
     ],
     "workflows/sync.md": [
-        "A lane opens none: its work ends at its pushed head and its READY report, and only the leader opens the release pull request",
+        "A card that landed locally is closed with `card done` on the local landing evidence, not a pull request.",
     ],
 }
 
