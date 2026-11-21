@@ -888,6 +888,26 @@ fn plan_ignore(root: &Path) -> IgnoreFacts {
             warning: None,
         };
     }
+    // A rule the person wrote that makes the file not ignored (`!CLAUDE.local.md`) wins: a line
+    // added after it would flip their choice without their knowing, so none is added.
+    let negated = existing.as_deref().is_some_and(|b| {
+        String::from_utf8_lossy(b).lines().any(|l| {
+            matches!(
+                l.trim(),
+                "!CLAUDE.local.md" | "!/CLAUDE.local.md" | "!**/CLAUDE.local.md"
+            )
+        })
+    });
+    if negated {
+        return skip(
+            &format!("{GITIGNORE} has a rule you wrote that keeps {line} out of the ignore list"),
+            exists,
+            Some(format!(
+                "{GITIGNORE} holds a rule that un-ignores {line}; a rule you wrote wins, so no line is added and git will see the file. Remove that rule yourself if the file should stay out of the repo"
+            )),
+            tracked,
+        );
+    }
     let old = existing.clone().unwrap_or_default();
     let eol = if old.windows(2).any(|w| w == b"\r\n") {
         "\r\n"
@@ -970,8 +990,23 @@ fn plan_inner(kind: Kind, root: &Path) -> Result<Inner> {
     } else {
         Vec::new()
     };
-    let confirm_token =
-        (!hidden.is_empty()).then(|| hex(hidden.join("\n").as_bytes())[..16].to_string());
+    // The token is the user's yes to this plan, so it differs per project and per plan: it mixes
+    // the project path and the digests of the source and the target file into the warning text.
+    // A token learned from another project or an earlier plan does not open this one.
+    let confirm_token = (!hidden.is_empty()).then(|| {
+        let source_digest = match &found {
+            Found::Source(src) => crate::digest(&src.bytes),
+            _ => String::new(),
+        };
+        let seed = format!(
+            "{}\n{}\n{}\n{}",
+            hidden.join("\n"),
+            root.display(),
+            source_digest,
+            before.as_deref().map(crate::digest).unwrap_or_default()
+        );
+        hex(seed.as_bytes())[..16].to_string()
+    });
     let mut warnings = hidden;
     // What git says about the personal file: ignored or made ignored by one `.gitignore` line,
     // or tracked (committed whatever `.gitignore` says).
@@ -1002,12 +1037,25 @@ fn plan_inner(kind: Kind, root: &Path) -> Result<Inner> {
     .into_iter()
     .flatten()
     .collect();
-    let line_endings = (decision.action == "merge" && !crlf.is_empty()).then(|| {
-        format!(
+    // One line for what the copy changes at the line ends: the marker lines are LF whatever the
+    // text uses, and a source that does not end with a line break gets one in the copy.
+    let mut ending_notes: Vec<String> = Vec::new();
+    if !crlf.is_empty() {
+        ending_notes.push(format!(
             "{} use CRLF line endings; the marker lines are written with LF and the text keeps its own",
             crlf.join(" and ")
-        )
-    });
+        ));
+    }
+    if let Found::Source(s) = &found {
+        if !s.text.is_empty() && !s.text.ends_with(b"\n") {
+            ending_notes.push(format!(
+                "{} does not end with a line break; the copy ends with one before the end marker",
+                s.rel
+            ));
+        }
+    }
+    let line_endings =
+        (decision.action == "merge" && !ending_notes.is_empty()).then(|| ending_notes.join("; "));
     let source = match found {
         Found::Source(s) => Some(s),
         _ => None,

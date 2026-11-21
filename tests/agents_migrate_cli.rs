@@ -323,3 +323,64 @@ fn a_receipt_id_belongs_to_its_kind() {
     assert!(err.contains("unknown receipt id"), "{err}");
     assert!(fx.root.join("CLAUDE.md").exists(), "nothing was reverted");
 }
+
+/// Audit of the slice, C-M2: the revert of this kind takes only the receipt that names
+/// `CLAUDE.md`. A receipt that names another file, even the personal file the other kind writes,
+/// is refused and the file keeps every byte, although it holds exactly what the apply wrote.
+#[test]
+fn a_guidance_receipt_that_names_another_file_is_refused() {
+    for other in [
+        "README.md",
+        "CLAUDE.local.md",
+        "AGENTS.local.md",
+        "AGENTS.md",
+    ] {
+        let fx = Fx::with_text();
+        let id = fx.migrate()["receipt"].as_str().unwrap().to_string();
+        let written = fx.read("CLAUDE.md");
+        let agents_before = fx.read("AGENTS.md");
+        if other != "AGENTS.md" {
+            fx.write(other, &written);
+        }
+        let path = fx
+            .root
+            .join(format!(".moai-cli/receipts/{id}/receipt.json"));
+        let mut r: Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+        r["target_path"] = json!(other);
+        fs::write(&path, serde_json::to_vec_pretty(&r).unwrap()).unwrap();
+
+        let err = fx.revert(&id).unwrap_err();
+        assert!(err.contains("never writes"), "{other}: {err}");
+        assert_eq!(fx.read("CLAUDE.md"), written, "{other}: CLAUDE.md changed");
+        if other == "AGENTS.md" {
+            assert_eq!(fx.read("AGENTS.md"), agents_before);
+        } else {
+            assert_eq!(fx.read(other), written, "{other} was changed");
+        }
+    }
+}
+
+/// Audit of the slice, C-M3: a marker line of the personal-file merge that stayed in the text
+/// (one that lost its other half, so it was not taken out as an earlier block) blocks the plan:
+/// copied into `CLAUDE.md`, it would be read by the personal-file merge as its own block.
+#[test]
+fn a_damaged_personal_marker_in_the_text_blocks_the_plan() {
+    let begin = format!("<!-- moai:merged-local sha256={} -->\n", "b".repeat(64));
+    let end = "<!-- /moai:merged-local -->\n";
+    for (what, text) in [
+        ("a start marker alone", format!("{TEXT}{begin}My note.\n")),
+        ("an end marker alone", format!("{TEXT}My note.\n{end}")),
+    ] {
+        let fx = Fx::new();
+        fx.write("AGENTS.md", &text);
+        let p = fx.plan();
+        assert_eq!(p["action"], json!("blocked"), "{what}: {p}");
+        assert!(
+            p["reason"].as_str().unwrap().contains("marker"),
+            "{what}: {p}"
+        );
+        let digest = p["plan_digest"].as_str().unwrap();
+        assert!(apply_for(Kind::Guidance, &fx.root, digest, REF).is_err());
+        assert!(!fx.root.join("CLAUDE.md").exists(), "{what}");
+    }
+}

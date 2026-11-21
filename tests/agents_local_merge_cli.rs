@@ -1251,4 +1251,146 @@ fn the_preview_has_one_line_about_crlf() {
     let fx = Fx::with("# Rules\r\n", Some(MINE));
     let p = fx.plan();
     assert!(p["line_endings"].as_str().unwrap().contains("CRLF"), "{p}");
+
+    // A source without a final line break gets one in the copy, and the preview says so (audit
+    // of the repair, N1); with CRLF as well, both facts share the one line.
+    let fx = Fx::fresh("# Notes\n\nReply in Korean.");
+    let p = fx.plan();
+    let line = p["line_endings"].as_str().unwrap();
+    assert!(line.contains("does not end with a line break"), "{p}");
+    assert!(!line.contains("CRLF"), "{p}");
+    let fx = Fx::fresh("# Notes\r\n\r\nReply in Korean.");
+    let line = fx.plan()["line_endings"].as_str().unwrap().to_string();
+    assert!(
+        line.contains("CRLF") && line.contains("does not end with a line break"),
+        "{line}"
+    );
+}
+
+/// Audit of the repair, M4: the receipt names the file the apply wrote, and the revert takes only
+/// the names this command ever writes. A receipt that names another file is refused even when
+/// that file holds the very bytes the apply wrote, which would pass every later check.
+#[test]
+fn a_receipt_that_names_another_file_is_refused() {
+    for other in ["README.md", "CLAUDE.md", "docs/notes.md"] {
+        let fx = Fx::fresh(MINE);
+        let applied = fx.merge();
+        let id = applied["receipt"].as_str().unwrap().to_string();
+        let written = fx.read("CLAUDE.local.md");
+        // The other file holds exactly what the apply wrote, so only the allow-list can stop it.
+        fx.write(other, &written);
+        let path = fx.receipt_path(&id).join("receipt.json");
+        let mut r: Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+        r["target_path"] = json!(other);
+        fs::write(&path, serde_json::to_vec_pretty(&r).unwrap()).unwrap();
+
+        let v = fx.revert_with(&id, REF);
+        assert_eq!(v["ok"], json!(false), "{other}: {v}");
+        assert!(
+            v["error"]["message"]
+                .as_str()
+                .unwrap()
+                .contains("never writes"),
+            "{other}: {v}"
+        );
+        assert_eq!(fx.read(other), written, "{other} was changed");
+        assert_eq!(fx.read("CLAUDE.local.md"), written, "{other}");
+    }
+}
+
+/// Audit of the repair, M5: an apply that was interrupted leaves a `pending` receipt. For a file
+/// the apply was creating, a missing file means it wrote nothing (the receipt becomes `failed`
+/// and nothing changes); for a file that existed, a missing file is an error, not "wrote nothing".
+#[test]
+fn a_pending_receipt_of_a_new_file_that_is_missing_wrote_nothing() {
+    // The apply was creating CLAUDE.local.md and stopped before the write.
+    let fx = Fx::fresh(MINE);
+    let applied = fx.merge();
+    let id = applied["receipt"].as_str().unwrap().to_string();
+    assert_eq!(fx.receipt(&id)["target_existed"], json!(false));
+    fx.set_status(&id, "pending");
+    fs::remove_file(fx.root.join("CLAUDE.local.md")).unwrap();
+    let v = fx.revert_with(&id, REF);
+    assert_eq!(v["ok"], json!(true), "{v}");
+    assert_eq!(v["result"]["state"], json!("unchanged"), "{v}");
+    assert_eq!(fx.receipt(&id)["status"], json!("failed"));
+    assert!(!fx.root.join("CLAUDE.local.md").exists());
+
+    // The same stop for a file that existed before: it cannot be missing, so the revert says so
+    // and writes nothing.
+    let fx = Fx::fresh(MINE);
+    fx.write("CLAUDE.local.md", "# my own notes\n");
+    let applied = fx.merge();
+    let id = applied["receipt"].as_str().unwrap().to_string();
+    assert_eq!(fx.receipt(&id)["target_existed"], json!(true));
+    fx.set_status(&id, "pending");
+    fs::remove_file(fx.root.join("CLAUDE.local.md")).unwrap();
+    let v = fx.revert_with(&id, REF);
+    assert_eq!(v["ok"], json!(false), "{v}");
+    assert!(
+        v["error"]["message"].as_str().unwrap().contains("missing"),
+        "{v}"
+    );
+    assert_eq!(fx.receipt(&id)["status"], json!("pending"));
+
+    // The apply did write (the file holds the bytes it was about to write): the revert undoes it
+    // like an applied one and removes the file it created.
+    let fx = Fx::fresh(MINE);
+    let applied = fx.merge();
+    let id = applied["receipt"].as_str().unwrap().to_string();
+    fx.set_status(&id, "pending");
+    let v = fx.revert_with(&id, REF);
+    assert_eq!(v["result"]["state"], json!("reverted"), "{v}");
+    assert!(!fx.root.join("CLAUDE.local.md").exists());
+}
+
+/// Audit of the repair, N8: the token is the user's yes to one plan. Two projects with the same
+/// warning text get different tokens, and a changed source gives a new one; a token of another
+/// plan opens nothing.
+#[test]
+fn the_token_differs_per_project_and_per_plan() {
+    let a = Fx::fresh(MINE);
+    a.write("AGENTS.md", RULES);
+    let b = Fx::fresh(MINE);
+    b.write("AGENTS.md", RULES);
+    let (pa, pb) = (a.plan(), b.plan());
+    assert_eq!(pa["warnings"], pb["warnings"], "same warning text");
+    let (ta, tb) = (
+        pa["confirm_token"].as_str().unwrap().to_string(),
+        pb["confirm_token"].as_str().unwrap().to_string(),
+    );
+    assert_ne!(ta, tb, "another project has another token");
+
+    // The token of A does not open B, even with B's own digest.
+    let before = tree_state(&b.root);
+    let v = b.apply_confirmed(pb["plan_digest"].as_str().unwrap(), &ta);
+    assert_eq!(v["ok"], json!(false), "{v}");
+    assert_eq!(tree_state(&b.root), before);
+
+    // The same project with another source text: another token.
+    a.write("AGENTS.local.md", "# Other notes\n\nAnswer briefly.\n");
+    assert_ne!(a.plan()["confirm_token"].as_str().unwrap(), ta);
+}
+
+/// Audit of the repair, N9: a rule the user wrote to un-ignore the file wins. No line is added,
+/// the plan says so, and the apply still writes the personal file.
+#[test]
+fn a_negated_ignore_rule_the_user_wrote_wins() {
+    let fx = Fx::fresh(MINE);
+    fx.git_init();
+    let earlier = "target/\n!CLAUDE.local.md\n";
+    fx.write(".gitignore", earlier);
+    let p = fx.plan();
+    assert_eq!(p["gitignore"]["action"], json!("skip"), "{p}");
+    assert!(
+        p["warnings"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|w| w.as_str().unwrap().contains("a rule you wrote wins")),
+        "{p}"
+    );
+    let applied = fx.merge();
+    assert_eq!(applied["writes"], json!(["CLAUDE.local.md"]), "{applied}");
+    assert_eq!(fx.read(".gitignore"), earlier, ".gitignore is untouched");
 }
