@@ -51,15 +51,13 @@ fn fixture() -> Fixture {
         .unwrap()
         .success());
     let bin = tempfile::tempdir().unwrap();
-    for host in ["claude"] {
-        let path = bin.path().join(host);
-        fs::write(
-            &path,
-            "#!/bin/sh\nprintf started > \"$MOAI_TEST_HOST_MARKER\"\nexit 0\n",
-        )
-        .unwrap();
-        fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).unwrap();
-    }
+    let path = bin.path().join("claude");
+    fs::write(
+        &path,
+        "#!/bin/sh\nprintf started > \"$MOAI_TEST_HOST_MARKER\"\nexit 0\n",
+    )
+    .unwrap();
+    fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).unwrap();
     Fixture {
         project,
         bin,

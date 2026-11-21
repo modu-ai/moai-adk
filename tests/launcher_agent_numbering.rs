@@ -57,11 +57,9 @@ fn fixture() -> Fixture {
     fs::create_dir(project.path().join(".moai-cli")).unwrap();
     fs::write(project.path().join(".moai-cli/project.yaml"), "{}\n").unwrap();
     let bin = tempfile::tempdir().unwrap();
-    for host in ["claude"] {
-        let path = bin.path().join(host);
-        fs::write(&path, STUB).unwrap();
-        fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).unwrap();
-    }
+    let path = bin.path().join("claude");
+    fs::write(&path, STUB).unwrap();
+    fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).unwrap();
     Fixture {
         project,
         bin,

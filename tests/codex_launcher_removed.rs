@@ -111,23 +111,22 @@ fn moai_codex_is_an_unknown_command() {
 #[test]
 fn the_codex_host_word_is_refused_like_any_unknown_host() {
     let f = fixture();
-    for flag in ["-a"] {
-        let nope = run(&f, f.project.path(), &[flag, "nope", "--dry-run"]);
-        let codex = run(&f, f.project.path(), &[flag, "codex", "--dry-run"]);
-        assert_ne!(nope.status.code(), Some(0), "{flag} nope: {nope:?}");
-        assert_eq!(codex.status.code(), nope.status.code(), "{flag}: {codex:?}");
-        assert!(codex.stdout.is_empty(), "{flag}: {codex:?}");
-        let text = out_text(&codex);
-        assert!(text.contains("(cc|glm|omp)"), "{flag}: {text}");
-        assert!(!text.contains("codex|"), "{flag}: {text}");
-        assert!(!text.contains("|codex"), "{flag}: {text}");
-        assert_eq!(
-            text.replace("codex", "WORD"),
-            out_text(&nope).replace("nope", "WORD"),
-            "{flag}: the refusal differs from the unknown-host refusal"
-        );
-        assert!(!started(&f), "{flag}: a host was started");
-    }
+    let flag = "-a";
+    let nope = run(&f, f.project.path(), &[flag, "nope", "--dry-run"]);
+    let codex = run(&f, f.project.path(), &[flag, "codex", "--dry-run"]);
+    assert_ne!(nope.status.code(), Some(0), "{flag} nope: {nope:?}");
+    assert_eq!(codex.status.code(), nope.status.code(), "{flag}: {codex:?}");
+    assert!(codex.stdout.is_empty(), "{flag}: {codex:?}");
+    let text = out_text(&codex);
+    assert!(text.contains("(cc|glm|omp)"), "{flag}: {text}");
+    assert!(!text.contains("codex|"), "{flag}: {text}");
+    assert!(!text.contains("|codex"), "{flag}: {text}");
+    assert_eq!(
+        text.replace("codex", "WORD"),
+        out_text(&nope).replace("nope", "WORD"),
+        "{flag}: the refusal differs from the unknown-host refusal"
+    );
+    assert!(!started(&f), "{flag}: a host was started");
     // Without `--dry-run` too: the stub `codex` on PATH is never started.
     let out = run(&f, f.project.path(), &["-a", "codex"]);
     assert_ne!(out.status.code(), Some(0), "{out:?}");

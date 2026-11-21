@@ -21,15 +21,13 @@ struct Fixture {
 
 fn fixture() -> Fixture {
     let bin = tempfile::tempdir().unwrap();
-    for host in ["claude"] {
-        let path = bin.path().join(host);
-        fs::write(
-            &path,
-            "#!/bin/sh\nprintf started > \"$MOAI_TEST_HOST_MARKER\"\n",
-        )
-        .unwrap();
-        fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).unwrap();
-    }
+    let path = bin.path().join("claude");
+    fs::write(
+        &path,
+        "#!/bin/sh\nprintf started > \"$MOAI_TEST_HOST_MARKER\"\n",
+    )
+    .unwrap();
+    fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).unwrap();
     // A project that already has its settings: the launch initializes nothing, so the only
     // launcher line on stderr is the one under test.
     let project = tempfile::tempdir().unwrap();
