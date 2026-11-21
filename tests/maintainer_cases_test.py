@@ -221,6 +221,11 @@ class StageOrderTest(Temp):
         self.assertEqual(row["verdict"], "flag")
         self.assertIn("RUN", row["detail"])
 
+    def test_a_stage_name_preceded_by_a_hyphen_does_not_count(self):
+        row = self.stages("One round runs PLAN → pre-RUN → VERIFY → SYNC → AUDIT → merge")
+        self.assertEqual(row["verdict"], "flag")
+        self.assertIn("RUN", row["detail"])
+
     def test_a_phrase_that_is_not_in_the_file_is_refused(self):
         write(self.root, "chain.md", "no such line\n")
         write(self.root, "round.md", "One round runs PLAN\n")
@@ -300,6 +305,49 @@ class DeletionTest(Temp):
     def test_a_function_of_the_same_name_that_is_not_a_test_does_not_put_it_back(self):
         patch = self.REMOVED + "+fn gone_test() {\n+}\n"
         self.assertEqual(self.diff(patch)["verdict"], "flag")
+
+    def test_a_test_kept_under_its_context_attribute_is_put_back_on_the_added_side_too(self):
+        # The unchanged `#[test]` is context: it marks the added function as a test as well, so
+        # an edited test that keeps its name is not a deletion.
+        patch = (
+            "--- a/tests/x.rs\n+++ b/tests/x.rs\n@@ -1,3 +1,3 @@\n #[test]\n-fn same_test() {\n"
+            "+fn same_test() { // edited\n }\n"
+        )
+        self.assertEqual(self.diff(patch)["verdict"], "clean")
+
+    def test_a_function_right_after_a_removed_test_is_not_taken_for_a_test(self):
+        patch = "--- a/tests/x.rs\n+++ b/tests/x.rs\n@@ -1,5 +0,0 @@\n-#[test]\n-fn gone_t() {\n-}\n-fn helper() {\n-}\n"
+        row = self.diff(patch)
+        self.assertEqual(row["verdict"], "flag")
+        self.assertIn("gone_t", row["detail"])
+        self.assertNotIn("helper", row["detail"])
+
+    def test_a_function_right_after_an_added_test_does_not_put_a_removed_one_back(self):
+        patch = (
+            "--- a/tests/x.rs\n+++ b/tests/x.rs\n@@ -1,3 +1,6 @@\n-#[test]\n-fn a_t() {\n-}\n"
+            "+#[test]\n+fn b_t() {\n+}\n+fn a_t() {\n+}\n"
+        )
+        row = self.diff(patch)
+        self.assertEqual(row["verdict"], "flag")
+        self.assertIn("a_t", row["detail"])
+
+    def test_a_context_line_that_is_not_an_attribute_ends_the_marker(self):
+        patch = (
+            "--- a/tests/x.rs\n+++ b/tests/x.rs\n@@ -1,5 +1,3 @@\n #[test]\n fn keep_t() {\n }\n"
+            "-fn helper() {\n-}\n"
+        )
+        self.assertEqual(self.diff(patch)["verdict"], "clean")
+
+    def test_a_new_hunk_ends_the_marker_of_the_hunk_before_it(self):
+        patch = (
+            "--- a/tests/x.rs\n+++ b/tests/x.rs\n@@ -1,1 +1,1 @@\n #[test]\n"
+            "@@ -9,2 +9,0 @@\n-fn helper() {\n-}\n"
+        )
+        self.assertEqual(self.diff(patch)["verdict"], "clean")
+
+    def test_a_removed_python_function_that_is_not_a_test_is_clean(self):
+        patch = "--- a/tests/t.py\n+++ b/tests/t.py\n@@ -1,3 +0,0 @@\n-def helper():\n-    pass\n"
+        self.assertEqual(self.diff(patch)["verdict"], "clean")
 
     def test_a_diff_that_only_adds_is_clean(self):
         patch = "--- a/tests/x.rs\n+++ b/tests/x.rs\n@@ -0,0 +1,3 @@\n+#[test]\n+fn new_test() {\n+}\n"
