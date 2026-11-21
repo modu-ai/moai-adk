@@ -4,7 +4,7 @@
 
 use super::input::SubagentTask;
 
-/// Auto-compact trigger used to scale the context bar (memory.go `defaultAutoCompactPct`).
+/// Auto-compact trigger used to scale the context percentage (memory.go `defaultAutoCompactPct`).
 pub const DEFAULT_AUTO_COMPACT_PCT: i64 = 85;
 const DEFAULT_CONTEXT_WINDOW: i64 = 200_000;
 // internal/config handoff band constants.
@@ -63,7 +63,7 @@ pub fn shorten_model_name(model: &str) -> String {
     }
 }
 
-/// The context-window reading behind the CTX bar (`MemoryData`).
+/// The context-window reading behind the CTX number (`MemoryData`).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Memory {
     pub tokens_used: i64,
@@ -84,7 +84,7 @@ pub struct ContextReading {
 }
 
 /// `CollectMemory` (memory.go). `size_override` is the GLM / env override (0 = none);
-/// `auto_compact` scales the budget so the bar reaches 100% where auto-compact fires.
+/// `auto_compact` scales the budget so the percentage reaches 100% where auto-compact fires.
 pub fn collect_memory(cw: Option<ContextReading>, size_override: i64, auto_compact: i64) -> Memory {
     let Some(cw) = cw else {
         return Memory::default();
