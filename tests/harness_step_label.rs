@@ -36,6 +36,11 @@ fn install_reason_names_the_step_by_its_display_name() {
         reason.contains("project harness"),
         "the install phase reason must name `project harness`: {reason}"
     );
+    // The name carries what the step writes, as the SPEC's plan words it.
+    assert!(
+        reason.contains("project harness (AGENTS.md managed section and generated files)"),
+        "the install phase reason lost what the step writes: {reason}"
+    );
 }
 
 #[test]
@@ -122,13 +127,18 @@ fn workflow_text_tells_to_translate_and_keeps_the_id_for_tools() {
             .find("Call the generation step")
             .unwrap_or_else(|| panic!("{rel}: the naming line has no `Call the generation step`"));
         let line = &whole[start..];
-        assert!(
-            line.contains("translate"),
-            "{rel}: the naming line must tell to translate the name for another language: {line}"
-        );
-        assert!(
-            line.contains("`generation`"),
-            "{rel}: the naming line must keep the id `generation` for tools: {line}"
-        );
+        // Whole clauses, not loose words: the labels keep their language (REQ-4, REQ-5), the
+        // name is translated for any other language, and the id is for tools only (REQ-6).
+        for clause in [
+            "Call the generation step \"Project harness\" in English and \"프로젝트 맞춤 하네스\" in Korean",
+            "translate that name for any other conversation language",
+            "the id `generation` stays for the commands and the JSON",
+            ", never as the name you say to the user",
+        ] {
+            assert!(
+                line.contains(clause),
+                "{rel}: the naming sentence lost the clause `{clause}`: {line}"
+            );
+        }
     }
 }

@@ -46,7 +46,7 @@ The plan stays English bytes (the JSON envelope never speaks Korean); the Korean
 
 ## Plan
 
-Tests first (RED). `tests/harness_step_label.rs` reads the source and the two workflow texts, runs no command and needs no HOME, like `tests/project_preview_order.rs`. On the tip alone the three groups fail for the right reasons (the install reason says `generation`; the workflows have no sentence). The three paired edits arrive from their holders as pair lines; the chain is merged together and the tests read green on the merge.
+Tests first (RED). `tests/harness_step_label.rs` reads the source and the two workflow texts, runs no command and needs no HOME, like `tests/project_preview_order.rs`. On the tip alone the three groups fail for the right reasons (the install reason says `generation`; the workflows have no sentence). The three edits (the install reason, `update.md`, `project.md`) then landed on this same branch, so the tests read green on the branch itself.
 
 The workflow sentence (one per file, placed where the file first reads the plan out): `Call the generation step "Project harness" in English and "프로젝트 맞춤 하네스" in Korean, and translate that name for any other conversation language; the id stays `generation` for the commands and the JSON, never as the name you say to the user.`
 
@@ -54,7 +54,7 @@ The install reason becomes `profile, project harness (AGENTS.md managed section 
 
 ## Risks
 
-- The tests read red on this branch alone: the three edits live in files other cards hold. The pair lines name this change as the pair, and the READY waits for the merged chain.
+- The tests read red on the tip alone and green on this branch, because the three edits are on it. Another card that edits `update.md` or the source manifest merges by sentence with this branch, and the manifest row is regenerated on the merged tree.
 - The shipped text must not gain a maintainer token (a card number, an issue number, a repository link or the local-rules file name): the sentence has none, and the ratchet scan of the shipped paths still passes with the sentence added.
 - `skills/moai` edits need their sha256 entries in the source manifest in the same change; the holder of the manifest updates them with the sentence.
 - A reader of the plan JSON who looks for the display name in a field will not find it (non-goal); the install reason and the workflow text are where it is.
@@ -71,6 +71,6 @@ Fail-to-pass, measured: with the three changed files (`update.md`, `project.md`,
 
 Mutants (10, one rule each, run on the committed text against the built test executable, each restored with `git checkout` and the tree read clean): `translate` turned into `render` in `project.md` and in `update.md`; the English name changed; the Korean name changed in `project.md` and shortened in `update.md`; the id clause dropped from the `project.md` sentence; `INSTALL_REASON` saying `generation`, its steps swapped, and `GitHub templates` dropped; `manifests/generation.json` renamed. The first run left the dropped id clause alive (the line check above); after the test change all 10 were killed.
 
-Other checks run: `tools/source_manifest.py write` then `check` exit 0 (the manifest changed for `workflows/project.md` only); `rustfmt --check --edition 2021 tests/harness_step_label.rs` exit 0; the added `project.md` sentence holds no card number, issue number, link or local-rules file name.
+Other checks run: `tools/source_manifest.py write` then `check` exit 0 (over the whole range the manifest changed for `workflows/update.md` in one commit and `workflows/project.md` in another); `rustfmt --check --edition 2021 tests/harness_step_label.rs` exit 0; the added `project.md` sentence holds no card number, issue number, link or local-rules file name.
 
 Not run: the check-affected chain for this head (it runs next), Windows and Linux, a reader of the plan JSON looking for the display name in a field (a stated non-goal), and the ratchet script `tools/shipped_text_ratchet.py` (not in this branch's tree).
