@@ -709,7 +709,12 @@ pub fn deny_apply(settings_path: &Path, picked: bool) -> Result<Value> {
     let deny = settings
         .pointer_mut("/permissions/deny")
         .and_then(|d| d.as_array_mut())
-        .ok_or_else(|| format!("settings {} permissions.deny is not a list", settings_path.display()))?;
+        .ok_or_else(|| {
+            format!(
+                "settings {} permissions.deny is not a list",
+                settings_path.display()
+            )
+        })?;
     let mut written = 0usize;
     for entry in deny_entries() {
         if !deny.iter().any(|d| d.as_str() == Some(entry)) {

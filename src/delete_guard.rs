@@ -37,7 +37,10 @@ struct Refusal {
 
 impl Refusal {
     fn message(&self) -> String {
-        format!("{PREFIX} recursive delete of {} is refused{TAIL}", self.what)
+        format!(
+            "{PREFIX} recursive delete of {} is refused{TAIL}",
+            self.what
+        )
     }
 }
 
@@ -58,9 +61,7 @@ pub fn check(name: &str, args: &[String], project_root: Option<&Path>) -> Option
 /// `sudo rm -rf /` / `xargs rm -rf /`: unwrap one layer and re-check the inner command.
 fn wrapped_check(args: &[String], root: Option<&Path>) -> Option<Refusal> {
     match args.split_first() {
-        Some((first, rest))
-            if matches!(first.as_str(), "rm" | "find" | "xargs") =>
-        {
+        Some((first, rest)) if matches!(first.as_str(), "rm" | "find" | "xargs") => {
             match first.as_str() {
                 "rm" => rm_check(rest, root),
                 "find" => find_check(rest, root),
@@ -100,9 +101,9 @@ fn rm_check(args: &[String], root: Option<&Path>) -> Option<Refusal> {
 /// non-option words are the paths find walks.
 fn find_check(args: &[String], root: Option<&Path>) -> Option<Refusal> {
     let deletes = args.iter().any(|a| a == "-delete")
-        || args.windows(2).any(|w| {
-            (w[0] == "-exec" || w[0] == "-execdir") && w[1] == "rm"
-        });
+        || args
+            .windows(2)
+            .any(|w| (w[0] == "-exec" || w[0] == "-execdir") && w[1] == "rm");
     if !deletes {
         return None;
     }
@@ -137,7 +138,11 @@ fn variable_refusal(target: &str) -> Option<Refusal> {
         return Some(empty_variable_refusal());
     }
     let name = &first[1..];
-    if name.chars().next().is_some_and(|c| c.is_ascii_alphabetic() || c == '_') {
+    if name
+        .chars()
+        .next()
+        .is_some_and(|c| c.is_ascii_alphabetic() || c == '_')
+    {
         return Some(empty_variable_refusal());
     }
     None
@@ -217,10 +222,8 @@ fn classify(target: &str, root: Option<&Path>) -> Option<Refusal> {
                 return Some(Refusal {
                     what: format!(
                         "a parent of the project root ({})",
-                        root.parent().map_or_else(
-                            || "/".to_string(),
-                            |p| p.display().to_string(),
-                        )
+                        root.parent()
+                            .map_or_else(|| "/".to_string(), |p| p.display().to_string(),)
                     ),
                 });
             }
