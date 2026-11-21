@@ -4,6 +4,8 @@
 //! git repository in a temporary directory and runs the real binary; the developer's
 //! repository, its common dir and the real HOME are never touched.
 
+#![cfg(unix)]
+
 mod common;
 use serde_json::{json, Value};
 use std::{
