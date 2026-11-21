@@ -88,4 +88,3 @@ Mutants (five, on the committed files, each restored, `restored: clean = True`; 
 - `moai check affected` on the final head `56506f1712`: not run again (a formatting-only commit follows the run; its own check is the `fmt --check` and the target above).
 - `mode_workflow_steps` inside the `check affected` run: it was not in the affected set; its 43 passes are from `green1.out` on the green commit.
 - A second run of the same tests on the same tree: not repeated.
-
