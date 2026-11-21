@@ -37,7 +37,7 @@ The workflow text the hosts load is in [skills/moai/](skills/moai/SKILL.md).
 | Language | Rust | Go |
 | Command | `moai` (alias `moai-cli`) | `moai` |
 | Version | `2026.11.0-rc.1` (prerelease, unreleased) | latest release `v3.1.2` |
-| State folders | `.moai-cli/` (project), `~/.moai-cli/` (user) | `.moai/`, `~/.moai/` |
+| State folders | `.moai/` (a new project; a project that began on the earlier RC keeps `.moai-cli/`), `~/.moai-cli/` (user) | `.moai/`, `~/.moai/` |
 | Host entry | `/moai <request>` in Claude Code, `$moai <request>` in Codex | `/moai` commands in Claude Code |
 
 The two generations use separate state folders and do not update each other. Both commands are called `moai`; `moai --version` tells them apart (the release candidate ends its line with `(rust)`). The release candidate also builds `moai-cli` as an alias: it prints the same `--version` line, and its help names `moai-cli` as the command.
@@ -48,9 +48,9 @@ The two generations use separate state folders and do not update each other. Bot
 
 ## Install
 
-### From a release (not available yet)
+### From a release (installer in this repository)
 
-Release assets and an installer for RC1 are not published. This section will list the real commands once they exist; until then they are `not_run`. Release files will be verifiable with GitHub artifact attestations ([docs/release-attestation.md](docs/release-attestation.md)).
+The Rust edition is installed from `https://adk.mo.ai.kr/install.sh` (macOS, Linux) or `install.ps1` (Windows; also `pwsh` on macOS and Linux) — the same addresses the Go edition used, with `curl -fsSL https://adk.mo.ai.kr/install.sh | sh` as the one-line form. The commands, the options and the next steps the installer prints are documented in [install/README.md](install/README.md); release files will be verifiable with GitHub artifact attestations ([docs/release-attestation.md](docs/release-attestation.md)).
 
 > 💡 **To cut costs — z.ai GLM recommended**: signing up via [this link](https://z.ai/subscribe?ic=1NDV03BGWU) grants bonus tokens. The link is also a way to sponsor moai-adk open-source development. Free models (GLM-4.7-Flash, GLM-4.5-Flash) exist too — see the [z.ai pricing](https://docs.z.ai/guides/overview/pricing).
 
@@ -70,12 +70,7 @@ The last command prints `moai-cli 2026.11.0-rc.1 (rust)`; `./target/release/moai
 
 ## First run
 
-The intended entry is natural language in the host session at your project root:
-
-- Claude Code: `/moai read this project and set it up`
-- Codex: `$moai read this project and set it up`
-
-Adding the `moai` skill to a project and these first-run requests have **not been tested end to end yet** (`not_run`, pending the RC1 release). The draft user flow is in [docs/user-entry-draft.md](docs/user-entry-draft.md).
+The entry after installing: start a session at your project root with `moai cc` (Claude Code; `moai glm`, `moai codex`, `omp` for the other hosts; `-l` leader, `-a` agent), then set the project up inside it with `/moai project` (`$moai project` in Codex, `/skill:moai project` in OMP). The fuller natural-language entry (`/moai read this project and set it up`) is drafted in [docs/user-entry-draft.md](docs/user-entry-draft.md) and lands with the RC1 release.
 
 `moai --help` lists the internal commands the workflow calls. They are building blocks for the skill, not a daily interface.
 
