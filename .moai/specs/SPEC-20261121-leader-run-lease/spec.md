@@ -22,17 +22,19 @@ Orca's automations page (https://orca.dev/docs/cli/automations, read 2026-11-21T
 - REQ-3 (REQ-1): IF the lease has ended, THEN the `leader-run begin` command shall take it over and say that it replaced the ended lease of the earlier holder.
 - REQ-4: The `leader-run end` command shall release the lease only for the session that holds it and refuse the release of another session's lease.
 - REQ-5 (REQ-1): IF the caller reports no ready card or a HOLD, THEN the `leader-run begin` command shall take no lease and print `idle` with the state change that wakes the run.
-- REQ-6: The MODE-LEADER text shall tell a Claude Code or Codex CLI leader to call `leader-run begin` first in each tick, to run the round only on `taken`, to skip it on `skipped` and `idle`, and to call `leader-run end` last.
+- REQ-6 (REQ-1): IF the unexpired lease is held by the same session, THEN the `leader-run begin` command shall renew it and print `taken` with `renewed` true.
+- REQ-7: The MODE-LEADER text shall tell a Claude Code or Codex CLI leader to call `leader-run begin` first in each tick, to run the round only on `taken`, to skip it on `skipped` and `idle`, and to call `leader-run end` last.
 
 ## Acceptance
 
-- AC-1 (REQ-1, REQ-2, REQ-3, REQ-4, REQ-5): in a temporary project, two overlapping begins give one `taken` and one `skipped`, an ended lease is taken over, a begin that reports no ready card gives `idle` and the next one that reports a ready card gives `taken`, and an end by another session is refused; the times and results of the run are written in the Result · verify: `cargo test --locked --offline --test leader_run_cli`
-- AC-2 (REQ-6): the MODE-LEADER text carries the lease rule once and the scan and reader tests of the file pass · verify: `cargo test --locked --offline --test leader_run_cli mode_text`
+- AC-1 (REQ-1, REQ-2, REQ-3, REQ-4, REQ-5, REQ-6): in a temporary project, two overlapping begins give one `taken` and one `skipped`, an ended lease is taken over, a begin that reports no ready card gives `idle` and the next one that reports a ready card gives `taken`, and an end by another session is refused; the times and results of the run are written in the Result · verify: `cargo test --locked --offline --test leader_run_cli`
+- AC-2 (REQ-7): the MODE-LEADER text carries the lease rule once and the scan and reader tests of the file pass · verify: `cargo test --locked --offline --test leader_run_cli mode_text`
 
 ## Scope
 
 - write: `.moai/specs/SPEC-20261121-leader-run-lease/**`
-- write: `src/leader_run.rs`, `src/ops/leader_run.rs`, `tests/leader_run_cli.rs` (new files; the operation registry file when it is free)
+- write: `src/ops/leader_run.rs`, `docs/design-review/appendix/operations/leader_run.md`, `tests/leader_run_cli.rs` (new files; the logic sits in the operation file so `src/lib.rs` stays untouched)
+- write (when the files are free): `tests/fixtures/help/*` (the new command appears in the help listings)
 - write (when the file is free): `skills/moai/workflows/mode-leader.md`, `skills/moai/references/source-manifest.json`
 
 ## Decisions
