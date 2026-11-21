@@ -84,6 +84,28 @@ fn flow_section_names_github_flow_the_recommended_default() {
 }
 
 #[test]
+fn only_the_github_flow_bullet_carries_the_recommended_default() {
+    let section = flow_section();
+    let bullet = |name: &str| {
+        section
+            .lines()
+            .find(|l| l.starts_with(&format!("- **{name}**")))
+            .unwrap_or_else(|| panic!("the flow section has no bullet for {name}"))
+            .to_string()
+    };
+    assert!(
+        bullet("GitHub flow").contains("the recommended default"),
+        "the GitHub flow bullet must carry the recommended default"
+    );
+    for other in ["m-flow", "trunk-based", "git-flow"] {
+        assert!(
+            !bullet(other).contains("recommended default"),
+            "the {other} bullet must not carry the recommended default"
+        );
+    }
+}
+
+#[test]
 fn flow_section_tells_the_model_to_describe_m_flow_in_plain_words_first() {
     let section = flow_section();
     for phrase in [
