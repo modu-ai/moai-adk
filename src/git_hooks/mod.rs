@@ -26,6 +26,8 @@ use std::fs;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 
+pub mod update;
+
 type Result<T> = std::result::Result<T, String>;
 
 /// The hooks this feature manages, in the order the preview lists them.
@@ -451,7 +453,7 @@ pub fn apply(repo_root: &Path, token: &str, now: &str) -> Result<Value> {
         "installed": installed,
         "kept": fresh["kept"],
         "folder": retire.display().to_string(),
-        "revert": format!("revert with the feature's revert and the stamp {stamp}"),
+        "revert": format!("moai git-hooks-revert {stamp}"),
     }))
 }
 

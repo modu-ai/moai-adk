@@ -9,6 +9,9 @@
 #![cfg(unix)]
 
 #[path = "../src/git_hooks/mod.rs"]
+// The crate exercises the feature only; the update submodule's items stay unused here, which
+// is dead code in this include and live code in the library.
+#[allow(dead_code)]
 mod git_hooks;
 
 mod common;
