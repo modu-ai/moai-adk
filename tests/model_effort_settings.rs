@@ -4,7 +4,7 @@
 //!
 //! SPEC-20261121-codex-launcher-and-models-removed: Codex is no longer a tool. A `codex` value
 //! saved by an earlier version is ignored on read (it never refuses a Claude, OMP or GLM launch)
-//! and is kept as it was when another tool's choice is written.
+//! and is left out of the file when another tool's choice is written (leader decision D2).
 use serde_json::{json, Map, Value};
 
 use moai_cli::model_effort_settings::{
@@ -216,8 +216,10 @@ fn setting_a_choice_changes_one_entry_and_keeps_every_other_key() {
     let after = with_choice(&base, "glm", "leader", "zai/glm-5.3", "low").unwrap();
     assert_eq!(base, before, "the input object must not change");
 
+    // The retired `codex` key is the one thing the write leaves out (leader decision D2).
     let mut expected = before.clone();
     expected["models"]["glm"] = json!({"leader": {"model": "zai/glm-5.3", "effort": "low"}});
+    expected["models"].as_object_mut().unwrap().remove("codex");
     assert_eq!(after, expected);
     assert_eq!(
         resolve("glm", "leader", Some(&after)).unwrap(),
@@ -231,7 +233,7 @@ fn setting_a_choice_changes_one_entry_and_keeps_every_other_key() {
         json!({"model": "zai/glm-5.3-flash", "effort": "high"})
     );
     assert_eq!(again["models"]["claude"], before["models"]["claude"]);
-    assert_eq!(again["models"]["codex"], before["models"]["codex"]);
+    assert!(again["models"].get("codex").is_none(), "{again:?}");
     assert_eq!(again["role_access"], json!("prompt"));
     assert_eq!(again["unrelated"], before["unrelated"]);
 
@@ -475,16 +477,16 @@ fn a_saved_codex_value_never_refuses_another_tool_and_is_not_listed() {
 }
 
 #[test]
-fn a_saved_codex_value_is_kept_as_it_was_when_another_tool_is_written() {
+fn a_saved_codex_value_is_left_out_when_another_tool_is_written() {
     for (shape, codex) in old_codex_shapes() {
         let base = object(json!({"advisor": "fable", "models": {"codex": codex.clone()}}));
         let before = base.clone();
         let after = with_choice(&base, "claude", "agent", "claude-haiku-5-5", "low")
             .unwrap_or_else(|e| panic!("{shape}: the write was refused: {e}"));
         assert_eq!(base, before, "{shape}: the input object changed");
-        assert_eq!(
-            after["models"]["codex"], codex,
-            "{shape}: the Codex value changed"
+        assert!(
+            after["models"].get("codex").is_none(),
+            "{shape}: the Codex value stayed in the written file"
         );
         assert_eq!(after["advisor"], json!("fable"), "{shape}");
         assert_eq!(

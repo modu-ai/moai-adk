@@ -153,9 +153,10 @@ fn the_choice_is_written_through_the_digest_bound_apply_and_read_back() {
 
 /// SPEC-20261121-codex-launcher-and-models-removed REQ-5, REQ-6, REQ-8: a saved
 /// `launcher.models.codex` value, whatever its shape, is no error of the model step, is not
-/// listed as unsupported, and stays in the file after a Claude choice is written.
+/// listed as unsupported, and is left out of the file once a Claude choice is written (leader
+/// decision D2).
 #[test]
-fn a_saved_codex_value_is_ignored_and_kept() {
+fn a_saved_codex_value_is_ignored_and_dropped_on_the_next_save() {
     for codex in [
         r#"{"agent":{"model":"gpt-6.1-terra","effort":"xhigh"}}"#,
         r#"{"agent":"SECRET-CODEX-MODEL"}"#,
@@ -176,8 +177,10 @@ fn a_saved_codex_value_is_ignored_and_kept() {
         let (result, _) = run_stage(&h.path, &format!("{}y\n", enters(5)));
         assert_eq!(result["state"], json!("applied"), "{codex}: {result}");
         let saved: Value = serde_json::from_str(&fs::read_to_string(&path).unwrap()).unwrap();
-        let expected: Value = serde_json::from_str(codex).unwrap();
-        assert_eq!(saved["launcher"]["models"]["codex"], expected, "{codex}");
+        assert!(
+            saved["launcher"]["models"].get("codex").is_none(),
+            "{codex}: the Codex value stayed: {saved}"
+        );
         assert!(saved["launcher"]["models"]["claude"].is_object(), "{saved}");
     }
 }

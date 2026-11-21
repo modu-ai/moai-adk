@@ -1,12 +1,12 @@
 ---
 id: SPEC-20261121-codex-launcher-and-models-removed
-title: "The launcher and the model settings stop supporting Codex; a Codex value saved earlier is ignored on read and kept in the file"
+title: "The launcher and the model settings stop supporting Codex; a Codex value saved earlier is ignored on read and dropped on the next save"
 status: draft
 revision: 1
 created: 2026-11-21
 ---
 
-# The launcher and the model settings stop supporting Codex; a Codex value saved earlier is ignored on read and kept in the file
+# The launcher and the model settings stop supporting Codex; a Codex value saved earlier is ignored on read and dropped on the next save
 
 ## Intent
 
@@ -32,7 +32,7 @@ Three things stand in the way of a plain deletion, and the design follows them:
 - REQ-3: The launcher shall build no Codex command line, so that a session request names no Codex program and the Codex argument notes are gone.
 - REQ-4: The model settings shall hold a table and defaults for `claude`, `omp` and `glm` only.
 - REQ-5: When the saved launcher settings hold a `launcher.models.codex` value of any shape, the model settings shall ignore it on read, so that a Claude or GLM choice still resolves and the entry is not listed as unsupported. · failure: none — an ignored value is not an error
-- REQ-6: When a choice is written for another tool, the model settings shall keep a saved `launcher.models.codex` value as it was. · failure: none — keeping a value cannot fail
+- REQ-6: When a choice is written for another tool, the model settings shall leave a saved `launcher.models.codex` value out of the written file, as the retired-tool rule of SPEC-20261121-retired-hosts-read-safely does (leader decision D2 of 2026-11-21). · failure: none — leaving a key out cannot fail
 - REQ-7: The model question shall offer `claude` and `glm` as its tools and no Codex row.
 - REQ-8: The models step of `moai update` shall look for the folders of `claude` only.
 - REQ-9: The first-run profile and the missing-skill check of the launcher shall know no `codex` host.
@@ -42,7 +42,7 @@ Three things stand in the way of a plain deletion, and the design follows them:
 ## Acceptance
 
 - AC-1 (REQ-1, REQ-2, REQ-3): `moai codex` exits 2 with the usage envelope `unknown command; see --help`; `moai -a codex` and `moai session --host codex` are refused exactly like an unknown word (same exit code, same message shape) and the message lists `cc|glm|omp`; the bare-run usage line and the `moai init` guidance name no `codex`; a session request holds no Codex program name · verify: `cargo test --test codex_launcher_removed`
-- AC-2 (REQ-4, REQ-5, REQ-6, REQ-11): `supported("codex")` and `default_choice("codex", …)` are `None`, `TOOLS` has no `codex`, a `with_choice` for `codex` is refused; `resolve` for `claude` and `glm` works with a `launcher.models.codex` value of every shape (a valid old entry, a malformed one, a secret-looking text) and `unsupported_entries` lists none of it; writing a Claude choice leaves the Codex value byte for byte · verify: `cargo test --test model_effort_settings`
+- AC-2 (REQ-4, REQ-5, REQ-6, REQ-11): `supported("codex")` and `default_choice("codex", …)` are `None`, `TOOLS` has no `codex`, a `with_choice` for `codex` is refused; `resolve` for `claude` and `glm` works with a `launcher.models.codex` value of every shape (a valid old entry, a malformed one, a secret-looking text) and `unsupported_entries` lists none of it; writing a Claude choice leaves the Codex value out of the written file and keeps every other key · verify: `cargo test --test model_effort_settings`
 - AC-3 (REQ-7, REQ-8): the question tools are `claude` and `glm`; the installed tools of a home with `.claude` and `.codex` folders are `claude` only; a saved Codex value does not make the model step report an error · verify: `cargo test --test model_effort_questions --test update_model_pick`
 - AC-4 (REQ-9): the first-run profile of `moai cc` and `moai glm` names its own host only and the missing-skill check refuses a `codex` word like any unknown host · verify: `cargo test --test launcher_auto_init --test launcher_skill_check`
 - AC-5 (REQ-10): the root and the full help print the launcher words `cc, glm, omp` and the goldens match · verify: `cargo test --test help_layout`
@@ -57,9 +57,9 @@ Three things stand in the way of a plain deletion, and the design follows them:
 
 ## Plan
 
-Tests first (RED): the new `tests/codex_launcher_removed.rs` runs the built binary for the launcher words and calls the model functions for the table; the existing launcher and model tests lose their Codex cases and gain the new expectations (a saved Codex value is ignored and kept). On the tip these fail for the right reasons (`moai codex` still launches, `codex` is still in the table).
+Tests first (RED): the new `tests/codex_launcher_removed.rs` runs the built binary for the launcher words and calls the model functions for the table; the existing launcher and model tests lose their Codex cases and gain the new expectations (a saved Codex value is ignored on read and dropped on the next save). On the tip these fail for the right reasons (`moai codex` still launches, `codex` is still in the table).
 
-Order of the change, as the research of the area gave it: first the read safety in `src/model_effort_settings.rs` (ignored tool names are skipped in the structure check, the entry check and the unsupported list; `with_choice` keeps every other key as it does now), then the table, the defaults, the question and the update's tool list; then the launcher (`src/session.rs` Codex argv, notes and request field, `src/main.rs` command, host word, usage lines and request literals, `src/launcher_terminal.rs` warning list length, `src/launcher_init.rs`); last the help lines and goldens when `src/help.rs` is free.
+Order of the change, as the research of the area gave it: first the read safety in `src/model_effort_settings.rs` (ignored tool names are skipped in the structure check, the entry check and the unsupported list; `with_choice` keeps every other key as it does now and leaves retired tools out; the shared retired-tool rule landed first in SPEC-20261121-retired-hosts-read-safely), then the table, the defaults, the question and the update's tool list; then the launcher (`src/session.rs` Codex argv, notes and request field, `src/main.rs` command, host word, usage lines and request literals, `src/launcher_terminal.rs` warning list length, `src/launcher_init.rs`); last the help lines and goldens when `src/help.rs` is free.
 
 `host_home::Host::Codex` stays (hooks and doctor use it). `install/moai-switch.sh` stays (hash pinned).
 

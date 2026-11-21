@@ -256,8 +256,9 @@ fn the_plan_changes_only_the_picked_entries_and_lists_unsupported_ones() {
     assert_eq!(p.kept_unsupported, ["launcher.models.glm.agent"]);
     assert_eq!(p.after["role_access"], json!("prompt"));
     assert_eq!(p.after["models"]["glm"], before["models"]["glm"]);
-    // The saved Codex value is not a choice of any tool: it is neither changed nor listed.
-    assert_eq!(p.after["models"]["codex"], before["models"]["codex"]);
+    // The saved Codex value is not a choice of any tool: it is not listed, and the written file
+    // leaves it out (leader decision D2).
+    assert!(p.after["models"].get("codex").is_none(), "{:?}", p.after);
     assert_eq!(
         p.after["models"]["claude"]["leader"],
         json!({"model": "claude-opus-5-5", "effort": "low"})
@@ -332,7 +333,7 @@ fn a_structurally_broken_models_key_is_refused_without_quoting_it() {
 }
 
 #[test]
-fn a_saved_codex_value_of_any_shape_does_not_block_a_plan_and_is_kept() {
+fn a_saved_codex_value_of_any_shape_does_not_block_a_plan_and_is_dropped() {
     let pick = [pick("claude", "leader", "claude-opus-5-5", "high")];
     for codex in [
         json!({"agent": {"model": "gpt-6.2-sol", "effort": "max"}}),
@@ -343,7 +344,10 @@ fn a_saved_codex_value_of_any_shape_does_not_block_a_plan_and_is_kept() {
     ] {
         let launcher = object(json!({"models": {"codex": codex.clone()}}));
         let p = plan(&launcher, &pick).unwrap_or_else(|e| panic!("{codex}: {e}"));
-        assert_eq!(p.after["models"]["codex"], codex, "kept as it was");
+        assert!(
+            p.after["models"].get("codex").is_none(),
+            "{codex}: left out of the written file"
+        );
         assert!(p.kept_unsupported.is_empty(), "{codex}: not listed");
         assert_eq!(p.changes.len(), 1);
     }
