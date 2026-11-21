@@ -178,13 +178,15 @@ fn line1_tag_first_under_ko_en_and_80_40_columns() {
                         "{name} {variant} LANG={lang} COLUMNS={columns}: line 1 {line1:?}"
                     );
                     let line3 = text.lines().nth(2).unwrap_or_default();
-                    // The worktree label (C-124) may open the line; the CTX bar comes right after.
+                    // The worktree label closed line 2 since the picked layout
+                    // (SPEC-20261121-statusline-detached REQ-4); line 3 holds the counts and
+                    // the windows as numbers (REQ-5: no bar, no colon).
                     let line3 = match line3.strip_prefix("🌳 ") {
                         Some(rest) => rest.split_once(" | ").map_or(line3, |(_, after)| after),
                         None => line3,
                     };
                     assert!(
-                        line3.starts_with("🔋 CTX: ") || line3.starts_with("🪫 CTX: "),
+                        line3.starts_with("🔋 CTX ") || line3.starts_with("🪫 CTX "),
                         "{name} {variant} LANG={lang} COLUMNS={columns}: line 3 {line3:?}"
                     );
                     assert!(
