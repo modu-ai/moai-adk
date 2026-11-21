@@ -88,4 +88,19 @@ M-Flow 의 병합 기준은 하나의 로컬 통합 브랜치 팁이에요. 그�
 
 ## Result
 
-(구현 뒤에 적어요.)
+조각 S1(`integration-base`)과 S2(`spec take`)의 결과예요(2026-11-21). 안내 문장(REQ-7·REQ-8)과 도움말·골든(AC-4·AC-5)은 그 파일을 쥔 카드가 돌려주는 대로 해서 수용 줄이 아직 없어요.
+
+- AC-1: met — head c90b8ece7e 에서 `cargo test --offline --locked --test integration_base_cli` exit 0 (7 passed: 갈라진 로컬/원격에서 로컬 커밋과 `source: "local"`, 로컬 브랜치가 없으면 `not_found`·다음 단계·원격 커밋 id 미출력, 같은 이름의 태그가 대신하지 않음, m-flow 아님·프로필 없음·통합 브랜치 없음은 `policy: "none"`, 쓰기 없음). 고치기 전(명령 없음)에는 같은 명령이 exit 101 (7 failed, `unknown command`).
+- AC-2: met — head 0edf6ff9b2 에서 `cargo test --offline --locked --no-fail-fast --test spec_take_cli` exit 0 (18 passed: 갈라진 origin 에서도 로컬 커밋에서 시작해 `branch.<name>.moai-base-sha` 기록·`base_sha`·`local-integration` 보고, 로컬 브랜치가 없으면 이름이 같은 태그와 원격 추적 ref 가 있어도 거절하고 브랜치·설정·체크아웃이 그대로, m-flow 가 아닌 흐름은 이름 기반 `profile`, 다시 take 하면 기록된 기준 유지). 고치기 전에는 3 failed. `spec_take_followups` 3 passed.
+- AC-3: met — 첫 번째 실행의 `a_worktree_from_the_local_commit_holds_it_and_one_from_origin_does_not`(로컬 커밋에서 만든 워크트리는 `contains_base`·`matches_recorded` 참, 갈라진 `origin/main` 에서 만든 것은 `contains_base` 거짓·`recorded_sha` null, 다른 커밋이 기록되면 `matches_recorded` 거짓)와 `a_worktree_check_without_a_policy_or_for_a_bad_path_says_so` 통과
+- AC-6: met — 변형 5개를 하나씩 적용해 `cargo test --offline --locked --no-fail-fast --test integration_base_cli --test spec_take_cli` 를 돌렸고 모두 빨갛게 바뀐 뒤(컴파일 오류 없음) 파일을 복원했어요(`git diff` 깨끗).
+
+  | 변형 | 바꾼 곳 | 잡은 시험 |
+  | --- | --- | --- |
+  | `refs/heads/` 접두사 제거 | `integration_base` 의 해석 ref | 같은 이름 태그 시험, 로컬 ref 없음(spec take) 시험 |
+  | `contains_base` 항상 참 | `worktree_base` | 워크트리 시험 |
+  | 커밋 id 미기록 | `take` 의 `moai-base-sha` 쓰기 | 프로필 통합 브랜치 시험, 갈라진 origin 시험 |
+  | 로컬 ref 없음을 정책 없음으로 | `integration_base` 의 오류 갈래 | 로컬 ref 없음 시험 4개 |
+  | `matches_recorded` 항상 참 | `worktree_base` | 워크트리 시험 |
+
+- 점검: `cargo clippy --offline --locked --all-targets -- -D warnings` exit 0, `git diff --check` exit 0, 바꾼 Rust 파일 `rustfmt --edition 2021 --check` exit 0. 돌리지 않은 것: `--lib`·`--bins` 전체, `repo_scans` 목록, 파이썬, `check affected`(도움말 행이 생긴 뒤에 돌려요).
