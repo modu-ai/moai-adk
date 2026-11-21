@@ -2,7 +2,7 @@
 id: SPEC-20261121-leader-round-ledger
 title: "leader-round summarises per-lane next actions from the card ledger and flags a dispatch that forbids its own work"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-21
 parent: null
 ---
@@ -25,6 +25,9 @@ codex 리더 무중단 보고서(codex-leader-nonstop-2026-11-21.md, 02:59-03:07
 - REQ-2: The cards section shall carry a clear_redispatch item for a lane whose snapshot shows the context at fifteen percent or less and a card boundary marker. · failure: none — the lane's own end condition stays in its existing section.
 - REQ-3: leader-round shall add a one-line warning to its answer when the round's dispatch text contains a prohibition word and the dispatched card's kind changes the repository. · failure: none — no prohibition word means no warning.
 - REQ-4: The cards section shall not write anything: the ledger opens read-only and no command in this path writes a file, a note or a reservation. · failure: none — the read-only contract of leader-round stays.
+- REQ-5 (slice 1): The round answer shall carry a lanes section built from the lane registry joined to the ledger: for each registered lane whose entry names a session, the cards that session holds with their state, the seconds of lease left, the newest note kind of each held card and whether a held card is recorded landed while the card is not closed. · failure: none — a registry or ledger read failure is one not_run item and the rest of the answer stays.
+- REQ-6 (slice 1): The lanes section shall mark a lane idle when its session holds no card and no newest note kind names a leader action. · failure: none — a lane the registry does not list is not in the section.
+- REQ-7 (slice 1): The lane join shall read the registry entry's session field and the ledger reservation's holder, and a session id that changed after a clear simply matches the new holder or holds nothing, without a stale-session report. · failure: none — the read-only contract stays.
 
 ## Acceptance
 
@@ -40,7 +43,7 @@ codex 리더 무중단 보고서(codex-leader-nonstop-2026-11-21.md, 02:59-03:07
 
 ## Scope
 
-- write: `.moai/specs/SPEC-20261121-leader-round-ledger/**`, `src/leader_round.rs`, `src/ops/leader_round.rs`, `tests/leader_round_cli.rs`
+- write: `.moai/specs/SPEC-20261121-leader-round-ledger/**`, `src/leader_round.rs`, `src/ops/leader_round.rs`, `tests/leader_round_cli.rs`, `src/lane_ledger.rs`, `tests/lane_ledger_cli.rs`
 - read-only: `src/card/command.rs`, `src/ledger/**`, `src/lane_registry.rs`
 - forbidden: leader-round 의 쓰기 동작, GitHub 스냅샷 부분 변경, 원장 스키마 변경, 카드 번호의 출력 사용
 
@@ -49,6 +52,12 @@ codex 리더 무중단 보고서(codex-leader-nonstop-2026-11-21.md, 02:59-03:07
 1. RED: 카드 픽스처 원장(응답 없는 결정 카드·만료 임대 카드·홀더 없는 카드)을 tests/leader_round_cli.rs 에 올려 세 행동과 무기록을 먼저 요구해요.
 2. GREEN: 원장 읽기 헬퍼(읽기 전용) + round 답의 cards 섹션 + P7 경고 단위.
 3. READY 전체 검사 → 감사는 리더에게 → READY.
+
+### Slice 1 (2026-11-21 리더 디스패치, 레인별 원장 요약)
+
+- RED: 임시 HOME + 임시 원장 다섯 장면을 tests/lane_ledger_cli.rs 에 올려요 — MERGE-READY 카드를 쥔 레인, SWITCH + 반납한 카드를 가진 레인, landed 인데 아직 안 닫힌 카드를 쥔 레인, 아무것도 안 쥔 레이idle, /clear 뒤 세션 id 가 바뀐 레인.
+- GREEN: src/lane_ledger.rs 의 읽기 전용 요약(원장 읽기 경로 재사용) — registry entry.session ↔ reservation.holder 조인.
+- 짝 줄: src/leader_round.rs 와 tests/leader_round_cli.rs 는 Codex 제거 카드(감사 PASS, 미착지, head 확인 — 그 head 는 leader_round 를 아직 만지지 않음)가 쥐어요; PAIR-REQUEST 를 그 카드에 남겼고 배선과 그 장면은 해제 뒤 옮겨요. check affected 의 base 는 머지 첫 부모.
 
 ## Risks
 

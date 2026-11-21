@@ -172,6 +172,21 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
         &args.project,
         now,
     );
+    // The per-lane ledger summary (slice 1): registry sessions joined with the cards their
+    // sessions hold, read-only. A registry or ledger read failure is one not_run item.
+    let home_dir = moai_cli::key_vault::home();
+    out["lane_ledger"] = match moai_cli::lane_registry::registry_dir(&args.project) {
+        Ok(dir) => match home_dir {
+            Some(h) => {
+                moai_cli::lane_ledger::lane_summaries(&dir, &h, Path::new(&args.project), now)
+            }
+            None => json!({"lanes": {
+                "state": "not_run",
+                "reason": "no HOME: the card ledger lives there"
+            }}),
+        },
+        Err(e) => json!({"lanes": {"state": "not_run", "reason": e}}),
+    };
     // A dispatch that forbids the work it dispatches (P7): one line, nothing else changes.
     if let Some(warning) = args
         .dispatch
