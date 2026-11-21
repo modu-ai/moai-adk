@@ -55,6 +55,30 @@ fn no_saved_value_answers_the_default_for_every_tool_and_role() {
     }
 }
 
+/// SPEC-20261121-model-defaults-one-table REQ-1: the defaults are one constant table with exactly
+/// one row for each tool and role, and `default_choice` is that table and nothing else.
+#[test]
+fn the_defaults_are_one_table_with_a_row_for_each_tool_and_role() {
+    use moai_cli::model_effort_settings::DEFAULTS;
+    assert_eq!(DEFAULTS.len(), TOOLS.len() * ROLES.len());
+    for tool in TOOLS {
+        for role in ROLES {
+            let rows: Vec<_> = DEFAULTS
+                .iter()
+                .filter(|row| row.tool == tool && row.role == role)
+                .collect();
+            assert_eq!(rows.len(), 1, "{tool} {role}");
+            assert_eq!(
+                default_choice(tool, role),
+                Some(choice(rows[0].model, rows[0].effort)),
+                "{tool} {role}"
+            );
+        }
+    }
+    assert_eq!(default_choice("claude", "boss"), None);
+    assert_eq!(default_choice("vim", "leader"), None);
+}
+
 #[test]
 fn a_saved_supported_value_wins_and_is_marked_saved() {
     let launcher = object(json!({

@@ -85,6 +85,8 @@ pub fn role_entry_note(role: Option<&str>, host: &str) -> Option<&'static str> {
         _ => return None,
     })
 }
+/// The Claude defaults of a session without a role. A session with a role takes the default of
+/// the one table in `model_effort_settings` instead (SPEC-20261121-model-defaults-one-table).
 const DEFAULT_MODEL: &str = "opus";
 const DEFAULT_EFFORT: &str = "medium";
 /// User decision 2026-11-08 (#2053 HOLD-L1 = A, #2062): a session without a role still gets the
@@ -851,7 +853,10 @@ fn saved_note(host: &str, role: &str) -> &'static str {
 /// saved id comes from the table shared with OMP and carries the `zai/` provider prefix, which the
 /// z.ai endpoint does not take, so the prefix is removed here (research note C-47 note 3452: Claude
 /// Code sends a full unknown id as written; the alias mapping of the environment is unchanged).
-/// The second value is the note to add when a saved value was used.
+/// With nothing saved for the host and role the default of the one table in
+/// `model_effort_settings` fills the same way (SPEC-20261121-model-defaults-one-table), so a
+/// launcher runs what the `moai update` question screen shows as "(default)".
+/// The second value is the note to add when a saved or default value was used.
 fn apply_saved_choice(
     r: &SessionRequest,
 ) -> Result<(SessionRequest, Option<&'static str>), String> {
@@ -859,20 +864,27 @@ fn apply_saved_choice(
     else {
         return Ok((r.clone(), None));
     };
-    let Some(launcher) = user_launcher()? else {
-        return Ok((r.clone(), None));
-    };
-    let unsupported = crate::model_effort_settings::unsupported_entries(&launcher)?;
-    if !unsupported.is_empty() {
-        return Err(format!(
-            "saved model settings are not supported ({}): replace them with moai update",
-            unsupported.join(", ")
-        ));
+    let launcher = user_launcher()?;
+    let mut saved = None;
+    if let Some(launcher) = &launcher {
+        let unsupported = crate::model_effort_settings::unsupported_entries(launcher)?;
+        if !unsupported.is_empty() {
+            return Err(format!(
+                "saved model settings are not supported ({}): replace them with moai update",
+                unsupported.join(", ")
+            ));
+        }
+        saved = crate::model_effort_settings::saved_choice(launcher, &r.host, role);
     }
-    let Some(choice) = crate::model_effort_settings::saved_choice(&launcher, &r.host, role) else {
+    // Nothing saved for this host and role: the default of the one table that the question
+    // screen of `moai update` shows (SPEC-20261121-model-defaults-one-table).
+    let from_saved = saved.is_some();
+    let Some(choice) =
+        saved.or_else(|| crate::model_effort_settings::default_choice(&r.host, role))
+    else {
         return Ok((r.clone(), None));
     };
-    let saved_model = if r.host == "glm" {
+    let model = if r.host == "glm" {
         choice.model.strip_prefix("zai/").unwrap_or(&choice.model)
     } else {
         choice.model.as_str()
@@ -880,15 +892,23 @@ fn apply_saved_choice(
     let mut filled = r.clone();
     let mut used = false;
     if filled.model.is_none() {
-        filled.model = Some(saved_model.to_string());
+        filled.model = Some(model.to_string());
         used = true;
     }
     if filled.effort.is_none() {
         filled.effort = Some(choice.effort);
         used = true;
     }
-    Ok((filled, used.then(|| saved_note(&r.host, role))))
+    let note = if from_saved {
+        saved_note(&r.host, role)
+    } else {
+        NOTE_TABLE_DEFAULT
+    };
+    Ok((filled, used.then_some(note)))
 }
+
+/// The note that says a value came from the table of defaults, not from a saved choice.
+const NOTE_TABLE_DEFAULT: &str = "model and effort not given on the command line come from the default table of moai (the one the moai update question screen shows; nothing is saved for this host and role)";
 
 /// Composes the host command without running it. Returns
 /// `{host, role, name, argv, env_keys, notes, executed:false, host_loaded:false}`.

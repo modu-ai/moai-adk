@@ -813,30 +813,61 @@ fn symlink_launcher_config_is_refused_without_following_it() {
 #[test]
 fn name_and_leader_launch_the_decided_full_access_argv_and_take_no_number() {
     let f = fixture();
-    let claude = |name: &'static str| -> Vec<&'static str> {
-        vec![
-            "claude",
-            "--name",
-            name,
-            "--model",
-            "opus",
-            "--effort",
-            "medium",
-            "--dangerously-skip-permissions",
-        ]
-    };
-    let codex = |prompt: &'static str| -> Vec<&'static str> {
-        vec!["codex", "-s", "danger-full-access", "-a", "never", prompt]
-    };
+    // A role session takes the default of the one table (SPEC-20261121-model-defaults-one-table).
+    let claude =
+        |name: &'static str, model: &'static str, effort: &'static str| -> Vec<&'static str> {
+            vec![
+                "claude",
+                "--name",
+                name,
+                "--model",
+                model,
+                "--effort",
+                effort,
+                "--dangerously-skip-permissions",
+            ]
+        };
+    let codex =
+        |model: &'static str, effort: &'static str, prompt: &'static str| -> Vec<&'static str> {
+            vec![
+                "codex",
+                "-s",
+                "danger-full-access",
+                "-a",
+                "never",
+                "-m",
+                model,
+                "-c",
+                effort,
+                prompt,
+            ]
+        };
     let cases: [(&[&str], Vec<&str>); 6] = [
-        (&["cc", "-l"], claude("leader")),
-        (&["glm", "-l"], claude("leader")),
-        (&["codex", "-l"], codex("MoAI session name: leader")),
-        (&["cc", "-a", "--name", "x"], claude("x")),
-        (&["glm", "-a", "--name", "x"], claude("x")),
+        (&["cc", "-l"], claude("leader", "claude-opus-5-5", "high")),
+        (&["glm", "-l"], claude("leader", "glm-5.3", "high")),
+        (
+            &["codex", "-l"],
+            codex(
+                "gpt-6.2-sol",
+                "model_reasoning_effort=\"high\"",
+                "MoAI session name: leader",
+            ),
+        ),
+        (
+            &["cc", "-a", "--name", "x"],
+            claude("x", "claude-sonnet-5-5", "high"),
+        ),
+        (
+            &["glm", "-a", "--name", "x"],
+            claude("x", "glm-5.3-flash", "max"),
+        ),
         (
             &["codex", "-a", "--name", "x"],
-            codex("$moai --mode-agent\nMoAI session name: x"),
+            codex(
+                "gpt-6.1-terra",
+                "model_reasoning_effort=\"xhigh\"",
+                "$moai --mode-agent\nMoAI session name: x",
+            ),
         ),
     ];
     for (args, want) in cases {

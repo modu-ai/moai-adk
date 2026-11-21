@@ -243,23 +243,24 @@ fn explicit_flags_win_per_field() {
     assert!(!notes(&v).contains("launcher.models"), "{}", notes(&v));
 }
 
-/// AC-3 (REQ-4): with no saved choice for that host and role the launch is what it was.
+/// AC-3 (REQ-4): with no saved choice for that host and role the launch takes the default of the
+/// one table (SPEC-20261121-model-defaults-one-table), and a saved entry of another tool changes
+/// nothing for it.
 #[test]
 fn without_a_saved_choice_nothing_changes() {
     let f = Fixture::new();
     // No file at all.
     let a = argv(&f.dry(&["cc", "-l"]));
-    assert!(has_pair(&a, "--model", "opus"), "{a:?}");
-    assert!(has_pair(&a, "--effort", "medium"), "{a:?}");
+    assert!(has_pair(&a, "--model", "claude-opus-5-5"), "{a:?}");
+    assert!(has_pair(&a, "--effort", "high"), "{a:?}");
     let a = argv(&f.dry(&["codex", "-l"]));
-    assert!(!a.iter().any(|x| x == "-m" || x == "-c"), "{a:?}");
+    assert!(has_pair(&a, "-m", "gpt-6.2-sol"), "{a:?}");
+    assert!(has_pair(&a, "-c", &effort_arg("high")), "{a:?}");
     let a = argv(&f.dry(&["omp", "-a"]));
-    assert!(
-        !a.iter().any(|x| x == "--model" || x == "--thinking"),
-        "{a:?}"
-    );
-    // A file that saves only codex: the claude, omp and glm launches stay as they are (a glm role
-    // session without a saved glm entry keeps the alias default of `claude_argv`, D-4).
+    assert!(has_pair(&a, "--model", "zai/glm-5.3-flash"), "{a:?}");
+    assert!(has_pair(&a, "--thinking", "max"), "{a:?}");
+    // A file that saves only codex: the claude, omp and glm launches stay as they are (they use
+    // the table default).
     let bare = (
         argv(&f.dry(&["cc", "-a"])),
         argv(&f.dry(&["omp", "-l"])),
@@ -271,9 +272,10 @@ fn without_a_saved_choice_nothing_changes() {
     assert_eq!(argv(&f.dry(&["cc", "-a"])), bare.0);
     assert_eq!(argv(&f.dry(&["omp", "-l"])), bare.1);
     assert_eq!(argv(&f.dry(&["glm", "-l"])), bare.2);
-    // The codex agent has no saved entry either: nothing is passed for it.
+    // The codex agent has no saved entry either: its table default is passed.
     let a = argv(&f.dry(&["codex", "-a"]));
-    assert!(!a.iter().any(|x| x == "-m" || x == "-c"), "{a:?}");
+    assert!(has_pair(&a, "-m", "gpt-6.1-terra"), "{a:?}");
+    assert!(has_pair(&a, "-c", &effort_arg("xhigh")), "{a:?}");
 }
 
 /// AC-3 (REQ-4 of the glm SPEC): a roleless session — `glm` included — ignores the saved choices;
@@ -318,11 +320,11 @@ fn a_rewritten_file_is_used_by_the_next_launch() {
         "{second:?}"
     );
     assert!(has_pair(&second, "--effort", "medium"), "{second:?}");
-    // Removing the file puts the launch back to its defaults without another step.
+    // Removing the file puts the launch back to the table default without another step.
     fs::remove_file(f.home.path().join(".moai-cli/config/launcher.yaml")).unwrap();
     let third = argv(&f.dry(&["cc", "-l"]));
-    assert!(has_pair(&third, "--model", "opus"), "{third:?}");
-    assert!(has_pair(&third, "--effort", "medium"), "{third:?}");
+    assert!(has_pair(&third, "--model", "claude-opus-5-5"), "{third:?}");
+    assert!(has_pair(&third, "--effort", "high"), "{third:?}");
 }
 
 /// AC-5: a saved entry outside the support table refuses a role launch on claude, codex, omp and

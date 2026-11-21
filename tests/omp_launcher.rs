@@ -270,7 +270,20 @@ fn omp_approval_modes() {
 fn omp_has_no_role_prompt_and_names_the_entry_lines() {
     let f = Fixture::new();
     let leader = f.dry(&["omp", "-l"]);
-    assert_eq!(argv(&leader), ["omp", "--approval-mode", "yolo"]);
+    // A role session starts with the default of the one table
+    // (SPEC-20261121-model-defaults-one-table).
+    assert_eq!(
+        argv(&leader),
+        [
+            "omp",
+            "--model",
+            "zai/glm-5.3",
+            "--thinking",
+            "high",
+            "--approval-mode",
+            "yolo"
+        ]
+    );
     assert!(
         notes(&leader)
             .iter()
@@ -278,7 +291,18 @@ fn omp_has_no_role_prompt_and_names_the_entry_lines() {
         "{leader}"
     );
     let agent = f.dry(&["omp", "-a"]);
-    assert_eq!(argv(&agent), ["omp", "--approval-mode", "yolo"]);
+    assert_eq!(
+        argv(&agent),
+        [
+            "omp",
+            "--model",
+            "zai/glm-5.3-flash",
+            "--thinking",
+            "max",
+            "--approval-mode",
+            "yolo"
+        ]
+    );
     let agent_notes = notes(&agent);
     assert!(
         agent_notes
@@ -322,9 +346,18 @@ fn omp_key_reaches_the_process_for_a_glm_model_only() {
     let out = f2.run(&["omp", "-l", "--model", "opus"]);
     assert!(out.status.success(), "{out:?}");
     assert_eq!(f2.zai_seen_by_host(), "<unset>", "not a z.ai model");
+    // No model named: the leader default of the one table is a z.ai model, so the key reaches
+    // the host. A roleless `omp` names no model and passes no key.
     let out = f2.run(&["omp", "-l"]);
     assert!(out.status.success(), "{out:?}");
-    assert_eq!(f2.zai_seen_by_host(), "<unset>", "no model named");
+    assert_eq!(
+        f2.zai_seen_by_host(),
+        VAULT_KEY,
+        "no model named, the default is z.ai"
+    );
+    let out = f2.run(&["omp"]);
+    assert!(out.status.success(), "{out:?}");
+    assert_eq!(f2.zai_seen_by_host(), "<unset>", "roleless, no model named");
 
     // The variable wins over the vault, as for the glm launcher; a `glm` name is a z.ai model.
     let f3 = Fixture::new();
@@ -472,7 +505,8 @@ fn omp_agent_takes_a_number_and_a_refusal_takes_none() {
     assert!(!refused.status.success(), "{refused:?}");
     assert!(!g.number_live(1), "a refused launch took a number");
     assert!(!g.started());
-    let accepted = g.run(&["omp", "-a"]);
+    // The agent default is a z.ai model, which the blocked vault refuses too; name another model.
+    let accepted = g.run(&["omp", "-a", "--model", "opus"]);
     let v: Value = serde_json::from_slice(&accepted.stdout).unwrap();
     assert_eq!(v["name"], "agent-1", "{v}");
 }

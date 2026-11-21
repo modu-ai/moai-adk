@@ -146,14 +146,34 @@ fn role_paths_are_unchanged() {
     let skip = "--dangerously-skip-permissions";
     let (_, v, _) = dry(&["cc", "-l"], None);
     assert_eq!(v["role"], "leader");
+    // A role session starts with the default of the one table
+    // (SPEC-20261121-model-defaults-one-table).
     assert_eq!(
         argv(&v),
-        ["claude", "--name", "leader", "--model", "opus", "--effort", "medium", skip]
+        [
+            "claude",
+            "--name",
+            "leader",
+            "--model",
+            "claude-opus-5-5",
+            "--effort",
+            "high",
+            skip
+        ]
     );
     let (_, v, _) = dry(&["-a"], None);
     assert_eq!(
         argv(&v),
-        ["claude", "--name", "agent-1", "--model", "opus", "--effort", "medium", skip]
+        [
+            "claude",
+            "--name",
+            "agent-1",
+            "--model",
+            "claude-sonnet-5-5",
+            "--effort",
+            "high",
+            skip
+        ]
     );
     let (_, v, _) = dry(&["codex", "-a", "--name", "agent-9"], None);
     assert_eq!(
@@ -164,6 +184,10 @@ fn role_paths_are_unchanged() {
             "danger-full-access",
             "-a",
             "never",
+            "-m",
+            "gpt-6.1-terra",
+            "-c",
+            "model_reasoning_effort=\"xhigh\"",
             // SPEC-20261118-launcher-agent-entry: `codex -a` starts agent mode.
             "$moai --mode-agent\nMoAI session name: agent-9"
         ]
@@ -171,7 +195,16 @@ fn role_paths_are_unchanged() {
     let (_, v, _) = dry(&["glm", "-a"], Some("moai-dummy-token-value"));
     assert_eq!(
         argv(&v),
-        ["claude", "--name", "agent-1", "--model", "opus", "--effort", "medium", skip]
+        [
+            "claude",
+            "--name",
+            "agent-1",
+            "--model",
+            "glm-5.3-flash",
+            "--effort",
+            "max",
+            skip
+        ]
     );
     // The legacy `session` subcommand is unchanged too.
     let (_, v, _) = dry(&["session", "--name", "s1"], None);

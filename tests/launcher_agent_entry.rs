@@ -76,6 +76,11 @@ fn codex_agent_prompt_starts_with_the_mode_line() {
             "danger-full-access",
             "-a",
             "never",
+            // The agent default of the one table (SPEC-20261121-model-defaults-one-table).
+            "-m",
+            "gpt-6.1-terra",
+            "-c",
+            "model_reasoning_effort=\"xhigh\"",
             "$moai --mode-agent\nMoAI session name: agent-1"
         ]
     );
@@ -104,6 +109,10 @@ fn codex_agent_prompt_starts_with_the_mode_line() {
             "workspace-write",
             "-a",
             "on-request",
+            "-m",
+            "gpt-6.1-terra",
+            "-c",
+            "model_reasoning_effort=\"xhigh\"",
             "$moai --mode-agent\nMoAI session name: agent-1"
         ]
     );
@@ -226,22 +235,36 @@ fn the_root_example_names_the_entry_command() {
 /// AC-4 (REQ-4): the other launches compose the argv they composed before.
 #[test]
 fn other_launches_keep_their_argv() {
-    let claude = |name: &str| {
+    // The model and effort of a role session are the default of the one table
+    // (SPEC-20261121-model-defaults-one-table); the glm host takes the bare z.ai name.
+    let claude = |name: &str, model: &str, effort: &str| {
         vec![
             "claude".to_string(),
             "--name".into(),
             name.into(),
             "--model".into(),
-            "opus".into(),
+            model.into(),
             "--effort".into(),
-            "medium".into(),
+            effort.into(),
             "--dangerously-skip-permissions".into(),
         ]
     };
-    assert_eq!(argv(&dry(&["cc", "-l"], None)), claude("leader"));
-    assert_eq!(argv(&dry(&["cc", "-a"], None)), claude("agent-1"));
-    assert_eq!(argv(&dry(&["glm", "-l"], Some("t"))), claude("leader"));
-    assert_eq!(argv(&dry(&["glm", "-a"], Some("t"))), claude("agent-1"));
+    assert_eq!(
+        argv(&dry(&["cc", "-l"], None)),
+        claude("leader", "claude-opus-5-5", "high")
+    );
+    assert_eq!(
+        argv(&dry(&["cc", "-a"], None)),
+        claude("agent-1", "claude-sonnet-5-5", "high")
+    );
+    assert_eq!(
+        argv(&dry(&["glm", "-l"], Some("t"))),
+        claude("leader", "glm-5.3", "high")
+    );
+    assert_eq!(
+        argv(&dry(&["glm", "-a"], Some("t"))),
+        claude("agent-1", "glm-5.3-flash", "max")
+    );
     assert_eq!(
         argv(&dry(&["codex", "-l"], None)),
         [
@@ -250,6 +273,10 @@ fn other_launches_keep_their_argv() {
             "danger-full-access",
             "-a",
             "never",
+            "-m",
+            "gpt-6.2-sol",
+            "-c",
+            "model_reasoning_effort=\"high\"",
             "MoAI session name: leader"
         ]
     );

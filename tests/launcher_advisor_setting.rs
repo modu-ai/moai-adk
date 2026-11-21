@@ -131,24 +131,47 @@ fn number_store(f: &Fixture) -> std::path::PathBuf {
 /// (role index 0 = `-l`, 1 = `-a`, 2 = none).
 fn plain(host: &str, role: usize) -> Vec<&'static str> {
     match (host, role) {
-        ("cc" | "glm", 0) => vec![
+        // A session with a role starts with the default of the one table in
+        // `model_effort_settings` (SPEC-20261121-model-defaults-one-table); the glm host takes
+        // the bare z.ai model name.
+        ("cc", 0) => vec![
             "claude",
             "--name",
             "leader",
             "--model",
-            "opus",
+            "claude-opus-5-5",
             "--effort",
-            "medium",
+            "high",
             "--dangerously-skip-permissions",
         ],
-        ("cc" | "glm", 1) => vec![
+        ("cc", 1) => vec![
             "claude",
             "--name",
             "agent-1",
             "--model",
-            "opus",
+            "claude-sonnet-5-5",
             "--effort",
-            "medium",
+            "high",
+            "--dangerously-skip-permissions",
+        ],
+        ("glm", 0) => vec![
+            "claude",
+            "--name",
+            "leader",
+            "--model",
+            "glm-5.3",
+            "--effort",
+            "high",
+            "--dangerously-skip-permissions",
+        ],
+        ("glm", 1) => vec![
+            "claude",
+            "--name",
+            "agent-1",
+            "--model",
+            "glm-5.3-flash",
+            "--effort",
+            "max",
             "--dangerously-skip-permissions",
         ],
         ("cc" | "glm", 2) => vec!["claude", "--model", "opus", "--effort", "medium"],
@@ -158,6 +181,10 @@ fn plain(host: &str, role: usize) -> Vec<&'static str> {
             "danger-full-access",
             "-a",
             "never",
+            "-m",
+            "gpt-6.2-sol",
+            "-c",
+            "model_reasoning_effort=\"high\"",
             "MoAI session name: leader",
         ],
         ("codex", 1) => vec![
@@ -166,6 +193,10 @@ fn plain(host: &str, role: usize) -> Vec<&'static str> {
             "danger-full-access",
             "-a",
             "never",
+            "-m",
+            "gpt-6.1-terra",
+            "-c",
+            "model_reasoning_effort=\"xhigh\"",
             // SPEC-20261118-launcher-agent-entry: `codex -a` starts agent mode.
             "$moai --mode-agent\nMoAI session name: agent-1",
         ],
@@ -182,9 +213,9 @@ fn with_advisor(role: usize, advisor: &'static str) -> Vec<&'static str> {
             "--name",
             "leader",
             "--model",
-            "opus",
+            "claude-opus-5-5",
             "--effort",
-            "medium",
+            "high",
             "--advisor",
             advisor,
             "--dangerously-skip-permissions",
@@ -194,9 +225,9 @@ fn with_advisor(role: usize, advisor: &'static str) -> Vec<&'static str> {
             "--name",
             "agent-1",
             "--model",
-            "opus",
+            "claude-sonnet-5-5",
             "--effort",
-            "medium",
+            "high",
             "--advisor",
             advisor,
             "--dangerously-skip-permissions",
@@ -323,9 +354,9 @@ fn cli_and_setting_enable_the_advisor_with_cli_precedence() {
             "--name",
             "leader",
             "--model",
-            "opus",
+            "claude-opus-5-5",
             "--effort",
-            "medium",
+            "high",
             "--advisor",
             "fable"
         ]
@@ -387,11 +418,13 @@ fn invalid_setting_is_refused_without_host_or_number() {
 fn lower_ranked_setting_is_refused_before_numbering() {
     let f = fixture();
     config(f.home.path(), r#"{"launcher":{"advisor":"sonnet"}}"#);
-    let stderr = rejected(&command(&f, &["cc", "-a"]).output().unwrap());
+    // The leader default is `claude-opus-5-5` (the agent default is sonnet, which a sonnet
+    // advisor does not undercut).
+    let stderr = rejected(&command(&f, &["cc", "-l"]).output().unwrap());
     assert!(stderr.contains("rank"), "{stderr}");
     assert!(!host_started(&f));
     assert!(!number_store(&f).exists());
-    // A lower main model makes the same setting valid.
+    // A lower main model makes the same setting valid; the effort is the table default.
     let v = dry(&f, &["cc", "-l", "--model", "sonnet"]);
     assert_eq!(
         argv(&v),
@@ -402,7 +435,7 @@ fn lower_ranked_setting_is_refused_before_numbering() {
             "--model",
             "sonnet",
             "--effort",
-            "medium",
+            "high",
             "--advisor",
             "sonnet",
             "--dangerously-skip-permissions"

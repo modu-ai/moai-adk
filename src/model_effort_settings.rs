@@ -94,23 +94,80 @@ pub enum Source {
     Default,
 }
 
-/// The default of a tool and role (decision D-4 of SPEC-20261118-model-effort-settings; the
-/// claude-leader effort and the gpt-leader model changed by the user decision of 2026-11-19,
-/// from the research note of SPEC-20261120-update-three-tool-models).
+/// One row of [`DEFAULTS`]: the model and effort a tool and role start with when nothing is saved.
+pub struct DefaultRow {
+    pub tool: &'static str,
+    pub role: &'static str,
+    pub model: &'static str,
+    pub effort: &'static str,
+}
+
+/// The one table of defaults (user decision 2026-11-20, SPEC-20261121-model-defaults-one-table).
+/// The question screen of `moai update` and the launcher both read it, so the "(default)" the
+/// screen shows is what a launcher runs when nothing is saved. `omp` and `glm` share the GLM
+/// rows. Earlier values: decision D-4 of SPEC-20261118-model-effort-settings and the user
+/// decision of 2026-11-19 (SPEC-20261120-update-three-tool-models).
+pub const DEFAULTS: [DefaultRow; 8] = [
+    DefaultRow {
+        tool: "claude",
+        role: "leader",
+        model: "claude-opus-5-5",
+        effort: "high",
+    },
+    DefaultRow {
+        tool: "claude",
+        role: "agent",
+        model: "claude-sonnet-5-5",
+        effort: "high",
+    },
+    DefaultRow {
+        tool: "codex",
+        role: "leader",
+        model: "gpt-6.2-sol",
+        effort: "high",
+    },
+    DefaultRow {
+        tool: "codex",
+        role: "agent",
+        model: "gpt-6.1-terra",
+        effort: "xhigh",
+    },
+    DefaultRow {
+        tool: "omp",
+        role: "leader",
+        model: "zai/glm-5.3",
+        effort: "high",
+    },
+    DefaultRow {
+        tool: "omp",
+        role: "agent",
+        model: "zai/glm-5.3-flash",
+        effort: "max",
+    },
+    DefaultRow {
+        tool: "glm",
+        role: "leader",
+        model: "zai/glm-5.3",
+        effort: "high",
+    },
+    DefaultRow {
+        tool: "glm",
+        role: "agent",
+        model: "zai/glm-5.3-flash",
+        effort: "max",
+    },
+];
+
+/// The default of a tool and role, read from [`DEFAULTS`]; `None` for a tool or role the table
+/// does not know.
 pub fn default_choice(tool: &str, role: &str) -> Option<Choice> {
-    let (model, effort) = match (tool, role) {
-        ("claude", "leader") => ("claude-opus-5-5", "high"),
-        ("claude", "agent") => ("claude-sonnet-5-5", "high"),
-        ("codex", "leader") => ("gpt-6.2-sol", "high"),
-        ("codex", "agent") => ("gpt-6.1-terra", "xhigh"),
-        ("omp" | "glm", "leader") => ("zai/glm-5.3", "high"),
-        ("omp" | "glm", "agent") => ("zai/glm-5.3-flash", "max"),
-        _ => return None,
-    };
-    Some(Choice {
-        model: model.to_string(),
-        effort: effort.to_string(),
-    })
+    DEFAULTS
+        .iter()
+        .find(|row| row.tool == tool && row.role == role)
+        .map(|row| Choice {
+            model: row.model.to_string(),
+            effort: row.effort.to_string(),
+        })
 }
 
 fn offers(tool: &str, model: &str, effort: &str) -> bool {
