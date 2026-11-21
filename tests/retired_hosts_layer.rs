@@ -754,3 +754,63 @@ mod profile_hosts {
         assert_eq!(planned.action, "unchanged", "{:?}", planned.delta);
     }
 }
+
+// ---- the shared backup code leaves the Codex module (REQ-9) --------------------------------
+
+mod backup_move {
+    use std::fs;
+    use std::path::Path;
+
+    fn source(rel: &str) -> String {
+        fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join(rel)).unwrap_or_default()
+    }
+
+    #[test]
+    fn the_shared_backup_code_is_defined_in_config_backup() {
+        let new = source("src/hosts/config_backup.rs");
+        for def in [
+            "pub(crate) struct Backup {",
+            "pub(crate) const BACKUP_DIR: &str = \"backups\";",
+            "pub(crate) fn write_backup(",
+            "pub const CONFIG_LIMIT: u64 = 262_144;",
+        ] {
+            assert!(
+                new.contains(def),
+                "src/hosts/config_backup.rs lacks `{def}`"
+            );
+        }
+    }
+
+    #[test]
+    fn the_codex_config_module_defines_none_of_them() {
+        let old = source("src/hosts/codex_config.rs");
+        for def in [
+            "struct Backup",
+            "const BACKUP_DIR",
+            "fn write_backup(",
+            "const CONFIG_LIMIT",
+        ] {
+            assert!(
+                !old.contains(def),
+                "src/hosts/codex_config.rs still defines `{def}`"
+            );
+        }
+    }
+
+    #[test]
+    fn the_hooks_and_the_state_preview_use_the_new_module() {
+        for rel in ["src/hooks.rs", "src/go_state.rs"] {
+            let text = source(rel);
+            for old in [
+                "codex_config::Backup",
+                "codex_config::BACKUP_DIR",
+                "codex_config::write_backup",
+                "codex_config::CONFIG_LIMIT",
+            ] {
+                assert!(!text.contains(old), "{rel} still names `{old}`");
+            }
+        }
+        assert!(source("src/hooks.rs").contains("config_backup"));
+        assert!(source("src/go_state.rs").contains("config_backup::CONFIG_LIMIT"));
+    }
+}
