@@ -175,6 +175,7 @@ pub const GROUPS: &[Group] = &[
             ("queue-query", false),
             ("leader-tick", false),
             ("leader-pulse", false),
+            ("leader-run", false),
             ("leader-round", false),
             ("lane-next", false),
             ("lane-loop-line", false),
@@ -455,6 +456,14 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     (
         "leader-pulse",
         &["leader-pulse --terminal term_abc --text continue-round --interval-secs 300"],
+    ),
+    (
+        "leader-run",
+        &[
+            "leader-run begin . --session lead-a --ready 2",
+            "leader-run end . --session lead-a",
+            "leader-run status .",
+        ],
     ),
     (
         "leader-round",
