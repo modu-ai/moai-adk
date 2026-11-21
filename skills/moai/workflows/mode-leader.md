@@ -91,4 +91,4 @@ Not run yet (`not_run`): in a clean clone with a registered ledger, open a new C
 
 Judge completion only from evidence on the remote and in the ledger (merged pull requests, verdicts, `done` cards), never from a message or an idle notice.
 
-Every row of a status, close or decision table you post carries a source: the command whose output gave its number or state, and its time when it reads the remote (SKILL.md, Issue #2678). A row whose command printed nothing says "no result" and why, never a bare 0.
+Every row of a status, close or decision table you post carries a source: the command whose output gave its number or state, and its time when it reads the remote (rule 24 of the core rules, Issue #2678). A row whose command printed nothing says "no result" and why, never a bare 0.

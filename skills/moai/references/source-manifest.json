@@ -408,7 +408,7 @@
       }
     },
     "references/rule-history.md": {
-      "sha256": "582f4391723a854668e65b908bd18989cbc258bf7ae70dcf25c28c9a114daaf6",
+      "sha256": "d54378a964f1518ed2ce7d96a0c3826bed1db5f291552750cf60f0a6d17928e6",
       "origin": {
         "kind": "design-spec",
         "template_id": "rule-prune-history",
@@ -435,7 +435,7 @@
       }
     },
     "workflows/mode-leader.md": {
-      "sha256": "0538577bcf7e2de2c809c1650a45cf342f0936bd434872c542a10ae7aa3f7dbe",
+      "sha256": "f20fda2088e72a7a77be6c21af78047e96d8cc4276b70b4a7654cb64e0f7c60b",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-mode-leader",
