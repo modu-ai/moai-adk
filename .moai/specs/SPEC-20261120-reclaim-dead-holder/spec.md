@@ -97,4 +97,15 @@ created: 2026-11-20
 
 ## Result
 
-(written at SYNC)
+Head `5e18015bbb`, built on the pushed head `436f34c93f` of the launcher-liveness repair branch (the liveness lookup it needs is not in the local integration tip yet; the two land together). The unnarrowed `moai check affected a4d4c9a164..5e18015bbb` ended `result=PASS` (diff_check, fmt, ops_rustfmt, clippy, test_lib, test_bins, test_targets, build_cli and python all exit 0), run with `CLAUDE_CODE_SESSION_ID` removed from the environment.
+
+- AC-1: met — `early_reclaim_succeeds` in `tests/card_reclaim_early_cli.rs`
+- AC-2: met — `refused_without_the_liveness_proof`
+- AC-3: met — `refused_without_the_worktree_proof`
+- AC-4: met — `process_in_the_worktree`
+- AC-5: met — `event_names_the_proof`
+- AC-6: met — `reclaim_early_holder`
+- AC-7: met — `early_reclaim_counts`
+- AC-8: met — `card_reclaim_early_cli` and `card_reclaim_cli` both pass in the affected run
+- AC-9: met — `reason_too_long`
+- AC-10: met — `a_listed_tool_cache_is_not_work` and the lib test `only_an_untracked_listed_file_is_a_cache`
