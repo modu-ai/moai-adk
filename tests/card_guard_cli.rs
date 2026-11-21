@@ -510,6 +510,13 @@ fn ac3_packing_and_gc_pass_and_a_real_delete_does_not() {
     tree_clean(&v);
     v.refused(&v.try_git(&v.repo, &["update-ref", "-d", "refs/heads/Integ"]));
     tree_clean(&v);
+
+    // Loose and packed at the same value (`pack-refs --no-prune`): a delete that names no old
+    // value is a deletion, not the prune of a loose copy.
+    v.git(&v.repo, &["pack-refs", "--all", "--no-prune"]);
+    assert!(v.common().join("refs/heads/Integ").exists());
+    v.refused(&v.try_git(&v.repo, &["branch", "-D", INTEG]));
+    tree_clean(&v);
 }
 
 // ---- AC-4: case variants -------------------------------------------------------------------
