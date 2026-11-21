@@ -66,4 +66,10 @@ HOME 이동·정리, 워크트리 정리, 위생 정리 명령은 지우거나 �
 
 ## Result
 
-(구현 뒤에 채워요.)
+- AC-1: met — `cargo test --locked --offline --test process_scan_cost_cli the_process_scans_run_lsof_without_name_lookups_or_blocking_calls` 통과(가짜 `lsof` 가 받은 호출 둘 모두 `-w -n -P -b` 를 가졌어요). 고치기 전에는 `-n is missing from lsof -w -a -d cwd -Fn` 으로 실패했어요(RED).
+- AC-2: met — `cargo test --locked --offline --lib worktree_gc` 16 개 통과(새 단위 시험 `the_cheap_scans_still_see_a_held_file_and_a_working_folder` 포함: 진짜 `lsof` 로 파일을 열어 둔 프로세스와 폴더에서 일하는 프로세스를 둘 다 봤어요).
+- AC-3: met — `… the_injected_empty_table_skips_lsof_and_blocks_nothing` 통과(가짜 `lsof` 의 호출 기록 파일이 생기지 않았고 HOME 계획에 사용 중·`_unavailable` 막힘이 없어요). 고치기 전에는 `lsof ran` 으로 실패했어요(RED).
+- AC-4: met — `cargo test --locked --offline --test home_state_plan --test home_state_selective --test worktree_gc --test worktree_gc_apply --test hygiene_apply_cli` 10·10·9·14·15 개 통과, `cargo clippy --locked --offline --all-targets -- -D warnings` 0, `cargo fmt` 적용.
+- 변이 5 개 모두 시험이 잡았어요(`-b` 빼기, `-n` 빼기, 작업 폴더 스캔이 옛 옵션 쓰기, 작업 폴더 스캔이 주입 무시, 열린 파일 스캔이 주입 무시). 처음 둘은 배열 길이가 달라 컴파일이 안 돼 무효였고, 길이를 지키는 변이로 다시 돌려 시험이 실패했어요.
+- 실측(같은 기계, 부하 평균 17~40): 기계 전체 `lsof -w -Fn` 5.8~7.4 초 → `-w -n -P -b -Fn` 0.66 초(파일 이름 줄 수 같음, 열어 둔 파일·cwd 둘 다 보임). 작업 폴더 스캔 0.82 초 → 0.65 초. `ps` 0.15 초(바꾸지 않았어요). 시험 한 바이너리: `cargo test --test home_install_apply_cli`(41 개 통과) 실행 시간이 옛 코드 222.85 초 → 새 코드 81.84 초(−63%; 옛 코드는 `git show b4681b3a6f:src/worktree_gc.rs` 로 되돌려 같은 조건으로 쟀어요).
+- 돌리지 않은 것: 끄개(`MOAI_CLI_TEST_PROCESS_TABLE=empty`)를 켠 시험 시간 비교(시험이 환경을 비우고 실행해서 끄개는 시험마다 `.env` 로 줘야 해요. 이 SPEC 은 끄개와 시험 하나만 더하고, 어느 시험이 끄개를 쓰게 할지는 다음 조각이에요), 보고서 전체의 "25~30%" 확정(한 바이너리 −63% 만 쟀어요), 전체 `moai check affected`(병합 준비 노트에 줄째로 적어요), Linux 에서의 실행(`/proc` 경로는 바꾸지 않았고 새 시험 둘은 `/proc` 가 있으면 건너뛰어요; 단위 시험은 `/proc` 로도 도는 것은 확인하지 않았어요).
