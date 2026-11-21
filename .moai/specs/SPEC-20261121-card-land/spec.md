@@ -89,4 +89,18 @@ The command is an action of `moai card` (decision D-1 of the flow skeleton). Unt
 
 ## Result
 
-Not started.
+Slice 1a with the repairs of the first audit (the first audit of `4b43a97984` ended FAIL, small: a false `nothing was changed` after the move, five guards with no test, and three non-blocking items). The numbers are from one run of `moai check affected dcdaeaa98a73..94df32e4529b` (82 targets: the whole lib and both bins, `diff_check`, `fmt`, `ops_rustfmt`, `clippy`, `test_lib`, `test_bins`, `test_targets`, `build_cli` and `python` all exit 0, result PASS). The SPEC text of this Result and the AC lines of the repairs were written after that run and change no code. The re-audit goes to the first auditor and covers the repairs only.
+
+- AC-1 met: `ac1_` (1 test) passed: the candidate is now a real merge commit with the tip as its first parent; the branch points at it, the card is done, the reservation is released and the reference log names the candidate. AC-2 met: `ac2_` (1 test) passed.
+- AC-3 met: `ac3_` (1 test) passed. AC-4 met: `ac4_` (1 test) passed: an older base and a tip held only on a second parent both refuse with `stale_base`.
+- AC-5 met: `ac5_` (1 test) passed, and the generation refusal now says `nothing was changed` once (RED before the repair: it said it twice).
+- AC-6 met: `ac6_` (1 test) passed. AC-7 met: `ac7_` (1 test) passed. AC-8 met: `ac8_` (1 test) passed. AC-9 met: `ac9_` (1 test) passed. AC-10 met: `ac10_` (1 test) passed.
+- AC-11 met: `ac27_` of `card_finish_cli` passed. AC-12 met: `ac19_` of `card_finish_cli` passed and now also refuses a tip that holds no copy of the SPEC (`is absent`), which closes the audit's gap between the AC-19 line and its test.
+- AC-13 met: `ac13_` (1 test) passed: a criterion marked met by another session between the checks and the close makes the close refuse; the answer says the branch already moved to the candidate and never `nothing was changed`, the branch stays at the candidate, no landing event exists, and the same call run again closes the card with `moved` false. RED before the repair.
+- AC-14 met: `ac14_` (1 test) passed: a good SPEC on the tip with a broken one at the candidate refuses and the reverse lands. AC-15 met: `ac15_` (1 test) passed: the landing event holds the head, the new tip and the caller word, for a move and for a head already inside.
+- AC-16 met: `ac16_` (1 test) passed: a research card is refused with the finish-command words and nothing moves. AC-17 met: `ac17_` (1 test) passed: `GIT_DIR`, `GIT_WORK_TREE`, `GIT_INDEX_FILE` and `GIT_NAMESPACE` of the caller do not reach the git of the command.
+- AC-18 met: `ac18_` (1 test) passed: a stale lock file on the branch reference is reported with git's reason and not as `tip_moved`, with the branch and the ledger unchanged. RED before the repair.
+- Whole targets in the run: `card_land_cli` 16 and `card_finish_cli` 45 passed, none failed (run alone before the affected run: 16 of 16 and 45 of 45).
+- Mutants on the five guards of the audit (byte-copy restore, tree clean after each): the SPEC read at the old tip (killed by `ac14_`), the new tip not recorded (`ac15_` and `ac1_`), the already-moved sentence removed (`ac13_`), the report-card refusal removed (`ac16_`) and the git environment scrub removed (`ac17_`): all five killed.
+- Not run: the re-audit (the first auditor's), the Windows type check, `self_check.sh`, a full test run outside the affected sets.
+- Left as the SPEC states them: who may land is the leader word only (D-3, D-6) and the ledger row of the move before the close comes with the next slice; the annotated tag object id that passes the commit check is not repaired here.
