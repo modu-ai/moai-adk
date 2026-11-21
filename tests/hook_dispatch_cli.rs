@@ -2172,3 +2172,68 @@ fn an_omp_input_with_source_compact_gets_the_same_sentences() {
     assert!(!compact.contains("/goal"), "{compact}");
     assert!(!plain.contains("compacted"), "{plain}");
 }
+
+/// Every path under `root`, relative and sorted, links not followed.
+fn tree_paths(root: &Path) -> Vec<String> {
+    fn walk(dir: &Path, root: &Path, out: &mut Vec<String>) {
+        for entry in fs::read_dir(dir).unwrap() {
+            let path = entry.unwrap().path();
+            out.push(path.strip_prefix(root).unwrap().display().to_string());
+            if fs::symlink_metadata(&path).unwrap().is_dir() {
+                walk(&path, root, out);
+            }
+        }
+    }
+    let mut out = Vec::new();
+    walk(root, root, &mut out);
+    out.sort();
+    out
+}
+
+/// A removed host (codex, omp) is answered with one line on standard error and nothing else:
+/// empty standard output, exit 0, no decision of any kind and no file written, for a harmless
+/// tool call and for the commit the guard denies on a lane branch, on both events.
+#[test]
+fn a_removed_host_gets_one_line_and_exit_zero() {
+    let (_d, root) = repo("issue/77-k");
+    let harmless = pre_tool("ls", &root);
+    let denied = pre_tool("git commit -m x", &root);
+    for host in ["codex", "omp"] {
+        for event in ["tool-preflight", "session-check"] {
+            for (what, input) in [("harmless", &harmless), ("denied commit", &denied)] {
+                let case = format!("{host} {event} {what}");
+                let before = tree_paths(&root);
+                let r = run_program(
+                    Path::new(BIN),
+                    &["hook-dispatch", "--host", host, "--event", event],
+                    &root,
+                    input,
+                    &[],
+                )
+                .unwrap();
+                assert_eq!(r.code, 0, "{case}: exit code, stderr: {}", r.stderr);
+                assert_eq!(r.stdout, "", "{case}: standard output is empty");
+                let lines: Vec<&str> = r.stderr.lines().collect();
+                assert!(
+                    lines.len() == 1 && !lines[0].trim().is_empty(),
+                    "{case}: standard error is exactly one non-empty line: {:?}",
+                    r.stderr
+                );
+                assert!(
+                    lines[0].contains("removed"),
+                    "{case}: the line says the host was removed: {:?}",
+                    lines[0]
+                );
+                for word in ["permissionDecision", "decision", "block"] {
+                    assert!(
+                        !r.stdout.contains(word) && !r.stderr.contains(word),
+                        "{case}: no decision, found {word}: {:?} {:?}",
+                        r.stdout,
+                        r.stderr
+                    );
+                }
+                assert_eq!(tree_paths(&root), before, "{case}: the call wrote nothing");
+            }
+        }
+    }
+}
