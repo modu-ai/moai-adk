@@ -1,0 +1,10 @@
+#!/bin/sh
+# MoAI commit-msg hook (Rust): refuse card numbers in the commit message — the same scan
+# `moai trailer-check` runs on a range. Installed by the MoAI git-hook feature
+# (`moai update --confirm-git-hooks <token>`); git hooks call the Rust `moai` only.
+# When `moai` is not on PATH the hook lets the commit through and says so.
+if ! command -v moai >/dev/null 2>&1; then
+    printf '[commit-msg] moai not on PATH -- message not checked\n' >&2
+    exit 0
+fi
+exec moai trailer-check --message-file "$1"

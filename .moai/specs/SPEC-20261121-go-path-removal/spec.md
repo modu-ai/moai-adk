@@ -2,7 +2,7 @@
 id: SPEC-20261121-go-path-removal
 title: "moai drops the Go path: inventory refresh, Go-link removal in update, name-switch retirement"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-21
 ---
 
@@ -27,6 +27,8 @@ created: 2026-11-21
 - 실제 HOME 에 쓰기: 읽기만 한다.
 - Go 하위 명령 실행: `--help` 없이는 실행하지 않는다(이 기계엔 Go moai 가 없어 실행 자체가 불가능하다).
 
+조각 본체(구현, 리더 결정 노트 20 기준): 피처 모듈은 `src/git_hooks/`(신규 폴더 — Go 세대 훅 인식·미리보기·적용·되돌리기), 훅 텍스트는 `install/git-hooks/`(commit-msg·pre-commit·pre-push), 시험은 `tests/git_hooks_cli.rs`(임시 저장소, `#[path]` 포함으로 배선 없이 단독 검증 — quality_gate 조각 선례), 그리고 `install/commit-msg` 는 plain `moai` 를 부르게 고친다. 이 조각이 편집하는 파일은 이 네 가지와 SPEC 폴더뿐이다. `src/update.rs` 와 `src/lib.rs` 는 C-307 이, `src/main.rs` 는 C-313 이 쥐고 있어 pair request 노트를 남겼고(카드 C-307 노트 5800, C-313 노트 5801), update 레이어 연결과 `git-hooks-plan|apply|revert` 명령어 연결은 홀더와 조율해 붙인다. pre-push 는 리더가 받은 기본안으로 정한다: 밀린 범위의 trailer-check(카드 번호 스캔 포함), 100ms 안쪽, moai 가 PATH 에 없으면 안내문과 함께 통과. 12개 저장소의 막힌 pre-commit 을 레인이 손대는 일은 없다(리더가 사용자에게 보고).
+
 ## Risks
 
 - 기계 상태는 하루 안에도 움직였다(11-19 목록 이후 shim 고아화, Go 바이너리 퇴장, 자산 번들 착지, 공유 훅 교체). 목록의 수는 읽은 시점의 것이고, 조각 2·3 실행 전에 관련 행을 다시 세야 한다.
@@ -40,8 +42,10 @@ created: 2026-11-21
 - REQ-3: When the inventory is read, it shall reflect the machine state of 2026-11-21 and mark what changed since the 2026-11-19 baseline. · failure: none
 - REQ-4: When the inventory is read, it shall list every place the product can still execute or install a Go path (installer, update switch step, launcher, hooks, statusline, commit-msg, templates/bundle-packs, tests reading the real HOME) with its disposition. · failure: none
 - REQ-5: While the inventory is being made, the work shall change no file outside this SPEC folder and write nothing in the real HOME. · failure: none
-- REQ-6: When the git-hook slice runs, moai update shall find Go-generation git hooks by their hash files and header text in the user's repository and show them in the preview. · failure: none
-- REQ-7: When the git-hook slice applies, it shall retire the recognised Go hooks with a revert record and install the Rust hooks in their place while listing every hook without MoAI marks as kept. · failure: none
+- REQ-6: When the feature module scans a repository's hooks folder, it shall recognise each hook as Go-generation by its hash file or header text and name every hook without MoAI marks as kept. · failure: none
+- REQ-7: When the feature applies with its token, it shall retire the recognised Go hooks with a revert record and install the Rust hooks in their place without touching a hook the user wrote. · failure: none
+- REQ-8: When the slice installs hooks, it shall provide a pre-push hook that runs trailer-check on the pushed range under 100 ms and lets the push through with a message when moai is absent. · failure: none
+- REQ-9: When the update layer lands through the pair, moai update shall run this feature's retire and install step with its own confirm token and a revert record. · failure: none
 
 ## Acceptance
 
@@ -53,14 +57,20 @@ created: 2026-11-21
   verify: `grep -c -e 'versions/4.2647.15' -e 'moai.before-' -e 'no Go moai binary' .moai/specs/SPEC-20261121-go-path-removal/inventory.md`
 - AC-4 (REQ-4): the execution-path table has rows for installer, update, launcher, hooks, statusline, commit-msg, bundle-packs and the tests.
   verify: `for p in installer update launcher hooks statusline commit-msg bundle-packs tests; do awk '/^## Execution paths/{f=1;next} f&&/^\| '"$p"'/{found=1} END{exit !found}' .moai/specs/SPEC-20261121-go-path-removal/inventory.md || { echo "missing $p"; exit 1; }; done`
-- AC-5 (REQ-5): the change touches only this SPEC folder.
-  verify: `git diff --name-only $(git merge-base HEAD v2026.11.0) HEAD | grep -v '^\.moai/specs/SPEC-20261121-go-path-removal/' | wc -l`
+- AC-5 (REQ-5): the change touches only the paths this SPEC names.
+  verify: `git diff --name-only $(git merge-base HEAD v2026.11.0) HEAD | grep -v -e '^\.moai/specs/SPEC-20261121-go-path-removal/' -e '^src/git_hooks/' -e '^tests/git_hooks_cli\.rs$' -e '^install/git-hooks/' -e '^install/commit-msg$' | wc -l`
+- AC-6 (REQ-6): the recognition cases pass: Go-generation by hash file, by header text, Rust hook, and a user hook kept.
+  verify: `cargo test --offline --locked --test git_hooks_cli recognition`
+- AC-7 (REQ-7): the lifecycle cases pass: retire-and-replace, a user hook kept byte for byte, a mixed folder, a second run that changes nothing, and a revert that restores.
+  verify: `cargo test --offline --locked --test git_hooks_cli lifecycle`
+- AC-8 (REQ-8): the hook-text cases pass: commit-msg refuses a card number and passes a clean, a trailer-less and a merge-subject message; pre-push checks the pushed range and passes when moai is absent.
+  verify: `cargo test --offline --locked --test git_hooks_cli hook_text`
 
 ## Scope
 
-- write: `.moai/specs/SPEC-20261121-go-path-removal/**`
-- read-only: `install/`, `src/`, `skills/`, `tools/`, `tests/`, `docs/`, `templates/`, the installed Rust binary (`--help` and read-only probes only, temporary HOME), and this machine's state (`which`, `ls`, `shasum`, shell rc reads)
-- forbidden: any file outside the SPEC folder, any write in the real HOME, any run of a Go subcommand
+- write: `.moai/specs/SPEC-20261121-go-path-removal/**`, `src/git_hooks/**`, `tests/git_hooks_cli.rs`, `install/commit-msg`, `install/git-hooks/**`
+- read-only: the rest of `src/`, `tests/`, `install/`, `docs/`, `skills/`, `tools/`, `templates/`, the installed Rust binary (`--help` and read-only probes only, temporary HOME), and this machine's state
+- forbidden: `src/lib.rs`, `src/update.rs`, `src/main.rs` (held by C-307 and C-313 — pair requests posted), the 12 repositories' hook folders on this machine, any write in the real HOME, any run of a Go subcommand
 
 ## Plan
 
