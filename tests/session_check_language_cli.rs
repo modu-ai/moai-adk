@@ -18,12 +18,10 @@ use std::{
 const BIN: &str = crate::common::MOAI_BIN;
 
 fn git(cwd: &Path, args: &[&str]) {
-    let out = Command::new("git")
+    let out = common::git::command()
         .args(args)
         .current_dir(cwd)
         .env("HOME", cwd.join("home"))
-        .env("GIT_CONFIG_GLOBAL", "/dev/null")
-        .env("GIT_CONFIG_SYSTEM", "/dev/null")
         .output()
         .unwrap();
     assert!(
@@ -86,7 +84,7 @@ fn session_context(root: &Path, source: &str) -> String {
             "--event",
             "session-check",
         ])
-        .current_dir(&root)
+        .current_dir(root)
         .env("HOME", root.join("home"))
         .env("GIT_CONFIG_GLOBAL", "/dev/null")
         .env("GIT_CONFIG_SYSTEM", "/dev/null")
