@@ -28,7 +28,9 @@ Version token: each recorded case names the actual binary version and SHA-256.
 
 Usage:
   python3 -I tools/statusline_golden.py --bin <statusline binary> [--argv "<arguments>"] --write [--variant V] [--case NAME]
-  python3 -I tools/statusline_golden.py --bin <statusline binary> [--binary-version <v>] --check
+  python3 -I tools/statusline_golden.py --bin <statusline binary> [--binary-version <v>] [--jobs N] --check
+(`--jobs N`: --check runs up to N (case, variant) checks at once and prints them in manifest order;
+ default `MOAI_SPAWN_TEST_CAP`, else 4; --write always runs one at a time.)
 (`--binary-version` defaults to the last token `<bin> --version` prints, `v` stripped.)
 (`--argv` defaults to DEFAULT_ARGV: the hidden seams that make the render independent of the
 machine, so recording and checking produce the same text; an explicit `--argv` must carry them too.)
@@ -46,6 +48,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
@@ -302,7 +305,7 @@ def check_color_contract(binary, argv):
             raise ValueError("truecolor TTY has no truecolor escapes")
         if variant == "ansi256" and ("38;5;" not in out or "38;2;" in out):
             raise ValueError("ANSI256 TTY does not use the ANSI256 palette")
-    print("ok   native stdout color contract")
+    return "ok   native stdout color contract"
 
 
 def check_input_boundaries(binary, argv):
@@ -326,13 +329,78 @@ def check_input_boundaries(binary, argv):
         code, out, err = run_case(binary, argv, case, "plain", stdin_bytes=raw)
         if code or out != fallback or "\x1b" in out:
             raise ValueError(f"{label} did not fall back: {code} {out!r} {err!r}")
-    print("ok   native stdin boundaries")
+    return "ok   native stdin boundaries"
+
+
+def runtime_contract(binary, argv):
+    """The two native runtime contracts as the lines they print, or the failure line.
+
+    Both run once per harness run, whatever `--jobs` is; they are one task so a failure in the
+    first still skips the second, as it always did."""
+    try:
+        return True, "\n".join([check_color_contract(binary, argv),
+                                check_input_boundaries(binary, argv)])
+    except (OSError, ValueError, subprocess.TimeoutExpired) as exc:
+        return False, f"FAIL native runtime contract: {exc}"
 
 
 # Recording and checking share these hidden seams. `--render-budget-ms`: the goldens describe the
 # render within budget, so a slow git cannot drop the git segment (#2350). `--now-unix`: the prompt
 # cache timer counts from a fixed clock (#2756 AC-8).
 DEFAULT_ARGV = "statusline --render-budget-ms 3600000 --now-unix 1738429000"
+
+# `--check` runs its (case, variant) checks on this many workers when `--jobs` and the spawn cap
+# `MOAI_SPAWN_TEST_CAP` (tests that spawn the binary, shared with the Rust test helpers) say
+# nothing. Each worker copies the binary and starts it, so the number stays small.
+DEFAULT_JOBS = 4
+
+
+def resolve_jobs(value, environ):
+    """The worker count: `--jobs`, else `MOAI_SPAWN_TEST_CAP`, else `DEFAULT_JOBS`.
+
+    A value that is not a whole number of at least 1 is refused with a message naming where it
+    came from, before any check runs."""
+    source = "--jobs"
+    if value is None:
+        value = environ.get("MOAI_SPAWN_TEST_CAP")
+        source = "MOAI_SPAWN_TEST_CAP"
+        if value is None:
+            return DEFAULT_JOBS
+    if not re.fullmatch(r"[0-9]+", value) or int(value) < 1:
+        raise ValueError(f"{source} must be a whole number of at least 1, got {value!r}")
+    return int(value)
+
+
+def rendered_pair(binary, argv, case, variant):
+    """Run one (case, variant) and return its stdout after the checks `--write` and `--check` share."""
+    code, out, err = run_case(binary, argv, case, variant)
+    if code != 0 or not out.strip():
+        raise ValueError(f"exit {code}, stdout {out!r}, stderr {err.strip()[:200]}")
+    if variant == "plain" and "\x1b" in out:
+        raise ValueError("NO_COLOR output contains terminal escapes")
+    if variant != "plain":
+        # #2559: Claude Code reads stdout through a pipe; the piped bytes must
+        # equal the PTY bytes (an escape-free pipe was the regression).
+        pipe_code, pipe_out, pipe_err = run_case(binary, argv, case, variant, stdout_tty=False)
+        if pipe_code or pipe_out != out:
+            raise ValueError(
+                f"pipe output differs from the PTY: {pipe_code} {pipe_out!r} {pipe_err!r}")
+    return out
+
+
+def check_pair(binary, argv, binary_version, case, variant):
+    """One golden comparison: `(True, "ok   <case> <variant>")` or `(False, "FAIL <case> <variant>: <why>")`."""
+    try:
+        out = rendered_pair(binary, argv, case, variant)
+        golden = FIXTURES / "golden" / f"{case['name']}.{variant}.txt"
+        recorded = case.get("recorded_with", {}).get("variants", {})[variant]["version"]
+        want = normalize_version(golden.read_text(encoding="utf-8"), recorded)
+        got = normalize_version(out, binary_version)
+        if want != got:
+            raise ValueError("golden differs")
+        return True, f"ok   {case['name']} {variant}"
+    except (OSError, ValueError, KeyError, subprocess.TimeoutExpired) as exc:
+        return False, f"FAIL {case['name']} {variant}: {exc}"
 
 
 def main():
@@ -349,7 +417,16 @@ def main():
                     help="restrict to these variants (default: all)")
     ap.add_argument("--case", action="append",
                     help="restrict to these case names (default: all)")
+    ap.add_argument("--jobs", metavar="N",
+                    help="--check runs up to N (case, variant) checks at once "
+                         "(default: MOAI_SPAWN_TEST_CAP, else 4); the output order and every "
+                         "comparison are the same as with 1")
     args = ap.parse_args()
+    try:
+        jobs = resolve_jobs(args.jobs, os.environ)
+    except ValueError as exc:
+        print(exc)
+        return 2
     binary = Path(args.bin).resolve()
     if not binary.is_file():
         print(f"binary not found: {binary}")
@@ -376,25 +453,15 @@ def main():
     print(f"binary version {args.binary_version}")
     failed = 0
     checked = 0
-    for case in cases:
-        recorded_variants = case.get("recorded_with", {}).get("variants", {})
-        for variant in variants:
-            try:
-                code, out, err = run_case(binary, args.argv.split(), case, variant)
-                if code != 0 or not out.strip():
-                    raise ValueError(f"exit {code}, stdout {out!r}, stderr {err.strip()[:200]}")
-                if variant == "plain" and "\x1b" in out:
-                    raise ValueError("NO_COLOR output contains terminal escapes")
-                if variant != "plain":
-                    # #2559: Claude Code reads stdout through a pipe; the piped bytes must
-                    # equal the PTY bytes (an escape-free pipe was the regression).
-                    pipe_code, pipe_out, pipe_err = run_case(
-                        binary, args.argv.split(), case, variant, stdout_tty=False)
-                    if pipe_code or pipe_out != out:
-                        raise ValueError(
-                            f"pipe output differs from the PTY: {pipe_code} {pipe_out!r} {pipe_err!r}")
-                golden = FIXTURES / "golden" / f"{case['name']}.{variant}.txt"
-                if args.write:
+    argv = args.argv.split()
+    if args.write:
+        # Recording rewrites one manifest after every pair, so it stays one pair at a time.
+        for case in cases:
+            recorded_variants = case.get("recorded_with", {}).get("variants", {})
+            for variant in variants:
+                try:
+                    out = rendered_pair(binary, argv, case, variant)
+                    golden = FIXTURES / "golden" / f"{case['name']}.{variant}.txt"
                     golden.parent.mkdir(parents=True, exist_ok=True)
                     golden.write_text(out, encoding="utf-8")
                     recorded_variants[variant] = {
@@ -408,23 +475,27 @@ def main():
                     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
                     print(f"wrote {golden.relative_to(REPO)}")
                     checked += 1
-                    continue
-                recorded = recorded_variants[variant]["version"]
-                want = normalize_version(golden.read_text(encoding="utf-8"), recorded)
-                got = normalize_version(out, args.binary_version)
-                if want != got:
-                    raise ValueError("golden differs")
-                print(f"ok   {case['name']} {variant}")
-                checked += 1
-            except (OSError, ValueError, KeyError, subprocess.TimeoutExpired) as exc:
-                print(f"FAIL {case['name']} {variant}: {exc}")
-                failed += 1
-    try:
-        check_color_contract(binary, args.argv.split())
-        check_input_boundaries(binary, args.argv.split())
-    except (OSError, ValueError, subprocess.TimeoutExpired) as exc:
-        print(f"FAIL native runtime contract: {exc}")
-        failed += 1
+                except (OSError, ValueError, KeyError, subprocess.TimeoutExpired) as exc:
+                    print(f"FAIL {case['name']} {variant}: {exc}")
+                    failed += 1
+        ok, text = runtime_contract(binary, argv)
+        print(text)
+        failed += 0 if ok else 1
+    else:
+        # Every check starts in its own fresh HOME and project, so they are independent; they run
+        # on `jobs` workers and print in the order of the manifest, the one order a serial run has.
+        with ThreadPoolExecutor(max_workers=jobs) as pool:
+            pending = [pool.submit(check_pair, binary, argv, args.binary_version, case, variant)
+                       for case in cases for variant in variants]
+            contract = pool.submit(runtime_contract, binary, argv)
+            for future in pending:
+                ok, line = future.result()
+                print(line)
+                checked += 1 if ok else 0
+                failed += 0 if ok else 1
+            ok, text = contract.result()
+            print(text)
+            failed += 0 if ok else 1
     if checked == 0:
         print("FAIL no golden outputs checked or recorded")
         failed += 1

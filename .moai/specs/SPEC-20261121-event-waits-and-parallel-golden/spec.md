@@ -40,8 +40,8 @@ created: 2026-11-21
 - AC-1 (REQ-1, REQ-2): 시계 대기 도우미가 초가 바뀌면 끝나고 1.1초를 넘지 않으며, 시계가 안 바뀌면 이름이 든 메시지로 실패해요 · verify: `cargo test --locked --offline --test no_fixed_second_sleeps the_clock_wait_ends_when_the_second_changes_and_fails_when_it_does_not`
 - AC-2 (REQ-3): 목록에 든 파일에 `from_millis(1100)` 이 없고 시계 대기를 불러요(목록은 조각 1에서 네 파일, 조각 2에서 `update_command_cli.rs` 가 더해져 다섯 파일) · verify: `cargo test --locked --offline --test no_fixed_second_sleeps the_listed_files_hold_no_fixed_1100_ms_sleep`
 - AC-3 (REQ-1): 바꾼 시험이 모두 같은 단언으로 통과해요 · verify: `cargo test --locked --offline --test go_state_classes_cli --test index_cli --test update_command_cli --test update_moved_receipts --test update_version_folders`
-- AC-4 (REQ-4, REQ-5, REQ-6, REQ-7): 작은 가짜 바이너리와 가짜 케이스로 `--jobs 4` 와 `--jobs 1` 의 출력(줄 순서)과 종료 코드가 같고, 다른 골든은 두 방식 모두 `FAIL <case> <variant>` 로 1 을 내고, 색상·입력 경계 검사는 한 번만 돌아요 · verify: `python3 -I -m unittest tests.statusline_golden_parallel_test`
-- AC-5 (REQ-8, REQ-9): `--jobs` 가 없으면 `MOAI_SPAWN_TEST_CAP`(없으면 4)을 쓰고, 0·음수·글자는 아무것도 돌리기 전에 거절돼요 · verify: `python3 -I -m unittest tests.statusline_golden_parallel_test`
+- AC-4 (REQ-4, REQ-5, REQ-6, REQ-7): 작은 가짜 바이너리와 가짜 케이스로 `--jobs 4` 와 `--jobs 1` 의 출력(줄 순서)과 종료 코드가 같고, 다른 골든은 두 방식 모두 `FAIL <case> <variant>` 로 1 을 내고, 색상·입력 경계 검사는 한 번만 돌아요 · verify: `python3 -m unittest tests.statusline_golden_parallel_test`
+- AC-5 (REQ-8, REQ-9): `--jobs` 가 없으면 `MOAI_SPAWN_TEST_CAP`(없으면 4)을 쓰고, 0·음수·글자는 아무것도 돌리기 전에 거절돼요 · verify: `python3 -m unittest tests.statusline_golden_parallel_test`
 - AC-6 (REQ-10): 골든 시험이 실제 바이너리로 통과해요 · verify: `cargo test --locked --offline --test statusline_golden`
 - AC-7 (REQ-11): Result 에 전후 시간 표가 있어요 · verify: `grep -n "전후 시간" .moai/specs/SPEC-20261121-event-waits-and-parallel-golden/spec.md`
 - AC-8 (REQ-12): 바뀐 시험 파일에서 지워진 줄 가운데 `#[test]` 나 `assert` 가 든 줄이 없어요 · verify: `git diff b4681b3a6f..HEAD -- tests/go_state_classes_cli.rs tests/index_cli.rs tests/update_moved_receipts.rs tests/update_version_folders.rs | grep -E '^-' | grep -vE '^---' | grep -cE '#\[test\]|assert'` 가 0 을 찍어요(없으면 grep 이 1 로 끝나요)

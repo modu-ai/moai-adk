@@ -13,6 +13,12 @@
 //! within budget, so the harness passes the hidden seam `--render-budget-ms 3600000`; the
 //! over-budget path is pinned on its own in `tests/statusline_git_env.rs`.
 //!
+//! Parallel checks: the harness runs its (case, variant) checks on `--jobs` workers and prints
+//! them in manifest order, so the bytes compared and the lines printed are those of a serial
+//! run. This test passes no `--jobs`: the harness then uses the spawn cap
+//! `MOAI_SPAWN_TEST_CAP` (4 when unset), the same bound the tests that spawn the binary share.
+//! The worker logic is pinned on its own in `tests/statusline_golden_parallel_test.py`.
+//!
 //! Clock independence (#2756 AC-8): the prompt cache timer counts from `--now-unix`, a hidden
 //! seam; the goldens are recorded and checked with the same value. Both seams are the harness's
 //! own default `--argv` (`DEFAULT_ARGV`), so a direct `--check` or `--write` uses them too.
