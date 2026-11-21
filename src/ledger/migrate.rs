@@ -195,6 +195,54 @@ mod tests {
     use super::*;
 
     #[test]
+    fn a_backup_that_is_not_this_ledger_does_not_read_back() {
+        let dir = tempfile::tempdir().unwrap();
+        // Not a database at all.
+        let garbage = dir.path().join("garbage");
+        std::fs::write(&garbage, vec![7u8; 4096]).unwrap();
+        assert!(check_backup(&garbage).is_err());
+        // A database that is not a MoAI ledger (application_id 0).
+        let foreign = dir.path().join("foreign");
+        Connection::open(&foreign)
+            .unwrap()
+            .execute_batch("CREATE TABLE t (a); PRAGMA user_version = 1;")
+            .unwrap();
+        assert!(check_backup(&foreign).is_err());
+        // A MoAI ledger of another schema version.
+        let other = dir.path().join("other");
+        Connection::open(&other)
+            .unwrap()
+            .execute_batch(&format!(
+                "CREATE TABLE t (a); PRAGMA application_id = {APPLICATION_ID}; PRAGMA user_version = 2;"
+            ))
+            .unwrap();
+        assert!(check_backup(&other).is_err());
+        // The same pragmas at this version read back.
+        let good = dir.path().join("good");
+        Connection::open(&good)
+            .unwrap()
+            .execute_batch(&format!(
+                "CREATE TABLE t (a); PRAGMA application_id = {APPLICATION_ID}; PRAGMA user_version = {SCHEMA_VERSION};"
+            ))
+            .unwrap();
+        assert!(check_backup(&good).is_ok());
+    }
+
+    #[test]
+    fn a_backup_is_never_written_over_an_existing_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let from = dir.path().join("from");
+        let to = dir.path().join("to");
+        std::fs::write(&from, b"ledger bytes").unwrap();
+        std::fs::write(&to, b"already here").unwrap();
+        assert!(copy_ledger(&from, &to).is_err());
+        assert_eq!(std::fs::read(&to).unwrap(), b"already here");
+        std::fs::remove_file(&to).unwrap();
+        copy_ledger(&from, &to).unwrap();
+        assert_eq!(std::fs::read(&to).unwrap(), b"ledger bytes");
+    }
+
+    #[test]
     fn only_the_current_version_opens_at_its_edges() {
         assert!(matches!(check_version(0), Err(LedgerError::Unavailable(_))));
         assert!(matches!(

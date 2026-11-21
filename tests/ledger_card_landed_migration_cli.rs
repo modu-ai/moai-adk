@@ -151,10 +151,7 @@ fn meta(path: &Path, key: &str) -> Option<String> {
 fn the_fixture_is_really_an_old_ledger() {
     let (_home, path) = old_ledger();
     let err = close(&path, 1).expect_err("old guard refuses a landed card");
-    assert!(
-        err.to_string().contains("no merged pull request"),
-        "{err}"
-    );
+    assert!(err.to_string().contains("no merged pull request"), "{err}");
     assert!(!guard_sql(&raw(&path)).unwrap().contains("card.landed"));
 }
 
@@ -189,9 +186,13 @@ fn migrates_an_old_ledger() {
     let backup = Connection::open_with_flags(&found[0], OpenFlags::SQLITE_OPEN_READ_ONLY).unwrap();
     assert_eq!(dump(&found[0]), before);
     assert!(!guard_sql(&backup).unwrap().contains("card.landed"));
-    let id: i64 = backup.query_row("PRAGMA application_id", [], |r| r.get(0)).unwrap();
+    let id: i64 = backup
+        .query_row("PRAGMA application_id", [], |r| r.get(0))
+        .unwrap();
     assert_eq!(id, ledger::APPLICATION_ID);
-    let ver: i64 = backup.query_row("PRAGMA user_version", [], |r| r.get(0)).unwrap();
+    let ver: i64 = backup
+        .query_row("PRAGMA user_version", [], |r| r.get(0))
+        .unwrap();
     assert_eq!(ver, ledger::SCHEMA_VERSION);
     #[cfg(unix)]
     {
@@ -232,7 +233,11 @@ fn second_open_is_a_noop() {
     drop(w);
 
     assert_eq!(backups(&path).len(), 1, "no second backup");
-    assert_eq!(fs::read(&path).unwrap(), bytes, "the file bytes are unchanged");
+    assert_eq!(
+        fs::read(&path).unwrap(),
+        bytes,
+        "the file bytes are unchanged"
+    );
     assert_eq!(meta(&path, "done_guard_landed"), note);
 }
 
@@ -365,7 +370,9 @@ fn status_is_read_only() {
 fn an_absent_guard_gets_the_current_one() {
     let fresh = fresh_guard();
     let (home, path) = old_ledger();
-    raw(&path).execute_batch("DROP TRIGGER card_done_guard;").unwrap();
+    raw(&path)
+        .execute_batch("DROP TRIGGER card_done_guard;")
+        .unwrap();
 
     drop(ledger::open_write(home.path(), "demo").expect("open_write"));
 
