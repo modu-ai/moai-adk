@@ -69,7 +69,7 @@
       }
     },
     "references/adapters/orca.md": {
-      "sha256": "6c70926478f31c80cf8994b1e141c23d31724c53484cd7e1f225d058bdbb8a70",
+      "sha256": "68e09f3dfa288b159e6c64a20ecb05bcb7d67b10f9b3cf7551f8372f3ff1a7d9",
       "origin": {
         "kind": "design-spec",
         "template_id": "adapter-orca",
@@ -417,7 +417,7 @@
       }
     },
     "workflows/mode-agent.md": {
-      "sha256": "7e4d35aa49b458f9bbfbb6562a2d1ebf80eb750f04eae960919b4661ff6861b2",
+      "sha256": "1cca929f44b6796d0255421eb4f5917e7ed171b30acb2f35cecf355fea93cbe8",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-mode-agent",
@@ -426,7 +426,7 @@
       }
     },
     "workflows/mode-leader.md": {
-      "sha256": "3674e7e80b0c5f1e62e3c84851012cc1b713919ed2caa2c75f9e51e70339236f",
+      "sha256": "648cf628f8c73443fd088ce3885cf207b7ec7049ac29b659d7656d82b3731474",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-mode-leader",
