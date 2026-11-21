@@ -623,18 +623,16 @@ fn a_file_a_nested_gitignore_still_ignores_is_not_named_as_visible() {
 }
 
 /// SPEC-20261121-gitignore-nested REQ-2: a `.gitignore` several folders above a file still
-/// applies to it, even when that file is the only candidate and no file sits next to the rules.
+/// applies to it, even when that file is the only candidate and the rules file is tracked, so
+/// it is no candidate itself and nothing sits next to it.
 #[test]
 fn a_nested_gitignore_above_a_deeper_file_still_applies() {
     let fx = Fx::new(None);
     with_earlier_block(&fx);
     write_nested(&fx, ".moai-cli/tools/.gitignore", b"*.tmp\n");
+    git_ok(&fx.root, &["add", "-f", ".moai-cli/tools/.gitignore"]);
     let detail = detail_with_files(&fx, &[".moai-cli/tools/sub/deep/z.tmp"]);
-    assert_eq!(
-        visible_lines(&detail),
-        ["now visible: .moai-cli/tools/.gitignore"],
-        "{detail}"
-    );
+    assert_eq!(visible_lines(&detail), Vec::<&str>::new(), "{detail}");
 }
 
 /// SPEC-20261121-gitignore-nested REQ-3: a nested `.gitignore` the plan cannot read as text (not
