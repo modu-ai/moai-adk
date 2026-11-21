@@ -2,7 +2,7 @@
 id: SPEC-20261121-ref-guard
 title: "a reference-transaction guard keeps the integration branch moving only through the landing command"
 status: draft
-revision: 2
+revision: 3
 created: 2026-11-21
 ---
 
@@ -45,7 +45,7 @@ Measured on this machine in scratch repositories (git 2.54.0, `reference-transac
 - AC-1 (REQ-1): in a temporary repository with the hook installed and a profile that names the integration branch, each of these leaves the branch where it was and exits non-zero: `update-ref`, `update-ref --stdin`, `branch -f`, `branch -D`, `branch -m`, `push . HEAD:<ref>`, `fetch . <ref>:<ref>`, a commit and a `reset --hard` in a worktree that has the branch checked out, and the same call with an environment variable typed by hand · verify: `cargo test --locked --offline --test card_guard_cli ac1_`
 - AC-2 (REQ-1, REQ-9): the move that the intent record names passes and removes the record; a record with another new value, another old value, another ref, or a new value that is not a descendant of the current one refuses; the record of a finished move cannot allow it again, and no record allows a deletion; a creation with a record naming zero as the old value passes · verify: `cargo test --locked --offline --test card_guard_cli ac2_`
 - AC-3 (REQ-2): `pack-refs --all`, `gc`, `pack-refs --all --no-prune` and a second `pack-refs` pass in the loose and in the packed state and from a linked worktree, the branch keeps its value, and `branch -D` and `update-ref -d` with no old value refuse in the loose-only and in the packed-only state · verify: `cargo test --locked --offline --test card_guard_cli ac3_`
-- AC-4 (REQ-3): creating a branch whose name differs only in case, one whose first path part differs only in case, and moving or deleting such a branch that already exists, refuse in the packed state, with a message that holds the recorded spelling and the landing command, a branch of any other name passes, and the answer of `card land` names a variant that already exists · verify: `cargo test --locked --offline --test card_guard_cli ac4_`
+- AC-4 (REQ-3): creating a branch whose name differs only in case, one whose first path part differs only in case, and moving or deleting such a branch that already exists, refuse in the packed state, with a message that holds the recorded spelling and the landing command, and a branch of any other name passes · verify: `cargo test --locked --offline --test card_guard_cli ac4_`
 - AC-5 (REQ-4): `symbolic-ref` of a branch to the integration branch and to a case variant refuse, the integration branch made symbolic refuses, and a worktree that checks the branch out keeps working · verify: `cargo test --locked --offline --test card_guard_cli ac5_`
 - AC-6 (REQ-5): a stand-in moai on the path records its calls: none for a commit on an unrelated lane branch at any state, one each at prepared and committed for a transaction that names the recorded ref, a case variant, a nested variant or a symbolic value, and none at the preparing and aborted states; with no moai on the path a transaction on the recorded branch refuses and the message names the cause while the unrelated commit passes, and with no record file nothing starts · verify: `cargo test --locked --offline --test card_guard_cli ac6_`
 - AC-7 (REQ-6): `card land` under the guard moves the branch, the record exists before the update and is gone after, a record left by a stopped call is replaced, and a move the guard refuses (the record removed by a wrapper just before the update) answers with the guard's message and the branch and the ledger as they were · verify: `cargo test --locked --offline --test card_land_cli ac19_`
@@ -54,7 +54,8 @@ Measured on this machine in scratch repositories (git 2.54.0, `reference-transac
 - AC-10 (REQ-9, REQ-10): the hook text starts with a shell line, holds the guard's command and no branch name and reads the record, is installed executable by the test and works as the installed hook in AC-1 to AC-6, and an aborted transaction leaves the record in place · verify: `cargo test --locked --offline --test card_guard_cli ac10_`
 - AC-11 (REQ-7): when a lane takes the ready card between the checks and the close while the call carries a generation, the refusal after the move names the cause and the moved branch and does not say that nothing was changed, so the suffix strip of the landing command's message is pinned (the open non-blocking item of the first audit) · verify: `cargo test --locked --offline --test card_land_cli ac21_`
 - AC-12 (REQ-1): the card operations document names the `card guard` action, its states, the intent record and the guard's refusals, and the help of `card guard` says that git runs it and that nobody types it · verify: `cargo test --locked --offline --test card_guard_cli ac12_`
-- AC-13 (REQ-11): in a linked worktree whose checked-out profile names another integration branch (a branch cut before a rename) the moves of the recorded branch listed in AC-1 still refuse, the refusal reports that the profile disagrees, and the answer of `card land` run there reports it too · verify: `cargo test --locked --offline --test card_guard_cli ac13_`
+- AC-13 (REQ-11): in a linked worktree whose checked-out profile names another integration branch (a branch cut before a rename) the moves of the recorded branch listed in AC-1 still refuse, and the refusal reports that the profile disagrees · verify: `cargo test --locked --offline --test card_guard_cli ac13_`
+- AC-14 (REQ-3, REQ-11): the answer of `card land` names a case variant that already exists (`variants`), and when the profile names another integration branch than the record it reports the disagreement (`profile_disagrees`) while it moves the recorded branch · verify: `cargo test --locked --offline --test card_land_cli ac22_`
 
 ## Scope
 
@@ -79,7 +80,7 @@ Measured on this machine in scratch repositories (git 2.54.0, `reference-transac
 
 ## Plan
 
-1. Tests first (RED): `tests/card_guard_cli.rs` with a real git, a hook installed from the module's text and a stand-in moai on the path, AC-1 to AC-6, AC-9, AC-10 and AC-12; `tests/card_land_cli.rs` gets AC-7, AC-8 and AC-11 (the next acceptance numbers of that file).
+1. Tests first (RED): `tests/card_guard_cli.rs` with a real git, a hook installed from the module's text and a stand-in moai on the path, AC-1 to AC-6, AC-9, AC-10 and AC-12; `tests/card_land_cli.rs` gets AC-7, AC-8, AC-11 and AC-14 (its next test numbers, `ac19_` to `ac22_`).
 2. `src/card/guard.rs`: the pure judgement over the transaction lines, the resolved values and the intent record, the case and alias rules, the record of the protected name and its one reader, the intent record file, the entry and the hook text with its shell filter; `src/card/landed.rs` gets the common-folder lookup through the git environment scrub.
 3. `src/ledger/workflow.rs`: the start row written by the checks of the close; `src/card/land.rs`: the new order of D-9.
 4. The card operations document and the help of the action; light checks, at most five mutants after the commit, one affected run.
