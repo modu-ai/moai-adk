@@ -4024,15 +4024,17 @@ mod help_rules {
         }
     }
 
-    /// `card` is decided per action: `note` reads standard input, the other actions do not.
+    /// `card` is decided per action: `note` and `guard` (the hook's transaction) read standard
+    /// input, the other actions do not.
     #[test]
     fn card_reads_stdin_for_note_only() {
         let (reads, per_action) = commands_reading_stdin();
         assert!(!reads.contains("card"), "card is decided per action");
-        let note: BTreeSet<String> = ["note".to_string()].into();
-        assert_eq!(per_action.get("card"), Some(&note));
+        let readers: BTreeSet<String> = ["guard".to_string(), "note".to_string()].into();
+        assert_eq!(per_action.get("card"), Some(&readers));
         for (example, wants) in [
             ("card note C-1 --kind report --project . < note.md", true),
+            ("card guard prepared < transaction.txt", true),
             ("card note C-1 --kind report", true),
             ("card take C-1 --project .", false),
             ("card add --title t", false),
