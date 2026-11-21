@@ -79,4 +79,13 @@ created: 2026-11-21
 
 ## Result
 
-(구현 뒤에 채워요.)
+- AC-1: met — `cargo test --locked --offline --test optional_browser_refs_cli the_aside_reference_is_cli_only_and_points_to_the_installed_guide` 통과(`aside guide` 를 가리키고 "CLI only" 가 있으며 `moai mcp add`, "Optional registration", `--args mcp` 가 없어요). 고치기 전에는 `no pointer to the installed guide` 로 실패했어요(RED).
+- AC-2: met — `… the_ego_reference_points_to_the_installed_guide_without_copying_it` 통과(`ego-browser skill` 이 정본, "When to use"·"How far it may go" 절, `await page.`·`task.page(`·`taskSpace(`·`task.finish(` 없음, 70 줄 안팎으로 120 줄 이하). 고치기 전에는 파일이 없어서 실패했어요.
+- AC-3: met — `… both_references_state_the_safe_stop_the_limits_and_the_badge_rule` 통과(두 글 모두 `not_run`, "as absent", 설치·업그레이드 금지, 사용자 설정·MCP 설정 불변, 배지는 완료가 아님, ego 글은 금지하는 `ego-browser import` 를 이름으로 대요).
+- AC-4: met — `… the_ops_tools_pack_lists_both_references_with_matching_names` 통과(경로·종류·루트·빈 `depends_skills`·64 자 `sha256`, 머리말 이름이 항목 이름과 같아요).
+- AC-5: met — `… adding_ops_tools_installs_both_references_with_no_browser_tool_present` 통과(깨끗한 HOME 과 PATH 에서 `bundle add ops-tools` 성공, 두 글이 출하 바이트 그대로 설치돼요).
+- AC-6: met — `cargo test --locked --offline --test bundle_user_assets_cli` 6 개 통과, `cargo clippy --locked --offline --all-targets -- -D warnings` 0, `cargo fmt` 적용, `python3 -m unittest tests.repo_scans_test tests.ci_scope_test` 53 개 통과.
+- 변이 5 개 모두 시험이 잡았어요(Aside 글에 MCP 등록 줄 되살리기, ego 글에서 `not_run` 지우기, ego 글에 공식 API 줄 복사, ego 머리말 이름 바꾸기, 팩 항목 이름 바꾸기). 처음 한 번은 새 글이 `.gitignore` 의 `.claude/` 에 걸려 커밋에 빠진 채였고 복원이 실패해 변이 흔적이 쌓였어요: 파일을 원본으로 되돌려 `packs.json` 에 적은 해시와 맞는 것을 확인하고(`git add -f` 로 추가), 메모리에 둔 원본으로 복원하는 방식으로 다섯을 다시 돌렸어요.
+- 확인한 사실(2026-11-21, 이 Mac): `ego-browser skill` 은 "ego-browser usage guide v2.2.1 (macos)", `ego-browser --version` 은 0.6.3.17, `aside --version` 은 1.26.1115.1556 이에요. 글이 쓰는 도구 사실은 이 출력에서 왔어요: 업그레이드는 사용자 승인, 사람이 해야 할 일(로그인·사람 확인·2차 인증)은 넘겨주고 멈춤, 프로필은 사용자가 지정하지 않으면 건드리지 않음, `ego-browser import` 는 브라우저 프로필 가져오기, Aside 는 `--permission ask|guard|full-access`(`ask` 와 `guard` 는 같은 모드, 기본값).
+- `packs.json` 의 `sha256` 열은 코드가 읽지 않는 옛 값이고 바이트에서 재현되지 않아요: 바꾼 Aside 항목과 새 ego 항목에는 `SKILL.md` 의 SHA-256 을 넣었어요.
+- 돌리지 않은 것: 도구가 설치된 상태에서의 실제 사용(로컬 페이지 확인은 이 조각의 시험이 아니에요), 전체 `moai check affected`(병합 준비 노트에 줄째로 적어요), `skills/moai` 의 어댑터·워크플로 글(이 조각에서 바꾸지 않았어요: 이미 `aside guide`, `ego-browser skill` 을 가리켜요).
