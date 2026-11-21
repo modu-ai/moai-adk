@@ -3,8 +3,10 @@
 //! in host-neutral words, under a size cap so loading the skill stays cheap.
 use std::{fs, path::Path};
 
-/// The cap the author proposed for the leader's record (load cost of the skill).
-const CORE_RULES_MAX_BYTES: usize = 4096;
+/// The cap the author proposed for the leader's record (load cost of the skill), raised from
+/// 4096 to 4608 bytes by SPEC-20261120-guidance-sweep-core for the Korean developer-words
+/// sentence of rule 7 and the recurring-problem rule 22.
+const CORE_RULES_MAX_BYTES: usize = 4608;
 
 fn package(rel: &str) -> String {
     fs::read_to_string(

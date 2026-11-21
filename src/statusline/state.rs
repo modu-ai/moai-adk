@@ -815,6 +815,13 @@ fn collect_git(dir: &Path, ctx: &Context) -> Option<GitStatus> {
         status.branch = run_git(dir, &["symbolic-ref", "--short", "HEAD"], ctx)
             .map(|b| b.trim().to_string())
             .unwrap_or_default();
+        // Detached HEAD (SPEC-20261121-statusline-detached): the short SHA stands in for
+        // the branch name, so the repository and its forge counts stay on the line.
+        if status.branch.is_empty() {
+            status.head_sha = run_git(dir, &["rev-parse", "--short", "HEAD"], ctx)
+                .map(|b| b.trim().to_string())
+                .unwrap_or_default();
+        }
     }
     Some(status)
 }

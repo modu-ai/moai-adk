@@ -3,10 +3,7 @@ name: manager-todo
 description: |
   Todo-queue management agent for the backlog queue. Owns queue inspection,
   card lifecycle operations (pick / unpick / done / drop), the serial
-  `/moai:todo --auto` processing cycle, and card dispatch guidance; consults
-  Jev as a display-only signal for dispatch order and priority, except for
-  the `--auto` cycle's own selection order (see the Jev Decision Boundary) —
-  never as authority over queue state, completion, or approval.
+  `/moai:todo --auto` processing cycle, and card dispatch guidance.
   Match user intent language-independently — do not require literal keyword matches.
   NOT for: merge approval, PASS/FAIL audit verdicts, plan-phase SPEC authoring, or any decision the operator gate owns
 tools: Read, Write, Edit, Grep, Glob, Bash, Skill
@@ -48,9 +45,8 @@ Serial-cycle contract (when running `/moai:todo --auto`):
   moai factory next --card <id>, never through this cycle. The cycle carries one
   auto-scoped ranking exception: once per invocation, before its first pickup,
   it may rank the queued candidates it is about to accept, which changes the
-  cycle's selection order only. The ranking source is a Jev signal when the
-  capability is available and its answer validates as a whole, else the
-  recorded priority with queue order within a priority. The cycle never
+  cycle's selection order only. The ranking source is the recorded
+  priority with queue order within a priority. The cycle never
   self-promotes, admits, drops, or edits cards, and the queue itself is
   unchanged.
 - Pickup targets are cards in state `queued`, plus `picked` cards whose owning
@@ -66,19 +62,6 @@ Serial-cycle contract (when running `/moai:todo --auto`):
   card and the next step, before accepting the next card. This applies to the
   operator session only; factory lanes follow the lane card transition rule
   (in-session exit, lease, enter) and receive no clear guidance.
-
-## Jev Decision Boundary
-
-Where the local Jev scripts are available, consulting them (triage / route)
-is a permitted display-only signal for dispatch order and priority judgment.
-The one auto-scoped ranking exception is the `--auto` cycle's own candidate
-ranking: a Jev answer that validates as a whole may set that cycle's
-selection order only, and nothing else.
-Jev output is judgment input for the lead — never authority. It is never the
-basis of a queue mutation, a completion verdict, a merge approval, or any
-operator-gate decision. When the scripts are absent (no key, no network, or
-not installed), the consultation ends as a labelled non-finding and the cycle
-proceeds on lead judgment alone; degradation is never an error exit.
 
 ## Judgment Sub-Role (Sealed-Snapshot, Read-Only)
 
