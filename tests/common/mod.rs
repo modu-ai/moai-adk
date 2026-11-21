@@ -2,6 +2,9 @@
 pub mod cli;
 pub mod git;
 pub mod home;
+#[cfg(unix)]
+pub mod pty;
+pub mod screens;
 use moai_cli::forge::transport::{Exchange, HttpRequest, HttpResponse};
 use std::path::{Path, PathBuf};
 
