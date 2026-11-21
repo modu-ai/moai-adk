@@ -10,7 +10,6 @@
 //! exception appends one record line to the guard log.
 
 use crate::claim_verify::GitSub;
-use crate::ledger::LedgerError;
 use std::path::Path;
 
 /// The variable whose value names the decision note of an exception.
