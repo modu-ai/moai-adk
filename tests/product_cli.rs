@@ -1163,7 +1163,7 @@ fn launcher_role_flags_are_kept_without_a_deprecation_warning() {
         &["-l", "--dry-run"][..],
         &["-a", "--name", "agent-7", "--dry-run"][..],
         &["cc", "-l", "--dry-run"][..],
-        &["codex", "-a", "--dry-run"][..],
+        &["cc", "-a", "--dry-run"][..],
         &["cc", "--dry-run"][..],
     ] {
         let out = launcher(args, None);
@@ -1241,70 +1241,15 @@ fn launcher_glm_requires_token_name_only() {
     assert!(v["notes"].to_string().contains("--advisor omitted on glm"));
 }
 #[test]
-fn launcher_codex_argv() {
-    // Full access since #2359 (user decision 2026-11-10), leader and agent alike.
-    let v = launched(&launcher(&["codex", "-l", "--dry-run"], None));
-    assert_eq!(
-        v["argv"],
-        json!([
-            "codex",
-            "-s",
-            "danger-full-access",
-            "-a",
-            "never",
-            "MoAI session name: leader"
-        ])
-    );
-    assert_eq!(v["host"], json!("codex"));
-    assert!(v["notes"].to_string().contains("cross-session"));
-    let v = launched(&launcher(
-        &[
-            "-a",
-            "codex",
-            "--name",
-            "agent-2",
-            "--model",
-            "some-model",
-            "--dry-run",
-        ],
-        None,
-    ));
-    assert_eq!(
-        v["argv"],
-        json!([
-            "codex",
-            "-s",
-            "danger-full-access",
-            "-a",
-            "never",
-            "-m",
-            "some-model",
-            // SPEC-20261118-launcher-agent-entry: `codex -a` starts agent mode.
-            "$moai --mode-agent\nMoAI session name: agent-2"
-        ])
-    );
-    let v = launched(&launcher(
-        &[
-            "codex",
-            "-a",
-            "--name",
-            "agent-5",
-            "--dry-run",
-            "first task",
-        ],
-        None,
-    ));
-    assert_eq!(
-        v["argv"].as_array().unwrap().last().unwrap(),
-        &json!("$moai --mode-agent\nMoAI session name: agent-5\nfirst task")
-    );
-    assert!(!v["argv"].to_string().contains("dangerously"));
+fn launcher_prompt_is_not_passed_to_a_claude_host() {
+    // The Codex launcher cases of this test went with the Codex launcher
+    // (SPEC-20261121-codex-launcher-and-models-removed); `moai codex` is an unknown command.
     // A PROMPT on a Claude host is not passed on, and the output says so.
     let v = launched(&launcher(&["cc", "-l", "--dry-run", "first task"], None));
     assert!(!v["argv"].to_string().contains("first task"));
     assert!(v["notes"]
         .to_string()
-        .contains("PROMPT is used by codex only"));
+        .contains("PROMPT was not passed to the Claude host"));
 }
 
 /// Fixture repo: a Go-style baseline commit with `.claude` and template `.claude`, then an
@@ -2814,6 +2759,7 @@ mod skill_package {
             adapters,
             [
                 "references/adapters/aside.md",
+                "references/adapters/herdr.md",
                 "references/adapters/orca.md"
             ]
         );

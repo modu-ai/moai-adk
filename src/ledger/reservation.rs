@@ -1319,6 +1319,12 @@ pub enum ReclaimError {
         card_id: i64,
         reclaims: i64,
     },
+    /// An early reclaim was proven for one holder and the reservation is now held by another
+    /// (SPEC-20261120-reclaim-dead-holder REQ-6).
+    HolderChanged {
+        proven: String,
+        current: String,
+    },
     /// The ledger itself failed (busy, unavailable, constraint ...).
     Ledger(LedgerError),
 }
@@ -1335,6 +1341,7 @@ impl ReclaimError {
             ReclaimError::NotHeld { .. } => "not_held",
             ReclaimError::LeaseLive { .. } => "lease_live",
             ReclaimError::ReclaimLimit { .. } => "reclaim_limit",
+            ReclaimError::HolderChanged { .. } => "holder_changed",
             ReclaimError::Ledger(e) => e.code(),
         }
     }
@@ -1374,6 +1381,11 @@ impl std::fmt::Display for ReclaimError {
                 f,
                 "card conflict in reclaim limit: C-{card_id} was already reclaimed {reclaims} time(s); \
                  a card is reclaimed three times at most (SPEC-20261119-card-reclaim-guard)"
+            ),
+            ReclaimError::HolderChanged { proven, current } => write!(
+                f,
+                "reservation conflict in holder: the proof that the holder is gone was made for \
+                 session {proven}, but the reservation is now held by session {current}"
             ),
             ReclaimError::Ledger(e) => e.fmt(f),
         }
@@ -1420,6 +1432,58 @@ pub fn reclaim(
     reason: &str,
     lease_secs: i64,
 ) -> Result<Reclaimed, ReclaimError> {
+    reclaim_with(
+        w, card_id, to_holder, generation, by, reason, lease_secs, None,
+    )
+}
+
+/// What an early reclaim carries: the holder session the proof was made for and the proof as it
+/// goes into the event payload (`early_proof`).
+pub struct EarlyProof<'a> {
+    pub holder: &'a str,
+    pub detail: &'a Value,
+}
+
+/// [`reclaim`] for a reservation whose lease has NOT ended, when the caller holds proof that
+/// the holder session is gone (SPEC-20261120-reclaim-dead-holder). The lease check is replaced
+/// by a check that the reservation is still held by the holder the proof names; everything
+/// else is the same transaction: the generation rules, the lifetime limit of three reclaims
+/// (an early reclaim counts), the new lease, the one `card.reclaim` event. The proof itself is
+/// gathered by the caller (`card::early_reclaim`); the ledger only keeps it in the event.
+#[allow(clippy::too_many_arguments)]
+pub fn reclaim_early(
+    w: &mut WriteLedger,
+    card_id: i64,
+    to_holder: &str,
+    generation: i64,
+    by: &str,
+    reason: &str,
+    lease_secs: i64,
+    proof: &EarlyProof<'_>,
+) -> Result<Reclaimed, ReclaimError> {
+    reclaim_with(
+        w,
+        card_id,
+        to_holder,
+        generation,
+        by,
+        reason,
+        lease_secs,
+        Some(proof),
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn reclaim_with(
+    w: &mut WriteLedger,
+    card_id: i64,
+    to_holder: &str,
+    generation: i64,
+    by: &str,
+    reason: &str,
+    lease_secs: i64,
+    early: Option<&EarlyProof<'_>>,
+) -> Result<Reclaimed, ReclaimError> {
     check_holder(to_holder)
         .map_err(|why| ReclaimError::InvalidInput(format!("to_holder: {why}")))?;
     check_label("by", by, MAX_BY_LEN)?;
@@ -1453,11 +1517,22 @@ pub fn reclaim(
         if old.status != "held" {
             return Ok(Err(ReclaimError::NotHeld { status: old.status }));
         }
-        if !lease_ended(old.lease_until, now) {
-            return Ok(Err(ReclaimError::LeaseLive {
-                lease_until: old.lease_until,
-                now,
-            }));
+        match early {
+            // The ordinary rule: only an ended lease is reclaimed.
+            None if !lease_ended(old.lease_until, now) => {
+                return Ok(Err(ReclaimError::LeaseLive {
+                    lease_until: old.lease_until,
+                    now,
+                }));
+            }
+            // The early rule: the proof was made for this holder or it is worth nothing.
+            Some(p) if old.holder != p.holder => {
+                return Ok(Err(ReclaimError::HolderChanged {
+                    proven: p.holder.to_string(),
+                    current: old.holder,
+                }));
+            }
+            _ => {}
         }
         // REQ-5 (SPEC-20261119-card-reclaim-guard): three reclaims are a card's lifetime
         // allowance, counted from its own events so the cap survives any caller; the fourth
@@ -1501,26 +1576,23 @@ pub fn reclaim(
              SELECT ?1, pattern FROM reservation_scope WHERE reservation_id = ?2",
             params![new_id, old.reservation_id],
         )?;
-        add_event(
-            tx,
-            now,
-            by,
-            card_id,
-            "card.reclaim",
-            &json!({
-                "from_holder": old.holder,
-                "from_generation": current,
-                "from_lease_until": old.lease_until,
-                "holder": to_holder,
-                "generation": next,
-                "lease_until": now + lease_secs,
-                "by": by,
-                "reason": reason,
-                "card_state": state,
-                "worktree": old.worktree,
-                "branch": old.branch,
-            }),
-        )?;
+        let mut payload = json!({
+            "from_holder": old.holder,
+            "from_generation": current,
+            "from_lease_until": old.lease_until,
+            "holder": to_holder,
+            "generation": next,
+            "lease_until": now + lease_secs,
+            "by": by,
+            "reason": reason,
+            "card_state": state,
+            "worktree": old.worktree,
+            "branch": old.branch,
+        });
+        if let Some(p) = early {
+            payload["early_proof"] = p.detail.clone();
+        }
+        add_event(tx, now, by, card_id, "card.reclaim", &payload)?;
         let previous = load_reservation(tx, card_id, current)?
             .ok_or_else(|| LedgerError::Sql("the reclaimed reservation cannot be read".into()))?;
         let reservation = load_reservation(tx, card_id, next)?
