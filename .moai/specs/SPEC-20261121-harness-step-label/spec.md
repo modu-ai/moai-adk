@@ -40,8 +40,7 @@ The plan stays English bytes (the JSON envelope never speaks Korean); the Korean
 
 ## Scope
 
-- write: `tests/harness_step_label.rs` (new), `.moai/specs/SPEC-20261121-harness-step-label/**`
-- paired (written by the cards that hold these files, from a pair line, and merged in one chain with this change): `src/project_update.rs` (one string, `INSTALL_REASON`), `skills/moai/workflows/update.md` and `skills/moai/workflows/project.md` (one sentence each), `skills/moai/references/source-manifest.json` (the two sha256 entries)
+- write: `tests/harness_step_label.rs` (new), `.moai/specs/SPEC-20261121-harness-step-label/**`, and the four files below, which this change holds itself once their earlier holders gave them back: `src/project_update.rs` (one string, `INSTALL_REASON`), `skills/moai/workflows/update.md` and `skills/moai/workflows/project.md` (one sentence each), `skills/moai/references/source-manifest.json` (the sha256 entries, regenerated)
 - read-only: `src/help.rs`, `skills/moai/workflows/setup.md`
 - forbidden: any identifier, command name, manifest path, JSON field or error text that names a file; the Go repository; the real HOME
 
@@ -62,4 +61,16 @@ The install reason becomes `profile, project harness (AGENTS.md managed section 
 
 ## Result
 
-(not yet written)
+Built tests first. The RED commit held six tests that read the source and the two workflow texts; the three edits then landed on this same branch, so the final state is `cargo test --locked --offline --test harness_step_label` → `6 passed; 0 failed` (run under the heavy-slot command).
+
+- AC-1: met — `install_reason_names_the_step_by_its_display_name`, `install_reason_does_not_say_generation` and `install_reason_keeps_the_other_steps_in_order` pass: `INSTALL_REASON` reads `profile, project harness (AGENTS.md managed section and generated files), Claude Code settings, ...`, holds no `generation`, and lists the other steps in the same order.
+- AC-2: met — `identifiers_stay_as_they_were` passes: `src/project_update.rs` still names the step `generation`, prints `generation-apply`, reads `manifests/generation.json`, and `src/help.rs` still lists `generation-plan` and `generation-apply`.
+- AC-3: met — `workflow_text_names_the_step_in_english_and_korean` and `workflow_text_tells_to_translate_and_keeps_the_id_for_tools` pass for `update.md` and `project.md`. The second test reads the sentence itself, from `Call the generation step` to the end of its line: the `project.md` step line already names `generation` elsewhere, so a check over the whole line let a dropped id clause through (mutant H2, found below, closed by this).
+
+Fail-to-pass, measured: with the three changed files (`update.md`, `project.md`, `src/project_update.rs`) put back to the text of the local tip and the same test executable, the run gave `1 passed; 5 failed` (the one that passes is `identifiers_stay_as_they_were`, which pins what must not change); with the branch's text, `6 passed`. The three files were restored from the commit and the tree read clean afterwards.
+
+Mutants (10, one rule each, run on the committed text against the built test executable, each restored with `git checkout` and the tree read clean): `translate` turned into `render` in `project.md` and in `update.md`; the English name changed; the Korean name changed in `project.md` and shortened in `update.md`; the id clause dropped from the `project.md` sentence; `INSTALL_REASON` saying `generation`, its steps swapped, and `GitHub templates` dropped; `manifests/generation.json` renamed. The first run left the dropped id clause alive (the line check above); after the test change all 10 were killed.
+
+Other checks run: `tools/source_manifest.py write` then `check` exit 0 (the manifest changed for `workflows/project.md` only); `rustfmt --check --edition 2021 tests/harness_step_label.rs` exit 0; the added `project.md` sentence holds no card number, issue number, link or local-rules file name.
+
+Not run: the check-affected chain for this head (it runs next), Windows and Linux, a reader of the plan JSON looking for the display name in a field (a stated non-goal), and the ratchet script `tools/shipped_text_ratchet.py` (not in this branch's tree).
