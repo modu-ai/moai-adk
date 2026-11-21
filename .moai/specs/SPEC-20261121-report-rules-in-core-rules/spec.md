@@ -27,6 +27,7 @@ The skill entry `skills/moai/SKILL.md` is meant to be the entry and the router: 
 - REQ-4: The size cap of the core rules shall rise by no more than the bytes of the two moved rules and their section line.
 - REQ-5: The skill's source manifest shall match the files after the change.
 - REQ-6: The live inventory of the core rules in `references/rule-history.md` shall list rules 22 to 24.
+- REQ-7: The rule history and the leader workflow shall point to the core rules, and not to the skill entry, for the completion rule and the report-number rule.
 
 ## Acceptance
 
@@ -42,6 +43,8 @@ The skill entry `skills/moai/SKILL.md` is meant to be the entry and the router: 
   verify: `python3 -I tools/source_manifest.py check`
 - AC-6 (REQ-6): the rule history guard passes with the three new rows.
   verify: `cargo test --locked --offline --test rule_history_guard`
+- AC-7 (REQ-7): the rule-history entry of the completion rule names rule 23 of the core rules without naming the skill entry, and the table-row rule of `workflows/mode-leader.md` cites rule 24 of the core rules.
+  verify: `cargo test --locked --offline --test report_rules_core no_other_file_points_to_the_skill_entry_for_the_moved_rules`
 
 ## Scope
 
@@ -71,10 +74,11 @@ The skill entry `skills/moai/SKILL.md` is meant to be the entry and the router: 
 | D-3 | The core-rules cap rises from 4608 to 5120 bytes | The same bytes leave the skill entry; the cap was already raised once for added rules | Lower it after the rules move back |
 | D-4 | The rules go in a section of their own, `## Reports`, after rule 22 | Rule numbers are fixed and the numbering test needs no gaps | Move them into another section |
 | D-5 | The pointer line names the route table's `core_rules` entry, not the file path | A skill package test lets the skill entry name only the route table as a package path (one hop) | Name the path and change that test with a decision |
+| D-6 | The two places that named the skill entry are repaired in this SPEC | Audit finding (leader note 5676): `references/rule-history.md` and `workflows/mode-leader.md` still named the skill entry as the copy | Point them back to the skill entry and move the rules back |
 
 ## Result
 
-Filled in by the implementation lane on 2026-11-21; the audit checks it again. The SPEC is `1c56cfc447`; red `9b3036d00d`, green `51dbf6c90a`, the pointer fix `84697d1eb1` (the first green pointer named a package path, which `skill_package_frontmatter_is_host_neutral` refused; it now names the route table's `core_rules` entry), the lines of `tests/product_cli.rs` `78921658c5`, the three manifest rows `2509e156a4`; the local tip `42f5af0800` is merged in as `03fc31a63f` (the earlier tip as `9999b47943`, no conflict, `git merge-tree` exit 0). Evidence files are in this worktree's `target/notes/`.
+Filled in by the implementation lane on 2026-11-21; the audit checks it again. The SPEC is `1c56cfc447`; red `9b3036d00d`, green `51dbf6c90a`, the pointer fix `84697d1eb1` (the first green pointer named a package path, which `skill_package_frontmatter_is_host_neutral` refused; it now names the route table's `core_rules` entry), the lines of `tests/product_cli.rs` `78921658c5`, the three manifest rows `2509e156a4`; the local tip `42f5af0800` is merged in as `03fc31a63f` (the earlier tip as `9999b47943`, no conflict, `git merge-tree` exit 0). After the audit (FAIL, small, leader note 5676) the repair is red `61edfe5dce` and fix `10bba8fdbf` on the same branch; the Result below was updated on 2026-11-21 (`date -u`). Evidence files are in this worktree's `target/notes/`.
 
 Red (`red1.out`, before the text): `the_core_rules_carry_the_moved_report_rules` and `the_skill_entry_points_to_the_core_rules_and_keeps_the_decision_order` FAILED on the tip text, 0 passed and 2 failed in `tests/report_rules_core.rs`.
 
@@ -84,8 +88,13 @@ Red (`red1.out`, before the text): `the_core_rules_carry_the_moved_report_rules`
 - AC-4: met — `cargo test --locked --offline --test core_rules_2876` (`green4.out`, `affected/06-test_targets.log`): 6 passed; the cap is 5120.
 - AC-5: met — `python3 -I tools/source_manifest.py check` prints `{"conflicted": false, "changed": [], "dropped": [], "ok": true}` on the final head.
 - AC-6: met — `cargo test --locked --offline --test rule_history_guard` (`green4.out`): 6 passed, 0 failed.
+- AC-7: met — `cargo test --locked --offline --test report_rules_core` (`green2.out`, no name filter, after the repair): 3 passed, 0 failed; `no_other_file_points_to_the_skill_entry_for_the_moved_rules` failed before the fix (`red2.out`: 2 passed, 1 failed) and passes after it. The same run: `core_rules_2876` 6, `product_cli` 79, `mode_workflow_steps` 43, `agent_defs_package` 19 passed.
 
 ### Checks
+
+After the repair (head `10bba8fdbf`): `moai check affected 42f5af0800..10bba8fdbf` (the branch's own build, `--max 2`, `CLAUDE_CODE_SESSION_ID` unset), summary line as printed: `check-affected base=42f5af0800fb head=10bba8fdbfd7 targets=43 py=8 scans=listed:42 diff_check=0 fmt=0 clippy=0 test_lib=0 test_bins=0 test_targets=0 build_cli=0 python=0 result=PASS`. My own recount of every mention of the skill entry for the two moved rules (`git grep` over `skills`, `agents`, `docs`, `src`) found no place besides the two repaired ones; the entries of earlier moves in `references/rule-history.md` are history and stay.
+
+Before the repair:
 
 `moai check affected 42f5af0800..03fc31a63f` (the branch's own build of the binary, `--max 2`), summary line as printed: `check-affected base=42f5af0800fb head=03fc31a63f6d targets=43 py=8 scans=listed:42 diff_check=0 fmt=0 clippy=0 test_lib=0 test_bins=0 test_targets=0 build_cli=0 python=0 result=PASS`.
 
