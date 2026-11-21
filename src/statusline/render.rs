@@ -1,15 +1,14 @@
-//! The main Claude Code statusline: up to three lines joined by `\n`, 10-cell
-//! gradient bars, and two Catppuccin themes. Without color the text is identical
+//! The main Claude Code statusline: up to three lines joined by `\n`, usage
+//! windows as numbers, and two Catppuccin themes. Without color the text is identical
 //! and carries no escape sequence.
 
-use super::color::{hex_rgb, Profile};
+use super::color::Profile;
 use super::segments;
 use super::state::{DisplayConfig, Status};
 use std::collections::BTreeMap;
 
-const BAR_WIDTH: i64 = 10;
 const SEPARATOR: &str = " | ";
-/// Card C-137 (user instruction 2026-11-19), line 2: the two git counts, the items of the card
+/// User instruction 2026-11-19, line 2: the two git counts, the items of the card
 /// counts and the text after the repository and the branch icons are one space apart (leader
 /// decision, card note 3570, decision D-1 of SPEC-20261120-statusline-line2-order: the two
 /// spaces of the user's example are the terminal's drawing of the variation-selector icons).
@@ -22,14 +21,13 @@ const BRANCH_ICON_GAP: &str = " ";
 const SGR_NORMAL_INTENSITY: &str = "\x1b[22m";
 const SGR_RESET: &str = "\x1b[0m";
 
-/// A theme's colors (internal/tui/catppuccin.go). `stops` run green → yellow → peach → red.
+/// A theme's colors (internal/tui/catppuccin.go).
 /// The per-segment colors are the #2559 segment palette (user decision 2026-11-12): each
 /// segment kind takes its own Catppuccin accent, so neighbours never share a color.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Theme {
     pub text: &'static str,
     pub muted: &'static str,
-    pub stops: [&'static str; 4],
     /// `🧠` model (mauve).
     pub model: &'static str,
     /// `🤔` effort and thinking (lavender).
@@ -54,16 +52,11 @@ pub struct Theme {
     pub cards_waiting: &'static str,
     /// `✅` cards done (teal).
     pub cards_done: &'static str,
-    /// `(⚠️ /clear)` soft handoff warning (yellow).
-    pub warn: &'static str,
-    /// `(🛑/clear!)` hard handoff warning (red).
-    pub alert: &'static str,
 }
 
 pub const MOCHA: Theme = Theme {
     text: "#CDD6F4",
     muted: "#6C7086",
-    stops: ["#A6E3A1", "#F9E2AF", "#FAB387", "#F38BA8"],
     model: "#CBA6F7",
     effort: "#B4BEFE",
     cache: "#94E2D5",
@@ -76,14 +69,11 @@ pub const MOCHA: Theme = Theme {
     cards_posted: "#F5E0DC",
     cards_waiting: "#74C7EC",
     cards_done: "#94E2D5",
-    warn: "#F9E2AF",
-    alert: "#F38BA8",
 };
 
 pub const LATTE: Theme = Theme {
     text: "#4C4F69",
     muted: "#9CA0B0",
-    stops: ["#40A02B", "#DF8E1D", "#FE640B", "#D20F39"],
     model: "#8839EF",
     effort: "#7287FD",
     cache: "#179299",
@@ -96,8 +86,6 @@ pub const LATTE: Theme = Theme {
     cards_posted: "#DC8A78",
     cards_waiting: "#209FB5",
     cards_done: "#179299",
-    warn: "#DF8E1D",
-    alert: "#D20F39",
 };
 
 /// `NewTheme`: `catppuccin-latte`, anything else is Mocha.
@@ -142,11 +130,11 @@ impl Renderer {
 
     /// `Render`: the layout, or `MoAI` when every line is empty, then the base color.
     /// #2756 (user instruction 2026-11-13): line 1 is the running environment, line 2 the
-    /// repository, line 3 the usage bars; #2928 (user instruction 6878415244, 2026-11-14): the
+    /// repository, line 3 the usage windows; #2928 (user instruction 6878415244, 2026-11-14): the
     /// `leader`/`agent` tag opens line 1. The user's three instructions of 2026-11-20
     /// (SPEC-20261120-statusline-layout): line 1 is tag, model, effort, the Claude Code
     /// version and the MoAI version; line 2 is the repository with its forge counts in one
-    /// segment and the branch; line 3 opens with the card counts, carries the usage bars, and
+    /// segment and the branch; line 3 opens with the card counts, carries the usage windows, and
     /// closes with the worktree label. The cache segment is not in the layout. A line with
     /// nothing in it is left out, so the numbers above shift up by one for each empty line
     /// before it.
@@ -154,7 +142,7 @@ impl Renderer {
         let lines: Vec<String> = [
             self.info_line(status),
             self.git_line(status),
-            self.bars_line(status),
+            self.windows_line(status),
         ]
         .into_iter()
         .filter(|l| !l.is_empty())
@@ -215,7 +203,7 @@ impl Renderer {
         // segment is not in the layout. The `cache_hit` option name is still accepted in
         // configs, it just shows nothing — like `session_time` and `output_style` — and the
         // cache value and its warm or cold timer stay in the collected state. The card counts
-        // open line 3 and the worktree label closes it ([`Renderer::bars_line`], the user's
+        // open line 3 and the worktree label closes it ([`Renderer::windows_line`], the user's
         // third instruction of 2026-11-20); the Claude Code version stands on line 1 between
         // the effort and the MoAI version.
         if self.enabled("claude_version") && !s.claude_version.is_empty() {
@@ -237,33 +225,38 @@ impl Renderer {
         segs.join(SEPARATOR)
     }
 
-    fn bars_line(&self, s: &Status) -> String {
+    fn windows_line(&self, s: &Status) -> String {
         let mut segs = Vec::new();
-        // #2928 (user instruction 6878415244, 2026-11-14): line 3 is the bars; the tag moved
+        // #2928 (user instruction 6878415244, 2026-11-14): line 3 is the usage windows; the tag moved
         // to the front of line 1. The user's third instruction of 2026-11-20: the card counts
         // open this line (they read the project's local ledger, not git), and the worktree
         // label closes it (was: it opened the line, user instruction 2026-11-19).
         if let Some(cards) = self.cards(s) {
             segs.push(cards);
         }
-        // The newest user instruction (leader notes 5378–5379 on C-233, 2026-11-21): the
-        // numbers and the gradient bars stay as they are — the `(⚠️ /clear)` and
-        // `(🛑/clear!)` hints are what goes (REQ-7 of SPEC-20261121-statusline-detached).
+        // The user's final call (2026-11-21, SPEC-20261121-statusline-detached): the windows
+        // render as numbers only — `🔋 CTX 61%`, no graph, no trailing colon — and the
+        // `(⚠️ /clear)` / `(🛑/clear!)` hints stay gone (REQ-5, REQ-7). An earlier "keep the
+        // graph" reading of a relayed message was a misunderstanding, now corrected. A window
+        // whose percentage is unknown says `n/a` with no battery icon (REQ-9).
         if self.enabled("context") {
             if s.memory.available && s.memory.token_budget > 0 {
                 let pct = segments::usage_percent(s.memory.tokens_used, s.memory.token_budget);
-                segs.push(self.usage_bar("CTX:", pct));
+                segs.push(self.usage_number("CTX", pct));
             } else {
-                segs.push(self.unknown_bar("CTX:"));
+                segs.push(self.unknown_number("CTX"));
             }
         }
-        // #2756 leader decision 6862179411 item 1: the five-hour bar is not shown (the user
+        // #2756 leader decision 6862179411 item 1: the five-hour window is not shown (the user
         // did not choose it, 6858992949); the `usage_5h` option is still accepted. The
-        // weekly reset countdown (the picked decision of C-233) measures against the
+        // weekly reset countdown (the user's picked layout) measures against the
         // render's clock (REQ-6).
         if self.enabled("usage_7d") {
             if let Some(w) = s.seven_day {
-                let mut seg = self.usage_bar("Week:", w.used_percentage.unwrap_or(0.0) as i64);
+                let mut seg = match w.used_percentage {
+                    Some(pct) => self.usage_number("Week", pct as i64),
+                    None => self.unknown_number("Week"),
+                };
                 if let Some(resets) = w.resets_at {
                     seg.push(' ');
                     seg.push_str(
@@ -278,43 +271,25 @@ impl Renderer {
         segs.join(SEPARATOR)
     }
 
-    /// `renderUnknownBar`: an empty muted placeholder and `n/a`, never a percentage.
-    fn unknown_bar(&self, label: &str) -> String {
-        let blocks = "░".repeat(BAR_WIDTH as usize);
-        format!("{label} {} n/a", self.paint(self.theme.muted, &blocks))
+    /// A window whose numbers are unavailable: `<label> n/a` in the muted color with no
+    /// battery icon, never a guessed zero (REQ-9 of SPEC-20261121-statusline-detached).
+    fn unknown_number(&self, label: &str) -> String {
+        format!("{label} {}", self.unknown_text())
     }
 
-    /// `renderUsageBar`: battery icon, label, gradient bar, percentage.
-    fn usage_bar(&self, label: &str, pct: i64) -> String {
+    /// A window renders as a number with the battery icon — no graph, no trailing colon;
+    /// the icon switches at high use. The percentage is shown from 0 to 100 (REQ-10).
+    fn usage_number(&self, label: &str, pct: i64) -> String {
+        let pct = pct.clamp(0, 100);
         let icon = if pct > 70 { "🪫" } else { "🔋" };
-        format!("{icon} {label} {} {pct}%", self.gradient_bar(pct))
-    }
-
-    /// `buildGradientBar`: each filled cell gets its own color across the theme stops.
-    fn gradient_bar(&self, pct: i64) -> String {
-        let filled = (pct * BAR_WIDTH / 100).clamp(0, BAR_WIDTH);
-        let empty = "░".repeat((BAR_WIDTH - filled) as usize);
-        if self.profile.is_none() || filled == 0 {
-            return "█".repeat(filled as usize) + &empty;
-        }
-        let mut out = String::new();
-        for i in 0..filled {
-            let at = if filled > 1 {
-                i as f64 / (filled - 1) as f64
-            } else {
-                0.0
-            };
-            let (r, g, b) = interpolate(&self.theme.stops, at);
-            out.push_str(&self.paint(&format!("#{r:02X}{g:02X}{b:02X}"), "█"));
-        }
-        out + &empty
+        format!("{icon} {label} {pct}%")
     }
 
     fn git_line(&self, s: &Status) -> String {
         let mut segs = Vec::new();
         // SPEC-20261120-statusline-layout (user instruction 2026-11-20): line 2 opens with the
         // repository and its forge counts in one segment, then the branch; the card counts
-        // open line 3 ([`Renderer::bars_line`], the user's third instruction of 2026-11-20).
+        // open line 3 ([`Renderer::windows_line`], the user's third instruction of 2026-11-20).
         if let Some(g) = self
             .enabled("git_branch")
             .then(|| self.repo_groups(s))
@@ -350,8 +325,8 @@ impl Renderer {
         segs.join(SEPARATOR)
     }
 
-    /// Card C-65 (user instructions 2026-11-16 and 2026-11-17, card 85; order and icons by the
-    /// user's decision 2026-11-19; one space between the items and no slash, card C-137): it
+    /// The card counts (user instructions 2026-11-16 and 2026-11-17; order and icons by the
+    /// user's decision 2026-11-19; one space between the items and no slash): it
     /// opens line 3 since the user's third instruction of 2026-11-20
     /// (SPEC-20261120-statusline-layout, was: line 1, then line 2),
     /// `🗂️ <remaining> ▶️ <working> 🔃 <waiting for integration> ✅ <done>` from the project's
@@ -382,7 +357,7 @@ impl Renderer {
     /// repository and the branch slot; `None` without a git repository. Their order on the
     /// line is [`Renderer::git_line`]'s. SPEC-20261121-statusline-detached (the user-confirmed
     /// decision on card note 5373): a detached HEAD shows the short SHA in the branch slot
-    /// instead of hiding the whole line, and a slot whose lookup failed says `미확인` — never
+    /// instead of hiding the whole line, and a slot whose lookup failed says `n/a` — never
     /// a zero and never nothing.
     fn repo_groups(&self, s: &Status) -> Option<RepoGroups> {
         let git = s.git.as_ref()?;
@@ -433,8 +408,8 @@ impl Renderer {
         } else {
             Some(format!(
                 "{}{GIT_COUNTS_GAP}{}",
-                self.paint(self.theme.muted, "⬇️ 미확인"),
-                self.paint(self.theme.muted, "🔀 미확인")
+                self.paint(self.theme.muted, "⬇️ n/a"),
+                self.paint(self.theme.muted, "🔀 n/a")
             ))
         };
         let repo = self.paint(self.theme.repo, &repo_text);
@@ -451,9 +426,9 @@ impl Renderer {
         })
     }
 
-    /// `미확인` in the muted color: a slot whose lookup failed says so, in place of a zero.
+    /// `n/a` in the muted color: a slot whose lookup failed says so, in place of a zero.
     fn unknown_text(&self) -> String {
-        self.paint(self.theme.muted, "미확인")
+        self.paint(self.theme.muted, "n/a")
     }
 }
 
@@ -467,7 +442,7 @@ struct RepoGroups {
 /// User instruction 2026-11-19: `🌳 WT-c<card>-<name>` when a held reservation names the
 /// worktree, `🌳 WT-c<card>` when nothing says what the work is, else the worktree name the host
 /// gave, alone.
-/// `(resets in …)` from the seconds left (the user's picked layout, card C-233): a day or
+/// `(resets in …)` from the seconds left (the user's picked layout): a day or
 /// more counts days and hours, under a day hours and minutes, under an hour minutes only.
 fn reset_countdown(secs_left: i64) -> String {
     if secs_left >= 86_400 {
@@ -510,18 +485,6 @@ fn tag_text(s: &Status) -> String {
         Some(n) => format!("Agent-{n}"),
         None => "agent".to_string(),
     }
-}
-
-/// `interpolateGradientColor`: evenly spaced stops, round half away from zero.
-fn interpolate(stops: &[&str; 4], at: f64) -> (u8, u8, u8) {
-    let segments = (stops.len() - 1) as f64;
-    let pos = at.clamp(0.0, 1.0) * segments;
-    let i = (pos as usize).min(stops.len() - 2);
-    let f = pos - i as f64;
-    let (r0, g0, b0) = hex_rgb(stops[i]);
-    let (r1, g1, b1) = hex_rgb(stops[i + 1]);
-    let lerp = |a: u8, b: u8| (f64::from(a) + (f64::from(b) - f64::from(a)) * f).round() as u8;
-    (lerp(r0, r1), lerp(g0, g1), lerp(b0, b1))
 }
 
 /// `applyBaseColor`: every line opens with normal intensity and the base color, the base
@@ -596,7 +559,7 @@ mod tests {
     /// #2756 AC-1–AC-2 (user instructions 2026-11-13) and #2928 (user instruction 6878415244,
     /// 2026-11-14), reordered by the user instruction 2026-11-20: line 1 is the tag, the
     /// environment and the MoAI version, line 2 opens with the repository and its forge counts
-    /// and line 3 is the usage bars ending with the Claude Code version, each line joined by
+    /// and line 3 is the usage windows ending with the Claude Code version, each line joined by
     /// ` | `. The cache segment is not in the layout (D-1 of SPEC-20261120-statusline-layout).
     /// Under M-Flow the merges land locally first, so the ahead count shows before behind
     /// (SPEC-20261120-statusline-ahead).
@@ -606,7 +569,7 @@ mod tests {
             plain(&full_status(), &[]),
             "🏷️ agent | 🧠 Opus | 🤔 high·t | 🤖 v2.1.293 | 🗿 v2.0 -> 🗿 v3.0\n\
              📡 owner/repo, ⬇️ 7 🔀 3 | 🅱️ main ↑5 ↓2 +3\n\
-             🔋 CTX: █████░░░░░ 50% | 🪫 Week: ███████░░░ 75%"
+             🔋 CTX 50% | 🪫 Week 75%"
         );
     }
 
@@ -634,7 +597,7 @@ mod tests {
         assert_eq!(line, "📡 owner/repo, ⬇️ 7 🔀 3 | 🅱️ main ↑4 +2");
     }
 
-    /// The user's picked example (card C-233, 2026-11-20T21:5xZ): every segment present
+    /// The user's picked example (2026-11-20T21:5xZ): every segment present
     /// gives exactly these three lines in plain output. The cache data is in the input and,
     /// by D-1, shows nothing; the worktree label closes line 2; the weekly window carries
     /// its reset countdown measured from the render's clock.
@@ -694,7 +657,7 @@ mod tests {
             out,
             "🏷️ Leader | 🧠 Opus 5.5 | 🤔 high·t | 🤖 v2.1.325 | 🗿 v4.2647.10\n\
              📡 modu-ai/moai-adk, ⬇️ 0 🔀 0 | 🅱️ v2026.11.0 ↑207 +11 | 🌳 c135\n\
-             🗂️ 105 ▶️ 24 🔃 21 ✅ 76 | 🪫 CTX: █████████░ 97% | 🔋 Week: ██░░░░░░░░ 21% (resets in 6d 21h)"
+             🗂️ 105 ▶️ 24 🔃 21 ✅ 76 | 🪫 CTX 97% | 🔋 Week 21% (resets in 6d 21h)"
         );
     }
 
@@ -721,17 +684,14 @@ mod tests {
     }
 
     /// REQ-2 and REQ-3: a repository whose name or remote cannot be resolved and forge
-    /// counts that cannot be read say `미확인` — never a zero and never a hidden segment.
+    /// counts that cannot be read say `n/a` — never a zero and never a hidden segment.
     #[test]
     fn lookup_failures_show_unknown_not_zero() {
         let mut status = full_status();
         status.repo = None;
         status.github.available = false;
         let line = plain(&status, &[]).lines().nth(1).unwrap().to_string();
-        assert_eq!(
-            line, "📡 미확인, ⬇️ 미확인 🔀 미확인 | 🅱️ main ↑5 ↓2 +3",
-            "{line}"
-        );
+        assert_eq!(line, "📡 n/a, ⬇️ n/a 🔀 n/a | 🅱️ main ↑5 ↓2 +3", "{line}");
         assert!(
             !line.contains("⬇️ 0"),
             "a failed lookup is never zero: {line}"
@@ -803,11 +763,11 @@ mod tests {
         assert!(!enabled.contains('⏳'), "{enabled}");
     }
 
-    /// #2756 leader decision 6862179411 items 1–2: no five-hour bar (the user did not choose
+    /// #2756 leader decision 6862179411 items 1–2: no five-hour window (the user did not choose
     /// it) and no `💾` file-change segment, even with both in the input and their
     /// `usage_5h` / `git_status` options left enabled. The branch keeps its `+N` changes.
     #[test]
-    fn the_five_hour_bar_and_the_file_change_segment_are_never_shown() {
+    fn the_five_hour_window_and_the_file_change_segment_are_never_shown() {
         let status = full_status();
         assert!(
             status.five_hour.is_some() && status.git.is_some(),
@@ -829,28 +789,117 @@ mod tests {
     }
 
     #[test]
-    fn rate_windows_are_optional_but_present_windows_keep_zero_percent() {
+    fn rate_windows_are_optional_and_an_unknown_window_says_n_a() {
         let mut status = Status::default();
-        assert_eq!(plain(&status, &["session"]), "CTX: ░░░░░░░░░░ n/a");
+        assert_eq!(plain(&status, &["session"]), "CTX n/a");
         status.seven_day = Some(RateWindow::default());
-        assert_eq!(
-            plain(&status, &["session"]),
-            "CTX: ░░░░░░░░░░ n/a | 🔋 Week: ░░░░░░░░░░ 0%"
-        );
-        assert_eq!(
-            plain(&status, &["session", "context"]),
-            "🔋 Week: ░░░░░░░░░░ 0%"
-        );
-        assert_eq!(
-            plain(&status, &["session", "usage_7d"]),
-            "CTX: ░░░░░░░░░░ n/a"
+        assert_eq!(plain(&status, &["session"]), "CTX n/a | Week n/a");
+        assert_eq!(plain(&status, &["session", "context"]), "Week n/a");
+        assert_eq!(plain(&status, &["session", "usage_7d"]), "CTX n/a");
+        // A window that reports a real zero keeps it, with its icon.
+        status.seven_day = Some(RateWindow {
+            used_percentage: Some(0.0),
+            resets_at: None,
+        });
+        assert_eq!(plain(&status, &["session", "context"]), "🔋 Week 0%");
+    }
+
+    /// REQ-9: a window whose percentage is unavailable says `n/a` with no battery icon and never
+    /// `0%`; the reset countdown of an unknown week still follows it.
+    #[test]
+    fn an_unknown_window_says_n_a_without_a_battery_icon() {
+        let unknown_ctx = Status::default();
+        let line = plain(&unknown_ctx, &["session"]);
+        assert_eq!(line, "CTX n/a", "{line}");
+        assert!(!line.contains('🪫') && !line.contains('🔋'), "{line}");
+        let no_budget = Status {
+            memory: segments::Memory {
+                tokens_used: 5,
+                token_budget: 0,
+                context_window_size: 200_000,
+                available: true,
+            },
+            ..Status::default()
+        };
+        assert_eq!(plain(&no_budget, &["session"]), "CTX n/a");
+        let week = Status {
+            seven_day: Some(RateWindow {
+                used_percentage: None,
+                resets_at: None,
+            }),
+            ..Status::default()
+        };
+        let line = plain(&week, &["session", "context"]);
+        assert_eq!(line, "Week n/a", "{line}");
+        assert!(
+            !line.contains("0%") && !line.contains('🪫') && !line.contains('🔋'),
+            "{line}"
         );
     }
 
-    /// #2559 AC-1: the bar's thresholds pinned at N/N+1 — the battery icon turns at 70/71 and
-    /// a cell fills at each tenth (9/10). Plain output, so only the threshold decides.
+    /// REQ-10: a window's percentage is shown from 0 to 100 and no further, at the edges too.
     #[test]
-    fn bar_thresholds_hold_at_their_boundaries() {
+    fn window_percentages_stay_between_zero_and_one_hundred() {
+        let week = |pct: f64| {
+            let status = Status {
+                seven_day: Some(RateWindow {
+                    used_percentage: Some(pct),
+                    resets_at: None,
+                }),
+                ..Status::default()
+            };
+            plain(&status, &["context", "session"])
+        };
+        assert_eq!(week(-5.0), "🔋 Week 0%");
+        assert_eq!(week(0.0), "🔋 Week 0%");
+        assert_eq!(week(1.0), "🔋 Week 1%");
+        assert_eq!(week(99.0), "🪫 Week 99%");
+        assert_eq!(week(100.0), "🪫 Week 100%");
+        assert_eq!(week(101.0), "🪫 Week 100%");
+        assert_eq!(week(1_000_000.0), "🪫 Week 100%");
+        let ctx = |used: i64| {
+            let status = Status {
+                memory: segments::Memory {
+                    tokens_used: used,
+                    token_budget: 100,
+                    context_window_size: 200_000,
+                    available: true,
+                },
+                ..Status::default()
+            };
+            plain(&status, &["session", "usage_7d"])
+        };
+        assert_eq!(ctx(0), "🔋 CTX 0%");
+        assert_eq!(ctx(100), "🪫 CTX 100%");
+        assert_eq!(ctx(101), "🪫 CTX 100%");
+        assert_eq!(ctx(5_000), "🪫 CTX 100%");
+    }
+
+    /// REQ-11: the screen is English only — nothing a render prints holds a Hangul letter, with
+    /// the values known, unknown or failed to read, in plain and in colored output.
+    #[test]
+    fn no_line_of_the_screen_carries_korean_text() {
+        let is_hangul = |c: char| matches!(c, '\u{1100}'..='\u{11FF}' | '\u{3130}'..='\u{318F}' | '\u{AC00}'..='\u{D7A3}');
+        let mut failed = full_status();
+        failed.repo = None;
+        failed.github.available = false;
+        failed.seven_day = Some(RateWindow::default());
+        failed.memory.available = false;
+        let mut detached = full_status();
+        detached.git = Some(segments::parse_porcelain("## HEAD (no branch)\n"));
+        let screens = [Status::default(), full_status(), failed, detached];
+        for status in &screens {
+            let out = plain(status, &[]);
+            assert!(!out.chars().any(is_hangul), "plain: {out}");
+            let out = colored("mocha", Profile::TrueColor, status);
+            assert!(!out.chars().any(is_hangul), "colored: {out:?}");
+        }
+    }
+
+    /// #2559 AC-1: the window icon's thresholds pinned at N/N+1 — the battery icon turns at
+    /// 70/71. Plain output, so only the threshold decides.
+    #[test]
+    fn window_icon_thresholds_hold_at_their_boundaries() {
         let at = |pct: f64| {
             let status = Status {
                 seven_day: Some(RateWindow {
@@ -861,10 +910,10 @@ mod tests {
             };
             plain(&status, &["context", "session"])
         };
-        assert_eq!(at(70.0), "🔋 Week: ███████░░░ 70%");
-        assert_eq!(at(71.0), "🪫 Week: ███████░░░ 71%");
-        assert_eq!(at(9.0), "🔋 Week: ░░░░░░░░░░ 9%");
-        assert_eq!(at(10.0), "🔋 Week: █░░░░░░░░░ 10%");
+        assert_eq!(at(70.0), "🔋 Week 70%");
+        assert_eq!(at(71.0), "🪫 Week 71%");
+        assert_eq!(at(9.0), "🔋 Week 9%");
+        assert_eq!(at(10.0), "🔋 Week 10%");
     }
 
     /// The renderer never shortens for width and does not read `COLUMNS`; since #2928 the
@@ -878,46 +927,34 @@ mod tests {
             out.lines().next(),
             Some("🏷️ agent | 🧠 Opus | 🤔 high·t | 🤖 v2.1.293 | 🗿 v2.0 -> 🗿 v3.0")
         );
-        assert_eq!(
-            out.lines().nth(2),
-            Some("🔋 CTX: █████░░░░░ 50% | 🪫 Week: ███████░░░ 75%")
-        );
+        assert_eq!(out.lines().nth(2), Some("🔋 CTX 50% | 🪫 Week 75%"));
     }
 
     /// #2928 (user instruction 6878415244, 2026-11-14): line 1 is `🏷️ <tag> | 🧠 … | 🗿 …` and
     /// line 3 is `🔋 CTX … | 🪫 Week …` alone. The tag (`Leader`, `Agent-<n>` or `agent`, #2871) comes first; it
     /// is shown whenever the `session` segment is on, even with no stdin (decision Q2 = (가));
     /// with every other line-1 segment off it stands alone, and with `session` off line 1 is as
-    /// before. The bar icons and marks are unchanged.
+    /// before. The window icons and marks are unchanged.
     #[test]
     fn the_tag_is_the_first_segment_of_line_one() {
         let mut status = Status::default();
-        assert_eq!(plain(&status, &[]), "🏷️ agent\nCTX: ░░░░░░░░░░ n/a");
+        assert_eq!(plain(&status, &[]), "🏷️ agent\nCTX n/a");
         status.seven_day = Some(RateWindow::default());
-        assert_eq!(
-            plain(&status, &[]),
-            "🏷️ agent\nCTX: ░░░░░░░░░░ n/a | 🔋 Week: ░░░░░░░░░░ 0%"
-        );
+        assert_eq!(plain(&status, &[]), "🏷️ agent\nCTX n/a | Week n/a");
         status.leader = true;
-        assert_eq!(
-            plain(&status, &[]),
-            "🏷️ Leader\nCTX: ░░░░░░░░░░ n/a | 🔋 Week: ░░░░░░░░░░ 0%"
-        );
+        assert_eq!(plain(&status, &[]), "🏷️ Leader\nCTX n/a | Week n/a");
         assert_eq!(plain(&status, &["usage_7d", "context"]), "🏷️ Leader");
-        assert_eq!(
-            plain(&status, &["session"]),
-            "CTX: ░░░░░░░░░░ n/a | 🔋 Week: ░░░░░░░░░░ 0%"
-        );
+        assert_eq!(plain(&status, &["session"]), "CTX n/a | Week n/a");
         let mut full = full_status();
-        let bars = "🔋 CTX: █████░░░░░ 50% | 🪫 Week: ███████░░░ 75%";
+        let windows = "🔋 CTX 50% | 🪫 Week 75%";
         let env = "🧠 Opus | 🤔 high·t | 🤖 v2.1.293 | 🗿 v2.0 -> 🗿 v3.0";
         assert_eq!(
             plain(&full, &[]).lines().next(),
             Some(format!("🏷️ agent | {env}").as_str())
         );
-        assert_eq!(plain(&full, &[]).lines().nth(2), Some(bars));
+        assert_eq!(plain(&full, &[]).lines().nth(2), Some(windows));
         assert_eq!(plain(&full, &["session"]).lines().next(), Some(env));
-        assert_eq!(plain(&full, &["session"]).lines().nth(2), Some(bars));
+        assert_eq!(plain(&full, &["session"]).lines().nth(2), Some(windows));
         let line_one_off = [
             "model",
             "effort_thinking",
@@ -927,10 +964,10 @@ mod tests {
         ];
         let only_tag = plain(&full, &line_one_off);
         assert_eq!(only_tag.lines().next(), Some("🏷️ agent"), "{only_tag}");
-        // `claude_version` is off in this list, so line 3 ends with the bars.
+        // `claude_version` is off in this list, so line 3 ends with the windows.
         assert_eq!(
             only_tag.lines().nth(2),
-            Some("🔋 CTX: █████░░░░░ 50% | 🪫 Week: ███████░░░ 75%"),
+            Some("🔋 CTX 50% | 🪫 Week 75%"),
             "{only_tag}"
         );
         full.leader = true;
@@ -938,13 +975,13 @@ mod tests {
             plain(&full, &[]).lines().next(),
             Some(format!("🏷️ Leader | {env}").as_str())
         );
-        assert_eq!(plain(&full, &[]).lines().nth(2), Some(bars));
+        assert_eq!(plain(&full, &[]).lines().nth(2), Some(windows));
         let colored = strip_sgr(&colored("mocha", Profile::TrueColor, &full));
         assert!(
             colored.lines().next().unwrap().starts_with("🏷️ Leader | "),
             "{colored:?}"
         );
-        assert_eq!(colored.lines().nth(2), Some(bars), "{colored:?}");
+        assert_eq!(colored.lines().nth(2), Some(windows), "{colored:?}");
     }
 
     /// #2871 (leader decision 6907570513, replacing #2928's "never print the name"): the tag is
@@ -1057,7 +1094,7 @@ mod tests {
         assert_eq!(
             want_plain,
             "📡 owner/repo, ⬇️ 7 🔀 3 | 🅱️ main ↑5 ↓2 +3\n\
-             🔋 CTX: █████░░░░░ 50% | 🪫 Week: ███████░░░ 75%"
+             🔋 CTX 50% | 🪫 Week 75%"
         );
         let base_colored = colored("mocha", Profile::TrueColor, &base);
         let want_colored = tail(&base_colored);
@@ -1103,11 +1140,11 @@ mod tests {
         assert!(with_zero.contains("📡 owner/repo, ⬇️ 0 🔀 0 | 🅱️ main ↑5 ↓2 +3"));
         // #2559: icons, not the old letter labels.
         assert!(!with_zero.contains("I: ") && !with_zero.contains("PR: "));
-        // A failed query says `미확인`, never a zero and never a hidden segment (REQ-3).
+        // A failed query says `n/a`, never a zero and never a hidden segment (REQ-3).
         status.github.available = false;
         let unknown = plain(&status, &[]);
         assert!(
-            unknown.contains("📡 owner/repo, ⬇️ 미확인 🔀 미확인 | 🅱️ main ↑5 ↓2 +3"),
+            unknown.contains("📡 owner/repo, ⬇️ n/a 🔀 n/a | 🅱️ main ↑5 ↓2 +3"),
             "{unknown}"
         );
         assert!(!unknown.contains("⬇️ 0"), "{unknown}");
@@ -1125,14 +1162,14 @@ mod tests {
         assert!(!plain(&status, &["git_status"]).contains("💾"));
         // The repository name unknown: the slot says so, the line stays (REQ-2).
         status.repo = None;
-        assert!(plain(&status, &[]).contains("📡 미확인, ⬇️ 0 🔀 0"));
+        assert!(plain(&status, &[]).contains("📡 n/a, ⬇️ 0 🔀 0"));
     }
 
-    /// Card C-65 (user instructions 2026-11-16 and 2026-11-17, card 85), moved to line 3 by the
+    /// The card counts (user instructions 2026-11-16 and 2026-11-17), moved to line 3 by the
     /// user's third instruction of 2026-11-20: `🗂️ remaining ▶️ in progress ✅ done` opens
-    /// line 3 before the usage bars; zero is shown, and absent counts leave line 3 as it was.
+    /// line 3 before the usage windows; zero is shown, and absent counts leave line 3 as it was.
     #[test]
-    fn the_card_counts_open_line_three_before_the_usage_bars() {
+    fn the_card_counts_open_line_three_before_the_usage_windows() {
         // The last line: line 3 in the full render, and the same line one up when the git
         // line is gone.
         let line3 = |s: &Status, off: &[&str]| plain(s, off).lines().last().unwrap().to_string();
@@ -1140,8 +1177,8 @@ mod tests {
         let without = plain(&status, &[]);
         assert_eq!(
             line3(&status, &[]),
-            "🔋 CTX: █████░░░░░ 50% | 🪫 Week: ███████░░░ 75%",
-            "no counts: the bars alone"
+            "🔋 CTX 50% | 🪫 Week 75%",
+            "no counts: the windows alone"
         );
         status.cards = Some(CardCounts {
             in_progress: 5,
@@ -1151,7 +1188,7 @@ mod tests {
         });
         assert_eq!(
             line3(&status, &[]),
-            "🗂️ 50 ▶️ 5 ✅ 12 | 🔋 CTX: █████░░░░░ 50% | 🪫 Week: ███████░░░ 75%"
+            "🗂️ 50 ▶️ 5 ✅ 12 | 🔋 CTX 50% | 🪫 Week 75%"
         );
         // Lines 1 and 2 do not change.
         let with = plain(&status, &[]);
@@ -1176,7 +1213,7 @@ mod tests {
         status.cards = Some(CardCounts::default());
         assert_eq!(
             line3(&status, &[]),
-            "🗂️ 0 ▶️ 0 ✅ 0 | 🔋 CTX: █████░░░░░ 50% | 🪫 Week: ███████░░░ 75%"
+            "🗂️ 0 ▶️ 0 ✅ 0 | 🔋 CTX 50% | 🪫 Week 75%"
         );
     }
 
@@ -1225,13 +1262,13 @@ mod tests {
         // between the working and the done number.
         assert_eq!(
             plain(&status, &[]).lines().nth(2).unwrap(),
-            "🗂️ 50 ▶️ 5 🔃 15 ✅ 65 | 🔋 CTX: █████░░░░░ 50% | 🪫 Week: ███████░░░ 75%"
+            "🗂️ 50 ▶️ 5 🔃 15 ✅ 65 | 🔋 CTX 50% | 🪫 Week 75%"
         );
         // Notes unreadable: the same place, three items.
         status.cards.as_mut().unwrap().waiting = None;
         assert_eq!(
             plain(&status, &[]).lines().nth(2).unwrap(),
-            "🗂️ 50 ▶️ 5 ✅ 65 | 🔋 CTX: █████░░░░░ 50% | 🪫 Week: ███████░░░ 75%"
+            "🗂️ 50 ▶️ 5 ✅ 65 | 🔋 CTX 50% | 🪫 Week 75%"
         );
         status.cards.as_mut().unwrap().waiting = Some(15);
         // Without the forge counts the repository name stands alone, with no comma.
@@ -1242,7 +1279,7 @@ mod tests {
         // The `cards` switch hides the group and nothing else.
         assert_eq!(
             plain(&status, &["cards"]).lines().nth(2).unwrap(),
-            "🔋 CTX: █████░░░░░ 50% | 🪫 Week: ███████░░░ 75%"
+            "🔋 CTX 50% | 🪫 Week 75%"
         );
         // The pull request keeps the last place of line 2.
         assert_eq!(
@@ -1251,7 +1288,7 @@ mod tests {
         );
     }
 
-    /// Card C-65: the counts come from the local ledger, not from the repository, so they are
+    /// The counts come from the local ledger, not from the repository, so they are
     /// shown without a repository name, without a branch and with `git_branch` off.
     /// A known waiting count gives the four-number form with `🔃` between the working and the
     /// done number; `None` (notes unreadable) gives the three-number form without it, and
@@ -1273,7 +1310,7 @@ mod tests {
         // and the worktree label stands alone on line 2 (it closes line 2 now — REQ-4).
         assert_eq!(
             line3(&status, &["git_branch"]),
-            "🗂️ 50 ▶️ 2 🔃 26 ✅ 12 | 🔋 CTX: █████░░░░░ 50% | 🪫 Week: ███████░░░ 75%"
+            "🗂️ 50 ▶️ 2 🔃 26 ✅ 12 | 🔋 CTX 50% | 🪫 Week 75%"
         );
         assert_eq!(
             plain(&status, &["git_branch"]).lines().nth(1).unwrap(),
@@ -1288,7 +1325,7 @@ mod tests {
         });
         assert_eq!(
             line3(&status, &["git_branch"]),
-            "🗂️ 50 ▶️ 28 ✅ 12 | 🔋 CTX: █████░░░░░ 50% | 🪫 Week: ███████░░░ 75%"
+            "🗂️ 50 ▶️ 28 ✅ 12 | 🔋 CTX 50% | 🪫 Week 75%"
         );
     }
 
@@ -1305,34 +1342,34 @@ mod tests {
             done: 3,
         });
         status.worktree = "wt".into();
-        let bars = "🔋 CTX: █████░░░░░ 50% | 🪫 Week: ███████░░░ 75%";
+        let windows = "🔋 CTX 50% | 🪫 Week 75%";
         // With `git_branch` off the repository slot is gone and the worktree label stands
         // alone on line 2 (REQ-4); the counts still open line 3.
         status.repo = None;
         assert_eq!(
             line3(&status, &["git_branch"]),
-            format!("🗂️ 2 ▶️ 1 ✅ 3 | {bars}")
+            format!("🗂️ 2 ▶️ 1 ✅ 3 | {windows}")
         );
         assert_eq!(
             plain(&status, &["git_branch"]).lines().nth(1).unwrap(),
             "🌳 wt"
         );
-        // The full render: an unresolved repository says `미확인` and keeps its line (REQ-2),
+        // The full render: an unresolved repository says `n/a` and keeps its line (REQ-2),
         // the worktree label closes line 2, the counts open line 3.
         let out = plain(&status, &[]);
         assert_eq!(out.lines().count(), 3, "{out}");
         assert_eq!(
             out.lines().nth(1).unwrap(),
-            "📡 미확인, ⬇️ 7 🔀 3 | 🅱️ main ↑5 ↓2 +3 | 🌳 wt"
+            "📡 n/a, ⬇️ 7 🔀 3 | 🅱️ main ↑5 ↓2 +3 | 🌳 wt"
         );
         assert_eq!(
             out.lines().nth(2).unwrap(),
-            format!("🗂️ 2 ▶️ 1 ✅ 3 | {bars}")
+            format!("🗂️ 2 ▶️ 1 ✅ 3 | {windows}")
         );
         status.git = None;
         assert_eq!(
             line3(&status, &["git_branch"]),
-            format!("🗂️ 2 ▶️ 1 ✅ 3 | {bars}")
+            format!("🗂️ 2 ▶️ 1 ✅ 3 | {windows}")
         );
         assert_eq!(
             plain(&status, &["git_branch"]).lines().nth(1).unwrap(),
@@ -1344,11 +1381,11 @@ mod tests {
         assert_eq!(out.lines().count(), 2, "{out}");
         assert_eq!(
             out.lines().nth(1).unwrap(),
-            format!("🗂️ 2 ▶️ 1 ✅ 3 | {bars}")
+            format!("🗂️ 2 ▶️ 1 ✅ 3 | {windows}")
         );
     }
 
-    /// Card C-65: color is never the only signal. Each number keeps its icon, the three parts
+    /// Color is never the only signal. Each number keeps its icon, the three parts
     /// take three colors of their own, and the text is the plain text once the escapes are
     /// removed.
     #[test]
@@ -1429,7 +1466,7 @@ mod tests {
 
     /// The user's third instruction of 2026-11-20: the worktree closes line 3, as
     /// `🌳 WT-c<card>-<name>`, as `🌳 WT-c<card>` when the label has no name, and as the
-    /// host's name alone without a label; the bars before it are unchanged and `worktree`
+    /// host's name alone without a label; the windows before it are unchanged and `worktree`
     /// off removes it.
     #[test]
     fn the_worktree_label_closes_line_2_in_three_shapes() {
@@ -1482,9 +1519,10 @@ mod tests {
             lines[1],
             "📡 owner/repo, ⬇️ 7 🔀 3 | 🅱️ main ↑5 ↓2 +3 | 🔗 #42 pending | 🌳 wt"
         );
-        // The card counts would open line 3 (none here) and the bars follow; the worktree
-        // label closed this line before the picked layout moved it to line 2 (REQ-4).
-        assert!(lines[2].starts_with("🔋 CTX:"), "{}", lines[2]);
+        // The card counts would open line 3 (none here) and the windows follow as numbers;
+        // the worktree label closed this line before the picked layout moved it to line 2
+        // (REQ-4).
+        assert!(lines[2].starts_with("🔋 CTX 50%"), "{}", lines[2]);
         assert!(lines[2].ends_with("75%"), "{}", lines[2]);
         assert!(
             !out.contains('\x1b'),
@@ -1566,9 +1604,9 @@ mod tests {
         assert_eq!(plain(&full_status(), &disabled), "MoAI");
         let output = plain(&full_status(), &["session", "usage_5h", "usage_7d"]);
         assert_eq!(output.lines().count(), 3);
-        // The Claude Code version keeps line 3 non-empty without the bars.
-        assert_eq!(output.lines().nth(2), Some("🔋 CTX: █████░░░░░ 50%"));
-        // #2756: with the repository line hidden, the bars line moves up to second.
+        // The Claude Code version keeps line 3 non-empty without the windows.
+        assert_eq!(output.lines().nth(2), Some("🔋 CTX 50%"));
+        // #2756: with the repository line hidden, the windows line moves up to second.
         let output = plain(&full_status(), &["git_branch", "git_status"]);
         assert_eq!(output.lines().count(), 2);
         assert!(
@@ -1576,7 +1614,7 @@ mod tests {
             "{output}"
         );
         assert!(
-            output.lines().nth(1).unwrap().starts_with("🔋 CTX: "),
+            output.lines().nth(1).unwrap().starts_with("🔋 CTX "),
             "{output}"
         );
     }
@@ -1594,24 +1632,16 @@ mod tests {
             ..Default::default()
         };
         let off = ["session"];
-        // REQ-7: the `(⚠️ /clear)` and `(🛑/clear!)` hints are gone at every band — the bar
+        // REQ-7: the `(⚠️ /clear)` and `(🛑/clear!)` hints are gone at every band — the window
         // and the percentage stay exactly as they were.
-        assert_eq!(plain(&status, &off), "🪫 CTX: ██████████ 100%");
-        assert_eq!(plain(&status, &[]), "🏷️ agent\n🪫 CTX: ██████████ 100%");
+        assert_eq!(plain(&status, &off), "🪫 CTX 100%");
+        assert_eq!(plain(&status, &[]), "🏷️ agent\n🪫 CTX 100%");
         status.memory.tokens_used = 190_000;
-        assert_eq!(plain(&status, &off), "🪫 CTX: ██████████ 100%");
+        assert_eq!(plain(&status, &off), "🪫 CTX 100%");
         status.goal_armed = true;
-        assert_eq!(plain(&status, &off), "🪫 CTX: ██████████ 100%");
+        assert_eq!(plain(&status, &off), "🪫 CTX 100%");
         assert_eq!(plain(&status, &["context", "session"]), "MoAI");
         assert_eq!(plain(&status, &["context"]), "🏷️ agent");
-    }
-
-    #[test]
-    fn gradient_interpolates_like_go() {
-        assert_eq!(interpolate(&MOCHA.stops, 0.0), (166, 227, 161));
-        assert_eq!(interpolate(&MOCHA.stops, 0.5), (250, 203, 155));
-        assert_eq!(interpolate(&MOCHA.stops, 1.0 / 9.0), (194, 227, 166));
-        assert_eq!(interpolate(&MOCHA.stops, 1.0), (243, 139, 168));
     }
 
     #[test]
@@ -1643,10 +1673,9 @@ mod tests {
         out
     }
 
-    fn segment_colors(t: &Theme) -> [&'static str; 10] {
+    fn segment_colors(t: &Theme) -> [&'static str; 8] {
         [
-            t.model, t.effort, t.cache, t.version, t.repo, t.issues, t.prs, t.branch, t.warn,
-            t.alert,
+            t.model, t.effort, t.cache, t.version, t.repo, t.issues, t.prs, t.branch,
         ]
     }
 

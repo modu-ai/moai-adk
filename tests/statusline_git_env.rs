@@ -95,11 +95,11 @@ fn an_inherited_git_dir_cannot_change_the_rendered_branch_or_counts() {
     // #2756: the repository line is the second of the three lines, not the last. A clean
     // branch has no `+N` (the other repository's three changes would show as `+3`); there is
     // no `💾` segment (leader decision 6862179411). The fixture has no remote and no forge
-    // cache, so the repository and the counts say `미확인`
+    // cache, so the repository and the counts say `n/a`
     // (SPEC-20261121-statusline-detached REQ-2, REQ-3) — the line stays, never a zero.
     let repository_line = clean.lines().find(|l| l.contains("🅱️")).unwrap();
     assert_eq!(
-        repository_line, "📡 미확인, ⬇️ 미확인 🔀 미확인 | 🅱️ main",
+        repository_line, "📡 n/a, ⬇️ n/a 🔀 n/a | 🅱️ main",
         "{clean}"
     );
     assert!(!clean.contains("📁"), "{clean}");
@@ -138,11 +138,11 @@ fn an_expired_render_budget_drops_the_git_segment() {
 
     let within = render(&home, &project, &[], WITHIN);
     // #2756: the repository line sits between the environment and usage lines; the
-    // fixture's missing remote and forge cache render as `미확인` slots
+    // fixture's missing remote and forge cache render as `n/a` slots
     // (SPEC-20261121-statusline-detached REQ-2, REQ-3).
     assert_eq!(
         within.lines().nth(1),
-        Some("📡 미확인, ⬇️ 미확인 🔀 미확인 | 🅱️ main"),
+        Some("📡 n/a, ⬇️ n/a 🔀 n/a | 🅱️ main"),
         "{within}"
     );
     for _ in 0..5 {
