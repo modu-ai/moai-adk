@@ -428,10 +428,32 @@ pub fn release(
     let (id, mut ledger) = open_for_write(project, home)?;
     let out = reservation::release(&mut ledger, card_id, holder, generation)
         .map_err(|e| e.to_string())?;
-    Ok(json!({
+    let mut answer = json!({
         "action": "release", "project_id": id, "reservation": reservation_json(&out.reservation),
         "state": out.card_state, "writes": true,
-    }))
+    });
+    // A card whose landing is recorded is not plain work again: say so and name the way to close
+    // it. The ledger is the only source (no git command), and nothing else of the answer changes.
+    if has_recorded_landing(ledger.conn(), card_id).map_err(|e| e.to_string())? {
+        answer["landed"] = json!(true);
+        answer["next_step"] = json!(format!(
+            "{name} already landed: close it with `card finish {name} --by <you>` instead of working it again",
+            name = input::card_name(card_id)
+        ));
+    }
+    Ok(answer)
+}
+
+/// Whether the ledger records a landing of the card: a `card.landed` event or a merged pull
+/// request link.
+fn has_recorded_landing(conn: &rusqlite::Connection, card_id: i64) -> rusqlite::Result<bool> {
+    conn.query_row(
+        "SELECT EXISTS(SELECT 1 FROM event WHERE card_id = ?1 AND kind = 'card.landed') \
+         OR EXISTS(SELECT 1 FROM card_link WHERE from_card = ?1 AND kind = 'pr' \
+                   AND state = 'active' AND pr_state = 'merged')",
+        [card_id],
+        |r| r.get(0),
+    )
 }
 
 /// `card handoff C-n`: the holder's reservation ends and `to` gets the next generation. The
