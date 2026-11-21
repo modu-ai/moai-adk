@@ -371,7 +371,7 @@ fn gh_merges(args: &[String]) -> bool {
 /// The option letters of every short-option cluster (`-vf` → v, f) up to `--`. A letter in
 /// `value_opts` takes the rest of its cluster, or the next word when it ends the cluster, as
 /// its value (pre-audit H5-B3: git aggregates short options).
-fn short_letters(rest: &[String], value_opts: &[char]) -> Vec<char> {
+pub(crate) fn short_letters(rest: &[String], value_opts: &[char]) -> Vec<char> {
     let mut out = Vec::new();
     let mut skip_next = false;
     for a in rest {
@@ -585,7 +585,7 @@ pub(crate) fn push_force_option(arg: &str) -> bool {
 
 /// The words that are not options or option values: for `git push`, the remote then the
 /// refspecs. `-o` and the long options below take the next word as their value.
-fn push_positionals(rest: &[String]) -> Vec<&String> {
+pub(crate) fn push_positionals(rest: &[String]) -> Vec<&String> {
     const LONG_VALUE: &[&str] = &["push-option", "repo", "receive-pack", "exec"];
     let mut out = Vec::new();
     let mut skip_next = false;
@@ -611,7 +611,7 @@ fn push_positionals(rest: &[String]) -> Vec<&String> {
     out
 }
 
-fn branch_of_refspec(spec: &str) -> &str {
+pub(crate) fn branch_of_refspec(spec: &str) -> &str {
     let spec = spec.trim_start_matches('+');
     let dst = spec.rsplit(':').next().unwrap_or(spec);
     dst.strip_prefix("refs/heads/").unwrap_or(dst)
@@ -1119,7 +1119,7 @@ const SPEC_TWO_IDS: &str = "MoAI tool-preflight: this SPEC work branch name read
 /// The branch HEAD names in the work tree at `top`, read from the file system: `.git` is the
 /// git folder, or a file `gitdir: <folder>` for a linked worktree. `None` when detached or
 /// unreadable.
-fn work_tree_branch(top: &Path) -> Option<String> {
+pub(crate) fn work_tree_branch(top: &Path) -> Option<String> {
     let dir = git_folder(top)?;
     let head = read_regular(&dir.join("HEAD"), GIT_SMALL_FILE_LIMIT)?;
     head.trim()

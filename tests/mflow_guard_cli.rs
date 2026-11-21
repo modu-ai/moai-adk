@@ -231,29 +231,50 @@ fn the_script_is_pinned_byte_identical() {
 #[test]
 fn the_guard_refuses_the_listed_commands_on_the_integration_branch() {
     let branch = "v2026.11.0";
-    for cmd in [
-        "git reset --hard v2026.11.0",
-        "git reset --keep v2026.11.0",
-        "git push --force origin v2026.11.0",
-        "git push --force-with-lease origin v2026.11.0",
-        "git branch -f v2026.11.0 main",
-        "git branch -D v2026.11.0",
+    let here = Some(branch);
+    // The incident shape and the audit B2 bypasses: with the integration branch checked out,
+    // any reset --hard refuses whatever the target is; -C and cd do not hide it.
+    for (cmd, cwd) in [
+        ("git reset --hard 0989b3fc58", here),
+        ("git reset --hard HEAD~1", here),
+        ("git reset --hard v2026.11.0", here),
+        ("git reset --keep v2026.11.0", here),
+        ("git -C /repo reset --hard 0989b3fc58", None),
+        ("cd /repo && git reset --hard 0989b3fc58", None),
+        ("/usr/bin/git push --force origin v2026.11.0", here),
+        ("git push --force-with-lease=v2026.11.0:x origin v2026.11.0", here),
+        ("git push origin +v2026.11.0", here),
+        ("git branch -f v2026.11.0 main", here),
+        ("git branch -M other v2026.11.0", here),
+        ("git branch -D v2026.11.0", here),
     ] {
-        assert!(guard_rule(cmd, branch).is_some(), "{cmd} is refused");
+        assert!(
+            guard_rule(cmd, branch, cwd).is_some(),
+            "{cmd} is refused (cwd {cwd:?})"
+        );
     }
 }
 
 #[test]
 fn the_guard_leaves_other_branches_and_commands_alone() {
     let branch = "v2026.11.0";
-    for cmd in [
-        "git reset --hard main",
-        "git push origin v2026.11.0",
-        "git branch -f other main",
-        "git status",
-        "git merge --no-ff side",
-        "git checkout -B v2026.11.0-origin-base",
+    let main = Some("main");
+    let none: Option<&str> = None;
+    for (cmd, cwd) in [
+        // The same reset shapes, run on a checkout of another branch.
+        ("git reset --hard main", main),
+        ("git reset --hard 0989b3fc58", main),
+        ("git reset --keep v2026.11.0", main),
+        ("git push origin v2026.11.0", none),
+        ("git branch -f other main", none),
+        ("git status", none),
+        ("git merge --no-ff side", none),
+        ("git checkout -B v2026.11.0-origin-base", none),
+        // Substring neighbours of the branch name do not trip the word matching.
+        ("git maintenance run", none),
+        ("git reset --hard origin/main", main),
+        ("git log --oneline domain/", none),
     ] {
-        assert_eq!(guard_rule(cmd, branch), None, "{cmd} is not refused");
+        assert_eq!(guard_rule(cmd, branch, cwd), None, "{cmd} is not refused");
     }
 }
