@@ -5,6 +5,7 @@
 
 #![cfg(unix)]
 
+mod clock_wait;
 mod common;
 use common::pty::{output_within, Terminal, END_OF_INPUT};
 use common::CleanEnv;
@@ -16,7 +17,6 @@ use std::{
     io::Write as _,
     path::{Path, PathBuf},
     process::{Command, Output},
-    thread::sleep,
     time::Duration,
 };
 use tempfile::TempDir;
@@ -144,7 +144,7 @@ fn preview(exe: &Path, home: &Path) -> Value {
 fn confirm(exe: &Path, home: &Path, digest: &str) -> Value {
     let r = ok(&run(exe, home, &["update", "--confirm", digest]));
     assert_eq!(r["mode"], json!("applied"), "{r}");
-    sleep(Duration::from_millis(1100)); // receipts carry second-resolution timestamps
+    clock_wait::wait_for_next_second(); // receipts carry second-resolution timestamps
     r
 }
 

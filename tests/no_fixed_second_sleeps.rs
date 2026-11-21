@@ -14,12 +14,16 @@ use std::{
 };
 
 /// The test files whose fixed 1100 ms sleep became a wait on the clock.
-const WAITING_FILES: [(&str, &str); 4] = [
+const WAITING_FILES: [(&str, &str); 5] = [
     (
         "go_state_classes_cli.rs",
         include_str!("go_state_classes_cli.rs"),
     ),
     ("index_cli.rs", include_str!("index_cli.rs")),
+    (
+        "update_command_cli.rs",
+        include_str!("update_command_cli.rs"),
+    ),
     (
         "update_moved_receipts.rs",
         include_str!("update_moved_receipts.rs"),
