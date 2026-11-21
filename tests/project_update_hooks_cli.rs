@@ -89,8 +89,10 @@ fn the_install_phase_lists_hooks_after_the_claude_settings() {
 /// SPEC-20261119-hooks-followups AC-1 (N1, leader decision B): a profile that lists `claude` and
 /// a project with no hooks at all (no settings file, no record, no move) keeps the step
 /// `unchanged` with no command (the rule of the settings-move receipt stays), but its reason
-/// names the gap and the command to run by hand, and `preview.configured` reads as `hooks-status`
-/// does. Before, the step said only "no Go-generation hooks are left".
+/// names the gap without telling the user to run `moai hooks-plan` and `moai hooks-apply` by hand
+/// (SPEC-20261121-update-installs-hooks REQ-10: the home `moai update` offers the set), and
+/// `preview.configured` reads as `hooks-status` does. Before, the step said only "no
+/// Go-generation hooks are left".
 #[test]
 fn a_project_with_nothing_yet_names_the_gap_and_prints_no_command() {
     let fx = GoFx::new();
@@ -106,8 +108,9 @@ fn a_project_with_nothing_yet_names_the_gap_and_prints_no_command() {
     let reason = step["reason"].as_str().unwrap();
     assert!(reason.contains("no MoAI hook set is installed"), "{step}");
     assert!(reason.contains("hooks-plan reads update"), "{step}");
-    assert!(reason.contains("moai hooks-apply"), "{step}");
-    assert!(reason.contains("--host claude"), "{step}");
+    assert!(!reason.contains("moai hooks-plan"), "{step}");
+    assert!(!reason.contains("moai hooks-apply"), "{step}");
+    assert!(!reason.contains("--host claude"), "{step}");
     assert_eq!(
         step["preview"]["configured"], own["hook_status"]["configured"],
         "{step}"
@@ -598,9 +601,8 @@ fn a_file_without_hooks_and_without_a_record_says_drifted_like_the_status() {
     assert_eq!(step["preview"]["configured"], "drifted", "{step}");
     let reason = step["reason"].as_str().unwrap();
     assert!(reason.contains("hooks-plan reads update"), "{step}");
-    // SPEC-20261121-update-installs-hooks REQ-10: the reason tells the user where the set is
-    // offered, never to run the two commands by hand.
-    assert!(reason.contains("home update"), "{step}");
+    // SPEC-20261121-update-installs-hooks REQ-10: the reason never tells the user to run the two
+    // commands by hand.
     assert!(!reason.contains("moai hooks-plan"), "{step}");
     assert!(!reason.contains("moai hooks-apply"), "{step}");
     assert!(!reason.contains("is current"), "{step}");

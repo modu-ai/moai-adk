@@ -58,17 +58,17 @@ created: 2026-11-21
 
 ## Scope
 
-- write: `.moai/specs/SPEC-20261121-update-installs-hooks/**`, `src/update_hooks.rs` (the plan loop), `src/project_update.rs` (the one reason sentence), `src/update_tux.rs` and `tests/fixtures/update_tux/**` and `tests/update_tux_golden.rs` (the screen rows and goldens that show the hook layer), `tests/update_installs_hooks_cli.rs` (new), `tests/update_hooks_cli.rs` (the test that pins the old skip reason), `tests/project_update_hooks_cli.rs` (the test that pins the sentence)
+- write: `.moai/specs/SPEC-20261121-update-installs-hooks/**`, `src/update_hooks.rs` (the plan loop), `src/update_tux.rs` and `tests/fixtures/update_tux/**` and `tests/update_tux_golden.rs` (the screen rows and goldens that show the hook layer), `tests/update_installs_hooks_cli.rs` (new), `tests/update_hooks_cli.rs` (the test that pins the old skip reason), `tests/project_update_hooks_cli.rs` (the test that pins the sentence)
 - read-only: every other file, the real HOME
 - tier 1: an independent audit of the exact head
-- depends on: the files `src/update_hooks.rs`, `src/project_update.rs` and `tests/update_hooks_cli.rs` are held by other changes at the time of writing; this change takes them after they land
+- depends on: the files `src/update_hooks.rs` and `tests/update_hooks_cli.rs` are held by other changes at the time of writing; this change takes them after they land. The reason sentence in `src/project_update.rs` is removed by the pair line that the codex-statusline change carries (head dc5d9cad56); the two heads land in one chain, and `tests/project_update_hooks_cli.rs` here pins the result
 
 ## Plan
 
 1. SPEC first (this file).
 2. RED: the new test file for the first install, and the edits to the two tests that pin the old words.
 3. `update_hooks::plan_in`: a host that is not installed is planned as a first install with the same host plan, gate, conflict handling, digest, receipt and revert; the profile hosts decide the offer.
-4. `project_update`: the reason sentence without the two commands.
+4. `project_update`: the reason sentence without the two commands, carried by the pair line of the codex-statusline change; this change only pins it in `tests/project_update_hooks_cli.rs`.
 5. Screen rows and goldens for the new `create` rows.
 6. The unnarrowed `check affected` set, then an independent audit (tier 1).
 
