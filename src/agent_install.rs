@@ -530,7 +530,8 @@ pub fn apply_for(
             written.push(format!("{}:{}", host.host, file.file));
         }
         if file.legacy.as_deref() == Some("remove") {
-            let flat_dir = legacy_dir(&home, &host.host)?.ok_or("no earlier folder for the host")?;
+            let flat_dir =
+                legacy_dir(&home, &host.host)?.ok_or("no earlier folder for the host")?;
             let flat = flat_dir.join(&file.file);
             let bytes = current_file(&flat)?;
             if bytes.as_deref().map(sha) != file.legacy_sha256 {
@@ -634,9 +635,8 @@ pub fn revert_in(
             skipped.push(serde_json::json!({"host": e.host, "file": e.file, "reason": format!("agent_folder_not_plain: {reason}")}));
             continue;
         }
-        let moved = |n: &ReceiptEntry| {
-            n.action == "remove_legacy" && n.host == e.host && n.file == e.file
-        };
+        let moved =
+            |n: &ReceiptEntry| n.action == "remove_legacy" && n.host == e.host && n.file == e.file;
         if e.action == "remove_legacy" {
             // The flat file goes back only when the nested copy of the same apply is going
             // away too (unchanged since); a changed nested copy stays, with the flat file

@@ -180,7 +180,7 @@ fn state(home: &Path) -> Vec<(PathBuf, Vec<u8>)> {
 
 fn agents_dir(home: &Path, host: &str) -> PathBuf {
     match host {
-        "claude" => home.join(".claude/agents"),
+        "claude" => home.join(".claude/agents/moai"),
         "codex" => home.join(".codex/agents"),
         _ => home.join(".omp/agent/agents"),
     }

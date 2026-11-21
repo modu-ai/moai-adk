@@ -85,11 +85,14 @@ impl Fx {
             PERMISSION,
         ])
     }
+    /// Claude Code keeps the base agents in `agents/moai/`
+    /// (SPEC-20261121-base-agents-user-folder); the other hosts stay in `agents/`.
     fn agent(&self, host_dir: &str, file: &str) -> std::path::PathBuf {
-        Path::new(&self.home)
-            .join(host_dir)
-            .join("agents")
-            .join(file)
+        let mut dir = Path::new(&self.home).join(host_dir).join("agents");
+        if host_dir == ".claude" {
+            dir.push("moai");
+        }
+        dir.join(file)
     }
 }
 
@@ -281,7 +284,7 @@ fn a_symlink_anywhere_above_the_omp_agent_folder_blocks_only_omp() {
 fn revert_undoes_only_unchanged_files_and_stale_plans_are_refused() {
     let fx = fx();
     let plan = fx.plan();
-    fs::create_dir_all(Path::new(&fx.home).join(".claude/agents")).unwrap();
+    fs::create_dir_all(Path::new(&fx.home).join(".claude/agents/moai")).unwrap();
     fs::write(
         fx.agent(".claude", "moai-docs.md"),
         "appeared after the plan\n",
@@ -362,7 +365,7 @@ fn revert_never_writes_through_a_folder_that_became_a_link() {
     assert_eq!(blocked, 5, "{r}");
     for role in ["impl", "audit", "research", "docs", "plan"] {
         assert!(
-            outside.join(format!("moai-{role}.md")).is_file(),
+            outside.join(format!("moai/moai-{role}.md")).is_file(),
             "{role} removed outside HOME"
         );
     }

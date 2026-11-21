@@ -582,7 +582,7 @@ class InstallShTest(unittest.TestCase):
         self.assertTrue(os.path.isfile(os.path.join(version, "skills", "moai", "SKILL.md")))
         self.assertTrue(os.path.isfile(os.path.join(version, "agents", "impl.md")))
         self.assertTrue(os.path.isfile(os.path.join(self.home, ".claude", "skills", "moai", "SKILL.md")))
-        self.assertTrue(os.path.isfile(os.path.join(self.home, ".claude", "agents", "moai-impl.md")))
+        self.assertTrue(os.path.isfile(os.path.join(self.home, ".claude", "agents", "moai", "moai-impl.md")))
         again = subprocess.run(
             [os.path.join(version, "bin", "moai-cli"), "update", "--json"],
             env=self.env(**env), cwd=version, capture_output=True, text=True, timeout=120)
