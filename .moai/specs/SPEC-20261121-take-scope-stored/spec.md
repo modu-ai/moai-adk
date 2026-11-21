@@ -23,13 +23,13 @@ created: 2026-11-21
 
 ## Requirements
 
-- REQ-1: When `card take` is given `--scope` and the card's own write scope is empty, the take shall store the given scope as the card's write scope in the reserving transaction and record one `card.scope` event whose actor is the taker. · failure: none — a refused take writes nothing, REQ-7 covers it.
+- REQ-1: When `card take` is given `--scope` and the card's own write scope is empty, the take shall store the given scope as the card's write scope as soon as the reservation is made and record one `card.scope` event whose actor is the taker. · failure: none — a refused take writes nothing, REQ-7 covers it.
 - REQ-2: When `card take` is given `--scope` and the card's own write scope is not empty, the take shall leave the card's write scope unchanged. · failure: none — only the reservation takes the given scope, and REQ-7 covers a refusal.
 - REQ-3: When `card take` is given no `--scope` and the card's own write scope is empty, the take shall use the `write:` list of the SPEC the card names and store it as the card's write scope. · failure: none — REQ-6 covers a card with no source.
 - REQ-4: When the card names no SPEC or its SPEC has no readable `write:` list, the take shall use the scope of the card's most recent reservation and store it as the card's write scope. · failure: none — REQ-6 covers a card with no source.
 - REQ-5: The answer of a take shall carry `scope_source` naming where the scope came from: `given`, `card`, `spec` or `last_reservation`.
 - REQ-6: If no source gives a scope, then the take shall be refused with a message that names `--scope` and `card scope` and writes nothing.
-- REQ-7: The take shall store a filled or given scope on the card in the same write transaction as the overlap check, so a scope that overlaps another card's active reservation is refused and leaves the card as it was.
+- REQ-7: The take shall store a filled or given scope on the card only after the reservation, whose own overlap check runs first, has been made, so a scope that overlaps another card's active reservation is refused and leaves the card as it was.
 - REQ-8: If a SPEC `write:` list holds more than 64 paths, then the take shall be refused with the 64-path limit named and nothing written.
 - REQ-9: `card next` shall list a `ready` card whose empty scope a take would fill from its SPEC or its last reservation, showing the filled scope and its `scope_source`, instead of skipping it as `empty_scope`.
 
@@ -45,7 +45,7 @@ created: 2026-11-21
   verify: `cargo test --locked --offline --test card_take_scope_cli an_empty_card_is_filled_from_its_last_reservation`
 - AC-5 (REQ-6): an empty-scope card with no SPEC and no earlier reservation is refused; the message holds `--scope` and `card scope`, and the ledger is unchanged.
   verify: `cargo test --locked --offline --test card_take_scope_cli no_source_names_the_two_ways_out`
-- AC-6 (REQ-7): a fill whose paths overlap another card's active reservation is refused with the overlap named, and the card's scope stays empty with no event.
+- AC-6 (REQ-7): a fill whose paths overlap another card's active reservation is refused with the write scope in conflict and the card that holds it named, and the card's scope stays empty with no event.
   verify: `cargo test --locked --offline --test card_take_scope_cli a_fill_keeps_the_overlap_check`
 - AC-7 (REQ-8): a SPEC `write:` list of 64 paths fills the scope and a list of 65 is refused with the limit named, nothing written.
   verify: `cargo test --locked --offline --test card_take_scope_cli the_spec_list_has_the_same_limit`
@@ -58,25 +58,25 @@ created: 2026-11-21
 
 ## Scope
 
-- write: `.moai/specs/SPEC-20261121-take-scope-stored/**`, `tests/card_take_scope_cli.rs` (new), `src/card/take_scope.rs` (new: the SPEC `write:` list read), `src/card/mod.rs` (one module line), `src/card/dispatch.rs` (`take`), `src/card/work.rs` (`next`: the fill of a card it would skip), `src/ledger/reservation.rs` (the reserving transaction and the last-reservation read)
+- write: `.moai/specs/SPEC-20261121-take-scope-stored/**`, `tests/card_take_scope_cli.rs` (new), `src/card/take_scope.rs` (new: the SPEC `write:` list read), `src/card/mod.rs` (one module line), `src/card/dispatch.rs` (`take`), and in the second piece `src/card/work.rs` and `src/ledger/workflow.rs` (`next`: the fill of a card it would skip)
 - read-only: every other file, the real HOME
 - tier 2: an independent audit of the exact head (a ledger rule)
-- depends on: `src/ledger/reservation.rs` is held in turn by the early-reclaim change and the renewal change, and `src/card/work.rs` by the shared-line-lease change; this change takes them after they land. The SPEC and the red tests go first
+- depends on: the second piece (REQ-9, `card next`) edits `src/card/work.rs` and `src/ledger/workflow.rs`, which other changes hold today; it follows when they land. `src/ledger/reservation.rs` is not edited: the reservation's own overlap check runs first and the scope is kept on the card afterwards
 
 ## Plan
 
 1. SPEC first (this file).
 2. RED: `tests/card_take_scope_cli.rs`, one test per acceptance line, each failing for the stated reason.
 3. `take_scope.rs`: read the `write:` list of a SPEC folder (bounded, no symlink out of the project) and answer a list or none.
-4. `reservation::reserve_filled`: the reserving transaction with an optional SPEC list as fallback; it stores the scope on the card with the `card.scope` event and answers the source; `reserve` and `reserve_own_scope` keep their results.
-5. `dispatch::take`: pass the SPEC list, add `scope_source` to the answer, refusal text with the two ways out.
-6. `card next`: the same order for the cards it would skip as `empty_scope`.
+4. `take_scope::store`: after a successful reservation, keep the scope on a card whose own scope is empty, with one `card.scope` event; `reserve` and `reserve_own_scope` keep their results.
+5. `dispatch::take`: choose the scope by the order of D-1, add `scope_source` to the answer, refusal text with the two ways out (first piece: REQ-1 to REQ-8).
+6. Second piece: `card next` uses the same order for the cards it would skip as `empty_scope` (REQ-9).
 7. The unnarrowed `check affected` set, then an independent audit (tier 2).
 
 ## Risks
 
 - A SPEC list wider than the work wants: the taker sees the scope in the answer and can widen or narrow it as before; the card keeps what was used, and `card scope` replaces it on a card nobody holds.
-- A path in an old reservation that another card holds now: the overlap check runs on the filled scope in the same transaction, so the take is refused and nothing is stored.
+- A path in an old reservation that another card holds now: the reservation's overlap check runs on the filled scope before anything is stored, so the take is refused and nothing is stored.
 - The SPEC folder is read from the project the command is run for; a SPEC that lives only on a lane branch is not seen and the next source is used.
 
 ## Decisions

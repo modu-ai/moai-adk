@@ -19,6 +19,7 @@
 use super::command::{actor, open_for_write};
 use super::input::{self, CardRef};
 use super::spec_link;
+use super::take_scope;
 use crate::ledger::reservation::{self, Reservation};
 use crate::ledger::{self};
 use crate::session_current;
@@ -373,11 +374,11 @@ pub fn take(project: &Path, home: &Path, reference: &str, req: &TakeRequest<'_>)
     };
     let (id, mut ledger) = open_for_write(project, home)?;
     // A card that is not there has no SPEC; `reserve` answers `card not found` for it.
-    let (spec, warning) = match spec_link::kind_and_spec(ledger.conn(), card_id)
-        .map_err(|e| ledger::LedgerError::from(e).to_string())?
-    {
+    let linked = spec_link::kind_and_spec(ledger.conn(), card_id)
+        .map_err(|e| ledger::LedgerError::from(e).to_string())?;
+    let (spec, warning) = match &linked {
         Some((kind, spec)) => {
-            spec_link::status(project, &input::card_name(card_id), &kind, spec.as_deref())
+            spec_link::status(project, &input::card_name(card_id), kind, spec.as_deref())
         }
         None => (Value::Null, None),
     };
@@ -387,7 +388,40 @@ pub fn take(project: &Path, home: &Path, reference: &str, req: &TakeRequest<'_>)
         ));
     }
     let lease = req.lease_secs.unwrap_or(DEFAULT_LEASE_SECS);
-    let r = match given {
+    // Where the scope comes from (SPEC-20261121-take-scope-stored): the given one, the card's
+    // own, the linked SPEC's `write:` list, the last reservation's scope. A scope that is not the
+    // card's own is kept on the card once the reservation is made, so a released card is not
+    // empty again; the overlap check of `reserve` runs first and a refusal stores nothing.
+    let own = take_scope::own_scope(ledger.conn(), card_id)
+        .map_err(|e| ledger::LedgerError::from(e).to_string())?;
+    let own_is_empty = own.as_ref().is_some_and(Vec::is_empty);
+    let (scope, source) = match given {
+        Some(scope) => (Some(scope), take_scope::Source::Given),
+        None if own_is_empty => {
+            let from_spec = take_scope::spec_list(
+                project,
+                linked.as_ref().and_then(|(_, spec)| spec.as_deref()),
+            );
+            if !from_spec.is_empty() {
+                (
+                    Some(checked_scope("take", &from_spec)?),
+                    take_scope::Source::Spec,
+                )
+            } else {
+                let last = take_scope::last_reservation(ledger.conn(), card_id)
+                    .map_err(|e| ledger::LedgerError::from(e).to_string())?;
+                if last.is_empty() {
+                    return Err(take_scope::no_source_message(&input::card_name(card_id)));
+                }
+                (
+                    Some(checked_scope("take", &last)?),
+                    take_scope::Source::LastReservation,
+                )
+            }
+        }
+        None => (None, take_scope::Source::Card),
+    };
+    let r = match scope {
         Some(scope) => reservation::reserve(
             &mut ledger,
             card_id,
@@ -407,9 +441,22 @@ pub fn take(project: &Path, home: &Path, reference: &str, req: &TakeRequest<'_>)
         ),
     }
     .map_err(|e| e.to_string())?;
+    let mut warnings: Vec<String> = warning.into_iter().collect();
+    if own_is_empty && source != take_scope::Source::Card {
+        // The take already succeeded; a scope that could not be kept is a warning, never a
+        // failure that would leave the card taken and reported refused.
+        if let Err(why) =
+            take_scope::store(&mut ledger, card_id, &r.write_scope, req.holder, source)
+        {
+            warnings.push(format!(
+                "{}: the scope could not be kept on the card ({why}); `card scope` sets it",
+                input::card_name(card_id)
+            ));
+        }
+    }
     Ok(json!({
         "action": "take", "project_id": id, "reservation": reservation_json(&r),
-        "state": "active", "spec": spec, "warnings": warning.into_iter().collect::<Vec<_>>(),
+        "state": "active", "spec": spec, "scope_source": source.word(), "warnings": warnings,
         "writes": true,
     }))
 }

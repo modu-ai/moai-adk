@@ -261,7 +261,9 @@ fn a_fill_keeps_the_overlap_check() {
     w.link(&name, &spec);
     let events = w.count("SELECT count(*) FROM event WHERE kind = 'card.scope'");
     let message = refusal(&w.card(Some(S_B), &["take", &name]));
-    assert!(message.contains("overlap"), "{message}");
+    // The reservation's own refusal names the write scope in conflict and the card that holds it.
+    assert!(message.contains("conflict in write scope"), "{message}");
+    assert!(message.contains(&holder), "{message}");
     assert_eq!(w.own_scope(&name), json!([]));
     assert_eq!(
         w.count("SELECT count(*) FROM event WHERE kind = 'card.scope'"),
