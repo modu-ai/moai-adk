@@ -223,11 +223,20 @@ pub fn identity(path: &Path) -> Result<Value> {
         Some(top) => {
             let root = crate::state_root::path(top, "");
             refuse_symlink(&root, "project state root")?;
-            let (id, status) = match fs::symlink_metadata(root.join("project.yaml")) {
-                Err(_) => (Value::Null, "missing"),
-                Ok(_) => match read_profile(top) {
-                    Ok((p, _)) => (json!(p.project_id), "present"),
-                    Err(_) => (Value::Null, "unreadable"),
+            // The status names the file that is actually read and, when it cannot be read,
+            // why (the delta audit's N2): the mixed-layout chooser, not one fixed folder.
+            let (id, status) = match crate::profile::chosen_profile(top) {
+                Err(e) => (
+                    Value::Null,
+                    format!("unreadable: {} ({e})", crate::profile::read_rel(top)),
+                ),
+                Ok(None) => (Value::Null, "missing".to_string()),
+                Ok(Some(_)) => match read_profile(top) {
+                    Ok((p, _)) => (json!(p.project_id), "present".to_string()),
+                    Err(e) => (
+                        Value::Null,
+                        format!("unreadable: {} ({e})", crate::profile::read_rel(top)),
+                    ),
                 },
             };
             (json!(text(&root)?), id, json!(status))

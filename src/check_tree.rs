@@ -333,7 +333,7 @@ pub fn check(project: &Path) -> Result<Value> {
             add(SESSION_ID, Some(("hits", sessions as u64)));
         }
     }
-    let profile_rel = crate::state_root::rel(&root, "project.yaml");
+    let profile_rel = crate::profile::read_rel(&root);
     match project_id::read(&root) {
         Ok(Some(id)) if !project_id::is_random_form(&id) => {
             findings.push(Finding {
