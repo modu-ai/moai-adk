@@ -72,14 +72,36 @@ fn card_id(reference: &str) -> Result<i64> {
     }
 }
 
-/// A refusal of the finish checks or of the finish itself, as `card finish` words it for an
-/// input mistake and with `nothing was changed` for a check that refused before any write.
+/// The sentence a refusal that wrote nothing ends with. Finish's own refusals end with it too, so
+/// it is added once.
+const NOTHING_CHANGED: &str = "nothing was changed";
+
+/// A refusal of the finish checks, or of a finish that comes before the branch moved: said as
+/// `card finish` words it for an input mistake, and with `nothing was changed` once for a check
+/// that refused before any write.
 fn finish_refusal(e: WorkflowError) -> String {
     match e {
         WorkflowError::InvalidInput(why) => refused(why),
+        WorkflowError::FinishRefused(why) if why.ends_with(NOTHING_CHANGED) => refused(why),
         WorkflowError::FinishRefused(why) => unchanged(why),
         other => other.to_string(),
     }
+}
+
+/// A refusal of the close after the branch moved. The branch was changed, so the refusal never
+/// says that nothing was: it says the branch moved and the call can be run again.
+fn refusal_after_move(e: WorkflowError, branch: &str, head: &str) -> String {
+    let why = match e {
+        WorkflowError::InvalidInput(why) | WorkflowError::FinishRefused(why) => why,
+        other => other.to_string(),
+    };
+    let why = why
+        .strip_suffix(&format!("; {NOTHING_CHANGED}"))
+        .unwrap_or(&why);
+    format!(
+        "card land refused after the move: {why}; the integration branch {branch} already moved \
+         to {head} and the card is still open: run the same call again after the cause is repaired"
+    )
 }
 
 /// `card land C-n`: see the module comment.
@@ -215,8 +237,17 @@ pub fn land(project: &Path, home: &Path, reference: &str, req: &LandRequest<'_>)
         match landed::move_branch(project, &full, req.head, &tip, &message).map_err(unchanged)? {
             RefMove::Moved => moved = true,
             RefMove::Lost(why) => {
-                // Another call may have landed this very head a moment ago: nothing to move.
+                // Read where the branch is now: another call may have landed this very head a
+                // moment ago (nothing to move), the branch may have moved to something else
+                // (`tip_moved`), or it did not move at all and git refused for another reason (a
+                // lock file, a read-only store): that one is git's reason, not a moved tip.
                 let now = landed::tip_of(project, &branch).map_err(unchanged)?;
+                if now == tip {
+                    return Err(unchanged(format!(
+                        "git refused to move the integration branch {branch} to {}: {why}",
+                        req.head
+                    )));
+                }
                 if now != req.head {
                     return Err(conflict(format!(
                         "tip_moved: the integration branch {branch} no longer points at {tip} \
@@ -238,15 +269,10 @@ pub fn land(project: &Path, home: &Path, reference: &str, req: &LandRequest<'_>)
         req.generation,
     )
     .map_err(|e| {
-        let why = finish_refusal(e);
         if moved {
-            format!(
-                "{why}; the integration branch {branch} already moved to {}: run the same call \
-                 again after the cause is repaired",
-                req.head
-            )
+            refusal_after_move(e, &branch, req.head)
         } else {
-            why
+            finish_refusal(e)
         }
     })?;
     let applied: &[(i64, String)] = if done.closed { &met } else { &[] };
