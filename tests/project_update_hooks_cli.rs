@@ -13,6 +13,7 @@ mod go_project_real_run;
 use go_project_real_run::{install_step, GoFx};
 use serde_json::{json, Value};
 use std::fs;
+use std::process::{Command, Stdio};
 
 const PLACEHOLDER: &str = "<permission-reference>";
 const INSTALL_ORDER: [&str; 5] = [
@@ -127,7 +128,7 @@ fn a_project_with_nothing_yet_names_the_gap_and_prints_no_command() {
         b"",
     );
     assert_eq!(applied["ok"], json!(true), "{applied}");
-    assert_eq!(settings_now(&fx)["hooks"], generated());
+    assert_eq!(normalize_commands(settings_now(&fx)["hooks"].clone()), generated());
     let after = fx.update_plan();
     assert_eq!(hooks(&after)["state"], "unchanged");
     assert_eq!(hooks(&after)["reason"], "the MoAI hook set is current");
@@ -324,7 +325,34 @@ fn hooks_wait_for_the_settings_apply_when_the_profile_is_unreadable() {
 // ---- C-55: the ownership record outlives the settings file it describes ----
 
 fn generated() -> Value {
-    Value::Object(moai_cli::hooks::hooks_object("claude").unwrap())
+    normalize_commands(Value::Object(
+        moai_cli::hooks::hooks_object("claude").unwrap(),
+    ))
+}
+
+/// The exec-form entries name the absolute path of the binary that rendered them
+/// (SPEC-20261122-next-flow-hooks REQ-5): an in-test render names this test's executable
+/// while the file was written by the spawned `moai`, so comparisons normalize every
+/// command to its last path segment.
+fn normalize_commands(v: Value) -> Value {
+    match v {
+        Value::Object(mut m) => {
+            if m.contains_key("command") && m.contains_key("args") {
+                // A generated entry: the absolute path names whichever binary rendered it
+                // (the spawned `moai` for files, this test executable in-process), so both
+                // sides become the same constant token.
+                m.insert("command".into(), json!("moai"));
+            }
+            Value::Object(m.into_iter().map(|(k, v)| (k, normalize_commands(v))).collect())
+        }
+        Value::Array(a) => Value::Array(a.into_iter().map(normalize_commands).collect()),
+        other => other,
+    }
+}
+
+/// The settings file's `hooks`, normalized the same way.
+fn settings_hooks_normalized(fx: &GoFx) -> Value {
+    normalize_commands(settings_now(fx)["hooks"].clone())
 }
 
 fn settings_now(fx: &GoFx) -> Value {
@@ -344,7 +372,7 @@ fn reset_after_a_hooks_step(fx: &GoFx) -> Vec<u8> {
     let old = fs::read(fx.root.join(".claude/settings.json")).unwrap();
     let out = fx.apply_step(hooks(&plan));
     assert_eq!(out["ok"], json!(true), "{out}");
-    assert_eq!(settings_now(fx)["hooks"], generated(), "the first apply");
+    assert_eq!(settings_hooks_normalized(fx), generated(), "the first apply");
     fs::write(fx.root.join(".claude/settings.json"), &old).unwrap();
     fx.write(".claude/hooks/moai/handle-a.sh", "#!/bin/sh\necho a\n");
     fx.write(".claude/hooks/moai/handle-b.sh", "#!/bin/sh\necho b\n");
@@ -379,7 +407,7 @@ fn a_stale_record_does_not_keep_the_hooks_step_from_writing_the_hook_set() {
 
     let after = settings_now(&fx);
     assert_eq!(
-        after["hooks"],
+        normalize_commands(after["hooks"].clone()),
         generated(),
         "an applied hooks step leaves the previewed MoAI hook set in the file: {after}"
     );
@@ -462,7 +490,7 @@ fn a_file_without_the_recorded_hooks_reads_ready_and_agrees_with_the_status() {
     let out = fx.apply_step(step);
     assert_eq!(out["ok"], json!(true), "{out}");
     let after = settings_now(&fx);
-    assert_eq!(after["hooks"], generated(), "{after}");
+    assert_eq!(normalize_commands(after["hooks"].clone()), generated(), "{after}");
     assert_eq!(after["permissions"]["deny"], json!(DENY), "{after}");
     let own = hooks_plan(&fx);
     assert_eq!(own["action"], "unchanged", "{own}");
@@ -518,6 +546,66 @@ fn recorded_hooks_that_were_edited_are_kept_and_get_no_command() {
 // ---- SPEC-20261119-hooks-followups: what the step says when the file and the record disagree
 
 /// The command `hooks` prints for the Claude host, for the plan digest of `own` (`hooks-plan`).
+/// Runs `hooks-apply` as the step's own argv would: the spawned binary with its directory
+/// first on PATH (the legacy gate needs the Rust `moai` first; the entries' absolute path
+/// makes an in-process apply digest a different command than the spawned plan).
+fn run_hooks_apply(fx: &GoFx, argv: &Value, digest: &str) -> Value {
+    use common::CleanEnv as _;
+    use std::io::Write as _;
+    let bin_dir = std::path::Path::new(common::MOAI_BIN)
+        .parent()
+        .unwrap()
+        .to_path_buf();
+    // The argv holds the program name, the action, the project, the digest flag with the
+    // PLAN's digest (the step's own digest may differ), the permission placeholder and more;
+    // rebuild it with the step's digest and a real permission reference.
+    let mut args: Vec<String> = Vec::new();
+    let mut skip_next = false;
+    for (n, word) in argv.as_array().unwrap().iter().enumerate() {
+        if skip_next {
+            skip_next = false;
+            continue;
+        }
+        let w = word.as_str().unwrap_or_default();
+        if n == 0 {
+            continue; // the program name
+        }
+        if w == "--plan-digest" {
+            args.push("--plan-digest".into());
+            args.push(digest.to_string());
+            skip_next = true;
+            continue;
+        }
+        if word == &json!(PLACEHOLDER) {
+            args.push(go_project_real_run::REF.to_string());
+            continue;
+        }
+        args.push(w.to_string());
+    }
+    let arg_refs: Vec<&str> = args.iter().map(String::as_str).collect();
+    let mut child = Command::new(common::MOAI_BIN)
+        .args(&arg_refs)
+        .clean_env()
+        .env("HOME", &fx.home)
+        .env("PATH", format!("{}:/usr/bin:/bin", bin_dir.display()))
+        .env("LC_ALL", "C")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    let mut pipe = child.stdin.take().unwrap();
+    let _ = pipe.write_all(b"");
+    drop(pipe);
+    let out = child.wait_with_output().unwrap();
+    serde_json::from_slice(&out.stdout).unwrap_or_else(|_| {
+        panic!(
+            "hooks-apply {arg_refs:?}: {}",
+            String::from_utf8_lossy(&out.stderr)
+        )
+    })
+}
+
 fn hooks_apply_argv(fx: &GoFx, own: &Value) -> Value {
     json!([
         "moai",
@@ -762,19 +850,15 @@ fn an_older_hook_set_held_by_the_file_and_the_record_reads_ready() {
     let step = hooks(&update);
     assert_eq!(step["state"], "ready", "{step}");
     assert_eq!(step["apply"]["argv"], hooks_apply_argv(&fx, &own), "{step}");
-    // Rewriting the `moai-cli` command names through the command needs the Rust `moai` first on
-    // PATH (the gate of `hook_legacy`, which this test environment does not have), so the
-    // writer the command calls runs in this process, with the digest the step printed.
-    let out = moai_cli::hooks::apply(
-        &fx.root,
-        "claude",
-        Some(fx.home.as_path()),
-        step["plan_digest"].as_str().unwrap(),
-        go_project_real_run::REF,
-    )
-    .expect("the printed digest applies");
-    assert_eq!(out["state"], "applied", "{out}");
-    assert_eq!(settings_now(&fx)["hooks"], generated());
+    // The writer runs as the command's own argv: the spawned binary, with its own directory
+    // first on PATH so the `moai-cli` rewrite's gate sees the Rust `moai` (the exec-form
+    // entries name the absolute path of the binary that renders them, so an in-process apply
+    // would digest a different command than the spawned plan did).
+    let argv = hooks_apply_argv(&fx, &own);
+    let out = run_hooks_apply(&fx, &argv, step["plan_digest"].as_str().unwrap());
+    assert_eq!(out["ok"], json!(true), "{out}");
+    assert_eq!(out["result"]["state"], "applied", "{out}");
+    assert_eq!(normalize_commands(settings_now(&fx)["hooks"].clone()), generated());
     assert_eq!(hooks(&fx.update_plan())["state"], "unchanged");
 }
 
