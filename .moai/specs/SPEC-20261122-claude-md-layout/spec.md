@@ -26,7 +26,7 @@ moai 가 사용자 프로젝트에서 관리하는 지침 파일을 Claude Code 
 
 개정 2(2026-11-22, 사용자 결정): moai 의 공통 내용 — 흐름 규칙, 라우팅, 스킬, 에이전트, 명령, 출력 스타일 — 은 전역 설정 폴더(`CLAUDE_CONFIG_DIR`, 없으면 `~/.claude`)에 설치하고, moai 는 프로젝트의 `.claude/rules` 등에 기본으로 쓰지 않아요. 프로젝트 `CLAUDE.md` 의 블록은 이 프로젝트만의 사실(도구, 검사 명령, 언어, 흐름 이름과 통합 브랜치, SPEC·카드 자리)이라서 남아요. 슬롯 0 탐침이 보여 준 대로 프로필 폴더는 자기 `rules/` 만 읽으니, 설정 폴더(Orca 프로필마다 하나)마다 자기 사본을 받아요. 전역 파일을 쓰는 일은 사용자의 선택이고 쓰기 구현은 `SPEC-20261122-claude-md-home-routing` 이 맡아요.
 
-이 SPEC 은 첫 조각(조사 + SPEC)이에요. 코드, 시험, 이 저장소 자신의 `AGENTS.md` 이동은 아래 Plan 의 뒤 조각에서 해요. 요구가 12개를 넘으면 쪼개라는 규칙(SPEC 크기 예산)에 따라 다섯 SPEC 으로 나눴고, 넷은 이 SPEC 을 `parent` 로 이어요. `import` 를 고르면 `AGENTS.local.md` 는 아무 일도 없어요(Claude Code 가 원래 읽지 않던 파일이에요).
+이 SPEC 은 첫 조각(조사 + SPEC)이에요. 코드, 시험, 이 저장소 자신의 `AGENTS.md` 이동은 아래 Plan 의 뒤 조각에서 해요. 요구가 12개를 넘으면 쪼개라는 규칙(SPEC 크기 예산)에 따라 여섯 SPEC 으로 나눴고, 다섯은 이 SPEC 을 `parent` 로 이어요(흐름 규칙 파일의 내용과 한도는 `SPEC-20261122-claude-md-flow-rule`). `import` 를 고르면 `AGENTS.local.md` 는 아무 일도 없어요(Claude Code 가 원래 읽지 않던 파일이에요).
 
 ### What exists (tip `012e9470cb`)
 
@@ -129,7 +129,7 @@ Slices in this order. Each is one SPEC-backed change with its own audit tier; th
 | D-12 | This SPEC family supersedes in part `SPEC-20261119-agents-conflict-choices` (REQ-11…REQ-14, REQ-16, REQ-17) and `SPEC-20261119-agents-choices-step` (REQ-5, REQ-8, REQ-9, REQ-11); the pick `claude-import` is gone and refused as an unknown id; an old receipt's rows revert through the generic apply recovery (see the risks). | The shadow model no longer holds when `CLAUDE.md` is moai's file. | Keep both SPECs and the pick. |
 | D-13 | `local_file` value `tracked` is read as `ignored` with a preview note. | A personal file is not shared. | Keep `tracked` for `CLAUDE.local.md`. |
 | D-14 | The banner stays as `SPEC-20261121-style-banner` decided. | Implemented and pinned. | None. |
-| D-15 | The requirements are split over five SPECs with this one as parent. | Twelve requirements per SPEC is the size budget; each slice gets its own SPEC and audit. | Merge them. |
+| D-15 | The requirements are split over six SPECs with this one as parent. | Twelve requirements per SPEC is the size budget; each slice gets its own SPEC and audit. | Merge them. |
 
 ## Result
 
