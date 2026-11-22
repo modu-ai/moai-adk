@@ -31,7 +31,7 @@ created: 2026-11-22
 
 ## Scope
 
-- write: `.moai/specs/SPEC-20261122-heavy-slot-exit-line/**`, `docs/rust-product-path.md`(heavy-slot 줄 하나, 리더 말로 허락)
+- write: `.moai/specs/SPEC-20261122-heavy-slot-exit-line/**`, `docs/rust-product-path.md`(heavy-slot 줄 하나, 리더 말로 허락), `src/main.rs`(`heavy-slot-acquire` 도움말 문장 하나, 리더 결정 D-5)
 - carried by `SPEC-20261122-check-affected-one-slot` (D-3): `src/heavy_slot.rs` 의 끝 줄, `tests/heavy_slot_cli.rs` 의 AC-1 시험
 - read-only: `src/check_affected.rs`, `src/bundle/verify.rs`, `tools/heavy_check_slot.py`
 - forbidden: 실제 HOME, 상태 폴더 이름을 글자로 쓴 시험 기대값, 새 Python 시험
@@ -56,3 +56,4 @@ created: 2026-11-22
 | D-2 | 기다림의 끝 시각은 이 SPEC 이 아니라 레인 규칙과 `moai card wait` 가 다뤄요. | 배포 문서·스킬에 기다리는 반복문이 없어요(위 명령). | 카드 열림 |
 | D-3 | 코드 줄과 RED 시험은 `SPEC-20261122-check-affected-one-slot` 의 가지가 실어요. 이 SPEC 은 그 가지가 착지한 뒤 SPEC 과 문서 한 줄로 착지해요. | 리더 결정 2026-11-22(선택지 b): 그 작업이 끝 줄을 찍는 함수를 다시 써서, 따로 고치면 같은 줄에서 충돌해요. | 카드 열림 |
 | D-4 | 같은 문서 줄의 기다림 파일 이름을 `waiting/<ns>-<pid>-<max>` 로 바로잡아요. | 자리 하나 작업(착지 6d5410cd2d)이 이름에 `--max` 를 붙였는데 이 줄은 옛 꼴로 남았어요(`src/heavy_slot.rs` 19행 모듈 설명과 달라요). 이 SPEC 에 허락된 그 줄 하나 안의 고침이에요. | 카드 열림 |
+| D-5 | `src/main.rs` 의 `heavy-slot-acquire` 도움말 문장 "while waiting and on failure it prints …" 를 "while waiting and when COMMAND ends it prints …" 로 바꿔요. 문서 줄은 C-325 가 그 파일을 예약한 동안에도 이 카드와 함께 착지해요. | 리더 결정 2026-11-22(노트 6923, 6921 의 기본안 둘 다). 자리 하나 작업 감사의 N6 이 이 문장을 짚었어요. 이 문장을 글자 그대로 읽는 시험은 없어요(`rg -ln 'on failure it prints the load' tests src docs skills` 는 `src/main.rs` 만 찾아요). | 카드 열림 |
