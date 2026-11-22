@@ -40,3 +40,17 @@ The user decided on 2026-11-22, after the audit of the home update slice, that t
 1. RED: add the two byte-identical cases and tighten the archive list assertion of the plan test; they fail on the tip because the plan still archives the Codex and shared agents files.
 2. GREEN: drop `.agents/skills` from the sibling roots, `.codex/agents` from the agent roots and the two retired slugs from the manifest root table (the manifest read skips an unknown slug already); update the module doc.
 3. Run the whole cleanup test file, clippy, rustfmt and `moai spec check`.
+
+## Result
+
+Built tests first: the plan test, the apply test, the linked-folder case and two new byte-for-byte cases were written and failed by assertion on the tip (5 failed, 10 passed in `update_cleanup_cli`), then the roots went out of `src/update_cleanup.rs`, then the empty-sibling case was rewritten for the one folder that is left. The evidence below was read from the unnarrowed run `moai check affected 66e524119d..e5b152e997` (`targets=60`, `result=PASS`, every step exit 0, log `target/check-d.log`).
+
+- AC-1: met — `the_plan_archives_only_proven_items_and_writes_nothing` passes: the archived list is seven `.claude` and `.moai` paths and no plan item starts with `.codex` or `.agents`.
+- AC-2: met — `the_codex_agents_folder_stays_byte_identical_after_the_cleanup` passes: the proven Go agent file has the same bytes after the apply and the archive holds no `.codex` folder.
+- AC-3: met — `the_shared_agents_skills_folder_stays_byte_identical_after_the_cleanup` passes: the proven Go skill folder has the same bytes after the apply and the archive holds no `.agents` folder.
+- AC-4: met — the fixture manifest still carries `agents-skills` and `codex-agents` entries and `plan["go_manifest"]` stays `valid` in every case of `update_cleanup_cli` (15 passed).
+- AC-5: met — the other cases of `update_cleanup_cli` pass unchanged: the apply and revert round trip, the live-session cases, the unreadable-manifest case and the second-apply case.
+
+Mutants (two, `tools/mutate.py` once and one by hand): putting the shared agents skills folder back into the sibling roots was caught (cargo exit 101, three cases failed: `a_linked_agents_skills_folder_is_not_looked_at`, `an_empty_sibling_skill_folder_is_not_proven`, `the_plan_archives_only_proven_items_and_writes_nothing`); putting the Codex agents folder and its manifest slug back by hand was caught (three cases failed: the plan case, the apply and revert case and `the_codex_agents_folder_stays_byte_identical_after_the_cleanup`); the source was put back and `git status` printed nothing. Putting the Codex agents folder back without its slug changes nothing and was not run (an equivalent change: the manifest read skips the entry).
+
+Not run: Windows and Linux, the independent audit, and the design-review pages of the cleanup commands (`docs/design-review/appendix/operations/cleanup_plan.md`, lines 8 to 10) that still describe the two folders as swept; they are outside this SPEC's scope.
