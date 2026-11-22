@@ -949,6 +949,34 @@ fn ac18_a_rename_onto_the_integration_branch_is_refused_before_the_source_is_del
     w.git(&repo, &["branch", "-M", "side", "other-name"]);
     assert!(w.rev("refs/heads/other-name").is_some());
     tree_clean(&w);
+
+    // The integration name as a folder of `-C` (a linked worktree named like the branch) is no
+    // rename: only the last operand of the command counts (audit N-14).
+    let named = w.dir.path().join(INTEG);
+    w.git(
+        &repo,
+        &[
+            "worktree",
+            "add",
+            "-q",
+            "-b",
+            "named-lane",
+            named.to_str().unwrap(),
+        ],
+    );
+    w.git(&repo, &["branch", "tmp4", &a]);
+    let out = w
+        .command(w.dir.path(), &["-C", INTEG, "branch", "-D", "tmp4"])
+        .stdin(Stdio::null())
+        .output()
+        .unwrap();
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert!(w.rev("refs/heads/tmp4").is_none());
+    tree_clean(&w);
 }
 
 // ---- AC-19: the hook starts no git process in the ordinary case --------------------------------
@@ -999,6 +1027,36 @@ fn ac19_the_hook_starts_no_git_process_in_the_ordinary_case() {
     assert!(run("prepared", &on_lane).status.success());
     assert_eq!(calls(&log), vec!["card guard prepared"]);
 
+    // In the primary worktree git gives the hook a relative path (audit N-16): the same.
+    fs::write(&log, "").unwrap();
+    let relative = Command::new("/bin/sh")
+        .arg(".git/hooks/reference-transaction")
+        .arg("prepared")
+        .current_dir(&repo)
+        .clean_env()
+        .env("PATH", &bin)
+        .env("HOME", w.home.path())
+        .env("STANDIN_LOG", &log)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    let mut relative = relative;
+    std::io::Write::write_all(&mut relative.stdin.take().unwrap(), on_integ.as_bytes()).unwrap();
+    assert!(relative.wait_with_output().unwrap().status.success());
+    assert_eq!(calls(&log), vec!["card guard prepared"], "a relative path");
+
+    // No `ps` on the path: a branch delete still passes (the rename check cannot read the
+    // command line), and on Linux the hook reads /proc (audit N-15).
+    assert!(run("prepared", &format!("{a} {ZERO} refs/heads/side\n"))
+        .status
+        .success());
+    assert!(
+        guard::hook_text().contains("/proc/$PPID/cmdline"),
+        "no fallback to /proc"
+    );
+
     // A hook that lives somewhere else: git is asked for the common folder, and the branch is
     // still protected.
     let elsewhere = w.dir.path().join("shared-hooks");
@@ -1012,6 +1070,59 @@ fn ac19_the_hook_starts_no_git_process_in_the_ordinary_case() {
     w.refused(&w.try_git(&repo, &["update-ref", "refs/heads/Integ", &b, &a]));
     tree_clean(&w);
     let _ = &mut w;
+}
+
+// ---- AC-20: git's copy path is a known gap the hook cannot see -------------------------------
+
+/// AC-20: `git branch -c` and `-C` write the copy outside a reference transaction, so the hook is
+/// not run and the copy moves the integration branch with exit 0 (also a case variant while the
+/// branch is packed). This test pins that behaviour of git; when git changes it and the hook
+/// begins to see the copy, this test fails and the gap in the Risks of the SPEC can go. The
+/// defence is the drift check of `card land` and the preflight hook of the tool.
+#[test]
+fn ac20_git_copy_path_runs_no_hook_and_is_a_known_gap() {
+    let mut w = Repo::new(false);
+    w.install();
+    let log = w.dir.path().join("standin.log");
+    let standin_dir = w.dir.path().join("standin");
+    fs::create_dir_all(&standin_dir).unwrap();
+    common::write_executable(&standin_dir.join("moai"), STANDIN);
+    w.standin = Some(standin_dir);
+    w.env
+        .push(("STANDIN_LOG".into(), log.to_str().unwrap().into()));
+    let (repo, b) = (w.repo.clone(), w.b.clone());
+
+    let out = w.try_git(&repo, &["branch", "-C", "lane", INTEG]);
+    assert!(
+        out.status.success(),
+        "git now refuses the copy: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert_eq!(w.integ(), b, "the copy moved the branch to the lane head");
+    assert!(
+        calls(&log).is_empty(),
+        "the hook saw the copy: {:?}",
+        calls(&log)
+    );
+
+    // Packed: the copy back to the first commit, with the log emptied after `pack-refs`, which
+    // the hook does see.
+    let a = w.a.clone();
+    w.git(&repo, &["branch", "other", &a]);
+    w.git(&repo, &["pack-refs", "--all"]);
+    fs::write(&log, "").unwrap();
+    let out = w.try_git(&repo, &["branch", "-C", "other", INTEG]);
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert_eq!(w.integ(), a, "the packed copy did not move the branch");
+    assert!(
+        calls(&log).is_empty(),
+        "the hook saw the packed copy: {:?}",
+        calls(&log)
+    );
 }
 
 // ---- AC-10: the hook text and the aborted transaction ------------------------------------------

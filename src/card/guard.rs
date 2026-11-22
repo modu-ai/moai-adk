@@ -55,10 +55,11 @@ pub fn hook_text() -> &'static str {
 case "$1" in prepared | committed) ;; *) exit 0 ;; esac
 common=${GIT_COMMON_DIR:-}
 if [ -z "$common" ]; then
-  case "$0" in /*/hooks/*) common=${0%/hooks/*} ;; esac
+  case "$0" in /*) self=$0 ;; *) self=$PWD/$0 ;; esac
+  case "$self" in */hooks/*) common=${self%/hooks/*} ;; esac
   [ -f "$common/moai/integration-branch" ] || common=$(git rev-parse --git-common-dir 2>/dev/null) || exit 0
 fi
-case "$common" in /*) ;; *) common=$(pwd)/$common ;; esac
+case "$common" in /*) ;; *) common=$PWD/$common ;; esac
 record="$common/moai/integration-branch"
 [ -f "$record" ] || exit 0
 line=
@@ -86,9 +87,17 @@ done <<EOF
 $lines
 EOF
 if [ "$hit" = 0 ] && [ "$deletes" = 1 ] && [ "$1" = prepared ]; then
-  words=$(ps -o command= -p "$PPID" 2>/dev/null | tr 'A-Z ' 'a-z\n')
-  case "$nl$words$nl" in
-    *"$nl$name$nl"* | *"${nl}refs/heads/$name$nl"*)
+  cmd=$(ps -o command= -p "$PPID" 2>/dev/null)
+  if [ -z "$cmd" ] && [ -r "/proc/$PPID/cmdline" ]; then cmd=$(tr '\0' ' ' < "/proc/$PPID/cmdline"); fi
+  words=$(printf '%s\n' "$cmd" | tr 'A-Z ' 'a-z\n')
+  target=
+  while read -r word; do
+    case "$word" in "" | -*) ;; *) target=$word ;; esac
+  done <<EOF
+$words
+EOF
+  case "$target" in
+    "$name" | "refs/heads/$name")
       # git moved the source's reflog aside before this delete and does not move it back
       moved="$common/logs/refs/.tmp-renamed-log"
       if [ -n "$source" ] && [ -f "$moved" ] && [ ! -e "$common/logs/$source" ]; then
