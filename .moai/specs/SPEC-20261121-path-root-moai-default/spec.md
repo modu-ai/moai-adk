@@ -2,7 +2,7 @@
 id: SPEC-20261121-path-root-moai-default
 title: "A tree with no earlier state folder resolves to .moai, and .moai-cli stays only where it already exists"
 status: draft
-revision: 2
+revision: 3
 created: 2026-11-21
 ---
 
@@ -64,6 +64,9 @@ What stays with other work: the project-side move step of `/moai update` with pr
 - REQ-9: When the project is new, the answers of `is_new_project`, `create_dir` and `adopt_new` shall stay as they are, so that the marker of a new project is still written once. · failure: none — a project that is not new gets no marker
 - REQ-10: The tree shall carry one test per row of the table for each of the three resolvers, run on temporary folders only. · failure: none — a missing case fails the test run
 
+- REQ-11 (slice 2): When the Go settings clean-up replaces a Go status line, the clean-up shall write the Rust launcher path under the folder the HOME resolver gives for that HOME, and show the same path in its plan and its refusals. · failure: none — with no HOME the replacement stays blocked as before
+- REQ-12 (slice 2): When the Go settings clean-up checks the Rust launcher, the clean-up shall look for it under the folder the HOME resolver gives for that HOME. · failure: none — a launcher that is not there is `missing`, as before
+- REQ-13 (slice 2): When project detection walks a project, the walk shall skip `.moai` as it skips `.moai-cli`, so that state files never count as project sources. · failure: none — a project whose sources live only under `.moai` reports no language, as a project whose sources live only under `.moai-cli` does today
 ## Acceptance
 
 - AC-1 (REQ-1, REQ-2, REQ-3, REQ-4, REQ-8, REQ-9): the project resolver gives `.moai` or `.moai-cli` as the table says for a tree with a marker, with only `.moai-cli`, with both folders, with neither, with a specs-only `.moai/`, with a worktree-like `.moai/` that holds `project.yaml` and `specs/` and no marker, with Go markers, with a Go-and-Rust mixed folder, with a link as `.moai-cli`, and a new project still gets its marker once · verify: `cargo test --test path_root_default project_`
@@ -72,10 +75,14 @@ What stays with other work: the project-side move step of `/moai update` with pr
 - AC-4 (REQ-7): a snapshot of every file, folder and link of the temporary tree before and after calls to `dir`, `path` and `rel` of the three resolvers is the same, and no `.moai-cli` appears in a tree that had none · verify: `cargo test --test path_root_default reads_only`
 - AC-5 (REQ-1, REQ-2, REQ-3, REQ-4, REQ-5, REQ-6, REQ-7, REQ-8, REQ-9, REQ-10): the unit tests of the three resolver files that stated the earlier answer for an empty tree follow the table, the library and the binaries build and pass, and the SPEC checks clean · verify: `cargo test --lib && cargo test --bins && moai-cli spec check SPEC-20261121-path-root-moai-default`
 
+- AC-6 (REQ-11): for a temporary HOME that resolves to `.moai` the status line the clean-up writes runs `"$HOME/.moai/path/moai-cli" statusline`, and for a temporary HOME that keeps `.moai-cli` it runs `"$HOME/.moai-cli/path/moai-cli" statusline`; the plan's `launcher.path` names the same path · verify: `cargo test --test path_root_direct_sites launcher_`
+- AC-7 (REQ-12): a launcher placed under the resolved folder of a temporary HOME is found (not `missing`), and one placed under the other folder is `missing` · verify: `cargo test --test path_root_direct_sites launcher_`
+- AC-8 (REQ-13): a temporary project whose only manifest lies under `.moai/` reports no language, and the same manifest beside it at the top reports its language · verify: `cargo test --test path_root_direct_sites detect_`
 ## Scope
 
 - write: `src/state_root.rs`, `src/home_root.rs`, `src/clone_root.rs` (the resolvers and their unit tests), new `tests/path_root_default.rs`, and this SPEC folder
 - write, test fixtures only (the lines that built an empty tree and expected the earlier folder): `src/apply.rs`, `src/message.rs`, `src/profile.rs`, `src/project_home.rs`, `tests/freshness_fixture.rs`, `tests/home_install_apply_cli.rs`, `tests/home_style_cli.rs`, `tests/message_cli.rs`, `tests/omp_agents.rs`, `tests/update_hooks_cli.rs`; and by pair note with the holder's ACK, one test-only line each in `src/statusline/state.rs` (ACK given), `src/lane_idle.rs`, `src/lane_loop.rs`, `src/project_update.rs`, `tests/launcher_auto_init.rs`, `tests/statusline_home_state.rs` and `tests/statusline_counts_refresh.rs` (answers pending)
+- write (slice 2): `src/go_settings_clean.rs` (the launcher path from the HOME resolver, its unit tests), `src/project_detect.rs` (`.moai` in the skipped folders), new `tests/path_root_direct_sites.rs`, `tests/lane_next_cli.rs` (the lane-idle paths of a clone, done with slice 1's affected run); `src/migrate.rs` and `src/forge/report.rs` are in the card's scope for slice 3
 - read-only: `src/lib.rs` (held by another change; its constants and doc comments stay), `src/identity.rs`, `install/install.sh`, every direct site named above
 - forbidden: the Go repository, the real HOME, any move or delete of state, installer or shell profile changes, any card number in a file name, SPEC id, branch or commit
 
@@ -85,6 +92,8 @@ Tests first (RED): `tests/path_root_default.rs` builds each row of the table in 
 
 Readers of the resolvers and of the earlier name (files, counted as above) for the next slices: direct sites by file — `src/agents.rs` (16 lines), `src/message.rs` (15), `src/apply.rs`, `src/project_id.rs`, `src/profile.rs`, `src/lane_loop.rs`, `src/statusline/state.rs`, `src/claude.rs`, `src/layout.rs`, `src/go_state.rs`, `src/project_home.rs`, `src/project_detect.rs`, `src/hooks.rs`, `src/hook_engine.rs`, `src/check_tree.rs`, `src/forge/report.rs`, `src/project_hosts.rs`, `src/migrate.rs`, `src/scope.rs`; fixed paths — `src/worktree_move.rs`, `src/optimize.rs`, `src/key_vault.rs`, `src/go_settings_clean.rs`, `src/baseline.rs`; HOME and clone — `src/home_install.rs`, `src/usage_limit.rs`, `src/project_home.rs`, `src/home_workdir.rs`. Next slices: route these through the resolvers, the move step, the installer and the texts.
 
+
+Slice 2 (revision 3), from a read-only inventory of every production site that spells the earlier name (64 rows: 2 writers, 4 resolver returns, 11 deliberate legacy reads, 16 reads, 30 texts, 1 import). No production site in a project or a clone creates `.moai-cli` where it is absent: the HOME install journal is written only when `~/.moai-cli` already exists (`home_install.rs` action `none` for an absent old root), and the migration rehearsal writes only into its synthetic home. What does break after a HOME move: the Go settings clean-up writes and probes the launcher at `$HOME/.moai-cli/path/moai-cli` whatever the HOME resolves to, so a moved HOME would get a status line that points nowhere; and project detection walks `.moai` (its skip list names only `.moai-cli`). Slice 2 fixes these two, tests first. Slice 3: the texts that name `~/.moai-cli` (help, refusals, hints), the shell shim default (`shim_check.rs`), the rehearsal prefix (`migrate.rs`) and `forge::report::render` (no production caller), each behind the resolver or reworded.
 ## Risks
 
 - A tree that a resolver now sends to `.moai` can gain a `.moai-cli` from a direct writer, which makes it resolve to `.moai-cli` and strands the earlier `.moai` state. Slice 1 keeps the resolvers read-only and pins the stranding in a test comment; the direct sites are the next slice, and a new tree's marker keeps `.moai` first.
