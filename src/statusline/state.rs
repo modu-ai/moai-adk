@@ -280,7 +280,12 @@ pub fn collect(input: Option<&Input>, ctx: &Context) -> Status {
     // the goal file.
     status.context = collect_context(input, ctx);
     status.cost = input.cost.as_ref().and_then(|c| c.total_cost_usd);
-    status.claude_version = input::text(&input.version).to_string();
+    // Audit N-3: the version comes from stdin; a control character (an escape, a newline) never
+    // reaches the screen.
+    status.claude_version = input::text(&input.version)
+        .chars()
+        .filter(|c| !c.is_control())
+        .collect();
     status.effort = input
         .effort
         .as_ref()
@@ -624,17 +629,30 @@ fn resolve_glm_model_name(display: &str, ctx: &Context) -> String {
 
 // ---- context window ----
 
+/// The tokens of `current_usage` the `CW` number falls back to: none when the object carries no
+/// count at all (REQ-2: `CW n/a`, never a guessed `0%`), and a sum that stops at `i64::MAX`
+/// instead of overflowing on absurd counts.
+fn usage_tokens(u: &input::CurrentUsage) -> Option<i64> {
+    let counts = [
+        u.input_tokens,
+        u.cache_creation_input_tokens,
+        u.cache_read_input_tokens,
+    ];
+    counts.iter().any(Option::is_some).then(|| {
+        counts
+            .iter()
+            .flatten()
+            .fold(0i64, |sum, n| sum.saturating_add(*n))
+    })
+}
+
 fn collect_context(input: &Input, ctx: &Context) -> Option<f64> {
     let reading = input.context_window.as_ref().map(|cw| ContextReading {
         used_percentage: cw.used_percentage,
         context_window_size: cw.context_window_size.unwrap_or(0),
         used: cw.used.unwrap_or(0),
         total: cw.total.unwrap_or(0),
-        current_usage_tokens: cw.current_usage.as_ref().map(|u| {
-            u.input_tokens.unwrap_or(0)
-                + u.cache_creation_input_tokens.unwrap_or(0)
-                + u.cache_read_input_tokens.unwrap_or(0)
-        }),
+        current_usage_tokens: cw.current_usage.as_ref().and_then(usage_tokens),
     });
     let size_override = if reading.is_some() {
         context_window_override(ctx)
@@ -1834,6 +1852,24 @@ mod tests {
     thread_local! {
         /// `run_git` spawn attempts on this test thread.
         pub(super) static GIT_SPAWNS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+    }
+
+    /// Audit N-1 and N-5 of the limits slice: absurd counts stop at `i64::MAX` (a plain `+`
+    /// panics in a debug build), and an object with no count gives no number at all.
+    #[test]
+    fn usage_tokens_saturate_and_an_empty_object_has_none() {
+        let usage = |a, b, c| input::CurrentUsage {
+            input_tokens: a,
+            cache_creation_input_tokens: b,
+            cache_read_input_tokens: c,
+        };
+        assert_eq!(
+            usage_tokens(&usage(Some(i64::MAX), Some(i64::MAX), Some(1))),
+            Some(i64::MAX)
+        );
+        assert_eq!(usage_tokens(&usage(Some(1), None, Some(2))), Some(3));
+        assert_eq!(usage_tokens(&usage(None, None, Some(0))), Some(0));
+        assert_eq!(usage_tokens(&usage(None, None, None)), None);
     }
 
     #[test]
