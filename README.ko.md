@@ -131,11 +131,11 @@ RC1은 HOME의 `.moai` 폴더가 이 세대의 마커를 갖고 있거나 HOME�
 
 ## Anthropic·Claude Code와의 관계
 
-- MoAI ADK는 사용자가 직접 설치하고 로그인한 Claude Code를 실행합니다.
-- MoAI ADK는 Anthropic 제품이 아닙니다. Anthropic이 만들거나 보증하거나 제휴한 도구가 아닙니다.
-- Claude Code나 Anthropic의 이름과 로고를 자기 이름이나 로고로 쓰지 않습니다.
+- MoAI ADK는 사용자가 직접 설치한 Claude Code를 실행합니다. Claude Code는 사용자의 Claude 계정이나 GLM 같은 다른 공급자에 연결해 씁니다.
+- MoAI ADK는 Anthropic 제품이 아닙니다. Anthropic이 만들거나 보증한 도구가 아니며, Anthropic과 제휴 관계도 없습니다.
+- Claude Code나 Anthropic의 이름과 로고를 자체 이름이나 로고로 쓰지 않습니다.
 - Claude Code 실행 파일을 바꾸지 않고, Anthropic이 배포한 그대로 실행합니다.
-- Claude 계정 자격 증명이나 세션 토큰을 묻거나 저장하거나 전달하지 않습니다. 로그인은 Claude Code가 맡습니다.
+- Claude 계정 자격 증명이나 세션 토큰을 요구하거나 저장하거나 전달하지 않습니다. 로그인은 Claude Code가 맡습니다. GLM 키처럼 사용자가 고른 공급자 키는 moai의 자체 키 보관소에 둡니다(`moai key-set glm`).
 
 ## 라이선스
 
