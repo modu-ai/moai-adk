@@ -117,6 +117,7 @@ parent: null
 | D-17 | Tier 0 gets a light audit by the lander instead of no audit, because a card lands only with a passing verdict. The tier is named in the lane's ready note, not in a pull-request body. | Leader answer on the slice C part 3 note (2026-11-22); the flow reference's landing rule. | Restore "tier 0 has no audit". |
 | D-18 | The product spellings of the retired modes stay for a product slice; they are listed in Result and are not rewritten here. | Leader answer on the slice C part 2 note (2026-11-22). | Rewrite them in this SPEC. |
 | D-19 | The audit contract's section "Audit tiers" lists the tier 2 prefixes of `src/gate.rs` one by one (AUDIT's tier step points to it, because a workflow names no package path), naming the retired second host's folder by where it sits because REQ-8 keeps its name out; the leader's three cases (documents read by the lander, tests or tools a light audit by the lander, code an independent audit) apply below tier 2, and tier 2 is always the full audit by an independent session. The verdict's second line is `Moai-Session: <value>`: the card verdict reader reads the first line only, so the recording session compares that value itself. | Slice C audit N-c, N-d and N-e and the leader's repair brief (2026-11-23). | Apply the three cases to tier 2 too, or teach `auditor: <lane>`. |
+| D-20 | Plan step 6 also wrote two lines outside this Scope by the leader's word: the `docs/rule-history.md` entry of `EXACT_DENY` in `tools/ci_scope.py`, and line 5 of `references/internal/core-rules.md`, which points to the moved history. | Leader decision on the step 6 blocked note (2026-11-22); the cards that held the two files had landed their slices. | Leave the pointer for a later step and keep the docs path out of the deny list. |
 
 ## Result
 
@@ -154,7 +155,7 @@ What each slice delivered:
   - `tests/skill_references_test.py` drops its exception for the history, because no shipped file is left out now;
   - the header comments of `tests/claim_renew_doc_3042.rs`, `tests/mode_cards_53.rs` and `tests/mode_workflow_steps.rs` name `docs/rule-history.md` (the guard still requires every test file the history names to exist, D-11);
   - the source manifest is regenerated and drops the entry.
-- **Left for a later step:** line 5 of `references/internal/core-rules.md` still names `references/rule-history.md`. Another card holds that file, so the line changes once it lands.
+- **The two granted lines (D-20):** line 5 of `references/internal/core-rules.md` now names the moai-adk repository's `docs/rule-history.md`, and `tools/ci_scope.py` lists `docs/rule-history.md` in `EXACT_DENY`, because code reads that docs path. Each file changed by that one line; the source manifest entry of `core-rules.md` is regenerated.
 - **Follow-ups of the slice C verdict:**
   - F2 (done): SYNC names a pull request only where it speaks of the release pull request. The receipt is carried in a note on the card, the SPEC is archived after the landing, and step 2 checks the tree the lane's ready note names; a test scans every sentence of SYNC.
   - F3 (done): SYNC's work ledger is the project's card ledger, as WORK reads it.
