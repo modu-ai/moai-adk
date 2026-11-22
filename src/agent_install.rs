@@ -154,6 +154,42 @@ pub struct Receipt {
     /// pending | committed | reverted
     pub status: String,
     pub entries: Vec<ReceiptEntry>,
+    /// Per host, how many folders at the end of the agent folder's path (below the host folder)
+    /// this apply created; the revert removes them again while they are empty. Absent in a
+    /// receipt that created none.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub created_folders: BTreeMap<String, usize>,
+}
+
+/// How many folders at the end of the agent folder's path do not exist yet, counted from the
+/// agent folder up and never past the host folder (`place.base`) or above `place.rel`.
+fn missing_levels(place: &crate::host_home::Place) -> usize {
+    let dir = place.path();
+    dir.ancestors()
+        .take(place.rel.components().count())
+        .take_while(|d| fs::symlink_metadata(d).is_err())
+        .count()
+}
+
+/// Removes up to `levels` empty folders at the end of the host's agent folder path, from the
+/// agent folder up, stopping at the first folder that holds anything (the folders a revert
+/// leaves behind when its apply created them).
+fn remove_created_folders(home: &Path, host: &str, levels: usize) -> Result<Vec<String>> {
+    let place = host_place(home, host)?;
+    let mut dir = place.path();
+    let mut removed = Vec::new();
+    for _ in 0..levels.min(place.rel.components().count()) {
+        let empty = fs::read_dir(&dir)
+            .map(|mut entries| entries.next().is_none())
+            .unwrap_or(false);
+        if !empty {
+            break;
+        }
+        fs::remove_dir(&dir).map_err(|_| format!("{} not removed", dir.display()))?;
+        removed.push(dir.display().to_string());
+        dir.pop();
+    }
+    Ok(removed)
 }
 
 /// A path that must be a real folder (or absent): never a symlink, never a file.
@@ -474,6 +510,7 @@ pub fn apply_for(
         permission_reference: permission.to_string(),
         status: "pending".into(),
         entries: Vec::new(),
+        created_folders: BTreeMap::new(),
     };
     let receipt_path = receipt_dir.join("receipt.json");
     write_json(&receipt_path, &receipt)?;
@@ -482,6 +519,12 @@ pub fn apply_for(
         let dir = host_dir(&home, &host.host)?;
         // Checked before creating (create_dir_all would follow a linked parent) and after.
         host_folders_plain(&home, &host.host)?;
+        // Recorded before creating, so the revert can take back the folders it made (audit B1).
+        let missing = missing_levels(&host_place(&home, &host.host)?);
+        if missing > 0 && !receipt.created_folders.contains_key(&host.host) {
+            receipt.created_folders.insert(host.host.clone(), missing);
+            write_json(&receipt_path, &receipt)?;
+        }
         fs::create_dir_all(&dir).map_err(|_| format!("{} unavailable", dir.display()))?;
         host_folders_plain(&home, &host.host)?;
         let target = dir.join(&file.file);
@@ -705,9 +748,20 @@ pub fn revert_in(
         write_json(&state_root(&home).join(format!("{}.json", e.host)), &state)?;
         reverted.push(format!("{}:{}", e.host, e.file));
     }
+    // Audit B1: the folders this apply created go too, while they are empty.
+    let mut removed_folders = Vec::new();
+    for (host, levels) in &receipt.created_folders {
+        if retired(host, active)
+            || !HOSTS.contains(&host.as_str())
+            || host_folders_plain(&home, host).is_err()
+        {
+            continue;
+        }
+        removed_folders.extend(remove_created_folders(&home, host, *levels)?);
+    }
     receipt.status = "reverted".into();
     write_json(&path, &receipt)?;
     Ok(
-        serde_json::json!({"state": "reverted", "receipt": receipt_id, "reverted": reverted, "skipped": skipped}),
+        serde_json::json!({"state": "reverted", "receipt": receipt_id, "reverted": reverted, "skipped": skipped, "removed_folders": removed_folders}),
     )
 }

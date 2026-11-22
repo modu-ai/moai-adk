@@ -324,6 +324,52 @@ fn the_revert_of_a_move_restores_the_flat_files_and_skips_a_changed_one() {
     );
 }
 
+fn names_in(dir: &Path) -> Vec<String> {
+    let mut names: Vec<String> = fs::read_dir(dir)
+        .unwrap()
+        .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+        .collect();
+    names.sort();
+    names
+}
+
+/// Audit B1: the revert removes the folders its apply created while they are empty, and keeps
+/// a folder that holds anything.
+#[test]
+fn the_revert_removes_the_empty_folders_its_apply_created() {
+    // The user's own agent was already in agents/: only moai/ was created, so only moai/ goes.
+    let one = fx();
+    fs::create_dir_all(one.claude_agents()).unwrap();
+    fs::write(one.claude_agents().join("my-own.md"), "mine\n").unwrap();
+    let v = one.apply(&one.plan());
+    let id = v["result"]["receipt"].as_str().unwrap().to_string();
+    assert!(one.nested("audit").is_file(), "{v}");
+    let r = one.revert(&id);
+    assert_eq!(r["result"]["state"], "reverted", "{r}");
+    assert_eq!(names_in(&one.claude_agents()), vec!["my-own.md"], "{r}");
+
+    // No agents/ before: the apply created agents/ and moai/, and the revert removes both.
+    let two = fx();
+    let v = two.apply(&two.plan());
+    let id = v["result"]["receipt"].as_str().unwrap().to_string();
+    let r = two.revert(&id);
+    assert_eq!(r["result"]["state"], "reverted", "{r}");
+    assert!(!two.claude_agents().exists(), "{r}");
+
+    // A file the user put into moai/ after the apply keeps that folder.
+    let three = fx();
+    let v = three.apply(&three.plan());
+    let id = v["result"]["receipt"].as_str().unwrap().to_string();
+    fs::write(three.claude_agents().join("moai/notes.md"), "mine\n").unwrap();
+    let r = three.revert(&id);
+    assert_eq!(r["result"]["state"], "reverted", "{r}");
+    assert_eq!(
+        names_in(&three.claude_agents().join("moai")),
+        vec!["notes.md"],
+        "{r}"
+    );
+}
+
 /// REQ-10: Claude Code itself finds the five base agents and a project role. There is no
 /// documented command that lists definitions without a model run; an unknown `--agent` name
 /// exits before any model call and prints the list it found (measured on Claude Code 2.1.330).
