@@ -694,7 +694,7 @@ fn build_and_test_commands_and_ci_files_are_reported_beside_the_facts() {
     let empty = TempDir::new().unwrap();
     assert_eq!(
         detect(&empty)["commands"],
-        json!({"build": [], "test": [], "ci_files": []})
+        json!({"build": [], "test": [], "lint": [], "format": [], "ci_files": []})
     );
 
     let root = TempDir::new().unwrap();
@@ -728,6 +728,8 @@ fn build_and_test_commands_and_ci_files_are_reported_beside_the_facts() {
         json!({
             "build": ["./gradlew build", "cargo build", "go build ./...", "make build", "mvn package", "pnpm run build"],
             "test": ["./gradlew test", "cargo test", "go test ./...", "make test", "mvn test", "pnpm test", "pytest"],
+            "lint": ["cargo clippy --all-targets -- -D warnings", "go vet ./...", "make lint"],
+            "format": ["cargo fmt --check", "test -z \"$(gofmt -l .)\""],
             "ci_files": ["ci.yml", "release.yaml"],
         })
     );
@@ -785,10 +787,147 @@ fn build_and_test_commands_and_ci_files_are_reported_beside_the_facts() {
     let yarn = TempDir::new().unwrap();
     write(yarn.path(), "package.json", r#"{"scripts": {"lint": "x"}}"#);
     write(yarn.path(), "yarn.lock", "");
+    // The `lint` script is now a lint candidate; it still names no build or test command.
     assert_eq!(
         detect(&yarn)["commands"],
-        json!({"build": [], "test": [], "ci_files": []})
+        json!({"build": [], "test": [], "lint": ["yarn run lint"], "format": [], "ci_files": []})
     );
+}
+
+/// CI design slice A (REQ-4): lint and format command candidates beside build and test, from
+/// the same fixed templates, never a script body and never run. A script that formats in place
+/// (`format`) is not a check and is never offered; only a script that checks is.
+#[test]
+fn lint_and_format_candidates_come_from_fixed_templates_and_check_only() {
+    // Rust: the two usual tools, with the strict flags the project's own check uses.
+    let rust = TempDir::new().unwrap();
+    write(rust.path(), "Cargo.toml", "[package]\nname = \"x\"\n");
+    let c = detect(&rust)["commands"].clone();
+    assert_eq!(
+        c["lint"],
+        json!(["cargo clippy --all-targets -- -D warnings"])
+    );
+    assert_eq!(c["format"], json!(["cargo fmt --check"]));
+
+    // Node: only the scripts the manifest declares, through the lock file's package manager.
+    for (lock, pm) in [
+        ("", "npm"),
+        ("pnpm-lock.yaml", "pnpm"),
+        ("yarn.lock", "yarn"),
+        ("bun.lockb", "bun"),
+    ] {
+        let node = TempDir::new().unwrap();
+        write(
+            node.path(),
+            "package.json",
+            &format!(
+                r#"{{"scripts": {{"lint": "echo {TOKEN}", "format:check": "x", "format": "y"}}}}"#
+            ),
+        );
+        if !lock.is_empty() {
+            write(node.path(), lock, "");
+        }
+        let result = detect(&node);
+        let c = &result["commands"];
+        assert_eq!(c["lint"], json!([format!("{pm} run lint")]), "{pm}");
+        assert_eq!(
+            c["format"],
+            json!([format!("{pm} run format:check")]),
+            "{pm}"
+        );
+        assert!(!result.to_string().contains(TOKEN), "{result}");
+    }
+    let in_place = TempDir::new().unwrap();
+    write(
+        in_place.path(),
+        "package.json",
+        r#"{"scripts": {"format": "prettier --write ."}}"#,
+    );
+    assert_eq!(detect(&in_place)["commands"]["format"], json!([]));
+
+    // Go, Python (ruff, black from the dependency files) and a Makefile.
+    let go = TempDir::new().unwrap();
+    write(go.path(), "go.mod", "module example.com/x\n");
+    let c = detect(&go)["commands"].clone();
+    assert_eq!(c["lint"], json!(["go vet ./..."]));
+    assert_eq!(c["format"], json!(["test -z \"$(gofmt -l .)\""]));
+    let py = TempDir::new().unwrap();
+    write(py.path(), "requirements.txt", "ruff==0.5\nblack==24.1\n");
+    let c = detect(&py)["commands"].clone();
+    assert_eq!(c["lint"], json!(["ruff check ."]));
+    assert_eq!(
+        c["format"],
+        json!(["black --check .", "ruff format --check ."])
+    );
+    let py_group = TempDir::new().unwrap();
+    write(
+        py_group.path(),
+        "pyproject.toml",
+        "[dependency-groups]\nlint = [\"ruff>=0.5\"]\n",
+    );
+    assert_eq!(
+        detect(&py_group)["commands"]["lint"],
+        json!(["ruff check ."])
+    );
+    let make = TempDir::new().unwrap();
+    write(
+        make.path(),
+        "Makefile",
+        "lint:\n\techo\nformat:\n\techo\nformat-check:\n\techo\n",
+    );
+    let c = detect(&make)["commands"].clone();
+    assert_eq!(c["lint"], json!(["make lint"]));
+    assert_eq!(c["format"], json!(["make format-check"]));
+
+    // Nothing declared, nothing offered; and nothing is written.
+    let empty = TempDir::new().unwrap();
+    let before = tree(empty.path());
+    let c = detect(&empty)["commands"].clone();
+    assert_eq!(
+        (c["lint"].clone(), c["format"].clone()),
+        (json!([]), json!([]))
+    );
+    assert_eq!(tree(empty.path()), before);
+}
+
+/// Every candidate the detection offers is a command the profile's declared list accepts, so
+/// a confirmed detection can always be saved as it is.
+#[test]
+fn every_detected_command_is_accepted_as_a_declared_check() {
+    let root = TempDir::new().unwrap();
+    let r = root.path();
+    write(r, "Cargo.toml", "[package]\nname = \"x\"\n");
+    write(r, "go.mod", "module example.com/x\n");
+    write(r, "requirements.txt", "pytest\nruff\nblack\n");
+    write(
+        r,
+        "package.json",
+        r#"{"scripts": {"build": "a", "test": "b", "lint": "c", "format:check": "d"}}"#,
+    );
+    write(
+        r,
+        "Makefile",
+        "build:\n\techo\ntest:\n\techo\nlint:\n\techo\nformat-check:\n\techo\n",
+    );
+    let commands = detect(&root)["commands"].clone();
+    let mut checks = Vec::new();
+    for kind in ["build", "test", "lint", "format"] {
+        for (i, command) in commands[kind].as_array().unwrap().iter().enumerate() {
+            checks.push(json!({"id": format!("{kind}{i}"), "command": command}));
+        }
+    }
+    assert!(
+        checks.len() > 8,
+        "the fixture offers many commands: {checks:?}"
+    );
+    checks.truncate(16);
+    let mut profile = json!({
+        "schema_version": 2, "project_id": "demo", "purpose": "Build a small editor",
+        "tools": ["Rust"], "development_methods": ["TDD"], "hosts": ["claude"]
+    });
+    profile["checks"] = Value::Array(checks);
+    let out = run(&["project-plan", p(&root)], profile.to_string().as_bytes());
+    ok(&out);
 }
 
 #[cfg(unix)]
@@ -843,7 +982,7 @@ fn ci_file_names_are_filtered_and_capped_and_make_targets_stay_apart() {
     write(make.path(), "Makefile", "test:\n\techo\n");
     assert_eq!(
         detect(&make)["commands"],
-        json!({"build": [], "test": ["make test"], "ci_files": []})
+        json!({"build": [], "test": ["make test"], "lint": [], "format": [], "ci_files": []})
     );
 }
 
