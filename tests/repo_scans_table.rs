@@ -214,6 +214,12 @@ fn id(scan: &Value) -> String {
 #[test]
 fn entries_are_well_formed() {
     let scans = load();
+    for scan in &scans {
+        assert!(
+            scan["id"].as_str().is_some_and(|s| !s.is_empty()),
+            "an entry has no id: {scan}"
+        );
+    }
     let ids: Vec<String> = scans.iter().map(id).collect();
     let unique: BTreeSet<&String> = ids.iter().collect();
     assert_eq!(ids.len(), unique.len(), "duplicate id");

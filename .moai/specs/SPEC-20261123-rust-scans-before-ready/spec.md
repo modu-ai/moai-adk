@@ -2,7 +2,7 @@
 id: SPEC-20261123-rust-scans-before-ready
 title: "The two scans every lane runs before READY are Rust tests, and check affected no longer plans a Python step"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-23
 ---
 
@@ -10,7 +10,7 @@ created: 2026-11-23
 
 ## Intent
 
-사용자 말(2026-11-23): "python tests are not used". 리더 노트(카드 C-317, 6949)가 순서를 정했어요: (1) 모든 레인이 READY 전에 돌리는 `repo_scans_test` 와 `source_manifest_test` 를 Rust 로 옮기고, (2) 그 보호가 Rust 로 옮겨진 같은 조각에서 `check affected` 가 파이썬 단계를 걷고, (3) 나머지 모듈과 `tools/*.py` 는 `SPEC-20261121-rust-only-text-scans` 와 뒤따르는 조각이 맡아요.
+사용자 말(2026-11-23): "python tests are not used". 리더가 같은 날 순서를 정했어요: (1) 모든 레인이 READY 전에 돌리는 `repo_scans_test` 와 `source_manifest_test` 를 Rust 로 옮기고, (2) 그 보호가 Rust 로 옮겨진 같은 조각에서 `check affected` 가 파이썬 단계를 걷고, (3) 나머지 모듈과 `tools/*.py` 는 `SPEC-20261121-rust-only-text-scans` 와 뒤따르는 조각이 맡아요.
 
 이 조각은 (1)과 (2)만 해요.
 
@@ -64,15 +64,18 @@ created: 2026-11-23
 
 결정은 되돌릴 수 있고 범주는 `none` 이에요. 결정자는 리더이고, 답이 없으면 기본값으로 진행해요.
 
-- D10 `check affected` 가 파이썬 단계를 걷는 시점. 리더 노트 6949 는 "그 단계가 지키던 보호가 Rust 로 옮겨진 같은 조각"이라고 해요. 남은 파이썬 시험은 READY 영수증에서 빠지고 CI 의 `unittest` 단계가 계속 돌려요(D8). 기본값: 이 조각에서 걷어요.
+- D10 `check affected` 가 파이썬 단계를 걷는 시점. 리더가 정한 순서는 "그 단계가 지키던 보호가 Rust 로 옮겨진 같은 조각"에서 걷는 거예요. 남은 파이썬 시험은 READY 영수증에서 빠지고 CI 의 `unittest` 단계가 계속 돌려요(D8). 기본값: 이 조각에서 걷어요.
 - D11 `source_manifest_test.py` 의 저장소 사실 두 사례(`test_this_repository_manifest_is_what_the_tool_writes`, `test_this_repository_names_the_driver_for_the_manifest`)는 같은 사실을 Rust 가 단정하는 동안(D9) 파이썬에도 그대로 둬요. 기본값: 그대로 둠, 조각 4 에서 파일째 지워요.
 - D12 `tools/self_check.sh` 의 `py-repo-scans` 항목은 파일이 없으면 건너뛰고(`skip (no tests/repo_scans_test.py)`), 같은 일을 하는 항목은 스크립트를 Rust 로 옮기는 조각에서 더해요. 그동안 READY 전 훑기는 표의 검사(`--test repo_scans_table`)가 맡아요. 기본값: 스크립트와 그 시험은 건드리지 않음.
+
+- D13 위 일곱 파이썬 모듈을 착지 사이에 누가 돌리는지. 선택지: (a) 리더의 전체 시험 실행(다섯 번 착지마다)과 CI 의 `rest` 다리가 돌림, (b) 모든 레인이 READY 전에 손으로 돌림(파이썬 시험은 아무도 손으로 돌리지 않는다는 사용자 규칙과 어긋나서 버려요). 기본값: (a). 감사가 (a)를 제안했고, 리더의 전체 실행이 이 일곱을 실제로 포함하는지는 리더가 확인해요.
 
 ## Risks
 
 - 파이썬 정규식이 하던 훑기("걷는 시험 파일" 찾기와 `fn` 이름 찾기)를 Rust 의 문자열 함수로 다시 쓰는 것이라 두 구현이 어긋날 수 있어요. 옮긴 뒤 두 쪽이 낸 파일 집합을 같은 트리에서 비교했어요(Result).
 - `skills/moai` 아래에 추적되지 않는 파일(예: `.DS_Store`)이 있으면 매니페스트 시험이 실패해요. 파이썬 도구도 디스크를 훑어서 같은 동작이에요.
-- `check affected` 가 파이썬 단계를 걷으면 파이썬으로만 지켜지는 보호는 CI 의 `unittest` 단계에서만 돌아요. 그 시험이 모두 Rust 로 옮겨질 때까지의 한시적 상태예요.
+- `check affected` 가 파이썬 단계를 걷으면 파이썬으로만 지켜지는 보호는 `tools/local_check.sh` 와 CI 의 `unittest` 단계에서만 돌아요. 그 시험이 모두 Rust 로 옮겨질 때까지의 한시적 상태예요.
+- 표(`tools/repo_scans.json`)가 `unittest` 검사로 걸어 두었던 파이썬 모듈은 일곱이에요: `ci_scope_test`, `github_assets_test`, `github_inventory_test`, `github_templates_test`, `skill_references_test`, `source_manifest_test`, `space_applied_record_test`. 저장소 트리를 읽는 훑기라서 바뀐 범위가 그 항목의 범위에 들면 `check affected` 가 골라 주었는데, 이제는 아무 레인도 READY 전에 돌리지 않아요. 그 일곱은 `tools/local_check.sh` 의 `unittest` 단계와 CI 의 `rest` 다리가 돌리고, 착지 사이에는 D13 이 정한 주체가 돌려요.
 - CLAUDE.md 의 "Scan tests first" 줄이 아직 `python3 -m unittest tests.repo_scans_test tests.source_manifest_test` 를 가리켜요. CLAUDE.md 는 리더의 파일이라 이 조각이 고치지 않고, 새 명령을 노트로 알려요.
 
 ## Result

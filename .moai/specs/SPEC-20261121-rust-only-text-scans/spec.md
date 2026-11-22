@@ -14,7 +14,7 @@ created: 2026-11-21
 
 이 head 는 SPEC 만 담고 코드는 없어요. 착지 순서상 경로 뿌리와 Go 연결 정리가 먼저 들어가야 해서 구현은 그 뒤에 시작해요.
 
-개정 2(2026-11-23): `tests/omp_host_survey_test.py`(9 사례)는 퇴역한 OMP 조사표를 고정하던 시험이라 다른 카드가 지우므로 표에서 뺐어요(리더 노트 6676). 모든 레인이 READY 전에 돌리는 `repo_scans_test` 와 `source_manifest_test` 의 저장소 사실은 이 SPEC 의 순서보다 먼저 `SPEC-20261123-rust-scans-before-ready` 가 옮겨요(그 SPEC 은 `check affected` 의 파이썬 단계도 걷어요). 그래서 아래 "뒤따르는 착지" 의 C 에 있는 `repo_scans` 표 점검은 이미 끝난 것으로 봐요.
+개정 2(2026-11-23): `tests/omp_host_survey_test.py`(9 사례)는 퇴역한 OMP 조사표를 고정하던 시험이라 리더가 다른 조각에서 지우기로 정했으므로 표에서 뺐어요. 모든 레인이 READY 전에 돌리는 `repo_scans_test` 와 `source_manifest_test` 의 저장소 사실은 이 SPEC 의 순서보다 먼저 `SPEC-20261123-rust-scans-before-ready` 가 옮겨요(그 SPEC 은 `check affected` 의 파이썬 단계도 걷어요). 그래서 아래 "뒤따르는 착지" 의 C 에 있는 `repo_scans` 표 점검은 이미 끝난 것으로 봐요.
 
 판정표에서 옮길 대상(사례 수는 `ast` 로 센 값):
 

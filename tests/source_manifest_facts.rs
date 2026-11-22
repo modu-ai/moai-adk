@@ -1,5 +1,5 @@
-//! The facts of this repository's `skills/moai/references/source-manifest.json` (Issue #2837,
-//! cards C-74 and C-92): every file under `skills/moai/` has one entry with its sha256, the
+//! The facts of this repository's `skills/moai/references/source-manifest.json` (Issue #2837):
+//! every file under `skills/moai/` has one entry with its sha256, the
 //! entries are in sorted key order with no key twice, the file is the text
 //! `json.dumps(indent=2, ensure_ascii=False)` plus a newline gives, and `.gitattributes` names
 //! the merge driver for it.
@@ -167,8 +167,8 @@ fn a_duplicate_key_is_never_read_as_last_wins() {
 
 #[test]
 fn files_are_in_sorted_key_order() {
-    // Card C-92: one order for every tree, whatever the history, so two branches that hold the
-    // same entry hold it on the same line and a text merge never keeps an entry twice.
+    // One order for every tree, whatever the history, so two branches that hold the same entry
+    // hold it on the same line and a text merge never keeps an entry twice.
     let keys = keys_of_files(&manifest_text());
     let mut sorted = keys.clone();
     sorted.sort();
@@ -239,28 +239,152 @@ fn this_repository_manifest_is_what_the_tool_writes() {
     }
 }
 
+/// What `.gitattributes` says about the `merge` attribute of one path, as git reads it.
+#[derive(Debug, PartialEq)]
+enum Merge {
+    Unspecified,
+    Set,
+    Unset,
+    Driver(String),
+}
+
+/// `*` stays inside one folder name, `**` crosses folders, `**/` also matches no folder, and `?`
+/// is one character that is not `/`.
+fn glob_match(pattern: &[u8], text: &[u8]) -> bool {
+    match pattern {
+        [] => text.is_empty(),
+        [b'*', b'*', b'/', rest @ ..] => {
+            glob_match(rest, text)
+                || (0..text.len()).any(|i| text[i] == b'/' && glob_match(rest, &text[i + 1..]))
+        }
+        [b'*', b'*', rest @ ..] => (0..=text.len()).any(|i| glob_match(rest, &text[i..])),
+        [b'*', rest @ ..] => {
+            let reach = text.iter().position(|c| *c == b'/').unwrap_or(text.len());
+            (0..=reach).any(|i| glob_match(rest, &text[i..]))
+        }
+        [b'?', rest @ ..] => {
+            matches!(text.first(), Some(c) if *c != b'/') && glob_match(rest, &text[1..])
+        }
+        [c, rest @ ..] => text.first() == Some(c) && glob_match(rest, &text[1..]),
+    }
+}
+
+/// Does a `.gitattributes` pattern (kept at the repository root) name this file? A pattern with
+/// no slash matches the file name in any folder; one with a slash is read from the root.
+fn pattern_names(pattern: &str, path: &str) -> bool {
+    if pattern.ends_with('/') {
+        return false;
+    }
+    let anchored = pattern.trim_start_matches('/');
+    if anchored.contains('/') {
+        glob_match(anchored.as_bytes(), path.as_bytes())
+    } else {
+        let name = path.rsplit('/').next().unwrap_or(path);
+        glob_match(anchored.as_bytes(), name.as_bytes())
+    }
+}
+
+/// The last line that names the path and speaks of `merge` decides, as in git: `merge` sets it,
+/// `-merge` unsets it, `!merge` leaves it unspecified and `merge=<driver>` names the driver. A
+/// `[attr]` macro that mentions merge is refused, because what it sets cannot be told here.
+fn merge_attribute(attributes: &str, path: &str) -> Result<Merge, String> {
+    let mut state = Merge::Unspecified;
+    for line in attributes.lines().map(str::trim) {
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+        if line.starts_with("[attr]") {
+            if line.contains("merge") {
+                return Err(format!("a macro line speaks of merge: {line}"));
+            }
+            continue;
+        }
+        let mut words = line.split_whitespace();
+        let Some(pattern) = words.next() else {
+            continue;
+        };
+        if !pattern_names(pattern, path) {
+            continue;
+        }
+        for word in words {
+            if word == "merge" {
+                state = Merge::Set;
+            } else if word == "-merge" {
+                state = Merge::Unset;
+            } else if word == "!merge" {
+                state = Merge::Unspecified;
+            } else if let Some(driver) = word.strip_prefix("merge=") {
+                state = Merge::Driver(driver.to_string());
+            }
+        }
+    }
+    Ok(state)
+}
+
+#[test]
+fn the_attribute_reader_reads_the_last_line_that_names_the_path() {
+    let path = format!("{PACKAGE}/{MANIFEST}");
+    let driver = format!("{path} merge=moai-manifest\n");
+    let read = |text: &str| merge_attribute(text, &path).expect("the lines are readable");
+    assert_eq!(read(&driver), Merge::Driver("moai-manifest".into()));
+    // Lines that do not name the file, or come before the driver line, change nothing.
+    for other in [
+        "skills/moai/other/*.json -merge\n",
+        "*.md merge=union\n",
+        "# skills/moai/references/*.json -merge\n",
+        "templates/** merge=union\n",
+        "skills/moai/references/ merge=union\n",
+    ] {
+        assert_eq!(
+            read(&format!("{driver}{other}")),
+            Merge::Driver("moai-manifest".into()),
+            "{other}"
+        );
+    }
+    assert_eq!(
+        read(&format!("*.json -merge\n{driver}")),
+        Merge::Driver("moai-manifest".into())
+    );
+    // A later line that names the file, by a glob, by the file name alone or by `**`, wins.
+    for (later, want) in [
+        ("skills/moai/references/*.json -merge", Merge::Unset),
+        ("skills/**/*.json !merge", Merge::Unspecified),
+        ("**/references/*.json merge", Merge::Set),
+        (
+            "source-manifest.json merge=ours",
+            Merge::Driver("ours".into()),
+        ),
+        (
+            "/skills/moai/references/source-manifest.json merge=union",
+            Merge::Driver("union".into()),
+        ),
+        (
+            "skills/moai/references/source-manifest.json -merge",
+            Merge::Unset,
+        ),
+    ] {
+        assert_eq!(read(&format!("{driver}{later}\n")), want, "{later}");
+    }
+    assert!(merge_attribute("[attr]sync merge=union\n", &path).is_err());
+}
+
 #[test]
 fn this_repository_names_the_driver_for_the_manifest() {
+    let path = format!("{PACKAGE}/{MANIFEST}");
     let attributes = fs::read_to_string(Path::new(ROOT).join(".gitattributes")).unwrap();
-    let pattern = format!("{PACKAGE}/{MANIFEST}");
-    // git applies the last line that names the pattern for an attribute.
-    let merge = attributes
-        .lines()
-        .map(str::trim)
-        .filter(|l| !l.starts_with('#'))
-        .filter_map(|l| {
-            let mut words = l.split_whitespace();
-            (words.next() == Some(pattern.as_str())).then_some(words)
-        })
-        .flat_map(|words| {
-            words
-                .filter_map(|w| w.strip_prefix("merge=").map(str::to_string))
-                .collect::<Vec<_>>()
-        })
-        .last();
     assert_eq!(
-        merge.as_deref(),
-        Some("moai-manifest"),
-        ".gitattributes does not name the manifest driver for {pattern}"
+        merge_attribute(&attributes, &path),
+        Ok(Merge::Driver("moai-manifest".into())),
+        ".gitattributes does not leave the manifest driver on {path}"
     );
+    // A `.gitattributes` in a folder on the way down would speak after the root one.
+    let mut folder = Path::new(ROOT).to_path_buf();
+    for part in path.split('/').take(path.split('/').count() - 1) {
+        folder.push(part);
+        assert!(
+            fs::symlink_metadata(folder.join(".gitattributes")).is_err(),
+            "{} holds its own .gitattributes",
+            folder.display()
+        );
+    }
 }
