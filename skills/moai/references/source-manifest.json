@@ -95,6 +95,15 @@
         "reason": "Written for rc.2 #2637 from the leader's final design (#2634, sections 2-4, user instruction 2026-11-13T02:4xZ): request kind -> route -> agents in order -> what the parent reads first. Agents' own lists stay in their `reads:` key, so the chain never repeats them. A rule line for internal/lenses added by #3096 S1."
       }
     },
+    "references/home/flow.md": {
+      "sha256": "6530666d484a5ac71574354e60a14a762cb61f4258465bf61d745db069bec1e6",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "home-flow-rule",
+        "adoption": "new",
+        "reason": "Written for SPEC-20261122-claude-md-flow-rule: the NeXT-Flow git rule that moai-cli writes as rules/moai/flow.md into each Claude config folder the user picks (src/home_routing/rules.rs), plain text with no frontmatter, at most 80 lines and 5 KiB; its Compact Instructions section lists what must survive a compaction."
+      }
+    },
     "references/home/output-style.md": {
       "sha256": "c1b1e83187bf23b09c9b19ec943d09953ae72e12dc291f1fb6d35f55024628cb",
       "origin": {

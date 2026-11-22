@@ -1,22 +1,29 @@
-//! The MoAI routing section in Claude Code's global instruction file (#2638, final design
-//! layer 2; user decision 6845654776).
+//! The MoAI routing text in Claude Code's config folder (#2638, final design layer 2; user
+//! decision 6845654776; SPEC-20261122-claude-md-home-routing, SPEC-20261122-claude-md-flow-rule).
 //!
-//! The section text is one package file, `references/home/routing.md`, rendered for the host
-//! (`{invoke}` becomes `/moai`) and kept between `moai:managed` markers with the id
-//! `moai-routing` in `~/.claude/CLAUDE.md`. The Codex section that an earlier version wrote into
-//! `~/.codex/AGENTS.md` is no longer written (SPEC-20261122-codex-home-update-removed); a receipt
-//! that names it is skipped.
+//! The routing text is one package file, `references/home/routing.md`, rendered for the host
+//! (`{invoke}` becomes `/moai`) and written as the whole file `rules/moai.md` of a Claude config
+//! folder (`CLAUDE_CONFIG_DIR`, else `~/.claude`); the flow rule `references/home/flow.md` is
+//! written beside it as `rules/moai/flow.md`. Both are planned together for each config folder
+//! (the resolved one, and every `--config-dir` the user picks) and shown in the preview. The
+//! `moai-routing` block that an earlier version wrote into the folder's `CLAUDE.md` is no longer
+//! refreshed; its removal is a separate pick (`remove_old_block`) and only happens while the block
+//! still holds the bytes that version recorded and the routing file is in place. The Codex
+//! section that an even earlier version wrote into `~/.codex/AGENTS.md` is no longer written
+//! (SPEC-20261122-codex-home-update-removed); a receipt that names it is skipped.
 //!
-//! `plan` compares the block three-way with `agents::section_plan` — baseline = the block we
-//! last wrote (`~/.moai-cli/home-routing/<host>.json`), current = the block on disk, new = the
-//! rendering — and writes nothing. Bytes outside the markers are never changed; an edited
-//! block or malformed markers are a `conflict`, never overwritten; a symlinked folder or file
-//! blocks the host. `apply` re-plans, refuses any other digest, keeps the before bytes in a
-//! receipt; `revert` restores a file only while it still holds the bytes the apply wrote.
-//! Hosts without a user-level instruction file this module can write are reported in
-//! `not_supported` with the reason — never served by a substitute.
+//! `plan` writes nothing. A whole file is moai's own only while it holds the bytes moai last
+//! wrote (`home-routing/rules-<folder id>.json`); anything else, and any link or file that is
+//! not UTF-8, is a `conflict` and is kept. Only a refused `CLAUDE_CONFIG_DIR` (or an unreadable
+//! state file) blocks a folder. `apply` re-plans, refuses any other digest, keeps the before
+//! bytes in a receipt whose entries name their kind and config folder; `revert` restores a file
+//! only while it still holds the bytes the apply wrote, skips and names a file changed since,
+//! and removes a folder the apply made only when it is empty. Hosts without a user-level
+//! instruction file this module can write are reported in `not_supported` with the reason.
 
-use crate::agents::{assert_single_block, markers, section_plan, splice, FilePlan};
+mod rules;
+
+use crate::agents::{markers, FilePlan};
 use crate::apply::{publish_exclusive, publish_replace, read_opt};
 use crate::retired_hosts::retired;
 use serde::{Deserialize, Serialize};
@@ -29,12 +36,17 @@ type Result<T> = std::result::Result<T, String>;
 
 const SCHEMA_VERSION: u32 = 1;
 const STATE_DIR: &str = "home-routing";
-/// The managed block id inside the global instruction files.
+/// The managed block id the earlier version wrote into the global instruction file.
 pub const SECTION: &str = "moai-routing";
-/// The section source inside the skill package.
+/// The routing text inside the skill package.
 pub const SOURCE: &str = "references/home/routing.md";
-/// Hosts written: (host, file under HOME when the host folder is not relocated — see
-/// [`crate::host_home`] — and how the user invokes the skill there).
+/// The flow rule text inside the skill package.
+pub const FLOW_SOURCE: &str = "references/home/flow.md";
+/// The routing file and the flow rule file, below a Claude config folder.
+pub const RULES_FILE: &str = "rules/moai.md";
+pub const FLOW_FILE: &str = "rules/moai/flow.md";
+/// Hosts written: (host, the file of the earlier block under HOME when the host folder is not
+/// relocated — see [`crate::host_home`] — and how the user invokes the skill there).
 pub const HOSTS: [(&str, &str, &str); 1] = [("claude", ".claude/CLAUDE.md", "/moai")];
 /// Hosts not written, each with the reason (#2635 6842183286).
 pub const NOT_SUPPORTED: [(&str, &str); 2] = [
@@ -48,17 +60,49 @@ pub const NOT_SUPPORTED: [(&str, &str); 2] = [
     ),
 ];
 
+/// The picks beyond the default config folder.
+#[derive(Clone, Debug, Default)]
+pub struct Options {
+    /// Further Claude config folders (absolute), each planned like the default one.
+    pub config_dirs: Vec<PathBuf>,
+    /// Remove the earlier block from each folder's `CLAUDE.md` where it is unedited.
+    pub remove_old_block: bool,
+}
+
+/// One config folder's plan. `section` is the routing file; when only the flow file changes it
+/// carries that action, so a caller that reads this row alone still sees a write.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct HostPlan {
     pub host: String,
+    /// The config folder the row is about.
+    pub config_dir: String,
+    /// The routing file.
     pub file: String,
-    /// ok | blocked
+    /// ok | blocked (only a refused `CLAUDE_CONFIG_DIR` or an unreadable state file blocks)
     pub preflight: String,
     pub blocked_reason: Option<String>,
-    /// The section plan of the file (create | append | merge | unchanged | conflict); none when
-    /// blocked.
+    /// The routing file's plan (create | merge | unchanged | conflict); none when blocked.
     pub section: Option<FilePlan>,
+    /// The flow rule file's plan; none when blocked or the package has no flow text.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub flow: Option<FilePlan>,
+    /// The earlier block in the folder's `CLAUDE.md`; none when there is no block to offer.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub old_block: Option<OldBlockPlan>,
+}
+
+/// What the plan says about the earlier block.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct OldBlockPlan {
+    pub path: String,
+    /// offered | remove | waiting | kept
+    pub action: String,
+    pub expected_sha256: Option<String>,
+    /// The block's sha256 the earlier version recorded.
+    pub baseline_sha256: Option<String>,
+    pub detail: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
@@ -75,12 +119,14 @@ pub struct Plan {
     pub home: String,
     pub package_digest: String,
     pub source_sha256: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub flow_source_sha256: Option<String>,
     pub hosts: Vec<HostPlan>,
     pub not_supported: Vec<Unsupported>,
     pub plan_digest: String,
 }
 
-/// The block we last wrote into one host's file.
+/// The block the earlier version last wrote into one host's file.
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 struct HostState {
@@ -92,12 +138,22 @@ struct HostState {
 #[serde(deny_unknown_fields)]
 pub struct ReceiptEntry {
     pub host: String,
-    /// create | append | merge
+    /// routing | flow | old_block; an entry without one (an earlier version's) is the block.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub kind: Option<String>,
+    /// The config folder the entry is about; an entry without one is the host's resolved folder.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub config_dir: Option<String>,
+    /// create | append | merge | remove
     pub action: String,
     pub before_sha256: Option<String>,
     pub after_sha256: String,
-    /// The block this module owned before the apply; a revert restores it.
+    /// What this module owned before the apply (a file's or the block's digest); a revert
+    /// restores it.
     pub baseline_before: Option<String>,
+    /// The folders the apply made for this file, top down; a revert removes the empty ones.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub created_dirs: Vec<String>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
@@ -114,18 +170,6 @@ pub struct Receipt {
 
 fn sha(bytes: &[u8]) -> String {
     crate::digest(bytes)
-}
-
-/// The host's instruction file: `CLAUDE.md` or `AGENTS.md` in the host folder that
-/// [`crate::host_home`] names (`~/.claude`, `~/.codex`, or the relocated folder, card C-79).
-fn host_file(home: &Path, host: &str) -> Result<PathBuf> {
-    let rel = HOSTS
-        .iter()
-        .find(|(h, _, _)| *h == host)
-        .map(|(_, f, _)| *f)
-        .unwrap_or_else(|| unreachable!("unknown routing host {host}"));
-    let (_, name) = rel.split_once('/').expect("host folder and file name");
-    Ok(crate::host_home::resolve_named(host, home)?.join(name))
 }
 
 fn state_root(home: &Path) -> PathBuf {
@@ -145,8 +189,8 @@ fn plain_dir_or_absent(path: &Path) -> Result<()> {
     }
 }
 
-/// The current bytes of the instruction file: `Ok(None)` when absent; a symlink or a folder in
-/// its place is an error (the host is blocked, never followed).
+/// The current bytes of a target file: `Ok(None)` when absent; a symlink or a folder in its
+/// place is an error (never followed).
 fn current_file(path: &Path) -> Result<Option<Vec<u8>>> {
     match fs::symlink_metadata(path) {
         Ok(m) if m.file_type().is_symlink() => {
@@ -159,11 +203,7 @@ fn current_file(path: &Path) -> Result<Option<Vec<u8>>> {
     }
 }
 
-fn host_folder_plain(home: &Path, host: &str) -> Result<()> {
-    let file = host_file(home, host)?;
-    plain_dir_or_absent(file.parent().expect("host folder"))
-}
-
+/// The record of the earlier block (`home-routing/<host>.json`): the baseline of its removal.
 fn read_state(home: &Path, host: &str) -> Result<HostState> {
     let root = state_root(home);
     plain_dir_or_absent(&crate::home_root::path(home))?;
@@ -193,7 +233,7 @@ fn write_json<T: Serialize>(path: &Path, value: &T) -> Result<()> {
     }
 }
 
-/// The section source, checked: UTF-8, one `{invoke}`, no marker tokens, ends with a newline.
+/// The routing source, checked: UTF-8, one `{invoke}`, no marker tokens, ends with a newline.
 fn source(package: &Path) -> Result<String> {
     let path = package.join(SOURCE);
     let text = match fs::symlink_metadata(&path) {
@@ -215,70 +255,14 @@ fn source(package: &Path) -> Result<String> {
     Ok(text)
 }
 
-/// The full managed block for one host, markers included.
+/// The routing file's text for one host: the source with `{invoke}` filled in.
 pub fn render(source: &str, host: &str) -> Result<String> {
     let invoke = HOSTS
         .iter()
         .find(|(h, _, _)| *h == host)
         .map(|(_, _, i)| *i)
         .ok_or_else(|| format!("routing host not supported: {host:?}"))?;
-    let (begin, end) = markers(SECTION, "html");
-    Ok(format!(
-        "{begin}\n{}{end}\n",
-        source.replacen("{invoke}", invoke, 1)
-    ))
-}
-
-fn host_plan(home: &Path, host: &str, rendered: &str) -> HostPlan {
-    // A host folder that cannot be named (an empty or relative relocation variable) blocks
-    // the host; the file shown is then the one under HOME.
-    let (file, unnamed) = match host_file(home, host) {
-        Ok(f) => (f, None),
-        Err(e) => {
-            let rel = HOSTS
-                .iter()
-                .find(|(h, _, _)| *h == host)
-                .map_or("", |(_, f, _)| *f);
-            (home.join(rel), Some(e))
-        }
-    };
-    let mut plan = HostPlan {
-        host: host.into(),
-        file: file.to_string_lossy().into_owned(),
-        preflight: "ok".into(),
-        blocked_reason: None,
-        section: None,
-    };
-    if let Some(e) = unnamed {
-        plan.preflight = "blocked".into();
-        plan.blocked_reason = Some(e);
-        return plan;
-    }
-    let current = host_folder_plain(home, host)
-        .and_then(|()| current_file(&file))
-        .and_then(|cur| read_state(home, host).map(|s| (cur, s)));
-    match current {
-        Ok((cur, state)) => match section_plan(
-            &plan.file,
-            false,
-            SECTION,
-            "html",
-            cur.as_deref(),
-            state.block_sha256,
-            rendered,
-        ) {
-            Ok(section) => plan.section = Some(section),
-            Err(e) => {
-                plan.preflight = "blocked".into();
-                plan.blocked_reason = Some(e);
-            }
-        },
-        Err(e) => {
-            plan.preflight = "blocked".into();
-            plan.blocked_reason = Some(e);
-        }
-    }
-    plan
+    Ok(source.replacen("{invoke}", invoke, 1))
 }
 
 /// Read-only preview of every host; writes nothing.
@@ -290,26 +274,63 @@ pub fn plan(home: &Path, package: &Path) -> Result<Plan> {
 /// Read-only preview of the named hosts only (#2638: `moai-cli update` leaves out a host whose
 /// skill copy is blocked); writes nothing. An unknown host is refused.
 pub fn plan_for(home: &Path, package: &Path, only: &[&str]) -> Result<Plan> {
+    plan_with(home, package, only, &Options::default())
+}
+
+/// [`plan_for`] with the picks: further config folders and the removal of the earlier block.
+pub fn plan_with(home: &Path, package: &Path, only: &[&str], opts: &Options) -> Result<Plan> {
+    plan_inner(home, package, only, opts).map(|(plan, _)| plan)
+}
+
+fn plan_inner(
+    home: &Path,
+    package: &Path,
+    only: &[&str],
+    opts: &Options,
+) -> Result<(Plan, Vec<rules::Folder>)> {
     if let Some(h) = only.iter().find(|h| !HOSTS.iter().any(|(k, _, _)| k == *h)) {
         return Err(format!("routing host not supported: {h:?}"));
     }
+    if opts.config_dirs.iter().any(|d| !d.is_absolute()) {
+        return Err("--config-dir must be an absolute path".into());
+    }
     let home = fs::canonicalize(home).map_err(|_| "home directory unavailable")?;
-    // No host to write: the source is not needed (a package from before #2638 has none).
-    let src = if only.is_empty() {
-        String::new()
+    // No host to write: the sources are not needed (a package from before #2638 has none).
+    let (src, flow) = if only.is_empty() {
+        (String::new(), None)
     } else {
-        source(package)?
+        (
+            rules::routing_source(package)?,
+            rules::flow_source(package)?,
+        )
     };
-    let mut hosts = Vec::new();
-    for (host, _, _) in HOSTS.iter().filter(|(h, _, _)| only.contains(h)) {
-        hosts.push(host_plan(&home, host, &render(&src, host)?));
+    let mut folders = Vec::new();
+    if only.contains(&"claude") {
+        let routing_text = render(&src, "claude")?;
+        let mut dirs = vec![(crate::host_home::resolve_named("claude", &home), true)];
+        for d in &opts.config_dirs {
+            if !dirs.iter().any(|(r, _)| r.as_ref().ok() == Some(d)) {
+                dirs.push((Ok(d.clone()), false));
+            }
+        }
+        for (dir, is_default) in dirs {
+            folders.push(rules::plan_folder(
+                &home,
+                dir,
+                is_default,
+                &routing_text,
+                flow.as_deref(),
+                opts.remove_old_block,
+            ));
+        }
     }
     let mut plan = Plan {
         schema_version: SCHEMA_VERSION,
         home: home.to_str().ok_or("non UTF-8 home path")?.to_string(),
         package_digest: crate::package_digest(package)?,
         source_sha256: sha(src.as_bytes()),
-        hosts,
+        flow_source_sha256: flow.as_ref().map(|f| sha(f.as_bytes())),
+        hosts: folders.iter().map(|f| f.row.clone()).collect(),
         not_supported: NOT_SUPPORTED
             .iter()
             .map(|(h, r)| Unsupported {
@@ -320,7 +341,7 @@ pub fn plan_for(home: &Path, package: &Path, only: &[&str]) -> Result<Plan> {
         plan_digest: String::new(),
     };
     plan.plan_digest = sha(&serde_json::to_vec(&plan).map_err(|_| "encode failed")?);
-    Ok(plan)
+    Ok((plan, folders))
 }
 
 fn validate_permission(permission: &str) -> Result<()> {
@@ -350,8 +371,9 @@ fn new_receipt_dir(home: &Path) -> Result<(String, PathBuf)> {
     Err("routing receipt id unavailable".into())
 }
 
-/// Applies a previewed plan. `plan_digest` must equal a fresh plan's digest; only `create`,
-/// `append` and `merge` are written, blocked hosts and conflicts are skipped.
+/// Applies a previewed plan. `plan_digest` must equal a fresh plan's digest; only `create` and
+/// `merge` files and a picked block removal are written; blocked folders and conflicts are
+/// skipped.
 pub fn apply(
     home: &Path,
     package: &Path,
@@ -371,25 +393,38 @@ pub fn apply_for(
     plan_digest: &str,
     permission: &str,
 ) -> Result<serde_json::Value> {
+    apply_with(
+        home,
+        package,
+        only,
+        &Options::default(),
+        plan_digest,
+        permission,
+    )
+}
+
+/// [`apply_for`] with the picks the preview was made with.
+pub fn apply_with(
+    home: &Path,
+    package: &Path,
+    only: &[&str],
+    opts: &Options,
+    plan_digest: &str,
+    permission: &str,
+) -> Result<serde_json::Value> {
     validate_permission(permission)?;
-    let fresh = plan_for(home, package, only)?;
+    let (fresh, folders) = plan_inner(home, package, only, opts)?;
     if fresh.plan_digest != plan_digest {
         return Err("stale or altered plan; re-preview required".into());
     }
     let home = PathBuf::from(&fresh.home);
-    let writes: Vec<(&HostPlan, &FilePlan)> = fresh
-        .hosts
-        .iter()
-        .filter(|h| h.preflight == "ok")
-        .filter_map(|h| h.section.as_ref().map(|s| (h, s)))
-        .filter(|(_, s)| ["create", "append", "merge"].contains(&s.action.as_str()))
-        .collect();
-    if writes.is_empty() {
+    if !folders.iter().any(rules::Folder::writes) {
         return Ok(
             serde_json::json!({"state": "unchanged", "plan_digest": fresh.plan_digest, "written": []}),
         );
     }
-    let src = source(package)?;
+    let routing_text = render(&rules::routing_source(package)?, "claude")?;
+    let flow_text = rules::flow_source(package)?;
     let (id, receipt_dir) = new_receipt_dir(&home)?;
     let mut receipt = Receipt {
         schema_version: SCHEMA_VERSION,
@@ -401,48 +436,16 @@ pub fn apply_for(
     };
     let receipt_path = receipt_dir.join("receipt.json");
     write_json(&receipt_path, &receipt)?;
-    let (begin, end) = markers(SECTION, "html");
     let mut written = Vec::new();
-    for (host, section) in writes {
-        let target = host_file(&home, &host.host)?;
-        let folder = target.parent().expect("host folder");
-        // Checked before creating (create_dir_all would follow a linked parent) and after.
-        host_folder_plain(&home, &host.host)?;
-        fs::create_dir_all(folder).map_err(|_| format!("{} unavailable", folder.display()))?;
-        host_folder_plain(&home, &host.host)?;
-        let before = current_file(&target)?;
-        if before.as_deref().map(sha) != section.expected_sha256 {
-            return Err(format!(
-                "{} changed since the plan; re-preview required",
-                target.display()
-            ));
-        }
-        let rendered = render(&src, &host.host)?;
-        let out = splice(before.as_deref(), &begin, &end, &rendered, "")?;
-        assert_single_block(&out, &begin, &end, &rendered)?;
-        if let Some(b) = &before {
-            publish_exclusive(&receipt_dir.join(format!("{}.before", host.host)), b)?;
-        }
-        match &before {
-            Some(b) => publish_replace(&target, Some(b), &out)?,
-            None => publish_exclusive(&target, &out)?,
-        }
-        receipt.entries.push(ReceiptEntry {
-            host: host.host.clone(),
-            action: section.action.clone(),
-            before_sha256: before.as_deref().map(sha),
-            after_sha256: sha(&out),
-            baseline_before: section.baseline_sha256.clone(),
-        });
-        write_json(&receipt_path, &receipt)?;
-        write_json(
-            &state_root(&home).join(format!("{}.json", host.host)),
-            &HostState {
-                schema_version: SCHEMA_VERSION,
-                block_sha256: Some(sha(rendered.as_bytes())),
-            },
-        )?;
-        written.push(host.host.clone());
+    for folder in &folders {
+        written.extend(rules::apply_folder(
+            &home,
+            &receipt_dir,
+            &mut receipt,
+            folder,
+            &routing_text,
+            flow_text.as_deref(),
+        )?);
     }
     receipt.status = "committed".into();
     write_json(&receipt_path, &receipt)?;
@@ -461,7 +464,7 @@ fn receipt_id_ok(id: &str) -> bool {
 }
 
 /// Undoes one apply for the files that still hold the bytes it wrote: a created file is
-/// removed, a changed one gets its before bytes back. A file changed since is skipped.
+/// removed, a changed one gets its before bytes back. A file changed since is skipped and named.
 pub fn revert(home: &Path, receipt_id: &str, permission: &str) -> Result<serde_json::Value> {
     revert_in(
         &HOSTS.iter().map(|(h, _, _)| *h).collect::<Vec<_>>(),
@@ -472,7 +475,8 @@ pub fn revert(home: &Path, receipt_id: &str, permission: &str) -> Result<serde_j
 }
 
 /// [`revert`] for a place whose active hosts are `active`: a receipt entry of a retired host is
-/// skipped and reported (reason `host_retired`), the other entries are reverted.
+/// skipped and reported (reason `host_retired`), the other entries are reverted last first.
+/// `reverted` names each host once; `files` names each file restored.
 pub fn revert_in(
     active: &[&str],
     home: &Path,
@@ -495,7 +499,8 @@ pub fn revert_in(
     if receipt.status == "reverted" {
         return Err("routing receipt already reverted".into());
     }
-    let mut reverted = Vec::new();
+    let mut reverted: Vec<String> = Vec::new();
+    let mut files = Vec::new();
     let mut skipped = Vec::new();
     for e in receipt.entries.iter().rev() {
         if retired(&e.host, active) {
@@ -505,46 +510,23 @@ pub fn revert_in(
         if !HOSTS.iter().any(|(h, _, _)| *h == e.host) {
             return Err("routing receipt names an unknown host".into());
         }
-        if let Err(reason) = host_folder_plain(&home, &e.host) {
-            skipped.push(serde_json::json!({"host": e.host, "reason": format!("host_folder_not_plain: {reason}")}));
-            continue;
-        }
-        let target = host_file(&home, &e.host)?;
-        let current = match current_file(&target) {
-            Ok(c) => c,
-            Err(reason) => {
-                skipped.push(serde_json::json!({"host": e.host, "reason": format!("file_not_plain: {reason}")}));
-                continue;
-            }
-        };
-        if current.as_deref().map(sha) != Some(e.after_sha256.clone()) {
-            skipped.push(serde_json::json!({"host": e.host, "reason": "user_changed_since_apply"}));
-            continue;
-        }
-        let current = current.expect("checked above");
-        let mut state = read_state(&home, &e.host)?;
-        match &e.before_sha256 {
-            None => {
-                fs::remove_file(&target)
-                    .map_err(|_| format!("{} not removed", target.display()))?;
-                state.block_sha256 = None;
-            }
-            Some(before_sha) => {
-                let before = read_opt(&dir.join(format!("{}.before", e.host)))?
-                    .ok_or("before bytes missing from the receipt")?;
-                if &sha(&before) != before_sha {
-                    return Err("before bytes do not match the receipt".into());
+        match rules::revert_entry(&home, &dir, e)? {
+            Ok(file) => {
+                if !reverted.contains(&e.host) {
+                    reverted.push(e.host.clone());
                 }
-                publish_replace(&target, Some(&current), &before)?;
-                state.block_sha256 = e.baseline_before.clone();
+                files.push(serde_json::json!({
+                    "host": e.host,
+                    "kind": e.kind.as_deref().unwrap_or("old_block"),
+                    "path": file,
+                }));
             }
+            Err(skip) => skipped.push(skip),
         }
-        write_json(&state_root(&home).join(format!("{}.json", e.host)), &state)?;
-        reverted.push(e.host.clone());
     }
     receipt.status = "reverted".into();
     write_json(&path, &receipt)?;
     Ok(
-        serde_json::json!({"state": "reverted", "receipt": receipt_id, "reverted": reverted, "skipped": skipped}),
+        serde_json::json!({"state": "reverted", "receipt": receipt_id, "reverted": reverted, "files": files, "skipped": skipped}),
     )
 }

@@ -236,10 +236,13 @@ fn update_previews_and_installs_the_whole_user_layer_then_has_nothing_to_apply()
         json!(["style", "routing", "agents"]),
         "{r}"
     );
-    // The global instruction file carries the section; no Codex or shared-agents file is made.
-    assert!(fs::read_to_string(home.join(".claude/CLAUDE.md"))
+    // The routing file carries the section and the flow rule file sits beside it; the user's
+    // `CLAUDE.md` is not touched, and no Codex or shared-agents file is made.
+    assert!(fs::read_to_string(home.join(".claude/rules/moai.md"))
         .unwrap()
         .contains("(/moai)"));
+    assert!(home.join(".claude/rules/moai/flow.md").is_file());
+    assert!(!home.join(".claude/CLAUDE.md").exists());
     for gone in [".codex", ".agents", ".omp"] {
         assert!(!home.join(gone).exists(), "{gone} was made");
     }
@@ -326,10 +329,13 @@ fn the_printed_revert_order_gives_back_the_users_own_files_byte_for_byte() {
     let r = result(&run(&exe, &home, &["update", "--confirm", top]));
     assert_eq!(r["applied"], json!(true), "{r}");
     for (rel, text) in mine {
-        // The layer wrote beside or into these files; none is left as the user had it.
+        // The layer wrote into `settings.json` and beside the others: the routing text is its own
+        // file now, so the user's `CLAUDE.md` is left as it was.
         let now = fs::read_to_string(home.join(rel)).unwrap();
-        if rel != ".claude/agents/my-own.md" {
+        if rel == ".claude/settings.json" {
             assert_ne!(now, text, "{rel} was not touched by the apply");
+        } else {
+            assert_eq!(now, text, "{rel} was touched by the apply");
         }
     }
     let order: Vec<String> = r["revert_order"]
@@ -421,7 +427,7 @@ fn current_skills_with_missing_agents_still_have_something_to_apply() {
     let r = result(&run(&exe, &home, &["update", "--confirm", &top]));
     assert_eq!(r["applied"], json!(true), "{r}");
     assert_eq!(r["agents_result"]["state"], json!("applied"), "{r}");
-    assert!(home.join(".claude/CLAUDE.md").is_file());
+    assert!(home.join(".claude/rules/moai.md").is_file());
 }
 
 #[test]
@@ -468,7 +474,7 @@ fn a_blocked_skill_copy_gets_no_agents_and_no_section() {
     let top = p["plan_digest"].as_str().unwrap().to_string();
     run(&exe, &home, &["update", "--confirm", &top]);
     assert!(!agents_dir(&home, "claude").exists());
-    assert!(!home.join(".claude/CLAUDE.md").exists());
+    assert!(!home.join(".claude/rules/moai.md").exists());
     assert_eq!(
         fs::read_to_string(foreign.join("SKILL.md")).unwrap(),
         "---\nname: moai\ndescription: someone else's\n---\n"

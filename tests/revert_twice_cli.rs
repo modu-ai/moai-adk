@@ -83,11 +83,12 @@ fn a_second_routing_revert_is_a_conflict_and_changes_nothing() {
     let (code, first) = call(&revert);
     assert_eq!(code, 0, "{first}");
     let watched = [
-        home.join(".claude/CLAUDE.md"),
+        home.join(".claude/rules/moai.md"),
+        home.join(".claude/rules/moai/flow.md"),
         home.join(".codex/AGENTS.md"),
         home.join(format!(".moai-cli/home-routing/receipts/{id}/receipt.json")),
     ];
-    assert!(watched[2].is_file(), "receipt path");
+    assert!(watched[3].is_file(), "receipt path");
     let before = bytes(&watched);
     let (code, second) = call(&revert);
     assert_conflict(code, &second, "routing receipt already reverted");

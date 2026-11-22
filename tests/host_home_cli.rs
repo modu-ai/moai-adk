@@ -137,7 +137,7 @@ fn routing_writes_and_reverts_in_the_relocated_folders() {
     let plan = ok(&w.run(&vars, true, &["home-routing-plan", w.h(), w.pkg()]));
     assert_eq!(
         host(&plan, "claude")["file"],
-        json!(s(&conf.join("CLAUDE.md"))),
+        json!(s(&conf.join("rules/moai.md"))),
         "{plan}"
     );
     assert_eq!(plan["hosts"].as_array().unwrap().len(), 1, "{plan}");
@@ -154,7 +154,9 @@ fn routing_writes_and_reverts_in_the_relocated_folders() {
             PERM,
         ],
     ));
-    assert!(conf.join("CLAUDE.md").is_file(), "{applied}");
+    assert!(conf.join("rules/moai.md").is_file(), "{applied}");
+    assert!(conf.join("rules/moai/flow.md").is_file(), "{applied}");
+    assert!(!conf.join("CLAUDE.md").exists(), "{applied}");
     assert!(!cx.join("AGENTS.md").exists());
     assert!(!w.base.join(".claude").exists());
     assert!(!w.base.join(".codex").exists());
@@ -171,7 +173,8 @@ fn routing_writes_and_reverts_in_the_relocated_folders() {
             PERM,
         ],
     ));
-    assert!(!conf.join("CLAUDE.md").exists());
+    assert!(!conf.join("rules/moai.md").exists());
+    assert!(!conf.join("rules/moai/flow.md").exists());
 }
 
 /// REQ-5: a home that is not the account's own home keeps the folders under it, whatever the
@@ -189,7 +192,7 @@ fn the_variables_count_only_for_the_account_home() {
     let plan = ok(&w.run(&vars, false, &["home-routing-plan", w.h(), w.pkg()]));
     assert_eq!(
         host(&plan, "claude")["file"],
-        json!(s(&w.base.join(".claude/CLAUDE.md"))),
+        json!(s(&w.base.join(".claude/rules/moai.md"))),
         "{plan}"
     );
     // Another account home named: the same.
@@ -201,7 +204,7 @@ fn the_variables_count_only_for_the_account_home() {
     let plan = ok(&cmd.output().unwrap());
     assert_eq!(
         host(&plan, "claude")["file"],
-        json!(s(&w.base.join(".claude/CLAUDE.md")))
+        json!(s(&w.base.join(".claude/rules/moai.md")))
     );
 }
 
@@ -396,10 +399,12 @@ fn a_linked_config_folder_is_refused_not_followed() {
         true,
         &["home-routing-plan", w.h(), w.pkg()],
     ));
+    // A linked config folder is a conflict naming the link, not a block (the layer stays ok).
     let claude = host(&plan, "claude");
-    assert_eq!(claude["preflight"], json!("blocked"), "{plan}");
+    assert_eq!(claude["preflight"], json!("ok"), "{plan}");
+    assert_eq!(claude["section"]["action"], json!("conflict"), "{plan}");
     assert!(
-        claude["blocked_reason"]
+        claude["section"]["detail"]
             .as_str()
             .unwrap()
             .contains("symlink"),
@@ -458,8 +463,8 @@ fn a_linked_config_folder_is_refused_not_followed() {
         &["home-routing-plan", w.h(), w.pkg()],
     ));
     assert_eq!(
-        host(&plan, "claude")["preflight"],
-        json!("blocked"),
+        host(&plan, "claude")["section"]["action"],
+        json!("conflict"),
         "{plan}"
     );
     assert_eq!(fs::read_dir(&far_real).unwrap().count(), 0);
