@@ -399,6 +399,7 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("home-install-plan", &["home-install-plan", "home-install-apply --home <HOME> --now 2026-11-14T00:00:00Z --plan-digest <digest> --permission-reference <ref>"]),
     ("home-install-apply", &["home-install-apply --home <HOME> --now 2026-11-14T00:00:00Z --plan-digest <digest> --permission-reference <ref>"]),
     ("home-install-revert", &["home-install-revert --home <HOME> --permission-reference <ref>"]),
+    ("host-wake", &["host-wake leader --text <line>"]),
     ("worktree-move-plan",&["worktree-move-plan .", "worktree-move-apply --plan-digest <digest> --permission-reference <ref> ."]),
     ("worktree-move-apply", &["worktree-move-apply --plan-digest <digest> --permission-reference <ref> ."]),
     ("update-plan", &["update-plan ~ <stage>", "update-apply --plan-digest <digest> --permission-reference <ref> ~ <stage> < request.json"]),

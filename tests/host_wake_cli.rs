@@ -87,6 +87,7 @@ fn ac2_a_session_without_a_socket_is_the_no_inbox_refusal() {
     );
 }
 
+#[cfg(unix)]
 #[test]
 fn ac3_a_resolved_addressee_answers_the_queued_shape_and_writes_nothing() {
     // The addressee's inbox stands in as a bound listener the test owns; the

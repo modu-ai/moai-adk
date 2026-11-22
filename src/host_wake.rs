@@ -6,8 +6,8 @@
 //! This module is the decision layer: it validates the wake, classifies the
 //! refusal reasons of REQ-2, and reports the result shape of REQ-3. The
 //! transport itself is the [`PeerMessaging`] trait, so the same rules govern
-//! the real socket transport and the test fake; Orca paths are absent by
-//! construction (REQ-4).
+//! the real socket transport and the test fake; no host-terminal path is ever
+//! taken (REQ-4).
 
 /// Longest wake text, in characters, matching the lane-send guard's limit.
 pub const MAX_TEXT_CHARS: usize = 2000;
@@ -225,10 +225,10 @@ impl PeerMessaging for RegistryListing {
         // line of JSON ending in a newline, one direction, close after; the
         // minimum line a receiver accepts is a user message. moai sends
         // exactly that line — no auth token (none is read), no from-mode
-        // (never faked). A bypass receiver holds the message unless the lane
-        // runs with the user's accept pick, and the status notice goes to a
-        // sender socket moai does not have, so the answer here is the queued
-        // shape: the line left this process for the addressee's inbox.
+        // (never faked). A bypass receiver holds the message unless accept is
+        // set (moai's install default), and the status notice goes to a sender
+        // socket moai does not have, so the answer here is the queued shape:
+        // the line left this process for the addressee's inbox.
         let socket = peer
             .socket
             .clone()
@@ -238,18 +238,31 @@ impl PeerMessaging for RegistryListing {
             "message": {"role": "user", "content": text},
         })
         .to_string();
-        let mut stream = std::os::unix::net::UnixStream::connect(&socket)
-            .map_err(|e| format!("wake send could not reach {socket}: {e}"))?;
-        use std::io::Write as _;
-        stream
-            .write_all(format!("{line}\n").as_bytes())
-            .map_err(|e| format!("wake send failed: {e}"))?;
-        stream
-            .flush()
-            .map_err(|e| format!("wake send failed: {e}"))?;
-        drop(stream);
-        Ok(SendShape::Delivered)
+        write_line_to_socket(&socket, &line)
     }
+}
+
+/// Write one complete line to the addressee's inbox socket and close. The
+/// inbox socket is a Unix domain socket on macOS and Linux (a named pipe on
+/// native Windows, whose auth line is required — that port stays open).
+#[cfg(unix)]
+fn write_line_to_socket(socket: &str, line: &str) -> Result<SendShape, String> {
+    use std::io::Write as _;
+    let mut stream = std::os::unix::net::UnixStream::connect(socket)
+        .map_err(|e| format!("wake send could not reach {socket}: {e}"))?;
+    stream
+        .write_all(format!("{line}\n").as_bytes())
+        .and_then(|_| stream.flush())
+        .map_err(|e| format!("wake send failed: {e}"))?;
+    drop(stream);
+    Ok(SendShape::Delivered)
+}
+
+/// On a platform without the Unix domain inbox socket the wake answers the
+/// open port: the documented wake path there is a Claude session's own tool.
+#[cfg(not(unix))]
+fn write_line_to_socket(_socket: &str, _line: &str) -> Result<SendShape, String> {
+    Err("wake send is unix-only: on this platform the wake path is a Claude session's SendMessage tool".into())
 }
 
 #[cfg(test)]
@@ -294,6 +307,7 @@ mod tests {
     /// The wire write the leader's research measured: one line of JSON ending
     /// in a newline, one direction, no auth line, no from-mode. The listener
     /// here stands for the addressee's inbox exactly as a session binds one.
+    #[cfg(unix)]
     #[test]
     fn the_send_writes_the_minimum_user_line_to_the_socket() {
         let dir = tempfile::tempdir().unwrap();
