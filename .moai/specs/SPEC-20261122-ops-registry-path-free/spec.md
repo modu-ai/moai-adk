@@ -79,3 +79,10 @@ Slice 1. Status draft; only the lines below are claimed.
 - AC-3: met. `a_path_in_the_registry_is_named` passes: samples holding an absolute path, a `#[path` attribute or `src/ops/` are named by line, and the real registry yields none.
 - The tests were red first (d531b20042: the registry held `#[path = "<worktree>/src/ops/<word>.rs"]` lines and no list) and green with `build.rs` and `declare_ops!` (454fbe5c17); D-4 moved them into the listed scan file (fd22e6ad6a).
 - Not claimed: a run in a build folder cloned from another worktree; the change removes the path the generated file depended on, and cargo's own rerun judgment is unchanged (Non-goals).
+
+Slice 2 (revision 3):
+
+- AC-4: met. `reuse-run.sh` ran on 2026-11-23 (macOS, no compiler cache) once per commit, worktrees under `.claude/worktrees/`. Both runs used one build folder name for A and B (`moai-cli-15cad06d8545a2ec`), the condition the Intent names.
+  - Commit before the change (3784f7232f, the integration side of the landing merge): A built in 43.84 s, its build folder cloned into B, A removed; B's build after touching `src/main.rs` exited 101 with `couldn't read .../reuse-before-a/src/ops/agents_apply.rs: No such file or directory`, and B's registry held 157 lines naming A. The `--help` line printed after it came from the binary cloned from A, since B's own build failed.
+  - The tip (3d6cf4882d): the same steps; B's build exited 0 in 3.96 s, B's registry held 0 lines naming A, and B's own binary answered `agents-apply --help` with its first help line.
+- Not claimed: the same on Linux or Windows (the run uses `cp -c`), and a reuse across worktrees of different commits (Non-goals).
