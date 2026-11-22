@@ -1,14 +1,15 @@
 """#2517 (leader decision B): the `## Web pages` section is written once per workflow —
-VERIFY, AUDIT and RUN — with no separate package file, so the one-hop rule of the skill
-package stays intact. The three copies must stay identical, and each browser rule must
-stay in them: removing any rule sentence fails here."""
+AUDIT and RUN (RUN carries the retired VERIFY route, SPEC-20261122-next-flow-skills-agents) —
+with no separate package file, so the one-hop rule of the skill package stays intact. The
+copies must stay identical, and each browser rule must stay in them: removing any rule
+sentence fails here."""
 
 from pathlib import Path
 import re
 import unittest
 
 ROOT = Path(__file__).resolve().parent.parent
-WORKFLOWS = ("verify", "audit", "run")
+WORKFLOWS = ("audit", "run")
 
 # One entry per rule the Issue asks the document to fix.
 RULES = {
@@ -18,7 +19,11 @@ RULES = {
         "report the step as not_run and never switch to another browser silently"
     ),
     "read the browser's own guidance": "Read the browser's own current guidance before using it",
-    "Chrome path per host": "with no documented Codex CLI path, so there it is not_run",
+    # SPEC-20261122-next-flow-skills-agents REQ-8: the Codex CLI clause left with its host; the
+    # Claude Code path stays.
+    "Chrome path": (
+        "Chrome in Claude Code through the Claude in Chrome extension (`claude --chrome`, `/chrome`)"
+    ),
     "aside guidance commands": "aside through `aside guide` and `aside --help`",
     "Ego Lite guidance commands": "Ego Lite through `ego-browser skill` and `ego-browser help`",
     "default permission": "Keep the browser's default permission mode",

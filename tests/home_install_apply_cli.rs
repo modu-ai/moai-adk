@@ -88,7 +88,7 @@ impl Fx {
     }
 
     fn sessions(&self) -> PathBuf {
-        self.project.join(".git/.moai-cli/sessions")
+        self.project.join(".git/.moai/sessions")
     }
 }
 
@@ -158,6 +158,7 @@ fn call(args: &[&str], envs: &[(&str, &str)]) -> Value {
         .env_remove("MOAI_HOME")
         .env("GIT_CONFIG_GLOBAL", "/dev/null")
         .env("GIT_CONFIG_SYSTEM", "/dev/null")
+        .envs([crate::common::process_table()])
         .envs(envs.iter().copied())
         .stdin(Stdio::null())
         .output()
@@ -635,6 +636,8 @@ fn vault_survives_the_move() {
     let dir = tempfile::tempdir().unwrap();
     let home = fs::canonicalize(dir.path()).unwrap();
     fs::create_dir(home.join("work")).unwrap();
+    // An earlier HOME: a HOME with no state at all now starts on `~/.moai` and has nothing to move.
+    fs::create_dir(home.join(".moai-cli")).unwrap();
     let (_p, project) = project_dir();
     let f = Fx {
         _home: dir,
@@ -651,6 +654,7 @@ fn vault_survives_the_move() {
             .current_dir(home.join("work"))
             .env("HOME", &home)
             .env("GIT_CEILING_DIRECTORIES", &home)
+            .envs([crate::common::process_table()])
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
@@ -709,6 +713,7 @@ fn apply_does_not_open_a_master_key_that_is_a_fifo() {
         .env_remove("MOAI_HOME")
         .env("GIT_CONFIG_GLOBAL", "/dev/null")
         .env("GIT_CONFIG_SYSTEM", "/dev/null")
+        .envs([crate::common::process_table()])
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -1391,6 +1396,7 @@ fn apply_rolls_back_when_a_program_uses_an_entry() {
     let f = fx();
     let before = home_tree(&f);
     let p = plan(&f);
+    crate::common::use_real_process_table();
     let mut holder = Command::new("sleep")
         .arg("120")
         .current_dir(f.old("state"))

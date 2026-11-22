@@ -252,7 +252,49 @@ pub fn host_os() -> &'static str {
     std::env::consts::OS
 }
 
-/// One planned step. `heavy` steps run under one heavy slot hold each.
+/// What runs the tests: `cargo nextest run` when `cargo nextest --version` succeeds, else one
+/// `cargo test` (SPEC-20261122-check-affected-one-slot REQ-3).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Runner {
+    Nextest,
+    CargoTest,
+}
+
+impl Runner {
+    pub fn word(self) -> &'static str {
+        match self {
+            Runner::Nextest => "nextest",
+            Runner::CargoTest => "cargo-test",
+        }
+    }
+
+    /// The cargo subcommand of the test step.
+    fn sub(self) -> &'static [&'static str] {
+        match self {
+            Runner::Nextest => &["nextest", "run"],
+            Runner::CargoTest => &["test"],
+        }
+    }
+}
+
+/// `cargo nextest --version` in `dir`: nextest when it exits 0, `cargo test` otherwise.
+pub fn runner_in(dir: &Path) -> Runner {
+    let ok = Command::new("cargo")
+        .args(["nextest", "--version"])
+        .current_dir(dir)
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .is_ok_and(|s| s.success());
+    if ok {
+        Runner::Nextest
+    } else {
+        Runner::CargoTest
+    }
+}
+
+/// One planned step. The `heavy` steps run one after another under one heavy slot hold.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Step {
     pub label: String,
@@ -273,8 +315,14 @@ fn step(label: &str, program: &str, args: &[&str], heavy: bool) -> Step {
 }
 
 /// The steps of a selection, in the order the summary names them (REQ-4, REQ-7). `present` are
-/// the changed paths that exist in the checkout.
-pub fn steps(sel: &Selection, present: &[String], range: &str, target_dir: &str) -> Vec<Step> {
+/// the changed paths that exist in the checkout; `runner` runs the one `test` step.
+pub fn steps(
+    sel: &Selection,
+    present: &[String],
+    range: &str,
+    target_dir: &str,
+    runner: Runner,
+) -> Vec<Step> {
     let mut out = vec![
         step("diff_check", "git", &["diff", "--check", range], false),
         step("fmt", "cargo", &["fmt", "--all", "--", "--check"], false),
@@ -306,27 +354,28 @@ pub fn steps(sel: &Selection, present: &[String], range: &str, target_dir: &str)
         &["clippy"],
         &["--all-targets", "--", "-D", "warnings"],
     ));
-    out.push(cargo_step(
-        "test_lib",
-        &["test"],
-        &["--no-fail-fast", "--lib"],
-    ));
-    out.push(cargo_step(
-        "test_bins",
-        &["test"],
-        &["--no-fail-fast", "--bins"],
-    ));
-    if !sel.rust.is_empty() {
-        let mut rest = vec!["--no-fail-fast".to_string()];
-        for t in &sel.rust {
-            rest.push("--test".to_string());
-            rest.push(t.clone());
-        }
-        let refs: Vec<&str> = rest.iter().map(String::as_str).collect();
-        out.push(cargo_step("test_targets", &["test"], &refs));
+    // The library, binary and selected target tests in one call (SPEC-20261122-check-affected-
+    // one-slot REQ-3): one build graph and, with nextest, the binaries run side by side. The
+    // binary tests are `--bin moai-cli` alone: `--bins` would also build and run the harness of
+    // every other binary, even one whose `[[bin]]` says `test = false` (D-5).
+    let mut rest = vec![
+        "--no-fail-fast".to_string(),
+        "--lib".to_string(),
+        "--bin".to_string(),
+        "moai-cli".to_string(),
+    ];
+    for t in &sel.rust {
+        rest.push("--test".to_string());
+        rest.push(t.clone());
     }
+    let refs: Vec<&str> = rest.iter().map(String::as_str).collect();
+    out.push(cargo_step("test", runner.sub(), &refs));
     if !sel.python.is_empty() {
-        out.push(cargo_step("build_cli", &["build"], &["--bin", "moai-cli"]));
+        // A selected Rust test target makes cargo build the binary into the same folder, so a
+        // separate build step would be a second build of it.
+        if sel.rust.is_empty() {
+            out.push(cargo_step("build_cli", &["build"], &["--bin", "moai-cli"]));
+        }
         let mut py = step("python", "python3", &["-m", "unittest"], false);
         py.args
             .extend(sel.python.iter().map(|m| format!("tests.{m}")));
@@ -504,11 +553,13 @@ pub fn list(dir: &Path, range: &str) -> Result<serde_json::Value> {
         host_os(),
     );
     let target = target_dir(&facts.root).to_string_lossy().into_owned();
+    let runner = runner_in(&facts.root);
     let planned = steps(
         &sel,
         &facts.present,
         &format!("{}...{}", facts.base, facts.head),
         &target,
+        runner,
     );
     Ok(serde_json::json!({
         "action": "affected",
@@ -517,6 +568,7 @@ pub fn list(dir: &Path, range: &str) -> Result<serde_json::Value> {
         "head": facts.head,
         "changed": facts.changed.len(),
         "host_os": host_os(),
+        "runner": runner.word(),
         "scans": sel.scans.word(),
         "rust_targets": sel.rust,
         "python_modules": sel.python,
@@ -533,7 +585,7 @@ pub fn list(dir: &Path, range: &str) -> Result<serde_json::Value> {
     }))
 }
 
-/// How `run` holds the heavy slot of a cargo step.
+/// How `run` holds the one heavy slot of its cargo steps.
 pub struct RunOptions {
     pub slot_dir: Option<std::path::PathBuf>,
     pub max: u32,
@@ -557,38 +609,23 @@ fn exit_of(status: std::process::ExitStatus) -> i32 {
     1
 }
 
-/// Run one step in `dir`; its output goes to `log`. A program that cannot start is 127.
-fn run_step(dir: &Path, s: &Step, opts: &RunOptions, log: &Path) -> i32 {
+/// Run one step in `dir` with `extra` added to its environment; its output goes to `log`. A
+/// program that cannot start is 127.
+fn run_step(dir: &Path, s: &Step, log: &Path, extra: &[(&str, std::ffi::OsString)]) -> i32 {
     let Ok(file) = std::fs::File::create(log) else {
         return 127;
     };
     let Ok(err) = file.try_clone() else {
         return 127;
     };
-    let mut cmd = if s.heavy {
-        let Ok(exe) = std::env::current_exe() else {
-            return 127;
-        };
-        let mut c = Command::new(exe);
-        c.arg("heavy-slot-acquire")
-            .args(["--max", &opts.max.to_string()])
-            .args(["--min-free-gb", &opts.min_free_gb.to_string()]);
-        if let Some(d) = &opts.slot_dir {
-            c.arg("--dir").arg(d);
-        }
-        c.args(["--name", "check-affected", "--", &s.program])
-            .args(&s.args);
-        c
-    } else {
-        let mut c = Command::new(&s.program);
-        if s.program == "git" {
-            crate::identity::scrub_git_env(&mut c);
-        }
-        c.args(&s.args);
-        c
-    };
-    cmd.current_dir(dir)
+    let mut cmd = Command::new(&s.program);
+    if s.program == "git" {
+        crate::identity::scrub_git_env(&mut cmd);
+    }
+    cmd.args(&s.args)
+        .current_dir(dir)
         .envs(s.env.iter().map(|(k, v)| (k, v)))
+        .envs(extra.iter().map(|(k, v)| (k, v)))
         .stdin(std::process::Stdio::null())
         .stdout(file)
         .stderr(err);
@@ -596,6 +633,80 @@ fn run_step(dir: &Path, s: &Step, opts: &RunOptions, log: &Path) -> i32 {
         Ok(status) => exit_of(status),
         Err(_) => 127,
     }
+}
+
+/// The `CARGO_BUILD_JOBS` of a cargo step when the caller set none: the logical CPUs shared out
+/// over the slots, at least 2 (SPEC-20261122-check-affected-one-slot REQ-6).
+pub fn default_jobs(cpus: usize, slots: usize) -> usize {
+    (cpus / slots.max(1)).max(2)
+}
+
+/// The jobs value to add to the heavy steps' environment: `None` when the caller set
+/// `CARGO_BUILD_JOBS` (theirs passes through unchanged).
+fn build_jobs(slots: usize) -> Option<std::ffi::OsString> {
+    if std::env::var_os("CARGO_BUILD_JOBS").is_some() {
+        return None;
+    }
+    let cpus = std::thread::available_parallelism().map_or(1, |n| n.get());
+    Some(default_jobs(cpus, slots).to_string().into())
+}
+
+/// Takes the one heavy slot of a run, with its effective slot count. The waiting lines and any
+/// refusal reason go to `<out>/heavy-slot.log` — stdout is the JSON answer. `Err` is the slot's
+/// exit code: 125 refused, 75 machine too busy, 2 no usable slot folder or `--max 0`.
+fn hold_slot(
+    opts: &RunOptions,
+    out: &Path,
+) -> std::result::Result<(crate::heavy_slot::Held, usize), i32> {
+    use std::io::Write;
+    let mut log: Box<dyn Write> = match std::fs::File::create(out.join("heavy-slot.log")) {
+        Ok(f) => Box::new(f),
+        Err(_) => Box::new(std::io::sink()),
+    };
+    let folder = match opts
+        .slot_dir
+        .clone()
+        .map(Ok)
+        .unwrap_or_else(crate::heavy_slot::default_dir)
+    {
+        Ok(d) => d,
+        Err(e) => {
+            let _ = writeln!(log, "heavy-slot: {e}");
+            return Err(i32::from(crate::heavy_slot::USAGE));
+        }
+    };
+    let (max, limits, notes) = match crate::heavy_slot::resolve(
+        &folder,
+        Some(opts.max as usize),
+        Some(u64::from(opts.min_free_gb)),
+        None,
+        None,
+    ) {
+        Ok(r) => r,
+        Err(e) => {
+            let _ = writeln!(
+                log,
+                "heavy-slot: refused {e}; nothing was written and no cargo step ran"
+            );
+            return Err(i32::from(crate::heavy_slot::REFUSED));
+        }
+    };
+    for n in notes {
+        let _ = writeln!(log, "{n}");
+    }
+    if max < 1 {
+        let _ = writeln!(log, "heavy-slot: --max 0 leaves no slot; no cargo step ran");
+        return Err(i32::from(crate::heavy_slot::USAGE));
+    }
+    let name = "check-affected";
+    // The slot record names this run's own command line, as `heavy-slot-acquire` names COMMAND.
+    let command: Vec<String> = std::env::args_os()
+        .map(|a| a.to_string_lossy().into_owned())
+        .collect();
+    let held = crate::heavy_slot::hold(&folder, max, name, &command, limits, &mut log)
+        .map_err(i32::from)?;
+    let _ = writeln!(log, "{}", held.taken_line(name));
+    Ok((held, max))
 }
 
 /// `key=exit` words in step order: one key per label up to its `:`, the first non-zero exit
@@ -617,7 +728,12 @@ fn summary_words(results: &[(String, i32)]) -> Vec<(String, i32)> {
 }
 
 /// `check affected <range>`: refuse unless the checkout is the range's head and clean, then run
-/// every step (never stopping at the first failure) and give one summary line (REQ-8 to REQ-11).
+/// every cheap step, then every heavy step unless a cheap one failed (the run stops before the
+/// heavy steps and the summary says `stopped_at=<step>`), and give one summary line (REQ-8 to
+/// REQ-11 of the earlier SPEC, changed by SPEC-20261122-check-light-stop). The heavy steps run
+/// under one heavy slot, taken before the first and let go after the last, before `python`; a
+/// slot that is not obtained gives its exit code to every heavy step and none starts
+/// (SPEC-20261122-check-affected-one-slot REQ-1, REQ-2).
 pub fn run(dir: &Path, range: &str, opts: &RunOptions) -> Result<serde_json::Value> {
     let facts = read_facts(dir, range)?;
     let dir = facts.root.as_path();
@@ -643,12 +759,11 @@ pub fn run(dir: &Path, range: &str, opts: &RunOptions) -> Result<serde_json::Val
         host_os(),
     );
     let target = target_dir(&std::fs::canonicalize(dir).unwrap_or_else(|_| dir.to_path_buf()));
-    let planned = steps(
-        &sel,
-        &facts.present,
-        &format!("{}...{}", facts.base, facts.head),
-        &target.to_string_lossy(),
-    );
+    let range3 = format!("{}...{}", facts.base, facts.head);
+    let target_text = target.to_string_lossy().into_owned();
+    // Planned with nextest until the slot is held: the runner is asked only then, so a refused
+    // slot starts no cargo at all. The labels do not depend on the runner.
+    let mut planned = steps(&sel, &facts.present, &range3, &target_text, Runner::Nextest);
     let out = opts
         .out
         .clone()
@@ -661,18 +776,68 @@ pub fn run(dir: &Path, range: &str, opts: &RunOptions) -> Result<serde_json::Val
     })?;
     let mut results: Vec<(String, i32)> = Vec::new();
     let mut records = Vec::new();
-    for (i, s) in planned.iter().enumerate() {
+    // The cheap steps are the ones planned before the first heavy step. They all run; when one
+    // failed, the run stops before the first heavy step (SPEC-20261122-check-light-stop).
+    let cheap = planned.iter().take_while(|s| !s.heavy).count();
+    let mut stopped_at: Option<String> = None;
+    let mut tried = false;
+    let mut held: Option<(crate::heavy_slot::Held, usize)> = None;
+    let mut refused: Option<i32> = None;
+    let mut runner: Option<Runner> = None;
+    for i in 0..planned.len() {
+        if i == cheap {
+            if let Some((label, _)) = results.iter().find(|(_, c)| *c != 0) {
+                stopped_at = Some(label.split(':').next().unwrap_or(label).to_string());
+                break;
+            }
+        }
+        if planned[i].heavy && !tried {
+            tried = true;
+            match hold_slot(opts, &out) {
+                Ok(h) => {
+                    let r = runner_in(dir);
+                    planned = steps(&sel, &facts.present, &range3, &target_text, r);
+                    runner = Some(r);
+                    held = Some(h);
+                }
+                Err(code) => refused = Some(code),
+            }
+        }
+        if !planned[i].heavy {
+            // D-2: the slot is let go after the last cargo step, before `python`.
+            held = None;
+        }
+        let s = &planned[i];
         let log = out.join(format!(
             "{:02}-{}.log",
             i + 1,
             s.label.replace([':', '/'], "_")
         ));
-        let code = run_step(dir, s, opts, &log);
+        let code = match (s.heavy, &held, refused) {
+            (true, Some((h, slots)), _) => {
+                let mut extra = vec![(crate::heavy_slot::SLOT_FD_ENV, h.env_value())];
+                if let Some(jobs) = build_jobs(*slots) {
+                    extra.push(("CARGO_BUILD_JOBS", jobs));
+                }
+                run_step(dir, s, &log, &extra)
+            }
+            (true, None, Some(code)) => {
+                let _ = std::fs::write(
+                    &log,
+                    format!("not run: the heavy slot was not obtained (exit {code}); see heavy-slot.log\n"),
+                );
+                code
+            }
+            _ => run_step(dir, s, &log, &[]),
+        };
+        let mut words = vec![s.program.clone()];
+        words.extend(s.args.iter().cloned());
         results.push((s.label.clone(), code));
         records.push(serde_json::json!({
-            "label": s.label, "exit": code, "log": log.to_string_lossy(),
+            "label": s.label, "exit": code, "log": log.to_string_lossy(), "command": words,
         }));
     }
+    drop(held);
     let pass = results.iter().all(|(_, c)| *c == 0);
     let mut line = format!(
         "check-affected base={} head={} targets={} py={} scans={}",
@@ -682,15 +847,11 @@ pub fn run(dir: &Path, range: &str, opts: &RunOptions) -> Result<serde_json::Val
         sel.python.len(),
         sel.scans.word()
     );
-    // The card's test-parallelism cap (2026-11-21): name the threads a wrapped test run
-    // starts with — but only when the wrapper applies it; a caller that pinned the runner's
-    // own knob wins, and the honest line then names nothing.
-    if std::env::var_os("RUST_TEST_THREADS").is_none() {
-        let cap = crate::heavy_slot::test_thread_cap(opts.slot_dir.as_deref());
-        line.push_str(&format!(" test-threads={cap}"));
-    }
     for (k, c) in summary_words(&results) {
         line.push_str(&format!(" {k}={c}"));
+    }
+    if let Some(label) = &stopped_at {
+        line.push_str(&format!(" stopped_at={label}"));
     }
     line.push_str(if pass { " result=PASS" } else { " result=FAIL" });
     Ok(serde_json::json!({
@@ -698,6 +859,8 @@ pub fn run(dir: &Path, range: &str, opts: &RunOptions) -> Result<serde_json::Val
         "mode": "run",
         "summary": line,
         "result": if pass { "PASS" } else { "FAIL" },
+        "stopped_at": stopped_at,
+        "runner": runner.map(Runner::word),
         "steps": records,
         "out": out.to_string_lossy(),
         "writes": true,
@@ -868,19 +1031,88 @@ mod tests {
         );
     }
 
+    /// SPEC-20261122-check-affected-one-slot REQ-3: the library, binary and selected target tests
+    /// are one `test` step, run by nextest or by one `cargo test`.
     #[test]
     fn the_steps_always_hold_lib_bins_and_the_fixed_checks() {
         let sel = select(&paths(&["README.md"]), &[], None, "linux");
-        let planned = steps(&sel, &[], "a...b", "/t");
+        let planned = steps(&sel, &[], "a...b", "/t", Runner::Nextest);
         let labels: Vec<&str> = planned.iter().map(|s| s.label.as_str()).collect();
-        assert_eq!(
-            labels,
-            ["diff_check", "fmt", "clippy", "test_lib", "test_bins"]
-        );
+        assert_eq!(labels, ["diff_check", "fmt", "clippy", "test"]);
         assert!(planned
             .iter()
             .filter(|s| s.program == "cargo" && s.label != "fmt")
             .all(|s| s.heavy));
+        let test = |runner: Runner, sel: &Selection| -> Vec<String> {
+            steps(sel, &[], "a...b", "/t", runner)
+                .into_iter()
+                .find(|s| s.label == "test")
+                .unwrap()
+                .args
+        };
+        assert_eq!(
+            test(Runner::Nextest, &sel),
+            [
+                "nextest",
+                "run",
+                "--locked",
+                "--offline",
+                "--no-fail-fast",
+                "--lib",
+                "--bin",
+                "moai-cli"
+            ]
+        );
+        let targets = select(
+            &paths(&["src/update_models.rs"]),
+            &[rust("update_cli", &[], &[]), rust("update_x", &[], &[])],
+            None,
+            "linux",
+        );
+        assert_eq!(
+            test(Runner::CargoTest, &targets),
+            [
+                "test",
+                "--locked",
+                "--offline",
+                "--no-fail-fast",
+                "--lib",
+                "--bin",
+                "moai-cli",
+                "--test",
+                "update_cli",
+                "--test",
+                "update_x"
+            ]
+        );
+        let planned = steps(&targets, &[], "a...b", "/t", Runner::CargoTest);
+        let labels: Vec<&str> = planned.iter().map(|s| s.label.as_str()).collect();
+        assert_eq!(labels, ["diff_check", "fmt", "clippy", "test"]);
+        // D-5: no step selects every binary's harness.
+        for runner in [Runner::Nextest, Runner::CargoTest] {
+            for sel in [&sel, &targets] {
+                assert!(!test(runner, sel).iter().any(|a| a == "--bins"));
+            }
+        }
+    }
+
+    /// REQ-6: the logical CPUs shared out over the slots, never under 2.
+    #[test]
+    fn the_default_jobs_share_the_cpus_over_the_slots_and_never_go_under_two() {
+        for (cpus, slots, jobs) in [
+            (16, 3, 5),
+            (16, 4, 4),
+            (6, 3, 2),
+            (5, 3, 2),
+            (9, 3, 3),
+            (8, 3, 2),
+            (1, 1, 2),
+            (2, 1, 2),
+            (3, 1, 3),
+            (16, 0, 16),
+        ] {
+            assert_eq!(default_jobs(cpus, slots), jobs, "{cpus} / {slots}");
+        }
     }
 
     #[test]
@@ -892,13 +1124,46 @@ mod tests {
             "linux",
         );
         let present = paths(&["src/ops/x.rs", "tools/a.sh"]);
-        let planned = steps(&sel, &present, "a...b", "/t");
+        let planned = steps(&sel, &present, "a...b", "/t", Runner::Nextest);
         let ops = planned.iter().find(|s| s.label == "ops_rustfmt").unwrap();
         assert_eq!(ops.args, ["--edition", "2021", "--check", "src/ops/x.rs"]);
         assert!(planned.iter().any(|s| s.label == "bash_n:tools/a.sh"));
         let python = planned.iter().find(|s| s.label == "python").unwrap();
         assert_eq!(python.args, ["-m", "unittest", "tests.x_test"]);
         assert!(planned.iter().any(|s| s.label == "build_cli"));
+    }
+
+    /// SPEC-20261122-check-light-stop REQ-5 and REQ-6: a run that already builds the binary for
+    /// its Rust test targets plans no `build_cli` step; one that selects only Python modules
+    /// plans exactly one, and it builds `moai-cli` alone.
+    #[test]
+    fn the_binary_is_built_by_one_step_at_most() {
+        let build_steps = |sel: &Selection| -> Vec<Step> {
+            steps(sel, &[], "a...b", "/t", Runner::Nextest)
+                .into_iter()
+                .filter(|s| s.label == "build_cli")
+                .collect()
+        };
+        let both = select(
+            &paths(&["src/update_models.rs"]),
+            &[
+                rust("update_command_cli", &[], &[]),
+                py("update_tux_tty_test"),
+            ],
+            None,
+            "linux",
+        );
+        assert!(!both.rust.is_empty() && !both.python.is_empty());
+        assert!(build_steps(&both).is_empty());
+
+        let only_python = select(&paths(&["src/ops/x.rs"]), &[py("x_test")], None, "linux");
+        assert!(only_python.rust.is_empty() && !only_python.python.is_empty());
+        let built = build_steps(&only_python);
+        assert_eq!(built.len(), 1);
+        assert_eq!(
+            built[0].args,
+            ["build", "--locked", "--offline", "--bin", "moai-cli"]
+        );
     }
 
     #[test]

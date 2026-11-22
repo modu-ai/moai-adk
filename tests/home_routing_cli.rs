@@ -37,27 +37,26 @@ fn block(host: &str) -> String {
 }
 
 #[test]
-fn fresh_home_gets_one_block_per_host_and_a_second_run_is_unchanged() {
+fn fresh_home_gets_one_block_for_claude_and_a_second_run_is_unchanged() {
     let (_t, home) = home();
     let p = plan(&home, &package()).unwrap();
     assert_eq!(action(&p, "claude"), "create");
-    assert_eq!(action(&p, "codex"), "create");
+    let planned: Vec<&str> = p.hosts.iter().map(|h| h.host.as_str()).collect();
+    assert_eq!(planned, ["claude"], "no Codex host is planned");
     let hosts: Vec<&str> = p.not_supported.iter().map(|u| u.host.as_str()).collect();
-    assert_eq!(hosts, ["omp", "kiro", "cursor"]);
+    assert_eq!(hosts, ["kiro", "cursor"]);
     assert!(p.not_supported.iter().all(|u| !u.reason.is_empty()));
     let r = apply(&home, &package(), &p.plan_digest, PERM).unwrap();
     assert_eq!(r["state"], "applied");
     let claude = fs::read_to_string(file(&home, "claude")).unwrap();
-    let codex = fs::read_to_string(file(&home, "codex")).unwrap();
     assert_eq!(claude, block("claude"));
-    assert_eq!(codex, block("codex"));
-    assert!(claude.contains("(/moai)") && codex.contains("($moai)"));
+    assert!(claude.contains("(/moai)"));
     assert!(claude.starts_with(&format!("<!-- moai:managed:begin id={SECTION} -->\n")));
-    // `~/.agents/AGENTS.md` is never created (user decision 6845654776).
+    // No Codex or shared-agents instruction file is ever created (user decision 6845654776).
     assert!(!home.join(".agents/AGENTS.md").exists());
+    assert!(!home.join(".codex").exists());
     let again = plan(&home, &package()).unwrap();
     assert_eq!(action(&again, "claude"), "unchanged");
-    assert_eq!(action(&again, "codex"), "unchanged");
     let r = apply(&home, &package(), &again.plan_digest, PERM).unwrap();
     assert_eq!(r["state"], "unchanged");
     assert_eq!(fs::read_to_string(file(&home, "claude")).unwrap(), claude);
@@ -67,19 +66,21 @@ fn fresh_home_gets_one_block_per_host_and_a_second_run_is_unchanged() {
 fn existing_files_keep_every_byte_outside_the_block() {
     let (_t, home) = home();
     fs::create_dir_all(home.join(".claude")).unwrap();
-    fs::create_dir_all(home.join(".codex")).unwrap();
-    // No trailing newline, and a file that already ends with a blank line.
+    // No trailing newline, and a Codex file of the user's that is never read or written.
     let claude_user = "# Mine\n\nKeep this line.";
     let codex_user = "Codex notes\n\n";
+    fs::create_dir_all(home.join(".codex")).unwrap();
+    fs::write(home.join(".codex/AGENTS.md"), codex_user).unwrap();
     fs::write(file(&home, "claude"), claude_user).unwrap();
-    fs::write(file(&home, "codex"), codex_user).unwrap();
     let p = plan(&home, &package()).unwrap();
     assert_eq!(action(&p, "claude"), "append");
     apply(&home, &package(), &p.plan_digest, PERM).unwrap();
     let claude = fs::read_to_string(file(&home, "claude")).unwrap();
     assert_eq!(claude, format!("{claude_user}\n\n{}", block("claude")));
-    let codex = fs::read_to_string(file(&home, "codex")).unwrap();
-    assert_eq!(codex, format!("{codex_user}{}", block("codex")));
+    assert_eq!(
+        fs::read_to_string(home.join(".codex/AGENTS.md")).unwrap(),
+        codex_user
+    );
     // The user adds text after the block; a later run keeps it and changes nothing.
     fs::write(file(&home, "claude"), format!("{claude}\nAfter.\n")).unwrap();
     let p = plan(&home, &package()).unwrap();
@@ -106,13 +107,9 @@ fn an_edited_block_is_kept_and_conflicts_once_the_source_changes() {
         .unwrap()
         .replace("Use the skill", "Use my own skill");
     fs::write(file(&home, "claude"), &edited).unwrap();
-    let codex = fs::read_to_string(file(&home, "codex")).unwrap();
-    let broken = format!("{codex}{codex}");
-    fs::write(file(&home, "codex"), &broken).unwrap();
-    // Same source: the user's edit is kept, nothing is written; doubled markers conflict.
+    // Same source: the user's edit is kept and nothing is written.
     let p = plan(&home, pkg.path()).unwrap();
     assert_eq!(action(&p, "claude"), "unchanged");
-    assert_eq!(action(&p, "codex"), "conflict");
     // A new source and an edited block: a conflict, never an overwrite.
     fs::write(
         pkg.path().join(SOURCE),
@@ -121,11 +118,17 @@ fn an_edited_block_is_kept_and_conflicts_once_the_source_changes() {
     .unwrap();
     let p = plan(&home, pkg.path()).unwrap();
     assert_eq!(action(&p, "claude"), "conflict");
-    assert_eq!(action(&p, "codex"), "conflict");
     let r = apply(&home, pkg.path(), &p.plan_digest, PERM).unwrap();
     assert_eq!(r["state"], "unchanged");
     assert_eq!(fs::read_to_string(file(&home, "claude")).unwrap(), edited);
-    assert_eq!(fs::read_to_string(file(&home, "codex")).unwrap(), broken);
+    // Doubled markers conflict too, and the file stays as it is.
+    let broken = format!("{edited}{edited}");
+    fs::write(file(&home, "claude"), &broken).unwrap();
+    let p = plan(&home, pkg.path()).unwrap();
+    assert_eq!(action(&p, "claude"), "conflict");
+    let r = apply(&home, pkg.path(), &p.plan_digest, PERM).unwrap();
+    assert_eq!(r["state"], "unchanged");
+    assert_eq!(fs::read_to_string(file(&home, "claude")).unwrap(), broken);
 }
 
 #[cfg(unix)]
@@ -137,22 +140,31 @@ fn a_symlinked_file_or_folder_blocks_its_host() {
     fs::write(elsewhere.join("CLAUDE.md"), "theirs").unwrap();
     fs::create_dir_all(home.join(".claude")).unwrap();
     std::os::unix::fs::symlink(elsewhere.join("CLAUDE.md"), file(&home, "claude")).unwrap();
-    std::os::unix::fs::symlink(&elsewhere, home.join(".codex")).unwrap();
     let p = plan(&home, &package()).unwrap();
     assert_eq!(action(&p, "claude"), "blocked");
-    assert_eq!(action(&p, "codex"), "blocked");
     let r = apply(&home, &package(), &p.plan_digest, PERM).unwrap();
     assert_eq!(r["state"], "unchanged");
     assert_eq!(
         fs::read_to_string(elsewhere.join("CLAUDE.md")).unwrap(),
         "theirs"
     );
-    assert!(!elsewhere.join("AGENTS.md").exists());
+    // A linked host folder blocks the host as well.
+    let (_t2, linked) = home_with_linked_claude_folder();
+    let p = plan(&linked, &package()).unwrap();
+    assert_eq!(action(&p, "claude"), "blocked");
 }
 
-/// Audit FAIL 6846213349 B1 (#2650): after the apply, both host folders are moved outside HOME
-/// and linked back. Revert must skip them — never remove the created Codex file or restore the
-/// Claude file through the link.
+#[cfg(unix)]
+fn home_with_linked_claude_folder() -> (tempfile::TempDir, PathBuf) {
+    let (t, home) = home();
+    let elsewhere = home.join("elsewhere");
+    fs::create_dir_all(&elsewhere).unwrap();
+    std::os::unix::fs::symlink(&elsewhere, home.join(".claude")).unwrap();
+    (t, home)
+}
+
+/// Audit FAIL 6846213349 B1 (#2650): after the apply, the host folder is moved outside HOME
+/// and linked back. Revert must skip it — never restore the Claude file through the link.
 #[cfg(unix)]
 #[test]
 fn revert_never_writes_through_a_folder_linked_after_the_apply() {
@@ -165,15 +177,12 @@ fn revert_never_writes_through_a_folder_linked_after_the_apply() {
     let r = apply(&home, &package(), &p.plan_digest, PERM).unwrap();
     let id = r["receipt"].as_str().unwrap().to_string();
     let applied_claude = fs::read_to_string(file(&home, "claude")).unwrap();
-    let applied_codex = fs::read_to_string(file(&home, "codex")).unwrap();
-    for dir in [".claude", ".codex"] {
-        fs::rename(home.join(dir), outside.join(dir)).unwrap();
-        std::os::unix::fs::symlink(outside.join(dir), home.join(dir)).unwrap();
-    }
+    fs::rename(home.join(".claude"), outside.join(".claude")).unwrap();
+    std::os::unix::fs::symlink(outside.join(".claude"), home.join(".claude")).unwrap();
     let v = revert(&home, &id, PERM).unwrap();
     assert_eq!(v["reverted"], serde_json::json!([]));
     let skipped = v["skipped"].as_array().unwrap();
-    assert_eq!(skipped.len(), 2);
+    assert_eq!(skipped.len(), 1);
     assert!(skipped.iter().all(|s| s["reason"]
         .as_str()
         .unwrap()
@@ -181,10 +190,6 @@ fn revert_never_writes_through_a_folder_linked_after_the_apply() {
     assert_eq!(
         fs::read_to_string(outside.join(".claude/CLAUDE.md")).unwrap(),
         applied_claude
-    );
-    assert_eq!(
-        fs::read_to_string(outside.join(".codex/AGENTS.md")).unwrap(),
-        applied_codex
     );
 }
 
@@ -214,22 +219,32 @@ fn revert_restores_only_files_still_holding_what_the_apply_wrote() {
     let p = plan(&home, &package()).unwrap();
     let r = apply(&home, &package(), &p.plan_digest, PERM).unwrap();
     let id = r["receipt"].as_str().unwrap().to_string();
-    // The user edits the Codex file after the apply: it is skipped, Claude is restored.
-    fs::write(file(&home, "codex"), "user wrote this\n").unwrap();
+    // Untouched since the apply: the file is restored.
     let v = revert(&home, &id, PERM).unwrap();
     assert_eq!(v["reverted"], serde_json::json!(["claude"]));
-    assert_eq!(v["skipped"][0]["reason"], "user_changed_since_apply");
+    assert_eq!(v["skipped"], serde_json::json!([]));
     assert_eq!(fs::read_to_string(file(&home, "claude")).unwrap(), "mine\n");
-    assert_eq!(
-        fs::read_to_string(file(&home, "codex")).unwrap(),
-        "user wrote this\n"
-    );
     assert!(revert(&home, &id, PERM).unwrap_err().contains("already"));
     assert!(revert(&home, "agents-1-0", PERM).is_err());
     // After the revert the Claude file has no block and no ownership: append again.
     assert_eq!(
         action(&plan(&home, &package()).unwrap(), "claude"),
         "append"
+    );
+    // The user edits the file after an apply: it is skipped and keeps the edit.
+    let (_t2, other) = crate::home();
+    fs::create_dir_all(other.join(".claude")).unwrap();
+    fs::write(file(&other, "claude"), "mine\n").unwrap();
+    let p = plan(&other, &package()).unwrap();
+    let r = apply(&other, &package(), &p.plan_digest, PERM).unwrap();
+    let id = r["receipt"].as_str().unwrap().to_string();
+    fs::write(file(&other, "claude"), "user wrote this\n").unwrap();
+    let v = revert(&other, &id, PERM).unwrap();
+    assert_eq!(v["reverted"], serde_json::json!([]));
+    assert_eq!(v["skipped"][0]["reason"], "user_changed_since_apply");
+    assert_eq!(
+        fs::read_to_string(file(&other, "claude")).unwrap(),
+        "user wrote this\n"
     );
 }
 

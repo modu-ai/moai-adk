@@ -11,7 +11,7 @@
 >
 > 추가는 #1990 HOLD-C2 / REQ-01C-02(r27)의 "필요 시 추가는 docs에 기록" 조항을 따랐고, 기존 11종의 의미는 바꾸지 않았다.
 >
-> 고른 envelope에는 상태 필드가 없으므로 아래 envelope 후보 A·B(`status`/`domain_status`) 어느 쪽과도 같지 않다. 실패 쪽 모양은 오류 후보 B와 같다. 런처(`-l`, `-a`, `cc|glm|codex`, `session`)는 대상이 아니다. 아래 `현행 계약` 절의 fixture는 이 변경에 맞춰 다시 기록했다. 세부 규칙은 `docs/rust-product-path.md`의 `Output envelope` 절에 있다.
+> 고른 envelope에는 상태 필드가 없으므로 아래 envelope 후보 A·B(`status`/`domain_status`) 어느 쪽과도 같지 않다. 실패 쪽 모양은 오류 후보 B와 같다. 런처(`-l`, `-a`, `cc|glm`, `session`)는 대상이 아니다. 아래 `현행 계약` 절의 fixture는 이 변경에 맞춰 다시 기록했다. 세부 규칙은 `docs/rust-product-path.md`의 `Output envelope` 절에 있다.
 
 ## HOLD 현황
 
@@ -52,25 +52,6 @@
 | REQ-00D-09 digest 재현성 | plan digest가 절대 경로에 묶인다 | 06, 16 |
 | REQ-00D-11 값 echo 금지 | MoAI가 직접 내는 메시지에는 입력 값이 없다(`effort must be one of …`는 허용값 목록). 다만 clap 사용 오류는 입력한 하위 명령 이름을 그대로 되돌려 준다(`unrecognized subcommand 'no-such-command'`) | 01, 19 |
 
-### 추가된 operation (02-C #1993)
-
-`codex.projection_plan`(`codex-projection-plan`)과 `codex.doctor`(`codex-doctor`)는 01-C envelope을 그대로 쓴다. 둘 다 아무것도 쓰지 않는다. 새 `kind`는 없다.
-
-`codex.projection_apply`(`codex-projection-apply`, I4 #2241)도 같은 envelope을 쓴다. 쓰는 곳은 `--target` 아래의 계획된 파일뿐이다. 새 `kind`는 없다. 오류는 기존 kind로 분류된다(`codex_projection_apply_messages_have_a_deliberate_kind`가 고정한다).
-
-| 상황 | kind |
-| --- | --- |
-| permission reference 없음 | `permission_reference_missing` |
-| `--plan-digest`가 새로 계산한 plan과 다름 | `stale_plan` |
-| source manifest 불일치·누락(REQ-I4-01) | `conflict` |
-| 대상 파일 바이트가 다름 | `conflict` |
-| 첫 파일을 만든 뒤 실패 | `partial` |
-
-- 사용하는 kind는 `usage`, `invalid_input`, `not_found`, `io`이다.
-- 메시지와 kind의 대응은 `tests/codex_adapter.rs`의 `codex_messages_have_a_deliberate_kind`가 고정한다.
-- 위 golden fixture 21건은 00-D가 기록한 기존 명령의 기준선이라 이 두 operation을 담지 않는다.
-- 두 operation의 출력은 `tests/codex_adapter.rs`가 검사하고, `result` 키는 `docs/rust-product-path.md`의 operation 표에 있다.
-
 ## 상태 변환표
 
 7개 어휘를 모았다. Issue 본문은 6벌이라고 적었지만 실제로는 설치 lifecycle(02:148), VERIFY verdict(07:29), attempt(11:44-64), SYNC(06:67), Issue 상태(승인 계획 사본 267행), issue-report(22:590), migration(14:100)의 7개다. 키는 (도메인, 토큰)이다. `blocked`·`unknown`·`authorized`처럼 여러 도메인에 나오는 말은 도메인마다 따로 행을 둔다.
@@ -105,7 +86,7 @@ claim record(`src/claim.rs` `ClaimRecord`)과 handoff가 운반하는 동일 레
 ## 검증 명령
 
 ```sh
-export CARGO_HOME=$(test -d /tmp/moai-product-cargo/registry/cache && echo /tmp/moai-product-cargo || echo /tmp/moai-rc-product-cargo)  # 빌드 폴더는 worktree 안 target/(CARGO_TARGET_DIR 지정 안 함, AGENTS.local.md)
+export CARGO_HOME=$(test -d /tmp/moai-product-cargo/registry/cache && echo /tmp/moai-product-cargo || echo /tmp/moai-rc-product-cargo)  # 빌드 폴더는 worktree 안 target/(CARGO_TARGET_DIR 지정 안 함, CLAUDE.md)
 cargo test --offline --locked protocol_fixtures      # 00D-AC-1
 cargo test --offline --locked exit_code_table        # 00D-AC-2
 for v in A B; do jq -e --arg v $v '.variants[$v] | ([.rows[]|select(.canonical==null and .no_map_reason==null)]|length)==0 and ([.rows[]|select((.source_token|IN("not_run","unknown","blocked","stale")) and (.canonical|IN("passed","applied","host_verified")))]|length)==0' schemas/protocol/v1/status-crosswalk.json; done   # 00D-AC-3

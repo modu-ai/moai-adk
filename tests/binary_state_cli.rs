@@ -470,22 +470,22 @@ fn a_fresh_apply_is_refused_only_for_the_wrong_generation() {
         serde_json::from_slice(&out.stdout).unwrap()
     };
     script(&w.bin, "moai", &printing("moai-adk v3.2.1-rc.6"));
-    let refused = apply("codex");
+    let refused = apply("claude");
     assert_eq!(refused["ok"], json!(false), "{refused}");
     assert!(
         refused.to_string().contains("wrong_generation"),
         "{refused}"
     );
-    assert!(!w.project.join(".codex").exists(), "nothing was written");
+    assert!(!w.project.join(".claude").exists(), "nothing was written");
 
     fs::remove_file(w.bin.join("moai")).unwrap();
-    let applied = apply("codex");
+    let applied = apply("claude");
     assert_eq!(applied["ok"], json!(true), "{applied}");
     let applied = &applied["result"];
     assert_eq!(applied["hook_binary"]["state"], json!("binary_unresolved"));
     assert_eq!(applied["hook_binary"]["name"], json!("moai"));
     assert_eq!(applied["hooks_active"], json!(false));
-    let file = fs::read_to_string(w.project.join(".codex/hooks.json")).unwrap();
+    let file = fs::read_to_string(w.project.join(".claude/settings.json")).unwrap();
     assert!(file.contains("\"moai claim-verify . --hook\""), "{file}");
     assert!(!file.contains("moai-cli"), "{file}");
 }

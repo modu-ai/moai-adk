@@ -344,8 +344,8 @@ fn install_receipt_self_match_and_stale() {
     assert_eq!(result["self"]["state"], json!("self"));
 
     // Tamper the recorded digest (simulates a replaced binary): stale_receipt, no rewrite.
-    let receipt_path = home
-        .join(".moai-cli/installations")
+    let receipt_path = moai_cli::home_root::path(home)
+        .join("installations")
         .join(format!("{}.json", plan.install_id));
     let mut value: Value = serde_json::from_slice(&fs::read(&receipt_path).unwrap()).unwrap();
     value["binary_sha256"] = json!(format!("sha256:{}", "0".repeat(64)));

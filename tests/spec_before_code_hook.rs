@@ -83,32 +83,12 @@ fn plain_repo(branch: &str) -> (tempfile::TempDir, PathBuf) {
     (dir, root)
 }
 
-/// #3176 audit N1: one call that writes the SPEC and a code file together waits while the SPEC
-/// file is not on disk yet: the SPEC in the same call does not count. The same call with the
-/// SPEC alone goes ahead.
+/// #3176 audit N1: a code write waits while the SPEC file is not on disk yet. One MultiEdit names
+/// one file, so the pair is the code file's MultiEdit while the SPEC is still missing; then the
+/// SPEC lands and it passes.
 #[test]
-fn one_call_writing_the_spec_and_code_waits_for_the_spec() {
+fn a_code_edit_waits_for_the_spec_until_it_lands() {
     let (_d, root) = repo(BRANCH);
-    let both = format!(
-        "*** Begin Patch\n*** Add File: {SPEC}\n+{}\n*** Update File: a.txt\n@@\n-a\n+b\n*** End Patch",
-        spec_text("SPEC-20261117-demo").replace('\n', "\n+")
-    );
-    let spec_only = format!(
-        "*** Begin Patch\n*** Add File: {SPEC}\n+{}\n*** End Patch",
-        spec_text("SPEC-20261117-demo").replace('\n', "\n+")
-    );
-    let patch = |command: &str| {
-        json!({"hook_event_name": "PreToolUse", "tool_name": "apply_patch",
-               "tool_input": {"command": command}, "cwd": root})
-    };
-    let codex_denied = |r: &Run| r.code == 2 || r.stdout.contains("\"deny\"");
-    let r = preflight("codex", &root, &patch(&both));
-    assert!(codex_denied(&r), "codex both: {} {}", r.code, r.stdout);
-    let r = preflight("codex", &root, &patch(&spec_only));
-    let spec_only_passes = !codex_denied(&r);
-    assert!(spec_only_passes, "codex spec only: {} {}", r.code, r.stdout);
-    // The same pair through Claude's tools: one MultiEdit names one file, so the pair is the
-    // code file's MultiEdit while the SPEC is still missing; then the SPEC lands and it passes.
     let multi = json!({"hook_event_name": "PreToolUse", "tool_name": "MultiEdit",
                        "tool_input": {"file_path": "a.txt",
                                       "edits": [{"old_string": "a", "new_string": "b"}]},
@@ -118,7 +98,6 @@ fn one_call_writing_the_spec_and_code_waits_for_the_spec() {
     fs::create_dir_all(root.join(SPEC).parent().unwrap()).unwrap();
     fs::write(root.join(SPEC), spec_text("SPEC-20261117-demo")).unwrap();
     assert_allow(&preflight("claude", &root, &multi));
-    assert!(!codex_denied(&preflight("codex", &root, &patch(&both))));
 }
 
 /// #3176 audit N2: a repository without a `.moai` folder at its work-tree root is not a MoAI
@@ -271,8 +250,8 @@ fn other_branches_outside_writes_and_bash_are_left_alone() {
     assert_allow(&preflight("claude", &root, &bash));
 }
 
-/// AC-5: the rule reads a linked worktree's branch, and covers Edit, MultiEdit and Codex
-/// `apply_patch` the same way.
+/// AC-5: the rule reads a linked worktree's branch, and covers Write, Edit and MultiEdit the
+/// same way.
 #[test]
 fn linked_worktrees_and_every_write_tool_are_covered() {
     let (_d, main) = repo("main");
@@ -293,20 +272,9 @@ fn linked_worktrees_and_every_write_tool_are_covered() {
                                       "edits": [{"old_string": "a", "new_string": "b"}]},
                        "cwd": wt});
     assert_deny(&preflight("claude", &wt, &multi));
-    let patch = json!({"hook_event_name": "PreToolUse", "tool_name": "apply_patch",
-                       "tool_input": {"command": "*** Begin Patch\n*** Update File: a.txt\n@@\n-a\n+b\n*** End Patch"},
-                       "cwd": wt});
-    let r = preflight("codex", &wt, &patch);
-    assert!(
-        r.code == 2 || r.stdout.contains("\"deny\""),
-        "codex: {} {}",
-        r.code,
-        r.stdout
-    );
     fs::create_dir_all(wt.join(".moai/specs/SPEC-20261117-demo")).unwrap();
     fs::write(wt.join(SPEC), spec_text("SPEC-20261117-demo")).unwrap();
     assert_allow(&preflight("claude", &wt, &edit));
-    assert_allow(&preflight("codex", &wt, &patch));
     // The primary checkout on `main` is untouched by its worktree's branch.
     assert_allow(&preflight("claude", &main, &write("src/main.rs", &main)));
 }

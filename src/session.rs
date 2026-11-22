@@ -12,55 +12,37 @@
 //! - `glm`: Claude Code pointed at z.ai through process environment only, per
 //!   https://docs.z.ai/scenario-example/develop-tools/claude. The token is inherited from the
 //!   caller and only its presence is checked; its value is never kept, printed or written.
-//! - `omp`: Oh My Pi 18.18.7 `omp [--model <m>] [--thinking <e>] [--approval-mode <mode>]`
-//!   (SPEC-20261118-omp-launcher, read in the installed `omp --help` and its source on
-//!   2026-11-18). OMP has no session-name flag and takes the role line inside the session as
-//!   `/skill:moai --mode-agent`. A role session passes `--approval-mode yolo`, `--permissions`
-//!   passes `always-ask-cached`, a roleless session passes none (OMP's own default is `yolo`).
-//!   For a z.ai model the glm key reaches the process as `ZAI_API_KEY`, never in argv.
 //!
-//! Without a role (`moai-cli cc|glm|omp` with neither `-l` nor `-a`, Issue #2053) the launcher
+//! Without a role (`moai-cli cc|glm` with neither `-l` nor `-a`, Issue #2053) the launcher
 //! opens a plain host session: no role is guessed, no session name is added and no permission
 //! flag is passed, so the host starts in the mode its own settings choose. A role session
 //! (`-l` named `leader`, `-a` named `agent-N`) starts with full access unless the user setting
 //! `launcher.role_access` selects prompts or `--permissions` is given. `-l|-a` only name the
 //! session and set its access: the role is entered inside the session with `/moai --mode-agent`
-//! or `/moai --mode-leader` (OMP: `/skill:moai --mode-agent`), which the `--dry-run` notes say
-//! (user decision 2026-11-18, SPEC-20261118-launcher-agent-entry). Codex is not a host any more
-//! (user decision 2026-11-21, SPEC-20261121-codex-launcher-and-models-removed).
+//! or `/moai --mode-leader`, which the `--dry-run` notes say
+//! (user decision 2026-11-18, SPEC-20261118-launcher-agent-entry). Codex and OMP are not hosts
+//! any more (user decision 2026-11-21, SPEC-20261121-codex-launcher-and-models-removed,
+//! SPEC-20261122-remove-omp-launcher).
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::fs::{self, OpenOptions};
 use std::path::{Path, PathBuf};
 
 const ROLES: [&str; 2] = ["leader", "agent"];
-const HOSTS: [&str; 3] = ["claude", "glm", "omp"];
+const HOSTS: [&str; 2] = ["claude", "glm"];
 const EFFORTS: [&str; 6] = ["low", "medium", "high", "xhigh", "max", "ultracode"];
-/// The efforts the launcher hands to OMP (`--thinking <value>`); OMP also takes `off`,
-/// `minimal` and `auto`, which are not efforts of the other launchers. `ultracode` is a Claude
-/// Code word and is not passed.
-const OMP_EFFORTS: [&str; 5] = ["low", "medium", "high", "xhigh", "max"];
 const ADVISOR_ALIASES: [&str; 3] = ["fable", "opus", "sonnet"];
 /// Notes that tell the user an option they gave was dropped. The terminal launcher prints these
 /// before the host starts (#3004 P9), so the text is shared with `launcher_terminal`.
 pub const NOTE_ADVISOR_OMITTED_GLM: &str =
     "--advisor omitted on glm: the advisor is Anthropic API only";
-pub const NOTE_EFFORT_NOT_PASSED_OMP: &str =
-    "--effort was not passed to omp: omp takes low|medium|high|xhigh|max here";
-pub const NOTE_ADVISOR_NOT_PASSED_OMP: &str =
-    "the advisor applies to Claude hosts only; it was not passed to omp";
-/// The variable through which OMP reads the key of its z.ai (GLM) provider (OMP's
-/// `src/cli/help-extra.ts`, `pi-ai/README.md`, read 2026-11-18).
-pub const OMP_KEY_VAR: &str = "ZAI_API_KEY";
 
 /// How a role session enters its role (SPEC-20261118-launcher-agent-entry): `-l|-a` only name
 /// the session and set its access; the role is entered inside the session with the mode command
-/// of #2286 for that host. `None` for a roleless session. The `cc|glm|omp` launchers add it to
+/// of #2286 for that host. `None` for a roleless session. The `cc|glm` launchers add it to
 /// their notes; the legacy `session` command (REQ-00F-06) keeps its recorded answer.
 pub fn role_entry_note(role: Option<&str>, host: &str) -> Option<&'static str> {
     Some(match (role?, host) {
-        ("leader", "omp") => "role: -l only names the session and sets its access; enter leader mode inside the session with `/skill:moai --mode-leader` (omp has no session-name flag and takes the skill as /skill:moai)",
-        ("agent", "omp") => "role: -a only names the session and sets its access; enter agent mode inside the session with `/skill:moai --mode-agent` (omp has no session-name flag and takes the skill as /skill:moai)",
         ("leader", _) => "role: -l only names the session and sets its access; enter leader mode inside the session with `/moai --mode-leader`",
         ("agent", _) => "role: -a only names the session and sets its access; enter agent mode inside the session with `/moai --mode-agent`",
         _ => return None,
@@ -314,7 +296,6 @@ pub struct LaunchSettings {
 /// only. The file is validated for every launch, also when the CLI
 /// decides, so a broken file is never silently skipped. Project settings do not matter.
 pub fn launch_settings(
-    host: &str,
     has_role: bool,
     keep_prompts: bool,
     cli_advisor: Option<&str>,
@@ -329,8 +310,7 @@ pub fn launch_settings(
     let advisor = match (cli_advisor, no_advisor) {
         (Some(a), _) => Some((a.to_string(), AdvisorSource::Cli)),
         (None, true) => None,
-        (None, false) if host != "omp" => configured.map(|a| (a, AdvisorSource::UserSetting)),
-        (None, false) => None,
+        (None, false) => configured.map(|a| (a, AdvisorSource::UserSetting)),
     };
     Ok(LaunchSettings {
         skip_permissions: has_role && !keep_prompts && configured_access,
@@ -342,7 +322,7 @@ pub fn launch_settings(
 /// The configuration is validated even for `--permissions` and roleless sessions; roleless
 /// sessions always leave permission flags to the host. Project settings do not matter.
 pub fn full_access(has_role: bool, keep_prompts: bool) -> Result<bool, String> {
-    Ok(launch_settings("claude", has_role, keep_prompts, None, false)?.skip_permissions)
+    Ok(launch_settings(has_role, keep_prompts, None, false)?.skip_permissions)
 }
 
 // ---- agent-N numbering (#2359 decision 6760976883; resolves #2361; changed by #2971) ----
@@ -711,92 +691,32 @@ fn claude_argv(r: &SessionRequest, notes: &mut Vec<&'static str>) -> Result<Vec<
     Ok(argv)
 }
 
-/// `omp [--model <m>] [--thinking <e>] [--approval-mode <mode>]` (SPEC-20261118-omp-launcher).
-/// OMP has no session-name flag and its first message does not run the role line, so neither
-/// the name nor a role prompt is passed; the notes (`role_entry_note`) say what to type.
-fn omp_argv(r: &SessionRequest, notes: &mut Vec<&'static str>) -> Result<Vec<String>, String> {
-    let mut argv = vec!["omp".to_string()];
-    if let Some(m) = &r.model {
-        clean("model", m)?;
-        argv.push("--model".into());
-        argv.push(m.clone());
-    }
-    if let Some(e) = r.effort.as_deref() {
-        if OMP_EFFORTS.contains(&e) {
-            argv.push("--thinking".into());
-            argv.push(e.into());
-        } else {
-            notes.push(NOTE_EFFORT_NOT_PASSED_OMP);
-        }
-    }
-    // User decision 2026-11-10 (#2359) in OMP's words: a role session gets full access
-    // (`yolo`, OMP's `tools.approvalMode` default made explicit), `--permissions` keeps the
-    // prompts (`always-ask-cached`), and a roleless session gets no flag, so OMP's own
-    // settings decide.
-    if r.skip_permissions {
-        argv.extend(["--approval-mode".into(), "yolo".into()]);
-        notes.push("omp full access: --approval-mode yolo, every tool call runs without an approval prompt (role session, user decision 2026-11-10 #2359; keep prompts with --permissions)");
-    } else if r.role.is_some() {
-        argv.extend(["--approval-mode".into(), "always-ask-cached".into()]);
-        notes.push("omp keeps approval prompts: --approval-mode always-ask-cached (--permissions or launcher.role_access)");
-    } else {
-        notes.push("no approval flag: omp takes tools.approvalMode from its own settings (roleless session, #2359)");
-    }
-    if r.advisor.is_some() {
-        notes.push(NOTE_ADVISOR_NOT_PASSED_OMP);
-    }
-    if r.name.is_some() {
-        notes.push("omp has no session-name flag: the name is not passed to the host");
-    }
-    Ok(argv)
-}
-
-/// Whether the model named is one of the z.ai (GLM) provider: a `zai/` prefix (OMP's
-/// `provider/model` form) or `glm` in the name (D-4 of SPEC-20261118-omp-launcher).
-fn is_zai_model(model: Option<&str>) -> bool {
-    model.is_some_and(|m| {
-        let m = m.to_ascii_lowercase();
-        m.starts_with("zai/") || m.contains("glm")
-    })
-}
-
-/// The glm key for an OMP launch: only for a z.ai model, read the way the glm launcher reads it
-/// (variable, then vault; a legacy key file blocks). `Ok(None)` is no key or no need of one.
-fn omp_key(r: &SessionRequest) -> Result<Option<(String, KeySource)>, String> {
-    if r.host != "omp" || !is_zai_model(r.model.as_deref()) {
-        return Ok(None);
-    }
-    glm_token().map_err(|b| blocked_line(&b))
-}
-
 /// The note that says a value came from the choice `moai update` saved for the host and role
 /// (SPEC-20261119-launcher-reads-models REQ-9): the key path and nothing else of the file.
 fn saved_note(host: &str, role: &str) -> &'static str {
     match (host, role) {
-        ("claude", "leader") => "model and effort not given on the command line come from launcher.models.claude.leader (saved by moai update)",
-        ("claude", _) => "model and effort not given on the command line come from launcher.models.claude.agent (saved by moai update)",
         ("glm", "leader") => "model and effort not given on the command line come from launcher.models.glm.leader (saved by moai update)",
         ("glm", _) => "model and effort not given on the command line come from launcher.models.glm.agent (saved by moai update)",
-        (_, "leader") => "model and effort not given on the command line come from launcher.models.omp.leader (saved by moai update)",
-        _ => "model and effort not given on the command line come from launcher.models.omp.agent (saved by moai update)",
+        (_, "leader") => "model and effort not given on the command line come from launcher.models.claude.leader (saved by moai update)",
+        _ => "model and effort not given on the command line come from launcher.models.claude.agent (saved by moai update)",
     }
 }
 
 /// Fills the model and effort a person did not give from the choice `moai update` saved under
 /// `launcher.models.<host>.<role>` of the user launcher settings file (card C-47 criteria 5 and 7,
 /// SPEC-20261119-launcher-reads-models; the glm host in SPEC-20261119-glm-launcher-settings-receipt).
-/// It applies to a session with a role on `claude`, `omp` and `glm`; a roleless session
+/// It applies to a session with a role on `claude` and `glm`; a roleless session
 /// keeps its own rules. The file is read at every call, so a rewritten file is used by the next
 /// launch. A saved entry outside the support table, anywhere under `launcher.models`, refuses the
 /// launch with key paths only (`unsupported_entries`). The glm host is Claude Code on z.ai: its
-/// saved id comes from the table shared with OMP and carries the `zai/` provider prefix, which the
+/// saved id carries the `zai/` provider prefix, which the
 /// z.ai endpoint does not take, so the prefix is removed here (research note C-47 note 3452: Claude
 /// Code sends a full unknown id as written; the alias mapping of the environment is unchanged).
 /// The second value is the note to add when a saved value was used.
 fn apply_saved_choice(
     r: &SessionRequest,
 ) -> Result<(SessionRequest, Option<&'static str>), String> {
-    let (Some(role), "claude" | "omp" | "glm") = (r.role.as_deref(), r.host.as_str()) else {
+    let (Some(role), "claude" | "glm") = (r.role.as_deref(), r.host.as_str()) else {
         return Ok((r.clone(), None));
     };
     let Some(launcher) = user_launcher()? else {
@@ -845,7 +765,7 @@ fn compose_resolved(r: &SessionRequest, saved: Option<&'static str>) -> Result<V
         }
     }
     if !HOSTS.contains(&r.host.as_str()) {
-        return Err(format!("unknown host {} (claude|glm|omp)", r.host));
+        return Err(format!("unknown host {} (claude|glm)", r.host));
     }
     if let Some(n) = &r.name {
         clean("name", n)?;
@@ -854,31 +774,15 @@ fn compose_resolved(r: &SessionRequest, saved: Option<&'static str>) -> Result<V
     notes.extend(saved);
     if r.role.is_none() {
         notes.push("no role: a plain host session; no role or session name is added (#2053)");
-        if r.host != "omp" {
-            notes.push(if ROLELESS_LAUNCHER_DEFAULTS {
-                "launcher defaults without a role: model opus, effort medium (user decision 2026-11-08: A); no advisor unless --advisor or launcher.advisor asks for one (user decision 2026-11-12, #2476)"
-            } else {
-                "no model or effort flag without a role; the user's Claude settings apply; no advisor unless --advisor or launcher.advisor asks for one (#2476)"
-            });
-        }
+        notes.push(if ROLELESS_LAUNCHER_DEFAULTS {
+            "launcher defaults without a role: model opus, effort medium (user decision 2026-11-08: A); no advisor unless --advisor or launcher.advisor asks for one (user decision 2026-11-12, #2476)"
+        } else {
+            "no model or effort flag without a role; the user's Claude settings apply; no advisor unless --advisor or launcher.advisor asks for one (#2476)"
+        });
     }
     let mut env_keys: Vec<&str> = Vec::new();
     let mut key_source: Option<&str> = None;
     let argv = match r.host.as_str() {
-        "omp" => {
-            match omp_key(r)? {
-                Some((_, source)) => {
-                    key_source = Some(source.name());
-                    env_keys.push(OMP_KEY_VAR);
-                    notes.push("ZAI_API_KEY is the glm key of the moai-cli key vault or of ANTHROPIC_AUTH_TOKEN; it is passed to the host process only, and only for a z.ai model");
-                }
-                None if is_zai_model(r.model.as_deref()) => notes.push(
-                    "no glm key was found (ANTHROPIC_AUTH_TOKEN is unset and the vault holds none): OMP uses its own login for the z.ai model; store a key with `moai key-set glm` to pass it",
-                ),
-                None => {}
-            }
-            omp_argv(r, &mut notes)?
-        }
         "glm" => {
             match glm_token() {
                 Err(b) => return Err(blocked_line(&b)),
@@ -919,7 +823,7 @@ fn compose_resolved(r: &SessionRequest, saved: Option<&'static str>) -> Result<V
 
 /// Composes and, unless `dry_run`, starts the host and waits for it to exit.
 pub fn launch(r: &SessionRequest, dry_run: bool) -> Result<Value, String> {
-    // The same request as `compose` uses, so a saved z.ai model for OMP gets its key below too.
+    // The same request as `compose` uses.
     let (resolved, saved) = apply_saved_choice(r)?;
     let r = &resolved;
     let mut v = compose_resolved(r, saved)?;
@@ -938,9 +842,6 @@ pub fn launch(r: &SessionRequest, dry_run: bool) -> Result<Value, String> {
             .ok_or("blocked: the key changed")?;
         command.env(GLM_TOKEN_VAR, &token);
         command.env(GLM_MCP_KEY_VAR, &token);
-    }
-    if let Some((token, _)) = omp_key(r)? {
-        command.env(OMP_KEY_VAR, &token);
     }
     let status = command
         .status()

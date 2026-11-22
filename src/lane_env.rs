@@ -4,7 +4,7 @@
 //! after a refusal: POSIX `eval` of an empty string returns 0.)
 //!
 //! - `CARGO_TARGET_DIR` is the build folder of the worktree the command runs in (card C-82,
-//!   `skills/moai/references/internal/build-folder.md`; follow-up asked by the user 2026-11-17
+//!   `skills/moai/workflows/run.md`, "Check-run rules"; follow-up asked by the user 2026-11-17
 //!   08:22Z): `<HOME>/.moai/build/<project>-<worktree name>`, one per worktree, never shared,
 //!   named as `tools/build_folder.py env` names it ([`folder_name`]; a test runs both). Like that
 //!   tool it makes `~/.moai`, `~/.moai/build` and the folder (mode 0700) when missing and writes
@@ -423,7 +423,7 @@ pub fn render(lane: &str, env: &LaneEnv) -> String {
         None => out.push_str(&format!("# {}\n", env.cargo_home_why)),
     }
     out.push_str(
-        "# This worktree's own build folder (internal/build-folder, card C-82): after \
+        "# This worktree's own build folder (workflows/run.md, card C-82): after \
          git restore/checkout/archive, touch build.rs and the sources before building.\n",
     );
     out

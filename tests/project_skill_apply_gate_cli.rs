@@ -47,7 +47,7 @@ impl Fx {
     fn request(&self) -> Value {
         json!({
             "protocol_version": 1, "opt_in": true, "project_root": "ignored",
-            "home": null, "hosts": ["codex"], "source_dir": self.source,
+            "home": null, "hosts": ["claude"], "source_dir": self.source,
         })
     }
 
@@ -75,7 +75,7 @@ fn digest(plan: &Value) -> String {
 }
 
 fn copy_of(project: &str) -> std::path::PathBuf {
-    Path::new(project).join(".agents/skills/moai/SKILL.md")
+    Path::new(project).join(".claude/skills/moai/SKILL.md")
 }
 
 #[test]
@@ -83,7 +83,7 @@ fn the_plan_prints_a_digest_and_writes_nothing() {
     let f = fx();
     let plan = f.plan(&f.a);
     assert!(digest(&plan).starts_with("sha256:"), "{plan}");
-    assert!(!Path::new(&f.a).join(".agents").exists());
+    assert!(!Path::new(&f.a).join(".claude").exists());
 }
 
 #[test]
@@ -116,7 +116,7 @@ fn a_wrong_digest_or_an_empty_permission_writes_nothing() {
     assert_eq!(stale["ok"], json!(false), "{stale}");
     let empty = f.apply(&f.a, &["--plan-digest", &d, "--permission-reference", ""]);
     assert_eq!(empty["ok"], json!(false), "{empty}");
-    assert!(!Path::new(&f.a).join(".agents").exists());
+    assert!(!Path::new(&f.a).join(".claude").exists());
 }
 
 #[test]
@@ -127,7 +127,7 @@ fn one_flag_without_the_other_is_a_usage_error_and_writes_nothing() {
     assert_eq!(only_digest["ok"], json!(false), "{only_digest}");
     let only_ref = f.apply(&f.a, &["--permission-reference", PERMISSION]);
     assert_eq!(only_ref["ok"], json!(false), "{only_ref}");
-    assert!(!Path::new(&f.a).join(".agents").exists());
+    assert!(!Path::new(&f.a).join(".claude").exists());
 }
 
 #[test]
@@ -139,7 +139,7 @@ fn a_plan_of_one_project_is_not_a_plan_of_another() {
         &["--plan-digest", &d, "--permission-reference", PERMISSION],
     );
     assert_eq!(out["ok"], json!(false), "{out}");
-    assert!(!Path::new(&f.b).join(".agents").exists());
+    assert!(!Path::new(&f.b).join(".claude").exists());
 }
 
 #[test]
@@ -155,7 +155,7 @@ fn a_package_changed_after_the_preview_is_refused() {
         &["--plan-digest", &d, "--permission-reference", PERMISSION],
     );
     assert_eq!(out["ok"], json!(false), "{out}");
-    assert!(!Path::new(&f.a).join(".agents").exists());
+    assert!(!Path::new(&f.a).join(".claude").exists());
 }
 
 #[test]

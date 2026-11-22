@@ -83,7 +83,7 @@ impl Tools {
         let dir = tempfile::tempdir().unwrap();
         for n in names {
             let script = format!(
-                "#!/bin/sh\necho \"{n} $*\" >> \"$FAKE_CALLS\"\necho \"{n} env CTD=$CARGO_TARGET_DIR MB=$MOAI_CLI_BIN RT=$RUST_TEST_THREADS\" >> \"$FAKE_CALLS\"\ncase \"$FAKE_FAIL\" in\n  '') ;;\n  *) case \" $* \" in *\" $FAKE_FAIL \"*) exit 3 ;; esac ;;\nesac\nexit 0\n"
+                "#!/bin/sh\necho \"{n} $*\" >> \"$FAKE_CALLS\"\necho \"{n} env CTD=$CARGO_TARGET_DIR MB=$MOAI_CLI_BIN\" >> \"$FAKE_CALLS\"\ncase \"$FAKE_FAIL\" in\n  '') ;;\n  *) case \" $* \" in *\" $FAKE_FAIL \"*) exit 3 ;; esac ;;\nesac\nexit 0\n"
             );
             let path = dir.path().join(n);
             fs::write(&path, script).unwrap();
@@ -136,10 +136,13 @@ fn slot_dir_with(max: u32) -> tempfile::TempDir {
 /// The whole answer: `(ok, result or error)`.
 fn affected(fx: &Fixture, extra: &[&str], tools: Option<(&Tools, &str)>) -> (bool, Value) {
     let mut cmd = Command::new(BIN);
+    // No caller build folder: the step logs go under the temporary repository's own
+    // `target/`, never as `check-affected-<head>` folders into the build folder of this run.
     cmd.args(["check", "affected", &fx.range(), "--dir"])
         .arg(fx.root())
         .args(extra)
         .env_remove("MOAI_HOME")
+        .env_remove("CARGO_TARGET_DIR")
         .stdin(Stdio::null());
     if let Some((t, fail)) = tools {
         cmd.env("PATH", t.path())
@@ -246,11 +249,13 @@ fn the_fixed_steps_and_the_host_targets_are_always_listed() {
         "ops_rustfmt",
         "bash_n:tools/a.sh",
         "clippy",
-        "test_lib",
-        "test_bins",
-        "test_targets",
+        "test",
     ] {
         assert!(l.contains(&want.to_string()), "{want} in {l:?}");
+    }
+    // SPEC-20261122-check-affected-one-slot REQ-3: one test step, no per-kind steps.
+    for gone in ["test_lib", "test_bins", "test_targets"] {
+        assert!(!l.contains(&gone.to_string()), "{gone} in {l:?}");
     }
     let ops = r["steps"]
         .as_array()
@@ -418,13 +423,16 @@ fn a_failed_step_does_not_stop_the_rest_and_the_summary_says_fail() {
     let slots = slot_dir();
     let slot = slots.path().to_string_lossy().to_string();
     let args = ["--slot-dir", slot.as_str()];
-    let (ok, r) = affected(&fx, &args, Some((&tools, "fmt")));
+    // A heavy step fails (the cheap steps all pass): the rest still run (REQ-4).
+    let (ok, r) = affected(&fx, &args, Some((&tools, "clippy")));
     assert!(ok, "{r}");
     let line = r["summary"].as_str().unwrap();
     assert!(line.starts_with("check-affected base="), "{line}");
-    assert!(line.contains(" fmt=3 "), "{line}");
+    assert!(line.contains(" clippy=3 "), "{line}");
     assert!(line.ends_with(" result=FAIL"), "{line}");
-    // The keys come in the order the steps run, then the result.
+    assert!(!line.contains("stopped_at"), "{line}");
+    // The keys come in the order the steps run, then the result. The binary is built by the
+    // test step, so no `build_cli` step is planned when a Rust target is selected (REQ-5).
     let keys: Vec<&str> = line
         .split(' ')
         .skip(1)
@@ -438,32 +446,21 @@ fn a_failed_step_does_not_stop_the_rest_and_the_summary_says_fail() {
             "targets",
             "py",
             "scans",
-            // The test-parallelism cap: named while the wrapper applies it, which this run's
-            // environment does (no RUST_TEST_THREADS of its own).
-            "test-threads",
             "diff_check",
             "fmt",
             "clippy",
-            "test_lib",
-            "test_bins",
-            "test_targets",
-            "build_cli",
+            "test",
             "python",
             "result"
         ],
         "{line}"
     );
     assert_eq!(r["result"], "FAIL");
-    // The steps after the failed one still ran.
+    // The steps after the failed one still ran: one test call (the fake `cargo nextest
+    // --version` succeeds, so nextest runs it).
     let calls = tools.calls_text();
-    for later in [
-        "clippy",
-        "test --locked --offline --no-fail-fast --lib",
-        "--bins",
-        "--test update_command_cli",
-    ] {
-        assert!(calls.contains(later), "{later} in {calls}");
-    }
+    let later = "cargo nextest run --locked --offline --no-fail-fast --lib --bin moai-cli --test home_isolation_scan --test update_command_cli";
+    assert!(calls.contains(later), "{later} in {calls}");
     assert!(
         calls.contains("python3 -m unittest tests.update_tux_tty_test"),
         "{calls}"
@@ -483,6 +480,118 @@ fn a_failed_step_does_not_stop_the_rest_and_the_summary_says_fail() {
         "{line}"
     );
     assert_eq!(r["steps"].as_array().unwrap().len(), labels(&r).len());
+}
+
+/// The keys of a summary line, in order.
+fn keys(line: &str) -> Vec<&str> {
+    line.split(' ')
+        .skip(1)
+        .filter_map(|w| w.split_once('=').map(|(k, _)| k))
+        .collect()
+}
+
+/// SPEC-20261122-check-light-stop REQ-1 to REQ-3: a cheap step that fails stops the run before
+/// clippy, the build, the tests and the Python step; the other cheap steps still run; the
+/// summary names the first failed one right before the result and has no word for a step that
+/// did not run.
+#[test]
+fn a_failed_cheap_step_stops_before_the_heavy_steps() {
+    let fx = Fixture::new(
+        true,
+        &[
+            ("src/update_models.rs", "// b\n"),
+            ("src/ops/alpha.rs", "// b\n"),
+        ],
+    );
+    let tools = Tools::new(&["cargo", "python3", "rustfmt"]);
+    let slots = slot_dir();
+    let slot = slots.path().to_string_lossy().to_string();
+    let (ok, r) = affected(&fx, &["--slot-dir", slot.as_str()], Some((&tools, "fmt")));
+    assert!(ok, "{r}");
+    let line = r["summary"].as_str().unwrap();
+    assert!(line.contains(" fmt=3 "), "{line}");
+    assert!(line.ends_with(" stopped_at=fmt result=FAIL"), "{line}");
+    assert_eq!(
+        keys(line),
+        [
+            "base",
+            "head",
+            "targets",
+            "py",
+            "scans",
+            "diff_check",
+            "fmt",
+            "ops_rustfmt",
+            "stopped_at",
+            "result"
+        ],
+        "{line}"
+    );
+    assert_eq!(r["result"], "FAIL");
+    // The other cheap steps ran; nothing heavy and no Python did.
+    let calls = tools.calls_text();
+    assert!(calls.contains("rustfmt --edition 2021 --check"), "{calls}");
+    for never in ["clippy", "--lib", "--bin moai-cli", "--test ", "python3"] {
+        assert!(!calls.contains(never), "{never} ran: {calls}");
+    }
+    for line in calls.lines().filter(|l| l.starts_with("cargo ")) {
+        assert!(
+            line.starts_with("cargo fmt ") || line.starts_with("cargo env "),
+            "a heavy cargo step ran: {line}"
+        );
+    }
+    let ran: Vec<String> = r["steps"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|s| s["label"].as_str().unwrap().to_string())
+        .collect();
+    assert_eq!(ran, ["diff_check", "fmt", "ops_rustfmt"], "{r}");
+}
+
+/// REQ-1 with the three kinds of cheap step: a real trailing-space `git diff --check` failure,
+/// an operation-file format check whose program cannot start (127) and a real `bash -n` failure.
+#[test]
+fn every_kind_of_cheap_failure_stops_the_run() {
+    let slots = slot_dir();
+    let slot = slots.path().to_string_lossy().to_string();
+    // Changed files, the step that must stop the run and the fake tools on the path.
+    type Case<'a> = (&'a [(&'a str, &'a str)], &'a str, &'a [&'a str]);
+    let cases: [Case; 3] = [
+        (
+            &[("src/update_models.rs", "// trailing \n")],
+            "diff_check",
+            &["cargo", "python3", "rustfmt"],
+        ),
+        (
+            &[("src/ops/alpha.rs", "// b\n")],
+            "ops_rustfmt",
+            // No fake `rustfmt` on the path: the step cannot start.
+            &["cargo", "python3"],
+        ),
+        (
+            &[("tools/a.sh", "if true; then\n")],
+            "bash_n:tools/a.sh",
+            &["cargo", "python3", "rustfmt"],
+        ),
+    ];
+    for (changed, stopped, fakes) in cases {
+        let fx = Fixture::new(false, changed);
+        let tools = Tools::new(fakes);
+        let (ok, r) = affected(&fx, &["--slot-dir", slot.as_str()], Some((&tools, "")));
+        assert!(ok, "{stopped}: {r}");
+        let line = r["summary"].as_str().unwrap();
+        // The summary key of a repeated label stops at its `:`.
+        let key = stopped.split(':').next().unwrap();
+        assert!(
+            line.ends_with(&format!(" stopped_at={key} result=FAIL")),
+            "{stopped}: {line}"
+        );
+        let calls = tools.calls_text();
+        for never in ["clippy", "--lib", "--bin moai-cli", "python3"] {
+            assert!(!calls.contains(never), "{stopped}: {never} ran: {calls}");
+        }
+    }
 }
 
 #[test]
@@ -505,7 +614,7 @@ fn a_program_that_cannot_start_is_127_and_a_refused_slot_keeps_its_code() {
     let (ok, r) = affected(&fx, &["--slot-dir", refusing.as_str()], Some((&tools, "")));
     assert!(ok, "{r}");
     let line = r["summary"].as_str().unwrap();
-    assert!(line.contains(" clippy=125 "), "{line}");
+    assert!(line.contains(" clippy=125 test=125 "), "{line}");
     assert!(line.ends_with(" result=FAIL"), "{line}");
     let calls = tools.calls_text();
     assert!(
@@ -565,61 +674,4 @@ fn a_checkout_that_is_not_the_head_runs_nothing() {
         "{v}"
     );
     assert_eq!(tools.calls_text(), "", "no step may have run");
-}
-
-// SPEC-20261120-test-parallelism-cap REQ-1: the test run runs with the wrapper's cap and the
-// summary line names it; a caller that pins the runner's own knob wins, and nothing is named.
-#[test]
-fn the_test_step_runs_capped_and_the_summary_names_the_cap() {
-    let fx = Fixture::new(true, &[("tests/solo_cli.rs", "fn main() { /* b */ }\n")]);
-    let tools = Tools::new(&["cargo", "python3", "rustfmt"]);
-    let slot = slot_dir();
-    let (ok, r) = affected(
-        &fx,
-        &["--slot-dir", slot.path().to_str().unwrap()],
-        Some((&tools, "")),
-    );
-    assert!(ok, "{r}");
-    let line = r["summary"].as_str().unwrap();
-    assert!(
-        line.contains(" test-threads=4 "),
-        "the cap is not named: {line}"
-    );
-    let calls = tools.calls_text();
-    assert!(
-        calls.contains("RT=4"),
-        "the cargo test step did not get the capped threads: {calls}"
-    );
-}
-
-#[test]
-fn a_caller_pinned_test_threads_wins_and_the_summary_names_nothing() {
-    let fx = Fixture::new(true, &[("tests/solo_cli.rs", "fn main() { /* b */ }\n")]);
-    let tools = Tools::new(&["cargo", "python3", "rustfmt"]);
-    let slot = slot_dir();
-    let out = Command::new(BIN)
-        .args(["check", "affected", &fx.range(), "--dir"])
-        .arg(fx.root())
-        .arg("--slot-dir")
-        .arg(slot.path())
-        .env_remove("MOAI_HOME")
-        .env("RUST_TEST_THREADS", "11")
-        .env("PATH", tools.path())
-        .env("FAKE_CALLS", tools.calls())
-        .env("FAKE_FAIL", "")
-        .stdin(Stdio::null())
-        .output()
-        .unwrap();
-    let v: Value = serde_json::from_slice(&out.stdout).unwrap();
-    assert_eq!(v["ok"], true, "{v}");
-    let line = v["result"]["summary"].as_str().unwrap();
-    assert!(
-        !line.contains("test-threads"),
-        "the pin is not honoured: {line}"
-    );
-    let calls = tools.calls_text();
-    assert!(
-        calls.contains("RT=11"),
-        "the caller's pin did not win: {calls}"
-    );
 }

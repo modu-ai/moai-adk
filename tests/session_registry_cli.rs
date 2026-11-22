@@ -45,21 +45,72 @@ impl Fixture {
         }
     }
     fn sessions(&self) -> PathBuf {
-        self.repo.join(".git/.moai-cli/sessions")
+        moai_cli::clone_root::path(&self.repo.join(".git")).join("sessions")
     }
     fn entry(&self, name: &str) -> PathBuf {
         self.sessions().join(format!("{name}.json"))
     }
 }
 
+/// The one place that builds a command for the binary under test: a temporary HOME and no git
+/// configuration of the machine (SPEC REQ-1).
+fn registrar(fx: &Fixture) -> Command {
+    let mut c = Command::new(BIN);
+    c.env("HOME", &fx.home)
+        .env("GIT_CONFIG_GLOBAL", "/dev/null")
+        .env("GIT_CONFIG_SYSTEM", "/dev/null")
+        // The registrar records a `session` key from this variable; a lane shell sets it, and
+        // the tests expect the entry without it.
+        .env_remove("CLAUDE_CODE_SESSION_ID");
+    c
+}
+
+/// REQ-1, REQ-2: a child of these tests never inherits the session id of the shell that runs
+/// them. The command says it by name: the variable is removed, not left to the environment.
+#[test]
+fn session_registry_children_do_not_inherit_the_shell_session_id() {
+    let fx = Fixture::new();
+    let cmd = registrar(&fx);
+    let removed = cmd
+        .get_envs()
+        .any(|(k, v)| k == "CLAUDE_CODE_SESSION_ID" && v.is_none());
+    assert!(
+        removed,
+        "the command leaves CLAUDE_CODE_SESSION_ID to the shell"
+    );
+}
+
+/// SPEC-20261122-test-defects-session-reclaim AC-5 (REQ-2): every command of this file is built
+/// in `registrar`, so the variable it removes is removed for every child; a command built
+/// anywhere else fails here with its line.
+#[test]
+fn every_child_is_built_by_the_one_helper() {
+    let text = include_str!("session_registry_cli.rs");
+    // Split so this line is not a match of its own.
+    let needle = concat!("Command", "::new(");
+    let at: Vec<usize> = text
+        .lines()
+        .enumerate()
+        .filter(|(_, l)| l.contains(needle))
+        .map(|(i, _)| i + 1)
+        .collect();
+    let helper = text
+        .lines()
+        .position(|l| l.starts_with("fn registrar("))
+        .expect("the registrar helper")
+        + 1;
+    assert_eq!(
+        at,
+        vec![helper + 1],
+        "commands are built at lines {at:?}; only registrar (line {helper}) may build one"
+    );
+}
+
 fn run_in(fx: &Fixture, cwd: &Path, args: &[&str]) -> Output {
-    Command::new(BIN)
+    registrar(fx)
         .arg("session-register")
         .args(args)
         .current_dir(cwd)
-        .env("HOME", &fx.home)
-        .env("GIT_CONFIG_GLOBAL", "/dev/null")
-        .env("GIT_CONFIG_SYSTEM", "/dev/null")
         .output()
         .unwrap()
 }
@@ -209,7 +260,7 @@ fn show_without_a_project_reads_the_clone_of_the_current_folder() {
         assert_eq!(free["status"], "free");
     }
     assert!(!fx.entry("agent-9").exists(), "--show writes nothing");
-    assert!(!wt.join(".moai-cli/sessions").exists());
+    assert!(!moai_cli::state_root::path(&wt, "sessions").exists());
     // A folder that is no clone is refused, not read as "free".
     let plain = fx.home.join("plain");
     fs::create_dir_all(&plain).unwrap();
@@ -268,7 +319,7 @@ fn every_worktree_of_the_clone_sees_one_registry() {
         &[wt.to_str().unwrap(), "--name", "agent-8", "--now", T0],
     ));
     assert_eq!(kind, "conflict");
-    assert!(!wt.join(".moai-cli/sessions").exists());
+    assert!(!moai_cli::state_root::path(&wt, "sessions").exists());
 }
 
 #[test]
@@ -406,7 +457,7 @@ fn outside_a_repository_it_is_refused() {
         &[plain.to_str().unwrap(), "--name", "agent-8", "--now", T0],
     );
     refused(&out);
-    assert!(!plain.join(".moai-cli").exists());
+    assert!(!moai_cli::state_root::path(&plain, "").exists());
 }
 
 /// Eight concurrent registrations of one name, with the read-to-write window widened: exactly
@@ -417,12 +468,9 @@ fn concurrent_registrations_admit_one() {
     let repo = fx.repo.to_str().unwrap().to_string();
     let children: Vec<_> = (0..8)
         .map(|_| {
-            Command::new(BIN)
+            registrar(&fx)
                 .args(["session-register", &repo, "--name", "agent-8", "--now", T0])
                 .current_dir(&fx.repo)
-                .env("HOME", &fx.home)
-                .env("GIT_CONFIG_GLOBAL", "/dev/null")
-                .env("GIT_CONFIG_SYSTEM", "/dev/null")
                 .env("MOAI_CLI_TEST_SESSION_REGISTRY_HOLD_MS", "150")
                 .stdout(std::process::Stdio::piped())
                 .stderr(std::process::Stdio::piped())

@@ -381,6 +381,7 @@ impl Drop for Holder {
 fn update_home_token_goes_stale_when_an_item_in_use_is_freed() {
     let (_t, home, exe) = setup();
     go_items(&home);
+    crate::common::use_real_process_table();
     let holder = Holder(
         Command::new("sleep")
             .arg("60")

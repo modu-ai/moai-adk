@@ -110,6 +110,7 @@ fn call(args: &[&str]) -> Value {
         .env_remove("MOAI_HOME")
         .env("GIT_CONFIG_GLOBAL", "/dev/null")
         .env("GIT_CONFIG_SYSTEM", "/dev/null")
+        .envs([crate::common::process_table()])
         .stdin(Stdio::null())
         .output()
         .unwrap();
@@ -371,6 +372,7 @@ fn after_the_install_readers_resolve_under_moai_and_moai_cli_stays_untouched() {
             .current_dir(&home)
             .env("HOME", &home)
             .env("GIT_CEILING_DIRECTORIES", &home)
+            .envs([crate::common::process_table()])
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())

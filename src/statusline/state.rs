@@ -1,9 +1,11 @@
 //! Everything the statusline reads outside stdin: environment, the project configuration
-//! and state files, the HOME state files, and local git. Read-only (#2350): the Go
-//! statusline also writes `$HOME/.moai/state/last-model.txt` and
-//! `<anchor>/.moai/state/context-usage/*.json`; this module writes nothing. The one write
-//! of the statusline is the forge counts cache, done by the detached refresh child in
-//! [`super::counts`] (#2588), never by the render path.
+//! and state files, the HOME state files, and local git. The Go statusline also writes
+//! `$HOME/.moai/state/last-model.txt` and `<anchor>/.moai/state/context-usage/*.json`; this
+//! module writes neither. It has one write of its own, the per-session cache of the git facts
+//! under `$TMPDIR/moai-statusline/` (SPEC-20261122-statusline-where REQ-5): one small file per
+//! session id, a folder only the user may enter, an unwritable folder never failing a render.
+//! The forge counts cache is written by the detached refresh child in [`super::counts`]
+//! (#2588), never by the render path.
 //!
 //! HOME state (#2455, user decision 2026-11-11): `last-model.txt` is read from
 //! `$HOME/.moai-cli/state/` only, never from the Go folder `$HOME/.moai/`, and `MOAI_HOME` is
@@ -11,20 +13,22 @@
 //! session task (`last-session-state.json`, 📋) is not read at all since the three-line layout
 //! (#2376, user decision 3: the task is never shown).
 //!
-//! Card C-65: the card counts are the one read under `$HOME/.moai/`: the project's local ledger
-//! in `$HOME/.moai/projects/<project_id>/`, opened read-only through `crate::ledger` with a
-//! short wait (see [`card_counts`]).
+//! The cards by stage are the one read under `$HOME/.moai/`: the project's local ledger in
+//! `$HOME/.moai/projects/<project_id>/`, opened read-only through `crate::ledger` with a short
+//! wait, in four statements (see [`read_flow`]).
 //!
-//! The only subprocess is `git`, and only when a `.git` entry is found above the
-//! directory Go would open; it runs read-only (`--no-optional-locks`) under the render
-//! deadline. No network here: the counts refresh child is started by `statusline::run`
-//! after the render (#2588).
+//! The only subprocess is `git`, at most one `git status` per render, and only when a `.git`
+//! entry is found above the directory Go would open and the cache of the session does not
+//! answer; it runs read-only (`--no-optional-locks`) under the render deadline. The branch name
+//! and the short commit of a detached HEAD come from the `HEAD` file, never from a process. No
+//! network here: the counts refresh child is started by `statusline::run` after the render
+//! (#2588).
 
 use super::config::{self, Node};
 use super::input::{self, Input};
-use super::segments::{self, ContextReading, GitStatus, Memory};
-use serde::Deserialize;
-use std::collections::{BTreeMap, HashMap};
+use super::segments::{self, ContextReading, GitStatus};
+use serde::{Deserialize, Serialize};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
@@ -84,6 +88,16 @@ impl Context {
         self.var("HOME").map(PathBuf::from)
     }
 
+    /// `HOME` as this render sees it (the Orca pass-through finds its wrapper below it).
+    pub fn home_dir(&self) -> Option<PathBuf> {
+        self.home()
+    }
+
+    /// Every variable of this render, for a child started with the render's environment.
+    pub fn vars(&self) -> impl Iterator<Item = (&String, &String)> {
+        self.vars.iter()
+    }
+
     /// The HOME state folder `$HOME/.moai-cli/state` (Issue #2455, user decision
     /// 2026-11-11). The Go folder `$HOME/.moai` is never read, and `MOAI_HOME` — the Go
     /// tool's variable — is not consulted, so a Go setting cannot point back at it.
@@ -101,49 +115,32 @@ impl Context {
 #[derive(Debug, Default)]
 pub struct Status {
     pub model: String,
-    pub session_ms: i64,
-    pub memory: Memory,
-    pub auto_compact: i64,
+    /// The `CW` percentage as the host gives it, or its fallback (SPEC-20261122-statusline-limits
+    /// D-1); `None` when the input names none.
+    pub context: Option<f64>,
+    /// `cost.total_cost_usd`, the host's estimate of the session's cost in US dollars.
+    pub cost: Option<f64>,
     pub version: Option<Version>,
     pub claude_version: String,
-    pub output_style: String,
-    pub session_name: String,
-    /// #2928 (decision D1 = (A)): the clone's lane registry holds a live `leader` entry for the
-    /// stdin `session_name`. The tag shows `Leader` then, and also for the exact name `leader`
-    /// (#2871); the name text itself is never copied (see `render::tag_text`).
-    pub leader: bool,
     /// `Some` when `effort` is present, even with an empty level.
     pub effort: Option<String>,
     pub thinking: Option<bool>,
-    /// (cache read, cache creation) from `current_usage`.
-    pub cache: Option<(i64, i64)>,
     pub five_hour: Option<input::RateWindow>,
     pub seven_day: Option<input::RateWindow>,
     pub git: Option<GitStatus>,
     pub repo: Option<(String, String)>,
     pub github: GitHubCounts,
-    /// Card C-65: the card counts of the project's local ledger; `None` when there is no
-    /// ledger to read (see [`card_counts`]).
-    pub cards: Option<CardCounts>,
-    pub goal_armed: bool,
+    /// The cards of the project's local ledger by stage, for the flow line; `None` when there
+    /// is no ledger to read (see [`read_flow`]).
+    pub flow: Option<Flow>,
     /// #2756 AC-7: the open pull request of the current branch.
     pub pr: Option<PrInfo>,
-    /// #2756 AC-8: how long the prompt cache stays warm.
-    pub cache_timer: Option<CacheTimer>,
-    /// #2756 AC-9: the worktree name; empty in the main checkout.
+    /// #2756 AC-9: the worktree name the host gave; empty in the main checkout. The `🌳` item
+    /// shows it as it is (D-4 of SPEC-20261122-statusline-where).
     pub worktree: String,
-    /// User instruction 2026-11-19: the card and the name of the held reservation that names
-    /// the session's worktree folder, for `🌳 WT-c<card>-<name>`; `None` shows `worktree` as
-    /// the host gave it.
-    pub worktree_label: Option<WorktreeLabel>,
-}
-
-/// The parts of `🌳 WT-c<card>-<name>`: the number of the card holding the worktree and the
-/// name that says what the work is (empty when nothing says it).
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct WorktreeLabel {
-    pub card: i64,
-    pub name: String,
+    /// SPEC-20261122-statusline-where: the integration branch of the project (`work_flow` of its
+    /// profile, else the remote's default branch), `None` when neither names one.
+    pub integration: Option<String>,
 }
 
 /// The `pr` fields the status line shows.
@@ -154,15 +151,9 @@ pub struct PrInfo {
     pub url: String,
     /// Empty when absent.
     pub review_state: String,
-}
-
-/// The prompt cache state from `prompt_cache` (Unix-second timestamps).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum CacheTimer {
-    /// Warm, with whole minutes left until `expires_at` (rounded down).
-    Warm(i64),
-    /// `warm` is false, or `expires_at` has passed.
-    Cold,
+    /// SPEC-20261122-statusline-where REQ-9: the host says the request is a GitLab merge
+    /// request (`pr.kind` is `mr`), so the item is written `!<n>`.
+    pub merge_request: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -179,22 +170,84 @@ pub struct GitHubCounts {
     pub open_prs: i64,
 }
 
-/// Card C-65 (user instructions 2026-11-16 and 2026-11-17): the cards of the project's local
-/// ledger, as the repository line shows them (`🗂️ remaining ▶️ in_progress 🔃 waiting ✅ done`;
-/// without `waiting` the three-number form `🗂️ ▶️ ✅`).
+/// The stage of an open card in its progress (SPEC-20261122-statusline-flow REQ-1): the nine
+/// stages of the flow line, each with the letter the line writes for it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Stage {
+    /// `D`: drafted, not yet ready.
+    Draft,
+    /// `R`: ready to be taken.
+    Ready,
+    /// `W`: a lane holds it with a live lease and works on it.
+    Working,
+    /// `E`: it is worked on by nobody — the lease has ended or no reservation holds it.
+    Stale,
+    /// `S`: pushed, waiting for an audit or the leader's integration (every `review` card).
+    Submitted,
+    /// `A`: an audit passed for the head and nobody landed it.
+    Audited,
+    /// `L`: landed on the integration branch and not yet closed.
+    Landed,
+    /// `B`: the lane asked for a decision.
+    Blocked,
+    /// `H`: on hold.
+    Hold,
+}
+
+impl Stage {
+    /// The letter the flow line writes (D-9 of the SPEC); English only.
+    pub fn letter(self) -> char {
+        match self {
+            Stage::Draft => 'D',
+            Stage::Ready => 'R',
+            Stage::Working => 'W',
+            Stage::Stale => 'E',
+            Stage::Submitted => 'S',
+            Stage::Audited => 'A',
+            Stage::Landed => 'L',
+            Stage::Blocked => 'B',
+            Stage::Hold => 'H',
+        }
+    }
+}
+
+/// The card the session is on: its number and stage (SPEC REQ-6).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct MyCard {
+    pub card: i64,
+    pub stage: Stage,
+}
+
+/// The cards of the project's local ledger by the stage of their progress, for the flow line
+/// (SPEC-20261122-statusline-flow). The nine stage counts add up to the cards that are not
+/// `done`.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
-pub struct CardCounts {
-    /// The cards being worked on: `active` ones whose newest marker note is not a waiting one.
-    /// When `waiting` is `None` (the notes could not be read) it is `active` + `review`.
-    pub in_progress: i64,
-    /// The cards pushed and waiting for integration or an audit: every `review` card and each
-    /// `active` card whose newest marker note is a waiting one. `None` when the notes could not
-    /// be read, and the line then shows the three-number form.
-    pub waiting: Option<i64>,
-    /// `draft` + `ready` + `hold`.
-    pub remaining: i64,
-    /// `done`; counted in neither of the other two.
-    pub done: i64,
+pub struct Flow {
+    pub draft: i64,
+    pub ready: i64,
+    pub working: i64,
+    pub stale: i64,
+    pub submitted: i64,
+    pub audited: i64,
+    pub landed: i64,
+    pub blocked: i64,
+    pub hold: i64,
+    /// The cards closed at or after the start of the UTC day of the render's clock.
+    pub done_today: i64,
+    /// The card this session holds, when it holds one.
+    pub mine: Option<MyCard>,
+    /// `false` when the notes, the landing events or the reservations could not be read in the
+    /// budget: only `draft`, `ready`, `hold`, `done_today` and `working` (`active` + `review`,
+    /// unsplit) are set then and the line writes the unsplit form, never a guess.
+    pub split: bool,
+}
+
+/// Who asks: the stdin session id and the folder the session works in, for "my card"
+/// (SPEC REQ-6).
+#[derive(Debug, Clone, Copy, Default)]
+pub struct Whose<'a> {
+    pub session_id: &'a str,
+    pub dir: Option<&'a Path>,
 }
 
 /// `statusline.yaml` as the Go CLI reads it: theme and the segments map.
@@ -202,6 +255,9 @@ pub struct CardCounts {
 pub struct DisplayConfig {
     pub theme: String,
     pub segments: BTreeMap<String, bool>,
+    /// The `padding` of the host's `statusLine` block that this file mirrors, in characters
+    /// (default 0): the host adds it to every line, so the width budget subtracts it.
+    pub padding: usize,
 }
 
 /// Version this binary reports in the `🗿` segment.
@@ -210,47 +266,42 @@ pub const BINARY_VERSION: &str = crate::BUILD_VERSION;
 pub fn collect(input: Option<&Input>, ctx: &Context) -> Status {
     let project_root = find_project_root(ctx);
     let anchor = input.and_then(resolve_anchor);
-    let auto_compact = segments::auto_compact_threshold(ctx.var("CLAUDE_AUTOCOMPACT_PCT_OVERRIDE"));
     let mut status = Status {
         model: collect_model(input, ctx),
-        auto_compact,
         version: Some(collect_version(ctx, BINARY_VERSION)),
         ..Default::default()
     };
+    // The branch and the commit come from the `HEAD` file and the numbers from the session
+    // cache or the one git process of the render (SPEC-20261122-statusline-where REQ-2, REQ-6,
+    // REQ-7); the profile of the project names the integration branch.
     let git_dir = project_root.clone().or_else(|| ctx.cwd.clone());
-    status.git = git_dir.and_then(|d| collect_git(&d, ctx));
+    let profile_root = anchor.clone().or_else(|| project_root.clone());
+    let session_id = input.map_or("", |i| input::text(&i.session_id));
+    if let Some(read) = git_dir.and_then(|d| read_git(&d, ctx, profile_root.as_deref(), session_id))
+    {
+        status.git = Some(read.git);
+        status.integration = read.integration;
+    }
     let Some(input) = input else {
         return status;
     };
-    status.session_ms = input
-        .cost
-        .as_ref()
-        .and_then(|c| c.total_duration_ms)
-        .unwrap_or(0);
-    status.memory = collect_memory(input, ctx, auto_compact);
-    status.session_name = input::text(&input.session_name).to_string();
-    status.leader = is_leader(input, &status.session_name, ctx.now);
-    status.output_style = input
-        .output_style
-        .as_ref()
-        .map_or("", |s| input::text(&s.name))
-        .to_string();
-    status.claude_version = input::text(&input.version).to_string();
+    // SPEC-20261122-statusline-limits REQ-11: only what a shown item needs is collected — not
+    // the session duration, the output style, the cache hit ratio, the prompt cache timer or
+    // the goal file.
+    status.context = collect_context(input, ctx);
+    status.cost = input.cost.as_ref().and_then(|c| c.total_cost_usd);
+    // The version comes from stdin and is printed as text: a control character (an escape, a
+    // newline) or an invisible format character (a direction mark, a zero-width one) could
+    // move or hide what the line shows, so none reaches the screen.
+    status.claude_version = input::text(&input.version)
+        .chars()
+        .filter(|c| !c.is_control() && !invisible_format_char(*c))
+        .collect();
     status.effort = input
         .effort
         .as_ref()
         .map(|e| input::text(&e.level).to_string());
     status.thinking = input.thinking.as_ref().map(|t| t.enabled.unwrap_or(false));
-    status.cache = input
-        .context_window
-        .as_ref()
-        .and_then(|cw| cw.current_usage.as_ref())
-        .map(|u| {
-            (
-                u.cache_read_input_tokens.unwrap_or(0),
-                u.cache_creation_input_tokens.unwrap_or(0),
-            )
-        });
     if let Some(limits) = &input.rate_limits {
         status.five_hour = limits.five_hour;
         status.seven_day = limits.seven_day;
@@ -267,23 +318,28 @@ pub fn collect(input: Option<&Input>, ctx: &Context) -> Status {
         });
     if let Some(anchor) = &anchor {
         status.github = github_counts(anchor);
-        status.goal_armed = goal_armed(anchor, input::text(&input.session_id));
     }
-    status.cards = anchor
+    let dir = session_dir(input);
+    status.flow = anchor
         .as_deref()
         .or(project_root.as_deref())
-        .and_then(|project| card_counts(project, ctx));
+        .and_then(|project| {
+            let who = Whose {
+                session_id: input::text(&input.session_id),
+                dir: dir.as_deref(),
+            };
+            read_flow(project, ctx, &who)
+        });
     status.pr = input.pr.as_ref().and_then(|p| {
         Some(PrInfo {
             number: p.number.filter(|n| *n > 0)?,
             url: safe_link(input::text(&p.url)).to_string(),
             review_state: input::text(&p.review_state).to_string(),
+            // Official statusline page: `pr.kind` is `mr` for a GitLab merge request and absent
+            // for a GitHub pull request; any other value is a pull request.
+            merge_request: p.kind.as_deref() == Some("mr"),
         })
     });
-    status.cache_timer = input
-        .prompt_cache
-        .as_ref()
-        .and_then(|c| cache_timer(c, ctx.now));
     let worktree = input.worktree.as_ref().map_or("", |w| input::text(&w.name));
     status.worktree = if worktree.is_empty() {
         input
@@ -294,13 +350,6 @@ pub fn collect(input: Option<&Input>, ctx: &Context) -> Status {
     } else {
         worktree.to_string()
     };
-    if !status.worktree.is_empty() {
-        status.worktree_label = anchor
-            .as_deref()
-            .or(project_root.as_deref())
-            .zip(session_dir(input))
-            .and_then(|(project, dir)| worktree_label(project, &dir, ctx));
-    }
     status
 }
 
@@ -317,28 +366,6 @@ fn session_dir(input: &Input) -> Option<PathBuf> {
         dir
     };
     (!dir.is_empty()).then(|| PathBuf::from(dir))
-}
-
-/// #2756 AC-8: `warm: false` is cold; `warm: true` with `expires_at` gives the whole minutes
-/// left (a passed `expires_at` is cold). Anything else — no `warm`, a warm cache without
-/// `expires_at`, a value of another type — shows no timer.
-fn cache_timer(cache: &serde_json::Value, now: i64) -> Option<CacheTimer> {
-    match cache.get("warm").and_then(serde_json::Value::as_bool)? {
-        false => Some(CacheTimer::Cold),
-        true => {
-            // The decoder may hand numbers over as floats (Go `encoding/json` rules).
-            let expires = cache.get("expires_at").and_then(|v| {
-                v.as_i64()
-                    .or_else(|| v.as_f64().filter(|f| f.is_finite()).map(|f| f as i64))
-            })?;
-            let left = expires - now;
-            Some(if left <= 0 {
-                CacheTimer::Cold
-            } else {
-                CacheTimer::Warm(left / 60)
-            })
-        }
-    }
 }
 
 /// #2756 AC-7: a URL usable inside an OSC 8 hyperlink — `http://` or `https://` and no
@@ -435,7 +462,16 @@ fn read_display_config(path: &Path) -> DisplayConfig {
             }
         }
     }
-    DisplayConfig { theme, segments }
+    // A `padding` that is not a plain non-negative number reads as 0, never as a failed file.
+    let padding = match doc.get(&["statusline", "padding"]) {
+        Some(Node::Scalar(s)) => s.trim().parse().unwrap_or(0),
+        _ => 0,
+    };
+    DisplayConfig {
+        theme,
+        segments,
+        padding,
+    }
 }
 
 /// `findProjectRoot` (cli/glm.go): walk up from the cwd to a directory holding `.moai`,
@@ -493,34 +529,10 @@ pub fn resolve_anchor(input: &Input) -> Option<PathBuf> {
     main_checkout_of(Path::new(dir))
 }
 
-/// #2928: the session is the leader when its `session_name` is a valid lane name and the lane
-/// registry of the clone holding the session's directory (`workspace.current_dir`, else `cwd`)
-/// has a live entry for that name with mode `leader` (`lane_registry::mode_of`).
-fn is_leader(input: &Input, session_name: &str, now: i64) -> bool {
-    if !crate::lane_registry::valid_name(session_name) {
-        return false;
-    }
-    let dir = input
-        .workspace
-        .as_ref()
-        .map_or("", |w| input::text(&w.current_dir));
-    let dir = if dir.is_empty() {
-        input::text(&input.cwd)
-    } else {
-        dir
-    };
-    if dir.is_empty() {
-        return false;
-    }
-    common_dir_of(Path::new(dir)).is_some_and(|common| {
-        crate::lane_registry::mode_of(&common, session_name, now) == Some("leader")
-    })
-}
-
 /// Where the git common directory of `dir` is, found on disk: the main checkout's `.git`
 /// folder (with that checkout's top), or the folder a linked worktree's `commondir` names.
 enum GitCommon {
-    Main { top: PathBuf, dot_git: PathBuf },
+    Main { top: PathBuf },
     Linked(PathBuf),
 }
 
@@ -528,7 +540,7 @@ fn find_common(dir: &Path) -> Option<GitCommon> {
     let dir = std::fs::canonicalize(dir).ok()?;
     let (top, dot_git) = find_dot_git(&dir)?;
     if dot_git.is_dir() {
-        return Some(GitCommon::Main { top, dot_git });
+        return Some(GitCommon::Main { top });
     }
     let text = std::fs::read_to_string(&dot_git).ok()?;
     let git_dir = PathBuf::from(text.trim().strip_prefix("gitdir:")?.trim());
@@ -555,17 +567,8 @@ fn find_common(dir: &Path) -> Option<GitCommon> {
 /// file naming a worktree git dir whose `commondir` points back to the main repository.
 fn main_checkout_of(dir: &Path) -> Option<PathBuf> {
     match find_common(dir)? {
-        GitCommon::Main { top, .. } => Some(top),
+        GitCommon::Main { top } => Some(top),
         GitCommon::Linked(common) => common.parent().map(Path::to_path_buf),
-    }
-}
-
-/// #2928: the git common directory of `dir`, canonical — the folder the clone's lane registry
-/// lives under (`identity`'s `clone_anchor`).
-fn common_dir_of(dir: &Path) -> Option<PathBuf> {
-    match find_common(dir)? {
-        GitCommon::Main { dot_git, .. } => std::fs::canonicalize(dot_git).ok(),
-        GitCommon::Linked(common) => Some(common),
     }
 }
 
@@ -637,24 +640,55 @@ fn resolve_glm_model_name(display: &str, ctx: &Context) -> String {
 
 // ---- context window ----
 
-fn collect_memory(input: &Input, ctx: &Context, auto_compact: i64) -> Memory {
+/// An invisible Unicode format character that changes how a line reads without showing: the
+/// soft hyphen, the Arabic letter mark, the zero-width and direction marks, the direction
+/// embeddings, overrides and isolates, the word joiner and invisible operators, and the byte
+/// order mark.
+fn invisible_format_char(c: char) -> bool {
+    matches!(
+        c,
+        '\u{00AD}'
+            | '\u{061C}'
+            | '\u{180E}'
+            | '\u{200B}'..='\u{200F}'
+            | '\u{202A}'..='\u{202E}'
+            | '\u{2060}'..='\u{2064}'
+            | '\u{2066}'..='\u{206F}'
+            | '\u{FEFF}'
+    )
+}
+
+/// The tokens of `current_usage` the `CW` number falls back to: none when the object carries no
+/// count at all (REQ-2: `CW n/a`, never a guessed `0%`), and a sum that stops at `i64::MAX`
+/// instead of overflowing on absurd counts.
+fn usage_tokens(u: &input::CurrentUsage) -> Option<i64> {
+    let counts = [
+        u.input_tokens,
+        u.cache_creation_input_tokens,
+        u.cache_read_input_tokens,
+    ];
+    counts.iter().any(Option::is_some).then(|| {
+        counts
+            .iter()
+            .flatten()
+            .fold(0i64, |sum, n| sum.saturating_add(*n))
+    })
+}
+
+fn collect_context(input: &Input, ctx: &Context) -> Option<f64> {
     let reading = input.context_window.as_ref().map(|cw| ContextReading {
         used_percentage: cw.used_percentage,
         context_window_size: cw.context_window_size.unwrap_or(0),
         used: cw.used.unwrap_or(0),
         total: cw.total.unwrap_or(0),
-        current_usage_tokens: cw.current_usage.as_ref().map(|u| {
-            u.input_tokens.unwrap_or(0)
-                + u.cache_creation_input_tokens.unwrap_or(0)
-                + u.cache_read_input_tokens.unwrap_or(0)
-        }),
+        current_usage_tokens: cw.current_usage.as_ref().and_then(usage_tokens),
     });
     let size_override = if reading.is_some() {
         context_window_override(ctx)
     } else {
         0
     };
-    segments::collect_memory(reading, size_override, auto_compact)
+    segments::context_percent(reading, size_override)
 }
 
 /// Built-in GLM context windows (memory.go `glmContextWindows`).
@@ -800,30 +834,617 @@ fn template_version(ctx: &Context) -> Option<String> {
     None
 }
 
-// ---- git ----
+// ---- where: the items of line 1 (SPEC-20261122-statusline-where) ----
 
-fn collect_git(dir: &Path, ctx: &Context) -> Option<GitStatus> {
-    // No repository above `dir`: nothing to ask git, so no process is started.
-    find_dot_git(&std::fs::canonicalize(dir).ok()?)?;
-    let out = run_git(
-        dir,
-        &["--no-optional-locks", "status", "--porcelain", "--branch"],
-        ctx,
-    )?;
-    let mut status = segments::parse_porcelain(&out);
-    if status.branch.is_empty() {
-        status.branch = run_git(dir, &["symbolic-ref", "--short", "HEAD"], ctx)
-            .map(|b| b.trim().to_string())
-            .unwrap_or_default();
-        // Detached HEAD (SPEC-20261121-statusline-detached): the short SHA stands in for
-        // the branch name, so the repository and its forge counts stay on the line.
-        if status.branch.is_empty() {
-            status.head_sha = run_git(dir, &["rev-parse", "--short", "HEAD"], ctx)
-                .map(|b| b.trim().to_string())
-                .unwrap_or_default();
+/// What the `HEAD` file of the git directory says (REQ-2): a branch, a detached commit
+/// (its first seven characters) or nothing usable.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Head<'a> {
+    Branch(&'a str),
+    Detached(&'a str),
+    Unreadable,
+}
+
+/// The seconds a cache of the git facts is trusted (REQ-6, D-1 of the SPEC): a cache is fresh
+/// while its age is below this.
+pub const CACHE_MAX_AGE_SECS: i64 = 10;
+/// A cache file older than this many seconds is removed by the render that writes a cache.
+pub const CACHE_KEEP_SECS: i64 = 86_400;
+/// The render that writes a cache removes at most this many old cache files.
+pub const CACHE_REMOVE_PER_RENDER: usize = 10;
+/// The folder under `$TMPDIR` that holds the cache files of the sessions.
+const CACHE_FOLDER: &str = "moai-statusline";
+/// A cache file larger than this is not one.
+const CACHE_FILE_CAP: u64 = 64 * 1024;
+/// A `HEAD` file, a ref file or a `.git` file larger than this is not read.
+const SMALL_FILE_CAP: u64 = 4096;
+/// `packed-refs` is searched only when the loose ref of the integration branch is missing.
+const PACKED_REFS_CAP: u64 = 8 * 1024 * 1024;
+
+/// The text of a `HEAD` file read as a branch, a detached commit or nothing. A branch name is
+/// taken only when it is one git can be given safely (`profile::branch_name`: a portable subset,
+/// no escape or control byte can reach the screen), and a commit is a 40 or 64 digit hash.
+pub fn head_of(content: &str) -> Head<'_> {
+    let text = content.strip_suffix('\n').unwrap_or(content);
+    if let Some(name) = text.strip_prefix("ref: refs/heads/") {
+        return if crate::profile::branch_name(name) {
+            Head::Branch(name)
+        } else {
+            Head::Unreadable
+        };
+    }
+    if matches!(text.len(), 40 | 64) && text.bytes().all(|b| b.is_ascii_hexdigit()) {
+        Head::Detached(&text[..7])
+    } else {
+        Head::Unreadable
+    }
+}
+
+/// The integration branch: the name `work_flow.integration_branch` of the project profile text
+/// gives, else the remote's default branch from the text of `refs/remotes/origin/HEAD`, else
+/// `None`. A name git cannot be given safely is no name.
+pub fn integration_from(profile: Option<&str>, origin_head: Option<&str>) -> Option<String> {
+    let named = profile
+        .and_then(|p| serde_json::from_str::<serde_json::Value>(p).ok())
+        .and_then(|v| {
+            v.get("work_flow")?
+                .get("integration_branch")?
+                .as_str()
+                .map(str::to_string)
+        })
+        .filter(|name| crate::profile::branch_name(name));
+    named.or_else(|| {
+        let text = origin_head?;
+        let name = text
+            .strip_suffix('\n')
+            .unwrap_or(text)
+            .strip_prefix("ref: refs/remotes/origin/")?;
+        crate::profile::branch_name(name).then(|| name.to_string())
+    })
+}
+
+/// The arguments of the one git process of a render, after the program name. The lane branch
+/// is measured against the integration branch with two `-c` overrides, only when both names are
+/// safe to hand to git and the branch is not the integration branch itself.
+pub fn status_args(branch: Option<&str>, integration: Option<&str>) -> Vec<String> {
+    let mut args = vec!["--no-optional-locks".to_string()];
+    if let (Some(branch), Some(integration)) = (branch, integration) {
+        if branch != integration
+            && crate::profile::branch_name(branch)
+            && crate::profile::branch_name(integration)
+        {
+            args.extend([
+                "-c".to_string(),
+                format!("branch.{branch}.remote=."),
+                "-c".to_string(),
+                format!("branch.{branch}.merge=refs/heads/{integration}"),
+            ]);
         }
     }
-    Some(status)
+    args.extend(["status", "--porcelain", "--branch"].map(String::from));
+    args
+}
+
+/// What the first line needs to know about where the session stands.
+#[derive(Debug, Clone, Copy)]
+pub struct WhereInput<'a> {
+    /// The host's worktree name; empty in the main checkout.
+    pub worktree: &'a str,
+    pub head: Head<'a>,
+    pub integration: Option<&'a str>,
+    /// The numbers of `git status --porcelain --branch`.
+    pub ahead: i64,
+    pub behind: i64,
+    pub dirty: i64,
+}
+
+/// The `↑ ↓ +` marks of the place items; a zero is not written.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct Marks {
+    pub ahead: i64,
+    pub behind: i64,
+    pub dirty: i64,
+}
+
+/// The `🧭` item: the commits the branch is ahead of and behind the integration branch.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Distance {
+    pub name: String,
+    pub ahead: i64,
+    pub behind: i64,
+}
+
+/// The place items of line 1. The marks follow the last of the worktree and branch items.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Where {
+    /// `🌳 <worktree>`.
+    pub worktree: Option<String>,
+    /// `🅱️  <branch>` or the short commit of a detached HEAD.
+    pub branch: Option<String>,
+    pub marks: Marks,
+    pub distance: Option<Distance>,
+}
+
+/// Which place items show and with which numbers (REQ-3, REQ-4). The worktree name comes from
+/// the host, so its item stays when `HEAD` cannot be read, without marks; the branch item and the
+/// distance need the `HEAD` file.
+pub fn where_items(input: &WhereInput) -> Where {
+    let worktree = (!input.worktree.is_empty()).then(|| input.worktree.to_string());
+    let (name, detached) = match input.head {
+        Head::Branch(name) => (name, false),
+        Head::Detached(commit) => (commit, true),
+        Head::Unreadable => {
+            return Where {
+                worktree,
+                ..Where::default()
+            }
+        }
+    };
+    // A detached HEAD has no upstream: no ahead or behind count, only the dirty count.
+    let (ahead, behind) = if detached {
+        (0, 0)
+    } else {
+        (input.ahead, input.behind)
+    };
+    let integration = input.integration.filter(|n| !n.is_empty());
+    let distance = integration
+        .filter(|n| !detached && *n != name)
+        .map(|n| Distance {
+            name: n.to_string(),
+            ahead,
+            behind,
+        });
+    Where {
+        branch: (worktree.as_deref() != Some(name) || detached).then(|| name.to_string()),
+        worktree,
+        // The behind count lives in the distance; it stays on the branch item only when git's
+        // own upstream is all there is to measure against.
+        marks: Marks {
+            ahead,
+            behind: if integration.is_none() { behind } else { 0 },
+            dirty: input.dirty,
+        },
+        distance,
+    }
+}
+
+/// The file name of a session's cache: the stdin session id and `.json`, only for an id of
+/// 1 to 64 characters of `A-Z a-z 0-9 _ -` (REQ-5).
+pub fn cache_file_name(session_id: &str) -> Option<String> {
+    let plain = !session_id.is_empty()
+        && session_id.len() <= 64
+        && session_id
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'_' | b'-'));
+    plain.then(|| format!("{session_id}.json"))
+}
+
+/// Whether a cache may stand in for git (REQ-6): the same `HEAD` content, the same integration
+/// commit and an age below [`CACHE_MAX_AGE_SECS`]. A cache written in the future is not fresh.
+pub fn cache_is_fresh(
+    written_at: i64,
+    now: i64,
+    cached_head: &str,
+    head: &str,
+    cached_integration: &str,
+    integration: &str,
+) -> bool {
+    (0..CACHE_MAX_AGE_SECS).contains(&now.saturating_sub(written_at))
+        && cached_head == head
+        && cached_integration == integration
+}
+
+// ---- git ----
+
+/// The numbers of one `git status --porcelain --branch`, the facts the cache keeps.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+struct Counts {
+    ahead: i64,
+    behind: i64,
+    staged: i64,
+    modified: i64,
+    untracked: i64,
+}
+
+/// What the cache file holds (REQ-5): the key (the canonical git directory that holds the `HEAD`
+/// file, the work state of [`work_state`], the `HEAD` text and the integration commit), the time
+/// it was written, and the parsed git facts. A record without a folder or a work state (an older
+/// file) never matches.
+#[derive(Debug, Serialize, Deserialize)]
+struct CacheRecord {
+    #[serde(default)]
+    folder: String,
+    #[serde(default)]
+    state: String,
+    head: String,
+    integration: String,
+    written_at: i64,
+    counts: Counts,
+}
+
+/// What a render reads about git: the facts of the status line and the integration branch.
+struct GitRead {
+    git: GitStatus,
+    integration: Option<String>,
+}
+
+/// Where the git directory of a checkout and the common directory of its repository are.
+struct GitDirs {
+    /// The folder holding `HEAD`: `.git`, or the gitdir a linked worktree's `.git` file names.
+    git_dir: PathBuf,
+    /// The folder holding `refs/` and `packed-refs`.
+    common: PathBuf,
+}
+
+/// The git directories above the canonical `dir`, found on disk without a process.
+fn git_dirs(dir: &Path) -> Option<GitDirs> {
+    let (top, dot_git) = find_dot_git(dir)?;
+    if std::fs::metadata(&dot_git).ok()?.is_dir() {
+        return Some(GitDirs {
+            git_dir: dot_git.clone(),
+            common: dot_git,
+        });
+    }
+    let text = read_small(&dot_git, SMALL_FILE_CAP)?;
+    let named = PathBuf::from(text.lines().next()?.strip_prefix("gitdir:")?.trim());
+    let git_dir = if named.is_absolute() {
+        named
+    } else {
+        top.join(named)
+    };
+    let common = read_small(&git_dir.join("commondir"), SMALL_FILE_CAP)
+        .map(|c| PathBuf::from(c.trim()))
+        .map_or_else(
+            || git_dir.clone(),
+            |c| if c.is_absolute() { c } else { git_dir.join(c) },
+        );
+    Some(GitDirs { git_dir, common })
+}
+
+/// A small regular file as text: a link, a pipe, a folder, a file over `cap` bytes or text that
+/// is not UTF-8 is not read (a named pipe would block the render).
+fn read_small(path: &Path, cap: u64) -> Option<String> {
+    let meta = std::fs::symlink_metadata(path).ok()?;
+    if !meta.is_file() || meta.len() > cap {
+        return None;
+    }
+    std::fs::read_to_string(path).ok()
+}
+
+/// The commit a hash text names: 40 or 64 hexadecimal digits.
+fn is_commit(text: &str) -> bool {
+    matches!(text.len(), 40 | 64) && text.bytes().all(|b| b.is_ascii_hexdigit())
+}
+
+/// The commit of the local branch `name` (a name that passed `profile::branch_name`): its loose
+/// ref file, else its line of `packed-refs`; empty when neither says. Read for the cache key.
+fn ref_commit(common: &Path, name: &str) -> String {
+    if let Some(text) = read_small(&common.join("refs/heads").join(name), SMALL_FILE_CAP) {
+        if is_commit(text.trim()) {
+            return text.trim().to_string();
+        }
+    }
+    let want = format!("refs/heads/{name}");
+    read_small(&common.join("packed-refs"), PACKED_REFS_CAP)
+        .and_then(|packed| {
+            packed.lines().find_map(|line| {
+                let (hash, name) = line.split_once(' ')?;
+                (name == want && is_commit(hash)).then(|| hash.to_string())
+            })
+        })
+        .unwrap_or_default()
+}
+
+/// The git facts of the checkout above `dir`: the branch or the short commit from the `HEAD`
+/// file, the numbers from the session cache or else from the one `git status` of the render.
+/// `None` when no repository is found (no process is started then).
+fn read_git(
+    dir: &Path,
+    ctx: &Context,
+    profile_root: Option<&Path>,
+    session_id: &str,
+) -> Option<GitRead> {
+    let dirs = git_dirs(&std::fs::canonicalize(dir).ok()?)?;
+    let profile = profile_root
+        .and_then(|root| crate::profile::chosen_profile(root).ok().flatten())
+        .and_then(|bytes| String::from_utf8(bytes).ok());
+    let origin_head = read_small(
+        &dirs.common.join("refs/remotes/origin/HEAD"),
+        SMALL_FILE_CAP,
+    );
+    let integration = integration_from(profile.as_deref(), origin_head.as_deref());
+    let mut git = GitStatus::default();
+    let head_text = read_small(&dirs.git_dir.join("HEAD"), SMALL_FILE_CAP).unwrap_or_default();
+    let branch = match head_of(&head_text) {
+        Head::Branch(name) => {
+            git.branch = name.to_string();
+            Some(name)
+        }
+        Head::Detached(commit) => {
+            git.head_sha = commit.to_string();
+            None
+        }
+        // Nothing to measure: no branch, no distance and no process.
+        Head::Unreadable => {
+            return Some(GitRead { git, integration });
+        }
+    };
+    let commit = integration
+        .as_deref()
+        .map_or_else(String::new, |name| ref_commit(&dirs.common, name));
+    // The per-checkout git directory, as the disk spells it, is the folder of the key.
+    let folder = std::fs::canonicalize(&dirs.git_dir)
+        .unwrap_or_else(|_| dirs.git_dir.clone())
+        .to_string_lossy()
+        .into_owned();
+    let state = work_state(&dirs, branch);
+    let counts = git_counts(
+        dir,
+        ctx,
+        &CacheKey {
+            folder: &folder,
+            state: &state,
+        },
+        &head_text,
+        &commit,
+        &status_args(branch, integration.as_deref()),
+        SessionCache::open(ctx, session_id),
+    );
+    git.ahead = counts.ahead;
+    git.behind = counts.behind;
+    git.staged = counts.staged;
+    git.modified = counts.modified;
+    git.untracked = counts.untracked;
+    Some(GitRead { git, integration })
+}
+
+/// The parts of the cache key besides the `HEAD` text and the integration commit.
+struct CacheKey<'a> {
+    /// The canonical per-checkout git directory.
+    folder: &'a str,
+    /// [`work_state`]: the branch commit and the index size and time.
+    state: &'a str,
+}
+
+/// The numbers for one render: the cache when it is fresh for this git directory, work state,
+/// `HEAD` text and integration commit, else the output of the one git process, which then
+/// rewrites the cache. A git that cannot answer (a spent budget, a failure) gives zeros and
+/// writes nothing.
+fn git_counts(
+    dir: &Path,
+    ctx: &Context,
+    key: &CacheKey<'_>,
+    head_text: &str,
+    commit: &str,
+    args: &[String],
+    cache: Option<SessionCache>,
+) -> Counts {
+    if let Some(record) = cache.as_ref().and_then(SessionCache::read) {
+        // Another folder with the same `HEAD` text is another key: a session that moves to
+        // another checkout asks git once. A commit or a stage on the same branch changes the
+        // work state, so it asks git once too.
+        if record.folder == key.folder
+            && record.state == key.state
+            && cache_is_fresh(
+                record.written_at,
+                ctx.now,
+                &record.head,
+                head_text,
+                &record.integration,
+                commit,
+            )
+        {
+            return record.counts;
+        }
+    }
+    let args: Vec<&str> = args.iter().map(String::as_str).collect();
+    let Some(out) = run_git(dir, &args, ctx) else {
+        return Counts::default();
+    };
+    let parsed = segments::parse_porcelain(&out);
+    let counts = Counts {
+        ahead: parsed.ahead,
+        behind: parsed.behind,
+        staged: parsed.staged,
+        modified: parsed.modified,
+        untracked: parsed.untracked,
+    };
+    if let Some(cache) = cache {
+        let record = CacheRecord {
+            folder: key.folder.to_string(),
+            state: key.state.to_string(),
+            head: head_text.to_string(),
+            integration: commit.to_string(),
+            written_at: ctx.now,
+            counts,
+        };
+        if cache.write(&record) {
+            cache.remove_old(ctx.now);
+        }
+    }
+    counts
+}
+
+/// The cache file of one session under `$TMPDIR/moai-statusline/` (`/tmp` when `TMPDIR` is
+/// unset). The folder and the file name are one place: [`SessionCache::open`] makes the folder
+/// private (0700, the user's own, never a link) and names the file only by the session id.
+struct SessionCache {
+    dir: PathBuf,
+    file: PathBuf,
+}
+
+impl SessionCache {
+    /// `None` without a plain session id, with a relative `TMPDIR` (it would name a folder inside
+    /// the checkout the render runs in), without a folder this user alone may enter, or on a
+    /// platform without Unix modes: every render then asks git.
+    fn open(ctx: &Context, session_id: &str) -> Option<SessionCache> {
+        let name = cache_file_name(session_id)?;
+        let dir = cache_folder(ctx.var("TMPDIR"))?;
+        private_folder(&dir).then(|| SessionCache {
+            file: dir.join(name),
+            dir,
+        })
+    }
+
+    /// The record in the file; a missing, unreadable, linked, oversized or malformed file is none.
+    fn read(&self) -> Option<CacheRecord> {
+        serde_json::from_str(&read_small(&self.file, CACHE_FILE_CAP)?).ok()
+    }
+
+    /// Writes the record through a temporary file and a rename, so a reader never sees half of
+    /// it and a link in the file's place is replaced, not written through. `false` when it could
+    /// not be written; nothing else changes then.
+    fn write(&self, record: &CacheRecord) -> bool {
+        use std::io::Write;
+        let Ok(bytes) = serde_json::to_vec(record) else {
+            return false;
+        };
+        let temp = self.dir.join(format!(".write-{}.tmp", std::process::id()));
+        let mut options = std::fs::OpenOptions::new();
+        options.write(true).create_new(true);
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::OpenOptionsExt;
+            options.mode(0o600);
+        }
+        let written = options
+            .open(&temp)
+            .and_then(|mut f| f.write_all(&bytes))
+            .and_then(|()| std::fs::rename(&temp, &self.file));
+        if written.is_err() {
+            let _ = std::fs::remove_file(&temp);
+        }
+        written.is_ok()
+    }
+
+    /// Removes cache files (and temporary files a stopped render left) older than
+    /// [`CACHE_KEEP_SECS`] by their modified time against the render's clock, at most
+    /// [`CACHE_REMOVE_PER_RENDER`] of them. Other files and links stay.
+    fn remove_old(&self, now: i64) {
+        let Ok(entries) = std::fs::read_dir(&self.dir) else {
+            return;
+        };
+        let mut removed = 0;
+        for entry in entries.flatten() {
+            if removed >= CACHE_REMOVE_PER_RENDER {
+                break;
+            }
+            let path = entry.path();
+            let cache_like = path.extension().is_some_and(|e| e == "json" || e == "tmp");
+            let old = entry.metadata().ok().is_some_and(|m| {
+                m.is_file()
+                    && m.modified()
+                        .ok()
+                        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+                        .is_some_and(|t| now.saturating_sub(t.as_secs() as i64) > CACHE_KEEP_SECS)
+            });
+            if cache_like && path != self.file && old && std::fs::remove_file(&path).is_ok() {
+                removed += 1;
+            }
+        }
+    }
+}
+
+/// The folder the cache folder goes in: `TMPDIR` when it is an absolute path, `/tmp` when it is
+/// unset or empty, and none when it is relative.
+fn cache_base(tmpdir: Option<&str>) -> Option<PathBuf> {
+    match tmpdir {
+        None | Some("") => Some(PathBuf::from("/tmp")),
+        Some(dir) => Some(PathBuf::from(dir)).filter(|p| p.is_absolute()),
+    }
+}
+
+/// The status line's cache folder for a `TMPDIR` value: `moai-statusline` in [`cache_base`],
+/// none for a relative `TMPDIR`. Makes nothing. The session caches and the usage record
+/// ([`crate::usage_limit`]) both live here. With `TMPDIR` unset or empty the folder is in the
+/// shared `/tmp`, so its name carries this user's id (`moai-statusline-<uid>`): another local
+/// user who made `/tmp/moai-statusline` first would otherwise own the name, and every read would
+/// be refused as not private.
+pub(crate) fn cache_folder(tmpdir: Option<&str>) -> Option<PathBuf> {
+    let base = cache_base(tmpdir)?;
+    Some(match tmpdir {
+        None | Some("") => base.join(shared_tmp_folder_name()),
+        Some(_) => base.join(CACHE_FOLDER),
+    })
+}
+
+/// [`CACHE_FOLDER`] with this user's id, for the shared `/tmp`.
+#[cfg(unix)]
+fn shared_tmp_folder_name() -> String {
+    // SAFETY: geteuid has no preconditions and cannot fail.
+    let me = unsafe { libc::geteuid() };
+    format!("{CACHE_FOLDER}-{me}")
+}
+
+#[cfg(not(unix))]
+fn shared_tmp_folder_name() -> String {
+    CACHE_FOLDER.to_string()
+}
+
+/// What a commit or a stage on the same branch changes while the `HEAD` text stays: the commit
+/// of the checked-out branch (none for a detached `HEAD`, whose text is the commit) and the size
+/// and modified time of the checkout's index file. Read from disk, no process.
+fn work_state(dirs: &GitDirs, branch: Option<&str>) -> String {
+    let commit = branch.map_or_else(String::new, |name| ref_commit(&dirs.common, name));
+    let index = std::fs::symlink_metadata(dirs.git_dir.join("index"))
+        .ok()
+        .filter(std::fs::Metadata::is_file)
+        .map_or_else(
+            || "none".to_string(),
+            |m| {
+                let at = m
+                    .modified()
+                    .ok()
+                    .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+                    .map_or(0, |d| d.as_nanos());
+                format!("{}:{at}", m.len())
+            },
+        );
+    format!("commit={commit};index={index}")
+}
+
+/// The cache folder exists as a plain folder of this user that nobody else may enter: made 0700
+/// when missing, tightened to 0700 when it is the user's own with wider rights, refused when it
+/// is a link, another kind of file or another user's.
+#[cfg(unix)]
+pub(crate) fn private_folder(dir: &Path) -> bool {
+    use std::os::unix::fs::{DirBuilderExt, MetadataExt, PermissionsExt};
+    if std::fs::symlink_metadata(dir).is_err() {
+        // A render that made it first is as good: the checks below decide.
+        let _ = std::fs::DirBuilder::new().mode(0o700).create(dir);
+    }
+    let Ok(meta) = std::fs::symlink_metadata(dir) else {
+        return false;
+    };
+    // SAFETY: geteuid has no preconditions and cannot fail.
+    let me = unsafe { libc::geteuid() };
+    meta.file_type().is_dir()
+        && meta.uid() == me
+        && (meta.mode() & 0o077 == 0
+            || std::fs::set_permissions(dir, std::fs::Permissions::from_mode(0o700)).is_ok())
+}
+
+#[cfg(not(unix))]
+pub(crate) fn private_folder(_dir: &Path) -> bool {
+    false
+}
+
+/// What [`private_folder`] demands, checked without making or changing anything, for a reader
+/// that writes nothing: a plain folder (not a link) of this user that nobody else may enter.
+#[cfg(unix)]
+pub(crate) fn is_private_folder(dir: &Path) -> bool {
+    use std::os::unix::fs::MetadataExt;
+    let Ok(meta) = std::fs::symlink_metadata(dir) else {
+        return false;
+    };
+    // SAFETY: geteuid has no preconditions and cannot fail.
+    let me = unsafe { libc::geteuid() };
+    meta.file_type().is_dir() && meta.uid() == me && meta.mode() & 0o077 == 0
+}
+
+#[cfg(not(unix))]
+pub(crate) fn is_private_folder(_dir: &Path) -> bool {
+    false
 }
 
 /// Most bytes of one git call's stdout the render reads; the rest is dropped.
@@ -878,26 +1499,6 @@ fn run_git(dir: &Path, args: &[&str], ctx: &Context) -> Option<String> {
 
 // ---- local state files ----
 
-/// `resolveGoalArmed`: `<anchor>/.moai/state/goal/<session_id>.json` has `status: armed`.
-/// A session id carrying a path separator is refused rather than joined.
-fn goal_armed(anchor: &Path, session_id: &str) -> bool {
-    if session_id.is_empty() || session_id.contains(['/', '\\']) || session_id == ".." {
-        return false;
-    }
-    #[derive(Deserialize, Default)]
-    #[serde(default)]
-    struct Goal {
-        status: Option<String>,
-    }
-    let path = anchor
-        .join(".moai/state/goal")
-        .join(format!("{session_id}.json"));
-    std::fs::read(path)
-        .ok()
-        .and_then(|b| serde_json::from_slice::<Goal>(&b).ok())
-        .is_some_and(|g| g.status.as_deref() == Some("armed"))
-}
-
 /// `resolveGitHubCounts`: the cache only, never the network (#2588: the refresh runs
 /// in a detached child, see [`super::counts`]); an explicit `statusline.forge` naming no
 /// forge suppresses the pair, and counts fetched longer ago than
@@ -927,35 +1528,298 @@ pub const CARDS_BUSY_TIMEOUT: Duration = Duration::from_millis(50);
 // budget — 50 ms today, 100 ms at the very most. A value above the bound fails this build.
 const _: () = assert!(CARDS_BUSY_TIMEOUT.as_millis() <= 100);
 
-/// Card C-65: the card counts of `project`'s local ledger
-/// (`$HOME/.moai/projects/<project_id>/`), the one `moai card list` reads. Read-only like that
-/// command (`ledger::open`: no folder, no file, no journal; no process and no network), with
-/// [`CARDS_BUSY_TIMEOUT`] — or what is left of the render budget when that is less — in place of
-/// the ledger's own wait. `None`, and so no segment, whenever the counts cannot be read: no
-/// HOME, no project profile, no registered ledger, a file that is not this project's ledger
-/// (corrupt, another project's, a link), a lock held past the wait, or a spent budget.
-fn card_counts(project: &Path, ctx: &Context) -> Option<CardCounts> {
+/// The four statements of the flow read, in the order they run (SPEC-20261122-statusline-flow
+/// REQ-11): the open cards with the done-today count, the notes of the cards a lane works on,
+/// the landing events, and the reservations. Four short reads cost about 33 ms on the real
+/// ledger against 115 ms for one statement joining them all; a test counts them here.
+const FLOW_STATEMENTS: [&str; 4] = [
+    "SELECT card_id, state, 0 FROM card WHERE state <> 'done' \
+     UNION ALL SELECT -1, 'done_today', count(*) FROM card \
+     WHERE state = 'done' AND closed_at >= ?1",
+    // `NOTE_HEAD_CHARS` is 1000: the literal keeps the statement a constant.
+    "SELECT n.card_id, substr(n.body, 1, 1000) FROM card_note n \
+     JOIN card c ON c.card_id = n.card_id WHERE c.state IN ('active', 'review') \
+     ORDER BY n.card_id, n.note_id DESC",
+    "SELECT DISTINCT card_id FROM event WHERE kind = 'card.landed' AND card_id IS NOT NULL",
+    "SELECT card_id, holder, status, lease_until, worktree, acquired_at, reservation_id \
+     FROM reservation WHERE status IN ('held', 'held_for_review', 'expired_candidate')",
+];
+
+const _: () = assert!(NOTE_HEAD_CHARS == 1000);
+
+/// The cards of `project`'s local ledger (`$HOME/.moai/projects/<project_id>/`, the one
+/// `moai card list` reads) by the stage of their progress, for the flow line. Read-only like
+/// that command (`ledger::open`: no folder, no file, no journal; no process and no network),
+/// with [`CARDS_BUSY_TIMEOUT`] — or what is left of the render budget when that is less — in
+/// place of the ledger's own wait. `None`, and so no flow line, whenever the ledger cannot be
+/// read: no HOME, no project profile, no registered ledger, a file that is not this project's
+/// ledger (corrupt, another project's, a link), a lock held past the wait, or a spent budget.
+/// A budget spent after the open cards were read gives the unsplit [`Flow`] (`split` false).
+pub fn read_flow(project: &Path, ctx: &Context, who: &Whose) -> Option<Flow> {
     let (ledger, _) = open_project_ledger(project, ctx)?;
-    let mut counts = CardCounts::default();
-    for (state, n) in crate::ledger::command::state_counts(&ledger).ok()? {
-        match state.as_str() {
-            "active" | "review" => counts.in_progress += n,
-            "draft" | "ready" | "hold" => counts.remaining += n,
-            "done" => counts.done += n,
-            _ => {}
-        }
-    }
-    // Split the `active` + `review` total; when the notes cannot be read the total stays whole
-    // and the line shows the three-number form.
-    counts.waiting = waiting_cards(&ledger, ctx.deadline);
-    if let Some(waiting) = counts.waiting {
-        counts.in_progress = split_in_progress(counts.in_progress, waiting);
-    }
-    Some(counts)
+    let spent = || {
+        ctx.deadline
+            .is_some_and(|deadline| Instant::now() >= deadline)
+    };
+    read_flow_with(&ledger, ctx.now, who, &spent)
 }
 
-/// The project's ledger opened read-only the way [`card_counts`] reads it, with the project id.
-/// `None` for every case [`card_counts`] documents (no HOME, no profile, no registered ledger,
+/// [`read_flow`] on an open ledger with the render clock `now` and the "is the render budget
+/// spent" question as a parameter, so a test can spend it in the middle of a read.
+fn read_flow_with(
+    ledger: &crate::ledger::open::ReadLedger,
+    now: i64,
+    who: &Whose,
+    spent: &dyn Fn() -> bool,
+) -> Option<Flow> {
+    if spent() {
+        return None;
+    }
+    let conn = ledger.conn();
+    // The UTC day of the render's clock (D-4): done today is counted from its first second.
+    let day_start = now.div_euclid(86_400) * 86_400;
+    let mut stmt = conn.prepare(FLOW_STATEMENTS[0]).ok()?;
+    let rows = stmt
+        .query_map([day_start], |r| {
+            Ok((
+                r.get::<_, i64>(0)?,
+                r.get::<_, String>(1)?,
+                r.get::<_, i64>(2)?,
+            ))
+        })
+        .ok()?;
+    let mut open: Vec<(i64, String)> = Vec::new();
+    let mut flow = Flow::default();
+    for row in rows {
+        let (card, state, n) = row.ok()?;
+        match state.as_str() {
+            "done_today" => flow.done_today = n,
+            "draft" => flow.draft += 1,
+            "ready" => flow.ready += 1,
+            "hold" => flow.hold += 1,
+            // `active` and `review` stay whole until the notes are read.
+            "active" | "review" => flow.working += 1,
+            _ => continue,
+        }
+        if state != "done_today" {
+            open.push((card, state));
+        }
+    }
+    drop(stmt);
+    // The split reads three more statements; when the budget is spent or a read fails the
+    // unsplit counts above stand and the line writes the unsplit form.
+    Some(split_flow(conn, now, who, &open, spent, flow).unwrap_or(flow))
+}
+
+/// What the three statements after the first add: the stage of every open card and "my card".
+/// `None` when the budget is spent (checked before each statement and on every row) or a read
+/// fails; the caller then keeps the unsplit counts.
+fn split_flow(
+    conn: &rusqlite::Connection,
+    now: i64,
+    who: &Whose,
+    open: &[(i64, String)],
+    spent: &dyn Fn() -> bool,
+    unsplit: Flow,
+) -> Option<Flow> {
+    // Statement 2: the newest marker note of each card, first row of a card deciding it.
+    if spent() {
+        return None;
+    }
+    let mut stmt = conn.prepare(FLOW_STATEMENTS[1]).ok()?;
+    let rows = stmt
+        .query_map([], |r| Ok((r.get::<_, i64>(0)?, r.get::<_, String>(1)?)))
+        .ok()?;
+    let mut markers: HashMap<i64, Marker> = HashMap::new();
+    let mut decided: Option<i64> = None;
+    for row in rows {
+        if spent() {
+            return None;
+        }
+        let (card, body) = row.ok()?;
+        if decided == Some(card) {
+            continue;
+        }
+        if let Some(marker) = marker_of(&body) {
+            markers.insert(card, marker);
+            decided = Some(card);
+        }
+    }
+    drop(stmt);
+    // Statement 3: the cards with a landing event.
+    if spent() {
+        return None;
+    }
+    let mut stmt = conn.prepare(FLOW_STATEMENTS[2]).ok()?;
+    let rows = stmt.query_map([], |r| r.get::<_, i64>(0)).ok()?;
+    let mut landed: HashSet<i64> = HashSet::new();
+    for row in rows {
+        if spent() {
+            return None;
+        }
+        landed.insert(row.ok()?);
+    }
+    drop(stmt);
+    // Statement 4: the reservations that can hold a card.
+    if spent() {
+        return None;
+    }
+    let mut stmt = conn.prepare(FLOW_STATEMENTS[3]).ok()?;
+    let rows = stmt
+        .query_map([], |r| {
+            Ok(Reservation {
+                card: r.get(0)?,
+                holder: r.get(1)?,
+                status: r.get(2)?,
+                lease_until: r.get(3)?,
+                worktree: r.get(4)?,
+                acquired_at: r.get(5)?,
+                id: r.get(6)?,
+            })
+        })
+        .ok()?;
+    let mut reservations: Vec<Reservation> = Vec::new();
+    for row in rows {
+        if spent() {
+            return None;
+        }
+        reservations.push(row.ok()?);
+    }
+    drop(stmt);
+
+    let live: HashSet<i64> = reservations
+        .iter()
+        .filter(|r| r.is_live(now))
+        .map(|r| r.card)
+        .collect();
+    let mut flow = Flow {
+        working: 0,
+        split: true,
+        ..unsplit
+    };
+    let mut stages: HashMap<i64, Stage> = HashMap::new();
+    for (card, state) in open {
+        let Some(stage) = stage_of(
+            state,
+            markers.get(card).copied(),
+            landed.contains(card),
+            live.contains(card),
+        ) else {
+            continue;
+        };
+        match stage {
+            // Counted by their ledger state already.
+            Stage::Draft | Stage::Ready | Stage::Hold => {}
+            Stage::Working => flow.working += 1,
+            Stage::Stale => flow.stale += 1,
+            Stage::Submitted => flow.submitted += 1,
+            Stage::Audited => flow.audited += 1,
+            Stage::Landed => flow.landed += 1,
+            Stage::Blocked => flow.blocked += 1,
+        }
+        stages.insert(*card, stage);
+    }
+    flow.mine = my_card(&reservations, who, now).and_then(|card| {
+        stages.get(&card).map(|stage| MyCard {
+            card,
+            stage: *stage,
+        })
+    });
+    Some(flow)
+}
+
+/// One row of the reservation read.
+struct Reservation {
+    card: i64,
+    holder: String,
+    status: String,
+    lease_until: i64,
+    worktree: Option<String>,
+    acquired_at: i64,
+    id: i64,
+}
+
+impl Reservation {
+    /// Held (also for review) and with a lease that ends at or after the render's clock.
+    fn is_live(&self, now: i64) -> bool {
+        matches!(self.status.as_str(), "held" | "held_for_review") && self.lease_until >= now
+    }
+
+    fn is_held(&self) -> bool {
+        matches!(self.status.as_str(), "held" | "held_for_review")
+    }
+}
+
+/// The stage of one card by its ledger state, its newest marker, a landing event and a live
+/// lease (D-1 and D-2 of the SPEC). `None` for a state that is not open. `draft`, `ready` and
+/// `hold` keep their own stage; of the cards a lane works on, a landing event wins, then the
+/// newest marker (blocked, audited, submitted), then `review` itself is submitted, and the rest
+/// are working with a live lease and stale without one.
+fn stage_of(state: &str, marker: Option<Marker>, landed: bool, live: bool) -> Option<Stage> {
+    match state {
+        "draft" => Some(Stage::Draft),
+        "ready" => Some(Stage::Ready),
+        "hold" => Some(Stage::Hold),
+        "active" | "review" => Some(if landed {
+            Stage::Landed
+        } else {
+            match marker {
+                Some(Marker::Blocked) => Stage::Blocked,
+                Some(Marker::Audited) => Stage::Audited,
+                Some(Marker::Submitted) => Stage::Submitted,
+                _ if state == "review" => Stage::Submitted,
+                _ if live => Stage::Working,
+                _ => Stage::Stale,
+            }
+        }),
+        _ => None,
+    }
+}
+
+/// My card (SPEC REQ-6, D-3): the lowest-numbered card whose held reservation names the folder
+/// the session works in (the worktree), else the newest live held reservation of the stdin
+/// session id (`acquired_at`, then the reservation id, decides which is newest). Never the
+/// lowest number of a session's several cards.
+fn my_card(reservations: &[Reservation], who: &Whose, now: i64) -> Option<i64> {
+    if let Some((found, _)) = who.dir.and_then(find_dot_git) {
+        let canonical = std::fs::canonicalize(&found).unwrap_or_else(|_| found.clone());
+        let by_folder = reservations
+            .iter()
+            .filter(|r| r.is_held())
+            .filter(|r| {
+                r.worktree
+                    .as_deref()
+                    .is_some_and(|held| names_folder(Path::new(held), &found, &canonical))
+            })
+            .map(|r| r.card)
+            .min();
+        if by_folder.is_some() {
+            return by_folder;
+        }
+    }
+    if who.session_id.is_empty() {
+        return None;
+    }
+    reservations
+        .iter()
+        .filter(|r| r.is_live(now) && r.holder == who.session_id)
+        .max_by_key(|r| (r.acquired_at, r.id))
+        .map(|r| r.card)
+}
+
+/// Whether the folder a holder recorded (`named`) is the folder `found` (as found) or
+/// `canonical`. The holder typed the path (`card take --worktree`), so it may be a link
+/// spelling: it is compared as written and as a canonical path. A path that is not absolute
+/// names no folder from here (it would be read against this process's working directory).
+fn names_folder(named: &Path, found: &Path, canonical: &Path) -> bool {
+    named.is_absolute()
+        && (named == found
+            || named == canonical
+            || std::fs::canonicalize(named).is_ok_and(|c| c == canonical))
+}
+
+/// The project's ledger opened read-only the way [`read_flow`] reads it, with the project id.
+/// `None` for every case [`read_flow`] documents (no HOME, no profile, no registered ledger,
 /// a file that is not this project's ledger, a lock held past the wait, a spent budget).
 fn open_project_ledger(
     project: &Path,
@@ -971,187 +1835,42 @@ fn open_project_ledger(
     Some((ledger, id))
 }
 
-/// User instruction 2026-11-19: which card holds the worktree the session is in, and what the
-/// work is called. `dir` is a folder inside the worktree (`workspace.current_dir`, else `cwd`).
-/// The held reservation naming the worktree folder gives the card (the lowest number when more
-/// than one names it) and its branch the name ([`label_name`]). `None` when no reservation names
-/// the folder or the ledger cannot be read in the budget: the line then shows the host's name.
-fn worktree_label(project: &Path, dir: &Path, ctx: &Context) -> Option<WorktreeLabel> {
-    // The folder holding the nearest `.git` entry above `dir`, in the two spellings a holder
-    // may have recorded: as found and canonical.
-    let (found, _) = find_dot_git(dir)?;
-    let canonical = std::fs::canonicalize(&found).unwrap_or_else(|_| found.clone());
-    let (ledger, project_id) = open_project_ledger(project, ctx)?;
-    let expired = || {
-        ctx.deadline
-            .is_some_and(|deadline| Instant::now() >= deadline)
-    };
-    let (card, branch) = holding_card(ledger.conn(), &found, &canonical, &expired)?;
-    let folder = canonical
-        .file_name()
-        .map_or_else(String::new, |n| n.to_string_lossy().into_owned());
-    Some(WorktreeLabel {
-        card,
-        name: label_name(branch.as_deref(), &folder, &project_id, card),
-    })
-}
-
-/// The lowest card whose holding reservation names the folder `found` (as found) or `canonical`,
-/// with that reservation's branch. The holder typed the path (`card take --worktree`), so it may
-/// be a link spelling: each holding reservation is compared as written and as a canonical path.
-/// A path that is not absolute names no folder from here (it would be read against this
-/// process's working directory), so it never matches; a row that cannot be read is skipped.
-/// `expired` is asked before every row, and `None` comes back as soon as it is true.
-fn holding_card(
-    conn: &rusqlite::Connection,
-    found: &Path,
-    canonical: &Path,
-    expired: &dyn Fn() -> bool,
-) -> Option<(i64, Option<String>)> {
-    let mut stmt = conn
-        .prepare(
-            "SELECT card_id, branch, worktree FROM reservation \
-             WHERE status IN ('held', 'held_for_review', 'expired_candidate') \
-             AND worktree IS NOT NULL ORDER BY card_id",
-        )
-        .ok()?;
-    let rows = stmt
-        .query_map([], |r| {
-            Ok((
-                r.get::<_, i64>(0)?,
-                r.get::<_, Option<String>>(1)?,
-                r.get::<_, String>(2)?,
-            ))
-        })
-        .ok()?;
-    for row in rows {
-        if expired() {
-            return None;
-        }
-        let Ok((card, branch, held)) = row else {
-            continue;
-        };
-        let named = Path::new(&held);
-        if !named.is_absolute() {
-            continue;
-        }
-        if named == found
-            || named == canonical
-            || std::fs::canonicalize(named).is_ok_and(|c| c == canonical)
-        {
-            return Some((card, branch));
-        }
-    }
-    None
-}
-
-/// The name part of `WT-c<card>-<name>`, from the reservation's `branch`: the part after the
-/// eight-digit date and a dash in its last path segment, else the worktree folder name without
-/// its `<project>-` prefix and its card number, else nothing; control and invisible format
-/// characters dropped ([`is_unseen`]) before the length is counted, a source nothing is left of
-/// giving way to the next, and at most [`LABEL_NAME_CHARS`] characters.
-fn label_name(branch: Option<&str>, folder: &str, project_id: &str, card: i64) -> String {
-    // Each source is cleaned first; a slug that nothing is left of gives way to the folder name.
-    let clean = |raw: String| -> String { raw.chars().filter(|c| !is_unseen(*c)).collect() };
-    let raw = branch
-        .and_then(branch_slug)
-        .map(clean)
-        .filter(|s| !s.is_empty())
-        .or_else(|| folder_rest(folder, project_id, card).map(clean))
-        .unwrap_or_default();
-    let mut chars = raw.chars();
-    let mut name: String = chars.by_ref().take(LABEL_NAME_CHARS).collect();
-    if chars.next().is_some() {
-        // One character too many: keep 31 and mark the cut.
-        name = name.chars().take(LABEL_NAME_CHARS - 1).collect();
-        name.push('…');
-    }
-    name
-}
-
-/// A character the terminal would not show as itself: a control character, or one of the
-/// invisible format characters that reorder or hide text (zero-width and bidirectional marks,
-/// the byte order mark). The name is free text from a branch or a folder.
-fn is_unseen(c: char) -> bool {
-    c.is_control()
-        || matches!(
-            c,
-            '\u{200b}'..='\u{200f}'
-                | '\u{202a}'..='\u{202e}'
-                | '\u{2060}'..='\u{2064}'
-                | '\u{2066}'..='\u{206f}'
-                | '\u{feff}'
-        )
-}
-
-/// `spec/20261119-statusline-waiting-cards` gives `statusline-waiting-cards`: the last path
-/// segment is eight digits, a dash and something.
-fn branch_slug(branch: &str) -> Option<String> {
-    let last = branch.rsplit('/').next()?;
-    let (date, rest) = last.split_at_checked(8)?;
-    if !date.bytes().all(|b| b.is_ascii_digit()) {
-        return None;
-    }
-    let rest = rest.strip_prefix('-')?;
-    (!rest.is_empty()).then(|| rest.to_string())
-}
-
-/// The worktree folder name without its `<project>-` prefix and without the card number
-/// (`demo-1-hooks` gives `hooks`, `demo-c1-hooks` too); `None` when nothing is left.
-fn folder_rest(folder: &str, project_id: &str, card: i64) -> Option<String> {
-    let rest = match folder.strip_prefix(project_id) {
-        Some("") => "",
-        Some(after) => after.strip_prefix('-').unwrap_or(folder),
-        None => folder,
-    };
-    let mut rest = rest;
-    for token in [format!("c{card}"), card.to_string()] {
-        match rest.strip_prefix(token.as_str()) {
-            Some("") => rest = "",
-            Some(after) if after.starts_with('-') => rest = &after[1..],
-            _ => continue,
-        }
-        break;
-    }
-    let rest = rest.trim_matches('-');
-    (!rest.is_empty()).then(|| rest.to_string())
-}
-
-/// The longest `<name>` of the worktree label, in characters; one more is cut with `…`.
-const LABEL_NAME_CHARS: usize = 32;
-
-/// The working number once the waiting cards are taken out of the `active` + `review` total.
-/// The state count and the note read are two reads of a ledger that may change between them, so
-/// a card that moved can make `waiting` larger than the total: never below zero.
-fn split_in_progress(total: i64, waiting: i64) -> i64 {
-    (total - waiting).max(0)
-}
-
 /// How many characters of a note's body are read: enough for its first line, so a long report
 /// costs no more than a short one.
 const NOTE_HEAD_CHARS: usize = 1000;
 
-/// What a note's first line says about its card.
+/// What a note's first line says about its card (D-1 of SPEC-20261122-statusline-flow).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Marker {
     /// The card was pushed and waits for an audit or for the leader's integration.
-    Waiting,
+    Submitted,
+    /// An audit passed for the head.
+    Audited,
+    /// The lane asked for a decision.
+    Blocked,
     /// The lane is working on the card again (took or resumed it, planned, or was told FAIL).
     Working,
 }
 
 /// The marker a note's first line carries, if any. Only the lines the lanes already write by
-/// rule count; any other first line is no marker and changes nothing.
+/// rule count; any other first line is no marker and changes nothing (`RESUME`, `waiting:`,
+/// `LANE-HOLD` and `PAIR-` among them). This is the one first-line parser of the status line and
+/// a temporary one: typed submit, block and verdict rows will replace it.
 fn marker_of(body: &str) -> Option<Marker> {
     let first = body.lines().next().unwrap_or("");
     let audit = first.starts_with("AUDIT");
-    if first.starts_with("LANE-READY-INTEGRATION")
+    if first.starts_with("LANE-BLOCKED") {
+        Some(Marker::Blocked)
+    } else if audit && first.contains("verdict: PASS") {
+        Some(Marker::Audited)
+    } else if first.starts_with("LANE-READY-INTEGRATION")
+        || first.starts_with("MERGE-READY")
+        || first.starts_with("READY ")
         || first.starts_with("감사 요청")
         || (first.starts_with("LANE-DONE")
             && (first.contains("audit requested") || first.contains("감사 요청")))
-        || (audit && first.contains("verdict: PASS"))
     {
-        Some(Marker::Waiting)
+        Some(Marker::Submitted)
     } else if first.starts_with("ACK ")
         || first.starts_with("PLAN ")
         || (audit && first.contains("verdict: FAIL"))
@@ -1160,68 +1879,6 @@ fn marker_of(body: &str) -> Option<Marker> {
     } else {
         None
     }
-}
-
-/// The cards pushed and waiting for integration: every `review` card and each `active` card
-/// whose newest note with a marker (see [`marker_of`]) is a waiting one. One more `SELECT` over
-/// the notes of the `active` cards, newest first, each body cut to [`NOTE_HEAD_CHARS`]; no
-/// write. `None` when the render `deadline` has passed (checked before the read and on every
-/// row) or the read fails, so the caller shows the three-number form instead of a guess.
-fn waiting_cards(
-    ledger: &crate::ledger::open::ReadLedger,
-    deadline: Option<Instant>,
-) -> Option<i64> {
-    waiting_cards_with(ledger, &|| deadline.is_some_and(|d| Instant::now() >= d))
-}
-
-/// [`waiting_cards`] with the "is the render budget spent" question as a parameter, so a test
-/// can spend it in the middle of the row loop.
-fn waiting_cards_with(
-    ledger: &crate::ledger::open::ReadLedger,
-    spent: &dyn Fn() -> bool,
-) -> Option<i64> {
-    if spent() {
-        return None;
-    }
-    let review: i64 = ledger
-        .conn()
-        .query_row(
-            "SELECT count(*) FROM card WHERE state = 'review'",
-            [],
-            |r| r.get(0),
-        )
-        .ok()?;
-    let mut stmt = ledger
-        .conn()
-        .prepare(&format!(
-            "SELECT n.card_id, substr(n.body, 1, {NOTE_HEAD_CHARS}) FROM card_note n \
-             JOIN card c ON c.card_id = n.card_id WHERE c.state = 'active' \
-             ORDER BY n.card_id, n.note_id DESC"
-        ))
-        .ok()?;
-    let rows = stmt
-        .query_map([], |r| Ok((r.get::<_, i64>(0)?, r.get::<_, String>(1)?)))
-        .ok()?;
-    let mut decided: Option<i64> = None;
-    let mut waiting = review;
-    for row in rows {
-        if spent() {
-            return None;
-        }
-        let (card, body) = row.ok()?;
-        if decided == Some(card) {
-            continue;
-        }
-        match marker_of(&body) {
-            Some(Marker::Waiting) => {
-                waiting += 1;
-                decided = Some(card);
-            }
-            Some(Marker::Working) => decided = Some(card),
-            None => {}
-        }
-    }
-    Some(waiting)
 }
 
 /// An explicit `statusline.forge` naming neither github nor gitlab.
@@ -1244,6 +1901,24 @@ mod tests {
     thread_local! {
         /// `run_git` spawn attempts on this test thread.
         pub(super) static GIT_SPAWNS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+    }
+
+    /// Absurd counts stop at `i64::MAX` (a plain `+`
+    /// panics in a debug build), and an object with no count gives no number at all.
+    #[test]
+    fn usage_tokens_saturate_and_an_empty_object_has_none() {
+        let usage = |a, b, c| input::CurrentUsage {
+            input_tokens: a,
+            cache_creation_input_tokens: b,
+            cache_read_input_tokens: c,
+        };
+        assert_eq!(
+            usage_tokens(&usage(Some(i64::MAX), Some(i64::MAX), Some(1))),
+            Some(i64::MAX)
+        );
+        assert_eq!(usage_tokens(&usage(Some(1), None, Some(2))), Some(3));
+        assert_eq!(usage_tokens(&usage(None, None, Some(0))), Some(0));
+        assert_eq!(usage_tokens(&usage(None, None, None)), None);
     }
 
     #[test]
@@ -1650,6 +2325,7 @@ mod tests {
     #[test]
     fn a_backup_is_read_only_after_the_move_to_the_new_state_folder() {
         let tmp = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(tmp.path().join(crate::fixed_state!())).unwrap();
         // The project is found by its `.moai/` folder, which has no Rust marker: the state is still
         // in the earlier folder, and the backup beside it is nobody's business.
         std::fs::create_dir_all(tmp.path().join(".moai")).unwrap();
@@ -1664,14 +2340,8 @@ mod tests {
     }
 
     #[test]
-    fn goal_and_forge_reads() {
+    fn forge_reads() {
         let tmp = tempfile::tempdir().unwrap();
-        let goal = tmp.path().join(".moai/state/goal");
-        std::fs::create_dir_all(&goal).unwrap();
-        std::fs::write(goal.join("s1.json"), r#"{"status":"armed"}"#).unwrap();
-        assert!(goal_armed(tmp.path(), "s1"));
-        assert!(!goal_armed(tmp.path(), "s2"));
-        assert!(!goal_armed(tmp.path(), "../goal/s1"));
         assert_eq!(github_counts(tmp.path()), GitHubCounts::default());
         let gh = tmp.path().join(".moai/state/github");
         std::fs::create_dir_all(&gh).unwrap();
@@ -1726,10 +2396,15 @@ mod tests {
         let canon = std::fs::canonicalize(&main).unwrap();
         assert_eq!(main_checkout_of(&wt.join("sub")), Some(canon.clone()));
         assert_eq!(main_checkout_of(&main), Some(canon.clone()));
-        // #2928: the common dir under both, the folder the lane registry lives in.
-        assert_eq!(common_dir_of(&wt.join("sub")), Some(canon.join(".git")));
-        assert_eq!(common_dir_of(&main), Some(canon.join(".git")));
-        assert_eq!(common_dir_of(tmp.path()), None, "no repository");
+        // SPEC-20261122-statusline-where REQ-2: the git folder (where `HEAD` is) and the common
+        // folder (where the refs are) of a linked worktree and of the main checkout.
+        let linked = git_dirs(&std::fs::canonicalize(wt.join("sub")).unwrap()).unwrap();
+        assert_eq!(linked.git_dir, gitdir);
+        assert_eq!(linked.common, gitdir.join("../.."));
+        let primary = git_dirs(&canon).unwrap();
+        assert_eq!(primary.git_dir, canon.join(".git"));
+        assert_eq!(primary.common, canon.join(".git"));
+        assert!(git_dirs(&std::fs::canonicalize(tmp.path()).unwrap()).is_none());
     }
 
     /// #2811 AC-3: real `git worktree add` worktrees in the new home place and in the Go
@@ -1822,138 +2497,48 @@ mod tests {
         std::fs::create_dir(&plain).unwrap();
         let mut ctx = Context::for_test(&[], Some(&plain));
         ctx.git_program = wrapper.display().to_string();
-        assert!(collect_git(&plain, &ctx).is_none());
+        assert!(read_git(&plain, &ctx, None, "").is_none());
         assert_eq!(calls(), 0);
 
         let repo = tmp.path().join("repo");
         std::fs::create_dir(&repo).unwrap();
         git_init(&repo);
         assert_eq!(
-            collect_git(&repo, &ctx).map(|s| s.branch),
+            read_git(&repo, &ctx, None, "").map(|r| r.git.branch),
             Some("main".into())
         );
         assert_eq!(calls(), 1);
 
-        // An expired deadline: nothing is started and the git status is absent. The
-        // wrapper log cannot show this (a started child is killed before it writes), so the
-        // spawn attempts of this thread are counted.
+        // An expired deadline: nothing is started, the numbers are zeros, and the branch still
+        // comes from the `HEAD` file. The wrapper log cannot show this (a started child is
+        // killed before it writes), so the spawn attempts of this thread are counted.
         ctx.deadline = Some(Instant::now());
         let before = GIT_SPAWNS.with(|n| n.get());
-        assert!(collect_git(&repo, &ctx).is_none());
+        let spent = read_git(&repo, &ctx, None, "").unwrap();
+        assert_eq!(spent.git.branch, "main");
         assert_eq!(GIT_SPAWNS.with(|n| n.get()), before);
         ctx.deadline = None;
-        assert!(collect_git(&repo, &ctx).is_some());
+        assert!(read_git(&repo, &ctx, None, "").is_some());
+        assert_eq!(GIT_SPAWNS.with(|n| n.get()), before + 1);
+        // A `HEAD` that names nothing usable: no branch and no process at all.
+        std::fs::write(repo.join(".git/HEAD"), "garbage\n").unwrap();
+        let nothing = read_git(&repo, &ctx, None, "").unwrap();
+        assert_eq!(nothing.git, GitStatus::default());
         assert_eq!(GIT_SPAWNS.with(|n| n.get()), before + 1);
     }
 }
 
-/// #2756 AC-7–AC-9: the pull request, prompt cache and worktree values the renderer shows.
+/// #2756 AC-7 and AC-9: the pull request and worktree values the renderer shows.
 #[cfg(test)]
 mod extras_tests {
     use super::*;
     use serde_json::json;
 
     fn collect_json(value: serde_json::Value, now: i64) -> Status {
-        let input = input::parse(value.to_string().as_bytes()).unwrap();
+        let input = input::parse(value.to_string().as_bytes());
         let mut ctx = Context::for_test(&[], None);
         ctx.now = now;
         collect(Some(&input), &ctx)
-    }
-
-    /// #2928 S-2/S-3 (decision D1 = (A)): the session is the leader only when the stdin
-    /// `session_name` is a valid lane name and the clone's registry holds a live entry for it
-    /// with mode `leader`; the registry is found from the session's directory, in the main
-    /// checkout or in a linked worktree. Every other case — no entry, an ended lease, mode
-    /// `agent`, a title or escape text, no directory — is the agent.
-    #[test]
-    fn the_leader_tag_needs_a_live_leader_entry_for_a_valid_name() {
-        let tmp = tempfile::tempdir().unwrap();
-        let main = tmp.path().join("main");
-        let sessions = main.join(".git/.moai-cli/sessions");
-        std::fs::create_dir_all(&sessions).unwrap();
-        let gitdir = main.join(".git/worktrees/wt");
-        std::fs::create_dir_all(&gitdir).unwrap();
-        std::fs::write(gitdir.join("commondir"), "../..\n").unwrap();
-        let wt = tmp.path().join("wt");
-        std::fs::create_dir_all(&wt).unwrap();
-        std::fs::write(wt.join(".git"), format!("gitdir: {}\n", gitdir.display())).unwrap();
-        let now = 1_000;
-        let put = |name: &str, lease: i64, mode: &str| {
-            let entry = json!({
-                "schema_version": 1, "name": name, "instance": "1".repeat(32),
-                "lease_until": lease, "registered_at": 0, "mode": mode,
-            });
-            std::fs::write(sessions.join(format!("{name}.json")), entry.to_string()).unwrap();
-        };
-        let leader = |name: &str, dir: &Path| {
-            collect_json(
-                json!({"session_name": name, "workspace": {"current_dir": dir}}),
-                now,
-            )
-            .leader
-        };
-        put("leader", now + 1, "leader");
-        put("agent-3", now + 1, "agent");
-        put("old", now, "leader");
-        assert!(leader("leader", &main), "live leader entry, main checkout");
-        assert!(leader("leader", &wt), "live leader entry, linked worktree");
-        assert!(
-            collect_json(json!({"session_name": "leader", "cwd": main}), now).leader,
-            "the cwd when there is no workspace"
-        );
-        assert!(!leader("agent-3", &main), "mode agent");
-        assert!(!leader("old", &main), "the lease ended at this second");
-        assert!(!leader("nobody", &main), "no entry");
-        for title in [
-            "\u{1b}]0;leader\u{7}",
-            "leader\u{9b}",
-            "#2388·#2403 Issue 닫기 대조",
-            "/moai",
-            "",
-        ] {
-            assert!(!leader(title, &main), "{title:?}");
-        }
-        assert!(
-            !collect_json(json!({"session_name": "leader"}), now).leader,
-            "no directory: no registry"
-        );
-        let elsewhere = tmp.path().join("elsewhere");
-        std::fs::create_dir_all(&elsewhere).unwrap();
-        assert!(!leader("leader", &elsewhere), "outside the repository");
-    }
-
-    #[test]
-    fn the_cache_timer_counts_whole_minutes_and_turns_cold_at_expiry() {
-        let at = |cache: serde_json::Value| cache_timer(&cache, 1000);
-        assert_eq!(
-            at(json!({"warm": true, "expires_at": 1000 + 299})),
-            Some(CacheTimer::Warm(4))
-        );
-        assert_eq!(
-            at(json!({"warm": true, "expires_at": 1000 + 60})),
-            Some(CacheTimer::Warm(1))
-        );
-        assert_eq!(
-            at(json!({"warm": true, "expires_at": 1000 + 59})),
-            Some(CacheTimer::Warm(0))
-        );
-        assert_eq!(
-            at(json!({"warm": true, "expires_at": 1000 + 1})),
-            Some(CacheTimer::Warm(0))
-        );
-        assert_eq!(
-            at(json!({"warm": true, "expires_at": 1000})),
-            Some(CacheTimer::Cold)
-        );
-        assert_eq!(
-            at(json!({"warm": false, "expires_at": null})),
-            Some(CacheTimer::Cold)
-        );
-        // No value to show: no `warm`, a warm cache without `expires_at`, other types.
-        assert_eq!(at(json!({"expires_at": 1300})), None);
-        assert_eq!(at(json!({"warm": true, "expires_at": null})), None);
-        assert_eq!(at(json!({"warm": "yes"})), None);
-        assert_eq!(at(json!("warm")), None);
     }
 
     #[test]
@@ -1979,13 +2564,12 @@ mod extras_tests {
     }
 
     #[test]
-    fn pr_worktree_and_cache_come_from_the_input_or_stay_empty() {
+    fn pr_and_worktree_come_from_the_input_or_stay_empty() {
         let s = collect_json(
             json!({
                 "pr": {"number": 12, "url": "https://github.com/o/r/pull/12", "review_state": "approved"},
                 "worktree": {"name": "wt-session"},
-                "workspace": {"git_worktree": "linked"},
-                "prompt_cache": {"warm": true, "expires_at": 600}
+                "workspace": {"git_worktree": "linked"}
             }),
             0,
         );
@@ -1994,14 +2578,14 @@ mod extras_tests {
             Some(PrInfo {
                 number: 12,
                 url: "https://github.com/o/r/pull/12".into(),
-                review_state: "approved".into()
+                review_state: "approved".into(),
+                merge_request: false,
             })
         );
         assert_eq!(
             s.worktree, "wt-session",
             "worktree.name wins over git_worktree"
         );
-        assert_eq!(s.cache_timer, Some(CacheTimer::Warm(10)));
         let s = collect_json(
             json!({"workspace": {"git_worktree": "linked"}, "pr": {"number": 3}}),
             0,
@@ -2013,18 +2597,41 @@ mod extras_tests {
         let pr = s.pr.unwrap();
         assert!(pr.url.is_empty() && pr.review_state.is_empty());
         let s = collect_json(json!({"pr": {"number": 0}, "workspace": {}}), 0);
-        assert_eq!((s.pr, s.worktree.as_str(), s.cache_timer), (None, "", None));
-        // A mistyped prompt_cache leaves the timer out but keeps the rest of the payload.
-        let s = collect_json(json!({"session_name": "x", "prompt_cache": 7}), 0);
-        assert_eq!((s.session_name.as_str(), s.cache_timer), ("x", None));
+        assert_eq!((s.pr, s.worktree.as_str()), (None, ""));
     }
 }
 
 /// Card C-65: the card counts read from a ledger in a temporary HOME; the real HOME is never
 /// touched.
+/// AC-1 and AC-2 of SPEC-20261122-statusline-flow: the stage rule and the marker words, read
+/// from a fixture ledger. The older tests of the card-count era stay as the regression of what
+/// did not change: they read the flow through [`legacy`], the three numbers of that era
+/// (working = `W` + `E`, waiting = `S` + `A`, remaining = `D` + `R` + `H`).
 #[cfg(test)]
-mod card_counts_tests {
+mod stage_tests {
     use super::*;
+
+    /// The card-count era's four numbers, rebuilt from a [`Flow`] for the older tests.
+    #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+    struct CardCounts {
+        in_progress: i64,
+        waiting: Option<i64>,
+        remaining: i64,
+        done: i64,
+    }
+
+    fn legacy(flow: Flow) -> CardCounts {
+        CardCounts {
+            in_progress: flow.working + flow.stale,
+            waiting: flow.split.then_some(flow.submitted + flow.audited),
+            remaining: flow.draft + flow.ready + flow.hold,
+            done: flow.done_today,
+        }
+    }
+
+    fn card_counts(project: &Path, ctx: &Context) -> Option<CardCounts> {
+        read_flow(project, ctx, &Whose::default()).map(legacy)
+    }
 
     struct Fixture {
         _tmp: tempfile::TempDir,
@@ -2283,6 +2890,35 @@ mod card_counts_tests {
         assert_eq!(f.home_tree(), before, "no journal, no new file");
     }
 
+    /// REQ-11 and the read-only rule (audit N3): the connection the status line reads the ledger
+    /// through is a read-only one, so a statement that writes is refused by the database itself,
+    /// and a whole flow read leaves the ledger file as it was. A read-write open would fail
+    /// the first check.
+    #[test]
+    fn the_status_line_opens_the_ledger_read_only() {
+        let f = fixture();
+        crate::ledger::register(&f.home, "demo").unwrap();
+        f.add("active", 2);
+        let before = std::fs::read(f.ledger_file()).unwrap();
+
+        let (ledger, id) = open_project_ledger(&f.project, &f.ctx()).unwrap();
+        assert_eq!(id, "demo");
+        assert!(ledger.conn().is_readonly("main").unwrap());
+        let refused = ledger
+            .conn()
+            .execute("UPDATE card SET state = 'done'", [])
+            .unwrap_err();
+        assert!(
+            refused.to_string().to_lowercase().contains("readonly"),
+            "{refused}"
+        );
+        drop(ledger);
+
+        let flow = read_flow(&f.project, &f.ctx(), &Whose::default()).unwrap();
+        assert!(flow.split);
+        assert_eq!(std::fs::read(f.ledger_file()).unwrap(), before);
+    }
+
     #[test]
     fn a_failed_note_read_gives_the_three_number_form() {
         let f = fixture();
@@ -2292,13 +2928,13 @@ mod card_counts_tests {
         let ledger =
             crate::ledger::open::open_read_only_within(&f.home, "demo", Duration::from_millis(100))
                 .unwrap();
-        // The render deadline has passed: no reading of the notes.
-        let spent = Instant::now() - Duration::from_millis(1);
-        assert_eq!(waiting_cards(&ledger, Some(spent)), None);
+        let who = Whose::default();
+        // The render budget is spent before the read: no flow at all.
+        assert_eq!(read_flow_with(&ledger, 0, &who, &|| true), None);
         // With time left the same ledger reads: the active card and the review card wait.
-        let left = Instant::now() + Duration::from_secs(60);
-        assert_eq!(waiting_cards(&ledger, Some(left)), Some(2));
-        assert_eq!(waiting_cards(&ledger, None), Some(2));
+        let flow = read_flow_with(&ledger, 0, &who, &|| false).unwrap();
+        assert!(flow.split);
+        assert_eq!((flow.submitted, flow.working, flow.stale), (2, 0, 0));
     }
 
     /// A deadline that passes in the middle of the row loop (not only before it) gives `None`:
@@ -2316,10 +2952,22 @@ mod card_counts_tests {
             asked.set(asked.get() + 1);
             asked.get() > 1
         };
-        assert_eq!(waiting_cards_with(&ledger, &spent), None);
-        assert!(asked.get() >= 2, "the loop asked again after the first row");
-        // Never spent: the same ledger reads.
-        assert_eq!(waiting_cards_with(&ledger, &|| false), Some(1));
+        // The first question (before the read) is "no", the next ones "yes": the open cards
+        // were read, the notes were not, so the unsplit counts stand and say so.
+        let flow = read_flow_with(&ledger, 0, &Whose::default(), &spent).unwrap();
+        assert!(
+            !flow.split,
+            "a spent budget in the split gives the unsplit flow"
+        );
+        assert_eq!((flow.working, flow.submitted, flow.stale), (1, 0, 0));
+        assert!(
+            asked.get() >= 2,
+            "the split asked again after the first read"
+        );
+        // Never spent: the same ledger reads and the card waits.
+        let whole = read_flow_with(&ledger, 0, &Whose::default(), &|| false).unwrap();
+        assert!(whole.split);
+        assert_eq!((whole.submitted, whole.working, whole.stale), (1, 0, 0));
     }
 
     /// Several waiting notes on one card count that card once, and a waiting note keeps
@@ -2337,14 +2985,14 @@ mod card_counts_tests {
     }
 
     /// One line carrying both verdicts is read by the first word that decides it: `PASS` is
-    /// tested before `FAIL`, so a FAIL line that quotes an earlier PASS reads as waiting. The
+    /// tested before `FAIL`, so a FAIL line that quotes an earlier PASS reads as audited. The
     /// real verdict line ends at the verdict word, so this only pins the rule.
     #[test]
-    fn a_line_with_both_verdicts_reads_as_waiting() {
+    fn a_line_with_both_verdicts_reads_as_audited() {
         let both = "AUDIT C-1 (x) head abc base def — verdict: FAIL (was verdict: PASS)";
-        assert_eq!(marker_of(both), Some(Marker::Waiting));
+        assert_eq!(marker_of(both), Some(Marker::Audited));
         assert_eq!(marker_of(FAIL), Some(Marker::Working));
-        assert_eq!(marker_of(PASS), Some(Marker::Waiting));
+        assert_eq!(marker_of(PASS), Some(Marker::Audited));
     }
 
     /// Only the first `NOTE_HEAD_CHARS` characters of a note are read: a `LANE-DONE` line whose
@@ -2376,15 +3024,6 @@ mod card_counts_tests {
                 "{key} one past"
             );
         }
-    }
-
-    /// The working number never goes below zero: a card that moved between the state count and
-    /// the note read must not show `▶️ -1`.
-    #[test]
-    fn the_working_number_never_goes_below_zero() {
-        assert_eq!(split_in_progress(5, 2), 3);
-        assert_eq!(split_in_progress(2, 2), 0);
-        assert_eq!(split_in_progress(1, 3), 0);
     }
 
     #[test]
@@ -2531,15 +3170,631 @@ mod card_counts_tests {
             serde_json::json!({"workspace": {"project_dir": f.project}})
                 .to_string()
                 .as_bytes(),
-        )
-        .unwrap();
+        );
         let ctx = Context::for_test(&[("HOME", home)], Some(&elsewhere));
-        assert_eq!(collect(Some(&named), &ctx).cards, counts(0, 2, 1));
-        let empty = input::parse(b"{}").unwrap();
-        assert_eq!(collect(Some(&empty), &ctx).cards, None, "no project here");
+        let counts_of = |status: Status| status.flow.map(legacy);
+        assert_eq!(counts_of(collect(Some(&named), &ctx)), counts(0, 2, 1));
+        let empty = input::parse(b"{}");
+        assert_eq!(
+            counts_of(collect(Some(&empty), &ctx)),
+            None,
+            "no project here"
+        );
         std::fs::create_dir_all(f.project.join(".moai")).unwrap();
         let inside = Context::for_test(&[("HOME", home)], Some(&f.project));
-        assert_eq!(collect(Some(&empty), &inside).cards, counts(0, 2, 1));
+        assert_eq!(counts_of(collect(Some(&empty), &inside)), counts(0, 2, 1));
+    }
+}
+
+/// A fixture ledger for the stage tests: a HOME with the project `demo` and its registered
+/// ledger, with helpers to add cards, notes, reservations and landing events.
+#[cfg(test)]
+mod flow_support {
+    use super::*;
+
+    pub(super) struct Fx {
+        pub(super) _tmp: tempfile::TempDir,
+        pub(super) home: PathBuf,
+        pub(super) project: PathBuf,
+    }
+
+    pub(super) fn fx() -> Fx {
+        let tmp = tempfile::tempdir().unwrap();
+        let home = tmp.path().join("home");
+        let project = tmp.path().join("work/demo");
+        let state = project.join(crate::PROJECT_STATE_DIR);
+        std::fs::create_dir_all(&home).unwrap();
+        std::fs::create_dir_all(&state).unwrap();
+        std::fs::write(
+            state.join("project.yaml"),
+            "{\"schema_version\":2,\"project_id\":\"demo\"}\n",
+        )
+        .unwrap();
+        crate::ledger::register(&home, "demo").unwrap();
+        Fx {
+            _tmp: tmp,
+            home,
+            project,
+        }
+    }
+
+    impl Fx {
+        /// One card in `state` with its notes oldest first; returns its number. A `done` card
+        /// closes at the ledger's own clock.
+        pub(super) fn card(&self, state: &str, notes: &[(&str, &str)]) -> i64 {
+            let mut ledger = crate::ledger::open_write(&self.home, "demo").unwrap();
+            let mut id = 0;
+            ledger
+                .with_write_tx(|tx, now| {
+                    tx.execute(
+                        "INSERT INTO card (title, state, created_by, created_at, updated_at, closed_at) \
+                         VALUES ('t', ?1, 'test', ?2, ?2, iif(?1 = 'done', ?2, NULL))",
+                        rusqlite::params![state, now],
+                    )?;
+                    id = tx.last_insert_rowid();
+                    for (kind, body) in notes {
+                        tx.execute(
+                            "INSERT INTO card_note (card_id, kind, author, body, created_at) \
+                             VALUES (?1, ?2, 'test', ?3, ?4)",
+                            rusqlite::params![id, kind, body, now],
+                        )?;
+                    }
+                    Ok(())
+                })
+                .unwrap();
+            id
+        }
+
+        /// A `done` card closed at `closed_at`.
+        pub(super) fn done_at(&self, closed_at: i64) {
+            let mut ledger = crate::ledger::open_write(&self.home, "demo").unwrap();
+            ledger
+                .with_write_tx(|tx, now| {
+                    tx.execute(
+                        "INSERT INTO card (title, state, created_by, created_at, updated_at, closed_at) \
+                         VALUES ('t', 'done', 'test', ?1, ?1, ?2)",
+                        rusqlite::params![now, closed_at],
+                    )?;
+                    Ok(())
+                })
+                .unwrap();
+        }
+
+        /// A reservation of `card` (generation 1).
+        pub(super) fn reserve(
+            &self,
+            card: i64,
+            holder: &str,
+            status: &str,
+            acquired_at: i64,
+            lease_until: i64,
+            worktree: Option<&str>,
+        ) {
+            let mut ledger = crate::ledger::open_write(&self.home, "demo").unwrap();
+            ledger
+                .with_write_tx(|tx, _| {
+                    tx.execute(
+                        "INSERT INTO reservation (card_id, generation, holder, status, acquired_at, \
+                         lease_until, updated_at, worktree, branch) \
+                         VALUES (?1, 1, ?2, ?3, ?4, ?5, ?4, ?6, NULL)",
+                        rusqlite::params![card, holder, status, acquired_at, lease_until, worktree],
+                    )?;
+                    Ok(())
+                })
+                .unwrap();
+        }
+
+        /// A `card.landed` event of `card`.
+        pub(super) fn landed(&self, card: i64) {
+            let mut ledger = crate::ledger::open_write(&self.home, "demo").unwrap();
+            ledger
+                .with_write_tx(|tx, now| {
+                    tx.execute(
+                        "INSERT INTO event (event_key, at, actor, card_id, kind) \
+                         VALUES (?1, ?2, 'test', ?3, 'card.landed')",
+                        rusqlite::params![format!("landed-{card}"), now, card],
+                    )?;
+                    Ok(())
+                })
+                .unwrap();
+        }
+
+        /// The flow at the render clock `now` for `who`.
+        pub(super) fn flow(&self, now: i64, who: &Whose) -> Flow {
+            let mut ctx = Context::for_test(&[("HOME", self.home.to_str().unwrap())], None);
+            ctx.now = now;
+            read_flow(&self.project, &ctx, who).unwrap()
+        }
+    }
+}
+
+/// AC-1 of SPEC-20261122-statusline-flow: every edge of the stage rule has one answer, and the
+/// nine counts add up to the open cards.
+#[cfg(test)]
+mod stage_tests_edges {
+    use super::flow_support::fx;
+    use super::*;
+
+    const NOW: i64 = 1_800_000_000;
+
+    /// D-9 of the SPEC: the nine letters of the legend, one per stage, English only and all
+    /// different (audit N2: a letter swapped between two stages survived every other test).
+    #[test]
+    fn every_stage_has_its_letter_from_the_legend() {
+        let table = [
+            (Stage::Draft, 'D'),
+            (Stage::Ready, 'R'),
+            (Stage::Working, 'W'),
+            (Stage::Stale, 'E'),
+            (Stage::Submitted, 'S'),
+            (Stage::Audited, 'A'),
+            (Stage::Landed, 'L'),
+            (Stage::Blocked, 'B'),
+            (Stage::Hold, 'H'),
+        ];
+        for (stage, letter) in table {
+            assert_eq!(stage.letter(), letter, "{stage:?}");
+        }
+        let mut letters: Vec<char> = table.iter().map(|(s, _)| s.letter()).collect();
+        letters.sort_unstable();
+        letters.dedup();
+        assert_eq!(letters.len(), 9, "two stages share a letter");
+    }
+
+    #[test]
+    fn the_stage_rule_has_one_answer_for_every_edge() {
+        use Marker::{Audited, Blocked, Submitted, Working};
+        use Stage::{Draft, Hold, Landed, Ready, Stale};
+        let s = Stage::Submitted;
+        let a = Stage::Audited;
+        let b = Stage::Blocked;
+        let w = Stage::Working;
+        // (state, newest marker, landing event, live lease) -> stage
+        type Row = (&'static str, Option<Marker>, bool, bool, Option<Stage>);
+        let table: [Row; 30] = [
+            // draft, ready and hold keep their own stage whatever else is true of them.
+            ("draft", None, false, false, Some(Draft)),
+            ("draft", Some(Submitted), true, true, Some(Draft)),
+            ("ready", Some(Blocked), true, false, Some(Ready)),
+            ("hold", Some(Audited), true, true, Some(Hold)),
+            // active: working with a live lease, stale without one.
+            ("active", None, false, true, Some(w)),
+            ("active", None, false, false, Some(Stale)),
+            ("active", Some(Working), false, true, Some(w)),
+            ("active", Some(Working), false, false, Some(Stale)),
+            // submitted, audited and blocked keep their stage whatever the lease says.
+            ("active", Some(Submitted), false, false, Some(s)),
+            ("active", Some(Submitted), false, true, Some(s)),
+            ("active", Some(Audited), false, false, Some(a)),
+            ("active", Some(Audited), false, true, Some(a)),
+            ("active", Some(Blocked), false, true, Some(b)),
+            ("active", Some(Blocked), false, false, Some(b)),
+            // review is submitted unless a marker says audited or blocked.
+            ("review", None, false, false, Some(s)),
+            ("review", None, false, true, Some(s)),
+            ("review", Some(Working), false, true, Some(s)),
+            ("review", Some(Submitted), false, false, Some(s)),
+            ("review", Some(Audited), false, false, Some(a)),
+            ("review", Some(Blocked), false, false, Some(b)),
+            // a landing event wins over every marker and lease of an active or review card.
+            ("active", Some(Blocked), true, true, Some(Landed)),
+            ("active", None, true, false, Some(Landed)),
+            ("active", Some(Working), true, true, Some(Landed)),
+            ("review", Some(Audited), true, false, Some(Landed)),
+            ("review", None, true, true, Some(Landed)),
+            // a closed card, and a state the ledger does not have, are no open card.
+            ("done", None, false, false, None),
+            ("done", Some(Submitted), true, true, None),
+            ("bogus", None, false, false, None),
+            ("", Some(Audited), false, true, None),
+            ("Active", None, false, true, None),
+        ];
+        for (state, marker, landed, live, want) in table {
+            assert_eq!(
+                stage_of(state, marker, landed, live),
+                want,
+                "{state} {marker:?} landed={landed} live={live}"
+            );
+        }
+    }
+
+    #[test]
+    fn the_nine_counts_add_up_to_the_open_cards_of_a_fixture_ledger() {
+        let f = fx();
+        f.card("draft", &[]);
+        f.card("ready", &[]);
+        f.card("hold", &[]);
+        let working = f.card("active", &[]);
+        f.reserve(working, "s-1", "held", 10, NOW + 60, None);
+        f.card("active", &[]); // no reservation at all: stale
+        f.card("active", &[("report", "READY (head abc)")]);
+        f.card(
+            "active",
+            &[("report", "AUDIT C-1 head abc base def — verdict: PASS")],
+        );
+        f.card("active", &[("report", "LANE-BLOCKED kind=decision x")]);
+        let landed = f.card("active", &[("report", "READY (head abc)")]);
+        f.landed(landed);
+        // Three cards closed today, and one closed long ago that still carries a marker note: a
+        // closed card is never an open stage.
+        f.done_at(NOW);
+        f.done_at(NOW + 1);
+        f.done_at(NOW + 2);
+        f.card("done", &[("report", "READY (head abc)")]);
+        let flow = f.flow(NOW, &Whose::default());
+        assert!(flow.split);
+        assert_eq!(
+            (
+                flow.draft,
+                flow.ready,
+                flow.working,
+                flow.stale,
+                flow.submitted,
+                flow.audited,
+                flow.landed,
+                flow.blocked,
+                flow.hold,
+            ),
+            (1, 1, 1, 1, 1, 1, 1, 1, 1),
+            "one card in every stage"
+        );
+        let sum = flow.draft
+            + flow.ready
+            + flow.working
+            + flow.stale
+            + flow.submitted
+            + flow.audited
+            + flow.landed
+            + flow.blocked
+            + flow.hold;
+        assert_eq!(sum, 9, "the nine counts are the open cards");
+        assert_eq!(flow.done_today, 3, "closed cards are never an open stage");
+    }
+
+    /// A lease that ends at the render's clock is still live; one second less is over. Only
+    /// `held` and `held_for_review` reservations count as a live holder.
+    #[test]
+    fn the_lease_edge_and_the_status_of_a_reservation_decide_working_or_stale() {
+        let who = Whose::default();
+        for (status, lease, want_working) in [
+            ("held", NOW, true),
+            ("held", NOW + 1, true),
+            ("held", NOW - 1, false),
+            ("held_for_review", NOW + 60, true),
+            ("held_for_review", NOW - 1, false),
+            ("expired_candidate", NOW + 60, false),
+            ("released", NOW + 60, false),
+            ("reclaimed", NOW + 60, false),
+        ] {
+            let f = fx();
+            let card = f.card("active", &[]);
+            f.reserve(card, "s-1", status, 10, lease, None);
+            let flow = f.flow(NOW, &who);
+            assert_eq!(
+                (flow.working, flow.stale),
+                if want_working { (1, 0) } else { (0, 1) },
+                "{status} lease_until={lease}"
+            );
+        }
+    }
+
+    #[test]
+    fn the_four_statements_read_and_never_write() {
+        assert_eq!(FLOW_STATEMENTS.len(), 4);
+        for sql in FLOW_STATEMENTS {
+            assert!(sql.trim_start().starts_with("SELECT"), "{sql}");
+            let upper = sql.to_ascii_uppercase();
+            for word in [
+                "INSERT", "UPDATE", "DELETE", "CREATE", "DROP", "PRAGMA", "ALTER",
+            ] {
+                assert!(!upper.contains(word), "{word} in {sql}");
+            }
+        }
+    }
+
+    /// Two live holders, a worktree: the folder wins over the newer card of the session id.
+    #[test]
+    fn my_card_is_the_worktree_card_then_the_newest_live_card_of_the_session() {
+        let f = fx();
+        let wt = tempfile::tempdir().unwrap();
+        std::fs::create_dir(wt.path().join(".git")).unwrap();
+        let wt_path = std::fs::canonicalize(wt.path()).unwrap();
+        let folder = wt_path.to_str().unwrap();
+        let old = f.card("active", &[]);
+        let new = f.card("active", &[("report", "READY (head abc)")]);
+        let expired = f.card("active", &[]);
+        let in_folder = f.card("active", &[]);
+        f.reserve(old, "s-1", "held", 100, NOW + 60, None);
+        f.reserve(new, "s-1", "held", 200, NOW + 60, None);
+        f.reserve(expired, "s-1", "held", 300, NOW - 1, None);
+        f.reserve(in_folder, "s-2", "held", 50, NOW + 60, Some(folder));
+
+        let by_session = Whose {
+            session_id: "s-1",
+            dir: None,
+        };
+        let mine = f.flow(NOW, &by_session).mine.unwrap();
+        assert_eq!(
+            mine.card, new,
+            "the newest live card, not the lowest number"
+        );
+        assert_eq!(
+            mine.stage,
+            Stage::Submitted,
+            "its stage is the stage rule's"
+        );
+
+        let in_worktree = Whose {
+            session_id: "s-1",
+            dir: Some(wt_path.as_path()),
+        };
+        assert_eq!(
+            f.flow(NOW, &in_worktree).mine.map(|m| m.card),
+            Some(in_folder),
+            "the card whose reservation names the worktree comes first"
+        );
+        let stranger = Whose {
+            session_id: "s-9",
+            dir: None,
+        };
+        assert_eq!(
+            f.flow(NOW, &stranger).mine,
+            None,
+            "a session that holds nothing"
+        );
+        let anonymous = Whose::default();
+        assert_eq!(
+            f.flow(NOW, &anonymous).mine,
+            None,
+            "no session id, no folder"
+        );
+        // Only the expired card is left to the session: never chosen.
+        let g = fx();
+        let gone = g.card("active", &[]);
+        g.reserve(gone, "s-1", "held", 300, NOW - 1, None);
+        assert_eq!(g.flow(NOW, &by_session).mine, None);
+        // A card closed since the reservation is no open card, so no card of mine.
+        let h = fx();
+        let closed = h.card("done", &[]);
+        h.reserve(closed, "s-1", "held", 300, NOW + 60, None);
+        assert_eq!(h.flow(NOW, &by_session).mine, None);
+    }
+
+    #[test]
+    fn two_cards_naming_one_folder_give_the_lowest_number_and_a_relative_path_names_none() {
+        let f = fx();
+        let wt = tempfile::tempdir().unwrap();
+        std::fs::create_dir(wt.path().join(".git")).unwrap();
+        let wt_path = std::fs::canonicalize(wt.path()).unwrap();
+        let folder = wt_path.to_str().unwrap();
+        let first = f.card("active", &[]);
+        let second = f.card("active", &[]);
+        let relative = f.card("active", &[]);
+        // Each card holds one reservation; the second names the folder in a link spelling too.
+        f.reserve(second, "a", "held", 1, NOW + 60, Some(folder));
+        f.reserve(first, "b", "held_for_review", 1, NOW + 60, Some(folder));
+        f.reserve(relative, "c", "held", 1, NOW + 60, Some("relative/path"));
+        let here = Whose {
+            session_id: "",
+            dir: Some(wt_path.as_path()),
+        };
+        assert_eq!(f.flow(NOW, &here).mine.map(|m| m.card), Some(first));
+        let elsewhere = Whose {
+            session_id: "",
+            dir: Some(Path::new("relative/path")),
+        };
+        assert_eq!(f.flow(NOW, &elsewhere).mine, None);
+    }
+}
+
+/// AC-2 of SPEC-20261122-statusline-flow: the marker words at their edges.
+#[cfg(test)]
+mod marker_tests {
+    use super::flow_support::fx;
+    use super::*;
+
+    #[test]
+    fn each_word_alone_is_the_marker_the_rule_names() {
+        for (line, want) in [
+            ("LANE-READY-INTEGRATION C-1 head=abc", Marker::Submitted),
+            ("MERGE-READY (2026-11-20) lane x", Marker::Submitted),
+            ("READY (SPEC revision 2) agent-17", Marker::Submitted),
+            ("READY head abc", Marker::Submitted),
+            ("감사 요청 tier 1", Marker::Submitted),
+            (
+                "LANE-DONE a C-1 pushed — audit requested",
+                Marker::Submitted,
+            ),
+            ("LANE-DONE a C-1 pushed — 감사 요청", Marker::Submitted),
+            ("AUDIT C-1 head abc — verdict: PASS", Marker::Audited),
+            ("LANE-BLOCKED kind=decision question", Marker::Blocked),
+            ("LANE-BLOCKED", Marker::Blocked),
+            ("ACK agent-1 C-1", Marker::Working),
+            ("PLAN C-1 steps", Marker::Working),
+            ("AUDIT C-1 head abc — verdict: FAIL", Marker::Working),
+        ] {
+            assert_eq!(marker_of(line), Some(want), "{line}");
+        }
+    }
+
+    #[test]
+    fn the_words_that_are_no_marker_change_nothing() {
+        for line in [
+            "RESUME head abc",
+            "RESUME (weekly usage limit reached)",
+            "waiting: audit since 08:00Z",
+            "LANE-HOLD C-1",
+            "PAIR-REQUEST agent-2",
+            "PAIR-OK",
+            "MERGED-LOCAL (2026-11-22, leader): landed",
+            "LANE-DONE a C-1 slice done",
+            "AUDIT C-1 head abc",
+            "LEADER 2026-11-19 — decision",
+            "",
+            " READY (leading space)",
+            "ready (lower case)",
+        ] {
+            assert_eq!(marker_of(line), None, "{line:?}");
+        }
+    }
+
+    /// `READY ` is the word and one space: the same letters inside a longer word, at the end of
+    /// the line, or before a tab or a line break are no marker.
+    #[test]
+    fn ready_needs_its_space_and_is_not_a_prefix_of_a_longer_word() {
+        assert_eq!(marker_of("READY x"), Some(Marker::Submitted));
+        assert_eq!(marker_of("READY  two spaces"), Some(Marker::Submitted));
+        for line in [
+            "READYX",
+            "READY",
+            "READY\tx",
+            "READY\nx",
+            "READYNESS review",
+            "READY-FOR-AUDIT",
+        ] {
+            assert_eq!(marker_of(line), None, "{line:?}");
+        }
+        // `MERGE-READY` is a prefix match by design (the rule's word is the first token).
+        assert_eq!(marker_of("MERGE-READY"), Some(Marker::Submitted));
+        assert_eq!(marker_of("MERGE-READYX"), Some(Marker::Submitted));
+        assert_eq!(marker_of("XMERGE-READY"), None);
+    }
+
+    /// A marker word only counts on the first line: each word on line two is no marker.
+    #[test]
+    fn a_marker_on_the_second_line_is_none() {
+        for word in [
+            "READY (head abc)",
+            "MERGE-READY (x)",
+            "LANE-READY-INTEGRATION C-1",
+            "LANE-BLOCKED kind=decision",
+            "AUDIT C-1 — verdict: PASS",
+            "ACK agent-1",
+            "PLAN C-1",
+            "감사 요청 tier 2",
+        ] {
+            assert_eq!(marker_of(&format!("summary\n{word}")), None, "{word}");
+        }
+    }
+
+    /// The first 1000 characters of a note are read, counted in characters (Korean too): a
+    /// verdict that ends at the cut still reads and one character later does not.
+    #[test]
+    fn the_note_head_is_cut_at_exactly_one_thousand_characters() {
+        let line = |pad: usize| {
+            let mut s = String::from("AUDIT C-1 head abc ");
+            s.push_str(&"감".repeat(pad));
+            s.push_str(" verdict: PASS");
+            s
+        };
+        let base = line(0).chars().count();
+        for (pad, stage) in [
+            (1000 - base, Stage::Audited),
+            (1000 - base + 1, Stage::Stale),
+        ] {
+            let f = fx();
+            f.card("active", &[("report", &line(pad))]);
+            let flow = f.flow(0, &Whose::default());
+            let expected = if stage == Stage::Audited {
+                (1, 0)
+            } else {
+                (0, 1)
+            };
+            assert_eq!(
+                (flow.audited, flow.stale),
+                expected,
+                "pad {pad}: first line of {} characters",
+                line(pad).chars().count()
+            );
+        }
+    }
+
+    /// The newest marker wins, across kinds: every ordering of two notes reads as the newest.
+    #[test]
+    fn the_newest_marker_wins_over_an_older_one_of_another_kind() {
+        let ready = "READY (head abc)";
+        let blocked = "LANE-BLOCKED kind=decision";
+        let pass = "AUDIT C-1 head abc — verdict: PASS";
+        let ack = "ACK agent-1 C-1";
+        for (notes, submitted, audited, blocked_n, stale) in [
+            (vec![ready, blocked], 0, 0, 1, 0),
+            (vec![blocked, ready], 1, 0, 0, 0),
+            (vec![blocked, ack], 0, 0, 0, 1),
+            (vec![ready, pass], 0, 1, 0, 0),
+            (vec![pass, ready], 1, 0, 0, 0),
+            (vec![pass, ack], 0, 0, 0, 1),
+            // A note that is no marker, newer than the marker, changes nothing.
+            (
+                vec![blocked, "RESUME head abc", "waiting: a run"],
+                0,
+                0,
+                1,
+                0,
+            ),
+        ] {
+            let f = fx();
+            let all: Vec<(&str, &str)> = notes.iter().map(|n| ("report", *n)).collect();
+            f.card("active", &all);
+            let flow = f.flow(0, &Whose::default());
+            assert_eq!(
+                (flow.submitted, flow.audited, flow.blocked, flow.stale),
+                (submitted, audited, blocked_n, stale),
+                "{notes:?}"
+            );
+        }
+    }
+
+    /// Several markers on one card count that card once.
+    #[test]
+    fn several_markers_on_one_card_count_it_once() {
+        let f = fx();
+        f.card(
+            "active",
+            &[
+                ("report", "READY (a)"),
+                ("report", "READY (b)"),
+                ("report", "MERGE-READY (c)"),
+            ],
+        );
+        let flow = f.flow(0, &Whose::default());
+        assert_eq!((flow.submitted, flow.draft, flow.stale), (1, 0, 0));
+    }
+}
+
+/// AC-3 of SPEC-20261122-statusline-flow: done today changes at the UTC midnight.
+#[cfg(test)]
+mod done_today_tests {
+    use super::flow_support::fx;
+    use super::*;
+
+    /// 20000 days after the epoch, at 00:00:00 UTC.
+    const MIDNIGHT: i64 = 20_000 * 86_400;
+
+    #[test]
+    fn the_count_changes_at_the_utc_midnight_and_not_a_second_before() {
+        let f = fx();
+        f.done_at(MIDNIGHT - 1);
+        f.done_at(MIDNIGHT);
+        f.done_at(MIDNIGHT + 3_600);
+        let who = Whose::default();
+        // The last second of the day before: that day started a day earlier, so all three
+        // (closed at or after its start) count.
+        assert_eq!(f.flow(MIDNIGHT - 1, &who).done_today, 3);
+        assert_eq!(f.flow(MIDNIGHT - 2, &who).done_today, 3);
+        // At the midnight the new day starts: the card closed one second earlier is yesterday's.
+        assert_eq!(f.flow(MIDNIGHT, &who).done_today, 2);
+        assert_eq!(f.flow(MIDNIGHT + 86_399, &who).done_today, 2);
+        // The next midnight: all three are older.
+        assert_eq!(f.flow(MIDNIGHT + 86_400, &who).done_today, 0);
+    }
+
+    #[test]
+    fn open_cards_never_count_as_done_today() {
+        let f = fx();
+        f.card("active", &[]);
+        f.card("hold", &[]);
+        f.done_at(MIDNIGHT + 5);
+        assert_eq!(f.flow(MIDNIGHT + 10, &Whose::default()).done_today, 1);
     }
 }
 
@@ -2608,465 +3863,562 @@ mod project_root_tests {
     }
 }
 
-/// User instruction 2026-11-19: `🌳 WT-c<card>-<name>`. The name is a pure function of the
-/// reservation's branch, the worktree folder name, the project id and the card number; the card
-/// comes from the held reservation that names the worktree folder, read from the local ledger.
+/// SPEC-20261122-statusline-where AC-3: the worktree-name rule, the integration distance and
+/// the readings behind them, as pure functions. `0123456` stands for a short commit and `next`
+/// for the integration branch of the fixtures.
 #[cfg(test)]
-mod worktree_label_tests {
+mod where_tests {
     use super::*;
 
-    fn name(branch: Option<&str>, folder: &str, card: i64) -> String {
-        label_name(branch, folder, "demo", card)
-    }
+    const FULL_SHA: &str = "0123456789abcdef0123456789abcdef01234567";
 
-    #[test]
-    fn a_spec_branch_gives_its_slug() {
-        assert_eq!(
-            name(
-                Some("spec/20261119-statusline-waiting-cards"),
-                "demo-1-x",
-                1
-            ),
-            "statusline-waiting-cards"
-        );
-        // Any kind before the slash, and no slash at all.
-        assert_eq!(name(Some("fix/20261119-a"), "demo-1", 1), "a");
-        assert_eq!(name(Some("20261119-a-b"), "demo-1", 1), "a-b");
-        // The date must be eight digits followed by a dash and something.
-        assert_eq!(name(Some("spec/2026111-a"), "demo-1-rest", 1), "rest");
-        assert_eq!(name(Some("spec/20261119-"), "demo-1-rest", 1), "rest");
-        assert_eq!(name(Some("spec/20261119"), "demo-1-rest", 1), "rest");
-    }
-
-    #[test]
-    fn another_branch_takes_the_rest_of_the_folder_name() {
-        let b = Some("m-flow/bundle-20261119-6");
-        assert_eq!(name(b, "demo-1-hooks", 1), "hooks");
-        assert_eq!(name(None, "demo-1-hooks", 1), "hooks");
-        // The card number may carry its `c`.
-        assert_eq!(name(b, "demo-c1-hooks", 1), "hooks");
-        // The folder with nothing left gives nothing.
-        assert_eq!(name(b, "demo-1", 1), "");
-        assert_eq!(name(b, "demo", 1), "");
-        // A number that is not this card's number stays; so does a folder of another project.
-        assert_eq!(name(b, "demo-12-hooks", 1), "12-hooks");
-        assert_eq!(name(b, "demo-audit-3230", 1), "audit-3230");
-        assert_eq!(name(b, "other-hooks", 1), "other-hooks");
-        // The prefix is the project id plus a dash, not any text that starts the same.
-        assert_eq!(name(b, "demonstration-1-x", 1), "demonstration-1-x");
-    }
-
-    #[test]
-    fn the_name_is_cut_at_thirty_two_characters_and_drops_control_characters() {
-        let exact = "a".repeat(32);
-        let long = "a".repeat(33);
-        let branch = |s: &str| format!("spec/20261119-{s}");
-        assert_eq!(name(Some(&branch(&exact)), "demo-1", 1), exact);
-        assert_eq!(
-            name(Some(&branch(&long)), "demo-1", 1),
-            format!("{}…", "a".repeat(31))
-        );
-        // Characters, not bytes.
-        let korean = "가".repeat(40);
-        assert_eq!(
-            name(Some(&branch(&korean)), "demo-1", 1),
-            format!("{}…", "가".repeat(31))
-        );
-        assert_eq!(
-            name(Some(&branch(&"가".repeat(32))), "demo-1", 1),
-            "가".repeat(32)
-        );
-        assert_eq!(name(Some("spec/20261119-a\u{1b}b\nc"), "demo-1", 1), "abc");
-        // Control characters are dropped before the length is counted.
-        let padded = format!("{}\u{7}{}", "a".repeat(32), "");
-        assert_eq!(name(Some(&branch(&padded)), "demo-1", 1), exact);
-    }
-
-    struct Fixture {
-        _tmp: tempfile::TempDir,
-        home: PathBuf,
-        project: PathBuf,
-        /// A worktree folder (a `.git` entry and a `src` folder), canonical.
-        wt: PathBuf,
-    }
-
-    fn fixture() -> Fixture {
-        let tmp = tempfile::tempdir().unwrap();
-        let root = std::fs::canonicalize(tmp.path()).unwrap();
-        let home = root.join("home");
-        let project = root.join("work/demo");
-        let state = project.join(crate::PROJECT_STATE_DIR);
-        let wt = root.join("wt/demo-1-work");
-        std::fs::create_dir_all(&home).unwrap();
-        std::fs::create_dir_all(&state).unwrap();
-        std::fs::create_dir_all(wt.join("src")).unwrap();
-        std::fs::write(wt.join(".git"), "gitdir: nowhere\n").unwrap();
-        std::fs::write(
-            state.join("project.yaml"),
-            "{\"schema_version\":2,\"project_id\":\"demo\"}\n",
-        )
-        .unwrap();
-        crate::ledger::register(&home, "demo").unwrap();
-        Fixture {
-            _tmp: tmp,
-            home,
-            project,
-            wt,
-        }
-    }
-
-    impl Fixture {
-        fn ctx(&self) -> Context {
-            Context::for_test(&[("HOME", self.home.to_str().unwrap())], None)
-        }
-
-        fn label(&self, dir: &Path) -> Option<WorktreeLabel> {
-            worktree_label(&self.project, dir, &self.ctx())
-        }
-
-        /// One card with no reservation; returns its number. Cards are numbered in the order
-        /// they are made, so a later `reserve_card` can give the lower card its reservation
-        /// after a higher one has had its own.
-        fn add_card(&self) -> i64 {
-            let mut ledger = crate::ledger::open_write(&self.home, "demo").unwrap();
-            let mut card = 0;
-            ledger
-                .with_write_tx(|tx, now| {
-                    tx.execute(
-                        "INSERT INTO card (title, state, created_by, created_at, updated_at) \
-                         VALUES ('t', 'active', 'test', ?1, ?1)",
-                        rusqlite::params![now],
-                    )?;
-                    card = tx.last_insert_rowid();
-                    Ok(())
-                })
-                .unwrap();
-            card
-        }
-
-        /// A `held` reservation of the existing `card` naming `worktree` (any spelling).
-        fn reserve_card(&self, card: i64, worktree: &str, branch: &str) {
-            let mut ledger = crate::ledger::open_write(&self.home, "demo").unwrap();
-            ledger
-                .with_write_tx(|tx, now| {
-                    tx.execute(
-                        "INSERT INTO reservation (card_id, generation, holder, status, \
-                         acquired_at, lease_until, updated_at, worktree, branch) \
-                         VALUES (?1, 1, 'test', 'held', ?2, ?3, ?2, ?4, ?5)",
-                        rusqlite::params![card, now, now + 14400, worktree, branch],
-                    )?;
-                    Ok(())
-                })
-                .unwrap();
-        }
-
-        /// One card in `card_state` and a reservation of it in `status` naming `worktree`.
-        /// An `INSERT` has no transition check. Returns the card number.
-        fn reserve(
-            &self,
-            card_state: &str,
-            status: &str,
-            worktree: &Path,
-            branch: Option<&str>,
-        ) -> i64 {
-            let mut ledger = crate::ledger::open_write(&self.home, "demo").unwrap();
-            let mut card = 0;
-            ledger
-                .with_write_tx(|tx, now| {
-                    tx.execute(
-                        "INSERT INTO card (title, state, created_by, created_at, updated_at) \
-                         VALUES ('t', ?1, 'test', ?2, ?2)",
-                        rusqlite::params![card_state, now],
-                    )?;
-                    card = tx.last_insert_rowid();
-                    tx.execute(
-                        "INSERT INTO reservation (card_id, generation, holder, status, \
-                         acquired_at, lease_until, updated_at, worktree, branch) \
-                         VALUES (?1, 1, 'test', ?2, ?3, ?4, ?3, ?5, ?6)",
-                        rusqlite::params![
-                            card,
-                            status,
-                            now,
-                            now + 14400,
-                            worktree.to_string_lossy(),
-                            branch
-                        ],
-                    )?;
-                    Ok(())
-                })
-                .unwrap();
-            card
-        }
-    }
-
-    fn label(card: i64, name: &str) -> Option<WorktreeLabel> {
-        Some(WorktreeLabel {
-            card,
-            name: name.to_string(),
+    fn at<'a>(
+        worktree: &'a str,
+        head: Head<'a>,
+        integration: Option<&'a str>,
+        numbers: (i64, i64, i64),
+    ) -> Where {
+        where_items(&WhereInput {
+            worktree,
+            head,
+            integration,
+            ahead: numbers.0,
+            behind: numbers.1,
+            dirty: numbers.2,
         })
     }
 
-    #[test]
-    fn a_held_reservation_gives_the_card_and_the_name_from_inside_the_folder() {
-        let f = fixture();
-        let card = f.reserve("active", "held", &f.wt, Some("spec/20261119-demo-work"));
-        assert_eq!(f.label(&f.wt), label(card, "demo-work"));
-        // From a folder inside the worktree, the way `workspace.current_dir` often is.
-        assert_eq!(f.label(&f.wt.join("src")), label(card, "demo-work"));
+    fn marks(ahead: i64, behind: i64, dirty: i64) -> Marks {
+        Marks {
+            ahead,
+            behind,
+            dirty,
+        }
     }
 
+    fn distance(name: &str, ahead: i64, behind: i64) -> Option<Distance> {
+        Some(Distance {
+            name: name.into(),
+            ahead,
+            behind,
+        })
+    }
+
+    /// REQ-3: the same name shows the worktree item alone, and the marks and the distance stay.
     #[test]
-    fn only_a_reservation_that_still_holds_the_folder_counts() {
-        for (status, counts) in [
-            ("held", true),
-            ("held_for_review", true),
-            ("expired_candidate", true),
-            ("released", false),
-            ("reclaimed", false),
+    fn a_worktree_named_like_its_branch_shows_the_worktree_item_alone() {
+        let got = at(
+            "statusline-flow",
+            Head::Branch("statusline-flow"),
+            Some("next"),
+            (3, 0, 2),
+        );
+        assert_eq!(
+            got,
+            Where {
+                worktree: Some("statusline-flow".into()),
+                branch: None,
+                marks: marks(3, 0, 2),
+                distance: distance("next", 3, 0),
+            }
+        );
+    }
+
+    /// REQ-3: another name shows both items, the marks follow the branch, and the behind count
+    /// lives in the distance only.
+    #[test]
+    fn unequal_names_show_the_worktree_item_and_the_branch_item() {
+        let got = at(
+            "c135",
+            Head::Branch("spec-impl/20261122-statusline-where"),
+            Some("next"),
+            (1, 2, 0),
+        );
+        assert_eq!(
+            got,
+            Where {
+                worktree: Some("c135".into()),
+                branch: Some("spec-impl/20261122-statusline-where".into()),
+                marks: marks(1, 0, 0),
+                distance: distance("next", 1, 2),
+            }
+        );
+    }
+
+    /// The names are compared as they are: case and a longer name are two names.
+    #[test]
+    fn the_names_are_compared_exactly() {
+        for branch in [
+            "Statusline-Flow",
+            "statusline-flow/x",
+            "statusline-flo",
+            "x",
         ] {
-            let f = fixture();
-            let card = f.reserve("active", status, &f.wt, Some("spec/20261119-demo-work"));
-            let want = counts.then(|| WorktreeLabel {
-                card,
-                name: "demo-work".into(),
-            });
-            assert_eq!(f.label(&f.wt), want, "status {status}");
+            let got = at(
+                "statusline-flow",
+                Head::Branch(branch),
+                Some("next"),
+                (0, 0, 0),
+            );
+            assert_eq!(got.worktree.as_deref(), Some("statusline-flow"), "{branch}");
+            assert_eq!(got.branch.as_deref(), Some(branch), "{branch}");
         }
     }
 
+    /// REQ-3: the main checkout (no worktree name) shows the branch item alone.
     #[test]
-    fn two_cards_holding_one_folder_give_the_lowest_number() {
-        let f = fixture();
-        let first = f.reserve("active", "held", &f.wt, Some("spec/20261119-first"));
-        let _second = f.reserve("active", "held", &f.wt, Some("spec/20261119-second"));
-        assert_eq!(f.label(&f.wt), label(first, "first"));
-        // The lowest number among the ones that hold, not among all.
-        let g = fixture();
-        let _gone = g.reserve("ready", "released", &g.wt, Some("spec/20261119-gone"));
-        let kept = g.reserve("active", "held", &g.wt, Some("spec/20261119-kept"));
-        assert_eq!(g.label(&g.wt), label(kept, "kept"));
+    fn the_main_checkout_shows_the_branch_item_alone() {
+        let got = at("", Head::Branch("feature/login"), Some("next"), (1, 2, 3));
+        assert_eq!(
+            got,
+            Where {
+                worktree: None,
+                branch: Some("feature/login".into()),
+                marks: marks(1, 0, 3),
+                distance: distance("next", 1, 2),
+            }
+        );
     }
 
-    /// REQ-3 against the order the rows were written in: the lower card is reserved AFTER the
-    /// higher one, so only the ordering of the read puts it first.
+    /// REQ-4: on the integration branch itself there is no distance and `↑` is the landings not
+    /// yet pushed; in a worktree of that name the worktree item stands alone.
     #[test]
-    fn the_lowest_card_wins_even_when_it_was_reserved_last() {
-        let f = fixture();
-        let low = f.add_card();
-        let high = f.add_card();
-        assert!(low < high);
-        f.reserve_card(high, f.wt.to_str().unwrap(), "spec/20261119-high");
-        f.reserve_card(low, f.wt.to_str().unwrap(), "spec/20261119-low");
-        assert_eq!(f.label(&f.wt), label(low, "low"));
+    fn on_the_integration_branch_the_ahead_count_is_the_landings_not_yet_pushed() {
+        let got = at("", Head::Branch("next"), Some("next"), (2, 5, 1));
+        assert_eq!(
+            got,
+            Where {
+                worktree: None,
+                branch: Some("next".into()),
+                marks: marks(2, 0, 1),
+                distance: None,
+            }
+        );
+        let got = at("next", Head::Branch("next"), Some("next"), (2, 5, 1));
+        assert_eq!(got.worktree.as_deref(), Some("next"));
+        assert_eq!(got.branch, None);
+        assert_eq!(got.distance, None);
+        assert_eq!(got.marks, marks(2, 0, 1));
     }
 
-    /// A recorded path that is not absolute names no folder from here: read against this
-    /// process's working directory it could name the session's folder by accident. The path
-    /// below is relative and, from this process, does resolve to the worktree.
+    /// REQ-4: with no integration branch known the item is left out and the branch item keeps
+    /// the numbers git gave against its own upstream, behind included.
     #[test]
-    fn a_relative_recorded_path_never_matches() {
-        let f = fixture();
-        let here = std::env::current_dir().unwrap();
-        let mut relative = PathBuf::new();
-        for _ in here.components().skip(1) {
-            relative.push("..");
+    fn an_unknown_integration_branch_leaves_the_item_out() {
+        let got = at("", Head::Branch("feature/login"), None, (2, 1, 4));
+        assert_eq!(
+            got,
+            Where {
+                worktree: None,
+                branch: Some("feature/login".into()),
+                marks: marks(2, 1, 4),
+                distance: None,
+            }
+        );
+        let got = at("lane", Head::Branch("other"), None, (2, 1, 4));
+        assert_eq!(got.marks, marks(2, 1, 4));
+        assert_eq!(got.distance, None);
+    }
+
+    /// REQ-2, REQ-4: a detached HEAD shows its short commit in the branch item, has no distance
+    /// and no ahead or behind count whatever the input says, and keeps the dirty count.
+    #[test]
+    fn a_detached_head_shows_its_short_commit_and_no_distance() {
+        let got = at("", Head::Detached("0123456"), Some("next"), (4, 9, 3));
+        assert_eq!(
+            got,
+            Where {
+                worktree: None,
+                branch: Some("0123456".into()),
+                marks: marks(0, 0, 3),
+                distance: None,
+            }
+        );
+        let got = at("c135", Head::Detached("0123456"), Some("next"), (0, 0, 0));
+        assert_eq!(got.worktree.as_deref(), Some("c135"));
+        assert_eq!(got.branch.as_deref(), Some("0123456"));
+        assert_eq!(got.distance, None);
+    }
+
+    /// REQ-2: an unreadable `HEAD` leaves the branch item and the distance out.
+    #[test]
+    fn an_unreadable_head_leaves_the_branch_items_out() {
+        let got = at("", Head::Unreadable, Some("next"), (3, 1, 2));
+        assert_eq!(got.branch, None);
+        assert_eq!(got.distance, None);
+        assert_eq!(got.worktree, None);
+        // The worktree name comes from the host: its item stays, without marks.
+        let got = at("c135", Head::Unreadable, Some("next"), (3, 1, 2));
+        assert_eq!(
+            got,
+            Where {
+                worktree: Some("c135".into()),
+                branch: None,
+                marks: Marks::default(),
+                distance: None,
+            }
+        );
+    }
+
+    /// REQ-4: the distance writes both numbers, a zero included.
+    #[test]
+    fn the_distance_keeps_both_numbers_at_zero() {
+        let got = at("", Head::Branch("lane"), Some("next"), (0, 0, 0));
+        assert_eq!(got.distance, distance("next", 0, 0));
+        assert_eq!(got.marks, marks(0, 0, 0));
+    }
+
+    /// REQ-2: the `HEAD` file read as a branch, a short commit or nothing, at the edges of the
+    /// commit length (a 40 and a 64 digit hash are commits, 39 and 41 are not).
+    #[test]
+    fn the_head_file_reads_as_a_branch_a_commit_or_nothing() {
+        assert_eq!(head_of("ref: refs/heads/main\n"), Head::Branch("main"));
+        assert_eq!(
+            head_of("ref: refs/heads/feature/login"),
+            Head::Branch("feature/login")
+        );
+        assert_eq!(
+            head_of("ref: refs/heads/v2026.11.0\n"),
+            Head::Branch("v2026.11.0")
+        );
+        assert_eq!(head_of(&format!("{FULL_SHA}\n")), Head::Detached("0123456"));
+        assert_eq!(head_of(FULL_SHA), Head::Detached("0123456"));
+        let long = FULL_SHA.repeat(2)[..64].to_string();
+        assert_eq!(head_of(&long), Head::Detached("0123456"), "64 digits");
+        assert_eq!(head_of(&FULL_SHA[..39]), Head::Unreadable, "39 digits");
+        assert_eq!(
+            head_of(&format!("{FULL_SHA}0")),
+            Head::Unreadable,
+            "41 digits"
+        );
+        for nothing in [
+            "",
+            "\n",
+            "garbage",
+            "ref: refs/heads/",
+            "ref: refs/heads/\n",
+            "ref: refs/tags/v1\n",
+            "ref: refs/remotes/origin/main\n",
+            "ref: refs/heads/a\u{1b}[31mb\n",
+            "ref: refs/heads/a\nb\n",
+            "xyz0123456789abcdef0123456789abcdef0123456",
+        ] {
+            assert_eq!(head_of(nothing), Head::Unreadable, "{nothing:?}");
         }
-        relative.push(f.wt.strip_prefix("/").unwrap());
-        assert!(relative.is_relative());
-        assert_eq!(
-            std::fs::canonicalize(&relative).unwrap(),
-            f.wt,
-            "the probe path resolves to the folder from this process"
-        );
-        let (by_walk, by_dot) = (f.add_card(), f.add_card());
-        f.reserve_card(
-            by_walk,
-            relative.to_str().unwrap(),
-            "spec/20261119-elsewhere",
-        );
-        f.reserve_card(by_dot, ".", "spec/20261119-dot");
-        assert_eq!(f.label(&f.wt), None);
-        // An absolute entry of a higher card is still found past the relative ones.
-        let other = f.add_card();
-        f.reserve_card(other, f.wt.to_str().unwrap(), "spec/20261119-real");
-        assert_eq!(f.label(&f.wt), label(other, "real"));
     }
 
-    /// The read stops at once when the budget runs out, even between two rows: the first row
-    /// names another folder, the second would match.
+    const PROFILE: &str = r#"{"schema_version":2,"project_id":"p","work_flow":{"flow":"m-flow","integration_branch":"v2026.11.0"}}"#;
+
+    /// Risk 3 of the SPEC: the profile names the integration branch and else the remote's
+    /// default branch; a repository with neither shows no item.
     #[test]
-    fn the_budget_is_asked_before_every_row() {
-        let f = fixture();
-        let elsewhere = f.wt.parent().unwrap().join("demo-2-other");
-        std::fs::create_dir_all(&elsewhere).unwrap();
-        let first = f.add_card();
-        let second = f.add_card();
-        f.reserve_card(first, elsewhere.to_str().unwrap(), "spec/20261119-other");
-        f.reserve_card(second, f.wt.to_str().unwrap(), "spec/20261119-demo-work");
-        let ledger = crate::ledger::open::open_read_only_within(
-            &f.home,
-            "demo",
-            std::time::Duration::from_millis(50),
-        )
-        .unwrap();
-        let asked = std::cell::Cell::new(0);
-        let after_one_row = || {
-            asked.set(asked.get() + 1);
-            asked.get() > 1
-        };
+    fn the_integration_branch_comes_from_the_profile_then_the_remote_default() {
+        let origin = "ref: refs/remotes/origin/main\n";
         assert_eq!(
-            holding_card(ledger.conn(), &f.wt, &f.wt, &after_one_row),
-            None
+            integration_from(Some(PROFILE), Some(origin)).as_deref(),
+            Some("v2026.11.0")
         );
-        assert_eq!(asked.get(), 2, "asked again before the second row");
-        let never = || false;
         assert_eq!(
-            holding_card(ledger.conn(), &f.wt, &f.wt, &never).map(|(c, _)| c),
-            Some(second)
+            integration_from(Some(PROFILE), None).as_deref(),
+            Some("v2026.11.0")
         );
+        assert_eq!(
+            integration_from(None, Some(origin)).as_deref(),
+            Some("main")
+        );
+        assert_eq!(
+            integration_from(None, Some("ref: refs/remotes/origin/release/1.2\n")).as_deref(),
+            Some("release/1.2")
+        );
+        for profile in [
+            r#"{"work_flow":{"flow":"trunk-based"}}"#,
+            r#"{"work_flow":{"flow":"m-flow","integration_branch":null}}"#,
+            r#"{"work_flow":null}"#,
+            r#"{}"#,
+            "not json",
+            "",
+        ] {
+            assert_eq!(
+                integration_from(Some(profile), Some(origin)).as_deref(),
+                Some("main"),
+                "{profile:?} falls to the remote default"
+            );
+            assert_eq!(integration_from(Some(profile), None), None, "{profile:?}");
+        }
+        assert_eq!(integration_from(None, None), None);
+        for origin in [
+            "",
+            "garbage",
+            "ref: refs/remotes/origin/\n",
+            "ref: refs/heads/main\n",
+            "0123456789abcdef0123456789abcdef01234567\n",
+        ] {
+            assert_eq!(integration_from(None, Some(origin)), None, "{origin:?}");
+        }
     }
 
-    /// The folder the session works in: `workspace.current_dir`, else `cwd`, else none.
+    /// A profile that names a branch git cannot be given safely names none.
     #[test]
-    fn the_session_folder_is_current_dir_then_cwd() {
-        let parse = |json: &str| serde_json::from_str::<Input>(json).unwrap();
-        let dir = |json: &str| session_dir(&parse(json));
-        assert_eq!(
-            dir(r#"{"cwd":"/c","workspace":{"current_dir":"/w"}}"#),
-            Some(PathBuf::from("/w"))
-        );
-        assert_eq!(
-            dir(r#"{"cwd":"/c","workspace":{"current_dir":""}}"#),
-            Some(PathBuf::from("/c"))
-        );
-        assert_eq!(
-            dir(r#"{"cwd":"/c","workspace":{}}"#),
-            Some(PathBuf::from("/c"))
-        );
-        assert_eq!(dir(r#"{"cwd":"/c"}"#), Some(PathBuf::from("/c")));
-        assert_eq!(
-            dir(r#"{"workspace":{"current_dir":"/w"}}"#),
-            Some(PathBuf::from("/w"))
-        );
-        assert_eq!(dir(r#"{"cwd":"","workspace":{"current_dir":""}}"#), None);
-        assert_eq!(dir("{}"), None);
+    fn an_unsafe_integration_name_is_no_name() {
+        for name in ["-x", "--upload-pack=x", "a b", "a..b", "HEAD", ""] {
+            let profile = format!(
+                r#"{{"work_flow":{{"flow":"m-flow","integration_branch":{}}}}}"#,
+                serde_json::Value::String(name.into())
+            );
+            assert_eq!(integration_from(Some(&profile), None), None, "{name:?}");
+        }
     }
 
-    /// A name nothing visible is left of gives way to the folder name, and invisible format
-    /// characters (zero-width, bidirectional marks) are dropped like control characters.
+    fn plain_args() -> Vec<String> {
+        ["--no-optional-locks", "status", "--porcelain", "--branch"]
+            .map(String::from)
+            .to_vec()
+    }
+
+    fn lane_args(branch: &str, integration: &str) -> Vec<String> {
+        vec![
+            "--no-optional-locks".into(),
+            "-c".into(),
+            format!("branch.{branch}.remote=."),
+            "-c".into(),
+            format!("branch.{branch}.merge=refs/heads/{integration}"),
+            "status".into(),
+            "--porcelain".into(),
+            "--branch".into(),
+        ]
+    }
+
+    /// REQ-4, REQ-7: one process, the lane branch measured against the integration branch.
     #[test]
-    fn a_name_with_nothing_visible_left_falls_to_the_folder_name() {
-        let b = |slug: &str| Some(format!("spec/20261119-{slug}"));
+    fn the_one_git_process_measures_a_lane_branch_against_the_integration_branch() {
         assert_eq!(
-            label_name(b("\u{1b}\u{7}").as_deref(), "demo-1-hooks", "demo", 1),
-            "hooks"
+            status_args(Some("lane"), Some("next")),
+            lane_args("lane", "next")
         );
         assert_eq!(
-            label_name(b("\u{202e}\u{200b}").as_deref(), "demo-1-hooks", "demo", 1),
-            "hooks"
-        );
-        assert_eq!(
-            label_name(
-                b("a\u{202e}b\u{200f}c\u{feff}").as_deref(),
-                "demo-1",
-                "demo",
-                1
+            status_args(
+                Some("spec-impl/20261122-statusline-where"),
+                Some("v2026.11.0")
             ),
-            "abc"
+            lane_args("spec-impl/20261122-statusline-where", "v2026.11.0")
         );
-        // Nothing visible in either source: no name, the card alone.
+        // On the integration branch, with no integration branch, detached or unreadable: git's
+        // own numbers.
+        assert_eq!(status_args(Some("next"), Some("next")), plain_args());
+        assert_eq!(status_args(Some("lane"), None), plain_args());
+        assert_eq!(status_args(None, Some("next")), plain_args());
+        assert_eq!(status_args(None, None), plain_args());
+    }
+
+    /// A name that git could take as an option, as a revision range or as a config value is
+    /// never handed to it; a name of exactly 100 bytes is, and one of 101 is not.
+    #[test]
+    fn a_name_git_could_misread_is_never_passed() {
+        for bad in [
+            "",
+            "-x",
+            "--upload-pack=x",
+            "a b",
+            "a\tb",
+            "a..b",
+            "a=b",
+            "HEAD",
+            "é",
+            "a\nb",
+            "-c core.pager=x",
+        ] {
+            assert_eq!(
+                status_args(Some(bad), Some("next")),
+                plain_args(),
+                "{bad:?}"
+            );
+            assert_eq!(
+                status_args(Some("lane"), Some(bad)),
+                plain_args(),
+                "{bad:?}"
+            );
+        }
+        let hundred = "a".repeat(100);
         assert_eq!(
-            label_name(b("\u{7}").as_deref(), "demo-1-\u{202e}", "demo", 1),
-            ""
+            status_args(Some(&hundred), Some("next")),
+            lane_args(&hundred, "next"),
+            "100 bytes"
         );
-    }
-
-    #[test]
-    fn a_reservation_without_a_branch_takes_the_name_from_the_folder() {
-        let f = fixture();
-        let card = f.reserve("active", "held", &f.wt, None);
-        // The folder is `demo-1-work` and the card number is 1: `work` is left.
-        assert_eq!(f.label(&f.wt), label(card, "work"));
-    }
-
-    #[test]
-    fn no_reservation_for_the_folder_gives_no_label() {
-        let f = fixture();
-        assert_eq!(f.label(&f.wt), None, "an empty ledger");
-        let other = f.wt.parent().unwrap().join("demo-2-other");
-        std::fs::create_dir_all(&other).unwrap();
-        std::fs::write(other.join(".git"), "gitdir: nowhere\n").unwrap();
-        f.reserve("active", "held", &other, Some("spec/20261119-other"));
-        assert_eq!(f.label(&f.wt), None, "a reservation of another folder");
-        // A folder with no `.git` entry anywhere above it is not a worktree.
-        let bare = f._tmp.path().join("bare");
-        std::fs::create_dir_all(&bare).unwrap();
-        assert_eq!(f.label(&bare), None);
-    }
-
-    #[test]
-    fn a_ledger_that_cannot_be_read_gives_no_label() {
-        let f = fixture();
-        f.reserve("active", "held", &f.wt, Some("spec/20261119-demo-work"));
-        // No HOME, no ledger to read.
-        let no_home = Context::for_test(&[], None);
-        assert_eq!(worktree_label(&f.project, &f.wt, &no_home), None);
-        // A project with no profile.
+        let over = "a".repeat(101);
         assert_eq!(
-            worktree_label(&f.project.join("absent"), &f.wt, &f.ctx()),
-            None
+            status_args(Some(&over), Some("next")),
+            plain_args(),
+            "101 bytes"
         );
-        // A budget that is spent.
-        let mut spent = f.ctx();
-        spent.deadline = Some(Instant::now() - Duration::from_millis(1));
-        assert_eq!(worktree_label(&f.project, &f.wt, &spent), None);
-        // With time left the same ledger reads.
-        let mut left = f.ctx();
-        left.deadline = Some(Instant::now() + Duration::from_secs(60));
-        assert!(worktree_label(&f.project, &f.wt, &left).is_some());
+        assert_eq!(
+            status_args(Some("lane"), Some(&over)),
+            plain_args(),
+            "101 bytes"
+        );
     }
 
+    fn collect_pr(pr: serde_json::Value) -> Option<PrInfo> {
+        let stdin = serde_json::json!({ "pr": pr }).to_string();
+        let input = input::parse(stdin.as_bytes());
+        collect(Some(&input), &Context::for_test(&[], None)).pr
+    }
+
+    /// REQ-9: a merge request is the one the stdin says is one, `pr.kind` of `mr` as the
+    /// official statusline page documents it; anything else, including a value of another type,
+    /// is a pull request and never fails the payload.
+    #[test]
+    fn a_merge_request_is_the_one_the_stdin_kind_says() {
+        let pr = collect_pr(serde_json::json!({
+            "number": 12, "review_state": "pending", "kind": "mr"
+        }))
+        .expect("a pr");
+        assert!(pr.merge_request, "kind mr");
+        assert_eq!((pr.number, pr.review_state.as_str()), (12, "pending"));
+        for kind in [
+            serde_json::json!("pull_request"),
+            serde_json::json!("merge_request"),
+            serde_json::json!("MR"),
+            serde_json::json!(""),
+            serde_json::json!(null),
+            serde_json::json!(7),
+            serde_json::json!({"a": 1}),
+        ] {
+            let pr = collect_pr(serde_json::json!({"number": 12, "kind": kind}))
+                .unwrap_or_else(|| panic!("kind {kind} fails the payload"));
+            assert!(!pr.merge_request, "kind {kind}");
+        }
+        let pr = collect_pr(serde_json::json!({"number": 12})).expect("a pr without a kind");
+        assert!(!pr.merge_request);
+    }
+}
+
+/// SPEC-20261122-statusline-where REQ-5 and REQ-6: the name of a session's cache file and the
+/// rule that lets it stand in for git.
+#[cfg(test)]
+mod cache_key_tests {
+    use super::*;
+
+    #[test]
+    fn the_age_limit_is_ten_seconds() {
+        assert_eq!(CACHE_MAX_AGE_SECS, 10);
+        assert_eq!(CACHE_KEEP_SECS, 86_400);
+        assert_eq!(CACHE_REMOVE_PER_RENDER, 10);
+    }
+
+    /// Only the session id names the file, and only an id of 1 to 64 plain characters.
+    #[test]
+    fn only_a_plain_session_id_of_one_to_sixty_four_characters_names_a_file() {
+        assert_eq!(
+            cache_file_name("abc-DEF_123").as_deref(),
+            Some("abc-DEF_123.json")
+        );
+        assert_eq!(cache_file_name("a").as_deref(), Some("a.json"));
+        let n64 = "a".repeat(64);
+        assert_eq!(cache_file_name(&n64), Some(format!("{n64}.json")), "64");
+        for bad in [
+            "".to_string(),
+            "a".repeat(65),
+            "a/b".into(),
+            "../x".into(),
+            "..".into(),
+            "a.b".into(),
+            "a b".into(),
+            "a\0b".into(),
+            "a\nb".into(),
+            "é".into(),
+            "a\\b".into(),
+            "~".into(),
+        ] {
+            assert_eq!(cache_file_name(&bad), None, "{bad:?}");
+        }
+    }
+
+    /// REQ-5: the cache goes under an absolute `TMPDIR`, under `/tmp` when it is unset or
+    /// empty, and nowhere when it is relative.
+    #[test]
+    fn the_cache_base_refuses_a_relative_tmpdir() {
+        assert_eq!(cache_base(None), Some(PathBuf::from("/tmp")));
+        assert_eq!(cache_base(Some("")), Some(PathBuf::from("/tmp")));
+        assert_eq!(
+            cache_base(Some("/var/folders/x")),
+            Some(PathBuf::from("/var/folders/x"))
+        );
+        for relative in [".", "./", "tmp", "./tmp", "../tmp"] {
+            assert_eq!(cache_base(Some(relative)), None, "{relative:?}");
+            assert_eq!(cache_folder(Some(relative)), None, "{relative:?}");
+        }
+    }
+
+    /// In the shared `/tmp` (TMPDIR unset or empty) the cache folder's name carries this user's
+    /// id, so a folder another user made first under the plain name is never this user's; with
+    /// a TMPDIR of the user's own the plain name stays.
     #[cfg(unix)]
     #[test]
-    fn a_folder_spelled_through_a_link_matches_in_either_spelling() {
-        let f = fixture();
-        let link = f.wt.parent().unwrap().join("link-to-work");
-        std::os::unix::fs::symlink(&f.wt, &link).unwrap();
-        // The session is in the folder through the link, the reservation holds the real path.
-        let card = f.reserve("active", "held", &f.wt, Some("spec/20261119-demo-work"));
-        assert_eq!(f.label(&link.join("src")), label(card, "demo-work"));
-        // The reservation holds the link spelling, the session is in the real folder.
-        let g = fixture();
-        let glink = g.wt.parent().unwrap().join("link-to-work");
-        std::os::unix::fs::symlink(&g.wt, &glink).unwrap();
-        let gcard = g.reserve("active", "held", &glink, Some("spec/20261119-demo-work"));
-        assert_eq!(g.label(&g.wt.join("src")), label(gcard, "demo-work"));
+    fn the_shared_tmp_cache_folder_is_named_per_user() {
+        // SAFETY: geteuid has no preconditions and cannot fail.
+        let me = unsafe { libc::geteuid() };
+        let own = PathBuf::from(format!("/tmp/moai-statusline-{me}"));
+        assert_eq!(cache_folder(None), Some(own.clone()));
+        assert_eq!(cache_folder(Some("")), Some(own));
+        assert_eq!(
+            cache_folder(Some("/var/folders/x")),
+            Some(PathBuf::from("/var/folders/x/moai-statusline"))
+        );
     }
 
+    /// The reader's guard: a folder that others may enter (group or other rights), a link to a
+    /// private folder and a file are all refused; only a 0700 folder of this user passes.
+    #[cfg(unix)]
     #[test]
-    fn reading_the_label_leaves_the_ledger_and_the_home_as_they_were() {
-        let f = fixture();
-        f.reserve("active", "held", &f.wt, Some("spec/20261119-demo-work"));
-        let ledger_file = crate::ledger::ledger_path(&f.home, "demo").unwrap();
-        let before = std::fs::read(&ledger_file).unwrap();
-        let listing = |dir: &Path| {
-            let mut all = Vec::new();
-            let mut stack = vec![dir.to_path_buf()];
-            while let Some(d) = stack.pop() {
-                for e in std::fs::read_dir(&d).unwrap() {
-                    let p = e.unwrap().path();
-                    all.push(p.clone());
-                    if p.is_dir() {
-                        stack.push(p);
-                    }
-                }
-            }
-            all.sort();
-            all
+    fn the_reader_accepts_only_a_private_folder() {
+        use std::os::unix::fs::PermissionsExt;
+        let t = tempfile::tempdir().unwrap();
+        let dir = t.path().join("c");
+        std::fs::create_dir(&dir).unwrap();
+        for (mode, want) in [
+            (0o700, true),
+            (0o750, false),
+            (0o705, false),
+            (0o770, false),
+        ] {
+            std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(mode)).unwrap();
+            assert_eq!(is_private_folder(&dir), want, "{mode:o}");
+        }
+        std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o700)).unwrap();
+        let link = t.path().join("link");
+        std::os::unix::fs::symlink(&dir, &link).unwrap();
+        assert!(!is_private_folder(&link));
+        let file = t.path().join("f");
+        std::fs::write(&file, "").unwrap();
+        assert!(!is_private_folder(&file));
+        assert!(!is_private_folder(&t.path().join("missing")));
+    }
+
+    /// REQ-6 at its edges: an age of 9 seconds is fresh, 10 and 11 are not; the same `HEAD`
+    /// content and the same integration commit are both needed.
+    #[test]
+    fn a_cache_is_fresh_below_ten_seconds_with_the_same_head_and_integration_commit() {
+        let fresh = |age: i64, cached_head: &str, head: &str, cached_i: &str, i: &str| {
+            cache_is_fresh(1_000, 1_000 + age, cached_head, head, cached_i, i)
         };
-        let tree = listing(&f.home);
-        assert!(f.label(&f.wt).is_some());
-        assert_eq!(std::fs::read(&ledger_file).unwrap(), before);
-        assert_eq!(listing(&f.home), tree, "no file or folder made in the HOME");
+        let (h, i) = ("ref: refs/heads/main\n", "0123456789abcdef");
+        assert!(fresh(0, h, h, i, i), "age 0");
+        assert!(fresh(9, h, h, i, i), "age 9");
+        assert!(!fresh(10, h, h, i, i), "age 10");
+        assert!(!fresh(11, h, h, i, i), "age 11");
+        assert!(!fresh(3_600, h, h, i, i), "an hour");
+        assert!(
+            !fresh(1, h, "ref: refs/heads/other\n", i, i),
+            "another HEAD"
+        );
+        assert!(!fresh(1, h, h, i, "fedcba9876543210"), "another commit");
+        assert!(
+            !fresh(1, h, h, "", i),
+            "a cache without an integration commit"
+        );
+        assert!(
+            fresh(1, h, h, "", ""),
+            "no integration branch on both sides"
+        );
     }
 }

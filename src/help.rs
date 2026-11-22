@@ -25,7 +25,7 @@ pub const GROUPS: &[Group] = &[
     Group {
         heading: "Start",
         heading_ko: "시작",
-        commands: &[("cc", true), ("glm", true), ("omp", true)],
+        commands: &[("cc", true), ("glm", true)],
     },
     Group {
         heading: "Project",
@@ -63,11 +63,12 @@ pub const GROUPS: &[Group] = &[
             ("labels-apply", false),
             ("claude-settings-plan", false),
             ("claude-settings-apply", false),
-            ("codex-config-plan", false),
-            ("codex-config-apply", false),
             ("hooks-plan", false),
             ("hooks-apply", false),
             ("hooks-revert", false),
+            ("git-hooks-plan", false),
+            ("git-hooks-apply", false),
+            ("git-hooks-revert", false),
             ("go-hooks-plan", false),
             ("go-hooks-apply", false),
             ("go-hooks-revert", false),
@@ -77,8 +78,6 @@ pub const GROUPS: &[Group] = &[
             ("agents-merge-plan", false),
             ("agents-merge-apply", false),
             ("agents-merge-revert", false),
-            ("agents-project-plan", false),
-            ("agents-project-apply", false),
         ],
     },
     Group {
@@ -99,6 +98,8 @@ pub const GROUPS: &[Group] = &[
             ("home-install-plan", false),
             ("home-install-apply", false),
             ("home-install-revert", false),
+            ("host-wake", false),
+            ("star-ask", false),
             ("worktree-move-plan", true),
             ("worktree-move-apply", true),
             ("update-plan", false),
@@ -150,7 +151,6 @@ pub const GROUPS: &[Group] = &[
         heading_ko: "진단",
         commands: &[
             ("claude-doctor", true),
-            ("codex-doctor", true),
             ("install-inspect", true),
             ("identity", true),
             ("worktree-report", true),
@@ -183,6 +183,7 @@ pub const GROUPS: &[Group] = &[
             ("lane-resume-note", false),
             ("lane-resume-check", false),
             ("lane-duty-line", false),
+            ("lane-run", false),
             ("lane-status", false),
             ("lane-screen", false),
             ("lane-send", false),
@@ -218,6 +219,7 @@ pub const GROUPS: &[Group] = &[
             ("trailer-check", false),
             ("bundle", false),
             ("audit-clone-plan", false),
+            ("audit-slot", false),
             ("labels-check", false),
             ("decision-due", false),
             ("decision-file-check", false),
@@ -275,8 +277,6 @@ pub const GROUPS: &[Group] = &[
             ("snapshot-describe", false),
             ("package-inspect", false),
             ("package-resolve", false),
-            ("codex-projection-plan", false),
-            ("codex-projection-apply", false),
             ("project-skill-plan", false),
             ("project-skill-apply", false),
             ("project-skill-revert", false),
@@ -286,6 +286,7 @@ pub const GROUPS: &[Group] = &[
             ("archive-search", false),
             ("worktree-gc-plan", false),
             ("worktree-gc-apply", false),
+            ("worktree-slot", false),
             ("worktree-install-plan", false),
             ("hygiene-plan", false),
             ("hygiene-apply", false),
@@ -302,7 +303,6 @@ pub const GROUPS: &[Group] = &[
 pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("cc", &["cc -l", "cc -a"]),
     ("glm", &["glm -a"]),
-    ("omp", &["omp -a", "omp -l --print-command"]),
     ("project-detect", &["project-detect ."]),
     ("project-plan", &["project-plan . < request.json", "project-apply --plan-digest <digest> --permission-reference <ref> . < request.json"]),
     ("project-apply", &["project-apply --plan-digest <digest> --permission-reference <ref> . < request.json"]),
@@ -329,11 +329,12 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("labels-apply", &["labels-apply --plan-digest <digest> --permission-reference <ref> . < request.json"]),
     ("claude-settings-plan", &["claude-settings-plan . < request.json", "claude-settings-apply --plan-digest <digest> --permission-reference <ref> . < request.json"]),
     ("claude-settings-apply", &["claude-settings-apply --plan-digest <digest> --permission-reference <ref> . < request.json"]),
-    ("codex-config-plan", &["codex-config-plan . < request.json", "codex-config-apply --plan-digest <digest> --permission-reference <ref> . < request.json"]),
-    ("codex-config-apply", &["codex-config-apply --plan-digest <digest> --permission-reference <ref> . < request.json"]),
-    ("hooks-plan", &["hooks-plan --host claude .", "hooks-apply --host claude --plan-digest <digest> --permission-reference <ref> .", "hooks-plan --host codex --lane-loop agent-1 --repo modu-ai/moai-adk ."]),
+    ("hooks-plan", &["hooks-plan --host claude .", "hooks-apply --host claude --plan-digest <digest> --permission-reference <ref> ."]),
     ("hooks-apply", &["hooks-apply --host claude --plan-digest <digest> --permission-reference <ref> ."]),
     ("hooks-revert", &["hooks-revert --receipt <id> --permission-reference <ref> ."]),
+    ("git-hooks-plan", &["git-hooks-plan ."]),
+    ("git-hooks-apply", &["git-hooks-apply --confirm-git-hooks <token> ."]),
+    ("git-hooks-revert", &["git-hooks-revert <stamp> ."]),
     ("go-hooks-plan", &["go-hooks-plan .", "go-hooks-apply --plan-digest <digest> --permission-reference <ref> ."]),
     ("go-hooks-apply", &["go-hooks-apply --plan-digest <digest> --permission-reference <ref> ."]),
     ("go-hooks-revert", &["go-hooks-revert --receipt <id> --permission-reference <ref> ."]),
@@ -343,8 +344,6 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("agents-merge-plan", &["agents-merge-plan .", "agents-merge-apply --plan-digest <digest> --permission-reference <ref> ."]),
     ("agents-merge-apply", &["agents-merge-apply --plan-digest <digest> --permission-reference <ref> ."]),
     ("agents-merge-revert", &["agents-merge-revert --receipt <id> --permission-reference <ref> ."]),
-    ("agents-project-plan", &["agents-project-plan . skills/moai agents", "agents-project-apply --plan-digest <digest> --permission-reference <ref> . skills/moai agents"]),
-    ("agents-project-apply", &["agents-project-apply --plan-digest <digest> --permission-reference <ref> . skills/moai agents"]),
     ("ledger-status", &["ledger-status ."]),
     (
         "card",
@@ -392,6 +391,8 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("home-install-plan", &["home-install-plan", "home-install-apply --home <HOME> --now 2026-11-14T00:00:00Z --plan-digest <digest> --permission-reference <ref>"]),
     ("home-install-apply", &["home-install-apply --home <HOME> --now 2026-11-14T00:00:00Z --plan-digest <digest> --permission-reference <ref>"]),
     ("home-install-revert", &["home-install-revert --home <HOME> --permission-reference <ref>"]),
+    ("host-wake", &["host-wake leader --text <line>"]),
+    ("star-ask", &["star-ask --dismiss"]),
     ("worktree-move-plan",&["worktree-move-plan .", "worktree-move-apply --plan-digest <digest> --permission-reference <ref> ."]),
     ("worktree-move-apply", &["worktree-move-apply --plan-digest <digest> --permission-reference <ref> ."]),
     ("update-plan", &["update-plan ~ <stage>", "update-apply --plan-digest <digest> --permission-reference <ref> ~ <stage> < request.json"]),
@@ -431,7 +432,6 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("keys-revert", &["keys-revert --receipt <keys-id> --permission-reference <ref> ~"]),
     ("models-revert", &["models-revert --receipt <models-id> --permission-reference <ref> ~"]),
     ("claude-doctor", &["claude-doctor ."]),
-    ("codex-doctor", &["codex-doctor ."]),
     ("install-inspect", &["install-inspect"]),
     ("identity", &["identity ."]),
     ("worktree-report", &["worktree-report ."]),
@@ -501,6 +501,14 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
             "lane-duty-line --lane 1 --host codex --first <task>",
         ],
     ),
+    (
+        "lane-run",
+        &[
+            "lane-run show --lane agent-1",
+            "lane-run set nonstop --lane agent-1",
+            "lane-run prompt --lane agent-1",
+        ],
+    ),
     ("lane-status", &["lane-status . < request.json"]),
     (
         "lane-screen",
@@ -557,6 +565,7 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
         &["audit-gate < input.json", "audit-gate --require-pass < input.json"],
     ),
     ("audit-clone-plan", &["audit-clone-plan --pr 2824 --head <sha> --head-branch <head-branch> --base-branch <base-branch> ."]),
+    ("audit-slot", &["audit-slot prep auto --head <sha> --holder agent-2 --lane .claude/worktrees/lane-01", "audit-slot done audit-1 --discard --holder agent-2"]),
     ("labels-check", &["labels-check --repo modu-ai/moai-adk ."]),
     ("decision-due", &["decision-due docs/decisions/bundle.md"]),
     ("decision-file-check", &["decision-file-check docs/decisions/bundle.md"]),
@@ -602,8 +611,6 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("snapshot-describe", &["snapshot-describe ."]),
     ("package-inspect", &["package-inspect skills/moai"]),
     ("package-resolve", &["package-resolve ."]),
-    ("codex-projection-plan", &["codex-projection-plan --target <folder> skills/moai", "codex-projection-apply --target <folder> --plan-digest <digest> --permission-reference <ref> skills/moai"]),
-    ("codex-projection-apply", &["codex-projection-apply --target <folder> --plan-digest <digest> --permission-reference <ref> skills/moai"]),
     ("project-skill-plan", &["project-skill-plan . < request.json", "project-skill-apply . < request.json"]),
     ("project-skill-apply", &["project-skill-apply . < request.json"]),
     ("project-skill-revert", &["project-skill-revert . < request.json"]),
@@ -612,6 +619,7 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("archive-restore", &["archive-restore --spec SPEC-001 --permission-reference <ref> ."]),
     ("archive-search", &["archive-search --query cache ."]),
     ("worktree-gc-plan", &["worktree-gc-plan --integration-ref origin/main .", "worktree-gc-apply --integration-ref origin/main --plan-digest <digest> --permission-reference <ref> ."]),
+    ("worktree-slot", &["worktree-slot plan", "worktree-slot ensure lane-01 --at origin/main"]),
     ("worktree-install-plan", &["worktree-install-plan --scope web ."]),
     ("hygiene-plan", &["hygiene-plan --integration-ref origin/main ."]),
     ("hygiene-apply", &["hygiene-apply --integration-ref origin/main --plan-digest <digest> --permission-reference <ref> ."]),
@@ -736,53 +744,8 @@ pub const ARG_HELP_FOR: &[(&str, &str, &str)] = &[
         "attempt",
         "Attempt number of the operation id",
     ),
-    ("hooks-apply", "host", "`claude` or `codex`"),
-    ("hook-receipt", "host", "`claude` or `codex`"),
-    (
-        "codex-projection-plan",
-        "package",
-        "Common skill package folder to project",
-    ),
-    (
-        "codex-projection-apply",
-        "package",
-        "Common skill package folder to project",
-    ),
-    (
-        "codex-projection-plan",
-        "display_name",
-        "`display_name` written to `agents/openai.yaml`",
-    ),
-    (
-        "codex-projection-apply",
-        "display_name",
-        "`display_name` written to `agents/openai.yaml`",
-    ),
-    (
-        "codex-projection-plan",
-        "short_description",
-        "`short_description` written to `agents/openai.yaml`",
-    ),
-    (
-        "codex-projection-apply",
-        "short_description",
-        "`short_description` written to `agents/openai.yaml`",
-    ),
-    (
-        "codex-projection-plan",
-        "default_prompt",
-        "`default_prompt` written to `agents/openai.yaml`",
-    ),
-    (
-        "codex-projection-apply",
-        "default_prompt",
-        "`default_prompt` written to `agents/openai.yaml`",
-    ),
-    (
-        "codex-projection-apply",
-        "allow_implicit_invocation",
-        "Write `policy.allow_implicit_invocation`; omitted keeps Codex's default",
-    ),
+    ("hooks-apply", "host", "`claude`"),
+    ("hook-receipt", "host", "`claude`"),
     (
         "worktree-apply",
         "branch_prefix",
@@ -897,7 +860,7 @@ pub const ARG_HELP_FOR: &[(&str, &str, &str)] = &[
     (
         "session",
         "host",
-        "Only `claude`; other hosts start with `cc|glm|omp -l|-a`",
+        "Only `claude`; other hosts start with `cc|glm -l|-a`",
     ),
     ("session", "model", "Claude model"),
     ("session", "effort", "Claude effort"),
@@ -914,8 +877,8 @@ pub fn arg_help(command: &str, id: &str) -> Option<&'static str> {
 }
 
 /// The launchers the root help shows on one line.
-const LAUNCHERS: [&str; 3] = ["cc", "glm", "omp"];
-const LAUNCHER_LINE: (&str, &str) = ("cc, glm, omp", "Start a Claude Code, GLM or OMP session");
+const LAUNCHERS: [&str; 2] = ["cc", "glm"];
+const LAUNCHER_LINE: (&str, &str) = ("cc, glm", "Start a Claude Code or GLM session");
 
 /// The Korean one-line about of each command the root help shows (S6d, #2825; design 8). The
 /// other commands keep their English about in `help --all` until S6e moves the command help.
@@ -946,7 +909,6 @@ pub const ABOUT_KO: &[(&str, &str)] = &[
     ("key-import-plan", "옛 키 파일 가져오기 미리 보기"),
     ("key-import-apply", "미리 본 옛 키 파일 가져오기"),
     ("claude-doctor", "Claude Code 가 AGENTS.md 를 읽는지 확인"),
-    ("codex-doctor", "Codex 지침과 스킬 확인"),
     ("install-inspect", "설치된 MoAI 실행 파일 보기"),
     ("identity", "경로가 클론 안 어디에 있는지 보기"),
     ("worktree-report", "worktree 가 쓰는 공간 보고"),
@@ -955,7 +917,7 @@ pub const ABOUT_KO: &[(&str, &str)] = &[
 ];
 
 /// The launcher line's about on a Korean terminal.
-const LAUNCHER_LINE_KO: &str = "Claude Code·GLM·OMP 세션 시작";
+const LAUNCHER_LINE_KO: &str = "Claude Code·GLM 세션 시작";
 /// clap's `Usage:` heading on a Korean terminal.
 const USAGE_KO: &str = "사용법:";
 /// clap's `Options:` heading of `help --all` on a Korean terminal.
@@ -1080,7 +1042,7 @@ pub fn render_groups_in(cmd: &Command, all: bool, width: usize, lang: Lang) -> S
 pub const GETTING_STARTED: &[(&str, &str)] = &[
     ("install-inspect", "Check the installed MoAI"),
     ("update", "Install or update the MoAI skill and agents"),
-    ("cc", "Start a session in this folder (or: glm, omp)"),
+    ("cc", "Start a session in this folder (or: glm)"),
     ("/moai project", "In the session: set up this project"),
 ];
 
@@ -1089,7 +1051,7 @@ pub const GETTING_STARTED: &[(&str, &str)] = &[
 pub const ROOT_EXAMPLES: &[(&str, &str)] = &[
     // SPEC-20261118-launcher-agent-entry: the role is entered inside the session; at 60
     // columns this ends on column 59, so it never wraps.
-    ("cc -l", "leader, then /moai --mode-leader"),
+    ("cc -l", "start the leader session"),
     ("update", "preview and apply an update"),
     ("project-detect .", "show the facts of this project"),
 ];
@@ -1322,13 +1284,13 @@ pub fn configure_styled(
     // spells its usage lines out in the template instead. The second line starts under the
     // first one's command (`Usage:` is six cells, a Korean heading two per letter).
     let usage = format!(
-        "{bin} <command> [options]\n{}{bin} cc|glm|omp -l|-a    {LEAD_OR_AGENT}",
+        "{bin} <command> [options]\n{}{bin} cc|glm -l|-a    {LEAD_OR_AGENT}",
         " ".repeat("Usage:".width() + 1)
     );
     let usage_lines = match lang {
         Lang::En => "{usage-heading} {usage}".to_string(),
         Lang::Ko => format!(
-            "{USAGE_KO} {bin} <command> [options]\n{}{bin} cc|glm|omp -l|-a    {LEAD_OR_AGENT_KO}",
+            "{USAGE_KO} {bin} <command> [options]\n{}{bin} cc|glm -l|-a    {LEAD_OR_AGENT_KO}",
             " ".repeat(USAGE_KO.width() + 1)
         ),
     };
@@ -1624,28 +1586,18 @@ const LONG_ABOUT_KO: &[(&str, &str)] = &[
     ),
     (
         "cc",
-        "Claude Code 세션 실행기: `cc -l|-a`. `-l|-a` 는 세션 이름과 권한만 정하고, 역할은 세션 \
-         안의 `/moai --mode-leader`·`/moai --mode-agent` 로 시작.",
+        "Claude Code 세션 실행기: `cc -l|-a`. `-l|-a` 는 세션 이름과 권한만 정해요. `-l` 은 리더 \
+         세션이고, `-a` 세션의 일은 세션 안의 `/moai work` 로 시작.",
     ),
     (
         "glm",
         "z.ai GLM 위의 Claude Code: `glm -l|-a`(환경의 ANTHROPIC_AUTH_TOKEN 이나 키 파일이 \
-         필요해요). `-l|-a` 는 세션 이름과 권한만 정하고, 역할은 세션 안의 \
-         `/moai --mode-leader`·`/moai --mode-agent` 로 시작.",
-    ),
-    (
-        "omp",
-        "Oh My Pi(OMP) 세션 실행기: `omp -l|-a`. `-l|-a` 는 세션 이름과 권한(`--approval-mode`)만 \
-         정하고, 역할은 세션 안의 `/skill:moai --mode-leader`·`/skill:moai --mode-agent` 로 \
-         시작. z.ai 모델이면 glm 키가 `ZAI_API_KEY` 로 OMP 에 가요(명령에는 없어요).",
+         필요해요). `-l|-a` 는 세션 이름과 권한만 정해요. `-l` 은 리더 세션이고, `-a` 세션의 \
+         일은 세션 안의 `/moai work` 로 시작.",
     ),
     (
         "claude-doctor",
         "Claude Code 를 읽기만 하고 확인해요: PROJECT 에서 시작한 세션이 AGENTS.md 를 읽는지.",
-    ),
-    (
-        "codex-doctor",
-        "Codex 를 읽기만 하고 진단해요: AGENTS 사슬과 크기 한도, 겹친 스킬, `.codex/` 층.",
     ),
     (
         "install-inspect",
@@ -1709,11 +1661,10 @@ const LONG_ABOUT_KO: &[(&str, &str)] = &[
     ),
 ];
 
-/// The launchers' own abouts (S6e-6): the root list shows the three on one line instead.
+/// The launchers' own abouts (S6e-6): the root list shows the two on one line instead.
 const LAUNCHER_ABOUT_KO: &[(&str, &str)] = &[
     ("cc", "Claude Code 세션 시작"),
     ("glm", "z.ai GLM 으로 Claude Code 세션 시작"),
-    ("omp", "Oh My Pi(OMP) 세션 시작"),
 ];
 
 /// The Korean help of a moved command's argument (S6e-2): `(command, id, text)`, an empty
@@ -1721,88 +1672,56 @@ const LAUNCHER_ABOUT_KO: &[(&str, &str)] = &[
 const ARG_HELP_KO: &[(&str, &str, &str)] = &[
     ("", "project", "프로젝트 루트"),
     (
-        "cc|glm|omp",
+        "cc|glm",
         "prompt",
         "첫 프롬프트에 덧붙일 글(받는 호스트가 없어요)",
     ),
     (
-        "cc|glm|omp",
+        "cc|glm",
         "leader",
-        "리더 세션(이름 `leader` 와 권한만 정함, 역할은 세션 안의 `/moai --mode-leader`, OMP 는 \
-         `/skill:moai --mode-leader`)",
+        "리더 세션(이름 `leader` 와 권한만 정함)",
     ),
     (
-        "cc|glm|omp",
+        "cc|glm",
         "agent",
-        "에이전트 세션(이름과 권한만 정함, 역할은 세션 안의 `/moai --mode-agent`, OMP 는 \
-         `/skill:moai --mode-agent`)",
+        "에이전트 세션(이름과 권한만 정함, 일은 세션 안의 `/moai work` 로 시작)",
     ),
     (
-        "cc|glm|omp",
+        "cc|glm",
         "name",
         "세션 이름(기본: -l 은 `leader`, -a 는 프로젝트의 다음 `agent-N`, 역할 없으면 없음)",
     ),
     (
-        "cc|glm|omp",
+        "cc|glm",
         "model",
-        "주 모델(Claude 호스트 기본 `opus`, omp 는 정하지 않으면 자기 기본값)",
+        "주 모델(Claude 호스트 기본 `opus`)",
     ),
     (
-        "cc|glm|omp",
+        "cc|glm",
         "effort",
-        "effort(Claude 기본 `medium`, omp 는 지정할 때만 low|medium|high|xhigh|max, omp 는 `--thinking` 으로)",
+        "effort(Claude 기본 `medium`)",
     ),
     (
-        "cc|glm|omp",
+        "cc|glm",
         "advisor",
         "Claude 호스트의 advisor 모델(fable|opus|sonnet 또는 claude-* 전체 id). 기본 없음 — \
          사용자 설정 `launcher.advisor` 로 켤 수 있음. 사용량 크레딧이 청구될 수 있음",
     ),
     (
-        "cc|glm|omp",
+        "cc|glm",
         "no_advisor",
         "사용자 설정 `launcher.advisor` 가 켜도 `--advisor` 를 넘기지 않기",
     ),
     (
-        "cc|glm|omp",
+        "cc|glm",
         "permissions",
-        "권한 질문 유지: `--dangerously-skip-permissions` 없음(Claude 호스트), omp 는 `--approval-mode always-ask-cached`. 없으면 \
-         -l|-a 세션은 전체 접근(omp: `--approval-mode yolo`), 역할 없는 세션은 권한 플래그를 받지 않음",
+        "권한 질문 유지: `--dangerously-skip-permissions` 없음(Claude 호스트). 없으면 \
+         -l|-a 세션은 전체 접근, 역할 없는 세션은 권한 플래그를 받지 않음",
     ),
     (
-        "cc|glm|omp",
+        "cc|glm",
         "dry_run",
         "호스트를 시작하는 대신 만든 명령을 JSON 으로 찍기(`--print-command` 도 같은 뜻)",
-    ),
-    (
-        "codex-doctor",
-        "project",
-        "프로젝트 루트(Codex 는 여기서 작업 폴더까지 내려가며 읽음)",
-    ),
-    (
-        "codex-doctor",
-        "cwd",
-        "프로젝트 안의 작업 폴더(기본: 프로젝트 루트)",
-    ),
-    (
-        "codex-doctor",
-        "codex_home",
-        "전역 AGENTS 파일이 있는 Codex home(기본: $CODEX_HOME, 없으면 ~/.codex)",
-    ),
-    (
-        "codex-doctor",
-        "home",
-        "`.agents/skills` 가 있는 home(기본: $HOME)",
-    ),
-    (
-        "codex-doctor",
-        "fallback",
-        "`project_doc_fallback_filenames` 항목(되풀이 가능, config.toml 은 안 읽음)",
-    ),
-    (
-        "codex-doctor",
-        "max_bytes",
-        "`project_doc_max_bytes`(기본 32768, config.toml 은 안 읽음)",
     ),
     (
         "install-inspect",
@@ -1894,6 +1813,12 @@ const ARG_HELP_KO: &[(&str, &str, &str)] = &[
         "미리 보기의 `switch.confirm_token`: 이름 전환 스크립트 `<상태 폴더>/path/moai` 를 \
          새 것으로 바꿈. 옛 파일은 옆에 `moai.before-<UTC>` 로 보관됨. --confirm 이 없으면 \
          나머지는 미리 보기로 남음",
+    ),
+    (
+        "update",
+        "confirm_git_hooks",
+        "미리 보기의 `git_hooks.confirm_token`: 프로젝트의 Go 세대 git 훅을 은퇴하고 \
+         Rust 훅을 설치함. --confirm 이 없으면 나머지는 미리 보기로 남음",
     ),
     (
         "update",
@@ -2188,7 +2113,7 @@ const ARG_HELP_KO: &[(&str, &str, &str)] = &[
 
 /// The Korean help of argument `id` of `command`, when the table has one.
 fn arg_help_ko(command: &str, id: &str) -> Option<&'static str> {
-    // A command field may name several commands, `cc|glm|omp`.
+    // A command field may name several commands, `cc|glm`.
     ARG_HELP_KO
         .iter()
         .find(|(c, i, _)| c.split('|').any(|w| w == command) && *i == id)
@@ -2232,7 +2157,7 @@ fn korean_frame(c: Command) -> Command {
     // replaced by the same flag with Korean lines (`ArgAction::Help`: `-h` short, `--help` long).
     // Every help starts on the line after its name, `LONG_ARG_INDENT` in, in `-h` as in
     // `--help`: clap counts a Hangul letter as one cell, so beside a wide name it would judge a
-    // Korean help to fit when it does not (`codex-projection-plan -h` ran to 72 cells at 60).
+    // Korean help to fit when it does not (a long command's `-h` ran to 72 cells at 60).
     let room = width().saturating_sub(LONG_ARG_INDENT);
     c.disable_help_flag(true)
         .arg(
@@ -2454,9 +2379,9 @@ mod tests {
         let cmd = root_cmd();
         let en = render_groups(&cmd, false, 100);
         assert_eq!(render_groups_in(&cmd, false, 100, Lang::En), en);
-        assert!(en.starts_with("Start\n  cc, glm, omp"), "{en}");
+        assert!(en.starts_with("Start\n  cc, glm  "), "{en}");
         let ko = render_groups_in(&cmd, false, 100, Lang::Ko);
-        assert!(ko.starts_with("시작\n  cc, glm, omp"), "{ko}");
+        assert!(ko.starts_with("시작\n  cc, glm  "), "{ko}");
         assert!(ko.contains(LAUNCHER_LINE_KO), "{ko}");
         assert!(!ko.contains("About "), "{ko}");
         assert!(ko.contains("  project-detect  "), "{ko}");
@@ -2499,7 +2424,7 @@ mod tests {
                 "{text}"
             );
             assert!(
-                text.contains("\n\nCommands\n  Start\n    cc, glm, omp  "),
+                text.contains("\n\nCommands\n  Start\n    cc, glm  "),
                 "{text}"
             );
             assert!(text.contains("\n\nExamples\n  moai cc -l  "), "{text}");
@@ -2518,7 +2443,7 @@ mod tests {
                         "  1. moai install-inspect",
                         "  moai cc -l",
                         "  moai help --all",
-                        "    cc, glm, omp",
+                        "    cc, glm",
                     ]
                     .iter()
                     .find(|p| l.starts_with(**p))
@@ -2757,7 +2682,7 @@ mod tests {
         );
         let usage = format!("\n{USAGE_KO} moai <command> [options]\n");
         assert!(ko.contains(&usage), "{ko}");
-        let second = ko.lines().find(|l| l.contains("cc|glm|omp")).unwrap();
+        let second = ko.lines().find(|l| l.contains("cc|glm -l|-a")).unwrap();
         let first = ko.lines().find(|l| l.starts_with(USAGE_KO)).unwrap();
         assert_eq!(
             second.find("moai").map(|i| second[..i].width()),

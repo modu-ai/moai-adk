@@ -39,13 +39,15 @@ impl Run {
     }
 }
 
-/// `moai lane-screen ARGS` in `cwd` with HOME `home`, `input` on standard input.
+/// `moai lane-screen ARGS` in `cwd` with HOME `home` and `TMPDIR` `home` (where a lane's usage
+/// record is looked for), `input` on standard input.
 fn run_in(cwd: &Path, home: &Path, input: &str, args: &[&str]) -> Run {
     let mut child = Command::new(BIN)
         .arg("lane-screen")
         .args(args)
         .current_dir(cwd)
         .env("HOME", home)
+        .env("TMPDIR", home)
         .env("GIT_CONFIG_GLOBAL", "/dev/null")
         .env("GIT_CONFIG_SYSTEM", "/dev/null")
         .stdin(Stdio::piped())
@@ -563,7 +565,9 @@ fn lane_screen_reset_a_time_outside_the_years_1970_to_9999_in_utc_is_unknown() {
     }
 }
 
-fn home_with(windows: &[(&str, f64, i64)]) -> tempfile::TempDir {
+/// A lane HOME whose usage record holds `windows`, kept in the cache folder of the `TMPDIR`
+/// `tmpdir` (the reader's `TMPDIR`: [`run_in`] gives it its `home` argument).
+fn home_with(tmpdir: &Path, windows: &[(&str, f64, i64)]) -> tempfile::TempDir {
     let home = tempfile::tempdir().unwrap();
     let map: BTreeMap<String, Window> = windows
         .iter()
@@ -577,18 +581,21 @@ fn home_with(windows: &[(&str, f64, i64)]) -> tempfile::TempDir {
             )
         })
         .collect();
-    record(home.path(), map, NOW).unwrap();
+    record(home.path(), tmpdir.to_str(), map, NOW).unwrap();
     home
 }
 
 #[test]
 fn lane_screen_reset_the_lane_home_record_beats_the_screen_text() {
     let resets_at = NOW + 5 * 3600 + 7;
-    let home = home_with(&[
-        ("five_hour", 100.0, resets_at),
-        ("seven_day", 40.0, NOW + 86_400 * 3),
-    ]);
     let cwd = tempfile::tempdir().unwrap();
+    let home = home_with(
+        cwd.path(),
+        &[
+            ("five_hour", 100.0, resets_at),
+            ("seven_day", 40.0, NOW + 86_400 * 3),
+        ],
+    );
     let r = run_in(
         cwd.path(),
         cwd.path(),
@@ -609,8 +616,8 @@ fn lane_screen_reset_the_lane_home_record_beats_the_screen_text() {
 
 #[test]
 fn lane_screen_reset_a_window_that_is_not_at_its_limit_is_not_the_reset() {
-    let home = home_with(&[("five_hour", 90.0, NOW + 3600)]);
     let cwd = tempfile::tempdir().unwrap();
+    let home = home_with(cwd.path(), &[("five_hour", 90.0, NOW + 3600)]);
     let r = run_in(
         cwd.path(),
         cwd.path(),

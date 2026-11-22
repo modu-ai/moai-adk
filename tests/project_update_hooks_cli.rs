@@ -739,7 +739,7 @@ fn an_unreadable_record_names_its_file_and_the_next_step() {
 /// older set in both, written the way that release did (the `moai-cli` command names).
 fn hold_an_older_set(fx: &GoFx) {
     let record = with_the_hook_set_installed(fx);
-    let older = Value::Object(moai_cli::hooks::legacy_hooks("claude", None).unwrap());
+    let older = Value::Object(moai_cli::hooks::legacy_hooks("claude").unwrap());
     let mut s = settings_now(fx);
     s["hooks"] = older.clone();
     write_settings(fx, &s);

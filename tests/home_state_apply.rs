@@ -61,6 +61,7 @@ fn call(args: &[&str]) -> Value {
     let out = Command::new(BIN)
         .args(args)
         .env_remove("MOAI_HOME")
+        .envs([crate::common::process_table()])
         .output()
         .unwrap();
     serde_json::from_slice(&out.stdout)

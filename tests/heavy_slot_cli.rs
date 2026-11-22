@@ -192,7 +192,7 @@ fn the_commands_exit_code_comes_back() {
 }
 
 /// AC-2: a failing command is reported with the load averages and the free disk space of the
-/// working folder; a passing one is not.
+/// working folder (a passing one too since SPEC-20261122-heavy-slot-exit-line).
 #[test]
 fn a_failure_reports_load_and_disk() {
     let d = tempfile::tempdir().unwrap();
@@ -202,8 +202,33 @@ fn a_failure_reports_load_and_disk() {
     assert!(err.contains("lane-x exited 1"), "{err}");
     assert!(err.contains("load "), "{err}");
     assert!(err.contains("disk free "), "{err}");
-    let ok = run(acquire(d.path(), "1", "lane-x", &["true"]));
-    assert!(!String::from_utf8_lossy(&ok.stderr).contains("disk free"));
+}
+
+/// SPEC-20261122-heavy-slot-exit-line AC-1: a started command's end is always announced with one
+/// exit line, 0 included, so a shell waiting for that line ends on success too; the command's
+/// own exit code and stdout come back unchanged.
+#[test]
+fn a_started_command_prints_its_exit_line_on_success_and_on_failure() {
+    let d = tempfile::tempdir().unwrap();
+    for (cmd, code) in [("echo out; exit 0", 0), ("echo out; exit 4", 4)] {
+        let out = run(acquire(d.path(), "1", "lane-x", &["sh", "-c", cmd]));
+        assert_eq!(out.status.code(), Some(code), "{cmd}: {}", text(&out));
+        assert_eq!(String::from_utf8_lossy(&out.stdout), "out\n", "{cmd}");
+        let err = String::from_utf8_lossy(&out.stderr);
+        let want = format!("heavy-slot: lane-x exited {code}; ");
+        let lines: Vec<&str> = err.lines().filter(|l| l.starts_with(&want)).collect();
+        assert_eq!(lines.len(), 1, "{cmd}: {err}");
+        assert!(
+            lines[0].contains("load ") && lines[0].contains("disk free "),
+            "{cmd}: {err}"
+        );
+        assert_eq!(
+            err.lines().filter(|l| l.contains(" exited ")).count(),
+            1,
+            "{cmd}: {err}"
+        );
+    }
+    assert_eq!(status(d.path())["held"], serde_json::json!([]));
 }
 
 /// AC-1: with one slot the second caller waits — printing its place with load and disk — and

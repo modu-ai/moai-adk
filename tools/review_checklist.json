@@ -140,7 +140,7 @@
           }
         ]
       },
-      "check": "Host worktree guard (Issue #2836): a refusal that names the session as isolated in a worktree comes from Claude Code itself, not from a MoAI hook (whose refusals start with `MoAI tool-preflight:`); the shapes it accepts are listed in the MODE-AGENT workflow (\"Host worktree guard\"). They only change how a permitted effect is spelled, as the rule above says.",
+      "check": "Host worktree guard (Issue #2836): a refusal that names the session as isolated in a worktree comes from Claude Code itself, not from a MoAI hook (whose refusals start with `MoAI tool-preflight:`); the shapes it accepts are listed below (\"Host worktree guard\"). They only change how a permitted effect is spelled, as the rule above says.",
       "source": "Issue #2836",
       "added": "2026-11-14"
     },

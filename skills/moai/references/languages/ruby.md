@@ -1,6 +1,6 @@
 # Language: Ruby
 
-When to read: `internal/quality` sent you here because the project's detected languages include `ruby`. The project's own declarations (CI steps, `Rakefile` tasks, `AGENTS.md`) win over every default below.
+When to read: `internal/quality` sent you here because the project's detected languages include `ruby`. The project's own declarations (CI steps, `Rakefile` tasks, `CLAUDE.md`) win over every default below.
 
 ## Evidence and defaults
 

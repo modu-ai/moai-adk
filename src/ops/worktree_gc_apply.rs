@@ -49,6 +49,7 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             max_checked: args.max_checked,
             cursor: args.cursor,
             only: args.only,
+            max_worktrees: None,
         },
         &args.plan_digest,
         &args.permission_reference,

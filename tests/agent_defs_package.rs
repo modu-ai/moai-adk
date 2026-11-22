@@ -5,6 +5,10 @@
 use moai_cli::agent_defs::{package_agents, render, HOSTS, SOURCE_DIR};
 use std::path::Path;
 
+/// The renderings that still exist: the home installer's host and the OMP file the project layer
+/// writes until it moves out.
+const RENDERED_HOSTS: [&str; 2] = ["claude", "omp"];
+
 fn package() -> std::path::PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai")
 }
@@ -208,37 +212,18 @@ fn the_package_holds_the_five_roles_of_the_contract() {
 
 #[test]
 fn every_role_renders_for_every_host_deterministically() {
-    // #2633: OMP is rendered and installed (2026-11-13 confirmation of five supported hosts;
-    // Kiro and Cursor CLI follow).
-    assert_eq!(HOSTS, ["claude", "codex", "omp"]);
+    // The home installer writes Claude Code only; the OMP rendering stays for the project layer
+    // (`omp_agents`) and the Codex rendering is gone.
+    assert_eq!(HOSTS, ["claude"]);
     let defs = package_agents(&agents(), &package()).unwrap();
     for d in &defs {
-        for host in HOSTS {
+        for host in RENDERED_HOSTS {
             let a = render(d, host).unwrap();
             assert_eq!(a, render(d, host).unwrap());
             assert!(a.path.starts_with("agents/moai-"), "{}", a.path);
             assert!(a.text.contains(&d.name));
         }
-        let codex = render(d, "codex").unwrap();
-        // Codex cannot enforce read-only or isolation: named, never silently dropped.
-        assert_eq!(
-            codex
-                .not_supported
-                .iter()
-                .any(|n| n.starts_with("readonly")),
-            d.readonly,
-            "{}",
-            d.name
-        );
-        assert_eq!(
-            codex
-                .not_supported
-                .iter()
-                .any(|n| n.starts_with("isolation")),
-            d.isolation == "worktree",
-            "{}",
-            d.name
-        );
+        assert!(render(d, "codex").is_err(), "{}", d.name);
         // #2633: OMP enforces read-only by its tool list and names per-call isolation.
         let omp = render(d, "omp").unwrap();
         assert_eq!(
@@ -259,8 +244,7 @@ fn every_role_renders_for_every_host_deterministically() {
 /// #3096 S7: a rendered agent file names no model and no effort. In the one run per product
 /// measured on 2026-11-16 (`docs/agent-model-effort-inheritance.md`) a child of such a file
 /// showed its parent's model and effort. This test pins the files; it does not prove the host.
-/// The Codex file is parsed as TOML, so a table or a `key="v"` line without spaces is seen too
-/// (#3110 audit 6905677737 B2); the Claude Code and OMP frontmatter is read line by line.
+/// The Claude Code and OMP frontmatter is read line by line (#3110 audit 6905677737 B2).
 #[test]
 fn rendered_agent_files_name_no_model_and_no_effort() {
     const KEYS_CLAUDE_OMP: [&str; 5] = [
@@ -270,36 +254,26 @@ fn rendered_agent_files_name_no_model_and_no_effort() {
         "isolation",
         "tools",
     ];
-    const KEYS_CODEX: [&str; 3] = ["name", "description", "developer_instructions"];
     let defs = package_agents(&agents(), &package()).unwrap();
     assert!(!defs.is_empty());
     for d in &defs {
-        for host in HOSTS {
+        for host in RENDERED_HOSTS {
             let text = render(d, host).unwrap().text;
-            let (allowed, keys): (&[&str], Vec<String>) = if host == "codex" {
-                let doc: toml_edit::DocumentMut = text
-                    .parse()
-                    .unwrap_or_else(|e| panic!("{} codex file is not TOML: {e}", d.name));
-                let keys = doc.iter().map(|(k, _)| k.to_string()).collect();
-                (&KEYS_CODEX, keys)
-            } else {
-                let keys = text
-                    .lines()
-                    .skip(1)
-                    .take_while(|l| *l != "---")
-                    .map(|l| {
-                        l.split_once(':')
-                            .unwrap_or_else(|| panic!("{} {host}: frontmatter line {l:?}", d.name))
-                            .0
-                            .to_string()
-                    })
-                    .collect();
-                (&KEYS_CLAUDE_OMP, keys)
-            };
+            let keys: Vec<String> = text
+                .lines()
+                .skip(1)
+                .take_while(|l| *l != "---")
+                .map(|l| {
+                    l.split_once(':')
+                        .unwrap_or_else(|| panic!("{} {host}: frontmatter line {l:?}", d.name))
+                        .0
+                        .to_string()
+                })
+                .collect();
             assert!(!keys.is_empty(), "{} {host}", d.name);
             for k in &keys {
                 assert!(
-                    allowed.contains(&k.as_str()),
+                    KEYS_CLAUDE_OMP.contains(&k.as_str()),
                     "{} {host}: key {k:?}",
                     d.name
                 );
@@ -374,21 +348,23 @@ fn reads_lists_match_the_design_and_render_on_every_host() {
             "internal/git-safety",
             "internal/tdd-results",
             // C-77: the pre-PR self-check list, run before the change goes to the audit.
-            "internal/self-check",
-            // C-82: where builds go and how the build folder is emptied.
-            "internal/build-folder"
+            // SPEC-20261122-next-flow-skills-agents slice C: `internal/build-folder` left the
+            // package; where builds go is RUN's "Check-run rules", which the body points to.
+            "internal/self-check"
         ]
     );
     assert_eq!(
         reads("moai-audit"),
         [
+            // SPEC-20261122-next-flow-skills-agents slice B: the review note became the audit
+            // contract `references/audit.md`, which no `<folder>/<name>` entry can name; the
+            // source body points to it instead. Slice C: `internal/build-folder` left the
+            // package as well; the body points to RUN's "Check-run rules".
             "internal/core-rules",
-            "internal/review",
             "internal/test-design",
             "internal/check-completeness",
             "internal/boundary-checks",
-            "internal/security-checklist",
-            "internal/build-folder"
+            "internal/security-checklist"
         ]
     );
     // SPEC-20261117-sdd-guidance: moai-docs is SYNC's writer and keeps the SPEC Result.
@@ -408,7 +384,7 @@ fn reads_lists_match_the_design_and_render_on_every_host() {
                 "{entry}"
             );
         }
-        for host in HOSTS {
+        for host in RENDERED_HOSTS {
             let text = render(d, host).unwrap().text;
             assert_eq!(
                 text.contains("Read first,"),
@@ -458,7 +434,6 @@ fn a_reads_entry_without_its_file_is_refused() {
 #[test]
 fn internal_references_say_when_to_read_them() {
     let names = [
-        "review",
         "decide",
         "interview",
         // C-51/C-52 (user decision 2026-11-16): how a question reaches the user.
@@ -483,12 +458,12 @@ fn internal_references_say_when_to_read_them() {
         "sdd",
         // SPEC-20261117-atlas-in-read-plan: READ and PLAN read the code atlas when it is fresh.
         "code-atlas",
-        // C-82: where agent and audit builds go and how the build folder is emptied.
-        "build-folder",
+        // `build-folder` left the package in SPEC-20261122-next-flow-skills-agents slice C:
+        // its rule, rewritten (D-14), is part of RUN's "Check-run rules".
         // SDD-6 (user decision U-B): the identity trailers every agent commit carries.
         "commit-trailers",
         // SPEC-20261117-quality-guides: the project's own check commands, AC-to-test tracing
-        // and the dependency existence check, read by RUN and VERIFY through the chain rules.
+        // and the dependency existence check, read by RUN through the chain rules.
         "quality",
     ];
     let mut found: Vec<String> = std::fs::read_dir(package().join("references/internal"))
@@ -559,33 +534,26 @@ fn chains_name_real_routes_agents_and_references() {
             }
         }
     }
-    for route in [
-        "PLAN",
-        "RUN",
-        "AUDIT",
-        "READ",
-        "VERIFY",
-        "PROJECT",
-        "SYNC",
-        "MODE-AGENT",
-    ] {
+    for route in ["PLAN", "RUN", "AUDIT", "READ", "PROJECT", "SYNC", "WORK"] {
         assert!(covered.contains(&route), "{route} has no chain");
     }
     for rule in [
         "The parent session starts each agent in turn",
         "An agent never starts another agent.",
         "The agent that implemented a change never audits it.",
-        "the parent session, not the agent, writes the verdict",
+        // Slice B audit N2: who records the verdict is the audit contract's rule alone.
+        "the agent never writes the verdict",
+        "`references/audit.md`, \"Who records the verdict\"",
     ] {
         assert!(text.contains(rule), "{rule}");
     }
     // The build chain runs implementation before the audit, never in the same agent; SYNC
     // (moai-docs) writes before AUDIT checks (SPEC-20261117-sdd-guidance).
     let build = rows.iter().find(|r| r[0] == "Build something new").unwrap();
-    assert_eq!(build[1], "PLAN, RUN, VERIFY, SYNC, AUDIT");
+    assert_eq!(build[1], "PLAN, RUN, SYNC, AUDIT");
     assert_eq!(build[2], "moai-plan, moai-impl, moai-docs, moai-audit");
     let fix = rows.iter().find(|r| r[0] == "Fix a bug").unwrap();
-    assert_eq!(fix[1], "PLAN, RUN, VERIFY, SYNC, AUDIT");
+    assert_eq!(fix[1], "PLAN, RUN, SYNC, AUDIT");
     assert_eq!(
         fix[2],
         "moai-research, moai-plan, moai-impl, moai-docs, moai-audit"
@@ -923,9 +891,8 @@ fn versioning_reference_states_headver_numbers_and_the_release_checklist() {
     assert!(read("references/chains/index.md").contains(
         "- Any route that prepares, tags or publishes a release or release candidate runs `internal/versioning` `## At every release` first."
     ));
-    assert!(read("workflows/mode-leader.md").contains(
-        "Before any release or release candidate, at either level, run `internal/versioning` `## At every release`."
-    ));
+    // The MODE-LEADER pin of the same rule left with its route (SPEC-20261122-next-flow-skills-agents
+    // REQ-2); SYNC and the chain rules above carry it.
 }
 
 /// #2673 AC-2: git-safety names, per host, how to enter a worktree — the built-in tool first,
@@ -941,12 +908,17 @@ fn git_safety_tells_each_host_how_to_work_in_a_worktree() {
         "| Claude Code | `EnterWorktree` (`path` for an existing one) and `ExitWorktree`",
         "create the worktree with `git worktree add` first and enter it by `path`",
         "(`$VAR`, `$?`, `$(…)`)",
-        "| Codex CLI |",
-        "| Cursor CLI |",
+        // The `| Codex CLI |` row is retired with Codex (SPEC-20261122-next-flow-skills-agents
+        // REQ-8); the Cursor row now states its git use itself.
+        "| Cursor CLI | `-w` / `--worktree` at start only. | Inside a session started there, plain `git <verb>`; otherwise `git -C <worktree> <verb>`. |",
         "| Kiro CLI | None documented. | `git -C <worktree> <verb>`. |",
     ] {
         assert!(text.contains(line), "git-safety.md lacks: {line}");
     }
+    assert!(
+        !text.contains("| Codex CLI |"),
+        "git-safety.md keeps a Codex row"
+    );
 }
 
 /// Card C-77: the pre-PR self-check list ships in the package, holds the two rules that turned
@@ -1029,52 +1001,78 @@ fn self_check_lists_the_pre_pr_checks_and_is_named_by_impl_and_the_chains() {
     );
 }
 
-/// C-82 (user decision 2026-11-17, "빌드 폴더를 한 곳으로 모으기"): the build-folder reference
-/// states the rule — one folder per worktree under `~/.moai/build/`, `CARGO_INCREMENTAL=0`, the
-/// owner record, the refusal path, evidence kept in the worktree, the end-of-task cleanup and the
-/// user-picked removal — and both builder agents read it; the places that used to name the
-/// per-lane folder point to it.
+/// The words that send a reader to where the build rule lives now: by path from an agent or an
+/// internal reference, by name from another workflow (a workflow names no package path).
+const BUILD_RULE_POINTER: &str = "(`workflows/run.md`, \"Check-run rules\")";
+const BUILD_RULE_WORKFLOW_POINTER: &str = "(the RUN workflow, \"Check-run rules\")";
+
+/// A user decision of 2026-11-17 wrote the build rule as the reference
+/// `internal/build-folder`; SPEC-20261122-next-flow-skills-agents slice C (D-14, the user's build
+/// rule of 2026-11-22) removed that reference and rewrote the rule in RUN's "Check-run rules".
+/// The pins whose rule still holds moved with it: one build folder per worktree, never shared;
+/// the end-of-task cleanup of the cargo output the worker made; evidence kept apart from that
+/// cleanup; `CARGO_INCREMENTAL=0` in the builder agents; leftover agent build folders removed
+/// only as the rows the user picks (UPDATE). Retired, because each worktree now builds in its
+/// own folder and nothing is built in the real HOME: the folder per worktree in the home state
+/// folder, its owner record `.moai-build.json`, the refusal when HOME is not usable, and the
+/// HOME exception of the builder agents with its 0700 parents.
 #[test]
-fn build_folder_reference_is_read_by_the_builders_and_states_the_rule() {
+fn build_rule_lives_in_run_and_the_builders_point_to_it() {
     let read = |rel: &str| std::fs::read_to_string(package().join(rel)).unwrap();
-    let text = read("references/internal/build-folder.md");
-    assert!(
-        read("references/source-manifest.json").contains("\"references/internal/build-folder.md\"")
-    );
+    assert!(!package()
+        .join("references/internal/build-folder.md")
+        .exists());
+    assert!(!read("references/source-manifest.json").contains("internal/build-folder"));
+    let run = read("workflows/run.md");
+    let rules = run
+        .split("\n## Check-run rules\n")
+        .nth(1)
+        .and_then(|s| s.split("\n## ").next())
+        .expect("run.md has a `## Check-run rules` section");
     for needle in [
-        "set `CARGO_TARGET_DIR` to `~/.moai/build/<project>-<worktree name>/`: one folder per worktree, never shared between worktrees, never inside a worktree",
-        "Always set `CARGO_INCREMENTAL=0`",
-        "`.moai-build.json` with `schema_version` 1, `git_common_dir` and `worktree`",
-        "when HOME is not absolute or not writable, or a link sits on the folder's path, do not follow it and do not build there",
-        "Neither goes in the build folder; deleting the build output never deletes evidence",
-        "End of task: delete your folder's cargo output and report the freed size under `Cleanup`",
-        "One goes only after the user picks its row",
+        "Use one build folder per worktree",
+        "never share it with another worktree",
+        "a lane removes only the cargo output it made itself",
+        "the notes, evidence and scripts under `target/<name>/`",
     ] {
-        assert!(text.contains(needle), "build-folder.md lacks {needle:?}");
+        assert!(
+            rules.contains(needle),
+            "run.md \"Check-run rules\" lacks {needle:?}"
+        );
     }
+    assert!(
+        read("workflows/update.md").contains("go only as the rows the user picks"),
+        "update.md lacks the user-picked removal"
+    );
+    let home_build = format!("~/{}/build", moai_cli::state_root::MOAI_DIR);
     let defs = package_agents(&agents(), &package()).unwrap();
+    for d in &defs {
+        assert!(
+            !d.reads.iter().any(|r| r == "internal/build-folder"),
+            "{}",
+            d.name
+        );
+    }
     for name in ["moai-impl", "moai-audit"] {
         let d = defs.iter().find(|d| d.name == name).unwrap();
-        assert!(
-            d.reads.iter().any(|r| r == "internal/build-folder"),
-            "{name}"
-        );
         assert!(d.body.contains("`CARGO_INCREMENTAL=0`"), "{name}");
-        // Audit N6: the HOME exception names the parents `env` makes, too.
-        assert!(
-            d.body.contains(
-                "`~/.moai/build/` (`internal/build-folder`) and its parents `~/.moai` and `~/.moai/build`, made 0700 when missing"
-            ),
-            "{name}"
-        );
+        assert!(d.body.contains(BUILD_RULE_POINTER), "{name}");
+        assert!(!d.body.contains(&home_build), "{name} names {home_build}");
+        for host in RENDERED_HOSTS {
+            let text = render(d, host).unwrap().text;
+            assert!(text.contains(BUILD_RULE_POINTER), "{name} on {host}");
+        }
     }
-    for rel in [
-        "references/internal/git-safety.md",
-        "references/internal/self-check.md",
-        "workflows/mode-agent.md",
-        "workflows/verify.md",
-        "workflows/optimize.md",
+    for (rel, pointer) in [
+        ("references/internal/git-safety.md", BUILD_RULE_POINTER),
+        ("references/internal/self-check.md", BUILD_RULE_POINTER),
+        // UPDATE carries the retired OPTIMIZE route (SPEC-20261122-next-flow-skills-agents).
+        ("workflows/update.md", BUILD_RULE_WORKFLOW_POINTER),
     ] {
-        assert!(read(rel).contains("internal/build-folder"), "{rel}");
+        let text = read(rel);
+        assert!(text.contains(pointer), "{rel}");
+        assert!(!text.contains("internal/build-folder"), "{rel}");
     }
+    // RUN holds the rule itself; its other sections name it without the removed reference.
+    assert!(!run.contains("internal/build-folder"), "workflows/run.md");
 }

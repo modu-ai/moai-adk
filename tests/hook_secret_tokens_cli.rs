@@ -52,8 +52,7 @@ fn allowed(r: &Run) -> bool {
     r.code == 0 && r.stdout.is_empty()
 }
 
-/// The five ways written content reaches tool-preflight: four Claude tools and one Codex patch.
-/// `content` must be one line (a patch line starts with `+`).
+/// The four ways written content reaches tool-preflight: the four Claude write tools.
 fn every_write(cwd: &Path, content: &str) -> Vec<(&'static str, Run)> {
     let path = cwd.join("out.txt");
     let path = path.to_str().unwrap();
@@ -94,15 +93,7 @@ fn every_write(cwd: &Path, content: &str) -> Vec<(&'static str, Run)> {
                 json!({"notebook_path": path, "new_source": content}),
             ),
         ),
-        (
-            "apply_patch",
-            dispatch("codex", cwd, "apply_patch", patch_adding(path, content)),
-        ),
     ]
-}
-
-fn patch_adding(path: &str, line: &str) -> Value {
-    json!({"command": format!("*** Begin Patch\n*** Add File: {path}\n+{line}\n*** End Patch")})
 }
 
 fn write_only(cwd: &Path, content: &str) -> Run {
@@ -206,7 +197,7 @@ fn in_line(value: &str) -> String {
 
 // ---- AC-1 (REQ-1..REQ-6) ----
 
-/// AC-1: each shape at exactly its minimum is refused through every write tool and the Codex patch.
+/// AC-1: each shape at exactly its minimum is refused through every write tool.
 #[test]
 fn refused_every_shape_at_its_minimum_through_every_write_tool() {
     let dir = tempfile::TempDir::new().unwrap();
@@ -416,10 +407,9 @@ fn boundary_characters_a_shape_does_not_accept_end_the_run() {
 
 // ---- AC-3 (REQ-8, REQ-10) ----
 
-/// AC-3: certificates and public keys stay allowed, the existing refusals answer as before, and
-/// a Codex patch is scanned on its added lines only.
+/// AC-3: certificates and public keys stay allowed and the existing refusals answer as before.
 #[test]
-fn unchanged_existing_answers_and_patch_added_lines_only() {
+fn unchanged_existing_answers() {
     let dir = tempfile::TempDir::new().unwrap();
     let cwd = dir.path();
     let block = |kind: &str| format!("{}{} {kind}{}", "-----", "BEGIN", "-----");
@@ -457,23 +447,6 @@ fn unchanged_existing_answers_and_patch_added_lines_only() {
     assert!(
         allowed(&write_only(cwd, &in_line(&pat(21)))),
         "21-character fine-grained token"
-    );
-
-    // The patch check uses the shape that is refused today, so this test pins only old behaviour.
-    let token = ghp(36);
-    let path = cwd.join("a.rs");
-    let path = path.to_str().unwrap();
-    let removed = json!({"command": format!(
-        "*** Begin Patch\n*** Update File: {path}\n@@\n-{token}\n {token}\n+fine\n*** End Patch")});
-    assert!(
-        allowed(&dispatch("codex", cwd, "apply_patch", removed)),
-        "removed and context lines"
-    );
-    let added = json!({"command": format!(
-        "*** Begin Patch\n*** Update File: {path}\n@@\n-fine\n+{token}\n*** End Patch")});
-    assert!(
-        denied(&dispatch("codex", cwd, "apply_patch", added)),
-        "added line"
     );
 }
 

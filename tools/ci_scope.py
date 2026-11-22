@@ -35,6 +35,7 @@ EXACT_DENY = frozenset(
         "docs/release-attestation.md",
         "docs/2383-statusline-switch-design.md",
         "docs/rust-product-path.md",
+        "docs/rule-history.md",
         "docs/llms.txt",
         "docs/user-entry-draft.md",
         "docs/product-naming-inventory.md",
@@ -49,6 +50,10 @@ EXACT_DENY = frozenset(
         "docs/protocol-v1.md",
         "docs/message-test-isolation.md",
         "docs/e2e-matrix.md",
+        "docs/troubleshooting.md",
+        "docs/host-live-session-checklist.md",
+        "docs/agent-model-effort-inheritance.md",
+        "docs/agents-md-maintenance.md",
     }
 )
 # Directory prefixes that are never docs-only even under docs/.

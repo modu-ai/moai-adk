@@ -11,7 +11,7 @@ use std::path::PathBuf;
 /// `tools/repo_scans.json` names, the Python tests of the area and the tests that name this
 /// host's operating system. It adds the library and binary tests, `git diff --check`,
 /// `cargo fmt`, `rustfmt --edition 2021` of each changed operation file, `bash -n` of each
-/// changed script and `cargo clippy`.
+/// changed script and `cargo clippy`; the tests run in one call.
 #[derive(clap::Args)]
 pub struct Args {
     #[command(subcommand)]
@@ -25,13 +25,14 @@ enum Action {
     /// Runs commands (`--list` only reads). The range is `<base>..<head>` (two dots); the changed
     /// paths are `<base>...<head>`, so a head behind its base's tip counts only its own changes.
     /// The checkout must be at the head with no modified tracked file, otherwise nothing runs.
-    /// Every step runs, a failure does not stop the rest; each cargo step holds one heavy slot.
-    /// The answer has one `summary` line of `key=value` words in a fixed order: `check-affected`,
-    /// base, head, targets, py, scans, `test-threads=<n>` while the wrapper applies its cap
-    /// (a caller that pins `RUST_TEST_THREADS` wins, and the line names nothing), the exit
-    /// status of each step in the order they ran, then `result=PASS` when every status is 0
-    /// and `result=FAIL` otherwise. Writes the step logs under `<dir>/target/check-affected-<head>`
-    /// (or `--out`).
+    /// The cheap steps all run; when one fails, nothing after them runs. The cargo steps (clippy,
+    /// one `test` call by `cargo nextest run`, or `cargo test` when nextest is missing, and the
+    /// CLI build) run under one heavy slot held from the first to the last; a slot that is not
+    /// obtained gives its exit code to each of them and no cargo starts. The answer has one
+    /// `summary` line of `key=value` words in a fixed order: `check-affected`, base, head,
+    /// targets, py, scans, the exit status of each step in the order they ran, then
+    /// `result=PASS` when every status is 0 and `result=FAIL` otherwise. Writes the step logs and
+    /// `heavy-slot.log` under `<build folder>/check-affected-<head>` (or `--out`).
     Affected {
         /// The range, `<base>..<head>`.
         range: String,

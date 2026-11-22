@@ -289,7 +289,7 @@ impl Fx {
     }
 
     fn vault(&self) -> PathBuf {
-        self.home.join(".moai-cli").join("vault")
+        moai_cli::home_root::path(&self.home).join("vault")
     }
 
     fn entry(&self) -> PathBuf {
