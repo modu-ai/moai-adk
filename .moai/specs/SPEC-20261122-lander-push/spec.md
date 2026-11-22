@@ -1,13 +1,13 @@
 ---
 id: SPEC-20261122-lander-push
-title: "the lander copies the integration branch to the remote after every landing, fast-forward only, and a lost copy is retried by the next run"
+title: "the lander copies the integration branch to the remote after every landing while the profile key is on, fast-forward only, and a lost copy is retried by the next run"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-22
 parent: SPEC-20261122-remote-copy-slim
 ---
 
-# the lander copies the integration branch to the remote after every landing, fast-forward only, and a lost copy is retried by the next run
+# the lander copies the integration branch to the remote after every landing while the profile key is on, fast-forward only, and a lost copy is retried by the next run
 
 ## Intent
 
@@ -26,12 +26,15 @@ parent: SPEC-20261122-remote-copy-slim
 
 ## Requirements
 
-- REQ-1: When a landing has closed its transaction, the lander shall copy the integration branch to its remote with one fast-forward-only push and report the copy state in the landing answer. · failure: none — a refused, failed or unreachable copy leaves the landing, every table and every reference unchanged, is reported in the landing answer, and never fails the landing command.
+- REQ-1: When a landing has closed its transaction, the lander shall copy the integration branch to its remote with one fast-forward-only push and report the copy state in the landing answer, but only while the profile key turns the copy on. · failure: none — with the key absent or false the landing pushes nothing and answers off with a preview of what a copy would do, and the key turns on only after a preview and the user's yes (never by the tool alone); a refused, failed or unreachable copy leaves the landing, every table and every reference unchanged, is reported in the landing answer, and never fails the landing command.
 - REQ-2: When the copy runs, the copy shall classify the remote position first and push only when the remote ref is behind the local tip or absent, never with a force flag. · failure: none — a remote that already holds the same commit or a descendant is settled as success with no push, and a remote that shares no ancestry with the local tip is recorded as a hold with nothing pushed.
-- REQ-3: When the push answer is read, the copy shall read git's documented push output for the one ref to tell a rejection from a remote failure from an unreachable remote. · failure: none — a rejection re-reads the remote once and settles or holds, a remote failure records a pending copy whose outcome the next run settles, and an unreachable remote records a pending copy.
+- REQ-3: When the push answer is read, the copy shall read git's documented push output for the one ref to tell a rejection from a remote failure from an unreachable remote. · failure: none — a rejection re-reads the remote once and settles or holds, a remote failure records a pending copy whose outcome the next run settles, and an unreachable remote records a pending copy, never a hold.
 - REQ-4: When a copy has not finished, the next landing command and the on-demand command shall push the integration branch again without waiting for another landing. · failure: none — no resident loop runs, no new card is made, and a new process pushes the recorded commit fast-forward.
-- REQ-5: When a copy ends in any state, the copy shall write one record of its state in the common git folder by a temporary file and a rename, beside the one landing record the close already wrote. · failure: none — retries write no second record and no second landing event.
+- REQ-5: When a copy ends in any state, the copy shall write one record of its state in the common git folder by a temporary file and a rename, beside the one landing record the close already wrote. · failure: none — retries write no second record and no second landing event, and the off answer of the on-demand command writes no record at all.
 - REQ-6: When the on-demand command runs, the command shall answer the copy state as an action of the card command and write no ledger row. · failure: none — a hold is an answer with a record, not an error exit and not a card.
+- REQ-7: When a remote name or URL reaches an answer, a why line or the record, the copy shall carry the configured remote's name where the value names one and strip any userinfo from a URL. · failure: none — a token inside a push-remote URL never reaches an answer or the record, while the push itself still uses the raw value.
+- REQ-8: When the copy pushes, the copy shall pass --no-follow-tags and close the options with -- before the remote name. · failure: none — no tag follows the push however push.followTags is set, and no spelling of the remote can read as an option.
+- REQ-9: When the remote holds a descendant the local repository does not know, the copy shall settle as success. · failure: none — an unknown remote tip never reads as a hold.
 
 ## Acceptance
 
@@ -49,6 +52,10 @@ parent: SPEC-20261122-remote-copy-slim
   verify: `cargo test --locked --offline --test card_remote_copy_cli an_absent_remote_branch_is_created_and_a_profile_without_a_branch_is_reported` — red first
 - AC-7: the wider READY set passes.
   verify: `cargo test --locked --offline --bins` and `--lib`
+- AC-8 (REQ-1): with the key absent a landing pushes nothing and answers off, and the on-demand command answers off with a preview (remote, branch, behind-by count, the ci sentence) and writes no record.
+  verify: `cargo test --locked --offline --test card_remote_copy_cli a_landing_with_the_copy_off_pushes_nothing_and_answers_off` and `the_off_command_answers_a_preview_and_writes_nothing` — red first in the repair
+- AC-9 (REQ-7, REQ-8, REQ-9): a token in a push-remote URL is redacted everywhere, the push argv carries --no-follow-tags and -- before the remote name and never a force shape, no tag follows the push, an unknown descendant settles as done and an unreachable push reads pending.
+  verify: `cargo test --locked --offline --test card_remote_copy_cli a_token_in_the_push_remote_url_is_redacted`, `the_push_arguments_carry_the_safety_flags`, `a_tag_on_the_tip_is_not_pushed`, `an_unknown_descendant_settles_as_done`, `an_unreachable_push_reads_pending` — red first in the repair
 
 ## Scope
 
@@ -83,6 +90,10 @@ parent: SPEC-20261122-remote-copy-slim
 | D-4 | 재시도 상태는 공용 git 폴더의 기록 하나 `moai/remote-copy`(branch·remote·tip·state·why, 임시 파일과 이름 바꾸기)이고, 재시도를 시작하는 것은 다음 착지 명령과 `card remote-copy` 뿐이다. | 동료 제안의 "SPEC names where the retry state is kept"; 참조 가드의 공용 폴더 선례(저장소당 기록 하나) | 카드 열림 |
 | D-5 | 필요 시 명령은 `card remote-copy` 다(새 최상위 낱말 없음). 원장 행은 쓰지 않고 복사 상태를 답하며, 보류는 기록을 남긴 답이지 오류 종료나 카드가 아니다. | flow-skeleton D-1, 동료 제안 (c)·"no new card" | 카드 열림 |
 | D-6 | 원격은 git 자신의 push 원격 규칙을 따른다(`branch.<name>.pushRemote`, `remote.pushDefault`, `branch.<name>.remote`, `origin` 순서)이고 refspec 은 언제나 `refs/heads/<branch>:refs/heads/<branch>` 에 강제 플래그가 없다. | git-push(1), fast-forward 전용 규칙 | 카드 열림 |
+| D-7 | 복사는 기본 꺼짐이다: 최상위 프로필 키 `remote_copy` 가 true 일 때만 돌고, 키는 미리보기(원격·가지·뒤처진 커밋 수·원격 검사 문장)와 사용자의 예 뒤에만 켜진다. 꺼짐 동안 착지는 off 를 답하고 아무것도 안 밀며, 필요 시 명령의 off 답은 미리보기만 주고 기록도 안 쓴다. | 리더 결정 6177 (1), 감사 B1(실제 원격이 646커밋 뒤) | 카드 열림 |
+| D-8 | 답·why·기록이 실을 원격은 설정된 이름 우선, URL 이면 userinfo 제거이고 push·ls-remote 는 원본 값을 쓴다. | 리더 결정 6177 (2), 감사 B2(토큰 노출) | 카드 열림 |
+| D-9 | push 인자는 `--no-follow-tags` 뒤 `--` 로 옵션을 닫고 원격 이름을 준다; 미지 자손은 성공 정산, push 때 도달 불가는 pending. | 리더 결정 6177 (3)·감사 B3·N2·N3 | 카드 열림 |
+| D-10 | 다음 조각들이 미리 정해진 사용자 결정(2026-11-22, 원장 노트 6301): 원격 CI 는 통합 가지 push 에 라이트 검사만(실패는 수리 카드, 착지 불가차단 없음), full matrix 는 릴리스 PR 만, pull_request 트리거는 main 만; 릴리스 이름은 40-hex 은퇴·`v4.<yearweek>.<build>` 만, 발행된 태그는 불변. 커버리지 한 줄들(원장 노트 6235): moai 명령은 통합 가지 이름의 모든 대소문자를 받는다(NeXT), 사전-push 는 원격에 대소문자만 다른 가지를 만드는 push 를 거부한다, mode-000 시험은 root 밑에서 건너뛰거나 권한을 되돌린다. | 사용자 결정 6301, 커버리지 노트 6235 | 카드 열림 |
 
 ## Result
 

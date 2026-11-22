@@ -579,6 +579,14 @@ fn the_push_arguments_carry_the_safety_flags() {
         fs::set_permissions(&wrapper, fs::Permissions::from_mode(0o755)).unwrap();
     }
     w.write_profile();
+    // The local branch moves ahead of the seeded remote, so the copy has something to push.
+    let ahead = commit_with(
+        &w.project,
+        &w.tip,
+        &[&w.tip],
+        "a commit the copy would carry",
+    );
+    git(&w.project, &["update-ref", "refs/heads/integ", &ahead]);
     let mut cmd = w.home.command(&["card", "remote-copy", "--project", &w.p]);
     cmd.env("MOAI_GIT_BIN", &wrapper);
     let out = cmd.output().unwrap();
