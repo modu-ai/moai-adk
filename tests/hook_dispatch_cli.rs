@@ -33,6 +33,9 @@ fn run_program(
     stdin: &[u8],
     env: &[(&str, &str)],
 ) -> std::io::Result<Run> {
+    // A moai project: outside one, every duty exits 0 at once with no output
+    // (SPEC-20261122-next-flow-hooks REQ-15), and these tests read answers.
+    fs::create_dir_all(cwd.join(".moai")).unwrap();
     let mut cmd = Command::new(program);
     cmd.args(args)
         .current_dir(cwd)
@@ -113,9 +116,23 @@ fn pre_tool(command: &str, cwd: &Path) -> Vec<u8> {
     .into_bytes()
 }
 
+/// A Codex refusal keeps the documented deny object with exit 0 (only the Claude rendering
+/// carries exit 2, SPEC-20261122-next-flow-hooks REQ-8); this accepts both and returns the
+/// reason.
+fn assert_deny_any_exit(r: &Run) -> String {
+    assert!(matches!(r.code, 0 | 2), "deny exits 0 or 2: {}", r.stderr);
+    let v: Value = serde_json::from_str(r.stdout.trim()).expect("stdout is one JSON object");
+    v["hookSpecificOutput"]["permissionDecisionReason"]
+        .as_str()
+        .unwrap()
+        .to_string()
+}
+
 /// The documented PreToolUse deny object, and nothing else, on stdout.
 fn assert_deny(r: &Run) -> String {
-    assert_eq!(r.code, 0, "deny exits 0: {}", r.stderr);
+    // A refusal is exit code 2 with the documented deny object beside it
+    // (SPEC-20261122-next-flow-hooks REQ-8).
+    assert_eq!(r.code, 2, "deny exits 2: {}", r.stderr);
     let v: Value = serde_json::from_str(r.stdout.trim()).expect("stdout is one JSON object");
     let out = v.as_object().unwrap();
     assert_eq!(out.keys().collect::<Vec<_>>(), vec!["hookSpecificOutput"]);
@@ -150,31 +167,28 @@ fn assert_engine_error(r: &Run) {
 
 #[test]
 fn commit_without_claim_token_on_lane_branch_is_denied_without_echoing_the_command() {
+    // SPEC-20261122-next-flow-hooks REQ-11: the Issue claim-token rule is gone; a commit in a
+    // project without a ledger reservation touching it passes. The no-echo property is pinned
+    // by the refusal tests below (the command text never reaches a reason).
     let (_d, root) = repo("issue/77-fixture-key");
-    let r = dispatch(
+    assert_allow(&dispatch(
         "tool-preflight",
         &root,
         &pre_tool("git commit -m 'SECRETWORD change'", &root),
         &[],
-    );
-    let reason = assert_deny(&r);
-    assert!(reason.contains("Moai-Claim: 77#"), "{reason}");
-    assert!(
-        !reason.contains("SECRETWORD") && !reason.contains("fixture-key"),
-        "{reason}"
-    );
+    ));
 }
 
 #[test]
 fn commit_naming_another_issue_is_denied() {
+    // REQ-11 again: no token rule, nothing to name another Issue.
     let (_d, root) = repo("issue/77-k");
-    let r = dispatch(
+    assert_allow(&dispatch(
         "tool-preflight",
         &root,
         &pre_tool("git commit -m 'x\n\nMoai-Claim: 78#5'", &root),
         &[],
-    );
-    assert!(assert_deny(&r).contains("another Issue"));
+    ));
 }
 
 #[test]
@@ -223,7 +237,7 @@ fn non_lane_branch_non_commit_and_non_bash_are_allowed() {
 #[test]
 fn unknown_input_fields_are_ignored() {
     let (_d, root) = repo("issue/77-k");
-    let mut v: Value = serde_json::from_slice(&pre_tool("git commit -m x", &root)).unwrap();
+    let mut v: Value = serde_json::from_slice(&pre_tool("rm -rf /", &root)).unwrap();
     v["permission_mode"] = json!("default");
     v["future_field"] = json!({"nested": [1, 2]});
     assert_deny(&dispatch(
@@ -295,14 +309,16 @@ fn session_check_adds_fixed_vocabulary_context() {
     let ctx = v["hookSpecificOutput"]["additionalContext"]
         .as_str()
         .unwrap();
-    assert!(ctx.contains("lane branch: Issue #77"), "{ctx}");
-    assert!(ctx.contains("state directory .moai-cli: absent"), "{ctx}");
-    assert!(ctx.contains("local claim record: absent"), "{ctx}");
-    assert!(!ctx.contains("secret-key-name"), "{ctx}");
-    fs::create_dir(root.join(".moai-cli")).unwrap();
+    // SPEC-20261122-next-flow-hooks REQ-3: the answer names the branch, the recorded
+    // integration branch and the worktree's card, with no Issue or claim wording.
+    assert!(ctx.contains("branch: issue/77-secret-key-name"), "{ctx}");
+    assert!(ctx.contains("integration branch: no record"), "{ctx}");
+    assert!(ctx.contains("card: none on this branch"), "{ctx}");
+    assert!(!ctx.contains("claim"), "{ctx}");
+    fs::create_dir_all(root.join(".moai")).unwrap();
     let r = dispatch("session-check", &root, start, &[]);
     assert!(
-        r.stdout.contains("state directory .moai-cli: present"),
+        r.stdout.contains("branch: issue/77-secret-key-name"),
         "{}",
         r.stdout
     );
@@ -381,16 +397,14 @@ fn denied_commit_leaves_no_commit_and_the_allowed_control_does() {
     fs::write(root.join("a.txt"), "b\n").unwrap();
     git(&root, &["add", "a.txt"]);
     let before = commit_count(&root);
-    assert!(!host_runs_tool(
-        Path::new(BIN),
-        &root,
-        "git commit -q -m 'no token'"
-    ));
+    // REQ-11: the blocking call is a plain dangerous rm; the commit control passes and
+    // commits.
+    assert!(!host_runs_tool(Path::new(BIN), &root, "rm -rf /"));
     assert_eq!(commit_count(&root), before, "side effect despite deny");
     assert!(host_runs_tool(
         Path::new(BIN),
         &root,
-        "git commit -q -m 'ok\n\nMoai-Claim: 77#5'"
+        "git commit -q -m 'ok'"
     ));
     assert_eq!(
         commit_count(&root),
@@ -432,6 +446,9 @@ fn host_runs_tool_with_timeout(
         path_prefix.display(),
         std::env::var("PATH").unwrap_or_default()
     );
+    // A moai project (REQ-15): outside one the duty exits 0 at once and the deny control
+    // below would run its command.
+    fs::create_dir_all(root.join(".moai")).unwrap();
     let mut child = Command::new(BIN)
         .args([
             "hook-dispatch",
@@ -551,11 +568,11 @@ fn a_timed_out_preflight_is_non_blocking_by_the_host_rules() {
     let before = commit_count(&root);
 
     let (ran, cancelled) =
-        host_runs_tool_with_timeout(&root, &fast, "git commit -q -m 'no token'", None);
+        host_runs_tool_with_timeout(&root, &fast, "rm -rf /", None);
     assert!(!cancelled);
     assert!(
         !ran,
-        "the engine reached git through the shim PATH and denied"
+        "the engine reached the guard through the shim PATH and denied"
     );
     assert_eq!(commit_count(&root), before, "no side effect despite deny");
 
@@ -586,9 +603,10 @@ fn a_timed_out_preflight_is_non_blocking_by_the_host_rules() {
 /// A PreToolUse input for a lane commit without a claim token, padded to exactly `total`
 /// bytes (the padding is a field the engine ignores).
 fn sized_commit_input(root: &Path, total: usize) -> Vec<u8> {
+    // REQ-11: the denying command is a plain dangerous rm (the commit token rule is gone).
     let make = |pad: &str| {
         json!({"hook_event_name": "PreToolUse", "tool_name": "Bash",
-               "tool_input": {"command": "git commit -m x", "pad": pad}, "cwd": root})
+               "tool_input": {"command": "rm -rf /", "pad": pad}, "cwd": root})
         .to_string()
         .into_bytes()
     };
@@ -624,33 +642,47 @@ fn stdin_bound_is_4194304_bytes_and_one_more_is_a_non_blocking_engine_error() {
 /// B2: the branch is read in the directory the input's `cwd` names, not the hook process's.
 #[test]
 fn input_cwd_decides_over_the_process_cwd() {
-    let (_a, plain) = repo("main");
-    let (_b, lane) = repo("issue/77-k");
-    // Process in a non-lane repo, command in the lane repo: denied.
-    assert_deny(&dispatch(
+    // SPEC-20261122-next-flow-hooks REQ-15: the input's cwd decides whether the folder is a
+    // moai project. The run helper gives the process folder `.moai`, so the plain input folder
+    // is a repository that never was a process cwd. (The commit-token premise this test had
+    // is gone, REQ-11.)
+    let (_a, plain_process) = repo("main");
+    let (_b, moai) = repo("issue/77-k");
+    let (_c, plain_input) = repo("main");
+    fs::create_dir_all(moai.join(".moai")).unwrap();
+    // The call names the moai project from a plain process folder: the duty answers (the
+    // guard rules ran; nothing denied here, so allow with empty stdout).
+    let r = dispatch(
         "tool-preflight",
-        &plain,
-        &pre_tool("git commit -m x", &lane),
+        &plain_process,
+        &pre_tool("git commit -m x", &moai),
         &[],
-    ));
-    // Process in the lane repo, command in the non-lane repo: allowed.
-    assert_allow(&dispatch(
+    );
+    assert_eq!(r.code, 0, "{} {}", r.stdout, r.stderr);
+    // The call names a plain folder: exit 0 at once, no output.
+    let r = dispatch(
         "tool-preflight",
-        &lane,
-        &pre_tool("git commit -m x", &plain),
+        &moai,
+        &pre_tool("git commit -m x", &plain_input),
         &[],
-    ));
+    );
+    assert_eq!(r.code, 0, "{}", r.stderr);
+    assert!(r.stdout.is_empty(), "{}", r.stdout);
 }
 
 /// #2399 review: read commands that merely mention `commit` are not commits (they were denied
 /// before the subcommand-position fix); a real commit behind global options still is.
 #[test]
 fn read_commands_mentioning_commit_are_allowed_and_real_commits_are_not() {
+    // SPEC-20261122-next-flow-hooks REQ-11: the commit-token rule is gone, so the reads pass
+    // and the commits pass alike; the reservation check that replaced it needs a ledger and is
+    // pinned by tests/next_flow_hooks_cli ac12.
     let (_d, root) = repo("issue/77-k");
     for cmd in [
         "git log --grep commit",
         "git log -- commit",
         "git show commit-ish",
+        "git --attr-source HEAD commit -m x",
     ] {
         assert_allow(&dispatch(
             "tool-preflight",
@@ -659,15 +691,8 @@ fn read_commands_mentioning_commit_are_allowed_and_real_commits_are_not() {
             &[],
         ));
     }
-    // #2399 re-audit B5: a value-taking global option does not hide the commit.
-    assert_deny(&dispatch(
-        "tool-preflight",
-        &root,
-        &pre_tool("git --attr-source HEAD commit -m x", &root),
-        &[],
-    ));
     let dir_commit = format!("git -C {} commit -m x", root.display());
-    assert_deny(&dispatch(
+    assert_allow(&dispatch(
         "tool-preflight",
         &root,
         &pre_tool(&dir_commit, &root),
@@ -697,55 +722,14 @@ fn lane_push_without_token_is_allowed_by_stage_one() {
 /// forge check to `claim-verify --hook`.
 #[test]
 fn a_local_claim_record_hands_the_commit_to_the_claim_guard() {
+    // SPEC-20261122-next-flow-hooks REQ-11: the Issue claim-token rule and its journal are
+    // gone; a commit passes whatever the journal holds. The ledger reservation check that
+    // replaced it is pinned by tests/next_flow_hooks_cli ac12.
     let (_d, root) = repo("issue/77-k");
-    let base = git(&root, &["rev-parse", "HEAD"]);
-    let record = ClaimRecord {
-        schema_version: 1,
-        task_ref: TaskRef::new("github", "github.com", "acme", "widgets", 1, 70, 77),
-        task_key: "0123456789abcdef".into(),
-        logical_key: "B4".into(),
-        owner: Owner::new("session", "agent-fixture"),
-        assignee: None,
-        provider_session: None,
-        integration_owner: None,
-        attempt: None,
-        epoch: 1,
-        base_revision: base,
-        worktree: WorktreeId::new(
-            root.join(".git").display().to_string(),
-            root.join(".git").display().to_string(),
-            root.display().to_string(),
-            "b".repeat(40),
-        ),
-        write_scope: vec!["a.txt".into()],
-        spec_ref: SpecRef {
-            id: "SPEC-B4".into(),
-            revision: "r1".into(),
-            digest: None,
-        },
-        comment_id: Some(5),
-        claim_token: Some("Moai-Claim: 77#5".into()),
-        lease_until: Some("2026-11-10T23:00:00Z".into()),
-        state: "assigned".into(),
-        effects: vec![],
-        last_observed_at: "2026-11-10T12:00:00Z".into(),
-    };
-    let journal = Journal::open(&moai_cli::claim::journal_root(&root).unwrap()).unwrap();
-    assert!(journal.try_lock().unwrap());
-    journal.commit("acquire", &record).unwrap();
-    drop(journal);
     assert_allow(&dispatch(
         "tool-preflight",
         &root,
         &pre_tool("git commit -m x", &root),
-        &[],
-    ));
-    // Control: the same commit in an identical repo without the record is denied.
-    let (_e, bare) = repo("issue/77-k");
-    assert_deny(&dispatch(
-        "tool-preflight",
-        &bare,
-        &pre_tool("git commit -m x", &bare),
         &[],
     ));
 }
@@ -939,13 +923,15 @@ fn codex_tool_preflight_denies_with_the_documented_codex_shape() {
     let input = json!({"session_id": "s", "turn_id": "t", "hook_event_name": "PreToolUse",
                        "tool_name": "Bash", "tool_use_id": "u", "model": "m",
                        "tool_input": {"command": "git commit -m x"}, "cwd": root});
-    let r = codex("tool-preflight", &root, input.to_string().as_bytes());
-    let reason = assert_deny(&r);
-    assert!(reason.contains("Moai-Claim: 77#"), "{reason}");
+    // REQ-11: the token rule is gone — the denying call is a plain dangerous rm, and the
+    // same commit without a token passes.
+    let input_deny = json!({"session_id": "s", "turn_id": "t", "hook_event_name": "PreToolUse",
+                            "tool_name": "Bash", "tool_use_id": "u", "model": "m",
+                            "tool_input": {"command": "rm -rf /"}, "cwd": root});
+    let r = codex("tool-preflight", &root, input_deny.to_string().as_bytes());
+    assert_deny_any_exit(&r);
     assert_no_unsupported_codex_fields(&r.stdout);
-    let ok = json!({"hook_event_name": "PreToolUse", "tool_name": "Bash",
-                    "tool_input": {"command": "git commit -m 'x Moai-Claim: 77#5'"}, "cwd": root});
-    assert_allow(&codex("tool-preflight", &root, ok.to_string().as_bytes()));
+    assert_allow(&codex("tool-preflight", &root, input.to_string().as_bytes()));
     // apply_patch cannot commit; a patch touching no protected path is allowed (stage 5 guards
     // only .git internals, credential paths and secret content in patches).
     let patch = json!({"hook_event_name": "PreToolUse", "tool_name": "apply_patch",
@@ -964,8 +950,10 @@ fn codex_denied_commit_leaves_no_commit() {
     fs::write(root.join("a.txt"), "z\n").unwrap();
     git(&root, &["add", "a.txt"]);
     let before = commit_count(&root);
+    // REQ-11: the token rule is gone — a plain dangerous rm denies on Codex too, and a
+    // blocked call never runs.
     let input = json!({"hook_event_name": "PreToolUse", "tool_name": "Bash",
-                       "tool_input": {"command": "git commit -q -m 'no token'"}, "cwd": root});
+                       "tool_input": {"command": "rm -rf /"}, "cwd": root});
     let r = codex("tool-preflight", &root, input.to_string().as_bytes());
     // Codex rules: exit 2, or the PreToolUse deny object, blocks the call.
     let blocked = r.code == 2
@@ -1158,43 +1146,9 @@ fn tool_observe_never_logs_secret_shaped_or_escaping_paths() {
 /// path still finds its local claim record, as `claim-verify --hook` does.
 #[test]
 fn session_check_through_a_symlinked_cwd_still_finds_the_local_record() {
+    // SPEC-20261122-next-flow-hooks REQ-2: the branch is read from the git HEAD file through a
+    // symlinked cwd (the claim journal the old test read is out of the answer, REQ-3).
     let (_d, root) = repo("issue/77-k");
-    let base = git(&root, &["rev-parse", "HEAD"]);
-    let record = ClaimRecord {
-        schema_version: 1,
-        task_ref: TaskRef::new("github", "github.com", "acme", "widgets", 1, 70, 77),
-        task_key: "0123456789abcdef".into(),
-        logical_key: "CW".into(),
-        owner: Owner::new("session", "agent-fixture"),
-        assignee: None,
-        provider_session: None,
-        integration_owner: None,
-        attempt: None,
-        epoch: 1,
-        base_revision: base,
-        worktree: WorktreeId::new(
-            root.join(".git").display().to_string(),
-            root.join(".git").display().to_string(),
-            root.display().to_string(),
-            "b".repeat(40),
-        ),
-        write_scope: vec!["a.txt".into()],
-        spec_ref: SpecRef {
-            id: "SPEC-CW".into(),
-            revision: "r1".into(),
-            digest: None,
-        },
-        comment_id: Some(5),
-        claim_token: Some("Moai-Claim: 77#5".into()),
-        lease_until: Some("2026-11-10T23:00:00Z".into()),
-        state: "assigned".into(),
-        effects: vec![],
-        last_observed_at: "2026-11-10T12:00:00Z".into(),
-    };
-    let journal = Journal::open(&moai_cli::claim::journal_root(&root).unwrap()).unwrap();
-    assert!(journal.try_lock().unwrap());
-    journal.commit("acquire", &record).unwrap();
-    drop(journal);
     let link_dir = tempfile::TempDir::new().unwrap();
     let link = link_dir.path().join("via-link");
     std::os::unix::fs::symlink(&root, &link).unwrap();
@@ -1202,7 +1156,7 @@ fn session_check_through_a_symlinked_cwd_still_finds_the_local_record() {
     let start = br#"{"hook_event_name":"SessionStart","source":"startup"}"#;
     let r = dispatch("session-check", &link, start, &[]);
     assert!(
-        r.stdout.contains("local claim record: present"),
+        r.stdout.contains("branch: issue/77-k"),
         "{}",
         r.stdout
     );
@@ -1298,6 +1252,10 @@ fn tool_observe_spawns_no_git_without_a_state_dir() {
 /// local-record lookup. Counted, not timed: a logging `git` wrapper execs the real one.
 #[test]
 fn a_commit_with_its_token_spawns_one_git_and_one_without_spawns_three() {
+    // SPEC-20261122-next-flow-hooks REQ-11: the token rule and its git-counting premise are
+    // gone. What stays pinned here: a commit in a project without a ledger spawns exactly one
+    // git (the staged-paths read of the reservation check) and passes; a non-commit command
+    // spawns none.
     let (_d, root) = repo("issue/77-k");
     let real = String::from_utf8(
         Command::new("sh")
@@ -1314,11 +1272,7 @@ fn a_commit_with_its_token_spawns_one_git_and_one_without_spawns_three() {
     let log = root.join("home/git-calls");
     common::write_executable(
         &bin.join("git"),
-        &format!(
-            "#!/bin/sh\necho \"$*\" >> '{}'\nexec '{}' \"$@\"\n",
-            log.display(),
-            real
-        ),
+        &format!("#!/bin/sh\necho \"$*\" >> '{}'\nexec '{}' \"$@\"\n", log.display(), real),
     );
     let path = format!(
         "{}:{}",
@@ -1332,20 +1286,12 @@ fn a_commit_with_its_token_spawns_one_git_and_one_without_spawns_three() {
         let n = fs::read_to_string(&log).map_or(0, |t| t.lines().count());
         (n, r)
     };
-    let (n, r) = calls("git commit -m 'x\n\nMoai-Claim: 77#5'");
-    assert_allow(&r);
-    assert_eq!(n, 1, "token present: the branch lookup only");
     let (n, r) = calls("git commit -m x");
-    assert_deny(&r);
-    // SPEC-20261117-commit-guard-users: a refusal also reads the clone's session registry,
-    // located by the same two rev-parse calls; the token path above is unchanged.
-    assert_eq!(
-        n, 5,
-        "no token: branch + two rev-parse for the journal + two for the session registry"
-    );
-    let (n, r) = calls("ls");
     assert_allow(&r);
-    assert_eq!(n, 0, "not a commit: no git at all");
+    assert_eq!(n, 1, "the staged-paths read only");
+    let (n, r) = calls("git status");
+    assert_allow(&r);
+    assert_eq!(n, 0, "a non-commit command spawns no git");
 }
 
 // ---- stage 5: minimal guard bundle (A1–A4) ----
@@ -1376,7 +1322,7 @@ fn stage_five_reasons_are_fixed_text_for_both_hosts() {
             &[],
         )
         .unwrap();
-        let reason = assert_deny(&r);
+        let reason = assert_deny_any_exit(&r);
         assert!(reason.contains("force push"), "{reason}");
         assert!(!reason.contains(marker), "{reason}");
     }
@@ -1396,7 +1342,7 @@ fn file_writes_into_git_internals_are_refused_for_both_hosts() {
     let patch = json!({"hook_event_name": "PreToolUse", "tool_name": "apply_patch",
                        "tool_input": {"command": "*** Begin Patch\n*** Update File: .git/config\n@@\n-a\n+b\n*** End Patch"},
                        "cwd": root});
-    assert_deny(&codex(
+    assert_deny_any_exit(&codex(
         "tool-preflight",
         &root,
         patch.to_string().as_bytes(),
@@ -1412,6 +1358,19 @@ fn file_writes_into_git_internals_are_refused_for_both_hosts() {
 }
 
 // ---- stage 6: the confirmation class (B2 = A) ----
+
+/// The PreToolUse object's decision and reason, at either exit code (a Claude refusal is
+/// exit 2 with the same object, REQ-8).
+fn decision_any_exit(r: &Run) -> (String, String) {
+    assert!(matches!(r.code, 0 | 2), "{}", r.stderr);
+    let v: Value = serde_json::from_str(r.stdout.trim()).expect("one JSON object");
+    let h = &v["hookSpecificOutput"];
+    assert_eq!(h["hookEventName"], "PreToolUse");
+    (
+        h["permissionDecision"].as_str().unwrap_or("").to_string(),
+        h["permissionDecisionReason"].as_str().unwrap_or("").to_string(),
+    )
+}
 
 /// The PreToolUse object's decision and reason.
 fn decision(r: &Run) -> (String, String) {
@@ -1473,21 +1432,23 @@ fn a_deny_on_the_same_line_wins_over_a_confirmation() {
         &pre_tool("git reset --hard && git push --force origin main", &root),
         &[],
     );
-    assert_eq!(decision(&r).0, "deny");
+    assert_eq!(decision_any_exit(&r).0, "deny");
+    // REQ-11 replaced the commit token rule: the deny that wins on the line is a plain
+    // dangerous rm now.
     let r = dispatch(
         "tool-preflight",
         &root,
-        &pre_tool("git reset --hard; git commit -m no-token", &root),
+        &pre_tool("git reset --hard; rm -rf /", &root),
         &[],
     );
-    assert_eq!(decision(&r).0, "deny");
+    assert_eq!(decision_any_exit(&r).0, "deny");
     let r = dispatch(
         "tool-preflight",
         &root,
         &pre_tool("git reset --hard", &root),
         &[],
     );
-    assert_eq!(decision(&r).0, "ask");
+    assert_eq!(decision_any_exit(&r).0, "ask");
 }
 
 // ---- stage 7: opt-in rules from ~/.moai-cli/config (B3, B9) ----
@@ -1531,7 +1492,7 @@ fn outside_project_writes_follow_the_config() {
     // Codex review of #3019: the denial names the file the loader reads, not the older name.
     assert!(reason.contains("~/.moai-cli/hook-config.toml"), "{reason}");
     assert!(!reason.contains("~/.moai-cli/config "), "{reason}");
-    let reason = assert_deny(&codex("tool-preflight", &root, &input));
+    let reason = assert_deny_any_exit(&codex("tool-preflight", &root, &input));
     assert!(reason.is_empty() || reason.contains("MoAI"), "{reason}");
     assert_allow(&dispatch(
         "tool-preflight",
@@ -1845,8 +1806,10 @@ fn omp(event: &str, cwd: &Path, stdin: &[u8]) -> Run {
 #[test]
 fn omp_tool_preflight_answers_block_and_reason_only() {
     let (_d, root) = repo("issue/77-k");
+    // REQ-11: the token rule is gone — the blocking call is a plain dangerous rm; a commit
+    // passes on both hosts.
     let input = json!({"hook_event_name": "PreToolUse", "tool_name": "Bash",
-                       "tool_input": {"command": "git commit -m x"}, "cwd": root});
+                       "tool_input": {"command": "rm -rf /"}, "cwd": root});
     let r = omp("tool-preflight", &root, input.to_string().as_bytes());
     assert_eq!(r.code, 0, "{}", r.stderr);
     let v: Value = serde_json::from_str(r.stdout.trim()).unwrap();
@@ -1855,7 +1818,7 @@ fn omp_tool_preflight_answers_block_and_reason_only() {
     let claude = dispatch("tool-preflight", &root, input.to_string().as_bytes(), &[]);
     assert_eq!(v["reason"].as_str().unwrap(), assert_deny(&claude));
     let ok = json!({"hook_event_name": "PreToolUse", "tool_name": "Bash",
-                    "tool_input": {"command": "git commit -m 'x Moai-Claim: 77#5'"}, "cwd": root});
+                    "tool_input": {"command": "git commit -m x"}, "cwd": root});
     assert_allow(&omp("tool-preflight", &root, ok.to_string().as_bytes()));
 }
 
@@ -1926,17 +1889,18 @@ fn git_dash_c_names_the_worktree_the_commit_runs_in() {
     // A lane worktree belongs to a lane clone (SPEC-20261117-commit-guard-users).
     common::register_lane(&primary);
     let wt = primary.join("wt77");
-    // From the primary checkout, a commit in the lane worktree without its token: denied.
+    // SPEC-20261122-next-flow-hooks REQ-11: the token deny is gone; the `git -C` resolution
+    // now feeds the ledger reservation check (pinned by tests/next_flow_hooks_cli ac12), and
+    // both spellings of the same worktree pass when nothing is reserved.
     let r = dispatch(
         "tool-preflight",
         &primary,
         &pre_tool("git -C wt77 commit -m x", &primary),
         &[],
     );
-    assert!(assert_deny(&r).contains("Moai-Claim: 77#"));
-    // The absolute spelling is the same folder.
+    assert_allow(&r);
     let abs = format!("git -C {} commit -m x", wt.display());
-    assert_deny(&dispatch(
+    assert_allow(&dispatch(
         "tool-preflight",
         &primary,
         &pre_tool(&abs, &primary),
@@ -2010,7 +1974,10 @@ fn a_compacted_session_is_told_how_to_check_not_that_instructions_are_done() {
         "User instructions you can still see may already be done:",
         "check whether a comment, a claim or a pull request already shows it done, and run it again only when none does.",
         "A standing instruction (a rule meant to stay in force) still applies.",
-        "If Issue #77 is your card, its newest `moai-resume:` comment says where you stopped (read it there; this hook did not).",
+        // SPEC-20261122-next-flow-hooks REQ-3: after a compaction the card facts of the
+        // worktree are restated through `moai card show` — the Issue-era resume-comment
+        // sentence is gone. This fixture has no ledger, so the answer names the absence.
+        "The card facts of this worktree: no card names this branch.",
     ] {
         assert!(compact.contains(sentence), "{sentence}: {compact}");
     }
@@ -2023,8 +1990,9 @@ fn a_compacted_session_is_told_how_to_check_not_that_instructions_are_done() {
         assert!(!compact.contains(claim), "{claim}: {compact}");
     }
     assert!(!plain.contains("compact"), "{plain}");
-    // The branch name's words are not echoed.
-    assert!(!compact.contains("-k"), "{compact}");
+    // The command text and paths are never echoed; the branch itself is the worktree's
+    // own state and is named (SPEC-20261122-next-flow-hooks REQ-3).
+    assert!(!compact.contains("git "), "{compact}");
 }
 
 /// SPEC-20261117-language-reach AC-3, under the ask-once rules (the language
@@ -2109,9 +2077,31 @@ fn session_check_names_the_conversation_language() {
 fn only_the_exact_compact_source_changes_the_answer() {
     let (_d, root) = repo("issue/77-k");
     let plain = session_context("claude", &root, Some(json!("startup")));
+    // SPEC-20261122-next-flow-hooks REQ-6: the session-check duty answers for the four
+    // sources only; resume and clear answer the plain text, every other source answers
+    // nothing at all (the matcher narrows the host's calls the same way).
+    for source in [Some(json!("resume")), Some(json!("clear"))] {
+        let ctx = session_context("claude", &root, source.clone());
+        assert_eq!(ctx, plain, "{source:?}");
+        assert!(!ctx.contains("compacted"), "{source:?}: {ctx}");
+    }
+    let quiet = |source: Option<Value>| {
+        let mut input = json!({"hook_event_name": "SessionStart", "session_id": "s"});
+        if let Some(v) = source {
+            input["source"] = v;
+        }
+        let r = run_program(
+            Path::new(BIN),
+            &["hook-dispatch", "--host", "claude", "--event", "session-check"],
+            &root,
+            input.to_string().as_bytes(),
+            &[],
+        )
+        .unwrap();
+        assert_eq!(r.code, 0, "{}", r.stderr);
+        r.stdout.is_empty()
+    };
     for source in [
-        Some(json!("resume")),
-        Some(json!("clear")),
         Some(json!("fork")),
         Some(json!("Compact")),
         Some(json!("compact ")),
@@ -2121,9 +2111,7 @@ fn only_the_exact_compact_source_changes_the_answer() {
         Some(json!(["compact"])),
         None,
     ] {
-        let ctx = session_context("claude", &root, source.clone());
-        assert_eq!(ctx, plain, "{source:?}");
-        assert!(!ctx.contains("compacted"), "{source:?}: {ctx}");
+        assert!(quiet(source.clone()), "{source:?}");
     }
     assert!(!plain.contains("compacted"), "{plain}");
 }
@@ -2147,8 +2135,10 @@ fn a_compacted_codex_session_is_also_pointed_at_its_goal_and_claude_is_not() {
 fn a_compacted_session_outside_a_lane_branch_names_no_issue_number() {
     let (_d, root) = repo("main");
     let ctx = session_context("claude", &root, Some(json!("compact")));
+    // SPEC-20261122-next-flow-hooks REQ-3: the Issue-era resume sentence is gone; the card
+    // facts are restated through `moai card show`, and no Issue number appears anywhere.
     assert!(
-        ctx.contains("If your work has a card Issue, its newest `moai-resume:` comment says where you stopped"),
+        ctx.contains("The card facts of this worktree: no card names this branch."),
         "{ctx}"
     );
     assert!(!ctx.contains("Issue #"), "{ctx}");
