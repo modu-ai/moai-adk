@@ -65,3 +65,14 @@ Today 175 Rust test files spell the earlier name on 1,363 lines, and 141 spell t
 
 - A lane whose branch adds a literal to a listed file gets a failure at its READY receipt: that is the point. The text says how to fix it with the resolver, or how to raise the count for a real fixture.
 - Branches that landed after the baseline was generated can push a count above it on the tip: the scan then fails on the tip, and the next landing raises or fixes it. The leader's landing check runs the scan on the merged tree.
+
+## Result
+
+Measured 2026-11-22 on macOS, on the tip c91859e4b8, which holds the install-test repair.
+
+- AC-1 met: `a_new_fresh_project_line_in_a_listed_file_fails`. A listed fixture text at 2 earlier-name literals gains a fresh-project `receipts` line and fails with one violation that names the file, the earlier name, `3 times` and `allows 2`.
+- AC-2 met: `a_listed_fixture_passes_unchanged_and_with_fewer_literals`.
+- AC-3 met: `an_unlisted_python_file_that_spells_the_new_name_fails` and `program_names_tags_and_hosts_count_nothing`. Program names, release tags, the host name and `x.moai` count nothing; quoted, slashed and `~/` forms count.
+- AC-4 met: the baseline was written with the switch from this tree. It has 261 files (248 `.rs`, 13 `.py`) with 1,388 earlier-name and 1,939 new-name literals; `tests/install_script_test.py` stands at 3 and 2 after the repair. Against it, `the_repository_tests_stay_within_the_state_folder_baseline` passes. `tools/repo_scans.json` lists the scan with `tests/` `.rs` and `.py` in its scope, and `python3 -m unittest tests.repo_scans_test` gives 6 OK.
+- AC-5 met: `the_write_switch_form_is_sorted_and_judges_clean`. The temporary tree's `tests/fixtures/` and clean files are left out, the rows are sorted, and the judge passes them.
+- `cargo nextest run --test state_folder_literal_scan`: red, with no baseline, was 6 run, 5 passed and 1 failed, naming 261 files; green is 6 run, 6 passed, 0.06 s.

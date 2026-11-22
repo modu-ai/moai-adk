@@ -1019,6 +1019,29 @@
         }
       ],
       "rejects": "the old banner wordings 'MoAI-Easy ★' or 'MoAI ★' left in shipped text; banners read '<emoji> MoAI 🗿 <name> ─…' (user instruction 2026-11-21)"
+    },
+    {
+      "id": "state-folder-literals-in-tests",
+      "tests": [
+        "tests/state_folder_literal_scan.rs::the_repository_tests_stay_within_the_state_folder_baseline"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test state_folder_literal_scan"
+      ],
+      "rules": [
+        "tests/state_folder_literal_scan.rs",
+        "tests/fixtures/state_folder_literals/allow.tsv"
+      ],
+      "scope": [
+        {
+          "prefix": "tests/",
+          "suffixes": [
+            ".rs",
+            ".py"
+          ]
+        }
+      ],
+      "rejects": "a test file outside tests/fixtures that spells the earlier or the new state folder name and is not in the counted baseline, or spells one more often than its baseline count; a fresh project or HOME uses the resolvers (SPEC-20261122-state-folder-literal-scan)"
     }
   ]
 }
