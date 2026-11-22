@@ -116,8 +116,8 @@ fn sha(bytes: &[u8]) -> String {
     crate::digest(bytes)
 }
 
-/// The host's instruction file: `CLAUDE.md` or `AGENTS.md` in the host folder that
-/// [`crate::host_home`] names (`~/.claude`, `~/.codex`, or the relocated folder, card C-79).
+/// The host's instruction file: `CLAUDE.md` in the host folder that [`crate::host_home`] names
+/// (`~/.claude`, or the relocated folder). The update writes no Codex file any more.
 fn host_file(home: &Path, host: &str) -> Result<PathBuf> {
     let rel = HOSTS
         .iter()

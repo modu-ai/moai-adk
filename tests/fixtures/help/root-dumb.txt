@@ -38,7 +38,6 @@ Commands
     key-import-apply       Import a previewed old key file
   Diagnose
     claude-doctor          Check that Claude Code reads AGENTS.md
-    codex-doctor           Check the Codex instructions and skills
     install-inspect        Show the installed MoAI binaries
     identity               Show where a path sits in its clone
     worktree-report        Report the space worktrees use

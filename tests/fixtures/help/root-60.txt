@@ -55,8 +55,6 @@ Commands
   Diagnose
     claude-doctor          Check that Claude Code reads
                            AGENTS.md
-    codex-doctor           Check the Codex instructions and
-                           skills
     install-inspect        Show the installed MoAI binaries
     identity               Show where a path sits in its
                            clone

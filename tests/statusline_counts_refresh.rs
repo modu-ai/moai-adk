@@ -86,6 +86,9 @@ fn render(f: &Fixture) -> (String, Duration) {
         }
     })
     .to_string();
+    // The render may keep a session cache under `$TMPDIR`: a folder of its own, so nothing
+    // reaches the real temporary folder.
+    let tmp = tempfile::tempdir().unwrap();
     let started = Instant::now();
     let mut child = Command::new(crate::common::MOAI_BIN)
         .args(["statusline", "--render-budget-ms", "3600000"])
@@ -93,6 +96,7 @@ fn render(f: &Fixture) -> (String, Duration) {
         .clean_env()
         .env("PATH", &f.bin)
         .env("HOME", &f.home)
+        .env("TMPDIR", tmp.path())
         .env("NO_COLOR", "1")
         // An inherited gh target must not redirect the refresh (Codex review on #2604).
         .env("GH_REPO", "elsewhere/other")
@@ -149,7 +153,7 @@ fn a_stale_cache_is_refreshed_in_the_background_and_the_go_file_is_left_alone() 
     // `n/a` (SPEC-20261121-statusline-detached REQ-3) — never the stale numbers.
     let (first, _) = render(&f);
     assert!(
-        !first.contains("⬇️ 7") && !first.contains("🔀 3"),
+        !first.contains("⬇️  7") && !first.contains("🔀 3"),
         "stale counts shown: {first}"
     );
     assert!(first.contains("n/a"), "the failed read says so: {first}");
@@ -165,7 +169,7 @@ fn a_stale_cache_is_refreshed_in_the_background_and_the_go_file_is_left_alone() 
         (Some(12), Some(5))
     );
     let (second, _) = render(&f);
-    assert!(second.contains("⬇️ 12 🔀 5"), "{second}");
+    assert!(second.contains("⬇️  12 🔀 5"), "{second}");
     assert_eq!(std::fs::read_to_string(f.repo.join(GO_CACHE)).unwrap(), go);
     assert_eq!(
         gh_calls(&f),

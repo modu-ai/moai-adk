@@ -25,7 +25,8 @@ type Result<T> = std::result::Result<T, String>;
 
 /// The HOME state folder every OS uses (D1).
 pub const STATE_DIR: &str = ".moai";
-/// New worktrees, under [`STATE_DIR`].
+/// The home folder of the earlier worktrees, under [`STATE_DIR`]: the classifier still names it,
+/// and no new worktree is made there (new ones go to the project's `.claude/worktrees`).
 pub const WORKTREES: &str = "worktrees";
 /// The default parent of new projects, under [`STATE_DIR`]; also the Go generation's folder
 /// under [`WORKTREES`] (D8).
@@ -163,6 +164,118 @@ pub fn worktree_dir(project_root: &Path, id: &str) -> Result<PathBuf> {
         .join(".claude")
         .join("worktrees")
         .join(worktree_name(project_root, id)?))
+}
+
+/// The ancestor of `folder` that is the primary checkout under another spelling, when `folder`
+/// sits below that checkout's `.claude/worktrees`: the ancestors are compared by what they resolve
+/// to, never by how the path was written, so a path spelled through a linked parent (on macOS
+/// `/tmp` is a link to `/private/tmp`) still finds its owner. The `.claude` and
+/// `.claude/worktrees` links themselves are not followed to reach the owner, because the walk
+/// stops at the first ancestor that is the primary and has the place below it. The two place
+/// parts are read ignoring case, because a disk that ignores case (APFS, NTFS) makes
+/// `.CLAUDE/worktrees` the same folder; on a disk that does not, the name still only widens the
+/// check, which refuses links and nothing else. `None` when `folder` is not inside the place of
+/// that checkout.
+pub fn place_owner(primary: &Path, folder: &Path) -> Option<PathBuf> {
+    let want = crate::worktree::resolve_existing(primary);
+    folder.ancestors().skip(1).find_map(|a| {
+        let inside = folder.strip_prefix(a).ok().is_some_and(|rest| {
+            let mut parts = rest.components().filter_map(|c| c.as_os_str().to_str());
+            parts
+                .next()
+                .is_some_and(|p| p.eq_ignore_ascii_case(".claude"))
+                && parts
+                    .next()
+                    .is_some_and(|p| p.eq_ignore_ascii_case("worktrees"))
+        });
+        (inside && crate::worktree::resolve_existing(a) == want).then(|| a.to_path_buf())
+    })
+}
+
+/// Why a worktree path is refused: a short `reason` for the answer and a `detail` that names the
+/// path.
+#[derive(Debug, PartialEq, Eq)]
+pub struct PlaceRefusal {
+    pub reason: &'static str,
+    pub detail: String,
+}
+
+/// The verdict on a worktree path against the place of the primary checkout `primary`
+/// (REQ-13): the path is refused when it holds a `.` or `..` part, when it lies in the place and
+/// runs through a link, or when it lies in the place by name and resolves outside it. A path
+/// outside the place passes untouched.
+pub fn place_verdict(primary: &Path, target: &Path) -> std::result::Result<(), PlaceRefusal> {
+    // A `.` or `..` part is refused as text, plainly: `Path::components` drops an interior `.`
+    // and a `..` is folded by the file system after a link was followed, so neither can be
+    // judged by the parts the path is made of.
+    let text = target.to_string_lossy();
+    if text.split(['/', '\\']).any(|p| p == "." || p == "..") {
+        return Err(PlaceRefusal {
+            reason: "place_path_refused",
+            detail: format!(
+                "worktree path refused: {} holds a '.' or '..' part; give the path without it and nothing was changed",
+                target.display()
+            ),
+        });
+    }
+    // Outside the place of that checkout the path is the caller's own business.
+    let Some(owner) = place_owner(primary, target) else {
+        return Ok(());
+    };
+    // Inside it: no link in any existing part from the owner down ...
+    refuse_linked_place(&owner, target).map_err(|detail| PlaceRefusal {
+        reason: "place_is_a_link",
+        detail,
+    })?;
+    // ... and the real path of the target lies under the real place of the owner.
+    let place = crate::worktree::resolve_existing(&owner)
+        .join(".claude")
+        .join("worktrees");
+    if !crate::worktree::resolve_existing(target).starts_with(&place) {
+        return Err(PlaceRefusal {
+            reason: "place_path_refused",
+            detail: format!(
+                "worktree path refused: {} resolves outside {}; nothing was changed",
+                target.display(),
+                place.display()
+            ),
+        });
+    }
+    Ok(())
+}
+
+/// Refuses a worktree place that runs through a link: `<project>/.claude`, `<project>/.claude/
+/// worktrees`, the `folder` of the new worktree and every part between them must not be symbolic
+/// links (REQ-13). Nothing is followed or changed; the error names the linked path. `project` is
+/// the primary checkout.
+pub fn refuse_linked_place(project: &Path, folder: &Path) -> Result<()> {
+    // Every part between the project and the folder is looked at as it is written, so a link
+    // is found whatever the spelling (a disk that ignores case resolves `.CLAUDE` to the real
+    // folder) and a link in a middle part is found as well. A folder that is not below the
+    // project keeps the three named parts.
+    let claude = project.join(".claude");
+    let mut parts: Vec<PathBuf> = vec![claude.clone(), claude.join("worktrees")];
+    if let Ok(rest) = folder.strip_prefix(project) {
+        let mut at = project.to_path_buf();
+        parts = rest
+            .components()
+            .map(|c| {
+                at.push(c.as_os_str());
+                at.clone()
+            })
+            .collect();
+    } else {
+        parts.push(folder.to_path_buf());
+    }
+    for path in parts {
+        if std::fs::symlink_metadata(&path).is_ok_and(|m| m.file_type().is_symlink()) {
+            return Err(format!(
+                "worktree place refused: {} is a link; it is not followed and nothing was changed",
+                path.display()
+            ));
+        }
+    }
+    Ok(())
 }
 
 /// The line this module adds to a repository's local exclude file, anchored at the root.

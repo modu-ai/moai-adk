@@ -46,12 +46,16 @@ fn render(f: &Fixture, extra: &[(&str, &str)]) -> String {
 }
 
 fn render_in(f: &Fixture, cwd: &Path, extra: &[(&str, &str)]) -> String {
+    // The render may keep a session cache under `$TMPDIR`: a folder of its own outside the
+    // HOME, so nothing reaches the real temporary folder.
+    let tmp = tempfile::tempdir().unwrap();
     let mut cmd = Command::new(crate::common::MOAI_BIN);
     cmd.args(["statusline", "--render-budget-ms", "3600000"])
         .current_dir(cwd)
         .clean_env()
         .env("PATH", std::env::var_os("PATH").unwrap_or_default())
         .env("HOME", &f.home)
+        .env("TMPDIR", tmp.path())
         .env("NO_COLOR", "1")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())

@@ -11,10 +11,9 @@
 //! the bytes we last wrote (`~/.moai-cli/home-style/<host>.json`); anything else is a
 //! `conflict`, never overwritten. `outputStyle` is set only when the key is absent — another
 //! value is the user's choice and a `conflict`. A symlinked folder or file blocks the host.
-//! `apply` re-plans,
-//! refuses any other digest and keeps the before bytes in a receipt; `revert` restores a file
-//! only while it still holds the bytes the apply wrote, and removes the `outputStyle` key only
-//! while it still names this style.
+//! `apply` re-plans, refuses any other digest and keeps the before bytes in a receipt; `revert`
+//! restores a file only while it still holds the bytes the apply wrote, and removes the
+//! `outputStyle` key only while it still names this style.
 
 use crate::apply::{publish_exclusive, publish_replace, read_opt};
 use crate::retired_hosts::retired;

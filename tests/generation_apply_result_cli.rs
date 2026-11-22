@@ -133,3 +133,83 @@ fn a_file_that_was_already_there_is_merged_not_created() {
     let agents = fs::read_to_string(root.path().join("AGENTS.md")).unwrap();
     assert!(agents.contains("Keep this line."), "{agents}");
 }
+
+/// SPEC-20261121-remove-codex-project-layer REQ-8 (AC-8): a project that lists claude, codex and
+/// omp, and a request that names a Codex role, a Codex projection target and the default project
+/// skill hosts, gets the Claude files only. Nothing exists under `.codex`, `.agents` or `.omp`,
+/// and the manifest names no other host's projection or owned entry.
+#[test]
+fn no_codex_projection_is_written() {
+    let root = project();
+    let profile = json!({"schema_version":2,"project_id":"demo","purpose":"Build a small editor","tools":["Rust"],"development_methods":["TDD"],"hosts":["claude","codex","omp"],"interview_revision":"rc1-fixture-1"});
+    let mut bytes = serde_json::to_vec_pretty(&profile).unwrap();
+    bytes.push(b'\n');
+    fs::write(root.path().join(".moai-cli/project.yaml"), &bytes).unwrap();
+    let sources = json!({"schema_version": 1, "sources": [
+        {"source_url": "fixtures/skill-b", "license": {"status": "reviewed", "spdx": "MIT"},
+         "resolved_revision": null}]});
+    fs::create_dir_all(root.path().join(".moai-cli/manifests")).unwrap();
+    fs::write(
+        root.path().join(".moai-cli/manifests/sources.json"),
+        serde_json::to_vec_pretty(&sources).unwrap(),
+    )
+    .unwrap();
+    let request = json!({
+        "protocol_version": 1, "language": "en",
+        "workflow_reference": "skills/moai/workflows/", "local_file": "none",
+        "workflow_id": "review-flow",
+        "native_roles": [
+            {"role_id": "prj-fixer", "host": "claude", "purpose": "Fix lint failures"},
+            {"role_id": "prj-watcher", "host": "codex", "purpose": "Review diffs only"}
+        ],
+        "skill_projections": [
+            {"id": "ref-b", "source_url": "fixtures/skill-b", "host_targets": ["claude", "codex"]}
+        ],
+        "project_skills": [{"id": "prj-checks", "purpose": "How this project is checked"}]
+    });
+    let p = root.path().to_str().unwrap();
+    let plan = cli(&["generation-plan", p], &request);
+    assert_eq!(plan["ok"], json!(true), "{plan}");
+    let plan = plan["result"].clone();
+    let applied = cli(
+        &[
+            "generation-apply",
+            p,
+            "--plan-digest",
+            plan["plan_digest"].as_str().unwrap(),
+            "--permission-reference",
+            "fixture-approved",
+        ],
+        &plan,
+    );
+    assert_eq!(applied["ok"], json!(true), "{applied}");
+
+    for folder in [".codex", ".agents", ".omp"] {
+        assert!(
+            !root.path().join(folder).exists(),
+            "{folder} must not exist after a generation"
+        );
+    }
+    for claude in [
+        ".claude/agents/prj-fixer.md",
+        ".claude/skills/ref-b/SKILL.md",
+        ".claude/skills/prj-checks/SKILL.md",
+    ] {
+        assert!(root.path().join(claude).exists(), "{claude}");
+    }
+    let manifest: Value =
+        serde_json::from_slice(&fs::read(root.path().join(MANIFEST)).unwrap()).unwrap();
+    assert_eq!(manifest["projections"], json!(["claude"]), "{manifest}");
+    for entry in manifest["owned_files"].as_array().unwrap() {
+        let path = entry["path"].as_str().unwrap_or("");
+        let tag = entry["section_id"].as_str().unwrap_or("");
+        assert!(
+            !path.starts_with(".codex/")
+                && !path.starts_with(".agents/")
+                && !path.starts_with(".omp/")
+                && !tag.contains(":codex:")
+                && !tag.contains(":omp:"),
+            "{entry}"
+        );
+    }
+}

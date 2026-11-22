@@ -197,21 +197,13 @@ class CheckRunRulesSingleSourceTest(unittest.TestCase):
     def read(self, rel):
         return (ROOT / rel).read_text(encoding="utf-8")
 
-    def test_generated_agents_md_points_at_the_single_source(self):
-        # #2385 AC-1, after the CLAUDE.md layout (SPEC-20261122-claude-md-layout): the managed
-        # block of CLAUDE.md holds project facts only, so each language names the check command
-        # in one line and points at no workflow; the rules stay in the workflow's one section.
-        template = self.read("src/agents.rs")
-        for line in (
-            'Checks: `moai check affected`.\\n\\\n',
-            '검사: `moai check affected`.\\n\\\n',
-        ):
-            self.assertEqual(template.count(line), 1, line)
-        # RUN carries the retired VERIFY route (SPEC-20261122-next-flow-skills-agents).
-        self.assertEqual(self.read("skills/moai/workflows/run.md").count("\n## Check-run rules\n"), 1)
-        # The template points; it never restates the rules (no citation format, no role table).
-        self.assertNotIn(CI_FORMAT, template)
-        self.assertNotIn("Delta auditor: merge-only delta", template)
+    # The test of the AGENTS.md managed-section template that pointed at the VERIFY workflow's
+    # "Check-run rules" is retired: the template is gone. The writer now puts a facts-only block
+    # into CLAUDE.md (a few lines, no workflow sentence). What the old test still guarded is
+    # kept as a Rust pin, `check_run_the_generated_block_never_restates_the_rules` in
+    # tests/claude_md_engine_cli.rs (the block never restates the citation format or the role
+    # table); the VERIFY section itself stays pinned once by
+    # `test_verify_holds_the_rules_once` below.
 
     def test_verify_holds_the_rules_once(self):
         # RUN carries the retired VERIFY route (SPEC-20261122-next-flow-skills-agents).

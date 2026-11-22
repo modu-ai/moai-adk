@@ -395,6 +395,22 @@ mod receipts {
         assert_eq!(tree(&home.join(".omp")), omp_before);
     }
 
+    /// The files a hook receipt of `host` named when the host was served (the host's layer is
+    /// gone, so they are written out here).
+    fn receipt_files(project: &Path, host: &str) -> Vec<String> {
+        match host {
+            "codex" => vec![
+                ".codex/hooks.json".into(),
+                ".moai-cli/manifests/codex-hooks.json".into(),
+            ],
+            "omp" => vec![
+                ".omp/extensions/moai-hooks.ts".into(),
+                ".moai-cli/manifests/omp-hooks.json".into(),
+            ],
+            _ => moai_cli::hooks::written_files(project, host).unwrap().0,
+        }
+    }
+
     /// A hand-written hook receipt: absent before and after for every file of the hosts, so a
     /// host the revert handles has nothing to restore.
     fn hook_receipt(project: &Path, hosts: &[&str]) -> String {
@@ -402,8 +418,7 @@ mod receipts {
         let entries: Vec<Value> = hosts
             .iter()
             .map(|h| {
-                let (files, _) = moai_cli::hooks::written_files(project, h).unwrap();
-                let files: Vec<Value> = files
+                let files: Vec<Value> = receipt_files(project, h)
                     .iter()
                     .map(|f| json!({"path": f, "before_sha256": null, "after_sha256": null}))
                     .collect();
@@ -487,13 +502,13 @@ mod generation_manifest {
     use std::fs;
     use std::path::Path;
 
-    const TODAY: [&str; 2] = ["claude", "codex"];
     const AFTER: [&str; 1] = ["claude"];
     const PERM: &str = "fixture-approved";
     const CLAUDE_CHECKS: &str = ".claude/skills/prj-checks/SKILL.md";
     const CODEX_CHECKS: &str = ".agents/skills/prj-checks/SKILL.md";
     const CLAUDE_EXTRA: &str = ".claude/skills/prj-extra/SKILL.md";
     const CODEX_EXTRA: &str = ".agents/skills/prj-extra/SKILL.md";
+    const CODEX_ROLE: &str = ".codex/agents/prj-reviewer.toml";
     const PROJECTION: &str = ".agents/skills/prj-proj/SKILL.md";
     const MANIFEST: &str = ".moai-cli/manifests/generation.json";
 
@@ -534,10 +549,6 @@ mod generation_manifest {
         ])
     }
 
-    fn codex_role() -> Value {
-        json!([{"role_id": "prj-reviewer", "host": "codex", "purpose": "Reviews changes"}])
-    }
-
     fn manifest(root: &Path) -> Value {
         serde_json::from_slice(&fs::read(root.join(MANIFEST)).unwrap()).unwrap()
     }
@@ -551,22 +562,49 @@ mod generation_manifest {
             .collect()
     }
 
-    /// A project written by an earlier version: two project skills for both hosts, a Codex
-    /// native role, and a skill projection entry recorded for Codex.
+    /// A project written by an earlier version: two project skills for Claude from a real apply,
+    /// and the Codex files that version also wrote (two project skills, a native role and a skill
+    /// projection) put on disk and recorded in the manifest by hand, since this version writes
+    /// none of them.
     fn applied() -> tempfile::TempDir {
         let root = project();
         let r = root.path();
-        let plan = generation_plan(r, request(both_skills(), codex_role())).unwrap();
+        let plan = generation_plan(r, request(both_skills(), json!([]))).unwrap();
         generation_apply(r, plan.clone(), &plan.plan_digest, PERM).unwrap();
         let mut value = manifest(r);
-        let baseline = moai_cli::digest(b"projection");
-        fs::create_dir_all(r.join(".agents/skills/prj-proj")).unwrap();
-        fs::write(r.join(PROJECTION), b"projection").unwrap();
-        value["owned_files"].as_array_mut().unwrap().push(json!({
-            "path": PROJECTION, "kind": "skill-projection",
-            "section_id": "generation:skill-projection:codex:prj-proj",
-            "baseline_sha256": baseline
-        }));
+        for (path, kind, section_id, body) in [
+            (
+                CODEX_CHECKS,
+                "project-skill",
+                "generation:project-skill:codex:prj-checks",
+                "codex checks",
+            ),
+            (
+                CODEX_EXTRA,
+                "project-skill",
+                "generation:project-skill:codex:prj-extra",
+                "codex extra",
+            ),
+            (
+                CODEX_ROLE,
+                "native-role",
+                "generation:native-role:codex:prj-reviewer",
+                "codex role",
+            ),
+            (
+                PROJECTION,
+                "skill-projection",
+                "generation:skill-projection:codex:prj-proj",
+                "projection",
+            ),
+        ] {
+            fs::create_dir_all(r.join(path).parent().unwrap()).unwrap();
+            fs::write(r.join(path), body).unwrap();
+            value["owned_files"].as_array_mut().unwrap().push(json!({
+                "path": path, "kind": kind, "section_id": section_id,
+                "baseline_sha256": moai_cli::digest(body.as_bytes())
+            }));
+        }
         let mut bytes = serde_json::to_vec_pretty(&value).unwrap();
         bytes.push(b'\n');
         fs::write(r.join(MANIFEST), bytes).unwrap();
@@ -586,15 +624,6 @@ mod generation_manifest {
             .iter()
             .find(|f| f.path == path)
             .map(|f| f.action.clone())
-    }
-
-    #[test]
-    fn while_codex_is_active_its_recorded_skills_are_planned_for_removal_as_before() {
-        let root = applied();
-        let plan = generation_plan_in(&TODAY, root.path(), checks_for_claude_only()).unwrap();
-        assert_eq!(action(&plan, CODEX_CHECKS).as_deref(), Some("remove"));
-        assert_eq!(action(&plan, CODEX_EXTRA).as_deref(), Some("remove"));
-        assert_eq!(action(&plan, CLAUDE_EXTRA).as_deref(), Some("remove"));
     }
 
     #[test]
@@ -636,32 +665,13 @@ mod generation_manifest {
                 .any(|id| id == "generation:project-skill:claude:prj-checks"),
             "{ids:?}"
         );
-        for kept in [CODEX_CHECKS, CODEX_EXTRA, PROJECTION] {
+        for kept in [CODEX_CHECKS, CODEX_EXTRA, CODEX_ROLE, PROJECTION] {
             assert!(r.join(kept).exists(), "{kept} is left alone");
         }
         assert!(r.join(CLAUDE_CHECKS).exists());
         assert!(
             !r.join(CLAUDE_EXTRA).exists(),
             "an active host still removes"
-        );
-    }
-
-    #[test]
-    fn while_codex_is_active_an_apply_keeps_the_native_role_and_projection_entries() {
-        let root = applied();
-        let r = root.path();
-        let plan = generation_plan_in(&TODAY, r, checks_for_claude_only()).unwrap();
-        generation_apply_in(&TODAY, r, plan.clone(), &plan.plan_digest, PERM).unwrap();
-        let ids = section_ids(r);
-        assert!(
-            ids.iter()
-                .any(|id| id == "generation:native-role:codex:prj-reviewer"),
-            "{ids:?}"
-        );
-        assert!(
-            ids.iter()
-                .any(|id| id == "generation:skill-projection:codex:prj-proj"),
-            "{ids:?}"
         );
     }
 }
@@ -798,36 +808,29 @@ mod backup_move {
         fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join(rel)).unwrap_or_default()
     }
 
+    /// The size bound the Go-era state preview reads is still defined in `config_backup`; the
+    /// backup writer that sat beside it went with the Codex config writer.
     #[test]
-    fn the_shared_backup_code_is_defined_in_config_backup() {
+    fn the_config_size_bound_is_defined_in_config_backup() {
         let new = source("src/hosts/config_backup.rs");
-        for def in [
-            "pub(crate) struct Backup {",
-            "pub(crate) const BACKUP_DIR: &str = \"backups\";",
-            "pub(crate) fn write_backup(",
-            "pub const CONFIG_LIMIT: u64 = 262_144;",
-        ] {
-            assert!(
-                new.contains(def),
-                "src/hosts/config_backup.rs lacks `{def}`"
-            );
-        }
+        assert!(
+            new.contains("pub const CONFIG_LIMIT: u64 = 262_144;"),
+            "src/hosts/config_backup.rs lacks CONFIG_LIMIT"
+        );
+        assert!(
+            !new.contains("fn write_backup("),
+            "the backup writer is removed with the Codex config writer"
+        );
     }
 
     #[test]
-    fn the_codex_config_module_defines_none_of_them() {
-        let old = source("src/hosts/codex_config.rs");
-        for def in [
-            "struct Backup",
-            "const BACKUP_DIR",
-            "fn write_backup(",
-            "const CONFIG_LIMIT",
-        ] {
-            assert!(
-                !old.contains(def),
-                "src/hosts/codex_config.rs still defines `{def}`"
-            );
-        }
+    fn the_codex_config_module_is_gone() {
+        assert!(
+            !Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("src/hosts/codex_config.rs")
+                .exists(),
+            "src/hosts/codex_config.rs is removed"
+        );
     }
 
     #[test]
@@ -843,7 +846,7 @@ mod backup_move {
                 assert!(!text.contains(old), "{rel} still names `{old}`");
             }
         }
-        assert!(source("src/hooks.rs").contains("config_backup"));
+        // The hook adapters that used the backup code were removed with their hosts.
         assert!(source("src/go_state.rs").contains("config_backup::CONFIG_LIMIT"));
     }
 }

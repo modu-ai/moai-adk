@@ -135,32 +135,6 @@ struct LaunchOpts {
     json: bool,
 }
 
-/// The Codex lane Stop hook of `hooks-plan` / `hooks-apply` (#2904 stage 2). Without either
-/// flag the plan keeps what the Codex receipt records.
-#[derive(Args)]
-struct LaneLoopArgs {
-    /// Add this lane's Stop hook (`lane-stop-hook`) to `.codex/hooks.json` (codex only).
-    #[arg(long, requires = "repo", conflicts_with = "lane_loop_off")]
-    lane_loop: Option<String>,
-    /// `OWNER/REPO` the lane Stop hook reads (with `--lane-loop`).
-    #[arg(long, requires = "lane_loop")]
-    repo: Option<String>,
-    /// Remove the lane Stop hook: the file returns to the base hook set (codex only).
-    #[arg(long)]
-    lane_loop_off: bool,
-}
-
-impl LaneLoopArgs {
-    fn lane_loop(self) -> moai_cli::hooks::LaneLoop {
-        use moai_cli::hooks::LaneLoop;
-        match (self.lane_loop, self.repo, self.lane_loop_off) {
-            (Some(lane), Some(repo), _) => LaneLoop::Set { lane, repo },
-            (_, _, true) => LaneLoop::Off,
-            _ => LaneLoop::Keep,
-        }
-    }
-}
-
 /// `moai-cli cc|glm|omp [-l|-a] [options] [PROMPT]`. Without `-l|-a` it is a plain host
 /// session: no role is guessed (Issue #2053).
 #[derive(Args)]
@@ -609,15 +583,9 @@ enum Command {
     /// Preview the MoAI hook set for one host in PROJECT (rc.2 I1 #2238); writes nothing.
     HooksPlan {
         project: PathBuf,
-        /// `claude` (.claude/settings.json `hooks`) or `codex` (.codex/hooks.json).
+        /// `claude` (.claude/settings.json `hooks`).
         #[arg(long)]
         host: String,
-        /// With `--host codex` or `omp`, plan the replacement of a hook file MoAI does not own:
-        /// the plan names the copy kept first and lists the differing lines; writes nothing.
-        #[arg(long)]
-        replace_with_backup: bool,
-        #[command(flatten)]
-        lane: LaneLoopArgs,
     },
     /// Write a previewed hook set
     ///
@@ -630,12 +598,6 @@ enum Command {
         plan_digest: String,
         #[arg(long)]
         permission_reference: String,
-        /// The same `--replace-with-backup` the plan used: keep a copy of the existing hook
-        /// file in the `backups` folder of the project state folder, then replace it.
-        #[arg(long)]
-        replace_with_backup: bool,
-        #[command(flatten)]
-        lane: LaneLoopArgs,
     },
     /// Answer a Codex lane's Stop hook
     ///
@@ -676,7 +638,7 @@ enum Command {
     /// Hook engine (#2391): run one MoAI hook duty for a host and print the host's native
     /// answer; reads the host's hook JSON on stdin, no network.
     HookDispatch {
-        /// `claude` or `codex`.
+        /// `claude`. A removed host (`codex`, `omp`) gets one line on standard error and exit 0.
         #[arg(long)]
         host: String,
         /// `session-check`, `tool-preflight`, `tool-observe`, `turn-validation` or
@@ -1100,11 +1062,6 @@ fn input<T: serde::de::DeserializeOwned>() -> Result<T, String> {
         return Err("input exceeds 64 KiB".into());
     }
     moai_cli::contract::typed_json(&bytes)
-}
-/// The config writer takes an explicit user home. Refuse a project target that is also
-/// the host's relocated user config directory before either preview or apply can run.
-fn codex_config_home(project: &std::path::Path) -> Result<PathBuf, String> {
-    moai_cli::hosts::codex_config::config_home(project)
 }
 /// Upper bound on a typed plan fed back to its `*-apply` (#2349). A plan grows with the
 /// files it covers (about 330 bytes per file per host), so the 64 KiB request bound cut
@@ -1939,20 +1896,9 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             );
             moai_cli::flow::wip_check_json(&client, &owner, &repo, &lane, lane_cap, total_cap)
         }
-        Command::HooksPlan {
-            project,
-            host,
-            replace_with_backup,
-            lane,
-        } => {
+        Command::HooksPlan { project, host } => {
             let home = std::env::var_os("HOME").map(PathBuf::from);
-            let mut out = moai_cli::hooks::plan_with_replace(
-                &project,
-                &host,
-                home.as_deref(),
-                lane.lane_loop(),
-                replace_with_backup,
-            )?;
+            let mut out = moai_cli::hooks::plan(&project, &host, home.as_deref())?;
             merge_binary_state(&mut out, &project, home.as_deref());
             // Outside the plan digest: the #2391 hook state from local evidence, read only.
             let path_env = std::env::var("PATH").unwrap_or_default();
@@ -1984,8 +1930,6 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             host,
             plan_digest,
             permission_reference,
-            replace_with_backup,
-            lane,
         } => {
             let home = std::env::var_os("HOME").map(PathBuf::from);
             let path_env = std::env::var("PATH").unwrap_or_default();
@@ -1995,8 +1939,6 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 home.as_deref(),
                 &plan_digest,
                 &permission_reference,
-                lane.lane_loop(),
-                replace_with_backup,
                 &path_env,
             )?;
             merge_binary_state(&mut out, &project, home.as_deref());
