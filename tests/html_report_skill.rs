@@ -7,6 +7,8 @@
 use std::fs;
 use std::path::Path;
 
+use moai_cli::home_root::MOAI_DIR;
+
 const DIR: &str = "skills/moai-html-report";
 const REFERENCES: [&str; 4] = [
     "artifact-contract.md",
@@ -40,10 +42,15 @@ fn read(rel: &str) -> String {
     fs::read_to_string(&path).unwrap_or_else(|e| panic!("{DIR}/{rel}: {e}"))
 }
 
-/// Byte offsets of `.moai/reports/` that are not the user-level `~/.moai/reports/`: a report
-/// folder inside the project.
+/// The reports folder under the state folder, spelled through the resolver's name.
+fn reports_dir() -> String {
+    format!("{MOAI_DIR}/reports/")
+}
+
+/// Byte offsets of `<state folder>/reports/` that are not the user-level one under `~/`: a
+/// report folder inside the project.
 fn project_report_paths(text: &str) -> Vec<usize> {
-    text.match_indices(".moai/reports/")
+    text.match_indices(reports_dir().as_str())
         .map(|(i, _)| i)
         .filter(|&i| !text[..i].ends_with("~/"))
         .collect()
@@ -99,9 +106,13 @@ fn delivery_section(skill: &str) -> &str {
 #[test]
 fn the_package_carries_the_internal_skill_with_no_go_era_text() {
     // The project-folder matcher in both directions.
-    assert!(project_report_paths("in `~/.moai/reports/moai-adk/`").is_empty());
-    assert_eq!(project_report_paths("write `.moai/reports/x.md`"), vec![7]);
-    assert_eq!(project_report_paths("`$HOME/.moai/reports/`").len(), 1);
+    let reports = reports_dir();
+    assert!(project_report_paths(&format!("in `~/{reports}moai-adk/`")).is_empty());
+    assert_eq!(
+        project_report_paths(&format!("write `{reports}x.md`")),
+        vec![7]
+    );
+    assert_eq!(project_report_paths(&format!("`$HOME/{reports}`")).len(), 1);
 
     for rel in skill_files() {
         let path = Path::new(env!("CARGO_MANIFEST_DIR")).join(DIR).join(&rel);
@@ -241,7 +252,10 @@ fn the_delivery_section_follows_the_report_rule() {
         assert!(at >= last, "{step} is out of order");
         last = at;
     }
-    assert!(delivery.contains("~/.moai/reports/"), "{delivery}");
+    assert!(
+        delivery.contains(&format!("~/{}", reports_dir())),
+        "{delivery}"
+    );
     // Every `references/...` file SKILL.md points to ships: in this skill or in the moai skill.
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("skills");
     // A path with a `<placeholder>` is a pattern, not a file.
