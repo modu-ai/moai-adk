@@ -14,14 +14,14 @@ When to read: before you audit a change, as `moai-audit` or as the session that 
 
 - The first line `RESULT audit <ok|blocked|not_run> <head 40 hex>`.
 - Every command it ran with its exit code, and every check it did not run with the reason.
-- Its findings, blocking first. Each finding names the file and the line in the head, the evidence and whether it blocks; `moai review-check` refuses a finding set that lacks a severity, a file and line in the head, or evidence.
+- Its findings, blocking first. Each finding names the file and the line in the head, the evidence and whether it blocks. `moai review-check` refuses a finding set that lacks a severity, a file and line in the head, or evidence, so a finding without both a file and a line stays out of the set: it counts as no finding (side rules).
 - A clean `git status` in its own worktree: a change there makes its findings unusable.
 
 The auditor never writes the verdict, never fixes what it finds and never commits.
 
 ## Who records the verdict
 
-The session that started the audit records the verdict: never the auditor agent and never the author. It checks the returned evidence itself, then adds one `moai card note` whose first line is `AUDIT <card> (<one-line scope>) head <40 hex> base <40 hex> — verdict: PASS|FAIL`, naming the head the auditor examined. The lander reads that note before it runs `moai card land`.
+The session that started the audit records the verdict: never the auditor agent and never the author. A session that made a commit between the base and the head, the parent session included, hands the recording to another session, such as the lander, with the returned evidence. The recording session checks that evidence itself, then adds one `moai card note` whose first line is `AUDIT <card> (<one-line scope>) head <40 hex> base <40 hex> — verdict: PASS|FAIL`, naming the head the auditor examined. The lander reads that note before it runs `moai card land`.
 
 The author of a change never audits it. Whoever wrote or repaired a change hands it to a separate context (`chains/index.md`); a session that made a commit between the base and the head is an author of that head.
 
@@ -38,4 +38,4 @@ The author of a change never audits it. Whoever wrote or repaired a change hands
 - A re-audit goes to the first auditor: the session that audited the head first checks the repairs, unless the lander hands the audit on with a note on the card.
 - A lane's tree-bound check receipt may be cited: the receipt its ready note quotes, made on the same tree as the audited head, with its targets, the exit code of each step and its log folder. A receipt from another tree is not cited.
 - No forked session and no advisor session audits: a fork carries the author's context, and an advisor sees only what it is shown, not the head.
-- A finding that names no file and no line counts as no finding: it neither blocks nor passes.
+- A finding that does not name both a file and a line in the head counts as no finding: it neither blocks nor passes.

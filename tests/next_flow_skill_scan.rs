@@ -2,7 +2,8 @@
 //! package has eight routes, `/moai work` takes a card through the whole flow, and the retired
 //! SETUP, VERIFY and OPTIMIZE routes leave their rules in PROJECT, RUN and UPDATE. Text slice B
 //! (AC-3): one flow reference and one audit contract, each within its byte budget. Text slice C
-//! (AC-4): the shipped texts name no retired host, mode, gate or tool.
+//! (AC-4): the shipped texts name no retired host, mode, gate or tool, and the points of the
+//! slice B audit hold: the pull-request era's verdict and reservation became card notes.
 //!
 //! The tests read the skill files of this checkout; nothing is run and no HOME is touched. The
 //! planted-copy tests write only into a temporary folder.
@@ -91,6 +92,14 @@ const PUSH_CONDITION: &str = "only when the user has turned the remote copy on";
 
 /// REQ-6: the audit contract.
 const AUDIT_REF: &str = "references/audit.md";
+
+/// Slice B audit N6: the one wording for a finding that lacks its file or its line.
+const NO_FILE_LINE: &str =
+    "A finding that does not name both a file and a line in the head counts as no finding";
+
+/// Slice B audit N1: the pull-request era's verdict comment and audit reservation line. The flow
+/// has no pull request between a lane and the integration branch, so no shipped text names them.
+const PR_ERA: [&str; 2] = ["AUDIT #", "moai-audit-claim"];
 
 /// REQ-4: the mode spellings SKILL.md no longer names.
 const MODE_SPELLINGS: [&str; 5] = [
@@ -586,6 +595,8 @@ fn refs_flow_reference_holds_each_stated_item() {
         "`moai card land <card> --head <40 hex> --by leader`",
         "protection hook",
         "Remote checks never block a landing",
+        // Slice B audit N9: the switch by its name and default.
+        "the `remote_copy` setting, off by default",
     ] {
         assert!(flow.contains(phrase), "{FLOW_REF} lacks {phrase:?}");
     }
@@ -690,9 +701,179 @@ fn refs_audit_contract_states_the_five_side_rules() {
         "A re-audit goes to the first auditor",
         "A lane's tree-bound check receipt may be cited",
         "No forked session and no advisor session audits",
-        "A finding that names no file and no line counts as no finding",
+        NO_FILE_LINE,
     ] {
         assert!(audit.contains(phrase), "{AUDIT_REF} lacks {phrase:?}");
+    }
+}
+
+/// Slice B audit N6: a finding with a file but no line was "no finding" in one line and a refused
+/// set in another. The contract says it once; the returns line points to it.
+#[test]
+fn refs_audit_contract_treats_a_finding_without_a_line_one_way() {
+    let audit = read(AUDIT_REF);
+    assert_eq!(
+        audit.matches(NO_FILE_LINE).count(),
+        1,
+        "{AUDIT_REF} states {NO_FILE_LINE:?} once"
+    );
+    assert!(
+        !audit.contains("names no file and no line"),
+        "{AUDIT_REF} keeps the old wording"
+    );
+    let returns = section(&audit, "What the auditor returns");
+    let findings = returns
+        .lines()
+        .find(|l| l.starts_with("- Its findings"))
+        .expect("the returns list has a findings line");
+    assert!(
+        findings.contains("counts as no finding (side rules)"),
+        "the findings line does not point to the side rule: {findings}"
+    );
+}
+
+/// Slice B audit N2: the session that records the verdict is never an author of the head; the
+/// contract alone says who takes the recording over, and the chain rules point to it.
+#[test]
+fn refs_audit_contract_alone_says_who_records_a_verdict_the_parent_wrote() {
+    let audit = read(AUDIT_REF);
+    let who = section(&audit, "Who records the verdict");
+    assert!(
+        who.contains("hands the recording to another session, such as the lander"),
+        "{AUDIT_REF}: {who}"
+    );
+    let chains = read("references/chains/index.md");
+    let rules = chains.split("Rules for every chain:").nth(1).unwrap();
+    assert!(
+        rules.contains("`references/audit.md`, \"Who records the verdict\""),
+        "chains/index.md rules do not point to the contract"
+    );
+    assert!(
+        !rules.contains("the parent session, not the agent, writes the verdict"),
+        "chains/index.md rules restate who writes the verdict"
+    );
+}
+
+/// Slice B audit N1: the AUDIT steps of the pull-request era are card notes now; the RUN
+/// lifetime rule starts when the card lands.
+#[test]
+fn refs_audit_steps_record_on_the_card() {
+    let audit = read("workflows/audit.md");
+    for phrase in [
+        "`AUDIT <card> (<one-line scope>) head <40-hex> base <40-hex> — verdict: PASS|FAIL`",
+        "The lane's ready note names the tier",
+        "reserve the head with one note on the card",
+        "only when no other reservation note names the same head",
+        "goes on the card as a note with no verdict line",
+    ] {
+        assert!(audit.contains(phrase), "audit.md lacks {phrase:?}");
+    }
+    let run = read("workflows/run.md");
+    assert!(
+        run.contains("**Lifetime.** After the card lands"),
+        "run.md: the lifetime rule does not start when the card lands"
+    );
+    assert!(
+        !run.contains("pull request is merged"),
+        "run.md waits for a merged pull request"
+    );
+}
+
+/// Slice B audit N1: no shipped text names the verdict comment or the reservation line of the
+/// pull-request era.
+#[test]
+fn scrub_shipped_texts_name_no_pull_request_verdict_or_claim() {
+    let hits: Vec<String> = shipped_texts()
+        .into_iter()
+        .filter(|(path, _)| !SCRUB_EXCEPTIONS.contains(&path.as_str()))
+        .flat_map(|(path, text)| {
+            text.lines()
+                .enumerate()
+                .flat_map(|(number, line)| {
+                    PR_ERA
+                        .iter()
+                        .filter(|word| line.contains(*word))
+                        .map(|word| format!("{path}:{}: {word}", number + 1))
+                        .collect::<Vec<_>>()
+                })
+                .collect::<Vec<_>>()
+        })
+        .collect();
+    assert!(
+        hits.is_empty(),
+        "pull-request era lines:\n{}",
+        hits.join("\n")
+    );
+}
+
+/// Slice B audit N3: where a route starts work, the flow reference is named by its entry — in
+/// SKILL.md (whose one package path stays the route table), in WORK's input, and in the WORK row
+/// of the chain table beside `internal/git-safety`, each entry of that cell a package file under
+/// `references/`.
+#[test]
+fn refs_route_start_names_the_flow_reference() {
+    let entry = FLOW_REF
+        .strip_prefix("references/")
+        .and_then(|e| e.strip_suffix(".md"))
+        .unwrap();
+    assert!(
+        read("SKILL.md").contains(&format!("`{entry}`")),
+        "SKILL.md does not name {entry}"
+    );
+    let work = read("workflows/work.md");
+    assert!(
+        section(&work, "Input").contains(&format!("`{entry}`")),
+        "work.md's input does not name {entry}"
+    );
+    let chains = read("references/chains/index.md");
+    let row = chains
+        .lines()
+        .find(|l| l.starts_with("| Work through the cards |"))
+        .expect("the chain table has the WORK row");
+    let cells: Vec<&str> = row.trim_matches('|').split('|').map(str::trim).collect();
+    let reads: Vec<&str> = cells[3].split(", ").collect();
+    for want in ["internal/git-safety", entry] {
+        assert!(reads.contains(&want), "the WORK row lacks {want}: {row}");
+    }
+    for r in reads {
+        assert!(
+            package().join(format!("references/{r}.md")).is_file(),
+            "the WORK row names {r}, which is no package file"
+        );
+    }
+}
+
+/// Slice B audit N11: the flows folder holds the one flow reference and nothing else.
+#[test]
+fn refs_flows_folder_holds_exactly_one_file() {
+    let folder = package().join(Path::new(FLOW_REF).parent().unwrap());
+    let mut names: Vec<String> = fs::read_dir(&folder)
+        .unwrap_or_else(|e| panic!("{}: {e}", folder.display()))
+        .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+        .collect();
+    names.sort();
+    let want = Path::new(FLOW_REF)
+        .file_name()
+        .unwrap()
+        .to_string_lossy()
+        .into_owned();
+    assert_eq!(names, [want]);
+}
+
+/// Slice B audit N11: both references of slice B begin, after their title, with the line that
+/// says when to read them.
+#[test]
+fn refs_new_references_begin_with_when_to_read() {
+    for rel in [FLOW_REF, AUDIT_REF] {
+        let text = read(rel);
+        let lines: Vec<&str> = text.lines().take(3).collect();
+        assert!(
+            lines.len() == 3
+                && lines[0].starts_with("# ")
+                && lines[1].is_empty()
+                && lines[2].starts_with("When to read: "),
+            "{rel} does not begin with a \"When to read:\" line: {lines:?}"
+        );
     }
 }
 

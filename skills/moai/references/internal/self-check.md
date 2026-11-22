@@ -29,5 +29,5 @@ In the moai-adk repository, `tools/self_check.sh` runs the machine items in one 
 15. Scope: `git diff --name-only <base>...HEAD` lists only paths inside the write scope, and nothing touches a held item.
 16. Whitespace: `git diff --check <base>...HEAD` prints nothing, as in CI.
 17. Commits: `git interpret-trailers --parse` on each new commit shows the `Moai-Spec` and `Moai-Session` trailers with the attribution last; no commit message, branch name or pull request title carries a card number.
-18. Body: the first line is `audit-tier: 0|1|2 <reason>`; `## Self-Audit` lists every command with its exit code and every item not run with its reason; check it with `moai pr-self-audit-check --file BODY.md`.
+18. Tier and body: the lane's ready note names the tier in a line `audit-tier: 0|1|2 <reason>`, with the changed paths as the reason (`workflows/audit.md`, step 9). A release pull request's body has `## Self-Audit`, which lists every command with its exit code and every item not run with its reason; check it with `moai pr-self-audit-check --file BODY.md`.
 19. Acceptance criteria: each row is ticked with its evidence (command and exit code, or a comment link).

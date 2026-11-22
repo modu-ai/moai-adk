@@ -13,12 +13,12 @@ A chain is the order in which the parent session uses agents for one kind of req
 | Check a page or do a web task | RUN | none | none |
 | Set up a project | PROJECT | none | internal/interview, internal/questions |
 | Update documents and the work card after a merge | SYNC | moai-docs | internal/decide |
-| Work through the cards | WORK | none | internal/git-safety |
+| Work through the cards | WORK | none | internal/git-safety, flows/next-flow |
 
 Rules for every chain:
 
 - Every change that modifies the repository has a SPEC, and the order of the stages is the one `internal/sdd` gives: SYNC writes the SPEC Result, documents and `@cc:` comments (agents and tools add and link them automatically) on the same branch, and AUDIT only checks them.
-- The agent that implemented a change never audits it. `moai-audit` runs in a separate context on the exact head, and the parent session, not the agent, writes the verdict.
+- The agent that implemented a change never audits it. `moai-audit` runs in a separate context on the exact head, and the agent never writes the verdict; who records it is the audit contract's rule (`references/audit.md`, "Who records the verdict").
 - A bug fix starts with a test that fails for the reported reason (`moai-impl` reads `internal/test-design`).
 - Whoever wrote a change runs `internal/self-check` before asking for an audit or opening a pull request.
 - Every commit for a SPEC carries the identity trailers of `internal/commit-trailers`, and every audit verdict names its auditor's session the same way.

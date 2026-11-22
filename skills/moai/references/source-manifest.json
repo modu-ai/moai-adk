@@ -51,7 +51,7 @@
   },
   "files": {
     "SKILL.md": {
-      "sha256": "3bd6739adbfb5e93cc67e7043c7f096cfc7d4b32ad47cc9abedf9941f0618563",
+      "sha256": "aacdc777d334b2c7386b543af65b21e5fe81be61c0e4602046e030a16aa59e1c",
       "origin": {
         "kind": "design-template",
         "template_id": "router-core",
@@ -78,7 +78,7 @@
       }
     },
     "references/audit.md": {
-      "sha256": "920c9ccc8611c9519435499ebca1dfe343d01b6bdcad8d80c640d6999ef9efb4",
+      "sha256": "e09e004c2edd81e8ddc855f4f954fb3677cbb278d4c77bed6090e4bc49a8e832",
       "origin": {
         "kind": "design-spec",
         "template_id": "audit-contract",
@@ -87,7 +87,7 @@
       }
     },
     "references/chains/index.md": {
-      "sha256": "79ee15ae9e8c97f1a133b12b0cd9a0a3c146d2c66682acdef00766e528f523a0",
+      "sha256": "556d738b0d07ec0dd85485d300490a8e9c12f741a5b2426c7c1896ba25419874",
       "origin": {
         "kind": "design-spec",
         "template_id": "chains-index",
@@ -96,7 +96,7 @@
       }
     },
     "references/flows/next-flow.md": {
-      "sha256": "1e5a4d05e53f79dfe4d8891c4595457b96872bf1f27fffb8f72e2d079a6c90e7",
+      "sha256": "d5ba85dfdd0509761b54be502c7efd94987aba22c482c427c95c6eb538fdd1f9",
       "origin": {
         "kind": "design-spec",
         "template_id": "flow-next-flow",
@@ -261,7 +261,7 @@
       }
     },
     "references/internal/self-check.md": {
-      "sha256": "199b6fb2560c891d236bff539cf9ea79b6cc3a0af6e0b275940c2b8d41361488",
+      "sha256": "b3154c41e968a8aa3cd475f38a15ec638a8d67085dc5f2fab8601191986fef6a",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-self-check",
@@ -408,7 +408,7 @@
       }
     },
     "workflows/audit.md": {
-      "sha256": "e884459638d376a67b38f1e4b97d30ebcbb47d553e8a62178dc665af2af58f71",
+      "sha256": "8937d24fa0f41915ece69a7e82fa35c11ca8efa83a83cb0730ecb3448e763df8",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-audit",
@@ -444,7 +444,7 @@
       }
     },
     "workflows/run.md": {
-      "sha256": "3b95bbcbbdb981cabb057a5ed72fb6b09e29a4361b4d93c15ea0e2269323c0ac",
+      "sha256": "72899a238466aad5ad02d9fce6c307f1a06424e2be416b7e6befd2691cb809d3",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-run",
@@ -477,7 +477,7 @@
         "adoption": "new",
         "reason": "Written for SPEC-20261122-next-flow-skills-agents (REQ-3, text slice A): `/moai work` takes one card at a time through PLAN, RUN, SYNC, AUDIT and the landing command and repeats until no card is left; a decision becomes a blocked note on the card. The card take, check, criterion and fresh-state sentences moved here from the retired MODE-AGENT workflow with their pins."
       },
-      "sha256": "f1c4863e3ca68b5e3dd424d29524c450f194fd6c5226c0c9a1b48d685ccf45f6"
+      "sha256": "377a42e3bcf2ba08a527ea75577bebe450f8ac5887226536123c0ff65022e11d"
     }
   }
 }

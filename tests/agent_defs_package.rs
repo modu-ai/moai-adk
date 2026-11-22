@@ -541,7 +541,9 @@ fn chains_name_real_routes_agents_and_references() {
         "The parent session starts each agent in turn",
         "An agent never starts another agent.",
         "The agent that implemented a change never audits it.",
-        "the parent session, not the agent, writes the verdict",
+        // Slice B audit N2: who records the verdict is the audit contract's rule alone.
+        "the agent never writes the verdict",
+        "`references/audit.md`, \"Who records the verdict\"",
     ] {
         assert!(text.contains(rule), "{rule}");
     }

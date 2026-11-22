@@ -112,7 +112,36 @@ parent: null
 | D-7 | The shipped texts do not name `prj-reviewer` or `prj-local-check`. | They are this repository's own harness files; a product text must not depend on them. | Name them again. |
 | D-13 | Text slice A also wrote, by the leader's word, the lines outside this Scope that pointed at the removed files (the PR template, the local rules file, three docs, two source comments, four tests, a fixture line and a tool), re-pointing references only; the reference test counts `.moai/specs/**`, `docs/design-review/**`, `docs/decisions-*.md` and `docs/surveys/**` as history and no longer requires their paths to resolve. | Leader decision on the slice A blocked note (2026-11-22): closed SPECs and dated docs record past states and are not rewritten; live references move to the routes that absorbed them, with no stub files. | Rewrite the history files, or restore stubs. |
 | D-14 | The build-folder reference leaves the package in slice C, not slice B, and its rule is rewritten where it moves: each worktree builds in its own `target/` (no shared build home for new work), with the fixed slots and the seeded copy of the redesign; its source and test readers are granted when slice C asks. | Leader decision on the slice B blocked note (2026-11-22) and the user's build rule of the same day. | Remove it in slice B with its old rule. |
+| D-15 | Slice B also wrote two lines outside this Scope by the leader's word: the `next-flow-shipped-texts` entry of `tools/repo_scans.json`, and the read list and step 2 of `agents/audit.md`. | Leader decision on the slice B blocked note (2026-11-22). | Drop the scan entry and the agent's read line. |
+| D-16 | Slice C also wrote lines outside this Scope by the leader's word, and only lines that named a removed file, a retired mode or gate, or a pull-request-era step:<br>- `src/help.rs`, `src/lane_idle.rs`, `src/lane_env.rs`, `src/optimize.rs`, `tools/review_checklist.json`, `tools/build_folder.py` and `docs/rust-product-path.md`;<br>- the pins of `agent_defs_package`, `codex_question_tool`, `flaky_followups`, `lane_rules_2836`, `launcher_agent_entry`, `mode_workflow_steps`, `orca_optional_3005`, `product_cli`, `update_always_asks` and `update_route`, and the root help goldens;<br>- `skills/moai/workflows/work.md` (one Input line);<br>- `tests/gate_collect.rs`, where the test of the pull-request example is re-pinned to the card-note example the gate parser reads, because no code builds a card-note line. | Leader decisions on the slice C blocked notes (2026-11-22, three answers). | Restore each line from the slice's parent commit. |
+| D-17 | Tier 0 gets a light audit by the lander instead of no audit, because a card lands only with a passing verdict. The tier is named in the lane's ready note, not in a pull-request body. | Leader answer on the slice C part 3 note (2026-11-22); the flow reference's landing rule. | Restore "tier 0 has no audit". |
+| D-18 | The product spellings of the retired modes stay for a product slice; they are listed in Result and are not rewritten here. | Leader answer on the slice C part 2 note (2026-11-22). | Rewrite them in this SPEC. |
 
 ## Result
 
-(Filled when the work is done. This is the SPEC-only slice: no code and no text changed yet.)
+Status: text slices A, B and C written. Slices A and B landed; slice C is in audit. Plan step 6 (the rule history moves to `docs/`) and the child SPECs are open.
+
+What each slice delivered:
+- **Slice A:** route inventory and retired references removed.
+- **Slice B:** the flow reference `references/flows/next-flow.md` and the audit contract `references/audit.md`; `internal/review.md` removed and its readers re-pointed (D-15).
+- **Slice C:**
+  - The build-folder reference is removed, and its rule moves into the run workflow's check-run rules (D-14).
+  - The REQ-8 and REQ-9 scrub tests pass over every file under `skills/moai/` and `agents/`. Three named exceptions remain: the rule history, a text another card holds, and the source manifest's origin reasons.
+  - The points of the slice B audit:
+    - the verdict, reservation and interim result are card notes;
+    - pull-request passages are scoped to a release pull request;
+    - one rule says who records a verdict;
+    - the flow reference is named where WORK starts;
+    - the audit agent's input carries `head` and `base`;
+    - a finding has one wording: a file and a line, or no finding;
+    - the remote copy wording matches the `remote_copy` setting, off by default;
+    - `references/flows/` holds one file, and both new references begin with "When to read:".
+
+Left for a product slice (D-18), product spellings of the retired modes and of their help:
+- `src/main.rs:145-153` and `:1011-1027`;
+- `src/session.rs:62-65`;
+- `src/lane_loop.rs:177` and `:189`;
+- `src/leader_round.rs:848`;
+- the claude-doctor line of `src/help.rs`.
+
+Finding: the `remote_copy` setting is not on this branch's base. It is on the integration branch (`src/profile.rs`, `src/card/remote_copy.rs`), where `moai card land` runs the copy itself. The flow text names the setting and its behaviour, but not the `moai card remote-copy` command, until this branch takes the tip.
