@@ -168,3 +168,67 @@ fn deleting_the_integration_branch_is_still_refused_and_queues_nothing() {
     assert_eq!(git(&r.root, &["rev-parse", "--verify", "refs/heads/integ"]).len(), 40);
     assert_eq!(r.queue(), None);
 }
+
+/// A cleanup that fails after it took the queue puts every line back and leaves no taken file:
+/// the integration ref it is given does not exist, so the plan refuses once the card's worktree
+/// is known. This is the entry the verdict step calls, run with `Trigger::Verdict`.
+#[test]
+fn a_cleanup_that_fails_after_taking_the_queue_puts_every_line_back() {
+    use common::home::TempHome;
+    use moai_cli::worktree_cleanup::{self, Request, Trigger};
+    let home = TempHome::new();
+    let project = fs::canonicalize(home.project("demo")).unwrap();
+    moai_cli::ledger::register(home.path(), "demo").unwrap();
+    git(&project, &["init", "-q", "-b", "integ"]);
+    fs::write(project.join("a.txt"), "a\n").unwrap();
+    git(&project, &["add", "a.txt"]);
+    commit(&project, "one");
+    let wt = fs::canonicalize(home.path()).unwrap().join("wt");
+    git(
+        &project,
+        &["worktree", "add", "-q", "--detach", wt.to_str().unwrap(), "integ"],
+    );
+    let p = project.to_str().unwrap();
+    let run = |args: &[&str]| {
+        let out = home
+            .command(args)
+            .env("CLAUDE_CODE_SESSION_ID", "aaaaaaaa-0000-4000-8000-00000000000a")
+            .output()
+            .unwrap();
+        assert!(out.status.success(), "{}", String::from_utf8_lossy(&out.stdout));
+        serde_json::from_slice::<serde_json::Value>(&out.stdout).unwrap()
+    };
+    let added = run(&["card", "add", "--title", "t", "--scope", "src/a.rs", "--project", p]);
+    let name = added["result"]["name"].as_str().unwrap().to_string();
+    run(&["card", "ready", &name, "--project", p]);
+    run(&["card", "take", &name, "--worktree", wt.to_str().unwrap(), "--project", p]);
+
+    let queue = project.join(".git").join(QUEUE);
+    fs::create_dir_all(queue.parent().unwrap()).unwrap();
+    fs::write(&queue, "refs/heads/card/gone\nrefs/heads/card/other\n").unwrap();
+    let got = worktree_cleanup::run(
+        &project,
+        home.path(),
+        &Request {
+            card_id: 1,
+            integration_ref: "refs/heads/nope",
+            trigger: Trigger::Verdict,
+        },
+    );
+    assert_eq!(got["trigger"], serde_json::json!("verdict"), "{got}");
+    assert_eq!(got["applied"], serde_json::json!(false), "{got}");
+    assert!(got["error"].as_str().unwrap().contains("integration ref"), "{got}");
+    assert_eq!(
+        fs::read_to_string(&queue).unwrap(),
+        "refs/heads/card/gone\nrefs/heads/card/other\n",
+        "the queue lost a line"
+    );
+    let leftovers: Vec<String> = fs::read_dir(queue.parent().unwrap())
+        .unwrap()
+        .flatten()
+        .map(|e| e.file_name().to_string_lossy().to_string())
+        .filter(|n| n.contains("draining"))
+        .collect();
+    assert!(leftovers.is_empty(), "a taken file was left: {leftovers:?}");
+    assert!(wt.is_dir(), "a failed cleanup removed a worktree");
+}
