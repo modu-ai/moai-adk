@@ -12,16 +12,22 @@ use std::{
 use tempfile::TempDir;
 
 const EXE: &str = crate::common::MOAI_BIN;
-const MANIFEST: &str = ".moai-cli/manifests/generation.json";
+/// The generation manifest of `root`, spelled by the state-folder resolver (leader rule: tests
+/// never spell the state folder).
+fn manifest(root: &TempDir) -> String {
+    moai_cli::state_root::rel(root.path(), "manifests/generation.json")
+}
 
 fn project() -> TempDir {
     let root = TempDir::new().unwrap();
     fs::create_dir_all(root.path().join("skills/moai/workflows")).unwrap();
-    fs::create_dir_all(root.path().join(".moai-cli")).unwrap();
+    // A project of the current state folder (`PROJECT_STATE_DIR`), as the fixture always was.
+    let state = root.path().join(moai_cli::PROJECT_STATE_DIR);
+    fs::create_dir_all(&state).unwrap();
     let profile = json!({"schema_version":2,"project_id":"demo","purpose":"Build a small editor","tools":["Rust"],"development_methods":["TDD"],"hosts":["claude","codex"],"interview_revision":"rc1-fixture-1"});
     let mut bytes = serde_json::to_vec_pretty(&profile).unwrap();
     bytes.push(b'\n');
-    fs::write(root.path().join(".moai-cli/project.yaml"), &bytes).unwrap();
+    fs::write(state.join("project.yaml"), &bytes).unwrap();
     root
 }
 
@@ -80,9 +86,12 @@ fn a_new_project_lists_everything_as_created_with_its_manifest_and_receipt() {
     let root = project();
     let r = generate(&root);
     let created = names(&r["files_created"]);
-    for path in ["AGENTS.md", MANIFEST] {
-        assert!(created.iter().any(|c| c == path), "{path} in {created:?}");
+    // The generation writes the managed block into CLAUDE.md and never writes AGENTS.md (user
+    // decision 6484: moai writes only CLAUDE.md and CLAUDE.local.md).
+    for path in ["CLAUDE.md".to_string(), manifest(&root)] {
+        assert!(created.contains(&path), "{path} in {created:?}");
     }
+    assert!(!created.iter().any(|c| c == "AGENTS.md"), "{created:?}");
     assert!(names(&r["files_merged"]).is_empty(), "nothing existed: {r}");
 
     // The agents engine's receipt is named and is a receipt on disk.
@@ -90,7 +99,10 @@ fn a_new_project_lists_everything_as_created_with_its_manifest_and_receipt() {
     assert_ne!(Some(id), r["receipt"].as_str(), "{r}");
     assert!(
         root.path()
-            .join(format!(".moai-cli/receipts/{id}.json"))
+            .join(moai_cli::state_root::rel(
+                root.path(),
+                &format!("receipts/{id}.json")
+            ))
             .exists(),
         "{id}"
     );
@@ -114,24 +126,33 @@ fn a_new_project_lists_everything_as_created_with_its_manifest_and_receipt() {
 fn a_file_that_was_already_there_is_merged_not_created() {
     let root = project();
     let mine = "# My project notes\n\nKeep this line.\n";
-    fs::write(root.path().join("AGENTS.md"), mine).unwrap();
+    fs::write(root.path().join("CLAUDE.md"), mine).unwrap();
     fs::write(root.path().join(".gitignore"), "target/\n").unwrap();
+    // No AGENTS.md here: with one, no CLAUDE.md is planned until the user picks move, import or
+    // leave (SPEC-20261122-claude-md-project-picks), which is that SPEC's scene, not this one.
     let r = generate(&root);
 
     let created = names(&r["files_created"]);
     let merged = names(&r["files_merged"]);
-    assert!(merged.iter().any(|m| m == "AGENTS.md"), "merged {merged:?}");
+    assert!(
+        merged.iter().any(|m| m == "CLAUDE.md"),
+        "merged {merged:?}: {r}"
+    );
     // No file that was there before is called created (the request may not touch `.gitignore`).
-    for path in ["AGENTS.md", ".gitignore"] {
+    for path in ["CLAUDE.md", ".gitignore"] {
         assert!(
             !created.iter().any(|c| c == path),
             "{path} in created {created:?}"
         );
     }
     // The manifest did not exist, so it is a creation, and the user's text is still there.
-    assert!(created.iter().any(|c| c == MANIFEST), "{created:?}");
-    let agents = fs::read_to_string(root.path().join("AGENTS.md")).unwrap();
-    assert!(agents.contains("Keep this line."), "{agents}");
+    assert!(created.iter().any(|c| *c == manifest(&root)), "{created:?}");
+    let claude = fs::read_to_string(root.path().join("CLAUDE.md")).unwrap();
+    assert!(claude.contains("Keep this line."), "{claude}");
+    assert!(
+        !root.path().join("AGENTS.md").exists(),
+        "AGENTS.md was written"
+    );
 }
 
 /// SPEC-20261121-remove-codex-project-layer REQ-8 (AC-8): a project that lists claude, codex and
@@ -144,13 +165,17 @@ fn no_codex_projection_is_written() {
     let profile = json!({"schema_version":2,"project_id":"demo","purpose":"Build a small editor","tools":["Rust"],"development_methods":["TDD"],"hosts":["claude","codex","omp"],"interview_revision":"rc1-fixture-1"});
     let mut bytes = serde_json::to_vec_pretty(&profile).unwrap();
     bytes.push(b'\n');
-    fs::write(root.path().join(".moai-cli/project.yaml"), &bytes).unwrap();
+    fs::write(
+        moai_cli::state_root::path(root.path(), "project.yaml"),
+        &bytes,
+    )
+    .unwrap();
     let sources = json!({"schema_version": 1, "sources": [
         {"source_url": "fixtures/skill-b", "license": {"status": "reviewed", "spdx": "MIT"},
          "resolved_revision": null}]});
-    fs::create_dir_all(root.path().join(".moai-cli/manifests")).unwrap();
+    fs::create_dir_all(moai_cli::state_root::path(root.path(), "manifests")).unwrap();
     fs::write(
-        root.path().join(".moai-cli/manifests/sources.json"),
+        moai_cli::state_root::path(root.path(), "manifests/sources.json"),
         serde_json::to_vec_pretty(&sources).unwrap(),
     )
     .unwrap();
@@ -191,14 +216,14 @@ fn no_codex_projection_is_written() {
         );
     }
     for claude in [
-        ".claude/agents/prj-fixer.md",
+        ".claude/agents/moai/prj-fixer.md",
         ".claude/skills/ref-b/SKILL.md",
         ".claude/skills/prj-checks/SKILL.md",
     ] {
         assert!(root.path().join(claude).exists(), "{claude}");
     }
     let manifest: Value =
-        serde_json::from_slice(&fs::read(root.path().join(MANIFEST)).unwrap()).unwrap();
+        serde_json::from_slice(&fs::read(root.path().join(manifest(&root))).unwrap()).unwrap();
     assert_eq!(manifest["projections"], json!(["claude"]), "{manifest}");
     for entry in manifest["owned_files"].as_array().unwrap() {
         let path = entry["path"].as_str().unwrap_or("");

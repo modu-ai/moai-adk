@@ -31,18 +31,32 @@ PS1 = os.path.join(REPO_ROOT, "install", "install.ps1")
 # argument per line (ended by `--`) in $FAKE_LOG, write config/language.yaml only when it is not
 # there, and answer in the real envelope's shape. With $FAKE_STDIN_LOG set, every call first reads
 # its whole standard input and records `<command> <bytes>` there (SPEC-20261118-installer-stdin-null).
+# The HOME state folder, as src/home_root.rs `dir()` answers for the HOMEs these tests build (no
+# Go state): an earlier `~/.moai-cli` keeps its folder, any other HOME is on `~/.moai`. The fake
+# below answers by the same rule, so `state()` and the fake agree with the real binary.
+EARLIER_HOME_STATE_DIR = ".moai-cli"
+NEW_HOME_STATE_DIR = ".moai"
+
+
+def home_state_dir(home):
+    if os.path.isdir(os.path.join(home, EARLIER_HOME_STATE_DIR)):
+        return EARLIER_HOME_STATE_DIR
+    return NEW_HOME_STATE_DIR
+
+
 FAKE_CLI = """#!/bin/sh
+if [ -d "$HOME/@EARLIER@" ]; then state_root="$HOME/@EARLIER@"; else state_root="$HOME/@NEW@"; fi
 if [ -n "${FAKE_STDIN_LOG:-}" ]; then printf '%s %s\\n' "$1" "$(wc -c | tr -d ' ')" >> "$FAKE_STDIN_LOG"; fi
 case "$1" in
   install-inspect)
-    printf '{"protocol_version":1,"operation":"install.inspect","ok":true,"result":{"home_state_root":"%s","path_first_moai":{"path":null,"generation":"%s"},"writes":false}}\\n' "${FAKE_STATE_ROOT:-$HOME/.moai-cli}" "${FAKE_GEN:-absent}"
+    printf '{"protocol_version":1,"operation":"install.inspect","ok":true,"result":{"home_state_root":"%s","path_first_moai":{"path":null,"generation":"%s"},"writes":false}}\\n' "${FAKE_STATE_ROOT:-$state_root}" "${FAKE_GEN:-absent}"
     ;;
   --version) echo "moai-cli @VERSION@ (rust)" ;;
   language-set)
     if [ -n "${FAKE_LOG:-}" ]; then { for a in "$@"; do printf '%s\\n' "$a"; done; echo --; } >> "$FAKE_LOG"; fi
     # The code is the last argument, after the flags (`--home`, `--if-absent`).
     for a in "$@"; do :; done
-    root="${FAKE_STATE_ROOT:-$HOME/.moai-cli}"
+    root="${FAKE_STATE_ROOT:-$state_root}"
     if [ -e "$root/config/language.yaml" ]; then
       printf '{"ok":true,"result":{"written":false,"reason":"exists"}}\\n'
     else
@@ -76,9 +90,11 @@ case "$1" in
     ;;
   *) exit 2 ;;
 esac
-""".replace("@DIGEST@", "sha256:" + "a" * 64)
+""".replace("@DIGEST@", "sha256:" + "a" * 64).replace(
+    "@EARLIER@", EARLIER_HOME_STATE_DIR).replace("@NEW@", NEW_HOME_STATE_DIR)
 
-# An older moai-cli: no `language-set` (an unknown command exits 2).
+# An older moai-cli: no `language-set` (an unknown command exits 2), and the earlier state folder
+# it always used (an earlier-layout fixture).
 FAKE_CLI_OLD = """#!/bin/sh
 case "$1" in
   install-inspect)
@@ -309,7 +325,7 @@ class InstallShTest(unittest.TestCase):
         )
 
     def state(self, *parts):
-        return os.path.join(self.home, ".moai-cli", *parts)
+        return os.path.join(self.home, home_state_dir(self.home), *parts)
 
     def test_help_lists_the_go_options_and_unknown_options_fail(self):
         r = self.run_sh("--help")
@@ -446,7 +462,7 @@ class InstallShTest(unittest.TestCase):
         out = r.stdout
         self.assertIn("No Claude Code found", out)
         self.assertEqual(self.update_calls(), [])
-        self.assertEqual(sorted(os.listdir(self.home)), [".moai-cli"])
+        self.assertEqual(sorted(os.listdir(self.home)), [NEW_HOME_STATE_DIR])
         steps = self.next_steps(out)
         self.assertIn("1. Install the MoAI skill and agents", steps)
         for entry in self.HOST_ENTRIES.values():
@@ -585,7 +601,7 @@ class InstallShTest(unittest.TestCase):
         self.assertTrue(os.path.isfile(os.path.join(version, "skills", "moai", "SKILL.md")))
         self.assertTrue(os.path.isfile(os.path.join(version, "agents", "impl.md")))
         self.assertTrue(os.path.isfile(os.path.join(self.home, ".claude", "skills", "moai", "SKILL.md")))
-        self.assertTrue(os.path.isfile(os.path.join(self.home, ".claude", "agents", "moai-impl.md")))
+        self.assertTrue(os.path.isfile(os.path.join(self.home, ".claude", "agents", "moai", "moai-impl.md")))
         again = subprocess.run(
             [os.path.join(version, "bin", "moai-cli"), "update", "--json"],
             env=self.env(**env), cwd=version, capture_output=True, text=True, timeout=120)
@@ -669,11 +685,13 @@ class InstallShTest(unittest.TestCase):
         self.assertIn("different", (r.stdout + r.stderr).lower())
 
     def test_the_state_folder_comes_from_the_binary(self):
-        target = os.path.join(self.home, ".moai")
+        # A folder neither default names, so the install can only have found it through the binary.
+        target = os.path.join(self.home, "state-named-by-the-binary")
         r = self.run_sh("--version", "1.2.3", FAKE_STATE_ROOT=target)
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         self.assertTrue(os.path.isfile(os.path.join(target, "versions", "1.2.3", "bin", "moai-cli")))
-        self.assertFalse(os.path.exists(self.state()))
+        for default in (EARLIER_HOME_STATE_DIR, NEW_HOME_STATE_DIR):
+            self.assertFalse(os.path.exists(os.path.join(self.home, default)), default)
         # A state folder the binary names that is not an absolute path is refused.
         self.assert_refused_without_writes("--version", "1.2.3", FAKE_STATE_ROOT="relative/dir")
 

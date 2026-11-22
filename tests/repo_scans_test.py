@@ -26,6 +26,8 @@ def load(path=TABLE):
 # Files the heuristic flags that only walk temporary directories or named files.
 EXEMPT = {
     "tests/atlas_query_cli.rs": "walks the TempDir tree it built from named atlas fixtures",
+    "tests/base_agents_nested.rs": "read_dir of temporary homes (the install tree before and after); "
+                                   "reads the named src and package files",
     "tests/ci_install_ripgrep_test.py": "rglob over the test's own temporary runner folder",
     "tests/codex_home_update_removed.rs": "read_dir of temporary homes (before/after trees of the "
                                           "Codex and OMP folders); reads no checked-in tree",

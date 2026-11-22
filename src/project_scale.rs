@@ -10,14 +10,18 @@
 //! Only Claude Code's own keys are planned; the settings writer checks them again on apply.
 
 use crate::apply::{read_opt, root_of, target};
+use crate::claude::shown_value;
 use crate::digest;
 use crate::spec::{Canonical, SortedKeys};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
 use std::collections::BTreeSet;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 type Result<T> = std::result::Result<T, String>;
+
+/// Bound of a linked worktree's `.git` pointer file.
+const POINTER_MAX: u64 = 4096;
 
 /// The documentation lines every row cites, with the date they were read.
 const DOCS: &str = include_str!("project_scale_docs.json");
@@ -92,7 +96,10 @@ pub struct ScaleRow {
     pub key: Option<String>,
     /// create | merge | unchanged | conflict
     pub action: String,
-    /// The planned value: the file's text, the key's value, or the ignore line.
+    /// The planned value: the file's text, the key's value, or the ignore line. For a `merge`
+    /// or `unchanged` key row it is the key's whole value after the change (the current entries
+    /// in their order, the new ones appended once), so a writer that sets the key (a dotted key
+    /// inside its parent object, whose other sub-keys stay) drops nothing.
     pub value: Value,
     pub doc_url: String,
     pub doc_quote: String,
@@ -149,7 +156,8 @@ fn clean(s: &str) -> String {
     s.trim_start_matches("./").trim_end_matches('/').to_string()
 }
 
-/// Checks one list of picked paths and returns them cleaned, sorted and without repeats.
+/// Checks one list of picked paths and returns them cleaned, sorted and without repeats. A pick
+/// that names the repository root itself (`.`, `./`) is refused: it is not a folder in it.
 fn picked_paths(key: &str, list: &[String]) -> Result<Vec<String>> {
     if list.len() > PICKS_MAX {
         return Err(format!(
@@ -161,7 +169,13 @@ fn picked_paths(key: &str, list: &[String]) -> Result<Vec<String>> {
         if let Some(why) = path_refusal(s) {
             return Err(format!("{key} refused: {why}; nothing is planned"));
         }
-        out.insert(clean(s));
+        let cleaned = clean(s);
+        if cleaned.is_empty() || cleaned == "." {
+            return Err(format!(
+                "{key} refused: it names the repository root, not a folder in it; nothing is planned"
+            ));
+        }
+        out.insert(cleaned);
     }
     Ok(out.into_iter().collect())
 }
@@ -213,51 +227,76 @@ fn get_dotted<'a>(map: &'a Map<String, Value>, key: &str) -> Option<&'a Value> {
     Some(v)
 }
 
-/// The action for one key: lists and plugin objects merge their new entries, any other value
-/// that differs is a conflict.
-fn key_action(current: &Current, key: &str, planned: &Value) -> (&'static str, Option<String>) {
+/// One key row's action, its detail and the value the row carries.
+type KeyAction = ((&'static str, Option<String>), Value);
+
+/// The action for one key: lists and plugin objects merge their new entries into the current
+/// value, and the row carries the merged value (current entries first, in their order, each new
+/// one appended once); any other value that differs is a conflict.
+fn key_action(current: &Current, key: &str, planned: &Value) -> KeyAction {
+    let conflict = |why: String| (("conflict", Some(why)), planned.clone());
     let map = match current {
-        Err(why) => return ("conflict", Some(why.clone())),
-        Ok(None) => return ("create", None),
+        Err(why) => return conflict(why.clone()),
+        Ok(None) => return (("create", None), planned.clone()),
         Ok(Some(map)) => map,
     };
+    // A dotted key can only go inside a parent that is an object.
+    if let Some((parent, _)) = key.split_once('.') {
+        if map.get(parent).is_some_and(|p| !p.is_object()) {
+            return conflict(format!("{parent} is not an object; it is kept"));
+        }
+    }
     let Some(now) = get_dotted(map, key) else {
-        return ("merge", None);
+        return (("merge", None), planned.clone());
     };
     if now == planned {
-        return ("unchanged", None);
+        return (("unchanged", None), now.clone());
     }
-    let merges = matches!(key, "permissions.deny" | "claudeMdExcludes");
+    let merges = matches!(
+        key,
+        "permissions.deny"
+            | "claudeMdExcludes"
+            | "worktree.sparsePaths"
+            | "worktree.symlinkDirectories"
+    );
     match (now, planned) {
         (Value::Array(have), Value::Array(want)) if merges => {
-            if want.iter().all(|w| have.contains(w)) {
-                ("unchanged", None)
+            let mut merged = have.clone();
+            for w in want {
+                if !merged.contains(w) {
+                    merged.push(w.clone());
+                }
+            }
+            if merged.len() == have.len() {
+                (("unchanged", None), now.clone())
             } else {
                 (
-                    "merge",
-                    Some(format!("added to the {} entries already there", have.len())),
+                    (
+                        "merge",
+                        Some(format!("added to the {} entries already there", have.len())),
+                    ),
+                    Value::Array(merged),
                 )
             }
         }
         (Value::Object(have), Value::Object(want)) if key == "enabledPlugins" => {
             if want.iter().all(|(k, v)| have.get(k) == Some(v)) {
-                ("unchanged", None)
+                (("unchanged", None), now.clone())
             } else if want.keys().any(|k| have.contains_key(k)) {
-                (
-                    "conflict",
-                    Some("a picked plugin is already set to another value; it is kept".into()),
-                )
+                conflict("a picked plugin is already set to another value; it is kept".into())
             } else {
+                let mut merged = have.clone();
+                merged.extend(want.iter().map(|(k, v)| (k.clone(), v.clone())));
                 (
-                    "merge",
-                    Some(format!("added to the {} plugins already there", have.len())),
+                    (
+                        "merge",
+                        Some(format!("added to the {} plugins already there", have.len())),
+                    ),
+                    Value::Object(merged),
                 )
             }
         }
-        _ => (
-            "conflict",
-            Some("the key already holds another value; it is kept".into()),
-        ),
+        _ => conflict("the key already holds another value; it is kept".into()),
     }
 }
 
@@ -312,10 +351,39 @@ fn package_text(package: &str, manifests: &BTreeSet<String>) -> String {
     text
 }
 
+/// The local exclude file git reads for this checkout: `.git/info/exclude`, or in a linked
+/// worktree (`.git` is a `gitdir:` file) the one in the repository's common git dir, which
+/// every worktree shares (`commondir` of the admin folder). `None` when the pointer cannot be
+/// trusted: it is not small, or its admin folder does not name this checkout's `.git` back.
+fn exclude_file(root: &Path) -> Option<PathBuf> {
+    let dot_git = root.join(".git");
+    let meta = std::fs::symlink_metadata(&dot_git).ok()?;
+    if meta.is_dir() {
+        return Some(dot_git.join("info/exclude"));
+    }
+    if !meta.is_file() || meta.len() > POINTER_MAX {
+        return None;
+    }
+    let first_line = |path: &Path| -> Option<String> {
+        let bytes = read_opt(path).ok()??;
+        let text = String::from_utf8(bytes).ok()?;
+        Some(text.lines().next()?.trim().to_string())
+    };
+    // A relative pointer is relative to the folder that holds it, as git reads it.
+    let admin = root.join(first_line(&dot_git)?.strip_prefix("gitdir:")?.trim());
+    let back = admin.join(first_line(&admin.join("gitdir"))?);
+    if std::fs::canonicalize(back).ok()? != std::fs::canonicalize(&dot_git).ok()? {
+        return None;
+    }
+    let common = first_line(&admin.join("commondir"))?;
+    Some(admin.join(common).join("info/exclude"))
+}
+
 /// The ignore line for the worktree folder is already in `.gitignore` or the local exclude file.
 fn worktrees_ignored(root: &Path) -> bool {
-    [".gitignore", ".git/info/exclude"].iter().any(|rel| {
-        read_opt(&root.join(rel)).ok().flatten().is_some_and(|b| {
+    let files = [Some(root.join(".gitignore")), exclude_file(root)];
+    files.iter().flatten().any(|path| {
+        read_opt(path).ok().flatten().is_some_and(|b| {
             String::from_utf8_lossy(&b).lines().any(|l| {
                 matches!(
                     l.trim(),
@@ -395,7 +463,7 @@ pub fn scale_plan(root: &Path, request: ScaleRequest) -> Result<ScalePlan> {
         if let Some(p) = list.iter().find(|p| !packages.contains(*p)) {
             return Err(format!(
                 "{key} refused: {} is not a detected package; nothing is planned",
-                p.chars().take(64).collect::<String>()
+                shown_value(p)
             ));
         }
     }
@@ -403,7 +471,7 @@ pub fn scale_plan(root: &Path, request: ScaleRequest) -> Result<ScalePlan> {
         if let Some(p) = list.iter().find(|p| !real_dir(&root, p)) {
             return Err(format!(
                 "{key} refused: {} is not a folder in the repository; nothing is planned",
-                p.chars().take(64).collect::<String>()
+                shown_value(p)
             ));
         }
     }
@@ -419,13 +487,9 @@ pub fn scale_plan(root: &Path, request: ScaleRequest) -> Result<ScalePlan> {
                     plugins.insert((plugin, binary));
                 }
                 _ => {
-                    let shown: String = language
-                        .chars()
-                        .filter(|c| !c.is_control())
-                        .take(64)
-                        .collect();
                     return Err(format!(
-                        "plugins refused: {shown} is not a detected language with a code intelligence plugin; nothing is planned"
+                        "plugins refused: {} is not a detected language with a code intelligence plugin; nothing is planned",
+                        shown_value(language)
                     ));
                 }
             }
@@ -482,7 +546,7 @@ pub fn scale_plan(root: &Path, request: ScaleRequest) -> Result<ScalePlan> {
             .map(|p| format!("**/{p}/**/CLAUDE.md"))
             .collect::<Vec<_>>());
         let current = settings_of(&root, file)?;
-        let action = key_action(&current, "claudeMdExcludes", &value);
+        let (action, value) = key_action(&current, "claudeMdExcludes", &value);
         push(
             &mut rows,
             file,
@@ -500,7 +564,7 @@ pub fn scale_plan(root: &Path, request: ScaleRequest) -> Result<ScalePlan> {
             .iter()
             .map(|d| format!("Read(./{d}/**/*)"))
             .collect::<Vec<_>>());
-        let action = key_action(&current_root, "permissions.deny", &value);
+        let (action, value) = key_action(&current_root, "permissions.deny", &value);
         push(
             &mut rows,
             root_settings,
@@ -520,7 +584,7 @@ pub fn scale_plan(root: &Path, request: ScaleRequest) -> Result<ScalePlan> {
             ));
         }
         let value = Value::Object(value);
-        let action = key_action(&current_root, "enabledPlugins", &value);
+        let (action, value) = key_action(&current_root, "enabledPlugins", &value);
         push(
             &mut rows,
             root_settings,
@@ -535,7 +599,7 @@ pub fn scale_plan(root: &Path, request: ScaleRequest) -> Result<ScalePlan> {
         let mut paths = vec![".claude".to_string()];
         paths.extend(sparse_paths.iter().filter(|p| *p != ".claude").cloned());
         let value = json!(paths);
-        let action = key_action(&current_root, "worktree.sparsePaths", &value);
+        let (action, value) = key_action(&current_root, "worktree.sparsePaths", &value);
         push(
             &mut rows,
             root_settings,
@@ -551,7 +615,7 @@ pub fn scale_plan(root: &Path, request: ScaleRequest) -> Result<ScalePlan> {
             .collect();
         if !linked.is_empty() {
             let value = json!(linked);
-            let action = key_action(&current_root, "worktree.symlinkDirectories", &value);
+            let (action, value) = key_action(&current_root, "worktree.symlinkDirectories", &value);
             push(
                 &mut rows,
                 root_settings,
@@ -585,8 +649,16 @@ pub fn scale_plan(root: &Path, request: ScaleRequest) -> Result<ScalePlan> {
         );
     }
     // REQ-7: a self-contained settings file per package sessions start from, naming its
-    // sibling packages that exist.
+    // sibling packages that exist. A session started there does not inherit the root file, so
+    // the Read deny rules of the picked folders inside the package are carried again, relative
+    // to the package (decision 2026-11-22, SPEC-20261122-project-scale-settings D-2).
     for package in &start_packages {
+        let prefix = format!("{package}/");
+        let deny: Vec<String> = deny_read
+            .iter()
+            .filter_map(|d| d.strip_prefix(&prefix))
+            .map(|rest| format!("Read(./{rest}/**/*)"))
+            .collect();
         let siblings: Vec<String> = packages
             .iter()
             .filter(|s| {
@@ -598,7 +670,10 @@ pub fn scale_plan(root: &Path, request: ScaleRequest) -> Result<ScalePlan> {
             .map(|s| relative(package, s))
             .take(PICKS_MAX)
             .collect();
-        let value = json!({"permissions": {"additionalDirectories": siblings}});
+        let mut value = json!({"permissions": {"additionalDirectories": siblings}});
+        if !deny.is_empty() {
+            value["permissions"]["deny"] = json!(deny);
+        }
         let file = format!("{package}/.claude/settings.json");
         let mut text = serde_json::to_string_pretty(&value).map_err(|_| "encode failed")?;
         text.push('\n');
