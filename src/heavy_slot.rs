@@ -16,14 +16,24 @@
 //! `/proc` or `lsof`; `unavailable` with `holders` null is not "nobody"). That is the list of
 //! processes with the file open, not a proof of who owns the lock. Ending such a process is
 //! for its owner; a slot file is never edited or deleted by hand. The Python twin has no
-//! `alive` or `holders`. A waiter holds `waiting/<ns>-<pid>`, and its place is its rank
-//! among live waiters by name. Waiters start in arrival order (SPEC-20261122-check-affected-one-slot
-//! REQ-4): every caller first creates and locks its own waiting file, and takes a slot only while
-//! the number of live (locked) waiters that arrived before it is lower than the number of free
-//! slots; an unlocked waiting file is a dead waiter and is not counted. A process started under a
-//! held slot finds `MOAI_HEAVY_SLOT_FD=<fd>:<slot path>` ([`SLOT_FD_ENV`]); asking for a slot in
-//! the same folder, it reuses that slot without queueing when the open descriptor is the same file
-//! (device and inode) as the slot file there (REQ-5). While waiting, and in the one exit line every started COMMAND gets on stderr
+//! `alive` or `holders`. A waiter holds `waiting/<ns>-<pid>-<max>` (its own `--max` last), and
+//! its place is its rank among live waiters by name. Waiters start in arrival order
+//! (SPEC-20261122-check-affected-one-slot REQ-4): every caller first creates and locks its own
+//! waiting file. On each look it lists the free slots of its own `0..max`, lowest first, and
+//! gives away one of them to every live (locked) waiter that arrived earlier and can use one of
+//! those left — the lowest it can use, which is the slot that waiter takes itself; a waiting file
+//! without a `<max>` (the Python twin, an older build) can use any slot. The caller takes a slot
+//! that is still left, or waits when none is: so a caller never passes an earlier waiter that
+//! can use the same slot, and never waits for a free slot of its own that no earlier waiter can
+//! use (a narrower waiter queued ahead keeps no wider caller off a slot it cannot take itself).
+//! An unlocked waiting file is a dead waiter and is not counted (it is left where it is). A
+//! process started under a held slot finds `MOAI_HEAVY_SLOT_FD=<fd>:<slot path>`
+//! ([`SLOT_FD_ENV`]); asking for a slot in the same folder, it reuses that slot without queueing
+//! only when the path names `slot-<digits>` in that folder, the descriptor is open on that very
+//! file, someone holds the slot, and an exclusive non-blocking `flock` on the descriptor succeeds
+//! — a `flock` belongs to the open file description, so that last step succeeds only for the
+//! holder's own description handed down to this process, never for the slot file opened anew
+//! (REQ-5). While waiting, and in the one exit line every started COMMAND gets on stderr
 //! (`heavy-slot: <name> exited <code>; …`, 0 included), the load averages and the
 //! free disk space of the working folder are printed (AC-2). A machine below `--min-free-gb`
 //! free or above `--max-swap-pct` swap use starts nothing and exits 75 with the measured
@@ -551,6 +561,7 @@ pub fn hold(
     _folder: &Path,
     _max: usize,
     _name: &str,
+    _command: &[String],
     _limits: Limits,
     _progress: &mut dyn std::io::Write,
 ) -> std::result::Result<Held, u8> {
@@ -778,8 +789,12 @@ mod sys {
         }
     }
 
-    fn take_slot(folder: &Path, max: usize) -> std::result::Result<Option<(usize, File)>, Open> {
-        for i in 0..max {
+    /// The first of `slots` this caller can lock, with its index.
+    fn take_one(
+        folder: &Path,
+        slots: &[usize],
+    ) -> std::result::Result<Option<(usize, File)>, Open> {
+        for &i in slots {
             if let Some(f) = try_exclusive(&folder.join(format!("slot-{i}")), false)? {
                 return Ok(Some((i, f)));
             }
@@ -787,17 +802,17 @@ mod sys {
         Ok(None)
     }
 
-    /// The slots of `0..max` nobody holds now: a slot file that does not exist yet counts as
-    /// free. Reads only (a shared try-lock that is let go at once).
-    fn free_slots(folder: &Path, max: usize) -> std::result::Result<usize, Open> {
-        let mut free = 0;
+    /// The slots of `0..max` nobody holds now, lowest first: a slot file that does not exist yet
+    /// counts as free. Reads only (a shared try-lock that is let go at once).
+    fn free_slots(folder: &Path, max: usize) -> std::result::Result<Vec<usize>, Open> {
+        let mut free = Vec::new();
         for i in 0..max {
             let path = folder.join(format!("slot-{i}"));
             match fs::symlink_metadata(&path) {
-                Err(e) if e.kind() == std::io::ErrorKind::NotFound => free += 1,
+                Err(e) if e.kind() == std::io::ErrorKind::NotFound => free.push(i),
                 _ => {
                     if !is_held(&path)? {
-                        free += 1;
+                        free.push(i);
                     }
                 }
             }
@@ -806,7 +821,7 @@ mod sys {
     }
 
     /// The live waiters (their waiting file is locked) and `me`, oldest first by name. An
-    /// unlocked file is a waiter that died: it is not counted (REQ-4).
+    /// unlocked file is a waiter that died: it is not counted (REQ-4). Read once per look.
     fn live_waiters(waiting: &Path, me: &str) -> Vec<String> {
         let mut names: Vec<String> = fs::read_dir(waiting)
             .map(|r| {
@@ -820,9 +835,8 @@ mod sys {
         names
     }
 
-    /// 1-based place of `me` among live waiters (oldest first by name), and their count.
-    fn queue_place(waiting: &Path, me: &str) -> (usize, usize) {
-        let live = live_waiters(waiting, me);
+    /// 1-based place of `me` among `live` (oldest first by name), and their count.
+    fn queue_place(live: &[String], me: &str) -> (usize, usize) {
         let place = live
             .iter()
             .position(|n| n.as_str() == me)
@@ -830,19 +844,32 @@ mod sys {
         (place, live.len().max(1))
     }
 
-    /// Whether `me` may take a slot now: fewer live waiters arrived before it than there are
-    /// free slots (REQ-4).
-    fn my_turn(
-        folder: &Path,
-        waiting: &Path,
-        me: &str,
-        max: usize,
-    ) -> std::result::Result<bool, Open> {
-        let ahead = live_waiters(waiting, me)
-            .iter()
-            .filter(|n| n.as_str() < me)
-            .count();
-        Ok(ahead < free_slots(folder, max)?)
+    /// The `--max` a waiting file names last (`<ns>-<pid>-<max>`); `None` for a name without one
+    /// (the Python twin, an older build), a waiter that can use any slot.
+    pub(super) fn waiter_max(name: &str) -> Option<usize> {
+        let mut parts = name.split('-');
+        let (_ns, _pid, max) = (parts.next()?, parts.next()?, parts.next()?);
+        if parts.next().is_some() || max.is_empty() || !max.bytes().all(|b| b.is_ascii_digit()) {
+            return None;
+        }
+        max.parse().ok()
+    }
+
+    /// The slots `me` may take now, lowest first: its `free` slots that remain once every live
+    /// waiter of `live` that arrived before it has been given, in arrival order, the lowest
+    /// remaining slot it can use (below its own `--max`) — the slot it takes itself. Empty: `me`
+    /// waits (REQ-4).
+    pub(super) fn my_slots(mut free: Vec<usize>, live: &[String], me: &str) -> Vec<usize> {
+        for w in live.iter().filter(|n| n.as_str() < me) {
+            if free.is_empty() {
+                break;
+            }
+            let can = waiter_max(w).unwrap_or(usize::MAX);
+            if let Some(i) = free.iter().position(|&s| s < can) {
+                free.remove(i);
+            }
+        }
+        free
     }
 
     /// A slot held by this process or inherited from the one that started it. Dropping it lets
@@ -901,9 +928,20 @@ mod sys {
         }
     }
 
-    /// The slot named by [`super::SLOT_FD_ENV`], when it is `slot-<i>` of `folder`, its open
-    /// descriptor is that very file (same device and inode, which proves it was inherited) and
-    /// the slot is held. Anything else is `None`, and the caller queues as before.
+    /// The slot named by [`super::SLOT_FD_ENV`], reused only when all of these hold; anything
+    /// else is `None`, and the caller queues as before:
+    /// 1. the path names `slot-<digits>` in `folder` itself (the same folder by device and inode,
+    ///    so another spelling of its path counts) and that slot file is a plain file;
+    /// 2. the descriptor is open on that very file (same device and inode);
+    /// 3. someone holds the slot now: a shared try-lock on a fresh open of it fails;
+    /// 4. an exclusive non-blocking `flock` on the descriptor succeeds. A `flock` belongs to the
+    ///    open file description, so with the slot held (3) this succeeds only when the descriptor
+    ///    shares the holder's description — the one the process that took the slot handed down —
+    ///    and fails for the slot file opened anew, by this process or any other.
+    ///
+    /// Step 3 comes first so the check never takes a slot that nobody held. Should the holder let
+    /// the slot go between 3 and 4, step 4 takes it on the descriptor's own description, and the
+    /// slot still has one holder.
     fn inherited(folder: &Path) -> Option<Held> {
         let value = std::env::var_os(super::SLOT_FD_ENV)?;
         let bytes = value.as_bytes();
@@ -919,6 +957,13 @@ mod sys {
             return None;
         }
         let slot: usize = digits.parse().ok()?;
+        let (theirs, ours) = (
+            fs::metadata(named.parent()?).ok()?,
+            fs::metadata(folder).ok()?,
+        );
+        if (theirs.dev(), theirs.ino()) != (ours.dev(), ours.ino()) {
+            return None;
+        }
         let here = folder.join(file_name);
         let m = fs::symlink_metadata(&here).ok()?;
         if !m.file_type().is_file() {
@@ -932,6 +977,10 @@ mod sys {
         #[allow(clippy::unnecessary_cast)]
         let same = (st.st_dev as u64, st.st_ino as u64) == (m.dev(), m.ino());
         if !same || !matches!(is_held(&here), Ok(true)) {
+            return None;
+        }
+        // SAFETY: flock(2) on a descriptor number; a closed one fails with EBADF.
+        if unsafe { libc::flock(fd, libc::LOCK_EX | libc::LOCK_NB) } != 0 {
             return None;
         }
         Some(Held {
@@ -972,17 +1021,48 @@ mod sys {
         REFUSED
     }
 
+    /// How many times a caller tries the lock of its own fresh waiting file, and the pause
+    /// between tries: another waiter's look (a shared try-lock let go at once) can hold it for a
+    /// moment, which is no reason to give up.
+    const OWN_LOCK_TRIES: u32 = 50;
+    const OWN_LOCK_PAUSE: Duration = Duration::from_millis(10);
+
+    /// The exclusive lock of this caller's own fresh waiting file, tried up to `tries` times
+    /// `pause` apart while another process holds it for a moment; still held after that, it is
+    /// an error.
+    pub(super) fn lock_own(
+        file: &File,
+        path: &Path,
+        tries: u32,
+        pause: Duration,
+    ) -> std::result::Result<(), String> {
+        for i in 0..tries {
+            match file.try_lock() {
+                Ok(()) => return Ok(()),
+                Err(TryLockError::WouldBlock) => {
+                    if i + 1 < tries {
+                        std::thread::sleep(pause);
+                    }
+                }
+                Err(TryLockError::Error(e)) => return Err(format!("{}: {e}", path.display())),
+            }
+        }
+        Err(format!("{}: held by another process", path.display()))
+    }
+
     /// Waits for a slot and returns it held, with its close-on-exec flag cleared so the
-    /// children of this process keep it. A slot inherited in [`super::SLOT_FD_ENV`] from the
-    /// process that started this one is reused without queueing (REQ-5). Otherwise the caller
-    /// queues in arrival order (REQ-4); the waiting lines go to `progress`, and the caller
-    /// announces the slot it got ([`Held::taken_line`]). A machine over
-    /// `limits` gets [`BUSY`]; a waiter whose parent ended leaves the queue with [`REFUSED`] —
-    /// nobody is left to take its result (#2677 items 3, 4).
+    /// children of this process keep it, and its record naming `name` and `command`. A slot
+    /// inherited in [`super::SLOT_FD_ENV`] from the process that started this one is reused
+    /// without queueing (REQ-5). Otherwise the caller queues in arrival order (REQ-4, the module
+    /// doc); the waiting lines go to `progress`, and the caller announces the slot it got
+    /// ([`Held::taken_line`]). A machine over `limits` gets [`BUSY`]; a waiter whose parent
+    /// ended leaves the queue with [`REFUSED`] — nobody is left to take its result (#2677 items
+    /// 3, 4).
     pub fn hold(
         folder: &Path,
         max: usize,
         name: &str,
+        command: &[String],
         limits: Limits,
         progress: &mut dyn Write,
     ) -> std::result::Result<Held, u8> {
@@ -1002,17 +1082,14 @@ mod sys {
         if let Err(e) = fs::create_dir_all(&waiting) {
             return Err(io(&format!("creating {} failed ({e})", waiting.display())));
         }
-        // Every caller queues first, so one that arrived earlier is never passed (REQ-4).
-        let me = format!("{:020}-{}", now_ns(), std::process::id());
+        // Every caller queues first, so one that arrived earlier is never passed (REQ-4); the
+        // name ends with this caller's `--max`, so the others know which slots it can use.
+        let me = format!("{:020}-{}-{max}", now_ns(), std::process::id());
         let wait_path = waiting.join(&me);
         let queue = || -> std::result::Result<File, Open> {
-            match try_exclusive(&wait_path, true)? {
-                Some(f) => Ok(f),
-                None => Err(Open::Io(format!(
-                    "{}: held by another process",
-                    wait_path.display()
-                ))),
-            }
+            let f = open_plain(&wait_path, true, true)?;
+            lock_own(&f, &wait_path, OWN_LOCK_TRIES, OWN_LOCK_PAUSE).map_err(Open::Io)?;
+            Ok(f)
         };
         let mut wait_file = match queue() {
             Err(Open::NotPlain(p)) => return Err(refused(&p)),
@@ -1022,16 +1099,17 @@ mod sys {
         let mut last = None;
         let mut waited = false;
         let taken = loop {
-            match my_turn(folder, &waiting, &me, max) {
+            // One read of the queue per look serves both the turn and the place.
+            let live = live_waiters(&waiting, &me);
+            match free_slots(folder, max).map(|free| my_slots(free, &live, &me)) {
                 Err(e) => break Err(e),
-                Ok(true) => match take_slot(folder, max) {
+                Ok(mine) => match take_one(folder, &mine) {
                     Ok(Some(t)) => break Ok(Some(t)),
                     Ok(None) => {}
                     Err(e) => break Err(e),
                 },
-                Ok(false) => {}
             }
-            let place = queue_place(&waiting, &me);
+            let place = queue_place(&live, &me);
             if last != Some(place) {
                 let _ = writeln!(
                     progress,
@@ -1087,13 +1165,17 @@ mod sys {
         }
         let fd = file.as_raw_fd();
         keep_for_children(fd);
+        // An absolute path, so a nested caller in another working folder finds the same folder.
+        let path = std::env::current_dir()
+            .map_or_else(|_| folder.to_path_buf(), |c| c.join(folder))
+            .join(format!("slot-{slot}"));
         let mut held = Held {
             slot,
-            path: folder.join(format!("slot-{slot}")),
+            path,
             file: Some(file),
             fd,
         };
-        held.write_record(name, &[]);
+        held.write_record(name, command);
         Ok(held)
     }
 
@@ -1111,7 +1193,7 @@ mod sys {
             eprintln!("heavy-slot: acquire needs --max >= 1 and a command after --");
             return USAGE;
         }
-        let held = match hold(folder, max, name, limits, &mut std::io::stdout()) {
+        let held = match hold(folder, max, name, command, limits, &mut std::io::stdout()) {
             Ok(h) => h,
             Err(code) => return code,
         };
@@ -1120,7 +1202,7 @@ mod sys {
         run_holding(held, name, command, &cwd)
     }
 
-    fn run_holding(mut held: Held, name: &str, command: &[String], cwd: &Path) -> u8 {
+    fn run_holding(held: Held, name: &str, command: &[String], cwd: &Path) -> u8 {
         // Forwarded signals are blocked before the command starts, so none lands in a gap
         // where the wrapper dies and leaves the command running; a waiter thread receives them
         // with sigwait and passes them on. The command unblocks them before it execs.
@@ -1134,7 +1216,6 @@ mod sys {
             libc::pthread_sigmask(libc::SIG_BLOCK, &s, std::ptr::null_mut());
             s
         };
-        held.write_record(name, command);
         // The command inherits the locked file ([`hold`] cleared its close-on-exec flag) and
         // learns where it is, so a nested caller in the same folder reuses the slot (REQ-5).
         let mut cmd = std::process::Command::new(&command[0]);
@@ -1697,6 +1778,93 @@ mod alive_tests {
             assert_eq!(e["alive"], Value::Null, "{e}");
             assert!(e.get("holders").is_none(), "{e}");
         }
+    }
+}
+
+/// SPEC-20261122-check-affected-one-slot REQ-4: which free slots a caller may take, with waiters
+/// of mixed `--max` ahead of it.
+#[cfg(all(test, unix))]
+mod queue_tests {
+    use super::sys::{lock_own, my_slots, waiter_max};
+    use std::time::{Duration, Instant};
+
+    fn names(v: &[&str]) -> Vec<String> {
+        v.iter().map(|s| s.to_string()).collect()
+    }
+
+    #[test]
+    fn a_waiting_name_gives_its_max_or_none() {
+        assert_eq!(waiter_max("00000000000000000001-42-3"), Some(3));
+        assert_eq!(waiter_max("00000000000000000001-42-0"), Some(0));
+        for n in [
+            "00000000000000000001-42",
+            "00000000000000000001-42-",
+            "00000000000000000001-42-x",
+            "00000000000000000001-42-3-4",
+            "00000000000000000001-42-+3",
+            "",
+        ] {
+            assert_eq!(waiter_max(n), None, "{n}");
+        }
+    }
+
+    #[test]
+    fn earlier_waiters_take_only_the_slots_they_can_use() {
+        let me = "00000000000000000005-9-2";
+        // Nobody ahead: every free slot is the caller's.
+        assert_eq!(my_slots(vec![0, 1], &names(&[me]), me), vec![0, 1]);
+        // A narrower waiter ahead (`--max 1`) cannot use slot 1: the caller keeps it.
+        let narrow = "00000000000000000001-7-1";
+        assert_eq!(my_slots(vec![1], &names(&[narrow, me]), me), vec![1]);
+        // With both free, slot 0 is left to the narrower waiter and the caller gets slot 1.
+        assert_eq!(my_slots(vec![0, 1], &names(&[narrow, me]), me), vec![1]);
+        // A waiter as wide as the caller, or one whose name gives no max, takes the lowest.
+        for ahead in ["00000000000000000001-7-2", "00000000000000000001-7"] {
+            assert_eq!(
+                my_slots(vec![1], &names(&[ahead, me]), me),
+                Vec::<usize>::new()
+            );
+            assert_eq!(my_slots(vec![0, 1], &names(&[ahead, me]), me), vec![1]);
+        }
+        // Waiters that arrived later never count.
+        let later = "00000000000000000009-7-2";
+        assert_eq!(my_slots(vec![0], &names(&[me, later]), me), vec![0]);
+        // Two narrow waiters ahead want one slot between them: the first gets it, the second
+        // takes nothing from the caller's slot 1.
+        let narrow2 = "00000000000000000002-8-1";
+        assert_eq!(
+            my_slots(vec![0, 1], &names(&[narrow, narrow2, me]), me),
+            vec![1]
+        );
+        // A waiter that can use no slot (`--max 0`) takes none.
+        let zero = "00000000000000000001-7-0";
+        assert_eq!(my_slots(vec![0], &names(&[zero, me]), me), vec![0]);
+    }
+
+    /// N2 of the audit: the lock of a caller's own fresh waiting file is tried again while
+    /// another process holds it for a moment, and given up only after the last try.
+    #[test]
+    fn the_own_waiting_lock_is_tried_again_and_then_given_up() {
+        let d = tempfile::tempdir().unwrap();
+        let path = d.path().join("w");
+        let mine = std::fs::File::create(&path).unwrap();
+        let probe = std::fs::File::open(&path).unwrap();
+        probe.lock_shared().unwrap();
+        let start = Instant::now();
+        let e = lock_own(&mine, &path, 3, Duration::from_millis(20)).unwrap_err();
+        assert!(e.ends_with("held by another process"), "{e}");
+        assert!(start.elapsed() >= Duration::from_millis(40), "three tries");
+        // A probe that lets go during the tries does not stop the lock.
+        let t = std::thread::spawn(move || {
+            std::thread::sleep(Duration::from_millis(60));
+            drop(probe);
+        });
+        lock_own(&mine, &path, 50, Duration::from_millis(10)).unwrap();
+        t.join().unwrap();
+        // One try with nobody in the way is enough.
+        let other = d.path().join("v");
+        let f = std::fs::File::create(&other).unwrap();
+        lock_own(&f, &other, 1, Duration::from_millis(10)).unwrap();
     }
 }
 

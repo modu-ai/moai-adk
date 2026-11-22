@@ -136,10 +136,13 @@ fn slot_dir_with(max: u32) -> tempfile::TempDir {
 /// The whole answer: `(ok, result or error)`.
 fn affected(fx: &Fixture, extra: &[&str], tools: Option<(&Tools, &str)>) -> (bool, Value) {
     let mut cmd = Command::new(BIN);
+    // No caller build folder: the step logs go under the temporary repository's own
+    // `target/`, never as `check-affected-<head>` folders into the build folder of this run.
     cmd.args(["check", "affected", &fx.range(), "--dir"])
         .arg(fx.root())
         .args(extra)
         .env_remove("MOAI_HOME")
+        .env_remove("CARGO_TARGET_DIR")
         .stdin(Stdio::null());
     if let Some((t, fail)) = tools {
         cmd.env("PATH", t.path())

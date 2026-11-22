@@ -72,7 +72,9 @@ impl Fixture {
 
 /// Fake tools. Each call appends one line `<tool> <args> | FD=<MOAI_HEAVY_SLOT_FD>
 /// JOBS=<CARGO_BUILD_JOBS>` to `calls.log`. A fake `cargo` made `without_nextest` exits 101 for
-/// `cargo nextest …`, as cargo does for a subcommand that is not installed.
+/// `cargo nextest …`, as cargo does for a subcommand that is not installed. With `FAKE_MOAI` set,
+/// each call also writes `heavy-slot-status --dir $FAKE_SLOTS` as it is during that call to
+/// `calls.log.<tool>-<first arg>.status`.
 struct Tools {
     dir: tempfile::TempDir,
 }
@@ -87,7 +89,7 @@ impl Tools {
                 ""
             };
             let script = format!(
-                "#!/bin/sh\necho \"{n} $* | FD=$MOAI_HEAVY_SLOT_FD JOBS=$CARGO_BUILD_JOBS\" >> \"$FAKE_CALLS\"\n{nextest}exit 0\n"
+                "#!/bin/sh\necho \"{n} $* | FD=$MOAI_HEAVY_SLOT_FD JOBS=$CARGO_BUILD_JOBS\" >> \"$FAKE_CALLS\"\nif [ -n \"$FAKE_MOAI\" ]; then \"$FAKE_MOAI\" heavy-slot-status --dir \"$FAKE_SLOTS\" > \"$FAKE_CALLS.{n}-$1.status\"; fi\n{nextest}exit 0\n"
             );
             let path = dir.path().join(n);
             fs::write(&path, script).unwrap();
@@ -451,4 +453,107 @@ fn a_check_inside_a_one_slot_acquire_does_not_wait_on_itself() {
     let log = r.slot_log();
     assert!(log.contains("reuses slot 0 it inherited"), "{log}");
     assert_eq!(r.tools.starting("cargo nextest run ").len(), 1);
+}
+
+/// The `held` list of the slot status a fake call wrote (`<tool>-<first arg>`).
+fn held_during(r: &Run, call: &str) -> Vec<Value> {
+    let path = format!("{}.{call}.status", r.tools.calls().display());
+    let text = fs::read_to_string(&path).unwrap_or_else(|e| panic!("{path}: {e}"));
+    let v: Value = serde_json::from_str(&text).unwrap_or_else(|_| panic!("{path}: {text}"));
+    let status = if v.get("result").is_some() {
+        &v["result"]
+    } else {
+        &v
+    };
+    status["held"]
+        .as_array()
+        .unwrap_or_else(|| panic!("{path}: {text}"))
+        .clone()
+}
+
+/// D-2 and the slot record: while a cargo step runs, the one slot is held and its record names
+/// this run and its own command line; the `python` step runs after the slot is let go, so the
+/// status it sees holds no slot.
+#[test]
+fn the_slot_record_names_the_run_and_python_runs_after_the_slot_is_let_go() {
+    let fx = Fixture::new(&[
+        ("src/update_models.rs", "// b\n"),
+        ("tests/bundle_ops_test.py", "# b\n"),
+    ]);
+    let r = Run::new(true, 4);
+    let mut cmd = r.command(&fx, &[]);
+    cmd.env("FAKE_MOAI", BIN).env("FAKE_SLOTS", r.slots.path());
+    let v = run(cmd);
+    let line = v["summary"].as_str().unwrap();
+    assert!(line.ends_with(" python=0 result=PASS"), "{line}");
+    let held = held_during(&r, "cargo-clippy");
+    assert_eq!(held.len(), 1, "{held:?}");
+    assert_eq!(held[0]["name"], "check-affected", "{held:?}");
+    let command: Vec<&str> = held[0]["command"]
+        .as_array()
+        .unwrap_or_else(|| panic!("{held:?}"))
+        .iter()
+        .filter_map(Value::as_str)
+        .collect();
+    let range = fx.range();
+    for word in ["check", "affected", range.as_str()] {
+        assert!(command.contains(&word), "{word} in {command:?}");
+    }
+    assert_eq!(
+        held_during(&r, "cargo-nextest").len(),
+        1,
+        "the test call holds it"
+    );
+    let during_python = held_during(&r, "python3--m");
+    assert!(
+        during_python.is_empty(),
+        "python ran while the slot was held: {during_python:?}"
+    );
+}
+
+/// A slot count of 0 and a slot folder that cannot be named (no HOME, no XDG_CACHE_HOME, no
+/// `--slot-dir`) are code 2 for every cargo step, and no cargo starts but the cheap `fmt`.
+#[test]
+fn no_slot_count_or_no_slot_folder_is_code_2_for_every_cargo_step() {
+    let fx = Fixture::rust_target();
+    let r = Run::new(true, 4);
+    let v = run(r.command(&fx, &["--max", "0"]));
+    let line = v["summary"].as_str().unwrap();
+    assert!(line.ends_with(" clippy=2 test=2 result=FAIL"), "{line}");
+    assert!(
+        r.slot_log().contains("--max 0 leaves no slot"),
+        "{}",
+        r.slot_log()
+    );
+
+    let r2 = Run::new(true, 4);
+    let mut cmd = Command::new(BIN);
+    cmd.args(["check", "affected", &fx.range(), "--dir"])
+        .arg(fx.root())
+        .arg("--out")
+        .arg(r2.out.path())
+        .env_remove("HOME")
+        .env_remove("MOAI_HOME")
+        .env_remove("XDG_CACHE_HOME")
+        .env_remove("CARGO_TARGET_DIR")
+        .env_remove("MOAI_HEAVY_SLOT_FD")
+        .env("MOAI_CLI_TEST_MACHINE", ROOMY)
+        .env("PATH", r2.tools.path())
+        .env("FAKE_CALLS", r2.tools.calls())
+        .stdin(Stdio::null());
+    let v = run(cmd);
+    let line = v["summary"].as_str().unwrap();
+    assert!(line.ends_with(" clippy=2 test=2 result=FAIL"), "{line}");
+    assert!(
+        r2.slot_log().contains("HOME is not set"),
+        "{}",
+        r2.slot_log()
+    );
+    for t in [&r.tools, &r2.tools] {
+        let cargo = t.starting("cargo ");
+        assert!(
+            !cargo.is_empty() && cargo.iter().all(|l| l.starts_with("cargo fmt ")),
+            "{cargo:?}"
+        );
+    }
 }

@@ -653,7 +653,7 @@ fn build_jobs(slots: usize) -> Option<std::ffi::OsString> {
 
 /// Takes the one heavy slot of a run, with its effective slot count. The waiting lines and any
 /// refusal reason go to `<out>/heavy-slot.log` — stdout is the JSON answer. `Err` is the slot's
-/// exit code: 125 refused, 75 machine too busy, 2 no usable slot folder.
+/// exit code: 125 refused, 75 machine too busy, 2 no usable slot folder or `--max 0`.
 fn hold_slot(
     opts: &RunOptions,
     out: &Path,
@@ -694,8 +694,17 @@ fn hold_slot(
     for n in notes {
         let _ = writeln!(log, "{n}");
     }
+    if max < 1 {
+        let _ = writeln!(log, "heavy-slot: --max 0 leaves no slot; no cargo step ran");
+        return Err(i32::from(crate::heavy_slot::USAGE));
+    }
     let name = "check-affected";
-    let held = crate::heavy_slot::hold(&folder, max, name, limits, &mut log).map_err(i32::from)?;
+    // The slot record names this run's own command line, as `heavy-slot-acquire` names COMMAND.
+    let command: Vec<String> = std::env::args_os()
+        .map(|a| a.to_string_lossy().into_owned())
+        .collect();
+    let held = crate::heavy_slot::hold(&folder, max, name, &command, limits, &mut log)
+        .map_err(i32::from)?;
     let _ = writeln!(log, "{}", held.taken_line(name));
     Ok((held, max))
 }
