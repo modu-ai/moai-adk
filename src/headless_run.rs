@@ -325,13 +325,21 @@ pub fn run_with_limit(built: &BuiltRun, cwd: &Path, limit: std::time::Duration) 
     let stderr_thread = std::thread::spawn(move || drain_pipe(stderr_pipe, err_for_thread));
     let deadline = std::time::Instant::now() + limit;
     let mut timed_out = false;
+    // M-1: a child reaped elsewhere must skip the group kill (the group id may already be
+    // recycled).
+    let mut skip_group_kill = false;
     loop {
         // L-2 (unix): poll WITHOUT reaping, so the group kill below can never hit a
         // recycled process group after the leader was reaped.
         #[cfg(unix)]
         {
-            if child_exited_unreaped(group) {
-                break;
+            match poll_unreaped(group) {
+                WaitPoll::ExitedUnreaped => break,
+                WaitPoll::ReapedElsewhere => {
+                    skip_group_kill = true;
+                    break;
+                }
+                WaitPoll::Running => {}
             }
             if std::time::Instant::now() >= deadline {
                 kill_at_deadline(&mut child, group);
@@ -356,8 +364,10 @@ pub fn run_with_limit(built: &BuiltRun, cwd: &Path, limit: std::time::Duration) 
     }
     // F-1: a descendant that still holds the pipes must not stretch the call — kill the
     // group while the (zombie) leader still owns it, then bound the drain wait and take
-    // whatever the buffers hold.
-    kill_stragglers(group);
+    // whatever the buffers hold. M-1: skip the kill when the child was reaped elsewhere.
+    if !skip_group_kill {
+        kill_stragglers(group);
+    }
     let drain_bound = std::time::Duration::from_secs(2);
     let (stdout, stderr_bytes, abandoned) = finish_drains(
         &stdout_thread,
@@ -434,12 +444,26 @@ fn finish_drains(
     (out, err, abandoned)
 }
 
-/// Whether the child has exited WITHOUT being reaped (L-2): the zombie still owns the
-/// process group, so the straggler kill that follows cannot hit a recycled group.
+/// What the unreaped wait poll saw (L-2, M-1).
 #[cfg(unix)]
-fn child_exited_unreaped(pid: u32) -> bool {
-    // SAFETY: waitid with WNOWAIT reports an exited child and leaves it un-reaped; a zeroed
-    // siginfo_t is what the call fills in.
+enum WaitPoll {
+    /// The child exited and is still a zombie owning its group.
+    ExitedUnreaped,
+    /// The child was reaped elsewhere — treat it as gone and skip the group kill.
+    ReapedElsewhere,
+    /// Still running.
+    Running,
+}
+
+/// Polls the child WITHOUT reaping it (L-2): the zombie still owns the process group, so
+/// the straggler kill that follows cannot hit a recycled group. A waitid error is only
+/// "no such child" in practice here (the child was reaped elsewhere, M-1); anything else
+/// counts as running until the deadline ends the call anyway.
+#[cfg(unix)]
+fn poll_unreaped(pid: u32) -> WaitPoll {
+    // SAFETY: waitid with WNOWAIT reports an exited child and leaves it un-reaped; a
+    // zeroed siginfo_t is what the call fills in. si_pid() is the method spelling that
+    // libc 0.2.189 exposes on Apple and Linux alike (audit B-1).
     unsafe {
         let mut info: libc::siginfo_t = std::mem::zeroed();
         let rc = libc::waitid(
@@ -448,7 +472,17 @@ fn child_exited_unreaped(pid: u32) -> bool {
             &mut info,
             libc::WEXITED | libc::WNOHANG | libc::WNOWAIT,
         );
-        rc == 0 && info.si_pid != 0
+        if rc == 0 {
+            if info.si_pid() != 0 {
+                WaitPoll::ExitedUnreaped
+            } else {
+                WaitPoll::Running
+            }
+        } else if std::io::Error::last_os_error().raw_os_error() == Some(libc::ECHILD) {
+            WaitPoll::ReapedElsewhere
+        } else {
+            WaitPoll::Running
+        }
     }
 }
 
@@ -662,9 +696,9 @@ fn narrow_rule(tool: &str) -> Result<()> {
         if !inner.contains('*') {
             return false;
         }
-        inner
+        strip_assignments(inner)
             .split_whitespace()
-            .find(|token| !env_assignment(token))
+            .next()
             .is_some_and(broad_first_word)
     });
     if blanket || wildcard_only || wildcarded_word {
@@ -673,6 +707,40 @@ fn narrow_rule(tool: &str) -> Result<()> {
         ));
     }
     Ok(())
+}
+
+/// Strips leading env assignments off a command's raw text so the first REAL word can be
+/// checked (L-4, M-2): each assignment is `NAME=value` or `NAME="a quoted value"`, so a
+/// value with a space inside quotes is one assignment, not two words.
+fn strip_assignments(command: &str) -> &str {
+    let mut rest = command.trim_start();
+    while let Some(stripped) = strip_one_assignment(rest) {
+        rest = stripped;
+    }
+    rest
+}
+
+/// Strips one `NAME=value` (or `NAME="quoted value"`) from the start of `text` (M-2).
+fn strip_one_assignment(text: &str) -> Option<&str> {
+    let eq = text.find('=')?;
+    let name = &text[..eq];
+    let valid_name = !name.is_empty()
+        && name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
+        && name.chars().next().is_some_and(|c| !c.is_ascii_digit());
+    if !valid_name {
+        return None;
+    }
+    let after_eq = &text[eq + 1..];
+    let mut in_quotes = false;
+    for (i, c) in after_eq.char_indices() {
+        match c {
+            '"' => in_quotes = !in_quotes,
+            c if c.is_whitespace() && !in_quotes => return Some(after_eq[i..].trim_start()),
+            _ => {}
+        }
+    }
+    // the value ran to the end: everything was assignment
+    Some("")
 }
 
 /// Whether a command rule's first word turns a wildcarded rule into a blanket one: the
@@ -691,23 +759,10 @@ fn broad_first_word(word: &str) -> bool {
         .is_some_and(|rest| rest.chars().all(|c| c.is_ascii_digit() || c == '.'))
 }
 
-/// Whether a token is a leading env assignment (`FOO=1`), skipped when the first real
-/// word of a command is looked for (L-4: `FOO=1 python *` is a wildcarded interpreter).
-fn env_assignment(token: &str) -> bool {
-    match token.split_once('=') {
-        Some((name, _)) => {
-            !name.is_empty()
-                && name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
-                && name.chars().next().is_some_and(|c| !c.is_ascii_digit())
-        }
-        None => false,
-    }
-}
-
 /// The first words that run what follows them (permission-modes.md's dropped-rules list,
 /// the env/xargs/sudo/npx escapes of audit R-2, command/exec/uv of R-4, busybox/bun/php
-/// of L-4).
-const INTERPRETERS_AND_WRAPPERS: [&str; 25] = [
+/// of L-4, doas/pkexec of M-2).
+const INTERPRETERS_AND_WRAPPERS: [&str; 27] = [
     "python",
     "python3",
     "node",
@@ -733,6 +788,8 @@ const INTERPRETERS_AND_WRAPPERS: [&str; 25] = [
     "busybox",
     "bun",
     "php",
+    "doas",
+    "pkexec",
 ];
 
 /// Whether a platform `managed-mcp.json` is deployed (SPEC REQ-3, D-2). A test passes its own

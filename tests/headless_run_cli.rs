@@ -372,6 +372,10 @@ fn blanket_tool_rules_refuse_to_build() {
         "Bash(busybox sh *)",
         "Bash(bun *)",
         "Bash(php *)",
+        // M-2: a quoted assignment with a space, and the privilege escalators
+        "Bash(FOO=\"a b\" python *)",
+        "Bash(doas *)",
+        "Bash(pkexec *)",
         // R-3: the Monitor allow rule the dropped-rules list forbids
         "Monitor",
     ] {
