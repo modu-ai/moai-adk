@@ -1000,12 +1000,15 @@ struct Counts {
 }
 
 /// What the cache file holds (REQ-5): the key (the canonical git directory that holds the `HEAD`
-/// file, the `HEAD` text and the integration commit), the time it was written, and the parsed
-/// git facts. A record without a folder (an older file) never matches.
+/// file, the work state of [`work_state`], the `HEAD` text and the integration commit), the time
+/// it was written, and the parsed git facts. A record without a folder or a work state (an older
+/// file) never matches.
 #[derive(Debug, Serialize, Deserialize)]
 struct CacheRecord {
     #[serde(default)]
     folder: String,
+    #[serde(default)]
+    state: String,
     head: String,
     integration: String,
     written_at: i64,
@@ -1127,10 +1130,14 @@ fn read_git(
         .unwrap_or_else(|_| dirs.git_dir.clone())
         .to_string_lossy()
         .into_owned();
+    let state = work_state(&dirs, branch);
     let counts = git_counts(
         dir,
         ctx,
-        &folder,
+        &CacheKey {
+            folder: &folder,
+            state: &state,
+        },
         &head_text,
         &commit,
         &status_args(branch, integration.as_deref()),
@@ -1144,13 +1151,22 @@ fn read_git(
     Some(GitRead { git, integration })
 }
 
-/// The numbers for one render: the cache when it is fresh for this git directory, `HEAD` text and
-/// integration commit, else the output of the one git process, which then rewrites the cache. A git that
-/// cannot answer (a spent budget, a failure) gives zeros and writes nothing.
+/// The parts of the cache key besides the `HEAD` text and the integration commit.
+struct CacheKey<'a> {
+    /// The canonical per-checkout git directory.
+    folder: &'a str,
+    /// [`work_state`]: the branch commit and the index size and time.
+    state: &'a str,
+}
+
+/// The numbers for one render: the cache when it is fresh for this git directory, work state,
+/// `HEAD` text and integration commit, else the output of the one git process, which then
+/// rewrites the cache. A git that cannot answer (a spent budget, a failure) gives zeros and
+/// writes nothing.
 fn git_counts(
     dir: &Path,
     ctx: &Context,
-    folder: &str,
+    key: &CacheKey<'_>,
     head_text: &str,
     commit: &str,
     args: &[String],
@@ -1158,8 +1174,10 @@ fn git_counts(
 ) -> Counts {
     if let Some(record) = cache.as_ref().and_then(SessionCache::read) {
         // Another folder with the same `HEAD` text is another key: a session that moves to
-        // another checkout asks git once.
-        if record.folder == folder
+        // another checkout asks git once. A commit or a stage on the same branch changes the
+        // work state, so it asks git once too.
+        if record.folder == key.folder
+            && record.state == key.state
             && cache_is_fresh(
                 record.written_at,
                 ctx.now,
@@ -1186,7 +1204,8 @@ fn git_counts(
     };
     if let Some(cache) = cache {
         let record = CacheRecord {
-            folder: folder.to_string(),
+            folder: key.folder.to_string(),
+            state: key.state.to_string(),
             head: head_text.to_string(),
             integration: commit.to_string(),
             written_at: ctx.now,
@@ -1208,13 +1227,12 @@ struct SessionCache {
 }
 
 impl SessionCache {
-    /// `None` without a plain session id, without a folder this user alone may enter, or on a
+    /// `None` without a plain session id, with a relative `TMPDIR` (it would name a folder inside
+    /// the checkout the render runs in), without a folder this user alone may enter, or on a
     /// platform without Unix modes: every render then asks git.
     fn open(ctx: &Context, session_id: &str) -> Option<SessionCache> {
         let name = cache_file_name(session_id)?;
-        let base = ctx
-            .var("TMPDIR")
-            .map_or_else(|| PathBuf::from("/tmp"), PathBuf::from);
+        let base = cache_base(ctx.var("TMPDIR"))?;
         let dir = base.join(CACHE_FOLDER);
         private_folder(&dir).then(|| SessionCache {
             file: dir.join(name),
@@ -1279,6 +1297,37 @@ impl SessionCache {
             }
         }
     }
+}
+
+/// The folder the cache folder goes in: `TMPDIR` when it is an absolute path, `/tmp` when it is
+/// unset or empty, and none when it is relative.
+fn cache_base(tmpdir: Option<&str>) -> Option<PathBuf> {
+    match tmpdir {
+        None | Some("") => Some(PathBuf::from("/tmp")),
+        Some(dir) => Some(PathBuf::from(dir)).filter(|p| p.is_absolute()),
+    }
+}
+
+/// What a commit or a stage on the same branch changes while the `HEAD` text stays: the commit
+/// of the checked-out branch (none for a detached `HEAD`, whose text is the commit) and the size
+/// and modified time of the checkout's index file. Read from disk, no process.
+fn work_state(dirs: &GitDirs, branch: Option<&str>) -> String {
+    let commit = branch.map_or_else(String::new, |name| ref_commit(&dirs.common, name));
+    let index = std::fs::symlink_metadata(dirs.git_dir.join("index"))
+        .ok()
+        .filter(std::fs::Metadata::is_file)
+        .map_or_else(
+            || "none".to_string(),
+            |m| {
+                let at = m
+                    .modified()
+                    .ok()
+                    .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+                    .map_or(0, |d| d.as_nanos());
+                format!("{}:{at}", m.len())
+            },
+        );
+    format!("commit={commit};index={index}")
 }
 
 /// The cache folder exists as a plain folder of this user that nobody else may enter: made 0700
@@ -4171,6 +4220,21 @@ mod cache_key_tests {
             "~".into(),
         ] {
             assert_eq!(cache_file_name(&bad), None, "{bad:?}");
+        }
+    }
+
+    /// REQ-5: the cache goes under an absolute `TMPDIR`, under `/tmp` when it is unset or
+    /// empty, and nowhere when it is relative.
+    #[test]
+    fn the_cache_base_refuses_a_relative_tmpdir() {
+        assert_eq!(cache_base(None), Some(PathBuf::from("/tmp")));
+        assert_eq!(cache_base(Some("")), Some(PathBuf::from("/tmp")));
+        assert_eq!(
+            cache_base(Some("/var/folders/x")),
+            Some(PathBuf::from("/var/folders/x"))
+        );
+        for relative in [".", "./", "tmp", "./tmp", "../tmp"] {
+            assert_eq!(cache_base(Some(relative)), None, "{relative:?}");
         }
     }
 
