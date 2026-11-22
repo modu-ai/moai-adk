@@ -51,7 +51,8 @@ pub struct JobLoad {
 }
 
 /// The estimate the preview prints.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Estimate {
     /// Billed minutes per month, each run rounded up to a whole minute.
     pub minutes: u32,
