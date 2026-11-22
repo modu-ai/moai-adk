@@ -907,6 +907,69 @@ fn ac18_a_rename_onto_the_integration_branch_is_refused_before_the_source_is_del
     tree_clean(&w);
 }
 
+// ---- AC-19: the hook starts no git process in the ordinary case --------------------------------
+
+/// AC-19: the hook finds the common git folder from its own path, so it works with no `git` on
+/// the path at all (run by hand with only `tr`, `cat` and a stand-in moai available) and asks git
+/// only when it lives somewhere else (`core.hooksPath`), where it still protects the branch.
+#[test]
+fn ac19_the_hook_starts_no_git_process_in_the_ordinary_case() {
+    let mut w = Repo::new(false);
+    w.install();
+    let (repo, a, b) = (w.repo.clone(), w.a.clone(), w.b.clone());
+
+    // The hook run by hand, with a path that holds no git.
+    let bin = w.dir.path().join("minbin");
+    fs::create_dir_all(&bin).unwrap();
+    for tool in ["tr", "cat"] {
+        let from = ["/usr/bin", "/bin"]
+            .iter()
+            .map(|d| Path::new(d).join(tool))
+            .find(|p| p.exists())
+            .unwrap();
+        std::os::unix::fs::symlink(from, bin.join(tool)).unwrap();
+    }
+    common::write_executable(&bin.join("moai"), STANDIN);
+    let log = w.dir.path().join("standin.log");
+    let hook = w.common().join("hooks/reference-transaction");
+    let run = |state: &str, line: &str| {
+        let mut child = Command::new("/bin/sh")
+            .arg(&hook)
+            .arg(state)
+            .current_dir(&repo)
+            .clean_env()
+            .env("PATH", &bin)
+            .env("HOME", w.home.path())
+            .env("STANDIN_LOG", &log)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .unwrap();
+        std::io::Write::write_all(&mut child.stdin.take().unwrap(), line.as_bytes()).unwrap();
+        child.wait_with_output().unwrap()
+    };
+    let on_integ = format!("{a} {b} refs/heads/Integ\n");
+    let on_lane = format!("{a} {b} refs/heads/lane\n");
+    assert!(run("prepared", &on_integ).status.success());
+    assert!(run("prepared", &on_lane).status.success());
+    assert_eq!(calls(&log), vec!["card guard prepared"]);
+
+    // A hook that lives somewhere else: git is asked for the common folder, and the branch is
+    // still protected.
+    let elsewhere = w.dir.path().join("shared-hooks");
+    fs::create_dir_all(&elsewhere).unwrap();
+    common::write_executable(&elsewhere.join("reference-transaction"), guard::hook_text());
+    fs::remove_file(&hook).unwrap();
+    w.git(
+        &repo,
+        &["config", "core.hooksPath", elsewhere.to_str().unwrap()],
+    );
+    w.refused(&w.try_git(&repo, &["update-ref", "refs/heads/Integ", &b, &a]));
+    tree_clean(&w);
+    let _ = &mut w;
+}
+
 // ---- AC-10: the hook text and the aborted transaction ------------------------------------------
 
 /// AC-10: the hook text is a shell script that holds the guard's command and no branch name and

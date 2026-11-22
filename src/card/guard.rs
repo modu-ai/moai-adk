@@ -54,7 +54,10 @@ pub fn hook_text() -> &'static str {
 # (SPEC-20261121-ref-guard). Written by moai; changes are overwritten.
 case "$1" in prepared | committed) ;; *) exit 0 ;; esac
 common=${GIT_COMMON_DIR:-}
-[ -n "$common" ] || common=$(git rev-parse --git-common-dir 2>/dev/null) || exit 0
+if [ -z "$common" ]; then
+  case "$0" in /*/hooks/*) common=${0%/hooks/*} ;; esac
+  [ -f "$common/moai/integration-branch" ] || common=$(git rev-parse --git-common-dir 2>/dev/null) || exit 0
+fi
 case "$common" in /*) ;; *) common=$(pwd)/$common ;; esac
 record="$common/moai/integration-branch"
 [ -f "$record" ] || exit 0
