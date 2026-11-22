@@ -1346,24 +1346,11 @@ fn line_three_ladder_one_render_starts_one_git_and_one_orca_wrapper_at_most() {
     assert_eq!(count("orca"), 1, "the wrapper starts once");
     assert!(count("git") <= 1, "git started {} times", count("git"));
     assert_eq!(f.home.snapshot(), before, "the render changed the HOME");
-    let mut written: Vec<String> = Vec::new();
-    let mut stack = vec![tmp.path().to_path_buf()];
-    while let Some(dir) = stack.pop() {
-        for e in std::fs::read_dir(&dir).unwrap() {
-            let p = e.unwrap().path();
-            if p.is_dir() {
-                stack.push(p);
-            } else {
-                written.push(
-                    p.strip_prefix(tmp.path())
-                        .unwrap()
-                        .to_string_lossy()
-                        .into_owned(),
-                );
-            }
-        }
-    }
-    written.sort();
+    let written: Vec<String> = common::cli::tree_state(tmp.path())
+        .into_iter()
+        .map(|(rel, _)| rel)
+        .filter(|rel| !tmp.path().join(rel).is_dir())
+        .collect();
     assert_eq!(written.len(), 2, "{written:?}");
     assert_eq!(written[0], "moai-statusline/s-ac9.json", "{written:?}");
     assert!(

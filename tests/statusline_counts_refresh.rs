@@ -348,7 +348,9 @@ fn orca_pass_through_starts_with_the_endpoint_variable() {
 #[test]
 fn orca_pass_through_starts_nothing_without_limits_variables_or_an_executable() {
     let two = &ORCA_VARS[..2];
-    let cases: [(&str, bool, &[(&str, &str)]); 6] = [
+    // (case, stdin has rate_limits, hook variables set)
+    type Case<'a> = (&'a str, bool, &'a [(&'a str, &'a str)]);
+    let cases: [Case; 6] = [
         ("no rate_limits", false, &ORCA_VARS),
         ("no variable", true, &[]),
         ("two of three variables", true, two),
