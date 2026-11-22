@@ -222,11 +222,15 @@ fn the_error_table_holds_no_removed_hook_adapter_message() {
 
 /// AC-8: the repository tracks no file under its own `.codex` folder: the committed tree has no
 /// `.codex` entry (a tracked file would give it one). A local untracked `.codex` does not count.
+/// `ls-tree` answers an absent entry with success and no line, so a git failure fails the test
+/// instead of passing it.
 #[test]
 fn the_repository_tracks_no_codex_folder() {
-    let out = common::git::git_raw(
-        &root(),
-        &["rev-parse", "--verify", "--quiet", "HEAD:.codex"],
+    let out = common::git::git_raw(&root(), &["ls-tree", "--name-only", "HEAD", "--", ".codex"]);
+    assert!(out.success, "git ls-tree failed: {}", out.stderr);
+    assert!(
+        out.stdout.trim().is_empty(),
+        "HEAD tracks .codex: {}",
+        out.stdout
     );
-    assert!(!out.success, "HEAD tracks .codex: {}", out.stdout);
 }
