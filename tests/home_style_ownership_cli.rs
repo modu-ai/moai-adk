@@ -2,8 +2,8 @@
 //! the installer takes a style file that equals the current render or an earlier shipped render
 //! as MoAI's own while a real user edit stays a conflict. Against a temporary HOME only.
 //!
-//! The three earlier renders are kept as fixtures (`tests/fixtures/home-style/render-1.md` to
-//! `render-3.md`), rebuilt from the commits of the text history; their sha256 are the ones of
+//! The earlier renders are kept as fixtures (`tests/fixtures/home-style/render-1.md` to
+//! `render-4.md`), rebuilt from the commits of the text history; their sha256 are the ones of
 //! the SPEC decision D-4.
 
 mod common;
@@ -20,7 +20,7 @@ fn record_file(home: &Path) -> PathBuf {
         .join("home-style")
         .join("claude.json")
 }
-const RENDERS: [&str; 3] = ["render-1.md", "render-2.md", "render-3.md"];
+const RENDERS: [&str; 4] = ["render-1.md", "render-2.md", "render-3.md", "render-4.md"];
 
 fn package() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai")
@@ -117,7 +117,11 @@ fn the_progress_board_points_to_the_flow_rule_for_background_work() {
     let start = s.find("## Progress board").unwrap();
     let end = start + s[start..].find("## Format").unwrap();
     let section = &s[start..end];
-    for item in ["`rules/moai/flow.md`", "background work", "subagents, shells, monitors"] {
+    for item in [
+        "`rules/moai/flow.md`",
+        "background work",
+        "subagents, shells, monitors",
+    ] {
         assert!(section.contains(item), "{item}");
     }
     for word in ["TaskCreate", "TaskUpdate", "task tool"] {
@@ -140,14 +144,16 @@ fn the_rendered_description_has_no_double_quote_and_names_the_banner() {
     assert!(!line["description: \"".len()..line.len() - 1].contains('"'));
 }
 
-/// The sha256 of the three earlier renders, kept in the SPEC (D-4), match the fixtures.
+/// The sha256 of the earlier renders, kept in the SPEC (D-4), match the fixtures.
 #[test]
-fn the_fixtures_are_the_three_renders_of_the_spec() {
+fn the_fixtures_are_the_earlier_renders_of_the_spec() {
     let want = [
         "93e53607dd194da86abfbe7ea993303fff1d17af1a1a1ae6868788938ed785d2",
         "d4e1851a65eb0ed21d16de888925dc6ae8a7bcebcae45973e1b8cce884d75e67",
         "690c534220f9bb1614e27d608e56306da973e2fe7b53e2bc1a4d42d7d2b9c65e",
+        "a31d966b0486f501839121832eb6a99d3fc718996b22a901e9e17884a0ab369e",
     ];
+    assert_eq!(want.len(), RENDERS.len());
     for (name, sha) in RENDERS.iter().zip(want) {
         assert_eq!(
             moai_cli::digest(fixture(name).as_bytes()),
@@ -161,7 +167,7 @@ fn the_fixtures_are_the_three_renders_of_the_spec() {
 /// frontmatter makes this test fail until the outgoing render is appended to
 /// `EARLIER_RENDERS` and this constant names the new one (AC-7, REQ-8).
 const CURRENT_RENDER_SHA256: &str =
-    "a31d966b0486f501839121832eb6a99d3fc718996b22a901e9e17884a0ab369e";
+    "80e189d27dd7be365724bbba2f38f1eddb3c0e96801da4caf82535ce80181a65";
 
 /// AC-7 (REQ-8): the list holds 64 hex digits each, all different, equal to the fixtures in
 /// order, and never the current render, which is pinned here.

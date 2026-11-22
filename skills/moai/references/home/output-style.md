@@ -31,6 +31,7 @@ Use it instead of a paragraph when three or more steps are tracked, with 46 `─
 [⬜] <step> · <not its turn yet>
 ```
 Icons: ⬜ not started · 🟢 done · 🟡 in progress · ⏸️ blocked · 🔵 in review · ❌ failed or cancelled · 🔴 risk. Keep the icons and ▓░ as they are, always with words beside them so color is never the only signal. One step per line; fill the bar only from real counts.
+When a turn ends while background work (subagents, shells, monitors) is still running, the flow rule `rules/moai/flow.md` says whether this board closes the turn; this section sets only its look.
 
 ## Format
 Markdown in chat. Cite files as `path:line`. Name the sources when the web was used.

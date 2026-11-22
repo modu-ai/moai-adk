@@ -47,14 +47,16 @@ const SETTINGS_LIMIT: usize = 256 * 1024;
 const DESCRIPTION: &str = "Plain words, four steps (understand, plan, do, check), evidence before done, MoAI 🗿 banners and a progress board.";
 /// The sha256 (64 hex digits) of every style file text moai-cli rendered before the current one,
 /// oldest first: the first text with an unquoted description and a star banner, the YAML repair
-/// of its description, and the text with the `MoAI 🗿` banner. A style file equal to one of them
+/// of its description, the text with the `MoAI 🗿` banner, and the text of the picked sections
+/// before its progress board pointed to the flow rule. A style file equal to one of them
 /// is a text MoAI shipped, so it is updated and not left as a conflict. When the template or the
 /// frontmatter changes, the render this module made until then is appended here (the test
 /// `the_earlier_renders_are_pinned_and_never_hold_the_current_one` fails until it is).
-pub const EARLIER_RENDERS: [&str; 3] = [
+pub const EARLIER_RENDERS: [&str; 4] = [
     "93e53607dd194da86abfbe7ea993303fff1d17af1a1a1ae6868788938ed785d2",
     "d4e1851a65eb0ed21d16de888925dc6ae8a7bcebcae45973e1b8cce884d75e67",
     "690c534220f9bb1614e27d608e56306da973e2fe7b53e2bc1a4d42d7d2b9c65e",
+    "a31d966b0486f501839121832eb6a99d3fc718996b22a901e9e17884a0ab369e",
 ];
 
 /// One write target of one host.
