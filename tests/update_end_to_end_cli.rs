@@ -308,16 +308,8 @@ fn assert_walks_to_the_end(fx: &GoFx, expected: &[&str]) -> Walk {
 }
 
 /// The order every shape runs: the settings clean-up, the move of the Go folder, then the
-/// install steps that have something to write (the MoAI files, the hook set, the host files).
-const ORDER: [&str; 7] = [
-    "go-settings",
-    "go-state",
-    "generation",
-    "hooks",
-    "codex-hooks",
-    "codex-config",
-    "omp-hooks",
-];
+/// install steps that have something to write (the MoAI files and the hook set).
+const ORDER: [&str; 4] = ["go-settings", "go-state", "generation", "hooks"];
 
 #[test]
 fn shape_g_reaches_all_unchanged() {
@@ -522,20 +514,9 @@ fn project_nodes(fx: &GoFx) -> BTreeMap<String, Node> {
 }
 
 /// What the chain adds and an undo does not take away: the receipts, the set-aside folder of the
-/// Rust state, and the files of the three host steps that have no revert command.
+/// Rust state.
 fn may_stay_behind(rel: &str) -> bool {
-    rel == ".codex"
-        || rel.starts_with(".codex/")
-        || rel == ".omp"
-        || rel.starts_with(".omp/")
-        || rel.starts_with(".moai-cli/receipts")
-        || rel.starts_with(".moai.rust-")
-        || matches!(
-            rel,
-            ".moai-cli/manifests/codex-config.json"
-                | ".moai-cli/manifests/codex-hooks.json"
-                | ".moai-cli/manifests/omp-hooks.json"
-        )
+    rel.starts_with(".moai-cli/receipts") || rel.starts_with(".moai.rust-")
 }
 
 fn applied<'a>(w: &'a Walk, step: &str) -> &'a Value {
@@ -572,14 +553,6 @@ fn the_printed_undo_order_takes_the_chain_back_to_the_start_bytes() {
             .map(|c| c.as_str().unwrap().to_string())
             .collect()
     };
-    for step in ["omp-hooks", "codex-config", "codex-hooks"] {
-        let note = steps.iter().find(|s| s["step"] == step).unwrap()["note"].as_str();
-        assert!(
-            note.is_some_and(|n| n.contains("no revert command")),
-            "{step}"
-        );
-        assert_eq!(commands(step), Vec::<String>::new(), "{step}");
-    }
     // What stays is said, not left to be read as "everything is back".
     let stays = w.last["undo_order"]["stays"].as_str().unwrap();
     assert!(

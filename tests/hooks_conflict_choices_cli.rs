@@ -18,7 +18,6 @@ use tempfile::TempDir;
 
 const EXE: &str = crate::common::MOAI_BIN;
 const REF: &str = "test:hooks-conflict-choices";
-const PLACEHOLDER: &str = "<permission-reference>";
 const SYSTEM_PATH: &str = "/usr/bin:/bin";
 const RUST_MOAI: &str = "moai 1.2.3 (rust)";
 const GO_MOAI: &str = "moai-adk v3.2.1-rc.6";
@@ -27,20 +26,17 @@ const GO_MOAI: &str = "moai-adk v3.2.1-rc.6";
 #[derive(Clone, Copy)]
 struct H {
     name: &'static str,
-    step: &'static str,
     file: &'static str,
     user: &'static str,
 }
 
 const CODEX: H = H {
     name: "codex",
-    step: "codex-hooks",
     file: ".codex/hooks.json",
     user: "{\n  \"hooks\": {\n    \"Stop\": [\n      {\n        \"hooks\": [{\"type\": \"command\", \"command\": \"echo mine\"}]\n      }\n    ]\n  }\n}\n",
 };
 const OMP: H = H {
     name: "omp",
-    step: "omp-hooks",
     file: ".omp/extensions/moai-hooks.ts",
     user: "// mine\nexport default function () {}\n",
 };
@@ -134,12 +130,6 @@ impl Fx {
 
     fn run(&self, args: &[&str], stdin: &[u8]) -> (i32, Value) {
         self.run_on(args, stdin, SYSTEM_PATH)
-    }
-
-    fn call(&self, args: &[&str], stdin: &[u8]) -> Value {
-        let (code, v) = self.run(args, stdin);
-        assert_eq!((code, &v["ok"]), (0, &json!(true)), "{args:?}: {v}");
-        v["result"].clone()
     }
 
     /// `hooks-plan` for `h`; the whole envelope.
@@ -238,62 +228,6 @@ impl Fx {
         out.sort();
         out
     }
-
-    /// A profile written the way PROJECT writes it, listing the Codex and omp hosts.
-    fn with_profile(&self) {
-        let detect = self.call(&["project-detect", self.p()], b"");
-        let profile = json!({
-            "schema_version": 2, "project_id": "demo", "purpose": "Build a small editor",
-            "tools": ["Rust"], "development_methods": ["TDD"],
-            "hosts": ["claude", "codex", "omp"],
-            "detected": detect["detected"],
-        });
-        let plan = self.call(
-            &["project-plan", self.p()],
-            &serde_json::to_vec(&profile).unwrap(),
-        );
-        let digest = plan["plan_digest"].as_str().unwrap().to_string();
-        self.call(
-            &[
-                "project-apply",
-                self.p(),
-                "--plan-digest",
-                &digest,
-                "--permission-reference",
-                REF,
-            ],
-            &serde_json::to_vec(&plan).unwrap(),
-        );
-    }
-
-    /// `project-update-plan`, with the whole tree compared before and after.
-    fn update_plan(&self) -> Value {
-        let before = self.tree();
-        let plan = self.call(&["project-update-plan", self.p()], b"");
-        assert_eq!(before, self.tree(), "project-update-plan wrote something");
-        plan
-    }
-
-    /// Runs one printed command (`{"argv": [...], "stdin": ...}`): `moai` is this binary and the
-    /// placeholder is a permission reference.
-    fn run_printed(&self, command: &Value) -> (i32, Value) {
-        let argv: Vec<String> = command["argv"]
-            .as_array()
-            .unwrap_or_else(|| panic!("a choice with a command prints its argv: {command}"))
-            .iter()
-            .map(|w| w.as_str().unwrap().to_string())
-            .collect();
-        assert_eq!(argv[0], "moai", "{argv:?}");
-        let args: Vec<&str> = argv[1..]
-            .iter()
-            .map(|w| if w == PLACEHOLDER { REF } else { w.as_str() })
-            .collect();
-        let stdin = match &command["stdin"] {
-            Value::Null => Vec::new(),
-            v => serde_json::to_vec(v).unwrap(),
-        };
-        self.run(&args, &stdin)
-    }
 }
 
 fn digest(plan: &Value) -> String {
@@ -301,16 +235,6 @@ fn digest(plan: &Value) -> String {
         .as_str()
         .unwrap_or_else(|| panic!("the plan has a digest: {plan}"))
         .to_string()
-}
-
-fn step<'a>(plan: &'a Value, name: &str) -> &'a Value {
-    plan["phases"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .flat_map(|p| p["steps"].as_array().into_iter().flatten())
-        .find(|s| s["step"] == name)
-        .unwrap_or_else(|| panic!("no step {name}: {plan}"))
 }
 
 fn backup_rel(plan: &Value) -> String {
@@ -322,15 +246,6 @@ fn backup_rel(plan: &Value) -> String {
 
 fn mode(p: &Path) -> u32 {
     fs::metadata(p).unwrap().permissions().mode() & 0o777
-}
-
-fn ids(choices: &Value) -> Vec<&str> {
-    choices
-        .as_array()
-        .unwrap_or_else(|| panic!("the step has choices: {choices}"))
-        .iter()
-        .map(|c| c["id"].as_str().unwrap())
-        .collect()
 }
 
 // ---- plan -------------------------------------------------------------------------------
@@ -839,129 +754,4 @@ fn gate_refuses_a_replace_when_moai_on_path_is_the_go_build() {
     assert!(fx.backups().is_empty());
     let (code, v) = fx.apply_env(CODEX, &digest(&plan), true, &[], &rust);
     assert_eq!(code, 0, "{v}");
-}
-
-// ---- step -------------------------------------------------------------------------------
-
-/// AC-4 (REQ-11): both conflicting hook steps list `keep`, `diff`, `replace` in that order:
-/// `keep` recommended with no command, `diff` the read-only replace plan, `replace` the apply of
-/// that plan's digest.
-#[test]
-fn step_lists_keep_diff_and_replace_in_that_order() {
-    let fx = Fx::new();
-    fx.with_profile();
-    for h in BOTH {
-        fx.write(h.file, h.user);
-    }
-    let plan = fx.update_plan();
-    for h in BOTH {
-        let s = step(&plan, h.step);
-        assert_eq!(s["state"], json!("conflict"), "{s}");
-        assert!(
-            s["reason"]
-                .as_str()
-                .unwrap()
-                .contains("preservation review"),
-            "{s}"
-        );
-        assert!(s["plan_digest"].is_null() && s["apply"].is_null(), "{s}");
-        let choices = &s["preview"]["choices"];
-        assert_eq!(ids(choices), ["keep", "diff", "replace"], "{s}");
-        let c = choices.as_array().unwrap();
-        assert_eq!(c[0]["recommended"], json!(true), "{s}");
-        assert!(c[0]["command"].is_null(), "{s}");
-        assert_eq!(
-            c.iter().filter(|x| x["recommended"] == json!(true)).count(),
-            1,
-            "{s}"
-        );
-        let writes: Vec<&str> = c
-            .iter()
-            .filter(|x| x["writes"] == json!(true))
-            .map(|x| x["id"].as_str().unwrap())
-            .collect();
-        assert_eq!(writes, ["replace"], "{s}");
-        let argv = |i: usize| -> Vec<&str> {
-            c[i]["command"]["argv"]
-                .as_array()
-                .unwrap()
-                .iter()
-                .map(|w| w.as_str().unwrap())
-                .collect()
-        };
-        let (diff, replace) = (argv(1), argv(2));
-        assert_eq!(&diff[..2], ["moai", "hooks-plan"], "{diff:?}");
-        assert!(
-            diff.contains(&"--replace-with-backup") && diff.contains(&h.name),
-            "{diff:?}"
-        );
-        assert_eq!(&replace[..2], ["moai", "hooks-apply"], "{replace:?}");
-        assert!(replace.contains(&"--replace-with-backup") && replace.contains(&h.name));
-        assert!(replace.contains(&PLACEHOLDER), "{replace:?}");
-        let at = replace.iter().position(|w| *w == "--plan-digest").unwrap();
-        let replace_plan = fx.plan(h, true);
-        assert_eq!(replace[at + 1], digest(&replace_plan), "{s}");
-        assert_eq!(c[2]["backup"], replace_plan["backup"]["path"], "{s}");
-        // The two sides are in the step itself: reading the diff needs no command.
-        assert!(s["preview"]["diff"]["removed"].is_array(), "{s}");
-    }
-}
-
-/// AC-4 (REQ-11): the printed `diff` and `replace` commands run as printed; the `diff` writes
-/// nothing, the `replace` settles the step.
-#[test]
-fn step_commands_run_as_printed_and_settle() {
-    let fx = Fx::new();
-    fx.with_profile();
-    for h in BOTH {
-        fx.write(h.file, h.user);
-    }
-    let plan = fx.update_plan();
-    for h in BOTH {
-        let choices = step(&plan, h.step)["preview"]["choices"].clone();
-        let before = fx.tree();
-        let (code, v) = fx.run_printed(&choices[1]["command"]);
-        assert_eq!(code, 0, "{}: {v}", h.name);
-        assert_eq!(v["result"]["action"], json!("replace"), "{v}");
-        assert_eq!(before, fx.tree(), "the diff command wrote something");
-        let (code, v) = fx.run_printed(&choices[2]["command"]);
-        assert_eq!(code, 0, "{}: {v}", h.name);
-        assert_eq!(v["result"]["state"], json!("applied"), "{v}");
-    }
-    assert_eq!(fx.backups().len(), 2);
-    let after = fx.update_plan();
-    for h in BOTH {
-        let s = step(&after, h.step);
-        assert_eq!(s["state"], json!("unchanged"), "{s}");
-        assert!(s["preview"]["choices"].is_null(), "{s}");
-    }
-}
-
-/// AC-4 (REQ-12): when the replace plan cannot be made (a linked `backups` folder) the step stays
-/// a conflict with no choices, and the plain steps keep their shape.
-#[test]
-fn step_without_a_replace_plan_stays_a_bare_conflict() {
-    let fx = Fx::new();
-    fx.with_profile();
-    fx.write(CODEX.file, CODEX.user);
-    let elsewhere = fx.base.join("elsewhere");
-    fs::create_dir_all(&elsewhere).unwrap();
-    let state = fx.state();
-    std::os::unix::fs::symlink(&elsewhere, fx.root.join(state).join("backups")).unwrap();
-    let plan = fx.update_plan();
-    let s = step(&plan, CODEX.step);
-    assert_eq!(s["state"], json!("conflict"), "{s}");
-    assert!(
-        s["reason"]
-            .as_str()
-            .unwrap()
-            .contains("preservation review"),
-        "{s}"
-    );
-    assert!(s["preview"]["choices"].is_null(), "{s}");
-    assert!(s["plan_digest"].is_null() && s["apply"].is_null(), "{s}");
-    // The omp step has no file of the user's: it is a plain create with its own command.
-    let omp = step(&plan, OMP.step);
-    assert_eq!(omp["state"], json!("ready"), "{omp}");
-    assert!(omp["apply"]["argv"].is_array(), "{omp}");
 }

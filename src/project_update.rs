@@ -51,8 +51,8 @@ const BACKUP_REASON: &str = "the Go-generation .moai/ and the earlier .moai-cli/
      (go-state-plan); .codex files are classified in the preview and nothing under .codex \
      moves yet (#2936 S1c-2)";
 const INSTALL_REASON: &str = "profile, generation (AGENTS.md managed section and generated \
-     files), Claude Code settings, Claude Code hooks, GitHub templates, the Codex and OMP hook \
-     sets; the Codex config and skill copy and the OMP agents are a later slice (#2936 R9 S5b)";
+     files), Claude Code settings, Claude Code hooks, GitHub templates; the retired-hosts step \
+     only lists the files of the retired Codex and OMP hosts and leaves them as they are";
 /// Why the merge step waits while the generation step has files to write: the merge reads and
 /// writes `AGENTS.md`, whose bytes that step's digest binds.
 pub const AFTER_INSTALL: &str = "re-run after the install phase";
@@ -1239,26 +1239,21 @@ fn github_step(root: &Path, shown: &str) -> Result<Step> {
     })
 }
 
-/// The install steps in the order they are printed and applied; `hooks` follows
-/// `claude-settings` (#2936 R-B), the host steps follow `github` (#2936 R9 S5a).
-const INSTALL: [&str; 11] = [
+/// The install steps that wait for the profile or for the backup phase, in the order they are
+/// printed and applied; `hooks` follows `claude-settings` (#2936 R-B). The retired-hosts step
+/// is not one of them: it reads no file content, so nothing makes it stale (see [`host_steps`]).
+const INSTALL: [&str; 5] = [
     "profile",
     "generation",
     "claude-settings",
     "hooks",
     "github",
-    "codex-hooks",
-    "codex-config",
-    "codex-skill",
-    "omp-hooks",
-    "omp-config",
-    "omp-agents",
 ];
 
-/// The host steps (#2936 R9 S5a) as this module's steps; `picked` is the profile's `hosts`, or
-/// `None` when no profile could be read (SPEC-20261118-profile-host-omp).
-fn host_steps(root: &Path, shown: &str, picked: Option<&[String]>) -> Vec<Step> {
-    project_hosts::steps(root, shown, picked)
+/// The host steps as this module's steps: the one information step about the retired hosts,
+/// which every preview carries after the install steps above.
+fn host_steps(root: &Path) -> Vec<Step> {
+    project_hosts::steps(root)
         .into_iter()
         .map(|h| Step {
             name: h.name,
@@ -1290,7 +1285,6 @@ fn install_steps(
             steps.push(or_blocked("claude-settings", settings_step(root, shown)));
             steps.push(or_blocked("hooks", hooks_step(root, shown, false)));
             steps.push(or_blocked("github", github_step(root, shown)));
-            steps.extend(host_steps(root, shown, None));
             hooks_after_settings(&mut steps);
             return steps;
         }
@@ -1309,7 +1303,6 @@ fn install_steps(
         or_blocked("hooks", hooks_step(root, shown, claude)),
         or_blocked("github", github_step(root, shown)),
     ];
-    steps.extend(host_steps(root, shown, Some(&profile.hosts)));
     hooks_after_settings(&mut steps);
     steps
 }
@@ -1618,16 +1611,11 @@ fn dead_update_lock(root: &Path) -> Option<String> {
 /// generation step's `AGENTS.md` is still in place ("revert refused: AGENTS.md is conflict"), and
 /// the generation step's `AGENTS.md` is a second receipt (`agents_receipt`) that its own undo does
 /// not cover. Run in this order the project is back to its start bytes (what the steps added —
-/// receipts, `.moai.rust-<UTC>/`, the Codex and OMP files — stays). Each id is printed by the
-/// apply result of its step.
+/// receipts and `.moai.rust-<UTC>/` — stays). Each id is printed by the apply result of its step.
 fn undo_order() -> Value {
-    let none = "no revert command exists for this step; its files stay and do not block the commands below";
     json!({
         "rule": "undo the step applied last first; every command needs its own permission reference",
         "steps": [
-            {"step": "omp-hooks", "commands": [], "note": none},
-            {"step": "codex-config", "commands": [], "note": none},
-            {"step": "codex-hooks", "commands": [], "note": none},
             {"step": "hooks", "commands": [
                 "moai go-hooks-revert --receipt <receipt of the hooks step> --permission-reference <reference> <PROJECT>",
             ], "note": "for a hooks step that ran go-hooks-apply (the Go hook set); a hooks step that ran hooks-apply --host claude over an existing settings file printed its own `revert` (moai hooks-revert <PROJECT> --receipt <id> --permission-reference <reference>), and a first install has nothing to revert"},
@@ -1643,7 +1631,7 @@ fn undo_order() -> Value {
                 "moai go-settings-revert --receipt <receipt of the go-settings step> --permission-reference <reference> <PROJECT>",
             ]},
         ],
-        "stays": "what the commands above do not take away: the receipts under .moai-cli/receipts/, the Rust state's set-aside folder .moai.rust-<UTC>/, and what the three steps without a revert command wrote (.codex/, .omp/, .moai-cli/manifests/codex-config.json, codex-hooks.json, omp-hooks.json); remove those by hand only after reading them, nothing here deletes them",
+        "stays": "what the commands above do not take away: the receipts under .moai-cli/receipts/, and the Rust state's set-aside folder .moai.rust-<UTC>/; remove those by hand only after reading them, nothing here deletes them",
         "other_steps": "a step not listed (profile, claude-settings, github, the merge steps) prints its own revert or receipt in its apply result",
     })
 }
@@ -1676,7 +1664,7 @@ pub fn plan(project: &Path) -> Result<Value> {
     }
     let backup = vec![settings, state, reports];
     // A move still to make: every install preview would be stale after it.
-    let install = if backup_pending(&backup) {
+    let mut install: Vec<Step> = if backup_pending(&backup) {
         INSTALL
             .map(|n| Step::waiting(n, "blocked", AFTER_BACKUP))
             .into_iter()
@@ -1684,6 +1672,8 @@ pub fn plan(project: &Path) -> Result<Value> {
     } else {
         install_steps(&root, &shown, &detected)
     };
+    // The retired hosts are always in the preview, whatever the profile or the backup phase says.
+    install.extend(host_steps(&root));
     let merge = merge_steps(&root, &shown, &backup, &install);
     let all_unchanged = backup
         .iter()

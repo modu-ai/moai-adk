@@ -18,7 +18,6 @@ use tempfile::TempDir;
 
 const EXE: &str = crate::common::MOAI_BIN;
 const REF: &str = "test:codex-conflict-choices";
-const PLACEHOLDER: &str = "<permission-reference>";
 const CONFIG: &str = ".codex/config.toml";
 /// The user's own file: a comment, an unrelated key with a trailing comment, their own status line.
 const USER_CONFIG: &str = "# mine\nmodel = \"x\" # keep\n\n[tui]\nstatus_line = [\"model\"]\n";
@@ -146,75 +145,10 @@ impl Fx {
         out.sort();
         out
     }
-
-    /// A profile written the way PROJECT writes it, listing the Codex host.
-    fn with_profile(&self) {
-        let detect = self.call(&["project-detect", self.p()], b"");
-        let profile = json!({
-            "schema_version": 2, "project_id": "demo", "purpose": "Build a small editor",
-            "tools": ["Rust"], "development_methods": ["TDD"], "hosts": ["claude", "codex"],
-            "detected": detect["detected"],
-        });
-        let plan = self.call(
-            &["project-plan", self.p()],
-            &serde_json::to_vec(&profile).unwrap(),
-        );
-        let digest = plan["plan_digest"].as_str().unwrap().to_string();
-        self.call(
-            &[
-                "project-apply",
-                self.p(),
-                "--plan-digest",
-                &digest,
-                "--permission-reference",
-                REF,
-            ],
-            &serde_json::to_vec(&plan).unwrap(),
-        );
-    }
-
-    /// `project-update-plan`, with the whole tree compared before and after.
-    fn update_plan(&self) -> Value {
-        let before = self.tree();
-        let plan = self.call(&["project-update-plan", self.p()], b"");
-        assert_eq!(before, self.tree(), "project-update-plan wrote something");
-        plan
-    }
-
-    /// Runs one printed command (`{"argv": [...], "stdin": ...}`): `moai` is this binary and the
-    /// placeholder is a permission reference.
-    fn run_printed(&self, command: &Value) -> (i32, Value) {
-        let argv: Vec<String> = command["argv"]
-            .as_array()
-            .unwrap_or_else(|| panic!("a choice with a command prints its argv: {command}"))
-            .iter()
-            .map(|w| w.as_str().unwrap().to_string())
-            .collect();
-        assert_eq!(argv[0], "moai", "{argv:?}");
-        let args: Vec<&str> = argv[1..]
-            .iter()
-            .map(|w| if w == PLACEHOLDER { REF } else { w.as_str() })
-            .collect();
-        let stdin = match &command["stdin"] {
-            Value::Null => Vec::new(),
-            v => serde_json::to_vec(v).unwrap(),
-        };
-        self.run(&args, &stdin)
-    }
 }
 
 fn want() -> Value {
     json!({"tui.status_line": "moai"})
-}
-
-fn step<'a>(plan: &'a Value, name: &str) -> &'a Value {
-    plan["phases"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .flat_map(|p| p["steps"].as_array().into_iter().flatten())
-        .find(|s| s["step"] == name)
-        .unwrap_or_else(|| panic!("no step {name}: {plan}"))
 }
 
 fn digest(plan: &Value) -> String {
@@ -467,109 +401,4 @@ fn a_linked_backup_folder_blocks_the_replacement_only() {
         "a copy went through the link"
     );
     assert_eq!(fx.read(CONFIG), USER_CONFIG.as_bytes());
-}
-
-// ---- project-update-plan step -----------------------------------------------------------
-
-fn choices(plan: &Value) -> Vec<Value> {
-    step(plan, "codex-config")["preview"]["choices"]
-        .as_array()
-        .unwrap_or_else(|| panic!("the conflict step carries choices: {plan}"))
-        .clone()
-}
-
-/// AC-3 (REQ-9, REQ-11): the conflict step lists `keep` (recommended, no command), `diff`
-/// (read-only) and `replace` (the apply with the replace digest and the backup path).
-#[test]
-fn step_lists_keep_diff_and_replace_in_that_order() {
-    let fx = Fx::with_user_config();
-    fx.with_profile();
-    let plan = fx.update_plan();
-    let s = step(&plan, "codex-config");
-    assert_eq!(s["state"], "conflict", "{s}");
-    // The values are in the step itself, so `diff` needs no command to be read.
-    assert_eq!(s["preview"]["diff"][0]["key"], "tui.status_line", "{s}");
-    assert_eq!(s["preview"]["diff"][0]["current"], json!(["model"]), "{s}");
-    let list = choices(&plan);
-    let ids: Vec<&str> = list.iter().map(|c| c["id"].as_str().unwrap()).collect();
-    assert_eq!(ids, ["keep", "diff", "replace"], "{s}");
-    assert_eq!(list[0]["recommended"], json!(true), "{s}");
-    assert_eq!(list[1]["recommended"], json!(false), "{s}");
-    assert_eq!(list[2]["recommended"], json!(false), "{s}");
-    assert_eq!(list[0]["command"], Value::Null, "{s}");
-    assert_eq!(list[0]["writes"], json!(false), "{s}");
-    assert_eq!(list[1]["writes"], json!(false), "{s}");
-    assert_eq!(list[2]["writes"], json!(true), "{s}");
-    let diff = list[1]["command"]["argv"].as_array().unwrap();
-    assert_eq!(
-        diff.iter().map(|w| w.as_str().unwrap()).collect::<Vec<_>>(),
-        ["moai", "codex-config-plan", fx.p(), "--replace-with-backup"],
-        "{s}"
-    );
-    assert_eq!(list[1]["command"]["stdin"], want(), "{s}");
-    assert!(
-        list[2]["backup"].as_str().unwrap().contains("backups/"),
-        "{s}"
-    );
-    assert!(
-        s["apply"].is_null(),
-        "a conflict step prints no apply of its own: {s}"
-    );
-}
-
-/// AC-3 (REQ-11, REQ-12): the printed `diff` and `replace` commands run as printed, the digest
-/// the step prints is the one the replace plan computes, and the project settles afterwards.
-#[test]
-fn step_printed_commands_run_as_printed() {
-    let fx = Fx::with_user_config();
-    fx.with_profile();
-    let list = choices(&fx.update_plan());
-
-    let (code, shown) = fx.run_printed(&list[1]["command"]);
-    assert_eq!(code, 0, "{shown}");
-    assert_eq!(shown["result"]["action"], "replace", "{shown}");
-    let printed: Vec<&str> = list[2]["command"]["argv"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .map(|w| w.as_str().unwrap())
-        .collect();
-    let at = printed.iter().position(|w| *w == "--plan-digest").unwrap();
-    assert_eq!(
-        printed[at + 1],
-        shown["result"]["plan_digest"].as_str().unwrap(),
-        "{printed:?}"
-    );
-    assert!(printed.contains(&"--replace-with-backup"), "{printed:?}");
-    assert!(printed.contains(&PLACEHOLDER), "{printed:?}");
-
-    let backup = list[2]["backup"].as_str().unwrap();
-    assert!(!fx.exists(backup), "the diff command wrote the backup");
-    let (code, applied) = fx.run_printed(&list[2]["command"]);
-    assert_eq!(code, 0, "{applied}");
-    assert_eq!(fx.read(backup), USER_CONFIG.as_bytes());
-
-    let again = fx.update_plan();
-    assert_eq!(
-        step(&again, "codex-config")["state"],
-        "unchanged",
-        "{again}"
-    );
-    assert!(
-        step(&again, "codex-config")["preview"]
-            .get("choices")
-            .is_none(),
-        "a settled step offers no choices"
-    );
-}
-
-/// AC-3 (REQ-9): only a conflict carries choices.
-#[test]
-fn step_without_a_conflict_carries_no_choices() {
-    let fx = Fx::new();
-    fx.with_profile();
-    let plan = fx.update_plan();
-    let s = step(&plan, "codex-config");
-    assert_eq!(s["state"], "ready", "{s}");
-    assert!(s["preview"].get("choices").is_none(), "{s}");
 }
