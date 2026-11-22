@@ -21,6 +21,19 @@ Four technical rules make the flow run. They describe how it works; they are not
 - A lane only commits: no push, no pull request and no merge of a moved integration tip. A background session never pushes and never opens a pull request.
 - A lane submits two things and nothing else: its head commit and the base its checks ran on. It adds one `moai card note` whose first line is `LANE-READY-INTEGRATION <card> head=<40 hex>` and names the base in the lines below it.
 - A decision the lane cannot make goes on the card as a blocked note (`workflows/work.md`); the lane takes the next card.
+- A `LANE-READY-INTEGRATION`, READY, REPAIRED or MERGE-READY note and a `LANE-DONE` line on the screen hand a card back; none of them is done in the ledger. How the session is cleared and the next card starts goes in two stages.
+
+### Transition (the leader and a lane-terminal manager today)
+
+- The leader sends `/clear` to the exact existing window only after the ledger shows the lane's card done or released (a safe hand-back that keeps the checkpoint and the candidate head for the audit), and only when nothing is open: no card in review, no live reservation, no run of the lane's own, no unsaved change, no input or selection prompt on the screen and nothing unknown.
+- A fixed delay after `/clear` proves nothing. The leader confirms that the new session is ready, sends the next line once, and confirms that session's reservation of the new card (the ACK). When the ACK is not seen it inspects the window and does not send again.
+- A new window is opened only when the existing one cannot be recovered.
+
+### Final flow
+
+- `/clear` and a lane-terminal manager are not conditions of dispatch. The start signal is the card verified and landed on the local integration branch, then done with its reservation released in the ledger.
+- The worker reserves the next eligible card once, and an automatic restart runs only through the existing HOLD, ownership, priority and safety checks.
+- Waiting for an audit and the hand-back of a card are separate from done and start nothing. A worker clearing its own session is not documented as a guarantee.
 
 ## Landing
 
