@@ -68,3 +68,20 @@ The user decided on 2026-11-21 that moai-adk supports Claude Code and GLM only. 
 - D-1: A separate `Msg::OmpRemoved` and `OMP_REMOVED`, mirroring the Codex notice, rather than one notice with a parameter (planning default).
 - D-2: The removal test is a new file `tests/omp_launcher_removed.rs`; `tests/omp_launcher.rs` is deleted (planning default).
 - D-3: The existing Python install test is edited in the install commit; no Python test is added.
+
+## Result
+
+All REQs are coded on this branch after the RED commit 3d9a8b0830: the launcher (5afdc18d93), the model settings (1c33e18fef) and the install texts (b6ef0c3968), written by a moai-impl agent in its own worktree on top of the RED commit and brought here by fast-forward. The RED lines come from this lane's run on 3d9a8b0830 (`target/red2.log`); the passes come from `moai check affected 59cefecb76..b6ef0c3968` (PASS, 70 targets, `target/check-g.log`, step logs in `target/check-g/`).
+
+- AC-1 met: `moai_omp_says_it_was_removed` failed first (`moai omp` composed an `omp` launch and exited 0) and passes now; `omp_launcher_removed` 6 passed.
+- AC-2 met: `help_omp_and_help_codex_print_the_removal_notice` failed first (`help omp` exited 0 with an `omp` launch) and passes in the same run.
+- AC-3 met: `the_omp_host_word_is_refused_like_any_unknown_host` failed first and passes in the same run.
+- AC-4 met: `cc_and_glm_launches_are_unchanged_and_name_no_omp` failed first (the `cc -l` dry run named `omp` in a note) and passes in the same run.
+- AC-5 met: `omp_is_not_a_tool_any_more` failed first (`TOOLS` was `["claude", "omp", "glm"]`) and passes now; `model_effort_settings` 12 passed.
+- AC-6 met: `a_saved_omp_value_of_any_shape_never_changes_a_cc_or_glm_launch` failed first (`launcher.models.omp must be an object` refused the `cc -l` dry run) and passes in the same run.
+- AC-7 met: `a_saved_omp_value_is_not_reported_and_leaves_the_file_on_the_next_save` failed first and passes now; `update_model_pick` 12 passed.
+- AC-8 met: `no_help_usage_or_install_text_names_omp_or_moai_codex` failed first (`tests/fixtures/help/root.txt:4` named `cc|glm|omp`) and passes in the same run; `help_layout` 10 passed and `tests/install_script_test.py` ran in the python step (302 tests, OK, 7 skipped).
+- Check results: check affected 59cefecb76..b6ef0c3968 PASS: diff_check 0, fmt 0, bash_n `install/install.sh` 0, clippy 0, test_lib 0, test_bins 0, test_targets 0, build_cli 0, python 0.
+- Changes beyond the listed lines, all inside granted files: `launch_settings` in `src/session.rs` lost its `host` argument (its only use was the removed OMP advisor guard) with its two callers; `default_profile` in `src/launcher_init.rs` keeps its signature with `_host` and always answers `claude`; `tests/install_script_test.py` renames `test_omp_gets_its_skill_entry` to `test_an_omp_or_codex_folder_alone_is_no_host`; `tests/model_effort_questions.rs` gains a supported `claude.agent` entry to keep a "from Some" case; the `src/launcher_terminal.rs` startup-lines test uses a GLM vault note instead of the removed OMP note.
+- Left as is (outside this SPEC): the `hooks-plan` doc text at `src/main.rs:614` and the comment at `src/retired_hosts.rs:5`, both project-layer wording.
+- Not run: the whole suite, a test run after merging the tip, and the independent audit.
