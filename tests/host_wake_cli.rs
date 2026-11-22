@@ -87,14 +87,35 @@ fn ac2_a_session_without_a_socket_is_the_no_inbox_refusal() {
     );
 }
 
+/// A test-owned socket folder under /tmp with the registry folder's name
+/// shape (the audit's N8: never the real /tmp/cc-socks folder); the Drop
+/// removes it, panic or not.
+struct SockFolder(std::path::PathBuf);
+impl SockFolder {
+    fn new(tag: &str) -> Self {
+        let path = std::path::Path::new("/tmp")
+            .join(format!("cc-socks-moai-test-{tag}-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&path);
+        fs::create_dir_all(&path).unwrap();
+        Self(path)
+    }
+}
+impl Drop for SockFolder {
+    fn drop(&mut self) {
+        let _ = fs::remove_dir_all(&self.0);
+    }
+}
+
 #[cfg(unix)]
 #[test]
 fn ac3_a_resolved_addressee_answers_the_queued_shape_and_writes_nothing() {
-    // The addressee's inbox stands in as a bound listener the test owns; the
-    // wake writes the minimum user line to it and answers the queued shape.
-    let dir = TempDir::new().unwrap();
-    let socket_path = dir.path().join("wake.sock");
+    // The addressee's inbox stands in as a bound listener the test owns, in a
+    // folder with the registry socket folder's name shape; the wake writes
+    // exactly the minimum user line to it and answers the queued shape.
+    let socks = SockFolder::new("cli");
+    let socket_path = socks.0.join("wake.sock");
     let listener = std::os::unix::net::UnixListener::bind(&socket_path).unwrap();
+    let dir = TempDir::new().unwrap();
     let sessions = dir.path().join("sessions");
     fs::create_dir_all(&sessions).unwrap();
     fs::write(
@@ -115,15 +136,11 @@ fn ac3_a_resolved_addressee_answers_the_queued_shape_and_writes_nothing() {
     let v = wake(&dir, "leader");
     assert_eq!(v["shape"], json!("delivered"), "{v}");
     let line = reader.join().unwrap();
-    let value: Value = serde_json::from_str(line.trim()).unwrap();
-    assert_eq!(value["type"], json!("user"));
-    assert_eq!(value["message"]["role"], json!("user"));
-    assert!(
-        value["message"]["content"]
-            .as_str()
-            .unwrap()
-            .contains("read the card timeline"),
-        "{value}"
+    // The audit's N2: the exact line, not a substring.
+    assert_eq!(
+        line,
+        "{\"type\":\"user\",\"message\":{\"role\":\"user\",\"content\":\"a verdict landed; read the card timeline\"}}\n",
+        "exactly the minimum user line and one newline"
     );
     assert_eq!(v["writes"], json!(false));
 }

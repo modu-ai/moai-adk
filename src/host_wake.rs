@@ -106,7 +106,7 @@ impl Invalid {
             Invalid::BadNameChar => {
                 "wake refused: the addressee name carries a character outside letters, digits, - and _"
             }
-            Invalid::EmptyText => "wake refused: the text is empty",
+            Invalid::EmptyText => "wake refused: the text is empty or only a newline",
             Invalid::LongText => "wake refused: the text is too long",
             Invalid::MultiLineText => "wake refused: the text is one line, the ledger holds the rest",
         }
@@ -135,7 +135,9 @@ impl Wake {
         if !valid_name(&self.addressee) {
             return Err(Invalid::BadNameChar);
         }
-        if self.text.is_empty() {
+        // N1 of the audit: a text of only a newline (or any whitespace) is
+        // empty — trim before the line checks.
+        if self.text.trim().is_empty() {
             return Err(Invalid::EmptyText);
         }
         if self.text.chars().count() > MAX_TEXT_CHARS {
@@ -242,14 +244,59 @@ impl PeerMessaging for RegistryListing {
     }
 }
 
+/// Check the registry's socket path before any connect (the audit's B1): the
+/// path must be absolute, no component of it may be a symbolic link (a linked
+/// socket is refused, so a moved registry entry cannot redirect the wake),
+/// its parent must be the registry's own socket folder — a directory directly
+/// under `/tmp` whose name starts with `cc-socks` (both spellings of the
+/// private per-user folder) — and the entry itself must be a socket file, so
+/// a dead path or a regular file never reaches `connect`.
+#[cfg(unix)]
+fn checked_socket_path(raw: &str) -> Result<std::path::PathBuf, String> {
+    use std::os::unix::fs::FileTypeExt as _;
+    let refuse = |why: &str| Err(format!("wake refused: the socket path {why}"));
+    let path = std::path::Path::new(raw);
+    if !path.is_absolute() {
+        return refuse("is not absolute");
+    }
+    // Every component between the socket and /tmp must be real; /tmp itself
+    // is the system's own link on macOS (/private/tmp) and the root is /.
+    for ancestor in path.ancestors().skip(1) {
+        if ancestor == std::path::Path::new("/tmp") || ancestor == std::path::Path::new("/") {
+            continue;
+        }
+        match std::fs::symlink_metadata(ancestor) {
+            Ok(data) if !data.file_type().is_symlink() => {}
+            _ => return refuse("has a missing or linked component"),
+        }
+    }
+    let parent = path
+        .parent()
+        .filter(|p| p.parent() == Some(std::path::Path::new("/tmp")));
+    let folder = parent
+        .and_then(|p| p.file_name())
+        .map(|n| n.to_string_lossy().into_owned());
+    match folder {
+        Some(name) if name.starts_with("cc-socks") => {}
+        _ => return refuse("is outside the registry's socket folder"),
+    }
+    match std::fs::symlink_metadata(path) {
+        Ok(data) if data.file_type().is_symlink() => refuse("is a linked socket"),
+        Ok(data) if data.file_type().is_socket() => Ok(path.to_path_buf()),
+        Ok(_) => refuse("is not a socket file"),
+        Err(_) => refuse("is a dead path"),
+    }
+}
+
 /// Write one complete line to the addressee's inbox socket and close. The
 /// inbox socket is a Unix domain socket on macOS and Linux (a named pipe on
 /// native Windows, whose auth line is required — that port stays open).
 #[cfg(unix)]
 fn write_line_to_socket(socket: &str, line: &str) -> Result<SendShape, String> {
     use std::io::Write as _;
-    let mut stream = std::os::unix::net::UnixStream::connect(socket)
-        .map_err(|e| format!("wake send could not reach {socket}: {e}"))?;
+    let path = checked_socket_path(socket)?;
+    let mut stream = std::os::unix::net::UnixStream::connect(&path)
+        .map_err(|e| format!("wake send could not reach {}: {e}", path.display()))?;
     stream
         .write_all(format!("{line}\n").as_bytes())
         .and_then(|_| stream.flush())
@@ -269,17 +316,56 @@ fn write_line_to_socket(_socket: &str, _line: &str) -> Result<SendShape, String>
 mod tests {
     use super::*;
 
-    /// The registry listing reads one JSON per live session (measured shape):
-    /// the name answers, a socket path binds an inbox, a session without one
-    /// does not, and an unreadable folder is the no-channel answer.
-    #[test]
-    fn the_registry_listing_reads_names_and_inboxes() {
+    /// A test-owned socket folder under /tmp with the registry folder's name
+    /// shape (the audit's N8: never the real /tmp/cc-socks folder). The Drop
+    /// removes the folder, panic or not.
+    struct SockFolder(std::path::PathBuf);
+    impl SockFolder {
+        fn new(tag: &str) -> Self {
+            let path = std::path::Path::new("/tmp")
+                .join(format!("cc-socks-moai-test-{tag}-{}", std::process::id()));
+            let _ = std::fs::remove_dir_all(&path);
+            std::fs::create_dir_all(&path).unwrap();
+            Self(path)
+        }
+        fn socket(&self, name: &str) -> String {
+            self.0.join(name).display().to_string()
+        }
+    }
+    impl Drop for SockFolder {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.0);
+        }
+    }
+
+    /// One config root whose single session names the given socket path.
+    fn one_peer_config(socket: &str) -> tempfile::TempDir {
         let dir = tempfile::tempdir().unwrap();
         let sessions = dir.path().join("sessions");
         std::fs::create_dir_all(&sessions).unwrap();
         std::fs::write(
             sessions.join("1.json"),
-            r#"{"name":"leader","messagingSocketPath":"/tmp/cc-socks/1.sock"}"#,
+            format!(r#"{{"name":"leader","messagingSocketPath":"{socket}"}}"#),
+        )
+        .unwrap();
+        dir
+    }
+
+    /// The registry listing reads one JSON per live session (measured shape):
+    /// the name answers, a socket path binds an inbox, a session without one
+    /// does not, and an unreadable folder is the no-channel answer.
+    #[test]
+    fn the_registry_listing_reads_names_and_inboxes() {
+        let socks = SockFolder::new("listing");
+        let dir = tempfile::tempdir().unwrap();
+        let sessions = dir.path().join("sessions");
+        std::fs::create_dir_all(&sessions).unwrap();
+        std::fs::write(
+            sessions.join("1.json"),
+            format!(
+                r#"{{"name":"leader","messagingSocketPath":"{}"}}"#,
+                socks.socket("1.sock")
+            ),
         )
         .unwrap();
         std::fs::write(sessions.join("2.json"), r#"{"name":"worker"}"#).unwrap();
@@ -290,7 +376,7 @@ mod tests {
             vec![
                 Peer {
                     name: "leader".into(),
-                    socket: Some("/tmp/cc-socks/1.sock".into()),
+                    socket: Some(socks.socket("1.sock")),
                     channel: true
                 },
                 Peer {
@@ -306,23 +392,15 @@ mod tests {
 
     /// The wire write the leader's research measured: one line of JSON ending
     /// in a newline, one direction, no auth line, no from-mode. The listener
-    /// here stands for the addressee's inbox exactly as a session binds one.
+    /// here stands for the addressee's inbox exactly as a session binds one,
+    /// in a test-owned folder with the registry folder's name shape.
     #[cfg(unix)]
     #[test]
     fn the_send_writes_the_minimum_user_line_to_the_socket() {
-        let dir = tempfile::tempdir().unwrap();
-        let socket_path = dir.path().join("wake.sock");
+        let socks = SockFolder::new("wire");
+        let socket_path = std::path::PathBuf::from(socks.socket("wake.sock"));
         let listener = std::os::unix::net::UnixListener::bind(&socket_path).unwrap();
-        let sessions = dir.path().join("sessions");
-        std::fs::create_dir_all(&sessions).unwrap();
-        std::fs::write(
-            sessions.join("1.json"),
-            format!(
-                r#"{{"name":"leader","messagingSocketPath":"{}"}}"#,
-                socket_path.display()
-            ),
-        )
-        .unwrap();
+        let dir = one_peer_config(&socket_path.display().to_string());
         let listing = RegistryListing::read(dir.path()).unwrap();
         let reader = std::thread::spawn(move || {
             let (mut stream, _) = listener.accept().unwrap();
@@ -347,6 +425,99 @@ mod tests {
             }),
             "exactly the minimum user line, nothing else"
         );
+    }
+
+    /// The audit's B1: a symlinked socket is refused — the registry entry may
+    /// not redirect the wake to another path.
+    #[cfg(unix)]
+    #[test]
+    fn a_linked_socket_is_refused() {
+        let socks = SockFolder::new("link");
+        let real = socks.socket("real.sock");
+        let _listener = std::os::unix::net::UnixListener::bind(&real).unwrap();
+        let link = socks.socket("link.sock");
+        std::os::unix::fs::symlink(&real, &link).unwrap();
+        let dir = one_peer_config(&link);
+        let listing = RegistryListing::read(dir.path()).unwrap();
+        let answer = wake("leader", "wake").send_once(&listing);
+        assert!(
+            answer.as_ref().is_err_and(|line| line.contains("linked")),
+            "{answer:?}"
+        );
+    }
+
+    /// The audit's B1: a dead path (nothing bound, no socket file) never
+    /// reaches connect.
+    #[cfg(unix)]
+    #[test]
+    fn a_dead_socket_is_refused() {
+        let socks = SockFolder::new("dead");
+        let dir = one_peer_config(&socks.socket("dead.sock"));
+        let listing = RegistryListing::read(dir.path()).unwrap();
+        let answer = wake("leader", "wake").send_once(&listing);
+        assert!(
+            answer
+                .as_ref()
+                .is_err_and(|line| line.contains("dead path")),
+            "{answer:?}"
+        );
+    }
+
+    /// The audit's B1: a regular file where a socket should be is refused.
+    #[cfg(unix)]
+    #[test]
+    fn a_non_socket_file_is_refused() {
+        let socks = SockFolder::new("plain");
+        let plain = socks.socket("plain.sock");
+        std::fs::write(&plain, "not a socket").unwrap();
+        let dir = one_peer_config(&plain);
+        let listing = RegistryListing::read(dir.path()).unwrap();
+        let answer = wake("leader", "wake").send_once(&listing);
+        assert!(
+            answer
+                .as_ref()
+                .is_err_and(|line| line.contains("not a socket file")),
+            "{answer:?}"
+        );
+    }
+
+    /// The audit's B1: a relative socket path resolves against the caller's
+    /// working directory and is refused outright.
+    #[cfg(unix)]
+    #[test]
+    fn a_relative_socket_path_is_refused() {
+        let dir = one_peer_config("sessions/1.sock");
+        let listing = RegistryListing::read(dir.path()).unwrap();
+        let answer = wake("leader", "wake").send_once(&listing);
+        assert!(
+            answer
+                .as_ref()
+                .is_err_and(|line| line.contains("not absolute")),
+            "{answer:?}"
+        );
+    }
+
+    /// The audit's N1: a text of only a newline is empty and is refused
+    /// before any transport.
+    #[test]
+    fn a_text_of_only_a_newline_is_refused() {
+        let fake = Fake {
+            peers: vec![Peer {
+                name: "leader".into(),
+                socket: Some("/tmp/cc-socks-moai-test-fake/none.sock".into()),
+                channel: true,
+            }],
+            shape: SendShape::Delivered,
+            sends: std::cell::RefCell::new(vec![]),
+        };
+        let answer = wake("leader", "\n").send_once(&fake);
+        assert!(
+            answer
+                .as_ref()
+                .is_err_and(|line| line.contains("only a newline")),
+            "{answer:?}"
+        );
+        assert!(fake.sends.borrow().is_empty());
     }
 
     /// A fake transport answering from a fixed listing and recording the one
@@ -380,7 +551,7 @@ mod tests {
         let fake = Fake {
             peers: vec![Peer {
                 name: "leader".into(),
-                socket: Some("/tmp/none.sock".into()),
+                socket: Some("/tmp/cc-socks-moai-test-fake/none.sock".into()),
                 channel: true,
             }],
             shape: SendShape::Delivered,
@@ -437,6 +608,7 @@ mod tests {
             wake("worker", "wake").send_once(&fake),
             Ok(SendShape::Refused(Refusal::NoInbox))
         );
+        assert!(fake.sends.borrow().is_empty(), "a refusal sends nothing");
     }
 
     #[test]
@@ -444,7 +616,7 @@ mod tests {
         let fake = Fake {
             peers: vec![Peer {
                 name: "leader".into(),
-                socket: Some("/tmp/none.sock".into()),
+                socket: Some("/tmp/cc-socks-moai-test-fake/none.sock".into()),
                 channel: true,
             }],
             shape: SendShape::HeldWithNotice,
@@ -470,7 +642,7 @@ mod tests {
             let fake = Fake {
                 peers: vec![Peer {
                     name: "leader".into(),
-                    socket: Some("/tmp/none.sock".into()),
+                    socket: Some("/tmp/cc-socks-moai-test-fake/none.sock".into()),
                     channel: true,
                 }],
                 shape: SendShape::Delivered,
