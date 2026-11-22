@@ -1,6 +1,7 @@
 //! SPEC-20261122-next-flow-skills-agents, text slice A (AC-1, AC-2, AC-5): the `/moai` skill
 //! package has eight routes, `/moai work` takes a card through the whole flow, and the retired
-//! SETUP, VERIFY and OPTIMIZE routes leave their rules in PROJECT, RUN and UPDATE.
+//! SETUP, VERIFY and OPTIMIZE routes leave their rules in PROJECT, RUN and UPDATE. Text slice B
+//! (AC-3): one flow reference and one audit contract, each within its byte budget.
 //!
 //! The tests read the skill files of this checkout; nothing is run and no HOME is touched.
 
@@ -38,17 +39,41 @@ const ROUTES: [&str; 8] = [
     "AUDIT", "PLAN", "PROJECT", "READ", "RUN", "SYNC", "UPDATE", "WORK",
 ];
 
-/// REQ-2, the files text slice A removes. The list grows: slice B adds
-/// `references/internal/build-folder.md` and `references/internal/review.md`, and Plan step 6
-/// adds `references/rule-history.md` when the rule history moves to `docs/`.
-const REMOVED: [&str; 6] = [
+/// REQ-2, the files text slices A and B remove. The list grows: slice B adds
+/// `references/internal/review.md` (absorbed into the audit contract);
+/// `references/internal/build-folder.md` moves in a later slice, and Plan step 6 adds
+/// `references/rule-history.md` when the rule history moves to `docs/`.
+const REMOVED: [&str; 7] = [
     "workflows/mode-agent.md",
     "workflows/mode-leader.md",
     "workflows/setup.md",
     "workflows/verify.md",
     "workflows/optimize.md",
     "references/adapters/herdr.md",
+    "references/internal/review.md",
 ];
+
+/// REQ-5 and REQ-6: the byte budget of the flow reference and of the audit contract.
+const REF_LIMIT: usize = 6144;
+
+/// REQ-5: the flow reference and the meaning it alone explains.
+const FLOW_REF: &str = "references/flows/next-flow.md";
+const MEANING: &str = "New · engineering · eXperience · Together";
+const FLOW_LINE: &str = "Work in parallel. Land once.";
+
+/// REQ-5: the four technical rules, each with the letter of the name it must not be spelled as.
+const RULES: [(char, &str); 4] = [
+    ('n', "no tip chase"),
+    ('e', "evidence before landing"),
+    ('x', "exactly-once landing"),
+    ('t', "a guarded tip"),
+];
+
+/// REQ-5: the condition the push sentence names.
+const PUSH_CONDITION: &str = "only when the user has turned the remote copy on";
+
+/// REQ-6: the audit contract.
+const AUDIT_REF: &str = "references/audit.md";
 
 /// REQ-4: the mode spellings SKILL.md no longer names.
 const MODE_SPELLINGS: [&str; 5] = [
@@ -100,6 +125,66 @@ fn step_keys(procedure: &str) -> Vec<(usize, String)> {
             (!after.is_empty()).then(|| (number, key.to_string()))
         })
         .collect()
+}
+
+/// Every shipped text: the files under `skills/moai/` and `agents/`, as (repository path, text).
+fn shipped_texts() -> Vec<(String, String)> {
+    fn walk(dir: &Path, out: &mut Vec<PathBuf>) {
+        for entry in fs::read_dir(dir).unwrap_or_else(|e| panic!("{}: {e}", dir.display())) {
+            let path = entry.unwrap().path();
+            if path.is_dir() {
+                walk(&path, out);
+            } else {
+                out.push(path);
+            }
+        }
+    }
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let mut files = Vec::new();
+    for top in ["skills/moai", "agents"] {
+        walk(&root.join(top), &mut files);
+    }
+    files.sort();
+    files
+        .into_iter()
+        .map(|p| {
+            let rel = p.strip_prefix(root).unwrap().to_string_lossy().into_owned();
+            let text = fs::read_to_string(&p).unwrap_or_else(|e| panic!("{rel}: {e}"));
+            (rel, text)
+        })
+        .collect()
+}
+
+/// The (letter, rule) pairs `text` spells as the letters of the name: a rule with its letter set
+/// before it (`N = no tip chase`, `- **T**: a guarded tip`) or marked inside it
+/// (`e**X**actly-once landing`).
+fn letter_spellings(text: &str) -> Vec<(char, &'static str)> {
+    let separators = |c: char| c.is_whitespace() || "=:—–-*`_()→,.".contains(c);
+    let mut hits = Vec::new();
+    for line in text.lines() {
+        let lower = line.to_lowercase();
+        let bare: String = lower
+            .chars()
+            .filter(|c| !matches!(c, '*' | '`' | '_'))
+            .collect();
+        for (letter, rule) in RULES {
+            // The rule without its article, so `T = guarded tip` is found as well.
+            let core = rule.strip_prefix("a ").unwrap_or(rule);
+            let before = lower.match_indices(core).any(|(at, _)| {
+                let mut head = lower[..at].trim_end_matches(separators);
+                if let Some(rest) = head.strip_suffix(" a") {
+                    head = rest.trim_end_matches(separators);
+                }
+                let mut tail = head.chars().rev();
+                tail.next() == Some(letter) && !tail.next().is_some_and(char::is_alphanumeric)
+            });
+            let inside = bare.contains(core) && !lower.contains(core);
+            if before || inside {
+                hits.push((letter, rule));
+            }
+        }
+    }
+    hits
 }
 
 /// The route cells of the chain table, one list per row.
@@ -316,6 +401,148 @@ fn absorb_entry_names_no_retired_route() {
         for word in ["SETUP", "VERIFY", "OPTIMIZE", "/moai optimize"] {
             assert!(!text.contains(word), "{rel} names {word}");
         }
+    }
+}
+
+#[test]
+fn refs_flow_reference_holds_each_stated_item() {
+    let flow = read(FLOW_REF);
+    assert!(
+        flow.len() <= REF_LIMIT,
+        "{FLOW_REF} is {} bytes, over {REF_LIMIT}",
+        flow.len()
+    );
+    for phrase in [
+        MEANING,
+        FLOW_LINE,
+        "`.claude/worktrees`",
+        "submits two things and nothing else: its head commit and the base its checks ran on",
+        "`moai card land <card> --head <40 hex> --by leader`",
+        "protection hook",
+        "Remote checks never block a landing",
+    ] {
+        assert!(flow.contains(phrase), "{FLOW_REF} lacks {phrase:?}");
+    }
+    let lower = flow.to_lowercase();
+    for (_, rule) in RULES {
+        assert!(lower.contains(rule), "{FLOW_REF} lacks the rule {rule:?}");
+    }
+}
+
+#[test]
+fn refs_meaning_is_in_exactly_one_shipped_text() {
+    let holders: Vec<String> = shipped_texts()
+        .into_iter()
+        .filter(|(_, text)| text.contains(MEANING))
+        .map(|(path, _)| path)
+        .collect();
+    assert_eq!(holders, [format!("skills/moai/{FLOW_REF}")]);
+}
+
+#[test]
+fn refs_no_shipped_text_spells_the_rules_as_letters() {
+    const NONE: [(char, &str); 0] = [];
+    // The checker finds a planted spelling, so an empty result below means none is there.
+    assert_eq!(
+        letter_spellings("N = no tip chase"),
+        [('n', "no tip chase")]
+    );
+    assert_eq!(
+        letter_spellings("- **X** — exactly-once landing"),
+        [('x', "exactly-once landing")]
+    );
+    assert_eq!(
+        letter_spellings("e**X**actly-once landing"),
+        [('x', "exactly-once landing")]
+    );
+    assert_eq!(
+        letter_spellings("- **T**: a guarded tip"),
+        [('t', "a guarded tip")]
+    );
+    assert_eq!(
+        letter_spellings("T = guarded tip"),
+        [('t', "a guarded tip")]
+    );
+    assert_eq!(
+        letter_spellings(
+            "Four rules: no tip chase, evidence before landing, exactly-once landing and a guarded tip."
+        ),
+        NONE
+    );
+    for (path, text) in shipped_texts() {
+        assert_eq!(letter_spellings(&text), NONE, "{path}");
+    }
+}
+
+#[test]
+fn refs_push_sentence_names_the_remote_copy() {
+    let flow = read(FLOW_REF);
+    let pushes: Vec<&str> = flow
+        .split(". ")
+        .flat_map(|s| s.split('\n'))
+        .filter(|s| s.contains("push") && s.contains("fast-forward"))
+        .collect();
+    assert!(!pushes.is_empty(), "{FLOW_REF} has no push sentence");
+    for sentence in pushes {
+        assert!(
+            sentence.contains(PUSH_CONDITION),
+            "the push sentence lacks its condition: {sentence}"
+        );
+    }
+}
+
+#[test]
+fn refs_audit_contract_holds_each_stated_item() {
+    let audit = read(AUDIT_REF);
+    assert!(
+        audit.len() <= REF_LIMIT,
+        "{AUDIT_REF} is {} bytes, over {REF_LIMIT}",
+        audit.len()
+    );
+    for name in [
+        "What the auditor receives",
+        "What the auditor returns",
+        "Who records the verdict",
+    ] {
+        assert!(
+            !section(&audit, name).trim().is_empty(),
+            "{AUDIT_REF}: `## {name}` is empty"
+        );
+    }
+    assert!(
+        audit.contains("The author of a change never audits it"),
+        "{AUDIT_REF} lacks the author rule"
+    );
+}
+
+#[test]
+fn refs_audit_contract_states_the_five_side_rules() {
+    let audit = read(AUDIT_REF);
+    for phrase in [
+        "A local code review of the `<base>..<head>` range is allowed evidence",
+        "never with its `--fix` or `--comment` option",
+        "A re-audit goes to the first auditor",
+        "A lane's tree-bound check receipt may be cited",
+        "No forked session and no advisor session audits",
+        "A finding that names no file and no line counts as no finding",
+    ] {
+        assert!(audit.contains(phrase), "{AUDIT_REF} lacks {phrase:?}");
+    }
+}
+
+#[test]
+fn refs_audit_contract_points_to_the_check_run_rules() {
+    let audit = read(AUDIT_REF);
+    assert!(
+        audit.contains("`workflows/run.md`") && audit.contains("\"Check-run rules\""),
+        "{AUDIT_REF} does not point to RUN's check-run rules"
+    );
+    // RUN's own words stay in RUN.
+    for restated in ["Citation conditions", "| Role and change |", "head_sha"] {
+        assert!(
+            !audit.contains(restated),
+            "{AUDIT_REF} restates {restated:?}"
+        );
     }
 }
 
