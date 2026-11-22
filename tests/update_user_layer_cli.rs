@@ -896,7 +896,14 @@ fn a_second_version_folder_adopts_the_html_report_receipt_instead_of_blocking_it
     let p = result(&run(&exe, &home, &["update"]));
     let top = p["plan_digest"].as_str().unwrap();
     result(&run(&exe, &home, &["update", "--confirm", top]));
-    let next = home.join(".moai-cli/versions/b");
+    // Beside the first version folder, whatever the state folder is named: exe is
+    // `<versions>/a/bin/moai-cli`.
+    let versions = exe
+        .parent()
+        .and_then(Path::parent)
+        .and_then(Path::parent)
+        .unwrap();
+    let next = versions.join("b");
     fs::create_dir_all(next.join("bin")).unwrap();
     let exe_b = next.join("bin/moai-cli");
     common::copy_executable(Path::new(EXE), &exe_b);

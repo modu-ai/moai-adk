@@ -710,7 +710,7 @@ fn copy_tree(from: &Path, to: &Path) {
 }
 
 /// SPEC-20261122-html-report-install AC-4: from a release laid out as installed (a copy of the
-/// binary in `~/.moai-cli/versions/a/bin`, `skills/moai`, `skills/moai-html-report` and
+/// binary in `versions/a/bin` of the HOME state folder, `skills/moai`, `skills/moai-html-report` and
 /// `agents` beside it), `moai update` puts both skill folders under `$CLAUDE_CONFIG_DIR/skills`
 /// and makes no `.claude` folder under the temporary HOME.
 #[test]
@@ -718,7 +718,7 @@ fn the_html_report_skill_follows_claude_config_dir_beside_the_moai_skill() {
     let w = World::new();
     let repo = Path::new(env!("CARGO_MANIFEST_DIR"));
     let skill = moai_cli::update::extra_skill::SKILLS[0];
-    let folder = w.base.join(".moai-cli/versions/a");
+    let folder = moai_cli::home_root::path(&w.base).join("versions/a");
     fs::create_dir_all(folder.join("bin")).unwrap();
     let exe = folder.join("bin/moai-cli");
     common::copy_executable(Path::new(common::MOAI_BIN), &exe);
