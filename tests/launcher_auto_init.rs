@@ -199,7 +199,7 @@ fn the_first_launch_outside_git_initializes_the_folder_on_every_host() {
         assert_eq!(init_lines(&out), 1, "{host}: {}", text(&out));
         assert!(dir.join(".git").is_dir(), "{host}");
         assert!(
-            dir.join(".git/.moai-cli/sessions/agent-1.live").is_file(),
+            dir.join(".git/.moai/sessions/agent-1.live").is_file(),
             "{host}"
         );
         let p = profile(&dir);
@@ -493,7 +493,7 @@ fn an_interrupted_first_launch_is_finished_by_the_next_launch() {
     let f = fixture();
     let plain = tempfile::tempdir().unwrap();
     let dir = plain.path();
-    let marker_file = dir.join(".git/.moai-cli/sessions/.init-pending");
+    let marker_file = dir.join(".git/.moai/sessions/.init-pending");
     let out = command(&f, dir, &with_git(&f), &["cc", "-a"])
         .env(moai_cli::launcher_init::INIT_TEST_FAIL_VAR, "1")
         .output()
@@ -544,7 +544,7 @@ fn an_agents_md_deleted_after_a_finished_first_launch_stays_deleted() {
     let plain = tempfile::tempdir().unwrap();
     let dir = plain.path();
     json(&run_in(&f, dir, &["cc", "-a"]));
-    assert!(!dir.join(".git/.moai-cli/sessions/.init-pending").exists());
+    assert!(!dir.join(".git/.moai/sessions/.init-pending").exists());
     fs::remove_file(dir.join("AGENTS.md")).unwrap();
     let out = run_in(&f, dir, &["cc", "-a"]);
     assert_eq!(json(&out)["name"], "agent-1");

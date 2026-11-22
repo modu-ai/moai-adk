@@ -1724,6 +1724,7 @@ mod tests {
     fn a_workflow_reference_in_the_earlier_state_folder_follows_the_state() {
         let tmp = tempfile::tempdir().unwrap();
         let root = tmp.path();
+        fs::create_dir(root.join(state_root::EARLIER_PROJECT_DIR)).unwrap();
         let earlier = format!("{}/workflows/moai/", state_root::EARLIER_PROJECT_DIR);
         let moved = format!("{}/workflows/moai/", state_root::MOAI_DIR);
         // The state has not moved: as recorded.
