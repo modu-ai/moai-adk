@@ -206,15 +206,18 @@ impl Wake {
 /// The registry listing of the sessions this config root can see (measured
 /// 2026-11-22: one JSON per live session under `<config dir>/sessions/`, with
 /// `name` and `messagingSocketPath`). A session with a socket path binds an
-/// inbox; the listing itself is the channel.
+/// inbox; the listing itself is the channel. A symlinked sessions folder is
+/// followed — the listing only reads, and the socket-path guard checks every
+/// component between the socket and /tmp before any connect (follow-up 3 of
+/// the landed follow-ups: decided, read-only).
 #[derive(Debug)]
 pub struct RegistryListing {
     peers: Vec<Peer>,
 }
 
 impl RegistryListing {
-    /// Read the listing of one config root. A folder that cannot be read is an
-    /// error the wake reports as the no-channel refusal.
+    /// Read the listing of one config root. A folder that cannot be read is
+    /// an error the operation answers with the sessions folder named.
     pub fn read(config_dir: &std::path::Path) -> Result<Self, String> {
         let sessions = config_dir.join("sessions");
         let entries = std::fs::read_dir(&sessions).map_err(|e| e.to_string())?;
@@ -421,7 +424,7 @@ mod tests {
 
     /// The registry listing reads one JSON per live session (measured shape):
     /// the name answers, a socket path binds an inbox, a session without one
-    /// does not, and an unreadable folder is the no-channel answer.
+    /// does not, and an unreadable folder answers with the folder named.
     #[test]
     fn the_registry_listing_reads_names_and_inboxes() {
         let socks = SockFolder::new("listing");

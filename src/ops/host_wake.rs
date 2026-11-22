@@ -1,6 +1,6 @@
 //! `host-wake`: one flow wake through the host adapter (SPEC-20261122-session-messages).
-//! Lists the config root's session registry — a missing or unreadable registry
-//! folder is the no-channel refusal, never an internal error — refuses with
+//! Lists the config root's session registry — a missing or unreadable sessions
+//! folder answers with its path named, never an internal error — refuses with
 //! the reason when the addressee is unreachable, and answers the result
 //! shape: queued (one line written to the addressee's inbox socket), held
 //! with a notice, or refused (an unknown name, no channel, no inbox, an
@@ -48,8 +48,8 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             .to_string()),
         Ok(()) => match moai_cli::host_wake::RegistryListing::read(&config_dir) {
             Err(_) => Err(format!(
-                "wake refused: the registry folder under {} is missing or unreadable",
-                config_dir.display()
+                "wake refused: the sessions registry {} is missing or unreadable",
+                config_dir.join("sessions").display()
             )),
             Ok(listing) => wake.send_once(&listing),
         },
