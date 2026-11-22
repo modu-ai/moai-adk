@@ -238,3 +238,150 @@ fn a_missing_gh_marks_the_counts_suppressed_without_a_retry_storm() {
     assert_eq!(cache(&f).unwrap()["attempted_at"].as_i64(), attempted);
     assert!(!f.repo.join(LOCK).exists(), "a second refresh started");
 }
+
+// ---- SPEC-20261122-statusline-limits AC-6 (REQ-8, D-6): the Orca pass-through ----
+
+/// The Orca script below the temporary HOME (D-6: the file Orca installs).
+const ORCA_SCRIPT: &str = ".orca/agent-hooks/claude-statusline.sh";
+/// The three hook variables D-6 names, with fake values.
+const ORCA_VARS: [(&str, &str); 3] = [
+    ("ORCA_AGENT_HOOK_PORT", "1"),
+    ("ORCA_AGENT_HOOK_TOKEN", "fake"),
+    ("ORCA_PANE_KEY", "tab:1"),
+];
+
+/// A stdin payload with `rate_limits` (or without it).
+fn orca_stdin(f: &Fixture, with_limits: bool) -> String {
+    let mut v = serde_json::json!({
+        "workspace": {"project_dir": f.repo},
+        "context_window": {"used_percentage": 10},
+    });
+    if with_limits {
+        v["rate_limits"] = serde_json::json!({
+            "seven_day": {"used_percentage": 21, "resets_at": 4_102_444_800_i64}
+        });
+    }
+    v.to_string()
+}
+
+/// A fake Orca script: keeps its stdin in `orca.in`, adds one line to `orca.calls`, then sleeps
+/// `delay` seconds. Only absolute programs, since PATH holds `git` alone.
+fn orca_script(f: &Fixture, delay: u32) -> String {
+    let dir = f.log.parent().unwrap().display().to_string();
+    format!(
+        "#!/bin/sh\n/bin/cat > '{dir}/orca.in'\necho call >> '{dir}/orca.calls'\n/bin/sleep {delay}\n"
+    )
+}
+
+/// Writes the fake script as an executable file, its folders first.
+fn orca_install(path: &Path, text: &str) {
+    std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+    common::write_executable(path, text);
+}
+
+fn orca_calls(f: &Fixture) -> usize {
+    std::fs::read_to_string(f.log.parent().unwrap().join("orca.calls"))
+        .map(|s| s.lines().count())
+        .unwrap_or(0)
+}
+
+/// One render with `stdin` and these extra variables; its output and how long it took.
+fn orca_render(f: &Fixture, stdin: &str, vars: &[(&str, &str)]) -> (String, Duration) {
+    let tmp = tempfile::tempdir().unwrap();
+    let started = Instant::now();
+    let mut c = Command::new(crate::common::MOAI_BIN);
+    c.args(["statusline", "--render-budget-ms", "3600000"])
+        .current_dir(&f.repo)
+        .clean_env()
+        .env("PATH", &f.bin)
+        .env("HOME", &f.home)
+        .env("TMPDIR", tmp.path())
+        .env("NO_COLOR", "1");
+    for (k, v) in vars {
+        c.env(k, v);
+    }
+    let mut child = c
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()
+        .unwrap();
+    common::feed_stdin(&mut child, stdin.as_bytes());
+    let out = child.wait_with_output().unwrap();
+    assert!(out.status.success());
+    (String::from_utf8(out.stdout).unwrap(), started.elapsed())
+}
+
+/// AC-6: with the hook variables, an executable script and `rate_limits` in the stdin, the
+/// script starts once and reads exactly the bytes the status line received.
+#[test]
+fn orca_pass_through_starts_the_script_once_with_the_stdin_bytes() {
+    let f = fixture("https://github.com/acme/widgets.git", None);
+    orca_install(&f.home.join(ORCA_SCRIPT), &orca_script(&f, 0));
+    let stdin = orca_stdin(&f, true);
+    let (out, _) = orca_render(&f, &stdin, &ORCA_VARS);
+    assert!(out.contains("CW 10%"), "{out}");
+    assert!(wait_for(|| orca_calls(&f) == 1), "the script did not start");
+    std::thread::sleep(Duration::from_millis(300));
+    assert_eq!(orca_calls(&f), 1, "started more than once");
+    let got = std::fs::read(f.log.parent().unwrap().join("orca.in")).unwrap();
+    assert_eq!(got, stdin.as_bytes());
+}
+
+/// AC-6 (D-6): the endpoint file variable alone is enough to start the script.
+#[test]
+fn orca_pass_through_starts_with_the_endpoint_variable() {
+    let f = fixture("https://github.com/acme/widgets.git", None);
+    orca_install(&f.home.join(ORCA_SCRIPT), &orca_script(&f, 0));
+    let endpoint = f.log.parent().unwrap().join("endpoint.env");
+    std::fs::write(&endpoint, "").unwrap();
+    let (_, _) = orca_render(
+        &f,
+        &orca_stdin(&f, true),
+        &[("ORCA_AGENT_HOOK_ENDPOINT", endpoint.to_str().unwrap())],
+    );
+    assert!(wait_for(|| orca_calls(&f) == 1), "the script did not start");
+}
+
+/// AC-6: no `rate_limits`, no variable, only some of the three, a script that is not
+/// executable, a folder in its place or no script at all start nothing.
+#[test]
+fn orca_pass_through_starts_nothing_without_limits_variables_or_an_executable() {
+    let two = &ORCA_VARS[..2];
+    let cases: [(&str, bool, &[(&str, &str)]); 6] = [
+        ("no rate_limits", false, &ORCA_VARS),
+        ("no variable", true, &[]),
+        ("two of three variables", true, two),
+        ("not executable", true, &ORCA_VARS),
+        ("a folder", true, &ORCA_VARS),
+        ("no script", true, &ORCA_VARS),
+    ];
+    for (name, limits, vars) in cases {
+        let f = fixture("https://github.com/acme/widgets.git", None);
+        let script = f.home.join(ORCA_SCRIPT);
+        match name {
+            "not executable" => {
+                std::fs::create_dir_all(script.parent().unwrap()).unwrap();
+                std::fs::write(&script, orca_script(&f, 0)).unwrap();
+            }
+            "a folder" => std::fs::create_dir_all(&script).unwrap(),
+            "no script" => {}
+            _ => orca_install(&script, &orca_script(&f, 0)),
+        }
+        let (out, _) = orca_render(&f, &orca_stdin(&f, limits), vars);
+        assert!(out.contains("CW 10%"), "{name}: {out}");
+        std::thread::sleep(Duration::from_millis(700));
+        assert_eq!(orca_calls(&f), 0, "{name}: the script started");
+    }
+}
+
+/// AC-6: the render returns before a slow script ends.
+#[test]
+fn orca_pass_through_does_not_wait_for_a_slow_script() {
+    let f = fixture("https://github.com/acme/widgets.git", None);
+    orca_install(&f.home.join(ORCA_SCRIPT), &orca_script(&f, 20));
+    let (out, took) = orca_render(&f, &orca_stdin(&f, true), &ORCA_VARS);
+    assert!(out.contains("CW 10%"), "{out}");
+    assert!(took < Duration::from_secs(10), "the render waited {took:?}");
+    assert!(wait_for(|| orca_calls(&f) == 1), "the script did not start");
+}
