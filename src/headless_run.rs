@@ -489,9 +489,9 @@ fn interpret_waitid(rc: i32, reported_pid: i32, errno: Option<i32>) -> WaitPoll 
 }
 
 /// Polls the child WITHOUT reaping it (L-2): the zombie still owns the process group, so
-/// the straggler kill that follows cannot hit a recycled group. A waitid error is only
-/// "no such child" in practice here (the child was reaped elsewhere, M-1); anything else
-/// counts as running until the deadline ends the call anyway.
+/// the straggler kill that follows cannot hit a recycled group. A waitid error with errno
+/// ECHILD means the child was reaped elsewhere (M-1: skip the group kill; P-2: the drained
+/// output returns with an unknown exit status); every other answer counts as running.
 #[cfg(unix)]
 fn poll_unreaped(pid: u32) -> WaitPoll {
     // SAFETY: waitid with WNOWAIT reports an exited child and leaves it un-reaped; a
@@ -748,7 +748,11 @@ fn narrow_rule(tool: &str) -> Result<()> {
         inner.is_empty() || inner.starts_with('*') || inner == ":*"
     });
     let starts_with_assignment = |inner: &str| {
+        // Q-2: FOO+=1 and arr[0]=1 are assignments too — the name may carry an index
+        // suffix or a + before the =, and every such prefix counts as an assignment.
         inner.split_once('=').is_some_and(|(name, _)| {
+            let name = name.split_once('[').map_or(name, |(base, _)| base);
+            let name = name.strip_suffix('+').unwrap_or(name);
             !name.is_empty()
                 && name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
                 && name.chars().next().is_some_and(|c| !c.is_ascii_digit())
@@ -763,10 +767,20 @@ fn narrow_rule(tool: &str) -> Result<()> {
         if starts_with_assignment(inner.trim_start()) {
             return true;
         }
-        inner
-            .split_whitespace()
-            .next()
-            .is_some_and(broad_first_word)
+        // Q-3: a first word holding a quote, a backslash or a redirection cannot be told
+        // apart from its interpreter safely — a wildcarded rule with one refuses.
+        let Some(first) = inner.split_whitespace().next() else {
+            return false;
+        };
+        if first.contains('"')
+            || first.contains('\'')
+            || first.contains('\\')
+            || first.starts_with('>')
+            || first.starts_with('<')
+        {
+            return true;
+        }
+        first.split_whitespace().next() == Some(first) && broad_first_word(first)
     });
     if blanket || wildcard_only || wildcarded_word {
         return Err(format!(

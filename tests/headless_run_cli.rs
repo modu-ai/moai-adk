@@ -383,6 +383,13 @@ fn blanket_tool_rules_refuse_to_build() {
         "Bash(FOO=a\\ b python *)",
         "Bash(FOO=\"say \\\"hi\\\"\" python *)",
         "Bash(FOO=1 sh *)",
+        // Q-2: assignment spellings the name check missed
+        "Bash(FOO+=1 python *)",
+        "Bash(arr[0]=1 python *)",
+        // Q-3: a quoted, escaped or redirected first word
+        "Bash(\\python *)",
+        "Bash(\"python\" *)",
+        "Bash(>/dev/null python *)",
         // R-3: the Monitor allow rule the dropped-rules list forbids
         "Monitor",
     ] {
@@ -850,9 +857,9 @@ fn assignment_prefixed_wildcard_rules_refuse_in_every_spelling() {
     assert!(build(&spec, &ctx(&root), &env).is_ok());
 }
 
-/// P-2: a reaped-elsewhere child returns the drained output with an unknown exit status
-/// instead of failing and discarding it — driven through the module's own test hook
-/// (the unit tests inside src pin the poll arms).
+/// Q-1: the REAL reaped-elsewhere case — SIGCHLD set to SIG_IGN makes the kernel reap
+/// children at exit, so waitid answers ECHILD, wait() fails and the arm under test runs:
+/// success false, code none, the drained answer kept, and therefore no verdict.
 #[test]
 fn a_reaped_elsewhere_child_returns_its_drained_output() {
     use moai_cli::headless_run::{parse_result, run_with_limit, RunOutcome};
@@ -868,7 +875,19 @@ exit 0\n";
     let root = tmp.path().join("platform");
     fs::create_dir_all(&root).unwrap();
     let built = build(&audit_spec(), &ctx(&root), &parent_env(&fixtures, &record)).unwrap();
-    let raw = run_with_limit(&built, tmp.path(), Duration::from_secs(5)).unwrap();
-    assert!(raw.success, "{}", raw.stderr);
-    assert!(matches!(parse_result(&raw), RunOutcome::Answered(_)));
+    // In-process real case: ignore SIGCHLD for this thread's lifetime — the kernel then
+    // auto-reaps the child at its exit and waitid answers ECHILD, exactly the arm Q-1 pins.
+    unsafe {
+        let previous = libc::signal(libc::SIGCHLD, libc::SIG_IGN);
+        let raw = run_with_limit(&built, tmp.path(), Duration::from_secs(5)).unwrap();
+        libc::signal(libc::SIGCHLD, previous);
+        assert!(!raw.success, "an unknown exit status is not a success");
+        assert!(raw.code.is_none(), "the exit code is unknown");
+        assert!(raw.stderr.contains("unknown"), "{}", raw.stderr);
+        assert!(
+            matches!(parse_result(&raw), RunOutcome::NoVerdict { .. }),
+            "a kept answer still cannot be a verdict without a status: {}",
+            raw.stdout
+        );
+    }
 }
