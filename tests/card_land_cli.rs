@@ -1529,3 +1529,30 @@ fn ac24_a_kill_after_the_move_then_a_rerun_writes_no_second_row() {
     assert_eq!(w.events(&card, "card.landed"), 1);
     assert_eq!(w.integ(), candidate);
 }
+
+/// AC-25 (SPEC-20261121-ref-guard): a tip that moved forward from the last landing is no drift: a
+/// fast-forward made by hand keeps the last landed head inside the branch, so the next landing
+/// goes through; only a tip that does not contain it is refused.
+#[test]
+fn ac25_a_tip_that_contains_the_last_landed_head_is_no_drift() {
+    let w = World::new();
+    let first = w.review_card(&["one"]);
+    let landed = w.candidate();
+    result(&w.land(
+        &first,
+        &["--head", &landed, "--met", "1=x", "--by", "leader"],
+    ));
+
+    let ahead = commit_with(&w.project, &landed, &[&landed], "a fast-forward by hand");
+    git(
+        &w.project,
+        &["update-ref", "refs/heads/integ", &ahead, &landed],
+    );
+    let second = w.review_card(&["one"]);
+    let next = commit_with(&w.project, &ahead, &[&ahead], "a head on the moved tip");
+    result(&w.land(
+        &second,
+        &["--head", &next, "--met", "1=x", "--by", "leader"],
+    ));
+    assert_eq!(w.integ(), next);
+}
