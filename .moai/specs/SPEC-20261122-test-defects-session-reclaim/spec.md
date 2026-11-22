@@ -2,7 +2,7 @@
 id: SPEC-20261122-test-defects-session-reclaim
 title: "Two defects: the registry tests read the shell's session id, and card reclaim counts the runtime state folder as work"
 status: draft
-revision: 2
+revision: 3
 created: 2026-11-22
 ---
 
@@ -25,6 +25,8 @@ Every lane shell turns `moai check affected` red because the session-register te
 - REQ-4 (REQ-3): IF a tracked file is changed or an untracked file lies outside the runtime state folder, THEN the reclaim gate shall count it as work.
 - REQ-5: When the early reclaim counts the ignored entries of a recorded worktree, the count shall leave out every ignored file under the runtime state folder of that worktree.
 - REQ-6 (REQ-5): IF an ignored file lies outside the runtime state folder and off the regenerable list, THEN the early reclaim shall refuse and name that file.
+- REQ-7: When a property suite checks its time budget, the budget shall grow with the one-minute load average above the number of logical CPUs of the machine.
+- REQ-8 (REQ-7): IF a property run exceeds its budget, THEN the failure shall name the property, the seed, the elapsed time, the budget and the load it was scaled by.
 
 ## Acceptance
 
@@ -34,16 +36,18 @@ Every lane shell turns `moai check affected` red because the session-register te
 - AC-4 (REQ-3): in a worktree on the earlier project layout, an untracked file under that layout's state folder is a cache and a file beside it is work, so the current-folder rule and the earlier-generation rule each decide on their own · verify: `cargo test --offline --locked --lib an_old_layout_runtime_state_folder_is_not_work`
 - AC-5 (REQ-2): `tests/session_registry_cli.rs` builds every command for the binary under test in its one helper, and a test fails when the file builds one anywhere else · verify: `cargo test --offline --locked --test session_registry_cli every_child_`
 - AC-6 (REQ-5, REQ-6): a worktree that ignores its runtime state folder and holds an ignored file there is reclaimed early and the file stays, while an ignored file outside that folder still refuses the reclaim · verify: `cargo test --offline --locked --test card_reclaim_early_cli an_ignored_state_folder_file_is_not_work`
+- AC-7 (REQ-7, REQ-8): the budget of `tests/common/prop.rs` is 30 s when the load is at or below the CPU count or cannot be read, grows in proportion above it, and is capped; the over-budget message carries the seed, the elapsed time, the budget and the load · verify: `cargo test --offline --locked --test prop_reservation the_property_budget_`
 
 ## Scope
 
-- write: `tests/session_registry_cli.rs`, `tests/card_reclaim_early_cli.rs`, `src/card/early_reclaim.rs` (the entry rules, their comments and unit tests), `src/card/dispatch.rs` (one comment), this SPEC folder
+- write: `tests/session_registry_cli.rs`, `tests/card_reclaim_early_cli.rs`, `src/card/early_reclaim.rs` (the entry rules, their comments and unit tests), `src/card/dispatch.rs` (one comment), `tests/common/prop.rs` (the time budget), this SPEC folder
 
 ## Plan
 
 1. REQ-1 and REQ-2: a red test that reads the environment of the command the tests build (`Command::get_envs`), then the variable is removed in the one helper that builds it.
 2. REQ-3 and REQ-4: the red test first, then the entry rule of `is_tool_cache_entry` names the state folder instead of one file; the older test that pinned "another name in the same folder is work" is rewritten to the new rule and keeps its other three cases.
 3. The audit follow-ups (revision 2): the earlier-layout unit test (AC-4) and the one-helper test (AC-5) first, then REQ-5 red first in `card_reclaim_early_cli` and the ignored-entry rule of `is_regenerable_ignored` widened to the runtime state folder; the two comments that still name one listed cache file are brought up to the folder rule.
+4. Slice 3 (revision 3, leader note 6874): the budget function and its unit tests in `tests/common/prop.rs` first (red), then `run_property` checks the elapsed time against it and names the load in its message.
 
 ## Decisions
 
@@ -53,6 +57,7 @@ Every lane shell turns `moai check affected` red because the session-register te
 | D-2 | The test clears the variable itself (the second option of note 5660); the expected entry does not change. | leader note 5660 |
 | D-3 | An ignored file under the runtime state folder is not work either; the ignored-entry rule takes the same folder as the untracked rule. | leader decision in audit note 6775 (N2): "yes, an ignored state-folder file is not work either" |
 | D-4 | The earlier-layout test builds that layout through the resolver constant for the earlier project folder, not by spelling it. | leader rule: tests never spell the state folder |
+| D-5 | The 30 s budget of C-100 AC-3 is kept for an idle machine and multiplied by load / CPUs (at least 1, at most 8) instead of dropping the wall-time check; a failure still prints the seed. | leader note 6874 offered "count cases, not wall time; or scale the budget"; scaling keeps the other SPEC's acceptance on an idle machine, which dropping it would remove |
 
 ### Research
 
