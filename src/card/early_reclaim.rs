@@ -548,4 +548,29 @@ mod cache_tests {
         assert!(!is(&format!("?? sub/{state}/github/counts.json")));
         assert!(!is(""));
     }
+
+    /// AC-4 (REQ-3): in a worktree on the earlier project layout the current state folder is that
+    /// layout's, so the rule for the current folder and the rule for the earlier generation's
+    /// folder are two different prefixes and each decides on its own. The layout is built
+    /// through the resolver's constant for the earlier project folder (D-4).
+    #[test]
+    fn an_old_layout_runtime_state_folder_is_not_work() {
+        let tmp = tempfile::tempdir().unwrap();
+        let root = tmp.path();
+        let earlier = root.join(crate::PROJECT_STATE_DIR);
+        std::fs::create_dir_all(&earlier).unwrap();
+        std::fs::write(earlier.join("project.yaml"), "schema_version: 2\n").unwrap();
+        let state = crate::state_root::rel(root, "state");
+        assert_eq!(
+            state,
+            format!("{}/state", crate::PROJECT_STATE_DIR),
+            "the resolver picks the earlier layout"
+        );
+        let go = format!("{}/state", crate::state_root::MOAI_DIR);
+        assert_ne!(state, go);
+        let is = |line: &str| is_tool_cache_entry(root, line);
+        assert!(is(&format!("?? {state}/github/counts.json")));
+        assert!(is(&format!("?? {go}/github/counts.json")));
+        assert!(!is(&format!("?? {}/other.json", crate::PROJECT_STATE_DIR)));
+    }
 }

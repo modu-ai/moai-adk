@@ -486,6 +486,41 @@ fn a_runtime_state_folder_is_not_work() {
     }
 }
 
+/// SPEC-20261122-test-defects-session-reclaim AC-6 (REQ-5, REQ-6): a worktree that ignores its
+/// runtime state folder, as this repository does, holds an ignored file there: tool state, so
+/// the early reclaim goes through and the file stays. An ignored file outside that folder still
+/// refuses it and is named.
+#[test]
+fn an_ignored_state_folder_file_is_not_work() {
+    let w = world();
+    // The state folder from the resolver, read before any file is made (tests never spell it).
+    let state = moai_cli::state_root::rel(&w.wt, "state");
+    fs::write(w.wt.join(".gitignore"), format!("{state}/\nscratch/\n")).unwrap();
+    git_in(&w.wt, &["add", ".gitignore"]);
+    git_in(&w.wt, &["commit", "-q", "-m", "ignore list"]);
+    git_in(&w.wt, &["push", "-q", "origin", "main"]);
+    let card = w.taken(&sid(1), Some(&w.wt), "src/work/");
+    w.register_gone(NAME, &sid(1));
+    let before = w.dump();
+
+    let counts = w.wt.join(&state).join("github/counts.json");
+    fs::create_dir_all(counts.parent().unwrap()).unwrap();
+    fs::write(&counts, "{\"open_issues\":1}\n").unwrap();
+
+    // An ignored file outside the state folder is still a draft, and it is the one named.
+    fs::create_dir_all(w.wt.join("scratch")).unwrap();
+    fs::write(w.wt.join("scratch/draft.md"), "x\n").unwrap();
+    let m = w.refused_and_unchanged(w.reclaim(&sid(2), &card, "1"), "ignored entry", &before);
+    assert!(m.contains("scratch/"), "{m}");
+    fs::remove_file(w.wt.join("scratch/draft.md")).unwrap();
+    fs::remove_dir(w.wt.join("scratch")).unwrap();
+
+    // Only the ignored state folder file is left: the reclaim goes through and it stays.
+    let got = result(&w.reclaim(&sid(2), &card, "1"));
+    assert_eq!(got["reservation"]["generation"], json!(2));
+    assert!(counts.exists(), "the proof deleted a file");
+}
+
 /// AC-5 (REQ-5, REQ-7): the event keeps its kind, carries the proof in its own field, and the
 /// ledger tables and the schema version are what they were; an ordinary reclaim of an ended
 /// lease carries no such field.
