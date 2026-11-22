@@ -1556,6 +1556,10 @@ pub struct UserLayerPlan {
     pub git_hooks: crate::git_hooks::update::Layer,
     /// Agent, routing and style hosts left out because their skill copy is blocked.
     pub skipped: Vec<serde_json::Value>,
+    /// Things the user should know that are no skipped write: a project setting that hides the
+    /// style, and the `/status` pointer after a style write
+    /// (SPEC-20261122-output-style-install-checks D-6). Read only and outside every digest.
+    pub notices: Vec<serde_json::Value>,
     /// One digest over the seven plan digests; the only value `--confirm` accepts.
     pub plan_digest: String,
     /// #2872 stage 2: the cleanup preview (`update_cleanup::plan`) from the same staged
@@ -1633,7 +1637,7 @@ fn user_layer_plan_in(
     let cwd = std::env::current_dir().map_err(|_| "current directory unavailable".to_string())?;
     // A project value of `outputStyle` that hides ours, and the `/status` pointer after a style
     // write: notices only, read-only and outside every digest (install-checks SPEC).
-    skipped.extend(crate::home_style::notices(&style, &cwd));
+    let notices = crate::home_style::notices(&style, &cwd);
     let hooks = crate::update_hooks::plan(home, &cwd)?;
     let keys = crate::update_keys::plan(home)?;
     let home_layer = crate::update_home::plan(home)?;
@@ -1674,6 +1678,7 @@ fn user_layer_plan_in(
         switch: switch_layer,
         git_hooks: git_hooks_layer,
         skipped,
+        notices,
         plan_digest,
         cleanup,
     })
@@ -1894,19 +1899,16 @@ pub fn layer_summary(p: &UserLayerPlan) -> String {
     out.push_str(&p.home.summary());
     out.push_str(&p.switch.summary());
     out.push_str(&p.git_hooks.summary());
-    for s in &p.skipped {
-        // A style notice (`kind: notice`) is no skipped write: it keeps its own word.
-        let word = if s["kind"] == "notice" {
-            "notice"
-        } else {
-            "skipped"
-        };
-        out.push_str(&format!(
-            "  {word} {} {}: {}\n",
-            s["part"].as_str().unwrap_or(""),
-            s["host"].as_str().unwrap_or(""),
-            s["reason"].as_str().unwrap_or("")
-        ));
+    // A skipped write, then a notice (no write at all), each with its own word.
+    for (word, list) in [("skipped", &p.skipped), ("notice", &p.notices)] {
+        for s in list {
+            out.push_str(&format!(
+                "  {word} {} {}: {}\n",
+                s["part"].as_str().unwrap_or(""),
+                s["host"].as_str().unwrap_or(""),
+                s["reason"].as_str().unwrap_or("")
+            ));
+        }
     }
     out.push_str(&cleanup_summary(p.cleanup.as_ref()));
     out
@@ -2004,6 +2006,7 @@ fn update_command_core(
             "bin_names": layer.bin_names.to_json(),
             "hooks": layer.hooks.to_json(),
             "skipped": layer.skipped,
+            "notices": layer.notices,
             "confirm_with": format!(
                 "moai update {}--confirm {}",
                 if allow_older { "--allow-older " } else { "" },
@@ -2201,6 +2204,7 @@ fn update_command_core(
         "bin_names_result": bin_names,
         "hooks_result": hooks,
         "skipped": skipped,
+        "notices": fresh.notices,
         "revert": {
             "agents": revert("agents-home-revert", &agents),
             "routing": revert("home-routing-revert", &routing),
@@ -3150,9 +3154,9 @@ mod user_layer_tests {
         assert!(e.contains("package changed"), "{e}");
     }
 
-    /// SPEC-20261122-output-style-install-checks, audit N2 and N3: the update plan of an empty
-    /// HOME writes the style file, so its `skipped` list carries the `/status` pointer as a
-    /// notice, and the terminal summary prints it as a notice, not as a skipped write.
+    /// SPEC-20261122-output-style-install-checks: the update plan of an empty HOME writes the
+    /// style file, so its own `notices` list (never `skipped`) carries the `/status` pointer, and
+    /// the terminal summary prints it as a notice, not as a skipped write.
     #[test]
     fn the_update_plan_carries_the_style_notice_and_prints_it_as_a_notice() {
         let tmp = tempfile::tempdir().unwrap();
@@ -3162,13 +3166,13 @@ mod user_layer_tests {
         let pkg = root.join("skills/moai");
         let agents = root.join(crate::agent_defs::SOURCE_DIR);
         let layer = user_layer_plan(&home, &pkg, &agents, &stage_package(&pkg).unwrap()).unwrap();
-        let pointer: Vec<&serde_json::Value> = layer
-            .skipped
-            .iter()
-            .filter(|s| s["reason"].as_str().is_some_and(|r| r.contains("/status")))
-            .collect();
-        assert_eq!(pointer.len(), 1, "{:?}", layer.skipped);
-        assert_eq!(pointer[0]["kind"], json!("notice"));
+        let pointer = |list: &[serde_json::Value]| {
+            list.iter()
+                .filter(|s| s["reason"].as_str().is_some_and(|r| r.contains("/status")))
+                .count()
+        };
+        assert_eq!(pointer(&layer.notices), 1, "{:?}", layer.notices);
+        assert_eq!(pointer(&layer.skipped), 0, "{:?}", layer.skipped);
         let text = layer_summary(&layer);
         assert!(
             text.contains("  notice style claude: if the style does not show up"),
