@@ -552,7 +552,7 @@ fn write_profile(project: &Path, integration: Option<&str>) {
         .map(|b| format!(",\"work_flow\":{{\"flow\":\"m-flow\",\"integration_branch\":\"{b}\"}}"))
         .unwrap_or_default();
     std::fs::write(
-        project.join(".moai-cli/project.yaml"),
+        moai_cli::state_root::path(project, "project.yaml"),
         format!("{{\"schema_version\":2,\"project_id\":\"demo\"{work_flow}}}\n"),
     )
     .unwrap();
@@ -672,7 +672,7 @@ fn generic_session() -> Session {
         std::fs::write(main.join(name), "u\n").unwrap();
     }
     write_profile(&main, None);
-    let config = main.join(".moai-cli/config/sections/statusline.yaml");
+    let config = moai_cli::state_root::path(&main, "config/sections/statusline.yaml");
     std::fs::create_dir_all(config.parent().unwrap()).unwrap();
     std::fs::write(&config, "statusline:\n  segments:\n    github: false\n").unwrap();
     let mut stdin = host_stdin(&main, &main, ("acme", "webapp"));

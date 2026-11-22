@@ -199,7 +199,7 @@ impl Scripted {
         for d in [&home, &project, &tmp, &bin] {
             fs::create_dir_all(d).unwrap();
         }
-        fs::create_dir_all(home.join(".moai")).unwrap();
+        fs::create_dir_all(home.join(moai_cli::home_root::MOAI_DIR)).unwrap();
         common::git::git_ok(&project, &["init", "-q", "-b", "main"]);
         common::git::git_in(
             &project,
@@ -245,7 +245,7 @@ impl Scripted {
 
     /// The project profile names `name` as the integration branch, and its ref file holds `sha`.
     fn integration(&self, name: &str, sha: &str) {
-        let state = self.project.join(".moai-cli");
+        let state = moai_cli::state_root::path(&self.project, "");
         fs::create_dir_all(&state).unwrap();
         fs::write(
             state.join("project.yaml"),
@@ -303,7 +303,7 @@ impl Scripted {
         .clean_env()
         .env("PATH", format!("{}:/usr/bin:/bin", self.bin.display()))
         .env("HOME", &self.home)
-        .env("MOAI_HOME", self.home.join(".moai"))
+        .env("MOAI_HOME", self.home.join(moai_cli::home_root::MOAI_DIR))
         .env("TMPDIR", &self.tmp)
         .env("NO_COLOR", "1")
         .stdin(Stdio::piped())

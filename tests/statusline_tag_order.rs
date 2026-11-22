@@ -232,12 +232,16 @@ fn first_line_with(name: Option<&str>, registry: bool, color: bool) -> String {
     let root = std::fs::canonicalize(tmp.path()).unwrap();
     let home = root.join("home");
     let project = root.join("work/demo-project");
-    for d in [&home, &home.join(".moai"), &project, &root.join("tmp")] {
+    let moai_home = home.join(moai_cli::home_root::MOAI_DIR);
+    for d in [&home, &moai_home, &project, &root.join("tmp")] {
         std::fs::create_dir_all(d).unwrap();
     }
     common::git::git_ok(&project, &["init", "-q", "-b", "main"]);
     if registry {
-        let file = project.join(".git/.moai-cli/sessions/leader.json");
+        // The lane registry where the clone resolver puts it.
+        let file = moai_cli::clone_root::path(&project.join(".git"))
+            .join("sessions")
+            .join("leader.json");
         std::fs::create_dir_all(file.parent().unwrap()).unwrap();
         std::fs::write(file, LIVE_LEADER).unwrap();
     }
@@ -256,7 +260,7 @@ fn first_line_with(name: Option<&str>, registry: bool, color: bool) -> String {
         .clean_env()
         .env("PATH", "/usr/bin:/bin")
         .env("HOME", &home)
-        .env("MOAI_HOME", home.join(".moai"))
+        .env("MOAI_HOME", &moai_home)
         .env("TMPDIR", root.join("tmp"))
         .env("TZ", "UTC")
         .env("GIT_CONFIG_GLOBAL", "/dev/null")
