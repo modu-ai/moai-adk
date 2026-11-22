@@ -58,7 +58,10 @@ fn registrar(fx: &Fixture) -> Command {
     let mut c = Command::new(BIN);
     c.env("HOME", &fx.home)
         .env("GIT_CONFIG_GLOBAL", "/dev/null")
-        .env("GIT_CONFIG_SYSTEM", "/dev/null");
+        .env("GIT_CONFIG_SYSTEM", "/dev/null")
+        // The registrar records a `session` key from this variable; a lane shell sets it, and
+        // the tests expect the entry without it.
+        .env_remove("CLAUDE_CODE_SESSION_ID");
     c
 }
 
