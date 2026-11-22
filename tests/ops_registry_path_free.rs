@@ -87,7 +87,10 @@ fn the_registry_is_a_list_of_names_with_no_path() {
     assert!(!words.is_empty());
     assert_eq!(listed_words(REGISTRY), words);
     let found = path_lines(REGISTRY, ROOT);
-    assert!(found.is_empty(), "registry lines that hold a path: {found:?}");
+    assert!(
+        found.is_empty(),
+        "registry lines that hold a path: {found:?}"
+    );
 }
 
 /// AC-3: the path finder names each line that holds a path, and nothing in the real registry.

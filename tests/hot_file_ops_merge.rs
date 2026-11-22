@@ -164,10 +164,13 @@ fn the_registry_holds_every_operation_file() {
         .collect();
     words.sort();
     assert!(!words.is_empty());
+    // An entry line of the `with_ops!` list: the file word, the variant name, the help lines in
+    // brackets (SPEC-20261122-ops-registry-path-free).
     let declared: Vec<&str> = REGISTRY
         .lines()
-        .filter_map(|l| l.strip_prefix("pub mod "))
-        .map(|l| l.trim_end_matches(';'))
+        .map(str::trim)
+        .filter(|l| l.ends_with(']') && !l.starts_with("//"))
+        .filter_map(|l| l.split_whitespace().next())
         .collect();
     assert_eq!(declared, words);
 }
