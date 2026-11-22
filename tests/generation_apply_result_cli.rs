@@ -12,16 +12,22 @@ use std::{
 use tempfile::TempDir;
 
 const EXE: &str = crate::common::MOAI_BIN;
-const MANIFEST: &str = ".moai-cli/manifests/generation.json";
+/// The generation manifest of `root`, spelled by the state-folder resolver (leader rule: tests
+/// never spell the state folder).
+fn manifest(root: &TempDir) -> String {
+    moai_cli::state_root::rel(root.path(), "manifests/generation.json")
+}
 
 fn project() -> TempDir {
     let root = TempDir::new().unwrap();
     fs::create_dir_all(root.path().join("skills/moai/workflows")).unwrap();
-    fs::create_dir_all(root.path().join(".moai-cli")).unwrap();
+    // A project of the current state folder (`PROJECT_STATE_DIR`), as the fixture always was.
+    let state = root.path().join(moai_cli::PROJECT_STATE_DIR);
+    fs::create_dir_all(&state).unwrap();
     let profile = json!({"schema_version":2,"project_id":"demo","purpose":"Build a small editor","tools":["Rust"],"development_methods":["TDD"],"hosts":["claude","codex"],"interview_revision":"rc1-fixture-1"});
     let mut bytes = serde_json::to_vec_pretty(&profile).unwrap();
     bytes.push(b'\n');
-    fs::write(root.path().join(".moai-cli/project.yaml"), &bytes).unwrap();
+    fs::write(state.join("project.yaml"), &bytes).unwrap();
     root
 }
 
@@ -82,8 +88,8 @@ fn a_new_project_lists_everything_as_created_with_its_manifest_and_receipt() {
     let created = names(&r["files_created"]);
     // The generation writes the managed block into CLAUDE.md and never writes AGENTS.md (user
     // decision 6484: moai writes only CLAUDE.md and CLAUDE.local.md).
-    for path in ["CLAUDE.md", MANIFEST] {
-        assert!(created.iter().any(|c| c == path), "{path} in {created:?}");
+    for path in ["CLAUDE.md".to_string(), manifest(&root)] {
+        assert!(created.iter().any(|c| *c == path), "{path} in {created:?}");
     }
     assert!(!created.iter().any(|c| c == "AGENTS.md"), "{created:?}");
     assert!(names(&r["files_merged"]).is_empty(), "nothing existed: {r}");
@@ -93,7 +99,10 @@ fn a_new_project_lists_everything_as_created_with_its_manifest_and_receipt() {
     assert_ne!(Some(id), r["receipt"].as_str(), "{r}");
     assert!(
         root.path()
-            .join(format!(".moai-cli/receipts/{id}.json"))
+            .join(moai_cli::state_root::rel(
+                root.path(),
+                &format!("receipts/{id}.json")
+            ))
             .exists(),
         "{id}"
     );
@@ -137,7 +146,7 @@ fn a_file_that_was_already_there_is_merged_not_created() {
         );
     }
     // The manifest did not exist, so it is a creation, and the user's text is still there.
-    assert!(created.iter().any(|c| c == MANIFEST), "{created:?}");
+    assert!(created.iter().any(|c| *c == manifest(&root)), "{created:?}");
     let claude = fs::read_to_string(root.path().join("CLAUDE.md")).unwrap();
     assert!(claude.contains("Keep this line."), "{claude}");
     assert!(
