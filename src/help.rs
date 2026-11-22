@@ -563,7 +563,7 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
         &["audit-gate < input.json", "audit-gate --require-pass < input.json"],
     ),
     ("audit-clone-plan", &["audit-clone-plan --pr 2824 --head <sha> --head-branch <head-branch> --base-branch <base-branch> ."]),
-    ("audit-slot", &["audit-slot prep audit-1 --head <sha> --lane .claude/worktrees/lane-01", "audit-slot done audit-1 --discard"]),
+    ("audit-slot", &["audit-slot prep auto --head <sha> --holder agent-2 --lane .claude/worktrees/lane-01", "audit-slot done audit-1 --discard --holder agent-2"]),
     ("labels-check", &["labels-check --repo modu-ai/moai-adk ."]),
     ("decision-due", &["decision-due docs/decisions/bundle.md"]),
     ("decision-file-check", &["decision-file-check docs/decisions/bundle.md"]),
