@@ -1,13 +1,14 @@
 //! #2928 (user instruction 6878415244, 2026-11-14, replacing S-1's tag-first line 3): line 1 of
 //! the Claude statusline starts with `🏷️ <Leader|Agent-N|agent> | ` (#2871), and line 3 is
-//! `🗂️ … | 🔋 CW … | 🪫 7D … | 🌳 …` (the user's third instruction of 2026-11-20) without
-//! the tag, the same bytes under every language and width. The card counts open the line when
-//! a ledger shows, and the worktree label (`🌳 <name>`, or `🌳 WT-c<card>-<name>`) closes it
-//! when there is one; the check below skips those groups and still requires CW between them.
+//! `🔋 CW … | 🪫 7D …` without the tag, the same bytes under every language. The worktree label
+//! (`🌳 <name>`, or `🌳 WT-c<card>-<name>`) closes line 2 when there is one, and with a ledger a
+//! flow line stands between line 2 and the windows (SPEC-20261122-statusline-flow); these cases
+//! have no ledger, so the check below still finds CW on line 3.
 //!
-//! The renderer has no language text and does not read `COLUMNS` (docs/rust-product-path.md,
-//! line 1), so "Korean and English, 80 and 40 columns" is proven as "byte-equal to the recorded
-//! golden": each case of `tests/fixtures/statusline-claude/cases.json` named below runs under
+//! The renderer has no language text, and these cases have no ledger, so no line has more than
+//! one form: the width ladder only changes the flow line, and the other lines are the same bytes
+//! at `COLUMNS` 80 and 40. "Korean and English, 80 and 40 columns" is therefore proven as
+//! "byte-equal to the recorded golden": each case of `tests/fixtures/statusline-claude/cases.json` named below runs under
 //! `LANG` ko_KR.UTF-8 / en_US.UTF-8 × `COLUMNS` 80 / 40 × plain (`NO_COLOR=1`) / truecolor
 //! (`COLORTERM=truecolor`, through a pipe as Claude Code reads it), and must print exactly the
 //! `plain` / `ansi` golden. The run mirrors `tools/statusline_golden.py`: a fresh HOME and

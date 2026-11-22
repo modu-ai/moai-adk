@@ -1,11 +1,8 @@
-//! Card C-65 (user instructions 2026-11-16 and 2026-11-17): the statusline shows the cards of
-//! the project's local ledger opening line 3, `🗂️ 50 ▶️ 2 🔃 3 ✅ 12` before the usage windows
-//! (the user's third instruction of 2026-11-20; was line 1, then line 2), and line 2 opens
-//! with the repository and its forge counts, `📡 owner/repo, ⬇️ 46 🔀 0 | 🅱️ …`:
-//! `🗂️` cards created and remaining (`draft` + `ready` + `hold`), `▶️` cards being worked on
-//! (`active` without a waiting marker note), `🔃` cards pushed and waiting for integration
-//! (every `review` card and each `active` card whose newest marker note is a waiting one),
-//! `✅` cards `done` (user decision 2026-11-19: this order and these icons).
+//! The flow line of the status line (SPEC-20261122-statusline-flow; it grew out of card C-65's
+//! card counts, user instructions 2026-11-16 and 2026-11-17): the cards of the project's local
+//! ledger by the stage of their progress, `👀 S3 A0 L0 | ⛔ B0 ⏸️  H5 | 🗂️  D20 R25 W0 E2 ✅ 12`,
+//! on a line of its own between the repository line and the usage windows. The repository line
+//! opens with the repository and its forge counts, `📡 owner/repo, ⬇️ 46 🔀 0 | 🅱️ …`.
 //!
 //! Every case runs the real binary through `TempHome` (a temporary HOME, nothing of the real
 //! environment but a PATH for git) against a ledger built in that HOME. The read is local and
@@ -16,6 +13,7 @@ mod common;
 
 use common::home::TempHome;
 use moai_cli::ledger;
+use moai_cli::statusline::width::display_width;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
@@ -79,8 +77,8 @@ impl Fixture {
     }
 
     /// The [`MIX`], and one of the `active` cards carries a note whose first line is the
-    /// leader-bound `LANE-READY-INTEGRATION` marker: it waits for integration, the other two
-    /// `active` cards (no notes) are being worked on, and the 2 `review` cards wait.
+    /// leader-bound `LANE-READY-INTEGRATION` marker: it is submitted, the other two `active`
+    /// cards (no notes, no reservation) are stale, and the 2 `review` cards are submitted.
     fn with_mix(&self) {
         self.with_cards();
         let mut l = ledger::open_write(self.home.path(), "demo").unwrap();
@@ -97,7 +95,8 @@ impl Fixture {
         .unwrap();
     }
 
-    /// The [`MIX`] cards alone, with no note: the 3 `active` cards are all being worked on.
+    /// The [`MIX`] cards alone, with no note: the 3 `active` cards have no marker and no
+    /// reservation, so all three are stale.
     fn with_cards(&self) {
         self.register();
         for (state, n) in MIX {
@@ -167,11 +166,18 @@ impl Fixture {
         self.render_from(&self.project, &[("NO_COLOR", "1")])
     }
 
+    /// The plain render with `COLUMNS` set to `columns`.
+    fn plain_at(&self, columns: &str) -> String {
+        self.render_from(&self.project, &[("NO_COLOR", "1"), ("COLUMNS", columns)])
+    }
+
     fn line2(&self) -> String {
         self.plain().lines().nth(1).unwrap_or_default().to_string()
     }
 
-    fn line3(&self) -> String {
+    /// The flow line when the ledger has cards: the third line, after the model line and the
+    /// repository line.
+    fn flow_line(&self) -> String {
         self.plain().lines().nth(2).unwrap_or_default().to_string()
     }
 
@@ -182,18 +188,23 @@ impl Fixture {
 
 /// `+1`: the project's untracked state folder.
 const WITHOUT_CARDS: &str = "📡 modu-ai/moai-adk, ⬇️ 46 🔀 0 | 🅱️ main +1";
-/// The card counts group that opens line 3 when the mix ledger is present.
-const CARDS_GROUP: &str = "🗂️ 50 ▶️ 2 🔃 3 ✅ 12";
+/// The flow line of the [`MIX`] ledger with the note of [`Fixture::with_mix`]: 3 submitted (2
+/// review, 1 by its note), 2 stale, 5 on hold, 20 draft, 25 ready, 12 done today, no card of
+/// mine (the session holds none).
+const FLOW_MIX: &str = "👀 S3 A0 L0 | ⛔ B0 ⏸️  H5 | 🗂️  D20 R25 W0 E2 ✅ 12";
+/// The flow line of the [`MIX`] cards alone: the 3 `active` cards are stale, the 2 `review`
+/// cards submitted.
+const FLOW_CARDS: &str = "👀 S2 A0 L0 | ⛔ B0 ⏸️  H5 | 🗂️  D20 R25 W0 E3 ✅ 12";
 
 #[test]
-fn the_card_counts_open_line_three_before_the_usage_windows() {
+fn the_flow_line_stands_between_the_repository_line_and_the_usage_windows() {
     let f = fixture();
     let baseline = f.plain();
     assert_eq!(baseline.lines().nth(1), Some(WITHOUT_CARDS), "no ledger");
     assert_eq!(baseline.lines().count(), 3, "{baseline}");
     assert!(
-        !baseline.lines().nth(2).unwrap().contains("🗂️"),
-        "no ledger: no card icons"
+        !baseline.contains("🗂️"),
+        "no ledger: no flow line and no card icon"
     );
     f.with_mix();
     let with = f.plain();
@@ -202,23 +213,30 @@ fn the_card_counts_open_line_three_before_the_usage_windows() {
         Some(WITHOUT_CARDS),
         "line 2 keeps the repository, the forge counts, the branch"
     );
-    assert!(
-        with.lines()
-            .nth(2)
-            .unwrap()
-            .starts_with(&format!("{CARDS_GROUP} | ")),
-        "the card counts open line 3: {}",
-        with.lines().nth(2).unwrap()
+    assert_eq!(with.lines().nth(2), Some(FLOW_MIX), "{with}");
+    assert_eq!(
+        with.lines().nth(3),
+        baseline.lines().nth(2),
+        "the usage windows follow, unchanged"
     );
     assert!(!f.line1().contains("🗂️"), "line 1 keeps no card counts");
     // Lines 1 and 2 do not change from the render without a ledger.
     assert_eq!(with.lines().next(), baseline.lines().next());
     assert_eq!(with.lines().nth(1), baseline.lines().nth(1));
-    assert_eq!(with.lines().count(), 3);
+    assert_eq!(with.lines().count(), 4);
+}
+
+/// Without a marker note an `active` card nobody holds is stale, and a `review` card is
+/// submitted whatever its notes say.
+#[test]
+fn active_cards_nobody_holds_are_stale_and_review_cards_are_submitted() {
+    let f = fixture();
+    f.with_cards();
+    assert_eq!(f.flow_line(), FLOW_CARDS);
 }
 
 #[test]
-fn the_card_counts_keep_their_place_without_fresh_forge_counts() {
+fn the_flow_line_keeps_its_place_without_fresh_forge_counts() {
     let f = fixture();
     f.with_mix();
     std::fs::remove_file(f.project.join(FORGE_CACHE)).unwrap();
@@ -229,11 +247,7 @@ fn the_card_counts_keep_their_place_without_fresh_forge_counts() {
         "📡 modu-ai/moai-adk, ⬇️ n/a 🔀 n/a | 🅱️ main +1",
         "without fresh forge counts the slots say unknown, with the comma kept"
     );
-    assert!(
-        f.line3().starts_with(&format!("{CARDS_GROUP} | ")),
-        "{}",
-        f.line3()
-    );
+    assert_eq!(f.flow_line(), FLOW_MIX);
 }
 
 /// SPEC-20261120-statusline-ahead: under M-Flow the local branch runs ahead of its upstream
@@ -254,66 +268,140 @@ fn the_branch_shows_the_ahead_count_against_the_upstream() {
     assert!(!line.contains("↑0"), "a zero ahead is never shown: {line}");
 }
 
-/// SPEC-20261120-statusline-line2-order REQ-8: the renderer shortens nothing and reads no
-/// `COLUMNS`, so the whole output, line 2 with all its groups included, has the same bytes under
-/// 80 and 40 columns, with and without color.
+/// The forms of the flow line for the [`FLOW_MIX`] ledger, from the widest to the narrowest.
+/// The narrowest form that has anything to show is the waits group: with no blocked card the
+/// attention group is left out of the form without the hold count.
+const MIX_FORMS: [&str; 3] = [FLOW_MIX, "👀 S3 A0 L0 | ⛔ B0 ⏸️  H5", "👀 S3 A0 L0"];
+
+/// SPEC-20261122-statusline-flow REQ-9 (it replaces the same-bytes-at-80-and-40 rule of
+/// SPEC-20261120-statusline-line2-order): each line takes the widest of its forms that fits
+/// `COLUMNS` − 2 − padding. Lines 1 and 2 and the windows are the same bytes at every width; the
+/// flow line changes form exactly at each boundary.
 #[test]
-fn line_two_has_the_same_bytes_under_80_and_40_columns() {
+fn width_ladder_changes_the_flow_line_exactly_at_each_boundary() {
     let f = fixture();
     f.with_mix();
-    let render = |columns: &str, plain: bool| {
-        let env: Vec<(&str, &str)> = if plain {
-            vec![("COLUMNS", columns), ("NO_COLOR", "1")]
-        } else {
-            vec![("COLUMNS", columns), ("COLORTERM", "truecolor")]
-        };
-        f.render_from(&f.project, &env)
-    };
-    for plain in [true, false] {
-        let wide = render("80", plain);
-        let narrow = render("40", plain);
-        assert_eq!(wide, narrow, "plain={plain}");
-        // The colored line carries the plain text (the colored-line test pins that), so the
-        // shape is read from the plain render.
+    let wide = f.plain_at("200");
+    for (i, form) in MIX_FORMS.iter().enumerate() {
+        let w = display_width(form);
+        let at = |columns: usize| f.plain_at(&columns.to_string());
+        let kept = at(w + 2);
         assert_eq!(
-            f.plain().lines().nth(1),
-            Some(WITHOUT_CARDS),
-            "plain={plain}"
+            kept.lines().nth(2),
+            Some(*form),
+            "COLUMNS {} keeps form {i}",
+            w + 2
         );
-        assert!(
-            f.plain()
-                .lines()
-                .nth(2)
-                .unwrap()
-                .starts_with(&format!("{CARDS_GROUP} | ")),
-            "plain={plain}"
+        if let Some(next) = MIX_FORMS.get(i + 1) {
+            let dropped = at(w + 1);
+            assert_eq!(
+                dropped.lines().nth(2),
+                Some(*next),
+                "COLUMNS {} drops form {i}",
+                w + 1
+            );
+        }
+        // Every other line is the same bytes at every width.
+        for out in [&kept, &at(w + 1)] {
+            for n in [0, 1] {
+                assert_eq!(out.lines().nth(n), wide.lines().nth(n), "line {n}");
+            }
+            assert_eq!(out.lines().last(), wide.lines().last(), "the windows line");
+            assert_eq!(out.lines().count(), 4);
+        }
+    }
+    assert_eq!(wide.lines().nth(2), Some(FLOW_MIX));
+    assert_eq!(f.plain_at("120").lines().nth(2), Some(FLOW_MIX));
+    assert_eq!(f.plain_at("80").lines().nth(2), Some(FLOW_MIX));
+    // Below the narrowest form the narrowest is still written.
+    for columns in ["20", "5", "3", "2", "1"] {
+        assert_eq!(
+            f.plain_at(columns).lines().nth(2),
+            Some(MIX_FORMS[2]),
+            "COLUMNS {columns}"
         );
     }
 }
 
+/// A missing, empty, zero or non-numeric `COLUMNS` writes the widest form: there is no width to
+/// fit.
 #[test]
-fn a_registered_ledger_without_cards_shows_zeros() {
+fn width_ladder_writes_the_widest_form_without_a_usable_columns() {
     let f = fixture();
+    f.with_mix();
+    assert_eq!(f.flow_line(), FLOW_MIX, "COLUMNS unset");
+    for columns in ["", "0", "abc", "-5", "8 0", "12x"] {
+        assert_eq!(
+            f.plain_at(columns).lines().nth(2),
+            Some(FLOW_MIX),
+            "COLUMNS {columns:?}"
+        );
+    }
+}
+
+/// The padding of `statusline.yaml` (the same number the generated host settings carry) is
+/// subtracted from the budget on top of the margin of two.
+#[test]
+fn width_ladder_subtracts_the_configured_padding() {
+    let f = fixture();
+    f.with_mix();
+    let config = f.project.join(".moai-cli/config/sections/statusline.yaml");
+    std::fs::create_dir_all(config.parent().unwrap()).unwrap();
+    let w = display_width(FLOW_MIX);
+    for padding in [1usize, 3, 10] {
+        std::fs::write(&config, format!("statusline:\n  padding: {padding}\n")).unwrap();
+        assert_eq!(
+            f.plain_at(&(w + 2 + padding).to_string()).lines().nth(2),
+            Some(FLOW_MIX),
+            "padding {padding} keeps the widest form at its edge"
+        );
+        assert_eq!(
+            f.plain_at(&(w + 1 + padding).to_string()).lines().nth(2),
+            Some(MIX_FORMS[1]),
+            "padding {padding}: one column less drops a form"
+        );
+    }
+    // A padding that is not a number reads as 0.
+    for text in ["abc", "-2", "", "1.5"] {
+        std::fs::write(&config, format!("statusline:\n  padding: {text}\n")).unwrap();
+        assert_eq!(
+            f.plain_at(&(w + 2).to_string()).lines().nth(2),
+            Some(FLOW_MIX),
+            "padding {text:?}"
+        );
+    }
+}
+
+/// A ledger with cards but no card in any open stage and nothing closed today has nothing to
+/// show: the flow line is left out (zeros are not shown) and the output is the one without a
+/// ledger.
+#[test]
+fn a_registered_ledger_without_cards_shows_no_flow_line() {
+    let f = fixture();
+    let baseline = f.plain();
     f.register();
     assert_eq!(f.line2(), WITHOUT_CARDS);
-    assert!(
-        f.line3().starts_with("🗂️ 0 ▶️ 0 🔃 0 ✅ 0 | "),
-        "{}",
-        f.line3()
+    assert_eq!(
+        f.plain(),
+        baseline,
+        "nothing to show: the output is unchanged"
     );
 }
 
-/// `done` cards are counted in `✅` only; a ledger of nothing but done cards has no card in
-/// progress and none remaining, and the other way round.
+/// Closed cards are counted in `✅` only (closed today, UTC); open ones in their own stage.
 #[test]
 fn done_cards_are_counted_only_in_the_done_segment() {
     let f = fixture();
     f.register();
     f.add("done", 4);
-    assert!(f.line3().contains("🗂️ 0 ▶️ 0 🔃 0 ✅ 4"), "{}", f.line3());
+    assert_eq!(f.flow_line(), "🗂️  D0 R0 W0 E0 ✅ 4");
     f.add("active", 1);
     f.add("hold", 2);
-    assert!(f.line3().contains("🗂️ 2 ▶️ 1 🔃 0 ✅ 4"), "{}", f.line3());
+    assert_eq!(
+        f.flow_line(),
+        "⛔ B0 ⏸️  H2 | 🗂️  D0 R0 W0 E1 ✅ 4",
+        "the active card has no reservation, so it is stale"
+    );
 }
 
 /// A ledger another process holds exclusively, a file that is not a database, a database cut
@@ -376,43 +464,31 @@ fn the_cards_option_hides_the_segment() {
     std::fs::write(&config, "statusline:\n  segments:\n    cards: false\n").unwrap();
     assert_eq!(f.plain(), baseline);
     std::fs::write(&config, "statusline:\n  segments:\n    cards: true\n").unwrap();
-    assert!(f.line3().contains("🗂️ 50 ▶️ 2 🔃 3 ✅ 12"), "{}", f.line3());
+    assert_eq!(f.flow_line(), FLOW_MIX);
     std::fs::write(
         &config,
         "statusline:\n  segments:\n    github: false\n    git_branch: false\n",
     )
     .unwrap();
-    // Without forge counts and a branch line 2 is gone and the last line keeps the counts
-    // first.
+    // Without forge counts and a branch line 2 is gone: the model line, the flow line, the
+    // windows.
     let out = f.plain();
-    assert_eq!(out.lines().count(), 2, "{out}");
-    assert!(
-        out.lines()
-            .last()
-            .unwrap()
-            .starts_with(&format!("{CARDS_GROUP} | ")),
-        "{out}"
-    );
+    assert_eq!(out.lines().count(), 3, "{out}");
+    assert_eq!(out.lines().nth(1), Some(FLOW_MIX), "{out}");
 }
 
 /// The project is the one the input names, not the working directory: from a folder outside
-/// the project (no repository there, so no branch) the counts are still this project's.
+/// the project (no repository there, so no branch) the flow is still this project's.
 #[test]
-fn the_counts_follow_the_project_of_the_input_not_the_working_directory() {
+fn the_flow_follows_the_project_of_the_input_not_the_working_directory() {
     let f = fixture();
     f.with_mix();
     let elsewhere = tempfile::tempdir().unwrap();
     let out = f.render_from(elsewhere.path(), &[("NO_COLOR", "1")]);
-    assert!(
-        out.lines()
-            .last()
-            .unwrap()
-            .contains("🗂️ 50 ▶️ 2 🔃 3 ✅ 12"),
-        "{out}"
-    );
+    assert!(out.lines().any(|l| l == FLOW_MIX), "{out}");
 }
 
-/// With color the text is the same once the escapes are removed: each number keeps its icon.
+/// With color the text is the same once the escapes are removed: each number keeps its letter.
 #[test]
 fn the_colored_line_carries_the_same_text() {
     let f = fixture();

@@ -2,7 +2,7 @@
 id: SPEC-20261122-statusline-flow
 title: "The status line gives each of its three lines one role, and its flow line shows the cards by the stage of their progress, my card first"
 status: draft
-revision: 2
+revision: 3
 created: 2026-11-22
 ---
 
@@ -96,7 +96,7 @@ created: 2026-11-22
   verify: `cargo test --offline --locked --lib statusline::state::marker_tests`
 - AC-3 (REQ-5): the done-today count changes at the UTC midnight and not a second before.
   verify: `cargo test --offline --locked --lib statusline::state::done_today_tests`
-- AC-4 (REQ-6): a session whose worktree matches a reservation shows that card even when its session id holds a newer one, a session without a worktree match shows the newest live reservation of its id, a card with an ended lease is never chosen, and a session with neither shows no group.
+- AC-4 (REQ-6): a session whose worktree matches a reservation shows that card even when its session id holds a newer one, a session without a worktree match shows the newest live reservation of its id, a card with an ended lease is never chosen through the session id and is shown (with the stage `E`) only when its reservation still names the session's worktree, and a session with neither shows no group.
   verify: `cargo test --offline --locked --test statusline_flow my_card_`
 - AC-5 (REQ-7): the flow line of every form in the Layouts section is exactly the string written there, plain and with color, the colored text minus its escapes equals the plain text, and a group of zero counts is left out.
   verify: `cargo test --offline --locked --lib statusline::render::flow_line_tests`
@@ -205,4 +205,17 @@ Reversible, category `none`, decider the leader (the user's picks are recorded i
 
 ## Result
 
-이 개정은 SPEC 만이에요. 구현과 측정은 코드 조각에서 채워요. 돌린 것: 위 조사 표의 원장 읽기(읽기 전용), 레이아웃 너비 측정(`unicode-width` 로 만든 프로브, 2026-11-22), 아이콘 폭 표 측정, `spec check`. 돌리지 않은 것: 실제 Claude Code 세션에서의 `COLUMNS` 확인과 세션 id 대조(위험 2·5), 위 시험들(아직 없어요).
+Step 2 (the flow line) is built and audited; this section holds what the audit asked the Result to carry (risks 5 and 6) and what is still open. Times are from a clock read in the step: 2026-11-22T02:13Z.
+
+**Risk 6, the cost of the ledger read (measured on a copy of the real ledger).** The copy was made with `sqlite3 -readonly <ledger> ".backup <copy>"` into a temporary HOME: 15,675,392 bytes, 346 cards, 6,035 notes, 7,821 events. The binary was the debug build of this tree (`cargo build --offline --locked`), run as `moai statusline --render-budget-ms 800` with `COLUMNS` 120, stdin carrying a session id, 30 runs after one warm-up, wall time of the whole process:
+
+| run | median | p90 | max |
+| --- | --- | --- | --- |
+| with the ledger copy | 42 ms | 70 ms | 107 ms |
+| same project, a HOME with no ledger | 30 ms | 58 ms | 79 ms |
+
+So the four statements cost about 12 ms at the median on this machine, far under the 800 ms budget; the auditor's own measure on another copy was 39 to 49 ms with the ledger against 22 to 23 ms without. A debug build is slower than the shipped one, so these numbers are an upper bound for the same machine. The copy kept its size after the runs (15,675,392 bytes). That the read cannot write is carried by a test, not by this measure: `the_status_line_opens_the_ledger_read_only` (the connection is read-only, a writing statement is refused by the database, the file bytes are unchanged after a whole flow read).
+
+**Risk 5, the session id and the holder.** Observed with the shipped binary on the same copy: with a stdin `session_id` equal to the string a `card take` wrote as holder (this session's `CLAUDE_CODE_SESSION_ID`), the flow line opened with `🎯 c<n> S` for the newest live held reservation of that id; with another id the line had no `🎯` group and every other group stayed. Not observed: what Claude Code itself puts into stdin `session_id` in a live session. The `statusLine` command of this session is the Orca helper, which reads stdin and throws it away, so no real payload could be captured here. What corroborates it is only that the environment variable the holder is written from equals the transcript file name of the session. This stays open and is deferred, with this reason: REQ-6 matches the worktree first, so a host id that differs from the holder costs only the session-id fallback, never a wrong card. The check to run once a `statusLine` command that keeps stdin is in use: capture one payload and compare its `session_id` with the holder of the reservation (`moai card show`).
+
+**Other things run for step 2.** `cargo test --offline --locked --lib statusline::` 181 passed after the repair (178 before; the three new ones are `every_stage_has_its_letter_from_the_legend`, `my_card_shows_the_letter_of_each_stage` and `the_status_line_opens_the_ledger_read_only`); the width budget no longer overflows for a padding as large as a number (`budget` adds with `saturating_add`, test at `usize::MAX`). AC-4 was reworded to say what REQ-6 and D-3 already said: a card whose lease ended is shown with `E` through the worktree match and never through the session id. Not run here: `COLUMNS` in a live session (risk 2), and the AC-8 and AC-9 verify filters still select no test; their names are aligned before closure.
