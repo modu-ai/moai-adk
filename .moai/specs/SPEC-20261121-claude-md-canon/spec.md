@@ -96,7 +96,7 @@ This SPEC is slice A. The design has three slices; B and C get their own SPECs (
   - `.gitignore`: 깃 저장소이고 `CLAUDE.local.md` 가 무시되지 않으면 한 줄만 덧붙여요(미리보기의 `gitignore` 필드, 영수증의 `gitignore_*`, 되돌리기는 파일이 안 바뀐 동안만 되돌리고 바뀌었으면 `kept`). 깃 저장소가 아니면 줄 없이 "not a git repository" 설명을 남겨요. 이미 추적 중이면 경고만 하고 추적을 풀지 않아요(`commit_notice` 도 "tracks" 로 바뀌어 사실과 맞아요).
   - 이전 세대가 `AGENTS.md` 에 합쳐 둔 같은 글(표시 줄의 sha256 과 본문이 모두 같을 때)이면 `unchanged` 로 그 위치를 말해요. 줄 끝이 CRLF 면 미리보기에 그 한 줄이 나와요.
 - `src/ops/agents_merge_{plan,apply,revert}.rs`: 도움말 문구를 새 동작에 맞췄고, 적용 명령에 `--confirm-warnings` 가 생겼어요.
-- `src/project_update.rs`(함수 `agents_local_merge_step` 와 상수 하나, C-296 과 pair 증거 노트): `/moai update` 미리보기가 `warnings`·`needs_confirmation`·`confirm_token`·`gitignore`·`line_endings` 를 전하고, 경고가 있는 계획에만 `--confirm-warnings <warning-confirmation>` 자리표시자를 권한 참조 앞에 찍어요(그 밖의 단계는 자리표시자가 그대로 하나뿐이에요).
+- `src/project_update.rs`(함수 `agents_local_merge_step` 와 상수 하나, 같은 파일을 고치는 다른 변경과 pair 증거 노트): `/moai update` 미리보기가 `warnings`·`needs_confirmation`·`confirm_token`·`gitignore`·`line_endings` 를 전하고, 경고가 있는 계획에만 `--confirm-warnings <warning-confirmation>` 자리표시자를 권한 참조 앞에 찍어요(그 밖의 단계는 자리표시자가 그대로 하나뿐이에요).
 - 시험: `tests/agents_local_merge_cli.rs` 21 → 28개, `tests/project_update_plan_cli.rs` 에 시험 도우미와 새 시험 2개.
 
 ### 증거 (2026-11-21, 이 작업 트리에서 돌린 것)
