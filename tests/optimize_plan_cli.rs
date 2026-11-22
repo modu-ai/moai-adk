@@ -166,6 +166,7 @@ fn run(fx: &Fixture, args: &[&str]) -> Output {
         .env("HOME", &fx.home)
         .env("GIT_CONFIG_GLOBAL", "/dev/null")
         .env("GIT_CONFIG_SYSTEM", "/dev/null")
+        .envs([crate::common::process_table()])
         .output()
         .unwrap()
 }

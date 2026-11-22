@@ -42,7 +42,8 @@ fn plan_with(home: &Path, moai_home: Option<&str>) -> Value {
         "--now",
         NOW,
     ])
-    .env_remove("MOAI_HOME");
+    .env_remove("MOAI_HOME")
+    .envs([crate::common::process_table()]);
     if let Some(m) = moai_home {
         c.env("MOAI_HOME", m);
     }
@@ -222,6 +223,7 @@ fn a_live_go_session_blocks_the_move() {
 #[test]
 fn a_process_inside_or_a_nested_checkout_blocks_the_move() {
     let (_d, home) = go_home();
+    crate::common::use_real_process_table();
     let mut child = Command::new("sleep")
         .arg("30")
         .current_dir(home.join(".moai/config"))
@@ -290,6 +292,7 @@ fn a_relative_home_or_a_bad_clock_is_refused() {
 fn a_registered_live_pid_blocks_and_a_dead_one_does_not() {
     let (_d, home) = go_home();
     let reg = home.join(".moai/state/active-sessions.json");
+    crate::common::use_real_process_table();
     let mut child = Command::new("sleep")
         .arg("30")
         .current_dir(&home)
@@ -326,6 +329,7 @@ fn a_file_held_open_inside_blocks_the_move() {
     let (_d, home) = go_home();
     write(&home, ".moai/logs/run.log", "x\n");
     let held = fs::File::open(home.join(".moai/logs/run.log")).unwrap();
+    crate::common::use_real_process_table();
     let mut child = Command::new("sleep")
         .arg("30")
         .current_dir(std::env::temp_dir())

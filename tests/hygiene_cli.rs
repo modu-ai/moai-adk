@@ -116,6 +116,7 @@ fn plan(fx: &Fx, now: u64) -> Value {
         .env("HOME", &fx.home)
         .env("GIT_CONFIG_GLOBAL", "/dev/null")
         .env("GIT_CONFIG_SYSTEM", "/dev/null")
+        .envs([crate::common::process_table()])
         .output()
         .unwrap();
     let v: Value = serde_json::from_slice(&out.stdout)
@@ -143,6 +144,7 @@ fn action(r: &Value, suffix: &str) -> (String, String) {
 
 /// A process working in `dir`, and one naming `dir` in its environment.
 fn users(fx: &Fx) -> (Child, Child) {
+    crate::common::use_real_process_table();
     let cwd = Command::new("/bin/sleep")
         .arg("60")
         .current_dir(fx.tmp.join("build-cwd"))

@@ -40,9 +40,9 @@ helpers, and only the tests that judge "a program uses this folder" read the rea
 
 ## Acceptance
 
-- AC-1 (REQ-1, REQ-4): a child built with `clean_env` sees `MOAI_CLI_TEST_PROCESS_TABLE=empty`, and one built with `clean_env` and then `real_process_table` sees no such variable · verify: `cargo test --locked --offline --test process_table_default`
+- AC-1 (REQ-1, REQ-4): a child built with `clean_env` sees `MOAI_CLI_TEST_PROCESS_TABLE=empty`; after the test calls `use_real_process_table` its children see `real`, and another test thread still sees `empty` · verify: `cargo test --locked --offline --test process_table_default`
 - AC-2 (REQ-2, REQ-3): the named slow test files pass with the switch on, and their in-use tests still see the program that holds the folder · verify: `cargo test --locked --offline --test home_install_apply_cli --test home_retire_cli --test home_state_apply --test home_state_plan --test home_install_go_retire --test home_install_plan_cli --test update_home_layer_cli --test hygiene_apply_cli --test hygiene_cli --test optimize_plan_cli`
-- AC-3 (REQ-3): every named file whose tests judge a folder in use calls `real_process_table`, and every other named file sets the switch · verify: `cargo test --locked --offline --test process_table_default the_named_files_choose_their_table`
+- AC-3 (REQ-3): every named file sets the switch, and every named file that starts a holder program calls `use_real_process_table` · verify: `cargo test --locked --offline --test process_table_default the_named_files_choose_their_table`
 - AC-4 (REQ-5): the Result lists the before and after time of each named target from one nextest run each, on the same machine · verify: read the Result
 
 ## Scope
@@ -55,15 +55,27 @@ helpers, and only the tests that judge "a program uses this folder" read the rea
 
 1. Before: one nextest run of the ten named targets on the tip, durations kept.
 2. RED: `tests/process_table_default.rs` asserts that a `clean_env` child sees the switch; it fails by assertion on the tip.
-3. GREEN: `tests/common/mod.rs` names the switch (`PROCESS_TABLE_SWITCH`, `NO_PROCESS_TABLE`, `REAL_PROCESS_TABLE`), `clean_env` sets it, and a `real_process_table` method removes it; the named files' command helpers set it; the tests that hold a folder with a program opt back in.
+3. GREEN: `tests/common/mod.rs` names the switch (`PROCESS_TABLE_SWITCH`, `NO_PROCESS_TABLE`, `REAL_PROCESS_TABLE`) and keeps the choice per test thread: `process_table()` answers `empty` until the test calls `use_real_process_table()`; `clean_env` and the named files' command helpers pass `process_table()`; a test calls `use_real_process_table()` right before it starts a program that holds a folder or a file.
 4. The file-list case (AC-3) reads the named files only (no directory walk).
 5. After: the same nextest run; the Result records both.
 
 ## Risks
 
 - A test that judges "in use" left under the switch would pass for the wrong reason only if it did not assert the in-use answer; the in-use tests assert `skip-in-use` or a refusal, so under the switch they fail and are found.
-- `MOAI_CLI_TEST_PROCESS_TABLE` in a developer's shell does not reach these children: `clean_env` clears the environment first.
+- `MOAI_CLI_TEST_PROCESS_TABLE` in a developer's shell does not reach these children: `clean_env` clears the environment first, and the named helpers set the variable explicitly.
+- The choice lives in a thread-local: with `--test-threads=1` libtest runs every test on one thread, so a test after an in-use test reads the real table too — slower, never wrong.
 
 ## Decisions
 
 - D-1: The switch goes into `clean_env` and into each named file's own helper, not into `.cargo/config.toml` `[env]`, because `[env]` would also reach `cargo run` of a developer's debug build (planning default).
+- D-2: The real table is chosen per test thread by `use_real_process_table()`, called where a test starts its holder program, instead of an extra argument on every helper; the in-use tests then need one line each (planning default).
+
+## Result
+
+RED e7f3785f18 on the tip 2fb33d76bf; GREEN is the next commit. Both runs are one `cargo nextest run` of the eleven targets below through `moai heavy-slot-acquire --max 3`, on this machine (load about 17–24 at the start of each).
+
+- AC-1 met: `a_clean_env_child_skips_the_process_table` failed first by assertion (`"unset"` instead of `"empty"`, `target/before.log`) and passes now; `a_test_that_judges_in_use_opts_back_in` passes.
+- AC-2 met: the ten named targets pass with the switch on, their in-use tests included (173 passed, 0 failed, `target/after.log`).
+- AC-3 met: `the_named_files_choose_their_table` passes.
+- AC-4 met: summed test time per target, before → after: `home_install_apply_cli` 313.2 → 119.9 s, `home_retire_cli` 179.7 → 60.5 s, `home_install_go_retire` 121.4 → 13.1 s, `update_home_layer_cli` 111.2 → 50.2 s, `optimize_plan_cli` 95.2 → 112.0 s (no gain: its time is not the process scan), `home_state_apply` 81.7 → 1.6 s, `home_state_plan` 52.4 → 34.0 s, `hygiene_apply_cli` 44.4 → 21.2 s, `home_install_plan_cli` 30.1 → 11.0 s, `hygiene_cli` 5.2 → 3.3 s; all ten 1,034.5 → 426.8 s, and the run's wall clock 212 s → 96 s. The before run is the tip's files (the RED commit changes none of them).
+- Not run: the lib unit tests that call the scans (a later slice), the whole suite, the independent audit.

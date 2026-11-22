@@ -155,6 +155,7 @@ fn run(fx: &Fx, cmd: &str, now: u64, extra: &[&str]) -> Value {
         .env("HOME", &fx.home)
         .env("GIT_CONFIG_GLOBAL", "/dev/null")
         .env("GIT_CONFIG_SYSTEM", "/dev/null")
+        .envs([crate::common::process_table()])
         .stdin(Stdio::null())
         .output()
         .unwrap();
@@ -292,6 +293,7 @@ fn an_item_in_use_after_the_plan_is_not_moved() {
     let fx = fixture();
     let now = far(&fx);
     let digest = plan(&fx, now)["plan_digest"].as_str().unwrap().to_string();
+    crate::common::use_real_process_table();
     let mut sleeper = Command::new("/bin/sleep")
         .arg("30")
         .current_dir(fx.build())
@@ -317,6 +319,7 @@ fn an_item_with_a_file_held_open_is_skipped_right_before_the_move() {
     let fx = fixture();
     let now = far(&fx);
     let digest = plan(&fx, now)["plan_digest"].as_str().unwrap().to_string();
+    crate::common::use_real_process_table();
     let mut holder = Command::new("/bin/sh")
         .args([
             "-c",
@@ -454,6 +457,7 @@ fn a_worktree_named_by_a_process_is_skipped_right_before_the_move() {
     let fx = fixture();
     let now = far(&fx);
     let digest = plan(&fx, now)["plan_digest"].as_str().unwrap().to_string();
+    crate::common::use_real_process_table();
     let mut namer = Command::new("/bin/sh")
         .args(["-c", "/bin/sleep 30; :", "sh"])
         .arg(fx.wt())
