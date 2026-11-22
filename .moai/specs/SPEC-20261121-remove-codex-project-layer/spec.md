@@ -112,11 +112,20 @@ Order. A compatibility layer lands first and only adds: it filters retired hosts
 
 ## Result
 
-Stage before the compatibility layer, on this branch: REQ-5, REQ-6 and REQ-11 are coded and tested; the rest waits for the compatibility layer (D-7).
+All REQs are coded on this branch, in three areas after the first stage (D-13): area 1 the project host steps (7715746e88), area 2 the hook adapters (RED 9d4cf14df0, GREEN 25955ad6b5, aa8d962786), area 3 generation and the seven commands (RED 5b8b848e99, GREEN afc51604d7), and the host survey rows (279022cdb0).
 
-The RED lines below are the implementing agent's report of its own runs on the sources before the change (not re-run here); the passes are this lane's own run.
+The RED lines are the implementing agents' reports of their own runs on the sources before each change (not re-run here); the passes come from this lane's `moai check affected` runs, whose logs are named on each line.
 
 - AC-5 met: `a_request_that_lists_codex_is_filtered_not_refused` failed first (left `["claude","codex"]`, right `["claude"]`) and passes now; `project_skill_links` 7 passed, `project_skill_apply_gate_cli` 10 passed, `skill_name_collision` 5 passed, `empty_parent_prune_cli` 5 passed, `project_skills_generation` 11 passed (run in this session, `cargo_exit=0`).
 - AC-6 met: `a_receipt_that_names_codex_is_skipped_and_reported` failed first (the revert returned no `skipped` key) and passes now; `boundary_d3_skill_revert` 4 passed.
 - AC-11 met: `codex_folders_are_not_read_or_walked` failed first (`mcp_servers` was `["docs"]`) and passes now; `project_detect_cli` 25 passed.
-- Not run in this stage: AC-1 to AC-4, AC-7, AC-8 and AC-10 (they need the compatibility layer first), AC-12 (the sources of `go_state` are unchanged), the whole suite, the unnarrowed affected set, clippy by this lane (the implementing agent reported it clean; not observed here), and the independent audit.
+- AC-1 met: `no_codex_or_omp_step_is_planned` failed first and passes now; `project_update_plan_cli` 48 passed (check affected aa8d962786..afc51604d7, `06-test_targets.log`).
+- AC-2 met: `a_profile_that_lists_codex_and_omp_still_loads` passes in the same run.
+- AC-3 met: `the_retired_hosts_step_only_informs` passes in the same run.
+- AC-4 met: `the_codex_and_omp_folders_stay_byte_identical` passes in the same run.
+- AC-7 met: `a_removed_host_gets_one_line_and_exit_zero` failed first (area 2 RED) and passes now; `hook_dispatch_cli` passed in check affected 7715746e88..25955ad6b5.
+- AC-8 met: `no_codex_projection_is_written` failed first by assertion (area 3 RED) and passes now; `generation_apply_result_cli` 3 passed (check affected aa8d962786..afc51604d7).
+- AC-10 met: `no_codex_command_is_listed` failed first by assertion (area 3 RED) and passes now; `help_layout` 11 passed in the same run.
+- AC-12 met: `go_state_codex_cli` 37 passed in the same run; the Go-generation `.codex` classification is kept.
+- Check results: area 1 check affected PASS (58 targets). Area 2 and area 3 check affected each FAIL only on `retired_hosts_layer` `model_settings` (2 tests), which fail on this branch's base and pass on the integration tip after its own repair; a trial `git merge-tree` with the tip reported conflicts in the help goldens, one protocol fixture and `tests/host_home_cli.rs` (left to the lander; no tip merge here). The area 3 run also failed `omp_host_survey_test` (4 cases: three from this branch, one from the landed launcher removal); 279022cdb0 fixes the rows and `omp_host_survey_test`, `host_matrix_test` and `ci_scope_test` pass (run by hand, not re-run through check affected).
+- Not run: the whole suite, a test run after merging the tip, and the independent audit.
