@@ -63,7 +63,7 @@ pub fn shorten_model_name(model: &str) -> String {
     }
 }
 
-/// The context-window reading behind the CW number (`MemoryData`).
+/// A context-window reading in tokens (`MemoryData`), as [`handoff_stage`] measures it.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Memory {
     pub tokens_used: i64,
@@ -72,7 +72,7 @@ pub struct Memory {
     pub available: bool,
 }
 
-/// What `CollectMemory` reads from `context_window`; `None` when the object is absent.
+/// What [`context_percent`] reads from `context_window`; `None` when the object is absent.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct ContextReading {
     pub used_percentage: Option<f64>,
@@ -83,12 +83,16 @@ pub struct ContextReading {
     pub current_usage_tokens: Option<i64>,
 }
 
-/// `CollectMemory` (memory.go). `size_override` is the GLM / env override (0 = none);
-/// `auto_compact` scales the budget so the percentage reaches 100% where auto-compact fires.
-pub fn collect_memory(cw: Option<ContextReading>, size_override: i64, auto_compact: i64) -> Memory {
-    let Some(cw) = cw else {
-        return Memory::default();
-    };
+/// The `CW` percentage (SPEC-20261122-statusline-limits REQ-2, D-1): `used_percentage` as the
+/// host gives it; when it is null, the input tokens of `current_usage` over the window size, else
+/// `used` over `total` of an older host — rescaled by nothing. `size_override` is the GLM / env
+/// override of the window size (0 = none). `None` when the window names none of them, so the
+/// line says `CW n/a`, never a guessed zero.
+pub fn context_percent(cw: Option<ContextReading>, size_override: i64) -> Option<f64> {
+    let cw = cw?;
+    if let Some(pct) = cw.used_percentage {
+        return Some(pct);
+    }
     let mut size = cw.context_window_size;
     if size <= 0 {
         size = cw.total;
@@ -99,30 +103,10 @@ pub fn collect_memory(cw: Option<ContextReading>, size_override: i64, auto_compa
     if size_override > 0 {
         size = size_override;
     }
-    let budget = size.saturating_mul(auto_compact) / 100;
-    let full = |tokens_used| Memory {
-        tokens_used,
-        token_budget: budget,
-        context_window_size: size,
-        available: true,
-    };
-    if let Some(pct) = cw.used_percentage {
-        return full((size as f64 * pct / 100.0) as i64);
-    }
     if let Some(tokens) = cw.current_usage_tokens {
-        return full(tokens);
+        return Some(tokens as f64 * 100.0 / size as f64);
     }
-    if cw.used > 0 || cw.total > 0 {
-        return Memory {
-            tokens_used: cw.used,
-            token_budget: cw.total.saturating_mul(auto_compact) / 100,
-            context_window_size: size,
-            available: true,
-        };
-    }
-    // The window names no percentage, no usage and no totals: nothing was read, so the reading
-    // is unavailable and the screen says `CW n/a`, never a guessed zero (REQ-9).
-    Memory::default()
+    (cw.total > 0).then(|| cw.used as f64 * 100.0 / cw.total as f64)
 }
 
 /// `usagePercent`: truncated, capped at 100, 0 for an empty budget.
@@ -369,27 +353,43 @@ mod tests {
         assert_eq!(shorten_model_name("claude-fable-5-1"), "Fable 5.1");
     }
 
+    /// SPEC-20261122-statusline-limits D-1 (it replaces the 85 percent auto-compact rescale): the
+    /// host's percentage unchanged, and without it the input tokens over the window size, the
+    /// size override first, or `used` over `total` of an older host.
     #[test]
-    fn memory_scales_to_the_auto_compact_budget() {
-        let cw = |pct, size| ContextReading {
+    fn the_context_percentage_is_the_hosts_without_a_rescale() {
+        let cw = |pct| ContextReading {
             used_percentage: Some(pct),
-            context_window_size: size,
+            context_window_size: 200_000,
             ..Default::default()
         };
-        let m = collect_memory(Some(cw(8.0, 200_000)), 0, 85);
-        assert_eq!((m.tokens_used, m.token_budget), (16_000, 170_000));
-        assert_eq!(usage_percent(m.tokens_used, m.token_budget), 9);
-        let m = collect_memory(Some(cw(93.0, 200_000)), 0, 85);
-        assert_eq!(usage_percent(m.tokens_used, m.token_budget), 100);
-        assert_eq!(handoff_stage(&m, 85), HandoffStage::Soft);
+        for pct in [8.0, 25.0, 85.0, 93.0, 100.0] {
+            assert_eq!(context_percent(Some(cw(pct)), 0), Some(pct));
+            assert_eq!(context_percent(Some(cw(pct)), 1_000_000), Some(pct));
+        }
         let usage = ContextReading {
             context_window_size: 200_000,
             current_usage_tokens: Some(50_000),
             ..Default::default()
         };
-        let m = collect_memory(Some(usage), 0, 85);
-        assert_eq!(usage_percent(m.tokens_used, m.token_budget), 29);
-        assert!(!collect_memory(None, 0, 85).available);
+        assert_eq!(context_percent(Some(usage), 0), Some(25.0));
+        assert_eq!(context_percent(Some(usage), 1_000_000), Some(5.0));
+        let no_size = ContextReading {
+            current_usage_tokens: Some(50_000),
+            ..Default::default()
+        };
+        assert_eq!(
+            context_percent(Some(no_size), 0),
+            Some(25.0),
+            "200k by default"
+        );
+        let older = ContextReading {
+            used: 30,
+            total: 120,
+            ..Default::default()
+        };
+        assert_eq!(context_percent(Some(older), 0), Some(25.0));
+        assert_eq!(context_percent(None, 0), None);
     }
 
     /// A context window that names a size but gives no percentage and no usage is unknown,
@@ -401,39 +401,42 @@ mod tests {
             context_window_size: 200_000,
             ..Default::default()
         };
-        assert!(!collect_memory(Some(sized), 0, 85).available);
-        assert!(!collect_memory(Some(ContextReading::default()), 0, 85).available);
+        assert_eq!(context_percent(Some(sized), 0), None);
+        assert_eq!(context_percent(Some(ContextReading::default()), 0), None);
+        let used_without_total = ContextReading {
+            used: 5,
+            ..Default::default()
+        };
+        assert_eq!(context_percent(Some(used_without_total), 0), None);
         let zero_percentage = ContextReading {
             used_percentage: Some(0.0),
             context_window_size: 200_000,
             ..Default::default()
         };
-        assert!(collect_memory(Some(zero_percentage), 0, 85).available);
+        assert_eq!(context_percent(Some(zero_percentage), 0), Some(0.0));
         let zero_usage = ContextReading {
             context_window_size: 200_000,
             current_usage_tokens: Some(0),
             ..Default::default()
         };
-        assert!(collect_memory(Some(zero_usage), 0, 85).available);
+        assert_eq!(context_percent(Some(zero_usage), 0), Some(0.0));
     }
 
     /// Numbers far beyond any real window must not overflow a debug build (REQ-10).
     #[test]
     fn huge_context_numbers_do_not_overflow() {
-        let by_percentage = ContextReading {
-            used_percentage: Some(1e300),
-            context_window_size: i64::MAX,
+        let by_usage = ContextReading {
+            current_usage_tokens: Some(i64::MAX),
+            context_window_size: 1,
             ..Default::default()
         };
-        let m = collect_memory(Some(by_percentage), 0, 85);
-        assert!((0..=100).contains(&usage_percent(m.tokens_used, m.token_budget)));
+        assert!(context_percent(Some(by_usage), 0).is_some_and(f64::is_finite));
         let by_total = ContextReading {
             used: i64::MAX,
             total: i64::MAX,
             ..Default::default()
         };
-        let m = collect_memory(Some(by_total), 0, 85);
-        assert_eq!(usage_percent(m.tokens_used, m.token_budget), 100);
+        assert_eq!(context_percent(Some(by_total), 0), Some(100.0));
         assert_eq!(usage_percent(i64::MAX, 1), 100);
         let hit = cache_hit_percent(i64::MAX, i64::MAX);
         assert!(hit.is_some_and(|p| (0..=100).contains(&p)));

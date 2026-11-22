@@ -288,6 +288,43 @@ fn a_token_split_by_a_control_character_or_named_as_an_env_entry_is_never_echoed
 }
 
 #[test]
+fn a_token_split_by_an_invisible_format_or_separator_character_is_never_echoed() {
+    // an obviously fake token, shaped like one.
+    let token = format!("ghp_{}", "x".repeat(36));
+    for mark in [
+        '\u{200B}',
+        '\u{00AD}',
+        '\u{202E}',
+        '\u{2028}',
+        '\u{2029}',
+        '\u{FEFF}',
+        '\u{2060}',
+        '\u{E0041}',
+    ] {
+        let split = format!("ghp_{}{mark}{}", "x".repeat(18), "x".repeat(18));
+        let mut desired = Map::new();
+        desired.insert(split, json!(true));
+        let err = plan_settings(&Map::new(), &Map::new(), &desired).unwrap_err();
+        assert!(
+            err.contains("unmanaged claude settings key refused"),
+            "{mark:?}: {err}"
+        );
+        assert!(err.contains("looks like a credential"), "{mark:?}: {err}");
+        assert!(
+            !err.contains(&token) && !err.contains("ghp_"),
+            "{mark:?}: {err}"
+        );
+    }
+    // a plain name is still named, without the invisible character that could hide or reorder
+    // what the reader sees.
+    let mut desired = Map::new();
+    desired.insert("the\u{202E}me".into(), json!("dark"));
+    let err = plan_settings(&Map::new(), &Map::new(), &desired).unwrap_err();
+    assert!(err.contains("theme"), "{err}");
+    assert!(!err.contains('\u{202E}'), "{err:?}");
+}
+
+#[test]
 fn the_writer_refuses_an_additional_directory_outside_the_repository() {
     let repo = TempDir::new().unwrap();
     fs::create_dir_all(repo.path().join(".git")).unwrap();

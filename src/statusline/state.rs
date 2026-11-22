@@ -26,7 +26,7 @@
 
 use super::config::{self, Node};
 use super::input::{self, Input};
-use super::segments::{self, ContextReading, GitStatus, Memory};
+use super::segments::{self, ContextReading, GitStatus};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::io::Read;
@@ -105,17 +105,16 @@ impl Context {
 #[derive(Debug, Default)]
 pub struct Status {
     pub model: String,
-    pub session_ms: i64,
-    pub memory: Memory,
-    pub auto_compact: i64,
+    /// The `CW` percentage as the host gives it, or its fallback (SPEC-20261122-statusline-limits
+    /// D-1); `None` when the input names none.
+    pub context: Option<f64>,
+    /// `cost.total_cost_usd`, the host's estimate of the session's cost in US dollars.
+    pub cost: Option<f64>,
     pub version: Option<Version>,
     pub claude_version: String,
-    pub output_style: String,
     /// `Some` when `effort` is present, even with an empty level.
     pub effort: Option<String>,
     pub thinking: Option<bool>,
-    /// (cache read, cache creation) from `current_usage`.
-    pub cache: Option<(i64, i64)>,
     pub five_hour: Option<input::RateWindow>,
     pub seven_day: Option<input::RateWindow>,
     pub git: Option<GitStatus>,
@@ -124,11 +123,8 @@ pub struct Status {
     /// The cards of the project's local ledger by stage, for the flow line; `None` when there
     /// is no ledger to read (see [`read_flow`]).
     pub flow: Option<Flow>,
-    pub goal_armed: bool,
     /// #2756 AC-7: the open pull request of the current branch.
     pub pr: Option<PrInfo>,
-    /// #2756 AC-8: how long the prompt cache stays warm.
-    pub cache_timer: Option<CacheTimer>,
     /// #2756 AC-9: the worktree name the host gave; empty in the main checkout. The `🌳` item
     /// shows it as it is (D-4 of SPEC-20261122-statusline-where).
     pub worktree: String,
@@ -148,15 +144,6 @@ pub struct PrInfo {
     /// SPEC-20261122-statusline-where REQ-9: the host says the request is a GitLab merge
     /// request (`pr.kind` is `mr`), so the item is written `!<n>`.
     pub merge_request: bool,
-}
-
-/// The prompt cache state from `prompt_cache` (Unix-second timestamps).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum CacheTimer {
-    /// Warm, with whole minutes left until `expires_at` (rounded down).
-    Warm(i64),
-    /// `warm` is false, or `expires_at` has passed.
-    Cold,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -269,10 +256,8 @@ pub const BINARY_VERSION: &str = crate::BUILD_VERSION;
 pub fn collect(input: Option<&Input>, ctx: &Context) -> Status {
     let project_root = find_project_root(ctx);
     let anchor = input.and_then(resolve_anchor);
-    let auto_compact = segments::auto_compact_threshold(ctx.var("CLAUDE_AUTOCOMPACT_PCT_OVERRIDE"));
     let mut status = Status {
         model: collect_model(input, ctx),
-        auto_compact,
         version: Some(collect_version(ctx, BINARY_VERSION)),
         ..Default::default()
     };
@@ -290,33 +275,22 @@ pub fn collect(input: Option<&Input>, ctx: &Context) -> Status {
     let Some(input) = input else {
         return status;
     };
-    status.session_ms = input
-        .cost
-        .as_ref()
-        .and_then(|c| c.total_duration_ms)
-        .unwrap_or(0);
-    status.memory = collect_memory(input, ctx, auto_compact);
-    status.output_style = input
-        .output_style
-        .as_ref()
-        .map_or("", |s| input::text(&s.name))
-        .to_string();
-    status.claude_version = input::text(&input.version).to_string();
+    // SPEC-20261122-statusline-limits REQ-11: only what a shown item needs is collected — not
+    // the session duration, the output style, the cache hit ratio, the prompt cache timer or
+    // the goal file.
+    status.context = collect_context(input, ctx);
+    status.cost = input.cost.as_ref().and_then(|c| c.total_cost_usd);
+    // Audit N-3: the version comes from stdin; a control character (an escape, a newline) never
+    // reaches the screen.
+    status.claude_version = input::text(&input.version)
+        .chars()
+        .filter(|c| !c.is_control())
+        .collect();
     status.effort = input
         .effort
         .as_ref()
         .map(|e| input::text(&e.level).to_string());
     status.thinking = input.thinking.as_ref().map(|t| t.enabled.unwrap_or(false));
-    status.cache = input
-        .context_window
-        .as_ref()
-        .and_then(|cw| cw.current_usage.as_ref())
-        .map(|u| {
-            (
-                u.cache_read_input_tokens.unwrap_or(0),
-                u.cache_creation_input_tokens.unwrap_or(0),
-            )
-        });
     if let Some(limits) = &input.rate_limits {
         status.five_hour = limits.five_hour;
         status.seven_day = limits.seven_day;
@@ -333,7 +307,6 @@ pub fn collect(input: Option<&Input>, ctx: &Context) -> Status {
         });
     if let Some(anchor) = &anchor {
         status.github = github_counts(anchor);
-        status.goal_armed = goal_armed(anchor, input::text(&input.session_id));
     }
     let dir = session_dir(input);
     status.flow = anchor
@@ -353,13 +326,9 @@ pub fn collect(input: Option<&Input>, ctx: &Context) -> Status {
             review_state: input::text(&p.review_state).to_string(),
             // Official statusline page: `pr.kind` is `mr` for a GitLab merge request and absent
             // for a GitHub pull request; any other value is a pull request.
-            merge_request: matches!(&p.kind, Some(serde_json::Value::String(k)) if k == "mr"),
+            merge_request: p.kind.as_deref() == Some("mr"),
         })
     });
-    status.cache_timer = input
-        .prompt_cache
-        .as_ref()
-        .and_then(|c| cache_timer(c, ctx.now));
     let worktree = input.worktree.as_ref().map_or("", |w| input::text(&w.name));
     status.worktree = if worktree.is_empty() {
         input
@@ -386,28 +355,6 @@ fn session_dir(input: &Input) -> Option<PathBuf> {
         dir
     };
     (!dir.is_empty()).then(|| PathBuf::from(dir))
-}
-
-/// #2756 AC-8: `warm: false` is cold; `warm: true` with `expires_at` gives the whole minutes
-/// left (a passed `expires_at` is cold). Anything else — no `warm`, a warm cache without
-/// `expires_at`, a value of another type — shows no timer.
-fn cache_timer(cache: &serde_json::Value, now: i64) -> Option<CacheTimer> {
-    match cache.get("warm").and_then(serde_json::Value::as_bool)? {
-        false => Some(CacheTimer::Cold),
-        true => {
-            // The decoder may hand numbers over as floats (Go `encoding/json` rules).
-            let expires = cache.get("expires_at").and_then(|v| {
-                v.as_i64()
-                    .or_else(|| v.as_f64().filter(|f| f.is_finite()).map(|f| f as i64))
-            })?;
-            let left = expires - now;
-            Some(if left <= 0 {
-                CacheTimer::Cold
-            } else {
-                CacheTimer::Warm(left / 60)
-            })
-        }
-    }
 }
 
 /// #2756 AC-7: a URL usable inside an OSC 8 hyperlink — `http://` or `https://` and no
@@ -682,24 +629,37 @@ fn resolve_glm_model_name(display: &str, ctx: &Context) -> String {
 
 // ---- context window ----
 
-fn collect_memory(input: &Input, ctx: &Context, auto_compact: i64) -> Memory {
+/// The tokens of `current_usage` the `CW` number falls back to: none when the object carries no
+/// count at all (REQ-2: `CW n/a`, never a guessed `0%`), and a sum that stops at `i64::MAX`
+/// instead of overflowing on absurd counts.
+fn usage_tokens(u: &input::CurrentUsage) -> Option<i64> {
+    let counts = [
+        u.input_tokens,
+        u.cache_creation_input_tokens,
+        u.cache_read_input_tokens,
+    ];
+    counts.iter().any(Option::is_some).then(|| {
+        counts
+            .iter()
+            .flatten()
+            .fold(0i64, |sum, n| sum.saturating_add(*n))
+    })
+}
+
+fn collect_context(input: &Input, ctx: &Context) -> Option<f64> {
     let reading = input.context_window.as_ref().map(|cw| ContextReading {
         used_percentage: cw.used_percentage,
         context_window_size: cw.context_window_size.unwrap_or(0),
         used: cw.used.unwrap_or(0),
         total: cw.total.unwrap_or(0),
-        current_usage_tokens: cw.current_usage.as_ref().map(|u| {
-            u.input_tokens.unwrap_or(0)
-                + u.cache_creation_input_tokens.unwrap_or(0)
-                + u.cache_read_input_tokens.unwrap_or(0)
-        }),
+        current_usage_tokens: cw.current_usage.as_ref().and_then(usage_tokens),
     });
     let size_override = if reading.is_some() {
         context_window_override(ctx)
     } else {
         0
     };
-    segments::collect_memory(reading, size_override, auto_compact)
+    segments::context_percent(reading, size_override)
 }
 
 /// Built-in GLM context windows (memory.go `glmContextWindows`).
@@ -1058,12 +1018,15 @@ struct Counts {
 }
 
 /// What the cache file holds (REQ-5): the key (the canonical git directory that holds the `HEAD`
-/// file, the `HEAD` text and the integration commit), the time it was written, and the parsed
-/// git facts. A record without a folder (an older file) never matches.
+/// file, the work state of [`work_state`], the `HEAD` text and the integration commit), the time
+/// it was written, and the parsed git facts. A record without a folder or a work state (an older
+/// file) never matches.
 #[derive(Debug, Serialize, Deserialize)]
 struct CacheRecord {
     #[serde(default)]
     folder: String,
+    #[serde(default)]
+    state: String,
     head: String,
     integration: String,
     written_at: i64,
@@ -1185,10 +1148,14 @@ fn read_git(
         .unwrap_or_else(|_| dirs.git_dir.clone())
         .to_string_lossy()
         .into_owned();
+    let state = work_state(&dirs, branch);
     let counts = git_counts(
         dir,
         ctx,
-        &folder,
+        &CacheKey {
+            folder: &folder,
+            state: &state,
+        },
         &head_text,
         &commit,
         &status_args(branch, integration.as_deref()),
@@ -1202,13 +1169,22 @@ fn read_git(
     Some(GitRead { git, integration })
 }
 
-/// The numbers for one render: the cache when it is fresh for this git directory, `HEAD` text and
-/// integration commit, else the output of the one git process, which then rewrites the cache. A git that
-/// cannot answer (a spent budget, a failure) gives zeros and writes nothing.
+/// The parts of the cache key besides the `HEAD` text and the integration commit.
+struct CacheKey<'a> {
+    /// The canonical per-checkout git directory.
+    folder: &'a str,
+    /// [`work_state`]: the branch commit and the index size and time.
+    state: &'a str,
+}
+
+/// The numbers for one render: the cache when it is fresh for this git directory, work state,
+/// `HEAD` text and integration commit, else the output of the one git process, which then
+/// rewrites the cache. A git that cannot answer (a spent budget, a failure) gives zeros and
+/// writes nothing.
 fn git_counts(
     dir: &Path,
     ctx: &Context,
-    folder: &str,
+    key: &CacheKey<'_>,
     head_text: &str,
     commit: &str,
     args: &[String],
@@ -1216,8 +1192,10 @@ fn git_counts(
 ) -> Counts {
     if let Some(record) = cache.as_ref().and_then(SessionCache::read) {
         // Another folder with the same `HEAD` text is another key: a session that moves to
-        // another checkout asks git once.
-        if record.folder == folder
+        // another checkout asks git once. A commit or a stage on the same branch changes the
+        // work state, so it asks git once too.
+        if record.folder == key.folder
+            && record.state == key.state
             && cache_is_fresh(
                 record.written_at,
                 ctx.now,
@@ -1244,7 +1222,8 @@ fn git_counts(
     };
     if let Some(cache) = cache {
         let record = CacheRecord {
-            folder: folder.to_string(),
+            folder: key.folder.to_string(),
+            state: key.state.to_string(),
             head: head_text.to_string(),
             integration: commit.to_string(),
             written_at: ctx.now,
@@ -1266,14 +1245,12 @@ struct SessionCache {
 }
 
 impl SessionCache {
-    /// `None` without a plain session id, without a folder this user alone may enter, or on a
+    /// `None` without a plain session id, with a relative `TMPDIR` (it would name a folder inside
+    /// the checkout the render runs in), without a folder this user alone may enter, or on a
     /// platform without Unix modes: every render then asks git.
     fn open(ctx: &Context, session_id: &str) -> Option<SessionCache> {
         let name = cache_file_name(session_id)?;
-        let base = ctx
-            .var("TMPDIR")
-            .map_or_else(|| PathBuf::from("/tmp"), PathBuf::from);
-        let dir = base.join(CACHE_FOLDER);
+        let dir = cache_folder(ctx.var("TMPDIR"))?;
         private_folder(&dir).then(|| SessionCache {
             file: dir.join(name),
             dir,
@@ -1339,11 +1316,49 @@ impl SessionCache {
     }
 }
 
+/// The folder the cache folder goes in: `TMPDIR` when it is an absolute path, `/tmp` when it is
+/// unset or empty, and none when it is relative.
+fn cache_base(tmpdir: Option<&str>) -> Option<PathBuf> {
+    match tmpdir {
+        None | Some("") => Some(PathBuf::from("/tmp")),
+        Some(dir) => Some(PathBuf::from(dir)).filter(|p| p.is_absolute()),
+    }
+}
+
+/// The status line's cache folder for a `TMPDIR` value: `moai-statusline` in [`cache_base`],
+/// none for a relative `TMPDIR`. Makes nothing. The session caches and the usage record
+/// ([`crate::usage_limit`]) both live here.
+pub(crate) fn cache_folder(tmpdir: Option<&str>) -> Option<PathBuf> {
+    cache_base(tmpdir).map(|base| base.join(CACHE_FOLDER))
+}
+
+/// What a commit or a stage on the same branch changes while the `HEAD` text stays: the commit
+/// of the checked-out branch (none for a detached `HEAD`, whose text is the commit) and the size
+/// and modified time of the checkout's index file. Read from disk, no process.
+fn work_state(dirs: &GitDirs, branch: Option<&str>) -> String {
+    let commit = branch.map_or_else(String::new, |name| ref_commit(&dirs.common, name));
+    let index = std::fs::symlink_metadata(dirs.git_dir.join("index"))
+        .ok()
+        .filter(std::fs::Metadata::is_file)
+        .map_or_else(
+            || "none".to_string(),
+            |m| {
+                let at = m
+                    .modified()
+                    .ok()
+                    .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+                    .map_or(0, |d| d.as_nanos());
+                format!("{}:{at}", m.len())
+            },
+        );
+    format!("commit={commit};index={index}")
+}
+
 /// The cache folder exists as a plain folder of this user that nobody else may enter: made 0700
 /// when missing, tightened to 0700 when it is the user's own with wider rights, refused when it
 /// is a link, another kind of file or another user's.
 #[cfg(unix)]
-fn private_folder(dir: &Path) -> bool {
+pub(crate) fn private_folder(dir: &Path) -> bool {
     use std::os::unix::fs::{DirBuilderExt, MetadataExt, PermissionsExt};
     if std::fs::symlink_metadata(dir).is_err() {
         // A render that made it first is as good: the checks below decide.
@@ -1361,7 +1376,25 @@ fn private_folder(dir: &Path) -> bool {
 }
 
 #[cfg(not(unix))]
-fn private_folder(_dir: &Path) -> bool {
+pub(crate) fn private_folder(_dir: &Path) -> bool {
+    false
+}
+
+/// What [`private_folder`] demands, checked without making or changing anything, for a reader
+/// that writes nothing: a plain folder (not a link) of this user that nobody else may enter.
+#[cfg(unix)]
+pub(crate) fn is_private_folder(dir: &Path) -> bool {
+    use std::os::unix::fs::MetadataExt;
+    let Ok(meta) = std::fs::symlink_metadata(dir) else {
+        return false;
+    };
+    // SAFETY: geteuid has no preconditions and cannot fail.
+    let me = unsafe { libc::geteuid() };
+    meta.file_type().is_dir() && meta.uid() == me && meta.mode() & 0o077 == 0
+}
+
+#[cfg(not(unix))]
+pub(crate) fn is_private_folder(_dir: &Path) -> bool {
     false
 }
 
@@ -1416,26 +1449,6 @@ fn run_git(dir: &Path, args: &[&str], ctx: &Context) -> Option<String> {
 }
 
 // ---- local state files ----
-
-/// `resolveGoalArmed`: `<anchor>/.moai/state/goal/<session_id>.json` has `status: armed`.
-/// A session id carrying a path separator is refused rather than joined.
-fn goal_armed(anchor: &Path, session_id: &str) -> bool {
-    if session_id.is_empty() || session_id.contains(['/', '\\']) || session_id == ".." {
-        return false;
-    }
-    #[derive(Deserialize, Default)]
-    #[serde(default)]
-    struct Goal {
-        status: Option<String>,
-    }
-    let path = anchor
-        .join(".moai/state/goal")
-        .join(format!("{session_id}.json"));
-    std::fs::read(path)
-        .ok()
-        .and_then(|b| serde_json::from_slice::<Goal>(&b).ok())
-        .is_some_and(|g| g.status.as_deref() == Some("armed"))
-}
 
 /// `resolveGitHubCounts`: the cache only, never the network (#2588: the refresh runs
 /// in a detached child, see [`super::counts`]); an explicit `statusline.forge` naming no
@@ -1839,6 +1852,24 @@ mod tests {
     thread_local! {
         /// `run_git` spawn attempts on this test thread.
         pub(super) static GIT_SPAWNS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+    }
+
+    /// Audit N-1 and N-5 of the limits slice: absurd counts stop at `i64::MAX` (a plain `+`
+    /// panics in a debug build), and an object with no count gives no number at all.
+    #[test]
+    fn usage_tokens_saturate_and_an_empty_object_has_none() {
+        let usage = |a, b, c| input::CurrentUsage {
+            input_tokens: a,
+            cache_creation_input_tokens: b,
+            cache_read_input_tokens: c,
+        };
+        assert_eq!(
+            usage_tokens(&usage(Some(i64::MAX), Some(i64::MAX), Some(1))),
+            Some(i64::MAX)
+        );
+        assert_eq!(usage_tokens(&usage(Some(1), None, Some(2))), Some(3));
+        assert_eq!(usage_tokens(&usage(None, None, Some(0))), Some(0));
+        assert_eq!(usage_tokens(&usage(None, None, None)), None);
     }
 
     #[test]
@@ -2260,14 +2291,8 @@ mod tests {
     }
 
     #[test]
-    fn goal_and_forge_reads() {
+    fn forge_reads() {
         let tmp = tempfile::tempdir().unwrap();
-        let goal = tmp.path().join(".moai/state/goal");
-        std::fs::create_dir_all(&goal).unwrap();
-        std::fs::write(goal.join("s1.json"), r#"{"status":"armed"}"#).unwrap();
-        assert!(goal_armed(tmp.path(), "s1"));
-        assert!(!goal_armed(tmp.path(), "s2"));
-        assert!(!goal_armed(tmp.path(), "../goal/s1"));
         assert_eq!(github_counts(tmp.path()), GitHubCounts::default());
         let gh = tmp.path().join(".moai/state/github");
         std::fs::create_dir_all(&gh).unwrap();
@@ -2454,51 +2479,17 @@ mod tests {
     }
 }
 
-/// #2756 AC-7–AC-9: the pull request, prompt cache and worktree values the renderer shows.
+/// #2756 AC-7 and AC-9: the pull request and worktree values the renderer shows.
 #[cfg(test)]
 mod extras_tests {
     use super::*;
     use serde_json::json;
 
     fn collect_json(value: serde_json::Value, now: i64) -> Status {
-        let input = input::parse(value.to_string().as_bytes()).unwrap();
+        let input = input::parse(value.to_string().as_bytes());
         let mut ctx = Context::for_test(&[], None);
         ctx.now = now;
         collect(Some(&input), &ctx)
-    }
-
-    #[test]
-    fn the_cache_timer_counts_whole_minutes_and_turns_cold_at_expiry() {
-        let at = |cache: serde_json::Value| cache_timer(&cache, 1000);
-        assert_eq!(
-            at(json!({"warm": true, "expires_at": 1000 + 299})),
-            Some(CacheTimer::Warm(4))
-        );
-        assert_eq!(
-            at(json!({"warm": true, "expires_at": 1000 + 60})),
-            Some(CacheTimer::Warm(1))
-        );
-        assert_eq!(
-            at(json!({"warm": true, "expires_at": 1000 + 59})),
-            Some(CacheTimer::Warm(0))
-        );
-        assert_eq!(
-            at(json!({"warm": true, "expires_at": 1000 + 1})),
-            Some(CacheTimer::Warm(0))
-        );
-        assert_eq!(
-            at(json!({"warm": true, "expires_at": 1000})),
-            Some(CacheTimer::Cold)
-        );
-        assert_eq!(
-            at(json!({"warm": false, "expires_at": null})),
-            Some(CacheTimer::Cold)
-        );
-        // No value to show: no `warm`, a warm cache without `expires_at`, other types.
-        assert_eq!(at(json!({"expires_at": 1300})), None);
-        assert_eq!(at(json!({"warm": true, "expires_at": null})), None);
-        assert_eq!(at(json!({"warm": "yes"})), None);
-        assert_eq!(at(json!("warm")), None);
     }
 
     #[test]
@@ -2524,13 +2515,12 @@ mod extras_tests {
     }
 
     #[test]
-    fn pr_worktree_and_cache_come_from_the_input_or_stay_empty() {
+    fn pr_and_worktree_come_from_the_input_or_stay_empty() {
         let s = collect_json(
             json!({
                 "pr": {"number": 12, "url": "https://github.com/o/r/pull/12", "review_state": "approved"},
                 "worktree": {"name": "wt-session"},
-                "workspace": {"git_worktree": "linked"},
-                "prompt_cache": {"warm": true, "expires_at": 600}
+                "workspace": {"git_worktree": "linked"}
             }),
             0,
         );
@@ -2547,7 +2537,6 @@ mod extras_tests {
             s.worktree, "wt-session",
             "worktree.name wins over git_worktree"
         );
-        assert_eq!(s.cache_timer, Some(CacheTimer::Warm(10)));
         let s = collect_json(
             json!({"workspace": {"git_worktree": "linked"}, "pr": {"number": 3}}),
             0,
@@ -2559,13 +2548,7 @@ mod extras_tests {
         let pr = s.pr.unwrap();
         assert!(pr.url.is_empty() && pr.review_state.is_empty());
         let s = collect_json(json!({"pr": {"number": 0}, "workspace": {}}), 0);
-        assert_eq!((s.pr, s.worktree.as_str(), s.cache_timer), (None, "", None));
-        // A mistyped prompt_cache leaves the timer out but keeps the rest of the payload.
-        let s = collect_json(
-            json!({"model": {"display_name": "x"}, "prompt_cache": 7}),
-            0,
-        );
-        assert_eq!((s.model.as_str(), s.cache_timer), ("x", None));
+        assert_eq!((s.pr, s.worktree.as_str()), (None, ""));
     }
 }
 
@@ -3138,12 +3121,11 @@ mod stage_tests {
             serde_json::json!({"workspace": {"project_dir": f.project}})
                 .to_string()
                 .as_bytes(),
-        )
-        .unwrap();
+        );
         let ctx = Context::for_test(&[("HOME", home)], Some(&elsewhere));
         let counts_of = |status: Status| status.flow.map(legacy);
         assert_eq!(counts_of(collect(Some(&named), &ctx)), counts(0, 2, 1));
-        let empty = input::parse(b"{}").unwrap();
+        let empty = input::parse(b"{}");
         assert_eq!(
             counts_of(collect(Some(&empty), &ctx)),
             None,
@@ -4228,7 +4210,7 @@ mod where_tests {
 
     fn collect_pr(pr: serde_json::Value) -> Option<PrInfo> {
         let stdin = serde_json::json!({ "pr": pr }).to_string();
-        let input = input::parse(stdin.as_bytes()).unwrap();
+        let input = input::parse(stdin.as_bytes());
         collect(Some(&input), &Context::for_test(&[], None)).pr
     }
 
@@ -4299,6 +4281,21 @@ mod cache_key_tests {
             "~".into(),
         ] {
             assert_eq!(cache_file_name(&bad), None, "{bad:?}");
+        }
+    }
+
+    /// REQ-5: the cache goes under an absolute `TMPDIR`, under `/tmp` when it is unset or
+    /// empty, and nowhere when it is relative.
+    #[test]
+    fn the_cache_base_refuses_a_relative_tmpdir() {
+        assert_eq!(cache_base(None), Some(PathBuf::from("/tmp")));
+        assert_eq!(cache_base(Some("")), Some(PathBuf::from("/tmp")));
+        assert_eq!(
+            cache_base(Some("/var/folders/x")),
+            Some(PathBuf::from("/var/folders/x"))
+        );
+        for relative in [".", "./", "tmp", "./tmp", "../tmp"] {
+            assert_eq!(cache_base(Some(relative)), None, "{relative:?}");
         }
     }
 

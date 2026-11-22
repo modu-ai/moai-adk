@@ -1,6 +1,6 @@
 //! Per-project writing language by item (Issue #2293), end to end through the binary in
 //! temporary projects only: profile validation (AC-1), the setup input step feeding
-//! `project-plan`/`project-apply` (AC-2) and the AGENTS.md managed section rendered from the
+//! `project-plan`/`project-apply` (AC-2) and the CLAUDE.md managed block rendered from the
 //! setting through `agents-*` and `generation-*` (AC-3).
 
 mod common;
@@ -104,8 +104,8 @@ fn agents_request(language: &str) -> Value {
     json!({"protocol_version":1,"language":language,"workflow_reference":"skills/moai/workflows/","local_file":"none"})
 }
 
-fn agents_md(root: &TempDir) -> String {
-    fs::read_to_string(root.path().join("AGENTS.md")).unwrap()
+fn claude_md(root: &TempDir) -> String {
+    fs::read_to_string(root.path().join("CLAUDE.md")).unwrap()
 }
 
 /// AC-1: `project-plan` refuses an unknown item and an unsupported code without echoing
@@ -316,32 +316,31 @@ fn interactive_setup_reads_one_answer_per_item() {
     assert!(!String::from_utf8_lossy(&refused.stdout).contains("\"de\""));
 }
 
-/// The managed block of a profile without `language`, pinned: the #2293 change must leave
-/// existing projects' AGENTS.md byte-identical. #2385 deliberately adds one line (the
-/// pointer to the VERIFY workflow's "Check-run rules"), so existing projects get it as an
-/// `update` on their next plan. #2619 replaces the line on deciding and asking with the sorting order of the
-/// skill (facts answered, one-way and guarded choices to the user, the rest decided and recorded).
-const PLAIN_EN: &str = "<!-- moai:managed:begin id=moai-workflow -->
-## MoAI workflow (managed section)
+/// The managed block of a profile without `language`, pinned: no writing-language line. The
+/// block lives in CLAUDE.md and states facts only (SPEC-20261122-claude-md-layout REQ-3): the
+/// project id and tools, the check command, and where the SPECs and cards are.
+fn plain_en(root: &Path) -> String {
+    format!(
+        "<!-- moai:managed:begin id=moai-workflow -->
+## MoAI project facts (managed block)
 
-Project `demo` · tools: Rust · methods: TDD · hosts: claude, codex.
-Purpose: Build a small editor
-
-Confirm the approved SPEC and Issue scope, then proceed plan → implement → real verification → independent audit → report.
-Answer a factual question yourself and cite the evidence. A choice that cannot be undone, that goes beyond the allowed scope (cost, permissions, external transmission), or that touches money, legal terms, external contracts, secrets, real data or a guarded setting (permissions, keys, the real HOME and global settings, deletions, protection settings) waits for the user; decide any other choice within the allowed scope and record it.
-Never report an unexecuted check as PASS. Distinguish passed, failed, not_run, blocked and stale.
-Which checks run locally, and when an exact-head CI result may be cited instead, follow the \"Check-run rules\" section of the VERIFY workflow (the single source).
-Without the MoAI binary, do what native tools allow. When a required gate has no verified substitute, block the dependent action and report blocked.
-Read only the workflow you need from `skills/moai/workflows/`.
-Never share the personal `AGENTS.local.md`, credentials or raw secret logs in the repo or in Issues.
+Project `demo` · tools: Rust.
+Checks: `moai check affected`.
+SPECs: `{}/specs/` · cards: `moai card list`.
 <!-- moai:managed:end id=moai-workflow -->
-";
+",
+        moai_cli::state_root::dir(root)
+    )
+}
 
 #[test]
-fn absent_language_renders_the_earlier_managed_block() {
+fn absent_language_renders_the_block_without_a_language_line() {
     let root = project(None);
     plan_then_apply(&root, "agents", &agents_request("en"));
-    assert_eq!(agents_md(&root), format!("# demo\n\n{PLAIN_EN}"));
+    assert_eq!(
+        claude_md(&root),
+        format!("# demo\n\n{}", plain_en(root.path()))
+    );
 }
 
 /// AC-3: two projects with different settings get managed text that states exactly their
@@ -354,24 +353,27 @@ fn managed_section_states_each_projects_setting() {
         "code_comments": "en"
     })));
     let plan = plan_then_apply(&korean, "agents", &agents_request("ko"));
-    let text = agents_md(&korean);
-    let block = "항목별 작성 언어(`.moai-cli/project.yaml`의 `language`):
-- 사용자 대화: 한국어 (`ko`)
-- 사용자 보고: 한국어 (`ko`)
-- Issue·PR 기록: 한국어 (`ko`)
-- 커밋 메시지: 한국어 (`ko`)
-- 에이전트 간 메시지: 영어 (`en`)
-- 지침 파일(AGENTS.md, 규칙): 한국어 (`ko`)
-- skill 지침: 영어 (`en`)
-- 코드 주석: 영어 (`en`)
-그 밖의 글(지침 파일, 스킬·규칙, 에이전트 간 메시지, 코드 주석, Issue·PR 기록)은 위에 따로 적지 않으면 영어로 써요.
-
-승인한 SPEC과";
-    assert!(text.contains(block), "{text}");
-    // #2619: the Korean section carries the same sorting order as the English one.
+    let text = claude_md(&korean);
+    // The CLAUDE.md block states the writing languages on one line (SPEC-20261122-claude-md-layout
+    // REQ-3): every item the profile sets, in item order, then that the rest is English. The
+    // instruction-files label is matched around its parenthesis, which names the instruction
+    // file and follows the layout of the text slice.
+    let line = text
+        .lines()
+        .find(|l| l.starts_with("작성 언어: "))
+        .unwrap_or_else(|| panic!("no writing-language line:\n{text}"));
+    let (head, tail) = line
+        .split_once("; 지침 파일(")
+        .unwrap_or_else(|| panic!("{line}"));
+    assert_eq!(
+        head,
+        "작성 언어: 사용자 대화: 한국어 (`ko`); 사용자 보고: 한국어 (`ko`); Issue·PR 기록: 한국어 (`ko`); 커밋 메시지: 한국어 (`ko`); 에이전트 간 메시지: 영어 (`en`)"
+    );
     assert!(
-        text.contains("사실 확인은 스스로 하고 근거를 남긴다. 되돌릴 수 없거나, 허용 범위를 넘거나(비용·권한·외부 전송), 돈·법·외부 계약·비밀·실데이터·보호 대상 설정(권한·키·실제 HOME과 전역 설정·삭제·보호 설정)에 닿는 선택은 사용자를 기다리고, 나머지는 허용 범위 안에서 정한 뒤 기록한다."),
-        "{text}"
+        tail.ends_with(
+            " 규칙): 한국어 (`ko`); skill 지침: 영어 (`en`); 코드 주석: 영어 (`en`); 그 밖은 영어."
+        ),
+        "{line}"
     );
     // The managed section follows instruction_files, so nothing is reported.
     assert!(!plan["warnings"].to_string().contains("instruction_files"));
@@ -390,24 +392,20 @@ fn managed_section_states_each_projects_setting() {
         "workflow_id": "review-flow", "native_roles": [], "skill_projections": []
     });
     plan_then_apply(&japanese, "generation", &generation);
-    let text = agents_md(&japanese);
-    let block = "Purpose: Build a small editor
-
-Writing language by item (`language` in `.moai-cli/project.yaml`):
-- Conversation with the user: Japanese (`ja`)
-- Code comments: Chinese (`zh`)
-All other writing (instruction files, skills and rules, messages between agents, code comments, issue and PR records) is in English unless a line above says otherwise.
-
-Confirm the approved";
+    let text = claude_md(&japanese);
+    let block = "Checks: `moai check affected`.
+Writing language: Conversation with the user: Japanese (`ja`); Code comments: Chinese (`zh`); everything else English.
+";
     assert!(text.contains(block), "{text}");
-    assert!(!agents_md(&korean).contains("Writing language by item"));
+    assert!(!claude_md(&korean).contains("Writing language"));
 
     // Changing the setting and re-applying rewrites only the managed lines.
     let mut profile = profile_value(japanese.path());
     profile["language"]["code_comments"] = json!("ja");
     apply_profile(&japanese, &profile);
     plan_then_apply(&japanese, "agents", &agents_request("en"));
-    assert!(agents_md(&japanese).contains("- Code comments: Japanese (`ja`)\n"));
+    assert!(claude_md(&japanese)
+        .contains("; Code comments: Japanese (`ja`); everything else English.\n"));
 }
 
 /// #2706: the stored `instruction_files` language decides the managed section, ahead of the
@@ -422,37 +420,39 @@ fn the_stored_instruction_language_writes_the_managed_section() {
     profile["language"] = json!({"instruction_files": "ko"});
     apply_profile(&root, &profile);
     plan_then_apply(&root, "agents", &agents_request("en"));
-    let text = agents_md(&root);
-    assert!(text.contains("## MoAI 작업 흐름 (관리 구간)"), "{text}");
-    assert!(!text.contains("## MoAI workflow (managed section)"));
-    // The writing-language lines speak the section's language too (mutation G3).
+    let text = claude_md(&root);
+    assert!(text.contains("## MoAI 프로젝트 사실 (관리 구간)"), "{text}");
+    assert!(!text.contains("## MoAI project facts (managed block)"));
+    // The writing-language line speaks the section's language too (mutation G3); the label's
+    // parenthesis names the instruction file and is not pinned here.
+    assert!(text.contains("작성 언어: 지침 파일("), "{text}");
     assert!(
-        text.contains("- 지침 파일(AGENTS.md, 규칙): 한국어 (`ko`)"),
+        text.contains(" 규칙): 한국어 (`ko`); 그 밖은 영어.\n"),
         "{text}"
     );
-    assert!(!text.contains("Writing language by item"));
+    assert!(!text.contains("Writing language"));
     // User text outside the markers survives a re-run, and the re-run plans unchanged.
     let with_note = format!("{text}\n## Our notes\n\nkeep me\n");
-    std::fs::write(root.path().join("AGENTS.md"), &with_note).unwrap();
+    std::fs::write(root.path().join("CLAUDE.md"), &with_note).unwrap();
     let again = plan_then_apply(&root, "agents", &agents_request("en"));
     assert!(
         again["files"]
             .as_array()
             .unwrap()
             .iter()
-            .any(|f| f["path"] == json!("AGENTS.md") && f["action"] == json!("unchanged")),
+            .any(|f| f["path"] == json!("CLAUDE.md") && f["action"] == json!("unchanged")),
         "{again}"
     );
-    assert_eq!(agents_md(&root), with_note);
+    assert_eq!(claude_md(&root), with_note);
 
     // Changing the stored language rewrites only the managed section.
     let mut profile = profile_value(root.path());
     profile["language"]["instruction_files"] = json!("en");
     apply_profile(&root, &profile);
     plan_then_apply(&root, "agents", &agents_request("ko"));
-    let text = agents_md(&root);
+    let text = claude_md(&root);
     assert!(
-        text.contains("## MoAI workflow (managed section)"),
+        text.contains("## MoAI project facts (managed block)"),
         "{text}"
     );
     assert!(text.ends_with("## Our notes\n\nkeep me\n"));
@@ -460,7 +460,7 @@ fn the_stored_instruction_language_writes_the_managed_section() {
     // `ja` has no managed-section text: the request language, with a warning.
     let japanese = project(Some(json!({"instruction_files": "ja"})));
     let plan = plan_then_apply(&japanese, "agents", &agents_request("ko"));
-    assert!(agents_md(&japanese).contains("## MoAI 작업 흐름 (관리 구간)"));
+    assert!(claude_md(&japanese).contains("## MoAI 프로젝트 사실 (관리 구간)"));
     assert!(
         plan["warnings"]
             .to_string()
@@ -470,9 +470,11 @@ fn the_stored_instruction_language_writes_the_managed_section() {
 }
 
 /// #2696 C2: in a migrated project (the profile under `.moai/`, marker present) the managed
-/// section's heading names `.moai/project.yaml`, where the setting actually lives.
+/// block names the folder the project's state actually lives in. The CLAUDE.md block names no
+/// profile path any more (SPEC-20261122-claude-md-layout REQ-3); its SPEC place carries the
+/// folder.
 #[test]
-fn a_migrated_project_names_its_own_profile_path() {
+fn a_migrated_project_names_its_own_state_folder() {
     let root = project(Some(json!({"user_chat": "en", "code_comments": "en"})));
     fs::create_dir(root.path().join(".moai")).unwrap();
     fs::rename(
@@ -486,14 +488,20 @@ fn a_migrated_project_names_its_own_profile_path() {
     )
     .unwrap();
     plan_then_apply(&root, "agents", &agents_request("en"));
-    let text = agents_md(&root);
+    let text = claude_md(&root);
+    let state = moai_cli::state_root::dir(root.path());
+    assert_ne!(
+        state,
+        moai_cli::PROJECT_STATE_DIR,
+        "the project is migrated"
+    );
+    assert!(text.contains(&format!("SPECs: `{state}/specs/`")), "{text}");
     assert!(
-        text.contains("Writing language by item (`language` in `.moai/project.yaml`):"),
+        !text.contains(&format!("{}/", moai_cli::PROJECT_STATE_DIR)),
         "{text}"
     );
-    assert!(!text.contains(".moai-cli/project.yaml"), "{text}");
     // AUDIT #2794 B2: the preview renders the same section the apply wrote — a re-plan right
-    // after the apply finds AGENTS.md `unchanged` (a plan that named another profile path
+    // after the apply finds CLAUDE.md `unchanged` (a plan that named another state folder
     // would render a different block and plan an update).
     let again = ok(&run(
         &["agents-plan", path(&root)],
@@ -503,7 +511,7 @@ fn a_migrated_project_names_its_own_profile_path() {
         .as_array()
         .unwrap()
         .iter()
-        .find(|f| f["path"] == "AGENTS.md")
+        .find(|f| f["path"] == "CLAUDE.md")
         .unwrap_or_else(|| panic!("{again}"))
         .clone();
     assert_eq!(agents["action"], json!("unchanged"), "{again}");

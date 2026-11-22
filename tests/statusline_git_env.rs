@@ -199,7 +199,7 @@ impl Scripted {
         for d in [&home, &project, &tmp, &bin] {
             fs::create_dir_all(d).unwrap();
         }
-        fs::create_dir_all(home.join(".moai")).unwrap();
+        fs::create_dir_all(home.join(moai_cli::home_root::MOAI_DIR)).unwrap();
         common::git::git_ok(&project, &["init", "-q", "-b", "main"]);
         common::git::git_in(
             &project,
@@ -245,7 +245,7 @@ impl Scripted {
 
     /// The project profile names `name` as the integration branch, and its ref file holds `sha`.
     fn integration(&self, name: &str, sha: &str) {
-        let state = self.project.join(".moai-cli");
+        let state = moai_cli::state_root::path(&self.project, "");
         fs::create_dir_all(&state).unwrap();
         fs::write(
             state.join("project.yaml"),
@@ -303,7 +303,7 @@ impl Scripted {
         .clean_env()
         .env("PATH", format!("{}:/usr/bin:/bin", self.bin.display()))
         .env("HOME", &self.home)
-        .env("MOAI_HOME", self.home.join(".moai"))
+        .env("MOAI_HOME", self.home.join(moai_cli::home_root::MOAI_DIR))
         .env("TMPDIR", &self.tmp)
         .env("NO_COLOR", "1")
         .stdin(Stdio::piped())
@@ -632,6 +632,97 @@ fn session_cache_a_changed_integration_commit_starts_one_git() {
     fs::write(s.git_dir().join("packed-refs"), packed(SHA_B)).unwrap();
     s.run(T + 2, "s-packed");
     assert_eq!(s.starts().len(), 2, "{:?}", s.starts());
+}
+
+/// REQ-6: a commit on the same branch changes the branch's ref but not the `HEAD` text; it is
+/// another key, so the next render starts one git, and the new key is cached.
+#[test]
+fn session_cache_a_commit_on_the_same_branch_starts_one_git() {
+    let s = Scripted::new("ref: refs/heads/main\n");
+    s.run(T, "s-commit");
+    s.run(T + 1, "s-commit");
+    assert_eq!(s.starts().len(), 1, "{:?}", s.starts());
+    fs::write(s.git_dir().join("refs/heads/main"), format!("{SHA_A}\n")).unwrap();
+    s.run(T + 2, "s-commit");
+    assert_eq!(
+        s.starts().len(),
+        2,
+        "a new branch commit asks git: {:?}",
+        s.starts()
+    );
+    s.run(T + 3, "s-commit");
+    assert_eq!(s.starts().len(), 2, "{:?}", s.starts());
+}
+
+/// REQ-6: staging changes the index file, not `HEAD` nor any ref; a new index size or a new
+/// index time is another key, so the next render starts one git.
+#[test]
+fn session_cache_a_stage_on_the_same_branch_starts_one_git() {
+    let s = Scripted::new("ref: refs/heads/main\n");
+    let index = s.git_dir().join("index");
+    fs::write(&index, "first index\n").unwrap();
+    s.run(T, "s-stage");
+    s.run(T + 1, "s-stage");
+    assert_eq!(s.starts().len(), 1, "{:?}", s.starts());
+    // Another size.
+    fs::write(&index, "a longer second index\n").unwrap();
+    s.run(T + 2, "s-stage");
+    assert_eq!(
+        s.starts().len(),
+        2,
+        "a new index size asks git: {:?}",
+        s.starts()
+    );
+    s.run(T + 3, "s-stage");
+    assert_eq!(s.starts().len(), 2, "{:?}", s.starts());
+    // The same size, another modified time.
+    let later = fs::metadata(&index).unwrap().modified().unwrap() + Duration::from_secs(7);
+    fs::OpenOptions::new()
+        .write(true)
+        .open(&index)
+        .unwrap()
+        .set_modified(later)
+        .unwrap();
+    s.run(T + 4, "s-stage");
+    assert_eq!(
+        s.starts().len(),
+        3,
+        "a new index time asks git: {:?}",
+        s.starts()
+    );
+}
+
+/// REQ-5: a relative `TMPDIR` (`.`, `tmp`) would put the cache inside the folder the render
+/// runs in, the repository; such a `TMPDIR` turns the cache off: nothing is written there and
+/// every render asks git, with the same line.
+#[test]
+fn session_cache_a_relative_tmpdir_writes_no_cache() {
+    let reference = {
+        let s = Scripted::new("ref: refs/heads/main\n");
+        s.run(T, "s-rel")
+    };
+    for relative in [".", "tmp", "./tmp"] {
+        let mut s = Scripted::new("ref: refs/heads/main\n");
+        s.tmp = PathBuf::from(relative);
+        let before = files_under(&s.project);
+        let first = s.run(T, "s-rel");
+        let second = s.run(T + 1, "s-rel");
+        assert_eq!(first, reference, "TMPDIR={relative}");
+        assert_eq!(second, reference, "TMPDIR={relative}");
+        assert_eq!(
+            s.starts().len(),
+            2,
+            "TMPDIR={relative}: git each time: {:?}",
+            s.starts()
+        );
+        assert_eq!(
+            files_under(&s.project),
+            before,
+            "TMPDIR={relative}: nothing written in the repository"
+        );
+        assert!(!s.project.join("moai-statusline").exists());
+        assert!(!s.project.join("tmp").exists());
+    }
 }
 
 /// REQ-6 at the edge of the age: 9 seconds is a hit, 10 and 11 start one git, and the git that
