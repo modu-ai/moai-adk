@@ -2,7 +2,7 @@
 id: SPEC-20261121-card-land
 title: "card land moves the integration branch to a candidate commit and closes the card in one call"
 status: draft
-revision: 4
+revision: 5
 created: 2026-11-21
 ---
 
@@ -36,7 +36,7 @@ The command is an action of `moai card` (decision D-1 of the flow skeleton). Unt
 - REQ-9: When the card land command is run again after a stop between the reference update and the close, the card land command shall answer as one uninterrupted run would · failure: none — the rerun finds the candidate inside the tip, skips the update and closes the card, with one landing event and one finish event.
 - REQ-10: When the profile names an integration branch that is not under refs/heads, the card land command shall refuse as the card finish command does · failure: none — nothing is written.
 - REQ-11: When the card land command runs git, the card land command shall run it through the git environment scrub and with a reference-log message that names the candidate and no card number · failure: none — a git that cannot run refuses before any write.
-- REQ-12: When the integration branch points at a commit that is neither where the newest start row of that branch left it nor a descendant of that row's head, the card land command shall refuse before any write and name the drift and the command that puts the branch back · failure: none — the answer is a conflict that holds both commits and the `git update-ref` line, the ledger is unchanged, and a branch with no start row has nothing to compare and lands.
+- REQ-12: When the integration branch points at a commit that is not the result commit of the newest successful landing of that branch and not the tip or the target of an interrupted landing after it, the card land command shall refuse before any write and name the drift and the `moai card drift --restore` command that puts the branch back · failure: none — the answer is a conflict that holds both commits, the ledger is unchanged, a commit added by hand on top of the last landing is drift too, and a branch with no start row has nothing to compare and lands.
 
 ## Acceptance
 
@@ -58,9 +58,11 @@ The command is an action of `moai card` (decision D-1 of the flow skeleton). Unt
 - AC-16 (REQ-4): a research card is refused with the words that a card closing on a report is the finish command's, and the branch and the ledger stay as they were · verify: `cargo test --locked --offline --test card_land_cli ac16_`
 - AC-17 (REQ-11): a caller whose environment names another repository (the git directory, work tree, index file and namespace variables) lands in the project's own repository · verify: `cargo test --locked --offline --test card_land_cli ac17_`
 - AC-18 (REQ-1): a reference update that git refuses because a lock file is in the way is reported with git's reason and not as tip_moved, and the branch stays and the ledger holds at most the start row of SPEC-20261121-ref-guard · verify: `cargo test --locked --offline --test card_land_cli ac18_`
-- AC-19 (REQ-12): `git branch -C` of an unrelated commit over the integration branch makes the next landing refuse with the word drift, both commits and the update-ref line, nothing written; after the recovery the same call lands · verify: `cargo test --locked --offline --test card_land_cli ac23_`
-- AC-20 (REQ-12): a tip that contains the last landed head (a fast-forward made by hand) is no drift and the next landing goes through · verify: `cargo test --locked --offline --test card_land_cli ac25_`
+- AC-19 (REQ-12): `git branch -C` of an unrelated commit over the integration branch makes the next landing refuse with the word drift, both commits and the `moai card drift --restore` command, nothing written; after the recovery by that command the same call lands · verify: `cargo test --locked --offline --test card_land_cli ac23_`
+- AC-20 (REQ-12): a commit added by hand on top of the last landing is drift, and so is a rewind to the tip the previous landing started from; an interrupted landing is accepted on its from-tip and on its target, and an interrupted landing after a landing does not change the commit a restore names · verify: `cargo test --locked --offline --test card_land_cli ac25_`, `ac26_`, `ac27_` and `ac31_`
 - AC-21 (REQ-9): the lander killed after the move and before the close, then run again, moves nothing, writes no second start row and closes · verify: `cargo test --locked --offline --test card_land_cli ac24_`
+- AC-22 (REQ-12): `moai card drift` reads and writes nothing and says `ok`, `drift` or `no_landing` with the recorded commit · verify: `cargo test --locked --offline --test card_land_cli ac28_`
+- AC-23 (REQ-12): `moai card drift --restore` previews the move and the commits it drops; with `--apply` it needs `--by leader`, the digest of a preview of the same state and a permission reference, moves the branch under the guard and writes one `card.tip_restored` row · verify: `cargo test --locked --offline --test card_land_cli ac29_` and `ac30_`
 
 ## Scope
 
@@ -88,7 +90,7 @@ The command is an action of `moai card` (decision D-1 of the flow skeleton). Unt
 
 ## Risks
 
-- The drift check compares with the newest start row of the branch only, so a copy that happens before the first landing of a repository, or one that makes the branch a descendant of the last landed head, is not seen. A hand-made fast-forward looks the same as a copy of a descendant; both are accepted on purpose (AC-20). The hook of SPEC-20261121-ref-guard cannot see `git branch -c` and `-C`; this check is the layer that notices them, and the preflight hook of the tool is another card's work.
+- The drift check compares with the ledger's newest successful landing of the branch (a start row followed by a landed row of the same card and head). A branch the ledger never moved has nothing to compare, so a copy before the first landing is not seen; and a first landing that was interrupted uses its own from-tip as the recorded base. A hand-made fast-forward is drift now (the revision-5 decision of the leader on the second re-check): a commit nobody landed is not a landing, and a rewind accepted as the previous start would make the next landing drop a landed change. A branch fast-forwarded by hand after its last landing is refused until the user picks: `moai card drift --restore` previews the move back and lists the commits it drops, so nothing the hand merge added is lost without a look. The hook of SPEC-20261121-ref-guard cannot see `git branch -c` and `-C`; this check is the layer that notices them.
 - A move under a race is refused by git itself, but the close can still be refused after the move when the ledger changed between the checks and the write; the answer says the branch moved, and the rerun closes the card or repeats the refusal. That is the cost of git and the ledger being two stores.
 - `MOAI_GIT_BIN` lets a test put a wrapper around git; the wrapper that makes the branch move at the wrong moment (AC-2) is written by the test and is not a spawn of git by the test.
 
@@ -109,3 +111,4 @@ Slice 1a with the repairs of the first audit (the first audit of `4b43a97984` en
 - Mutants on the five guards of the audit (byte-copy restore, tree clean after each): the SPEC read at the old tip (killed by `ac14_`), the new tip not recorded (`ac15_` and `ac1_`), the already-moved sentence removed (`ac13_`), the report-card refusal removed (`ac16_`) and the git environment scrub removed (`ac17_`): all five killed.
 - Not run: the re-audit (the first auditor's), the Windows type check, `self_check.sh`, a full test run outside the affected sets.
 - Left as the SPEC states them: who may land is the leader word only (D-3, D-6) and the ledger row of the move before the close comes with the next slice; the annotated tag object id that passes the commit check is not repaired here.
+- Revision 5 (the second re-check's B-3 and N-18, N-19): the drift rule is strict (REQ-12, AC-19 to AC-23), `card drift` is the read-only view and the preview-first restore, and the refusal says `nothing was written` once. Red first: `ac23_`, `ac25_`, `ac26_`, `ac28_` and `ac29_` failed on the earlier code. Whole `card_land_cli` target: 29 passed, none failed. Five mutants of the new module (byte-copy restore, tree clean after): M17 (the newest start row read as the landing) first survived and is now killed by `ac31_`; M18 (target of an interrupted first landing not accepted) killed by `ac13_`, `ac24_`, `ac27_`; M19 (the from-tip of a finished landing accepted) killed by `ac26_`, `ac28_`, `ac29_`; M20 (digest not compared) killed by `ac29_`, `ac30_`; M21 (leader word not checked) killed by `ac29_`.
