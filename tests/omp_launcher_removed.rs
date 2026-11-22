@@ -27,9 +27,13 @@ fn fixture() -> Fixture {
         .status()
         .unwrap();
     assert!(init.success());
-    // An initialized project, so no launch runs the first-launch initialization.
-    fs::create_dir(project.path().join(".moai-cli")).unwrap();
-    fs::write(project.path().join(".moai-cli/project.yaml"), "{}\n").unwrap();
+    // An initialized project, so no launch runs the first-launch initialization. The state
+    // folder comes from the resolver, so the case follows the folder the product reads.
+    let state = project
+        .path()
+        .join(moai_cli::state_root::dir(project.path()));
+    fs::create_dir_all(&state).unwrap();
+    fs::write(state.join("project.yaml"), "{}\n").unwrap();
     let bin = tempfile::tempdir().unwrap();
     // Stub `omp` and `claude` programs that leave a trace when they start.
     for host in ["omp", "claude"] {
@@ -238,7 +242,7 @@ fn cc_and_glm_launches_are_unchanged_and_name_no_omp() {
 }
 
 fn save_launcher(f: &Fixture, body: &str) {
-    let dir = f.home.path().join(".moai-cli/config");
+    let dir = moai_cli::home_root::path(f.home.path()).join("config");
     fs::create_dir_all(&dir).unwrap();
     fs::write(dir.join("launcher.yaml"), body).unwrap();
 }
