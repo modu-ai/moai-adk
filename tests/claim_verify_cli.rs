@@ -1652,39 +1652,15 @@ fn hook_binary_exits_2_on_a_lane_branch_without_a_token() {
     assert_eq!(run("cargo test").status.code(), Some(0));
 }
 
-/// AC-2 (workflow text): the MODE-AGENT workflow names the boundary before commit and
-/// push, and the guard that enforces it; the binary test above is the mechanical half.
-#[test]
-fn mode_agent_workflow_names_claim_verify_before_writes() {
-    let text = fs::read_to_string(
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai/workflows/mode-agent.md"),
-    )
-    .unwrap();
-    let step = text
-        .lines()
-        .find(|l| l.contains("moai claim-verify"))
-        .expect("mode-agent names claim-verify");
-    assert!(
-        step.contains("Before every commit and every push"),
-        "{step}"
-    );
-    assert!(step.contains("claim-verify --hook"), "{step}");
-    // C-53 S5: the step checks a card (`card check`) and no card moves by time (was: "never
-    // take the Issue over by time alone").
-    assert!(
-        step.contains("never take a card over by time alone"),
-        "{step}"
-    );
-}
+// Retired with the MODE-AGENT route (SPEC-20261122-next-flow-skills-agents REQ-2): `mode_agent_workflow_names_claim_verify_before_writes` pinned the lane's claim-verify step, which left with the route.
 
-/// #3030 D2: AGENTS.md and the agent-mode workflow state one order for the local claim record:
-/// claim in the folder you will work in, and run `claim-link` when the folder or branch
-/// changes afterwards.
+/// #3030 D2: AGENTS.md states one order for the local claim record: claim in the folder you
+/// will work in, and run `claim-link` when the folder or branch changes afterwards. The agent-mode
+/// half left with the MODE-AGENT route (SPEC-20261122-next-flow-skills-agents REQ-2).
 #[test]
 fn claim_order_docs_agree() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
     let agents = fs::read_to_string(root.join("AGENTS.md")).unwrap();
-    let mode = fs::read_to_string(root.join("skills/moai/workflows/mode-agent.md")).unwrap();
     let line = |text: &str, start: &str| -> String {
         text.lines()
             .find(|l| l.starts_with(start))
@@ -1693,8 +1669,6 @@ fn claim_order_docs_agree() {
     };
     let step1 = line(&agents, "1. Claim.");
     let step2 = line(&agents, "2. Worktree.");
-    let claim = line(&mode, "5. **claim**");
-    let state = line(&mode, "3. **state**");
     assert!(
         step1.contains("claim in the folder you will work in"),
         "{step1}"
@@ -1704,19 +1678,6 @@ fn claim_order_docs_agree() {
         step2.contains("create it first, then claim in it"),
         "{step2}"
     );
-    // C-53 S5: MODE-AGENT takes a card with `card take --worktree`, which records the folder
-    // once; no command re-points a reservation, so the folder never moves (was: claim in the
-    // folder, and `moai claim-link` after a move).
-    assert!(
-        claim.contains("Create the worktree first")
-            && claim.contains("then take the card in it")
-            && claim.contains("Take in the folder you will work in and never move it afterwards"),
-        "{claim}"
-    );
-    assert!(state.contains("the folder you take the card in"), "{state}");
-    for l in [&claim, &state] {
-        assert!(!l.contains("claim-link"), "{l}");
-    }
 }
 
 /// #2673 AC-3: `claim-verify --hook` reads the branch, the claim record and the commits in the

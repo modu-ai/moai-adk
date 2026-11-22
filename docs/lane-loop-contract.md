@@ -1,6 +1,6 @@
 # 레인 반복 계약과 리더 점검 루프 (제안, 2026-11-08)
 
-> **폐기됨 (#2900, #2899 G10, 2026-11-14)**: 이 문서는 더 이상 규칙이 아니다. 현행 규칙은 `docs/design-review/autonomy-modes-spec.md`(§5 모드·리더 행동·비우기 계약, §12 끝 조건)와 `skills/moai/workflows/mode-leader.md`·`mode-agent.md`다. 특히 아래 "리더에게 다음 Issue 요청" 단계는 자율 모드의 self-pick과 지휘 모드의 `clear_redispatch`로 바뀌었다. 아래는 이력으로만 남긴다.
+> **폐기됨 (#2900, #2899 G10, 2026-11-14)**: 이 문서는 더 이상 규칙이 아니다. 현행 규칙은 `docs/design-review/autonomy-modes-spec.md`(§5 모드·리더 행동·비우기 계약, §12 끝 조건)와 `/moai work`의 `skills/moai/workflows/work.md`다(모드 workflow 두 개는 패키지에서 빠졌다). 특히 아래 "리더에게 다음 Issue 요청" 단계는 자율 모드의 self-pick과 지휘 모드의 `clear_redispatch`로 바뀌었다. 아래는 이력으로만 남긴다.
 >
 > 현행 상태(#2167): 이 문서는 2026-11-08 제안으로 남겨 둔 기록이다. 현행 규칙은 `AGENTS.local.md` § Agent loop (self-claim)·§ Leader supervision·§ Gate와 `docs/design-review/autonomy-modes-spec.md` §3(self-claim)·§5(리더 감독)에 있다. 아래 HOLD 중 결정된 것: P08 claim 방식과 lease 4h·자동 takeover 없음(#2166, D-5), 통합 owner = 리더(통합 게이트), 레인 수령 = 리더 배차 대신 self-claim(#2161). 독립 감사는 PR 개설 뒤에 한다(아래 표 4·5단계 순서와 다르다).
 

@@ -126,19 +126,7 @@ class OmpHostSurveyTest(unittest.TestCase):
                 with self.subTest(feature=r["feature"]):
                     self.assertTrue(r["gap"] in ("", "-") or r["omp"] == "n/a", r["gap"])
 
-    def test_the_lane_duty_row_follows_the_omp_entry_spelling(self):
-        # Audit #3203 B1: a host in a list is not a host that works. The lane-duty line types the
-        # prefix the code pairs with omp; the mode workflow names the only spelling OMP accepts.
-        duty = (ROOT / "src" / "lane_duty.rs").read_text(encoding="utf-8")
-        mode = (ROOT / "skills" / "moai" / "workflows" / "mode-agent.md").read_text(encoding="utf-8")
-        code = re.search(r'\("omp",\s*"([^"]+)"\)', duty)
-        doc = re.search(r"`(\S+) --mode-agent` in OMP", mode)
-        self.assertIsNotNone(code, "no omp entry in src/lane_duty.rs")
-        self.assertIsNotNone(doc, "mode-agent.md names no OMP spelling")
-        row = [r for r in self.rows if r["evidence"].startswith("`src/lane_duty.rs::HOSTS")]
-        self.assertEqual(len(row), 1)
-        same = code.group(1) == doc.group(1)
-        self.assertEqual(row[0]["omp"], "yes" if same else "gap", f"code {code.group(1)} vs workflow {doc.group(1)}")
+    # Retired with the MODE-AGENT route (SPEC-20261122-next-flow-skills-agents REQ-2): `test_the_lane_duty_row_follows_the_omp_entry_spelling` compared the lane-duty OMP prefix with the OMP entry of the agent mode file.
 
     def test_the_document_replaces_the_2378_unsupported_line(self):
         # Slice A kept the old words once because the Rust pin `tests/launcher_three_hosts.rs`
