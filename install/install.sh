@@ -24,7 +24,7 @@
 #
 # A release archive carries the skill package and the base agents beside the binary (`skills/`,
 # `agents/`); they go into the version folder next to `bin/`, where `moai update` reads them
-# (SPEC-20261117-installer-skill-agents). Into the hosts (Claude Code, Codex, OMP) they go only
+# (SPEC-20261117-installer-skill-agents). Into the host (Claude Code) they go only
 # through the product's own preview and confirmed apply, `moai-cli update --json` and then
 # `moai-cli update --confirm <plan_digest> --json`: this script copies nothing into a host
 # folder. It shows the folders the preview names, asks once at a terminal (--yes answers for a
@@ -434,7 +434,7 @@ place() {
 # The hosts this machine has: the host's command on PATH, or its folder in HOME.
 detect_hosts() {
     HOSTS=""
-    for host in claude codex omp; do
+    for host in claude; do
         if command -v "$host" >/dev/null 2>&1 || [ -d "$HOME/.$host" ]; then
             HOSTS="$HOSTS $host"
         fi
@@ -456,8 +456,8 @@ install_skill() {
     detect_hosts
     echo ""
     if [ -z "$HOSTS" ]; then
-        print_warning "No Claude Code, Codex or OMP found (no claude, codex or omp command, no ~/.claude, ~/.codex or ~/.omp)."
-        print_info "Install one of them, then install the MoAI skill and agents with: moai update"
+        print_warning "No Claude Code found (no claude command, no ~/.claude)."
+        print_info "Install it, then install the MoAI skill and agents with: moai update"
         return 0
     fi
     print_info "Previewing the MoAI skill and agents for your hosts (writes nothing):"
@@ -577,13 +577,11 @@ finish() {
     echo "  $n. Make a project folder and enter it: mkdir my-project && cd my-project"
     n=$((n + 1))
     echo "  $n. Start a session there, then set the project up inside it:"
-    # One entry per host found, or all three when none was: the list is split on purpose.
+    # One entry per host found, or Claude Code when none was: the list is split on purpose.
     # shellcheck disable=SC2086
-    for host in ${HOSTS:-claude codex omp}; do
+    for host in ${HOSTS:-claude}; do
         case "$host" in
             claude) echo "     Claude Code: moai cc (or moai glm; -l leader, -a agent), then /moai project" ;;
-            codex) echo "     Codex: moai codex, then \$moai project" ;;
-            omp) echo "     OMP: omp, then /skill:moai project" ;;
         esac
     done
     echo ""

@@ -1,12 +1,11 @@
 MoAI-ADK <version> — agentic development kit
 
 Usage: moai <command> [options]
-       moai cc|glm|omp -l|-a    lead or agent session
+       moai cc|glm -l|-a    lead or agent session
 
 Start
   cc                     Start a Claude Code session
   glm                    Start a Claude Code session on z.ai GLM
-  omp                    Start an Oh My Pi (OMP) session
 Project
   project-detect         Detect the project's facts
   project-plan           Preview the project profile
@@ -145,6 +144,7 @@ Lane and leader
   lane-resume-note       Write a card's resume note
   lane-resume-check      Read a card's resume note from a comment
   lane-duty-line         Print the line a leader types into a lane
+  lane-run               Run a lane non-stop or one card at a time
   lane-status            Show the status table of the named lanes
   lane-screen            Read a lane's screen into a state
   lane-send              Send a text to a lane terminal if its screen allows it
@@ -244,9 +244,9 @@ Internal
 Options:
   -l, --leader             Start a leader session on the default host (cc); the
                            role is entered inside it with `/moai --mode-leader`
-  -a, --agent [<HOST>]     Start an agent session on HOST (cc|glm|omp; default
-                           cc); the role is entered inside it with `/moai
-                           --mode-agent` (omp: `/skill:moai --mode-agent`)
+  -a, --agent [<HOST>]     Start an agent session on HOST (cc|glm; default cc);
+                           the role is entered inside it with `/moai
+                           --mode-agent`
       --color <WHEN>       Color on a terminal: auto, always (even with NO_COLOR
                            or TERM=dumb) or never; put it before the command
       --name <NAME>        Session name (default `leader` for -l, the project's

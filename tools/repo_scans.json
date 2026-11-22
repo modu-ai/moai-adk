@@ -734,7 +734,7 @@
           "prefix": "README.md"
         },
         {
-          "prefix": "AGENTS.md"
+          "prefix": "CLAUDE.md"
         }
       ],
       "rejects": "a file that still says to run the removed Python Claude adapter, the adapter coming back, or the kept output styles leaving templates/claude/output-styles/ (#2709)"
@@ -1041,6 +1041,29 @@
         }
       ],
       "rejects": "a second shipped text that explains the meaning of the NeXT name, or a shipped text that spells the four technical rules of the flow as the letters of the name (SPEC-20261122-next-flow-skills-agents AC-3)"
+    },
+    {
+      "id": "state-folder-literals-in-tests",
+      "tests": [
+        "tests/state_folder_literal_scan.rs::the_repository_tests_stay_within_the_state_folder_baseline"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test state_folder_literal_scan"
+      ],
+      "rules": [
+        "tests/state_folder_literal_scan.rs",
+        "tests/fixtures/state_folder_literals/allow.tsv"
+      ],
+      "scope": [
+        {
+          "prefix": "tests/",
+          "suffixes": [
+            ".rs",
+            ".py"
+          ]
+        }
+      ],
+      "rejects": "a test file outside tests/fixtures that spells the earlier or the new state folder name and is not in the counted baseline, or spells one more often than its baseline count; a fresh project or HOME uses the resolvers (SPEC-20261122-state-folder-literal-scan)"
     }
   ]
 }

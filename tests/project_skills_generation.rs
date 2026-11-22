@@ -1,6 +1,6 @@
 //! Issue #2706 P2: `generation-plan` builds project skills `prj-<name>` from the profile's
 //! interview answers into `.claude/skills/` (Claude Code), records them in
-//! `.moai-cli/manifests/generation.json`, never overwrites a hand edit and never claims a folder
+//! `manifests/generation.json` of the project state folder, never overwrites a hand edit and never claims a folder
 //! it did not write. A request without project skills plans as before. The retired hosts codex and
 //! omp are left out of a request: nothing is written under `.agents` for them
 //! (SPEC-20261121-remove-codex-project-layer).
@@ -9,9 +9,14 @@ mod common;
 
 use serde_json::{json, Value};
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use tempfile::TempDir;
+
+/// The project's state folder, named by the resolver the product uses.
+fn state(root: &Path) -> PathBuf {
+    root.join(moai_cli::state_root::dir(root))
+}
 
 fn cli(args: &[&str], input: &Value) -> std::process::Output {
     let mut child = Command::new(crate::common::MOAI_BIN)
@@ -42,7 +47,7 @@ fn write_profile(root: &Path, decisions: Vec<Value>) {
         "interview_revision": "r1", "decisions": decisions});
     let mut bytes = serde_json::to_vec_pretty(&profile).unwrap();
     bytes.push(b'\n');
-    fs::write(root.join(".moai-cli/project.yaml"), bytes).unwrap();
+    fs::write(state(root).join("project.yaml"), bytes).unwrap();
 }
 
 fn answers() -> Vec<Value> {
@@ -57,7 +62,7 @@ fn answers() -> Vec<Value> {
 fn project() -> TempDir {
     let root = TempDir::new().unwrap();
     fs::create_dir_all(root.path().join("skills/moai/workflows")).unwrap();
-    fs::create_dir_all(root.path().join(".moai-cli")).unwrap();
+    fs::create_dir_all(state(root.path())).unwrap();
     write_profile(root.path(), answers());
     root
 }
@@ -131,7 +136,7 @@ fn a_project_skill_is_written_for_claude_only_from_the_answers() {
         "an unanswered axis is never written"
     );
     let manifest: Value =
-        serde_json::from_slice(&fs::read(r.join(".moai-cli/manifests/generation.json")).unwrap())
+        serde_json::from_slice(&fs::read(state(r).join("manifests/generation.json")).unwrap())
             .unwrap();
     let kinds: Vec<&str> = manifest["owned_files"]
         .as_array()
@@ -297,7 +302,7 @@ fn a_skill_no_longer_requested_is_removed_and_can_be_recovered() {
     );
     assert!(r.join(CLAUDE).exists());
     let manifest: Value =
-        serde_json::from_slice(&fs::read(r.join(".moai-cli/manifests/generation.json")).unwrap())
+        serde_json::from_slice(&fs::read(state(r).join("manifests/generation.json")).unwrap())
             .unwrap();
     assert!(
         !manifest.to_string().contains("prj-extra"),
@@ -454,7 +459,7 @@ fn a_remove_never_follows_a_link_or_a_recorded_path_of_another_kind() {
     let r = root.path();
     result(&apply(r, &result(&plan(r, &request(two())))));
     fs::write(r.join("notes.md"), "keep me\n").unwrap();
-    let mpath = r.join(".moai-cli/manifests/generation.json");
+    let mpath = state(r).join("manifests/generation.json");
     let text = fs::read_to_string(&mpath).unwrap();
     // The baseline is spelled exactly as the tool records it (`sha256:<hex>`), so `notes.md`
     // reads as unedited and only the path check can refuse it.

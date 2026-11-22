@@ -109,28 +109,8 @@ Codex 공식 문서는 Desktop 앱, CLI, IDE 확장을 함께 설명한다. 세 
 
 호스트 세션은 역할 없이 엽니다: `moai cc|glm|codex`는 평범한 host 세션이고(#2053), MoAI 역할은 세션 안에서 `/moai --mode-leader`·`/moai --mode-agent`로 정합니다. 모드 표기는 이 두 개뿐입니다(사용자 결정 2026-11-10, #2286 — 옛 표기와 별칭은 폐기). 리더·에이전트 론처 플래그 `-l|-a`(`moai -l|-a`, `moai cc|glm|codex -l|-a`)는 세션 이름(`leader`, `agent-N`)과 전체 권한을 붙이는 형태로 유지합니다(사용자 결정 2026-11-10, Issue #2359 댓글 6760976883). `-l|-a`는 이름과 권한만 정하고 역할은 세션 안에서 `/moai --mode-leader`·`/moai --mode-agent`(Codex는 `$moai --mode-leader`·`$moai --mode-agent`)로 들어가며, 도움말과 `--dry-run` notes가 이를 적습니다. `moai codex -a`만은 첫 프롬프트를 `$moai --mode-agent` 줄로 시작합니다(사용자 결정 2026-11-18, SPEC-20261118-launcher-agent-entry: 이름 줄만 받은 Codex 레인은 에이전트 모드에 들어가지 않았음). #2164의 deprecated 경고는 없앴고, 역할 없는 세션에는 권한 플래그를 붙이지 않습니다. `--name`은 여전히 독립 옵션입니다. 상태: 유지(`--dry-run`과 시험으로 확인, 실제 host 실행 not_run). git 저장소가 아닌 폴더에서 처음 실행하면 묻지 않고 `git init`과 프로젝트 설정(`.moai-cli/project.yaml`)·`AGENTS.md` 생성을 먼저 합니다(이미 있는 파일은 그대로, HOME 자체·루트는 안내 후 중단, git 미설치는 OS별 설치 안내 후 중단 — 사용자 결정 2026-11-12, #2481, 상세는 `docs/rust-product-path.md` "First launch initializes the project folder").
 
-론처가 시작하는 host는 `cc`·`glm`·`codex`·`omp` 네 가지입니다. OMP 론처(`moai omp [-l|-a]`)는 사용자 지시 2026-11-17(카드 C-62: OMP를 전체 host로 지원)로 들어왔고, 같은 날 연 Issue #2378의 2026-11-10 결정(OMP 어댑터 #2362 제거, 론처는 세 host)을 **대체**합니다. `moai omp`는 `omp --model`·`--thinking`·`--approval-mode`로 명령을 만들고(역할 세션은 `yolo`, `--permissions`는 `always-ask-cached`, 역할 없는 세션은 플래그 없음), 역할은 세션 안에서 `/skill:moai --mode-leader`·`/skill:moai --mode-agent`로 정합니다(OMP는 세션 이름 플래그가 없고 첫 메시지로 그 줄을 풀어 주는지 확인하지 못했습니다). z.ai 모델(`zai/…` 또는 이름에 `glm`)을 고르면 glm 키가 `ZAI_API_KEY`로 OMP 프로세스에만 갑니다. 어디가 빠졌는지는 아래 "MoAI 기능별 host 지원 (C-62)" 표가 줄마다 적습니다. 2026-11-13 사용자 확정(공식 지원 5개: Claude Code, Codex, OMP, Kiro, Cursor CLI)에 따라 OMP는 기본 에이전트 파일(`~/.omp/agent/agents/moai-<역할>.md`, `src/agent_defs.rs`)의 대상 host입니다(Issue #2633).
+론처가 시작하는 host는 `cc`·`glm` 두 가지입니다. 2026-11-17에 들어왔던 OMP 론처(`moai omp [-l|-a]`)는 2026-11-21 사용자 결정(OMP·Codex 지원 철회)으로 없어졌습니다. 지금 `moai omp`와 `moai help omp`는 제거 안내만 출력하고 아무것도 시작하지 않으며, 저장된 론처 설정의 `omp` 값은 읽을 때 건너뜁니다.
 
-## MoAI 기능별 host 지원 (C-62)
+## MoAI 기능별 host 지원
 
-코드에서 host로 갈라지는 자리마다 한 줄이다(사용자 지시 2026-11-17, 카드 C-62: OMP를 전체 host로 지원). `yes`는 그 자리가 host를 다룬다는 뜻이고, `gap`은 아직 다루지 않는다는 뜻이며 어느 조각이나 카드가 닫는지 `gap` 열에 적는다, `n/a`는 그 host에서 하지 않기로 했거나 그 자리에 해당하는 단계가 없다는 뜻이다. 근거(`evidence`)는 `파일::기호`이고, ` (list)`가 붙은 줄은 그 기호가 가리키는 host 목록이 이 줄의 `yes`와 같아야 한다. `tests/omp_host_survey_test.py`가 근거 파일·기호의 존재와 목록 일치, OMP `gap`의 닫는 곳을 확인한다. 2026-11-18, tip eea59f4ff1에서 코드를 읽어 적었고(조각 A), 같은 날 조각 B(`SPEC-20261118-omp-launcher`)가 론처·도움말·프로젝트 설정·세션 host 목록·glm 키 길·레인 의무 줄의 OMP 칸을 `yes`로 바꿨다. 세션 안에서 skill과 agent가 실제로 로드되는 관찰은 아직이다(`not_run`, 사람 관찰 — 카드 C-62 기준 5; 절차는 `.moai/specs/SPEC-20261119-omp-host/spec.md`). 다만 2026-11-19 무비용 점검(모델 호출 없음)으로 두 가지는 보았다: OMP 18.18.7의 `omp skills list`(스킬 22개)가 moai 스킬을 `source claude:user`, 파일 `<홈>/skills/moai/SKILL.md`로 발견하는 것과, `~/.omp/agent/agents/`에 `moai-{audit,docs,impl,plan,research}.md` 다섯 파일이 있는 것.
-
-| feature | claude | codex | omp | evidence | gap |
-| --- | --- | --- | --- | --- | --- |
-| 론처 하위 명령 `moai <host> -l\|-a` | yes | yes | yes | `src/main.rs::Omp(HostLaunch)` | - |
-| 론처 도움말과 사용법 줄 | yes | yes | yes | `src/help.rs::LAUNCHERS` | - |
-| 론처 첫 실행의 프로젝트 설정 | yes | yes | yes | `src/launcher_init.rs::default_profile` | - |
-| 세션 등록의 host 목록 | yes | n/a | yes | `src/session.rs::HOSTS` (list) | - |
-| glm 키가 세션에 닿는 길 | yes | n/a | yes | `src/session.rs::read_here` | - |
-| 프로필이 적을 수 있는 host | yes | yes | yes | `src/profile.rs::KNOWN_HOSTS` (list) | - |
-| 에이전트 정의 렌더링 | yes | yes | yes | `src/agent_defs.rs::HOSTS` (list) | - |
-| hook 설치와 전달 | yes | n/a | n/a | `src/hooks.rs::HOSTS` (list) | - |
-| 레인 의무 줄(`lane-duty-line`) | yes | yes | yes | `src/lane_duty.rs::HOSTS` | - |
-| host 폴더 해석 | yes | yes | yes | `src/host_home.rs::Omp` | - |
-| 프로젝트 host 단계(codex·omp) | n/a | n/a | n/a | `src/project_hosts.rs::retired_hosts_step` | - |
-| 사용자 범위 AGENTS 라우팅 | yes | yes | n/a | `src/home_routing.rs::shadows every other user context file` | - |
-| 상태줄 설정 | yes | n/a | n/a | `src/project_update.rs::statusLine` | - |
-| skill 설치(`moai update`)의 host 목록 | yes | yes | gap | `src/update.rs::HOSTS` (list) | leader card: OMP는 `.agents/skills`(codex 단계가 쓰는 폴더)와 `~/.omp/agent/skills`를 읽으므로(`src/skills_legacy.rs`) 일부는 이미 닿는다; 2026-11-19 `omp skills list` 관찰(무비용)은 Claude 사용자 skill 폴더도 읽어 moai 스킬을 `source claude:user`로 발견함을 보여 주므로 읽는 폴더는 이 가정보다 넓다; 빠진 것은 이 목록과 `~/.omp/agent/skills`로의 설치이고, `src/update.rs`는 카드 C-47 범위 |
-| 프로젝트 skill 설치 | yes | yes | gap | `src/project_skills.rs::host_folder` | leader card: 같은 폴더 규칙(OMP는 `.agents/skills`를 읽으므로 codex용 설치가 OMP에도 보이는지 먼저 확인; 2026-11-19 `omp skills list` 관찰은 OMP가 가정 밖의 Claude 사용자 skill 폴더도 `source claude:user`로 읽음을 보여 주므로, 확인할 폴더에 그 폴더와 `~/.omp/agent/skills`도 더한다) |
-| 출력 스타일 설치 | yes | yes | gap | `src/home_style.rs::HOSTS` (list) | leader card: OMP에 출력 스타일이 있는지 먼저 조사한다 |
-| 감사 독립성 표 | yes | yes | gap | `src/audit.rs::INDEPENDENCE` (list) | leader card: OMP 하위 에이전트가 이전 대화를 이어받는지 문서로 확인한 뒤 줄을 더한다 |
+OMP와 Codex 지원은 2026-11-21 사용자 결정으로 철회되었고, MoAI가 지원하는 host는 Claude Code 하나입니다. 코드에 남은 `codex`·`omp` 이름은 옛 설정과 파일을 읽어 건너뛰거나 그대로 두는 자리입니다. 2026-11-17에 연 OMP 전체 지원 조사표와 그 표를 고정하던 `tests/omp_host_survey_test.py`는 이 결정으로 지웠습니다(옛 표는 git 기록에 남아 있습니다).

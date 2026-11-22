@@ -32,7 +32,6 @@ parent: null
 
 ## Non-goals
 
-- 이 조각의 코드·시험 변경: 조사와 SPEC 만 써요.
 - leader round·lane registry·화면 읽기 지우기: 재설계 순서의 host adapter 코드 조각이 그 자신의 카드로 해요. 이 SPEC 은 그 조각이 쓸 메시지 길의 요구만 정해요.
 - 머신 밖·클라우드 세션에 메시지 보내기: Remote Control 과 claude.ai 로그인이 필요하고 GLM 라우팅 세션은 쓸 수 없어서 범위 밖이에요.
 - 상태줄 다시 설계(진행 순서 표시 카드)와 `rate_limits` 표시: 이 SPEC 은 absent 가능성만 기록해요.
@@ -42,7 +41,7 @@ parent: null
 
 - REQ-1: When the flow wakes another flow session, the wake shall be one Claude Code cross-session message addressed to the session's name whose text names only the ledger change to read, carrying no state the ledger does not already hold.
 - REQ-2 (REQ-1): IF the addressee does not appear in the listing of reachable sessions, THEN the wake command shall report the constraint once with its reason (a different config root, no channel from the shared flag slot or the version, or a session without an inbox) and neither re-send nor write into the addressee's terminal.
-- REQ-3: The wake command shall read the send result and report its three shapes (delivered to the inbox, held with a delivery notice, refused) without a second send · failure: none — a held or refused wake changes nothing in the ledger.
+- REQ-3: The wake command shall read the send result and report its three shapes (queued to the inbox socket, held with a delivery notice, refused) without a second send · failure: none — a held or refused wake changes nothing in the ledger.
 - REQ-4: moai shall address Orca mail only to Orca bots and from one Orca worker to another, never between two Claude Code sessions through Orca mail or a terminal send.
 - REQ-5: The lane launcher shall start every flow session with the same Claude Code config root as the session the user talks to, because session discovery reads one config root (measured 2026-11-22: one root held the eight live flow sessions and every other root saw none of them).
 - REQ-6: A wake to a GLM-routed session shall use the same message path as a wake to a first-party session, requiring neither a claude.ai sign-in nor rate-limit data (measured: a GLM session listed its seven peers and its message to a first-party session was delivered).
@@ -53,17 +52,17 @@ parent: null
 
 ## Acceptance
 
-- AC-1 (REQ-1): a wake is one SendMessage to a session name, the ledger row exists before the message leaves, and the text names the change and where to read it and nothing else · verify: `cargo test --locked --offline --test host_wake_cli ac1_`
-- AC-2 (REQ-2, REQ-3): an addressee missing from the listing refuses once with the reason and sends nothing; a delivered, a held-with-notice and a refused send each report their shape with no second send · verify: `cargo test --locked --offline --test host_wake_cli ac2_`
-- AC-3 (REQ-4): between two Claude Code sessions no Orca call is made, and the Orca transport appears only with an Orca bot or worker address · verify: `cargo test --locked --offline --test host_wake_cli ac3_`
-- AC-4 (REQ-5, REQ-7): lanes the launcher starts under a temporary shared config root appear in the listing of a session in that root and receive a message, and a lane in another root is reported unreachable — the listing comes from a fake session registry the test builds, no real session is started · verify: `cargo test --locked --offline --test host_wake_cli ac4_`
-- AC-5 (REQ-6): the wake path is the same call for a first-party and a GLM-routed addressee and reads no rate-limit field · verify: `cargo test --locked --offline --test host_wake_cli ac5_`
-- AC-6 (REQ-8, REQ-9, REQ-10): a landing sends one notification naming the card and the new head to the sibling sessions, a wait attaches the idle notice once instead of polling, and a headless worker starts with its inbound control set to accept in the settings file it reads · verify: `cargo test --locked --offline --test host_wake_cli ac6_`
+- AC-1 (REQ-1, REQ-3): one send writes exactly the minimum user line with one newline and answers queued; every send path sends exactly once · verify: `cargo test --locked --offline --test host_wake_cli ac3_` · verify: `cargo test --locked --offline --lib host_wake::tests::a_valid_wake`
+- AC-2 (REQ-2): the listing refusals answer their one-line reason and send nothing — different root, no inbox, and the registry folder named as missing or unreadable · verify: `cargo test --locked --offline --test host_wake_cli ac1_` · verify: `cargo test --locked --offline --test host_wake_cli ac2`
+- AC-3 (REQ-1, REQ-3): the socket path is checked before any connect — absolute, no linked component (socket or parent folder), inside the user-owned cc-socks folder closed against group and world writes (each bit alone refuses), a real socket file · verify: `cargo test --locked --offline --test host_wake_cli ac6_` · verify: `cargo test --locked --offline --lib host_wake::tests::the_folder_predicate`
+- AC-4 (REQ-2): a name answering to two live sessions is refused, never picked · verify: `cargo test --locked --offline --test host_wake_cli ac4_`
+- AC-5 (REQ-9): the idle flag is refused with its line — the idle notice rides the model-session tool · verify: `cargo test --locked --offline --test host_wake_cli ac5_`
+- AC-6 (REQ-8, REQ-9, REQ-10), the land and launcher slice: a landing notifies the sibling sessions, a wait attaches the idle notice through the model-session tool, and a headless worker starts with accept in its settings file · verify: `cargo test --locked --offline --test host_wake_land_cli` (the tests land with that slice)
 
 ## Scope
 
-- this slice, write: `.moai/specs/SPEC-20261122-session-messages/**`
-- later slices, write: the wake command and its refusal reasons (`src/` module of the host adapter), the launcher's config-root sharing, the removal of the leader round, the lane registry and the screen reading (`src/leader_round.rs`, `src/lane_registry.rs`, `src/lane_screen.rs`, `src/lane_send.rs`, `src/ops/lane_send.rs`, `src/ops/leader_round.rs`), the tests that pin them
+- the landed slices write: this SPEC, the wake module and its command (`src/host_wake.rs`, `src/ops/host_wake.rs`), the tests that pin them, the operation document
+- the later slices write: the launcher's config-root sharing, the land notification of REQ-8, the removal of the leader round, the lane registry and the screen reading (`src/leader_round.rs`, `src/lane_registry.rs`, `src/lane_screen.rs`, `src/lane_send.rs`, `src/ops/lane_send.rs`, `src/ops/leader_round.rs`), the tests that pin them
 - forbidden: writing the real HOME or any config root of this machine; printing key material or the messaging token; a bulk edit of the real ledger
 
 ## Plan
@@ -84,8 +83,6 @@ parent: null
 
 ## Decisions
 
-| D-8 | The CLI wake sends the minimum user line the leader's research measured (`{"type":"user","message":{"role":"user","content":"…"}}` plus one newline, one direction, close after) with no auth token read and no from-mode faked; a bypass lane would hold such a message, so moai sets `crossSessionInbound` to accept by default in the user settings of every config folder it installs into (a default item of the install/update preview, with one line on what it allows and how to turn it off — the user decision replacing the earlier pick), and the held-or-delivered status notice goes to a sender socket the CLI does not have — its answer is the queued shape. The model-session path stays the native SendMessage tool. | The leader's decision and the measured format (2026-11-22, session-socket-format report); the settings write rides the check of the settings-write card. | Send only after official docs name a format; make accept a pick again. |
-
 | Id | Decision | Basis | Undo |
 | --- | --- | --- | --- |
 | D-1 | The flow messages same-machine sessions only; cross-machine and cloud stay out. | Beyond this machine needs Remote Control and a claude.ai sign-in, which a GLM-routed session cannot have (docs; measured absence of the tool). | Add a Remote Control slice later. |
@@ -93,15 +90,17 @@ parent: null
 | D-3 | moai never writes the shared flag slot and never injects the hatch; it only detects and reports. | Only first-party sessions write the slot (prior measurement); writing it is upstream's job. | Write the slot from the launcher. |
 | D-4 | A wake message is a pointer into the ledger, never the record. | The queue-on-disk doctrine: a held or lost message must cost nothing. | Allow stateful messages. |
 | D-5 | When messaging is absent the wake surfaces the constraint; it does not fall back to the terminal send. | The 2026-11-19 screen-send accident is why the guard exists; silence with a reason beats typing blind. | Restore the screen fallback. |
-| D-6 | A wake may attach the one-shot idle notice instead of polling. | `notify_when_idle` replaces a polling loop (docs; step 4 of the redesign order: event wake instead of polling). | Poll the ledger. |
+| D-6 | The CLI wake refuses the `--idle` flag (the one-shot idle notice rides the model-session tool's SendMessage; the minimum socket line carries none). | The leader's measured format: the minimum line has no idle field; the notice belongs to the tool path. | Wire the notice into the socket line. |
+| D-8 | The CLI wake sends the minimum user line the leader's research measured (`{"type":"user","message":{"role":"user","content":"…"}}` plus one newline, one direction, close after) with no auth token read and no from-mode faked; a bypass lane would hold such a message, so moai sets `crossSessionInbound` to accept by default in the user settings of every config folder it installs into (a default item of the install/update preview, with one line on what it allows and how to turn it off — the user decision replacing the earlier pick), and the held-or-delivered status notice goes to a sender socket the CLI does not have — its answer is the queued shape. The model-session path stays the native SendMessage tool. | The leader's decision and the measured format (2026-11-22, session-socket-format report); the settings write rides the check of the settings-write card. | Send only after official docs name a format; make accept a pick again. |
 
-### Open questions (the user's pick before approval)
+### Answered questions (the user's picks, note 6063 on this card)
 
-- REQ-5 — 흐름 세션 전체가 사용자가 말하는 세션과 하나의 config root 를 공유하는 것(Orca 프로필 구조와 얽힘).
-- D-1 — 머신 밖·클라우드로 메시지를 내보내지 않는 것(Remote Control 도입 여부).
-- D-2 — 탈출구 환경 변수를 쓰지 않고 루트 공유로 해결하는 것.
-셋 다 사용자가 고르기 전까지 이 SPEC 은 draft 로 있어요.
+- REQ-5 — 흐름 세션 전체가 사용자가 말하는 세션과 같은 config root 를 씀(사용자 확정).
+- D-1 — 메시지는 이 머신 안에서만 가요; Remote Control·클라우드 없음(사용자 확정).
+- D-2 — 닿음은 루트 공유로; 탈출구 환경 변수는 쓰지 않음(사용자 확정).
 
 ## Result
 
-Research-and-SPEC slice, done 2026-11-22. No code, no runtime acceptance criterion run (AC-1…AC-6 belong to the host-adapter code slice). Measured, with times: same-root peer listing 01:23:30Z (7 peers); GLM→peer send delivered to the inbox 01:23:55Z (not held, not refused); reverse peer→GLM reply framed and received — sent ≈02:13Z (sender-stated 11:13 KST), received before 02:14:38Z (first reference in this session's turn record); cause of the empty listing measured as per-config-root discovery registries (8/1/0/0/0/0 entries across the roots); GLM endpoint cleared; inbound defaults unset everywhere, so the two-class default rule applies (doc quoted in Intent); status-line rate_limits documented as subscription-only, absent expected on a third-party endpoint (no live sample taken, read-only); Artifact tools offered, Remote Control not. Both card criteria met with recorded evidence (research note and round-trip addendum). The three open questions above stay with the user; the SPEC stays draft until then.
+The research slice (2026-11-22) and the first code slices have landed. Measured, with times: same-root peer listing 01:23:30Z (7 peers); GLM→peer send queued to the inbox 01:23:55Z (not held, not refused); reverse peer→GLM reply framed and received — sent ≈02:13Z (sender-stated 11:13 KST), received before 02:14:38Z; cause of the empty listing measured as per-config-root discovery registries (8/1/0/0/0/0 entries across the roots); GLM endpoint cleared; inbound defaults unset everywhere, so the two-class default rule applies; status-line rate_limits documented as subscription-only, absent on a third-party endpoint; Artifact tools offered, Remote Control not. Both card criteria met with recorded evidence. The three open questions are answered by the user (the Answered section below).
+
+The landed code: the wake module and its command answer the refusal reasons (a different root, the sessions folder named as missing or unreadable, no inbox, an ambiguous name, the idle flag, and the socket path guard: absolute, no linked component, the user-owned cc-socks folder closed against group and world writes, a real socket file), send exactly one minimum user line and answer queued with socket_write true; a refused answer exits 0 with ok true and its reason. AC-1…AC-5 are met by their named tests. AC-6 (the land notification, the launcher's reachability check, the headless worker's accept) lands with its own slice — its test target arrives then. Notes for that slice: a stale registry file makes a name ambiguous (live-ness is not checked); the ambiguous hint says what the user can do, not a nonexistent short reference; the call site passing the two uids is exercised with a foreign owner only under root, so the predicate test covers that path in the pure form.
