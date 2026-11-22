@@ -10,9 +10,17 @@
 //!
 //! The rules are the moai skill's: a package file on disk that no receipt of this skill owns blocks
 //! the part (the reason names the folder and says moai did not install it; nothing is written
-//! there), a pending receipt blocks it until it is recovered, and a newer installed version blocks
-//! it unless `--allow-older` was given. The part is planned and applied on its own: a blocked moai
-//! skill copy does not stop it, and a blocked part does not stop the moai skill.
+//! there), and a newer installed version blocks it unless `--allow-older` was given. The plan also
+//! blocks the part when a path a write goes through has a shape the apply would fail on (a file
+//! where a folder is needed, a folder where a file is, a folder moai cannot write in), so a confirm
+//! does not stop halfway on it. The part is planned and applied on its own: a blocked moai skill
+//! copy does not stop it, and a blocked part does not stop the moai skill.
+//!
+//! An apply that still fails halfway undoes its own files: the files it created are removed (only
+//! while they hold the bytes it wrote) with the folders it made, the files it replaced get their
+//! earlier bytes back, and the receipt is marked `recovered`. `recovery-plan` does not read these
+//! receipts, so only an undo that itself fails leaves a receipt pending; a pending receipt blocks
+//! the part, and its reason names the receipt, the folder and the way out by hand.
 //!
 //! Receipts live in their own namespace, `installations/<id>/hosts/<skill>/claude.json`, with
 //! known-good copies under `hosts/<skill>/claude/known-good`. The receipt path, the receipt choice
@@ -22,8 +30,9 @@
 use super::{
     ancestor_symlinks, cross_filesystem, current_install_id, earlier_install_ids, file_result,
     file_result_with, layout_folder, load_host_receipt, now_rfc3339, owned_map, owned_vec,
-    reload_state, scan_projection, sha256_hex, stage_package, validate_permission, writable,
-    FilePlan, HostReceipt, HostReceiptEntry, ProjectionScan, ReceiptSource, StagedPackage,
+    reload_state, scan_projection, sha256_hex, stage_package, test_fault, validate_permission,
+    writable, FilePlan, HostReceipt, HostReceiptEntry, ProjectionScan, ReceiptSource,
+    StagedPackage,
 };
 use crate::apply::{decide, publish_exclusive, publish_replace, read_opt, Decision};
 use crate::host_home::{Host, Place};
@@ -71,6 +80,10 @@ pub struct Layer {
     pub plan_digest: String,
     /// The staged folder of each part (same order), `None` where staging failed.
     staged: Vec<Option<StagedPackage>>,
+    /// Whether the top skills folder of each part (same order) existed when this plan was made.
+    /// The confirm makes its plan before any apply step, so the receipt records the folder as it
+    /// was before the moai skill's apply of the same run could create it.
+    top_existed: Vec<bool>,
 }
 
 impl Layer {
@@ -125,6 +138,7 @@ pub fn plan(home: &Path, package: &Path, allow_older: bool) -> Result<Layer> {
     let canonical_home = fs::canonicalize(home).map_err(|_| "home directory unavailable")?;
     let mut parts = Vec::new();
     let mut staged = Vec::new();
+    let mut top_existed = Vec::new();
     let mut install_id: Option<String> = None;
     if let Some(beside) = package.parent() {
         for skill in SKILLS {
@@ -151,6 +165,11 @@ pub fn plan(home: &Path, package: &Path, allow_older: bool) -> Result<Layer> {
                 }
             };
             let (part, pkg) = plan_part(&canonical_home, &id, skill, stage, allow_older)?;
+            top_existed.push(
+                Path::new(&part.projection_root)
+                    .parent()
+                    .is_some_and(|p| fs::symlink_metadata(p).is_ok()),
+            );
             parts.push(part);
             staged.push(pkg);
         }
@@ -160,12 +179,34 @@ pub fn plan(home: &Path, package: &Path, allow_older: bool) -> Result<Layer> {
         parts,
         plan_digest,
         staged,
+        top_existed,
     })
 }
 
 /// The folder of `skill` under the Claude config folder of `home`.
 fn place(home: &Path, skill: &str) -> Result<Place> {
     crate::host_home::place(Host::Claude, home, &format!("skills/{skill}"))
+}
+
+/// The path of [`place`], or where it would be under `~/.claude` when it cannot be resolved.
+fn folder(home: &Path, skill: &str) -> PathBuf {
+    place(home, skill)
+        .as_ref()
+        .map(Place::path)
+        .unwrap_or_else(|_| home.join(".claude/skills").join(skill))
+}
+
+/// The blocked reason of a pending receipt. `recovery-plan` does not read the receipts of these
+/// skills, so the reason gives the way out by hand.
+fn pending_reason(skill: &str, receipt: &Path, of: &str, root: &Path) -> String {
+    format!(
+        "the {skill} receipt {}{of} is pending: an apply stopped and could not undo its own \
+         files, so moai writes nothing to {} while it is pending; compare that folder with the \
+         receipt's entries, move the folder aside, then remove the receipt to let moai install \
+         {skill} again",
+        receipt.display(),
+        root.display()
+    )
 }
 
 fn plan_part(
@@ -222,10 +263,11 @@ fn plan_part(
         if let Some(reason) = source.blocked {
             blocked = Some(reason);
         } else if let Some(r) = receipt.as_ref().filter(|r| r.status == "pending") {
-            blocked = Some(format!(
-                "the {skill} receipt {} is pending; nothing is written to {root_text} until it \
-                 is recovered",
-                receipt_path(home, &r.install_id, skill, false)?.display()
+            blocked = Some(pending_reason(
+                skill,
+                &receipt_path(home, &r.install_id, skill, false)?,
+                "",
+                &root,
             ));
         } else if let Some(r) = receipt
             .as_ref()
@@ -328,6 +370,9 @@ fn plan_part(
             unmanaged.join(", ")
         ));
     }
+    if blocked.is_none() {
+        blocked = shape_blocker(&root, skill, &files);
+    }
     let part = Part {
         skill: skill.to_string(),
         host: HOST.to_string(),
@@ -343,9 +388,12 @@ fn plan_part(
 }
 
 /// The preflight of `update::preflight` for the folder `place`: links from the host folder down,
-/// a writable parent for an absent folder, a clean scan, a writable folder and one filesystem.
+/// a writable folder above an absent one, a clean scan, a writable folder and one filesystem.
+/// Every reason names the skill folder.
 fn preflight(home: &Path, place: &Place) -> (Option<String>, Option<ProjectionScan>) {
     let root = place.path();
+    let shown = root.display();
+    let refuse = |reason: String| (Some(reason), None);
     let base = &place.base;
     let top = if base == home {
         home.to_path_buf()
@@ -353,22 +401,36 @@ fn preflight(home: &Path, place: &Place) -> (Option<String>, Option<ProjectionSc
         base.parent()
             .map_or_else(|| base.clone(), Path::to_path_buf)
     };
-    if let Err(e) = ancestor_symlinks(&top, &root) {
-        return (Some(e), None);
+    let meta = fs::symlink_metadata(&root);
+    if meta.as_ref().is_ok_and(|m| m.file_type().is_symlink()) {
+        return refuse(format!("the skill folder {shown} is a symlink; refused"));
     }
-    let meta = match fs::symlink_metadata(&root) {
+    if ancestor_symlinks(&top, &root).is_err() {
+        return refuse(format!(
+            "a folder above the skill folder {shown} is a symlink; refused"
+        ));
+    }
+    let meta = match meta {
         Err(_) => {
             let mut cursor = match root.parent() {
                 Some(p) => p.to_path_buf(),
-                None => return (Some("projection path invalid".into()), None),
+                None => return refuse(format!("the skill folder path {shown} is invalid")),
             };
             loop {
-                if fs::symlink_metadata(&cursor).is_ok() {
+                if let Ok(m) = fs::symlink_metadata(&cursor) {
+                    if !m.is_dir() {
+                        return refuse(format!(
+                            "{} is not a folder, but the skill folder {shown} goes below it; \
+                             refused",
+                            cursor.display()
+                        ));
+                    }
                     if !writable(&cursor) {
-                        return (
-                            Some("skills parent directory is not writable; refused".into()),
-                            None,
-                        );
+                        return refuse(format!(
+                            "the folder {} that would hold the skill folder {shown} is not \
+                             writable; refused",
+                            cursor.display()
+                        ));
                     }
                     break;
                 }
@@ -386,26 +448,77 @@ fn preflight(home: &Path, place: &Place) -> (Option<String>, Option<ProjectionSc
         }
         Ok(m) => m,
     };
-    if meta.file_type().is_symlink() {
-        return (Some("projection path is a symlink; refused".into()), None);
+    if !meta.is_dir() {
+        return refuse(format!(
+            "the skill folder path {shown} is not a folder; refused"
+        ));
     }
     let scan = match scan_projection(&root) {
         Ok(s) => s,
-        Err(e) => return (Some(e), None),
+        Err(e) => return refuse(format!("the skill folder {shown}: {e}")),
     };
     if !writable(&root) {
-        return (
-            Some("projection directory is not writable; refused".into()),
-            None,
-        );
+        return refuse(format!("the skill folder {shown} is not writable; refused"));
     }
     if cross_filesystem(home, &root).unwrap_or(false) {
-        return (
-            Some("cross-filesystem projection; receipt and files must share one filesystem".into()),
-            None,
-        );
+        return refuse(format!(
+            "the skill folder {shown} is on another filesystem than the receipts; receipt and \
+             files must share one filesystem"
+        ));
     }
     (None, Some(scan))
+}
+
+/// The first path a write of this plan would fail on, as a blocked reason: below `root`, a part
+/// of a written file's path that exists but is not a folder, a folder there that moai cannot
+/// write in, or the file's own name taken by something that is not a regular file. The plan
+/// blocks the part on it, so a confirm never stops halfway on a shape it could have seen. The
+/// scan has already refused links and special files inside the folder.
+fn shape_blocker(root: &Path, skill: &str, files: &[FilePlan]) -> Option<String> {
+    let aside = format!("move it aside to let moai install {skill} there");
+    for f in files
+        .iter()
+        .filter(|f| f.action == "create" || f.action == "update")
+    {
+        let names: Vec<&str> = f.path.split('/').collect();
+        let mut cursor = root.to_path_buf();
+        for (i, name) in names.iter().enumerate() {
+            cursor.push(name);
+            let Ok(meta) = fs::symlink_metadata(&cursor) else {
+                // Absent from here down: the apply creates it.
+                break;
+            };
+            let shown = cursor.display();
+            let last = i + 1 == names.len();
+            if meta.file_type().is_symlink() {
+                return Some(format!(
+                    "{shown} is a symlink, and the package file {} goes there; {aside}",
+                    f.path
+                ));
+            }
+            if last && !meta.is_file() {
+                return Some(format!(
+                    "{shown} is not a regular file, but the package puts the file {} there; \
+                     {aside}",
+                    f.path
+                ));
+            }
+            if !last && !meta.is_dir() {
+                return Some(format!(
+                    "{shown} is not a folder, but the package file {} goes below it; {aside}",
+                    f.path
+                ));
+            }
+            if !last && !writable(&cursor) {
+                return Some(format!(
+                    "the folder {shown} is not writable, and the package file {} goes in it; \
+                     refused",
+                    f.path
+                ));
+            }
+        }
+    }
+    None
 }
 
 /// Refuses a symlink in any existing component between the state root and `dir`.
@@ -584,9 +697,11 @@ fn resolve_receipt(canonical_home: &Path, install_id: &str, skill: &str) -> Resu
     }
     if let Some((started, id)) = newest_pending {
         if best.as_ref().is_none_or(|(k, _, _)| started >= *k) {
-            return Ok(blocked(format!(
-                "the {skill} receipt of the earlier installation {id} is pending; run \
-                 recovery-plan with that version's binary first"
+            return Ok(blocked(pending_reason(
+                skill,
+                &receipt_path(canonical_home, &id, skill, false)?,
+                &format!(" of the earlier installation {id}"),
+                &folder(canonical_home, skill),
             )));
         }
     }
@@ -678,8 +793,14 @@ pub fn apply(
     crate::home_root::adopt_new(&canonical_home, "update-apply")?;
     let install_id = current_install_id(&canonical_home)?;
     let mut outcomes = Vec::new();
-    let (mut published, mut failed, mut conflict) = (false, false, false);
-    for (part, staged) in fresh.parts.iter().zip(&fresh.staged) {
+    let (mut published, mut failed, mut conflict, mut stuck) = (false, false, false, false);
+    // The top folder as the confirmed plan saw it, before any apply step of this run.
+    for ((part, staged), top_existed) in fresh
+        .parts
+        .iter()
+        .zip(&fresh.staged)
+        .zip(&expected.top_existed)
+    {
         let o = match staged.as_ref().filter(|_| part.preflight != "blocked") {
             None => outcome(
                 part,
@@ -688,15 +809,20 @@ pub fn apply(
                 None,
                 ("no", "no files written"),
             ),
-            Some(staged) => apply_part(&canonical_home, &install_id, part, staged)?,
+            Some(staged) => apply_part(&canonical_home, &install_id, part, staged, *top_existed)?,
         };
         published |= o["status"] == json!("applied");
         failed |= o["status"] == json!("failed");
         conflict |= o["status"] == json!("conflict");
+        stuck |= o["receipt_status"] == json!("pending");
         outcomes.push(o);
     }
-    let state = if failed {
+    // A failed part whose undo put everything back wrote nothing: only a pending receipt, or
+    // another part that did write, makes the layer partial.
+    let state = if stuck || (failed && published) {
         "partial"
+    } else if failed {
+        "failed"
     } else if outcomes.iter().all(|o| o["status"] == json!("blocked")) {
         "blocked"
     } else if published {
@@ -728,7 +854,15 @@ fn outcome(
     })
 }
 
-fn apply_part(home: &Path, install_id: &str, part: &Part, staged: &StagedPackage) -> Result<Value> {
+/// One part's transaction. `top_skills_existed` is the top skills folder as the confirmed plan
+/// saw it, before any apply step of this run.
+fn apply_part(
+    home: &Path,
+    install_id: &str,
+    part: &Part,
+    staged: &StagedPackage,
+    top_skills_existed: bool,
+) -> Result<Value> {
     let skill = part.skill.as_str();
     let root = place(home, skill)?.path();
     let writes: Vec<&FilePlan> = part
@@ -765,9 +899,8 @@ fn apply_part(home: &Path, install_id: &str, part: &Part, staged: &StagedPackage
     receipt_path(home, install_id, skill, true)?;
     let previous = resolve_receipt(home, install_id, skill)?.receipt;
     let pre_owned = owned_map(previous.as_ref());
-    let top_skills_existed = root
-        .parent()
-        .is_some_and(|p| fs::symlink_metadata(p).is_ok());
+    // Measured before the first publish: only these folders are this apply's to remove.
+    let made = missing_folders(&root, &writes);
     let mut receipt = HostReceipt {
         schema_version: crate::install::RECEIPT_SCHEMA_VERSION,
         install_id: install_id.to_string(),
@@ -799,12 +932,15 @@ fn apply_part(home: &Path, install_id: &str, part: &Part, staged: &StagedPackage
     let mut owned_now = pre_owned.clone();
     let mut count = 0usize;
     let mut failed: Option<String> = None;
+    // The bytes each published `update` replaced, for the undo.
+    let mut replaced: Vec<Option<Vec<u8>>> = vec![None; writes.len()];
     for (idx, w) in writes.iter().enumerate() {
         let target = root.join(&w.path);
-        let new_bytes = staged
-            .files
-            .get(&w.path)
-            .ok_or_else(|| "package file disappeared".to_string())?;
+        let Some(new_bytes) = staged.files.get(&w.path) else {
+            failed = Some("package file disappeared".into());
+            receipt.entries[idx].error = failed.clone();
+            break;
+        };
         let before = match read_opt(&target) {
             Ok(b) => b,
             Err(e) => {
@@ -818,51 +954,99 @@ fn apply_part(home: &Path, install_id: &str, part: &Part, staged: &StagedPackage
             receipt.entries[idx].error = failed.clone();
             break;
         }
-        let result = if w.action == "create" {
-            publish_exclusive(&target, new_bytes)
+        // Test seam: `MOAI_CLI_TEST_FAULT=extra_skill_last_publish` fails the last publish as if
+        // the OS refused it (debug builds only).
+        let result = if idx + 1 == writes.len() {
+            test_fault("extra_skill_last_publish")
         } else {
-            publish_replace(&target, before.as_deref(), new_bytes)
-        };
+            Ok(())
+        }
+        .and_then(|()| {
+            if w.action == "create" {
+                publish_exclusive(&target, new_bytes)
+            } else {
+                publish_replace(&target, before.as_deref(), new_bytes)
+            }
+        });
         if let Err(e) = result {
             failed = Some(e);
             receipt.entries[idx].error = failed.clone();
             break;
         }
-        let written = read_opt(&target)?.as_deref().map(sha256_hex);
+        // Published from here: a read-back that fails or differs leaves the file to the undo,
+        // which takes back only the bytes this apply wrote.
+        receipt.entries[idx].published = true;
+        replaced[idx] = before;
+        let written = match read_opt(&target) {
+            Ok(b) => b.as_deref().map(sha256_hex),
+            Err(e) => {
+                failed = Some(e);
+                receipt.entries[idx].error = failed.clone();
+                break;
+            }
+        };
         if written.as_deref() != w.new_sha256.as_deref() {
             failed = Some("published bytes do not match the plan".into());
             receipt.entries[idx].error = failed.clone();
             break;
         }
-        receipt.entries[idx].published = true;
         owned_now.insert(w.path.clone(), written.expect("sha of a written file"));
         count += 1;
+    }
+    if failed.is_none() {
+        for w in &writes {
+            let written = read_opt(&root.join(&w.path)).ok().flatten();
+            if written.as_deref().map(sha256_hex).as_deref() != w.new_sha256.as_deref() {
+                failed = Some(format!(
+                    "published bytes of {} do not match the plan",
+                    w.path
+                ));
+                break;
+            }
+        }
     }
     let files: Vec<Value> = writes
         .iter()
         .zip(&receipt.entries)
         .map(|(f, e)| file_result_with(f, e))
         .collect();
-    if failed.is_some() {
-        // The receipt stays pending with the ownership it had before this apply.
+    if let Some(why) = failed {
+        // The receipt keeps the ownership it had before this apply in either case.
+        let undo = undo_own_writes(&root, &writes, &receipt.entries, &replaced, &made);
         receipt.finished_at = Some(now_rfc3339());
+        let path = receipt_path(home, install_id, skill, false)?;
+        let (status, reload, basis) = match undo {
+            Ok(()) => {
+                receipt.status = "recovered".into();
+                (
+                    "recovered",
+                    "no",
+                    format!(
+                        "apply failed ({why}); the files this apply created were removed and \
+                         the ones it replaced got their earlier bytes back, so {} is as it was; \
+                         the receipt {} is recovered and the next preview plans the part again",
+                        root.display(),
+                        path.display()
+                    ),
+                )
+            }
+            Err(e) => (
+                "pending",
+                "unknown",
+                format!(
+                    "apply failed ({why}) and undoing its own files failed too ({e}); {}",
+                    pending_reason(skill, &path, "", &root)
+                ),
+            ),
+        };
         save_receipt(home, install_id, skill, &receipt)?;
         return Ok(outcome(
             part,
             "failed",
             files,
-            Some("pending"),
-            (
-                "unknown",
-                "apply failed mid-transaction; the part's receipt is pending",
-            ),
+            Some(status),
+            (reload, basis.as_str()),
         ));
-    }
-    for w in &writes {
-        let written = read_opt(&root.join(&w.path))?;
-        if written.as_deref().map(sha256_hex).as_deref() != w.new_sha256.as_deref() {
-            return Err("published bytes do not match the plan".into());
-        }
     }
     receipt.owned = owned_vec(HOST, &owned_now);
     receipt.status = "committed".into();
@@ -884,4 +1068,71 @@ fn apply_part(home: &Path, install_id: &str, part: &Part, staged: &StagedPackage
         Some("committed"),
         (reload, basis.as_str()),
     ))
+}
+
+/// The folders from `root` down to each write's folder that do not exist yet, deepest first:
+/// the ones this apply creates, and so the only ones its undo may remove.
+fn missing_folders(root: &Path, writes: &[&FilePlan]) -> Vec<PathBuf> {
+    let mut made: Vec<PathBuf> = Vec::new();
+    for w in writes {
+        let mut dir = root.join(&w.path);
+        while let Some(parent) = dir.parent() {
+            if !parent.starts_with(root) || fs::symlink_metadata(parent).is_ok() {
+                break;
+            }
+            if !made.iter().any(|m| m == parent) {
+                made.push(parent.to_path_buf());
+            }
+            dir = parent.to_path_buf();
+        }
+    }
+    made.sort_by_key(|p| std::cmp::Reverse(p.components().count()));
+    made
+}
+
+/// Undoes this apply's published writes, last first: a file it created is removed, a file it
+/// replaced gets the bytes it replaced back, each only while it still holds the bytes this apply
+/// wrote; a symlink found there is left alone. Then the folders this apply made are removed while
+/// they are empty. A file this apply did not write is never touched. The error names every file
+/// left as it is.
+fn undo_own_writes(
+    root: &Path,
+    writes: &[&FilePlan],
+    entries: &[HostReceiptEntry],
+    replaced: &[Option<Vec<u8>>],
+    made: &[PathBuf],
+) -> Result<()> {
+    let mut left = Vec::new();
+    for (idx, w) in writes.iter().enumerate().rev() {
+        if !entries[idx].published {
+            continue;
+        }
+        let target = root.join(&w.path);
+        let step = || -> Result<()> {
+            if fs::symlink_metadata(&target).is_ok_and(|m| m.file_type().is_symlink()) {
+                return Err("a symlink is there now".into());
+            }
+            let current = read_opt(&target)?;
+            if current.as_deref().map(sha256_hex).as_deref() != w.new_sha256.as_deref() {
+                return Err("it no longer holds the bytes this apply wrote".into());
+            }
+            match (w.action.as_str(), &replaced[idx]) {
+                ("create", _) => fs::remove_file(&target).map_err(|_| "remove failed".to_string()),
+                ("update", Some(before)) => publish_replace(&target, current.as_deref(), before),
+                _ => Err("the replaced bytes are unknown".into()),
+            }
+        };
+        if let Err(e) = step() {
+            left.push(format!("{} ({e})", w.path));
+        }
+    }
+    for dir in made {
+        // `remove_dir` removes only an empty folder: whatever another writer put there stays.
+        let _ = fs::remove_dir(dir);
+    }
+    if left.is_empty() {
+        Ok(())
+    } else {
+        Err(format!("left as it is: {}", left.join(", ")))
+    }
 }

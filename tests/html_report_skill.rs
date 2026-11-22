@@ -242,10 +242,32 @@ fn the_delivery_section_follows_the_report_rule() {
         last = at;
     }
     assert!(delivery.contains("~/.moai/reports/"), "{delivery}");
+    // Every `references/...` file SKILL.md points to ships: in this skill or in the moai skill.
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("skills");
+    // A path with a `<placeholder>` is a pattern, not a file.
+    let named: Vec<&str> = skill
+        .match_indices("`references/")
+        .filter_map(|(i, _)| skill[i + 1..].split('`').next())
+        .filter(|rel| !rel.contains('<'))
+        .collect();
     assert!(
-        delivery.contains("references/internal/reports.md"),
-        "{delivery}"
+        named.contains(&"references/artifact-contract.md"),
+        "{named:?}"
     );
+    for rel in named {
+        let ships = |skill_dir: &str| {
+            let path = root.join(skill_dir).join(rel);
+            if rel.ends_with('/') {
+                path.is_dir()
+            } else {
+                path.is_file()
+            }
+        };
+        assert!(
+            ships("moai-html-report") || ships("moai"),
+            "SKILL.md points to {rel}, which no shipped skill holds"
+        );
+    }
     assert!(
         !skill.contains("xdg-open"),
         "SKILL.md still opens a browser"

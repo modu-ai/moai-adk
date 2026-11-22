@@ -1561,7 +1561,7 @@ pub struct UserLayerPlan {
     pub extra_skills: extra_skill::Layer,
     /// Agent, routing and style hosts left out because their skill copy is blocked.
     pub skipped: Vec<serde_json::Value>,
-    /// One digest over the seven plan digests; the only value `--confirm` accepts.
+    /// One digest over the eight plan digests; the only value `--confirm` accepts.
     pub plan_digest: String,
     /// #2872 stage 2: the cleanup preview (`update_cleanup::plan`) from the same staged
     /// package, only when it archives something. Not part of `plan_digest`: only
@@ -2223,11 +2223,18 @@ fn update_command_core(
             "hooks": hooks["receipt"].as_str().map(|id| format!(
                 "moai hooks-revert <PROJECT> --receipt {id} --permission-reference <reference>"
             )),
-            "skills": "recovery-plan / recovery-apply for a host left pending",
+            "skills": "recovery-plan / recovery-apply for a moai skill host left pending",
         },
     });
     if !fresh.extra_skills.parts.is_empty() {
         out["extra_skills_result"] = extra_skills;
+        // `recovery-plan` reads only the moai skill's receipts: these parts undo their own
+        // failed apply, and a pending receipt's blocked reason gives the way out by hand.
+        out["revert"]["extra_skills"] = json!(
+            "none: a failed apply of a skill folder beside the moai skill removes the files it \
+             created and restores the ones it replaced; if that undo fails too, the part's \
+             reason names the pending receipt and the way out"
+        );
     }
     if !fresh.keys.rows.is_empty() {
         out["revert"]["keys"] = json!(revert("keys-revert", &keys));

@@ -150,8 +150,7 @@ from (the output style or an explicit `audience`), the report title, and the
 key sections or figures in a short paragraph or a few bullets. Never paste the
 html.
 
-**The other report rules** are in the moai skill's
-`references/internal/reports.md`. In short:
+**The other report rules:**
 
 - The md carries one revision line: the head commit the report was made at, or `UNVERSIONED`.
 - A table of more than 200 rows goes to a file beside the report; the answer shows its row count and path.

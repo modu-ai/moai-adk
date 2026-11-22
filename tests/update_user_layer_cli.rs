@@ -927,3 +927,301 @@ fn a_second_version_folder_adopts_the_html_report_receipt_instead_of_blocking_it
         "{p}"
     );
 }
+
+/// [`run`] with one more variable set, such as the debug builds' fault seam.
+fn run_with(exe: &Path, home: &Path, args: &[&str], var: (&str, &str)) -> Output {
+    Command::new(exe)
+        .args(args)
+        .clean_env()
+        .env("PATH", "/usr/bin:/bin")
+        .env("HOME", home)
+        .env("LC_ALL", "C")
+        .env(var.0, var.1)
+        .current_dir(home)
+        .stdin(Stdio::null())
+        .output()
+        .unwrap()
+}
+
+/// The fault seam that fails the last publish of a skill folder beside the moai skill.
+const LAST_PUBLISH_FAULT: (&str, &str) = ("MOAI_CLI_TEST_FAULT", "extra_skill_last_publish");
+
+/// The receipt files of the html-report skill under HOME's state folder.
+fn html_report_receipt_files(home: &Path) -> Vec<PathBuf> {
+    let tail = Path::new("hosts").join(HTML_REPORT).join("claude.json");
+    state(home)
+        .into_iter()
+        .map(|(p, _)| p)
+        .filter(|p| p.ends_with(&tail))
+        .collect()
+}
+
+/// The installed html-report folder under the temporary HOME.
+fn html_report_dir(home: &Path) -> PathBuf {
+    home.join(".claude/skills").join(HTML_REPORT)
+}
+
+/// The preview's html-report part and its blocked reason (empty when it is not blocked).
+fn html_report_part(p: &Value) -> (Value, String) {
+    let part = p["extra_skills"]["parts"][0].clone();
+    let why = part["blocked_reason"].as_str().unwrap_or("").to_string();
+    (part, why)
+}
+
+/// SPEC-20261122-html-report-install AC-6: a path of a package file that the apply would fail on
+/// blocks the part at preview time and the reason names that path: a regular file named
+/// `references` where the package needs a folder, a folder named `SKILL.md` where it needs a
+/// file, and a folder moai cannot write in. The confirmed update writes nothing there.
+#[test]
+fn a_path_the_apply_would_fail_on_blocks_the_html_report_part_at_preview() {
+    let (_t, home, exe, pkg) = setup();
+    with_html_report(&pkg);
+    let dest = html_report_dir(&home);
+    fs::create_dir_all(&dest).unwrap();
+    let blocker = dest.join("references");
+    fs::write(&blocker, "not a folder\n").unwrap();
+    let p = result(&run(&exe, &home, &["update"]));
+    let (part, why) = html_report_part(&p);
+    assert_eq!(part["preflight"], json!("blocked"), "{p}");
+    assert!(why.contains(blocker.to_str().unwrap()), "{why}");
+    let top = p["plan_digest"].as_str().unwrap();
+    let r = result(&run(&exe, &home, &["update", "--confirm", top]));
+    assert_eq!(
+        r["extra_skills_result"]["parts"][0]["status"],
+        json!("blocked"),
+        "{r}"
+    );
+    assert_eq!(
+        tree(&dest),
+        [(PathBuf::from("references"), b"not a folder\n".to_vec())]
+    );
+    assert!(html_report_receipts(&home).is_empty());
+    // A folder where the package puts a file.
+    fs::remove_file(&blocker).unwrap();
+    let folder = dest.join("SKILL.md");
+    fs::create_dir_all(&folder).unwrap();
+    let (part, why) = html_report_part(&result(&run(&exe, &home, &["update"])));
+    assert_eq!(part["preflight"], json!("blocked"), "{part}");
+    assert!(why.contains(folder.to_str().unwrap()), "{why}");
+    // A folder of the package that moai cannot write in.
+    fs::remove_dir(&folder).unwrap();
+    fs::create_dir_all(&blocker).unwrap();
+    use std::os::unix::fs::PermissionsExt;
+    fs::set_permissions(&blocker, fs::Permissions::from_mode(0o555)).unwrap();
+    let (part, why) = html_report_part(&result(&run(&exe, &home, &["update"])));
+    fs::set_permissions(&blocker, fs::Permissions::from_mode(0o755)).unwrap();
+    assert_eq!(part["preflight"], json!("blocked"), "{part}");
+    assert!(why.contains(blocker.to_str().unwrap()), "{why}");
+    assert!(html_report_receipts(&home).is_empty());
+}
+
+/// SPEC-20261122-html-report-install AC-7: a publish that fails during the apply (the fault seam
+/// fails the last one) undoes this apply's own files: the files it created are removed with the
+/// folders it made, the files it replaced get their earlier bytes back, and the receipt is
+/// `recovered`, not left pending. No half-installed skill stays and the next preview is not
+/// blocked.
+#[test]
+fn a_failed_html_report_apply_undoes_its_own_files_and_the_next_preview_is_not_blocked() {
+    let (_t, home, exe, pkg) = setup();
+    let src = with_html_report(&pkg);
+    let dest = html_report_dir(&home);
+    let p = result(&run(&exe, &home, &["update"]));
+    let top = p["plan_digest"].as_str().unwrap().to_string();
+    let r = result(&run_with(
+        &exe,
+        &home,
+        &["update", "--confirm", &top],
+        LAST_PUBLISH_FAULT,
+    ));
+    let part = &r["extra_skills_result"]["parts"][0];
+    assert_eq!(part["status"], json!("failed"), "{r}");
+    assert_eq!(part["receipt_status"], json!("recovered"), "{r}");
+    assert!(!dest.exists(), "a half-installed skill: {:?}", tree(&dest));
+    // The way back it prints is the undo that ran, not `recovery-plan`.
+    let revert = r["revert"]["extra_skills"].as_str().unwrap();
+    assert!(revert.contains("removes the files it created"), "{r}");
+    assert!(!revert.contains("recovery-plan"), "{r}");
+    let receipts = html_report_receipts(&home);
+    assert_eq!(receipts.len(), 1, "{receipts:?}");
+    assert_eq!(receipts[0]["status"], json!("recovered"), "{receipts:?}");
+    // The next preview plans the whole folder again and its confirm installs it.
+    let p = result(&run(&exe, &home, &["update"]));
+    let (part, why) = html_report_part(&p);
+    assert_eq!(part["preflight"], json!("ok"), "{why}");
+    assert!(
+        part["files"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|f| f["action"] == json!("create")),
+        "{p}"
+    );
+    let top = p["plan_digest"].as_str().unwrap();
+    let r = result(&run(&exe, &home, &["update", "--confirm", top]));
+    assert_eq!(r["extra_skills_result"]["state"], json!("applied"), "{r}");
+    assert_eq!(tree(&dest), tree(&src));
+    // An update that fails puts back the bytes it replaced.
+    let installed = tree(&dest);
+    for rel in ["SKILL.md", "references/fonts.md"] {
+        let mut bytes = fs::read(src.join(rel)).unwrap();
+        bytes.extend_from_slice(b"\nchanged in the next release\n");
+        fs::write(src.join(rel), bytes).unwrap();
+    }
+    let updates = |p: &Value| {
+        p["extra_skills"]["parts"][0]["files"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|f| f["action"] == json!("update"))
+            .count()
+    };
+    let p = result(&run(&exe, &home, &["update"]));
+    assert_eq!(updates(&p), 2, "{p}");
+    let top = p["plan_digest"].as_str().unwrap().to_string();
+    let r = result(&run_with(
+        &exe,
+        &home,
+        &["update", "--confirm", &top],
+        LAST_PUBLISH_FAULT,
+    ));
+    let part = &r["extra_skills_result"]["parts"][0];
+    assert_eq!(part["status"], json!("failed"), "{r}");
+    assert_eq!(part["receipt_status"], json!("recovered"), "{r}");
+    assert_eq!(tree(&dest), installed, "the replaced bytes are back");
+    assert_eq!(html_report_receipts(&home)[0]["status"], json!("recovered"));
+    let p = result(&run(&exe, &home, &["update"]));
+    let (part, why) = html_report_part(&p);
+    assert_eq!(part["preflight"], json!("ok"), "{why}");
+    assert_eq!(updates(&p), 2, "{p}");
+}
+
+/// SPEC-20261122-html-report-install AC-8: the confirm digest binds the skill folders beside
+/// the moai skill: a file of `skills/moai-html-report` changed after the preview is refused as a
+/// stale plan and nothing is written, the moai skill included.
+#[test]
+fn an_html_report_package_changed_after_the_preview_is_refused_with_nothing_written() {
+    let (_t, home, exe, pkg) = setup();
+    let src = with_html_report(&pkg);
+    let p = result(&run(&exe, &home, &["update"]));
+    let top = p["plan_digest"].as_str().unwrap().to_string();
+    let file = src.join("references/fonts.md");
+    let mut bytes = fs::read(&file).unwrap();
+    bytes.extend_from_slice(b"\nchanged after the preview\n");
+    fs::write(&file, bytes).unwrap();
+    let before = state(&home);
+    let out = run(&exe, &home, &["update", "--confirm", &top]);
+    assert!(!out.status.success());
+    let v: Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert!(
+        v["error"]["message"].as_str().unwrap().contains("stale"),
+        "{v}"
+    );
+    assert_eq!(state(&home), before, "nothing was written");
+}
+
+/// SPEC-20261122-html-report-install AC-9: a pending receipt of the html-report skill blocks the
+/// part, in this version folder and in the next one. The reason names the receipt and the folder
+/// and gives the way out; it does not send the user to `recovery-plan`, which reads only the moai
+/// skill's receipts. The confirmed update leaves the folder as it is.
+#[test]
+fn a_pending_html_report_receipt_blocks_the_part_and_names_the_way_out() {
+    let (_t, home, exe, pkg) = setup();
+    with_html_report(&pkg);
+    let dest = html_report_dir(&home);
+    let p = result(&run(&exe, &home, &["update"]));
+    let top = p["plan_digest"].as_str().unwrap();
+    result(&run(&exe, &home, &["update", "--confirm", top]));
+    let files = html_report_receipt_files(&home);
+    assert_eq!(files.len(), 1, "{files:?}");
+    let receipt = &files[0];
+    let mut v: Value = serde_json::from_slice(&fs::read(receipt).unwrap()).unwrap();
+    v["status"] = json!("pending");
+    fs::write(receipt, serde_json::to_vec_pretty(&v).unwrap()).unwrap();
+    let way_out = |why: &str| {
+        assert!(why.contains(receipt.to_str().unwrap()), "{why}");
+        assert!(why.contains(dest.to_str().unwrap()), "{why}");
+        assert!(why.contains("move the folder aside"), "{why}");
+        assert!(!why.contains("recovery-plan"), "{why}");
+    };
+    let p = result(&run(&exe, &home, &["update"]));
+    let (part, why) = html_report_part(&p);
+    assert_eq!(part["preflight"], json!("blocked"), "{p}");
+    way_out(&why);
+    let installed = tree(&dest);
+    let top = p["plan_digest"].as_str().unwrap();
+    let r = result(&run(&exe, &home, &["update", "--confirm", top]));
+    assert_eq!(
+        r["extra_skills_result"]["parts"][0]["status"],
+        json!("blocked"),
+        "{r}"
+    );
+    assert_eq!(tree(&dest), installed);
+    // The next version folder finds the earlier folder's pending receipt the same way: exe is
+    // `<versions>/a/bin/moai-cli`, whatever the state folder is named.
+    let next = exe
+        .parent()
+        .and_then(Path::parent)
+        .and_then(Path::parent)
+        .unwrap()
+        .join("b");
+    fs::create_dir_all(next.join("bin")).unwrap();
+    let exe_b = next.join("bin/moai-cli");
+    common::copy_executable(Path::new(EXE), &exe_b);
+    let pkg_b = next.join("skills/moai");
+    copy_tree(&package(), &pkg_b);
+    with_html_report(&pkg_b);
+    copy_tree(
+        &Path::new(env!("CARGO_MANIFEST_DIR")).join("agents"),
+        &next.join("agents"),
+    );
+    let (part, why) = html_report_part(&result(&run(&exe_b, &home, &["update"])));
+    assert_eq!(part["preflight"], json!("blocked"), "{part}");
+    way_out(&why);
+}
+
+/// SPEC-20261122-html-report-install AC-10: a symlink or a file where the html-report folder
+/// goes blocks the part, and the reason names that folder.
+#[test]
+fn a_symlink_or_a_file_at_the_html_report_folder_is_named_in_the_reason() {
+    let (_t, home, exe, pkg) = setup();
+    with_html_report(&pkg);
+    let dest = html_report_dir(&home);
+    let elsewhere = home.join("elsewhere");
+    fs::create_dir_all(&elsewhere).unwrap();
+    fs::create_dir_all(dest.parent().unwrap()).unwrap();
+    std::os::unix::fs::symlink(&elsewhere, &dest).unwrap();
+    let before = state(&home);
+    let (part, why) = html_report_part(&result(&run(&exe, &home, &["update"])));
+    assert_eq!(part["preflight"], json!("blocked"), "{part}");
+    assert!(why.contains(dest.to_str().unwrap()), "{why}");
+    assert!(why.contains("symlink"), "{why}");
+    assert_eq!(state(&home), before, "a preview writes nothing");
+    fs::remove_file(&dest).unwrap();
+    fs::write(&dest, "a file\n").unwrap();
+    let (part, why) = html_report_part(&result(&run(&exe, &home, &["update"])));
+    assert_eq!(part["preflight"], json!("blocked"), "{part}");
+    assert!(why.contains(dest.to_str().unwrap()), "{why}");
+    assert!(why.contains("not a folder"), "{why}");
+}
+
+/// SPEC-20261122-html-report-install AC-11: on a first install the html-report receipt records
+/// that the top skills folder did not exist before this run, though the moai skill's apply of the
+/// same run made it first, so the result asks for the skill reload.
+#[test]
+fn a_first_html_report_install_records_that_the_skills_folder_was_new_to_this_run() {
+    let (_t, home, exe, pkg) = setup();
+    with_html_report(&pkg);
+    assert!(!home.join(".claude/skills").exists());
+    let p = result(&run(&exe, &home, &["update"]));
+    let top = p["plan_digest"].as_str().unwrap();
+    let r = result(&run(&exe, &home, &["update", "--confirm", top]));
+    let part = &r["extra_skills_result"]["parts"][0];
+    assert_eq!(part["status"], json!("applied"), "{r}");
+    assert_eq!(part["reload_required"], json!("yes"), "{r}");
+    let receipts = html_report_receipts(&home);
+    assert_eq!(
+        receipts[0]["top_skills_existed_before"],
+        json!(false),
+        "{receipts:?}"
+    );
+}
