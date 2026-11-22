@@ -107,12 +107,22 @@ fn agents(reference: &str) -> Value {
     json!({"protocol_version":1,"language":"en","workflow_reference":reference,"local_file":"none"})
 }
 
-fn agents_md(project: &Path) -> String {
-    fs::read_to_string(project.join("AGENTS.md")).unwrap()
+/// The `workflow_reference` the generation recorded in its manifest. Since the CLAUDE.md
+/// layout the managed block holds project facts only and names no workflow folder, so the
+/// manifest is where the reference is kept.
+fn recorded_reference(project: &Path) -> String {
+    assert!(project.join("CLAUDE.md").is_file(), "the managed CLAUDE.md");
+    let manifest = [".moai", ".moai-cli"]
+        .iter()
+        .map(|state| project.join(state).join("manifests/generation.json"))
+        .find(|p| p.is_file())
+        .expect("the generation manifest");
+    let v: Value = serde_json::from_slice(&fs::read(manifest).unwrap()).unwrap();
+    v["workflow_reference"].as_str().unwrap().to_string()
 }
 
-/// AC-1: empty project → project → generation → agents, every step exit 0, and AGENTS.md
-/// points at the generated `.moai/workflows/review-flow/`.
+/// AC-1: empty project → project → generation → agents, every step exit 0, and the recorded
+/// reference is the generated `.moai/workflows/review-flow/`.
 #[test]
 fn an_empty_project_generates_into_its_own_workflow_location() {
     let f = fixture();
@@ -122,14 +132,11 @@ fn an_empty_project_generates_into_its_own_workflow_location() {
     assert!(!f.project.join(reference).exists(), "not there before");
     plan_apply(&f, "generation", &generation(reference));
     assert!(f.project.join(reference).join("SKILL.md").is_file());
-    assert!(
-        agents_md(&f.project).contains(reference),
-        "{}",
-        agents_md(&f.project)
-    );
+    assert_eq!(recorded_reference(&f.project), reference);
     // agents-plan on its own now finds the generated directory.
     plan_apply(&f, "agents", &agents(reference));
-    assert!(agents_md(&f.project).contains(reference));
+    assert!(f.project.join("CLAUDE.md").is_file());
+    assert!(!f.project.join("AGENTS.md").exists());
     assert!(
         fs::read_dir(&f.home).unwrap().next().is_none(),
         "HOME untouched"
@@ -144,8 +151,9 @@ fn the_workflows_parent_is_also_generations_own_location() {
         let f = fixture();
         plan_apply(&f, "project", &profile());
         plan_apply(&f, "generation", &generation(reference));
-        assert!(
-            agents_md(&f.project).contains(".moai/workflows/"),
+        assert_eq!(
+            recorded_reference(&f.project),
+            ".moai/workflows/",
             "{reference}"
         );
     }
@@ -179,7 +187,7 @@ fn a_missing_reference_is_still_refused_outside_generations_own_location() {
         assert!(!ok, "{reference}: {v}");
         assert_eq!(v["error"]["kind"], json!("not_found"), "{reference}: {v}");
     }
-    assert!(!f.project.join("AGENTS.md").exists());
+    assert!(!f.project.join("CLAUDE.md").exists());
     assert!(!f.project.join(".moai/workflows").exists());
 }
 
@@ -213,5 +221,5 @@ fn the_exception_keeps_the_other_refusals() {
     );
     let (ok, v) = cli(&f, &["generation-plan", p(&f)], &generation("../outside/"));
     assert!(!ok, "{v}");
-    assert!(!f.project.join("AGENTS.md").exists());
+    assert!(!f.project.join("CLAUDE.md").exists());
 }
