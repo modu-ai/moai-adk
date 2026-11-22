@@ -841,6 +841,50 @@ fn ac17_the_shell_and_the_program_read_the_record_the_same_way() {
     }
 }
 
+/// AC-3: the prune rule of the guard, asked directly with the one line git sends for the prune of
+/// a loose copy (`<value> 0 <ref>`): it passes only while the loose file exists and the packed
+/// store holds the same value; git itself never sends that line for a real delete without its
+/// `0 0` companion, which is refused first, so only a direct call reaches the loose-copy condition.
+#[test]
+fn ac3_the_prune_rule_needs_the_loose_copy_and_the_same_packed_value() {
+    let w = Repo::new(false);
+    w.install();
+    let repo = w.repo.clone();
+    let a = w.a.clone();
+    let line = format!("{a} {ZERO} refs/heads/Integ\n");
+    let ask = || {
+        let mut child = Command::new(common::MOAI_BIN)
+            .args(["card", "guard", "prepared"])
+            .current_dir(&repo)
+            .clean_env()
+            .env("HOME", w.home.path())
+            .env("PATH", w.path_var())
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .unwrap();
+        std::io::Write::write_all(&mut child.stdin.take().unwrap(), line.as_bytes()).unwrap();
+        child.wait_with_output().unwrap()
+    };
+    // Loose only: nothing is packed, so this is a delete.
+    assert!(!ask().status.success(), "a loose-only delete passed");
+    // Loose and packed at the same value: the prune of a loose copy passes.
+    w.git(&repo, &["pack-refs", "--all", "--no-prune"]);
+    assert!(w.common().join("refs/heads/Integ").exists());
+    assert!(
+        ask().status.success(),
+        "{}",
+        String::from_utf8_lossy(&ask().stderr)
+    );
+    // Packed only: no loose copy to prune, so this is a delete.
+    w.git(&repo, &["pack-refs", "--all"]);
+    assert!(!w.common().join("refs/heads/Integ").exists());
+    let out = ask();
+    assert!(!out.status.success(), "a packed-only delete passed");
+    assert!(String::from_utf8_lossy(&out.stderr).contains("cannot be deleted"));
+}
+
 // ---- AC-18: a rename onto the integration branch loses nothing --------------------------------
 
 /// AC-18: `git branch -M <other> <integration branch>` deletes `<other>` in a transaction of its
