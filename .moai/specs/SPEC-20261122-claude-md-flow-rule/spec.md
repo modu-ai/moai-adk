@@ -56,4 +56,10 @@ parent: SPEC-20261122-claude-md-layout
 
 ## Result
 
-(Filled when the work is done.)
+- AC-1 met: `cargo test --locked --offline --test claude_md_home_cli flow_plan_` runs 7 tests (one file per config folder, written only with the update's confirm token, no `paths` key, limits, an over-limit source refused).
+- AC-2 met: `... flow_conflict_` runs 4 tests (edited file, link file, link folder above it, a file that is not UTF-8; each keeps its bytes).
+- AC-3 met: `... flow_text_` runs 2 tests (the four contents are present; neither the four letters nor the retired name appear).
+- AC-4 met: `moai check affected` on the slice reports fmt, ops rustfmt and clippy `--all-targets -D warnings` at exit 0.
+- Open, not a code item: the measurement of Plan 4 (whether the rule and its Compact Instructions section survive a compaction, and a background session's git behaviour) has not been run; it needs the temporary config folder and the local stand-in API and is the user's call for a real-API run.
+- Three lines of the flow text come from the SPEC and the leader's wording and were not checked against code: the protection hook line, the fast-forward push of the lander and the remote-check line. The leader reads the wording before it lands.
+- closure_status: awaiting the independent audit.

@@ -78,4 +78,10 @@ parent: SPEC-20261122-claude-md-layout
 
 ## Result
 
-(Filled when the work is done.)
+- AC-1 met: `claude_md_home_cli target_` runs 7 tests and `host_home_cli` 12 (the routing file in the resolved folder with and without the config variable; an edited file and a link are conflicts; a refused variable blocks the layer).
+- AC-2 met: `claude_md_home_cli removal_` runs 8 tests (the old block goes only on the pick, only when it equals its recorded baseline and only while the routing file is in place; no other text reaches the user's `CLAUDE.md`).
+- AC-3 met: `claude_md_home_cli revert_` runs 6 tests and `update_user_layer_cli` 11 (files and the removed block come back, a changed file is skipped by name, a receipt entry without a kind reverts as the old block).
+- AC-5 met: `claude_md_home_cli folders_` runs 4 tests (each picked folder has its own routing file and state file; the others stay untouched).
+- AC-4 met: `moai check affected` on the slice reports fmt, ops rustfmt and clippy `--all-targets -D warnings` at exit 0.
+- Open: the update preview does not yet show the removal of the old block as its own pick; that row needs the update flow and waits for the slice that edits it. The CLI flags `--remove-old-block` and `--config-dir` are the pick for now.
+- closure_status: awaiting the independent audit.
