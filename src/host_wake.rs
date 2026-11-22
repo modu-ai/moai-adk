@@ -1,7 +1,9 @@
 //! The wake path of the host adapter (SPEC-20261122-session-messages): one
 //! cross-session message to a flow session by name. The message names only the
 //! ledger change to read — the ledger row is the record, the message only
-//! wakes — and the send result's three shapes are read, never re-sent.
+//! wakes — and the send result's shapes are read: queued (the line left this
+//! process for the addressee's inbox socket), held with a notice, or refused;
+//! a refused or held wake is reported, never re-sent.
 //!
 //! This module is the decision layer: it validates the wake, classifies the
 //! refusal reasons of REQ-2, and reports the result shape of REQ-3. The
@@ -83,7 +85,7 @@ impl Refusal {
             }
             Refusal::NoInbox => "wake refused: the addressee binds no inbox",
             Refusal::Ambiguous => {
-                "wake refused: the name answers to more than one live session; name one with its short reference"
+                "wake refused: the name answers to more than one live session; address one from its own terminal or rename it first"
             }
             Refusal::IdleUnsupported => {
                 "wake refused: the idle notice rides the model-session tool; the minimum line carries none"
@@ -308,9 +310,13 @@ fn checked_socket_path(raw: &str) -> Result<std::path::PathBuf, String> {
         _ => return refuse("is outside the registry's socket folder"),
     }
     let parent = parent.expect("the folder check above passed with this parent");
-    match std::fs::metadata(parent) {
-        Ok(data) if data.uid() == self_uid() && (data.mode() & 0o022) == 0 => {}
-        Ok(data) if data.uid() != self_uid() => {
+    // 9 of the N-slice audit: the owner and mode of the folder itself, read
+    // with symlink_metadata (the folder is already link-checked above, so the
+    // lstat cannot follow a link); the pure predicate below is what the
+    // mutation-pinned tests drive.
+    match std::fs::symlink_metadata(parent).map(|data| (data.uid(), data.mode())) {
+        Ok((folder_uid, mode)) if folder_safe(folder_uid, self_uid(), mode) => {}
+        Ok((folder_uid, _)) if folder_uid != self_uid() => {
             return refuse("is in a socket folder another user owns")
         }
         Ok(_) => return refuse("is in a socket folder open to group or world writes"),
@@ -322,6 +328,14 @@ fn checked_socket_path(raw: &str) -> Result<std::path::PathBuf, String> {
         Ok(_) => refuse("is not a socket file"),
         Err(_) => refuse("is a dead path"),
     }
+}
+
+/// The pure folder predicate (pinned by its own tests, N-slice mutants 1
+/// and 2): the socket folder belongs to this user and carries neither the
+/// group-write nor the world-write bit — each bit alone refuses.
+#[cfg(unix)]
+fn folder_safe(folder_uid: u32, own_uid: u32, mode: u32) -> bool {
+    folder_uid == own_uid && (mode & 0o022) == 0
 }
 
 /// The current process's user id (the folder another account could have
@@ -365,7 +379,8 @@ mod tests {
     use super::*;
 
     /// A test-owned socket folder under /tmp with the registry folder's name
-    /// shape (the audit's N8: never the real /tmp/cc-socks folder). The Drop
+    /// shape, its mode set explicitly (the audit's N8 and item 12: never the
+    /// real /tmp/cc-socks folder, never the umask's default). The Drop
     /// removes the folder, panic or not.
     struct SockFolder(std::path::PathBuf);
     impl SockFolder {
@@ -374,6 +389,11 @@ mod tests {
                 .join(format!("cc-socks-moai-test-{tag}-{}", std::process::id()));
             let _ = std::fs::remove_dir_all(&path);
             std::fs::create_dir_all(&path).unwrap();
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt as _;
+                std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755)).unwrap();
+            }
             Self(path)
         }
         fn socket(&self, name: &str) -> String {
@@ -496,16 +516,24 @@ mod tests {
 
     /// The landed slice's follow-up: a linked parent FOLDER is refused — the
     /// registry entry may not route the wake through a symlinked directory
-    /// even when both ends carry the socket folder's name.
+    /// even when both ends carry the socket folder's name. The guard removes
+    /// the link on every path out (the audit's item 11: a failing run must
+    /// not leak it into /tmp).
     #[cfg(unix)]
     #[test]
     fn a_linked_parent_folder_is_refused() {
+        struct LinkGuard(std::path::PathBuf);
+        impl Drop for LinkGuard {
+            fn drop(&mut self) {
+                let _ = std::fs::remove_file(&self.0);
+            }
+        }
         let real_folder = SockFolder::new("dirlink-real");
         let real = real_folder.socket("wake.sock");
         let _listener = std::os::unix::net::UnixListener::bind(&real).unwrap();
         let linked_folder = std::path::Path::new("/tmp")
             .join(format!("cc-socks-moai-test-dirlink-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&linked_folder);
+        let _ = std::fs::remove_file(&linked_folder);
         std::os::unix::fs::symlink(
             real_folder
                 .0
@@ -515,6 +543,7 @@ mod tests {
             &linked_folder,
         )
         .unwrap();
+        let _guard = LinkGuard(linked_folder.clone());
         let dir = one_peer_config(&linked_folder.join("wake.sock").display().to_string());
         let listing = RegistryListing::read(dir.path()).unwrap();
         let answer = wake("leader", "wake").send_once(&listing);
@@ -524,7 +553,23 @@ mod tests {
                 .is_err_and(|line| line.contains("linked component")),
             "{answer:?}"
         );
-        let _ = std::fs::remove_file(&linked_folder);
+    }
+
+    /// The pure folder predicate (the audit's mutants 1 and 2): each bit
+    /// alone refuses and the owner must be this user.
+    #[cfg(unix)]
+    #[test]
+    fn the_folder_predicate_pins_each_bit_and_the_owner() {
+        let me = self_uid();
+        assert!(folder_safe(me, me, 0o755));
+        assert!(folder_safe(me, me, 0o700));
+        // Group-write alone (0o775, 0o720) and world-write alone (0o702).
+        assert!(!folder_safe(me, me, 0o775));
+        assert!(!folder_safe(me, me, 0o720));
+        assert!(!folder_safe(me, me, 0o702));
+        assert!(!folder_safe(me, me, 0o777));
+        // Another owner refuses at every safe mode.
+        assert!(!folder_safe(me.wrapping_add(1), me, 0o755));
     }
 
     /// The audit's B1: a dead path (nothing bound, no socket file) never

@@ -1,7 +1,10 @@
-//! The host-wake CLI (SPEC-20261122-session-messages, slice (c) of the leader's
-//! decision): the registry read is real (a temporary config root), the refusal
-//! reasons answer per addressee, and a resolved addressee answers the D-8 open
-//! item — the send seam — without anything being written.
+//! The host-wake CLI (SPEC-20261122-session-messages): the registry read is
+//! real (a temporary config root), a missing or unreadable registry folder
+//! answers the no-channel refusal in the refused shape (never an internal
+//! error), each unreachable addressee answers its one-line refusal, a
+//! `--idle` wake is refused (the notice rides the model-session tool), and a
+//! resolved addressee answers queued with `socket_write: true` — one line to
+//! its inbox socket and nothing else.
 
 mod common;
 use common::home::TempHome;
@@ -37,13 +40,19 @@ fn ok(out: &Output) -> Value {
 }
 
 /// A config root with one session that binds an inbox and one that does not.
+/// The socket path names a harness-made folder (N8 of the first audit: never
+/// the real /tmp/cc-socks folder).
 fn config_root() -> TempDir {
+    let socks = SockFolder::new("config");
     let dir = TempDir::new().unwrap();
     let sessions = dir.path().join("sessions");
     fs::create_dir_all(&sessions).unwrap();
     fs::write(
         sessions.join("1.json"),
-        r#"{"name":"leader","messagingSocketPath":"/tmp/cc-socks/1.sock"}"#,
+        format!(
+            r#"{{"name":"leader","messagingSocketPath":"{}"}}"#,
+            socks.socket("1.sock")
+        ),
     )
     .unwrap();
     fs::write(sessions.join("2.json"), r#"{"name":"worker"}"#).unwrap();
@@ -61,6 +70,34 @@ fn wake(dir: &TempDir, name: &str) -> Value {
     ]))
 }
 
+/// A test-owned socket folder under /tmp with the registry folder's name
+/// shape, with its mode set explicitly (the audit's item 12: never the real
+/// /tmp/cc-socks folder, and never the umask's default); the Drop removes it,
+/// panic or not.
+struct SockFolder(std::path::PathBuf);
+impl SockFolder {
+    fn new(tag: &str) -> Self {
+        let path = std::path::Path::new("/tmp")
+            .join(format!("cc-socks-moai-test-{tag}-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&path);
+        fs::create_dir_all(&path).unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt as _;
+            fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).unwrap();
+        }
+        Self(path)
+    }
+    fn socket(&self, name: &str) -> String {
+        self.0.join(name).display().to_string()
+    }
+}
+impl Drop for SockFolder {
+    fn drop(&mut self) {
+        let _ = fs::remove_dir_all(&self.0);
+    }
+}
+
 #[test]
 fn ac1_an_unknown_addressee_is_the_different_root_refusal() {
     let dir = config_root();
@@ -76,8 +113,30 @@ fn ac1_an_unknown_addressee_is_the_different_root_refusal() {
     assert_eq!(v["socket_write"], json!(false));
 }
 
+/// B1 of the N-slice audit: a missing registry folder answers the no-channel
+/// refusal in the refused shape, never an internal error.
 #[test]
-fn ac2_a_session_without_a_socket_is_the_no_inbox_refusal() {
+fn ac2_a_missing_registry_folder_is_the_no_channel_refusal() {
+    let missing = TempDir::new().unwrap();
+    let nowhere = missing.path().join("nowhere");
+    let v = ok(&run(&[
+        "host-wake",
+        "leader",
+        "--text",
+        "a verdict landed",
+        "--config-dir",
+        nowhere.to_str().unwrap(),
+    ]));
+    assert_eq!(v["shape"], json!("refused"), "{v}");
+    assert!(
+        v["reason"].as_str().unwrap().contains("no message channel"),
+        "{v}"
+    );
+    assert_eq!(v["socket_write"], json!(false), "{v}");
+}
+
+#[test]
+fn ac2b_a_session_without_a_socket_is_the_no_inbox_refusal() {
     let dir = config_root();
     let v = wake(&dir, "worker");
     assert_eq!(v["shape"], json!("refused"));
@@ -85,33 +144,16 @@ fn ac2_a_session_without_a_socket_is_the_no_inbox_refusal() {
         v["reason"].as_str().unwrap().contains("binds no inbox"),
         "{v}"
     );
-}
-
-/// A test-owned socket folder under /tmp with the registry folder's name
-/// shape (the audit's N8: never the real /tmp/cc-socks folder); the Drop
-/// removes it, panic or not.
-struct SockFolder(std::path::PathBuf);
-impl SockFolder {
-    fn new(tag: &str) -> Self {
-        let path = std::path::Path::new("/tmp")
-            .join(format!("cc-socks-moai-test-{tag}-{}", std::process::id()));
-        let _ = fs::remove_dir_all(&path);
-        fs::create_dir_all(&path).unwrap();
-        Self(path)
-    }
-}
-impl Drop for SockFolder {
-    fn drop(&mut self) {
-        let _ = fs::remove_dir_all(&self.0);
-    }
+    assert_eq!(v["socket_write"], json!(false), "{v}");
 }
 
 #[cfg(unix)]
 #[test]
-fn ac3_a_resolved_addressee_answers_the_queued_shape_and_writes_nothing() {
+fn ac3_a_resolved_addressee_answers_the_queued_shape() {
     // The addressee's inbox stands in as a bound listener the test owns, in a
     // folder with the registry socket folder's name shape; the wake writes
-    // exactly the minimum user line to it and answers the queued shape.
+    // exactly the minimum user line to it and answers queued with
+    // socket_write true.
     let socks = SockFolder::new("cli");
     let socket_path = socks.0.join("wake.sock");
     let listener = std::os::unix::net::UnixListener::bind(&socket_path).unwrap();
@@ -149,6 +191,7 @@ fn ac3_a_resolved_addressee_answers_the_queued_shape_and_writes_nothing() {
 /// outright; the wake never picks one.
 #[test]
 fn ac4_an_ambiguous_name_is_refused() {
+    let socks = SockFolder::new("two");
     let dir = TempDir::new().unwrap();
     let sessions = dir.path().join("sessions");
     fs::create_dir_all(&sessions).unwrap();
@@ -156,7 +199,8 @@ fn ac4_an_ambiguous_name_is_refused() {
         fs::write(
             sessions.join(file),
             format!(
-                r#"{{"name":"leader","messagingSocketPath":"/tmp/cc-socks-moai-test-two/{socket}"}}"#
+                r#"{{"name":"leader","messagingSocketPath":"{}"}}"#,
+                socks.socket(socket)
             ),
         )
         .unwrap();
@@ -175,68 +219,61 @@ fn ac4_an_ambiguous_name_is_refused() {
 #[test]
 fn ac5_the_idle_flag_is_refused_with_its_line() {
     let dir = config_root();
-    let out = TempHome::new();
-    let _ = out;
-    let mut command = std::process::Command::new(common::MOAI_CLI_BIN);
-    command
-        .args([
-            "host-wake",
-            "leader",
-            "--text",
-            "a verdict landed",
-            "--idle",
-            "--config-dir",
-            dir.path().to_str().unwrap(),
-        ])
-        .env("HOME", TempHome::new().path())
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped());
-    let out = command.output().unwrap();
-    let v: Value = serde_json::from_slice(&out.stdout).unwrap();
-    assert_eq!(v["result"]["shape"], json!("refused"), "{v}");
-    assert!(
-        v["result"]["reason"]
-            .as_str()
-            .unwrap()
-            .contains("idle notice rides the model-session tool"),
-        "{v}"
-    );
-}
-
-/// The landed slice's follow-up: a socket folder open to group or world
-/// writes is refused (/tmp itself is world-writable).
-#[cfg(unix)]
-#[test]
-fn ac6_a_world_writable_socket_folder_is_refused() {
-    let folder = std::path::Path::new("/tmp")
-        .join(format!("cc-socks-moai-test-open-{}", std::process::id()));
-    let _ = fs::remove_dir_all(&folder);
-    fs::create_dir_all(&folder).unwrap();
-    use std::os::unix::fs::PermissionsExt as _;
-    fs::set_permissions(&folder, fs::Permissions::from_mode(0o777)).unwrap();
-    let socket_path = folder.join("wake.sock");
-    let _listener = std::os::unix::net::UnixListener::bind(&socket_path).unwrap();
-    let dir = TempDir::new().unwrap();
-    let sessions = dir.path().join("sessions");
-    fs::create_dir_all(&sessions).unwrap();
-    fs::write(
-        sessions.join("1.json"),
-        format!(
-            r#"{{"name":"leader","messagingSocketPath":"{}"}}"#,
-            socket_path.display()
-        ),
-    )
-    .unwrap();
-    let v = wake(&dir, "leader");
+    let v = wake_with_idle(&dir);
     assert_eq!(v["shape"], json!("refused"), "{v}");
     assert!(
         v["reason"]
             .as_str()
             .unwrap()
-            .contains("group or world writes"),
+            .contains("idle notice rides the model-session tool"),
         "{v}"
     );
-    drop(_listener);
-    let _ = fs::remove_dir_all(&folder);
+    assert_eq!(v["socket_write"], json!(false), "{v}");
+}
+
+fn wake_with_idle(dir: &TempDir) -> Value {
+    ok(&run(&[
+        "host-wake",
+        "leader",
+        "--text",
+        "a verdict landed",
+        "--idle",
+        "--config-dir",
+        dir.path().to_str().unwrap(),
+    ]))
+}
+
+/// The landed slice's follow-up (mutant 1 of the N-slice audit): a socket
+/// folder with the group-write bit set — even alone, mode 0o775 — is
+/// refused; the world-write bit alone refuses too.
+#[cfg(unix)]
+#[test]
+fn ac6_a_socket_folder_open_to_group_or_world_writes_is_refused() {
+    for mode in [0o777u32, 0o775, 0o720, 0o702] {
+        let socks = SockFolder::new("mode");
+        use std::os::unix::fs::PermissionsExt as _;
+        fs::set_permissions(&socks.0, fs::Permissions::from_mode(mode)).unwrap();
+        let socket_path = socks.0.join("wake.sock");
+        let _listener = std::os::unix::net::UnixListener::bind(&socket_path).unwrap();
+        let dir = TempDir::new().unwrap();
+        let sessions = dir.path().join("sessions");
+        fs::create_dir_all(&sessions).unwrap();
+        fs::write(
+            sessions.join("1.json"),
+            format!(
+                r#"{{"name":"leader","messagingSocketPath":"{}"}}"#,
+                socket_path.display()
+            ),
+        )
+        .unwrap();
+        let v = wake(&dir, "leader");
+        assert_eq!(v["shape"], json!("refused"), "mode {mode:o}: {v}");
+        assert!(
+            v["reason"]
+                .as_str()
+                .unwrap()
+                .contains("group or world writes"),
+            "mode {mode:o}: {v}"
+        );
+    }
 }
