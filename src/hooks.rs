@@ -283,7 +283,8 @@ pub(crate) fn project_root(project: &Path, home: Option<&Path>) -> Result<PathBu
     // C-79 (audit B1): the folders `CLAUDE_CONFIG_DIR` and `CODEX_HOME` name are user folders
     // wherever they are, so a project inside one, or whose own `.claude`/`.codex` is one, would
     // write the user-scope hooks; refused like `~/.claude`. An empty or relative value is
-    // refused by name (the same guard as `claude.rs` and `codex_config.rs`).
+    // refused by name (the same guard as `claude.rs`). The `CODEX_HOME` check stays: it keeps
+    // a project inside an old Codex home from being written.
     for (host, dir) in [
         (crate::host_home::Host::Claude, ".claude"),
         (crate::host_home::Host::Codex, ".codex"),

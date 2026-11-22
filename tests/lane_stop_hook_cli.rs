@@ -23,7 +23,7 @@ fn setup() -> Fixture {
     let (home, project) = (root.join("home"), root.join("project"));
     fs::create_dir_all(&home).unwrap();
     // The state folder a block count is written into (an install used to make it).
-    fs::create_dir_all(project.join(".moai-cli")).unwrap();
+    fs::create_dir_all(project.join(moai_cli::state_root::dir(&project))).unwrap();
     Fixture {
         _tmp: tmp,
         home,

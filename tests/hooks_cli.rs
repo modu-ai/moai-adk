@@ -567,7 +567,7 @@ fn a_retired_host_is_refused_by_hooks_plan_and_hooks_apply() {
                 "{host} {}: {v}",
                 args[0]
             );
-            for gone in [".codex", ".omp", ".moai-cli"] {
+            for gone in [".codex", ".omp", moai_cli::state_root::dir(p.path())] {
                 assert!(!p.path().join(gone).exists(), "{host}: {gone} was created");
             }
         }
@@ -2624,8 +2624,8 @@ fn a_call_with_a_newline_or_a_no_break_space_inside_is_not_recorded_as_the_verif
 
 /// SPEC-20261119-ac-verify-recorded-limits REQ-10 (card C-130 criterion 5, leader decision of
 /// note 3387 on audit N10): the rule counts a write of the session only when its outcome is not a
-/// failure (a success and an unknown outcome both count: dropping the unknown would weaken the
-/// rule quietly) and its path is not outside the project folder; a line with no path counts,
+/// failure (Claude Code reports a success or a failure) and its path is not outside the project
+/// folder; a line with no path counts,
 /// conservatively. After a write that does not count the Stop rule has no write to ask about.
 #[test]
 fn ac_verify_rule_counts_only_writes_that_did_not_fail_and_are_inside_the_project() {
