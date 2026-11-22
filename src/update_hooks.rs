@@ -216,6 +216,32 @@ fn duty_names(hooks: &Value) -> Vec<String> {
     names
 }
 
+/// The settings file as an object (audit 6768 B7): a top-level array or another shape, a
+/// `permissions` key that is not an object, or a `permissions.deny` that is not a list is a
+/// conflict the preview reports and the confirm refuses — never a panic, never a silent
+/// replacement of the user's own key.
+fn settings_object(bytes: &[u8]) -> Result<Value> {
+    let v: Value = serde_json::from_slice(bytes)
+        .map_err(|_| "the config settings file is not JSON".to_string())?;
+    if !v.is_object() {
+        return Err("the config settings file is not a JSON object".into());
+    }
+    match v.get("permissions") {
+        None | Some(Value::Null) => {}
+        Some(Value::Object(p)) => match p.get("deny") {
+            None | Some(Value::Null) => {}
+            Some(d) if d.is_array() => {}
+            Some(_) => {
+                return Err("the config settings file's permissions.deny is not a list".into())
+            }
+        },
+        Some(_) => {
+            return Err("the config settings file's permissions key is not an object".into())
+        }
+    }
+    Ok(v)
+}
+
 /// One config folder's plan: the desired `hooks` (the generated Claude set in exec form) and
 /// the deny rules against the settings file as it is, with the ownership receipt resolving a
 /// `hooks` key MoAI wrote before. A user's own `hooks` key MoAI never owned is a conflict.
@@ -224,8 +250,7 @@ fn folder_plan(folder: &Path) -> Result<FolderPlan> {
     let settings = folder.join("settings.json");
     let current: Value = match crate::claude::read_existing(&settings)? {
         None => Value::Null,
-        Some(bytes) => serde_json::from_slice(&bytes)
-            .map_err(|_| "the config settings file is not JSON".to_string())?,
+        Some(bytes) => settings_object(bytes.as_slice())?,
     };
     let desired = crate::hooks::hooks_object("claude")
         .map(Value::Object)
@@ -666,8 +691,7 @@ fn apply_folder(f: &FolderPlan, home: &Path) -> Result<Value> {
     }
     let mut merged: Value = match &before {
         None => json!({}),
-        Some(bytes) => serde_json::from_slice(bytes)
-            .map_err(|_| "the config settings file is not JSON".to_string())?,
+        Some(bytes) => settings_object(bytes)?,
     };
     if merged["hooks"].is_object() && merged["hooks"] != desired {
         let owned = owned_hooks_sha(&f.folder).is_some();
@@ -765,19 +789,23 @@ pub fn revert_in(
     }
     let root = fs::canonicalize(project).map_err(|_| "project directory unavailable")?;
     let home = std::env::var_os("HOME").map(PathBuf::from);
-    let mut candidates: Vec<PathBuf> = vec![receipts_dir(&root).join(receipt_id)];
+    // A candidate is (whether it lives under the HOME receipts folder, its path). The
+    // project-side folder is first for the project layer's receipts; the config-folder
+    // layer's receipts are read only from the HOME side (audit 6768 B5).
+    let mut candidates: Vec<(bool, PathBuf)> = vec![(false, receipts_dir(&root).join(receipt_id))];
     if let Some(h) = &home {
-        candidates.push(new_receipt_root(h).join(receipt_id));
-        candidates.push(new_receipt_root(h).join(format!("{receipt_id}.json")));
+        candidates.push((true, new_receipt_root(h).join(receipt_id)));
+        candidates.push((true, new_receipt_root(h).join(format!("{receipt_id}.json"))));
     }
     // An old per-receipt folder holds `receipt.json` inside; a flat receipt is the file
     // itself, so its folder for the plain-dir checks is the receipts folder it lives in.
-    let (dir, path) = candidates
+    let (from_home, dir, path) = candidates
         .into_iter()
-        .find_map(|c| {
+        .find_map(|(from_home, c)| {
             if c.extension().map(|e| e == "json").unwrap_or(false) {
                 c.is_file().then(|| {
                     (
+                        from_home,
                         c.parent()
                             .map(Path::to_path_buf)
                             .unwrap_or_else(|| c.clone()),
@@ -787,7 +815,7 @@ pub fn revert_in(
             } else {
                 c.join("receipt.json")
                     .is_file()
-                    .then(|| (c.clone(), c.join("receipt.json")))
+                    .then(|| (from_home, c.clone(), c.join("receipt.json")))
             }
         })
         .ok_or("hook receipt not found")?;
@@ -808,6 +836,26 @@ pub fn revert_in(
     let mut skipped = Vec::new();
     for h in &receipt.hosts {
         if h.host == "claude-config" {
+            // audit 6768 B5: a config-folder receipt is read only from the HOME receipts
+            // folder, and every file it names must be the host's own settings file — a
+            // receipt shipped inside a repository can never write or delete a chosen path.
+            if !from_home {
+                return Err(
+                    "a config-folder receipt is read only from the HOME receipts folder".into(),
+                );
+            }
+            let config = crate::host_home::resolve(
+                crate::host_home::Host::Claude,
+                home.as_deref().unwrap_or(Path::new("")),
+            )
+            .map_err(|_| "the config folder is unavailable".to_string())?;
+            let settings = config.join("settings.json");
+            if h.files
+                .iter()
+                .any(|f| Path::new(&f.path) != settings.as_path())
+            {
+                return Err("hook receipt names a file outside the host's hook files".into());
+            }
             // The config-folder layer's entry: every file path is absolute, the before bytes
             // ride inline in the receipt (before_hex), and a file changed since the apply is
             // skipped whole.

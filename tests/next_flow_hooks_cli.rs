@@ -988,8 +988,9 @@ fn ac17_env_file_and_reload_skills() {
     assert_eq!(v["hookSpecificOutput"]["reloadSkills"], json!(false));
     let text = fs::read_to_string(&env_file).unwrap();
     assert!(text.contains("export OTHER_HOOK=1\n"), "{text}");
+    // audit 6768 small 5: the value is single-quoted.
     assert!(
-        text.contains("export MOAI_INTEGRATION_BRANCH=NeXT\n"),
+        text.contains("export MOAI_INTEGRATION_BRANCH='NeXT'\n"),
         "{text}"
     );
 

@@ -1708,7 +1708,7 @@ fn a_compacted_session_is_told_how_to_check_not_that_instructions_are_done() {
     for sentence in [
         "This session was just compacted.",
         "User instructions you can still see may already be done:",
-        "check whether a comment, a claim or a pull request already shows it done, and run it again only when none does.",
+        "check whether a comment, a review or a pull request already shows it done, and run it again only when none does.",
         "A standing instruction (a rule meant to stay in force) still applies.",
         // SPEC-20261122-next-flow-hooks REQ-3: after a compaction the card facts of the
         // worktree are restated through `moai card show` — the Issue-era resume-comment

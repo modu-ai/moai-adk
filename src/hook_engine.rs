@@ -399,8 +399,15 @@ fn allow_quietly() -> Answer {
 
 /// Claude Code rendering of a verdict (documented shapes only).
 fn render_claude(event: Event, verdict: Verdict) -> Answer {
-    let denied = matches!(&verdict, Verdict::Deny(_))
-        && matches!(event, Event::ToolPreflight | Event::DangerousPreflight);
+    // D-13 (audit 6768 B4): a refusal's fixed reason rides stderr too — an exit 2 with empty
+    // stderr tells the caller nothing when the object is not shown.
+    let deny_reason = match (&verdict, event) {
+        (Verdict::Deny(reason), Event::ToolPreflight | Event::DangerousPreflight) => {
+            Some(reason.clone())
+        }
+        _ => None,
+    };
+    let denied = deny_reason.is_some();
     let stdout = match (event, verdict) {
         (_, Verdict::Allow) => String::new(),
         // "`ask` prompts the user to confirm" (code.claude.com/docs/en/hooks, read 2026-11-11);
@@ -442,7 +449,7 @@ fn render_claude(event: Event, verdict: Verdict) -> Answer {
     // host treats as blocking; every other answer stays exit 0.
     Answer {
         stdout,
-        stderr: String::new(),
+        stderr: deny_reason.unwrap_or_default(),
         exit: u8::from(denied) * 2,
     }
 }
@@ -458,9 +465,9 @@ fn render_claude(event: Event, verdict: Verdict) -> Answer {
 /// (audit B1 of #3075).
 const COMPACTED: &str =
     "This session was just compacted. User instructions you can still see may already be done: \
-     before you act on one, check whether a comment, a claim or a pull request already shows it \
-     done, and run it again only when none does. A standing instruction (a rule meant to stay \
-     in force) still applies.";
+     before you act on one, check whether a comment, a review or a pull request already shows \
+     it done, and run it again only when none does. A standing instruction (a rule meant to \
+     stay in force) still applies.";
 
 /// The conversation language the user chose, as one sentence for session-check:
 /// the code recorded in HOME (`language-set --home`, the installer's choice) — the one source
@@ -567,14 +574,17 @@ fn export_env_file(cwd: &Path, integration: &Option<String>, card: Option<&str>)
         return;
     };
     let mut lines = String::new();
+    // audit 6768 (small 5): every value is single-quoted (an embedded quote escaped), so a
+    // branch name or id with shell characters stays one value.
+    let shell = |v: &str| format!("'{}'", v.replace('\'', r"'\''"));
     if let Some(name) = integration {
-        lines.push_str(&format!("export MOAI_INTEGRATION_BRANCH={name}\n"));
+        lines.push_str(&format!("export MOAI_INTEGRATION_BRANCH={}\n", shell(name)));
     }
     if let Some(card) = card {
-        lines.push_str(&format!("export MOAI_CARD={card}\n"));
+        lines.push_str(&format!("export MOAI_CARD={}\n", shell(card)));
     }
     if let Some(id) = project_id_of(cwd) {
-        lines.push_str(&format!("export MOAI_PROJECT_ID={id}\n"));
+        lines.push_str(&format!("export MOAI_PROJECT_ID={}\n", shell(&id)));
     }
     if lines.is_empty() {
         return;
@@ -671,7 +681,14 @@ pub const MERGE_CONFIRM_RULE: &str = "merge_confirm";
 /// work-tree root, found by walking up — a session may run in a subfolder). A folder that is
 /// not gets one process start and nothing else from every duty.
 fn moai_project(cwd: &Path) -> bool {
+    // The tool's own home state folder is not a project (audit 6768 B3): without this, a
+    // session anywhere under the user's home would always count as a moai project and every
+    // duty would run there.
+    let home = std::env::var_os("HOME").map(PathBuf::from);
     cwd.ancestors().any(|dir| {
+        if home.as_deref() == Some(dir) {
+            return false;
+        }
         [
             crate::state_root::EARLIER_PROJECT_DIR,
             crate::state_root::MOAI_DIR,
@@ -1765,6 +1782,77 @@ mod tests {
             target_path(&json!({"tool_input": {}}), &real),
             Value::Null,
             "no path"
+        );
+    }
+
+    // ---- audit 6768 repairs (the tests went red first) ----
+
+    /// B3: the tool's own home state folder is not a moai project — a session under the
+    /// user's home answers nothing, while a folder with its own state folder still does.
+    #[test]
+    fn audit_b3_the_tool_home_is_not_a_project() {
+        let home = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(home.path().join(crate::state_root::MOAI_DIR)).unwrap();
+        let saved = std::env::var_os("HOME");
+        std::env::set_var("HOME", home.path());
+        let plain_under_home = home.path().join("work/plain");
+        assert!(
+            !moai_project(&plain_under_home),
+            "a folder under a home with the tool state is not a project"
+        );
+        assert!(
+            !moai_project(home.path()),
+            "the home itself is not a project"
+        );
+        if let Some(saved) = saved {
+            std::env::set_var("HOME", saved);
+        }
+        let project = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(project.path().join(crate::state_root::MOAI_DIR)).unwrap();
+        assert!(moai_project(&project.path().join("sub")));
+        assert!(moai_project(project.path()));
+    }
+
+    /// B4: a refusal's fixed reason rides stderr too (D-13), beside the documented object.
+    #[test]
+    fn audit_b4_a_refusal_puts_its_reason_on_stderr() {
+        let reason = "MoAI: the fixed refusal sentence.";
+        let answer = render_claude(Event::ToolPreflight, Verdict::Deny(reason.to_string()));
+        assert_eq!(answer.exit, 2);
+        assert_eq!(answer.stderr, reason);
+        assert!(answer.stdout.contains("\"permissionDecision\":\"deny\""));
+    }
+
+    /// audit 6768 small 3: the compacted sentences hold none of the words the session
+    /// answer is forbidden to carry (REQ-3).
+    #[test]
+    fn audit_small3_the_compacted_sentences_hold_no_forbidden_word() {
+        for word in ["claim", "Issue #"] {
+            assert!(!COMPACTED.contains(word), "{COMPACTED}");
+        }
+    }
+
+    /// audit 6768 small 5: the CLAUDE_ENV_FILE export lines quote their values, so a value
+    /// with shell characters stays one value.
+    #[test]
+    fn audit_small5_env_file_values_are_quoted() {
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("env");
+        let saved_env = std::env::var_os("CLAUDE_ENV_FILE");
+        let saved_home = std::env::var_os("HOME");
+        std::env::set_var("CLAUDE_ENV_FILE", &file);
+        std::env::set_var("HOME", dir.path());
+        export_env_file(dir.path(), &Some("br'anch".to_string()), None);
+        if let Some(v) = saved_env {
+            std::env::set_var("CLAUDE_ENV_FILE", v);
+        }
+        if let Some(v) = saved_home {
+            std::env::set_var("HOME", v);
+        }
+        let text = std::fs::read_to_string(&file).unwrap();
+        assert_eq!(
+            text, "export MOAI_INTEGRATION_BRANCH='br'\\''anch'\n",
+            "{text}"
         );
     }
 }

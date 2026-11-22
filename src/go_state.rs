@@ -5605,7 +5605,11 @@ mod tests {
         assert!(hooks_proof(go).is_ok());
         let set = crate::hooks::current_hooks("claude").unwrap();
         let doc = serde_json::json!({ "hooks": set });
-        assert!(doc.to_string().contains("\"moai "), "{doc}");
+        // Exec form (SPEC-20261122-next-flow-hooks REQ-5): every command is the absolute
+        // path of this binary with an args array; the Go wiring's bare `moai hook …` is not.
+        let text = doc.to_string();
+        assert!(!text.contains("\"moai "), "{text}");
+        assert!(text.contains("\"args\":[\"hook-dispatch\""), "{text}");
         let proof = hooks_proof(doc.to_string().as_bytes());
         assert!(proof.is_err(), "{proof:?}");
         for command in [

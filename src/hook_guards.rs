@@ -2108,10 +2108,13 @@ fn integration_reason(branch: &str) -> String {
 /// folder's settings.json — the three files a hook or deny rule lives in, each written only on
 /// the user's pick at a preview.
 fn guarded_settings_files(cwd: &Path) -> Vec<PathBuf> {
-    let mut files = vec![
-        cwd.join(".claude/settings.json"),
-        cwd.join(".claude/settings.local.json"),
-    ];
+    // Every ancestor's settings pair — a session in a subfolder still writes the project's
+    // pair above it (audit 6768 small 4) — plus the config folder's settings.
+    let mut files = Vec::new();
+    for dir in cwd.ancestors() {
+        files.push(dir.join(".claude/settings.json"));
+        files.push(dir.join(".claude/settings.local.json"));
+    }
     if let Some(config) = std::env::var_os("CLAUDE_CONFIG_DIR").filter(|v| !v.is_empty()) {
         files.push(PathBuf::from(config).join("settings.json"));
     } else if let Some(home) = std::env::var_os("HOME").filter(|v| !v.is_empty()) {
@@ -2134,7 +2137,9 @@ pub fn dangerous_guard(tool: &str, tool_input: &Value, cwd: &Path) -> Option<Str
             let file = tool_input["file_path"]
                 .as_str()
                 .or_else(|| tool_input["notebook_path"].as_str())?;
-            let file = std::fs::canonicalize(file).unwrap_or_else(|_| PathBuf::from(file));
+            // audit 6768 small 4: a dot-dot or relative path resolves the way a deletion
+            // target does (variables, links, the missing tail kept), never a bare literal.
+            let file = resolve_target(file, cwd);
             guarded_settings_files(cwd)
                 .contains(&file)
                 .then_some(GUARDED_SETTINGS_WRITE.to_string())
@@ -2157,6 +2162,27 @@ fn dangerous_bash(command: &str, cwd: &Path) -> Option<String> {
             }
         }
     }
+    // audit 6768 small 4: a shell redirect into a guarded settings file (`> .claude/x`,
+    // `>> ../.claude/settings.json`, an attached `>file`) is the same write.
+    let guarded = guarded_settings_files(cwd);
+    let mut after_redirect = false;
+    for word in command.split_whitespace() {
+        let bare = word.trim_start_matches(|c: char| c.is_ascii_digit());
+        let target = if after_redirect {
+            Some(word)
+        } else {
+            bare.strip_prefix(">>")
+                .or_else(|| bare.strip_prefix('>'))
+                .filter(|t| !t.is_empty() && *t != "&")
+        };
+        after_redirect = word == ">" || word == ">>";
+        if let Some(t) = target {
+            let t = t.trim_matches(['"', '\'']);
+            if guarded.contains(&resolve_target(t, cwd)) {
+                return Some(GUARDED_SETTINGS_WRITE.to_string());
+            }
+        }
+    }
     None
 }
 
@@ -2175,8 +2201,11 @@ pub(crate) fn git_subcommand(args: &[String]) -> Option<(&str, &[String])> {
     let mut i = 0;
     while i < args.len() {
         let w = args[i].as_str();
-        let takes_value =
-            value_taking.contains(&w) && (w == "-C" || (!w.contains('=') && w.starts_with("--")));
+        // `-c name=value` gives its configuration pair before the subcommand (audit 6768
+        // B2: the value was read as the subcommand and a `branch -D` under it slipped by).
+        let takes_value = w == "-c"
+            || (value_taking.contains(&w)
+                && (w == "-C" || (!w.contains('=') && w.starts_with("--"))));
         if takes_value {
             i += 2;
         } else if !w.starts_with('-') {
@@ -2308,34 +2337,62 @@ fn env_command(args: &[String]) -> Option<(&str, &[String])> {
     None
 }
 
-/// Expands the known variables and the home folder in a word: `$HOME/x`, `${HOME}/x`, `~/x`
-/// and `$TMPDIR/x` all resolve; an unknown `$VAR` stays as it is (an unresolvable word is
-/// judged by its literal shape, which never points inside a root by accident).
+/// Expands the known variables and the home folder in a word, wherever the forms sit and in
+/// every spelling: `$HOME/x`, `${HOME}/x`, a bare `$HOME` or `${HOME}`, `~/x` and `~` alone.
+/// A variable this guard does not know stays spelled as it is, and the deletion check refuses
+/// a target that still holds one (its value can name anywhere; audit 6768 B1).
 fn expand_known(word: &str) -> String {
-    let home = std::env::var_os("HOME").map(PathBuf::from);
-    let tmp = std::env::var_os("TMPDIR").map(PathBuf::from);
-    let mut out = word.to_string();
-    for (var, value) in [("HOME", home), ("TMPDIR", tmp)] {
-        let Some(value) = value else { continue };
-        let value = value.display().to_string();
-        for form in [format!("${var}/"), format!("${{{var}}}/")] {
-            if out.starts_with(&form) {
-                out = format!("{}/{}", value.trim_end_matches('/'), &out[form.len()..]);
-            }
-        }
-    }
-    if out.starts_with('~') {
-        if let Some(home) = std::env::var_os("HOME") {
-            out = format!(
-                "{}/{}",
-                PathBuf::from(home)
+    let value_of = |name: &str| {
+        ["HOME", "TMPDIR"]
+            .iter()
+            .find_map(|var| (name == *var).then(|| std::env::var_os(var)))
+            .flatten()
+            .map(|v| {
+                PathBuf::from(v)
                     .display()
                     .to_string()
-                    .trim_end_matches('/'),
-                &out[2..]
-            );
+                    .trim_end_matches('/')
+                    .to_string()
+            })
+    };
+    // The tilde forms expand only at the start (`~` alone is the home itself; `~user` names
+    // another user's home, a value this guard does not know).
+    let text = match word {
+        "~" => value_of("HOME").unwrap_or_else(|| word.to_string()),
+        _ => word
+            .strip_prefix("~/")
+            .and_then(|rest| value_of("HOME").map(|home| format!("{home}/{rest}")))
+            .unwrap_or_else(|| word.to_string()),
+    };
+    let mut out = String::new();
+    let mut rest = text.as_str();
+    while let Some(at) = rest.find('$') {
+        out.push_str(&rest[..at]);
+        let tail = &rest[at..];
+        let (token, name) = if let Some(inner) = tail.strip_prefix("${") {
+            match inner.find('}') {
+                Some(end) => (&tail[..2 + end + 1], &inner[..end]),
+                // An unterminated `${` is a `$` and the rest is read anew.
+                None => {
+                    out.push('$');
+                    rest = &tail[1..];
+                    continue;
+                }
+            }
+        } else {
+            let end = tail[1..]
+                .find(|c: char| !(c.is_ascii_alphanumeric() || c == '_'))
+                .map_or(tail.len(), |i| i + 1);
+            (&tail[..end.max(1)], &tail[1..end.max(1)])
+        };
+        match value_of(name) {
+            Some(v) => out.push_str(&v),
+            // An unknown variable stays spelled, so the caller can refuse it.
+            None => out.push_str(token),
         }
+        rest = &tail[token.len()..];
     }
+    out.push_str(rest);
     out
 }
 
@@ -2404,9 +2461,18 @@ pub fn deletion_outside(command: &str, cwd: &Path) -> Option<&'static str> {
     let feeds_xargs = command
         .split(|c: char| c.is_whitespace() || "|;&\n".contains(c))
         .any(|w| w.trim_matches(['\\', '"', '\'']) == "xargs");
+    // The folder a `cd` on this line entered: a relative target after it names that folder,
+    // not the session cwd (audit 6768 B1).
+    let mut base: Option<PathBuf> = None;
     for (name, args) in crate::claim_verify::shell_commands(command) {
         let mut targets: Vec<String> = Vec::new();
         match name.as_str() {
+            "cd" => {
+                base = args
+                    .first()
+                    .map(|dir| resolve_target(dir, base.as_deref().unwrap_or(cwd)));
+                continue;
+            }
             "rm" | "rmdir" => {
                 targets = operands(&args).iter().map(|s| s.to_string()).collect();
                 if targets.is_empty() && feeds_xargs {
@@ -2416,6 +2482,14 @@ pub fn deletion_outside(command: &str, cwd: &Path) -> Option<&'static str> {
             "git" => {
                 if let Some((sub, rest)) = git_subcommand(&args) {
                     if sub == "clean" {
+                        // The clean runs in the folder a leading `-C` names (audit 6768
+                        // B1: no path operand ever named it).
+                        if let Some(dir) = git_dash_c_dir(&args) {
+                            let p = resolve_target(&dir, base.as_deref().unwrap_or(cwd));
+                            if !under(&p) {
+                                return Some(DELETION_OUTSIDE);
+                            }
+                        }
                         targets = operands(rest).iter().map(|s| s.to_string()).collect();
                     }
                 }
@@ -2424,10 +2498,13 @@ pub fn deletion_outside(command: &str, cwd: &Path) -> Option<&'static str> {
                 let deletes = args.iter().any(|w| w == "-delete")
                     || args.iter().any(|w| w == "-exec" || w.starts_with("-exec"));
                 if deletes {
+                    // The -H/-L/-P flags lead the paths (`find -L <dir> -delete`, audit
+                    // 6768 B1) and take no value.
                     targets = args
                         .iter()
+                        .skip_while(|w| matches!(w.as_str(), "-H" | "-L" | "-P"))
                         .take_while(|w| !w.as_str().starts_with('-'))
-                        .cloned()
+                        .map(|w| w.to_string())
                         .collect();
                 }
             }
@@ -2456,13 +2533,39 @@ pub fn deletion_outside(command: &str, cwd: &Path) -> Option<&'static str> {
         if targets.is_empty() {
             continue;
         }
+        // A target that still names a variable this guard does not know can resolve
+        // anywhere, so it is outside every root (audit 6768 B1).
+        if targets.iter().any(|t| expand_known(t).contains('$')) {
+            return Some(DELETION_OUTSIDE);
+        }
+        let against = base.as_deref().unwrap_or(cwd);
         let any_outside = targets
             .iter()
-            .map(|t| resolve_target(t, cwd))
+            .map(|t| resolve_target(t, against))
             .any(|p| !under(&p));
         if any_outside {
             return Some(DELETION_OUTSIDE);
         }
+    }
+    None
+}
+
+/// The folder a leading `git -C <dir>` names, before the subcommand (None when the line
+/// spells none or attaches it with `=`).
+fn git_dash_c_dir(args: &[String]) -> Option<String> {
+    let mut i = 0;
+    while i < args.len() {
+        let w = args[i].as_str();
+        if w == "-C" {
+            return args.get(i + 1).cloned();
+        }
+        if let Some(dir) = w.strip_prefix("--git-dir=") {
+            return Some(dir.to_string());
+        }
+        if !w.starts_with('-') {
+            return None;
+        }
+        i += 1;
     }
     None
 }
@@ -3762,5 +3865,154 @@ mod tests {
         mkfifo(&top.join("pipe"));
         std::os::unix::fs::symlink(top.join("pipe"), git.join("HEAD")).unwrap();
         answers_without_waiting(&top, "HEAD is a symlink to a FIFO");
+    }
+
+    // ---- audit 6768 repairs (each shape was a bypass; the tests went red first) ----
+
+    fn a_worktree() -> (tempfile::TempDir, std::path::PathBuf) {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(dir.path().join(".git")).unwrap();
+        let path = std::fs::canonicalize(dir.path()).unwrap();
+        (dir, path)
+    }
+
+    /// B1: a relative deletion after a `cd` names the folder the cd entered, not the session
+    /// cwd; `cd /` then a recursive delete is outside every root.
+    #[test]
+    fn audit_b1_a_relative_deletion_after_cd_resolves_against_the_cd_target() {
+        let (_d, wt) = a_worktree();
+        assert_eq!(
+            deletion_outside("cd / && rm -rf victim", &wt),
+            Some(DELETION_OUTSIDE)
+        );
+        // A cd inside the worktree keeps a relative delete inside it.
+        assert_eq!(deletion_outside("cd src && rm -rf build", &wt), None);
+    }
+
+    /// B1: `git -C <outside> clean` deletes there even with no path operand.
+    #[test]
+    fn audit_b1_git_clean_under_a_dash_c_outside_is_refused() {
+        let (_d, wt) = a_worktree();
+        assert_eq!(
+            deletion_outside("git -C /Users/definitely-not-here clean -fdx", &wt),
+            Some(DELETION_OUTSIDE)
+        );
+        assert_eq!(
+            deletion_outside("git -C . clean -fdx", &wt),
+            None,
+            "the worktree's own clean is not a deletion outside"
+        );
+    }
+
+    /// B1: the variable forms — bare, braced, quoted — resolve to the value this guard
+    /// knows, and a variable it does not know never counts as inside.
+    #[test]
+    fn audit_b1_the_home_variable_in_every_form_and_unknown_variables() {
+        let (_d, wt) = a_worktree();
+        let home = "/Users/audit-b1-home";
+        let saved = std::env::var_os("HOME");
+        std::env::set_var("HOME", home);
+        for command in [
+            "rm $HOME/victim",
+            "rm ${HOME}/victim",
+            "rm \"$HOME\"/victim",
+            "rm ${HOME}",
+        ] {
+            assert_eq!(
+                deletion_outside(command, &wt),
+                Some(DELETION_OUTSIDE),
+                "{command}"
+            );
+        }
+        if let Some(saved) = saved {
+            std::env::set_var("HOME", saved);
+        }
+        // An unknown variable is never inside: its value can name anywhere.
+        std::env::remove_var("MOAI_AUDIT_B1_UNKNOWN");
+        assert_eq!(
+            deletion_outside("rm $MOAI_AUDIT_B1_UNKNOWN/victim", &wt),
+            Some(DELETION_OUTSIDE)
+        );
+    }
+
+    /// B1: the grouping forms — if-then, for-do, braces, backticks, a leading `!` — still let
+    /// the deletion be seen, and a doubly nested shell script is read through.
+    #[test]
+    fn audit_b1_deletions_inside_grouping_forms_are_seen() {
+        let (_d, wt) = a_worktree();
+        let outside = "/Users/definitely-not-here";
+        let cases = [
+            format!("if true; then rm -rf {outside}; fi"),
+            format!("for f in *; do rm -rf {outside}; done"),
+            format!("{{ rm -rf {outside}; }}"),
+            format!("`rm -rf {outside}`"),
+            format!("! rm -rf {outside}"),
+            format!("bash -c 'bash -c \"rm -rf {outside}\"'"),
+        ];
+        for command in cases {
+            assert_eq!(
+                deletion_outside(&command, &wt),
+                Some(DELETION_OUTSIDE),
+                "{command}"
+            );
+        }
+    }
+
+    /// B1: `find -L <outside> -delete` — the -L flag is not the end of the targets.
+    #[test]
+    fn audit_b1_find_with_dash_l_still_names_its_target() {
+        let (_d, wt) = a_worktree();
+        assert_eq!(
+            deletion_outside("find -L /Users/definitely-not-here -type f -delete", &wt),
+            Some(DELETION_OUTSIDE)
+        );
+    }
+
+    /// B2: `git -c name=value` gives a pair, so the subcommand after it is read as the
+    /// subcommand (`branch -D` and `push` of the integration branch reach the guard).
+    #[test]
+    fn audit_b2_git_dash_c_gives_its_value_pair() {
+        let args: Vec<String> = ["-c", "core.hooksPath=/x", "-C", ".", "branch", "-D", "main"]
+            .iter()
+            .map(|s| s.to_string())
+            .collect();
+        assert_eq!(git_subcommand(&args).map(|(s, _)| s), Some("branch"));
+    }
+
+    /// B6: the tilde alone is the home itself — never a panic, and a deletion of it is
+    /// outside the worktree.
+    #[test]
+    fn audit_b6_a_bare_tilde_target_never_panics_and_is_outside() {
+        let (_d, wt) = a_worktree();
+        let saved = std::env::var_os("HOME");
+        let saved_tmp = std::env::var_os("TMPDIR");
+        std::env::set_var("HOME", "/Users/audit-b6-home");
+        std::env::remove_var("TMPDIR");
+        let answer = deletion_outside("rm ~", &wt);
+        if let Some(saved) = saved {
+            std::env::set_var("HOME", saved);
+        }
+        if let Some(t) = saved_tmp {
+            std::env::set_var("TMPDIR", t);
+        }
+        assert_eq!(answer, Some(DELETION_OUTSIDE));
+    }
+
+    /// audit 6768 small 4: a guarded settings write is refused from a subfolder cwd, through
+    /// a dot-dot path, and through a Bash redirect.
+    #[test]
+    fn audit_small4_guarded_writes_from_a_subfolder_dot_dot_and_redirect() {
+        let (_d, wt) = a_worktree();
+        let sub = wt.join("sub");
+        std::fs::create_dir_all(&sub).unwrap();
+        let write = json!({"file_path": "../.claude/settings.json"});
+        assert!(dangerous_guard("Write", &write, &sub).is_some(), "dot-dot");
+        let redirect = json!({"command": "echo x > ../.claude/settings.json"});
+        assert!(
+            dangerous_guard("Bash", &redirect, &sub).is_some(),
+            "redirect"
+        );
+        let local = json!({"command": "echo x >> .claude/settings.local.json"});
+        assert!(dangerous_guard("Bash", &local, &wt).is_some(), "local pair");
     }
 }

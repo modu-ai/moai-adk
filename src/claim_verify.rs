@@ -558,7 +558,7 @@ fn shell_segments(command: &str) -> Vec<Vec<String>> {
                 }
                 in_word = true;
             }
-            ';' | '&' | '|' | '\n' | '(' | ')' => {
+            ';' | '&' | '|' | '\n' | '(' | ')' | '`' => {
                 if in_word {
                     words.push(std::mem::take(&mut word));
                     in_word = false;
@@ -817,12 +817,25 @@ pub(crate) fn shell_commands(command: &str) -> Vec<(String, Vec<String>)> {
 
 fn collect_commands(command: &str, depth: u8, out: &mut Vec<(String, Vec<String>)>) {
     for words in shell_segments(command) {
-        let Some(i) = command_index(&words) else {
+        // The shell's grouping keywords lead a segment without running anything (`then rm
+        // …`, `do rm …`, `{ rm … }`, `! rm …`): a command inside an if/for/brace group or
+        // under a negation is read as itself (audit 6768 B1).
+        let mut words: &[String] = &words;
+        while let Some((first, rest)) = words.split_first() {
+            if SHELL_KEYWORDS.contains(&first.as_str()) {
+                words = rest;
+            } else {
+                break;
+            }
+        }
+        let Some(i) = command_index(words) else {
             continue;
         };
         let name = command_name(&words[i]).to_string();
         let args = words[i + 1..].to_vec();
-        if depth == 0 {
+        // One nesting past the first: a script that itself runs a shell (`bash -c 'bash -c
+        // …'`) is read through (audit 6768 B1).
+        if depth < 2 {
             if let Some(script) = script_run_by(&name, &args) {
                 collect_commands(&script, depth + 1, out);
             }
@@ -830,6 +843,12 @@ fn collect_commands(command: &str, depth: u8, out: &mut Vec<(String, Vec<String>
         out.push((name, args));
     }
 }
+
+/// The words that lead a shell segment without being its command: the grouping and
+/// negation keywords of POSIX shell grammar (plus `time`, which prefixes a pipeline).
+const SHELL_KEYWORDS: &[&str] = &[
+    "then", "do", "else", "elif", "fi", "done", "!", "time", "in", "{", "}",
+];
 
 /// The script a command runs as shell code: a shell's `-c` script, or `eval`'s arguments
 /// joined with spaces. The one place that decides which quoted text is code, shared by the

@@ -698,3 +698,123 @@ fn the_hook_receipt_keeps_a_protected_settings_file_privately_under_any_umask() 
         }
     }
 }
+
+/// audit 6768 B7: a settings file of a shape the layer cannot merge (a top-level array, a
+/// `permissions` key that is not an object, a `deny` that is not a list) is a conflict the
+/// preview reports and the confirm refuses — never a panic, never a silent replacement, and
+/// nothing is written.
+#[test]
+fn audit_b7_an_unexpected_settings_shape_conflicts_and_never_panics() {
+    let shapes = [
+        ("a top-level array", b"[1, 2]\n".as_slice()),
+        ("permissions as a string", b"{\"permissions\": \"nope\"}\n"),
+        (
+            "deny as a string",
+            b"{\"permissions\": {\"deny\": \"nope\"}}\n",
+        ),
+    ];
+    for (what, bytes) in shapes {
+        let f = setup();
+        layer_current(&f);
+        fs::write(config_settings(&f), bytes).unwrap();
+        let out = run(f_ref(&f), &f.project, &["update"]);
+        assert!(!out.status.success(), "{what}: the preview refuses");
+        let text = String::from_utf8_lossy(&out.stdout).to_string()
+            + &String::from_utf8_lossy(&out.stderr);
+        assert!(!text.contains("panicked"), "{what}: {text}");
+        assert_eq!(fs::read(config_settings(&f)).unwrap(), bytes, "{what}");
+    }
+}
+
+/// audit 6768 B5: a config-folder receipt is read only from the HOME receipts folder and
+/// names only the host's own settings file — a receipt shipped inside a repository can never
+/// write or delete a chosen path.
+#[test]
+fn audit_b5_a_config_receipt_cannot_write_chosen_paths() {
+    let f = setup();
+    layer_current(&f);
+    let id = "hooks-1795000000000000000-0";
+    let victim = f.home.join("victim.txt");
+    fs::write(&victim, "kept\n").unwrap();
+    let receipt = json!({
+        "schema_version": 1,
+        "id": id,
+        "plan_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+        "permission_reference": "test-approval",
+        "status": "applied",
+        "hosts": [{
+            "host": "claude-config",
+            "files": [{
+                "path": victim.display().to_string(),
+                "before_sha256": null,
+                "after_sha256": moai_cli::digest(b"kept\n"),
+            }],
+        }],
+    });
+    // Shipped inside the repository: the project receipts folder.
+    let project_receipts = moai_cli::state_root::path(&f.project, "receipts");
+    fs::create_dir_all(project_receipts.join(id)).unwrap();
+    fs::write(
+        project_receipts.join(id).join("receipt.json"),
+        serde_json::to_vec_pretty(&receipt).unwrap(),
+    )
+    .unwrap();
+    let out = run(
+        &f,
+        &f.project,
+        &[
+            "hooks-revert",
+            f.project.to_str().unwrap(),
+            "--receipt",
+            id,
+            "--permission-reference",
+            "test-approval",
+        ],
+    );
+    assert!(
+        !out.status.success(),
+        "the project-side config receipt is refused"
+    );
+    let text =
+        String::from_utf8_lossy(&out.stdout).to_string() + &String::from_utf8_lossy(&out.stderr);
+    assert!(
+        text.contains("only from the HOME receipts folder"),
+        "{text}"
+    );
+    assert_eq!(fs::read_to_string(&victim).unwrap(), "kept\n");
+
+    // From the HOME receipts folder but naming a foreign path (either root the resolver
+    // may name, so the receipt is in both).
+    for root in receipts_roots(&f.home) {
+        let dir = root.join("receipts");
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(
+            dir.join(format!("{id}.json")),
+            serde_json::to_vec_pretty(&receipt).unwrap(),
+        )
+        .unwrap();
+    }
+    fs::remove_dir_all(&project_receipts).unwrap();
+    let out = run(
+        &f,
+        &f.project,
+        &[
+            "hooks-revert",
+            f.project.to_str().unwrap(),
+            "--receipt",
+            id,
+            "--permission-reference",
+            "test-approval",
+        ],
+    );
+    assert!(!out.status.success(), "the foreign path is refused");
+    let text =
+        String::from_utf8_lossy(&out.stdout).to_string() + &String::from_utf8_lossy(&out.stderr);
+    assert!(text.contains("outside the host's hook files"), "{text}");
+    assert_eq!(fs::read_to_string(&victim).unwrap(), "kept\n");
+}
+
+/// `run` takes the fixture by reference for the shapes loop above.
+fn f_ref(f: &Fixture) -> &Fixture {
+    f
+}

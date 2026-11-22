@@ -146,7 +146,10 @@ fn an_ordinary_user_commits_on_an_issue_branch() {
 fn a_lane_session_without_a_claim_is_refused() {
     let (_d, root) = repo("issue/12-fix-typo");
     register_lane(&root, None);
-    assert_eq!(guards(&root, PLAIN), (true, Some(2)));
+    // SPEC-20261122-next-flow-hooks REQ-11: the token rule is gone from the tool-preflight —
+    // a plain commit passes unless another holder's reservation covers a staged path; the
+    // claim-verify hook itself (the legacy entry an old install still runs) still refuses.
+    assert_eq!(guards(&root, PLAIN), (false, Some(2)));
 }
 
 #[test]
@@ -177,7 +180,9 @@ fn an_unreadable_registry_keeps_the_guard_on() {
     let clone_state = root.join(".git/.moai-cli");
     fs::create_dir_all(&clone_state).unwrap();
     std::os::unix::fs::symlink(&elsewhere, clone_state.join("sessions")).unwrap();
-    assert_eq!(guards(&root, PLAIN), (true, Some(2)));
+    // SPEC-20261122-next-flow-hooks REQ-11: the tool-preflight no longer carries the token
+    // rule; the claim-verify hook still fails closed on the unreadable registry.
+    assert_eq!(guards(&root, PLAIN), (false, Some(2)));
 }
 
 /// C-80 audit N1 (probe case 7): a link anywhere below the git common dir is refused, not only a
@@ -193,9 +198,12 @@ fn a_linked_clone_state_folder_keeps_the_guard_on() {
             fs::create_dir(empty.join("sessions")).unwrap();
         }
         std::os::unix::fs::symlink(&empty, root.join(".git/.moai-cli")).unwrap();
+        // SPEC-20261122-next-flow-hooks REQ-11: the token rule is gone from the
+        // tool-preflight (a plain commit passes); the claim-verify hook still fails closed
+        // on the linked registry.
         assert_eq!(
             guards(&root, PLAIN),
-            (true, Some(2)),
+            (false, Some(2)),
             "with_sessions={with_sessions}"
         );
         // The same layout as a real folder is an empty registry: no lane, no guard.
