@@ -41,9 +41,10 @@ fn ok(out: &Output) -> Value {
 
 /// A config root with one session that binds an inbox and one that does not.
 /// The socket path names a harness-made folder (N8 of the first audit: never
-/// the real /tmp/cc-socks folder).
-fn config_root() -> TempDir {
-    let socks = SockFolder::new("config");
+/// the real /tmp/cc-socks folder); the tag gives each caller its own folder
+/// (follow-up 3: one name per process races under threaded cargo test).
+fn config_root(tag: &str) -> TempDir {
+    let socks = SockFolder::new(tag);
     let dir = TempDir::new().unwrap();
     let sessions = dir.path().join("sessions");
     fs::create_dir_all(&sessions).unwrap();
@@ -100,7 +101,7 @@ impl Drop for SockFolder {
 
 #[test]
 fn ac1_an_unknown_addressee_is_the_different_root_refusal() {
-    let dir = config_root();
+    let dir = config_root("ac1");
     let v = wake(&dir, "someone-else");
     assert_eq!(v["shape"], json!("refused"));
     assert!(
@@ -114,7 +115,9 @@ fn ac1_an_unknown_addressee_is_the_different_root_refusal() {
 }
 
 /// B1 of the N-slice audit: a missing registry folder answers the no-channel
-/// refusal in the refused shape, never an internal error.
+/// refusal in the refused shape, never an internal error. Follow-up 1: the
+/// reason names the registry folder as missing or unreadable. Follow-up 2: an
+/// invalid wake answers its own reason even with the folder missing.
 #[test]
 fn ac2_a_missing_registry_folder_is_the_no_channel_refusal() {
     let missing = TempDir::new().unwrap();
@@ -129,15 +132,52 @@ fn ac2_a_missing_registry_folder_is_the_no_channel_refusal() {
     ]));
     assert_eq!(v["shape"], json!("refused"), "{v}");
     assert!(
-        v["reason"].as_str().unwrap().contains("no message channel"),
+        v["reason"].as_str().unwrap().contains("registry folder")
+            && v["reason"]
+                .as_str()
+                .unwrap()
+                .contains("missing or unreadable"),
         "{v}"
     );
     assert_eq!(v["socket_write"], json!(false), "{v}");
+    // Follow-up 2: the idle flag answers its own line, not the folder's.
+    let v = ok(&run(&[
+        "host-wake",
+        "leader",
+        "--text",
+        "a verdict landed",
+        "--idle",
+        "--config-dir",
+        nowhere.to_str().unwrap(),
+    ]));
+    assert!(
+        v["reason"]
+            .as_str()
+            .unwrap()
+            .contains("idle notice rides the model-session tool"),
+        "{v}"
+    );
+    // Follow-up 2: an invalid name answers its own line too.
+    let v = ok(&run(&[
+        "host-wake",
+        "bad name",
+        "--text",
+        "a verdict landed",
+        "--config-dir",
+        nowhere.to_str().unwrap(),
+    ]));
+    assert!(
+        v["reason"]
+            .as_str()
+            .unwrap()
+            .contains("character outside letters"),
+        "{v}"
+    );
 }
 
 #[test]
 fn ac2b_a_session_without_a_socket_is_the_no_inbox_refusal() {
-    let dir = config_root();
+    let dir = config_root("ac2b");
     let v = wake(&dir, "worker");
     assert_eq!(v["shape"], json!("refused"));
     assert!(
@@ -218,7 +258,7 @@ fn ac4_an_ambiguous_name_is_refused() {
 /// minimum line carries none, so the flag is refused.
 #[test]
 fn ac5_the_idle_flag_is_refused_with_its_line() {
-    let dir = config_root();
+    let dir = config_root("ac5");
     let v = wake_with_idle(&dir);
     assert_eq!(v["shape"], json!("refused"), "{v}");
     assert!(
