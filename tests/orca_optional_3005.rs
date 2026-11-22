@@ -64,7 +64,7 @@ fn mentions_orca(text: &str) -> bool {
 /// (`leader_round.rs`, `ops/leader_round.rs`). None of those starts the program; the one file
 /// that does is `lane_send.rs` (`ProcessOrca`, see its entry below), which the rows for
 /// `lane-screen` and `lane-send` of C-120 add.
-const SRC_ORCA_FILES: [&str; 13] = [
+const SRC_ORCA_FILES: [&str; 16] = [
     "src/claude.rs",
     "src/go_hooks.rs",
     // The `session_cwd` example of `lane-safe-to-reset` names the source `orca` (#3015 C1); the
@@ -91,6 +91,12 @@ const SRC_ORCA_FILES: [&str; 13] = [
     "src/ops/lane_safe_to_reset.rs",
     "src/ops/leader_pulse.rs",
     "src/ops/leader_round.rs",
+    // The status line hands its stdin to the wrapper script Orca installs
+    // (`~/.orca/agent-hooks/claude-statusline.sh`, SPEC-20261122-statusline-limits D-6) when
+    // that file and the hook variables exist; it starts that script, never the program.
+    "src/statusline/mod.rs",
+    "src/statusline/orca.rs",
+    "src/statusline/state.rs",
 ];
 
 /// The only places in the skill package and the agent files that name Orca. The research
