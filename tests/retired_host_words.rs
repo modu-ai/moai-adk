@@ -153,6 +153,17 @@ fn host_codex_is_retired_in_the_label_lists() {
     assert!(findings(".github/moai/README.md", &readme, &[]).is_empty());
 }
 
+/// AC-11: the error-kind table samples the messages of the hooks commands as they are now: no
+/// removed Codex hook file and no retired host in the host message.
+#[test]
+fn the_error_table_holds_no_removed_hook_adapter_message() {
+    let table = read("src/contract.rs");
+    for gone in [".codex/hooks.json", "must be claude, codex or omp"] {
+        assert!(!table.contains(gone), "src/contract.rs still holds {gone}");
+    }
+    assert!(table.contains("\"unknown hook host; must be claude\""));
+}
+
 /// AC-8: the repository tracks no file under its own `.codex` folder.
 #[test]
 fn the_repository_tracks_no_codex_folder() {

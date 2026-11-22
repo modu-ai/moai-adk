@@ -48,7 +48,7 @@ The user decided on 2026-11-21 that moai-adk supports Claude Code and GLM only. 
 - AC-8 (REQ-8): the two tracked `.codex/agents` files are absent · verify: `cargo test --locked --offline --test retired_host_words the_repository_tracks_no_codex_folder`
 - AC-9 (REQ-9): a planted word is reported with its file and line, and `compose`, `$MOAI_LANGUAGE` and `"$moai"` are not · verify: `cargo test --locked --offline --test retired_host_words a_planted_word_is_reported_with_file_and_line`
 - AC-10 (REQ-10): the source manifest equals the tool's output · verify: `cargo test --locked --offline --test product_cli source_manifest_covers_every_package_file`
-- AC-11 (REQ-11): the contract table holds no removed hook adapter message · verify: `cargo test --locked --offline --lib contract`
+- AC-11 (REQ-11): the contract table holds no removed hook adapter message and still gives every message its kind · verify: `cargo test --locked --offline --test retired_host_words the_error_table_holds_no_removed_hook_adapter_message`
 - AC-12 (REQ-12): the kept readers' tests pass unchanged · verify: `cargo test --locked --offline --test go_state_codex_cli --test update_cleanup_cli --test gate_check_cli --test retired_hosts_layer --test codex_home_update_removed --test switch_script_v2`
 
 ## Scope
