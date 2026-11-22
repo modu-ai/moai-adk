@@ -155,6 +155,60 @@ fn host_codex_is_retired_in_the_label_lists() {
     assert!(findings(".github/moai/README.md", &readme, &[]).is_empty());
 }
 
+/// The current product docs, named one by one (no directory walk).
+const PRODUCT_DOCS: [&str; 10] = [
+    "docs/support-matrix.md",
+    "docs/e2e-matrix.md",
+    "docs/host-live-session-checklist.md",
+    "docs/user-entry-draft.md",
+    "docs/protocol-v1.md",
+    "docs/agent-model-effort-inheritance.md",
+    "docs/llms.txt",
+    "docs/zcode-support.md",
+    "docs/lane-loop-contract.md",
+    "docs/agents-md-maintenance.md",
+];
+
+/// AC-6: the named product docs hold no retired host word outside the allow-list.
+#[test]
+fn product_docs_have_no_retired_host_words() {
+    // (path, line substring): a line that keeps a retired word on purpose.
+    const ALLOW: [(&str, &str); 1] = [
+        // The verbatim quote of the user's platform decision of 2026-11-17 (dated history); it
+        // picks the platforms, not the hosts.
+        (
+            "docs/support-matrix.md",
+            "claude code, codex에서 지원하는 환경으로 동일하게 지원하자.",
+        ),
+    ];
+    for (rel, part) in ALLOW {
+        assert!(
+            read(rel).contains(part),
+            "stale allow-list entry {rel}: {part}"
+        );
+    }
+    let mut found = Vec::new();
+    for rel in PRODUCT_DOCS {
+        found.extend(
+            findings(rel, &read(rel), &[])
+                .into_iter()
+                .filter(|f| !ALLOW.iter().any(|(p, part)| *p == rel && f.contains(part))),
+        );
+    }
+    assert!(found.is_empty(), "{found:#?}");
+}
+
+/// AC-7: the files that exist only for Codex or OMP are gone.
+#[test]
+fn codex_only_files_are_absent() {
+    for rel in ["docs/codex-adapter-contract.md"] {
+        assert!(
+            fs::symlink_metadata(root().join(rel)).is_err(),
+            "{rel} still exists"
+        );
+    }
+}
+
 /// AC-11: the error-kind table samples the messages of the hooks commands as they are now: no
 /// removed Codex hook file and no retired host in the host message.
 #[test]
