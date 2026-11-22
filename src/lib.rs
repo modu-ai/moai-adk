@@ -122,6 +122,7 @@ pub mod profile;
 pub mod progress;
 pub mod project_ci;
 pub mod project_ci_estimate;
+pub mod project_ci_plan;
 pub mod project_ci_workflows;
 pub mod project_detect;
 pub mod project_home;
