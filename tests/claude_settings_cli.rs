@@ -133,7 +133,7 @@ fn unmanaged_keys_and_stale_digests_are_refused() {
     let (home, project) = (TempDir::new().unwrap(), TempDir::new().unwrap());
     let p = project.path();
     let mut bad = desired();
-    bad["enabledPlugins"] = json!({"MOAI_TEST_UNMANAGED": false});
+    bad["cleanupPeriodDays"] = json!(30);
     bad["hooks"] = json!({});
     let (code, v) = run(
         &["claude-settings-plan", p.to_str().unwrap()],
@@ -143,7 +143,8 @@ fn unmanaged_keys_and_stale_digests_are_refused() {
     assert_eq!(code, Some(1), "{v}");
     let msg = v["error"]["message"].as_str().unwrap();
     assert!(
-        msg.contains("enabledPlugins, hooks") && msg.contains("allowed: outputStyle, statusLine"),
+        msg.contains("cleanupPeriodDays, hooks")
+            && msg.contains("allowed: outputStyle, statusLine"),
         "{msg}"
     );
     let (code, _) = apply(p, home.path(), &bad, &"0".repeat(64));
@@ -1060,7 +1061,7 @@ fn the_worktree_base_ref_is_previewed_applied_and_reverted() {
 
     for bad in [
         json!({"worktree": {"baseRef": "main"}}),
-        json!({"worktree": {"baseRef": "head", "sparsePaths": ["x"]}}),
+        json!({"worktree": {"baseRef": "head", "sparsePaths": ["../x"]}}),
         json!({"worktree": "head"}),
         json!({"worktree": {}}),
     ] {
