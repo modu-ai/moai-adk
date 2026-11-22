@@ -1060,7 +1060,7 @@ fn the_worktree_base_ref_is_previewed_applied_and_reverted() {
 
     for bad in [
         json!({"worktree": {"baseRef": "main"}}),
-        json!({"worktree": {"baseRef": "head", "sparsePaths": ["x"]}}),
+        json!({"worktree": {"baseRef": "head", "sparsePaths": ["../x"]}}),
         json!({"worktree": "head"}),
         json!({"worktree": {}}),
     ] {
