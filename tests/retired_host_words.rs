@@ -6,7 +6,7 @@
 //! later slice adds its own case when its files change.
 use moai_cli::labels_check::parse_axes;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 fn root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -87,15 +87,17 @@ fn github_forms() -> Vec<String> {
     for entry in manifest["files"].as_array().unwrap() {
         for key in ["template_path", "derived_from"] {
             if let Some(p) = entry[key].as_str() {
-                if root().join(p).is_file() && !paths.iter().any(|q: &String| q == p) {
+                assert!(root().join(p).is_file(), "the manifest names a missing {p}");
+                if !paths.iter().any(|q: &String| q == p) {
                     paths.push(p.to_string());
                 }
             }
         }
     }
-    assert!(
-        paths.iter().any(|p| p.ends_with("moai-bugfix.yml")),
-        "the manifest names the issue forms: {paths:?}"
+    assert_eq!(
+        paths.len(),
+        13,
+        "the manifest's templates and their sources: {paths:?}"
     );
     paths
 }
@@ -164,13 +166,21 @@ fn the_error_table_holds_no_removed_hook_adapter_message() {
     assert!(table.contains("\"unknown hook host; must be claude\""));
 }
 
-/// AC-8: the repository tracks no file under its own `.codex` folder.
+/// AC-8: the repository tracks no file under its own `.codex` folder: the committed tree has no
+/// `.codex` entry (a tracked file would give it one). A local untracked `.codex` does not count.
 #[test]
 fn the_repository_tracks_no_codex_folder() {
-    for rel in [
-        ".codex/agents/prj-local-check.toml",
-        ".codex/agents/prj-reviewer.toml",
-    ] {
-        assert!(!Path::new(&root().join(rel)).exists(), "{rel}");
-    }
+    let out = std::process::Command::new("git")
+        .args(["rev-parse", "--verify", "--quiet", "HEAD:.codex"])
+        .current_dir(root())
+        .env_remove("GIT_DIR")
+        .env_remove("GIT_INDEX_FILE")
+        .env_remove("GIT_WORK_TREE")
+        .output()
+        .unwrap();
+    assert!(
+        !out.status.success(),
+        "HEAD tracks .codex: {}",
+        String::from_utf8_lossy(&out.stdout)
+    );
 }
