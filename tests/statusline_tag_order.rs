@@ -1,9 +1,9 @@
 //! #2928 (user instruction 6878415244, 2026-11-14, replacing S-1's tag-first line 3): line 1 of
 //! the Claude statusline starts with `🏷️ <Leader|Agent-N|agent> | ` (#2871), and line 3 is
-//! `🗂️ … | 🔋 CTX … | 🪫 Week … | 🌳 …` (the user's third instruction of 2026-11-20) without
+//! `🗂️ … | 🔋 CW … | 🪫 7D … | 🌳 …` (the user's third instruction of 2026-11-20) without
 //! the tag, the same bytes under every language and width. The card counts open the line when
 //! a ledger shows, and the worktree label (`🌳 <name>`, or `🌳 WT-c<card>-<name>`) closes it
-//! when there is one; the check below skips those groups and still requires CTX between them.
+//! when there is one; the check below skips those groups and still requires CW between them.
 //!
 //! The renderer has no language text and does not read `COLUMNS` (docs/rust-product-path.md,
 //! line 1), so "Korean and English, 80 and 40 columns" is proven as "byte-equal to the recorded
@@ -186,7 +186,7 @@ fn line1_tag_first_under_ko_en_and_80_40_columns() {
                         None => line3,
                     };
                     assert!(
-                        line3.starts_with("🔋 CTX ") || line3.starts_with("🪫 CTX "),
+                        line3.starts_with("🔋 CW ") || line3.starts_with("🪫 CW "),
                         "{name} {variant} LANG={lang} COLUMNS={columns}: line 3 {line3:?}"
                     );
                     assert!(
