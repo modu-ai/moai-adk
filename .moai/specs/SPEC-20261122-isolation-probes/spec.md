@@ -74,4 +74,4 @@ parent: SPEC-20261121-flow-skeleton
 
 ## Result
 
-(status draft — written when the slice lands)
+Measured 2026-11-22T03:44–03:47Z, Claude Code 2.1.330, report `isolation-probes-2026-11-22/report.md` under the moai reports folder (the card closes on it). In short: the lane worktree session lands (the checks read the command text and the working directory only, never the files a child writes); the sandbox refuses the moai-home ledger write (`Operation not permitted`, allowed by `sandbox.filesystem.allowWrite` only); `git worktree add` passes in both forms against a temp repository, while a `git -C` aimed at the main checkout is refused with its exact message. Landing therefore runs from the lane when no sandbox is on, and from the leader session in the primary checkout or the user's terminal when one is.
