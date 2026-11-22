@@ -1003,6 +1003,132 @@ fn a_new_worktree_goes_under_the_project_place() {
     assert_eq!(git(&f.repo, &["status", "--porcelain"]), "");
 }
 
+/// The project-level lines of an apply made through `--project <project>` run in `cwd`.
+fn apply_from(f: &Fixture, project: &Path, cwd: &Path) -> Value {
+    let p = project.to_string_lossy().to_string();
+    let plan_out = envelope(&run(
+        cwd,
+        &args(&["worktree-plan", &p, "--branch-prefix", "lane"], &f.source),
+    ));
+    assert_eq!(plan_out["ok"], true, "{plan_out}");
+    let digest = plan_out["result"]["plan_digest"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    envelope(&run(
+        cwd,
+        &args(
+            &[
+                "worktree-apply",
+                &p,
+                "--branch-prefix",
+                "lane",
+                "--plan-digest",
+                &digest,
+                "--disk-floor-bytes",
+                "0",
+            ],
+            &f.source,
+        ),
+    ))
+}
+
+fn exclude_count(repo: &Path) -> usize {
+    fs::read_to_string(repo.join(".git/info/exclude"))
+        .unwrap_or_default()
+        .lines()
+        .filter(|l| *l == "/.claude/worktrees/")
+        .count()
+}
+
+/// REQ-10, audit B1: an apply run from a linked worktree — where a lane runs — still writes the
+/// exclude line for the primary checkout, so the primary's status stays clean.
+#[test]
+fn worktree_place_status_the_apply_from_a_linked_worktree_writes_the_exclude_line() {
+    let f = fixture();
+    fs::write(f.repo.join(".gitignore"), "").unwrap();
+    git(&f.repo, &["commit", "-q", "-am", "no ignore"]);
+    let linked = f.repo.parent().unwrap().join("linked");
+    git(
+        &f.repo,
+        &[
+            "worktree",
+            "add",
+            "-q",
+            "-b",
+            "side",
+            linked.to_str().unwrap(),
+        ],
+    );
+    let env = apply_from(&f, &linked, &linked);
+    assert_eq!(env["result"]["decision"], "created", "{env}");
+    assert!(env["result"].get("place_exclude_error").is_none(), "{env}");
+    assert!(
+        f.repo.join(".claude/worktrees/primary-7-06-C").is_dir(),
+        "{env}"
+    );
+    assert_eq!(exclude_count(&f.repo), 1);
+    assert_eq!(git(&f.repo, &["status", "--porcelain"]), "");
+}
+
+/// REQ-10, audit B1: an apply run from a subfolder of the primary checkout writes one line.
+#[test]
+fn worktree_place_status_the_apply_from_a_subfolder_writes_one_exclude_line() {
+    let f = fixture();
+    fs::write(f.repo.join(".gitignore"), "").unwrap();
+    fs::create_dir_all(f.repo.join("sub")).unwrap();
+    fs::write(f.repo.join("sub/x.txt"), "x\n").unwrap();
+    git(&f.repo, &["add", "-A"]);
+    git(&f.repo, &["commit", "-q", "-m", "sub"]);
+    let sub = f.repo.join("sub");
+    let env = apply_from(&f, &sub, &sub);
+    assert_eq!(env["result"]["decision"], "created", "{env}");
+    assert_eq!(exclude_count(&f.repo), 1);
+    assert_eq!(git(&f.repo, &["status", "--porcelain"]), "");
+}
+
+/// REQ-11, audit B2: an exclude file that cannot be written leaves the apply done, names the
+/// error under `place_exclude_error`, and the file the link points at keeps its bytes.
+#[cfg(unix)]
+#[test]
+fn worktree_place_status_the_apply_names_an_unwritable_exclude_file() {
+    let f = fixture();
+    fs::write(f.repo.join(".gitignore"), "").unwrap();
+    git(&f.repo, &["commit", "-q", "-am", "no ignore"]);
+    let outside = f.repo.parent().unwrap().join("outside-exclude");
+    fs::write(&outside, "keep\n").unwrap();
+    let exclude = f.repo.join(".git/info/exclude");
+    let _ = fs::remove_file(&exclude);
+    std::os::unix::fs::symlink(&outside, &exclude).unwrap();
+    let env = apply_from(&f, &f.repo, &f.repo);
+    assert_eq!(env["result"]["decision"], "created", "{env}");
+    let err = env["result"]["place_exclude_error"]
+        .as_str()
+        .unwrap_or_default();
+    assert!(err.contains("exclude"), "{env}");
+    assert!(f
+        .repo
+        .join(".claude/worktrees/primary-7-06-C/README.md")
+        .is_file());
+    assert_eq!(fs::read_to_string(&outside).unwrap(), "keep\n");
+}
+
+/// Audit N3: an add that fails leaves the exclude file as it was — the line follows a
+/// successful add.
+#[test]
+fn worktree_place_status_a_failed_add_leaves_the_exclude_file_alone() {
+    let f = fixture();
+    fs::write(f.repo.join(".gitignore"), "").unwrap();
+    git(&f.repo, &["commit", "-q", "-am", "no ignore"]);
+    // `.claude` as a plain file: the add cannot make its parents.
+    fs::write(f.repo.join(".claude"), "not a folder\n").unwrap();
+    let before = fs::read(f.repo.join(".git/info/exclude")).ok();
+    let env = apply_from(&f, &f.repo, &f.repo);
+    assert_ne!(env["result"]["decision"], "created", "{env}");
+    assert_eq!(fs::read(f.repo.join(".git/info/exclude")).ok(), before);
+    assert_eq!(exclude_count(&f.repo), 0);
+}
+
 /// AC-2: the same name again is refused, never overwritten — a folder already at the path
 /// stays as it was and no branch is made.
 #[test]

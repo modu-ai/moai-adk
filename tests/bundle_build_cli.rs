@@ -1037,6 +1037,54 @@ fn build_changes_only_the_new_branch_and_worktree() {
     assert_eq!(w.ledger_view(), ledger, "no card note, no ledger row");
 }
 
+/// REQ-11, audit B2: an exclude file that cannot be written leaves the build done, names the
+/// error under `place_exclude_error`, and the file the link points at keeps its bytes.
+#[cfg(unix)]
+#[test]
+fn worktree_place_status_the_bundle_names_an_unwritable_exclude_file() {
+    let w = World::new();
+    w.identity();
+    let a = w.head("spec/a", TIP, &[("notes/a.md", "a\n")], SPEC, &[1, 2], true);
+    let c1 = w.ready_card(&a);
+    w.git(&["checkout", "-q", "trunk"]);
+    let outside = w.work.parent().unwrap().join("outside-exclude");
+    std::fs::write(&outside, "keep\n").unwrap();
+    let exclude = w.work.join(".git/info/exclude");
+    let _ = std::fs::remove_file(&exclude);
+    std::os::unix::fs::symlink(&outside, &exclude).unwrap();
+    let (v, code) = w.build(&[&c1]);
+    assert_eq!(code, 0, "{v}");
+    let err = v["result"]["place_exclude_error"]
+        .as_str()
+        .unwrap_or_default();
+    assert!(err.contains("exclude"), "{v}");
+    assert!(w.worktree_of(1).join("notes/a.md").is_file(), "{v}");
+    assert_eq!(std::fs::read_to_string(&outside).unwrap(), "keep\n");
+}
+
+/// A bundle build that works writes one exclude line, and an answer without an error has no
+/// `place_exclude_error` key.
+#[test]
+fn worktree_place_status_the_bundle_writes_the_exclude_line_once() {
+    let w = World::new();
+    w.identity();
+    let a = w.head("spec/a", TIP, &[("notes/a.md", "a\n")], SPEC, &[1, 2], true);
+    let b = w.head("spec/b", TIP, &[("notes/b.md", "b\n")], SPEC, &[1, 2], true);
+    let (c1, c2) = (w.ready_card(&a), w.ready_card(&b));
+    w.git(&["checkout", "-q", "trunk"]);
+    let (v, code) = w.build(&[&c1]);
+    assert_eq!(code, 0, "{v}");
+    assert!(v["result"].get("place_exclude_error").is_none(), "{v}");
+    let (v2, code2) = w.build(&[&c2]);
+    assert_eq!(code2, 0, "{v2}");
+    let lines = std::fs::read_to_string(w.work.join(".git/info/exclude"))
+        .unwrap_or_default()
+        .lines()
+        .filter(|l| *l == "/.claude/worktrees/")
+        .count();
+    assert_eq!(lines, 1);
+}
+
 #[test]
 fn the_help_and_the_ops_doc_say_what_build_writes() {
     let w = World::new();
