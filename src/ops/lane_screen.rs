@@ -10,7 +10,8 @@ use std::path::PathBuf;
 /// answer or the screen as plain text, and prints its state (`working`, `idle`,
 /// `permission_prompt`, `input_pending`, `usage_limit`, `unreachable` or `unknown`) with the one
 /// screen row it was read from. For a usage limit it prints the reset time in UTC: from the
-/// lane's `usage-limits.json` when `--home` is given and a window is at its limit, otherwise
+/// usage record the lane's status line keeps for its HOME in the cache folder under `TMPDIR`
+/// when `--home` is given and a window is at its limit, otherwise
 /// from the screen text; a time with no zone or an unknown zone is `unknown` with its text.
 /// Only the five states `lane-status` names carry a `pane` object. Reads standard input and,
 /// with `--home`, one record; writes nothing and sends nothing.
@@ -25,7 +26,7 @@ use std::path::PathBuf;
 /// limit per call); exits non-zero when the list cannot be read.
 #[derive(clap::Args)]
 pub struct Args {
-    /// The lane's HOME, to read its `usage-limits.json` for the reset time of a usage limit.
+    /// The lane's HOME, to read its usage record for the reset time of a usage limit.
     #[arg(long)]
     home: Option<PathBuf>,
     /// Scan every terminal `orca terminal list` reports instead of reading one screen.
@@ -78,9 +79,11 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
     }
     let input = String::from_utf8_lossy(&bytes);
     let now = clock(args.now.as_deref())?;
+    let tmpdir = std::env::var("TMPDIR").ok();
     Ok(moai_cli::lane_status::lane_screen::report(
         &input,
         args.home.as_deref(),
+        tmpdir.as_deref(),
         now,
     ))
 }

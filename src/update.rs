@@ -1631,6 +1631,9 @@ fn user_layer_plan_in(
     let exe = std::env::current_exe().map_err(|_| "current executable unavailable".to_string())?;
     let bin_names = crate::bin_names::plan_for(home, &exe)?;
     let cwd = std::env::current_dir().map_err(|_| "current directory unavailable".to_string())?;
+    // A project value of `outputStyle` that hides ours, and the `/status` pointer after a style
+    // write: notices only, read-only and outside every digest (install-checks SPEC).
+    skipped.extend(crate::home_style::notices(&style, &cwd));
     let hooks = crate::update_hooks::plan(home, &cwd)?;
     let keys = crate::update_keys::plan(home)?;
     let home_layer = crate::update_home::plan(home)?;
@@ -1892,8 +1895,14 @@ pub fn layer_summary(p: &UserLayerPlan) -> String {
     out.push_str(&p.switch.summary());
     out.push_str(&p.git_hooks.summary());
     for s in &p.skipped {
+        // A style notice (`kind: notice`) is no skipped write: it keeps its own word.
+        let word = if s["kind"] == "notice" {
+            "notice"
+        } else {
+            "skipped"
+        };
         out.push_str(&format!(
-            "  skipped {} {}: {}\n",
+            "  {word} {} {}: {}\n",
             s["part"].as_str().unwrap_or(""),
             s["host"].as_str().unwrap_or(""),
             s["reason"].as_str().unwrap_or("")
@@ -3139,6 +3148,33 @@ mod user_layer_tests {
         assert!(user_layer_plan(&home, &a, &agents, &staged).is_ok());
         let e = user_layer_plan(&home, &b, &agents, &staged).err().unwrap();
         assert!(e.contains("package changed"), "{e}");
+    }
+
+    /// SPEC-20261122-output-style-install-checks, audit N2 and N3: the update plan of an empty
+    /// HOME writes the style file, so its `skipped` list carries the `/status` pointer as a
+    /// notice, and the terminal summary prints it as a notice, not as a skipped write.
+    #[test]
+    fn the_update_plan_carries_the_style_notice_and_prints_it_as_a_notice() {
+        let tmp = tempfile::tempdir().unwrap();
+        let home = tmp.path().join("home");
+        fs::create_dir_all(&home).unwrap();
+        let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+        let pkg = root.join("skills/moai");
+        let agents = root.join(crate::agent_defs::SOURCE_DIR);
+        let layer = user_layer_plan(&home, &pkg, &agents, &stage_package(&pkg).unwrap()).unwrap();
+        let pointer: Vec<&serde_json::Value> = layer
+            .skipped
+            .iter()
+            .filter(|s| s["reason"].as_str().is_some_and(|r| r.contains("/status")))
+            .collect();
+        assert_eq!(pointer.len(), 1, "{:?}", layer.skipped);
+        assert_eq!(pointer[0]["kind"], json!("notice"));
+        let text = layer_summary(&layer);
+        assert!(
+            text.contains("  notice style claude: if the style does not show up"),
+            "{text}"
+        );
+        assert!(!text.contains("  skipped style claude"), "{text}");
     }
 
     /// #2872 stage 2: the terminal summary gets a cleanup block only when the cleanup plan

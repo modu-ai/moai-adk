@@ -587,6 +587,64 @@ fn a_linked_worktree_reads_the_exclude_file_of_the_common_git_dir() {
 }
 
 #[test]
+fn a_picked_plugin_already_set_the_same_way_is_kept_and_the_rest_are_added() {
+    let m = monorepo();
+    let root = m.path();
+    write(root, "pyproject.toml", "[project]\nname = \"tools\"\n");
+    write(root, "tools/gen.py", "print(1)\n");
+    let request = json!({
+        "protocol_version": 1, "kind": "monorepo", "plugins": ["javascript", "python"]
+    });
+    // one picked plugin is already on, the other is new: a merge, not a conflict.
+    write(
+        root,
+        ".claude/settings.json",
+        "{\"enabledPlugins\": {\"typescript-lsp@claude-plugins-official\": true}}\n",
+    );
+    let before = snapshot(root);
+    let p = plan(root, request.clone()).unwrap();
+    assert_eq!(snapshot(root), before);
+    let plug = row(&p, ".claude/settings.json", Some("enabledPlugins"));
+    assert_eq!(plug.action, "merge", "{plug:#?}");
+    assert_eq!(
+        plug.value,
+        json!({"typescript-lsp@claude-plugins-official": true,
+               "pyright-lsp@claude-plugins-official": true})
+    );
+    assert!(
+        plug.detail
+            .as_deref()
+            .is_some_and(|d| d.contains("1 picked already set the same way")),
+        "{plug:#?}"
+    );
+    // both already on: unchanged.
+    write(
+        root,
+        ".claude/settings.json",
+        "{\"enabledPlugins\": {\"typescript-lsp@claude-plugins-official\": true, \
+         \"pyright-lsp@claude-plugins-official\": true}}\n",
+    );
+    let both = plan(root, request.clone()).unwrap();
+    let plug = row(&both, ".claude/settings.json", Some("enabledPlugins"));
+    assert_eq!(plug.action, "unchanged", "{plug:#?}");
+    // one set to another value: a conflict that names that plugin and only that one.
+    write(
+        root,
+        ".claude/settings.json",
+        "{\"enabledPlugins\": {\"typescript-lsp@claude-plugins-official\": false}}\n",
+    );
+    let p = plan(root, request).unwrap();
+    let plug = row(&p, ".claude/settings.json", Some("enabledPlugins"));
+    assert_eq!(plug.action, "conflict", "{plug:#?}");
+    let detail = plug.detail.as_deref().unwrap_or_default();
+    assert!(
+        detail.contains("typescript-lsp@claude-plugins-official already set to another value"),
+        "{plug:#?}"
+    );
+    assert!(!detail.contains("pyright"), "{plug:#?}");
+}
+
+#[test]
 fn a_linked_worktree_pointer_is_read_up_to_4096_bytes_and_not_one_more() {
     let main = large_tree();
     let wt = TempDir::new().unwrap();

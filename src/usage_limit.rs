@@ -8,12 +8,29 @@
 //! Claude Code drops a window once its `resets_at` passes
 //! (https://code.claude.com/docs/en/statusline, read 2026-11-13). Once a limit is hit the
 //! model can do nothing, and the `StopFailure` hook carries no reset time
-//! (https://code.claude.com/docs/en/hooks, read 2026-11-13), so the record is written on every
-//! render and read before the limit.
+//! (https://code.claude.com/docs/en/hooks, read 2026-11-13), so the record is kept by every
+//! render that sees the windows and read before the limit.
 //!
-//! `record` writes `$HOME/.moai-cli/state/usage-limits.json` atomically; `evaluate` reads it
-//! and writes nothing. Resuming after the reset is Claude Code's own automatic continue
-//! (`autoContinueAtUsageLimit`), not done here.
+//! Where it lives (SPEC-20261122-statusline-limits REQ-7, D-5): in the status line's cache
+//! folder (`$TMPDIR/moai-statusline/`, `/tmp` when `TMPDIR` is unset or empty, none when it is
+//! relative: [`crate::statusline::state::cache_folder`]), one file per HOME named
+//! `usage-<first 12 hex digits of the SHA-256 of the canonical HOME path>.record`. The suffix is
+//! not `.json` on purpose: the session cache files of the same folder are `<session id>.json`
+//! and its clean-up removes old `.json` files, so the record is neither a session's name nor
+//! cleaned away however long it stays unchanged. Lane profiles
+//! run with their own HOME and account, so the HOME the status line runs under and the `home` a
+//! reader is given name the same file; a reader looks in its own `TMPDIR`, which must therefore be
+//! the writer's (on macOS it is the user's own `TMPDIR`). Nothing is written or read under HOME;
+//! the earlier record in the retired HOME state folder is neither written nor read, so before
+//! the first render after the move a lane sees no record, the `unknown` state as before any
+//! render.
+//!
+//! [`record`] writes only when a percentage or a reset time differs from the record on disk (or
+//! the file is missing or unreadable), through a 0600 temporary file renamed over the record in
+//! a folder [`crate::statusline::state::private_folder`] accepts (0700, the user's own, never a
+//! link); an unchanged render leaves the file and its modified time alone, so `observed_at` is
+//! the render that last changed it. [`evaluate`] reads it and writes nothing. Resuming after the
+//! reset is Claude Code's own automatic continue (`autoContinueAtUsageLimit`), not done here.
 
 use crate::forge::policy::format_utc;
 use serde::{Deserialize, Serialize};
@@ -26,7 +43,12 @@ pub const SCHEMA_VERSION: u32 = 1;
 pub const NEAR_PERCENT: f64 = 90.0;
 /// Seconds added to `resets_at` for the lease a lane renews to.
 pub const MARGIN_SECS: i64 = 15 * 60;
-const FILE: &str = "usage-limits.json";
+/// The record's file name is this, the HOME digest and [`FILE_SUFFIX`].
+const FILE_PREFIX: &str = "usage-";
+/// Not `.json`: see the module note (the session cache's names and clean-up).
+const FILE_SUFFIX: &str = ".record";
+/// Hex digits of the HOME digest in the file name.
+const HOME_DIGITS: usize = 12;
 /// The two windows Claude Code names; any other key is ignored when reading.
 pub const WINDOWS: [&str; 2] = ["five_hour", "seven_day"];
 
@@ -46,22 +68,33 @@ pub struct Record {
     pub windows: BTreeMap<String, Window>,
 }
 
-pub fn record_path(home: &Path) -> PathBuf {
-    crate::home_root::path(home).join("state").join(FILE)
+/// The record of `home` in the status line's cache folder for the `TMPDIR` value `tmpdir` (see
+/// the module text). `None` for a relative `TMPDIR` or a `home` without a canonical path (one
+/// that does not exist). Makes nothing.
+pub fn record_path(home: &Path, tmpdir: Option<&str>) -> Option<PathBuf> {
+    use sha2::{Digest, Sha256};
+    let folder = crate::statusline::state::cache_folder(tmpdir)?;
+    let canonical = std::fs::canonicalize(home).ok()?;
+    let hex = format!(
+        "{:x}",
+        Sha256::digest(canonical.as_os_str().as_encoded_bytes())
+    );
+    Some(folder.join(format!("{FILE_PREFIX}{}{FILE_SUFFIX}", &hex[..HOME_DIGITS])))
 }
 
-/// A folder that must be a real folder when present: a symlink here could send the write
-/// anywhere.
-fn plain_dir_or_absent(path: &Path) -> Result<(), String> {
-    match std::fs::symlink_metadata(path) {
-        Ok(m) if m.file_type().is_symlink() => {
-            Err(format!("{} is a symlink; refused", path.display()))
-        }
-        Ok(m) if !m.is_dir() => Err(format!("{} is not a folder", path.display())),
-        Ok(_) => Ok(()),
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
-        Err(_) => Err(format!("{} is unreadable", path.display())),
+/// The record at `path`, or why there is none: missing, not a regular file (a link is not
+/// followed), unreadable or of another schema.
+fn read_record(path: &Path) -> Result<Record, &'static str> {
+    let bytes = match std::fs::symlink_metadata(path) {
+        Ok(m) if m.is_file() => std::fs::read(path).map_err(|_| "record unreadable")?,
+        Ok(_) => return Err("record is not a regular file"),
+        Err(_) => return Err("no record"),
+    };
+    let rec: Record = serde_json::from_slice(&bytes).map_err(|_| "record unreadable")?;
+    if rec.schema_version != SCHEMA_VERSION {
+        return Err("record has an unknown schema");
     }
+    Ok(rec)
 }
 
 /// The windows worth keeping: both fields present, a finite percentage in 0–100, and a reset
@@ -91,23 +124,34 @@ pub fn windows_from(
         .collect()
 }
 
-/// Write the record when there is at least one window; an absent `rate_limits` (API key,
-/// before the first response) leaves the previous record alone, since that says nothing new.
-/// Returns whether a record was written.
-pub fn record(home: &Path, windows: BTreeMap<String, Window>, now: i64) -> Result<bool, String> {
+/// Write the record of `home` in the cache folder for `tmpdir` when there is at least one window
+/// and a percentage or a reset time differs from the record on disk; an absent `rate_limits`
+/// (API key, before the first response) leaves the previous record alone, since that says
+/// nothing new. Returns whether a record was written; `Err` when there is no cache folder this
+/// user alone may enter or the file cannot be written, and then nothing changed.
+pub fn record(
+    home: &Path,
+    tmpdir: Option<&str>,
+    windows: BTreeMap<String, Window>,
+    now: i64,
+) -> Result<bool, String> {
+    use std::io::Write;
     if windows.is_empty() {
         return Ok(false);
     }
-    let base = crate::home_root::path(home);
-    let dir = base.join("state");
-    plain_dir_or_absent(&base)?;
-    plain_dir_or_absent(&dir)?;
-    std::fs::create_dir_all(&dir).map_err(|_| format!("{} cannot be created", dir.display()))?;
-    let path = dir.join(FILE);
-    if let Ok(m) = std::fs::symlink_metadata(&path) {
-        if !m.is_file() {
-            return Err(format!("{} is not a regular file; refused", path.display()));
-        }
+    let path = record_path(home, tmpdir).ok_or("no cache folder for this TMPDIR and HOME")?;
+    let dir = path.parent().ok_or("no cache folder")?;
+    if !crate::statusline::state::private_folder(dir) {
+        return Err(format!(
+            "{} is not a private folder; refused",
+            dir.display()
+        ));
+    }
+    if read_record(&path).is_ok_and(|on_disk| on_disk.windows == windows) {
+        return Ok(false);
+    }
+    if std::fs::symlink_metadata(&path).is_ok_and(|m| !m.is_file()) {
+        return Err(format!("{} is not a regular file; refused", path.display()));
     }
     let rec = Record {
         schema_version: SCHEMA_VERSION,
@@ -116,50 +160,63 @@ pub fn record(home: &Path, windows: BTreeMap<String, Window>, now: i64) -> Resul
     };
     let mut bytes = serde_json::to_vec(&rec).map_err(|_| "encode failed")?;
     bytes.push(b'\n');
-    // A process-unique temporary name, renamed over the record: a reader sees the old or the
-    // new record, never half of one, even with several status lines rendering at once.
-    let tmp = dir.join(format!(".{FILE}.{}.tmp", std::process::id()));
-    std::fs::write(&tmp, &bytes).map_err(|_| format!("{} cannot be written", tmp.display()))?;
-    std::fs::rename(&tmp, &path).map_err(|_| {
+    // A process-unique temporary name made new (never through a link), renamed over the record:
+    // a reader sees the old or the new record, never half of one, even with several status lines
+    // rendering at once.
+    let name = path.file_name().map(|n| n.to_string_lossy().into_owned());
+    let tmp = dir.join(format!(
+        ".{}.{}.tmp",
+        name.unwrap_or_default(),
+        std::process::id()
+    ));
+    let mut options = std::fs::OpenOptions::new();
+    options.write(true).create_new(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.mode(0o600);
+    }
+    let written = options
+        .open(&tmp)
+        .and_then(|mut f| f.write_all(&bytes))
+        .and_then(|()| std::fs::rename(&tmp, &path));
+    if written.is_err() {
         let _ = std::fs::remove_file(&tmp);
-        format!("{} cannot be replaced", path.display())
-    })?;
+        return Err(format!("{} cannot be written", path.display()));
+    }
     Ok(true)
 }
 
-/// Read the record and judge it at `now`. Writes nothing. `state`: `unknown` (no record, an
-/// unreadable one, or no window still open), `reached` (a window at 100), `near` (a window at
-/// [`NEAR_PERCENT`] or more) or `ok`. For `near` and `reached`, `renew_until` is the latest
-/// such window's reset plus [`MARGIN_SECS`]: the lease a lane renews its claims to.
-pub fn evaluate(home: &Path, now: i64) -> Value {
-    let path = record_path(home);
+/// Read the record of `home` in the cache folder for `tmpdir` and judge it at `now`. Writes
+/// nothing. `state`: `unknown` (no cache folder, no record, an unreadable one, or no window
+/// still open), `reached` (a window at 100), `near` (a window at [`NEAR_PERCENT`] or more) or
+/// `ok`. For `near` and `reached`, `renew_until` is the latest such window's reset plus
+/// [`MARGIN_SECS`]: the lease a lane renews its claims to.
+pub fn evaluate(home: &Path, tmpdir: Option<&str>, now: i64) -> Value {
+    let path = record_path(home, tmpdir);
+    let shown = path.as_ref().map(|p| p.to_string_lossy().into_owned());
     let unknown = |reason: &str| {
         json!({
             "state": "unknown",
             "reason": reason,
-            "record": path.to_string_lossy(),
+            "record": shown,
             "windows": {},
         })
     };
-    let base = crate::home_root::path(home);
-    if plain_dir_or_absent(&base).is_err() || plain_dir_or_absent(&base.join("state")).is_err() {
-        return unknown("state folder is not a plain folder");
-    }
-    let bytes = match std::fs::symlink_metadata(&path) {
-        Ok(m) if m.is_file() => match std::fs::read(&path) {
-            Ok(b) => b,
-            Err(_) => return unknown("record unreadable"),
-        },
-        Ok(_) => return unknown("record is not a regular file"),
-        Err(_) => return unknown("no record"),
+    let Some(path) = path.as_deref() else {
+        return unknown("no record: no cache folder for this TMPDIR and HOME");
     };
-    let rec: Record = match serde_json::from_slice(&bytes) {
-        Ok(r) => r,
-        Err(_) => return unknown("record unreadable"),
-    };
-    if rec.schema_version != SCHEMA_VERSION {
-        return unknown("record has an unknown schema");
+    let dir = path.parent().unwrap_or(path);
+    if std::fs::symlink_metadata(dir).is_err() {
+        return unknown("no record");
     }
+    if !crate::statusline::state::is_private_folder(dir) {
+        return unknown("cache folder is not a private folder");
+    }
+    let rec = match read_record(path) {
+        Ok(rec) => rec,
+        Err(reason) => return unknown(reason),
+    };
     let open: BTreeMap<&String, &Window> = rec
         .windows
         .iter()
@@ -193,7 +250,7 @@ pub fn evaluate(home: &Path, now: i64) -> Value {
         .collect();
     let mut out = json!({
         "state": state,
-        "record": path.to_string_lossy(),
+        "record": shown,
         "observed_at": format_utc(rec.observed_at),
         "near_percent": NEAR_PERCENT,
         "windows": windows,
@@ -219,7 +276,35 @@ mod tests {
             resets_at: resets,
         }
     }
-    fn put(home: &Path, five: Option<Window>, seven: Option<Window>) {
+    /// A temporary HOME and a temporary `TMPDIR` for it.
+    struct Place {
+        home: TempDir,
+        tmp: TempDir,
+    }
+    impl Place {
+        fn new() -> Place {
+            Place {
+                home: TempDir::new().unwrap(),
+                tmp: TempDir::new().unwrap(),
+            }
+        }
+        fn path(&self) -> &Path {
+            self.home.path()
+        }
+        fn tmpdir(&self) -> Option<&str> {
+            self.tmp.path().to_str()
+        }
+        fn record(&self, w: BTreeMap<String, Window>) -> Result<bool, String> {
+            record(self.path(), self.tmpdir(), w, NOW)
+        }
+        fn evaluate(&self, now: i64) -> Value {
+            evaluate(self.path(), self.tmpdir(), now)
+        }
+        fn file(&self) -> PathBuf {
+            record_path(self.path(), self.tmpdir()).unwrap()
+        }
+    }
+    fn windows(five: Option<Window>, seven: Option<Window>) -> BTreeMap<String, Window> {
         let mut w = BTreeMap::new();
         if let Some(f) = five {
             w.insert("five_hour".to_string(), f);
@@ -227,12 +312,15 @@ mod tests {
         if let Some(s) = seven {
             w.insert("seven_day".to_string(), s);
         }
-        record(home, w, NOW).unwrap();
+        w
+    }
+    fn put(home: &Place, five: Option<Window>, seven: Option<Window>) {
+        home.record(windows(five, seven)).unwrap();
     }
 
     #[test]
     fn near_starts_at_the_threshold_and_reached_at_one_hundred() {
-        let home = TempDir::new().unwrap();
+        let home = Place::new();
         let reset = NOW + 3600;
         for (used, want) in [
             (0.0, "ok"),
@@ -241,8 +329,8 @@ mod tests {
             (99.9, "near"),
             (100.0, "reached"),
         ] {
-            put(home.path(), Some(win(used, reset)), None);
-            let v = evaluate(home.path(), NOW);
+            put(&home, Some(win(used, reset)), None);
+            let v = home.evaluate(NOW);
             assert_eq!(v["state"], want, "{used}");
             if want == "ok" {
                 assert!(v.get("renew_until").is_none(), "{used}");
@@ -256,37 +344,146 @@ mod tests {
 
     #[test]
     fn renew_until_follows_the_latest_window_at_or_above_the_threshold() {
-        let home = TempDir::new().unwrap();
+        let home = Place::new();
         // Both near: the later reset (seven_day) decides the lease.
         put(
-            home.path(),
+            &home,
             Some(win(95.0, NOW + 3600)),
             Some(win(91.0, NOW + 86_400)),
         );
-        let v = evaluate(home.path(), NOW);
+        let v = home.evaluate(NOW);
         assert_eq!(v["state"], "near");
         assert_eq!(v["window"], "seven_day");
         assert_eq!(v["renew_until"], format_utc(NOW + 86_400 + MARGIN_SECS));
         // Only five_hour near: seven_day below the threshold does not stretch the lease.
         put(
-            home.path(),
+            &home,
             Some(win(95.0, NOW + 3600)),
             Some(win(50.0, NOW + 86_400)),
         );
-        let v = evaluate(home.path(), NOW);
+        let v = home.evaluate(NOW);
         assert_eq!(v["window"], "five_hour");
         assert_eq!(v["renew_until"], format_utc(NOW + 3600 + MARGIN_SECS));
     }
 
     #[test]
     fn a_passed_window_is_not_open_and_no_record_is_unknown() {
-        let home = TempDir::new().unwrap();
-        assert_eq!(evaluate(home.path(), NOW)["state"], "unknown");
-        put(home.path(), Some(win(100.0, NOW + 1)), None);
-        assert_eq!(evaluate(home.path(), NOW)["state"], "reached");
+        let home = Place::new();
+        assert_eq!(home.evaluate(NOW)["state"], "unknown");
+        assert_eq!(home.evaluate(NOW)["reason"], "no record");
+        put(&home, Some(win(100.0, NOW + 1)), None);
+        assert_eq!(home.evaluate(NOW)["state"], "reached");
         // At and after the reset the window is closed: N/N+1 edge on resets_at.
-        assert_eq!(evaluate(home.path(), NOW + 1)["state"], "unknown");
-        assert_eq!(evaluate(home.path(), NOW + 2)["state"], "unknown");
+        assert_eq!(home.evaluate(NOW + 1)["state"], "unknown");
+        assert_eq!(home.evaluate(NOW + 2)["state"], "unknown");
+    }
+
+    /// REQ-7: only a changed percentage or reset time, or a missing or unreadable record, is
+    /// written; the same windows leave the file and its modified time alone.
+    #[test]
+    fn the_record_is_written_only_when_a_window_changed() {
+        let home = Place::new();
+        let first = windows(Some(win(42.0, NOW + 3600)), None);
+        assert_eq!(home.record(first.clone()), Ok(true));
+        let old = std::time::UNIX_EPOCH + std::time::Duration::from_secs(1_000_000_000);
+        std::fs::File::options()
+            .write(true)
+            .open(home.file())
+            .unwrap()
+            .set_modified(old)
+            .unwrap();
+        assert_eq!(home.record(first.clone()), Ok(false));
+        assert_eq!(
+            std::fs::metadata(home.file()).unwrap().modified().unwrap(),
+            old
+        );
+        // A later render of the same windows: observed_at stays the render that changed it.
+        assert_eq!(
+            record(home.path(), home.tmpdir(), first.clone(), NOW + 60),
+            Ok(false)
+        );
+        assert_eq!(
+            home.evaluate(NOW)["observed_at"],
+            format_utc(NOW),
+            "unchanged"
+        );
+        for changed in [
+            windows(Some(win(43.0, NOW + 3600)), None),
+            windows(Some(win(43.0, NOW + 3601)), None),
+            windows(Some(win(43.0, NOW + 3601)), Some(win(1.0, NOW + 86_400))),
+        ] {
+            assert_eq!(home.record(changed.clone()), Ok(true), "{changed:?}");
+            assert_eq!(home.record(changed), Ok(false));
+        }
+        std::fs::write(home.file(), "not json").unwrap();
+        assert_eq!(
+            home.record(first),
+            Ok(true),
+            "an unreadable record is replaced"
+        );
+        assert_eq!(home.evaluate(NOW)["state"], "ok");
+    }
+
+    /// The file rule: `usage-` and 12 hex digits of the canonical HOME path's SHA-256, in the
+    /// cache folder of `TMPDIR`; another HOME has another file; no canonical HOME or a relative
+    /// `TMPDIR` names no file, and then nothing is written and the reader says `unknown`.
+    #[test]
+    fn the_record_file_is_named_by_the_canonical_home_in_the_cache_folder() {
+        let home = Place::new();
+        let file = home.file();
+        assert_eq!(
+            file.parent(),
+            crate::statusline::state::cache_folder(home.tmpdir()).as_deref()
+        );
+        let name = file.file_name().unwrap().to_str().unwrap();
+        let hex = name
+            .strip_prefix("usage-")
+            .and_then(|r| r.strip_suffix(".record"))
+            .unwrap();
+        assert_eq!(hex.len(), 12, "{name}");
+        assert!(hex.bytes().all(|b| matches!(b, b'0'..=b'9' | b'a'..=b'f')));
+        let other = TempDir::new().unwrap();
+        assert_ne!(record_path(other.path(), home.tmpdir()), Some(file.clone()));
+        // The same HOME through another spelling names the same file.
+        let dotted = home.path().join(".");
+        assert_eq!(record_path(&dotted, home.tmpdir()), Some(file.clone()));
+        #[cfg(unix)]
+        {
+            let link = other.path().join("home-link");
+            std::os::unix::fs::symlink(home.path(), &link).unwrap();
+            assert_eq!(record_path(&link, home.tmpdir()), Some(file));
+        }
+        let gone = home.path().join("missing");
+        assert_eq!(record_path(&gone, home.tmpdir()), None);
+        for relative in ["rel", "./rel"] {
+            assert_eq!(record_path(home.path(), Some(relative)), None);
+            let w = windows(Some(win(95.0, NOW + 60)), None);
+            assert!(record(home.path(), Some(relative), w, NOW).is_err());
+            assert_eq!(
+                evaluate(home.path(), Some(relative), NOW)["state"],
+                "unknown"
+            );
+        }
+        assert_eq!(std::fs::read_dir(home.path()).unwrap().count(), 0);
+    }
+
+    /// The cache folder must be a private folder of this user: a link in its place is refused
+    /// for writing and reads as unknown, and nothing reaches the link's target.
+    #[cfg(unix)]
+    #[test]
+    fn a_linked_cache_folder_is_refused_and_reads_as_unknown() {
+        let home = Place::new();
+        let elsewhere = TempDir::new().unwrap();
+        let folder = crate::statusline::state::cache_folder(home.tmpdir()).unwrap();
+        std::os::unix::fs::symlink(elsewhere.path(), &folder).unwrap();
+        let w = windows(Some(win(95.0, NOW + 60)), None);
+        assert!(home.record(w).is_err());
+        assert_eq!(std::fs::read_dir(elsewhere.path()).unwrap().count(), 0);
+        assert_eq!(home.evaluate(NOW)["state"], "unknown");
+        assert_eq!(
+            home.evaluate(NOW)["reason"],
+            "cache folder is not a private folder"
+        );
     }
 
     #[test]
@@ -308,16 +505,18 @@ mod tests {
 
     #[test]
     fn empty_windows_keep_the_previous_record() {
-        let home = TempDir::new().unwrap();
-        put(home.path(), Some(win(95.0, NOW + 3600)), None);
-        assert!(!record(home.path(), BTreeMap::new(), NOW + 5).unwrap());
-        assert_eq!(evaluate(home.path(), NOW)["state"], "near");
+        let home = Place::new();
+        put(&home, Some(win(95.0, NOW + 3600)), None);
+        assert!(!record(home.path(), home.tmpdir(), BTreeMap::new(), NOW + 5).unwrap());
+        assert_eq!(home.evaluate(NOW)["state"], "near");
     }
 
+    /// D-5: the retired HOME state folder plays no part, even as a link to elsewhere: the
+    /// record goes to the cache folder and nothing reaches the link's target.
     #[cfg(unix)]
     #[test]
-    fn a_symlinked_state_folder_is_refused_and_reads_as_unknown() {
-        let home = TempDir::new().unwrap();
+    fn a_symlinked_home_state_folder_is_never_followed() {
+        let home = Place::new();
         let elsewhere = TempDir::new().unwrap();
         std::fs::create_dir_all(home.path().join(crate::HOME_STATE_DIR)).unwrap();
         std::os::unix::fs::symlink(
@@ -325,24 +524,23 @@ mod tests {
             home.path().join(crate::HOME_STATE_DIR).join("state"),
         )
         .unwrap();
-        let mut w = BTreeMap::new();
-        w.insert("five_hour".to_string(), win(95.0, NOW + 60));
-        assert!(record(home.path(), w, NOW).is_err());
+        let w = windows(Some(win(95.0, NOW + 60)), None);
+        assert_eq!(home.record(w), Ok(true));
         assert_eq!(std::fs::read_dir(elsewhere.path()).unwrap().count(), 0);
-        assert_eq!(evaluate(home.path(), NOW)["state"], "unknown");
+        assert_eq!(home.evaluate(NOW)["state"], "near");
     }
 
     #[test]
     fn an_unknown_schema_or_garbage_reads_as_unknown() {
-        let home = TempDir::new().unwrap();
-        let path = record_path(home.path());
-        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        let home = Place::new();
+        put(&home, Some(win(95.0, NOW + 60)), None);
+        let path = home.file();
         for text in [
             "not json",
             r#"{"schema_version":2,"observed_at":1,"windows":{}}"#,
         ] {
             std::fs::write(&path, text).unwrap();
-            assert_eq!(evaluate(home.path(), NOW)["state"], "unknown", "{text}");
+            assert_eq!(home.evaluate(NOW)["state"], "unknown", "{text}");
         }
     }
 }
