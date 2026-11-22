@@ -182,6 +182,7 @@ pub const GROUPS: &[Group] = &[
             ("lane-resume-note", false),
             ("lane-resume-check", false),
             ("lane-duty-line", false),
+            ("lane-run", false),
             ("lane-status", false),
             ("lane-screen", false),
             ("lane-send", false),
@@ -495,6 +496,14 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
         &[
             "lane-duty-line --lane 1",
             "lane-duty-line --lane 1 --host codex --first <task>",
+        ],
+    ),
+    (
+        "lane-run",
+        &[
+            "lane-run show --lane agent-1",
+            "lane-run set nonstop --lane agent-1",
+            "lane-run prompt --lane agent-1",
         ],
     ),
     ("lane-status", &["lane-status . < request.json"]),
