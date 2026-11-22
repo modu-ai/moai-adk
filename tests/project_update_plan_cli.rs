@@ -1826,6 +1826,206 @@ fn a_broken_profile_blocks_its_steps_and_not_the_host_hook_steps() {
     assert_eq!(step(&plan, "omp-config")["state"], "skip", "{plan}");
 }
 
+// ---- SPEC-20261121-remove-codex-project-layer: the retired hosts get no step of their own ----
+
+/// The six steps earlier versions planned for the Codex and OMP hosts.
+const RETIRED_STEPS: [&str; 6] = [
+    "codex-hooks",
+    "codex-config",
+    "codex-skill",
+    "omp-hooks",
+    "omp-config",
+    "omp-agents",
+];
+
+/// The files and folders earlier versions wrote for those hosts, as `retired-hosts` lists them.
+const RETIRED_FILES: [(&str, &str); 6] = [
+    (".codex/hooks.json", "{\"hooks\": {\"Notification\": []}}\n"),
+    (".codex/config.toml", "[tui]\nstatus_line = [\"model\"]\n"),
+    (".codex/agents/mine.toml", "name = \"mine\"\n"),
+    (".agents/skills/moai/SKILL.md", "my own skill\n"),
+    (".omp/extensions/moai-hooks.ts", "// mine\n"),
+    (".omp/agents/mine.md", "mine\n"),
+];
+
+impl Fx {
+    /// The entries under the project's `.codex`, `.omp` and `.agents` folders, bytes included.
+    fn host_folders(&self) -> Vec<(PathBuf, Node)> {
+        self.tree()
+            .into_iter()
+            .filter(|(p, _)| {
+                [".codex", ".omp", ".agents"]
+                    .iter()
+                    .any(|dir| p.starts_with(self.root.join(dir)))
+            })
+            .collect()
+    }
+}
+
+/// REQ-1 (AC-1): a full profile that still lists codex and omp plans the Claude steps and none
+/// of the six host steps, and the printed undo order names none of them either.
+#[test]
+fn no_codex_or_omp_step_is_planned() {
+    let fx = Fx::new();
+    fx.with_profile(false);
+    let plan = fx.plan();
+    let names: Vec<&str> = steps(&plan)
+        .iter()
+        .map(|s| s["step"].as_str().unwrap())
+        .collect();
+    for retired in RETIRED_STEPS {
+        assert!(!names.contains(&retired), "{retired} is planned: {names:?}");
+    }
+    for claude in [
+        "profile",
+        "generation",
+        "claude-settings",
+        "hooks",
+        "github",
+    ] {
+        assert!(names.contains(&claude), "{claude} is missing: {names:?}");
+    }
+    let undo = plan["undo_order"].to_string();
+    for retired in RETIRED_STEPS {
+        assert!(
+            !undo.contains(retired),
+            "the undo order names {retired}: {undo}"
+        );
+    }
+}
+
+/// REQ-2 (AC-2): a profile that lists codex or omp loads and plans without refusal, and the
+/// plan leaves its bytes alone (the profile step has nothing to write).
+#[test]
+fn a_profile_that_lists_codex_and_omp_still_loads() {
+    for hosts in [
+        json!(["claude", "codex", "omp"]),
+        json!(["codex"]),
+        json!(["omp"]),
+    ] {
+        let fx = Fx::new();
+        fx.with_profile_extra(json!({"hosts": hosts}));
+        let stored = [".moai/project.yaml", ".moai-cli/project.yaml"]
+            .into_iter()
+            .find(|rel| fx.root.join(rel).is_file())
+            .expect("the profile file");
+        let before = fs::read(fx.root.join(stored)).unwrap();
+        let plan = fx.plan();
+        let profile = step(&plan, "profile");
+        assert_eq!(profile["state"], "unchanged", "{hosts}: {profile}");
+        assert_eq!(profile["apply"], Value::Null, "{hosts}: {profile}");
+        assert_eq!(
+            fs::read(fx.root.join(stored)).unwrap(),
+            before,
+            "{hosts}: the plan rewrote the profile"
+        );
+        let text = String::from_utf8(before).unwrap();
+        assert!(
+            hosts
+                .as_array()
+                .unwrap()
+                .iter()
+                .all(|h| text.contains(h.as_str().unwrap())),
+            "{hosts}: the stored profile lost a host: {text}"
+        );
+        assert_eq!(
+            step(&plan, "retired-hosts")["state"],
+            "skip",
+            "{hosts}: {plan}"
+        );
+    }
+}
+
+/// REQ-3 (AC-3): the retired-hosts step is in every preview, with state skip and action info; it
+/// lists the sorted paths that exist, prints no command and carries no digest.
+#[test]
+fn the_retired_hosts_step_only_informs() {
+    // No profile and nothing found: the step is still there, with an empty list, and it is not
+    // one of the steps that wait for the profile.
+    let fx = Fx::new();
+    let plan = fx.plan();
+    let s = step(&plan, "retired-hosts");
+    assert_eq!(s["state"], "skip", "{s}");
+    assert_eq!(s["preview"], json!({"action": "info", "files": []}), "{s}");
+    assert_eq!(s["apply"], Value::Null, "{s}");
+    assert_eq!(s["plan_digest"], Value::Null, "{s}");
+    assert_eq!(
+        step(&plan, "profile")["state"],
+        "needs_decision",
+        "the other install steps still wait: {plan}"
+    );
+
+    // A full profile and every retired path present: the list is sorted and complete.
+    let fx = Fx::new();
+    fx.with_profile(false);
+    for (rel, body) in RETIRED_FILES {
+        fx.write(rel, body);
+    }
+    let plan = fx.plan();
+    let s = step(&plan, "retired-hosts");
+    assert_eq!(s["state"], "skip", "{s}");
+    assert_eq!(
+        s["preview"],
+        json!({"action": "info", "files": [
+            ".agents/skills/moai",
+            ".codex/agents",
+            ".codex/config.toml",
+            ".codex/hooks.json",
+            ".omp/agents",
+            ".omp/extensions/moai-hooks.ts",
+        ]}),
+        "{s}"
+    );
+    assert_eq!(s["apply"], Value::Null, "{s}");
+    assert_eq!(s["plan_digest"], Value::Null, "{s}");
+    assert!(
+        phase(&plan, "install")["steps"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|st| st["step"] == "retired-hosts"),
+        "the step belongs to the install phase: {plan}"
+    );
+}
+
+/// REQ-4 (AC-4): every file under `.codex/`, `.omp/` and the project skill copy stays byte for
+/// byte through the plan and through the apply of every printed command.
+#[test]
+fn the_codex_and_omp_folders_stay_byte_identical() {
+    let fx = Fx::new();
+    fx.with_profile(true);
+    // The two hook files stay absent: earlier versions would have written them, so a write
+    // there shows in the listing below.
+    for (rel, body) in RETIRED_FILES {
+        if rel != ".codex/hooks.json" && rel != ".omp/extensions/moai-hooks.ts" {
+            fx.write(rel, body);
+        }
+    }
+    // A folder of the user's own, so a new file beside theirs would show in the listing.
+    fx.write(".codex/notes.md", "mine\n");
+    fx.write(".omp/notes.md", "mine\n");
+    let before = fx.host_folders();
+    assert!(before.len() >= RETIRED_FILES.len(), "{before:?}");
+
+    let plan = fx.plan();
+    assert_eq!(before, fx.host_folders(), "the plan changed a host folder");
+    let mut applied = 0;
+    for s in steps(&plan).into_iter().filter(|s| s["state"] == "ready") {
+        let out = fx.apply_step(s);
+        assert_eq!(out["ok"], json!(true), "{}: {out}", s["step"]);
+        applied += 1;
+    }
+    assert!(applied >= 2, "the Claude steps still apply: {plan}");
+    assert_eq!(before, fx.host_folders(), "an apply changed a host folder");
+    let again = fx.plan();
+    assert_eq!(
+        before,
+        fx.host_folders(),
+        "the second plan changed a host folder"
+    );
+    assert_eq!(step(&again, "retired-hosts")["state"], "skip", "{again}");
+}
+
 fn argv_of(step: &Value) -> Vec<&str> {
     step["apply"]["argv"]
         .as_array()
