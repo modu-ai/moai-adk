@@ -654,41 +654,14 @@ fn a_linked_package_folder_is_refused() {
 
 /// A `skills/moai` folder this tool did not install, in both hosts' projection roots, so
 /// every host of the plan is `blocked`.
-/// Makes the config-folder hook layer `unchanged`: the generated hook set and the deny
-/// rules sit in `<config>/settings.json` with the ownership record beside them
-/// (SPEC-20261122-next-flow-hooks: the layer is part of every update, so a fixture whose
-/// point is "nothing to write" needs the hooks current too).
-fn hooks_current(home: &Path) {
-    use moai_cli::hooks;
-    let config = home.join(".claude");
-    fs::create_dir_all(&config).unwrap();
-    let desired = hooks::hooks_object("claude").unwrap();
-    let settings = json!({"hooks": desired,
-                          "permissions": {"deny": hooks::GUARDED_DENY_RULES}});
-    fs::write(
-        config.join("settings.json"),
-        serde_json::to_vec_pretty(&settings).unwrap(),
-    )
-    .unwrap();
-    let record = json!({"schema_version": 1,
-                        "folder": config.display().to_string(),
-                        "hooks_sha256": moai_cli::digest(
-                            &serde_json::to_vec(&desired).unwrap()),
-                        "settings_sha256": moai_cli::digest(
-                            &serde_json::to_vec_pretty(&settings).unwrap())});
-    let receipts = moai_cli::home_root::path(home).join("receipts");
-    fs::create_dir_all(&receipts).unwrap();
-    fs::write(
-        receipts.join(format!(
-            "config-hooks-{}.json",
-            moai_cli::digest(config.to_string_lossy().as_bytes())
-                .trim_start_matches("sha256:")
-                .get(..16)
-                .unwrap_or("0")
-        )),
-        serde_json::to_vec_pretty(&record).unwrap(),
-    )
-    .unwrap();
+/// Makes the config-folder hook layer `unchanged` the only way that is stable across
+/// processes: one real update cycle (SPEC-20261122-next-flow-hooks — the exec-form entries
+/// name the absolute path of the binary that rendered them, so pre-written bytes from this
+/// test process would always read as an update). The skill copies stay blocked, so only the
+/// hook layer writes.
+fn hooks_current(a: &Path, home: &Path) {
+    let p = preview(a, home);
+    confirm(a, home, &digest(&p));
 }
 
 fn foreign_skill_in_both_hosts(home: &Path) {
@@ -706,7 +679,7 @@ fn a_confirmed_plan_with_every_host_blocked_is_not_reported_as_applied() {
     let f = fx();
     let a = install_version(&f.home, "a", &v1());
     foreign_skill_in_both_hosts(&f.home);
-    hooks_current(&f.home);
+    hooks_current(&a, &f.home);
     let p = preview(&a, &f.home);
     for h in HOSTS {
         assert_eq!(
@@ -742,7 +715,7 @@ fn a_preview_with_nothing_to_write_says_so() {
     let f = fx();
     let a = install_version(&f.home, "a", &v1());
     foreign_skill_in_both_hosts(&f.home);
-    hooks_current(&f.home);
+    hooks_current(&a, &f.home);
     let p = preview(&a, &f.home);
     assert_eq!(p["nothing_to_apply"], json!(true), "{p}");
     let g = fx();
@@ -844,7 +817,7 @@ fn in_a_terminal_nothing_to_write_asks_nothing() {
     let f = fx();
     let a = install_version(&f.home, "a", &v1());
     foreign_skill_in_both_hosts(&f.home);
-    hooks_current(&f.home);
+    hooks_current(&a, &f.home);
     with_a_saved_model_setting(&f.home);
     let before = state(&f.home);
     let text = run_in_terminal_unanswered(&a, &f.home);
