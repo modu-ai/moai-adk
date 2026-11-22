@@ -27,6 +27,8 @@ def load(path=TABLE):
 EXEMPT = {
     "tests/atlas_query_cli.rs": "walks the TempDir tree it built from named atlas fixtures",
     "tests/ci_install_ripgrep_test.py": "rglob over the test's own temporary runner folder",
+    "tests/codex_home_update_removed.rs": "read_dir of temporary homes (before/after trees of the "
+                                          "Codex and OMP folders); reads no checked-in tree",
     "tests/decision_append_cli.rs": "read_dir of a TempDir docs folder",
     "tests/e2e_host_fixture.rs": "clones into a temp dir, then checks named route and workflow files",
     "tests/forge_cli.rs": "recursive walks of TempDir only",
