@@ -207,11 +207,15 @@ pub enum Msg {
     CodexRemoved,
     /// What `moai omp` says now that the launcher is gone (SPEC-20261122-remove-omp-launcher).
     OmpRemoved,
+    /// The update's "no longer managed" notice of the retired Codex and OMP home files; the
+    /// English texts are the `reason` of the `unmanaged` rows of `src/update.rs`.
+    CodexUnmanaged,
+    OmpUnmanaged,
 }
 
 impl Msg {
     /// Every variant, for the tests that walk the table.
-    pub const ALL: [Msg; 48] = [
+    pub const ALL: [Msg; 50] = [
         Msg::WordOk,
         Msg::WordWarning,
         Msg::WordError,
@@ -260,6 +264,8 @@ impl Msg {
         Msg::InitRemoved,
         Msg::CodexRemoved,
         Msg::OmpRemoved,
+        Msg::CodexUnmanaged,
+        Msg::OmpUnmanaged,
     ];
 }
 
@@ -391,6 +397,10 @@ pub fn text(msg: Msg, lang: Lang) -> &'static str {
         (OmpRemoved, Ko) => {
             "moai omp 는 없어졌어요: MoAI 는 Claude Code 와 GLM 만 지원해요 (moai cc | moai glm)"
         }
+        (CodexUnmanaged, En) => "Codex files under ~/.codex and ~/.agents/skills are left as they are; moai no longer manages them; remove them yourself if you do not use them",
+        (CodexUnmanaged, Ko) => "~/.codex와 ~/.agents/skills의 Codex 파일은 그대로 두며 moai가 더는 관리하지 않아요. 쓰지 않으면 직접 지우세요",
+        (OmpUnmanaged, En) => "OMP files under ~/.omp are left as they are; moai no longer manages them; remove them yourself if you do not use them",
+        (OmpUnmanaged, Ko) => "~/.omp의 OMP 파일은 그대로 두며 moai가 더는 관리하지 않아요. 쓰지 않으면 직접 지우세요",
     }
 }
 
@@ -773,6 +783,16 @@ mod tests {
                 !code.contains(literal),
                 "src/update_tux.rs writes `{literal}` itself"
             );
+        }
+        // The English rows are the command's own reasons, byte for byte.
+        let update = include_str!("update.rs");
+        for msg in [Msg::CodexUnmanaged, Msg::OmpUnmanaged] {
+            let en = text(msg, Lang::En);
+            assert!(
+                update.contains(&format!("\"reason\": \"{en}\"")),
+                "{msg:?}: {en}"
+            );
+            assert!(text(msg, Lang::Ko).ends_with("직접 지우세요"), "{msg:?}");
         }
     }
 }
