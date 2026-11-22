@@ -593,6 +593,15 @@ pub fn apply(home: &Path, layer: &Layer, plan_digest: &str, permission: &str) ->
     }
     receipt.status = "applied".into();
     write_json(&receipt_path, &receipt)?;
+    // D-15 (SPEC-20261122-next-flow-hooks): the session-check duty of a running session reads
+    // this stamp once and answers `reloadSkills`, so skills this update replaced become visible
+    // without a restart (whole-docs report 4-1).
+    let stamp = crate::host_home::resolve(crate::host_home::Host::Claude, home)
+        .map(|folder| folder.join("moai-update-stamp"))
+        .ok();
+    if let (Some(stamp), true) = (stamp, applied > 0) {
+        let _ = crate::apply::publish_exclusive_mode(&stamp, b"", Some(PRIVATE_FILE));
+    }
     let state = if applied == 0 {
         "error"
     } else if applied == results.len() {

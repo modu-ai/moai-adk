@@ -40,7 +40,7 @@
 //! Issue numbers only; tool input, branch names and file content are never echoed.
 
 use serde_json::{json, Value};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 /// Bound on the hook stdin read by the CLI (tool input can be large).
 pub const STDIN_LIMIT: u64 = 4 * 1024 * 1024;
@@ -706,6 +706,11 @@ fn session_check_answer(input: &Value, cwd: &Path) -> Answer {
     let branch = crate::hook_guards::work_tree_branch(cwd);
     let integration = crate::hook_guards::recorded_integration_branch(cwd);
     let card = worktree_card(cwd, branch.as_deref());
+    // D-15: the MOAI_* variables the flow needs go to the host's CLAUDE_ENV_FILE (appended,
+    // best effort — a missing or unwritable file costs nothing), and a skills reload is asked
+    // once when an update applied inside the running session left its stamp.
+    export_env_file(cwd, &integration, card.as_ref().map(|c| c.0.as_str()));
+    let reload_skills = skills_reload_stamp(cwd);
     let mut text = format!(
         "MoAI session-check (moai {}): branch: {}; integration branch: {}; card: {}. Read \
          locally; no network was used.",
@@ -736,12 +741,63 @@ fn session_check_answer(input: &Value, cwd: &Path) -> Answer {
                 "hookEventName": "SessionStart",
                 "additionalContext": text,
                 "sessionTitle": branch.unwrap_or_else(|| "moai session".to_string()),
+                "reloadSkills": reload_skills,
             }
         })
         .to_string(),
         stderr: String::new(),
         exit: 0,
     }
+}
+
+/// The stamp `moai update`'s hook layer leaves in the config folder when it wrote there while a
+/// session ran (`<config>/moai-update-stamp`, D-15). Reading it consumes it: one reload is
+/// asked per update.
+fn skills_reload_stamp(cwd: &Path) -> bool {
+    let config = std::env::var_os("CLAUDE_CONFIG_DIR")
+        .map(PathBuf::from)
+        .or_else(|| {
+            std::env::var_os("HOME").map(|h| Path::new(&h).join(".claude"))
+        });
+    let Some(stamp) = config.map(|c| c.join("moai-update-stamp")) else {
+        return false;
+    };
+    let _ = cwd;
+    std::fs::remove_file(&stamp).is_ok()
+}
+
+/// Appends the flow's MOAI_* variables to the host's `CLAUDE_ENV_FILE` (D-15): plain
+/// `export NAME=value` lines, added so other hooks' lines survive, best effort only.
+fn export_env_file(cwd: &Path, integration: &Option<String>, card: Option<&str>) {
+    use std::io::Write as _;
+    let Some(file) = std::env::var_os("CLAUDE_ENV_FILE").map(PathBuf::from) else {
+        return;
+    };
+    let mut lines = String::new();
+    if let Some(name) = integration {
+        lines.push_str(&format!("export MOAI_INTEGRATION_BRANCH={name}\n"));
+    }
+    if let Some(card) = card {
+        lines.push_str(&format!("export MOAI_CARD={card}\n"));
+    }
+    if let Some(id) = project_id_of(cwd) {
+        lines.push_str(&format!("export MOAI_PROJECT_ID={id}\n"));
+    }
+    if lines.is_empty() {
+        return;
+    }
+    let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(&file)
+    else {
+        return;
+    };
+    let _ = f.write_all(lines.as_bytes());
+}
+
+/// The project id of `cwd` from its profile, read only (`None` without a profile).
+fn project_id_of(cwd: &Path) -> Option<String> {
+    let home = std::env::var_os("HOME").map(PathBuf::from)?;
+    let project = crate::project_home::resolve(&home, cwd).ok()?;
+    (project.key_source == crate::project_home::KeySource::Profile).then_some(project.key)
 }
 
 /// The worktree's card: the live reservation whose branch is this worktree's branch, read from

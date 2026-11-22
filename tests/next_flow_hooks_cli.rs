@@ -768,3 +768,153 @@ fn ac15_the_hooks_land_in_the_config_folder_and_exit_zero_elsewhere() {
     assert!(r.stdout.is_empty(), "{}", r.stdout);
     assert!(!plain_root.join(".moai").exists() && !plain_root.join(".moai-cli").exists());
 }
+
+/// Fixture git with an explicit HOME (the D-15 fixture keeps its HOME beside the project).
+fn git_with_home(cwd: &Path, args: &[&str], home: &Path) {
+    let out = common::git::command()
+        .args(args)
+        .current_dir(cwd)
+        .env("HOME", home)
+        .output()
+        .unwrap();
+    assert!(
+        out.status.success(),
+        "git {args:?}: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+}
+
+/// The session-check duty with a CLAUDE_ENV_FILE named (D-15): the exported MOAI_* lines are
+/// the point, so this spawn carries the env the host would give.
+fn session_check_env(cwd: &Path, home: &Path, config: &Path, env_file: &Path) -> Run {
+    let mut cmd = Command::new(BIN);
+    cmd.args(["hook-dispatch", "--host", "claude", "--event", "session-check"])
+        .current_dir(cwd)
+        .env("HOME", home)
+        .env("CLAUDE_CONFIG_DIR", config)
+        .env("CLAUDE_ENV_FILE", env_file)
+        .env("GIT_CONFIG_GLOBAL", "/dev/null")
+        .env("GIT_CONFIG_SYSTEM", "/dev/null")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null());
+    let input = json!({"hook_event_name": "SessionStart", "source": "startup",
+                       "cwd": cwd, "session_id": "s"});
+    let mut child = cmd.spawn().unwrap();
+    common::feed_stdin(&mut child, input.to_string().as_bytes());
+    let out = child.wait_with_output().unwrap();
+    Run {
+        code: out.status.code().unwrap(),
+        stdout: String::from_utf8_lossy(&out.stdout).into_owned(),
+        stderr: String::new(),
+    }
+}
+
+/// D-15: the env file gains one `export MOAI_INTEGRATION_BRANCH=…` line for the recorded
+/// branch (appended, so a line another hook wrote survives), and a stamp in the config folder
+/// makes the duty answer `reloadSkills: true` exactly once — the second answer is false and
+/// the stamp is gone.
+#[test]
+fn ac17_env_file_and_reload_skills() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let root = fs::canonicalize(dir.path()).unwrap();
+    let home = root.join("home");
+    let config = root.join("config");
+    fs::create_dir_all(&home).unwrap();
+    fs::create_dir_all(&config).unwrap();
+    git_with_home(&root, &["init", "-q", "-b", "spec/x"], &home);
+    git_with_home(&root, &["config", "user.name", "fixture"], &home);
+    git_with_home(&root, &["config", "user.email", "f@e.invalid"], &home);
+    fs::write(root.join("a.txt"), "a\n").unwrap();
+    git_with_home(&root, &["add", "a.txt"], &home);
+    git_with_home(&root, &["commit", "-q", "-m", "i"], &home);
+    fs::create_dir_all(root.join(".moai")).unwrap();
+    fs::create_dir_all(root.join(".git/moai")).unwrap();
+    fs::write(root.join(".git/moai/integration-branch"), "refs/heads/NeXT\n").unwrap();
+    let env_file = root.join("home/env");
+    fs::write(&env_file, "export OTHER_HOOK=1\n").unwrap();
+
+    let r = session_check_env(&root, &home, &config, &env_file);
+    assert_eq!(r.code, 0);
+    let v: serde_json::Value = serde_json::from_str(&r.stdout).unwrap();
+    assert_eq!(v["hookSpecificOutput"]["reloadSkills"], json!(false));
+    let text = fs::read_to_string(&env_file).unwrap();
+    assert!(text.contains("export OTHER_HOOK=1\n"), "{text}");
+    assert!(
+        text.contains("export MOAI_INTEGRATION_BRANCH=NeXT\n"),
+        "{text}"
+    );
+
+    // The stamp the hook layer leaves: one reload, then consumed.
+    fs::write(config.join("moai-update-stamp"), "").unwrap();
+    let r = session_check_env(&root, &home, &config, &env_file);
+    let v: serde_json::Value = serde_json::from_str(&r.stdout).unwrap();
+    assert_eq!(v["hookSpecificOutput"]["reloadSkills"], json!(true));
+    assert!(!config.join("moai-update-stamp").exists());
+    let r = session_check_env(&root, &home, &config, &env_file);
+    let v: serde_json::Value = serde_json::from_str(&r.stdout).unwrap();
+    assert_eq!(v["hookSpecificOutput"]["reloadSkills"], json!(false));
+}
+
+/// The update layer leaves the stamp in the picked config folder (D-15): a confirmed apply
+/// that wrote creates it; a change-free apply does not.
+#[test]
+fn ac17_the_update_layer_leaves_the_reload_stamp() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let root = fs::canonicalize(tmp.path()).unwrap();
+    let home = root.join("home");
+    let folder = home.join(".moai-cli/versions/a");
+    fs::create_dir_all(folder.join("bin")).unwrap();
+    let exe = folder.join("bin/moai-cli");
+    common::copy_executable(Path::new(BIN), &exe);
+    copy_tree(
+        &Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai"),
+        &folder.join("skills/moai"),
+    );
+    copy_tree(
+        &Path::new(env!("CARGO_MANIFEST_DIR")).join("agents"),
+        &folder.join("agents"),
+    );
+    let project = root.join("project");
+    fs::create_dir_all(project.join(".moai")).unwrap();
+    let config = root.join("config");
+    fs::create_dir_all(&config).unwrap();
+
+    let run = |args: &[&str]| -> serde_json::Value {
+        let out = Command::new(&exe)
+            .args(args)
+            .current_dir(&project)
+            .env("HOME", &home)
+            .env("MOAI_ACCOUNT_HOME", &home)
+            .env("CLAUDE_CONFIG_DIR", &config)
+            .env("CLAUDE_CODE_SESSION_ID", "aabbccddeeff0011")
+            .env("GIT_CONFIG_GLOBAL", "/dev/null")
+            .env("GIT_CONFIG_SYSTEM", "/dev/null")
+            .stdin(Stdio::null())
+            .output()
+            .unwrap();
+        assert!(
+            out.status.success(),
+            "{args:?}: {}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        let v: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap_or_default();
+        v["result"].clone()
+    };
+    let p = run(&["update"]);
+    assert!(
+        !config.join("moai-update-stamp").exists(),
+        "a preview writes nothing"
+    );
+    let digest = p["plan_digest"].as_str().unwrap().to_string();
+    run(&["update", "--confirm", &digest]);
+    assert!(
+        config.join("moai-update-stamp").exists(),
+        "a confirmed apply leaves the reload stamp"
+    );
+    // A change-free apply does not.
+    let p = run(&["update"]);
+    let digest = p["plan_digest"].as_str().unwrap().to_string();
+    run(&["update", "--confirm", &digest]);
+    assert!(config.join("moai-update-stamp").exists());
+}
