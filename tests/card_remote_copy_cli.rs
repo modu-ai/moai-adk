@@ -601,6 +601,7 @@ fn the_push_arguments_carry_the_safety_flags() {
         ),
     )
     .unwrap();
+    #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
         fs::set_permissions(&wrapper, fs::Permissions::from_mode(0o755)).unwrap();
@@ -677,6 +678,7 @@ fn an_unreachable_push_reads_pending() {
         ),
     )
     .unwrap();
+    #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
         fs::set_permissions(&wrapper, fs::Permissions::from_mode(0o755)).unwrap();
@@ -725,6 +727,7 @@ fn the_off_path_runs_no_network_git() {
         ),
     )
     .unwrap();
+    #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
         fs::set_permissions(&wrapper, fs::Permissions::from_mode(0o755)).unwrap();

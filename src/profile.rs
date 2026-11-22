@@ -1434,10 +1434,10 @@ mod tests {
                 "scopes",
                 "versioning",
                 "work_flow",
+                "remote_copy",
                 "test_paths",
                 "ci",
-                "checks",
-                "remote_copy"
+                "checks"
             ]
         );
     }
