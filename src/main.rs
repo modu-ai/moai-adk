@@ -3607,22 +3607,30 @@ mod help_rules {
             let text = t.map(|h| h.to_string()).unwrap_or_default();
             text.split_whitespace().collect::<Vec<_>>().join(" ")
         };
-        for (host, prefix) in [("cc", "/moai"), ("glm", "/moai"), ("omp", "/skill:moai")] {
+        // The retired mode flags are gone from the launchers' help: `-a` names the entry
+        // command `/moai work`, `-l` only its name and permissions.
+        for host in ["cc", "glm", "omp"] {
             let cmd = korean.find_subcommand(host).unwrap();
-            for (id, mode) in [("leader", "leader"), ("agent", "agent")] {
+            for id in ["leader", "agent"] {
                 let arg = cmd.get_arguments().find(|a| a.get_id() == id).unwrap();
                 let short = flat(arg.get_help());
                 let long = flat(arg.get_long_help());
                 for text in [&short, &long] {
-                    let command = "`/moai --mode-".to_string() + mode + "`";
-                    assert!(text.contains(&command), "{host} -{id}: {text}");
-                    assert!(!text.contains("$moai"), "{host} -{id}: {text}");
                     assert!(text.contains("권한만 정함"), "{host} -{id}: {text}");
+                    assert!(!text.contains("--mode-"), "{host} -{id}: {text}");
+                    assert!(!text.contains("$moai"), "{host} -{id}: {text}");
+                    assert_eq!(
+                        text.contains("`/moai work`"),
+                        id == "agent",
+                        "{host} -{id}: {text}"
+                    );
                 }
             }
             let about = flat(cmd.get_long_about());
-            let both = format!("`{prefix} --mode-leader`·`{prefix} --mode-agent`");
-            assert!(about.contains(&both), "{host} long about: {about}");
+            assert!(!about.contains("--mode-"), "{host} long about: {about}");
+            if host != "omp" {
+                assert!(about.contains("`/moai work`"), "{host} long about: {about}");
+            }
         }
     }
 
