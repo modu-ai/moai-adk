@@ -22,11 +22,13 @@ const PURPOSE: &str = "Fix lint and test failures";
 fn project() -> TempDir {
     let root = TempDir::new().unwrap();
     fs::create_dir_all(root.path().join("skills/moai/workflows")).unwrap();
-    fs::create_dir_all(root.path().join(".moai-cli")).unwrap();
+    // A project of the current state folder (`PROJECT_STATE_DIR`), as the fixture always was.
+    let state = root.path().join(moai_cli::PROJECT_STATE_DIR);
+    fs::create_dir_all(&state).unwrap();
     let profile = json!({"schema_version":2,"project_id":"demo","purpose":"Build a small editor","tools":["Rust"],"development_methods":["TDD"],"hosts":["claude"],"interview_revision":"rc1-fixture-1"});
     let mut bytes = serde_json::to_vec_pretty(&profile).unwrap();
     bytes.push(b'\n');
-    fs::write(root.path().join(".moai-cli/project.yaml"), &bytes).unwrap();
+    fs::write(state.join("project.yaml"), &bytes).unwrap();
     root
 }
 
@@ -115,7 +117,7 @@ fn action_of(plan: &Value, path: &str) -> Option<String> {
 }
 
 fn manifest_path(root: &Path) -> std::path::PathBuf {
-    root.join(".moai-cli/manifests/generation.json")
+    moai_cli::state_root::path(root, "manifests/generation.json")
 }
 
 /// The earlier layout: the role file back at `.claude/agents/<id>.md` and the manifest naming

@@ -248,11 +248,12 @@ fn an_edited_or_foreign_flat_file_stays_and_blocks_its_nested_copy() {
     earlier_layout(&fx);
     fs::write(fx.flat("impl"), "I edited this one\n").unwrap();
     // A flat file the state does not own: forget the record of one agent.
-    let state = [".moai/agents/claude.json", ".moai-cli/agents/claude.json"]
-        .iter()
-        .map(|rel| Path::new(&fx.home).join(rel))
-        .find(|p| p.is_file())
-        .expect("the agent state file of the claude host");
+    // The home state folder comes from the resolver (leader rule: tests never spell it).
+    let state = moai_cli::home_root::path(Path::new(&fx.home)).join("agents/claude.json");
+    assert!(
+        state.is_file(),
+        "the agent state file of the claude host: {state:?}"
+    );
     let mut json: Value = serde_json::from_slice(&fs::read(&state).unwrap()).unwrap();
     json["owned"]
         .as_object_mut()
