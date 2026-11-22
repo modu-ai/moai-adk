@@ -2,7 +2,7 @@
 id: SPEC-20261123-lane-continues-card
 title: "A lane continues its own card after /clear or a restart: one adopt command re-registers the lane name and takes the card over at the next generation"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-23
 ---
 
@@ -10,12 +10,12 @@ created: 2026-11-23
 
 ## Intent
 
-레인이 `/clear` 를 받거나 재시작하면 호스트 세션 id 가 바뀌어요. 카드의 예약(reservation)은 옛 세션 id 에 묶여 있어서, 같은 레인의 새 세션이 자기 카드를 이어받지 못하고 임대(lease, 기본 4시간)가 끝나길 기다려요. 카드 본문과 리더 노트 두 개(5074, 5426)가 이 사례를 적었어요: 같은 레인 이름(`agent-34`)으로 다시 등록하려 하면 이전 인스턴스의 등록 임대에 막혔고, 한 카드가 `/clear` 전 세션에 묶여 16시간 동안 회수도 철회도 못 했어요.
+레인이 `/clear` 를 받거나 재시작하면 호스트 세션 id 가 바뀌어요. 카드의 예약(reservation)은 옛 세션 id 에 묶여 있어서, 같은 레인의 새 세션이 자기 카드를 이어받지 못하고 임대(lease, 기본 4시간)가 끝나길 기다려요. 카드 본문과 리더 노트 두 개가 이 사례를 적었어요: 같은 레인 이름(`agent-34`)으로 다시 등록하려 하면 이전 인스턴스의 등록 임대에 막혔고, 한 카드가 `/clear` 전 세션에 묶여 16시간 동안 회수도 철회도 못 했어요.
 
 ### 이미 있는 것 (이 저장소의 팁 `caeac7689a` 에서 읽었어요)
 
 - `card reclaim` 은 임대가 끝난 `held` 예약을 다음 세대(generation + 1)로 넘겨요. 범위·워크트리·브랜치는 그대로이고, 카드의 상태·노트·기준은 그대로예요 (`src/ledger/reservation.rs` `reclaim`, `src/card/dispatch.rs` `reclaim`). 임대가 끝난 뒤에도 워크트리에 커밋 안 한 변경이나 푸시 안 한 커밋이 있으면 `worktree_gate` 가 거절해요.
-- 조기 회수(SPEC-20261120-reclaim-dead-holder, 카드 C-189 쪽)는 임대가 남아도 세 증거가 모두 있으면 받아요: 홀더의 `.live` 파일이 있고 아무도 잡지 않으며(`launcher-exited`), 레지스트리 임대가 끝났고, 워크트리가 없거나 깨끗하며 그 안에서 도는 프로세스가 없을 때예요 (`src/card/early_reclaim.rs`).
+- 조기 회수(SPEC-20261120-reclaim-dead-holder)는 임대가 남아도 세 증거가 모두 있으면 받아요: 홀더의 `.live` 파일이 있고 아무도 잡지 않으며(`launcher-exited`), 레지스트리 임대가 끝났고, 워크트리가 없거나 깨끗하며 그 안에서 도는 프로세스가 없을 때예요 (`src/card/early_reclaim.rs`).
 - `session-register` 는 이름 → 인스턴스 하나, 호스트 세션 id(`session` 필드)를 적어요 (`src/lane_registry.rs` `register`). 같은 이름을 다른 인스턴스가 살아 있는 임대로 쥐고 있으면 `conflict` 로 거절해요.
 - `card handoff --to <세션>` 은 홀더가 직접 넘겨요. `/clear` 전에는 새 세션 id 를 모르니 레인이 스스로 쓸 수 없어요.
 
@@ -23,7 +23,7 @@ created: 2026-11-23
 
 이어받는 새 세션은 위의 길을 모두 지나지 못해요. 각 줄은 위 코드에서 읽은 결과예요:
 
-1. 이름 재등록이 막혀요: `register` 는 임대가 남은 다른 인스턴스를 `conflict` 로 거절해요. 리더 노트 5074 가 같은 사례를 적었어요.
+1. 이름 재등록이 막혀요: `register` 는 임대가 남은 다른 인스턴스를 `conflict` 로 거절해요. 리더의 첫 사례 노트가 같은 일을 적었어요.
 2. 조기 회수의 프로세스 증거가 막아요: 새 세션 자신이 그 워크트리에서 돌고 있어서 "워크트리 안에서 도는 프로세스 없음" 이 늘 거짓이에요 (`processes_in`).
 3. 조기 회수의 `.live` 증거도 막아요: 런처(`moai cc`)가 `/clear` 뒤에도 살아서 이름의 `.live` 잠금을 쥐고 있으니 `alive` 로 답해요. 런처 없이 연 창(Orca 의 창, 그냥 `claude`)은 `.live` 파일이 아예 없어서 "한 번도 런처가 없던 세션은 사라진 게 아니다" 규칙에 걸려요.
 4. 임대가 끝난 뒤에도 `worktree_gate` 가 막아요: 같은 레인의 작업 중 변경이 곧 그 워크트리의 변경인데, 이것을 "고아가 될 일" 로 세요.
@@ -37,7 +37,7 @@ created: 2026-11-23
 
 ### 출처 (2026-11-22T22:4xZ 에 읽은 것, 팁 `caeac7689a`)
 
-- 카드 C-268 의 본문, 기준 1, 노트 5074·5426 (`moai card show C-268`).
+- 이 카드의 본문, 기준 1, 리더의 사례 노트 둘 (`moai card show` 로 읽어요).
 - `src/ledger/reservation.rs` (`reclaim`, `reclaim_early`, `reclaim_with`: 낡은 예약은 `reclaimed` 로 바뀌고 새 행은 같은 범위·워크트리·브랜치를 이어받아요; 상태 CHECK 는 `held`, `released`, `expired_candidate`, `reclaimed`, `held_for_review` 이고 `reclaim` 은 `card.reclaim` 사건 3개를 평생 한도로 세요).
 - `src/card/dispatch.rs`, `src/card/early_reclaim.rs`, `src/lane_registry.rs`, `src/ops/session_register.rs`, `src/ops/card.rs`.
 - `src/trailers.rs`: `Moai-Session` 값은 `<세션 id>:<워크트리 키 12자>` 이고 `same_identity` 는 둘 다 전체 형태면 값 전체를 비교해요. 그래서 `/clear` 앞뒤의 같은 레인이 한 신원으로 읽히지 않아요(Non-goals, R-4).
@@ -48,7 +48,7 @@ created: 2026-11-23
 - 감사의 독립성 규칙 변경. `/clear` 앞의 세션이 쓴 커밋을 `/clear` 뒤의 같은 레인이 감사해도 다른 세션으로 읽히는 문제는 그대로예요 (R-4, 후속 카드 후보).
 - 임대 기본값(4시간), reclaim 한도(3), 원장 스키마 변경. 새 사건 종류 `card.adopt` 는 자유 사건 종류라서 스키마를 건드리지 않아요 (D-3).
 - 다른 레인의 세션이나 이름이 다른 세션이 카드를 이어받는 길. 그것은 `card reclaim`, `card handoff`, 리더의 회수예요.
-- 조기 회수(C-189)의 증거 규칙 변경.
+- 조기 회수(SPEC-20261120-reclaim-dead-holder)의 증거 규칙 변경.
 - 워크플로 문서(`mode-agent.md`), 스킬 문장, 런처의 변경. 코드가 들어간 뒤 글 슬라이스에서 `/clear` 다음에 `session-register --continue` 와 `card adopt` 를 쓰라고 적어요 (Plan 7).
 - 이름이 같은 두 세션이 한 워크트리에서 동시에 도는 상황을 막는 일. 이 SPEC 은 그 경우 옛 세션이 카드를 잃도록 두고(울타리), 막지는 않아요.
 
@@ -95,7 +95,7 @@ created: 2026-11-23
   - `tests/card_adopt_cli.rs` (new), `tests/session_registry_cli.rs`, `docs/design-review/appendix/operations/card.md` (the operation line).
 - read-only: `src/card/dispatch.rs` (error wording, `card_id`, `open_for_write`), `src/card/early_reclaim.rs`, `src/trailers.rs`, `src/session_current.rs`, `src/ledger/schema.rs`.
 - The card's own write scope is empty and the reservation taken for this slice holds the SPEC folder only; `src/card/command.rs` is reserved for another card. The code slice needs the files above added by the leader (`card scope`); none of them is `src/card/command.rs`.
-- forbidden: `src/card/early_reclaim.rs` (C-189's proofs stay as they are), the ledger schema (`src/ledger/schema.rs`, `src/ledger/migrate.rs`), any skill, workflow or agent text, the launcher (`src/session.rs`).
+- forbidden: `src/card/early_reclaim.rs` (the proofs of the early-reclaim SPEC stay as they are), the ledger schema (`src/ledger/schema.rs`, `src/ledger/migrate.rs`), any skill, workflow or agent text, the launcher (`src/session.rs`).
 
 ## Plan
 
@@ -136,4 +136,4 @@ created: 2026-11-23
 
 ## Result
 
-Status: SPEC draft (revision 1). Nothing is implemented and no acceptance line is met. The base is tip `caeac7689a`. The SPEC carries no approval; U-1 and U-2 wait for the user.
+Status: SPEC draft (revision 2: card and ledger note numbers replaced by what each source decided). Nothing is implemented and no acceptance line is met. The base is tip `caeac7689a`. The SPEC carries no approval; U-1 and U-2 wait for the user.
