@@ -451,13 +451,33 @@ fn measure_model_free(sb: &Sandbox, idle_required: Duration, idle_budget: Durati
         SHORT,
     );
     rep.row(&started);
-    std::thread::sleep(Duration::from_millis(1500));
-    let listed = sb.claude(
+    // The first listing can come before the session has a process or a worktree: read the state
+    // every two seconds, at most twelve times, until the session has a pid or has left `working`.
+    let mut listed = sb.claude(
         "agents_json_all_after_start",
         &["agents", "--json", "--all"],
         &repo,
         SHORT,
     );
+    for poll in 1..=12 {
+        let settled = serde_json::from_str::<Value>(listed.stdout.trim())
+            .ok()
+            .and_then(|v| v.as_array().and_then(|a| a.first().cloned()))
+            .is_some_and(|e| e.get("pid").is_some() || e["state"] != "working");
+        if settled {
+            break;
+        }
+        let mut row = listed.clone();
+        row.id = format!("agents_json_all_poll_{poll}");
+        rep.row(&row);
+        std::thread::sleep(Duration::from_secs(2));
+        listed = sb.claude(
+            "agents_json_all_after_start",
+            &["agents", "--json", "--all"],
+            &repo,
+            SHORT,
+        );
+    }
     rep.row(&listed);
     let session = first_session(&listed.stdout);
     if let Some((_, Some(pid))) = &session {
@@ -476,10 +496,6 @@ fn measure_model_free(sb: &Sandbox, idle_required: Duration, idle_budget: Durati
             "worktreeinclude_file_arrived": wt_dir.join(".env.probe").is_file(),
         }),
     );
-
-    if let Some((_, Some(pid))) = &session {
-        rep.fact("session_alive_after_placement_reads", json!(alive(*pid)));
-    }
 
     // Idle stop first, while the session still lives: only with a live session and a wait that
     // covers the documented idle time.
@@ -513,7 +529,7 @@ fn measure_model_free(sb: &Sandbox, idle_required: Duration, idle_budget: Durati
         rep.not_run("idle_stop", NO_LIVE_PROCESS);
     }
 
-    // Signals last: the terminate signal ends the session.
+    // Signals before the removal rows: the terminate signal ends the session.
     match session
         .as_ref()
         .and_then(|(_, pid)| *pid)
@@ -536,8 +552,8 @@ fn measure_model_free(sb: &Sandbox, idle_required: Duration, idle_budget: Durati
         None => rep.not_run("signals", NO_LIVE_PROCESS),
     }
 
-    // Removal rules on that worktree, after the signals (the session may be gone by now, which
-    // the liveness facts around this block record): an uncommitted change, then an unpushed commit.
+    // Removal rules on that worktree, after the signals: an uncommitted change, then an unpushed
+    // commit. A session ended by a terminate signal and one that ended by itself may differ.
     if let Some((id, _)) = session.clone() {
         if wt_dir.is_dir() {
             fs::write(wt_dir.join("dirty.txt"), "dirty\n").unwrap();
@@ -560,10 +576,6 @@ fn measure_model_free(sb: &Sandbox, idle_required: Duration, idle_budget: Durati
         }
     } else {
         rep.not_run("rm_rules", "no background session was listed");
-    }
-
-    if let Some((_, Some(pid))) = &session {
-        rep.fact("session_alive_after_removal_rows", json!(alive(*pid)));
     }
 
     for (id, why) in MODEL_ROWS {
