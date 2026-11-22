@@ -171,13 +171,18 @@ fn prove(project: &Path, cur: &reservation::Reservation, now: i64) -> Result<Pro
     })
 }
 
-/// Ignored entries of a worktree that a tool rebuilds by itself, so one left behind is no draft:
-/// the log folder, the cargo output folder and a Python bytecode folder. Every other ignored
-/// entry is a file somebody chose to keep out of git, so it counts as work. `entry` is a folder
-/// entry of `git status` (it ends with a slash) or a single file below one; a folder name counts
-/// as a whole component, so `my__pycache__/` and `src/target/` are not on the list.
-fn is_regenerable_ignored(entry: &str) -> bool {
+/// Ignored entries of the worktree `root` that a tool rebuilds by itself, so one left behind is
+/// no draft: the log folder, the runtime state folder (the one `root` uses now and the earlier
+/// generation's; SPEC-20261122-test-defects-session-reclaim REQ-5), the cargo output folder and
+/// a Python bytecode folder. Every other ignored entry is a file somebody chose to keep out of
+/// git, so it counts as work. `entry` is a folder entry of `git status` (it ends with a slash)
+/// or a single file below one; a folder name counts as a whole component, so `my__pycache__/`
+/// and `src/target/` are not on the list.
+fn is_regenerable_ignored(root: &Path, entry: &str) -> bool {
+    let state = format!("{}/", crate::state_root::rel(root, RUNTIME_STATE));
     entry.starts_with(".moai/logs/")
+        || entry.starts_with(&state)
+        || entry.starts_with(GO_RUNTIME_STATE)
         || entry.starts_with("target/")
         || entry.starts_with("__pycache__/")
         || entry.contains("/__pycache__/")
@@ -239,7 +244,7 @@ fn remaining_work(
         "the ignored files",
     )?;
     for entry in ignored.lines().filter_map(|l| l.strip_prefix("!! ")) {
-        if is_regenerable_ignored(entry) {
+        if is_regenerable_ignored(path, entry) {
             continue;
         }
         // git folds a folder that holds nothing but ignored files into one entry (`.moai/` when
@@ -258,7 +263,7 @@ fn remaining_work(
             )?;
             files
                 .lines()
-                .find(|f| !is_regenerable_ignored(f))
+                .find(|f| !is_regenerable_ignored(path, f))
                 .map(str::to_string)
         } else {
             Some(entry.to_string())
@@ -475,32 +480,46 @@ mod tests {
         assert!(stdout_within(missing, Duration::from_secs(1)).is_err());
     }
 
-    /// REQ-3: only the three named regenerable entries are not drafts.
+    /// REQ-3: only the named regenerable entries are not drafts; the runtime state folder of the
+    /// worktree and of the earlier generation joined them (SPEC-20261122-test-defects-session-
+    /// reclaim REQ-5, REQ-6). The folder name the worktree uses comes from its own state root.
     #[test]
     fn only_listed_ignored_entries_are_regenerable() {
+        let tmp = tempfile::tempdir().unwrap();
+        let root = tmp.path();
+        let state = crate::state_root::rel(root, "state");
+        let go = format!("{}/state", crate::state_root::MOAI_DIR);
+        let regenerable = |entry: &str| is_regenerable_ignored(root, entry);
         for ok in [
-            ".moai/logs/",
-            "target/",
-            "tests/__pycache__/",
-            "__pycache__/",
-            ".moai/logs/a.log",
-            "target/debug/moai",
-            "tools/__pycache__/x.pyc",
+            ".moai/logs/".to_string(),
+            "target/".to_string(),
+            "tests/__pycache__/".to_string(),
+            "__pycache__/".to_string(),
+            ".moai/logs/a.log".to_string(),
+            "target/debug/moai".to_string(),
+            "tools/__pycache__/x.pyc".to_string(),
+            format!("{state}/"),
+            format!("{state}/github/counts.json"),
+            format!("{go}/"),
+            format!("{go}/earlier.json"),
         ] {
-            assert!(is_regenerable_ignored(ok), "{ok}");
+            assert!(regenerable(&ok), "{ok}");
         }
         for work in [
-            "scratch/",
-            "draft.md",
-            "target",
-            ".moai/",
-            ".moai/other.txt",
-            ".moai/logs",
-            "src/target/",
-            "my__pycache__/",
-            "notes/__pycache__",
+            "scratch/".to_string(),
+            "draft.md".to_string(),
+            "target".to_string(),
+            ".moai/".to_string(),
+            ".moai/other.txt".to_string(),
+            ".moai/logs".to_string(),
+            "src/target/".to_string(),
+            "my__pycache__/".to_string(),
+            "notes/__pycache__".to_string(),
+            state.clone(),
+            format!("{state}man/x.json"),
+            format!("sub/{state}/x.json"),
         ] {
-            assert!(!is_regenerable_ignored(work), "{work}");
+            assert!(!regenerable(&work), "{work}");
         }
     }
 
@@ -572,5 +591,14 @@ mod cache_tests {
         assert!(is(&format!("?? {state}/github/counts.json")));
         assert!(is(&format!("?? {go}/github/counts.json")));
         assert!(!is(&format!("?? {}/other.json", crate::PROJECT_STATE_DIR)));
+        // The ignored-entry rule takes the same two folders, and each on its own (REQ-5).
+        let regenerable = |entry: &str| super::is_regenerable_ignored(root, entry);
+        assert!(regenerable(&format!("{state}/")));
+        assert!(regenerable(&format!("{state}/github/counts.json")));
+        assert!(regenerable(&format!("{go}/earlier.json")));
+        assert!(!regenerable(&format!(
+            "{}/other.json",
+            crate::PROJECT_STATE_DIR
+        )));
     }
 }

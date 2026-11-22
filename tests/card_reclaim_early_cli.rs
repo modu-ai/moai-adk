@@ -414,9 +414,10 @@ fn process_in_the_worktree() {
     let _ = beside.wait();
 }
 
-/// AC-10 (REQ-12): a worktree whose only untracked file is a listed tool cache (the statusline's
-/// GitHub counts) counts as clean; any other untracked file, an unlisted name in the same
-/// folder and a changed tracked file each keep it dirty.
+/// AC-10 (REQ-12): a worktree whose only untracked file is a tool cache (the statusline's GitHub
+/// counts, under the runtime state folder) counts as clean; an untracked file outside that
+/// folder, one beside it and a changed tracked file each keep it dirty
+/// (SPEC-20261122-test-defects-session-reclaim REQ-3, REQ-4 widened the one file to the folder).
 #[test]
 fn a_listed_tool_cache_is_not_work() {
     let w = world();
