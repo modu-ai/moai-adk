@@ -32,6 +32,9 @@ pub const MONOREPO_MANIFEST_FOLDERS: usize = 3;
 const MAX_PACKAGES: usize = 64;
 /// Largest `.git` pointer file read.
 const POINTER_LIMIT: u64 = 4096;
+/// moai's own state folders besides [`SKIP_DIRS`]: a SPEC that `spec new` writes is not a
+/// project file, so the walk count does not move when moai writes its state.
+const MOAI_STATE_DIRS: &[&str] = &[".moai", crate::state_root::GO_BACKUP];
 
 /// Root files whose presence alone marks a workspace.
 const MARKER_FILES: &[&str] = &[
@@ -118,7 +121,11 @@ fn index_path(root: &Path) -> Option<PathBuf> {
         let text = fs::read_to_string(&dot_git).ok()?;
         let target = text.trim().strip_prefix("gitdir:")?.trim();
         let target = Path::new(target);
-        let admin = if target.is_absolute() { target.to_path_buf() } else { root.join(target) };
+        let admin = if target.is_absolute() {
+            target.to_path_buf()
+        } else {
+            root.join(target)
+        };
         if !fs::symlink_metadata(&admin).ok()?.is_dir() {
             return None;
         }
@@ -136,12 +143,18 @@ fn index_path(root: &Path) -> Option<PathBuf> {
         return None;
     };
     let index = admin.join("index");
-    fs::symlink_metadata(&index).ok()?.is_file().then_some(index)
+    fs::symlink_metadata(&index)
+        .ok()?
+        .is_file()
+        .then_some(index)
 }
 
 fn tracked_from_index(root: &Path) -> Option<u64> {
     let mut header = [0u8; 12];
-    fs::File::open(index_path(root)?).ok()?.read_exact(&mut header).ok()?;
+    fs::File::open(index_path(root)?)
+        .ok()?
+        .read_exact(&mut header)
+        .ok()?;
     index_entry_count(&header)
 }
 
@@ -166,7 +179,11 @@ fn walked_files(dir: &Path, depth: usize, seen: &mut usize) -> u64 {
             continue;
         }
         if kind.is_dir() {
-            if depth < MAX_DEPTH && !SKIP_DIRS.contains(&name.to_string_lossy().as_ref()) {
+            let name = name.to_string_lossy();
+            if depth < MAX_DEPTH
+                && !SKIP_DIRS.contains(&name.as_ref())
+                && !MOAI_STATE_DIRS.contains(&name.as_ref())
+            {
                 files += walked_files(&entry.path(), depth + 1, seen);
             }
         } else if kind.is_file() {

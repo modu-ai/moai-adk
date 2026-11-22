@@ -69,7 +69,11 @@ fn the_thresholds_and_markers_decide_the_kind() {
 
     // a root package.json without `workspaces` and a Cargo.toml without `[workspace]` are not markers.
     let dir = TempDir::new().unwrap();
-    mk(dir.path(), "package.json", r#"{"name":"r","dependencies":{}}"#);
+    mk(
+        dir.path(),
+        "package.json",
+        r#"{"name":"r","dependencies":{}}"#,
+    );
     mk(dir.path(), "Cargo.toml", "[package]\nname = \"r\"\n");
     let fact = read(dir.path());
     assert_eq!(fact.kind, "small");
@@ -80,7 +84,11 @@ fn the_thresholds_and_markers_decide_the_kind() {
     mk(dir.path(), "packages/a/package.json", "{}");
     mk(dir.path(), "packages/b/package.json", "{}");
     assert_eq!(read(dir.path()).kind, "small");
-    mk(dir.path(), "packages/c/Cargo.toml", "[package]\nname = \"c\"\n");
+    mk(
+        dir.path(),
+        "packages/c/Cargo.toml",
+        "[package]\nname = \"c\"\n",
+    );
     let fact = read(dir.path());
     assert_eq!(fact.kind, "monorepo");
     assert_eq!(fact.manifest_folders, 3);
@@ -96,7 +104,11 @@ fn the_thresholds_and_markers_decide_the_kind() {
     // folders that are never part of the project do not count.
     let dir = TempDir::new().unwrap();
     for name in ["x", "y", "z"] {
-        mk(dir.path(), &format!("node_modules/{name}/package.json"), "{}");
+        mk(
+            dir.path(),
+            &format!("node_modules/{name}/package.json"),
+            "{}",
+        );
     }
     assert_eq!(read(dir.path()).kind, "small");
 }
@@ -105,7 +117,10 @@ fn the_thresholds_and_markers_decide_the_kind() {
 fn the_tracked_file_count_comes_from_the_index_header() {
     assert_eq!(index_entry_count(&index_bytes(2, 4_999)), Some(4_999));
     assert_eq!(index_entry_count(&index_bytes(3, 5_000)), Some(5_000));
-    assert_eq!(index_entry_count(&index_bytes(4, u32::MAX)), Some(u32::MAX as u64));
+    assert_eq!(
+        index_entry_count(&index_bytes(4, u32::MAX)),
+        Some(u32::MAX as u64)
+    );
     // anything that is not a header of a known version gives no count.
     assert_eq!(index_entry_count(b""), None);
     assert_eq!(index_entry_count(&index_bytes(2, 1)[..11]), None);
@@ -144,7 +159,20 @@ fn a_missing_or_unreadable_index_counts_the_walk_and_says_it_is_a_lower_bound() 
     mk(dir.path(), ".git/index", "not an index");
     let fact = read(dir.path());
     assert!(fact.lower_bound);
-    assert_eq!(fact.tracked_files, 1, "the .git folder itself is not counted");
+    assert_eq!(
+        fact.tracked_files, 1,
+        "the .git folder itself is not counted"
+    );
+
+    // moai's own state is not a project file: a SPEC under `.moai/` and the Go backup folder
+    // leave the walk count where it was.
+    let dir = TempDir::new().unwrap();
+    mk(dir.path(), "a.txt", "x");
+    let before = read(dir.path()).tracked_files;
+    mk(dir.path(), ".moai/specs/SPEC-20261122-x/spec.md", "# x\n");
+    mk(dir.path(), ".moai-cli/project.yaml", "schema_version: 2\n");
+    mk(dir.path(), ".moai-backup/old.txt", "x");
+    assert_eq!(read(dir.path()).tracked_files, before);
 
     // a `.git` folder with no index yet
     let dir = TempDir::new().unwrap();
@@ -160,8 +188,16 @@ fn a_linked_worktree_reads_its_own_index_and_a_wrong_pointer_is_not_followed() {
     let wt = TempDir::new().unwrap();
     fs::create_dir_all(&admin).unwrap();
     fs::write(admin.join("index"), index_bytes(2, 7_000)).unwrap();
-    fs::write(admin.join("gitdir"), format!("{}\n", wt.path().join(".git").display())).unwrap();
-    fs::write(wt.path().join(".git"), format!("gitdir: {}\n", admin.display())).unwrap();
+    fs::write(
+        admin.join("gitdir"),
+        format!("{}\n", wt.path().join(".git").display()),
+    )
+    .unwrap();
+    fs::write(
+        wt.path().join(".git"),
+        format!("gitdir: {}\n", admin.display()),
+    )
+    .unwrap();
     mk(wt.path(), "a.txt", "x");
     let fact = read(wt.path());
     assert_eq!(fact.tracked_files, 7_000);
@@ -170,7 +206,11 @@ fn a_linked_worktree_reads_its_own_index_and_a_wrong_pointer_is_not_followed() {
 
     // the folder the pointer names does not name this folder back: not followed, so a lower bound.
     let other = TempDir::new().unwrap();
-    fs::write(admin.join("gitdir"), format!("{}\n", other.path().join(".git").display())).unwrap();
+    fs::write(
+        admin.join("gitdir"),
+        format!("{}\n", other.path().join(".git").display()),
+    )
+    .unwrap();
     let fact = read(wt.path());
     assert!(fact.lower_bound);
     assert_eq!(fact.kind, "small");
@@ -192,7 +232,11 @@ fn a_git_entry_that_is_a_link_is_not_followed() {
 #[test]
 fn the_scale_is_a_fact_beside_detected_and_never_inside_it() {
     let dir = TempDir::new().unwrap();
-    mk(dir.path(), "pnpm-workspace.yaml", "packages:\n  - 'apps/*'\n");
+    mk(
+        dir.path(),
+        "pnpm-workspace.yaml",
+        "packages:\n  - 'apps/*'\n",
+    );
     mk(dir.path(), "apps/web/package.json", "{}");
     with_index(dir.path(), 6_000);
     let before = fs::read_to_string(dir.path().join("pnpm-workspace.yaml")).unwrap();
@@ -206,6 +250,9 @@ fn the_scale_is_a_fact_beside_detected_and_never_inside_it() {
     assert!(out["detected"].get("scale").is_none());
     assert_eq!(out["profile_written"], false);
     // detection writes nothing.
-    assert_eq!(fs::read_to_string(dir.path().join("pnpm-workspace.yaml")).unwrap(), before);
+    assert_eq!(
+        fs::read_to_string(dir.path().join("pnpm-workspace.yaml")).unwrap(),
+        before
+    );
     assert!(!dir.path().join(".moai-cli").exists() && !dir.path().join(".moai").exists());
 }
