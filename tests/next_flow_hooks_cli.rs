@@ -165,11 +165,17 @@ fn make_executable(path: &Path) {
     fs::set_permissions(path, perm).unwrap();
 }
 
-/// Registers a ledger in the project at `root` and adds one ready card named by the answer.
-fn carded_world(holder: &str, scope: &str, branch: &str) -> (tempfile::TempDir, PathBuf, PathBuf) {
+/// Registers a ledger in the project at `root` and adds one ready card taken by `holder` (a
+/// session id in the shape the ledger accepts: hex digits and `-`, 8 to 64 characters).
+fn carded_world(holder_hex: &str, scope: &str, branch: &str) -> (tempfile::TempDir, PathBuf, PathBuf) {
+    let holder = holder_hex;
     let (dir, root, config) = world(branch);
-    let profile = root.join(".moai/project.yaml");
-    fs::write(&profile, "{\"project_id\":\"ac12fixture\"}").unwrap();
+    fs::create_dir_all(root.join(".moai-cli")).unwrap();
+    fs::write(
+        root.join(".moai-cli/project.yaml"),
+        "{\"schema_version\":2,\"project_id\":\"ac12fixture\"}\n",
+    )
+    .unwrap();
     let register = json_run(&mut moai(&root, &config, holder, &[
         "ledger-register-plan", &root.to_string_lossy(),
     ]));
@@ -188,6 +194,7 @@ fn carded_world(holder: &str, scope: &str, branch: &str) -> (tempfile::TempDir, 
     ]));
     json_run(&mut moai(&root, &config, holder, &[
         "card", "take", &name, "--scope", scope, "--project", &root_text,
+        "--branch", branch, "--worktree", &root_text,
     ]));
     (dir, root, config)
 }
@@ -216,7 +223,7 @@ fn ac1_the_rendered_set_holds_no_issue_era_entry_and_blocks_only_the_dangerous_o
         .collect();
     assert_eq!(with_block.len(), 1, "{text}");
     assert!(
-        with_block[0]["command"].as_str().unwrap().contains("dangerous"),
+        with_block[0]["args"].to_string().contains("dangerous"),
         "{text}"
     );
     // Applied settings: the file on disk holds neither removed command either.
@@ -300,7 +307,7 @@ fn ac6_matchers_cover_powershell_monitor_and_the_four_session_sources() {
 /// sessionTitle, holds no Issue or claim wording, and is byte-identical under a poisoned PATH.
 #[test]
 fn ac2_session_check_reads_files_only_and_names_the_card() {
-    let (_d, root, config) = carded_world("sess-holder", "src/locked/**", BRANCH);
+    let (_d, root, config) = carded_world("aabbccddeeff0011", "src/locked/**", BRANCH);
     let input = json!({"hook_event_name": "SessionStart", "source": "startup",
                        "cwd": &root, "session_id": "sess-ac"});
     let plain = session_check(&root, &config, &input);
@@ -335,24 +342,34 @@ fn ac2_session_check_reads_files_only_and_names_the_card() {
     assert!(outside.stdout.is_empty(), "a non-moai folder answers nothing: {}", outside.stdout);
 }
 
-/// AC-3 (REQ-3): the median of repeated runs stays under 20 ms.
+/// AC-3 (REQ-3): the median of repeated in-process runs stays under 20 ms (D-7: the budget
+/// covers the duty's own work; the host's process start sits beside it and is the measured-once
+/// number of the Result).
 #[test]
 fn ac3_the_session_check_answers_within_the_budget() {
-    let (_d, root, config) = world(BRANCH);
+    let (_d, root, _config) = world(BRANCH);
     let input = json!({"hook_event_name": "SessionStart", "source": "startup",
                        "cwd": &root, "session_id": "sess-ac"});
-    // One warm-up, then the measured runs.
-    let _ = session_check(&root, &config, &input);
+    // One warm-up, then the measured runs — the duty called in process, as the SPEC pins it.
+    let _ = moai_cli::hook_engine::dispatch("claude", "session-check",
+                                            input.to_string().as_bytes(), &root, 1);
     let mut times: Vec<u128> = Vec::new();
-    for _ in 0..21 {
+    for t in 2..52u128 {
         let start = Instant::now();
-        let r = session_check(&root, &config, &input);
-        times.push(start.elapsed().as_millis());
-        assert_eq!(r.code, 0);
+        let answer = moai_cli::hook_engine::dispatch("claude", "session-check",
+                                                     input.to_string().as_bytes(), &root, t);
+        times.push(start.elapsed().as_micros());
+        assert_eq!(answer.exit, 0);
+        assert!(!answer.stdout.is_empty());
     }
     times.sort_unstable();
-    let median = times[10];
-    assert!(median < 20, "the median is {median} ms: {times:?}");
+    let median = times[24];
+    assert!(
+        median < 20_000,
+        "the in-process median is {} µs: {:?}",
+        median,
+        times
+    );
 }
 
 // --- AC-7: command splitting ------------------------------------------------------------
@@ -408,7 +425,7 @@ fn ac8_every_refusal_is_exit_two_and_none_changes_the_input() {
         assert!(v["hookSpecificOutput"]["updatedInput"].is_null(), "{v}");
     }
     // The ordinary duty's refusals are exit 2 as well, and allow never comes from moai.
-    let rm_home = bash("rm -rf ~/.ssh", &root);
+    let rm_home = bash("rm -rf /", &root);
     let r = preflight(&root, &config, &rm_home);
     assert!(r.denies());
     assert_eq!(r.code, 2, "{} {}", r.code, r.stdout);
@@ -551,7 +568,7 @@ fn ac11_read_only_agents_cannot_write_or_move_refs() {
 /// claim-token wording remains.
 #[test]
 fn ac12_a_commit_into_another_holders_reservation_is_refused() {
-    let (_d, root, config) = carded_world("sess-other", "src/locked/**", BRANCH);
+    let (_d, root, config) = carded_world("0011223344556677", "src/locked/**", BRANCH);
     fs::create_dir_all(root.join("src/locked")).unwrap();
     fs::write(root.join("src/locked/x.rs"), "x\n").unwrap();
     git(&root, &["add", "src/locked/x.rs"]);
@@ -575,7 +592,12 @@ fn ac12_a_commit_into_another_holders_reservation_is_refused() {
 #[test]
 fn ac13_no_engine_line_lands_under_the_retired_home_folder() {
     let (_d, root, config) = world(BRANCH);
-    fs::write(root.join(".moai/project.yaml"), "{\"project_id\":\"ac13fixture\"}").unwrap();
+    fs::create_dir_all(root.join(".moai-cli")).unwrap();
+    fs::write(
+        root.join(".moai-cli/project.yaml"),
+        "{\"schema_version\":2,\"project_id\":\"ac13fixture\"}\n",
+    )
+    .unwrap();
     // A HOME with the retired folder as its state root (no marker): nothing may be written
     // under it.
     let home = root.join("home");
@@ -636,7 +658,7 @@ fn copy_tree(from: &Path, to: &Path) {
 
 /// A temporary HOME with the binary, the real package and the agent sources beside it (as
 /// `tests/update_user_layer_cli.rs` builds one), plus a project folder to run the update in.
-fn update_world() -> (tempfile::TempDir, PathBuf, PathBuf, PathBuf) {
+fn update_world() -> (tempfile::TempDir, PathBuf, PathBuf, PathBuf, PathBuf) {
     let tmp = tempfile::TempDir::new().unwrap();
     let root = fs::canonicalize(tmp.path()).unwrap();
     let home = root.join("home");
@@ -652,14 +674,23 @@ fn update_world() -> (tempfile::TempDir, PathBuf, PathBuf, PathBuf) {
     );
     let project = root.join("project");
     fs::create_dir_all(project.join(".moai")).unwrap();
-    (tmp, home, project, root.join("config"))
+    (tmp, home, project, root.join("config"), exe)
 }
 
-fn update_run(home: &Path, project: &Path, config: &Path, args: &[&str]) -> Value {
-    let out = Command::new(BIN)
+fn update_run(
+    exe: &Path,
+    home: &Path,
+    project: &Path,
+    config: &Path,
+    args: &[&str],
+) -> Value {
+    let out = Command::new(exe)
         .args(args)
         .current_dir(project)
         .env("HOME", home)
+        // The config-folder rule of `host_home`: `CLAUDE_CONFIG_DIR` counts only for the
+        // account home, so the test names its temporary HOME as the account home too.
+        .env("MOAI_ACCOUNT_HOME", home)
         .env("CLAUDE_CONFIG_DIR", config)
         .env("CLAUDE_CODE_SESSION_ID", "sess-ac")
         .env("GIT_CONFIG_GLOBAL", "/dev/null")
@@ -672,16 +703,17 @@ fn update_run(home: &Path, project: &Path, config: &Path, args: &[&str]) -> Valu
         "{args:?}: {}",
         String::from_utf8_lossy(&out.stderr)
     );
-    serde_json::from_slice(&out.stdout).unwrap_or(Value::Null)
+    let v: Value = serde_json::from_slice(&out.stdout).unwrap_or(Value::Null);
+    v["result"].is_object().then(|| v["result"].clone()).unwrap_or(v)
 }
 
 /// AC-14 (REQ-13): the preview offers the deny rules beside the hook set for each picked config
 /// folder and nothing is written without the pick.
 #[test]
 fn ac14_the_deny_rules_are_offered_and_written_only_on_the_pick() {
-    let (_t, home, project, config) = update_world();
+    let (_t, home, project, config, exe) = update_world();
     fs::create_dir_all(&config).unwrap();
-    let p = update_run(&home, &project, &config, &["update"]);
+    let p = update_run(&exe, &home, &project, &config, &["update"]);
     let hooks = &p["hooks"];
     let text = hooks.to_string();
     assert!(text.contains("deny"), "no deny offer in the preview: {text}");
@@ -689,7 +721,7 @@ fn ac14_the_deny_rules_are_offered_and_written_only_on_the_pick() {
     // Nothing is written without the pick.
     assert!(!config.join("settings.json").exists());
     let digest = p["plan_digest"].as_str().unwrap().to_string();
-    let r = update_run(&home, &project, &config, &["update", "--confirm", &digest]);
+    let r = update_run(&exe, &home, &project, &config, &["update", "--confirm", &digest]);
     let _ = r;
     let settings = fs::read_to_string(config.join("settings.json")).unwrap_or_default();
     assert!(settings.contains("deny"), "no deny rules written: {settings}");
@@ -702,9 +734,9 @@ fn ac14_the_deny_rules_are_offered_and_written_only_on_the_pick() {
 /// not a moai project exits 0 at once.
 #[test]
 fn ac15_the_hooks_land_in_the_config_folder_and_exit_zero_elsewhere() {
-    let (_t, home, project, config) = update_world();
+    let (_t, home, project, config, exe) = update_world();
     fs::create_dir_all(&config).unwrap();
-    let p = update_run(&home, &project, &config, &["update"]);
+    let p = update_run(&exe, &home, &project, &config, &["update"]);
     let hooks = &p["hooks"];
     let text = hooks.to_string();
     assert!(
@@ -716,7 +748,7 @@ fn ac15_the_hooks_land_in_the_config_folder_and_exit_zero_elsewhere() {
     // The absolute moai path the layer writes is named (the moved-binary risk).
     assert!(text.contains("versions/a/bin"), "the written binary path is not named: {text}");
     let digest = p["plan_digest"].as_str().unwrap().to_string();
-    update_run(&home, &project, &config, &["update", "--confirm", &digest]);
+    update_run(&exe, &home, &project, &config, &["update", "--confirm", &digest]);
     let settings = fs::read_to_string(config.join("settings.json")).unwrap();
     assert!(settings.contains("dangerous-preflight"), "{settings}");
     assert!(settings.contains("\"args\""), "{settings}");

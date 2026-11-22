@@ -1119,7 +1119,9 @@ const SPEC_TWO_IDS: &str = "MoAI tool-preflight: this SPEC work branch name read
 /// The branch HEAD names in the work tree at `top`, read from the file system: `.git` is the
 /// git folder, or a file `gitdir: <folder>` for a linked worktree. `None` when detached or
 /// unreadable.
-fn work_tree_branch(top: &Path) -> Option<String> {
+/// The branch the work tree at `top` has checked out, read from the git HEAD file only
+/// (SPEC-20261122-next-flow-hooks REQ-2: the session-check duty starts no subprocess).
+pub(crate) fn work_tree_branch(top: &Path) -> Option<String> {
     let dir = git_folder(top)?;
     let head = read_regular(&dir.join("HEAD"), GIT_SMALL_FILE_LIMIT)?;
     head.trim()
@@ -2082,6 +2084,216 @@ fn has_token(content: &str, shape: &TokenShape) -> bool {
                 .count()
                 == shape.min
     })
+}
+
+// --- the dangerous-call duty (SPEC-20261122-next-flow-hooks REQ-6..REQ-9) ----------------
+//
+// The calls this duty refuses are the ones no other layer catches in time: `git branch -c/-C`
+// moves a branch with no reference transaction at all (guard audit B-2), a push names the
+// integration branch before any git hook runs, a recursive delete outside the project tree
+// cannot be undone, and a write of the guarded settings files rewrites the very hooks that
+// guard. The command reading follows the permission rules (REQ-7): the line is split into its
+// commands ([`crate::claim_verify::shell_commands`] already splits on `&&`, `||`, `;`, `|`, `&`
+// and newlines, walks past wrapper words and assignments and opens a shell's `-c` script one
+// level), the name loses its path (an absolute `/usr/bin/git` is `git`), and a `git -C
+// <dir>` prefix only moves the repository, never the meaning. The reasons are fixed strings.
+
+/// The recorded integration branch of the repository at `cwd`, as the reference guard's record
+/// names it (`<common git folder>/moai/integration-branch`, one line, the full ref), read from
+/// the file system only. The record is the guard SPEC's (D-11 of SPEC-20261121-ref-guard);
+/// until that module lands beside this one, this reader and the record's format are pinned by
+/// the same line. `None` when there is no git folder or no record: nothing to protect.
+pub fn recorded_integration_branch(cwd: &Path) -> Option<String> {
+    let common = git_folder(cwd)?;
+    let record = read_regular(&common.join("moai/integration-branch"), GIT_SMALL_FILE_LIMIT)?;
+    let name = record.trim();
+    name.strip_prefix("refs/heads/")
+        .map(str::to_string)
+        .filter(|n| !n.is_empty())
+}
+
+const OUTSIDE_RECURSIVE_DELETE: &str =
+    "MoAI: a recursive delete outside the project tree cannot be undone";
+const GUARDED_SETTINGS_WRITE: &str =
+    "MoAI: that settings file is guarded; change it through moai and a preview";
+
+/// The sentence of an integration-branch refusal: it names the recorded spelling and the
+/// landing command (REQ-9), so it is built at run time and the deny line leaves `reason` null.
+fn integration_reason(branch: &str) -> String {
+    format!(
+        "MoAI: that call moves the integration branch {branch}; only `moai card land` moves it \
+         (the guard's record names it)"
+    )
+}
+
+/// The guarded settings files (REQ-9, D-4): the project's two settings files and the config
+/// folder's settings.json — the three files a hook or deny rule lives in, each written only on
+/// the user's pick at a preview.
+fn guarded_settings_files(cwd: &Path) -> Vec<PathBuf> {
+    let mut files = vec![
+        cwd.join(".claude/settings.json"),
+        cwd.join(".claude/settings.local.json"),
+    ];
+    if let Some(config) = std::env::var_os("CLAUDE_CONFIG_DIR").filter(|v| !v.is_empty()) {
+        files.push(PathBuf::from(config).join("settings.json"));
+    } else if let Some(home) = std::env::var_os("HOME").filter(|v| !v.is_empty()) {
+        files.push(PathBuf::from(home).join(".claude/settings.json"));
+    }
+    files
+}
+
+/// The reason the dangerous-call duty refuses the call, or `None`. `tool` is the calling tool's
+/// name (a Bash, PowerShell or Monitor command is read through [`shell_commands`]; a write
+/// tool's target is read from `tool_input`). The sentence is built at run time when it names
+/// the recorded branch, so the engine log keeps no fixed reason for it.
+pub fn dangerous_guard(tool: &str, tool_input: &Value, cwd: &Path) -> Option<String> {
+    match tool {
+        "Bash" | "PowerShell" | "Monitor" => {
+            let command = tool_input["command"].as_str().unwrap_or("");
+            dangerous_bash(command, cwd)
+        }
+        "Write" | "Edit" | "NotebookEdit" => {
+            let file = tool_input["file_path"]
+                .as_str()
+                .or_else(|| tool_input["notebook_path"].as_str())?;
+            let file = std::fs::canonicalize(file).unwrap_or_else(|_| PathBuf::from(file));
+            guarded_settings_files(cwd)
+                .iter()
+                .any(|g| file == *g)
+                .then_some(GUARDED_SETTINGS_WRITE.to_string())
+        }
+        _ => None,
+    }
+}
+
+/// The Bash side of the dangerous-call duty. The recorded integration branch is read once; a
+/// repository with no record has no integration-branch refusals (there is no name to protect).
+fn dangerous_bash(command: &str, cwd: &Path) -> Option<String> {
+    let branch = recorded_integration_branch(cwd);
+    for (name, args) in crate::claim_verify::shell_commands(command) {
+        if let Some(reason) = recursive_delete_outside(&name, &args, cwd) {
+            return Some(reason.to_string());
+        }
+        if name == "git" {
+            if let Some(branch) = integration_call(&args, branch.as_deref()) {
+                return Some(integration_reason(&branch));
+            }
+        }
+    }
+    None
+}
+
+/// `git`'s subcommand and the words after it, past the global options that take a value
+/// (`-C <dir>`, `--git-dir …`) and the ones that carry it attached; `None` when the line names
+/// no subcommand.
+pub(crate) fn git_subcommand(args: &[String]) -> Option<(&str, &[String])> {
+    let mut i = 0;
+    while i < args.len() {
+        let w = args[i].as_str();
+        if w == "-C" {
+            i += 2;
+        } else if w.starts_with("--")
+            && !w.contains('=')
+            && matches!(
+                w,
+                "--git-dir" | "--work-tree" | "--namespace" | "--exec-path" | "--super-prefix"
+            )
+        {
+            i += 2;
+        } else if !w.starts_with('-') {
+            return Some((w, &args[i + 1..]));
+        } else {
+            i += 1;
+        }
+    }
+    None
+}
+
+/// Whether the word names the recorded branch (or its full ref) in any letter case.
+fn names_branch(word: &str, branch: &str) -> bool {
+    word.eq_ignore_ascii_case(branch)
+        || word.eq_ignore_ascii_case(&format!("refs/heads/{branch}"))
+        || word.eq_ignore_ascii_case(&format!("heads/{branch}"))
+}
+
+/// The git verbs of REQ-9: `branch -c/-C/-m/-M/-d/-D` and `update-ref` and `push` naming the
+/// recorded integration branch, in any letter case. Every operand is read: a copy, a move or a
+/// delete names the branch as its source or its target, and a push names it in a refspec on
+/// either side. Answers the recorded branch when the call is refused (the sentence names it).
+fn integration_call(args: &[String], branch: Option<&str>) -> Option<String> {
+    let Some(branch) = branch else {
+        return None;
+    };
+    let Some((sub, rest)) = git_subcommand(args) else {
+        return None;
+    };
+    let hit = || branch.to_string();
+    match sub {
+        "branch" => {
+            let mut copy_move_delete = false;
+            let mut operands: Vec<&str> = Vec::new();
+            for word in rest.iter().map(String::as_str) {
+                if word == "--" {
+                    continue;
+                }
+                if word.starts_with("--") {
+                    if matches!(word, "--copy" | "--move" | "--delete") {
+                        copy_move_delete = true;
+                    }
+                } else if word.starts_with('-') && word.len() > 1 {
+                    for c in word[1..].chars() {
+                        if matches!(c, 'c' | 'C' | 'm' | 'M' | 'd' | 'D') {
+                            copy_move_delete = true;
+                        }
+                    }
+                } else {
+                    operands.push(word);
+                }
+            }
+            (copy_move_delete && operands.iter().any(|w| names_branch(w, branch))).then(hit)
+        }
+        "update-ref" => rest.iter().any(|w| names_branch(w, branch)).then(hit),
+        "push" => rest
+            .iter()
+            .filter(|w| !w.starts_with('-'))
+            .any(|w| {
+                w.split(':')
+                    .any(|side| names_branch(side.trim_start_matches('+'), branch))
+            })
+            .then(hit),
+        _ => None,
+    }
+}
+
+/// A recursive `rm` aimed outside the project tree (REQ-9). The project is the cwd the call
+/// names; a target that resolves below it stays with the ordinary duty.
+fn recursive_delete_outside(name: &str, args: &[String], cwd: &Path) -> Option<&'static str> {
+    if name != "rm" {
+        return None;
+    }
+    let recursive = args.iter().any(|w| {
+        let w = w.as_str();
+        (w.starts_with('-') && !w.starts_with("--") && w.len() > 1
+            && w[1..].chars().any(|c| c == 'r' || c == 'R'))
+            || w == "--recursive"
+    });
+    if !recursive {
+        return None;
+    }
+    let root = std::fs::canonicalize(cwd).unwrap_or_else(|_| cwd.to_path_buf());
+    args.iter()
+        .filter(|w| !w.starts_with('-'))
+        .any(|w| {
+            let path = Path::new(w);
+            let resolved = if path.is_absolute() {
+                std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf())
+            } else {
+                let joined = root.join(path);
+                std::fs::canonicalize(&joined).unwrap_or(joined)
+            };
+            resolved != root && !resolved.starts_with(&root)
+        })
+        .then_some(OUTSIDE_RECURSIVE_DELETE)
 }
 
 #[cfg(test)]

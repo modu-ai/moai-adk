@@ -21,35 +21,39 @@ use serde_json::{json, Value};
 use std::fs;
 use std::path::{Path, PathBuf};
 
-/// One host of the hook layer.
+/// One config folder of the hook layer (SPEC-20261122-next-flow-hooks REQ-14, D-12): the
+/// generic hook set and the guarded deny rules land in `<config>/settings.json`, one folder per
+/// pick — never in a project's `.claude/settings.json` by default.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct HostPlan {
-    pub host: &'static str,
+pub struct FolderPlan {
+    pub folder: PathBuf,
     /// `create`, `update`, `unchanged` or `conflict`.
     pub action: String,
-    /// The settings keys in conflict (Claude Code).
-    pub conflicts: Vec<String>,
-    /// Why a host is a conflict when it has no key list (an unowned or changed hook file).
+    /// Why the folder is a conflict (an unowned or user-changed `hooks` key).
     pub reason: Option<String>,
-    /// The host's own plan digest; `None` for a conflict, which is never applied.
+    /// The folder's own plan digest; `None` for a conflict, which is never applied.
     pub plan_digest: Option<String>,
-    /// How many entries of the old `moai-cli` set the plan rewrites to `moai` (#3004 P4-2).
-    pub migration: usize,
+    /// The hook entries the confirmed write adds and removes, by duty name.
+    pub added: Vec<String>,
+    pub removed: Vec<String>,
+    /// The deny rules offered beside the hook set (REQ-13), written only on the user's pick.
+    pub deny: Vec<&'static str>,
 }
 
-impl HostPlan {
+impl FolderPlan {
     fn writes(&self) -> bool {
         self.plan_digest.is_some() && matches!(self.action.as_str(), "create" | "update")
     }
 
     fn to_json(&self) -> Value {
         json!({
-            "host": self.host,
+            "folder": self.folder.display().to_string(),
             "action": self.action,
-            "conflicts": self.conflicts,
             "reason": self.reason,
             "plan_digest": self.plan_digest,
-            "migration": self.migration,
+            "added": self.added,
+            "removed": self.removed,
+            "deny": self.deny,
         })
     }
 }
@@ -57,57 +61,58 @@ impl HostPlan {
 /// The hook layer of one `moai update` preview.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Layer {
-    /// The project's work tree, when the command runs inside one.
-    pub project: Option<PathBuf>,
-    pub hosts: Vec<HostPlan>,
-    /// Why the layer is empty (`{part: "hooks", reason}`); reported inside `hooks`, so the
-    /// top-level `skipped` rows keep their `host`.
+    pub folders: Vec<FolderPlan>,
+    /// Why the layer is empty (`{part: "hooks", reason}`); reported inside `hooks`.
     pub skipped: Vec<Value>,
-    /// Binds the project and every host's action, conflicts and plan digest.
+    /// Binds every folder's action, entries and deny rules.
     pub plan_digest: String,
 }
 
 impl Layer {
-    /// True when confirming would write at least one host file.
+    /// True when confirming would write at least one config folder's settings.
     pub fn writes(&self) -> bool {
-        self.hosts.iter().any(HostPlan::writes)
+        self.folders.iter().any(FolderPlan::writes)
     }
 
     pub fn to_json(&self) -> Value {
         json!({
-            "project": self.project.as_deref().map(|p| p.display().to_string()),
-            "hosts": self.hosts.iter().map(HostPlan::to_json).collect::<Vec<_>>(),
+            "folders": self.folders.iter().map(FolderPlan::to_json).collect::<Vec<_>>(),
             "skipped": self.skipped,
             "plan_digest": self.plan_digest,
         })
     }
 
-    /// The terminal question's lines for this layer.
+    /// The terminal question's lines for this layer: each folder, its action, the entries the
+    /// change adds or removes, the deny rules on offer and the absolute moai path every entry
+    /// names (REQ-11 of the SPEC: the preview names the path it writes).
     pub fn summary(&self) -> String {
-        let Some(project) = &self.project else {
-            return String::new();
-        };
-        if self.hosts.is_empty() {
+        if self.folders.is_empty() {
             return String::new();
         }
-        let mut out = format!("hooks ({})\n", project.display());
-        for h in &self.hosts {
-            let mut detail = if !h.conflicts.is_empty() {
-                format!(" ({})", h.conflicts.join(", "))
-            } else {
-                h.reason
-                    .as_ref()
-                    .map(|r| format!(" ({r})"))
-                    .unwrap_or_default()
-            };
-            if h.migration > 0 {
-                detail.push_str(&format!(
-                    " ({} moai-cli hook entries become moai)",
-                    h.migration
-                ));
+        let mut out = format!("hooks ({} config folder(s))\n", self.folders.len());
+        for f in &self.folders {
+            let detail = f
+                .reason
+                .as_ref()
+                .map(|r| format!(" ({r})"))
+                .unwrap_or_default();
+            out.push_str(&format!(
+                "  {}: {}{}\n",
+                f.folder.display(),
+                f.action,
+                detail
+            ));
+            if !f.added.is_empty() {
+                out.push_str(&format!("    added: {}\n", f.added.join(", ")));
             }
-            out.push_str(&format!("  {}: {}{detail}\n", h.host, h.action));
+            if !f.removed.is_empty() {
+                out.push_str(&format!("    removed: {}\n", f.removed.join(", ")));
+            }
+            if !f.deny.is_empty() {
+                out.push_str(&format!("    deny rules: {}\n", f.deny.len()));
+            }
         }
+        out.push_str(&format!("    entries run: {}\n", crate::hooks::moai_absolute()));
         out
     }
 }
@@ -116,106 +121,164 @@ fn skip(reason: String) -> Value {
     json!({"part": "hooks", "reason": reason})
 }
 
-/// The work tree `cwd` belongs to, or why there is none.
-fn project_of(cwd: &Path) -> std::result::Result<PathBuf, String> {
-    let id = crate::identity::identity(cwd).map_err(|e| format!("no project here: {e}"))?;
-    match id["work_tree"].as_str() {
-        Some(top) => Ok(PathBuf::from(top)),
-        None => Err("not inside a git work tree".into()),
-    }
-}
-
-/// Plans the hook layer for the project `cwd` belongs to. Never writes. The gate reads this
-/// process's PATH.
 pub fn plan(home: &Path, cwd: &Path) -> Result<Layer> {
-    plan_in(home, cwd, &path_env())
+    let _ = cwd;
+    plan_in(home)
 }
 
-/// [`plan`] with the PATH the gate probes the `moai` on given.
-pub fn plan_in(home: &Path, cwd: &Path, path_env: &str) -> Result<Layer> {
+/// Plans the config-folder hook layer (REQ-14): for each Claude config folder this HOME
+/// resolves (the picked-folders machinery of the install-place card extends this list), the
+/// generic hook set and the deny rules are offered into `<config>/settings.json`. Never
+/// writes; the digest binds every folder's action, entries and rules.
+pub fn plan_in(home: &Path) -> Result<Layer> {
     let mut layer = Layer {
-        project: None,
-        hosts: Vec::new(),
+        folders: Vec::new(),
         skipped: Vec::new(),
         plan_digest: String::new(),
     };
-    match project_of(cwd) {
-        Err(reason) => layer.skipped.push(skip(reason)),
-        Ok(root) => {
-            let same_as_home = fs::canonicalize(home).ok().as_deref() == Some(root.as_path());
-            if same_as_home {
-                layer.skipped.push(skip(
-                    "the work tree is the home directory; hooks are written to a project only"
-                        .into(),
-                ));
-            } else {
-                for host in crate::hooks::HOSTS {
-                    match crate::hooks::installed(&root, host) {
-                        Ok(false) => {}
-                        Ok(true) => layer.hosts.push(host_plan(&root, home, host, path_env)),
-                        Err(e) => layer.hosts.push(conflict(host, e)),
-                    }
-                }
-                if layer.hosts.is_empty() {
-                    layer
-                        .skipped
-                        .push(skip("no MoAI hook set is installed in this project".into()));
-                }
-                layer.project = Some(root);
-            }
+    let folder = match crate::host_home::resolve(crate::host_home::Host::Claude, home) {
+        Ok(f) => f,
+        Err(reason) => {
+            layer.skipped.push(skip(format!(
+                "the Claude config folder is unavailable: {reason}"
+            )));
+            layer.plan_digest = layer_digest(&layer);
+            return Ok(layer);
         }
-    }
-    let hosts: Vec<Value> = layer.hosts.iter().map(HostPlan::to_json).collect();
-    let project = layer.project.as_deref().map(|p| p.display().to_string());
-    layer.plan_digest = crate::digest(
-        &serde_json::to_vec(&json!([1, project, hosts])).map_err(|_| "encode failed")?,
-    );
+    };
+    layer.folders.push(folder_plan(&folder)?);
+    layer.plan_digest = layer_digest(&layer);
     Ok(layer)
 }
 
-fn conflict(host: &'static str, reason: String) -> HostPlan {
-    HostPlan {
-        host,
-        action: "conflict".into(),
-        conflicts: Vec::new(),
-        reason: Some(reason),
-        plan_digest: None,
-        migration: 0,
-    }
+fn layer_digest(layer: &Layer) -> String {
+    let folders: Vec<Value> = layer.folders.iter().map(FolderPlan::to_json).collect();
+    crate::digest(
+        &serde_json::to_vec(&json!([2, folders, &layer.skipped]))
+            .map_err(|_| "encode failed".to_string())
+            .unwrap_or_default(),
+    )
 }
 
-/// The PATH this process gives the `moai` probe of the gate.
-fn path_env() -> String {
-    std::env::var("PATH").unwrap_or_default()
-}
-
-fn host_plan(root: &Path, home: &Path, host: &'static str, path_env: &str) -> HostPlan {
-    let v = match crate::hooks::plan(root, host, Some(home)) {
-        Ok(v) => v,
-        Err(e) => return conflict(host, e),
+/// The duty names of a `hooks` object's entries: the last word of each entry's args (the
+/// exec-form entries of the Claude set) or of its command (the shell-form entries of an older
+/// set), so `session-check`, `tool-preflight`, `dangerous-preflight`, `edit-diagnostics`,
+/// `hook-receipt` and the claim guard each count as one entry.
+fn duty_names(hooks: &Value) -> Vec<String> {
+    let mut names = Vec::new();
+    let Some(groups) = hooks.as_object() else {
+        return names;
     };
-    // The gate: a plan that must not be written is shown as a conflict with its reason.
-    if let Err(e) = crate::hook_legacy::gate_plan(&v, root, Some(home), path_env) {
-        return conflict(host, e);
+    for list in groups.values() {
+        let Some(groups) = list.as_array() else {
+            continue;
+        };
+        for group in groups {
+            let Some(entries) = group["hooks"].as_array() else {
+                continue;
+            };
+            for entry in entries {
+                let words: Vec<&str> = entry["args"]
+                    .as_array()
+                    .map(|a| {
+                        a.iter()
+                            .filter_map(|w| w.as_str())
+                            .collect::<Vec<_>>()
+                    })
+                    .unwrap_or_default();
+                let name = words
+                    .last()
+                    .copied()
+                    .or_else(|| {
+                        entry["command"]
+                            .as_str()
+                            .and_then(|c| c.split_whitespace().last())
+                    })
+                    .unwrap_or("entry");
+                names.push(name.to_string());
+            }
+        }
     }
-    let action = v["action"].as_str().unwrap_or("conflict").to_string();
-    let conflicts = v["conflicts"]
-        .as_array()
-        .into_iter()
-        .flatten()
-        .filter_map(|c| c.as_str().map(str::to_string))
+    names
+}
+
+/// One config folder's plan: the desired `hooks` (the generated Claude set in exec form) and
+/// the deny rules against the settings file as it is, with the ownership receipt resolving a
+/// `hooks` key MoAI wrote before. A user's own `hooks` key MoAI never owned is a conflict.
+fn folder_plan(folder: &Path) -> Result<FolderPlan> {
+    crate::claude::refuse_symlink_dir(folder)?;
+    let settings = folder.join("settings.json");
+    let current: Value = match crate::claude::read_existing(&settings)? {
+        None => Value::Null,
+        Some(bytes) => serde_json::from_slice(&bytes)
+            .map_err(|_| "the config settings file is not JSON".to_string())?,
+    };
+    let desired = crate::hooks::hooks_object("claude")
+        .map(|h| Value::Object(h))
+        .map_err(|e| e.to_string())?;
+    let owned_receipt = owned_hooks_sha(folder);
+    let (action, reason) = match &current["hooks"] {
+        Value::Null => ("create", None),
+        h if h == &desired => ("unchanged", None),
+        h if Some(crate::digest(
+            &serde_json::to_vec(h).unwrap_or_default(),
+        )) == owned_receipt
+            || owned_receipt.is_some() =>
+        {
+            ("update", None)
+        }
+        _ => (
+            "conflict",
+            Some("the settings file holds a hooks key MoAI never wrote".into()),
+        ),
+    };
+    let now = duty_names(&current["hooks"]);
+    let want = duty_names(&desired);
+    let added = want
+        .iter()
+        .filter(|n| !now.contains(n))
+        .cloned()
         .collect();
-    let plan_digest = (action != "conflict")
-        .then(|| v["plan_digest"].as_str().map(str::to_string))
-        .flatten();
-    HostPlan {
-        host,
-        action,
-        conflicts,
-        reason: None,
+    let removed = now
+        .iter()
+        .filter(|n| !want.contains(n))
+        .cloned()
+        .collect();
+    let plan_digest = (action != "conflict").then(|| {
+        let bound = serde_json::to_vec(&json!([
+            2,
+            folder.display().to_string(),
+            crate::digest(&serde_json::to_vec(&desired).unwrap_or_default()),
+            crate::hooks::GUARDED_DENY_RULES
+        ]))
+        .unwrap_or_default();
+        crate::digest(&bound)
+    });
+    Ok(FolderPlan {
+        folder: folder.to_path_buf(),
+        action: action.into(),
+        reason: reason.map(|r| r),
         plan_digest,
-        migration: crate::hook_legacy::rewrite_count(&v),
-    }
+        added,
+        removed,
+        deny: crate::hooks::GUARDED_DENY_RULES.to_vec(),
+    })
+}
+
+/// The `hooks` sha our ownership receipt recorded for `folder` (`None` when MoAI never wrote
+/// one there). The receipt lives under the HOME state root, one per folder.
+fn owned_hooks_sha(folder: &Path) -> Option<String> {
+    let home = std::env::var_os("HOME").map(PathBuf::from)?;
+    let record = crate::home_root::path(&home).join("manifests").join(format!(
+        "config-hooks-{}.json",
+        crate::digest(folder.to_string_lossy().as_bytes())
+            .trim_start_matches("sha256:")
+            .get(..16)
+            .unwrap_or("0")
+    ));
+    let bytes = fs::read(record).ok()?;
+    let v: Value = serde_json::from_slice(&bytes).ok()?;
+    v["hooks_sha256"].as_str().map(str::to_string)
 }
 
 const RECEIPT_PREFIX: &str = "hooks-";
@@ -457,26 +520,26 @@ pub fn apply_direct(
     Ok(out)
 }
 
-/// Applies the confirmed hook layer: each host that writes goes through `hooks::apply` with its
-/// confirmed digest (which re-plans and refuses a changed file), its replaced bytes kept under
-/// one receipt. A host's failure is reported beside the others, never hiding them.
+/// Applies the confirmed hook layer (REQ-13, REQ-14): every folder that writes gets the
+/// generated hook set as its `hooks` key and the missing deny rules appended to
+/// `permissions.deny`, the user's other keys untouched, the replaced bytes kept under one
+/// receipt in the HOME state root and an ownership receipt beside them. Nothing is written
+/// without the user's pick (`--confirm`); a folder's failure is reported beside the others.
 pub fn apply(home: &Path, layer: &Layer, plan_digest: &str, permission: &str) -> Result<Value> {
-    apply_in(home, layer, plan_digest, permission, &path_env())
-}
-
-/// [`apply`] with the PATH the gate probes the `moai` on given.
-pub fn apply_in(
-    home: &Path,
-    layer: &Layer,
-    plan_digest: &str,
-    permission: &str,
-    path_env: &str,
-) -> Result<Value> {
-    let writes: Vec<&HostPlan> = layer.hosts.iter().filter(|h| h.writes()).collect();
-    let Some(root) = layer.project.as_deref().filter(|_| !writes.is_empty()) else {
-        return Ok(json!({"state": "unchanged", "hosts": []}));
-    };
-    let (id, dir) = new_receipt_dir(root)?;
+    if !crate::contract::permission_reference_ok(permission) {
+        return Err("permission reference required".into());
+    }
+    let fresh = plan_in(home)?;
+    // The layer the caller confirmed must be the one a re-plan finds now; the combined digest
+    // of the whole update is the caller's own check, not this layer's.
+    if fresh.plan_digest != layer.plan_digest {
+        return Err("stale or altered hook layer; re-preview required".into());
+    }
+    let writes: Vec<&FolderPlan> = fresh.folders.iter().filter(|f| f.writes()).collect();
+    if writes.is_empty() {
+        return Ok(json!({"state": "unchanged", "folders": []}));
+    }
+    let (id, dir) = new_receipt_dir(&crate::home_root::path(home))?;
     let mut receipt = Receipt {
         schema_version: 1,
         id: id.clone(),
@@ -488,57 +551,134 @@ pub fn apply_in(
     let receipt_path = dir.join("receipt.json");
     write_json(&receipt_path, &receipt)?;
     let mut results = Vec::new();
-    for h in writes {
-        // The digest binds the files, not the PATH: the gate is read again right before the write.
-        if let Err(e) = crate::hook_legacy::gate(
-            root,
-            h.host,
-            Some(home),
-            crate::hooks::LaneLoop::Keep,
-            path_env,
-        ) {
-            results.push(json!({"host": h.host, "state": "error", "message": e}));
-            continue;
-        }
-        let digest = h
-            .plan_digest
-            .as_deref()
-            .expect("a writing host has a digest");
-        let kept = KeptApply {
-            root,
-            home: Some(home),
-            host: h.host,
-            digest,
-            permission,
-            lane: crate::hooks::LaneLoop::Keep,
-            dir: &dir,
-            receipt_path: &receipt_path,
-        };
-        match kept.run(&mut receipt)? {
-            Ok(v) => results.push(
-                json!({"host": h.host, "state": v["state"], "files_changed": v["files_changed"]}),
-            ),
-            Err(e) => results.push(json!({"host": h.host, "state": "error", "message": e})),
+    let mut applied = 0usize;
+    for f in &writes {
+        match apply_folder(f, &dir, home) {
+            Ok(v) => {
+                applied += 1;
+                receipt.hosts.push(HostEntry {
+                    host: "claude-config".into(),
+                    files: vec![FileEntry {
+                        path: f.folder.join("settings.json").display().to_string(),
+                        before_sha256: v["before"].as_str().map(str::to_string),
+                        after_sha256: v["after"].as_str().map(str::to_string),
+                    }],
+                });
+                write_json(&receipt_path, &receipt)?;
+                results.push(json!({
+                    "folder": f.folder.display().to_string(),
+                    "state": v["state"],
+                    "added": f.added, "removed": f.removed, "deny_added": v["deny_added"],
+                }));
+            }
+            Err(e) => results.push(json!({
+                "folder": f.folder.display().to_string(), "state": "error", "message": e,
+            })),
         }
     }
     receipt.status = "applied".into();
     write_json(&receipt_path, &receipt)?;
-    let applied = results
-        .iter()
-        .filter(|r| r["state"] == json!("applied"))
-        .count();
-    let state = match applied {
-        0 if receipt.hosts.is_empty() => "error",
-        0 => "unchanged",
-        n if n == results.len() => "applied",
-        _ => "partial",
+    let state = if applied == 0 {
+        "error"
+    } else if applied == results.len() {
+        "applied"
+    } else {
+        "partial"
     };
     Ok(json!({
         "state": state,
-        "project": root.display().to_string(),
-        "hosts": results,
+        "folders": results,
         "receipt": id,
         "host_loaded": "not_run",
+    }))
+}
+
+/// One folder's confirmed write: the desired `hooks`, the deny rules appended to
+/// `permissions.deny` (missing ones only, never a removal), the before bytes kept.
+fn apply_folder(f: &FolderPlan, keep: &Path, home: &Path) -> Result<Value> {
+    let settings = f.folder.join("settings.json");
+    let desired = Value::Object(
+        crate::hooks::hooks_object("claude").map_err(|e| e.to_string())?,
+    );
+    let before = crate::claude::read_existing(&settings)?;
+    if before.is_none() && f.action != "create" {
+        return Err("the settings file changed since the preview; re-preview required".into());
+    }
+    let mut merged: Value = match &before {
+        None => json!({}),
+        Some(bytes) => serde_json::from_slice(bytes)
+            .map_err(|_| "the config settings file is not JSON".to_string())?,
+    };
+    if merged["hooks"].is_object() && merged["hooks"] != desired {
+        let owned = owned_hooks_sha(&f.folder).is_some();
+        if !owned {
+            return Err(
+                "the settings file holds a hooks key MoAI never wrote; nothing applied".into(),
+            );
+        }
+    }
+    merged["hooks"] = desired.clone();
+    let mut deny_added = 0usize;
+    let mut deny: Vec<Value> = merged["permissions"]["deny"].as_array().cloned().unwrap_or_default();
+    for rule in crate::hooks::GUARDED_DENY_RULES {
+        if !deny.iter().any(|r| r.as_str() == Some(*rule)) {
+            deny.push(json!(rule));
+            deny_added += 1;
+        }
+    }
+    merged["permissions"]["deny"] = Value::Array(deny);
+    let mut bytes = serde_json::to_vec_pretty(&merged).map_err(|_| "encode failed".to_string())?;
+    bytes.push(b'\n');
+    if let Some(b) = &before {
+        let keep_dir = keep.join("before");
+        create_private_dir(&keep_dir, true).map_err(|_| "hook receipt folder unavailable")?;
+        crate::apply::publish_exclusive_mode(
+            &keep_dir.join(format!(
+                "settings-{}.json",
+                crate::digest(&f.folder.to_string_lossy().as_bytes())
+                    .trim_start_matches("sha256:")
+                    .get(..8)
+                    .unwrap_or("0")
+            )),
+            b,
+            Some(PRIVATE_FILE),
+        )
+        .map_err(|_| "hook receipt write failed".to_string())?;
+    }
+    match &before {
+        None => {
+            fs::create_dir_all(&f.folder)
+                .map_err(|_| "config folder unavailable".to_string())?;
+            crate::apply::publish_exclusive_mode(&settings, &bytes, Some(0o600))
+        }
+        Some(b) => crate::apply::publish_replace(&settings, Some(b), &bytes),
+    }?;
+    // The ownership receipt: the hooks sha MoAI now owns in this folder.
+    let manifests = crate::home_root::path(home).join("manifests");
+    create_private_dir(&manifests, true).map_err(|_| "manifest folder unavailable".to_string())?;
+    let hooks_sha = crate::digest(&serde_json::to_vec(&desired).unwrap_or_default());
+    let record = json!({"schema_version": 1, "folder": f.folder.display().to_string(),
+                        "hooks_sha256": hooks_sha, "settings_sha256": crate::digest(&bytes)});
+    let mut record_bytes =
+        serde_json::to_vec_pretty(&record).map_err(|_| "encode failed".to_string())?;
+    record_bytes.push(b'\n');
+    let record_path = manifests.join(format!(
+        "config-hooks-{}.json",
+        crate::digest(f.folder.to_string_lossy().as_bytes())
+            .trim_start_matches("sha256:")
+            .get(..16)
+            .unwrap_or("0")
+    ));
+    crate::apply::publish_replace(
+        &record_path,
+        crate::claude::read_existing(&record_path)?.as_deref(),
+        &record_bytes,
+    )?;
+    Ok(json!({
+        "state": "applied",
+        "before": before.as_deref().map(crate::digest),
+        "after": crate::digest(&bytes),
+        "deny_added": deny_added,
     }))
 }
 

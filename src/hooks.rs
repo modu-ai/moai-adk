@@ -43,6 +43,13 @@ pub enum Handler {
     /// Code only for now (#2877 leader Q1): it keeps the protection the Go-generation hooks gave
     /// once those are replaced. Answers with the documented PreToolUse deny object, never allow.
     Preflight,
+    /// `hook-dispatch --host claude --event dangerous-preflight`: the dangerous-call duty of
+    /// SPEC-20261122-next-flow-hooks (REQ-6..REQ-9) — the calls that move, copy, rename, delete
+    /// or push the recorded integration branch, recursive deletes outside the project tree and
+    /// writes of the guarded settings files. Generated as its own matcher group with
+    /// `onFailure: "block"` (Claude Code 2.1.295+), so a missing or crashing moai blocks only
+    /// these calls; the ordinary checks stay fail-open.
+    Dangerous,
     /// `hook-dispatch --event session-check`: answers with the session context (project state
     /// folder, lane branch, local claim record) the model reads at session start (#2936 R9 S1).
     /// It replaces the record-only receipt at `SessionStart`: nothing but `hooks-status` read
@@ -69,16 +76,42 @@ pub fn edit_diagnostics_timeout(binary: &str, host: &str) -> Option<u64> {
         .map(|r| r.timeout_secs + 5)
 }
 
-/// The tools the Claude preflight guard sees: the hook engine's Bash and write guards
-/// (`hook_engine::capabilities("claude")`).
-pub const CLAUDE_PREFLIGHT_MATCHER: &str = "Bash|Write|Edit|MultiEdit|NotebookEdit";
+/// The shell tools the Claude duties see (SPEC-20261122-next-flow-hooks REQ-6): `Bash|PowerShell`
+/// covers both shell tools, and since Claude Code 2.1.314 a `Bash` matcher also catches the
+/// shell commands the Monitor tool starts (hooks.md).
+pub const CLAUDE_SHELL_MATCHER: &str = "Bash|PowerShell";
+/// The write tools the Claude preflight duty sees (REQ-6). `MultiEdit` left the tool list; the
+/// matcher holds the three write tools of Claude Code 2.1.330.
+pub const CLAUDE_WRITE_MATCHER: &str = "Edit|Write|NotebookEdit";
+/// The session sources the session-check duty answers for (REQ-6): start, resume, clear and
+/// compaction — the compaction source is what restates the card facts after a compaction.
+pub const CLAUDE_SESSION_MATCHER: &str = "startup|resume|clear|compact";
 
-/// The MoAI hook set: (event, matcher, handler). The session context at session start, one
-/// blocking guard before each Bash tool call (it refuses only an unverified claim's commit or
-/// push, #2255 AC-2) and a receipt after each Bash tool call. `Stop` is not in the set: its
-/// receipt had no reader but `hooks-status`, and the turn-validation rules are empty
-/// (`hook_engine::STOP_RULES`). The Codex lane Stop hook is added by [`codex_hooks`], not here
-/// (#2936 R9 S1, selection table of Issue #2936 comment 6881107273).
+/// The guarded commands every layer refuses (REQ-13, D-8): the `permissions.deny` rules the
+/// hook writer offers into the picked config folder and the verbs the dangerous-call duty
+/// checks come from this one table, so the two cannot drift. The rules use the host's
+/// permission-rule syntax and narrow only. The integration-branch calls themselves name a
+/// branch that is recorded per repository, so no static rule can hold them; the dangerous
+/// duty is that layer.
+pub const GUARDED_DENY_RULES: &[&str] = &[
+    "Bash(git push --force *)",
+    "Bash(git push -f *)",
+    "Bash(git push --force-with-lease *)",
+    "Bash(git reset --hard *)",
+    "Bash(git clean -f *)",
+    "Bash(git clean -fd *)",
+    "Bash(git clean -fx *)",
+    "Bash(git commit --no-verify *)",
+    "Bash(git commit -n *)",
+    "Bash(git add -A *)",
+    "Bash(git add --all *)",
+];
+
+/// The MoAI hook set of the hosts that keep the Issue-era base (Codex, OMP): the session
+/// context at session start, one blocking guard before each Bash tool call (the claim write
+/// boundary, #2255 AC-2) and a receipt after each Bash tool call. The Claude set left this
+/// base for the NeXT-Flow set (SPEC-20261122-next-flow-hooks REQ-1); the withdrawn-host cards
+/// retire these hosts whole.
 pub const HOOK_SET: &[(&str, Option<&str>, Handler)] = &[
     ("SessionStart", None, Handler::SessionCheck),
     ("PreToolUse", Some("Bash"), Handler::ClaimGuard),
@@ -224,6 +257,10 @@ fn check_host(host: &str) -> Result<()> {
 
 /// The command a generated hook runs: the bare binary name, never an absolute path. The guard
 /// names the project as `.`: both hosts run a command hook in the session's working directory.
+/// The Claude entries do not use this shell form: they are rendered in exec form with the
+/// absolute path of this binary ([`moai_absolute`], REQ-5), so no shell sits between the host
+/// and moai (a shell profile's output can break the JSON answer, and the Claude config folder
+/// path can hold spaces).
 pub fn hook_command(host: &str, handler: Handler) -> String {
     command_with(HOOK_BINARY, host, handler)
 }
@@ -240,10 +277,40 @@ pub fn command_with(binary: &str, host: &str, handler: Handler) -> String {
         Handler::Preflight => {
             format!("{binary} hook-dispatch --host {host} --event tool-preflight")
         }
+        Handler::Dangerous => format!("{binary} hook-dispatch --host {host} --event dangerous-preflight"),
         Handler::EditDiagnostics => {
             format!("{binary} hook-dispatch --host {host} --event edit-diagnostics")
         }
     }
+}
+
+/// The argument vector of a Claude entry in exec form (REQ-5): the words after the binary of
+/// [`command_with`], so the exec-form entry and the shell-form command cannot drift.
+pub fn handler_args(host: &str, handler: Handler) -> Vec<String> {
+    command_with(HOOK_BINARY, host, handler)
+        .split_whitespace()
+        .skip(1)
+        .map(str::to_string)
+        .collect()
+}
+
+/// The absolute path of this binary as a Claude entry's `command` names it (REQ-5, D-12): the
+/// canonical executable, preferred under its public `moai` name when the sibling link exists
+/// (the install layout writes both), else under the name it runs as. A relative
+/// `current_exe` (some sandboxes) falls back to the bare [`HOOK_BINARY`] name — the entry then
+/// still names a program the host's PATH may find.
+pub fn moai_absolute() -> String {
+    let Ok(exe) = std::env::current_exe() else {
+        return HOOK_BINARY.into();
+    };
+    let exe = std::fs::canonicalize(&exe).unwrap_or(exe);
+    let exe = crate::install::identity_exe(exe);
+    let moai = exe
+        .parent()
+        .map(|dir| dir.join(HOOK_BINARY))
+        .filter(|p| p.is_file())
+        .unwrap_or(exe);
+    moai.to_string_lossy().into_owned()
 }
 
 /// The binary every generated hook command names (#3004 P4-2; `moai-cli` before, #2812 W3 and
@@ -285,28 +352,53 @@ pub fn moai_state(project: &Path, path_env: &str, home: Option<&Path>) -> Value 
 /// The hook set of one host: [`HOOK_SET`], and for Claude Code the preflight guard after the
 /// claim guard (#2877 Q1).
 pub fn hook_set(host: &str) -> Vec<(&'static str, Option<&'static str>, Handler)> {
-    let mut set = HOOK_SET.to_vec();
     if host == "claude" {
-        let at = set
-            .iter()
-            .position(|(e, _, _)| *e == "PreToolUse")
-            .map_or(set.len(), |i| i + 1);
-        set.insert(
-            at,
-            (
-                "PreToolUse",
-                Some(CLAUDE_PREFLIGHT_MATCHER),
-                Handler::Preflight,
-            ),
-        );
+        return vec![
+            ("SessionStart", Some(CLAUDE_SESSION_MATCHER), Handler::SessionCheck),
+            ("PreToolUse", Some(CLAUDE_SHELL_MATCHER), Handler::Dangerous),
+            ("PreToolUse", Some(CLAUDE_SHELL_MATCHER), Handler::Preflight),
+            ("PreToolUse", Some(CLAUDE_WRITE_MATCHER), Handler::Preflight),
+        ];
     }
-    set
+    HOOK_SET.to_vec()
 }
 
 /// The hook set as a host `hooks` object (event -> matcher groups -> handlers); two entries of
 /// one event are two matcher groups, in [`hook_set`] order.
 pub fn hooks_object(host: &str) -> Result<Map<String, Value>> {
     hooks_object_with(HOOK_BINARY, host)
+}
+
+/// One handler entry as the host's settings hold it. Claude Code entries are exec form
+/// (SPEC-20261122-next-flow-hooks REQ-5): the absolute path of this binary as `command`, the
+/// duty's arguments as the `args` array, no shell between — and the dangerous-call duty alone
+/// carries `onFailure: "block"` (REQ-1), so a missing or crashing moai blocks only its calls.
+/// The other hosts keep the shell-form command string their files have always held.
+fn handler_json(binary: &str, host: &str, handler: Handler) -> Value {
+    if host != "claude" {
+        return json!({"type": "command", "command": command_with(binary, host, handler),
+                       "timeout": HOOK_TIMEOUT_SECS});
+    }
+    let command = if binary == HOOK_BINARY {
+        moai_absolute()
+    } else {
+        binary.to_string()
+    };
+    let args: Vec<String> = if binary == HOOK_BINARY {
+        handler_args(host, handler)
+    } else {
+        command_with(binary, host, handler)
+            .split_whitespace()
+            .skip(1)
+            .map(str::to_string)
+            .collect()
+    };
+    let mut v = json!({"type": "command", "command": command, "args": args,
+                       "timeout": HOOK_TIMEOUT_SECS});
+    if handler == Handler::Dangerous {
+        v["onFailure"] = json!("block");
+    }
+    v
 }
 
 /// [`hooks_object`] for any binary name (the legacy set is `hooks_object_with(LEGACY_BINARY, …)`).
@@ -318,10 +410,7 @@ pub fn hooks_object_with(binary: &str, host: &str) -> Result<Map<String, Value>>
         if let Some(m) = matcher {
             group.insert("matcher".into(), json!(m));
         }
-        group.insert(
-            "hooks".into(),
-            json!([{"type": "command", "command": command_with(binary, host, handler), "timeout": HOOK_TIMEOUT_SECS}]),
-        );
+        group.insert("hooks".into(), json!([handler_json(binary, host, handler)]));
         let groups = out
             .entry(event.to_string())
             .or_insert_with(|| Value::Array(Vec::new()));
@@ -330,11 +419,11 @@ pub fn hooks_object_with(binary: &str, host: &str) -> Result<Map<String, Value>>
         }
     }
     if let Some(timeout) = edit_diagnostics_timeout(binary, host) {
+        let mut entry = handler_json(binary, host, Handler::EditDiagnostics);
+        entry["timeout"] = json!(timeout);
         let group = json!({
             "matcher": crate::edit_diagnostics::MATCHER,
-            "hooks": [{"type": "command",
-                       "command": command_with(binary, host, Handler::EditDiagnostics),
-                       "timeout": timeout}],
+            "hooks": [entry],
         });
         if let Some(list) = out
             .entry("PostToolUse".to_string())
@@ -497,8 +586,12 @@ fn hook_list_with(binary: &str, host: &str) -> Value {
     let mut list: Vec<Value> = hook_set(host)
         .into_iter()
         .map(|(event, matcher, handler)| {
-            json!({"event": event, "matcher": matcher, "command": command_with(binary, host, handler),
-                   "timeout": HOOK_TIMEOUT_SECS})
+            let entry = handler_json(binary, host, handler);
+            json!({"event": event, "matcher": matcher,
+                   "command": entry["command"].clone(),
+                   "args": entry["args"].clone(),
+                   "onFailure": entry["onFailure"].clone(),
+                   "timeout": entry["timeout"].clone()})
         })
         .collect();
     if let Some(timeout) = edit_diagnostics_timeout(binary, host) {
@@ -1341,12 +1434,23 @@ pub(crate) fn append_receipt_line_in(
     file: &str,
     line: &Value,
 ) -> std::result::Result<(), &'static str> {
-    let state_dir = crate::state_root::path(cwd, "");
-    match fs::symlink_metadata(&state_dir) {
-        Ok(m) if m.is_dir() => {}
-        _ => return Err("no .moai-cli directory in the working directory"),
-    }
-    let home_dir = home_receipts_dir(home, cwd);
+    // Either state-folder name answers: a project mid-move (SPEC #2725) may hold only the
+    // other one, and a log line must not be lost to the name it lacks.
+    let state_dir = [
+        crate::state_root::path(cwd, ""),
+        cwd.join(crate::PROJECT_STATE_DIR),
+        cwd.join(crate::state_root::MOAI_DIR),
+    ]
+    .into_iter()
+    .find(|d| fs::symlink_metadata(d).is_ok_and(|m| m.is_dir()))
+    .ok_or("no .moai-cli directory in the working directory")?;
+    // REQ-12 (SPEC-20261122-next-flow-hooks): no line is ever written under the retired home
+    // folder. A HOME whose state root still resolves to `~/.moai-cli` logs on the project side
+    // only (never creating the retired folder); the read path keeps both places for lines
+    // written before the move.
+    let home_dir = home
+        .filter(|h| crate::home_root::dir(h) != crate::HOME_STATE_DIR)
+        .and_then(|h| home_receipts_dir(Some(h), cwd));
     let dir = match &home_dir {
         Some(dir) => {
             let state = home

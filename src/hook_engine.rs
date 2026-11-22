@@ -50,6 +50,11 @@ pub const STDIN_LIMIT: u64 = 4 * 1024 * 1024;
 pub enum Event {
     SessionCheck,
     ToolPreflight,
+    /// SPEC-20261122-next-flow-hooks: the dangerous-call duty — the calls that move, copy,
+    /// rename, delete or push the recorded integration branch, recursive deletes outside the
+    /// project tree and writes of the guarded settings files. Generated with
+    /// `onFailure: "block"`, so a missing or crashing moai blocks only these calls.
+    DangerousPreflight,
     ToolObserve,
     TurnValidation,
     /// SPEC-20261117-edit-diagnostics S1: the user's checker after a file edit (Claude Code,
@@ -62,6 +67,7 @@ impl Event {
         match word {
             "session-check" => Some(Event::SessionCheck),
             "tool-preflight" => Some(Event::ToolPreflight),
+            "dangerous-preflight" => Some(Event::DangerousPreflight),
             "tool-observe" => Some(Event::ToolObserve),
             "turn-validation" => Some(Event::TurnValidation),
             "edit-diagnostics" => Some(Event::EditDiagnostics),
@@ -73,7 +79,7 @@ impl Event {
     fn host_event(self) -> &'static str {
         match self {
             Event::SessionCheck => "SessionStart",
-            Event::ToolPreflight => "PreToolUse",
+            Event::ToolPreflight | Event::DangerousPreflight => "PreToolUse",
             Event::ToolObserve | Event::EditDiagnostics => "PostToolUse",
             Event::TurnValidation => "Stop",
         }
@@ -137,12 +143,11 @@ fn engine_error(reason: &str) -> Answer {
 pub fn dispatch(host: &str, event: &str, stdin: &[u8], cwd: &Path, now_unix_ms: u128) -> Answer {
     let cwd = std::fs::canonicalize(cwd).unwrap_or_else(|_| cwd.to_path_buf());
     let cwd = cwd.as_path();
-    let Some(host) = Host::parse(host) else {
-        return engine_error("unknown hook host; must be claude, codex or omp");
+    let Some(host) = Host::parse(host) else {        return engine_error("unknown hook host; must be claude, codex or omp");
     };
     let Some(event) = Event::parse(event) else {
         return engine_error(
-            "unknown hook event; must be session-check, tool-preflight, tool-observe, turn-validation or edit-diagnostics",
+            "unknown hook event; must be session-check, tool-preflight, dangerous-preflight, tool-observe, turn-validation or edit-diagnostics",
         );
     };
     // OMP's turn-end event is `session_stop` (OMP 18.18.7, extensions.md), but the generated
@@ -183,9 +188,21 @@ pub fn dispatch(host: &str, event: &str, stdin: &[u8], cwd: &Path, now_unix_ms: 
     if event == Event::EditDiagnostics {
         return edit_diagnostics(&input, cwd, now_unix_ms, host);
     }
+    // REQ-15 (SPEC-20261122-next-flow-hooks): a folder that is not a moai project (no project
+    // state folder at the cwd the input names) gets one process start and nothing else — no
+    // output, no log line, no ledger read. The generic hooks live in the config folder, so they
+    // fire in every project of that folder; this rule bounds the cost for the rest.
+    if matches!(
+        event,
+        Event::SessionCheck | Event::ToolPreflight | Event::DangerousPreflight
+    ) && !moai_project(cwd)
+    {
+        return allow_quietly();
+    }
     // The sentence of a guard whose text is fixed (set by tool-preflight); see `record_deny`.
     let mut fixed_reason: Option<&'static str> = None;
     let verdict = match event {
+        Event::SessionCheck if host == Host::Claude => return session_check_answer(&input, cwd),
         Event::SessionCheck => session_check(host, &input, cwd),
         Event::ToolPreflight => {
             // Stage 7 opt-in rules (B3, B9; decision 6779829826) come from ~/.moai-cli/hook-config.toml,
@@ -203,12 +220,14 @@ pub fn dispatch(host: &str, event: &str, stdin: &[u8], cwd: &Path, now_unix_ms: 
                 &mut fixed_reason,
             )
         }
+        Event::DangerousPreflight => dangerous_preflight(&input, cwd),
         Event::ToolObserve => tool_observe(&input, cwd, now_unix_ms, host),
         Event::TurnValidation => turn_validation_with(STOP_RULES, &input, cwd, now_unix_ms),
         // Answered above, before any verdict.
         Event::EditDiagnostics => Verdict::Allow,
     };
-    if let (Event::ToolPreflight, Verdict::Deny(_)) = (event, &verdict) {
+    if let (Event::ToolPreflight | Event::DangerousPreflight, Verdict::Deny(_)) = (event, &verdict)
+    {
         record_deny(&input, cwd, now_unix_ms, host, fixed_reason);
     }
     match host {
@@ -301,7 +320,7 @@ fn record_deny(
     // (the commit-identity rule names an email, the claim rule an Issue number, a line that
     // commits in more than one folder names the verbs): the line never carries the command,
     // a path or file content.
-    let line = json!({
+    let mut line = json!({
         "schema_version": 1,
         "kind": "deny",
         "host": host.name(),
@@ -310,6 +329,19 @@ fn record_deny(
         "unix_ms": now_unix_ms as u64,
         "reason": reason,
     });
+    // REQ-10 (D-5): the deny line of a read-only agent's refusal names the agent type and a
+    // short hash of the agent id — the treatment a session id gets; a raw host id never
+    // enters the log.
+    if let Some(agent) = input["agent_type"].as_str() {
+        line["agent_type"] = json!(agent);
+        line["agent"] = match input["agent_id"].as_str() {
+            Some(id) if !id.is_empty() => {
+                let d = crate::digest(id.as_bytes());
+                json!(d.trim_start_matches("sha256:")[..16].to_string())
+            }
+            _ => Value::Null,
+        };
+    }
     let _ = crate::hooks::append_receipt_line(cwd, ENGINE_LOG, &line);
 }
 
@@ -510,6 +542,8 @@ fn allow_quietly() -> Answer {
 
 /// Claude Code rendering of a verdict (documented shapes only).
 fn render_claude(event: Event, verdict: Verdict) -> Answer {
+    let denied =
+        matches!(&verdict, Verdict::Deny(_)) && matches!(event, Event::ToolPreflight | Event::DangerousPreflight);
     let stdout = match (event, verdict) {
         (_, Verdict::Allow) => String::new(),
         // "`ask` prompts the user to confirm" (code.claude.com/docs/en/hooks, read 2026-11-11);
@@ -522,14 +556,19 @@ fn render_claude(event: Event, verdict: Verdict) -> Answer {
             }
         })
         .to_string(),
-        (Event::ToolPreflight, Verdict::Deny(reason)) => json!({
-            "hookSpecificOutput": {
-                "hookEventName": "PreToolUse",
-                "permissionDecision": "deny",
-                "permissionDecisionReason": reason,
-            }
-        })
-        .to_string(),
+        (Event::ToolPreflight | Event::DangerousPreflight, Verdict::Deny(reason)) => {
+            // REQ-8 (SPEC-20261122-next-flow-hooks): the documented deny object; the exit code
+            // below makes a refusal exit 2 — exit 0 never refuses ("exit 0 doesn't approve it")
+            // and exit 1 never blocks.
+            json!({
+                "hookSpecificOutput": {
+                    "hookEventName": "PreToolUse",
+                    "permissionDecision": "deny",
+                    "permissionDecisionReason": reason,
+                }
+            })
+            .to_string()
+        }
         (Event::SessionCheck, Verdict::Context(text)) => json!({
             "hookSpecificOutput": {"hookEventName": "SessionStart", "additionalContext": text}
         })
@@ -542,10 +581,12 @@ fn render_claude(event: Event, verdict: Verdict) -> Answer {
         // A verdict the duty cannot carry is a bug in the policy core, reported, not guessed.
         _ => return engine_error("policy returned a verdict this duty cannot carry"),
     };
+    // REQ-8 (SPEC-20261122-next-flow-hooks): a PreToolUse refusal is exit code 2, the code the
+    // host treats as blocking; every other answer stays exit 0.
     Answer {
         stdout,
         stderr: String::new(),
-        exit: 0,
+        exit: u8::from(denied) * 2,
     }
 }
 
@@ -584,10 +625,7 @@ fn conversation_line(home: Option<&Path>) -> Option<String> {
     ))
 }
 
-/// session-check: a short, fixed-vocabulary state summary for the model. Never blocks. After a
-/// compaction (`source: "compact"`, exactly that string) it adds [`COMPACTED`] and, if the work
-/// has a card, points at its newest `moai-resume:` comment; any other `source`, or none, gives
-/// the text it always did.
+/// session-check of the Issue era, kept for the hosts that still run the base set (Codex, OMP).
 fn session_check(host: Host, input: &Value, cwd: &Path) -> Verdict {
     let state_dir = match std::fs::symlink_metadata(crate::state_root::path(cwd, "")) {
         Ok(m) if m.is_dir() => "present",
@@ -649,6 +687,92 @@ fn session_check(host: Host, input: &Value, cwd: &Path) -> Verdict {
     Verdict::Context(text)
 }
 
+/// The Claude session-check duty of SPEC-20261122-next-flow-hooks (REQ-2 to REQ-4): files only
+/// — the branch from the git HEAD file, the integration branch from the record in the common
+/// git folder, the worktree's card from the local ledger read-only, the language from HOME —
+/// no subprocess anywhere. The answer is the documented `hookSpecificOutput` object with
+/// `additionalContext` (text outside it is silently ignored) and a `sessionTitle` built from
+/// the branch name (no card number). After a compaction the advice restates the card facts and
+/// points at `moai card show`.
+fn session_check_answer(input: &Value, cwd: &Path) -> Answer {
+    // REQ-6: the duty answers for start, resume, clear and compaction only; the matcher already
+    // narrows the host's calls, and a direct call for any other source answers nothing.
+    if !matches!(
+        input.get("source").and_then(Value::as_str),
+        Some("startup" | "resume" | "clear" | "compact")
+    ) {
+        return allow_quietly();
+    }
+    let branch = crate::hook_guards::work_tree_branch(cwd);
+    let integration = crate::hook_guards::recorded_integration_branch(cwd);
+    let card = worktree_card(cwd, branch.as_deref());
+    let mut text = format!(
+        "MoAI session-check (moai {}): branch: {}; integration branch: {}; card: {}. Read \
+         locally; no network was used.",
+        env!("CARGO_PKG_VERSION"),
+        branch.as_deref().unwrap_or("none (detached HEAD or not a git worktree)"),
+        integration.as_deref().unwrap_or("no record"),
+        card.as_ref()
+            .map(|(name, title)| format!("{name} ({title}) — `moai card show {name}` for its state"))
+            .unwrap_or_else(|| "none on this branch".to_string()),
+    );
+    if let Some(line) = conversation_line(std::env::var_os("HOME").as_deref().map(Path::new)) {
+        text.push(' ');
+        text.push_str(&line);
+    }
+    if input.get("source").and_then(Value::as_str) == Some("compact") {
+        text.push(' ');
+        text.push_str(COMPACTED);
+        text.push_str(&format!(
+            " The card facts of this worktree: {}.",
+            card.as_ref()
+                .map(|(name, _)| format!("run `moai card show {name}` and read its notes whole"))
+                .unwrap_or_else(|| "no card names this branch".to_string())
+        ));
+    }
+    Answer {
+        stdout: json!({
+            "hookSpecificOutput": {
+                "hookEventName": "SessionStart",
+                "additionalContext": text,
+                "sessionTitle": branch.unwrap_or_else(|| "moai session".to_string()),
+            }
+        })
+        .to_string(),
+        stderr: String::new(),
+        exit: 0,
+    }
+}
+
+/// The worktree's card: the live reservation whose branch is this worktree's branch, read from
+/// the local ledger read-only (REQ-2; `None` without a ledger, a profile or a matching card).
+fn worktree_card(cwd: &Path, branch: Option<&str>) -> Option<(String, String)> {
+    let home = std::env::var_os("HOME").map(std::path::PathBuf::from)?;
+    let (Some(branch), Some(home_ref)) = (branch, home.is_absolute().then_some(())) else {
+        return None;
+    };
+    let _ = home_ref;
+    let project = crate::project_home::resolve(&home, cwd).ok()?;
+    let ledger = crate::ledger::open::open_read_only_within(
+        &home,
+        &project.key,
+        std::time::Duration::from_millis(50),
+    )
+    .ok()?;
+    let row: (i64, String) = ledger
+        .conn()
+        .query_row(
+            "SELECT c.card_id, c.title FROM reservation r \
+             JOIN card c ON c.card_id = r.card_id \
+             WHERE r.status = 'held' AND r.branch = ?1 AND r.lease_until >= unixepoch() \
+             ORDER BY r.reservation_id DESC LIMIT 1",
+            rusqlite::params![branch],
+            |row| Ok((row.get::<_, i64>(0)?, row.get::<_, String>(1)?)),
+        )
+        .ok()?;
+    Some((crate::card::input::card_name(row.0), row.1))
+}
+
 /// tool-preflight, stage 1 policy: a Bash `git commit` on a lane branch `issue/<n>-…` that has
 /// no local claim record must carry `Moai-Claim: <n>#<id>` in its command line (the decided
 /// lane rule; AGENTS.local.md and the MODE-AGENT workflow step 6). Everything else is allowed
@@ -693,6 +817,32 @@ fn tool_preflight(
 
 /// The rule id of the direct-merge confirmation in `[hooks.modes]` and in the engine log.
 pub const MERGE_CONFIRM_RULE: &str = "merge_confirm";
+
+/// REQ-15: whether `cwd` is a moai project (a project state folder of either name at its
+/// root). A folder that is not gets one process start and nothing else from every duty.
+fn moai_project(cwd: &Path) -> bool {
+    [crate::PROJECT_STATE_DIR, crate::state_root::MOAI_DIR]
+        .iter()
+        .any(|name| cwd.join(name).is_dir())
+}
+
+/// The dangerous-call duty (REQ-6 to REQ-9 of SPEC-20261122-next-flow-hooks): the calls that
+/// move, copy, rename, delete or push the recorded integration branch in any letter case —
+/// behind `git -C`, an absolute git path, a separator, a wrapper or a cd prefix — a recursive
+/// delete outside the project tree, and a write of a guarded settings file. Every refusal is
+/// the fixed sentence of the guard that found it (the deny line logs that sentence, never the
+/// command); everything else is allowed here and stays with the ordinary duty.
+fn dangerous_preflight(input: &Value, cwd: &Path) -> Verdict {
+    let dir = input["cwd"]
+        .as_str()
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|| cwd.to_path_buf());
+    let tool = input["tool_name"].as_str().unwrap_or("");
+    match crate::hook_guards::dangerous_guard(tool, &input["tool_input"], &dir) {
+        Some(reason) => Verdict::Deny(reason),
+        None => Verdict::Allow,
+    }
+}
 
 /// How many times one session may be refused by one rule before the next call goes through
 /// (leader decision, C-86 note 2346): the third refusal is released.
@@ -770,8 +920,34 @@ fn rule_blocks_in(home: Option<&Path>, cwd: &Path, session: &str, rule: &str) ->
         .count()
 }
 
+/// The read-only base agent types (REQ-10, D-3 of SPEC-20261122-next-flow-hooks): the agents
+/// whose definitions disallow the write tools. The list lives here until the agent-set card
+/// moves it beside the agent definitions; the refusal names the type, so a gap is visible.
+pub const READ_ONLY_AGENTS: &[&str] = &["moai-plan", "moai-research", "moai-audit"];
+
+/// Whether the words after `git` are a reference move: `push`, `update-ref`, a `branch`
+/// copy/move/delete, `reset --hard` or a `symbolic-ref` write — the verbs a read-only agent
+/// never runs (REQ-10).
+fn git_moves_a_ref(args: &[String]) -> bool {
+    match crate::hook_guards::git_subcommand(args) {
+        Some(("push" | "update-ref" | "symbolic-ref", _)) => true,
+        Some(("branch", rest)) => rest.iter().any(|w| {
+            let w = w.as_str();
+            (w.starts_with('-') && !w.starts_with("--")
+                && w[1..].chars().any(|c| matches!(c, 'm' | 'M' | 'd' | 'D' | 'c' | 'C')))
+                || matches!(w, "--move" | "--delete" | "--copy")
+        }),
+        Some(("reset", rest)) => rest.iter().any(|w| w == "--hard"),
+        _ => false,
+    }
+}
+
+/// The sentence of a read-only agent's refusal.
+const READ_ONLY_AGENT: &str =
+    "MoAI: a read-only agent may read and search, not write files or move refs";
+
 /// `fixed_reason` is set to the guard's sentence when a guard with fixed text refuses the
-/// call; a refusal whose sentence is built at run time (commit identity, claim token, a line
+/// call; a refusal whose sentence is built at run time (commit identity, a reservation, a line
 /// that commits in more than one folder) leaves it unset.
 fn tool_preflight_deny(
     input: &Value,
@@ -781,6 +957,19 @@ fn tool_preflight_deny(
 ) -> Verdict {
     let command = input["tool_input"]["command"].as_str().unwrap_or("");
     let tool = input["tool_name"].as_str().unwrap_or("");
+    // REQ-10: a read-only agent type gets no file write and no reference move.
+    if let Some(agent) = input["agent_type"].as_str() {
+        if READ_ONLY_AGENTS.contains(&agent) {
+            let write = matches!(tool, "Write" | "Edit" | "MultiEdit" | "NotebookEdit");
+            let moves_ref = tool == "Bash"
+                && crate::claim_verify::shell_commands(command)
+                    .iter()
+                    .any(|(name, args)| name == "git" && git_moves_a_ref(args));
+            if write || moves_ref {
+                return Verdict::Deny(READ_ONLY_AGENT.to_string());
+            }
+        }
+    }
     // Stage 5 text guards (#2391 A1–A4) come first: they read only the input, so a command they
     // do not refuse still spawns no `git` unless it is a commit.
     let write_dir = input["cwd"]
@@ -826,7 +1015,11 @@ fn tool_preflight_deny(
     if tool != "Bash" || !crate::claim_verify::is_commit(command) {
         return Verdict::Allow;
     }
-    // The command runs in the session's directory unless the input names another one.
+    // REQ-11 (SPEC-20261122-next-flow-hooks): the Issue claim-token rule is replaced by a
+    // read-only ledger reservation check. A commit that touches a path covered by the live
+    // reservation of another holder is refused; this session's own reservation passes. The
+    // staged paths are read with one `git` call (the duty's only subprocess, at commit time
+    // only — REQ-2 bounds the session-check duty alone).
     let dir = input["cwd"]
         .as_str()
         .map(std::path::PathBuf::from)
@@ -834,39 +1027,79 @@ fn tool_preflight_deny(
     let Ok(dir) = std::fs::canonicalize(dir) else {
         return Verdict::Allow;
     };
-    // #2673: the commit runs in the folder `git -C` names, which may be a lane worktree even
-    // when the session sits in the primary checkout.
     let dir = match crate::claim_verify::git_target_dir(command, &dir, &["commit"]) {
         Ok(d) => d.unwrap_or(dir),
         Err(why) => return Verdict::Deny(format!("MoAI tool-preflight: {why}.")),
     };
-    let Some(branch) = crate::claim_verify::current_branch(&dir) else {
+    let Some(staged) = staged_paths(&dir) else {
         return Verdict::Allow;
     };
-    let crate::claim_verify::LaneBranch::Issue(issue) = crate::claim_verify::lane_branch(&branch)
-    else {
-        return Verdict::Allow;
-    };
-    // Cost: the token check reads only the command text, while the local-record lookup spawns
-    // two `git rev-parse` calls to find the journal. Both outcomes allow, so the cheap check
-    // goes first and a commit that carries its token never pays for the lookup.
-    let gap = match crate::claim_verify::commit_claim_id(command, issue) {
-        Ok(_) => return Verdict::Allow,
-        Err(gap) => gap,
-    };
-    if crate::claim_verify::has_local_record(cwd, &dir) {
-        return Verdict::Allow;
+    if let Some(path) = reserved_by_another(&dir, &staged, input["session_id"].as_str()) {
+        return Verdict::Deny(format!(
+            "MoAI tool-preflight: {path} is covered by the live reservation of another \
+             holder; read `moai card list --state active` and work inside your own scope"
+        ));
     }
-    // SPEC-20261117-commit-guard-users: a lane safety only; no live lane session in this
-    // clone means an ordinary user, whose commit is not refused.
-    if !crate::claim_verify::lane_clone(&dir) {
-        return Verdict::Allow;
+    Verdict::Allow
+}
+
+/// The paths a commit in `dir` touches (staged against HEAD), read with one local `git` call;
+/// `None` when git answers nothing usable (nothing staged is not the hook's business).
+fn staged_paths(dir: &Path) -> Option<Vec<String>> {
+    let mut cmd = std::process::Command::new("git");
+    crate::identity::scrub_git_env(&mut cmd);
+    let out = cmd
+        .arg("-C")
+        .arg(dir)
+        .args(["diff", "--cached", "--name-only", "-z"])
+        .stderr(std::process::Stdio::null())
+        .output()
+        .ok()?;
+    if !out.status.success() {
+        return None;
     }
-    Verdict::Deny(format!(
-        "MoAI tool-preflight: {}; put `Moai-Claim: {issue}#<claim comment id>` in the -m \
-         message.",
-        gap.reason(issue)
-    ))
+    let text = String::from_utf8_lossy(&out.stdout);
+    let paths: Vec<String> = text
+        .split('\0')
+        .filter(|p| !p.is_empty())
+        .map(str::to_string)
+        .collect();
+    (text.contains('\0')).then_some(paths)
+}
+
+/// The first staged path covered by the live reservation of a holder other than `session`
+/// (REQ-11): the local ledger is read read-only only, and a ledger that cannot be opened
+/// reserves nothing (the ordinary guard rules still ran). `None` when every path is free.
+fn reserved_by_another(dir: &Path, staged: &[String], session: Option<&str>) -> Option<String> {
+    let home = std::env::var_os("HOME").map(std::path::PathBuf::from)?;
+    let project = crate::project_home::resolve(&home, dir).ok()?;
+    let ledger = crate::ledger::open::open_read_only_within(
+        &home,
+        &project.key,
+        std::time::Duration::from_millis(50),
+    )
+    .ok()?;
+    let rows: Vec<(String, String)> = ledger
+        .conn()
+        .prepare(
+            "SELECT r.holder, s.pattern FROM reservation r \
+             JOIN reservation_scope s ON s.reservation_id = r.reservation_id \
+             WHERE r.status = 'held' AND r.lease_until >= unixepoch()",
+        )
+        .ok()?
+        .query_map([], |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+        })
+        .ok()?
+        .filter_map(|r| r.ok())
+        .collect();
+    staged.iter().find_map(|path| {
+        rows.iter()
+            .find(|(holder, pattern)| {
+                holder.as_str() != session.unwrap_or("") && crate::scope::overlap(pattern, path)
+            })
+            .map(|_| path.clone())
+    })
 }
 
 /// The log both stage-2 duties share, under `<cwd>/.moai-cli/receipts/`: tool-observe appends
