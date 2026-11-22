@@ -415,18 +415,23 @@ fn the_update_points_to_status_after_a_style_write() {
     assert!(!reasons(&moai_cli::home_style::notices(&again, &project))
         .iter()
         .any(|s| s.contains("/status")));
-    // Audit N1: a style file the update takes over (`merge`) is a write too and gets the pointer.
+    // A style file the update takes over (`merge`) is a write too and gets the pointer.
     let (_h2, taken) = project_with(&[]);
     write(&taken, STYLE, &render_style_file(&src()));
     let p = plan(&taken, &package()).unwrap();
     assert_eq!(action(&p, "style_file"), "merge");
     let notices = moai_cli::home_style::notices(&p, &project);
     assert!(reasons(&notices).iter().any(|s| s.contains("/status")));
-    // Audit N3: every notice says it is one, so the update screens do not print it as skipped.
-    assert!(notices.iter().all(|n| n["kind"] == "notice"), "{notices:?}");
+    // Every notice names the style part and the host, the shape the update's notice rows read.
+    assert!(
+        notices
+            .iter()
+            .all(|n| n["part"] == "style" && n["host"] == "claude"),
+        "{notices:?}"
+    );
 }
 
-/// AC-4 (REQ-5), audit B1: a receipt written before it named its folder reverts in the default
+/// AC-4 (REQ-5), D-5: a receipt written before it named its folder reverts in the default
 /// folder only; in another folder's environment it changes nothing.
 #[test]
 fn a_receipt_without_a_folder_reverts_only_in_the_default_folder() {
@@ -601,7 +606,7 @@ fn folder_run_any(home: &Path, folder: Option<&Path>, args: &[&str]) -> (bool, V
     (out.status.success(), v)
 }
 
-/// AC-4 (REQ-5), audit B1: a receipt belongs to the config folder it was applied in. Reverting
+/// AC-4 (REQ-5), D-5: a receipt belongs to the config folder it was applied in. Reverting
 /// folder B's receipt from folder A's environment (the variable unset) changes nothing in either
 /// folder, leaves the receipt usable, and names the folder it belongs to; run in folder B it then
 /// reverts B and leaves A alone.
@@ -636,7 +641,7 @@ fn a_receipt_reverts_only_in_the_config_folder_it_was_applied_in() {
         PERM,
     ];
     let (ok, v) = folder_run_any(&home, None, &revert_b);
-    // Audit R5: the one intended answer is a refusal (failed exit, `ok: false`), never a run
+    // The one intended answer is a refusal (failed exit, `ok: false`), never a run
     // that reports some other state.
     assert!(!ok, "{v}");
     assert_eq!(v["ok"], json!(false), "{v}");

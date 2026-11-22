@@ -2,7 +2,7 @@
 id: SPEC-20261122-output-style-install-checks
 title: "The update checks that the MoAI-Easy style is the one in force and writes it once per Claude config folder"
 status: draft
-revision: 3
+revision: 4
 created: 2026-11-22
 parent: SPEC-20261122-output-style-moai-easy
 ---
@@ -78,6 +78,7 @@ parent: SPEC-20261122-output-style-moai-easy
 | D-3 | 프로젝트 설정에서 `outputStyle` 을 읽기만 하고 알림만 낸다 | 보고서 9-2: `/output-style` 이 `.claude/settings.local.json` 에 써서 사용자 값을 이겨요. 사용자 결정: 프로젝트 `.claude` 에는 쓰지 않아요 | 알림 줄과 읽기 함수 삭제 |
 | D-4 | 깨진 스타일 파일은 우리가 검사하지 않고 `/status` 로 안내한다 | 공식 변경 기록 2.1.327: `/status` 가 깨진 스타일 파일을 보여 줘요(보고서 9-2) | 안내 한 줄 삭제 |
 | D-5 | (개정 2) 영수증은 적용한 설정 폴더를 적고, 되돌리기는 지금 환경이 고른 폴더가 영수증의 폴더와 다르면 아무것도 바꾸지 않고 그 폴더 이름으로 거절한다(영수증은 다시 쓸 수 있게 그대로). 폴더를 적지 않은 옛 영수증은 기본 폴더에서만 지금처럼 되돌린다 | 감사 B1: 폴더 B 의 영수증을 A 의 환경에서 되돌리면 A 가 되돌려졌어요(AC-4 의 "한 폴더 되돌리기는 다른 폴더를 건드리지 않는다"와 어긋남) | 영수증 필드와 비교 한 곳 |
+| D-6 | (개정 4) 스타일 알림(프로젝트 설정이 스타일을 가린다는 알림, `/status` 안내)은 update 결과의 `notices` 목록에 따로 담고 `skipped` 에는 넣지 않는다. 터미널 요약과 전체 화면은 그 줄을 `notice`/`알림` 낱말로 보여 준다. 이전 세대가 쓴 호스트의 "더는 관리하지 않음" 알림은 SPEC-20261122-codex-home-update-removed 의 결정대로 `skipped` 에 남는다 | 감사 R1: 알림은 건너뛴 쓰기가 아니라서 `kind` 표시로 구별하면 JSON 을 읽는 쪽이 둘을 섞어요. 목록을 나누면 읽는 쪽은 키 하나만 봐요 | `notices` 키와 두 화면의 줄 한 곳씩 |
 
 ### 다음 조각으로 미룬 감사 지적 (개정 2)
 
@@ -86,5 +87,5 @@ parent: SPEC-20261122-output-style-moai-easy
 - N6: HOME 에서 돌리면 프로젝트 알림이 사용자 자신의 설정 파일을 읽어요.
 - N7: 진행 보드 조각이 가리키는 `rules/moai/flow.md` 를 아직 어떤 카드도 배포하지 않아요.
 - N8: 범위와 트레일러 장부 정리.
-- R1 (개정 3): 전체 화면 update(`src/update_tux.rs`)는 알림을 아직 건너뜀 줄로 보여 주고, JSON 에서도 알림이 `kind: notice` 로 `skipped` 목록 안에 있어요. 알림만의 목록과 화면 줄, 골든 파일을 함께 바꿔요. 그 파일은 다른 카드가 예약 중이라 예약이 풀린 뒤에 해요.
-- R2 (개정 3): 바이너리를 거친 알림 시험(`tests/update_user_layer_cli.rs`)은 그 파일의 예약이 풀린 뒤에 넣어요. 지금은 `src/update.rs` 의 lib 시험이 계획의 알림을 확인해요.
+- R1 (개정 3, 개정 4에서 끝남): 알림은 이제 `notices` 목록에 있고(D-6), 전체 화면 update 의 질문 화면과 결과 화면이 그 줄을 `notice`/`알림` 낱말로 한 번씩 보여 줘요(`tests/update_tux_golden.rs` 의 `a_notice_is_its_own_row_never_a_skipped_one`). 저장된 결과 픽스처에는 알림이 없어서 골든 파일은 바뀌지 않아요. 파일은 리더 결정(C-332 노트 6859)으로 받았어요.
+- R2 (개정 3, 개정 4에서 끝남): 바이너리를 거친 테스트(`tests/update_user_layer_cli.rs`)가 빈 HOME 의 미리보기와 적용 결과 모두에서 `/status` 안내가 `notices` 에 한 번, `skipped` 에는 없음을 확인하고, 미리보기 키 목록에 `notices` 를 고정해요. 파일은 리더 결정(C-332 노트 6859)으로 받았어요.

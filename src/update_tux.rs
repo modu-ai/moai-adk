@@ -121,6 +121,7 @@ enum W {
     New,
     Conflict,
     Skipped,
+    Notice,
     Blocked,
     OutsideLayout,
     NoHookSet,
@@ -345,6 +346,13 @@ fn w(lang: Lang, word: W) -> &'static str {
                 "건너뜀"
             } else {
                 "skipped"
+            }
+        }
+        Notice => {
+            if ko {
+                "알림"
+            } else {
+                "notice"
             }
         }
         Blocked => {
@@ -720,6 +728,29 @@ fn skipped_row(lang: Lang, s: &Value) -> (String, String) {
     (label, format!("{}: {reason}", w(lang, W::Skipped)))
 }
 
+/// One row of the `notices` list (SPEC-20261122-output-style-install-checks): something to
+/// know that is no skipped write, with its own word and a warning mark.
+fn notice_rows(lang: Lang, v: &Value) -> Vec<Row> {
+    v["notices"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .map(|n| {
+            let part = n["part"].as_str().unwrap_or("");
+            let host = n["host"].as_str().unwrap_or("");
+            row(
+                Mark::Warn,
+                format!("{part} {host}").trim().to_string(),
+                format!(
+                    "{}: {}",
+                    w(lang, W::Notice),
+                    n["reason"].as_str().unwrap_or("")
+                ),
+            )
+        })
+        .collect()
+}
+
 fn row(mark: Mark, label: String, text: String) -> Row {
     Row { mark, label, text }
 }
@@ -1022,6 +1053,7 @@ fn preview_rows(v: &Value, lang: Lang) -> Vec<Row> {
         let (label, text) = skipped_row(lang, s);
         rows.push(row(Mark::Skip, label, text));
     }
+    rows.extend(notice_rows(lang, v));
     // #2872 stage 2: Go leftovers the cleanup would archive (confirmed apart, never by the y).
     let c = &v["cleanup"];
     if c["confirm_token"].is_string() && v["cleanup_result"].is_null() {
@@ -2032,6 +2064,7 @@ fn applied(v: &Value, view: &View) -> String {
         let (label, text) = skipped_row(lang, s);
         rows.push(row(Mark::Skip, label, text));
     }
+    rows.extend(notice_rows(lang, v));
     // A blank line after the answer typed at the question.
     o.blank();
     o.heading(W::Applying);

@@ -240,6 +240,17 @@ fn update_previews_and_installs_the_whole_user_layer_then_has_nothing_to_apply()
     assert_eq!(p["routing"]["hosts"].as_array().unwrap().len(), 1, "{p}");
     // #2875: the style file and the default style, both Claude's.
     assert_eq!(p["style"]["targets"].as_array().unwrap().len(), 2, "{p}");
+    // SPEC-20261122-output-style-install-checks: the style write brings the `/status` pointer,
+    // in its own `notices` list and never among the skipped writes.
+    let status = |list: &Value| {
+        list.as_array()
+            .unwrap()
+            .iter()
+            .filter(|n| n["reason"].as_str().is_some_and(|r| r.contains("/status")))
+            .count()
+    };
+    assert_eq!(status(&p["notices"]), 1, "{p}");
+    assert_eq!(status(&p["skipped"]), 0, "{p}");
     // A part's own digest is not a confirmation of the whole layer.
     for part in ["plan", "agents", "routing", "style"] {
         let d = p[part]["plan_digest"].as_str().unwrap();
@@ -253,6 +264,11 @@ fn update_previews_and_installs_the_whole_user_layer_then_has_nothing_to_apply()
     assert_eq!(r["agents_result"]["state"], json!("applied"), "{r}");
     assert_eq!(r["routing_result"]["state"], json!("applied"), "{r}");
     assert_eq!(r["style_result"]["state"], json!("applied"), "{r}");
+    assert_eq!(
+        status(&r["notices"]),
+        1,
+        "the result keeps the pointer: {r}"
+    );
     assert!(r["revert"]["style"]
         .as_str()
         .unwrap()
@@ -544,7 +560,7 @@ fn go_leftovers(home: &Path) {
     );
 }
 
-const PREVIEW_KEYS: [&str; 13] = [
+const PREVIEW_KEYS: [&str; 14] = [
     "mode",
     "applied",
     "nothing_to_apply",
@@ -557,6 +573,7 @@ const PREVIEW_KEYS: [&str; 13] = [
     "bin_names",
     "hooks",
     "skipped",
+    "notices",
     "confirm_with",
 ];
 
