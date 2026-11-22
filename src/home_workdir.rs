@@ -166,6 +166,24 @@ pub fn worktree_dir(project_root: &Path, id: &str) -> Result<PathBuf> {
         .join(worktree_name(project_root, id)?))
 }
 
+/// The ancestor of `folder` that is the primary checkout under another spelling, when `folder`
+/// sits below that checkout's `.claude/worktrees`: the ancestors are compared by what they resolve
+/// to, never by how the path was written, so a path spelled through a linked parent (on macOS
+/// `/tmp` is a link to `/private/tmp`) still finds its owner. The `.claude` and
+/// `.claude/worktrees` links themselves are not followed to reach the owner, because the walk
+/// stops at the first ancestor that is the primary and has the place below it. `None` when
+/// `folder` is not inside the place of that checkout.
+pub fn place_owner(primary: &Path, folder: &Path) -> Option<PathBuf> {
+    let want = crate::worktree::resolve_existing(primary);
+    folder.ancestors().skip(1).find_map(|a| {
+        let inside = folder
+            .strip_prefix(a)
+            .ok()
+            .is_some_and(|rest| rest.starts_with(".claude/worktrees"));
+        (inside && crate::worktree::resolve_existing(a) == want).then(|| a.to_path_buf())
+    })
+}
+
 /// Refuses a worktree place that runs through a link: `<project>/.claude`, `<project>/.claude/
 /// worktrees` and the `folder` of the new worktree must not be symbolic links (REQ-13). Nothing is
 /// followed or changed; the error names the linked path. `project` is the primary checkout.

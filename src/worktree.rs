@@ -487,6 +487,8 @@ pub fn plan(
         "branch": branch,
         "path": path.to_string_lossy(),
         "build_folder": build_folder.as_ref().map(|p| p.to_string_lossy().into_owned()),
+        // The name a session opens this worktree with: `claude --worktree <session_name>`.
+        "session_name": path.file_name().map(|n| n.to_string_lossy().into_owned()),
         "base_sha": rec.base_revision,
         "primary": primary.to_string_lossy(),
         "lock_reason": format!("moai claim {} e{}", rec.task_key, rec.epoch),
@@ -638,9 +640,11 @@ pub fn apply(
         ));
     }
     // REQ-13: a link in the place is refused before anything is made behind it.
+    // The owner is found by what each ancestor resolves to, so a `--path` spelled through a
+    // linked parent reaches the check as well.
     if let Some(primary) = entries.first().map(|e| PathBuf::from(&e.path)) {
-        if target.starts_with(primary.join(".claude").join("worktrees")) {
-            if let Err(msg) = crate::home_workdir::refuse_linked_place(&primary, &target) {
+        if let Some(owner) = crate::home_workdir::place_owner(&primary, &target) {
+            if let Err(msg) = crate::home_workdir::refuse_linked_place(&owner, &target) {
                 return Ok(conflict(
                     rec,
                     "place_is_a_link",

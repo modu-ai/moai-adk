@@ -330,3 +330,33 @@ fn worktree_place_scans_the_selection_ignores_the_place() {
     assert_eq!(sel.scans, moai_cli::check_affected::Scans::None);
     assert_eq!(moai_cli::check_affected::area(&changed[0]), None);
 }
+/// Audit B1 (REQ-13): the owner of a place path is found by what the ancestors resolve to. A
+/// path spelled through a linked alias of the project finds the project, a linked `.claude` is
+/// not followed to reach it, and a path outside the place has no owner.
+#[cfg(unix)]
+#[test]
+fn worktree_place_links_the_owner_is_found_by_what_the_path_resolves_to() {
+    let tmp = tempfile::tempdir().unwrap();
+    let project = tmp.path().join("p");
+    std::fs::create_dir_all(&project).unwrap();
+    let alias = tmp.path().join("alias");
+    std::os::unix::fs::symlink(&project, &alias).unwrap();
+    let via = alias.join(".claude/worktrees/w");
+    assert_eq!(
+        home_workdir::place_owner(&project, &via),
+        Some(alias.clone())
+    );
+    assert_eq!(
+        home_workdir::place_owner(&project, &project.join(".claude/worktrees/w")),
+        Some(project.clone())
+    );
+    // Outside the place: no owner, even though the parent is the project.
+    assert_eq!(
+        home_workdir::place_owner(&project, &project.join("w")),
+        None
+    );
+    assert_eq!(
+        home_workdir::place_owner(&project, &tmp.path().join("other/.claude/worktrees/w")),
+        None
+    );
+}

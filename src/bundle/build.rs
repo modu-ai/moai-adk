@@ -200,9 +200,16 @@ fn number(git: &Git, dir: &Path, date: &str) -> Result<(u32, String, PathBuf)> {
 /// exists is changed when it fails.
 pub fn create(dir: &Path, branch: &str, folder: &Path, base: &str) -> Result<()> {
     // REQ-13: a link in the place is refused before anything is made behind it.
-    if let Some(project) = folder.ancestors().nth(3) {
-        home_workdir::refuse_linked_place(project, folder)
-            .map_err(|e| format!("bundle build refused: {e}"))?;
+    // The project is the primary checkout the folder belongs to, found by what the ancestors
+    // resolve to, not by counting path parts.
+    if let Some(primary) = worktree::worktrees(dir)?
+        .first()
+        .map(|e| PathBuf::from(&e.path))
+    {
+        if let Some(owner) = home_workdir::place_owner(&primary, folder) {
+            home_workdir::refuse_linked_place(&owner, folder)
+                .map_err(|e| format!("bundle build refused: {e}"))?;
+        }
     }
     if std::fs::symlink_metadata(folder).is_ok() {
         return Err(format!(
