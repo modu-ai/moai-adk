@@ -115,6 +115,14 @@ Read [CONTRIBUTING.md](CONTRIBUTING.md). You do not need to follow the internal 
 - Report a vulnerability privately: [SECURITY.md](SECURITY.md)
 - Code of conduct: [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
 
+## Relation to Anthropic and Claude Code
+
+- MoAI ADK runs Claude Code, which you install and sign in to yourself.
+- MoAI ADK is not an Anthropic product: Anthropic has not built, endorsed or partnered with it.
+- It does not use the Claude Code or Anthropic name or logo as its own name or logo.
+- It does not modify the Claude Code executable; it starts Claude Code as Anthropic publishes it.
+- It does not ask for, store or relay your Claude account credentials or session tokens; signing in stays with Claude Code.
+
 ## License
 
 Apache License 2.0. See [LICENSE](LICENSE).

@@ -159,6 +159,9 @@ fn cloud_trailer_of_another_shape_or_doubled_is_named_without_failing() {
             ("malformed_cloud_session".to_string(), false),
             ("missing_session".to_string(), false),
             ("missing_session".to_string(), false),
+            // Off a `spec/` branch a missing SPEC is named and does not fail either.
+            ("missing_spec".to_string(), false),
+            ("missing_spec".to_string(), false),
         ],
         "{v}"
     );
