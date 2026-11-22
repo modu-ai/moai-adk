@@ -154,6 +154,8 @@ This SPEC changes what earlier SPECs pinned; they stay as the record of what was
 | `SPEC-20261120-statusline-layout` | REQ-2 (card counts `🗂️ ▶️ 🔃 ✅` open line 3) | the groups of REQ-6 and REQ-7 form line 2; line 3 holds the limits |
 | `SPEC-20261119-statusline-waiting-cards` | REQ-1 to REQ-5 (four numbers; waiting markers) | stages and the widened rule (D-1); `review` stays waiting as stage S |
 | `SPEC-20261121-statusline-detached` | REQ-5 (`CTX <n>%`, `Week <n>%`, `resets in`) | the labels are `CW` and `7D` (landed in step 1); the countdown loses `resets in` (`limits` D-4) |
+| `SPEC-20261121-statusline-detached` | REQ-2 (`📡 n/a` when the repository name cannot be resolved) | the repository item comes from the host's `workspace.repo`; without it the item is left out with its separator (`where` REQ-1, landed in step 3) |
+| `SPEC-20261119-statusline-worktree-label` | REQ-1 to REQ-10 (the `🌳 WT-c<card>-<name>` label from the held reservations) | the `🌳` item shows the host's worktree name only and the card moves to `🎯` (`where` D-4, landed in step 3); the reservation read leaves the status line |
 | `SPEC-20261120-statusline-docs-items-2-3` | AC-1 to AC-4 (its `check.py` and the example lines) | the document and its example follow the steps of the Plan |
 
 ## Scope
