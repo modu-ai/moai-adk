@@ -231,7 +231,7 @@
       }
     },
     "references/internal/review.md": {
-      "sha256": "4a118c640f4880ff0345125b865258a365cbd465e907a87e4a6be1a5aae65abd",
+      "sha256": "89d42b51f0173a237bbd60b4c44b23a8c354c4c9d5dcb65df165b13a41e6a413",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-review",
@@ -261,7 +261,7 @@
       }
     },
     "references/internal/self-check.md": {
-      "sha256": "f8487f6bc230b5fe61cc9bf7ff051949a095b2f8970a4b45dace09d5f7b625b7",
+      "sha256": "16f13834aaa9dba52b5b06b1f175b3913d9756fb0d3a9591b60c36b38b2a5cea",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-self-check",
