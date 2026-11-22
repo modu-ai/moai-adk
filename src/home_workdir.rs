@@ -166,9 +166,22 @@ pub fn worktree_dir(project_root: &Path, id: &str) -> Result<PathBuf> {
 }
 
 /// Refuses a worktree place that runs through a link: `<project>/.claude`, `<project>/.claude/
-/// worktrees` and the `folder` of the new worktree must not be symbolic links (REQ-13). Placeholder:
-/// the body comes with the change that makes the tests pass.
-pub fn refuse_linked_place(_project: &Path, _folder: &Path) -> Result<()> {
+/// worktrees` and the `folder` of the new worktree must not be symbolic links (REQ-13). Nothing is
+/// followed or changed; the error names the linked path. `project` is the primary checkout.
+pub fn refuse_linked_place(project: &Path, folder: &Path) -> Result<()> {
+    let claude = project.join(".claude");
+    for path in [
+        claude.clone(),
+        claude.join("worktrees"),
+        folder.to_path_buf(),
+    ] {
+        if std::fs::symlink_metadata(&path).is_ok_and(|m| m.file_type().is_symlink()) {
+            return Err(format!(
+                "worktree place refused: {} is a link; it is not followed and nothing was changed",
+                path.display()
+            ));
+        }
+    }
     Ok(())
 }
 

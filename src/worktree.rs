@@ -637,6 +637,19 @@ pub fn apply(
             vec![json!({"branch": full_ref, "head": head.trim()})],
         ));
     }
+    // REQ-13: a link in the place is refused before anything is made behind it.
+    if let Some(primary) = entries.first().map(|e| PathBuf::from(&e.path)) {
+        if target.starts_with(primary.join(".claude").join("worktrees")) {
+            if let Err(msg) = crate::home_workdir::refuse_linked_place(&primary, &target) {
+                return Ok(conflict(
+                    rec,
+                    "place_is_a_link",
+                    &p,
+                    vec![json!({ "detail": msg })],
+                ));
+            }
+        }
+    }
     if target.exists() {
         let at: Vec<Value> = entries
             .iter()

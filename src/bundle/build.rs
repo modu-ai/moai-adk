@@ -199,6 +199,11 @@ fn number(git: &Git, dir: &Path, date: &str) -> Result<(u32, String, PathBuf)> {
 /// existing branch an error, and an existing folder is refused before git runs. Nothing that
 /// exists is changed when it fails.
 pub fn create(dir: &Path, branch: &str, folder: &Path, base: &str) -> Result<()> {
+    // REQ-13: a link in the place is refused before anything is made behind it.
+    if let Some(project) = folder.ancestors().nth(3) {
+        home_workdir::refuse_linked_place(project, folder)
+            .map_err(|e| format!("bundle build refused: {e}"))?;
+    }
     if std::fs::symlink_metadata(folder).is_ok() {
         return Err(format!(
             "bundle build refused: {} already exists, nothing was changed",
