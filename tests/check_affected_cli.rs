@@ -246,11 +246,13 @@ fn the_fixed_steps_and_the_host_targets_are_always_listed() {
         "ops_rustfmt",
         "bash_n:tools/a.sh",
         "clippy",
-        "test_lib",
-        "test_bins",
-        "test_targets",
+        "test",
     ] {
         assert!(l.contains(&want.to_string()), "{want} in {l:?}");
+    }
+    // SPEC-20261122-check-affected-one-slot REQ-3: one test step, no per-kind steps.
+    for gone in ["test_lib", "test_bins", "test_targets"] {
+        assert!(!l.contains(&gone.to_string()), "{gone} in {l:?}");
     }
     let ops = r["steps"]
         .as_array()
@@ -444,24 +446,18 @@ fn a_failed_step_does_not_stop_the_rest_and_the_summary_says_fail() {
             "diff_check",
             "fmt",
             "clippy",
-            "test_lib",
-            "test_bins",
-            "test_targets",
+            "test",
             "python",
             "result"
         ],
         "{line}"
     );
     assert_eq!(r["result"], "FAIL");
-    // The steps after the failed one still ran.
+    // The steps after the failed one still ran: one test call (the fake `cargo nextest
+    // --version` succeeds, so nextest runs it).
     let calls = tools.calls_text();
-    for later in [
-        "test --locked --offline --no-fail-fast --lib",
-        "--bins",
-        "--test update_command_cli",
-    ] {
-        assert!(calls.contains(later), "{later} in {calls}");
-    }
+    let later = "cargo nextest run --locked --offline --no-fail-fast --lib --bin moai-cli --test home_isolation_scan --test update_command_cli";
+    assert!(calls.contains(later), "{later} in {calls}");
     assert!(
         calls.contains("python3 -m unittest tests.update_tux_tty_test"),
         "{calls}"
@@ -532,7 +528,7 @@ fn a_failed_cheap_step_stops_before_the_heavy_steps() {
     // The other cheap steps ran; nothing heavy and no Python did.
     let calls = tools.calls_text();
     assert!(calls.contains("rustfmt --edition 2021 --check"), "{calls}");
-    for never in ["clippy", "--lib", "--bins", "--test ", "python3"] {
+    for never in ["clippy", "--lib", "--bin moai-cli", "--test ", "python3"] {
         assert!(!calls.contains(never), "{never} ran: {calls}");
     }
     for line in calls.lines().filter(|l| l.starts_with("cargo ")) {
@@ -589,7 +585,7 @@ fn every_kind_of_cheap_failure_stops_the_run() {
             "{stopped}: {line}"
         );
         let calls = tools.calls_text();
-        for never in ["clippy", "--lib", "--bins", "python3"] {
+        for never in ["clippy", "--lib", "--bin moai-cli", "python3"] {
             assert!(!calls.contains(never), "{stopped}: {never} ran: {calls}");
         }
     }
@@ -615,7 +611,7 @@ fn a_program_that_cannot_start_is_127_and_a_refused_slot_keeps_its_code() {
     let (ok, r) = affected(&fx, &["--slot-dir", refusing.as_str()], Some((&tools, "")));
     assert!(ok, "{r}");
     let line = r["summary"].as_str().unwrap();
-    assert!(line.contains(" clippy=125 "), "{line}");
+    assert!(line.contains(" clippy=125 test=125 "), "{line}");
     assert!(line.ends_with(" result=FAIL"), "{line}");
     let calls = tools.calls_text();
     assert!(

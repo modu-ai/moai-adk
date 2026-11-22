@@ -17,7 +17,14 @@
 //! processes with the file open, not a proof of who owns the lock. Ending such a process is
 //! for its owner; a slot file is never edited or deleted by hand. The Python twin has no
 //! `alive` or `holders`. A waiter holds `waiting/<ns>-<pid>`, and its place is its rank
-//! among live waiters by name. While waiting, and when COMMAND fails, the load averages and the
+//! among live waiters by name. Waiters start in arrival order (SPEC-20261122-check-affected-one-slot
+//! REQ-4): every caller first creates and locks its own waiting file, and takes a slot only while
+//! the number of live (locked) waiters that arrived before it is lower than the number of free
+//! slots; an unlocked waiting file is a dead waiter and is not counted. A process started under a
+//! held slot finds `MOAI_HEAVY_SLOT_FD=<fd>:<slot path>` ([`SLOT_FD_ENV`]); asking for a slot in
+//! the same folder, it reuses that slot without queueing when the open descriptor is the same file
+//! (device and inode) as the slot file there (REQ-5). While waiting, and in the one exit line every started COMMAND gets on stderr
+//! (`heavy-slot: <name> exited <code>; …`, 0 included), the load averages and the
 //! free disk space of the working folder are printed (AC-2). A machine below `--min-free-gb`
 //! free or above `--max-swap-pct` swap use starts nothing and exits 75 with the measured
 //! values (leader's numbers 50 GB and 80 %, Issue #2677 comment 6850581277), judged before
@@ -86,6 +93,10 @@ pub const DEFAULT_MAX: usize = 3;
 
 /// The machine's limits, beside the slots: `<slot folder>/limits.json` (#2930 R-2, D-a).
 pub const LIMITS_FILE: &str = "limits.json";
+
+/// The variable a command run under a held slot finds: `<fd>:<slot path>`, the inherited open
+/// slot file and where it is. A nested caller in the same folder reuses that slot (REQ-5).
+pub const SLOT_FD_ENV: &str = "MOAI_HEAVY_SLOT_FD";
 
 /// The largest limits file read; a bigger one is refused, not cut.
 const LIMITS_FILE_MAX_BYTES: u64 = 4096;
@@ -227,6 +238,26 @@ pub fn effective(
         },
         notes,
     )
+}
+
+/// The limits `heavy-slot-acquire` uses in `folder`: its limits file read and the caller's
+/// values applied by [`effective`]. An unusable limits file is an error — the caller runs nothing
+/// and exits [`REFUSED`].
+pub fn resolve(
+    folder: &Path,
+    caller_max: Option<usize>,
+    caller_free: Option<u64>,
+    caller_swap: Option<u64>,
+    caller_mem_free: Option<u64>,
+) -> Result<(usize, Limits, Vec<String>)> {
+    let file = read_limits_file(folder)?;
+    Ok(effective(
+        file.as_ref(),
+        caller_max,
+        caller_free,
+        caller_swap,
+        caller_mem_free,
+    ))
 }
 
 /// The memory readings of a machine that reports memory pressure (macOS, card C-88); each part
@@ -486,11 +517,45 @@ pub fn machine_line(folder: &Path) -> String {
 }
 
 #[cfg(unix)]
-pub use sys::{acquire, status};
+pub use sys::{acquire, hold, status, Held};
 
 #[cfg(not(unix))]
 pub fn status(_folder: &Path) -> Result<Value> {
     Err("heavy-slot needs flock, which this platform does not provide".into())
+}
+
+/// A held slot; never made on this platform.
+#[cfg(not(unix))]
+pub struct Held {
+    _never: (),
+}
+
+#[cfg(not(unix))]
+impl Held {
+    pub fn slot(&self) -> usize {
+        0
+    }
+    pub fn inherited(&self) -> bool {
+        false
+    }
+    pub fn env_value(&self) -> std::ffi::OsString {
+        std::ffi::OsString::new()
+    }
+    pub fn taken_line(&self, _name: &str) -> String {
+        String::new()
+    }
+}
+
+#[cfg(not(unix))]
+pub fn hold(
+    _folder: &Path,
+    _max: usize,
+    _name: &str,
+    _limits: Limits,
+    _progress: &mut dyn std::io::Write,
+) -> std::result::Result<Held, u8> {
+    eprintln!("heavy-slot: flock is unavailable on this platform");
+    Err(USAGE)
 }
 
 #[cfg(not(unix))]
@@ -722,8 +787,27 @@ mod sys {
         Ok(None)
     }
 
-    /// 1-based place of `me` among live waiters (oldest first by name), and their count.
-    fn queue_place(waiting: &Path, me: &str) -> (usize, usize) {
+    /// The slots of `0..max` nobody holds now: a slot file that does not exist yet counts as
+    /// free. Reads only (a shared try-lock that is let go at once).
+    fn free_slots(folder: &Path, max: usize) -> std::result::Result<usize, Open> {
+        let mut free = 0;
+        for i in 0..max {
+            let path = folder.join(format!("slot-{i}"));
+            match fs::symlink_metadata(&path) {
+                Err(e) if e.kind() == std::io::ErrorKind::NotFound => free += 1,
+                _ => {
+                    if !is_held(&path)? {
+                        free += 1;
+                    }
+                }
+            }
+        }
+        Ok(free)
+    }
+
+    /// The live waiters (their waiting file is locked) and `me`, oldest first by name. An
+    /// unlocked file is a waiter that died: it is not counted (REQ-4).
+    fn live_waiters(waiting: &Path, me: &str) -> Vec<String> {
         let mut names: Vec<String> = fs::read_dir(waiting)
             .map(|r| {
                 r.filter_map(|e| e.ok())
@@ -732,15 +816,141 @@ mod sys {
             })
             .unwrap_or_default();
         names.sort();
-        let live: Vec<&String> = names
-            .iter()
-            .filter(|n| n.as_str() == me || matches!(is_held(&waiting.join(n)), Ok(true)))
-            .collect();
+        names.retain(|n| n.as_str() == me || matches!(is_held(&waiting.join(n)), Ok(true)));
+        names
+    }
+
+    /// 1-based place of `me` among live waiters (oldest first by name), and their count.
+    fn queue_place(waiting: &Path, me: &str) -> (usize, usize) {
+        let live = live_waiters(waiting, me);
         let place = live
             .iter()
             .position(|n| n.as_str() == me)
             .map_or(1, |p| p + 1);
         (place, live.len().max(1))
+    }
+
+    /// Whether `me` may take a slot now: fewer live waiters arrived before it than there are
+    /// free slots (REQ-4).
+    fn my_turn(
+        folder: &Path,
+        waiting: &Path,
+        me: &str,
+        max: usize,
+    ) -> std::result::Result<bool, Open> {
+        let ahead = live_waiters(waiting, me)
+            .iter()
+            .filter(|n| n.as_str() < me)
+            .count();
+        Ok(ahead < free_slots(folder, max)?)
+    }
+
+    /// A slot held by this process or inherited from the one that started it. Dropping it lets
+    /// this process's hold go; the operating system frees the slot when no process has the file
+    /// open any more.
+    pub struct Held {
+        slot: usize,
+        path: PathBuf,
+        /// `None` for an inherited slot: the descriptor belongs to the process that took it.
+        file: Option<File>,
+        fd: libc::c_int,
+    }
+
+    impl Held {
+        pub fn slot(&self) -> usize {
+            self.slot
+        }
+
+        /// Whether the slot came from the process that started this one (REQ-5).
+        pub fn inherited(&self) -> bool {
+            self.file.is_none()
+        }
+
+        /// The line a caller prints once it has the slot: `heavy-slot: slot <i> taken by <name>`,
+        /// or `heavy-slot: <name> reuses slot <i> it inherited`.
+        pub fn taken_line(&self, name: &str) -> String {
+            if self.inherited() {
+                format!("heavy-slot: {name} reuses slot {} it inherited", self.slot)
+            } else {
+                format!("heavy-slot: slot {} taken by {name}", self.slot)
+            }
+        }
+
+        /// The [`super::SLOT_FD_ENV`] value for a child: `<fd>:<slot path>`.
+        pub fn env_value(&self) -> std::ffi::OsString {
+            let mut v = std::ffi::OsString::from(format!("{}:", self.fd));
+            v.push(self.path.as_os_str());
+            v
+        }
+
+        /// Overwrites the slot record that `status` reads; an inherited slot keeps its owner's.
+        fn write_record(&mut self, name: &str, command: &[String]) {
+            let Some(file) = self.file.as_mut() else {
+                return;
+            };
+            let record = json!({
+                "name": name,
+                "command": command,
+                "pid": std::process::id(),
+                "started_unix": SystemTime::now().duration_since(UNIX_EPOCH).map_or(0, |d| d.as_secs()),
+                "slot": self.slot,
+            });
+            let _ = file.set_len(0);
+            let _ = file.seek(SeekFrom::Start(0));
+            let _ = writeln!(file, "{record}");
+        }
+    }
+
+    /// The slot named by [`super::SLOT_FD_ENV`], when it is `slot-<i>` of `folder`, its open
+    /// descriptor is that very file (same device and inode, which proves it was inherited) and
+    /// the slot is held. Anything else is `None`, and the caller queues as before.
+    fn inherited(folder: &Path) -> Option<Held> {
+        let value = std::env::var_os(super::SLOT_FD_ENV)?;
+        let bytes = value.as_bytes();
+        let colon = bytes.iter().position(|&b| b == b':')?;
+        let fd: libc::c_int = std::str::from_utf8(&bytes[..colon]).ok()?.parse().ok()?;
+        if fd < 0 {
+            return None;
+        }
+        let named = Path::new(std::ffi::OsStr::from_bytes(&bytes[colon + 1..]));
+        let file_name = named.file_name()?.to_str()?;
+        let digits = file_name.strip_prefix("slot-")?;
+        if digits.is_empty() || !digits.bytes().all(|b| b.is_ascii_digit()) {
+            return None;
+        }
+        let slot: usize = digits.parse().ok()?;
+        let here = folder.join(file_name);
+        let m = fs::symlink_metadata(&here).ok()?;
+        if !m.file_type().is_file() {
+            return None;
+        }
+        // SAFETY: fstat fills the zeroed struct for a descriptor number; a closed one fails.
+        let mut st: libc::stat = unsafe { std::mem::zeroed() };
+        if unsafe { libc::fstat(fd, &mut st) } != 0 {
+            return None;
+        }
+        #[allow(clippy::unnecessary_cast)]
+        let same = (st.st_dev as u64, st.st_ino as u64) == (m.dev(), m.ino());
+        if !same || !matches!(is_held(&here), Ok(true)) {
+            return None;
+        }
+        Some(Held {
+            slot,
+            path: here,
+            file: None,
+            fd,
+        })
+    }
+
+    /// The descriptor stays open in the children this process starts.
+    fn keep_for_children(fd: libc::c_int) {
+        // SAFETY: fcntl on a descriptor the caller owns.
+        unsafe {
+            let fl = libc::fcntl(fd, libc::F_GETFD);
+            if fl >= 0 {
+                libc::fcntl(fd, libc::F_SETFD, fl & !libc::FD_CLOEXEC);
+            }
+        }
     }
 
     fn now_ns() -> u128 {
@@ -762,9 +972,134 @@ mod sys {
         REFUSED
     }
 
-    /// Waits for a slot, runs `command` holding it, returns its exit code. A machine over
-    /// `limits` starts nothing ([`BUSY`]); a waiter whose parent ended leaves the queue without
-    /// running anything ([`REFUSED`]) — nobody is left to take its result (#2677 items 3, 4).
+    /// Waits for a slot and returns it held, with its close-on-exec flag cleared so the
+    /// children of this process keep it. A slot inherited in [`super::SLOT_FD_ENV`] from the
+    /// process that started this one is reused without queueing (REQ-5). Otherwise the caller
+    /// queues in arrival order (REQ-4); the waiting lines go to `progress`, and the caller
+    /// announces the slot it got ([`Held::taken_line`]). A machine over
+    /// `limits` gets [`BUSY`]; a waiter whose parent ended leaves the queue with [`REFUSED`] —
+    /// nobody is left to take its result (#2677 items 3, 4).
+    pub fn hold(
+        folder: &Path,
+        max: usize,
+        name: &str,
+        limits: Limits,
+        progress: &mut dyn Write,
+    ) -> std::result::Result<Held, u8> {
+        if max < 1 {
+            eprintln!("heavy-slot: acquire needs --max >= 1 and a command after --");
+            return Err(USAGE);
+        }
+        if let Some(held) = inherited(folder) {
+            return Ok(held);
+        }
+        let cwd = std::env::current_dir().unwrap_or_else(|_| folder.to_path_buf());
+        if let Some(why) = over_limits(&cwd, limits) {
+            return Err(busy(name, &why, &cwd));
+        }
+        let ppid = parent();
+        let waiting = folder.join("waiting");
+        if let Err(e) = fs::create_dir_all(&waiting) {
+            return Err(io(&format!("creating {} failed ({e})", waiting.display())));
+        }
+        // Every caller queues first, so one that arrived earlier is never passed (REQ-4).
+        let me = format!("{:020}-{}", now_ns(), std::process::id());
+        let wait_path = waiting.join(&me);
+        let queue = || -> std::result::Result<File, Open> {
+            match try_exclusive(&wait_path, true)? {
+                Some(f) => Ok(f),
+                None => Err(Open::Io(format!(
+                    "{}: held by another process",
+                    wait_path.display()
+                ))),
+            }
+        };
+        let mut wait_file = match queue() {
+            Err(Open::NotPlain(p)) => return Err(refused(&p)),
+            Err(Open::Io(e)) => return Err(io(&e)),
+            Ok(f) => f,
+        };
+        let mut last = None;
+        let mut waited = false;
+        let taken = loop {
+            match my_turn(folder, &waiting, &me, max) {
+                Err(e) => break Err(e),
+                Ok(true) => match take_slot(folder, max) {
+                    Ok(Some(t)) => break Ok(Some(t)),
+                    Ok(None) => {}
+                    Err(e) => break Err(e),
+                },
+                Ok(false) => {}
+            }
+            let place = queue_place(&waiting, &me);
+            if last != Some(place) {
+                let _ = writeln!(
+                    progress,
+                    "heavy-slot: waiting {} of {} for {max} slot(s); {}",
+                    place.0,
+                    place.1,
+                    machine_line(&cwd)
+                );
+                last = Some(place);
+            }
+            waited = true;
+            std::thread::sleep(POLL);
+            if parent() != ppid {
+                break Ok(None);
+            }
+            // A waiting file that vanished is made again under the same name: the place
+            // stays the one of the arrival.
+            if matches!(fs::symlink_metadata(&wait_path), Err(e) if e.kind() == std::io::ErrorKind::NotFound)
+            {
+                // The assignment lets the old, unlinked file go.
+                match queue() {
+                    Ok(f) => wait_file = f,
+                    Err(e) => break Err(e),
+                }
+            }
+        };
+        drop(wait_file);
+        let _ = fs::remove_file(&wait_path);
+        let (slot, file) = match taken {
+            Ok(Some(t)) => {
+                // The machine may have changed during the wait: judge it again before
+                // starting; dropping the slot file frees the slot.
+                if waited {
+                    if let Some(why) = over_limits(&cwd, limits) {
+                        return Err(busy(name, &why, &cwd));
+                    }
+                }
+                t
+            }
+            Ok(None) => {
+                eprintln!(
+                    "heavy-slot: {name} left the queue: the process that started it (pid {ppid}) has ended; COMMAND did not run"
+                );
+                return Err(REFUSED);
+            }
+            Err(Open::NotPlain(p)) => return Err(refused(&p)),
+            Err(Open::Io(e)) => return Err(io(&e)),
+        };
+        // #2930 item 6: the run starts, but the disk is getting short — stderr only, so
+        // stdout and the exit code stay COMMAND's own.
+        if let Some(line) = low_space_line(measured(&cwd).free, limits.min_free_gb, &cwd) {
+            eprintln!("heavy-slot: {line}");
+        }
+        let fd = file.as_raw_fd();
+        keep_for_children(fd);
+        let mut held = Held {
+            slot,
+            path: folder.join(format!("slot-{slot}")),
+            file: Some(file),
+            fd,
+        };
+        held.write_record(name, &[]);
+        Ok(held)
+    }
+
+    /// Waits for a slot ([`hold`], waiting lines on stdout), runs `command` holding it, returns
+    /// its exit code or the refusal of [`hold`]. The line that names the slot taken and the exit
+    /// line go to stderr, so stdout carries nothing of the wrapper once COMMAND runs.
     pub fn acquire(
         folder: &Path,
         max: usize,
@@ -776,80 +1111,16 @@ mod sys {
             eprintln!("heavy-slot: acquire needs --max >= 1 and a command after --");
             return USAGE;
         }
-        let cwd = std::env::current_dir().unwrap_or_else(|_| folder.to_path_buf());
-        if let Some(why) = over_limits(&cwd, limits) {
-            return busy(name, &why, &cwd);
-        }
-        let ppid = parent();
-        let waiting = folder.join("waiting");
-        if let Err(e) = fs::create_dir_all(&waiting) {
-            return io(&format!("creating {} failed ({e})", waiting.display()));
-        }
-        let (slot, file) = match take_slot(folder, max) {
-            Err(Open::NotPlain(p)) => return refused(&p),
-            Err(Open::Io(e)) => return io(&e),
-            Ok(Some(t)) => t,
-            Ok(None) => {
-                let me = format!("{:020}-{}", now_ns(), std::process::id());
-                let wait_path = waiting.join(&me);
-                let wait_file = match try_exclusive(&wait_path, true) {
-                    Err(Open::NotPlain(p)) => return refused(&p),
-                    Err(Open::Io(e)) => return io(&e),
-                    Ok(f) => f,
-                };
-                let mut last = None;
-                let taken = loop {
-                    let place = queue_place(&waiting, &me);
-                    if last != Some(place) {
-                        println!(
-                            "heavy-slot: waiting {} of {} for {max} slot(s); {}",
-                            place.0,
-                            place.1,
-                            machine_line(&cwd)
-                        );
-                        last = Some(place);
-                    }
-                    std::thread::sleep(POLL);
-                    if parent() != ppid {
-                        break Ok(None);
-                    }
-                    match take_slot(folder, max) {
-                        Ok(Some(t)) => break Ok(Some(t)),
-                        Ok(None) => continue,
-                        Err(e) => break Err(e),
-                    }
-                };
-                drop(wait_file);
-                let _ = fs::remove_file(&wait_path);
-                match taken {
-                    Ok(Some(t)) => {
-                        // The machine may have changed during the wait: judge it again
-                        // before starting; dropping the slot file frees the slot.
-                        if let Some(why) = over_limits(&cwd, limits) {
-                            return busy(name, &why, &cwd);
-                        }
-                        t
-                    }
-                    Ok(None) => {
-                        eprintln!(
-                            "heavy-slot: {name} left the queue: the process that started it (pid {ppid}) has ended; COMMAND did not run"
-                        );
-                        return REFUSED;
-                    }
-                    Err(Open::NotPlain(p)) => return refused(&p),
-                    Err(Open::Io(e)) => return io(&e),
-                }
-            }
+        let held = match hold(folder, max, name, limits, &mut std::io::stdout()) {
+            Ok(h) => h,
+            Err(code) => return code,
         };
-        // #2930 item 6: the run starts, but the disk is getting short — stderr only, so
-        // stdout and the exit code stay COMMAND's own.
-        if let Some(line) = low_space_line(measured(&cwd).free, limits.min_free_gb, &cwd) {
-            eprintln!("heavy-slot: {line}");
-        }
-        run_holding(slot, file, name, command, &cwd)
+        eprintln!("{}", held.taken_line(name));
+        let cwd = std::env::current_dir().unwrap_or_else(|_| folder.to_path_buf());
+        run_holding(held, name, command, &cwd)
     }
 
-    fn run_holding(slot: usize, mut file: File, name: &str, command: &[String], cwd: &Path) -> u8 {
+    fn run_holding(mut held: Held, name: &str, command: &[String], cwd: &Path) -> u8 {
         // Forwarded signals are blocked before the command starts, so none lands in a gap
         // where the wrapper dies and leaves the command running; a waiter thread receives them
         // with sigwait and passes them on. The command unblocks them before it execs.
@@ -863,28 +1134,12 @@ mod sys {
             libc::pthread_sigmask(libc::SIG_BLOCK, &s, std::ptr::null_mut());
             s
         };
-        let record = json!({
-            "name": name,
-            "command": command,
-            "pid": std::process::id(),
-            "started_unix": SystemTime::now().duration_since(UNIX_EPOCH).map_or(0, |d| d.as_secs()),
-            "slot": slot,
-        });
-        let _ = file.set_len(0);
-        let _ = file.seek(SeekFrom::Start(0));
-        let _ = writeln!(file, "{record}");
-        println!("heavy-slot: slot {slot} taken by {name}");
-        // The command inherits the locked file: clear close-on-exec on it.
-        let fd = file.as_raw_fd();
-        // SAFETY: fcntl on a descriptor this function owns.
-        unsafe {
-            let fl = libc::fcntl(fd, libc::F_GETFD);
-            if fl >= 0 {
-                libc::fcntl(fd, libc::F_SETFD, fl & !libc::FD_CLOEXEC);
-            }
-        }
+        held.write_record(name, command);
+        // The command inherits the locked file ([`hold`] cleared its close-on-exec flag) and
+        // learns where it is, so a nested caller in the same folder reuses the slot (REQ-5).
         let mut cmd = std::process::Command::new(&command[0]);
-        cmd.args(&command[1..]);
+        cmd.args(&command[1..])
+            .env(super::SLOT_FD_ENV, held.env_value());
         let unblock = set;
         // SAFETY: pthread_sigmask is async-signal-safe; nothing else runs between fork and exec.
         unsafe {
@@ -916,10 +1171,10 @@ mod sys {
                 .unwrap_or(1),
             Err(_) => 1,
         };
-        drop(file);
-        if code != 0 {
-            eprintln!("heavy-slot: {name} exited {code}; {}", machine_line(cwd));
-        }
+        drop(held);
+        // Every started command ends with one exit line, 0 included, so a shell waiting for
+        // that line ends on success too (SPEC-20261122-heavy-slot-exit-line).
+        eprintln!("heavy-slot: {name} exited {code}; {}", machine_line(cwd));
         code
     }
 
