@@ -58,6 +58,7 @@ const PROFILE_KEYS: &[(&str, bool)] = &[
     ("scopes", true),
     ("versioning", true),
     ("work_flow", true),
+    ("remote_copy", true),
     ("test_paths", true),
 ];
 
@@ -159,6 +160,12 @@ pub struct Profile {
     /// written before this key reads unchanged.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub work_flow: Option<WorkFlowSettings>,
+    /// Whether the landing's remote copy is on: the leader turns it on only after a preview
+    /// and the user's yes (decision of 2026-11-22); absent or false means the copy pushes
+    /// nothing. A bool needs no validator beyond its type: a non-boolean value fails the
+    /// read, and the key is listed in [`PROFILE_KEYS`] so it is a managed key.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub remote_copy: Option<bool>,
     /// The project's own test paths beside the per-language table of `crate::tdd`
     /// (SPEC-20261117-green-test-lock D-4): relative folders or files, at most
     /// [`crate::tdd::MAX_DECLARED`]. Absent means none were declared; a profile written before
