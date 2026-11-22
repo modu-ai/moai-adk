@@ -98,3 +98,36 @@ created: 2026-11-21
 2. Probe the installed Rust binary with every routed word in a temporary HOME and record what it answers today.
 3. Re-verify the machine-side counts the baseline recorded (project hook folders, git pre-commit callers, MCP registrations, shell rc lines) and record what changed.
 4. Write `inventory.md` with the machine state, the word table, the action table, the execution-path table and the findings, and keep every claim on a command run for this file.
+
+## Result
+
+Filled in by the implementation lane after the re-audit repair (second repair round); the audit checks it again. Branch `spec/20261121-go-path-removal`, repair commit `9dc2d50ac676292151a93ef7a6ed5634021dfe8d` on the earlier work-in-progress commit, checked against base `65b0ed5efbf07326a1323420c7d48c8cb7a57a3d`.
+
+- AC-1: met — the verify loop over the shim's Go line printed no `missing` word.
+- AC-2: met — the verify awk printed `rows=77 with-disposition=77`, exit 0.
+- AC-3: met — the verify grep counted 7 matching lines of `inventory.md`.
+- AC-4: met — the verify loop printed no `missing` path.
+- AC-5: met — the verify pipeline printed `0` (the path list now names the update screen file, its test file and the pair-approved files).
+- AC-6: met — `recognition_*` tests in `tests/git_hooks_cli.rs` pass inside `check affected`, among them `recognition_the_header_on_line_10_is_inside_the_window` and `recognition_a_go_header_on_line_11_marks_nothing`.
+- AC-7: met — `lifecycle_*` tests in `tests/git_hooks_cli.rs` pass inside `check affected`.
+- AC-8: met — `hook_text_*` tests in `tests/git_hooks_cli.rs` pass; the new ones are `hook_text_pre_push_names_the_pushed_ref_when_it_passes_without_a_range`, `hook_text_pre_push_passes_a_forced_push_over_a_tip_the_repository_does_not_hold` and `hook_text_pre_push_passes_a_sha256_new_branch_with_a_note`.
+- AC-9: met — `verbs_plan_previews_and_apply_needs_the_token` and `verbs_revert_restores_the_retired_hooks` pass.
+- AC-10: met — the `layer_*` tests in `tests/update_git_hooks_cli.rs` pass.
+- AC-11: met — `update_applies_the_hook_step_with_the_token_alone` and `update_applies_the_hook_step_with_both_confirm_flags` pass.
+- AC-12: met — the six tests of `tests/update_tux_git_hooks.rs` pass; mutants of the applied screen (the step dropped, a failed step not making the run partial) are killed by them.
+- AC-13: met — `lifecycle_revert_keeps_an_unreadable_entry_at_a_retired_name`, `lifecycle_revert_keeps_a_symlink_at_a_retired_name`, `lifecycle_revert_keeps_a_readable_user_edit_at_a_retired_name_and_reports_it` and `lifecycle_saved_copies_and_the_restore_keep_their_modes` pass.
+- AC-14: met — the two window tests above, `lifecycle_a_stale_hash_file_for_an_absent_hook_is_a_leftover_not_a_kept_hook`, `lifecycle_a_name_that_fills_during_the_apply_is_kept_and_the_error_names_the_undo`, `lifecycle_revert_restores_a_stranded_commit_msg_only_to_an_absent_name` and `lifecycle_the_preview_names_a_stranded_product_commit_msg` pass.
+- AC-15: met — `the_spec_and_shipped_texts_carry_no_stale_claims` passes.
+
+### Checks
+
+`check affected` (the branch's own build, `--max 2`, `CLAUDE_CODE_SESSION_ID` unset): `check-affected base=65b0ed5efbf0 head=9dc2d50ac676 targets=63 py=8 scans=listed:43 diff_check=0 fmt=0 ops_rustfmt=0 clippy=0 test_lib=0 test_bins=0 test_targets=0 build_cli=0 python=0 result=PASS`. Clippy over all targets with warnings denied and rustfmt were also run on their own and were clean.
+
+Mutants on the committed files, each applied, run against its whole target and restored (`git status` clean after): header window widened (killed by the line-11 test), revert overwriting a readable user text (killed by the readable-edit test), a token-only update run not applying (killed by the token-alone test), the appeared-after-preview refusal removed (killed by the fill-during-apply test), saved copies always 0755 (killed by the modes test), an unreadable entry not stopping the revert (killed by the unreadable and symlink tests), the applied screen dropping the step and a failed step not making the run partial (killed by the screen tests).
+
+### Not run
+
+- The hooks in a real repository of this machine or the real HOME: not run (forbidden by the Scope).
+- A second pass of the same targets on the same tree: not repeated.
+- A merge with the tip as it is now: not made (the leader merges once at landing); the `check affected` PASS is cited for it.
+- The known limits listed under Risks (Go variants not recognised, no scan of new refs) have no test beyond the pass-through cases above.
