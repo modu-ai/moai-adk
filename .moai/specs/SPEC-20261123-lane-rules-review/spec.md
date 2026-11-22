@@ -56,7 +56,7 @@ The lane review of 2026-11-23 measured 19 FAIL in 65 verdicts with every lane ch
 
 ## Result
 
-Measured on the working tree of branch `spec/lane-rules-review-20261123`, with the `verify` commands above, before its one commit.
+Measured with the `verify` commands above: the text checks on the working tree before the first commit, and the tests of AC-7 on the tree of that commit.
 
 - AC-1 met: `CLAUDE.md` line 141 starts the item and names the ledger check, the screen read, `/clear` through `orca terminal send`, the next line and `LANE-DONE` as the last line; the count of `start the next round at once` is 0.
 - AC-2 met: `CLAUDE.md` line 106.
@@ -64,5 +64,5 @@ Measured on the working tree of branch `spec/lane-rules-review-20261123`, with t
 - AC-4 met: `CLAUDE.md` line 107.
 - AC-5 met: `CLAUDE.md` line 142.
 - AC-6 met: five rows with `2026-11-23` and `cause:`, each with two cells.
-- AC-7 met: `wc -c CLAUDE.md` prints 43851, which is 1205 under 45056 (the file had 41913). The two tests run in the `moai check affected` receipt of the committed head, which the READY note carries.
+- AC-7 met: `wc -c CLAUDE.md` prints 43851, which is 1205 under 45056 (the file had 41913). `moai check affected` picks neither of the two targets for a change of `CLAUDE.md` (its 43 targets include `tests/next_flow_skill_scan.rs`), so the verify line ran once by hand in a heavy-run slot: 10 tests run, 10 passed, 0 skipped.
 - AC-8 met: the count of card numbers in the ten new lines is 0.
