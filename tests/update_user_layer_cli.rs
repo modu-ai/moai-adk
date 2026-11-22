@@ -238,7 +238,7 @@ fn update_previews_and_installs_the_whole_user_layer_then_has_nothing_to_apply()
     // reverting routing first leaves the Codex block behind for good. The envelope says so.
     assert_eq!(
         r["revert_order"],
-        json!(["style", "routing", "agents"]),
+        json!(["hooks", "style", "routing", "agents"]),
         "{r}"
     );
     // The global instruction files carry the section; `~/.agents/AGENTS.md` is never made.
@@ -348,7 +348,7 @@ fn the_printed_revert_order_gives_back_the_users_own_files_byte_for_byte() {
         .iter()
         .map(|v| v.as_str().unwrap().to_string())
         .collect();
-    assert_eq!(order, ["style", "routing", "agents"], "{r}");
+    assert_eq!(order, ["hooks", "style", "routing", "agents"], "{r}");
     let h = home.to_str().unwrap();
     for step in &order {
         let printed = r["revert"][step.as_str()].as_str().unwrap();
@@ -357,6 +357,7 @@ fn the_printed_revert_order_gives_back_the_users_own_files_byte_for_byte() {
             .skip(1)
             .map(|w| match w {
                 "<HOME>" => h.to_string(),
+                "<PROJECT>" => h.to_string(),
                 "<reference>" => "fixture".to_string(),
                 other => other.to_string(),
             })
