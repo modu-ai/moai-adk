@@ -305,12 +305,11 @@ fn actions(plan: &Value) -> BTreeMap<String, (String, String)> {
         .collect()
 }
 
-const ARCHIVED: [&str; 8] = [
+const ARCHIVED: [&str; 7] = [
     ".claude/agents/moai-a.md",
     ".claude/skills/moai-proven",
     ".claude/skills/moai/b.md",
     ".claude/skills/moai/legacy.md",
-    ".codex/agents/moai-c.toml",
     ".moai/cache",
     ".moai/logs",
     ".moai/tmp-123",
@@ -332,12 +331,17 @@ fn the_plan_archives_only_proven_items_and_writes_nothing() {
         .map(|(p, _)| p.as_str())
         .collect();
     assert_eq!(archived, ARCHIVED.to_vec(), "{plan:#}");
+    // The Codex and shared agents folders are not the cleanup's: no item, not even a keep.
+    assert!(
+        !a.keys()
+            .any(|k| k.starts_with(".codex") || k.starts_with(".agents")),
+        "{plan:#}"
+    );
     let want_keep = [
         (".claude/skills/moai/c.md", "user_edited"),
         (".claude/skills/moai/user-note.md", "unrecorded"),
         (".claude/skills/moai/.env", "secret"),
         (".claude/skills/moai-extra", "unproven_files"),
-        (".agents/skills/moai-mismatch", "unproven_files"),
         (".claude/skills/moai-link", "symlink"),
         (".claude/agents/moai-b.md", "user_edited"),
         (".moai/credentials.yaml", "secret"),
@@ -740,9 +744,12 @@ fn an_empty_sibling_skill_folder_is_not_proven() {
     fs::create_dir_all(f.home.join(".claude/skills/moai-empty")).unwrap();
     fs::create_dir_all(f.home.join(".agents/skills/moai-empty")).unwrap();
     let a = actions(&f.plan());
-    for p in [".claude/skills/moai-empty", ".agents/skills/moai-empty"] {
-        assert_eq!(a[p], ("keep".into(), "unrecorded".into()), "{p}");
-    }
+    assert_eq!(
+        a[".claude/skills/moai-empty"],
+        ("keep".into(), "unrecorded".into())
+    );
+    // The shared agents skills folder is not the cleanup's: its empty folder is not listed.
+    assert!(!a.contains_key(".agents/skills/moai-empty"), "{a:?}");
 }
 
 #[test]
@@ -765,7 +772,7 @@ fn an_unreadable_go_manifest_proves_nothing() {
 }
 
 #[test]
-fn a_linked_skills_folder_is_kept_and_never_followed() {
+fn a_linked_agents_skills_folder_is_not_looked_at() {
     let f = fixture();
     // The update no longer writes `.agents/skills/moai`; an earlier install left this one.
     write(
@@ -777,6 +784,54 @@ fn a_linked_skills_folder_is_kept_and_never_followed() {
     fs::rename(&skills, f.home.join("agents-skills-real")).unwrap();
     std::os::unix::fs::symlink(f.home.join("agents-skills-real"), &skills).unwrap();
     let a = actions(&f.plan());
-    assert_eq!(a[".agents/skills"], ("keep".into(), "symlink".into()));
-    assert!(!a.keys().any(|k| k.starts_with(".agents/skills/moai")));
+    assert!(!a.keys().any(|k| k.starts_with(".agents")), "{a:?}");
+}
+
+/// The home update says once that Codex and shared agents files are no longer managed; the
+/// cleanup agrees by never moving them (user decision 2026-11-22): a proven Go agent file in
+/// `~/.codex/agents` has the same bytes after the apply and sits in no archive folder.
+#[test]
+fn the_codex_agents_folder_stays_byte_identical_after_the_cleanup() {
+    let f = fixture();
+    let before = fs::read(f.home.join(".codex/agents/moai-c.toml")).unwrap();
+    let plan = f.plan();
+    let token = plan["confirm_token"].as_str().unwrap();
+    let (v, success) = f.apply(token, &[]);
+    assert!(success, "{v}");
+    assert_eq!(
+        fs::read(f.home.join(".codex/agents/moai-c.toml")).ok(),
+        Some(before),
+        "the cleanup moved the Codex agent file"
+    );
+    let archive = f.home.join(".moai-cli/cleanup").join(STAMP);
+    assert!(!archive.join(".codex").exists(), "the archive holds .codex");
+}
+
+/// Same for a Go skill folder the manifest proves in `~/.agents/skills`.
+#[test]
+fn the_shared_agents_skills_folder_stays_byte_identical_after_the_cleanup() {
+    let f = fixture();
+    write(&f.home, ".agents/skills/moai-proven/SKILL.md", "proven\n");
+    // The fixture's manifest is rebuilt with the new proven folder before the plan.
+    let manifest_path = f.home.join(".moai/user-assets.json");
+    let mut m: Value = serde_json::from_slice(&fs::read(&manifest_path).unwrap()).unwrap();
+    let key = format!("{}/moai-proven/SKILL.md", ["agents", "skills"].join("-"));
+    m["files"][key] = json!({"sha256": sha(b"proven\n"), "bundle": "core"});
+    fs::write(&manifest_path, serde_json::to_vec(&m).unwrap()).unwrap();
+    let before = fs::read(f.home.join(".agents/skills/moai-proven/SKILL.md")).unwrap();
+    let plan = f.plan();
+    assert_eq!(plan["go_manifest"], json!("valid"));
+    let token = plan["confirm_token"].as_str().unwrap();
+    let (v, success) = f.apply(token, &[]);
+    assert!(success, "{v}");
+    assert_eq!(
+        fs::read(f.home.join(".agents/skills/moai-proven/SKILL.md")).ok(),
+        Some(before),
+        "the cleanup moved the shared agents skill folder"
+    );
+    let archive = f.home.join(".moai-cli/cleanup").join(STAMP);
+    assert!(
+        !archive.join(".agents").exists(),
+        "the archive holds .agents"
+    );
 }

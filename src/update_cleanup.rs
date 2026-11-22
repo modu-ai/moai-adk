@@ -5,14 +5,18 @@
 //!
 //! The plan lists candidates with an action, `archive` or `keep`, and a reason:
 //!
-//! - projection extras: files in `~/.claude/skills/moai` and `~/.agents/skills/moai` the staged
-//!   package does not carry. Archived when the host receipt owns the file with the bytes on disk
-//!   (update-plan's `remove_blocked` with no edit) or the Go user-asset manifest proves it.
-//! - Go sibling skills `~/.claude/skills/moai-*` and `~/.agents/skills/moai-*`: one folder
-//!   each, archived only when every file inside is proven by the Go manifest
-//!   (`~/.moai/user-assets.json`) and nothing inside is a link, a special file or a secret.
-//! - Go agents directly in `~/.claude/agents` and `~/.codex/agents` whose name the manifest
-//!   records; archived when the bytes match.
+//! - projection extras: files in `~/.claude/skills/moai` the staged package does not carry.
+//!   Archived when the host receipt owns the file with the bytes on disk (update-plan's
+//!   `remove_blocked` with no edit) or the Go user-asset manifest proves it.
+//! - Go sibling skills `~/.claude/skills/moai-*`: one folder each, archived only when every file
+//!   inside is proven by the Go manifest (`~/.moai/user-assets.json`) and nothing inside is a
+//!   link, a special file or a secret.
+//! - Go agents directly in `~/.claude/agents` whose name the manifest records; archived when the
+//!   bytes match.
+//!
+//! `~/.codex` and `~/.agents` are not the cleanup's: it lists, keeps and archives nothing there
+//! (user decision 2026-11-22). Old moai files in them get the one "no longer managed" notice of
+//! the home update, and the user removes them if wanted.
 //! - `~/.moai` leftovers, only while `~/.moai` is the Go generation: a top-level entry of the
 //!   `move-to-backup` class of [`crate::home_state::SELECTIVE_TABLE`] that is an empty folder or
 //!   named `tmp-*`, `scratch` or `cache`. Every other top-level entry is listed as `keep`.
@@ -58,15 +62,15 @@ const GO_RUNTIME: [&str; 8] = [
     "gpt-appserver",
     "backup",
 ];
-/// The Go manifest's root slugs and the HOME folders they stand for.
-const GO_ROOTS: [(&str, &str); 4] = [
+/// The Go manifest's root slugs and the HOME folders they stand for. The Go manifest also
+/// records the `agents-skills` and `codex-agents` roots; the cleanup never touches those folders
+/// (user decision 2026-11-22), so their entries are skipped like any unknown slug.
+const GO_ROOTS: [(&str, &str); 2] = [
     ("claude-skills", ".claude/skills"),
     ("claude-agents", ".claude/agents"),
-    ("agents-skills", ".agents/skills"),
-    ("codex-agents", ".codex/agents"),
 ];
-const SIBLING_ROOTS: [&str; 2] = [".claude/skills", ".agents/skills"];
-const AGENT_ROOTS: [&str; 2] = [".claude/agents", ".codex/agents"];
+const SIBLING_ROOTS: [&str; 1] = [".claude/skills"];
+const AGENT_ROOTS: [&str; 1] = [".claude/agents"];
 
 /// The plan's bounds; over one, the affected group is kept (fail-closed).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
