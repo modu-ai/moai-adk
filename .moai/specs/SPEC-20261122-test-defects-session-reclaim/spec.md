@@ -25,7 +25,7 @@ Every lane shell turns `moai check affected` red because the session-register te
 - REQ-4 (REQ-3): IF a tracked file is changed or an untracked file lies outside the runtime state folder, THEN the reclaim gate shall count it as work.
 - REQ-5: When the early reclaim counts the ignored entries of a recorded worktree, the count shall leave out every ignored file under the runtime state folder of that worktree.
 - REQ-6 (REQ-5): IF an ignored file lies outside the runtime state folder and off the regenerable list, THEN the early reclaim shall refuse and name that file.
-- REQ-7: When a property suite checks its time budget, the budget shall grow with the one-minute load average above the number of logical CPUs of the machine.
+- REQ-7: When the Rust property harness checks its time budget, the budget shall grow with the one-minute load average above the number of logical CPUs of the machine.
 - REQ-8 (REQ-7): IF a property run exceeds its budget, THEN the failure shall name the property, the seed, the elapsed time, the budget and the load it was scaled by.
 - REQ-9: When the reclaim gate reads a recorded worktree through git, the gate shall take any warning git writes as an unreadable worktree.
 - REQ-10 (REQ-9): IF git warns that it could not open a folder of the worktree, THEN the reclaim shall be refused as unreadable.

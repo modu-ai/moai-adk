@@ -683,16 +683,21 @@ pub(super) fn worktree_gate(project: &Path, worktree: Option<&str>) -> Result<()
         Ok(true) => {}
         Err(_) => return Err(unreadable()),
     }
-    // One changed or untracked path per line, every untracked file on its own line (a folder
-    // git would show as one entry could hide real work beside a tool cache). An untracked file
-    // under the runtime state folder is tool state, not work (SPEC-20261120-reclaim-dead-holder
-    // REQ-12, widened from one file to the folder by SPEC-20261122-test-defects-session-reclaim
-    // REQ-3).
-    let uncommitted = git_output(path, &["status", "--porcelain=v1", "--untracked-files=all"])
-        .ok_or_else(unreadable)?
-        .lines()
-        .filter(|l| !l.trim().is_empty() && !super::early_reclaim::is_tool_cache_entry(path, l))
-        .count() as u64;
+    // One changed or untracked path per entry, every untracked file on its own (a folder git
+    // would show as one entry could hide real work beside a tool cache), names unquoted (`-z`).
+    // An untracked file under the runtime state folder is tool state, not work
+    // (SPEC-20261120-reclaim-dead-holder REQ-12, widened from one file to the folder by
+    // SPEC-20261122-test-defects-session-reclaim REQ-3). A folder git cannot open is only a
+    // warning to git, so any warning makes the worktree unreadable (REQ-9, REQ-10).
+    let state = super::early_reclaim::state_prefix(path);
+    let uncommitted = git_entries(
+        path,
+        &["status", "--porcelain=v1", "-z", "--untracked-files=all"],
+    )
+    .ok_or_else(unreadable)?
+    .iter()
+    .filter(|e| !super::early_reclaim::is_tool_cache_entry(&state, e))
+    .count() as u64;
     let unpushed = unpushed_commits(path, "HEAD", integration_ref(project, path).as_deref())
         .ok_or_else(unreadable)?;
     if uncommitted > 0 || unpushed > 0 {
@@ -741,6 +746,40 @@ pub(super) fn unpushed_commits(dir: &Path, tip: &str, integration: Option<&str>)
 /// every spawn (`identity::scrub_git_env`) and the meaning matches `lane_reset`'s probes — no
 /// fetch, untracked files counted, `None` on any failure.
 pub(super) fn git_output(dir: &Path, args: &[&str]) -> Option<String> {
+    git_run(dir, args).map(|out| String::from_utf8_lossy(&out.stdout).into_owned())
+}
+
+/// The entries of one git file list read with `-z` (`status` or `ls-files`), names as written.
+/// `None` on a failure and also when git wrote anything on its standard error: `git status`
+/// exits 0 with only a warning for a folder it cannot open and lists nothing for it, so a
+/// warning means the list is incomplete (SPEC-20261122-test-defects-session-reclaim REQ-9).
+pub(super) fn git_entries(dir: &Path, args: &[&str]) -> Option<Vec<String>> {
+    let out = git_run(dir, args)?;
+    if !out.stderr.is_empty() {
+        return None;
+    }
+    let status = args.first() == Some(&"status");
+    Some(split_entries(&String::from_utf8_lossy(&out.stdout), status))
+}
+
+/// Splits `-z` output into entries. In `git status` output a renamed or copied entry (`R` or
+/// `C` in either status column) is followed by its origin path as a field of its own, which is
+/// part of that entry and not one more.
+fn split_entries(raw: &str, status: bool) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut fields = raw.split('\0').filter(|f| !f.is_empty());
+    while let Some(entry) = fields.next() {
+        let code = entry.get(..2).unwrap_or("");
+        if status && code.contains(['R', 'C']) {
+            fields.next();
+        }
+        out.push(entry.to_string());
+    }
+    out
+}
+
+/// One read-only git command in `dir`, its output when it exits 0.
+fn git_run(dir: &Path, args: &[&str]) -> Option<std::process::Output> {
     // `MOAI_GIT_BIN` names the git program for a runner whose child carries no `PATH`
     // (the same seam as `MOAI_FORGE_GH_BIN`); everyone else spawns `git`.
     let program = std::env::var("MOAI_GIT_BIN").unwrap_or_else(|_| "git".to_string());
@@ -754,15 +793,29 @@ pub(super) fn git_output(dir: &Path, args: &[&str]) -> Option<String> {
         .stdin(std::process::Stdio::null())
         .output()
         .ok()?;
-    if !out.status.success() {
-        return None;
-    }
-    Some(String::from_utf8_lossy(&out.stdout).into_owned())
+    out.status.success().then_some(out)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// SPEC-20261122-test-defects-session-reclaim AC-9: `-z` entries keep a space as written; in
+    /// `git status` output a rename or copy carries its origin as one more field, which is part
+    /// of that entry, while an `ls-files` list has no status columns to read.
+    #[test]
+    fn a_z_list_keeps_names_and_folds_a_rename_origin() {
+        let status = "?? my notes.md\0R  new name.rs\0old name.rs\0 C a.rs\0b.rs\0 M c.rs\0";
+        assert_eq!(
+            split_entries(status, true),
+            ["?? my notes.md", "R  new name.rs", " C a.rs", " M c.rs"]
+        );
+        assert_eq!(
+            split_entries("R  x.rs\0C  y.rs\0", false),
+            ["R  x.rs", "C  y.rs"]
+        );
+        assert!(split_entries("", true).is_empty());
+    }
     use std::collections::HashMap;
 
     const A: &str = "428e289a-1c67-492e-a23b-a5aca15b4d1f";
