@@ -231,17 +231,19 @@ fn folder_plan(folder: &Path) -> Result<FolderPlan> {
         .map(Value::Object)
         .map_err(|e| e.to_string())?;
     let owned_receipt = owned_hooks_sha(folder);
+    let current_hooks_sha = current["hooks"]
+        .as_object()
+        .map(|h| hooks_sha256(&Value::Object(h.clone())));
     let (action, reason) = match &current["hooks"] {
         Value::Null => ("create", None),
         h if h == &desired => ("unchanged", None),
-        h if Some(crate::digest(&serde_json::to_vec(h).unwrap_or_default())) == owned_receipt
-            || owned_receipt.is_some() =>
-        {
-            ("update", None)
-        }
+        // The receipt still names the file's hooks: MoAI's own earlier set, an update.
+        _ if owned_receipt.is_some() && owned_receipt == current_hooks_sha => ("update", None),
+        // A hooks key MoAI never wrote, or one the user edited since MoAI wrote it: kept
+        // (the leader's word: a hand edit stays a conflict).
         _ => (
             "conflict",
-            Some("the settings file holds a hooks key MoAI never wrote".into()),
+            Some("the settings file holds a hooks key MoAI does not own as it stands".into()),
         ),
     };
     let now = duty_names(&current["hooks"]);
@@ -267,6 +269,13 @@ fn folder_plan(folder: &Path) -> Result<FolderPlan> {
         removed,
         deny: crate::hooks::GUARDED_DENY_RULES.to_vec(),
     })
+}
+
+/// The digest of a hooks value the layer records and compares: the canonical sorted-keys
+/// bytes, so the same hooks parse to the same sha whatever map ordering this build uses.
+fn hooks_sha256(hooks: &Value) -> String {
+    use crate::spec::Canonical as _;
+    crate::digest(&crate::spec::SortedKeys.bytes(hooks))
 }
 
 /// The `hooks` sha our ownership receipt recorded for `folder` (`None` when MoAI never wrote
@@ -310,6 +319,10 @@ struct FileEntry {
     path: String,
     before_sha256: Option<String>,
     after_sha256: Option<String>,
+}
+
+fn new_receipt_root(home: &Path) -> PathBuf {
+    crate::home_root::path(home).join("receipts")
 }
 
 fn receipts_dir(root: &Path) -> PathBuf {
@@ -543,7 +556,7 @@ pub fn apply(home: &Path, layer: &Layer, plan_digest: &str, permission: &str) ->
     if writes.is_empty() {
         return Ok(json!({"state": "unchanged", "folders": []}));
     }
-    let (id, dir) = new_receipt_dir(&crate::home_root::path(home))?;
+    let (id, dir) = new_receipt_dir(home)?;
     let mut receipt = Receipt {
         schema_version: 1,
         id: id.clone(),
@@ -612,6 +625,11 @@ fn apply_folder(f: &FolderPlan, keep: &Path, home: &Path) -> Result<Value> {
     let settings = f.folder.join("settings.json");
     let desired = Value::Object(crate::hooks::hooks_object("claude").map_err(|e| e.to_string())?);
     let before = crate::claude::read_existing(&settings)?;
+    // The update core binds the whole plan's digest before any write, so a file another
+    // layer of this same run created (the style layer writes the same settings file) is
+    // expected; only a planned write whose file then vanished is a change nobody recorded.
+    // A settings file with a hooks key MoAI does not own was already a conflict at planning
+    // (owned_hooks_sha), and a mid-run creation carries no hooks key to lose.
     if before.is_none() && f.action != "create" {
         return Err("the settings file changed since the preview; re-preview required".into());
     }
@@ -669,7 +687,7 @@ fn apply_folder(f: &FolderPlan, keep: &Path, home: &Path) -> Result<Value> {
     // The ownership receipt: the hooks sha MoAI now owns in this folder.
     let receipts = crate::home_root::path(home).join("receipts");
     create_private_dir(&receipts, true).map_err(|_| "receipt folder unavailable".to_string())?;
-    let hooks_sha = crate::digest(&serde_json::to_vec(&desired).unwrap_or_default());
+    let hooks_sha = hooks_sha256(&desired);
     let record = json!({"schema_version": 1, "folder": f.folder.display().to_string(),
                         "hooks_sha256": hooks_sha, "settings_sha256": crate::digest(&bytes)});
     let mut record_bytes =
@@ -718,10 +736,20 @@ pub fn revert_in(
         return Err("unknown hook receipt id".into());
     }
     let root = fs::canonicalize(project).map_err(|_| "project directory unavailable")?;
-    let dir = receipts_dir(&root).join(receipt_id);
+    let home = std::env::var_os("HOME").map(PathBuf::from);
+    let mut candidates: Vec<PathBuf> = vec![receipts_dir(&root).join(receipt_id)];
+    if let Some(h) = &home {
+        candidates.push(new_receipt_root(h).join(receipt_id));
+    }
+    let dir = candidates
+        .into_iter()
+        .find(|d| d.join("receipt.json").is_file())
+        .ok_or("hook receipt not found")?;
     plain_dirs(&[
         crate::state_root::path(&root, ""),
-        receipts_dir(&root),
+        dir.parent()
+            .map(Path::to_path_buf)
+            .unwrap_or_else(|| dir.clone()),
         dir.clone(),
     ])?;
     let path = dir.join("receipt.json");
@@ -734,6 +762,60 @@ pub fn revert_in(
     let mut reverted = Vec::new();
     let mut skipped = Vec::new();
     for h in &receipt.hosts {
+        if h.host == "claude-config" {
+            // The config-folder layer's entry: every file path is absolute, the before copy
+            // sits under before/, and a file changed since the apply is skipped whole.
+            let mut restored = Vec::new();
+            let mut skipped_config = Vec::new();
+            let mut restore: Vec<(PathBuf, Option<Vec<u8>>)> = Vec::new();
+            for (n, f) in h.files.iter().enumerate() {
+                let target = PathBuf::from(&f.path);
+                let current = crate::claude::read_existing(&target)?;
+                if current.as_deref().map(crate::digest) != f.after_sha256.clone() {
+                    skipped_config.push(json!({"host": "claude-config",
+                                                "reason": "user_changed_since_apply"}));
+                    continue;
+                }
+                let before = match &f.before_sha256 {
+                    None => None,
+                    Some(sha) => {
+                        let before_dir = dir.join("before");
+                        let mut kept: Option<PathBuf> = None;
+                        for e in fs::read_dir(&before_dir)
+                            .map_err(|_| "before bytes missing from the hook receipt")?
+                        {
+                            let e = e.map_err(|_| "before bytes missing from the hook receipt")?;
+                            kept = Some(e.path());
+                        }
+                        let b = fs::read(kept.ok_or("before bytes missing from the hook receipt")?)
+                            .map_err(|_| "before bytes missing from the hook receipt")?;
+                        if &crate::digest(&b) != sha {
+                            return Err("before bytes do not match the hook receipt".into());
+                        }
+                        Some(b)
+                    }
+                };
+                restore.push((target, before));
+            }
+            if skipped_config.is_empty() || !restore.is_empty() {
+                for (target, before) in restore {
+                    match before {
+                        Some(b) => {
+                            let now = crate::claude::read_existing(&target)?;
+                            crate::apply::publish_replace(&target, now.as_deref(), &b)?;
+                        }
+                        None => {
+                            fs::remove_file(&target)
+                                .map_err(|_| format!("{} not removed", target.display()))?;
+                        }
+                    }
+                    restored.push("claude-config".to_string());
+                }
+            }
+            reverted.extend(restored);
+            skipped.extend(skipped_config);
+            continue;
+        }
         if retired(&h.host, active) {
             skipped.push(json!({"host": h.host, "reason": "host_retired"}));
             continue;
