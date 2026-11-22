@@ -271,6 +271,26 @@ fn a_home_with_codex_files_shows_one_notice_for_codex() {
     assert!(found[0].1.contains("~/.codex"), "{}", found[0].1);
 }
 
+/// Each Codex folder alone is enough for the one Codex notice: the mutants that dropped one of the
+/// two checks survived the case above, which creates both.
+#[test]
+fn the_codex_folder_alone_shows_the_codex_notice() {
+    let (_t, home, exe) = setup();
+    put(&home, ".codex/AGENTS.md", "mine\n");
+    let found = notices(&result(&run(&exe, &home, &["update"])));
+    assert_eq!(found.len(), 1, "{found:?}");
+    assert_eq!(found[0].0, "codex");
+}
+
+#[test]
+fn the_shared_agents_folder_alone_shows_the_codex_notice() {
+    let (_t, home, exe) = setup();
+    put(&home, ".agents/skills/other/SKILL.md", "x\n");
+    let found = notices(&result(&run(&exe, &home, &["update"])));
+    assert_eq!(found.len(), 1, "{found:?}");
+    assert_eq!(found[0].0, "codex");
+}
+
 #[test]
 fn a_home_with_omp_files_shows_one_notice_for_omp() {
     let (_t, home, exe) = setup();
