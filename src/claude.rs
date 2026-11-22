@@ -450,12 +450,43 @@ pub(crate) fn credential_like(text: &str) -> bool {
         || (text.contains("://") && text.contains('@'))
 }
 
+/// Whether a character prints as nothing or moves other text: a control character, or a format,
+/// line or paragraph separator character (soft hyphen, zero-width and joiner characters, the
+/// direction marks, embeddings, overrides and isolates, word joiner and invisible operators,
+/// the byte order mark, interlinear annotation marks and tag characters).
+pub(crate) fn invisible_char(c: char) -> bool {
+    c.is_control()
+        || matches!(
+            c,
+            '\u{00AD}'
+                | '\u{034F}'
+                | '\u{061C}'
+                | '\u{115F}'
+                | '\u{1160}'
+                | '\u{17B4}'
+                | '\u{17B5}'
+                | '\u{180B}'..='\u{180F}'
+                | '\u{200B}'..='\u{200F}'
+                | '\u{2028}'..='\u{202E}'
+                | '\u{2060}'..='\u{206F}'
+                | '\u{3164}'
+                | '\u{FE00}'..='\u{FE0F}'
+                | '\u{FEFF}'
+                | '\u{FFA0}'
+                | '\u{FFF9}'..='\u{FFFB}'
+                | '\u{1BCA0}'..='\u{1BCA3}'
+                | '\u{1D173}'..='\u{1D17A}'
+                | '\u{E0000}'..='\u{E0FFF}'
+        )
+}
+
 /// A picked or requested value as a refusal message may show it: at most 64 characters without
-/// control characters, or a placeholder when [`credential_like`] flags the value either as given
-/// or with its control characters stripped (a control character inside a token would otherwise
-/// hide its shape and the stripped token would be printed), so no message carries a secret back.
+/// [`invisible_char`]s, or a placeholder when [`credential_like`] flags the value either as given
+/// or with those characters stripped (a control, zero-width or direction character inside a
+/// token would otherwise hide its shape and the stripped token would be printed looking whole),
+/// so no message carries a secret back.
 pub(crate) fn shown_value(text: &str) -> String {
-    let clean: String = text.chars().filter(|c| !c.is_control()).collect();
+    let clean: String = text.chars().filter(|c| !invisible_char(*c)).collect();
     if credential_like(text) || credential_like(&clean) {
         return "<value hidden: looks like a credential>".into();
     }
