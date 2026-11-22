@@ -89,9 +89,9 @@ Project
   go-settings-apply       Clean Go-era settings keys
   go-settings-revert      Undo a Go-era settings clean-up
   agents-merge-plan       Preview merging AGENTS.local.md
-                          into AGENTS.md
+                          into CLAUDE.local.md
   agents-merge-apply      Merge AGENTS.local.md into
-                          AGENTS.md
+                          CLAUDE.local.md
   agents-merge-revert     Undo an AGENTS.local.md merge
   agents-project-plan     Preview the base agents in a
                           project

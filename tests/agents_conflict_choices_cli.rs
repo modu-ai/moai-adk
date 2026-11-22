@@ -1,8 +1,8 @@
-//! SPEC-20261119-agents-conflict-choices (card C-57, slice 2a): an AGENTS.md conflict comes with
+//! SPEC-20261119-agents-conflict-choices (card C-57, slice 2a): a CLAUDE.md conflict comes with
 //! choices the session can run after the user's pick. The pick travels in the request as
 //! `picks`; a request without picks plans, digests and applies as before.
 //!
-//! The conflict is made the way `product_cli.rs` makes it: apply once, replace AGENTS.md with a
+//! The conflict is made the way `product_cli.rs` makes it: apply once, replace CLAUDE.md with a
 //! human text that has no markers, and plan again with another language so the rendered block
 //! differs from the baseline.
 
@@ -110,10 +110,10 @@ fn applied_project() -> TempDir {
     root
 }
 
-/// The project above with AGENTS.md replaced by a human text without markers.
+/// The project above with CLAUDE.md replaced by a human text without markers.
 fn conflict_project() -> TempDir {
     let root = applied_project();
-    fs::write(root.path().join("AGENTS.md"), HUMAN).unwrap();
+    fs::write(root.path().join("CLAUDE.md"), HUMAN).unwrap();
     root
 }
 
@@ -133,7 +133,7 @@ fn action(plan: &Value, path: &str) -> String {
 }
 
 fn agents_md(root: &TempDir) -> String {
-    fs::read_to_string(root.path().join("AGENTS.md")).unwrap()
+    fs::read_to_string(root.path().join("CLAUDE.md")).unwrap()
 }
 
 // ---- picks (AC-1) ---------------------------------------------------------------------------
@@ -163,7 +163,7 @@ fn picks_absent_or_empty_plan_digest_and_apply_as_before() {
     let empty = plan_ok(&root, &with_empty);
     assert_eq!(plain["plan_digest"], empty["plan_digest"]);
     // Without a pick the conflict still stops the apply and nothing is written.
-    assert_eq!(action(&plain, "AGENTS.md"), "conflict");
+    assert_eq!(action(&plain, "CLAUDE.md"), "conflict");
     let refused = apply(&root, &plain);
     assert!(!refused.status.success());
     assert!(String::from_utf8_lossy(&refused.stderr).contains("conflict"));
@@ -177,8 +177,8 @@ fn append_pick_turns_the_missing_block_conflict_into_an_append_without_writing()
     let root = conflict_project();
     let plain = plan_ok(&root, &request("ko", "none", &[]));
     let picked = plan_ok(&root, &request("ko", "none", &["append-managed"]));
-    assert_eq!(action(&plain, "AGENTS.md"), "conflict");
-    assert_eq!(action(&picked, "AGENTS.md"), "append");
+    assert_eq!(action(&plain, "CLAUDE.md"), "conflict");
+    assert_eq!(action(&picked, "CLAUDE.md"), "append");
     assert_ne!(plain["plan_digest"], picked["plan_digest"]);
     assert_eq!(agents_md(&root), HUMAN, "a plan writes nothing");
 }
@@ -195,7 +195,7 @@ fn append_apply_keeps_every_earlier_byte_and_adds_one_marker_pair() {
     assert!(text.len() > HUMAN.len());
     // The same request now plans unchanged: the baseline was recorded for the appended block.
     let after = plan_ok(&root, &request("ko", "none", &["append-managed"]));
-    assert_eq!(action(&after, "AGENTS.md"), "unchanged");
+    assert_eq!(action(&after, "CLAUDE.md"), "unchanged");
 }
 
 #[test]
@@ -218,35 +218,32 @@ fn append_pick_leaves_an_edited_block_and_malformed_markers_as_conflict() {
     // An edited block: the block is present, so it is not the missing-block conflict.
     let root = applied_project();
     let generated = agents_md(&root);
-    let edited = generated.replace(
-        "Read only the workflow you need",
-        "Read ONLY the workflow you need",
-    );
+    let edited = generated.replace("Checks:", "CHECKS:");
     assert_ne!(edited, generated);
-    fs::write(root.path().join("AGENTS.md"), &edited).unwrap();
+    fs::write(root.path().join("CLAUDE.md"), &edited).unwrap();
     let plan = plan_ok(&root, &request("ko", "none", &["append-managed"]));
-    assert_eq!(action(&plan, "AGENTS.md"), "conflict");
+    assert_eq!(action(&plan, "CLAUDE.md"), "conflict");
     assert_eq!(agents_md(&root), edited);
 
     // Malformed markers: a begin marker with no end.
     let broken = "<!-- moai:managed:begin id=moai-workflow -->\nno end\n";
-    fs::write(root.path().join("AGENTS.md"), broken).unwrap();
+    fs::write(root.path().join("CLAUDE.md"), broken).unwrap();
     let plan = plan_ok(&root, &request("ko", "none", &["append-managed"]));
-    assert_eq!(action(&plan, "AGENTS.md"), "conflict");
+    assert_eq!(action(&plan, "CLAUDE.md"), "conflict");
     assert_eq!(agents_md(&root), broken);
 }
 
 #[test]
 fn append_pick_does_not_recreate_a_deleted_file() {
-    // The pick appends to a file that is there. A deleted AGENTS.md whose baseline no longer
+    // The pick appends to a file that is there. A deleted CLAUDE.md whose baseline no longer
     // matches stays a conflict: creating the file is a different choice than the user made.
     let root = applied_project();
-    fs::remove_file(root.path().join("AGENTS.md")).unwrap();
+    fs::remove_file(root.path().join("CLAUDE.md")).unwrap();
     let plain = plan_ok(&root, &request("ko", "none", &[]));
     let picked = plan_ok(&root, &request("ko", "none", &["append-managed"]));
-    assert_eq!(action(&plain, "AGENTS.md"), "conflict");
-    assert_eq!(action(&picked, "AGENTS.md"), "conflict");
-    assert!(!root.path().join("AGENTS.md").exists());
+    assert_eq!(action(&plain, "CLAUDE.md"), "conflict");
+    assert_eq!(action(&picked, "CLAUDE.md"), "conflict");
+    assert!(!root.path().join("CLAUDE.md").exists());
 }
 
 #[test]
@@ -278,10 +275,12 @@ fn append_receipt_recovers_the_bytes_the_file_held_before() {
 
 // ---- skip-conflicts (AC-3) ------------------------------------------------------------------
 
-/// The conflict project asked for a personal file that is ignored: AGENTS.local.md and the
-/// `.gitignore` block are planned beside the conflicting AGENTS.md.
+/// The conflict project asked for a personal file that is ignored and picked it: CLAUDE.local.md
+/// and the `.gitignore` block are planned beside the conflicting CLAUDE.md.
 fn skip_request(picks: &[&str]) -> Value {
-    request("ko", "ignored", picks)
+    let mut all = vec!["personal-file"];
+    all.extend_from_slice(picks);
+    request("ko", "ignored", &all)
 }
 
 #[test]
@@ -289,18 +288,18 @@ fn skip_pick_marks_only_the_conflicting_file_and_the_rest_still_applies() {
     let root = conflict_project();
     let plain = plan_ok(&root, &skip_request(&[]));
     let picked = plan_ok(&root, &skip_request(&["skip-conflicts"]));
-    assert_eq!(action(&plain, "AGENTS.md"), "conflict");
-    assert_eq!(action(&picked, "AGENTS.md"), "skip");
-    for path in ["AGENTS.local.md", ".gitignore"] {
+    assert_eq!(action(&plain, "CLAUDE.md"), "conflict");
+    assert_eq!(action(&picked, "CLAUDE.md"), "skip");
+    for path in ["CLAUDE.local.md", ".gitignore"] {
         assert_eq!(action(&picked, path), action(&plain, path), "{path}");
         assert_ne!(action(&picked, path), "conflict", "{path}");
     }
 
     apply_ok(&root, &picked);
     assert_eq!(agents_md(&root), HUMAN, "the skipped file keeps every byte");
-    assert!(root.path().join("AGENTS.local.md").exists());
+    assert!(root.path().join("CLAUDE.local.md").exists());
     let ignore = fs::read_to_string(root.path().join(".gitignore")).unwrap();
-    assert!(ignore.contains("AGENTS.local.md"), "{ignore:?}");
+    assert!(ignore.contains("CLAUDE.local.md"), "{ignore:?}");
 }
 
 #[test]
@@ -309,123 +308,96 @@ fn skip_records_no_baseline_so_the_plain_plan_conflicts_again() {
     let picked = plan_ok(&root, &skip_request(&["skip-conflicts"]));
     apply_ok(&root, &picked);
     let plain = plan_ok(&root, &skip_request(&[]));
-    assert_eq!(action(&plain, "AGENTS.md"), "conflict");
+    assert_eq!(action(&plain, "CLAUDE.md"), "conflict");
     let again = plan_ok(&root, &skip_request(&["skip-conflicts"]));
-    assert_eq!(action(&again, "AGENTS.md"), "skip");
+    assert_eq!(action(&again, "CLAUDE.md"), "skip");
     // A skipped file adds nothing to the manifest: the manifest row is `unchanged` too.
     assert_eq!(
         action(&again, ".moai-cli/manifests/generation.json"),
         "unchanged"
     );
-    for path in ["AGENTS.local.md", ".gitignore"] {
+    for path in ["CLAUDE.local.md", ".gitignore"] {
         assert_eq!(action(&again, path), "unchanged", "{path}");
     }
 }
 
-// ---- claude-import (AC-4) -------------------------------------------------------------------
+// ---- the earlier claude-import pick is gone from the writer ---------------------------------
 
-fn with_claude_md(path: &str, text: &str) -> TempDir {
+/// `CLAUDE.md` is moai's file now, so it shadows nothing: the plan carries no `claude_shadow`,
+/// and the earlier pick `claude-import` is refused like any unknown id.
+#[test]
+fn claude_import_is_not_a_pick_and_no_shadow_is_reported() {
     let root = applied_project();
-    let target = root.path().join(path);
-    fs::create_dir_all(target.parent().unwrap()).unwrap();
-    fs::write(target, text).unwrap();
-    root
-}
-
-#[test]
-fn claude_shadow_is_reported_and_the_import_pick_plans_one_append_row() {
-    let root = with_claude_md("CLAUDE.md", "# mine\n");
-    let plain = plan_ok(&root, &request("en", "none", &[]));
-    assert_eq!(
-        plain["claude_shadow"]["path"],
-        json!("CLAUDE.md"),
-        "{plain}"
-    );
-    assert!(
-        row(&plain, "CLAUDE.md").is_none(),
-        "nothing is planned without the pick"
-    );
-
-    let picked = plan_ok(&root, &request("en", "none", &["claude-import"]));
-    assert_eq!(action(&picked, "CLAUDE.md"), "append");
-    assert_eq!(picked["claude_shadow"]["path"], json!("CLAUDE.md"));
-    assert_eq!(
-        fs::read_to_string(root.path().join("CLAUDE.md")).unwrap(),
-        "# mine\n",
-        "a plan writes nothing"
-    );
-}
-
-#[test]
-fn claude_shadow_needs_the_claude_host_in_the_profile() {
-    let root = TempDir::new().unwrap();
-    fs::create_dir_all(root.path().join("skills/moai/workflows")).unwrap();
-    let mut codex_only = profile(None);
-    codex_only["hosts"] = json!(["codex"]);
-    create(&root, &codex_only);
     fs::write(root.path().join("CLAUDE.md"), "# mine\n").unwrap();
-    let picked = plan_ok(&root, &request("en", "none", &["claude-import"]));
-    assert!(picked.get("claude_shadow").is_none(), "{picked}");
-    assert!(row(&picked, "CLAUDE.md").is_none(), "{picked}");
-}
-
-#[test]
-fn claude_shadow_does_not_change_the_plan_digest() {
-    let root = with_claude_md("CLAUDE.md", "# mine\n");
-    let mut plan = plan_ok(&root, &request("en", "none", &[]));
-    assert!(plan.get("claude_shadow").is_some());
-    // Without the field the same digest still applies: the field is not digested.
-    plan.as_object_mut().unwrap().remove("claude_shadow");
-    apply_ok(&root, &plan);
-}
-
-#[test]
-fn claude_import_apply_appends_only_the_line_and_does_not_own_the_file() {
-    let root = with_claude_md("CLAUDE.md", "# mine");
-    let picked = plan_ok(&root, &request("en", "none", &["claude-import"]));
-    apply_ok(&root, &picked);
+    let plain = plan_ok(&root, &request("en", "none", &[]));
+    assert!(plain.get("claude_shadow").is_none(), "{plain}");
+    let out = plan(&root, &request("en", "none", &["claude-import"]));
+    assert!(!out.status.success());
+    let body: Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(body["error"]["kind"], json!("invalid_input"), "{body}");
     assert_eq!(
         fs::read_to_string(root.path().join("CLAUDE.md")).unwrap(),
-        "# mine\n@AGENTS.md\n",
-        "earlier bytes kept, a missing final newline is added before the line"
-    );
-    let manifest =
-        fs::read_to_string(root.path().join(".moai-cli/manifests/generation.json")).unwrap();
-    assert!(!manifest.contains("CLAUDE.md"), "{manifest}");
-    // The next plan with the same pick has nothing left to import.
-    let after = plan_ok(&root, &request("en", "none", &["claude-import"]));
-    assert!(row(&after, "CLAUDE.md").is_none());
-    assert!(after.get("claude_shadow").is_none() || after["claude_shadow"].is_null());
-}
-
-#[test]
-fn claude_import_in_the_claude_folder_uses_the_relative_path() {
-    let root = with_claude_md(".claude/CLAUDE.md", "# mine\n");
-    let picked = plan_ok(&root, &request("en", "none", &["claude-import"]));
-    assert_eq!(action(&picked, ".claude/CLAUDE.md"), "append");
-    apply_ok(&root, &picked);
-    assert_eq!(
-        fs::read_to_string(root.path().join(".claude/CLAUDE.md")).unwrap(),
-        "# mine\n@../AGENTS.md\n"
+        "# mine\n"
     );
 }
 
-#[cfg(unix)]
+/// What `apply-recover` does with a receipt the earlier pick `claude-import` left: a receipt
+/// records paths and digests, never a pick id, so its `CLAUDE.md` row is read like any other row.
+/// The file goes back when it still holds the bytes the apply wrote, and is skipped, named, when
+/// it changed since. The receipt of the removed pick is neither refused by name nor ignored.
 #[test]
-fn a_claude_md_that_is_a_link_is_not_a_shadow_and_the_pick_still_plans() {
-    // CLAUDE.md linked to AGENTS.md is already the setup the pick would make. A write through
-    // the link is refused by the apply engine, so it must not turn the plan into an error.
-    let root = applied_project();
-    std::os::unix::fs::symlink("AGENTS.md", root.path().join("CLAUDE.md")).unwrap();
-    let picked = plan_ok(&root, &request("en", "none", &["claude-import"]));
-    assert!(picked.get("claude_shadow").is_none(), "{picked}");
-    assert!(row(&picked, "CLAUDE.md").is_none(), "{picked}");
-}
+fn an_old_claude_import_receipt_reverts_like_any_other_row() {
+    for edited in [false, true] {
+        let root = TempDir::new().unwrap();
+        let before = "# mine\n";
+        let written = "# mine\n@AGENTS.md\n";
+        let current = if edited {
+            "# mine\n@AGENTS.md\nmore\n"
+        } else {
+            written
+        };
+        fs::write(root.path().join("CLAUDE.md"), current).unwrap();
+        let store = moai_cli::state_root::path(root.path(), "receipts");
+        let id = "agents-apply-0123456789abcdef";
+        fs::create_dir_all(store.join(format!("{id}.before"))).unwrap();
+        fs::write(store.join(format!("{id}.before/CLAUDE.md")), before).unwrap();
+        let receipt = json!({
+            "schema_version": 1, "request_id": id, "operation": "agents.apply",
+            "clone_id": null, "workspace_id": null, "status": "complete",
+            "entries": [{
+                "path": "CLAUDE.md", "decision": "append",
+                "before_sha256": moai_cli::digest(before.as_bytes()),
+                "after_sha256": moai_cli::digest(written.as_bytes()),
+                "published": true, "error": null,
+            }],
+        });
+        fs::write(store.join(format!("{id}.json")), receipt.to_string()).unwrap();
 
-#[test]
-fn claude_that_already_imports_agents_md_gets_no_row() {
-    let root = with_claude_md("CLAUDE.md", "# mine\n@AGENTS.md\n");
-    let picked = plan_ok(&root, &request("en", "none", &["claude-import"]));
-    assert!(row(&picked, "CLAUDE.md").is_none(), "{picked}");
-    assert!(picked.get("claude_shadow").is_none() || picked["claude_shadow"].is_null());
+        let out = cli(
+            &[
+                "apply-recover",
+                root.path().to_str().unwrap(),
+                "--receipt",
+                id,
+                "--permission-reference",
+                "fixture-approved",
+            ],
+            &json!({}),
+        );
+        let body: Value = serde_json::from_slice(&out.stdout).unwrap();
+        assert_eq!(body["ok"], json!(true), "{body}");
+        let text = fs::read_to_string(root.path().join("CLAUDE.md")).unwrap();
+        if edited {
+            assert_eq!(text, current, "a changed file is left as it is");
+            assert_eq!(body["result"]["state"], "nothing_to_revert", "{body}");
+            assert_eq!(
+                body["result"]["skipped"],
+                json!([{"path": "CLAUDE.md", "reason": "user_changed_since_apply"}]),
+                "{body}"
+            );
+        } else {
+            assert_eq!(text, before, "{body}");
+            assert_eq!(body["result"]["reverted"], json!(["CLAUDE.md"]), "{body}");
+        }
+    }
 }
