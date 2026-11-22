@@ -524,47 +524,39 @@ fn update_world(h: Host) -> World {
     w
 }
 
-/// The `moai update` hook layer: the preview counts the entries it would rewrite, a Go `moai`
-/// turns the host into a conflict with the reason, and the PATH is read again at apply time.
+/// The `moai update` hook layer is the config-folder layer now (SPEC-20261122-next-flow-hooks
+/// REQ-14): it plans the Claude config folder's settings.json, carries no per-project hosts and
+/// no migration count — the Go-binary PATH gate is gone because every entry names this build's
+/// binary by absolute path. The full behaviour is pinned by tests/next_flow_hooks_cli
+/// (ac14, ac15); this test keeps the layer's shape honest for the legacy crate.
 #[test]
-fn the_update_layer_counts_the_rewrite_and_gates_it() {
+fn the_update_layer_plans_the_config_folder_and_gates_nothing() {
     use moai_cli::update_hooks;
     let w = update_world(CLAUDE);
     let before = w.files(CLAUDE);
-    let layer = update_hooks::plan_in(&w.home, &w.project, &w.rust()).unwrap();
-    let host = &layer.to_json()["hosts"][0];
-    assert_eq!(host["action"], json!("update"), "{host}");
-    assert_eq!(host["migration"], json!(CLAUDE.entries), "{host}");
-    assert!(layer.writes());
-    assert!(layer
-        .summary()
-        .contains("moai-cli hook entries become moai"));
-
-    let go = update_hooks::plan_in(&w.home, &w.project, &w.go()).unwrap();
-    let host = &go.to_json()["hosts"][0];
-    assert_eq!(host["action"], json!("conflict"), "{host}");
-    assert_eq!(host["plan_digest"], Value::Null, "{host}");
+    let layer = update_hooks::plan_in(&w.home).unwrap();
+    let v = layer.to_json();
+    assert!(v.get("hosts").is_none(), "no per-project hosts any more: {v}");
     assert!(
-        host["reason"]
-            .as_str()
-            .unwrap()
-            .contains("wrong_generation"),
-        "{host}"
+        v.get("migration").is_none() && !v.to_string().contains("migration"),
+        "no moai-cli rewrite count any more: {v}"
     );
-    assert!(!go.writes());
-
-    // Planned under the Rust PATH, applied under the Go one: refused, nothing written.
-    let out =
-        update_hooks::apply_in(&w.home, &layer, &layer.plan_digest, "test-3004", &w.go()).unwrap();
-    assert_eq!(out["state"], json!("error"), "{out}");
-    assert!(out.to_string().contains("not rewritten"), "{out}");
-    assert_eq!(w.files(CLAUDE), before);
-
-    let out = update_hooks::apply_in(&w.home, &layer, &layer.plan_digest, "test-3004", &w.rust())
-        .unwrap();
-    assert_eq!(out["state"], json!("applied"), "{out}");
-    let (file, _) = w.files(CLAUDE);
-    assert!(!String::from_utf8_lossy(&file).contains("moai-cli"));
+    assert_eq!(v["folders"].as_array().map(Vec::len), Some(1), "{v}");
+    assert!(
+        v["binary"].as_str().is_some_and(|b| b.starts_with('/')),
+        "the preview names the absolute binary path: {v}"
+    );
+    // The layer never touches the project's settings file.
+    let out = update_hooks::apply_in(
+        &w.home,
+        &layer,
+        &layer.plan_digest,
+        "test-3004",
+        &w.rust(),
+    )
+    .unwrap();
+    let _ = out;
+    assert_eq!(w.files(CLAUDE), before, "the project file must not change");
 }
 
 /// `hook_status.configured` tells an old `moai-cli` install (it still runs) from a current one

@@ -129,6 +129,18 @@ pub fn plan(home: &Path, cwd: &Path) -> Result<Layer> {
     plan_in(home)
 }
 
+/// [`apply`] with the PATH of the old per-project gate given (the config-folder layer gates no
+/// legacy binary: its entries name the absolute path of this build).
+pub fn apply_in(
+    home: &Path,
+    layer: &Layer,
+    plan_digest: &str,
+    permission: &str,
+    _path_env: &str,
+) -> Result<Value> {
+    apply(home, layer, plan_digest, permission)
+}
+
 /// Plans the config-folder hook layer (REQ-14): for each Claude config folder this HOME
 /// resolves (the picked-folders machinery of the install-place card extends this list), the
 /// generic hook set and the deny rules are offered into `<config>/settings.json`. Never
