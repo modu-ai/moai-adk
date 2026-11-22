@@ -679,7 +679,7 @@ mod tests {
         std::fs::create_dir(&anchor).unwrap();
         let elsewhere = d.path().join("elsewhere");
         std::fs::create_dir(&elsewhere).unwrap();
-        std::os::unix::fs::symlink(&elsewhere, crate::clone_root::path(&anchor)).unwrap();
+        std::os::unix::fs::symlink(&elsewhere, anchor.join(crate::fixed_state!())).unwrap();
         let mut v = empty_read();
         apply(&mut v, Some(&anchor), "agent-1", "o/r", 6, NOW);
         assert_eq!(v["idle"]["counting"], json!(false), "{v}");
