@@ -694,7 +694,7 @@ enum Command {
         /// Branch prefix (HOLD: no default; the user decides it).
         #[arg(long)]
         branch_prefix: String,
-        /// Worktree path; default `<HOME>/.moai/worktrees/<project>-<issue>-<logical_key>` (#2811).
+        /// Worktree path; default `<project>/.claude/worktrees/<project>-<issue>-<logical_key>`.
         /// Refused inside a Cargo build folder (#2930 R-3).
         #[arg(long)]
         path: Option<PathBuf>,
