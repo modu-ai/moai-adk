@@ -65,12 +65,12 @@ fn parent_env(fixtures: &Path, record: &Path) -> BTreeMap<String, String> {
 
 /// A stand-in `claude` (SPEC D-5): records its argv and environment to
 /// `$MOAI_STANDIN_RECORD` in the form `ARGV`, one arg per line, then `ENV`, sorted `env`
-/// lines, then answers one JSON result and exits zero.
+/// lines, then answers one JSON result with a verdict and exits zero.
 fn standin_claude(fixtures: &Path) {
     let script = "#!/bin/sh\n\
 r=\"$MOAI_STANDIN_RECORD\"\n\
 { printf 'ARGV\\n'; for a in \"$@\"; do printf '%s\\n' \"$a\"; done; printf 'ENV\\n'; env | LC_ALL=C sort; } > \"$r\"\n\
-printf '%s' '{\"type\":\"result\",\"subtype\":\"success\",\"is_error\":false,\"session_id\":\"standin\",\"total_cost_usd\":0.01,\"num_turns\":1}'\n";
+printf '%s' '{\"type\":\"result\",\"subtype\":\"success\",\"is_error\":false,\"session_id\":\"standin\",\"total_cost_usd\":0.01,\"num_turns\":1,\"structured_output\":{\"verdict\":\"fail\"}}'\n";
     common::write_executable(&fixtures.join("claude"), script);
 }
 
@@ -244,6 +244,14 @@ fn settings_object_is_one_and_role_scoped() {
     assert_eq!(settings["permissions"]["denyInsteadOfPrompting"], true);
     assert_eq!(after(&built.args, "--permission-mode"), "auto");
 
+    // N-9 (AC-3): an Audit run's settings carry no permissions key at all
+    let audit_built = build(&audit_spec(), &ctx(&root), &env).unwrap();
+    let audit_settings = settings_json(&audit_built.args);
+    assert!(
+        audit_settings.get("permissions").is_none(),
+        "{audit_settings}"
+    );
+
     let mut worker = audit_spec();
     worker.role = RunRole::Worker;
     worker.agent = None;
@@ -344,6 +352,22 @@ fn blanket_tool_rules_refuse_to_build() {
         "Bash(python *)",
         "Bash(sh -c *)",
         "Agent",
+        // R-1: the colon spelling of a wildcarded interpreter
+        "Bash(python:*)",
+        "Bash(bash:*)",
+        // R-2: the env/xargs/sudo/npx escapes and a versioned interpreter
+        "Bash(env *)",
+        "Bash(xargs *)",
+        "Bash(sudo *)",
+        "Bash(npx *)",
+        "Bash(python3.12 *)",
+        // R-4: command/exec/uv and a path-spelled interpreter (basename match)
+        "Bash(command *)",
+        "Bash(exec *)",
+        "Bash(uv *)",
+        "Bash(/usr/bin/env *)",
+        // R-3: the Monitor allow rule the dropped-rules list forbids
+        "Monitor",
     ] {
         let mut spec = audit_spec();
         spec.allowed_tools = vec![blanket.to_string()];
@@ -358,6 +382,8 @@ fn blanket_tool_rules_refuse_to_build() {
         "Read".to_string(),
         "Bash(git diff *)".to_string(),
         "Bash(npm test)".to_string(),
+        // a named subcommand with the colon wildcard stays narrow
+        "Bash(git log:*)".to_string(),
     ];
     assert!(build(&spec, &ctx(&root), &env).is_ok());
 }
@@ -500,6 +526,8 @@ fn one_run_one_ledger_row() {
     let outcome = parse_result(&raw);
     let row = ledger_row(&built, &raw, &outcome);
 
+    // N-9 (AC-6): the verdict exists and is the schema-checked word
+    assert_eq!(row["verdict"], "fail");
     assert_eq!(row["session_id"], "standin");
     assert_eq!(row["cost_is_estimate"], true);
     assert!(row["total_cost_usd"].is_number());
@@ -523,4 +551,183 @@ fn one_run_one_ledger_row() {
     assert_eq!(count, 1);
     let payload: serde_json::Value = serde_json::from_str(&payload).unwrap();
     assert_eq!(payload["session_id"], "standin");
+}
+
+/// N-4: only the success subtype can answer — anything else is no verdict.
+#[test]
+fn a_non_success_subtype_is_no_verdict() {
+    use moai_cli::headless_run::{parse_result, RawRun, RunOutcome};
+    let raw = RawRun {
+        success: true,
+        code: Some(0),
+        stdout: r#"{"type":"result","subtype":"error_max_turns","is_error":false,"structured_output":{"verdict":"pass"}}"#.into(),
+        stderr: String::new(),
+    };
+    assert!(matches!(parse_result(&raw), RunOutcome::NoVerdict { .. }));
+}
+
+/// N-1: the verdict field is checked against the schema before it is trusted.
+#[test]
+fn the_verdict_field_is_checked_against_the_schema() {
+    use moai_cli::headless_run::check_verdict;
+    let schema = json!({"type":"object","properties":{"verdict":{"type":"string","enum":["pass","fail"]}},"required":["verdict"]});
+    let ok = json!({"verdict":"pass"});
+    assert_eq!(check_verdict(&ok, &schema).unwrap(), "pass");
+    let wrong_enum = json!({"verdict":"maybe"});
+    assert!(check_verdict(&wrong_enum, &schema).is_err());
+    let missing = json!({"other": 1});
+    assert!(check_verdict(&missing, &schema).is_err());
+    let wrong_type = json!({"verdict": 3});
+    assert!(check_verdict(&wrong_type, &schema).is_err());
+}
+
+/// N-2 + B-1b: a run past its wall-clock limit is killed — the whole process group, so a
+/// background grandchild holding the pipe cannot stretch the wait — and reports no success.
+#[test]
+fn a_wall_clock_limit_kills_the_run() {
+    use moai_cli::headless_run::run_with_limit;
+    use std::time::{Duration, Instant};
+    let tmp = tempfile::tempdir().unwrap();
+    let fixtures = tmp.path().join("bin");
+    fs::create_dir_all(&fixtures).unwrap();
+    // a stand-in that outlives the limit and leaves a grandchild holding the pipe
+    let slow = "#!/bin/sh\nsleep 30 &\nwait\n";
+    common::write_executable(&fixtures.join("claude"), slow);
+    let record = tmp.path().join("record.txt");
+    let root = tmp.path().join("platform");
+    fs::create_dir_all(&root).unwrap();
+    let built = build(&audit_spec(), &ctx(&root), &parent_env(&fixtures, &record)).unwrap();
+    let started = Instant::now();
+    let raw = run_with_limit(&built, tmp.path(), Duration::from_millis(300)).unwrap();
+    let elapsed = started.elapsed();
+    assert!(!raw.success, "a killed run is not a success");
+    assert!(raw.stderr.contains("wall-clock"), "{}", raw.stderr);
+    assert!(
+        elapsed < Duration::from_secs(5),
+        "the group kill must not wait for the grandchild: {elapsed:?}"
+    );
+}
+
+/// B-1: a large answer must come back quickly — the wait drains stdout and stderr while it
+/// polls, so a full pipe never turns an answer into a timeout.
+#[test]
+fn a_large_answer_is_not_killed_by_a_full_pipe() {
+    use moai_cli::headless_run::{parse_result, run_with_limit, RunOutcome};
+    use std::time::{Duration, Instant};
+    let tmp = tempfile::tempdir().unwrap();
+    let fixtures = tmp.path().join("bin");
+    fs::create_dir_all(&fixtures).unwrap();
+    // ~300 KB of answer inside one JSON result
+    let big = "#!/bin/sh\n\
+printf '%s' '{\"type\":\"result\",\"subtype\":\"success\",\"is_error\":false,\"session_id\":\"standin\",\"structured_output\":{\"verdict\":\"pass\",\"detail\":\"'\n\
+head -c 300000 /dev/zero | tr '\\0' 'x'\n\
+printf '%s\\n' '\"}}'\n";
+    common::write_executable(&fixtures.join("claude"), big);
+    let record = tmp.path().join("record.txt");
+    let root = tmp.path().join("platform");
+    fs::create_dir_all(&root).unwrap();
+    let built = build(&audit_spec(), &ctx(&root), &parent_env(&fixtures, &record)).unwrap();
+    let started = Instant::now();
+    let raw = run_with_limit(&built, tmp.path(), Duration::from_secs(5)).unwrap();
+    let elapsed = started.elapsed();
+    assert!(
+        elapsed < Duration::from_secs(5),
+        "a large answer must not hit the limit: {elapsed:?}"
+    );
+    assert!(raw.success, "{}", raw.stderr);
+    assert!(raw.stdout.len() > 300_000, "{} bytes", raw.stdout.len());
+    assert!(matches!(parse_result(&raw), RunOutcome::Answered(_)));
+}
+
+/// F-1 case 1: a child that exits and leaves a background sleeper holding the pipe — the
+/// group is killed on normal exit too, so the call does not stretch past the limit.
+#[test]
+fn a_background_sleeper_does_not_stretch_the_call() {
+    use moai_cli::headless_run::run_with_limit;
+    use std::time::{Duration, Instant};
+    let tmp = tempfile::tempdir().unwrap();
+    let fixtures = tmp.path().join("bin");
+    fs::create_dir_all(&fixtures).unwrap();
+    let leaves_sleeper = "#!/bin/sh\nsleep 30 &\nexit 0\n";
+    common::write_executable(&fixtures.join("claude"), leaves_sleeper);
+    let record = tmp.path().join("record.txt");
+    let root = tmp.path().join("platform");
+    fs::create_dir_all(&root).unwrap();
+    let built = build(&audit_spec(), &ctx(&root), &parent_env(&fixtures, &record)).unwrap();
+    let started = Instant::now();
+    let raw = run_with_limit(&built, tmp.path(), Duration::from_secs(1)).unwrap();
+    let elapsed = started.elapsed();
+    assert!(raw.success, "{}", raw.stderr);
+    assert!(
+        elapsed < Duration::from_secs(4),
+        "the group kill on exit must not wait for the sleeper: {elapsed:?}"
+    );
+}
+
+/// F-1 case 2: a grandchild that leaves the process group escapes the group kill — the
+/// bounded join abandons the pipe instead of stretching the call past the limit.
+#[test]
+fn a_group_leaving_grandchild_does_not_stretch_the_call() {
+    use moai_cli::headless_run::run_with_limit;
+    use std::time::{Duration, Instant};
+    let tmp = tempfile::tempdir().unwrap();
+    let fixtures = tmp.path().join("bin");
+    fs::create_dir_all(&fixtures).unwrap();
+    let leaves_group =
+        "#!/bin/sh\npython3 -c 'import os,time; os.setsid(); time.sleep(30)' &\nexit 0\n";
+    common::write_executable(&fixtures.join("claude"), leaves_group);
+    let record = tmp.path().join("record.txt");
+    let root = tmp.path().join("platform");
+    fs::create_dir_all(&root).unwrap();
+    let built = build(&audit_spec(), &ctx(&root), &parent_env(&fixtures, &record)).unwrap();
+    let started = Instant::now();
+    let raw = run_with_limit(&built, tmp.path(), Duration::from_secs(1)).unwrap();
+    let elapsed = started.elapsed();
+    assert!(raw.success, "{}", raw.stderr);
+    assert!(
+        elapsed < Duration::from_secs(6),
+        "the bounded join must abandon the pipe, not wait out the escapee: {elapsed:?}"
+    );
+}
+
+/// N-7 and N-8: the prompt sits behind `--`, and the author comparison ignores case and
+/// falls back to the environment's session id.
+#[test]
+fn prompt_sits_behind_a_dashdash_and_the_author_check_ignores_case() {
+    let tmp = tempfile::tempdir().unwrap();
+    let fixtures = tmp.path().join("bin");
+    fs::create_dir_all(&fixtures).unwrap();
+    let record = tmp.path().join("record.txt");
+    standin_claude(&fixtures);
+    let root = tmp.path().join("platform");
+    fs::create_dir_all(&root).unwrap();
+    let mut env = parent_env(&fixtures, &record);
+
+    // N-7: the recorded argv ends "-- <prompt>", never a bare dash-prompt
+    let built = build(&audit_spec(), &ctx(&root), &env).unwrap();
+    let n = built.args.len();
+    assert_eq!(built.args[n - 2], "--");
+    assert_eq!(built.args[n - 1], "audit the head");
+
+    // N-8: an author id differing only in case is still the author
+    let mut self_audit = audit_spec();
+    self_audit.role = RunRole::Audit {
+        author_session: REQUESTING.to_ascii_uppercase(),
+    };
+    assert!(build(&self_audit, &ctx(&root), &env).is_err());
+
+    // N-8: an empty requesting session falls back to CLAUDE_CODE_SESSION_ID
+    env.insert("CLAUDE_CODE_SESSION_ID".into(), REQUESTING.into());
+    let blank_ctx = RunContext {
+        requesting_session: String::new(),
+        platform_root: Some(root.clone()),
+    };
+    let mut same_author = audit_spec();
+    same_author.role = RunRole::Audit {
+        author_session: REQUESTING.into(),
+    };
+    assert!(
+        build(&same_author, &blank_ctx, &env).is_err(),
+        "the env session id is the requester, so the author audit must refuse"
+    );
 }

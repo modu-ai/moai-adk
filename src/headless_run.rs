@@ -92,6 +92,9 @@ pub struct BuiltRun {
     pub managed_mcp_deployed: bool,
     pub scrubbed: Vec<String>,
     pub credential_warning: Option<String>,
+    /// The schema the answer is checked against (N-1): carried from the spec so the verdict
+    /// is trusted only after `check_verdict`.
+    pub verdict_schema: Option<Value>,
 }
 
 /// The raw outcome of one started run (parsed in the next slice).
@@ -110,7 +113,15 @@ pub fn build(
     ctx: &RunContext,
     parent_env: &BTreeMap<String, String>,
 ) -> Result<BuiltRun> {
-    let requesting = ctx.requesting_session.trim().to_string();
+    // N-8: the requesting session comes from the caller or, when blank, from the
+    // environment's CLAUDE_CODE_SESSION_ID; the author comparison ignores case.
+    let requesting = match ctx.requesting_session.trim() {
+        "" => parent_env
+            .get("CLAUDE_CODE_SESSION_ID")
+            .map(|s| s.trim().to_string())
+            .unwrap_or_default(),
+        given => given.to_string(),
+    };
     if requesting.is_empty() {
         return Err("headless run without a requesting session".to_string());
     }
@@ -122,7 +133,7 @@ pub fn build(
             if author.is_empty() {
                 return Err("audit run names no author session".to_string());
             }
-            if author == requesting {
+            if author.eq_ignore_ascii_case(&requesting) {
                 return Err(format!(
                     "audit run requested by the change's author session {author}: the author never audits"
                 ));
@@ -251,7 +262,9 @@ pub fn build(
         .to_string()
     });
 
-    // The prompt is the positional argument, last.
+    // The prompt is the positional argument, last, behind `--` so a dash-leading prompt is
+    // never read as a flag (N-7).
+    args.push("--".into());
     args.push(spec.prompt.clone());
 
     let program = resolve_program(&env)?;
@@ -265,29 +278,155 @@ pub fn build(
         managed_mcp_deployed: deployed,
         scrubbed,
         credential_warning,
+        verdict_schema: spec.schema.clone(),
     })
 }
 
-/// Starts a built run: prints the credential warning once, spawns the resolved program with the
-/// exact argv and environment, and returns the raw outcome (parsed in the next slice).
+/// Starts a built run with the default wall-clock limit of thirty minutes (N-2).
 pub fn run(built: &BuiltRun, cwd: &Path) -> Result<RawRun> {
+    run_with_limit(built, cwd, std::time::Duration::from_secs(1800))
+}
+
+/// Starts a built run under a wall-clock limit (N-2, audit B-1 and B-1b): prints the
+/// credential warning once, spawns the resolved program with the exact argv and environment
+/// in a process group of its own, drains stdout and stderr on threads while it waits (a
+/// full pipe never turns an answer into a timeout), and kills the whole group at the
+/// deadline, reporting no success.
+pub fn run_with_limit(built: &BuiltRun, cwd: &Path, limit: std::time::Duration) -> Result<RawRun> {
+    use std::io::Read;
+    use std::process::Stdio;
     if let Some(warning) = &built.credential_warning {
         eprintln!("{warning}");
     }
-    let output = std::process::Command::new(&built.program)
+    let mut command = std::process::Command::new(&built.program);
+    command
         .args(&built.args)
         .env_clear()
         .envs(&built.env)
         .current_dir(cwd)
-        .output()
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    new_group(&mut command);
+    let mut child = command
+        .spawn()
         .map_err(|e| format!("starting {}: {e}", built.program.display()))?;
+    let group = child.id();
+    // B-1: drain both pipes on threads while the deadline is polled.
+    let mut stdout_pipe = child.stdout.take();
+    let mut stderr_pipe = child.stderr.take();
+    let stdout_thread = std::thread::spawn(move || {
+        let mut buf = Vec::new();
+        if let Some(pipe) = stdout_pipe.as_mut() {
+            let _ = pipe.read_to_end(&mut buf);
+        }
+        buf
+    });
+    let stderr_thread = std::thread::spawn(move || {
+        let mut buf = Vec::new();
+        if let Some(pipe) = stderr_pipe.as_mut() {
+            let _ = pipe.read_to_end(&mut buf);
+        }
+        buf
+    });
+    let deadline = std::time::Instant::now() + limit;
+    let mut timed_out = false;
+    loop {
+        match child.try_wait() {
+            Ok(Some(_)) => break,
+            Ok(None) => {
+                if std::time::Instant::now() >= deadline {
+                    kill_at_deadline(&mut child, group);
+                    timed_out = true;
+                    break;
+                }
+                std::thread::sleep(std::time::Duration::from_millis(20));
+            }
+            Err(e) => return Err(format!("waiting for {}: {e}", built.program.display())),
+        }
+    }
+    // F-1: a descendant that still holds the pipes must not stretch the call — kill the
+    // group on normal exit too, then bound the joins and abandon what will not finish.
+    kill_stragglers(group);
+    let drain_bound = std::time::Duration::from_secs(2);
+    let stdout = join_bounded(stdout_thread, drain_bound).unwrap_or_default();
+    let stderr_bytes = join_bounded(stderr_thread, drain_bound).unwrap_or_default();
+    let status = child
+        .wait()
+        .map_err(|e| format!("collecting {}: {e}", built.program.display()))?;
+    let mut stderr = if timed_out {
+        format!(
+            "{}\nmoai: wall-clock limit of {} seconds exceeded; the child was killed",
+            String::from_utf8_lossy(&stderr_bytes),
+            limit.as_secs()
+        )
+    } else {
+        String::from_utf8_lossy(&stderr_bytes).into_owned()
+    };
+    if timed_out {
+        stderr.push_str("\nmoai: an output drain may have been abandoned at the limit");
+    }
     Ok(RawRun {
-        success: output.status.success(),
-        code: output.status.code(),
-        stdout: String::from_utf8_lossy(&output.stdout).into_owned(),
-        stderr: String::from_utf8_lossy(&output.stderr).into_owned(),
+        success: status.success() && !timed_out,
+        code: status.code(),
+        stdout: String::from_utf8_lossy(&stdout).into_owned(),
+        stderr,
     })
 }
+
+/// Joins a drain thread within a short bound (F-1); `None` abandons the pipe.
+fn join_bounded<T>(handle: std::thread::JoinHandle<T>, bound: std::time::Duration) -> Option<T> {
+    let deadline = std::time::Instant::now() + bound;
+    while std::time::Instant::now() < deadline {
+        if handle.is_finished() {
+            return handle.join().ok();
+        }
+        std::thread::sleep(std::time::Duration::from_millis(10));
+    }
+    None
+}
+
+/// Puts the child in a process group of its own (B-1b: a group kill reaches grandchildren
+/// that hold the pipes).
+#[cfg(unix)]
+fn new_group(command: &mut std::process::Command) {
+    use std::os::unix::process::CommandExt;
+    command.process_group(0);
+}
+
+#[cfg(not(unix))]
+fn new_group(_command: &mut std::process::Command) {}
+
+/// Kills at the deadline: the whole process group on unix, the child itself elsewhere
+/// (F-2 — the non-unix branch must still kill something).
+#[cfg(unix)]
+fn kill_at_deadline(child: &mut std::process::Child, pgid: u32) {
+    let _ = child;
+    // SAFETY: libc kill with a negative pid signals the process group; failure (the group
+    // already gone) is fine at the deadline.
+    unsafe {
+        libc::kill(-(pgid as i32), libc::SIGKILL);
+    }
+}
+
+#[cfg(not(unix))]
+fn kill_at_deadline(child: &mut std::process::Child, _pgid: u32) {
+    let _ = child.kill();
+}
+
+/// Kills whatever still runs in the child's group after a normal exit, so a background
+/// sleeper cannot hold the pipes (F-1); nothing to do outside unix, where the child ran
+/// without a group.
+#[cfg(unix)]
+fn kill_stragglers(pgid: u32) {
+    // SAFETY: as above; a group that already exited reports ESRCH, which is fine.
+    unsafe {
+        libc::kill(-(pgid as i32), libc::SIGKILL);
+    }
+}
+
+#[cfg(not(unix))]
+fn kill_stragglers(_pgid: u32) {}
 
 /// What one run's result is, checked before it is trusted (SPEC REQ-11): a `success` subtype
 /// alone is not an answer.
@@ -318,6 +457,10 @@ pub fn parse_result(raw: &RawRun) -> RunOutcome {
     let Ok(value) = serde_json::from_str::<Value>(&raw.stdout) else {
         return no("stdout is not one JSON object");
     };
+    // N-4: only the success subtype can carry an answer.
+    if value.get("subtype").and_then(Value::as_str) != Some("success") {
+        return no("the result subtype is not success");
+    }
     if value.get("is_error").and_then(Value::as_bool) != Some(false) {
         return no("the result carries is_error true or no is_error field");
     }
@@ -331,15 +474,60 @@ pub fn parse_result(raw: &RawRun) -> RunOutcome {
     }
 }
 
+/// Checks the verdict field of an answered run against the schema that asked for it (N-1):
+/// the field must exist, carry the schema's type and, when the schema names an enum, be one
+/// of its words. Returns the verdict string; the message never carries other values.
+pub fn check_verdict(answer: &Value, schema: &Value) -> Result<String> {
+    let verdict = answer
+        .get("verdict")
+        .ok_or_else(|| "the answer carries no verdict field".to_string())?;
+    let field = schema
+        .get("properties")
+        .and_then(|p| p.get("verdict"))
+        .ok_or_else(|| "the schema names no verdict property".to_string())?;
+    if let Some(words) = field.get("enum").and_then(Value::as_array) {
+        let held = verdict.as_str().unwrap_or("");
+        if !words.iter().any(|w| w.as_str() == Some(held)) {
+            return Err("the verdict is not one of the schema's words".to_string());
+        }
+    }
+    match (field.get("type").and_then(Value::as_str), verdict) {
+        (Some("string"), Value::String(s)) => Ok(s.clone()),
+        (Some("string"), _) => Err("the verdict field must be a string".to_string()),
+        (_, Value::String(s)) => Ok(s.clone()),
+        (_, other) => Err(format!(
+            "the verdict field must be a scalar, not {}",
+            json_kind(other)
+        )),
+    }
+}
+
+fn json_kind(value: &Value) -> &'static str {
+    match value {
+        Value::Null => "null",
+        Value::Bool(_) => "a boolean",
+        Value::Number(_) => "a number",
+        Value::String(_) => "a string",
+        Value::Array(_) => "an array",
+        Value::Object(_) => "an object",
+    }
+}
+
 /// One `claude.run` ledger payload (SPEC REQ-12): the verdict, the session id, the cost as a
 /// marked estimate, the turns, the terminal reason and the permission denials.
 pub fn ledger_row(built: &BuiltRun, raw: &RawRun, outcome: &RunOutcome) -> Value {
     let result: Value = serde_json::from_str(&raw.stdout).unwrap_or(Value::Null);
     let verdict = match outcome {
-        RunOutcome::Answered(answer) => answer
-            .get("verdict")
-            .cloned()
-            .unwrap_or_else(|| Value::String("answered".into())),
+        // N-1: the verdict is trusted only after it is checked against the schema that
+        // asked for it; a refused check is recorded as such, never as a verdict.
+        RunOutcome::Answered(answer) => match (&built.verdict_schema, answer.get("verdict")) {
+            (Some(schema), _) => match check_verdict(answer, schema) {
+                Ok(word) => Value::String(word),
+                Err(reason) => json!({"verdict_refused": reason}),
+            },
+            (None, Some(v)) => v.clone(),
+            (None, None) => Value::String("answered".into()),
+        },
         RunOutcome::NoVerdict { reason } => json!({"no_verdict": reason}),
     };
     let terminal_reason = json!({
@@ -411,7 +599,7 @@ fn narrow_rule(tool: &str) -> Result<()> {
         inner
             .split_whitespace()
             .next()
-            .is_some_and(|word| INTERPRETERS_AND_WRAPPERS.contains(&word))
+            .is_some_and(broad_first_word)
     });
     if blanket || wildcard_only || wildcarded_word {
         return Err(format!(
@@ -421,9 +609,25 @@ fn narrow_rule(tool: &str) -> Result<()> {
     Ok(())
 }
 
-/// The first words that turn a wildcarded command rule into a blanket one: interpreters and
-/// the wrappers that run what follows them (permission-modes.md's dropped-rules list).
-const INTERPRETERS_AND_WRAPPERS: [&str; 15] = [
+/// Whether a command rule's first word turns a wildcarded rule into a blanket one: the
+/// interpreters and wrappers that run what follows them, in every spelling — a versioned
+/// interpreter (python3.12), the `:*` colon suffix and the word's basename
+/// (`/usr/bin/env`) included (permission-modes.md's dropped-rules list, audits R-1 R-2
+/// and R-4).
+fn broad_first_word(word: &str) -> bool {
+    let word = word.split(':').next().unwrap_or(word);
+    let word = word.rsplit('/').next().unwrap_or(word);
+    if INTERPRETERS_AND_WRAPPERS.contains(&word) {
+        return true;
+    }
+    // a versioned python: python3, python3.12, pypy-style digits and dots after the name
+    word.strip_prefix("python")
+        .is_some_and(|rest| rest.chars().all(|c| c.is_ascii_digit() || c == '.'))
+}
+
+/// The first words that run what follows them (permission-modes.md's dropped-rules list,
+/// the env/xargs/sudo/npx escapes of audit R-2, command/exec/uv of R-4).
+const INTERPRETERS_AND_WRAPPERS: [&str; 22] = [
     "python",
     "python3",
     "node",
@@ -439,6 +643,13 @@ const INTERPRETERS_AND_WRAPPERS: [&str; 15] = [
     "time",
     "nice",
     "nohup",
+    "env",
+    "xargs",
+    "sudo",
+    "npx",
+    "command",
+    "exec",
+    "uv",
 ];
 
 /// Whether a platform `managed-mcp.json` is deployed (SPEC REQ-3, D-2). A test passes its own
@@ -463,16 +674,23 @@ fn platform_dir() -> PathBuf {
 }
 
 /// Resolves `claude` from the PATH of the child environment, so a stand-in first on that PATH
-/// takes the program's place (SPEC D-5) and the spawn never depends on the parent's PATH.
+/// takes the program's place (SPEC D-5) and the spawn never depends on the parent's PATH. On
+/// Windows the PATH separator is `;` and the program carries an `.exe` suffix (N-10).
 fn resolve_program(env: &BTreeMap<String, String>) -> Result<PathBuf> {
     let path = env
         .get("PATH")
         .ok_or_else(|| "child environment has no PATH".to_string())?;
-    for dir in path.split(':') {
+    let program = if cfg!(windows) {
+        "claude.exe"
+    } else {
+        "claude"
+    };
+    let separator = if cfg!(windows) { ';' } else { ':' };
+    for dir in path.split(separator) {
         if dir.is_empty() {
             continue;
         }
-        let candidate = Path::new(dir).join("claude");
+        let candidate = Path::new(dir).join(program);
         if is_executable(&candidate) {
             return Ok(candidate);
         }
