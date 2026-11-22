@@ -1517,14 +1517,14 @@ fn unmanaged_notices(home: &Path) -> Vec<serde_json::Value> {
         out.push(json!({
             "part": "unmanaged",
             "host": "codex",
-            "reason": "Codex files under ~/.codex and ~/.agents/skills are left as they are; moai no longer manages them",
+            "reason": "Codex files under ~/.codex and ~/.agents/skills are left as they are; moai no longer manages them; remove them yourself if you do not use them",
         }));
     }
     if present(".omp") {
         out.push(json!({
             "part": "unmanaged",
             "host": "omp",
-            "reason": "OMP files under ~/.omp are left as they are; moai no longer manages them",
+            "reason": "OMP files under ~/.omp are left as they are; moai no longer manages them; remove them yourself if you do not use them",
         }));
     }
     out
