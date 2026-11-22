@@ -16,7 +16,6 @@
 mod common;
 
 use common::CleanEnv as _;
-use moai_cli::hooks;
 use serde_json::{json, Value};
 use std::{
     fs,
@@ -28,7 +27,6 @@ use tempfile::TempDir;
 const FIXTURES: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/hooks-pre-p4");
 const RUST: &str = "moai 1.2.3 (rust)";
 const GO: &str = "moai-adk v3.2.1-rc.6";
-const LANE_ARGS: [&str; 4] = ["--lane-loop", "agent-1", "--repo", "o/r"];
 
 /// One host's files: where they go in the project and which fixtures hold the old bytes.
 #[derive(Clone, Copy)]
@@ -53,34 +51,7 @@ const CLAUDE: Host = Host {
     fresh_args: &[],
     entries: 4,
 };
-const CODEX: Host = Host {
-    name: "codex",
-    file: ".codex/hooks.json",
-    receipt: ".moai-cli/manifests/codex-hooks.json",
-    fixture: "codex.hooks.json",
-    fixture_receipt: "codex.receipt.json",
-    fresh_args: &[],
-    entries: 3,
-};
-const CODEX_LANE: Host = Host {
-    name: "codex",
-    file: ".codex/hooks.json",
-    receipt: ".moai-cli/manifests/codex-hooks.json",
-    fixture: "codex-lane.hooks.json",
-    fixture_receipt: "codex-lane.receipt.json",
-    fresh_args: &LANE_ARGS,
-    entries: 4,
-};
-const OMP: Host = Host {
-    name: "omp",
-    file: ".omp/extensions/moai-hooks.ts",
-    receipt: ".moai-cli/manifests/omp-hooks.json",
-    fixture: "omp.moai-hooks.ts",
-    fixture_receipt: "omp.receipt.json",
-    fresh_args: &[],
-    entries: 1,
-};
-const ALL: [Host; 4] = [CLAUDE, CODEX, CODEX_LANE, OMP];
+const ALL: [Host; 1] = [CLAUDE];
 
 /// One temporary world: `root/project`, `root/home` and the PATH folders `rust`, `go`.
 struct World {
@@ -190,10 +161,6 @@ fn plan(w: &World, h: Host, path_env: &str) -> Value {
     result(w, &plan_args(w, h, "hooks-plan", &[]), path_env)
 }
 
-fn plan_envelope(w: &World, h: Host, path_env: &str) -> Value {
-    envelope(w, &plan_args(w, h, "hooks-plan", &[]), path_env)
-}
-
 /// `hooks-apply` of `digest`; the whole envelope, since a refusal is part of the test.
 fn apply(w: &World, h: Host, digest: &str, path_env: &str, extra: &[&str]) -> Value {
     let mut a = plan_args(w, h, "hooks-apply", extra);
@@ -234,7 +201,7 @@ fn commands(file: &[u8]) -> Vec<String> {
 }
 
 /// AC-1: every command a fresh install writes starts with `moai ` and `moai-cli` is in no file
-/// the install wrote, the receipts and the OMP module and the lane Stop group included.
+/// the install wrote, the receipt included.
 #[test]
 fn a_fresh_install_calls_moai_everywhere() {
     for h in ALL {
@@ -244,13 +211,9 @@ fn a_fresh_install_calls_moai_everywhere() {
             let text = String::from_utf8_lossy(bytes);
             assert!(!text.contains("moai-cli"), "{} {name}: {text}", h.fixture);
         }
-        if h.name == "omp" {
-            assert_eq!(file, hooks::omp_module("moai").as_bytes());
-        } else {
-            let cmds = commands(&file);
-            assert_eq!(cmds.len(), h.entries, "{cmds:?}");
-            assert!(cmds.iter().all(|c| c.starts_with("moai ")), "{cmds:?}");
-        }
+        let cmds = commands(&file);
+        assert_eq!(cmds.len(), h.entries, "{cmds:?}");
+        assert!(cmds.iter().all(|c| c.starts_with("moai ")), "{cmds:?}");
         assert_eq!(next["action"], json!("unchanged"), "{next}");
         assert_eq!(next["binary_migration"]["state"], json!("none"), "{next}");
     }
@@ -273,25 +236,11 @@ fn a_legacy_install_is_previewed_as_a_rewrite_and_nothing_is_written() {
         assert_eq!(m["blocked_by"], Value::Null, "{p}");
         let entries = m["entries"].as_array().unwrap();
         assert_eq!(entries.len(), h.entries, "{p}");
-        if h.name == "omp" {
-            let old = hooks::omp_module(hooks::LEGACY_BINARY);
-            let new = hooks::omp_module(hooks::HOOK_BINARY);
-            assert_eq!(entries[0]["kind"], json!("module"));
-            assert_eq!(
-                entries[0]["before_sha256"],
-                json!(moai_cli::digest(old.as_bytes()))
-            );
-            assert_eq!(
-                entries[0]["after_sha256"],
-                json!(moai_cli::digest(new.as_bytes()))
-            );
-        } else {
-            for e in entries {
-                let (b, a) = (e["before"].as_str().unwrap(), e["after"].as_str().unwrap());
-                assert!(b.starts_with("moai-cli "), "{e}");
-                assert_eq!(a, b.replacen("moai-cli", "moai", 1), "{e}");
-                assert_eq!(e["decision"], json!("rewrite"), "{e}");
-            }
+        for e in entries {
+            let (b, a) = (e["before"].as_str().unwrap(), e["after"].as_str().unwrap());
+            assert!(b.starts_with("moai-cli "), "{e}");
+            assert_eq!(a, b.replacen("moai-cli", "moai", 1), "{e}");
+            assert_eq!(e["decision"], json!("rewrite"), "{e}");
         }
         assert_eq!(p["gate"]["allowed"], json!(true), "{p}");
         assert_eq!(w.files(h), before, "a plan writes nothing");
@@ -405,8 +354,7 @@ fn an_edited_entry_keeps_the_whole_set_and_is_never_printed() {
 }
 
 /// AC-6: a Claude set with another hook beside MoAI's old entries is `mixed_entries`, an old set
-/// with no ownership receipt is `not_owned`; both are held whole. Codex and OMP files that are
-/// edited or have no receipt are left for review.
+/// with no ownership receipt is `not_owned`; both are held whole.
 #[test]
 fn mixed_and_receipt_less_installs_are_held() {
     // Mixed: the user added a group of their own.
@@ -446,31 +394,6 @@ fn mixed_and_receipt_less_installs_are_held() {
         "{p}"
     );
     assert_eq!(w.read(CLAUDE.file), before);
-
-    // Codex and OMP: a whole-file receipt; an edited file or no receipt is a review.
-    for h in [CODEX, CODEX_LANE, OMP] {
-        let w = world();
-        w.write(h.file, &fixture(h.fixture));
-        let before = w.read(h.file);
-        let v = plan_envelope(&w, h, &w.rust());
-        assert_eq!(v["ok"], json!(false), "{}: {v}", h.fixture);
-        assert!(
-            v.to_string().contains("requires preservation review"),
-            "{v}"
-        );
-        assert_eq!(w.read(h.file), before);
-        w.install_legacy(h);
-        let mut edited = fixture(h.fixture);
-        edited.extend_from_slice(b"\n// edited by the user\n");
-        w.write(h.file, &edited);
-        let v = plan_envelope(&w, h, &w.rust());
-        assert_eq!(v["ok"], json!(false), "{}: {v}", h.fixture);
-        assert!(
-            v.to_string().contains("requires preservation review"),
-            "{v}"
-        );
-        assert_eq!(w.read(h.file), edited);
-    }
 }
 
 /// AC-10: a rewrite needs the Rust build first on PATH. Under a Go `moai`, no `moai` or a `moai`
@@ -586,11 +509,6 @@ fn the_status_names_an_old_install_legacy_binary() {
         let p = plan(&w, h, &w.rust());
         assert_eq!(p["hook_status"]["configured"], json!("yes"), "{p}");
     }
-    let w = world();
-    w.install_legacy(OMP);
-    w.write(OMP.file, b"// something else\n");
-    let p = plan_envelope(&w, OMP, &w.rust());
-    assert!(p.to_string().contains("preservation review"), "{p}");
 }
 
 /// A file the receipt owns whole but that is neither the old nor the current set (an earlier
@@ -618,22 +536,4 @@ fn an_earlier_owned_set_is_replaced_whole_and_named() {
     assert_eq!(m["entries"], json!([]), "{p}");
     assert_eq!(m["replaced"][0]["reason"], json!("earlier_moai_set"), "{p}");
     assert!(!p.to_string().contains("--earlier"), "{p}");
-
-    // OMP: the receipt's sha256 matches a module that is not the old one.
-    let w = world();
-    let module = b"// an earlier moai module\n";
-    w.write(OMP.file, module);
-    let mut receipt: Value = serde_json::from_slice(&fixture(OMP.fixture_receipt)).unwrap();
-    receipt["sha256"] = json!(moai_cli::digest(module));
-    w.write(OMP.receipt, &serde_json::to_vec_pretty(&receipt).unwrap());
-    let p = plan(&w, OMP, &w.rust());
-    assert_eq!(p["action"], json!("update"), "{p}");
-    let m = &p["binary_migration"];
-    assert_eq!(m["state"], json!("rewrite"), "{p}");
-    assert_eq!(m["entries"], json!([]), "{p}");
-    assert_eq!(
-        m["replaced"][0]["reason"],
-        json!("earlier_moai_module"),
-        "{p}"
-    );
 }

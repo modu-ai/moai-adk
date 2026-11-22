@@ -52,12 +52,7 @@ fn allowed(r: &Run) -> bool {
     r.code == 0 && r.stdout.is_empty()
 }
 
-fn patch_adding(path: &str, line: &str) -> Value {
-    json!({"command": format!("*** Begin Patch\n*** Add File: {path}\n+{line}\n*** End Patch")})
-}
-
-/// The five ways written content reaches tool-preflight: four Claude tools and one Codex patch.
-/// `content` must be one line (a patch line starts with `+`).
+/// The four ways written content reaches tool-preflight: the four Claude write tools.
 fn every_write(cwd: &Path, content: &str) -> Vec<(&'static str, Run)> {
     let path = cwd.join("out.txt");
     let path = path.to_str().unwrap();
@@ -98,10 +93,6 @@ fn every_write(cwd: &Path, content: &str) -> Vec<(&'static str, Run)> {
                 json!({"notebook_path": path, "new_source": content}),
             ),
         ),
-        (
-            "apply_patch",
-            dispatch("codex", cwd, "apply_patch", patch_adding(path, content)),
-        ),
     ]
 }
 
@@ -140,8 +131,7 @@ fn in_line(value: &str) -> String {
 
 // ---- AC-1 (REQ-1, REQ-3) ----
 
-/// AC-1: each prefix with exactly 40 accepted characters is refused through every write tool and
-/// the Codex patch.
+/// AC-1: each prefix with exactly 40 accepted characters is refused through every write tool.
 #[test]
 fn refused_each_prefix_at_exactly_forty_through_every_write_tool() {
     let dir = tempfile::TempDir::new().unwrap();

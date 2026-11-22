@@ -362,6 +362,22 @@ mod receipts {
         assert_eq!(tree(&home.join(".omp")), omp_before);
     }
 
+    /// The files a hook receipt of `host` named when the host was served (the host's layer is
+    /// gone, so they are written out here).
+    fn receipt_files(project: &Path, host: &str) -> Vec<String> {
+        match host {
+            "codex" => vec![
+                ".codex/hooks.json".into(),
+                ".moai-cli/manifests/codex-hooks.json".into(),
+            ],
+            "omp" => vec![
+                ".omp/extensions/moai-hooks.ts".into(),
+                ".moai-cli/manifests/omp-hooks.json".into(),
+            ],
+            _ => moai_cli::hooks::written_files(project, host).unwrap().0,
+        }
+    }
+
     /// A hand-written hook receipt: absent before and after for every file of the hosts, so a
     /// host the revert handles has nothing to restore.
     fn hook_receipt(project: &Path, hosts: &[&str]) -> String {
@@ -369,8 +385,7 @@ mod receipts {
         let entries: Vec<Value> = hosts
             .iter()
             .map(|h| {
-                let (files, _) = moai_cli::hooks::written_files(project, h).unwrap();
-                let files: Vec<Value> = files
+                let files: Vec<Value> = receipt_files(project, h)
                     .iter()
                     .map(|f| json!({"path": f, "before_sha256": null, "after_sha256": null}))
                     .collect();
@@ -810,7 +825,7 @@ mod backup_move {
                 assert!(!text.contains(old), "{rel} still names `{old}`");
             }
         }
-        assert!(source("src/hooks.rs").contains("config_backup"));
+        // The hook adapters that used the backup code were removed with their hosts.
         assert!(source("src/go_state.rs").contains("config_backup::CONFIG_LIMIT"));
     }
 }

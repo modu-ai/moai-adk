@@ -313,7 +313,7 @@ fn a_go_moai_first_on_path_is_the_wrong_generation_and_no_hook_is_written() {
         assert_eq!(code, Some(0), "{v}");
         v["result"].clone()
     };
-    for host in ["claude", "codex", "omp"] {
+    for host in moai_cli::hooks::HOSTS.iter().copied() {
         let plan = plan_with(&go_first, host);
         assert_eq!(plan["hook_binary"]["name"], "moai", "{host}: {plan}");
         assert_eq!(
@@ -348,10 +348,8 @@ fn a_go_moai_first_on_path_is_the_wrong_generation_and_no_hook_is_written() {
             "{refused}"
         );
     }
-    // Nothing was written for any host, and the Go `moai` heard `--version` only.
-    for path in [".claude", ".codex", ".omp"] {
-        assert!(!p.join(path).exists(), "{path} was written");
-    }
+    // Nothing was written, and the Go `moai` heard `--version` only.
+    assert!(!p.join(".claude").exists(), ".claude was written");
     let calls = fs::read_to_string(&go_log).unwrap();
     assert!(
         calls.lines().count() >= 1 && calls.lines().all(|l| l == "--version"),
@@ -359,7 +357,7 @@ fn a_go_moai_first_on_path_is_the_wrong_generation_and_no_hook_is_written() {
     );
 
     // The Rust `moai` first: the same plan is `resolved`, and the apply writes.
-    let plan = plan_with(&rust_first, "codex");
+    let plan = plan_with(&rust_first, "claude");
     assert_eq!(plan["hook_binary"]["state"], "resolved", "{plan}");
     assert_eq!(plan["gate"]["allowed"], true, "{plan}");
     let (code, applied) = run(
@@ -368,7 +366,7 @@ fn a_go_moai_first_on_path_is_the_wrong_generation_and_no_hook_is_written() {
             "hooks-apply",
             ".",
             "--host",
-            "codex",
+            "claude",
             "--plan-digest",
             plan["plan_digest"].as_str().unwrap(),
             "--permission-reference",
@@ -376,7 +374,7 @@ fn a_go_moai_first_on_path_is_the_wrong_generation_and_no_hook_is_written() {
         ],
     );
     assert_eq!(code, Some(0), "{applied}");
-    assert!(p.join(".codex/hooks.json").is_file());
+    assert!(p.join(".claude/settings.json").is_file());
 
     // Run the generated claim guard the way a host does with the Rust `moai` first: its
     // command string through a shell with that PATH, the PreToolUse input on stdin. The Go

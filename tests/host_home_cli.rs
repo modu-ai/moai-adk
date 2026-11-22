@@ -521,65 +521,61 @@ fn the_codex_doctor_reads_codex_home() {
     assert!(!v.to_string().contains(&s(&cx)), "{v}");
 }
 
-/// REQ-7 (audit B1): the hook writer refuses a project whose `.claude` or `.codex` is the folder
-/// `CLAUDE_CONFIG_DIR` or `CODEX_HOME` names, or a project inside that folder, for both hosts;
-/// nothing is written. A project elsewhere still plans.
+/// REQ-7 (audit B1): the hook writer refuses a project whose `.claude` is the folder
+/// `CLAUDE_CONFIG_DIR` names, or a project inside that folder; nothing is written. A project
+/// elsewhere still plans.
 #[test]
 fn hooks_refuse_the_relocated_user_folders() {
     let w = World::new();
-    for (host, var, dir) in [
-        ("claude", "CLAUDE_CONFIG_DIR", ".claude"),
-        ("codex", "CODEX_HOME", ".codex"),
-    ] {
-        let project = w.outside(&format!("{host}-project"));
-        fs::create_dir_all(project.join(dir)).unwrap();
-        let user = project.join(dir);
-        let inside = user.join("sub");
-        fs::create_dir_all(&inside).unwrap();
-        let u = std::ffi::OsString::from(&user);
-        for target in [&project, &inside] {
-            let m = refused(&w.run_os(
-                &[(var, u.as_os_str())],
-                &["hooks-plan", &s(target), "--host", host],
-                None,
-            ));
-            assert!(m.contains(var), "{host} {}: {m}", target.display());
-            let m = refused(&w.run_os(
-                &[(var, u.as_os_str())],
-                &[
-                    "hooks-apply",
-                    &s(target),
-                    "--host",
-                    host,
-                    "--plan-digest",
-                    "sha256:00",
-                    "--permission-reference",
-                    PERM,
-                ],
-                None,
-            ));
-            assert!(m.contains(var), "{host} apply: {m}");
-        }
-        assert!(!user.join("hooks.json").exists());
-        assert!(!user.join("settings.json").exists());
-        // An empty or relative value is refused by name too.
-        for bad in ["", "rel"] {
-            let m = refused(&w.run_os(
-                &[(var, std::ffi::OsStr::new(bad))],
-                &["hooks-plan", &s(&project), "--host", host],
-                None,
-            ));
-            assert!(m.contains(var), "{host} {bad:?}: {m}");
-        }
-        // A project elsewhere plans with the variable set.
-        let other = w.outside(&format!("{host}-other"));
-        fs::create_dir_all(&other).unwrap();
-        ok(&w.run_os(
+    let (host, var, dir) = ("claude", "CLAUDE_CONFIG_DIR", ".claude");
+    let project = w.outside(&format!("{host}-project"));
+    fs::create_dir_all(project.join(dir)).unwrap();
+    let user = project.join(dir);
+    let inside = user.join("sub");
+    fs::create_dir_all(&inside).unwrap();
+    let u = std::ffi::OsString::from(&user);
+    for target in [&project, &inside] {
+        let m = refused(&w.run_os(
             &[(var, u.as_os_str())],
-            &["hooks-plan", &s(&other), "--host", host],
+            &["hooks-plan", &s(target), "--host", host],
             None,
         ));
+        assert!(m.contains(var), "{host} {}: {m}", target.display());
+        let m = refused(&w.run_os(
+            &[(var, u.as_os_str())],
+            &[
+                "hooks-apply",
+                &s(target),
+                "--host",
+                host,
+                "--plan-digest",
+                "sha256:00",
+                "--permission-reference",
+                PERM,
+            ],
+            None,
+        ));
+        assert!(m.contains(var), "{host} apply: {m}");
     }
+    assert!(!user.join("hooks.json").exists());
+    assert!(!user.join("settings.json").exists());
+    // An empty or relative value is refused by name too.
+    for bad in ["", "rel"] {
+        let m = refused(&w.run_os(
+            &[(var, std::ffi::OsStr::new(bad))],
+            &["hooks-plan", &s(&project), "--host", host],
+            None,
+        ));
+        assert!(m.contains(var), "{host} {bad:?}: {m}");
+    }
+    // A project elsewhere plans with the variable set.
+    let other = w.outside(&format!("{host}-other"));
+    fs::create_dir_all(&other).unwrap();
+    ok(&w.run_os(
+        &[(var, u.as_os_str())],
+        &["hooks-plan", &s(&other), "--host", host],
+        None,
+    ));
 }
 
 /// REQ-5, D10 (user decision 2026-11-17, "기본 폴더 링크만 허용"): a folder in the relocated host
