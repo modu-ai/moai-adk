@@ -251,6 +251,24 @@ pub fn secret_lines(text: &str) -> Vec<Finding> {
     findings
 }
 
+/// The personal instructions file Claude Code reads beside `CLAUDE.md`: one person's notes, never
+/// build input, so an include list must not copy it (SPEC-20261122-worktree-place REQ-15,
+/// REQ-16, leader note 6026).
+const LOCAL_INSTRUCTIONS: &str = "CLAUDE.local.md";
+
+/// The line of an include list that selects `CLAUDE.local.md` at the project root, decided as
+/// git reads the list (a later `!` for the file un-selects it).
+pub fn local_instructions_line(text: &str) -> Option<Finding> {
+    let rules = parse(text);
+    deciding_rule(&rules, LOCAL_INSTRUCTIONS)
+        .filter(|r| !r.negate)
+        .map(|r| Finding {
+            line: r.line,
+            pattern: r.text.clone(),
+            probes: vec![LOCAL_INSTRUCTIONS.to_string()],
+        })
+}
+
 /// One line of the include list or the ignore list that selects paths a move takes away
 /// (#2936 R-A).
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize)]
@@ -350,7 +368,7 @@ pub fn warnings(project: &Path) -> Vec<String> {
             )]
         }
     };
-    secret_lines(&text)
+    let mut lines: Vec<String> = secret_lines(&text)
         .into_iter()
         .map(|f| {
             format!(
@@ -361,7 +379,15 @@ pub fn warnings(project: &Path) -> Vec<String> {
                 f.probes.join(", ")
             )
         })
-        .collect()
+        .collect();
+    if let Some(f) = local_instructions_line(&text) {
+        lines.push(format!(
+            "{FILE} line {} `{}` copies {LOCAL_INSTRUCTIONS} (one person's instructions, not build \
+             input) into every new Claude Code worktree; remove the line (not changed here)",
+            f.line, f.pattern
+        ));
+    }
+    lines
 }
 
 #[cfg(test)]

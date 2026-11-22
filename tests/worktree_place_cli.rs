@@ -423,6 +423,39 @@ fn worktree_place_scans_the_selection_ignores_the_place() {
     assert_eq!(sel.scans, moai_cli::check_affected::Scans::None);
     assert_eq!(moai_cli::check_affected::area(&changed[0]), None);
 }
+
+/// AC-12 (REQ-15, REQ-16, leader note 6026): the read-only `.worktreeinclude` check names a line
+/// that selects `CLAUDE.local.md` — written out, through a pattern, nested, and kept when a later
+/// negation only un-selects another file — and names nothing for a list of build files or a
+/// list whose later line un-selects it. The check writes nothing.
+#[test]
+fn worktree_place_include_names_a_line_that_copies_claude_local_md() {
+    let named = |list: &str| -> Vec<String> {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::write(tmp.path().join(".worktreeinclude"), list).unwrap();
+        let w = moai_cli::worktree_include::warnings(tmp.path());
+        assert_eq!(
+            std::fs::read_to_string(tmp.path().join(".worktreeinclude")).unwrap(),
+            list,
+            "the check wrote the file"
+        );
+        w.into_iter()
+            .filter(|l| l.contains("CLAUDE.local.md"))
+            .collect()
+    };
+    for (list, line) in [
+        ("CLAUDE.local.md\n", "line 1"),
+        ("build/gen.rs\n*.local.md\n", "line 2"),
+        ("**/CLAUDE.local.md\n", "line 1"),
+        ("*.md\n!README.md\n", "line 1"),
+    ] {
+        let w = named(list);
+        assert_eq!(w.len(), 1, "{list:?}: {w:?}");
+        assert!(w[0].contains(line), "{list:?}: {w:?}");
+    }
+    assert!(named("build/gen.rs\nconfig/local.toml\n").is_empty());
+    assert!(named("*.md\n!CLAUDE.local.md\n").is_empty());
+}
 /// Audit B1 (REQ-13): the owner of a place path is found by what the ancestors resolve to. A
 /// path spelled through a linked alias of the project finds the project, a linked `.claude` is
 /// not followed to reach it, and a path outside the place has no owner.
