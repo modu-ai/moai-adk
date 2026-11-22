@@ -1239,6 +1239,86 @@ fn worktree_place_links_a_case_changed_spelling_is_refused() {
     assert!(!git(&f.repo, &["for-each-ref", "refs/heads"]).contains("lane/"));
 }
 
+/// Plans and applies `--path <via>` with the lane prefix and returns the apply answer.
+#[cfg(unix)]
+fn apply_via(f: &Fixture, via: &str) -> Value {
+    let p = project(f);
+    let plan_out = run(
+        &f.repo,
+        &args(
+            &[
+                "worktree-plan",
+                &p,
+                "--branch-prefix",
+                "lane",
+                "--path",
+                via,
+            ],
+            &f.source,
+        ),
+    );
+    let digest = envelope(&plan_out)["result"]["plan_digest"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    apply_with(f, &digest, &["--path", via, "--disk-floor-bytes", "0"])
+}
+
+/// Audit B3 (REQ-13): a `.` or `..` part in `--path` is refused plainly, whatever it is mixed
+/// with: `.claude/zz/../worktrees/x` reached the folder behind a linked `.claude`, and
+/// `.claude/../.claude/worktrees/x` left the project. Nothing is made.
+#[cfg(unix)]
+#[test]
+fn worktree_place_links_dot_parts_in_the_path_are_refused() {
+    let f = fixture();
+    let outside = f.repo.parent().unwrap().join("outside-b3");
+    fs::create_dir_all(&outside).unwrap();
+    std::os::unix::fs::symlink(&outside, f.repo.join(".claude")).unwrap();
+    for (i, tail) in [
+        ".claude/zz/../worktrees/x5",
+        ".claude/../.claude/worktrees/x6",
+        ".claude/./worktrees/x7",
+    ]
+    .iter()
+    .enumerate()
+    {
+        let via = format!("{}/{}", f.repo.display(), tail);
+        let env = apply_via(&f, &via);
+        assert_eq!(env["result"]["decision"], "conflict", "{i} {env}");
+        assert_eq!(env["result"]["reason"], "place_path_refused", "{i} {env}");
+    }
+    assert!(
+        fs::remove_dir(&outside).is_ok(),
+        "something was made behind the link"
+    );
+    assert!(!git(&f.repo, &["for-each-ref", "refs/heads"]).contains("lane/"));
+}
+
+/// Audit B3 (REQ-13): one mixed path: a linked alias of the project, a changed case and a linked
+/// middle part together are refused, and nothing is made behind the link.
+#[cfg(unix)]
+#[test]
+fn worktree_place_links_a_mixed_path_is_refused() {
+    let f = fixture();
+    if !disk_ignores_case(f.repo.parent().unwrap()) {
+        return;
+    }
+    let outside = f.repo.parent().unwrap().join("outside-b3-mixed");
+    fs::create_dir_all(&outside).unwrap();
+    fs::create_dir_all(f.repo.join(".claude/worktrees")).unwrap();
+    std::os::unix::fs::symlink(&outside, f.repo.join(".claude/worktrees/group")).unwrap();
+    let alias = f.repo.parent().unwrap().join("alias-b3");
+    std::os::unix::fs::symlink(&f.repo, &alias).unwrap();
+    let via = alias.join(".Claude/WORKTREES/group/w");
+    let env = apply_via(&f, via.to_str().unwrap());
+    assert_eq!(env["result"]["decision"], "conflict", "{env}");
+    assert_eq!(env["result"]["reason"], "place_is_a_link", "{env}");
+    assert!(
+        fs::remove_dir(&outside).is_ok(),
+        "something was made behind the link"
+    );
+}
+
 /// Audit N2 (AC-9, REQ-12): the plan names the folder name a session opens with
 /// `claude --worktree <name>`.
 #[test]
