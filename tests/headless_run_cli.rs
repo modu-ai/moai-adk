@@ -383,13 +383,20 @@ fn blanket_tool_rules_refuse_to_build() {
         "Bash(FOO=a\\ b python *)",
         "Bash(FOO=\"say \\\"hi\\\"\" python *)",
         "Bash(FOO=1 sh *)",
-        // Q-2: assignment spellings the name check missed
+        // assignment spellings a plain name check misses
         "Bash(FOO+=1 python *)",
         "Bash(arr[0]=1 python *)",
-        // Q-3: a quoted, escaped or redirected first word
+        // a quoted, escaped or redirected first word
         "Bash(\\python *)",
         "Bash(\"python\" *)",
         "Bash(>/dev/null python *)",
+        // B-1: descriptor and & redirection prefixes
+        "Bash(2>&1 python *)",
+        "Bash(2>/dev/null python *)",
+        "Bash(&>/dev/null python *)",
+        // N-2: the < and single-quote legs, each pinned on its own
+        "Bash(</dev/null python *)",
+        "Bash('python' *)",
         // R-3: the Monitor allow rule the dropped-rules list forbids
         "Monitor",
     ] {
@@ -857,7 +864,7 @@ fn assignment_prefixed_wildcard_rules_refuse_in_every_spelling() {
     assert!(build(&spec, &ctx(&root), &env).is_ok());
 }
 
-/// Q-1: the REAL reaped-elsewhere case, in a process of its own (the audit's wording):
+/// The reaped-elsewhere case, in a process of its own (the audit's wording):
 /// SIGCHLD set to SIG_IGN makes the kernel reap children at exit, so waitid answers ECHILD,
 /// wait() fails and the arm under test runs — success false, code none, the answer kept,
 /// no verdict. The disposition is process-wide, so the child of this test re-execs the
@@ -886,19 +893,30 @@ exit 0\n";
             libc::signal(libc::SIGCHLD, libc::SIG_IGN);
         }
         let raw = run_with_limit(&built, tmp.path(), Duration::from_secs(5)).unwrap();
-        println!(
-            "REAPED_JSON:{}",
+        // the parent hands us the outcome path in the environment: write, clean, exit
+        let out_path = std::env::var("REAPED_ELSEWHERE_OUT").unwrap();
+        fs::write(
+            &out_path,
             serde_json::json!({
                 "success": raw.success,
                 "code": raw.code,
                 "stdout": raw.stdout,
                 "stderr": raw.stderr,
             })
-        );
+            .to_string(),
+        )
+        .expect("write the outcome file");
+        drop(built);
+        drop(record);
+        drop(root);
+        let _ = reaped;
+        let _ = tmp;
         std::process::exit(0);
     }
 
-    // Parent mode: re-exec this same test in a fresh process with the marker set.
+    // Parent mode: re-exec this same test in a fresh process with the marker set and a
+    // known outcome path — a file sidesteps single-thread libtest interleaving stdout.
+    let outcome = tmp.path().join("reaped-outcome.json");
     let exe = std::env::current_exe().unwrap();
     let out = std::process::Command::new(exe)
         .args([
@@ -907,16 +925,12 @@ exit 0\n";
             "--nocapture",
         ])
         .env("REAPED_ELSEWHERE_CHILD", "1")
+        .env("REAPED_ELSEWHERE_OUT", outcome.display().to_string())
         .output()
         .expect("spawn the reaped-elsewhere child process");
     assert!(out.status.success(), "child test process failed");
-    let text = String::from_utf8_lossy(&out.stdout);
-    let line = text
-        .lines()
-        .rev()
-        .find_map(|l| l.strip_prefix("REAPED_JSON:"))
-        .expect("the child printed its RawRun json");
-    let raw: Value = serde_json::from_str(line).expect("the json parses");
+    let raw: Value = serde_json::from_str(&fs::read_to_string(&outcome).expect("the outcome file"))
+        .expect("the json parses");
     assert!(
         !raw["success"].as_bool().unwrap(),
         "unknown status is not a success"
@@ -924,9 +938,15 @@ exit 0\n";
     assert!(raw["code"].is_null(), "the exit code is unknown");
     let stderr = raw["stderr"].as_str().unwrap();
     assert!(stderr.contains("unknown"), "{stderr}");
-    // the drained answer was kept, and without a status it can be no verdict
-    assert!(raw["stdout"]
-        .as_str()
-        .unwrap()
-        .contains("structured_output"));
+    // the kept answer is STILL no verdict without a status — asserted, not just said
+    let raw_run = moai_cli::headless_run::RawRun {
+        success: raw["success"].as_bool().unwrap(),
+        code: raw["code"].as_i64().map(|c| c as i32),
+        stdout: raw["stdout"].as_str().unwrap().to_string(),
+        stderr: stderr.to_string(),
+    };
+    assert!(matches!(
+        moai_cli::headless_run::parse_result(&raw_run),
+        moai_cli::headless_run::RunOutcome::NoVerdict { .. }
+    ));
 }

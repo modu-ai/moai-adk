@@ -748,8 +748,8 @@ fn narrow_rule(tool: &str) -> Result<()> {
         inner.is_empty() || inner.starts_with('*') || inner == ":*"
     });
     let starts_with_assignment = |inner: &str| {
-        // Q-2: FOO+=1 and arr[0]=1 are assignments too — the name may carry an index
-        // suffix or a + before the =, and every such prefix counts as an assignment.
+        // += and array-index assignments count too — the name may carry an index
+        // the name may carry an index or + before the =.
         inner.split_once('=').is_some_and(|(name, _)| {
             let name = name.split_once('[').map_or(name, |(base, _)| base);
             let name = name.strip_suffix('+').unwrap_or(name);
@@ -762,25 +762,27 @@ fn narrow_rule(tool: &str) -> Result<()> {
         if !inner.contains('*') {
             return false;
         }
-        // P-1 stricter rule: an assignment prefix on a wildcarded rule refuses outright —
-        // every quote spelling is covered by the refusal, not by parsing.
+        // An assignment prefix on a wildcarded rule refuses outright — every quote
+        // spelling is covered by the refusal, not by parsing.
         if starts_with_assignment(inner.trim_start()) {
             return true;
         }
-        // Q-3: a first word holding a quote, a backslash or a redirection cannot be told
-        // apart from its interpreter safely — a wildcarded rule with one refuses.
+        // A first word holding a quote, a backslash or a redirection — anywhere in the
+        // word, or an & prefix — cannot be told apart from its interpreter safely, so a
+        // wildcarded rule with one refuses (2>&1, 2>/dev/null and &>/dev/null included).
         let Some(first) = inner.split_whitespace().next() else {
             return false;
         };
         if first.contains('"')
             || first.contains('\'')
             || first.contains('\\')
-            || first.starts_with('>')
-            || first.starts_with('<')
+            || first.contains('>')
+            || first.contains('<')
+            || first.starts_with('&')
         {
             return true;
         }
-        first.split_whitespace().next() == Some(first) && broad_first_word(first)
+        broad_first_word(first)
     });
     if blanket || wildcard_only || wildcarded_word {
         return Err(format!(
