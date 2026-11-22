@@ -1253,3 +1253,116 @@ fn line_three_ladder_without_a_usable_columns_and_below_the_narrowest() {
     let line = plain_three_at(&api_key_user(), None, "3");
     assert_eq!(line, "🔋 CW 41%");
 }
+
+/// AC-9 (REQ-12): one render with `rate_limits`, the Orca hook variables and the Orca wrapper
+/// in place starts at most one `git` and exactly one wrapper, and writes nothing but the session
+/// cache and the usage record (both in the temporary folder); the HOME is left as it was.
+#[test]
+fn line_three_ladder_one_render_starts_one_git_and_one_orca_wrapper_at_most() {
+    let f = fixture();
+    let outside = tempfile::tempdir().unwrap();
+    let log = outside.path().join("spawns.log");
+    let bin = outside.path().join("bin");
+    std::fs::create_dir_all(&bin).unwrap();
+    let real_git = String::from_utf8(
+        std::process::Command::new("sh")
+            .args(["-c", "command -v git"])
+            .output()
+            .unwrap()
+            .stdout,
+    )
+    .unwrap();
+    common::write_executable(
+        &bin.join("git"),
+        &format!(
+            "#!/bin/sh\necho git >> '{}'\nexec '{}' \"$@\"\n",
+            log.display(),
+            real_git.trim()
+        ),
+    );
+    let wrapper = f.home.path().join(".orca/agent-hooks/claude-statusline.sh");
+    std::fs::create_dir_all(wrapper.parent().unwrap()).unwrap();
+    common::write_executable(
+        &wrapper,
+        &format!(
+            "#!/bin/sh\n/bin/cat > /dev/null\necho orca >> '{}'\n",
+            log.display()
+        ),
+    );
+    let mut stdin = subscriber(85);
+    stdin["session_id"] = serde_json::json!("s-ac9");
+    // The usage record keeps a window by the wall clock (not the `--now-unix` seam), so its
+    // resets lie far ahead (2100-01-01).
+    for w in ["five_hour", "seven_day"] {
+        stdin["rate_limits"][w]["resets_at"] = serde_json::json!(4_102_444_800_i64);
+    }
+    stdin["cwd"] = serde_json::json!(f.project);
+    stdin["workspace"] = serde_json::json!({
+        "current_dir": f.project,
+        "project_dir": f.project,
+        "repo": {"host": "github.com", "owner": "modu-ai", "name": "moai-adk"},
+    });
+    let tmp = tempfile::tempdir().unwrap();
+    let before = f.home.snapshot();
+    let mut cmd = f
+        .home
+        .command(&["statusline", "--render-budget-ms", "3600000"]);
+    cmd.current_dir(&f.project)
+        .env("PATH", &bin)
+        .env("TMPDIR", tmp.path())
+        .env("NO_COLOR", "1")
+        .env("ORCA_AGENT_HOOK_PORT", "1")
+        .env("ORCA_AGENT_HOOK_TOKEN", "fake")
+        .env("ORCA_PANE_KEY", "tab:1")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null());
+    let mut child = cmd.spawn().unwrap();
+    child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(stdin.to_string().as_bytes())
+        .unwrap();
+    let out = child.wait_with_output().unwrap();
+    assert_eq!(out.status.code(), Some(0));
+    let count = |what: &str| {
+        std::fs::read_to_string(&log)
+            .unwrap_or_default()
+            .lines()
+            .filter(|l| *l == what)
+            .count()
+    };
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(30);
+    while count("orca") == 0 && std::time::Instant::now() < deadline {
+        std::thread::sleep(std::time::Duration::from_millis(50));
+    }
+    std::thread::sleep(std::time::Duration::from_millis(300));
+    assert_eq!(count("orca"), 1, "the wrapper starts once");
+    assert!(count("git") <= 1, "git started {} times", count("git"));
+    assert_eq!(f.home.snapshot(), before, "the render changed the HOME");
+    let mut written: Vec<String> = Vec::new();
+    let mut stack = vec![tmp.path().to_path_buf()];
+    while let Some(dir) = stack.pop() {
+        for e in std::fs::read_dir(&dir).unwrap() {
+            let p = e.unwrap().path();
+            if p.is_dir() {
+                stack.push(p);
+            } else {
+                written.push(
+                    p.strip_prefix(tmp.path())
+                        .unwrap()
+                        .to_string_lossy()
+                        .into_owned(),
+                );
+            }
+        }
+    }
+    written.sort();
+    assert_eq!(written.len(), 2, "{written:?}");
+    assert_eq!(written[0], "moai-statusline/s-ac9.json", "{written:?}");
+    assert!(
+        written[1].starts_with("moai-statusline/usage-") && written[1].ends_with(".record"),
+        "{written:?}"
+    );
+}
