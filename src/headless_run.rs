@@ -411,7 +411,7 @@ fn narrow_rule(tool: &str) -> Result<()> {
         inner
             .split_whitespace()
             .next()
-            .is_some_and(|word| INTERPRETERS_AND_WRAPPERS.contains(&word))
+            .is_some_and(broad_first_word)
     });
     if blanket || wildcard_only || wildcarded_word {
         return Err(format!(
@@ -421,9 +421,23 @@ fn narrow_rule(tool: &str) -> Result<()> {
     Ok(())
 }
 
-/// The first words that turn a wildcarded command rule into a blanket one: interpreters and
-/// the wrappers that run what follows them (permission-modes.md's dropped-rules list).
-const INTERPRETERS_AND_WRAPPERS: [&str; 15] = [
+/// Whether a command rule's first word turns a wildcarded rule into a blanket one: the
+/// interpreters and wrappers that run what follows them, in every spelling — a versioned
+/// interpreter (python3.12) and the `:*` colon suffix included (permission-modes.md's
+/// dropped-rules list, audit R-1 and R-2).
+fn broad_first_word(word: &str) -> bool {
+    let word = word.split(':').next().unwrap_or(word);
+    if INTERPRETERS_AND_WRAPPERS.contains(&word) {
+        return true;
+    }
+    // a versioned python: python3, python3.12, pypy-style digits and dots after the name
+    word.strip_prefix("python")
+        .is_some_and(|rest| rest.chars().all(|c| c.is_ascii_digit() || c == '.'))
+}
+
+/// The first words that run what follows them (permission-modes.md's dropped-rules list plus
+/// the env/xargs/sudo/npx escapes of audit R-2).
+const INTERPRETERS_AND_WRAPPERS: [&str; 19] = [
     "python",
     "python3",
     "node",
@@ -439,6 +453,10 @@ const INTERPRETERS_AND_WRAPPERS: [&str; 15] = [
     "time",
     "nice",
     "nohup",
+    "env",
+    "xargs",
+    "sudo",
+    "npx",
 ];
 
 /// Whether a platform `managed-mcp.json` is deployed (SPEC REQ-3, D-2). A test passes its own

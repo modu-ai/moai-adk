@@ -344,6 +344,17 @@ fn blanket_tool_rules_refuse_to_build() {
         "Bash(python *)",
         "Bash(sh -c *)",
         "Agent",
+        // R-1: the colon spelling of a wildcarded interpreter
+        "Bash(python:*)",
+        "Bash(bash:*)",
+        // R-2: the env/xargs/sudo/npx escapes and a versioned interpreter
+        "Bash(env *)",
+        "Bash(xargs *)",
+        "Bash(sudo *)",
+        "Bash(npx *)",
+        "Bash(python3.12 *)",
+        // R-3: the Monitor allow rule the dropped-rules list forbids
+        "Monitor",
     ] {
         let mut spec = audit_spec();
         spec.allowed_tools = vec![blanket.to_string()];
@@ -358,6 +369,8 @@ fn blanket_tool_rules_refuse_to_build() {
         "Read".to_string(),
         "Bash(git diff *)".to_string(),
         "Bash(npm test)".to_string(),
+        // a named subcommand with the colon wildcard stays narrow
+        "Bash(git log:*)".to_string(),
     ];
     assert!(build(&spec, &ctx(&root), &env).is_ok());
 }
