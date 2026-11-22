@@ -1,9 +1,11 @@
-//! AGENTS.md managed-section generation: plan (read-only) and apply (hash-rechecked).
+//! Project instruction files: plan (read-only) and apply (hash-rechecked).
 //!
-//! AGENTS.md stays user-owned. MoAI owns only the text between its managed markers and
+//! `CLAUDE.md` stays user-owned. MoAI owns only the text between its managed markers and
 //! decides per file with a baseline/current/new three-way comparison. Everything outside
 //! the markers is preserved byte for byte. A conflict is reported, never resolved by
-//! overwriting. AGENTS.local.md is created once and never modified afterwards.
+//! overwriting. `CLAUDE.local.md` is created once, on the user's pick, and never modified
+//! afterwards. `.claude/rules/moai/flow.md` is a whole file of MoAI's, replaced only while
+//! it holds the bytes MoAI last wrote. `AGENTS.md` and `AGENTS.local.md` are never written.
 
 use crate::apply::{self, decide, read_opt, relative_ok, root_of, target, Decision};
 use crate::retired_hosts::owned_entry_retired;
@@ -13,10 +15,22 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::path::Path;
 
+mod flow_text;
+
 type Result<T> = std::result::Result<T, String>;
 
 pub const AGENTS_SECTION: &str = "moai-workflow";
 pub const IGNORE_SECTION: &str = "moai-local";
+/// The project file that holds the managed block (Claude Code's own file name).
+pub const BLOCK_FILE: &str = "CLAUDE.md";
+/// The personal file, created once and only on the user's pick.
+pub const LOCAL_FILE: &str = "CLAUDE.local.md";
+/// The one flow rule file: unscoped (no `paths` key), so it loads at session start.
+pub const FLOW_FILE: &str = ".claude/rules/moai/flow.md";
+/// The section id the flow file's baseline is recorded under (the whole file is MoAI's).
+const FLOW_SECTION: &str = "moai-flow";
+/// What the file `AGENTS.md` is called; it is read, never written.
+const AGENTS_FILE: &str = "AGENTS.md";
 /// The REVIEW.md section the PROJECT interview fills (#2639).
 pub const REVIEW_SECTION: &str = "moai-review";
 /// Interview answers the REVIEW.md section carries, in the order it lists them.
@@ -39,19 +53,29 @@ pub struct AgentsRequest {
     /// Repo-relative directory the managed section points at for detailed procedures.
     /// Must exist at plan time; a missing reference blocks the plan.
     pub workflow_reference: String,
-    /// `none` (do not create), `ignored` (create once and add a .gitignore rule) or
-    /// `tracked` (create once, no ignore rule). The personal file is opt-in by design.
+    /// `none` (no personal file), `ignored` (the personal file is kept out of git) or `tracked`
+    /// (read as `ignored`: a personal file is not shared; the preview says so). The personal
+    /// file is created only on the pick `personal-file`.
     pub local_file: String,
-    /// What the user picked for a conflict (SPEC-20261119-agents-conflict-choices): ids from
-    /// [`PICKS`]. Absent when empty, so a request without picks digests as before.
+    /// What the user picked (SPEC-20261119-agents-conflict-choices, SPEC-20261122-claude-md-layout):
+    /// ids from [`PICKS`]. Absent when empty, so a request without picks digests as before.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub picks: Vec<String>,
 }
 
-/// The ids a request's `picks` may hold. `append-managed` appends the managed section to an
-/// AGENTS.md whose block was removed; `skip-conflicts` leaves each conflicting file as it is;
-/// `claude-import` adds the `@AGENTS.md` line to a CLAUDE.md that shadows AGENTS.md.
-pub const PICKS: [&str; 3] = ["append-managed", "skip-conflicts", "claude-import"];
+/// The ids a request's `picks` may hold. `append-managed` appends the managed section to a
+/// CLAUDE.md whose block was removed; `skip-conflicts` leaves each conflicting file as it is;
+/// `import` and `move` let the block go into `CLAUDE.md` of a project that holds an `AGENTS.md`
+/// (the text itself is carried over by the project layer of `moai update`); `personal-file`
+/// creates `CLAUDE.local.md` once. The earlier pick `claude-import` is gone from the writer:
+/// only the revert of an old receipt still reads its rows.
+pub const PICKS: [&str; 5] = [
+    "append-managed",
+    "skip-conflicts",
+    "import",
+    "move",
+    "personal-file",
+];
 
 fn picked(r: &AgentsRequest, id: &str) -> bool {
     r.picks.iter().any(|p| p == id)
@@ -83,12 +107,12 @@ pub struct AgentsPlan {
     pub profile_sha256: String,
     pub target_binding: String,
     pub files: Vec<FilePlan>,
-    /// Pre-existing host instruction files that may shadow or replace AGENTS.md. They are
-    /// preserved, never edited; actual host loading stays not_run.
+    /// Host notes of earlier versions; the writer no longer fills them (the files they named
+    /// are now MoAI's own targets), so the list is empty. The field stays for the schema.
     pub host_notes: Vec<String>,
     pub warnings: Vec<String>,
-    /// A CLAUDE.md that shadows AGENTS.md on Claude Code and does not import it. Information
-    /// for the user's pick: absent when none shadows, and not part of the plan digest.
+    /// Kept for the schema and for plans written by an earlier version: the writer no longer
+    /// sets it, because `CLAUDE.md` is MoAI's file and does not shadow anything.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub claude_shadow: Option<ClaudeShadow>,
     pub plan_digest: String,
@@ -160,30 +184,46 @@ fn validate(r: &AgentsRequest) -> Result<()> {
     Ok(())
 }
 
-/// The CLAUDE.md that shadows AGENTS.md, from the project files alone (no HOME, no `claude`
-/// run): the first of `CLAUDE.md` and `.claude/CLAUDE.md` that exists and does not import it.
-/// Only a profile that targets the `claude` host has one. The import line is relative to the
-/// file it goes into.
-fn claude_shadow(root: &Path, hosts: &[String]) -> Option<ClaudeShadow> {
-    if !hosts.iter().any(|h| h == "claude") {
-        return None;
+/// What a planned file looks like on disk, read without failing the plan: a link (the file or a
+/// folder above it inside the project) and text that is not UTF-8 are refused as a conflict row
+/// that writes nothing, not as an error of the whole plan.
+enum Probe {
+    Absent,
+    Text(Vec<u8>),
+    Refused(&'static str),
+}
+
+fn probe(root: &Path, rel: &str) -> Result<Probe> {
+    let path = match target(root, rel) {
+        Ok(path) => path,
+        Err(e) if e == "symlink target refused" => {
+            return Ok(Probe::Refused(
+                "the file, or a folder above it, is a link; nothing is written through a link",
+            ))
+        }
+        Err(e) => return Err(e),
+    };
+    Ok(match read_opt(&path)? {
+        None => Probe::Absent,
+        Some(bytes) if std::str::from_utf8(&bytes).is_err() => {
+            Probe::Refused("the file is not valid UTF-8 text; it is left as it is")
+        }
+        Some(bytes) => Probe::Text(bytes),
+    })
+}
+
+/// The conflict row of a file the plan refuses to touch (a link or a file that is not text).
+fn refused_row(path: &str, tracked: bool, section: Option<&str>, why: &str) -> FilePlan {
+    FilePlan {
+        path: path.into(),
+        action: "conflict".into(),
+        tracked_by_default: tracked,
+        expected_sha256: None,
+        section_id: section.map(String::from),
+        baseline_sha256: None,
+        rendered_sha256: None,
+        detail: Some(why.into()),
     }
-    [
-        ("CLAUDE.md", "@AGENTS.md"),
-        (".claude/CLAUDE.md", "@../AGENTS.md"),
-    ]
-    .into_iter()
-    .find(|(rel, _)| {
-        // A link is not a file this tool may write through (`apply::target` refuses it), and a
-        // CLAUDE.md linked to AGENTS.md already loads it.
-        let path = root.join(rel);
-        std::fs::symlink_metadata(&path).is_ok_and(|m| m.is_file())
-            && !crate::claude::imports_agents(&path)
-    })
-    .map(|(rel, line)| ClaudeShadow {
-        path: rel.into(),
-        import_line: line.into(),
-    })
 }
 
 pub(crate) fn markers(id: &str, comment: &str) -> (String, String) {
@@ -302,110 +342,141 @@ fn render_review(p: &Profile, r: &AgentsRequest) -> Option<String> {
     Some(format!("{begin}\n{body}{end}\n"))
 }
 
-fn render_agents(p: &Profile, r: &AgentsRequest, root: &Path) -> String {
-    let (begin, end) = markers(AGENTS_SECTION, "html");
-    let list = |v: &[String]| v.join(", ");
-    let lang = instruction_language(p, r);
-    let share = match (lang, r.local_file.as_str()) {
-        ("ko", "tracked") => "credential과 원문 비밀 로그는 repo와 Issue에 공유하지 않는다.",
-        ("ko", _) => "개인 `AGENTS.local.md`, credential, 원문 비밀 로그는 repo와 Issue에 공유하지 않는다.",
-        (_, "tracked") => "Never share credentials or raw secret logs in the repo or in Issues.",
-        _ => "Never share the personal `AGENTS.local.md`, credentials or raw secret logs in the repo or in Issues.",
+/// The most lines the managed block holds between its two marker lines (REQ-3).
+pub const BLOCK_MAX_LINES: usize = 15;
+
+/// The writing-language facts on one line: `render_lines` prints a heading, one row per item the
+/// profile sets and a closing sentence, which would use most of the block's lines; the rows alone
+/// carry the facts. `None` when the profile sets no language.
+fn writing_line(p: &Profile, ui: &str, root: &Path) -> Option<String> {
+    let settings = p.language.as_ref()?;
+    let full = crate::language::render_lines(
+        settings,
+        ui,
+        &crate::state_root::rel(root, "project.yaml"),
+    );
+    let rows: Vec<&str> = full.lines().filter_map(|l| l.strip_prefix("- ")).collect();
+    if rows.is_empty() {
+        return None;
+    }
+    let (head, tail) = if ui == "ko" {
+        ("작성 언어", "그 밖은 영어")
+    } else {
+        ("Writing language", "everything else English")
     };
-    // #2293: the writing-language lines appear only when the profile sets `language`, so a
-    // profile without it renders byte-identical to the earlier template; card C-87 S1: one line
-    // per item the profile sets, none guessed for the others.
-    let writing = p
-        .language
-        .as_ref()
-        .map(|l| {
-            format!(
-                "{}\n",
-                crate::language::render_lines(
-                    l,
-                    lang,
-                    &crate::state_root::rel(root, "project.yaml"),
-                )
-            )
-        })
-        .unwrap_or_default();
-    // C-69: the versioning line appears only when the profile records a choice, so a profile
-    // without it renders byte-identical to the earlier template.
+    Some(format!("{head}: {}; {tail}.\n", rows.join("; ")))
+}
+
+/// The managed block of `CLAUDE.md`: facts only, within [`BLOCK_MAX_LINES`] lines (REQ-3): the
+/// project id, the tools, the check command, the language, the versioning line, the flow with its
+/// integration branch, the places of SPECs and cards, and the flow rule file when one is planned.
+/// What to do and how to decide is the flow file's and the skills' to say, not the block's.
+fn render_agents(p: &Profile, r: &AgentsRequest, root: &Path, flow_planned: bool) -> String {
+    let (begin, end) = markers(AGENTS_SECTION, "html");
+    let lang = instruction_language(p, r);
+    let ko = lang == "ko";
+    let tools = p.tools.join(", ");
+    let writing = writing_line(p, lang, root).unwrap_or_default();
+    // C-69: the versioning line appears only when the profile records a choice.
     let versioning = p
         .versioning
         .as_ref()
         .map(|v| crate::versioning::render_line(v, lang))
         .unwrap_or_default();
-    let body = if lang == "ko" {
+    let specs = format!("{}/specs/", state_root::dir(root));
+    let flow = p
+        .work_flow
+        .as_ref()
+        .map(|w| {
+            let branch = w.integration_branch.as_deref();
+            let rules = if flow_planned {
+                if ko {
+                    format!("; 규칙은 `{FLOW_FILE}`")
+                } else {
+                    format!("; rules in `{FLOW_FILE}`")
+                }
+            } else {
+                String::new()
+            };
+            match (ko, branch) {
+                (true, Some(b)) => format!("작업 흐름: {} (통합 브랜치 `{b}`){rules}.\n", w.flow),
+                (true, None) => format!("작업 흐름: {}{rules}.\n", w.flow),
+                (false, Some(b)) => {
+                    format!("Work flow: {} (integration branch `{b}`){rules}.\n", w.flow)
+                }
+                (false, None) => format!("Work flow: {}{rules}.\n", w.flow),
+            }
+        })
+        .unwrap_or_default();
+    let body = if ko {
         format!(
-            "## MoAI 작업 흐름 (관리 구간)\n\n\
-프로젝트 `{id}` · 도구: {tools} · 개발 방식: {methods} · host: {hosts}.\n\
-목적: {purpose}\n\
-{versioning}\n\
-{writing}\
-승인한 SPEC과 Issue 범위를 확인한 뒤 계획 → 구현 → 실제 검증 → 독립 감사 → 보고 순서로 진행한다.\n\
-사실 확인은 스스로 하고 근거를 남긴다. 되돌릴 수 없거나, 허용 범위를 넘거나(비용·권한·외부 전송), 돈·법·외부 계약·비밀·실데이터·보호 대상 설정(권한·키·실제 HOME과 전역 설정·삭제·보호 설정)에 닿는 선택은 사용자를 기다리고, 나머지는 허용 범위 안에서 정한 뒤 기록한다.\n\
-실행하지 않은 검증을 PASS로 보고하지 않는다. passed·failed·not_run·blocked·stale을 구분한다.\n\
-어떤 검사를 로컬에서 돌리고 언제 정확한 head의 CI 결과를 대신 인용할 수 있는지는 VERIFY workflow의 \"Check-run rules\" 절(단일 출처)을 따른다.\n\
-MoAI binary가 없어도 native 도구로 가능한 작업을 수행한다. 필수 gate의 검증된 대체가 없으면 관련 실행·발행을 막고 blocked로 보고한다.\n\
-상세 절차는 `{wf}`에서 필요한 workflow만 읽는다.\n\
-{share}\n",
+            "## MoAI 프로젝트 사실 (관리 구간)\n\n\
+프로젝트 `{id}` · 도구: {tools}.\n\
+검사: `moai check affected`.\n\
+{writing}{versioning}{flow}\
+SPEC: `{specs}` · 카드: `moai card list`.\n",
             id = p.project_id,
-            tools = list(&p.tools),
-            methods = list(&p.development_methods),
-            hosts = list(&p.hosts),
-            purpose = p.purpose,
-            wf = r.workflow_reference,
         )
     } else {
         format!(
-            "## MoAI workflow (managed section)\n\n\
-Project `{id}` · tools: {tools} · methods: {methods} · hosts: {hosts}.\n\
-Purpose: {purpose}\n\
-{versioning}\n\
-{writing}\
-Confirm the approved SPEC and Issue scope, then proceed plan → implement → real verification → independent audit → report.\n\
-Answer a factual question yourself and cite the evidence. A choice that cannot be undone, that goes beyond the allowed scope (cost, permissions, external transmission), or that touches money, legal terms, external contracts, secrets, real data or a guarded setting (permissions, keys, the real HOME and global settings, deletions, protection settings) waits for the user; decide any other choice within the allowed scope and record it.\n\
-Never report an unexecuted check as PASS. Distinguish passed, failed, not_run, blocked and stale.\n\
-Which checks run locally, and when an exact-head CI result may be cited instead, follow the \"Check-run rules\" section of the VERIFY workflow (the single source).\n\
-Without the MoAI binary, do what native tools allow. When a required gate has no verified substitute, block the dependent action and report blocked.\n\
-Read only the workflow you need from `{wf}`.\n\
-{share}\n",
+            "## MoAI project facts (managed block)\n\n\
+Project `{id}` · tools: {tools}.\n\
+Checks: `moai check affected`.\n\
+{writing}{versioning}{flow}\
+SPECs: `{specs}` · cards: `moai card list`.\n",
             id = p.project_id,
-            tools = list(&p.tools),
-            methods = list(&p.development_methods),
-            hosts = list(&p.hosts),
-            purpose = p.purpose,
-            wf = r.workflow_reference,
         )
     };
     format!("{begin}\n{body}{end}\n")
 }
 
+/// The flow rule file's text for the profile's `work_flow`, in the instruction language, or
+/// `None` when the profile names no flow (REQ-9: no file is planned and the accepted values are
+/// named). Every value `Profile` accepts has a shipped text, so a profile with a flow always
+/// gets one.
+fn render_flow(p: &Profile, r: &AgentsRequest) -> Option<String> {
+    let w = p.work_flow.as_ref()?;
+    flow_text::render(
+        &w.flow,
+        w.integration_branch.as_deref(),
+        instruction_language(p, r) == "ko",
+    )
+}
+
+/// The first-creation text of the personal file `CLAUDE.local.md`, in the request language. A
+/// personal file is never tracked, so `tracked` renders like `ignored` (REQ-7).
 fn render_local(r: &AgentsRequest) -> String {
-    match (r.language.as_str(), r.local_file.as_str()) {
-        ("ko", "tracked") => "# 개인 작업 보충\n\n응답 언어: 한국어\n\n<!-- MoAI가 호출 시 명시적으로 읽는 개인 파일. 이 저장소에서는 추적을 허용했으므로 비밀값을 넣지 않는다. -->\n".into(),
-        ("ko", _) => "# 개인 작업 보충\n\n응답 언어: 한국어\n\n<!-- MoAI가 호출 시 명시적으로 읽는 개인 파일. 비밀값을 넣지 않으며 repo·Issue에 공유하지 않는다. -->\n".into(),
-        (_, "tracked") => "# Personal supplement\n\nResponse language: English\n\n<!-- Personal file MoAI reads explicitly when invoked. Tracking is allowed in this repository, so keep secrets out of it. -->\n".into(),
-        _ => "# Personal supplement\n\nResponse language: English\n\n<!-- Personal file MoAI reads explicitly when invoked. Keep secrets out; never share it in the repo or in Issues. -->\n".into(),
+    match r.language.as_str() {
+        "ko" => "# 개인 작업 보충\n\n응답 언어: 한국어\n\n<!-- Claude Code가 CLAUDE.md 옆에서 함께 읽는 개인 파일. 비밀값을 넣지 않으며 repo에 공유하지 않는다. -->\n".into(),
+        _ => "# Personal supplement\n\nResponse language: English\n\n<!-- Personal file Claude Code loads next to CLAUDE.md. Keep secrets out; never share it in the repo. -->\n".into(),
     }
 }
 
-/// `true` when `bytes` is exactly one of the personal-file texts `render_local` writes (#2936
-/// R10): such a file holds nothing the user wrote, so a merge into `AGENTS.md` skips it.
+/// The first-creation texts of the personal file `AGENTS.local.md` that earlier versions wrote
+/// (the `ignored` and the `tracked` text, in each language).
+const EARLIER_LOCAL_TEXTS: [&str; 4] = [
+    "# 개인 작업 보충\n\n응답 언어: 한국어\n\n<!-- MoAI가 호출 시 명시적으로 읽는 개인 파일. 이 저장소에서는 추적을 허용했으므로 비밀값을 넣지 않는다. -->\n",
+    "# 개인 작업 보충\n\n응답 언어: 한국어\n\n<!-- MoAI가 호출 시 명시적으로 읽는 개인 파일. 비밀값을 넣지 않으며 repo·Issue에 공유하지 않는다. -->\n",
+    "# Personal supplement\n\nResponse language: English\n\n<!-- Personal file MoAI reads explicitly when invoked. Tracking is allowed in this repository, so keep secrets out of it. -->\n",
+    "# Personal supplement\n\nResponse language: English\n\n<!-- Personal file MoAI reads explicitly when invoked. Keep secrets out; never share it in the repo or in Issues. -->\n",
+];
+
+/// `true` when `bytes` is exactly one of the personal-file texts this tool has written (#2936
+/// R10): such a file holds nothing the user wrote, so a move into `CLAUDE.md` skips it.
 pub fn is_generated_local(bytes: &[u8]) -> bool {
-    ["en", "ko"].iter().any(|language| {
-        ["ignored", "tracked", "none"].iter().any(|local_file| {
-            let request = AgentsRequest {
-                protocol_version: 1,
-                language: (*language).into(),
-                workflow_reference: String::new(),
-                local_file: (*local_file).into(),
-                picks: Vec::new(),
-            };
-            render_local(&request).as_bytes() == bytes
+    let current = |language: &str| {
+        render_local(&AgentsRequest {
+            protocol_version: 1,
+            language: language.into(),
+            workflow_reference: String::new(),
+            local_file: "ignored".into(),
+            picks: Vec::new(),
         })
-    })
+    };
+    ["en", "ko"]
+        .iter()
+        .any(|language| current(language).as_bytes() == bytes)
+        || EARLIER_LOCAL_TEXTS.iter().any(|t| t.as_bytes() == bytes)
 }
 
 /// What the project's state folder keeps in git (#3009 S3b, design §2): the profile, the
@@ -433,16 +504,20 @@ const IGNORE_KIND_WITH_LOCAL: &str = "agents:ignore-with-local";
 const IGNORE_KIND_STATE_ONLY: &str = "agents:ignore-state";
 
 /// The managed `.gitignore` block (#3009 S3b, leader decision A): the receipts line, the
-/// state-folder allow-list, and `AGENTS.local.md` only when `list_local` (the personal file is
-/// `ignored`, the behaviour before S3b).
+/// state-folder allow-list, `CLAUDE.local.md` only when `list_local` (the personal file is kept
+/// out of git), and the line `AGENTS.local.md` when the block already carried it (`keep_earlier`:
+/// that file is still the user's, and the block never drops a line that keeps it out of git).
 ///
 /// `allow` is the list of `!` paths the block carries, in order (see [`ignore_block`]).
-fn render_ignore(root: &Path, list_local: bool, allow: &[String]) -> String {
+fn render_ignore(root: &Path, list_local: bool, keep_earlier: bool, allow: &[String]) -> String {
     let (begin, end) = markers(IGNORE_SECTION, "hash");
     let state = state_root::dir(root);
     let mut body = String::new();
+    if keep_earlier {
+        body.push_str(&format!("{}\n", LOCAL_NAMES[0]));
+    }
     if list_local {
-        body.push_str("AGENTS.local.md\n");
+        body.push_str(&format!("{LOCAL_FILE}\n"));
     }
     // HOLD-B1 (user-confirmed 2026-11-08, ADK_1989_CONFIRMED_20261108_01): apply
     // receipts stay out of git alongside the
@@ -566,10 +641,18 @@ fn ignore_block(root: &Path, list_local: bool, ignore_text: Option<&str>) -> Res
         ));
         allow.push(path);
     }
+    // The block of an earlier version listed `AGENTS.local.md`: that line stays.
+    let keep_earlier = ignore_text.is_some_and(|text| block_lists(text, LOCAL_NAMES[0]));
     Ok(IgnoreBlock {
-        rendered: render_ignore(root, list_local, &allow),
+        rendered: render_ignore(root, list_local, keep_earlier, &allow),
         notes: shown,
     })
+}
+
+/// `true` when a rule for `name` stands inside this tool's managed `.gitignore` block of `text`.
+fn block_lists(text: &str, name: &str) -> bool {
+    let (begin, end) = markers(IGNORE_SECTION, "hash");
+    matches!(find_block(text, &begin, &end), Ok(Some((_, _, body))) if ignore_names(&body, name))
 }
 
 /// The part of a `.gitignore` the user wrote: its text outside this tool's managed block. A
@@ -969,9 +1052,9 @@ fn ignore_names(text: &str, name: &str) -> bool {
 }
 
 /// `true` when a rule in `text` names the personal file this version generates
-/// (`AGENTS.local.md`); a rule for the other name is not a rule for that file.
+/// (`CLAUDE.local.md`); a rule for the other name is not a rule for that file.
 pub(crate) fn ignore_has_rule(text: &str) -> bool {
-    ignore_names(text, LOCAL_NAMES[0])
+    ignore_names(text, LOCAL_NAMES[1])
 }
 
 /// `true` when a rule in `text` names the personal file under either of its names; for what a
@@ -1025,8 +1108,6 @@ pub(crate) const BLOCK_MISSING: &str = "managed block missing or removed; baseli
 const APPEND_PICKED: &str =
     "append-managed picked: the managed section is added at the end; every other byte is kept";
 const SKIP_PICKED: &str = "skip-conflicts picked: the file is kept as it is";
-/// Marks the CLAUDE.md import write inside the apply loop; it is not a manifest section id.
-const CLAUDE_IMPORT: &str = "claude-import";
 
 /// Three-way plan of one managed file. Exposed (Issue #1989, 5b) so 03-C's
 /// `generation.rs` can call the engine per `FileKind` instead of reimplementing it.
@@ -1095,6 +1176,51 @@ pub fn section_plan(
     Ok(plan)
 }
 
+/// The plan row of the flow rule file (REQ-11, REQ-12): the file is MoAI's whole, so it is
+/// replaced only while it holds the bytes MoAI last wrote (the recorded baseline); any other
+/// bytes, or a file MoAI never wrote, are a conflict and the file stays. A link or text that is
+/// not UTF-8 is a conflict row too (REQ-5).
+fn flow_row(root: &Path, m: Option<&Manifest>, text: &str) -> Result<FilePlan> {
+    let rendered = digest(text.as_bytes());
+    let baseline = baseline_for(m, FLOW_FILE);
+    let mut row = FilePlan {
+        path: FLOW_FILE.into(),
+        action: String::new(),
+        tracked_by_default: true,
+        expected_sha256: None,
+        section_id: Some(FLOW_SECTION.into()),
+        baseline_sha256: baseline.clone(),
+        rendered_sha256: Some(rendered.clone()),
+        detail: None,
+    };
+    match probe(root, FLOW_FILE)? {
+        Probe::Refused(why) => {
+            return Ok(refused_row(FLOW_FILE, true, Some(FLOW_SECTION), why));
+        }
+        Probe::Absent => row.action = "create".into(),
+        Probe::Text(bytes) => {
+            let current = digest(&bytes);
+            row.expected_sha256 = Some(current.clone());
+            if current == rendered {
+                row.action = "unchanged".into();
+            } else if baseline.as_deref() == Some(current.as_str()) {
+                row.action = "merge".into();
+            } else {
+                row.action = "conflict".into();
+                row.detail = Some(
+                    if baseline.is_none() {
+                        "the flow rule file exists and MoAI never wrote it; it is kept"
+                    } else {
+                        "the flow rule file differs from the bytes MoAI last wrote; it is kept"
+                    }
+                    .into(),
+                );
+            }
+        }
+    }
+    Ok(row)
+}
+
 fn plan_digest(p: &AgentsPlan) -> String {
     digest(
         &serde_json::to_vec(&(
@@ -1132,12 +1258,13 @@ fn record_owned_kind(
 }
 
 /// Whether the personal file's line goes into the managed `.gitignore` block (#3009 S3b): the
-/// choice is `ignored`, and no rule of that name stands in the user's own text, the part of the
-/// file outside the block. The block's own line is never counted as a user rule (audit
-/// 6897773189 B4): with the generation manifest gone, a block that lists the file would
-/// otherwise read itself as the user's rule, plan a different block and stay in conflict.
+/// choice is `ignored` or `tracked` (a personal file is never tracked, so both list it), and no
+/// rule of that name stands in the user's own text, the part of the file outside the block. The
+/// block's own line is never counted as a user rule (audit 6897773189 B4): with the generation
+/// manifest gone, a block that lists the file would otherwise read itself as the user's rule,
+/// plan a different block and stay in conflict.
 fn lists_local(request: &AgentsRequest, ignore_text: Option<&str>) -> bool {
-    request.local_file == "ignored"
+    request.local_file != "none"
         && !ignore_text.is_some_and(|text| ignore_has_rule(&outside_block(text)))
 }
 
@@ -1182,6 +1309,13 @@ fn adopt_unchanged(
         None => {
             if !created.contains(&f.path) {
                 created.push(f.path.clone());
+            }
+        }
+        // The flow file is a whole file of MoAI's: bytes equal to the rendering become the
+        // baseline (a first write, or an interrupted update).
+        Some(FLOW_SECTION) => {
+            if f.baseline_sha256.as_deref() != Some(rendered) && digest(bytes) == rendered {
+                record_owned(owned, &f.path, FLOW_SECTION, bytes);
             }
         }
         Some(section) if f.baseline_sha256.as_deref() != Some(rendered) => {
@@ -1332,72 +1466,93 @@ pub(crate) fn agents_plan_for(
     if injects_markers(&profile, &request) {
         return Err("profile value contains managed-marker syntax; refused".into());
     }
-    let host_notes: Vec<String> = [
-        "CLAUDE.md",
-        ".claude/CLAUDE.md",
-        "CLAUDE.local.md",
-        "AGENTS.override.md",
-    ]
-    .iter()
-    .filter(|rel| root.join(rel).exists())
-    .map(|rel| format!("{rel} present; preserved; may shadow or replace AGENTS.md on its host (loading not_run)"))
-    .collect();
+    // The files that used to be listed here (`CLAUDE.md`, `CLAUDE.local.md`) are this tool's own
+    // targets now, and `AGENTS.override.md` belonged to a host this tool no longer writes for.
+    let host_notes: Vec<String> = Vec::new();
 
-    let agents = read_opt(&target(&root, "AGENTS.md")?)?;
-    let agents_rendered = render_agents(&profile, &request, &root);
-    let mut agents_row = section_plan(
-        "AGENTS.md",
-        true,
-        AGENTS_SECTION,
-        "html",
-        agents.as_deref(),
-        baseline_for(m, "AGENTS.md"),
-        &agents_rendered,
-    )?;
-    // `append-managed`: a baseline whose block is gone is planned as a first append (no
-    // baseline), which keeps every other byte. An edited block or malformed markers stay
-    // conflicts: only the missing-block conflict is turned.
-    if picked(&request, "append-managed")
-        && agents_row.action == "conflict"
-        && agents_row.detail.as_deref() == Some(BLOCK_MISSING)
-    {
-        let appended = section_plan(
-            "AGENTS.md",
-            true,
-            AGENTS_SECTION,
-            "html",
-            agents.as_deref(),
-            None,
-            &agents_rendered,
-        )?;
-        if appended.action == "append" {
-            agents_row = FilePlan {
-                detail: Some(APPEND_PICKED.into()),
-                ..appended
-            };
+    let flow_rendered = render_flow(&profile, &request);
+    let agents_rendered = render_agents(&profile, &request, &root, flow_rendered.is_some());
+    // REQ-1, REQ-2: the block goes into `CLAUDE.md` when the project holds no `AGENTS.md`, when
+    // `CLAUDE.md` already holds the block or the import of `AGENTS.md` (a settled project keeps
+    // getting its block refreshed), or when the user picked `import` or `move`. Otherwise Claude
+    // Code would stop reading the user's `AGENTS.md` the moment this tool wrote a CLAUDE file,
+    // so nothing is planned and the preview says a pick is needed.
+    let claude = probe(&root, BLOCK_FILE)?;
+    let agents_md_exists = std::fs::symlink_metadata(root.join(AGENTS_FILE)).is_ok();
+    let (block_begin, _) = markers(AGENTS_SECTION, "html");
+    let settled = match &claude {
+        Probe::Text(bytes) => {
+            // `probe` returned text, so it is UTF-8.
+            std::str::from_utf8(bytes).is_ok_and(|t| t.contains(&block_begin))
+                || crate::claude::imports_agents(&root.join(BLOCK_FILE))
         }
-    }
-    files.push(agents_row);
-
-    if let Some(agents_file) = files.first() {
-        let rendered_len = render_agents(&profile, &request, &root).len();
-        let (b, e) = markers(AGENTS_SECTION, "html");
-        let projected = match &agents {
-            Some(bytes) => {
-                let block_len = std::str::from_utf8(bytes)
-                    .ok()
-                    .and_then(|t| find_block(t, &b, &e).ok().flatten())
-                    .map_or(0, |(s, end, _)| end - s);
-                bytes.len() - block_len + rendered_len
+        Probe::Absent | Probe::Refused(_) => false,
+    };
+    let block_wanted =
+        !agents_md_exists || settled || picked(&request, "import") || picked(&request, "move");
+    let mut claude_row = None;
+    if !block_wanted {
+        warnings.push(format!(
+            "{AGENTS_FILE} exists, so no {BLOCK_FILE} is planned: Claude Code reads {BLOCK_FILE} \
+             instead of {AGENTS_FILE} once it exists. A pick is needed: `import` (the block and an \
+             `@{AGENTS_FILE}` line), `move` (the block and a copy of your text) or `leave` (nothing \
+             is written)"
+        ));
+    } else {
+        let row = match &claude {
+            Probe::Refused(why) => refused_row(BLOCK_FILE, true, Some(AGENTS_SECTION), why),
+            Probe::Absent | Probe::Text(_) => {
+                let current = match &claude {
+                    Probe::Text(bytes) => Some(bytes.as_slice()),
+                    _ => None,
+                };
+                let mut row = section_plan(
+                    BLOCK_FILE,
+                    true,
+                    AGENTS_SECTION,
+                    "html",
+                    current,
+                    baseline_for(m, BLOCK_FILE),
+                    &agents_rendered,
+                )?;
+                // `append-managed`: a baseline whose block is gone is planned as a first append
+                // (no baseline), which keeps every other byte. An edited block or malformed
+                // markers stay conflicts: only the missing-block conflict is turned.
+                if picked(&request, "append-managed")
+                    && row.action == "conflict"
+                    && row.detail.as_deref() == Some(BLOCK_MISSING)
+                {
+                    let appended = section_plan(
+                        BLOCK_FILE,
+                        true,
+                        AGENTS_SECTION,
+                        "html",
+                        current,
+                        None,
+                        &agents_rendered,
+                    )?;
+                    if appended.action == "append" {
+                        row = FilePlan {
+                            detail: Some(APPEND_PICKED.into()),
+                            ..appended
+                        };
+                    }
+                }
+                row
             }
-            None => rendered_len,
         };
-        if agents_file.detail.as_deref() == Some(BLOCK_ABSENT) {
+        claude_row = Some(row);
+    }
+    if let Some(row) = claude_row {
+        if row.detail.as_deref() == Some(BLOCK_ABSENT) {
             warnings.push(BLOCK_ABSENT.into());
         }
-        // The managed text follows `instruction_files` when the profile sets it and the
-        // conversation language `user_chat` otherwise, when templates exist for it (`en`, `ko`);
-        // another code is reported and the request language used.
+        files.push(row);
+    }
+    // The managed text follows `instruction_files` when the profile sets it and the
+    // conversation language `user_chat` otherwise, when templates exist for it (`en`, `ko`);
+    // another code is reported and the request language used.
+    {
         let chosen = instruction_language(&profile, &request);
         let language = profile.language.as_ref();
         let named = |key: &str| {
@@ -1418,10 +1573,6 @@ pub(crate) fn agents_plan_for(
                 "managed section rendered in `{chosen}`: no managed-section text in profile language.{key} `{code}`"
             ));
         }
-        if agents_file.action != "conflict" && projected > 32 * 1024 {
-            warnings
-                .push("AGENTS.md may exceed the 32 KiB default instruction budget of Codex".into());
-        }
     }
 
     if let Some(review) = render_review(&profile, &request) {
@@ -1437,24 +1588,55 @@ pub(crate) fn agents_plan_for(
         )?);
     }
 
-    if request.local_file != "none" {
-        let local = read_opt(&target(&root, "AGENTS.local.md")?)?;
-        let local_rendered = render_local(&request);
-        files.push(FilePlan {
-            path: "AGENTS.local.md".into(),
-            action: if local.is_none() && !created_once(m, "AGENTS.local.md") {
-                "create"
-            } else {
-                "unchanged"
+    // REQ-6, REQ-7: the personal file is created once, and only on the user's pick. A personal
+    // file is not shared, so `tracked` plans exactly like `ignored`; the preview says so.
+    if request.local_file == "tracked" {
+        warnings.push(format!(
+            "local_file `tracked` is read as `ignored`: {LOCAL_FILE} is a personal file and is kept out of git"
+        ));
+    }
+    if picked(&request, "personal-file") {
+        if request.local_file == "none" {
+            warnings.push(format!(
+                "personal-file picked while local_file is `none`: {LOCAL_FILE} is not planned"
+            ));
+        } else {
+            match probe(&root, LOCAL_FILE)? {
+                Probe::Refused(why) => files.push(refused_row(LOCAL_FILE, false, None, why)),
+                found => {
+                    let local = match &found {
+                        Probe::Text(bytes) => Some(bytes.as_slice()),
+                        _ => None,
+                    };
+                    let local_rendered = render_local(&request);
+                    files.push(FilePlan {
+                        path: LOCAL_FILE.into(),
+                        action: if local.is_none() && !created_once(m, LOCAL_FILE) {
+                            "create"
+                        } else {
+                            "unchanged"
+                        }
+                        .into(),
+                        tracked_by_default: false,
+                        expected_sha256: local.map(digest),
+                        section_id: None,
+                        baseline_sha256: None,
+                        rendered_sha256: Some(digest(local_rendered.as_bytes())),
+                        detail: None,
+                    });
+                }
             }
-            .into(),
-            tracked_by_default: request.local_file == "tracked",
-            expected_sha256: local.as_deref().map(digest),
-            section_id: None,
-            baseline_sha256: None,
-            rendered_sha256: Some(digest(local_rendered.as_bytes())),
-            detail: None,
-        });
+        }
+    }
+
+    // REQ-8, REQ-9: one flow rule file from the profile's `work_flow`, or none and the accepted
+    // values named.
+    match &flow_rendered {
+        Some(text) => files.push(flow_row(&root, m, text)?),
+        None => warnings.push(format!(
+            "work_flow names no flow, so no flow rule file is planned; accepted values: {}",
+            crate::profile::WORK_FLOWS.join(", ")
+        )),
     }
 
     // #3009 S3b (leader decision A): the managed `.gitignore` block is always planned, for the
@@ -1468,7 +1650,7 @@ pub(crate) fn agents_plan_for(
             None => None,
         };
         let list_local = lists_local(&request, ignore_text);
-        let user_rule = request.local_file == "ignored" && !list_local;
+        let user_rule = request.local_file != "none" && !list_local;
         let (begin, end) = markers(IGNORE_SECTION, "hash");
         let block = ignore_block(&root, list_local, ignore_text)?;
         let rendered = block.rendered;
@@ -1493,36 +1675,13 @@ pub(crate) fn agents_plan_for(
             plan.detail = Some(detail);
         }
         if user_rule {
-            let note = "existing user rule names AGENTS.local.md; effective git ignore status not verified";
+            let note = "existing user rule names CLAUDE.local.md; effective git ignore status not verified";
             plan.detail = Some(match plan.detail.take() {
                 Some(d) => format!("{note}\n{d}"),
                 None => note.into(),
             });
         }
         files.push(plan);
-    }
-
-    // `claude-import`: the one line that makes a shadowing CLAUDE.md load AGENTS.md. Not a
-    // managed section: the file stays the user's (no baseline, never recorded as owned).
-    let shadow = claude_shadow(&root, &profile.hosts);
-    if let Some(s) = shadow
-        .as_ref()
-        .filter(|_| picked(&request, "claude-import"))
-    {
-        let current = read_opt(&target(&root, &s.path)?)?;
-        files.push(FilePlan {
-            path: s.path.clone(),
-            action: "append".into(),
-            tracked_by_default: true,
-            expected_sha256: current.as_deref().map(digest),
-            section_id: None,
-            baseline_sha256: None,
-            rendered_sha256: Some(digest(s.import_line.as_bytes())),
-            detail: Some(format!(
-                "claude-import picked: `{}` is added at the end; every other byte is kept",
-                s.import_line
-            )),
-        });
     }
 
     // `skip-conflicts`: a conflicting file is left as it is and the rest of the plan applies.
@@ -1579,7 +1738,7 @@ pub(crate) fn agents_plan_for(
         files,
         host_notes,
         warnings,
-        claude_shadow: shadow,
+        claude_shadow: None,
         plan_digest: String::new(),
     };
     plan.plan_digest = plan_digest(&plan);
@@ -1805,9 +1964,14 @@ pub(crate) fn agents_apply_amended_for(
             ));
         }
         let (bytes, section) = match f.path.as_str() {
-            "AGENTS.md" => {
+            BLOCK_FILE => {
                 let (b, e) = markers(AGENTS_SECTION, "html");
-                let rendered = render_agents(&profile, &p.request, &root);
+                let rendered = render_agents(
+                    &profile,
+                    &p.request,
+                    &root,
+                    render_flow(&profile, &p.request).is_some(),
+                );
                 let prefix = format!("# {}\n\n", profile.project_id);
                 let out = splice(before.as_deref(), &b, &e, &rendered, &prefix)?;
                 assert_single_block(&out, &b, &e, &rendered)?;
@@ -1831,20 +1995,10 @@ pub(crate) fn agents_apply_amended_for(
                 assert_single_block(&out, &b, &e, &rendered)?;
                 (out, Some(IGNORE_SECTION))
             }
-            "AGENTS.local.md" => (render_local(&p.request).into_bytes(), None),
-            // `claude-import`: only the import line, after every earlier byte. The path is
-            // checked against the shadow this tool finds now, so a plan cannot name another file.
-            path if p.request.picks.iter().any(|x| x == "claude-import")
-                && claude_shadow(&root, &profile.hosts).is_some_and(|s| s.path == path) =>
-            {
-                let shadow = claude_shadow(&root, &profile.hosts).ok_or("unknown planned path")?;
-                let mut out = before.clone().unwrap_or_default();
-                if !out.is_empty() && !out.ends_with(b"\n") {
-                    out.push(b'\n');
-                }
-                out.extend_from_slice(shadow.import_line.as_bytes());
-                out.push(b'\n');
-                (out, Some(CLAUDE_IMPORT))
+            LOCAL_FILE => (render_local(&p.request).into_bytes(), None),
+            FLOW_FILE => {
+                let text = render_flow(&profile, &p.request).ok_or("no flow text for the profile")?;
+                (text.into_bytes(), Some(FLOW_SECTION))
             }
             _ => return Err("unknown planned path".into()),
         };
@@ -1912,8 +2066,16 @@ pub(crate) fn agents_apply_amended_for(
                 &mut owned,
                 &f.path,
                 AGENTS_SECTION,
-                render_agents(&profile, &p.request, &root).as_bytes(),
+                render_agents(
+                    &profile,
+                    &p.request,
+                    &root,
+                    render_flow(&profile, &p.request).is_some(),
+                )
+                .as_bytes(),
             ),
+            // The flow file is MoAI's whole file: its baseline is every byte written.
+            Some(FLOW_SECTION) => record_owned(&mut owned, &f.path, FLOW_SECTION, &bytes),
             // #2936: REVIEW.md is an owned section too; without a baseline a later language or
             // answer change planned `conflict` for a block nobody had edited.
             Some(REVIEW_SECTION) => {
@@ -1937,8 +2099,6 @@ pub(crate) fn agents_apply_amended_for(
                     Some(ignore_kind(ignore_has_any_local_rule(block))),
                 );
             }
-            // The user's own CLAUDE.md gained a line: it is neither owned nor created once.
-            Some(CLAUDE_IMPORT) => {}
             _ => {
                 if !created.contains(&f.path) {
                     created.push(f.path.clone());
@@ -2123,7 +2283,7 @@ mod tests {
             picks: Vec::new(),
         };
         let plain: Profile = serde_json::from_value(base.clone()).unwrap();
-        let without = render_agents(&plain, &request("en"), root.path());
+        let without = render_agents(&plain, &request("en"), root.path(), false);
         assert!(!without.contains("Versioning"), "{without}");
 
         let with = |versioning: Value| -> Profile {
@@ -2132,7 +2292,7 @@ mod tests {
             serde_json::from_value(v).expect("the profile takes a versioning key")
         };
         let calver = with(json!({"scheme": "calver", "format": "YYYY.0M.MICRO"}));
-        let text = render_agents(&calver, &request("en"), root.path());
+        let text = render_agents(&calver, &request("en"), root.path(), false);
         let line = "Versioning: CalVer (YYYY.0M.MICRO).\n";
         assert!(
             text.contains(&format!(
@@ -2141,7 +2301,7 @@ mod tests {
             "{text}"
         );
         assert_eq!(text.replace(line, ""), without);
-        let korean = render_agents(&calver, &request("ko"), root.path());
+        let korean = render_agents(&calver, &request("ko"), root.path(), false);
         assert!(
             korean.contains("목적: Build a small editor\n버전 규칙: CalVer (YYYY.0M.MICRO).\n\n"),
             "{korean}"
@@ -2604,10 +2764,10 @@ mod tests {
     /// other name never hides the file that is actually written.
     #[test]
     fn ignore_rules_are_read_per_name_and_across_both() {
-        assert!(ignore_has_rule("AGENTS.local.md\n"));
-        assert!(ignore_has_rule("/AGENTS.local.md\n"));
-        assert!(!ignore_has_rule("CLAUDE.local.md\n"));
-        assert!(!ignore_has_rule("# AGENTS.local.md\n"));
+        assert!(ignore_has_rule("CLAUDE.local.md\n"));
+        assert!(ignore_has_rule("/CLAUDE.local.md\n"));
+        assert!(!ignore_has_rule("AGENTS.local.md\n"));
+        assert!(!ignore_has_rule("# CLAUDE.local.md\n"));
         for text in [
             "AGENTS.local.md\n",
             "/AGENTS.local.md\n",

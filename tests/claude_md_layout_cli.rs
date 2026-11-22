@@ -1,0 +1,522 @@
+//! The files `agents-plan` and `agents-apply` own in a user's project: the managed block in
+//! `CLAUDE.md`, the personal file `CLAUDE.local.md` on the user's pick, and one flow rule file
+//! `.claude/rules/moai/flow.md`. Never `AGENTS.md` or `AGENTS.local.md`. Every case runs through
+//! the binary in a temporary git repository with an empty temporary HOME.
+//!
+//! The test names start with `blocks_`, `local_` or `flow_`: the acceptance criteria of
+//! `SPEC-20261122-claude-md-layout` filter on those prefixes, and each prefix has tests.
+
+mod common;
+use common::git::git_ok;
+use common::CleanEnv;
+use serde_json::{json, Value};
+use std::{
+    fs,
+    io::Write,
+    path::PathBuf,
+    process::{Command, Stdio},
+};
+use tempfile::TempDir;
+
+const PERMISSION: &str = "fixture-approved";
+const BEGIN: &str = "<!-- moai:managed:begin id=moai-workflow -->";
+const END: &str = "<!-- moai:managed:end id=moai-workflow -->";
+const FLOW_FILE: &str = ".claude/rules/moai/flow.md";
+const FLOWS: [&str; 4] = ["m-flow", "github-flow", "trunk-based", "git-flow"];
+
+struct Fx {
+    _tmp: TempDir,
+    root: PathBuf,
+    home: PathBuf,
+}
+
+impl Fx {
+    /// A git repository with a project profile applied; `work_flow` is the profile's flow.
+    fn new(work_flow: Option<&str>) -> Fx {
+        let tmp = TempDir::new().unwrap();
+        let base = fs::canonicalize(tmp.path()).unwrap();
+        let (root, home) = (base.join("project"), base.join("home"));
+        fs::create_dir_all(root.join("skills/moai/workflows")).unwrap();
+        fs::create_dir_all(&home).unwrap();
+        let fx = Fx {
+            _tmp: tmp,
+            root,
+            home,
+        };
+        git_ok(&fx.root, &["init", "-q", "-b", "main"]);
+        fx.set_profile(work_flow);
+        fx
+    }
+
+    fn profile(work_flow: Option<&str>) -> Value {
+        let mut profile = json!({
+            "schema_version": 2, "project_id": "demo", "purpose": "Build a small editor",
+            "tools": ["Rust"], "development_methods": ["TDD"], "hosts": ["claude"],
+            "interview_revision": "rc1-fixture-1",
+        });
+        if let Some(flow) = work_flow {
+            profile["work_flow"] = json!({"flow": flow, "integration_branch": "main"});
+        }
+        profile
+    }
+
+    /// Applies a project profile with the given flow (a second call replaces the first).
+    fn set_profile(&self, work_flow: Option<&str>) {
+        let plan = self.call(&["project-plan"], &Fx::profile(work_flow));
+        let digest = plan["plan_digest"].as_str().unwrap().to_string();
+        self.call(
+            &[
+                "project-apply",
+                "--plan-digest",
+                &digest,
+                "--permission-reference",
+                PERMISSION,
+            ],
+            &plan,
+        );
+    }
+
+    fn p(&self) -> &str {
+        self.root.to_str().unwrap()
+    }
+
+    fn path(&self, rel: &str) -> PathBuf {
+        self.root.join(rel)
+    }
+
+    fn run(&self, args: &[&str], stdin: &Value) -> Value {
+        // The project path is the first argument after the subcommand name.
+        let mut full: Vec<&str> = vec![args[0], self.p()];
+        full.extend(&args[1..]);
+        let mut child = Command::new(common::MOAI_BIN)
+            .args(&full)
+            .clean_env()
+            .env("HOME", &self.home)
+            .env("PATH", "/usr/bin:/bin")
+            .env("LC_ALL", "C")
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .unwrap();
+        let mut pipe = child.stdin.take().unwrap();
+        match pipe.write_all(stdin.to_string().as_bytes()) {
+            Ok(()) => {}
+            Err(e) if e.kind() == std::io::ErrorKind::BrokenPipe => {}
+            Err(e) => panic!("stdin write failed: {e}"),
+        }
+        drop(pipe);
+        let out = child.wait_with_output().unwrap();
+        serde_json::from_slice(&out.stdout).unwrap_or_else(|_| {
+            panic!(
+                "{full:?}: {}{}",
+                String::from_utf8_lossy(&out.stdout),
+                String::from_utf8_lossy(&out.stderr)
+            )
+        })
+    }
+
+    fn call(&self, args: &[&str], stdin: &Value) -> Value {
+        let v = self.run(args, stdin);
+        assert_eq!(v["ok"], json!(true), "{args:?}: {v}");
+        v["result"].clone()
+    }
+
+    fn request(local_file: &str, picks: &[&str]) -> Value {
+        let mut r = json!({"protocol_version": 1, "language": "en",
+               "workflow_reference": "skills/moai/workflows/", "local_file": local_file});
+        if !picks.is_empty() {
+            r["picks"] = json!(picks);
+        }
+        r
+    }
+
+    fn plan(&self, local_file: &str, picks: &[&str]) -> Value {
+        self.call(&["agents-plan"], &Fx::request(local_file, picks))
+    }
+
+    /// The raw answer of an apply of `plan` (an error answer is returned, not asserted away).
+    fn apply_raw(&self, plan: &Value) -> Value {
+        self.run(
+            &[
+                "agents-apply",
+                "--plan-digest",
+                plan["plan_digest"].as_str().unwrap(),
+                "--permission-reference",
+                PERMISSION,
+            ],
+            plan,
+        )
+    }
+
+    fn apply_ok(&self, local_file: &str, picks: &[&str]) -> Value {
+        let out = self.apply_raw(&self.plan(local_file, picks));
+        assert_eq!(out["ok"], json!(true), "{out}");
+        out
+    }
+
+    fn read(&self, rel: &str) -> String {
+        fs::read_to_string(self.path(rel)).unwrap()
+    }
+
+    fn exists(&self, rel: &str) -> bool {
+        fs::symlink_metadata(self.path(rel)).is_ok()
+    }
+}
+
+fn row<'a>(plan: &'a Value, path: &str) -> Option<&'a Value> {
+    plan["files"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|f| f["path"] == path)
+}
+
+fn action(plan: &Value, path: &str) -> String {
+    row(plan, path)
+        .map(|f| f["action"].as_str().unwrap().to_string())
+        .unwrap_or_else(|| "absent".into())
+}
+
+fn paths(plan: &Value) -> Vec<String> {
+    plan["files"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|f| f["path"].as_str().unwrap().to_string())
+        .collect()
+}
+
+/// The lines between the two marker lines of the managed block in `text`.
+fn block_lines(text: &str) -> Vec<&str> {
+    let start = text.find(BEGIN).expect("begin marker") + BEGIN.len();
+    let end = text.find(END).expect("end marker");
+    text[start..end]
+        .lines()
+        .skip(1)
+        .collect::<Vec<_>>()
+        .into_iter()
+        .collect()
+}
+
+fn warnings(plan: &Value) -> String {
+    plan["warnings"].to_string()
+}
+
+// --- the managed block lives in CLAUDE.md ---------------------------------------------------------
+
+#[test]
+fn blocks_go_into_claude_md_and_never_into_agents_md() {
+    let fx = Fx::new(None);
+    let plan = fx.plan("none", &[]);
+    assert_eq!(action(&plan, "CLAUDE.md"), "create", "{plan}");
+    let all = paths(&plan);
+    assert!(
+        !all.iter().any(|p| p == "AGENTS.md" || p == "AGENTS.local.md"),
+        "{all:?}"
+    );
+    fx.apply_ok("none", &[]);
+    let text = fx.read("CLAUDE.md");
+    assert!(text.starts_with("# demo\n\n"), "{text}");
+    assert!(text.contains(BEGIN) && text.contains(END), "{text}");
+    assert!(!fx.exists("AGENTS.md") && !fx.exists("AGENTS.local.md"));
+    // A second plan over the written project has nothing left to do for the file.
+    assert_eq!(action(&fx.plan("none", &[]), "CLAUDE.md"), "unchanged");
+}
+
+#[test]
+fn blocks_hold_facts_only_within_fifteen_lines() {
+    let fx = Fx::new(Some("m-flow"));
+    fx.apply_ok("none", &[]);
+    let text = fx.read("CLAUDE.md");
+    let lines = block_lines(&text);
+    assert!(lines.len() <= 15, "{} lines:\n{}", lines.len(), lines.join("\n"));
+    let joined = lines.join("\n");
+    for fact in ["demo", "Rust", "m-flow", "main", FLOW_FILE, ".moai/specs"] {
+        assert!(joined.contains(fact), "missing {fact:?} in:\n{joined}");
+    }
+    // Only the facts REQ-3 lists: no purpose, no development methods, no hosts.
+    for left_out in ["Build a small editor", "TDD", "hosts"] {
+        assert!(!joined.contains(left_out), "{left_out:?} in:\n{joined}");
+    }
+    assert!(joined.contains("moai check"), "the check command is stated:\n{joined}");
+    // Issue-era wording and instructions about the process are gone from the block.
+    for word in ["Issue", "Issues", "independent audit", "PASS"] {
+        assert!(!joined.contains(word), "{word:?} in:\n{joined}");
+    }
+}
+
+#[test]
+fn blocks_hold_the_flow_path_only_when_a_flow_file_is_planned() {
+    let fx = Fx::new(None);
+    fx.apply_ok("none", &[]);
+    let text = fx.read("CLAUDE.md");
+    assert!(!block_lines(&text).join("\n").contains(FLOW_FILE), "{text}");
+}
+
+#[test]
+fn blocks_wait_for_a_pick_when_agents_md_exists() {
+    let fx = Fx::new(None);
+    fs::write(fx.path("AGENTS.md"), "# Team rules\n\nRun tests first.\n").unwrap();
+    let plan = fx.plan("none", &[]);
+    assert_eq!(action(&plan, "CLAUDE.md"), "absent", "{plan}");
+    let w = warnings(&plan);
+    for word in ["AGENTS.md", "pick", "import", "move"] {
+        assert!(w.contains(word), "{word:?} not in {w}");
+    }
+    fx.apply_ok("none", &[]);
+    assert!(!fx.exists("CLAUDE.md"), "no CLAUDE file without a pick");
+    assert_eq!(
+        fx.read("AGENTS.md"),
+        "# Team rules\n\nRun tests first.\n",
+        "AGENTS.md is never changed"
+    );
+}
+
+#[test]
+fn blocks_follow_the_pick_import_or_move() {
+    for pick in ["import", "move"] {
+        let fx = Fx::new(None);
+        fs::write(fx.path("AGENTS.md"), "# Team rules\n").unwrap();
+        let plan = fx.plan("none", &[pick]);
+        assert_eq!(action(&plan, "CLAUDE.md"), "create", "{pick}: {plan}");
+        fx.apply_ok("none", &[pick]);
+        assert!(fx.read("CLAUDE.md").contains(BEGIN), "{pick}");
+        assert_eq!(fx.read("AGENTS.md"), "# Team rules\n", "{pick}");
+    }
+}
+
+#[test]
+fn blocks_keep_refreshing_a_settled_project() {
+    // A CLAUDE.md that already holds the block keeps getting it refreshed although AGENTS.md exists.
+    let fx = Fx::new(None);
+    fx.apply_ok("none", &[]);
+    fs::write(fx.path("AGENTS.md"), "# Team rules\n").unwrap();
+    assert_eq!(action(&fx.plan("none", &[]), "CLAUDE.md"), "unchanged");
+    // A CLAUDE.md with the import line and no block gets the block.
+    let fx = Fx::new(None);
+    fs::write(fx.path("AGENTS.md"), "# Team rules\n").unwrap();
+    fs::write(fx.path("CLAUDE.md"), "Our notes\n@AGENTS.md\n").unwrap();
+    let plan = fx.plan("none", &[]);
+    assert_eq!(action(&plan, "CLAUDE.md"), "append", "{plan}");
+    fx.apply_ok("none", &[]);
+    let text = fx.read("CLAUDE.md");
+    assert!(text.starts_with("Our notes\n@AGENTS.md\n"), "{text}");
+    assert!(text.contains(BEGIN));
+}
+
+#[test]
+fn blocks_append_on_a_new_line_and_keep_every_earlier_byte() {
+    let fx = Fx::new(None);
+    let earlier = "# Mine\nno final newline";
+    fs::write(fx.path("CLAUDE.md"), earlier).unwrap();
+    let plan = fx.plan("none", &[]);
+    assert_eq!(action(&plan, "CLAUDE.md"), "append", "{plan}");
+    fx.apply_ok("none", &[]);
+    let text = fx.read("CLAUDE.md");
+    assert!(text.starts_with(earlier), "{text}");
+    let begin_at = text.find(BEGIN).unwrap();
+    assert!(
+        text[..begin_at].ends_with('\n'),
+        "the block starts on a new line: {text:?}"
+    );
+    assert_eq!(text.matches(BEGIN).count(), 1);
+}
+
+#[test]
+fn blocks_edited_after_the_baseline_are_a_conflict_that_writes_nothing() {
+    let fx = Fx::new(Some("github-flow"));
+    fx.apply_ok("none", &[]);
+    let edited = fx.read("CLAUDE.md").replace("Rust", "Rust and Zig");
+    fs::write(fx.path("CLAUDE.md"), &edited).unwrap();
+    // Nothing new to write over the edit: the plan leaves the file as it is.
+    assert_eq!(action(&fx.plan("none", &[]), "CLAUDE.md"), "unchanged");
+    // The profile now renders another block: the edit stands in its way, so it is a conflict.
+    fx.set_profile(Some("m-flow"));
+    let plan = fx.plan("none", &[]);
+    assert_eq!(action(&plan, "CLAUDE.md"), "conflict", "{plan}");
+    let out = fx.apply_raw(&plan);
+    assert_eq!(out["ok"], json!(false), "{out}");
+    assert_eq!(fx.read("CLAUDE.md"), edited, "the edited file is kept");
+}
+
+#[cfg(unix)]
+#[test]
+fn blocks_report_a_link_or_non_utf8_file_as_a_conflict_row() {
+    // CLAUDE.md is a link: a conflict row, not a failed plan, and nothing is written through it.
+    let fx = Fx::new(None);
+    fs::write(fx.path("elsewhere.md"), "kept\n").unwrap();
+    std::os::unix::fs::symlink("elsewhere.md", fx.path("CLAUDE.md")).unwrap();
+    let plan = fx.plan("none", &[]);
+    assert_eq!(action(&plan, "CLAUDE.md"), "conflict", "{plan}");
+    assert!(row(&plan, "CLAUDE.md").unwrap()["detail"]
+        .as_str()
+        .unwrap()
+        .contains("link"));
+    assert_eq!(fx.apply_raw(&plan)["ok"], json!(false));
+    assert_eq!(fx.read("elsewhere.md"), "kept\n");
+
+    // CLAUDE.md is not UTF-8 text.
+    let fx = Fx::new(None);
+    fs::write(fx.path("CLAUDE.md"), [0xff, 0xfe, b'\n']).unwrap();
+    let plan = fx.plan("none", &[]);
+    assert_eq!(action(&plan, "CLAUDE.md"), "conflict", "{plan}");
+    assert_eq!(fx.apply_raw(&plan)["ok"], json!(false));
+    assert_eq!(fs::read(fx.path("CLAUDE.md")).unwrap(), [0xff, 0xfe, b'\n']);
+
+    // A folder above the flow file is a link: the flow file is a conflict row.
+    let fx = Fx::new(Some("m-flow"));
+    fs::create_dir_all(fx.path("elsewhere/rules")).unwrap();
+    fs::create_dir_all(fx.path(".claude")).unwrap();
+    std::os::unix::fs::symlink("../elsewhere/rules", fx.path(".claude/rules")).unwrap();
+    let plan = fx.plan("none", &[]);
+    assert_eq!(action(&plan, FLOW_FILE), "conflict", "{plan}");
+    assert_eq!(fx.apply_raw(&plan)["ok"], json!(false));
+    assert!(!fx.exists("elsewhere/rules/moai/flow.md"));
+}
+
+// --- the personal file --------------------------------------------------------------------------
+
+#[test]
+fn local_file_is_created_only_on_the_users_pick() {
+    let fx = Fx::new(None);
+    let plan = fx.plan("ignored", &[]);
+    assert_eq!(action(&plan, "CLAUDE.local.md"), "absent", "{plan}");
+    fx.apply_ok("ignored", &[]);
+    assert!(!fx.exists("CLAUDE.local.md") && !fx.exists("AGENTS.local.md"));
+
+    let plan = fx.plan("ignored", &["personal-file"]);
+    assert_eq!(action(&plan, "CLAUDE.local.md"), "create", "{plan}");
+    fx.apply_ok("ignored", &["personal-file"]);
+    assert!(fx.read("CLAUDE.local.md").contains("Personal supplement"));
+    // It is created once: a later plan leaves it alone, and so does a deletion.
+    assert_eq!(
+        action(&fx.plan("ignored", &["personal-file"]), "CLAUDE.local.md"),
+        "unchanged"
+    );
+    fs::remove_file(fx.path("CLAUDE.local.md")).unwrap();
+    assert_eq!(
+        action(&fx.plan("ignored", &["personal-file"]), "CLAUDE.local.md"),
+        "unchanged"
+    );
+}
+
+#[test]
+fn local_file_is_listed_for_git_to_ignore_under_its_new_name() {
+    let fx = Fx::new(None);
+    fx.apply_ok("ignored", &["personal-file"]);
+    let ignore = fx.read(".gitignore");
+    assert!(
+        ignore.lines().any(|l| l == "CLAUDE.local.md"),
+        "{ignore}"
+    );
+    assert!(!ignore.lines().any(|l| l == "AGENTS.local.md"), "{ignore}");
+}
+
+#[test]
+fn local_tracked_plans_like_ignored_with_a_preview_note() {
+    let fx = Fx::new(None);
+    let ignored = fx.plan("ignored", &["personal-file"]);
+    let tracked = fx.plan("tracked", &["personal-file"]);
+    assert_eq!(paths(&ignored), paths(&tracked));
+    for p in paths(&ignored) {
+        assert_eq!(action(&ignored, &p), action(&tracked, &p), "{p}");
+    }
+    assert!(
+        warnings(&tracked).contains("tracked"),
+        "the preview says tracked is read as ignored: {}",
+        warnings(&tracked)
+    );
+    assert!(!warnings(&ignored).contains("tracked"));
+    fx.apply_ok("tracked", &["personal-file"]);
+    let ignore = fx.read(".gitignore");
+    assert!(ignore.lines().any(|l| l == "CLAUDE.local.md"), "{ignore}");
+}
+
+// --- the flow rule file ---------------------------------------------------------------------------
+
+#[test]
+fn flow_file_is_planned_from_the_profile_flow() {
+    let fx = Fx::new(Some("m-flow"));
+    let plan = fx.plan("none", &[]);
+    assert_eq!(action(&plan, FLOW_FILE), "create", "{plan}");
+    let flows: Vec<String> = paths(&plan)
+        .into_iter()
+        .filter(|p| p.starts_with(".claude/rules/"))
+        .collect();
+    assert_eq!(flows, vec![FLOW_FILE.to_string()], "exactly one rule file");
+    fx.apply_ok("none", &[]);
+    let text = fx.read(FLOW_FILE);
+    assert!(text.contains("m-flow") || text.contains("M-Flow"), "{text}");
+    // The file is moai's whole file: a second plan has nothing to do.
+    assert_eq!(action(&fx.plan("none", &[]), FLOW_FILE), "unchanged");
+}
+
+#[test]
+fn flow_none_is_planned_without_a_flow_and_the_accepted_values_are_named() {
+    let fx = Fx::new(None);
+    let plan = fx.plan("none", &[]);
+    assert_eq!(action(&plan, FLOW_FILE), "absent", "{plan}");
+    let w = warnings(&plan);
+    for flow in FLOWS {
+        assert!(w.contains(flow), "{flow} not named in {w}");
+    }
+    fx.apply_ok("none", &[]);
+    assert!(!fx.exists(FLOW_FILE));
+}
+
+#[test]
+fn flow_text_is_short_and_loads_at_session_start_for_every_flow() {
+    for flow in FLOWS {
+        let fx = Fx::new(Some(flow));
+        fx.apply_ok("none", &[]);
+        let text = fx.read(FLOW_FILE);
+        assert!(text.lines().count() <= 80, "{flow}: {} lines", text.lines().count());
+        assert!(text.len() <= 5 * 1024, "{flow}: {} bytes", text.len());
+        // No `paths` key in a frontmatter: an unscoped rule loads at session start.
+        if let Some(rest) = text.strip_prefix("---\n") {
+            let front = rest.split("\n---").next().unwrap();
+            assert!(
+                !front.lines().any(|l| l.trim_start().starts_with("paths")),
+                "{flow}: {front}"
+            );
+        }
+        assert!(!text.contains("AGENTS.md"), "{flow}");
+        assert!(text.contains(flow) || text.to_lowercase().contains(&flow.replace('-', " ")), "{flow}: names its flow");
+    }
+}
+
+#[test]
+fn flow_file_is_replaced_only_while_it_holds_the_last_written_bytes() {
+    let fx = Fx::new(Some("m-flow"));
+    fx.apply_ok("none", &[]);
+    let written = fx.read(FLOW_FILE);
+
+    // A new flow in the profile replaces the untouched file.
+    fx.set_profile(Some("github-flow"));
+    let plan = fx.plan("none", &[]);
+    assert_eq!(action(&plan, FLOW_FILE), "merge", "{plan}");
+    fx.apply_ok("none", &[]);
+    let replaced = fx.read(FLOW_FILE);
+    assert_ne!(replaced, written);
+
+    // A hand edit is a conflict; the file and the other files stay as they are.
+    let edited = format!("{replaced}\nOur own note.\n");
+    fs::write(fx.path(FLOW_FILE), &edited).unwrap();
+    fx.set_profile(Some("trunk-based"));
+    let plan = fx.plan("none", &[]);
+    assert_eq!(action(&plan, FLOW_FILE), "conflict", "{plan}");
+    assert_eq!(fx.apply_raw(&plan)["ok"], json!(false));
+    assert_eq!(fx.read(FLOW_FILE), edited);
+}
+
+#[test]
+fn flow_file_that_moai_never_wrote_is_a_conflict() {
+    let fx = Fx::new(Some("m-flow"));
+    fs::create_dir_all(fx.path(".claude/rules/moai")).unwrap();
+    fs::write(fx.path(FLOW_FILE), "# Our own flow\n").unwrap();
+    let plan = fx.plan("none", &[]);
+    assert_eq!(action(&plan, FLOW_FILE), "conflict", "{plan}");
+    assert_eq!(fx.apply_raw(&plan)["ok"], json!(false));
+    assert_eq!(fx.read(FLOW_FILE), "# Our own flow\n");
+}
