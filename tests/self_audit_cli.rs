@@ -123,9 +123,8 @@ fn the_shipped_skill_runs_no_repository_python_tool() {
         "the moai-adk repository mentions moved: {mentions}"
     );
     assert_eq!(bad, Vec::<String>::new());
-    let leader = fs::read_to_string(root.join("workflows/mode-leader.md")).unwrap();
-    assert!(leader.contains("run `moai repo-scans --refs <tip> <head>` from any checkout"));
-    assert!(leader.contains("when `result.remerge` is `true`"));
+    // The MODE-LEADER pin of the `repo-scans` command left with its route
+    // (SPEC-20261122-next-flow-skills-agents REQ-2).
 }
 
 fn run(args: &[&str], body: &str) -> (i32, String) {

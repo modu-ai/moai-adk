@@ -832,7 +832,6 @@ class SelfCheckSourcesTest(unittest.TestCase):
             self.assertIn(f"`{label}`", text, label)
 
 
-MODE_AGENT = ROOT / "skills" / "moai" / "workflows" / "mode-agent.md"
 # RUN carries the retired VERIFY route (SPEC-20261122-next-flow-skills-agents).
 VERIFY = ROOT / "skills" / "moai" / "workflows" / "run.md"
 
@@ -879,10 +878,7 @@ class SkillDocsNameThePythonSlotTest(unittest.TestCase):
         text = REFERENCE.read_text()
         self.assertIn("`exit=75 slot-refused (not run)`: report it as not run, never as passed", text)
 
-    def test_mode_agent_heavy_checks_names_pre_ready_and_the_python_slot(self):
-        line = paragraph(MODE_AGENT, "7. **heavy-checks**")
-        self.assertIn("`tools/self_check.sh --pre-ready`", line)
-        self.assertIn("python slot", line)
+    # Retired with the MODE-AGENT route (SPEC-20261122-next-flow-skills-agents REQ-2): `test_mode_agent_heavy_checks_names_pre_ready_and_the_python_slot` pinned the lane heavy-checks step.
 
     def test_verify_serialised_paragraph_names_the_python_slot(self):
         line = paragraph(VERIFY, "Heavy checks are serialised")

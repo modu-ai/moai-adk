@@ -309,22 +309,18 @@ class NoAuthorCiLineTest(unittest.TestCase):
         self.assertIn("passes a body with or without that line", verify)
         self.assertIn("without waiting for an author's `ci:` line (decision D4",
                       self.read("skills/moai/workflows/audit.md"))
-        self.assertIn("no author `ci:` line is waited for (decision D4",
-                      self.read("skills/moai/workflows/mode-leader.md"))
-        self.assertIn("it needs no `ci:` line in its body (decision D4",
-                      self.read("skills/moai/workflows/mode-agent.md"))
+        # The MODE-LEADER and MODE-AGENT halves left with their routes
+        # (SPEC-20261122-next-flow-skills-agents REQ-2).
         self.assertIn("저자는 `## Self-Audit` 절에 `ci:` 줄을 적지 않아도 된다",
                       self.read(".github/pull_request_template.md"))
 
     def test_no_merge_rule_waits_for_an_author_line(self):
-        for rel in ("skills/moai/workflows/mode-agent.md", "skills/moai/workflows/mode-leader.md",
-                    "skills/moai/workflows/sync.md"):
+        # The two mode files left with their routes (SPEC-20261122-next-flow-skills-agents REQ-2);
+        # SYNC keeps the rule.
+        for rel in ("skills/moai/workflows/sync.md",):
             text = self.read(rel)
             self.assertNotIn("its `ci:` line", text, rel)
             self.assertIn("a non-author PASS that cites that run", text, rel)
-        leader = self.read("skills/moai/workflows/mode-leader.md")
-        self.assertNotIn("top-priority next act", leader)
-        self.assertNotIn("never posts a verdict over a stale `ci:` line", leader)
 
 
 if __name__ == "__main__":

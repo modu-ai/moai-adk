@@ -19,25 +19,7 @@ fn says(text: &str, file: &str, phrases: &[&str]) {
     }
 }
 
-#[test]
-fn mode_agent_gates_the_opening_exempts_tip_repairs_and_verifies_before_a_merge() {
-    let agent = workflow("mode-agent.md");
-    says(
-        &agent,
-        "mode-agent.md",
-        &[
-            // P-C: the count and the opening are one command.
-            "Gate the opening on that count in the same command",
-            "-lt <N> ] && gh pr create",
-            // P-B: a tip repair is outside the open-PR limit.
-            "A pull request whose body carries a `moai-tip-repair:` line is outside this count",
-            "never convert it to a draft",
-            // P-E: a tip merge is a commit. C-53 S5: the check is `card check` (was: "A tip
-            // merge is a commit too: run `moai claim-verify` before `git merge`").
-            "and before `git merge` of the tip (a tip merge is a commit too), run `moai card check <card> --generation <g> --path <p>`",
-        ],
-    );
-}
+// Retired with the MODE-AGENT route (SPEC-20261122-next-flow-skills-agents REQ-2): `mode_agent_gates_the_opening_exempts_tip_repairs_and_verifies_before_a_merge` pinned the pull-request opening gate, and WORK opens no pull request.
 
 #[test]
 fn run_puts_a_new_test_in_a_file_of_its_own() {

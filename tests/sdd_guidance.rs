@@ -296,7 +296,9 @@ fn no_card_number_or_ddd_wording_in_the_package_and_agents() {
     for agent in ["plan", "research", "impl", "audit", "docs"] {
         files.push(format!("agents/{agent}.md"));
     }
-    assert!(files.len() >= 22, "{files:?}");
+    // Eight route texts (SPEC-20261122-next-flow-skills-agents REQ-1; twelve before), five
+    // internal references, the chain table, SKILL.md and five agents.
+    assert!(files.len() >= 20, "{files:?}");
     for rel in files {
         assert!(!read(&rel).contains("DDD"), "{rel} still says DDD");
     }

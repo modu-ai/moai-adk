@@ -272,23 +272,23 @@ fn a_missing_flag_is_a_usage_error_that_names_it() {
     }
 }
 
-/// D2, re-pointed by card C-53 S5: MODE-AGENT checks a write with `card check` in its flag form
-/// (its flags are checked against `--help` in tests/mode_cards_53.rs) and no longer shows the
-/// Issue `claim-verify` request; the flag form itself stays pinned by the tests above.
+/// D2, re-pointed by card C-53 S5 and then to WORK with the retired MODE-AGENT route
+/// (SPEC-20261122-next-flow-skills-agents REQ-3): the loop checks a write with `card check` in
+/// its flag form and shows no Issue `claim-verify` request; the name stays.
 #[test]
 fn mode_agent_shows_the_flag_form() {
     let doc = fs::read_to_string(
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai/workflows/mode-agent.md"),
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai/workflows/work.md"),
     )
     .unwrap();
     for phrase in [
         "`moai card check <card> --generation <g> --path <p>`",
         "with every path the change touches; write only when it answers `allowed: true`",
     ] {
-        assert!(doc.contains(phrase), "mode-agent.md must say `{phrase}`");
+        assert!(doc.contains(phrase), "work.md must say `{phrase}`");
     }
     assert!(
         !doc.contains("moai claim-verify . --issue"),
-        "the Issue claim request is gone from MODE-AGENT"
+        "the Issue claim request is gone from WORK"
     );
 }

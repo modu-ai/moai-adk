@@ -13,11 +13,15 @@
 use std::{fs, path::PathBuf};
 
 const HISTORY_FILE: &str = "skills/moai/references/rule-history.md";
-const LIVE_FILES: [&str; 4] = [
-    "skills/moai/workflows/mode-leader.md",
-    "skills/moai/workflows/mode-agent.md",
+const LIVE_FILES: [&str; 2] = [
     "skills/moai/workflows/audit.md",
     "skills/moai/references/internal/core-rules.md",
+];
+/// Rule files that left the package with their route (SPEC-20261122-next-flow-skills-agents
+/// REQ-2): their history headings stay, and nothing live is left to compare them with.
+const RETIRED_SOURCES: [&str; 2] = [
+    "skills/moai/workflows/mode-leader.md",
+    "skills/moai/workflows/mode-agent.md",
 ];
 
 fn root() -> PathBuf {
@@ -198,7 +202,10 @@ fn history_entries(text: &str) -> Vec<(String, String)> {
 /// The live rule file a history heading says its entries were moved from.
 fn source_file(heading: &str) -> Option<&'static str> {
     let from = heading.strip_prefix("History — moved from ")?;
-    LIVE_FILES.into_iter().find(|f| f.ends_with(from))
+    LIVE_FILES
+        .into_iter()
+        .chain(RETIRED_SOURCES)
+        .find(|f| f.ends_with(from))
 }
 
 fn live_entries<'a>(entries: &'a [(String, String)], live: &str) -> Vec<&'a str> {

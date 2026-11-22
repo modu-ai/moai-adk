@@ -1,5 +1,5 @@
 //! #2836 (leader decision 6869212685): the host's worktree guard (Claude Code, not a MoAI hook)
-//! and the shapes it accepts are pinned in the shipped MODE-AGENT workflow, with the rule that a
+//! and the shapes it accepts are pinned in the shipped RUN workflow (MODE-AGENT until SPEC-20261122-next-flow-skills-agents), with the rule that a
 //! check and the push or comment it guards are never sent as parallel calls.
 use std::{fs, path::Path};
 
@@ -22,10 +22,12 @@ fn says(text: &str, file: &str, phrases: &[&str]) {
 /// between spelling a permitted effect differently and reaching a refused one.
 #[test]
 fn mode_agent_lists_every_host_guard_refusal_with_its_accepted_shape() {
-    let agent = workflow("mode-agent.md");
+    // The table moved to RUN with the retired MODE-AGENT route
+    // (SPEC-20261122-next-flow-skills-agents REQ-2); the name stays.
+    let run = workflow("run.md");
     says(
-        &agent,
-        "mode-agent.md",
+        &run,
+        "run.md",
         &[
             "Host worktree guard (Issue #2836",
             "not a MoAI hook, whose refusals start with `MoAI tool-preflight:`",
@@ -50,10 +52,12 @@ fn mode_agent_lists_every_host_guard_refusal_with_its_accepted_shape() {
 /// or a leader message that reports a check waits for the check's exit.
 #[test]
 fn mode_agent_keeps_a_check_apart_from_the_push_and_the_comments_it_guards() {
-    let agent = workflow("mode-agent.md");
+    // The rule moved to RUN with the retired MODE-AGENT route
+    // (SPEC-20261122-next-flow-skills-agents REQ-2); the name stays.
+    let run = workflow("run.md");
     says(
-        &agent,
-        "mode-agent.md",
+        &run,
+        "run.md",
         &[
             "Never send a check and the push it guards as parallel calls in one response",
             // C-53 S5: a card note (was: an Issue or pull request comment).
@@ -62,7 +66,6 @@ fn mode_agent_keeps_a_check_apart_from_the_push_and_the_comments_it_guards() {
         ],
     );
     // The RUN workflow carries the retired VERIFY route (SPEC-20261122-next-flow-skills-agents).
-    let run = workflow("run.md");
     says(
         &run,
         "run.md",

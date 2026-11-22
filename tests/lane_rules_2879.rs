@@ -18,47 +18,9 @@ fn says(text: &str, file: &str, phrases: &[&str]) {
     }
 }
 
-#[test]
-fn a_lane_cleans_its_card_after_the_closing_table() {
-    let agent = workflow("mode-agent.md");
-    says(
-        &agent,
-        "mode-agent.md",
-        &[
-            "clean up that card (Issue #2879, required)",
-            "`moai worktree-gc-plan --integration-ref origin/<base> --worktree <the card's worktree> .`",
-            "then `moai worktree-gc-apply` with the same arguments, its `plan_digest`",
-            "never forced",
-            // C-82 (user decision 2026-11-17): one build folder per worktree under
-            // `~/.moai/build/`, emptied when the card is done (was: "Keep the lane's one build
-            // folder (`moai lane-env`)" and the self-audit building into that lane folder).
-            "Empty the card's build folder (`internal/build-folder`).",
-            "Every build, a self-audit's too, goes to the worktree's build folder (`internal/build-folder`).",
-        ],
-    );
-    assert!(
-        !agent.contains("lane-env"),
-        "mode-agent.md still names the per-lane folder"
-    );
-}
+// Retired with the MODE-AGENT route (SPEC-20261122-next-flow-skills-agents REQ-2): `a_lane_cleans_its_card_after_the_closing_table` pinned the lane's card cleanup after its pull request merged.
 
-/// Audit C1 on PR #2896: the blanket "never delete" rule names the card cleanup as its
-/// exception, so the two instructions no longer contradict each other. C-53 S5 repair N8: the
-/// unused worktree and branch of a refused `card take` is the second exception, and the
-/// `claim` step names the two commands and "that branch only".
-#[test]
-fn the_never_delete_rule_names_the_card_cleanup_as_its_exception() {
-    let agent = workflow("mode-agent.md");
-    says(
-        &agent,
-        "mode-agent.md",
-        // C-53 S5: the cleanup is self-pick item (3) since the pre-audit item left (was (4)).
-        &[
-            "Never delete files, branches or worktrees — except the cleanup in `self-pick` (3): `moai worktree-gc-apply` on your own merged card's worktree, with that plan's `plan_digest` (Issue #2879), and a refused take's unused worktree and branch (`claim` step) — never touch the real HOME",
-            "On `conflict` (held by another session, a scope overlap, not `ready`) remove the unused worktree and its branch (`git worktree remove <w>`, `git branch -D card/<n>-<slug>`, that branch only), then take the next candidate",
-        ],
-    );
-}
+// Retired with the MODE-AGENT route (SPEC-20261122-next-flow-skills-agents REQ-2): `the_never_delete_rule_names_the_card_cleanup_as_its_exception` pinned the lane's never-delete exceptions, which left with the route.
 
 /// The RUN workflow carries the retired VERIFY route (SPEC-20261122-next-flow-skills-agents).
 #[test]
@@ -79,20 +41,7 @@ fn verify_states_the_safe_ignored_rule_and_leaves_bulk_cleanup_to_the_leader() {
     );
 }
 
-#[test]
-fn the_leader_runs_the_same_plan_periodically_with_a_cursor() {
-    let leader = workflow("mode-leader.md");
-    says(
-        &leader,
-        "mode-leader.md",
-        &[
-            "Disk hygiene is part of supervision (Issue #2879)",
-            "`moai worktree-gc-plan --integration-ref origin/<base> --max-checked <N> --cursor <the last plan's next_cursor> .`",
-            "while free space is under the heavy-slot limit",
-            "Record the merged-worktree count and free space before and after",
-        ],
-    );
-}
+// Retired with the MODE-LEADER route (SPEC-20261122-next-flow-skills-agents REQ-2): `the_leader_runs_the_same_plan_periodically_with_a_cursor` pinned the leader's periodic disk hygiene.
 
 #[test]
 fn verify_names_the_build_folder_warning() {

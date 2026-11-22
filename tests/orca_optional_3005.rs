@@ -97,16 +97,12 @@ const SRC_ORCA_FILES: [&str; 13] = [
 /// agent lists the adapter among the documents it reads (checked below to be that line only).
 /// `rule-history.md` (C-103) is the record of the rule sentences the two modes carried: it quotes
 /// them word for word, so it names Orca; it holds no `orca` command line and no step of its own.
-const PACKAGE_ORCA_FILES: [&str; 5] = [
+/// The two mode files left with their routes (SPEC-20261122-next-flow-skills-agents REQ-2).
+const PACKAGE_ORCA_FILES: [&str; 3] = [
     "agents/research.md",
     "skills/moai/references/adapters/orca.md",
     "skills/moai/references/rule-history.md",
-    "skills/moai/workflows/mode-agent.md",
-    "skills/moai/workflows/mode-leader.md",
 ];
-
-/// Words that make an Orca command line safe to read on a machine without Orca.
-const NO_ORCA_PHRASES: [&str; 3] = ["without Orca", "no Orca", "neither Orca"];
 
 fn src_files() -> Vec<PathBuf> {
     let mut files = Vec::new();
@@ -180,46 +176,7 @@ fn the_word_orca_stays_in_the_two_modes_and_the_adapter() {
     );
 }
 
-#[test]
-fn every_orca_command_in_a_mode_sits_next_to_its_rule_for_no_orca() {
-    for (file, entry_rule) in [
-        (
-            "skills/moai/workflows/mode-agent.md",
-            // C-53 S5: the lane takes what `card next` names (was: "go straight to the
-            // self-claim round").
-            "in the autonomous mode (no Orca, or no channel between sessions) take what `card next` names",
-        ),
-        (
-            "skills/moai/workflows/mode-leader.md",
-            "Refuse to enter only when there is neither Orca nor a timer",
-        ),
-    ] {
-        let text = read(file);
-        let orca_section = section(&text, "Session control with Orca");
-        let intro = &orca_section[..orca_section.find("\n1. ").expect("a numbered list")];
-        for phrase in [
-            "installed is not chosen",
-            "Otherwise report the session-control step `not_run`",
-        ] {
-            assert!(intro.contains(phrase), "{file}: the Orca section lacks `{phrase}`");
-        }
-        assert!(text.contains(entry_rule), "{file}: lacks `{entry_rule}`");
-        let mut bare = Vec::new();
-        for line in text.lines() {
-            if orca_section.contains(line) || !line.contains("`orca ") {
-                continue;
-            }
-            if !NO_ORCA_PHRASES.iter().any(|p| line.contains(p)) {
-                bare.push(line.chars().take(90).collect::<String>());
-            }
-        }
-        assert!(
-            bare.is_empty(),
-            "{file}: a line outside the Orca section runs an Orca command and says nothing \
-             about the case without Orca (#3005 AC-8): {bare:#?}"
-        );
-    }
-}
+// Retired with the MODE-AGENT route (SPEC-20261122-next-flow-skills-agents REQ-2): `every_orca_command_in_a_mode_sits_next_to_its_rule_for_no_orca` checked the Orca lines of the two mode files, which are gone.
 
 #[test]
 fn the_adapter_table_has_a_row_for_every_route_with_a_status_word() {
@@ -233,8 +190,8 @@ fn the_adapter_table_has_a_row_for_every_route_with_a_status_word() {
         .collect();
     assert_eq!(
         route_names.len(),
-        12,
-        "the plan counts 12 workflows: {route_names:?}"
+        8,
+        "the route table counts 8 workflows (SPEC-20261122-next-flow-skills-agents REQ-1): {route_names:?}"
     );
 
     let adapter = read("skills/moai/references/adapters/orca.md");
@@ -257,8 +214,8 @@ fn the_adapter_table_has_a_row_for_every_route_with_a_status_word() {
         }
         // The audit of #3018 (B1): an Orca profile moves the settings folder to
         // `CLAUDE_CONFIG_DIR`, which `moai update` does not look at (Issue #2936), so SETUP and
-        // UPDATE are not "works" with Orca.
-        if name == "SETUP" || name == "UPDATE" {
+        // UPDATE are not "works" with Orca (SETUP left with its route).
+        if name == "UPDATE" {
             assert!(
                 cells[1].starts_with("unsupported") && cells[1].contains("#2936"),
                 "row `{name}`, With Orca must start with unsupported and name Issue #2936: {}",

@@ -233,14 +233,7 @@ class LabelCoherenceTest(unittest.TestCase):
         self.assertFalse(names - repo_names, sorted(names - repo_names))
 
 
-    def test_mode_skills_say_area_labels_are_the_projects_own(self):
-        # Decision 42 = (가) (6845981985): the product list seeds no `area:`, so the lane and
-        # leader instructions must not require an `area:` label from that list (#2651 review).
-        leader = (ROOT / "skills/moai/workflows/mode-leader.md").read_text(encoding="utf-8")
-        agent = (ROOT / "skills/moai/workflows/mode-agent.md").read_text(encoding="utf-8")
-        self.assertIn("one or more `area:` when the project defines them", leader)
-        self.assertIn("plus the `area:` labels the project creates for itself (that list seeds none)", leader)
-        self.assertIn("and the project's own `area:` labels (the file seeds none)", agent)
+    # Retired with the MODE-LEADER route (SPEC-20261122-next-flow-skills-agents REQ-2): `test_mode_skills_say_area_labels_are_the_projects_own` pinned the area-label sentences of the two mode files.
 
 if __name__ == "__main__":
     unittest.main()
