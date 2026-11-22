@@ -19,13 +19,20 @@ fn a_cleared_child_environment_keeps_the_developer_dir() {
     let child = String::from_utf8_lossy(&out.stdout);
     let lines: Vec<&str> = child.lines().collect();
     assert!(lines.contains(&"PATH=/usr/bin:/bin"), "{child}");
+    // `clean_env` also sets the process table switch (SPEC-20261122-test-process-table-default).
+    let switch = format!(
+        "{}={}",
+        common::NO_PROCESS_TABLE.0,
+        common::NO_PROCESS_TABLE.1
+    );
+    assert!(lines.contains(&switch.as_str()), "{child}");
     match std::env::var("DEVELOPER_DIR") {
         Ok(dir) if Path::new(&dir).is_dir() => {
             assert!(
                 lines.contains(&format!("DEVELOPER_DIR={dir}").as_str()),
                 "{child}"
             );
-            assert_eq!(lines.len(), 2, "nothing else survives the clear: {child}");
+            assert_eq!(lines.len(), 3, "nothing else survives the clear: {child}");
         }
         _ => assert!(!child.contains("DEVELOPER_DIR="), "{child}"),
     }

@@ -49,6 +49,7 @@ helpers, and only the tests that judge "a program uses this folder" read the rea
 
 - write: this SPEC folder, `tests/common/mod.rs`, the new `tests/process_table_default.rs`
 - write: `tests/home_install_apply_cli.rs`, `tests/home_retire_cli.rs`, `tests/home_state_apply.rs`, `tests/home_state_plan.rs`, `tests/home_install_go_retire.rs`, `tests/home_install_plan_cli.rs`, `tests/update_home_layer_cli.rs`, `tests/hygiene_apply_cli.rs`, `tests/hygiene_cli.rs`, `tests/optimize_plan_cli.rs`
+- write (found by the first check affected run): `tests/cargo_env_developer_dir.rs` and `tests/home_isolation_scan.rs` pin the variables `clean_env` passes on and learn the switch; `tests/process_scan_cost_cli.rs` counts lsof calls and reads the real table
 - read-only: everything else, `src/` included
 
 ## Plan
