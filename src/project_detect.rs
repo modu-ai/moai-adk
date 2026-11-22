@@ -520,23 +520,11 @@ fn requirement_name(spec: &str) -> String {
         .to_ascii_lowercase()
 }
 
-/// Dependency names declared in the root manifests (names only; versions are ignored).
-fn dependency_names(root: &Path) -> BTreeSet<String> {
+/// Dependency names the Python files at the root declare: `pyproject.toml` (`[project]` and
+/// Poetry dependencies) and `requirements.txt`. Names only, as the requirement names carry
+/// them.
+fn python_dependency_names(root: &Path) -> BTreeSet<String> {
     let mut names = BTreeSet::new();
-    if let Some(doc) = read_in(root, &["Cargo.toml"]).and_then(|t| toml_doc(&t)) {
-        for section in ["dependencies", "dev-dependencies", "build-dependencies"] {
-            names.extend(table_keys(doc.get(section)));
-        }
-    }
-    if let Some(v) =
-        read_in(root, &["package.json"]).and_then(|t| serde_json::from_str::<Value>(&t).ok())
-    {
-        for section in ["dependencies", "devDependencies"] {
-            if let Some(map) = v[section].as_object() {
-                names.extend(map.keys().cloned());
-            }
-        }
-    }
     if let Some(doc) = read_in(root, &["pyproject.toml"]).and_then(|t| toml_doc(&t)) {
         if let Some(list) = doc
             .get("project")
@@ -559,6 +547,27 @@ fn dependency_names(root: &Path) -> BTreeSet<String> {
                 .map(requirement_name),
         );
     }
+    names.into_iter().map(|n| n.to_ascii_lowercase()).collect()
+}
+
+/// Dependency names declared in the root manifests (names only; versions are ignored).
+fn dependency_names(root: &Path) -> BTreeSet<String> {
+    let mut names = BTreeSet::new();
+    if let Some(doc) = read_in(root, &["Cargo.toml"]).and_then(|t| toml_doc(&t)) {
+        for section in ["dependencies", "dev-dependencies", "build-dependencies"] {
+            names.extend(table_keys(doc.get(section)));
+        }
+    }
+    if let Some(v) =
+        read_in(root, &["package.json"]).and_then(|t| serde_json::from_str::<Value>(&t).ok())
+    {
+        for section in ["dependencies", "devDependencies"] {
+            if let Some(map) = v[section].as_object() {
+                names.extend(map.keys().cloned());
+            }
+        }
+    }
+    names.extend(python_dependency_names(root));
     if let Some(text) = read_in(root, &["go.mod"]) {
         for line in text.lines() {
             let line = line.trim().trim_start_matches("require").trim();
@@ -750,13 +759,15 @@ fn commands_fact(root: &Path) -> Value {
         lint.insert("go vet ./...".to_string());
         format.insert("test -z \"$(gofmt -l .)\"".to_string());
     }
-    let python_names: BTreeSet<String> = dependency_names(root)
+    if dependency_names(root).contains("pytest") || python_test_names(root).contains("pytest") {
+        test.insert("pytest".to_string());
+    }
+    // Lint and format tools count only when a Python file declares them: a Rust or Node
+    // dependency that is also called `ruff` offers nothing.
+    let python_names: BTreeSet<String> = python_dependency_names(root)
         .into_iter()
         .chain(python_test_names(root))
         .collect();
-    if python_names.contains("pytest") {
-        test.insert("pytest".to_string());
-    }
     if python_names.contains("ruff") {
         lint.insert("ruff check .".to_string());
         format.insert("ruff format --check .".to_string());

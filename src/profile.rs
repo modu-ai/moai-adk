@@ -196,7 +196,7 @@ pub struct WorkFlowSettings {
 /// A branch name git takes, kept to a portable subset: 1 to 100 bytes of ASCII letters, digits
 /// and `. - _ /`; no leading `-`, `.` or `/`; no trailing `/` or `.`; no `..`, `//` or `/.`;
 /// no `/` component ending in `.lock`; not `HEAD` (as `git check-ref-format --branch` rules).
-fn branch_name(s: &str) -> bool {
+pub(crate) fn branch_name(s: &str) -> bool {
     !s.is_empty()
         && s.len() <= 100
         && s != "HEAD"

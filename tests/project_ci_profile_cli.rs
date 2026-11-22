@@ -466,3 +466,60 @@ fn a_refusal_does_not_echo_the_offending_value() {
     assert!(!text(&out).contains("sk-fixture"), "{}", text(&out));
     assert!(Path::new(p(&root)).exists());
 }
+
+/// Audit N2: the same holds for a refused `ci` value; no value of the answers is repeated.
+#[test]
+fn a_refusal_of_the_answers_does_not_echo_the_offending_value() {
+    let marker = "zz-fixture-marker-9183";
+    let mut cases = Vec::new();
+    for (field, value) in [
+        ("kind", json!(marker)),
+        ("visibility", json!(marker)),
+        ("strict", json!(marker)),
+        ("systems", json!(["linux", marker])),
+        (
+            "deploy",
+            json!({"enabled": true, "target": format!("{marker} x")}),
+        ),
+    ] {
+        let mut answers = ci();
+        answers[field] = value;
+        cases.push(answers);
+    }
+    for answers in cases {
+        let root = TempDir::new().unwrap();
+        let out = plan(&root, &with("ci", answers.clone()));
+        assert!(!out.status.success(), "{answers}");
+        assert!(!text(&out).contains(marker), "{answers}: {}", text(&out));
+    }
+}
+
+/// Audit N1: a check id and a deploy place are names, but a name that has the shape of a key
+/// is refused like any other profile text, and the value is not repeated.
+#[test]
+fn a_check_id_or_a_deploy_place_in_the_shape_of_a_key_is_refused() {
+    for name in ["sk-live-4242", "ghp_abcdef1234", "github_pat_x1"] {
+        let root = TempDir::new().unwrap();
+        let out = plan(
+            &root,
+            &with("checks", json!([{"id": name, "command": "true"}])),
+        );
+        assert!(!out.status.success(), "id {name} was accepted");
+        assert!(!text(&out).contains(name), "{}", text(&out));
+
+        let mut answers = ci();
+        answers["deploy"] = json!({"enabled": true, "target": name});
+        let out = plan(&root, &with("ci", answers));
+        assert!(!out.status.success(), "deploy place {name} was accepted");
+        assert!(!text(&out).contains(name), "{}", text(&out));
+    }
+    // A word that only contains the letters is a plain name.
+    let root = TempDir::new().unwrap();
+    let mut answers = ci();
+    answers["deploy"] = json!({"enabled": true, "target": "task-based"});
+    ok(&plan(&root, &with("ci", answers)));
+    ok(&plan(
+        &root,
+        &with("checks", json!([{"id": "risk-free", "command": "true"}])),
+    ));
+}

@@ -920,14 +920,48 @@ fn every_detected_command_is_accepted_as_a_declared_check() {
         checks.len() > 8,
         "the fixture offers many commands: {checks:?}"
     );
-    checks.truncate(16);
-    let mut profile = json!({
-        "schema_version": 2, "project_id": "demo", "purpose": "Build a small editor",
-        "tools": ["Rust"], "development_methods": ["TDD"], "hosts": ["claude"]
-    });
-    profile["checks"] = Value::Array(checks);
-    let out = run(&["project-plan", p(&root)], profile.to_string().as_bytes());
-    ok(&out);
+    // Every candidate is tried: a plan holds at most 16 checks, so they go in groups of 16.
+    for group in checks.chunks(16) {
+        let mut profile = json!({
+            "schema_version": 2, "project_id": "demo", "purpose": "Build a small editor",
+            "tools": ["Rust"], "development_methods": ["TDD"], "hosts": ["claude"]
+        });
+        profile["checks"] = Value::Array(group.to_vec());
+        let out = run(&["project-plan", p(&root)], profile.to_string().as_bytes());
+        ok(&out);
+    }
+}
+
+/// Audit N4 on the CI profile keys: Python tool names count only when a Python file declares
+/// them; a Rust or Node dependency that happens to be called `ruff` or `black` offers nothing.
+#[test]
+fn python_lint_and_format_candidates_need_a_python_declaration() {
+    let root = TempDir::new().unwrap();
+    let r = root.path();
+    write(
+        r,
+        "Cargo.toml",
+        "[package]\nname = \"x\"\n[dependencies]\nruff = \"1\"\nblack = \"1\"\n",
+    );
+    write(
+        r,
+        "package.json",
+        r#"{"devDependencies": {"ruff": "1", "black": "1"}}"#,
+    );
+    let c = detect(&root)["commands"].clone();
+    for kind in ["lint", "format"] {
+        let listed = c[kind].to_string();
+        assert!(!listed.contains("ruff"), "{kind}: {listed}");
+        assert!(!listed.contains("black"), "{kind}: {listed}");
+    }
+    // The same names in a Python file still count.
+    write(r, "requirements.txt", "ruff==0.5\nblack==24.1\n");
+    let c = detect(&root)["commands"].clone();
+    assert_eq!(
+        c["lint"],
+        json!(["cargo clippy --all-targets -- -D warnings", "ruff check ."])
+    );
+    assert!(c["format"].to_string().contains("black --check ."), "{c}");
 }
 
 #[cfg(unix)]
