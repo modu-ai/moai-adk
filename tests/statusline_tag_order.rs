@@ -173,23 +173,37 @@ fn line1_has_no_tag_under_ko_en_and_80_40_columns() {
             )
             .unwrap()
             .replace(
-                &format!("🗿 v{recorded}"),
-                &format!("🗿 v{}", moai_cli::BUILD_VERSION),
+                &format!("🗿 {recorded}"),
+                &format!("🗿 {}", moai_cli::BUILD_VERSION),
             );
             for lang in ["ko_KR.UTF-8", "en_US.UTF-8"] {
                 for columns in ["80", "40"] {
                     let got = run_case(&case, lang, columns, color);
-                    // Line 1 has its own forms by width (SPEC-20261122-statusline-where REQ-11), so
-                    // it is read below; every line after it is the same bytes as the golden.
+                    let budget: usize = columns.parse::<usize>().unwrap() - 2;
+                    // Line 1 and line 3 have their own forms by width
+                    // (SPEC-20261122-statusline-where REQ-11, SPEC-20261122-statusline-limits
+                    // REQ-1), so they are read below; every line between them is the same bytes
+                    // as the golden, and line 3 is the golden's when that fits the budget.
+                    let lines: Vec<&str> = got.lines().collect();
+                    let want: Vec<&str> = golden.lines().collect();
+                    assert_eq!(lines.len(), want.len(), "{name} {variant} {columns}");
+                    let inner = 1..lines.len().saturating_sub(1);
                     assert_eq!(
-                        got.lines().skip(1).collect::<Vec<_>>(),
-                        golden.lines().skip(1).collect::<Vec<_>>(),
+                        lines[inner.clone()],
+                        want[inner],
                         "{name} {variant} LANG={lang} COLUMNS={columns}"
                     );
+                    let golden_last = strip_sgr(want.last().copied().unwrap_or_default());
+                    if display_width(&golden_last) <= budget {
+                        assert_eq!(
+                            lines.last(),
+                            want.last(),
+                            "{name} {variant} LANG={lang} COLUMNS={columns}"
+                        );
+                    }
                     let text = strip_sgr(&got);
                     let line1 = strip_links(text.lines().next().unwrap_or_default());
                     let line1 = line1.as_str();
-                    let budget: usize = columns.parse::<usize>().unwrap() - 2;
                     assert!(
                         line1.starts_with("🧠 Opus"),
                         "{name} {variant} LANG={lang} COLUMNS={columns}: line 1 {line1:?}"
@@ -207,6 +221,10 @@ fn line1_has_no_tag_under_ko_en_and_80_40_columns() {
                     assert!(
                         last.starts_with("🔋 CW ") || last.starts_with("🪫 CW "),
                         "{name} {variant} LANG={lang} COLUMNS={columns}: last line {last:?}"
+                    );
+                    assert!(
+                        display_width(last) <= budget,
+                        "{name} {variant} LANG={lang} COLUMNS={columns}: line 3 {last:?} is too wide"
                     );
                     runs += 1;
                 }
@@ -232,12 +250,16 @@ fn first_line_with(name: Option<&str>, registry: bool, color: bool) -> String {
     let root = std::fs::canonicalize(tmp.path()).unwrap();
     let home = root.join("home");
     let project = root.join("work/demo-project");
-    for d in [&home, &home.join(".moai"), &project, &root.join("tmp")] {
+    let moai_home = home.join(moai_cli::home_root::MOAI_DIR);
+    for d in [&home, &moai_home, &project, &root.join("tmp")] {
         std::fs::create_dir_all(d).unwrap();
     }
     common::git::git_ok(&project, &["init", "-q", "-b", "main"]);
     if registry {
-        let file = project.join(".git/.moai-cli/sessions/leader.json");
+        // The lane registry where the clone resolver puts it.
+        let file = moai_cli::clone_root::path(&project.join(".git"))
+            .join("sessions")
+            .join("leader.json");
         std::fs::create_dir_all(file.parent().unwrap()).unwrap();
         std::fs::write(file, LIVE_LEADER).unwrap();
     }
@@ -256,7 +278,7 @@ fn first_line_with(name: Option<&str>, registry: bool, color: bool) -> String {
         .clean_env()
         .env("PATH", "/usr/bin:/bin")
         .env("HOME", &home)
-        .env("MOAI_HOME", home.join(".moai"))
+        .env("MOAI_HOME", &moai_home)
         .env("TMPDIR", root.join("tmp"))
         .env("TZ", "UTC")
         .env("GIT_CONFIG_GLOBAL", "/dev/null")
