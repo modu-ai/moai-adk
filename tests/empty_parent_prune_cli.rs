@@ -122,8 +122,10 @@ fn removing_the_last_project_skill_leaves_no_empty_skills_folder() {
     ] {
         assert!(!r.join(gone).exists(), "{gone} was left behind");
     }
-    // The project root itself, and what the apply never wrote, stay.
-    assert!(r.join("AGENTS.md").exists());
+    // The project root itself and its instruction file stay; since the CLAUDE.md layout the
+    // generation writes CLAUDE.md and never AGENTS.md.
+    assert!(r.join("CLAUDE.md").exists());
+    assert!(!r.join("AGENTS.md").exists());
 }
 
 /// The miss direction: a sibling keeps the folders above it, a file of the user's keeps them

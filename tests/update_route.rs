@@ -44,7 +44,9 @@ fn the_update_route_is_the_project_layer() {
         "Show the user every phase and every step in one view",
         "Ask once for the `ready` steps as a whole, then a separate yes for each `needs_decision` step",
         // C-51 (user decision 2026-11-16): the session composes the reference from the pick.
-        "the words of `apply.argv` (the first is the `moai` command) with `<permission-reference>` replaced by a permission reference this session composes from the user's pick",
+        // The warning-confirmation clause sits between the two halves since the AGENTS.md picks.
+        "the words of `apply.argv` (the first is the `moai` command) with ",
+        "`<permission-reference>` replaced by a permission reference this session composes from the user's pick",
         "and `apply.stdin` on stdin (nothing when it is `null`)",
         "After a go-state apply, run `moai project-update-plan <project>` again before anything else",
         "The project is up to date only when `all_unchanged` is `true`",
