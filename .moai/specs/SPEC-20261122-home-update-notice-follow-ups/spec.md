@@ -41,3 +41,15 @@ The independent audit of the home update slice passed it and left three follow-u
 1. RED: add the removal sentence to the notice cases, add the screen case for both languages and both screens, and restore the confirm result check; the first two fail on the tip.
 2. GREEN: extend the two notice reasons, add the Korean form and the host label in the two skipped-row renderers, and fix the two comments.
 3. Run the new test file, the notice test file, the golden test file, the user layer test file, clippy, rustfmt and `moai spec check`.
+
+## Result
+
+RED afb0ce8825, GREEN 39c3850f71, scan row b8ced3e49e. The leader granted the named lines of the held files (LEADER DECISION on LANE-BLOCKED 6282, extended on 6441 for the one EXEMPT row in `tests/repo_scans_test.py`).
+
+- AC-1 met: `the_notice_says_to_remove_the_old_files_yourself` failed first (the Codex reason ended at "no longer manages them") and passes now; `home_update_notice_follow_ups` 2 passed, `codex_home_update_removed` 12 passed (green run, `target/green.log`).
+- AC-2 met: `the_unmanaged_notice_reads_in_both_languages_and_names_the_host` failed first (no row `unmanaged codex` on the apply screen) and passes now in the same run; `update_tux_golden` 14 passed, no golden changed.
+- AC-3 met: the same test checks `unmanaged codex`, `unmanaged omp` and `agents claude` on the preview and the apply screens in both languages.
+- AC-4 met: `a_blocked_skill_copy_gets_no_agents_and_no_section` reads the confirm result again and passes; `update_user_layer_cli` 11 passed.
+- AC-5 met: `git grep -n -i codex -- src/home_routing.rs src/home_style.rs` prints five lines, each saying the Codex file is no longer written.
+- Checks: clippy `--all-targets -D warnings` exit 0; rustfmt check clean; `moai spec check` 0 errors. `moai check affected fd56877af5..39c3850f71` (70 targets) failed on the walking-file scan, fixed by b8ced3e49e (`tests/repo_scans_test.py` 6 passed by hand), and on `update_route` 1 test and `update_end_to_end_cli` 2 tests, which this diff does not touch; the leader checks those on the integration tip.
+- Not run: check affected after b8ced3e49e, the whole suite, and the independent audit.
