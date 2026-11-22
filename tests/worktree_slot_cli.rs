@@ -704,14 +704,21 @@ fn ensure_removes_the_temporary_copies_a_killed_run_left() {
 /// audit slot removes nothing and names nothing.
 #[test]
 fn ensure_leaves_an_audit_slots_leftover_copy_to_audit_slot() {
-    let r = repo(&[("a.txt", "a\n")]);
-    r.ok(&["ensure", "audit-1", "--at", &r.head]);
-    let slot = r.slot("audit-1");
-    fs::create_dir_all(slot.join(".target-inherit-4242/debug")).unwrap();
-    fs::write(slot.join(".target-inherit-4242/debug/x"), "x\n").unwrap();
-    let again = r.ok(&["ensure", "audit-1", "--at", &r.head]);
-    assert_eq!(again["cleaned"], json!([]), "{again}");
-    assert!(slot.join(".target-inherit-4242/debug/x").is_file());
+    // Every audit slot, not the first alone: a rule that names one slot or one prefix of the
+    // names would clean the others' copies (the audit's third mutant).
+    for name in ["audit-1", "audit-2", "audit-3"] {
+        let r = repo(&[("a.txt", "a\n")]);
+        r.ok(&["ensure", name, "--at", &r.head]);
+        let slot = r.slot(name);
+        fs::create_dir_all(slot.join(".target-inherit-4242/debug")).unwrap();
+        fs::write(slot.join(".target-inherit-4242/debug/x"), "x\n").unwrap();
+        let again = r.ok(&["ensure", name, "--at", &r.head]);
+        assert_eq!(again["cleaned"], json!([]), "{name}: {again}");
+        assert!(
+            slot.join(".target-inherit-4242/debug/x").is_file(),
+            "{name}: its copy was removed"
+        );
+    }
 }
 
 /// A run that cannot get the slot lock waits for the configured time, then refuses and adds
