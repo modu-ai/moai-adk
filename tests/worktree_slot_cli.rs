@@ -330,3 +330,46 @@ fn a_slot_warmed_from_the_seed_compiles_only_the_workspace_crate() {
     assert!(!warm.contains("Compiling slotdep"), "{warm}");
     assert!(warm.contains("Compiling slotapp"), "{warm}");
 }
+
+/// The caps are exact: one under the worktree cap adds, and a floor equal to the measured free
+/// share adds (N against N+1).
+#[test]
+fn ensure_adds_right_at_the_caps() {
+    let r = repo(&[("a.txt", "a\n")]);
+    r.ok(&["ensure", "lane-01", "--at", &r.head]);
+    let added = r.ok(&["ensure", "lane-02", "--at", &r.head, "--max-worktrees", "2"]);
+    assert_eq!(added["added"], json!(true), "{added}");
+    let free = r.ok(&["plan"])["caps"]["free_percent"]["value"]
+        .as_u64()
+        .unwrap();
+    let at = free.to_string();
+    let added = r.ok(&[
+        "ensure",
+        "lane-03",
+        "--at",
+        &r.head,
+        "--min-free-percent",
+        &at,
+    ]);
+    assert_eq!(added["added"], json!(true), "{added}");
+    let over = (free + 1).to_string();
+    let (code, v) = r.run(&[
+        "ensure",
+        "lane-04",
+        "--at",
+        &r.head,
+        "--min-free-percent",
+        &over,
+    ]);
+    assert_ne!(code, 0, "{v}");
+    let (code, v) = r.run(&["ensure", "lane-04", "--at", "no-such-commit"]);
+    assert_ne!(code, 0, "{v}");
+    assert!(
+        v["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("names no commit"),
+        "{v}"
+    );
+    assert!(!r.slot("lane-04").exists());
+}
