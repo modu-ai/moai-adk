@@ -67,3 +67,13 @@ The registry becomes a list of names: `build.rs` writes a `with_ops!` macro that
 | R-1 | `~/.moai/reports/moai-adk/build-review-2026-11-22.md` 5.3 (read whole on 2026-11-22): "`build.rs:179-185` 가 `#[path = \"<CARGO_MANIFEST_DIR>/src/ops/<word>.rs\"]` 를 생성해요"; an audit build folder held a registry that pointed into a removed worktree; the macro form "시험 결과: `7 [\"alpha\", \"beta\"]`"; "`#[path]` 를 빼고 `pub mod alpha;` 만 생성하면 … E0583". | Intent, REQ-1, REQ-3, Risks |
 | R-2 | The same report section 6: the generated file holds no path, and its content depends only on its inputs (operation file names and doc lines), with no time, path or environment. | REQ-2, D-2 |
 | R-3 | `~/.moai/reports/moai-adk/agentic-redesign-2026-11-22.md` 3.B (read whole): "`build.rs`의 절대 경로 제거(경로 없는 `with_ops!` 매크로, 시험 크레이트로 확인)"; 3.A: new and reset worktree slots are warmed with `cp -c -R -p seed/target`. | Intent |
+
+## Result
+
+Slice 1. Status draft; only the lines below are claimed.
+
+- AC-1: met. `the_registry_is_a_list_of_names_with_no_path` passes in `tests/hot_file_ops_merge.rs`: the generated `ops_registry.rs` is a `macro_rules! with_ops` list whose entry words equal the files under `src/ops/` in file-name order, and no line holds `#[path`, `src/ops/` or the package folder.
+- AC-2: met. `every_operation_keeps_its_name_and_help_line` passes: every operation answers `--help` under its kebab-case name with the first `///` line of its `Args` as the first help line; `the_registry_holds_every_operation_file` reads the words from the new entry lines.
+- AC-3: met. `a_path_in_the_registry_is_named` passes: samples holding an absolute path, a `#[path` attribute or `src/ops/` are named by line, and the real registry yields none.
+- The tests were red first (d531b20042: the registry held `#[path = "<worktree>/src/ops/<word>.rs"]` lines and no list) and green with `build.rs` and `declare_ops!` (454fbe5c17); D-4 moved them into the listed scan file (fd22e6ad6a).
+- Not claimed: a run in a build folder cloned from another worktree; the change removes the path the generated file depended on, and cargo's own rerun judgment is unchanged (Non-goals).
