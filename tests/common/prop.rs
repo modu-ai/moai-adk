@@ -87,7 +87,7 @@ fn seed_from_env() -> (u64, Option<u64>) {
     (seed, only)
 }
 
-/// Runs `property` for `cases` generated inputs and asserts the run stays under 30 seconds
+/// Runs `property` for `cases` generated inputs and asserts the run stays within its budget
 /// (C-100 AC-3: at least 1000 cases, 30 seconds per property, the seed printed on failure).
 /// A failing case's panic is retold with the property's name, the seed and the case index.
 /// `FnMut` so a property can hold one shared fixture (a ledger, a tree) across its cases.
@@ -114,12 +114,65 @@ pub fn run_property(name: &str, cases: u64, mut property: impl FnMut(&mut Rng)) 
             );
         }
     }
-    assert!(
-        start.elapsed() < Duration::from_secs(30),
-        "property {name} ran {} cases in over 30 s (seed {seed})",
-        cases
-    );
+    let load = None;
+    if let Some(message) = over_budget(name, cases, seed, start.elapsed(), load, 1) {
+        panic!("{message}");
+    }
+}
+
+/// The time budget of one property run.
+pub fn budget(_load: Option<f64>, _cpus: usize) -> Duration {
+    Duration::from_secs(30)
+}
+
+/// The failure message of a run that took `elapsed`, or `None` while it is within the budget.
+pub fn over_budget(
+    name: &str,
+    cases: u64,
+    seed: u64,
+    elapsed: Duration,
+    load: Option<f64>,
+    cpus: usize,
+) -> Option<String> {
+    (elapsed >= budget(load, cpus))
+        .then(|| format!("property {name} ran {cases} cases in over 30 s (seed {seed})"))
 }
 
 /// The C-100 case floor: every property runs at least this many cases.
 pub const MIN_CASES: u64 = 1000;
+
+/// SPEC-20261122-test-defects-session-reclaim AC-7 (REQ-7): 30 s at or below one runnable
+/// thread per CPU or with no reading, in proportion above it, and capped.
+#[test]
+fn the_property_budget_grows_with_load_above_the_cpus() {
+    let secs = |load: Option<f64>, cpus: usize| budget(load, cpus).as_secs_f64();
+    assert_eq!(secs(None, 8), 30.0);
+    assert_eq!(secs(Some(2.0), 8), 30.0);
+    assert_eq!(secs(Some(8.0), 8), 30.0);
+    assert_eq!(secs(Some(16.0), 8), 60.0);
+    assert_eq!(secs(Some(67.0), 16), 30.0 * 67.0 / 16.0);
+    assert_eq!(secs(Some(1000.0), 8), 240.0, "capped at eight times");
+    assert_eq!(secs(Some(f64::NAN), 8), 30.0);
+    assert_eq!(secs(Some(-1.0), 8), 30.0);
+    assert_eq!(secs(Some(16.0), 0), 30.0, "no CPU count, no scaling");
+}
+
+/// AC-7 (REQ-8): a run within its budget passes; one over it names the property, the seed, the
+/// elapsed time, the budget and the load the budget was scaled by.
+#[test]
+fn the_property_budget_message_names_the_seed_and_the_load() {
+    let within = over_budget("p", 1000, 7, Duration::from_secs(59), Some(16.0), 8);
+    assert_eq!(within, None);
+    let over = over_budget("p", 1000, 7, Duration::from_secs(61), Some(16.0), 8).expect("over");
+    for part in [
+        "property p",
+        "1000 cases",
+        "seed 7",
+        "61",
+        "60",
+        "load 16.0",
+        "8 CPUs",
+    ] {
+        assert!(over.contains(part), "{part:?} in {over}");
+    }
+}
