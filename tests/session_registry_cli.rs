@@ -80,6 +80,32 @@ fn session_registry_children_do_not_inherit_the_shell_session_id() {
     );
 }
 
+/// SPEC-20261122-test-defects-session-reclaim AC-5 (REQ-2): every command of this file is built
+/// in `registrar`, so the variable it removes is removed for every child; a command built
+/// anywhere else fails here with its line.
+#[test]
+fn every_child_is_built_by_the_one_helper() {
+    let text = include_str!("session_registry_cli.rs");
+    // Split so this line is not a match of its own.
+    let needle = concat!("Command", "::new(");
+    let at: Vec<usize> = text
+        .lines()
+        .enumerate()
+        .filter(|(_, l)| l.contains(needle))
+        .map(|(i, _)| i + 1)
+        .collect();
+    let helper = text
+        .lines()
+        .position(|l| l.starts_with("fn registrar("))
+        .expect("the registrar helper")
+        + 1;
+    assert_eq!(
+        at,
+        vec![helper + 1],
+        "commands are built at lines {at:?}; only registrar (line {helper}) may build one"
+    );
+}
+
 fn run_in(fx: &Fixture, cwd: &Path, args: &[&str]) -> Output {
     registrar(fx)
         .arg("session-register")

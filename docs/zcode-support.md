@@ -98,9 +98,9 @@ CLI 사용 문서(원문은 중국어):
 
 - **P04/P15 ZCode 범위**: 결정됨(2026-11-08). 헤드리스 경로만 다루고, 수신·훅은 미확인으로 둔다.
 - **ZCode projection 위치**: 상태 HOLD. 이 Issue는 고르지 않는다.
-  - A. Import 대화상자로 Claude/Codex 설치본을 가져오게 안내한다. MoAI가 ZCode 경로에 쓰지 않는다. Symlink 모드는 독립 복사 원칙과 충돌할 수 있다. 앱 전용이라 헤드리스 경로에는 해당하지 않는다.
+  - A. Import 대화상자로 Claude 설치본을 가져오게 안내한다. MoAI가 ZCode 경로에 쓰지 않는다. Symlink 모드는 독립 복사 원칙과 충돌할 수 있다. 앱 전용이라 헤드리스 경로에는 해당하지 않는다.
   - B. `~/.zcode/skills/moai`에 독립 복사한다. 앱 문서가 명시한 유일한 경로이고, CLI 문서도 사용자 `.zcode/skills`를 찾는다.
-  - C. `.agents/skills/moai`(CLI 문서의 project·user 후보)에 둔다. Codex 등 다른 클라이언트와 경로를 공유하는 관례에 맞지만, 앱 문서에는 없다.
+  - C. `.agents/skills/moai`(CLI 문서의 project·user 후보)에 둔다. 다른 클라이언트와 경로를 공유하는 관례에 맞지만, 앱 문서에는 없다.
   - D. `.zcode-plugin/plugin.json` plugin으로 배포한다. skill과 hook을 함께 실을 수 있지만 marketplace 운영이 필요하다.
 - **앱/CLI 불일치 해소 방법**(실측 시점·환경): HOLD. 실측은 ZCode 3.17.2 설치와 계정이 필요하다.
 

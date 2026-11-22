@@ -11,7 +11,7 @@
 >
 > 추가는 #1990 HOLD-C2 / REQ-01C-02(r27)의 "필요 시 추가는 docs에 기록" 조항을 따랐고, 기존 11종의 의미는 바꾸지 않았다.
 >
-> 고른 envelope에는 상태 필드가 없으므로 아래 envelope 후보 A·B(`status`/`domain_status`) 어느 쪽과도 같지 않다. 실패 쪽 모양은 오류 후보 B와 같다. 런처(`-l`, `-a`, `cc|glm|codex`, `session`)는 대상이 아니다. 아래 `현행 계약` 절의 fixture는 이 변경에 맞춰 다시 기록했다. 세부 규칙은 `docs/rust-product-path.md`의 `Output envelope` 절에 있다.
+> 고른 envelope에는 상태 필드가 없으므로 아래 envelope 후보 A·B(`status`/`domain_status`) 어느 쪽과도 같지 않다. 실패 쪽 모양은 오류 후보 B와 같다. 런처(`-l`, `-a`, `cc|glm`, `session`)는 대상이 아니다. 아래 `현행 계약` 절의 fixture는 이 변경에 맞춰 다시 기록했다. 세부 규칙은 `docs/rust-product-path.md`의 `Output envelope` 절에 있다.
 
 ## HOLD 현황
 
@@ -51,25 +51,6 @@
 | REQ-00D-04 지원 밖 protocol_version | project-apply는 `stale or altered plan`, agents-plan은 `invalid agents request`로 나온다. 05-B #2002의 `plan-admit`만 전용 메시지 `unsupported protocol_version; supported: 1`을 내고, `contract::classify` 규칙으로 `kind: unsupported_protocol_version`이 된다(규칙과 단위 시험은 `src/contract.rs`) | 07, 15 |
 | REQ-00D-09 digest 재현성 | plan digest가 절대 경로에 묶인다 | 06, 16 |
 | REQ-00D-11 값 echo 금지 | MoAI가 직접 내는 메시지에는 입력 값이 없다(`effort must be one of …`는 허용값 목록). 다만 clap 사용 오류는 입력한 하위 명령 이름을 그대로 되돌려 준다(`unrecognized subcommand 'no-such-command'`) | 01, 19 |
-
-### 추가된 operation (02-C #1993)
-
-`codex.projection_plan`(`codex-projection-plan`)과 `codex.doctor`(`codex-doctor`)는 01-C envelope을 그대로 쓴다. 둘 다 아무것도 쓰지 않는다. 새 `kind`는 없다.
-
-`codex.projection_apply`(`codex-projection-apply`, I4 #2241)도 같은 envelope을 쓴다. 쓰는 곳은 `--target` 아래의 계획된 파일뿐이다. 새 `kind`는 없다. 오류는 기존 kind로 분류된다(`codex_projection_apply_messages_have_a_deliberate_kind`가 고정한다).
-
-| 상황 | kind |
-| --- | --- |
-| permission reference 없음 | `permission_reference_missing` |
-| `--plan-digest`가 새로 계산한 plan과 다름 | `stale_plan` |
-| source manifest 불일치·누락(REQ-I4-01) | `conflict` |
-| 대상 파일 바이트가 다름 | `conflict` |
-| 첫 파일을 만든 뒤 실패 | `partial` |
-
-- 사용하는 kind는 `usage`, `invalid_input`, `not_found`, `io`이다.
-- 메시지와 kind의 대응은 `tests/codex_adapter.rs`의 `codex_messages_have_a_deliberate_kind`가 고정한다.
-- 위 golden fixture 21건은 00-D가 기록한 기존 명령의 기준선이라 이 두 operation을 담지 않는다.
-- 두 operation의 출력은 `tests/codex_adapter.rs`가 검사하고, `result` 키는 `docs/rust-product-path.md`의 operation 표에 있다.
 
 ## 상태 변환표
 

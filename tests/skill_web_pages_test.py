@@ -19,7 +19,11 @@ RULES = {
         "report the step as not_run and never switch to another browser silently"
     ),
     "read the browser's own guidance": "Read the browser's own current guidance before using it",
-    "Chrome path per host": "with no documented Codex CLI path, so there it is not_run",
+    # SPEC-20261122-next-flow-skills-agents REQ-8: the Codex CLI clause left with its host; the
+    # Claude Code path stays.
+    "Chrome path": (
+        "Chrome in Claude Code through the Claude in Chrome extension (`claude --chrome`, `/chrome`)"
+    ),
     "aside guidance commands": "aside through `aside guide` and `aside --help`",
     "Ego Lite guidance commands": "Ego Lite through `ego-browser skill` and `ego-browser help`",
     "default permission": "Keep the browser's default permission mode",

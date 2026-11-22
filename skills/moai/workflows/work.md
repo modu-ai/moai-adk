@@ -4,7 +4,7 @@
 
 ## Input
 
-The project's card ledger, read with `moai card next`, the SPEC each card names and the worktree each card is worked in.
+The project's card ledger, read with `moai card next`, the SPEC each card names and the worktree each card is worked in. Read the flow reference `flows/next-flow` before the first take: how a lane works, what it submits and how a card lands.
 
 ## Output
 

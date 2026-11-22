@@ -1,0 +1,27 @@
+* MoAI update
+  installed 2026.11.0-rc.1 = package
+  2026.11.0-rc.1
+  HOME ~
+
+Checking
+  ^ skills claude
+    30 up to date · 1 new · 1 to update
+  ok agents
+    claude 5 — 5 up to date
+  ok routing
+    CLAUDE.md up to date
+  ok output style
+    2 up to date
+  ok command names
+    up to date
+  - hooks
+    skipped: no MoAI hook set in this
+    project
+  ! style claude
+    notice: if the style does not show
+    up, open /status
+
+Changes
+  skills claude
+    ^ references/routes.md
+    ^ workflows/update.md

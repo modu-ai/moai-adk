@@ -136,7 +136,7 @@ pub const HOME_TABLE: &[Entry] = &[
     row("projects", Writes, true, UserData, UserDataKeep, NO, "design #3009 §2 (나): `projects/<project_id>/` holds this generation's machine-written data (layout.rs:46,122,254); the same folder is the #2811 new-project parent `projects/<name>` (home_workdir.rs:30); Go carve-out clean_home.go:33 with another meaning (Z3: kept in place, never moved or retired). A child is never a table name"),
     row("receipts", Writes, false, Class::Rust, RustName, NO, "key_vault.rs:1001"),
     row("schedule", Writes, false, Class::Rust, RustName, NO, "gate_schedule.rs:372 schedule_dir (unit files, lock, receipts); spelled through a constant, so the src scan below does not see it"),
-    row("state", Writes, true, ToolAsset, GoRetires, NO, "usage_limit.rs:50, statusline/state.rs:88; Go paths.go:456 state/active-sessions.json (a live registry: skip-in-use)"),
+    row("state", Writes, true, ToolAsset, GoRetires, NO, "statusline/state.rs:88 (the usage record left it for the status line's cache folder, SPEC-20261122-statusline-limits D-5); Go paths.go:456 state/active-sessions.json (a live registry: skip-in-use)"),
     row("vault", Writes, false, Class::Rust, SecretRenameOnly, NO, "key_vault.rs:37,239 (.master.key and entries; 0700/0600)"),
     row("versions", Writes, false, Class::Rust, RustName, NO, "update.rs:901, bin_names.rs:95"),
     row("star-ask-dismissed", Writes, false, Class::Rust, RustName, NO, "star_ask.rs dismiss_star_ask (SPEC-20261122-star-and-reports)"),

@@ -181,6 +181,7 @@ Lane and leader
   trailer-check          Report commits with missing or malformed trailers
   bundle                 Assemble the M-Flow bundle from READY heads
   audit-clone-plan       Preview an independent audit clone
+  audit-slot             Audit slots that inherit the lane's build
   labels-check           Report Issues whose labels break the rule
   decision-due           Sort the unanswered decisions of a bundle
   decision-file-check    Check one decision bundle file
@@ -237,6 +238,7 @@ Internal
   archive-search         Search the archived SPECs
   worktree-gc-plan       Preview removing or trimming merged worktrees
   worktree-gc-apply      Remove or trim the previewed worktrees
+  worktree-slot          Fixed worktree slots, warmed from the seed
   worktree-install-plan  Preview a scoped package install
   hygiene-plan           Preview what may move to the holding folder
   hygiene-apply          Move the previewed leftovers to the holding folder

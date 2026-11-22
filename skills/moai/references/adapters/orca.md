@@ -41,20 +41,20 @@ Read on 2026-11-20 (UTC, from `date -u` in the same step as each read): https://
 
 Use `git worktree` and the host's own terminal instead, and record the Orca step as `not_run` with the reason (`orca` not on PATH, or the runtime not reachable).
 
-Orca is optional for every workflow. Nothing in the `moai` tool runs `orca`, and the two modes name Orca only in steps that carry their own "without Orca" rule. This table says what each workflow does on each side; `works` runs as written, `replaced` runs through another channel, `unsupported` has no way yet and is left for the leader to track.
+Orca is optional for every workflow. Nothing in the `moai` tool runs `orca`, and a workflow names Orca only in steps that carry their own "without Orca" rule. This table says what each workflow does on each side; `works` runs as written, `replaced` runs through another channel, `unsupported` has no way yet and is left for the leader to track.
 
 | Workflow | With Orca | Without Orca | Host differences |
 |---|---|---|---|
-| READ | works (Orca not used) | works | parallel reads: Claude Code several agents in one message, Codex one agent at a time and wait for all |
-| PROJECT | works | works | entry `/moai project` (Claude Code), `$moai project` (Codex CLI) |
+| READ | works (Orca not used) | works | parallel reads: Claude Code several agents in one message |
+| PROJECT | works | works | entry `/moai project` |
 | UPDATE | unsupported: an Orca profile starts Claude Code with `CLAUDE_CONFIG_DIR` set to its own folder, and `moai update` does not see the settings folder of an Orca profile (Issue #2936) | works | files go to the host's own settings folder, which an Orca profile can move away from `~/.claude` |
 | PLAN | works | works | the `moai-plan` agent runs through the host's own subagent tool |
-| RUN | works (Orca terminals and worktrees are not used) | works | isolation: Claude Code `isolation: worktree`; Codex, Kiro and Cursor work in one worktree, one change at a time |
+| RUN | works (Orca terminals and worktrees are not used) | works | isolation: Claude Code `isolation: worktree`; Kiro and Cursor work in one worktree, one change at a time |
 | AUDIT | works | works | read-only is enforced by the agent file on Claude Code only; the verdict's first line has one format on every host |
 | SYNC | works | works | none |
 | WORK | works (Orca not used) | works | none |
 
-Unsupported today, tracked in Issue #3005: a Codex or OMP leader's periodic run without Orca. Settled in Issue #3005 P10 and P11 (OMP 18.18.7, read in its installed documents and source on 2026-11-15; no live OMP session was run): the entry is `/skill:moai <text>` and the text after the name reaches the skill as plain text; OMP reads skills from `~/.agents/skills` and from `.claude/skills`, `.agents/skills` and `.omp/skills` of the project, and from `~/.claude/skills` only when `enabledProviders` names `claude`, `skills.enableClaudeUser` is on or `CLAUDE_CONFIG_DIR` is set; an OMP lane keeps going with goal mode and ends it with the `goal` tool's `drop`, since OMP has no interval timer and no empty-read count. Tracked in Issue #2936: the settings folder of an Orca profile (`CLAUDE_CONFIG_DIR`), which `moai update` does not see, so SETUP and UPDATE are unsupported with Orca until that repair lands. The table is pinned by `tests/orca_optional_3005.rs`: a workflow without a row, or a row without one of the three words, fails the test.
+Unsupported today, tracked in Issue #2936: the settings folder of an Orca profile (`CLAUDE_CONFIG_DIR`), which `moai update` does not see, so UPDATE is unsupported with Orca until that repair lands. The table is pinned by `tests/orca_optional_3005.rs`: a workflow without a row, or a row without one of the three words, fails the test.
 
 ## Sources
 

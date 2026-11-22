@@ -219,6 +219,7 @@ pub const GROUPS: &[Group] = &[
             ("trailer-check", false),
             ("bundle", false),
             ("audit-clone-plan", false),
+            ("audit-slot", false),
             ("labels-check", false),
             ("decision-due", false),
             ("decision-file-check", false),
@@ -285,6 +286,7 @@ pub const GROUPS: &[Group] = &[
             ("archive-search", false),
             ("worktree-gc-plan", false),
             ("worktree-gc-apply", false),
+            ("worktree-slot", false),
             ("worktree-install-plan", false),
             ("hygiene-plan", false),
             ("hygiene-apply", false),
@@ -563,6 +565,7 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
         &["audit-gate < input.json", "audit-gate --require-pass < input.json"],
     ),
     ("audit-clone-plan", &["audit-clone-plan --pr 2824 --head <sha> --head-branch <head-branch> --base-branch <base-branch> ."]),
+    ("audit-slot", &["audit-slot prep auto --head <sha> --holder agent-2 --lane .claude/worktrees/lane-01", "audit-slot done audit-1 --discard --holder agent-2"]),
     ("labels-check", &["labels-check --repo modu-ai/moai-adk ."]),
     ("decision-due", &["decision-due docs/decisions/bundle.md"]),
     ("decision-file-check", &["decision-file-check docs/decisions/bundle.md"]),
@@ -616,6 +619,7 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("archive-restore", &["archive-restore --spec SPEC-001 --permission-reference <ref> ."]),
     ("archive-search", &["archive-search --query cache ."]),
     ("worktree-gc-plan", &["worktree-gc-plan --integration-ref origin/main .", "worktree-gc-apply --integration-ref origin/main --plan-digest <digest> --permission-reference <ref> ."]),
+    ("worktree-slot", &["worktree-slot plan", "worktree-slot ensure lane-01 --at origin/main"]),
     ("worktree-install-plan", &["worktree-install-plan --scope web ."]),
     ("hygiene-plan", &["hygiene-plan --integration-ref origin/main ."]),
     ("hygiene-apply", &["hygiene-apply --integration-ref origin/main --plan-digest <digest> --permission-reference <ref> ."]),
@@ -1047,7 +1051,7 @@ pub const GETTING_STARTED: &[(&str, &str)] = &[
 pub const ROOT_EXAMPLES: &[(&str, &str)] = &[
     // SPEC-20261118-launcher-agent-entry: the role is entered inside the session; at 60
     // columns this ends on column 59, so it never wraps.
-    ("cc -l", "leader, then /moai --mode-leader"),
+    ("cc -l", "start the leader session"),
     ("update", "preview and apply an update"),
     ("project-detect .", "show the facts of this project"),
 ];
@@ -1582,14 +1586,14 @@ const LONG_ABOUT_KO: &[(&str, &str)] = &[
     ),
     (
         "cc",
-        "Claude Code 세션 실행기: `cc -l|-a`. `-l|-a` 는 세션 이름과 권한만 정하고, 역할은 세션 \
-         안의 `/moai --mode-leader`·`/moai --mode-agent` 로 시작.",
+        "Claude Code 세션 실행기: `cc -l|-a`. `-l|-a` 는 세션 이름과 권한만 정해요. `-l` 은 리더 \
+         세션이고, `-a` 세션의 일은 세션 안의 `/moai work` 로 시작.",
     ),
     (
         "glm",
         "z.ai GLM 위의 Claude Code: `glm -l|-a`(환경의 ANTHROPIC_AUTH_TOKEN 이나 키 파일이 \
-         필요해요). `-l|-a` 는 세션 이름과 권한만 정하고, 역할은 세션 안의 \
-         `/moai --mode-leader`·`/moai --mode-agent` 로 시작.",
+         필요해요). `-l|-a` 는 세션 이름과 권한만 정해요. `-l` 은 리더 세션이고, `-a` 세션의 \
+         일은 세션 안의 `/moai work` 로 시작.",
     ),
     (
         "claude-doctor",
@@ -1675,12 +1679,12 @@ const ARG_HELP_KO: &[(&str, &str, &str)] = &[
     (
         "cc|glm",
         "leader",
-        "리더 세션(이름 `leader` 와 권한만 정함, 역할은 세션 안의 `/moai --mode-leader`)",
+        "리더 세션(이름 `leader` 와 권한만 정함)",
     ),
     (
         "cc|glm",
         "agent",
-        "에이전트 세션(이름과 권한만 정함, 역할은 세션 안의 `/moai --mode-agent`)",
+        "에이전트 세션(이름과 권한만 정함, 일은 세션 안의 `/moai work` 로 시작)",
     ),
     (
         "cc|glm",

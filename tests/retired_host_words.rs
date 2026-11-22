@@ -4,9 +4,10 @@
 //! slice. A retired host word is `codex` anywhere, `omp` or `oh my pi` as a whole word, the Codex
 //! entry spelling `$moai` followed by a space or a dash, and the OMP spelling `/skill:moai`. Each
 //! later slice adds its own case when its files change.
+mod common;
 use moai_cli::labels_check::parse_axes;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 fn root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -87,15 +88,17 @@ fn github_forms() -> Vec<String> {
     for entry in manifest["files"].as_array().unwrap() {
         for key in ["template_path", "derived_from"] {
             if let Some(p) = entry[key].as_str() {
-                if root().join(p).is_file() && !paths.iter().any(|q: &String| q == p) {
+                assert!(root().join(p).is_file(), "the manifest names a missing {p}");
+                if !paths.iter().any(|q: &String| q == p) {
                     paths.push(p.to_string());
                 }
             }
         }
     }
-    assert!(
-        paths.iter().any(|p| p.ends_with("moai-bugfix.yml")),
-        "the manifest names the issue forms: {paths:?}"
+    assert_eq!(
+        paths.len(),
+        13,
+        "the manifest's templates and their sources: {paths:?}"
     );
     paths
 }
@@ -153,6 +156,59 @@ fn host_codex_is_retired_in_the_label_lists() {
     assert!(findings(".github/moai/README.md", &readme, &[]).is_empty());
 }
 
+/// The current product docs, named one by one (no directory walk).
+const PRODUCT_DOCS: [&str; 10] = [
+    "docs/support-matrix.md",
+    "docs/e2e-matrix.md",
+    "docs/host-live-session-checklist.md",
+    "docs/user-entry-draft.md",
+    "docs/protocol-v1.md",
+    "docs/agent-model-effort-inheritance.md",
+    "docs/llms.txt",
+    "docs/zcode-support.md",
+    "docs/lane-loop-contract.md",
+    "docs/agents-md-maintenance.md",
+];
+
+/// AC-6: the named product docs hold no retired host word outside the allow-list.
+#[test]
+fn product_docs_have_no_retired_host_words() {
+    // (path, line substring): a line that keeps a retired word on purpose.
+    const ALLOW: [(&str, &str); 1] = [
+        // The verbatim quote of the user's platform decision of 2026-11-17 (dated history); it
+        // picks the platforms, not the hosts.
+        (
+            "docs/support-matrix.md",
+            "claude code, codex에서 지원하는 환경으로 동일하게 지원하자.",
+        ),
+    ];
+    for (rel, part) in ALLOW {
+        assert!(
+            read(rel).contains(part),
+            "stale allow-list entry {rel}: {part}"
+        );
+    }
+    let mut found = Vec::new();
+    for rel in PRODUCT_DOCS {
+        found.extend(
+            findings(rel, &read(rel), &[])
+                .into_iter()
+                .filter(|f| !ALLOW.iter().any(|(p, part)| *p == rel && f.contains(part))),
+        );
+    }
+    assert!(found.is_empty(), "{found:#?}");
+}
+
+/// AC-7: the files that exist only for Codex or OMP are gone.
+#[test]
+fn codex_only_files_are_absent() {
+    let rel = "docs/codex-adapter-contract.md";
+    assert!(
+        fs::symlink_metadata(root().join(rel)).is_err(),
+        "{rel} still exists"
+    );
+}
+
 /// AC-11: the error-kind table samples the messages of the hooks commands as they are now: no
 /// removed Codex hook file and no retired host in the host message.
 #[test]
@@ -164,13 +220,13 @@ fn the_error_table_holds_no_removed_hook_adapter_message() {
     assert!(table.contains("\"unknown hook host; must be claude\""));
 }
 
-/// AC-8: the repository tracks no file under its own `.codex` folder.
+/// AC-8: the repository tracks no file under its own `.codex` folder: the committed tree has no
+/// `.codex` entry (a tracked file would give it one). A local untracked `.codex` does not count.
 #[test]
 fn the_repository_tracks_no_codex_folder() {
-    for rel in [
-        ".codex/agents/prj-local-check.toml",
-        ".codex/agents/prj-reviewer.toml",
-    ] {
-        assert!(!Path::new(&root().join(rel)).exists(), "{rel}");
-    }
+    let out = common::git::git_raw(
+        &root(),
+        &["rev-parse", "--verify", "--quiet", "HEAD:.codex"],
+    );
+    assert!(!out.success, "HEAD tracks .codex: {}", out.stdout);
 }

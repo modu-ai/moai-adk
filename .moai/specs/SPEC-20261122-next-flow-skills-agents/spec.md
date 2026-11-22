@@ -112,7 +112,72 @@ parent: null
 | D-7 | The shipped texts do not name `prj-reviewer` or `prj-local-check`. | They are this repository's own harness files; a product text must not depend on them. | Name them again. |
 | D-13 | Text slice A also wrote, by the leader's word, the lines outside this Scope that pointed at the removed files (the PR template, the local rules file, three docs, two source comments, four tests, a fixture line and a tool), re-pointing references only; the reference test counts `.moai/specs/**`, `docs/design-review/**`, `docs/decisions-*.md` and `docs/surveys/**` as history and no longer requires their paths to resolve. | Leader decision on the slice A blocked note (2026-11-22): closed SPECs and dated docs record past states and are not rewritten; live references move to the routes that absorbed them, with no stub files. | Rewrite the history files, or restore stubs. |
 | D-14 | The build-folder reference leaves the package in slice C, not slice B, and its rule is rewritten where it moves: each worktree builds in its own `target/` (no shared build home for new work), with the fixed slots and the seeded copy of the redesign; its source and test readers are granted when slice C asks. | Leader decision on the slice B blocked note (2026-11-22) and the user's build rule of the same day. | Remove it in slice B with its old rule. |
+| D-15 | Slice B also wrote two lines outside this Scope by the leader's word: the `next-flow-shipped-texts` entry of `tools/repo_scans.json`, and the read list and step 2 of `agents/audit.md`. | Leader decision on the slice B blocked note (2026-11-22). | Drop the scan entry and the agent's read line. |
+| D-16 | Slice C also wrote lines outside this Scope by the leader's word, and only lines that named a removed file, a retired mode or gate, or a pull-request-era step:<br>- `src/help.rs`, `src/lane_idle.rs`, `src/lane_env.rs`, `src/optimize.rs`, `tools/review_checklist.json`, `tools/build_folder.py` and `docs/rust-product-path.md`;<br>- the pins of `agent_defs_package`, `codex_question_tool`, `flaky_followups`, `lane_rules_2836`, `launcher_agent_entry`, `mode_workflow_steps`, `orca_optional_3005`, `product_cli`, `update_always_asks` and `update_route`, and the root help goldens;<br>- `skills/moai/workflows/work.md` (one Input line);<br>- `tests/gate_collect.rs`, where the test of the pull-request example is re-pinned to the card-note example the gate parser reads, because no code builds a card-note line. | Leader decisions on the slice C blocked notes (2026-11-22, three answers). | Restore each line from the slice's parent commit. |
+| D-17 | Tier 0 gets a light audit by the lander instead of no audit, because a card lands only with a passing verdict. The tier is named in the lane's ready note, not in a pull-request body. | Leader answer on the slice C part 3 note (2026-11-22); the flow reference's landing rule. | Restore "tier 0 has no audit". |
+| D-18 | The product spellings of the retired modes stay for a product slice; they are listed in Result and are not rewritten here. | Leader answer on the slice C part 2 note (2026-11-22). | Rewrite them in this SPEC. |
+| D-19 | The audit contract's section "Audit tiers" lists the tier 2 prefixes of `src/gate.rs` one by one (AUDIT's tier step points to it, because a workflow names no package path), naming the retired second host's folder by where it sits because REQ-8 keeps its name out; the leader's three cases (documents read by the lander, tests or tools a light audit by the lander, code an independent audit) apply below tier 2, and tier 2 is always the full audit by an independent session. The verdict's second line is `Moai-Session: <value>`: the card verdict reader reads the first line only, so the recording session compares that value itself. | Slice C audit N-c, N-d and N-e and the leader's repair brief (2026-11-23). | Apply the three cases to tier 2 too, or teach `auditor: <lane>`. |
+| D-20 | Plan step 6 also wrote two lines outside this Scope by the leader's word: the `docs/rule-history.md` entry of `EXACT_DENY` in `tools/ci_scope.py`, and line 5 of `references/internal/core-rules.md`, which points to the moved history. | Leader decision on the step 6 blocked note (2026-11-22); the cards that held the two files had landed their slices. | Leave the pointer for a later step and keep the docs path out of the deny list. |
 
 ## Result
 
-(Filled when the work is done. This is the SPEC-only slice: no code and no text changed yet.)
+Status: text slices A, B and C landed. Plan step 6 (the rule history moves to `docs/`) is written; the child SPECs are open.
+
+What each slice delivered:
+- **Slice A:** route inventory and retired references removed.
+- **Slice B:** the flow reference `references/flows/next-flow.md` and the audit contract `references/audit.md`; `internal/review.md` removed and its readers re-pointed (D-15).
+- **Slice C:**
+  - The build-folder reference is removed, and its rule moves into the run workflow's check-run rules (D-14).
+  - The REQ-8 and REQ-9 scrub tests pass over every file under `skills/moai/` and `agents/`. Three named exceptions remain: the rule history, a text another card holds, and the source manifest's origin reasons.
+  - The points of the slice B audit:
+    - the verdict, reservation and interim result are card notes;
+    - pull-request passages are scoped to a release pull request;
+    - one rule says who records a verdict;
+    - the flow reference is named where WORK starts;
+    - the audit agent's input carries `head` and `base`;
+    - a finding has one wording: a file and a line, or no finding;
+    - the remote copy wording matches the `remote_copy` setting, off by default;
+    - `references/flows/` holds one file, and both new references begin with "When to read:".
+
+  - The repair of the slice C audit:
+    - RUN names no `moai lane-env` step: each worktree builds in its own `target/`;
+    - SYNC lands a card through the flow: the lane only commits, and the lander lands once with `moai card land` after a recorded verdict; the pull request is a release's;
+    - the scan's REQ-8 words gain `audit-gate`, `moai/audit`, `gh pr merge`, `update-branch` and `train number`;
+    - `internal/sdd` and `internal/git-safety` no longer tie a SPEC to a pull request or read a lane's merge state;
+    - AUDIT no longer sends its reader to SYNC for integration;
+    - the verdict's second line has one form, `Moai-Session: <value>`;
+    - the audit contract lists the tier 2 prefixes of `src/gate.rs` (a workflow names no package path), and AUDIT's tier step points to it and says who audits each kind of change.
+- **Plan step 6 (done, D-3):** `references/rule-history.md` moved to `docs/rule-history.md` with `git mv`. Its title, the note that it was a package file and the package-size note changed; the rest is as it was. The readers that moved:
+  - `tests/rule_history_guard.rs` reads `docs/rule-history.md`, keeps all three checks and fails while the package still holds the old file;
+  - `tests/next_flow_skill_scan.rs` lists the old path in `REMOVED` (nine files) and drops it from the scrub exceptions (two left);
+  - `tests/report_rules_core.rs` reads the history from the repository root;
+  - `tests/orca_optional_3005.rs` no longer lists it among the package files that name Orca;
+  - `tests/skill_references_test.py` drops its exception for the history, because no shipped file is left out now;
+  - the header comments of `tests/claim_renew_doc_3042.rs`, `tests/mode_cards_53.rs` and `tests/mode_workflow_steps.rs` name `docs/rule-history.md` (the guard still requires every test file the history names to exist, D-11);
+  - the source manifest is regenerated and drops the entry.
+- **The two granted lines (D-20):** line 5 of `references/internal/core-rules.md` now names the moai-adk repository's `docs/rule-history.md`, and `tools/ci_scope.py` lists `docs/rule-history.md` in `EXACT_DENY`, because code reads that docs path. Each file changed by that one line; the source manifest entry of `core-rules.md` is regenerated.
+- **Follow-ups of the slice C verdict:**
+  - F2 (done): SYNC names a pull request only where it speaks of the release pull request. The receipt is carried in a note on the card, the SPEC is archived after the landing, and step 2 checks the tree the lane's ready note names; a test scans every sentence of SYNC.
+  - F3 (done): SYNC's work ledger is the project's card ledger, as WORK reads it.
+  - F4 (done): the tier 2 list test fails on an entry the code lacks, on an entry written twice and on a missing entry, and keeps exactly one stand-in for the retired second host's dot folder.
+  - F1 and F5 moved to `SPEC-20261123-audit-rule-text`, which rewrites the AUDIT tier step and the RUN heavy-check paragraph.
+- **D-19 is a rule for the sessions, not a tool check.** The tools judge the floor (`tier_of`) and the tier a PASS note states (`moai bundle check`). Who audits is a rule the sessions follow, and `moai card land` reads no verdict.
+
+Left for a product slice (D-18), product spellings of the retired modes and of their help:
+- `src/main.rs:54`, `:57`, `:145-153` and `:1011-1027`;
+- `src/session.rs:21-22` and `:46-47`;
+- `src/lane_duty.rs:75` and `:88`;
+- `src/lane_loop.rs:5`, `:177` and `:189`;
+- `src/leader_round.rs:848`;
+- `src/lane_registry.rs:11` and `src/hook_engine.rs:503` (comments that name the retired agent workflow);
+- the operation comments `src/ops/lane_loop_line.rs:9` and `src/ops/lane_duty_line.rs:7`;
+- the claude-doctor line of `src/help.rs`.
+
+Left for a product slice, the home build folder (slice C audit B1): the texts no longer send a lane to `moai lane-env`, but the code still builds there:
+- `moai lane-env` sets `CARGO_TARGET_DIR` to a folder under the home folder and creates it (`src/lane_env.rs:301-302`, `:401`; its `--help` says so);
+- the warning of `moai heavy-slot-acquire` names that folder and the lane-env line (`src/heavy_slot.rs:461`);
+- the comments `src/lane_env.rs:7` and `tools/build_folder.py:7` still cite RUN's "Check-run rules" for the home build folder.
+
+Left as it is: RUN's cleanup item (3) keeps the words "after the card's closing table", which `tests/check_pr_self_audit_test.py` pins and this card's write scope does not hold; the build rule now names `moai worktree-gc-apply` for removing the worktree itself, so the two agree on how.
+
+Finding: the `remote_copy` setting is not on this branch's base. It is on the integration branch (`src/profile.rs`, `src/card/remote_copy.rs`), where `moai card land` runs the copy itself. The flow text names the setting and its behaviour, but not the `moai card remote-copy` command, until this branch takes the tip.

@@ -414,9 +414,10 @@ fn process_in_the_worktree() {
     let _ = beside.wait();
 }
 
-/// AC-10 (REQ-12): a worktree whose only untracked file is a listed tool cache (the statusline's
-/// GitHub counts) counts as clean; any other untracked file, an unlisted name in the same
-/// folder and a changed tracked file each keep it dirty.
+/// AC-10 (REQ-12): a worktree whose only untracked file is a tool cache (the statusline's GitHub
+/// counts, under the runtime state folder) counts as clean; an untracked file outside that
+/// folder, one beside it and a changed tracked file each keep it dirty
+/// (SPEC-20261122-test-defects-session-reclaim REQ-3, REQ-4 widened the one file to the folder).
 #[test]
 fn a_listed_tool_cache_is_not_work() {
     let w = world();
@@ -484,6 +485,87 @@ fn a_runtime_state_folder_is_not_work() {
     for f in &files {
         assert!(w.wt.join(f).exists(), "the proof deleted {f}");
     }
+}
+
+/// SPEC-20261122-test-defects-session-reclaim AC-6 (REQ-5, REQ-6): a worktree that ignores its
+/// runtime state folder, as this repository does, holds an ignored file there: tool state, so
+/// the early reclaim goes through and the file stays. An ignored file outside that folder still
+/// refuses it and is named.
+#[test]
+fn an_ignored_state_folder_file_is_not_work() {
+    let w = world();
+    // The state folder from the resolver, read before any file is made (tests never spell it).
+    let state = moai_cli::state_root::rel(&w.wt, "state");
+    fs::write(w.wt.join(".gitignore"), format!("{state}/\nscratch/\n")).unwrap();
+    git_in(&w.wt, &["add", ".gitignore"]);
+    git_in(&w.wt, &["commit", "-q", "-m", "ignore list"]);
+    git_in(&w.wt, &["push", "-q", "origin", "main"]);
+    let card = w.taken(&sid(1), Some(&w.wt), "src/work/");
+    w.register_gone(NAME, &sid(1));
+    let before = w.dump();
+
+    let counts = w.wt.join(&state).join("github/counts.json");
+    fs::create_dir_all(counts.parent().unwrap()).unwrap();
+    fs::write(&counts, "{\"open_issues\":1}\n").unwrap();
+
+    // An ignored file outside the state folder is still a draft, and it is the one named.
+    fs::create_dir_all(w.wt.join("scratch")).unwrap();
+    fs::write(w.wt.join("scratch/draft.md"), "x\n").unwrap();
+    let m = w.refused_and_unchanged(w.reclaim(&sid(2), &card, "1"), "ignored entry", &before);
+    assert!(m.contains("scratch/"), "{m}");
+    fs::remove_file(w.wt.join("scratch/draft.md")).unwrap();
+    fs::remove_dir(w.wt.join("scratch")).unwrap();
+
+    // Only the ignored state folder file is left: the reclaim goes through and it stays.
+    let got = result(&w.reclaim(&sid(2), &card, "1"));
+    assert_eq!(got["reservation"]["generation"], json!(2));
+    assert!(counts.exists(), "the proof deleted a file");
+}
+
+/// SPEC-20261122-test-defects-session-reclaim AC-8 (REQ-9, REQ-10): an untracked folder git
+/// cannot open (mode 000) makes `git status` exit 0 with only a warning and list nothing for
+/// it; the worktree is unreadable, not clean, so the reclaim is refused and changes nothing.
+#[test]
+fn an_unreadable_folder_is_not_a_clean_worktree() {
+    use std::os::unix::fs::PermissionsExt;
+    let w = world();
+    let card = w.taken(&sid(1), Some(&w.wt), "src/locked/");
+    w.register_gone(NAME, &sid(1));
+    let before = w.dump();
+
+    let locked = w.wt.join("locked");
+    fs::create_dir_all(&locked).unwrap();
+    fs::write(locked.join("draft.md"), "x\n").unwrap();
+    fs::set_permissions(&locked, fs::Permissions::from_mode(0o000)).unwrap();
+    let out = w.reclaim(&sid(2), &card, "1");
+    // Opened again before any assertion, so the temporary folder can always be removed.
+    fs::set_permissions(&locked, fs::Permissions::from_mode(0o755)).unwrap();
+    let m = w.refused_and_unchanged(out, "could not be read", &before);
+    assert!(m.contains("worktree unknown"), "{m}");
+}
+
+/// AC-9 (REQ-3, REQ-4): an untracked name with a space is read as written (git quotes it in
+/// its line form): under the runtime state folder it is tool state, outside it is one
+/// uncommitted change.
+#[test]
+fn a_name_with_a_space_is_read_as_written() {
+    let w = world();
+    let card = w.taken(&sid(1), Some(&w.wt), "src/spaced/");
+    w.register_gone(NAME, &sid(1));
+    let before = w.dump();
+
+    let spaced = w.wt.join("my notes.md");
+    fs::write(&spaced, "x\n").unwrap();
+    let m = w.refused_and_unchanged(w.reclaim(&sid(2), &card, "1"), "worktree dirty", &before);
+    assert!(m.contains("holds 1 uncommitted change(s)"), "{m}");
+    fs::remove_file(&spaced).unwrap();
+
+    let cache = moai_cli::state_root::path(&w.wt, "state/github/my counts.json");
+    fs::create_dir_all(cache.parent().unwrap()).unwrap();
+    fs::write(&cache, "{}\n").unwrap();
+    let got = result(&w.reclaim(&sid(2), &card, "1"));
+    assert_eq!(got["reservation"]["generation"], json!(2));
+    assert!(cache.exists(), "the proof deleted a file");
 }
 
 /// AC-5 (REQ-5, REQ-7): the event keeps its kind, carries the proof in its own field, and the

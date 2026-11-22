@@ -13,6 +13,7 @@ pub mod color;
 pub mod config;
 pub mod counts;
 pub mod input;
+pub mod orca;
 pub mod render;
 pub mod segments;
 pub mod state;
@@ -31,6 +32,8 @@ pub fn render(stdin: &[u8], ctx: &state::Context) -> String {
     if let Some(tasks) = input.tasks.as_ref() {
         return segments::subagent_rows(tasks) + "\n";
     }
+    // REQ-8: Orca's own wrapper gets the stdin too; started detached, never waited for.
+    orca::pass_through(stdin, input.rate_limits.is_some(), ctx);
     let config = state::display_config(Some(&input), ctx);
     // #2559: Claude Code reads stdout through a pipe, so color never depends on a TTY
     // (the regression PR #2552 introduced); only NO_COLOR / MOAI_NO_COLOR turn it off.

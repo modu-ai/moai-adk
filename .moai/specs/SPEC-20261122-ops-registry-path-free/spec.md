@@ -2,7 +2,7 @@
 id: SPEC-20261122-ops-registry-path-free
 title: "The generated operation registry names no file path, so a copied or shared build folder compiles this worktree's operations"
 status: draft
-revision: 2
+revision: 3
 created: 2026-11-22
 ---
 
@@ -34,6 +34,7 @@ The registry becomes a list of names: `build.rs` writes a `with_ops!` macro that
 - AC-1 (REQ-1, REQ-2): the generated `ops_registry.rs` (read by the test from the build script's output folder) holds a `macro_rules! with_ops` list with one entry per `src/ops/<word>.rs` in file-name order, and holds no `#[path`, no `src/ops/` and no part of `CARGO_MANIFEST_DIR` · verify: `cargo test --offline --locked --test hot_file_ops_merge the_registry_is_a_list_of_names_with_no_path`
 - AC-2 (REQ-3, REQ-4): for every operation file, `moai <word with - for _> --help` exits 0 and its first line is the first `///` line above that file's `pub struct Args`; the registry's word list equals the files under `src/ops/` · verify: `cargo test --offline --locked --test hot_file_ops_merge`
 - AC-3 (REQ-5): the test's path finder, fed registry samples that hold an absolute path, a `#[path` attribute or `src/ops/`, names that line, and fed the real registry it names nothing · verify: `cargo test --offline --locked --test hot_file_ops_merge a_path_in_the_registry_is_named`
+- AC-4 (REQ-1, REQ-3): two worktrees of one commit share a build folder the way a warmed slot does (A built, A's build folder cloned into B, A removed, B built after a change outside `src/ops/`); on the commit before this change B's build fails on a module file of the removed A, and on the tip B builds, its registry names no part of A's path and its binary answers `--help` · verify: `bash .moai/specs/SPEC-20261122-ops-registry-path-free/reuse-run.sh <repository> <commit> <label>`, once with the commit before the change and once with the tip
 
 ## Scope
 
@@ -44,6 +45,7 @@ The registry becomes a list of names: `build.rs` writes a `with_ops!` macro that
 ## Plan
 
 1. This slice: the SPEC, the red test (written as `tests/ops_registry_path_free.rs`, which fails today on the `#[path` lines, then moved into `tests/hot_file_ops_merge.rs`, D-4), then `build.rs` and `src/ops/mod.rs`, then `tests/hot_file_ops_merge.rs` reads the new list, then one check affected and READY.
+2. Slice 2: the build-folder reuse run (AC-4, `reuse-run.sh` in this folder) on the commit before the change and on the tip, read into the Result; no product code changes.
 
 ## Risks
 
@@ -77,3 +79,10 @@ Slice 1. Status draft; only the lines below are claimed.
 - AC-3: met. `a_path_in_the_registry_is_named` passes: samples holding an absolute path, a `#[path` attribute or `src/ops/` are named by line, and the real registry yields none.
 - The tests were red first (d531b20042: the registry held `#[path = "<worktree>/src/ops/<word>.rs"]` lines and no list) and green with `build.rs` and `declare_ops!` (454fbe5c17); D-4 moved them into the listed scan file (fd22e6ad6a).
 - Not claimed: a run in a build folder cloned from another worktree; the change removes the path the generated file depended on, and cargo's own rerun judgment is unchanged (Non-goals).
+
+Slice 2 (revision 3):
+
+- AC-4: met. `reuse-run.sh` ran on 2026-11-23 (macOS, no compiler cache) once per commit, worktrees under `.claude/worktrees/`. Both runs used one build folder name for A and B (`moai-cli-15cad06d8545a2ec`), the condition the Intent names.
+  - Commit before the change (3784f7232f, the integration side of the landing merge): A built in 43.84 s, its build folder cloned into B, A removed; B's build after touching `src/main.rs` exited 101 with `couldn't read .../reuse-before-a/src/ops/agents_apply.rs: No such file or directory`, and B's registry held 157 lines naming A. The `--help` line printed after it came from the binary cloned from A, since B's own build failed.
+  - The tip (3d6cf4882d): the same steps; B's build exited 0 in 3.96 s, B's registry held 0 lines naming A, and B's own binary answered `agents-apply --help` with its first help line.
+- Not claimed: the same on Linux or Windows (the run uses `cp -c`), and a reuse across worktrees of different commits (Non-goals).

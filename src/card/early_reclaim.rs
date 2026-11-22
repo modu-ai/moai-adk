@@ -28,14 +28,20 @@ const RUNTIME_STATE: &str = "state";
 /// The earlier (Go) generation's runtime state folder, which the statusline still reads.
 const GO_RUNTIME_STATE: &str = ".moai/state/";
 
-/// True when one `git status --porcelain=v1 --untracked-files=all` line of the worktree `root`
-/// is an untracked file under the runtime state folder that `root` uses now, or under the
-/// earlier generation's. A changed tracked file, an untracked file outside the folder and a
-/// line that is quoted or unreadable are never a cache: they stay work (REQ-4).
-pub(super) fn is_tool_cache_entry(root: &Path, line: &str) -> bool {
-    let current = format!("{}/", crate::state_root::rel(root, RUNTIME_STATE));
+/// The runtime state folder the worktree `root` uses now, relative and ending with a slash:
+/// resolved once per check and handed to the two entry rules below.
+pub(super) fn state_prefix(root: &Path) -> String {
+    format!("{}/", crate::state_root::rel(root, RUNTIME_STATE))
+}
+
+/// True when one `git status --porcelain=v1 -z --untracked-files=all` entry is an untracked
+/// file under the runtime state folder `state` (from [`state_prefix`]) or under the earlier
+/// generation's. The entry is read as written: `-z` leaves a name with a space unquoted
+/// (SPEC-20261122-test-defects-session-reclaim AC-9). A changed tracked file and an untracked
+/// file outside the folder are never a cache: they stay work (REQ-4).
+pub(super) fn is_tool_cache_entry(state: &str, line: &str) -> bool {
     line.strip_prefix("?? ")
-        .is_some_and(|path| path.starts_with(&current) || path.starts_with(GO_RUNTIME_STATE))
+        .is_some_and(|path| path.starts_with(state) || path.starts_with(GO_RUNTIME_STATE))
 }
 
 /// A complete proof, about one holder.
@@ -171,13 +177,17 @@ fn prove(project: &Path, cur: &reservation::Reservation, now: i64) -> Result<Pro
     })
 }
 
-/// Ignored entries of a worktree that a tool rebuilds by itself, so one left behind is no draft:
-/// the log folder, the cargo output folder and a Python bytecode folder. Every other ignored
-/// entry is a file somebody chose to keep out of git, so it counts as work. `entry` is a folder
-/// entry of `git status` (it ends with a slash) or a single file below one; a folder name counts
-/// as a whole component, so `my__pycache__/` and `src/target/` are not on the list.
-fn is_regenerable_ignored(entry: &str) -> bool {
+/// Ignored entries of the worktree `root` that a tool rebuilds by itself, so one left behind is
+/// no draft: the log folder, the runtime state folder (the one `root` uses now and the earlier
+/// generation's; SPEC-20261122-test-defects-session-reclaim REQ-5), the cargo output folder and
+/// a Python bytecode folder. Every other ignored entry is a file somebody chose to keep out of
+/// git, so it counts as work. `entry` is a folder entry of `git status` (it ends with a slash)
+/// or a single file below one; a folder name counts as a whole component, so `my__pycache__/`
+/// and `src/target/` are not on the list. `state` is the worktree's [`state_prefix`].
+fn is_regenerable_ignored(state: &str, entry: &str) -> bool {
     entry.starts_with(".moai/logs/")
+        || entry.starts_with(state)
+        || entry.starts_with(GO_RUNTIME_STATE)
         || entry.starts_with("target/")
         || entry.starts_with("__pycache__/")
         || entry.contains("/__pycache__/")
@@ -198,6 +208,12 @@ fn remaining_work(
     let git = |args: &[&str], what: &str| {
         super::dispatch::git_output(path, args).ok_or_else(|| unreadable(what))
     };
+    // The file lists: names unquoted (`-z`) and a warning is unreadable, not "nothing there"
+    // (REQ-9).
+    let listed = |args: &[&str], what: &str| {
+        super::dispatch::git_entries(path, args).ok_or_else(|| unreadable(what))
+    };
+    let state = state_prefix(path);
     let head = git(&["rev-parse", "--abbrev-ref", "HEAD"], "its branch")?;
     let head = head.trim();
     let branch = if head == "HEAD" { "(no branch)" } else { head };
@@ -234,20 +250,21 @@ fn remaining_work(
             }
         }
     }
-    let ignored = git(
-        &["status", "--porcelain=v1", "--ignored=traditional"],
+    let ignored = listed(
+        &["status", "--porcelain=v1", "-z", "--ignored=traditional"],
         "the ignored files",
     )?;
-    for entry in ignored.lines().filter_map(|l| l.strip_prefix("!! ")) {
-        if is_regenerable_ignored(entry) {
+    for entry in ignored.iter().filter_map(|l| l.strip_prefix("!! ")) {
+        if is_regenerable_ignored(&state, entry) {
             continue;
         }
         // git folds a folder that holds nothing but ignored files into one entry (`.moai/` when
         // only its log folder is ignored); look inside it, file by file, before calling it work.
         let draft = if entry.ends_with('/') {
-            let files = git(
+            let files = listed(
                 &[
                     "ls-files",
+                    "-z",
                     "--others",
                     "--ignored",
                     "--exclude-standard",
@@ -257,9 +274,8 @@ fn remaining_work(
                 "the ignored files",
             )?;
             files
-                .lines()
-                .find(|f| !is_regenerable_ignored(f))
-                .map(str::to_string)
+                .into_iter()
+                .find(|f| !is_regenerable_ignored(&state, f))
         } else {
             Some(entry.to_string())
         };
@@ -475,32 +491,46 @@ mod tests {
         assert!(stdout_within(missing, Duration::from_secs(1)).is_err());
     }
 
-    /// REQ-3: only the three named regenerable entries are not drafts.
+    /// REQ-3: only the named regenerable entries are not drafts; the runtime state folder of the
+    /// worktree and of the earlier generation joined them (SPEC-20261122-test-defects-session-
+    /// reclaim REQ-5, REQ-6). The folder name the worktree uses comes from its own state root.
     #[test]
     fn only_listed_ignored_entries_are_regenerable() {
+        let tmp = tempfile::tempdir().unwrap();
+        let root = tmp.path();
+        let state = crate::state_root::rel(root, "state");
+        let go = format!("{}/state", crate::state_root::MOAI_DIR);
+        let regenerable = |entry: &str| is_regenerable_ignored(&super::state_prefix(root), entry);
         for ok in [
-            ".moai/logs/",
-            "target/",
-            "tests/__pycache__/",
-            "__pycache__/",
-            ".moai/logs/a.log",
-            "target/debug/moai",
-            "tools/__pycache__/x.pyc",
+            ".moai/logs/".to_string(),
+            "target/".to_string(),
+            "tests/__pycache__/".to_string(),
+            "__pycache__/".to_string(),
+            ".moai/logs/a.log".to_string(),
+            "target/debug/moai".to_string(),
+            "tools/__pycache__/x.pyc".to_string(),
+            format!("{state}/"),
+            format!("{state}/github/counts.json"),
+            format!("{go}/"),
+            format!("{go}/earlier.json"),
         ] {
-            assert!(is_regenerable_ignored(ok), "{ok}");
+            assert!(regenerable(&ok), "{ok}");
         }
         for work in [
-            "scratch/",
-            "draft.md",
-            "target",
-            ".moai/",
-            ".moai/other.txt",
-            ".moai/logs",
-            "src/target/",
-            "my__pycache__/",
-            "notes/__pycache__",
+            "scratch/".to_string(),
+            "draft.md".to_string(),
+            "target".to_string(),
+            ".moai/".to_string(),
+            ".moai/other.txt".to_string(),
+            ".moai/logs".to_string(),
+            "src/target/".to_string(),
+            "my__pycache__/".to_string(),
+            "notes/__pycache__".to_string(),
+            state.clone(),
+            format!("{state}man/x.json"),
+            format!("sub/{state}/x.json"),
         ] {
-            assert!(!is_regenerable_ignored(work), "{work}");
+            assert!(!regenerable(&work), "{work}");
         }
     }
 
@@ -529,7 +559,7 @@ mod cache_tests {
         let tmp = tempfile::tempdir().unwrap();
         let root = tmp.path();
         let state = crate::state_root::rel(root, "state");
-        let is = |line: &str| is_tool_cache_entry(root, line);
+        let is = |line: &str| is_tool_cache_entry(&super::state_prefix(root), line);
         assert!(is(&format!("?? {state}/github/counts.json")));
         assert!(is(&format!("?? {state}/github/other.json")));
         assert!(is(&format!("?? {state}/deep/er/inner.txt")));
@@ -547,5 +577,40 @@ mod cache_tests {
         assert!(!is(&format!("?? {state}man/x.json")));
         assert!(!is(&format!("?? sub/{state}/github/counts.json")));
         assert!(!is(""));
+    }
+
+    /// AC-4 (REQ-3): in a worktree on the earlier project layout the current state folder is that
+    /// layout's, so the rule for the current folder and the rule for the earlier generation's
+    /// folder are two different prefixes and each decides on its own. The layout is built
+    /// through the resolver's constant for the earlier project folder (D-4).
+    #[test]
+    fn an_old_layout_runtime_state_folder_is_not_work() {
+        let tmp = tempfile::tempdir().unwrap();
+        let root = tmp.path();
+        let earlier = root.join(crate::PROJECT_STATE_DIR);
+        std::fs::create_dir_all(&earlier).unwrap();
+        std::fs::write(earlier.join("project.yaml"), "schema_version: 2\n").unwrap();
+        let state = crate::state_root::rel(root, "state");
+        assert_eq!(
+            state,
+            format!("{}/state", crate::PROJECT_STATE_DIR),
+            "the resolver picks the earlier layout"
+        );
+        let go = format!("{}/state", crate::state_root::MOAI_DIR);
+        assert_ne!(state, go);
+        let is = |line: &str| is_tool_cache_entry(&super::state_prefix(root), line);
+        assert!(is(&format!("?? {state}/github/counts.json")));
+        assert!(is(&format!("?? {go}/github/counts.json")));
+        assert!(!is(&format!("?? {}/other.json", crate::PROJECT_STATE_DIR)));
+        // The ignored-entry rule takes the same two folders, and each on its own (REQ-5).
+        let regenerable =
+            |entry: &str| super::is_regenerable_ignored(&super::state_prefix(root), entry);
+        assert!(regenerable(&format!("{state}/")));
+        assert!(regenerable(&format!("{state}/github/counts.json")));
+        assert!(regenerable(&format!("{go}/earlier.json")));
+        assert!(!regenerable(&format!(
+            "{}/other.json",
+            crate::PROJECT_STATE_DIR
+        )));
     }
 }

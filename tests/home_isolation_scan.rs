@@ -494,10 +494,19 @@ fn a_temp_home_child_sees_only_the_temp_home() {
     let path = home.path().to_str().unwrap();
     assert_eq!(vars.get("HOME"), Some(&path), "{text}");
     assert_eq!(vars.get("USERPROFILE"), Some(&path), "{text}");
-    // nothing else of the caller's environment is passed on (the developer folder excepted)
+    // nothing else of the caller's environment is passed on (the developer folder and the test
+    // process table switch excepted)
     let extra: Vec<&&str> = vars
         .keys()
-        .filter(|k| !["HOME", "USERPROFILE", "DEVELOPER_DIR"].contains(*k))
+        .filter(|k| {
+            ![
+                "HOME",
+                "USERPROFILE",
+                "DEVELOPER_DIR",
+                common::PROCESS_TABLE_SWITCH,
+            ]
+            .contains(*k)
+        })
         .collect();
     assert!(extra.is_empty(), "{extra:?}");
 }

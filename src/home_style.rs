@@ -502,8 +502,9 @@ fn hiding_style(path: &Path) -> Option<String> {
 /// The notices of a style plan for `moai update` (SPEC-20261122-output-style-install-checks):
 /// one entry per project settings file whose `outputStyle` hides ours in `project` (REQ-2, read
 /// only), and one `/status` pointer when the plan writes the style file (REQ-4). Entries have the
-/// shape of the update's `skipped` list plus `kind: notice`, which the update screens print with
-/// their own word; they are not part of any plan digest and nothing is written for them.
+/// shape of the update's `skipped` entries but go to its own `notices` list, which the update
+/// screens print with their own word; they are not part of any plan digest and nothing is
+/// written for them.
 pub fn notices(plan: &Plan, project: &Path) -> Vec<Value> {
     let mut out = Vec::new();
     for rel in [".claude/settings.local.json", ".claude/settings.json"] {
@@ -511,7 +512,6 @@ pub fn notices(plan: &Plan, project: &Path) -> Vec<Value> {
             out.push(json!({
                 "part": "style",
                 "host": "claude",
-                "kind": "notice",
                 "reason": format!("{rel} sets outputStyle \"{value}\": this project uses it, not {STYLE_NAME}; moai does not change project settings"),
             }));
         }
@@ -524,7 +524,6 @@ pub fn notices(plan: &Plan, project: &Path) -> Vec<Value> {
         out.push(json!({
             "part": "style",
             "host": "claude",
-            "kind": "notice",
             "reason": "if the style does not show up in Claude Code, `/status` lists a style file it could not load",
         }));
     }

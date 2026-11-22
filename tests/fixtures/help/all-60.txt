@@ -283,6 +283,8 @@ Lane and leader
   bundle                 Assemble the M-Flow bundle from
                          READY heads
   audit-clone-plan       Preview an independent audit clone
+  audit-slot             Audit slots that inherit the lane's
+                         build
   labels-check           Report Issues whose labels break
                          the rule
   decision-due           Sort the unanswered decisions of a
@@ -370,6 +372,8 @@ Internal
                          worktrees
   worktree-gc-apply      Remove or trim the previewed
                          worktrees
+  worktree-slot          Fixed worktree slots, warmed from
+                         the seed
   worktree-install-plan  Preview a scoped package install
   hygiene-plan           Preview what may move to the
                          holding folder

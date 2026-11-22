@@ -27,7 +27,9 @@ fn the_reference_states_the_rules_the_user_decided() {
     assert!(text.starts_with("# Internal: sdd\n\nWhen to read: "));
     for phrase in [
         "Every change that modifies the repository has a SPEC",
-        "One SPEC = one branch `spec/<slug>-<yyyymmdd>` = one pull request",
+        // SPEC-20261122-next-flow-skills-agents (slice C audit B2): a card lands once through the
+        // landing command; the pull request is a release's.
+        "One SPEC = one branch `spec/<slug>-<yyyymmdd>` = one landing",
         "--minimal",
         "exactly one `shall`",
         "IF <condition>, THEN",
