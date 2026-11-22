@@ -1289,6 +1289,7 @@ mod tests {
             scopes: None,
             versioning: None,
             work_flow: None,
+            remote_copy: None,
             test_paths: None,
         }
     }
@@ -1362,6 +1363,7 @@ mod tests {
                 flow: "m-flow".into(),
                 integration_branch: Some("main".into()),
             }),
+            remote_copy: Some(true),
             test_paths: Some(vec!["qa/".into()]),
             ..v2()
         };
@@ -1394,6 +1396,7 @@ mod tests {
                 "scopes",
                 "versioning",
                 "work_flow",
+                "remote_copy",
                 "test_paths"
             ]
         );
