@@ -438,6 +438,79 @@ fn done_refuses_a_slot_that_is_not_there() {
     r.refused(&["done", "audit-2"], &["audit-2", "not a worktree"]);
 }
 
+/// Every file under `dir` (the `.git` link file left out) with its bytes, and its git status.
+fn snapshot(dir: &Path) -> (Vec<(String, Vec<u8>)>, String) {
+    fn walk(base: &Path, dir: &Path, out: &mut Vec<(String, Vec<u8>)>) {
+        for e in fs::read_dir(dir).unwrap().flatten() {
+            let p = e.path();
+            let rel = p.strip_prefix(base).unwrap().to_string_lossy().to_string();
+            if rel == ".git" {
+                continue;
+            }
+            let m = fs::symlink_metadata(&p).unwrap();
+            if m.is_dir() {
+                walk(base, &p, out);
+            } else {
+                out.push((rel, fs::read(&p).unwrap_or_default()));
+            }
+        }
+    }
+    let mut files = Vec::new();
+    walk(dir, dir, &mut files);
+    files.sort();
+    let status = git(dir, &["status", "--porcelain", "--untracked-files=all"]);
+    (files, status)
+}
+
+/// A slot path that is a link to another registered worktree is refused by every writing action
+/// (prep with and without a lane, done, done --discard) before its first write: the worktree it
+/// points at keeps every byte, its change and its untracked file.
+#[cfg(unix)]
+#[test]
+fn every_writing_action_refuses_a_slot_path_that_is_a_link() {
+    let r = repo(&[("a.txt", "a\n")]);
+    old_file(&r.lane, "target/debug/built.txt", "lane build\n");
+    let victim = r.root.parent().unwrap().join("victim");
+    git(
+        &r.root,
+        &[
+            "worktree",
+            "add",
+            "-q",
+            "--detach",
+            victim.to_str().unwrap(),
+            &r.first,
+        ],
+    );
+    fs::write(victim.join("a.txt"), "work in progress\n").unwrap();
+    fs::write(victim.join("notes.txt"), "mine\n").unwrap();
+    // A seed build, so a slot step that ran before the refusal would warm the link's target.
+    let (code, v) = r.run_op("worktree-slot", &["ensure", "seed", "--at", &r.first]);
+    assert_eq!(code, 0, "{v}");
+    old_file(&r.slot("seed"), "target/debug/seed.txt", "seed build\n");
+    std::os::unix::fs::symlink(&victim, r.slot("audit-1")).unwrap();
+    let before = snapshot(&victim);
+    let head_before = git(&victim, &["rev-parse", "HEAD"]);
+    let worktrees = r.worktrees();
+    let lane = r.lane_str().to_string();
+    for args in [
+        vec!["prep", "audit-1", "--head", &r.second],
+        vec!["prep", "audit-1", "--head", &r.second, "--lane", &lane],
+        vec!["done", "audit-1"],
+        vec!["done", "audit-1", "--discard"],
+    ] {
+        r.refused(&args, &["audit-1", "is a link"]);
+        assert_eq!(snapshot(&victim), before, "{args:?}");
+        assert_eq!(
+            git(&victim, &["rev-parse", "HEAD"]),
+            head_before,
+            "{args:?}"
+        );
+    }
+    assert!(!victim.join("target").exists());
+    assert_eq!(r.worktrees(), worktrees);
+}
+
 // ---- the inherited build is fresh (AC-3: REQ-4)
 
 /// A crate with a dependency outside the repository (as a registry crate sits outside it),
