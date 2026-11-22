@@ -864,13 +864,12 @@ fn assignment_prefixed_wildcard_rules_refuse_in_every_spelling() {
     assert!(build(&spec, &ctx(&root), &env).is_ok());
 }
 
-/// The reaped-elsewhere case, in a process of its own (the audit's wording):
-/// SIGCHLD set to SIG_IGN makes the kernel reap children at exit, so waitid answers ECHILD,
-/// wait() fails and the arm under test runs — success false, code none, the answer kept,
-/// no verdict. The disposition is process-wide, so the child of this test re-execs the
-/// test binary with a marker env var and prints the RawRun as JSON for the parent to
-/// assert on; a leaked SIG_IGN would break every sibling test (measured: ECHILD in
-/// common::write_executable's sh).
+/// The reaped-elsewhere case, in a process of its own: SIGCHLD set to SIG_IGN makes the
+/// kernel reap children at exit, so waitid answers ECHILD, wait() fails and the arm under
+/// test runs — success false, code none, the answer kept, no verdict. The disposition is
+/// process-wide, so the child of this test re-execs the test binary with a marker env var
+/// and writes its RawRun as JSON to a parent-named file; a leaked SIG_IGN would break every
+/// sibling test (measured: ECHILD in common::write_executable's sh).
 #[test]
 fn a_reaped_elsewhere_child_returns_its_drained_output() {
     use moai_cli::headless_run::run_with_limit;
@@ -878,22 +877,21 @@ fn a_reaped_elsewhere_child_returns_its_drained_output() {
     let tmp = tempfile::tempdir().unwrap();
     let fixtures = tmp.path().join("bin");
     fs::create_dir_all(&fixtures).unwrap();
-    let reaped = "#!/bin/sh\n\
+    let standin = "#!/bin/sh\n\
 printf '%s' '{\"type\":\"result\",\"subtype\":\"success\",\"is_error\":false,\"session_id\":\"standin\",\"structured_output\":{\"verdict\":\"fail\"}}'\n\
 exit 0\n";
-    common::write_executable(&fixtures.join("claude"), reaped);
+    common::write_executable(&fixtures.join("claude"), standin);
     let record = tmp.path().join("record.txt");
     let root = tmp.path().join("platform");
     fs::create_dir_all(&root).unwrap();
     let built = build(&audit_spec(), &ctx(&root), &parent_env(&fixtures, &record)).unwrap();
 
-    // Child mode: ignore SIGCHLD, run once, print the outcome, exit — never return.
+    // Child mode: ignore SIGCHLD, run once, write the outcome file, clean, exit.
     if std::env::var_os("REAPED_ELSEWHERE_CHILD").is_some() {
         unsafe {
             libc::signal(libc::SIGCHLD, libc::SIG_IGN);
         }
         let raw = run_with_limit(&built, tmp.path(), Duration::from_secs(5)).unwrap();
-        // the parent hands us the outcome path in the environment: write, clean, exit
         let out_path = std::env::var("REAPED_ELSEWHERE_OUT").unwrap();
         fs::write(
             &out_path,
@@ -909,8 +907,8 @@ exit 0\n";
         drop(built);
         drop(record);
         drop(root);
-        let _ = reaped;
-        let _ = tmp;
+        drop(fixtures);
+        drop(tmp);
         std::process::exit(0);
     }
 
@@ -938,7 +936,17 @@ exit 0\n";
     assert!(raw["code"].is_null(), "the exit code is unknown");
     let stderr = raw["stderr"].as_str().unwrap();
     assert!(stderr.contains("unknown"), "{stderr}");
-    // the kept answer is STILL no verdict without a status — asserted, not just said
+    // the drained stdout itself is KEPT: the structured_output the child printed must be
+    // in the returned stdout (an empty-stdout return fails here)
+    assert!(
+        raw["stdout"]
+            .as_str()
+            .unwrap()
+            .contains("structured_output"),
+        "the drained stdout must be kept: {}",
+        raw["stdout"]
+    );
+    // and that kept answer is STILL no verdict without a status — asserted, not just said
     let raw_run = moai_cli::headless_run::RawRun {
         success: raw["success"].as_bool().unwrap(),
         code: raw["code"].as_i64().map(|c| c as i32),

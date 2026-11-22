@@ -376,7 +376,7 @@ pub fn run_with_limit(built: &BuiltRun, cwd: &Path, limit: std::time::Duration) 
         &err_buf,
         drain_bound,
     );
-    // P-2: a child reaped elsewhere makes wait() fail — the drained answer is returned
+    // A child reaped elsewhere makes wait() fail — the drained answer is returned
     // with an unknown exit status (success stays false, the code None), never discarded.
     let (succeeded, code) = match child.wait() {
         Ok(status) => (status.success(), status.code()),
@@ -748,8 +748,8 @@ fn narrow_rule(tool: &str) -> Result<()> {
         inner.is_empty() || inner.starts_with('*') || inner == ":*"
     });
     let starts_with_assignment = |inner: &str| {
-        // += and array-index assignments count too — the name may carry an index
-        // the name may carry an index or + before the =.
+        // += and array-index assignments count too: the name may carry an index suffix
+        // or a + before the =.
         inner.split_once('=').is_some_and(|(name, _)| {
             let name = name.split_once('[').map_or(name, |(base, _)| base);
             let name = name.strip_suffix('+').unwrap_or(name);
