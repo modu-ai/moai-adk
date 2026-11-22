@@ -4046,7 +4046,7 @@ mod help_rules {
     /// `card` is decided per action: `note` and `guard` (the hook's transaction) read standard
     /// input, the other actions do not.
     #[test]
-    fn card_reads_stdin_for_note_only() {
+    fn card_reads_stdin_for_note_and_guard_only() {
         let (reads, per_action) = commands_reading_stdin();
         assert!(!reads.contains("card"), "card is decided per action");
         let readers: BTreeSet<String> = ["guard".to_string(), "note".to_string()].into();
