@@ -1351,10 +1351,15 @@ fn line_three_ladder_one_render_starts_one_git_and_one_orca_wrapper_at_most() {
         .map(|(rel, _)| rel)
         .filter(|rel| !tmp.path().join(rel).is_dir())
         .collect();
-    assert_eq!(written.len(), 2, "{written:?}");
-    assert_eq!(written[0], "moai-statusline/s-ac9.json", "{written:?}");
+    // The session cache, the usage record and the lock the wrapper holds while it runs.
+    assert_eq!(written.len(), 3, "{written:?}");
+    assert_eq!(
+        written[0], "moai-statusline/orca-wrapper.lock",
+        "{written:?}"
+    );
+    assert_eq!(written[1], "moai-statusline/s-ac9.json", "{written:?}");
     assert!(
-        written[1].starts_with("moai-statusline/usage-") && written[1].ends_with(".record"),
+        written[2].starts_with("moai-statusline/usage-") && written[2].ends_with(".record"),
         "{written:?}"
     );
 }

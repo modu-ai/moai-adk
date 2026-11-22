@@ -302,6 +302,18 @@ fn orca_calls(f: &Fixture) -> usize {
 #[cfg(unix)]
 fn orca_render(f: &Fixture, stdin: &str, vars: &[(&str, &str)]) -> (String, Duration) {
     let tmp = tempfile::tempdir().unwrap();
+    orca_render_in(f, tmp.path(), stdin, vars)
+}
+
+/// [`orca_render`] with a given `TMPDIR`, so several renders share the cache folder (and the
+/// wrapper lock in it).
+#[cfg(unix)]
+fn orca_render_in(
+    f: &Fixture,
+    tmp: &Path,
+    stdin: &str,
+    vars: &[(&str, &str)],
+) -> (String, Duration) {
     let started = Instant::now();
     let mut c = Command::new(crate::common::MOAI_BIN);
     c.args(["statusline", "--render-budget-ms", "3600000"])
@@ -309,7 +321,7 @@ fn orca_render(f: &Fixture, stdin: &str, vars: &[(&str, &str)]) -> (String, Dura
         .clean_env()
         .env("PATH", &f.bin)
         .env("HOME", &f.home)
-        .env("TMPDIR", tmp.path())
+        .env("TMPDIR", tmp)
         .env("NO_COLOR", "1");
     for (k, v) in vars {
         c.env(k, v);
@@ -441,4 +453,133 @@ fn orca_pass_through_does_not_wait_for_a_slow_script() {
     assert!(out.contains("CW 10%"), "{out}");
     assert!(took < Duration::from_secs(10), "the render waited {took:?}");
     assert!(wait_for(|| orca_calls(&f) == 1), "the script did not start");
+}
+
+/// A stand-in that records its pid, its process group, its environment and the call, then
+/// waits `hang` seconds in its own process (`exec`), the way a wrapper that hangs would.
+#[cfg(unix)]
+fn orca_hanging(f: &Fixture, hang: u32) -> String {
+    let dir = f.log.parent().unwrap().display().to_string();
+    format!(
+        "#!/bin/sh\n/bin/cat > /dev/null\n/usr/bin/env > '{dir}/orca.env'\n\
+         echo \"$$ $(/bin/ps -o pgid= -p $$)\" >> '{dir}/orca.pids'\n\
+         echo call >> '{dir}/orca.calls'\nexec /bin/sleep {hang}\n"
+    )
+}
+
+/// The pids and process groups the stand-in recorded, one pair per start.
+#[cfg(unix)]
+fn orca_pids(f: &Fixture) -> Vec<(i32, i32)> {
+    std::fs::read_to_string(f.log.parent().unwrap().join("orca.pids"))
+        .unwrap_or_default()
+        .lines()
+        .filter_map(|l| {
+            let mut it = l.split_whitespace().map(|n| n.parse::<i32>());
+            Some((it.next()?.ok()?, it.next()?.ok()?))
+        })
+        .collect()
+}
+
+#[cfg(unix)]
+fn alive(pid: i32) -> bool {
+    // SAFETY: signal 0 only asks whether the process exists; nothing is sent.
+    unsafe { libc::kill(pid, 0) == 0 }
+}
+
+/// Ends what a test started, so no stand-in outlives it.
+#[cfg(unix)]
+fn orca_stop(f: &Fixture) {
+    for (pid, _) in orca_pids(f) {
+        // SAFETY: a plain kill of a pid this test's stand-in recorded.
+        unsafe { libc::kill(pid, libc::SIGKILL) };
+    }
+}
+
+/// While a wrapper still runs, renders start no other one (D-10): five renders against a
+/// wrapper that hangs leave one live process and one call.
+#[cfg(unix)]
+#[test]
+fn orca_pass_through_starts_no_second_wrapper_while_one_runs() {
+    let f = fixture("https://github.com/acme/widgets.git", None);
+    orca_install(&f.home.join(ORCA_SCRIPT), &orca_hanging(&f, 60));
+    let tmp = tempfile::tempdir().unwrap();
+    let stdin = orca_stdin(&f, true);
+    orca_render_in(&f, tmp.path(), &stdin, &ORCA_VARS);
+    assert!(wait_for(|| orca_calls(&f) == 1), "the script did not start");
+    for _ in 0..4 {
+        let (out, _) = orca_render_in(&f, tmp.path(), &stdin, &ORCA_VARS);
+        assert!(out.contains("CW 10%"), "{out}");
+    }
+    std::thread::sleep(Duration::from_millis(700));
+    let pids = orca_pids(&f);
+    let live = pids.iter().filter(|(p, _)| alive(*p)).count();
+    orca_stop(&f);
+    assert_eq!(orca_calls(&f), 1, "{pids:?}");
+    assert_eq!(live, 1, "{pids:?}");
+}
+
+/// A wrapper that hangs ends at its time limit, and the next render starts one again (D-10).
+#[cfg(unix)]
+#[test]
+fn a_hanging_wrapper_ends_at_its_time_limit_and_the_next_render_starts_one() {
+    let limit = u64::from(moai_cli::statusline::orca::TIME_LIMIT_SECS);
+    let f = fixture("https://github.com/acme/widgets.git", None);
+    orca_install(&f.home.join(ORCA_SCRIPT), &orca_hanging(&f, 300));
+    let tmp = tempfile::tempdir().unwrap();
+    let stdin = orca_stdin(&f, true);
+    orca_render_in(&f, tmp.path(), &stdin, &ORCA_VARS);
+    assert!(wait_for(|| orca_calls(&f) == 1), "the script did not start");
+    let (pid, _) = orca_pids(&f)[0];
+    let deadline = Instant::now() + Duration::from_secs(limit + 10);
+    while alive(pid) && Instant::now() < deadline {
+        std::thread::sleep(Duration::from_millis(200));
+    }
+    let ended = !alive(pid);
+    orca_render_in(&f, tmp.path(), &stdin, &ORCA_VARS);
+    let again = wait_for(|| orca_calls(&f) == 2);
+    orca_stop(&f);
+    assert!(ended, "the wrapper outlived its time limit of {limit} s");
+    assert!(again, "no wrapper started after the first one ended");
+}
+
+/// The wrapper gets the hook variables and none of the render's other variables, and runs in a
+/// process group of its own (D-10).
+#[cfg(unix)]
+#[test]
+fn the_wrapper_gets_the_hook_variables_only_and_its_own_process_group() {
+    let f = fixture("https://github.com/acme/widgets.git", None);
+    orca_install(&f.home.join(ORCA_SCRIPT), &orca_hanging(&f, 0));
+    let mut vars = ORCA_VARS.to_vec();
+    vars.push(("UNRELATED_SECRET", "s3cr3t"));
+    orca_render(&f, &orca_stdin(&f, true), &vars);
+    assert!(wait_for(|| orca_calls(&f) == 1), "the script did not start");
+    let env = std::fs::read_to_string(f.log.parent().unwrap().join("orca.env")).unwrap();
+    assert!(
+        env.lines().any(|l| l.starts_with("ORCA_AGENT_HOOK_TOKEN=")),
+        "{env}"
+    );
+    assert!(
+        env.lines().any(|l| l.starts_with("ORCA_PANE_KEY=")),
+        "{env}"
+    );
+    assert!(!env.contains("UNRELATED_SECRET"), "{env}");
+    assert!(!env.contains("NO_COLOR"), "{env}");
+    let pids = orca_pids(&f);
+    assert_eq!(pids.len(), 1, "{pids:?}");
+    assert_eq!(pids[0].0, pids[0].1, "not its own process group: {pids:?}");
+}
+
+/// A payload larger than a pipe holds starts nothing: it would reach the wrapper cut short
+/// (D-10).
+#[cfg(unix)]
+#[test]
+fn an_oversized_payload_starts_no_wrapper() {
+    let f = fixture("https://github.com/acme/widgets.git", None);
+    orca_install(&f.home.join(ORCA_SCRIPT), &orca_script(&f, 0));
+    let mut v: serde_json::Value = serde_json::from_str(&orca_stdin(&f, true)).unwrap();
+    v["padding"] = serde_json::json!("x".repeat(20 * 1024));
+    let (out, _) = orca_render(&f, &v.to_string(), &ORCA_VARS);
+    assert!(out.contains("CW 10%"), "{out}");
+    std::thread::sleep(Duration::from_millis(700));
+    assert_eq!(orca_calls(&f), 0, "the script started");
 }

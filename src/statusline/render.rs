@@ -429,9 +429,13 @@ impl Renderer {
         // REQ-3: the host drops a window once its reset time passes, so one that still names a
         // passed reset is left out; under a minute left (1 to 59 s) prints `(0m)`.
         let live = |w: Option<RateWindow>| w.filter(|w| w.resets_at.is_none_or(|at| at > self.now));
+        // A reset further ahead than the longest window allows is no time to count down to
+        // (the usage record drops it too): the window shows without a countdown.
         let countdown = |w: &RateWindow| {
             w.resets_at
-                .map(|at| piece(t.muted, reset_countdown(at - self.now)))
+                .map(|at| at.saturating_sub(self.now))
+                .filter(|left| *left <= crate::usage_limit::MAX_RESET_AHEAD_SECS)
+                .map(|left| piece(t.muted, reset_countdown(left)))
         };
         let context: Option<Group> = self.enabled("context").then(|| match s.context {
             Some(pct) => vec![piece("", battery("CW", whole_percent(pct)))],
@@ -2359,6 +2363,19 @@ mod window_tests {
             windows(json!({"seven_day": {"used_percentage": 21, "resets_at": NOW - DAY}})),
             "🔋 CW 10%"
         );
+        // Beyond 31 days the reset is no countdown: the week shows without one.
+        let edge = NOW + crate::usage_limit::MAX_RESET_AHEAD_SECS;
+        assert_eq!(
+            week(json!(21), Some(edge)).as_deref(),
+            Some("🔋 7D 21% (31d 0h)")
+        );
+        for at in [edge + 1, i64::MAX] {
+            assert_eq!(
+                week(json!(21), Some(at)).as_deref(),
+                Some("🔋 7D 21%"),
+                "{at}"
+            );
+        }
         assert_eq!(
             windows(json!({"five_hour": {"used_percentage": 90, "resets_at": NOW}})),
             "🔋 CW 10%"
