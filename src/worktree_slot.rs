@@ -110,7 +110,7 @@ fn git(dir: &Path, args: &[&str]) -> Result<String> {
 }
 
 /// The git common directory of the repository that holds `project`.
-fn common_dir(project: &Path) -> Result<PathBuf> {
+pub(crate) fn common_dir(project: &Path) -> Result<PathBuf> {
     git(
         project,
         &["rev-parse", "--path-format=absolute", "--git-common-dir"],
@@ -119,20 +119,20 @@ fn common_dir(project: &Path) -> Result<PathBuf> {
 }
 
 /// The primary checkout of the repository whose common directory is `common`.
-fn primary_of(common: &Path) -> Result<PathBuf> {
+pub(crate) fn primary_of(common: &Path) -> Result<PathBuf> {
     let root = common
         .parent()
         .ok_or("the repository has no primary checkout")?;
     Ok(fs::canonicalize(root).unwrap_or_else(|_| root.to_path_buf()))
 }
 
-fn same(a: &Path, b: &Path) -> bool {
+pub(crate) fn same(a: &Path, b: &Path) -> bool {
     let canon = |p: &Path| fs::canonicalize(p).unwrap_or_else(|_| p.to_path_buf());
     canon(a) == canon(b)
 }
 
 /// The linked worktrees (the primary checkout left out).
-fn linked(primary: &Path) -> Result<Vec<WorktreeEntry>> {
+pub(crate) fn linked(primary: &Path) -> Result<Vec<WorktreeEntry>> {
     let text = git(primary, &["worktree", "list", "--porcelain"])?;
     Ok(parse_worktree_list(&text)
         .into_iter()
@@ -224,7 +224,7 @@ pub fn plan(project: &Path, caps: Caps) -> Result<Value> {
 }
 
 /// Takes the repository's exclusive `ensure` lock, waiting at most [`LOCK_WAIT`].
-fn lock(common: &Path) -> Result<fs::File> {
+pub(crate) fn lock(common: &Path) -> Result<fs::File> {
     let file = fs::OpenOptions::new()
         .create(true)
         .truncate(false)
@@ -240,7 +240,7 @@ fn lock(common: &Path) -> Result<fs::File> {
             }
             Err(fs::TryLockError::WouldBlock) => {
                 return Err(format!(
-                    "another worktree-slot ensure held the lock for {} seconds; nothing was added",
+                    "another worktree-slot or audit-slot run held the slot lock for {} seconds; nothing was changed",
                     LOCK_WAIT.as_secs()
                 ))
             }
