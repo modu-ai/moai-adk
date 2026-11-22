@@ -89,7 +89,7 @@ fn a_new_project_lists_everything_as_created_with_its_manifest_and_receipt() {
     // The generation writes the managed block into CLAUDE.md and never writes AGENTS.md (user
     // decision 6484: moai writes only CLAUDE.md and CLAUDE.local.md).
     for path in ["CLAUDE.md".to_string(), manifest(&root)] {
-        assert!(created.iter().any(|c| *c == path), "{path} in {created:?}");
+        assert!(created.contains(&path), "{path} in {created:?}");
     }
     assert!(!created.iter().any(|c| c == "AGENTS.md"), "{created:?}");
     assert!(names(&r["files_merged"]).is_empty(), "nothing existed: {r}");
