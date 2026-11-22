@@ -4,7 +4,7 @@ operation `worktree.gc.plan` · 코드 `src/ops/worktree_gc_plan.rs` · WT-4 #23
 
 `worktree-gc-plan PROJECT --integration-ref REF` 는 연결된 worktree 마다 `remove`·`trim`(cargo 빌드 출력만)·`skip` 과 이유, digest 를 보여 준다. 지우지 않고, fetch 하지 않는다. `src/main.rs` 에서 그대로 옮김(#2834 R2c).
 
-고정 자리와 상한(SPEC-20261123-worktree-slots 조각 2, 리더 결정 6854의 (b)안): 아래 규칙은 건너뛰거나 알려 주기만 하고, 새로 지울 수 있게 되는 경로는 없다. `.claude/worktrees/` 보존(Q8)은 그대로다.
+고정 자리와 상한(SPEC-20261123-worktree-slots 조각 2, 리더가 기록한 결정의 (b)안): 아래 규칙은 건너뛰거나 알려 주기만 하고, 새로 지울 수 있게 되는 경로는 없다. `.claude/worktrees/` 보존(Q8)은 그대로다.
 
 - `fixed_slot`: 본 체크아웃의 `.claude/worktrees/` 에 있는 고정 자리(`lane-01`…`lane-10`, `audit-1`…`audit-3`, `seed`)는 지우지 않는다.
 - `nested_worktree`: 안에 다른 연결 worktree 가 든 worktree 는 건너뛴다. 지우면 안쪽 체크아웃도 함께 사라진다.

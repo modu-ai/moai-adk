@@ -2,7 +2,7 @@
 id: SPEC-20261123-worktree-slots
 title: "Worktrees are fixed slots warmed from a seed by an APFS clone, under caps, and cleaned when their work ends"
 status: draft
-revision: 5
+revision: 6
 created: 2026-11-23
 ---
 
@@ -10,7 +10,7 @@ created: 2026-11-23
 
 ## Intent
 
-User decision 2026-11-22 (ledger C-319 notes 6628 and 6646; redesign `~/.moai/reports/moai-adk/agentic-redesign-2026-11-22.md` §3A; research `worktree-practice-research-2026-11-22.md` §6; review `audit-landing-process-review-2026-11-22.md` D3). One machine had 465 to 520 linked worktrees, 155 GB under `.claude/worktrees` and 318 GB under the retired home build folder. Every new worktree started with an empty `target/` and rebuilt every dependency. The decision:
+User decision 2026-11-22 (recorded in the ledger; redesign `~/.moai/reports/moai-adk/agentic-redesign-2026-11-22.md` §3A; research `worktree-practice-research-2026-11-22.md` §6; review `audit-landing-process-review-2026-11-22.md` D3). One machine had 465 to 520 linked worktrees, 155 GB under `.claude/worktrees` and 318 GB under the retired home build folder. Every new worktree started with an empty `target/` and rebuilt every dependency. The decision:
 
 - Fixed slots `.claude/worktrees/lane-01` to `lane-10`, `audit-1` to `audit-3` and `seed`; only subagents use one-off worktrees.
 - A new or reset slot is warmed with `cp -c -R -p seed/target`. The seed is rebuilt incrementally after each landing.
@@ -43,7 +43,7 @@ Readers: lanes and the leader, who create, reuse and clean worktrees, and the au
 - REQ-3: If an ensured slot does not exist, then the slot command shall add it detached at the given commit with `git worktree add --detach`.
 - REQ-4: If an ensured slot has no `target/` while the seed has one, then the slot command shall copy the seed's `target/` into it with `cp -c -R -p` on macOS or a recursive copy keeping times elsewhere, naming the method in its answer.
 - REQ-5: If the linked worktree count is already at the worktree cap or the free share of the disk is below the floor, then the slot command shall refuse to add a slot and name the cap, its limit and the measured value.
-- REQ-6: If an ensured slot already exists, then the slot command shall report it as present with its checkout and its `target/` as they were.
+- REQ-6: If an ensured slot already exists, then the slot command shall report it as present with its checkout as it was, warming it only when it has no `target/`.
 - REQ-7: The cleanup plan shall never offer a fixed slot for removal; a slot is offered only for a detach and a trim of its cargo output.
 - REQ-8: The cleanup plan shall skip a worktree that holds another linked worktree inside it or a live local claim, and name the reason.
 - REQ-9: The cleanup plan shall offer a merged one-off worktree unchanged for 3 days for removal under the existing safe criteria.
@@ -68,7 +68,7 @@ Readers: lanes and the leader, who create, reuse and clean worktrees, and the au
 
 ## Scope
 
-- slice 1 write: `.moai/specs/SPEC-20261123-worktree-slots/spec.md`, `src/help.rs` (one table row and its examples), `tests/fixtures/help/all*.txt` (regenerated, leader decision 6837), `src/worktree_slot.rs` (new; the git calls must reach `identity::scrub_git_env`, which only the library sees), `src/lib.rs` (one `pub mod` line), `src/ops/worktree_slot.rs` (new), `tests/worktree_slot_cli.rs` (new), `docs/design-review/appendix/operations/worktree_slot.md` (new)
+- slice 1 write: `.moai/specs/SPEC-20261123-worktree-slots/spec.md`, `src/help.rs` (one table row and its examples), `tests/fixtures/help/all*.txt` (regenerated under a recorded leader decision), `src/worktree_slot.rs` (new; the git calls must reach `identity::scrub_git_env`, which only the library sees), `src/lib.rs` (one `pub mod` line), `src/ops/worktree_slot.rs` (new), `tests/worktree_slot_cli.rs` (new), `docs/design-review/appendix/operations/worktree_slot.md` (new)
 - slice 2 write: `src/worktree_gc.rs`, `src/ledger/reservation.rs` (one read-only query), `src/ops/worktree_gc_plan.rs` (`--max-worktrees`), `src/ops/worktree_gc_apply.rs` (the new `Pace` field), `tests/worktree_gc_slots.rs` (new), `docs/design-review/appendix/operations/worktree_gc_plan.md`
 - slice 3 write: the landing and verdict steps, a `reference-transaction` hook installer, the skill text
 - read-only: everything else
@@ -78,12 +78,12 @@ Readers: lanes and the leader, who create, reuse and clean worktrees, and the au
 - D-1: The slot names are fixed in code, not configured, so a typo can never create a 15th slot; the count matches the user decision (10 lanes, 3 audits, 1 seed).
 - D-2: A slot is created detached at a commit; the lane switches its own branch inside it. A slot never owns a branch, so deleting a card branch never strands a slot.
 - D-3: Warming copies only when the slot has no `target/`: a present `target/` is the slot's own warm build and is never overwritten (REQ-6).
-- D-4: The 300 GB cap is not enforced in slice 1. `du` overcounts APFS clones (research §4 experiment 1), and an honest per-folder figure needs block-sharing data that `df` does not give. Slice 1 enforces the worktree count and the free share from `statvfs`. The plan reports the 300 GB cap as `not_measured`; slice 2 measures it from the trims it makes.
+- D-4: The 300 GB cap is not enforced in slice 1. `du` overcounts APFS clones (research §4 experiment 1), and an honest per-folder figure needs block-sharing data that `df` does not give. Slice 1 enforces the worktree count and the free share from `df -P -k`. The plan reports the 300 GB cap as `not_measured`; slice 2 measures it from the trims it makes.
 - D-5: Caps are checked by the command that adds a slot. Entry gates in the launcher and a `PreToolUse` hook belong to slice 3.
 - D-6: Test seams (`--max-worktrees`, `--min-free-percent`) set lower limits for the refusal tests; the defaults are 25 and 15.
-- D-7: The help table row and its examples are in slice 1: the binary's `help_rules` tests require every command in the table with an `Examples:` section. The four `help --all` goldens (`tests/fixtures/help/all*.txt`) are reserved by another card; the leader decision 6837 on this card lets slice 1 regenerate them from the tree merged with the integration tip, and the diff is the one `worktree-slot` row.
+- D-7: The help table row and its examples are in slice 1: the binary's `help_rules` tests require every command in the table with an `Examples:` section. The four `help --all` goldens (`tests/fixtures/help/all*.txt`) are reserved by another card; a recorded leader decision on this card lets slice 1 regenerate them from the tree merged with the integration tip, and the diff is the one `worktree-slot` row.
 
-- D-8: Slice 2 follows option (b) of the leader decision 6854 on 6852 (category guarded, deletion scope): its rules only skip or report, and no path becomes removable that was not before. The Q8 preservation of every `.claude/worktrees/` path and its test `a_worktree_under_claude_worktrees_is_preserved` stay. Option (a) (this repository's own `.claude/worktrees/` under the normal safe criteria, slots trim-only) waits for the user's pick and becomes a slice of its own.
+- D-8: Slice 2 follows option (b) of the leader's recorded decision on the lane's deletion-scope question (category guarded): its rules only skip or report, and no path becomes removable that was not before. The Q8 preservation of every `.claude/worktrees/` path and its test `a_worktree_under_claude_worktrees_is_preserved` stay. Option (a) (this repository's own `.claude/worktrees/` under the normal safe criteria, slots trim-only) waits for the user's pick and becomes a slice of its own.
 - D-9: A claim is an active card reservation (`held`, `expired_candidate`, `held_for_review`) whose `worktree` names the path. A `held` reservation whose lease has ended still counts, because a lane's lease can end during a long run. A ledger that exists but cannot be read keeps every linked worktree (`claim_check_unavailable`); a project without a profile or a ledger has no claims.
 - D-10: REQ-9 needs no new code: a merged, clean worktree whose newest change is older than the existing 120-minute window is already a `remove` candidate, and 3 days is past it. The control test measures it with the clock three days ahead.
 
@@ -99,7 +99,7 @@ Readers: lanes and the leader, who create, reuse and clean worktrees, and the au
 
 - A clone shares blocks until written; a full disk can make a later write fail with ENOSPC (clonefile(2)). The free-share floor guards it.
 - A slot reused for a new card keeps the old card's build: Cargo rebuilds what changed by modification time, which a fresh checkout of changed files always updates.
-- Two sessions ensuring the same slot at once: `git worktree add` refuses the second, which reports the slot present.
+- Two sessions ensuring the same slot at once: an exclusive lock on a file in the git common directory serializes `ensure`, so the second run finds the slot present. Without it, both runs added and warmed the slot (the audit measured a doubled registration and a nested `target/target`).
 
 ## Result
 
@@ -116,3 +116,16 @@ Slice 2, measured 2026-11-23 on macOS, under option (b) (D-8).
 - AC-5 met: `tests/worktree_gc_slots.rs`, 8 passed. The tests cover the control remove three days on, `nested_worktree`, `live_claim` and its end on release, `fixed_slot` only in the slot folder, an unreadable ledger giving `claim_check_unavailable`, and the `cap` block (oldest first, `needed`, `enough` at over equal to the candidates, outside the digest). `tests/worktree_gc.rs` still passes 14 of 14, the Q8 test included.
 - Red: 7 run, 2 passed (the two controls), 5 failed. Before this slice, a worktree that a held reservation named was a `remove` candidate.
 - Mutants, all killed: the nested check matching itself; the claim match inverted; claim_check_unavailable switched off; the age sort reversed; `needed` without the minimum; `enough` with `>`; a slot name matched outside the slot folder.
+
+Slice 1 audit repair, measured 2026-11-23 on macOS.
+- The audit (FAIL, one blocking) found that concurrent ensure runs of one slot both added and warmed it. Repair: one lock per repository around check, add and warm, and a warm copied to a temporary name and renamed into place only after `cp` succeeded.
+- Also repaired:
+  - A slot that has `target/` is never copied into.
+  - A present slot without `target/` is warmed (REQ-6 revised).
+  - A failed warm fails the command and leaves no `target/`.
+  - A registered slot whose folder is gone is reported `missing` and refused.
+  - A linked seed `target` or a seed that is not a worktree is refused before anything is added.
+  - A failing `df` refuses.
+  - git failures keep the `fatal:` line.
+- `tests/worktree_slot_cli.rs`: 14 passed, 7 of them new. One of them runs three concurrent ensures of one slot for three slots.
+- Mutants, all killed: the lock removed; the guard on an existing `target/` removed; the temporary copy kept after a failure; the `df` exit status ignored.

@@ -1,4 +1,4 @@
-//! SPEC-20261123-worktree-slots slice 2 (option (b) of leader decision on 6852): rules in
+//! SPEC-20261123-worktree-slots slice 2 (option (b) of the leader's recorded decision): rules in
 //! `worktree-gc-plan` that only skip or report — nothing new becomes removable.
 //! - a worktree holding another linked worktree inside it is skipped (`nested_worktree`);
 //! - a worktree a held card reservation names is skipped (`live_claim`);
