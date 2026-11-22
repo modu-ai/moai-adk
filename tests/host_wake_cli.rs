@@ -1,6 +1,6 @@
 //! The host-wake CLI (SPEC-20261122-session-messages): the registry read is
-//! real (a temporary config root), a missing or unreadable registry folder
-//! answers the no-channel refusal in the refused shape (never an internal
+//! real (a temporary config root), a missing or unreadable sessions folder
+//! answers with its path pinned in the refused shape (never an internal
 //! error), each unreachable addressee answers its one-line refusal, a
 //! `--idle` wake is refused (the notice rides the model-session tool), and a
 //! resolved addressee answers queued with `socket_write: true` — one line to
@@ -41,9 +41,10 @@ fn ok(out: &Output) -> Value {
 
 /// A config root with one session that binds an inbox and one that does not.
 /// The socket path names a harness-made folder (N8 of the first audit: never
-/// the real /tmp/cc-socks folder).
-fn config_root() -> TempDir {
-    let socks = SockFolder::new("config");
+/// the real /tmp/cc-socks folder); the tag gives each caller its own folder
+/// (follow-up 3: one name per process races under threaded cargo test).
+fn config_root(tag: &str) -> TempDir {
+    let socks = SockFolder::new(tag);
     let dir = TempDir::new().unwrap();
     let sessions = dir.path().join("sessions");
     fs::create_dir_all(&sessions).unwrap();
@@ -100,7 +101,7 @@ impl Drop for SockFolder {
 
 #[test]
 fn ac1_an_unknown_addressee_is_the_different_root_refusal() {
-    let dir = config_root();
+    let dir = config_root("ac1");
     let v = wake(&dir, "someone-else");
     assert_eq!(v["shape"], json!("refused"));
     assert!(
@@ -113,10 +114,11 @@ fn ac1_an_unknown_addressee_is_the_different_root_refusal() {
     assert_eq!(v["socket_write"], json!(false));
 }
 
-/// B1 of the N-slice audit: a missing registry folder answers the no-channel
-/// refusal in the refused shape, never an internal error.
+/// B1 of the N-slice audit: a missing sessions folder answers in the refused
+/// shape with its path pinned, never an internal error. Follow-up 2: an
+/// invalid wake answers its own reason even with the folder missing.
 #[test]
-fn ac2_a_missing_registry_folder_is_the_no_channel_refusal() {
+fn ac2_a_missing_sessions_folder_is_refused_with_its_path() {
     let missing = TempDir::new().unwrap();
     let nowhere = missing.path().join("nowhere");
     let v = ok(&run(&[
@@ -128,16 +130,53 @@ fn ac2_a_missing_registry_folder_is_the_no_channel_refusal() {
         nowhere.to_str().unwrap(),
     ]));
     assert_eq!(v["shape"], json!("refused"), "{v}");
+    let reason = v["reason"].as_str().unwrap();
+    // Follow-up 1 and 4 of the landed follow-ups: the sessions folder's own
+    // path appears in the reason, not the bare config dir.
+    assert!(reason.contains("missing or unreadable"), "{v}");
     assert!(
-        v["reason"].as_str().unwrap().contains("no message channel"),
-        "{v}"
+        reason.contains(&nowhere.join("sessions").display().to_string()),
+        "the sessions folder path is pinned: {v}"
     );
     assert_eq!(v["socket_write"], json!(false), "{v}");
+    // Follow-up 2: the idle flag answers its own line, not the folder's.
+    let v = ok(&run(&[
+        "host-wake",
+        "leader",
+        "--text",
+        "a verdict landed",
+        "--idle",
+        "--config-dir",
+        nowhere.to_str().unwrap(),
+    ]));
+    assert!(
+        v["reason"]
+            .as_str()
+            .unwrap()
+            .contains("idle notice rides the model-session tool"),
+        "{v}"
+    );
+    // Follow-up 2: an invalid name answers its own line too.
+    let v = ok(&run(&[
+        "host-wake",
+        "bad name",
+        "--text",
+        "a verdict landed",
+        "--config-dir",
+        nowhere.to_str().unwrap(),
+    ]));
+    assert!(
+        v["reason"]
+            .as_str()
+            .unwrap()
+            .contains("character outside letters"),
+        "{v}"
+    );
 }
 
 #[test]
 fn ac2b_a_session_without_a_socket_is_the_no_inbox_refusal() {
-    let dir = config_root();
+    let dir = config_root("ac2b");
     let v = wake(&dir, "worker");
     assert_eq!(v["shape"], json!("refused"));
     assert!(
@@ -218,7 +257,7 @@ fn ac4_an_ambiguous_name_is_refused() {
 /// minimum line carries none, so the flag is refused.
 #[test]
 fn ac5_the_idle_flag_is_refused_with_its_line() {
-    let dir = config_root();
+    let dir = config_root("ac5");
     let v = wake_with_idle(&dir);
     assert_eq!(v["shape"], json!("refused"), "{v}");
     assert!(
@@ -276,4 +315,51 @@ fn ac6_a_socket_folder_open_to_group_or_world_writes_is_refused() {
             "mode {mode:o}: {v}"
         );
     }
+}
+
+/// The follow-up of the landed follow-ups: a symlinked sessions folder — and
+/// a symlinked config root — is followed on purpose (D-8): users link their
+/// config root, the listing only reads, and the socket-path guard checks
+/// every component between the socket and /tmp before any connect, so a link
+/// cannot redirect a send.
+#[cfg(unix)]
+#[test]
+fn ac7_a_linked_sessions_folder_and_a_linked_config_root_are_followed() {
+    let socks = SockFolder::new("linkcfg");
+    let socket_path = socks.0.join("wake.sock");
+    let _listener = std::os::unix::net::UnixListener::bind(&socket_path).unwrap();
+
+    // A real config root with a sessions folder, linked into place.
+    let real_root = TempDir::new().unwrap();
+    let real_sessions = real_root.path().join("sessions");
+    fs::create_dir_all(&real_sessions).unwrap();
+    fs::write(
+        real_sessions.join("1.json"),
+        format!(
+            r#"{{"name":"leader","messagingSocketPath":"{}"}}"#,
+            socket_path.display()
+        ),
+    )
+    .unwrap();
+
+    // Case 1: the sessions folder itself is a link.
+    let linked_sessions = TempDir::new().unwrap();
+    std::os::unix::fs::symlink(&real_sessions, linked_sessions.path().join("sessions")).unwrap();
+    let v = wake(&linked_sessions, "leader");
+    assert_eq!(v["shape"], json!("queued"), "sessions link: {v}");
+    assert_eq!(v["socket_write"], json!(true), "sessions link: {v}");
+
+    // Case 2: the whole config root is a link.
+    let linked_root = TempDir::new().unwrap();
+    std::os::unix::fs::symlink(real_root.path(), linked_root.path().join("root")).unwrap();
+    let v = ok(&run(&[
+        "host-wake",
+        "leader",
+        "--text",
+        "a verdict landed",
+        "--config-dir",
+        linked_root.path().join("root").to_str().unwrap(),
+    ]));
+    assert_eq!(v["shape"], json!("queued"), "root link: {v}");
+    assert_eq!(v["socket_write"], json!(true), "root link: {v}");
 }

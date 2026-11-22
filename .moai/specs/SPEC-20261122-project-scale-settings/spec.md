@@ -60,6 +60,11 @@ parent: SPEC-20261122-project-scale
 - 토큰 모양의 `enabledPlugins` 키와 관리 밖 키는 거절되고 메시지에 값이 나오지 않아요(REQ-9): `claude_settings_scale_keys a_token_shaped_plugin_key_is_refused_and_hidden`
 - 설정 계획 자체가 저장소를 벗어나는 `additionalDirectories` 를 거절하고 `.git` 찾기는 저장소 루트에서 멈춰요(REQ-10): `claude_settings_scale_keys the_writer_refuses_an_additional_directory_outside_the_repository`
 
+### Slice C3 follow-ups (C2 감사의 막지 않는 두 항목)
+
+- 거절 메시지는 제어 문자뿐 아니라 보이지 않는 서식·구분 문자(폭 없는 공백, 소프트 하이픈, 방향 표시·뒤집기, 줄·문단 구분자, BOM, 태그 문자)도 지운 뒤 자격 증명 검사를 하고, 지운 글만 보여 줘요(REQ-9): `claude_settings_scale_keys a_token_split_by_an_invisible_format_or_separator_character_is_never_echoed`
+- 고른 플러그인 중 이미 같은 값인 것은 그대로 두고 나머지를 더해요. 다른 값으로 이미 있는 플러그인만 충돌이고, 충돌 글은 그 플러그인만 이름 대요(REQ-5): `project_scale_plan_lib a_picked_plugin_already_set_the_same_way_is_kept_and_the_rest_are_added`
+
 ## Risks
 
 - 거절 규칙은 보안 경계가 아니에요(문서: 하위 프로세스가 직접 여는 파일은 안 막아요). 미리보기가 그 한계를 한 줄로 말해요.

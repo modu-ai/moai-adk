@@ -1,12 +1,13 @@
 //! `host-wake`: one flow wake through the host adapter (SPEC-20261122-session-messages).
-//! Lists the config root's session registry — a missing or unreadable registry
-//! folder is the no-channel refusal, never an internal error — refuses with
+//! Lists the config root's session registry — a missing or unreadable sessions
+//! folder answers with its path named, never an internal error — refuses with
 //! the reason when the addressee is unreachable, and answers the result
 //! shape: queued (one line written to the addressee's inbox socket), held
-//! with a notice, or refused (an unknown name, no channel, no inbox, an
-//! ambiguous name, the idle flag, or a socket path outside its guarded
-//! folder).
+//! with a notice, or refused (an unknown name, the sessions folder missing,
+//! no inbox, an ambiguous name, the idle flag, or a socket path outside its
+//! guarded folder).
 
+use serde_json::Value;
 use std::path::PathBuf;
 
 /// One wake through the host adapter
@@ -34,14 +35,24 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
         text: args.text,
         notify_when_idle: args.idle,
     };
-    // B1 of the N-slice audit: a missing or unreadable registry folder is the
-    // no-channel refusal, never an internal error; the refused wrapper below
-    // answers it in the same shape as every other refusal.
-    let answer = match moai_cli::host_wake::RegistryListing::read(&config_dir) {
-        Ok(listing) => wake.send_once(&listing),
-        Err(_) => Ok(moai_cli::host_wake::SendShape::Refused(
-            moai_cli::host_wake::Refusal::NoChannel,
-        )),
+    // Follow-up 2 of the landed N slice: validation and the idle check run
+    // before any registry read, so an invalid name, an empty text or the
+    // idle flag answers its own reason even when the registry folder is
+    // missing. Follow-up 1: a missing or unreadable registry folder — a
+    // mistyped --config-dir, a file in its place — answers with the folder
+    // named, never an internal error.
+    let answer = match wake.validate() {
+        Err(invalid) => Err(invalid.line().to_string()),
+        Ok(()) if wake.notify_when_idle => Err(moai_cli::host_wake::Refusal::IdleUnsupported
+            .line()
+            .to_string()),
+        Ok(()) => match moai_cli::host_wake::RegistryListing::read(&config_dir) {
+            Err(_) => Err(format!(
+                "wake refused: the sessions registry {} is missing or unreadable",
+                config_dir.join("sessions").display()
+            )),
+            Ok(listing) => wake.send_once(&listing),
+        },
     };
     // N3 and N9 of the first audit: the answer says queued, never delivered
     // (the status notice goes to a sender socket this command does not have),
@@ -58,11 +69,15 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             }));
         }
     };
+    let reason = match reason_line(&answer) {
+        Some(line) => Value::String(line),
+        None => Value::Null,
+    };
     Ok(serde_json::json!({
         "schema_version": 1,
         "addressee": wake.addressee,
         "shape": shape_name(&answer),
-        "reason": reason_line(&answer),
+        "reason": reason,
         // N4: a queued wake wrote one line to the addressee's inbox socket;
         // nothing else was written.
         "socket_write": matches!(answer, moai_cli::host_wake::SendShape::Queued),

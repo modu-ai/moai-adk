@@ -13,7 +13,7 @@
 //! `idle`. A time without a zone is never taken as local time or as UTC.
 //!
 //! Pure functions over text: no file, process or terminal is touched here except the optional
-//! read of `usage-limits.json` by the caller through [`crate::usage_limit::evaluate`].
+//! read of the lane's usage record by the caller through [`crate::usage_limit::evaluate`].
 
 use crate::lane_status::PaneState;
 
@@ -729,9 +729,15 @@ fn reset_json(found: &Reset) -> serde_json::Value {
 }
 
 /// The answer of `moai lane-screen`: the state, its evidence row and reason, the reset time of a
-/// usage limit (from the lane's `home` when given), the `pane` object `lane-status` takes, and
-/// the count of non-blank rows. `now` is Unix seconds.
-pub fn report(input: &str, home: Option<&std::path::Path>, now: i64) -> serde_json::Value {
+/// usage limit (from the record of the lane's `home` in the cache folder for `tmpdir`, the
+/// `TMPDIR` value, when `home` is given), the `pane` object `lane-status` takes, and the count of
+/// non-blank rows. `now` is Unix seconds.
+pub fn report(
+    input: &str,
+    home: Option<&std::path::Path>,
+    tmpdir: Option<&str>,
+    now: i64,
+) -> serde_json::Value {
     use crate::forge::policy::{format_utc, parse_utc};
     use serde_json::{json, Value};
 
@@ -743,7 +749,7 @@ pub fn report(input: &str, home: Option<&std::path::Path>, now: i64) -> serde_js
     let mut until: Option<String> = None;
     if seen.state == State::UsageLimit {
         let from_home = home
-            .map(|h| crate::usage_limit::evaluate(h, now))
+            .map(|h| crate::usage_limit::evaluate(h, tmpdir, now))
             .filter(|v| v["state"] == "reached")
             .and_then(|v| v["resets_at"].as_str().map(String::from))
             .filter(|t| parse_utc(t).is_some());
@@ -803,7 +809,7 @@ fn shown(text: &str) -> String {
 /// state of its screen, read one terminal at a time through `read` (the handle in, the answer of
 /// `orca terminal read --screen --json` out). A terminal that cannot be read, has no handle or is
 /// not answered with an Orca answer is `unreachable`; the scan goes on. A usage limit carries its
-/// reset time in UTC from the screen text (no `usage-limits.json`: a terminal does not say whose
+/// reset time in UTC from the screen text (no usage record: a terminal does not say whose
 /// HOME it is). `now` is Unix seconds. `Err` only when the list itself cannot be read.
 pub fn scan(
     list_json: &str,
@@ -867,7 +873,7 @@ pub fn scan(
                     if input.source != "orca:screen" {
                         unreachable_row("the answer of `orca terminal read` is not an Orca answer")
                     } else {
-                        let seen = report(&out, None, now);
+                        let seen = report(&out, None, None, now);
                         let state = seen["state"].as_str().unwrap_or("unknown").to_string();
                         let mut reason = seen["reason"].as_str().unwrap_or("").to_string();
                         let mut reset = seen["reset"].clone();
