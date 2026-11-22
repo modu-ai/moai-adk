@@ -88,6 +88,16 @@ impl Context {
         self.var("HOME").map(PathBuf::from)
     }
 
+    /// `HOME` as this render sees it (the Orca pass-through finds its wrapper below it).
+    pub fn home_dir(&self) -> Option<PathBuf> {
+        self.home()
+    }
+
+    /// Every variable of this render, for a child started with the render's environment.
+    pub fn vars(&self) -> impl Iterator<Item = (&String, &String)> {
+        self.vars.iter()
+    }
+
     /// The HOME state folder `$HOME/.moai-cli/state` (Issue #2455, user decision
     /// 2026-11-11). The Go folder `$HOME/.moai` is never read, and `MOAI_HOME` — the Go
     /// tool's variable — is not consulted, so a Go setting cannot point back at it.
