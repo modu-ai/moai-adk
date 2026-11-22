@@ -137,14 +137,6 @@ fn hook_set_has_explicit_timeouts_and_bare_commands() {
             }
         }
     }
-    for host in ["codex", "omp"] {
-        let obj = hooks::hooks_object(host).unwrap();
-        assert_eq!(
-            obj.keys().collect::<Vec<_>>(),
-            ["SessionStart", "PreToolUse", "PostToolUse"],
-            "{host}"
-        );
-    }
 }
 
 /// #2255 AC-2 (wiring): the command `hooks-apply` writes for `PreToolUse` is the guard, and
@@ -1071,12 +1063,11 @@ fn merge_confirm_capabilities_name_the_direct_merge() {
 /// the generated command, run as the host runs it, denies a dangerous Bash call and a write
 /// into `.git`, and lets an ordinary call through.
 #[test]
-fn claude_runs_the_preflight_guard_and_codex_does_not() {
+fn claude_runs_the_preflight_guard() {
     // SPEC-20261122-next-flow-hooks: the Claude PreToolUse groups are the dangerous duty and
     // the ordinary duty on the shell tools plus the ordinary duty on the write tools — no
     // claim-verify anywhere — and the generated command, run as the host runs it, denies a
-    // dangerous Bash call and a write into `.git`, and lets an ordinary call through. Codex
-    // keeps its three base hooks.
+    // dangerous Bash call and a write into `.git`, and lets an ordinary call through.
     let claude = hooks::hooks_object("claude").unwrap();
     let pre = claude["PreToolUse"].as_array().unwrap();
     assert_eq!(pre.len(), 3, "{pre:?}");
@@ -1089,13 +1080,6 @@ fn claude_runs_the_preflight_guard_and_codex_does_not() {
             "{pre:?}"
         );
     }
-    let codex = hooks::hooks_object("codex").unwrap();
-    assert_eq!(
-        codex.keys().collect::<Vec<_>>(),
-        ["SessionStart", "PreToolUse", "PostToolUse"]
-    );
-    let codex_text = serde_json::to_string(&codex).unwrap();
-    assert!(codex_text.contains("claim-verify"), "codex keeps its base");
     // Run as the host runs it: the same argv the entry spells. Inside a test binary
     // `moai_absolute` names this test executable, so the run uses the built moai binary with
     // the entry's own args vector (the shape assertions above pin what is written).

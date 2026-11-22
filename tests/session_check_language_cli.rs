@@ -74,6 +74,9 @@ fn run(args: &[&str], cwd: &Path, stdin: &[u8]) -> (i32, String) {
 }
 
 fn session_context(root: &Path, source: &str) -> String {
+    // REQ-15: the duty answers only inside a moai project; mark the project state folder
+    // through the resolver's own default name.
+    std::fs::create_dir_all(moai_cli::state_root::path(root, "")).unwrap();
     let input = json!({"hook_event_name": "SessionStart", "session_id": "s", "model": "m",
                        "source": source});
     let mut child = Command::new(Path::new(BIN))

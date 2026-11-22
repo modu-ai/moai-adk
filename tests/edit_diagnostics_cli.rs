@@ -756,7 +756,13 @@ fn a_malformed_table_leaves_the_other_guards_on() {
                 .unwrap();
         }
         let out = child.wait_with_output().unwrap();
-        assert_eq!(out.status.code(), Some(0), "{out:?}");
+        // SPEC-20261122-next-flow-hooks REQ-8: a Claude refusal is exit 2 with the same
+        // object; an allow is exit 0.
+        assert!(
+            matches!(out.status.code(), Some(0) | Some(2)),
+            "{}",
+            String::from_utf8_lossy(&out.stdout)
+        );
         String::from_utf8_lossy(&out.stdout).trim().to_string()
     };
     let denied = |stdout: &str| stdout.contains("\"permissionDecision\":\"deny\"");

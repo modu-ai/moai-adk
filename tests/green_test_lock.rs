@@ -322,7 +322,8 @@ fn preflight(cwd: &Path, input: &Value) -> Run {
 }
 
 fn denied(r: &Run) -> bool {
-    r.code == 0 && r.stdout.contains("\"permissionDecision\":\"deny\"")
+    // SPEC-20261122-next-flow-hooks REQ-8: a Claude refusal is exit 2 with the same object.
+    matches!(r.code, 0 | 2) && r.stdout.contains("\"permissionDecision\":\"deny\"")
 }
 
 fn allowed(r: &Run) -> bool {

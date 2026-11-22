@@ -486,7 +486,11 @@ fn a_fresh_apply_is_refused_only_for_the_wrong_generation() {
     assert_eq!(applied["hook_binary"]["name"], json!("moai"));
     assert_eq!(applied["hooks_active"], json!(false));
     let file = fs::read_to_string(w.project.join(".claude/settings.json")).unwrap();
-    assert!(file.contains("\"moai claim-verify . --hook\""), "{file}");
+    // SPEC-20261122-next-flow-hooks REQ-1: the fresh Claude set is the NeXT-Flow set — the
+    // session-check duty and the two preflight duties, no claim-verify anywhere.
+    assert!(file.contains("session-check"), "{file}");
+    assert!(file.contains("dangerous-preflight"), "{file}");
+    assert!(!file.contains("claim-verify"), "{file}");
     assert!(!file.contains("moai-cli"), "{file}");
 }
 

@@ -722,7 +722,11 @@ fn a_local_claim_record_hands_the_commit_to_the_claim_guard() {
 // ---- stage 2: tool-observe and turn-validation ----
 
 fn engine_log(root: &Path) -> PathBuf {
-    root.join(".moai-cli/receipts/hook-engine.jsonl")
+    // The engine log lives under the receipts folder of the state name the project resolves
+    // to — the product's own resolver, never a literal.
+    root.join(moai_cli::state_root::dir(root))
+        .join("receipts")
+        .join(moai_cli::hook_engine::ENGINE_LOG)
 }
 
 fn post_tool(event: &str, tool: &str, file_path: &str, response: &str) -> Vec<u8> {
@@ -1037,11 +1041,11 @@ fn claude_observe_outcome_comes_from_the_event() {
 
 // ---- stage 4: cost ----
 
-/// Audit #2400 N3: tool-observe spawns `git` only when it will record. A fake `git` first on
-/// PATH leaves a marker; without `.moai-cli/` there is no marker, with it there is one (the
-/// control proves the fake is the `git` the engine would run).
+/// Audit #2400 N3, restated for REQ-15: outside a moai project the duty runs one process
+/// start and nothing else — no `git`, no engine log. Inside one, tool-observe spawns `git`
+/// only to record; a fake `git` first on PATH leaves a marker only in the project case.
 #[test]
-fn tool_observe_spawns_no_git_without_a_state_dir() {
+fn tool_observe_spawns_no_git_outside_a_project() {
     let (_d, root) = repo("main");
     let bin = root.join("home/fakebin");
     fs::create_dir_all(&bin).unwrap();
@@ -1060,9 +1064,41 @@ fn tool_observe_spawns_no_git_without_a_state_dir() {
     );
     let env = [("PATH", path.as_str())];
     let post = post_tool("PostToolUse", "Read", "a.txt", "x");
-    dispatch("tool-observe", &root, &post, &env);
+    // A plain folder with no state folder: the duty answers nothing and runs no git. The
+    // spawn is direct because the run helper marks a project before it spawns (REQ-15).
+    let plain = root.join("plain");
+    fs::create_dir_all(&plain).unwrap();
+    let mut child = std::process::Command::new(Path::new(BIN))
+        .args([
+            "hook-dispatch",
+            "--host",
+            "claude",
+            "--event",
+            "tool-observe",
+        ])
+        .current_dir(&plain)
+        .env("HOME", root.join("home"))
+        .env("PATH", &path)
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .unwrap();
+    common::feed_stdin(&mut child, &post);
+    let out = child.wait_with_output().unwrap();
+    assert_eq!(
+        out.status.code(),
+        Some(0),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert!(
+        out.stdout.is_empty(),
+        "{}",
+        String::from_utf8_lossy(&out.stdout)
+    );
     assert!(!marker.exists(), "git ran although nothing is recorded");
-    fs::create_dir(root.join(".moai-cli")).unwrap();
+    // The control, inside the project: the fake git is the one run and the log records it.
     dispatch("tool-observe", &root, &post, &env);
     assert!(marker.exists(), "control: the fake git is the one run");
     let text = fs::read_to_string(engine_log(&root)).unwrap();
@@ -1576,41 +1612,9 @@ fn a_config_folder_is_the_launcher_folder_and_no_problem() {
     assert!(config_errors(&root).is_empty());
 }
 
-// ---- #2633: the OMP adapter (an extension module calls hook-dispatch --host omp) ----
-
-fn omp(event: &str, cwd: &Path, stdin: &[u8]) -> Run {
-    run_program(
-        Path::new(BIN),
-        &["hook-dispatch", "--host", "omp", "--event", event],
-        cwd,
-        stdin,
-        &[],
-    )
-    .unwrap()
-}
-
-/// The answer the module turns into OMP's `tool_call` result: exactly `{block: true, reason}`
-/// on a deny, nothing on an allow, and the reason is the same fixed text as for Claude Code.
-#[test]
-fn omp_tool_preflight_answers_block_and_reason_only() {
-    let (_d, root) = repo("issue/77-k");
-    // REQ-11: the token rule is gone — the blocking call is a plain dangerous rm; a commit
-    // passes on both hosts.
-    let input = json!({"hook_event_name": "PreToolUse", "tool_name": "Bash",
-                       "tool_input": {"command": "rm -rf /"}, "cwd": root});
-    let r = omp("tool-preflight", &root, input.to_string().as_bytes());
-    assert_eq!(r.code, 0, "{}", r.stderr);
-    let v: Value = serde_json::from_str(r.stdout.trim()).unwrap();
-    assert_eq!(v.as_object().unwrap().len(), 2, "{v}");
-    assert_eq!(v["block"], true);
-    let claude = dispatch("tool-preflight", &root, input.to_string().as_bytes(), &[]);
-    assert_eq!(v["reason"].as_str().unwrap(), assert_deny(&claude));
-    let ok = json!({"hook_event_name": "PreToolUse", "tool_name": "Bash",
-                    "tool_input": {"command": "git commit -m x"}, "cwd": root});
-    assert_allow(&omp("tool-preflight", &root, ok.to_string().as_bytes()));
-}
-
-/// Session context is `{context}` (the module puts it in `before_agent_start`'s systemPrompt);
+/// #2673 AC-3: a host without a built-in worktree tool commits with `git -C <worktree>` from
+/// the primary checkout (user decision on #2673). The branch is read in the folder `-C` names,
+/// not in the session's own folder, so the commit guard still sees the lane branch.
 #[test]
 fn git_dash_c_names_the_worktree_the_commit_runs_in() {
     let (_a, primary) = repo("main");
@@ -1858,7 +1862,13 @@ fn only_the_exact_compact_source_changes_the_answer() {
 fn a_compacted_claude_session_names_its_card_and_is_not_pointed_at_a_goal() {
     let (_d, root) = repo("issue/77-k");
     let claude_ctx = session_context("claude", &root, Some(json!("compact")));
-    assert!(claude_ctx.contains("Issue #77"), "{claude_ctx}");
+    // SPEC-20261122-next-flow-hooks REQ-3: the compact advice restates the card facts; the
+    // Issue-era number never appears and the pointer comes only with a card, not here.
+    assert!(
+        claude_ctx.contains("The card facts of this worktree: no card names this branch."),
+        "{claude_ctx}"
+    );
+    assert!(!claude_ctx.contains("Issue #"), "{claude_ctx}");
     assert!(!claude_ctx.contains("/goal"), "{claude_ctx}");
     assert!(!session_context("claude", &root, Some(json!("startup"))).contains("/goal"));
 }
@@ -1902,6 +1912,9 @@ fn tree_paths(root: &Path) -> Vec<String> {
 #[test]
 fn a_removed_host_gets_one_line_and_exit_zero() {
     let (_d, root) = repo("issue/77-k");
+    // The run helper marks a moai project before it spawns (REQ-15); the tree comparison
+    // starts from the marked shape, so only the dispatch's own writes can differ.
+    fs::create_dir_all(root.join(".moai")).unwrap();
     let harmless = pre_tool("ls", &root);
     let denied = pre_tool("git commit -m x", &root);
     for host in ["codex", "omp"] {

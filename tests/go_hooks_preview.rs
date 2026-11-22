@@ -108,10 +108,13 @@ fn the_preview_lists_what_goes_what_stays_and_what_is_added_and_writes_nothing()
         json!({"PreToolUse": [{"matcher": "Write|Edit|Bash",
             "hooks": [{"type": "command", "command": "orca guard", "timeout": 5}]}]})
     );
-    // The MoAI set is added; nothing of the Go generation is left in the result.
+    // The MoAI set is added; nothing of the Go generation is left in the result. The set is
+    // the NeXT-Flow one (SPEC-20261122-next-flow-hooks REQ-1): no claim-verify anywhere.
     let after = p["hooks_after"].to_string();
     assert!(!after.contains(".claude/hooks/moai/"), "{after}");
-    assert!(after.contains("moai claim-verify"), "{after}");
+    assert!(after.contains("session-check"), "{after}");
+    assert!(after.contains("dangerous-preflight"), "{after}");
+    assert!(!after.contains("claim-verify"), "{after}");
     assert!(!after.contains("moai-cli"), "{after}");
     assert!(after.contains("orca guard"), "{after}");
     assert_eq!(

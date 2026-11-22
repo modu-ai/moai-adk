@@ -324,8 +324,10 @@ fn a_go_moai_first_on_path_is_the_wrong_generation_and_no_hook_is_written() {
         assert_eq!(plan["gate"]["allowed"], false, "{host}: {plan}");
         for h in plan["hooks"].as_array().unwrap() {
             let c = h["command"].as_str().unwrap();
+            // Claude's rows are exec form (the absolute binary path,
+            // SPEC-20261122-next-flow-hooks REQ-5); either way the new name, never the old.
             assert!(
-                c.starts_with("moai ") && !c.contains("moai-cli"),
+                (c.starts_with("moai ") || c.starts_with('/')) && !c.contains("moai-cli"),
                 "{host}: {c}"
             );
         }
@@ -376,17 +378,21 @@ fn a_go_moai_first_on_path_is_the_wrong_generation_and_no_hook_is_written() {
     assert_eq!(code, Some(0), "{applied}");
     assert!(p.join(".claude/settings.json").is_file());
 
-    // Run the generated claim guard the way a host does with the Rust `moai` first: its
-    // command string through a shell with that PATH, the PreToolUse input on stdin. The Go
-    // `moai` is never reached.
+    // Run a generated PreToolUse duty the way a host does with the Rust `moai` first: the
+    // exec-form argv (the command plus its args, plain words) through a shell with that PATH,
+    // the PreToolUse input on stdin. The Go `moai` is never reached.
     fs::remove_file(&go_log).unwrap();
-    let guard = plan["hooks"]
+    let guard_row = plan["hooks"]
         .as_array()
         .unwrap()
         .iter()
         .find(|h| h["event"] == "PreToolUse")
-        .map(|h| h["command"].as_str().unwrap().to_string())
         .unwrap();
+    let mut guard = guard_row["command"].as_str().unwrap().to_string();
+    for a in guard_row["args"].as_array().unwrap() {
+        guard.push(' ');
+        guard.push_str(a.as_str().unwrap());
+    }
     let input = format!(
         r#"{{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{{"command":"git commit -m x"}},"cwd":"{}"}}"#,
         p.display()
