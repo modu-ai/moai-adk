@@ -376,7 +376,7 @@ pub fn run_with_limit(built: &BuiltRun, cwd: &Path, limit: std::time::Duration) 
         &err_buf,
         drain_bound,
     );
-    // P-2: a child reaped elsewhere makes wait() fail — the drained answer is returned
+    // A child reaped elsewhere makes wait() fail — the drained answer is returned
     // with an unknown exit status (success stays false, the code None), never discarded.
     let (succeeded, code) = match child.wait() {
         Ok(status) => (status.success(), status.code()),
@@ -489,9 +489,9 @@ fn interpret_waitid(rc: i32, reported_pid: i32, errno: Option<i32>) -> WaitPoll 
 }
 
 /// Polls the child WITHOUT reaping it (L-2): the zombie still owns the process group, so
-/// the straggler kill that follows cannot hit a recycled group. A waitid error is only
-/// "no such child" in practice here (the child was reaped elsewhere, M-1); anything else
-/// counts as running until the deadline ends the call anyway.
+/// the straggler kill that follows cannot hit a recycled group. A waitid error with errno
+/// ECHILD means the child was reaped elsewhere (M-1: skip the group kill; P-2: the drained
+/// output returns with an unknown exit status); every other answer counts as running.
 #[cfg(unix)]
 fn poll_unreaped(pid: u32) -> WaitPoll {
     // SAFETY: waitid with WNOWAIT reports an exited child and leaves it un-reaped; a
@@ -748,7 +748,11 @@ fn narrow_rule(tool: &str) -> Result<()> {
         inner.is_empty() || inner.starts_with('*') || inner == ":*"
     });
     let starts_with_assignment = |inner: &str| {
+        // += and array-index assignments count too: the name may carry an index suffix
+        // or a + before the =.
         inner.split_once('=').is_some_and(|(name, _)| {
+            let name = name.split_once('[').map_or(name, |(base, _)| base);
+            let name = name.strip_suffix('+').unwrap_or(name);
             !name.is_empty()
                 && name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
                 && name.chars().next().is_some_and(|c| !c.is_ascii_digit())
@@ -758,15 +762,27 @@ fn narrow_rule(tool: &str) -> Result<()> {
         if !inner.contains('*') {
             return false;
         }
-        // P-1 stricter rule: an assignment prefix on a wildcarded rule refuses outright —
-        // every quote spelling is covered by the refusal, not by parsing.
+        // An assignment prefix on a wildcarded rule refuses outright — every quote
+        // spelling is covered by the refusal, not by parsing.
         if starts_with_assignment(inner.trim_start()) {
             return true;
         }
-        inner
-            .split_whitespace()
-            .next()
-            .is_some_and(broad_first_word)
+        // A first word holding a quote, a backslash or a redirection — anywhere in the
+        // word, or an & prefix — cannot be told apart from its interpreter safely, so a
+        // wildcarded rule with one refuses (2>&1, 2>/dev/null and &>/dev/null included).
+        let Some(first) = inner.split_whitespace().next() else {
+            return false;
+        };
+        if first.contains('"')
+            || first.contains('\'')
+            || first.contains('\\')
+            || first.contains('>')
+            || first.contains('<')
+            || first.starts_with('&')
+        {
+            return true;
+        }
+        broad_first_word(first)
     });
     if blanket || wildcard_only || wildcarded_word {
         return Err(format!(

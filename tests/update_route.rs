@@ -38,7 +38,8 @@ fn the_update_route_is_the_project_layer() {
     );
     let update = skill("workflows/update.md");
     for text in [
-        "`/moai update` (`$moai update` in Codex CLI, `/skill:moai update` in OMP) updates the current project",
+        // SPEC-20261122-next-flow-skills-agents REQ-8: the Codex and OMP entry spellings left.
+        "`/moai update` updates the current project",
         // #2936 S1: one read-only preview of every phase, then the printed commands.
         "Run `moai project-update-plan <project>`. It writes nothing",
         "Show the user every phase and every step in one view",
@@ -208,48 +209,22 @@ fn every_question_is_a_selection_through_the_hosts_question_tool() {
             .unwrap_or_else(|| panic!("no row for {host}"))
             .to_string()
     };
+    // SPEC-20261122-next-flow-skills-agents REQ-8 retired the Codex CLI and OMP rows with their
+    // hosts. What they pinned for every host stays in rule 3 above: no answer is not a pick, and
+    // nothing is preselected for a case-(2) question.
+    for host in ["Codex CLI", "OMP"] {
+        assert!(
+            !q.lines().any(|l| l.starts_with(&format!("| {host} |"))),
+            "questions.md still has a {host} row"
+        );
+    }
     for (host, texts) in [
         ("Claude Code", &["`AskUserQuestion`", "(Recommended)"][..]),
         (
-            "Codex CLI",
+            "Any other host",
             &[
-                "`request_user_input`",
-                "At most 3 questions per call, 2 or 3 options each",
-                "`features.default_mode_request_user_input`",
-                // N1: true at this head — the launcher does not turn the feature on yet.
-                "(under development, off by default; the `moai codex` launcher is to turn it on — card C-52, not in this version): go by the tool list",
-                // B1: Codex's own Default-mode instruction must not decide a case-(2) question.
-                "continue with best judgment",
-                "for a case-(2) question never do that: no answer is not a pick (rule 3)",
-                // N10: Default mode's own ban on permission requests through the tool, quoted
-                // from the installed Codex 0.170.0, and how the pick is asked instead.
-                "In Default mode a case-(2) pick is not asked through `request_user_input` at all",
-                "Never use the `request_user_input` tool for permission requests or permission-related escalations",
-                "ask it as plain text with numbered choices, the recommended one first, say that it is the fallback, and wait for the reply",
-                "Ordinary picks and Plan mode keep the tool",
-                // N2: Plan mode previews and picks; the applies run after it.
-                "In Plan mode only previews and picks happen",
-                "the applies run after the user leaves Plan mode; say so once",
-                "Never `request_user_input_async` for a question a step waits on",
-                "say once that `/plan` enables the dialog",
+                "Use the host's own question tool the same way when it lists one",
                 "one question per message with numbered choices",
-            ][..],
-        ),
-        (
-            "OMP",
-            &[
-                "`ask`",
-                "one HTML form",
-                "`<select>`",
-                "`checked`",
-                // B1: OMP submits the form's values on a timeout, so case (2) presets none.
-                "for a case-(2) question (rule 3) nothing is preselected: no `checked`, no `selected` and no `value`",
-                // N8: the form is submitted on a timeout, so an empty submission is no pick.
-                "the recommendation is named in the label text only",
-                "a submission without a choice is not a pick",
-                "`ask.timeout`",
-                "print mode or a subagent",
-                "in the final answer",
             ][..],
         ),
     ] {

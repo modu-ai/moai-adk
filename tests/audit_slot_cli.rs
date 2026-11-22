@@ -117,14 +117,25 @@ impl Repo {
     }
 
     fn run_op(&self, op: &str, args: &[&str]) -> (i32, Value) {
-        let out = self
-            .home
-            .command(&[op])
-            .current_dir(&self.root)
+        self.run_op_env(op, args, &[])
+    }
+
+    fn run_op_env(&self, op: &str, args: &[&str], env: &[(&str, &str)]) -> (i32, Value) {
+        let mut cmd = self.home.command(&[op]);
+        cmd.current_dir(&self.root)
             .args(args)
-            .args(["--project", self.root.to_str().unwrap()])
-            .output()
-            .unwrap();
+            .args(["--project", self.root.to_str().unwrap()]);
+        // `prep` and `done` name a holder; the tests act as one auditor unless they name another.
+        if op == "audit-slot"
+            && matches!(args.first(), Some(&"prep") | Some(&"done"))
+            && !args.contains(&"--holder")
+        {
+            cmd.args(["--holder", "auditor-a"]);
+        }
+        for (k, v) in env {
+            cmd.env(k, v);
+        }
+        let out = cmd.output().unwrap();
         let v: Value = serde_json::from_slice(&out.stdout).unwrap_or_else(|_| {
             panic!(
                 "{args:?}: not JSON: {} / {}",
@@ -194,8 +205,17 @@ fn prep_refuses_a_name_that_is_not_an_audit_slot() {
         r.refused(&["prep", bad, "--head", &r.first], &["audit-1"]);
         r.refused(&["done", bad], &["audit-1"]);
     }
+    // Not a full commit id: a short id, a branch, a tag, upper case, or 40 hex naming nothing.
+    let short = &r.first[..12];
+    let upper = r.first.to_uppercase();
+    for bad in [short, "main", "HEAD", "no-such-commit", upper.as_str()] {
+        r.refused(
+            &["prep", "audit-1", "--head", bad],
+            &["full 40-character commit id"],
+        );
+    }
     r.refused(
-        &["prep", "audit-1", "--head", "no-such-commit"],
+        &["prep", "audit-1", "--head", &"0".repeat(40)],
         &["names no commit"],
     );
     assert_eq!(r.worktrees(), before);
@@ -581,4 +601,378 @@ fn a_slot_prepared_from_the_lane_does_not_compile_the_dependency() {
     assert!(mutant.contains("Compiling auditapp"), "{mutant}");
     let done = r.ok(&["done", "audit-1", "--discard"]);
     assert_eq!(done["reverted"], json!(["src/main.rs"]), "{done}");
+}
+
+// ---- the slot is its own worktree (AC-6: REQ-11)
+
+/// A registered slot path whose folder is not the slot's own worktree is refused by every
+/// writing action before its first write, in four shapes: a plain folder (git would walk up to
+/// the primary checkout), another repository, a `.git` file that borrows the lane's git dir, and
+/// a clean primary that `prep` must not detach.
+#[test]
+fn a_registered_slot_that_is_not_its_own_worktree_is_refused_and_nothing_changes() {
+    let r = repo(&[("a.txt", "a\n")]);
+    r.ok(&["prep", "audit-1", "--head", &r.first]);
+    r.ok(&["done", "audit-1"]);
+    let slot = r.slot("audit-1");
+    let moved = r.root.parent().unwrap().join("moved-slot");
+    let primary_branch = || git(&r.root, &["symbolic-ref", "-q", "HEAD"]);
+    let primary_head = git(&r.root, &["rev-parse", "HEAD"]);
+    let refuse_all = |words: &[&str]| {
+        for args in [
+            vec!["prep", "audit-1", "--head", r.second.as_str()],
+            vec!["done", "audit-1"],
+            vec!["done", "audit-1", "--discard"],
+        ] {
+            r.refused(&args, words);
+        }
+    };
+
+    // 1. A plain folder at the registered path, the primary clean: prep must not detach it.
+    fs::rename(&slot, &moved).unwrap();
+    fs::create_dir_all(&slot).unwrap();
+    refuse_all(&["audit-1", "not its own worktree"]);
+    assert_eq!(primary_branch(), "refs/heads/main");
+    assert_eq!(git(&r.root, &["rev-parse", "HEAD"]), primary_head);
+    // ... and with a tracked change in the primary, which done --discard must not revert.
+    fs::write(r.root.join("a.txt"), "primary work\n").unwrap();
+    refuse_all(&["audit-1", "not its own worktree"]);
+    assert_eq!(
+        fs::read_to_string(r.root.join("a.txt")).unwrap(),
+        "primary work\n"
+    );
+    assert_eq!(primary_branch(), "refs/heads/main");
+    fs::write(r.root.join("a.txt"), "a\n").unwrap();
+    fs::remove_dir(&slot).unwrap();
+
+    // 2. Another repository at the registered path, with a change and an untracked file.
+    git(
+        &r.root,
+        &["init", "-q", "-b", "other", slot.to_str().unwrap()],
+    );
+    fs::write(slot.join("x.txt"), "x\n").unwrap();
+    git(&slot, &["add", "x.txt"]);
+    commit(&slot, "other");
+    fs::write(slot.join("x.txt"), "other work\n").unwrap();
+    fs::write(slot.join("keep.txt"), "untracked\n").unwrap();
+    let other = snapshot(&slot);
+    refuse_all(&["audit-1", "not its own worktree", "repository"]);
+    assert_eq!(snapshot(&slot), other);
+    fs::remove_dir_all(&slot).unwrap();
+
+    // 3. A slot `.git` that borrows the lane's git dir, the lane with staged content.
+    fs::rename(&moved, &slot).unwrap();
+    let lane_gitdir = git(
+        &r.lane,
+        &["rev-parse", "--path-format=absolute", "--git-dir"],
+    );
+    let own_git = fs::read_to_string(slot.join(".git")).unwrap();
+    fs::write(slot.join(".git"), format!("gitdir: {lane_gitdir}\n")).unwrap();
+    fs::write(r.lane.join("staged.txt"), "staged\n").unwrap();
+    git(&r.lane, &["add", "staged.txt"]);
+    let lane_index = git(&r.lane, &["diff", "--cached", "--name-only"]);
+    refuse_all(&["audit-1", "not its own worktree", "belongs to the worktree"]);
+    assert_eq!(
+        git(&r.lane, &["diff", "--cached", "--name-only"]),
+        lane_index
+    );
+    assert_eq!(
+        fs::read_to_string(r.lane.join("staged.txt")).unwrap(),
+        "staged\n"
+    );
+    assert_eq!(git(&r.lane, &["rev-parse", "HEAD"]), r.second);
+
+    // Put back, the slot works again.
+    fs::write(slot.join(".git"), own_git).unwrap();
+    r.ok(&["prep", "audit-1", "--head", &r.second]);
+    detached_at(&slot, &r.second);
+}
+
+/// A folder above the slot that is a link (`.claude/worktrees` pointing elsewhere) is refused.
+#[cfg(unix)]
+#[test]
+fn a_link_above_the_slot_is_refused() {
+    let r = repo(&[("a.txt", "a\n")]);
+    let elsewhere = r.root.parent().unwrap().join("elsewhere");
+    fs::create_dir_all(&elsewhere).unwrap();
+    fs::create_dir_all(r.root.join(".claude")).unwrap();
+    std::os::unix::fs::symlink(&elsewhere, r.root.join(".claude/worktrees")).unwrap();
+    let before = r.worktrees();
+    r.refused(
+        &["prep", "audit-1", "--head", &r.first],
+        &[".claude/worktrees above it is a link"],
+    );
+    r.refused(&["done", "audit-1"], &["above it is a link"]);
+    assert_eq!(r.worktrees(), before);
+    assert_eq!(fs::read_dir(&elsewhere).unwrap().count(), 0);
+}
+
+// ---- one holder per slot (AC-7: REQ-12)
+
+#[test]
+fn a_slot_has_one_live_holder_and_done_releases_it() {
+    let r = repo(&[("a.txt", "a\n")]);
+    let a = r.ok(&[
+        "prep",
+        "audit-1",
+        "--head",
+        &r.first,
+        "--holder",
+        "auditor-a",
+    ]);
+    assert_eq!(a["holder"]["holder"], json!("auditor-a"), "{a}");
+    assert_eq!(a["took_over"], json!(null), "{a}");
+    // Another holder is refused, by prep and by done; the slot stays at the first head.
+    let m = r.refused(
+        &[
+            "prep",
+            "audit-1",
+            "--head",
+            &r.second,
+            "--holder",
+            "auditor-b",
+        ],
+        &["held by", "auditor-a"],
+    );
+    assert!(m.contains(&r.first), "{m}");
+    r.refused(
+        &["done", "audit-1", "--discard", "--holder", "auditor-b"],
+        &["held by", "auditor-a"],
+    );
+    assert_eq!(git(&r.slot("audit-1"), &["rev-parse", "HEAD"]), r.first);
+    // The same holder may prep again.
+    r.ok(&[
+        "prep",
+        "audit-1",
+        "--head",
+        &r.second,
+        "--holder",
+        "auditor-a",
+    ]);
+    // auto takes the first slot without a live holder, until all are held.
+    let b = r.ok(&["prep", "auto", "--head", &r.second, "--holder", "auditor-b"]);
+    assert_eq!(b["slot"], json!("audit-2"), "{b}");
+    let c = r.ok(&["prep", "auto", "--head", &r.second, "--holder", "auditor-c"]);
+    assert_eq!(c["slot"], json!("audit-3"), "{c}");
+    r.refused(
+        &["prep", "auto", "--head", &r.second, "--holder", "auditor-d"],
+        &[
+            "all audit slots are held",
+            "auditor-a",
+            "auditor-b",
+            "auditor-c",
+        ],
+    );
+    // done releases: the next holder takes the slot.
+    let done = r.ok(&["done", "audit-2", "--holder", "auditor-b"]);
+    assert_eq!(done["released"], json!(true), "{done}");
+    let d = r.ok(&["prep", "auto", "--head", &r.first, "--holder", "auditor-d"]);
+    assert_eq!(d["slot"], json!("audit-2"), "{d}");
+}
+
+#[test]
+fn a_dead_holder_is_taken_over_with_a_line() {
+    let r = repo(&[("a.txt", "a\n")]);
+    // A holder whose process has ended.
+    let mut child = std::process::Command::new("true").spawn().unwrap();
+    let pid = child.id().to_string();
+    child.wait().unwrap();
+    r.ok(&[
+        "prep",
+        "audit-1",
+        "--head",
+        &r.first,
+        "--holder",
+        "auditor-a",
+        "--pid",
+        &pid,
+    ]);
+    let b = r.ok(&[
+        "prep",
+        "audit-1",
+        "--head",
+        &r.second,
+        "--holder",
+        "auditor-b",
+    ]);
+    assert_eq!(b["took_over"]["holder"], json!("auditor-a"), "{b}");
+    detached_at(&r.slot("audit-1"), &r.second);
+    // A holder whose lease has ended.
+    r.ok(&[
+        "prep",
+        "audit-2",
+        "--head",
+        &r.first,
+        "--holder",
+        "auditor-c",
+        "--lease-secs",
+        "1",
+    ]);
+    std::thread::sleep(Duration::from_millis(2100));
+    let done = r.ok(&["done", "audit-2", "--holder", "auditor-d"]);
+    assert_eq!(done["took_over"]["holder"], json!("auditor-c"), "{done}");
+    assert_eq!(done["released"], json!(true), "{done}");
+    for bad in ["0", "86401"] {
+        r.refused(
+            &["prep", "audit-3", "--head", &r.first, "--lease-secs", bad],
+            &["--lease-secs"],
+        );
+    }
+    r.refused(
+        &["prep", "audit-3", "--head", &r.first, "--holder", "a b"],
+        &["--holder"],
+    );
+}
+
+// ---- the slot lock (REQ-9)
+
+#[test]
+fn prep_and_done_wait_for_the_slot_lock_then_refuse() {
+    let r = repo(&[("a.txt", "a\n")]);
+    r.ok(&["prep", "audit-1", "--head", &r.first]);
+    let slot = r.slot("audit-1");
+    fs::write(slot.join("a.txt"), "mutant\n").unwrap();
+    let common = git(
+        &r.root,
+        &["rev-parse", "--path-format=absolute", "--git-common-dir"],
+    );
+    let held = fs::OpenOptions::new()
+        .create(true)
+        .truncate(false)
+        .write(true)
+        .open(Path::new(&common).join("moai-worktree-slot.lock"))
+        .unwrap();
+    held.lock().unwrap();
+    let env = [("MOAI_WORKTREE_SLOT_LOCK_WAIT_SECS", "1")];
+    for args in [
+        vec!["prep", "audit-1", "--head", r.second.as_str()],
+        vec!["prep", "audit-2", "--head", r.second.as_str()],
+        vec!["done", "audit-1", "--discard"],
+    ] {
+        let (code, v) = r.run_op_env("audit-slot", &args, &env);
+        assert_ne!(code, 0, "{args:?}: {v}");
+        let m = v["error"]["message"].as_str().unwrap();
+        assert!(
+            m.contains("held the slot lock for 1 seconds"),
+            "{args:?}: {m}"
+        );
+    }
+    assert_eq!(fs::read_to_string(slot.join("a.txt")).unwrap(), "mutant\n");
+    assert!(!r.slot("audit-2").exists());
+    held.unlock().unwrap();
+    r.ok(&["done", "audit-1", "--discard"]);
+}
+
+// ---- leftovers and refusal kinds
+
+#[test]
+fn a_copy_a_killed_prep_left_is_named_once_and_removed_whole() {
+    let r = repo(&[("a.txt", "a\n")]);
+    r.ok(&["prep", "audit-1", "--head", &r.first]);
+    let slot = r.slot("audit-1");
+    for f in ["debug/a", "debug/b", "debug/deps/c"] {
+        let p = slot.join(".target-inherit-4242").join(f);
+        fs::create_dir_all(p.parent().unwrap()).unwrap();
+        fs::write(p, "x").unwrap();
+    }
+    let m = r.refused(
+        &["prep", "audit-1", "--head", &r.second],
+        &[".target-inherit-4242", "--discard"],
+    );
+    assert!(!m.contains("debug/a"), "{m}");
+    let done = r.ok(&["done", "audit-1", "--discard"]);
+    assert_eq!(done["removed"], json!([".target-inherit-4242"]), "{done}");
+    assert!(!slot.join(".target-inherit-4242").exists());
+}
+
+#[test]
+fn a_cap_refusal_is_invalid_input_and_adds_nothing() {
+    let r = repo(&[("a.txt", "a\n")]);
+    let before = r.worktrees();
+    r.refused(
+        &[
+            "prep",
+            "audit-1",
+            "--head",
+            &r.first,
+            "--max-worktrees",
+            "1",
+        ],
+        &["audit-1", "cap reached"],
+    );
+    r.refused(
+        &[
+            "prep",
+            "audit-1",
+            "--head",
+            &r.first,
+            "--min-free-percent",
+            "100",
+        ],
+        &["audit-1", "under the floor"],
+    );
+    assert_eq!(r.worktrees(), before);
+}
+
+// ---- the inherited build is the head's (AC-8: REQ-13)
+
+/// A lane builds a mutant, then reverts the source: its HEAD is the audited head and it has no
+/// tracked change, but its `target/` holds the mutant's binary, which Cargo would call `Fresh`
+/// in a slot whose sources are older. After prep the slot's binary is the head's.
+#[cfg(unix)]
+#[test]
+fn an_inherited_mutant_build_is_compiled_again_from_the_head() {
+    use std::process::Command;
+    let r = repo(&[
+        (
+            "Cargo.toml",
+            "[package]\nname = \"auditbin\"\nversion = \"0.1.0\"\nedition = \"2021\"\n[workspace]\n",
+        ),
+        ("src/main.rs", "fn main() { println!(\"CLEAN\"); }\n"),
+    ]);
+    let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".into());
+    let run = |dir: &Path| -> String {
+        let out = Command::new(&cargo)
+            .args(["run", "-q", "--offline"])
+            .current_dir(dir)
+            .env_remove("CARGO_TARGET_DIR")
+            .env_remove("CARGO_BUILD_TARGET_DIR")
+            .env_remove("RUSTC_WRAPPER")
+            .env_remove("CARGO_BUILD_RUSTC_WRAPPER")
+            .output()
+            .unwrap();
+        assert!(
+            out.status.success(),
+            "{}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        String::from_utf8_lossy(&out.stdout).trim().to_string()
+    };
+    // The slot exists first, its sources checked out before the lane's mutant build.
+    r.ok(&["prep", "audit-1", "--head", &r.second]);
+    r.ok(&["done", "audit-1"]);
+    std::thread::sleep(Duration::from_millis(1100));
+    let main = r.lane.join("src/main.rs");
+    fs::write(&main, "fn main() { println!(\"MUTANT\"); }\n").unwrap();
+    assert_eq!(run(&r.lane), "MUTANT");
+    git(&r.lane, &["checkout", "--", "src/main.rs"]);
+    // No tracked change (Cargo.lock is new and untracked).
+    assert_eq!(
+        git(&r.lane, &["status", "--porcelain", "--untracked-files=no"]),
+        ""
+    );
+    let prep = r.ok(&[
+        "prep",
+        "audit-1",
+        "--head",
+        &r.second,
+        "--lane",
+        r.lane_str(),
+    ]);
+    assert_eq!(prep["build"]["source"], json!("lane"), "{prep}");
+    assert!(
+        prep["build"]["sources_touched"].as_u64().unwrap() >= 3,
+        "{prep}"
+    );
+    assert_eq!(run(&r.slot("audit-1")), "CLEAN");
 }

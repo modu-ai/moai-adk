@@ -51,7 +51,8 @@ pub const LOCK_WAIT: Duration = Duration::from_secs(300);
 /// Shortens [`LOCK_WAIT`] to this many seconds, for tests.
 pub const LOCK_WAIT_ENV: &str = "MOAI_WORKTREE_SLOT_LOCK_WAIT_SECS";
 /// The temporary folders a warm or an inherit leaves only when it was killed mid-copy.
-const TEMP_PREFIXES: [&str; 3] = [".target-warming-", ".target-inherit-", ".target-old-"];
+pub(crate) const TEMP_PREFIXES: [&str; 3] =
+    [".target-warming-", ".target-inherit-", ".target-old-"];
 
 /// The limits a slot is checked against; the defaults are the user decision's.
 #[derive(Clone, Copy, Debug)]
@@ -227,6 +228,41 @@ pub fn plan(project: &Path, caps: Caps) -> Result<Value> {
     }))
 }
 
+/// Whether `path` is its own linked worktree of the repository whose git common dir is
+/// `common`: git run in it names `path` as the top level and `common` as the common dir, and
+/// its private git dir points back at `path/.git`. A plain folder (git walks up to the primary
+/// checkout), another repository, or a `.git` file that borrows another worktree's git dir
+/// (git would use that worktree's index) each fail, with the reason.
+pub(crate) fn own_worktree(path: &Path, common: &Path) -> Result<()> {
+    let canon =
+        |p: &Path| fs::canonicalize(p).map_err(|e| format!("{} unreadable: {e}", p.display()));
+    let me = canon(path)?;
+    let top = git(path, &["rev-parse", "--show-toplevel"])
+        .map_err(|e| format!("git cannot read it: {e}"))?;
+    if canon(Path::new(&top))? != me {
+        return Err(format!("git in it works on {top}"));
+    }
+    let shared = git(
+        path,
+        &["rev-parse", "--path-format=absolute", "--git-common-dir"],
+    )
+    .map_err(|e| format!("git cannot read it: {e}"))?;
+    if canon(Path::new(&shared))? != canon(common)? {
+        return Err(format!("it belongs to the repository at {shared}"));
+    }
+    let own = git(path, &["rev-parse", "--path-format=absolute", "--git-dir"])
+        .map_err(|e| format!("git cannot read it: {e}"))?;
+    let back = fs::read_to_string(Path::new(&own).join("gitdir"))
+        .map_err(|_| format!("its git dir {own} names no linked worktree"))?;
+    if canon(Path::new(back.trim())).ok() != Some(me.join(".git")) {
+        return Err(format!(
+            "its git dir {own} belongs to the worktree at {}",
+            back.trim()
+        ));
+    }
+    Ok(())
+}
+
 /// Takes the repository's exclusive `ensure` lock, waiting at most [`LOCK_WAIT`].
 pub(crate) fn lock(common: &Path) -> Result<fs::File> {
     let file = fs::OpenOptions::new()
@@ -365,12 +401,21 @@ pub fn ensure(project: &Path, name: &str, at: &str, caps: Caps) -> Result<Value>
             "{rel} exists but is not a worktree of this repository; nothing was added"
         ));
     }
+    if present {
+        // A registered path holding a plain folder, another repository or a borrowed `.git`
+        // would take the seed copy, and git in it would act on another checkout.
+        own_worktree(&path, &common).map_err(|e| {
+            format!("{rel} is registered but is not its own worktree ({e}); refused, nothing was changed")
+        })?;
+    }
     let seed = if name == SEED {
         None
     } else {
         seed_target(&primary, &linked)?
     };
-    let cleaned = if present {
+    // An audit slot's leftover copy is audit-slot's to name and to discard with `done --discard`,
+    // so `ensure` leaves it there for `audit_slot` to refuse on.
+    let cleaned = if present && !name.starts_with("audit-") {
         clean_leftovers(&path)?
     } else {
         Vec::new()

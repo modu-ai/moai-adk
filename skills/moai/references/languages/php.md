@@ -1,6 +1,6 @@
 # Language: PHP
 
-When to read: `internal/quality` sent you here because the project's detected languages include `php`. The project's own declarations (CI steps, `composer.json` `scripts`, `AGENTS.md`) win over every default below.
+When to read: `internal/quality` sent you here because the project's detected languages include `php`. The project's own declarations (CI steps, `composer.json` `scripts`, `CLAUDE.md`) win over every default below.
 
 ## Evidence and defaults
 

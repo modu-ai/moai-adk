@@ -2784,7 +2784,8 @@ mod skill_package {
             "its `role_id` is `prj-<name>` for the project's own job",
             "a project agent never shadows a user-layer `moai-*` agent",
             "Offer project skills the same way: each is one `project_skills` entry",
-            "it writes the skill folder Claude Code reads and the one Codex CLI reads",
+            // SPEC-20261122-next-flow-skills-agents REQ-8: the Codex CLI folder left the text.
+            "it writes the skill folder Claude Code reads, and an unanswered axis is never written",
             "for any other host, say that none is written",
             "apply with `generation-apply` only after the user agrees",
             "planned `unchanged` while the answers stay the same, and `conflict` once they change too",
@@ -2938,6 +2939,38 @@ mod skill_package {
         );
         assert!(!out.status.success());
         assert!(String::from_utf8_lossy(&out.stderr).contains("SKILL.md"));
+    }
+
+    /// SPEC-20261122-html-report-install REQ-4: every skill folder the package installs, and
+    /// every folder `moai update` copies beside the moai skill, is a bundle base name, so
+    /// `moai bundle remove` never deletes an installed skill file.
+    #[test]
+    fn the_bundle_base_names_hold_every_installed_skill_folder() {
+        let repo = Path::new(env!("CARGO_MANIFEST_DIR"));
+        let packs: Value = serde_json::from_slice(
+            &fs::read(repo.join("templates/bundle-packs/packs.json")).unwrap(),
+        )
+        .unwrap();
+        let base: Vec<&str> = packs["base_names"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|b| b.as_str().unwrap())
+            .collect();
+        let mut checked = 0;
+        for entry in fs::read_dir(repo.join("skills")).unwrap() {
+            let path = entry.unwrap().path();
+            if !path.is_dir() {
+                continue;
+            }
+            let name = path.file_name().unwrap().to_str().unwrap();
+            assert!(base.contains(&name), "{name} is not a bundle base name");
+            checked += 1;
+        }
+        assert!(checked > 0, "no skill folder checked");
+        for skill in moai_cli::update::extra_skill::SKILLS {
+            assert!(base.contains(&skill), "{skill} is not a bundle base name");
+        }
     }
 }
 

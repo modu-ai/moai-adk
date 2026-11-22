@@ -99,7 +99,7 @@ Readers: lanes and the leader, who create, reuse and clean worktrees, and the au
 - D-11: Only a missing profile means no claims. A profile that exists but cannot be read is `claim_check_unavailable`, as an unreadable ledger is. This replaces part of D-9.
 - D-12: `apply` reads the nesting (from the worktree list it read) and the claims again right before it acts on each entry, beside the existing busy re-check. A claim or a nested worktree that appears after the plan already changes the recomputed digest. So the act-time re-check covers the window between the digest match and the action.
 - D-13: The lock wait is shortened by `MOAI_WORKTREE_SLOT_LOCK_WAIT_SECS`, for tests. The default stays 300 seconds.
-- D-14: Under the slot lock, a present slot's `.target-warming-*`, `.target-inherit-*` and `.target-old-*` folders belong to a killed run, because no other run copies while the lock is held. ensure removes them and names them in `cleaned`.
+- D-14: Under the slot lock, a present slot's `.target-warming-*`, `.target-inherit-*` and `.target-old-*` folders belong to a killed run, because no other run copies while the lock is held. ensure removes them and names them in `cleaned`, except in an audit slot, whose leftover copy audit-slot names and discards with `done --discard`.
 - D-10: REQ-9 needs no new code: a merged, clean worktree whose newest change is older than the existing 120-minute window is already a `remove` candidate, and 3 days is past it. The control test measures it with the clock three days ahead.
 
 ## Plan

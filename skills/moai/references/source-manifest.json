@@ -51,7 +51,7 @@
   },
   "files": {
     "SKILL.md": {
-      "sha256": "654f44bdf5d4f7480a995af5e3c9aae00563f41e696be999acf3b49aa3edf015",
+      "sha256": "aacdc777d334b2c7386b543af65b21e5fe81be61c0e4602046e030a16aa59e1c",
       "origin": {
         "kind": "design-template",
         "template_id": "router-core",
@@ -69,7 +69,7 @@
       }
     },
     "references/adapters/orca.md": {
-      "sha256": "ca0091a8f8eb85bb2ff6a09947f6aecf19594391959197202bd25be4eb0c234a",
+      "sha256": "f8567a0a9b0d580eb7c41b128376757f4a5c5f160a547df02fb577ede3632094",
       "origin": {
         "kind": "design-spec",
         "template_id": "adapter-orca",
@@ -78,7 +78,7 @@
       }
     },
     "references/audit.md": {
-      "sha256": "920c9ccc8611c9519435499ebca1dfe343d01b6bdcad8d80c640d6999ef9efb4",
+      "sha256": "d12718ec08086785e60c69d2b4a41c665a5f15b1dac0de839bfc722f5f696035",
       "origin": {
         "kind": "design-spec",
         "template_id": "audit-contract",
@@ -87,7 +87,7 @@
       }
     },
     "references/chains/index.md": {
-      "sha256": "79ee15ae9e8c97f1a133b12b0cd9a0a3c146d2c66682acdef00766e528f523a0",
+      "sha256": "556d738b0d07ec0dd85485d300490a8e9c12f741a5b2426c7c1896ba25419874",
       "origin": {
         "kind": "design-spec",
         "template_id": "chains-index",
@@ -96,7 +96,7 @@
       }
     },
     "references/flows/next-flow.md": {
-      "sha256": "1e5a4d05e53f79dfe4d8891c4595457b96872bf1f27fffb8f72e2d079a6c90e7",
+      "sha256": "d5ba85dfdd0509761b54be502c7efd94987aba22c482c427c95c6eb538fdd1f9",
       "origin": {
         "kind": "design-spec",
         "template_id": "flow-next-flow",
@@ -105,7 +105,7 @@
       }
     },
     "references/home/output-style.md": {
-      "sha256": "05534bc4cfe1ec799ec2d5c44720d1ee09a281ead6ae73be192c588da76f5cc2",
+      "sha256": "c887ee1aa2aaca3221559b84f14ea46954ac7f19c4f8ecc15508ed1089522c67",
       "origin": {
         "kind": "design-spec",
         "template_id": "home-output-style",
@@ -134,15 +134,6 @@
         "license": "Apache-2.0"
       }
     },
-    "references/internal/build-folder.md": {
-      "sha256": "5197d549504678b70534e7ed403b92dfa1aed95b05f2115e9c5c810ea5f7c01e",
-      "origin": {
-        "kind": "design-spec",
-        "template_id": "internal-build-folder",
-        "adoption": "new",
-        "reason": "Written for card C-82 (user decision 2026-11-17, selection '빌드 폴더를 한 곳으로 모으기'; SPEC-20261117-agent-build-folder): where agent and audit builds put CARGO_TARGET_DIR (one folder per worktree under ~/.moai/build/, CARGO_INCREMENTAL=0, an owner record), what a refusal does, where evidence stays, the end-of-task cleanup and the user-picked removal of leftovers. Read by moai-impl and moai-audit (`reads:`); its moai-adk helper is the repository's tools/build_folder.py."
-      }
-    },
     "references/internal/check-completeness.md": {
       "sha256": "2d016c9036c51fd64cb388210e77fc2095318654ced07d9eb1704490b168ab2a",
       "origin": {
@@ -165,7 +156,7 @@
       }
     },
     "references/internal/commit-trailers.md": {
-      "sha256": "f1b1df618170ad0f5365211e942091766ea16993d0b2a195a5b9db6e3c1b86f0",
+      "sha256": "4f6890d4bc8b8fcec6c1a1620d106deebe062330ff50f2d8eb092b7115210b61",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-commit-trailers",
@@ -174,7 +165,7 @@
       }
     },
     "references/internal/core-rules.md": {
-      "sha256": "7a6040e3fa935f596090c4057ac2e30dc51c387a116e04244111aec219cecd95",
+      "sha256": "d5bc05f7295b8eaa41adf9e9ad8583d2be79cc85c56dc790edde78f73448f34a",
       "origin": {
         "kind": "go-generation",
         "template_id": "internal-core-rules",
@@ -204,7 +195,7 @@
       }
     },
     "references/internal/git-safety.md": {
-      "sha256": "dff7fc84fecfd7e11cc30690a05ce9fb4dd6d30e724695e84862c21a3e65157b",
+      "sha256": "f052a104b1a95f3561f051bf1af600e9f490bd2ce18f30c3d9e8482219e68c05",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-git-safety",
@@ -231,7 +222,7 @@
       }
     },
     "references/internal/quality.md": {
-      "sha256": "a8bc10b0804c9c5d795251b8ba2c5b783d96ac5b95ed31d0fa2c559e616e93de",
+      "sha256": "1775e7ecc447b63561a74ec21f30bb86f7ca25688e162a3a9f1de35599a143c6",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-quality",
@@ -240,7 +231,7 @@
       }
     },
     "references/internal/questions.md": {
-      "sha256": "b5243550b336a43fbf07f90aa1f7100bda31df06776133e2685cdf1db118012a",
+      "sha256": "3077b7ce02d37acd2e7a84d59568659773f9ee63be36b2490b975ee620012b68",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-questions",
@@ -249,7 +240,7 @@
       }
     },
     "references/internal/sdd.md": {
-      "sha256": "42a2851e34e0c834c1a31c0c4ea33800a8d2823bfddf60acce8765183034db87",
+      "sha256": "b0a04a4d95d880d75470a8a09d2723e29d261a50976d81acdc0729e40d347129",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-sdd",
@@ -270,7 +261,7 @@
       }
     },
     "references/internal/self-check.md": {
-      "sha256": "16f13834aaa9dba52b5b06b1f175b3913d9756fb0d3a9591b60c36b38b2a5cea",
+      "sha256": "b3154c41e968a8aa3cd475f38a15ec638a8d67085dc5f2fab8601191986fef6a",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-self-check",
@@ -300,7 +291,7 @@
       }
     },
     "references/internal/versioning.md": {
-      "sha256": "831edff3461f0f230ff69c269fc6fe28e41bebbdebaa2d584f328d727aceb0e4",
+      "sha256": "9785ee1c4a67397d5ee896cd897213e25af7949a0c37167f69aa6c5335028b07",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-versioning",
@@ -309,7 +300,7 @@
       }
     },
     "references/languages/c-cpp.md": {
-      "sha256": "b99e7aa0a35b890edcf45b64ba417133703a1de2b44982186d679f6654f3da64",
+      "sha256": "5164187907d38660305a11549367fcc7caaabd196b17818beb6dbdb84d295cc2",
       "origin": {
         "kind": "design-spec",
         "template_id": "language-guide",
@@ -318,7 +309,7 @@
       }
     },
     "references/languages/csharp.md": {
-      "sha256": "d1118133180422c848e297ac6eb17a0049196ef56b7ece7abede9d07680a887f",
+      "sha256": "63828c1a8286ccc263f67199afafaccc2d9272fcf69afac633ab839a7cbc771b",
       "origin": {
         "kind": "design-spec",
         "template_id": "language-guide",
@@ -327,7 +318,7 @@
       }
     },
     "references/languages/go.md": {
-      "sha256": "63447f509673fc2cc92bf45c5ede910de4d2235876b407b8c1e1bca6d43672be",
+      "sha256": "b6acc83c5e7ac23326b753ccdab918cc5630f4d9082833a3fb014482b2227ea2",
       "origin": {
         "kind": "design-spec",
         "template_id": "language-guide",
@@ -336,7 +327,7 @@
       }
     },
     "references/languages/java-kotlin.md": {
-      "sha256": "d81cd181cf4973272b4290b1d1388520bb709a0a3135a0062011dcbc5db6e0aa",
+      "sha256": "49bb2385714d016b8ae21a8ff0c7e6d84d4329d36273aa705d4328ff2289dddf",
       "origin": {
         "kind": "design-spec",
         "template_id": "language-guide",
@@ -345,7 +336,7 @@
       }
     },
     "references/languages/javascript-typescript.md": {
-      "sha256": "e7c8d23fc9d0eeb7846d9461efbd39c5b3254005f3a6943032a4f3cced1830b4",
+      "sha256": "312b6271fafec1481a6d1de6adf345ba8c96c94da5785fd26df10867fb510548",
       "origin": {
         "kind": "design-spec",
         "template_id": "language-guide",
@@ -354,7 +345,7 @@
       }
     },
     "references/languages/php.md": {
-      "sha256": "a5482a6f63828ed069c3e63f21dfb7fb28de0f0f02efc8dbc41163550b8d3a6d",
+      "sha256": "e930d760e165c80e0abd97a7a28f900f62cc884d2362c09d0b9533ff0c99b34c",
       "origin": {
         "kind": "design-spec",
         "template_id": "language-guide",
@@ -363,7 +354,7 @@
       }
     },
     "references/languages/python.md": {
-      "sha256": "4d98921d0cee97a0a7c23115853693c9b19cc561904d998dd84e0421485bbb59",
+      "sha256": "12c64d49e0407ce5ee6ccb045608672e79b355e15ead3bab141e67840529b724",
       "origin": {
         "kind": "design-spec",
         "template_id": "language-guide",
@@ -372,7 +363,7 @@
       }
     },
     "references/languages/ruby.md": {
-      "sha256": "346fa375c7341bc7918ee33ce6b5ed445ae9acbc779a5b5a836bfdc3e8c2d5ab",
+      "sha256": "89296848578548e064b6b313604198d8f98a966d7cce30107eb001c6eecf777f",
       "origin": {
         "kind": "design-spec",
         "template_id": "language-guide",
@@ -381,7 +372,7 @@
       }
     },
     "references/languages/rust.md": {
-      "sha256": "17a06c69e1a5e4b1caffbceed607f598e704dab1c3779a4deaa167c8285a37f2",
+      "sha256": "77ef40580e566f1f61b9fb531a67c885b02abcb51362a3d3aef52c284721dd31",
       "origin": {
         "kind": "design-spec",
         "template_id": "language-guide",
@@ -390,7 +381,7 @@
       }
     },
     "references/languages/swift.md": {
-      "sha256": "23756ccd70ba785c54ed843570c855a8493c896725f2a6e14e2c789c14454e18",
+      "sha256": "b892608b4cdb2d50c31e2a687b920abcc7d474b633b8b004131460cf4c6fcc22",
       "origin": {
         "kind": "design-spec",
         "template_id": "language-guide",
@@ -407,17 +398,8 @@
         "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. MODE-LEADER and MODE-AGENT routes added by rc.2 A1 #2160. PROJECT route added by rc.2 #2496 (user decisions 16 = B, 17 = all three, #1975 comment 6815357071). #2637: top-level `chains` names references/chains/index.md, the agent order per route. OPTIMIZE route (`/moai optimize`) added by #2724 (leader decision A, 2026-11-13)."
       }
     },
-    "references/rule-history.md": {
-      "sha256": "d54378a964f1518ed2ce7d96a0c3826bed1db5f291552750cf60f0a6d17928e6",
-      "origin": {
-        "kind": "design-spec",
-        "template_id": "rule-prune-history",
-        "adoption": "new",
-        "reason": "Written for card C-103 (SPEC-20261119-rule-prune, leader decision note 2527): the rule inventory of the verification-rule prune — every rule sentence of the four rule files with its source (git blame → PR) and its enforcer, the rules with one source and no diff trigger moved out of core-rules.md into the history section (their live lines stay as numbered pointers, a form pinned by tests/core_rules_2876.rs)."
-      }
-    },
     "workflows/audit.md": {
-      "sha256": "ba11c16bf0342560622456a0d739cad01ce596f9bb0185d4a61e587693200a97",
+      "sha256": "fa5b1c2dcc1947a8b9bae1bdc615bdba10fac3473f868791290a1832569b396c",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-audit",
@@ -426,7 +408,7 @@
       }
     },
     "workflows/plan.md": {
-      "sha256": "f21396e69dd59d1bbc5a20ff9c2adc1012551313c033db9ca818842445b1ee1c",
+      "sha256": "463b1f9af6ca6957abe36a6bd91ab8829c1882e5995c894b96917686f3930683",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-plan",
@@ -435,7 +417,7 @@
       }
     },
     "workflows/project.md": {
-      "sha256": "f0f9264cc78bda0c02594d427ea4508743156267d0cc8d48f5e6b6fc176b5584",
+      "sha256": "c4c57efd782d073e6cb08e53ae185ab52c8d233194245ffaabe2bffebef967d7",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-project",
@@ -444,7 +426,7 @@
       }
     },
     "workflows/read.md": {
-      "sha256": "d07ffc92cbda89b464714895e8929bbb25d13a4e42e816a2117babc5808f3c32",
+      "sha256": "bcad1ea09775fc577000f1802bc8fb9de9a36e3effd25480ca7dedcc4f524a22",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-read",
@@ -453,7 +435,7 @@
       }
     },
     "workflows/run.md": {
-      "sha256": "bd14db1959e478b9740fc09bc338e2bac021adf19a48250364e8eb6c05244993",
+      "sha256": "0bbdf3bc5d4aeee4c6a5331975d504a4f6c4517388894fc9674da395db424404",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-run",
@@ -462,7 +444,7 @@
       }
     },
     "workflows/sync.md": {
-      "sha256": "2f58431a750d7344cd87cf86e00703843a97e17c0462ec22f4fb77cd607db674",
+      "sha256": "426c494e05d5343594d4583d579356458883baa7255f32a4e06e9d499c6d0987",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-sync",
@@ -471,7 +453,7 @@
       }
     },
     "workflows/update.md": {
-      "sha256": "9f5284efd0550cba3429475cc286e95b8acb14d09597f8eb032296f80e51d76a",
+      "sha256": "49ae5142a95a18d81747d529c034145e28b921886cac1c16c3c300d06efb4e40",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-update",
@@ -486,7 +468,7 @@
         "adoption": "new",
         "reason": "Written for SPEC-20261122-next-flow-skills-agents (REQ-3, text slice A): `/moai work` takes one card at a time through PLAN, RUN, SYNC, AUDIT and the landing command and repeats until no card is left; a decision becomes a blocked note on the card. The card take, check, criterion and fresh-state sentences moved here from the retired MODE-AGENT workflow with their pins."
       },
-      "sha256": "f1c4863e3ca68b5e3dd424d29524c450f194fd6c5226c0c9a1b48d685ccf45f6"
+      "sha256": "377a42e3bcf2ba08a527ea75577bebe450f8ac5887226536123c0ff65022e11d"
     }
   }
 }

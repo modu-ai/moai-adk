@@ -1,5 +1,5 @@
-//! SPEC-20261119-rule-prune-leader (card C-103, last slice): `references/rule-history.md` is a
-//! record the other rule files point to, so three things in it must not drift quietly:
+//! SPEC-20261119-rule-prune-leader (last slice): `docs/rule-history.md` is a record the other
+//! rule files point to, so three things in it must not drift quietly:
 //! every row of a mechanical inventory names the test files that read its line (or says
 //! `text only`) and its section heading names the tip it was written from; every test file the
 //! record names exists; and no entry of a history section is still word for word in the live rule
@@ -9,10 +9,17 @@
 //! The row text of a mechanical inventory is not compared with the live files: other cards edit
 //! the workflows all the time, and a text match would block their merges (SPEC decision D-3).
 //! The tests read files of this checkout only; nothing is run.
+//!
+//! SPEC-20261122-next-flow-skills-agents Plan step 6 (D-3): the record left the skill package
+//! for `docs/`, because nothing reads it while a route runs; every check above follows it.
 
 use std::{fs, path::PathBuf};
 
-const HISTORY_FILE: &str = "skills/moai/references/rule-history.md";
+const HISTORY_FILE: &str = "docs/rule-history.md";
+/// The skill package, and where the record stood in it while the package shipped it (REQ-2
+/// removes it). The path is written from the package folder: no file of that name exists.
+const PACKAGE: &str = "skills/moai";
+const PACKAGE_COPY: &str = "references/rule-history.md";
 const LIVE_FILES: [&str; 2] = [
     "skills/moai/workflows/audit.md",
     "skills/moai/references/internal/core-rules.md",
@@ -213,6 +220,18 @@ fn live_entries<'a>(entries: &'a [(String, String)], live: &str) -> Vec<&'a str>
         .filter(|(_, text)| text.len() >= 20 && live.contains(text.as_str()))
         .map(|(_, text)| text.as_str())
         .collect()
+}
+
+#[test]
+fn the_history_lives_in_docs_not_in_the_package() {
+    assert!(
+        root().join(HISTORY_FILE).is_file(),
+        "{HISTORY_FILE} is not a file"
+    );
+    assert!(
+        !root().join(PACKAGE).join(PACKAGE_COPY).exists(),
+        "{PACKAGE_COPY} is still in the skill package"
+    );
 }
 
 #[test]

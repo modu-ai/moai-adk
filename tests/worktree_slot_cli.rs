@@ -700,6 +700,20 @@ fn ensure_removes_the_temporary_copies_a_killed_run_left() {
     assert!(slot.join(".target-keep-me").is_file());
 }
 
+/// An audit slot's leftover copy is left for audit-slot to name and discard, so `ensure` of an
+/// audit slot removes nothing and names nothing.
+#[test]
+fn ensure_leaves_an_audit_slots_leftover_copy_to_audit_slot() {
+    let r = repo(&[("a.txt", "a\n")]);
+    r.ok(&["ensure", "audit-1", "--at", &r.head]);
+    let slot = r.slot("audit-1");
+    fs::create_dir_all(slot.join(".target-inherit-4242/debug")).unwrap();
+    fs::write(slot.join(".target-inherit-4242/debug/x"), "x\n").unwrap();
+    let again = r.ok(&["ensure", "audit-1", "--at", &r.head]);
+    assert_eq!(again["cleaned"], json!([]), "{again}");
+    assert!(slot.join(".target-inherit-4242/debug/x").is_file());
+}
+
 /// A run that cannot get the slot lock waits for the configured time, then refuses and adds
 /// nothing.
 #[test]

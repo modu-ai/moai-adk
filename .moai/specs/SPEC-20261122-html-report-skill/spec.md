@@ -52,7 +52,7 @@ parent: SPEC-20261122-report-rules
 - AC-1 (REQ-1, REQ-2, REQ-8): `skills/moai-html-report/` 가 SKILL.md, 참고 글 넷, 템플릿 여섯을 가지고, SKILL.md 머리말이 `user-invocable: false` 이며, 스킬 글 어디에도 `report.yaml`, `report.format`, `Codex`, `skill-routing doctrine`, 프로젝트 안 `.moai/reports/` 가 없어요. `tests/dist_include_test.py` 의 스킬 폴더 목록이 두 이름을 가져요 · verify: `cargo test --locked --offline --test html_report_skill the_package_carries_the_internal_skill_with_no_go_era_text`
 - AC-2 (REQ-3, REQ-4, REQ-7, REQ-11): 여섯 템플릿의 html 머리가 Pretendard(jsDelivr)·JetBrains Mono(Google Fonts) 링크를 가지고 Noto 글꼴 링크나 Noto 글꼴 토큰은 갖지 않아요. `_html` 로 끝나는 칸과 `diagram_svg` 는 세 중괄호이고, 남은 칸은 두 중괄호예요. mermaid 를 쓰는 글은 정확한 버전 주소와 스크립트 없이 보이는 원문 자리를 말해요 · verify: `cargo test --locked --offline --test html_report_skill the_html_head_loads_pretendard_and_html_fields_use_three_braces`
 - AC-3 (REQ-5, REQ-6): 아티팩트 글이 스타일시트 호스트를 `fonts.googleapis.com` 하나로, 글꼴 파일 호스트를 `fonts.gstatic.com` 하나로 말하고, 언어별 Noto Sans 네 가족(KR, JP, SC, TC)을 이름으로 말하며, 다이어그램은 스크립트 없는 `pre.mermaid` 라고 말해요 · verify: `cargo test --locked --offline --test html_report_skill the_artifact_text_names_google_fonts_noto_by_language_and_pre_mermaid`
-- AC-4 (REQ-9, REQ-10): SKILL.md 의 전달 절이 기록 md, 옆 html, 한 번의 게시, 거절 한 줄 순서를 말하고 부모 SPEC 의 참고 글을 가리켜요. Result 가 검토 91개 항목마다 조각 이름이나 남긴 까닭을 가져요 · verify: `cargo test --locked --offline --test html_report_skill the_delivery_section_follows_the_report_rule`
+- AC-4 (REQ-9, REQ-10): SKILL.md 의 전달 절이 기록 md, 옆 html, 한 번의 게시, 거절 한 줄 순서를 말하고, SKILL.md 가 가리키는 `references/` 글은 모두 패키지에 있어요(이 스킬이나 moai 스킬). Result 가 검토 91개 항목마다 조각 이름이나 남긴 까닭을 가져요 · verify: `cargo test --locked --offline --test html_report_skill the_delivery_section_follows_the_report_rule`
   manual: 이 SPEC Result 의 검토 항목 표
 
 ## Scope
@@ -110,4 +110,112 @@ parent: SPEC-20261122-report-rules
 
 ## Result
 
-(status draft — written when the slices land)
+status 는 draft 그대로예요. 아래는 REQ-10 이 묻는 검토 항목 표예요(리더 검토 보고서 91개, 2026-11-23 에 조각 A·B 의 트리 `skills/moai-html-report/` 를 다시 읽어 맞췄어요). "조각 A" 는 이미 이 가지에 있는 고침, "조각 C" 는 아직 열린 항목, "결정" 은 사용자·리더 결정으로 닫은 항목, "후속" 은 이 SPEC 범위 밖에 남긴 항목이에요.
+
+### 검토 항목 표 (REQ-10)
+
+| 항목 | 처리 | 근거 |
+| --- | --- | --- |
+| A1 | 조각 A | 보고서 폴더는 `~/.moai/reports/<project>/` 하나예요. AC-1 시험이 프로젝트 안 `.moai/reports/` 가 없음을 고정해요. |
+| A2 | 조각 A | `report.yaml`·`report.format` 이 없어요(AC-1 시험). 전달 순서는 § Delivery 네 단계로 고정했어요. |
+| A3 | 조각 A | `skill-routing doctrine` 이 없어요(AC-1 시험). |
+| A4 | 조각 A | `Codex` 가 없어요(AC-1 시험). 게시가 안 되는 세션은 § Delivery 의 이유 줄 목록이에요. |
+| A5 | 조각 A | § Resolving the tier: 인자, 세션의 스타일 이름, `$CLAUDE_CONFIG_DIR/settings.json`, 기본값 `expert` 순서예요. |
+| A6 | 조각 A | 템플릿에 아티팩트 글꼴 블록과 Noto 링크가 없어요(AC-2 시험). |
+| A7 | 조각 A | § Fields per mode 가 템플릿 이름(`shipped_table`, `summary_cells`, `branch_from` 등)을 따라요. |
+| A8 | 조각 A | SKILL.md 에서 slice 표를 뺐어요. |
+| A9 | 조각 A | 여섯 템플릿 머리가 모두 Pretendard 와 JetBrains Mono 를 불러요(AC-2 시험, 결정 D-3). |
+| A10 | 조각 A | `editorial`·`legal` 모드와 그 글꼴 절이 없어요. |
+| A11 | 조각 A | 머리말과 본문이 "글꼴과 mermaid 는 CDN, 오프라인이면 시스템 글꼴과 다이어그램 원문" 이라고 사실대로 말해요. |
+| B1 | 조각 A | `references/artifact-contract.md` §1 이 뼈대 없는 순서와 `claude:viewport-fit-sides` 를 말해요. |
+| B2 | 조각 A | 허용 호스트 다섯과 정확한 버전 규칙을 옮겼어요(artifact-contract.md). |
+| B3 | 조각 A | 아티팩트 글과 템플릿의 다크 블록에 `color-scheme` 이 있어요. |
+| B4 | 조각 C | 고정 hex 색(`#3D3D3A` 등)이 여섯 템플릿에 남아 있어요. |
+| B5 | 조각 A | 아티팩트 본의 `max(16px, env(...))` 옆 여백을 artifact-contract.md 가 말해요. html 파일의 좁은 화면 여백은 B6 와 함께 조각 C 에서 봐요. |
+| B6 | 조각 C | 표 스크롤 상자와 `minmax(0,1fr)` 가 아직 없어요. |
+| B7 | 결정 | 사용자 결정 D-2: 아티팩트는 보고서 언어의 Noto Sans 예요(AC-3 시험). |
+| B8 | 조각 A | 여섯 템플릿의 `<title>` 이 `{{title}}` 하나이고, 최종 확인이 2-4 단어 이름을 봐요. |
+| B9 | 조각 A | "외부 스크립트는 mermaid 하나, 인라인 스크립트는 작게 허용, 아티팩트는 외부 스크립트 없음" 한 규칙이에요(결정 D-4). |
+| B10 | 조각 A | artifact-contract.md 에 하지 말 것 목록(`window.print()` 등)과 게시 인자가 있어요. |
+| C1 | 조각 A, 조각 C | 정확한 판 `mermaid@11.4.1` UMD 는 조각 A(AC-2 시험). `integrity` 와 다크 테마 값은 조각 C 예요(감사 노트 N8). |
+| C2 | 조각 C | Pretendard 가 아직 static 주소(`pretendard.css`)예요. |
+| C3 | 조각 C | jsDelivr 스타일시트에 `integrity` 가 아직 없어요. |
+| C4 | 조각 A | `<noscript>` 대신 보이는 `mmd-fallback` 을 써요(AC-2 시험). |
+| C5 | 조각 C | 접힌 `details` 와 탭의 인쇄 규칙이 아직 없어요. |
+| C6 | 조각 C | 인쇄 때 토큰을 밝은 값으로 되돌리는 규칙이 아직 없어요. |
+| C7 | 조각 C | `a[href]::after` 가 아직 안쪽 링크에도 걸려요. |
+| C8 | 조각 C | 밝은 테마 대비 토큰(`--g500` 등)이 아직 그대로예요. |
+| C9 | 조각 C | 다크 `--g500` 과 diff 색이 아직 그대로예요. |
+| C10 | 조각 A, 조각 C | `lang="{{lang}}"` 와 § Language 는 조각 A 예요. `keep-all`, 라벨 자간, `--mono` 의 한글 대체, `text-wrap` 은 조각 C 예요. |
+| C11 | 조각 C | 초점 표시, 화면 낭독기 글, 탭 ARIA, `scope`, 움직임 줄이기가 아직 없어요. |
+| C12 | 조각 C | 휴대폰에서 SVG 글자 크기가 그대로예요. |
+| C13 | 조각 A | editorial 절과 함께 woff `<link>` 예시가 빠졌어요. |
+| D1 | 조각 A, 조각 C | `lang="{{lang}}"` 와 "라벨은 대화 언어로" 규칙(§ Language)은 조각 A 예요. 라벨을 데이터 칸으로 빼는 일은 조각 C 예요. |
+| D2 | 조각 C | plan·explainer 의 `* { margin: 0; padding: 0 }` 이 남아 있어요. |
+| D3 | 조각 A | `.length` 대신 `has_*` 칸을 써요(§ Fields per mode). |
+| S1 | 조각 C | Shipped 표의 스크롤 상자와 고정 너비. 주석의 `link`, `risk_label` 은 조각 A 의 필드 표에 있어요. |
+| S2 | 조각 C | 속도 차트의 `fill="{{fill}}"` 과 `system-ui` 가 남아 있어요. |
+| S3 | 조각 C | "Auto-generated" 알약이 남아 있어요. |
+| I1 | 조각 A | 세 중괄호와 `<div>` (AC-2 시험). |
+| I2 | 조각 A | `<pre class="log-block">` 이에요. |
+| I3 | 조각 A | 주석과 필드 표가 `dot_class`, `body_html`, `initials`, `assignee`, `desc_html`, `status_label` 하나로 맞아요. |
+| I4 | 조각 C | `.tldr`, `.log-block`, `.code-panel` 이 아직 `var(--slate)` 예요. |
+| I5 | 조각 C | clay 위 흰 글씨가 남아 있어요. |
+| I6 | 조각 C | 완료 상태 글과 휴대폰의 담당자 이름이 아직 없어요. |
+| P1 | 조각 A | `{{{goal_html}}}`, `{{{diagram_svg}}}` (AC-2 시험). |
+| P2 | 조각 C | `--g150` 이 남아 있어요. 폭 1100px 은 § Design tokens and width 의 모드별 표에 적었어요. |
+| P3 | 조각 C | `130px 28px 1fr` 이 남아 있어요. |
+| P4 | 조각 C | 위험도 칩과 SVG 안내의 고정 색이 남아 있어요. |
+| P5 | 조각 C | 위험표 역할, 고정 번호, `.sec-intro` 색이 그대로예요. |
+| X1 | 조각 A | 세 중괄호 (AC-2 시험). |
+| X2 | 조각 A | 머리 주석이 `open`, `first` 를 말해요. |
+| X3 | 조각 C | 좁은 화면의 목차가 아직 없어요. |
+| X4 | 조각 C | 단계 제목줄 넘침이 그대로예요. |
+| X5 | 조각 C | 탭의 좁은 화면, JS 없음, 인쇄. JS 규칙 문장은 조각 A 예요(B9). |
+| X6 | 조각 C | callout 의 고정 색과 ★ 이 남아 있어요. |
+| N1 | 조각 C | 손익표 `min-width:200px` 이 남아 있어요. |
+| N2 | 조각 A, 조각 C | 두 주석이 `value_str`, `pct_str`, `bar_width` 로 맞고 좌표 칸이 필드 표에 있어요(조각 A). 색을 class 로 주는 일은 조각 C 예요. |
+| N3 | 조각 C | 0 기준선 양쪽 막대가 아직 없어요. |
+| N4 | 조각 C | `th scope="row"` 와 인쇄 12pt 가 아직 없어요. |
+| R1 | 조각 A | 세 중괄호와 `background_html` (AC-2 시험). |
+| R2 | 조각 C | 파일 링크가 모두 `#tour` 예요. |
+| R3 | 조각 C | `1fr 220px` 이 남아 있어요. |
+| R4 | 조각 C | `.path` 줄바꿈이 아직 없어요. |
+| R5 | 조각 C | 배지 고정 색과 번호 알약 대비가 그대로예요. |
+| R6 | 조각 C | 시험 체크 상태 글과 움직임 줄이기가 아직 없어요. |
+| E1 | 조각 A | § Render order 여덟 단계예요. |
+| E2 | 조각 A | § Purpose and Scope: md 가 기록이고 html 은 설명만 더해요. |
+| E3 | 조각 A | § Delivery 네 단계예요(AC-4 시험). |
+| E4 | 조각 A | SKILL.md 의 보고서 규칙 일곱 줄이에요. 가리키던 moai 스킬의 `references/internal/reports.md` 는 아직 없는 파일이라(`SPEC-20261122-report-rules` 의 조각 A 가 만들어요) 감사 수리에서 가리킴을 뺐고, AC-4 시험이 SKILL.md 가 가리키는 `references/` 글이 모두 패키지에 있음을 확인해요. |
+| E5 | 조각 A | § Delivery 3단계: `artifact-design`, `icon`, `description`, 비공개, 다시 낼 때의 `url` 이에요. |
+| E6 | 조각 A | § Language 예요. |
+| E7 | 조각 A | 자동 열기 없음, Windows 는 `cmd //c start "" "<path>"` (AC-4 시험이 `xdg-open` 이 없음을 고정해요). |
+| E8 | 조각 A | JS 규칙 한 문장(B9), `design_system` 문장 없음. |
+| E9 | 조각 A | § Design tokens and width 가 개수 대신 design-tokens.md 를 가리키고 폭을 표로 둬요. |
+| E10 | 조각 A | `<YYYY-MM-DD>-<ascii-slug>`, 충돌하면 `-2`, 날짜는 `date -u` 예요. |
+| E11 | 조각 A | § Final check before the publish 다섯 줄이에요. |
+| F1 | 조각 A | 새 description 의 첫 문장이 모든 보고서의 html 과 아티팩트를 말해요. |
+| F2 | 조각 A, 조각 B | 저장소 본 `user-invocable: false` (AC-1 시험), 설치본도 같아요(`SPEC-20261122-html-report-install` AC-2). |
+| F3 | 조각 A | `allowed-tools: Read Write Edit Bash(mkdir -p *)` 예요. |
+| F4 | 조각 A | metadata 가 없어요. |
+| F5 | 결정 | `compatibility` 는 두고, 이름은 D-1 로 `moai-html-report` 예요. |
+| G1 | 조각 A, 후속 | 새 스킬은 `skills/moai-html-report/` 에 있어요. `creative` 묶음의 옛 사본은 남아 있어요(감사 노트 N7). |
+| G2 | 조각 A | `design-artifact`·plannotator 근거가 없어요. |
+| G3 | 조각 A | craft-fundamentals.md 와 § Design tokens and width 가 "사용자 결정으로 유지" 를 적어요. |
+| G4 | 조각 A | § Render order 3·4단계: 바깥 글은 늘 이스케이프, HTML 칸에는 에이전트가 만든 태그만. |
+| G5 | 후속 | html 검사는 `SPEC-20261122-report-rules` 의 `report-check` 다음 조각 제안으로 남겨요(이 SPEC 범위 밖). |
+| G6 | 조각 C | 여섯 템플릿의 공통 CSS 를 한 곳으로 모으는 일이에요. |
+| G7 | 후속 | `SPEC-20261122-report-rules` 다음 리비전의 일이에요(이 SPEC 범위 밖). |
+| G8 | 조각 A | § Usage examples 에 한국어 예 둘이 있어요. |
+
+합계: 조각 A 만 46, 조각 A 와 조각 C 4, 조각 A 와 조각 B 1, 조각 A 와 후속 1, 조각 C 만 35, 결정 2, 후속 2 — 91개예요.
+
+### Audit notes
+
+조각 A·B 감사(FAIL, 리더 노트 2026-11-22)가 SPEC 에 남기라고 한 항목이에요. 감사 수리 범위 밖이라 후속으로 둬요.
+
+- N4: 감사 노트가 이름만 남겼고 원장 글에 내용이 없어요. 같은 감사자가 다시 읽을 때 내용을 적어 주면 여기에 옮겨요.
+- N7: `creative` 묶음(`templates/bundle-packs/.claude/skills/moai-domain-html-report/`)이 아직 옛 스킬을 실어요. 이름이 달라 설치가 겹치지는 않지만, 지우거나 새 이름을 가리키는 일은 후속이에요.
+- N8: html 파일의 mermaid 스크립트 태그에 `integrity` 속성이 없어요. 조각 C 의 C1·C3 와 함께 고쳐요.
+- N9: N4 와 같아요(이름만 있고 내용이 원장에 없어요).
+- N10: N4 와 같아요(이름만 있고 내용이 원장에 없어요).

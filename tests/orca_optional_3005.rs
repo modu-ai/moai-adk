@@ -64,7 +64,7 @@ fn mentions_orca(text: &str) -> bool {
 /// (`leader_round.rs`, `ops/leader_round.rs`). None of those starts the program; the one file
 /// that does is `lane_send.rs` (`ProcessOrca`, see its entry below), which the rows for
 /// `lane-screen` and `lane-send` of C-120 add.
-const SRC_ORCA_FILES: [&str; 13] = [
+const SRC_ORCA_FILES: [&str; 16] = [
     "src/claude.rs",
     "src/go_hooks.rs",
     // The `session_cwd` example of `lane-safe-to-reset` names the source `orca` (#3015 C1); the
@@ -91,17 +91,22 @@ const SRC_ORCA_FILES: [&str; 13] = [
     "src/ops/lane_safe_to_reset.rs",
     "src/ops/leader_pulse.rs",
     "src/ops/leader_round.rs",
+    // The status line hands its stdin to the wrapper script Orca installs
+    // (`~/.orca/agent-hooks/claude-statusline.sh`, SPEC-20261122-statusline-limits D-6) when
+    // that file and the hook variables exist; it starts that script, never the program.
+    "src/statusline/mod.rs",
+    "src/statusline/orca.rs",
+    "src/statusline/state.rs",
 ];
 
 /// The only places in the skill package and the agent files that name Orca. The research
 /// agent lists the adapter among the documents it reads (checked below to be that line only).
-/// `rule-history.md` (C-103) is the record of the rule sentences the two modes carried: it quotes
-/// them word for word, so it names Orca; it holds no `orca` command line and no step of its own.
-/// The two mode files left with their routes (SPEC-20261122-next-flow-skills-agents REQ-2).
-const PACKAGE_ORCA_FILES: [&str; 3] = [
+/// The two mode files left with their routes (SPEC-20261122-next-flow-skills-agents REQ-2), and
+/// the rule history, which quotes their sentences word for word, left the package for
+/// `docs/rule-history.md` (the same SPEC's Plan step 6).
+const PACKAGE_ORCA_FILES: [&str; 2] = [
     "agents/research.md",
     "skills/moai/references/adapters/orca.md",
-    "skills/moai/references/rule-history.md",
 ];
 
 fn src_files() -> Vec<PathBuf> {
@@ -233,28 +238,16 @@ fn the_adapter_table_has_a_row_for_every_route_with_a_status_word() {
         .lines()
         .find(|l| l.starts_with("Unsupported today"))
         .expect("the section has an `Unsupported today` paragraph");
-    for cell in [
-        "a Codex or OMP leader's periodic run",
-        "the settings folder of an Orca profile",
-        "Issue #2936",
-    ] {
+    // SPEC-20261122-next-flow-skills-agents REQ-8 retired Codex and OMP: the Codex or OMP
+    // leader's periodic run is no longer an unsupported item, and the settled OMP entry
+    // spelling, skill folders and lane wake of #3005 P10 and P11 left the paragraph with it.
+    for cell in ["the settings folder of an Orca profile", "Issue #2936"] {
         assert!(list.contains(cell), "the unsupported list lost `{cell}`");
     }
-    // #3005 P10 and P11 settled the OMP entry spelling and an OMP lane's wake: they are no
-    // longer unsupported, and the paragraph says what replaced them.
-    for gone in ["the OMP spelling of the entry", "an OMP lane's wake"] {
+    for gone in ["Codex", "OMP", "/skill:moai"] {
         assert!(
             !list.contains(gone),
-            "`{gone}` is settled and must not be listed as unsupported: {list}"
+            "the paragraph still names `{gone}`: {list}"
         );
-    }
-    for settled in [
-        "the entry is `/skill:moai <text>`",
-        "`~/.agents/skills`",
-        "`~/.claude/skills` only when `enabledProviders` names `claude`, `skills.enableClaudeUser` is on or `CLAUDE_CONFIG_DIR` is set",
-        "goal mode and ends it with the `goal` tool's `drop`",
-        "no live OMP session was run",
-    ] {
-        assert!(list.contains(settled), "the OMP paragraph lost `{settled}`: {list}");
     }
 }
