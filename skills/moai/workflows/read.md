@@ -34,7 +34,6 @@ Skip this section when you are a base agent yourself: base agents never start ot
 READ fans out: split the question into independent parts, give each part a short id, start one `moai-research` per part, and answer only after every part's `RESULT` line is in. A part that came back `blocked` or `not_run` stays unconfirmed in the answer.
 
 - Claude Code: several agent calls in one message run at once; a background agent reports when it finishes.
-- Codex CLI: spawn one agent per part and wait for all of them.
 - Kiro and Cursor CLI: the documents read do not settle starting several at once and collecting them. Fallback: start them one after another.
 
 ## Exceptions and Permissions

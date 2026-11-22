@@ -77,8 +77,9 @@ fn gate_unavailable_rules_are_written_where_they_are_used() {
 
 // Retired with the MODE-AGENT route (SPEC-20261122-next-flow-skills-agents REQ-2): `usage_limit_rules_are_pinned_in_both_mode_workflows` pinned the usage-limit rules of the lane and the leader.
 
-/// #2592 Codex parity: Codex spawns agents on a skill instruction that requests delegation, so
-/// SKILL.md requests it in words and names each host's own subagent tool.
+/// #2592: SKILL.md requests delegation in words and names the subagent tool. The Codex pin
+/// (`spawn_agent` and then `wait_agent`) is retired with Codex (SPEC-20261122-next-flow-skills-agents
+/// REQ-8); the Claude Code tool stays pinned.
 #[test]
 fn skill_requests_delegation_with_each_hosts_subagent_tool() {
     let skill =
@@ -87,8 +88,7 @@ fn skill_requests_delegation_with_each_hosts_subagent_tool() {
     for needle in [
         "This skill requests delegation",
         "`## Base agents`",
-        "`spawn_agent` and then `wait_agent` in Codex CLI",
-        "the agent tool in Claude Code",
+        "start that agent with Claude Code's Agent tool",
         "do the step in this session and say so",
     ] {
         assert!(skill.contains(needle), "SKILL.md lacks {needle}");
@@ -207,11 +207,18 @@ fn omp_has_an_entry_spelling_and_a_wake_that_a_lane_can_end() {
     for p in ["in OMP", "the task tool in OMP"] {
         assert!(!skill.contains(p), "SKILL.md must not say `{p}` any more");
     }
-    for (file, key) in [
-        ("project.md", "`/skill:moai project` in OMP"),
-        ("update.md", "`/skill:moai update` in OMP"),
+    // SPEC-20261122-next-flow-skills-agents REQ-8 retired the OMP entry spellings of PROJECT and
+    // UPDATE as well; each workflow keeps only its `/moai` entry.
+    for (file, entry) in [
+        ("project.md", "`/moai project`"),
+        ("update.md", "`/moai update`"),
     ] {
-        assert!(workflow(file).contains(key), "{file} must say `{key}`");
+        let text = workflow(file);
+        assert!(text.contains(entry), "{file} must say `{entry}`");
+        assert!(
+            !text.contains("/skill:moai"),
+            "{file} still names OMP's entry"
+        );
     }
 }
 

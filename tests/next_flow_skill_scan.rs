@@ -1,9 +1,11 @@
 //! SPEC-20261122-next-flow-skills-agents, text slice A (AC-1, AC-2, AC-5): the `/moai` skill
 //! package has eight routes, `/moai work` takes a card through the whole flow, and the retired
 //! SETUP, VERIFY and OPTIMIZE routes leave their rules in PROJECT, RUN and UPDATE. Text slice B
-//! (AC-3): one flow reference and one audit contract, each within its byte budget.
+//! (AC-3): one flow reference and one audit contract, each within its byte budget. Text slice C
+//! (AC-4): the shipped texts name no retired host, mode, gate or tool.
 //!
-//! The tests read the skill files of this checkout; nothing is run and no HOME is touched.
+//! The tests read the skill files of this checkout; nothing is run and no HOME is touched. The
+//! planted-copy tests write only into a temporary folder.
 
 use serde_json::Value;
 use std::{
@@ -144,6 +146,11 @@ fn step_keys(procedure: &str) -> Vec<(usize, String)> {
 
 /// Every shipped text: the files under `skills/moai/` and `agents/`, as (repository path, text).
 fn shipped_texts() -> Vec<(String, String)> {
+    shipped_texts_under(Path::new(env!("CARGO_MANIFEST_DIR")))
+}
+
+/// The shipped texts of the tree at `root` (this checkout, or a copy of it in a test).
+fn shipped_texts_under(root: &Path) -> Vec<(String, String)> {
     fn walk(dir: &Path, out: &mut Vec<PathBuf>) {
         for entry in fs::read_dir(dir).unwrap_or_else(|e| panic!("{}: {e}", dir.display())) {
             let path = entry.unwrap().path();
@@ -154,7 +161,6 @@ fn shipped_texts() -> Vec<(String, String)> {
             }
         }
     }
-    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
     let mut files = Vec::new();
     for top in ["skills/moai", "agents"] {
         walk(&root.join(top), &mut files);
@@ -200,6 +206,151 @@ fn letter_spellings(text: &str) -> Vec<(char, &'static str)> {
         }
     }
     hits
+}
+
+/// AC-4: the shipped texts the scrub scans leave out, each with its reason.
+const SCRUB_EXCEPTIONS: [&str; 3] = [
+    // The rule history records where each rule came from; it moves to `docs/` in Plan step 6.
+    "skills/moai/references/rule-history.md",
+    // Another card holds the interview question bank until it lands; its lines stay as they are.
+    "skills/moai/references/internal/interview.md",
+    // The manifest's origin reasons record where each file came from: history, not instructions.
+    "skills/moai/references/source-manifest.json",
+];
+
+/// REQ-8: words no shipped text names, matched without regard to case: the retired hosts
+/// (Codex in any spelling, OMP's skill command), the resident leader and its mode flags, the
+/// pull-request audit gate, the merge train and the repository's own harness agents.
+const REQ8_WORDS: [&str; 15] = [
+    "codex",
+    "$moai",
+    "/skill:moai",
+    "resident leader",
+    "leader mode",
+    "mode-agent",
+    "mode-leader",
+    "--autonomy",
+    "/moai -a ",
+    "/moai -l ",
+    "merge train",
+    "merge-train",
+    "audit gate",
+    "prj-reviewer",
+    "prj-local-check",
+];
+
+/// REQ-8: OMP as a word of its own, without regard to case.
+const REQ8_WHOLE_WORDS: [&str; 1] = ["omp"];
+
+/// REQ-8: the older instruction files. A line may name them only as the older files moai moves
+/// away from, which it says with the word in `OLDER`; CLAUDE.md is the instruction file.
+const AGENTS_FILES: [&str; 2] = ["AGENTS.md", "AGENTS.local.md"];
+const OLDER: &str = "older";
+
+/// REQ-9: the tools and options Claude Code no longer has, matched as written.
+const REQ9_WORDS: [&str; 7] = [
+    "TodoWrite",
+    "TaskOutput",
+    "BashOutput",
+    "agents wizard",
+    "`/agents`",
+    "`resume`",
+    "`mode`",
+];
+
+/// REQ-9: the Grep and Glob tools as words of their own; a shipped text never assumes them.
+const REQ9_WHOLE_WORDS: [&str; 2] = ["Grep", "Glob"];
+
+/// D-10: TaskCreate is named only as a tool used when the host offers it.
+const TASK_CREATE: &str = "TaskCreate";
+const OFFERED: &str = "offer";
+
+/// Whether `word` stands in `line` with no letter, digit or `_` on either side.
+fn has_whole_word(line: &str, word: &str) -> bool {
+    let edge = |c: Option<char>| !c.is_some_and(|c| c.is_alphanumeric() || c == '_');
+    line.match_indices(word).any(|(at, w)| {
+        edge(line[..at].chars().next_back()) && edge(line[at + w.len()..].chars().next())
+    })
+}
+
+/// The REQ-8 hits of one text: (line number, word).
+fn req8_hits(text: &str) -> Vec<(usize, &'static str)> {
+    let mut hits = Vec::new();
+    for (number, line) in text.lines().enumerate() {
+        let lower = line.to_lowercase();
+        for word in REQ8_WORDS {
+            if lower.contains(word) {
+                hits.push((number + 1, word));
+            }
+        }
+        for word in REQ8_WHOLE_WORDS {
+            if has_whole_word(&lower, word) {
+                hits.push((number + 1, word));
+            }
+        }
+        for file in AGENTS_FILES {
+            if has_whole_word(line, file) && !has_whole_word(&lower, OLDER) {
+                hits.push((number + 1, file));
+            }
+        }
+    }
+    hits
+}
+
+/// The REQ-9 hits of one text at repository path `path`: (line number, what was found).
+fn req9_hits(path: &str, text: &str) -> Vec<(usize, &'static str)> {
+    let mut hits = Vec::new();
+    let mut in_frontmatter = path.starts_with("skills/") && text.starts_with("---\n");
+    for (number, line) in text.lines().enumerate() {
+        if number > 0 && line == "---" {
+            in_frontmatter = false;
+        }
+        for word in REQ9_WORDS {
+            if line.contains(word) {
+                hits.push((number + 1, word));
+            }
+        }
+        for word in REQ9_WHOLE_WORDS {
+            if has_whole_word(line, word) {
+                hits.push((number + 1, word));
+            }
+        }
+        if line.trim_start().starts_with("!`") {
+            hits.push((number + 1, "shell-injection block"));
+        }
+        if in_frontmatter && number > 0 && line.starts_with("model:") {
+            hits.push((number + 1, "model key"));
+        }
+        if line.contains(TASK_CREATE) && !line.contains(OFFERED) {
+            hits.push((number + 1, TASK_CREATE));
+        }
+    }
+    hits
+}
+
+/// `path:line: word` for each hit of `scan` in the shipped texts under `root`, the exceptions
+/// left out.
+fn scrub_scan(root: &Path, scan: fn(&str, &str) -> Vec<(usize, &'static str)>) -> Vec<String> {
+    shipped_texts_under(root)
+        .into_iter()
+        .filter(|(path, _)| !SCRUB_EXCEPTIONS.contains(&path.as_str()))
+        .flat_map(|(path, text)| {
+            scan(&path, &text)
+                .into_iter()
+                .map(move |(line, word)| format!("{path}:{line}: {word}"))
+        })
+        .collect()
+}
+
+/// A copy of this checkout's shipped texts in a fresh temporary folder.
+fn shipped_copy() -> tempfile::TempDir {
+    let copy = tempfile::tempdir().unwrap();
+    for (path, text) in shipped_texts() {
+        let to = copy.path().join(&path);
+        fs::create_dir_all(to.parent().unwrap()).unwrap();
+        fs::write(&to, text).unwrap();
+    }
+    copy
 }
 
 /// The route cells of the chain table, one list per row.
@@ -589,6 +740,107 @@ fn refs_no_shipped_text_names_the_removed_build_folder_reference() {
     assert!(
         naming.is_empty(),
         "still name internal/build-folder: {naming:?}"
+    );
+}
+
+#[test]
+fn scrub_shipped_texts_name_no_retired_host_mode_or_gate() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let hits = scrub_scan(root, |_, text| req8_hits(text));
+    assert!(hits.is_empty(), "REQ-8 words:\n{}", hits.join("\n"));
+}
+
+#[test]
+fn scrub_shipped_texts_name_no_retired_tool() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let hits = scrub_scan(root, req9_hits);
+    assert!(hits.is_empty(), "REQ-9 tools:\n{}", hits.join("\n"));
+}
+
+#[test]
+fn scrub_finds_a_word_planted_in_a_copy() {
+    let planted = "skills/moai/workflows/work.md";
+    for (word, scan) in [
+        (
+            "Run it as `$moai work` in Codex CLI.",
+            (|_: &str, text: &str| req8_hits(text)) as fn(&str, &str) -> Vec<(usize, &'static str)>,
+        ),
+        ("Keep the list with TodoWrite.", req9_hits),
+    ] {
+        let copy = shipped_copy();
+        let before = scrub_scan(copy.path(), scan);
+        let file = copy.path().join(planted);
+        let mut text = fs::read_to_string(&file).unwrap();
+        let line = text.lines().count() + 1;
+        text.push_str(word);
+        text.push('\n');
+        fs::write(&file, text).unwrap();
+        let after = scrub_scan(copy.path(), scan);
+        let new: Vec<&String> = after.iter().filter(|h| !before.contains(h)).collect();
+        assert!(!new.is_empty(), "the scan missed {word:?}");
+        for hit in new {
+            assert!(
+                hit.starts_with(&format!("{planted}:{line}: ")),
+                "{word:?}: {hit}"
+            );
+        }
+        // The same word in an excepted file is left out.
+        let excepted = copy.path().join(SCRUB_EXCEPTIONS[0]);
+        let mut text = fs::read_to_string(&excepted).unwrap();
+        text.push_str(word);
+        fs::write(&excepted, text).unwrap();
+        assert_eq!(scrub_scan(copy.path(), scan).len(), after.len(), "{word:?}");
+    }
+}
+
+#[test]
+fn scrub_line_checks_read_what_they_say() {
+    const NONE: [(usize, &str); 0] = [];
+    // REQ-8: each spelling is found; a word inside another word is not OMP.
+    assert_eq!(req8_hits("ask the OMP host"), [(1, "omp")]);
+    assert_eq!(req8_hits("a compact table"), NONE);
+    assert_eq!(req8_hits("x\nCODEX_HOME"), [(2, "codex")]);
+    assert_eq!(req8_hits("the MODE-AGENT workflow"), [(1, "mode-agent")]);
+    // REQ-8: AGENTS.md is named only as the older file.
+    assert_eq!(
+        req8_hits("read the project's AGENTS.md"),
+        [(1, "AGENTS.md")]
+    );
+    // `older` is a word of its own: the `older` inside `folder` is no exception.
+    assert_eq!(
+        req8_hits("the state folder and the AGENTS.md section"),
+        [(1, "AGENTS.md")]
+    );
+    assert_eq!(
+        req8_hits("moves the older `AGENTS.md` and `AGENTS.local.md` into `CLAUDE.md`"),
+        NONE
+    );
+    // REQ-9: tools as written, Grep and Glob as words, the shell-injection line, a skill's model
+    // key, and TaskCreate only where the host offers it.
+    assert_eq!(req9_hits("agents/x.md", "use the Grep tool"), [(1, "Grep")]);
+    assert_eq!(req9_hits("agents/x.md", "a Globber, `grep -rn`"), NONE);
+    assert_eq!(
+        req9_hits("skills/moai/SKILL.md", "  !`git status`"),
+        [(1, "shell-injection block")]
+    );
+    assert_eq!(
+        req9_hits(
+            "skills/moai/SKILL.md",
+            "---\nname: moai\nmodel: opus\n---\nmodel: text\n"
+        ),
+        [(3, "model key")]
+    );
+    assert_eq!(req9_hits("agents/x.md", "---\nmodel: opus\n---\n"), NONE);
+    assert_eq!(
+        req9_hits("agents/x.md", "keep a TaskCreate list"),
+        [(1, "TaskCreate")]
+    );
+    assert_eq!(
+        req9_hits(
+            "agents/x.md",
+            "keep the task list current if the TaskCreate tool is offered"
+        ),
+        NONE
     );
 }
 

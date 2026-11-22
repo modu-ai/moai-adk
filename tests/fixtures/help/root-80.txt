@@ -46,7 +46,7 @@ Commands
     baseline-inventory     List a checkout's baseline facts
 
 Examples
-  moai cc -l               leader, then /moai --mode-leader
+  moai cc -l               start the leader session
   moai update              preview and apply an update
   moai project-detect .    show the facts of this project
 

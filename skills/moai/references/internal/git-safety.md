@@ -2,9 +2,9 @@
 
 When to read: before you commit, push, merge or switch branches in a worktree.
 
-1. Write only while you hold the card: run `moai card check` for the files you are about to write before every commit and every push. A refusal stops the write and is reported as it is (MODE-AGENT workflow).
+1. Write only while you hold the card: run `moai card check` for the files you are about to write before every commit and every push. A refusal stops the write and is reported as it is (the WORK route, `/moai work`).
 2. Keep the trailer paragraph last: the `Moai-Spec` and `Moai-Session` trailers and the attribution line, nothing after them; no card number goes into a commit message, a branch name or a pull request. Confirm each new commit with `git interpret-trailers --parse`.
-3. Work in your own worktree, with its one build folder inside it (`workflows/run.md`, "Check-run rules"). Never write in another worktree and never share a build folder with another worktree; after switching worktrees, trust only a run whose `Compiling` line names the worktree you are checking. New worktrees go to `~/.moai/worktrees/<project>-<id>` (`moai worktree-plan`, #2811); never move an existing worktree, and never touch `~/.moai/worktrees/projects/`, which the Go generation uses.
+3. Work in your own worktree, with its one build folder inside it (`workflows/run.md`, "Check-run rules"). Never write in another worktree and never share a build folder with another worktree; after switching worktrees, trust only a run whose `Compiling` line names the worktree you are checking. New worktrees go to the project's `.claude/worktrees/<name>` (`workflows/run.md`, "Check-run rules"); never move an existing worktree, and never touch `~/.moai/worktrees/projects/`, which the Go generation uses.
 4. Never force-push, `reset --hard`, `clean`, delete a branch or rewrite history that others may have. Never use a bare `git stash`; the stash stack is shared between worktrees.
 5. After every push, read the remote head back (`git ls-remote`) and the pull request's merge state; a conflicting pull request runs no CI until the tip is merged in.
 6. Take every SHA you write down from command output, never typed from memory.
@@ -14,8 +14,7 @@ When to read: before you commit, push, merge or switch branches in a worktree.
 | Host | Enter and leave a worktree | Git inside it |
 | --- | --- | --- |
 | Claude Code | `EnterWorktree` (`path` for an existing one) and `ExitWorktree`; subagents with `isolation: worktree`. `EnterWorktree` with a `name` branches from the default branch, so for another base create the worktree with `git worktree add` first and enter it by `path`. | Plain `git <verb>`, or `git -C <own worktree> <verb>`. Its built-in guard refuses a line that runs git next to a shell expansion (`$VAR`, `$?`, `$(…)`) or `-C` to the shared checkout; put such work in a script file under `target/`. |
-| Codex CLI | `--worktree` or `/worktree` starts the session in a worktree; no documented way out. | Inside a session started there, plain `git <verb>`; otherwise `git -C <worktree> <verb>`. |
-| Cursor CLI | `-w` / `--worktree` at start only. | Same as Codex CLI. |
+| Cursor CLI | `-w` / `--worktree` at start only. | Inside a session started there, plain `git <verb>`; otherwise `git -C <worktree> <verb>`. |
 | Kiro CLI | None documented. | `git -C <worktree> <verb>`. |
 
-Sources, read 2026-11-13: https://code.claude.com/docs/en/worktrees.md and https://code.claude.com/docs/en/tools-reference.md; https://learn.chatgpt.com/docs/developer-commands?surface=cli; https://cursor.com/docs/cli/reference/parameters; https://kiro.dev/docs/reference/cli-commands/. The Claude Code guard behaviour was measured on 2.1.323.
+Sources, read 2026-11-13: https://code.claude.com/docs/en/worktrees.md and https://code.claude.com/docs/en/tools-reference.md; https://cursor.com/docs/cli/reference/parameters; https://kiro.dev/docs/reference/cli-commands/. The Claude Code guard behaviour was measured on 2.1.323.

@@ -233,28 +233,16 @@ fn the_adapter_table_has_a_row_for_every_route_with_a_status_word() {
         .lines()
         .find(|l| l.starts_with("Unsupported today"))
         .expect("the section has an `Unsupported today` paragraph");
-    for cell in [
-        "a Codex or OMP leader's periodic run",
-        "the settings folder of an Orca profile",
-        "Issue #2936",
-    ] {
+    // SPEC-20261122-next-flow-skills-agents REQ-8 retired Codex and OMP: the Codex or OMP
+    // leader's periodic run is no longer an unsupported item, and the settled OMP entry
+    // spelling, skill folders and lane wake of #3005 P10 and P11 left the paragraph with it.
+    for cell in ["the settings folder of an Orca profile", "Issue #2936"] {
         assert!(list.contains(cell), "the unsupported list lost `{cell}`");
     }
-    // #3005 P10 and P11 settled the OMP entry spelling and an OMP lane's wake: they are no
-    // longer unsupported, and the paragraph says what replaced them.
-    for gone in ["the OMP spelling of the entry", "an OMP lane's wake"] {
+    for gone in ["Codex", "OMP", "/skill:moai"] {
         assert!(
             !list.contains(gone),
-            "`{gone}` is settled and must not be listed as unsupported: {list}"
+            "the paragraph still names `{gone}`: {list}"
         );
-    }
-    for settled in [
-        "the entry is `/skill:moai <text>`",
-        "`~/.agents/skills`",
-        "`~/.claude/skills` only when `enabledProviders` names `claude`, `skills.enableClaudeUser` is on or `CLAUDE_CONFIG_DIR` is set",
-        "goal mode and ends it with the `goal` tool's `drop`",
-        "no live OMP session was run",
-    ] {
-        assert!(list.contains(settled), "the OMP paragraph lost `{settled}`: {list}");
     }
 }

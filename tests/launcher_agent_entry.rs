@@ -167,8 +167,10 @@ fn the_root_example_names_the_entry_command() {
             .lines()
             .find(|l| l.trim_start().starts_with("moai cc -l "))
             .unwrap_or_else(|| panic!("COLUMNS={columns}: no cc -l example:\n{text}"));
+        // SPEC-20261122-next-flow-skills-agents REQ-8: the example names the leader session,
+        // not the retired `/moai --mode-leader` entry.
         assert!(
-            line.ends_with("leader, then /moai --mode-leader"),
+            line.ends_with("start the leader session"),
             "COLUMNS={columns}: {line:?}"
         );
     }

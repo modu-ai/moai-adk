@@ -51,7 +51,7 @@
   },
   "files": {
     "SKILL.md": {
-      "sha256": "654f44bdf5d4f7480a995af5e3c9aae00563f41e696be999acf3b49aa3edf015",
+      "sha256": "3bd6739adbfb5e93cc67e7043c7f096cfc7d4b32ad47cc9abedf9941f0618563",
       "origin": {
         "kind": "design-template",
         "template_id": "router-core",
@@ -69,7 +69,7 @@
       }
     },
     "references/adapters/orca.md": {
-      "sha256": "ca0091a8f8eb85bb2ff6a09947f6aecf19594391959197202bd25be4eb0c234a",
+      "sha256": "f8567a0a9b0d580eb7c41b128376757f4a5c5f160a547df02fb577ede3632094",
       "origin": {
         "kind": "design-spec",
         "template_id": "adapter-orca",
@@ -156,7 +156,7 @@
       }
     },
     "references/internal/commit-trailers.md": {
-      "sha256": "f1b1df618170ad0f5365211e942091766ea16993d0b2a195a5b9db6e3c1b86f0",
+      "sha256": "5853bebcacd992d28b288de9d058cfea97fc8323b3f5d59f53b383c31ce3acdb",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-commit-trailers",
@@ -195,7 +195,7 @@
       }
     },
     "references/internal/git-safety.md": {
-      "sha256": "70a33e833027abf29d24dad1a8dcf6c967931180b642f9c9e45dfec663ecd882",
+      "sha256": "3f379d87a46a1df98491325bb928fcc5f72eb3cabc3d7d1af49c87c9e6a392b7",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-git-safety",
@@ -222,7 +222,7 @@
       }
     },
     "references/internal/quality.md": {
-      "sha256": "a8bc10b0804c9c5d795251b8ba2c5b783d96ac5b95ed31d0fa2c559e616e93de",
+      "sha256": "1775e7ecc447b63561a74ec21f30bb86f7ca25688e162a3a9f1de35599a143c6",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-quality",
@@ -231,7 +231,7 @@
       }
     },
     "references/internal/questions.md": {
-      "sha256": "b5243550b336a43fbf07f90aa1f7100bda31df06776133e2685cdf1db118012a",
+      "sha256": "3077b7ce02d37acd2e7a84d59568659773f9ee63be36b2490b975ee620012b68",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-questions",
@@ -291,7 +291,7 @@
       }
     },
     "references/internal/versioning.md": {
-      "sha256": "831edff3461f0f230ff69c269fc6fe28e41bebbdebaa2d584f328d727aceb0e4",
+      "sha256": "9785ee1c4a67397d5ee896cd897213e25af7949a0c37167f69aa6c5335028b07",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-versioning",
@@ -300,7 +300,7 @@
       }
     },
     "references/languages/c-cpp.md": {
-      "sha256": "b99e7aa0a35b890edcf45b64ba417133703a1de2b44982186d679f6654f3da64",
+      "sha256": "5164187907d38660305a11549367fcc7caaabd196b17818beb6dbdb84d295cc2",
       "origin": {
         "kind": "design-spec",
         "template_id": "language-guide",
@@ -309,7 +309,7 @@
       }
     },
     "references/languages/csharp.md": {
-      "sha256": "d1118133180422c848e297ac6eb17a0049196ef56b7ece7abede9d07680a887f",
+      "sha256": "63828c1a8286ccc263f67199afafaccc2d9272fcf69afac633ab839a7cbc771b",
       "origin": {
         "kind": "design-spec",
         "template_id": "language-guide",
@@ -318,7 +318,7 @@
       }
     },
     "references/languages/go.md": {
-      "sha256": "63447f509673fc2cc92bf45c5ede910de4d2235876b407b8c1e1bca6d43672be",
+      "sha256": "b6acc83c5e7ac23326b753ccdab918cc5630f4d9082833a3fb014482b2227ea2",
       "origin": {
         "kind": "design-spec",
         "template_id": "language-guide",
@@ -327,7 +327,7 @@
       }
     },
     "references/languages/java-kotlin.md": {
-      "sha256": "d81cd181cf4973272b4290b1d1388520bb709a0a3135a0062011dcbc5db6e0aa",
+      "sha256": "49bb2385714d016b8ae21a8ff0c7e6d84d4329d36273aa705d4328ff2289dddf",
       "origin": {
         "kind": "design-spec",
         "template_id": "language-guide",
@@ -336,7 +336,7 @@
       }
     },
     "references/languages/javascript-typescript.md": {
-      "sha256": "e7c8d23fc9d0eeb7846d9461efbd39c5b3254005f3a6943032a4f3cced1830b4",
+      "sha256": "312b6271fafec1481a6d1de6adf345ba8c96c94da5785fd26df10867fb510548",
       "origin": {
         "kind": "design-spec",
         "template_id": "language-guide",
@@ -345,7 +345,7 @@
       }
     },
     "references/languages/php.md": {
-      "sha256": "a5482a6f63828ed069c3e63f21dfb7fb28de0f0f02efc8dbc41163550b8d3a6d",
+      "sha256": "e930d760e165c80e0abd97a7a28f900f62cc884d2362c09d0b9533ff0c99b34c",
       "origin": {
         "kind": "design-spec",
         "template_id": "language-guide",
@@ -354,7 +354,7 @@
       }
     },
     "references/languages/python.md": {
-      "sha256": "4d98921d0cee97a0a7c23115853693c9b19cc561904d998dd84e0421485bbb59",
+      "sha256": "12c64d49e0407ce5ee6ccb045608672e79b355e15ead3bab141e67840529b724",
       "origin": {
         "kind": "design-spec",
         "template_id": "language-guide",
@@ -363,7 +363,7 @@
       }
     },
     "references/languages/ruby.md": {
-      "sha256": "346fa375c7341bc7918ee33ce6b5ed445ae9acbc779a5b5a836bfdc3e8c2d5ab",
+      "sha256": "89296848578548e064b6b313604198d8f98a966d7cce30107eb001c6eecf777f",
       "origin": {
         "kind": "design-spec",
         "template_id": "language-guide",
@@ -372,7 +372,7 @@
       }
     },
     "references/languages/rust.md": {
-      "sha256": "17a06c69e1a5e4b1caffbceed607f598e704dab1c3779a4deaa167c8285a37f2",
+      "sha256": "77ef40580e566f1f61b9fb531a67c885b02abcb51362a3d3aef52c284721dd31",
       "origin": {
         "kind": "design-spec",
         "template_id": "language-guide",
@@ -381,7 +381,7 @@
       }
     },
     "references/languages/swift.md": {
-      "sha256": "23756ccd70ba785c54ed843570c855a8493c896725f2a6e14e2c789c14454e18",
+      "sha256": "b892608b4cdb2d50c31e2a687b920abcc7d474b633b8b004131460cf4c6fcc22",
       "origin": {
         "kind": "design-spec",
         "template_id": "language-guide",
@@ -408,7 +408,7 @@
       }
     },
     "workflows/audit.md": {
-      "sha256": "ba11c16bf0342560622456a0d739cad01ce596f9bb0185d4a61e587693200a97",
+      "sha256": "e884459638d376a67b38f1e4b97d30ebcbb47d553e8a62178dc665af2af58f71",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-audit",
@@ -417,7 +417,7 @@
       }
     },
     "workflows/plan.md": {
-      "sha256": "f21396e69dd59d1bbc5a20ff9c2adc1012551313c033db9ca818842445b1ee1c",
+      "sha256": "30b0adb9641fea0b8f23fc9a204c695b9c5e741226132a4dd4ea9605593e018d",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-plan",
@@ -426,7 +426,7 @@
       }
     },
     "workflows/project.md": {
-      "sha256": "f0f9264cc78bda0c02594d427ea4508743156267d0cc8d48f5e6b6fc176b5584",
+      "sha256": "c4c57efd782d073e6cb08e53ae185ab52c8d233194245ffaabe2bffebef967d7",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-project",
@@ -435,7 +435,7 @@
       }
     },
     "workflows/read.md": {
-      "sha256": "d07ffc92cbda89b464714895e8929bbb25d13a4e42e816a2117babc5808f3c32",
+      "sha256": "09866ceb42e01ebd1b8d7de94690b8183c032ca5df38024889b9c3502587190b",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-read",
@@ -444,7 +444,7 @@
       }
     },
     "workflows/run.md": {
-      "sha256": "4b9f7f0af98e64394848a8475bd8b8b4742595a78d9543b3698b3f603878bdee",
+      "sha256": "3b95bbcbbdb981cabb057a5ed72fb6b09e29a4361b4d93c15ea0e2269323c0ac",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-run",
@@ -453,7 +453,7 @@
       }
     },
     "workflows/sync.md": {
-      "sha256": "2f58431a750d7344cd87cf86e00703843a97e17c0462ec22f4fb77cd607db674",
+      "sha256": "7d7dcfd87eca7f7a8b9a52867b876a7c36c3f311f92030d37249d6d23fa2371b",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-sync",
@@ -462,7 +462,7 @@
       }
     },
     "workflows/update.md": {
-      "sha256": "b1614e71169afcfab08b62c51afb881540df45831cd25ed889058d49ce2ea489",
+      "sha256": "49ae5142a95a18d81747d529c034145e28b921886cac1c16c3c300d06efb4e40",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-update",
