@@ -19,8 +19,11 @@ use std::process::Output;
 
 const S_A: &str = "aaaaaaaa-0000-4000-8000-00000000000a";
 
-/// The profile of an m-flow project whose integration branch is `integ`.
-const MFLOW_PROFILE: &[u8] = b"{\"schema_version\": 1, \"project_id\": \"demo\", \"purpose\": \"fixture\", \"tools\": [\"rust\"], \"development_methods\": [\"sdd\"], \"hosts\": [\"claude\"], \"work_flow\": {\"flow\": \"m-flow\", \"integration_branch\": \"integ\"}}";
+/// The profile of an m-flow project whose integration branch is `integ` and whose remote copy
+/// is on (the leader turned it on after a preview and the user's yes).
+const MFLOW_PROFILE: &[u8] = b"{\"schema_version\": 1, \"project_id\": \"demo\", \"purpose\": \"fixture\", \"tools\": [\"rust\"], \"development_methods\": [\"sdd\"], \"hosts\": [\"claude\"], \"work_flow\": {\"flow\": \"m-flow\", \"integration_branch\": \"integ\"}, \"remote_copy\": true}";
+/// The same profile with the copy off: the key is absent, and the copy must stay off.
+const COPY_OFF_PROFILE: &[u8] = b"{\"schema_version\": 1, \"project_id\": \"demo\", \"purpose\": \"fixture\", \"tools\": [\"rust\"], \"development_methods\": [\"sdd\"], \"hosts\": [\"claude\"], \"work_flow\": {\"flow\": \"m-flow\", \"integration_branch\": \"integ\"}}";
 /// The same profile with no integration branch named.
 const NO_BRANCH_PROFILE: &[u8] = b"{\"schema_version\": 1, \"project_id\": \"demo\", \"purpose\": \"fixture\", \"tools\": [\"rust\"], \"development_methods\": [\"sdd\"], \"hosts\": [\"claude\"], \"work_flow\": {\"flow\": \"m-flow\"}}";
 
@@ -474,4 +477,195 @@ fn an_absent_remote_branch_is_created_and_a_profile_without_a_branch_is_reported
     assert_eq!(reported["state"], json!("pending"), "{reported}");
     assert!(reported["why"].is_string(), "{reported}");
     assert_eq!(w.integ(), candidate, "nothing moved");
+}
+
+// ---- B1: the copy is off by default and answers off with a preview ---------------------------
+
+/// B1: with the key absent a landing pushes nothing, answers `off`, and the remote stays where
+/// it was.
+#[test]
+fn a_landing_with_the_copy_off_pushes_nothing_and_answers_off() {
+    let mut w = World::new();
+    w.set_profile(COPY_OFF_PROFILE);
+    let seeded = w.remote_tip();
+    let card = w.review_card();
+    let candidate = w.candidate();
+    let landed = w.land(&card, &candidate);
+    assert_eq!(landed["closed"], json!(true), "{landed}");
+    assert_eq!(landed["remote_copy"]["state"], json!("off"), "{landed}");
+    assert_eq!(landed["remote_copy"]["pushed"], json!(false), "{landed}");
+    assert_eq!(w.integ(), candidate, "the landing itself completed");
+    assert_eq!(w.remote_tip(), seeded, "nothing reached the remote");
+    assert_eq!(w.record_state(), "off");
+}
+
+/// B1: with the copy off the on-demand command answers a preview and writes nothing — no push,
+/// no record.
+#[test]
+fn the_off_command_answers_a_preview_and_writes_nothing() {
+    let mut w = World::new();
+    w.set_profile(COPY_OFF_PROFILE);
+    let seeded = w.remote_tip();
+    let answered = w.remote_copy();
+    assert_eq!(answered["state"], json!("off"), "{answered}");
+    let preview = &answered["preview"];
+    assert_eq!(preview["remote"], json!("origin"), "{answered}");
+    assert_eq!(preview["branch"], json!("integ"), "{answered}");
+    assert!(preview["behind_by"].is_number(), "{answered}");
+    assert!(preview["ci"].is_string(), "{answered}");
+    assert!(!w.record().exists(), "the off answer writes no record");
+    assert_eq!(w.remote_tip(), seeded, "nothing reached the remote");
+}
+
+// ---- B2: a token inside a push-remote URL never reaches an answer or the record --------------
+
+/// B2: a pushRemote URL holding a token is redacted wherever the copy answers or records it.
+#[test]
+fn a_token_in_the_push_remote_url_is_redacted() {
+    let w = World::new();
+    git(
+        &w.project,
+        &[
+            "config",
+            "branch.integ.pushRemote",
+            "https://user:secret-tok@example.invalid/x.git",
+        ],
+    );
+    let answered = w.remote_copy();
+    let text = serde_json::to_string(&answered).unwrap();
+    assert!(!text.contains("secret-tok"), "{answered}");
+    assert!(!text.contains("user:"), "{answered}");
+    if w.record().exists() {
+        assert!(!w.record_text().contains("secret-tok"));
+    }
+}
+
+// ---- B3: no tag follows the push, and the push arguments carry the safety flags --------------
+
+/// B3: with push.followTags on, a tag on the tip does not reach the remote.
+#[test]
+fn a_tag_on_the_tip_is_not_pushed() {
+    let w = World::new();
+    git(&w.project, &["config", "push.followTags", "true"]);
+    let card = w.review_card();
+    let candidate = w.candidate();
+    git(&w.project, &["tag", "probe-tag", &candidate]);
+    let landed = w.land(&card, &candidate);
+    assert_eq!(landed["remote_copy"]["state"], json!("done"), "{landed}");
+    assert!(w.remote_tip() == candidate, "the branch was copied");
+    let tags = git(&w.project, &["ls-remote", "--tags", "origin"]);
+    assert!(tags.trim().is_empty(), "no tag reached the remote: {tags}");
+}
+
+/// B3 and the auditor's probe: the push argv carries --no-follow-tags and `--` before the
+/// remote name, and never --force, --mirror or a +refspec. A wrapper around git records it.
+#[test]
+fn the_push_arguments_carry_the_safety_flags() {
+    let w = World::new();
+    let log = w.bare.path().with_extension("argv");
+    let wrapper = w.bare.path().with_extension("gitwrap");
+    let real = git_executable();
+    fs::write(
+        &wrapper,
+        format!(
+            "#!/bin/sh\nfor a in \"$@\"; do [ \"$a\" = push ] && printf '%s\\n' \"$*\" >> {}; done\nexec {} \"$@\"\n",
+            log.to_string_lossy(),
+            real.to_string_lossy(),
+        ),
+    )
+    .unwrap();
+    {
+        use std::os::unix::fs::PermissionsExt;
+        fs::set_permissions(&wrapper, fs::Permissions::from_mode(0o755)).unwrap();
+    }
+    w.write_profile();
+    let mut cmd = w.home.command(&["card", "remote-copy", "--project", &w.p]);
+    cmd.env("MOAI_GIT_BIN", &wrapper);
+    let out = cmd.output().unwrap();
+    let answered = result(&out);
+    assert_eq!(answered["state"], json!("done"), "{answered}");
+    let argv = fs::read_to_string(&log).unwrap();
+    let push_line = argv
+        .lines()
+        .find(|l| l.contains(" push "))
+        .or_else(|| argv.lines().next())
+        .expect("a recorded push call");
+    assert!(push_line.contains("--no-follow-tags"), "{push_line}");
+    assert!(push_line.contains("-- origin refs/heads/"), "{push_line}");
+    assert!(!push_line.contains("--force"), "{push_line}");
+    assert!(!push_line.contains("--mirror"), "{push_line}");
+    assert!(!push_line.contains("+refs/"), "{push_line}");
+}
+
+// ---- N2 and N3: the unreachable push and the unknown descendant -------------------------------
+
+/// N3: a remote holding a descendant the local repository does not know settles as success,
+/// never as a hold (the parent SPEC's AC-3).
+#[test]
+fn an_unknown_descendant_settles_as_done() {
+    let w = World::new();
+    // A third clone makes a commit on the remote that the project never fetched.
+    let third = tempfile::Builder::new()
+        .prefix("moai-test-third-")
+        .tempdir()
+        .unwrap();
+    git(
+        third.path(),
+        &["clone", "-q", &w.bare.path().to_string_lossy(), "c"],
+    );
+    let clone = third.path().join("c");
+    git(&clone, &["checkout", "-q", "-b", "integ", "origin/integ"]);
+    git(
+        &clone,
+        &["commit", "-q", "--allow-empty", "-m", "a remote child"],
+    );
+    let pushed = git(&clone, &["rev-parse", "HEAD"]);
+    git(&clone, &["push", "-q", "origin", "integ:refs/heads/integ"]);
+    let settled = w.remote_copy();
+    assert_eq!(settled["state"], json!("done"), "{settled}");
+    assert_eq!(settled["pushed"], json!(false), "{settled}");
+    assert_eq!(w.remote_tip(), pushed);
+    assert!(!w.record_text().contains("\"hold\""));
+}
+
+/// N2: a push that cannot reach the remote reads pending, never a hold.
+#[test]
+fn an_unreachable_push_reads_pending() {
+    let w = World::new();
+    let wrapper = w.bare.path().with_extension("pushfail");
+    let real = git_executable();
+    fs::write(
+        &wrapper,
+        format!(
+            "#!/bin/sh\nfor a in \"$@\"; do [ \"$a\" = push ] && echo 'fatal: test unreachable' >&2 && exit 128; done\nexec {} \"$@\"\n",
+            real.to_string_lossy(),
+        ),
+    )
+    .unwrap();
+    {
+        use std::os::unix::fs::PermissionsExt;
+        fs::set_permissions(&wrapper, fs::Permissions::from_mode(0o755)).unwrap();
+    }
+    w.write_profile();
+    let card = w.review_card();
+    let candidate = w.candidate();
+    let mut cmd = w.home.command(&[
+        "card",
+        "land",
+        &card,
+        "--head",
+        &candidate,
+        "--met",
+        "1=the test",
+        "--by",
+        "leader",
+        "--project",
+        &w.p,
+    ]);
+    cmd.env("MOAI_GIT_BIN", &wrapper);
+    let out = cmd.output().unwrap();
+    let landed = result(&out);
+    assert_eq!(landed["closed"], json!(true), "{landed}");
+    assert_eq!(landed["remote_copy"]["state"], json!("pending"), "{landed}");
+    assert_eq!(w.record_state(), "pending");
 }
