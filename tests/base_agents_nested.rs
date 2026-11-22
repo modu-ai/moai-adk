@@ -370,6 +370,46 @@ fn the_revert_removes_the_empty_folders_its_apply_created() {
     );
 }
 
+/// The receipt file `<id>/receipt.json` under `dir`, found by walking (the state folder is not
+/// spelled here).
+fn receipt_file(dir: &Path, id: &str) -> Option<PathBuf> {
+    for e in fs::read_dir(dir).ok()?.flatten() {
+        let p = e.path();
+        if !e.file_type().ok()?.is_dir() {
+            continue;
+        }
+        let candidate = p.join("receipt.json");
+        if p.file_name().is_some_and(|n| n == id) && candidate.is_file() {
+            return Some(candidate);
+        }
+        if let Some(found) = receipt_file(&p, id) {
+            return Some(found);
+        }
+    }
+    None
+}
+
+/// The revert never removes more levels than the agent folder's path below the host folder
+/// holds, whatever count a receipt names: a hand-edited count of 99 keeps the empty host folder.
+#[test]
+fn a_receipt_count_above_the_agent_path_keeps_the_host_folder() {
+    let fx = fx();
+    let host = Path::new(&fx.home).join(".claude");
+    fs::create_dir_all(&host).unwrap();
+    let v = fx.apply(&fx.plan());
+    let id = v["result"]["receipt"].as_str().unwrap().to_string();
+    let path = receipt_file(Path::new(&fx.home), &id).expect("receipt file");
+    let mut receipt: Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+    assert_eq!(receipt["created_folders"]["claude"], 2, "{receipt}");
+    receipt["created_folders"]["claude"] = Value::from(99);
+    fs::write(&path, serde_json::to_vec_pretty(&receipt).unwrap()).unwrap();
+
+    let r = fx.revert(&id);
+    assert_eq!(r["result"]["state"], "reverted", "{r}");
+    assert!(!fx.claude_agents().exists(), "{r}");
+    assert!(host.is_dir(), "the empty host folder was removed: {r}");
+}
+
 /// REQ-10: Claude Code itself finds the five base agents and a project role. There is no
 /// documented command that lists definitions without a model run; an unknown `--agent` name
 /// exits before any model call and prints the list it found (measured on Claude Code 2.1.330).

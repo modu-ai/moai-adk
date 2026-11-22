@@ -693,3 +693,37 @@ fn the_preview_shows_routing_appends_and_blocked_style_targets() {
     let name = path.rsplit('/').next().unwrap();
     assert!(flat_text.contains(name), "{text}");
 }
+
+/// SPEC-20261122-output-style-install-checks: the `notices` list (a project setting that hides
+/// the style, the `/status` pointer) is a row of its own word on the question and on the result
+/// screen, never a skipped write.
+#[test]
+fn a_notice_is_its_own_row_never_a_skipped_one() {
+    let notice = serde_json::json!([{"part": "style", "host": "claude",
+        "reason": "if the style does not show up, open /status"}]);
+    let mut changes = fixture("preview-changes");
+    changes["notices"] = notice.clone();
+    let mut done = fixture("applied");
+    done["notices"] = notice;
+    for lang in [Lang::En, Lang::Ko] {
+        let v = view(lang, Look::Plain, 100, None);
+        let (word, skipped) = if lang == Lang::Ko {
+            ("알림", "건너뜀")
+        } else {
+            ("notice", "skipped")
+        };
+        for text in [question(&changes, &v), screen(&done, Asked::Yes, &v)] {
+            let lines: Vec<&str> = text
+                .lines()
+                .filter(|l| l.contains("open /status"))
+                .collect();
+            assert_eq!(lines.len(), 1, "{text}");
+            assert!(lines[0].contains("style claude"), "{text}");
+            assert!(
+                lines[0].contains(&format!("{word}: if the style")),
+                "{text}"
+            );
+            assert!(!lines[0].contains(skipped), "{text}");
+        }
+    }
+}

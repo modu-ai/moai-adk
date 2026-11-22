@@ -280,20 +280,43 @@ fn key_action(current: &Current, key: &str, planned: &Value) -> KeyAction {
             }
         }
         (Value::Object(have), Value::Object(want)) if key == "enabledPlugins" => {
-            if want.iter().all(|(k, v)| have.get(k) == Some(v)) {
+            // Only a picked plugin set to ANOTHER value is a conflict; one already set to the same
+            // value is kept as it is and the rest are added.
+            let differs: Vec<&str> = want
+                .iter()
+                .filter(|(k, v)| have.get(*k).is_some_and(|h| h != *v))
+                .map(|(k, _)| k.as_str())
+                .collect();
+            if !differs.is_empty() {
+                conflict(format!(
+                    "{} already set to another value; it is kept",
+                    differs
+                        .iter()
+                        .map(|k| crate::claude::shown_value(k))
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                ))
+            } else if want.keys().all(|k| have.contains_key(k)) {
                 (("unchanged", None), now.clone())
-            } else if want.keys().any(|k| have.contains_key(k)) {
-                conflict("a picked plugin is already set to another value; it is kept".into())
             } else {
                 let mut merged = have.clone();
-                merged.extend(want.iter().map(|(k, v)| (k.clone(), v.clone())));
-                (
-                    (
-                        "merge",
-                        Some(format!("added to the {} plugins already there", have.len())),
-                    ),
-                    Value::Object(merged),
-                )
+                let mut added = 0;
+                for (k, v) in want {
+                    if !merged.contains_key(k) {
+                        merged.insert(k.clone(), v.clone());
+                        added += 1;
+                    }
+                }
+                let same = want.len() - added;
+                let detail = if same == 0 {
+                    format!("added to the {} plugins already there", have.len())
+                } else {
+                    format!(
+                        "added to the {} plugins already there; {same} picked already set the same way",
+                        have.len()
+                    )
+                };
+                (("merge", Some(detail)), Value::Object(merged))
             }
         }
         _ => conflict("the key already holds another value; it is kept".into()),

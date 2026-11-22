@@ -77,8 +77,17 @@
         "reason": "Written for rc.2 #2636 (parent #2634, leader final design of 2026-11-13): when MoAI uses Orca, the commands that print Orca's version-matched guides (orca skills get orca-cli, orca agent-context --json), the lines MoAI keeps and the fallback when Orca is missing. Checked against https://orca.dev/docs/cli/overview and /docs/cli/skills and the orca 1.4.257 CLI help (read 2026-11-13). No design-22 template exists for adapters. One line ties Orca to the command mode and to MODE-LEADER's clear contract (#2900, #2899 G2, G4)."
       }
     },
+    "references/audit.md": {
+      "sha256": "920c9ccc8611c9519435499ebca1dfe343d01b6bdcad8d80c640d6999ef9efb4",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "audit-contract",
+        "adoption": "new",
+        "reason": "Written for SPEC-20261122-next-flow-skills-agents (REQ-6, REQ-7, text slice B; decisions D-4, D-5, D-6): the one audit contract, at most 6144 bytes. What the auditor receives, what it returns, which session records the verdict (a card note read by the lander) and that the author of a change never audits it, with five side rules: a local code review of the base..head range without its fix or comment options, a re-audit to the first auditor, a lane's tree-bound check receipt, no forked or advisor session, and a finding without file and line counts as none. It absorbs the former internal review note, whose two security sentences keep their pins (tests/core_rules_2876.rs), and points to RUN's check-run rules instead of restating them. Named by the AUDIT row of chains/index.md and by the moai-audit agent's body."
+      }
+    },
     "references/chains/index.md": {
-      "sha256": "135ca5680cd45872c4410601f5363021fcb977c77f6243b32695486b10f52048",
+      "sha256": "79ee15ae9e8c97f1a133b12b0cd9a0a3c146d2c66682acdef00766e528f523a0",
       "origin": {
         "kind": "design-spec",
         "template_id": "chains-index",
@@ -86,8 +95,17 @@
         "reason": "Written for rc.2 #2637 from the leader's final design (#2634, sections 2-4, user instruction 2026-11-13T02:4xZ): request kind -> route -> agents in order -> what the parent reads first. Agents' own lists stay in their `reads:` key, so the chain never repeats them. A rule line for internal/lenses added by #3096 S1."
       }
     },
+    "references/flows/next-flow.md": {
+      "sha256": "1e5a4d05e53f79dfe4d8891c4595457b96872bf1f27fffb8f72e2d079a6c90e7",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "flow-next-flow",
+        "adoption": "new",
+        "reason": "Written for SPEC-20261122-next-flow-skills-agents (REQ-5, text slice B; decisions D-2, D-8, D-9): the one full description of the flow, at most 6144 bytes. It explains the name once, describes the four technical rules as how the flow runs, and states the worktree place, that a lane submits its head and base only, the landing command, the protection hook, the fast-forward push only when the user has turned the remote copy on, and that remote checks never block a landing. Each landing and hook statement was checked against src/card/land.rs and src/card/guard.rs. The flow rule file in the config folder points here (REQ-11)."
+      }
+    },
     "references/home/output-style.md": {
-      "sha256": "c1b1e83187bf23b09c9b19ec943d09953ae72e12dc291f1fb6d35f55024628cb",
+      "sha256": "05534bc4cfe1ec799ec2d5c44720d1ee09a281ead6ae73be192c588da76f5cc2",
       "origin": {
         "kind": "design-spec",
         "template_id": "home-output-style",
@@ -228,15 +246,6 @@
         "template_id": "internal-questions",
         "adoption": "new",
         "reason": "Written for rc.2 cards C-51 and C-52 slice S1 (user decision 2026-11-16): how a question reaches the user in UPDATE, PROJECT and SETUP — the session runs the commands itself, every question is a selection with the recommended option first, and one table names the question tool per host (Claude Code, Codex CLI, OMP) with its plain-text fallback. Named by update.md, project.md, setup.md, internal/interview and the PROJECT row of chains/index.md instead of being repeated."
-      }
-    },
-    "references/internal/review.md": {
-      "sha256": "89d42b51f0173a237bbd60b4c44b23a8c354c4c9d5dcb65df165b13a41e6a413",
-      "origin": {
-        "kind": "design-spec",
-        "template_id": "internal-review",
-        "adoption": "new",
-        "reason": "Written for rc.2 #2637 from the leader's final design (#2634, sections 2-4, user instruction 2026-11-13T02:4xZ): an internal reference (decision A, never a separate skill) read by the agents whose `reads:` names it; it points to the rules already merged instead of restating them."
       }
     },
     "references/internal/sdd.md": {

@@ -356,8 +356,10 @@ fn reads_lists_match_the_design_and_render_on_every_host() {
     assert_eq!(
         reads("moai-audit"),
         [
+            // SPEC-20261122-next-flow-skills-agents slice B: the review note became the audit
+            // contract `references/audit.md`, which no `<folder>/<name>` entry can name; the
+            // source body points to it instead.
             "internal/core-rules",
-            "internal/review",
             "internal/test-design",
             "internal/check-completeness",
             "internal/boundary-checks",
@@ -432,7 +434,6 @@ fn a_reads_entry_without_its_file_is_refused() {
 #[test]
 fn internal_references_say_when_to_read_them() {
     let names = [
-        "review",
         "decide",
         "interview",
         // C-51/C-52 (user decision 2026-11-16): how a question reaches the user.

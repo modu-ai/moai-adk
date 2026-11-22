@@ -830,6 +830,18 @@ enum Action {
         /// The state git gives the hook: `prepared` or `committed`.
         state: String,
     },
+    /// Copies the integration branch to its remote, fast-forward only
+    ///
+    /// Writes no ledger row and, while the profile key is off, touches no network at all. The
+    /// on-demand run of the copy a landing makes: the remote is read first and pushed only
+    /// behind or absent, never forced. A copy that could not finish answers pending and is
+    /// retried by this command or the next landing; diverged histories and a remote tip this
+    /// repository does not know answer hold and move nothing.
+    RemoteCopy {
+        /// The project folder (its profile holds the project id and the integration branch).
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+    },
     /// Writes the ledger. Extend the lease of a taken card
     ///
     /// Writes the ledger. The lease of this session's reservation at `--generation` ends
@@ -1340,7 +1352,7 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             home,
         } => {
             let session = d::session_holder("land", env).ok();
-            moai_cli::card::land::land(
+            let mut landed = moai_cli::card::land::land(
                 &project,
                 &resolve_home(home)?,
                 &card,
@@ -1351,8 +1363,15 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
                     generation,
                     by: &by,
                 },
-            )
+            )?;
+            // The remote copy never fails the landing; its state rides in the answer.
+            let copy = moai_cli::card::remote_copy::copy(&project, "land");
+            if let serde_json::Value::Object(map) = &mut landed {
+                map.insert("remote_copy".to_string(), copy.json());
+            }
+            Ok(landed)
         }
+        Action::RemoteCopy { project } => Ok(moai_cli::card::remote_copy::entry(&project)),
         Action::Drift {
             restore,
             apply,

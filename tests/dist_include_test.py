@@ -39,11 +39,14 @@ class DistIncludeTest(unittest.TestCase):
                 self.assertTrue(os.path.isdir(path), path)
                 self.assertFalse(os.path.islink(path.rstrip("/")), path)
 
-    def test_the_skills_folder_holds_only_the_moai_skill_package(self):
-        # Everything under `skills/` ships; the package `moai update` stages is `skills/moai`.
+    def test_the_skills_folder_holds_the_moai_and_html_report_skill_packages(self):
+        # Everything under `skills/` ships: the moai skill and the internal html-report skill
+        # (SPEC-20261122-html-report-skill AC-1).
         skills = os.path.join(REPO_ROOT, "skills")
-        self.assertEqual(sorted(os.listdir(skills)), ["moai"])
-        self.assertTrue(os.path.isfile(os.path.join(skills, "moai", "SKILL.md")))
+        self.assertEqual(sorted(os.listdir(skills)), ["moai", "moai-html-report"])
+        for name in ("moai", "moai-html-report"):
+            with self.subTest(name=name):
+                self.assertTrue(os.path.isfile(os.path.join(skills, name, "SKILL.md")))
 
     def test_the_agents_folder_holds_agent_sources(self):
         agents = os.path.join(REPO_ROOT, "agents")

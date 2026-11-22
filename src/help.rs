@@ -182,6 +182,7 @@ pub const GROUPS: &[Group] = &[
             ("lane-resume-note", false),
             ("lane-resume-check", false),
             ("lane-duty-line", false),
+            ("lane-run", false),
             ("lane-status", false),
             ("lane-screen", false),
             ("lane-send", false),
@@ -283,6 +284,7 @@ pub const GROUPS: &[Group] = &[
             ("archive-search", false),
             ("worktree-gc-plan", false),
             ("worktree-gc-apply", false),
+            ("worktree-slot", false),
             ("worktree-install-plan", false),
             ("hygiene-plan", false),
             ("hygiene-apply", false),
@@ -496,6 +498,14 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
             "lane-duty-line --lane 1 --host codex --first <task>",
         ],
     ),
+    (
+        "lane-run",
+        &[
+            "lane-run show --lane agent-1",
+            "lane-run set nonstop --lane agent-1",
+            "lane-run prompt --lane agent-1",
+        ],
+    ),
     ("lane-status", &["lane-status . < request.json"]),
     (
         "lane-screen",
@@ -605,6 +615,7 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("archive-restore", &["archive-restore --spec SPEC-001 --permission-reference <ref> ."]),
     ("archive-search", &["archive-search --query cache ."]),
     ("worktree-gc-plan", &["worktree-gc-plan --integration-ref origin/main .", "worktree-gc-apply --integration-ref origin/main --plan-digest <digest> --permission-reference <ref> ."]),
+    ("worktree-slot", &["worktree-slot plan", "worktree-slot ensure lane-01 --at origin/main"]),
     ("worktree-install-plan", &["worktree-install-plan --scope web ."]),
     ("hygiene-plan", &["hygiene-plan --integration-ref origin/main ."]),
     ("hygiene-apply", &["hygiene-apply --integration-ref origin/main --plan-digest <digest> --permission-reference <ref> ."]),

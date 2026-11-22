@@ -35,6 +35,8 @@ use std::{
     path::{Path, PathBuf},
 };
 
+/// The skill folders installed beside the moai skill (SPEC-20261122-html-report-install).
+pub mod extra_skill;
 /// The name-switch script part of `moai update` (card C-33 S3, SPEC-20261119-update-switch-layer).
 pub mod switch;
 
@@ -1554,9 +1556,16 @@ pub struct UserLayerPlan {
     /// The git-hook retire and install (SPEC-20261121-go-path-removal), confirmed apart like
     /// the switch part.
     pub git_hooks: crate::git_hooks::update::Layer,
+    /// The skill folders beside the moai skill (SPEC-20261122-html-report-install); bound into
+    /// `plan_digest`.
+    pub extra_skills: extra_skill::Layer,
     /// Agent, routing and style hosts left out because their skill copy is blocked.
     pub skipped: Vec<serde_json::Value>,
-    /// One digest over the seven plan digests; the only value `--confirm` accepts.
+    /// Things the user should know that are no skipped write: a project setting that hides the
+    /// style, and the `/status` pointer after a style write
+    /// (SPEC-20261122-output-style-install-checks D-6). Read only and outside every digest.
+    pub notices: Vec<serde_json::Value>,
+    /// One digest over the eight plan digests; the only value `--confirm` accepts.
     pub plan_digest: String,
     /// #2872 stage 2: the cleanup preview (`update_cleanup::plan`) from the same staged
     /// package, only when it archives something. Not part of `plan_digest`: only
@@ -1631,11 +1640,16 @@ fn user_layer_plan_in(
     let exe = std::env::current_exe().map_err(|_| "current executable unavailable".to_string())?;
     let bin_names = crate::bin_names::plan_for(home, &exe)?;
     let cwd = std::env::current_dir().map_err(|_| "current directory unavailable".to_string())?;
+    // A project value of `outputStyle` that hides ours, and the `/status` pointer after a style
+    // write: notices only, read-only and outside every digest (install-checks SPEC).
+    let notices = crate::home_style::notices(&style, &cwd);
     let hooks = crate::update_hooks::plan(home, &cwd)?;
     let keys = crate::update_keys::plan(home)?;
     let home_layer = crate::update_home::plan(home)?;
     let switch_layer = switch::plan(home)?;
     let git_hooks_layer = crate::git_hooks::update::plan(home, &cwd)?;
+    // SPEC-20261122-html-report-install: planned on its own, whatever the moai skill copy says.
+    let extra_skills = extra_skill::plan(home, package, allow_older)?;
     // One snapshot: what the agents and the section were rendered from is the staged package.
     if agents.package_digest != staged.digest
         || routing.package_digest != staged.digest
@@ -1651,6 +1665,7 @@ fn user_layer_plan_in(
             bin_names.plan_digest,
             hooks.plan_digest,
             style.plan_digest,
+            extra_skills.plan_digest,
             keys.plan_digest
         ]))
         .map_err(|_| "encode failed")?,
@@ -1670,7 +1685,9 @@ fn user_layer_plan_in(
         home: home_layer,
         switch: switch_layer,
         git_hooks: git_hooks_layer,
+        extra_skills,
         skipped,
+        notices,
         plan_digest,
         cleanup,
     })
@@ -1856,6 +1873,7 @@ fn routing_writes_anything(p: &crate::home_routing::Plan) -> bool {
 pub fn layer_summary(p: &UserLayerPlan) -> String {
     let mut out = String::from("skills\n");
     out.push_str(&plan_summary(&p.skills));
+    out.push_str(&p.extra_skills.summary());
     out.push_str("agents\n");
     for h in &p.agents.hosts {
         let mut counts: BTreeMap<&str, usize> = BTreeMap::new();
@@ -1891,13 +1909,16 @@ pub fn layer_summary(p: &UserLayerPlan) -> String {
     out.push_str(&p.home.summary());
     out.push_str(&p.switch.summary());
     out.push_str(&p.git_hooks.summary());
-    for s in &p.skipped {
-        out.push_str(&format!(
-            "  skipped {} {}: {}\n",
-            s["part"].as_str().unwrap_or(""),
-            s["host"].as_str().unwrap_or(""),
-            s["reason"].as_str().unwrap_or("")
-        ));
+    // A skipped write, then a notice (no write at all), each with its own word.
+    for (word, list) in [("skipped", &p.skipped), ("notice", &p.notices)] {
+        for s in list {
+            out.push_str(&format!(
+                "  {word} {} {}: {}\n",
+                s["part"].as_str().unwrap_or(""),
+                s["host"].as_str().unwrap_or(""),
+                s["reason"].as_str().unwrap_or("")
+            ));
+        }
     }
     out.push_str(&cleanup_summary(p.cleanup.as_ref()));
     out
@@ -1965,6 +1986,7 @@ fn update_command_core(
         || routing_writes_anything(&layer.routing)
         || crate::home_style::writes_anything(&layer.style)
         || layer.bin_names.writes()
+        || layer.extra_skills.writes()
         || layer.hooks.writes()
         || layer.keys.writes();
     let cleanup = cleanup_token(&layer, confirm_cleanup)?;
@@ -1995,12 +2017,17 @@ fn update_command_core(
             "bin_names": layer.bin_names.to_json(),
             "hooks": layer.hooks.to_json(),
             "skipped": layer.skipped,
+            "notices": layer.notices,
             "confirm_with": format!(
                 "moai update {}--confirm {}",
                 if allow_older { "--allow-older " } else { "" },
                 layer.plan_digest
             ),
         });
+        // SPEC-20261122-html-report-install: only a release with another skill folder shows it.
+        if let Some(x) = layer.extra_skills.to_json() {
+            out["extra_skills"] = x;
+        }
         // #2871 I2 S3: only a HOME with legacy key files has a `keys` part.
         if !layer.keys.rows.is_empty() {
             out["keys"] = layer.keys.to_json();
@@ -2152,6 +2179,14 @@ fn update_command_core(
     ));
     // #2871 I2 S3: the vault import of a legacy key file; its plan was confirmed.
     let keys = part(crate::update_keys::apply(home, &fresh.keys, PERMISSION));
+    // SPEC-20261122-html-report-install: the skill folders beside the moai skill, on their own.
+    let extra_skills = part(extra_skill::apply(
+        home,
+        &package,
+        &fresh.extra_skills,
+        PERMISSION,
+        allow_older,
+    ));
     // #2540: `applied` says whether files were written, not only that the apply steps ran.
     let applied = keys["state"] == json!("applied")
         || matches!(skills["status"].as_str(), Some("applied" | "partial"))
@@ -2159,6 +2194,7 @@ fn update_command_core(
         || routing["state"] == json!("applied")
         || style["state"] == json!("applied")
         || bin_names["state"] == json!("applied")
+        || matches!(extra_skills["state"].as_str(), Some("applied" | "partial"))
         || matches!(hooks["state"].as_str(), Some("applied" | "partial"));
     // #2872 stage 2: the confirmed cleanup, after the layer; an error is reported beside it.
     let cleanup = cleanup.map(|t| part(run_cleanup(home, &staged, t, PERMISSION)));
@@ -2192,6 +2228,7 @@ fn update_command_core(
         "bin_names_result": bin_names,
         "hooks_result": hooks,
         "skipped": skipped,
+        "notices": fresh.notices,
         "revert": {
             "agents": revert("agents-home-revert", &agents),
             "routing": revert("home-routing-revert", &routing),
@@ -2199,9 +2236,19 @@ fn update_command_core(
             "hooks": hooks["receipt"].as_str().map(|id| format!(
                 "moai hooks-revert <PROJECT> --receipt {id} --permission-reference <reference>"
             )),
-            "skills": "recovery-plan / recovery-apply for a host left pending",
+            "skills": "recovery-plan / recovery-apply for a moai skill host left pending",
         },
     });
+    if !fresh.extra_skills.parts.is_empty() {
+        out["extra_skills_result"] = extra_skills;
+        // `recovery-plan` reads only the moai skill's receipts: these parts undo their own
+        // failed apply, and a pending receipt's blocked reason gives the way out by hand.
+        out["revert"]["extra_skills"] = json!(
+            "none: a failed apply of a skill folder beside the moai skill removes the files it \
+             created and restores the ones it replaced; if that undo fails too, the part's \
+             reason names the pending receipt and the way out"
+        );
+    }
     if !fresh.keys.rows.is_empty() {
         out["revert"]["keys"] = json!(revert("keys-revert", &keys));
         out["keys_result"] = keys;
@@ -3139,6 +3186,33 @@ mod user_layer_tests {
         assert!(user_layer_plan(&home, &a, &agents, &staged).is_ok());
         let e = user_layer_plan(&home, &b, &agents, &staged).err().unwrap();
         assert!(e.contains("package changed"), "{e}");
+    }
+
+    /// SPEC-20261122-output-style-install-checks: the update plan of an empty HOME writes the
+    /// style file, so its own `notices` list (never `skipped`) carries the `/status` pointer, and
+    /// the terminal summary prints it as a notice, not as a skipped write.
+    #[test]
+    fn the_update_plan_carries_the_style_notice_and_prints_it_as_a_notice() {
+        let tmp = tempfile::tempdir().unwrap();
+        let home = tmp.path().join("home");
+        fs::create_dir_all(&home).unwrap();
+        let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+        let pkg = root.join("skills/moai");
+        let agents = root.join(crate::agent_defs::SOURCE_DIR);
+        let layer = user_layer_plan(&home, &pkg, &agents, &stage_package(&pkg).unwrap()).unwrap();
+        let pointer = |list: &[serde_json::Value]| {
+            list.iter()
+                .filter(|s| s["reason"].as_str().is_some_and(|r| r.contains("/status")))
+                .count()
+        };
+        assert_eq!(pointer(&layer.notices), 1, "{:?}", layer.notices);
+        assert_eq!(pointer(&layer.skipped), 0, "{:?}", layer.skipped);
+        let text = layer_summary(&layer);
+        assert!(
+            text.contains("  notice style claude: if the style does not show up"),
+            "{text}"
+        );
+        assert!(!text.contains("  skipped style claude"), "{text}");
     }
 
     /// #2872 stage 2: the terminal summary gets a cleanup block only when the cleanup plan
