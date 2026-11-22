@@ -72,3 +72,13 @@ Three facts from the official Claude Code pages reach moai: Windows runs a `.cmd
 
 - A cloud session id with a `c-<digit>` part would trip the card-number rule on the trailer line; AC-2 pins a real-shaped link and the rule's boundary keeps `session_…` ids out.
 - The README section must stay true as the product changes; REQ-7's test holds the five statements, not their wording.
+
+## Result
+
+Slice 1 (REQ-3 to REQ-8). Status draft; only the lines below are claimed. Slice 2 (REQ-1, REQ-2) is not started: its files (the launcher and the session start) are reserved by other cards.
+
+- AC-2: met. `cloud_trailer_beside_moai_trailers_adds_no_finding` passes in `tests/host_small_fixes_cli.rs`: a commit with the three moai trailers and a `Claude-Session` link gives no finding at all, the card-number rule included; `trailer-check` reads the link as its own field (`CommitTrailers::cloud_sessions`), so a `Claude-Session` line never fails.
+- AC-3: met. `cloud_trailer_without_moai_session_names_the_cloud_session` passes: with no `Moai-Session` and one well-formed link, the only finding is `cloud_session` (`fails: false`) whose detail names the link, and `missing_session` is not reported.
+- AC-4: met. `cloud_trailer_of_another_shape_or_doubled_is_named_without_failing` passes: a link of another host, a doubled link, the link's start with no id and an id holding a `-` each give `malformed_cloud_session` beside `missing_session`, none failing, and `ok` stays true on `main`. The two mutants that first survived (an empty id accepted, any character accepted in `is_cloud_session_link`) are killed by the last two cases (run by hand on head 0472c57f89).
+- AC-5: met. `readme_states_how_moai_relates_to_anthropic` passes: `README.md` ("Relation to Anthropic and Claude Code") and `README.ko.md` ("Anthropic·Claude Code와의 관계") each hold one section with the five statements, before the license section.
+- AC-1: not met (slice 2).
