@@ -1003,6 +1003,24 @@ fn a_new_worktree_goes_under_the_project_place() {
     assert_eq!(git(&f.repo, &["status", "--porcelain"]), "");
 }
 
+/// REQ-13: a `.claude` that is a link makes the apply refuse before git runs: the answer is a
+/// conflict naming the link, no branch is made and the folder the link points at stays empty.
+#[cfg(unix)]
+#[test]
+fn worktree_place_links_the_apply_refuses_a_linked_claude_folder() {
+    let f = fixture();
+    let outside = f.repo.parent().unwrap().join("outside");
+    fs::create_dir_all(&outside).unwrap();
+    std::os::unix::fs::symlink(&outside, f.repo.join(".claude")).unwrap();
+    let p = plan(&f, "lane");
+    let env = apply(&f, "lane", p["plan_digest"].as_str().unwrap());
+    assert_eq!(env["result"]["decision"], "conflict", "{env}");
+    assert_eq!(env["result"]["reason"], "place_is_a_link", "{env}");
+    assert!(env.to_string().contains(".claude"), "{env}");
+    assert_eq!(fs::read_dir(&outside).unwrap().count(), 0);
+    assert!(!git(&f.repo, &["for-each-ref", "refs/heads"]).contains("lane/"));
+}
+
 /// AC-2: the same name again is refused, never overwritten — a folder already at the path
 /// stays as it was and no branch is made.
 #[test]

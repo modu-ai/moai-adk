@@ -174,3 +174,72 @@ fn worktree_place_status_an_exclude_file_that_is_a_link_is_refused() {
     assert!(err.contains("exclude"), "{err}");
     assert_eq!(std::fs::read_to_string(&outside).unwrap(), "keep\n");
 }
+
+// ---- REQ-13: a place that runs through a link is refused ----
+
+/// Where a link test points: a folder outside the project that must stay empty.
+#[cfg(unix)]
+fn link_world() -> (tempfile::TempDir, std::path::PathBuf, std::path::PathBuf) {
+    let t = tempfile::tempdir().unwrap();
+    let project = t.path().join("project");
+    std::fs::create_dir_all(&project).unwrap();
+    let outside = t.path().join("outside");
+    std::fs::create_dir_all(&outside).unwrap();
+    (t, project, outside)
+}
+
+/// Scene 8 (REQ-13): `.claude` that is a link is refused with the linked path named, and the
+/// folder it points at gets nothing.
+#[cfg(unix)]
+#[test]
+fn worktree_place_links_a_linked_claude_folder_is_refused() {
+    let (_t, project, outside) = link_world();
+    std::os::unix::fs::symlink(&outside, project.join(".claude")).unwrap();
+    let folder = project.join(".claude/worktrees/project-1-k");
+    let err = home_workdir::refuse_linked_place(&project, &folder).unwrap_err();
+    assert!(
+        err.contains(&project.join(".claude").display().to_string()),
+        "{err}"
+    );
+    assert_eq!(std::fs::read_dir(&outside).unwrap().count(), 0);
+}
+
+/// Scene 9 (REQ-13): `.claude/worktrees` that is a link is refused with that path named.
+#[cfg(unix)]
+#[test]
+fn worktree_place_links_a_linked_worktrees_folder_is_refused() {
+    let (_t, project, outside) = link_world();
+    std::fs::create_dir_all(project.join(".claude")).unwrap();
+    std::os::unix::fs::symlink(&outside, project.join(".claude/worktrees")).unwrap();
+    let folder = project.join(".claude/worktrees/project-1-k");
+    let err = home_workdir::refuse_linked_place(&project, &folder).unwrap_err();
+    assert!(
+        err.contains(&project.join(".claude/worktrees").display().to_string()),
+        "{err}"
+    );
+    assert_eq!(std::fs::read_dir(&outside).unwrap().count(), 0);
+}
+
+/// Scene 10 (REQ-13): a worktree folder that is itself a link, even a dangling one, is refused.
+#[cfg(unix)]
+#[test]
+fn worktree_place_links_a_linked_worktree_folder_is_refused() {
+    let (_t, project, outside) = link_world();
+    std::fs::create_dir_all(project.join(".claude/worktrees")).unwrap();
+    let folder = project.join(".claude/worktrees/project-1-k");
+    std::os::unix::fs::symlink(outside.join("missing"), &folder).unwrap();
+    let err = home_workdir::refuse_linked_place(&project, &folder).unwrap_err();
+    assert!(err.contains(&folder.display().to_string()), "{err}");
+}
+
+/// Scene 11 (REQ-13): real folders, or none yet, are accepted.
+#[test]
+fn worktree_place_links_real_folders_and_missing_ones_are_accepted() {
+    let t = tempfile::tempdir().unwrap();
+    let project = t.path().join("project");
+    std::fs::create_dir_all(&project).unwrap();
+    let folder = project.join(".claude/worktrees/project-1-k");
+    home_workdir::refuse_linked_place(&project, &folder).unwrap();
+    std::fs::create_dir_all(project.join(".claude/worktrees")).unwrap();
+    home_workdir::refuse_linked_place(&project, &folder).unwrap();
+}

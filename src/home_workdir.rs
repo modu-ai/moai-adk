@@ -165,6 +165,13 @@ pub fn worktree_dir(project_root: &Path, id: &str) -> Result<PathBuf> {
         .join(worktree_name(project_root, id)?))
 }
 
+/// Refuses a worktree place that runs through a link: `<project>/.claude`, `<project>/.claude/
+/// worktrees` and the `folder` of the new worktree must not be symbolic links (REQ-13). Placeholder:
+/// the body comes with the change that makes the tests pass.
+pub fn refuse_linked_place(_project: &Path, _folder: &Path) -> Result<()> {
+    Ok(())
+}
+
 /// The line this module adds to a repository's local exclude file, anchored at the root.
 const PLACE_EXCLUDE_LINE: &str = "/.claude/worktrees/";
 
