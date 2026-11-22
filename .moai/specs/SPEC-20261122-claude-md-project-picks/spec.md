@@ -51,7 +51,7 @@ parent: SPEC-20261122-claude-md-layout
 
 1. A pure planner for the picks: reads the project root and returns rows for each pick (path, action, earlier bytes); the three picks are three plans with their own digest.
 2. Print them as `choices` like `project-update-plan` does: one command and one digest per pick.
-3. (Done in the first slice.) `claude_shadow` and the pick `claude-import` left the writer; the revert path of old receipts stays.
+3. (Done in the first slice.) `claude_shadow` and the pick `claude-import` left the writer; an old receipt's rows revert through the generic apply recovery (no code reads the pick id).
 4. `agents_local_merge/picks.rs` holds the composite: `plan` reads the project and returns the offer, the warnings and the three choices; `apply` checks the digest of the pre-state, then runs the writer pick, the text merges and the ignore line, each from its own fresh plan, under one composite receipt; `revert` undoes in reverse order and names a file that changed after the apply while the others still revert.
 5. `Kind::Import` in the merge engine writes the line `@AGENTS.md` between two marker lines, so the audited revert and the idempotence check apply to it.
 6. `agents-merge-plan`, `agents-merge-apply` and `agents-merge-revert` take `--pick <move|import|leave>`; without it they keep today's behaviour for the personal file.
