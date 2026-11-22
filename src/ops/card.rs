@@ -458,6 +458,44 @@ enum Action {
         #[arg(long)]
         home: Option<PathBuf>,
     },
+    /// Reads the ledger only. Wait for the next note on the named cards, or for a timeout
+    ///
+    /// Reads the ledger only. Fixes a start mark (`--since`, else the largest note id in the
+    /// ledger), then reads the ledger every `--every` seconds (default 15, 1 to 300). A poll
+    /// keeps the local notes above the mark that are on a named card, or whose first line holds
+    /// `all lanes` in any case on a card that is not `done`, and leaves out the notes of each
+    /// `--not-author` name. The first poll that keeps any ends the wait with all of them, oldest
+    /// first, each with its first line cut to 200 characters (`outcome: "note"`); when the
+    /// timeout passes first the answer is `outcome: "timeout"` with the seconds waited. Both exit
+    /// 0, and nothing is printed while it waits. `--timeout` must be given: 1 second to 12
+    /// hours, written `<n>`, `<n>s`, `<n>m` or `<n>h`. An unknown card, an absent ledger or a
+    /// ledger that is refused is refused before the wait, and nothing is created. A poll that
+    /// finds the ledger busy counts as a poll that found nothing.
+    Wait {
+        /// A card to watch, `C-<n>` or `#<number>` as `card show` reads it (repeat, or join with
+        /// commas).
+        #[arg(long = "card", required = true, value_delimiter = ',')]
+        cards: Vec<String>,
+        /// The longest wait: `<n>`, `<n>s`, `<n>m` or `<n>h`, 1 second to 12 hours.
+        #[arg(long, value_parser = moai_cli::card::wait::timeout_arg)]
+        timeout: u64,
+        /// The time between two polls, written as `--timeout` is: 1 to 300 seconds (default 15).
+        #[arg(long, value_parser = moai_cli::card::wait::every_arg)]
+        every: Option<u64>,
+        /// Return only notes with a larger note id (default: the largest note id at the start).
+        #[arg(long, value_parser = clap::value_parser!(i64).range(0..))]
+        since: Option<i64>,
+        /// Leave out the notes this author wrote, for example the lane's own name (repeat for
+        /// more).
+        #[arg(long = "not-author")]
+        not_authors: Vec<String>,
+        /// The project folder (its profile holds the project id).
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// The HOME to read (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+    },
     /// Writes the ledger. Append a note to a card, the text on stdin
     ///
     /// Writes the ledger. Stores the text read from stdin as one note with one `card.note`
@@ -1145,6 +1183,25 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             leader,
             home,
         } => moai_cli::card::inbox::inbox(&project, &resolve_home(home)?, leader.as_deref()),
+        Action::Wait {
+            cards,
+            timeout,
+            every,
+            since,
+            not_authors,
+            project,
+            home,
+        } => moai_cli::card::wait::wait(
+            &project,
+            &resolve_home(home)?,
+            &moai_cli::card::wait::WaitRequest {
+                cards: &cards,
+                timeout_secs: timeout,
+                every_secs: every.unwrap_or(moai_cli::card::wait::EVERY_DEFAULT_SECS),
+                since,
+                not_authors: &not_authors,
+            },
+        ),
         Action::Note {
             card,
             kind,
