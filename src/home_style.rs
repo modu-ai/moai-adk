@@ -7,9 +7,11 @@
 //! section. The Codex block that an earlier version wrote into `~/.codex/AGENTS.md` is no longer
 //! written (SPEC-20261122-codex-home-update-removed); a receipt that names it is skipped.
 //!
-//! `plan` writes nothing. Every target is three-way: the style file is ours only while it holds
-//! the bytes we last wrote (`~/.moai-cli/home-style/<host>.json`); anything else is a
-//! `conflict`, never overwritten. `outputStyle` is set only when the key is absent — another
+//! `plan` writes nothing. Every target is three-way: the style file is ours while it holds the
+//! bytes the record names (`<state folder>/home-style/<host>.json`; a config folder other than
+//! the HOME's default has its own record, see [`record_name`]), the current text (adopted into the
+//! record) or a text MoAI shipped earlier ([`EARLIER_RENDERS`]); anything else is a `conflict`,
+//! never overwritten. `outputStyle` is set only when the key is absent — another
 //! value is the user's choice and a `conflict`. A symlinked folder or file blocks the host.
 //! `apply` re-plans,
 //! refuses any other digest and keeps the before bytes in a receipt; `revert` restores a file
@@ -203,11 +205,38 @@ fn current_file(path: &Path) -> Result<Option<Vec<u8>>> {
     }
 }
 
+/// The name of the owned-text record of `host`'s folder in the state folder (D-1 of
+/// SPEC-20261122-output-style-install-checks). The HOME's default folder keeps `<host>.json`
+/// where it is today. Another config folder (`CLAUDE_CONFIG_DIR`) gets `<host>-<12 hex digits of
+/// the sha256 of its path>.json`, and only on a HOME whose state root is this generation's: the
+/// record is never made below the earlier state folder, so any other HOME blocks it.
+fn record_name(home: &Path, host: &str) -> Result<String> {
+    let Some(h) = crate::host_home::Host::from_name(host) else {
+        return Ok(format!("{host}.json"));
+    };
+    let folder = crate::host_home::resolve(h, home)?;
+    if folder == home.join(h.default_dir()) {
+        return Ok(format!("{host}.json"));
+    }
+    if !matches!(
+        crate::state_root::classify_home(home).generation,
+        "rust" | "rust-first"
+    ) {
+        return Err(format!(
+            "{} is not the default {host} folder, and this HOME's state root is not of this generation; its own record needs the moved state folder, so nothing is written for it",
+            folder.display()
+        ));
+    }
+    let digest = sha(folder.to_string_lossy().as_bytes());
+    let hex = digest.strip_prefix("sha256:").unwrap_or(&digest);
+    Ok(format!("{host}-{}.json", &hex[..12]))
+}
+
 fn read_state(home: &Path, host: &str) -> Result<HostState> {
     let root = state_root(home);
     plain_dir_or_absent(&crate::home_root::path(home))?;
     plain_dir_or_absent(&root)?;
-    match read_opt(&root.join(format!("{host}.json")))? {
+    match read_opt(&root.join(record_name(home, host)?))? {
         None => Ok(HostState {
             schema_version: SCHEMA_VERSION,
             owned_sha256: None,
@@ -225,7 +254,7 @@ fn read_state(home: &Path, host: &str) -> Result<HostState> {
 
 fn write_state(home: &Path, host: &str, owned: Option<String>) -> Result<()> {
     write_json(
-        &state_root(home).join(format!("{host}.json")),
+        &state_root(home).join(record_name(home, host)?),
         &HostState {
             schema_version: SCHEMA_VERSION,
             owned_sha256: owned,
@@ -365,6 +394,11 @@ fn setting_plan(home: &Path, style: &TargetPlan) -> TargetPlan {
         Ok((_, c)) => c,
         Err(e) => return blocked(t, e),
     };
+    // A folder whose record cannot be made blocks both of its targets (REQ-7); a folder that is
+    // refused for its own reason (a link) keeps that reason first.
+    if let Err(e) = record_name(home, "claude") {
+        return blocked(t, e);
+    }
     t.expected_sha256 = cur.as_deref().map(sha);
     if !["create", "merge", "unchanged"].contains(&style.action.as_str()) {
         t.action = "skipped".into();
@@ -386,6 +420,13 @@ fn setting_plan(home: &Path, style: &TargetPlan) -> TargetPlan {
         Ok(map) => match map.get("outputStyle") {
             None => "set",
             Some(Value::String(s)) if s == STYLE_NAME => "unchanged",
+            // Claude Code compares the name with case: a near miss silently selects its default.
+            Some(Value::String(s)) if s.eq_ignore_ascii_case(STYLE_NAME) => {
+                t.detail = Some(format!(
+                    "outputStyle is \"{s}\": the name is case-sensitive, so Claude Code uses its default style, not {STYLE_NAME}; not changed"
+                ));
+                "conflict"
+            }
             Some(other) => {
                 t.detail = Some(format!(
                     "outputStyle is {other}: the user's choice; not changed"
@@ -398,9 +439,49 @@ fn setting_plan(home: &Path, style: &TargetPlan) -> TargetPlan {
     t
 }
 
-/// Stub for the red run.
-pub fn notices(_plan: &Plan, _project: &Path) -> Vec<Value> {
-    Vec::new()
+/// The `outputStyle` string a project settings file holds when it is another name than ours; none
+/// for a file that is absent, linked, not a regular file, too large, not a JSON object, or without
+/// a string value (REQ-3). Reads only.
+fn hiding_style(path: &Path) -> Option<String> {
+    let meta = fs::symlink_metadata(path).ok()?;
+    if !meta.is_file() || meta.len() > SETTINGS_LIMIT as u64 {
+        return None;
+    }
+    let map = settings_object(&fs::read(path).ok()?).ok()?;
+    match map.get("outputStyle") {
+        Some(Value::String(s)) if s != STYLE_NAME => Some(s.clone()),
+        _ => None,
+    }
+}
+
+/// The notices of a style plan for `moai update` (SPEC-20261122-output-style-install-checks):
+/// one entry per project settings file whose `outputStyle` hides ours in `project` (REQ-2, read
+/// only), and one `/status` pointer when the plan writes the style file (REQ-4). Entries have the
+/// shape of the update's `skipped` list; they are not part of any plan digest and nothing is
+/// written for them.
+pub fn notices(plan: &Plan, project: &Path) -> Vec<Value> {
+    let mut out = Vec::new();
+    for rel in [".claude/settings.local.json", ".claude/settings.json"] {
+        if let Some(value) = hiding_style(&project.join(rel)) {
+            out.push(json!({
+                "part": "style",
+                "host": "claude",
+                "reason": format!("{rel} sets outputStyle \"{value}\": this project uses it, not {STYLE_NAME}; moai does not change project settings"),
+            }));
+        }
+    }
+    let writes_style = plan
+        .targets
+        .iter()
+        .any(|t| t.kind == "style_file" && matches!(t.action.as_str(), "create" | "merge"));
+    if writes_style {
+        out.push(json!({
+            "part": "style",
+            "host": "claude",
+            "reason": "if the style does not show up in Claude Code, `/status` lists a style file it could not load",
+        }));
+    }
+    out
 }
 
 /// Read-only preview of every host; writes nothing.

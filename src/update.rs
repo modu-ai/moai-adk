@@ -1631,6 +1631,9 @@ fn user_layer_plan_in(
     let exe = std::env::current_exe().map_err(|_| "current executable unavailable".to_string())?;
     let bin_names = crate::bin_names::plan_for(home, &exe)?;
     let cwd = std::env::current_dir().map_err(|_| "current directory unavailable".to_string())?;
+    // A project value of `outputStyle` that hides ours, and the `/status` pointer after a style
+    // write: notices only, read-only and outside every digest (install-checks SPEC).
+    skipped.extend(crate::home_style::notices(&style, &cwd));
     let hooks = crate::update_hooks::plan(home, &cwd)?;
     let keys = crate::update_keys::plan(home)?;
     let home_layer = crate::update_home::plan(home)?;

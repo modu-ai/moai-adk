@@ -2,7 +2,7 @@
 id: SPEC-20261122-output-style-moai-easy
 title: "The MoAI-Easy output style reads for Claude Code only and its installer takes an unchanged file as its own"
 status: draft
-revision: 3
+revision: 4
 created: 2026-11-22
 ---
 
@@ -18,7 +18,7 @@ created: 2026-11-22
 
 ## Non-goals
 
-- Codex 대상(`~/.codex/AGENTS.md` 의 `moai-output-style` 블록)은 건드리지 않아요. Codex 제거 카드들이 걷어요. 같은 소스 문장을 아직 읽으므로 그때까지 Codex 블록도 새 문장을 담아요.
+- Codex 대상은 이 SPEC 에서 다루지 않아요. `~/.codex/AGENTS.md` 의 `moai-output-style` 블록은 Codex 제거 카드가 이미 걷어서 설치기가 더는 쓰지 않아요(`SPEC-20261122-codex-home-update-removed`); 이 SPEC 의 템플릿은 Claude Code 만 말해요.
 - `outputStyle` 설정 규칙(없을 때만 넣고 다른 값은 충돌)과 `settings.json` 바이트 보존은 바꾸지 않아요.
 - 스타일 이름 `MoAI-Easy`, 설치 경로, 영수증·되돌리기 형식은 바꾸지 않아요.
 - 설치 소유 기록 파일의 위치(`~/.moai-cli/home-style/`)는 다른 카드(경로 이전)의 몫이에요. 이 SPEC 의 시험은 위치를 `moai_cli::home_root::path` 로 물어요.
@@ -52,7 +52,7 @@ created: 2026-11-22
 
 ## Scope
 
-- write: `.moai/specs/SPEC-20261122-output-style-moai-easy/**`, `skills/moai/references/*/output-style.md`(`home` 폴더의 한 파일), `skills/moai/references/source-manifest.json`(그 파일 항목의 해시와 사유 한 곳), `src/home_style.rs`, `tests/home_style_cli.rs`, `tests/fixtures/home-style/**`
+- write: `.moai/specs/SPEC-20261122-output-style-moai-easy/**`, `skills/moai/references/*/output-style.md`(`home` 폴더의 한 파일), `skills/moai/references/source-manifest.json`(그 파일 항목의 해시와 사유 한 곳), `src/home_style.rs`, `tests/home_style_cli.rs`, `tests/home_style_ownership_cli.rs`(새 시험 파일, 접두 `home_style_ownership`), `tests/repo_scans_test.py`(그 시험 파일의 면제 행 한 줄), `tests/fixtures/home-style/**`
 - read-only: `src/ops/home_style_*.rs`, `src/update.rs`, `src/update_tux.rs`, `src/host_home.rs`, `tests/style_banner_scan.rs`, `tests/update_user_layer_cli.rs`, `tests/host_home_cli.rs`
 - forbidden: Codex 대상 바꾸기, `outputStyle` 규칙 바꾸기, 사용자 HOME 쓰기(시험은 임시 HOME 만), 새 동작 이름 더하기(`update_tux` 가 아는 `create`·`merge`·`conflict`·`unchanged` 만 써요)
 
@@ -83,5 +83,5 @@ created: 2026-11-22
 | D-4 | 옛 배포 렌더는 sha256 목록으로 가지고, 현재 렌더가 같은 파일은 소유 기록과 상관없이 채택한다 | git 이력의 렌더 세 벌: 최초 `15578b330b`(앞머리 값 따옴표 없음·`★`) sha256 `93e53607dd194da86abfbe7ea993303fff1d17af1a1a1ae6868788938ed785d2`, YAML 수정 `235f7cafd6`(`★`) `d4e1851a65eb0ed21d16de888925dc6ae8a7bcebcae45973e1b8cce884d75e67`, 배너 `02af21e018`(`🗿`, 현재 팁 `62e457ceaf` 의 렌더) `690c534220f9bb1614e27d608e56306da973e2fe7b53e2bc1a4d42d7d2b9c65e`; 이 세 벌은 `git show <커밋>:src/home_style.rs` 의 `DESCRIPTION` 과 형식, `git show <커밋>:skills/moai/references/home/output-style.md` 로 계산했어요. 마지막 것이 사용자가 오늘 손으로 옮긴 설치본이에요 | 목록 항목과 분기의 제거 |
 | D-5 | 앞머리 `keep-coding-instructions: true` 를 유지한다 | 공식 문서: 맞춤 스타일은 이 값이 없으면 기본 소프트웨어 공학 지침을 빼요. 이 스타일은 대화 표현만 바꾸고 코딩 방식은 바꾸지 않아요 | 한 줄 |
 | D-6 | 템플릿의 한국어 해요체 문장은 사용자가 고른 대로 둔다 | 보고서 2-3절과 카드 본문(사용자 선택 2026-11-22) | 그 문장 삭제 |
-| D-7 | Codex 대상은 이 SPEC 에서 건드리지 않는다 | 카드 본문: "Codex targets go with the Codex removal cards" | 해당 없음 |
+| D-7 | Codex 대상은 이 SPEC 에서 다루지 않는다(그 블록은 Codex 제거 카드가 걷었다) | 카드 본문: "Codex targets go with the Codex removal cards"; 제거는 `SPEC-20261122-codex-home-update-removed` 가 했어요 | 해당 없음 |
 | D-8 | 스타일 파일은 호스트 설정 폴더(`CLAUDE_CONFIG_DIR` 또는 `~/.claude`)에만 쓰고 프로젝트 `.claude/output-styles` 에는 쓰지 않는다 | 사용자 결정 2026-11-22(전역 설치): 일반 moai 내용은 전역에 두고 프로젝트 폴더는 쓰지 않아요; 개인 말투를 팀 저장소에 커밋하게 되는 것도 막아요 | 해당 없음 |
