@@ -1,5 +1,6 @@
 //! 04-C (#2000) UPDATE partial-failure recovery. Every case runs in a temporary HOME; the
-//! pending state is built from a REAL v1 install (update-apply on both hosts) and then
+//! pending state is built from a REAL v1 install (update-apply on the Claude host, the one
+//! host the home update writes) and then
 //! either rewritten by hand to a chosen crash point (the end state a crash would leave:
 //! files on disk + a pending receipt) or produced by 04-B's own sabotage pattern.
 //! No injection hook is added to `apply_update`.
@@ -23,6 +24,8 @@ const SKILL_V2: &str = "---\nname: moai\ndescription: fixture package\n---\n# Mo
 const UPDATE_V1: &str = "# UPDATE\nv1\n";
 const UPDATE_V2: &str = "# UPDATE\nv2\n";
 const NEW_V2: &str = "# NEW\nadded in v2\n";
+const USER_SKILL: &str = "---\nname: my-skill\ndescription: the user's own\n---\n# Mine\n";
+const USER_NOTES: &str = "my notes, not part of any update\n";
 
 fn sha(b: &[u8]) -> String {
     moai_cli::digest(b)
@@ -59,7 +62,7 @@ fn run(args: &[&str], stdin: Option<&Value>) -> (bool, Value) {
     (out.status.success(), v)
 }
 
-/// A HOME with both hosts committed at v1, and a v2 stage.
+/// A HOME with the Claude host committed at v1, and a v2 stage.
 struct Fixture {
     _root: TempDir,
     home: PathBuf,
@@ -117,9 +120,6 @@ fn fixture() -> Fixture {
 }
 
 impl Fixture {
-    fn codex(&self) -> PathBuf {
-        self.home.join(".agents/skills/moai")
-    }
     fn claude(&self) -> PathBuf {
         self.home.join(".claude/skills/moai")
     }
@@ -137,15 +137,15 @@ impl Fixture {
         serde_json::from_slice(&fs::read(self.hosts_dir().join(format!("{host}.json"))).unwrap())
             .unwrap()
     }
-    /// The end state of a codex apply to v2 that crashed after `new.md` was created and
+    /// The end state of a Claude apply to v2 that crashed after `new.md` was created and
     /// `SKILL.md` replaced, before `update.md` and before the receipt commit: both files
     /// already carry v2 but the receipt still says pending (published left false for
     /// SKILL.md to show that classification ignores the flag).
-    fn crash_codex(&self) {
-        let root = self.codex();
+    fn crash_claude(&self) {
+        let root = self.claude();
         fs::write(root.join("workflows/new.md"), NEW_V2).unwrap();
         fs::write(root.join("SKILL.md"), SKILL_V2).unwrap();
-        let mut r = self.receipt("codex");
+        let mut r = self.receipt("claude");
         r["status"] = json!("pending");
         r["operation"] = json!("update.apply");
         r["finished_at"] = Value::Null;
@@ -161,10 +161,20 @@ impl Fixture {
              "published": false, "error": null},
         ]);
         fs::write(
-            self.hosts_dir().join("codex.json"),
+            self.hosts_dir().join("claude.json"),
             serde_json::to_vec_pretty(&r).unwrap(),
         )
         .unwrap();
+    }
+    /// An unrelated user folder beside the package and a user file inside it, under the
+    /// Claude host root; no receipt names either.
+    fn user_files(&self) -> (PathBuf, PathBuf) {
+        let skill = self.home.join(".claude/skills/my-skill/SKILL.md");
+        fs::create_dir_all(skill.parent().unwrap()).unwrap();
+        fs::write(&skill, USER_SKILL).unwrap();
+        let notes = self.claude().join("my-notes.md");
+        fs::write(&notes, USER_NOTES).unwrap();
+        (skill, notes)
     }
     /// Places the known-good copy of `bytes` for `host` (what 04-B stores at apply since #2091).
     fn known_good(&self, host: &str, bytes: &str) {
@@ -223,31 +233,30 @@ fn kind_of(v: &Value) -> String {
     v["error"]["kind"].as_str().unwrap().to_string()
 }
 
-/// AC-04C-01: host1 (claude) committed, host2 (codex) pending after a crash; files 1·2 are
-/// `matches_after`, file 3 `matches_before`; the plan writes nothing.
+/// AC-04C-01: the Claude host is pending after a crash; files 1·2 are `matches_after`,
+/// file 3 `matches_before`; the plan writes nothing.
 #[test]
 fn recovery_plan_classifies_partial_host_without_writes() {
     let f = fixture();
-    f.crash_codex();
-    f.known_good("codex", SKILL_V1);
+    f.crash_claude();
+    f.known_good("claude", SKILL_V1);
     let before = f.digest_of(&f.home);
     let plan = f.plan();
     assert_eq!(f.digest_of(&f.home), before, "recovery-plan writes nothing");
-    assert_eq!(host(&plan, "claude")["receipt_status"], json!("committed"));
-    assert_eq!(host(&plan, "claude")["files"], json!([]));
-    let codex = host(&plan, "codex");
-    assert_eq!(codex["receipt_status"], json!("pending"));
-    let new = file(codex, "workflows/new.md");
+    let claude = host(&plan, "claude");
+    assert_eq!(claude["receipt_status"], json!("pending"));
+    assert_eq!(claude["files"].as_array().unwrap().len(), 3, "{claude}");
+    let new = file(claude, "workflows/new.md");
     assert_eq!(
         (new["class"].as_str(), new["action"].as_str()),
         (Some("matches_after"), Some("remove"))
     );
-    let skill = file(codex, "SKILL.md");
+    let skill = file(claude, "SKILL.md");
     assert_eq!(
         (skill["class"].as_str(), skill["action"].as_str()),
         (Some("matches_after"), Some("restore"))
     );
-    let upd = file(codex, "workflows/update.md");
+    let upd = file(claude, "workflows/update.md");
     assert_eq!(
         (upd["class"].as_str(), upd["action"].as_str()),
         (Some("matches_before"), Some("none"))
@@ -257,53 +266,68 @@ fn recovery_plan_classifies_partial_host_without_writes() {
 }
 
 /// AC-04C-02: the pending host's `matches_after` files return to their before bytes (the
-/// created file is removed, the replaced one restored from known-good); the committed
-/// host's tree is byte-identical; the receipt becomes `recovered`.
+/// created file is removed, the replaced one restored from known-good); an unrelated user
+/// folder and a user file under the host root keep their bytes, and the host root as a
+/// whole is back to its bytes from before the crash; the receipt becomes `recovered`.
 #[test]
-fn recovery_restores_only_this_request_changes_and_keeps_other_host() {
+fn recovery_restores_only_this_request_and_keeps_an_unrelated_user_file() {
     let f = fixture();
-    f.crash_codex();
-    f.known_good("codex", SKILL_V1);
-    let claude_before = f.digest_of(&f.claude());
-    let claude_receipt = f.receipt("claude");
+    let version = f.receipt("claude")["package_version"].clone();
+    assert!(version.is_string(), "{version}");
+    let (user_skill, user_notes) = f.user_files();
+    let host_root = f.home.join(".claude");
+    let before_crash = f.digest_of(&host_root);
+    f.crash_claude();
+    f.known_good("claude", SKILL_V1);
+    assert_ne!(
+        f.digest_of(&host_root),
+        before_crash,
+        "the crash changed files"
+    );
     let plan = f.plan();
+    // The plan names this request's files only: the user's files are not in it.
+    let planned: Vec<&str> = host(&plan, "claude")["files"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|f| f["path"].as_str().unwrap())
+        .collect();
+    assert_eq!(
+        planned,
+        ["workflows/new.md", "SKILL.md", "workflows/update.md"]
+    );
     let (ok, v) = f.apply(&plan);
     assert!(ok, "{v}");
     let r = &v["result"];
     assert_eq!(r["status"], json!("success"));
-    let codex = host(r, "codex");
-    assert_eq!(codex["receipt_status"], json!("recovered"));
-    assert_eq!(codex["recovered"], json!(["workflows/new.md", "SKILL.md"]));
-    assert_eq!(codex["conflicts"], json!([]));
+    let claude = host(r, "claude");
+    assert_eq!(claude["receipt_status"], json!("recovered"));
+    assert_eq!(claude["recovered"], json!(["workflows/new.md", "SKILL.md"]));
+    assert_eq!(claude["conflicts"], json!([]));
+    assert_eq!(claude["written"], json!(true));
     // REQ-04C-06: the receipt's version_before reaches the report (#2091).
+    assert_eq!(claude["version_before"], version);
+    assert_eq!(claude["version_before_basis"], Value::Null);
+    assert_eq!(claude["version_after"], version);
+    assert!(!f.claude().join("workflows/new.md").exists());
     assert_eq!(
-        codex["version_before"],
-        f.receipt("claude")["package_version"]
-    );
-    assert!(codex["version_before"].is_string());
-    assert_eq!(codex["version_before_basis"], Value::Null);
-    assert_eq!(
-        codex["version_after"],
-        f.receipt("claude")["package_version"]
-    );
-    assert!(!f.codex().join("workflows/new.md").exists());
-    assert_eq!(
-        sha(&fs::read(f.codex().join("SKILL.md")).unwrap()),
+        sha(&fs::read(f.claude().join("SKILL.md")).unwrap()),
         sha(SKILL_V1.as_bytes())
     );
     assert_eq!(
-        fs::read_to_string(f.codex().join("workflows/update.md")).unwrap(),
+        fs::read_to_string(f.claude().join("workflows/update.md")).unwrap(),
         UPDATE_V1
     );
-    assert_eq!(f.receipt("codex")["status"], json!("recovered"));
+    assert_eq!(f.receipt("claude")["status"], json!("recovered"));
     let record: Value =
-        serde_json::from_slice(&fs::read(f.hosts_dir().join("codex.recovery.json")).unwrap())
+        serde_json::from_slice(&fs::read(f.hosts_dir().join("claude.recovery.json")).unwrap())
             .unwrap();
     assert_eq!(record["status"], json!("recovered"));
-    // The committed host: no write at all.
-    assert_eq!(host(r, "claude")["written"], json!(false));
-    assert_eq!(f.digest_of(&f.claude()), claude_before);
-    assert_eq!(f.receipt("claude"), claude_receipt);
+    // The unrelated user folder and file: not written at all.
+    assert_eq!(fs::read_to_string(&user_skill).unwrap(), USER_SKILL);
+    assert_eq!(fs::read_to_string(&user_notes).unwrap(), USER_NOTES);
+    // Nothing beyond this request moved: the host root is byte for byte as before the crash.
+    assert_eq!(f.digest_of(&host_root), before_crash);
     // A stale or altered plan is refused before any write.
     let (ok, v) = f.apply(&plan);
     assert!(!ok);
@@ -315,11 +339,11 @@ fn recovery_restores_only_this_request_changes_and_keeps_other_host() {
 #[test]
 fn recovery_preserves_user_edit_made_after_failure() {
     let f = fixture();
-    f.crash_codex();
-    f.known_good("codex", SKILL_V1);
-    fs::write(f.codex().join("SKILL.md"), "my own edit\n").unwrap();
+    f.crash_claude();
+    f.known_good("claude", SKILL_V1);
+    fs::write(f.claude().join("SKILL.md"), "my own edit\n").unwrap();
     let plan = f.plan();
-    let skill = file(host(&plan, "codex"), "SKILL.md");
+    let skill = file(host(&plan, "claude"), "SKILL.md");
     assert_eq!(skill["class"], json!("conflict"));
     assert_eq!(skill["reason"], json!("user_changed"));
     let (ok, v) = f.apply(&plan);
@@ -330,16 +354,16 @@ fn recovery_preserves_user_edit_made_after_failure() {
         json!("partial"),
         "a remaining conflict is never summarised as success"
     );
-    let codex = host(r, "codex");
-    assert_eq!(codex["recovered"], json!(["workflows/new.md"]));
-    assert_eq!(codex["conflicts"][0]["path"], json!("SKILL.md"));
-    assert_eq!(codex["receipt_status"], json!("pending"));
+    let claude = host(r, "claude");
+    assert_eq!(claude["recovered"], json!(["workflows/new.md"]));
+    assert_eq!(claude["conflicts"][0]["path"], json!("SKILL.md"));
+    assert_eq!(claude["receipt_status"], json!("pending"));
     assert_eq!(
-        fs::read_to_string(f.codex().join("SKILL.md")).unwrap(),
+        fs::read_to_string(f.claude().join("SKILL.md")).unwrap(),
         "my own edit\n"
     );
-    assert!(!f.codex().join("workflows/new.md").exists());
-    assert_eq!(f.receipt("codex")["status"], json!("pending"));
+    assert!(!f.claude().join("workflows/new.md").exists());
+    assert_eq!(f.receipt("claude")["status"], json!("pending"));
 }
 
 /// AC-04C-04: no known-good copy, a damaged receipt, a symlink substitution and a
@@ -351,9 +375,9 @@ fn recovery_refuses_without_known_good_or_on_tamper() {
     // before #2091 or a copy since lost; 04-B now stores one per replaced file): the
     // replaced file is conflict(no_known_good); the created file is still removed.
     let f = fixture();
-    f.crash_codex();
+    f.crash_claude();
     let plan = f.plan();
-    let skill = file(host(&plan, "codex"), "SKILL.md");
+    let skill = file(host(&plan, "claude"), "SKILL.md");
     assert_eq!(
         (skill["class"].as_str(), skill["reason"].as_str()),
         (Some("conflict"), Some("no_known_good"))
@@ -362,13 +386,13 @@ fn recovery_refuses_without_known_good_or_on_tamper() {
     assert!(ok, "{v}");
     assert_eq!(v["result"]["status"], json!("partial"));
     assert_eq!(
-        fs::read_to_string(f.codex().join("SKILL.md")).unwrap(),
+        fs::read_to_string(f.claude().join("SKILL.md")).unwrap(),
         SKILL_V2
     );
     // A known-good file whose bytes do not hash to the name is not a copy.
     let f = fixture();
-    f.crash_codex();
-    let dir = f.hosts_dir().join("codex/known-good");
+    f.crash_claude();
+    let dir = f.hosts_dir().join("claude/known-good");
     fs::create_dir_all(&dir).unwrap();
     let name = sha(SKILL_V1.as_bytes());
     fs::write(
@@ -377,21 +401,21 @@ fn recovery_refuses_without_known_good_or_on_tamper() {
     )
     .unwrap();
     assert_eq!(
-        file(host(&f.plan(), "codex"), "SKILL.md")["reason"],
+        file(host(&f.plan(), "claude"), "SKILL.md")["reason"],
         json!("no_known_good")
     );
 
     // (b) Damaged receipt: the host is blocked and nothing is written.
     let f = fixture();
-    f.crash_codex();
+    f.crash_claude();
     fs::write(
-        f.hosts_dir().join("codex.json"),
+        f.hosts_dir().join("claude.json"),
         b"{\"schema_version\": 1, \"surprise\": true}",
     )
     .unwrap();
     let before = f.digest_of(&f.home);
     let plan = f.plan();
-    assert_eq!(host(&plan, "codex")["receipt_status"], json!("blocked"));
+    assert_eq!(host(&plan, "claude")["receipt_status"], json!("blocked"));
     let (ok, v) = f.apply(&plan);
     assert!(ok, "{v}");
     assert_eq!(v["result"]["status"], json!("partial"));
@@ -403,20 +427,20 @@ fn recovery_refuses_without_known_good_or_on_tamper() {
 
     // (c) Symlink substitution: the created file became a link; it is not followed.
     let f = fixture();
-    f.crash_codex();
+    f.crash_claude();
     let outside = f.home.join("outside.md");
     fs::write(&outside, NEW_V2).unwrap();
-    fs::remove_file(f.codex().join("workflows/new.md")).unwrap();
-    std::os::unix::fs::symlink(&outside, f.codex().join("workflows/new.md")).unwrap();
+    fs::remove_file(f.claude().join("workflows/new.md")).unwrap();
+    std::os::unix::fs::symlink(&outside, f.claude().join("workflows/new.md")).unwrap();
     let plan = f.plan();
-    let new = file(host(&plan, "codex"), "workflows/new.md");
+    let new = file(host(&plan, "claude"), "workflows/new.md");
     assert_eq!(
         (new["class"].as_str(), new["reason"].as_str()),
         (Some("conflict"), Some("symlink"))
     );
     let (ok, _) = f.apply(&plan);
     assert!(ok);
-    assert!(fs::symlink_metadata(f.codex().join("workflows/new.md"))
+    assert!(fs::symlink_metadata(f.claude().join("workflows/new.md"))
         .unwrap()
         .file_type()
         .is_symlink());
@@ -429,8 +453,8 @@ fn recovery_refuses_without_known_good_or_on_tamper() {
     // (d) Read-only directory: the remove fails; nothing is reverted, the receipt stays
     // pending with the failure recorded, and the command does not retry.
     let f = fixture();
-    f.crash_codex();
-    let wf = f.codex().join("workflows");
+    f.crash_claude();
+    let wf = f.claude().join("workflows");
     let mut perm = fs::metadata(&wf).unwrap().permissions();
     std::os::unix::fs::PermissionsExt::set_mode(&mut perm, 0o555);
     fs::set_permissions(&wf, perm.clone()).unwrap();
@@ -440,19 +464,19 @@ fn recovery_refuses_without_known_good_or_on_tamper() {
     fs::set_permissions(&wf, perm).unwrap();
     assert!(!ok);
     assert_eq!(kind_of(&v), "conflict", "{v}");
-    assert!(f.codex().join("workflows/new.md").exists());
-    assert_eq!(f.receipt("codex")["status"], json!("pending"));
+    assert!(f.claude().join("workflows/new.md").exists());
+    assert_eq!(f.receipt("claude")["status"], json!("pending"));
     let record: Value =
-        serde_json::from_slice(&fs::read(f.hosts_dir().join("codex.recovery.json")).unwrap())
+        serde_json::from_slice(&fs::read(f.hosts_dir().join("claude.recovery.json")).unwrap())
             .unwrap();
     assert_eq!(record["status"], json!("failed"));
     assert_eq!(record["failed"]["path"], json!("workflows/new.md"));
     assert_eq!(record["reverted"], json!([]));
 
-    // (e) A real pending receipt from 04-B's own failure path (sabotaged codex tree).
+    // (e) A real pending receipt from 04-B's own failure path (sabotaged Claude tree).
     let f = fixture();
-    fs::remove_dir_all(f.codex().join("workflows")).unwrap();
-    fs::write(f.codex().join("workflows"), b"not a directory\n").unwrap();
+    fs::remove_dir_all(f.claude().join("workflows")).unwrap();
+    fs::write(f.claude().join("workflows"), b"not a directory\n").unwrap();
     let (ok, v) = run(
         &[
             "update-plan",
@@ -476,33 +500,35 @@ fn recovery_refuses_without_known_good_or_on_tamper() {
         Some(&p),
     );
     assert!(ok, "{v}");
-    assert_eq!(f.receipt("codex")["status"], json!("pending"));
+    assert_eq!(f.receipt("claude")["status"], json!("pending"));
     let plan = f.plan();
-    let codex = host(&plan, "codex");
-    assert_eq!(codex["receipt_status"], json!("pending"));
+    let claude = host(&plan, "claude");
+    assert_eq!(claude["receipt_status"], json!("pending"));
     // SKILL.md was replaced before the failure; 04-B (#2091) kept its known-good copy, so
     // it is revertible. The files under the sabotaged `workflows` path are not regular
     // files and are preserved as conflicts.
-    let skill = file(codex, "SKILL.md");
+    let skill = file(claude, "SKILL.md");
     assert_eq!(
         (skill["class"].as_str(), skill["action"].as_str()),
         (Some("matches_after"), Some("restore"))
     );
     assert_eq!(
-        file(codex, "workflows/new.md")["reason"],
+        file(claude, "workflows/new.md")["reason"],
         json!("not_a_regular_file")
     );
 }
 
 /// AC-04C-02 against 04-B's real known-good copy and REQ-04C-06 `version_before`: the
 /// receipt 04-B itself wrote (sabotaged mid-apply) is recovered from the copy 04-B stored,
-/// and the report carries the version that failed apply replaced.
+/// and the report carries the version that failed apply replaced. Recovery writes the one
+/// file it can restore and nothing else under the host root.
 #[test]
 fn recovery_uses_real_known_good_and_reports_version_before() {
     let f = fixture();
-    let claude_before = f.digest_of(&f.claude());
-    fs::remove_dir_all(f.codex().join("workflows")).unwrap();
-    fs::write(f.codex().join("workflows"), b"not a directory\n").unwrap();
+    let v1_version = f.receipt("claude")["package_version"].clone();
+    assert!(v1_version.is_string(), "{v1_version}");
+    fs::remove_dir_all(f.claude().join("workflows")).unwrap();
+    fs::write(f.claude().join("workflows"), b"not a directory\n").unwrap();
     let home = f.home.to_str().unwrap();
     let stage = f.stage2.to_str().unwrap();
     let (ok, v) = run(&["update-plan", home, stage], None);
@@ -521,79 +547,75 @@ fn recovery_uses_real_known_good_and_reports_version_before() {
         Some(&p),
     );
     assert!(ok, "{v}");
-    let receipt = f.receipt("codex");
+    let receipt = f.receipt("claude");
     assert_eq!(receipt["status"], json!("pending"));
-    assert!(
-        receipt["version_before"].is_string(),
-        "04-B records version_before: {receipt}"
+    assert_eq!(
+        receipt["version_before"], v1_version,
+        "04-B records the version it replaced: {receipt}"
     );
     // The copy 04-B stored, under the REQ-04C-03 path.
     let hex = sha(SKILL_V1.as_bytes());
     assert!(f
         .hosts_dir()
-        .join("codex/known-good")
+        .join("claude/known-good")
         .join(hex.strip_prefix("sha256:").unwrap())
         .is_file());
     assert_eq!(
-        fs::read_to_string(f.codex().join("SKILL.md")).unwrap(),
+        fs::read_to_string(f.claude().join("SKILL.md")).unwrap(),
         SKILL_V2
     );
-    // claude committed v2 in the same run; it must stay as it is now.
-    let claude_after_update = f.digest_of(&f.claude());
-    assert_ne!(claude_after_update, claude_before);
+    // Everything under the host root except the one restorable file must stay as it is now.
+    let host_root = f.home.join(".claude");
+    let rest_after_update = tree_digest(&host_root, &["skills/moai/SKILL.md"]).unwrap();
 
     let plan = f.plan();
-    assert_eq!(
-        host(&plan, "codex")["version_before"],
-        receipt["version_before"]
-    );
+    assert_eq!(host(&plan, "claude")["version_before"], v1_version);
     let (ok, v) = f.apply(&plan);
     assert!(ok, "{v}");
-    let codex = host(&v["result"], "codex");
-    assert_eq!(codex["recovered"], json!(["SKILL.md"]));
-    assert_eq!(codex["version_before"], receipt["version_before"]);
-    assert_eq!(codex["version_before_basis"], Value::Null);
+    let claude = host(&v["result"], "claude");
+    assert_eq!(claude["recovered"], json!(["SKILL.md"]));
+    assert_eq!(claude["version_before"], v1_version);
+    assert_eq!(claude["version_before_basis"], Value::Null);
     // Conflicts remain under the sabotaged path, so the host stays pending and the run is
     // partial; SKILL.md is back to its v1 bytes from the real copy.
     assert_eq!(v["result"]["status"], json!("partial"));
-    assert_eq!(codex["receipt_status"], json!("pending"));
+    assert_eq!(claude["receipt_status"], json!("pending"));
     assert_eq!(
-        fs::read_to_string(f.codex().join("SKILL.md")).unwrap(),
+        fs::read_to_string(f.claude().join("SKILL.md")).unwrap(),
         SKILL_V1
     );
     assert_eq!(
-        f.digest_of(&f.claude()),
-        claude_after_update,
-        "committed host untouched"
+        fs::read(f.claude().join("workflows")).unwrap(),
+        b"not a directory\n",
+        "the conflict under the sabotaged path is preserved"
     );
-    // claude's committed v2 receipt also records the version it replaced: no basis needed.
-    assert!(host(&v["result"], "claude")["version_before"].is_string());
     assert_eq!(
-        host(&v["result"], "claude")["version_before_basis"],
-        Value::Null
+        tree_digest(&host_root, &["skills/moai/SKILL.md"]).unwrap(),
+        rest_after_update,
+        "nothing but the restored file was written"
     );
 }
 
-/// AC-04C-05: a pending host refuses a new update-apply until recovered; the committed
-/// host plans and applies as usual; after recovery the host applies normally.
+/// AC-04C-05: a pending host refuses a new update-apply until recovered (its files and its
+/// receipt stay as they are); after recovery the host plans and applies normally.
 #[test]
 fn pending_host_blocks_reapply_until_recovered() {
     let f = fixture();
-    f.crash_codex();
-    f.known_good("codex", SKILL_V1);
+    f.crash_claude();
+    f.known_good("claude", SKILL_V1);
     let home = f.home.to_str().unwrap();
     let stage = f.stage2.to_str().unwrap();
     let (ok, v) = run(&["update-plan", home, stage], None);
     assert!(ok, "{v}");
     let p = v["result"].clone();
-    let codex = host(&p, "codex");
-    assert_eq!(codex["preflight"], json!("blocked"));
+    let claude = host(&p, "claude");
+    assert_eq!(claude["preflight"], json!("blocked"));
     assert_eq!(
-        codex["blocked_reason"],
+        claude["blocked_reason"],
         json!("host receipt is pending; run recovery-plan first")
     );
-    assert_eq!(host(&p, "claude")["preflight"], json!("ok"));
-    let codex_before = f.digest_of(&f.codex());
+    let claude_before = f.digest_of(&f.claude());
+    let receipt_before = f.receipt("claude");
     let (ok, v) = run(
         &[
             "update-apply",
@@ -607,13 +629,14 @@ fn pending_host_blocks_reapply_until_recovered() {
         Some(&p),
     );
     assert!(ok, "{v}");
-    assert_eq!(host(&v["result"], "codex")["status"], json!("blocked"));
-    assert_eq!(host(&v["result"], "claude")["status"], json!("applied"));
+    assert_eq!(host(&v["result"], "claude")["status"], json!("blocked"));
+    assert_eq!(v["result"]["status"], json!("blocked"));
     assert_eq!(
-        f.digest_of(&f.codex()),
-        codex_before,
+        f.digest_of(&f.claude()),
+        claude_before,
         "pending host not written"
     );
+    assert_eq!(f.receipt("claude"), receipt_before, "receipt still pending");
 
     // Recover, then the host plans and applies again.
     let plan = f.plan();
@@ -621,7 +644,7 @@ fn pending_host_blocks_reapply_until_recovered() {
     let (ok, v) = run(&["update-plan", home, stage], None);
     assert!(ok, "{v}");
     let p = v["result"].clone();
-    assert_eq!(host(&p, "codex")["preflight"], json!("ok"));
+    assert_eq!(host(&p, "claude")["preflight"], json!("ok"));
     let (ok, v) = run(
         &[
             "update-apply",
@@ -635,10 +658,10 @@ fn pending_host_blocks_reapply_until_recovered() {
         Some(&p),
     );
     assert!(ok, "{v}");
-    assert_eq!(host(&v["result"], "codex")["status"], json!("applied"));
-    assert_eq!(f.receipt("codex")["status"], json!("committed"));
+    assert_eq!(host(&v["result"], "claude")["status"], json!("applied"));
+    assert_eq!(f.receipt("claude")["status"], json!("committed"));
     assert_eq!(
-        fs::read_to_string(f.codex().join("SKILL.md")).unwrap(),
+        fs::read_to_string(f.claude().join("SKILL.md")).unwrap(),
         SKILL_V2
     );
 }
@@ -647,13 +670,13 @@ fn pending_host_blocks_reapply_until_recovered() {
 #[test]
 fn recovery_rerun_is_noop() {
     let f = fixture();
-    f.crash_codex();
-    f.known_good("codex", SKILL_V1);
+    f.crash_claude();
+    f.known_good("claude", SKILL_V1);
     assert!(f.apply(&f.plan()).0);
     let before = f.digest_of(&f.home);
     let plan = f.plan();
-    assert_eq!(host(&plan, "codex")["receipt_status"], json!("recovered"));
-    assert_eq!(host(&plan, "codex")["files"], json!([]));
+    assert_eq!(host(&plan, "claude")["receipt_status"], json!("recovered"));
+    assert_eq!(host(&plan, "claude")["files"], json!([]));
     let (ok, v) = f.apply(&plan);
     assert!(ok, "{v}");
     assert_eq!(v["result"]["status"], json!("success"));
