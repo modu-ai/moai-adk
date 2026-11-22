@@ -108,6 +108,23 @@ fn the_shipped_source_names_only_claude_code_and_keeps_the_picked_sections() {
     assert!(!s.contains("MoAI-Easy ★"));
 }
 
+/// AC-11 (REQ-11): the progress board section keeps the board's look and points to the flow
+/// rule for when it closes a turn with background work still running; the choice between the
+/// board and the task list is the flow rule's, so the style names no task tool.
+#[test]
+fn the_progress_board_points_to_the_flow_rule_for_background_work() {
+    let s = src();
+    let start = s.find("## Progress board").unwrap();
+    let end = start + s[start..].find("## Format").unwrap();
+    let section = &s[start..end];
+    for item in ["`rules/moai/flow.md`", "background work", "subagents, shells, monitors"] {
+        assert!(section.contains(item), "{item}");
+    }
+    for word in ["TaskCreate", "TaskUpdate", "task tool"] {
+        assert!(!section.contains(word), "{word}");
+    }
+}
+
 /// AC-3 (REQ-4): the description is the one of the SPEC, with no double quote inside.
 #[test]
 fn the_rendered_description_has_no_double_quote_and_names_the_banner() {

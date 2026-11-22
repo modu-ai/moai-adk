@@ -2,7 +2,7 @@
 id: SPEC-20261122-output-style-moai-easy
 title: "The MoAI-Easy output style reads for Claude Code only and its installer takes an unchanged file as its own"
 status: draft
-revision: 4
+revision: 5
 created: 2026-11-22
 ---
 
@@ -13,6 +13,8 @@ created: 2026-11-22
 사용자 선택 2026-11-22: 리더 보고서(출력 스타일 개선과 moai-adk용 Claude mods 설계, 2-3절)의 개선된 스타일 문장을 제품 템플릿 `skills/moai/references/home/output-style.md` 에 반영해요. 배너는 `MoAI 🗿` 이고 Codex·"모든 도구" 문구가 없어요. 아울러 스타일 설치기(`src/home_style.rs`)가 지금 템플릿 렌더와 같거나 과거에 배포한 렌더와 같은 파일을 MoAI 소유로 받아서, 손으로 옮겨 둔 설치본이 "충돌"에 갇히지 않게 해요(지금은 소유 기록이 옛 판을 가리키면 다음 템플릿 변경이 영영 적용되지 않아요).
 
 개정 2: 리더 노트와 전체 문서 조사 보고서 9-2절(사용자 결정 2026-11-22)이 두 가지를 더했어요 — 설치 뒤 스타일이 켜졌는지 `moai update` 가 확인하고 알리는 것, 그리고 스타일을 사용자가 쓰는 Claude 설정 폴더마다 한 벌씩 폴더별 기록과 함께 쓰는 것. 요구가 12개를 넘으면 쪼갠다는 크기 규칙에 따라 이 둘은 자식 SPEC `SPEC-20261122-output-style-install-checks` 가 가져요(`parent` 로 이 SPEC 을 이어요). 이 SPEC 의 요구 REQ-1…REQ-10 은 바뀌지 않았어요.
+
+개정 5: 사용자 결정 2026-11-22(카드 노트의 USER DECISION 두 건)이 "백그라운드 일이 도는 동안 진행 중임이 화면에 보여야 한다"는 규칙을 두 곳에 나눴어요. 언제 보드로 턴을 끝내는지(작업 목록 도구가 있으면 그 목록, 없으면 보드)는 Claude 설정 폴더의 흐름 규칙 `rules/moai/flow.md` 가 정하고(다른 카드의 몫), 이 스타일은 보드의 모양만 가지며 그 규칙을 가리켜요. 그래서 REQ-11 과 AC-11 을 더했고, 템플릿 렌더가 바뀌므로 나가는 렌더를 옛 렌더 목록에 더해요(D-4, REQ-8).
 
 공식 문서 근거(2026-11-22 원문 `.md` 전체 읽음: output-styles 204줄, settings 344줄, memory 667줄): 스타일은 지시일 뿐 강제가 아니에요. 맞춤 스타일은 `keep-coding-instructions: true` 가 없으면 기본 소프트웨어 공학 지침을 빼요. 사용자 범위 위치는 `~/.claude/output-styles` 이고, 값 `outputStyle` 은 대소문자를 가려요. 파일은 시작할 때 읽어서 고치면 재시작해야 반영돼요. 프로젝트 `.claude/output-styles` 도 읽히지만 moai 는 쓰지 않아요(사용자 결정, 아래 Decisions D-8).
 
@@ -36,6 +38,7 @@ created: 2026-11-22
 - REQ-8: The list of earlier shipped renders shall hold the sha256 of every style file text moai-cli rendered before the current one and never the current one.
 - REQ-9: WHEN an apply that adopted or replaced a style file is reverted, the revert shall give back the before bytes and the previous record. · failure: none
 - REQ-10: The installer shall write the style file only below the host's config folder and nothing below a project folder.
+- REQ-11: The Progress board section of the shipped output style source shall name the flow rule `rules/moai/flow.md` as the place that decides when a turn with background work still running ends with the board · failure: none — the section names no task tool
 
 ## Acceptance
 
@@ -49,6 +52,7 @@ created: 2026-11-22
 - AC-8 (REQ-9): 채택·교체를 적용한 뒤 되돌리면 파일 바이트와 소유 기록이 적용 전과 같아요 · verify: `cargo test --offline --locked --test home_style_ownership_cli reverting_an_adopted_or_replaced_style_file_gives_back_bytes_and_record`
 - AC-9 (REQ-10): 프로젝트 폴더에 `.claude/output-styles` 가 있어도 plan 의 대상 경로가 모두 HOME 의 호스트 폴더 아래이고 apply 가 프로젝트 폴더를 쓰지 않아요 · verify: `cargo test --offline --locked --test home_style_ownership_cli the_style_is_never_written_below_a_project_folder`
 - AC-10 (REQ-1…REQ-10): 이웃 시험이 그대로 통과해요 · verify: `cargo test --offline --locked --test update_user_layer_cli` 와 `cargo test --offline --locked --test host_home_cli` 와 `cargo test --offline --locked --test home_style_cli`
+- AC-11 (REQ-11): 템플릿의 진행 보드 절에 `rules/moai/flow.md`·"background work"·"subagents, shells, monitors" 가 있고 `TaskCreate`·`TaskUpdate`·"task tool" 은 없어요(어느 쪽을 보일지는 흐름 규칙이 정해요) · verify: `cargo test --offline --locked --test home_style_ownership_cli the_progress_board_points_to_the_flow_rule_for_background_work`
 
 ## Scope
 
@@ -63,6 +67,7 @@ created: 2026-11-22
 2. RED(슬라이스 2): `tests/home_style_ownership_cli.rs` 와 `tests/fixtures/home-style/render-1.md`~`render-3.md`(옛 배포 렌더 세 벌을 git 이력에서 꺼낸 것, 목록의 sha256 과 맞춰요)와 `src/home_style.rs` 단위 시험을 먼저 더하고, 템플릿·설치기가 옛 모습인 채로 실패하는 것을 눈으로 봐요.
 3. GREEN(슬라이스 2): 템플릿을 보고서 2-3절 본문으로 바꾸되 앞머리 없이(D-1), `DESCRIPTION` 을 큰따옴표 없이(D-2), 설치기에 옛 렌더 목록과 채택·교체 규칙(D-3, D-4)을 넣고 `python3 -I tools/source_manifest.py write` 로 매니페스트를 갱신해요.
 4. 확인: 위 verify 명령, `cargo test --offline --locked --test update_user_layer_cli`, `host_home_cli`, `style_banner_scan`, `python3 -m unittest tests.source_manifest_test tests.skill_references_test`, `moai spec check`, `git diff --check`, fmt, clippy `--all-targets`, trailer-check, `moai check affected` 한 번.
+5. 개정 5(조각 4): RED 로 AC-11 시험을 먼저 더해 지금 템플릿에서 실패를 보고, GREEN 에서 진행 보드 절에 흐름 규칙을 가리키는 한 문장을 넣고, 나가는 렌더를 `EARLIER_RENDERS` 와 픽스처 `render-4.md` 에 더하고, 시험의 현재 렌더 sha256 과 매니페스트 해시를 새 판으로 바꿔요.
 
 ## Risks
 
@@ -80,8 +85,9 @@ created: 2026-11-22
 | D-1 | 템플릿은 보고서 2-3절의 본문만 담고 앞머리는 설치 코드가 붙인다 | `source()` 가 앞머리로 시작하는 소스를 거부하고 설명을 코드에 두는 구조예요(보고서 2-4 둘째 줄) | 템플릿 한 파일의 되돌림 |
 | D-2 | `DESCRIPTION` 은 `Plain words, four steps (understand, plan, do, check), evidence before done, MoAI 🗿 banners and a progress board.` 로 큰따옴표를 뺀다 | 제안 파일의 `"done"` 은 설치 코드가 값을 큰따옴표로 감싸서 앞머리를 깨요(`the_style_frontmatter_is_valid_yaml` 이 막아요) | 상수 한 줄 |
 | D-3 | 채택과 옛 렌더 교체는 새 동작 이름 없이 `merge` 로 표시한다 | `update.rs`·`update_tux.rs` 가 아는 이름은 `create`·`append`·`merge`·`set`·`unchanged`·`conflict`·`blocked`·`skipped` 뿐이에요 | 분기 한 곳 |
-| D-4 | 옛 배포 렌더는 sha256 목록으로 가지고, 현재 렌더가 같은 파일은 소유 기록과 상관없이 채택한다 | git 이력의 렌더 세 벌: 최초 `15578b330b`(앞머리 값 따옴표 없음·`★`) sha256 `93e53607dd194da86abfbe7ea993303fff1d17af1a1a1ae6868788938ed785d2`, YAML 수정 `235f7cafd6`(`★`) `d4e1851a65eb0ed21d16de888925dc6ae8a7bcebcae45973e1b8cce884d75e67`, 배너 `02af21e018`(`🗿`, 현재 팁 `62e457ceaf` 의 렌더) `690c534220f9bb1614e27d608e56306da973e2fe7b53e2bc1a4d42d7d2b9c65e`; 이 세 벌은 `git show <커밋>:src/home_style.rs` 의 `DESCRIPTION` 과 형식, `git show <커밋>:skills/moai/references/home/output-style.md` 로 계산했어요. 마지막 것이 사용자가 오늘 손으로 옮긴 설치본이에요 | 목록 항목과 분기의 제거 |
+| D-4 | 옛 배포 렌더는 sha256 목록으로 가지고, 현재 렌더가 같은 파일은 소유 기록과 상관없이 채택한다 | git 이력의 렌더 세 벌: 최초 `15578b330b`(앞머리 값 따옴표 없음·`★`) sha256 `93e53607dd194da86abfbe7ea993303fff1d17af1a1a1ae6868788938ed785d2`, YAML 수정 `235f7cafd6`(`★`) `d4e1851a65eb0ed21d16de888925dc6ae8a7bcebcae45973e1b8cce884d75e67`, 배너 `02af21e018`(`🗿`, 현재 팁 `62e457ceaf` 의 렌더) `690c534220f9bb1614e27d608e56306da973e2fe7b53e2bc1a4d42d7d2b9c65e`; 이 세 벌은 `git show <커밋>:src/home_style.rs` 의 `DESCRIPTION` 과 형식, `git show <커밋>:skills/moai/references/home/output-style.md` 로 계산했어요. 마지막 것이 사용자가 오늘 손으로 옮긴 설치본이에요. 개정 5 에서 넷째 렌더를 더해요: 조각 2 가 착지시킨 판(`872deaa540`, 해요체 문장과 `MoAI 🗿` 배너) `a31d966b0486f501839121832eb6a99d3fc718996b22a901e9e17884a0ab369e`, 픽스처 `render-4.md` | 목록 항목과 분기의 제거 |
 | D-5 | 앞머리 `keep-coding-instructions: true` 를 유지한다 | 공식 문서: 맞춤 스타일은 이 값이 없으면 기본 소프트웨어 공학 지침을 빼요. 이 스타일은 대화 표현만 바꾸고 코딩 방식은 바꾸지 않아요 | 한 줄 |
 | D-6 | 템플릿의 한국어 해요체 문장은 사용자가 고른 대로 둔다 | 보고서 2-3절과 카드 본문(사용자 선택 2026-11-22) | 그 문장 삭제 |
 | D-7 | Codex 대상은 이 SPEC 에서 다루지 않는다(그 블록은 Codex 제거 카드가 걷었다) | 카드 본문: "Codex targets go with the Codex removal cards"; 제거는 `SPEC-20261122-codex-home-update-removed` 가 했어요 | 해당 없음 |
 | D-8 | 스타일 파일은 호스트 설정 폴더(`CLAUDE_CONFIG_DIR` 또는 `~/.claude`)에만 쓰고 프로젝트 `.claude/output-styles` 에는 쓰지 않는다 | 사용자 결정 2026-11-22(전역 설치): 일반 moai 내용은 전역에 두고 프로젝트 폴더는 쓰지 않아요; 개인 말투를 팀 저장소에 커밋하게 되는 것도 막아요 | 해당 없음 |
+| D-9 | 진행 보드 절은 보드의 모양만 가지고, 백그라운드 일이 남은 턴의 끝에 보드를 보일지 작업 목록을 쓸지는 흐름 규칙 `rules/moai/flow.md` 를 가리킨다 | 사용자 결정 2026-11-22(두 번째 결정이 첫 번째를 좁혔어요): 행동 한 줄은 고른 출력 스타일과 상관없이 지켜져야 해서 흐름 규칙에 두고, 스타일에는 모양과 가리키는 말만 둬요; 프로젝트 `CLAUDE.md` 에는 넣지 않아요 | 템플릿 한 문장 |
