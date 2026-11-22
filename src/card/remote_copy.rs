@@ -257,6 +257,16 @@ pub fn copy(project: &Path, by: &str) -> Outcome {
     outcome
 }
 
+/// The answer of `card remote-copy`: the copy run by the on-demand command itself.
+pub fn entry(project: &Path) -> Value {
+    let outcome = copy(project, "remote-copy");
+    let mut answer = outcome.json();
+    answer["action"] = json!("remote-copy");
+    // No ledger row is written; the copy writes only its one record in the git folder.
+    answer["writes"] = json!(false);
+    answer
+}
+
 struct Classified {
     outcome: Outcome,
     step: Step,
