@@ -779,18 +779,20 @@ enum Action {
         #[arg(long)]
         home: Option<PathBuf>,
     },
-    /// Writes the git folder and the ledger only with `--restore --apply`. Show where the integration branch stands against the ledger, and put it back
+    /// Writes the git folder and the ledger only with `--restore`. Show where the integration branch stands against the ledger, and put it back
     ///
-    /// Reads and writes nothing without `--restore --apply`. Compares the integration branch's tip
+    /// The plain view writes nothing. `--restore` writes one file, the preview's one-use nonce in
+    /// the common git folder, and `--apply` also moves the branch and writes the ledger row. Compares the integration branch's tip
     /// with the ledger: it must be the result commit of the newest successful `card land` of the
     /// branch (or, for a landing that was interrupted, the tip it started from or its target).
     /// `state` is `ok`, `drift` or `no_landing` (the ledger never moved the branch). A commit
     /// added by hand and a branch copied or rewound with `git branch -C` are drift. `--restore`
-    /// previews the move back to the recorded commit: the commits it drops, the plan digest and
-    /// nothing moved. With `--apply` the move is made, and only with `--by leader`, the digest of
-    /// a preview of the same state and `--permission-reference` naming the user's yes: the branch
-    /// moves under the guard (the intent record `card land` writes) and one `card.tip_restored`
-    /// row is written. The preview and the plain view write nothing.
+    /// previews the move back to the recorded commit: the commits it drops and a plan digest bound
+    /// to the nonce; nothing moves. With `--apply` the move is made, and only with `--by leader`,
+    /// the digest of the latest preview of the same state (a digest is used once) and
+    /// `--permission-reference` naming the user's yes: the branch moves under the guard (a restore
+    /// intent that names the recorded landing and its ledger row, the one move that may be no
+    /// fast-forward) and one `card.tip_restored` row is written.
     Drift {
         /// Preview the move back to the recorded commit.
         #[arg(long)]
