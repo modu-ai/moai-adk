@@ -2,7 +2,7 @@
 id: SPEC-20261122-output-style-install-checks
 title: "The update checks that the MoAI-Easy style is the one in force and writes it once per Claude config folder"
 status: draft
-revision: 2
+revision: 3
 created: 2026-11-22
 parent: SPEC-20261122-output-style-moai-easy
 ---
@@ -66,6 +66,8 @@ parent: SPEC-20261122-output-style-moai-easy
 - 이전 세대 HOME 에서는 둘째 폴더 설치가 막혀요(REQ-7). 경로 이전이 끝난 HOME 에서만 여러 폴더가 돼요. 사용자는 막힘 이유로 그 사실을 보아요.
 - 프로젝트 설정이 어디에 있는지는 update 가 도는 폴더에 달려요. 프로젝트가 아닌 곳에서 돌면 읽을 파일이 없고 알림도 없어요(REQ-3 과 같은 길).
 - `/output-style` 이 쓰는 로컬 파일 때문에 알림이 사람마다 다를 수 있어요. 알림은 값이 있고 다를 때만 나가요.
+- (개정 3, 감사 R3) 알려진 비용: D-5 전에 기본이 아닌 설정 폴더에서 쓴 옛 영수증은 폴더를 적지 않아서, 이제 그 폴더에서 되돌릴 수 없어요. 기본 폴더로 취급되어 거절되고, 아무것도 바뀌지 않아요. 그 폴더의 파일은 다음 update 가 기록대로 다시 맞춰요.
+- (개정 3, 감사 R4) 알려진 비용: 영수증 구조는 모르는 필드를 거절해서, 이전 바이너리는 `config_folder` 가 있는 새 영수증을 읽지 못하고 되돌리기를 거절해요. 바이너리를 되돌린 사용자는 새 바이너리로 되돌리거나 파일을 손으로 되돌려요.
 
 ## Decisions
 
@@ -84,3 +86,5 @@ parent: SPEC-20261122-output-style-moai-easy
 - N6: HOME 에서 돌리면 프로젝트 알림이 사용자 자신의 설정 파일을 읽어요.
 - N7: 진행 보드 조각이 가리키는 `rules/moai/flow.md` 를 아직 어떤 카드도 배포하지 않아요.
 - N8: 범위와 트레일러 장부 정리.
+- R1 (개정 3): 전체 화면 update(`src/update_tux.rs`)는 알림을 아직 건너뜀 줄로 보여 주고, JSON 에서도 알림이 `kind: notice` 로 `skipped` 목록 안에 있어요. 알림만의 목록과 화면 줄, 골든 파일을 함께 바꿔요. 그 파일은 다른 카드가 예약 중이라 예약이 풀린 뒤에 해요.
+- R2 (개정 3): 바이너리를 거친 알림 시험(`tests/update_user_layer_cli.rs`)은 그 파일의 예약이 풀린 뒤에 넣어요. 지금은 `src/update.rs` 의 lib 시험이 계획의 알림을 확인해요.
