@@ -128,6 +128,50 @@ pub struct Receipt {
     /// pending | committed | reverted
     pub status: String,
     pub entries: Vec<ReceiptEntry>,
+    /// The Claude config folder the apply wrote in (D-5 of
+    /// SPEC-20261122-output-style-install-checks): a revert runs only where the environment
+    /// picks this folder again. A receipt written before it has none and reverts in the
+    /// default folder only.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub config_folder: Option<String>,
+}
+
+/// The Claude config folder the environment picks for `home` ([`crate::host_home::resolve`]).
+fn claude_folder(home: &Path) -> Result<PathBuf> {
+    crate::host_home::resolve(crate::host_home::Host::Claude, home)
+}
+
+/// Two spellings of one folder: equal real paths, or equal text when either cannot be resolved.
+fn same_folder(a: &Path, b: &Path) -> bool {
+    match (fs::canonicalize(a), fs::canonicalize(b)) {
+        (Ok(x), Ok(y)) => x == y,
+        _ => a == b,
+    }
+}
+
+/// D-5: a revert changes nothing unless the environment picks the folder the receipt was
+/// applied in; a receipt without a folder belongs to the default folder.
+fn receipt_folder_matches(home: &Path, receipt: &Receipt) -> Result<()> {
+    let here = claude_folder(home)?;
+    let default = home.join(crate::host_home::Host::Claude.default_dir());
+    let theirs = receipt
+        .config_folder
+        .as_ref()
+        .map_or_else(|| default.clone(), PathBuf::from);
+    if same_folder(&here, &theirs) {
+        return Ok(());
+    }
+    Err(match &receipt.config_folder {
+        Some(f) => format!(
+            "this style receipt belongs to the Claude config folder {f}, not {}; run the revert with CLAUDE_CONFIG_DIR={f}; nothing was changed",
+            here.display()
+        ),
+        None => format!(
+            "this style receipt names no config folder, so it reverts only in the default folder {}, not {}; nothing was changed",
+            default.display(),
+            here.display()
+        ),
+    })
 }
 
 fn sha(bytes: &[u8]) -> String {
@@ -458,8 +502,8 @@ fn hiding_style(path: &Path) -> Option<String> {
 /// The notices of a style plan for `moai update` (SPEC-20261122-output-style-install-checks):
 /// one entry per project settings file whose `outputStyle` hides ours in `project` (REQ-2, read
 /// only), and one `/status` pointer when the plan writes the style file (REQ-4). Entries have the
-/// shape of the update's `skipped` list; they are not part of any plan digest and nothing is
-/// written for them.
+/// shape of the update's `skipped` list plus `kind: notice`, which the update screens print with
+/// their own word; they are not part of any plan digest and nothing is written for them.
 pub fn notices(plan: &Plan, project: &Path) -> Vec<Value> {
     let mut out = Vec::new();
     for rel in [".claude/settings.local.json", ".claude/settings.json"] {
@@ -467,6 +511,7 @@ pub fn notices(plan: &Plan, project: &Path) -> Vec<Value> {
             out.push(json!({
                 "part": "style",
                 "host": "claude",
+                "kind": "notice",
                 "reason": format!("{rel} sets outputStyle \"{value}\": this project uses it, not {STYLE_NAME}; moai does not change project settings"),
             }));
         }
@@ -479,6 +524,7 @@ pub fn notices(plan: &Plan, project: &Path) -> Vec<Value> {
         out.push(json!({
             "part": "style",
             "host": "claude",
+            "kind": "notice",
             "reason": "if the style does not show up in Claude Code, `/status` lists a style file it could not load",
         }));
     }
@@ -668,6 +714,7 @@ pub fn apply_for(
         permission_reference: permission.to_string(),
         status: "pending".into(),
         entries: Vec::new(),
+        config_folder: Some(claude_folder(&home)?.to_string_lossy().into_owned()),
     };
     let receipt_path = receipt_dir.join("receipt.json");
     write_json(&receipt_path, &receipt)?;
@@ -806,6 +853,7 @@ pub fn revert_in(
     if receipt.status == "reverted" {
         return Err("style receipt already reverted".into());
     }
+    receipt_folder_matches(&home, &receipt)?;
     let mut reverted = Vec::new();
     let mut skipped = Vec::new();
     for e in receipt.entries.iter().rev() {

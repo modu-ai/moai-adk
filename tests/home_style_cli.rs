@@ -415,6 +415,54 @@ fn the_update_points_to_status_after_a_style_write() {
     assert!(!reasons(&moai_cli::home_style::notices(&again, &project))
         .iter()
         .any(|s| s.contains("/status")));
+    // Audit N1: a style file the update takes over (`merge`) is a write too and gets the pointer.
+    let (_h2, taken) = project_with(&[]);
+    write(&taken, STYLE, &render_style_file(&src()));
+    let p = plan(&taken, &package()).unwrap();
+    assert_eq!(action(&p, "style_file"), "merge");
+    let notices = moai_cli::home_style::notices(&p, &project);
+    assert!(reasons(&notices).iter().any(|s| s.contains("/status")));
+    // Audit N3: every notice says it is one, so the update screens do not print it as skipped.
+    assert!(notices.iter().all(|n| n["kind"] == "notice"), "{notices:?}");
+}
+
+/// AC-4 (REQ-5), audit B1: a receipt written before it named its folder reverts in the default
+/// folder only; in another folder's environment it changes nothing.
+#[test]
+fn a_receipt_without_a_folder_reverts_only_in_the_default_folder() {
+    let (_t, home) = home();
+    assert!(moai_cli::home_root::adopt_new(&home, "test").unwrap());
+    let second = home.join("profiles/b");
+    let (_, id) = folder_install(&home, None);
+    let id = id.unwrap();
+    let receipt = moai_cli::home_root::path(&home)
+        .join("home-style/receipts")
+        .join(&id)
+        .join("receipt.json");
+    let mut r: Value = serde_json::from_slice(&fs::read(&receipt).unwrap()).unwrap();
+    assert_eq!(
+        r["config_folder"],
+        json!(home.join(".claude").to_str().unwrap())
+    );
+    r.as_object_mut().unwrap().remove("config_folder");
+    fs::write(&receipt, serde_json::to_vec_pretty(&r).unwrap()).unwrap();
+    let style = fs::read(home.join(STYLE)).unwrap();
+    let h = home.to_str().unwrap();
+    let args = [
+        "home-style-revert",
+        h,
+        "--receipt",
+        id.as_str(),
+        "--permission-reference",
+        PERM,
+    ];
+    let (ok, v) = folder_run_any(&home, Some(&second), &args);
+    assert!(!ok, "{v}");
+    assert!(v.to_string().contains("names no config folder"), "{v}");
+    assert_eq!(fs::read(home.join(STYLE)).unwrap(), style);
+    let v = folder_run(&home, None, &args);
+    assert_eq!(v["result"]["state"], json!("reverted"), "{v}");
+    assert!(!home.join(STYLE).exists());
 }
 
 /// `home-style-*` through the binary for one Claude config folder of a temporary HOME: `folder`
