@@ -407,8 +407,6 @@ class InstallShTest(unittest.TestCase):
 
     HOST_ENTRIES = {
         "claude": "Claude Code: moai cc",
-        "codex": "Codex: moai codex, then $moai project",
-        "omp": "OMP: omp, then /skill:moai project",
     }
 
     @property
@@ -446,7 +444,7 @@ class InstallShTest(unittest.TestCase):
     def test_no_host_found_writes_no_host_folder_and_names_every_entry(self):
         r = self.run_update()
         out = r.stdout
-        self.assertIn("No Claude Code, Codex or OMP found", out)
+        self.assertIn("No Claude Code found", out)
         self.assertEqual(self.update_calls(), [])
         self.assertEqual(sorted(os.listdir(self.home)), [".moai-cli"])
         steps = self.next_steps(out)
@@ -473,7 +471,7 @@ class InstallShTest(unittest.TestCase):
         self.assertNotIn("/skill:moai", steps)
 
     def test_yes_applies_the_previewed_plan_and_drops_the_update_step(self):
-        r = self.run_update("--yes", hosts=("codex",))
+        r = self.run_update("--yes", hosts=("claude",))
         out = r.stdout
         calls = self.update_calls()
         self.assertEqual(len(calls), 2, calls)
@@ -484,14 +482,17 @@ class InstallShTest(unittest.TestCase):
         steps = self.next_steps(out)
         self.assertNotIn("Install the MoAI skill and agents", steps)
         self.assertIn("1. Make a project folder", steps)
-        self.assertIn(self.HOST_ENTRIES["codex"], steps)
-        self.assertNotIn("/moai project", steps)
+        self.assertIn(self.HOST_ENTRIES["claude"], steps)
+        self.assertNotIn("$moai", steps)
 
-    def test_omp_gets_its_skill_entry(self):
-        r = self.run_update("--yes", hosts=("omp",))
+    def test_an_omp_or_codex_folder_alone_is_no_host(self):
+        r = self.run_update("--yes", hosts=("omp", "codex"))
+        self.assertIn("No Claude Code found", r.stdout)
+        self.assertEqual(self.update_calls(), [])
         steps = self.next_steps(r.stdout)
-        self.assertIn(self.HOST_ENTRIES["omp"], steps)
-        self.assertNotIn("moai cc", steps)
+        self.assertIn(self.HOST_ENTRIES["claude"], steps)
+        self.assertNotIn("moai codex", steps)
+        self.assertNotIn("/skill:moai", steps)
 
     def test_an_installed_skill_is_not_applied_again(self):
         r = self.run_update("--yes", hosts=("claude",), FAKE_UPDATE="current")
