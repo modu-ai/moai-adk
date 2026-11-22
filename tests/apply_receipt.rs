@@ -50,6 +50,13 @@ fn agents_request(language: &str, local_file: &str) -> Value {
     json!({"protocol_version":1,"language":language,"workflow_reference":"skills/moai/workflows/","local_file":local_file})
 }
 
+/// The widest file set since the CLAUDE.md layout: the personal file is created only on the
+/// `personal-file` pick, so the request names it (CLAUDE.md, CLAUDE.local.md, .gitignore and
+/// the generation manifest).
+fn agents_request_with_personal_file(language: &str) -> Value {
+    json!({"protocol_version":1,"language":language,"workflow_reference":"skills/moai/workflows/","local_file":"ignored","picks":["personal-file"]})
+}
+
 fn agents_plan(root: &TempDir, request: &Value) -> std::process::Output {
     cli(&["agents-plan", root.path().to_str().unwrap()], request)
 }
@@ -171,9 +178,11 @@ fn receipt_records_per_file_results() {
     // on the apply result, so `apply-recover --receipt` has one source of truth.
     let root = TempDir::new().unwrap();
     agents_project_root(&root);
-    // "ignored" exercises the widest file set: AGENTS.md, AGENTS.local.md, .gitignore
-    // and the generation manifest.
-    let plan: Value = ok_result(&agents_plan(&root, &agents_request("en", "ignored")));
+    // The widest file set: CLAUDE.md, CLAUDE.local.md, .gitignore and the generation manifest.
+    let plan: Value = ok_result(&agents_plan(
+        &root,
+        &agents_request_with_personal_file("en"),
+    ));
     let applied = agents_apply(&root, &plan);
     assert!(
         applied.status.success(),
@@ -194,7 +203,7 @@ fn receipt_records_per_file_results() {
     assert_eq!(receipt["operation"], json!("agents.apply"));
     assert_eq!(receipt["status"], json!("complete"));
 
-    let agents = entry(&receipt, "AGENTS.md");
+    let agents = entry(&receipt, "CLAUDE.md");
     assert_eq!(agents["decision"], json!("create"));
     assert_eq!(agents["before_sha256"], Value::Null);
     assert!(agents["after_sha256"].is_string());
@@ -205,7 +214,7 @@ fn receipt_records_per_file_results() {
     assert_eq!(ignore["decision"], json!("create"));
     assert_eq!(ignore["published"], json!(true));
 
-    let local = entry(&receipt, "AGENTS.local.md");
+    let local = entry(&receipt, "CLAUDE.local.md");
     assert_eq!(local["published"], json!(true));
 
     let manifest = entry(&receipt, ".moai-cli/manifests/generation.json");
@@ -241,10 +250,10 @@ fn apply_receipt_records_partial_apply_and_leaves_no_temp() {
     assert!(!result.status.success());
     let stderr = String::from_utf8_lossy(&result.stderr);
     assert!(
-        stderr.contains("partial apply") && stderr.contains("AGENTS.md"),
+        stderr.contains("partial apply") && stderr.contains("CLAUDE.md"),
         "{stderr}"
     );
-    assert!(root.path().join("AGENTS.md").is_file());
+    assert!(root.path().join("CLAUDE.md").is_file());
 
     let receipt = read_receipt(
         root.path(),
@@ -254,7 +263,7 @@ fn apply_receipt_records_partial_apply_and_leaves_no_temp() {
     let manifest = entry(&receipt, ".moai-cli/manifests/generation.json");
     assert_eq!(manifest["published"], json!(false));
     assert!(manifest["error"].is_string(), "{}", manifest);
-    let agents = entry(&receipt, "AGENTS.md");
+    let agents = entry(&receipt, "CLAUDE.md");
     assert_eq!(agents["published"], json!(true));
     assert!(
         temp_files_left(root.path()).is_empty(),
@@ -270,13 +279,16 @@ fn apply_recover_restores_only_unchanged_targets() {
     // still owns; a file the user edited since keeps the user's bytes.
     let root = TempDir::new().unwrap();
     agents_project_root(&root);
-    let plan: Value = ok_result(&agents_plan(&root, &agents_request("en", "ignored")));
+    let plan: Value = ok_result(&agents_plan(
+        &root,
+        &agents_request_with_personal_file("en"),
+    ));
     let applied = agents_apply(&root, &plan);
     let result = ok_result(&applied);
     let receipt_id = result["receipt"].as_str().unwrap().to_string();
 
     // The user edits the managed file's non-managed prefix after the apply.
-    let agents_md = root.path().join("AGENTS.md");
+    let agents_md = root.path().join("CLAUDE.md");
     let user_bytes = fs::read(&agents_md).unwrap();
     let user_text = String::from_utf8(user_bytes.clone()).unwrap().replacen(
         "# demo",
@@ -301,17 +313,17 @@ fn apply_recover_restores_only_unchanged_targets() {
         .map(|v| v["path"].as_str().unwrap())
         .collect();
 
-    // AGENTS.md changed since the apply: preserved byte for byte, reported as skipped.
-    assert_eq!(skipped, vec!["AGENTS.md"]);
+    // CLAUDE.md changed since the apply: preserved byte for byte, reported as skipped.
+    assert_eq!(skipped, vec!["CLAUDE.md"]);
     assert_eq!(fs::read(&agents_md).unwrap(), user_text.as_bytes());
     // Created files are removed again; nothing else keeps apply state.
-    assert!(!root.path().join("AGENTS.local.md").exists());
+    assert!(!root.path().join("CLAUDE.local.md").exists());
     assert!(!root.path().join(".gitignore").exists());
     assert!(!root
         .path()
         .join(".moai-cli/manifests/generation.json")
         .exists());
-    assert!(reverted.contains(&"AGENTS.local.md"));
+    assert!(reverted.contains(&"CLAUDE.local.md"));
     assert!(reverted.contains(&".gitignore"));
     assert!(reverted.contains(&".moai-cli/manifests/generation.json"));
     // A second recovery finds nothing left to revert.
@@ -325,18 +337,24 @@ fn reapply_records_zero_published_entries() {
     // their bytes; the receipt shows the unchanged files with zero published entries.
     let root = TempDir::new().unwrap();
     agents_project_root(&root);
-    let first: Value = ok_result(&agents_plan(&root, &agents_request("en", "ignored")));
+    let first: Value = ok_result(&agents_plan(
+        &root,
+        &agents_request_with_personal_file("en"),
+    ));
     assert!(agents_apply(&root, &first).status.success());
     let snapshot = |root: &TempDir| -> Vec<(String, Vec<u8>)> {
         let mut v = Vec::new();
-        for rel in ["AGENTS.md", "AGENTS.local.md", ".gitignore"] {
+        for rel in ["CLAUDE.md", "CLAUDE.local.md", ".gitignore"] {
             v.push((rel.into(), fs::read(root.path().join(rel)).unwrap()));
         }
         v
     };
     let before = snapshot(&root);
 
-    let second: Value = ok_result(&agents_plan(&root, &agents_request("en", "ignored")));
+    let second: Value = ok_result(&agents_plan(
+        &root,
+        &agents_request_with_personal_file("en"),
+    ));
     let applied = agents_apply(&root, &second);
     assert!(
         applied.status.success(),
@@ -570,5 +588,5 @@ fn agents_ignore_block_excludes_the_receipt_directory() {
     assert!(agents_apply(&root, &plan).status.success());
     let text = String::from_utf8(fs::read(root.path().join(".gitignore")).unwrap()).unwrap();
     assert!(text.contains(".moai-cli/receipts/"), "{text}");
-    assert!(text.contains("AGENTS.local.md"));
+    assert!(text.contains("CLAUDE.local.md"), "{text}");
 }

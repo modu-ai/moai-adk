@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
-"""Issue #2380 WT-2: the repository's AGENTS.local.md keeps one build folder per
-worktree. The check set must not set CARGO_TARGET_DIR, and the build-folder rule
-must say so, so that a later edit cannot quietly bring back a shared or
-per-session target folder (a merge with #2563 nearly did)."""
+"""Issue #2380 WT-2: the repository's CLAUDE.md (which holds the former
+AGENTS.local.md) keeps one build folder per worktree. The check set must not set
+CARGO_TARGET_DIR, and the build-folder rule must say so, so that a later edit
+cannot quietly bring back a shared or per-session target folder (a merge with
+#2563 nearly did)."""
 
 import pathlib
 import re
 import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-LOCAL = ROOT / "AGENTS.local.md"
+LOCAL = ROOT / "CLAUDE.md"
 CONTRACT = ROOT / "docs" / "lane-loop-contract.md"
 # How-to commands that once set a per-session /tmp target folder (WT-2 audit N1).
 HOWTO_DOCS = (

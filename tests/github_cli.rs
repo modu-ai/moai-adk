@@ -179,9 +179,10 @@ fn github_clean_project_creates_only_selected_files() {
         );
     }
     assert!(!root.join(".github/ISSUE_TEMPLATE/config.yml").exists());
-    let manifest: Value =
-        serde_json::from_slice(&fs::read(root.join(".moai-cli/manifests/github.json")).unwrap())
-            .unwrap();
+    let manifest: Value = serde_json::from_slice(
+        &fs::read(moai_cli::state_root::path(&root, "manifests/github.json")).unwrap(),
+    )
+    .unwrap();
     assert_eq!(
         manifest["owned_files"].as_array().unwrap().len(),
         TARGETS.len()
@@ -198,7 +199,8 @@ fn github_second_run_is_unchanged() {
     let first = plan(&root, true);
     assert_eq!(apply(&root, &first)["ok"], true);
     let before = hashes(&root.join(".github"));
-    let manifest_before = fs::read(root.join(".moai-cli/manifests/github.json")).unwrap();
+    let manifest_before =
+        fs::read(moai_cli::state_root::path(&root, "manifests/github.json")).unwrap();
     let second = plan(&root, true);
     assert!(
         actions(&second).iter().all(|(_, a)| a == "unchanged"),
@@ -214,7 +216,7 @@ fn github_second_run_is_unchanged() {
     assert_eq!(before, hashes(&root.join(".github")));
     assert_eq!(
         manifest_before,
-        fs::read(root.join(".moai-cli/manifests/github.json")).unwrap()
+        fs::read(moai_cli::state_root::path(&root, "manifests/github.json")).unwrap()
     );
     // The plan itself is byte-stable for equal input.
     assert_eq!(plan(&root, true), second);
@@ -330,7 +332,7 @@ fn github_interrupted_update_recovers_baseline() {
         env["result"]["adopted_baselines"].as_array().unwrap().len(),
         TARGETS.len()
     );
-    assert!(root.join(".moai-cli/manifests/github.json").exists());
+    assert!(moai_cli::state_root::path(&root, "manifests/github.json").exists());
     let again = plan(&root, true);
     assert!(again["files"]
         .as_array()

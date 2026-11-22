@@ -7,15 +7,12 @@
   ✗ 스킬 claude
     막힘: SKILL.md was changed by hand
     since the last update
-  ✓ 스킬 codex
-    최신 32개
   ✓ 에이전트
-    claude 5 · codex 5 · omp 5 — 최신
-    15개
+    claude 5 — 최신 5개
   ✓ 라우팅
-    CLAUDE.md 최신 · AGENTS.md 최신
+    CLAUDE.md 최신
   ✓ 출력 스타일
-    최신 3개
+    최신 2개
   ✓ 실행 파일 이름
     최신
   – hooks

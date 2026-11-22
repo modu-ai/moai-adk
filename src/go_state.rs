@@ -67,7 +67,7 @@ const GO_WIRING_JOURNAL: &str = ".moai/state/codex-wiring-journal.json";
 const WIRING_TEMP: &str = ".codexwiring-";
 /// The reason of an item that S1c-2 will move; S1c-1 only classifies it.
 const MOVES_LATER: &str = "classified; moves in S1c-2";
-/// The size bound of a Codex config file, shared with `codex-config-plan`.
+/// The size bound of a Codex config file.
 const CODEX_READ_LIMIT: u64 = crate::hosts::config_backup::CONFIG_LIMIT;
 /// The handler commands the Go wiring owns (`moaiHandlerPrefix`, `isMoaiNamespaceCommand`).
 const GO_HANDLER_PREFIX: &str = "moai hook ";
@@ -5603,13 +5603,11 @@ mod tests {
     fn the_rust_generated_hooks_are_not_the_go_wiring() {
         let go = br#"{"hooks":{"SessionStart":[{"hooks":[{"type":"command","command":"moai hook session-start"}]}]}}"#;
         assert!(hooks_proof(go).is_ok());
-        for lane in [None, Some(("agent-1", "o/r"))] {
-            let set = crate::hooks::current_hooks("codex", lane).unwrap();
-            let doc = serde_json::json!({ "hooks": set });
-            assert!(doc.to_string().contains("\"moai "), "{doc}");
-            let proof = hooks_proof(doc.to_string().as_bytes());
-            assert!(proof.is_err(), "{lane:?}: {proof:?}");
-        }
+        let set = crate::hooks::current_hooks("claude").unwrap();
+        let doc = serde_json::json!({ "hooks": set });
+        assert!(doc.to_string().contains("\"moai "), "{doc}");
+        let proof = hooks_proof(doc.to_string().as_bytes());
+        assert!(proof.is_err(), "{proof:?}");
         for command in [
             "moai hook-dispatch --host codex --event stop",
             "moai hook-receipt --host codex",

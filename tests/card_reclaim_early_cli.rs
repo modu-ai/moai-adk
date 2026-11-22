@@ -93,7 +93,7 @@ impl World {
     }
 
     fn sessions_dir(&self) -> PathBuf {
-        self.project.join(".git/.moai-cli/sessions")
+        moai_cli::clone_root::path(&self.project.join(".git")).join("sessions")
     }
 
     /// `moai session-register` for `name`, as the host session `session` (none: no id).
@@ -424,7 +424,7 @@ fn a_listed_tool_cache_is_not_work() {
     w.register_gone(NAME, &sid(1));
     let before = w.dump();
 
-    let cache_dir = w.wt.join(".moai-cli/state/github");
+    let cache_dir = moai_cli::state_root::path(&w.wt, "state/github");
     fs::create_dir_all(&cache_dir).unwrap();
     fs::write(cache_dir.join("counts.json"), "{\"open_issues\":1}\n").unwrap();
 

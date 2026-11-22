@@ -70,10 +70,12 @@ pub struct CheckEntry {
 const REFUSED_ANSWERS: &str = "invalid ci answers; no values were logged";
 const REFUSED_CHECKS: &str = "invalid declared checks; no values were logged";
 
-/// Lowercase letters, digits, `-` and `_`, starting with a letter or digit, 1..=[`NAME_BYTES`].
+/// Lowercase letters, digits, `-` and `_`, starting with a letter or digit, 1..=[`NAME_BYTES`],
+/// and not in the shape of a key (`sk-…`, `ghp_…`): a name is profile text like any other.
 fn name_ok(name: &str) -> bool {
     !name.is_empty()
         && name.len() <= NAME_BYTES
+        && !crate::secret_shaped(name)
         && name
             .bytes()
             .next()
@@ -261,7 +263,17 @@ mod tests {
     fn declared_check_ids_are_distinct_short_names_and_the_list_is_bounded() {
         assert!(validate_checks(&[]).is_err());
         assert!(validate_checks(&[check("a", "x"), check("a", "y")]).is_err());
-        for bad in ["", "A", "a b", "a/b", "-a", &"i".repeat(NAME_BYTES + 1)] {
+        for bad in [
+            "",
+            "A",
+            "a b",
+            "a/b",
+            "-a",
+            "sk-live-1",
+            "ghp_abc",
+            "github_pat_x",
+            &"i".repeat(NAME_BYTES + 1),
+        ] {
             assert!(validate_checks(&[check(bad, "x")]).is_err(), "{bad:?}");
         }
         assert!(validate_checks(&[check(&"i".repeat(NAME_BYTES), "x")]).is_ok());

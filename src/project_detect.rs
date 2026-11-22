@@ -146,9 +146,10 @@ const DB_DEPENDENCIES: &[(&str, &str)] = &[
 /// Folders the code walk never enters: VCS and MoAI state, the host folders MoAI writes hook
 /// and agent files into (`.omp/extensions/moai-hooks.ts` is TypeScript, #2936 R9), build
 /// output, vendored deps.
-const SKIP_DIRS: &[&str] = &[
+pub(crate) const SKIP_DIRS: &[&str] = &[
     ".git",
     PROJECT_STATE_DIR,
+    crate::state_root::MOAI_DIR,
     ".claude",
     ".codex",
     ".omp",
@@ -191,7 +192,7 @@ fn file_in(root: &Path, parts: &[&str]) -> Option<(PathBuf, fs::Metadata)> {
 }
 
 /// The text of [`file_in`], at most `MAX_FILE` bytes.
-fn read_in(root: &Path, parts: &[&str]) -> Option<String> {
+pub(crate) fn read_in(root: &Path, parts: &[&str]) -> Option<String> {
     let (path, meta) = file_in(root, parts)?;
     if meta.len() > MAX_FILE {
         return None;
@@ -199,7 +200,7 @@ fn read_in(root: &Path, parts: &[&str]) -> Option<String> {
     fs::read_to_string(path).ok()
 }
 
-fn is_file_in(root: &Path, parts: &[&str]) -> bool {
+pub(crate) fn is_file_in(root: &Path, parts: &[&str]) -> bool {
     file_in(root, parts).is_some()
 }
 
@@ -424,7 +425,7 @@ fn root_ignore_lines(root: &Path) -> Vec<IgnoreLine> {
 /// the ignore lists exclude never entered. An ignore list that cannot be read (a link, over
 /// [`MAX_FILE`], not UTF-8) counts as no lines, so that failure can only read more, never
 /// less. The `seen` budget mirrors the code walk's [`MAX_ENTRIES`].
-fn nested_manifests(root: &Path) -> BTreeSet<String> {
+pub(crate) fn nested_manifests(root: &Path) -> BTreeSet<String> {
     let mut found = BTreeSet::new();
     let mut seen = 0usize;
     let mut stack = IgnoreStack(vec![(0, root_ignore_lines(root))]);
@@ -520,23 +521,11 @@ fn requirement_name(spec: &str) -> String {
         .to_ascii_lowercase()
 }
 
-/// Dependency names declared in the root manifests (names only; versions are ignored).
-fn dependency_names(root: &Path) -> BTreeSet<String> {
+/// Dependency names the Python files at the root declare: `pyproject.toml` (`[project]` and
+/// Poetry dependencies) and `requirements.txt`. Names only, as the requirement names carry
+/// them.
+fn python_dependency_names(root: &Path) -> BTreeSet<String> {
     let mut names = BTreeSet::new();
-    if let Some(doc) = read_in(root, &["Cargo.toml"]).and_then(|t| toml_doc(&t)) {
-        for section in ["dependencies", "dev-dependencies", "build-dependencies"] {
-            names.extend(table_keys(doc.get(section)));
-        }
-    }
-    if let Some(v) =
-        read_in(root, &["package.json"]).and_then(|t| serde_json::from_str::<Value>(&t).ok())
-    {
-        for section in ["dependencies", "devDependencies"] {
-            if let Some(map) = v[section].as_object() {
-                names.extend(map.keys().cloned());
-            }
-        }
-    }
     if let Some(doc) = read_in(root, &["pyproject.toml"]).and_then(|t| toml_doc(&t)) {
         if let Some(list) = doc
             .get("project")
@@ -559,6 +548,27 @@ fn dependency_names(root: &Path) -> BTreeSet<String> {
                 .map(requirement_name),
         );
     }
+    names.into_iter().map(|n| n.to_ascii_lowercase()).collect()
+}
+
+/// Dependency names declared in the root manifests (names only; versions are ignored).
+fn dependency_names(root: &Path) -> BTreeSet<String> {
+    let mut names = BTreeSet::new();
+    if let Some(doc) = read_in(root, &["Cargo.toml"]).and_then(|t| toml_doc(&t)) {
+        for section in ["dependencies", "dev-dependencies", "build-dependencies"] {
+            names.extend(table_keys(doc.get(section)));
+        }
+    }
+    if let Some(v) =
+        read_in(root, &["package.json"]).and_then(|t| serde_json::from_str::<Value>(&t).ok())
+    {
+        for section in ["dependencies", "devDependencies"] {
+            if let Some(map) = v[section].as_object() {
+                names.extend(map.keys().cloned());
+            }
+        }
+    }
+    names.extend(python_dependency_names(root));
     if let Some(text) = read_in(root, &["go.mod"]) {
         for line in text.lines() {
             let line = line.trim().trim_start_matches("require").trim();
@@ -592,8 +602,8 @@ fn prisma_database(root: &Path) -> Option<String> {
     }
 }
 
-/// MCP server names from the project's `.mcp.json` (`mcpServers`) and
-/// `.codex/config.toml` (`[mcp_servers.<name>]`). Values are never read further.
+/// MCP server names from the project's `.mcp.json` (`mcpServers`). The `.codex` folder is not
+/// read: moai no longer manages it. Values are never read further.
 fn mcp_servers(root: &Path) -> BTreeSet<String> {
     let mut names = BTreeSet::new();
     if let Some(v) =
@@ -602,9 +612,6 @@ fn mcp_servers(root: &Path) -> BTreeSet<String> {
         if let Some(map) = v["mcpServers"].as_object() {
             names.extend(map.keys().cloned());
         }
-    }
-    if let Some(doc) = read_in(root, &[".codex", "config.toml"]).and_then(|t| toml_doc(&t)) {
-        names.extend(table_keys(doc.get("mcp_servers")));
     }
     names
 }
@@ -750,13 +757,15 @@ fn commands_fact(root: &Path) -> Value {
         lint.insert("go vet ./...".to_string());
         format.insert("test -z \"$(gofmt -l .)\"".to_string());
     }
-    let python_names: BTreeSet<String> = dependency_names(root)
+    if dependency_names(root).contains("pytest") || python_test_names(root).contains("pytest") {
+        test.insert("pytest".to_string());
+    }
+    // Lint and format tools count only when a Python file declares them: a Rust or Node
+    // dependency that is also called `ruff` offers nothing.
+    let python_names: BTreeSet<String> = python_dependency_names(root)
         .into_iter()
         .chain(python_test_names(root))
         .collect();
-    if python_names.contains("pytest") {
-        test.insert("pytest".to_string());
-    }
     if python_names.contains("ruff") {
         lint.insert("ruff check .".to_string());
         format.insert("ruff format --check .".to_string());
@@ -947,6 +956,9 @@ pub fn detect_cli(root: &Path) -> Result<Value> {
         // C-69: the versioning scheme the tag names and root manifests already show, a fact
         // beside `detected` like the commands; the interview offers keeping it.
         "versioning": crate::versioning::fact(root),
+        // SPEC-20261122-project-scale: small, large single tree or monorepo, a fact beside
+        // `detected` that the user's pick can override; never recorded inside `detected`.
+        "scale": crate::project_scale_detect::read(root),
         "next_actions": next_actions,
     }))
 }

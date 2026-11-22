@@ -113,6 +113,14 @@ RC1은 자기 사용자 상태를 `~/.moai-cli/`에 두고 Go 세대의 `~/.moai
 - 취약점 비공개 신고: [SECURITY.md](SECURITY.md)
 - 행동 강령: [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) ([한국어 번역](https://www.contributor-covenant.org/ko/version/3/0/code_of_conduct/))
 
+## Anthropic·Claude Code와의 관계
+
+- MoAI ADK는 사용자가 직접 설치하고 로그인한 Claude Code를 실행합니다.
+- MoAI ADK는 Anthropic 제품이 아닙니다. Anthropic이 만들거나 보증하거나 제휴한 도구가 아닙니다.
+- Claude Code나 Anthropic의 이름과 로고를 자기 이름이나 로고로 쓰지 않습니다.
+- Claude Code 실행 파일을 바꾸지 않고, Anthropic이 배포한 그대로 실행합니다.
+- Claude 계정 자격 증명이나 세션 토큰을 묻거나 저장하거나 전달하지 않습니다. 로그인은 Claude Code가 맡습니다.
+
 ## 라이선스
 
 Apache License 2.0. [LICENSE](LICENSE)를 보세요.

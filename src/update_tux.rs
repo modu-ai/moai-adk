@@ -462,9 +462,9 @@ fn w(lang: Lang, word: W) -> &'static str {
         ProjectNext => {
             if ko {
                 // A no-break space keeps each command on one line when the sentence wraps.
-                "다음: 기존 프로젝트는 각 프로젝트의 세션에서 /moai\u{a0}update (Codex CLI 는 $moai\u{a0}update)를 실행해 프로젝트 설정을 꼭 업데이트하세요."
+                "다음: 기존 프로젝트는 각 프로젝트의 세션에서 /moai\u{a0}update 를 실행해 프로젝트 설정을 꼭 업데이트하세요."
             } else {
-                "Next: in each existing project, run /moai\u{a0}update in a session there ($moai\u{a0}update in Codex CLI) to update the project's settings."
+                "Next: in each existing project, run /moai\u{a0}update in a session there to update the project's settings."
             }
         }
         ThisFolder => {
@@ -705,6 +705,21 @@ struct Row {
     text: String,
 }
 
+/// The row label and reason of one `skipped` entry. The label is the part and the host, on the
+/// preview and the apply screens alike. The "no longer managed" notice of a retired host reads in
+/// Korean on the Korean screens; every other reason is printed as the command gave it.
+fn skipped_row(lang: Lang, s: &Value) -> (String, String) {
+    let part = s["part"].as_str().unwrap_or("");
+    let host = s["host"].as_str().unwrap_or("");
+    let label = format!("{part} {host}").trim().to_string();
+    let reason = match (lang, part, host) {
+        (Lang::Ko, "unmanaged", "codex") => "~/.codex와 ~/.agents/skills의 Codex 파일은 그대로 두며 moai가 더는 관리하지 않아요. 쓰지 않으면 직접 지우세요",
+        (Lang::Ko, "unmanaged", "omp") => "~/.omp의 OMP 파일은 그대로 두며 moai가 더는 관리하지 않아요. 쓰지 않으면 직접 지우세요",
+        _ => s["reason"].as_str().unwrap_or(""),
+    };
+    (label, format!("{}: {reason}", w(lang, W::Skipped)))
+}
+
 fn row(mark: Mark, label: String, text: String) -> Row {
     Row { mark, label, text }
 }
@@ -913,21 +928,8 @@ fn preview_rows(v: &Value, lang: Lang) -> Vec<Row> {
     }
     rows.extend(key_rows(v, lang));
     for s in v["skipped"].as_array().into_iter().flatten() {
-        rows.push(row(
-            Mark::Skip,
-            format!(
-                "{} {}",
-                s["part"].as_str().unwrap_or(""),
-                s["host"].as_str().unwrap_or("")
-            )
-            .trim()
-            .to_string(),
-            format!(
-                "{}: {}",
-                w(lang, W::Skipped),
-                s["reason"].as_str().unwrap_or("")
-            ),
-        ));
+        let (label, text) = skipped_row(lang, s);
+        rows.push(row(Mark::Skip, label, text));
     }
     // #2872 stage 2: Go leftovers the cleanup would archive (confirmed apart, never by the y).
     let c = &v["cleanup"];
@@ -1907,15 +1909,8 @@ fn applied(v: &Value, view: &View) -> String {
     part(W::Hooks, &v["hooks_result"], &mut rows);
     part(W::Keys, &v["keys_result"], &mut rows);
     for s in v["skipped"].as_array().into_iter().flatten() {
-        rows.push(row(
-            Mark::Skip,
-            s["part"].as_str().unwrap_or("").to_string(),
-            format!(
-                "{}: {}",
-                w(lang, W::Skipped),
-                s["reason"].as_str().unwrap_or("")
-            ),
-        ));
+        let (label, text) = skipped_row(lang, s);
+        rows.push(row(Mark::Skip, label, text));
     }
     // A blank line after the answer typed at the question.
     o.blank();

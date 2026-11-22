@@ -651,7 +651,7 @@ core.worktree 세 CLI 시험이 세 경계를 각각 고정한다.
 
 ### Claim re-verification before commit and push (`claim-verify`, rc.2 A9 #2255)
 
-The claim line keeps its RC1 head, `moai-claim: session=<id> epoch=<n> lease_until=<utc>`, and gains appended tokens written by the one generator `claim::render_claim_line`: `lane=`, `issue=`, `branch=`, `at=` (UTC) and `relay=true` when another session posted the line (absent means not relayed, so a line with no extra fields — what `claim-acquire` posts — is the RC1 line byte for byte; a session that cannot confirm its id writes `session=unverified`). Readers of the RC1 form ignore the extra tokens. Two machine lines close a claim: `moai-claim-release: comment=<id> by=<who>` and `moai-claim-handoff: comment=<id> to=<session> by=<who>`; this code renders and parses them and posts neither (the one claim POST is unchanged). `claim_verify::evaluate` re-reads every comment and decides, in comment-id order: claim lines from authors outside `allowed_authors` are `author_mismatch`, unreadable lines (bad lease, missing fields, a closing line that names no earlier claim) are `malformed`, a second claim with the same session and epoch is `duplicate`; all three are ignored and reported (REQ-A9-02). The holder is the lowest claim not closed by a release or handoff. A live holder that is the caller gives `owner`; another live holder gives `not_owner` with `lost_to` (REQ-A9-01); an expired holder gives `stale` to everyone, the holder included, with `auto_assigned: false`, because time alone never reassigns the Issue (REQ-A9-03); a closed own claim gives `closed`; a recorded comment id that is not on the Issue gives `uncertain`; otherwise `no_claim`. `claim-verify` makes one paginated GET and succeeds only on `owner`; every other verdict is a classified error (`not owner`, `closed`, `no claim` → `conflict`; `stale`, `uncertain` → `blocked`). `--hook` is the host `PreToolUse` guard. It allows every call except a Bash segment whose first word (after `NAME=value` assignments) is `git` running `commit` or `push` — `echo git commit` is not a git run. In a worktree with an active claim record in this clone's journal it verifies that record's claim. Without a record — the claim was posted for the lane, not by `claim-acquire` — a worktree on a lane branch `issue/<n>-…` is still guarded: the Issue comes from the branch, owner and repository from the GitHub `origin` URL, and the claim comment id from the `Moai-Claim: <n>#<id>` token in the commit command's message (`git commit`) or with the highest comment id among the Issue's tokens on the branch's first-parent commits, merges included (`git push`; a renewal's token may sit only on a merge commit); no token, a token for another Issue only, or a non-GitHub origin is `uncertain` and refuses (fail-closed), with the next action — get the claim comment id — in the message. Other branches and a detached HEAD are not lane worktrees and pass, with the reason. On `git push` every lane-written commit on the branch's first-parent line since the base (the record's `base_revision`, else the commits on no other `origin` branch — the integration branch need not share history with the default branch, as `v2026.11.0` and `main` here do not; with no other remote branch every commit is checked and the push refused) must carry a token of the caller's claim or of an earlier claim of the Issue closed by a handoff line, so commits of a previous epoch stay valid after a takeover; merge commits are not checked (decision 2026-11-09 06:02, #1975), nor are the merged-in commits of other cards (`trailer missing` → `invalid_input`). A refusal exits 2, the code both hosts treat as blocking. `queue-free` drops claims closed by a release or handoff line, so a released card is free again. The MODE-AGENT workflow runs `claim-verify` before every commit and push (`skills/moai/workflows/mode-agent.md` step 6). Limits: every lane posts through one shared GitHub account, so a forged `session=` from an allowed author is indistinguishable from a real one; `hooks-apply` (#2260) writes the guard as the `PreToolUse` (matcher `Bash`) hook `moai-cli claim-verify . --hook` for both hosts; a guard that times out (10 s) does not block, so the workflow step stays the boundary. Tests: `tests/claim_verify_cli.rs` (concurrent, late-visible competitor, uncertain, duplicate, forged author, handoff and release, stale, restart, malformed lines, agreement with `resolve_winner`, the op over recorded exchanges, the hook in temporary repositories including the trailer check, the handoff epoch tokens, a lane branch without a claim record for commit and push, and the binary's exit 2 on both paths) and `src/queue.rs` `released_claims_do_not_hold_the_card`.
+The claim line keeps its RC1 head, `moai-claim: session=<id> epoch=<n> lease_until=<utc>`, and gains appended tokens written by the one generator `claim::render_claim_line`: `lane=`, `issue=`, `branch=`, `at=` (UTC) and `relay=true` when another session posted the line (absent means not relayed, so a line with no extra fields — what `claim-acquire` posts — is the RC1 line byte for byte; a session that cannot confirm its id writes `session=unverified`). Readers of the RC1 form ignore the extra tokens. Two machine lines close a claim: `moai-claim-release: comment=<id> by=<who>` and `moai-claim-handoff: comment=<id> to=<session> by=<who>`; this code renders and parses them and posts neither (the one claim POST is unchanged). `claim_verify::evaluate` re-reads every comment and decides, in comment-id order: claim lines from authors outside `allowed_authors` are `author_mismatch`, unreadable lines (bad lease, missing fields, a closing line that names no earlier claim) are `malformed`, a second claim with the same session and epoch is `duplicate`; all three are ignored and reported (REQ-A9-02). The holder is the lowest claim not closed by a release or handoff. A live holder that is the caller gives `owner`; another live holder gives `not_owner` with `lost_to` (REQ-A9-01); an expired holder gives `stale` to everyone, the holder included, with `auto_assigned: false`, because time alone never reassigns the Issue (REQ-A9-03); a closed own claim gives `closed`; a recorded comment id that is not on the Issue gives `uncertain`; otherwise `no_claim`. `claim-verify` makes one paginated GET and succeeds only on `owner`; every other verdict is a classified error (`not owner`, `closed`, `no claim` → `conflict`; `stale`, `uncertain` → `blocked`). `--hook` is the host `PreToolUse` guard. It allows every call except a Bash segment whose first word (after `NAME=value` assignments) is `git` running `commit` or `push` — `echo git commit` is not a git run. In a worktree with an active claim record in this clone's journal it verifies that record's claim. Without a record — the claim was posted for the lane, not by `claim-acquire` — a worktree on a lane branch `issue/<n>-…` is still guarded: the Issue comes from the branch, owner and repository from the GitHub `origin` URL, and the claim comment id from the `Moai-Claim: <n>#<id>` token in the commit command's message (`git commit`) or with the highest comment id among the Issue's tokens on the branch's first-parent commits, merges included (`git push`; a renewal's token may sit only on a merge commit); no token, a token for another Issue only, or a non-GitHub origin is `uncertain` and refuses (fail-closed), with the next action — get the claim comment id — in the message. Other branches and a detached HEAD are not lane worktrees and pass, with the reason. On `git push` every lane-written commit on the branch's first-parent line since the base (the record's `base_revision`, else the commits on no other `origin` branch — the integration branch need not share history with the default branch, as `v2026.11.0` and `main` here do not; with no other remote branch every commit is checked and the push refused) must carry a token of the caller's claim or of an earlier claim of the Issue closed by a handoff line, so commits of a previous epoch stay valid after a takeover; merge commits are not checked (decision 2026-11-09 06:02, #1975), nor are the merged-in commits of other cards (`trailer missing` → `invalid_input`). A refusal exits 2, the code both hosts treat as blocking. `queue-free` drops claims closed by a release or handoff line, so a released card is free again. The MODE-AGENT workflow that ran `claim-verify` before every commit and push (its step 6) left the package; `/moai work` runs `moai card check` before every commit instead (`skills/moai/workflows/work.md`, run step). Limits: every lane posts through one shared GitHub account, so a forged `session=` from an allowed author is indistinguishable from a real one; `hooks-apply` (#2260) writes the guard as the `PreToolUse` (matcher `Bash`) hook `moai-cli claim-verify . --hook` for both hosts; a guard that times out (10 s) does not block, so the workflow step stays the boundary. Tests: `tests/claim_verify_cli.rs` (concurrent, late-visible competitor, uncertain, duplicate, forged author, handoff and release, stale, restart, malformed lines, agreement with `resolve_winner`, the op over recorded exchanges, the hook in temporary repositories including the trailer check, the handoff epoch tokens, a lane branch without a claim record for commit and push, and the binary's exit 2 on both paths) and `src/queue.rs` `released_claims_do_not_hold_the_card`.
 
 ### Linking a claim to the worktree you work in (`claim-link`, #3030)
 
@@ -918,9 +918,10 @@ is left out together with its separator.
    (behind), then `+N` (dirty), each only when it is not 0
    (SPEC-20261120-statusline-ahead: under M-Flow the merges land on the local integration
    branch first, so the ahead count is the one that shows them landing; the count comes from
-   the `git status` header the renderer already reads). Forge counts that cannot be read say `⬇️ n/a 🔀 n/a`, never a zero, and a repository whose name cannot be
-   resolved says `📡 n/a`; a detached HEAD shows the short SHA in the branch slot (`🅱️ a1b2c3d`) and the
-   repository segment stays.
+   the `git status` header the renderer already reads). Forge counts that cannot be read say `⬇️ n/a 🔀 n/a`, never a zero, and a repository whose name the host did not
+   give leaves the repository item out with its separator (SPEC-20261122-statusline-where);
+   a detached HEAD shows the short SHA in the branch slot (`🅱️  a1b2c3d`) and the
+   repository item stays.
    The `pr` option turns its segment off.
    `▶️` and `🔃` split the cards in `active` or `review`: a card in `review` is waiting, and
    an `active` card is waiting only when the newest of its notes whose first line carries a
@@ -970,19 +971,11 @@ is left out together with its separator.
    layout of 2026-11-20, SPEC-20261120-statusline-layout and SPEC-20261121-statusline-detached),
    and the Claude Code version stands on line 1. The card counts stand at the front of the last
    line: line 3 while lines 1 and 2 are shown, and one line up when an empty line is left out. In a
-   linked worktree the label has three shapes. `🌳 WT-c<card>-<name>` when a live reservation of the project (status
-   `held`, `held_for_review` or `expired_candidate`, with an absolute worktree path)
-   names the session's folder (`<card>` is the number of the card that holds it, the
-   lowest number when several do; `<name>` is the part of the reservation's branch after
-   the eight-digit date and a dash in its last path segment, else the folder name without
-   its `<project_id>-` prefix (the project profile's `project_id`) and without the card
-   number). `🌳 WT-c<card>` when no name is left. `🌳 <worktree name>`
-   alone, with no `WT-` and no card number (the name the host gave: `worktree.name`, else
-   `workspace.git_worktree`), when no live reservation names the folder or the ledger
-   cannot be read within the render budget. A reservation whose recorded worktree path is
-   not absolute names no folder. `<name>` shows at most 32 characters, cut with `…` after
-   the 31st, and drops control characters and the invisible format characters that
-   reorder or hide text. There is no segment in the main checkout, and the `worktree`
+   linked worktree the first line carries `🌳 <worktree name>` (the name the host
+   gave: `worktree.name`, else `workspace.git_worktree`) as it is, before the branch item,
+   and the item stands alone when the branch has the same name
+   (SPEC-20261122-statusline-where, D-4); the card number is not part of it, and the
+   held card shows as `🎯` on the flow line. There is no item in the main checkout, and the `worktree`
    option turns it off. The ledger is opened read-only under the budget of the card
    counts, and nothing is created. Example (lines 2 and 3 of the golden
    `b14-card-counts-waiting`):
@@ -990,12 +983,9 @@ is left out together with its separator.
        📡 anthropics/claude-code, ⬇️ 46 🔀 0 | 🅱️ main | 🔗 #1234 pending | 🌳 feature-xyz
        🗂️ 50 ▶️ 2 🔃 3 ✅ 12 | 🔋 CW 9% | 🔋 7D 41% (resets in 4d 23h)
 
-   Tests: `tests/statusline_worktree_label.rs` (the three shapes, a released reservation
-   is no holder, the lowest card number, the main checkout, the `worktree` option, the
-   line), the unit tests in `src/statusline/state.rs`
-   (`the_name_is_cut_at_thirty_two_characters_and_drops_control_characters`,
-   `a_relative_recorded_path_never_matches`) and the golden cases `a02-doc-full` and
-   `b14-card-counts-waiting`. With both windows off and no card counts the line is empty and
+   Tests: `tests/statusline_worktree_label.rs` (the host name, a released reservation
+   is no holder, the main checkout, the `worktree` option, the line) and the golden cases
+   `a02-doc-full` and `b14-card-counts-waiting`. With both windows off and no card counts the line is empty and
    omitted like any empty line. The five-hour window is not shown — the user did not choose it (#2756,
    6858992949) — and the `usage_5h` option is still accepted. A missing weekly window is
    hidden. The existing usage calculation is retained. The
@@ -1015,9 +1005,18 @@ returns JSONL rows. It is not a second main layout. Empty, malformed and oversiz
 main input degrades to the normal nonempty fallback; the input ceiling is 4 MiB,
 including when an oversized stream begins with otherwise valid JSON.
 
-Rendering remains read-only and network-free. Local git retains its 800 ms render
-budget; no forge refresh is added. Existing configuration/cache sources are unchanged,
-and this command does not change Claude settings, Go scripts or Orca wrappers.
+Rendering is not read-only any more (SPEC-20261122-statusline-where). The status line
+starts `git` at most once in a render (the branch, or the short commit of a detached
+HEAD, is read from the `HEAD` file with no process), starts the detached `gh` refresh of
+the issue and pull request counts when their numbers are old, and writes a
+cache under `$TMPDIR`: `moai-statusline/<session_id>.json`, named only by the stdin
+session id, in a folder of mode 0700 and a file of mode 0600. While the cache holds the same `HEAD` text
+and the same integration branch commit and is less than ten seconds old, no `git`
+process is started; the render that writes a new file removes files older than a day, at
+most ten per render. The render itself waits for no network. Local git retains its
+800 ms render budget; the forge counts and their refresh are unchanged. Other
+configuration/cache sources are unchanged, and this command does not change Claude
+settings, Go scripts or Orca wrappers.
 
 `tests/fixtures/statusline/` preserves the historical Go recordings unchanged.
 The active Rust layout recordings are in `tests/fixtures/statusline-claude/`;

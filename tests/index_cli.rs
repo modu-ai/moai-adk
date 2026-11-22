@@ -193,8 +193,13 @@ fn index_query_answers_under_its_operation_name() {
     );
 }
 
+/// `<state folder>/index/<sub>` of `project`, from the resolver the product uses.
+fn index_path(project: &Path, sub: &str) -> PathBuf {
+    moai_cli::state_root::path(project, "index").join(sub)
+}
+
 fn pointer_gen(project: &Path) -> Option<String> {
-    let bytes = fs::read(project.join(".moai-cli/index/current.json")).ok()?;
+    let bytes = fs::read(index_path(project, "current.json")).ok()?;
     let v: Value = serde_json::from_slice(&bytes).ok()?;
     v["generation_id"].as_str().map(str::to_string)
 }
@@ -295,10 +300,7 @@ fn freshness_suite_detects_add_delete_modify_new_and_branch_switch() {
         .unwrap()
         .to_string();
     assert_ne!(gen1, gen2);
-    assert!(project
-        .join(".moai-cli/index/generations")
-        .join(&gen1)
-        .is_dir());
+    assert!(index_path(&project, "generations").join(&gen1).is_dir());
     let v = query(&project);
     assert_eq!(v["state"], json!("fresh"));
     assert_eq!(v["generation_id"], json!(gen2));
@@ -307,8 +309,7 @@ fn freshness_suite_detects_add_delete_modify_new_and_branch_switch() {
 
 fn gen1_base(project: &Path, gen: &str) -> String {
     let bytes = fs::read(
-        project
-            .join(".moai-cli/index/generations")
+        index_path(project, "generations")
             .join(gen)
             .join("manifest.json"),
     )
@@ -326,8 +327,7 @@ fn identical_rebuild_across_seconds_keeps_generation_and_manifest() {
     assert!(first.status.success());
     let first = envelope(&first)["result"].clone();
     let generation = first["generation_id"].as_str().unwrap();
-    let manifest = project
-        .join(".moai-cli/index/generations")
+    let manifest = index_path(&project, "generations")
         .join(generation)
         .join("manifest.json");
     let before = fs::read(&manifest).unwrap();
@@ -352,8 +352,7 @@ fn pointer_generation_id_is_validated_before_path_resolution() {
     let first = build(&project);
     assert!(first.status.success());
     let generation = pointer_gen(&project).unwrap();
-    let manifest = project
-        .join(".moai-cli/index/generations")
+    let manifest = index_path(&project, "generations")
         .join(&generation)
         .join("manifest.json");
     let original: Value = serde_json::from_slice(&fs::read(manifest).unwrap()).unwrap();
@@ -374,7 +373,7 @@ fn pointer_generation_id_is_validated_before_path_resolution() {
         fs::write(outside.join("manifest.json"), &bytes).unwrap();
         let pointer =
             serde_json::to_vec(&json!({"schema_version": 1, "generation_id": id})).unwrap();
-        fs::write(project.join(".moai-cli/index/current.json"), &pointer).unwrap();
+        fs::write(index_path(&project, "current.json"), &pointer).unwrap();
         let result = query(&project);
         assert_eq!(result["state"], json!("unavailable"), "{id}");
         assert_eq!(result["reason"], json!("index pointer unreadable"), "{id}");
@@ -382,7 +381,7 @@ fn pointer_generation_id_is_validated_before_path_resolution() {
         assert_eq!(result["writes"], json!(false));
         assert_eq!(fs::read(outside.join("manifest.json")).unwrap(), bytes);
         assert_eq!(
-            fs::read(project.join(".moai-cli/index/current.json")).unwrap(),
+            fs::read(index_path(&project, "current.json")).unwrap(),
             pointer
         );
     }
@@ -395,8 +394,7 @@ fn damaged_reusable_manifest_keeps_previous_pointer_and_marks_partial() {
     let (_tmp, project) = setup_project();
     assert!(build(&project).status.success());
     let old = pointer_gen(&project).unwrap();
-    let old_manifest = project
-        .join(".moai-cli/index/generations")
+    let old_manifest = index_path(&project, "generations")
         .join(&old)
         .join("manifest.json");
     let before = fs::read(&old_manifest).unwrap();
@@ -478,7 +476,7 @@ fn failed_build_keeps_previous_generation_and_marks_partial() {
     assert!(out.status.success());
     let v = query(&project);
     assert_eq!(v["state"], json!("fresh"));
-    assert!(!project.join(".moai-cli/index/last-build.json").exists());
+    assert!(!index_path(&project, "last-build.json").exists());
 }
 
 /// AC-2 mixed generations 0 + crash-mid-write: the pointer is the only resolution path.
@@ -495,9 +493,7 @@ fn orphan_temp_dirs_are_ignored_and_the_pointer_is_the_only_path() {
 
     // Crash mid-write: a staging directory with a manifest that is NOT the published
     // generation. It must be reported as an orphan candidate and never resolved.
-    let orphan = project
-        .join(".moai-cli/index/generations")
-        .join(".tmp-999-crashed");
+    let orphan = index_path(&project, "generations").join(".tmp-999-crashed");
     fs::create_dir_all(&orphan).unwrap();
     fs::write(
         orphan.join("manifest.json"),
@@ -529,7 +525,7 @@ fn orphan_temp_dirs_are_ignored_and_the_pointer_is_the_only_path() {
 
     // A corrupted pointer (torn/damaged file) is unavailable with a reason — the
     // atomic swap makes this impossible mid-build, so seeing it means damage.
-    fs::write(project.join(".moai-cli/index/current.json"), b"{truncated").unwrap();
+    fs::write(index_path(&project, "current.json"), b"{truncated").unwrap();
     let v = query(&project);
     assert_eq!(v["state"], json!("unavailable"));
     assert!(v["reason"].as_str().unwrap().contains("unreadable"));
@@ -561,11 +557,7 @@ fn symlinked_failure_marker_never_overwrites_source() {
     let (_tmp, project) = setup_project();
     assert!(build(&project).status.success());
     let old = pointer_gen(&project).unwrap();
-    std::os::unix::fs::symlink(
-        "../../a.txt",
-        project.join(".moai-cli/index/last-build.json"),
-    )
-    .unwrap();
+    std::os::unix::fs::symlink("../../a.txt", index_path(&project, "last-build.json")).unwrap();
     fs::write(
         project.join("too-large.txt"),
         vec![b'x'; 16 * 1024 * 1024 + 1],
@@ -577,7 +569,7 @@ fn symlinked_failure_marker_never_overwrites_source() {
     assert_eq!(fs::read(project.join("a.txt")).unwrap(), b"alpha");
     assert_eq!(pointer_gen(&project).as_deref(), Some(old.as_str()));
     assert!(
-        fs::symlink_metadata(project.join(".moai-cli/index/last-build.json"))
+        fs::symlink_metadata(index_path(&project, "last-build.json"))
             .unwrap()
             .file_type()
             .is_symlink()
@@ -587,17 +579,19 @@ fn symlinked_failure_marker_never_overwrites_source() {
 #[cfg(unix)]
 #[test]
 fn symlinked_index_ancestors_never_receive_build_writes() {
-    for rel in [
-        ".moai-cli",
-        ".moai-cli/index",
-        ".moai-cli/index/generations",
-    ] {
+    for rel in ["", "index", "index/generations"] {
         let (tmp, project) = setup_project();
+        if rel.is_empty() {
+            // The state folder itself as a link: an earlier project's `.moai-cli`, the folder a
+            // link at that place keeps resolving to (a link named `.moai` is not adopted; the
+            // resolver falls back to the earlier name and writes nothing through the link).
+            fs::create_dir(project.join(".moai-cli")).unwrap();
+        }
         assert!(build(&project).status.success());
         let external = tmp.path().join("external");
         fs::create_dir(&external).unwrap();
         fs::write(external.join("sentinel"), b"keep").unwrap();
-        let original = project.join(rel);
+        let original = moai_cli::state_root::path(&project, rel);
         fs::rename(&original, original.with_extension("kept")).unwrap();
         std::os::unix::fs::symlink(&external, &original).unwrap();
         let attempt = build(&project);
@@ -639,8 +633,7 @@ fn tracked_parent_symlinks_are_deleted_without_indexing_outside_content() {
         assert_ne!(generation, old);
         let manifest: Value = serde_json::from_slice(
             &fs::read(
-                project
-                    .join(".moai-cli/index/generations")
+                index_path(&project, "generations")
                     .join(generation)
                     .join("manifest.json"),
             )
@@ -767,7 +760,7 @@ fn git_output_has_literal_n_and_n_plus_one_boundaries() {
 fn pointer_swap_preserves_existing_readers_of_the_previous_pointer() {
     let (tmp, project) = setup_project();
     assert!(build(&project).status.success());
-    let pointer = project.join(".moai-cli/index/current.json");
+    let pointer = index_path(&project, "current.json");
     let before = fs::read(&pointer).unwrap();
     let held = tmp.path().join("held-pointer.json");
     fs::hard_link(&pointer, &held).unwrap();
@@ -803,8 +796,7 @@ fn tracked_regular_file_replaced_by_a_directory_is_deleted_not_a_gitlink() {
     let generation = pointer_gen(&project).unwrap();
     let manifest: Value = serde_json::from_slice(
         &fs::read(
-            project
-                .join(".moai-cli/index/generations")
+            index_path(&project, "generations")
                 .join(generation)
                 .join("manifest.json"),
         )
@@ -858,7 +850,7 @@ fn untracked_overflow_is_unavailable_instead_of_a_truncated_change_list() {
         .unwrap()
         .contains("untracked file limit exceeded"));
     fs::write(
-        project.join(".moai-cli/index/last-build.json"),
+        index_path(&project, "last-build.json"),
         serde_json::to_vec(&json!({
             "status": "partial", "reason": "source read failed", "at": "2026-11-10T00:00:00Z"
         }))
@@ -900,8 +892,7 @@ fn actual_gitlink_keeps_the_submodule_commit_in_the_manifest() {
     let generation = pointer_gen(&project).unwrap();
     let manifest: Value = serde_json::from_slice(
         &fs::read(
-            project
-                .join(".moai-cli/index/generations")
+            index_path(&project, "generations")
                 .join(generation)
                 .join("manifest.json"),
         )
@@ -931,12 +922,11 @@ fn state_fifos_are_unavailable_and_never_wait_for_a_writer() {
         assert!(build(&project).status.success());
         let generation = pointer_gen(&project).unwrap();
         let path = if state == "manifest.json" {
-            project
-                .join(".moai-cli/index/generations")
+            index_path(&project, "generations")
                 .join(&generation)
                 .join(state)
         } else {
-            project.join(".moai-cli/index").join(state)
+            index_path(&project, state)
         };
         if path.exists() {
             fs::remove_file(&path).unwrap();
@@ -962,22 +952,22 @@ fn failed_build_never_waits_when_its_failure_marker_is_a_fifo() {
     let (_tmp, project) = setup_project();
     assert!(build(&project).status.success());
     let previous = pointer_gen(&project).unwrap();
-    let pointer = fs::read(project.join(".moai-cli/index/current.json")).unwrap();
-    fifo(&project.join(".moai-cli/index/last-build.json"));
+    let pointer = fs::read(index_path(&project, "current.json")).unwrap();
+    fifo(&index_path(&project, "last-build.json"));
     fs::remove_file(project.join("a.txt")).unwrap();
     fifo(&project.join("a.txt"));
     let failed = cli_before_deadline(&project, &["index-build", "."]);
     assert!(!failed.status.success());
     assert_eq!(pointer_gen(&project).as_deref(), Some(previous.as_str()));
     assert_eq!(
-        fs::read(project.join(".moai-cli/index/current.json")).unwrap(),
+        fs::read(index_path(&project, "current.json")).unwrap(),
         pointer
     );
     let queried = cli_before_deadline(&project, &["index-query", "."]);
     assert_eq!(envelope(&queried)["result"]["state"], "unavailable");
     use std::os::unix::fs::FileTypeExt;
     assert!(
-        fs::symlink_metadata(project.join(".moai-cli/index/last-build.json"))
+        fs::symlink_metadata(index_path(&project, "last-build.json"))
             .unwrap()
             .file_type()
             .is_fifo()
@@ -989,8 +979,7 @@ fn manifest_file_count_has_literal_n_and_n_plus_one_read_boundaries() {
     let (_tmp, project) = setup_project();
     assert!(build(&project).status.success());
     let generation = pointer_gen(&project).unwrap();
-    let path = project
-        .join(".moai-cli/index/generations")
+    let path = index_path(&project, "generations")
         .join(&generation)
         .join("manifest.json");
     let mut manifest: Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
@@ -1024,12 +1013,11 @@ fn state_byte_budget_has_literal_n_and_n_plus_one_read_boundaries() {
         assert!(build(&project).status.success());
         let generation = pointer_gen(&project).unwrap();
         let path = if state == "manifest.json" {
-            project
-                .join(".moai-cli/index/generations")
+            index_path(&project, "generations")
                 .join(generation)
                 .join(state)
         } else {
-            project.join(".moai-cli/index").join(state)
+            index_path(&project, state)
         };
         let mut bytes = if state == "last-build.json" {
             br#"{"status":"partial","reason":"known failure","at":"2026-11-10T00:00:00Z"}"#.to_vec()

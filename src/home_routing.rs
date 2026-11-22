@@ -1,11 +1,11 @@
-//! The MoAI routing section in each host's global instruction file (#2638, final design
+//! The MoAI routing section in Claude Code's global instruction file (#2638, final design
 //! layer 2; user decision 6845654776).
 //!
-//! The section text is one package file, `references/home/routing.md`, rendered per host
-//! (`{invoke}` becomes `/moai` or `$moai`) and kept between `moai:managed` markers with the id
-//! `moai-routing` in Claude Code's `~/.claude/CLAUDE.md` and Codex's `~/.codex/AGENTS.md`. Codex
-//! has no `@` import (#2635 6842183286, measured), so both files carry the text itself, from
-//! the same source. `~/.agents/AGENTS.md` is never created (user decision 3).
+//! The section text is one package file, `references/home/routing.md`, rendered for the host
+//! (`{invoke}` becomes `/moai`) and kept between `moai:managed` markers with the id
+//! `moai-routing` in `~/.claude/CLAUDE.md`. The Codex section that an earlier version wrote into
+//! `~/.codex/AGENTS.md` is no longer written (SPEC-20261122-codex-home-update-removed); a receipt
+//! that names it is skipped.
 //!
 //! `plan` compares the block three-way with `agents::section_plan` — baseline = the block we
 //! last wrote (`~/.moai-cli/home-routing/<host>.json`), current = the block on disk, new = the
@@ -35,16 +35,9 @@ pub const SECTION: &str = "moai-routing";
 pub const SOURCE: &str = "references/home/routing.md";
 /// Hosts written: (host, file under HOME when the host folder is not relocated — see
 /// [`crate::host_home`] — and how the user invokes the skill there).
-pub const HOSTS: [(&str, &str, &str); 2] = [
-    ("claude", ".claude/CLAUDE.md", "/moai"),
-    ("codex", ".codex/AGENTS.md", "$moai"),
-];
+pub const HOSTS: [(&str, &str, &str); 1] = [("claude", ".claude/CLAUDE.md", "/moai")];
 /// Hosts not written, each with the reason (#2635 6842183286).
-pub const NOT_SUPPORTED: [(&str, &str); 3] = [
-    (
-        "omp",
-        "~/.omp/agent/AGENTS.md, once present, shadows every other user context file OMP reads; not created by this tool",
-    ),
+pub const NOT_SUPPORTED: [(&str, &str); 2] = [
     (
         "kiro",
         "~/.kiro/steering is documented but not measured (Kiro not installed); not written",
@@ -123,8 +116,8 @@ fn sha(bytes: &[u8]) -> String {
     crate::digest(bytes)
 }
 
-/// The host's instruction file: `CLAUDE.md` or `AGENTS.md` in the host folder that
-/// [`crate::host_home`] names (`~/.claude`, `~/.codex`, or the relocated folder, card C-79).
+/// The host's instruction file: `CLAUDE.md` in the host folder that [`crate::host_home`] names
+/// (`~/.claude`, or the relocated folder). The update writes no Codex file any more.
 fn host_file(home: &Path, host: &str) -> Result<PathBuf> {
     let rel = HOSTS
         .iter()

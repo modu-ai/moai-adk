@@ -20,6 +20,7 @@ use tempfile::TempDir;
 const EXE: &str = crate::common::MOAI_BIN;
 const REF: &str = "test:2936";
 const PLACEHOLDER: &str = "<permission-reference>";
+const CONFIRM_PLACEHOLDER: &str = "<warning-confirmation>";
 const BLOCKED_BY_BACKUP: &str = "re-run after the backup phase";
 
 struct Fx {
@@ -131,31 +132,6 @@ impl Fx {
         plan
     }
 
-    /// A fake install folder beside the project and HOME: a copy of this binary at
-    /// `install/bin/<name>` with the skill package and the agent sources next to it, the layout
-    /// `update::installed_package_dir` and `installed_agents_dir` look for. Returns the copy.
-    fn install(&self) -> String {
-        let repo = Path::new(env!("CARGO_MANIFEST_DIR"));
-        let dir = self.home.parent().unwrap().join("install");
-        fs::create_dir_all(dir.join("bin")).unwrap();
-        fs::create_dir_all(dir.join("skills")).unwrap();
-        let exe = dir.join("bin").join(Path::new(EXE).file_name().unwrap());
-        common::copy_executable(Path::new(EXE), &exe);
-        for (from, to) in [("skills/moai", "skills/moai"), ("agents", "agents")] {
-            copy_tree(&repo.join(from), &dir.join(to));
-        }
-        exe.to_str().unwrap().to_string()
-    }
-
-    /// [`Fx::plan`] run by the copy [`Fx::install`] made.
-    fn plan_installed(&self, exe: &str) -> Value {
-        let before = self.tree();
-        let v = self.run_exe(exe, &["project-update-plan", self.p()], b"");
-        assert_eq!(v["ok"], json!(true), "{v}");
-        assert_eq!(before, self.tree(), "project-update-plan wrote something");
-        v["result"].clone()
-    }
-
     /// A profile written the way PROJECT writes it: the detected facts, then
     /// `project-plan` and `project-apply`.
     fn with_profile(&self, github_issues: bool) {
@@ -253,14 +229,32 @@ impl Fx {
             .map(|w| w.as_str().unwrap().to_string())
             .collect();
         assert_eq!(argv[0], "moai", "{argv:?}");
+        // The permission reference is the only placeholder, plus the confirmation token of a
+        // plan that carries a warning (the step then says so in its preview).
+        let wants_token = step["preview"]["needs_confirmation"] == json!(true);
+        let expected: Vec<&str> = if wants_token {
+            vec![CONFIRM_PLACEHOLDER, PLACEHOLDER]
+        } else {
+            vec![PLACEHOLDER]
+        };
         assert_eq!(
-            argv.iter().filter(|w| w.contains('<')).collect::<Vec<_>>(),
-            vec![PLACEHOLDER],
-            "the only placeholder is the permission reference: {argv:?}"
+            argv.iter()
+                .filter(|w| w.contains('<'))
+                .map(String::as_str)
+                .collect::<Vec<_>>(),
+            expected,
+            "placeholders of the printed command: {argv:?}"
         );
+        let token = step["preview"]["confirm_token"]
+            .as_str()
+            .unwrap_or_default();
         let args: Vec<&str> = argv[1..]
             .iter()
-            .map(|w| if w == PLACEHOLDER { REF } else { w.as_str() })
+            .map(|w| match w.as_str() {
+                PLACEHOLDER => REF,
+                CONFIRM_PLACEHOLDER => token,
+                other => other,
+            })
             .collect();
         let stdin = match &step["apply"]["stdin"] {
             Value::Null => Vec::new(),
@@ -298,32 +292,14 @@ fn steps(plan: &Value) -> Vec<&Value> {
         .collect()
 }
 
-const INSTALL: [&str; 11] = [
+/// The install steps that wait for the profile or the backup phase.
+const INSTALL: [&str; 5] = [
     "profile",
     "generation",
     "claude-settings",
     "hooks",
     "github",
-    "codex-hooks",
-    "codex-config",
-    "codex-skill",
-    "omp-hooks",
-    "omp-config",
-    "omp-agents",
 ];
-
-fn copy_tree(from: &Path, to: &Path) {
-    fs::create_dir_all(to).unwrap();
-    for e in fs::read_dir(from).unwrap() {
-        let e = e.unwrap();
-        let target = to.join(e.file_name());
-        if e.file_type().unwrap().is_dir() {
-            copy_tree(&e.path(), &target);
-        } else {
-            fs::copy(e.path(), target).unwrap();
-        }
-    }
-}
 
 #[test]
 fn empty_project() {
@@ -890,31 +866,36 @@ fn local_file_from_manifest() {
     let paths = generation_paths(&plan);
     // #3009 S3b: the managed `.gitignore` block (the state-folder allow-list) is planned for
     // every choice; the personal file is planned only when the choice makes it.
-    assert!(!paths.iter().any(|p| p == "AGENTS.local.md"), "{paths:?}");
+    assert!(!paths.iter().any(|p| p == "CLAUDE.local.md"), "{paths:?}");
     assert!(paths.iter().any(|p| p == ".gitignore"), "{paths:?}");
 
-    for (choice, lists_local) in [("tracked", false), ("ignored", true)] {
+    // A personal file is never shared, so `tracked` plans like `ignored` (the layout's REQ-7).
+    for (choice, lists_local) in [("tracked", true), ("ignored", true)] {
         let fx = Fx::new();
         fx.with_profile(false);
         let mut request = step(&fx.plan(), "generation")["apply"]["stdin"]["request"].clone();
         request["local_file"] = json!(choice);
+        request["picks"] = json!(["personal-file"]);
         fx.generate(&request);
         let plan = fx.plan();
         let generation = step(&plan, "generation");
         assert_eq!(generation["state"], "unchanged", "{choice}: {generation}");
         let paths = generation_paths(&plan);
+        // The personal file is planned on the pick only, and the file stays as it was written.
         assert!(
-            paths.iter().any(|p| p == "AGENTS.local.md"),
+            !paths.iter().any(|p| p == "CLAUDE.local.md"),
             "{choice}: {paths:?}"
         );
+        assert!(fx.root.join("CLAUDE.local.md").is_file(), "{choice}");
         assert!(
             paths.iter().any(|p| p == ".gitignore"),
             "{choice}: {paths:?}"
         );
-        // The block lists the personal file only for the `ignored` choice (condition 4).
+        // The block lists the personal file whenever the choice is not `none`, `tracked` too: a
+        // personal file is never shared, so both `ignored` and `tracked` keep it out of git.
         let ignore = fs::read_to_string(fx.root.join(".gitignore")).unwrap();
         assert_eq!(
-            ignore.lines().any(|l| l == "AGENTS.local.md"),
+            ignore.lines().any(|l| l == "CLAUDE.local.md"),
             lists_local,
             "{choice}: {ignore}"
         );
@@ -923,9 +904,10 @@ fn local_file_from_manifest() {
     // `ignored` over the user's own rule records no section: tracked or ignored is unknown.
     let fx = Fx::new();
     fx.with_profile(false);
-    fx.write(".gitignore", "AGENTS.local.md\n");
+    fx.write(".gitignore", "CLAUDE.local.md\n");
     let mut request = step(&fx.plan(), "generation")["apply"]["stdin"]["request"].clone();
     request["local_file"] = json!("ignored");
+    request["picks"] = json!(["personal-file"]);
     fx.generate(&request);
     let plan = fx.plan();
     let generation = step(&plan, "generation");
@@ -954,6 +936,7 @@ fn the_recorded_block_kind_tells_the_personal_file_choice() {
         fx.with_profile(false);
         let mut request = step(&fx.plan(), "generation")["apply"]["stdin"]["request"].clone();
         request["local_file"] = json!("ignored");
+        request["picks"] = json!(["personal-file"]);
         fx.generate(&request);
         let manifest_path = fx.generation_manifest(&fx.plan());
         let mut manifest: Value =
@@ -991,6 +974,41 @@ fn the_recorded_block_kind_tells_the_personal_file_choice() {
             "{kind:?}: {generation}"
         );
     }
+}
+
+/// Generation moved to `CLAUDE.local.md`: a manifest of an earlier release that records the
+/// personal file under the old name reads like one that records it under the new name. Without
+/// that the record "file seen once, block lists it" is half a record and the update asks the user
+/// again.
+#[test]
+fn a_manifest_that_names_agents_local_md_gives_the_same_choice() {
+    let fx = Fx::new();
+    fx.with_profile(false);
+    let mut request = step(&fx.plan(), "generation")["apply"]["stdin"]["request"].clone();
+    request["local_file"] = json!("ignored");
+    request["picks"] = json!(["personal-file"]);
+    fx.generate(&request);
+    let manifest_path = fx.generation_manifest(&fx.plan());
+    let mut manifest: Value = serde_json::from_slice(&fs::read(&manifest_path).unwrap()).unwrap();
+    let recorded = manifest["created_once"].as_array_mut().unwrap();
+    assert!(
+        recorded.iter().any(|p| p == "CLAUDE.local.md"),
+        "the apply records the personal file: {recorded:?}"
+    );
+    // A manifest of an earlier release records it under the old name: it reads the same.
+    for p in recorded.iter_mut() {
+        if *p == "CLAUDE.local.md" {
+            *p = json!("AGENTS.local.md");
+        }
+    }
+    fs::write(
+        &manifest_path,
+        serde_json::to_vec_pretty(&manifest).unwrap(),
+    )
+    .unwrap();
+    let plan = fx.plan();
+    let generation = step(&plan, "generation");
+    assert_ne!(generation["state"], "needs_decision", "{generation}");
 }
 
 /// #2953 F3: a `ready` profile step holds the generation step until the preview is re-run.
@@ -1174,12 +1192,36 @@ fn request_defaults() {
     );
 }
 
+impl Fx {
+    /// Makes the settled project's `CLAUDE.md` import `AGENTS.md`, below its managed block. A
+    /// project like that is offered no pick (SPEC-20261122-claude-md-project-picks), so the
+    /// personal-file merge step stays the one that offers an `AGENTS.local.md`.
+    fn import_agents_md(&self) {
+        let path = self.root.join("CLAUDE.md");
+        let text = fs::read_to_string(&path).unwrap();
+        fs::write(&path, format!("{text}\n@AGENTS.md\n")).unwrap();
+    }
+}
+
 /// #2936 R10: a settled project with a personal `AGENTS.local.md` gets the merge as a decision
-/// that prints the apply command; applying it settles the preview again.
+/// that prints the apply command; applying it settles the preview again. A project whose
+/// `CLAUDE.md` does not import `AGENTS.md` is offered the picks instead, and the merge step skips
+/// while they are pending.
 #[test]
 fn the_merge_step_offers_the_personal_file_and_settles_after_the_apply() {
     let fx = Fx::new();
     fx.settled();
+    let pending = fx.root.join("AGENTS.local.md");
+    fs::write(&pending, "# My notes\n\nReply in Korean.\n").unwrap();
+    let plan = fx.plan();
+    assert_eq!(
+        step(&plan, "agents-picks")["state"],
+        "needs_decision",
+        "{plan}"
+    );
+    assert_eq!(step(&plan, "agents-local-merge")["state"], "skip", "{plan}");
+    fs::remove_file(&pending).unwrap();
+    fx.import_agents_md();
     let settled = fx.plan();
     assert_eq!(
         step(&settled, "agents-local-merge")["state"],
@@ -1218,6 +1260,96 @@ fn the_merge_step_offers_the_personal_file_and_settles_after_the_apply() {
         "{after}"
     );
     assert_eq!(after["all_unchanged"], json!(true), "{after}");
+}
+
+/// The audit of the personal-file move: a first `CLAUDE.local.md` over an `AGENTS.md` would hide
+/// that file from Claude Code, so the merge on its own warns in plain words and writes nothing
+/// until the confirmation token comes with it. The update preview offers the picks first for such
+/// a project: they write `CLAUDE.md` before the personal file, so their preview carries no such
+/// warning, and the merge step skips while they are pending.
+#[test]
+fn the_merge_preview_warns_and_the_apply_waits_for_the_confirmation() {
+    let fx = Fx::new();
+    // The project holds an AGENTS.md of its own and no CLAUDE file, so generation writes none.
+    fx.write("AGENTS.md", "# rules\n");
+    fx.write("AGENTS.local.md", "# My notes\n\nReply in Korean.\n");
+    fx.with_profile(false);
+    for s in steps(&fx.plan())
+        .into_iter()
+        .filter(|s| s["state"] == "ready")
+    {
+        assert_eq!(fx.apply_step(s)["ok"], json!(true), "{s}");
+    }
+    assert!(!fx.root.join("CLAUDE.md").exists());
+    let plan = fx.plan();
+    let picks = step(&plan, "agents-picks");
+    assert_eq!(picks["state"], "needs_decision", "{picks}");
+    assert!(
+        !picks.to_string().contains("claude-md-and-agents-md"),
+        "{picks}"
+    );
+    let merge = step(&plan, "agents-local-merge");
+    assert_eq!(merge["state"], "skip", "{merge}");
+    assert_eq!(merge["apply"], Value::Null, "{merge}");
+
+    // The merge on its own: the plan warns and carries the token that answers the warning.
+    let own = fx.call(&["agents-merge-plan", fx.p()], b"");
+    let warnings = own["warnings"].to_string();
+    assert!(
+        warnings.contains("AGENTS.md") && warnings.contains("claude-md-and-agents-md"),
+        "the warning names the file and the setting that keeps both read: {own}"
+    );
+    assert_eq!(own["needs_confirmation"], json!(true), "{own}");
+    let token = own["confirm_token"].as_str().expect("a token").to_string();
+    let digest = own["plan_digest"].as_str().unwrap().to_string();
+
+    // Without the token: refused, the project is unchanged.
+    let command = |token: Option<&str>| {
+        let mut args = vec![
+            "agents-merge-apply",
+            fx.p(),
+            "--plan-digest",
+            digest.as_str(),
+            "--permission-reference",
+            REF,
+        ];
+        if let Some(token) = token {
+            args.extend(["--confirm-warnings", token]);
+        }
+        fx.run(&args, b"")
+    };
+    let before = fx.tree();
+    let refused = command(None);
+    assert_eq!(refused["ok"], json!(false), "{refused}");
+    assert_eq!(before, fx.tree(), "a refused apply wrote something");
+    assert!(!fx.root.join("CLAUDE.local.md").exists());
+
+    // With the token the merge is applied.
+    assert_eq!(command(Some(&token))["ok"], json!(true));
+    assert!(fx.root.join("CLAUDE.local.md").exists());
+}
+
+/// The audit of the personal-file move: in a git project the preview shows the one `.gitignore`
+/// line and the apply writes it.
+#[test]
+fn the_merge_step_adds_the_ignore_line_in_a_git_project() {
+    let fx = Fx::new();
+    fx.settled();
+    let init = Command::new("/usr/bin/git")
+        .args(["init", "-q"])
+        .arg(&fx.root)
+        .clean_env()
+        .status()
+        .unwrap();
+    assert!(init.success());
+    fx.import_agents_md();
+    fx.write("AGENTS.local.md", "# My notes\n\nReply in Korean.\n");
+    let plan = fx.plan();
+    let merge = step(&plan, "agents-local-merge");
+    assert_eq!(merge["preview"]["gitignore"]["action"], "add", "{merge}");
+    assert_eq!(fx.apply_step(merge)["ok"], json!(true), "{merge}");
+    let ignore = fs::read_to_string(fx.root.join(".gitignore")).unwrap();
+    assert!(ignore.lines().any(|l| l == "CLAUDE.local.md"), "{ignore}");
 }
 
 /// #2936 R10: while the generation step still has files to write, the merge waits: that step's
@@ -1610,140 +1742,42 @@ fn a_backup_copy_changed_after_the_move_blocks_the_merge() {
     assert_eq!(merge["apply"], Value::Null);
 }
 
-// ---- #2936 R9 S5a: the host hook steps ----
+// ---- the install phase after the Codex and OMP steps were removed ----
 
-/// The whole plan as text, for the words no step may print (Q-H2: no trust bypass, no
-/// approval mode, no `features.` key, no `trust_level`).
-fn assert_no_forbidden_words(plan: &Value) {
-    let text = plan.to_string();
-    for word in [
-        "trust_level",
-        "--dangerously-bypass-hook-trust",
-        "approvalMode",
-        "features.",
-    ] {
-        assert!(!text.contains(word), "the plan prints {word}: {text}");
-    }
-}
-
+/// The profile's `hosts` no longer change the steps: whatever it lists, the install phase holds
+/// the five Claude-side steps and then the retired-hosts step, and no step prints a command that
+/// writes for codex or omp.
 #[test]
-fn the_host_hook_steps_print_their_apply_and_settle() {
-    let fx = Fx::new();
-    fx.with_profile(false);
-    let plan = fx.plan();
-    for (name, host, file) in [
-        ("codex-hooks", "codex", ".codex/hooks.json"),
-        ("omp-hooks", "omp", ".omp/extensions/"),
-    ] {
-        let s = step(&plan, name);
-        assert_eq!(s["state"], "ready", "{name}: {s}");
-        let argv: Vec<&str> = s["apply"]["argv"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .map(|w| w.as_str().unwrap())
-            .collect();
-        assert_eq!(&argv[..2], ["moai", "hooks-apply"], "{argv:?}");
-        assert_eq!(argv[2], fx.p(), "{argv:?}");
-        let at = argv.iter().position(|w| *w == "--host").unwrap();
-        assert_eq!(argv[at + 1], host, "{argv:?}");
-        assert!(
-            s["preview"]["path"].as_str().unwrap().starts_with(file),
-            "{name}: {s}"
-        );
-        assert!(s["plan_digest"].is_string(), "{name}: {s}");
-    }
-    for name in ["codex-hooks", "omp-hooks"] {
-        let out = fx.apply_step(step(&plan, name));
-        assert_eq!(out["ok"], json!(true), "{name}: {out}");
-    }
-    assert!(fx.root.join(".codex/hooks.json").is_file());
-    let again = fx.plan();
-    for name in ["codex-hooks", "omp-hooks"] {
-        let s = step(&again, name);
-        assert_eq!(s["state"], "unchanged", "{name}: {s}");
-        assert_eq!(s["apply"], Value::Null, "{name}: {s}");
-    }
-}
-
-#[test]
-fn the_codex_hook_step_says_the_user_trusts_the_hooks_in_codex() {
-    let fx = Fx::new();
-    fx.with_profile(false);
-    let plan = fx.plan();
-    let notice = step(&plan, "codex-hooks")["preview"]["trust_required"]
-        .as_str()
-        .unwrap_or_else(|| panic!("no trust notice: {plan}"))
-        .to_string();
-    assert!(notice.contains("/hooks"), "{notice}");
-    assert_no_forbidden_words(&plan);
-}
-
-#[test]
-fn an_edited_codex_hook_file_is_a_conflict_and_stays_byte_identical() {
-    let fx = Fx::new();
-    fx.with_profile(false);
-    let mine = "{\"hooks\": {\"Notification\": []}}\n";
-    fx.write(".codex/hooks.json", mine);
-    let before = fx.tree();
-    let plan = fx.plan();
-    let s = step(&plan, "codex-hooks");
-    assert_eq!(s["state"], "conflict", "{s}");
-    assert_eq!(s["apply"], Value::Null, "{s}");
-    assert!(
-        s["reason"]
-            .as_str()
-            .unwrap()
-            .contains("preservation review"),
-        "{s}"
-    );
-    assert_eq!(before, fx.tree(), "the plan changed the user's file");
-    assert_eq!(
-        fs::read_to_string(fx.root.join(".codex/hooks.json")).unwrap(),
-        mine
-    );
-}
-
-const CODEX_STEPS: [&str; 3] = ["codex-hooks", "codex-config", "codex-skill"];
-const OMP_STEPS: [&str; 3] = ["omp-hooks", "omp-config", "omp-agents"];
-
-/// SPEC-20261118-profile-host-omp AC-3: a host's steps are planned only when the profile lists
-/// that host; an unlisted host's steps are `skip` with a reason naming it and no command.
-#[test]
-fn host_steps_follow_the_profile_hosts() {
-    for (hosts, codex_picked, omp_picked) in [
-        (json!(["claude", "codex", "omp"]), true, true),
-        (json!(["claude", "codex"]), true, false),
-        (json!(["claude", "omp"]), false, true),
-        (json!(["claude"]), false, false),
+fn the_install_steps_do_not_depend_on_the_profile_hosts() {
+    let mut want: Vec<&str> = INSTALL.to_vec();
+    want.push("retired-hosts");
+    for hosts in [
+        json!(["claude", "codex", "omp"]),
+        json!(["claude", "codex"]),
+        json!(["claude", "omp"]),
+        json!(["claude"]),
     ] {
         let fx = Fx::new();
         fx.with_profile_extra(json!({"hosts": hosts}));
         let plan = fx.plan();
-        for (names, host, picked) in [
-            (CODEX_STEPS, "codex", codex_picked),
-            (OMP_STEPS, "omp", omp_picked),
-        ] {
-            for name in names {
-                let s = step(&plan, name);
-                if !picked {
-                    assert_eq!(s["state"], "skip", "{hosts}: {name}: {s}");
-                    assert_eq!(s["apply"], Value::Null, "{hosts}: {name}: {s}");
-                    assert!(
-                        s["reason"].as_str().unwrap().contains(host),
-                        "{hosts}: {name}: {s}"
-                    );
-                }
+        let names: Vec<&str> = phase(&plan, "install")["steps"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|s| s["step"].as_str().unwrap())
+            .collect();
+        assert_eq!(names, want, "{hosts}: {plan}");
+        for s in steps(&plan) {
+            for word in s["apply"]["argv"].as_array().into_iter().flatten() {
+                let word = word.as_str().unwrap();
+                assert!(
+                    !matches!(word, "codex" | "omp")
+                        && !word.starts_with("codex-")
+                        && !word.starts_with("omp-"),
+                    "{hosts}: {}: {s}",
+                    s["step"]
+                );
             }
-        }
-        for (name, picked) in [("codex-hooks", codex_picked), ("omp-hooks", omp_picked)] {
-            let s = step(&plan, name);
-            assert_eq!(s["state"] == "ready", picked, "{hosts}: {name}: {s}");
-            assert_eq!(
-                s["apply"]["argv"].is_array(),
-                picked,
-                "{hosts}: {name}: {s}"
-            );
         }
     }
 }
@@ -1785,28 +1819,7 @@ fn a_profile_with_omp_passes_project_plan() {
 }
 
 #[test]
-fn the_omp_config_step_writes_nothing_and_prints_no_command() {
-    let fx = Fx::new();
-    fx.with_profile(false);
-    let plan = fx.plan();
-    let s = step(&plan, "omp-config");
-    assert_eq!(s["state"], "skip", "{s}");
-    assert_eq!(s["apply"], Value::Null, "{s}");
-    assert!(
-        s["reason"].as_str().unwrap().contains(".omp/config.yml"),
-        "{s}"
-    );
-    for ready in steps(&plan).into_iter().filter(|x| x["state"] == "ready") {
-        assert_eq!(fx.apply_step(ready)["ok"], json!(true), "{ready}");
-    }
-    assert!(
-        !fx.root.join(".omp/config.yml").exists(),
-        "the install phase created .omp/config.yml"
-    );
-}
-
-#[test]
-fn a_broken_profile_blocks_its_steps_and_not_the_host_hook_steps() {
+fn a_broken_profile_blocks_its_steps_and_not_the_retired_hosts_step() {
     let fx = Fx::new();
     fx.with_profile(false);
     // The profile lives in the state folder; find it where PROJECT wrote it.
@@ -1818,329 +1831,209 @@ fn a_broken_profile_blocks_its_steps_and_not_the_host_hook_steps() {
     let plan = fx.plan();
     assert_eq!(step(&plan, "profile")["state"], "blocked", "{plan}");
     assert_eq!(step(&plan, "generation")["state"], "blocked", "{plan}");
-    for name in ["codex-hooks", "codex-config", "omp-hooks"] {
-        let s = step(&plan, name);
-        assert_eq!(s["state"], "ready", "{name}: {s}");
-        assert!(s["apply"]["argv"].is_array(), "{name}: {s}");
-    }
-    assert_eq!(step(&plan, "omp-config")["state"], "skip", "{plan}");
+    let retired = step(&plan, "retired-hosts");
+    assert_eq!(retired["state"], "skip", "{retired}");
+    assert_eq!(retired["apply"], Value::Null, "{retired}");
 }
 
-fn argv_of(step: &Value) -> Vec<&str> {
-    step["apply"]["argv"]
-        .as_array()
-        .unwrap_or_else(|| panic!("no printed command: {step}"))
-        .iter()
-        .map(|w| w.as_str().unwrap())
-        .collect()
-}
+// ---- SPEC-20261121-remove-codex-project-layer: the retired hosts get no step of their own ----
+
+/// The six steps earlier versions planned for the Codex and OMP hosts.
+const RETIRED_STEPS: [&str; 6] = [
+    "codex-hooks",
+    "codex-config",
+    "codex-skill",
+    "omp-hooks",
+    "omp-config",
+    "omp-agents",
+];
+
+/// The files and folders earlier versions wrote for those hosts, as `retired-hosts` lists them.
+const RETIRED_FILES: [(&str, &str); 6] = [
+    (".codex/hooks.json", "{\"hooks\": {\"Notification\": []}}\n"),
+    (".codex/config.toml", "[tui]\nstatus_line = [\"model\"]\n"),
+    (".codex/agents/mine.toml", "name = \"mine\"\n"),
+    (".agents/skills/moai/SKILL.md", "my own skill\n"),
+    (".omp/extensions/moai-hooks.ts", "// mine\n"),
+    (".omp/agents/mine.md", "mine\n"),
+];
 
 impl Fx {
-    /// The entries under HOME only.
-    fn home_tree(&self) -> Vec<(PathBuf, Node)> {
+    /// The entries under the project's `.codex`, `.omp` and `.agents` folders, bytes included.
+    fn host_folders(&self) -> Vec<(PathBuf, Node)> {
         self.tree()
             .into_iter()
-            .filter(|(p, _)| p.starts_with(&self.home))
+            .filter(|(p, _)| {
+                [".codex", ".omp", ".agents"]
+                    .iter()
+                    .any(|dir| p.starts_with(self.root.join(dir)))
+            })
             .collect()
     }
 }
 
+/// REQ-1 (AC-1): a full profile that still lists codex and omp plans the Claude steps and none
+/// of the six host steps, and the printed undo order names none of them either.
 #[test]
-fn the_codex_config_step_prints_its_apply_with_the_status_line_on_stdin_and_settles() {
+fn no_codex_or_omp_step_is_planned() {
     let fx = Fx::new();
     fx.with_profile(false);
     let plan = fx.plan();
-    let s = step(&plan, "codex-config");
-    assert_eq!(s["state"], "ready", "{s}");
-    let argv = argv_of(s);
-    assert_eq!(&argv[..2], ["moai", "codex-config-apply"], "{argv:?}");
-    assert_eq!(argv[2], fx.p(), "{argv:?}");
-    assert_eq!(
-        s["apply"]["stdin"],
-        json!({"tui.status_line": "moai"}),
-        "{s}"
-    );
-    assert!(s["plan_digest"].is_string(), "{s}");
-    assert!(
-        s["preview"]["config_path"]
-            .as_str()
-            .unwrap()
-            .ends_with("config.toml"),
-        "{s}"
-    );
-    assert_no_forbidden_words(&plan);
-    let home = fx.home_tree();
-    let out = fx.apply_step(s);
-    assert_eq!(out["ok"], json!(true), "{out}");
-    assert!(fx.root.join(".codex/config.toml").is_file());
-    assert_eq!(home, fx.home_tree(), "the apply wrote into HOME");
-    let again = fx.plan();
-    let s = step(&again, "codex-config");
-    assert_eq!(s["state"], "unchanged", "{s}");
-    assert_eq!(s["apply"], Value::Null, "{s}");
-}
-
-#[test]
-fn the_omp_agents_step_is_skipped_when_this_binary_has_no_install() {
-    let fx = Fx::new();
-    fx.with_profile(false);
-    let plan = fx.plan();
-    let s = step(&plan, "omp-agents");
-    assert_eq!(s["state"], "skip", "{s}");
-    assert_eq!(s["apply"], Value::Null, "{s}");
-    assert!(s["reason"].as_str().unwrap().contains("installed"), "{s}");
-}
-
-#[test]
-fn the_omp_agents_step_prints_its_apply_and_settles() {
-    let fx = Fx::new();
-    fx.with_profile(false);
-    let exe = fx.install();
-    let plan = fx.plan_installed(&exe);
-    let s = step(&plan, "omp-agents");
-    assert_eq!(s["state"], "ready", "{s}");
-    let argv = argv_of(s);
-    assert_eq!(&argv[..2], ["moai", "agents-project-apply"], "{argv:?}");
-    assert_eq!(argv[2], fx.p(), "{argv:?}");
-    assert!(argv[3].ends_with("install/skills/moai"), "{argv:?}");
-    assert!(argv[4].ends_with("install/agents"), "{argv:?}");
-    assert!(argv.contains(&"--plan-digest"), "{argv:?}");
-    assert_eq!(s["apply"]["stdin"], Value::Null, "{s}");
-    assert!(
-        s["preview"]["shadows_user_agents"]
-            .as_str()
-            .unwrap()
-            .contains("shadows"),
-        "{s}"
-    );
-    let files = s["preview"]["files"].as_array().unwrap();
-    assert!(!files.is_empty(), "{s}");
-    assert!(files.iter().all(|f| f["action"] == "create"), "{s}");
-    assert_no_forbidden_words(&plan);
-    let home = fx.home_tree();
-    let out = fx.apply_step(s);
-    assert_eq!(out["ok"], json!(true), "{out}");
-    let written = fs::read_dir(fx.root.join(".omp/agents")).unwrap().count();
-    assert_eq!(written, files.len(), "{out}");
-    assert_eq!(home, fx.home_tree(), "the apply wrote into HOME");
-    let again = fx.plan_installed(&exe);
-    let s = step(&again, "omp-agents");
-    assert_eq!(s["state"], "unchanged", "{s}");
-    assert_eq!(s["apply"], Value::Null, "{s}");
-}
-
-#[test]
-fn an_agent_file_the_user_edited_stays_and_the_step_has_nothing_to_do() {
-    let fx = Fx::new();
-    fx.with_profile(false);
-    let exe = fx.install();
-    let plan = fx.plan_installed(&exe);
-    assert_eq!(fx.apply_step(step(&plan, "omp-agents"))["ok"], json!(true));
-    let file = fs::read_dir(fx.root.join(".omp/agents"))
-        .unwrap()
-        .next()
-        .unwrap()
-        .unwrap()
-        .path();
-    fs::write(&file, "mine\n").unwrap();
-    let again = fx.plan_installed(&exe);
-    let s = step(&again, "omp-agents");
-    assert_eq!(s["state"], "unchanged", "{s}");
-    assert_eq!(s["apply"], Value::Null, "{s}");
-    assert!(
-        s["preview"]["files"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .any(|f| f["action"] == "preserved"),
-        "{s}"
-    );
-    assert_eq!(fs::read_to_string(&file).unwrap(), "mine\n");
-}
-
-#[test]
-fn a_linked_omp_folder_blocks_the_agents_step_and_nothing_lands_beyond_it() {
-    let fx = Fx::new();
-    fx.with_profile(false);
-    let exe = fx.install();
-    let beyond = fx.home.parent().unwrap().join("beyond");
-    fs::create_dir_all(&beyond).unwrap();
-    std::os::unix::fs::symlink(&beyond, fx.root.join(".omp")).unwrap();
-    let plan = fx.plan_installed(&exe);
-    let s = step(&plan, "omp-agents");
-    assert_eq!(s["state"], "blocked", "{s}");
-    assert_eq!(s["apply"], Value::Null, "{s}");
-    assert!(fs::read_dir(&beyond).unwrap().next().is_none());
-}
-
-#[test]
-fn a_status_line_the_user_changed_after_the_apply_is_kept_and_stays_byte_identical() {
-    let fx = Fx::new();
-    fx.with_profile(false);
-    let plan = fx.plan();
-    assert_eq!(
-        fx.apply_step(step(&plan, "codex-config"))["ok"],
-        json!(true)
-    );
-    let mine = "[tui]\nstatus_line = [\"model\"]\n";
-    fx.write(".codex/config.toml", mine);
-    let before = fx.tree();
-    let again = fx.plan();
-    let s = step(&again, "codex-config");
-    assert_eq!(s["state"], "unchanged", "{s}");
-    assert_eq!(s["apply"], Value::Null, "{s}");
-    assert_eq!(before, fx.tree(), "the plan changed the user's file");
-    assert_eq!(
-        fs::read_to_string(fx.root.join(".codex/config.toml")).unwrap(),
-        mine
-    );
-}
-
-#[test]
-fn the_codex_skill_step_is_skipped_when_this_binary_has_no_install() {
-    let fx = Fx::new();
-    fx.with_profile(false);
-    let plan = fx.plan();
-    let s = step(&plan, "codex-skill");
-    assert_eq!(s["state"], "skip", "{s}");
-    assert_eq!(s["apply"], Value::Null, "{s}");
-    assert!(s["reason"].as_str().unwrap().contains("installed"), "{s}");
-}
-
-#[test]
-fn the_codex_skill_step_prints_its_apply_with_both_flags_and_settles() {
-    let fx = Fx::new();
-    fx.with_profile(false);
-    let exe = fx.install();
-    let plan = fx.plan_installed(&exe);
-    let s = step(&plan, "codex-skill");
-    assert_eq!(s["state"], "ready", "{s}");
-    let argv = argv_of(s);
-    assert_eq!(
-        &argv[..3],
-        ["moai", "project-skill-apply", fx.p()],
-        "{argv:?}"
-    );
-    assert_eq!(argv[3], "--plan-digest", "{argv:?}");
-    assert_eq!(argv[5], "--permission-reference", "{argv:?}");
-    assert_eq!(argv[6], PLACEHOLDER, "{argv:?}");
-    assert_eq!(argv.len(), 7, "{argv:?}");
-    let request = &s["apply"]["stdin"];
-    assert_eq!(request["opt_in"], json!(true), "{s}");
-    assert_eq!(request["hosts"], json!(["codex"]), "{s}");
-    assert_eq!(request["home"], json!(fx.home.to_str().unwrap()), "{s}");
-    assert!(
-        request["source_dir"]
-            .as_str()
-            .unwrap()
-            .ends_with("install/skills/moai"),
-        "{s}"
-    );
-    // The step carries the digest its printed command names, and the install steps come in the
-    // order of `INSTALL`.
-    assert_eq!(s["plan_digest"], json!(argv[4]), "{s}");
-    let order: Vec<&str> = phase(&plan, "install")["steps"]
-        .as_array()
-        .unwrap()
+    let names: Vec<&str> = steps(&plan)
         .iter()
-        .map(|st| st["step"].as_str().unwrap())
+        .map(|s| s["step"].as_str().unwrap())
         .collect();
-    assert_eq!(order, INSTALL, "{plan}");
-    assert_eq!(s["preview"]["path"], ".agents/skills/moai", "{s}");
-    assert_eq!(s["preview"]["action"], "create", "{s}");
-    assert_no_forbidden_words(&plan);
-    let home = fx.home_tree();
-    let out = fx.apply_step(s);
-    assert_eq!(out["ok"], json!(true), "{out}");
-    assert!(fx.root.join(".agents/skills/moai/SKILL.md").is_file());
-    assert_eq!(home, fx.home_tree(), "the apply wrote into HOME");
-    let again = fx.plan_installed(&exe);
-    let s = step(&again, "codex-skill");
-    assert_eq!(s["state"], "unchanged", "{s}");
-    assert_eq!(s["apply"], Value::Null, "{s}");
-}
-
-#[test]
-fn a_moai_skill_in_the_users_codex_home_skips_the_project_copy() {
-    let fx = Fx::new();
-    fx.with_profile(false);
-    let exe = fx.install();
-    let skill = fx.home.join(".agents/skills/moai");
-    fs::create_dir_all(&skill).unwrap();
-    fs::write(skill.join("SKILL.md"), "mine\n").unwrap();
-    let plan = fx.plan_installed(&exe);
-    let s = step(&plan, "codex-skill");
-    assert_eq!(s["state"], "skip", "{s}");
-    assert_eq!(s["apply"], Value::Null, "{s}");
-    assert!(s["reason"].as_str().unwrap().contains("HOME"), "{s}");
-    assert!(!fx.root.join(".agents").exists());
-    assert_eq!(
-        fs::read_to_string(skill.join("SKILL.md")).unwrap(),
-        "mine\n"
-    );
-}
-
-#[test]
-fn a_linked_agents_folder_blocks_the_codex_skill_step_and_nothing_lands_beyond_it() {
-    let fx = Fx::new();
-    fx.with_profile(false);
-    let exe = fx.install();
-    let beyond = fx.home.parent().unwrap().join("beyond-skill");
-    fs::create_dir_all(&beyond).unwrap();
-    std::os::unix::fs::symlink(&beyond, fx.root.join(".agents")).unwrap();
-    let plan = fx.plan_installed(&exe);
-    let s = step(&plan, "codex-skill");
-    assert_eq!(s["state"], "blocked", "{s}");
-    assert_eq!(s["apply"], Value::Null, "{s}");
-    assert!(fs::read_dir(&beyond).unwrap().next().is_none());
-}
-
-/// Audit #3025 B2: a project that is the user's HOME, or lies in a host's configuration folder
-/// under it, gets no `project-skill-apply` command: following it would create the user's own
-/// `~/.agents/skills/moai`. The plan still writes nothing (`plan_installed` compares the trees).
-#[test]
-fn a_project_that_is_the_home_or_inside_its_agents_folder_gets_no_skill_command() {
-    for inside in [None, Some(".agents/work"), Some(".codex/work")] {
-        let base = Fx::new();
-        let (tmp, home) = (base._tmp, base.home);
-        let root = match inside {
-            None => home.clone(),
-            Some(rel) => {
-                let p = home.join(rel);
-                fs::create_dir_all(&p).unwrap();
-                p
-            }
-        };
-        let fx = Fx {
-            _tmp: tmp,
-            home,
-            root,
-        };
-        fx.with_profile(false);
-        let exe = fx.install();
-        let plan = fx.plan_installed(&exe);
-        let s = step(&plan, "codex-skill");
-        assert_eq!(s["state"], "blocked", "{inside:?}: {s}");
-        assert_eq!(s["apply"], Value::Null, "{inside:?}: {s}");
+    for retired in RETIRED_STEPS {
+        assert!(!names.contains(&retired), "{retired} is planned: {names:?}");
+    }
+    for claude in [
+        "profile",
+        "generation",
+        "claude-settings",
+        "hooks",
+        "github",
+    ] {
+        assert!(names.contains(&claude), "{claude} is missing: {names:?}");
+    }
+    let undo = plan["undo_order"].to_string();
+    for retired in RETIRED_STEPS {
         assert!(
-            !fx.home.join(".agents/skills/moai").exists(),
-            "{inside:?}: the user's skill folder was created"
+            !undo.contains(retired),
+            "the undo order names {retired}: {undo}"
         );
     }
 }
 
+/// REQ-2 (AC-2): a profile that lists codex or omp loads and plans without refusal, and the
+/// plan leaves its bytes alone (the profile step has nothing to write).
 #[test]
-fn a_project_skill_folder_that_is_not_ours_is_blocked_and_kept() {
+fn a_profile_that_lists_codex_and_omp_still_loads() {
+    for hosts in [
+        json!(["claude", "codex", "omp"]),
+        json!(["codex"]),
+        json!(["omp"]),
+    ] {
+        let fx = Fx::new();
+        fx.with_profile_extra(json!({"hosts": hosts}));
+        let stored = [".moai/project.yaml", ".moai-cli/project.yaml"]
+            .into_iter()
+            .find(|rel| fx.root.join(rel).is_file())
+            .expect("the profile file");
+        let before = fs::read(fx.root.join(stored)).unwrap();
+        let plan = fx.plan();
+        let profile = step(&plan, "profile");
+        assert_eq!(profile["state"], "unchanged", "{hosts}: {profile}");
+        assert_eq!(profile["apply"], Value::Null, "{hosts}: {profile}");
+        assert_eq!(
+            fs::read(fx.root.join(stored)).unwrap(),
+            before,
+            "{hosts}: the plan rewrote the profile"
+        );
+        let text = String::from_utf8(before).unwrap();
+        assert!(
+            hosts
+                .as_array()
+                .unwrap()
+                .iter()
+                .all(|h| text.contains(h.as_str().unwrap())),
+            "{hosts}: the stored profile lost a host: {text}"
+        );
+        assert_eq!(
+            step(&plan, "retired-hosts")["state"],
+            "skip",
+            "{hosts}: {plan}"
+        );
+    }
+}
+
+/// REQ-3 (AC-3): the retired-hosts step is in every preview, with state skip and action info; it
+/// lists the sorted paths that exist, prints no command and carries no digest.
+#[test]
+fn the_retired_hosts_step_only_informs() {
+    // No profile and nothing found: the step is still there, with an empty list, and it is not
+    // one of the steps that wait for the profile.
+    let fx = Fx::new();
+    let plan = fx.plan();
+    let s = step(&plan, "retired-hosts");
+    assert_eq!(s["state"], "skip", "{s}");
+    assert_eq!(s["preview"], json!({"action": "info", "files": []}), "{s}");
+    assert_eq!(s["apply"], Value::Null, "{s}");
+    assert_eq!(s["plan_digest"], Value::Null, "{s}");
+    assert_eq!(
+        step(&plan, "profile")["state"],
+        "needs_decision",
+        "the other install steps still wait: {plan}"
+    );
+
+    // A full profile and every retired path present: the list is sorted and complete.
     let fx = Fx::new();
     fx.with_profile(false);
-    let exe = fx.install();
-    fx.write(".agents/skills/moai/SKILL.md", "my own skill\n");
-    let before = fx.tree();
-    let plan = fx.plan_installed(&exe);
-    let s = step(&plan, "codex-skill");
-    assert_eq!(s["state"], "blocked", "{s}");
+    for (rel, body) in RETIRED_FILES {
+        fx.write(rel, body);
+    }
+    let plan = fx.plan();
+    let s = step(&plan, "retired-hosts");
+    assert_eq!(s["state"], "skip", "{s}");
+    assert_eq!(
+        s["preview"],
+        json!({"action": "info", "files": [
+            ".agents/skills/moai",
+            ".codex/agents",
+            ".codex/config.toml",
+            ".codex/hooks.json",
+            ".omp/agents",
+            ".omp/extensions/moai-hooks.ts",
+        ]}),
+        "{s}"
+    );
     assert_eq!(s["apply"], Value::Null, "{s}");
-    assert_eq!(before, fx.tree(), "the plan changed the tree");
+    assert_eq!(s["plan_digest"], Value::Null, "{s}");
+    assert!(
+        phase(&plan, "install")["steps"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|st| st["step"] == "retired-hosts"),
+        "the step belongs to the install phase: {plan}"
+    );
+}
+
+/// REQ-4 (AC-4): every file under `.codex/`, `.omp/` and the project skill copy stays byte for
+/// byte through the plan and through the apply of every printed command.
+#[test]
+fn the_codex_and_omp_folders_stay_byte_identical() {
+    let fx = Fx::new();
+    fx.with_profile(true);
+    // The two hook files stay absent: earlier versions would have written them, so a write
+    // there shows in the listing below.
+    for (rel, body) in RETIRED_FILES {
+        if rel != ".codex/hooks.json" && rel != ".omp/extensions/moai-hooks.ts" {
+            fx.write(rel, body);
+        }
+    }
+    // A folder of the user's own, so a new file beside theirs would show in the listing.
+    fx.write(".codex/notes.md", "mine\n");
+    fx.write(".omp/notes.md", "mine\n");
+    let before = fx.host_folders();
+    assert!(before.len() >= RETIRED_FILES.len(), "{before:?}");
+
+    let plan = fx.plan();
+    assert_eq!(before, fx.host_folders(), "the plan changed a host folder");
+    let mut applied = 0;
+    for s in steps(&plan).into_iter().filter(|s| s["state"] == "ready") {
+        let out = fx.apply_step(s);
+        assert_eq!(out["ok"], json!(true), "{}: {out}", s["step"]);
+        applied += 1;
+    }
+    assert!(applied >= 2, "the Claude steps still apply: {plan}");
+    assert_eq!(before, fx.host_folders(), "an apply changed a host folder");
+    let again = fx.plan();
+    assert_eq!(
+        before,
+        fx.host_folders(),
+        "the second plan changed a host folder"
+    );
+    assert_eq!(step(&again, "retired-hosts")["state"], "skip", "{again}");
 }
 
 // ---- #2936 S-CYCLE: the hooks step after the settings moved, and the backup step's block ----

@@ -10,6 +10,15 @@ REFERENCE = re.compile(
     r"skills/[A-Za-z0-9_.-]+/(?:[A-Za-z0-9_.-]+/)*"
     r"[A-Za-z0-9_.-]+\.[A-Za-z0-9_-]+"
 )
+# Folders under docs/ whose files are dated records (design reviews, surveys).
+HISTORY_DOCS = ("design-review", "surveys")
+# Shipped files name a workflow relative to the skill (`workflows/run.md`), not by its
+# repository path, so REFERENCE alone misses them: the skill package and the base agents.
+SHIPPED = ("skills/moai/", "agents/")
+WORKFLOW_FILE = re.compile(r"(?<![A-Za-z0-9_./-])workflows/([A-Za-z0-9_.-]+\.md)")
+WORKFLOWS = ROOT / "skills/moai/workflows"
+# The rule history records where each rule came from, the retired workflow files included.
+RULE_HISTORY = "skills/moai/references/rule-history.md"
 
 
 def tracked_texts():
@@ -33,6 +42,12 @@ def reference_kind(name, line, start):
         # Its explicitly pinned measurement and dated #2405 annotations are history,
         # not instructions for loading the current skill package.
         return "dated-inventory"
+    top, _, rest = name.partition("/")
+    if (name.startswith(".moai/specs/")
+            or (top == "docs" and rest.split("/")[0] in HISTORY_DOCS and "/" in rest)
+            or (top == "docs" and re.fullmatch(r"decisions-[^/]*\.md", rest))):
+        # SPEC-20261122-next-flow-skills-agents: closed SPECs and dated docs record past states.
+        return "history"
     if start > 0 and line[start - 1] == "/":
         if "github.com/modu-ai/moai-adk/blob/" not in line[:start]:
             # Host projection paths and temporary-fixture paths are not repo paths.
@@ -65,6 +80,22 @@ class SkillReferences(unittest.TestCase):
         broken = [(name, number, reference) for name, number, reference in current
                   if not (ROOT / reference).is_file()]
         self.assertEqual(broken, [], "current repository skill references are broken")
+
+    def test_shipped_files_name_only_existing_workflows(self):
+        # A skill-relative `workflows/<name>.md` in the skill package or a base agent must
+        # name a workflow that still exists (the retired VERIFY file was named this way).
+        seen = 0
+        broken = []
+        for name, text in tracked_texts():
+            if not name.startswith(SHIPPED) or name == RULE_HISTORY:
+                continue
+            for number, line in enumerate(text.splitlines(), 1):
+                for match in WORKFLOW_FILE.finditer(line):
+                    seen += 1
+                    if not (WORKFLOWS / match.group(1)).is_file():
+                        broken.append((name, number, match.group()))
+        self.assertTrue(seen, "the shipped workflow-name inventory must not be empty")
+        self.assertEqual(broken, [], "shipped files name a workflow that does not exist")
 
 
 DETECT = ROOT / "src/project_detect.rs"

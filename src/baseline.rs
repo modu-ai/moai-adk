@@ -90,6 +90,13 @@ fn fields(bytes: &[u8]) -> Result<Vec<String>> {
 fn excluded(path: &str) -> bool {
     excluded_by(path, &EXCLUDED_PREFIXES)
 }
+/// The `/`-separated spelling of a path relative to the walked root
+/// (SPEC-20261122-worktree-place REQ-17, REQ-18): the exclude entries are written with `/`, so
+/// the platform's own separator is read as `/` before the compare.
+fn slash_rel(rel: &Path) -> Option<String> {
+    let parts: Option<Vec<&str>> = rel.components().map(|c| c.as_os_str().to_str()).collect();
+    parts.map(|p| p.join("/"))
+}
 /// `rel` is excluded when it equals an entry (trailing `/` ignored) or lies under it.
 fn excluded_by(rel: &str, excludes: &[&str]) -> bool {
     excludes.iter().any(|e| {
@@ -350,12 +357,8 @@ fn walk(
     };
     for entry in entries {
         let path = entry.map_err(|_| "directory entry unavailable")?.path();
-        let rel = path
-            .strip_prefix(root)
-            .map_err(|_| "path outside root")?
-            .to_str()
-            .ok_or("non UTF-8 path")?
-            .to_string();
+        let rel = slash_rel(path.strip_prefix(root).map_err(|_| "path outside root")?)
+            .ok_or("non UTF-8 path")?;
         let m = fs::symlink_metadata(&path).map_err(|_| "metadata unavailable")?;
         if excluded_by(&rel, excludes) {
             *skipped += if m.is_dir() { count_files(&path) } else { 1 };
@@ -679,4 +682,37 @@ pub fn inventory(project: &Path, go_commit: Option<&str>, go_repo: Option<&Path>
         "claude_diff": diff,
         "checksums": checksums,
     }))
+}
+
+#[cfg(test)]
+mod slash_tests {
+    use super::{excluded_by, slash_rel};
+    use std::path::Path;
+
+    /// SPEC-20261122-worktree-place AC-13 (REQ-17): a place path made of parts is spelled with
+    /// `/` and skipped; a name that only starts like the entry is walked.
+    #[test]
+    fn a_place_path_made_of_parts_is_spelled_with_slashes_and_skipped() {
+        let p = Path::new(".claude")
+            .join("worktrees")
+            .join("lane")
+            .join("f.rs");
+        let rel = slash_rel(&p).unwrap();
+        assert_eq!(rel, ".claude/worktrees/lane/f.rs");
+        assert!(excluded_by(&rel, &[".claude/worktrees"]));
+        assert!(!excluded_by(
+            ".claude/worktreesX/f.rs",
+            &[".claude/worktrees"]
+        ));
+    }
+
+    /// AC-13 (REQ-18): on Windows the platform separator is read as `/` (the lane has no
+    /// Windows run; this test is compiled and run there only).
+    #[cfg(windows)]
+    #[test]
+    fn a_windows_separator_is_read_as_a_slash() {
+        let rel = slash_rel(Path::new(r".claude\worktrees\lane\f.rs")).unwrap();
+        assert_eq!(rel, ".claude/worktrees/lane/f.rs");
+        assert!(excluded_by(&rel, &[".claude/worktrees"]));
+    }
 }

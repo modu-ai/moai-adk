@@ -5,11 +5,11 @@ use std::path::PathBuf;
 /// Preview the MoAI-Easy output style in HOME
 ///
 /// Preview the MoAI-Easy output style in HOME (#2875): Claude Code's style file and default
-/// `outputStyle`, and Codex's managed block, each create, merge, append, set, unchanged,
-/// conflict, skipped or blocked, and the hosts not written with the reason. Writes nothing.
+/// `outputStyle`, each create, merge, set, unchanged, conflict, skipped or blocked, and the
+/// hosts not written with the reason. Writes nothing.
 #[derive(clap::Args)]
 pub struct Args {
-    /// User home root whose `.claude/` and `.codex/AGENTS.md` are inspected.
+    /// User home root whose `.claude/` is inspected.
     home: PathBuf,
     /// Skill package folder carrying `references/home/output-style.md`.
     package: PathBuf,

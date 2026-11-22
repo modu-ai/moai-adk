@@ -25,7 +25,7 @@ The parent hands you one block:
 - `task`: the change to make, in one paragraph.
 - `scope`: the paths you may read and write. Write nowhere else.
 - `base`: the 40-hex commit the change builds on, when given.
-- `refs`: documents to read first (for example the `moai` skill's `workflows/run.md` and `workflows/verify.md`).
+- `refs`: documents to read first (for example the `moai` skill's `workflows/run.md` and `workflows/audit.md`).
 
 Assume no conversation context beyond this block. Do not start other agents.
 

@@ -26,13 +26,21 @@ def load(path=TABLE):
 # Files the heuristic flags that only walk temporary directories or named files.
 EXEMPT = {
     "tests/atlas_query_cli.rs": "walks the TempDir tree it built from named atlas fixtures",
+    "tests/base_agents_nested.rs": "read_dir of temporary homes (the install tree before and after); "
+                                   "reads the named src and package files",
     "tests/ci_install_ripgrep_test.py": "rglob over the test's own temporary runner folder",
+    "tests/codex_home_update_removed.rs": "read_dir of temporary homes (before/after trees of the "
+                                          "Codex and OMP folders); reads no checked-in tree",
     "tests/decision_append_cli.rs": "read_dir of a TempDir docs folder",
     "tests/e2e_host_fixture.rs": "clones into a temp dir, then checks named route and workflow files",
     "tests/forge_cli.rs": "recursive walks of TempDir only",
     "tests/github_cli.rs": "hashes temp dirs; templates are named include_str! files",
     "tests/heavy_slot_cli.rs": "read_dir of a TempDir slot folder; reads the named "
                                "tools/heavy_check_slot.py",
+    "tests/home_style_ownership_cli.rs": "read_dir of the temporary home it built (before/after "
+                                         "trees); reads the named template and fixtures",
+    "tests/home_update_notice_follow_ups.rs": "read_dir copies the named skills/moai and agents "
+                                              "folders into a temporary home; reads named fixtures",
     "tests/install_script_test.py": "os.walk of the test's temporary HOME and link folders; runs "
                                     "the named install/install.sh and install.ps1",
     "tests/next_flow_hooks_cli.rs": "walks TempDir repositories and HOME/config folders it "

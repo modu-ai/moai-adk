@@ -26,9 +26,9 @@ type Result<T> = std::result::Result<T, String>;
 
 /// The source folder's name, beside `skills/` in the repository and in the release folder.
 pub const SOURCE_DIR: &str = "agents";
-/// Hosts the home installer (#2592 S2) writes: Claude Code and Codex (S1), OMP (#2633). A host
-/// is listed here only together with its user folder in `agent_install::host_dir`.
-pub const HOSTS: [&str; 3] = ["claude", "codex", "omp"];
+/// Hosts the home installer (#2592 S2) writes: Claude Code only. A host is listed here only
+/// together with its user folder in `agent_install::host_dir`.
+pub const HOSTS: [&str; 1] = ["claude"];
 const DESCRIPTION_LIMIT: usize = 1024;
 const BODY_LIMIT: usize = 16 * 1024;
 
@@ -81,7 +81,7 @@ fn parse_reads(name: &str, value: &str) -> Result<Vec<String>> {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct Rendered {
     pub host: String,
-    /// Path relative to the host's user folder (`~/.claude`, `~/.codex`).
+    /// Path relative to the host's user folder (`~/.claude`).
     pub path: String,
     pub text: String,
     /// Source fields this host cannot express, each with the reason.
@@ -317,39 +317,6 @@ fn render_claude(def: &AgentDef) -> Rendered {
     }
 }
 
-/// Codex agent file `agents/<name>.toml`: `name`, `description`, `developer_instructions`.
-/// Codex agents inherit the parent sandbox and have no isolation field, so read-only and
-/// worktree isolation are instructions only (#2592 6840103566 §2).
-fn render_codex(def: &AgentDef) -> Rendered {
-    use crate::generation::toml_string;
-    let mut not_supported = Vec::new();
-    let mut body = reads_line(def) + &def.body;
-    if def.readonly {
-        not_supported.push(
-            "readonly: a Codex agent inherits the parent sandbox; read-only is an instruction only"
-                .into(),
-        );
-        body.push_str("\nRead-only: this host cannot enforce it, so do not write any file.\n");
-    }
-    if def.isolation == "worktree" {
-        not_supported.push(
-            "isolation: Codex agents have no worktree isolation; they run in the parent folder"
-                .into(),
-        );
-    }
-    Rendered {
-        host: "codex".into(),
-        path: format!("agents/{}.toml", def.name),
-        text: format!(
-            "name = {}\ndescription = {}\ndeveloper_instructions = {}\n",
-            toml_string(&def.name),
-            toml_string(&def.description),
-            toml_string(&body)
-        ),
-        not_supported,
-    }
-}
-
 /// Built-in tools an OMP agent gets. OMP reads `tools` as an allow-list with no deny form,
 /// and a list holding `task` lets the agent start any other agent even with `spawns: false`
 /// (`discovery/helpers.ts`), so the list is explicit and never holds `task`: the one-level
@@ -405,7 +372,8 @@ fn render_omp(def: &AgentDef) -> Rendered {
 pub fn render(def: &AgentDef, host: &str) -> Result<Rendered> {
     match host {
         "claude" => Ok(render_claude(def)),
-        "codex" => Ok(render_codex(def)),
+        // The OMP file is still rendered for the project layer (`omp_agents`); the home update
+        // no longer writes it, so `HOSTS` does not list it.
         "omp" => Ok(render_omp(def)),
         other => Err(format!("agent host not supported yet: {other:?}")),
     }
@@ -491,13 +459,8 @@ mod tests {
         .unwrap();
         let line = "Read first, from the `moai` skill package: `references/internal/review.md`, `references/internal/test-design.md`. Read no other internal reference.\n\nDo it.\n";
         assert!(render(&def, "claude").unwrap().text.ends_with(line));
-        let codex = render(&def, "codex").unwrap();
-        assert!(codex.text.contains("references/internal/review.md"));
-        assert_eq!(
-            codex.not_supported.len(),
-            2,
-            "reads is rendered, not dropped"
-        );
+        let omp = render(&def, "omp").unwrap();
+        assert!(omp.text.contains("references/internal/review.md"));
         // Without reads the output is unchanged.
         assert!(!render(&parse(SAMPLE).unwrap(), "claude")
             .unwrap()
@@ -515,13 +478,8 @@ mod tests {
             "---\nname: moai-x\ndescription: \"An agent.\"\ndisallowedTools: Write, Edit, NotebookEdit\nisolation: worktree\n---\n\nDo it.\n"
         );
         assert!(claude.not_supported.is_empty());
-        let codex = render(&def, "codex").unwrap();
-        assert_eq!(codex.path, "agents/moai-x.toml");
-        assert!(codex
-            .text
-            .starts_with("name = \"moai-x\"\ndescription = \"An agent.\"\n"));
-        assert!(codex.text.contains("do not write any file"));
-        assert_eq!(codex.not_supported.len(), 2);
+        // The Codex rendering is gone; a host the installer does not know is refused.
+        assert!(render(&def, "codex").is_err());
         let writer = parse(
             &SAMPLE
                 .replace("readonly: true", "readonly: false")
@@ -532,7 +490,6 @@ mod tests {
             .unwrap()
             .text
             .contains("disallowedTools"));
-        assert!(render(&writer, "codex").unwrap().not_supported.is_empty());
         assert!(render(&def, "goose").is_err());
     }
 

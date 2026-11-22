@@ -449,7 +449,6 @@ struct KeptApply<'a> {
     host: &'static str,
     digest: &'a str,
     permission: &'a str,
-    lane: crate::hooks::LaneLoop,
     dir: &'a Path,
     receipt_path: &'a Path,
 }
@@ -475,13 +474,12 @@ impl KeptApply<'_> {
             }
             before.push(bytes.as_deref().map(crate::digest));
         }
-        match crate::hooks::apply_with(
+        match crate::hooks::apply(
             self.root,
             self.host,
             self.home,
             self.digest,
             self.permission,
-            self.lane,
         ) {
             Ok(v) => {
                 let mut entries = Vec::new();
@@ -512,41 +510,27 @@ impl KeptApply<'_> {
 /// PATH now), then the apply. A plan that changes an existing file (`update`, which includes the
 /// rewrite of an old `moai-cli` set) keeps the replaced bytes under a receipt and names the
 /// `hooks-revert` command that restores them; a first install or a plan that writes nothing
-/// has nothing to restore and leaves no receipt. `replace` is `--replace-with-backup`: a plan of
-/// the action `replace` keeps a copy of the file first and leaves no revert receipt either.
-#[allow(clippy::too_many_arguments)]
+/// has nothing to restore and leaves no receipt.
 pub fn apply_direct(
     project: &Path,
     host: &str,
     home: Option<&Path>,
     plan_digest: &str,
     permission: &str,
-    lane: crate::hooks::LaneLoop,
-    replace: bool,
     path_env: &str,
 ) -> Result<Value> {
     if !crate::contract::permission_reference_ok(permission) {
         return Err("permission reference required".into());
     }
-    // A replacement (`--replace-with-backup`) is gated like any write: the `replace` action is
-    // refused where `create` and `update` are, and keeps its copy of the file under no receipt.
-    let plan = crate::hooks::plan_with_replace(project, host, home, lane.clone(), replace)?;
+    let plan = crate::hooks::plan(project, host, home)?;
     crate::hook_legacy::gate_plan(&plan, project, home, path_env)?;
     let host: &'static str = crate::hooks::HOSTS
         .iter()
         .find(|h| **h == host)
-        .ok_or("unknown hook host; must be claude, codex or omp")?;
+        .ok_or("unknown hook host; must be claude")?;
     // A plan that is stale, or writes no existing file, is left to the writer: no receipt.
     if plan["action"] != json!("update") || plan["plan_digest"] != json!(plan_digest) {
-        return crate::hooks::apply_with_replace(
-            project,
-            host,
-            home,
-            plan_digest,
-            permission,
-            lane,
-            replace,
-        );
+        return crate::hooks::apply(project, host, home, plan_digest, permission);
     }
     let root = crate::hooks::project_root(project, home)?;
     let (id, dir) = new_receipt_dir(&root)?;
@@ -568,7 +552,6 @@ pub fn apply_direct(
         host,
         digest: plan_digest,
         permission,
-        lane,
         dir: &dir,
         receipt_path: &receipt_path,
     };

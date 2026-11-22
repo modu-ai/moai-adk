@@ -493,33 +493,36 @@ fn a_current_or_absent_hook_set_leaves_nothing_to_apply() {
     assert_eq!(fs::read(&project_settings).unwrap(), installed);
 }
 
-/// The update never touches a Codex project hook file: a lane's Stop hook installed by
-/// hooks-apply survives a confirmation as it was.
+/// The update never touches the hook files of a removed host: Codex is no longer a host the
+/// hook layer plans, so the preview names no such host and the confirmation leaves both the
+/// hook file and its ownership receipt as they were (the tip's retired-host shape, transplanted
+/// onto this file's rewrite).
 #[test]
-fn update_keeps_the_codex_lane_stop_hook() {
+fn update_leaves_the_hook_files_of_a_removed_host_alone() {
     let f = setup();
-    let p = f.project.to_str().unwrap().to_string();
-    let lane = ["--lane-loop", "agent-1", "--repo", "o/r"];
-    let mut args = vec!["hooks-plan", p.as_str(), "--host", "codex"];
-    args.extend(lane.iter().copied());
-    let plan = result(&run(&f, &f.project, &args));
-    let digest = plan["plan_digest"].as_str().unwrap().to_string();
-    let mut apply = vec![
-        "hooks-apply",
-        p.as_str(),
-        "--host",
-        "codex",
-        "--plan-digest",
-        digest.as_str(),
-        "--permission-reference",
-        "test-approval",
+    layer_current(&f);
+    // The receipts an earlier moai wrote sit in the folder the project state resolves to.
+    let codex_receipt = moai_cli::state_root::rel(&f.project, "manifests/codex-hooks.json");
+    let omp_receipt = moai_cli::state_root::rel(&f.project, "manifests/omp-hooks.json");
+    let files = [
+        (".codex/hooks.json", "{\"hooks\": {}}\n"),
+        (codex_receipt.as_str(), "{}\n"),
+        (".omp/extensions/moai-hooks.ts", "// earlier module\n"),
+        (omp_receipt.as_str(), "{}\n"),
     ];
-    apply.extend(lane.iter().copied());
-    result(&run(&f, &f.project, &apply));
-    let file = f.project.join(".codex/hooks.json");
-    let with_lane = fs::read(&file).unwrap();
+    for (rel, text) in files {
+        let path = f.project.join(rel);
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        fs::write(path, text).unwrap();
+    }
     update_confirm(&f);
-    assert_eq!(fs::read(&file).unwrap(), with_lane);
+    for (rel, text) in files {
+        assert_eq!(
+            fs::read_to_string(f.project.join(rel)).unwrap(),
+            text,
+            "{rel}"
+        );
+    }
 }
 
 /// The confirmation binds the hook layer: a config settings file changed after the preview
