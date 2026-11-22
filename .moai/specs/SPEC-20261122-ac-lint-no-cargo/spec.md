@@ -58,3 +58,13 @@ The user-approved redesign (`~/.moai/reports/moai-adk/agentic-redesign-2026-11-2
 
 - A test name the reader misses would turn a good command into a false violation: the comparison in Plan step 3 checks every target the documents name, and the temporary-tree cases pin the shapes the repository uses.
 - Removing the nextest override lets this binary run beside the others again: the reason for it (the cargo call re-copying `target/debug/moai-cli`) is gone with REQ-1.
+
+## Result
+
+Measured 2026-11-22 on macOS in this branch's worktree (in-tree `target/`, `CARGO_BUILD_JOBS=5`).
+
+- AC-1 met: `the_repository_lint_starts_no_cargo_and_ends_within_five_seconds` passes. With a fake `cargo` first on `PATH`, the lint over the repository (334 recorded files, 6 named targets) exits 0 with 0 cargo starts and ends in 1.31 s inside nextest (1.78 s when run directly). The tip's script, run the same way, started cargo 6 times and reported every target as listing no tests.
+- AC-2 met: `test_names_are_read_from_the_sources_with_their_module_paths` passes. The 6 good filters select a read test (inline module, nested inline module under `#[tokio::test]`, module file, `#[path]` module, top level, after the modules), and exactly the 4 bad filters are violations (names inside a string and a raw string, a wrong module path twice).
+- AC-3 met: `a_filter_on_macro_made_tests_says_the_names_cannot_be_read` passes.
+- AC-4 met: `nextest_has_no_special_case_for_this_binary` passes. Name comparison, `cargo nextest list --message-format oneline` against the names read by `list_tests`, for every target the documents name today: archive_privacy_suite 13/13, boundary_output_scope 2/2, e2e_host_fixture 6/6, index_cli 23/23, install_cli 7/7, product_cli 73/73, with no name found on only one side.
+- `cargo nextest run --test ac_command_lint`: red on the tip code 8 run, 4 passed, 4 failed (the four new tests); green 8 run, 8 passed, 1.48 s.

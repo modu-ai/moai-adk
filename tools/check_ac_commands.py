@@ -15,13 +15,15 @@ backtick code span (table rows that only mention commands are handled by this: o
 the quoted span is tokenized, trailing prose never becomes a filter). Env prefixes
 (`CARGO_HOME=… cargo test …`) are stripped. The target must have `tests/<name>.rs`;
 its filters (positional words after `--test <name>` up to the next flag) must select
-at least one test, checked against `cargo test --test <name> -- --list` (one listing
-per target, cached). Placeholder filters (`<이름>`) are skipped as templates.
+at least one test, checked against the test names read from `tests/<name>.rs` and the
+module files it declares, as cargo prints them (`module::name`; one reading per target,
+cached). No cargo is started (SPEC-20261122-ac-lint-no-cargo): a `cargo --list` here built
+any target not built yet in the middle of the test. Names a `macro_rules!` body makes
+cannot be read; a filter that only such a name would satisfy is reported as such. Placeholder filters (`<이름>`) are skipped as templates.
 Exit 0 = all clear; 1 = violations listed on stdout; 2 = usage.
 """
 
 import re
-import subprocess
 import sys
 from pathlib import Path
 
@@ -93,20 +95,170 @@ def target_exists(root: Path, name: str) -> bool:
     return (root / "tests" / f"{name}.rs").is_file()
 
 
+MOD_OPEN = re.compile(r"(?:pub(?:\([^)]*\))?\s+)?mod\s+([A-Za-z_][A-Za-z0-9_]*)\s*([{;])")
+FN_NAME = re.compile(r"(?:pub(?:\([^)]*\))?\s+)?(?:const\s+)?(?:async\s+)?(?:unsafe\s+)?fn\s+([A-Za-z_][A-Za-z0-9_]*)")
+PATH_ATTR = re.compile(r'path\s*=\s*"([^"]+)"')
+
+
+def code_only(src: str) -> str:
+    """The source with comments, string, raw-string and char literals blanked to spaces
+    (string contents kept only inside attributes, where `#[path = "…"]` needs them).
+    Lengths are not kept; only the token order matters to the reader."""
+    out = []
+    i, n = 0, len(src)
+    attr_depth = 0  # > 0 while inside `#[ … ]`, so `#[path = "x"]` keeps its string
+    while i < n:
+        c = src[i]
+        if src.startswith("//", i):
+            j = src.find("\n", i)
+            i = n if j < 0 else j
+            continue
+        if src.startswith("/*", i):
+            depth, i = 1, i + 2
+            while i < n and depth:
+                if src.startswith("/*", i):
+                    depth, i = depth + 1, i + 2
+                elif src.startswith("*/", i):
+                    depth, i = depth - 1, i + 2
+                else:
+                    i += 1
+            out.append(" ")
+            continue
+        m = re.match(r'b?r(#*)"', src[i:])
+        if m and (i == 0 or not (src[i - 1].isalnum() or src[i - 1] == "_")):
+            close = '"' + m.group(1)
+            j = src.find(close, i + len(m.group(0)))
+            j = n if j < 0 else j + len(close)
+            out.append(src[i:j] if attr_depth else '""')
+            i = j
+            continue
+        if c == '"':
+            j = i + 1
+            while j < n and src[j] != '"':
+                j += 2 if src[j] == "\\" else 1
+            out.append(src[i:j + 1] if attr_depth else '""')
+            i = j + 1
+            continue
+        if c == "'":
+            m = re.match(r"'(?:\\(?:x[0-9a-fA-F]{2}|u\{[0-9a-fA-F]{1,6}\}|.)|[^\\'\n])'", src[i:])
+            if m:
+                out.append("' '")
+                i += len(m.group(0))
+                continue
+        if src.startswith("#[", i) or src.startswith("#![", i):
+            attr_depth += 1
+        elif c == "]" and attr_depth:
+            attr_depth -= 1
+        out.append(c)
+        i += 1
+    return "".join(out)
+
+
+def module_file(base: Path, name: str):
+    """The file of `mod name;` declared in a file whose child modules live under `base`."""
+    for candidate in (base / f"{name}.rs", base / name / "mod.rs"):
+        if candidate.is_file():
+            return candidate
+    return None
+
+
+def read_tests(file: Path, base: Path, prefix: str, out: set, seen: set) -> bool:
+    """Adds `module::name` for every test function in `file` (and the module files it
+    declares) to `out`. Returns whether a `macro_rules!` body there holds a test attribute."""
+    if file in seen or not file.is_file():
+        return False
+    seen.add(file)
+    code = code_only(file.read_text(encoding="utf-8", errors="replace"))
+    macro_tests = False
+    for m in re.finditer(r"macro_rules!\s*[A-Za-z_][A-Za-z0-9_]*\s*\{", code):
+        depth, j = 1, m.end()
+        while j < len(code) and depth:
+            depth += {"{": 1, "}": -1}.get(code[j], 0)
+            j += 1
+        if re.search(r"#\[\s*(?:[A-Za-z_][A-Za-z0-9_]*\s*::\s*)*test\s*[\](]", code[m.end():j]):
+            macro_tests = True
+    stack = []  # (module name, brace depth at its opening)
+    depth = 0
+    pending_test = False
+    pending_path = None
+    i, n = 0, len(code)
+    while i < n:
+        c = code[i]
+        if c == "#" and code.startswith("[", i + 1):
+            depth_a, j = 1, i + 2
+            while j < n and depth_a:
+                depth_a += {"[": 1, "]": -1}.get(code[j], 0)
+                j += 1
+            body = code[i + 2:j - 1].strip()
+            head = re.match(r"([A-Za-z_][A-Za-z0-9_]*(?:\s*::\s*[A-Za-z_][A-Za-z0-9_]*)*)", body)
+            rest = body[len(head.group(1)):].strip() if head else ""
+            if head and head.group(1).split("::")[-1].strip() == "test" and (not rest or rest.startswith("(")):
+                pending_test = True
+            pm = PATH_ATTR.match(body)
+            if pm:
+                pending_path = pm.group(1)
+            i = j
+            continue
+        if c == "{":
+            depth += 1
+            i += 1
+            continue
+        if c == "}":
+            depth -= 1
+            if stack and stack[-1][1] == depth:
+                stack.pop()
+            i += 1
+            continue
+        if c.isalpha() or c == "_":
+            m = MOD_OPEN.match(code, i)
+            if m and (i == 0 or not (code[i - 1].isalnum() or code[i - 1] == "_")):
+                name, kind = m.group(1), m.group(2)
+                if kind == "{":
+                    stack.append((name, depth))
+                    depth += 1
+                else:
+                    inner = [s[0] for s in stack]
+                    sub_base = base.joinpath(*inner) if inner else base
+                    if pending_path:
+                        # rustc: relative to the declaring file's folder outside inline modules
+                        target = (file.parent if not inner else sub_base) / pending_path
+                    else:
+                        target = module_file(sub_base, name)
+                    if target is not None and target.is_file():
+                        child_base = target.parent if target.name == "mod.rs" or pending_path else target.parent / target.stem
+                        mod_prefix = "::".join(p for p in (prefix, *inner, name) if p)
+                        macro_tests |= read_tests(target, child_base, mod_prefix, out, seen)
+                pending_test, pending_path = False, None
+                i = m.end()
+                continue
+            m = FN_NAME.match(code, i)
+            if m and (i == 0 or not (code[i - 1].isalnum() or code[i - 1] == "_")):
+                if pending_test:
+                    out.add("::".join(p for p in (prefix, *(s[0] for s in stack), m.group(1)) if p))
+                pending_test, pending_path = False, None
+                i = m.end()
+                continue
+            j = i
+            while j < n and (code[j].isalnum() or code[j] == "_"):
+                j += 1
+            pending_test, pending_path = False, None
+            i = j
+            continue
+        if c == ";":
+            pending_test, pending_path = False, None
+        i += 1
+    return macro_tests
+
+
 def list_tests(root: Path, name: str, cache: dict):
-    if name in cache:
-        return cache[name]
-    out = subprocess.run(
-        ["cargo", "test", "--offline", "--locked", "--test", name, "--", "--list"],
-        cwd=root, capture_output=True, text=True,
-    )
-    tests = set()
-    for line in out.stdout.splitlines():
-        line = line.strip()
-        if ": test" in line:
-            tests.add(line.split(":", 1)[0].strip())
-    cache[name] = tests
-    return tests
+    """(test names, whether a macro_rules! body makes tests) of `tests/<name>.rs`, read from
+    the sources: no cargo is started (SPEC-20261122-ac-lint-no-cargo)."""
+    if name not in cache:
+        tests: set = set()
+        tests_dir = root / "tests"
+        macro = read_tests(tests_dir / f"{name}.rs", tests_dir, "", tests, set())
+        cache[name] = (tests, macro)
+    return cache[name]
 
 
 def selects_any(filters, tests):
@@ -134,7 +286,13 @@ def violations_in(path: Path, text: str, root: Path, cache: dict):
             found.append(f"{where}: target tests/{name}.rs does not exist :: {candidate.strip()[:170]}")
             continue
         filters = [f for f in filters_after_target(tokens) if not f.startswith("<")]
-        tests = list_tests(root, name, cache)
+        tests, macro = list_tests(root, name, cache)
+        if macro and not selects_any(filters, tests):
+            found.append(
+                f"{where}: filters {filters} select 0 written tests in {name}; its other tests "
+                f"are made by a macro_rules! body, whose names cannot be read without cargo: "
+                f"name a written test :: {candidate.strip()[:170]}")
+            continue
         if not tests:
             found.append(f"{where}: target {name} lists no tests :: {candidate.strip()[:170]}")
             continue
