@@ -398,15 +398,6 @@
         "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. MODE-LEADER and MODE-AGENT routes added by rc.2 A1 #2160. PROJECT route added by rc.2 #2496 (user decisions 16 = B, 17 = all three, #1975 comment 6815357071). #2637: top-level `chains` names references/chains/index.md, the agent order per route. OPTIMIZE route (`/moai optimize`) added by #2724 (leader decision A, 2026-11-13)."
       }
     },
-    "references/rule-history.md": {
-      "sha256": "d54378a964f1518ed2ce7d96a0c3826bed1db5f291552750cf60f0a6d17928e6",
-      "origin": {
-        "kind": "design-spec",
-        "template_id": "rule-prune-history",
-        "adoption": "new",
-        "reason": "Written for card C-103 (SPEC-20261119-rule-prune, leader decision note 2527): the rule inventory of the verification-rule prune — every rule sentence of the four rule files with its source (git blame → PR) and its enforcer, the rules with one source and no diff trigger moved out of core-rules.md into the history section (their live lines stay as numbered pointers, a form pinned by tests/core_rules_2876.rs)."
-      }
-    },
     "workflows/audit.md": {
       "sha256": "fa5b1c2dcc1947a8b9bae1bdc615bdba10fac3473f868791290a1832569b396c",
       "origin": {
@@ -453,7 +444,7 @@
       }
     },
     "workflows/sync.md": {
-      "sha256": "fb2c0a68a07a207db3aaf6090e51eccb09c75a57867e09bafbc63a638bc045c3",
+      "sha256": "426c494e05d5343594d4583d579356458883baa7255f32a4e06e9d499c6d0987",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-sync",

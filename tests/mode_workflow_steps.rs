@@ -1,6 +1,6 @@
 //! #2497: the MODE-AGENT and MODE-LEADER workflows as testable step lists. Both left the package
 //! with their routes (SPEC-20261122-next-flow-skills-agents REQ-2); the file stays because
-//! `skills/moai/references/rule-history.md` names it (D-11). What still holds is pinned here: the
+//! `docs/rule-history.md` names it (D-11). What still holds is pinned here: the
 //! WORK workflow's card take and blocked note, and the AUDIT, SKILL.md, core-rules, PROJECT and
 //! UPDATE sentences the old tests also read.
 

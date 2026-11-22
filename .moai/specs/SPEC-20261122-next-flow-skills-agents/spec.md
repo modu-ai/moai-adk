@@ -120,7 +120,7 @@ parent: null
 
 ## Result
 
-Status: text slices A, B and C written. Slices A and B landed; slice C is in audit. Plan step 6 (the rule history moves to `docs/`) and the child SPECs are open.
+Status: text slices A, B and C landed. Plan step 6 (the rule history moves to `docs/`) is written; the child SPECs are open.
 
 What each slice delivered:
 - **Slice A:** route inventory and retired references removed.
@@ -146,6 +146,21 @@ What each slice delivered:
     - AUDIT no longer sends its reader to SYNC for integration;
     - the verdict's second line has one form, `Moai-Session: <value>`;
     - the audit contract lists the tier 2 prefixes of `src/gate.rs` (a workflow names no package path), and AUDIT's tier step points to it and says who audits each kind of change.
+- **Plan step 6 (done, D-3):** `references/rule-history.md` moved to `docs/rule-history.md` with `git mv`. Its title, the note that it was a package file and the package-size note changed; the rest is as it was. The readers that moved:
+  - `tests/rule_history_guard.rs` reads `docs/rule-history.md`, keeps all three checks and fails while the package still holds the old file;
+  - `tests/next_flow_skill_scan.rs` lists the old path in `REMOVED` (nine files) and drops it from the scrub exceptions (two left);
+  - `tests/report_rules_core.rs` reads the history from the repository root;
+  - `tests/orca_optional_3005.rs` no longer lists it among the package files that name Orca;
+  - `tests/skill_references_test.py` drops its exception for the history, because no shipped file is left out now;
+  - the header comments of `tests/claim_renew_doc_3042.rs`, `tests/mode_cards_53.rs` and `tests/mode_workflow_steps.rs` name `docs/rule-history.md` (the guard still requires every test file the history names to exist, D-11);
+  - the source manifest is regenerated and drops the entry.
+- **Left for a later step:** line 5 of `references/internal/core-rules.md` still names `references/rule-history.md`. Another card holds that file, so the line changes once it lands.
+- **Follow-ups of the slice C verdict:**
+  - F2 (done): SYNC names a pull request only where it speaks of the release pull request. The receipt is carried in a note on the card, the SPEC is archived after the landing, and step 2 checks the tree the lane's ready note names; a test scans every sentence of SYNC.
+  - F3 (done): SYNC's work ledger is the project's card ledger, as WORK reads it.
+  - F4 (done): the tier 2 list test fails on an entry the code lacks, on an entry written twice and on a missing entry, and keeps exactly one stand-in for the retired second host's dot folder.
+  - F1 and F5 moved to `SPEC-20261123-audit-rule-text`, which rewrites the AUDIT tier step and the RUN heavy-check paragraph.
+- **D-19 is a rule for the sessions, not a tool check.** The tools judge the floor (`tier_of`) and the tier a PASS note states (`moai bundle check`). Who audits is a rule the sessions follow, and `moai card land` reads no verdict.
 
 Left for a product slice (D-18), product spellings of the retired modes and of their help:
 - `src/main.rs:54`, `:57`, `:145-153` and `:1011-1027`;

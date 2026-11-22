@@ -17,8 +17,6 @@ HISTORY_DOCS = ("design-review", "surveys")
 SHIPPED = ("skills/moai/", "agents/")
 WORKFLOW_FILE = re.compile(r"(?<![A-Za-z0-9_./-])workflows/([A-Za-z0-9_.-]+\.md)")
 WORKFLOWS = ROOT / "skills/moai/workflows"
-# The rule history records where each rule came from, the retired workflow files included.
-RULE_HISTORY = "skills/moai/references/rule-history.md"
 
 
 def tracked_texts():
@@ -84,10 +82,12 @@ class SkillReferences(unittest.TestCase):
     def test_shipped_files_name_only_existing_workflows(self):
         # A skill-relative `workflows/<name>.md` in the skill package or a base agent must
         # name a workflow that still exists (the retired VERIFY file was named this way).
+        # The rule history, which names the retired workflow files, lives in docs/ and is
+        # not shipped, so no shipped file is left out.
         seen = 0
         broken = []
         for name, text in tracked_texts():
-            if not name.startswith(SHIPPED) or name == RULE_HISTORY:
+            if not name.startswith(SHIPPED):
                 continue
             for number, line in enumerate(text.splitlines(), 1):
                 for match in WORKFLOW_FILE.finditer(line):
