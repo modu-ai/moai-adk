@@ -50,10 +50,6 @@ Removed from the Korean command descriptions (each was a parenthesis or a clause
 - Removed `(#2811)` from the note on work folders and from the error "is user work and is never moved or copied".
 - "the apply is the next step of #2723" became "the apply is a later step"; "the selective apply is the next card after #2815" became "the selective apply is a later step".
 
-## `src/hosts/codex.rs`
-
-- Removed `(leader decision 2026-11-08, TOML surface 02-B #1992)` and `(#2240)` from the hold reason of the Codex projection ("not read: this operation reads no TOML; the project .codex/config.toml is written only by the codex_config plan/apply, and reading it here is a follow-up"); removed `(#2240)` from the status-line hold and `(#2238)` from the hooks reason. `tests/codex_adapter.rs` now looks for "this operation reads no TOML" instead of the label `02-B`.
-
 ## `src/launcher_init.rs`
 
 - The permission reference recorded in the apply receipts was `launcher-auto-init #2481 user decision 6810818827`; it is now `launcher-auto-init: the user chose first-launch setup`. The reference only has to name the reason for the writes; the Issue comment that recorded the user's choice is no longer in the text.

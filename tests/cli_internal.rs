@@ -1,7 +1,7 @@
 //! Product CLI tests of the Internal group (#2834 R2a): one file per command group, so a pull
 //! request that adds or changes a command touches its own group file, not
 //! `tests/product_cli.rs`. These pin the command-line binding of commands whose behaviour is
-//! tested through library calls only (`project-skill-*`, `codex-projection-*`): the operation
+//! tested through library calls only (`project-skill-*`): the operation
 //! name in the envelope, the error kind and message, and the exit code.
 
 mod common;
@@ -36,41 +36,4 @@ fn project_skill_commands_read_a_typed_request_and_name_their_operation() {
             refusal(&out, operation, "invalid_input", "invalid typed JSON input");
         }
     }
-}
-
-#[test]
-fn codex_projection_commands_name_their_operation() {
-    let root = TempDir::new().unwrap();
-    let pkg = root.path().join("pkg");
-    let target = root.path().join("moai");
-    let (pkg, target) = (pkg.to_str().unwrap(), target.to_str().unwrap());
-    let out = cli(
-        &["codex-projection-plan", pkg, "--target", target],
-        &Value::Null,
-    );
-    refusal(
-        &out,
-        "codex.projection_plan",
-        "not_found",
-        "package unavailable",
-    );
-    let out = cli(
-        &[
-            "codex-projection-apply",
-            pkg,
-            "--target",
-            target,
-            "--plan-digest",
-            "x",
-            "--permission-reference",
-            "r",
-        ],
-        &Value::Null,
-    );
-    refusal(
-        &out,
-        "codex.projection_apply",
-        "not_found",
-        "package unavailable",
-    );
 }

@@ -1,9 +1,9 @@
 //! Hook engine (rc.2 #2391): one policy core for the four MoAI hook duties (session-check,
-//! tool-preflight, tool-observe, turn-validation) with a native adapter per host. Stage 1:
-//! `session-check` and `tool-preflight`; stage 2: `tool-observe` (observation record only)
-//! and `turn-validation` (Stop machinery with an empty rule set); stage 3: the Codex adapter
-//! for all four (`render_codex`, from the Codex hooks page) and [`capabilities`], the per-host
-//! coverage `hooks-plan` reports.
+//! tool-preflight, tool-observe, turn-validation) with a native adapter for Claude Code. Stage
+//! 1: `session-check` and `tool-preflight`; stage 2: `tool-observe` (observation record only)
+//! and `turn-validation` (Stop machinery with an empty rule set); stage 3: [`capabilities`],
+//! the coverage `hooks-plan` reports. The Codex and OMP adapters of stage 3 were removed: a
+//! call for either host is answered with one line on standard error and no verdict.
 //!
 //! Sources (read 2026-11-10, https://code.claude.com/docs/en/hooks):
 //! - PreToolUse decision control: exit 0 and print
@@ -69,7 +69,7 @@ impl Event {
         }
     }
 
-    /// The host event name each duty answers (identical in Claude Code and Codex).
+    /// The host event name each duty answers in Claude Code.
     fn host_event(self) -> &'static str {
         match self {
             Event::SessionCheck => "SessionStart",
@@ -92,11 +92,7 @@ pub const CONFIRM_COMMANDS: &str =
     "git reset --hard, a forced git clean (not a dry run), a force push to a branch other than main or master, and in a MoAI project a direct pull request merge (gh pr merge, gh api PUT .../merge, the GraphQL merge mutations) outside `moai gate-merge`";
 
 /// How `[hooks.modes]` changes the direct-merge confirmation (card C-86, decision note 2346).
-pub const CONFIRM_MODES: &str = "[hooks.modes] merge_confirm = off | observe | enforce in the HOME hook-config.toml; absent or any other word is observe: the call goes through and one would_block line says it would have been confirmed; off does nothing; enforce confirms (Claude asks, Codex and OMP refuse). Where enforce refuses, the third refusal of the rule in one session goes through and one rule_release line records why, except that a call naming no session (OMP sends none, Codex may send an empty one) is refused every time; a refusal that cannot be written to the engine log goes through (hook cwd in a subfolder, the log at its size limit, a project without a .moai-cli folder)";
-
-/// Appended to a confirmation on Codex, which cannot ask.
-pub const CODEX_ASK_SUFFIX: &str =
-    "Codex cannot ask for confirmation in a hook, so it is refused here; run it yourself outside the agent if you mean it.";
+pub const CONFIRM_MODES: &str = "[hooks.modes] merge_confirm = off | observe | enforce in the HOME hook-config.toml; absent or any other word is observe: the call goes through and one would_block line says it would have been confirmed; off does nothing; enforce confirms (Claude asks)";
 
 /// What the policy core decided, before any host rendering.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -104,8 +100,7 @@ pub enum Verdict {
     Allow,
     Deny(String),
     /// Confirmation needed (decision B2 = A, Issue #2389 c6774899518 row 25): Claude Code asks
-    /// the user; Codex has no ask, so it is rendered as a deny there. Never written as a deny
-    /// line: the user's answer is unknown to the engine.
+    /// the user. Never written as a deny line: the user's answer is unknown to the engine.
     Ask(String),
     Context(String),
 }
@@ -135,29 +130,27 @@ fn engine_error(reason: &str) -> Answer {
 /// tool-observe, whose `.moai-cli/receipts/` receives the observation line. `now_unix_ms` is
 /// injected so no decision reads the wall clock.
 pub fn dispatch(host: &str, event: &str, stdin: &[u8], cwd: &Path, now_unix_ms: u128) -> Answer {
+    // A host MoAI no longer serves still has its old hook files in users' projects: answer them
+    // with one line and no verdict, so a stale hook neither allows nor stops anything.
+    if crate::retired_hosts::retired(host, crate::hooks::HOSTS) {
+        return Answer {
+            stdout: String::new(),
+            stderr: format!(
+                "moai hook-dispatch: the host {host} was removed; MoAI serves Claude Code only"
+            ),
+            exit: 0,
+        };
+    }
     let cwd = std::fs::canonicalize(cwd).unwrap_or_else(|_| cwd.to_path_buf());
     let cwd = cwd.as_path();
     let Some(host) = Host::parse(host) else {
-        return engine_error("unknown hook host; must be claude, codex or omp");
+        return engine_error("unknown hook host; must be claude");
     };
     let Some(event) = Event::parse(event) else {
         return engine_error(
             "unknown hook event; must be session-check, tool-preflight, tool-observe, turn-validation or edit-diagnostics",
         );
     };
-    // OMP's turn-end event is `session_stop` (OMP 18.18.7, extensions.md), but the generated
-    // extension module does not subscribe to it, so no Stop rule of `STOP_RULES` can run for
-    // OMP (the rules run for Claude and Codex only). A call is a configuration error, never a
-    // guess.
-    if host == Host::Omp && event == Event::TurnValidation {
-        return engine_error(
-            "turn-validation is not wired for OMP (session_stop exists; no rule uses it yet)",
-        );
-    }
-    // Slice S1 of SPEC-20261117-edit-diagnostics is Claude Code only (leader decision Q6).
-    if event == Event::EditDiagnostics && host != Host::Claude {
-        return engine_error("edit-diagnostics is Claude Code only in this release");
-    }
     let Ok(Value::Object(input)) = serde_json::from_slice::<Value>(stdin) else {
         // A PostToolUse input carries the whole tool result; one past the stdin bound is cut
         // off and no longer parses. Observation is best-effort and the tool already ran, so
@@ -172,12 +165,9 @@ pub fn dispatch(host: &str, event: &str, stdin: &[u8], cwd: &Path, now_unix_ms: 
     match input.get("hook_event_name") {
         None => {}
         Some(Value::String(name)) if name == event.host_event() => {}
-        // tool-observe also records failed tool calls on Claude Code (`PostToolUseFailure`);
-        // Codex has no such event, so there the name is a configuration error.
+        // tool-observe also records failed tool calls on Claude Code (`PostToolUseFailure`).
         Some(Value::String(name))
-            if host == Host::Claude
-                && event == Event::ToolObserve
-                && name == "PostToolUseFailure" => {}
+            if event == Event::ToolObserve && name == "PostToolUseFailure" => {}
         Some(_) => return engine_error("hook_event_name does not match the requested duty"),
     }
     if event == Event::EditDiagnostics {
@@ -186,7 +176,7 @@ pub fn dispatch(host: &str, event: &str, stdin: &[u8], cwd: &Path, now_unix_ms: 
     // The sentence of a guard whose text is fixed (set by tool-preflight); see `record_deny`.
     let mut fixed_reason: Option<&'static str> = None;
     let verdict = match event {
-        Event::SessionCheck => session_check(host, &input, cwd),
+        Event::SessionCheck => session_check(&input, cwd),
         Event::ToolPreflight => {
             // Stage 7 opt-in rules (B3, B9; decision 6779829826) come from ~/.moai-cli/hook-config.toml,
             // read once per call; an unusable file leaves them off and one line says why (N1).
@@ -213,55 +203,19 @@ pub fn dispatch(host: &str, event: &str, stdin: &[u8], cwd: &Path, now_unix_ms: 
     }
     match host {
         Host::Claude => render_claude(event, verdict),
-        Host::Codex => render_codex(event, verdict),
-        Host::Omp => render_omp(event, verdict),
     }
 }
 
-/// OMP rendering (#2633). OMP runs no command hooks; the generated extension module calls
-/// `hook-dispatch --host omp` and turns this answer into the extension's own return value
-/// (github.com/can1357/oh-my-pi `docs/extensions.md`, `extensibility/extensions/types.ts`,
-/// read 2026-11-13):
-/// - tool-preflight deny: `{"block": true, "reason": …}` — the `tool_call` result shape; OMP
-///   hands `reason` to the model as the tool's error. OMP has no ask, so a confirmation is a
-///   deny with the same suffix as Codex.
-/// - session-check context: `{"context": …}` — the module adds it to `before_agent_start`'s
-///   `systemPrompt`, because `session_start` returns nothing.
-/// - tool-observe: nothing printed; the observation line is the effect.
-fn render_omp(event: Event, verdict: Verdict) -> Answer {
-    let stdout = match (event, verdict) {
-        (_, Verdict::Allow) => String::new(),
-        (Event::ToolPreflight, Verdict::Ask(reason)) => {
-            json!({"block": true, "reason": format!("{reason} {CODEX_ASK_SUFFIX}")}).to_string()
-        }
-        (Event::ToolPreflight, Verdict::Deny(reason)) => {
-            json!({"block": true, "reason": reason}).to_string()
-        }
-        (Event::SessionCheck, Verdict::Context(text)) => json!({"context": text}).to_string(),
-        _ => return engine_error("policy returned a verdict this duty cannot carry"),
-    };
-    Answer {
-        stdout,
-        stderr: String::new(),
-        exit: 0,
-    }
-}
-
-/// The hosts with a native adapter. OMP (#2633) has no command hooks: its extension module
-/// calls `hook-dispatch --host omp` and reads the small answer [`render_omp`] prints.
+/// The hosts with a native adapter: Claude Code only.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Host {
     Claude,
-    Codex,
-    Omp,
 }
 
 impl Host {
     pub fn parse(word: &str) -> Option<Host> {
         match word {
             "claude" => Some(Host::Claude),
-            "codex" => Some(Host::Codex),
-            "omp" => Some(Host::Omp),
             _ => None,
         }
     }
@@ -269,8 +223,6 @@ impl Host {
     pub fn name(self) -> &'static str {
         match self {
             Host::Claude => "claude",
-            Host::Codex => "codex",
-            Host::Omp => "omp",
         }
     }
 }
@@ -371,58 +323,9 @@ fn record_config_error(
     let _ = crate::hooks::append_receipt_line(cwd, ENGINE_LOG, &line);
 }
 
-/// Codex rendering of a verdict, from the Codex hooks page only
-/// (https://learn.chatgpt.com/docs/hooks, read 2026-11-10), not copied from the Claude shapes:
-/// - PreToolUse deny: `hookSpecificOutput` with `hookEventName: "PreToolUse"`,
-///   `permissionDecision: "deny"` and `permissionDecisionReason`. `"ask"`, `"approve"`,
-///   `continue: false` and `stopReason` are "parsed but not supported yet" there — the hook run
-///   is marked failed and the tool call continues — so none of them is ever used to block.
-/// - SessionStart context: `hookSpecificOutput.additionalContext` "is added as extra developer
-///   context".
-/// - Stop: "expects JSON on stdout when it exits 0"; `decision: "block"` with `reason` makes
-///   Codex continue with a new continuation prompt. Allow prints nothing ("Exit 0 with no
-///   output is treated as success" — stated generally, not for Stop; recorded as unverified).
-/// - PostToolUse: "Plain text on stdout is ignored"; tool-observe prints nothing.
-fn render_codex(event: Event, verdict: Verdict) -> Answer {
-    let stdout = match (event, verdict) {
-        (_, Verdict::Allow) => String::new(),
-        // Codex parses `ask` but does not support it (the hook run fails and the call
-        // continues), so a confirmation becomes a deny the user can act on outside the agent.
-        (Event::ToolPreflight, Verdict::Ask(reason)) => json!({
-            "hookSpecificOutput": {
-                "hookEventName": "PreToolUse",
-                "permissionDecision": "deny",
-                "permissionDecisionReason": format!("{reason} {CODEX_ASK_SUFFIX}"),
-            }
-        })
-        .to_string(),
-        (Event::ToolPreflight, Verdict::Deny(reason)) => json!({
-            "hookSpecificOutput": {
-                "hookEventName": "PreToolUse",
-                "permissionDecision": "deny",
-                "permissionDecisionReason": reason,
-            }
-        })
-        .to_string(),
-        (Event::SessionCheck, Verdict::Context(text)) => json!({
-            "hookSpecificOutput": {"hookEventName": "SessionStart", "additionalContext": text}
-        })
-        .to_string(),
-        (Event::TurnValidation, Verdict::Deny(reason)) => {
-            json!({"decision": "block", "reason": reason}).to_string()
-        }
-        _ => return engine_error("policy returned a verdict this duty cannot carry"),
-    };
-    Answer {
-        stdout,
-        stderr: String::new(),
-        exit: 0,
-    }
-}
-
 /// What each duty covers on `host`: the host event, the tools it acts on, how it answers and
-/// what it never uses. `hooks-plan` reports it next to the plan so the coverage difference
-/// between hosts is visible before anything is installed. Source pages as in the renderers.
+/// what it never uses. `hooks-plan` reports it next to the plan before anything is installed.
+/// Source page as in the renderer.
 pub fn capabilities(host: &str) -> Value {
     match Host::parse(host) {
         Some(Host::Claude) => json!({
@@ -450,53 +353,7 @@ pub fn capabilities(host: &str) -> Value {
                                  "not_covered": ["a blocking mode (slice S2)", "language servers (slice S3)", "files outside the project or behind a link", "edits made by Bash"]},
             "on_engine_error": "exit 1: non-blocking by the host's rules",
         }),
-        Some(Host::Codex) => json!({
-            "host": "codex",
-            "source": "https://learn.chatgpt.com/docs/hooks (read 2026-11-10)",
-            "trust": "non-managed hooks run only after the user reviews and trusts the exact hook definition",
-            "session-check": {"event": "SessionStart", "answer": "hookSpecificOutput.additionalContext", "blocks": false},
-            "tool-preflight": {"event": "PreToolUse", "guards": [
-                                   "Bash: git commit on an issue/<n> branch without a claim token",
-                                   "Bash: dangerous rm targets, force push/delete of main or master, mkfs, dd onto a device, fork bomb, DROP DATABASE/SCHEMA or TRUNCATE TABLE through a database client, commit hook bypass",
-                                   "apply_patch: .git internals, credential directories, private-key file names (paths from '*** Add/Update/Delete File:' and '*** Move to:' lines, a format the docs do not define; an unreadable patch is not path-checked), private-key or access-token content in added lines",
-                                   BASH_LOCK_GUARD],
-                               "opt_in": OPT_IN_RULES,
-                               "not_guarded": ["writes outside the project unless [hooks.outside_project_writes] is enabled", "shell redirections into protected paths", BASH_LOCK_OPEN, "MCP tools"],
-                               "answer": "hookSpecificOutput.permissionDecision=deny",
-                               "confirm": {"answer": "hookSpecificOutput.permissionDecision=deny (Codex has no ask)", "commands": CONFIRM_COMMANDS, "modes": CONFIRM_MODES},
-                               "never_uses": ["ask", "approve", "continue=false", "stopReason", "allow+updatedInput"]},
-            "tool-observe": {"events": ["PostToolUse"], "records": "observe line", "blocks": false,
-                             "note": "Codex has no PostToolUseFailure; apply_patch has no file_path, so its path is not recorded",
-                             "outcome": "PostToolUse also runs after a failed Bash command, so the event never means success: outcome is unknown unless a Bash tool_response carries an integer exit_code (a field the docs do not name)"},
-            "turn-validation": {"event": "Stop", "rules": STOP_RULES.len(), "rule_ids": stop_rule_ids(), "answer": "decision=block + reason",
-                                "modes": STOP_MODES, "limits": AC_VERIFY_LIMITS,
-                                "host_cap": "not documented", "moai_cap": MOAI_STOP_BLOCK_CAP,
-                                "unverified": "empty stdout on exit 0 for Stop (stated generally, not for Stop)"},
-            "edit-diagnostics": {"supported": false, "reason": "slice S1 is Claude Code only; Codex apply_patch is slice S2"},
-            "on_engine_error": "exit 1: not documented for command hooks (unverified)",
-        }),
-        Some(Host::Omp) => json!({
-            "host": "omp",
-            "source": "https://github.com/can1357/oh-my-pi docs/extensions.md, docs/extension-loading.md, extensibility/extensions/types.ts (read 2026-11-13)",
-            "adapter": "extension module .omp/extensions/moai-hooks.ts calling hook-dispatch --host omp (OMP runs no command hooks)",
-            "session-check": {"event": "before_agent_start", "answer": "{context} added to systemPrompt", "blocks": false},
-            "tool-preflight": {"event": "tool_call", "guards": [
-                                   "bash: git commit on an issue/<n> branch without a claim token",
-                                   "bash: dangerous rm targets, force push/delete of main or master, mkfs, dd onto a device, fork bomb, DROP DATABASE/SCHEMA or TRUNCATE TABLE through a database client, commit hook bypass",
-                                   BASH_LOCK_GUARD],
-                               "opt_in": OPT_IN_RULES,
-                               "not_guarded": ["edit/write paths and content: OMP's edit input is not the Claude file_path/content shape, so it is not translated", "writes outside the project unless [hooks.outside_project_writes] is enabled", BASH_LOCK_OPEN, "MCP and extension tools"],
-                               "answer": "{block: true, reason} (reason reaches the model as the tool error)",
-                               "confirm": {"answer": "block (OMP has no ask)", "commands": CONFIRM_COMMANDS, "modes": CONFIRM_MODES},
-                               "on_module_error": "the module lets the call through when moai is missing, times out or exits 1, matching the non-blocking engine error of the other hosts; OMP itself treats a throwing handler as a block"},
-            "tool-observe": {"events": ["tool_result"], "records": "observe line", "blocks": false,
-                             "outcome": "tool_result.isError"},
-            "turn-validation": {"supported": false, "event": "session_stop", "answer": "{decision: \"block\", reason} (OMP 18.18.7 extensions.md)",
-                                "reason": "not wired: the extension module does not subscribe to session_stop, so no turn-validation rule runs on OMP"},
-            "edit-diagnostics": {"supported": false, "reason": "slice S1 is Claude Code only; OMP tool_result is slice S2"},
-            "on_engine_error": "exit 1: the module does not block",
-        }),
-        None => json!({"error": "unknown hook host; must be claude, codex or omp"}),
+        None => json!({"error": "unknown hook host; must be claude"}),
     }
 }
 
@@ -549,11 +406,10 @@ fn render_claude(event: Event, verdict: Verdict) -> Answer {
     }
 }
 
-/// The sentences a session that was just compacted gets (#3015 C6). Both hosts run the
-/// `SessionStart` hook again after a compaction with `source: "compact"` (Codex hooks page,
-/// https://learn.chatgpt.com/docs/hooks; Claude Code hooks page,
-/// https://code.claude.com/docs/en/hooks; both read 2026-11-15); `PreCompact` and `PostCompact`
-/// cannot put text into the context on either host. The text is fixed: it names no instruction
+/// The sentences a session that was just compacted gets (#3015 C6). Claude Code runs the
+/// `SessionStart` hook again after a compaction with `source: "compact"` (Claude Code hooks page,
+/// https://code.claude.com/docs/en/hooks, read 2026-11-15); `PreCompact` and `PostCompact`
+/// cannot put text into the context. The text is fixed: it names no instruction
 /// the user gave and echoes nothing from the input. The hook reads no comment, claim or pull
 /// request, so it cannot say that an instruction is done; it says how to find out (the rule of
 /// `skills/moai/workflows/mode-leader.md`: run an instruction again only when no comment, claim
@@ -564,9 +420,6 @@ const COMPACTED: &str =
      before you act on one, check whether a comment, a claim or a pull request already shows it \
      done, and run it again only when none does. A standing instruction (a rule meant to stay \
      in force) still applies.";
-/// Codex keeps the `/goal` as host state; the sentence points at it and says nothing the host
-/// has not been shown to keep (whether `/goal` survives a compaction is not measured).
-const COMPACTED_CODEX_GOAL: &str = "Check the active /goal before you continue.";
 
 /// The conversation language the user chose, as one sentence for session-check:
 /// the code recorded in HOME (`language-set --home`, the installer's choice) — the one source
@@ -588,7 +441,7 @@ fn conversation_line(home: Option<&Path>) -> Option<String> {
 /// compaction (`source: "compact"`, exactly that string) it adds [`COMPACTED`] and, if the work
 /// has a card, points at its newest `moai-resume:` comment; any other `source`, or none, gives
 /// the text it always did.
-fn session_check(host: Host, input: &Value, cwd: &Path) -> Verdict {
+fn session_check(input: &Value, cwd: &Path) -> Verdict {
     let state_dir = match std::fs::symlink_metadata(crate::state_root::path(cwd, "")) {
         Ok(m) if m.is_dir() => "present",
         Ok(_) => "not a directory",
@@ -641,10 +494,6 @@ fn session_check(host: Host, input: &Value, cwd: &Path) -> Verdict {
             " {lead}, its newest `moai-resume:` comment says where you stopped (read it there; \
              this hook did not)."
         ));
-        if host == Host::Codex {
-            text.push(' ');
-            text.push_str(COMPACTED_CODEX_GOAL);
-        }
     }
     Verdict::Context(text)
 }
@@ -694,21 +543,12 @@ fn tool_preflight(
 /// The rule id of the direct-merge confirmation in `[hooks.modes]` and in the engine log.
 pub const MERGE_CONFIRM_RULE: &str = "merge_confirm";
 
-/// How many times one session may be refused by one rule before the next call goes through
-/// (leader decision, C-86 note 2346): the third refusal is released.
-pub const RULE_BLOCK_CAP: usize = 2;
-
 /// Applies the mode `[hooks.modes]` gives `rule` to a refusal whose fixed sentence is
 /// `reason` (SPEC-20261119-enforce-merge-confirm REQ-6…REQ-11):
 /// - `off` → allow, nothing written;
 /// - `observe` (the default) → allow, one `would_block` line (rule, fixed reason, host,
 ///   session, call, time) and no command, path or content;
-/// - `enforce` → on Claude the confirmation, as before, never counted (a person answers it);
-///   where the host renders it as a refusal (Codex, OMP) one `rule_block` line is written
-///   first — a refusal that cannot be written down goes through, because it could not be
-///   counted — and once the session already has [`RULE_BLOCK_CAP`] such lines for the rule the
-///   call goes through with one `rule_release` line that carries the reason. A call that names
-///   no session ([`UNKNOWN_SESSION`]) is refused every time: there is no session to count in.
+/// - `enforce` → the confirmation Claude asks, never counted (a person answers it).
 fn apply_rule_mode(
     rule: &'static str,
     reason: &'static str,
@@ -737,37 +577,8 @@ fn apply_rule_mode(
             let _ = crate::hooks::append_receipt_line(cwd, ENGINE_LOG, &line("would_block"));
             Verdict::Allow
         }
-        RuleMode::Enforce if host == Host::Claude => Verdict::Ask(reason.to_string()),
-        RuleMode::Enforce => {
-            let home = crate::hooks::env_home();
-            let session = session_key(input);
-            // A host that names no session (OMP sends none, Codex may send an empty one) has
-            // nothing to count refusals in: every such call would share one count across all
-            // sessions of the project, so the refusal is never released there.
-            let strikes = rule_blocks_in(home.as_deref(), cwd, &session, rule);
-            if session != UNKNOWN_SESSION && strikes >= RULE_BLOCK_CAP {
-                let _ = crate::hooks::append_receipt_line(cwd, ENGINE_LOG, &line("rule_release"));
-                return Verdict::Allow;
-            }
-            match crate::hooks::append_receipt_line(cwd, ENGINE_LOG, &line("rule_block")) {
-                Ok(()) => Verdict::Ask(reason.to_string()),
-                Err(_) => Verdict::Allow,
-            }
-        }
+        RuleMode::Enforce => Verdict::Ask(reason.to_string()),
     }
-}
-
-/// How many `rule_block` lines of `rule` the engine log holds for `session`. Reads the bounded
-/// logs only (project side, then the HOME side); a missing or unreadable log counts as zero.
-fn rule_blocks_in(home: Option<&Path>, cwd: &Path, session: &str, rule: &str) -> usize {
-    crate::hooks::receipt_lines_in(home, cwd, ENGINE_LOG)
-        .iter()
-        .filter(|v| {
-            v["kind"] == json!("rule_block")
-                && v["rule"] == json!(rule)
-                && v["session"] == json!(session)
-        })
-        .count()
 }
 
 /// `fixed_reason` is set to the guard's sentence when a guard with fixed text refuses the
@@ -1013,35 +824,14 @@ fn canonical_below(path: &Path, cwd: &Path) -> Option<std::path::PathBuf> {
 /// tool name and class, target path, outcome, the `HEAD` commit and the time. It never blocks
 /// and never stores `tool_input` content, `tool_response` or messages. Marking earlier evidence
 /// stale waits for a persisted verification receipt (#2392; leader decision, Issue #2391).
-/// The observed call's outcome and what it was read from, per host (#2402 audit H3-B1):
-/// - Claude Code: `PostToolUse` "runs immediately after a tool completes successfully" and
-///   failures arrive as `PostToolUseFailure` — the event name decides.
-/// - Codex: `PostToolUse` also runs "after commands that exit with a non-zero status", and the
-///   page gives no shape for `tool_response` beyond "Tool-specific output" (read 2026-11-11).
-///   The event name therefore never means success. Only a Bash `tool_response` carrying an
-///   integer `exit_code` decides (0 success, anything else failure); that field is not named
-///   in the docs, so its use is recorded in `outcome_source`. Everything else is `unknown`.
-fn observe_outcome(input: &Value, host: Host) -> (&'static str, &'static str) {
-    match host {
-        Host::Claude if input["hook_event_name"] == json!("PostToolUseFailure") => {
-            ("failure", "event")
-        }
-        Host::Claude => ("success", "event"),
-        Host::Codex => match (
-            input["tool_name"].as_str(),
-            input["tool_response"]["exit_code"].as_i64(),
-        ) {
-            (Some("Bash"), Some(0)) => ("success", "tool_response.exit_code (undocumented)"),
-            (Some("Bash"), Some(_)) => ("failure", "tool_response.exit_code (undocumented)"),
-            _ => ("unknown", "none"),
-        },
-        // OMP `tool_result` carries `isError` (types.ts); the module passes it as
-        // `tool_response.is_error`.
-        Host::Omp => match input["tool_response"]["is_error"].as_bool() {
-            Some(false) => ("success", "tool_result.isError"),
-            Some(true) => ("failure", "tool_result.isError"),
-            None => ("unknown", "none"),
-        },
+/// The observed call's outcome and what it was read from (#2402 audit H3-B1): Claude Code's
+/// `PostToolUse` "runs immediately after a tool completes successfully" and failures arrive as
+/// `PostToolUseFailure` — the event name decides.
+fn observe_outcome(input: &Value) -> (&'static str, &'static str) {
+    if input["hook_event_name"] == json!("PostToolUseFailure") {
+        ("failure", "event")
+    } else {
+        ("success", "event")
     }
 }
 
@@ -1059,12 +849,12 @@ fn tool_observe(input: &Value, cwd: &Path, now_unix_ms: u128, host: Host) -> Ver
             .bytes()
             .all(|b| b.is_ascii_alphanumeric() || b == b'_' || b == b'-' || b == b'.');
     let class = match tool {
-        "Write" | "Edit" | "MultiEdit" | "NotebookEdit" | "apply_patch" => "write",
+        "Write" | "Edit" | "MultiEdit" | "NotebookEdit" => "write",
         "Bash" => "bash",
         "Read" | "Glob" | "Grep" | "LS" | "WebFetch" | "WebSearch" => "read",
         _ => "other",
     };
-    let (outcome, outcome_source) = observe_outcome(input, host);
+    let (outcome, outcome_source) = observe_outcome(input);
     let line = json!({
         "schema_version": 1,
         "kind": "observe",
@@ -1081,7 +871,7 @@ fn tool_observe(input: &Value, cwd: &Path, now_unix_ms: u128, host: Host) -> Ver
     });
     // Best effort: a project without `.moai-cli/`, or a refused log, is simply not recorded.
     let _ = crate::hooks::append_receipt_line(cwd, ENGINE_LOG, &line);
-    if class == "bash" && outcome == "success" && ran_to_its_end(input, host) {
+    if class == "bash" && outcome == "success" && ran_to_its_end(input) {
         record_ac_run(input, cwd, now_unix_ms);
     }
     Verdict::Allow
@@ -1104,8 +894,8 @@ fn tool_observe(input: &Value, cwd: &Path, now_unix_ms: u128, host: Host) -> Ver
 /// other value a mark can hold (the string "true", the number 1, an empty task id, a task id in
 /// snake_case) reads as unfinished, and so does a `tool_response` that is present and not an
 /// object (a shape the Bash tool does not document).
-fn ran_to_its_end(input: &Value, host: Host) -> bool {
-    if host == Host::Claude && input["hook_event_name"] != json!("PostToolUse") {
+fn ran_to_its_end(input: &Value) -> bool {
+    if input["hook_event_name"] != json!("PostToolUse") {
         return false;
     }
     let response = &input["tool_response"];
@@ -1208,7 +998,7 @@ const STOP_MODES: &str = "per rule in [hooks.modes] of the HOME hook-config.toml
 
 /// What the rule `ac_verify_recorded` does not do, shown in `capabilities` (SPEC-20261119-
 /// enforce-ac-verify-recorded Risks).
-const AC_VERIFY_LIMITS: [&str; 12] = [
+const AC_VERIFY_LIMITS: [&str; 11] = [
     "the generated host settings do not call tool-observe or turn-validation yet, so the rule runs only where hook-dispatch is called directly (a later slice wires them)",
     "a commit changes HEAD, so runs recorded before it no longer count and the verify commands run again",
     "shell writes (sed -i) are not writes, and a redirection is not one either: only the file-writing tools count as the session's last write, and of those a failed one and one outside the project folder do not count while one with an unknown outcome or no path does",
@@ -1220,7 +1010,6 @@ const AC_VERIFY_LIMITS: [&str; 12] = [
     "a verify command over 4096 bytes is never recorded, but Stop still asks for it until the third turn end goes through (two blocks, then a rule_release line)",
     "a detached HEAD, sha256 objects, a reftable and a symbolic ref read as no commit, so the rule switches itself off without saying so",
     "a run from a subfolder of the work tree counts, because the SPEC is found from the top of the work tree the call's cwd is in",
-    "on OMP the extension sends only isError, so a call OMP ran in the background (async, notify) or that timed out counts as a finished run",
 ];
 
 /// The rule `ac_verify_recorded` (SPEC-20261119-enforce-ac-verify-recorded REQ-3, REQ-4,
@@ -1320,9 +1109,7 @@ fn consecutive_blocks_in(home: Option<&Path>, cwd: &Path, session: &str) -> usiz
 /// - `stop_hook_active` → allow, always (decision D2 = a, Issue #2389 c6774899518 row 24): the
 ///   turn is already being continued by a stop hook — a user's `/goal`, another hook, or MoAI's
 ///   own earlier block, which the field cannot tell apart — and MoAI never competes with it.
-///   Both hosts send the field (Claude Code; Codex "Whether this turn was already continued by
-///   `Stop`", learn.chatgpt.com/docs/hooks read 2026-11-11). The Go `/goal` Stop link is not
-///   carried over (B5 rejected);
+///   Claude Code sends the field. The Go `/goal` Stop link is not carried over (B5 rejected);
 /// - MoAI has blocked [`MOAI_STOP_BLOCK_CAP`] times in a row → allow (backstop for a host that
 ///   does not report a continuation); a rule that would have blocked again writes a
 ///   `rule_release` line (rule, reason, session) so that the let-go leaves a trace — one per
@@ -1548,19 +1335,14 @@ mod tests {
     }
 
     #[test]
-    fn codex_renders_only_documented_codex_shapes() {
-        let stop = render_codex(Event::TurnValidation, Verdict::Deny("why".into()));
-        assert_eq!(
-            serde_json::from_str::<Value>(&stop.stdout).unwrap(),
-            json!({"decision": "block", "reason": "why"})
-        );
-        let deny = render_codex(Event::ToolPreflight, Verdict::Deny("no".into()));
+    fn claude_renders_only_documented_shapes() {
+        let deny = render_claude(Event::ToolPreflight, Verdict::Deny("no".into()));
         assert_eq!(
             serde_json::from_str::<Value>(&deny.stdout).unwrap(),
             json!({"hookSpecificOutput": {"hookEventName": "PreToolUse",
                    "permissionDecision": "deny", "permissionDecisionReason": "no"}})
         );
-        let ctx = render_codex(Event::SessionCheck, Verdict::Context("c".into()));
+        let ctx = render_claude(Event::SessionCheck, Verdict::Context("c".into()));
         assert_eq!(
             serde_json::from_str::<Value>(&ctx.stdout).unwrap(),
             json!({"hookSpecificOutput": {"hookEventName": "SessionStart", "additionalContext": "c"}})
@@ -1571,12 +1353,39 @@ mod tests {
             Event::ToolObserve,
             Event::TurnValidation,
         ] {
-            assert_eq!(render_codex(event, Verdict::Allow), allow_quietly());
+            assert_eq!(render_claude(event, Verdict::Allow), allow_quietly());
         }
-        // tool-observe never answers with a decision on Codex either.
+        // tool-observe never answers with a decision.
         assert_eq!(
-            render_codex(Event::ToolObserve, Verdict::Deny("x".into())).exit,
+            render_claude(Event::ToolObserve, Verdict::Deny("x".into())).exit,
             ENGINE_ERROR_EXIT
+        );
+    }
+
+    /// A host MoAI no longer serves gets one line, no verdict and exit 0 (whatever the event or
+    /// the input), and a name that was never a host is still an engine error.
+    #[test]
+    fn a_retired_host_is_answered_with_one_line_and_no_verdict() {
+        let dir = tempfile::tempdir().unwrap();
+        for host in ["codex", "omp"] {
+            for event in ["tool-preflight", "session-check", "nonsense"] {
+                let a = dispatch(host, event, b"not json", dir.path(), 1);
+                assert_eq!(a.stdout, "", "{host} {event}");
+                assert_eq!(a.exit, 0, "{host} {event}");
+                assert_eq!(a.stderr.lines().count(), 1, "{host} {event}: {}", a.stderr);
+                assert!(
+                    a.stderr.contains(host) && a.stderr.contains("removed"),
+                    "{}",
+                    a.stderr
+                );
+            }
+        }
+        let a = dispatch("gemini", "tool-preflight", b"{}", dir.path(), 1);
+        assert_eq!(a.exit, ENGINE_ERROR_EXIT);
+        assert!(
+            a.stderr.contains("unknown hook host; must be claude"),
+            "{}",
+            a.stderr
         );
     }
 
