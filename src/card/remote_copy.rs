@@ -152,7 +152,7 @@ fn ls_remote(project: &Path, remote: &str, full_ref: &str) -> Result<Option<Stri
     Ok(String::from_utf8_lossy(&out.stdout)
         .lines()
         .find_map(|l| l.split_once('\t'))
-        .filter(|(r, _)| *r == full_ref)
+        .filter(|(_, r)| *r == full_ref)
         .map(|(sha, _)| sha.trim().to_string())
         .filter(|sha| crate::gate::is_full_sha(sha)))
 }
@@ -245,11 +245,14 @@ enum Step {
 /// or `remote-copy`); the record of the state is written beside the answer.
 pub fn copy(project: &Path, by: &str) -> Outcome {
     let mut outcome = match classify(project) {
-        Ok(classified) => match classified.step {
-            Step::Push => push_once(project, classified.outcome),
-            Step::Settled => classified.outcome,
-        },
-        Err(pending) => pending,
+        Classified {
+            outcome,
+            step: Step::Push,
+        } => push_once(project, outcome),
+        Classified {
+            outcome,
+            step: Step::Settled,
+        } => outcome,
     };
     outcome.at = now();
     outcome.by = by.to_string();
@@ -272,15 +275,25 @@ struct Classified {
     step: Step,
 }
 
-/// Reads the branch, the tip and the remote position and decides what this run does; the error is
-/// already a `pending` outcome with the reason.
-fn classify(project: &Path) -> Result<Classified, Outcome> {
-    let branch = landed::integration_branch(project).map_err(pending_no_branch)?;
-    let full_ref = landed::branch_ref(&branch).map_err(pending_no_branch)?;
-    let tip = landed::tip_of(project, &branch).map_err(pending_no_branch)?;
-    let remote = push_remote(project, &branch);
+impl Classified {
+    /// A decision that needs nothing further: the outcome is already settled.
+    fn settled(outcome: Outcome) -> Self {
+        Classified {
+            outcome,
+            step: Step::Settled,
+        }
+    }
+}
+
+/// Reads the branch, the tip and the remote position and decides what this run does; a reason it
+/// could not is already a `pending` or `hold` outcome with nothing left to do.
+fn classify(project: &Path) -> Classified {
+    let (branch, full_ref, tip, remote) = match read_positions(project) {
+        Ok(read) => read,
+        Err(why) => return Classified::settled(pending_no_branch(why)),
+    };
     let outcome = Outcome {
-        branch: branch.clone(),
+        branch,
         full_ref: full_ref.clone(),
         remote: remote.clone(),
         tip: tip.clone(),
@@ -294,7 +307,7 @@ fn classify(project: &Path) -> Result<Classified, Outcome> {
     let remote_tip = match ls_remote(project, &remote, &full_ref) {
         Ok(found) => found,
         Err(why) => {
-            return Err(Outcome {
+            return Classified::settled(Outcome {
                 why: Some(why),
                 ..outcome
             })
@@ -306,48 +319,49 @@ fn classify(project: &Path) -> Result<Classified, Outcome> {
     };
     match remote_tip.as_deref() {
         // The remote has no such branch: the copy is a creation that destroys nothing.
-        None => Ok(Classified {
+        None => Classified {
             outcome,
             step: Step::Push,
-        }),
-        Some(r) if r == tip => Ok(Classified {
-            outcome: Outcome {
-                state: CopyState::Done,
-                why: Some("the remote already holds this commit".to_string()),
-                ..outcome
-            },
-            step: Step::Settled,
+        },
+        Some(r) if r == tip => Classified::settled(Outcome {
+            state: CopyState::Done,
+            why: Some("the remote already holds this commit".to_string()),
+            ..outcome
         }),
         Some(r) => match is_ancestor(project, r, &tip) {
             // The remote is behind: one fast-forward push.
-            Ok(true) => Ok(Classified {
+            Ok(true) => Classified {
                 outcome,
                 step: Step::Push,
-            }),
+            },
             // The remote holds a descendant of the tip: only the answer was lost; settled.
             Ok(false) => match is_ancestor(project, &tip, r) {
-                Ok(true) => Ok(Classified {
-                    outcome: Outcome {
-                        state: CopyState::Done,
-                        why: Some(
-                            "the remote already holds this commit or a descendant".to_string(),
-                        ),
-                        ..outcome
-                    },
-                    step: Step::Settled,
+                Ok(true) => Classified::settled(Outcome {
+                    state: CopyState::Done,
+                    why: Some("the remote already holds this commit or a descendant".to_string()),
+                    ..outcome
                 }),
-                Ok(false) => Err(hold(
+                _ => Classified::settled(hold(
                     outcome,
                     format!(
                         "the remote tip {r} shares no ancestry with the local tip {tip}: nothing \
                          was pushed and nothing was forced"
                     ),
                 )),
-                Err(why) => Err(hold(outcome, why)),
             },
-            Err(why) => Err(hold(outcome, why)),
+            Err(why) => Classified::settled(hold(outcome, why)),
         },
     }
+}
+
+/// The branch, its full ref, its tip and its push remote; the error is the reason (the profile
+/// names no branch, or git cannot read the branch).
+fn read_positions(project: &Path) -> Result<(String, String, String, String), String> {
+    let branch = landed::integration_branch(project)?;
+    let full_ref = landed::branch_ref(&branch)?;
+    let tip = landed::tip_of(project, &branch)?;
+    let remote = push_remote(project, &branch);
+    Ok((branch, full_ref, tip, remote))
 }
 
 /// A `pending` outcome for a project whose branch or tip could not even be read.
@@ -387,20 +401,27 @@ fn hold(outcome: Outcome, why: String) -> Outcome {
 fn push_once(project: &Path, outcome: Outcome) -> Outcome {
     let mut after = outcome.clone();
     match push(project, &outcome.remote, &outcome.full_ref) {
-        // A pushed fast-forward, a created ref or up to date (the flags ` `, `*`, `=`).
-        Ok(Some((flag, _))) if flag != '!' => {
-            after.state = CopyState::Done;
-            after.pushed = true;
-            after.why = None;
-        }
-        Ok(Some(('!', summary))) => {
-            if summary.contains("rejected") {
-                settle_after_rejection(project, &mut after, &summary);
-            } else if summary.contains("remote failure") {
-                after.why = Some(format!("the remote did not report the outcome: {summary}"));
+        Ok(Some((flag, summary))) => {
+            if flag == '!' {
+                if summary.contains("rejected") {
+                    settle_after_rejection(project, &mut after, &summary);
+                } else if summary.contains("remote failure") {
+                    after.why = Some(format!("the remote did not report the outcome: {summary}"));
+                } else {
+                    after.state = CopyState::Hold;
+                    after.why = Some(summary);
+                }
+            } else if flag == '=' {
+                // Up to date: the remote took our tip while the answer was in flight; nothing
+                // was pushed.
+                after.state = CopyState::Done;
+                after.pushed = false;
+                after.why = Some("the remote already holds this commit".to_string());
             } else {
-                after.state = CopyState::Hold;
-                after.why = Some(summary);
+                // A pushed fast-forward or a created ref (the flags ` ` and `*`).
+                after.state = CopyState::Done;
+                after.pushed = true;
+                after.why = None;
             }
         }
         Ok(None) => {}

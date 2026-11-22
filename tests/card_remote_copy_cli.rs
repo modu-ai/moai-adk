@@ -115,11 +115,12 @@ impl World {
         let tip = commit_with(&project, &head, &[&head], "integration moved on");
         git(&project, &["update-ref", "refs/heads/integ", &tip]);
         // One local bare repository is the remote; its `integ` starts even with the local tip.
+        // The bare's own HEAD names another branch (main), so a test may delete `integ` on it.
         let bare = tempfile::Builder::new()
             .prefix("moai-test-remote-")
             .tempdir()
             .unwrap();
-        git(bare.path(), &["init", "-q", "--bare", "-b", "integ"]);
+        git(bare.path(), &["init", "-q", "--bare", "-b", "main"]);
         git(
             &project,
             &["remote", "add", "origin", &bare.path().to_string_lossy()],
@@ -337,17 +338,14 @@ fn card_land_pushes_fast_forward_only_and_reports_a_refused_push() {
     let w2 = World::new();
     let card2 = w2.review_card();
     let candidate2 = w2.candidate();
-    w2.force_remote_to(&w2.unrelated());
+    let diverged = w2.unrelated();
+    w2.force_remote_to(&diverged);
     let refused = w2.land(&card2, &candidate2);
     assert_eq!(refused["closed"], json!(true), "{refused}");
     assert_eq!(refused["moved"], json!(true), "{refused}");
     assert_eq!(refused["remote_copy"]["state"], json!("hold"), "{refused}");
     assert!(w2.integ() == candidate2, "the local branch moved");
-    assert_eq!(
-        w2.remote_tip(),
-        w2.unrelated(),
-        "the remote stays where it was"
-    );
+    assert_eq!(w2.remote_tip(), diverged, "the remote stays where it was");
     assert_eq!(w2.record_state(), "hold");
 }
 
