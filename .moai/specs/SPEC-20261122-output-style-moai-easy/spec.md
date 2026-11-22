@@ -2,7 +2,7 @@
 id: SPEC-20261122-output-style-moai-easy
 title: "The MoAI-Easy output style reads for Claude Code only and its installer takes an unchanged file as its own"
 status: draft
-revision: 2
+revision: 3
 created: 2026-11-22
 ---
 
@@ -30,7 +30,7 @@ created: 2026-11-22
 - REQ-2: The shipped output style source shall carry the picked sections Voice, Rhythm, Size, Banner, Progress board and Format with the four steps, the evidence rule and the short-answer exception.
 - REQ-3: The shipped output style source shall state the banner first line as `<emoji> MoAI 🗿 <label> ─…` with the 46 `─` closing line and no star marker.
 - REQ-4: The rendered style file shall hold a description without a double quote so that its frontmatter stays valid YAML.
-- REQ-5: WHEN the style file equals the current render and the record names another text, the plan shall mark it `merge` so that the apply records it as MoAI's own. · failure: none
+- REQ-5: WHEN the style file equals the current render and the record names another text or no text, the plan shall mark it `merge` so that the apply records it as MoAI's own. · failure: none
 - REQ-6: WHEN the style file equals an earlier shipped render, the plan shall mark it `merge` so that the apply replaces it with the current render. · failure: none
 - REQ-7: WHEN the style file equals no shipped render and not the text MoAI last wrote, the plan shall mark it `conflict` so that the apply leaves its bytes. · failure: none
 - REQ-8: The list of earlier shipped renders shall hold the sha256 of every style file text moai-cli rendered before the current one and never the current one.
@@ -39,15 +39,15 @@ created: 2026-11-22
 
 ## Acceptance
 
-- AC-1 (REQ-1, REQ-2, REQ-3): 템플릿에 `Codex`·`every coding tool` 가 없고, 여섯 절 제목과 네 단계·증거·짧은 답 예외·`MoAI 🗿` 배너 줄·`▓▓▓▓▓▓░░░░`·46 `─` 가 있어요 · verify: `cargo test --offline --locked --test home_style_cli the_shipped_source_names_only_claude_code_and_keeps_the_picked_sections`
+- AC-1 (REQ-1, REQ-2, REQ-3): 템플릿에 `Codex`·`every coding tool` 가 없고, 여섯 절 제목과 네 단계·증거·짧은 답 예외·`MoAI 🗿` 배너 줄·`▓▓▓▓▓▓░░░░`·46 `─` 가 있어요 · verify: `cargo test --offline --locked --test home_style_ownership_cli the_shipped_source_names_only_claude_code_and_keeps_the_picked_sections`
 - AC-2 (REQ-3): 배포 스타일 파일 네 개에 `MoAI 🗿` 가 있고 맨 `★` 와 옛 배너 문구가 없어요 · verify: `cargo test --offline --locked --test style_banner_scan`
-- AC-3 (REQ-4): 렌더된 앞머리의 description 값에 큰따옴표가 없고 키 순서가 `name`, `description`, `keep-coding-instructions` 예요 · verify: `cargo test --offline --locked --test home_style_cli the_style_frontmatter_is_valid_yaml`
-- AC-4 (REQ-5): 임시 HOME 에서 소유 기록이 옛 `★` 판을 가리키고 파일이 현재 렌더와 같으면 plan 이 `merge` 이고, apply 뒤 파일 바이트는 그대로이며 기록이 현재 렌더를 가리키고, 템플릿이 바뀐 다음 plan 이 `merge`(충돌 아님)예요 · verify: `cargo test --offline --locked --test home_style_cli a_style_file_equal_to_the_current_text_is_taken_as_owned`
-- AC-5 (REQ-6): 임시 HOME 에서 소유 기록이 없거나 다른 판을 가리킬 때 파일이 옛 배포 렌더 세 벌 각각과 같으면 plan 이 `merge` 이고 apply 뒤 파일이 현재 렌더와 같아요 · verify: `cargo test --offline --locked --test home_style_cli a_style_file_equal_to_an_earlier_shipped_text_is_updated`
-- AC-6 (REQ-7): 사용자가 고친 파일(현재 렌더·옛 렌더·소유 기록 판 위에 한 줄을 더한 것)은 plan 이 `conflict` 이고 apply 가 바이트를 그대로 둬요 · verify: `cargo test --offline --locked --test home_style_cli a_real_user_edit_stays_a_conflict_on_every_known_text`
-- AC-7 (REQ-8): 옛 렌더 목록의 항목이 64자리 16진수·서로 다름이고, 각 항목이 시험 픽스처 파일의 sha256 과 같으며, 현재 렌더의 sha256 이 시험에 못 박혀 있고 목록에 없어요(템플릿이 바뀌면 시험이 실패해서 나가는 렌더를 목록에 더하게 해요) · verify: `cargo test --offline --locked --lib home_style::tests::the_earlier_renders_are_pinned_and_never_hold_the_current_one`
-- AC-8 (REQ-9): 채택·교체를 적용한 뒤 되돌리면 파일 바이트와 소유 기록이 적용 전과 같아요 · verify: `cargo test --offline --locked --test home_style_cli reverting_an_adopted_or_replaced_style_file_gives_back_bytes_and_record`
-- AC-9 (REQ-10): 프로젝트 폴더에 `.claude/output-styles` 가 있어도 plan 의 대상 경로가 모두 HOME 의 호스트 폴더 아래이고 apply 가 프로젝트 폴더를 쓰지 않아요 · verify: `cargo test --offline --locked --test home_style_cli the_style_is_never_written_below_a_project_folder`
+- AC-3 (REQ-4): 렌더된 앞머리의 description 값에 큰따옴표가 없고 키 순서가 `name`, `description`, `keep-coding-instructions` 예요 · verify: `cargo test --offline --locked --test home_style_cli the_style_frontmatter_is_valid_yaml` 와 `cargo test --offline --locked --test home_style_ownership_cli the_rendered_description_has_no_double_quote_and_names_the_banner`
+- AC-4 (REQ-5): 임시 HOME 에서 소유 기록이 옛 `★` 판을 가리키고 파일이 현재 렌더와 같으면 plan 이 `merge` 이고, apply 뒤 파일 바이트는 그대로이며 기록이 현재 렌더를 가리키고, 템플릿이 바뀐 다음 plan 이 `merge`(충돌 아님)예요 · verify: `cargo test --offline --locked --test home_style_ownership_cli a_style_file_equal_to_the_current_text_is_taken_as_owned`
+- AC-5 (REQ-6): 임시 HOME 에서 소유 기록이 없거나 다른 판을 가리킬 때 파일이 옛 배포 렌더 세 벌 각각과 같으면 plan 이 `merge` 이고 apply 뒤 파일이 현재 렌더와 같아요 · verify: `cargo test --offline --locked --test home_style_ownership_cli a_style_file_equal_to_an_earlier_shipped_text_is_updated`
+- AC-6 (REQ-7): 사용자가 고친 파일(현재 렌더·옛 렌더·소유 기록 판 위에 한 줄을 더한 것)은 plan 이 `conflict` 이고 apply 가 바이트를 그대로 둬요 · verify: `cargo test --offline --locked --test home_style_ownership_cli a_real_user_edit_stays_a_conflict_on_every_known_text`
+- AC-7 (REQ-8): 옛 렌더 목록의 항목이 64자리 16진수·서로 다름이고, 각 항목이 시험 픽스처 파일의 sha256 과 같으며, 현재 렌더의 sha256 이 시험에 못 박혀 있고 목록에 없어요(템플릿이 바뀌면 시험이 실패해서 나가는 렌더를 목록에 더하게 해요) · verify: `cargo test --offline --locked --test home_style_ownership_cli the_earlier_renders_are_pinned_and_never_hold_the_current_one`
+- AC-8 (REQ-9): 채택·교체를 적용한 뒤 되돌리면 파일 바이트와 소유 기록이 적용 전과 같아요 · verify: `cargo test --offline --locked --test home_style_ownership_cli reverting_an_adopted_or_replaced_style_file_gives_back_bytes_and_record`
+- AC-9 (REQ-10): 프로젝트 폴더에 `.claude/output-styles` 가 있어도 plan 의 대상 경로가 모두 HOME 의 호스트 폴더 아래이고 apply 가 프로젝트 폴더를 쓰지 않아요 · verify: `cargo test --offline --locked --test home_style_ownership_cli the_style_is_never_written_below_a_project_folder`
 - AC-10 (REQ-1…REQ-10): 이웃 시험이 그대로 통과해요 · verify: `cargo test --offline --locked --test update_user_layer_cli` 와 `cargo test --offline --locked --test host_home_cli` 와 `cargo test --offline --locked --test home_style_cli`
 
 ## Scope
@@ -59,7 +59,8 @@ created: 2026-11-22
 ## Plan
 
 1. 이 SPEC 을 먼저 커밋해요(슬라이스 1).
-2. RED(슬라이스 2): `tests/home_style_cli.rs` 와 `tests/fixtures/home-style/render-1.md`~`render-3.md`(옛 배포 렌더 세 벌을 git 이력에서 꺼낸 것, 목록의 sha256 과 맞춰요)와 `src/home_style.rs` 단위 시험을 먼저 더하고, 템플릿·설치기가 옛 모습인 채로 실패하는 것을 눈으로 봐요.
+개정 3: 새 시험은 새 파일 `tests/home_style_ownership_cli.rs` 에 둬요(`tests/home_style_cli.rs` 와 `src/home_style.rs` 는 그때 다른 카드의 쓰기 범위에 있었어요). 기록이 없는 경우도 채택해요(REQ-5). 옛 렌더 목록 시험은 `moai_cli::home_style` 의 공개 목록을 읽는 통합 시험이에요.
+2. RED(슬라이스 2): `tests/home_style_ownership_cli.rs` 와 `tests/fixtures/home-style/render-1.md`~`render-3.md`(옛 배포 렌더 세 벌을 git 이력에서 꺼낸 것, 목록의 sha256 과 맞춰요)와 `src/home_style.rs` 단위 시험을 먼저 더하고, 템플릿·설치기가 옛 모습인 채로 실패하는 것을 눈으로 봐요.
 3. GREEN(슬라이스 2): 템플릿을 보고서 2-3절 본문으로 바꾸되 앞머리 없이(D-1), `DESCRIPTION` 을 큰따옴표 없이(D-2), 설치기에 옛 렌더 목록과 채택·교체 규칙(D-3, D-4)을 넣고 `python3 -I tools/source_manifest.py write` 로 매니페스트를 갱신해요.
 4. 확인: 위 verify 명령, `cargo test --offline --locked --test update_user_layer_cli`, `host_home_cli`, `style_banner_scan`, `python3 -m unittest tests.source_manifest_test tests.skill_references_test`, `moai spec check`, `git diff --check`, fmt, clippy `--all-targets`, trailer-check, `moai check affected` 한 번.
 
