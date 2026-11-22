@@ -184,7 +184,7 @@ fn strip_userinfo(url: &str) -> String {
 /// Where the remote's branch stands: `Ok(None)` when the remote has no such ref, `Err` when the
 /// remote could not be reached at all.
 fn ls_remote(project: &Path, remote: &str, full_ref: &str) -> Result<Option<String>, String> {
-    let out = git(project, &["ls-remote", remote, full_ref])?;
+    let out = git(project, &["ls-remote", "--", remote, full_ref])?;
     if !out.status.success() {
         // The bare git reason: the callers add the remote's redacted name themselves.
         let why = String::from_utf8_lossy(&out.stderr);
@@ -331,34 +331,23 @@ fn remote_copy_on(project: &Path) -> bool {
         .unwrap_or(false)
 }
 
-/// The answer while the copy is off: nothing is pushed and nothing is forced, and the preview
-/// names what a copy would do — the remote (redacted), the branch, how many commits it would
-/// carry and what the remote would run.
+/// The answer while the copy is off: nothing is pushed, nothing is forced and **no network runs
+/// at all** — the remote is not even read. The preview names the remote (redacted), the branch
+/// and what the remote would run; how far the remote is behind stays unknown until the copy is
+/// on.
 fn off_outcome(project: &Path) -> Outcome {
     let (branch, full_ref, tip, remote) = match read_positions(project) {
         Ok(read) => read,
         Err(why) => return pending_no_branch(why),
     };
     let display = redacted(project, &remote);
-    let remote_tip = ls_remote(project, &remote, &full_ref).ok().flatten();
-    let behind_by = remote_tip
-        .as_deref()
-        .and_then(|r| {
-            let out = git(project, &["rev-list", "--count", &format!("{r}..{tip}")]).ok()?;
-            out.status
-                .success()
-                .then(|| String::from_utf8_lossy(&out.stdout).trim().to_string())
-                .and_then(|n| n.parse::<i64>().ok())
-        })
-        .map(Value::from)
-        .unwrap_or(Value::Null);
     Outcome {
         branch: branch.clone(),
         full_ref,
         remote: display.clone(),
         raw_remote: remote,
         tip,
-        remote_tip,
+        remote_tip: None,
         state: CopyState::Off,
         why: Some(
             "the remote copy is off: the profile key is absent or false, and it turns on only \
@@ -371,7 +360,7 @@ fn off_outcome(project: &Path) -> Outcome {
         preview: Some(json!({
             "remote": display,
             "branch": branch,
-            "behind_by": behind_by,
+            "behind_by": Value::Null,
             "ci": "a push would run the repository's current ci.yml; the slim workflow is not \
                    merged yet, so the full matrix would run",
         })),
@@ -462,16 +451,15 @@ fn classify(project: &Path) -> Classified {
                     why: Some("the remote already holds this commit or a descendant".to_string()),
                     ..outcome
                 }),
-                // No shared ancestry the local repository can read: the remote holds a
-                // descendant it does not know (settled, never a hold) or another line (hold).
-                Err(_) => Classified::settled(Outcome {
-                    state: CopyState::Done,
-                    why: Some(
-                        "the remote already holds a descendant this repository does not know"
-                            .to_string(),
+                // The remote tip is unknown here (a rewritten remote, most likely): it is not
+                // settled as anything without a look — hold, remote and local untouched.
+                Err(why) => Classified::settled(hold(
+                    outcome,
+                    format!(
+                        "the remote tip {r} is not a commit this repository knows ({why}): \
+                         nothing was pushed, nothing was forced and nothing was settled"
                     ),
-                    ..outcome
-                }),
+                )),
                 Ok(false) => Classified::settled(hold(
                     outcome,
                     format!(
@@ -480,16 +468,14 @@ fn classify(project: &Path) -> Classified {
                     ),
                 )),
             },
-            // The remote tip itself is unknown here: it cannot be behind, so it settles as the
-            // descendant the local repository cannot read (the parent SPEC's AC-3).
-            Err(_) => Classified::settled(Outcome {
-                state: CopyState::Done,
-                why: Some(
-                    "the remote already holds a descendant this repository does not know"
-                        .to_string(),
+            // The remote tip itself is unknown: the same rule — a hold, never a guess.
+            Err(why) => Classified::settled(hold(
+                outcome,
+                format!(
+                    "the remote tip {r} is not a commit this repository knows ({why}): nothing \
+                     was pushed, nothing was forced and nothing was settled"
                 ),
-                ..outcome
-            }),
+            )),
         },
     }
 }

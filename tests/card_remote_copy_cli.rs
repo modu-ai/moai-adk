@@ -500,21 +500,22 @@ fn a_landing_with_the_copy_off_pushes_nothing_and_answers_off() {
 }
 
 /// B1: with the copy off the on-demand command answers a preview and writes nothing — no push,
-/// no record.
+/// no record, and no network at all: the remote is not even read, so the behind-by count stays
+/// unknown while the copy is off.
 #[test]
 fn the_off_command_answers_a_preview_and_writes_nothing() {
     let mut w = World::new();
     w.set_profile(COPY_OFF_PROFILE);
-    let seeded = w.remote_tip();
+    w.bare_away();
     let answered = w.remote_copy();
     assert_eq!(answered["state"], json!("off"), "{answered}");
     let preview = &answered["preview"];
     assert_eq!(preview["remote"], json!("origin"), "{answered}");
     assert_eq!(preview["branch"], json!("integ"), "{answered}");
-    assert!(preview["behind_by"].is_number(), "{answered}");
+    assert!(preview["behind_by"].is_null(), "{answered}");
     assert!(preview["ci"].is_string(), "{answered}");
     assert!(!w.record().exists(), "the off answer writes no record");
-    assert_eq!(w.remote_tip(), seeded, "nothing reached the remote");
+    w.bare_back();
 }
 
 // ---- B2: a token inside a push-remote URL never reaches an answer or the record --------------
@@ -605,12 +606,12 @@ fn the_push_arguments_carry_the_safety_flags() {
     assert!(!push_line.contains("+refs/"), "{push_line}");
 }
 
-// ---- N2 and N3: the unreachable push and the unknown descendant -------------------------------
+// ---- N2 and R2: the unreachable push and the unknown remote tip -------------------------------
 
-/// N3: a remote holding a descendant the local repository does not know settles as success,
-/// never as a hold (the parent SPEC's AC-3).
+/// R2: a remote tip the local repository does not know reads as a hold, never as a descendant —
+/// a rewritten remote is not settled as success without a look.
 #[test]
-fn an_unknown_descendant_settles_as_done() {
+fn an_unknown_remote_tip_reads_as_a_hold() {
     let w = World::new();
     // A third clone makes a commit on the remote that the project never fetched.
     let third = tempfile::Builder::new()
@@ -630,10 +631,10 @@ fn an_unknown_descendant_settles_as_done() {
     let pushed = git(&clone, &["rev-parse", "HEAD"]);
     git(&clone, &["push", "-q", "origin", "integ:refs/heads/integ"]);
     let settled = w.remote_copy();
-    assert_eq!(settled["state"], json!("done"), "{settled}");
-    assert_eq!(settled["pushed"], json!(false), "{settled}");
+    assert_eq!(settled["state"], json!("hold"), "{settled}");
+    assert!(settled["why"].is_string(), "{settled}");
     assert_eq!(w.remote_tip(), pushed);
-    assert!(!w.record_text().contains("\"hold\""));
+    assert_eq!(w.record_state(), "hold");
 }
 
 /// N2: a push that cannot reach the remote reads pending, never a hold.
