@@ -1505,13 +1505,13 @@ fn agents_picks_step(root: &Path, shown: &str) -> Result<Step> {
             "apply": {"argv": words, "stdin": Value::Null},
         }));
     }
-    let refused = ["move", "import"]
-        .iter()
-        .all(|id| blocked.iter().any(|b| b["id"] == *id));
+    // Every pick that writes is refused when only `leave` is still ready. A project that holds
+    // only AGENTS.local.md is offered `move` and `leave`, so `import` is never in the list.
+    let refused = !blocked.is_empty() && choices.iter().all(|c| c["id"] == "leave");
     let (state, reason) = if refused {
         (
             "conflict",
-            "move and import are refused for the files named under blocked; only leave remains",
+            "every pick that writes is refused for the files named under blocked; only leave remains",
         )
     } else {
         (
