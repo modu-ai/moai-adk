@@ -628,6 +628,97 @@ fn cli_raw(args: &[&str], cwd: &Path, home: &Path, stdin: &[u8]) -> (i32, String
     )
 }
 
+/// A host MoAI no longer serves (Codex, OMP): `hooks-plan` and `hooks-apply` refuse it by name,
+/// as `unknown` hosts are refused, and write no file and no folder of that host.
+#[test]
+fn a_retired_host_is_refused_by_hooks_plan_and_hooks_apply() {
+    let home = project();
+    for host in ["codex", "omp"] {
+        let p = project();
+        let root = p.path().to_str().unwrap();
+        let plan = ["hooks-plan", root, "--host", host];
+        let apply = [
+            "hooks-apply",
+            root,
+            "--host",
+            host,
+            "--plan-digest",
+            "sha256:0",
+            "--permission-reference",
+            PERMISSION,
+        ];
+        for args in [&plan[..], &apply[..]] {
+            let (code, v) = cli(args, p.path(), home.path(), b"");
+            assert_ne!(code, 0, "{host} {}: {v}", args[0]);
+            assert_eq!(v["error"]["kind"], json!("invalid_input"), "{host}: {v}");
+            let message = v["error"]["message"].as_str().unwrap_or_default();
+            assert!(
+                message.contains(&format!("host {host} is retired; not managed")),
+                "{host} {}: {v}",
+                args[0]
+            );
+            for gone in [".codex", ".omp", ".moai-cli"] {
+                assert!(!p.path().join(gone).exists(), "{host}: {gone} was created");
+            }
+        }
+    }
+    // Any other name is still unknown, not retired.
+    let p = project();
+    let root = p.path().to_str().unwrap();
+    let (code, v) = cli(
+        &["hooks-plan", root, "--host", "gemini"],
+        p.path(),
+        home.path(),
+        b"",
+    );
+    assert_ne!(code, 0, "{v}");
+    assert!(
+        v["error"]["message"]
+            .as_str()
+            .unwrap_or_default()
+            .contains("unknown hook host; must be claude"),
+        "{v}"
+    );
+}
+
+/// A receipt of `moai update` from before the removal may name Codex or OMP: the revert skips
+/// those entries, says so, and never fails on them.
+#[test]
+fn hooks_revert_skips_a_receipt_entry_of_a_retired_host() {
+    let p = project();
+    let project = fs::canonicalize(p.path()).unwrap();
+    let id = "hooks-retired-1";
+    let dir = moai_cli::state_root::path(&project, "receipts").join(id);
+    fs::create_dir_all(&dir).unwrap();
+    let entry = |host: &str, files: [&str; 2]| {
+        let files: Vec<Value> = files
+            .iter()
+            .map(|f| json!({"path": f, "before_sha256": null, "after_sha256": null}))
+            .collect();
+        json!({"host": host, "files": files})
+    };
+    let receipt = json!({
+        "schema_version": 1, "id": id, "plan_digest": "x", "permission_reference": "x",
+        "status": "applied",
+        "hosts": [
+            entry("codex", [".codex/hooks.json", ".moai-cli/manifests/codex-hooks.json"]),
+            entry("omp", [".omp/extensions/moai-hooks.ts", ".moai-cli/manifests/omp-hooks.json"]),
+        ],
+    });
+    fs::write(dir.join("receipt.json"), receipt.to_string()).unwrap();
+    let v = moai_cli::update_hooks::revert(&project, id, PERMISSION).unwrap();
+    assert_eq!(v["state"], json!("reverted"), "{v}");
+    assert_eq!(v["reverted"], json!([]), "{v}");
+    assert_eq!(
+        v["skipped"],
+        json!([
+            {"host": "codex", "reason": "host_retired"},
+            {"host": "omp", "reason": "host_retired"}
+        ]),
+        "{v}"
+    );
+}
+
 /// #2239 × #2238: the user-facing settings op never writes `hooks` itself, and changing
 /// `outputStyle` after hooks-apply keeps the generated hook set instead of removing it.
 #[test]
