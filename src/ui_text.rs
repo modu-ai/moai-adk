@@ -760,4 +760,19 @@ mod tests {
         fs::write(&file, b"not json").unwrap();
         assert_eq!(profile_chat(&sub, None), None);
     }
+
+    /// SPEC-20261122-project-layer-follow-ups AC-8: the update screen takes the Korean
+    /// "no longer managed" rows of the retired hosts from this table, not from literals of its
+    /// own.
+    #[test]
+    fn update_tux_reads_the_unmanaged_rows_from_the_table() {
+        let screen = include_str!("update_tux.rs");
+        let code = screen.split("#[cfg(test)]").next().unwrap();
+        for literal in ["더는 관리하지 않아요", "직접 지우세요"] {
+            assert!(
+                !code.contains(literal),
+                "src/update_tux.rs writes `{literal}` itself"
+            );
+        }
+    }
 }
