@@ -369,6 +369,8 @@ Internal
                          worktrees
   worktree-gc-apply      Remove or trim the previewed
                          worktrees
+  worktree-slot          Fixed worktree slots, warmed from
+                         the seed
   worktree-install-plan  Preview a scoped package install
   hygiene-plan           Preview what may move to the
                          holding folder

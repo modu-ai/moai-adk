@@ -183,6 +183,7 @@ pub mod worktree_include;
 pub mod worktree_install_plan;
 pub mod worktree_move;
 pub mod worktree_report;
+pub mod worktree_slot;
 pub use agents::{agents_apply, agents_plan, AgentsPlan, AgentsRequest};
 pub use baseline::tree_digest;
 pub use profile::{apply, plan, read_profile, DecisionRecord, Delta, Plan, Profile};
