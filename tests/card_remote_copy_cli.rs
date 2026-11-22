@@ -145,10 +145,19 @@ impl World {
         }
     }
 
+    /// Writes the profile to BOTH profile folders, named by the library's own constants (never a
+    /// literal): the merged reader prefers the newer folder when both exist, and a landing at the
+    /// tip rewrites that file — without this, a command would silently shadow the profile the
+    /// test just set.
     fn write_profile(&self) {
-        let cfg = self.project.join(".moai-cli/project.yaml");
-        fs::create_dir_all(cfg.parent().unwrap()).unwrap();
-        fs::write(&cfg, &self.profile).unwrap();
+        for dir in [
+            moai_cli::state_root::EARLIER_PROJECT_DIR,
+            moai_cli::state_root::MOAI_DIR,
+        ] {
+            let cfg = self.project.join(dir).join("project.yaml");
+            fs::create_dir_all(cfg.parent().unwrap()).unwrap();
+            fs::write(&cfg, &self.profile).unwrap();
+        }
     }
 
     fn set_profile(&mut self, bytes: &[u8]) {
@@ -448,16 +457,25 @@ fn the_local_completion_is_recorded_once() {
     assert_eq!(w.events(&card, "card.finish"), 1);
     let record = w.record();
     assert!(record.is_file(), "exactly one record file exists");
+    // The tip's guard keeps its own record in the same folder; only the copy's files count.
     let dir = record.parent().unwrap();
-    let moai_entries: Vec<_> = fs::read_dir(dir).unwrap().collect();
-    assert_eq!(moai_entries.len(), 1, "no second record was written");
+    let copy_files: Vec<_> = fs::read_dir(dir)
+        .unwrap()
+        .filter_map(|e| e.ok())
+        .filter(|e| {
+            e.file_name()
+                .to_string_lossy()
+                .to_ascii_lowercase()
+                .starts_with("remote-copy")
+        })
+        .collect();
+    assert_eq!(copy_files.len(), 1, "no second copy record was written");
     assert_eq!(w.record_state(), "done");
 }
 
 // ---- AC-6: an absent remote branch is created; a profile without a branch is reported --------
 
-/// AC-6: a remote without the branch takes the copy as a creation that destroys nothing, and a
-/// profile with no integration branch answers pending with the reason and no push.
+/// AC-6: a remote without the branch takes the copy as a creation that destroys nothing.
 #[test]
 fn an_absent_remote_branch_is_created_and_a_profile_without_a_branch_is_reported() {
     let w = World::new();
@@ -471,12 +489,20 @@ fn an_absent_remote_branch_is_created_and_a_profile_without_a_branch_is_reported
     assert_eq!(landed["remote_copy"]["state"], json!("done"), "{landed}");
     assert_eq!(landed["remote_copy"]["pushed"], json!(true), "{landed}");
     assert_eq!(w.remote_tip(), candidate, "the branch was created");
+}
 
+/// A profile with no integration branch answers pending with the reason and pushes nothing — in a
+/// repository where no guard record names a branch either (once a landing has written the record
+/// `moai/integration-branch`, the record wins over the profile and the branch stays readable).
+#[test]
+fn a_profile_without_a_branch_answers_pending_where_no_record_names_one() {
+    let mut w = World::new();
     w.set_profile(NO_BRANCH_PROFILE);
+    let before = w.integ();
     let reported = w.remote_copy();
     assert_eq!(reported["state"], json!("pending"), "{reported}");
     assert!(reported["why"].is_string(), "{reported}");
-    assert_eq!(w.integ(), candidate, "nothing moved");
+    assert_eq!(w.integ(), before, "nothing moved");
 }
 
 // ---- B1: the copy is off by default and answers off with a preview ---------------------------
@@ -677,4 +703,67 @@ fn an_unreachable_push_reads_pending() {
     assert_eq!(landed["closed"], json!(true), "{landed}");
     assert_eq!(landed["remote_copy"]["state"], json!("pending"), "{landed}");
     assert_eq!(w.record_state(), "pending");
+}
+
+// ---- M1's probe, shipped: the off path runs no network git at all ------------------------------
+
+/// The auditor's probe (mutant U2): while the copy is off the landing and the on-demand command
+/// run no ls-remote, push or fetch at all. A wrapper around git records every invocation.
+#[test]
+fn the_off_path_runs_no_network_git() {
+    let mut w = World::new();
+    w.set_profile(COPY_OFF_PROFILE);
+    let log = w.bare.path().with_extension("calls");
+    let wrapper = w.bare.path().with_extension("netwrap");
+    let real = git_executable();
+    fs::write(
+        &wrapper,
+        format!(
+            "#!/bin/sh\nprintf '%s\\n' \"$*\" >> {log}\nexec {real} \"$@\"\n",
+            log = log.to_string_lossy(),
+            real = real.to_string_lossy(),
+        ),
+    )
+    .unwrap();
+    {
+        use std::os::unix::fs::PermissionsExt;
+        fs::set_permissions(&wrapper, fs::Permissions::from_mode(0o755)).unwrap();
+    }
+    // The landing and the on-demand command, both with the copy off, through the wrapper.
+    w.write_profile();
+    let card = w.review_card();
+    let candidate = w.candidate();
+    for args in [
+        vec![
+            "card",
+            "land",
+            &card,
+            "--head",
+            &candidate,
+            "--met",
+            "1=the test",
+            "--by",
+            "leader",
+            "--project",
+            &w.p,
+        ],
+        vec!["card", "remote-copy", "--project", &w.p],
+    ] {
+        let mut cmd = w.home.command(&args);
+        cmd.env("MOAI_GIT_BIN", &wrapper);
+        let out = cmd.output().unwrap();
+        assert_eq!(
+            out.status.code(),
+            Some(0),
+            "{}",
+            String::from_utf8_lossy(&out.stdout)
+        );
+    }
+    let calls = fs::read_to_string(&log).unwrap();
+    for line in calls.lines() {
+        let network = ["ls-remote", "push", "fetch", "pull"]
+            .iter()
+            .any(|word| line.split_whitespace().any(|a| a == *word));
+        assert!(!network, "the off path ran a network git call: {line}");
+    }
 }
