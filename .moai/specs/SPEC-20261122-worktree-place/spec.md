@@ -2,7 +2,7 @@
 id: SPEC-20261122-worktree-place
 title: "New worktrees live in the project's .claude/worktrees and the home worktree folder is retired"
 status: draft
-revision: 4
+revision: 5
 created: 2026-11-22
 parent: null
 ---
@@ -30,7 +30,7 @@ parent: null
 - REQ-4: A worktree that Claude Code or Orca made under the project's `.claude/worktrees/` shall be accepted with whatever folder name it has — the name rule of REQ-3 applying only to worktrees moai creates — with the branch of such a host-made worktree named by the card take or the submit that uses it, not by the folder.
 - REQ-5: The tool shall stop choosing a separate build home for new worktrees, whose builds then use the tool's default build folder inside that worktree.
 - REQ-6: Repository-wide scans and the test selection shall skip every path under `.claude/worktrees/`.
-- REQ-7: The Claude Code project settings moai ships shall carry `worktree.baseRef` set to `"head"`, so a subagent worktree, an audit one included, and a reopened worktree start from the current HEAD of the session instead of the default branch of the remote, while the worktree a lane works in is made by moai from the integration branch (REQ-12).
+- REQ-7: When the user picks the lane setup in the project preview, the Claude Code project settings moai writes shall carry `worktree.baseRef` set to `"head"`, so a subagent worktree, an audit one included, and a reopened worktree start from the current HEAD of the session instead of the default branch of the remote, while the worktree a lane works in is made by moai from the integration branch (REQ-12).
 - REQ-8: The worktree classifier shall keep recognising worktrees in the old places — the home folder, the Go generation folder and the earlier project state folder — and keep every command working on them.
 - REQ-9: Instruction texts and shipped documents shall name only the new place for new worktrees and stop ordering a new worktree under the home worktree folder.
 - REQ-10: When moai creates a worktree inside the project's `.claude/worktrees/` folder, the creation shall leave that folder listed in the repository's local exclude file unless git already ignores it, so that the status of the main tree does not change.
@@ -38,6 +38,11 @@ parent: null
 - REQ-12: Moai shall create the worktree of a lane itself from the main checkout, as `git worktree add .claude/worktrees/<name> -b <lane branch> <integration branch>`, so that the session opens that existing worktree with `claude --worktree <name>` and no branch name is ever put in `worktree.baseRef`.
 - REQ-13 (REQ-1): IF `.claude`, `.claude/worktrees` or the folder of the new worktree is a symbolic link, THEN the creation shall refuse, name the linked path and change nothing.
 - REQ-14: The tidy command of moai shall remove a worktree of a landed lane with `git worktree remove`, after `git worktree unlock` when the lock is Claude Code's from a session that has exited, and only on the user's pick.
+- REQ-15: When moai writes a project's `.worktreeinclude`, it shall write the file only on the user's pick and list only git-ignored files that a build in a new worktree needs, never `CLAUDE.local.md`.
+- REQ-16 (REQ-15): IF a `.worktreeinclude` line selects `CLAUDE.local.md`, THEN the read-only `.worktreeinclude` check shall name that line.
+- REQ-17: The walk that skips the excluded paths of a tree shall compare repository-relative paths written with `/` on every platform.
+- REQ-18 (REQ-17): IF a walked path is spelled with the platform's own separator, THEN the exclude check shall read that separator as `/` before it compares.
+- REQ-19 (REQ-7): IF the user does not pick the lane setup, THEN moai shall leave the project settings without a `worktree` key.
 
 ## Acceptance
 
@@ -51,6 +56,8 @@ parent: null
 - AC-9 (REQ-12): the worktree a moai lane creation makes is `.claude/worktrees/<name>/` on a new lane branch started at the integration base, and the plan names the name that `claude --worktree` is given · verify: `cargo test --offline --locked --test worktree_cli a_new_worktree_goes_under_the_project_place`
 - AC-10 (REQ-13): a linked `.claude`, a linked `.claude/worktrees` or a linked worktree folder is refused with the path named and nothing is changed · verify: `cargo test --offline --locked --test worktree_place_cli worktree_place_links_`, `cargo test --offline --locked --test worktree_cli worktree_place_links_` and `cargo test --offline --locked --test bundle_build_cli worktree_place_links_`
 - AC-11 (REQ-14): the tidy command removes a landed lane worktree only on the user's pick, unlocking a Claude-held lock first · verify: `cargo test --offline --locked --test worktree_place_cli worktree_place_tidy_`
+- AC-12 (REQ-15, REQ-16): the read-only `.worktreeinclude` check names a line that selects `CLAUDE.local.md` (written out, through a pattern, and kept after a later negation), names nothing for a list of build files, and moai writes no `.worktreeinclude` without the user's pick · verify: `cargo test --offline --locked --test worktree_place_cli worktree_place_include_`
+- AC-13 (REQ-17, REQ-18): the exclude check of the tree walk skips `.claude/worktrees/<name>/…` whether the path reaches it with `/` or with `\`, and a name that only starts like an excluded entry is still walked · verify: `cargo test --offline --locked --lib baseline::` (the walk's own unit tests; a Windows run is not available to the lane, so the separator is fed to the check directly)
 - AC-8 (REQ-10, REQ-11): a creation leaves the main tree's status as it was in a repository that does not ignore the folder, adds the one exclude line only once, and writes nothing when git already ignores the folder, and an exclude file that cannot be written leaves the creation done with the error named · verify: `cargo test --offline --locked --test worktree_place_cli worktree_place_status_`
 
 ## Scope
@@ -72,7 +79,8 @@ The survey read the worktree-path lines of every source file that mentions workt
 1. This slice: the SPEC only, linked to the card.
 2. Slice 2 (revision 4): the nine rules of the official worktrees page enter as Research rows R-1..R-10 and decisions D-4..D-6; REQ-13 (linked places refused) is coded first; REQ-7 settings, REQ-14 tidy and the REQ-6 scans follow; Measurement M-1 stays open for the leader or the user.
 3. Slice 3 (stacked on slice 2, branch read as the same SPEC through a repair suffix): REQ-6 for the tree digest, with the selection pinned; the walks of `scope.rs` and `atlas_tag.rs` stay open as a leader decision.
-4. Later slices: the keystone change (the create path and the classifier), then the creators, then the checks and guards, then the texts — each with its own red test first and the check affected once per slice.
+4. Slice 4 (revision 5, after slice 3 landed as 1aff538c06): REQ-15 and REQ-16 from leader note 6026 (the read-only check names a `CLAUDE.local.md` line; writing stays on the user's pick), REQ-17 and REQ-18 from the slice 3 audit (the walk's separator), and A12 (Spotlight) once its research row settles a step a tool can take without root; REQ-7 waits for D-7.
+5. Later slices: the keystone change (the create path and the classifier), then the creators, then the checks and guards, then the texts — each with its own red test first and the check affected once per slice.
 
 ## Risks
 
@@ -92,6 +100,8 @@ The survey read the worktree-path lines of every source file that mentions workt
 | D-4 | A lane worktree is made by moai (`git worktree add` on the integration branch) and opened by name; `worktree.baseRef` is never a branch and the project settings carry `"head"`. | R-1, R-2, R-3, R-4, leader decision 2026-11-22 | a later user decision |
 | D-5 | Cleanup of landed lane worktrees is moai's tidy command, on the user's pick; the Claude sweep keeps a worktree made with `git worktree add`. | R-5 | a later user decision |
 | D-6 | `.claude`, `.claude/worktrees` and the worktree folder must be real folders; a link is refused before anything is changed. | R-8 | a later user decision |
+| D-7 | REQ-7 is read with the later user decision that moai writes nothing into a project's `.claude/` by default: `worktree.baseRef: "head"` goes into the project settings only when the user picks the lane setup in the project preview. Proposed by the lane; the leader confirms or changes it. | user decision 2026-11-22 (generic content in each Claude config folder, nothing in a project's `.claude` by default); leader decision 5988 | the leader's answer |
+| D-8 | `.worktreeinclude` is never written by default; when the user picks it, it lists only ignored files a build needs and never `CLAUDE.local.md`, which holds one person's instructions and is not build input. | leader note 6026 (report section 16 item 6) | a later user decision |
 
 ### Research
 
