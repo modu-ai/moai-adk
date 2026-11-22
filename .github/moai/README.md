@@ -71,7 +71,7 @@ Taxonomy (Issue #2434, user decisions 1-4 = A, Issue comment 6783612809, 2026-11
 | `type:` | exactly one | `feature`, `fix`, `docs`, `chore`, `ci`, `test`, `refactor`, `design` |
 | `priority:` | exactly one, leader only | `P0` (blocks the RC release), `P1` (must ship in this RC), `P2` (this RC's scope, may move to the next rc), `P3` (after the stable release, or optional) |
 | `area:` | one or two: the component that owns the changed files (table below) | `ci`, `cli`, `config`, `docs-site`, `hooks`, `security`, `templates`, `workflow`, `setup`, `atlas`, `design`, `runtime`, `router`, `update`, `forge`, `launcher`, `statusline` |
-| `host:` | when the work must be verified on that host | `host:claude`, `host:codex` (both when both) |
+| `host:` | when the work must be verified on that host | `host:claude` |
 | gate marker | only while a user decision is pending | `needs:decision` |
 
 Status is not a label: it is reported in the Issue's owned report comment, because labels and assignees are not a distributed lock. `needs:decision` is not a status either: it marks that lanes must not proceed until the user decides. The authority stays the decisions log and the Issue's HOLD line; the label only makes HOLD Issues filterable. Parent tracking uses native sub-issues (no `kind:epic` label) and ordering uses native issue dependencies (no `blocked` label). The REST endpoints are used because `gh` 2.92 has no flag for either; read the link back after the first use.

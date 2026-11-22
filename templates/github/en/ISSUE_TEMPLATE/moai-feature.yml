@@ -100,9 +100,7 @@ body:
     label: host scope
     description: The hosts this work must be verified on.
     options:
-    - both (Claude Code and Codex)
     - claude
-    - codex
     - host-neutral
   validations:
     required: true

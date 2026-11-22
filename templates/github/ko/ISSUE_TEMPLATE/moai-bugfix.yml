@@ -108,9 +108,7 @@ body:
   attributes:
     label: host 범위
     options:
-    - both (Claude Code and Codex)
     - claude
-    - codex
     - host-neutral
   validations:
     required: true

@@ -1,3 +1,0 @@
-name = "prj-reviewer"
-description = "Reviews a change and stops a secret in code or logs, a change without a test, or a change outside the task's scope"
-developer_instructions = "Reviews a change and stops a secret in code or logs, a change without a test, or a change outside the task's scope"

@@ -54,9 +54,6 @@ added:
   - name: host:claude
     color: d4a5ff
     description: Must be verified on Claude Code
-  - name: host:codex
-    color: 74d2ff
-    description: Must be verified on Codex
   - name: area:setup
     color: c2e0c6
     description: "SETUP: project profile, AGENTS.md generation, host projections"
@@ -128,6 +125,9 @@ not_used:
     - priority:medium
     - priority:low
     - priority:P4
+  # Codex support was withdrawn on 2026-11-21: the label stays on the remote, unused.
+  retired_hosts:
+    - host:codex
   state:
     - blocked
     - in-progress

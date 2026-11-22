@@ -1,3 +1,0 @@
-name = "prj-local-check"
-description = "Runs tools/local_check.sh, the project's done check, and reports each step's exit code"
-developer_instructions = "Runs tools/local_check.sh, the project's done check, and reports each step's exit code"

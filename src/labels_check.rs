@@ -282,7 +282,7 @@ mod tests {
             "type:fix",
             "priority:P1",
             "area:cli",
-            "host:codex",
+            "host:claude",
             "needs:decision"
         ])
         .is_empty());
