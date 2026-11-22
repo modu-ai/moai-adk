@@ -6,7 +6,7 @@
 //! the user's yes to its exact full text, created with gh under the user's
 //! account, with the prefilled issue page URL when gh is absent.
 
-use crate::forge::transport::{HttpRequest, HttpResponse};
+use crate::forge::transport::HttpRequest;
 use std::path::{Path, PathBuf};
 
 /// The repository the star line names.
@@ -56,9 +56,12 @@ pub fn star_ask_dismissed(home: &Path) -> bool {
 /// starred endpoint through the forge transport (the test seam swaps gh);
 /// anything but 204 and 404 answers unknown, and no write call exists on
 /// this path.
-pub fn check_star(transport: &dyn Fn(HttpRequest) -> Result<HttpResponse, String>) -> StarState {
-    let request = HttpRequest::new("GET", format!("/user/starred/{REPOSITORY}"));
-    match transport(request) {
+pub fn check_star(transport: &dyn crate::forge::transport::Transport) -> StarState {
+    let request = HttpRequest::new(
+        "GET",
+        format!("https://api.github.com/user/starred/{REPOSITORY}"),
+    );
+    match transport.send(&request) {
         Ok(response) => match response.status {
             204 => StarState::Starred,
             404 => StarState::NotStarred,
@@ -145,8 +148,28 @@ mod tests {
         tempfile::tempdir().unwrap()
     }
 
-    fn answering(status: u16) -> impl Fn(HttpRequest) -> Result<HttpResponse, String> {
-        move |_| Ok(HttpResponse::new(status))
+    /// A fake transport answering with a fixed status; the test seam swaps
+    /// gh through `MOAI_FORGE_GH_BIN` at the CLI level.
+    struct FixedTransport(u16, bool);
+    impl crate::forge::transport::Transport for FixedTransport {
+        fn send(
+            &self,
+            _req: &HttpRequest,
+        ) -> std::result::Result<crate::forge::transport::HttpResponse, String> {
+            if self.1 {
+                Err("no gh".into())
+            } else {
+                Ok(crate::forge::transport::HttpResponse::new(self.0))
+            }
+        }
+    }
+
+    fn answering(status: u16) -> FixedTransport {
+        FixedTransport(status, false)
+    }
+
+    fn failing() -> FixedTransport {
+        FixedTransport(0, true)
     }
 
     /// REQ-2: the check reads exactly one GET and answers by status.
@@ -155,7 +178,7 @@ mod tests {
         assert_eq!(check_star(&answering(204)), StarState::Starred);
         assert_eq!(check_star(&answering(404)), StarState::NotStarred);
         assert_eq!(check_star(&answering(401)), StarState::Unknown);
-        assert_eq!(check_star(&|_| Err("no gh".into())), StarState::Unknown);
+        assert_eq!(check_star(&failing()), StarState::Unknown);
     }
 
     /// REQ-1, REQ-3: the line shows for unknown and not-starred, never for
