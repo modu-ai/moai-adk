@@ -70,6 +70,7 @@ Update and move
   home-install-apply     Move the ~/.moai-cli items to ~/.moai
   home-install-revert    Undo a ~/.moai-cli to ~/.moai move
   host-wake              One wake through the host adapter
+  star-ask               The polite star ask
   worktree-move-plan     Preview moving this clone's worktrees
   worktree-move-apply    Move the previewed worktrees
   update-plan            Preview an update of every host copy

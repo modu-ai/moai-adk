@@ -8,9 +8,8 @@ use common::home::TempHome;
 use serde_json::{json, Value};
 use std::{
     fs,
-    io::Write as _,
     path::{Path, PathBuf},
-    process::{Command, Output, Stdio},
+    process::Stdio,
 };
 use tempfile::TempDir;
 
@@ -115,7 +114,6 @@ fn ac1_the_star_line_follows_the_state_and_no_write_call_is_made() {
 #[test]
 fn ac1b_a_failing_gh_answers_unknown_and_the_line_still_shows() {
     let stubs = TempDir::new().unwrap();
-    let writes = stubs.path().join("writes");
     let gh_fail = stubs.path().join("gh-fail");
     fs::write(&gh_fail, "#!/bin/sh\nprintf 'this is not HTTP\\n'\n").unwrap();
     make_executable(&gh_fail);
