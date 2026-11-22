@@ -53,6 +53,42 @@ fn setup() -> (TempDir, PathBuf, PathBuf, PathBuf) {
     (tmp, home, exe, pkg)
 }
 
+/// SPEC-20261122-html-report-install: the skill folder a release carries beside `skills/moai`.
+const HTML_REPORT: &str = moai_cli::update::extra_skill::SKILLS[0];
+
+/// Copies the repository's `skills/moai-html-report` beside the fixture's `skills/moai`, as a
+/// release that carries it lays it out; returns the copy.
+fn with_html_report(pkg: &Path) -> PathBuf {
+    let dest = pkg.parent().unwrap().join(HTML_REPORT);
+    copy_tree(
+        &Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("skills")
+            .join(HTML_REPORT),
+        &dest,
+    );
+    dest
+}
+
+/// Every file under `dir`, relative, with its bytes.
+fn tree(dir: &Path) -> Vec<(PathBuf, Vec<u8>)> {
+    let mut out: Vec<(PathBuf, Vec<u8>)> = state(dir)
+        .into_iter()
+        .map(|(p, b)| (p.strip_prefix(dir).unwrap().to_path_buf(), b))
+        .collect();
+    out.sort();
+    out
+}
+
+/// The receipts of the html-report skill under HOME's state folder.
+fn html_report_receipts(home: &Path) -> Vec<Value> {
+    let tail = Path::new("hosts").join(HTML_REPORT).join("claude.json");
+    state(home)
+        .into_iter()
+        .filter(|(p, _)| p.ends_with(&tail))
+        .map(|(_, b)| serde_json::from_slice(&b).unwrap())
+        .collect()
+}
+
 /// #2721 AC-3: an install from a package that still carried the agent sources inside the skill
 /// (`references/agents/`) moves to the new layout. The base agents are found by name, so they
 /// stay unchanged; the five old skill-tree files are reported `remove_blocked` and kept — no
@@ -705,4 +741,182 @@ fn a_package_changed_after_the_preview_is_refused_with_nothing_written() {
         "{v}"
     );
     assert_eq!(state(&home), before, "nothing was written");
+}
+
+/// SPEC-20261122-html-report-install AC-1: a release that carries `skills/moai-html-report`
+/// previews it as its own part, and the terminal screen shows it as its own skills row beside
+/// the moai skill's row. A preview writes nothing.
+#[test]
+fn the_preview_lists_the_html_report_skill_on_its_own_row_beside_the_moai_skill() {
+    let (_t, home, exe, pkg) = setup();
+    let src = with_html_report(&pkg);
+    let before = state(&home);
+    let p = result(&run(&exe, &home, &["update"]));
+    assert_eq!(state(&home), before, "a preview writes nothing");
+    let mut with: Vec<&str> = PREVIEW_KEYS.to_vec();
+    with.push("extra_skills");
+    assert_eq!(keys(&p), with, "{p}");
+    let parts = p["extra_skills"]["parts"].as_array().unwrap();
+    assert_eq!(parts.len(), 1, "{p}");
+    let part = &parts[0];
+    assert_eq!(part["skill"], json!(HTML_REPORT), "{p}");
+    assert_eq!(part["host"], json!("claude"), "{p}");
+    assert_eq!(part["preflight"], json!("ok"), "{p}");
+    assert_eq!(
+        part["projection_root"],
+        json!(home.join(".claude/skills").join(HTML_REPORT)),
+        "{p}"
+    );
+    let files = part["files"].as_array().unwrap();
+    assert_eq!(files.len(), tree(&src).len(), "{p}");
+    assert!(files.iter().all(|f| f["action"] == json!("create")), "{p}");
+    // The moai skill keeps its own plan; the html-report files are not in it.
+    let moai = &p["plan"]["hosts"][0];
+    assert_eq!(moai["projection_root"], json!(skill_dir(&home, "claude")));
+    let view = moai_cli::update_tux::View {
+        painter: moai_cli::ui::Painter::plain(),
+        width: 120,
+        home: home.display().to_string(),
+        project: None,
+    };
+    let text = common::screens::strip_colors(&moai_cli::update_tux::screen(
+        &p,
+        moai_cli::update_tux::Asked::NotAsked,
+        &view,
+    ));
+    let row = |line: &str| -> Vec<String> {
+        line.split_whitespace()
+            .skip(1)
+            .take(3)
+            .map(str::to_string)
+            .collect()
+    };
+    assert!(
+        text.lines()
+            .any(|l| row(l) == ["skills", "claude", HTML_REPORT] && l.contains("new")),
+        "{text}"
+    );
+    assert!(
+        text.lines().any(|l| {
+            let r = row(l);
+            r.len() == 3 && r[..2] == ["skills", "claude"] && r[2] != HTML_REPORT
+        }),
+        "{text}"
+    );
+}
+
+/// SPEC-20261122-html-report-install AC-2: a confirmed update copies both skill folders byte
+/// for byte, the html-report skill stays out of the `/` menu (`user-invocable: false`), its
+/// receipt is committed under its own name, and the next run has nothing to apply.
+#[test]
+fn confirm_installs_both_skill_folders_and_the_html_report_is_not_user_invocable() {
+    let (_t, home, exe, pkg) = setup();
+    let src = with_html_report(&pkg);
+    let p = result(&run(&exe, &home, &["update"]));
+    let top = p["plan_digest"].as_str().unwrap();
+    let r = result(&run(&exe, &home, &["update", "--confirm", top]));
+    assert_eq!(r["applied"], json!(true), "{r}");
+    assert_eq!(r["extra_skills_result"]["state"], json!("applied"), "{r}");
+    let skills = home.join(".claude/skills");
+    assert_eq!(tree(&skills.join("moai")), tree(&pkg));
+    let installed = skills.join(HTML_REPORT);
+    assert_eq!(tree(&installed), tree(&src));
+    let text = fs::read_to_string(installed.join("SKILL.md")).unwrap();
+    let head = text.strip_prefix("---\n").unwrap();
+    let head = &head[..head.find("\n---\n").unwrap()];
+    let lines: Vec<&str> = head.lines().map(str::trim_end).collect();
+    assert!(
+        lines.contains(&format!("name: {HTML_REPORT}").as_str()),
+        "{head}"
+    );
+    assert!(lines.contains(&"user-invocable: false"), "{head}");
+    let receipts = html_report_receipts(&home);
+    assert_eq!(receipts.len(), 1, "{receipts:?}");
+    assert_eq!(receipts[0]["status"], json!("committed"));
+    assert_eq!(receipts[0]["host"], json!("claude"));
+    assert_eq!(
+        receipts[0]["owned"].as_array().unwrap().len(),
+        tree(&src).len()
+    );
+    let again = result(&run(&exe, &home, &["update"]));
+    assert_eq!(again["nothing_to_apply"], json!(true), "{again}");
+    let part = &again["extra_skills"]["parts"][0];
+    assert_eq!(part["preflight"], json!("ok"), "{again}");
+    assert!(
+        part["files"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|f| f["action"] == json!("unchanged")),
+        "{again}"
+    );
+}
+
+/// SPEC-20261122-html-report-install AC-3: a `moai-html-report` folder whose package file no
+/// moai receipt owns blocks only that part; the reason names the folder, the confirmed update
+/// leaves its bytes as they are and still installs the moai skill.
+#[test]
+fn an_html_report_folder_moai_did_not_install_is_named_and_left_untouched() {
+    let (_t, home, exe, pkg) = setup();
+    with_html_report(&pkg);
+    let foreign = home.join(".claude/skills").join(HTML_REPORT);
+    fs::create_dir_all(&foreign).unwrap();
+    let mine = "---\nname: moai-html-report\ndescription: my own copy\n---\nmine\n";
+    fs::write(foreign.join("SKILL.md"), mine).unwrap();
+    let p = result(&run(&exe, &home, &["update"]));
+    let part = &p["extra_skills"]["parts"][0];
+    assert_eq!(part["preflight"], json!("blocked"), "{p}");
+    let why = part["blocked_reason"].as_str().unwrap();
+    assert!(why.contains(foreign.to_str().unwrap()), "{why}");
+    assert!(why.contains("moai did not install"), "{why}");
+    assert_eq!(p["plan"]["hosts"][0]["preflight"], json!("ok"), "{p}");
+    let top = p["plan_digest"].as_str().unwrap();
+    let r = result(&run(&exe, &home, &["update", "--confirm", top]));
+    assert_eq!(r["applied"], json!(true), "{r}");
+    assert_eq!(
+        r["extra_skills_result"]["parts"][0]["status"],
+        json!("blocked"),
+        "{r}"
+    );
+    assert_eq!(
+        tree(&foreign),
+        [(PathBuf::from("SKILL.md"), mine.as_bytes().to_vec())]
+    );
+    assert!(skill_dir(&home, "claude").join("SKILL.md").is_file());
+    assert!(html_report_receipts(&home).is_empty());
+}
+
+/// SPEC-20261122-html-report-install: the next version folder takes the html-report baseline
+/// from the receipt the earlier folder committed, as the moai skill does, so the folder moai
+/// installed is not taken for one it did not.
+#[test]
+fn a_second_version_folder_adopts_the_html_report_receipt_instead_of_blocking_it() {
+    let (_t, home, exe, pkg) = setup();
+    with_html_report(&pkg);
+    let p = result(&run(&exe, &home, &["update"]));
+    let top = p["plan_digest"].as_str().unwrap();
+    result(&run(&exe, &home, &["update", "--confirm", top]));
+    let next = home.join(".moai-cli/versions/b");
+    fs::create_dir_all(next.join("bin")).unwrap();
+    let exe_b = next.join("bin/moai-cli");
+    common::copy_executable(Path::new(EXE), &exe_b);
+    let pkg_b = next.join("skills/moai");
+    copy_tree(&package(), &pkg_b);
+    with_html_report(&pkg_b);
+    copy_tree(
+        &Path::new(env!("CARGO_MANIFEST_DIR")).join("agents"),
+        &next.join("agents"),
+    );
+    let p = result(&run(&exe_b, &home, &["update"]));
+    let part = &p["extra_skills"]["parts"][0];
+    assert_eq!(part["preflight"], json!("ok"), "{p}");
+    assert!(part["receipt_from"].is_string(), "{p}");
+    assert!(
+        part["files"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|f| f["action"] == json!("unchanged")),
+        "{p}"
+    );
 }

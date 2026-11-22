@@ -775,6 +775,95 @@ fn blocked_row(lang: Lang, label: String, reason: &Value) -> Row {
     )
 }
 
+/// The label of a skill folder installed beside the moai skill
+/// (SPEC-20261122-html-report-install): `skills claude moai-html-report`.
+fn extra_label(lang: Lang, p: &Value) -> String {
+    format!(
+        "{} {} {}",
+        w(lang, W::Skills),
+        p["host"].as_str().unwrap_or(""),
+        p["skill"].as_str().unwrap_or("")
+    )
+}
+
+/// One preview row per skill folder beside the moai skill, like the moai skill's row.
+fn extra_preview_rows(v: &Value, lang: Lang) -> Vec<Row> {
+    let mut rows = Vec::new();
+    for p in v["extra_skills"]["parts"].as_array().into_iter().flatten() {
+        let label = extra_label(lang, p);
+        if p["preflight"].as_str() != Some("ok") {
+            rows.push(blocked_row(lang, label, &p["blocked_reason"]));
+            continue;
+        }
+        let (m, text) = tally_text(lang, tally(p["files"].as_array().map_or(&[], |a| a)));
+        rows.push(row(m, label.clone(), text));
+        if let Some(g) = p["going_back"].as_str() {
+            rows.push(row(Mark::Warn, label, g.to_string()));
+        }
+    }
+    rows
+}
+
+/// The applied rows of the skill folders beside the moai skill, the files they wrote and whether
+/// one did not land.
+fn extra_applied_rows(v: &Value, lang: Lang) -> (Vec<Row>, usize, bool) {
+    let r = &v["extra_skills_result"];
+    let (mut rows, mut total, mut bad) = (Vec::new(), 0usize, false);
+    if r.is_null() {
+        return (rows, total, bad);
+    }
+    if !r["parts"].is_array() {
+        // `update` reports a refused or failed step as `state` with a reason or message.
+        let msg = r["reason"]
+            .as_str()
+            .or(r["message"].as_str())
+            .unwrap_or(r["state"].as_str().unwrap_or(""));
+        rows.push(row(Mark::Warn, w(lang, W::Skills).into(), msg.to_string()));
+        return (rows, total, true);
+    }
+    for p in r["parts"].as_array().into_iter().flatten() {
+        let label = extra_label(lang, p);
+        let files = p["files"].as_array().map_or(&[][..], |a| a);
+        let n = files
+            .iter()
+            .filter(|f| f["published"].as_bool() == Some(true))
+            .count();
+        match p["status"].as_str().unwrap_or("") {
+            "applied" => {
+                total += n;
+                rows.push(row(
+                    Mark::Ok,
+                    label,
+                    format!("{} {}", count(lang, n), w(lang, W::Changed)),
+                ));
+            }
+            "unchanged" => {}
+            "conflict" => {
+                bad = true;
+                let c = files
+                    .iter()
+                    .filter(|f| f["action"].as_str() == Some("conflict"))
+                    .count();
+                rows.push(row(Mark::Warn, label, counted(lang, W::Conflict, c)));
+            }
+            _ => {
+                bad = true;
+                let reason = p["blocked_reason"]
+                    .as_str()
+                    .map(str::to_string)
+                    .or_else(|| {
+                        files
+                            .iter()
+                            .find_map(|f| f["error"].as_str().map(str::to_string))
+                    })
+                    .unwrap_or_default();
+                rows.push(blocked_row(lang, label, &Value::String(reason)));
+            }
+        }
+    }
+    (rows, total, bad)
+}
+
 /// The `검사` rows of a preview, one per layer (skills per host).
 fn preview_rows(v: &Value, lang: Lang) -> Vec<Row> {
     let mut rows = Vec::new();
@@ -795,6 +884,8 @@ fn preview_rows(v: &Value, lang: Lang) -> Vec<Row> {
             rows.push(row(Mark::Warn, label, w.to_string()));
         }
     }
+    // SPEC-20261122-html-report-install: each skill folder beside the moai skill, its own row.
+    rows.extend(extra_preview_rows(v, lang));
     // Agents: one row over the hosts.
     let hosts: Vec<&Value> = v["agents"]["hosts"]
         .as_array()
@@ -1527,6 +1618,20 @@ impl Out<'_> {
                 ));
             }
         }
+        for p in v["extra_skills"]["parts"].as_array().into_iter().flatten() {
+            if p["preflight"].as_str() != Some("ok") {
+                continue;
+            }
+            let items: Vec<(Mark, String)> = p["files"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter_map(|f| file_change(f, "path"))
+                .collect();
+            if !items.is_empty() {
+                groups.push((extra_label(lang, p), items));
+            }
+        }
         let mut agent_items = Vec::new();
         for h in v["agents"]["hosts"].as_array().into_iter().flatten() {
             for f in h["files"].as_array().into_iter().flatten() {
@@ -1741,6 +1846,17 @@ pub fn screen(result: &Value, asked: Asked, view: &View) -> String {
                 h["files"].as_array().map_or(0, Vec::len)
             ));
         }
+        for p in result["extra_skills"]["parts"]
+            .as_array()
+            .into_iter()
+            .flatten()
+        {
+            totals.push(format!(
+                "{} {}",
+                extra_label(lang, p),
+                p["files"].as_array().map_or(0, Vec::len)
+            ));
+        }
         let agents: usize = result["agents"]["hosts"]
             .as_array()
             .into_iter()
@@ -1878,6 +1994,10 @@ fn applied(v: &Value, view: &View) -> String {
             }
         }
     }
+    let (extra_rows, extra_total, extra_bad) = extra_applied_rows(v, lang);
+    rows.extend(extra_rows);
+    total += extra_total;
+    bad |= extra_bad;
     let mut part = |label: W, r: &Value, rows: &mut Vec<Row>| {
         let label = w(lang, label).to_string();
         match r["state"].as_str() {
@@ -1952,6 +2072,12 @@ fn applied(v: &Value, view: &View) -> String {
         .into_iter()
         .flatten()
         .any(|h| h["reload_required"].as_str() == Some("yes"));
+    let reload = reload
+        || v["extra_skills_result"]["parts"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .any(|p| p["reload_required"].as_str() == Some("yes"));
     if reload {
         o.muted(w(lang, W::Reload));
     }
