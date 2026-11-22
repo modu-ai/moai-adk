@@ -2,7 +2,7 @@
 id: SPEC-20261121-remove-codex-project-layer
 title: "The project layer, the hook adapters, the generation and the interview's host choices serve Claude Code only; retired host entries in existing files are read and skipped"
 status: draft
-revision: 2
+revision: 3
 created: 2026-11-21
 ---
 
@@ -61,10 +61,11 @@ Order. A compatibility layer lands first and only adds: it filters retired hosts
 - write: `.moai/specs/SPEC-20261121-remove-codex-project-layer/**`
 - write: `src/project_hosts.rs`, `src/project_update.rs`, `src/project_skills.rs`, `src/project_detect.rs`, `src/lib.rs`
 - write: `src/hooks.rs`, `src/hook_engine.rs`, `src/hook_guards.rs`, `src/hook_legacy.rs`, `src/hook_config.rs`, `src/update_hooks.rs`
-- write: `src/generation.rs`, `src/agents.rs`, `src/omp_agents.rs`, `src/ops/codex_*.rs`, `src/ops/agents_project_*.rs`, `src/skills_legacy.rs`, `src/ops/skills_legacy.rs`
+- write: `src/generation.rs`, `src/agents.rs`, `src/omp_agents.rs`, `src/ops/codex_*.rs`, `src/ops/agents_project_*.rs`
 - write: `src/help.rs`, `src/main.rs`, `schemas/protocol/v1/profile.schema.json`, `docs/cli-text-rationale.md`
 - write: the tests and fixtures that call an API this slice removes, and the Codex-only test files of the project layer and the hook adapters, listed in the impact report (sections 2.3 and 2.5)
 - write: the entries of `tools/repo_scans.json` and `tests/cli_text_citations.rs` that name a file this slice removes, in the same commit as that file
+- read-only: `src/skills_legacy.rs` and `src/ops/skills_legacy.rs`: the legacy-skill check already scans the Claude folder only, changed by the home update slice (its REQ-8), so this slice no longer writes them
 - read-only: every other file, and the `.codex/` and `.omp/` folders of any project
 - read-only: `src/hosts/**` until the sibling slice that removes the shipped adapters and the compatibility layer have landed
 - forbidden: the launcher and home-update sources of the other slice, the lane and goal sources, the shipped skill text, install scripts, the repository's own profile and generation files, any card or SPEC that describes Codex work
@@ -107,6 +108,7 @@ Order. A compatibility layer lands first and only adds: it filters retired hosts
 | D-11 | the removed-host line of hook-dispatch goes to standard error and standard output stays empty | a leftover Codex or OMP hook would read plain text on standard output as a decision | print it on standard output |
 | D-12 | the interview host row and its test move to the shipped skill text slice | the SPEC's scope forbids the shipped skill text; that file needs the skill manifest regenerated, which other cards hold | widen this scope by an explicit decision |
 | D-13 | the host steps and `project_hosts` change in one commit that also edits every test naming the six steps; only an add-only preparation commit comes before it | deleting the steps with the tests left behind turns the tests red | none needed |
+| D-14 | `src/skills_legacy.rs` and its operation page leave this SPEC's write scope | the home update slice (REQ-8 of SPEC-20261122-codex-home-update-removed) already narrowed the legacy-skill check to the Claude folder | take them back if that slice is dropped |
 
 ## Result
 
