@@ -2,7 +2,7 @@
 id: SPEC-20261121-card-land
 title: "card land moves the integration branch to a candidate commit and closes the card in one call"
 status: draft
-revision: 2
+revision: 3
 created: 2026-11-21
 ---
 
@@ -20,7 +20,7 @@ The command is an action of `moai card` (decision D-1 of the flow skeleton). Unt
 
 - The merge of a head onto the tip, the land evidence (parents, clean merge tree, manifest match, tier floor) and any check of an audit verdict: slice 1b and step 4 of SPEC-20261121-flow-skeleton.
 - A land of a card that has no integration branch (a profile that is not m-flow): it refuses, as `card finish` does for a landing it cannot prove.
-- A new ledger table, a new event kind or a new column: the close is `card finish`'s own transaction and writes its own events.
+- A new ledger table or a new column, and any new event kind but the start row `card.land_started` of SPEC-20261121-ref-guard: the close is `card finish`'s own transaction and writes its own events.
 - The clap lines of the command in `src/ops/card.rs` are the last step, by the same pair approval as the finish command had.
 
 ## Requirements
@@ -56,7 +56,7 @@ The command is an action of `moai card` (decision D-1 of the flow skeleton). Unt
 - AC-15 (REQ-1, REQ-2): the landing event records the candidate as head and the new tip (the candidate after a move, the tip read when the head was already inside) and the caller word · verify: `cargo test --locked --offline --test card_land_cli ac15_`
 - AC-16 (REQ-4): a research card is refused with the words that a card closing on a report is the finish command's, and the branch and the ledger stay as they were · verify: `cargo test --locked --offline --test card_land_cli ac16_`
 - AC-17 (REQ-11): a caller whose environment names another repository (the git directory, work tree, index file and namespace variables) lands in the project's own repository · verify: `cargo test --locked --offline --test card_land_cli ac17_`
-- AC-18 (REQ-1): a reference update that git refuses because a lock file is in the way is reported with git's reason and not as tip_moved, and the branch and the ledger stay as they were · verify: `cargo test --locked --offline --test card_land_cli ac18_`
+- AC-18 (REQ-1): a reference update that git refuses because a lock file is in the way is reported with git's reason and not as tip_moved, and the branch stays and the ledger holds at most the start row of SPEC-20261121-ref-guard · verify: `cargo test --locked --offline --test card_land_cli ac18_`
 
 ## Scope
 
