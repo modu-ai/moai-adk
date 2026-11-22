@@ -4,7 +4,7 @@
 
 use super::input::SubagentTask;
 
-/// Auto-compact trigger used to scale the context bar (memory.go `defaultAutoCompactPct`).
+/// Auto-compact trigger used to scale the context percentage (memory.go `defaultAutoCompactPct`).
 pub const DEFAULT_AUTO_COMPACT_PCT: i64 = 85;
 const DEFAULT_CONTEXT_WINDOW: i64 = 200_000;
 // internal/config handoff band constants.
@@ -63,7 +63,7 @@ pub fn shorten_model_name(model: &str) -> String {
     }
 }
 
-/// The context-window reading behind the CTX bar (`MemoryData`).
+/// The context-window reading behind the CW number (`MemoryData`).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Memory {
     pub tokens_used: i64,
@@ -84,7 +84,7 @@ pub struct ContextReading {
 }
 
 /// `CollectMemory` (memory.go). `size_override` is the GLM / env override (0 = none);
-/// `auto_compact` scales the budget so the bar reaches 100% where auto-compact fires.
+/// `auto_compact` scales the budget so the percentage reaches 100% where auto-compact fires.
 pub fn collect_memory(cw: Option<ContextReading>, size_override: i64, auto_compact: i64) -> Memory {
     let Some(cw) = cw else {
         return Memory::default();
@@ -99,7 +99,7 @@ pub fn collect_memory(cw: Option<ContextReading>, size_override: i64, auto_compa
     if size_override > 0 {
         size = size_override;
     }
-    let budget = size * auto_compact / 100;
+    let budget = size.saturating_mul(auto_compact) / 100;
     let full = |tokens_used| Memory {
         tokens_used,
         token_budget: budget,
@@ -115,12 +115,14 @@ pub fn collect_memory(cw: Option<ContextReading>, size_override: i64, auto_compa
     if cw.used > 0 || cw.total > 0 {
         return Memory {
             tokens_used: cw.used,
-            token_budget: cw.total * auto_compact / 100,
+            token_budget: cw.total.saturating_mul(auto_compact) / 100,
             context_window_size: size,
             available: true,
         };
     }
-    full(0)
+    // The window names no percentage, no usage and no totals: nothing was read, so the reading
+    // is unavailable and the screen says `CW n/a`, never a guessed zero (REQ-9).
+    Memory::default()
 }
 
 /// `usagePercent`: truncated, capped at 100, 0 for an empty budget.
@@ -128,7 +130,7 @@ pub fn usage_percent(used: i64, total: i64) -> i64 {
     if total <= 0 {
         return 0;
     }
-    (used * 100 / total).min(100)
+    (used.saturating_mul(100) / total).min(100)
 }
 
 /// `cacheHitPercent`: read / (read + creation), omitted when creation ≤ 0.
@@ -136,11 +138,11 @@ pub fn cache_hit_percent(read: i64, creation: i64) -> Option<i64> {
     if creation <= 0 {
         return None;
     }
-    let denom = read + creation;
+    let denom = read.saturating_add(creation);
     if denom <= 0 {
         return None;
     }
-    Some(read * 100 / denom)
+    Some((read.saturating_mul(100) / denom).min(100))
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -388,6 +390,53 @@ mod tests {
         let m = collect_memory(Some(usage), 0, 85);
         assert_eq!(usage_percent(m.tokens_used, m.token_budget), 29);
         assert!(!collect_memory(None, 0, 85).available);
+    }
+
+    /// A context window that names a size but gives no percentage and no usage is unknown,
+    /// never a reading of zero (REQ-9 of SPEC-20261121-statusline-detached); a real zero stays
+    /// a reading.
+    #[test]
+    fn a_context_window_with_no_percentage_and_no_usage_is_unavailable() {
+        let sized = ContextReading {
+            context_window_size: 200_000,
+            ..Default::default()
+        };
+        assert!(!collect_memory(Some(sized), 0, 85).available);
+        assert!(!collect_memory(Some(ContextReading::default()), 0, 85).available);
+        let zero_percentage = ContextReading {
+            used_percentage: Some(0.0),
+            context_window_size: 200_000,
+            ..Default::default()
+        };
+        assert!(collect_memory(Some(zero_percentage), 0, 85).available);
+        let zero_usage = ContextReading {
+            context_window_size: 200_000,
+            current_usage_tokens: Some(0),
+            ..Default::default()
+        };
+        assert!(collect_memory(Some(zero_usage), 0, 85).available);
+    }
+
+    /// Numbers far beyond any real window must not overflow a debug build (REQ-10).
+    #[test]
+    fn huge_context_numbers_do_not_overflow() {
+        let by_percentage = ContextReading {
+            used_percentage: Some(1e300),
+            context_window_size: i64::MAX,
+            ..Default::default()
+        };
+        let m = collect_memory(Some(by_percentage), 0, 85);
+        assert!((0..=100).contains(&usage_percent(m.tokens_used, m.token_budget)));
+        let by_total = ContextReading {
+            used: i64::MAX,
+            total: i64::MAX,
+            ..Default::default()
+        };
+        let m = collect_memory(Some(by_total), 0, 85);
+        assert_eq!(usage_percent(m.tokens_used, m.token_budget), 100);
+        assert_eq!(usage_percent(i64::MAX, 1), 100);
+        let hit = cache_hit_percent(i64::MAX, i64::MAX);
+        assert!(hit.is_some_and(|p| (0..=100).contains(&p)));
     }
 
     #[test]

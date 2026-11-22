@@ -2631,14 +2631,26 @@ mod skill_package {
             "pushing a tag or publishing a release is case (2) at every autonomy level, `full` included",
             "Independent audit and the CI gate are never delegated.",
             "its options, the default, whether it is reversible, its category (`none`, `guarded` or one of the five), its deadline and who decided; a decision without a record does not count.",
-            // #2678: a reported figure comes from a named command, and silence is not zero.
+        ] {
+            assert!(skill.contains(line), "SKILL.md lacks: {line}");
+        }
+        // #2678, moved by SPEC-20261121-report-rules-in-core-rules: a reported figure comes
+        // from a named command, and silence is not zero. The skill entry points to rules 23 and 24.
+        let core = fs::read_to_string(root().join("references/internal/core-rules.md")).unwrap();
+        for line in [
             "Take every number and state in a report from a command run for that report, and name the command next to it.",
             "An empty output is not zero: say whether the command prints nothing for \"none\" or also on a failure, and count a paged list only after reading every page.",
             "After a write, read the written thing back and report what the read shows, not what was sent.",
             "Write a time only from a clock read in the same step (`date -u`).",
         ] {
-            assert!(skill.contains(line), "SKILL.md lacks: {line}");
+            assert!(core.contains(line), "core-rules.md lacks: {line}");
         }
+        assert!(
+            skill.contains(
+                "rules 23 and 24 of the core rules (the route table's `core_rules` entry)"
+            ),
+            "SKILL.md points to the report rules"
+        );
         let leader = mode_workflow("MODE-LEADER");
         let agent = mode_workflow("MODE-AGENT");
         for body in [&leader, &agent] {

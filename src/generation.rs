@@ -468,9 +468,10 @@ fn project_skill_path(host: &str, id: &str) -> Option<String> {
 
 /// The project skill body (#2706 P2): the profile's interview answers, one line each; an answer
 /// recorded with `source: default` (an axis left unanswered) is never written.
-/// The profile a project skill is built from, in the project's state folder (#2725 S2b).
+/// The profile a project skill is built from, in the folder that is actually read (the delta
+/// audit's N2) (#2725 S2b).
 fn project_profile_rel(root: &Path) -> String {
-    crate::state_root::rel(root, "project.yaml")
+    crate::profile::read_rel(root)
 }
 
 fn render_project_skill(

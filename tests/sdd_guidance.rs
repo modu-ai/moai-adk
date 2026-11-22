@@ -1,6 +1,7 @@
 //! SPEC-20261117-sdd-guidance: the agent-facing SDD rules live in one reference
 //! (`skills/moai/references/internal/sdd.md`), name only commands this build has, and the
-//! workflows and the chain table agree on one order: PLAN → RUN → VERIFY → SYNC → AUDIT → merge.
+//! workflows and the chain table follow one order, written once in the reference:
+//! PLAN → RUN → VERIFY → SYNC → AUDIT → merge.
 mod common;
 
 use common::CleanEnv;
@@ -300,18 +301,103 @@ fn no_card_number_or_ddd_wording_in_the_package_and_agents() {
     }
 }
 
-/// The order is stated in the chain table and in every workflow it orders, and the old
-/// build order (audit before docs) is gone.
+/// The five files that order work by the stages (the chain table and four workflows). Each
+/// says that the order is the one `internal/sdd` gives and does not write it out
+/// (SPEC-20261121-stage-order-once, which replaces REQ-3 of this file's first SPEC).
+const POINTER_FILES: [&str; 5] = [
+    "skills/moai/references/chains/index.md",
+    "skills/moai/workflows/run.md",
+    "skills/moai/workflows/verify.md",
+    "skills/moai/workflows/sync.md",
+    "skills/moai/workflows/audit.md",
+];
+
+/// The sentence every pointer file carries instead of the order (compared in lower case).
+const POINTER: &str = "order of the stages is the one `internal/sdd` gives";
+
+/// SPEC-20261121-stage-order-once AC-1: the full order is in `sdd.md` only; the five pointer
+/// files name `internal/sdd` as its owner. Named files only (no folder walk): the entry, every
+/// workflow the route table names, the chain table and the internal references.
+#[test]
+fn stage_order_is_written_once() {
+    let routes: serde_json::Value =
+        serde_json::from_str(&read("skills/moai/references/routes.json")).unwrap();
+    let mut files: Vec<String> = routes["routes"]
+        .as_object()
+        .unwrap()
+        .values()
+        .map(|r| {
+            let rel = r["reference"].as_str().unwrap();
+            format!(
+                "skills/moai/{}",
+                rel.strip_prefix("../").expect("route reference")
+            )
+        })
+        .collect();
+    for name in ["sdd", "interview", "questions", "test-design", "core-rules"] {
+        files.push(format!("skills/moai/references/internal/{name}.md"));
+    }
+    files.push("skills/moai/references/chains/index.md".into());
+    files.push("skills/moai/SKILL.md".into());
+    let with_order: Vec<&String> = files
+        .iter()
+        .filter(|rel| read(rel).contains(ORDER))
+        .collect();
+    assert_eq!(
+        with_order,
+        ["skills/moai/references/internal/sdd.md"],
+        "the full order belongs to sdd.md only"
+    );
+    for rel in POINTER_FILES {
+        assert!(
+            read(rel).to_ascii_lowercase().contains(POINTER),
+            "{rel} does not say that internal/sdd owns the order"
+        );
+    }
+}
+
+/// SPEC-20261121-stage-order-once AC-2: taking the order out leaves what each stage reads,
+/// writes or refuses where it was.
+#[test]
+fn each_stage_workflow_keeps_its_own_duty() {
+    for (rel, phrase) in [
+        (
+            "skills/moai/workflows/audit.md",
+            "reads only, and any drift between the SPEC (its Scope, requirements and `## Result`), \
+             the code, the tests, the documents and the `@cc:` comments is a FAIL finding, never a fix.",
+        ),
+        (
+            "skills/moai/workflows/sync.md",
+            "SYNC writes, AUDIT checks. On the candidate branch, before the audit, SYNC makes the \
+             SPEC, the documents and the `@cc:` comments match the code",
+        ),
+        (
+            "skills/moai/workflows/verify.md",
+            "SYNC writes them into the SPEC's `## Result` before the audit",
+        ),
+        (
+            "skills/moai/workflows/run.md",
+            "RUN follows the SPEC as `internal/sdd` says: only its Scope, and never while a \
+             `[NEEDS CLARIFICATION …]` question is open.",
+        ),
+        (
+            "skills/moai/references/chains/index.md",
+            "SYNC writes the SPEC Result, documents and `@cc:` comments (agents and tools add and \
+             link them automatically) on the same branch, and AUDIT only checks them.",
+        ),
+    ] {
+        assert!(read(rel).contains(phrase), "{rel} lacks {phrase:?}");
+    }
+}
+
+/// The old build order (audit before docs) is gone.
 #[test]
 fn every_place_states_one_order() {
-    for rel in [
-        "skills/moai/references/chains/index.md",
-        "skills/moai/workflows/run.md",
-        "skills/moai/workflows/verify.md",
-        "skills/moai/workflows/sync.md",
-        "skills/moai/workflows/audit.md",
-    ] {
-        assert!(read(rel).contains(ORDER), "{rel} lacks the order");
+    for rel in POINTER_FILES {
+        assert!(
+            read(rel).to_ascii_lowercase().contains(POINTER),
+            "{rel} does not point to the one order"
+        );
     }
     for rel in [
         "skills/moai/references/chains/index.md",

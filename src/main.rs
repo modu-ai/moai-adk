@@ -694,7 +694,7 @@ enum Command {
         /// Branch prefix (HOLD: no default; the user decides it).
         #[arg(long)]
         branch_prefix: String,
-        /// Worktree path; default `<HOME>/.moai/worktrees/<project>-<issue>-<logical_key>` (#2811).
+        /// Worktree path; default `<project>/.claude/worktrees/<project>-<issue>-<logical_key>`.
         /// Refused inside a Cargo build folder (#2930 R-3).
         #[arg(long)]
         path: Option<PathBuf>,
@@ -937,6 +937,11 @@ enum Command {
         /// `moai.before-<UTC>`. Without --confirm the rest stays a preview.
         #[arg(long, value_name = "TOKEN")]
         confirm_switch: Option<String>,
+        /// The preview's `git_hooks.confirm_token` (SPEC-20261121-go-path-removal): retire the
+        /// Go-generation git hooks of the project and install the Rust hooks. Without --confirm
+        /// the rest stays a preview.
+        #[arg(long, value_name = "TOKEN")]
+        confirm_git_hooks: Option<String>,
         /// Put back the old name-switch script saved as `moai.before-<STAMP>` by an earlier
         /// --confirm-switch; runs alone (not combinable with a --confirm flag), nothing else changes.
         #[arg(long, value_name = "STAMP")]
@@ -2087,6 +2092,7 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             confirm_cleanup,
             confirm_home,
             confirm_switch,
+            confirm_git_hooks,
             revert_switch,
             allow_older,
             json: _,
@@ -2105,6 +2111,7 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 confirm_cleanup.as_deref(),
                 confirm_home.as_deref(),
                 confirm_switch.as_deref(),
+                confirm_git_hooks.as_deref(),
                 revert_switch.as_deref(),
                 allow_older,
                 |summary, preview| {

@@ -1542,6 +1542,9 @@ pub struct UserLayerPlan {
     /// C-33 S3: the name-switch script `path/moai` (v1 -> v2) that only `--confirm-switch
     /// <token>` replaces. Not part of `plan_digest`, like `home`.
     pub switch: switch::Layer,
+    /// The git-hook retire and install (SPEC-20261121-go-path-removal), confirmed apart like
+    /// the switch part.
+    pub git_hooks: crate::git_hooks::update::Layer,
     /// Agent, routing and style hosts left out because their skill copy is blocked.
     pub skipped: Vec<serde_json::Value>,
     /// One digest over the seven plan digests; the only value `--confirm` accepts.
@@ -1621,6 +1624,7 @@ fn user_layer_plan_in(
     let keys = crate::update_keys::plan(home)?;
     let home_layer = crate::update_home::plan(home)?;
     let switch_layer = switch::plan(home)?;
+    let git_hooks_layer = crate::git_hooks::update::plan(home, &cwd)?;
     // One snapshot: what the agents and the section were rendered from is the staged package.
     if agents.package_digest != staged.digest
         || routing.package_digest != staged.digest
@@ -1654,6 +1658,7 @@ fn user_layer_plan_in(
         keys,
         home: home_layer,
         switch: switch_layer,
+        git_hooks: git_hooks_layer,
         skipped,
         plan_digest,
         cleanup,
@@ -1705,9 +1710,10 @@ fn layer_asks(
     cleanup: Option<&str>,
     home: Option<&str>,
     switch: Option<&str>,
+    git_hooks: Option<&str>,
     writes: bool,
 ) -> bool {
-    asks(cleanup, home.or(switch), writes)
+    asks(cleanup, home.or(switch).or(git_hooks), writes)
 }
 
 /// Archive the cleanup items (`update_cleanup::apply` re-plans and checks the token again).
@@ -1728,8 +1734,16 @@ fn run_cleanup(
 /// reverting routing first is skipped as `user_changed_since_apply` and style then leaves the
 /// routing block behind for good. Only the commands that exist are listed. The terminal screen and
 /// the JSON result both take the order from here.
-pub const REVERT_ORDER: [&str; 8] = [
-    "switch", "home", "cleanup", "keys", "hooks", "style", "routing", "agents",
+pub const REVERT_ORDER: [&str; 9] = [
+    "git_hooks",
+    "switch",
+    "home",
+    "cleanup",
+    "keys",
+    "hooks",
+    "style",
+    "routing",
+    "agents",
 ];
 
 pub fn revert_order(revert: &serde_json::Value) -> Vec<&'static str> {
@@ -1869,6 +1883,7 @@ pub fn layer_summary(p: &UserLayerPlan) -> String {
     out.push_str(&p.keys.summary());
     out.push_str(&p.home.summary());
     out.push_str(&p.switch.summary());
+    out.push_str(&p.git_hooks.summary());
     for s in &p.skipped {
         out.push_str(&format!(
             "  skipped {} {}: {}\n",
@@ -1916,12 +1931,14 @@ pub fn layer_summary(p: &UserLayerPlan) -> String {
 /// Card C-67 (audit N1): `allow_older` (`--allow-older`) plans this build over a newer
 /// installed version instead of blocking it; each such host carries a `going_back` warning,
 /// and the digest binds the choice, so the confirm needs the flag again.
+#[allow(clippy::too_many_arguments)]
 fn update_command_core(
     home: &Path,
     confirm: Option<&str>,
     confirm_cleanup: Option<&str>,
     confirm_home: Option<&str>,
     confirm_switch: Option<&str>,
+    confirm_git_hooks: Option<&str>,
     allow_older: bool,
     ask: impl FnOnce(&str, &serde_json::Value) -> Result<bool>,
 ) -> Result<serde_json::Value> {
@@ -1948,6 +1965,8 @@ fn update_command_core(
     // C-33 S3: its own token, like the home part; the file it writes (`path/moai`) is no item of
     // `~/.moai`, so it combines with the cleanup and the home token.
     let switch_token = switch::check_token(&layer.switch, confirm_switch)?;
+    let git_hooks_token =
+        crate::git_hooks::update::check_token(&layer.git_hooks, confirm_git_hooks)?;
     if home_token.is_some() && cleanup.is_some() {
         return Err(
             "the home token and the cleanup token both move items of ~/.moai and would make each other's preview stale; confirm one at a time, nothing applied".into(),
@@ -1990,13 +2009,18 @@ fn update_command_core(
         if let Some(s) = layer.switch.to_json() {
             out["switch"] = s.clone();
         }
+        // SPEC-20261121-go-path-removal: only a repository with Go-generation or drifted hooks
+        // shows a `git_hooks` part.
+        if let Some(g) = layer.git_hooks.to_json() {
+            out["git_hooks"] = g.clone();
+        }
         out
     };
     let digest = match confirm {
         Some(d) => d.to_string(),
         // A cleanup or home run without `--confirm` leaves the layer a preview: a yes at the
         // question never applies a part with its own token.
-        None if layer_asks(cleanup, home_token, switch_token, writes)
+        None if layer_asks(cleanup, home_token, switch_token, git_hooks_token, writes)
             && ask(&layer_summary(&layer), &preview())? =>
         {
             layer.plan_digest.clone()
@@ -2020,6 +2044,14 @@ fn update_command_core(
                 out["revert"]["switch"] = r["revert"].clone();
                 out["revert_order"] = json!(revert_order(&out["revert"]));
                 out["switch_result"] = r;
+            }
+            if let Some(t) = git_hooks_token {
+                let cwd = std::env::current_dir()
+                    .map_err(|_| "current directory unavailable".to_string())?;
+                let r = crate::git_hooks::update::apply(&cwd, t, &crate::audit::utc_now())?;
+                out["revert"]["git_hooks"] = r["revert"].clone();
+                out["revert_order"] = json!(revert_order(&out["revert"]));
+                out["git_hooks_result"] = r;
             }
             return Ok(out);
         }
@@ -2127,6 +2159,15 @@ fn update_command_core(
     let home_part = home_token.map(|t| part(crate::update_home::apply(home, t, PERMISSION)));
     // C-33 S3: the confirmed switch part, last; an error is reported beside the rest.
     let switch_part = switch_token.map(|t| part(switch::apply(home, t, &crate::audit::utc_now())));
+    // SPEC-20261121-go-path-removal: the confirmed git-hook part; an error is reported beside
+    // the rest, and the hooks of the project the update runs in are the ones that change.
+    let git_hooks_part = git_hooks_token.map(|t| {
+        part((|| {
+            let cwd =
+                std::env::current_dir().map_err(|_| "current directory unavailable".to_string())?;
+            crate::git_hooks::update::apply(&cwd, t, &crate::audit::utc_now())
+        })())
+    });
     let revert = |op: &str, r: &serde_json::Value| {
         r["receipt"]
             .as_str()
@@ -2170,6 +2211,10 @@ fn update_command_core(
         out["revert"]["switch"] = s["revert"].clone();
         out["switch_result"] = s;
     }
+    if let Some(g) = git_hooks_part {
+        out["revert"]["git_hooks"] = g["revert"].clone();
+        out["git_hooks_result"] = g;
+    }
     out["revert_order"] = json!(revert_order(&out["revert"]));
     Ok(out)
 }
@@ -2196,6 +2241,7 @@ pub fn update_command(
         confirm_home,
         None,
         None,
+        None,
         allow_older,
         ask,
     )
@@ -2213,6 +2259,7 @@ pub fn update_command_switch(
     confirm_cleanup: Option<&str>,
     confirm_home: Option<&str>,
     confirm_switch: Option<&str>,
+    confirm_git_hooks: Option<&str>,
     revert_switch: Option<&str>,
     allow_older: bool,
     ask: impl FnOnce(&str, &serde_json::Value) -> Result<bool>,
@@ -2222,6 +2269,7 @@ pub fn update_command_switch(
             || confirm_cleanup.is_some()
             || confirm_home.is_some()
             || confirm_switch.is_some()
+            || confirm_git_hooks.is_some()
         {
             return Err(
                 "--revert-switch cannot be combined with a confirming flag; nothing changed".into(),
@@ -2233,13 +2281,15 @@ pub fn update_command_switch(
     let scripted = confirm.is_some()
         || confirm_cleanup.is_some()
         || confirm_home.is_some()
-        || confirm_switch.is_some();
+        || confirm_switch.is_some()
+        || confirm_git_hooks.is_some();
     let mut out = update_command_core(
         home,
         confirm,
         confirm_cleanup,
         confirm_home,
         confirm_switch,
+        confirm_git_hooks,
         allow_older,
         ask,
     )?;
@@ -3134,13 +3184,20 @@ mod user_layer_tests {
         // C-33 S3: a switch token alone leaves the layer a preview too — the terminal yes never
         // confirms the switch — and no token at all still asks.
         let sw = Some("switch:0123456789abcdef");
-        assert!(layer_asks(None, None, None, true));
-        assert!(!layer_asks(None, None, sw, true));
-        assert!(!layer_asks(None, Some("home:0123456789abcdef"), None, true));
+        assert!(layer_asks(None, None, None, None, true));
+        assert!(!layer_asks(None, None, sw, None, true));
+        assert!(!layer_asks(
+            None,
+            Some("home:0123456789abcdef"),
+            None,
+            None,
+            true
+        ));
         assert!(!layer_asks(
             Some("cleanup:0123456789abcdef"),
             None,
             sw,
+            None,
             true
         ));
     }

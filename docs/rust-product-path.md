@@ -918,7 +918,9 @@ is left out together with its separator.
    (behind), then `+N` (dirty), each only when it is not 0
    (SPEC-20261120-statusline-ahead: under M-Flow the merges land on the local integration
    branch first, so the ahead count is the one that shows them landing; the count comes from
-   the `git status` header the renderer already reads). Missing forge counts are omitted.
+   the `git status` header the renderer already reads). Forge counts that cannot be read say `⬇️ n/a 🔀 n/a`, never a zero, and a repository whose name cannot be
+   resolved says `📡 n/a`; a detached HEAD shows the short SHA in the branch slot (`🅱️ a1b2c3d`) and the
+   repository segment stays.
    The `pr` option turns its segment off.
    `▶️` and `🔃` split the cards in `active` or `review`: a card in `review` is waiting, and
    an `active` card is waiting only when the newest of its notes whose first line carries a
@@ -951,15 +953,24 @@ is left out together with its separator.
    `tests/fixtures/statusline-claude/ledger/cards-5-50-12.sqlite` for `b13` and
    `cards-5-50-12-waiting.sqlite` for `b14`, which adds the notes that make one card wait;
    the ignored test `write_the_golden_ledger_fixture` writes both).
-3. Usage and worktree: the card counts of the project's local ledger first (item 2's
-   `🗂️ … ▶️ … 🔃 … ✅ …`, they read the ledger and need no git), then the `CTX` and
-   available `Week` bars, then the worktree segment last (`🗂️ … | 🔋 CTX: … | 🪫 Week: … | 🌳 WT-c124-statusline-worktree-label`;
-   since #2928 user instruction 6878415244 the tag is on line 1, not here; the card counts
-   moved here from line 2 and the worktree segment moved from the front of this line to its
-   end by the user's third instruction of 2026-11-20, SPEC-20261120-statusline-layout; the
-   Claude Code version moved back to line 1 by the same instruction). The card counts stand at the front of the last line: line 3 while lines 1 and 2
-   are shown, and one line up when an empty line is left out. In a linked worktree it has
-   three shapes. `🌳 WT-c<card>-<name>` when a live reservation of the project (status
+3. Usage windows and card counts: the card counts of the project's local ledger first (item 2's
+   `🗂️ … ▶️ … 🔃 … ✅ …`, they read the ledger and need no git), then the `CW`
+   (the context window) and `7D` (the seven-day limit) windows as numbers only:
+   `🗂️ 50 ▶️ 2 🔃 3 ✅ 12 | 🔋 CW 9% | 🔋 7D 41% (resets in 4d 23h)`.
+   There is no graph and no colon; the battery icon is `🪫` above 70% and `🔋` otherwise; a
+   percentage is shown from 0 to 100; and there is no `/clear` hint on any line (the user's final
+   call of 2026-11-21, SPEC-20261121-statusline-detached). A window whose percentage is
+   unavailable (the window is absent, its percentage is `null`, or its object is empty) says
+   `CW n/a` or `7D n/a` with no battery icon and never `0%`, and every value
+   that cannot be read says `n/a` (the screen is English only). `7D` ends with
+   `(resets in <d>d <h>h)` at a day or more, `(resets in <h>h <m>m)` under a day and
+   `(resets in <m>m)` under an hour, measured from the render's clock, when Claude Code gives a
+   reset time. Since #2928 user instruction 6878415244 the tag is on line 1, not here; the
+   worktree label closes line 2, after the branch and the pull-request link (the user's picked
+   layout of 2026-11-20, SPEC-20261120-statusline-layout and SPEC-20261121-statusline-detached),
+   and the Claude Code version stands on line 1. The card counts stand at the front of the last
+   line: line 3 while lines 1 and 2 are shown, and one line up when an empty line is left out. In a
+   linked worktree the label has three shapes. `🌳 WT-c<card>-<name>` when a live reservation of the project (status
    `held`, `held_for_review` or `expired_candidate`, with an absolute worktree path)
    names the session's folder (`<card>` is the number of the card that holds it, the
    lowest number when several do; `<name>` is the part of the reservation's branch after
@@ -976,21 +987,18 @@ is left out together with its separator.
    counts, and nothing is created. Example (lines 2 and 3 of the golden
    `b14-card-counts-waiting`):
 
-       📡 anthropics/claude-code, ⬇️ 46 🔀 0 | 🅱️ main | 🔗 #1234 pending
-       🗂️ 50 ▶️ 2 🔃 3 ✅ 12 | 🔋 CTX: ░░░░░░░░░░ 9% | 🔋 Week: ████░░░░░░ 41% | 🌳 feature-xyz
+       📡 anthropics/claude-code, ⬇️ 46 🔀 0 | 🅱️ main | 🔗 #1234 pending | 🌳 feature-xyz
+       🗂️ 50 ▶️ 2 🔃 3 ✅ 12 | 🔋 CW 9% | 🔋 7D 41% (resets in 4d 23h)
 
    Tests: `tests/statusline_worktree_label.rs` (the three shapes, a released reservation
    is no holder, the lowest card number, the main checkout, the `worktree` option, the
    line), the unit tests in `src/statusline/state.rs`
    (`the_name_is_cut_at_thirty_two_characters_and_drops_control_characters`,
    `a_relative_recorded_path_never_matches`) and the golden cases `a02-doc-full` and
-   `b14-card-counts-waiting`. With both bars off and no worktree segment the line is the
-   Claude Code version alone when the `claude_version` option is on and its input is
-   there, and empty and omitted like any empty line otherwise. The bar icons (`🔋`/`🪫`) and the
-   `(⚠️ /clear)` handoff mark keep their rules. The five-hour bar is not shown — the user did not choose it (#2756,
+   `b14-card-counts-waiting`. With both windows off and no card counts the line is empty and
+   omitted like any empty line. The five-hour window is not shown — the user did not choose it (#2756,
    6858992949) — and the `usage_5h` option is still accepted. A missing weekly window is
-   hidden; reset times are not printed.
-   Context handoff warnings and the existing usage calculation are retained. The
+   hidden. The existing usage calculation is retained. The
    renderer shortens nothing: Claude Code sets `COLUMNS` for the status line command,
    but the renderer does not read it. When a line is wider than the status bar, the
    host documentation leaves open whether it is cut or wraps ("may get truncated or wrap

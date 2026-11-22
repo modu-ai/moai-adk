@@ -115,8 +115,8 @@ fn run(cwd: &Path, args: &[String]) -> Output {
     Command::new(crate::common::MOAI_BIN)
         .args(args)
         .current_dir(cwd)
-        // A temporary HOME beside the repository: new worktrees go under <HOME>/.moai (#2811),
-        // so a HOME inside the primary checkout would show up in its status.
+        // A temporary HOME beside the repository, so a HOME inside the primary checkout
+        // cannot show up in its status.
         .env("HOME", cwd.parent().unwrap().join("home"))
         .env("GIT_CONFIG_GLOBAL", "/dev/null")
         .env("GIT_CONFIG_SYSTEM", "/dev/null")
@@ -252,13 +252,12 @@ fn worktree_plan_idempotent() {
     assert_eq!(r["branch"], "lane/7-06-C-e1");
     assert_eq!(r["writes"], false);
     assert_eq!(r["base_sha"], f.base);
-    // #2811 AC-2: the default is <HOME>/.moai/worktrees/<project>-<issue>-<logical_key>.
+    // The default is <project>/.claude/worktrees/<project>-<issue>-<logical_key>.
     assert_eq!(
         r["path"],
-        f.repo
-            .parent()
+        fs::canonicalize(&f.repo)
             .unwrap()
-            .join("home/.moai/worktrees/primary-7-06-C")
+            .join(".claude/worktrees/primary-7-06-C")
             .to_string_lossy()
             .as_ref()
     );
@@ -980,25 +979,154 @@ fn worktree_apply_conflict_names_claim_link() {
     assert!(env["result"].get("next").is_none(), "{env}");
 }
 
-/// AC-2: in a temporary HOME the created worktree is `<HOME>/.moai/worktrees/<project>-<id>`;
-/// planning created no folder (D5) and the add created the parents itself.
+/// The created worktree is `<project>/.claude/worktrees/<project>-<id>`; planning created no
+/// folder (D5), the add created the parents itself, the main tree's status stays clean, and
+/// nothing went to the home folder.
 #[test]
-fn a_new_worktree_goes_under_the_home_work_folder() {
+fn a_new_worktree_goes_under_the_project_place() {
     let f = fixture();
     let home = f.repo.parent().unwrap().join("home");
     let p = plan(&f, "lane");
-    assert!(!home.join(".moai").exists(), "planning creates nothing");
+    assert!(!f.repo.join(".claude").exists(), "planning creates nothing");
     let env = apply(&f, "lane", p["plan_digest"].as_str().unwrap());
     assert_eq!(env["result"]["decision"], "created", "{env}");
-    let wt = home.join(".moai/worktrees/primary-7-06-C");
+    assert!(env["result"].get("place_exclude_error").is_none(), "{env}");
+    let wt = f.repo.join(".claude/worktrees/primary-7-06-C");
     assert!(wt.join("README.md").is_file(), "{env}");
     assert_eq!(
         fs::canonicalize(git(&wt, &["rev-parse", "--show-toplevel"]).trim()).unwrap(),
         fs::canonicalize(&wt).unwrap()
     );
-    // Nothing went to the old place, and the Go folder name was never touched.
+    // Nothing went to an old place, and the main tree's status did not change.
     assert!(!f.repo.join(".moai-cli/worktrees").exists());
-    assert!(!home.join(".moai/worktrees/projects").exists());
+    assert!(!home.join(".moai/worktrees").exists());
+    assert_eq!(git(&f.repo, &["status", "--porcelain"]), "");
+}
+
+/// The project-level lines of an apply made through `--project <project>` run in `cwd`.
+fn apply_from(f: &Fixture, project: &Path, cwd: &Path) -> Value {
+    let p = project.to_string_lossy().to_string();
+    let plan_out = envelope(&run(
+        cwd,
+        &args(&["worktree-plan", &p, "--branch-prefix", "lane"], &f.source),
+    ));
+    assert_eq!(plan_out["ok"], true, "{plan_out}");
+    let digest = plan_out["result"]["plan_digest"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    envelope(&run(
+        cwd,
+        &args(
+            &[
+                "worktree-apply",
+                &p,
+                "--branch-prefix",
+                "lane",
+                "--plan-digest",
+                &digest,
+                "--disk-floor-bytes",
+                "0",
+            ],
+            &f.source,
+        ),
+    ))
+}
+
+fn exclude_count(repo: &Path) -> usize {
+    fs::read_to_string(repo.join(".git/info/exclude"))
+        .unwrap_or_default()
+        .lines()
+        .filter(|l| *l == "/.claude/worktrees/")
+        .count()
+}
+
+/// REQ-10, audit B1: an apply run from a linked worktree — where a lane runs — still writes the
+/// exclude line for the primary checkout, so the primary's status stays clean.
+#[test]
+fn worktree_place_status_the_apply_from_a_linked_worktree_writes_the_exclude_line() {
+    let f = fixture();
+    fs::write(f.repo.join(".gitignore"), "").unwrap();
+    git(&f.repo, &["commit", "-q", "-am", "no ignore"]);
+    let linked = f.repo.parent().unwrap().join("linked");
+    git(
+        &f.repo,
+        &[
+            "worktree",
+            "add",
+            "-q",
+            "-b",
+            "side",
+            linked.to_str().unwrap(),
+        ],
+    );
+    let env = apply_from(&f, &linked, &linked);
+    assert_eq!(env["result"]["decision"], "created", "{env}");
+    assert!(env["result"].get("place_exclude_error").is_none(), "{env}");
+    assert!(
+        f.repo.join(".claude/worktrees/primary-7-06-C").is_dir(),
+        "{env}"
+    );
+    assert_eq!(exclude_count(&f.repo), 1);
+    assert_eq!(git(&f.repo, &["status", "--porcelain"]), "");
+}
+
+/// REQ-10, audit B1: an apply run from a subfolder of the primary checkout writes one line.
+#[test]
+fn worktree_place_status_the_apply_from_a_subfolder_writes_one_exclude_line() {
+    let f = fixture();
+    fs::write(f.repo.join(".gitignore"), "").unwrap();
+    fs::create_dir_all(f.repo.join("sub")).unwrap();
+    fs::write(f.repo.join("sub/x.txt"), "x\n").unwrap();
+    git(&f.repo, &["add", "-A"]);
+    git(&f.repo, &["commit", "-q", "-m", "sub"]);
+    let sub = f.repo.join("sub");
+    let env = apply_from(&f, &sub, &sub);
+    assert_eq!(env["result"]["decision"], "created", "{env}");
+    assert_eq!(exclude_count(&f.repo), 1);
+    assert_eq!(git(&f.repo, &["status", "--porcelain"]), "");
+}
+
+/// REQ-11, audit B2: an exclude file that cannot be written leaves the apply done, names the
+/// error under `place_exclude_error`, and the file the link points at keeps its bytes.
+#[cfg(unix)]
+#[test]
+fn worktree_place_status_the_apply_names_an_unwritable_exclude_file() {
+    let f = fixture();
+    fs::write(f.repo.join(".gitignore"), "").unwrap();
+    git(&f.repo, &["commit", "-q", "-am", "no ignore"]);
+    let outside = f.repo.parent().unwrap().join("outside-exclude");
+    fs::write(&outside, "keep\n").unwrap();
+    let exclude = f.repo.join(".git/info/exclude");
+    let _ = fs::remove_file(&exclude);
+    std::os::unix::fs::symlink(&outside, &exclude).unwrap();
+    let env = apply_from(&f, &f.repo, &f.repo);
+    assert_eq!(env["result"]["decision"], "created", "{env}");
+    let err = env["result"]["place_exclude_error"]
+        .as_str()
+        .unwrap_or_default();
+    assert!(err.contains("exclude"), "{env}");
+    assert!(f
+        .repo
+        .join(".claude/worktrees/primary-7-06-C/README.md")
+        .is_file());
+    assert_eq!(fs::read_to_string(&outside).unwrap(), "keep\n");
+}
+
+/// Audit N3: an add that fails leaves the exclude file as it was — the line follows a
+/// successful add.
+#[test]
+fn worktree_place_status_a_failed_add_leaves_the_exclude_file_alone() {
+    let f = fixture();
+    fs::write(f.repo.join(".gitignore"), "").unwrap();
+    git(&f.repo, &["commit", "-q", "-am", "no ignore"]);
+    // `.claude` as a plain file: the add cannot make its parents.
+    fs::write(f.repo.join(".claude"), "not a folder\n").unwrap();
+    let before = fs::read(f.repo.join(".git/info/exclude")).ok();
+    let env = apply_from(&f, &f.repo, &f.repo);
+    assert_ne!(env["result"]["decision"], "created", "{env}");
+    assert_eq!(fs::read(f.repo.join(".git/info/exclude")).ok(), before);
+    assert_eq!(exclude_count(&f.repo), 0);
 }
 
 /// AC-2: the same name again is refused, never overwritten — a folder already at the path
@@ -1006,11 +1134,7 @@ fn a_new_worktree_goes_under_the_home_work_folder() {
 #[test]
 fn a_taken_worktree_name_is_refused() {
     let f = fixture();
-    let wt = f
-        .repo
-        .parent()
-        .unwrap()
-        .join("home/.moai/worktrees/primary-7-06-C");
+    let wt = f.repo.join(".claude/worktrees/primary-7-06-C");
     fs::create_dir_all(&wt).unwrap();
     fs::write(wt.join("keep.txt"), "user file\n").unwrap();
     let p = plan(&f, "lane");
@@ -1026,10 +1150,10 @@ fn a_taken_worktree_name_is_refused() {
     assert!(!git(&f.repo, &["for-each-ref", "refs/heads"]).contains("lane/"));
 }
 
-/// D1/D6: without a home the default path cannot be named, so the plan is refused; an
-/// explicit `--path` still works and reads no home.
+/// The project place needs no home: without one the default path is still named, and an
+/// explicit `--path` still works.
 #[test]
-fn without_a_home_only_an_explicit_path_plans() {
+fn without_a_home_the_project_place_still_plans() {
     let f = fixture();
     let p = project(&f);
     let bare = |extra: &[&str]| {
@@ -1046,8 +1170,14 @@ fn without_a_home_only_an_explicit_path_plans() {
             .unwrap()
     };
     let env = envelope(&bare(&[]));
-    assert_eq!(env["ok"], false, "{env}");
-    assert!(env.to_string().contains("home directory missing"), "{env}");
+    assert_eq!(env["ok"], true, "{env}");
+    assert!(
+        env["result"]["path"]
+            .as_str()
+            .unwrap()
+            .ends_with(".claude/worktrees/primary-7-06-C"),
+        "{env}"
+    );
     let env = envelope(&bare(&["--path", "/tmp/elsewhere-wt"]));
     assert_eq!(env["ok"], true, "{env}");
     assert_eq!(env["result"]["path"], "/tmp/elsewhere-wt");

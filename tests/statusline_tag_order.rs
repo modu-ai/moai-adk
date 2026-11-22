@@ -1,13 +1,14 @@
 //! #2928 (user instruction 6878415244, 2026-11-14, replacing S-1's tag-first line 3): line 1 of
 //! the Claude statusline starts with `🏷️ <Leader|Agent-N|agent> | ` (#2871), and line 3 is
-//! `🗂️ … | 🔋 CTX … | 🪫 Week … | 🌳 …` (the user's third instruction of 2026-11-20) without
-//! the tag, the same bytes under every language and width. The card counts open the line when
-//! a ledger shows, and the worktree label (`🌳 <name>`, or `🌳 WT-c<card>-<name>`) closes it
-//! when there is one; the check below skips those groups and still requires CTX between them.
+//! `🔋 CW … | 🪫 7D …` without the tag, the same bytes under every language. The worktree label
+//! (`🌳 <name>`, or `🌳 WT-c<card>-<name>`) closes line 2 when there is one, and with a ledger a
+//! flow line stands between line 2 and the windows (SPEC-20261122-statusline-flow); these cases
+//! have no ledger, so the check below still finds CW on line 3.
 //!
-//! The renderer has no language text and does not read `COLUMNS` (docs/rust-product-path.md,
-//! line 1), so "Korean and English, 80 and 40 columns" is proven as "byte-equal to the recorded
-//! golden": each case of `tests/fixtures/statusline-claude/cases.json` named below runs under
+//! The renderer has no language text, and these cases have no ledger, so no line has more than
+//! one form: the width ladder only changes the flow line, and the other lines are the same bytes
+//! at `COLUMNS` 80 and 40. "Korean and English, 80 and 40 columns" is therefore proven as
+//! "byte-equal to the recorded golden": each case of `tests/fixtures/statusline-claude/cases.json` named below runs under
 //! `LANG` ko_KR.UTF-8 / en_US.UTF-8 × `COLUMNS` 80 / 40 × plain (`NO_COLOR=1`) / truecolor
 //! (`COLORTERM=truecolor`, through a pipe as Claude Code reads it), and must print exactly the
 //! `plain` / `ansi` golden. The run mirrors `tools/statusline_golden.py`: a fresh HOME and
@@ -34,7 +35,7 @@ const ARGV: [&str; 5] = [
     "--now-unix",
     "1738429000",
 ];
-/// `a02`: no registry (agent, every bar); `d01`: a live leader entry; `d03`: a title with
+/// `a02`: no registry (agent, every window); `d01`: a live leader entry; `d03`: a title with
 /// escape bytes as `session_name` (agent); `d04`: the exact name `agent-27` (`Agent-27`, #2871).
 const CASES: [&str; 4] = [
     "a02-doc-full",
@@ -178,13 +179,15 @@ fn line1_tag_first_under_ko_en_and_80_40_columns() {
                         "{name} {variant} LANG={lang} COLUMNS={columns}: line 1 {line1:?}"
                     );
                     let line3 = text.lines().nth(2).unwrap_or_default();
-                    // The worktree label (C-124) may open the line; the CTX bar comes right after.
+                    // The worktree label closed line 2 since the picked layout
+                    // (SPEC-20261121-statusline-detached REQ-4); line 3 holds the counts and
+                    // the windows as numbers (REQ-5: no graph, no colon).
                     let line3 = match line3.strip_prefix("🌳 ") {
                         Some(rest) => rest.split_once(" | ").map_or(line3, |(_, after)| after),
                         None => line3,
                     };
                     assert!(
-                        line3.starts_with("🔋 CTX: ") || line3.starts_with("🪫 CTX: "),
+                        line3.starts_with("🔋 CW ") || line3.starts_with("🪫 CW "),
                         "{name} {variant} LANG={lang} COLUMNS={columns}: line 3 {line3:?}"
                     );
                     assert!(
