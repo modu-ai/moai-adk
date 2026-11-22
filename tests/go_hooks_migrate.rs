@@ -17,6 +17,12 @@ const PERMISSION: &str = "test-permission-2877";
 /// `moai` here (#3004 P4-2 gate tests are below), so these tests do not depend on the machine.
 const NO_MOAI_PATH: &str = "/nonexistent-moai-path";
 
+/// A path under the project's state folder as the resolver answers it: `.moai` for these
+/// projects, which hold no earlier `.moai-cli` (SPEC-20261121-path-root-moai-default).
+fn state(root: &Path, sub: &str) -> PathBuf {
+    moai_cli::state_root::path(root, sub)
+}
+
 fn apply_no_moai(
     project: &Path,
     home: Option<&Path>,
@@ -130,7 +136,7 @@ fn apply_replaces_the_go_hooks_and_revert_puts_every_byte_back() {
     assert_eq!(after["statusLine"], before["statusLine"]);
     // The scripts moved into the receipt folder, byte for byte; nothing was deleted.
     assert!(!root.join(".claude/hooks/moai").exists());
-    let archive = root.join(format!(".moai-cli/receipts/{id}/archive/moai"));
+    let archive = state(&root, &format!("receipts/{id}/archive/moai"));
     assert_eq!(scripts_of(&archive), scripts_before);
     // `hooks-apply`'s ownership receipt now owns the hooks, so `update` sees them installed.
     assert!(moai_cli::hooks::installed(&root, "claude").unwrap());
@@ -148,9 +154,7 @@ fn apply_replaces_the_go_hooks_and_revert_puts_every_byte_back() {
     assert_eq!(back["state"], json!("reverted"), "{back}");
     assert_eq!(fs::read(&settings_path).unwrap(), settings_before);
     assert_eq!(scripts_of(&root.join(".claude/hooks/moai")), scripts_before);
-    assert!(!root
-        .join(".moai-cli/manifests/claude-settings.json")
-        .exists());
+    assert!(!state(&root, "manifests/claude-settings.json").exists());
     // A receipt is used once.
     assert!(go_hooks::revert(&root, &id, PERMISSION).is_err());
 }
@@ -175,7 +179,7 @@ fn a_stale_digest_or_a_missing_permission_writes_nothing() {
         settings_before
     );
     assert!(root.join(".claude/hooks/moai/handle-stop.sh").exists());
-    assert!(!root.join(".moai-cli/receipts").exists());
+    assert!(!state(&root, "receipts").exists());
 }
 
 #[test]
@@ -229,7 +233,7 @@ fn a_failed_install_puts_everything_back() {
     // An ownership receipt nobody can read makes `hooks-plan` fail after the Go entries were
     // taken out: the settings, the receipt and the scripts must all be as before.
     let (_d, root) = go_project();
-    let receipt = root.join(".moai-cli/manifests/claude-settings.json");
+    let receipt = state(&root, "manifests/claude-settings.json");
     fs::create_dir_all(receipt.parent().unwrap()).unwrap();
     fs::write(&receipt, "not json").unwrap();
     let settings_before = fs::read(root.join(".claude/settings.json")).unwrap();
@@ -252,15 +256,12 @@ fn a_failed_install_puts_everything_back() {
 
 // ---- SPEC-20261119-hooks-followups: the read-back and the put-back, with installers of our own
 
-const CLAIM_RECORD: &str = ".moai-cli/manifests/claude-settings.json";
+const CLAIM_RECORD: &str = "manifests/claude-settings.json";
 
 /// The status of the one `go-hooks-` receipt the apply left behind.
 fn the_receipt_status(root: &Path) -> String {
     let mut found = Vec::new();
-    for e in fs::read_dir(root.join(".moai-cli/receipts"))
-        .unwrap()
-        .flatten()
-    {
+    for e in fs::read_dir(state(&root, "receipts")).unwrap().flatten() {
         if e.file_name().to_string_lossy().starts_with("go-hooks-") {
             let r = read_json(&e.path().join("receipt.json"));
             found.push(r["status"].as_str().unwrap().to_string());
@@ -295,7 +296,7 @@ impl Before {
             self.scripts,
             "the scripts"
         );
-        assert!(!root.join(CLAIM_RECORD).exists(), "the ownership record");
+        assert!(!state(&root, CLAIM_RECORD).exists(), "the ownership record");
         assert_eq!(the_receipt_status(root), "rolled_back");
     }
 }
@@ -331,8 +332,8 @@ fn an_installer_that_writes_something_else_is_undone_with_its_record() {
     let before = Before::of(&root);
     let e = apply_with(&root, &|root, _, _| {
         fs::write(root.join(".claude/settings.json"), b"{\"hooks\": {}}\n").unwrap();
-        fs::create_dir_all(root.join(".moai-cli/manifests")).unwrap();
-        fs::write(root.join(CLAIM_RECORD), b"{\"owned\": {}}\n").unwrap();
+        fs::create_dir_all(state(&root, "manifests")).unwrap();
+        fs::write(state(&root, CLAIM_RECORD), b"{\"owned\": {}}\n").unwrap();
         Ok(())
     })
     .unwrap_err();
@@ -391,7 +392,7 @@ fn applied(root: &Path) -> String {
 }
 
 fn receipt_status(root: &Path, id: &str) -> Value {
-    read_json(&root.join(format!(".moai-cli/receipts/{id}/receipt.json")))["status"].clone()
+    read_json(&state(&root, &format!("receipts/{id}/receipt.json")))["status"].clone()
 }
 
 /// #2893 audit B1: a revert never writes through a link — neither a linked `.claude/hooks`
@@ -441,9 +442,7 @@ fn revert_refuses_a_linked_hooks_or_claude_folder() {
 fn revert_refuses_an_archived_script_changed_since_the_apply() {
     let (_d, root) = go_project();
     let id = applied(&root);
-    let archived = root.join(format!(
-        ".moai-cli/receipts/{id}/archive/moai/handle-stop.sh"
-    ));
+    let archived = state(&root, &format!("receipts/{id}/archive/moai/handle-stop.sh"));
     fs::write(&archived, "#!/bin/sh\necho changed\n").unwrap();
     let settings_now = fs::read(root.join(".claude/settings.json")).unwrap();
     let e = go_hooks::revert(&root, &id, PERMISSION).unwrap_err();
@@ -460,7 +459,7 @@ fn revert_refuses_an_archived_script_changed_since_the_apply() {
 fn a_pending_receipt_names_the_manual_recovery() {
     let (_d, root) = go_project();
     let id = applied(&root);
-    let path = root.join(format!(".moai-cli/receipts/{id}/receipt.json"));
+    let path = state(&root, &format!("receipts/{id}/receipt.json"));
     let mut r = read_json(&path);
     r["status"] = json!("pending");
     fs::write(&path, serde_json::to_vec_pretty(&r).unwrap()).unwrap();
@@ -476,7 +475,7 @@ fn a_revert_that_fails_midway_moves_the_scripts_back_into_the_archive() {
     let (_d, root) = go_project();
     let id = applied(&root);
     let settings_now = fs::read(root.join(".claude/settings.json")).unwrap();
-    let manifests = root.join(".moai-cli/manifests");
+    let manifests = state(&root, "manifests");
     fs::set_permissions(&manifests, fs::Permissions::from_mode(0o555)).unwrap();
     let result = go_hooks::revert(&root, &id, PERMISSION);
     fs::set_permissions(&manifests, fs::Permissions::from_mode(0o755)).unwrap();
@@ -486,11 +485,7 @@ fn a_revert_that_fails_midway_moves_the_scripts_back_into_the_archive() {
         settings_now
     );
     assert!(!root.join(".claude/hooks/moai").exists());
-    assert!(root
-        .join(format!(
-            ".moai-cli/receipts/{id}/archive/moai/handle-stop.sh"
-        ))
-        .is_file());
+    assert!(state(&root, &format!("receipts/{id}/archive/moai/handle-stop.sh")).is_file());
     assert_eq!(receipt_status(&root, &id), json!("applied"));
     assert_eq!(
         go_hooks::revert(&root, &id, PERMISSION).unwrap()["state"],
