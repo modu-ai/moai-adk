@@ -234,6 +234,8 @@ Lane and leader
                           comment
   lane-duty-line          Print the line a leader types into
                           a lane
+  lane-run                Run a lane non-stop or one card at
+                          a time
   lane-status             Show the status table of the named
                           lanes
   lane-screen             Read a lane's screen into a state
