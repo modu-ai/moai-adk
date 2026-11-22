@@ -414,6 +414,21 @@ fn blanket_tool_rules_refuse_to_build() {
         "Bash(! python *)",
         "Bash(builtin python *)",
         "Bash(eval python *)",
+        // compound commands with another first word, and globs inside the first word
+        "Bash(ls && python *)",
+        "Bash(echo ok && python *)",
+        "Bash(ls ; python *)",
+        "Bash(false || python *)",
+        "Bash(: && python *)",
+        "Bash(cat x | python *)",
+        "Bash(ls & python *)",
+        "Bash(if true; then python *)",
+        "Bash(ls\npython *)",
+        "Bash(py*n *)",
+        "Bash(p*n*x)",
+        "Bash(/usr/bin/py*n *)",
+        "Bash(pytho[n] *)",
+        "Bash(python[23] *)",
         // R-3: the Monitor allow rule the dropped-rules list forbids
         "Monitor",
     ] {
@@ -879,6 +894,23 @@ fn assignment_prefixed_wildcard_rules_refuse_in_every_spelling() {
     let mut spec = audit_spec();
     spec.allowed_tools = vec!["Bash(git diff *)".to_string()];
     assert!(build(&spec, &ctx(&root), &env).is_ok());
+    // the ALLOWED shape holds: a plain command word, a colon-wildcard suffix, an
+    // equals-bearing argument (the assignment check fires on the first word only),
+    // and cd/true on their own (no compound operator)
+    for rule in [
+        "Bash(git log:*)",
+        "Bash(git log --foo=bar *)",
+        "Bash(cd *)",
+        "Bash(true *)",
+        "Bash(npm run build:*)",
+    ] {
+        let mut spec = audit_spec();
+        spec.allowed_tools = vec![rule.to_string()];
+        assert!(
+            build(&spec, &ctx(&root), &env).is_ok(),
+            "{rule} is the allowed shape and must build"
+        );
+    }
 }
 
 /// The reaped-elsewhere case, in a process of its own: SIGCHLD set to SIG_IGN makes the

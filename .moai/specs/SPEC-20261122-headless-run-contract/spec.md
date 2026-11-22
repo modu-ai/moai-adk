@@ -2,7 +2,7 @@
 id: SPEC-20261122-headless-run-contract
 title: "Every claude -p run moai starts pins its permission mode, MCP config, model, output schema and budgets, and the result is checked before it is trusted"
 status: draft
-revision: 2
+revision: 3
 created: 2026-11-22
 parent: SPEC-20261121-flow-skeleton
 ---
@@ -25,7 +25,7 @@ parent: SPEC-20261121-flow-skeleton
 ## Requirements
 
 - REQ-1: When moai starts any headless Claude run, the runner shall build the `claude -p` command in one function that every caller goes through and that refuses to build a command missing a pinned flag or an audit run whose requesting session is the change's author session. · failure: none — a caller that cannot name its pinned values, or an audit caller that is the author or cannot name the author, gets a build error before any process starts, and the requesting session is recorded on the built run.
-- REQ-2: The runner shall always pass exactly one of `--permission-mode auto` or `--permission-mode dontAsk` together with `--permission-prompts none` and `--allowedTools` entries only as narrow rules that survive auto mode's broad-rule drop, recording the chosen mode and its reason in the run's ledger row. · failure: none — a blanket `Bash` or `Bash(*)`-style entry is a build error, and no run starts in the Manual default where approval-needing calls are denied.
+- REQ-2: The runner shall always pass exactly one of `--permission-mode auto` or `--permission-mode dontAsk` together with `--permission-prompts none` and `--allowedTools` entries only as narrow rules that survive auto mode's broad-rule drop, recording the chosen mode and its reason in the run's ledger row. · failure: none — a blanket `Bash` or `Bash(*)`-style entry is a build error, and no run starts in the Manual default where approval-needing calls are denied. The ALLOWED shape of a Bash rule (revision 3, leader direction): a first word of plain letters, digits and `. _ / -` only, then arguments — one command word, no more; the rule refuses when its text holds any shell metacharacter (`; | &` or a newline, the `name:*` colon form apart), when the first word holds a glob character (`* ? [`) or a substitution (`$ ` `{ }`), an assignment prefix, a quote, a backslash or a redirection, or when the first word (lower-cased) is an interpreter or wrapper of the documented list. Ground: permissions.md line 157, "A `*` in a Bash rule matches any text, including spaces" — a star matches at any position, so a glob inside the first word is one more way to widen a rule; read whole again 2026-11-22T19:53Z.
 - REQ-3: The runner shall pass `--strict-mcp-config` and no `--mcp-config` when no platform `managed-mcp.json` is deployed and neither of the two flags when one is. · failure: none — with the platform file deployed both flags make Claude Code exit at startup, and without the flag pair a `-p` run loads project `.mcp.json` servers without asking.
 - REQ-4: The runner shall always pass `--model` with a value the caller names and `--agent` with the agent definition name for audit runs. · failure: none — a run without a pinned model is a build error, because `-p` bills a Fable request to usage credits without asking, and the audit contract lives in the agent definition.
 - REQ-5: The runner shall pass `--output-format json` together with `--json-schema` for every run whose answer is read by code. · failure: none — a verdict read from free text is a build error.

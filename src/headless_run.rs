@@ -767,43 +767,36 @@ fn narrow_rule(tool: &str) -> Result<()> {
         if !inner.contains('*') {
             return false;
         }
-        // An assignment prefix on a wildcarded rule refuses outright — every quote
-        // spelling is covered by the refusal, not by parsing.
+        // The ALLOWED shape (SPEC revision 3): one plain command word of letters, digits
+        // and . _ / - then arguments — anything else on a wildcarded rule refuses.
+        // A compound command anywhere in the text (; | & or a newline, the documented
+        // name:* colon form apart) widens the rule past what was written.
+        let plain = inner.replace(":*", "");
+        if plain.contains(';') || plain.contains('|') || plain.contains('&') || plain.contains('\n')
+        {
+            return true;
+        }
+        // An assignment prefix refuses outright — every quote spelling is covered by the
+        // refusal, not by parsing.
         if starts_with_assignment(inner.trim_start()) {
             return true;
         }
-        // A first word holding a quote, a backslash or a redirection — anywhere in the
-        // word, or an & prefix — cannot be told apart from its interpreter safely, so a
-        // wildcarded rule with one refuses (2>&1, 2>/dev/null and &>/dev/null included).
         let Some(first) = inner.split_whitespace().next() else {
             return false;
         };
-        if first.contains('"')
-            || first.contains('\'')
-            || first.contains('\\')
-            || first.contains('>')
-            || first.contains('<')
-            || first.starts_with('&')
-        {
+        // The first word must be plain: no quote, backslash, redirection, substitution,
+        // brace or glob character anywhere (a star matches any text at any position,
+        // permissions.md line 157), no & prefix, nothing a shell would re-parse.
+        let plain_word = |w: &str| {
+            w.chars()
+                .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '/' | '-'))
+        };
+        if !plain_word(first) {
             return true;
         }
-        // A first word that is a substitution, a brace or glob form of an interpreter,
-        // upper case, or a shape a shell re-parses (compound commands, builtin, eval)
-        // cannot be matched as written either — refuse rather than guess.
-        if first.contains('$')
-            || first.contains('`')
-            || first.contains('{')
-            || first.contains('}')
-            || first.contains('?')
-            || first.contains(';')
-            || first.contains('|')
-            || first.contains('(')
-            || first.contains('!')
-            || first.ends_with('*')
-        {
-            return true;
-        }
-        if matches!(first, "builtin" | "eval" | "true" | "cd") {
+        // builtin and eval run what follows them; cd && cmd and true; cmd are compound
+        // commands already refused above, so only these two words remain of that class.
+        if matches!(first.to_ascii_lowercase().as_str(), "builtin" | "eval") {
             return true;
         }
         broad_first_word(&first.to_ascii_lowercase())
@@ -832,9 +825,11 @@ fn broad_first_word(word: &str) -> bool {
         .is_some_and(|rest| rest.chars().all(|c| c.is_ascii_digit() || c == '.'))
 }
 
-/// The first words that run what follows them (permission-modes.md's dropped-rules list
-/// plus the escapes each repair added: env/xargs/sudo/npx, command/exec/uv, busybox/bun/
-/// php, doas/pkexec, pypy3 — the match is case-insensitive).
+/// The interpreter and wrapper words the runner never lets a wildcarded rule start with
+/// (permission-modes.md's dropped-rules list plus the escapes each repair added; the
+/// match is case-insensitive). The list is the documented set, not every interpreter
+/// that exists: pypy, lua, awk, make, ssh and friends are NOT here, and whether they
+/// join is a SPEC decision, not a code one.
 const INTERPRETERS_AND_WRAPPERS: [&str; 28] = [
     "python",
     "python3",
