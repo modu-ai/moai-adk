@@ -3,8 +3,8 @@
 //! as MoAI's own while a real user edit stays a conflict. Against a temporary HOME only.
 //!
 //! The earlier renders are kept as fixtures (`tests/fixtures/home-style/render-1.md` to
-//! `render-4.md`), rebuilt from the commits of the text history; their sha256 are the ones of
-//! the SPEC decision D-4.
+//! `render-5.md`), rebuilt from the commits of the text history; their sha256 are the ones of
+//! the SPEC decision D-4 and, for the fifth, of SPEC-20261123-progress-board-flow-icons.
 
 mod common;
 use moai_cli::home_style::{apply, plan, render_style_file, revert, Plan, SOURCE};
@@ -20,7 +20,13 @@ fn record_file(home: &Path) -> PathBuf {
         .join("home-style")
         .join("claude.json")
 }
-const RENDERS: [&str; 4] = ["render-1.md", "render-2.md", "render-3.md", "render-4.md"];
+const RENDERS: [&str; 5] = [
+    "render-1.md",
+    "render-2.md",
+    "render-3.md",
+    "render-4.md",
+    "render-5.md",
+];
 
 fn package() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai")
@@ -108,25 +114,90 @@ fn the_shipped_source_names_only_claude_code_and_keeps_the_picked_sections() {
     assert!(!s.contains("MoAI-Easy ★"));
 }
 
-/// AC-11 (REQ-11): the progress board section keeps the board's look and points to the flow
-/// rule for when it closes a turn with background work still running; the choice between the
-/// board and the task list is the flow rule's, so the style names no task tool.
+/// The progress board is the one progress display (SPEC-20261123-progress-board-flow-icons):
+/// the section names the eleven icons in flow order, the line order with what needs the user
+/// first and the failed last, and the turn-end rule; it withdraws the host's task list and
+/// leaves the choice to no other file.
 #[test]
-fn the_progress_board_points_to_the_flow_rule_for_background_work() {
+fn the_progress_board_is_the_one_progress_display_with_flow_icons() {
     let s = src();
     let start = s.find("## Progress board").unwrap();
     let end = start + s[start..].find("## Format").unwrap();
     let section = &s[start..end];
     for item in [
-        "`rules/moai/flow.md`",
-        "background work",
-        "subagents, shells, monitors",
+        "The board is the one progress display",
+        "never use the host's task-list tool for progress",
+        "Icons follow the flow of one piece of work",
+        "Order the lines so the eye lands on what matters",
+        "first what needs the user (🙋, 🔴)",
+        "and ❌ last",
+        "When a turn ends while background work (subagents, shells, monitors) is still running, end it with this board.",
     ] {
         assert!(section.contains(item), "{item}");
     }
-    for word in ["TaskCreate", "TaskUpdate", "task tool"] {
+    // The eleven icons, each with a line of its own in the sample board, in the sample's order.
+    let icons = [
+        "🙋", "🔴", "🟢", "✅", "🔵", "📨", "🟡", "🔁", "🚧", "⬜", "❌",
+    ];
+    let mut at = 0;
+    for icon in icons {
+        let line = format!("[{icon}] <step>");
+        let found = section[at..]
+            .find(&line)
+            .unwrap_or_else(|| panic!("the sample board has no `{line}` line after byte {at}"));
+        at += found + line.len();
+    }
+    // The flow order is spelled once, from not started to landed.
+    assert!(section.contains(
+        "⬜ not started → 🟡 in progress → 📨 handed over, waiting for a check → 🔵 in independent check or review → 🔁 in repair after a failed check → ✅ passed, waiting to land → 🟢 landed or done"
+    ));
+    // The board no longer defers to another file, and the style names no task tool to use.
+    assert!(!section.contains("rules/moai/flow.md"));
+    assert!(!section.contains("⏸️"));
+    for word in ["TaskCreate", "TaskUpdate", "TaskList", "TaskGet"] {
         assert!(!section.contains(word), "{word}");
     }
+}
+
+/// No shipped skill text tells a session to show progress in the host's task list: the board
+/// section of the style is the one place that names it, to withdraw it. The files are listed,
+/// not walked, so a new file is a deliberate addition here.
+#[test]
+fn no_other_shipped_skill_text_points_progress_to_the_task_list() {
+    let files = [
+        "SKILL.md",
+        "references/audit.md",
+        "references/flows/next-flow.md",
+        "references/home/routing.md",
+        "workflows/audit.md",
+        "workflows/plan.md",
+        "workflows/project.md",
+        "workflows/read.md",
+        "workflows/run.md",
+        "workflows/sync.md",
+        "workflows/update.md",
+        "workflows/work.md",
+    ];
+    for file in files {
+        let text = fs::read_to_string(package().join(file))
+            .unwrap()
+            .to_lowercase();
+        for word in [
+            "task list",
+            "task-list",
+            "tasklist",
+            "taskcreate",
+            "taskupdate",
+        ] {
+            assert!(!text.contains(word), "{file} names `{word}`");
+        }
+    }
+    let style = src();
+    assert_eq!(
+        style.matches("task-list").count(),
+        1,
+        "the style names the task list once, to withdraw it"
+    );
 }
 
 /// AC-3 (REQ-4): the description is the one of the SPEC, with no double quote inside.
@@ -152,6 +223,7 @@ fn the_fixtures_are_the_earlier_renders_of_the_spec() {
         "d4e1851a65eb0ed21d16de888925dc6ae8a7bcebcae45973e1b8cce884d75e67",
         "690c534220f9bb1614e27d608e56306da973e2fe7b53e2bc1a4d42d7d2b9c65e",
         "a31d966b0486f501839121832eb6a99d3fc718996b22a901e9e17884a0ab369e",
+        "80e189d27dd7be365724bbba2f38f1eddb3c0e96801da4caf82535ce80181a65",
     ];
     assert_eq!(want.len(), RENDERS.len());
     for (name, sha) in RENDERS.iter().zip(want) {
@@ -167,7 +239,7 @@ fn the_fixtures_are_the_earlier_renders_of_the_spec() {
 /// frontmatter makes this test fail until the outgoing render is appended to
 /// `EARLIER_RENDERS` and this constant names the new one (AC-7, REQ-8).
 const CURRENT_RENDER_SHA256: &str =
-    "80e189d27dd7be365724bbba2f38f1eddb3c0e96801da4caf82535ce80181a65";
+    "5f6b5fd1d93f3b0a4553ba74df113bba99bb018ca819120e1a25926fe242d006";
 
 /// AC-7 (REQ-8): the list holds 64 hex digits each, all different, equal to the fixtures in
 /// order, and never the current render, which is pinned here.
