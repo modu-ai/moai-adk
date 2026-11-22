@@ -147,10 +147,10 @@ fn nextest_has_no_special_case_for_this_binary() {
     );
 }
 
-/// Runs the lint with a fake `cargo` first on PATH, which shadows the real one and records each
-/// start in `cargo-started`. Returns the output and whether cargo was started.
+/// A fake `cargo` first on PATH, which shadows the real one and records each start in the marker
+/// file. Returns the folder that owns it (keep it alive), the marker and the PATH value to use.
 #[cfg(unix)]
-fn run_lint_without_cargo(args: &[&str]) -> (std::process::Output, bool) {
+fn fake_cargo() -> (tempfile::TempDir, PathBuf, std::ffi::OsString) {
     use std::os::unix::fs::PermissionsExt;
     let bin = tempfile::TempDir::new().unwrap();
     let marker = bin.path().join("cargo-started");
@@ -166,6 +166,14 @@ fn run_lint_without_cargo(args: &[&str]) -> (std::process::Output, bool) {
         std::iter::once(bin.path().to_path_buf()).chain(std::env::split_paths(&path)),
     )
     .unwrap();
+    (bin, marker, path)
+}
+
+/// Runs the lint with a fake `cargo` first on PATH, which shadows the real one and records each
+/// start in `cargo-started`. Returns the output and whether cargo was started.
+#[cfg(unix)]
+fn run_lint_without_cargo(args: &[&str]) -> (std::process::Output, bool) {
+    let (_bin, marker, path) = fake_cargo();
     let out = Command::new("python3")
         .arg("-I")
         .arg(Path::new(MANIFEST).join("tools/check_ac_commands.py"))
@@ -185,25 +193,244 @@ fn text_of(out: &std::process::Output) -> String {
     )
 }
 
+/// Runs the lint script unchanged under an interpreter audit hook. The hook writes the process
+/// starts and the repository files opened to a report file, one line each (`spawn <event>` and
+/// `open <path>`), so a test can bound the work the lint does by counting it, never by the clock.
+/// The script itself is opened by the runner and is not counted.
+#[cfg(unix)]
+const AUDIT_RUNNER: &str = r#"
+import os, runpy, sys
+root, report, script = sys.argv[1:4]
+sys.argv = [script] + sys.argv[4:]
+SPAWN = ("subprocess.Popen", "os.system", "os.exec", "os.posix_spawn", "os.spawn", "os.fork", "os.forkpty")
+lines = []
+def hook(event, args):
+    if event == "open":
+        path = args[0]
+        if isinstance(path, int):
+            return
+        path = os.fsdecode(path)
+        if path.startswith(root) and path != script:
+            lines.append("open " + path)
+    elif event in SPAWN:
+        lines.append("spawn " + event)
+sys.addaudithook(hook)
+code = 0
+try:
+    runpy.run_path(script, run_name="__main__")
+except SystemExit as stop:
+    code = stop.code if isinstance(stop.code, int) else (0 if stop.code is None else 1)
+with open(report, "w") as out:
+    out.write("\n".join(lines) + "\n")
+raise SystemExit(code)
+"#;
+
+/// What one counted lint run did: the lint's own output, whether the fake cargo was started, the
+/// repository files it opened (in order) and the process starts the audit hook saw.
+#[cfg(unix)]
+struct CountedRun {
+    out: std::process::Output,
+    cargo_started: bool,
+    opened: Vec<String>,
+    spawned: Vec<String>,
+}
+
+#[cfg(unix)]
+fn run_lint_counted(script: &Path, root: &str) -> CountedRun {
+    let (bin, marker, path) = fake_cargo();
+    let report = bin.path().join("audit-report");
+    let out = Command::new("python3")
+        .arg("-I")
+        .arg("-c")
+        .arg(AUDIT_RUNNER)
+        .arg(root)
+        .arg(&report)
+        .arg(script)
+        .args(["--tree", root])
+        .env("PATH", path)
+        .output()
+        .expect("spawn the AC command lint under the audit runner");
+    let report = fs::read_to_string(&report).unwrap_or_default();
+    let mut opened = Vec::new();
+    let mut spawned = Vec::new();
+    for line in report.lines() {
+        match line.split_once(' ') {
+            Some(("open", p)) => opened.push(p.to_string()),
+            Some(("spawn", e)) => spawned.push(e.to_string()),
+            _ => {}
+        }
+    }
+    CountedRun {
+        out,
+        cargo_started: marker.exists(),
+        opened,
+        spawned,
+    }
+}
+
+/// The recorded files the lint says it checked and the `--test` targets it listed, read from its
+/// summary line `checked <n> recorded files, <m> --test targets listed`.
+#[cfg(unix)]
+fn checked_counts(text: &str) -> (usize, usize) {
+    let line = text
+        .lines()
+        .find(|l| l.starts_with("checked "))
+        .unwrap_or_else(|| panic!("the lint printed no summary line:\n{text}"));
+    let words: Vec<&str> = line.split_whitespace().collect();
+    let number = |i: usize| -> usize {
+        words
+            .get(i)
+            .and_then(|w| w.parse().ok())
+            .unwrap_or_else(|| panic!("unreadable summary line: {line}"))
+    };
+    (number(1), number(4))
+}
+
+/// Files opened more often than the lint's design allows, as `(path, opens)`. The lint reads each
+/// recorded document once and each target root `tests/<name>.rs` once (one reading per target is
+/// cached); a module file in a subfolder of `tests/` (`tests/common/*.rs`) is read once for every
+/// target that declares it, so at most `targets` times.
+#[cfg(unix)]
+fn repeated_opens(opened: &[String], targets: usize) -> Vec<(String, usize)> {
+    let mut counts = std::collections::BTreeMap::<&str, usize>::new();
+    for path in opened {
+        *counts.entry(path.as_str()).or_default() += 1;
+    }
+    let tests = format!("{MANIFEST}/tests/");
+    counts
+        .into_iter()
+        .filter(|(path, n)| {
+            let shared_module = path
+                .strip_prefix(tests.as_str())
+                .is_some_and(|rest| rest.contains('/'));
+            *n > if shared_module { targets.max(1) } else { 1 }
+        })
+        .map(|(path, n)| (path.to_string(), n))
+        .collect()
+}
+
+/// Files opened outside the three folders the lint scans (recorded documents, recorded reports and
+/// the test sources), under `root`.
+#[cfg(unix)]
+fn outside_opens<'a>(opened: &'a [String], root: &str) -> Vec<&'a String> {
+    let allowed = ["docs", ".moai-cli/reports", "tests"].map(|d| format!("{root}/{d}/"));
+    opened
+        .iter()
+        .filter(|p| !allowed.iter().any(|a| p.starts_with(a.as_str())))
+        .collect()
+}
+
+/// The lint is a pure reader that does a bounded amount of work, counted and not timed: it starts
+/// no process of any kind (the 68-112 s cargo build of the earlier lint was one), it opens each
+/// recorded file and each target root once and a shared test module once per target (see
+/// `repeated_opens`), and it opens nothing outside the folders it scans. A clock limit failed at 5.18 s under machine load 200 and
+/// could not tell a slow machine from a slow lint; a count does not move with load.
 #[cfg(unix)]
 #[test]
-fn the_repository_lint_starts_no_cargo_and_ends_within_five_seconds() {
-    let started = std::time::Instant::now();
-    let (out, cargo_started) = run_lint_without_cargo(&["--tree", MANIFEST]);
-    let took = started.elapsed();
+fn the_repository_lint_starts_no_process_and_reads_each_file_once() {
+    let script = Path::new(MANIFEST).join("tools/check_ac_commands.py");
+    let run = run_lint_counted(&script, MANIFEST);
+    let text = text_of(&run.out);
+    assert!(!run.cargo_started, "the lint must not start cargo:\n{text}");
     assert!(
-        !cargo_started,
-        "the lint must not start cargo:\n{}",
-        text_of(&out)
+        run.out.status.success(),
+        "the recorded commands must pass without cargo:\n{text}"
     );
     assert!(
-        out.status.success(),
-        "the recorded commands must pass without cargo:\n{}",
-        text_of(&out)
+        run.spawned.is_empty(),
+        "the lint started processes: {:?}\n{text}",
+        run.spawned
     );
+    let (files, targets) = checked_counts(&text);
+    let repeated = repeated_opens(&run.opened, targets);
     assert!(
-        took < std::time::Duration::from_secs(5),
-        "the lint took {took:?}; it must end within 5 s"
+        repeated.is_empty(),
+        "the lint opened files more often than its design allows: {repeated:?}"
+    );
+    let outside = outside_opens(&run.opened, MANIFEST);
+    assert!(
+        outside.is_empty(),
+        "the lint opened files outside the three folders it scans: {outside:?}"
+    );
+    // A counter that saw nothing proves nothing: the lint read every recorded file it reports and
+    // at least one test source for every target it listed.
+    assert!(
+        run.opened.len() >= files + targets,
+        "the counter saw {} opens for {files} recorded files and {targets} targets:\n{text}",
+        run.opened.len()
+    );
+}
+
+/// The counter itself is checked by small stand-in scripts, so the bound above cannot go green
+/// because the counter stopped counting: a script that starts a process, one that reads a recorded
+/// file twice, one that reads outside the scanned folders, and one that reports checked files but
+/// opens none each show up in exactly the count that the bound reads.
+#[cfg(unix)]
+#[test]
+fn the_audit_counter_sees_a_process_a_second_read_a_stray_read_and_a_silent_run() {
+    let tree = tempfile::TempDir::new().unwrap();
+    let root = tree.path().to_str().unwrap().to_string();
+    fs::create_dir_all(tree.path().join("docs")).unwrap();
+    fs::write(tree.path().join(doc("a.md")), "x\n").unwrap();
+    fs::write(tree.path().join("secret.txt"), "x\n").unwrap();
+    let scripts = tempfile::TempDir::new().unwrap();
+    let run_script = |name: &str, body: &str| {
+        let path = scripts.path().join(name);
+        fs::write(&path, body).unwrap();
+        run_lint_counted(&path, &root)
+    };
+
+    let spawned = run_script(
+        "spawn.py",
+        "import subprocess\nsubprocess.run(['true'])\nprint('checked 0 recorded files, 0 --test targets listed')\n",
+    );
+    assert_eq!(
+        spawned.spawned,
+        vec!["subprocess.Popen"],
+        "{:?}",
+        spawned.out
+    );
+    assert!(spawned.out.status.success());
+
+    let doc_path = format!("{root}/{}", doc("a.md"));
+    let twice = run_script(
+        "twice.py",
+        &format!("open('{doc_path}').read()\nopen('{doc_path}').read()\n"),
+    );
+    assert_eq!(twice.opened, vec![doc_path.clone(), doc_path.clone()]);
+    assert_eq!(
+        repeated_opens(&twice.opened, 3),
+        vec![(doc_path.clone(), 2)],
+        "a recorded document read twice is over the bound however many targets there are"
+    );
+    assert!(twice.spawned.is_empty());
+
+    let stray_path = format!("{root}/secret.txt");
+    let stray = run_script("stray.py", &format!("open('{stray_path}').read()\n"));
+    assert_eq!(outside_opens(&stray.opened, &root), vec![&stray_path]);
+
+    let silent = run_script(
+        "silent.py",
+        "print('checked 3 recorded files, 1 --test targets listed')\n",
+    );
+    let (files, targets) = checked_counts(&text_of(&silent.out));
+    assert_eq!((files, targets), (3, 1));
+    assert!(
+        silent.opened.len() < files + targets,
+        "a run that opened nothing must fall below the count the bound requires"
+    );
+
+    // The shared modules of the test sources are read once per target, so the same file seen
+    // three times is within the bound for three targets and over it for two.
+    let shared = format!("{MANIFEST}/tests/common/mod.rs");
+    let thrice = vec![shared.clone(), shared.clone(), shared.clone()];
+    assert!(repeated_opens(&thrice, 3).is_empty());
+    assert_eq!(repeated_opens(&thrice, 2), vec![(shared, 3)]);
+    // A target root read for every command is over the bound at any target count.
+    let root_file = format!("{MANIFEST}/tests/product_cli.rs");
+    assert_eq!(
+        repeated_opens(&[root_file.clone(), root_file.clone()], 6),
+        vec![(root_file, 2)]
     );
 }
 
