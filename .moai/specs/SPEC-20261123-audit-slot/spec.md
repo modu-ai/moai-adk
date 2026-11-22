@@ -29,7 +29,7 @@ Readers: the leader and the auditor, who prepare and finish an audit; the lane, 
 - Running the audit's build or tests. The auditor runs the targeted targets; `prep` only places the build.
 - Sharing one `target/` between worktrees, or a symlinked `target/`.
 - Nextest archives shared from the lane. They need the tests to read root and binary paths at run time first (135 files use compile-time `env!`); that is a follow-up card.
-- The four help goldens wait for a leader decision, because another card reserves them. The help table row is in.
+- None for the help: the row is in. The four goldens were regenerated under a recorded leader decision, because another card reserves them.
 - Removing a slot. Slots are fixed; cleanup rules belong to SPEC-20261123-worktree-slots.
 
 ## Requirements
@@ -99,4 +99,5 @@ Readers: the leader and the auditor, who prepare and finish an audit; the lane, 
 - RED first: `cargo nextest run --locked --offline --test audit_slot_cli` ran before the code. 5 tests ran and failed; the 4 others were skipped by fail-fast.
 - After the code, with `--no-fail-fast`: 9 run, 9 passed.
 - AC-3 was measured on macOS: the dependency is `Fresh`; the crate is `Dirty` once (D-6).
-- Open: the four help goldens wait for a leader decision.
+- The integration tip 072e359488 was merged once (fbd40fd1da). The four help goldens were then regenerated, adding the one audit-slot row (a3ee3bfc6f), under the recorded leader decision.
+- After the merge, `build.rs` writes no absolute path. The ops list holds names only, and the bundle packs use `env!("CARGO_MANIFEST_DIR")`, which the compile resolves to the slot. So a copied build never points at the lane's files.
