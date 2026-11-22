@@ -458,7 +458,7 @@ fn internal_references_say_when_to_read_them() {
         "sdd",
         // SPEC-20261117-atlas-in-read-plan: READ and PLAN read the code atlas when it is fresh.
         "code-atlas",
-        // C-82's `build-folder` left the package in SPEC-20261122-next-flow-skills-agents slice C:
+        // `build-folder` left the package in SPEC-20261122-next-flow-skills-agents slice C:
         // its rule, rewritten (D-14), is part of RUN's "Check-run rules".
         // SDD-6 (user decision U-B): the identity trailers every agent commit carries.
         "commit-trailers",
@@ -1006,7 +1006,7 @@ fn self_check_lists_the_pre_pr_checks_and_is_named_by_impl_and_the_chains() {
 const BUILD_RULE_POINTER: &str = "(`workflows/run.md`, \"Check-run rules\")";
 const BUILD_RULE_WORKFLOW_POINTER: &str = "(the RUN workflow, \"Check-run rules\")";
 
-/// C-82 (user decision 2026-11-17) wrote the build rule as the reference
+/// A user decision of 2026-11-17 wrote the build rule as the reference
 /// `internal/build-folder`; SPEC-20261122-next-flow-skills-agents slice C (D-14, the user's build
 /// rule of 2026-11-22) removed that reference and rewrote the rule in RUN's "Check-run rules".
 /// The pins whose rule still holds moved with it: one build folder per worktree, never shared;

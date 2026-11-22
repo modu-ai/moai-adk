@@ -3,7 +3,8 @@
 //! SETUP, VERIFY and OPTIMIZE routes leave their rules in PROJECT, RUN and UPDATE. Text slice B
 //! (AC-3): one flow reference and one audit contract, each within its byte budget. Text slice C
 //! (AC-4): the shipped texts name no retired host, mode, gate or tool, and the points of the
-//! slice B audit hold: the pull-request era's verdict and reservation became card notes.
+//! slice B audit hold: the pull-request era's verdict and reservation became card notes. The
+//! repair of the slice C audit adds the pins of its findings (`refs_` and `scrub_` tests).
 //!
 //! The tests read the skill files of this checkout; nothing is run and no HOME is touched. The
 //! planted-copy tests write only into a temporary folder.
@@ -229,8 +230,9 @@ const SCRUB_EXCEPTIONS: [&str; 3] = [
 
 /// REQ-8: words no shipped text names, matched without regard to case: the retired hosts
 /// (Codex in any spelling, OMP's skill command), the resident leader and its mode flags, the
-/// pull-request audit gate, the merge train and the repository's own harness agents.
-const REQ8_WORDS: [&str; 15] = [
+/// pull-request audit gate (its job, its status and the merge and branch update it guarded), the
+/// merge train and its numbers, and the repository's own harness agents.
+const REQ8_WORDS: [&str; 20] = [
     "codex",
     "$moai",
     "/skill:moai",
@@ -244,6 +246,11 @@ const REQ8_WORDS: [&str; 15] = [
     "merge train",
     "merge-train",
     "audit gate",
+    "audit-gate",
+    "moai/audit",
+    "gh pr merge",
+    "update-branch",
+    "train number",
     "prj-reviewer",
     "prj-local-check",
 ];
@@ -909,6 +916,158 @@ fn refs_run_check_run_rules_hold_the_build_rule() {
         !rules.contains(&home_build),
         "run.md \"Check-run rules\" names {home_build}"
     );
+    // Slice C audit B1: `moai lane-env` sets `CARGO_TARGET_DIR` to a folder under the home
+    // folder, so RUN names no lane-env step: the worktree's own `target/` needs none.
+    for step in ["lane-env", "eval \"$(moai lane-env", "eval \"$e\""] {
+        assert!(!run.contains(step), "run.md names {step:?}");
+    }
+    // Slice C audit N-g: the build output goes by relative path, the worktree itself through
+    // the one removal command, in the build rule and in AUDIT's cleanup alike.
+    assert!(
+        rules.contains("the worktree itself through `moai worktree-gc-apply --worktree <path>`"),
+        "run.md \"Check-run rules\" does not name how the worktree itself is removed"
+    );
+    assert!(
+        !read("workflows/audit.md").contains("after the user confirms"),
+        "audit.md removes an audit worktree another way"
+    );
+}
+
+/// Slice C audit B2: SYNC lands a card through the flow — the lane only commits, the lander lands
+/// once after a recorded verdict — and keeps the pull request for a release. The references the
+/// plan's step 5 names no longer tie a SPEC to a pull request or read a lane's merge state.
+#[test]
+fn refs_sync_lands_a_card_through_the_flow() {
+    let sync = read("workflows/sync.md");
+    for phrase in [
+        "A lane only commits",
+        "`moai card land <card> --head <40 hex> --by leader`",
+        "after a passing verdict is recorded on the card",
+        "A release pull request is the only pull request",
+    ] {
+        assert!(sync.contains(phrase), "sync.md lacks {phrase:?}");
+    }
+    for retired in [
+        "M-Flow",
+        "MERGE-READY",
+        "redoes step 2",
+        "Pre-stacking",
+        "Docs-only insertion",
+        "pushes it; gets the independent audit",
+    ] {
+        assert!(!sync.contains(retired), "sync.md keeps {retired:?}");
+    }
+    let sdd = read("references/internal/sdd.md");
+    assert!(
+        !sdd.contains("= one pull request"),
+        "sdd.md ties a SPEC to a pull request"
+    );
+    let safety = read("references/internal/git-safety.md");
+    assert!(
+        !safety.contains("the pull request's merge state"),
+        "git-safety.md reads a lane's pull request"
+    );
+}
+
+/// Slice C audit B3: AUDIT does not send its reader to SYNC for how a verdict reaches
+/// integration; its own verdict note and the audit contract say it.
+#[test]
+fn refs_audit_sends_no_reader_to_sync_for_integration() {
+    let audit = read("workflows/audit.md");
+    let both: Vec<&str> = audit
+        .lines()
+        .filter(|l| l.contains("SYNC") && l.contains("integration"))
+        .collect();
+    assert!(both.is_empty(), "audit.md: {both:?}");
+    assert!(!audit.contains("procedure steps 7 and 8"), "audit.md");
+}
+
+/// Slice C audit N-e: the line below a verdict's first line has one form, the auditor's
+/// `Moai-Session` value, in AUDIT, the trailer reference and the chain rules; no shipped text
+/// claims a tool that compares it on a card (the card verdict reader takes the first line only).
+#[test]
+fn refs_the_verdict_names_its_auditor_one_way() {
+    let audit = read("workflows/audit.md");
+    let step = &audit[audit
+        .find("**Verdict note.**")
+        .expect("a Verdict note step")..];
+    let example = &step[step.find("```text\n").expect("an example") + 8..];
+    let second = example.lines().nth(1).unwrap_or_default().trim();
+    assert!(second.starts_with("Moai-Session: "), "{second}");
+    for rel in [
+        "workflows/audit.md",
+        "references/internal/commit-trailers.md",
+        "references/chains/index.md",
+    ] {
+        let text = read(rel);
+        assert!(
+            !text.contains("auditor: agent-"),
+            "{rel} teaches `auditor:`"
+        );
+        assert!(
+            !text.contains("author check"),
+            "{rel} names an author check"
+        );
+    }
+    assert!(
+        read("references/internal/commit-trailers.md")
+            .contains("the line below the verdict's first line is `Moai-Session: <value>`"),
+        "commit-trailers.md lacks the second line's form"
+    );
+}
+
+/// Slice C audit N-b, N-c, N-d and N-f: the tier paragraph names the ready note's form, points
+/// to the audit contract's list of the code's tier 2 prefixes, carries the three cases of the
+/// leader's answer with who audits tier 1, and says that a tier stated in a verdict's scope is
+/// read.
+#[test]
+fn refs_audit_tiers_match_the_code_floor() {
+    let audit = read("workflows/audit.md");
+    let tier = audit
+        .lines()
+        .find(|l| l.contains("**Audit tier.**"))
+        .expect("an Audit tier step");
+    for phrase in [
+        "`audit-tier: 0|1|2 <reason>`",
+        "documents only is read by the lander",
+        "tests only or tools only gets a light audit by the lander",
+        "code gets an independent audit",
+        "Tier 1 is audited by",
+        "the tier 2 prefixes the audit contract lists (its section \"Audit tiers\")",
+    ] {
+        assert!(tier.contains(phrase), "the tier step lacks {phrase:?}");
+    }
+    // A workflow names no package path (`product_cli`), so the list lives in the contract.
+    let contract = read(AUDIT_REF);
+    let tiers = section(&contract, "Audit tiers");
+    for prefix in moai_cli::gate::TIER2_PREFIXES {
+        // REQ-8 keeps the retired second host's name out of the texts; its folder is named by
+        // where it sits.
+        let want = if prefix.contains("codex") {
+            "the retired second host's dot folder".to_string()
+        } else {
+            format!("`{prefix}`")
+        };
+        assert!(tiers.contains(&want), "the tier 2 list lacks {want}");
+    }
+    let note = &audit[audit.find("**Verdict note.**").unwrap()..];
+    let note = &note[..note.find("```").unwrap()];
+    assert!(
+        note.contains("a `tier <N>` in its scope is read"),
+        "the verdict note does not say the stated tier is read"
+    );
+}
+
+/// Slice C audit N-h: the block AUDIT hands its agent names `head` in the one list.
+#[test]
+fn refs_audit_agent_block_names_the_head_once() {
+    let audit = read("workflows/audit.md");
+    let block = audit
+        .lines()
+        .find(|l| l.contains("Give it one block"))
+        .expect("the block line");
+    assert!(block.contains("`head`"), "{block}");
+    assert!(!audit.contains("Its block also carries `head`"), "audit.md");
 }
 
 #[test]
@@ -982,6 +1141,17 @@ fn scrub_line_checks_read_what_they_say() {
     assert_eq!(req8_hits("a compact table"), NONE);
     assert_eq!(req8_hits("x\nCODEX_HOME"), [(2, "codex")]);
     assert_eq!(req8_hits("the MODE-AGENT workflow"), [(1, "mode-agent")]);
+    // Slice C audit B2: the pull-request gate's job, status, merge, branch update and train.
+    assert_eq!(
+        req8_hits("re-run the Audit-Gate job, then post `moai/audit`"),
+        [(1, "audit-gate"), (1, "moai/audit")]
+    );
+    assert_eq!(
+        req8_hits("`gh pr update-branch`, then `gh pr merge --auto`"),
+        [(1, "gh pr merge"), (1, "update-branch")]
+    );
+    assert_eq!(req8_hits("without a Train Number"), [(1, "train number")]);
+    assert_eq!(req8_hits("the audit of a merge, on the train"), NONE);
     // REQ-8: AGENTS.md is named only as the older file.
     assert_eq!(
         req8_hits("read the project's AGENTS.md"),

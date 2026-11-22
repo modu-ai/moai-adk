@@ -25,7 +25,7 @@ Skip this section when you are a base agent yourself: base agents never start ot
 
 `moai` installs five base agents into the host's user folder: `moai-plan`, `moai-research`, `moai-impl`, `moai-audit` and `moai-docs`. When this route hands a step to one of them:
 
-- Give it one block, `task`, `scope`, `base` and `refs`, and nothing else; it assumes no conversation context.
+- Give it one block, `task`, `scope`, `base` and `refs`, plus `head` where the route's own text below asks for it, and nothing else; it assumes no conversation context.
 - Decide on its first line, `RESULT <role> <ok|blocked|not_run> <target>`, then check the rest yourself: the files it lists and the commands and exit codes it reports. An agent's `ok` is not evidence.
 - Start agents only from this session, one level deep.
 - Use only what the host itself offers. Never stand in for a missing feature with extra sessions, folders or scripts: name the feature as not supported on this host, with the reason, and use the fallback given below.

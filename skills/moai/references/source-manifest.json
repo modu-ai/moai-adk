@@ -78,7 +78,7 @@
       }
     },
     "references/audit.md": {
-      "sha256": "e09e004c2edd81e8ddc855f4f954fb3677cbb278d4c77bed6090e4bc49a8e832",
+      "sha256": "d12718ec08086785e60c69d2b4a41c665a5f15b1dac0de839bfc722f5f696035",
       "origin": {
         "kind": "design-spec",
         "template_id": "audit-contract",
@@ -156,7 +156,7 @@
       }
     },
     "references/internal/commit-trailers.md": {
-      "sha256": "5853bebcacd992d28b288de9d058cfea97fc8323b3f5d59f53b383c31ce3acdb",
+      "sha256": "4f6890d4bc8b8fcec6c1a1620d106deebe062330ff50f2d8eb092b7115210b61",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-commit-trailers",
@@ -195,7 +195,7 @@
       }
     },
     "references/internal/git-safety.md": {
-      "sha256": "3f379d87a46a1df98491325bb928fcc5f72eb3cabc3d7d1af49c87c9e6a392b7",
+      "sha256": "f052a104b1a95f3561f051bf1af600e9f490bd2ce18f30c3d9e8482219e68c05",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-git-safety",
@@ -240,7 +240,7 @@
       }
     },
     "references/internal/sdd.md": {
-      "sha256": "42a2851e34e0c834c1a31c0c4ea33800a8d2823bfddf60acce8765183034db87",
+      "sha256": "b0a04a4d95d880d75470a8a09d2723e29d261a50976d81acdc0729e40d347129",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-sdd",
@@ -408,7 +408,7 @@
       }
     },
     "workflows/audit.md": {
-      "sha256": "8937d24fa0f41915ece69a7e82fa35c11ca8efa83a83cb0730ecb3448e763df8",
+      "sha256": "fa5b1c2dcc1947a8b9bae1bdc615bdba10fac3473f868791290a1832569b396c",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-audit",
@@ -417,7 +417,7 @@
       }
     },
     "workflows/plan.md": {
-      "sha256": "30b0adb9641fea0b8f23fc9a204c695b9c5e741226132a4dd4ea9605593e018d",
+      "sha256": "463b1f9af6ca6957abe36a6bd91ab8829c1882e5995c894b96917686f3930683",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-plan",
@@ -435,7 +435,7 @@
       }
     },
     "workflows/read.md": {
-      "sha256": "09866ceb42e01ebd1b8d7de94690b8183c032ca5df38024889b9c3502587190b",
+      "sha256": "bcad1ea09775fc577000f1802bc8fb9de9a36e3effd25480ca7dedcc4f524a22",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-read",
@@ -444,7 +444,7 @@
       }
     },
     "workflows/run.md": {
-      "sha256": "72899a238466aad5ad02d9fce6c307f1a06424e2be416b7e6befd2691cb809d3",
+      "sha256": "0bbdf3bc5d4aeee4c6a5331975d504a4f6c4517388894fc9674da395db424404",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-run",
@@ -453,7 +453,7 @@
       }
     },
     "workflows/sync.md": {
-      "sha256": "7d7dcfd87eca7f7a8b9a52867b876a7c36c3f311f92030d37249d6d23fa2371b",
+      "sha256": "fb2c0a68a07a207db3aaf6090e51eccb09c75a57867e09bafbc63a638bc045c3",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-sync",

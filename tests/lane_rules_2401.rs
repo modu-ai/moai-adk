@@ -60,7 +60,7 @@ fn the_documented_verdict_example_passes_the_card_verdict_parser() {
             "`AUDIT <card> (<one-line scope>) head <40-hex> base <40-hex> — verdict: PASS|FAIL`",
             "lowercase hex",
             "nothing after the verdict word",
-            "The next line names the auditing session and its reservation note",
+            "The next line names the auditing session as `Moai-Session: <value>`",
         ],
     );
     let example = verdict_example(&audit);
@@ -77,7 +77,9 @@ fn the_documented_verdict_example_passes_the_card_verdict_parser() {
         "{first}"
     );
     let second = lines.next().unwrap_or_default();
-    assert!(second.starts_with("auditor: "), "{example}");
+    // SPEC-20261122-next-flow-skills-agents (slice C audit N-e): one form for the second line,
+    // the auditor's `Moai-Session` value.
+    assert!(second.starts_with("Moai-Session: "), "{example}");
 }
 
 /// The rules the AUDIT text states — lowercase hex, nothing after the verdict word, the em dash —

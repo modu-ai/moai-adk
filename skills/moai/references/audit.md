@@ -25,6 +25,10 @@ The session that started the audit records the verdict: never the auditor agent 
 
 The author of a change never audits it. Whoever wrote or repaired a change hands it to a separate context (`chains/index.md`); a session that made a commit between the base and the head is an author of that head.
 
+## Audit tiers
+
+Who audits each tier is the AUDIT workflow's step 9 (`workflows/audit.md`). A changed path that starts with one of these prefixes sets the floor to tier 2: `src/gate`, `src/ops/gate`, `src/flow.rs`, `src/hook`, `src/ops/hook`, `src/go_hooks`, `src/ops/go_hooks`, `.github/`, `install`, `scripts/install`, `src/install`, `src/agent_install`, `src/update`, `src/self_update`, `src/home`, `src/ops/home`, `src/ops/agents_home`, `src/migrat`, `src/go_state`, `src/go_settings`, `src/ops/go_settings`, `src/state_root`, `src/secret`, `src/vault`, `src/keys`, `src/key_vault`, `src/redact`, `src/forge/audit_status`, `src/forge/transport`, `src/worktree_include`, `src/audit_gate.rs`, `.worktreeinclude`, `.claude/`, the retired second host's dot folder, `REVIEW.md`, `agents/audit.md`, `skills/moai/workflows/audit.md`, `CLAUDE.md` and the older `AGENTS.md`; and, of the moai-adk repository's own tools, `tools/local_check.sh`, `tools/ci_scope.py`, `tools/check_guard.py`, `tools/protected_checks.json`, `tools/repo_scans.json`, `tools/self_check.sh` and `tools/review_checklist.json`. This is the list the tier code reads (`moai bundle check` judges a head's floor with it).
+
 ## Rules for every audit
 
 1. Review one exact head against one exact base.
