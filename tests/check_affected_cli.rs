@@ -556,7 +556,9 @@ fn a_failed_cheap_step_stops_before_the_heavy_steps() {
 fn every_kind_of_cheap_failure_stops_the_run() {
     let slots = slot_dir();
     let slot = slots.path().to_string_lossy().to_string();
-    let cases: [(&[(&str, &str)], &str, &[&str]); 3] = [
+    // Changed files, the step that must stop the run and the fake tools on the path.
+    type Case<'a> = (&'a [(&'a str, &'a str)], &'a str, &'a [&'a str]);
+    let cases: [Case; 3] = [
         (
             &[("src/update_models.rs", "// trailing \n")],
             "diff_check",
