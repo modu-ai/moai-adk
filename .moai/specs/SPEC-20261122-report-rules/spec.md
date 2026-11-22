@@ -49,7 +49,7 @@ moai 는 보고서를 어떻게 쓸지에 대한 명시적 규칙이 아직 없�
 
 ## Scope
 
-- write: `.moai/specs/SPEC-20261122-report-rules/**`(이 조각). 뒤 조각에서 카드 범위에 더해요: `skills/moai/references/internal/reports.md`(새 글), `skills/moai/references/source-manifest.json`, `skills/moai/references/internal/core-rules.md`(한 줄 가리킴), `src/report_check.rs`, `src/ops/report_check.rs`, `src/lib.rs`(모듈 한 줄), 운영 페이지 `docs/design-review/appendix/operations/report_check.md`, 시험 파일 셋
+- write: `.moai/specs/SPEC-20261122-report-rules/**`(이 조각). 뒤 조각에서 카드 범위에 더해요: moai 스킬의 `references/internal/reports.md`(새 글, 조각 A 가 만들어요), `skills/moai/references/source-manifest.json`, `skills/moai/references/internal/core-rules.md`(한 줄 가리킴), `src/report_check.rs`, `src/ops/report_check.rs`, `src/lib.rs`(모듈 한 줄), 운영 페이지 `docs/design-review/appendix/operations/report_check.md`, 시험 파일 셋
 - read-only: 사용자의 보고서 폴더, `AGENTS.md`, `SPEC-20261121-flow-skeleton`
 - forbidden: 아티팩트 공유·삭제, 프로젝트 `.claude/` 쓰기, 인증 정보 읽기, 카드 번호를 SPEC id·가지·커밋·PR 에 쓰기, 실제 HOME
 
