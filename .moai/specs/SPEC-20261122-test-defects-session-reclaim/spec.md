@@ -74,3 +74,10 @@ Slice 1 (revision 1):
 - AC-2: met. `a_runtime_state_folder_is_not_work` was red first (holds 3 uncommitted change(s)) and passes: the counts file, a file beside it, a file two folders below and the earlier generation's state folder are reclaimed and every file stays.
 - AC-3: met. `a_listed_tool_cache_is_not_work` keeps its refusals for an untracked file outside the state folder and a changed tracked file, one uncommitted change each; the unit test `only_an_untracked_state_folder_file_is_a_cache` was rewritten red first; 3 mutants killed (no trailing slash, the earlier folder dropped, the untracked check dropped).
 - The rule lives in `src/card/early_reclaim.rs`, a file another card reserves; its holder answered that the hunk does not overlap theirs (note 6346), and the edit is by explicit path.
+
+Slice 2 (revision 2, the audit follow-ups):
+
+- AC-4: met. `an_old_layout_runtime_state_folder_is_not_work` (unit test in `src/card/early_reclaim.rs`) builds the earlier project layout through `crate::PROJECT_STATE_DIR`; the resolver picks that layout's state folder, which differs from the earlier generation's, and the untracked rule and the ignored-entry rule each accept both folders on their own. Two mutants killed (the current-folder arm of the ignored-entry rule dropped, the earlier-generation arm dropped).
+- AC-5: met. `every_child_is_built_by_the_one_helper` passes: the only line of `tests/session_registry_cli.rs` that builds a command is the one in `registrar`.
+- AC-6: met. `an_ignored_state_folder_file_is_not_work` was red first (a2a5a0407d: the refusal named the ignored `state/github/counts.json` as a draft) and passes (11b4621f3a): with the state folder ignored, an ignored file there is reclaimed and stays, and an ignored file outside it still refuses and is the one named.
+- The two comments that named one listed cache file now name the folder rule (`tests/card_reclaim_early_cli.rs`, `src/card/dispatch.rs`).
