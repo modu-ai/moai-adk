@@ -1047,7 +1047,7 @@ pub const GETTING_STARTED: &[(&str, &str)] = &[
 pub const ROOT_EXAMPLES: &[(&str, &str)] = &[
     // SPEC-20261118-launcher-agent-entry: the role is entered inside the session; at 60
     // columns this ends on column 59, so it never wraps.
-    ("cc -l", "leader, then /moai --mode-leader"),
+    ("cc -l", "start the leader session"),
     ("update", "preview and apply an update"),
     ("project-detect .", "show the facts of this project"),
 ];
@@ -1582,14 +1582,14 @@ const LONG_ABOUT_KO: &[(&str, &str)] = &[
     ),
     (
         "cc",
-        "Claude Code 세션 실행기: `cc -l|-a`. `-l|-a` 는 세션 이름과 권한만 정하고, 역할은 세션 \
-         안의 `/moai --mode-leader`·`/moai --mode-agent` 로 시작.",
+        "Claude Code 세션 실행기: `cc -l|-a`. `-l|-a` 는 세션 이름과 권한만 정해요. `-l` 은 리더 \
+         세션이고, `-a` 세션의 일은 세션 안의 `/moai work` 로 시작.",
     ),
     (
         "glm",
         "z.ai GLM 위의 Claude Code: `glm -l|-a`(환경의 ANTHROPIC_AUTH_TOKEN 이나 키 파일이 \
-         필요해요). `-l|-a` 는 세션 이름과 권한만 정하고, 역할은 세션 안의 \
-         `/moai --mode-leader`·`/moai --mode-agent` 로 시작.",
+         필요해요). `-l|-a` 는 세션 이름과 권한만 정해요. `-l` 은 리더 세션이고, `-a` 세션의 \
+         일은 세션 안의 `/moai work` 로 시작.",
     ),
     (
         "claude-doctor",
@@ -1675,12 +1675,12 @@ const ARG_HELP_KO: &[(&str, &str, &str)] = &[
     (
         "cc|glm",
         "leader",
-        "리더 세션(이름 `leader` 와 권한만 정함, 역할은 세션 안의 `/moai --mode-leader`)",
+        "리더 세션(이름 `leader` 와 권한만 정함)",
     ),
     (
         "cc|glm",
         "agent",
-        "에이전트 세션(이름과 권한만 정함, 역할은 세션 안의 `/moai --mode-agent`)",
+        "에이전트 세션(이름과 권한만 정함, 일은 세션 안의 `/moai work` 로 시작)",
     ),
     (
         "cc|glm",
