@@ -35,6 +35,8 @@ EXEMPT = {
     "tests/github_cli.rs": "hashes temp dirs; templates are named include_str! files",
     "tests/heavy_slot_cli.rs": "read_dir of a TempDir slot folder; reads the named "
                                "tools/heavy_check_slot.py",
+    "tests/home_style_ownership_cli.rs": "read_dir of the temporary home it built (before/after "
+                                         "trees); reads the named template and fixtures",
     "tests/install_script_test.py": "os.walk of the test's temporary HOME and link folders; runs "
                                     "the named install/install.sh and install.ps1",
     "tests/launcher_settings_receipt.rs": "read_dir of the temp home's receipts folder; reads the "
