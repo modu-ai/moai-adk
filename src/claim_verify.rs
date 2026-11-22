@@ -788,22 +788,56 @@ fn git_subcommand_positions(args: &[String]) -> Vec<usize> {
 /// written before each command (#2878: `GIT_AUTHOR_EMAIL=x git commit`). Commands inside
 /// `sh -c` are not opened here.
 pub(crate) fn shell_commands_with_env(command: &str) -> Vec<(Vec<String>, String, Vec<String>)> {
-    shell_segments(command)
-        .into_iter()
-        .filter_map(|words| {
-            let i = command_index(&words)?;
-            let env = words[..i]
+    // The same reading [`shell_commands`] gives — grouping keywords stripped, a shell script
+    // and every command-substitution body read one nesting further (audit 6768 N4) — with the
+    // `NAME=value` words of each segment leading it as that segment's env.
+    let mut out = Vec::new();
+    for words in shell_segments(command) {
+        let mut words: &[String] = &words;
+        while let Some((first, rest)) = words.split_first() {
+            if SHELL_KEYWORDS.contains(&first.as_str()) {
+                words = rest;
+            } else {
+                break;
+            }
+        }
+        // The substitution bodies first (an assignment-only segment still runs its body —
+        // audit 6768 N4).
+        for w in words {
+            for script in substitution_bodies(w) {
+                for (_, n, a) in shell_commands_with_env(&script) {
+                    out.push((Vec::new(), n, a));
+                }
+            }
+        }
+        let Some(i) = command_index(words) else {
+            // A segment that only assigns (`D=/x;`) still hands its values to the segments
+            // after it (N5(1)): an env-only entry with an empty name.
+            let env: Vec<String> = words
                 .iter()
                 .filter(|w| w.contains('=') && !w.starts_with('-'))
                 .cloned()
                 .collect();
-            Some((
-                env,
-                command_name(&words[i]).to_string(),
-                words[i + 1..].to_vec(),
-            ))
-        })
-        .collect()
+            if !env.is_empty() {
+                out.push((env, String::new(), Vec::new()));
+            }
+            continue;
+        };
+        let env = words[..i]
+            .iter()
+            .filter(|w| w.contains('=') && !w.starts_with('-'))
+            .cloned()
+            .collect();
+        let name = command_name(&words[i]).to_string();
+        let args = words[i + 1..].to_vec();
+        if let Some(script) = script_run_by(&name, &args) {
+            for (_, n, a) in shell_commands_with_env(&script) {
+                out.push((Vec::new(), n, a));
+            }
+        }
+        out.push((env, name, args));
+    }
+    out
 }
 
 /// Every command a shell line runs, as (name without its path, arguments), past assignments
@@ -828,6 +862,17 @@ fn collect_commands(command: &str, depth: u8, out: &mut Vec<(String, Vec<String>
                 break;
             }
         }
+        // audit 6768 N4: a command substitution inside quotes is code — `echo "$(rm …)"`,
+        // `X="$(…)"` and a backticked span in quotes all run their inner command, so every
+        // word's substitution bodies are read as commands of their own (a segment that is
+        // only an assignment still runs its body).
+        if depth < 2 {
+            for w in words {
+                for script in substitution_bodies(w) {
+                    collect_commands(&script, depth + 1, out);
+                }
+            }
+        }
         let Some(i) = command_index(words) else {
             continue;
         };
@@ -849,6 +894,40 @@ fn collect_commands(command: &str, depth: u8, out: &mut Vec<(String, Vec<String>
 const SHELL_KEYWORDS: &[&str] = &[
     "then", "do", "else", "elif", "fi", "done", "!", "time", "in", "{", "}",
 ];
+
+/// The command-substitution bodies a word holds: `$( … )` (to the last closing paren —
+/// nesting is not tracked, the whole span is code either way) and backtick spans (audit
+/// 6768 N4: quoted or not, the body is code a shell runs).
+fn substitution_bodies(word: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut rest = word;
+    while !rest.is_empty() {
+        let next_dollar = rest.find("$(");
+        let next_tick = rest.find('`');
+        let (start, len) = match (next_dollar, next_tick) {
+            (Some(d), Some(t)) if d < t => (d, 2),
+            (Some(_), None) => (next_dollar.unwrap(), 2),
+            (None, Some(t)) => (t, 1),
+            (None, None) => break,
+            (Some(_), Some(t)) => (t, 1),
+        };
+        let tail = &rest[start + len..];
+        let (end, skip) = if len == 2 {
+            match tail.rfind(')') {
+                Some(e) => (e, 1),
+                None => break,
+            }
+        } else {
+            match tail.find('`') {
+                Some(e) => (e, 1),
+                None => break,
+            }
+        };
+        out.push(tail[..end].to_string());
+        rest = &tail[end + skip..];
+    }
+    out
+}
 
 /// The script a command runs as shell code: a shell's `-c` script, or `eval`'s arguments
 /// joined with spaces. The one place that decides which quoted text is code, shared by the

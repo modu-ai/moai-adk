@@ -34,7 +34,7 @@ fn run_program(
 ) -> std::io::Result<Run> {
     // A moai project: outside one, every duty exits 0 at once with no output
     // (SPEC-20261122-next-flow-hooks REQ-15), and these tests read answers.
-    fs::create_dir_all(cwd.join(".moai")).unwrap();
+    fs::create_dir_all(moai_cli::state_root::path(cwd, "")).unwrap();
     let mut cmd = Command::new(program);
     cmd.args(args)
         .current_dir(cwd)
@@ -434,7 +434,7 @@ fn host_runs_tool_with_timeout(
     );
     // A moai project (REQ-15): outside one the duty exits 0 at once and the deny control
     // below would run its command.
-    fs::create_dir_all(root.join(".moai")).unwrap();
+    fs::create_dir_all(moai_cli::state_root::path(root, "")).unwrap();
     let mut child = Command::new(BIN)
         .args([
             "hook-dispatch",
@@ -628,13 +628,13 @@ fn stdin_bound_is_4194304_bytes_and_one_more_is_a_non_blocking_engine_error() {
 #[test]
 fn input_cwd_decides_over_the_process_cwd() {
     // SPEC-20261122-next-flow-hooks REQ-15: the input's cwd decides whether the folder is a
-    // moai project. The run helper gives the process folder `.moai`, so the plain input folder
+    // moai project. The run helper gives the process folder its state folder, so the plain input folder
     // is a repository that never was a process cwd. (The commit-token premise this test had
     // is gone, REQ-11.)
     let (_a, plain_process) = repo("main");
     let (_b, moai) = repo("issue/77-k");
     let (_c, plain_input) = repo("main");
-    fs::create_dir_all(moai.join(".moai")).unwrap();
+    fs::create_dir_all(moai_cli::state_root::path(&moai, "")).unwrap();
     // The call names the moai project from a plain process folder: the duty answers (the
     // guard rules ran; nothing denied here, so allow with empty stdout).
     let r = dispatch(
@@ -1914,7 +1914,7 @@ fn a_removed_host_gets_one_line_and_exit_zero() {
     let (_d, root) = repo("issue/77-k");
     // The run helper marks a moai project before it spawns (REQ-15); the tree comparison
     // starts from the marked shape, so only the dispatch's own writes can differ.
-    fs::create_dir_all(root.join(".moai")).unwrap();
+    fs::create_dir_all(moai_cli::state_root::path(&root, "")).unwrap();
     let harmless = pre_tool("ls", &root);
     let denied = pre_tool("git commit -m x", &root);
     for host in ["codex", "omp"] {

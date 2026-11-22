@@ -47,7 +47,9 @@ fn setup() -> Fixture {
     let tmp = TempDir::new().unwrap();
     let root = fs::canonicalize(tmp.path()).unwrap();
     let home = root.join("home");
-    let folder = home.join(".moai-cli/versions/a");
+    let folder = home
+        .join(moai_cli::state_root::EARLIER_PROJECT_DIR)
+        .join("versions/a");
     fs::create_dir_all(folder.join("bin")).unwrap();
     let exe = folder.join("bin/moai-cli");
     common::copy_executable(Path::new(EXE), &exe);
@@ -264,7 +266,7 @@ fn an_installed_four_event_set_is_replanned() {
     let text = fs::read_to_string(config_settings(&f)).unwrap();
     assert!(!text.contains(OLD_COMMAND), "{text}");
     // The exec-form command names the binary by absolute path, which legitimately runs under
-    // the version folder .moai-cli; the old command SHAPE is what must be gone.
+    // the version folder under the earlier state name; the old command SHAPE is what must be gone.
     assert!(!text.contains("moai-cli hook-"), "{text}");
     let again = update_preview(&f);
     assert_eq!(hook_folder(&again)["action"], json!("unchanged"));
@@ -894,4 +896,87 @@ fn req18_an_old_project_set_is_removed_and_the_users_own_entries_stay() {
             "{again}"
         );
     }
+
+    // audit 6768 N3: the removal rides under its own host kind and reverts — the project
+    // pair comes back byte for byte (this receipt's only write is the removal row).
+    let id = r["hooks_result"]["receipt"].as_str().unwrap().to_string();
+    let reverted = result(&run(
+        &f,
+        &f.project,
+        &[
+            "hooks-revert",
+            f.project.to_str().unwrap(),
+            "--receipt",
+            &id,
+            "--permission-reference",
+            "test-approval",
+        ],
+    ));
+    assert_eq!(reverted["state"], json!("reverted"), "{reverted}");
+    assert!(
+        reverted["reverted"].to_string().contains("claude-project"),
+        "{reverted}"
+    );
+    assert_eq!(
+        fs::read(project_claude.join("settings.json")).unwrap(),
+        bytes
+    );
+
+    // All-or-nothing (N3): a receipt with two writes where the user changed one file since
+    // skips the WHOLE receipt — the other file is not half-restored.
+    let fresh = setup();
+    let project_claude2 = fresh.project.join(".claude");
+    fs::create_dir_all(&project_claude2).unwrap();
+    fs::write(project_claude2.join("settings.json"), &bytes).unwrap();
+    let manifests2 = moai_cli::state_root::path(&fresh.project, "manifests");
+    fs::create_dir_all(&manifests2).unwrap();
+    fs::write(
+        manifests2.join("claude-settings.json"),
+        serde_json::to_vec_pretty(&json!({
+            "schema_version": 1,
+            "settings_path": ".claude/settings.json",
+            "owned": {"hooks": {}},
+            "settings_sha256": moai_cli::digest(&bytes),
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    let p2 = update_preview(&fresh);
+    let digest2 = p2["plan_digest"].as_str().unwrap().to_string();
+    let r2 = result(&run(
+        &fresh,
+        &fresh.project,
+        &["update", "--confirm", &digest2],
+    ));
+    let id2 = r2["hooks_result"]["receipt"].as_str().unwrap().to_string();
+    // The user edits the CONFIG settings (the other write) after the apply.
+    let config2 = config_settings(&fresh);
+    let mut s: Value = serde_json::from_slice(&fs::read(&config2).unwrap()).unwrap();
+    s["env"]["USER_TOUCH"] = json!("1");
+    fs::write(&config2, serde_json::to_vec_pretty(&s).unwrap()).unwrap();
+    let out = run(
+        &fresh,
+        &fresh.project,
+        &[
+            "hooks-revert",
+            fresh.project.to_str().unwrap(),
+            "--receipt",
+            &id2,
+            "--permission-reference",
+            "test-approval",
+        ],
+    );
+    let v: Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(v["result"]["state"], json!("skipped"), "{v}");
+    assert!(
+        v["result"]["skipped"]
+            .to_string()
+            .contains("user_changed_since_apply"),
+        "{v}"
+    );
+    // The project pair keeps the applied (removal) state: nothing was half-restored back.
+    let kept: Value =
+        serde_json::from_slice(&fs::read(project_claude2.join("settings.json")).unwrap()).unwrap();
+    assert!(!kept.to_string().contains("claim-verify"), "{kept}");
+    assert!(kept.to_string().contains("orca guard"), "{kept}");
 }

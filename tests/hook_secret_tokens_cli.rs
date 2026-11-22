@@ -25,7 +25,7 @@ struct Run {
 fn dispatch(host: &str, cwd: &Path, tool: &str, tool_input: Value) -> Run {
     // A moai project: outside one, every duty exits 0 at once
     // (SPEC-20261122-next-flow-hooks REQ-15).
-    std::fs::create_dir_all(cwd.join(".moai")).unwrap();
+    std::fs::create_dir_all(moai_cli::state_root::path(cwd, "")).unwrap();
     let input = json!({"hook_event_name": "PreToolUse", "tool_name": tool,
                        "tool_input": tool_input, "cwd": cwd});
     let mut child = Command::new(BIN)

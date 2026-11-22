@@ -727,8 +727,16 @@ pub fn apply(home: &Path, layer: &Layer, plan_digest: &str, permission: &str) ->
         match applied_step {
             Ok(v) => {
                 applied += 1;
+                // The project pair's removal row rides under its own host kind
+                // (audit 6768 N3): the revert accepts that kind for exactly the project's
+                // own settings path, never the config folder's.
+                let host_kind = if f.action == "remove" {
+                    "claude-project"
+                } else {
+                    "claude-config"
+                };
                 receipt.hosts.push(HostEntry {
-                    host: "claude-config".into(),
+                    host: host_kind.into(),
                     files: vec![FileEntry {
                         path: f.folder.join("settings.json").display().to_string(),
                         before_sha256: v["before"].as_str().map(str::to_string),
@@ -980,42 +988,68 @@ pub fn revert_in(
     }
     let mut reverted = Vec::new();
     let mut skipped = Vec::new();
+    // audit 6768 N3: a revert is all-or-nothing — a file changed since the apply skips the
+    // WHOLE receipt (never a half revert), before anything is restored.
+    let mut changed: Vec<Value> = Vec::new();
     for h in &receipt.hosts {
-        if h.host == "claude-config" {
+        for f in &h.files {
+            if let Some(after) = &f.after_sha256 {
+                // A project-layer entry names its file relative to the project; the
+                // config-layer entries are absolute.
+                let target = if Path::new(&f.path).is_absolute() {
+                    PathBuf::from(&f.path)
+                } else {
+                    root.join(&f.path)
+                };
+                let current = crate::claude::read_existing(&target)?;
+                if current.as_deref().map(crate::digest).as_deref() != Some(after.as_str()) {
+                    changed.push(json!({"host": &h.host, "path": &f.path,
+                                        "reason": "user_changed_since_apply"}));
+                }
+            }
+        }
+    }
+    if !changed.is_empty() {
+        return Ok(json!({
+            "state": "skipped",
+            "reason": "user_changed_since_apply",
+            "skipped": changed,
+            "receipt": receipt_id,
+        }));
+    }
+    for h in &receipt.hosts {
+        if h.host == "claude-config" || h.host == "claude-project" {
             // audit 6768 B5: a config-folder receipt is read only from the HOME receipts
             // folder, and every file it names must be the host's own settings file — a
             // receipt shipped inside a repository can never write or delete a chosen path.
+            // The project pair's removal row (N3) rides under its own kind, accepted for
+            // exactly the project's own settings path.
             if !from_home {
                 return Err(
                     "a config-folder receipt is read only from the HOME receipts folder".into(),
                 );
             }
-            let config = crate::host_home::resolve(
-                crate::host_home::Host::Claude,
-                home.as_deref().unwrap_or(Path::new("")),
-            )
-            .map_err(|_| "the config folder is unavailable".to_string())?;
-            let settings = config.join("settings.json");
+            let settings = if h.host == "claude-config" {
+                crate::host_home::resolve(
+                    crate::host_home::Host::Claude,
+                    home.as_deref().unwrap_or(Path::new("")),
+                )
+                .map_err(|_| "the config folder is unavailable".to_string())?
+                .join("settings.json")
+            } else {
+                root.join(".claude").join("settings.json")
+            };
             if h.files
                 .iter()
                 .any(|f| Path::new(&f.path) != settings.as_path())
             {
                 return Err("hook receipt names a file outside the host's hook files".into());
             }
-            // The config-folder layer's entry: every file path is absolute, the before bytes
-            // ride inline in the receipt (before_hex), and a file changed since the apply is
-            // skipped whole.
+            // The file paths are absolute and the before bytes ride inline in the receipt
+            // (before_hex); the changed-since check already ran for the whole receipt.
             let mut restored = Vec::new();
-            let mut skipped_config = Vec::new();
-            let mut restore: Vec<(PathBuf, Option<Vec<u8>>)> = Vec::new();
             for f in h.files.iter() {
                 let target = PathBuf::from(&f.path);
-                let current = crate::claude::read_existing(&target)?;
-                if current.as_deref().map(crate::digest) != f.after_sha256.clone() {
-                    skipped_config.push(json!({"host": "claude-config",
-                                                "reason": "user_changed_since_apply"}));
-                    continue;
-                }
                 let before = match &f.before_sha256 {
                     None => None,
                     Some(sha) => {
@@ -1031,25 +1065,19 @@ pub fn revert_in(
                         Some(b)
                     }
                 };
-                restore.push((target, before));
-            }
-            if skipped_config.is_empty() || !restore.is_empty() {
-                for (target, before) in restore {
-                    match before {
-                        Some(b) => {
-                            let now = crate::claude::read_existing(&target)?;
-                            crate::apply::publish_replace(&target, now.as_deref(), &b)?;
-                        }
-                        None => {
-                            fs::remove_file(&target)
-                                .map_err(|_| format!("{} not removed", target.display()))?;
-                        }
+                match before {
+                    Some(b) => {
+                        let now = crate::claude::read_existing(&target)?;
+                        crate::apply::publish_replace(&target, now.as_deref(), &b)?;
                     }
-                    restored.push("claude-config".to_string());
+                    None => {
+                        fs::remove_file(&target)
+                            .map_err(|_| format!("{} not removed", target.display()))?;
+                    }
                 }
+                restored.push(h.host.clone());
             }
             reverted.extend(restored);
-            skipped.extend(skipped_config);
             continue;
         }
         if retired(&h.host, active) {

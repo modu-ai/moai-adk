@@ -125,7 +125,7 @@ tests/hook_dispatch_cli.rs	39	0
 tests/hook_legacy_cli.rs	2	0
 tests/hook_mode_cli.rs	3	0
 tests/hook_status_cli.rs	3	0
-tests/hooks_cli.rs	21	20
+tests/hooks_cli.rs	21	22
 tests/hooks_pre_p4_fixtures.rs	3	0
 tests/hygiene_apply_cli.rs	0	1
 tests/hygiene_cli.rs	0	1
@@ -265,3 +265,4 @@ tests/worktree_gc_install_dir.rs	4	0
 tests/worktree_move.rs	7	4
 tests/worktree_place_cli.rs	1	2
 tests/worktree_report.rs	8	0
+tests/next_flow_hooks_cli.rs	10	10

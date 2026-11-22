@@ -683,8 +683,10 @@ pub const MERGE_CONFIRM_RULE: &str = "merge_confirm";
 fn moai_project(cwd: &Path) -> bool {
     // The tool's own home state folder is not a project (audit 6768 B3): without this, a
     // session anywhere under the user's home would always count as a moai project and every
-    // duty would run there.
+    // duty would run there. The home compares canonicalized (the B3 residual: a HOME spelled
+    // through a link never matched the walked folder).
     let home = std::env::var_os("HOME").map(PathBuf::from);
+    let home = home.map(|h| std::fs::canonicalize(&h).unwrap_or(h));
     cwd.ancestors().any(|dir| {
         if home.as_deref() == Some(dir) {
             return false;
@@ -1795,13 +1797,17 @@ mod tests {
         std::fs::create_dir_all(home.path().join(crate::state_root::MOAI_DIR)).unwrap();
         let saved = std::env::var_os("HOME");
         std::env::set_var("HOME", home.path());
+        // The engine canonicalizes the session folder before the walk; both sides canonical
+        // is also what compares a HOME spelled through a link (the B3 residual).
         let plain_under_home = home.path().join("work/plain");
+        std::fs::create_dir_all(&plain_under_home).unwrap();
+        let plain_under_home = std::fs::canonicalize(&plain_under_home).unwrap();
         assert!(
             !moai_project(&plain_under_home),
             "a folder under a home with the tool state is not a project"
         );
         assert!(
-            !moai_project(home.path()),
+            !moai_project(&std::fs::canonicalize(home.path()).unwrap()),
             "the home itself is not a project"
         );
         if let Some(saved) = saved {

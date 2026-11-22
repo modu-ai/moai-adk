@@ -2152,7 +2152,7 @@ pub fn dangerous_guard(tool: &str, tool_input: &Value, cwd: &Path) -> Option<Str
 /// repository with no record has no integration-branch refusals (there is no name to protect).
 fn dangerous_bash(command: &str, cwd: &Path) -> Option<String> {
     if let Some(reason) = deletion_outside(command, cwd) {
-        return Some(reason.to_string());
+        return Some(reason);
     }
     let branch = recorded_integration_branch(cwd);
     for (name, args) in crate::claim_verify::shell_commands(command) {
@@ -2201,9 +2201,11 @@ pub(crate) fn git_subcommand(args: &[String]) -> Option<(&str, &[String])> {
     let mut i = 0;
     while i < args.len() {
         let w = args[i].as_str();
-        // `-c name=value` gives its configuration pair before the subcommand (audit 6768
-        // B2: the value was read as the subcommand and a `branch -D` under it slipped by).
+        // `-c name=value` and `--config-env name=env` give their pair before the subcommand
+        // (audit 6768 B2 and its residual: the value was read as the subcommand and a
+        // `branch -D` under it slipped by).
         let takes_value = w == "-c"
+            || w == "--config-env"
             || (value_taking.contains(&w)
                 && (w == "-C" || (!w.contains('=') && w.starts_with("--"))));
         if takes_value {
@@ -2450,7 +2452,11 @@ fn temp_root() -> PathBuf {
 }
 
 /// The reason the deletion check refuses the line, or `None`.
-pub fn deletion_outside(command: &str, cwd: &Path) -> Option<&'static str> {
+pub fn deletion_outside(command: &str, cwd: &Path) -> Option<String> {
+    // N5(2) of audit 6768: a here-doc body is data unless it feeds a shell — cut the data
+    // bodies before anything else reads the line.
+    let command = strip_here_docs(command);
+    let command = command.as_str();
     let worktree = worktree_root(cwd);
     let temp = temp_root();
     let under = |p: &Path| p.starts_with(&worktree) || p.starts_with(&temp);
@@ -2461,33 +2467,58 @@ pub fn deletion_outside(command: &str, cwd: &Path) -> Option<&'static str> {
     let feeds_xargs = command
         .split(|c: char| c.is_whitespace() || "|;&\n".contains(c))
         .any(|w| w.trim_matches(['\\', '"', '\'']) == "xargs");
-    // The folder a `cd` on this line entered: a relative target after it names that folder,
-    // not the session cwd (audit 6768 B1).
+    // N5(1): the variables earlier segments of this same line assigned a literal, in order —
+    // a later target resolves through them; $PWD resolves to the working folder.
+    let mut vars: Vec<(String, String)> = Vec::new();
+    // The folder a `cd` or `pushd` on this line entered (audit 6768 B1, N4): a relative
+    // target after it names that folder, not the session cwd; `cd` alone goes home.
     let mut base: Option<PathBuf> = None;
-    for (name, args) in crate::claim_verify::shell_commands(command) {
+    let resolve = |word: &str,
+                   against: &Path,
+                   vars: &Vec<(String, String)>|
+     -> Result<PathBuf, String> { resolve_target_word(word, against, vars) };
+    for (env, name, args) in crate::claim_verify::shell_commands_with_env(command) {
+        // The literal assignments of this segment become known to the segments after it
+        // (N5(1)); `$PWD` as a value is kept spelled and resolves to the working folder in
+        // the target resolution.
+        for word in &env {
+            let Some((k, v)) = word.split_once('=') else {
+                continue;
+            };
+            let usable = is_literal(v) || v == "$PWD" || v == "${PWD}";
+            if usable && !vars.iter().any(|(n, _)| n == k) {
+                vars.push((k.to_string(), v.to_string()));
+            }
+        }
         let mut targets: Vec<String> = Vec::new();
         match name.as_str() {
-            "cd" => {
-                base = args
-                    .first()
-                    .map(|dir| resolve_target(dir, base.as_deref().unwrap_or(cwd)));
+            "cd" | "pushd" => {
+                let target = args.iter().find(|w| w.as_str() != "--").map(String::as_str);
+                base = Some(match target {
+                    None => home_folder(),
+                    Some(t) => match resolve(t, base.as_deref().unwrap_or(cwd), &vars) {
+                        Ok(p) => p,
+                        Err(reason) => return Some(reason),
+                    },
+                });
                 continue;
             }
             "rm" | "rmdir" => {
                 targets = operands(&args).iter().map(|s| s.to_string()).collect();
                 if targets.is_empty() && feeds_xargs {
-                    return Some(DELETION_OUTSIDE);
+                    return Some(DELETION_OUTSIDE.to_string());
                 }
             }
             "git" => {
                 if let Some((sub, rest)) = git_subcommand(&args) {
                     if sub == "clean" {
                         // The clean runs in the folder a leading `-C` names (audit 6768
-                        // B1: no path operand ever named it).
-                        if let Some(dir) = git_dash_c_dir(&args) {
-                            let p = resolve_target(&dir, base.as_deref().unwrap_or(cwd));
-                            if !under(&p) {
-                                return Some(DELETION_OUTSIDE);
+                        // B1, N4: also past -c pairs, the last -C, and --work-tree).
+                        if let Some(dir) = git_clean_dir(&args) {
+                            match resolve(&dir, base.as_deref().unwrap_or(cwd), &vars) {
+                                Ok(p) if !under(&p) => return Some(DELETION_OUTSIDE.to_string()),
+                                Ok(_) => {}
+                                Err(reason) => return Some(reason),
                             }
                         }
                         targets = operands(rest).iter().map(|s| s.to_string()).collect();
@@ -2495,14 +2526,15 @@ pub fn deletion_outside(command: &str, cwd: &Path) -> Option<&'static str> {
                 }
             }
             "find" => {
-                let deletes = args.iter().any(|w| w == "-delete")
-                    || args.iter().any(|w| w == "-exec" || w.starts_with("-exec"));
-                if deletes {
-                    // The -H/-L/-P flags lead the paths (`find -L <dir> -delete`, audit
-                    // 6768 B1) and take no value.
+                // N5(3): -exec is a deletion only when the executed command is one.
+                let direct = args.iter().any(|w| w == "-delete");
+                let exec_deletes = find_exec_deletes(&args);
+                if direct || exec_deletes {
+                    // The no-value flags lead the paths (`find -L <dir> -delete`, audit
+                    // 6768 B1/N4: also -E and -X).
                     targets = args
                         .iter()
-                        .skip_while(|w| matches!(w.as_str(), "-H" | "-L" | "-P"))
+                        .skip_while(|w| matches!(w.as_str(), "-H" | "-L" | "-P" | "-E" | "-X"))
                         .take_while(|w| !w.as_str().starts_with('-'))
                         .map(|w| w.to_string())
                         .collect();
@@ -2523,7 +2555,7 @@ pub fn deletion_outside(command: &str, cwd: &Path) -> Option<&'static str> {
                             // The targets come from stdin and cannot be resolved or bounded;
                             // the amplification itself is the risk (permissions.md: Bash
                             // rules are not a boundary).
-                            return Some(DELETION_OUTSIDE);
+                            return Some(DELETION_OUTSIDE.to_string());
                         }
                     }
                 }
@@ -2533,41 +2565,231 @@ pub fn deletion_outside(command: &str, cwd: &Path) -> Option<&'static str> {
         if targets.is_empty() {
             continue;
         }
-        // A target that still names a variable this guard does not know can resolve
-        // anywhere, so it is outside every root (audit 6768 B1).
-        if targets.iter().any(|t| expand_known(t).contains('$')) {
-            return Some(DELETION_OUTSIDE);
-        }
         let against = base.as_deref().unwrap_or(cwd);
-        let any_outside = targets
-            .iter()
-            .map(|t| resolve_target(t, against))
-            .any(|p| !under(&p));
-        if any_outside {
-            return Some(DELETION_OUTSIDE);
+        for t in &targets {
+            // A placeholder target stands for stdin items — unbounded (N4).
+            if t.contains("{}") {
+                return Some(DELETION_OUTSIDE.to_string());
+            }
+            match resolve(t, against, &vars) {
+                Ok(p) if !under(&p) => return Some(DELETION_OUTSIDE.to_string()),
+                Ok(_) => {}
+                Err(reason) => return Some(reason),
+            }
         }
     }
     None
 }
 
-/// The folder a leading `git -C <dir>` names, before the subcommand (None when the line
-/// spells none or attaches it with `=`).
-fn git_dash_c_dir(args: &[String]) -> Option<String> {
+/// One deletion target, resolved (N5(1)): `$PWD` and `${PWD}` name the working folder, a
+/// variable this same line assigned a literal names that literal, the known variables expand,
+/// and any other variable is a named refusal — the reason says which variable and to spell
+/// the path. A `~user` home or a brace-expansion word can name anywhere, so both are outside.
+fn resolve_target_word(
+    word: &str,
+    against: &Path,
+    vars: &[(String, String)],
+) -> Result<PathBuf, String> {
+    let mut text = word.to_string();
+    // A variable this same line assigned a literal names that literal first (N5(1)); a value
+    // spelled `$PWD` stays spelled here and resolves one step later.
+    for (k, v) in vars {
+        for form in [format!("${{{k}}}"), format!("${k}")] {
+            if text.contains(&form) {
+                text = text.replace(&form, v);
+            }
+        }
+    }
+    // $PWD next: it names the folder the resolution runs against (N5(1)) — including the
+    // braced form, which is a variable, never a brace expansion.
+    for form in ["${PWD}", "$PWD"] {
+        if text.contains(form) {
+            text = text.replace(form, &against.display().to_string());
+        }
+    }
+    let expanded = expand_known(&text);
+    // An unknown variable is a named refusal — after the known ones expanded, before any
+    // sentinel could hide it (N5(1)).
+    if let Some(name) = unknown_variable(&expanded) {
+        return Err(format!(
+            "MoAI: a delete target names the variable ${name}, whose value this guard \
+             cannot know; spell the path instead"
+        ));
+    }
+    if word.starts_with('~') && !word.starts_with("~/") {
+        // `~user` is another user's home (audit 6768 N4): outside every root.
+        return Ok(PathBuf::from("/__moai_outside__/tilde-user"));
+    }
+    if expanded.contains('{') && expanded.contains('}') {
+        // A brace-expansion word can expand to anything (N4): outside every root. Only a
+        // literal brace pair is left here — every variable form is gone above.
+        return Ok(PathBuf::from("/__moai_outside__/brace"));
+    }
+    Ok(resolve_target(&expanded, against))
+}
+
+/// The first variable name an expanded word still names (`None` when none is left).
+fn unknown_variable(word: &str) -> Option<&str> {
+    let mut rest = word;
+    while let Some(at) = rest.find('$') {
+        let tail = &rest[at..];
+        if let Some(inner) = tail.strip_prefix("${") {
+            if let Some(end) = inner.find('}') {
+                return Some(&inner[..end]);
+            }
+            return None;
+        }
+        let end = tail[1..]
+            .find(|c: char| !(c.is_ascii_alphanumeric() || c == '_'))
+            .map_or(tail.len(), |i| i + 1);
+        let name = &tail[1..end];
+        if !name.is_empty() {
+            return Some(name);
+        }
+        rest = &tail[1..];
+    }
+    None
+}
+
+/// Whether an assignment's value is a literal this guard may resolve through: no variable,
+/// no substitution, no tilde beyond the leading home form.
+fn is_literal(value: &str) -> bool {
+    !value.contains('$') && !value.contains('`') && !value.contains('~')
+}
+
+/// The user's home folder as itself (a `cd` with no argument goes there).
+fn home_folder() -> PathBuf {
+    std::env::var_os("HOME")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from("/__moai_outside__/home"))
+}
+
+/// The folder a `git clean` runs in: the LAST `-C` before the subcommand, past `-c` and
+/// `--config-env` pairs, or the `--work-tree` the line names (N4).
+fn git_clean_dir(args: &[String]) -> Option<String> {
+    let mut dir = None;
     let mut i = 0;
     while i < args.len() {
         let w = args[i].as_str();
         if w == "-C" {
-            return args.get(i + 1).cloned();
+            dir = args.get(i + 1).cloned();
+            i += 2;
+            continue;
         }
-        if let Some(dir) = w.strip_prefix("--git-dir=") {
-            return Some(dir.to_string());
+        if w == "-c" || w == "--config-env" {
+            i += 2;
+            continue;
+        }
+        if let Some(v) = w.strip_prefix("--work-tree=") {
+            dir = Some(v.to_string());
+        } else if w == "--work-tree" {
+            dir = args.get(i + 1).cloned();
+            i += 2;
+            continue;
         }
         if !w.starts_with('-') {
-            return None;
+            break;
         }
         i += 1;
     }
-    None
+    dir
+}
+
+/// Whether the command a `find -exec` runs is a deletion (N5(3)): rm, rmdir or unlink by
+/// name, or one shell level whose script deletes.
+fn find_exec_deletes(args: &[String]) -> bool {
+    let mut i = 0;
+    while i < args.len() {
+        if args[i] == "-exec" || args[i] == "-execdir" {
+            let inner: Vec<&str> = args[i + 1..]
+                .iter()
+                .map(String::as_str)
+                .take_while(|w| *w != ";" && *w != "+")
+                .collect();
+            if inner.first().is_some_and(|c| {
+                matches!(*c, "rm" | "rmdir" | "unlink" | "/bin/rm" | "/usr/bin/rm")
+            }) {
+                return true;
+            }
+            if let Some(at) = inner.iter().position(|w| *w == "-c") {
+                let name = inner.first().copied().unwrap_or("");
+                if matches!(name, "sh" | "bash" | "zsh" | "/bin/sh" | "/bin/bash") {
+                    let script = inner[at + 1..].join(" ");
+                    if crate::claim_verify::shell_commands(&script)
+                        .iter()
+                        .any(|(n, _)| matches!(n.as_str(), "rm" | "rmdir" | "unlink"))
+                    {
+                        return true;
+                    }
+                }
+            }
+        }
+        i += 1;
+    }
+    false
+}
+
+/// The line with its here-doc bodies cut (N5(2)): a body is data unless the command the
+/// redirect feeds is a shell (`sh`, `bash`, `zsh`, `eval`, `source`), in which case the body
+/// stays as code. Line based; the terminator is the word after `<<` (quotes stripped).
+fn strip_here_docs(command: &str) -> String {
+    let lines: Vec<&str> = command.lines().collect();
+    let mut out = String::new();
+    let mut i = 0;
+    while i < lines.len() {
+        let line = lines[i];
+        if let Some(tag) = heredoc_tag(line) {
+            let mut end = lines.len();
+            for (j, l) in lines.iter().enumerate().skip(i + 1) {
+                if l.trim() == tag {
+                    end = j;
+                    break;
+                }
+            }
+            out.push_str(line);
+            out.push('\n');
+            if line_feeds_shell(line) {
+                for body in &lines[i + 1..end] {
+                    out.push_str(body);
+                    out.push('\n');
+                }
+            }
+            i = end + 1;
+        } else {
+            out.push_str(line);
+            out.push('\n');
+            i += 1;
+        }
+    }
+    out
+}
+
+/// Whether a line's command is a shell that reads the here-doc as code.
+fn line_feeds_shell(line: &str) -> bool {
+    for word in line.split_whitespace() {
+        let w = word.trim_matches(['\\', '"', '\'']);
+        if w.contains('=') && !w.starts_with('-') {
+            continue;
+        }
+        let name = w.rsplit('/').next().unwrap_or(w);
+        return matches!(name, "sh" | "bash" | "zsh" | "eval" | "source" | ".");
+    }
+    false
+}
+
+/// The here-doc terminator word of a line, when it holds a `<<` redirect.
+fn heredoc_tag(line: &str) -> Option<String> {
+    let at = line.find("<<")?;
+    let rest = line[at + 2..].trim_start();
+    if rest.starts_with('<') {
+        return None;
+    }
+    let word: String = rest
+        .chars()
+        .take_while(|c| !c.is_whitespace() && *c != ';')
+        .collect();
+    let word = word.trim_matches(['\'', '"']);
+    (!word.is_empty()).then(|| word.to_string())
 }
 
 #[cfg(test)]
@@ -3883,7 +4105,7 @@ mod tests {
         let (_d, wt) = a_worktree();
         assert_eq!(
             deletion_outside("cd / && rm -rf victim", &wt),
-            Some(DELETION_OUTSIDE)
+            Some(DELETION_OUTSIDE.to_string())
         );
         // A cd inside the worktree keeps a relative delete inside it.
         assert_eq!(deletion_outside("cd src && rm -rf build", &wt), None);
@@ -3895,7 +4117,7 @@ mod tests {
         let (_d, wt) = a_worktree();
         assert_eq!(
             deletion_outside("git -C /Users/definitely-not-here clean -fdx", &wt),
-            Some(DELETION_OUTSIDE)
+            Some(DELETION_OUTSIDE.to_string())
         );
         assert_eq!(
             deletion_outside("git -C . clean -fdx", &wt),
@@ -3920,7 +4142,7 @@ mod tests {
         ] {
             assert_eq!(
                 deletion_outside(command, &wt),
-                Some(DELETION_OUTSIDE),
+                Some(DELETION_OUTSIDE.to_string()),
                 "{command}"
             );
         }
@@ -3929,10 +4151,11 @@ mod tests {
         }
         // An unknown variable is never inside: its value can name anywhere.
         std::env::remove_var("MOAI_AUDIT_B1_UNKNOWN");
-        assert_eq!(
-            deletion_outside("rm $MOAI_AUDIT_B1_UNKNOWN/victim", &wt),
-            Some(DELETION_OUTSIDE)
-        );
+        // N5(1): the refusal names the variable and says to spell the path.
+        let reason = deletion_outside("rm $MOAI_AUDIT_B1_UNKNOWN/victim", &wt)
+            .expect("the unknown variable is refused");
+        assert!(reason.contains("$MOAI_AUDIT_B1_UNKNOWN"), "{reason}");
+        assert!(reason.contains("spell the path"), "{reason}");
     }
 
     /// B1: the grouping forms — if-then, for-do, braces, backticks, a leading `!` — still let
@@ -3952,7 +4175,7 @@ mod tests {
         for command in cases {
             assert_eq!(
                 deletion_outside(&command, &wt),
-                Some(DELETION_OUTSIDE),
+                Some(DELETION_OUTSIDE.to_string()),
                 "{command}"
             );
         }
@@ -3964,7 +4187,7 @@ mod tests {
         let (_d, wt) = a_worktree();
         assert_eq!(
             deletion_outside("find -L /Users/definitely-not-here -type f -delete", &wt),
-            Some(DELETION_OUTSIDE)
+            Some(DELETION_OUTSIDE.to_string())
         );
     }
 
@@ -3995,7 +4218,7 @@ mod tests {
         if let Some(t) = saved_tmp {
             std::env::set_var("TMPDIR", t);
         }
-        assert_eq!(answer, Some(DELETION_OUTSIDE));
+        assert_eq!(answer, Some(DELETION_OUTSIDE.to_string()));
     }
 
     /// audit 6768 small 4: a guarded settings write is refused from a subfolder cwd, through
@@ -4014,5 +4237,84 @@ mod tests {
         );
         let local = json!({"command": "echo x >> .claude/settings.local.json"});
         assert!(dangerous_guard("Bash", &local, &wt).is_some(), "local pair");
+    }
+
+    /// N4 of the repair audit: the cd/pushd/git/find/xargs/brace/tilde/quoted-substitution
+    /// shapes that still slipped by.
+    #[test]
+    fn audit_n4_the_remaining_deletion_shapes_are_refused() {
+        let (_d, wt) = a_worktree();
+        let outside = "/Users/definitely-not-here";
+        let cases = [
+            "cd; rm -rf Documents".to_string(),
+            "cd -- / && rm -rf victim".to_string(),
+            "D=/; cd $D && rm -rf victim".to_string(),
+            "pushd / && rm -rf victim".to_string(),
+            format!("git -c a=b -C {outside} clean -fdx"),
+            "D=/; git -C $D clean -fdx".to_string(),
+            format!("git -C /tmp -C {outside} clean -fdx"),
+            format!("git --work-tree={outside} clean -fdx"),
+            format!("echo \"$(rm -rf {outside})\""),
+            format!("X=\"$(rm -rf {outside})\""),
+            format!("echo \"`rm -rf {outside}`\""),
+            "rm -rf ~root".to_string(),
+            "rm -rf {,/Users/definitely-not-here}".to_string(),
+            format!("find -E {outside} -type f -delete"),
+            "xargs -I{} rm -rf {}".to_string(),
+        ];
+        for command in &cases {
+            assert!(deletion_outside(command, &wt).is_some(), "{command}");
+        }
+    }
+
+    /// N5(1) of the repair audit (leader decision): $PWD and a variable this line assigned a
+    /// literal resolve; every other variable in a target is a refusal that names it.
+    #[test]
+    fn audit_n5_variables_resolve_or_refuse_by_name() {
+        let (_d, wt) = a_worktree();
+        // $PWD names the working folder: inside.
+        assert_eq!(deletion_outside("rm -rf $PWD/build", &wt), None);
+        assert_eq!(deletion_outside("rm -rf ${PWD}/build", &wt), None);
+        // A same-line literal assignment resolves through.
+        assert_eq!(deletion_outside("D=$PWD; rm -rf $D/build", &wt), None);
+        // Any other variable: refused, and the reason names the variable and says to spell
+        // the path.
+        std::env::remove_var("MOAI_AUDIT_N5_UNKNOWN");
+        let answer = deletion_outside("rm -rf $MOAI_AUDIT_N5_UNKNOWN/x", &wt);
+        let reason = answer.expect("the unknown variable is refused");
+        assert!(reason.contains("$MOAI_AUDIT_N5_UNKNOWN"), "{reason}");
+        assert!(reason.contains("spell the path"), "{reason}");
+    }
+
+    /// N5(2): a here-doc body is data unless the redirect feeds a shell.
+    #[test]
+    fn audit_n5_a_heredoc_body_is_data_unless_it_feeds_a_shell() {
+        let (_d, wt) = a_worktree();
+        let outside = "/Users/definitely-not-here";
+        // Data: git commit -F - and cat > file both pass with a body that mentions rm.
+        let commit = format!("git commit -F - <<EOF\nrm -rf {outside}\nEOF");
+        assert_eq!(deletion_outside(&commit, &wt), None, "{commit}");
+        let cat = format!("cat > notes.txt <<EOF\nxargs rm -rf {outside}\nEOF");
+        assert_eq!(deletion_outside(&cat, &wt), None, "{cat}");
+        // Code: the same body fed to a shell is refused.
+        let sh = format!("sh <<EOF\nrm -rf {outside}\nEOF");
+        assert!(deletion_outside(&sh, &wt).is_some(), "{sh}");
+        let bash = format!("bash <<EOF\nrm -rf {outside}\nEOF");
+        assert!(deletion_outside(&bash, &wt).is_some(), "{bash}");
+    }
+
+    /// N5(3): find -exec is a deletion only when the executed command is one.
+    #[test]
+    fn audit_n5_find_exec_deletes_only_with_a_deleting_command() {
+        let (_d, wt) = a_worktree();
+        let outside = "/Users/definitely-not-here";
+        let grep = format!("find {outside} -name x -exec grep q {{}} +");
+        assert_eq!(deletion_outside(&grep, &wt), None, "{grep}");
+        let ls = format!("find {outside} -name x -exec ls {{}} \\;");
+        assert_eq!(deletion_outside(&ls, &wt), None, "{ls}");
+        let rm = format!("find {outside} -name x -exec rm {{}} +");
+        assert!(deletion_outside(&rm, &wt).is_some(), "{rm}");
+        let shell = format!("find {outside} -name x -exec sh -c 'rm -rf {{}}' \\;");
+        assert!(deletion_outside(&shell, &wt).is_some(), "{shell}");
     }
 }
