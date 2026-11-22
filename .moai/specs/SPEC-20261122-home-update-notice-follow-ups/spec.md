@@ -24,20 +24,20 @@ The independent audit of the home update slice passed it and left three follow-u
 
 ## Acceptance
 
-- AC-1 (REQ-1, REQ-4): the notice of each host in the preview and in the apply result carries the removal sentence, and the plan digest is the same with and without the folders · verify: `cargo test --locked --offline --test codex_home_update_removed`
-- AC-2 (REQ-2): the Korean preview and apply rows for an unmanaged entry hold the Korean words for "no longer managed" and "remove them yourself", and the English rows hold the English sentence · verify: `cargo test --locked --offline --test update_tux_golden the_unmanaged_notice_reads_in_both_languages_and_names_the_host`
-- AC-3 (REQ-3): the apply screen row of an unmanaged entry starts with `unmanaged codex` and the apply row of a Claude skipped part starts with its part and `claude` · verify: `cargo test --locked --offline --test update_tux_golden the_unmanaged_notice_reads_in_both_languages_and_names_the_host`
+- AC-1 (REQ-1, REQ-4): the notice of each host in the preview ends with the removal sentence, and the plan digest is the same with and without the folders · verify: `cargo test --locked --offline --test home_update_notice_follow_ups the_notice_says_to_remove_the_old_files_yourself`
+- AC-2 (REQ-2): the Korean preview and apply rows for an unmanaged entry hold the Korean words for "no longer managed" and "remove them yourself", and the English rows hold the English sentence · verify: `cargo test --locked --offline --test home_update_notice_follow_ups the_unmanaged_notice_reads_in_both_languages_and_names_the_host`
+- AC-3 (REQ-3): the apply screen row of an unmanaged entry carries `unmanaged codex` and the apply row of a Claude skipped part carries its part and `claude` · verify: `cargo test --locked --offline --test home_update_notice_follow_ups the_unmanaged_notice_reads_in_both_languages_and_names_the_host`
 - AC-4 (REQ-5): the blocked skill copy test reads the confirm result and asserts `applied` is true · verify: `cargo test --locked --offline --test update_user_layer_cli a_blocked_skill_copy_gets_no_agents_and_no_section`
 - AC-5 (REQ-6): the two doc comments no longer name the Codex folder as a written target · verify: `git grep -n "codex" -- src/home_routing.rs src/home_style.rs` shows only the lines that say the update no longer writes it
 
 ## Scope
 
-- write: `src/update.rs`, `src/update_tux.rs`, `src/home_routing.rs`, `src/home_style.rs`, `tests/codex_home_update_removed.rs`, `tests/update_tux_golden.rs`, `tests/update_user_layer_cli.rs`, `.moai/specs/SPEC-20261122-home-update-notice-follow-ups/spec.md`
-- read-only: everything else, in particular the golden files under `tests/fixtures`
+- write: only the named lines of `src/update.rs` (the two notice reasons), `src/update_tux.rs` (the two skipped-row renderers), `src/home_routing.rs` and `src/home_style.rs` (one doc comment each) and `tests/update_user_layer_cli.rs` (the confirm result check), and the new file `tests/home_update_notice_follow_ups.rs` and this SPEC; those files are held by other cards and the leader granted these lines only
+- read-only: everything else, in particular `tests/codex_home_update_removed.rs`, `tests/update_tux_golden.rs` and the golden files under `tests/fixtures` (no golden holds a skipped row)
 - forbidden: any file under the user's Codex, shared agents or OMP folders on this machine; the real HOME (every test runs in a temporary home)
 
 ## Plan
 
 1. RED: add the removal sentence to the notice cases, add the screen case for both languages and both screens, and restore the confirm result check; the first two fail on the tip.
 2. GREEN: extend the two notice reasons, add the Korean form and the host label in the two skipped-row renderers, and fix the two comments.
-3. Run the notice test file, the golden test file, the user layer test file, clippy, rustfmt and `moai spec check`.
+3. Run the new test file, the notice test file, the golden test file, the user layer test file, clippy, rustfmt and `moai spec check`.
