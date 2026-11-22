@@ -124,31 +124,219 @@ fn run_lint(args: &[&str]) -> std::process::Output {
     cmd.output().expect("spawn the AC command lint")
 }
 
-/// #2661: the lint calls `cargo test --test <name> -- --list`, and that cargo call re-copies
-/// target/debug/moai-cli even when nothing is rebuilt. Under cargo-nextest every test of this
-/// binary must run alone, or a test spawning the binary in that moment fails with NotFound.
+/// SPEC-20261122-ac-lint-no-cargo: the lint reads test names from the sources and starts no
+/// cargo, so the nextest special case that made this binary run alone (#2661) has no reason.
 #[test]
-fn nextest_runs_this_binary_alone() {
+fn nextest_has_no_special_case_for_this_binary() {
     let config = fs::read_to_string(Path::new(MANIFEST).join(".config/nextest.toml"))
         .expect(".config/nextest.toml must exist");
-    let alone = config
+    let special = config
         .split("[[profile.default.overrides]]")
         .skip(1)
         .any(|block| {
             let block = block.split("\n[").next().unwrap_or("");
-            let value = |key: &str| {
-                block.lines().find_map(|line| {
-                    let (k, v) = line.split_once('=')?;
-                    (k.trim() == key).then(|| v.trim().trim_matches(['\'', '"']).to_string())
+            block.lines().any(|line| {
+                line.split_once('=').is_some_and(|(k, v)| {
+                    k.trim() == "filter" && v.contains("binary(ac_command_lint)")
                 })
-            };
-            value("filter").as_deref() == Some("binary(ac_command_lint)")
-                && value("threads-required").as_deref() == Some("num-test-threads")
+            })
         });
     assert!(
-        alone,
-        "an override with filter = 'binary(ac_command_lint)' and \
-         threads-required = 'num-test-threads' must stay in .config/nextest.toml:\n{config}"
+        !special,
+        "no override for binary(ac_command_lint) may stay in .config/nextest.toml:\n{config}"
+    );
+}
+
+/// Runs the lint with a fake `cargo` first on PATH, which shadows the real one and records each
+/// start in `cargo-started`. Returns the output and whether cargo was started.
+#[cfg(unix)]
+fn run_lint_without_cargo(args: &[&str]) -> (std::process::Output, bool) {
+    use std::os::unix::fs::PermissionsExt;
+    let bin = tempfile::TempDir::new().unwrap();
+    let marker = bin.path().join("cargo-started");
+    let fake = bin.path().join("cargo");
+    fs::write(
+        &fake,
+        format!("#!/bin/sh\necho \"$@\" >> '{}'\nexit 1\n", marker.display()),
+    )
+    .unwrap();
+    fs::set_permissions(&fake, fs::Permissions::from_mode(0o755)).unwrap();
+    let path = std::env::var_os("PATH").unwrap_or_default();
+    let path = std::env::join_paths(
+        std::iter::once(bin.path().to_path_buf()).chain(std::env::split_paths(&path)),
+    )
+    .unwrap();
+    let out = Command::new("python3")
+        .arg("-I")
+        .arg(Path::new(MANIFEST).join("tools/check_ac_commands.py"))
+        .args(args)
+        .env("PATH", path)
+        .output()
+        .expect("spawn the AC command lint");
+    (out, marker.exists())
+}
+
+#[cfg(unix)]
+fn text_of(out: &std::process::Output) -> String {
+    format!(
+        "{}{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    )
+}
+
+#[cfg(unix)]
+#[test]
+fn the_repository_lint_starts_no_cargo_and_ends_within_five_seconds() {
+    let started = std::time::Instant::now();
+    let (out, cargo_started) = run_lint_without_cargo(&["--tree", MANIFEST]);
+    let took = started.elapsed();
+    assert!(
+        !cargo_started,
+        "the lint must not start cargo:\n{}",
+        text_of(&out)
+    );
+    assert!(
+        out.status.success(),
+        "the recorded commands must pass without cargo:\n{}",
+        text_of(&out)
+    );
+    assert!(
+        took < std::time::Duration::from_secs(5),
+        "the lint took {took:?}; it must end within 5 s"
+    );
+}
+
+/// `docs/<name>` inside a temporary tree. Built at run time so tests/ci_scope_test.py, which greps
+/// quoted `docs/…` strings as repository documents, does not read these temporary paths as such.
+#[cfg(unix)]
+fn doc(name: &str) -> String {
+    format!("{}/{name}", "docs")
+}
+
+/// Writes `files` (relative path, text) under a new temporary tree.
+#[cfg(unix)]
+fn tree(files: &[(&str, &str)]) -> tempfile::TempDir {
+    let dir = tempfile::TempDir::new().unwrap();
+    for (rel, text) in files {
+        let path = dir.path().join(rel);
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        fs::write(path, text).unwrap();
+    }
+    dir
+}
+
+#[cfg(unix)]
+const SHAPES: &str = r##"// a brace in a comment: {
+/* a block comment with a brace } and a /* nested */ one */
+const TEXT: &str = "not a module { mod fake { #[test] fn in_a_string() {} } }";
+const RAW: &str = r#"#[test] fn in_a_raw_string() {}"#;
+const OPEN: char = '{';
+fn borrow<'a>(x: &'a str) -> &'a str { x }
+
+#[test]
+fn top_level() {}
+
+mod inner {
+    #[test]
+    // a comment between the attributes
+    #[ignore = "kept for the list"]
+    fn nested_one() {
+        let _ = "}";
+    }
+
+    mod deeper {
+        #[tokio::test]
+        async fn deepest() {}
+    }
+}
+
+mod helpers;
+
+#[path = "elsewhere/odd_name.rs"]
+mod renamed;
+
+#[test]
+fn after_the_modules() {}
+"##;
+
+#[cfg(unix)]
+#[test]
+fn test_names_are_read_from_the_sources_with_their_module_paths() {
+    let dir = tree(&[
+        ("tests/shapes.rs", SHAPES),
+        ("tests/helpers.rs", "#[test]\nfn from_a_module_file() {}\n"),
+        (
+            "tests/elsewhere/odd_name.rs",
+            "#[test]\nfn from_a_path_attribute() {}\n",
+        ),
+        (
+            doc("good.md").as_str(),
+            "`cargo test --test shapes top_level`\n\
+             `cargo test --test shapes inner::nested_one`\n\
+             `cargo test --test shapes inner::deeper::deepest`\n\
+             `cargo test --test shapes helpers::from_a_module_file`\n\
+             `cargo test --test shapes renamed::from_a_path_attribute`\n\
+             `cargo test --test shapes after_the_modules`\n",
+        ),
+        (
+            doc("bad.md").as_str(),
+            "`cargo test --test shapes in_a_string`\n\
+             `cargo test --test shapes in_a_raw_string`\n\
+             `cargo test --test shapes inner::after_the_modules`\n\
+             `cargo test --test shapes deeper::nested_one`\n",
+        ),
+    ]);
+    let root = dir.path().to_str().unwrap();
+    let (out, cargo_started) = run_lint_without_cargo(&["--tree", root]);
+    let text = text_of(&out);
+    assert!(!cargo_started, "the lint must not start cargo:\n{text}");
+    let violations: Vec<&str> = text
+        .lines()
+        .filter(|l| l.starts_with("VIOLATION:"))
+        .collect();
+    assert!(
+        violations.iter().all(|l| l.contains(&doc("bad.md"))),
+        "every good filter must select a read test:\n{text}"
+    );
+    for filter in [
+        "in_a_string",
+        "in_a_raw_string",
+        "inner::after_the_modules",
+        "deeper::nested_one",
+    ] {
+        assert!(
+            violations
+                .iter()
+                .any(|l| l.contains(&format!("'{filter}'"))),
+            "the filter {filter} names no test and must be a violation:\n{text}"
+        );
+    }
+    assert_eq!(violations.len(), 4, "{text}");
+    assert!(!out.status.success(), "{text}");
+}
+
+#[cfg(unix)]
+#[test]
+fn a_filter_on_macro_made_tests_says_the_names_cannot_be_read() {
+    let dir = tree(&[
+        (
+            "tests/made.rs",
+            "macro_rules! case {\n    ($name:ident) => {\n        #[test]\n        fn $name() {}\n    };\n}\n\
+             case!(made_by_macro);\n",
+        ),
+        (doc("record.md").as_str(), "`cargo test --test made made_by_macro`\n"),
+    ]);
+    let root = dir.path().to_str().unwrap();
+    let (out, cargo_started) = run_lint_without_cargo(&["--tree", root]);
+    let text = text_of(&out);
+    assert!(!cargo_started, "the lint must not start cargo:\n{text}");
+    assert!(!out.status.success(), "{text}");
+    assert!(
+        text.lines().any(|l| l.starts_with("VIOLATION:")
+            && l.contains(&doc("record.md"))
+            && l.contains("macro")),
+        "the violation must say the names are made by a macro:\n{text}"
     );
 }
 

@@ -164,11 +164,11 @@ fn merged_rules_live_in_their_workflow_files() {
             "never switch, create, reset, stash, rebase or merge branches in the shared primary checkout",
         ),
         (
-            "references/internal/review.md",
+            "references/audit.md",
             "A Critical or High security finding blocks",
         ),
         (
-            "references/internal/review.md",
+            "references/audit.md",
             "a missing or stale scan is unverified, never a pass",
         ),
         (

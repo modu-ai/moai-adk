@@ -1,9 +1,10 @@
 //! SPEC-20261119-launcher-reads-models (card C-47 slice 8, criteria 5 and 7): the launchers read the
 //! model and effort that `moai update` saved under `launcher.models.<tool>.<role>` in the user
 //! launcher settings file. The `glm` host follows in SPEC-20261119-glm-launcher-settings-receipt
-//! (criterion 5, glm part): its saved id carries the `zai/` provider prefix of the shared table, and
-//! the host takes the bare z.ai model name. Every case uses `--dry-run` with a synthetic HOME and a
-//! temporary git project; no host is started and no real settings file is read.
+//! (criterion 5, glm part): its saved id carries the `zai/` provider prefix of the support table,
+//! and the host takes the bare z.ai model name. Every case uses `--dry-run` with a synthetic HOME
+//! and a temporary git project; no host is started and no real settings file is read.
+//! SPEC-20261122-remove-omp-launcher: OMP is not a launcher host any more.
 
 #![cfg(unix)]
 
@@ -23,8 +24,6 @@ const SAVED: &str = r#"{"launcher":{"future_key":"SENTINEL-SAVED-TEXT","models":
               "agent":{"model":"claude-haiku-5-5","effort":"low"}},
     "codex":{"leader":{"model":"gpt-6.2-sol","effort":"max"},
              "agent":{"model":"gpt-6-luna","effort":"low"}},
-    "omp":{"leader":{"model":"zai/glm-5.3-flash","effort":"max"},
-           "agent":{"model":"zai/glm-5.3","effort":"low"}},
     "glm":{"leader":{"model":"zai/glm-5.3-flash","effort":"max"},
            "agent":{"model":"zai/glm-5.3","effort":"low"}}}}}"#;
 
@@ -48,9 +47,6 @@ impl Fixture {
             .unwrap()
             .success());
         let bin = tempfile::tempdir().unwrap();
-        let stub = bin.path().join("omp");
-        fs::write(&stub, "#!/bin/sh\nexit 0\n").unwrap();
-        fs::set_permissions(&stub, fs::Permissions::from_mode(0o755)).unwrap();
         let home = tempfile::tempdir().unwrap();
         // The skill copies of both hosts, so a launch prints no missing-skill warning (that line
         // names the HOME folder, and the outputs compared below come from different HOMEs).
@@ -113,7 +109,7 @@ fn has_pair(argv: &[String], flag: &str, value: &str) -> bool {
     argv.windows(2).any(|w| w[0] == flag && w[1] == value)
 }
 
-/// `(launcher word, role flag, model flag, model, effort pair)` for the three hosts and two roles
+/// `(launcher word, role flag, model flag, model, effort pair)` for the two hosts and two roles
 /// of `SAVED`: the flag each host takes the model in and the effort in.
 fn cases() -> Vec<(
     &'static str,
@@ -136,20 +132,6 @@ fn cases() -> Vec<(
             "--model",
             "claude-haiku-5-5",
             ["--effort".into(), "low".into()],
-        ),
-        (
-            "omp",
-            "-l",
-            "--model",
-            "zai/glm-5.3-flash",
-            ["--thinking".into(), "max".into()],
-        ),
-        (
-            "omp",
-            "-a",
-            "--model",
-            "zai/glm-5.3",
-            ["--thinking".into(), "low".into()],
         ),
         (
             "glm",
@@ -207,7 +189,7 @@ fn explicit_flags_win_per_field() {
     assert!(has_pair(&a, "--model", "opus"), "{a:?}");
     assert!(has_pair(&a, "--effort", "max"), "{a:?}");
     // A prefixed explicit model also stays as written: the strip is a translation of the saved
-    // table's OMP form, not input handling (audit N2 — a pin with a prefix on the flag).
+    // table's `zai/` form, not input handling (audit N2 — a pin with a prefix on the flag).
     let a = argv(&f.dry(&["glm", "-l", "--model", "zai/glm-5.3"]));
     assert!(has_pair(&a, "--model", "zai/glm-5.3"), "{a:?}");
     assert!(has_pair(&a, "--effort", "max"), "{a:?}");
@@ -234,25 +216,15 @@ fn without_a_saved_choice_nothing_changes() {
     let a = argv(&f.dry(&["cc", "-l"]));
     assert!(has_pair(&a, "--model", "opus"), "{a:?}");
     assert!(has_pair(&a, "--effort", "medium"), "{a:?}");
-    let a = argv(&f.dry(&["omp", "-a"]));
-    assert!(
-        !a.iter().any(|x| x == "--model" || x == "--thinking"),
-        "{a:?}"
-    );
-    // A file that saves only an old codex value: it is ignored, so the claude, omp and glm
+    // A file that saves only an old codex value: it is ignored, so the claude and glm
     // launches stay as they are (a glm role
     // session without a saved glm entry keeps the alias default of `claude_argv`, D-4).
-    let bare = (
-        argv(&f.dry(&["cc", "-a"])),
-        argv(&f.dry(&["omp", "-l"])),
-        argv(&f.dry(&["glm", "-l"])),
-    );
+    let bare = (argv(&f.dry(&["cc", "-a"])), argv(&f.dry(&["glm", "-l"])));
     f.config(
         r#"{"launcher":{"models":{"codex":{"leader":{"model":"gpt-6.1-sol","effort":"high"}}}}}"#,
     );
     assert_eq!(argv(&f.dry(&["cc", "-a"])), bare.0);
-    assert_eq!(argv(&f.dry(&["omp", "-l"])), bare.1);
-    assert_eq!(argv(&f.dry(&["glm", "-l"])), bare.2);
+    assert_eq!(argv(&f.dry(&["glm", "-l"])), bare.1);
 }
 
 /// AC-3 (REQ-4 of the glm SPEC): a roleless session — `glm` included — ignores the saved choices;
@@ -262,7 +234,7 @@ fn a_roleless_session_ignores_saved_choices() {
     let with = Fixture::new();
     with.config(SAVED);
     let without = Fixture::new();
-    let launches: [&[&str]; 3] = [&["cc"], &["omp"], &["glm"]];
+    let launches: [&[&str]; 2] = [&["cc"], &["glm"]];
     for args in launches {
         // Both homes launch in the same project: a note names the project folder.
         let launch = |home: &Path| {
@@ -304,7 +276,7 @@ fn a_rewritten_file_is_used_by_the_next_launch() {
     assert!(has_pair(&third, "--effort", "medium"), "{third:?}");
 }
 
-/// AC-5: a saved entry outside the support table refuses a role launch on claude, omp and glm
+/// AC-5: a saved entry outside the support table refuses a role launch on claude and glm
 /// (the entry of another tool counts: the whole file is checked), names key paths only, and does
 /// not refuse a roleless launch.
 #[test]
@@ -318,8 +290,8 @@ fn an_unsupported_saved_entry_refuses_a_role_launch() {
         ),
         // An effort the model does not offer (the glm models take low, high and max only).
         (
-            r#"{"launcher":{"models":{"omp":{"agent":{"model":"zai/glm-5.3","effort":"medium"}}}}}"#,
-            "launcher.models.omp.agent",
+            r#"{"launcher":{"models":{"glm":{"leader":{"model":"zai/glm-5.3","effort":"medium"}}}}}"#,
+            "launcher.models.glm.leader",
         ),
         // The bad entry belongs to another tool than the one launched below.
         (
@@ -330,7 +302,7 @@ fn an_unsupported_saved_entry_refuses_a_role_launch() {
     for (bad, key_path) in bad_files {
         let f = Fixture::new();
         f.config(bad);
-        for args in [["cc", "-l"], ["cc", "-a"], ["omp", "-l"], ["glm", "-l"]] {
+        for args in [["cc", "-l"], ["cc", "-a"], ["glm", "-l"]] {
             let out = f.run(&args);
             assert_eq!(out.status.code(), Some(1), "{args:?} {bad}");
             assert!(out.stdout.is_empty(), "{args:?} {bad}");
@@ -354,7 +326,7 @@ fn an_unsupported_saved_entry_refuses_a_role_launch() {
 #[test]
 fn a_saved_codex_entry_of_any_shape_is_ignored() {
     let clean = Fixture::new();
-    let baseline: Vec<Value> = [["cc", "-l"], ["cc", "-a"], ["omp", "-l"], ["glm", "-a"]]
+    let baseline: Vec<Value> = [["cc", "-l"], ["cc", "-a"], ["glm", "-a"]]
         .iter()
         .map(|args| clean.dry(args))
         .collect();
@@ -368,7 +340,7 @@ fn a_saved_codex_entry_of_any_shape_is_ignored() {
         f.config(&format!(
             r#"{{"launcher":{{"models":{{"codex":{codex}}}}}}}"#
         ));
-        for (args, want) in [["cc", "-l"], ["cc", "-a"], ["omp", "-l"], ["glm", "-a"]]
+        for (args, want) in [["cc", "-l"], ["cc", "-a"], ["glm", "-a"]]
             .iter()
             .zip(&baseline)
         {
@@ -410,53 +382,6 @@ fn a_saved_value_adds_a_note_with_its_key_path() {
             "{word} {role}: {text}"
         );
     }
-}
-
-/// AC-1 (the start path, not only `--dry-run`): a saved z.ai model for OMP reaches the host with
-/// its argv and with the glm key, the way a model named on the command line does. A stub `omp`
-/// records the arguments and the value of `ZAI_API_KEY`.
-#[test]
-fn a_saved_zai_model_reaches_an_omp_host_that_is_started() {
-    let f = Fixture::new();
-    f.config(SAVED);
-    let stub = f.bin.path().join("omp");
-    fs::write(
-        &stub,
-        "#!/bin/sh\nprintf '%s' \"${ZAI_API_KEY-<unset>}\" > \"$MOAI_TEST_MARK/zai\"\nprintf '%s\\n' \"$@\" > \"$MOAI_TEST_MARK/args\"\nexit 0\n",
-    )
-    .unwrap();
-    fs::set_permissions(&stub, fs::Permissions::from_mode(0o755)).unwrap();
-    let out = Command::new(crate::common::MOAI_BIN)
-        .args(["omp", "-l"])
-        .current_dir(f.project.path())
-        .env("PATH", format!("{}:/usr/bin:/bin", f.bin.path().display()))
-        .env("HOME", f.home.path())
-        .env("MOAI_TEST_MARK", f.bin.path())
-        .env("GIT_CONFIG_GLOBAL", "/dev/null")
-        .env("GIT_CONFIG_SYSTEM", "/dev/null")
-        .env_remove("ZAI_API_KEY")
-        .env("ANTHROPIC_AUTH_TOKEN", "moai-test-token-not-real")
-        .stdin(std::process::Stdio::null())
-        .output()
-        .unwrap();
-    assert!(
-        out.status.success(),
-        "{}",
-        String::from_utf8_lossy(&out.stderr)
-    );
-    let seen_key = fs::read_to_string(f.bin.path().join("zai")).unwrap();
-    assert_eq!(seen_key, "moai-test-token-not-real");
-    let args = fs::read_to_string(f.bin.path().join("args")).unwrap();
-    let args: Vec<&str> = args.lines().collect();
-    assert!(
-        args.windows(2)
-            .any(|w| w == ["--model", "zai/glm-5.3-flash"]),
-        "{args:?}"
-    );
-    assert!(
-        args.windows(2).any(|w| w == ["--thinking", "max"]),
-        "{args:?}"
-    );
 }
 
 /// AC-6 (REQ-7, the start path): a saved glm choice reaches the started host with the saved model

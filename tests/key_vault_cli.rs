@@ -66,7 +66,7 @@ fn envelope(out: &Output, secret: &str) -> Value {
 }
 
 fn vault(home: &Path) -> PathBuf {
-    home.join(".moai-cli/vault")
+    moai_cli::home_root::path(home).join("vault")
 }
 
 fn entry(home: &Path) -> PathBuf {
@@ -375,7 +375,7 @@ fn provider_names_cannot_leave_the_vault() {
         let env = envelope(&out, "v-never");
         assert_eq!(env["ok"], false, "{bad}");
     }
-    assert!(!home.join(".moai-cli").exists());
+    assert!(!moai_cli::home_root::path(&home).exists());
 }
 
 #[test]

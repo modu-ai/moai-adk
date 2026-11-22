@@ -416,30 +416,6 @@ fn locked_tests_refuse_other_writes_pass() {
         &root,
         &write_input("tests/old_test.rs", &root)
     )));
-    let patch = json!({"hook_event_name": "PreToolUse", "tool_name": "apply_patch",
-                       "tool_input": {"command": "*** Begin Patch\n*** Delete File: tests/login_test.rs\n*** End Patch"},
-                       "cwd": root});
-    let mut child = Command::new(BIN)
-        .args([
-            "hook-dispatch",
-            "--host",
-            "codex",
-            "--event",
-            "tool-preflight",
-        ])
-        .current_dir(&root)
-        .env("HOME", root.join("home"))
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .spawn()
-        .unwrap();
-    common::feed_stdin(&mut child, patch.to_string().as_bytes());
-    let out = child.wait_with_output().unwrap();
-    let text = String::from_utf8_lossy(&out.stdout);
-    assert!(
-        out.status.code() == Some(2) || text.contains("\"deny\""),
-        "codex: {text}"
-    );
     // A corrupt record locks nothing, and status reads no phase.
     fs::write(record_path(&root), "{oops").unwrap();
     assert!(allowed(&preflight(

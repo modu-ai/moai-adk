@@ -2,7 +2,7 @@
 id: SPEC-20261122-headless-run-contract
 title: "Every claude -p run moai starts pins its permission mode, MCP config, model, output schema and budgets, and the result is checked before it is trusted"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-22
 parent: SPEC-20261121-flow-skeleton
 ---
@@ -24,7 +24,7 @@ parent: SPEC-20261121-flow-skeleton
 
 ## Requirements
 
-- REQ-1: When moai starts any headless Claude run, the runner shall build the `claude -p` command in one function that every caller goes through and that refuses to build a command missing a pinned flag. · failure: none — a caller that cannot name its pinned values gets a build error before any process starts.
+- REQ-1: When moai starts any headless Claude run, the runner shall build the `claude -p` command in one function that every caller goes through and that refuses to build a command missing a pinned flag or an audit run whose requesting session is the change's author session. · failure: none — a caller that cannot name its pinned values, or an audit caller that is the author or cannot name the author, gets a build error before any process starts, and the requesting session is recorded on the built run.
 - REQ-2: The runner shall always pass exactly one of `--permission-mode auto` or `--permission-mode dontAsk` together with `--permission-prompts none` and `--allowedTools` entries only as narrow rules that survive auto mode's broad-rule drop, recording the chosen mode and its reason in the run's ledger row. · failure: none — a blanket `Bash` or `Bash(*)`-style entry is a build error, and no run starts in the Manual default where approval-needing calls are denied.
 - REQ-3: The runner shall pass `--strict-mcp-config` and no `--mcp-config` when no platform `managed-mcp.json` is deployed and neither of the two flags when one is. · failure: none — with the platform file deployed both flags make Claude Code exit at startup, and without the flag pair a `-p` run loads project `.mcp.json` servers without asking.
 - REQ-4: The runner shall always pass `--model` with a value the caller names and `--agent` with the agent definition name for audit runs. · failure: none — a run without a pinned model is a build error, because `-p` bills a Fable request to usage credits without asking, and the audit contract lives in the agent definition.
@@ -33,13 +33,13 @@ parent: SPEC-20261121-flow-skeleton
 - REQ-7: The runner shall always pass `--setting-sources user,project,local` and never `--bare`. · failure: none — a run that relies on the default sources or a future bare default is a build error, because `--bare` skips hooks, skills, CLAUDE.md and auto memory and stops the session from receiving messages.
 - REQ-8: The runner shall pass exactly one `--settings` value whose inline JSON object carries `crossSessionInbound: accept` for worker runs and additionally `permissions.denyInsteadOfPrompting: true` for lane runs only. · failure: none — a plain audit run that carries the lane key or a lane run without it is a build error, and the main session keeps asking because the key never enters a settings file.
 - REQ-9: When an audit is reproduced in a repository moai does not own, the runner shall replace the setting sources with `user` only or add `disableAllHooks: true` to the `--settings` object so that tree's hooks do not run. · failure: none — the default sources stay for moai's own repository.
-- REQ-10: The runner shall set `CLAUDE_CODE_RETRY_WATCHDOG=1` and a raised `BASH_DEFAULT_TIMEOUT_MS` in the child environment for every run and, when `ANTHROPIC_API_KEY` is present, print one warning that names the key's presence and billing consequence without the key's value or a file that holds it. · failure: none — an unattended run that fails on a transient capacity error or reports success before a long command finishes is a finding, and the warning text is checked to contain no credential material.
+- REQ-10: The runner shall set `CLAUDE_CODE_RETRY_WATCHDOG=1` and a raised `BASH_DEFAULT_TIMEOUT_MS` in the child environment for every run and, when `ANTHROPIC_API_KEY` is present, print one warning that names the key's presence and billing consequence without the key's value or a file that holds it, keeping every credential value out of the child argv and environment except a credential the caller names for a gateway run. · failure: none — an unattended run that fails on a transient capacity error or reports success before a long command finishes is a finding, the warning text is checked to contain no credential material, and the scrubbed credential names are recorded without their values.
 - REQ-11: The runner shall treat a run as answered only when the process exited zero and the JSON result carries `is_error` false and the expected `structured_output` field. · failure: none — a `success` subtype without `structured_output`, a refusal `stop_reason` and a non-zero exit are all recorded as no verdict.
 - REQ-12: The runner shall record one ledger event row per run with the kind `claude.run` and a JSON payload holding the verdict, `session_id`, `total_cost_usd` marked as an estimate, `num_turns`, the terminal reason and `permission_denials`. · failure: none — the row fits the existing free-text event table with no schema change.
 
 ## Acceptance
 
-- AC-1 (REQ-1, REQ-2, REQ-3, REQ-4, REQ-5, REQ-6, REQ-7, REQ-8, REQ-9, REQ-10): a stand-in `claude` binary placed first on the test PATH records the exact argv and environment of every moai-started run and each pinned flag of REQ-2 through REQ-10 is present in what it recorded.
+- AC-1 (REQ-1, REQ-2, REQ-3, REQ-4, REQ-5, REQ-6, REQ-7, REQ-8, REQ-9, REQ-10): a stand-in `claude` binary placed first on the test PATH records the exact argv and environment of every moai-started run, each pinned flag of REQ-2 through REQ-10 is present in what it recorded, and neither the recorded argv nor the recorded environment dump contains the credential value planted in the parent environment.
   verify: `cargo test --locked --offline --test headless_run_cli standin_records_every_pinned_flag` — red first in the code slice
 - AC-2 (REQ-3): with a faked platform root carrying a `managed-mcp.json`, the built command carries neither `--strict-mcp-config` nor `--mcp-config`, and without the file it carries `--strict-mcp-config` and no `--mcp-config`.
   verify: `cargo test --locked --offline --test headless_run_cli managed_mcp_adapts_the_flags` — red first
@@ -55,18 +55,20 @@ parent: SPEC-20261121-flow-skeleton
   verify: `cargo test --locked --offline --test headless_run_cli api_key_warning_names_presence_only` — red first
 - AC-8: the wider READY set passes.
   verify: `cargo test --locked --offline --bins` and `--lib`
+- AC-9 (REQ-1): an audit run whose requesting session equals the author session refuses to build before any process starts, and so does an audit run that names no author.
+  verify: `cargo test --locked --offline --test headless_run_cli author_session_audit_refuses_to_build` — red first
 
 ## Scope
 
-- write: `.moai/specs/SPEC-20261122-headless-run-contract/**`
-- later code slices on this card (joined by card scope when their turn comes): one new runner module under `src/` (planned name `src/headless_run.rs`, fixed in the code slice), the test target `tests/headless_run_cli.rs` with its stand-in `claude` fixture, the `claude.run` ledger event writer, and the call sites that adopt the runner (the audit runner first, the worker wake and the GLM gateway runner on their own cards)
+- write: `.moai/specs/SPEC-20261122-headless-run-contract/**`, `src/headless_run.rs`, `tests/headless_run_cli.rs`, and the one `pub mod headless_run;` registration line in `src/lib.rs` (added under `card line-lease`, the shared-file lease, when the path is free)
+- later code slices on this card (joined by card scope when their turn comes): the `claude.run` ledger event writer, and the call sites that adopt the runner (the audit runner first, the worker wake and the GLM gateway runner on their own cards)
 - read-only: `src/ledger/schema.rs` (the event table the run row fits), `.moai/specs/SPEC-20261121-flow-skeleton/**`
 - forbidden: a real `claude` process or any model call inside tests; printing or logging any credential value or key file; `--bare`; `--dangerously-skip-permissions`; force pushes; pushes of the integration branch
 
 ## Plan
 
 1. This slice: this SPEC, committed on its branch, READY note with head and base; a moved tip is not re-merged.
-2. Code slice A: the runner module and the stand-in test target, red tests first — the pinned argv and environment (REQ-1–REQ-10, AC-1–AC-4, AC-7).
+2. Code slice A: the runner module and the stand-in test target, red tests first — the pinned argv and environment, the author-session refusal and the credential scrub (REQ-1–REQ-10, AC-1–AC-4, AC-7, AC-9); the `src/lib.rs` registration line joins the slice by `card line-lease` when the shared file is free.
 3. Code slice B: the result check and the ledger row (REQ-11–REQ-12, AC-5–AC-6).
 4. Code slice C: the audit runner call site adopts the common function; the worker wake and the GLM gateway runner adopt it on their own cards.
 
@@ -90,6 +92,8 @@ parent: SPEC-20261121-flow-skeleton
 | D-6 | `--bare` 는 금지, `--setting-sources user,project,local` 을 항상 명시한다. | headless.md "`--bare` … will become the default for `-p` in a future release"; `--bare` 는 수신 소켓도 안 묶는다(cross-session-messaging.md) | 카드 열림 |
 | D-7 | 실행 기록은 자유 이벤트 행(kind `claude.run` + JSON payload)에 남긴다 — 스키마 변경 없음. | `src/ledger/schema.rs` event 표(kind TEXT, payload JSON) | 카드 열림 |
 | D-8 | `ANTHROPIC_API_KEY` 경고는 존재와 과금 결과만 말하고 값·파일은 절대 말하지 않는다(GLM 레인 규칙과 같은 선). | authentication.md "the key is always used when present", 리더 지시 "GLM 키 값·키 파일은 절대 출력하지 말기" | 카드 열림 |
+| D-9 | 감사 실행은 작성자 세션에서 오면 거절한다(fail closed): 요청 세션과 작성자 세션이 같거나 작성자를 못 대면 둘 다 빌드 거부, 요청 세션은 실행 기록에 남긴다. | 리더 MERGED-LOCAL 노트(2026-11-22) "the runner records the requesting session and refuses an audit run requested by the card's author session", "자기 작업은 자기가 감사하지 않기" 규칙 | 카드 열림 |
+| D-10 | 자식 환경에서 자격 증명 값(`ANTHROPIC_API_KEY`·`ANTHROPIC_AUTH_TOKEN`·`CLAUDE_CODE_OAUTH_TOKEN`)과 세션 정체 변수(`CLAUDECODE`·`CLAUDE_CODE_CHILD_SESSION`·`CLAUDE_CODE_SESSION_ID`)를 지우고, 호출자가 게이트웨이용으로 명시한 자격 증명 하나만 다시 넣는다; 지워진 이름(값 아님)을 기록한다. `BASH_DEFAULT_TIMEOUT_MS` 는 600000(기본 120000 의 5배, 문서 예시 300000 과 상한 기본 600000 의 위)로 올린다. | 리더 MERGED-LOCAL 노트(2026-11-22) "no credential value appears in argv or the recorded environment dump", headless.md BASH_DEFAULT_TIMEOUT_MS=300000 예시, env-vars.md 기본 120000·상한 관계 | 카드 열림 |
 
 ## Result
 

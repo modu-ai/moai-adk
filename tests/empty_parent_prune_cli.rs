@@ -1,5 +1,5 @@
 //! #2936 R-fix R-C (PLAN 6880040242 R7): the writers that remove a project skill leave no empty
-//! `.agents/skills` (or `.claude/skills`) behind. `generation-apply` removing the last project
+//! `.claude/skills` behind. `generation-apply` removing the last project
 //! skill and `project-skill-revert` of a copy it created prune the folders their removal
 //! emptied, up to the project root and no further; a folder that still holds anything stays.
 //!
@@ -53,7 +53,7 @@ fn generation_project() -> TempDir {
     fs::create_dir_all(root.path().join(".moai-cli")).unwrap();
     let profile = json!({"schema_version": 2, "project_id": "demo",
         "purpose": "Build a small editor", "tools": ["Rust"], "development_methods": ["TDD"],
-        "hosts": ["claude", "codex"], "interview_revision": "r1", "decisions": [
+        "hosts": ["claude"], "interview_revision": "r1", "decisions": [
             {"id": "test_command", "topic": "test_command", "value": "cargo test --locked",
              "source": "user", "scope": "project"}]});
     fs::write(
@@ -100,7 +100,7 @@ fn skills(ids: &[&str]) -> Value {
     )
 }
 
-const CODEX_LAST: &str = ".agents/skills/prj-checks/SKILL.md";
+const LAST: &str = ".claude/skills/prj-checks/SKILL.md";
 
 // ---- AC-9: generation-apply removing the last project skill ----
 
@@ -109,17 +109,12 @@ fn removing_the_last_project_skill_leaves_no_empty_skills_folder() {
     let root = generation_project();
     let r = root.path();
     apply(r, &plan(r, &request(skills(&["prj-checks"]))));
-    assert!(r.join(CODEX_LAST).exists());
+    assert!(r.join(LAST).exists());
 
     let p = plan(r, &request(Value::Null));
     apply(r, &p);
-    assert!(!r.join(CODEX_LAST).exists());
-    for gone in [
-        ".agents/skills/prj-checks",
-        ".agents/skills",
-        ".agents",
-        ".claude/skills",
-    ] {
+    assert!(!r.join(LAST).exists());
+    for gone in [".claude/skills/prj-checks", ".claude/skills", ".claude"] {
         assert!(!r.join(gone).exists(), "{gone} was left behind");
     }
     // The project root itself and its instruction file stay; since the CLAUDE.md layout the
@@ -137,16 +132,16 @@ fn a_folder_that_still_holds_something_stays() {
     apply(r, &plan(r, &request(skills(&["prj-checks", "prj-extra"]))));
     let p = plan(r, &request(skills(&["prj-checks"])));
     apply(r, &p);
-    assert!(!r.join(".agents/skills/prj-extra").exists());
-    assert!(r.join(".agents/skills/prj-checks/SKILL.md").exists());
+    assert!(!r.join(".claude/skills/prj-extra").exists());
+    assert!(r.join(".claude/skills/prj-checks/SKILL.md").exists());
 
     // Now the last one goes, but the user has a skill of their own beside it.
-    fs::create_dir_all(r.join(".agents/skills/mine")).unwrap();
-    fs::write(r.join(".agents/skills/mine/SKILL.md"), "mine\n").unwrap();
+    fs::create_dir_all(r.join(".claude/skills/mine")).unwrap();
+    fs::write(r.join(".claude/skills/mine/SKILL.md"), "mine\n").unwrap();
     apply(r, &plan(r, &request(Value::Null)));
-    assert!(!r.join(".agents/skills/prj-checks").exists());
-    assert!(r.join(".agents/skills/mine/SKILL.md").exists(), "{r:?}");
-    assert!(r.join(".agents").exists());
+    assert!(!r.join(".claude/skills/prj-checks").exists());
+    assert!(r.join(".claude/skills/mine/SKILL.md").exists(), "{r:?}");
+    assert!(r.join(".claude").exists());
 }
 
 /// `apply-recover` puts the last skill back, folders and all.
@@ -155,9 +150,9 @@ fn the_last_project_skill_can_be_recovered_after_its_folders_went() {
     let root = generation_project();
     let r = root.path();
     apply(r, &plan(r, &request(skills(&["prj-checks"]))));
-    let original = fs::read(r.join(CODEX_LAST)).unwrap();
+    let original = fs::read(r.join(LAST)).unwrap();
     let applied = apply(r, &plan(r, &request(Value::Null)));
-    assert!(!r.join(".agents").exists());
+    assert!(!r.join(".claude").exists());
     let receipt = applied["receipt"].as_str().unwrap().to_string();
     result(&cli(
         &[
@@ -170,7 +165,7 @@ fn the_last_project_skill_can_be_recovered_after_its_folders_went() {
         ],
         &json!({}),
     ));
-    assert_eq!(fs::read(r.join(CODEX_LAST)).unwrap(), original);
+    assert_eq!(fs::read(r.join(LAST)).unwrap(), original);
 }
 
 // ---- AC-10: project-skill-revert ----
@@ -212,17 +207,10 @@ fn reverting_a_created_copy_leaves_no_empty_skills_folder() {
     let project = TempDir::new().unwrap();
     let source = TempDir::new().unwrap();
     write_source(source.path());
-    let id = skill_apply(project.path(), source.path(), &["codex", "claude"]);
-    assert!(project.path().join(".agents/skills/moai/SKILL.md").exists());
+    let id = skill_apply(project.path(), source.path(), &["claude"]);
+    assert!(project.path().join(".claude/skills/moai/SKILL.md").exists());
     skill_revert(project.path(), &id);
-    for gone in [
-        ".agents/skills/moai",
-        ".agents/skills",
-        ".agents",
-        ".claude/skills/moai",
-        ".claude/skills",
-        ".claude",
-    ] {
+    for gone in [".claude/skills/moai", ".claude/skills", ".claude"] {
         assert!(
             !project.path().join(gone).exists(),
             "{gone} was left behind"
@@ -235,19 +223,13 @@ fn a_revert_keeps_the_folders_that_hold_other_files() {
     let project = TempDir::new().unwrap();
     let source = TempDir::new().unwrap();
     write_source(source.path());
-    // The user already has a skill of their own under both hosts' folders.
-    for host_dir in [".agents/skills/mine", ".claude/skills/mine"] {
-        fs::create_dir_all(project.path().join(host_dir)).unwrap();
-        fs::write(project.path().join(host_dir).join("SKILL.md"), "mine\n").unwrap();
-    }
-    let id = skill_apply(project.path(), source.path(), &["codex", "claude"]);
+    // The user already has a skill of their own under the host's folder.
+    let host_dir = ".claude/skills/mine";
+    fs::create_dir_all(project.path().join(host_dir)).unwrap();
+    fs::write(project.path().join(host_dir).join("SKILL.md"), "mine\n").unwrap();
+    let id = skill_apply(project.path(), source.path(), &["claude"]);
     skill_revert(project.path(), &id);
-    assert!(!project.path().join(".agents/skills/moai").exists());
     assert!(!project.path().join(".claude/skills/moai").exists());
-    for kept in [
-        ".agents/skills/mine/SKILL.md",
-        ".claude/skills/mine/SKILL.md",
-    ] {
-        assert!(project.path().join(kept).exists(), "{kept} was removed");
-    }
+    let kept = ".claude/skills/mine/SKILL.md";
+    assert!(project.path().join(kept).exists(), "{kept} was removed");
 }

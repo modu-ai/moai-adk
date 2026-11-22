@@ -362,8 +362,6 @@
         "tests/update_hooks_cli.rs (package copy)",
         "tests/update_keys_cli.rs (package copy)",
         "tests/update_home_layer_cli.rs (package copy)",
-        "tests/omp_agents.rs (package copy)",
-        "tests/agents_project_cli.rs (package copy)",
         "tests/project_update_plan_cli.rs (package copy)",
         "tests/update_headver.rs (package copy)",
         "tests/update_switch_cli.rs (package copy)",
@@ -371,20 +369,17 @@
         "tests/host_home_cli.rs (plans hash skills/moai and agents/)"
       ],
       "checks": [
-        "cargo test --offline --locked --test agent_defs_package --test agents_home_cli --test update_user_layer_cli --test update_hooks_cli --test update_keys_cli --test update_home_layer_cli --test omp_agents --test agents_project_cli --test project_update_plan_cli --test update_headver --test update_switch_cli --test update_git_hooks_cli --test host_home_cli"
+        "cargo test --offline --locked --test agent_defs_package --test agents_home_cli --test update_user_layer_cli --test update_hooks_cli --test update_keys_cli --test update_home_layer_cli --test project_update_plan_cli --test update_headver --test update_switch_cli --test update_git_hooks_cli --test host_home_cli"
       ],
       "rules": [
         "tests/agent_defs_package.rs",
         "src/agent_defs.rs",
         "src/agent_install.rs",
-        "src/omp_agents.rs",
         "tests/agents_home_cli.rs",
         "tests/update_user_layer_cli.rs",
         "tests/update_hooks_cli.rs",
         "tests/update_keys_cli.rs",
         "tests/update_home_layer_cli.rs",
-        "tests/omp_agents.rs",
-        "tests/agents_project_cli.rs",
         "tests/project_update_plan_cli.rs",
         "tests/update_headver.rs",
         "tests/update_switch_cli.rs",
@@ -404,23 +399,20 @@
     {
       "id": "skill-package-whole-tree",
       "tests": [
-        "tests/codex_adapter.rs (12)",
         "tests/home_routing_cli.rs (7)",
         "tests/exe_link_cli.rs::update_plan_through_a_link_matches_the_real_path",
         "src/claude.rs (2 unit)",
         "src/update.rs::a_skill_copy_that_did_not_apply_gets_no_agents_and_no_section"
       ],
       "checks": [
-        "cargo test --offline --locked --test codex_adapter --test home_routing_cli --test exe_link_cli",
+        "cargo test --offline --locked --test home_routing_cli --test exe_link_cli",
         "cargo test --offline --locked --lib -- projection_keeps_the_canonical_body_and_records_additions projection_refuses_overrides_grants_and_bad_values a_skill_copy_that_did_not_apply_gets_no_agents_and_no_section"
       ],
       "rules": [
         "src/lib.rs",
         "src/update.rs",
-        "src/hosts/codex.rs",
         "src/claude.rs",
         "src/home_routing.rs",
-        "tests/codex_adapter.rs",
         "tests/home_routing_cli.rs",
         "tests/exe_link_cli.rs"
       ],
@@ -742,7 +734,7 @@
           "prefix": "README.md"
         },
         {
-          "prefix": "AGENTS.md"
+          "prefix": "CLAUDE.md"
         }
       ],
       "rejects": "a file that still says to run the removed Python Claude adapter, the adapter coming back, or the kept output styles leaving templates/claude/output-styles/ (#2709)"
@@ -1027,6 +1019,51 @@
         }
       ],
       "rejects": "the old banner wordings 'MoAI-Easy ★' or 'MoAI ★' left in shipped text; banners read '<emoji> MoAI 🗿 <name> ─…' (user instruction 2026-11-21)"
+    },
+    {
+      "id": "next-flow-shipped-texts",
+      "tests": [
+        "tests/next_flow_skill_scan.rs::refs_meaning_is_in_exactly_one_shipped_text",
+        "tests/next_flow_skill_scan.rs::refs_no_shipped_text_spells_the_rules_as_letters"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test next_flow_skill_scan refs_"
+      ],
+      "rules": [
+        "tests/next_flow_skill_scan.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "skills/moai/"
+        },
+        {
+          "prefix": "agents/"
+        }
+      ],
+      "rejects": "a second shipped text that explains the meaning of the NeXT name, or a shipped text that spells the four technical rules of the flow as the letters of the name (SPEC-20261122-next-flow-skills-agents AC-3)"
+    },
+    {
+      "id": "state-folder-literals-in-tests",
+      "tests": [
+        "tests/state_folder_literal_scan.rs::the_repository_tests_stay_within_the_state_folder_baseline"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test state_folder_literal_scan"
+      ],
+      "rules": [
+        "tests/state_folder_literal_scan.rs",
+        "tests/fixtures/state_folder_literals/allow.tsv"
+      ],
+      "scope": [
+        {
+          "prefix": "tests/",
+          "suffixes": [
+            ".rs",
+            ".py"
+          ]
+        }
+      ],
+      "rejects": "a test file outside tests/fixtures that spells the earlier or the new state folder name and is not in the counted baseline, or spells one more often than its baseline count; a fresh project or HOME uses the resolvers (SPEC-20261122-state-folder-literal-scan)"
     }
   ]
 }

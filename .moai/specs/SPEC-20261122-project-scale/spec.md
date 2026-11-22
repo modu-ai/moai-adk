@@ -11,7 +11,7 @@ parent: SPEC-20261121-flow-skeleton
 
 ## Intent
 
-사용자 요구(2026-11-22): moai-adk 는 프로젝트 크기와 상관없이 Claude Code 의 자체 기능만으로 잘 돌아야 해요. 첫 큰 코드베이스는 사용자의 다른 프로젝트예요. `/moai project` 는 규모를 작은 프로젝트(`small`), 큰 단일 트리(`large_tree`), 패키지가 있는 모노레포(`monorepo`)로 읽고, 사용자가 고르면 공식 문서 `large-codebases` 의 설정을 미리보기로 보여 주고 승인 뒤에만 써요. 이 SPEC 은 규모를 읽고 고르고 미리보기·적용하는 틀이고, 어떤 설정을 무엇으로 쓰는지는 자식 `SPEC-20261122-project-scale-settings` 가 정해요. 코드는 뒤 조각이 써요.
+사용자 요구(2026-11-22): moai-adk 는 프로젝트 크기와 상관없이 Claude Code 의 자체 기능만으로 잘 돌아야 해요. 첫 큰 코드베이스는 사용자의 다른 프로젝트예요. `/moai project` 는 규모를 작은 프로젝트(`small`), 큰 단일 트리(`large_tree`), 패키지가 있는 모노레포(`monorepo`)로 읽고, 사용자가 고르면 공식 문서 `large-codebases` 의 설정을 미리보기로 보여 주고 승인 뒤에만 써요. 부모가 `SPEC-20261121-flow-skeleton` 인 까닭: 그 SPEC 이 재설계 전체의 마스터이고 각 단계를 자식 SPEC 으로 나눠 실어요. 이 SPEC 은 그 가운데 프로젝트 쪽 하네스(`/moai project`)가 프로젝트 크기에 맞는지를 다루는 한 단계예요. 이 SPEC 은 규모를 읽고 고르고 미리보기·적용하는 틀이고, 어떤 설정을 무엇으로 쓰는지는 자식 `SPEC-20261122-project-scale-settings` 가 정해요. 코드는 뒤 조각이 써요.
 
 설정 하나하나는 Claude Code 자신의 키와 파일이에요. moai 만의 규모 키나 새 형식은 만들지 않아요(프로필에 사용자의 선택 하나만 더해요). 기본으로는 아무것도 쓰지 않아요: 프로젝트의 `.claude/` 아래 파일은 사용자가 골라서 쓰는 맞춤 하네스예요(사용자 결정 2026-11-22: 프로젝트 `.claude/rules` 등은 moai 가 기본으로 쓰지 않아요).
 
@@ -62,6 +62,15 @@ parent: SPEC-20261121-flow-skeleton
 4. 조각 C: 계획과 적용(REQ-6 에서 REQ-11, AC-1, AC-3, AC-4). 자기 계획·적용 연산, 자기 기준선 매니페스트와 영수증(CI 계획기와 같은 엔진 모양).
 5. 조각 D: 인터뷰 행, 워크플로 절, 프로필 `scale` 키, 갱신 단계(REQ-5, REQ-10, REQ-12, AC-5).
 
+### Slice C2 first items
+
+리더 결정 2026-11-22(되돌릴 수 있어요). 시험은 모두 `project_scale_plan_lib` 에 있어요.
+
+- 거절 메시지는 비밀 모양 값이나 URL 사용자 정보를 되풀이하지 않고, 경로 선택은 "looks like a credential" 이유로 거절돼요(REQ-11): `a_refusal_never_echoes_a_credential_shaped_pick`
+- `merge` 행의 값은 지금 값과 더할 항목을 합친 결과예요(D-4): `a_merge_row_carries_the_merged_value_and_drops_nothing`
+- 링크 워크트리에서는 공통 git 폴더(`commondir`)의 `info/exclude` 를 읽어요: `a_linked_worktree_reads_the_exclude_file_of_the_common_git_dir`
+- `.` 과 `./` 는 거절 규칙이나 `sparsePaths` 선택으로 거절돼요(REQ-11): `the_repository_root_itself_is_refused_as_a_deny_or_sparse_pick`
+
 ### Interview rows
 
 한 번에 최대 세 질문, 모두 선택, 권장 답이 먼저예요. 읽을 수 있는 것은 묻지 않고 확인만 해요.
@@ -89,6 +98,7 @@ parent: SPEC-20261121-flow-skeleton
 | D-1 | 기본 기준: 추적 파일 5,000 개 이상이면 `large_tree`, 작업 공간 표지가 있거나 매니페스트 폴더가 3 개 이상이면 `monorepo`, 그 밖은 `small`. 사용자의 선택이 감지를 이겨요. | 문서와 블로그는 숫자 기준을 주지 않아요(블로그를 끝까지 읽었어요). 이 컴퓨터의 두 저장소를 읽었어요: 추적 파일 2,355 개와 매니페스트 2 개, 추적 파일 25,494 개와 매니페스트 32 개. | 카드 열림 |
 | D-2 | 쓰기는 모두 사용자의 선택이고 기본은 없어요. 프로젝트 `.claude/` 아래 파일은 맞춤 하네스예요. | 사용자 결정 2026-11-22(프로젝트 `.claude/rules` 등은 사용자가 필요할 때만). | 카드 열림 |
 | D-3 | 파일 수는 인덱스 헤더에서 읽고 프로그램을 시작하지 않아요. | 감지는 프로그램을 시작하지 않는 규칙이에요(`project_detect.rs` 머리말). | 카드 열림 |
+| D-4 | 설정 키의 `merge` 행은 키 전체를 바꾸지 않고 병합된 값을 실어요: 배열(`permissions.deny`, `claudeMdExcludes`, `worktree.sparsePaths`, `worktree.symlinkDirectories`)은 지금 순서 그대로 두고 새 항목을 한 번씩 뒤에 붙이고, `enabledPlugins` 는 지금 플러그인을 남겨요. 점 붙은 키는 부모 객체 안의 그 키만 가리켜서 `worktree.baseRef` 같은 다른 하위 키는 그대로예요. | 리더 결정 2026-11-22(되돌릴 수 있어요). | 카드 열림 |
 
 ## Result
 

@@ -172,17 +172,12 @@ fn query(project: &Path) -> Value {
 }
 
 fn manifest_paths(project: &Path) -> Vec<String> {
+    let index = moai_cli::state_root::path(project, "index");
     let pointer: Value =
-        serde_json::from_slice(&fs::read(project.join(".moai-cli/index/current.json")).unwrap())
-            .unwrap();
+        serde_json::from_slice(&fs::read(index.join("current.json")).unwrap()).unwrap();
     let gen = pointer["generation_id"].as_str().unwrap();
-    let text = fs::read_to_string(
-        project
-            .join(".moai-cli/index/generations")
-            .join(gen)
-            .join("manifest.json"),
-    )
-    .unwrap();
+    let text =
+        fs::read_to_string(index.join("generations").join(gen).join("manifest.json")).unwrap();
     let v: Value = serde_json::from_str(&text).unwrap();
     v["files"]
         .as_array()
