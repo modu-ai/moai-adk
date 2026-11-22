@@ -115,8 +115,8 @@ fn run(cwd: &Path, args: &[String]) -> Output {
     Command::new(crate::common::MOAI_BIN)
         .args(args)
         .current_dir(cwd)
-        // A temporary HOME beside the repository: new worktrees go under <HOME>/.moai (#2811),
-        // so a HOME inside the primary checkout would show up in its status.
+        // A temporary HOME beside the repository, so a HOME inside the primary checkout
+        // cannot show up in its status.
         .env("HOME", cwd.parent().unwrap().join("home"))
         .env("GIT_CONFIG_GLOBAL", "/dev/null")
         .env("GIT_CONFIG_SYSTEM", "/dev/null")
