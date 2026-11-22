@@ -1148,6 +1148,62 @@ fn worktree_place_links_the_apply_refuses_a_linked_claude_folder() {
     assert!(!git(&f.repo, &["for-each-ref", "refs/heads"]).contains("lane/"));
 }
 
+/// Audit B1 (REQ-13): an explicit `--path` spelled through a linked parent still reaches the
+/// check: the link is found by what the path resolves to, not by how it is written, so a
+/// linked `.claude` behind that spelling is refused and nothing is made behind it.
+#[cfg(unix)]
+#[test]
+fn worktree_place_links_an_explicit_path_through_a_linked_parent() {
+    let f = fixture();
+    let outside = f.repo.parent().unwrap().join("outside-b1");
+    fs::create_dir_all(&outside).unwrap();
+    std::os::unix::fs::symlink(&outside, f.repo.join(".claude")).unwrap();
+    let alias = f.repo.parent().unwrap().join("alias-b1");
+    std::os::unix::fs::symlink(&f.repo, &alias).unwrap();
+    let via = alias.join(".claude/worktrees/via-alias");
+    let via = via.to_str().unwrap();
+    let p = project(&f);
+    let plan_out = run(
+        &f.repo,
+        &args(
+            &[
+                "worktree-plan",
+                &p,
+                "--branch-prefix",
+                "lane",
+                "--path",
+                via,
+            ],
+            &f.source,
+        ),
+    );
+    let digest = envelope(&plan_out)["result"]["plan_digest"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let env = apply_with(&f, &digest, &["--path", via, "--disk-floor-bytes", "0"]);
+    assert_eq!(env["result"]["decision"], "conflict", "{env}");
+    assert_eq!(env["result"]["reason"], "place_is_a_link", "{env}");
+    assert!(fs::remove_dir(&outside).is_ok(), "{env}");
+    assert!(!git(&f.repo, &["for-each-ref", "refs/heads"]).contains("lane/"));
+}
+
+/// Audit N2 (AC-9, REQ-12): the plan names the folder name a session opens with
+/// `claude --worktree <name>`.
+#[test]
+fn worktree_place_lane_plan_names_the_session_worktree_name() {
+    let f = fixture();
+    let p = plan(&f, "lane");
+    let folder = Path::new(p["path"].as_str().unwrap())
+        .file_name()
+        .unwrap()
+        .to_str()
+        .unwrap()
+        .to_string();
+    assert_eq!(p["session_name"], folder.as_str(), "{p}");
+    assert!(!folder.is_empty());
+}
+
 /// AC-2: the same name again is refused, never overwritten — a folder already at the path
 /// stays as it was and no branch is made.
 #[test]
