@@ -15,8 +15,8 @@ use std::path::{Path, PathBuf};
 /// The repository the star line names.
 pub const REPOSITORY: &str = "modu-ai/moai-adk";
 
-/// The full URL of the one read-only GET (pinned by its own test, the
-/// audit's N1: a mutant changing the URL must not survive).
+/// The full URL of the one read-only GET (pinned by its own test: a mutant
+/// changing the URL must not survive).
 pub const STAR_CHECK_URL: &str = "https://api.github.com/user/starred/modu-ai/moai-adk";
 
 /// The star states the check answers.
@@ -43,10 +43,10 @@ pub enum WriteOutcome {
     /// The marker landed in the current-generation home folder.
     Written,
     /// The resolver answers the retired folder (`.moai-cli`): nothing new is
-    /// ever created there and nothing was written (B2).
+    /// ever created there and nothing was written.
     RetiredFolder,
     /// The folder exists but the write failed (a read-only folder): nothing
-    /// was written and the run that asked is never blocked (B3).
+    /// was written and the run that asked is never blocked.
     WriteRefused(String),
 }
 
@@ -64,14 +64,14 @@ pub fn star_ask_dismissed(home: &Path) -> bool {
     dismissal_file(home).is_file()
 }
 
-/// The shared state-write path (B2, B3): write one empty marker file into
+/// The shared state-write path: write one empty marker file into
 /// the current-generation home folder, creating the folder and its marker
 /// for a new home; refuse to create anything under the retired folder; say
 /// the truth when the write fails.
 fn write_state_marker(home: &Path, name: &str) -> WriteOutcome {
     let _ = crate::home_root::adopt_new(home, name);
     let path = crate::home_root::path(home).join(name);
-    // B2: when the resolver answers the retired folder, nothing new is ever
+    // When the resolver answers the retired folder, nothing new is ever
     // created there — write nothing and say why.
     if crate::home_root::dir(home) != crate::home_root::MOAI_DIR {
         return WriteOutcome::RetiredFolder;
@@ -103,25 +103,15 @@ pub fn check_star(transport: &dyn crate::forge::transport::Transport) -> StarSta
     }
 }
 
-/// The star ask line in both languages (B4: the text lives in a two-language
-/// pair, not a single English constant; it joins the shared UI text table
-/// when `src/ui_text.rs` is free — a pair request stands).
+/// The star ask line from the shared UI text table (`src/ui_text.rs`): one
+/// polite sentence in each language, with the repository link in the text.
 pub fn star_ask_line(lang: crate::ui_text::Lang) -> &'static str {
-    match lang {
-        crate::ui_text::Lang::En => STAR_ASK_LINE_EN,
-        crate::ui_text::Lang::Ko => STAR_ASK_LINE_KO,
-    }
+    crate::ui_text::text(crate::ui_text::Msg::StarAskLine, lang)
 }
-
-/// The English star ask line.
-pub const STAR_ASK_LINE_EN: &str = "Stars are real encouragement for this project — https://github.com/modu-ai/moai-adk if it helps you";
-/// The Korean star ask line.
-pub const STAR_ASK_LINE_KO: &str =
-    "별은 이 프로젝트에 실제 힘이 돼요 — 도움이 되셨다면 https://github.com/modu-ai/moai-adk";
 
 /// The star line's decision (REQ-1): shown when the state is unknown or not
 /// starred and no dismissal stands, at most one line per run. The text comes
-/// in the caller's language (B4).
+/// in the caller's language.
 pub fn star_line(
     state: StarState,
     home: &Path,
@@ -151,7 +141,7 @@ impl ReportConsent {
     }
 
     /// Store the choice; changeable by the same command later. The same
-    /// B2/B3 rules as the dismissal marker apply.
+    /// rules as the dismissal marker apply.
     pub fn store(self, home: &Path) -> WriteOutcome {
         let _ = crate::home_root::adopt_new(home, "report-consent");
         let path = Self::file(home);
@@ -190,9 +180,8 @@ impl ReportConsent {
 /// The preflight of a report body (REQ-5): the exact text the user will see,
 /// refused when it carries code, a file path beyond the version and the OS,
 /// a project name, or anything the secret rule blocks. The check runs before
-/// any yes is possible. (N4 of the audit: this is the star slice's shape of
-/// the check; the report slice tightens it to what the report actually
-/// sends.)
+/// any yes is possible. (This is the star slice's shape of the check; the
+/// report slice tightens it to what the report actually sends.)
 pub fn report_body_check(text: &str) -> Result<(), &'static str> {
     if text.contains("```") || text.contains("    fn ") {
         return Err("report refused: the body carries code");
@@ -211,7 +200,7 @@ mod tests {
     use super::*;
 
     /// A fake transport answering with a fixed status and recording the URL
-    /// (N1: a mutant changing the URL must not survive).
+    /// (a mutant changing the URL must not survive).
     struct FixedTransport(u16, bool, std::cell::RefCell<Vec<String>>);
     impl crate::forge::transport::Transport for FixedTransport {
         fn send(
@@ -239,7 +228,7 @@ mod tests {
         tempfile::tempdir().unwrap()
     }
 
-    /// REQ-2 and N1: the check reads exactly one GET, answers by status, and
+    /// REQ-2: the check reads exactly one GET, answers by status, and
     /// the URL is pinned.
     #[test]
     fn the_star_check_answers_by_status_and_pins_the_url() {
@@ -256,7 +245,7 @@ mod tests {
         assert_eq!(check_star(&failing()), StarState::Unknown);
     }
 
-    /// REQ-1, REQ-3, B1: the line shows for unknown and not-starred, never
+    /// REQ-1, REQ-3: the line shows for unknown and not-starred, never
     /// for starred, and a dismissal suppresses it forever.
     #[test]
     fn the_star_line_follows_the_state_and_the_dismissal() {
@@ -282,7 +271,7 @@ mod tests {
         assert!(star_line(StarState::Unknown, home.path(), crate::ui_text::Lang::En).is_none());
     }
 
-    /// B2: on a home whose resolver answers the retired folder, the marker
+    /// On a home whose resolver answers the retired folder, the marker
     /// is not written and the outcome says why.
     #[test]
     fn a_retired_folder_home_writes_nothing() {
@@ -296,7 +285,7 @@ mod tests {
         assert!(!star_ask_dismissed(home.path()));
     }
 
-    /// B3: a read-only home reports the write refusal with its reason.
+    /// A read-only home reports the write refusal with its reason.
     #[test]
     fn a_read_only_home_reports_the_refusal() {
         let home = home();

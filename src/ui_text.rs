@@ -207,11 +207,14 @@ pub enum Msg {
     CodexRemoved,
     /// What `moai omp` says now that the launcher is gone (SPEC-20261122-remove-omp-launcher).
     OmpRemoved,
+    /// The `star-ask` line: one polite ask for a star, with the repository
+    /// link in the text (SPEC-20261122-star-and-reports).
+    StarAskLine,
 }
 
 impl Msg {
     /// Every variant, for the tests that walk the table.
-    pub const ALL: [Msg; 48] = [
+    pub const ALL: [Msg; 49] = [
         Msg::WordOk,
         Msg::WordWarning,
         Msg::WordError,
@@ -260,6 +263,7 @@ impl Msg {
         Msg::InitRemoved,
         Msg::CodexRemoved,
         Msg::OmpRemoved,
+        Msg::StarAskLine,
     ];
 }
 
@@ -390,6 +394,12 @@ pub fn text(msg: Msg, lang: Lang) -> &'static str {
         }
         (OmpRemoved, Ko) => {
             "moai omp 는 없어졌어요: MoAI 는 Claude Code 와 GLM 만 지원해요 (moai cc | moai glm)"
+        }
+        (StarAskLine, En) => {
+            "Stars are real encouragement for this project — https://github.com/modu-ai/moai-adk if it helps you"
+        }
+        (StarAskLine, Ko) => {
+            "별은 이 프로젝트에 실제 힘이 돼요 — 도움이 되셨다면 https://github.com/modu-ai/moai-adk"
         }
     }
 }

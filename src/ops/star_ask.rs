@@ -1,11 +1,13 @@
 //! `star-ask` (SPEC-20261122-star-and-reports): the polite star line.
-//! B1 of the audit: a dismissed home makes no network call — the dismissal
-//! is checked before the transport is built. The line comes in the stream's
-//! language (B4: English and Korean). `--dismiss` records the marker in the
-//! current-generation home folder and reports the truth when nothing was
-//! written (B2, B3). The one read-only GET (the audit's clean finding) goes
-//! to `api.github.com/user/starred/modu-ai/moai-adk` through the user's gh
-//! login, only when this command runs explicitly.
+//! A dismissed home makes no network call — the dismissal is checked before
+//! the transport is built. The line comes from the shared UI text table in
+//! the stream's language, like every other screen. `--dismiss` records the
+//! marker in the current-generation home folder and answers one shape on
+//! every outcome — an object with `written` and `reason` (null when the
+//! marker landed), exit 0 always, so a state write never blocks a run; the
+//! retired folder and a refused write are named in `reason`. The one
+//! read-only GET goes to `api.github.com/user/starred/modu-ai/moai-adk`
+//! through the user's gh login, only when this command runs explicitly.
 
 /// The polite star ask
 #[derive(clap::Args)]
@@ -18,7 +20,7 @@ pub struct Args {
 pub const OPERATION: &str = "star.ask";
 
 pub fn run(args: Args) -> Result<serde_json::Value, String> {
-    // N2: a HOME that is not an absolute path is refused.
+    // A HOME that is not an absolute path is refused.
     let raw_home = std::env::var("HOME").map_err(|e| format!("HOME is unreadable: {e}"))?;
     let home = std::path::PathBuf::from(&raw_home);
     if !home.is_absolute() {
@@ -27,21 +29,27 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
         ));
     }
     if args.dismiss {
-        // B2, B3: the write outcome is the truth — written, the retired
-        // folder, or a refused write with its reason.
-        let answer = match moai_cli::star_ask::dismiss_star_ask(&home) {
-            moai_cli::star_ask::WriteOutcome::Written => serde_json::json!(true),
-            moai_cli::star_ask::WriteOutcome::RetiredFolder => serde_json::json!(false),
-            moai_cli::star_ask::WriteOutcome::WriteRefused(reason) => {
-                serde_json::json!({ "written": false, "reason": reason })
-            }
+        // One shape on every outcome (SPEC D-6): an object with `written`
+        // and `reason` — null when the marker landed, the retired folder or
+        // the refusal named otherwise. Exit 0 always: a state write never
+        // blocks a run.
+        let (written, reason) = match moai_cli::star_ask::dismiss_star_ask(&home) {
+            moai_cli::star_ask::WriteOutcome::Written => (true, None),
+            moai_cli::star_ask::WriteOutcome::RetiredFolder => (
+                false,
+                Some(
+                    "the home answers the retired folder (.moai-cli): nothing new is ever created there"
+                        .to_string(),
+                ),
+            ),
+            moai_cli::star_ask::WriteOutcome::WriteRefused(reason) => (false, Some(reason)),
         };
         return Ok(serde_json::json!({
             "schema_version": 1,
-            "dismissed": answer,
+            "dismissed": { "written": written, "reason": reason },
         }));
     }
-    // B1: a dismissed home makes no network call at all.
+    // A dismissed home makes no network call at all.
     if moai_cli::star_ask::star_ask_dismissed(&home) {
         return Ok(serde_json::json!({
             "schema_version": 1,
@@ -53,7 +61,8 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
     let transport =
         moai_cli::forge::transport::GhTransport::from_env().map_err(|e| e.to_string())?;
     let state = moai_cli::star_ask::check_star(&transport);
-    let lang = moai_cli::ui_text::Lang::En; // the JSON envelope is English (D3)
+    // The line follows the stream's language, like every other screen.
+    let lang = moai_cli::ui::ui_lang(moai_cli::ui::Stream::Stdout);
     let line = moai_cli::star_ask::star_line(state, &home, lang);
     Ok(serde_json::json!({
         "schema_version": 1,

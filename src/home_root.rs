@@ -176,7 +176,7 @@ mod tests {
             (
                 "star_ask.rs",
                 1,
-                "the unit test creates the retired folder for the B2 refusal; the code asks home_root::dir/path",
+                "the unit test creates the retired folder for the retired-folder refusal; the code asks home_root::dir/path",
             ),
             (
                 "home_install.rs",
