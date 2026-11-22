@@ -184,6 +184,7 @@ fn verdicts_other_than_go_never_offer_the_move() {
 
 #[test]
 fn a_live_go_session_blocks_the_move() {
+    // process table not read: the held lock file decides `go_session_live`.
     let (_d, home) = go_home();
     let lock = home.join(".moai/state/active-sessions.json.lock");
     fs::write(&lock, "").unwrap();

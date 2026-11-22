@@ -92,7 +92,9 @@ thread_local! {
 }
 
 /// The calling test judges whether a program uses a folder: from now on its commands read the
-/// machine's real process table. A helper that starts a program in a folder calls it.
+/// machine's real process table. A helper that starts a program in a folder calls it. The choice
+/// belongs to the calling thread: a command built on a thread the test starts gets the default
+/// (`empty`) unless that thread calls this too.
 #[allow(dead_code)]
 pub fn use_real_process_table() {
     REAL_TABLE.with(|c| c.set(true));
@@ -117,9 +119,15 @@ pub fn spawn_group(cmd: &mut std::process::Command) -> std::process::Child {
     cmd.process_group(0).spawn().unwrap()
 }
 
-/// Stop the group `spawn_group` started and reap its leader.
+/// Stop the group `spawn_group` started (`kill -KILL -- -<group>`) and reap its leader.
 #[allow(dead_code)]
 pub fn kill_group(child: &mut std::process::Child) {
+    let _ = std::process::Command::new("/bin/kill")
+        .args(["-KILL", "--", &format!("-{}", child.id())])
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status();
     let _ = child.kill();
     let _ = child.wait();
 }

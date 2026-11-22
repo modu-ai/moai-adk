@@ -86,3 +86,8 @@ RED e7f3785f18 on the tip 2fb33d76bf; GREEN is the next commit. Both runs are on
 - AC-3 met: `the_named_files_choose_their_table` passes.
 - AC-4 met: summed test time per target, before → after: `home_install_apply_cli` 313.2 → 119.9 s, `home_retire_cli` 179.7 → 60.5 s, `home_install_go_retire` 121.4 → 13.1 s, `update_home_layer_cli` 111.2 → 50.2 s, `optimize_plan_cli` 95.2 → 112.0 s (no gain: its time is not the process scan), `home_state_apply` 81.7 → 1.6 s, `home_state_plan` 52.4 → 34.0 s, `hygiene_apply_cli` 44.4 → 21.2 s, `home_install_plan_cli` 30.1 → 11.0 s, `hygiene_cli` 5.2 → 3.3 s; all ten 1,034.5 → 426.8 s, and the run's wall clock 212 s → 96 s. The before run is the tip's files (the RED commit changes none of them).
 - Not run: the lib unit tests that call the scans (a later slice), the whole suite, the independent audit.
+
+Follow-up slice (audit notes after the landing 37fbff0be4): RED 49a9cd5689 on that landing, then GREEN.
+
+- AC-5 met: `holder_scan_reads_each_function` passes; `the_named_files_choose_their_table` failed first by assertion on `tests/home_state_plan.rs` `a_live_go_session_blocks_the_move` (a `python3` holder with neither line, `target/red2.log`) and passes once that test says the lock decides.
+- AC-6 met: `a_group_started_shell_holder_leaves_no_child` failed first by assertion while `kill_group` stopped the shell alone (`group … still holds …`, the `sleep` left behind) and passes with `kill -KILL -- -<group>`; the shell holders of `tests/hygiene_cli.rs` (`users`) and `tests/hygiene_apply_cli.rs` (`a_worktree_named_by_a_process_is_skipped_right_before_the_move`) start and stop their group this way. The GREEN evidence is the slice's one check affected run, cited in its READY note.
