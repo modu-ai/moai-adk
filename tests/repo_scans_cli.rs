@@ -23,7 +23,7 @@ const INCIDENT_CHECK: &str =
     "cargo test --offline --locked --lib permission_reference_rule_has_one_copy";
 
 // The incident (#2681 body): #2642 added a walk of src/**/*.rs, #2632 added a file it rejects.
-const PR_2642: [&str; 22] = [
+const PR_2642: [&str; 20] = [
     "src/agents.rs",
     "src/apply.rs",
     "src/archive.rs",
@@ -36,8 +36,6 @@ const PR_2642: [&str; 22] = [
     "src/generation.rs",
     "src/github_templates.rs",
     "src/hooks.rs",
-    "src/hosts/codex.rs",
-    "src/hosts/codex_config.rs",
     "src/key_vault.rs",
     "src/layout.rs",
     "src/message.rs",

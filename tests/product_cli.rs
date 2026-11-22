@@ -3743,9 +3743,9 @@ fn generation_preserves_user_files_and_reports_conflict() {
 
 #[test]
 fn generation_native_roles_render_official_shapes() {
-    // 03C-AC-4: Claude roles render name/description/tools frontmatter, Codex roles
-    // only name/description/developer_instructions (never sandbox_mode), and the
-    // read-only intent surfaces as a plan warning.
+    // 03C-AC-4: Claude roles render name/description/tools frontmatter. A role that names the
+    // retired host codex is left out with one plan warning that echoes no value, and nothing is
+    // written under `.codex` (SPEC-20261121-remove-codex-project-layer REQ-8).
     let root = generation_project();
     let mut request = generation_request("none");
     request["native_roles"] = json!([
@@ -3755,10 +3755,12 @@ fn generation_native_roles_render_official_shapes() {
          "read_only_intent": true}
     ]);
     let plan = ok_result(&generation_plan_cli(&root, &request));
-    assert!(plan
-        .to_string()
-        .as_str()
-        .contains("cannot create a sandbox"));
+    let warnings = plan["warnings"].to_string();
+    assert!(
+        warnings.contains("1 native role(s) name a retired host"),
+        "{warnings}"
+    );
+    assert!(!plan.to_string().contains("prj-watcher"), "{plan}");
     ok_result(&generation_apply_cli(&root, &plan));
     let claude_role = String::from_utf8_lossy(
         &fs::read(root.path().join(".claude/agents/prj-fixer.md")).unwrap(),
@@ -3767,18 +3769,13 @@ fn generation_native_roles_render_official_shapes() {
     assert!(claude_role.contains("name: prj-fixer"));
     assert!(claude_role.contains("description: Fix lint and test failures"));
     assert!(claude_role.contains("tools: Bash, Edit"));
-    let codex_role_bytes = fs::read(root.path().join(".codex/agents/prj-watcher.toml")).unwrap();
-    let codex_role = String::from_utf8_lossy(&codex_role_bytes).into_owned();
-    assert!(codex_role.contains("name = \"prj-watcher\""));
-    assert!(codex_role.contains("developer_instructions = \"Review diffs only\""));
-    assert!(!codex_role.contains("sandbox_mode"));
-    assert!(!codex_role.contains("approval_policy"));
-    assert!(!codex_role.contains("mcp_servers"));
+    assert!(!root.path().join(".codex").exists());
 }
 
 /// #2639 (project agents): a project role carrying the confirmed test command is written for
-/// both hosts, a re-run plans it `unchanged`, a hand edit is kept (`unchanged` while the
+/// Claude Code, a re-run plans it `unchanged`, a hand edit is kept (`unchanged` while the
 /// answers stay, `conflict` once they change too) and never overwritten, and a role named with the base agents' `moai-` prefix is refused.
+/// The same role listed for the retired host codex is left out and writes nothing.
 #[test]
 fn generation_project_agent_keeps_hand_edits_and_never_takes_a_base_name() {
     let root = generation_project();
@@ -3791,15 +3788,12 @@ fn generation_project_agent_keeps_hand_edits_and_never_takes_a_base_name() {
     let plan = ok_result(&generation_plan_cli(&root, &request));
     ok_result(&generation_apply_cli(&root, &plan));
     let claude = root.path().join(".claude/agents/prj-demo-tester.md");
-    let codex = root.path().join(".codex/agents/prj-demo-tester.toml");
     assert!(fs::read_to_string(&claude).unwrap().contains(purpose));
-    assert!(fs::read_to_string(&codex)
-        .unwrap()
-        .contains("Run `cargo test --locked`"));
+    assert!(!root.path().join(".codex").exists());
 
     let again = ok_result(&generation_plan_cli(&root, &request));
     for (path, action) in actions_of(&again) {
-        if path.ends_with("prj-demo-tester.md") || path.ends_with("prj-demo-tester.toml") {
+        if path.ends_with("prj-demo-tester.md") {
             assert_eq!(action, "unchanged", "{path}");
         }
     }

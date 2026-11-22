@@ -53,7 +53,7 @@ fn claude_plan_apply_replan_is_noop() {
     .unwrap();
     assert_eq!(applied["state"], json!("applied"));
     assert_eq!(applied["host_loaded"], json!("not_run"));
-    // #2877 Q1: Claude Code also gets the hook engine's preflight guard (Codex stays at 3).
+    // #2877 Q1: Claude Code also gets the hook engine's preflight guard.
     assert_eq!(applied["hooks_generated"].as_array().unwrap().len(), 4);
     let settings = read_json(&p.path().join(".claude/settings.json"));
     assert_eq!(
@@ -61,7 +61,10 @@ fn claude_plan_apply_replan_is_noop() {
         Value::Object(hooks::hooks_object("claude").unwrap())
     );
     // REQ-I1-02: the receipt records the generated hooks MoAI owns.
-    let receipt = read_json(&p.path().join(".moai-cli/manifests/claude-settings.json"));
+    let receipt = read_json(&moai_cli::state_root::path(
+        p.path(),
+        "manifests/claude-settings.json",
+    ));
     assert_eq!(receipt["owned"]["hooks"], settings["hooks"]);
 
     let again = hooks::plan(p.path(), "claude", None).unwrap();
@@ -80,40 +83,6 @@ fn claude_plan_apply_replan_is_noop() {
         fs::read(p.path().join(".claude/settings.json")).unwrap(),
         before
     );
-}
-
-/// AC-1 (Codex): the same cycle for `.codex/hooks.json`, with the list in its own receipt.
-#[test]
-fn codex_plan_apply_replan_is_noop() {
-    let p = project();
-    let plan = hooks::plan(p.path(), "codex", None).unwrap();
-    assert_eq!(plan["action"], json!("create"));
-    assert!(!p.path().join(".codex").exists(), "plan must not write");
-    let (_, applied) = plan_apply(p.path(), "codex");
-    assert_eq!(applied["state"], json!("applied"));
-    assert_eq!(applied["files_created"], json!([".codex/hooks.json"]));
-    let file = read_json(&p.path().join(".codex/hooks.json"));
-    assert_eq!(
-        file["hooks"],
-        Value::Object(hooks::hooks_object("codex").unwrap())
-    );
-    assert!(file["description"].as_str().unwrap().contains("MoAI"));
-    let receipt = read_json(&p.path().join(".moai-cli/manifests/codex-hooks.json"));
-    assert_eq!(receipt["hooks"].as_array().unwrap().len(), 3);
-    assert_eq!(receipt["sha256"], applied["hooks_sha256_after"]);
-    assert!(receipt.get("pending_sha256").is_none(), "pending cleared");
-
-    let again = hooks::plan(p.path(), "codex", None).unwrap();
-    assert_eq!(again["action"], json!("unchanged"));
-    let noop = hooks::apply(
-        p.path(),
-        "codex",
-        None,
-        again["plan_digest"].as_str().unwrap(),
-        PERMISSION,
-    )
-    .unwrap();
-    assert_eq!(noop["state"], json!("unchanged"));
 }
 
 /// The hook set itself (#2936 R9 S1, selection table of Issue #2936 comment 6881107273): three
@@ -147,20 +116,6 @@ fn hook_set_has_explicit_timeouts_and_bare_commands() {
             assert!(!command.contains('/'), "{command}");
         }
     }
-}
-
-/// #2936 R9 S1 AC-6: the OMP coverage report names `session_stop` as the turn-end event (OMP
-/// 18.18.7, extensions.md `session_stop`) and says it is not wired, instead of claiming OMP has
-/// no turn-end event.
-#[test]
-fn omp_coverage_names_session_stop_and_says_it_is_not_wired() {
-    let caps = moai_cli::hook_engine::capabilities("omp");
-    let tv = &caps["turn-validation"];
-    assert_eq!(tv["supported"], json!(false), "{tv}");
-    assert_eq!(tv["event"], json!("session_stop"), "{tv}");
-    let reason = tv["reason"].as_str().unwrap();
-    assert!(reason.contains("not wired"), "{reason}");
-    assert!(!reason.contains("no turn-end event"), "{reason}");
 }
 
 /// #2255 AC-2 (wiring): the command `hooks-apply` writes for `PreToolUse` is the guard, and
@@ -270,49 +225,11 @@ fn claude_hooks_keep_other_owned_keys() {
     let settings = read_json(&p.path().join(".claude/settings.json"));
     assert_eq!(settings["outputStyle"], json!("MoAI"));
     assert!(settings["hooks"].is_object());
-    let receipt = read_json(&p.path().join(".moai-cli/manifests/claude-settings.json"));
-    assert_eq!(receipt["owned"]["outputStyle"], json!("MoAI"));
-}
-
-/// A `.codex/hooks.json` MoAI never wrote, or one edited after apply, is not overwritten.
-#[test]
-fn codex_unowned_or_edited_file_requires_review() {
-    let p = project();
-    fs::create_dir(p.path().join(".codex")).unwrap();
-    fs::write(p.path().join(".codex/hooks.json"), "{\"hooks\": {}}\n").unwrap();
-    let err = hooks::plan(p.path(), "codex", None).unwrap_err();
-    assert_eq!(classify(&err), Kind::Conflict, "{err}");
-
-    let q = project();
-    plan_apply(q.path(), "codex");
-    fs::write(q.path().join(".codex/hooks.json"), "{\"hooks\": {}}\n").unwrap();
-    let err = hooks::plan(q.path(), "codex", None).unwrap_err();
-    assert!(err.contains("requires preservation review"), "{err}");
-    assert_eq!(classify(&err), Kind::Conflict);
-}
-
-/// An apply interrupted after the pending receipt but before the file write resolves on the
-/// next plan: the receipt still owns the old sha256, so the cycle completes.
-#[test]
-fn codex_pending_receipt_resolves_on_replan() {
-    let p = project();
-    plan_apply(p.path(), "codex");
-    let receipt_path = p.path().join(".moai-cli/manifests/codex-hooks.json");
-    let mut receipt = read_json(&receipt_path);
-    receipt["pending_sha256"] = json!(format!("sha256:{}", "0".repeat(64)));
-    fs::write(&receipt_path, serde_json::to_vec_pretty(&receipt).unwrap()).unwrap();
-    let plan = hooks::plan(p.path(), "codex", None).unwrap();
-    assert_eq!(plan["action"], json!("unchanged"));
-    let done = hooks::apply(
+    let receipt = read_json(&moai_cli::state_root::path(
         p.path(),
-        "codex",
-        None,
-        plan["plan_digest"].as_str().unwrap(),
-        PERMISSION,
-    )
-    .unwrap();
-    assert_eq!(done["state"], json!("unchanged"));
-    assert!(read_json(&receipt_path).get("pending_sha256").is_none());
+        "manifests/claude-settings.json",
+    ));
+    assert_eq!(receipt["owned"]["outputStyle"], json!("MoAI"));
 }
 
 /// REQ-I1-01 isolation: the home directory itself, or a project inside a host's home
@@ -369,14 +286,14 @@ fn home_directory_is_refused() {
     for dir in [".claude", ".codex", ".omp", ".agents", ".moai-cli"] {
         let inside = home.path().join(dir).join("p");
         fs::create_dir_all(&inside).unwrap();
-        let err = hooks::plan(&inside, "codex", Some(home.path())).unwrap_err();
+        let err = hooks::plan(&inside, "claude", Some(home.path())).unwrap_err();
         assert!(err.contains("home directory refused"), "{dir}: {err}");
     }
     // A project elsewhere under the home (not in a config directory) is allowed.
     let elsewhere = home.path().join("work");
     fs::create_dir(&elsewhere).unwrap();
-    hooks::plan(&elsewhere, "codex", Some(home.path())).unwrap();
-    assert!(!home.path().join(".codex/hooks.json").exists());
+    hooks::plan(&elsewhere, "claude", Some(home.path())).unwrap();
+    assert!(!home.path().join(".claude/settings.json").exists());
 }
 
 /// Refusal branches: unknown host, stale digest, missing permission reference.
@@ -400,7 +317,6 @@ fn refusals_are_classified() {
         assert_eq!(classify(&err), Kind::PermissionReferenceMissing, "{err}");
     }
     assert!(!p.path().join(".claude").exists());
-    assert!(!p.path().join(".codex").exists());
 }
 
 /// hook-receipt writes nothing without `.moai-cli/`, and never fails.
@@ -440,13 +356,13 @@ fn receipt_keeps_only_allow_listed_fields() {
         "tool_response": {"stdout": "api_key=abc"},
         "prompt": "my password is hunter2",
     });
-    let v = hooks::receipt("codex", input.to_string().as_bytes(), p.path(), 42);
+    let v = hooks::receipt("claude", input.to_string().as_bytes(), p.path(), 42);
     assert_eq!(v["recorded"], json!(true), "{v}");
     let log = fs::read_to_string(p.path().join(".moai-cli/receipts/hooks.jsonl")).unwrap();
     let line: Value = serde_json::from_str(log.trim()).unwrap();
     assert_eq!(
         line,
-        json!({"schema_version": 1, "host": "codex", "unix_ms": 42,
+        json!({"schema_version": 1, "host": "claude", "unix_ms": 42,
                "hook_event_name": "PostToolUse", "tool_name": "Bash"})
     );
     for leaked in [
@@ -543,7 +459,7 @@ fn cli_round_trip_in_isolated_home() {
     let p = project();
     let root = p.path().to_str().unwrap();
     let (code, plan) = cli(
-        &["hooks-plan", root, "--host", "codex"],
+        &["hooks-plan", root, "--host", "claude"],
         p.path(),
         home.path(),
         b"",
@@ -556,7 +472,7 @@ fn cli_round_trip_in_isolated_home() {
             "hooks-apply",
             root,
             "--host",
-            "codex",
+            "claude",
             "--plan-digest",
             &digest,
             "--permission-reference",
@@ -568,7 +484,7 @@ fn cli_round_trip_in_isolated_home() {
     );
     assert_eq!(code, 0, "{applied}");
     assert_eq!(applied["result"]["state"], json!("applied"));
-    assert!(!home.path().join(".codex").exists(), "home untouched");
+    assert!(!home.path().join(".claude").exists(), "home untouched");
 
     let home_root = home.path().to_str().unwrap();
     let (code, refused) = cli(
@@ -585,15 +501,15 @@ fn cli_round_trip_in_isolated_home() {
     );
 
     // Hook mode prints nothing (#2348); the receipt log is the record.
-    fs::create_dir(p.path().join(".moai-cli/receipts")).ok();
-    let log = p.path().join(".moai-cli/receipts/hooks.jsonl");
+    fs::create_dir(moai_cli::state_root::path(p.path(), "receipts")).ok();
+    let log = moai_cli::state_root::path(p.path(), "receipts/hooks.jsonl");
     let lines = || {
         fs::read_to_string(&log)
             .map(|s| s.lines().count())
             .unwrap_or(0)
     };
     let (code, stdout) = cli_raw(
-        &["hook-receipt", "--host", "codex"],
+        &["hook-receipt", "--host", "claude"],
         p.path(),
         home.path(),
         br#"{"hook_event_name":"SessionStart","source":"startup"}"#,
@@ -601,7 +517,7 @@ fn cli_round_trip_in_isolated_home() {
     assert_eq!((code, stdout.as_str()), (0, ""));
     assert_eq!(lines(), 1);
     let (code, stdout) = cli_raw(
-        &["hook-receipt", "--host", "codex"],
+        &["hook-receipt", "--host", "claude"],
         p.path(),
         home.path(),
         b"{oops",
@@ -626,6 +542,97 @@ fn cli_raw(args: &[&str], cwd: &Path, home: &Path, stdin: &[u8]) -> (i32, String
         out.status.code().unwrap(),
         String::from_utf8_lossy(&out.stdout).into_owned(),
     )
+}
+
+/// A host MoAI no longer serves (Codex, OMP): `hooks-plan` and `hooks-apply` refuse it by name,
+/// as `unknown` hosts are refused, and write no file and no folder of that host.
+#[test]
+fn a_retired_host_is_refused_by_hooks_plan_and_hooks_apply() {
+    let home = project();
+    for host in ["codex", "omp"] {
+        let p = project();
+        let root = p.path().to_str().unwrap();
+        let plan = ["hooks-plan", root, "--host", host];
+        let apply = [
+            "hooks-apply",
+            root,
+            "--host",
+            host,
+            "--plan-digest",
+            "sha256:0",
+            "--permission-reference",
+            PERMISSION,
+        ];
+        for args in [&plan[..], &apply[..]] {
+            let (code, v) = cli(args, p.path(), home.path(), b"");
+            assert_ne!(code, 0, "{host} {}: {v}", args[0]);
+            assert_eq!(v["error"]["kind"], json!("invalid_input"), "{host}: {v}");
+            let message = v["error"]["message"].as_str().unwrap_or_default();
+            assert!(
+                message.contains(&format!("host {host} is retired; not managed")),
+                "{host} {}: {v}",
+                args[0]
+            );
+            for gone in [".codex", ".omp", ".moai-cli"] {
+                assert!(!p.path().join(gone).exists(), "{host}: {gone} was created");
+            }
+        }
+    }
+    // Any other name is still unknown, not retired.
+    let p = project();
+    let root = p.path().to_str().unwrap();
+    let (code, v) = cli(
+        &["hooks-plan", root, "--host", "gemini"],
+        p.path(),
+        home.path(),
+        b"",
+    );
+    assert_ne!(code, 0, "{v}");
+    assert!(
+        v["error"]["message"]
+            .as_str()
+            .unwrap_or_default()
+            .contains("unknown hook host; must be claude"),
+        "{v}"
+    );
+}
+
+/// A receipt of `moai update` from before the removal may name Codex or OMP: the revert skips
+/// those entries, says so, and never fails on them.
+#[test]
+fn hooks_revert_skips_a_receipt_entry_of_a_retired_host() {
+    let p = project();
+    let project = fs::canonicalize(p.path()).unwrap();
+    let id = "hooks-retired-1";
+    let dir = moai_cli::state_root::path(&project, "receipts").join(id);
+    fs::create_dir_all(&dir).unwrap();
+    let entry = |host: &str, files: [&str; 2]| {
+        let files: Vec<Value> = files
+            .iter()
+            .map(|f| json!({"path": f, "before_sha256": null, "after_sha256": null}))
+            .collect();
+        json!({"host": host, "files": files})
+    };
+    let receipt = json!({
+        "schema_version": 1, "id": id, "plan_digest": "x", "permission_reference": "x",
+        "status": "applied",
+        "hosts": [
+            entry("codex", [".codex/hooks.json", ".moai-cli/manifests/codex-hooks.json"]),
+            entry("omp", [".omp/extensions/moai-hooks.ts", ".moai-cli/manifests/omp-hooks.json"]),
+        ],
+    });
+    fs::write(dir.join("receipt.json"), receipt.to_string()).unwrap();
+    let v = moai_cli::update_hooks::revert(&project, id, PERMISSION).unwrap();
+    assert_eq!(v["state"], json!("reverted"), "{v}");
+    assert_eq!(v["reverted"], json!([]), "{v}");
+    assert_eq!(
+        v["skipped"],
+        json!([
+            {"host": "codex", "reason": "host_retired"},
+            {"host": "omp", "reason": "host_retired"}
+        ]),
+        "{v}"
+    );
 }
 
 /// #2239 × #2238: the user-facing settings op never writes `hooks` itself, and changing
@@ -658,88 +665,6 @@ fn claude_settings_op_neither_writes_nor_drops_hooks() {
         hooks::plan(p.path(), "claude", None).unwrap()["action"],
         json!("unchanged")
     );
-}
-
-// ---- #2633: OMP — the hooks file is an extension module MoAI owns ----
-
-#[test]
-fn omp_plan_apply_writes_the_module_and_replan_is_noop() {
-    let p = project();
-    let plan = hooks::plan(p.path(), "omp", None).unwrap();
-    assert_eq!(plan["action"], json!("create"));
-    assert_eq!(plan["path"], json!(".omp/extensions/moai-hooks.ts"));
-    assert!(!p.path().join(".omp").exists(), "plan must not write");
-    let (_, applied) = plan_apply(p.path(), "omp");
-    assert_eq!(applied["state"], json!("applied"));
-    assert_eq!(
-        applied["files_created"],
-        json!([".omp/extensions/moai-hooks.ts"])
-    );
-    let module = fs::read_to_string(p.path().join(".omp/extensions/moai-hooks.ts")).unwrap();
-    assert_eq!(module, hooks::omp_module("moai"));
-    let receipt = read_json(&p.path().join(".moai-cli/manifests/omp-hooks.json"));
-    assert_eq!(receipt["hooks"].as_array().unwrap().len(), 3);
-    assert_eq!(receipt["sha256"], applied["hooks_sha256_after"]);
-    assert!(applied["trust_required"].as_str().unwrap().contains("OMP"));
-    let again = hooks::plan(p.path(), "omp", None).unwrap();
-    assert_eq!(again["action"], json!("unchanged"));
-    assert_eq!(again["engine_capabilities"]["host"], json!("omp"));
-    let st = hooks::status(p.path(), "omp", None, "").unwrap();
-    assert_eq!(st["configured"], json!("yes"), "{st}");
-    // A user's edit is never overwritten and makes status drifted.
-    fs::write(p.path().join(".omp/extensions/moai-hooks.ts"), "// mine\n").unwrap();
-    let err = hooks::plan(p.path(), "omp", None).unwrap_err();
-    assert!(
-        err.contains(".omp/extensions/moai-hooks.ts requires preservation review"),
-        "{err}"
-    );
-    assert_eq!(classify(&err), Kind::Conflict);
-    let st = hooks::status(p.path(), "omp", None, "").unwrap();
-    assert_eq!(st["configured"], json!("drifted"), "{st}");
-}
-
-/// The module calls the engine with the bare binary, guards only `bash`, appends to the
-/// system prompt instead of replacing it, and never blocks on its own failure.
-#[test]
-fn omp_module_wiring_is_pinned() {
-    let module = hooks::omp_module("moai");
-    let m = module.as_str();
-    assert!(m.contains(r#"Bun.spawn(["moai", "hook-dispatch", "--host", "omp", "--event", event]"#));
-    // Both the preflight and the observation handler stop at a non-bash tool (mutation H5).
-    for handler in ["tool_call", "tool_result"] {
-        let start = m.find(&format!(r#"pi.on("{handler}""#)).unwrap();
-        let body = &m[start..];
-        let first_line = body.lines().nth(1).unwrap().trim();
-        assert_eq!(
-            first_line, r#"if (event.toolName !== "bash") return;"#,
-            "{handler}"
-        );
-    }
-    assert!(m.contains("systemPrompt: [...event.systemPrompt, answer.context]"));
-    assert!(m.contains("if (code !== 0 || out.trim() === \"\") return null;"));
-    assert!(m.contains("catch {\n\t\treturn null;"));
-    assert!(m.contains("const TIMEOUT_MS = 10000;"));
-    assert!(
-        !m.contains("turn-validation") && !m.contains("session_stop"),
-        "the module does not subscribe to OMP's session_stop (the turn-validation rules are empty)"
-    );
-}
-
-#[cfg(unix)]
-#[test]
-fn omp_symlinked_folders_are_refused() {
-    for linked in [".omp", ".omp/extensions"] {
-        let p = project();
-        let outside = project();
-        let link = p.path().join(linked);
-        fs::create_dir_all(link.parent().unwrap()).unwrap();
-        std::os::unix::fs::symlink(outside.path(), &link).unwrap();
-        assert!(hooks::plan(p.path(), "omp", None).is_err(), "{linked}");
-        assert!(
-            fs::read_dir(outside.path()).unwrap().next().is_none(),
-            "{linked}: wrote through the link"
-        );
-    }
 }
 
 // ---- SPEC-20261119-enforce-merge-confirm: a direct pull request merge asks first ----
@@ -852,25 +777,16 @@ fn merge_preflight_as(
     )
 }
 
-/// REQ-1, REQ-4: in a MoAI project every direct merge asks on Claude, and is refused on Codex,
-/// which cannot ask.
+/// REQ-1, REQ-4: in a MoAI project every direct merge asks on Claude.
 #[test]
 fn merge_confirm_asks_for_a_direct_merge_in_a_moai_project() {
     let (_tmp, root) = merge_repo(true);
     merge_enforce(&root);
     for (n, command) in DIRECT_MERGES.iter().enumerate() {
-        // One session per command: the third refusal in one session is released.
         let session = format!("s{n}");
         let (code, decision, reason) = merge_preflight_as("claude", &root, command, &session);
         assert_eq!((code, decision.as_str()), (0, "ask"), "{command}: {reason}");
         assert!(reason.contains("moai gate-merge"), "{command}: {reason}");
-        let (code, decision, reason) = merge_preflight_as("codex", &root, command, &session);
-        assert_eq!(
-            (code, decision.as_str()),
-            (0, "deny"),
-            "{command}: {reason}"
-        );
-        assert!(reason.contains("Codex cannot ask"), "{command}: {reason}");
     }
 }
 
@@ -920,14 +836,12 @@ fn merge_confirm_is_off_outside_a_moai_project() {
     let (_tmp, root) = merge_repo(false);
     merge_enforce(&root);
     for command in DIRECT_MERGES {
-        for host in ["claude", "codex"] {
-            let (code, decision, reason) = merge_preflight(host, &root, command);
-            assert_eq!(
-                (code, decision.as_str(), reason.as_str()),
-                (0, "", ""),
-                "{host} {command}"
-            );
-        }
+        let (code, decision, reason) = merge_preflight("claude", &root, command);
+        assert_eq!(
+            (code, decision.as_str(), reason.as_str()),
+            (0, "", ""),
+            "{command}"
+        );
     }
     // Nothing was written either: the rule did not apply.
     assert_eq!(merge_log(&root), Vec::<Value>::new());
@@ -986,217 +900,47 @@ fn merge_confirm_mode_defaults_to_observe_and_off_is_silent() {
     }
     let (_tmp, root) = merge_repo(true);
     merge_config(&root, "[hooks.modes]\nmerge_confirm = \"off\"\n");
-    for host in ["claude", "codex"] {
-        let (code, decision, reason) = merge_preflight(host, &root, "gh pr merge 987654");
-        assert_eq!(
-            (code, decision.as_str(), reason.as_str()),
-            (0, "", ""),
-            "{host}"
-        );
-    }
+    let (code, decision, reason) = merge_preflight("claude", &root, "gh pr merge 987654");
+    assert_eq!((code, decision.as_str(), reason.as_str()), (0, "", ""));
     assert_eq!(merge_log(&root), Vec::<Value>::new());
 }
 
-/// REQ-9, REQ-10, REQ-11: where enforce refuses (Codex cannot ask), the third refusal of the
-/// same rule in the same session goes through and says so; another session starts again; the
-/// ask on Claude is never counted; and a refusal that cannot be written down goes through.
+/// REQ-9, REQ-10: the ask on Claude (a person answers it) is not a refusal: it is asked every
+/// time in every session, never released and never written down as a block or a release.
 #[test]
-fn merge_confirm_strikes_release_the_third_refusal() {
+fn merge_confirm_ask_on_claude_is_never_counted_or_released() {
     let (_tmp, root) = merge_repo(true);
     merge_enforce(&root);
     let merge = "gh pr merge 123";
-    for n in 1..=2 {
-        let (code, decision, _) = merge_preflight_as("codex", &root, merge, "one");
-        assert_eq!((code, decision.as_str()), (0, "deny"), "refusal {n}");
-    }
-    let lines = merge_log(&root);
-    let kinds = |kind: &str| lines.iter().filter(|l| l["kind"] == json!(kind)).count();
-    assert_eq!(
-        (kinds("rule_block"), kinds("rule_release")),
-        (2, 0),
-        "{lines:?}"
-    );
-    assert!(lines
-        .iter()
-        .filter(|l| l["kind"] == json!("rule_block"))
-        .all(|l| l["rule"] == json!("merge_confirm")));
-    // The third and the fourth go through, each leaving a release line with the reason.
-    for _ in 0..2 {
-        let (code, decision, reason) = merge_preflight_as("codex", &root, merge, "one");
-        assert_eq!(
-            (code, decision.as_str(), reason.as_str()),
-            (0, "", ""),
-            "released"
-        );
-    }
-    let lines = merge_log(&root);
-    let releases: Vec<&Value> = lines
-        .iter()
-        .filter(|l| l["kind"] == json!("rule_release"))
-        .collect();
-    assert_eq!(releases.len(), 2, "{lines:?}");
-    assert_eq!(releases[0]["rule"], json!("merge_confirm"));
-    assert!(releases[0]["reason"]
-        .as_str()
-        .unwrap()
-        .contains("moai gate-merge"));
-    // Another session is counted on its own.
-    let (code, decision, _) = merge_preflight_as("codex", &root, merge, "two");
-    assert_eq!((code, decision.as_str()), (0, "deny"));
-    // The ask on Claude (a person answers it) is not a refusal and is never counted.
-    for _ in 0..4 {
-        let (code, decision, _) = merge_preflight_as("claude", &root, merge, "three");
-        assert_eq!((code, decision.as_str()), (0, "ask"));
-    }
-    let lines = merge_log(&root);
-    let claude_blocks = lines
-        .iter()
-        .filter(|l| l["kind"] == json!("rule_block") && l["host"] == json!("claude"))
-        .count();
-    assert_eq!(claude_blocks, 0, "{lines:?}");
-
-    // No folder to write the line into: the refusal could not be counted, so it goes through.
-    fs::remove_dir_all(root.join(".moai-cli")).unwrap();
-    let (code, decision, reason) = merge_preflight_as("codex", &root, merge, "four");
-    assert_eq!(
-        (code, decision.as_str(), reason.as_str()),
-        (0, "", ""),
-        "unwritable"
-    );
-}
-
-/// REQ-9: only this rule's `rule_block` lines of this session count: another rule's block and
-/// this rule's own release line are not strikes.
-#[test]
-fn merge_confirm_counts_only_its_own_blocks() {
-    use std::io::Write;
-    let (_tmp, root) = merge_repo(true);
-    merge_enforce(&root);
-    let merge = "gh pr merge 123";
-    let (_, decision, _) = merge_preflight_as("codex", &root, merge, "one");
-    assert_eq!(decision, "deny", "first refusal");
-    let first = merge_log(&root).remove(0);
-    let session = first["session"].clone();
-    let mut log = fs::OpenOptions::new()
-        .append(true)
-        .open(root.join(".moai-cli/receipts/hook-engine.jsonl"))
-        .unwrap();
-    for (kind, rule) in [
-        ("rule_block", "other_rule"),
-        ("rule_release", "merge_confirm"),
-    ] {
-        let line = json!({"schema_version": 1, "kind": kind, "rule": rule, "reason": "x",
-            "host": "codex", "session": session, "call": null, "unix_ms": 1});
-        writeln!(log, "{line}").unwrap();
-    }
-    // One strike of this rule so far: the next refusal still refuses, the one after is released.
-    let (_, decision, _) = merge_preflight_as("codex", &root, merge, "one");
-    assert_eq!(decision, "deny", "second refusal");
-    let (code, decision, _) = merge_preflight_as("codex", &root, merge, "one");
-    assert_eq!((code, decision.as_str()), (0, ""), "third is released");
-}
-
-/// One Bash call to the preflight guard as `host` sends it; `session` is the `session_id` field,
-/// or none (OMP sends none). Returns the exit code and the raw answer.
-fn merge_raw(host: &str, root: &Path, command: &str, session: Option<&str>) -> (i32, String) {
-    let mut input = json!({"hook_event_name": "PreToolUse",
-        "tool_name": "Bash", "tool_use_id": "t1",
-        "tool_input": {"command": command}, "cwd": root});
-    if let Some(s) = session {
-        input["session_id"] = json!(s);
-    }
-    let mut child = Command::new(common::MOAI_BIN)
-        .args(["hook-dispatch", "--host", host, "--event", "tool-preflight"])
-        .current_dir(root)
-        .env("HOME", root.join("home"))
-        .env("GIT_CONFIG_GLOBAL", "/dev/null")
-        .env("GIT_CONFIG_SYSTEM", "/dev/null")
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .unwrap();
-    common::feed_stdin(&mut child, input.to_string().as_bytes());
-    let out = child.wait_with_output().unwrap();
-    (
-        out.status.code().unwrap(),
-        String::from_utf8_lossy(&out.stdout).into_owned(),
-    )
-}
-
-/// True when a raw answer refuses the call: Codex's `deny`, OMP's `block`.
-fn merge_refused(answer: &str) -> bool {
-    answer.contains("\"permissionDecision\":\"deny\"") || answer.contains("\"block\":true")
-}
-
-/// #3216-style audit of S4, B1: a host that sends no session id (OMP) or an empty one (Codex)
-/// has no session to count refusals in, so the refusal is never released: every refusal stays
-/// a refusal, in every later call, and each is still written down.
-#[test]
-fn merge_confirm_without_a_session_id_is_never_released() {
-    for host in ["omp", "codex"] {
-        for session in [None, Some("")] {
-            let (_tmp, root) = merge_repo(true);
-            merge_enforce(&root);
-            for n in 1..=5 {
-                let (code, answer) = merge_raw(host, &root, "gh pr merge 123", session);
-                assert_eq!(code, 0, "{host} {session:?} call {n}");
-                assert!(
-                    merge_refused(&answer),
-                    "{host} {session:?} call {n} was released: {answer}"
-                );
-            }
-            let lines = merge_log(&root);
-            let kinds = |kind: &str| lines.iter().filter(|l| l["kind"] == json!(kind)).count();
-            assert_eq!(
-                (kinds("rule_block"), kinds("rule_release")),
-                (5, 0),
-                "{host} {session:?}: {lines:?}"
-            );
+    for session in ["one", "two"] {
+        for n in 1..=4 {
+            let (code, decision, _) = merge_preflight_as("claude", &root, merge, session);
+            assert_eq!((code, decision.as_str()), (0, "ask"), "{session} ask {n}");
         }
     }
+    let lines = merge_log(&root);
+    let counted = lines
+        .iter()
+        .filter(|l| l["kind"] == json!("rule_block") || l["kind"] == json!("rule_release"))
+        .count();
+    assert_eq!(counted, 0, "{lines:?}");
 }
 
-/// B2, mutant M4: `would_block` lines (observe) are not refusals and are not counted: after
-/// three observed calls the first enforced call is refused, the second too, the third released.
+/// B2, mutant M4: `would_block` lines (observe) are not refusals: after any number of observed
+/// calls the first enforced call on Claude still asks, and every later one asks too.
 #[test]
-fn merge_confirm_observed_calls_are_not_strikes() {
+fn merge_confirm_observed_calls_do_not_change_the_ask() {
     let (_tmp, root) = merge_repo(true);
     let merge = "gh pr merge 123";
     for _ in 0..3 {
-        let (code, answer) = merge_raw("codex", &root, merge, Some("one"));
-        assert_eq!((code, answer.as_str()), (0, ""), "observed");
+        let (code, decision, _) = merge_preflight_as("claude", &root, merge, "one");
+        assert_eq!((code, decision.as_str()), (0, ""), "observed");
     }
     merge_enforce(&root);
-    for n in 1..=2 {
-        let (_, answer) = merge_raw("codex", &root, merge, Some("one"));
-        assert!(merge_refused(&answer), "enforced refusal {n}: {answer}");
+    for n in 1..=4 {
+        let (code, decision, _) = merge_preflight_as("claude", &root, merge, "one");
+        assert_eq!((code, decision.as_str()), (0, "ask"), "enforced ask {n}");
     }
-    let (_, answer) = merge_raw("codex", &root, merge, Some("one"));
-    assert_eq!(answer, "", "the third enforced refusal is released");
-}
-
-/// B2, mutant M12: OMP cannot ask, so its refusals are counted like Codex's: with a session id
-/// the third is released, and another session starts again.
-#[test]
-fn merge_confirm_counts_omp_refusals_per_session() {
-    let (_tmp, root) = merge_repo(true);
-    merge_enforce(&root);
-    let merge = "gh pr merge 123";
-    for n in 1..=2 {
-        let (_, answer) = merge_raw("omp", &root, merge, Some("o1"));
-        assert!(merge_refused(&answer), "omp refusal {n}: {answer}");
-    }
-    let (_, answer) = merge_raw("omp", &root, merge, Some("o1"));
-    assert_eq!(answer, "", "released on the third");
-    let (_, answer) = merge_raw("omp", &root, merge, Some("o2"));
-    assert!(merge_refused(&answer), "another session: {answer}");
-    let lines = merge_log(&root);
-    let release = lines
-        .iter()
-        .filter(|l| l["kind"] == json!("rule_release"))
-        .count();
-    assert_eq!(release, 1, "{lines:?}");
 }
 
 /// N2 of the audit: a comment that only says `pr merge`, an option before the subcommand, and a
@@ -1232,10 +976,10 @@ fn merge_confirm_reads_the_subcommand_not_the_words_after_it() {
     }
 }
 
-/// REQ-5: every host's confirmation list names the direct merge.
+/// REQ-5: the confirmation list names the direct merge.
 #[test]
 fn merge_confirm_capabilities_name_the_direct_merge() {
-    for host in ["claude", "codex", "omp"] {
+    for host in hooks::HOSTS.iter().copied() {
         let caps = moai_cli::hook_engine::capabilities(host);
         let commands = caps["tool-preflight"]["confirm"]["commands"].to_string();
         assert!(
@@ -1255,25 +999,14 @@ fn merge_confirm_capabilities_name_the_direct_merge() {
             .all(|w| modes.contains(w)),
             "{host}: {modes}"
         );
-        // The limits of the release and of the log, named (audit of S4, B1 and N1).
-        for limit in [
-            "naming no session",
-            "refused every time",
-            "hook cwd in a subfolder",
-            "size limit",
-            ".moai-cli",
-        ] {
-            assert!(modes.contains(limit), "{host} {limit}: {modes}");
-        }
     }
 }
 
 /// #2877 Q1: the Claude set carries the hook engine's preflight guard after the claim guard, and
 /// the generated command, run as the host runs it, denies a dangerous Bash call and a write
-/// into `.git`, and lets an ordinary call through. Codex keeps its three hooks and has no
-/// preflight guard, only the session-check context.
+/// into `.git`, and lets an ordinary call through.
 #[test]
-fn claude_runs_the_preflight_guard_and_codex_does_not() {
+fn claude_runs_the_preflight_guard() {
     let claude = hooks::hooks_object("claude").unwrap();
     let pre = claude["PreToolUse"].as_array().unwrap();
     assert_eq!(pre.len(), 2, "{pre:?}");
@@ -1292,16 +1025,6 @@ fn claude_runs_the_preflight_guard_and_codex_does_not() {
         command,
         "moai hook-dispatch --host claude --event tool-preflight"
     );
-    let codex = hooks::hooks_object("codex").unwrap();
-    assert_eq!(codex["PreToolUse"].as_array().unwrap().len(), 1);
-    assert!(!codex
-        .values()
-        .any(|v| v.to_string().contains("tool-preflight")));
-    assert_eq!(
-        codex["SessionStart"][0]["hooks"][0]["command"],
-        json!("moai hook-dispatch --host codex --event session-check")
-    );
-
     // Run it the way Claude Code would: the command's words, our binary for `moai`.
     let dir = tempfile::TempDir::new().unwrap();
     let root = fs::canonicalize(dir.path()).unwrap();
@@ -2031,10 +1754,10 @@ fn deny_audit_line_is_null_when_the_sentence_is_built_at_run_time() {
     assert_eq!(denies[0]["reason"], Value::Null, "{lines:?}");
 }
 
-/// REQ-6: every host's answer says what the Bash lock covers and what it does not.
+/// REQ-6: the answer says what the Bash lock covers and what it does not.
 #[test]
 fn capabilities_name_the_bash_lock_limits() {
-    for host in ["claude", "codex", "omp"] {
+    for host in hooks::HOSTS.iter().copied() {
         let caps = moai_cli::hook_engine::capabilities(host);
         let pre = &caps["tool-preflight"];
         let guards = pre["guards"].to_string();
@@ -2556,11 +2279,10 @@ fn ac_verify_rule_modes_off_observe_enforce() {
     assert_eq!(blocks, 2);
 }
 
-/// REQ-7: Claude's and Codex's capabilities name the rule, its modes and its named limits;
-/// OMP still says it is not wired, without the old "STOP_RULES is empty" reason.
+/// REQ-7: Claude's capabilities name the rule, its modes and its named limits.
 #[test]
 fn ac_verify_rule_capabilities_name_the_rule_and_its_limits() {
-    for host in ["claude", "codex"] {
+    for host in hooks::HOSTS.iter().copied() {
         let caps = moai_cli::hook_engine::capabilities(host);
         let tv = &caps["turn-validation"];
         assert_eq!(tv["rules"], json!(1), "{host}: {tv}");
@@ -2590,10 +2312,6 @@ fn ac_verify_rule_capabilities_name_the_rule_and_its_limits() {
             assert!(limits.contains(limit), "{host} {limit}: {limits}");
         }
     }
-    let omp = moai_cli::hook_engine::capabilities("omp");
-    let reason = omp["turn-validation"]["reason"].as_str().unwrap();
-    assert!(reason.contains("not wired"), "{reason}");
-    assert!(!reason.contains("STOP_RULES is empty"), "{reason}");
 }
 
 /// SPEC-20261119-ac-verify-recorded-limits REQ-1 (card C-130, audit N2 N5 N8 and the subfolder
@@ -2604,7 +2322,7 @@ fn ac_verify_rule_capabilities_name_the_rule_and_its_limits() {
 #[test]
 fn the_ac_verify_limits_name_the_process_folder_the_command_size_the_unreadable_heads_and_the_subfolder(
 ) {
-    for host in ["claude", "codex"] {
+    for host in hooks::HOSTS.iter().copied() {
         let caps = moai_cli::hook_engine::capabilities(host);
         let limits = caps["turn-validation"]["limits"].to_string();
         for limit in [
@@ -2959,14 +2677,6 @@ fn ac_verify_rule_counts_only_writes_that_did_not_fail_and_are_inside_the_projec
             "Write",
             Box::new(|_| json!({"file_path": "../elsewhere.txt", "content": "x"})),
             false,
-        ),
-        (
-            "an unknown outcome (Codex apply_patch)",
-            "codex",
-            "PostToolUse",
-            "apply_patch",
-            Box::new(project_file),
-            true,
         ),
         (
             "a write line with no path",

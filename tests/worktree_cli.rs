@@ -839,7 +839,7 @@ fn without_flags_the_decided_limits_apply() {
     assert_eq!(limits["override"], false, "{limits}");
 }
 
-// ---- #2811 W2: new worktrees under <HOME>/.moai/worktrees ----
+// ---- new worktrees under the project's .claude/worktrees (#2811 W2 named the home folder) ----
 
 /// #3030 L3b (the #3048 acceptance): when the folder, the branch or the task already has a
 /// worktree, the `conflict` answer names the command that links that worktree to the claim:
@@ -1127,6 +1127,212 @@ fn worktree_place_status_a_failed_add_leaves_the_exclude_file_alone() {
     assert_ne!(env["result"]["decision"], "created", "{env}");
     assert_eq!(fs::read(f.repo.join(".git/info/exclude")).ok(), before);
     assert_eq!(exclude_count(&f.repo), 0);
+}
+
+/// REQ-13: a `.claude` that is a link makes the apply refuse before git runs: the answer is a
+/// conflict naming the link, no branch is made and the folder the link points at stays empty.
+#[cfg(unix)]
+#[test]
+fn worktree_place_links_the_apply_refuses_a_linked_claude_folder() {
+    let f = fixture();
+    let outside = f.repo.parent().unwrap().join("outside");
+    fs::create_dir_all(&outside).unwrap();
+    std::os::unix::fs::symlink(&outside, f.repo.join(".claude")).unwrap();
+    let p = plan(&f, "lane");
+    let env = apply(&f, "lane", p["plan_digest"].as_str().unwrap());
+    assert_eq!(env["result"]["decision"], "conflict", "{env}");
+    assert_eq!(env["result"]["reason"], "place_is_a_link", "{env}");
+    assert!(env.to_string().contains(".claude"), "{env}");
+    // `remove_dir` only removes an empty folder: nothing was made behind the link.
+    assert!(fs::remove_dir(&outside).is_ok(), "{env}");
+    assert!(!git(&f.repo, &["for-each-ref", "refs/heads"]).contains("lane/"));
+}
+
+/// Audit B1 (REQ-13): an explicit `--path` spelled through a linked parent still reaches the
+/// check: the link is found by what the path resolves to, not by how it is written, so a
+/// linked `.claude` behind that spelling is refused and nothing is made behind it.
+#[cfg(unix)]
+#[test]
+fn worktree_place_links_an_explicit_path_through_a_linked_parent() {
+    let f = fixture();
+    let outside = f.repo.parent().unwrap().join("outside-b1");
+    fs::create_dir_all(&outside).unwrap();
+    std::os::unix::fs::symlink(&outside, f.repo.join(".claude")).unwrap();
+    let alias = f.repo.parent().unwrap().join("alias-b1");
+    std::os::unix::fs::symlink(&f.repo, &alias).unwrap();
+    let via = alias.join(".claude/worktrees/via-alias");
+    let via = via.to_str().unwrap();
+    let p = project(&f);
+    let plan_out = run(
+        &f.repo,
+        &args(
+            &[
+                "worktree-plan",
+                &p,
+                "--branch-prefix",
+                "lane",
+                "--path",
+                via,
+            ],
+            &f.source,
+        ),
+    );
+    let digest = envelope(&plan_out)["result"]["plan_digest"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let env = apply_with(&f, &digest, &["--path", via, "--disk-floor-bytes", "0"]);
+    assert_eq!(env["result"]["decision"], "conflict", "{env}");
+    assert_eq!(env["result"]["reason"], "place_is_a_link", "{env}");
+    assert!(fs::remove_dir(&outside).is_ok(), "{env}");
+    assert!(!git(&f.repo, &["for-each-ref", "refs/heads"]).contains("lane/"));
+}
+
+/// True when the folder `dir` lives on treats names that differ only in case as one.
+#[cfg(unix)]
+fn disk_ignores_case(dir: &Path) -> bool {
+    let lower = dir.join("case-probe-lower");
+    fs::create_dir(&lower).unwrap();
+    let same = dir.join("CASE-PROBE-LOWER").exists();
+    fs::remove_dir(&lower).unwrap();
+    same
+}
+
+/// Audit B2 (REQ-13): on a disk that ignores case, `--path` spelled `.CLAUDE/worktrees/x` is the
+/// same folder as `.claude/worktrees/x`: a linked `.claude` behind that spelling is refused
+/// too, and nothing is made behind the link.
+#[cfg(unix)]
+#[test]
+fn worktree_place_links_a_case_changed_spelling_is_refused() {
+    let f = fixture();
+    if !disk_ignores_case(f.repo.parent().unwrap()) {
+        return; // on a case-sensitive disk `.CLAUDE` is another folder, not this one
+    }
+    let outside = f.repo.parent().unwrap().join("outside-b2");
+    fs::create_dir_all(&outside).unwrap();
+    std::os::unix::fs::symlink(&outside, f.repo.join(".claude")).unwrap();
+    let via = f.repo.join(".CLAUDE/worktrees/via-case");
+    let via = via.to_str().unwrap();
+    let p = project(&f);
+    let plan_out = run(
+        &f.repo,
+        &args(
+            &[
+                "worktree-plan",
+                &p,
+                "--branch-prefix",
+                "lane",
+                "--path",
+                via,
+            ],
+            &f.source,
+        ),
+    );
+    let digest = envelope(&plan_out)["result"]["plan_digest"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let env = apply_with(&f, &digest, &["--path", via, "--disk-floor-bytes", "0"]);
+    assert_eq!(env["result"]["decision"], "conflict", "{env}");
+    assert_eq!(env["result"]["reason"], "place_is_a_link", "{env}");
+    assert!(fs::remove_dir(&outside).is_ok(), "{env}");
+    assert!(!git(&f.repo, &["for-each-ref", "refs/heads"]).contains("lane/"));
+}
+
+/// Plans and applies `--path <via>` with the lane prefix and returns the apply answer.
+#[cfg(unix)]
+fn apply_via(f: &Fixture, via: &str) -> Value {
+    let p = project(f);
+    let plan_out = run(
+        &f.repo,
+        &args(
+            &[
+                "worktree-plan",
+                &p,
+                "--branch-prefix",
+                "lane",
+                "--path",
+                via,
+            ],
+            &f.source,
+        ),
+    );
+    let digest = envelope(&plan_out)["result"]["plan_digest"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    apply_with(f, &digest, &["--path", via, "--disk-floor-bytes", "0"])
+}
+
+/// Audit B3 (REQ-13): a `.` or `..` part in `--path` is refused plainly, whatever it is mixed
+/// with: `.claude/zz/../worktrees/x` reached the folder behind a linked `.claude`, and
+/// `.claude/../.claude/worktrees/x` left the project. Nothing is made.
+#[cfg(unix)]
+#[test]
+fn worktree_place_links_dot_parts_in_the_path_are_refused() {
+    let f = fixture();
+    let outside = f.repo.parent().unwrap().join("outside-b3");
+    fs::create_dir_all(&outside).unwrap();
+    std::os::unix::fs::symlink(&outside, f.repo.join(".claude")).unwrap();
+    for (i, tail) in [
+        ".claude/zz/../worktrees/x5",
+        ".claude/../.claude/worktrees/x6",
+        ".claude/./worktrees/x7",
+    ]
+    .iter()
+    .enumerate()
+    {
+        let via = format!("{}/{}", f.repo.display(), tail);
+        let env = apply_via(&f, &via);
+        assert_eq!(env["result"]["decision"], "conflict", "{i} {env}");
+        assert_eq!(env["result"]["reason"], "place_path_refused", "{i} {env}");
+    }
+    assert!(
+        fs::remove_dir(&outside).is_ok(),
+        "something was made behind the link"
+    );
+    assert!(!git(&f.repo, &["for-each-ref", "refs/heads"]).contains("lane/"));
+}
+
+/// Audit B3 (REQ-13): one mixed path: a linked alias of the project, a changed case and a linked
+/// middle part together are refused, and nothing is made behind the link.
+#[cfg(unix)]
+#[test]
+fn worktree_place_links_a_mixed_path_is_refused() {
+    let f = fixture();
+    if !disk_ignores_case(f.repo.parent().unwrap()) {
+        return;
+    }
+    let outside = f.repo.parent().unwrap().join("outside-b3-mixed");
+    fs::create_dir_all(&outside).unwrap();
+    fs::create_dir_all(f.repo.join(".claude/worktrees")).unwrap();
+    std::os::unix::fs::symlink(&outside, f.repo.join(".claude/worktrees/group")).unwrap();
+    let alias = f.repo.parent().unwrap().join("alias-b3");
+    std::os::unix::fs::symlink(&f.repo, &alias).unwrap();
+    let via = alias.join(".Claude/WORKTREES/group/w");
+    let env = apply_via(&f, via.to_str().unwrap());
+    assert_eq!(env["result"]["decision"], "conflict", "{env}");
+    assert_eq!(env["result"]["reason"], "place_is_a_link", "{env}");
+    assert!(
+        fs::remove_dir(&outside).is_ok(),
+        "something was made behind the link"
+    );
+}
+
+/// Audit N2 (AC-9, REQ-12): the plan names the folder name a session opens with
+/// `claude --worktree <name>`.
+#[test]
+fn worktree_place_lane_plan_names_the_session_worktree_name() {
+    let f = fixture();
+    let p = plan(&f, "lane");
+    let folder = Path::new(p["path"].as_str().unwrap())
+        .file_name()
+        .unwrap()
+        .to_str()
+        .unwrap()
+        .to_string();
+    assert_eq!(p["session_name"], folder.as_str(), "{p}");
+    assert!(!folder.is_empty());
 }
 
 /// AC-2: the same name again is refused, never overwritten — a folder already at the path

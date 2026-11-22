@@ -1,4 +1,3 @@
-//! Host adapters. Each adapter plans and diagnoses; installation into user homes is EP-05.
-pub mod codex;
-pub mod codex_config;
+//! Host code that outlives the Codex adapters: the config size bound the Go-era state preview
+//! uses.
 pub mod config_backup;

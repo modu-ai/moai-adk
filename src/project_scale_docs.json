@@ -1,0 +1,51 @@
+{
+  "read_on": "2026-11-22",
+  "claude_code_installed": "2.1.330",
+  "source": "SPEC-20261122-project-scale-settings, section Evidence",
+  "lines": {
+    "package_claude_md": {
+      "url": "https://code.claude.com/docs/en/memory",
+      "quote": "Instead of loading them at launch, Claude Code loads each one once Claude reads, writes, or edits another file in that subdirectory."
+    },
+    "claude_md_excludes": {
+      "url": "https://code.claude.com/docs/en/memory",
+      "quote": "You can configure `claudeMdExcludes` at any settings layer: user, project, local, or managed policy. Arrays merge across layers."
+    },
+    "deny_read": {
+      "url": "https://code.claude.com/docs/en/large-codebases",
+      "quote": "add `Read` deny rules in `permissions.deny` to block Claude from opening those files."
+    },
+    "enabled_plugins": {
+      "url": "https://code.claude.com/docs/en/settings-reference",
+      "quote": "Project settings: plugins turned on for everyone in the repository. This doesn't install them, so each user installs them."
+    },
+    "code_intelligence": {
+      "url": "https://code.claude.com/docs/en/plugins/code-intelligence",
+      "quote": "It doesn't include the language server."
+    },
+    "sparse_paths": {
+      "url": "https://code.claude.com/docs/en/settings-reference",
+      "quote": "Include `.claude` in the list so that each worktree also has the repository's `.claude/settings.json` and `.claude/rules/`."
+    },
+    "symlink_directories": {
+      "url": "https://code.claude.com/docs/en/settings-reference",
+      "quote": "Symlink directories from the main repository into each worktree so you don't duplicate large directories on disk."
+    },
+    "worktree_ignore": {
+      "url": "https://code.claude.com/docs/en/worktrees",
+      "quote": "By default, the worktree is created under `.claude/worktrees/<name>/` ... Add `.claude/worktrees/` to your `.gitignore`"
+    },
+    "package_settings": {
+      "url": "https://code.claude.com/docs/en/large-codebases",
+      "quote": "Project settings in `.claude/settings.json` aren't inherited from parent directories the way CLAUDE.md files are."
+    },
+    "additional_directories": {
+      "url": "https://code.claude.com/docs/en/permissions",
+      "quote": "Directories listed in `permissions.additionalDirectories` in a settings file grant file access only and don't load any of the configuration below."
+    },
+    "plan_survives": {
+      "url": "https://code.claude.com/docs/en/context-window",
+      "quote": "The plan Claude wrote in plan mode / Re-injected from disk"
+    }
+  }
+}

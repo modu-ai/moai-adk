@@ -252,23 +252,6 @@ fn an_empty_or_relative_variable_blocks_its_host_by_name() {
             "{style}"
         );
     }
-    // The Codex doctor refuses a relative CODEX_HOME.
-    let project = w.base.join("repo");
-    fs::create_dir_all(&project).unwrap();
-    let out = w.run(
-        &[("CODEX_HOME", "cx")],
-        true,
-        &["codex-doctor", &s(&project), "--home", w.h()],
-    );
-    assert_eq!(
-        out.status.code(),
-        Some(1),
-        "{}",
-        String::from_utf8_lossy(&out.stdout)
-    );
-    let v: Value = serde_json::from_slice(&out.stdout).unwrap();
-    let m = v["error"]["message"].as_str().unwrap();
-    assert!(m.contains("CODEX_HOME") && m.contains("absolute"), "{m}");
 }
 
 /// REQ-1: agents and the output style follow `CLAUDE_CONFIG_DIR`; no other host is planned.
@@ -465,99 +448,61 @@ fn a_linked_config_folder_is_refused_not_followed() {
     assert_eq!(fs::read_dir(&far_real).unwrap().count(), 0);
 }
 
-/// REQ-1: the Codex doctor reads the global AGENTS file from `CODEX_HOME`; `--codex-home`
-/// still wins.
-#[test]
-fn the_codex_doctor_reads_codex_home() {
-    let w = World::new();
-    let cx = w.outside("codex-home");
-    fs::create_dir_all(&cx).unwrap();
-    fs::write(cx.join("AGENTS.md"), "relocated codex notes\n").unwrap();
-    let project = w.base.join("repo");
-    fs::create_dir_all(&project).unwrap();
-    let x = s(&cx);
-    let v = ok(&w.run(
-        &[("CODEX_HOME", x.as_str())],
-        true,
-        &["codex-doctor", &s(&project), "--home", w.h()],
-    ));
-    assert!(v.to_string().contains(&s(&cx.join("AGENTS.md"))), "{v}");
-    let flag = w.outside("flag-home");
-    fs::create_dir_all(&flag).unwrap();
-    let v = ok(&w.run(
-        &[("CODEX_HOME", x.as_str())],
-        true,
-        &[
-            "codex-doctor",
-            &s(&project),
-            "--home",
-            w.h(),
-            "--codex-home",
-            &s(&flag),
-        ],
-    ));
-    assert!(!v.to_string().contains(&s(&cx)), "{v}");
-}
-
-/// REQ-7 (audit B1): the hook writer refuses a project whose `.claude` or `.codex` is the folder
-/// `CLAUDE_CONFIG_DIR` or `CODEX_HOME` names, or a project inside that folder, for both hosts;
-/// nothing is written. A project elsewhere still plans.
+/// REQ-7 (audit B1): the hook writer refuses a project whose `.claude` is the folder
+/// `CLAUDE_CONFIG_DIR` names, or a project inside that folder; nothing is written. A project
+/// elsewhere still plans.
 #[test]
 fn hooks_refuse_the_relocated_user_folders() {
     let w = World::new();
-    for (host, var, dir) in [
-        ("claude", "CLAUDE_CONFIG_DIR", ".claude"),
-        ("codex", "CODEX_HOME", ".codex"),
-    ] {
-        let project = w.outside(&format!("{host}-project"));
-        fs::create_dir_all(project.join(dir)).unwrap();
-        let user = project.join(dir);
-        let inside = user.join("sub");
-        fs::create_dir_all(&inside).unwrap();
-        let u = std::ffi::OsString::from(&user);
-        for target in [&project, &inside] {
-            let m = refused(&w.run_os(
-                &[(var, u.as_os_str())],
-                &["hooks-plan", &s(target), "--host", host],
-                None,
-            ));
-            assert!(m.contains(var), "{host} {}: {m}", target.display());
-            let m = refused(&w.run_os(
-                &[(var, u.as_os_str())],
-                &[
-                    "hooks-apply",
-                    &s(target),
-                    "--host",
-                    host,
-                    "--plan-digest",
-                    "sha256:00",
-                    "--permission-reference",
-                    PERM,
-                ],
-                None,
-            ));
-            assert!(m.contains(var), "{host} apply: {m}");
-        }
-        assert!(!user.join("hooks.json").exists());
-        assert!(!user.join("settings.json").exists());
-        // An empty or relative value is refused by name too.
-        for bad in ["", "rel"] {
-            let m = refused(&w.run_os(
-                &[(var, std::ffi::OsStr::new(bad))],
-                &["hooks-plan", &s(&project), "--host", host],
-                None,
-            ));
-            assert!(m.contains(var), "{host} {bad:?}: {m}");
-        }
-        // A project elsewhere plans with the variable set.
-        let other = w.outside(&format!("{host}-other"));
-        fs::create_dir_all(&other).unwrap();
-        ok(&w.run_os(
+    let (host, var, dir) = ("claude", "CLAUDE_CONFIG_DIR", ".claude");
+    let project = w.outside(&format!("{host}-project"));
+    fs::create_dir_all(project.join(dir)).unwrap();
+    let user = project.join(dir);
+    let inside = user.join("sub");
+    fs::create_dir_all(&inside).unwrap();
+    let u = std::ffi::OsString::from(&user);
+    for target in [&project, &inside] {
+        let m = refused(&w.run_os(
             &[(var, u.as_os_str())],
-            &["hooks-plan", &s(&other), "--host", host],
+            &["hooks-plan", &s(target), "--host", host],
             None,
         ));
+        assert!(m.contains(var), "{host} {}: {m}", target.display());
+        let m = refused(&w.run_os(
+            &[(var, u.as_os_str())],
+            &[
+                "hooks-apply",
+                &s(target),
+                "--host",
+                host,
+                "--plan-digest",
+                "sha256:00",
+                "--permission-reference",
+                PERM,
+            ],
+            None,
+        ));
+        assert!(m.contains(var), "{host} apply: {m}");
     }
+    assert!(!user.join("hooks.json").exists());
+    assert!(!user.join("settings.json").exists());
+    // An empty or relative value is refused by name too.
+    for bad in ["", "rel"] {
+        let m = refused(&w.run_os(
+            &[(var, std::ffi::OsStr::new(bad))],
+            &["hooks-plan", &s(&project), "--host", host],
+            None,
+        ));
+        assert!(m.contains(var), "{host} {bad:?}: {m}");
+    }
+    // A project elsewhere plans with the variable set.
+    let other = w.outside(&format!("{host}-other"));
+    fs::create_dir_all(&other).unwrap();
+    ok(&w.run_os(
+        &[(var, u.as_os_str())],
+        &["hooks-plan", &s(&other), "--host", host],
+        None,
+    ));
 }
 
 /// REQ-5, D10 (user decision 2026-11-17, "기본 폴더 링크만 허용"): a folder in the relocated host
@@ -710,14 +655,13 @@ fn the_output_style_refuses_a_linked_config_folder() {
     );
 }
 
-/// Audit N1 (M6, M7): the Claude settings and Codex config guards refuse an empty or relative
-/// variable by name and write nothing.
+/// Audit N1 (M6): the Claude settings guard refuses an empty or relative variable by name and
+/// writes nothing.
 #[test]
 fn the_user_scope_guards_refuse_empty_and_relative_values() {
     let w = World::new();
     let project = w.outside("project");
     fs::create_dir_all(project.join(".claude")).unwrap();
-    fs::create_dir_all(project.join(".codex")).unwrap();
     for bad in ["", "rel"] {
         let m = refused(&w.run_os(
             &[("CLAUDE_CONFIG_DIR", std::ffi::OsStr::new(bad))],
@@ -725,19 +669,11 @@ fn the_user_scope_guards_refuse_empty_and_relative_values() {
             Some(br#"{"outputStyle":"MoAI-Easy"}"#),
         ));
         assert!(m.contains("CLAUDE_CONFIG_DIR"), "{bad:?}: {m}");
-        let m = refused(&w.run_os(
-            &[("CODEX_HOME", std::ffi::OsStr::new(bad))],
-            &["codex-config-plan", &s(&project)],
-            Some(br#"{"project_doc_max_bytes":32768}"#),
-        ));
-        assert!(m.contains("CODEX_HOME"), "{bad:?}: {m}");
     }
     assert!(!project.join(".claude/settings.json").exists());
-    assert!(!project.join(".codex/config.toml").exists());
 }
 
-/// Audit N3: a variable that is not UTF-8 blocks only that host in `update-plan`, and the Codex
-/// doctor refuses it without a panic.
+/// Audit N3: a variable that is not UTF-8 blocks only that host in `update-plan`.
 #[test]
 fn a_variable_that_is_not_utf8_blocks_only_its_host() {
     use std::os::unix::ffi::OsStrExt;
@@ -758,12 +694,4 @@ fn a_variable_that_is_not_utf8_blocks_only_its_host() {
         "{plan}"
     );
     assert_eq!(plan["hosts"].as_array().unwrap().len(), 1, "{plan}");
-    let project = w.base.join("repo");
-    fs::create_dir_all(&project).unwrap();
-    let m = refused(&w.run_os(
-        &[("CODEX_HOME", bad)],
-        &["codex-doctor", &s(&project), "--home", w.h()],
-        None,
-    ));
-    assert!(m.contains("CODEX_HOME") && m.contains("UTF-8"), "{m}");
 }

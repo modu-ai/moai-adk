@@ -20,9 +20,9 @@
 //! text, as a merged block or pasted by hand, and when nothing of `AGENTS.local.md` is left to move.
 
 use super::{
-    apply_confirmed, find_guidance, imports_agents_md, new_receipt_dir_named, plan_for,
-    read_checked, receipts_dir, revert_for, write_private, Found, Kind, Result, GUIDANCE_TARGET,
-    LEGACY_TARGET, LOCAL, TARGET,
+    apply_confirmed, find_guidance, hidden_files_warning_except, imports_agents_md,
+    new_receipt_dir_named, plan_for, read_checked, receipts_dir, revert_for, write_private, Found,
+    Kind, Result, GUIDANCE_TARGET, LEGACY_TARGET, LOCAL, TARGET,
 };
 use crate::generation::{self, GenerationRequest};
 use serde::{Deserialize, Serialize};
@@ -329,7 +329,10 @@ fn engine_part(name: &str, plan: &Option<Value>, c: &mut Candidate, bound: &mut 
             if let Some(path) = plan["target"]["path"].as_str() {
                 c.writes.push(path.to_string());
             }
-            if plan["gitignore"]["action"] == "add" {
+            // The personal file's line, or the receipt folder's line when no managed block has it.
+            if plan["gitignore"]["action"] == "add"
+                || plan["gitignore"]["receipts"]["action"] == "add"
+            {
                 c.writes.push(".gitignore".into());
             }
             // The pick writes `CLAUDE.md` before the personal file, so the warning that a first
@@ -372,9 +375,18 @@ fn engine_part(name: &str, plan: &Option<Value>, c: &mut Candidate, bound: &mut 
 /// carries `choices` in the order `move`, `import`, `leave` and the shadow `warnings`.
 pub fn offer(root: &Path, request: impl FnOnce() -> Result<GenerationRequest>) -> Result<Value> {
     let project = root.display().to_string();
+    // The first CLAUDE file of the project hides `AGENTS.md` and `.claude/AGENTS.md` from Claude
+    // Code. A project that holds only `.claude/AGENTS.md` is warned and offered no pick: the
+    // picks move and import the root files, and moving that file is a separate feature.
+    // `move` and `import` carry the root AGENTS.md into the new CLAUDE.md, so it stays read and
+    // is not named; only `.claude/AGENTS.md` (nothing carries it) is.
+    let hidden: Vec<String> = hidden_files_warning_except(root, GUIDANCE_TARGET, &[LEGACY_TARGET])
+        .into_iter()
+        .collect();
     let other = |offer: &str, reason: &str| -> Result<Value> {
         Ok(json!({
-            "project": project, "offer": offer, "reason": reason, "warnings": [], "choices": [],
+            "project": project, "offer": offer, "reason": reason, "warnings": hidden,
+            "choices": [],
         }))
     };
     if !exists(root, LEGACY_TARGET) && !exists(root, LOCAL) {
@@ -401,7 +413,7 @@ pub fn offer(root: &Path, request: impl FnOnce() -> Result<GenerationRequest>) -
         "project": project,
         "offer": "picks",
         "reason": "the project holds AGENTS.md or AGENTS.local.md; pick move, import or leave",
-        "warnings": st.shadow_warnings(),
+        "warnings": hidden.into_iter().chain(st.shadow_warnings()).collect::<Vec<_>>(),
         "choices": choices,
     }))
 }
@@ -426,6 +438,7 @@ fn plan_with(
                 "pick": pick.id(), "offer": offered["offer"], "reason": reason,
                 "project": offered["project"],
             }))?,
+            "shadow_warnings": offered["warnings"],
         }))
     };
     match offered["offer"].as_str() {

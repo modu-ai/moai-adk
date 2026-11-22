@@ -12,7 +12,11 @@
     "purpose": {"type": "string"},
     "tools": {"type": "array", "items": {"type": "string"}},
     "development_methods": {"type": "array", "items": {"type": "string"}},
-    "hosts": {"type": "array", "items": {"enum": ["claude", "codex"]}},
+    "hosts": {
+      "description": "Hosts moai writes for: claude. codex and omp are legacy values: a profile that lists them still loads and the entries are ignored (moai no longer manages those hosts).",
+      "type": "array",
+      "items": {"enum": ["claude", "codex", "omp"]}
+    },
     "package_pin": {"$ref": "urn:moai:protocol:v1:digest"},
     "interview_revision": {"type": "string"},
     "decisions": {

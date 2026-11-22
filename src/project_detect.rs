@@ -146,7 +146,7 @@ const DB_DEPENDENCIES: &[(&str, &str)] = &[
 /// Folders the code walk never enters: VCS and MoAI state, the host folders MoAI writes hook
 /// and agent files into (`.omp/extensions/moai-hooks.ts` is TypeScript, #2936 R9), build
 /// output, vendored deps.
-const SKIP_DIRS: &[&str] = &[
+pub(crate) const SKIP_DIRS: &[&str] = &[
     ".git",
     PROJECT_STATE_DIR,
     crate::state_root::MOAI_DIR,
@@ -192,7 +192,7 @@ fn file_in(root: &Path, parts: &[&str]) -> Option<(PathBuf, fs::Metadata)> {
 }
 
 /// The text of [`file_in`], at most `MAX_FILE` bytes.
-fn read_in(root: &Path, parts: &[&str]) -> Option<String> {
+pub(crate) fn read_in(root: &Path, parts: &[&str]) -> Option<String> {
     let (path, meta) = file_in(root, parts)?;
     if meta.len() > MAX_FILE {
         return None;
@@ -200,7 +200,7 @@ fn read_in(root: &Path, parts: &[&str]) -> Option<String> {
     fs::read_to_string(path).ok()
 }
 
-fn is_file_in(root: &Path, parts: &[&str]) -> bool {
+pub(crate) fn is_file_in(root: &Path, parts: &[&str]) -> bool {
     file_in(root, parts).is_some()
 }
 
@@ -425,7 +425,7 @@ fn root_ignore_lines(root: &Path) -> Vec<IgnoreLine> {
 /// the ignore lists exclude never entered. An ignore list that cannot be read (a link, over
 /// [`MAX_FILE`], not UTF-8) counts as no lines, so that failure can only read more, never
 /// less. The `seen` budget mirrors the code walk's [`MAX_ENTRIES`].
-fn nested_manifests(root: &Path) -> BTreeSet<String> {
+pub(crate) fn nested_manifests(root: &Path) -> BTreeSet<String> {
     let mut found = BTreeSet::new();
     let mut seen = 0usize;
     let mut stack = IgnoreStack(vec![(0, root_ignore_lines(root))]);
@@ -602,8 +602,8 @@ fn prisma_database(root: &Path) -> Option<String> {
     }
 }
 
-/// MCP server names from the project's `.mcp.json` (`mcpServers`) and
-/// `.codex/config.toml` (`[mcp_servers.<name>]`). Values are never read further.
+/// MCP server names from the project's `.mcp.json` (`mcpServers`). The `.codex` folder is not
+/// read: moai no longer manages it. Values are never read further.
 fn mcp_servers(root: &Path) -> BTreeSet<String> {
     let mut names = BTreeSet::new();
     if let Some(v) =
@@ -612,9 +612,6 @@ fn mcp_servers(root: &Path) -> BTreeSet<String> {
         if let Some(map) = v["mcpServers"].as_object() {
             names.extend(map.keys().cloned());
         }
-    }
-    if let Some(doc) = read_in(root, &[".codex", "config.toml"]).and_then(|t| toml_doc(&t)) {
-        names.extend(table_keys(doc.get("mcp_servers")));
     }
     names
 }
@@ -959,6 +956,9 @@ pub fn detect_cli(root: &Path) -> Result<Value> {
         // C-69: the versioning scheme the tag names and root manifests already show, a fact
         // beside `detected` like the commands; the interview offers keeping it.
         "versioning": crate::versioning::fact(root),
+        // SPEC-20261122-project-scale: small, large single tree or monorepo, a fact beside
+        // `detected` that the user's pick can override; never recorded inside `detected`.
+        "scale": crate::project_scale_detect::read(root),
         "next_actions": next_actions,
     }))
 }

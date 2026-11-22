@@ -1111,10 +1111,20 @@ fn a_git_project_gets_one_ignore_line_through_the_same_receipt() {
         json!([".gitignore", "CLAUDE.local.md"]),
         "{applied}"
     );
-    assert_eq!(fx.read(".gitignore"), "CLAUDE.local.md\n");
+    // The personal file's line, then the line of the receipt folder this apply writes into: no
+    // managed block holds it in this project.
+    assert_eq!(
+        fx.read(".gitignore"),
+        format!("CLAUDE.local.md\n{}/receipts/\n", fx.state())
+    );
     assert_eq!(
         fx.git(&["check-ignore", "CLAUDE.local.md"]).trim(),
         "CLAUDE.local.md"
+    );
+    assert_eq!(
+        fx.git(&["check-ignore", &format!("{}/receipts", fx.state())])
+            .trim(),
+        format!("{}/receipts", fx.state())
     );
     let id = applied["receipt"].as_str().unwrap().to_string();
     let r = fx.receipt(&id);
@@ -1127,7 +1137,7 @@ fn a_git_project_gets_one_ignore_line_through_the_same_receipt() {
     assert!(!fx.root.join(".gitignore").exists());
     assert!(!fx.root.join("CLAUDE.local.md").exists());
 
-    // An existing `.gitignore` without a final newline: only the one line is added, every other
+    // An existing `.gitignore` without a final newline: only the two lines are added, every other
     // byte stays, and the revert restores the exact earlier bytes.
     let fx = Fx::fresh(MINE);
     fx.git_init();
@@ -1136,7 +1146,7 @@ fn a_git_project_gets_one_ignore_line_through_the_same_receipt() {
     let applied = fx.merge();
     assert_eq!(
         fx.read(".gitignore"),
-        format!("{earlier}\nCLAUDE.local.md\n")
+        format!("{earlier}\nCLAUDE.local.md\n{}/receipts/\n", fx.state())
     );
     let id = applied["receipt"].as_str().unwrap().to_string();
     assert_eq!(fx.receipt(&id)["gitignore_existed"], json!(true));
@@ -1168,11 +1178,17 @@ fn an_ignored_file_gets_no_line_and_a_folder_without_git_gets_a_note() {
         fx.write(".gitignore", pattern);
         let p = fx.plan();
         assert_eq!(p["gitignore"]["action"], json!("present"), "{p}");
+        assert_eq!(p["gitignore"]["receipts"]["action"], json!("add"), "{p}");
         let applied = fx.merge();
-        assert_eq!(applied["writes"], json!(["CLAUDE.local.md"]), "{applied}");
+        // The personal file adds no line; the receipt folder is not ignored by either pattern.
+        assert_eq!(
+            applied["writes"],
+            json!([".gitignore", "CLAUDE.local.md"]),
+            "{applied}"
+        );
         assert_eq!(
             fx.read(".gitignore"),
-            pattern,
+            format!("{pattern}{}/receipts/\n", fx.state()),
             "an ignored file adds no line"
         );
     }
@@ -1401,6 +1417,15 @@ fn a_negated_ignore_rule_the_user_wrote_wins() {
         "{p}"
     );
     let applied = fx.merge();
-    assert_eq!(applied["writes"], json!(["CLAUDE.local.md"]), "{applied}");
-    assert_eq!(fx.read(".gitignore"), earlier, ".gitignore is untouched");
+    // The rule about the personal file wins and adds no line; the receipt folder's line is added.
+    assert_eq!(
+        applied["writes"],
+        json!([".gitignore", "CLAUDE.local.md"]),
+        "{applied}"
+    );
+    assert_eq!(
+        fx.read(".gitignore"),
+        format!("{earlier}{}/receipts/\n", fx.state()),
+        "only the receipts line is added"
+    );
 }

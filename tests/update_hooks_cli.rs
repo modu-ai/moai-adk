@@ -173,40 +173,18 @@ fn make_claude_hooks_four_event(f: &Fixture, receipt: &str) {
     fs::write(&receipt_path, rb).unwrap();
 }
 
-/// The same four-event set for Codex: the hook file and its ownership receipt (whole-file
-/// ownership, so the receipt records the file's digest).
-fn make_codex_hooks_four_event(f: &Fixture) {
-    let file = f.project.join(".codex/hooks.json");
-    let mut v: Value = serde_json::from_slice(&fs::read(&file).unwrap()).unwrap();
-    let group: Value = serde_json::from_str(&RECEIPT_STOP.replace("HOST", "codex")).unwrap();
-    v["hooks"]["SessionStart"] = group.clone();
-    v["hooks"]["Stop"] = group;
-    let mut bytes = serde_json::to_vec_pretty(&v).unwrap();
-    bytes.push(b'\n');
-    fs::write(&file, &bytes).unwrap();
-    let receipt_path = f.project.join(".moai/manifests/codex-hooks.json");
-    let mut r: Value = serde_json::from_slice(&fs::read(&receipt_path).unwrap()).unwrap();
-    r["sha256"] = json!(moai_cli::digest(&bytes));
-    let mut rb = serde_json::to_vec_pretty(&r).unwrap();
-    rb.push(b'\n');
-    fs::write(&receipt_path, rb).unwrap();
-}
-
-/// #2936 R9 S1 AC-3: a project that holds the earlier four-event set sees it as an update for both
-/// hosts, the confirmation drops `Stop` and moves `SessionStart` to the session-check command, and
-/// the next preview has nothing to apply.
+/// #2936 R9 S1 AC-3: a project that holds the earlier four-event set sees it as an update, the
+/// confirmation drops `Stop` and moves `SessionStart` to the session-check command, and the next
+/// preview has nothing to apply.
 #[test]
 fn an_installed_four_event_set_is_replanned() {
     let f = setup();
     let receipt = install_hooks(&f, "claude");
-    install_hooks(&f, "codex");
     update_confirm(&f); // the rest of the user layer is current from here on
     make_claude_hooks_four_event(&f, &receipt);
-    make_codex_hooks_four_event(&f);
 
     let p = update_preview(&f);
     assert_eq!(hook_host(&p, "claude")["action"], json!("update"), "{p}");
-    assert_eq!(hook_host(&p, "codex")["action"], json!("update"), "{p}");
     let digest = p["plan_digest"].as_str().unwrap().to_string();
     let r = result(&run(&f, &f.project, &["update", "--confirm", &digest]));
     assert_eq!(r["hooks_result"]["state"], json!("applied"), "{r}");
@@ -214,59 +192,38 @@ fn an_installed_four_event_set_is_replanned() {
     let claude: Value =
         serde_json::from_slice(&fs::read(f.project.join(".claude/settings.json")).unwrap())
             .unwrap();
-    let codex: Value =
-        serde_json::from_slice(&fs::read(f.project.join(".codex/hooks.json")).unwrap()).unwrap();
-    for (host, v) in [("claude", &claude), ("codex", &codex)] {
-        assert!(v["hooks"].get("Stop").is_none(), "{host}: {v}");
-        assert_eq!(
-            v["hooks"]["SessionStart"][0]["hooks"][0]["command"],
-            json!(format!(
-                "moai hook-dispatch --host {host} --event session-check"
-            )),
-            "{host}"
-        );
-    }
+    assert!(claude["hooks"].get("Stop").is_none(), "{claude}");
+    assert_eq!(
+        claude["hooks"]["SessionStart"][0]["hooks"][0]["command"],
+        json!("moai hook-dispatch --host claude --event session-check")
+    );
     let again = update_preview(&f);
     assert_eq!(again["nothing_to_apply"], json!(true), "{again}");
     assert_eq!(hook_host(&again, "claude")["action"], json!("unchanged"));
-    assert_eq!(hook_host(&again, "codex")["action"], json!("unchanged"));
 }
 
 /// #2936 R9 S1 AC-4 (miss direction): an earlier four-event set that the user edited is not
-/// rewritten. Claude Code stops at a `hooks` conflict, Codex at "requires preservation review";
-/// both files are byte-identical after the confirmation, so no `Stop` entry is deleted.
+/// rewritten. Claude Code stops at a `hooks` conflict; the file is byte-identical after the
+/// confirmation, so no `Stop` entry is deleted.
 #[test]
 fn an_edited_four_event_set_is_kept() {
     let f = setup();
     let receipt = install_hooks(&f, "claude");
-    install_hooks(&f, "codex");
     update_confirm(&f);
     make_claude_hooks_four_event(&f, &receipt);
-    make_codex_hooks_four_event(&f);
     let settings = f.project.join(".claude/settings.json");
     let mut s: Value = serde_json::from_slice(&fs::read(&settings).unwrap()).unwrap();
     s["hooks"]["Stop"][0]["hooks"][0]["timeout"] = json!(99);
     fs::write(&settings, serde_json::to_vec_pretty(&s).unwrap()).unwrap();
-    let codex = f.project.join(".codex/hooks.json");
-    let mut c = fs::read(&codex).unwrap();
-    c.extend_from_slice(b" ");
-    fs::write(&codex, &c).unwrap();
-    let (s_before, c_before) = (fs::read(&settings).unwrap(), fs::read(&codex).unwrap());
+    let s_before = fs::read(&settings).unwrap();
 
     let p = update_preview(&f);
     let claude = hook_host(&p, "claude");
     assert_eq!(claude["action"], json!("conflict"), "{claude}");
     assert_eq!(claude["conflicts"], json!(["hooks"]));
-    let codex_plan = hook_host(&p, "codex");
-    assert_eq!(codex_plan["action"], json!("conflict"), "{codex_plan}");
-    assert!(codex_plan["reason"]
-        .as_str()
-        .unwrap()
-        .contains("requires preservation review"));
     let digest = p["plan_digest"].as_str().unwrap().to_string();
     result(&run(&f, &f.project, &["update", "--confirm", &digest]));
     assert_eq!(fs::read(&settings).unwrap(), s_before);
-    assert_eq!(fs::read(&codex).unwrap(), c_before);
 }
 
 /// AC-1: an old hook entry shows as an update in the preview, the confirmation applies it with a
@@ -462,41 +419,28 @@ fn a_hand_edit_of_a_current_hook_set_is_kept() {
 }
 
 /// AC-2: when MoAI has a newer hook set but the user edited the installed one, the entry is a
-/// conflict; a Codex hook file changed by hand is one too. The preview names them, nothing is
-/// offered, and a confirmation leaves both files as they are.
+/// conflict. The preview names it, nothing is offered, and a confirmation leaves the file as it is.
 #[test]
 fn hand_edited_hooks_are_conflicts_and_are_never_overwritten() {
     let f = setup();
     let receipt = install_hooks(&f, "claude");
-    install_hooks(&f, "codex");
     update_confirm(&f);
     make_claude_hooks_old(&f, &receipt);
     hand_edit_claude_hooks(&f);
     let settings = f.project.join(".claude/settings.json");
-    let codex = f.project.join(".codex/hooks.json");
-    let mut c = fs::read(&codex).unwrap();
-    c.extend_from_slice(b" ");
-    fs::write(&codex, &c).unwrap();
-    let (s_before, c_before) = (fs::read(&settings).unwrap(), fs::read(&codex).unwrap());
+    let s_before = fs::read(&settings).unwrap();
 
     let p = update_preview(&f);
     let claude = hook_host(&p, "claude");
     assert_eq!(claude["action"], json!("conflict"), "{claude}");
     assert_eq!(claude["conflicts"], json!(["hooks"]));
     assert_eq!(claude["plan_digest"], Value::Null);
-    let codex_plan = hook_host(&p, "codex");
-    assert_eq!(codex_plan["action"], json!("conflict"), "{codex_plan}");
-    assert!(codex_plan["reason"]
-        .as_str()
-        .unwrap()
-        .contains("requires preservation review"));
     assert_eq!(p["nothing_to_apply"], json!(true), "{p}");
 
     let digest = p["plan_digest"].as_str().unwrap().to_string();
     let r = result(&run(&f, &f.project, &["update", "--confirm", &digest]));
     assert_eq!(r["hooks_result"]["state"], json!("unchanged"), "{r}");
     assert_eq!(fs::read(&settings).unwrap(), s_before);
-    assert_eq!(fs::read(&codex).unwrap(), c_before);
 }
 
 /// AC-3: a current hook set adds nothing to apply; a project without MoAI hooks, and a folder
@@ -528,40 +472,43 @@ fn a_current_or_absent_hook_set_leaves_nothing_to_apply() {
     assert_eq!(outside["nothing_to_apply"], json!(true));
 }
 
-/// #2904 stage 2: `update` keeps a Codex lane's Stop hook — the receipt records the lane, so
-/// the re-plan is `unchanged` and the confirmation leaves the file as it was.
+/// A Codex or OMP hook file an earlier release wrote, with its ownership receipt, is no part of
+/// the hook layer any more: the preview names no such host and the confirmation leaves both
+/// files as they were.
 #[test]
-fn update_keeps_the_codex_lane_stop_hook() {
+fn update_leaves_the_hook_files_of_a_removed_host_alone() {
     let f = setup();
-    install_hooks(&f, "codex");
-    let p = f.project.to_str().unwrap();
-    let lane = ["--lane-loop", "agent-1", "--repo", "o/r"];
-    let mut args = vec!["hooks-plan", p, "--host", "codex"];
-    args.extend(lane);
-    let plan = result(&run(&f, &f.project, &args));
-    let digest = plan["plan_digest"].as_str().unwrap().to_string();
-    let mut apply = vec![
-        "hooks-apply",
-        p,
-        "--host",
-        "codex",
-        "--plan-digest",
-        &digest,
-        "--permission-reference",
-        "test-approval",
+    install_hooks(&f, "claude");
+    // The receipts an earlier moai wrote sit in the folder the project state resolves to.
+    let codex_receipt = moai_cli::state_root::rel(&f.project, "manifests/codex-hooks.json");
+    let omp_receipt = moai_cli::state_root::rel(&f.project, "manifests/omp-hooks.json");
+    let files = [
+        (".codex/hooks.json", "{\"hooks\": {}}\n"),
+        (codex_receipt.as_str(), "{}\n"),
+        (".omp/extensions/moai-hooks.ts", "// earlier module\n"),
+        (omp_receipt.as_str(), "{}\n"),
     ];
-    apply.extend(lane);
-    result(&run(&f, &f.project, &apply));
-    let file = f.project.join(".codex/hooks.json");
-    let with_lane = fs::read(&file).unwrap();
+    for (rel, text) in files {
+        let path = f.project.join(rel);
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        fs::write(path, text).unwrap();
+    }
     let preview = update_preview(&f);
-    assert_eq!(
-        hook_host(&preview, "codex")["action"],
-        json!("unchanged"),
-        "{preview}"
-    );
+    let hosts: Vec<&str> = preview["hooks"]["hosts"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|h| h["host"].as_str().unwrap())
+        .collect();
+    assert_eq!(hosts, ["claude"], "{preview}");
     update_confirm(&f);
-    assert_eq!(fs::read(&file).unwrap(), with_lane);
+    for (rel, text) in files {
+        assert_eq!(
+            fs::read_to_string(f.project.join(rel)).unwrap(),
+            text,
+            "{rel}"
+        );
+    }
 }
 
 /// The confirmation binds the hook layer: a hook file changed after the preview refuses the
@@ -642,7 +589,7 @@ fn the_hook_receipt_keeps_a_protected_settings_file_privately_under_any_umask() 
             "umask {umask}: {r}"
         );
 
-        let receipts = f.project.join(".moai/receipts");
+        let receipts = moai_cli::state_root::path(&f.project, "receipts");
         let mut seen = Vec::new();
         modes_below(&receipts, &mut seen);
         let own = fs::symlink_metadata(&receipts)

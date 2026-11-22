@@ -84,13 +84,10 @@ fn repo(dir: &Path) {
 /// Points git at an empty global config for this whole test binary, so no test here reads the
 /// runner's own git settings (its global ignore list could hide the folder under test).
 fn isolate_git_config() {
-    static EMPTY: std::sync::OnceLock<std::path::PathBuf> = std::sync::OnceLock::new();
-    EMPTY.get_or_init(|| {
-        let file = tempfile::NamedTempFile::new().unwrap();
-        let (_, path) = file.keep().unwrap();
-        std::env::set_var("GIT_CONFIG_GLOBAL", &path);
+    static ONCE: std::sync::Once = std::sync::Once::new();
+    ONCE.call_once(|| {
+        std::env::set_var("GIT_CONFIG_GLOBAL", "/dev/null");
         std::env::set_var("GIT_CONFIG_SYSTEM", "/dev/null");
-        path
     });
 }
 
@@ -222,5 +219,237 @@ fn worktree_place_status_a_last_line_without_a_newline_is_kept_whole() {
     assert_eq!(
         std::fs::read_to_string(p.join(".git/info/exclude")).unwrap(),
         "# mine\n/.claude/worktrees/\n"
+    );
+}
+
+// ---- REQ-13: a place that runs through a link is refused ----
+
+/// Where a link test points: a folder outside the project that must stay empty.
+#[cfg(unix)]
+fn link_world() -> (tempfile::TempDir, std::path::PathBuf, std::path::PathBuf) {
+    let t = tempfile::tempdir().unwrap();
+    let project = t.path().join("project");
+    std::fs::create_dir_all(&project).unwrap();
+    let outside = t.path().join("outside");
+    std::fs::create_dir_all(&outside).unwrap();
+    (t, project, outside)
+}
+
+/// Scene 8 (REQ-13): `.claude` that is a link is refused with the linked path named, and the
+/// folder it points at gets nothing.
+#[cfg(unix)]
+#[test]
+fn worktree_place_links_a_linked_claude_folder_is_refused() {
+    let (_t, project, outside) = link_world();
+    std::os::unix::fs::symlink(&outside, project.join(".claude")).unwrap();
+    let folder = project.join(".claude/worktrees/project-1-k");
+    let err = home_workdir::refuse_linked_place(&project, &folder).unwrap_err();
+    assert!(
+        err.contains(&project.join(".claude").display().to_string()),
+        "{err}"
+    );
+    assert_eq!(std::fs::read_dir(&outside).unwrap().count(), 0);
+}
+
+/// Scene 9 (REQ-13): `.claude/worktrees` that is a link is refused with that path named.
+#[cfg(unix)]
+#[test]
+fn worktree_place_links_a_linked_worktrees_folder_is_refused() {
+    let (_t, project, outside) = link_world();
+    std::fs::create_dir_all(project.join(".claude")).unwrap();
+    std::os::unix::fs::symlink(&outside, project.join(".claude/worktrees")).unwrap();
+    let folder = project.join(".claude/worktrees/project-1-k");
+    let err = home_workdir::refuse_linked_place(&project, &folder).unwrap_err();
+    assert!(
+        err.contains(&project.join(".claude/worktrees").display().to_string()),
+        "{err}"
+    );
+    assert_eq!(std::fs::read_dir(&outside).unwrap().count(), 0);
+}
+
+/// Scene 10 (REQ-13): a worktree folder that is itself a link, even a dangling one, is refused.
+#[cfg(unix)]
+#[test]
+fn worktree_place_links_a_linked_worktree_folder_is_refused() {
+    let (_t, project, outside) = link_world();
+    std::fs::create_dir_all(project.join(".claude/worktrees")).unwrap();
+    let folder = project.join(".claude/worktrees/project-1-k");
+    std::os::unix::fs::symlink(outside.join("missing"), &folder).unwrap();
+    let err = home_workdir::refuse_linked_place(&project, &folder).unwrap_err();
+    assert!(err.contains(&folder.display().to_string()), "{err}");
+}
+
+/// Audit B2 (REQ-13): the place is read ignoring case, so a path spelled `.CLAUDE/worktrees`
+/// still has its owner, and a link in a middle part of the path (here a group folder inside the
+/// place) is refused, whatever the spelling of the parts before it.
+#[cfg(unix)]
+#[test]
+fn worktree_place_links_every_part_below_the_owner_is_checked() {
+    let tmp = tempfile::tempdir().unwrap();
+    let project = tmp.path().join("p");
+    std::fs::create_dir_all(project.join(".claude/worktrees")).unwrap();
+    let elsewhere = tmp.path().join("elsewhere");
+    std::fs::create_dir_all(&elsewhere).unwrap();
+    std::os::unix::fs::symlink(&elsewhere, project.join(".claude/worktrees/group")).unwrap();
+    let folder = project.join(".claude/worktrees/group/w");
+    assert!(home_workdir::refuse_linked_place(&project, &folder)
+        .unwrap_err()
+        .contains("group"));
+    // The owner is found whatever the case of the place parts.
+    let upper = project.join(".CLAUDE/Worktrees/w");
+    assert_eq!(
+        home_workdir::place_owner(&project, &upper),
+        Some(project.clone())
+    );
+    // A folder below the project but outside the place has no owner.
+    assert_eq!(
+        home_workdir::place_owner(&project, &project.join("claude/worktrees/w")),
+        None
+    );
+}
+
+/// Audit B3 (REQ-13): the verdict refuses a `.` or `..` part anywhere in the path, plainly, and
+/// leaves a path outside the place and a plain place path alone.
+#[test]
+fn worktree_place_verdict_refuses_dot_parts_and_passes_plain_paths() {
+    let tmp = tempfile::tempdir().unwrap();
+    let project = tmp.path().join("p");
+    std::fs::create_dir_all(project.join(".claude/worktrees")).unwrap();
+    let refused = |t: &Path| home_workdir::place_verdict(&project, t).unwrap_err().reason;
+    assert_eq!(
+        refused(&project.join(".claude/zz/../worktrees/w")),
+        "place_path_refused"
+    );
+    assert_eq!(
+        refused(&project.join(".claude/../.claude/worktrees/w")),
+        "place_path_refused"
+    );
+    assert_eq!(refused(Path::new("a/./b")), "place_path_refused");
+    assert_eq!(refused(Path::new("./w")), "place_path_refused");
+    assert_eq!(refused(Path::new("../w")), "place_path_refused");
+    // Plain paths: in the place, below a missing place, outside the project.
+    assert!(home_workdir::place_verdict(&project, &project.join(".claude/worktrees/w")).is_ok());
+    assert!(home_workdir::place_verdict(&project, &tmp.path().join("elsewhere/w")).is_ok());
+    assert!(home_workdir::place_verdict(&project, Path::new("relative-name")).is_ok());
+}
+
+/// Audit B3 (REQ-13): a link anywhere between the owner and the folder is named, and the verdict
+/// of a path that is clean says nothing.
+#[cfg(unix)]
+#[test]
+fn worktree_place_verdict_names_a_link_in_any_part() {
+    let tmp = tempfile::tempdir().unwrap();
+    let project = tmp.path().join("p");
+    std::fs::create_dir_all(project.join(".claude/worktrees")).unwrap();
+    let elsewhere = tmp.path().join("elsewhere");
+    std::fs::create_dir_all(&elsewhere).unwrap();
+    std::os::unix::fs::symlink(&elsewhere, project.join(".claude/worktrees/group")).unwrap();
+    let r = home_workdir::place_verdict(&project, &project.join(".claude/worktrees/group/w"))
+        .unwrap_err();
+    assert_eq!(r.reason, "place_is_a_link");
+    assert!(r.detail.contains("group"), "{r:?}");
+    // The same path through a linked alias of the project is found as well.
+    let alias = tmp.path().join("alias");
+    std::os::unix::fs::symlink(&project, &alias).unwrap();
+    let r = home_workdir::place_verdict(&project, &alias.join(".claude/worktrees/group/w"))
+        .unwrap_err();
+    assert_eq!(r.reason, "place_is_a_link");
+}
+
+/// Audit B3 (REQ-13): a path that is in the place by name but whose real path is not under the
+/// real place is refused as well: here a changed case where no `.claude` exists yet, so the
+/// spelling is a folder of its own.
+#[test]
+fn worktree_place_verdict_refuses_a_path_that_resolves_outside_the_place() {
+    let tmp = tempfile::tempdir().unwrap();
+    let project = tmp.path().join("p");
+    std::fs::create_dir_all(&project).unwrap();
+    let r =
+        home_workdir::place_verdict(&project, &project.join(".CLAUDE/worktrees/w")).unwrap_err();
+    assert_eq!(r.reason, "place_path_refused");
+    assert!(r.detail.contains("resolves outside"), "{r:?}");
+    // The plain spelling passes, with or without the place made yet.
+    assert!(home_workdir::place_verdict(&project, &project.join(".claude/worktrees/w")).is_ok());
+}
+
+/// Scene 11 (REQ-13): real folders, or none yet, are accepted.
+#[test]
+fn worktree_place_links_real_folders_and_missing_ones_are_accepted() {
+    let t = tempfile::tempdir().unwrap();
+    let project = t.path().join("project");
+    std::fs::create_dir_all(&project).unwrap();
+    let folder = project.join(".claude/worktrees/project-1-k");
+    home_workdir::refuse_linked_place(&project, &folder).unwrap();
+    std::fs::create_dir_all(project.join(".claude/worktrees")).unwrap();
+    home_workdir::refuse_linked_place(&project, &folder).unwrap();
+}
+
+/// Scene 9 (REQ-6, AC-4): the tree digest that RUN records and AUDIT compares leaves the
+/// project place out, so a worktree made inside the project does not change it, and the
+/// project's other `.claude` files still count.
+#[test]
+fn worktree_place_scans_the_tree_digest_skips_the_place() {
+    let project = tempfile::tempdir().unwrap();
+    let root = project.path();
+    std::fs::write(root.join("a.txt"), "a\n").unwrap();
+    let digest = || moai_cli::tree_digest(root, &moai_cli::run::TREE_EXCLUDES).unwrap();
+    let before = digest();
+    let inside = root.join(".claude/worktrees/p-1-k/src");
+    std::fs::create_dir_all(&inside).unwrap();
+    std::fs::write(inside.join("b.rs"), "fn b() {}\n").unwrap();
+    assert_eq!(
+        digest(),
+        before,
+        "a file under the place changed the digest"
+    );
+    std::fs::write(root.join(".claude/settings.json"), "{}\n").unwrap();
+    assert_ne!(
+        digest(),
+        before,
+        "the project's own .claude file must still count"
+    );
+}
+
+/// Scene 10 (REQ-6, AC-4): the affected-test selection reads changed paths only, and a path
+/// under the place selects nothing (a pin: it holds by construction today).
+#[test]
+fn worktree_place_scans_the_selection_ignores_the_place() {
+    let changed = vec![
+        ".claude/worktrees/p-1-k/src/ops/worktree.rs".to_string(),
+        ".claude/worktrees/p-1-k/tests/worktree_cli.rs".to_string(),
+    ];
+    let sel = moai_cli::check_affected::select(&changed, &[], None, "macos");
+    assert!(sel.rust.is_empty() && sel.python.is_empty(), "{sel:?}");
+    assert_eq!(sel.scans, moai_cli::check_affected::Scans::None);
+    assert_eq!(moai_cli::check_affected::area(&changed[0]), None);
+}
+/// Audit B1 (REQ-13): the owner of a place path is found by what the ancestors resolve to. A
+/// path spelled through a linked alias of the project finds the project, a linked `.claude` is
+/// not followed to reach it, and a path outside the place has no owner.
+#[cfg(unix)]
+#[test]
+fn worktree_place_links_the_owner_is_found_by_what_the_path_resolves_to() {
+    let tmp = tempfile::tempdir().unwrap();
+    let project = tmp.path().join("p");
+    std::fs::create_dir_all(&project).unwrap();
+    let alias = tmp.path().join("alias");
+    std::os::unix::fs::symlink(&project, &alias).unwrap();
+    let via = alias.join(".claude/worktrees/w");
+    assert_eq!(
+        home_workdir::place_owner(&project, &via),
+        Some(alias.clone())
+    );
+    assert_eq!(
+        home_workdir::place_owner(&project, &project.join(".claude/worktrees/w")),
+        Some(project.clone())
+    );
+    // Outside the place: no owner, even though the parent is the project.
+    assert_eq!(
+        home_workdir::place_owner(&project, &project.join("w")),
+        None
+    );
+    assert_eq!(
+        home_workdir::place_owner(&project, &tmp.path().join("other/.claude/worktrees/w")),
+        None
     );
 }
