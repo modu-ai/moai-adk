@@ -66,9 +66,14 @@ impl Repo {
     }
 
     fn run(&self, args: &[&str]) -> (i32, Value) {
+        self.run_env(args, &[])
+    }
+
+    fn run_env(&self, args: &[&str], envs: &[(&str, &str)]) -> (i32, Value) {
         let out = self
             .home
             .command(&["worktree-slot"])
+            .envs(envs.iter().copied())
             .current_dir(&self.root)
             .args(args)
             .args(["--project", self.root.to_str().unwrap()])
@@ -374,4 +379,239 @@ fn ensure_adds_right_at_the_caps() {
         "{v}"
     );
     assert!(!r.slot("lane-04").exists());
+}
+
+// ---- audit repair: one ensure at a time, a copy that is complete or absent
+
+fn seed_with_build(r: &Repo) {
+    r.ok(&["ensure", "seed", "--at", &r.head]);
+    let built = r.slot("seed").join("target/debug/built.txt");
+    fs::create_dir_all(built.parent().unwrap()).unwrap();
+    fs::write(&built, "seed build\n").unwrap();
+}
+
+fn leftovers(slot: &Path) -> Vec<String> {
+    fs::read_dir(slot)
+        .unwrap()
+        .flatten()
+        .map(|e| e.file_name().to_string_lossy().to_string())
+        .filter(|n| n.starts_with(".target-warming-"))
+        .collect()
+}
+
+/// Three ensure runs of one slot at once: one adds and warms it, the others find it present;
+/// the slot is registered once and its `target/` holds no nested copy.
+#[test]
+fn concurrent_ensure_of_one_slot_adds_it_once_and_warms_it_once() {
+    let r = repo(&[("a.txt", "a\n")]);
+    seed_with_build(&r);
+    for round in 0..3 {
+        let name = ["lane-02", "lane-05", "audit-1"][round];
+        let answers: Vec<(i32, Value)> = std::thread::scope(|s| {
+            let runs: Vec<_> = (0..3)
+                .map(|_| s.spawn(|| r.run(&["ensure", name, "--at", &r.head])))
+                .collect();
+            runs.into_iter().map(|h| h.join().unwrap()).collect()
+        });
+        for (code, v) in &answers {
+            assert_eq!((*code, &v["ok"]), (0, &json!(true)), "{name}: {v}");
+        }
+        let added = answers
+            .iter()
+            .filter(|(_, v)| v["result"]["added"] == json!(true))
+            .count();
+        assert_eq!(added, 1, "{name}: {answers:?}");
+        let registered = r
+            .worktrees()
+            .lines()
+            .filter(|l| l.starts_with("worktree ") && l.ends_with(&format!("/{name}")))
+            .count();
+        assert_eq!(registered, 1, "{name}: {}", r.worktrees());
+        assert!(r.slot(name).join("target/debug/built.txt").is_file());
+        assert!(!r.slot(name).join("target/target").exists(), "{name}");
+        assert!(leftovers(&r.slot(name)).is_empty(), "{name}");
+    }
+}
+
+/// A slot whose checkout already has `target/` (here a tracked one) is never copied into.
+#[test]
+fn a_slot_that_already_has_target_is_not_copied_into() {
+    let r = repo(&[("a.txt", "a\n")]);
+    fs::create_dir_all(r.root.join("target")).unwrap();
+    fs::write(r.root.join("target/keep.txt"), "kept\n").unwrap();
+    git(&r.root, &["add", "-f", "target/keep.txt"]);
+    git(
+        &r.root,
+        &[
+            "-c",
+            "user.name=t",
+            "-c",
+            "user.email=t@example.invalid",
+            "commit",
+            "-q",
+            "-m",
+            "t",
+        ],
+    );
+    let head = git(&r.root, &["rev-parse", "HEAD"]);
+    seed_with_build(&r);
+    let lane = r.ok(&["ensure", "lane-04", "--at", &head]);
+    assert_eq!(
+        (&lane["added"], &lane["warmed"]),
+        (&json!(true), &json!("none")),
+        "{lane}"
+    );
+    assert!(r.slot("lane-04").join("target/keep.txt").is_file());
+    assert!(!r.slot("lane-04").join("target/target").exists());
+    assert!(!r.slot("lane-04").join("target/debug").exists());
+}
+
+#[test]
+fn a_folder_at_the_slot_path_that_is_not_a_worktree_is_refused() {
+    let r = repo(&[("a.txt", "a\n")]);
+    fs::create_dir_all(r.slot("lane-05")).unwrap();
+    let before = r.worktrees();
+    let (code, v) = r.run(&["ensure", "lane-05", "--at", &r.head]);
+    assert_ne!(code, 0, "{v}");
+    assert!(
+        v["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("lane-05 exists but is not a worktree"),
+        "{v}"
+    );
+    assert_eq!(r.worktrees(), before);
+}
+
+/// A copy that fails leaves no `target/` and no temporary copy, and fails the command; the next
+/// ensure warms the present slot.
+#[cfg(unix)]
+#[test]
+fn a_failed_warm_fails_leaves_no_target_and_the_next_ensure_warms_it() {
+    use std::os::unix::fs::PermissionsExt;
+    let r = repo(&[("a.txt", "a\n")]);
+    seed_with_build(&r);
+    let locked = r.slot("seed").join("target/locked");
+    fs::create_dir_all(&locked).unwrap();
+    fs::write(locked.join("x"), "x\n").unwrap();
+    fs::set_permissions(&locked, fs::Permissions::from_mode(0o000)).unwrap();
+    let (code, v) = r.run(&["ensure", "lane-06", "--at", &r.head]);
+    fs::set_permissions(&locked, fs::Permissions::from_mode(0o755)).unwrap();
+    assert_ne!(code, 0, "{v}");
+    assert!(
+        v["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("lane-06 is added but warming failed"),
+        "{v}"
+    );
+    assert!(!r.slot("lane-06").join("target").exists());
+    assert!(leftovers(&r.slot("lane-06")).is_empty());
+    let again = r.ok(&["ensure", "lane-06", "--at", &r.head]);
+    let method = if cfg!(target_os = "macos") {
+        "clone"
+    } else {
+        "copy"
+    };
+    assert_eq!(
+        (&again["present"], &again["warmed"]),
+        (&json!(true), &json!(method)),
+        "{again}"
+    );
+    assert!(r.slot("lane-06").join("target/locked/x").is_file());
+}
+
+/// A registered slot whose folder is gone is reported missing, and ensure refuses it.
+#[test]
+fn a_registered_slot_whose_folder_is_gone_is_reported_missing() {
+    let r = repo(&[("a.txt", "a\n")]);
+    r.ok(&["ensure", "lane-07", "--at", &r.head]);
+    fs::rename(r.slot("lane-07"), r.root.join("moved-away")).unwrap();
+    let plan = r.ok(&["plan"]);
+    let s = plan["slots"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|s| s["name"] == json!("lane-07"))
+        .unwrap()
+        .clone();
+    assert_eq!(
+        (&s["exists"], &s["missing"]),
+        (&json!(true), &json!(true)),
+        "{s}"
+    );
+    let (code, v) = r.run(&["ensure", "lane-07", "--at", &r.head]);
+    assert_ne!(code, 0, "{v}");
+    assert!(
+        v["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("folder is missing"),
+        "{v}"
+    );
+}
+
+/// A seed `target` that is a link (a shared build folder) or a seed that is not a worktree is
+/// refused before anything is added.
+#[cfg(unix)]
+#[test]
+fn a_linked_seed_target_or_a_seed_that_is_not_a_worktree_is_refused() {
+    let r = repo(&[("a.txt", "a\n")]);
+    r.ok(&["ensure", "seed", "--at", &r.head]);
+    let shared = r.root.join("shared-build");
+    fs::create_dir_all(&shared).unwrap();
+    std::os::unix::fs::symlink(&shared, r.slot("seed").join("target")).unwrap();
+    let before = r.worktrees();
+    let (code, v) = r.run(&["ensure", "lane-08", "--at", &r.head]);
+    assert_ne!(code, 0, "{v}");
+    assert!(
+        v["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("not a real folder"),
+        "{v}"
+    );
+    assert_eq!(r.worktrees(), before);
+
+    let r = repo(&[("a.txt", "a\n")]);
+    fs::create_dir_all(r.slot("seed").join("target")).unwrap();
+    let (code, v) = r.run(&["ensure", "lane-09", "--at", &r.head]);
+    assert_ne!(code, 0, "{v}");
+    assert!(
+        v["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("seed exists but is not a worktree"),
+        "{v}"
+    );
+    assert!(!r.slot("lane-09").exists());
+}
+
+/// A `df` that fails refuses: the free share is unknown.
+#[cfg(unix)]
+#[test]
+fn a_failing_df_refuses() {
+    use std::os::unix::fs::PermissionsExt;
+    let r = repo(&[("a.txt", "a\n")]);
+    let bin = r.root.parent().unwrap().join("fake-bin");
+    fs::create_dir_all(&bin).unwrap();
+    let df = bin.join("df");
+    fs::write(&df, "#!/bin/sh\nexit 1\n").unwrap();
+    fs::set_permissions(&df, fs::Permissions::from_mode(0o755)).unwrap();
+    let path = format!("{}:/usr/bin:/bin", bin.display());
+    for args in [
+        vec!["plan"],
+        vec!["ensure", "lane-10", "--at", r.head.as_str()],
+    ] {
+        let (code, v) = r.run_env(&args, &[("PATH", &path)]);
+        assert_ne!(code, 0, "{args:?}: {v}");
+        assert!(
+            v["error"]["message"]
+                .as_str()
+                .unwrap()
+                .starts_with("df failed"),
+            "{args:?}: {v}"
+        );
+    }
+    assert!(!r.slot("lane-10").exists());
 }
