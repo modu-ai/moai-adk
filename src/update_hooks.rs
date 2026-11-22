@@ -558,7 +558,9 @@ pub fn apply_direct(
         status: "pending".into(),
         hosts: Vec::new(),
     };
-    let receipt_path = dir.join(format!("{id}.json"));
+    // The project-layer receipt keeps the per-receipt folder shape (`receipt.json` inside
+    // `<receipts>/<id>`); only the config-folder layer's receipts go flat in the HOME folder.
+    let receipt_path = dir.join("receipt.json");
     write_json(&receipt_path, &receipt)?;
     let kept = KeptApply {
         root: &root,
@@ -744,11 +746,8 @@ fn apply_folder(f: &FolderPlan, home: &Path) -> Result<Value> {
             .map_err(|_| "receipt folder unavailable".to_string())?
             .permissions()
             .mode();
-        fs::set_permissions(
-            &record_path,
-            std::fs::Permissions::from_mode(mode & 0o700),
-        )
-        .map_err(|_| "receipt folder unavailable".to_string())?;
+        fs::set_permissions(&record_path, std::fs::Permissions::from_mode(mode & 0o700))
+            .map_err(|_| "receipt folder unavailable".to_string())?;
     }
     Ok(json!({
         "state": "applied",
@@ -796,7 +795,9 @@ pub fn revert_in(
             if c.extension().map(|e| e == "json").unwrap_or(false) {
                 c.is_file().then(|| {
                     (
-                        c.parent().map(Path::to_path_buf).unwrap_or_else(|| c.clone()),
+                        c.parent()
+                            .map(Path::to_path_buf)
+                            .unwrap_or_else(|| c.clone()),
                         c,
                     )
                 })
