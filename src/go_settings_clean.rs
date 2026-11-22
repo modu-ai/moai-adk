@@ -1038,8 +1038,8 @@ mod tests {
             "d": null,
         }));
         let (go, _) = classify(&m);
+        // A HOME with no state resolves to `.moai` (SPEC-20261121-path-root-moai-default).
         let home = tempfile::tempdir().unwrap();
-        fs::create_dir(home.path().join(crate::HOME_STATE_DIR)).unwrap();
         let line = rust_status_line(home.path());
         let out: Value = serde_json::from_slice(&rewrite(&m, &go, &line).unwrap()).unwrap();
         let keys: Vec<&String> = out.as_object().unwrap().keys().collect();
@@ -1047,7 +1047,7 @@ mod tests {
         assert_eq!(out["statusLine"], line);
         assert_eq!(
             line["command"],
-            json!("\"$HOME/.moai-cli/path/moai-cli\" statusline")
+            json!("\"$HOME/.moai/path/moai-cli\" statusline")
         );
         assert_eq!(out["b"], m["b"]);
     }
