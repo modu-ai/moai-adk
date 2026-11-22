@@ -150,12 +150,13 @@ fn every_plan_apply_uses_the_plan_limit() {
     let h = home.to_str().unwrap();
     let s = pkg.to_str().unwrap();
     let flags = ["--plan-digest", "d", "--permission-reference", "r"];
-    let cases: [Vec<&str>; 6] = [
+    let cases: [Vec<&str>; 7] = [
         vec!["project-apply", p],
         vec!["agents-apply", p],
         vec!["update-apply", h, s],
         vec!["recovery-apply", h],
         vec!["github-apply", p],
+        vec!["project-ci-apply", p],
         vec!["generation-apply", p],
     ];
     for case in cases {
