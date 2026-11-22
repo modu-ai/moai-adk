@@ -470,7 +470,10 @@ enum Action {
     /// 0, and nothing is printed while it waits. `--timeout` must be given: 1 second to 12
     /// hours, written `<n>`, `<n>s`, `<n>m` or `<n>h`. An unknown card, an absent ledger or a
     /// ledger that is refused is refused before the wait, and nothing is created. A poll that
-    /// finds the ledger busy counts as a poll that found nothing.
+    /// finds the ledger busy counts as a poll that found nothing, and the timeout is counted from
+    /// before the first read of the ledger. A wait started in the background with `&` from a
+    /// shell that is not interactive ignores SIGINT (Ctrl-C); end it with SIGTERM
+    /// (`kill <pid>`).
     Wait {
         /// A card to watch, `C-<n>` or `#<number>` as `card show` reads it (repeat, or join with
         /// commas).

@@ -270,6 +270,10 @@ pub fn wait(project: &Path, home: &Path, request: &WaitRequest) -> Result<Value>
         return Err(refused("--since must be 0 or more"));
     }
     let id = ledger::command::project_id_of(project)?;
+    // The clock starts before the first read of the ledger, so a ledger another process holds at
+    // the start counts in the timeout (the read waits at most the ledger's own limit).
+    let started = Instant::now();
+    let deadline = started + Duration::from_secs(request.timeout_secs);
     // The names and the mark come from one read-only connection, closed before the wait.
     let (cards, mark) = {
         let ledger = ledger::open_read_only(home, &id).map_err(|e| match e {
@@ -288,8 +292,6 @@ pub fn wait(project: &Path, home: &Path, request: &WaitRequest) -> Result<Value>
         };
         (cards, mark)
     };
-    let started = Instant::now();
-    let deadline = started + Duration::from_secs(request.timeout_secs);
     let rows = until(deadline, Duration::from_secs(request.every_secs), || {
         let rows = poll(home, &id, mark)?;
         let kept: Vec<Row> = matching(&rows, &cards, request.not_authors, mark)
@@ -460,6 +462,27 @@ mod tests {
         )
         .unwrap_err();
         assert_eq!(err, "ledger blocked: x");
+    }
+
+    #[test]
+    fn the_sleep_between_polls_never_passes_the_deadline() {
+        // An interval far longer than the time left: one poll now, one at the deadline, and no
+        // sleep of the whole interval. Without the cap this test sleeps for the full 30 s.
+        let started = Instant::now();
+        let mut polls = 0;
+        let got: Vec<i32> = until(
+            started + Duration::from_millis(300),
+            Duration::from_secs(30),
+            || {
+                polls += 1;
+                Ok(vec![])
+            },
+        )
+        .unwrap();
+        let elapsed = started.elapsed();
+        assert_eq!((got, polls), (vec![], 2));
+        assert!(elapsed >= Duration::from_millis(300), "{elapsed:?}");
+        assert!(elapsed < Duration::from_secs(10), "{elapsed:?}");
     }
 
     #[test]

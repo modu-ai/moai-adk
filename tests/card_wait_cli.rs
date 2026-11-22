@@ -288,6 +288,83 @@ fn without_a_matching_note_the_wait_ends_at_its_timeout() {
     assert!(elapsed >= Duration::from_secs(2), "{elapsed:?}");
     // The timeout plus one poll, with room for a slow machine; never the test's hard limit.
     assert!(elapsed < Duration::from_secs(12), "{elapsed:?}");
+
+    // An interval longer than the timeout is cut to the time left: the wait ends at the timeout,
+    // not after a whole interval (30 s here; an uncapped sleep would run past the limit above).
+    let (out, elapsed) = w.wait(&["--card", "C-1", "--timeout", "2s", "--every", "30"]);
+    let r = result(&out);
+    assert_eq!(r["outcome"], json!("timeout"), "{r}");
+    assert!(r["waited_secs"].as_u64().unwrap() >= 2, "{r}");
+    assert!(elapsed >= Duration::from_secs(2), "{elapsed:?}");
+    assert!(elapsed < Duration::from_secs(12), "{elapsed:?}");
+}
+
+/// A second connection to the ledger file that holds it exclusively until `release`. This process
+/// must not open the ledger file by any other path while it is held (closing any descriptor of a
+/// file drops the process's POSIX locks on it), so a case lets other processes do the reading and
+/// writing.
+struct Lock(rusqlite::Connection);
+
+impl Lock {
+    fn take(w: &World) -> Lock {
+        let path = ledger::ledger_path(w.home.path(), "demo").unwrap();
+        let held = rusqlite::Connection::open(path).unwrap();
+        held.execute_batch("BEGIN EXCLUSIVE").unwrap();
+        Lock(held)
+    }
+
+    fn release(self) {
+        self.0.execute_batch("ROLLBACK").unwrap();
+    }
+}
+
+#[test]
+fn a_busy_ledger_counts_as_a_poll_that_found_nothing() {
+    let w = world();
+    w.cards(&["watched"]);
+    let started = Instant::now();
+    let mut child = w.spawn_wait(&["--card", "C-1", "--timeout", "40s", "--every", "1s"]);
+    // The wait reads the ledger once at its start, which cannot be seen from outside: it gets a
+    // head start, and the lock is taken only after that. (A start that did meet the lock would
+    // wait for it and still pass; only the check of the busy poll below would be skipped.)
+    std::thread::sleep(Duration::from_millis(1500));
+    let lock = Lock::take(&w);
+    // Several polls meet the lock, each giving up after a quarter of a second.
+    std::thread::sleep(Duration::from_secs(3));
+    if child.try_wait().unwrap().is_some() {
+        let out = child.wait_with_output().unwrap();
+        panic!(
+            "the wait ended while another process held the ledger: {}",
+            text(&out)
+        );
+    }
+    lock.release();
+    // The wait kept polling: a note written once the ledger is free ends it.
+    let id = w.card_note("C-1", "leader", "LEADER answer after the lock");
+    let out = finish(child, started + HARD_LIMIT);
+    let r = result(&out);
+    assert_eq!(r["outcome"], json!("note"), "{r}");
+    assert_eq!(items(&r), vec![item("C-1", id)], "{r}");
+    assert!(r["waited_secs"].as_u64().unwrap() < 40, "{r}");
+}
+
+#[test]
+fn a_ledger_held_at_the_start_counts_in_the_wait() {
+    let w = world();
+    w.cards(&["watched"]);
+    let lock = Lock::take(&w);
+    let started = Instant::now();
+    let child = w.spawn_wait(&["--card", "C-1", "--timeout", "2s", "--every", "1s"]);
+    // The start read waits for the lock (the ledger's own limit is 5 s), then finds its time
+    // limit already used up: one poll and the timeout, not the whole timeout over again.
+    std::thread::sleep(Duration::from_millis(3500));
+    lock.release();
+    let out = finish(child, started + HARD_LIMIT);
+    let elapsed = started.elapsed();
+    let r = result(&out);
+    assert_eq!(r["outcome"], json!("timeout"), "{r}");
+    assert!(r["waited_secs"].as_u64().unwrap() >= 3, "{r}");
+    assert!(elapsed < Duration::from_millis(5000), "{elapsed:?}");
 }
 
 #[test]
