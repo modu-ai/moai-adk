@@ -293,7 +293,6 @@ pub fn run(built: &BuiltRun, cwd: &Path) -> Result<RawRun> {
 /// full pipe never turns an answer into a timeout), and kills the whole group at the
 /// deadline, reporting no success.
 pub fn run_with_limit(built: &BuiltRun, cwd: &Path, limit: std::time::Duration) -> Result<RawRun> {
-    use std::io::Read;
     use std::process::Stdio;
     if let Some(warning) = &built.credential_warning {
         eprintln!("{warning}");
@@ -312,26 +311,36 @@ pub fn run_with_limit(built: &BuiltRun, cwd: &Path, limit: std::time::Duration) 
         .spawn()
         .map_err(|e| format!("starting {}: {e}", built.program.display()))?;
     let group = child.id();
-    // B-1: drain both pipes on threads while the deadline is polled.
-    let mut stdout_pipe = child.stdout.take();
-    let mut stderr_pipe = child.stderr.take();
-    let stdout_thread = std::thread::spawn(move || {
-        let mut buf = Vec::new();
-        if let Some(pipe) = stdout_pipe.as_mut() {
-            let _ = pipe.read_to_end(&mut buf);
-        }
-        buf
-    });
-    let stderr_thread = std::thread::spawn(move || {
-        let mut buf = Vec::new();
-        if let Some(pipe) = stderr_pipe.as_mut() {
-            let _ = pipe.read_to_end(&mut buf);
-        }
-        buf
-    });
+    // B-1 with L-1: drain both pipes on threads while the deadline is polled, writing each
+    // chunk into a shared buffer — an abandoned drain keeps what it already read.
+    let out_buf: std::sync::Arc<std::sync::Mutex<Vec<u8>>> =
+        std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+    let err_buf: std::sync::Arc<std::sync::Mutex<Vec<u8>>> =
+        std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+    let stdout_pipe = child.stdout.take();
+    let stderr_pipe = child.stderr.take();
+    let out_for_thread = out_buf.clone();
+    let err_for_thread = err_buf.clone();
+    let stdout_thread = std::thread::spawn(move || drain_pipe(stdout_pipe, out_for_thread));
+    let stderr_thread = std::thread::spawn(move || drain_pipe(stderr_pipe, err_for_thread));
     let deadline = std::time::Instant::now() + limit;
     let mut timed_out = false;
     loop {
+        // L-2 (unix): poll WITHOUT reaping, so the group kill below can never hit a
+        // recycled process group after the leader was reaped.
+        #[cfg(unix)]
+        {
+            if child_exited_unreaped(group) {
+                break;
+            }
+            if std::time::Instant::now() >= deadline {
+                kill_at_deadline(&mut child, group);
+                timed_out = true;
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(20));
+        }
+        #[cfg(not(unix))]
         match child.try_wait() {
             Ok(Some(_)) => break,
             Ok(None) => {
@@ -346,11 +355,17 @@ pub fn run_with_limit(built: &BuiltRun, cwd: &Path, limit: std::time::Duration) 
         }
     }
     // F-1: a descendant that still holds the pipes must not stretch the call — kill the
-    // group on normal exit too, then bound the joins and abandon what will not finish.
+    // group while the (zombie) leader still owns it, then bound the drain wait and take
+    // whatever the buffers hold.
     kill_stragglers(group);
     let drain_bound = std::time::Duration::from_secs(2);
-    let stdout = join_bounded(stdout_thread, drain_bound).unwrap_or_default();
-    let stderr_bytes = join_bounded(stderr_thread, drain_bound).unwrap_or_default();
+    let (stdout, stderr_bytes, abandoned) = finish_drains(
+        &stdout_thread,
+        &stderr_thread,
+        &out_buf,
+        &err_buf,
+        drain_bound,
+    );
     let status = child
         .wait()
         .map_err(|e| format!("collecting {}: {e}", built.program.display()))?;
@@ -363,8 +378,8 @@ pub fn run_with_limit(built: &BuiltRun, cwd: &Path, limit: std::time::Duration) 
     } else {
         String::from_utf8_lossy(&stderr_bytes).into_owned()
     };
-    if timed_out {
-        stderr.push_str("\nmoai: an output drain may have been abandoned at the limit");
+    if abandoned {
+        stderr.push_str("\nmoai: an output drain was abandoned; the already-read output is kept");
     }
     Ok(RawRun {
         success: status.success() && !timed_out,
@@ -374,16 +389,67 @@ pub fn run_with_limit(built: &BuiltRun, cwd: &Path, limit: std::time::Duration) 
     })
 }
 
-/// Joins a drain thread within a short bound (F-1); `None` abandons the pipe.
-fn join_bounded<T>(handle: std::thread::JoinHandle<T>, bound: std::time::Duration) -> Option<T> {
+/// Drains one pipe chunk by chunk into the shared buffer (L-1): what arrives is kept even
+/// when the pipe never closes and the drain is abandoned at the bound.
+fn drain_pipe<R: std::io::Read>(
+    mut pipe: Option<R>,
+    shared: std::sync::Arc<std::sync::Mutex<Vec<u8>>>,
+) {
+    let mut chunk = [0u8; 8192];
+    let Some(pipe) = pipe.as_mut() else {
+        return;
+    };
+    loop {
+        match pipe.read(&mut chunk) {
+            Ok(0) | Err(_) => break,
+            Ok(n) => {
+                if let Ok(mut buf) = shared.lock() {
+                    buf.extend_from_slice(&chunk[..n]);
+                }
+            }
+        }
+    }
+}
+
+/// Waits at most `bound` for both drains, then takes whatever the shared buffers hold
+/// (L-1). Unfinished threads stay detached — they end when their pipe closes.
+#[allow(clippy::type_complexity)]
+fn finish_drains(
+    stdout_thread: &std::thread::JoinHandle<()>,
+    stderr_thread: &std::thread::JoinHandle<()>,
+    out_buf: &std::sync::Arc<std::sync::Mutex<Vec<u8>>>,
+    err_buf: &std::sync::Arc<std::sync::Mutex<Vec<u8>>>,
+    bound: std::time::Duration,
+) -> (Vec<u8>, Vec<u8>, bool) {
     let deadline = std::time::Instant::now() + bound;
     while std::time::Instant::now() < deadline {
-        if handle.is_finished() {
-            return handle.join().ok();
+        if stdout_thread.is_finished() && stderr_thread.is_finished() {
+            break;
         }
         std::thread::sleep(std::time::Duration::from_millis(10));
     }
-    None
+    let abandoned = !(stdout_thread.is_finished() && stderr_thread.is_finished());
+    let out = out_buf.lock().map(|b| b.clone()).unwrap_or_default();
+    let err = err_buf.lock().map(|b| b.clone()).unwrap_or_default();
+    (out, err, abandoned)
+}
+
+/// Whether the child has exited WITHOUT being reaped (L-2): the zombie still owns the
+/// process group, so the straggler kill that follows cannot hit a recycled group.
+#[cfg(unix)]
+fn child_exited_unreaped(pid: u32) -> bool {
+    // SAFETY: waitid with WNOWAIT reports an exited child and leaves it un-reaped; a zeroed
+    // siginfo_t is what the call fills in.
+    unsafe {
+        let mut info: libc::siginfo_t = std::mem::zeroed();
+        let rc = libc::waitid(
+            libc::P_PID,
+            pid as libc::id_t,
+            &mut info,
+            libc::WEXITED | libc::WNOHANG | libc::WNOWAIT,
+        );
+        rc == 0 && info.si_pid != 0
+    }
 }
 
 /// Puts the child in a process group of its own (B-1b: a group kill reaches grandchildren
@@ -598,7 +664,7 @@ fn narrow_rule(tool: &str) -> Result<()> {
         }
         inner
             .split_whitespace()
-            .next()
+            .find(|token| !env_assignment(token))
             .is_some_and(broad_first_word)
     });
     if blanket || wildcard_only || wildcarded_word {
@@ -611,9 +677,9 @@ fn narrow_rule(tool: &str) -> Result<()> {
 
 /// Whether a command rule's first word turns a wildcarded rule into a blanket one: the
 /// interpreters and wrappers that run what follows them, in every spelling — a versioned
-/// interpreter (python3.12), the `:*` colon suffix and the word's basename
-/// (`/usr/bin/env`) included (permission-modes.md's dropped-rules list, audits R-1 R-2
-/// and R-4).
+/// interpreter (python3.12), the `:*` colon suffix, the word's basename (`/usr/bin/env`)
+/// and a leading env assignment (FOO=1 python) included (permission-modes.md's
+/// dropped-rules list, audits R-1 R-2 R-4 and L-4).
 fn broad_first_word(word: &str) -> bool {
     let word = word.split(':').next().unwrap_or(word);
     let word = word.rsplit('/').next().unwrap_or(word);
@@ -625,9 +691,23 @@ fn broad_first_word(word: &str) -> bool {
         .is_some_and(|rest| rest.chars().all(|c| c.is_ascii_digit() || c == '.'))
 }
 
+/// Whether a token is a leading env assignment (`FOO=1`), skipped when the first real
+/// word of a command is looked for (L-4: `FOO=1 python *` is a wildcarded interpreter).
+fn env_assignment(token: &str) -> bool {
+    match token.split_once('=') {
+        Some((name, _)) => {
+            !name.is_empty()
+                && name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
+                && name.chars().next().is_some_and(|c| !c.is_ascii_digit())
+        }
+        None => false,
+    }
+}
+
 /// The first words that run what follows them (permission-modes.md's dropped-rules list,
-/// the env/xargs/sudo/npx escapes of audit R-2, command/exec/uv of R-4).
-const INTERPRETERS_AND_WRAPPERS: [&str; 22] = [
+/// the env/xargs/sudo/npx escapes of audit R-2, command/exec/uv of R-4, busybox/bun/php
+/// of L-4).
+const INTERPRETERS_AND_WRAPPERS: [&str; 25] = [
     "python",
     "python3",
     "node",
@@ -650,6 +730,9 @@ const INTERPRETERS_AND_WRAPPERS: [&str; 22] = [
     "command",
     "exec",
     "uv",
+    "busybox",
+    "bun",
+    "php",
 ];
 
 /// Whether a platform `managed-mcp.json` is deployed (SPEC REQ-3, D-2). A test passes its own

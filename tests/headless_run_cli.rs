@@ -366,6 +366,12 @@ fn blanket_tool_rules_refuse_to_build() {
         "Bash(exec *)",
         "Bash(uv *)",
         "Bash(/usr/bin/env *)",
+        // L-4: an env assignment before the interpreter, busybox, bun, php
+        "Bash(FOO=1 python *)",
+        "Bash(busybox *)",
+        "Bash(busybox sh *)",
+        "Bash(bun *)",
+        "Bash(php *)",
         // R-3: the Monitor allow rule the dropped-rules list forbids
         "Monitor",
     ] {
@@ -664,8 +670,9 @@ fn a_background_sleeper_does_not_stretch_the_call() {
     );
 }
 
-/// F-1 case 2: a grandchild that leaves the process group escapes the group kill — the
-/// bounded join abandons the pipe instead of stretching the call past the limit.
+/// F-1 case 2 / L-3a: a grandchild that has LEFT the group escapes the group kill, so only
+/// the bounded join ends the call — the escapee signals it has left before the parent
+/// exits, pinning the bound (a removed bound hangs this test).
 #[test]
 fn a_group_leaving_grandchild_does_not_stretch_the_call() {
     use moai_cli::headless_run::run_with_limit;
@@ -673,9 +680,12 @@ fn a_group_leaving_grandchild_does_not_stretch_the_call() {
     let tmp = tempfile::tempdir().unwrap();
     let fixtures = tmp.path().join("bin");
     fs::create_dir_all(&fixtures).unwrap();
-    let leaves_group =
-        "#!/bin/sh\npython3 -c 'import os,time; os.setsid(); time.sleep(30)' &\nexit 0\n";
-    common::write_executable(&fixtures.join("claude"), leaves_group);
+    let flag = tmp.path().join("left-the-group");
+    let leaves_group = format!(
+        "#!/bin/sh\npython3 -c 'import os,time; os.setsid(); open({flag:?}, \"w\"); time.sleep(30)' &\n\
+while [ ! -f {flag:?} ]; do sleep 0.05; done\nexit 0\n"
+    );
+    common::write_executable(&fixtures.join("claude"), &leaves_group);
     let record = tmp.path().join("record.txt");
     let root = tmp.path().join("platform");
     fs::create_dir_all(&root).unwrap();
@@ -687,6 +697,75 @@ fn a_group_leaving_grandchild_does_not_stretch_the_call() {
     assert!(
         elapsed < Duration::from_secs(6),
         "the bounded join must abandon the pipe, not wait out the escapee: {elapsed:?}"
+    );
+}
+
+/// L-1: an abandoned join keeps what was already read — a complete answer followed by a
+/// sleeper that has LEFT the group and holds stdout comes back with the answer, not empty.
+#[test]
+fn an_abandoned_join_keeps_the_answer_already_read() {
+    use moai_cli::headless_run::{parse_result, run_with_limit, RunOutcome};
+    use std::time::{Duration, Instant};
+    let tmp = tempfile::tempdir().unwrap();
+    let fixtures = tmp.path().join("bin");
+    fs::create_dir_all(&fixtures).unwrap();
+    let flag = tmp.path().join("escapee-left");
+    let answer_then_escapee = format!(
+        "#!/bin/sh\n\
+printf '%s' '{{\"type\":\"result\",\"subtype\":\"success\",\"is_error\":false,\"session_id\":\"standin\",\"structured_output\":{{\"verdict\":\"fail\"}}}}'\n\
+python3 -c 'import os,time; os.setsid(); open({flag:?}, \"w\"); time.sleep(30)' &\n\
+while [ ! -f {flag:?} ]; do sleep 0.05; done\nexit 0\n"
+    );
+    common::write_executable(&fixtures.join("claude"), &answer_then_escapee);
+    let record = tmp.path().join("record.txt");
+    let root = tmp.path().join("platform");
+    fs::create_dir_all(&root).unwrap();
+    let built = build(&audit_spec(), &ctx(&root), &parent_env(&fixtures, &record)).unwrap();
+    let started = Instant::now();
+    let raw = run_with_limit(&built, tmp.path(), Duration::from_secs(1)).unwrap();
+    let elapsed = started.elapsed();
+    assert!(raw.success, "{}", raw.stderr);
+    assert!(
+        elapsed < Duration::from_secs(6),
+        "the bounded join must not wait out the escapee: {elapsed:?}"
+    );
+    assert!(
+        matches!(parse_result(&raw), RunOutcome::Answered(_)),
+        "the already-read answer must survive: {}",
+        raw.stdout
+    );
+}
+
+/// L-3b: a verdict outside the schema is recorded as verdict_refused, never as a verdict.
+#[test]
+fn a_verdict_outside_the_schema_is_refused_in_the_row() {
+    use moai_cli::headless_run::{ledger_row, parse_result, RawRun};
+    let tmp = tempfile::tempdir().unwrap();
+    let fixtures = tmp.path().join("bin");
+    fs::create_dir_all(&fixtures).unwrap();
+    let record = tmp.path().join("record.txt");
+    standin_claude(&fixtures);
+    let root = tmp.path().join("platform");
+    fs::create_dir_all(&root).unwrap();
+    // a schema that names the words: pass or fail
+    let mut strict = audit_spec();
+    strict.schema = Some(
+        json!({"type":"object","properties":{"verdict":{"type":"string","enum":["pass","fail"]}},"required":["verdict"]}),
+    );
+    let built = build(&strict, &ctx(&root), &parent_env(&fixtures, &record)).unwrap();
+    // the answer says maybe
+    let raw = RawRun {
+        success: true,
+        code: Some(0),
+        stdout: r#"{"type":"result","subtype":"success","is_error":false,"structured_output":{"verdict":"maybe"},"session_id":"s"}"#.into(),
+        stderr: String::new(),
+    };
+    let outcome = parse_result(&raw);
+    let row = ledger_row(&built, &raw, &outcome);
+    assert!(
+        row["verdict"]["verdict_refused"].is_string(),
+        "{}",
+        row["verdict"]
     );
 }
 
