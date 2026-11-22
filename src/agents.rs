@@ -1652,6 +1652,33 @@ pub(crate) fn agents_plan_for(
         files.push(plan);
     }
 
+    // The first CLAUDE file of the project makes Claude Code stop reading `AGENTS.md` and
+    // `.claude/AGENTS.md`: the plan names each one that exists, whether this request creates the
+    // file or a pick (which the warning above asks for) would. Nothing is warned about once a
+    // CLAUDE file exists.
+    let creates_first = files
+        .iter()
+        .find(|f| f.action == "create" && (f.path == BLOCK_FILE || f.path == LOCAL_FILE))
+        .map(|f| f.path.as_str())
+        .or((!block_wanted).then_some(BLOCK_FILE));
+    if let Some(creating) = creates_first {
+        // Only a CLAUDE.md brings the root AGENTS.md along (a pick copies its text or imports
+        // it). When the personal file is created first and no CLAUDE.md is, nothing carries the
+        // root AGENTS.md over, so it is named like every other file.
+        let carries_agents_md = creating == BLOCK_FILE
+            || files
+                .iter()
+                .any(|f| f.action == "create" && f.path == BLOCK_FILE);
+        let carried: &[&str] = if carries_agents_md {
+            &["AGENTS.md"]
+        } else {
+            &[]
+        };
+        warnings.extend(crate::agents_local_merge::hidden_files_warning_except(
+            &root, creating, carried,
+        ));
+    }
+
     // `skip-conflicts`: a conflicting file is left as it is and the rest of the plan applies.
     if picked(&request, "skip-conflicts") {
         for f in files.iter_mut().filter(|f| f.action == "conflict") {
