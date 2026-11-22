@@ -92,7 +92,7 @@ parent: SPEC-20261122-remote-copy-slim
 | D-6 | 원격은 git 자신의 push 원격 규칙을 따른다(`branch.<name>.pushRemote`, `remote.pushDefault`, `branch.<name>.remote`, `origin` 순서)이고 refspec 은 언제나 `refs/heads/<branch>:refs/heads/<branch>` 에 강제 플래그가 없다. | git-push(1), fast-forward 전용 규칙 | 카드 열림 |
 | D-7 | 복사는 기본 꺼짐이다: 최상위 프로필 키 `remote_copy` 가 true 일 때만 돌고, 키는 미리보기(원격·가지·뒤처진 커밋 수·원격 검사 문장)와 사용자의 예 뒤에만 켜진다. 꺼짐 동안 착지는 off 를 답하고 아무것도 안 밀며, 필요 시 명령의 off 답은 미리보기만 주고 기록도 안 쓴다. | 리더 결정(2026-11-22, 감사 수리 지시), 감사 B1(실제 원격이 646커밋 뒤, 2026-11-22) | 카드 열림 |
 | D-8 | 답·why·기록이 실을 원격은 설정된 이름 우선, URL 이면 userinfo 제거이고 push·ls-remote 는 원본 값을 쓴다. | 리더 결정(2026-11-22, 감사 수리 지시), 감사 B2(토큰 노출) | 카드 열림 |
-| D-9 | push 인자는 `--no-follow-tags` 뒤 `--` 로 옵션을 닫고 원격 이름을 준다; 미지 자손은 성공 정산, push 때 도달 불가는 pending. | 리더 결정(2026-11-22)·감사 B3·N2·R2 | 카드 열림 |
+| D-9 | push 인자는 `--no-follow-tags` 뒤 `--` 로 옵션을 닫고 원격 이름을 준다; 미지 원격 끝은 성공으로 추측하지 않고 보류(hold)로 기록하며(REQ-9), push 때 도달 불가는 pending. | 리더 결정(2026-11-22)·감사 B3·N2·R2 | 카드 열림 |
 | D-10 | 다음 조각들이 미리 정해진 사용자 결정(2026-11-22): 원격 CI 는 통합 가지 push 에 라이트 검사만(실패는 수리 카드, 착지 불가차단 없음), full matrix 는 릴리스 PR 만, pull_request 트리거는 main 만; 릴리스 이름은 40-hex 은퇴·`v4.<yearweek>.<build>` 만, 발행된 태그는 불변. 커버리지 한 줄들(2026-11-22): moai 명령은 통합 가지 이름의 모든 대소문자를 받는다(NeXT), 사전-push 는 원격에 대소문자만 다른 가지를 만드는 push 를 거부한다, mode-000 시험은 root 밑에서 건너뛰거나 권한을 되돌린다. | 사용자 결정(2026-11-22), 커버리지 노트(2026-11-22) | 카드 열림 |
 
 ## Result
