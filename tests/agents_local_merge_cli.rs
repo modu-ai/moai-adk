@@ -212,11 +212,17 @@ fn personal_text_merges_once_and_a_rerun_changes_nothing() {
     assert_eq!(fx.read("AGENTS.local.md"), MINE);
     let id = applied["receipt"].as_str().unwrap();
     assert_eq!(
-        fx.read(&format!(".moai-cli/receipts/{id}/source/AGENTS.local.md")),
+        fx.read(&format!(
+            "{}/receipts/{id}/source/AGENTS.local.md",
+            fx.state()
+        )),
         MINE
     );
     assert_eq!(
-        fx.read(&format!(".moai-cli/receipts/{id}/before/CLAUDE.local.md")),
+        fx.read(&format!(
+            "{}/receipts/{id}/before/CLAUDE.local.md",
+            fx.state()
+        )),
         RULES
     );
 
@@ -548,8 +554,14 @@ impl Fx {
             .unwrap_or_else(|_| panic!("{args:?}: {}", String::from_utf8_lossy(&out.stderr)))
     }
 
+    /// The project's state folder as the resolver answers it (`.moai` for a project that holds
+    /// no earlier `.moai-cli`, SPEC-20261121-path-root-moai-default).
+    fn state(&self) -> &'static str {
+        moai_cli::state_root::dir(&self.root)
+    }
+
     fn receipt_path(&self, id: &str) -> PathBuf {
-        self.root.join(".moai-cli/receipts").join(id)
+        moai_cli::state_root::path(&self.root, "receipts").join(id)
     }
 
     fn set_status(&self, id: &str, status: &str) {

@@ -190,8 +190,11 @@ fn a_style_file_equal_to_the_current_text_is_taken_as_owned() {
         assert_eq!(style_action(&p), "merge", "record {:?}", record.is_some());
         apply(&home, &package(), &p.plan_digest, PERM).unwrap();
         assert_eq!(fs::read_to_string(home.join(STYLE)).unwrap(), current);
+        // The record lives under the folder the HOME resolves to: the earlier one when the case
+        // wrote it there, `~/.moai` for a HOME that held no state (SPEC-20261121-path-root-moai-default).
+        let written = moai_cli::home_root::path(&home).join("home-style/claude.json");
         assert_eq!(
-            fs::read_to_string(home.join(RECORD)).unwrap(),
+            fs::read_to_string(written).unwrap(),
             record_naming(&current)
         );
         // Owned now: a changed template is an update, never a conflict.

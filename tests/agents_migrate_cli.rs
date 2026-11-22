@@ -113,7 +113,10 @@ fn the_persons_text_moves_into_a_new_claude_md_once() {
     let id = applied["receipt"].as_str().unwrap();
     assert!(id.starts_with("agents-md-migrate-"), "{id}");
     assert_eq!(
-        fx.read(&format!(".moai-cli/receipts/{id}/source/AGENTS.md")),
+        fx.read(&format!(
+            "{}/receipts/{id}/source/AGENTS.md",
+            moai_cli::state_root::dir(&fx.root)
+        )),
         agents_before,
         "the receipt keeps a copy of the source file"
     );
@@ -342,9 +345,10 @@ fn a_guidance_receipt_that_names_another_file_is_refused() {
         if other != "AGENTS.md" {
             fx.write(other, &written);
         }
-        let path = fx
-            .root
-            .join(format!(".moai-cli/receipts/{id}/receipt.json"));
+        // The state folder as the resolver answers it (SPEC-20261121-path-root-moai-default).
+        let path = moai_cli::state_root::path(&fx.root, "receipts")
+            .join(&id)
+            .join("receipt.json");
         let mut r: Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
         r["target_path"] = json!(other);
         fs::write(&path, serde_json::to_vec_pretty(&r).unwrap()).unwrap();
