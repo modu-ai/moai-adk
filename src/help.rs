@@ -68,6 +68,9 @@ pub const GROUPS: &[Group] = &[
             ("hooks-plan", false),
             ("hooks-apply", false),
             ("hooks-revert", false),
+            ("git-hooks-plan", false),
+            ("git-hooks-apply", false),
+            ("git-hooks-revert", false),
             ("go-hooks-plan", false),
             ("go-hooks-apply", false),
             ("go-hooks-revert", false),
@@ -334,6 +337,9 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("hooks-plan", &["hooks-plan --host claude .", "hooks-apply --host claude --plan-digest <digest> --permission-reference <ref> .", "hooks-plan --host codex --lane-loop agent-1 --repo modu-ai/moai-adk ."]),
     ("hooks-apply", &["hooks-apply --host claude --plan-digest <digest> --permission-reference <ref> ."]),
     ("hooks-revert", &["hooks-revert --receipt <id> --permission-reference <ref> ."]),
+    ("git-hooks-plan", &["git-hooks-plan ."]),
+    ("git-hooks-apply", &["git-hooks-apply --confirm-git-hooks <token> ."]),
+    ("git-hooks-revert", &["git-hooks-revert <stamp> ."]),
     ("go-hooks-plan", &["go-hooks-plan .", "go-hooks-apply --plan-digest <digest> --permission-reference <ref> ."]),
     ("go-hooks-apply", &["go-hooks-apply --plan-digest <digest> --permission-reference <ref> ."]),
     ("go-hooks-revert", &["go-hooks-revert --receipt <id> --permission-reference <ref> ."]),
@@ -1894,6 +1900,12 @@ const ARG_HELP_KO: &[(&str, &str, &str)] = &[
         "미리 보기의 `switch.confirm_token`: 이름 전환 스크립트 `<상태 폴더>/path/moai` 를 \
          새 것으로 바꿈. 옛 파일은 옆에 `moai.before-<UTC>` 로 보관됨. --confirm 이 없으면 \
          나머지는 미리 보기로 남음",
+    ),
+    (
+        "update",
+        "confirm_git_hooks",
+        "미리 보기의 `git_hooks.confirm_token`: 프로젝트의 Go 세대 git 훅을 은퇴하고 \
+         Rust 훅을 설치함. --confirm 이 없으면 나머지는 미리 보기로 남음",
     ),
     (
         "update",
