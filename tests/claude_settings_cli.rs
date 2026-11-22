@@ -77,7 +77,7 @@ fn plan_apply_then_replan_is_a_no_op() {
     assert_eq!(first["action"], json!("update"));
     assert_eq!(first["writes"], json!(false));
     assert!(
-        !p.join(".moai-cli/manifests/claude-settings.json").exists(),
+        !moai_cli::state_root::path(p, "manifests/claude-settings.json").exists(),
         "plan writes nothing"
     );
 
@@ -94,7 +94,11 @@ fn plan_apply_then_replan_is_a_no_op() {
     assert_eq!(settings["model"], json!("user-choice"), "user key kept");
     assert_eq!(settings["outputStyle"], json!("MoAI-Easy"));
     let receipt: Value = serde_json::from_slice(
-        &fs::read(p.join(".moai-cli/manifests/claude-settings.json")).unwrap(),
+        &fs::read(moai_cli::state_root::path(
+            p,
+            "manifests/claude-settings.json",
+        ))
+        .unwrap(),
     )
     .unwrap();
     assert_eq!(receipt["owned"].as_object().unwrap().len(), 2, "{receipt}");
@@ -449,10 +453,8 @@ fn local_scope_writes_the_local_file_with_its_own_receipt() {
         !p.join(".claude/settings.json").exists(),
         "the project file is untouched"
     );
-    assert!(p
-        .join(".moai-cli/manifests/claude-settings-local.json")
-        .is_file());
-    assert!(!p.join(".moai-cli/manifests/claude-settings.json").exists());
+    assert!(moai_cli::state_root::path(p, "manifests/claude-settings-local.json").is_file());
+    assert!(!moai_cli::state_root::path(p, "manifests/claude-settings.json").exists());
 
     let (_, again) = run_with(
         "claude-settings-plan",
@@ -616,7 +618,7 @@ fn user_status_line(p: &Path) -> Vec<u8> {
 }
 
 fn backups(p: &Path) -> Vec<std::path::PathBuf> {
-    match fs::read_dir(p.join(".moai-cli/settings-backups")) {
+    match fs::read_dir(moai_cli::state_root::path(p, "settings-backups")) {
         Err(_) => vec![],
         Ok(rd) => {
             // Backup folders only; the root's `.gitignore` (audit 6850258090 B1) is not one.
@@ -648,7 +650,10 @@ fn a_conflicting_key_previews_a_confirmed_replacement_and_writes_nothing() {
         json!({"type": "command", "command": "orca statusline"})
     );
     assert_eq!(c["replace_with"]["statusLine"], sl()["statusLine"]);
-    assert_eq!(c["backup_root"], json!(".moai-cli/settings-backups"));
+    assert_eq!(
+        c["backup_root"],
+        json!(moai_cli::state_root::rel(p, "settings-backups"))
+    );
     let token = c["confirm_token"].as_str().unwrap();
     assert!(token.starts_with("settings-replace:project:"), "{token}");
     assert_eq!(
@@ -663,7 +668,7 @@ fn a_conflicting_key_previews_a_confirmed_replacement_and_writes_nothing() {
     assert!(v["error"]["message"].as_str().unwrap().contains("conflict"));
     assert_eq!(fs::read(p.join(".claude/settings.json")).unwrap(), before);
     assert!(backups(p).is_empty());
-    assert!(!p.join(".moai-cli/manifests/claude-settings.json").exists());
+    assert!(!moai_cli::state_root::path(p, "manifests/claude-settings.json").exists());
 }
 
 fn apply_replace(p: &Path, home: &Path, digest: &str, token: &str) -> (Option<i32>, Value) {
@@ -705,7 +710,10 @@ fn the_confirmed_replacement_keeps_the_original_then_replaces_only_that_key() {
     let name = dirs[0].file_name().unwrap().to_str().unwrap().to_string();
     assert!(name.ends_with("-project"), "{name}");
     assert_eq!(fs::read(dirs[0].join("settings.json")).unwrap(), before);
-    let rel = format!(".moai-cli/settings-backups/{name}");
+    let rel = format!(
+        "{}/{name}",
+        moai_cli::state_root::rel(p, "settings-backups")
+    );
     assert_eq!(out["backup_dir"], json!(rel));
     let revert = out["revert"].as_str().unwrap();
     assert!(
@@ -723,7 +731,11 @@ fn the_confirmed_replacement_keeps_the_original_then_replaces_only_that_key() {
     );
     assert_eq!(settings["statusLine"], sl()["statusLine"]);
     let receipt: Value = serde_json::from_slice(
-        &fs::read(p.join(".moai-cli/manifests/claude-settings.json")).unwrap(),
+        &fs::read(moai_cli::state_root::path(
+            p,
+            "manifests/claude-settings.json",
+        ))
+        .unwrap(),
     )
     .unwrap();
     assert_eq!(
@@ -792,7 +804,11 @@ fn a_confirmed_replacement_also_applies_the_requests_other_keys() {
         v["result"]["settings_sha256_after"]
     );
     let receipt: Value = serde_json::from_slice(
-        &fs::read(p.join(".moai-cli/manifests/claude-settings.json")).unwrap(),
+        &fs::read(moai_cli::state_root::path(
+            p,
+            "manifests/claude-settings.json",
+        ))
+        .unwrap(),
     )
     .unwrap();
     assert_eq!(receipt["owned"]["outputStyle"], both["outputStyle"]);
@@ -834,7 +850,7 @@ fn a_wrong_or_stale_token_refuses_before_any_write() {
         edited
     );
     assert!(backups(p).is_empty());
-    assert!(!p.join(".moai-cli/manifests/claude-settings.json").exists());
+    assert!(!moai_cli::state_root::path(p, "manifests/claude-settings.json").exists());
 
     // A fresh preview of the edited file with the old confirmation: the user confirmed
     // replacing a different current value, so the old token is refused even with the new

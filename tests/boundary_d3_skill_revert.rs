@@ -60,8 +60,7 @@ fn apply_with_codex_receipt(project: &Path, source: &Path) -> String {
         &project.join(".claude/skills/moai"),
         &project.join(".agents/skills/moai"),
     );
-    let receipt_path = project
-        .join(".moai-cli/project-skill-rollback")
+    let receipt_path = moai_cli::state_root::path(project, "project-skill-rollback")
         .join(&request_id)
         .join("receipt.json");
     let mut receipt: serde_json::Value =
@@ -90,7 +89,7 @@ fn a_receipt_that_names_codex_is_skipped_and_reported() {
     assert_eq!(reverted["state"], "reverted", "{reverted}");
     assert_eq!(
         reverted["skipped"],
-        serde_json::json!([{"host": "codex", "reason": "retired host; not managed"}]),
+        serde_json::json!([{"host": "codex", "reason": "host_retired"}]),
         "{reverted}"
     );
     assert!(

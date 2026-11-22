@@ -143,7 +143,7 @@ mod tests {
         assert_eq!(
             ph.dir,
             home.path()
-                .join(crate::HOME_STATE_DIR)
+                .join(crate::state_root::MOAI_DIR)
                 .join("projects")
                 .join("abcdefghijklmnopqrstuvwxyz")
         );
@@ -213,10 +213,19 @@ mod tests {
     fn the_state_root_follows_the_home_the_way_every_home_reader_does() {
         let project = tempfile::tempdir().unwrap();
         profile(project.path(), "abcdefghijklmnopqrstuvwxyz");
-        // A HOME with nothing: the earlier folder.
+        // A HOME with nothing: `.moai`.
         let plain = tempfile::tempdir().unwrap();
         let ph = resolve(plain.path(), project.path()).unwrap();
-        assert!(ph.dir.starts_with(plain.path().join(crate::HOME_STATE_DIR)));
+        assert!(ph
+            .dir
+            .starts_with(plain.path().join(crate::state_root::MOAI_DIR)));
+        // A HOME that has the earlier folder keeps it.
+        let legacy = tempfile::tempdir().unwrap();
+        fs::create_dir(legacy.path().join(crate::HOME_STATE_DIR)).unwrap();
+        let ph = resolve(legacy.path(), project.path()).unwrap();
+        assert!(ph
+            .dir
+            .starts_with(legacy.path().join(crate::HOME_STATE_DIR)));
         // A HOME with this generation's marker: `.moai`, and the same as `home_root::path`.
         for schema in [1u64, crate::state_root::HOME_MARKER_SCHEMA] {
             let home = tempfile::tempdir().unwrap();

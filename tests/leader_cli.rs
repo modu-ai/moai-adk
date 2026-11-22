@@ -143,7 +143,7 @@ fn unchanged_prs_are_not_reported_and_changes_are() {
         first["summary"],
         json!("1 open pull request(s) read; 1 changed since the previous tick")
     );
-    let state = p.join(".moai-cli/forge/leader-tick.json");
+    let state = moai_cli::state_root::path(p, "forge/leader-tick.json");
     let saved = fs::read(&state).unwrap();
 
     let second = tick(p, &[], one_pr("h1", "agent-1", "PASS", "success"));

@@ -216,7 +216,7 @@ fn state(home: &Path) -> Vec<(PathBuf, Vec<u8>)> {
 
 fn agents_dir(home: &Path, host: &str) -> PathBuf {
     assert_eq!(host, "claude", "the home update writes Claude only");
-    home.join(".claude/agents")
+    home.join(".claude/agents/moai")
 }
 
 fn skill_dir(home: &Path, agent_host: &str) -> PathBuf {

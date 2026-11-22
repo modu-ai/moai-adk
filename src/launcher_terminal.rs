@@ -1,4 +1,4 @@
-//! What the launcher (`moai cc|glm|omp -l|-a`) prints around a session (#3004 P9).
+//! What the launcher (`moai cc|glm -l|-a`) prints around a session (#3004 P9).
 //!
 //! After the host exits the launcher used to print one JSON line (`executed:true`), which a
 //! person at a terminal should never see. The JSON envelope stays for a pipe, a file and
@@ -7,9 +7,7 @@
 //! readable summary for `--dry-run`. Notes that carry a warning are printed once, before the
 //! host starts. Nothing here ever prints a key or token value: the envelope itself holds
 //! variable names only.
-use crate::session::{
-    NOTE_ADVISOR_NOT_PASSED_OMP, NOTE_ADVISOR_OMITTED_GLM, NOTE_EFFORT_NOT_PASSED_OMP,
-};
+use crate::session::NOTE_ADVISOR_OMITTED_GLM;
 use serde_json::Value;
 
 /// Whether the launcher prints the JSON envelope: always with `--json`, and whenever stdout is
@@ -30,11 +28,7 @@ pub fn startup_lines(composed: &Value, number_notes: &[String]) -> Vec<String> {
     // Decided in #3004 P9: the notes that say an option was dropped are limits the user must
     // see; the other notes (role defaults, model mapping, permission mode, key source) only
     // describe what the launcher chose and stay in the envelope.
-    const WARNINGS: [&str; 3] = [
-        NOTE_ADVISOR_OMITTED_GLM,
-        NOTE_EFFORT_NOT_PASSED_OMP,
-        NOTE_ADVISOR_NOT_PASSED_OMP,
-    ];
+    const WARNINGS: [&str; 1] = [NOTE_ADVISOR_OMITTED_GLM];
     let mut lines: Vec<String> = number_notes.iter().map(|n| format!("moai: {n}")).collect();
     let notes = composed["notes"].as_array().into_iter().flatten();
     lines.extend(
@@ -187,10 +181,7 @@ pub fn report(v: &Value, human: bool) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::session::{
-        AGENT_ONE_WARNING, NOTE_ADVISOR_NOT_PASSED_OMP, NOTE_ADVISOR_OMITTED_GLM,
-        NOTE_EFFORT_NOT_PASSED_OMP,
-    };
+    use crate::session::{AGENT_ONE_WARNING, NOTE_ADVISOR_OMITTED_GLM};
     use serde_json::json;
 
     /// The envelope of a session that ran, as `launch` returns it.
@@ -222,7 +213,6 @@ mod tests {
             ("claude", json!("agent"), "cc", " -a"),
             ("claude", json!("leader"), "cc", " -l"),
             ("glm", json!("agent"), "glm", " -a"),
-            ("omp", json!("leader"), "omp", " -l"),
         ] {
             let text = after_text(&ran(host, role, json!(3))).expect("a failure prints");
             assert!(
@@ -299,9 +289,7 @@ mod tests {
             "no role: a plain host session; no role or session name is added (#2053)",
             "model aliases map to z.ai models for this session: opus to glm-5.3",
             NOTE_ADVISOR_OMITTED_GLM,
-            NOTE_EFFORT_NOT_PASSED_OMP,
-            NOTE_ADVISOR_NOT_PASSED_OMP,
-            "omp has no session-name flag: the name is not passed",
+            "ANTHROPIC_AUTH_TOKEN comes from the moai-cli key vault; it is passed to the host process only",
         ]});
         let number = vec![
             "agent number 21 taken: next after live agent-20 (store /x)".to_string(),
@@ -314,8 +302,6 @@ mod tests {
                 "moai: agent number 21 taken: next after live agent-20 (store /x)".to_string(),
                 format!("moai: {AGENT_ONE_WARNING}"),
                 format!("moai: {NOTE_ADVISOR_OMITTED_GLM}"),
-                format!("moai: {NOTE_EFFORT_NOT_PASSED_OMP}"),
-                format!("moai: {NOTE_ADVISOR_NOT_PASSED_OMP}"),
             ]
         );
         assert!(startup_lines(&json!({"notes": []}), &[]).is_empty());

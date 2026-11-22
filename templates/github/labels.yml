@@ -53,9 +53,6 @@ labels:
 - name: host:claude
   color: d4a5ff
   description: Must be verified on Claude Code
-- name: host:codex
-  color: 74d2ff
-  description: Must be verified on Codex
 - name: needs:decision
   color: fef2c0
   description: A user decision is pending; work waits for it

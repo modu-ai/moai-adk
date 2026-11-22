@@ -33,9 +33,6 @@ const MINE: &str = "My own notes\nPrefer tabs.\n";
 /// The receipt folder of a project that has been through `project-apply` (state folder `.moai`).
 const RECEIPTS: &str = ".moai/receipts";
 const RECEIPTS_LINE: &str = ".moai/receipts/";
-/// The receipt folder of a project with no MoAI state yet: it keeps the earlier `.moai-cli`.
-const FRESH_RECEIPTS: &str = ".moai-cli/receipts";
-const FRESH_RECEIPTS_LINE: &str = ".moai-cli/receipts/";
 
 struct Fx {
     _tmp: TempDir,
@@ -77,6 +74,17 @@ impl Fx {
 
     fn read(&self, rel: &str) -> String {
         fs::read_to_string(self.root.join(rel)).unwrap()
+    }
+
+    /// The receipt folder of a project with no MoAI state yet, as the project state resolver
+    /// answers it (SPEC-20261121-path-root-moai-default: `.moai` for a tree with no earlier
+    /// `.moai-cli`).
+    fn fresh_receipts(&self) -> String {
+        format!("{}/receipts", moai_cli::state_root::dir(&self.root))
+    }
+
+    fn fresh_receipts_line(&self) -> String {
+        format!("{}/", self.fresh_receipts())
     }
 
     fn exists(&self, rel: &str) -> bool {
@@ -743,13 +751,16 @@ fn receipts_a_standalone_merge_ignores_the_receipt_folder() {
     );
     assert_eq!(
         fx.read(".gitignore"),
-        format!("CLAUDE.local.md\n{FRESH_RECEIPTS_LINE}\n")
+        format!("CLAUDE.local.md\n{}\n", fx.fresh_receipts_line())
     );
     assert!(
-        fx.exists(FRESH_RECEIPTS),
+        fx.exists(&fx.fresh_receipts()),
         "the apply wrote its receipt folder"
     );
-    assert!(fx.ignored(FRESH_RECEIPTS), "git sees the receipt folder");
+    assert!(
+        fx.ignored(&fx.fresh_receipts()),
+        "git sees the receipt folder"
+    );
     assert!(fx.ignored("CLAUDE.local.md"));
 }
 
@@ -784,16 +795,16 @@ fn receipts_a_pick_in_a_project_without_a_managed_block_ignores_the_receipt_fold
 #[test]
 fn receipts_a_folder_that_is_already_ignored_gets_no_second_line() {
     // A line of its own, and a wider rule.
-    for (earlier, expect) in [
-        (
-            "target/\n.moai-cli/receipts/\n",
-            "target/\n.moai-cli/receipts/\nCLAUDE.local.md\n",
-        ),
-        (".moai-cli/\n", ".moai-cli/\nCLAUDE.local.md\n"),
-    ] {
+    for wide in [false, true] {
         let fx = Fx::new();
+        let earlier = if wide {
+            format!("{}/\n", moai_cli::state_root::dir(&fx.root))
+        } else {
+            format!("target/\n{}\n", fx.fresh_receipts_line())
+        };
+        let expect = format!("{earlier}CLAUDE.local.md\n");
         fx.write("AGENTS.local.md", MINE);
-        fx.write(".gitignore", earlier);
+        fx.write(".gitignore", &earlier);
         let plan = fx.merge_plan();
         assert_eq!(
             plan["gitignore"]["receipts"]["action"],
@@ -802,7 +813,7 @@ fn receipts_a_folder_that_is_already_ignored_gets_no_second_line() {
         );
         fx.merge();
         assert_eq!(fx.read(".gitignore"), expect);
-        assert!(fx.ignored(FRESH_RECEIPTS));
+        assert!(fx.ignored(&fx.fresh_receipts()));
     }
 }
 
@@ -815,7 +826,7 @@ fn receipts_a_project_that_is_not_a_git_repository_gets_no_gitignore() {
     let applied = fx.merge();
     assert_eq!(applied["writes"], json!(["CLAUDE.local.md"]), "{applied}");
     assert!(!fx.exists(".gitignore"));
-    assert!(fx.exists(FRESH_RECEIPTS));
+    assert!(fx.exists(&fx.fresh_receipts()));
 }
 
 #[test]
@@ -827,7 +838,7 @@ fn receipts_the_revert_puts_gitignore_back_as_it_was() {
     let applied = fx.merge();
     assert_eq!(
         fx.read(".gitignore"),
-        format!("{earlier}\nCLAUDE.local.md\n{FRESH_RECEIPTS_LINE}\n")
+        format!("{earlier}\nCLAUDE.local.md\n{}\n", fx.fresh_receipts_line())
     );
     let id = applied["receipt"].as_str().unwrap();
     let out = fx.call(

@@ -76,7 +76,7 @@ ROUTER_REPLACED = {
     ".claude/skills/moai/workflows/project/doc-generation.md": "skills/moai/workflows/project.md",
     ".claude/skills/moai/workflows/project/mode-detection.md": "skills/moai/workflows/project.md",
     ".claude/skills/moai/workflows/review.md": "skills/moai/workflows/audit.md",
-    ".claude/skills/moai/workflows/gate.md": "skills/moai/workflows/verify.md",
+    ".claude/skills/moai/workflows/gate.md": "skills/moai/workflows/run.md",
     ".claude/skills/moai/workflows/plan/clarity-interview.md": "skills/moai/references/internal/interview.md",
     ".claude/skills/moai/workflows/plan/spec-assembly.md": "skills/moai/workflows/plan.md",
 }

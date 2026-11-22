@@ -116,7 +116,7 @@ fn moai_codex_says_it_was_removed() {
 }
 
 /// REQ-2: the host word after `-a` (`-l` takes none) refuses `codex` exactly as it refuses any unknown
-/// word: same exit code, same message shape, listing `cc|glm|omp` and no `codex`.
+/// word: same exit code, same message shape, listing `cc|glm` and no `codex`.
 #[test]
 fn the_codex_host_word_is_refused_like_any_unknown_host() {
     let f = fixture();
@@ -127,7 +127,7 @@ fn the_codex_host_word_is_refused_like_any_unknown_host() {
     assert_eq!(codex.status.code(), nope.status.code(), "{flag}: {codex:?}");
     assert!(codex.stdout.is_empty(), "{flag}: {codex:?}");
     let text = out_text(&codex);
-    assert!(text.contains("(cc|glm|omp)"), "{flag}: {text}");
+    assert!(text.contains("(cc|glm)"), "{flag}: {text}");
     assert!(!text.contains("codex|"), "{flag}: {text}");
     assert!(!text.contains("|codex"), "{flag}: {text}");
     assert_eq!(
@@ -142,13 +142,13 @@ fn the_codex_host_word_is_refused_like_any_unknown_host() {
     assert!(!started(&f), "a host was started");
 }
 
-/// REQ-1: the usage text of a bare `moai` (no arguments) names the three launcher words.
+/// REQ-1: the usage text of a bare `moai` (no arguments) names the two launcher words.
 #[test]
 fn the_bare_usage_line_names_no_codex() {
     let f = fixture();
     let out = run(&f, f.project.path(), &[]);
     let text = out_text(&out);
-    assert!(text.contains("cc|glm|omp"), "{text}");
+    assert!(text.contains("cc|glm"), "{text}");
     assert!(!text.contains("codex"), "{text}");
 }
 
@@ -197,7 +197,6 @@ fn a_session_request_has_no_codex_program_and_the_notes_name_no_codex() {
         &["cc", "-l", "--dry-run"][..],
         &["cc", "-a", "--dry-run"][..],
         &["cc", "--dry-run"][..],
-        &["omp", "-a", "--dry-run"][..],
         &["glm", "-l", "--dry-run"][..],
     ] {
         let out = run(&f, f.project.path(), args);

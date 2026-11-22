@@ -296,7 +296,11 @@ fn session_check_adds_fixed_vocabulary_context() {
         .as_str()
         .unwrap();
     assert!(ctx.contains("lane branch: Issue #77"), "{ctx}");
-    assert!(ctx.contains("state directory .moai-cli: absent"), "{ctx}");
+    let state = moai_cli::state_root::dir(&root);
+    assert!(
+        ctx.contains(&format!("state directory {state}: absent")),
+        "{ctx}"
+    );
     assert!(ctx.contains("local claim record: absent"), "{ctx}");
     assert!(!ctx.contains("secret-key-name"), "{ctx}");
     fs::create_dir(root.join(".moai-cli")).unwrap();

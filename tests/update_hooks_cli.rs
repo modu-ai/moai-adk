@@ -479,11 +479,14 @@ fn a_current_or_absent_hook_set_leaves_nothing_to_apply() {
 fn update_leaves_the_hook_files_of_a_removed_host_alone() {
     let f = setup();
     install_hooks(&f, "claude");
+    // The receipts an earlier moai wrote sit in the folder the project state resolves to.
+    let codex_receipt = moai_cli::state_root::rel(&f.project, "manifests/codex-hooks.json");
+    let omp_receipt = moai_cli::state_root::rel(&f.project, "manifests/omp-hooks.json");
     let files = [
         (".codex/hooks.json", "{\"hooks\": {}}\n"),
-        (".moai-cli/manifests/codex-hooks.json", "{}\n"),
+        (codex_receipt.as_str(), "{}\n"),
         (".omp/extensions/moai-hooks.ts", "// earlier module\n"),
-        (".moai-cli/manifests/omp-hooks.json", "{}\n"),
+        (omp_receipt.as_str(), "{}\n"),
     ];
     for (rel, text) in files {
         let path = f.project.join(rel);
@@ -586,7 +589,7 @@ fn the_hook_receipt_keeps_a_protected_settings_file_privately_under_any_umask() 
             "umask {umask}: {r}"
         );
 
-        let receipts = f.project.join(".moai-cli/receipts");
+        let receipts = moai_cli::state_root::path(&f.project, "receipts");
         let mut seen = Vec::new();
         modes_below(&receipts, &mut seen);
         let own = fs::symlink_metadata(&receipts)

@@ -2378,7 +2378,7 @@ mod idle_limit {
 
     fn state_file(c: &Clone) -> std::path::PathBuf {
         c.repo
-            .join(".git/.moai-cli/lane-idle")
+            .join(".git/.moai/lane-idle")
             .join(format!("{LANE}__o__r.json"))
     }
 
@@ -2522,7 +2522,7 @@ mod idle_limit {
         );
         let state = c
             .repo
-            .join(".git/.moai-cli/lane-idle")
+            .join(".git/.moai/lane-idle")
             .join(format!("{LANE}__o__r.json"));
         assert!(state.is_file(), "{}", state.display());
     }
@@ -2581,7 +2581,7 @@ mod idle_limit {
             r.get("idle").is_none() && r["writes"] == json!(false),
             "{r}"
         );
-        assert!(!c.repo.join(".git/.moai-cli/lane-idle").exists());
+        assert!(!c.repo.join(".git/.moai/lane-idle").exists());
         let (r, _) = read(&c, LANE, "o/r", &nothing(), "1");
         assert_eq!(r["status"], json!("idle_limit"), "{r}");
         let (r, v) = read(&c, LANE, "o/r", &nothing(), "1001");
@@ -2608,7 +2608,7 @@ mod idle_limit {
         let v: Value = serde_json::from_slice(&out.stdout).unwrap();
         assert!(v["result"].get("idle").is_none(), "{v}");
         assert_eq!(v["result"]["writes"], json!(false));
-        assert!(!c.repo.join(".git/.moai-cli/lane-idle").exists());
+        assert!(!c.repo.join(".git/.moai/lane-idle").exists());
 
         let plain = TempDir::new().unwrap();
         let (r, v) = read(

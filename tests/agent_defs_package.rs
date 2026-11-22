@@ -356,8 +356,10 @@ fn reads_lists_match_the_design_and_render_on_every_host() {
     assert_eq!(
         reads("moai-audit"),
         [
+            // SPEC-20261122-next-flow-skills-agents slice B: the review note became the audit
+            // contract `references/audit.md`, which no `<folder>/<name>` entry can name; the
+            // source body points to it instead.
             "internal/core-rules",
-            "internal/review",
             "internal/test-design",
             "internal/check-completeness",
             "internal/boundary-checks",
@@ -432,7 +434,6 @@ fn a_reads_entry_without_its_file_is_refused() {
 #[test]
 fn internal_references_say_when_to_read_them() {
     let names = [
-        "review",
         "decide",
         "interview",
         // C-51/C-52 (user decision 2026-11-16): how a question reaches the user.
@@ -462,7 +463,7 @@ fn internal_references_say_when_to_read_them() {
         // SDD-6 (user decision U-B): the identity trailers every agent commit carries.
         "commit-trailers",
         // SPEC-20261117-quality-guides: the project's own check commands, AC-to-test tracing
-        // and the dependency existence check, read by RUN and VERIFY through the chain rules.
+        // and the dependency existence check, read by RUN through the chain rules.
         "quality",
     ];
     let mut found: Vec<String> = std::fs::read_dir(package().join("references/internal"))
@@ -533,16 +534,7 @@ fn chains_name_real_routes_agents_and_references() {
             }
         }
     }
-    for route in [
-        "PLAN",
-        "RUN",
-        "AUDIT",
-        "READ",
-        "VERIFY",
-        "PROJECT",
-        "SYNC",
-        "MODE-AGENT",
-    ] {
+    for route in ["PLAN", "RUN", "AUDIT", "READ", "PROJECT", "SYNC", "WORK"] {
         assert!(covered.contains(&route), "{route} has no chain");
     }
     for rule in [
@@ -556,10 +548,10 @@ fn chains_name_real_routes_agents_and_references() {
     // The build chain runs implementation before the audit, never in the same agent; SYNC
     // (moai-docs) writes before AUDIT checks (SPEC-20261117-sdd-guidance).
     let build = rows.iter().find(|r| r[0] == "Build something new").unwrap();
-    assert_eq!(build[1], "PLAN, RUN, VERIFY, SYNC, AUDIT");
+    assert_eq!(build[1], "PLAN, RUN, SYNC, AUDIT");
     assert_eq!(build[2], "moai-plan, moai-impl, moai-docs, moai-audit");
     let fix = rows.iter().find(|r| r[0] == "Fix a bug").unwrap();
-    assert_eq!(fix[1], "PLAN, RUN, VERIFY, SYNC, AUDIT");
+    assert_eq!(fix[1], "PLAN, RUN, SYNC, AUDIT");
     assert_eq!(
         fix[2],
         "moai-research, moai-plan, moai-impl, moai-docs, moai-audit"
@@ -897,9 +889,8 @@ fn versioning_reference_states_headver_numbers_and_the_release_checklist() {
     assert!(read("references/chains/index.md").contains(
         "- Any route that prepares, tags or publishes a release or release candidate runs `internal/versioning` `## At every release` first."
     ));
-    assert!(read("workflows/mode-leader.md").contains(
-        "Before any release or release candidate, at either level, run `internal/versioning` `## At every release`."
-    ));
+    // The MODE-LEADER pin of the same rule left with its route (SPEC-20261122-next-flow-skills-agents
+    // REQ-2); SYNC and the chain rules above carry it.
 }
 
 /// #2673 AC-2: git-safety names, per host, how to enter a worktree — the built-in tool first,
@@ -1045,9 +1036,10 @@ fn build_folder_reference_is_read_by_the_builders_and_states_the_rule() {
     for rel in [
         "references/internal/git-safety.md",
         "references/internal/self-check.md",
-        "workflows/mode-agent.md",
-        "workflows/verify.md",
-        "workflows/optimize.md",
+        // RUN and UPDATE carry the retired VERIFY and OPTIMIZE routes
+        // (SPEC-20261122-next-flow-skills-agents).
+        "workflows/run.md",
+        "workflows/update.md",
     ] {
         assert!(read(rel).contains("internal/build-folder"), "{rel}");
     }

@@ -11,7 +11,7 @@ Each case pins one receipt state, so a weakened verdict line flips a case and fa
   passed.
 - AC-08C-3: a plain answer with no skill tool calls -> failed; `is_error: true` ->
   failed; tool calls naming the fixture's references/routes.json and
-  workflows/setup.md plus a clean result -> passed; the same trace and clean result
+  workflows/project.md plus a clean result -> passed; the same trace and clean result
   with exit 1 -> failed (#2291, pins the `[ "$RC3" -eq 0 ]` condition).
 - Both -p runs read stdin from /dev/null (#2291); the fake logs what fd 0 is.
 
@@ -64,11 +64,11 @@ if mode == "rc1":
 if mode == "plain":
     emit({"type": "result", "is_error": False, "result": "Hello! How can I help?", "session_id": "s1"})
 elif mode == "error":
-    tool(skills / "references" / "routes.json"); tool(skills / "workflows" / "setup.md")
+    tool(skills / "references" / "routes.json"); tool(skills / "workflows" / "project.md")
     emit({"type": "result", "is_error": True, "result": "failed", "session_id": "s1"})
 elif mode in ("skill", "skill-rc1"):
-    tool(skills / "references" / "routes.json"); tool(skills / "workflows" / "setup.md")
-    emit({"type": "result", "is_error": False, "result": "SETUP preview", "session_id": "s1"})
+    tool(skills / "references" / "routes.json"); tool(skills / "workflows" / "project.md")
+    emit({"type": "result", "is_error": False, "result": "PROJECT preview", "session_id": "s1"})
     if mode == "skill-rc1":
         sys.exit(1)
 elif mode == "empty":

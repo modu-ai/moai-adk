@@ -1,14 +1,15 @@
 """#2517 (leader decision B): the `## Web pages` section is written once per workflow —
-VERIFY, AUDIT and RUN — with no separate package file, so the one-hop rule of the skill
-package stays intact. The three copies must stay identical, and each browser rule must
-stay in them: removing any rule sentence fails here."""
+AUDIT and RUN (RUN carries the retired VERIFY route, SPEC-20261122-next-flow-skills-agents) —
+with no separate package file, so the one-hop rule of the skill package stays intact. The
+copies must stay identical, and each browser rule must stay in them: removing any rule
+sentence fails here."""
 
 from pathlib import Path
 import re
 import unittest
 
 ROOT = Path(__file__).resolve().parent.parent
-WORKFLOWS = ("verify", "audit", "run")
+WORKFLOWS = ("audit", "run")
 
 # One entry per rule the Issue asks the document to fix.
 RULES = {

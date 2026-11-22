@@ -58,6 +58,7 @@ const PROFILE_KEYS: &[(&str, bool)] = &[
     ("scopes", true),
     ("versioning", true),
     ("work_flow", true),
+    ("remote_copy", true),
     ("test_paths", true),
     ("ci", true),
     ("checks", true),
@@ -161,6 +162,12 @@ pub struct Profile {
     /// written before this key reads unchanged.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub work_flow: Option<WorkFlowSettings>,
+    /// Whether the landing's remote copy is on: the leader turns it on only after a preview
+    /// and the user's yes (decision of 2026-11-22); absent or false means the copy pushes
+    /// nothing. A bool needs no validator beyond its type: a non-boolean value fails the
+    /// read, and the key is listed in [`PROFILE_KEYS`] so it is a managed key.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub remote_copy: Option<bool>,
     /// The project's own test paths beside the per-language table of `crate::tdd`
     /// (SPEC-20261117-green-test-lock D-4): relative folders or files, at most
     /// [`crate::tdd::MAX_DECLARED`]. Absent means none were declared; a profile written before
@@ -1301,6 +1308,7 @@ mod tests {
             scopes: None,
             versioning: None,
             work_flow: None,
+            remote_copy: None,
             test_paths: None,
             ci: None,
             checks: None,
@@ -1376,6 +1384,7 @@ mod tests {
                 flow: "m-flow".into(),
                 integration_branch: Some("main".into()),
             }),
+            remote_copy: Some(true),
             test_paths: Some(vec!["qa/".into()]),
             ci: Some(crate::project_ci::CiAnswers {
                 kind: "cli".into(),
@@ -1425,6 +1434,7 @@ mod tests {
                 "scopes",
                 "versioning",
                 "work_flow",
+                "remote_copy",
                 "test_paths",
                 "ci",
                 "checks"
@@ -1981,15 +1991,23 @@ mod tests {
         assert_eq!(mixed_flow(earlier.path()).as_deref(), Some("m-flow"));
         assert_eq!(read_rel(earlier.path()), format!("{EARLIER}/project.yaml"));
 
-        // Only the newer file and no marker: the layout is not `rust`, the earlier folder has no
-        // profile, so the reader still looks where it always did and finds none.
+        // Only the newer file, no marker and an earlier folder with no profile: the layout is not
+        // `rust`, so the reader still looks where it always did and finds none.
         let newer = tempfile::tempdir().unwrap();
         mixed_put(newer.path(), ".moai", MIXED_MFLOW);
+        fs::create_dir(newer.path().join(EARLIER)).unwrap();
         assert_eq!(
             read_profile(newer.path()).unwrap_err(),
             PROFILE_MISSING.to_string()
         );
         assert_eq!(read_rel(newer.path()), format!("{EARLIER}/project.yaml"));
+
+        // The same newer file with no earlier folder at all is a new tree: it resolves to
+        // `.moai` and the profile is read there.
+        let fresh = tempfile::tempdir().unwrap();
+        mixed_put(fresh.path(), ".moai", MIXED_MFLOW);
+        assert_eq!(read_rel(fresh.path()), ".moai/project.yaml");
+        assert!(read_profile(fresh.path()).is_ok());
 
         // A `rust` layout (valid marker) reads `.moai`, with or without the earlier file.
         for with_earlier in [false, true] {

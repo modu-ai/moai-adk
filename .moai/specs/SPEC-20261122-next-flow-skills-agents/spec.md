@@ -2,7 +2,7 @@
 id: SPEC-20261122-next-flow-skills-agents
 title: "The moai skill has eight routes and /moai work, one flow reference and one audit contract, and the update removes what the package no longer ships"
 status: draft
-revision: 2
+revision: 4
 created: 2026-11-22
 parent: null
 ---
@@ -46,13 +46,13 @@ parent: null
 - REQ-6: The package shall carry exactly one audit contract, references/audit.md of at most 6144 bytes, that lists what the auditor receives, what it returns, which session records the verdict and that the author of a change never audits it.
 - REQ-7: The audit contract shall state five side rules: the local code review of the base..head range is allowed evidence without its fix or comment options, a re-audit goes to the first auditor, a lane's tree-bound check receipt may be cited, no forked or advisor session audits, and a finding that names no file and no line counts as no finding.
 - REQ-8: No shipped skill text shall name Codex, OMP, a resident leader, a mode flag, a pull-request audit gate, a merge train, AGENTS.md as a file moai writes, prj-reviewer or prj-local-check.
-- REQ-9: No shipped skill or agent text shall name a tool or option Claude Code no longer has (TodoWrite, TaskCreate, TaskOutput, BashOutput, the resume and mode inputs of the Agent tool, the agents wizard), assume the Grep or Glob tool exists, hold a shell-injection command block, or set a model key in a skill file.
+- REQ-9: No shipped skill or agent text shall name a tool or option Claude Code no longer has (TodoWrite, TaskOutput, BashOutput, the resume and mode inputs of the Agent tool, the agents wizard), assume the Grep or Glob tool exists, hold a shell-injection command block, or set a model key in a skill file.
 - REQ-10: The PROJECT and UPDATE route texts shall absorb the retired SETUP and OPTIMIZE routes: PROJECT carries the steps of SETUP with the local tool language question and asks no conversation, document or commit language that the user scope already holds, and UPDATE carries a preview of leftover space that deletes nothing.
 - REQ-11: The flow rule file that moai installs into a config folder shall hold only the short operational rules and one line that points to the flow reference, so that no shipped text other than the flow reference carries the flow's full description.
 
 ## Acceptance
 
-- AC-1 (REQ-1, REQ-2, REQ-4): the route table holds the eight routes and each reference file exists, the nine files are absent from the package, and SKILL.md names no mode flag as a route.
+- AC-1 (REQ-1, REQ-2, REQ-4): the route table holds the eight routes and each reference file exists, the nine files are absent from the package, and SKILL.md names no mode flag as a route. Text slice A removes six of them; the review reference leaves in slice B, the build-folder reference in slice C and the rule history in Plan step 6, and the test's list of absent files grows with each.
   verify: `cargo test --locked --offline --test next_flow_skill_scan routes_`
 - AC-2 (REQ-3): the WORK reference lists, in order, take a card, plan, run, sync, audit, land and repeat, and says that a decision goes to the card as a blocked note.
   verify: `cargo test --locked --offline --test next_flow_skill_scan work_`
@@ -72,7 +72,7 @@ parent: null
 ## Scope
 
 - this slice, write: `.moai/specs/SPEC-20261122-next-flow-skills-agents/**`, `.moai/specs/SPEC-20261122-next-flow-base-agents/**`, `.moai/specs/SPEC-20261122-next-flow-update-and-launcher/**`
-- later slices, write: `skills/moai/**` (texts, the source of the installed flow rule file that the home routing slice adds, once that slice has landed, `references/routes.json`, `references/chains/index.md`, `references/source-manifest.json`), `docs/**` (the moved rule history), `tests/next_flow_skill_scan.rs`, and every test that reads a removed file or a removed sentence (the inventory is the first step of the text slice)
+- later slices, write: `skills/moai/**` (texts, the source of the installed flow rule file that the home routing slice adds, once that slice has landed, `references/routes.json`, `references/chains/index.md`, `references/source-manifest.json`), `docs/**` (the moved rule history), `tests/next_flow_skill_scan.rs`, and every test that reads a removed file or a removed sentence (the inventory is the first step of the text slice), and the one source file whose unit test embeds a removed workflow text, `src/heavy_slot.rs` (test module only)
 - read-only: `src/update.rs`, `src/agent_install.rs`, `tests/style_banner_scan.rs`
 - forbidden: `AGENTS.md`, `AGENTS.local.md` of this repository, the real HOME, the network, the integration branch, `.claude/` of this checkout
 
@@ -81,8 +81,8 @@ parent: null
 1. (done) The three SPECs (this slice).
 2. Inventory: list every test and source line that names a removed file or a removed rule sentence (61 files name a mode file, 24 name `setup`, `verify` or `optimize`), and for each decide: the rule still matters → its sentence moves to the new place and the pin follows; the rule retires with the route → the test is retired with its reason written where it stood.
 3. Text slice A: routes and WORK: `routes.json`, `SKILL.md`, `chains/index.md`, the WORK reference, PROJECT absorbs SETUP, RUN absorbs VERIFY, UPDATE absorbs OPTIMIZE; the removed files go; `next_flow_skill_scan.rs` tests `routes_`, `work_`, `absorb_` are written first and fail first.
-4. Text slice B: the flow reference and the audit contract (the review text moves in); `refs_` tests first.
-5. Text slice C: the scrub of the internal references that named the old flow (commit-trailers, decide, git-safety, interview, quality, questions, self-check, sdd, versioning; build-folder and review leave the package in slices A and B), of the workflow texts and SKILL.md, and of the stale tool names; `scrub_` tests first; the source manifest is regenerated.
+4. Text slice B: the flow reference and the audit contract (the review text moves in, and review leaves the package); `refs_` tests first.
+5. Text slice C: the build-folder reference leaves the package, its rule rewritten where it moves (D-14); the scrub of the internal references that named the old flow (commit-trailers, decide, git-safety, interview, quality, questions, self-check, sdd, versioning), of the workflow texts and SKILL.md, and of the stale tool names; `scrub_` tests first; the source manifest is regenerated.
 6. Rule history moves from the package to `docs/`, and the guard test that pinned it follows.
 
 ## Risks
@@ -102,11 +102,16 @@ parent: null
 | D-2 | The flow reference lives at `references/flows/next-flow.md`; it explains the meaning New · engineering · eXperience · Together once and describes the four technical rules as how the flow works. | The user's decision on the meaning (leader's landing note, 2026-11-22); one explaining text. | Move the explanation. |
 | D-8 | The full flow text lives in the flow reference; the config folder's flow rule file holds the short operational rules and one pointer line (the reverse arrangement was the other option). | The leader asked that only one side carries the full text, settled between this card and the CLAUDE.md card; both are held by the same lane, and the rule file loads in every session, so the short side belongs there. | Put the full text in the rule file and make the reference point to it. |
 | D-9 | The fast-forward push after landing happens only when the user has turned the remote copy on; it is off by default. | User decision (leader's landing note, 2026-11-22). | Push after every landing. |
+| D-10 | REQ-9 no longer lists TaskCreate; a shipped text may name it only as a tool used when the host offers it (revision 3). | The user decision on background progress makes the flow rule file say "keep the task list current if the TaskCreate tool is offered" (decision note req9-taskcreate). | Keep TaskCreate in the list and drop the tool name from the flow rule. |
+| D-11 | Text slice A, with the inventory folded in, keeps the retired test files that the rule history names as emptied files with a header giving the reason, until the rule history moves to `docs/`; sentences whose rule still holds move with their pin (verify's to RUN, setup's to PROJECT, optimize's to UPDATE, the lane's card steps to WORK). | The rule-history guard requires every test file it names to exist; the smallest change that keeps it green. | Move the rule history first. |
+| D-12 | The local tool language question of REQ-10 is the instruction-file language; PROJECT asks commit and document language only when the user scope lacks them. | The language module asks three items and the conversation language is set at install. | Ask all three every time. |
 | D-3 | `references/rule-history.md` moves to `docs/`. | The report 4-3 and the coverage note: nothing reads it while a route runs. | Keep it in the package. |
 | D-4 | `review.md` is absorbed into the audit contract and removed. | The report 4-3: one audit contract, about 5 KB. | Keep both. |
 | D-5 | A re-audit goes to the first auditor, a lane's receipt may be cited, no fork or advisor audits. | The coverage note on the audit side rules. | Loosen per rule. |
 | D-6 | The audit contract fixes what the auditor receives and returns, not how the session is started. | Starting audit sessions is the lane and headless SPECs' work. | Fold it in later. |
 | D-7 | The shipped texts do not name `prj-reviewer` or `prj-local-check`. | They are this repository's own harness files; a product text must not depend on them. | Name them again. |
+| D-13 | Text slice A also wrote, by the leader's word, the lines outside this Scope that pointed at the removed files (the PR template, the local rules file, three docs, two source comments, four tests, a fixture line and a tool), re-pointing references only; the reference test counts `.moai/specs/**`, `docs/design-review/**`, `docs/decisions-*.md` and `docs/surveys/**` as history and no longer requires their paths to resolve. | Leader decision on the slice A blocked note (2026-11-22): closed SPECs and dated docs record past states and are not rewritten; live references move to the routes that absorbed them, with no stub files. | Rewrite the history files, or restore stubs. |
+| D-14 | The build-folder reference leaves the package in slice C, not slice B, and its rule is rewritten where it moves: each worktree builds in its own `target/` (no shared build home for new work), with the fixed slots and the seeded copy of the redesign; its source and test readers are granted when slice C asks. | Leader decision on the slice B blocked note (2026-11-22) and the user's build rule of the same day. | Remove it in slice B with its old rule. |
 
 ## Result
 

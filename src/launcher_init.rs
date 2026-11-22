@@ -1,4 +1,4 @@
-//! First-launch project initialization for `cc|glm|omp` (Issue #2481; user decisions
+//! First-launch project initialization for `cc|glm` (Issue #2481; user decisions
 //! 6810797000 and 6810818827, 2026-11-12).
 //!
 //! A launch in a folder that is not a git repository runs `git init` there without asking,
@@ -47,7 +47,7 @@ pub struct Prepared {
     pub git_pending: bool,
 }
 
-/// Initializes `cwd` for a launch on `host` (`claude`, `glm` or `omp`). Refuses — before any
+/// Initializes `cwd` for a launch on `host` (`claude` or `glm`). Refuses — before any
 /// write — when git is missing from PATH, or when `cwd` is not a repository and is HOME itself
 /// or the file-system root. Under `dry_run` it writes nothing and reports the plan. A missing
 /// skill copy for the host ([`missing_skill`]) adds its warning as a second line of the note.
@@ -454,16 +454,14 @@ fn primary_name(anchor: &Path) -> String {
 }
 
 /// The profile a first launch writes: `project_id` from the primary folder name with the key
-/// vault's folder-name mapping (so the vault folder name does not change), `hosts` from the
-/// launching host, and placeholder values marked `source: default` that the project interview
+/// vault's folder-name mapping (so the vault folder name does not change), `hosts` of
+/// `claude` (both launchers start Claude Code, and a host word this version does not know falls
+/// back to it), and placeholder values marked `source: default` that the project interview
 /// replaces.
-fn default_profile(folder: &str, host: &str) -> Result<profile::Profile, String> {
+fn default_profile(folder: &str, _host: &str) -> Result<profile::Profile, String> {
     let named = crate::key_vault::folder_name(None, folder, "");
     let project_id = named.strip_suffix('-').unwrap_or(&named).to_string();
-    let host = match host {
-        "omp" => "omp",
-        _ => "claude",
-    };
+    let host = "claude";
     let value: Value = json!({
         "schema_version": 2,
         "project_id": project_id,
@@ -543,7 +541,7 @@ mod tests {
         assert_eq!(p.hosts, ["claude"]);
         let p = default_profile("___", "omp").unwrap();
         assert_eq!(p.project_id, "project");
-        assert_eq!(p.hosts, ["omp"]);
+        assert_eq!(p.hosts, ["claude"]);
         // A host word this version does not know falls back to Claude Code, never to Codex.
         let p = default_profile("___", "codex").unwrap();
         assert_eq!(p.hosts, ["claude"]);

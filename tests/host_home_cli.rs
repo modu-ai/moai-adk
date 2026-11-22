@@ -270,7 +270,7 @@ fn agents_and_the_output_style_follow_the_variables() {
     let plan = ok(&w.run(&vars, true, &["agents-home-plan", w.h(), w.pkg(), &agents]));
     assert_eq!(
         host(&plan, "claude")["dir"],
-        json!(s(&conf.join("agents"))),
+        json!(s(&conf.join("agents/moai"))),
         "{plan}"
     );
     assert_eq!(plan["hosts"].as_array().unwrap().len(), 1, "{plan}");
@@ -559,7 +559,7 @@ fn a_link_to_the_default_folder_is_followed_and_any_other_link_is_blocked() {
     ));
     assert_eq!(
         host(&plan, "claude")["dir"],
-        json!(s(&w.base.join(".claude/agents"))),
+        json!(s(&w.base.join(".claude/agents/moai"))),
         "{plan}"
     );
     assert_eq!(host(&plan, "claude")["preflight"], json!("ok"));
