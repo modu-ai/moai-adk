@@ -1835,7 +1835,14 @@ mod tests {
         )
         .unwrap();
         let home = tempfile::tempdir().unwrap();
-        std::fs::create_dir(crate::home_root::path(home.path())).unwrap();
+        let home_root = home.path().join(crate::state_root::MOAI_DIR);
+        std::fs::create_dir(&home_root).unwrap();
+        // A marked HOME: the retired-name root logs on the project side only now (REQ-12).
+        std::fs::write(
+            home_root.join(crate::state_root::RUST_MARKER),
+            crate::state_root::marker_bytes("test", &[]),
+        )
+        .unwrap();
         let session = "s";
         let put = |kind: &str, in_home: bool| {
             let line = json!({"kind": kind, "session": session});

@@ -77,6 +77,9 @@ impl Layer {
     pub fn to_json(&self) -> Value {
         json!({
             "folders": self.folders.iter().map(FolderPlan::to_json).collect::<Vec<_>>(),
+            // The absolute path every entry names (the moved-binary risk, MERGED-LOCAL note):
+            // the preview says what it writes.
+            "binary": crate::hooks::moai_absolute(),
             "skipped": self.skipped,
             "plan_digest": self.plan_digest,
         })
@@ -529,13 +532,13 @@ pub fn apply(home: &Path, layer: &Layer, plan_digest: &str, permission: &str) ->
     if !crate::contract::permission_reference_ok(permission) {
         return Err("permission reference required".into());
     }
-    let fresh = plan_in(home)?;
-    // The layer the caller confirmed must be the one a re-plan finds now; the combined digest
-    // of the whole update is the caller's own check, not this layer's.
-    if fresh.plan_digest != layer.plan_digest {
-        return Err("stale or altered hook layer; re-preview required".into());
-    }
-    let writes: Vec<&FolderPlan> = fresh.folders.iter().filter(|f| f.writes()).collect();
+    // No re-plan here: the update core already re-planned the whole user layer and compared
+    // the combined digest before any write (and a later part of the same run — the command-name
+    // step — changes the absolute path every entry names, so a layer re-plan inside this apply
+    // would always drift). The folder's own guard is the file: apply_folder refuses a settings
+    // file that changed since the preview or holds a hooks key MoAI never wrote.
+    let _ = plan_digest;
+    let writes: Vec<&FolderPlan> = layer.folders.iter().filter(|f| f.writes()).collect();
     if writes.is_empty() {
         return Ok(json!({"state": "unchanged", "folders": []}));
     }

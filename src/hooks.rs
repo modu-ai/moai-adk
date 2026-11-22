@@ -369,13 +369,14 @@ pub fn hooks_object(host: &str) -> Result<Map<String, Value>> {
     hooks_object_with(HOOK_BINARY, host)
 }
 
-/// One handler entry as the host's settings hold it. Claude Code entries are exec form
-/// (SPEC-20261122-next-flow-hooks REQ-5): the absolute path of this binary as `command`, the
-/// duty's arguments as the `args` array, no shell between — and the dangerous-call duty alone
-/// carries `onFailure: "block"` (REQ-1), so a missing or crashing moai blocks only its calls.
-/// The other hosts keep the shell-form command string their files have always held.
+/// One handler entry as the host's settings hold it. Claude Code entries of this build's name
+/// are exec form (SPEC-20261122-next-flow-hooks REQ-5): the absolute path of this binary as
+/// `command`, the duty's arguments as the `args` array, no shell between — and the
+/// dangerous-call duty alone carries `onFailure: "block"` (REQ-1), so a missing or crashing
+/// moai blocks only its calls. The other hosts, and the legacy-name renders the
+/// `moai-cli`-era sets are rebuilt from, keep the shell-form command string.
 fn handler_json(binary: &str, host: &str, handler: Handler) -> Value {
-    if host != "claude" {
+    if host != "claude" || binary != HOOK_BINARY {
         return json!({"type": "command", "command": command_with(binary, host, handler),
                        "timeout": HOOK_TIMEOUT_SECS});
     }
@@ -573,6 +574,8 @@ fn receipt_lane(receipt: &[u8], fh: &FileHost) -> Result<Option<Lane>> {
 }
 
 /// The generated hook list a plan and a receipt report (no secrets: fixed strings only).
+/// Claude entries carry their exec-form fields (`args`, `onFailure`); the other hosts keep the
+/// shape their receipts have always held.
 fn hook_list_with(binary: &str, host: &str) -> Value {
     if host == "omp" {
         return OMP_EVENTS
@@ -586,12 +589,18 @@ fn hook_list_with(binary: &str, host: &str) -> Value {
     let mut list: Vec<Value> = hook_set(host)
         .into_iter()
         .map(|(event, matcher, handler)| {
-            let entry = handler_json(binary, host, handler);
-            json!({"event": event, "matcher": matcher,
-                   "command": entry["command"].clone(),
-                   "args": entry["args"].clone(),
-                   "onFailure": entry["onFailure"].clone(),
-                   "timeout": entry["timeout"].clone()})
+            if host == "claude" {
+                let entry = handler_json(binary, host, handler);
+                json!({"event": event, "matcher": matcher,
+                       "command": entry["command"].clone(),
+                       "args": entry["args"].clone(),
+                       "onFailure": entry["onFailure"].clone(),
+                       "timeout": entry["timeout"].clone()})
+            } else {
+                json!({"event": event, "matcher": matcher,
+                       "command": command_with(binary, host, handler),
+                       "timeout": HOOK_TIMEOUT_SECS})
+            }
         })
         .collect();
     if let Some(timeout) = edit_diagnostics_timeout(binary, host) {
@@ -1621,7 +1630,8 @@ mod tests {
             assert!(text.contains("moai-cli"), "{text}");
         }
         // Every generated command, in every host and for the lane Stop hook, names `moai`, and
-        // the legacy set names `moai-cli` in the same places.
+        // the legacy set names `moai-cli` in the same places. The Claude entries name the
+        // binary by absolute path in exec form (REQ-5); the shell-form hosts keep the bare name.
         for host in HOSTS {
             for (event, groups) in current_hooks(host, Some(("agent-1", "o/r"))).unwrap() {
                 let old = &legacy_hooks(host, Some(("agent-1", "o/r"))).unwrap()[&event];
@@ -1633,11 +1643,19 @@ mod tests {
                 {
                     let new_cmd = new_group["hooks"][0]["command"].as_str().unwrap();
                     let old_cmd = old_group["hooks"][0]["command"].as_str().unwrap();
-                    assert!(
-                        new_cmd.starts_with("moai ") && !new_cmd.contains("moai-cli"),
-                        "{new_cmd}"
-                    );
-                    assert_eq!(old_cmd, new_cmd.replacen("moai ", "moai-cli ", 1));
+                    if *host == "claude" {
+                        assert!(
+                            new_cmd.starts_with('/') && !new_cmd.contains("moai-cli "),
+                            "{new_cmd}"
+                        );
+                        assert!(old_cmd.starts_with("moai-cli "), "{old_cmd}");
+                    } else {
+                        assert!(
+                            new_cmd.starts_with("moai ") && !new_cmd.contains("moai-cli"),
+                            "{new_cmd}"
+                        );
+                        assert_eq!(old_cmd, new_cmd.replacen("moai ", "moai-cli ", 1));
+                    }
                 }
             }
         }
@@ -1753,7 +1771,18 @@ mod receipt_home_tests {
             .unwrap();
         }
         if home_state {
-            fs::create_dir(crate::home_root::path(home.path())).unwrap();
+            // The marked HOME is this generation's (`~/.moai`): a HOME whose state root still
+            // carries the retired name logs on the project side only now
+            // (SPEC-20261122-next-flow-hooks REQ-12). The marker is written under `.moai`
+            // directly — `home_root::path` would resolve the retired name before the marker
+            // exists.
+            let root = home.path().join(crate::state_root::MOAI_DIR);
+            fs::create_dir(&root).unwrap();
+            fs::write(
+                root.join(crate::state_root::RUST_MARKER),
+                crate::state_root::marker_bytes("test", &[]),
+            )
+            .unwrap();
         }
         (home, project)
     }
