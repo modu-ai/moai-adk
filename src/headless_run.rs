@@ -92,6 +92,9 @@ pub struct BuiltRun {
     pub managed_mcp_deployed: bool,
     pub scrubbed: Vec<String>,
     pub credential_warning: Option<String>,
+    /// The schema the answer is checked against (N-1): carried from the spec so the verdict
+    /// is trusted only after `check_verdict`.
+    pub verdict_schema: Option<Value>,
 }
 
 /// The raw outcome of one started run (parsed in the next slice).
@@ -275,6 +278,7 @@ pub fn build(
         managed_mcp_deployed: deployed,
         scrubbed,
         credential_warning,
+        verdict_schema: spec.schema.clone(),
     })
 }
 
@@ -332,7 +336,7 @@ pub fn run_with_limit(built: &BuiltRun, cwd: &Path, limit: std::time::Duration) 
             Ok(Some(_)) => break,
             Ok(None) => {
                 if std::time::Instant::now() >= deadline {
-                    kill_group(group);
+                    kill_at_deadline(&mut child, group);
                     timed_out = true;
                     break;
                 }
@@ -341,16 +345,16 @@ pub fn run_with_limit(built: &BuiltRun, cwd: &Path, limit: std::time::Duration) 
             Err(e) => return Err(format!("waiting for {}: {e}", built.program.display())),
         }
     }
-    let stdout = stdout_thread
-        .join()
-        .map_err(|_| "the stdout drain thread panicked".to_string())?;
-    let stderr_bytes = stderr_thread
-        .join()
-        .map_err(|_| "the stderr drain thread panicked".to_string())?;
+    // F-1: a descendant that still holds the pipes must not stretch the call — kill the
+    // group on normal exit too, then bound the joins and abandon what will not finish.
+    kill_stragglers(group);
+    let drain_bound = std::time::Duration::from_secs(2);
+    let stdout = join_bounded(stdout_thread, drain_bound).unwrap_or_default();
+    let stderr_bytes = join_bounded(stderr_thread, drain_bound).unwrap_or_default();
     let status = child
         .wait()
         .map_err(|e| format!("collecting {}: {e}", built.program.display()))?;
-    let stderr = if timed_out {
+    let mut stderr = if timed_out {
         format!(
             "{}\nmoai: wall-clock limit of {} seconds exceeded; the child was killed",
             String::from_utf8_lossy(&stderr_bytes),
@@ -359,12 +363,27 @@ pub fn run_with_limit(built: &BuiltRun, cwd: &Path, limit: std::time::Duration) 
     } else {
         String::from_utf8_lossy(&stderr_bytes).into_owned()
     };
+    if timed_out {
+        stderr.push_str("\nmoai: an output drain may have been abandoned at the limit");
+    }
     Ok(RawRun {
         success: status.success() && !timed_out,
         code: status.code(),
         stdout: String::from_utf8_lossy(&stdout).into_owned(),
         stderr,
     })
+}
+
+/// Joins a drain thread within a short bound (F-1); `None` abandons the pipe.
+fn join_bounded<T>(handle: std::thread::JoinHandle<T>, bound: std::time::Duration) -> Option<T> {
+    let deadline = std::time::Instant::now() + bound;
+    while std::time::Instant::now() < deadline {
+        if handle.is_finished() {
+            return handle.join().ok();
+        }
+        std::thread::sleep(std::time::Duration::from_millis(10));
+    }
+    None
 }
 
 /// Puts the child in a process group of its own (B-1b: a group kill reaches grandchildren
@@ -378,9 +397,11 @@ fn new_group(command: &mut std::process::Command) {
 #[cfg(not(unix))]
 fn new_group(_command: &mut std::process::Command) {}
 
-/// Kills the child's whole process group.
+/// Kills at the deadline: the whole process group on unix, the child itself elsewhere
+/// (F-2 — the non-unix branch must still kill something).
 #[cfg(unix)]
-fn kill_group(pgid: u32) {
+fn kill_at_deadline(child: &mut std::process::Child, pgid: u32) {
+    let _ = child;
     // SAFETY: libc kill with a negative pid signals the process group; failure (the group
     // already gone) is fine at the deadline.
     unsafe {
@@ -389,7 +410,23 @@ fn kill_group(pgid: u32) {
 }
 
 #[cfg(not(unix))]
-fn kill_group(_pid: u32) {}
+fn kill_at_deadline(child: &mut std::process::Child, _pgid: u32) {
+    let _ = child.kill();
+}
+
+/// Kills whatever still runs in the child's group after a normal exit, so a background
+/// sleeper cannot hold the pipes (F-1); nothing to do outside unix, where the child ran
+/// without a group.
+#[cfg(unix)]
+fn kill_stragglers(pgid: u32) {
+    // SAFETY: as above; a group that already exited reports ESRCH, which is fine.
+    unsafe {
+        libc::kill(-(pgid as i32), libc::SIGKILL);
+    }
+}
+
+#[cfg(not(unix))]
+fn kill_stragglers(_pgid: u32) {}
 
 /// What one run's result is, checked before it is trusted (SPEC REQ-11): a `success` subtype
 /// alone is not an answer.
@@ -481,10 +518,16 @@ fn json_kind(value: &Value) -> &'static str {
 pub fn ledger_row(built: &BuiltRun, raw: &RawRun, outcome: &RunOutcome) -> Value {
     let result: Value = serde_json::from_str(&raw.stdout).unwrap_or(Value::Null);
     let verdict = match outcome {
-        RunOutcome::Answered(answer) => answer
-            .get("verdict")
-            .cloned()
-            .unwrap_or_else(|| Value::String("answered".into())),
+        // N-1: the verdict is trusted only after it is checked against the schema that
+        // asked for it; a refused check is recorded as such, never as a verdict.
+        RunOutcome::Answered(answer) => match (&built.verdict_schema, answer.get("verdict")) {
+            (Some(schema), _) => match check_verdict(answer, schema) {
+                Ok(word) => Value::String(word),
+                Err(reason) => json!({"verdict_refused": reason}),
+            },
+            (None, Some(v)) => v.clone(),
+            (None, None) => Value::String("answered".into()),
+        },
         RunOutcome::NoVerdict { reason } => json!({"no_verdict": reason}),
     };
     let terminal_reason = json!({
@@ -568,10 +611,12 @@ fn narrow_rule(tool: &str) -> Result<()> {
 
 /// Whether a command rule's first word turns a wildcarded rule into a blanket one: the
 /// interpreters and wrappers that run what follows them, in every spelling — a versioned
-/// interpreter (python3.12) and the `:*` colon suffix included (permission-modes.md's
-/// dropped-rules list, audit R-1 and R-2).
+/// interpreter (python3.12), the `:*` colon suffix and the word's basename
+/// (`/usr/bin/env`) included (permission-modes.md's dropped-rules list, audits R-1 R-2
+/// and R-4).
 fn broad_first_word(word: &str) -> bool {
     let word = word.split(':').next().unwrap_or(word);
+    let word = word.rsplit('/').next().unwrap_or(word);
     if INTERPRETERS_AND_WRAPPERS.contains(&word) {
         return true;
     }
@@ -580,9 +625,9 @@ fn broad_first_word(word: &str) -> bool {
         .is_some_and(|rest| rest.chars().all(|c| c.is_ascii_digit() || c == '.'))
 }
 
-/// The first words that run what follows them (permission-modes.md's dropped-rules list plus
-/// the env/xargs/sudo/npx escapes of audit R-2).
-const INTERPRETERS_AND_WRAPPERS: [&str; 19] = [
+/// The first words that run what follows them (permission-modes.md's dropped-rules list,
+/// the env/xargs/sudo/npx escapes of audit R-2, command/exec/uv of R-4).
+const INTERPRETERS_AND_WRAPPERS: [&str; 22] = [
     "python",
     "python3",
     "node",
@@ -602,6 +647,9 @@ const INTERPRETERS_AND_WRAPPERS: [&str; 19] = [
     "xargs",
     "sudo",
     "npx",
+    "command",
+    "exec",
+    "uv",
 ];
 
 /// Whether a platform `managed-mcp.json` is deployed (SPEC REQ-3, D-2). A test passes its own
