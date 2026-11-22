@@ -1085,6 +1085,45 @@ fn worktree_place_status_the_bundle_writes_the_exclude_line_once() {
     assert_eq!(lines, 1);
 }
 
+/// REQ-13: a `.claude` that is a link makes the build refuse before anything is made: no new
+/// ref, nothing behind the link, and the refusal names the link.
+#[cfg(unix)]
+#[test]
+fn worktree_place_links_the_bundle_refuses_a_linked_claude_folder() {
+    let w = World::new();
+    w.identity();
+    let a = w.head("spec/a", TIP, &[("notes/a.md", "a\n")], SPEC, &[1, 2], true);
+    let c1 = w.ready_card(&a);
+    w.git(&["checkout", "-q", "trunk"]);
+    let outside = w.work.parent().unwrap().join("outside-place");
+    std::fs::create_dir_all(&outside).unwrap();
+    std::os::unix::fs::symlink(&outside, w.work.join(".claude")).unwrap();
+    let refs = w.refs();
+    let (v, code) = w.build(&[&c1]);
+    assert_ne!(code, 0, "{v}");
+    assert!(v.to_string().contains(".claude"), "{v}");
+    // `remove_dir` only removes an empty folder: nothing was made behind the link.
+    assert!(std::fs::remove_dir(&outside).is_ok(), "{v}");
+    assert_eq!(w.refs(), refs, "no ref was made");
+}
+
+/// Audit M11: the exclude line follows a successful add. A build whose add cannot happen (a
+/// plain file where `.claude` should be) leaves the exclude file exactly as it was.
+#[test]
+fn worktree_place_status_a_refused_bundle_leaves_the_exclude_file_alone() {
+    let w = World::new();
+    w.identity();
+    let a = w.head("spec/a", TIP, &[("notes/a.md", "a\n")], SPEC, &[1, 2], true);
+    let c1 = w.ready_card(&a);
+    w.git(&["checkout", "-q", "trunk"]);
+    std::fs::write(w.work.join(".claude"), "not a folder\n").unwrap();
+    let exclude = w.work.join(".git/info/exclude");
+    let before = std::fs::read(&exclude).ok();
+    let (v, code) = w.build(&[&c1]);
+    assert_ne!(code, 0, "{v}");
+    assert_eq!(std::fs::read(&exclude).ok(), before, "{v}");
+}
+
 #[test]
 fn the_help_and_the_ops_doc_say_what_build_writes() {
     let w = World::new();

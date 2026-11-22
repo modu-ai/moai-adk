@@ -18,7 +18,6 @@ use serde_json::Value;
 pub struct Input {
     pub hook_event_name: Option<String>,
     pub session_id: Option<String>,
-    pub session_name: Option<String>,
     pub transcript_path: Option<String>,
     pub cwd: Option<String>,
     #[serde(deserialize_with = "model_info")]
@@ -170,6 +169,10 @@ pub struct Pr {
     pub number: Option<i64>,
     pub url: Option<String>,
     pub review_state: Option<String>,
+    /// `mr` when the request is a GitLab merge request, absent for a GitHub pull request
+    /// (official statusline page). Read loosely: a value of another type is no merge request
+    /// and never fails the payload.
+    pub kind: Option<Value>,
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -349,8 +352,8 @@ mod tests {
         // high surrogate, so the DC00 after it stands alone.
         assert_eq!(name(br#"{"model":"\ud800\udc00"}"#), "\u{10000}");
         assert_eq!(name(br#"{"model":"\ud7ff\udc00"}"#), "\u{D7FF}\u{FFFD}");
-        let s = parse(br#"{"session_name":"my-se\udc00ssion","session_id":"x"}"#).unwrap();
-        assert_eq!(s.session_name.as_deref(), Some("my-se\u{FFFD}ssion"));
+        let s = parse(br#"{"cwd":"my-se\udc00ssion","session_id":"x"}"#).unwrap();
+        assert_eq!(s.cwd.as_deref(), Some("my-se\u{FFFD}ssion"));
         assert_eq!(s.session_id.as_deref(), Some("x"));
     }
 

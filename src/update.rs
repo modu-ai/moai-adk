@@ -1517,14 +1517,14 @@ fn unmanaged_notices(home: &Path) -> Vec<serde_json::Value> {
         out.push(json!({
             "part": "unmanaged",
             "host": "codex",
-            "reason": "Codex files under ~/.codex and ~/.agents/skills are left as they are; moai no longer manages them",
+            "reason": "Codex files under ~/.codex and ~/.agents/skills are left as they are; moai no longer manages them; remove them yourself if you do not use them",
         }));
     }
     if present(".omp") {
         out.push(json!({
             "part": "unmanaged",
             "host": "omp",
-            "reason": "OMP files under ~/.omp are left as they are; moai no longer manages them",
+            "reason": "OMP files under ~/.omp are left as they are; moai no longer manages them; remove them yourself if you do not use them",
         }));
     }
     out
@@ -1840,12 +1840,9 @@ fn count_hosts(p: &crate::home_style::Plan) -> usize {
 }
 
 fn agents_write_anything(p: &crate::agent_install::Plan) -> bool {
-    p.hosts.iter().any(|h| {
-        h.preflight == "ok"
-            && h.files
-                .iter()
-                .any(|f| f.action == "create" || f.action == "update")
-    })
+    p.hosts
+        .iter()
+        .any(|h| h.preflight == "ok" && h.files.iter().any(crate::agent_install::writes_anything))
 }
 
 fn routing_writes_anything(p: &crate::home_routing::Plan) -> bool {

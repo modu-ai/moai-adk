@@ -120,9 +120,7 @@ fn host_started(f: &Fixture) -> bool {
     f.home.path().join("host-started").exists()
 }
 fn number_store(f: &Fixture) -> std::path::PathBuf {
-    f.project
-        .path()
-        .join(".git/.moai-cli/sessions/agent-1.live")
+    moai_cli::clone_root::path(&f.project.path().join(".git")).join("sessions/agent-1.live")
 }
 
 /// Literal complete argv with no advisor: the decided default for every host and role

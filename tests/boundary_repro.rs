@@ -282,7 +282,7 @@ fn f1c_stored_baseline_unlocks_after_and_nothing_else_does() {
     let p = dir.path();
     let seen = observe(p).unwrap();
     let rev = seen.commit.clone();
-    let store = p.join(".git/.moai-cli/receipts/run");
+    let store = moai_cli::clone_root::path(&p.join(".git")).join("receipts/run");
 
     // The baseline run stores its receipt outside the tree: the candidate digest is unchanged.
     let base = run_verify(
@@ -476,7 +476,7 @@ fn d1_audit_writes_no_baseline_receipt() {
     input.run.method.change_strategy = Some("preserve".into());
     let _ = audit(dir.path(), &input).unwrap();
     assert!(
-        !dir.path().join(".git/.moai-cli").exists(),
+        !moai_cli::clone_root::path(&dir.path().join(".git")).exists(),
         "audit-reduce wrote under the git common dir"
     );
 }

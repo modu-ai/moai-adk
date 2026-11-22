@@ -23,7 +23,7 @@
 #
 # A release archive carries the skill package and the base agents beside the binary (`skills\`,
 # `agents\`); they go into the version folder next to `bin\`, where `moai update` reads them
-# (SPEC-20261117-installer-skill-agents). Into the hosts (Claude Code, Codex, OMP) they go only
+# (SPEC-20261117-installer-skill-agents). Into the host (Claude Code) they go only
 # through the product's own preview and confirmed apply, `moai-cli update --json` and then
 # `moai-cli update --confirm <plan_digest> --json`: this script copies nothing into a host
 # folder. It shows the folders the preview names, asks once at a terminal (--yes answers for a
@@ -285,7 +285,7 @@ function Add-ReleaseParts([string]$ArchiveRoot, [string]$Folder) {
 # The hosts this machine has: the host's command on PATH, or its folder in HOME.
 function Get-Hosts {
     $found = @()
-    foreach ($h in @("claude", "codex", "omp")) {
+    foreach ($h in @("claude")) {
         if ((Get-Command $h -CommandType Application -ErrorAction SilentlyContinue) -or
             (Test-Path -LiteralPath (Join-Path $env:HOME ".$h") -PathType Container)) { $found += $h }
     }
@@ -325,8 +325,8 @@ function Write-UpdateFailed($Answer) {
 function Install-Skill([string]$Cli, [string]$Folder, $Hosts, [bool]$Yes) {
     Write-Host ""
     if (-not $Hosts) {
-        Print-Warning "No Claude Code, Codex or OMP found (no claude, codex or omp command, no ~/.claude, ~/.codex or ~/.omp)."
-        Print-Info "Install one of them, then install the MoAI skill and agents with: moai update"
+        Print-Warning "No Claude Code found (no claude command, no ~/.claude)."
+        Print-Info "Install it, then install the MoAI skill and agents with: moai update"
         return $false
     }
     Print-Info "Previewing the MoAI skill and agents for your hosts (writes nothing):"
@@ -608,12 +608,10 @@ function Main {
     Write-Host "  $n. Make a project folder and enter it: New-Item -ItemType Directory my-project; Set-Location my-project"
     $n++
     Write-Host "  $n. Start a session there, then set the project up inside it:"
-    $entries = if ($hosts.Count -gt 0) { $hosts } else { @("claude", "codex", "omp") }
+    $entries = if ($hosts.Count -gt 0) { $hosts } else { @("claude") }
     foreach ($h in $entries) {
         switch ($h) {
             "claude" { Write-Host "     Claude Code: moai cc (or moai glm; -l leader, -a agent), then /moai project" }
-            "codex" { Write-Host '     Codex: moai codex, then $moai project' }
-            "omp" { Write-Host "     OMP: omp, then /skill:moai project" }
         }
     }
     Write-Host ""

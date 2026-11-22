@@ -123,14 +123,23 @@ fn golden(name: &str, os: &str) {
     let p = plan(&home, os, &[]);
     let entry = p["entry"].as_str().expect("entry text");
     let got = entry.replace(home.to_str().unwrap(), "<HOME>");
+    // The goldens spell the HOME state folder `<HOME>/.moai-cli`; the expected text names the
+    // folder the resolver gives this HOME.
+    let state = moai_cli::home_root::path(&home);
+    let state = format!(
+        "<HOME>/{}",
+        state.strip_prefix(&home).unwrap().to_str().unwrap()
+    );
     // cargo runs an integration test in the package root; only this named file is read.
     let path = Path::new("tests/fixtures/schedule").join(name);
     if std::env::var_os("MOAI_SCHEDULE_GOLDEN_WRITE").is_some() {
-        fs::write(&path, &got).unwrap();
+        fs::write(&path, got.replace(&state, "<HOME>/.moai-cli")).unwrap();
     }
     assert_eq!(
         got,
-        fs::read_to_string(&path).unwrap(),
+        fs::read_to_string(&path)
+            .unwrap()
+            .replace("<HOME>/.moai-cli", &state),
         "{name} differs from the golden"
     );
 }
@@ -143,7 +152,8 @@ fn launchd_entry_matches_the_golden() {
     let p = plan(&home, "macos", &[]);
     assert_eq!(
         p["target_path"].as_str().unwrap(),
-        home.join(".moai-cli/schedule/moai.gate-loop.acme.widgets.plist")
+        moai_cli::home_root::path(&home)
+            .join("schedule/moai.gate-loop.acme.widgets.plist")
             .to_str()
             .unwrap()
     );
@@ -179,7 +189,8 @@ fn cron_entry_matches_the_golden() {
     let p = plan(&home, "linux", &[]);
     assert_eq!(
         p["target_path"].as_str().unwrap(),
-        home.join(".moai-cli/schedule/gate-loop.crontab")
+        moai_cli::home_root::path(&home)
+            .join("schedule/gate-loop.crontab")
             .to_str()
             .unwrap()
     );
@@ -290,7 +301,9 @@ fn apply_keeps_the_before_bytes() {
         assert!(entry.contains("--permission-reference"), "{entry}");
         assert!(!entry.contains("--dry-run"), "{entry}");
         let id = env["result"]["receipt"].as_str().unwrap();
-        let dir = home.join(".moai-cli/schedule/receipts").join(id);
+        let dir = moai_cli::home_root::path(&home)
+            .join("schedule/receipts")
+            .join(id);
         assert_eq!(
             fs::read_to_string(dir.join("target.before")).unwrap(),
             "previous bytes\n"
@@ -436,7 +449,7 @@ fn apply_never_writes_into_launch_agents() {
     assert_eq!(code, 0, "{env}");
     let target = PathBuf::from(env["result"]["target_path"].as_str().unwrap());
     assert!(
-        target.starts_with(home.join(".moai-cli/schedule")),
+        target.starts_with(moai_cli::home_root::path(&home).join("schedule")),
         "{target:?}"
     );
     assert_eq!(

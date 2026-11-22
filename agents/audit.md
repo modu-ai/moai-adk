@@ -25,7 +25,7 @@ The parent hands you one block:
 - `task`: what to audit and against which acceptance criteria.
 - `scope`: the paths you may read. You write nothing.
 - `base`: the 40-hex head under audit. Read exactly this commit.
-- `refs`: documents to read first (for example the `moai` skill's `workflows/audit.md` and `workflows/verify.md`).
+- `refs`: documents to read first (for example the `moai` skill's `workflows/audit.md` and `workflows/run.md`).
 
 Assume no conversation context beyond this block. Do not start other agents.
 

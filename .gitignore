@@ -349,9 +349,10 @@ dist-ssr/
 # RC1 development repository policy (user decision, 2026-11-08)
 # .claude/ and .moai/ are local installed copies, not product source, except
 # .moai/specs/: the SPECs are shared project files (user decision 2026-11-17, below).
-# AGENTS.md and AGENTS.local.md are tracked: hosts read AGENTS.md only inside the
-# session's own working tree, so a lane worktree needs the tracked copy (user
-# decision 2026-11-13, Issue #2667; replaces the per-machine rule of 2026-11-08).
+# CLAUDE.md is tracked: Claude Code loads it from the session's own working tree,
+# so a lane worktree needs the tracked copy; CLAUDE.local.md is personal and
+# ignored (user decision 2026-11-22, which replaced AGENTS.md and AGENTS.local.md;
+# the earlier rule was the user decision 2026-11-13, Issue #2667).
 # ===========================================
 /.claude/
 # SPECs are shared project files and stay in git (user decision 2026-11-17, SDD always;

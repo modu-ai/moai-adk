@@ -19,22 +19,23 @@ use crate::ledger::{self, reservation};
 use serde_json::{json, Value};
 use std::path::Path;
 
-/// The statusline's GitHub counts file, relative to a state folder. A tool rewrites it by itself
-/// on its next run, so one left in a worktree is no work (SPEC-20261120-reclaim-dead-holder
-/// REQ-12). A name is listed or it is work; nothing is matched by pattern.
-const GITHUB_COUNTS: &str = "state/github/counts.json";
+/// The runtime state folder, relative to a state folder. Tools write their state and caches
+/// there and rewrite them on their next run, so an untracked file left in it is no work
+/// (SPEC-20261122-test-defects-session-reclaim REQ-3; it widens the one counts file of
+/// SPEC-20261120-reclaim-dead-holder REQ-12 to the folder).
+const RUNTIME_STATE: &str = "state";
 
-/// The earlier (Go) generation's cache of the same counts, which the statusline still reads.
-const GO_GITHUB_COUNTS: &str = ".moai/state/github/counts.json";
+/// The earlier (Go) generation's runtime state folder, which the statusline still reads.
+const GO_RUNTIME_STATE: &str = ".moai/state/";
 
 /// True when one `git status --porcelain=v1 --untracked-files=all` line of the worktree `root`
-/// is an untracked tool cache file: the counts file under the state folder `root` uses now, or
-/// the earlier generation's. A changed tracked file, an untracked file that is not listed and a
-/// line that is quoted or unreadable are never a cache: they stay work.
+/// is an untracked file under the runtime state folder that `root` uses now, or under the
+/// earlier generation's. A changed tracked file, an untracked file outside the folder and a
+/// line that is quoted or unreadable are never a cache: they stay work (REQ-4).
 pub(super) fn is_tool_cache_entry(root: &Path, line: &str) -> bool {
-    let current = crate::state_root::rel(root, GITHUB_COUNTS);
+    let current = format!("{}/", crate::state_root::rel(root, RUNTIME_STATE));
     line.strip_prefix("?? ")
-        .is_some_and(|path| path == current || path == GO_GITHUB_COUNTS)
+        .is_some_and(|path| path.starts_with(&current) || path.starts_with(GO_RUNTIME_STATE))
 }
 
 /// A complete proof, about one holder.
@@ -518,27 +519,33 @@ mod tests {
 mod cache_tests {
     use super::is_tool_cache_entry;
 
-    /// AC-10 (REQ-12): only an untracked, listed cache file is a cache. The folder name the
-    /// worktree uses comes from its own state root, here a worktree with no marker.
+    /// SPEC-20261122-test-defects-session-reclaim REQ-3, REQ-4: every untracked file under the
+    /// runtime state folder is tool state, in the folder the worktree uses now and in the earlier
+    /// generation's; a changed tracked file, a file beside the folder, a name that only starts
+    /// like it and a path below another folder are work. The folder name the worktree uses
+    /// comes from its own state root, here a worktree with no marker.
     #[test]
-    fn only_an_untracked_listed_file_is_a_cache() {
+    fn only_an_untracked_state_folder_file_is_a_cache() {
         let tmp = tempfile::tempdir().unwrap();
         let root = tmp.path();
-        let current = crate::state_root::rel(root, "state/github/counts.json");
+        let state = crate::state_root::rel(root, "state");
         let is = |line: &str| is_tool_cache_entry(root, line);
-        assert!(is(&format!("?? {current}")));
+        assert!(is(&format!("?? {state}/github/counts.json")));
+        assert!(is(&format!("?? {state}/github/other.json")));
+        assert!(is(&format!("?? {state}/deep/er/inner.txt")));
         assert!(is("?? .moai/state/github/counts.json"));
+        assert!(is("?? .moai/state/earlier.json"));
         // A changed tracked file of the same name is work.
-        assert!(!is(&format!(" M {current}")));
-        assert!(!is(&format!("A  {current}")));
-        // An unlisted name, a folder and a path that only ends alike are work.
-        assert!(!is(&format!("?? {}", current.replace("counts", "other"))));
+        assert!(!is(&format!(" M {state}/github/counts.json")));
+        assert!(!is(&format!("A  {state}/github/counts.json")));
+        // A file beside the folder, a name that only starts alike, a path below another
+        // folder and a line that is empty are work.
         assert!(!is(&format!(
-            "?? {}/",
-            crate::state_root::rel(root, "state")
+            "?? {}/other.json",
+            crate::state_root::dir(root)
         )));
-        assert!(!is(&format!("?? sub/{current}")));
-        assert!(!is(&format!("?? {current}.bak")));
+        assert!(!is(&format!("?? {state}man/x.json")));
+        assert!(!is(&format!("?? sub/{state}/github/counts.json")));
         assert!(!is(""));
     }
 }

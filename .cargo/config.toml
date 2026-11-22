@@ -14,3 +14,9 @@
 [env]
 RUST_MIN_STACK = "8388608"
 DEVELOPER_DIR = "/Library/Developer/CommandLineTools"
+
+# SPEC-20261122-check-light-stop REQ-7: incremental compilation is off for every build here, not
+# only for lane builds that export `CARGO_INCREMENTAL=0`. Incremental data held about 6.5 GiB in
+# each of 52 of 55 worktree build folders; a caller's `CARGO_INCREMENTAL` still decides for its run.
+[build]
+incremental = false

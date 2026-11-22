@@ -224,7 +224,7 @@ fn cache_step(languages: &[String], checks: &[CheckEntry]) -> String {
         .collect::<Vec<_>>()
         .join(", ");
     let mut out = String::new();
-    out.push_str("      - name: Cache dependencies\n");
+    out.push_str("      - name: \"Cache dependencies\"\n");
     out.push_str(&format!("        uses: {CACHE_PIN}\n"));
     out.push_str("        with:\n          path: |\n");
     for p in paths {
@@ -255,6 +255,31 @@ fn header(extra: &[&str], korean: bool) -> String {
         ]
     };
     lines.extend_from_slice(extra);
+    comment_block(&lines)
+}
+
+/// The header of the deploy file: it names what this file is. It runs no command of its own,
+/// so it must not say it runs the declared checks.
+fn deploy_header(korean: bool) -> String {
+    let lines: [&str; 4] = if korean {
+        [
+            "MoAI 가 만든 파일이에요. 자기 명령은 하나도 실행하지 않아요(runs no command).",
+            "배포 단계는 아래 작업 안에 직접 적어 넣어요. MoAI 는 배포 명령을 만들지 않아요.",
+            "자동으로 시작하지 않아요. Actions 탭에서 직접 실행할 때만 돌아요.",
+            "끄려면 이 파일을 지우거나, Actions 탭에서 이 워크플로를 골라 Disable workflow 를 누르세요.",
+        ]
+    } else {
+        [
+            "MoAI generated this file. It runs no command of its own.",
+            "Write your deploy steps in the job below; MoAI generates no deploy command.",
+            "It never starts by itself: it runs only when you start it from the Actions tab.",
+            "To turn it off: delete this file, or open the Actions tab, pick this workflow and choose Disable workflow.",
+        ]
+    };
+    comment_block(&lines)
+}
+
+fn comment_block(lines: &[&str]) -> String {
     let mut out = String::new();
     for l in lines {
         out.push_str(&format!("# {l}\n"));
@@ -263,12 +288,17 @@ fn header(extra: &[&str], korean: bool) -> String {
     out
 }
 
+/// The checkout step: pinned, and it leaves no credentials in the workspace.
+fn checkout_step() -> String {
+    format!("      - uses: {CHECKOUT_PIN}\n        with:\n          persist-credentials: false\n")
+}
+
 fn steps_for(languages: &[String], checks: &[CheckEntry], only_build: bool) -> String {
-    let mut out = format!("    steps:\n      - uses: {CHECKOUT_PIN}\n");
+    let mut out = format!("    steps:\n{}", checkout_step());
     out.push_str(&cache_step(languages, checks));
     for c in checks.iter().filter(|c| !only_build || c.id == "build") {
         out.push_str(&format!(
-            "      - name: {}\n        run: |\n          {}\n",
+            "      - name: \"{}\"\n        run: |\n          {}\n",
             c.id, c.command
         ));
     }
@@ -333,11 +363,11 @@ pub fn generate(input: &Input) -> Result<Generated> {
         "concurrency:\n  group: ${{ github.workflow }}-${{ github.ref }}\n  cancel-in-progress: false\n"
     };
     let mut check = header(&[], korean);
-    check.push_str("name: MoAI check\n");
+    check.push_str("name: \"MoAI check\"\n");
     check.push_str(&on);
     check.push_str("permissions:\n  contents: read\n");
     check.push_str(concurrency);
-    check.push_str("jobs:\n  check:\n    name: check\n    runs-on: ubuntu-latest\n");
+    check.push_str("jobs:\n  check:\n    name: \"check\"\n    runs-on: ubuntu-latest\n");
     check.push_str(&format!("    timeout-minutes: {CHECK_TIMEOUT}\n"));
     check.push_str(&steps_for(input.languages, input.checks, false));
 
@@ -353,7 +383,7 @@ pub fn generate(input: &Input) -> Result<Generated> {
             continue;
         }
         check.push_str(&format!(
-            "  build-{system}:\n    name: build-{system}\n    runs-on: {runner}\n"
+            "  build-{system}:\n    name: \"build-{system}\"\n    runs-on: {runner}\n"
         ));
         check.push_str(&format!("    timeout-minutes: {CHECK_TIMEOUT}\n"));
         check.push_str("    defaults:\n      run:\n        shell: bash\n");
@@ -382,7 +412,7 @@ pub fn generate(input: &Input) -> Result<Generated> {
             }],
             korean,
         );
-        nightly.push_str("name: MoAI nightly\n");
+        nightly.push_str("name: \"MoAI nightly\"\n");
         nightly.push_str(&format!(
             "on:\n  schedule:\n    - cron: \"{NIGHTLY_CRON}\"\n"
         ));
@@ -390,7 +420,7 @@ pub fn generate(input: &Input) -> Result<Generated> {
         nightly.push_str(
             "concurrency:\n  group: ${{ github.workflow }}\n  cancel-in-progress: false\n",
         );
-        nightly.push_str("jobs:\n  nightly:\n    name: nightly\n    runs-on: ubuntu-latest\n");
+        nightly.push_str("jobs:\n  nightly:\n    name: \"nightly\"\n    runs-on: ubuntu-latest\n");
         nightly.push_str(&format!("    timeout-minutes: {NIGHTLY_TIMEOUT}\n"));
         nightly.push_str(&steps_for(input.languages, input.checks, false));
         files.push(File {
@@ -409,26 +439,21 @@ pub fn generate(input: &Input) -> Result<Generated> {
         .as_deref()
         .filter(|_| input.answers.deploy.enabled)
     {
-        let mut deploy = header(
-            &[if korean {
-                "자동으로 시작하지 않아요. Actions 탭에서 직접 실행할 때만 돌아요."
-            } else {
-                "It never starts by itself: it runs only when you start it from the Actions tab."
-            }],
-            korean,
-        );
-        deploy.push_str("name: MoAI deploy\non:\n  workflow_dispatch:\n");
+        let mut deploy = deploy_header(korean);
+        deploy.push_str("name: \"MoAI deploy\"\non:\n  workflow_dispatch:\n");
         deploy.push_str("permissions:\n  contents: read\n");
         deploy.push_str(
             "concurrency:\n  group: ${{ github.workflow }}\n  cancel-in-progress: false\n",
         );
-        deploy.push_str("jobs:\n  deploy:\n    name: deploy\n    runs-on: ubuntu-latest\n");
-        deploy.push_str(&format!("    environment: {target}\n"));
+        deploy.push_str("jobs:\n  deploy:\n    name: \"deploy\"\n    runs-on: ubuntu-latest\n");
+        deploy.push_str(&format!("    environment: \"{target}\"\n"));
         deploy.push_str(&format!("    timeout-minutes: {DEPLOY_TIMEOUT}\n"));
-        deploy.push_str(&format!("    steps:\n      - uses: {CHECKOUT_PIN}\n"));
+        deploy.push_str(&format!("    steps:\n{}", checkout_step()));
         deploy.push_str(&cache_step(input.languages, input.checks));
+        // No deploy command is declared, so none is generated: the job body is a comment that
+        // tells the user where their own steps go (a run step would be an undeclared command).
         deploy.push_str(
-            "      - name: deploy\n        run: |\n          echo \"Add your deploy commands here.\"\n",
+            "      # Add your own deploy steps here. MoAI generates no deploy command because none is declared.\n",
         );
         files.push(File {
             path: ".github/workflows/moai-deploy.yml".into(),
@@ -498,6 +523,21 @@ pub fn lint(text: &str) -> Vec<String> {
     if lines.iter().any(|l| l.trim() == "inputs:") {
         found.push("no input may reach a shell".to_string());
     }
+    // A skipped workflow leaves a required check pending, so no path filter is ever written.
+    if lines.iter().any(|l| {
+        let t = l.trim_start();
+        t.starts_with("paths:") || t.starts_with("paths-ignore:")
+    }) {
+        found.push("no path filter may be used".to_string());
+    }
+    for (i, l) in lines.iter().enumerate() {
+        if l.contains("uses: actions/checkout@")
+            && !(lines.get(i + 1) == Some(&"        with:")
+                && lines.get(i + 2) == Some(&"          persist-credentials: false"))
+        {
+            found.push("the checkout must set persist-credentials to false".to_string());
+        }
+    }
     // A file with no `jobs:` (the Dependabot file) has none of the workflow rules.
     let Some(jobs_at) = lines.iter().position(|l| *l == "jobs:") else {
         return found;
@@ -550,10 +590,11 @@ pub fn lint(text: &str) -> Vec<String> {
         i += 1;
     }
     // Per job: a timeout and a cache step.
-    let mut jobs: Vec<(String, bool, bool)> = Vec::new();
+    // (job key, has a timeout, has a cache, has its stable name)
+    let mut jobs: Vec<(String, bool, bool, bool)> = Vec::new();
     for l in &lines[jobs_at + 1..] {
         if indent(l) == 2 && l.trim_end().ends_with(':') && !l.trim().is_empty() {
-            jobs.push((l.trim().to_string(), false, false));
+            jobs.push((l.trim().to_string(), false, false, false));
         } else if let Some(job) = jobs.last_mut() {
             if l.starts_with("    timeout-minutes: ") {
                 job.1 = true;
@@ -561,17 +602,24 @@ pub fn lint(text: &str) -> Vec<String> {
             if l.contains("uses: actions/cache@") {
                 job.2 = true;
             }
+            // The required-check name: the job key `check` must be named exactly "check".
+            if *l == "    name: \"check\"" {
+                job.3 = true;
+            }
         }
     }
     if jobs.is_empty() {
         found.push("the workflow has no job".to_string());
     }
-    for (name, timeout, cache) in jobs {
+    for (name, timeout, cache, stable) in jobs {
         if !timeout {
             found.push(format!("job {name} has no timeout"));
         }
         if !cache {
             found.push(format!("job {name} has no dependency cache"));
+        }
+        if name == "check:" && !stable {
+            found.push("the check job must be named exactly \"check\"".to_string());
         }
     }
     found
@@ -1023,6 +1071,39 @@ mod tests {
             ),
             ("a key shape", format!("{good}# sk-abc123def\n")),
             ("an input", format!("{good}  inputs:\n")),
+            // Audit B-N1: a path filter lets a required check be skipped and stay pending, and
+            // a changed job name breaks the required-check name.
+            (
+                "a path filter",
+                good.replace(
+                    "  pull_request:\n",
+                    "  pull_request:\n    paths: [\"src/**\"]\n",
+                ),
+            ),
+            (
+                "a path-ignore filter",
+                good.replace(
+                    "  pull_request:\n",
+                    "  pull_request:\n    paths-ignore: [\"docs/**\"]\n",
+                ),
+            ),
+            (
+                "a renamed check job",
+                good.replace("name: \"check\"", "name: \"Check job\""),
+            ),
+            (
+                "a check job without a name",
+                good.replace("    name: \"check\"\n", ""),
+            ),
+            // Audit B-N5: the checkout keeps no credentials in the workspace.
+            (
+                "credentials kept by checkout",
+                good.replace("persist-credentials: false", "persist-credentials: true"),
+            ),
+            (
+                "checkout without the setting",
+                good.replace("        with:\n          persist-credentials: false\n", ""),
+            ),
         ];
         for (why, text) in broken {
             assert!(!lint(text).is_empty(), "{why} passed the lint");
@@ -1045,7 +1126,26 @@ mod tests {
         };
         let yes = make(Some("github-flow"), &a, &c, &l);
         let text = file(&yes, "moai-deploy.yml");
-        assert!(text.contains("    environment: staging\n"), "{text}");
+        assert!(text.contains("    environment: \"staging\"\n"), "{text}");
+        // Audit B-N3: no run step of an undeclared command; the job body is a comment that
+        // tells the user where their own deploy steps go.
+        assert!(!text.contains("run:") && !text.contains("echo"), "{text}");
+        // Its header says what this file is, not what the check file does.
+        assert!(
+            !text.contains("runs the checks you declared")
+                && !text.contains("Only the commands in your project profile"),
+            "{text}"
+        );
+        assert!(text.contains("runs no command"), "{text}");
+        assert!(!file(
+            &make(Some("github-flow"), &answers(), &c, &l),
+            "moai-check.yml"
+        )
+        .contains("runs no command"));
+        assert!(
+            text.contains("\n      # Add your own deploy steps here"),
+            "{text}"
+        );
         assert!(on_block(text).contains("workflow_dispatch"), "{text}");
         assert!(
             !on_block(text).contains("push") && !on_block(text).contains("pull_request"),
@@ -1073,7 +1173,7 @@ mod tests {
                 let g = make(Some(flow), &a, &checks(), &languages());
                 let text = file(&g, "moai-check.yml");
                 assert!(
-                    text.contains("\n  check:\n    name: check\n"),
+                    text.contains("\n  check:\n    name: \"check\"\n"),
                     "{flow} {strict}"
                 );
                 for f in &g.files {
@@ -1166,5 +1266,171 @@ mod tests {
         let a = make(Some("m-flow"), &answers(), &checks(), &languages());
         let b = make(Some("m-flow"), &answers(), &checks(), &languages());
         assert_eq!(a, b);
+    }
+
+    fn all_features() -> CiAnswers {
+        let mut a = answers();
+        a.systems = vec!["linux".into(), "macos".into(), "windows".into()];
+        a.macos_price_ack = Some(true);
+        a.deploy = CiDeploy {
+            enabled: true,
+            target: Some("production".into()),
+        };
+        a.dependabot = Some(true);
+        a
+    }
+
+    /// Audit B-N2 (mutant 6a): the generator checks the answers again; an answer set the
+    /// profile would refuse is an error here whatever the caller did.
+    #[test]
+    fn the_generator_checks_the_answers_again() {
+        let broken: Vec<(&str, CiAnswers)> = vec![
+            (
+                "unknown kind",
+                CiAnswers {
+                    kind: "game".into(),
+                    ..answers()
+                },
+            ),
+            (
+                "macos without its yes",
+                CiAnswers {
+                    systems: vec!["linux".into(), "macos".into()],
+                    ..answers()
+                },
+            ),
+            (
+                "no linux",
+                CiAnswers {
+                    systems: vec!["windows".into()],
+                    ..answers()
+                },
+            ),
+            (
+                "unknown strictness",
+                CiAnswers {
+                    strict: "x".into(),
+                    ..answers()
+                },
+            ),
+            (
+                "a deploy place with a space",
+                CiAnswers {
+                    deploy: CiDeploy {
+                        enabled: true,
+                        target: Some("my site".into()),
+                    },
+                    ..answers()
+                },
+            ),
+            (
+                "a deploy place in the shape of a key",
+                CiAnswers {
+                    deploy: CiDeploy {
+                        enabled: true,
+                        target: Some("ghp_abc".into()),
+                    },
+                    ..answers()
+                },
+            ),
+            (
+                "a budget on a public repository",
+                CiAnswers {
+                    monthly_budget_usd: Some(5),
+                    ..answers()
+                },
+            ),
+        ];
+        for (why, a) in &broken {
+            let out = generate(&Input {
+                flow: Some("github-flow"),
+                integration_branch: None,
+                answers: a,
+                checks: &checks(),
+                languages: &languages(),
+                comments_in_korean: false,
+            });
+            assert!(out.is_err(), "{why} was accepted");
+        }
+    }
+
+    /// Audit B-N3: every run step of every generated file is one of the declared commands, in
+    /// a job that is not the deploy job; nothing else is ever run.
+    #[test]
+    fn every_run_step_in_every_file_is_a_declared_command() {
+        let c = checks();
+        for flow in ["m-flow", "github-flow", "trunk-based", "git-flow"] {
+            let g = make(Some(flow), &all_features(), &c, &languages());
+            for f in &g.files {
+                let mut after_run = false;
+                for l in f.text.lines() {
+                    if after_run {
+                        assert!(
+                            c.iter().any(|c| c.command == l.trim()),
+                            "{flow} {}: an undeclared run step: {l}",
+                            f.path
+                        );
+                    }
+                    after_run = l.trim_end().ends_with("run: |");
+                }
+            }
+        }
+    }
+
+    /// Audit B-N5: every checkout leaves no credentials in the workspace.
+    #[test]
+    fn checkout_keeps_no_credentials() {
+        let g = make(Some("m-flow"), &all_features(), &checks(), &languages());
+        let mut seen = 0;
+        for f in &g.files {
+            let lines: Vec<&str> = f.text.lines().collect();
+            for (i, l) in lines.iter().enumerate() {
+                if l.contains("uses: actions/checkout@") {
+                    seen += 1;
+                    assert_eq!(lines[i + 1], "        with:", "{}", f.path);
+                    assert_eq!(
+                        lines[i + 2],
+                        "          persist-credentials: false",
+                        "{}",
+                        f.path
+                    );
+                }
+            }
+        }
+        assert!(
+            seen >= 4,
+            "the check, build, nightly and deploy jobs: {seen}"
+        );
+    }
+
+    /// Audit B-N4: names and the environment are quoted, so no value can change the shape of the
+    /// YAML around it.
+    #[test]
+    fn names_and_environments_are_quoted() {
+        let g = make(Some("m-flow"), &all_features(), &checks(), &languages());
+        for f in g
+            .files
+            .iter()
+            .filter(|f| !f.path.ends_with("dependabot.yml"))
+        {
+            for l in f.text.lines() {
+                let t = l.trim_start().trim_start_matches("- ");
+                for key in ["name:", "environment:"] {
+                    if let Some(value) = t.strip_prefix(key) {
+                        let value = value.trim();
+                        assert!(
+                            value.len() >= 2 && value.starts_with('"') && value.ends_with('"'),
+                            "{}: unquoted {key} {value}",
+                            f.path
+                        );
+                    }
+                }
+            }
+        }
+        let text = file(&g, "moai-deploy.yml");
+        assert!(
+            text.contains("\n    environment: \"production\"\n"),
+            "{text}"
+        );
     }
 }

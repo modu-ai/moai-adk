@@ -1,11 +1,12 @@
 //! SPEC-20261119-flaky-followups, slice A (card C-99, REQ-1 to REQ-3): the flaky rule's card
 //! command carries a criterion and the card it makes can be read back with that criterion; the
 //! repair rule (no sleep, retry or skip; a test whose root cause is not found is deleted with the
-//! reason written) is in the MODE-AGENT text; the one record home (the flaky card, the `[flake]`
-//! Issue only for a project without a card ledger) is in the VERIFY text.
+//! reason written) and the one record home (the flaky card, the `[flake]` Issue only for a
+//! project without a card ledger) are in the RUN text, which carries the retired VERIFY route and
+//! the flaky rules of the retired mode workflows (SPEC-20261122-next-flow-skills-agents REQ-2).
 //!
-//! The tests read three workflow files, compiled in with `include_str!`, and run `moai card add`
-//! and `moai card show` against a temporary HOME; the real `~/.moai` is not read or written.
+//! The tests read the RUN workflow, compiled in with `include_str!`, and run `moai card add` and
+//! `moai card show` against a temporary HOME; the real `~/.moai` is not read or written.
 
 mod common;
 
@@ -13,17 +14,15 @@ use common::home::TempHome;
 use moai_cli::ledger;
 use serde_json::Value;
 
-const MODE_LEADER: &str = include_str!("../skills/moai/workflows/mode-leader.md");
-const MODE_AGENT: &str = include_str!("../skills/moai/workflows/mode-agent.md");
-const VERIFY: &str = include_str!("../skills/moai/workflows/verify.md");
+const RUN: &str = include_str!("../skills/moai/workflows/run.md");
 
-/// The command the merge-train step gives for the flaky card: the text between the backtick
-/// after `titled "flaky: <test>" (` and the closing backtick.
+/// The command the flaky rule gives for the flaky card: the text between the backtick after
+/// `titled "flaky: <test>" (` and the closing backtick.
 fn flaky_command() -> String {
-    let at = MODE_LEADER
+    let at = RUN
         .find("(`moai card add --kind task --title \"flaky: <test>\"")
-        .expect("the merge-train step gives the flaky card command");
-    let rest = &MODE_LEADER[at + 2..];
+        .expect("the flaky rule gives the flaky card command");
+    let rest = &RUN[at + 2..];
     rest[..rest.find('`').expect("the command ends with a backtick")].to_string()
 }
 
@@ -110,12 +109,8 @@ fn the_flaky_card_command_carries_an_ac_and_the_card_can_be_read_with_it() {
 /// SPEC-20261119-flaky-followups AC-2 (REQ-2).
 #[test]
 fn the_repair_rule_is_in_the_mode_agent_workflow() {
-    let step = line_with(MODE_AGENT, "Flaky repair (card C-99): ");
-    assert!(
-        step.starts_with("7. **heavy-checks**"),
-        "the sentence sits in the heavy-checks step"
-    );
-    let s = sentence_from(step, "Flaky repair (card C-99): ");
+    let para = line_with(RUN, "Flaky repair (card C-99): ");
+    let s = sentence_from(para, "Flaky repair (card C-99): ");
     // Whole phrases, so a sentence that turns the rule round ("is never deleted") does not pass.
     for word in [
         "never adds a sleep, a retry or a skip",
@@ -132,7 +127,7 @@ fn the_repair_rule_is_in_the_mode_agent_workflow() {
 /// SPEC-20261119-flaky-followups AC-2 (REQ-3).
 #[test]
 fn the_record_home_is_in_the_verify_workflow() {
-    let para = line_with(VERIFY, "Record home (card C-99): ");
+    let para = line_with(RUN, "Record home (card C-99): ");
     assert!(
         para.starts_with("A test that fails on one run and passes when the same head is run again"),
         "the sentence sits in the flaky paragraph"

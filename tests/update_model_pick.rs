@@ -71,7 +71,7 @@ fn the_tool_pick_comes_first_and_an_empty_pick_asks_nothing() {
 fn only_supported_values_are_offered_and_an_unknown_saved_value_is_kept() {
     let h = home();
     fs::create_dir_all(h.path.join(".claude")).unwrap();
-    let body = r#"{"launcher":{"role_access":"prompt","models":{"omp":{"leader":{"model":"SECRET-MODEL","effort":"ultra"}}}}}"#;
+    let body = r#"{"launcher":{"role_access":"prompt","models":{"glm":{"leader":{"model":"SECRET-MODEL","effort":"ultra"}}}}}"#;
     let path = write_settings(&h.path, body);
     // Tool pick Enter (claude is installed), four Enters for the two roles, then no save answer.
     let (result, out) = run_stage(&h.path, &enters(5));
@@ -82,7 +82,7 @@ fn only_supported_values_are_offered_and_an_unknown_saved_value_is_kept() {
         "{out}"
     );
     assert!(
-        out.contains("launcher.models.omp.leader"),
+        out.contains("launcher.models.glm.leader"),
         "the unsupported entry is named by key path: {out}"
     );
     assert!(
@@ -97,7 +97,7 @@ fn only_supported_values_are_offered_and_an_unknown_saved_value_is_kept() {
     let saved: Value = serde_json::from_str(&fs::read_to_string(&path).unwrap()).unwrap();
     assert_eq!(saved["launcher"]["role_access"], json!("prompt"));
     assert_eq!(
-        saved["launcher"]["models"]["omp"]["leader"],
+        saved["launcher"]["models"]["glm"]["leader"],
         json!({"model": "SECRET-MODEL", "effort": "ultra"})
     );
     assert_eq!(
@@ -183,6 +183,42 @@ fn a_saved_codex_value_is_ignored_and_dropped_on_the_next_save() {
         assert!(
             saved["launcher"]["models"].get("codex").is_none(),
             "{codex}: the Codex value stayed: {saved}"
+        );
+        assert!(saved["launcher"]["models"]["claude"].is_object(), "{saved}");
+    }
+}
+
+/// SPEC-20261122-remove-omp-launcher AC-7: a saved OMP value of any shape is neither listed nor
+/// quoted by the models step, and the next save drops it.
+#[test]
+fn a_saved_omp_value_is_not_reported_and_leaves_the_file_on_the_next_save() {
+    for omp in [
+        r#"{"agent":{"model":"zai/glm-5.3","effort":"low"}}"#,
+        r#"{"agent":"SECRET-OMP-MODEL"}"#,
+        r#""SECRET-OMP-MODEL""#,
+    ] {
+        let h = home();
+        fs::create_dir_all(h.path.join(".claude")).unwrap();
+        fs::create_dir_all(h.path.join(".omp")).unwrap();
+        let body = format!(r#"{{"launcher":{{"models":{{"omp":{omp}}}}}}}"#);
+        let path = write_settings(&h.path, &body);
+        let (result, out) = run_stage(&h.path, &enters(5));
+        assert_eq!(result["state"], json!("declined"), "{omp}: {result}");
+        assert!(
+            !out.contains("launcher.models.omp") && !out.contains("SECRET-OMP-MODEL"),
+            "{omp}: the saved OMP value is not listed or quoted: {out}"
+        );
+        assert!(
+            !out.contains("OMP"),
+            "{omp}: the models step offers OMP: {out}"
+        );
+        assert_eq!(fs::read_to_string(&path).unwrap(), body, "nothing written");
+        let (result, _) = run_stage(&h.path, &format!("{}y\n", enters(5)));
+        assert_eq!(result["state"], json!("applied"), "{omp}: {result}");
+        let saved: Value = serde_json::from_str(&fs::read_to_string(&path).unwrap()).unwrap();
+        assert!(
+            saved["launcher"]["models"].get("omp").is_none(),
+            "{omp}: the OMP value stayed: {saved}"
         );
         assert!(saved["launcher"]["models"]["claude"].is_object(), "{saved}");
     }
@@ -348,7 +384,7 @@ fn result_of(out: &Output) -> Value {
 fn a_non_terminal_run_asks_nothing_and_reports_the_values() {
     let h = home();
     let exe = install_version(&h.path);
-    let body = r#"{"launcher":{"models":{"claude":{"agent":{"model":"claude-sonnet-5-5","effort":"max"}},"omp":{"leader":{"model":"SECRET-MODEL","effort":"ultra"}}}}}"#;
+    let body = r#"{"launcher":{"models":{"claude":{"agent":{"model":"claude-sonnet-5-5","effort":"max"}},"glm":{"leader":{"model":"SECRET-MODEL","effort":"ultra"}}}}}"#;
     let path = write_settings(&h.path, body);
     // A preview keeps exactly the keys it had: no `models`.
     let preview = result_of(&run(&exe, &h.path, &["update"]));
@@ -363,10 +399,12 @@ fn a_non_terminal_run_asks_nothing_and_reports_the_values() {
     let models = &r["models"];
     assert_eq!(models["state"], json!("ok"), "{r}");
     let values = models["values"].as_array().unwrap();
-    assert_eq!(values.len(), 6, "{models}");
+    assert_eq!(values.len(), 4, "{models}");
     assert!(
-        values.iter().all(|v| v["tool"] != json!("codex")),
-        "no Codex row in the report: {models}"
+        values
+            .iter()
+            .all(|v| v["tool"] != json!("codex") && v["tool"] != json!("omp")),
+        "no Codex or OMP row in the report: {models}"
     );
     let find = |tool: &str, role: &str| -> Value {
         values
@@ -383,7 +421,7 @@ fn a_non_terminal_run_asks_nothing_and_reports_the_values() {
         find("claude", "leader"),
         json!({"tool": "claude", "role": "leader", "model": "claude-opus-5-5", "effort": "high", "source": "default"})
     );
-    assert_eq!(models["unsupported"], json!(["launcher.models.omp.leader"]));
+    assert_eq!(models["unsupported"], json!(["launcher.models.glm.leader"]));
     assert!(!models.to_string().contains("SECRET-MODEL"));
     assert_eq!(
         fs::read_to_string(&path).unwrap(),

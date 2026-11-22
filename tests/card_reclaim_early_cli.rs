@@ -93,7 +93,7 @@ impl World {
     }
 
     fn sessions_dir(&self) -> PathBuf {
-        self.project.join(".git/.moai-cli/sessions")
+        moai_cli::clone_root::path(&self.project.join(".git")).join("sessions")
     }
 
     /// `moai session-register` for `name`, as the host session `session` (none: no id).
@@ -424,7 +424,8 @@ fn a_listed_tool_cache_is_not_work() {
     w.register_gone(NAME, &sid(1));
     let before = w.dump();
 
-    let cache_dir = w.wt.join(".moai-cli/state/github");
+    // The state folder comes from the resolver (leader rule: tests never spell it).
+    let cache_dir = moai_cli::state_root::path(&w.wt, "state/github");
     fs::create_dir_all(&cache_dir).unwrap();
     fs::write(cache_dir.join("counts.json"), "{\"open_issues\":1}\n").unwrap();
 
@@ -434,11 +435,12 @@ fn a_listed_tool_cache_is_not_work() {
     assert!(m.contains("holds 1 uncommitted change(s)"), "{m}");
     fs::remove_file(w.wt.join("new.txt")).unwrap();
 
-    // An unlisted name beside the cache is not a listed cache.
-    fs::write(cache_dir.join("other.json"), "{}\n").unwrap();
+    // An untracked file beside the state folder, not under it, is work (REQ-4).
+    let beside = moai_cli::state_root::path(&w.wt, "other.json");
+    fs::write(&beside, "{}\n").unwrap();
     let m = w.refused_and_unchanged(w.reclaim(&sid(2), &card, "1"), "worktree dirty", &before);
     assert!(m.contains("holds 1 uncommitted change(s)"), "{m}");
-    fs::remove_file(cache_dir.join("other.json")).unwrap();
+    fs::remove_file(&beside).unwrap();
 
     // A tracked file that changed is work even when a listed cache sits beside it.
     fs::write(w.wt.join("a.txt"), "changed\n").unwrap();
@@ -453,6 +455,35 @@ fn a_listed_tool_cache_is_not_work() {
         cache_dir.join("counts.json").exists(),
         "the proof deleted a file"
     );
+}
+
+/// SPEC REQ-3 (AC-2): every untracked file under the runtime state folder is tool state, not
+/// work: the counts file, another file beside it, a file in a folder below, and the earlier
+/// generation's state folder. The reclaim goes through and no file is touched.
+#[test]
+fn a_runtime_state_folder_is_not_work() {
+    let w = world();
+    let card = w.taken(&sid(1), Some(&w.wt), "src/cache/");
+    w.register_gone(NAME, &sid(1));
+    // The current state folder from the resolver (read before any file is made), and the
+    // earlier generation's `.moai/state/` through its constant.
+    let state = |sub: &str| moai_cli::state_root::rel(&w.wt, sub);
+    let files = [
+        state("state/github/counts.json"),
+        state("state/github/other.json"),
+        state("state/deep/er/inner.txt"),
+        format!("{}/state/earlier.json", moai_cli::state_root::MOAI_DIR),
+    ];
+    for f in &files {
+        let p = w.wt.join(f);
+        fs::create_dir_all(p.parent().unwrap()).unwrap();
+        fs::write(&p, "{}\n").unwrap();
+    }
+    let got = result(&w.reclaim(&sid(2), &card, "1"));
+    assert_eq!(got["reservation"]["generation"], json!(2));
+    for f in &files {
+        assert!(w.wt.join(f).exists(), "the proof deleted {f}");
+    }
 }
 
 /// AC-5 (REQ-5, REQ-7): the event keeps its kind, carries the proof in its own field, and the

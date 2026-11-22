@@ -415,7 +415,7 @@ class CiScopePlatformTest(unittest.TestCase):
             ["docs/llms.txt"],
             ["docs/a.md", "docs/img/b.png"],
             ["src/contract.rs"],
-            ["skills/moai/workflows/verify.md"],
+            ["skills/moai/workflows/run.md"],
             ["tools/repo_scans.json"],
             ["AGENTS.md"],
             ["src/gate_loop.rs", "docs/rust-product-path.md"],
