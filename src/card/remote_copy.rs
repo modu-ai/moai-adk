@@ -40,6 +40,9 @@ pub enum CopyState {
     Pending,
     /// The histories diverged (or the remote refused): remote and local stay as they are.
     Hold,
+    /// The profile key is absent or false: nothing is pushed and the answer says so with a
+    /// preview of what a copy would do.
+    Off,
 }
 
 impl CopyState {
@@ -48,16 +51,20 @@ impl CopyState {
             CopyState::Done => "done",
             CopyState::Pending => "pending",
             CopyState::Hold => "hold",
+            CopyState::Off => "off",
         }
     }
 }
 
-/// What one copy run came to. `why` names the reason of a `pending` or `hold` state.
+/// What one copy run came to. `why` names the reason of a `pending`, `hold` or `off` state.
 #[derive(Debug, Clone)]
 pub struct Outcome {
     pub branch: String,
     pub full_ref: String,
+    /// The remote as an answer may carry it: the configured name, or the URL with its userinfo
+    /// removed. [`Outcome::raw_remote`] is what git itself is given.
     pub remote: String,
+    pub raw_remote: String,
     pub tip: String,
     pub remote_tip: Option<String>,
     pub state: CopyState,
@@ -65,17 +72,23 @@ pub struct Outcome {
     pub pushed: bool,
     pub at: i64,
     pub by: String,
+    /// What a copy would do, present only while the state is `off`.
+    pub preview: Option<Value>,
 }
 
 impl Outcome {
     /// The answer object of the copy (without an `action` key: the callers add theirs).
     pub fn json(&self) -> Value {
-        json!({
+        let mut v = json!({
             "branch": self.branch, "ref": self.full_ref, "remote": self.remote,
             "tip": self.tip, "remote_tip": self.remote_tip,
             "state": self.state.as_str(), "why": self.why, "pushed": self.pushed,
             "at": self.at, "by": self.by,
-        })
+        });
+        if self.preview.is_some() {
+            v["preview"] = self.preview.clone().unwrap_or(Value::Null);
+        }
+        v
     }
 }
 
@@ -136,17 +149,47 @@ fn push_remote(project: &Path, branch: &str) -> String {
     "origin".to_string()
 }
 
+/// The form of `remote` an answer, a why line or the record may carry: the configured name when
+/// the value names one, else the URL with its userinfo removed (a token never reaches an answer).
+fn redacted(project: &Path, remote: &str) -> String {
+    let named = format!("remote.{remote}.url");
+    if git(project, &["config", "--get", &named])
+        .map(|out| out.status.success())
+        .unwrap_or(false)
+    {
+        return remote.to_string();
+    }
+    strip_userinfo(remote)
+}
+
+/// `scheme://user:pass@host/path` becomes `scheme://host/path`; the scp form `user@host:path`
+/// becomes `host:path`; anything else stays as it is.
+fn strip_userinfo(url: &str) -> String {
+    if let Some((scheme, rest)) = url.split_once("://") {
+        let (authority, path) = match rest.split_once('/') {
+            Some((authority, path)) => (authority, format!("/{path}")),
+            None => (rest, String::new()),
+        };
+        return match authority.rsplit_once('@') {
+            Some((_, host)) => format!("{scheme}://{host}{path}"),
+            None => format!("{scheme}://{authority}{path}"),
+        };
+    }
+    match url.split_once('@') {
+        Some((_, rest)) if rest.contains(':') => rest.to_string(),
+        _ => url.to_string(),
+    }
+}
+
 /// Where the remote's branch stands: `Ok(None)` when the remote has no such ref, `Err` when the
 /// remote could not be reached at all.
 fn ls_remote(project: &Path, remote: &str, full_ref: &str) -> Result<Option<String>, String> {
     let out = git(project, &["ls-remote", remote, full_ref])?;
     if !out.status.success() {
+        // The bare git reason: the callers add the remote's redacted name themselves.
         let why = String::from_utf8_lossy(&out.stderr);
         let why = why.lines().find(|l| !l.trim().is_empty()).unwrap_or(&why);
-        return Err(format!(
-            "the remote {remote} could not be read: {}",
-            why.trim()
-        ));
+        return Err(why.trim().to_string());
     }
     // `<sha>\t<ref>` per line; the sha of the one ref asked for.
     Ok(String::from_utf8_lossy(&out.stdout)
@@ -170,11 +213,22 @@ fn is_ancestor(project: &Path, a: &str, b: &str) -> Result<bool, String> {
     }
 }
 
-/// One fast-forward push of the one ref (no force flag anywhere); the outcome is read from git's
+/// One fast-forward push of the one ref (no force flag anywhere, no tag follows it, and `--`
+/// closes the options so the remote name cannot read as one); the outcome is read from git's
 /// documented porcelain output, and `Err` means only that git could not run at all.
 fn push(project: &Path, remote: &str, full_ref: &str) -> Result<Option<(char, String)>, String> {
     let spec = format!("{full_ref}:{full_ref}");
-    let out = git(project, &["push", "--porcelain", remote, &spec])?;
+    let out = git(
+        project,
+        &[
+            "push",
+            "--porcelain",
+            "--no-follow-tags",
+            "--",
+            remote,
+            &spec,
+        ],
+    )?;
     let stdout = String::from_utf8_lossy(&out.stdout);
     if let Some(status) = porcelain_status(&stdout) {
         return Ok(Some(status));
@@ -244,20 +298,84 @@ enum Step {
 /// caller answers, so a landing that could not copy still stands. `by` names the caller (`land`
 /// or `remote-copy`); the record of the state is written beside the answer.
 pub fn copy(project: &Path, by: &str) -> Outcome {
-    let mut outcome = match classify(project) {
-        Classified {
-            outcome,
-            step: Step::Push,
-        } => push_once(project, outcome),
-        Classified {
-            outcome,
-            step: Step::Settled,
-        } => outcome,
+    let mut outcome = if remote_copy_on(project) {
+        match classify(project) {
+            Classified {
+                outcome,
+                step: Step::Push,
+            } => push_once(project, outcome),
+            Classified {
+                outcome,
+                step: Step::Settled,
+            } => outcome,
+        }
+    } else {
+        off_outcome(project)
     };
     outcome.at = now();
     outcome.by = by.to_string();
-    write_record(project, &outcome);
+    // While off, only a landing leaves the off record; the on-demand command answers and writes
+    // nothing, so it stays a read-only preview.
+    if outcome.state != CopyState::Off || by == "land" {
+        write_record(project, &outcome);
+    }
     outcome
+}
+
+/// Whether the profile turns the copy on: the key is absent or false by default, and the leader
+/// writes true only after a preview and the user's yes.
+fn remote_copy_on(project: &Path) -> bool {
+    crate::profile::read_profile(project)
+        .ok()
+        .and_then(|(profile, _)| profile.remote_copy)
+        .unwrap_or(false)
+}
+
+/// The answer while the copy is off: nothing is pushed and nothing is forced, and the preview
+/// names what a copy would do — the remote (redacted), the branch, how many commits it would
+/// carry and what the remote would run.
+fn off_outcome(project: &Path) -> Outcome {
+    let (branch, full_ref, tip, remote) = match read_positions(project) {
+        Ok(read) => read,
+        Err(why) => return pending_no_branch(why),
+    };
+    let display = redacted(project, &remote);
+    let remote_tip = ls_remote(project, &remote, &full_ref).ok().flatten();
+    let behind_by = remote_tip
+        .as_deref()
+        .and_then(|r| {
+            let out = git(project, &["rev-list", "--count", &format!("{r}..{tip}")]).ok()?;
+            out.status
+                .success()
+                .then(|| String::from_utf8_lossy(&out.stdout).trim().to_string())
+                .and_then(|n| n.parse::<i64>().ok())
+        })
+        .map(Value::from)
+        .unwrap_or(Value::Null);
+    Outcome {
+        branch: branch.clone(),
+        full_ref,
+        remote: display.clone(),
+        raw_remote: remote,
+        tip,
+        remote_tip,
+        state: CopyState::Off,
+        why: Some(
+            "the remote copy is off: the profile key is absent or false, and it turns on only \
+             after a preview and the user's yes"
+                .to_string(),
+        ),
+        pushed: false,
+        at: 0,
+        by: String::new(),
+        preview: Some(json!({
+            "remote": display,
+            "branch": branch,
+            "behind_by": behind_by,
+            "ci": "a push would run the repository's current ci.yml; the slim workflow is not \
+                   merged yet, so the full matrix would run",
+        })),
+    }
 }
 
 /// The answer of `card remote-copy`: the copy run by the on-demand command itself.
@@ -292,10 +410,12 @@ fn classify(project: &Path) -> Classified {
         Ok(read) => read,
         Err(why) => return Classified::settled(pending_no_branch(why)),
     };
+    let display = redacted(project, &remote);
     let outcome = Outcome {
         branch,
         full_ref: full_ref.clone(),
-        remote: remote.clone(),
+        remote: display.clone(),
+        raw_remote: remote.clone(),
         tip: tip.clone(),
         remote_tip: None,
         state: CopyState::Pending,
@@ -303,12 +423,13 @@ fn classify(project: &Path) -> Classified {
         pushed: false,
         at: 0,
         by: String::new(),
+        preview: None,
     };
     let remote_tip = match ls_remote(project, &remote, &full_ref) {
         Ok(found) => found,
-        Err(why) => {
+        Err(reason) => {
             return Classified::settled(Outcome {
-                why: Some(why),
+                why: Some(format!("the remote {display} could not be read: {reason}")),
                 ..outcome
             })
         }
@@ -341,7 +462,17 @@ fn classify(project: &Path) -> Classified {
                     why: Some("the remote already holds this commit or a descendant".to_string()),
                     ..outcome
                 }),
-                _ => Classified::settled(hold(
+                // No shared ancestry the local repository can read: the remote holds a
+                // descendant it does not know (settled, never a hold) or another line (hold).
+                Err(_) => Classified::settled(Outcome {
+                    state: CopyState::Done,
+                    why: Some(
+                        "the remote already holds a descendant this repository does not know"
+                            .to_string(),
+                    ),
+                    ..outcome
+                }),
+                Ok(false) => Classified::settled(hold(
                     outcome,
                     format!(
                         "the remote tip {r} shares no ancestry with the local tip {tip}: nothing \
@@ -349,7 +480,16 @@ fn classify(project: &Path) -> Classified {
                     ),
                 )),
             },
-            Err(why) => Classified::settled(hold(outcome, why)),
+            // The remote tip itself is unknown here: it cannot be behind, so it settles as the
+            // descendant the local repository cannot read (the parent SPEC's AC-3).
+            Err(_) => Classified::settled(Outcome {
+                state: CopyState::Done,
+                why: Some(
+                    "the remote already holds a descendant this repository does not know"
+                        .to_string(),
+                ),
+                ..outcome
+            }),
         },
     }
 }
@@ -377,6 +517,7 @@ fn empty_outcome() -> Outcome {
         branch: String::new(),
         full_ref: String::new(),
         remote: String::new(),
+        raw_remote: String::new(),
         tip: String::new(),
         remote_tip: None,
         state: CopyState::Pending,
@@ -384,6 +525,7 @@ fn empty_outcome() -> Outcome {
         pushed: false,
         at: 0,
         by: String::new(),
+        preview: None,
     }
 }
 
@@ -400,7 +542,7 @@ fn hold(outcome: Outcome, why: String) -> Outcome {
 /// remote once (the remote may have moved to our tip while the answer was in flight).
 fn push_once(project: &Path, outcome: Outcome) -> Outcome {
     let mut after = outcome.clone();
-    match push(project, &outcome.remote, &outcome.full_ref) {
+    match push(project, &outcome.raw_remote, &outcome.full_ref) {
         Ok(Some((flag, summary))) => {
             if flag == '!' {
                 if summary.contains("rejected") {
@@ -408,8 +550,12 @@ fn push_once(project: &Path, outcome: Outcome) -> Outcome {
                 } else if summary.contains("remote failure") {
                     after.why = Some(format!("the remote did not report the outcome: {summary}"));
                 } else {
-                    after.state = CopyState::Hold;
-                    after.why = Some(summary);
+                    // No porcelain status line: the remote was never reached, so the copy is
+                    // pending (never a hold) and the next run settles it.
+                    after.why = Some(format!(
+                        "the remote {} could not be reached: {summary}",
+                        after.remote
+                    ));
                 }
             } else if flag == '=' {
                 // Up to date: the remote took our tip while the answer was in flight; nothing
@@ -433,7 +579,7 @@ fn push_once(project: &Path, outcome: Outcome) -> Outcome {
 /// After a rejection: read the remote once more and settle as success when it now holds our tip
 /// or a descendant; anything else is a hold with git's own words.
 fn settle_after_rejection(project: &Path, after: &mut Outcome, summary: &str) {
-    match ls_remote(project, &after.remote, &after.full_ref) {
+    match ls_remote(project, &after.raw_remote, &after.full_ref) {
         Ok(Some(r)) if r == after.tip => {
             after.state = CopyState::Done;
             after.why =
