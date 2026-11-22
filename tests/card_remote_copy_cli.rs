@@ -587,6 +587,7 @@ fn a_tag_on_the_tip_is_not_pushed() {
 /// B3 and the auditor's probe: the push argv carries --no-follow-tags and `--` before the
 /// remote name, and never --force, --mirror or a +refspec. A wrapper around git records it.
 #[test]
+#[cfg(unix)]
 fn the_push_arguments_carry_the_safety_flags() {
     let w = World::new();
     let log = w.bare.path().with_extension("argv");
@@ -666,6 +667,7 @@ fn an_unknown_remote_tip_reads_as_a_hold() {
 
 /// N2: a push that cannot reach the remote reads pending, never a hold.
 #[test]
+#[cfg(unix)]
 fn an_unreachable_push_reads_pending() {
     let w = World::new();
     let wrapper = w.bare.path().with_extension("pushfail");
@@ -712,6 +714,7 @@ fn an_unreachable_push_reads_pending() {
 /// The auditor's probe (mutant U2): while the copy is off the landing and the on-demand command
 /// run no ls-remote, push or fetch at all. A wrapper around git records every invocation.
 #[test]
+#[cfg(unix)]
 fn the_off_path_runs_no_network_git() {
     let mut w = World::new();
     w.set_profile(COPY_OFF_PROFILE);
