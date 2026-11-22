@@ -146,7 +146,9 @@ fn hook_set_has_explicit_timeouts_and_bare_commands() {
         "the dangerous duty alone blocks on its own failure"
     );
     assert!(
-        claude["PreToolUse"][1]["hooks"][0].get("onFailure").is_none(),
+        claude["PreToolUse"][1]["hooks"][0]
+            .get("onFailure")
+            .is_none(),
         "the ordinary duty stays fail-open"
     );
     assert_eq!(
@@ -220,9 +222,9 @@ fn generated_pre_tool_use_command_blocks_an_unverified_commit() {
         "https://github.com/acme/widgets.git",
     ]);
 
-    for host in ["claude"] {
+    {
         // Only Claude carries the preflight duty (#2877 Q1; codex keeps its base set).
-        let obj = hooks::hooks_object(host).unwrap();
+        let obj = hooks::hooks_object("claude").unwrap();
         let entry = obj["PreToolUse"]
             .as_array()
             .unwrap()
@@ -282,11 +284,11 @@ fn generated_pre_tool_use_command_blocks_an_unverified_commit() {
         let (code, stdout) = run("rm -rf /");
         assert!(
             code == 2 || stdout.contains("\"deny\""),
-            "{host}: {} {stdout}",
+            "{} {stdout}",
             code
         );
         let (code, stdout) = run("git status");
-        assert_eq!((code, stdout.as_str()), (0, ""), "{host}");
+        assert_eq!((code, stdout.as_str()), (0, ""));
     }
 }
 
@@ -1399,10 +1401,7 @@ fn claude_runs_the_preflight_guard_and_codex_does_not() {
             String::from_utf8_lossy(&out.stdout).into_owned(),
         )
     };
-    let (code, stdout) = run(
-        "Bash",
-        json!({"command": "rm -rf /"}),
-    );
+    let (code, stdout) = run("Bash", json!({"command": "rm -rf /"}));
     assert_eq!(code, 2, "{stdout}");
     assert!(stdout.contains("\"deny\""), "{stdout}");
     let (code, stdout) = run(

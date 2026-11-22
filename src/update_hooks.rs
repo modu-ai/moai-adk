@@ -115,7 +115,10 @@ impl Layer {
                 out.push_str(&format!("    deny rules: {}\n", f.deny.len()));
             }
         }
-        out.push_str(&format!("    entries run: {}\n", crate::hooks::moai_absolute()));
+        out.push_str(&format!(
+            "    entries run: {}\n",
+            crate::hooks::moai_absolute()
+        ));
         out
     }
 }
@@ -195,11 +198,7 @@ fn duty_names(hooks: &Value) -> Vec<String> {
             for entry in entries {
                 let words: Vec<&str> = entry["args"]
                     .as_array()
-                    .map(|a| {
-                        a.iter()
-                            .filter_map(|w| w.as_str())
-                            .collect::<Vec<_>>()
-                    })
+                    .map(|a| a.iter().filter_map(|w| w.as_str()).collect::<Vec<_>>())
                     .unwrap_or_default();
                 let name = words
                     .last()
@@ -229,15 +228,13 @@ fn folder_plan(folder: &Path) -> Result<FolderPlan> {
             .map_err(|_| "the config settings file is not JSON".to_string())?,
     };
     let desired = crate::hooks::hooks_object("claude")
-        .map(|h| Value::Object(h))
+        .map(Value::Object)
         .map_err(|e| e.to_string())?;
     let owned_receipt = owned_hooks_sha(folder);
     let (action, reason) = match &current["hooks"] {
         Value::Null => ("create", None),
         h if h == &desired => ("unchanged", None),
-        h if Some(crate::digest(
-            &serde_json::to_vec(h).unwrap_or_default(),
-        )) == owned_receipt
+        h if Some(crate::digest(&serde_json::to_vec(h).unwrap_or_default())) == owned_receipt
             || owned_receipt.is_some() =>
         {
             ("update", None)
@@ -249,16 +246,8 @@ fn folder_plan(folder: &Path) -> Result<FolderPlan> {
     };
     let now = duty_names(&current["hooks"]);
     let want = duty_names(&desired);
-    let added = want
-        .iter()
-        .filter(|n| !now.contains(n))
-        .cloned()
-        .collect();
-    let removed = now
-        .iter()
-        .filter(|n| !want.contains(n))
-        .cloned()
-        .collect();
+    let added = want.iter().filter(|n| !now.contains(n)).cloned().collect();
+    let removed = now.iter().filter(|n| !want.contains(n)).cloned().collect();
     let plan_digest = (action != "conflict").then(|| {
         let bound = serde_json::to_vec(&json!([
             2,
@@ -272,7 +261,7 @@ fn folder_plan(folder: &Path) -> Result<FolderPlan> {
     Ok(FolderPlan {
         folder: folder.to_path_buf(),
         action: action.into(),
-        reason: reason.map(|r| r),
+        reason,
         plan_digest,
         added,
         removed,
@@ -284,13 +273,15 @@ fn folder_plan(folder: &Path) -> Result<FolderPlan> {
 /// one there). The receipt lives under the HOME state root, one per folder.
 fn owned_hooks_sha(folder: &Path) -> Option<String> {
     let home = std::env::var_os("HOME").map(PathBuf::from)?;
-    let record = crate::home_root::path(&home).join("manifests").join(format!(
-        "config-hooks-{}.json",
-        crate::digest(folder.to_string_lossy().as_bytes())
-            .trim_start_matches("sha256:")
-            .get(..16)
-            .unwrap_or("0")
-    ));
+    let record = crate::home_root::path(&home)
+        .join("manifests")
+        .join(format!(
+            "config-hooks-{}.json",
+            crate::digest(folder.to_string_lossy().as_bytes())
+                .trim_start_matches("sha256:")
+                .get(..16)
+                .unwrap_or("0")
+        ));
     let bytes = fs::read(record).ok()?;
     let v: Value = serde_json::from_slice(&bytes).ok()?;
     v["hooks_sha256"].as_str().map(str::to_string)
@@ -621,9 +612,7 @@ pub fn apply(home: &Path, layer: &Layer, plan_digest: &str, permission: &str) ->
 /// `permissions.deny` (missing ones only, never a removal), the before bytes kept.
 fn apply_folder(f: &FolderPlan, keep: &Path, home: &Path) -> Result<Value> {
     let settings = f.folder.join("settings.json");
-    let desired = Value::Object(
-        crate::hooks::hooks_object("claude").map_err(|e| e.to_string())?,
-    );
+    let desired = Value::Object(crate::hooks::hooks_object("claude").map_err(|e| e.to_string())?);
     let before = crate::claude::read_existing(&settings)?;
     if before.is_none() && f.action != "create" {
         return Err("the settings file changed since the preview; re-preview required".into());
@@ -643,7 +632,10 @@ fn apply_folder(f: &FolderPlan, keep: &Path, home: &Path) -> Result<Value> {
     }
     merged["hooks"] = desired.clone();
     let mut deny_added = 0usize;
-    let mut deny: Vec<Value> = merged["permissions"]["deny"].as_array().cloned().unwrap_or_default();
+    let mut deny: Vec<Value> = merged["permissions"]["deny"]
+        .as_array()
+        .cloned()
+        .unwrap_or_default();
     for rule in crate::hooks::GUARDED_DENY_RULES {
         if !deny.iter().any(|r| r.as_str() == Some(*rule)) {
             deny.push(json!(rule));
@@ -659,7 +651,7 @@ fn apply_folder(f: &FolderPlan, keep: &Path, home: &Path) -> Result<Value> {
         crate::apply::publish_exclusive_mode(
             &keep_dir.join(format!(
                 "settings-{}.json",
-                crate::digest(&f.folder.to_string_lossy().as_bytes())
+                crate::digest(f.folder.to_string_lossy().as_bytes())
                     .trim_start_matches("sha256:")
                     .get(..8)
                     .unwrap_or("0")
@@ -671,8 +663,7 @@ fn apply_folder(f: &FolderPlan, keep: &Path, home: &Path) -> Result<Value> {
     }
     match &before {
         None => {
-            fs::create_dir_all(&f.folder)
-                .map_err(|_| "config folder unavailable".to_string())?;
+            fs::create_dir_all(&f.folder).map_err(|_| "config folder unavailable".to_string())?;
             crate::apply::publish_exclusive_mode(&settings, &bytes, Some(0o600))
         }
         Some(b) => crate::apply::publish_replace(&settings, Some(b), &bytes),

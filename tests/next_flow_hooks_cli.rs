@@ -57,7 +57,11 @@ fn json_run(cmd: &mut Command) -> Value {
         String::from_utf8_lossy(&out.stderr)
     );
     let v: Value = serde_json::from_slice(&out.stdout).unwrap_or(Value::Null);
-    v["result"].is_object().then(|| v["result"].clone()).unwrap_or(v)
+    if v["result"].is_object() {
+        v["result"].clone()
+    } else {
+        v
+    }
 }
 
 /// `hook-dispatch --host claude --event <event>` with `input` on stdin.
@@ -167,7 +171,11 @@ fn make_executable(path: &Path) {
 
 /// Registers a ledger in the project at `root` and adds one ready card taken by `holder` (a
 /// session id in the shape the ledger accepts: hex digits and `-`, 8 to 64 characters).
-fn carded_world(holder_hex: &str, scope: &str, branch: &str) -> (tempfile::TempDir, PathBuf, PathBuf) {
+fn carded_world(
+    holder_hex: &str,
+    scope: &str,
+    branch: &str,
+) -> (tempfile::TempDir, PathBuf, PathBuf) {
     let holder = holder_hex;
     let (dir, root, config) = world(branch);
     fs::create_dir_all(root.join(".moai-cli")).unwrap();
@@ -176,35 +184,77 @@ fn carded_world(holder_hex: &str, scope: &str, branch: &str) -> (tempfile::TempD
         "{\"schema_version\":2,\"project_id\":\"ac12fixture\"}\n",
     )
     .unwrap();
-    let register = json_run(&mut moai(&root, &config, holder, &[
-        "ledger-register-plan", &root.to_string_lossy(),
-    ]));
+    let register = json_run(&mut moai(
+        &root,
+        &config,
+        holder,
+        &["ledger-register-plan", &root.to_string_lossy()],
+    ));
     let digest = register["plan_digest"].as_str().unwrap().to_string();
     let root_text = root.to_string_lossy().into_owned();
-    json_run(&mut moai(&root, &config, holder, &[
-        "ledger-register-apply", &root_text, "--plan-digest", &digest,
-        "--permission-reference", "user-approved-test",
-    ]));
-    let added = json_run(&mut moai(&root, &config, holder, &[
-        "card", "add", "--title", "fixture card", "--project", &root_text,
-    ]));
+    json_run(&mut moai(
+        &root,
+        &config,
+        holder,
+        &[
+            "ledger-register-apply",
+            &root_text,
+            "--plan-digest",
+            &digest,
+            "--permission-reference",
+            "user-approved-test",
+        ],
+    ));
+    let added = json_run(&mut moai(
+        &root,
+        &config,
+        holder,
+        &[
+            "card",
+            "add",
+            "--title",
+            "fixture card",
+            "--project",
+            &root_text,
+        ],
+    ));
     let name = added["name"].as_str().unwrap().to_string();
-    json_run(&mut moai(&root, &config, holder, &[
-        "card", "ready", &name, "--project", &root_text,
-    ]));
-    json_run(&mut moai(&root, &config, holder, &[
-        "card", "take", &name, "--scope", scope, "--project", &root_text,
-        "--branch", branch, "--worktree", &root_text,
-    ]));
+    json_run(&mut moai(
+        &root,
+        &config,
+        holder,
+        &["card", "ready", &name, "--project", &root_text],
+    ));
+    json_run(&mut moai(
+        &root,
+        &config,
+        holder,
+        &[
+            "card",
+            "take",
+            &name,
+            "--scope",
+            scope,
+            "--project",
+            &root_text,
+            "--branch",
+            branch,
+            "--worktree",
+            &root_text,
+        ],
+    ));
     (dir, root, config)
 }
 
 // --- AC-1, AC-5: the rendered set, exec form, onFailure --------------------------------
 
 fn plan_hooks(root: &Path, config: &Path) -> Vec<Value> {
-    let v = json_run(&mut moai(root, config, "sess-ac", &[
-        "hooks-plan", "--host", "claude", &root.to_string_lossy(),
-    ]));
+    let v = json_run(&mut moai(
+        root,
+        config,
+        "sess-ac",
+        &["hooks-plan", "--host", "claude", &root.to_string_lossy()],
+    ));
     v["hooks"].as_array().unwrap().clone()
 }
 
@@ -227,14 +277,28 @@ fn ac1_the_rendered_set_holds_no_issue_era_entry_and_blocks_only_the_dangerous_o
         "{text}"
     );
     // Applied settings: the file on disk holds neither removed command either.
-    let plan = json_run(&mut moai(&root, &config, "sess-ac", &[
-        "hooks-plan", "--host", "claude", &root.to_string_lossy(),
-    ]));
+    let plan = json_run(&mut moai(
+        &root,
+        &config,
+        "sess-ac",
+        &["hooks-plan", "--host", "claude", &root.to_string_lossy()],
+    ));
     let digest = plan["plan_digest"].as_str().unwrap().to_string();
-    let applied = json_run(&mut moai(&root, &config, "sess-ac", &[
-        "hooks-apply", "--host", "claude", &root.to_string_lossy(),
-        "--plan-digest", &digest, "--permission-reference", "user-approved-test",
-    ]));
+    let applied = json_run(&mut moai(
+        &root,
+        &config,
+        "sess-ac",
+        &[
+            "hooks-apply",
+            "--host",
+            "claude",
+            &root.to_string_lossy(),
+            "--plan-digest",
+            &digest,
+            "--permission-reference",
+            "user-approved-test",
+        ],
+    ));
     assert_eq!(applied["state"], json!("applied"), "{applied}");
     let settings = fs::read_to_string(root.join(".claude/settings.json")).unwrap();
     assert!(!settings.contains("claim-verify"), "{settings}");
@@ -293,7 +357,10 @@ fn ac6_matchers_cover_powershell_monitor_and_the_four_session_sources() {
     for source in ["startup", "resume", "clear", "compact"] {
         let input = json!({"hook_event_name": "SessionStart", "source": source,
                            "cwd": &root, "session_id": "sess-ac"});
-        assert!(!session_check(&root, &config, &input).stdout.is_empty(), "{source}");
+        assert!(
+            !session_check(&root, &config, &input).stdout.is_empty(),
+            "{source}"
+        );
     }
     let other = json!({"hook_event_name": "SessionStart", "source": "fork",
                        "cwd": &root, "session_id": "sess-ac"});
@@ -315,7 +382,11 @@ fn ac2_session_check_reads_files_only_and_names_the_card() {
         .as_str()
         .unwrap_or_default()
         .to_string();
-    assert!(!ctx.is_empty(), "not inside additionalContext: {}", plain.stdout);
+    assert!(
+        !ctx.is_empty(),
+        "not inside additionalContext: {}",
+        plain.stdout
+    );
     assert!(ctx.contains(BRANCH), "{ctx}");
     assert!(ctx.contains("NeXT"), "{ctx}");
     assert!(ctx.contains("moai card show"), "{ctx}");
@@ -332,14 +403,21 @@ fn ac2_session_check_reads_files_only_and_names_the_card() {
     // No subprocess: a PATH whose every git and sh fails changes nothing.
     let poison = poisoned_path(&root);
     let poisoned = dispatch("session-check", &root, &config, &input, Some(&poison));
-    assert_eq!(poisoned.stdout, plain.stdout, "the answer changed under a poisoned PATH");
+    assert_eq!(
+        poisoned.stdout, plain.stdout,
+        "the answer changed under a poisoned PATH"
+    );
     // The edge facts, in fixed wording.
     let bare = tempfile::TempDir::new().unwrap();
     let bare_root = fs::canonicalize(bare.path()).unwrap();
     fs::create_dir_all(bare_root.join("home")).unwrap();
     let outside = session_check(&bare_root, &config, &input);
     assert_eq!(outside.code, 0);
-    assert!(outside.stdout.is_empty(), "a non-moai folder answers nothing: {}", outside.stdout);
+    assert!(
+        outside.stdout.is_empty(),
+        "a non-moai folder answers nothing: {}",
+        outside.stdout
+    );
 }
 
 /// AC-3 (REQ-3): the median of repeated in-process runs stays under 20 ms (D-7: the budget
@@ -351,13 +429,23 @@ fn ac3_the_session_check_answers_within_the_budget() {
     let input = json!({"hook_event_name": "SessionStart", "source": "startup",
                        "cwd": &root, "session_id": "sess-ac"});
     // One warm-up, then the measured runs — the duty called in process, as the SPEC pins it.
-    let _ = moai_cli::hook_engine::dispatch("claude", "session-check",
-                                            input.to_string().as_bytes(), &root, 1);
+    let _ = moai_cli::hook_engine::dispatch(
+        "claude",
+        "session-check",
+        input.to_string().as_bytes(),
+        &root,
+        1,
+    );
     let mut times: Vec<u128> = Vec::new();
     for t in 2..52u128 {
         let start = Instant::now();
-        let answer = moai_cli::hook_engine::dispatch("claude", "session-check",
-                                                     input.to_string().as_bytes(), &root, t);
+        let answer = moai_cli::hook_engine::dispatch(
+            "claude",
+            "session-check",
+            input.to_string().as_bytes(),
+            &root,
+            t,
+        );
         times.push(start.elapsed().as_micros());
         assert_eq!(answer.exit, 0);
         assert!(!answer.stdout.is_empty());
@@ -410,17 +498,22 @@ fn ac7_a_guarded_call_hidden_behind_separators_wrappers_or_cd_is_refused() {
 #[test]
 fn ac8_every_refusal_is_exit_two_and_none_changes_the_input() {
     let (_d, root, config) = world(BRANCH);
-    let outside = tempfile::TempDir::new().unwrap();
     let refusals = [
         bash("git push origin NeXT", &root),
         bash("git branch -m NeXT side", &root),
-        bash(&format!("rm -rf {}", outside.path().display()), &root),
+        // Outside the worktree AND the temp folder (a temp-folder target is allowed by
+        // REQ-1's boundary).
+        bash("rm -rf /Users/definitely-not-here/ac8", &root),
         write_call(&root.join(".claude/settings.json").to_string_lossy(), &root),
     ];
     for input in &refusals {
         let r = dangerous(&root, &config, input);
         assert!(r.denies(), "not refused: {}", input);
-        assert_eq!(r.code, 2, "a refusal must be exit 2: {} {}", r.code, r.stdout);
+        assert_eq!(
+            r.code, 2,
+            "a refusal must be exit 2: {} {}",
+            r.code, r.stdout
+        );
         let v = r.json();
         assert!(v["hookSpecificOutput"]["updatedInput"].is_null(), "{v}");
     }
@@ -459,7 +552,11 @@ fn ac9_every_call_that_moves_the_integration_branch_is_refused() {
     let absolute_git = which_git();
     if let Some(git) = absolute_git {
         // The absolute-path form of the same verbs.
-        let d = dangerous(&root, &config, &bash(&format!("{git} branch -C side NeXT"), &root));
+        let d = dangerous(
+            &root,
+            &config,
+            &bash(&format!("{git} branch -C side NeXT"), &root),
+        );
         assert!(d.denies(), "absolute git path form refused nothing");
     }
     for call in &calls {
@@ -501,15 +598,14 @@ fn which_git() -> Option<String> {
 #[test]
 fn ac10_recursive_deletes_and_guarded_settings_writes_are_refused() {
     let (_d, root, config) = world(BRANCH);
-    let outside = tempfile::TempDir::new().unwrap();
     assert!(
         dangerous(
             &root,
             &config,
-            &bash(&format!("rm -rf {}", outside.path().display()), &root)
+            &bash("rm -rf /Users/definitely-not-here/ac10", &root)
         )
         .denies(),
-        "a recursive delete outside the project tree passed"
+        "a recursive delete outside the worktree and the temp folder passed"
     );
     let guarded = [
         root.join(".claude/settings.json"),
@@ -518,14 +614,21 @@ fn ac10_recursive_deletes_and_guarded_settings_writes_are_refused() {
     ];
     for file in &guarded {
         let r = dangerous(&root, &config, &write_call(&file.to_string_lossy(), &root));
-        assert!(r.denies(), "a guarded settings write passed: {}", file.display());
+        assert!(
+            r.denies(),
+            "a guarded settings write passed: {}",
+            file.display()
+        );
         assert!(!refusal_reason(&r).is_empty());
     }
     // An ordinary lane push and a source edit pass.
     assert!(!dangerous(&root, &config, &bash("git push origin side", &root)).denies());
-    assert!(!dangerous(&root, &config, &write_call(
-        &root.join("src/main.rs").to_string_lossy(), &root
-    )).denies());
+    assert!(!dangerous(
+        &root,
+        &config,
+        &write_call(&root.join("src/main.rs").to_string_lossy(), &root)
+    )
+    .denies());
 }
 
 // --- AC-11: read-only agent types -------------------------------------------------------
@@ -543,10 +646,16 @@ fn ac11_read_only_agents_cannot_write_or_move_refs() {
         let _ = tool;
         v
     };
-    let write = agent("Write", write_call(&root.join("src/x.rs").to_string_lossy(), &root));
+    let write = agent(
+        "Write",
+        write_call(&root.join("src/x.rs").to_string_lossy(), &root),
+    );
     let r = preflight(&root, &config, &write);
     assert!(r.denies(), "a read-only agent's write passed");
-    let move_ref = agent("Bash", bash("git update-ref refs/heads/side deadbeef", &root));
+    let move_ref = agent(
+        "Bash",
+        bash("git update-ref refs/heads/side deadbeef", &root),
+    );
     assert!(preflight(&root, &config, &move_ref).denies());
     let read = json!({"hook_event_name": "PreToolUse", "tool_name": "Read",
                       "tool_input": {"file_path": "a.txt"}, "cwd": &root,
@@ -557,7 +666,10 @@ fn ac11_read_only_agents_cannot_write_or_move_refs() {
     let log = root.join(".moai/receipts/hook-engine.jsonl");
     let text = fs::read_to_string(&log).unwrap_or_default();
     assert!(text.contains("moai-audit"), "{text}");
-    assert!(!text.contains("agent-ac11"), "a raw agent id in the log: {text}");
+    assert!(
+        !text.contains("agent-ac11"),
+        "a raw agent id in the log: {text}"
+    );
     assert!(text.contains("agent"), "{text}");
 }
 
@@ -612,15 +724,13 @@ fn ac13_no_engine_line_lands_under_the_retired_home_folder() {
                 if p.is_dir() {
                     stack.push(p);
                 } else {
-                    assert!(false, "a file under the retired folder: {}", p.display());
+                    panic!("a file under the retired folder: {}", p.display());
                 }
             }
         }
     };
     nothing_new(&retired);
-    let project_text = |rel: &str| {
-        fs::read_to_string(root.join(rel)).unwrap_or_default()
-    };
+    let project_text = |rel: &str| fs::read_to_string(root.join(rel)).unwrap_or_default();
     let project_side = project_text(".moai/receipts/hook-engine.jsonl")
         + &project_text(".moai-cli/receipts/hook-engine.jsonl");
     assert!(
@@ -638,7 +748,10 @@ fn ac13_no_engine_line_lands_under_the_retired_home_folder() {
     assert!(dangerous(&root, &config, &bash("git push origin NeXT", &root)).denies());
     let current = home.join(".moai/projects/ac13fixture/receipts/hook-engine.jsonl");
     let text = fs::read_to_string(&current).unwrap_or_default();
-    assert!(text.contains("\"deny\""), "no line under the current root: {text}");
+    assert!(
+        text.contains("\"deny\""),
+        "no line under the current root: {text}"
+    );
 }
 
 // --- AC-14, AC-15: the update layer -----------------------------------------------------
@@ -667,7 +780,10 @@ fn update_world() -> (tempfile::TempDir, PathBuf, PathBuf, PathBuf, PathBuf) {
     let exe = folder.join("bin/moai-cli");
     common::copy_executable(Path::new(BIN), &exe);
     let pkg = folder.join("skills/moai");
-    copy_tree(&Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai"), &pkg);
+    copy_tree(
+        &Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai"),
+        &pkg,
+    );
     copy_tree(
         &Path::new(env!("CARGO_MANIFEST_DIR")).join("agents"),
         &folder.join("agents"),
@@ -677,13 +793,7 @@ fn update_world() -> (tempfile::TempDir, PathBuf, PathBuf, PathBuf, PathBuf) {
     (tmp, home, project, root.join("config"), exe)
 }
 
-fn update_run(
-    exe: &Path,
-    home: &Path,
-    project: &Path,
-    config: &Path,
-    args: &[&str],
-) -> Value {
+fn update_run(exe: &Path, home: &Path, project: &Path, config: &Path, args: &[&str]) -> Value {
     let out = Command::new(exe)
         .args(args)
         .current_dir(project)
@@ -704,7 +814,11 @@ fn update_run(
         String::from_utf8_lossy(&out.stderr)
     );
     let v: Value = serde_json::from_slice(&out.stdout).unwrap_or(Value::Null);
-    v["result"].is_object().then(|| v["result"].clone()).unwrap_or(v)
+    if v["result"].is_object() {
+        v["result"].clone()
+    } else {
+        v
+    }
 }
 
 /// AC-14 (REQ-13): the preview offers the deny rules beside the hook set for each picked config
@@ -716,16 +830,31 @@ fn ac14_the_deny_rules_are_offered_and_written_only_on_the_pick() {
     let p = update_run(&exe, &home, &project, &config, &["update"]);
     let hooks = &p["hooks"];
     let text = hooks.to_string();
-    assert!(text.contains("deny"), "no deny offer in the preview: {text}");
+    assert!(
+        text.contains("deny"),
+        "no deny offer in the preview: {text}"
+    );
     assert!(text.contains("reset --hard"), "{text}");
     // Nothing is written without the pick.
     assert!(!config.join("settings.json").exists());
     let digest = p["plan_digest"].as_str().unwrap().to_string();
-    let r = update_run(&exe, &home, &project, &config, &["update", "--confirm", &digest]);
+    let r = update_run(
+        &exe,
+        &home,
+        &project,
+        &config,
+        &["update", "--confirm", &digest],
+    );
     let _ = r;
     let settings = fs::read_to_string(config.join("settings.json")).unwrap_or_default();
-    assert!(settings.contains("deny"), "no deny rules written: {settings}");
-    assert!(!settings.contains("NeXT") || settings.contains("deny"), "{settings}");
+    assert!(
+        settings.contains("deny"),
+        "no deny rules written: {settings}"
+    );
+    assert!(
+        !settings.contains("NeXT") || settings.contains("deny"),
+        "{settings}"
+    );
 }
 
 /// AC-15 (REQ-14, REQ-15): a confirmed update writes the hook entries into the picked config
@@ -746,9 +875,18 @@ fn ac15_the_hooks_land_in_the_config_folder_and_exit_zero_elsewhere() {
     assert!(text.contains("session-check"), "no entry named: {text}");
     assert!(text.contains("added"), "{text}");
     // The absolute moai path the layer writes is named (the moved-binary risk).
-    assert!(text.contains("versions/a/bin"), "the written binary path is not named: {text}");
+    assert!(
+        text.contains("versions/a/bin"),
+        "the written binary path is not named: {text}"
+    );
     let digest = p["plan_digest"].as_str().unwrap().to_string();
-    update_run(&exe, &home, &project, &config, &["update", "--confirm", &digest]);
+    update_run(
+        &exe,
+        &home,
+        &project,
+        &config,
+        &["update", "--confirm", &digest],
+    );
     let settings = fs::read_to_string(config.join("settings.json")).unwrap();
     assert!(settings.contains("dangerous-preflight"), "{settings}");
     assert!(settings.contains("\"args\""), "{settings}");
@@ -788,16 +926,22 @@ fn git_with_home(cwd: &Path, args: &[&str], home: &Path) {
 /// the point, so this spawn carries the env the host would give.
 fn session_check_env(cwd: &Path, home: &Path, config: &Path, env_file: &Path) -> Run {
     let mut cmd = Command::new(BIN);
-    cmd.args(["hook-dispatch", "--host", "claude", "--event", "session-check"])
-        .current_dir(cwd)
-        .env("HOME", home)
-        .env("CLAUDE_CONFIG_DIR", config)
-        .env("CLAUDE_ENV_FILE", env_file)
-        .env("GIT_CONFIG_GLOBAL", "/dev/null")
-        .env("GIT_CONFIG_SYSTEM", "/dev/null")
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::null());
+    cmd.args([
+        "hook-dispatch",
+        "--host",
+        "claude",
+        "--event",
+        "session-check",
+    ])
+    .current_dir(cwd)
+    .env("HOME", home)
+    .env("CLAUDE_CONFIG_DIR", config)
+    .env("CLAUDE_ENV_FILE", env_file)
+    .env("GIT_CONFIG_GLOBAL", "/dev/null")
+    .env("GIT_CONFIG_SYSTEM", "/dev/null")
+    .stdin(Stdio::piped())
+    .stdout(Stdio::piped())
+    .stderr(Stdio::null());
     let input = json!({"hook_event_name": "SessionStart", "source": "startup",
                        "cwd": cwd, "session_id": "s"});
     let mut child = cmd.spawn().unwrap();
@@ -830,7 +974,11 @@ fn ac17_env_file_and_reload_skills() {
     git_with_home(&root, &["commit", "-q", "-m", "i"], &home);
     fs::create_dir_all(root.join(".moai")).unwrap();
     fs::create_dir_all(root.join(".git/moai")).unwrap();
-    fs::write(root.join(".git/moai/integration-branch"), "refs/heads/NeXT\n").unwrap();
+    fs::write(
+        root.join(".git/moai/integration-branch"),
+        "refs/heads/NeXT\n",
+    )
+    .unwrap();
     let env_file = root.join("home/env");
     fs::write(&env_file, "export OTHER_HOOK=1\n").unwrap();
 
@@ -917,4 +1065,81 @@ fn ac17_the_update_layer_leaves_the_reload_stamp() {
     let digest = p["plan_digest"].as_str().unwrap().to_string();
     run(&["update", "--confirm", &digest]);
     assert!(config.join("moai-update-stamp").exists());
+}
+
+/// AC-1 (REQ-1, D-17): the deletion check. rm, rmdir, find -delete and git clean resolve
+/// their targets and refuse any target outside the session's worktree and the temp folder,
+/// through every bypass shape the documents name; a target inside either root passes.
+#[test]
+fn ac1_deletion_targets_outside_the_worktree_and_temp_are_refused() {
+    let (_d, root, config) = world(BRANCH);
+    let outside = "/Users/definitely-not-here/probe-deleted";
+    let temp = std::env::temp_dir().join("moai-ac1-temp-probe");
+    let wt = root.display().to_string();
+    let temp_s = temp.display().to_string();
+    let refused = [
+        format!("rm {outside}"),
+        format!("rm -rf {outside}"),
+        format!("/bin/rm {outside}"),
+        format!("rm {outside}/../probe-deleted"),
+        format!("bash -c 'rm -rf {outside}'"),
+        format!("sh -c \"rm {outside}\""),
+        format!("env rm {outside}"),
+        format!("FOO=1 rm {outside}"),
+        format!("echo {outside} | xargs rm -rf"),
+        format!("xargs rm < {outside}"),
+        format!("find {outside} -name x -delete"),
+        format!("find {outside} -name x -exec rm {{}} +"),
+        format!("git clean -f {outside}"),
+        format!("rmdir {outside}"),
+        // A $HOME spelling resolves through the variable.
+        "rm $HOME/definitely-not-here-probe".to_string(),
+    ];
+    for command in &refused {
+        if command.starts_with("rm $HOME") {
+            // The $HOME spelling resolves through the variable, so this one run gives the
+            // process a HOME that lies outside the worktree.
+            let mut cmd = Command::new(BIN);
+            cmd.args([
+                "hook-dispatch",
+                "--host",
+                "claude",
+                "--event",
+                "dangerous-preflight",
+            ])
+            .current_dir(&root)
+            .env("HOME", "/Users/definitely-not-here-home")
+            .env("CLAUDE_CONFIG_DIR", &config)
+            .env("GIT_CONFIG_GLOBAL", "/dev/null")
+            .env("GIT_CONFIG_SYSTEM", "/dev/null")
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::null());
+            let mut child = cmd.spawn().unwrap();
+            common::feed_stdin(&mut child, bash(command, &root).to_string().as_bytes());
+            let out = child.wait_with_output().unwrap();
+            assert_eq!(
+                out.status.code(),
+                Some(2),
+                "{command}: {}",
+                String::from_utf8_lossy(&out.stdout)
+            );
+            continue;
+        }
+        let r = dangerous(&root, &config, &bash(command, &root));
+        assert!(r.denies(), "not refused: {command}");
+        assert_eq!(r.code, 2, "{command}: {} {}", r.code, r.stdout);
+    }
+    // Inside the worktree, and inside the temp folder: both pass this rule (the ordinary
+    // duty's own rm rules still apply to their dangerous shapes).
+    let allowed = [
+        format!("rm {wt}/scratch.txt"),
+        format!("rm -rf {temp_s}/moai-ac1-probe"),
+        format!("rm $TMPDIR/moai-ac1-probe"),
+        "rm".to_string(),
+    ];
+    for command in &allowed {
+        let r = dangerous(&root, &config, &bash(command, &root));
+        assert!(!r.denies(), "refused: {command}");
+    }
 }

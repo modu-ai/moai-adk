@@ -10,7 +10,6 @@
 #![cfg(unix)]
 mod common;
 
-use moai_cli::claim::{ClaimRecord, Journal, Owner, SpecRef, TaskRef, WorktreeId};
 use serde_json::{json, Value};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -567,8 +566,7 @@ fn a_timed_out_preflight_is_non_blocking_by_the_host_rules() {
     let _release = Release(release);
     let before = commit_count(&root);
 
-    let (ran, cancelled) =
-        host_runs_tool_with_timeout(&root, &fast, "rm -rf /", None);
+    let (ran, cancelled) = host_runs_tool_with_timeout(&root, &fast, "rm -rf /", None);
     assert!(!cancelled);
     assert!(
         !ran,
@@ -931,7 +929,11 @@ fn codex_tool_preflight_denies_with_the_documented_codex_shape() {
     let r = codex("tool-preflight", &root, input_deny.to_string().as_bytes());
     assert_deny_any_exit(&r);
     assert_no_unsupported_codex_fields(&r.stdout);
-    assert_allow(&codex("tool-preflight", &root, input.to_string().as_bytes()));
+    assert_allow(&codex(
+        "tool-preflight",
+        &root,
+        input.to_string().as_bytes(),
+    ));
     // apply_patch cannot commit; a patch touching no protected path is allowed (stage 5 guards
     // only .git internals, credential paths and secret content in patches).
     let patch = json!({"hook_event_name": "PreToolUse", "tool_name": "apply_patch",
@@ -1155,11 +1157,7 @@ fn session_check_through_a_symlinked_cwd_still_finds_the_local_record() {
     fs::create_dir_all(link.join("home")).unwrap();
     let start = br#"{"hook_event_name":"SessionStart","source":"startup"}"#;
     let r = dispatch("session-check", &link, start, &[]);
-    assert!(
-        r.stdout.contains("branch: issue/77-k"),
-        "{}",
-        r.stdout
-    );
+    assert!(r.stdout.contains("branch: issue/77-k"), "{}", r.stdout);
 }
 
 /// Audit #2402 H3-B1: Codex sends `PostToolUse` after a failed Bash command too, so the event
@@ -1272,7 +1270,11 @@ fn a_commit_with_its_token_spawns_one_git_and_one_without_spawns_three() {
     let log = root.join("home/git-calls");
     common::write_executable(
         &bin.join("git"),
-        &format!("#!/bin/sh\necho \"$*\" >> '{}'\nexec '{}' \"$@\"\n", log.display(), real),
+        &format!(
+            "#!/bin/sh\necho \"$*\" >> '{}'\nexec '{}' \"$@\"\n",
+            log.display(),
+            real
+        ),
     );
     let path = format!(
         "{}:{}",
@@ -1368,7 +1370,10 @@ fn decision_any_exit(r: &Run) -> (String, String) {
     assert_eq!(h["hookEventName"], "PreToolUse");
     (
         h["permissionDecision"].as_str().unwrap_or("").to_string(),
-        h["permissionDecisionReason"].as_str().unwrap_or("").to_string(),
+        h["permissionDecisionReason"]
+            .as_str()
+            .unwrap_or("")
+            .to_string(),
     )
 }
 
@@ -2092,7 +2097,13 @@ fn only_the_exact_compact_source_changes_the_answer() {
         }
         let r = run_program(
             Path::new(BIN),
-            &["hook-dispatch", "--host", "claude", "--event", "session-check"],
+            &[
+                "hook-dispatch",
+                "--host",
+                "claude",
+                "--event",
+                "session-check",
+            ],
             &root,
             input.to_string().as_bytes(),
             &[],

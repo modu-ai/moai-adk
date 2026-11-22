@@ -143,7 +143,8 @@ fn engine_error(reason: &str) -> Answer {
 pub fn dispatch(host: &str, event: &str, stdin: &[u8], cwd: &Path, now_unix_ms: u128) -> Answer {
     let cwd = std::fs::canonicalize(cwd).unwrap_or_else(|_| cwd.to_path_buf());
     let cwd = cwd.as_path();
-    let Some(host) = Host::parse(host) else {        return engine_error("unknown hook host; must be claude, codex or omp");
+    let Some(host) = Host::parse(host) else {
+        return engine_error("unknown hook host; must be claude, codex or omp");
     };
     let Some(event) = Event::parse(event) else {
         return engine_error(
@@ -542,8 +543,8 @@ fn allow_quietly() -> Answer {
 
 /// Claude Code rendering of a verdict (documented shapes only).
 fn render_claude(event: Event, verdict: Verdict) -> Answer {
-    let denied =
-        matches!(&verdict, Verdict::Deny(_)) && matches!(event, Event::ToolPreflight | Event::DangerousPreflight);
+    let denied = matches!(&verdict, Verdict::Deny(_))
+        && matches!(event, Event::ToolPreflight | Event::DangerousPreflight);
     let stdout = match (event, verdict) {
         (_, Verdict::Allow) => String::new(),
         // "`ask` prompts the user to confirm" (code.claude.com/docs/en/hooks, read 2026-11-11);
@@ -715,10 +716,14 @@ fn session_check_answer(input: &Value, cwd: &Path) -> Answer {
         "MoAI session-check (moai {}): branch: {}; integration branch: {}; card: {}. Read \
          locally; no network was used.",
         env!("CARGO_PKG_VERSION"),
-        branch.as_deref().unwrap_or("none (detached HEAD or not a git worktree)"),
+        branch
+            .as_deref()
+            .unwrap_or("none (detached HEAD or not a git worktree)"),
         integration.as_deref().unwrap_or("no record"),
         card.as_ref()
-            .map(|(name, title)| format!("{name} ({title}) — `moai card show {name}` for its state"))
+            .map(|(name, title)| format!(
+                "{name} ({title}) — `moai card show {name}` for its state"
+            ))
             .unwrap_or_else(|| "none on this branch".to_string()),
     );
     if let Some(line) = conversation_line(std::env::var_os("HOME").as_deref().map(Path::new)) {
@@ -756,9 +761,7 @@ fn session_check_answer(input: &Value, cwd: &Path) -> Answer {
 fn skills_reload_stamp(cwd: &Path) -> bool {
     let config = std::env::var_os("CLAUDE_CONFIG_DIR")
         .map(PathBuf::from)
-        .or_else(|| {
-            std::env::var_os("HOME").map(|h| Path::new(&h).join(".claude"))
-        });
+        .or_else(|| std::env::var_os("HOME").map(|h| Path::new(&h).join(".claude")));
     let Some(stamp) = config.map(|c| c.join("moai-update-stamp")) else {
         return false;
     };
@@ -786,7 +789,10 @@ fn export_env_file(cwd: &Path, integration: &Option<String>, card: Option<&str>)
     if lines.is_empty() {
         return;
     }
-    let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(&file)
+    let Ok(mut f) = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&file)
     else {
         return;
     };
@@ -803,11 +809,8 @@ fn project_id_of(cwd: &Path) -> Option<String> {
 /// The worktree's card: the live reservation whose branch is this worktree's branch, read from
 /// the local ledger read-only (REQ-2; `None` without a ledger, a profile or a matching card).
 fn worktree_card(cwd: &Path, branch: Option<&str>) -> Option<(String, String)> {
+    let branch = branch?;
     let home = std::env::var_os("HOME").map(std::path::PathBuf::from)?;
-    let (Some(branch), Some(home_ref)) = (branch, home.is_absolute().then_some(())) else {
-        return None;
-    };
-    let _ = home_ref;
     let project = crate::project_home::resolve(&home, cwd).ok()?;
     let ledger = crate::ledger::open::open_read_only_within(
         &home,
@@ -992,8 +995,11 @@ fn git_moves_a_ref(args: &[String]) -> bool {
         Some(("push" | "update-ref" | "symbolic-ref", _)) => true,
         Some(("branch", rest)) => rest.iter().any(|w| {
             let w = w.as_str();
-            (w.starts_with('-') && !w.starts_with("--")
-                && w[1..].chars().any(|c| matches!(c, 'm' | 'M' | 'd' | 'D' | 'c' | 'C')))
+            (w.starts_with('-')
+                && !w.starts_with("--")
+                && w[1..]
+                    .chars()
+                    .any(|c| matches!(c, 'm' | 'M' | 'd' | 'D' | 'c' | 'C')))
                 || matches!(w, "--move" | "--delete" | "--copy")
         }),
         Some(("reset", rest)) => rest.iter().any(|w| w == "--hard"),

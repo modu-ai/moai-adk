@@ -128,7 +128,10 @@ fn a_project_with_nothing_yet_names_the_gap_and_prints_no_command() {
         b"",
     );
     assert_eq!(applied["ok"], json!(true), "{applied}");
-    assert_eq!(normalize_commands(settings_now(&fx)["hooks"].clone()), generated());
+    assert_eq!(
+        normalize_commands(settings_now(&fx)["hooks"].clone()),
+        generated()
+    );
     let after = fx.update_plan();
     assert_eq!(hooks(&after)["state"], "unchanged");
     assert_eq!(hooks(&after)["reason"], "the MoAI hook set is current");
@@ -343,7 +346,11 @@ fn normalize_commands(v: Value) -> Value {
                 // sides become the same constant token.
                 m.insert("command".into(), json!("moai"));
             }
-            Value::Object(m.into_iter().map(|(k, v)| (k, normalize_commands(v))).collect())
+            Value::Object(
+                m.into_iter()
+                    .map(|(k, v)| (k, normalize_commands(v)))
+                    .collect(),
+            )
         }
         Value::Array(a) => Value::Array(a.into_iter().map(normalize_commands).collect()),
         other => other,
@@ -372,7 +379,11 @@ fn reset_after_a_hooks_step(fx: &GoFx) -> Vec<u8> {
     let old = fs::read(fx.root.join(".claude/settings.json")).unwrap();
     let out = fx.apply_step(hooks(&plan));
     assert_eq!(out["ok"], json!(true), "{out}");
-    assert_eq!(settings_hooks_normalized(fx), generated(), "the first apply");
+    assert_eq!(
+        settings_hooks_normalized(fx),
+        generated(),
+        "the first apply"
+    );
     fs::write(fx.root.join(".claude/settings.json"), &old).unwrap();
     fx.write(".claude/hooks/moai/handle-a.sh", "#!/bin/sh\necho a\n");
     fx.write(".claude/hooks/moai/handle-b.sh", "#!/bin/sh\necho b\n");
@@ -490,7 +501,11 @@ fn a_file_without_the_recorded_hooks_reads_ready_and_agrees_with_the_status() {
     let out = fx.apply_step(step);
     assert_eq!(out["ok"], json!(true), "{out}");
     let after = settings_now(&fx);
-    assert_eq!(normalize_commands(after["hooks"].clone()), generated(), "{after}");
+    assert_eq!(
+        normalize_commands(after["hooks"].clone()),
+        generated(),
+        "{after}"
+    );
     assert_eq!(after["permissions"]["deny"], json!(DENY), "{after}");
     let own = hooks_plan(&fx);
     assert_eq!(own["action"], "unchanged", "{own}");
@@ -858,7 +873,10 @@ fn an_older_hook_set_held_by_the_file_and_the_record_reads_ready() {
     let out = run_hooks_apply(&fx, &argv, step["plan_digest"].as_str().unwrap());
     assert_eq!(out["ok"], json!(true), "{out}");
     assert_eq!(out["result"]["state"], "applied", "{out}");
-    assert_eq!(normalize_commands(settings_now(&fx)["hooks"].clone()), generated());
+    assert_eq!(
+        normalize_commands(settings_now(&fx)["hooks"].clone()),
+        generated()
+    );
     assert_eq!(hooks(&fx.update_plan())["state"], "unchanged");
 }
 

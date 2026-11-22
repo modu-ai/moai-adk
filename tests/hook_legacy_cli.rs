@@ -252,7 +252,8 @@ fn a_fresh_install_calls_moai_everywhere() {
             let cmds = commands(&file);
             assert_eq!(cmds.len(), h.entries, "{cmds:?}");
             assert!(
-                cmds.iter().all(|c| c.starts_with('/') && c.ends_with("/moai")),
+                cmds.iter()
+                    .all(|c| c.starts_with('/') && c.ends_with("/moai")),
                 "{cmds:?}"
             );
         } else {
@@ -556,7 +557,10 @@ fn the_update_layer_plans_the_config_folder_and_gates_nothing() {
     let before = w.files(CLAUDE);
     let layer = update_hooks::plan_in(&w.home).unwrap();
     let v = layer.to_json();
-    assert!(v.get("hosts").is_none(), "no per-project hosts any more: {v}");
+    assert!(
+        v.get("hosts").is_none(),
+        "no per-project hosts any more: {v}"
+    );
     assert!(
         v.get("migration").is_none() && !v.to_string().contains("migration"),
         "no moai-cli rewrite count any more: {v}"
@@ -567,14 +571,8 @@ fn the_update_layer_plans_the_config_folder_and_gates_nothing() {
         "the preview names the absolute binary path: {v}"
     );
     // The layer never touches the project's settings file.
-    let out = update_hooks::apply_in(
-        &w.home,
-        &layer,
-        &layer.plan_digest,
-        "test-3004",
-        &w.rust(),
-    )
-    .unwrap();
+    let out = update_hooks::apply_in(&w.home, &layer, &layer.plan_digest, "test-3004", &w.rust())
+        .unwrap();
     let _ = out;
     assert_eq!(w.files(CLAUDE), before, "the project file must not change");
 }

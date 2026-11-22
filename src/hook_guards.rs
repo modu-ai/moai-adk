@@ -2105,7 +2105,10 @@ fn has_token(content: &str, shape: &TokenShape) -> bool {
 /// the same line. `None` when there is no git folder or no record: nothing to protect.
 pub fn recorded_integration_branch(cwd: &Path) -> Option<String> {
     let common = git_folder(cwd)?;
-    let record = read_regular(&common.join("moai/integration-branch"), GIT_SMALL_FILE_LIMIT)?;
+    let record = read_regular(
+        &common.join("moai/integration-branch"),
+        GIT_SMALL_FILE_LIMIT,
+    )?;
     let name = record.trim();
     name.strip_prefix("refs/heads/")
         .map(str::to_string)
@@ -2158,8 +2161,7 @@ pub fn dangerous_guard(tool: &str, tool_input: &Value, cwd: &Path) -> Option<Str
                 .or_else(|| tool_input["notebook_path"].as_str())?;
             let file = std::fs::canonicalize(file).unwrap_or_else(|_| PathBuf::from(file));
             guarded_settings_files(cwd)
-                .iter()
-                .any(|g| file == *g)
+                .contains(&file)
                 .then_some(GUARDED_SETTINGS_WRITE.to_string())
         }
         _ => None,
@@ -2169,11 +2171,11 @@ pub fn dangerous_guard(tool: &str, tool_input: &Value, cwd: &Path) -> Option<Str
 /// The Bash side of the dangerous-call duty. The recorded integration branch is read once; a
 /// repository with no record has no integration-branch refusals (there is no name to protect).
 fn dangerous_bash(command: &str, cwd: &Path) -> Option<String> {
+    if let Some(reason) = deletion_outside(command, cwd) {
+        return Some(reason.to_string());
+    }
     let branch = recorded_integration_branch(cwd);
     for (name, args) in crate::claim_verify::shell_commands(command) {
-        if let Some(reason) = recursive_delete_outside(&name, &args, cwd) {
-            return Some(reason.to_string());
-        }
         if name == "git" {
             if let Some(branch) = integration_call(&args, branch.as_deref()) {
                 return Some(integration_reason(&branch));
@@ -2187,18 +2189,20 @@ fn dangerous_bash(command: &str, cwd: &Path) -> Option<String> {
 /// (`-C <dir>`, `--git-dir …`) and the ones that carry it attached; `None` when the line names
 /// no subcommand.
 pub(crate) fn git_subcommand(args: &[String]) -> Option<(&str, &[String])> {
+    let value_taking = [
+        "-C",
+        "--git-dir",
+        "--work-tree",
+        "--namespace",
+        "--exec-path",
+        "--super-prefix",
+    ];
     let mut i = 0;
     while i < args.len() {
         let w = args[i].as_str();
-        if w == "-C" {
-            i += 2;
-        } else if w.starts_with("--")
-            && !w.contains('=')
-            && matches!(
-                w,
-                "--git-dir" | "--work-tree" | "--namespace" | "--exec-path" | "--super-prefix"
-            )
-        {
+        let takes_value =
+            value_taking.contains(&w) && (w == "-C" || (!w.contains('=') && w.starts_with("--")));
+        if takes_value {
             i += 2;
         } else if !w.starts_with('-') {
             return Some((w, &args[i + 1..]));
@@ -2221,12 +2225,8 @@ fn names_branch(word: &str, branch: &str) -> bool {
 /// delete names the branch as its source or its target, and a push names it in a refspec on
 /// either side. Answers the recorded branch when the call is refused (the sentence names it).
 fn integration_call(args: &[String], branch: Option<&str>) -> Option<String> {
-    let Some(branch) = branch else {
-        return None;
-    };
-    let Some((sub, rest)) = git_subcommand(args) else {
-        return None;
-    };
+    let branch = branch?;
+    let (sub, rest) = git_subcommand(args)?;
     let hit = || branch.to_string();
     match sub {
         "branch" => {
@@ -2265,35 +2265,231 @@ fn integration_call(args: &[String], branch: Option<&str>) -> Option<String> {
     }
 }
 
-/// A recursive `rm` aimed outside the project tree (REQ-9). The project is the cwd the call
-/// names; a target that resolves below it stays with the ordinary duty.
-fn recursive_delete_outside(name: &str, args: &[String], cwd: &Path) -> Option<&'static str> {
-    if name != "rm" {
-        return None;
+/// REQ-1, D-17 (SPEC-20261122-next-flow-hooks, user decision 6278): the deletion check. rm,
+/// rmdir, `find -delete`, `find -exec rm` and `git clean` resolve their targets — absolute
+/// paths, the home folder, `..`, links (the existing part of the path), the known variables
+/// ($HOME, $TMPDIR), wrappers (env, xargs) and one level of a shell's `-c` script (all of it
+/// already walked by [`shell_commands`]) — and any target that resolves outside the session's
+/// worktree and the temp folder refuses the call. The boundary rule of permissions.md:261-271
+/// (Bash rules are not a boundary) is why this lives in the dangerous duty with
+/// `onFailure: "block"`, not in a deny rule.
+const DELETION_OUTSIDE: &str =
+    "MoAI: that delete leaves the session's worktree and the temp folder; run it yourself \
+     outside the agent if you mean it";
+
+/// The operands of a delete command: the words that are not options, past a `--`.
+fn operands(args: &[String]) -> Vec<&str> {
+    let mut out = Vec::new();
+    let mut only_operands = false;
+    for w in args.iter().map(String::as_str) {
+        if w == "--" {
+            only_operands = true;
+            continue;
+        }
+        if only_operands || !w.starts_with('-') {
+            out.push(w);
+        }
     }
-    let recursive = args.iter().any(|w| {
-        let w = w.as_str();
-        (w.starts_with('-') && !w.starts_with("--") && w.len() > 1
-            && w[1..].chars().any(|c| c == 'r' || c == 'R'))
-            || w == "--recursive"
-    });
-    if !recursive {
-        return None;
+    out
+}
+
+/// The words after `xargs`' own options: its command and that command's arguments.
+fn xargs_command(args: &[String]) -> Option<(&str, &[String])> {
+    let mut i = 0;
+    while i < args.len() {
+        let w = args[i].as_str();
+        if w == "--" {
+            return args.get(i + 1..).map(|rest| {
+                (
+                    rest.first().map(String::as_str).unwrap_or_default(),
+                    &rest[1..],
+                )
+            });
+        }
+        if w.starts_with('-') {
+            i += 1;
+            continue;
+        }
+        return Some((w, &args[i + 1..]));
     }
-    let root = std::fs::canonicalize(cwd).unwrap_or_else(|_| cwd.to_path_buf());
-    args.iter()
-        .filter(|w| !w.starts_with('-'))
-        .any(|w| {
-            let path = Path::new(w);
-            let resolved = if path.is_absolute() {
-                std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf())
-            } else {
-                let joined = root.join(path);
-                std::fs::canonicalize(&joined).unwrap_or(joined)
-            };
-            resolved != root && !resolved.starts_with(&root)
-        })
-        .then_some(OUTSIDE_RECURSIVE_DELETE)
+    None
+}
+
+/// The words after `env`'s own part: past `VAR=value` words and env's options to the command.
+fn env_command(args: &[String]) -> Option<(&str, &[String])> {
+    let mut i = 0;
+    while i < args.len() {
+        let w = args[i].as_str();
+        if w.contains('=') && !w.starts_with('-') {
+            i += 1;
+            continue;
+        }
+        if w.starts_with('-') && w != "--" {
+            i += 1;
+            continue;
+        }
+        return Some((w, &args[i + 1..]));
+    }
+    None
+}
+
+/// Expands the known variables and the home folder in a word: `$HOME/x`, `${HOME}/x`, `~/x`
+/// and `$TMPDIR/x` all resolve; an unknown `$VAR` stays as it is (an unresolvable word is
+/// judged by its literal shape, which never points inside a root by accident).
+fn expand_known(word: &str) -> String {
+    let home = std::env::var_os("HOME").map(PathBuf::from);
+    let tmp = std::env::var_os("TMPDIR").map(PathBuf::from);
+    let mut out = word.to_string();
+    for (var, value) in [("HOME", home), ("TMPDIR", tmp)] {
+        let Some(value) = value else { continue };
+        let value = value.display().to_string();
+        for form in [format!("${var}/"), format!("${{{var}}}/")] {
+            if out.starts_with(&form) {
+                out = format!("{}/{}", value.trim_end_matches('/'), &out[form.len()..]);
+            }
+        }
+    }
+    if out.starts_with('~') {
+        if let Some(home) = std::env::var_os("HOME") {
+            out = format!(
+                "{}/{}",
+                PathBuf::from(home)
+                    .display()
+                    .to_string()
+                    .trim_end_matches('/'),
+                &out[2..]
+            );
+        }
+    }
+    out
+}
+
+/// A path judged on the file system where it exists and lexically above that: the existing
+/// part is resolved (links followed), the missing tail is appended as it is spelled, and `.`
+/// and `..` are folded lexically.
+fn resolve_target(word: &str, cwd: &Path) -> PathBuf {
+    let word = expand_known(word);
+    let path = Path::new(&word);
+    let joined = if path.is_absolute() {
+        path.to_path_buf()
+    } else {
+        cwd.join(path)
+    };
+    lexical_clean(resolve_existing(&joined))
+}
+
+/// Folds `.` and `..` out of a path lexically (a `..` that climbs above the root stays
+/// outside every root, which is the refusal's answer).
+fn lexical_clean(path: PathBuf) -> PathBuf {
+    let mut out = PathBuf::new();
+    for part in path.components() {
+        match part {
+            std::path::Component::CurDir => {}
+            std::path::Component::ParentDir => {
+                out.pop();
+            }
+            other => out.push(other.as_os_str()),
+        }
+    }
+    out
+}
+
+/// The session's worktree root: the nearest folder above `cwd` that holds a `.git` (the
+/// primary or a linked worktree), else `cwd` itself.
+fn worktree_root(cwd: &Path) -> PathBuf {
+    let mut cur = Some(cwd);
+    while let Some(dir) = cur {
+        if dir.join(".git").symlink_metadata().is_ok() {
+            return std::fs::canonicalize(dir).unwrap_or_else(|_| dir.to_path_buf());
+        }
+        cur = dir.parent();
+    }
+    std::fs::canonicalize(cwd).unwrap_or_else(|_| cwd.to_path_buf())
+}
+
+/// The temp folder the host gives its processes, resolved the way a target is (a `TMPDIR`
+/// spelled through a link — `/tmp` on macOS — compares equal to the resolved target, whether
+/// or not the leaf folder exists yet).
+fn temp_root() -> PathBuf {
+    let raw = std::env::var_os("TMPDIR")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from("/tmp"));
+    lexical_clean(resolve_existing(&raw))
+}
+
+/// The reason the deletion check refuses the line, or `None`.
+pub fn deletion_outside(command: &str, cwd: &Path) -> Option<&'static str> {
+    let worktree = worktree_root(cwd);
+    let temp = temp_root();
+    let under = |p: &Path| p.starts_with(&worktree) || p.starts_with(&temp);
+    // [`shell_commands`] walks past wrapper words, so `echo x | xargs rm -rf` reaches this loop
+    // as a bare `rm` with no operands — its targets come from stdin, unresolvable and
+    // unbounded, and the amplification itself is the risk. One cheap look at the raw line
+    // names that shape (permissions.md:261-271: Bash rules are not a boundary).
+    let feeds_xargs = command
+        .split(|c: char| c.is_whitespace() || "|;&\n".contains(c))
+        .any(|w| w.trim_matches(['\\', '"', '\'']) == "xargs");
+    for (name, args) in crate::claim_verify::shell_commands(command) {
+        let mut targets: Vec<String> = Vec::new();
+        match name.as_str() {
+            "rm" | "rmdir" => {
+                targets = operands(&args).iter().map(|s| s.to_string()).collect();
+                if targets.is_empty() && feeds_xargs {
+                    return Some(DELETION_OUTSIDE);
+                }
+            }
+            "git" => {
+                if let Some((sub, rest)) = git_subcommand(&args) {
+                    if sub == "clean" {
+                        targets = operands(rest).iter().map(|s| s.to_string()).collect();
+                    }
+                }
+            }
+            "find" => {
+                let deletes = args.iter().any(|w| w == "-delete")
+                    || args.iter().any(|w| w == "-exec" || w.starts_with("-exec"));
+                if deletes {
+                    targets = args
+                        .iter()
+                        .take_while(|w| !w.as_str().starts_with('-'))
+                        .map(|w| w.clone())
+                        .collect();
+                }
+            }
+            "env" => {
+                if let Some((inner, rest)) = env_command(&args) {
+                    if inner == "rm" || inner == "rmdir" {
+                        targets = operands(rest).iter().map(|s| s.to_string()).collect();
+                    }
+                }
+            }
+            "xargs" => {
+                if let Some((inner, rest)) = xargs_command(&args) {
+                    if inner == "rm" || inner == "rmdir" {
+                        targets = operands(rest).iter().map(|s| s.to_string()).collect();
+                        if targets.is_empty() {
+                            // The targets come from stdin and cannot be resolved or bounded;
+                            // the amplification itself is the risk (permissions.md: Bash
+                            // rules are not a boundary).
+                            return Some(DELETION_OUTSIDE);
+                        }
+                    }
+                }
+            }
+            _ => {}
+        }
+        if targets.is_empty() {
+            continue;
+        }
+        let any_outside = targets
+            .iter()
+            .map(|t| resolve_target(t, cwd))
+            .any(|p| !under(&p));
+        if any_outside {
+            return Some(DELETION_OUTSIDE);
+        }
+    }
+    None
 }
 
 #[cfg(test)]

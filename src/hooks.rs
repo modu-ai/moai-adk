@@ -277,7 +277,9 @@ pub fn command_with(binary: &str, host: &str, handler: Handler) -> String {
         Handler::Preflight => {
             format!("{binary} hook-dispatch --host {host} --event tool-preflight")
         }
-        Handler::Dangerous => format!("{binary} hook-dispatch --host {host} --event dangerous-preflight"),
+        Handler::Dangerous => {
+            format!("{binary} hook-dispatch --host {host} --event dangerous-preflight")
+        }
         Handler::EditDiagnostics => {
             format!("{binary} hook-dispatch --host {host} --event edit-diagnostics")
         }
@@ -354,7 +356,11 @@ pub fn moai_state(project: &Path, path_env: &str, home: Option<&Path>) -> Value 
 pub fn hook_set(host: &str) -> Vec<(&'static str, Option<&'static str>, Handler)> {
     if host == "claude" {
         return vec![
-            ("SessionStart", Some(CLAUDE_SESSION_MATCHER), Handler::SessionCheck),
+            (
+                "SessionStart",
+                Some(CLAUDE_SESSION_MATCHER),
+                Handler::SessionCheck,
+            ),
             ("PreToolUse", Some(CLAUDE_SHELL_MATCHER), Handler::Dangerous),
             ("PreToolUse", Some(CLAUDE_SHELL_MATCHER), Handler::Preflight),
             ("PreToolUse", Some(CLAUDE_WRITE_MATCHER), Handler::Preflight),
