@@ -165,7 +165,7 @@
       }
     },
     "references/internal/core-rules.md": {
-      "sha256": "7a6040e3fa935f596090c4057ac2e30dc51c387a116e04244111aec219cecd95",
+      "sha256": "d5bc05f7295b8eaa41adf9e9ad8583d2be79cc85c56dc790edde78f73448f34a",
       "origin": {
         "kind": "go-generation",
         "template_id": "internal-core-rules",
