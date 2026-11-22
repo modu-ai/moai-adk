@@ -261,7 +261,7 @@ const CLAIM_RECORD: &str = "manifests/claude-settings.json";
 /// The status of the one `go-hooks-` receipt the apply left behind.
 fn the_receipt_status(root: &Path) -> String {
     let mut found = Vec::new();
-    for e in fs::read_dir(state(&root, "receipts")).unwrap().flatten() {
+    for e in fs::read_dir(state(root, "receipts")).unwrap().flatten() {
         if e.file_name().to_string_lossy().starts_with("go-hooks-") {
             let r = read_json(&e.path().join("receipt.json"));
             found.push(r["status"].as_str().unwrap().to_string());
@@ -296,7 +296,7 @@ impl Before {
             self.scripts,
             "the scripts"
         );
-        assert!(!state(&root, CLAIM_RECORD).exists(), "the ownership record");
+        assert!(!state(root, CLAIM_RECORD).exists(), "the ownership record");
         assert_eq!(the_receipt_status(root), "rolled_back");
     }
 }
@@ -332,8 +332,8 @@ fn an_installer_that_writes_something_else_is_undone_with_its_record() {
     let before = Before::of(&root);
     let e = apply_with(&root, &|root, _, _| {
         fs::write(root.join(".claude/settings.json"), b"{\"hooks\": {}}\n").unwrap();
-        fs::create_dir_all(state(&root, "manifests")).unwrap();
-        fs::write(state(&root, CLAIM_RECORD), b"{\"owned\": {}}\n").unwrap();
+        fs::create_dir_all(state(root, "manifests")).unwrap();
+        fs::write(state(root, CLAIM_RECORD), b"{\"owned\": {}}\n").unwrap();
         Ok(())
     })
     .unwrap_err();
@@ -392,7 +392,7 @@ fn applied(root: &Path) -> String {
 }
 
 fn receipt_status(root: &Path, id: &str) -> Value {
-    read_json(&state(&root, &format!("receipts/{id}/receipt.json")))["status"].clone()
+    read_json(&state(root, &format!("receipts/{id}/receipt.json")))["status"].clone()
 }
 
 /// #2893 audit B1: a revert never writes through a link — neither a linked `.claude/hooks`
