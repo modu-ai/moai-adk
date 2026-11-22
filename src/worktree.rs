@@ -660,6 +660,16 @@ pub fn apply(
     }
     let target_s = target.to_string_lossy().to_string();
     let base = p["base_sha"].as_str().unwrap_or_default().to_string();
+    // REQ-10, REQ-11: a worktree made in the project's own folder must not show in the main
+    // tree's status. The exclude line is written before the add; a failure is named in the
+    // answer and never stops the creation.
+    let place_exclude_error = if resolve_existing(&target)
+        .starts_with(resolve_existing(&project.join(".claude").join("worktrees")))
+    {
+        crate::home_workdir::ensure_place_ignored(project).err()
+    } else {
+        None
+    };
     git(
         project,
         &[
@@ -713,6 +723,9 @@ pub fn apply(
     });
     if let Some(err) = build_folder_error {
         out["build_folder_error"] = json!(err);
+    }
+    if let Some(err) = place_exclude_error {
+        out["place_exclude_error"] = json!(err);
     }
     Ok(out)
 }

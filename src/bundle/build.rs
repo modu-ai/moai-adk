@@ -305,6 +305,12 @@ pub fn build(
     let tip = tip_of(&git, tip)?;
     let wanted = resolve(&git, project, home, &tip, &args)?;
     let (n, branch, folder) = number(&git, dir, &date)?;
+    // REQ-10, REQ-11: the local exclude file lists the worktree folder before the add, so the
+    // main tree's status stays as it was; a failure is named in the answer, never a refusal.
+    let place_exclude_error = folder
+        .ancestors()
+        .nth(3)
+        .and_then(|project| home_workdir::ensure_place_ignored(project).err());
     create(dir, &branch, &folder, &tip.sha)?;
 
     let wt = Git { dir: &folder };
@@ -355,10 +361,14 @@ pub fn build(
             shell_word(&tip.name)
         )
     };
-    Ok(json!({
+    let mut answer = json!({
         "action": "build", "number": n, "branch": branch,
         "worktree": folder.to_string_lossy(), "tip": tip_json(&tip), "pinned": pinned,
         "merged": merged, "dropped": dropped, "skipped": skipped,
         "rebuild": rebuild, "ok": dropped.is_empty(), "writes": true,
-    }))
+    });
+    if let Some(err) = place_exclude_error {
+        answer["place_exclude_error"] = json!(err);
+    }
+    Ok(answer)
 }

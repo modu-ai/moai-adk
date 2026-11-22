@@ -252,13 +252,12 @@ fn worktree_plan_idempotent() {
     assert_eq!(r["branch"], "lane/7-06-C-e1");
     assert_eq!(r["writes"], false);
     assert_eq!(r["base_sha"], f.base);
-    // #2811 AC-2: the default is <HOME>/.moai/worktrees/<project>-<issue>-<logical_key>.
+    // The default is <project>/.claude/worktrees/<project>-<issue>-<logical_key>.
     assert_eq!(
         r["path"],
-        f.repo
-            .parent()
+        fs::canonicalize(&f.repo)
             .unwrap()
-            .join("home/.moai/worktrees/primary-7-06-C")
+            .join(".claude/worktrees/primary-7-06-C")
             .to_string_lossy()
             .as_ref()
     );
@@ -980,25 +979,28 @@ fn worktree_apply_conflict_names_claim_link() {
     assert!(env["result"].get("next").is_none(), "{env}");
 }
 
-/// AC-2: in a temporary HOME the created worktree is `<HOME>/.moai/worktrees/<project>-<id>`;
-/// planning created no folder (D5) and the add created the parents itself.
+/// The created worktree is `<project>/.claude/worktrees/<project>-<id>`; planning created no
+/// folder (D5), the add created the parents itself, the main tree's status stays clean, and
+/// nothing went to the home folder.
 #[test]
-fn a_new_worktree_goes_under_the_home_work_folder() {
+fn a_new_worktree_goes_under_the_project_place() {
     let f = fixture();
     let home = f.repo.parent().unwrap().join("home");
     let p = plan(&f, "lane");
-    assert!(!home.join(".moai").exists(), "planning creates nothing");
+    assert!(!f.repo.join(".claude").exists(), "planning creates nothing");
     let env = apply(&f, "lane", p["plan_digest"].as_str().unwrap());
     assert_eq!(env["result"]["decision"], "created", "{env}");
-    let wt = home.join(".moai/worktrees/primary-7-06-C");
+    assert!(env["result"].get("place_exclude_error").is_none(), "{env}");
+    let wt = f.repo.join(".claude/worktrees/primary-7-06-C");
     assert!(wt.join("README.md").is_file(), "{env}");
     assert_eq!(
         fs::canonicalize(git(&wt, &["rev-parse", "--show-toplevel"]).trim()).unwrap(),
         fs::canonicalize(&wt).unwrap()
     );
-    // Nothing went to the old place, and the Go folder name was never touched.
+    // Nothing went to an old place, and the main tree's status did not change.
     assert!(!f.repo.join(".moai-cli/worktrees").exists());
-    assert!(!home.join(".moai/worktrees/projects").exists());
+    assert!(!home.join(".moai/worktrees").exists());
+    assert_eq!(git(&f.repo, &["status", "--porcelain"]), "");
 }
 
 /// AC-2: the same name again is refused, never overwritten — a folder already at the path
@@ -1006,11 +1008,7 @@ fn a_new_worktree_goes_under_the_home_work_folder() {
 #[test]
 fn a_taken_worktree_name_is_refused() {
     let f = fixture();
-    let wt = f
-        .repo
-        .parent()
-        .unwrap()
-        .join("home/.moai/worktrees/primary-7-06-C");
+    let wt = f.repo.join(".claude/worktrees/primary-7-06-C");
     fs::create_dir_all(&wt).unwrap();
     fs::write(wt.join("keep.txt"), "user file\n").unwrap();
     let p = plan(&f, "lane");
@@ -1026,10 +1024,10 @@ fn a_taken_worktree_name_is_refused() {
     assert!(!git(&f.repo, &["for-each-ref", "refs/heads"]).contains("lane/"));
 }
 
-/// D1/D6: without a home the default path cannot be named, so the plan is refused; an
-/// explicit `--path` still works and reads no home.
+/// The project place needs no home: without one the default path is still named, and an
+/// explicit `--path` still works.
 #[test]
-fn without_a_home_only_an_explicit_path_plans() {
+fn without_a_home_the_project_place_still_plans() {
     let f = fixture();
     let p = project(&f);
     let bare = |extra: &[&str]| {
@@ -1046,8 +1044,14 @@ fn without_a_home_only_an_explicit_path_plans() {
             .unwrap()
     };
     let env = envelope(&bare(&[]));
-    assert_eq!(env["ok"], false, "{env}");
-    assert!(env.to_string().contains("home directory missing"), "{env}");
+    assert_eq!(env["ok"], true, "{env}");
+    assert!(
+        env["result"]["path"]
+            .as_str()
+            .unwrap()
+            .ends_with(".claude/worktrees/primary-7-06-C"),
+        "{env}"
+    );
     let env = envelope(&bare(&["--path", "/tmp/elsewhere-wt"]));
     assert_eq!(env["ok"], true, "{env}");
     assert_eq!(env["result"]["path"], "/tmp/elsewhere-wt");
