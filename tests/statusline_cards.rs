@@ -1034,15 +1034,16 @@ fn assert_line_three(stdin: &serde_json::Value, template: Option<&str>, want: &s
     assert_eq!(without_escapes(&colored), plain, "color changes no text");
 }
 
-/// Z0 of the subscriber whose five-hour window is over 70 percent.
+/// Z0 of the subscriber whose five-hour window is over 70 percent used. Every number is the share
+/// left (SPEC-20261122-statusline-limits-left): 74, 85 and 21 percent are used.
 const Z0_FIVE_HOUR: &str =
-    "🪫 CW 74% | 🪫 5H 85% (1h 10m) | 🔋 7D 21% (6d 21h) | 🤖 2.1.330 | 🗿 4.2647.16";
+    "🪫 CW 26% | 🪫 5H 15% (1h 10m) | 🔋 7D 79% (6d 21h) | 🤖 2.1.330 | 🗿 4.2647.16";
 /// Z0 of the subscriber whose five-hour window is hidden.
-const Z0_NO_FIVE_HOUR: &str = "🪫 CW 74% | 🔋 7D 21% (6d 21h) | 🤖 2.1.330 | 🗿 4.2647.16";
-/// Z0 of the API key user. The Layouts section writes `🪫 CW 41%`; the battery rule of the same
-/// SPEC (AC-2: `🔋` up to 70 percent, `🪫` from 71) gives `🔋` at 41, so the icon here follows the
-/// rule and the widths are the section's.
-const Z0_API_KEY: &str = "🔋 CW 41% | 💰 3.87 | 🤖 2.1.330 | 🗿 4.2647.16";
+const Z0_NO_FIVE_HOUR: &str = "🪫 CW 26% | 🔋 7D 79% (6d 21h) | 🤖 2.1.330 | 🗿 4.2647.16";
+/// Z0 of the API key user, 41 percent used. The Layouts section of SPEC-20261122-statusline-limits
+/// wrote `🪫` there; the battery rule of the same SPEC (AC-2: `🔋` up to 70 percent used, `🪫` from
+/// 71) gives `🔋` at 41, so the icon here follows the rule and the widths are the section's.
+const Z0_API_KEY: &str = "🔋 CW 59% | 💰 3.87 | 🤖 2.1.330 | 🗿 4.2647.16";
 
 /// REQ-1, REQ-4: a subscriber whose five-hour window is over 70 percent sees every window with
 /// its countdown, then the two versions, and no cost.
@@ -1083,8 +1084,8 @@ fn line_three_items_empty_context_window() {
 }
 
 /// REQ-2 and D-1: a null percentage falls back to the input tokens of `current_usage` over the
-/// window size, rescaled by nothing (60,000 of 200,000 is 30 percent, not the 35 the 85 percent
-/// budget gave); without `current_usage` it says `CW n/a`.
+/// window size, rescaled by nothing (60,000 of 200,000 is 30 percent used and 70 left, not the 35
+/// used the 85 percent budget gave); without `current_usage` it says `CW n/a`.
 #[test]
 fn line_three_items_null_percentage() {
     let mut stdin = api_key_user();
@@ -1101,18 +1102,18 @@ fn line_three_items_null_percentage() {
     assert_line_three(
         &stdin,
         None,
-        "🔋 CW 30% | 💰 3.87 | 🤖 2.1.330 | 🗿 4.2647.16",
+        "🔋 CW 70% | 💰 3.87 | 🤖 2.1.330 | 🗿 4.2647.16",
     );
     stdin["context_window"] =
         serde_json::json!({"used_percentage": null, "context_window_size": 200000});
     assert_line_three(&stdin, None, "CW n/a | 💰 3.87 | 🤖 2.1.330 | 🗿 4.2647.16");
 }
 
-/// REQ-2: `CW` is the host's percentage unchanged — 25, 85 and 100 stay 25, 85 and 100 (the 85
-/// percent rescale wrote 29, 100 and 100).
+/// REQ-2: `CW` is what is left of the host's percentage, rescaled by nothing — 25, 85 and 100
+/// used are 75, 15 and 0 left (the 85 percent rescale read 29, 100 and 100 used).
 #[test]
 fn line_three_items_context_window_as_the_host_gives_it() {
-    for (pct, want) in [(25, "🔋 CW 25%"), (85, "🪫 CW 85%"), (100, "🪫 CW 100%")] {
+    for (pct, want) in [(25, "🔋 CW 75%"), (85, "🪫 CW 15%"), (100, "🪫 CW 0%")] {
         let mut stdin = api_key_user();
         stdin["context_window"]["used_percentage"] = serde_json::json!(pct);
         let line = plain_three(&stdin, None);
@@ -1149,46 +1150,46 @@ const LADDERS: [(&str, &[(&str, usize)]); 4] = [
         &[
             (Z0_FIVE_HOUR, 79),
             (
-                "🪫 CW 74% | 🪫 5H 85% (1h 10m) | 🔋 7D 21% (6d 21h) | 🗿 4.2647.16",
+                "🪫 CW 26% | 🪫 5H 15% (1h 10m) | 🔋 7D 79% (6d 21h) | 🗿 4.2647.16",
                 66,
             ),
-            ("🪫 CW 74% | 🪫 5H 85% (1h 10m) | 🔋 7D 21% (6d 21h)", 51),
-            ("🪫 CW 74% | 🪫 5H 85% | 🔋 7D 21%", 33),
-            ("🪫 CW 74% | 🔋 7D 21%", 21),
+            ("🪫 CW 26% | 🪫 5H 15% (1h 10m) | 🔋 7D 79% (6d 21h)", 51),
+            ("🪫 CW 26% | 🪫 5H 15% | 🔋 7D 79%", 33),
+            ("🪫 CW 26% | 🔋 7D 79%", 21),
         ],
     ),
     (
         "subscriber, 5H hidden",
         &[
             (Z0_NO_FIVE_HOUR, 58),
-            ("🪫 CW 74% | 🔋 7D 21% (6d 21h) | 🗿 4.2647.16", 45),
-            ("🪫 CW 74% | 🔋 7D 21% (6d 21h)", 30),
-            ("🪫 CW 74% | 🔋 7D 21%", 21),
+            ("🪫 CW 26% | 🔋 7D 79% (6d 21h) | 🗿 4.2647.16", 45),
+            ("🪫 CW 26% | 🔋 7D 79% (6d 21h)", 30),
+            ("🪫 CW 26% | 🔋 7D 79%", 21),
         ],
     ),
     (
         "update pending",
         &[
             (
-                "🪫 CW 74% | 🪫 5H 85% (1h 10m) | 🔋 7D 21% (6d 21h) | 🤖 2.1.330 | 🗿 4.2647.15 -> 4.2647.16",
+                "🪫 CW 26% | 🪫 5H 15% (1h 10m) | 🔋 7D 79% (6d 21h) | 🤖 2.1.330 | 🗿 4.2647.15 -> 4.2647.16",
                 92,
             ),
             (
-                "🪫 CW 74% | 🪫 5H 85% (1h 10m) | 🔋 7D 21% (6d 21h) | 🗿 4.2647.15 -> 4.2647.16",
+                "🪫 CW 26% | 🪫 5H 15% (1h 10m) | 🔋 7D 79% (6d 21h) | 🗿 4.2647.15 -> 4.2647.16",
                 79,
             ),
-            ("🪫 CW 74% | 🪫 5H 85% (1h 10m) | 🔋 7D 21% (6d 21h)", 51),
-            ("🪫 CW 74% | 🪫 5H 85% | 🔋 7D 21%", 33),
-            ("🪫 CW 74% | 🔋 7D 21%", 21),
+            ("🪫 CW 26% | 🪫 5H 15% (1h 10m) | 🔋 7D 79% (6d 21h)", 51),
+            ("🪫 CW 26% | 🪫 5H 15% | 🔋 7D 79%", 33),
+            ("🪫 CW 26% | 🔋 7D 79%", 21),
         ],
     ),
     (
         "API key user",
         &[
             (Z0_API_KEY, 47),
-            ("🔋 CW 41% | 💰 3.87 | 🗿 4.2647.16", 34),
-            ("🔋 CW 41% | 💰 3.87", 19),
-            ("🔋 CW 41%", 9),
+            ("🔋 CW 59% | 💰 3.87 | 🗿 4.2647.16", 34),
+            ("🔋 CW 59% | 💰 3.87", 19),
+            ("🔋 CW 59%", 9),
         ],
     ),
 ];
@@ -1248,10 +1249,10 @@ fn line_three_ladder_without_a_usable_columns_and_below_the_narrowest() {
     }
     for columns in ["22", "10", "2", "1"] {
         let line = plain_three_at(&stdin, None, columns);
-        assert_eq!(line, "🪫 CW 74% | 🔋 7D 21%", "COLUMNS {columns}");
+        assert_eq!(line, "🪫 CW 26% | 🔋 7D 79%", "COLUMNS {columns}");
     }
     let line = plain_three_at(&api_key_user(), None, "3");
-    assert_eq!(line, "🔋 CW 41%");
+    assert_eq!(line, "🔋 CW 59%");
 }
 
 /// AC-9 (REQ-12): one render with `rate_limits`, the Orca hook variables and the Orca wrapper

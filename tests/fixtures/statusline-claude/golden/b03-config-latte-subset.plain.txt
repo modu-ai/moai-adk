@@ -1,2 +1,2 @@
 🧠 Opus | 📡 anthropics/claude-code, ⬇️  n/a 🔀 n/a | 🌳 feature-xyz
-🔋 CW 8% | 🤖 2.1.90 | 🗿 4.2647.0
+🔋 CW 92% | 🤖 2.1.90 | 🗿 4.2647.0

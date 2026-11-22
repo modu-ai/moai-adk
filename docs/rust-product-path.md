@@ -957,12 +957,14 @@ is left out together with its separator.
 3. Usage windows and card counts: the card counts of the project's local ledger first (item 2's
    `🗂️ … ▶️ … 🔃 … ✅ …`, they read the ledger and need no git), then the `CW`
    (the context window) and `7D` (the seven-day limit) windows as numbers only:
-   `🗂️ 50 ▶️ 2 🔃 3 ✅ 12 | 🔋 CW 9% | 🔋 7D 41% (resets in 4d 23h)`.
-   There is no graph and no colon; the battery icon is `🪫` above 70% and `🔋` otherwise; a
+   `🗂️ 50 ▶️ 2 🔃 3 ✅ 12 | 🔋 CW 91% | 🔋 7D 59% (resets in 4d 23h)`.
+   Each number is the share that is left, not the share used (9% used reads `CW 91%`;
+   SPEC-20261122-statusline-limits-left). There is no graph and no colon; the battery icon is
+   `🪫` when less than 30% is left and `🔋` otherwise; a
    percentage is shown from 0 to 100; and there is no `/clear` hint on any line (the user's final
    call of 2026-11-21, SPEC-20261121-statusline-detached). A window whose percentage is
    unavailable (the window is absent, its percentage is `null`, or its object is empty) says
-   `CW n/a` or `7D n/a` with no battery icon and never `0%`, and every value
+   `CW n/a` or `7D n/a` with no battery icon and never a guessed number, and every value
    that cannot be read says `n/a` (the screen is English only). `7D` ends with
    `(resets in <d>d <h>h)` at a day or more, `(resets in <h>h <m>m)` under a day and
    `(resets in <m>m)` under an hour, measured from the render's clock, when Claude Code gives a
@@ -981,13 +983,14 @@ is left out together with its separator.
    `b14-card-counts-waiting`):
 
        📡 anthropics/claude-code, ⬇️ 46 🔀 0 | 🅱️ main | 🔗 #1234 pending | 🌳 feature-xyz
-       🗂️ 50 ▶️ 2 🔃 3 ✅ 12 | 🔋 CW 9% | 🔋 7D 41% (resets in 4d 23h)
+       🗂️ 50 ▶️ 2 🔃 3 ✅ 12 | 🔋 CW 91% | 🔋 7D 59% (resets in 4d 23h)
 
    Tests: `tests/statusline_worktree_label.rs` (the host name, a released reservation
    is no holder, the main checkout, the `worktree` option, the line) and the golden cases
    `a02-doc-full` and `b14-card-counts-waiting`. With both windows off and no card counts the line is empty and
-   omitted like any empty line. The five-hour window is not shown — the user did not choose it (#2756,
-   6858992949) — and the `usage_5h` option is still accepted. A missing weekly window is
+   omitted like any empty line. The five-hour window stands between the two as `🪫 5H <left>%` with its
+   countdown only when the input carries it and less than 30% of it is left; the `usage_5h`
+   option turns it off. A missing weekly window is
    hidden. The existing usage calculation is retained. The
    renderer shortens nothing: Claude Code sets `COLUMNS` for the status line command,
    but the renderer does not read it. When a line is wider than the status bar, the

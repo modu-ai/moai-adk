@@ -16,9 +16,13 @@ const DISTANCE_NAME_CHARS: usize = 12;
 const LINE_ONE_STEPS: usize = 5;
 /// The forms of line 3, from the widest (Z0) to the narrowest (Z4).
 const LINE_THREE_STEPS: usize = 5;
-/// Above this percentage a window shows `🪫` instead of `🔋`, and only above it is the
-/// five-hour window shown (SPEC-20261122-statusline-limits D-2).
+/// The used percentage above which a window counts as nearly spent
+/// (SPEC-20261122-statusline-limits D-2).
 const HIGH_USE_PERCENT: i64 = 70;
+/// With less than this share left a window shows `🪫` instead of `🔋`, and only then is the
+/// five-hour window shown: the same state as a use above [`HIGH_USE_PERCENT`], read from what is
+/// left (SPEC-20261122-statusline-limits-left REQ-2, REQ-3).
+const LOW_LEFT_PERCENT: i64 = 100 - HIGH_USE_PERCENT;
 /// The cost is shown below this many US dollars (at most `999999.99`, nine characters); a larger
 /// value (`1e308` printed a 337-character line) is left out.
 const MAX_COST_USD: f64 = 1_000_000.0;
@@ -414,8 +418,9 @@ impl Renderer {
     /// narrowest forms write it). The context window and the seven-day window stay in every form.
     ///
     /// The windows are numbers only — `🔋 CW 61%`, no graph, no colon, no `/clear` hint
-    /// (SPEC-20261121-statusline-detached REQ-5, REQ-7); a window whose percentage is unknown says
-    /// `n/a` with no battery icon, never a guessed zero.
+    /// (SPEC-20261121-statusline-detached REQ-5, REQ-7) — and each number is the share left, not
+    /// the share used (SPEC-20261122-statusline-limits-left REQ-1); a window whose percentage is
+    /// unknown says `n/a` with no battery icon, never a guessed number.
     fn line_three_forms(&self, s: &Status) -> Vec<Vec<Group>> {
         let t = &self.theme;
         let piece = |color, text: String| Piece {
@@ -441,13 +446,14 @@ impl Renderer {
             Some(pct) => vec![piece("", battery("CW", whole_percent(pct)))],
             None => unknown("CW"),
         });
-        // REQ-4 and D-2: the five-hour window only strictly above the high-use percentage.
+        // REQ-4 and D-2: the five-hour window only with less than the low-left share left, which
+        // is strictly above the high-use percentage used.
         let five_hour = live(s.five_hour)
             .filter(|_| self.enabled("usage_5h"))
             .and_then(|w| {
-                let pct = whole_percent(w.used_percentage?);
-                (pct > HIGH_USE_PERCENT)
-                    .then(|| (vec![piece("", battery("5H", pct))], countdown(&w)))
+                let used = whole_percent(w.used_percentage?);
+                (left_percent(used) < LOW_LEFT_PERCENT)
+                    .then(|| (vec![piece("", battery("5H", used))], countdown(&w)))
             });
         let seven_day = live(s.seven_day)
             .filter(|_| self.enabled("usage_7d"))
@@ -631,21 +637,28 @@ impl Renderer {
     }
 }
 
-/// The whole percentage a window shows: the fraction cut off, from 0 to 100 (REQ-10 of
+/// The whole used percentage of a window: the fraction cut off, from 0 to 100 (REQ-10 of
 /// SPEC-20261121-statusline-detached).
 fn whole_percent(pct: f64) -> i64 {
     (pct as i64).clamp(0, 100)
 }
 
-/// `<battery> <label> <pct>%`: the battery icon turns from `🔋` to `🪫` above the high-use
-/// percentage.
-fn battery(label: &str, pct: i64) -> String {
-    let icon = if pct > HIGH_USE_PERCENT {
+/// The share of a window that is left, from its whole used percentage.
+fn left_percent(used: i64) -> i64 {
+    100 - used
+}
+
+/// `<battery> <label> <left>%` from the whole used percentage: the number is the share left, and
+/// the battery icon turns from `🔋` to `🪫` when less than [`LOW_LEFT_PERCENT`] is left
+/// (SPEC-20261122-statusline-limits-left REQ-1, REQ-2).
+fn battery(label: &str, used: i64) -> String {
+    let left = left_percent(used);
+    let icon = if left < LOW_LEFT_PERCENT {
         "🪫"
     } else {
         "🔋"
     };
-    width::icon_text(icon, &format!("{label} {pct}%"))
+    width::icon_text(icon, &format!("{label} {left}%"))
 }
 
 /// The reset countdown from the seconds left, without the words `resets in`
@@ -750,9 +763,10 @@ mod tests {
         }
     }
 
-    /// The line 3 of [`full_status`] (SPEC-20261122-statusline-limits): the five-hour window at
-    /// 25 percent is hidden, and the update arrow names the template, then the build.
-    const FULL_WINDOWS: &str = "🔋 CW 50% | 🪫 7D 75% | 🤖 2.1.293 | 🗿 2.0 -> 3.0";
+    /// The line 3 of [`full_status`] (SPEC-20261122-statusline-limits-left): the five-hour window
+    /// at 25 percent used is hidden, each number is the share left (50 and 75 percent used), and
+    /// the update arrow names the template, then the build.
+    const FULL_WINDOWS: &str = "🔋 CW 50% | 🪫 7D 25% | 🤖 2.1.293 | 🗿 2.0 -> 3.0";
 
     /// SPEC-20261122-statusline-where: line 1 is the model with its effort, the repository with
     /// its forge counts and the branch with its marks; line 3 is the last line and ends with the
@@ -872,7 +886,7 @@ mod tests {
             format!(
                 "🧠 Opus 5.5 high·t | 📡 modu-ai/moai-adk, ⬇️  0 🔀 0 | 🌳 c135 | 🅱️  v2026.11.0 ↑207 +11\n\
                  {P0}\n\
-                 🪫 CW 97% | 🔋 7D 21% (6d 21h) | 🤖 2.1.325 | 🗿 4.2647.10"
+                 🪫 CW 3% | 🔋 7D 79% (6d 21h) | 🤖 2.1.325 | 🗿 4.2647.10"
             )
         );
     }
@@ -957,8 +971,8 @@ mod tests {
 
     /// #2756 leader decision 6862179411 item 2: no `💾` file-change segment, even with its
     /// `git_status` option left enabled; the branch keeps its `+N` changes. The five-hour window
-    /// at 25 percent stays hidden: since SPEC-20261122-statusline-limits REQ-4 it shows only above
-    /// 70 percent (`window_tests`).
+    /// at 25 percent used stays hidden: since SPEC-20261122-statusline-limits REQ-4 it shows only
+    /// above 70 percent used, which is under 30 percent left (`window_tests`).
     #[test]
     fn the_five_hour_window_and_the_file_change_segment_are_never_shown() {
         let status = full_status();
@@ -989,12 +1003,12 @@ mod tests {
         assert_eq!(plain(&status, &[]), "CW n/a | 7D n/a");
         assert_eq!(plain(&status, &["context"]), "7D n/a");
         assert_eq!(plain(&status, &["usage_7d"]), "CW n/a");
-        // A window that reports a real zero keeps it, with its icon.
+        // A window that reports a real zero used is a known number, with its icon.
         status.seven_day = Some(RateWindow {
             used_percentage: Some(0.0),
             resets_at: None,
         });
-        assert_eq!(plain(&status, &["context"]), "🔋 7D 0%");
+        assert_eq!(plain(&status, &["context"]), "🔋 7D 100%");
     }
 
     /// REQ-9: a window whose percentage is unavailable says `n/a` with no battery icon and never
@@ -1021,7 +1035,8 @@ mod tests {
         );
     }
 
-    /// REQ-10: a window's percentage is shown from 0 to 100 and no further, at the edges too.
+    /// REQ-10: a window's percentage is shown from 0 to 100 and no further, at the edges too. The
+    /// number is the share left of the used percentage given.
     #[test]
     fn window_percentages_stay_between_zero_and_one_hundred() {
         let week = |pct: f64| {
@@ -1034,13 +1049,13 @@ mod tests {
             };
             plain(&status, &["context", "session"])
         };
-        assert_eq!(week(-5.0), "🔋 7D 0%");
-        assert_eq!(week(0.0), "🔋 7D 0%");
-        assert_eq!(week(1.0), "🔋 7D 1%");
-        assert_eq!(week(99.0), "🪫 7D 99%");
-        assert_eq!(week(100.0), "🪫 7D 100%");
-        assert_eq!(week(101.0), "🪫 7D 100%");
-        assert_eq!(week(1_000_000.0), "🪫 7D 100%");
+        assert_eq!(week(-5.0), "🔋 7D 100%");
+        assert_eq!(week(0.0), "🔋 7D 100%");
+        assert_eq!(week(1.0), "🔋 7D 99%");
+        assert_eq!(week(99.0), "🪫 7D 1%");
+        assert_eq!(week(100.0), "🪫 7D 0%");
+        assert_eq!(week(101.0), "🪫 7D 0%");
+        assert_eq!(week(1_000_000.0), "🪫 7D 0%");
         let ctx = |used: i64| {
             let status = Status {
                 context: Some(used as f64),
@@ -1048,10 +1063,10 @@ mod tests {
             };
             plain(&status, &["usage_7d"])
         };
-        assert_eq!(ctx(0), "🔋 CW 0%");
-        assert_eq!(ctx(100), "🪫 CW 100%");
-        assert_eq!(ctx(101), "🪫 CW 100%");
-        assert_eq!(ctx(5_000), "🪫 CW 100%");
+        assert_eq!(ctx(0), "🔋 CW 100%");
+        assert_eq!(ctx(100), "🪫 CW 0%");
+        assert_eq!(ctx(101), "🪫 CW 0%");
+        assert_eq!(ctx(5_000), "🪫 CW 0%");
     }
 
     /// REQ-11: the screen is English only — nothing a render prints holds a Hangul letter, with
@@ -1075,8 +1090,8 @@ mod tests {
         }
     }
 
-    /// #2559 AC-1: the window icon's thresholds pinned at N/N+1 — the battery icon turns at
-    /// 70/71. Plain output, so only the threshold decides.
+    /// #2559 AC-1: the window icon's thresholds pinned at N/N+1 — the battery icon turns between
+    /// 70 and 71 percent used (30 and 29 left). Plain output, so only the threshold decides.
     #[test]
     fn window_icon_thresholds_hold_at_their_boundaries() {
         let at = |pct: f64| {
@@ -1089,10 +1104,10 @@ mod tests {
             };
             plain(&status, &["context", "session"])
         };
-        assert_eq!(at(70.0), "🔋 7D 70%");
-        assert_eq!(at(71.0), "🪫 7D 71%");
-        assert_eq!(at(9.0), "🔋 7D 9%");
-        assert_eq!(at(10.0), "🔋 7D 10%");
+        assert_eq!(at(70.0), "🔋 7D 30%");
+        assert_eq!(at(71.0), "🪫 7D 29%");
+        assert_eq!(at(9.0), "🔋 7D 91%");
+        assert_eq!(at(10.0), "🔋 7D 90%");
     }
 
     /// SPEC-20261122-statusline-where REQ-8: line 1 has no tag. The `session` option is still
@@ -1406,7 +1421,7 @@ mod tests {
         );
         // The windows follow as numbers and the two versions close the line.
         assert!(lines[1].starts_with("🔋 CW 50%"), "{}", lines[1]);
-        assert!(lines[1].contains("75%"), "{}", lines[1]);
+        assert!(lines[1].contains("7D 25%"), "{}", lines[1]);
         assert!(lines[1].ends_with("🗿 2.0 -> 3.0"), "{}", lines[1]);
         assert_eq!(lines.len(), 2, "{out}");
         assert!(
@@ -1506,11 +1521,11 @@ mod tests {
         };
         let off = ["session"];
         // REQ-7: the `(⚠️ /clear)` and `(🛑/clear!)` hints are gone at every band — the window
-        // and the percentage stay exactly as they were.
-        assert_eq!(plain(&status, &off), "🪫 CW 90%");
-        assert_eq!(plain(&status, &[]), "🪫 CW 90%");
+        // and the percentage left stand alone.
+        assert_eq!(plain(&status, &off), "🪫 CW 10%");
+        assert_eq!(plain(&status, &[]), "🪫 CW 10%");
         status.context = Some(95.0);
-        assert_eq!(plain(&status, &off), "🪫 CW 95%");
+        assert_eq!(plain(&status, &off), "🪫 CW 5%");
         assert_eq!(plain(&status, &["context", "session"]), "MoAI");
         assert_eq!(plain(&status, &["context"]), "MoAI");
     }
@@ -2286,7 +2301,8 @@ mod line_three_support {
 /// AC-2 of SPEC-20261122-statusline-limits (REQ-3, REQ-4, D-2, D-4): the battery icon switches at
 /// 70/71, the reset countdown has three forms without `resets in`, a window whose reset has passed
 /// is left out, a week without a percentage says `7D n/a`, and the five-hour window is shown only
-/// strictly above 70 percent.
+/// strictly above 70 percent. Since SPEC-20261122-statusline-limits-left every number is the share
+/// left, so the percentages named here are 100 minus what the line writes.
 #[cfg(test)]
 mod window_tests {
     use super::line_three_support::{item, line, without_moai, NOW};
@@ -2313,11 +2329,109 @@ mod window_tests {
     const HOUR: i64 = 3_600;
     const MINUTE: i64 = 60;
 
-    /// A guard: the battery icon of a window turns at 70/71.
+    /// A guard: the battery icon of a window turns between 70 and 71 percent used.
     #[test]
     fn the_battery_icon_switches_at_70_and_71() {
-        assert_eq!(week(json!(70), None).as_deref(), Some("🔋 7D 70%"));
-        assert_eq!(week(json!(71), None).as_deref(), Some("🪫 7D 71%"));
+        assert_eq!(week(json!(70), None).as_deref(), Some("🔋 7D 30%"));
+        assert_eq!(week(json!(71), None).as_deref(), Some("🪫 7D 29%"));
+    }
+
+    /// AC-1 of SPEC-20261122-statusline-limits-left: each window shows the share left — 18 percent
+    /// used is `CW 82%`, 75 percent used of the five-hour window is `5H 25%`, 95 percent used of
+    /// the week is `7D 5%` — and a payload without a five-hour window has no `5H` item.
+    #[test]
+    fn the_row_shows_what_is_left_of_each_window() {
+        let row = |rate_limits: Value| {
+            without_moai(&line(&json!({
+                "context_window": {"used_percentage": 18},
+                "rate_limits": rate_limits,
+            })))
+        };
+        assert_eq!(
+            row(json!({
+                "five_hour": {"used_percentage": 75, "resets_at": NOW + HOUR + 10 * MINUTE},
+                "seven_day": {"used_percentage": 95, "resets_at": NOW + 4 * DAY + 2 * HOUR},
+            })),
+            "🔋 CW 82% | 🪫 5H 25% (1h 10m) | 🪫 7D 5% (4d 2h)"
+        );
+        let no_five = row(json!({
+            "seven_day": {"used_percentage": 95, "resets_at": NOW + 4 * DAY + 2 * HOUR},
+        }));
+        assert_eq!(no_five, "🔋 CW 82% | 🪫 7D 5% (4d 2h)");
+        assert_eq!(item(&no_five, "5H"), None);
+    }
+
+    /// AC-2 of SPEC-20261122-statusline-limits-left: an unknown window says `n/a` with no battery
+    /// icon, and the hide options `context`, `usage_5h` and `usage_7d` each take their item off
+    /// the line.
+    #[test]
+    fn unknown_windows_and_the_hide_list_stay_as_they_were() {
+        use crate::statusline::input::RateWindow;
+        use crate::statusline::render::Renderer;
+        use crate::statusline::state::{DisplayConfig, Status};
+        let render = |status: &Status, off: &[&str]| {
+            let config = DisplayConfig {
+                segments: off.iter().map(|k| ((*k).to_string(), false)).collect(),
+                ..Default::default()
+            };
+            Renderer::new(&config, None).render(status)
+        };
+        let unknown = Status {
+            seven_day: Some(RateWindow::default()),
+            ..Default::default()
+        };
+        assert_eq!(render(&unknown, &[]), "CW n/a | 7D n/a");
+        let window = |used: f64| {
+            Some(RateWindow {
+                used_percentage: Some(used),
+                resets_at: None,
+            })
+        };
+        let known = Status {
+            context: Some(18.0),
+            five_hour: window(75.0),
+            seven_day: window(95.0),
+            ..Default::default()
+        };
+        assert_eq!(render(&known, &[]), "🔋 CW 82% | 🪫 5H 25% | 🪫 7D 5%");
+        assert_eq!(render(&known, &["context"]), "🪫 5H 25% | 🪫 7D 5%");
+        assert_eq!(render(&known, &["usage_5h"]), "🔋 CW 82% | 🪫 7D 5%");
+        assert_eq!(render(&known, &["usage_7d"]), "🔋 CW 82% | 🪫 5H 25%");
+        assert_eq!(render(&known, &["context", "usage_5h", "usage_7d"]), "MoAI");
+    }
+
+    /// AC-3 of SPEC-20261122-statusline-limits-left: the icon turns at the low-left boundary —
+    /// exactly `LOW_LEFT_PERCENT` left (the high-use percentage used) is `🔋`, one percent less
+    /// left is `🪫` — and the five-hour window appears at that same step. The expected numbers
+    /// come from the constants the render reads.
+    #[test]
+    fn the_battery_icon_turns_at_the_low_left_boundary() {
+        use crate::statusline::render::{HIGH_USE_PERCENT, LOW_LEFT_PERCENT};
+        assert_eq!(LOW_LEFT_PERCENT, 100 - HIGH_USE_PERCENT);
+        let n = LOW_LEFT_PERCENT;
+        assert_eq!(
+            week(json!(HIGH_USE_PERCENT), None),
+            Some(format!("🔋 7D {n}%"))
+        );
+        assert_eq!(
+            week(json!(HIGH_USE_PERCENT + 1), None),
+            Some(format!("🪫 7D {}%", n - 1))
+        );
+        let five = |used: i64| {
+            item(
+                &windows(json!({"five_hour": {"used_percentage": used}})),
+                "5H",
+            )
+        };
+        assert_eq!(five(HIGH_USE_PERCENT), None);
+        assert_eq!(
+            five(HIGH_USE_PERCENT + 1),
+            Some(format!("🪫 5H {}%", n - 1))
+        );
+        let context =
+            |used: i64| without_moai(&line(&json!({"context_window": {"used_percentage": used}})));
+        assert_eq!(context(HIGH_USE_PERCENT), format!("🔋 CW {n}%"));
+        assert_eq!(context(HIGH_USE_PERCENT + 1), format!("🪫 CW {}%", n - 1));
     }
 
     /// D-4: `(6d 21h)`, `(2h 10m)`, `(35m)`, each unit changing at its edge, and never the words
@@ -2325,15 +2439,15 @@ mod window_tests {
     #[test]
     fn the_countdown_has_three_forms_without_resets_in() {
         for (left, want) in [
-            (6 * DAY + 21 * HOUR, "🔋 7D 21% (6d 21h)"),
-            (2 * HOUR + 10 * MINUTE, "🔋 7D 21% (2h 10m)"),
-            (35 * MINUTE, "🔋 7D 21% (35m)"),
-            (DAY, "🔋 7D 21% (1d 0h)"),
-            (DAY - 1, "🔋 7D 21% (23h 59m)"),
-            (HOUR, "🔋 7D 21% (1h 0m)"),
-            (HOUR - 1, "🔋 7D 21% (59m)"),
-            (MINUTE, "🔋 7D 21% (1m)"),
-            (1, "🔋 7D 21% (0m)"),
+            (6 * DAY + 21 * HOUR, "🔋 7D 79% (6d 21h)"),
+            (2 * HOUR + 10 * MINUTE, "🔋 7D 79% (2h 10m)"),
+            (35 * MINUTE, "🔋 7D 79% (35m)"),
+            (DAY, "🔋 7D 79% (1d 0h)"),
+            (DAY - 1, "🔋 7D 79% (23h 59m)"),
+            (HOUR, "🔋 7D 79% (1h 0m)"),
+            (HOUR - 1, "🔋 7D 79% (59m)"),
+            (MINUTE, "🔋 7D 79% (1m)"),
+            (1, "🔋 7D 79% (0m)"),
         ] {
             let got = week(json!(21), Some(NOW + left));
             assert_eq!(got.as_deref(), Some(want), "{left} seconds left");
@@ -2357,28 +2471,28 @@ mod window_tests {
         assert_eq!(week(json!(21), Some(NOW - 1)), None, "reset a second ago");
         assert_eq!(
             week(json!(21), Some(NOW + 1)).as_deref(),
-            Some("🔋 7D 21% (0m)")
+            Some("🔋 7D 79% (0m)")
         );
         assert_eq!(
             windows(json!({"seven_day": {"used_percentage": 21, "resets_at": NOW - DAY}})),
-            "🔋 CW 10%"
+            "🔋 CW 90%"
         );
         // Beyond 31 days the reset is no countdown: the week shows without one.
         let edge = NOW + crate::usage_limit::MAX_RESET_AHEAD_SECS;
         assert_eq!(
             week(json!(21), Some(edge)).as_deref(),
-            Some("🔋 7D 21% (31d 0h)")
+            Some("🔋 7D 79% (31d 0h)")
         );
         for at in [edge + 1, i64::MAX] {
             assert_eq!(
                 week(json!(21), Some(at)).as_deref(),
-                Some("🔋 7D 21%"),
+                Some("🔋 7D 79%"),
                 "{at}"
             );
         }
         assert_eq!(
             windows(json!({"five_hour": {"used_percentage": 90, "resets_at": NOW}})),
-            "🔋 CW 10%"
+            "🔋 CW 90%"
         );
     }
 
@@ -2399,10 +2513,10 @@ mod window_tests {
         assert_eq!(item(&windows(json!({})), "7D"), None, "an absent week");
     }
 
-    /// REQ-4 and D-2: the five-hour window shows strictly above 70 percent, with `🪫` and its
-    /// countdown, between the context window and the week; at 70 or below, without a percentage
-    /// or absent it is left out with its separator. A fraction is read by the whole percentage
-    /// the line writes, so 70.9 is 70 and stays hidden.
+    /// REQ-4 and D-2: the five-hour window shows strictly above 70 percent used (under 30 left),
+    /// with `🪫`, the share left and its countdown, between the context window and the week; at
+    /// 70 used or below, without a percentage or absent it is left out with its separator. A
+    /// fraction is read by the whole used percentage, so 70.9 is 70 and stays hidden.
     #[test]
     fn the_five_hour_window_shows_only_above_70() {
         let five = |pct: Value| {
@@ -2413,16 +2527,16 @@ mod window_tests {
                 "5H",
             )
         };
-        assert_eq!(five(json!(71)).as_deref(), Some("🪫 5H 71% (2h 10m)"));
-        assert_eq!(five(json!(100)).as_deref(), Some("🪫 5H 100% (2h 10m)"));
-        assert_eq!(five(json!(150)).as_deref(), Some("🪫 5H 100% (2h 10m)"));
+        assert_eq!(five(json!(71)).as_deref(), Some("🪫 5H 29% (2h 10m)"));
+        assert_eq!(five(json!(100)).as_deref(), Some("🪫 5H 0% (2h 10m)"));
+        assert_eq!(five(json!(150)).as_deref(), Some("🪫 5H 0% (2h 10m)"));
         assert_eq!(five(json!(70)), None);
         assert_eq!(five(json!(70.9)), None);
         assert_eq!(five(json!(23)), None);
         assert_eq!(five(json!(null)), None);
         assert_eq!(
             windows(json!({"five_hour": {"used_percentage": 70}})),
-            "🔋 CW 10%",
+            "🔋 CW 90%",
             "a hidden window leaves no separator"
         );
         assert_eq!(
@@ -2430,7 +2544,7 @@ mod window_tests {
                 "five_hour": {"used_percentage": 85, "resets_at": NOW + HOUR + 10 * MINUTE},
                 "seven_day": {"used_percentage": 21, "resets_at": NOW + 6 * DAY + 21 * HOUR},
             })),
-            "🔋 CW 10% | 🪫 5H 85% (1h 10m) | 🔋 7D 21% (6d 21h)"
+            "🔋 CW 90% | 🪫 5H 15% (1h 10m) | 🔋 7D 79% (6d 21h)"
         );
     }
 }
@@ -2459,10 +2573,10 @@ mod cost_tests {
 
     #[test]
     fn the_cost_shows_without_a_window() {
-        assert_eq!(with_cost(usd(json!(3.87)), None), "🔋 CW 10% | 💰 3.87");
+        assert_eq!(with_cost(usd(json!(3.87)), None), "🔋 CW 90% | 💰 3.87");
         assert_eq!(
             with_cost(usd(json!(3.87)), Some(json!({}))),
-            "🔋 CW 10% | 💰 3.87",
+            "🔋 CW 90% | 💰 3.87",
             "rate_limits without a window"
         );
     }
@@ -2473,7 +2587,7 @@ mod cost_tests {
         let spend = json!({"spend_limit": {"used_percentage": 62.8, "resets_at": NOW + 3_600, "period": "monthly"}});
         assert_eq!(
             with_cost(usd(json!(3.87)), Some(spend)),
-            "🔋 CW 10% | 💰 3.87"
+            "🔋 CW 90% | 💰 3.87"
         );
     }
 
@@ -2519,7 +2633,7 @@ mod cost_tests {
             usd(json!(null)),
             json!(5),
         ] {
-            assert_eq!(with_cost(cost.clone(), None), "🔋 CW 10%", "{cost}");
+            assert_eq!(with_cost(cost.clone(), None), "🔋 CW 90%", "{cost}");
         }
     }
 
@@ -2529,7 +2643,7 @@ mod cost_tests {
     #[test]
     fn a_negative_or_huge_cost_is_left_out() {
         for total in [json!(-0.001), json!(-3.5), json!(1_000_000.0), json!(1e308)] {
-            assert_eq!(with_cost(usd(total.clone()), None), "🔋 CW 10%", "{total}");
+            assert_eq!(with_cost(usd(total.clone()), None), "🔋 CW 90%", "{total}");
         }
         let out = with_cost(usd(json!(999_999.99)), None);
         assert_eq!(item(&out, "💰").as_deref(), Some("💰 999999.99"), "{out}");
@@ -2574,7 +2688,7 @@ mod version_tests {
     #[test]
     fn both_versions_close_the_line_without_a_v() {
         let out = line(&json!({"context_window": {"used_percentage": 10}, "version": "2.1.330"}));
-        assert_eq!(out, format!("🔋 CW 10% | 🤖 2.1.330 | 🗿 {BUILD}"));
+        assert_eq!(out, format!("🔋 CW 90% | 🤖 2.1.330 | 🗿 {BUILD}"));
     }
 
     /// The version comes from stdin; an escape, a newline, a direction mark or a zero-width
@@ -2584,17 +2698,17 @@ mod version_tests {
         let out = line(
             &json!({"context_window": {"used_percentage": 10}, "version": "2.1\u{1b}[31m.330\n"}),
         );
-        assert_eq!(out, format!("🔋 CW 10% | 🤖 2.1[31m.330 | 🗿 {BUILD}"));
+        assert_eq!(out, format!("🔋 CW 90% | 🤖 2.1[31m.330 | 🗿 {BUILD}"));
         let hidden = "\u{202E}2.1\u{200B}.3\u{2066}30\u{FEFF}\u{00AD}\u{061C}";
         let out = line(&json!({"context_window": {"used_percentage": 10}, "version": hidden}));
-        assert_eq!(out, format!("🔋 CW 10% | 🤖 2.1.330 | 🗿 {BUILD}"));
+        assert_eq!(out, format!("🔋 CW 90% | 🤖 2.1.330 | 🗿 {BUILD}"));
     }
 
     #[test]
     fn a_missing_claude_code_version_is_left_out() {
         for version in [json!(null), json!(""), json!(5)] {
             let out = line(&json!({"context_window": {"used_percentage": 10}, "version": version}));
-            assert_eq!(out, format!("🔋 CW 10% | 🗿 {BUILD}"), "{version}");
+            assert_eq!(out, format!("🔋 CW 90% | 🗿 {BUILD}"), "{version}");
         }
     }
 
@@ -2623,7 +2737,7 @@ mod version_tests {
             let out = line_in(&payload, home.path(), Some(&project));
             assert_eq!(
                 out,
-                format!("🔋 CW 10% | 🤖 2.1.330 | {want}"),
+                format!("🔋 CW 90% | 🤖 2.1.330 | {want}"),
                 "template {template}"
             );
         }
