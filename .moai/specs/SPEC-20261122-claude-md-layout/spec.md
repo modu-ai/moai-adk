@@ -81,6 +81,9 @@ moai 가 사용자 프로젝트에서 관리하는 지침 파일을 Claude Code 
   verify: `cargo test --locked --offline --test claude_md_layout_cli flow_`
 - AC-5 (REQ-8, REQ-10…REQ-12): one flow file is planned in the config folder on the user's pick, its text has no `paths` key and stays within its limits, a hand-edited file and a link are conflicts. The writer is the home layer of slice 3, so this criterion runs there and is not counted at slice 1.
   verify: `cargo test --locked --offline --test claude_md_home_cli flow_`
+- AC-6: for Plan 5 (revision 3), this repository tracks `CLAUDE.md` and neither `AGENTS.md` nor `AGENTS.local.md`, `CLAUDE.local.md` stays ignored and untracked, the shared rules of both originals are found in `CLAUDE.md` (only this machine's and this user's personal lines go to the ignored personal file), and every test that read the originals reads `CLAUDE.md`.
+  verify: `cargo test --locked --offline --test repo_claude_md`
+  verify: `cargo test --locked --offline --test recurring_problems_rule`
 - AC-4: neighbouring checks on the changed files.
   verify: `cargo fmt --check`
   verify: `cargo clippy --locked --offline --all-targets -- -D warnings`
