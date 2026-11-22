@@ -394,25 +394,6 @@ fn source_reviewed(root: &Path, source_url: &str) -> Result<Option<(String, Stri
 /// The hosts a generation writes for. A request or a manifest entry of a retired host is left out.
 pub const HOSTS: [&str; 1] = ["claude"];
 
-pub(crate) fn toml_string(s: &str) -> String {
-    let mut out = String::from("\"");
-    for c in s.chars() {
-        match c {
-            '"' => out.push_str("\\\""),
-            '\\' => out.push_str("\\\\"),
-            '\u{8}' => out.push_str("\\b"),
-            '\t' => out.push_str("\\t"),
-            '\n' => out.push_str("\\n"),
-            '\u{c}' => out.push_str("\\f"),
-            '\r' => out.push_str("\\r"),
-            c if (c as u32) < 0x20 => out.push_str(&format!("\\u{:04X}", c as u32)),
-            c => out.push(c),
-        }
-    }
-    out.push('"');
-    out
-}
-
 fn render_workflow_skill(workflow_id: &str, language: &str) -> String {
     if language == "ko" {
         format!("# {id} 워크플로\n\n이 프로젝트 전용 워크플로입니다. 절차와 판단 기준은 `references/workflow.md`에 정리합니다.\n",
