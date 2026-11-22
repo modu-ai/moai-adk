@@ -128,14 +128,30 @@ impl World {
         moai_cli::home_root::path(&self.base).join("home-routing")
     }
 
-    fn rules_state_files(&self) -> Vec<String> {
-        let mut names: Vec<String> = fs::read_dir(self.state_dir())
-            .map(|d| {
-                d.map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
-                    .filter(|n| n.starts_with("rules-"))
-                    .collect()
+    /// The names directly inside `dir` (a folder of this temporary home), sorted, from the
+    /// home snapshot; a missing folder has none.
+    fn children(&self, dir: &Path) -> Vec<String> {
+        let rel = dir.strip_prefix(&self.base).unwrap().to_str().unwrap();
+        let prefix = format!("{rel}/");
+        let mut names: Vec<String> = self
+            .home
+            .snapshot()
+            .into_iter()
+            .filter_map(|e| {
+                let rest = e.path.strip_prefix(&prefix)?.to_string();
+                (!rest.contains('/')).then_some(rest)
             })
-            .unwrap_or_default();
+            .collect();
+        names.sort();
+        names
+    }
+
+    fn rules_state_files(&self) -> Vec<String> {
+        let mut names: Vec<String> = self
+            .children(&self.state_dir())
+            .into_iter()
+            .filter(|n| n.starts_with("rules-"))
+            .collect();
         names.sort();
         names
     }
@@ -487,7 +503,7 @@ fn flow_conflict_a_linked_file_or_folder_is_kept_and_nothing_is_written_through_
             .any(|e| e.path.ends_with("flow.md") && !before.iter().any(|b| b.path == e.path));
         assert!(!flow_written, "{what}: the flow file is not written");
         assert_eq!(
-            fs::read_dir(&away).unwrap().count(),
+            w.children(&away).len(),
             usize::from(what == "file"),
             "{what}: nothing is written through the link"
         );
@@ -761,7 +777,7 @@ fn target_a_rules_link_into_the_default_folder_is_followed_and_any_other_is_refu
         "{plan}"
     );
     w.apply_out(plan["plan_digest"].as_str().unwrap(), &[]);
-    assert_eq!(fs::read_dir(&other).unwrap().count(), 0);
+    assert!(w.children(&other).is_empty());
 }
 
 // ---- removal_ ------------------------------------------------------------------------------
