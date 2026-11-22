@@ -19,10 +19,17 @@ pub const MAX_NAME_CHARS: usize = 64;
 pub struct Peer {
     /// The name other sessions message the peer by.
     pub name: String,
-    /// True when the peer binds an inbox the wake can reach.
-    pub inbox: bool,
+    /// The peer's inbox socket path, when it binds one the wake can reach.
+    pub socket: Option<String>,
     /// True when the peer's channel is on (the listing could see it at all).
     pub channel: bool,
+}
+
+impl Peer {
+    /// True when the peer binds an inbox the wake can reach.
+    pub fn inbox(&self) -> bool {
+        self.socket.as_deref().is_some_and(|s| !s.is_empty())
+    }
 }
 
 /// The transport: which peers are reachable and how one send answers. The real
@@ -160,16 +167,173 @@ impl Wake {
         if !peer.channel {
             return Ok(SendShape::Refused(Refusal::NoChannel));
         }
-        if !peer.inbox {
+        if !peer.inbox() {
             return Ok(SendShape::Refused(Refusal::NoInbox));
         }
         transport.send(peer, &self.text, self.notify_when_idle)
     }
 }
 
+/// The registry listing of the sessions this config root can see (measured
+/// 2026-11-22: one JSON per live session under `<config dir>/sessions/`, with
+/// `name` and `messagingSocketPath`). A session with a socket path binds an
+/// inbox; the listing itself is the channel.
+#[derive(Debug)]
+pub struct RegistryListing {
+    peers: Vec<Peer>,
+}
+
+impl RegistryListing {
+    /// Read the listing of one config root. A folder that cannot be read is an
+    /// error the wake reports as the no-channel refusal.
+    pub fn read(config_dir: &std::path::Path) -> Result<Self, String> {
+        let sessions = config_dir.join("sessions");
+        let entries = std::fs::read_dir(&sessions).map_err(|e| e.to_string())?;
+        let mut peers = Vec::new();
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.extension().is_none_or(|e| e != "json") {
+                continue;
+            }
+            let Ok(text) = std::fs::read_to_string(&path) else {
+                continue;
+            };
+            let Ok(value) = serde_json::from_str::<serde_json::Value>(&text) else {
+                continue;
+            };
+            let Some(name) = value["name"].as_str() else {
+                continue;
+            };
+            let socket = value["messagingSocketPath"].as_str().map(str::to_string);
+            peers.push(Peer {
+                name: name.to_string(),
+                socket: socket.filter(|s| !s.is_empty()),
+                channel: true,
+            });
+        }
+        peers.sort_by(|a, b| a.name.cmp(&b.name));
+        Ok(Self { peers })
+    }
+}
+
+impl PeerMessaging for RegistryListing {
+    fn list(&self) -> Result<Vec<Peer>, String> {
+        Ok(self.peers.clone())
+    }
+    fn send(&self, peer: &Peer, text: &str, _idle: bool) -> Result<SendShape, String> {
+        // The wire format the leader's research measured (2026-11-22): one
+        // line of JSON ending in a newline, one direction, close after; the
+        // minimum line a receiver accepts is a user message. moai sends
+        // exactly that line — no auth token (none is read), no from-mode
+        // (never faked). A bypass receiver holds the message unless the lane
+        // runs with the user's accept pick, and the status notice goes to a
+        // sender socket moai does not have, so the answer here is the queued
+        // shape: the line left this process for the addressee's inbox.
+        let socket = peer
+            .socket
+            .clone()
+            .ok_or_else(|| "the addressee binds no inbox".to_string())?;
+        let line = serde_json::json!({
+            "type": "user",
+            "message": {"role": "user", "content": text},
+        })
+        .to_string();
+        let mut stream = std::os::unix::net::UnixStream::connect(&socket)
+            .map_err(|e| format!("wake send could not reach {socket}: {e}"))?;
+        use std::io::Write as _;
+        stream
+            .write_all(format!("{line}\n").as_bytes())
+            .map_err(|e| format!("wake send failed: {e}"))?;
+        stream
+            .flush()
+            .map_err(|e| format!("wake send failed: {e}"))?;
+        drop(stream);
+        Ok(SendShape::Delivered)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The registry listing reads one JSON per live session (measured shape):
+    /// the name answers, a socket path binds an inbox, a session without one
+    /// does not, and an unreadable folder is the no-channel answer.
+    #[test]
+    fn the_registry_listing_reads_names_and_inboxes() {
+        let dir = tempfile::tempdir().unwrap();
+        let sessions = dir.path().join("sessions");
+        std::fs::create_dir_all(&sessions).unwrap();
+        std::fs::write(
+            sessions.join("1.json"),
+            r#"{"name":"leader","messagingSocketPath":"/tmp/cc-socks/1.sock"}"#,
+        )
+        .unwrap();
+        std::fs::write(sessions.join("2.json"), r#"{"name":"worker"}"#).unwrap();
+        std::fs::write(sessions.join("note.txt"), "not a session").unwrap();
+        let listing = RegistryListing::read(dir.path()).unwrap();
+        assert_eq!(
+            listing.list().unwrap(),
+            vec![
+                Peer {
+                    name: "leader".into(),
+                    socket: Some("/tmp/cc-socks/1.sock".into()),
+                    channel: true
+                },
+                Peer {
+                    name: "worker".into(),
+                    socket: None,
+                    channel: true
+                },
+            ]
+        );
+        let missing = RegistryListing::read(&dir.path().join("nope")).unwrap_err();
+        assert!(!missing.is_empty());
+    }
+
+    /// The wire write the leader's research measured: one line of JSON ending
+    /// in a newline, one direction, no auth line, no from-mode. The listener
+    /// here stands for the addressee's inbox exactly as a session binds one.
+    #[test]
+    fn the_send_writes_the_minimum_user_line_to_the_socket() {
+        let dir = tempfile::tempdir().unwrap();
+        let socket_path = dir.path().join("wake.sock");
+        let listener = std::os::unix::net::UnixListener::bind(&socket_path).unwrap();
+        let sessions = dir.path().join("sessions");
+        std::fs::create_dir_all(&sessions).unwrap();
+        std::fs::write(
+            sessions.join("1.json"),
+            format!(
+                r#"{{"name":"leader","messagingSocketPath":"{}"}}"#,
+                socket_path.display()
+            ),
+        )
+        .unwrap();
+        let listing = RegistryListing::read(dir.path()).unwrap();
+        let reader = std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            use std::io::Read as _;
+            let mut line = String::new();
+            stream.read_to_string(&mut line).unwrap();
+            line
+        });
+        let shape = wake("leader", "a verdict landed; read the card timeline").send_once(&listing);
+        assert_eq!(shape, Ok(SendShape::Delivered));
+        let line = reader.join().unwrap();
+        assert!(
+            line.ends_with('\n') && !line.ends_with("\n\n"),
+            "one newline: {line:?}"
+        );
+        let value: serde_json::Value = serde_json::from_str(line.trim()).unwrap();
+        assert_eq!(
+            value,
+            serde_json::json!({
+                "type": "user",
+                "message": {"role": "user", "content": "a verdict landed; read the card timeline"},
+            }),
+            "exactly the minimum user line, nothing else"
+        );
+    }
 
     /// A fake transport answering from a fixed listing and recording the one
     /// send it allows (REQ-3: no path here sends twice).
@@ -202,7 +366,7 @@ mod tests {
         let fake = Fake {
             peers: vec![Peer {
                 name: "leader".into(),
-                inbox: true,
+                socket: Some("/tmp/none.sock".into()),
                 channel: true,
             }],
             shape: SendShape::Delivered,
@@ -249,7 +413,7 @@ mod tests {
         let fake = Fake {
             peers: vec![Peer {
                 name: "worker".into(),
-                inbox: false,
+                socket: None,
                 channel: true,
             }],
             shape: SendShape::Delivered,
@@ -266,7 +430,7 @@ mod tests {
         let fake = Fake {
             peers: vec![Peer {
                 name: "leader".into(),
-                inbox: true,
+                socket: Some("/tmp/none.sock".into()),
                 channel: true,
             }],
             shape: SendShape::HeldWithNotice,
@@ -292,7 +456,7 @@ mod tests {
             let fake = Fake {
                 peers: vec![Peer {
                     name: "leader".into(),
-                    inbox: true,
+                    socket: Some("/tmp/none.sock".into()),
                     channel: true,
                 }],
                 shape: SendShape::Delivered,

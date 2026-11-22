@@ -102,6 +102,7 @@ pub const GROUPS: &[Group] = &[
             ("home-install-plan", false),
             ("home-install-apply", false),
             ("home-install-revert", false),
+            ("host-wake", false),
             ("worktree-move-plan", true),
             ("worktree-move-apply", true),
             ("update-plan", false),

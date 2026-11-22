@@ -2,7 +2,7 @@
 id: SPEC-20261122-session-messages
 title: "Session messages ride Claude Code cross-session messaging; Orca mail only for Orca bots and Orca workers; the ledger stays the record and a message only wakes"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-22
 parent: null
 ---
@@ -83,6 +83,8 @@ parent: null
 - A live sample of the GLM status line stdin was not taken: no read-only capture path exists (the configured status line renderer logs nothing). One operator-approved temporary capture can close this if the number itself is ever needed.
 
 ## Decisions
+
+| D-8 | The CLI wake sends the minimum user line the leader's research measured (`{"type":"user","message":{"role":"user","content":"…"}}` plus one newline, one direction, close after) with no auth token read and no from-mode faked; a bypass lane would hold such a message, so moai sets `crossSessionInbound` to accept by default in the user settings of every config folder it installs into (a default item of the install/update preview, with one line on what it allows and how to turn it off — the user decision replacing the earlier pick), and the held-or-delivered status notice goes to a sender socket the CLI does not have — its answer is the queued shape. The model-session path stays the native SendMessage tool. | The leader's decision and the measured format (2026-11-22, session-socket-format report); the settings write rides the check of the settings-write card. | Send only after official docs name a format; make accept a pick again. |
 
 | Id | Decision | Basis | Undo |
 | --- | --- | --- | --- |
