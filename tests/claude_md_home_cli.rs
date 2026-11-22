@@ -563,6 +563,22 @@ fn flow_text_holds_the_four_contents() {
     ] {
         assert!(text.contains(want), "the git rule lacks {want:?}");
     }
+    // The push after a landing is conditional on the remote copy.
+    let push: Vec<&str> = text
+        .lines()
+        .filter(|l| l.contains("fast-forward only"))
+        .collect();
+    assert_eq!(push.len(), 1, "{push:?}");
+    assert!(push[0].contains("remote copy on") && push[0].contains("off by default"));
+    // One behaviour line for background work at the end of a turn.
+    let board: Vec<&str> = text
+        .lines()
+        .filter(|l| l.contains("background work still running"))
+        .collect();
+    assert_eq!(board.len(), 1, "{board:?}");
+    for want in ["TaskCreate", "task list", "progress board"] {
+        assert!(board[0].contains(want), "{want}");
+    }
     // The Compact Instructions section and what it keeps.
     let (_, compact) = text.split_once("## Compact Instructions").expect("section");
     for want in [

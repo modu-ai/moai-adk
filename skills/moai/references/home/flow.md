@@ -5,8 +5,9 @@
 - A lane submits two things and nothing else: its head commit and the base its checks ran on. Add one `moai card note` whose first line is `LANE-READY-INTEGRATION <card> head=<40 hex>` and name the base in the lines below it.
 - A card lands exactly once, by the leader: `moai card land <card> --head <40 hex> --by leader`. It moves the integration branch by one compare-and-swap and closes the card; a rerun never moves it twice.
 - A protection hook refuses calls that move, copy, rename, delete or push the integration branch. Land with `moai card land`; never look for a way around the hook.
-- After a landing the lander pushes the integration branch to the remote, fast-forward only.
+- After a landing the lander pushes the integration branch to the remote, fast-forward only, and only when the user has turned the remote copy on; it is off by default.
 - Remote checks never block a landing; a failed remote run becomes a repair card.
+- When a turn ends with background work still running, keep the task list current if the TaskCreate tool is offered; otherwise end the turn with the progress board.
 
 ## Compact Instructions
 
