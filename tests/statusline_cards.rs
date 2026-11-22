@@ -1,8 +1,8 @@
 //! The flow line of the status line (SPEC-20261122-statusline-flow; it grew out of card C-65's
 //! card counts, user instructions 2026-11-16 and 2026-11-17): the cards of the project's local
-//! ledger by the stage of their progress, `👀 S3 A0 L0 | ⛔ B0 ⏸️  H5 | 🗂️  D20 R25 W0 E2 ✅ 12`,
+//! ledger by the stage of their progress, `🗂️ 25 → 📨 3 → ✅ 12 | 🙋 5`,
 //! on a line of its own between the first line and the usage windows. The first line says who
-//! and where (SPEC-20261122-statusline-where): `🧠 Opus | 📡 owner/repo, ⬇️  46 🔀 0 | 🅱️  …`.
+//! and where (SPEC-20261122-statusline-where): `🧠 Opus | 📡 owner/repo, ⬇️ 46 🔀 0 | 🅱️ …`.
 //!
 //! Every case runs the real binary through `TempHome` (a temporary HOME, nothing of the real
 //! environment but a PATH for git) against a ledger built in that HOME. The read is local and
@@ -187,14 +187,16 @@ impl Fixture {
 }
 
 /// The first line of the fixture; `+1`: the project's untracked state folder.
-const WITHOUT_CARDS: &str = "🧠 Opus | 📡 modu-ai/moai-adk, ⬇️  46 🔀 0 | 🅱️  main +1";
+const WITHOUT_CARDS: &str = "🧠 Opus | 📡 modu-ai/moai-adk, ⬇️ 46 🔀 0 | 🅱️ main +1";
 /// The flow line of the [`MIX`] ledger with the note of [`Fixture::with_mix`]: 3 submitted (2
 /// review, 1 by its note), 2 stale, 5 on hold, 20 draft, 25 ready, 12 done today, no card of
-/// mine (the session holds none).
-const FLOW_MIX: &str = "👀 S3 A0 L0 | ⛔ B0 ⏸️  H5 | 🗂️  D20 R25 W0 E2 ✅ 12";
-/// The flow line of the [`MIX`] cards alone: the 3 `active` cards are stale, the 2 `review`
-/// cards submitted.
-const FLOW_CARDS: &str = "👀 S2 A0 L0 | ⛔ B0 ⏸️  H5 | 🗂️  D20 R25 W0 E3 ✅ 12";
+/// mine (the session holds none). The drafts and the stale cards are not on the line, and the
+/// counts of zero (in progress, landing, blocked) are hidden
+/// (SPEC-20261122-statusline-limits-left REQ-6).
+const FLOW_MIX: &str = "🗂️ 25 → 📨 3 → ✅ 12 | 🙋 5";
+/// The flow line of the [`MIX`] cards alone: the 3 `active` cards are stale (not shown), the 2
+/// `review` cards submitted.
+const FLOW_CARDS: &str = "🗂️ 25 → 📨 2 → ✅ 12 | 🙋 5";
 
 #[test]
 fn the_flow_line_stands_between_the_first_line_and_the_usage_windows() {
@@ -243,7 +245,7 @@ fn the_flow_line_keeps_its_place_without_fresh_forge_counts() {
     // never a zero and never a hidden segment.
     assert_eq!(
         f.line1(),
-        "🧠 Opus | 📡 modu-ai/moai-adk, ⬇️  n/a 🔀 n/a | 🅱️  main +1",
+        "🧠 Opus | 📡 modu-ai/moai-adk, ⬇️ n/a 🔀 n/a | 🅱️ main +1",
         "without fresh forge counts the slots say unknown, with the comma kept"
     );
     assert_eq!(f.flow_line(), FLOW_MIX);
@@ -262,15 +264,14 @@ fn the_branch_shows_the_ahead_count_against_the_upstream() {
     common::git::git_in(&f.project, &["branch", "base", "HEAD~1"]);
     common::git::git_in(&f.project, &["branch", "--set-upstream-to=base"]);
     let line = f.line1();
-    assert!(line.contains("🅱️  main ↑1"), "the ahead count: {line}");
+    assert!(line.contains("🅱️ main ↑1"), "the ahead count: {line}");
     assert!(!line.contains('↓'), "behind 0 stays hidden: {line}");
     assert!(!line.contains("↑0"), "a zero ahead is never shown: {line}");
 }
 
 /// The forms of the flow line for the [`FLOW_MIX`] ledger, from the widest to the narrowest.
-/// The narrowest form that has anything to show is the waits group: with no blocked card the
-/// attention group is left out of the form without the hold count.
-const MIX_FORMS: [&str; 3] = [FLOW_MIX, "👀 S3 A0 L0 | ⛔ B0 ⏸️  H5", "👀 S3 A0 L0"];
+/// Each narrower form drops the leftmost item of the flow, `🗂️` first; `🙋` stays to the end.
+const MIX_FORMS: [&str; 4] = [FLOW_MIX, "📨 3 → ✅ 12 | 🙋 5", "✅ 12 | 🙋 5", "🙋 5"];
 
 /// SPEC-20261122-statusline-flow REQ-9 (it replaces the same-bytes-at-80-and-40 rule of
 /// SPEC-20261120-statusline-line2-order): each line takes the widest of its forms that fits
@@ -315,10 +316,10 @@ fn width_ladder_changes_the_flow_line_exactly_at_each_boundary() {
     assert_eq!(f.plain_at("120").lines().nth(1), Some(FLOW_MIX));
     assert_eq!(f.plain_at("80").lines().nth(1), Some(FLOW_MIX));
     // Below the narrowest form the narrowest is still written.
-    for columns in ["20", "5", "3", "2", "1"] {
+    for columns in ["5", "3", "2", "1"] {
         assert_eq!(
             f.plain_at(columns).lines().nth(1),
-            Some(MIX_FORMS[2]),
+            Some(MIX_FORMS[3]),
             "COLUMNS {columns}"
         );
     }
@@ -395,13 +396,13 @@ fn done_cards_are_counted_only_in_the_done_segment() {
     let f = fixture();
     f.register();
     f.add("done", 4);
-    assert_eq!(f.flow_line(), "🗂️  D0 R0 W0 E0 ✅ 4");
+    assert_eq!(f.flow_line(), "✅ 4");
     f.add("active", 1);
     f.add("hold", 2);
     assert_eq!(
         f.flow_line(),
-        "⛔ B0 ⏸️  H2 | 🗂️  D0 R0 W0 E1 ✅ 4",
-        "the active card has no reservation, so it is stale"
+        "✅ 4 | 🙋 2",
+        "the active card has no reservation, so it is stale and not on the line"
     );
 }
 
@@ -489,7 +490,7 @@ fn the_flow_follows_the_project_of_the_input_not_the_working_directory() {
     assert!(out.lines().any(|l| l == FLOW_MIX), "{out}");
 }
 
-/// With color the text is the same once the escapes are removed: each number keeps its letter.
+/// With color the text is the same once the escapes are removed: each number keeps its icon.
 #[test]
 fn the_colored_line_carries_the_same_text() {
     let f = fixture();
@@ -535,14 +536,14 @@ fn write_the_golden_ledger_fixture() {
 // Each case is a real repository in a temporary HOME and the real binary; `COLUMNS` is unset, so
 // the widest form is written. The strings are the ones of the Layouts section of the SPEC.
 
-/// The first line of the worktree session (form W0, 112 columns).
-const LINE_WORKTREE: &str = "🧠 Opus 5.5 high·t | 📡 modu-ai/moai-adk, ⬇️  7 🔀 3 | 🌳 statusline-flow ↑3 +2 | 🧭 next ↑3 ↓0 | 🔗 #12 pending";
-/// The first line of the main checkout on the integration branch (86 columns).
+/// The first line of the worktree session (form W0, 111 columns).
+const LINE_WORKTREE: &str = "🧠 Opus 5.5 high·t | 📡 modu-ai/moai-adk, ⬇️ 7 🔀 3 | 🌳 statusline-flow ↑3 +2 | 🧭 next ↑3 ↓0 | 🔗 #12 pending";
+/// The first line of the main checkout on the integration branch (84 columns).
 const LINE_MAIN: &str =
-    "🧠 Opus 5.5 high·t | 📡 modu-ai/moai-adk, ⬇️  7 🔀 3 | 🅱️  next ↑2 +1 | 🔗 #12 pending";
-/// The first line of a project without an integration branch (77 columns).
+    "🧠 Opus 5.5 high·t | 📡 modu-ai/moai-adk, ⬇️ 7 🔀 3 | 🅱️ next ↑2 +1 | 🔗 #12 pending";
+/// The first line of a project without an integration branch (76 columns).
 const LINE_GENERIC: &str =
-    "🧠 Sonnet 5.5 | 📡 acme/webapp | 🅱️  feature/login ↑2 ↓1 +4 | 🔗 #88 approved";
+    "🧠 Sonnet 5.5 | 📡 acme/webapp | 🅱️ feature/login ↑2 ↓1 +4 | 🔗 #88 approved";
 
 /// One session: a HOME, the folder it runs in and the JSON the host would write on stdin.
 struct Session {
@@ -790,7 +791,7 @@ fn line_one_items_generic_project() {
 fn line_one_items_merge_request() {
     let mut s = generic_session();
     s.stdin["pr"] = serde_json::json!({"number": 31, "review_state": "pending", "kind": "mr"});
-    let want = "🧠 Sonnet 5.5 | 📡 acme/webapp | 🅱️  feature/login ↑2 ↓1 +4 | 🔗 !31 pending";
+    let want = "🧠 Sonnet 5.5 | 📡 acme/webapp | 🅱️ feature/login ↑2 ↓1 +4 | 🔗 !31 pending";
     assert_eq!(s.first_line(&[]), want);
     assert_eq!(s.first_line_colored().1, want);
     for kind in [
@@ -806,7 +807,7 @@ fn line_one_items_merge_request() {
     s.stdin["pr"] = serde_json::Value::Null;
     assert_eq!(
         s.first_line(&[]),
-        "🧠 Sonnet 5.5 | 📡 acme/webapp | 🅱️  feature/login ↑2 ↓1 +4",
+        "🧠 Sonnet 5.5 | 📡 acme/webapp | 🅱️ feature/login ↑2 ↓1 +4",
         "no request: no item and no separator"
     );
 }
@@ -816,7 +817,7 @@ fn line_one_items_merge_request() {
 #[test]
 fn line_one_items_missing_model() {
     let mut s = generic_session();
-    let rest = "📡 acme/webapp | 🅱️  feature/login ↑2 ↓1 +4 | 🔗 #88 approved";
+    let rest = "📡 acme/webapp | 🅱️ feature/login ↑2 ↓1 +4 | 🔗 #88 approved";
     s.stdin["model"] = serde_json::Value::Null;
     assert_eq!(s.first_line(&[]), rest);
     s.stdin["model"] = serde_json::json!({});
@@ -855,9 +856,9 @@ fn line_one_items_empty_input_has_no_first_line() {
 fn line_one_items_follow_columns() {
     let s = worktree_session();
     for (columns, want) in [
-        ("114", LINE_WORKTREE),
+        ("113", LINE_WORKTREE),
         (
-            "113",
+            "112",
             "🧠 Opus 5.5 high·t | 📡 modu-ai/moai-adk | 🌳 statusline-flow ↑3 +2 | 🧭 next ↑3 ↓0 | 🔗 #12 pending",
         ),
         (

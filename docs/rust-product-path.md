@@ -910,8 +910,8 @@ is left out together with its separator.
    `📡 owner/repo, ⬇️ 46 🔀 0 | 🅱️ main | 🔗 #1234 pending`. The
    groups are joined by ` | `; inside a group the items are one space apart and have no
    slash, and every icon is followed by one space (user instruction 2026-11-19,
-   SPEC-20261120-statusline-line2-order; the two spaces of the user's example are the
-   terminal's drawing of the variation-selector icons, leader decision). The branch's `+N` is the only change
+   SPEC-20261120-statusline-line2-order; exactly one space also after the icons written with a
+   variation selector, `🅱️`, `⬇️` and `🗂️`, SPEC-20261122-statusline-limits-left). The branch's `+N` is the only change
    count: there is no
    `💾` file-change segment (leader decision 6862179411 on #2756; the `git_status`
    option is still accepted). The branch shows `↑N` (ahead of its upstream), then `↓N`
@@ -920,7 +920,7 @@ is left out together with its separator.
    branch first, so the ahead count is the one that shows them landing; the count comes from
    the `git status` header the renderer already reads). Forge counts that cannot be read say `⬇️ n/a 🔀 n/a`, never a zero, and a repository whose name the host did not
    give leaves the repository item out with its separator (SPEC-20261122-statusline-where);
-   a detached HEAD shows the short SHA in the branch slot (`🅱️  a1b2c3d`) and the
+   a detached HEAD shows the short SHA in the branch slot (`🅱️ a1b2c3d`) and the
    repository item stays.
    The `pr` option turns its segment off.
    `▶️` and `🔃` split the cards in `active` or `review`: a card in `review` is waiting, and
@@ -998,6 +998,22 @@ is left out together with its separator.
    but the renderer does not read it. When a line is wider than the status bar, the
    host documentation leaves open whether it is cut or wraps ("may get truncated or wrap
    awkwardly", https://code.claude.com/docs/en/statusline, read 2026-11-13).
+
+The flow line (SPEC-20261122-statusline-flow, with the one icon set of
+SPEC-20261122-statusline-limits-left) is the line between the first line and the limits, and
+it replaces the card counts described in items 2 and 3 above. Its widest form is
+`🎯 C-<n> <stage icon> | 🗂️ <ready> → 🟡 <working> → 📨 <submitted> → 🛬 <audited + landed, not
+closed> → ✅ <done today> | 🚧 <blocked> 🙋 <hold>`: the card the session holds with the icon
+of its stage, the flow, and what stands beside the flow. The icons are the ones of the
+progress board and the lane reports (`🗂️` added and waiting its turn, `🟡` in progress, `📨`
+handed over and waiting for a check, `🛬` check passed and waiting to land, `✅` done, `🚧`
+blocked, `🙋` needs the user's pick). There are no letter codes; an item whose count is zero is
+left out with its arrow; the drafts and the cards whose lease has ended are not on the line.
+A narrower form drops the leftmost item of the flow, `🗂️` first, and keeps the card of the
+session and `🚧 🙋` to the end. When the notes cannot be read within the render budget the
+line is `🗂️ <ready> 🟡 <active + review>` without an arrow, never a guess. Exactly one space
+follows every icon on all three lines. Tests: the `flow_line_tests` of
+`src/statusline/render.rs`, `tests/statusline_flow.rs` and `tests/statusline_cards.rs`.
 
 Directory, PR review state, agent name and active task segments are never rendered in
 the main layout, including when their old segment options are enabled. Remaining

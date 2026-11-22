@@ -171,42 +171,44 @@ pub struct GitHubCounts {
 }
 
 /// The stage of an open card in its progress (SPEC-20261122-statusline-flow REQ-1): the nine
-/// stages of the flow line, each with the letter the line writes for it.
+/// stages the ledger tells apart, each with the icon the flow line writes for a card of mine in
+/// it (SPEC-20261122-statusline-limits-left REQ-6).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Stage {
-    /// `D`: drafted, not yet ready.
+    /// Drafted, not yet ready.
     Draft,
-    /// `R`: ready to be taken.
+    /// Ready to be taken.
     Ready,
-    /// `W`: a lane holds it with a live lease and works on it.
+    /// A lane holds it with a live lease and works on it.
     Working,
-    /// `E`: it is worked on by nobody — the lease has ended or no reservation holds it.
+    /// It is worked on by nobody — the lease has ended or no reservation holds it.
     Stale,
-    /// `S`: pushed, waiting for an audit or the leader's integration (every `review` card).
+    /// Pushed, waiting for an audit or the leader's integration (every `review` card).
     Submitted,
-    /// `A`: an audit passed for the head and nobody landed it.
+    /// An audit passed for the head and nobody landed it.
     Audited,
-    /// `L`: landed on the integration branch and not yet closed.
+    /// Landed on the integration branch and not yet closed.
     Landed,
-    /// `B`: the lane asked for a decision.
+    /// The lane asked for a decision.
     Blocked,
-    /// `H`: on hold.
+    /// On hold.
     Hold,
 }
 
 impl Stage {
-    /// The letter the flow line writes (D-9 of the SPEC); English only.
-    pub fn letter(self) -> char {
+    /// The icon of the stage in the one icon set of the progress board, the status line and the
+    /// lane reports: `🗂️` added and waiting its turn (a draft too), `🟡` in progress (a card
+    /// whose lease has ended is still the card in hand), `📨` handed over and waiting for a
+    /// check, `🛬` check passed and waiting to land or to be closed, `🚧` blocked, `🙋` needs
+    /// the user's pick.
+    pub fn icon(self) -> &'static str {
         match self {
-            Stage::Draft => 'D',
-            Stage::Ready => 'R',
-            Stage::Working => 'W',
-            Stage::Stale => 'E',
-            Stage::Submitted => 'S',
-            Stage::Audited => 'A',
-            Stage::Landed => 'L',
-            Stage::Blocked => 'B',
-            Stage::Hold => 'H',
+            Stage::Draft | Stage::Ready => "🗂️",
+            Stage::Working | Stage::Stale => "🟡",
+            Stage::Submitted => "📨",
+            Stage::Audited | Stage::Landed => "🛬",
+            Stage::Blocked => "🚧",
+            Stage::Hold => "🙋",
         }
     }
 }
@@ -959,7 +961,7 @@ pub struct Distance {
 pub struct Where {
     /// `🌳 <worktree>`.
     pub worktree: Option<String>,
-    /// `🅱️  <branch>` or the short commit of a detached HEAD.
+    /// `🅱️ <branch>` or the short commit of a detached HEAD.
     pub branch: Option<String>,
     pub marks: Marks,
     pub distance: Option<Distance>,
@@ -2606,7 +2608,7 @@ mod extras_tests {
 /// AC-1 and AC-2 of SPEC-20261122-statusline-flow: the stage rule and the marker words, read
 /// from a fixture ledger. The older tests of the card-count era stay as the regression of what
 /// did not change: they read the flow through [`legacy`], the three numbers of that era
-/// (working = `W` + `E`, waiting = `S` + `A`, remaining = `D` + `R` + `H`).
+/// (working = working + stale, waiting = submitted + audited, remaining = draft + ready + hold).
 #[cfg(test)]
 mod stage_tests {
     use super::*;
@@ -3317,28 +3319,36 @@ mod stage_tests_edges {
 
     const NOW: i64 = 1_800_000_000;
 
-    /// D-9 of the SPEC: the nine letters of the legend, one per stage, English only and all
-    /// different (audit N2: a letter swapped between two stages survived every other test).
+    /// SPEC-20261122-statusline-limits-left REQ-6: every stage has its icon from the one icon
+    /// set — six icons for the nine stages, each one in the table of icons the lines print, and
+    /// none of the icons that left the set.
     #[test]
-    fn every_stage_has_its_letter_from_the_legend() {
+    fn every_stage_has_its_icon_from_the_one_icon_set() {
         let table = [
-            (Stage::Draft, 'D'),
-            (Stage::Ready, 'R'),
-            (Stage::Working, 'W'),
-            (Stage::Stale, 'E'),
-            (Stage::Submitted, 'S'),
-            (Stage::Audited, 'A'),
-            (Stage::Landed, 'L'),
-            (Stage::Blocked, 'B'),
-            (Stage::Hold, 'H'),
+            (Stage::Draft, "🗂️"),
+            (Stage::Ready, "🗂️"),
+            (Stage::Working, "🟡"),
+            (Stage::Stale, "🟡"),
+            (Stage::Submitted, "📨"),
+            (Stage::Audited, "🛬"),
+            (Stage::Landed, "🛬"),
+            (Stage::Blocked, "🚧"),
+            (Stage::Hold, "🙋"),
         ];
-        for (stage, letter) in table {
-            assert_eq!(stage.letter(), letter, "{stage:?}");
+        for (stage, icon) in table {
+            assert_eq!(stage.icon(), icon, "{stage:?}");
+            assert!(
+                crate::statusline::width::ICONS.contains(&icon),
+                "{icon} is not in the table"
+            );
         }
-        let mut letters: Vec<char> = table.iter().map(|(s, _)| s.letter()).collect();
-        letters.sort_unstable();
-        letters.dedup();
-        assert_eq!(letters.len(), 9, "two stages share a letter");
+        let mut icons: Vec<&str> = table.iter().map(|(s, _)| s.icon()).collect();
+        icons.sort_unstable();
+        icons.dedup();
+        assert_eq!(icons.len(), 6, "{icons:?}");
+        for gone in ["🔵", "🟢", "⬜", "👀", "⛔", "⏸️"] {
+            assert!(!icons.contains(&gone), "{gone} left the set");
+        }
     }
 
     #[test]

@@ -1,6 +1,6 @@
 //! SPEC-20261122-statusline-flow, the part of the flow line only the real binary can show: which
-//! card is mine (`🎯 c<n> <stage letter>`), what each line of the output is for, and the spacing
-//! after every icon.
+//! card is mine (`🎯 C-<n> <stage icon>`), what each line of the output is for, and the one
+//! space after every icon.
 //!
 //! Every case runs the real binary through `TempHome` against a ledger built in that HOME and a
 //! real linked worktree made with `git worktree add`. The read is local and read-only: the HOME
@@ -162,27 +162,15 @@ fn my_card_is_the_card_held_in_this_worktree() {
         lease: 3600,
     });
     let out = f.render(&wt, "this-session", Some("demo-1-work"));
-    assert_eq!(
-        line(&out, 1),
-        format!("🎯 c{card} W | 🗂️  D0 R0 W1 E0 ✅ 0"),
-        "{out}"
-    );
+    assert_eq!(line(&out, 1), format!("🎯 C-{card} 🟡 | 🟡 1"), "{out}");
     f.note(card, "LANE-READY-INTEGRATION C-1 head=abc");
     let out = f.render(&wt, "this-session", Some("demo-1-work"));
-    // The group of the open stages has nothing left to count, so it is left out.
-    assert_eq!(
-        line(&out, 1),
-        format!("🎯 c{card} S | 👀 S1 A0 L0"),
-        "{out}"
-    );
+    // The card moved on: it is counted as handed over and no longer as in progress.
+    assert_eq!(line(&out, 1), format!("🎯 C-{card} 📨 | 📨 1"), "{out}");
     f.note(card, "LANE-BLOCKED kind=decision which option");
     let out = f.render(&wt, "this-session", Some("demo-1-work"));
-    // The attention group shows both counts when either is not zero.
-    assert_eq!(
-        line(&out, 1),
-        format!("🎯 c{card} B | ⛔ B1 ⏸️  H0"),
-        "{out}"
-    );
+    // Blocked stands beside the flow; the zero of `🙋` is hidden.
+    assert_eq!(line(&out, 1), format!("🎯 C-{card} 🚧 | 🚧 1"), "{out}");
 }
 
 /// From the main checkout, with no worktree of mine, the newest live card the session holds is
@@ -208,16 +196,17 @@ fn my_card_falls_back_to_the_newest_live_card_of_the_session() {
     });
     let out = f.render(&f.project, "this-session", None);
     assert!(
-        line(&out, 1).starts_with(&format!("🎯 c{mine} W | ")),
+        line(&out, 1).starts_with(&format!("🎯 C-{mine} 🟡 | ")),
         "{out}"
     );
     let out = f.render(&f.project, "a-stranger", None);
     assert!(!line(&out, 1).contains('🎯'), "no card of mine: {out}");
 }
 
-/// A lease that is over makes the card stale (E), and it stays my card while its held
-/// reservation names this worktree (D-3): the line says my card needs attention. For a card of
-/// the session's holder in another folder, an ended lease means it is no longer mine.
+/// A lease that is over makes the card stale, and it stays my card while its held reservation
+/// names this worktree (D-3): it is still the card in hand (`🟡`), and it is not counted in the
+/// flow. For a card of the session's holder in another folder, an ended lease means it is no
+/// longer mine, and with nothing else to show there is no flow line.
 #[test]
 fn an_expired_lease_makes_my_card_stale_and_a_session_card_not_mine() {
     let f = fixture();
@@ -230,11 +219,12 @@ fn an_expired_lease_makes_my_card_stale_and_a_session_card_not_mine() {
         lease: -60,
     });
     let out = f.render(&wt, "this-session", Some("demo-1-work"));
-    assert_eq!(line(&out, 1), "🎯 c1 E | 🗂️  D0 R0 W0 E1 ✅ 0", "{out}");
+    assert_eq!(line(&out, 1), "🎯 C-1 🟡", "{out}");
     // From the main checkout the worktree does not match, and the session's own card has no
-    // live lease: nothing is mine.
+    // live lease: nothing is mine, and the ended lease is not on the line.
     let out = f.render(&f.project, "this-session", None);
-    assert_eq!(line(&out, 1), "🗂️  D0 R0 W0 E1 ✅ 0", "{out}");
+    assert_eq!(out.lines().count(), 2, "no flow line: {out}");
+    assert!(!out.contains('🎯') && !out.contains("🟡"), "{out}");
 }
 
 /// Each line has one role: line 1 the session and where it stands, line 2 the flow, the last
@@ -256,14 +246,17 @@ fn three_lines_have_their_roles() {
     assert!(lines[0].starts_with("🧠"), "{out}");
     assert!(lines[0].contains("🅱️") && lines[0].contains("🌳"), "{out}");
     assert!(
-        lines[1].starts_with("🎯") && lines[1].contains("🗂️"),
+        lines[1].starts_with("🎯") && lines[1].contains("🟡"),
         "{out}"
     );
     assert!(lines[2].contains("CW"), "{out}");
     for (n, role_icons) in [
-        (0, ["🎯", "👀", "⛔", "⏸️", "🗂️", "✅"].as_slice()),
+        (
+            0,
+            ["🎯", "🗂️", "🟡", "📨", "🛬", "✅", "🚧", "🙋"].as_slice(),
+        ),
         (1, ["🌳", "🅱️", "📡", "🧠"].as_slice()),
-        (2, ["🎯", "🗂️", "🌳", "🅱️"].as_slice()),
+        (2, ["🎯", "🗂️", "🟡", "🌳", "🅱️"].as_slice()),
     ] {
         for icon in role_icons {
             assert!(!lines[n].contains(icon), "line {n} carries {icon}: {out}");
@@ -271,8 +264,9 @@ fn three_lines_have_their_roles() {
     }
 }
 
-/// Every icon the flow line writes is followed by the spacing its width class asks for, in the
-/// real output: two spaces after an icon that is narrow by default, one after the others.
+/// Every icon the flow line writes is followed by exactly one space in the real output, `🗂️`
+/// (written with a variation selector) too, and the line holds none of the icons that left the
+/// set.
 #[test]
 fn icon_spacing_in_the_real_output() {
     let f = fixture();
@@ -306,17 +300,25 @@ fn icon_spacing_in_the_real_output() {
     }
     let out = f.render(&wt, "this-session", Some("demo-1-work"));
     let flow = line(&out, 1);
-    for icon in ["🎯", "⛔", "⏸️", "🗂️", "✅"] {
+    assert_eq!(
+        flow,
+        format!("🎯 C-{card} 🚧 | 🗂️ 1 → ✅ 1 | 🚧 1 🙋 1"),
+        "{out}"
+    );
+    for icon in ["🎯", "🚧", "🙋", "🗂️", "✅"] {
         assert!(flow.contains(icon), "{icon} missing in {flow}");
     }
-    for (icon, gap) in ICONS {
+    for icon in ICONS {
         for (at, _) in flow.match_indices(icon) {
             let after = &flow[at + icon.len()..];
-            assert!(after.starts_with(gap), "{icon}: `{after}` in {flow}");
+            assert!(after.starts_with(' '), "{icon}: `{after}` in {flow}");
             assert!(
-                !after[gap.len()..].starts_with(' '),
-                "{icon}: too many spaces in {flow}"
+                !after[1..].starts_with(' '),
+                "{icon}: more than one space in {flow}"
             );
         }
+    }
+    for gone in ["👀", "⛔", "⏸️", "🔵", "🟢", "⬜"] {
+        assert!(!out.contains(gone), "{gone} left the set: {out}");
     }
 }

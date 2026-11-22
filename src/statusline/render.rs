@@ -131,7 +131,7 @@ struct Piece {
     url: String,
 }
 
-/// Pieces joined by one space (`🗂️  D43 R150 W14 E22 ✅ 19` is two pieces).
+/// Pieces joined by one space (`🚧 3 🙋 7` is two pieces, `🗂️ 150 → 🟡 14` three).
 type Group = Vec<Piece>;
 
 /// The plain text of a form: its groups, each group's pieces joined by a space, the groups
@@ -527,11 +527,11 @@ impl Renderer {
     }
 
     /// The flow line (SPEC-20261122-statusline-flow REQ-7 and REQ-9): the cards of the project's
-    /// local ledger by the stage of their progress — my card, what waits for me, what is blocked
-    /// or on hold, the flow and what closed today — under the one `cards` option. It is written
-    /// in the widest of its forms that fits the width budget; empty when there is no ledger to
-    /// read or nothing to show. Each number has its letter and each icon its spacing
-    /// ([`width::icon_text`]), so color is never the only signal.
+    /// local ledger by the stage of their progress — my card, the flow from the cards waiting
+    /// their turn to the ones done today, and what is blocked or needs the user's pick — under
+    /// the one `cards` option. It is written in the widest of its forms that fits the width
+    /// budget; empty when there is no ledger to read or nothing to show. Each number has its
+    /// icon and one space after it ([`width::icon_text`]), so color is never the only signal.
     fn flow_line(&self, s: &Status) -> String {
         let Some(flow) = s.flow.filter(|_| self.enabled("cards")) else {
             return String::new();
@@ -569,11 +569,16 @@ impl Renderer {
             .join(SEPARATOR)
     }
 
-    /// The forms of the flow line from the widest to the narrowest, never an empty one: the
-    /// groups drop from the right — the flow group, then the hold count, then the waits — and a
-    /// group whose counts are all zero is left out with its separator. Equal neighbours are
-    /// kept once. An unsplit [`Flow`] (the notes could not be read) has one form,
-    /// `🗂️  D<n> R<n> W<n>`, never a guess.
+    /// The forms of the flow line from the widest to the narrowest, never an empty one
+    /// (SPEC-20261122-statusline-limits-left REQ-6 and REQ-7). The widest form is my card, the
+    /// flow and what stands beside it:
+    /// `🎯 C-<n> <stage icon> | 🗂️ <ready> → 🟡 <working> → 📨 <submitted> → 🛬 <audited + landed>
+    /// → ✅ <done today> | 🚧 <blocked> 🙋 <hold>`. There is no letter code, an item whose count
+    /// is zero is left out with its arrow or its separator, and the drafts and the cards whose
+    /// lease has ended are not on the line. Each narrower form drops the leftmost item still in
+    /// the flow — `🗂️` first, `✅` last — while my card and `🚧 🙋` stay in every form. An
+    /// unsplit [`Flow`] (the notes could not be read) has one form, `🗂️ <ready> 🟡 <working>`
+    /// without an arrow, never a guess.
     fn flow_forms(&self, f: &Flow) -> Vec<Vec<Group>> {
         let t = &self.theme;
         let piece = |color, icon, text: String| Piece {
@@ -581,48 +586,67 @@ impl Renderer {
             text: width::icon_text(icon, &text),
             url: String::new(),
         };
+        // An item of a count: left out when there is nothing to count.
+        let item =
+            |color, icon, count: i64| (count > 0).then(|| piece(color, icon, count.to_string()));
         if !f.split {
-            let text = format!("D{} R{} W{}", f.draft, f.ready, f.working);
-            return vec![vec![vec![piece(t.cards_waiting, "🗂️", text)]]];
+            let known: Group = [
+                item(t.cards_waiting, "🗂️", f.ready),
+                item(t.cards_active, "🟡", f.working),
+            ]
+            .into_iter()
+            .flatten()
+            .collect();
+            return if known.is_empty() {
+                Vec::new()
+            } else {
+                vec![vec![known]]
+            };
         }
         let mine: Option<Group> = f.mine.map(|m| {
             vec![piece(
                 t.cards_active,
                 "🎯",
-                format!("c{} {}", m.card, m.stage.letter()),
+                format!("C-{} {}", m.card, m.stage.icon()),
             )]
         });
-        let waits: Option<Group> = (f.submitted + f.audited + f.landed > 0).then(|| {
-            vec![piece(
-                t.cards_posted,
-                "👀",
-                format!("S{} A{} L{}", f.submitted, f.audited, f.landed),
-            )]
-        });
-        let blocked = || piece(t.issues, "⛔", format!("B{}", f.blocked));
-        let held = || piece(t.issues, "⏸️", format!("H{}", f.hold));
-        let attention: Option<Group> = (f.blocked + f.hold > 0).then(|| vec![blocked(), held()]);
-        let attention_no_hold: Option<Group> = (f.blocked > 0).then(|| vec![blocked()]);
-        let flow: Option<Group> = (f.draft + f.ready + f.working + f.stale + f.done_today > 0)
-            .then(|| {
-                vec![
-                    piece(
-                        t.cards_waiting,
-                        "🗂️",
-                        format!("D{} R{} W{} E{}", f.draft, f.ready, f.working, f.stale),
-                    ),
-                    piece(t.cards_done, "✅", f.done_today.to_string()),
-                ]
-            });
-        let levels: [[Option<Group>; 4]; 4] = [
-            [mine.clone(), waits.clone(), attention.clone(), flow],
-            [mine.clone(), waits.clone(), attention, None],
-            [mine.clone(), waits, attention_no_hold.clone(), None],
-            [mine, None, attention_no_hold, None],
-        ];
+        let chain: Vec<Piece> = [
+            item(t.cards_waiting, "🗂️", f.ready),
+            item(t.cards_active, "🟡", f.working),
+            item(t.cards_posted, "📨", f.submitted),
+            item(t.branch, "🛬", f.audited.saturating_add(f.landed)),
+            item(t.cards_done, "✅", f.done_today),
+        ]
+        .into_iter()
+        .flatten()
+        .collect();
+        let beside: Group = [
+            item(t.issues, "🚧", f.blocked),
+            item(t.issues, "🙋", f.hold),
+        ]
+        .into_iter()
+        .flatten()
+        .collect();
+        let arrow = || Piece {
+            color: t.muted,
+            text: "→".to_string(),
+            url: String::new(),
+        };
         let mut forms: Vec<Vec<Group>> = Vec::new();
-        for level in levels {
-            let form: Vec<Group> = level.into_iter().flatten().collect();
+        for dropped in 0..=chain.len() {
+            // The items left in the flow, an arrow between each two.
+            let mut flow: Group = Vec::new();
+            for item in &chain[dropped..] {
+                if !flow.is_empty() {
+                    flow.push(arrow());
+                }
+                flow.push(item.clone());
+            }
+            let form: Vec<Group> = [mine.clone(), Some(flow), Some(beside.clone())]
+                .into_iter()
+                .flatten()
+                .filter(|group| !group.is_empty())
+                .collect();
             if form.is_empty() {
                 continue;
             }
@@ -779,9 +803,7 @@ mod tests {
     fn full_layout_has_the_place_line_then_the_windows_with_ahead_before_behind() {
         assert_eq!(
             plain(&full_status(), &[]),
-            format!(
-                "🧠 Opus high·t | 📡 owner/repo, ⬇️  7 🔀 3 | 🅱️  main ↑5 ↓2 +3\n{FULL_WINDOWS}"
-            )
+            format!("🧠 Opus high·t | 📡 owner/repo, ⬇️ 7 🔀 3 | 🅱️ main ↑5 ↓2 +3\n{FULL_WINDOWS}")
         );
     }
 
@@ -796,7 +818,7 @@ mod tests {
         let line = plain(&status, &[]).lines().next().unwrap().to_string();
         assert_eq!(
             line,
-            "🧠 Opus high·t | 📡 owner/repo, ⬇️  7 🔀 3 | 🅱️  main ↓2 +3"
+            "🧠 Opus high·t | 📡 owner/repo, ⬇️ 7 🔀 3 | 🅱️ main ↓2 +3"
         );
         assert!(!line.contains('↑'), "{line}");
     }
@@ -811,7 +833,7 @@ mod tests {
         let line = plain(&status, &[]).lines().next().unwrap().to_string();
         assert_eq!(
             line,
-            "🧠 Opus high·t | 📡 owner/repo, ⬇️  7 🔀 3 | 🅱️  main ↑4 +2"
+            "🧠 Opus high·t | 📡 owner/repo, ⬇️ 7 🔀 3 | 🅱️ main ↑4 +2"
         );
     }
 
@@ -865,15 +887,22 @@ mod tests {
             hold: 7,
             done_today: 19,
             mine: Some(MyCard {
-                card: 12,
+                card: EXAMPLE_CARD,
                 stage: Stage::Working,
             }),
             split: true,
         }
     }
 
-    /// The widest form of the flow line of [`example_flow`].
-    const P0: &str = "🎯 c12 W | 👀 S11 A2 L0 | ⛔ B3 ⏸️  H7 | 🗂️  D43 R150 W14 E22 ✅ 19";
+    /// The card of mine in [`example_flow`].
+    const EXAMPLE_CARD: i64 = 12;
+
+    /// The widest form of the flow line of [`example_flow`]: my card with the icon of its stage,
+    /// the flow from the cards waiting their turn to the ones done today, then what stands
+    /// beside the flow. The drafts and the ended leases of the example are not on the line.
+    fn p0() -> String {
+        format!("🎯 C-{EXAMPLE_CARD} 🟡 | 🗂️ 150 → 🟡 14 → 📨 11 → 🛬 2 → ✅ 19 | 🚧 3 🙋 7")
+    }
 
     /// The render clock the example is measured at (`--now-unix` seam).
     const EXAMPLE_NOW: i64 = 1_700_000_000;
@@ -886,9 +915,10 @@ mod tests {
         assert_eq!(
             out,
             format!(
-                "🧠 Opus 5.5 high·t | 📡 modu-ai/moai-adk, ⬇️  0 🔀 0 | 🌳 c135 | 🅱️  v2026.11.0 ↑207 +11\n\
-                 {P0}\n\
-                 🪫 CW 3% | 🔋 7D 79% (6d 21h) | 🤖 2.1.325 | 🗿 4.2647.10"
+                "🧠 Opus 5.5 high·t | 📡 modu-ai/moai-adk, ⬇️ 0 🔀 0 | 🌳 c135 | 🅱️ v2026.11.0 ↑207 +11\n\
+                 {flow}\n\
+                 🪫 CW 3% | 🔋 7D 79% (6d 21h) | 🤖 2.1.325 | 🗿 4.2647.10",
+                flow = p0()
             )
         );
     }
@@ -905,7 +935,7 @@ mod tests {
         });
         let line = plain(&status, &[]).lines().next().unwrap().to_string();
         assert_eq!(
-            line, "🧠 Opus high·t | 📡 owner/repo, ⬇️  7 🔀 3 | 🅱️  a1b2c3d",
+            line, "🧠 Opus high·t | 📡 owner/repo, ⬇️ 7 🔀 3 | 🅱️ a1b2c3d",
             "{line}"
         );
         assert!(!line.contains("↑"), "a detached head has no ahead: {line}");
@@ -913,7 +943,7 @@ mod tests {
         status.git = Some(segments::GitStatus::default());
         let line = plain(&status, &[]).lines().next().unwrap().to_string();
         assert_eq!(
-            line, "🧠 Opus high·t | 📡 owner/repo, ⬇️  7 🔀 3",
+            line, "🧠 Opus high·t | 📡 owner/repo, ⬇️ 7 🔀 3",
             "no branch and no SHA leaves the branch item out"
         );
     }
@@ -927,16 +957,16 @@ mod tests {
         status.github.available = false;
         let line = plain(&status, &[]).lines().next().unwrap().to_string();
         assert_eq!(
-            line, "🧠 Opus high·t | 📡 owner/repo, ⬇️  n/a 🔀 n/a | 🅱️  main ↑5 ↓2 +3",
+            line, "🧠 Opus high·t | 📡 owner/repo, ⬇️ n/a 🔀 n/a | 🅱️ main ↑5 ↓2 +3",
             "{line}"
         );
         assert!(
-            !line.contains("⬇️  0"),
+            !line.contains("⬇️ 0"),
             "a failed lookup is never zero: {line}"
         );
         status.repo = None;
         let line = plain(&status, &[]).lines().next().unwrap().to_string();
-        assert_eq!(line, "🧠 Opus high·t | 🅱️  main ↑5 ↓2 +3", "{line}");
+        assert_eq!(line, "🧠 Opus high·t | 🅱️ main ↑5 ↓2 +3", "{line}");
         assert!(!line.contains("n/a") && !line.contains('📡'), "{line}");
     }
 
@@ -994,7 +1024,7 @@ mod tests {
         let out = Renderer::new(&config, None).render(&status);
         assert!(out.contains("🔋 5H 75%"), "{out}");
         assert!(!out.contains('💾'), "{out}");
-        assert!(out.contains("🅱️  main ↑5 ↓2 +3"), "{out}");
+        assert!(out.contains("🅱️ main ↑5 ↓2 +3"), "{out}");
     }
 
     #[test]
@@ -1139,27 +1169,27 @@ mod tests {
             ..Default::default()
         };
         let with_zero = plain(&status, &[]);
-        assert!(with_zero.contains("📡 owner/repo, ⬇️  0 🔀 0 | 🅱️  main ↑5 ↓2 +3"));
+        assert!(with_zero.contains("📡 owner/repo, ⬇️ 0 🔀 0 | 🅱️ main ↑5 ↓2 +3"));
         // #2559: icons, not the old letter labels.
         assert!(!with_zero.contains("I: ") && !with_zero.contains("PR: "));
         // A failed query says `n/a`, never a zero and never a hidden segment (REQ-3).
         status.github.available = false;
         let unknown = plain(&status, &[]);
         assert!(
-            unknown.contains("📡 owner/repo, ⬇️  n/a 🔀 n/a | 🅱️  main ↑5 ↓2 +3"),
+            unknown.contains("📡 owner/repo, ⬇️ n/a 🔀 n/a | 🅱️ main ↑5 ↓2 +3"),
             "{unknown}"
         );
-        assert!(!unknown.contains("⬇️  0"), "{unknown}");
+        assert!(!unknown.contains("⬇️ 0"), "{unknown}");
         // A user switch keeps the counts hidden.
         status.github.available = true;
         status.github.suppressed = true;
         let suppressed = plain(&status, &[]);
         assert!(
-            suppressed.contains("📡 owner/repo | 🅱️  main ↑5 ↓2 +3"),
+            suppressed.contains("📡 owner/repo | 🅱️ main ↑5 ↓2 +3"),
             "{suppressed}"
         );
         status.github.suppressed = false;
-        assert!(plain(&status, &["github"]).contains("📡 owner/repo | 🅱️  main ↑5 ↓2 +3"));
+        assert!(plain(&status, &["github"]).contains("📡 owner/repo | 🅱️ main ↑5 ↓2 +3"));
         assert!(!plain(&status, &["git_branch"]).contains("📡"));
         assert!(!plain(&status, &["git_status"]).contains("💾"));
         // The repository name unknown: the item and its counts are left out (REQ-1).
@@ -1191,21 +1221,25 @@ mod tests {
         let lines: Vec<&str> = with.lines().collect();
         assert_eq!(lines.len(), 3, "{with}");
         assert_eq!(Some(lines[0]), without.lines().next());
-        assert_eq!(lines[1], P0);
+        assert_eq!(lines[1], p0());
         assert_eq!(Some(lines[2]), without.lines().nth(1));
         // The `cards` option hides the flow line and nothing else.
         assert_eq!(plain(&status, &["cards"]), without);
         // The flow comes from the ledger, not from git.
         let flow_line =
             |s: &Status, off: &[&str]| plain(s, off).lines().nth(1).unwrap().to_string();
-        assert_eq!(flow_line(&status, &["github"]), P0);
+        assert_eq!(flow_line(&status, &["github"]), p0());
         status.github.suppressed = true;
-        assert_eq!(flow_line(&status, &[]), P0);
+        assert_eq!(flow_line(&status, &[]), p0());
         status.repo = None;
         status.git = None;
         let bare = plain(&status, &["git_branch"]);
         assert_eq!(bare.lines().next(), Some("🧠 Opus high·t"));
-        assert_eq!(bare.lines().nth(1), Some(P0), "line 1 keeps the model");
+        assert_eq!(
+            bare.lines().nth(1),
+            Some(p0().as_str()),
+            "line 1 keeps the model"
+        );
         // A ledger without a card has nothing to show: the line is left out, not zeros.
         status.flow = Some(Flow {
             split: true,
@@ -1234,7 +1268,7 @@ mod tests {
         let full = line(&status, &[]);
         assert_eq!(
             full,
-            "🧠 Opus high·t | 📡 owner/repo, ⬇️  7 🔀 3 | 🅱️  main ↑5 ↓2 +3 | 🔗 #42 pending"
+            "🧠 Opus high·t | 📡 owner/repo, ⬇️ 7 🔀 3 | 🅱️ main ↑5 ↓2 +3 | 🔗 #42 pending"
         );
         assert!(
             !full.replace("owner/repo", "").contains('/'),
@@ -1245,23 +1279,23 @@ mod tests {
         assert!(at("🔀") < at("🅱️") && at("🅱️") < at("🔗"));
         // The comma sits right after the repository name, inside the item: no separator
         // between the repository and the forge counts.
-        assert!(full.contains("owner/repo, ⬇️  7 🔀 3 | "), "{full}");
+        assert!(full.contains("owner/repo, ⬇️ 7 🔀 3 | "), "{full}");
         // The versions are on the windows line, not on line 1.
         assert!(!full.contains("🤖") && !full.contains("🗿"), "{full}");
         // The flow line is line 2 and the windows alone are line 3.
-        assert_eq!(plain(&status, &[]).lines().nth(1).unwrap(), P0);
+        assert_eq!(plain(&status, &[]).lines().nth(1).unwrap(), p0());
         assert_eq!(plain(&status, &[]).lines().nth(2).unwrap(), windows);
         // Without the forge counts the repository name stands alone, with no comma.
         assert_eq!(
             line(&status, &["github"]),
-            "🧠 Opus high·t | 📡 owner/repo | 🅱️  main ↑5 ↓2 +3 | 🔗 #42 pending"
+            "🧠 Opus high·t | 📡 owner/repo | 🅱️ main ↑5 ↓2 +3 | 🔗 #42 pending"
         );
         // The `cards` switch hides the flow line and nothing else.
         assert_eq!(plain(&status, &["cards"]).lines().nth(1).unwrap(), windows);
         // The pull request keeps the last place of line 1.
         assert_eq!(
             line(&status, &["pr"]),
-            "🧠 Opus high·t | 📡 owner/repo, ⬇️  7 🔀 3 | 🅱️  main ↑5 ↓2 +3"
+            "🧠 Opus high·t | 📡 owner/repo, ⬇️ 7 🔀 3 | 🅱️ main ↑5 ↓2 +3"
         );
     }
 
@@ -1279,7 +1313,7 @@ mod tests {
         // without marks.
         let off = plain(&status, &["git_branch"]);
         assert_eq!(off.lines().next().unwrap(), "🧠 Opus high·t | 🌳 wt");
-        assert_eq!(off.lines().nth(1).unwrap(), P0);
+        assert_eq!(off.lines().nth(1).unwrap(), p0());
         assert_eq!(off.lines().nth(2).unwrap(), windows);
         // The full render: an unnamed repository leaves its item out (REQ-1), the worktree and
         // the branch follow the model, the flow line comes next and the windows are last.
@@ -1287,23 +1321,22 @@ mod tests {
         assert_eq!(out.lines().count(), 3, "{out}");
         assert_eq!(
             out.lines().next().unwrap(),
-            "🧠 Opus high·t | 🌳 wt | 🅱️  main ↑5 ↓2 +3"
+            "🧠 Opus high·t | 🌳 wt | 🅱️ main ↑5 ↓2 +3"
         );
-        assert_eq!(out.lines().nth(1).unwrap(), P0);
+        assert_eq!(out.lines().nth(1).unwrap(), p0());
         // No git and no worktree: line 1 keeps the model, the flow line stays second.
         status.git = None;
         status.worktree.clear();
         let out = plain(&status, &[]);
         assert_eq!(out.lines().count(), 3, "{out}");
         assert_eq!(out.lines().next().unwrap(), "🧠 Opus high·t");
-        assert_eq!(out.lines().nth(1).unwrap(), P0);
+        assert_eq!(out.lines().nth(1).unwrap(), p0());
     }
 
-    /// Color is never the only signal. Every number keeps its letter and every icon its text,
-    /// the groups take colors of their own, and the text is the plain text once the escapes are
-    /// removed.
+    /// Color is never the only signal. Every number keeps its icon, neighbours in the flow take
+    /// colors of their own, and the text is the plain text once the escapes are removed.
     #[test]
-    fn the_flow_line_keeps_its_letters_under_every_color_profile() {
+    fn the_flow_line_keeps_its_icons_under_every_color_profile() {
         let mut status = full_status();
         status.flow = Some(example_flow());
         let text = plain(&status, &[]);
@@ -1312,22 +1345,27 @@ mod tests {
             for profile in [Profile::TrueColor, Profile::Ansi256] {
                 let out = colored(name, profile, &status);
                 assert_eq!(strip_sgr(&out), text, "{name} {profile:?}");
+                let mine = format!("🎯 C-{EXAMPLE_CARD} 🟡");
                 for (hex, part) in [
-                    (t.cards_active, "🎯 c12 W"),
-                    (t.cards_posted, "👀 S11 A2 L0"),
-                    (t.issues, "⛔ B3"),
-                    (t.issues, "⏸️  H7"),
-                    (t.cards_waiting, "🗂️  D43 R150 W14 E22"),
+                    (t.cards_active, mine.as_str()),
+                    (t.cards_waiting, "🗂️ 150"),
+                    (t.muted, "→"),
+                    (t.cards_active, "🟡 14"),
+                    (t.cards_posted, "📨 11"),
+                    (t.branch, "🛬 2"),
                     (t.cards_done, "✅ 19"),
+                    (t.issues, "🚧 3"),
+                    (t.issues, "🙋 7"),
                 ] {
                     assert!(out.contains(&profile.paint(hex, part)), "{name} {part}");
                 }
             }
+            // The items of the flow, in their order on the line.
             let colors = [
+                t.cards_waiting,
                 t.cards_active,
                 t.cards_posted,
-                t.issues,
-                t.cards_waiting,
+                t.branch,
                 t.cards_done,
             ];
             for pair in colors.windows(2) {
@@ -1384,7 +1422,7 @@ mod tests {
         status.worktree = "host-name".into();
         assert_eq!(
             line1(&status, &[]),
-            "🧠 Opus high·t | 📡 owner/repo, ⬇️  7 🔀 3 | 🌳 host-name | 🅱️  main ↑5 ↓2 +3"
+            "🧠 Opus high·t | 📡 owner/repo, ⬇️ 7 🔀 3 | 🌳 host-name | 🅱️ main ↑5 ↓2 +3"
         );
         assert!(!plain(&status, &[]).contains("WT-c"));
         assert_eq!(line1(&status, &["worktree"]), base);
@@ -1392,7 +1430,7 @@ mod tests {
         status.worktree = "main".into();
         assert_eq!(
             line1(&status, &[]),
-            "🧠 Opus high·t | 📡 owner/repo, ⬇️  7 🔀 3 | 🌳 main ↑5 ↓2 +3"
+            "🧠 Opus high·t | 📡 owner/repo, ⬇️ 7 🔀 3 | 🌳 main ↑5 ↓2 +3"
         );
         // The main checkout (no host name) has no worktree item.
         status.worktree.clear();
@@ -1417,7 +1455,7 @@ mod tests {
         let lines: Vec<_> = out.lines().collect();
         assert_eq!(
             lines[0],
-            "🧠 Opus high·t | 📡 owner/repo, ⬇️  7 🔀 3 | 🌳 wt | 🅱️  main ↑5 ↓2 +3 | 🔗 #42 pending",
+            "🧠 Opus high·t | 📡 owner/repo, ⬇️ 7 🔀 3 | 🌳 wt | 🅱️ main ↑5 ↓2 +3 | 🔗 #42 pending",
             "no cache segment: {}",
             lines[0]
         );
@@ -1447,7 +1485,7 @@ mod tests {
         status.worktree.clear();
         assert_eq!(
             plain(&status, &[]).lines().next(),
-            Some("🧠 Opus high·t | 📡 owner/repo, ⬇️  7 🔀 3 | 🅱️  main ↑5 ↓2 +3"),
+            Some("🧠 Opus high·t | 📡 owner/repo, ⬇️ 7 🔀 3 | 🅱️ main ↑5 ↓2 +3"),
             "no empty `| |`"
         );
     }
@@ -1583,9 +1621,9 @@ mod tests {
                     (t.version, "🤖 2.1.293"),
                     (t.version, "🗿 2.0 -> 3.0"),
                     (t.repo, "📡 owner/repo,"),
-                    (t.issues, "⬇️  7"),
+                    (t.issues, "⬇️ 7"),
                     (t.prs, "🔀 3"),
-                    (t.branch, "🅱️  main ↑5 ↓2 +3"),
+                    (t.branch, "🅱️ main ↑5 ↓2 +3"),
                 ] {
                     assert!(
                         out.contains(&profile.paint(hex, text)),
@@ -1623,12 +1661,17 @@ mod tests {
     }
 }
 
-/// AC-5, AC-7 (the flow line's share) and AC-8 (icon spacing) of SPEC-20261122-statusline-flow:
-/// the forms of the flow line, from the widest to the narrowest.
+/// The forms of the flow line, from the widest to the narrowest
+/// (SPEC-20261122-statusline-flow AC-5 and AC-7, with the one icon set of
+/// SPEC-20261122-statusline-limits-left REQ-6 and REQ-7): no letter codes, a zero count hidden,
+/// the items dropping from the left of the flow, and one space after every icon.
 #[cfg(test)]
 mod flow_line_tests {
     use super::*;
     use crate::statusline::state::{MyCard, Stage};
+
+    /// The number of my card in the fixtures.
+    const CARD: i64 = 12;
 
     fn full() -> Flow {
         Flow {
@@ -1638,12 +1681,12 @@ mod flow_line_tests {
             stale: 22,
             submitted: 11,
             audited: 2,
-            landed: 0,
+            landed: 1,
             blocked: 3,
             hold: 7,
             done_today: 19,
             mine: Some(MyCard {
-                card: 12,
+                card: CARD,
                 stage: Stage::Working,
             }),
             split: true,
@@ -1654,6 +1697,14 @@ mod flow_line_tests {
         Flow {
             mine: None,
             ..full()
+        }
+    }
+
+    /// A split flow with nothing in it.
+    fn empty() -> Flow {
+        Flow {
+            split: true,
+            ..Default::default()
         }
     }
 
@@ -1680,39 +1731,52 @@ mod flow_line_tests {
         only_flow(flow, budget, None)
     }
 
-    const P: [(&str, usize); 4] = [
-        (
-            "🎯 c12 W | 👀 S11 A2 L0 | ⛔ B3 ⏸️  H7 | 🗂️  D43 R150 W14 E22 ✅ 19",
-            67,
-        ),
-        ("🎯 c12 W | 👀 S11 A2 L0 | ⛔ B3 ⏸️  H7", 38),
-        ("🎯 c12 W | 👀 S11 A2 L0 | ⛔ B3", 31),
-        ("🎯 c12 W | ⛔ B3", 16),
-    ];
-    const Q: [(&str, usize); 4] = [
-        (
-            "👀 S11 A2 L0 | ⛔ B3 ⏸️  H7 | 🗂️  D43 R150 W14 E22 ✅ 19",
-            56,
-        ),
-        ("👀 S11 A2 L0 | ⛔ B3 ⏸️  H7", 27),
-        ("👀 S11 A2 L0 | ⛔ B3", 20),
-        ("⛔ B3", 5),
+    /// The forms of [`no_card`] with their widths: `🛬` counts the audited and the landed cards
+    /// together (2 + 1), the 43 drafts and the 22 ended leases are not on the line, and each
+    /// narrower form drops the leftmost item of the flow — `🗂️` first — while `🚧 🙋` stay.
+    const Q: [(&str, usize); 6] = [
+        ("🗂️ 150 → 🟡 14 → 📨 11 → 🛬 3 → ✅ 19 | 🚧 3 🙋 7", 49),
+        ("🟡 14 → 📨 11 → 🛬 3 → ✅ 19 | 🚧 3 🙋 7", 40),
+        ("📨 11 → 🛬 3 → ✅ 19 | 🚧 3 🙋 7", 32),
+        ("🛬 3 → ✅ 19 | 🚧 3 🙋 7", 24),
+        ("✅ 19 | 🚧 3 🙋 7", 17),
+        ("🚧 3 🙋 7", 9),
     ];
 
-    /// Every form is exactly the string of the Layouts section, with the width the section
-    /// gives, and changes at its boundary: a budget equal to the width keeps the form, one less
-    /// drops to the next.
+    /// My card as the line writes it: `🎯 C-<n> <stage icon>`.
+    fn mine(stage: Stage) -> String {
+        format!("🎯 C-{CARD} {}", stage.icon())
+    }
+
+    /// The forms of [`full`]: my card stands first in every form of [`Q`].
+    fn with_my_card() -> Vec<String> {
+        Q.iter()
+            .map(|(form, _)| format!("{} | {form}", mine(Stage::Working)))
+            .collect()
+    }
+
+    /// Every form is exactly its string, with its width, and changes at its boundary: a budget
+    /// equal to the width keeps the form, one less drops to the next.
     #[test]
-    fn every_form_is_exactly_the_string_of_the_layouts_section() {
-        for (flow, forms) in [(full(), P), (no_card(), Q)] {
-            for (i, (text, cols)) in forms.iter().enumerate() {
-                assert_eq!(width::display_width(text), *cols, "{text}");
-                assert_eq!(&plain(flow, Some(*cols)), text, "budget {cols}");
+    fn every_form_is_exactly_its_string_and_changes_at_its_boundary() {
+        for (form, cols) in Q {
+            assert_eq!(width::display_width(form), cols, "{form}");
+        }
+        let without: Vec<String> = Q.iter().map(|(form, _)| (*form).to_string()).collect();
+        assert_eq!(
+            with_my_card()[0],
+            format!("🎯 C-{CARD} 🟡 | 🗂️ 150 → 🟡 14 → 📨 11 → 🛬 3 → ✅ 19 | 🚧 3 🙋 7")
+        );
+        for (flow, forms) in [(full(), with_my_card()), (no_card(), without)] {
+            for (i, text) in forms.iter().enumerate() {
+                let cols = width::display_width(text);
+                assert_eq!(&plain(flow, Some(cols)), text, "budget {cols}");
                 if i == 0 {
-                    assert_eq!(&plain(flow, Some(*cols + 40)), text, "{cols} + 40");
+                    assert_eq!(&plain(flow, Some(cols + 40)), text, "{cols} + 40");
                 }
-                if let Some((next, _)) = forms.get(i + 1) {
-                    assert_eq!(&plain(flow, Some(*cols - 1)), next, "budget {}", cols - 1);
+                if let Some(next) = forms.get(i + 1) {
+                    assert!(width::display_width(next) < cols, "{next} is not narrower");
+                    assert_eq!(&plain(flow, Some(cols - 1)), next, "budget {}", cols - 1);
                 }
             }
         }
@@ -1720,104 +1784,161 @@ mod flow_line_tests {
 
     #[test]
     fn no_budget_writes_the_widest_form_and_a_budget_below_the_narrowest_the_narrowest() {
-        assert_eq!(plain(full(), None), P[0].0);
+        assert_eq!(plain(full(), None), with_my_card()[0]);
         assert_eq!(plain(no_card(), None), Q[0].0);
         for budget in [15, 5, 0] {
-            assert_eq!(plain(full(), Some(budget)), P[3].0, "{budget}");
+            assert_eq!(plain(full(), Some(budget)), with_my_card()[5], "{budget}");
         }
-        assert_eq!(plain(no_card(), Some(0)), Q[3].0);
+        assert_eq!(plain(no_card(), Some(0)), Q[5].0);
     }
 
-    /// A group whose counts are all zero is left out with its separator; a line with nothing
-    /// to show is left out whole.
+    /// A count of zero hides its item — with its arrow or its separator — and never prints `0`;
+    /// a line with nothing to show is left out whole.
     #[test]
-    fn groups_of_zero_counts_are_left_out_with_their_separator() {
-        let flow = Flow {
-            submitted: 0,
-            audited: 0,
-            landed: 0,
-            ..full()
-        };
+    fn a_zero_count_hides_its_item() {
+        let line = |flow: Flow| plain(flow, None);
         assert_eq!(
-            plain(flow, None),
-            "🎯 c12 W | ⛔ B3 ⏸️  H7 | 🗂️  D43 R150 W14 E22 ✅ 19"
+            line(Flow {
+                ready: 0,
+                ..no_card()
+            }),
+            "🟡 14 → 📨 11 → 🛬 3 → ✅ 19 | 🚧 3 🙋 7"
         );
-        let flow = Flow {
-            blocked: 0,
-            hold: 0,
-            ..full()
-        };
         assert_eq!(
-            plain(flow, None),
-            "🎯 c12 W | 👀 S11 A2 L0 | 🗂️  D43 R150 W14 E22 ✅ 19"
+            line(Flow {
+                submitted: 0,
+                ..no_card()
+            }),
+            "🗂️ 150 → 🟡 14 → 🛬 3 → ✅ 19 | 🚧 3 🙋 7"
         );
-        // Hold alone shows `B0` beside it, and drops with the hold count when narrow.
-        let hold_only = Flow {
-            blocked: 0,
-            ..full()
-        };
         assert_eq!(
-            plain(hold_only, Some(38)),
-            "🎯 c12 W | 👀 S11 A2 L0 | ⛔ B0 ⏸️  H7"
+            line(Flow {
+                working: 0,
+                done_today: 0,
+                ..no_card()
+            }),
+            "🗂️ 150 → 📨 11 → 🛬 3 | 🚧 3 🙋 7"
         );
-        assert_eq!(plain(hold_only, Some(37)), "🎯 c12 W | 👀 S11 A2 L0");
-        let flow_group = Flow {
-            draft: 0,
-            ready: 0,
-            working: 0,
-            stale: 0,
-            done_today: 0,
-            ..full()
-        };
+        // `🛬` is the audited and the landed cards together: either one shows it.
+        for (audited, landed, want) in [(0, 1, Some("🛬 1")), (2, 0, Some("🛬 2")), (0, 0, None)]
+        {
+            let out = line(Flow {
+                audited,
+                landed,
+                ..no_card()
+            });
+            match want {
+                Some(item) => assert!(out.contains(&format!("→ {item} →")), "{out}"),
+                None => assert_eq!(out, "🗂️ 150 → 🟡 14 → 📨 11 → ✅ 19 | 🚧 3 🙋 7"),
+            }
+        }
+        // Beside the flow: each of the two on its own, and no group without them.
+        let chain = "🗂️ 150 → 🟡 14 → 📨 11 → 🛬 3 → ✅ 19";
         assert_eq!(
-            plain(flow_group, None),
-            "🎯 c12 W | 👀 S11 A2 L0 | ⛔ B3 ⏸️  H7"
+            line(Flow {
+                blocked: 0,
+                ..no_card()
+            }),
+            format!("{chain} | 🙋 7")
         );
-        // Only my card, and only a stale one.
+        assert_eq!(
+            line(Flow {
+                hold: 0,
+                ..no_card()
+            }),
+            format!("{chain} | 🚧 3")
+        );
+        assert_eq!(
+            line(Flow {
+                blocked: 0,
+                hold: 0,
+                ..no_card()
+            }),
+            chain
+        );
+        // Nothing but cards waiting their turn: the one item.
+        assert_eq!(
+            line(Flow {
+                ready: 169,
+                ..empty()
+            }),
+            "🗂️ 169"
+        );
+        // No flow at all: my card and what stands beside the flow.
+        assert_eq!(
+            line(Flow {
+                ready: 0,
+                working: 0,
+                submitted: 0,
+                audited: 0,
+                landed: 0,
+                done_today: 0,
+                ..full()
+            }),
+            format!("{} | 🚧 3 🙋 7", mine(Stage::Working))
+        );
+        // Nothing at all: no flow line, so the renderer's own fallback is the whole output.
+        assert_eq!(line(empty()), "MoAI");
+        for out in [line(full()), line(no_card())] {
+            assert!(!out.contains(" 0"), "a zero is printed: {out}");
+        }
+    }
+
+    /// The drafts and the cards whose lease has ended are not on the line: a ledger that holds
+    /// nothing else has no flow line, and their numbers never reach another item.
+    #[test]
+    fn drafts_and_ended_leases_are_not_on_the_line() {
+        let only_those = Flow {
+            draft: 43,
+            stale: 22,
+            ..empty()
+        };
+        assert_eq!(plain(only_those, None), "MoAI");
+        let out = plain(full(), None);
+        for number in ["43", "22"] {
+            assert!(!out.contains(number), "{number} in {out}");
+        }
+        // Only my card, and its lease has ended: it is still the card in hand.
         let mine_only = Flow {
             mine: Some(MyCard {
-                card: 7,
+                card: CARD,
                 stage: Stage::Stale,
             }),
-            ..Flow {
-                split: true,
-                ..Default::default()
-            }
+            stale: 1,
+            ..empty()
         };
-        assert_eq!(plain(mine_only, None), "🎯 c7 E");
-        // Nothing at all: no flow line, so the renderer's own fallback is the whole output.
-        let nothing = Flow {
-            split: true,
-            ..Default::default()
-        };
-        assert_eq!(plain(nothing, None), "MoAI");
+        assert_eq!(plain(mine_only, None), format!("🎯 C-{CARD} 🟡"));
     }
 
-    /// My card shows the letter of its stage: `🎯 c<n> <letter>` for each of the nine stages
-    /// (audit N2), with no other group when the ledger holds nothing else.
+    /// My card is `🎯 C-<n> <stage icon>` with the icon of its stage from the one icon set, for
+    /// each of the nine stages, with no other group when the ledger holds nothing else.
     #[test]
-    fn my_card_shows_the_letter_of_each_stage() {
-        for (stage, letter) in [
-            (Stage::Draft, 'D'),
-            (Stage::Ready, 'R'),
-            (Stage::Working, 'W'),
-            (Stage::Stale, 'E'),
-            (Stage::Submitted, 'S'),
-            (Stage::Audited, 'A'),
-            (Stage::Landed, 'L'),
-            (Stage::Blocked, 'B'),
-            (Stage::Hold, 'H'),
+    fn my_card_shows_the_icon_of_each_stage() {
+        for (stage, icon) in [
+            (Stage::Draft, "🗂️"),
+            (Stage::Ready, "🗂️"),
+            (Stage::Working, "🟡"),
+            (Stage::Stale, "🟡"),
+            (Stage::Submitted, "📨"),
+            (Stage::Audited, "🛬"),
+            (Stage::Landed, "🛬"),
+            (Stage::Blocked, "🚧"),
+            (Stage::Hold, "🙋"),
         ] {
             let flow = Flow {
-                split: true,
-                mine: Some(MyCard { card: 3, stage }),
-                ..Default::default()
+                mine: Some(MyCard { card: CARD, stage }),
+                ..empty()
             };
-            assert_eq!(plain(flow, None), format!("🎯 c3 {letter}"), "{stage:?}");
+            assert_eq!(
+                plain(flow, None),
+                format!("🎯 C-{CARD} {icon}"),
+                "{stage:?}"
+            );
         }
     }
 
-    /// The unsplit flow (the notes could not be read) is one form of three numbers, never a
+    /// The unsplit flow (the notes could not be read) is one form of the two counts that are
+    /// known — the cards waiting their turn and the ones in progress, without an arrow — never a
     /// guess, at every width.
     #[test]
     fn the_unsplit_flow_has_one_form_and_never_a_guess() {
@@ -1830,16 +1951,26 @@ mod flow_line_tests {
             split: false,
             ..Default::default()
         };
-        for budget in [None, Some(200), Some(18), Some(0)] {
-            assert_eq!(plain(unsplit, budget), "🗂️  D43 R150 W15", "{budget:?}");
+        for budget in [None, Some(200), Some(13), Some(0)] {
+            assert_eq!(plain(unsplit, budget), "🗂️ 150 🟡 15", "{budget:?}");
         }
+        let no_ready = Flow {
+            ready: 0,
+            ..unsplit
+        };
+        assert_eq!(plain(no_ready, None), "🟡 15");
+        let neither = Flow {
+            working: 0,
+            ..no_ready
+        };
+        assert_eq!(plain(neither, None), "MoAI");
     }
 
     /// The colored line carries the same text once the escapes are removed, at every form.
     #[test]
     fn the_colored_line_has_the_plain_text_at_every_form() {
         for flow in [full(), no_card()] {
-            for budget in [None, Some(60), Some(30), Some(10)] {
+            for budget in [None, Some(45), Some(30), Some(10)] {
                 let text = plain(flow, budget);
                 for profile in [Profile::TrueColor, Profile::Ansi256] {
                     let out = only_flow(flow, budget, Some(profile));
@@ -1857,32 +1988,90 @@ mod flow_line_tests {
         }
     }
 
-    /// AC-8: every icon the line writes is followed by the spacing of its width class — two
-    /// spaces for an icon that is narrow by default and written with a variation selector, one
-    /// for the others — and a letter or a number follows the spacing.
+    /// Every form the line can print — each flow below at every budget from 0 to 70 columns and
+    /// without one — has exactly one space after every icon, then a number, the card, an arrow or
+    /// a separator; holds no icon outside the table and none that left the set; and carries no
+    /// letter code. Together the forms print each of the eight icons of the flow line.
     #[test]
-    fn every_icon_is_followed_by_the_spacing_of_its_width_class() {
-        let text = plain(full(), None);
-        let mut seen = 0;
-        for (icon, gap) in width::ICONS {
-            for (at, _) in text.match_indices(icon) {
-                seen += 1;
-                let after = &text[at + icon.len()..];
-                assert!(after.starts_with(gap), "{icon}: `{after}`");
-                assert!(
-                    !after[gap.len()..].starts_with(' '),
-                    "{icon}: more spaces than the class asks for: `{after}`"
-                );
-                assert!(
-                    after[gap.len()..]
-                        .chars()
-                        .next()
-                        .is_some_and(char::is_alphanumeric),
-                    "{icon} is followed by a letter or a number: `{after}`"
-                );
+    fn every_rendered_form_has_one_space_after_every_icon() {
+        let mut flows = vec![
+            full(),
+            no_card(),
+            Flow {
+                split: false,
+                ..no_card()
+            },
+            Flow {
+                ready: 169,
+                ..empty()
+            },
+        ];
+        for stage in [
+            Stage::Draft,
+            Stage::Ready,
+            Stage::Working,
+            Stage::Stale,
+            Stage::Submitted,
+            Stage::Audited,
+            Stage::Landed,
+            Stage::Blocked,
+            Stage::Hold,
+        ] {
+            flows.push(Flow {
+                mine: Some(MyCard { card: CARD, stage }),
+                ..full()
+            });
+        }
+        let mut printed: Vec<&str> = Vec::new();
+        let mut forms: Vec<String> = Vec::new();
+        for flow in flows {
+            for budget in std::iter::once(None).chain((0..=70).map(Some)) {
+                let text = plain(flow, budget);
+                if !forms.contains(&text) {
+                    forms.push(text);
+                }
             }
         }
-        assert_eq!(seen, 6, "🎯 👀 ⛔ ⏸️ 🗂️ ✅ each once in {text}");
+        assert!(forms.len() >= 20, "{} forms", forms.len());
+        for text in &forms {
+            for icon in width::ICONS {
+                for (at, _) in text.match_indices(icon) {
+                    if !printed.contains(&icon) {
+                        printed.push(icon);
+                    }
+                    let after = &text[at + icon.len()..];
+                    if after.is_empty() {
+                        continue;
+                    }
+                    let mut rest = after.chars();
+                    assert_eq!(rest.next(), Some(' '), "{icon} in `{text}`");
+                    let next = rest.next();
+                    assert!(
+                        next.is_some_and(|c| c.is_ascii_digit() || matches!(c, 'C' | '|' | '→')),
+                        "{icon} is followed by {next:?} in `{text}`"
+                    );
+                }
+            }
+            // Nothing but the icons of the table, the arrow and plain text.
+            let mut bare = text.clone();
+            for icon in width::ICONS {
+                bare = bare.replace(icon, "");
+            }
+            assert!(
+                bare.chars().all(|c| c.is_ascii() || c == '→'),
+                "an icon outside the table in `{text}`"
+            );
+            assert!(!text.contains("  "), "two spaces in `{text}`");
+            // No letter code: the only letter is the `C` of my card.
+            assert!(
+                bare.chars().all(|c| !c.is_ascii_alphabetic() || c == 'C'),
+                "a letter code in `{text}`"
+            );
+        }
+        printed.sort_unstable();
+        let mut flow_icons = vec!["🎯", "🗂️", "🟡", "📨", "🛬", "✅", "🚧", "🙋"];
+        flow_icons.sort_unstable();
+        assert_eq!(printed, flow_icons);
     }
 }
 
@@ -1894,11 +2083,12 @@ mod line_one_form_tests {
     use crate::statusline::segments::GitStatus;
     use crate::statusline::state::{GitHubCounts, PrInfo};
 
-    /// W0 to W4 of the Layouts section with the display width the section gives.
+    /// W0 to W4 of the Layouts section, with one space after every icon
+    /// (SPEC-20261122-statusline-limits-left REQ-5), and their display widths.
     const W: [(&str, usize); 5] = [
         (
-            "🧠 Opus 5.5 high·t | 📡 modu-ai/moai-adk, ⬇️  7 🔀 3 | 🌳 statusline-flow ↑3 +2 | 🧭 next ↑3 ↓0 | 🔗 #12 pending",
-            112,
+            "🧠 Opus 5.5 high·t | 📡 modu-ai/moai-adk, ⬇️ 7 🔀 3 | 🌳 statusline-flow ↑3 +2 | 🧭 next ↑3 ↓0 | 🔗 #12 pending",
+            111,
         ),
         (
             "🧠 Opus 5.5 high·t | 📡 modu-ai/moai-adk | 🌳 statusline-flow ↑3 +2 | 🧭 next ↑3 ↓0 | 🔗 #12 pending",
@@ -1915,15 +2105,15 @@ mod line_one_form_tests {
         ("🧠 Opus | 🌳 statusline-flow ↑3 +2", 34),
     ];
     const MAIN: (&str, usize) = (
-        "🧠 Opus 5.5 high·t | 📡 modu-ai/moai-adk, ⬇️  7 🔀 3 | 🅱️  next ↑2 +1 | 🔗 #12 pending",
-        86,
+        "🧠 Opus 5.5 high·t | 📡 modu-ai/moai-adk, ⬇️ 7 🔀 3 | 🅱️ next ↑2 +1 | 🔗 #12 pending",
+        84,
     );
     /// The next form of the main checkout: the counts go first (the drop order of the section).
     const MAIN_NO_COUNTS: &str =
-        "🧠 Opus 5.5 high·t | 📡 modu-ai/moai-adk | 🅱️  next ↑2 +1 | 🔗 #12 pending";
+        "🧠 Opus 5.5 high·t | 📡 modu-ai/moai-adk | 🅱️ next ↑2 +1 | 🔗 #12 pending";
     const GENERIC: (&str, usize) = (
-        "🧠 Sonnet 5.5 | 📡 acme/webapp | 🅱️  feature/login ↑2 ↓1 +4 | 🔗 #88 approved",
-        77,
+        "🧠 Sonnet 5.5 | 📡 acme/webapp | 🅱️ feature/login ↑2 ↓1 +4 | 🔗 #88 approved",
+        76,
     );
 
     fn pull_request(number: i64, state: &str, merge_request: bool) -> Option<PrInfo> {
@@ -2136,7 +2326,7 @@ mod line_one_form_tests {
         status.pr = pull_request(31, "pending", true);
         assert_eq!(
             plain(&status, None),
-            "🧠 Sonnet 5.5 | 📡 acme/webapp | 🅱️  feature/login ↑2 ↓1 +4 | 🔗 !31 pending"
+            "🧠 Sonnet 5.5 | 📡 acme/webapp | 🅱️ feature/login ↑2 ↓1 +4 | 🔗 !31 pending"
         );
         status.pr = pull_request(31, "", true);
         assert!(plain(&status, None).ends_with(" | 🔗 !31"), "no state");
@@ -2145,7 +2335,7 @@ mod line_one_form_tests {
         status.pr = None;
         assert_eq!(
             plain(&status, None),
-            "🧠 Sonnet 5.5 | 📡 acme/webapp | 🅱️  feature/login ↑2 ↓1 +4"
+            "🧠 Sonnet 5.5 | 📡 acme/webapp | 🅱️ feature/login ↑2 ↓1 +4"
         );
     }
 
@@ -2158,7 +2348,7 @@ mod line_one_form_tests {
         status.model = String::new();
         assert_eq!(
             plain(&status, None),
-            "📡 acme/webapp | 🅱️  feature/login ↑2 ↓1 +4 | 🔗 #88 approved"
+            "📡 acme/webapp | 🅱️ feature/login ↑2 ↓1 +4 | 🔗 #88 approved"
         );
         status.model = "Opus 4.1".into();
         status.effort = Some("high".into());
@@ -2188,7 +2378,7 @@ mod line_one_form_tests {
         });
         assert_eq!(
             plain(&status, None),
-            "🧠 Opus 5.5 high·t | 📡 modu-ai/moai-adk, ⬇️  7 🔀 3 | 🌳 statusline-flow ↑3 ↓1 +2 | 🔗 #12 pending",
+            "🧠 Opus 5.5 high·t | 📡 modu-ai/moai-adk, ⬇️ 7 🔀 3 | 🌳 statusline-flow ↑3 ↓1 +2 | 🔗 #12 pending",
             "no integration branch: the branch item keeps its own numbers"
         );
         assert_eq!(plain(&Status::default(), None), "MoAI");
@@ -2209,7 +2399,7 @@ mod line_one_form_tests {
         };
         assert_eq!(
             plain(&status, None),
-            "🧠 Sonnet 5.5 | 📡 acme/webapp | 🅱️  0123456 +3 | 🔗 #88 approved"
+            "🧠 Sonnet 5.5 | 📡 acme/webapp | 🅱️ 0123456 +3 | 🔗 #88 approved"
         );
     }
 
@@ -2232,21 +2422,21 @@ mod line_one_form_tests {
         assert!(!cut.contains('m'), "{cut}");
     }
 
-    /// REQ-10 and D-6: every icon of the first line is followed by the spacing of its width
-    /// class: two spaces for `⬇️` and `🅱️`, one for the rest.
+    /// REQ-10, and REQ-5 of SPEC-20261122-statusline-limits-left: every icon of the first line
+    /// is followed by exactly one space, `⬇️` and `🅱️` too.
     #[test]
-    fn every_icon_of_the_first_line_has_the_spacing_of_its_width_class() {
+    fn every_icon_of_the_first_line_is_followed_by_one_space() {
         for (status, expected) in [(worktree_session(), 7), (main_checkout(), 6)] {
             let text = plain(&status, None);
             let mut seen = 0;
-            for (icon, gap) in width::ICONS {
+            for icon in width::ICONS {
                 for (at, _) in text.match_indices(icon) {
                     seen += 1;
                     let after = &text[at + icon.len()..];
-                    assert!(after.starts_with(gap), "{icon}: `{after}`");
+                    assert!(after.starts_with(' '), "{icon}: `{after}`");
                     assert!(
-                        !after[gap.len()..].starts_with(' '),
-                        "{icon}: more spaces than the class asks for: `{after}`"
+                        !after[1..].starts_with(' '),
+                        "{icon}: more than one space: `{after}`"
                     );
                 }
             }
