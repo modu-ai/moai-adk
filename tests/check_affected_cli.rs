@@ -418,13 +418,16 @@ fn a_failed_step_does_not_stop_the_rest_and_the_summary_says_fail() {
     let slots = slot_dir();
     let slot = slots.path().to_string_lossy().to_string();
     let args = ["--slot-dir", slot.as_str()];
-    let (ok, r) = affected(&fx, &args, Some((&tools, "fmt")));
+    // A heavy step fails (the cheap steps all pass): the rest still run (REQ-4).
+    let (ok, r) = affected(&fx, &args, Some((&tools, "clippy")));
     assert!(ok, "{r}");
     let line = r["summary"].as_str().unwrap();
     assert!(line.starts_with("check-affected base="), "{line}");
-    assert!(line.contains(" fmt=3 "), "{line}");
+    assert!(line.contains(" clippy=3 "), "{line}");
     assert!(line.ends_with(" result=FAIL"), "{line}");
-    // The keys come in the order the steps run, then the result.
+    assert!(!line.contains("stopped_at"), "{line}");
+    // The keys come in the order the steps run, then the result. The binary is built by the
+    // test step, so no `build_cli` step is planned when a Rust target is selected (REQ-5).
     let keys: Vec<&str> = line
         .split(' ')
         .skip(1)
@@ -444,7 +447,6 @@ fn a_failed_step_does_not_stop_the_rest_and_the_summary_says_fail() {
             "test_lib",
             "test_bins",
             "test_targets",
-            "build_cli",
             "python",
             "result"
         ],
@@ -454,7 +456,6 @@ fn a_failed_step_does_not_stop_the_rest_and_the_summary_says_fail() {
     // The steps after the failed one still ran.
     let calls = tools.calls_text();
     for later in [
-        "clippy",
         "test --locked --offline --no-fail-fast --lib",
         "--bins",
         "--test update_command_cli",
@@ -480,6 +481,116 @@ fn a_failed_step_does_not_stop_the_rest_and_the_summary_says_fail() {
         "{line}"
     );
     assert_eq!(r["steps"].as_array().unwrap().len(), labels(&r).len());
+}
+
+/// The keys of a summary line, in order.
+fn keys(line: &str) -> Vec<&str> {
+    line.split(' ')
+        .skip(1)
+        .filter_map(|w| w.split_once('=').map(|(k, _)| k))
+        .collect()
+}
+
+/// SPEC-20261122-check-light-stop REQ-1 to REQ-3: a cheap step that fails stops the run before
+/// clippy, the build, the tests and the Python step; the other cheap steps still run; the
+/// summary names the first failed one right before the result and has no word for a step that
+/// did not run.
+#[test]
+fn a_failed_cheap_step_stops_before_the_heavy_steps() {
+    let fx = Fixture::new(
+        true,
+        &[
+            ("src/update_models.rs", "// b\n"),
+            ("src/ops/alpha.rs", "// b\n"),
+        ],
+    );
+    let tools = Tools::new(&["cargo", "python3", "rustfmt"]);
+    let slots = slot_dir();
+    let slot = slots.path().to_string_lossy().to_string();
+    let (ok, r) = affected(&fx, &["--slot-dir", slot.as_str()], Some((&tools, "fmt")));
+    assert!(ok, "{r}");
+    let line = r["summary"].as_str().unwrap();
+    assert!(line.contains(" fmt=3 "), "{line}");
+    assert!(line.ends_with(" stopped_at=fmt result=FAIL"), "{line}");
+    assert_eq!(
+        keys(line),
+        [
+            "base",
+            "head",
+            "targets",
+            "py",
+            "scans",
+            "diff_check",
+            "fmt",
+            "ops_rustfmt",
+            "stopped_at",
+            "result"
+        ],
+        "{line}"
+    );
+    assert_eq!(r["result"], "FAIL");
+    // The other cheap steps ran; nothing heavy and no Python did.
+    let calls = tools.calls_text();
+    assert!(calls.contains("rustfmt --edition 2021 --check"), "{calls}");
+    for never in ["clippy", "--lib", "--bins", "--test ", "python3"] {
+        assert!(!calls.contains(never), "{never} ran: {calls}");
+    }
+    for line in calls.lines().filter(|l| l.starts_with("cargo ")) {
+        assert!(
+            line.starts_with("cargo fmt ") || line.starts_with("cargo env "),
+            "a heavy cargo step ran: {line}"
+        );
+    }
+    let ran: Vec<String> = r["steps"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|s| s["label"].as_str().unwrap().to_string())
+        .collect();
+    assert_eq!(ran, ["diff_check", "fmt", "ops_rustfmt"], "{r}");
+}
+
+/// REQ-1 with the three kinds of cheap step: a real trailing-space `git diff --check` failure,
+/// an operation-file format check whose program cannot start (127) and a real `bash -n` failure.
+#[test]
+fn every_kind_of_cheap_failure_stops_the_run() {
+    let slots = slot_dir();
+    let slot = slots.path().to_string_lossy().to_string();
+    let cases: [(&[(&str, &str)], &str, &[&str]); 3] = [
+        (
+            &[("src/update_models.rs", "// trailing \n")],
+            "diff_check",
+            &["cargo", "python3", "rustfmt"],
+        ),
+        (
+            &[("src/ops/alpha.rs", "// b\n")],
+            "ops_rustfmt",
+            // No fake `rustfmt` on the path: the step cannot start.
+            &["cargo", "python3"],
+        ),
+        (
+            &[("tools/a.sh", "if true; then\n")],
+            "bash_n:tools/a.sh",
+            &["cargo", "python3", "rustfmt"],
+        ),
+    ];
+    for (changed, stopped, fakes) in cases {
+        let fx = Fixture::new(false, changed);
+        let tools = Tools::new(fakes);
+        let (ok, r) = affected(&fx, &["--slot-dir", slot.as_str()], Some((&tools, "")));
+        assert!(ok, "{stopped}: {r}");
+        let line = r["summary"].as_str().unwrap();
+        // The summary key of a repeated label stops at its `:`.
+        let key = stopped.split(':').next().unwrap();
+        assert!(
+            line.ends_with(&format!(" stopped_at={key} result=FAIL")),
+            "{stopped}: {line}"
+        );
+        let calls = tools.calls_text();
+        for never in ["clippy", "--lib", "--bins", "python3"] {
+            assert!(!calls.contains(never), "{stopped}: {never} ran: {calls}");
+        }
+    }
 }
 
 #[test]
