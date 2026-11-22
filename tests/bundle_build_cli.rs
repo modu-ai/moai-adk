@@ -1085,6 +1085,27 @@ fn worktree_place_status_the_bundle_writes_the_exclude_line_once() {
     assert_eq!(lines, 1);
 }
 
+/// REQ-13: a `.claude` that is a link makes the build refuse before anything is made: no new
+/// ref, nothing behind the link, and the refusal names the link.
+#[cfg(unix)]
+#[test]
+fn worktree_place_links_the_bundle_refuses_a_linked_claude_folder() {
+    let w = World::new();
+    w.identity();
+    let a = w.head("spec/a", TIP, &[("notes/a.md", "a\n")], SPEC, &[1, 2], true);
+    let c1 = w.ready_card(&a);
+    w.git(&["checkout", "-q", "trunk"]);
+    let outside = w.work.parent().unwrap().join("outside-place");
+    std::fs::create_dir_all(&outside).unwrap();
+    std::os::unix::fs::symlink(&outside, w.work.join(".claude")).unwrap();
+    let refs = w.refs();
+    let (v, code) = w.build(&[&c1]);
+    assert_ne!(code, 0, "{v}");
+    assert!(v.to_string().contains(".claude"), "{v}");
+    assert_eq!(std::fs::read_dir(&outside).unwrap().count(), 0);
+    assert_eq!(w.refs(), refs, "no ref was made");
+}
+
 #[test]
 fn the_help_and_the_ops_doc_say_what_build_writes() {
     let w = World::new();
