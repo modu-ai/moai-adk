@@ -41,7 +41,7 @@ created: 2026-11-22
 
 ## Scope
 
-- write: `.moai/specs/SPEC-20261122-check-affected-one-slot/**`, `src/check_affected.rs`, `src/ops/check.rs`, `tests/check_affected_cli.rs`, `tests/check_affected_one_slot.rs`(새), `tests/heavy_slot_fifo_cli.rs`(새), `docs/design-review/appendix/operations/check.md`, `src/heavy_slot.rs`(다른 작업이 잡고 있어 리더 답 뒤에)
+- write: `.moai/specs/SPEC-20261122-check-affected-one-slot/**`, `src/check_affected.rs`, `src/ops/check.rs`, `tests/check_affected_cli.rs`, `tests/check_affected_one_slot.rs`(새), `tests/heavy_slot_fifo_cli.rs`(새), `docs/design-review/appendix/operations/check.md`, `src/heavy_slot.rs`(리더 말로 허락), `tests/heavy_slot_cli.rs`(끝 줄 시험 하나, 리더 결정 D-6)
 - read-only: `src/main.rs`, `tools/heavy_slot.py`, `.cargo/config.toml`
 - forbidden: 실제 HOME, 상태 폴더 이름을 글자로 쓴 시험 기대값, 새 Python 시험
 
@@ -67,6 +67,7 @@ created: 2026-11-22
 | D-2 | 자리는 마지막 cargo 단계 뒤, python 전에 놓아요. | python 단계는 cargo 를 부르지 않아요. | 카드 열림 |
 | D-3 | nextest 가 없으면 `cargo test` 한 번으로 돌려요. | 시험 검토 F1-b·F2 의 대안. | 카드 열림 |
 | D-4 | 호출자가 준 `CARGO_BUILD_JOBS` 가 이겨요. | 레인이 리더 규칙으로 값을 내보내요. | 카드 열림 |
+| D-6 | 이 가지가 `SPEC-20261122-heavy-slot-exit-line` 의 REQ-1 도 실어요: 시작한 명령이 끝나면 일반 경로와 물려받은 자리 재사용 경로 모두 `heavy-slot: <name> exited <code>; …` 줄을 성공 때도 찍어요. 그 SPEC 의 RED 시험(`tests/heavy_slot_cli.rs` `a_started_command_prints_its_exit_line_on_success_and_on_failure`)도 같은 범위에 있어요. | 리더 결정 2026-11-22(선택지 b): 이 작업이 그 함수를 다시 써요. 그 SPEC 과 문서 줄은 이 가지가 착지한 뒤 따로 착지해요. | 카드 열림 |
 | D-5 | 시험 호출은 `--bins` 대신 `--bin moai-cli` 를 골라요. | 명시한 `--bins` 는 `test = false` 인 바이너리의 시험 하네스까지 지어요(같은 28개 시험이 `moai`·`moai-cli` 두 번, 리더 결정 2026-11-22). | 카드 열림 |
 
 ## Result
