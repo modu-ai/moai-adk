@@ -151,7 +151,11 @@ fn generation_apply_normalizes_raw_spelling_to_canonical() {
     // manifest records the reference, and it holds the canonical slash-terminated form.
     assert!(root.path().join("CLAUDE.md").is_file());
     let manifest: Value = serde_json::from_slice(
-        &fs::read(root.path().join(".moai-cli/manifests/generation.json")).unwrap(),
+        &fs::read(moai_cli::state_root::path(
+            root.path(),
+            "manifests/generation.json",
+        ))
+        .unwrap(),
     )
     .unwrap();
     assert_eq!(

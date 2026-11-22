@@ -112,11 +112,7 @@ fn agents(reference: &str) -> Value {
 /// manifest is where the reference is kept.
 fn recorded_reference(project: &Path) -> String {
     assert!(project.join("CLAUDE.md").is_file(), "the managed CLAUDE.md");
-    let manifest = [".moai", ".moai-cli"]
-        .iter()
-        .map(|state| project.join(state).join("manifests/generation.json"))
-        .find(|p| p.is_file())
-        .expect("the generation manifest");
+    let manifest = moai_cli::state_root::path(project, "manifests/generation.json");
     let v: Value = serde_json::from_slice(&fs::read(manifest).unwrap()).unwrap();
     v["workflow_reference"].as_str().unwrap().to_string()
 }
@@ -151,11 +147,8 @@ fn the_workflows_parent_is_also_generations_own_location() {
         let f = fixture();
         plan_apply(&f, "project", &profile());
         plan_apply(&f, "generation", &generation(reference));
-        assert_eq!(
-            recorded_reference(&f.project),
-            ".moai/workflows/",
-            "{reference}"
-        );
+        let parent = format!("{}/workflows/", moai_cli::state_root::dir(&f.project));
+        assert_eq!(recorded_reference(&f.project), parent, "{reference}");
     }
 }
 
