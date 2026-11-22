@@ -1704,6 +1704,42 @@ fn ac28_the_drift_view_compares_the_tip_with_the_ledger_and_writes_nothing() {
     assert_eq!(w.integ(), first, "the view moved the branch");
 }
 
+/// AC-31: an interrupted landing after a successful one does not become the recorded commit. The
+/// third landing starts and git refuses the move; the branch stays on the second result, which is
+/// no drift. A copy that then rewinds the branch is drift, and the commit a restore names is the
+/// second landing's result, not the head the interrupted landing was heading for.
+#[test]
+fn ac31_an_interrupted_landing_after_a_landing_is_not_the_recorded_commit() {
+    let (w, first, second) = two_landings();
+    let three = w.review_card(&["one"]);
+    let wanted = commit_with(
+        &w.project,
+        &second,
+        &[&second],
+        "the head of the stuck landing",
+    );
+    w.wrap_update_ref("git-refuses", "exit 1", "");
+    let out = w.land(
+        &three,
+        &["--head", &wanted, "--met", "1=x", "--by", "leader"],
+    );
+    assert_ne!(out.status.code(), Some(0));
+    assert_eq!(w.events(&three, "card.land_started"), 1);
+    assert_eq!(w.events(&three, "card.landed"), 0);
+    *w.git_bin.borrow_mut() = git_executable();
+    let ok = result(&w.card(None, &["drift"]));
+    assert_eq!(ok["state"], json!("ok"), "{ok}");
+    assert_eq!(ok["expected"]["commit"], json!(second), "{ok}");
+
+    git(&w.project, &["branch", "old", &first]);
+    git(&w.project, &["branch", "-C", "old", "integ"]);
+    let drift = result(&w.card(None, &["drift", "--restore"]));
+    assert_eq!(drift["state"], json!("drift"), "{drift}");
+    assert_eq!(drift["expected"]["commit"], json!(second), "{drift}");
+    assert_eq!(drift["plan"]["to"], json!(second), "{drift}");
+    assert_ne!(drift["expected"]["card"], json!(three), "{drift}");
+}
+
 /// AC-29: the restore previews first and moves only on the user's yes. The preview names the
 /// move and carries a digest and moves nothing; the apply needs the leader word, the digest of a
 /// preview of the same state and a permission reference; it moves the branch to the recorded
