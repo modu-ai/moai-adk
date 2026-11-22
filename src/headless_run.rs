@@ -376,9 +376,24 @@ pub fn run_with_limit(built: &BuiltRun, cwd: &Path, limit: std::time::Duration) 
         &err_buf,
         drain_bound,
     );
-    let status = child
-        .wait()
-        .map_err(|e| format!("collecting {}: {e}", built.program.display()))?;
+    // P-2: a child reaped elsewhere makes wait() fail — the drained answer is returned
+    // with an unknown exit status (success stays false, the code None), never discarded.
+    let (succeeded, code) = match child.wait() {
+        Ok(status) => (status.success(), status.code()),
+        Err(e) => {
+            let mut stderr = String::from_utf8_lossy(&stderr_bytes).into_owned();
+            stderr.push_str(&format!(
+                "\nmoai: the exit status is unknown (collecting {}: {e}); the output is kept",
+                built.program.display()
+            ));
+            return Ok(RawRun {
+                success: false,
+                code: None,
+                stdout: String::from_utf8_lossy(&stdout).into_owned(),
+                stderr,
+            });
+        }
+    };
     let mut stderr = if timed_out {
         format!(
             "{}\nmoai: wall-clock limit of {} seconds exceeded; the child was killed",
@@ -392,8 +407,8 @@ pub fn run_with_limit(built: &BuiltRun, cwd: &Path, limit: std::time::Duration) 
         stderr.push_str("\nmoai: an output drain was abandoned; the already-read output is kept");
     }
     Ok(RawRun {
-        success: status.success() && !timed_out,
-        code: status.code(),
+        success: succeeded && !timed_out,
+        code,
         stdout: String::from_utf8_lossy(&stdout).into_owned(),
         stderr,
     })
@@ -455,6 +470,24 @@ enum WaitPoll {
     Running,
 }
 
+/// Interprets one waitid answer (P-3 pins these arms in a unit test): rc 0 with a pid
+/// means the child exited un-reaped; rc != 0 with errno ECHILD means it was reaped
+/// elsewhere; anything else counts as running.
+#[cfg(unix)]
+fn interpret_waitid(rc: i32, reported_pid: i32, errno: Option<i32>) -> WaitPoll {
+    if rc == 0 {
+        if reported_pid != 0 {
+            WaitPoll::ExitedUnreaped
+        } else {
+            WaitPoll::Running
+        }
+    } else if errno == Some(libc::ECHILD) {
+        WaitPoll::ReapedElsewhere
+    } else {
+        WaitPoll::Running
+    }
+}
+
 /// Polls the child WITHOUT reaping it (L-2): the zombie still owns the process group, so
 /// the straggler kill that follows cannot hit a recycled group. A waitid error is only
 /// "no such child" in practice here (the child was reaped elsewhere, M-1); anything else
@@ -472,17 +505,37 @@ fn poll_unreaped(pid: u32) -> WaitPoll {
             &mut info,
             libc::WEXITED | libc::WNOHANG | libc::WNOWAIT,
         );
-        if rc == 0 {
-            if info.si_pid() != 0 {
-                WaitPoll::ExitedUnreaped
-            } else {
-                WaitPoll::Running
-            }
-        } else if std::io::Error::last_os_error().raw_os_error() == Some(libc::ECHILD) {
-            WaitPoll::ReapedElsewhere
+        let reported = if rc == 0 { info.si_pid() } else { 0 };
+        let errno = if rc != 0 {
+            std::io::Error::last_os_error().raw_os_error()
         } else {
+            None
+        };
+        interpret_waitid(rc, reported, errno)
+    }
+}
+
+#[cfg(all(test, unix))]
+mod waitid_tests {
+    use super::{interpret_waitid, WaitPoll};
+
+    #[test]
+    fn the_reaped_elsewhere_arm_is_pinned() {
+        // P-3: the mutant "every error counts as running" must die — ECHILD is
+        // ReapedElsewhere, and only that arm skips the group kill.
+        assert!(matches!(
+            interpret_waitid(-1, 0, Some(libc::ECHILD)),
+            WaitPoll::ReapedElsewhere
+        ));
+        assert!(matches!(
+            interpret_waitid(-1, 0, Some(libc::EINVAL)),
             WaitPoll::Running
-        }
+        ));
+        assert!(matches!(
+            interpret_waitid(0, 4242, None),
+            WaitPoll::ExitedUnreaped
+        ));
+        assert!(matches!(interpret_waitid(0, 0, None), WaitPoll::Running));
     }
 }
 
@@ -680,8 +733,10 @@ pub fn record_run(
 
 /// A tool rule the builder accepts: never a blanket `Bash`·`PowerShell`·`Agent`·`Monitor`,
 /// never a wildcard-only scope in any of its spellings (`*`, `:*`, empty), never a
-/// wildcarded interpreter or wrapper (`python *`, `sh -c *`, `timeout *`) — every shape auto
-/// mode drops (SPEC REQ-2, audit N-3).
+/// wildcarded interpreter or wrapper (`python *`, `sh -c *`, `timeout *`), and — the
+/// stricter rule of audit P-1 — never a wildcarded rule whose text starts with an env
+/// assignment in ANY spelling (`FOO=… python *`, quotes included), because no quoting can
+/// be told apart safely here.
 fn narrow_rule(tool: &str) -> Result<()> {
     let blanket = matches!(tool, "Bash" | "PowerShell" | "Agent" | "Monitor");
     let scope = tool
@@ -692,11 +747,23 @@ fn narrow_rule(tool: &str) -> Result<()> {
         let inner = inner.trim();
         inner.is_empty() || inner.starts_with('*') || inner == ":*"
     });
+    let starts_with_assignment = |inner: &str| {
+        inner.split_once('=').is_some_and(|(name, _)| {
+            !name.is_empty()
+                && name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
+                && name.chars().next().is_some_and(|c| !c.is_ascii_digit())
+        })
+    };
     let wildcarded_word = scope.is_some_and(|inner| {
         if !inner.contains('*') {
             return false;
         }
-        strip_assignments(inner)
+        // P-1 stricter rule: an assignment prefix on a wildcarded rule refuses outright —
+        // every quote spelling is covered by the refusal, not by parsing.
+        if starts_with_assignment(inner.trim_start()) {
+            return true;
+        }
+        inner
             .split_whitespace()
             .next()
             .is_some_and(broad_first_word)
@@ -709,45 +776,11 @@ fn narrow_rule(tool: &str) -> Result<()> {
     Ok(())
 }
 
-/// Strips leading env assignments off a command's raw text so the first REAL word can be
-/// checked (L-4, M-2): each assignment is `NAME=value` or `NAME="a quoted value"`, so a
-/// value with a space inside quotes is one assignment, not two words.
-fn strip_assignments(command: &str) -> &str {
-    let mut rest = command.trim_start();
-    while let Some(stripped) = strip_one_assignment(rest) {
-        rest = stripped;
-    }
-    rest
-}
-
-/// Strips one `NAME=value` (or `NAME="quoted value"`) from the start of `text` (M-2).
-fn strip_one_assignment(text: &str) -> Option<&str> {
-    let eq = text.find('=')?;
-    let name = &text[..eq];
-    let valid_name = !name.is_empty()
-        && name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
-        && name.chars().next().is_some_and(|c| !c.is_ascii_digit());
-    if !valid_name {
-        return None;
-    }
-    let after_eq = &text[eq + 1..];
-    let mut in_quotes = false;
-    for (i, c) in after_eq.char_indices() {
-        match c {
-            '"' => in_quotes = !in_quotes,
-            c if c.is_whitespace() && !in_quotes => return Some(after_eq[i..].trim_start()),
-            _ => {}
-        }
-    }
-    // the value ran to the end: everything was assignment
-    Some("")
-}
-
 /// Whether a command rule's first word turns a wildcarded rule into a blanket one: the
 /// interpreters and wrappers that run what follows them, in every spelling — a versioned
-/// interpreter (python3.12), the `:*` colon suffix, the word's basename (`/usr/bin/env`)
-/// and a leading env assignment (FOO=1 python) included (permission-modes.md's
-/// dropped-rules list, audits R-1 R-2 R-4 and L-4).
+/// interpreter (python3.12), the `:*` colon suffix and the word's basename
+/// (`/usr/bin/env`) included (permission-modes.md's dropped-rules list, audits R-1 R-2
+/// R-4 and L-4).
 fn broad_first_word(word: &str) -> bool {
     let word = word.split(':').next().unwrap_or(word);
     let word = word.rsplit('/').next().unwrap_or(word);
