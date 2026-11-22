@@ -2,7 +2,7 @@
 id: SPEC-20261121-path-root-moai-default
 title: "A tree with no earlier state folder resolves to .moai, and .moai-cli stays only where it already exists"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-21
 ---
 
@@ -112,7 +112,7 @@ Built tests first: `tests/path_root_default.rs` was written before the code (red
 - AC-2: met — the `home_` cases of the same run (empty HOME, earlier folder only, both folders, a Go state folder, only names this generation writes, a foreign name, schema-1 and schema-2 markers, a link as the earlier folder) and `install-inspect` in an empty temporary HOME reporting `.moai`.
 - AC-3: met — the `clone_` cases of the same run (nothing, only `.moai-cli`, a marker, an empty `.moai`, files and no marker).
 - AC-4: met — `reads_only` in the same run: a snapshot of the temporary tree before and after the calls is equal and no `.moai-cli` appears.
-- AC-5: not yet met — the library built and 1559 of 1562 library tests passed, `home_install_apply_cli` 41, `e2e_host_fixture` 6, `message_cli` 32, `home_style_cli` 16, `update_hooks_cli` 11, `freshness_fixture` 10, `omp_agents` 15 and `statusline::` 149 passed, and the SPEC checks clean; nine tests in six files that other changes hold wait for their holders' ACK and one line each (lane_idle 1, lane_loop 1, project_update 1, launcher_auto_init 2, statusline_home_state 1, statusline_counts_refresh 3) — the exact lines are in the pair notes of this change.
+- AC-5: met — `moai check affected 6e1bedb4f3..4867a28e10` (one run): diff check, fmt, clippy, lib (1562 passed), bins (28 and 28 passed), build and python steps exit 0; the test targets ran 92 targets with 1160 passed and one failed, `lane_next_cli` `the_sixth_empty_read_is_the_limit_and_the_fifth_is_not`, which looked for the lane-idle count under `.git/.moai-cli` of a clone that has no earlier folder. Its four paths now follow the clone resolver (`.git/.moai/lane-idle`), and `lane_next_cli` then passed 59 of 59; the whole affected set was not run a second time. The two statusline fixtures of the pair note were applied by the leader's word (`statusline_home_state` 5 passed, `statusline_counts_refresh` 6 passed), and the four other held lines were done earlier. SPEC check clean.
 
 Mutants (5, one row of `resolves_to_moai` each, run on the committed text, each restored with `git checkout` and the tree read clean): a marked tree is not on `.moai` → 4 failed; an empty tree ignores the earlier folder → 7 failed; an unknown tree ignores the earlier folder → 2 failed; `go`, `mixed`, `interrupted` and `refuse` resolve to `.moai` → 4 failed; a HOME with foreign names counts as ours → 2 failed.
 
