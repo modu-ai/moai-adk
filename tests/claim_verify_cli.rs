@@ -1654,13 +1654,13 @@ fn hook_binary_exits_2_on_a_lane_branch_without_a_token() {
 
 // Retired with the MODE-AGENT route (SPEC-20261122-next-flow-skills-agents REQ-2): `mode_agent_workflow_names_claim_verify_before_writes` pinned the lane's claim-verify step, which left with the route.
 
-/// #3030 D2: AGENTS.md states one order for the local claim record: claim in the folder you
+/// #3030 D2: CLAUDE.md states one order for the local claim record: claim in the folder you
 /// will work in, and run `claim-link` when the folder or branch changes afterwards. The agent-mode
 /// half left with the MODE-AGENT route (SPEC-20261122-next-flow-skills-agents REQ-2).
 #[test]
 fn claim_order_docs_agree() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
-    let agents = fs::read_to_string(root.join("AGENTS.md")).unwrap();
+    let agents = fs::read_to_string(root.join("CLAUDE.md")).unwrap();
     let line = |text: &str, start: &str| -> String {
         text.lines()
             .find(|l| l.starts_with(start))

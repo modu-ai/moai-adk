@@ -278,6 +278,7 @@ pub const TIER2_PREFIXES: &[&str] = &[
     "agents/audit.md",
     "skills/moai/workflows/audit.md",
     "AGENTS.md",
+    "CLAUDE.md",
 ];
 
 /// Whether a changed path may be tier 0 (#2906 T, user decision 6878414880): `docs/**`,

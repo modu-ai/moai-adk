@@ -2709,18 +2709,13 @@ mod skill_package {
     #[test]
     fn repository_instruction_files_carry_no_retired_mode_spelling() {
         let repo = Path::new(env!("CARGO_MANIFEST_DIR"));
-        for file in ["AGENTS.md", "AGENTS.local.md"] {
-            let text = fs::read_to_string(repo.join(file)).unwrap();
-            assert_eq!(
-                retired_mode_spelling(&text),
-                None,
-                "retired mode spelling is still in {file}"
-            );
-            assert!(
-                text.contains("--mode-agent") || file == "AGENTS.md",
-                "{file}"
-            );
-        }
+        let text = fs::read_to_string(repo.join("CLAUDE.md")).unwrap();
+        assert_eq!(
+            retired_mode_spelling(&text),
+            None,
+            "retired mode spelling is still in CLAUDE.md"
+        );
+        assert!(text.contains("--mode-agent"), "CLAUDE.md");
     }
 
     // Retired with the OPTIMIZE route (SPEC-20261122-next-flow-skills-agents REQ-2): `optimize_route_previews_and_applies_nothing` pinned the OPTIMIZE route; UPDATE carries its preview (tests/next_flow_skill_scan.rs `absorb_update_`).

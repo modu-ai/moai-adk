@@ -1,12 +1,13 @@
-//! SPEC-20261120-recurring-problems-source: `AGENTS.local.md` tells the leader that a problem that
-//! happens twice is fixed by a card that changes moai-adk itself, and records where the rule came
-//! from. The tests read the file only; no host, no HOME and no command runs here.
+//! SPEC-20261120-recurring-problems-source: `CLAUDE.md` (which holds the former `AGENTS.local.md`)
+//! tells the leader that a problem that happens twice is fixed by a card that changes moai-adk
+//! itself, and records where the rule came from. The tests read the file only; no host, no HOME
+//! and no command runs here.
 
 use std::fs;
 
 fn text() -> String {
-    fs::read_to_string(format!("{}/AGENTS.local.md", env!("CARGO_MANIFEST_DIR")))
-        .unwrap_or_else(|e| panic!("AGENTS.local.md: {e}"))
+    fs::read_to_string(format!("{}/CLAUDE.md", env!("CARGO_MANIFEST_DIR")))
+        .unwrap_or_else(|e| panic!("CLAUDE.md: {e}"))
 }
 
 /// The lines of the `## <heading>` section, up to the next `## ` heading.
@@ -25,7 +26,7 @@ fn section(text: &str, heading: &str) -> String {
             out.push('\n');
         }
     }
-    assert!(!out.is_empty(), "AGENTS.local.md has no section {heading}");
+    assert!(!out.is_empty(), "CLAUDE.md has no section {heading}");
     out
 }
 
@@ -170,12 +171,12 @@ fn the_rule_sentences_kept_while_making_room_are_still_there() {
         "Filling the shared folder again from crates.io needs the network and is the leader's act.",
         "text typed into a session's chat input (including what the leader pastes into a Codex window with `hc send`)",
     ] {
-        assert!(text.contains(phrase), "AGENTS.local.md lost: {phrase}");
+        assert!(text.contains(phrase), "CLAUDE.md lost: {phrase}");
     }
 }
 
 #[test]
 fn the_file_stays_inside_its_budget() {
     let len = text().len();
-    assert!(len < 32 * 1024, "AGENTS.local.md is {len} bytes");
+    assert!(len < 44 * 1024, "CLAUDE.md is {len} bytes");
 }

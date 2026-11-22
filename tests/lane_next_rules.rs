@@ -31,15 +31,15 @@ fn the_agent_loop_runs_lane_next_and_goes_on_with_reversible_defaults() {
 #[test]
 fn agents_md_names_the_plan_comment_as_part_of_the_design() {
     let agents =
-        fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("AGENTS.md")).unwrap();
-    // The Issue number (#2880) moved to the provenance table in AGENTS.local.md (#3096 S3); the
+        fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("CLAUDE.md")).unwrap();
+    // The Issue number (#2880) moved to the provenance table, now in CLAUDE.md (#3096 S3); the
     // rule's words stay pinned.
     assert!(
         agents.contains("Each Issue body plus the lane's `PLAN #<issue>` comment is the design;")
     );
     assert!(!agents.contains("Each Issue body is the design;"));
     let local =
-        fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("AGENTS.local.md")).unwrap();
+        fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("CLAUDE.md")).unwrap();
     assert!(local.contains(
         "| Authority 2: the lane's `PLAN #<issue>` comment is part of the design | Issue #2880 |"
     ));

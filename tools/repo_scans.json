@@ -742,7 +742,7 @@
           "prefix": "README.md"
         },
         {
-          "prefix": "AGENTS.md"
+          "prefix": "CLAUDE.md"
         }
       ],
       "rejects": "a file that still says to run the removed Python Claude adapter, the adapter coming back, or the kept output styles leaving templates/claude/output-styles/ (#2709)"

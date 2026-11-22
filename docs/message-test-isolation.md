@@ -70,7 +70,7 @@ sleep이나 확률적 지연을 사용하지 않는다.
 
 ```sh
 export CARGO_HOME=$(test -d /tmp/moai-product-cargo/registry/cache && echo /tmp/moai-product-cargo || echo /tmp/moai-rc-product-cargo)  # prepared cache; the new name once the leader moved it (#2563)
-# Build folder: this worktree's own target/ (do not set CARGO_TARGET_DIR, AGENTS.local.md).
+# Build folder: this worktree's own target/ (do not set CARGO_TARGET_DIR, CLAUDE.md).
 cargo test --offline --locked --lib --no-run
 # Use the src/lib.rs executable path printed by the successful build.
 case_bin="<printed libtest executable>"
