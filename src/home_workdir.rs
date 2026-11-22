@@ -171,29 +171,51 @@ pub fn worktree_dir(project_root: &Path, id: &str) -> Result<PathBuf> {
 /// to, never by how the path was written, so a path spelled through a linked parent (on macOS
 /// `/tmp` is a link to `/private/tmp`) still finds its owner. The `.claude` and
 /// `.claude/worktrees` links themselves are not followed to reach the owner, because the walk
-/// stops at the first ancestor that is the primary and has the place below it. `None` when
-/// `folder` is not inside the place of that checkout.
+/// stops at the first ancestor that is the primary and has the place below it. The two place
+/// parts are read ignoring case, because a disk that ignores case (APFS, NTFS) makes
+/// `.CLAUDE/worktrees` the same folder; on a disk that does not, the name still only widens the
+/// check, which refuses links and nothing else. `None` when `folder` is not inside the place of
+/// that checkout.
 pub fn place_owner(primary: &Path, folder: &Path) -> Option<PathBuf> {
     let want = crate::worktree::resolve_existing(primary);
     folder.ancestors().skip(1).find_map(|a| {
-        let inside = folder
-            .strip_prefix(a)
-            .ok()
-            .is_some_and(|rest| rest.starts_with(".claude/worktrees"));
+        let inside = folder.strip_prefix(a).ok().is_some_and(|rest| {
+            let mut parts = rest.components().filter_map(|c| c.as_os_str().to_str());
+            parts
+                .next()
+                .is_some_and(|p| p.eq_ignore_ascii_case(".claude"))
+                && parts
+                    .next()
+                    .is_some_and(|p| p.eq_ignore_ascii_case("worktrees"))
+        });
         (inside && crate::worktree::resolve_existing(a) == want).then(|| a.to_path_buf())
     })
 }
 
 /// Refuses a worktree place that runs through a link: `<project>/.claude`, `<project>/.claude/
-/// worktrees` and the `folder` of the new worktree must not be symbolic links (REQ-13). Nothing is
-/// followed or changed; the error names the linked path. `project` is the primary checkout.
+/// worktrees`, the `folder` of the new worktree and every part between them must not be symbolic
+/// links (REQ-13). Nothing is followed or changed; the error names the linked path. `project` is
+/// the primary checkout.
 pub fn refuse_linked_place(project: &Path, folder: &Path) -> Result<()> {
+    // Every part between the project and the folder is looked at as it is written, so a link
+    // is found whatever the spelling (a disk that ignores case resolves `.CLAUDE` to the real
+    // folder) and a link in a middle part is found as well. A folder that is not below the
+    // project keeps the three named parts.
     let claude = project.join(".claude");
-    for path in [
-        claude.clone(),
-        claude.join("worktrees"),
-        folder.to_path_buf(),
-    ] {
+    let mut parts: Vec<PathBuf> = vec![claude.clone(), claude.join("worktrees")];
+    if let Ok(rest) = folder.strip_prefix(project) {
+        let mut at = project.to_path_buf();
+        parts = rest
+            .components()
+            .map(|c| {
+                at.push(c.as_os_str());
+                at.clone()
+            })
+            .collect();
+    } else {
+        parts.push(folder.to_path_buf());
+    }
+    for path in parts {
         if std::fs::symlink_metadata(&path).is_ok_and(|m| m.file_type().is_symlink()) {
             return Err(format!(
                 "worktree place refused: {} is a link; it is not followed and nothing was changed",

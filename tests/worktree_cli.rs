@@ -1188,6 +1188,57 @@ fn worktree_place_links_an_explicit_path_through_a_linked_parent() {
     assert!(!git(&f.repo, &["for-each-ref", "refs/heads"]).contains("lane/"));
 }
 
+/// True when the folder `dir` lives on treats names that differ only in case as one.
+#[cfg(unix)]
+fn disk_ignores_case(dir: &Path) -> bool {
+    let lower = dir.join("case-probe-lower");
+    fs::create_dir(&lower).unwrap();
+    let same = dir.join("CASE-PROBE-LOWER").exists();
+    fs::remove_dir(&lower).unwrap();
+    same
+}
+
+/// Audit B2 (REQ-13): on a disk that ignores case, `--path` spelled `.CLAUDE/worktrees/x` is the
+/// same folder as `.claude/worktrees/x`: a linked `.claude` behind that spelling is refused
+/// too, and nothing is made behind the link.
+#[cfg(unix)]
+#[test]
+fn worktree_place_links_a_case_changed_spelling_is_refused() {
+    let f = fixture();
+    if !disk_ignores_case(f.repo.parent().unwrap()) {
+        return; // on a case-sensitive disk `.CLAUDE` is another folder, not this one
+    }
+    let outside = f.repo.parent().unwrap().join("outside-b2");
+    fs::create_dir_all(&outside).unwrap();
+    std::os::unix::fs::symlink(&outside, f.repo.join(".claude")).unwrap();
+    let via = f.repo.join(".CLAUDE/worktrees/via-case");
+    let via = via.to_str().unwrap();
+    let p = project(&f);
+    let plan_out = run(
+        &f.repo,
+        &args(
+            &[
+                "worktree-plan",
+                &p,
+                "--branch-prefix",
+                "lane",
+                "--path",
+                via,
+            ],
+            &f.source,
+        ),
+    );
+    let digest = envelope(&plan_out)["result"]["plan_digest"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let env = apply_with(&f, &digest, &["--path", via, "--disk-floor-bytes", "0"]);
+    assert_eq!(env["result"]["decision"], "conflict", "{env}");
+    assert_eq!(env["result"]["reason"], "place_is_a_link", "{env}");
+    assert!(fs::remove_dir(&outside).is_ok(), "{env}");
+    assert!(!git(&f.repo, &["for-each-ref", "refs/heads"]).contains("lane/"));
+}
+
 /// Audit N2 (AC-9, REQ-12): the plan names the folder name a session opens with
 /// `claude --worktree <name>`.
 #[test]
