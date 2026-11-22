@@ -375,7 +375,7 @@ fn prompt_for_a_nonstop_lane_names_every_rule_and_nothing_else() {
         "current card",
         "READY",
         "moai card next",
-        "moai card show",
+        "moai lane-run watch --card",
         "Monitor",
         "verdict",
         "LANE-BLOCKED",
@@ -390,8 +390,6 @@ fn prompt_for_a_nonstop_lane_names_every_rule_and_nothing_else() {
         !text.starts_with('/'),
         "a plain text, not a command: {text}"
     );
-    // Only commands that exist today: the watch command lands with a later slice.
-    assert!(!text.contains("lane-run watch"), "{text}");
     assert_clean(text, &p.root);
     // The same lane and pick give the same text.
     assert_eq!(
@@ -496,4 +494,151 @@ fn goal_refuses_a_wrong_card_or_turn_limit() {
             "{args:?}: {v}"
         );
     }
+}
+
+// ---- watch (AC-4: REQ-7, REQ-8)
+
+const SESSION: &str = "aaaaaaaa-0000-4000-8000-00000000000b";
+
+/// A registered project with a ledger, and a way to run moai in it.
+struct Ledger {
+    home: common::home::TempHome,
+    root: PathBuf,
+}
+
+fn ledger_project() -> Ledger {
+    let home = common::home::TempHome::new();
+    let root = fs::canonicalize(home.project("demo")).unwrap();
+    moai_cli::ledger::register(home.path(), "demo").unwrap();
+    Ledger { home, root }
+}
+
+impl Ledger {
+    fn command(&self, args: &[&str]) -> Command {
+        let mut cmd = self.home.command(args);
+        cmd.env("CLAUDE_CODE_SESSION_ID", SESSION)
+            .current_dir(&self.root)
+            .args(["--project", self.root.to_str().unwrap()]);
+        cmd
+    }
+
+    fn card(&self) -> String {
+        let out = self
+            .command(&["card", "add", "--title", "t", "--scope", "src/a.rs"])
+            .output()
+            .unwrap();
+        let v: Value = serde_json::from_slice(&out.stdout).unwrap();
+        v["result"]["name"].as_str().unwrap().to_string()
+    }
+
+    /// Writes a comment note whose first line is `line` on `card`; returns its note id.
+    fn note(&self, card: &str, line: &str) -> i64 {
+        use std::io::Write as _;
+        let mut child = self
+            .command(&["card", "note", "--kind", "comment", "--by", "agent-9", card])
+            .stdin(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::piped())
+            .spawn()
+            .unwrap();
+        child
+            .stdin
+            .take()
+            .unwrap()
+            .write_all(format!("{line}\nsecond line\n").as_bytes())
+            .unwrap();
+        let out = child.wait_with_output().unwrap();
+        let v: Value = serde_json::from_slice(&out.stdout).unwrap();
+        assert_eq!(v["ok"], json!(true), "{v}");
+        v["result"]["note_id"].as_i64().unwrap()
+    }
+}
+
+#[test]
+fn watch_refuses_a_deadline_outside_60_to_1700_seconds_before_reading() {
+    // No ledger at all: a refusal that read first would name the ledger, not the deadline.
+    let p = project();
+    for bad in ["59", "1701", "0"] {
+        let v = p.refused(&["watch", "--card", "C-1", "--deadline-secs", bad]);
+        let m = v["error"]["message"].as_str().unwrap();
+        assert!(
+            m.contains("deadline") && m.contains("60 to 1700"),
+            "{bad}: {m}"
+        );
+    }
+    let v = p.refused(&["watch", "--card", "C-1", "--every-secs", "0"]);
+    assert!(
+        v["error"]["message"].as_str().unwrap().contains("every"),
+        "{v}"
+    );
+}
+
+/// Two cards and one that does not exist, watched for the shortest deadline with a read every
+/// second: a note written before the watch is not printed; each new note of either card is
+/// printed once as `<card> note <id> <kind> <first line>`, and an event that is not a note
+/// prints nothing; the missing card prints one
+/// `unreadable` line and the others are still watched; nothing else is printed in the quiet
+/// time; the watch exits 0 at its deadline, before the Monitor's.
+#[test]
+fn watch_prints_each_new_note_once_and_exits_at_its_deadline() {
+    let l = ledger_project();
+    let (a, b) = (l.card(), l.card());
+    l.note(&a, "written before the watch");
+    let started = std::time::Instant::now();
+    let child = l
+        .command(&[
+            "lane-run",
+            "watch",
+            "--card",
+            &a,
+            "--card",
+            &b,
+            "--card",
+            "C-99",
+            "--deadline-secs",
+            "60",
+            "--every-secs",
+            "1",
+        ])
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .unwrap();
+    std::thread::sleep(std::time::Duration::from_secs(3));
+    let na = l.note(&a, "first new note");
+    // An event that is not a note prints nothing.
+    let ready = l.command(&["card", "ready", &b]).output().unwrap();
+    assert_eq!(ready.status.code(), Some(0), "{ready:?}");
+    std::thread::sleep(std::time::Duration::from_secs(3));
+    let nb = l.note(&b, "second new note");
+    let out = child.wait_with_output().unwrap();
+    let took = started.elapsed();
+    assert_eq!(
+        out.status.code(),
+        Some(0),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert!(took >= std::time::Duration::from_secs(60), "{took:?}");
+    assert!(took < std::time::Duration::from_secs(120), "{took:?}");
+    let text = String::from_utf8_lossy(&out.stdout).to_string();
+    let lines: Vec<&str> = text.lines().collect();
+    let (last, events) = lines.split_last().unwrap();
+    assert_eq!(
+        events.to_vec(),
+        vec![
+            "C-99 unreadable: card not found: there is no C-99".to_string(),
+            format!("{a} note {na} comment first new note"),
+            format!("{b} note {nb} comment second new note"),
+        ],
+        "{text}"
+    );
+    let end: Value = serde_json::from_str(last).unwrap();
+    assert_eq!(end["ok"], json!(true), "{end}");
+    let r = &end["result"];
+    assert_eq!(
+        (&r["ended"], &r["printed"], &r["writes"]),
+        (&json!("deadline"), &json!(2), &json!(false)),
+        "{end}"
+    );
+    assert_eq!(r["unreadable"], json!(["C-99"]), "{end}");
 }

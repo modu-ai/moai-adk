@@ -11,8 +11,9 @@ use std::path::{Path, PathBuf};
 /// `show` reads the pick in force for the project or a lane (the lane's own value before the
 /// project's) and the host facts that turn it into `single`; `set` saves a pick without asking;
 /// `prompt` prints the self-paced loop text for a non-stop lane; `goal` prints a `/goal`
-/// condition for one card. Only `set` writes, and only the profile's `lane_run` key. Nothing
-/// here starts a loop or a goal.
+/// condition for one card; `watch` is the command a Monitor runs: one line per new note of the
+/// named cards, until its own deadline. Only `set` writes, and only the profile's `lane_run`
+/// key. Nothing here starts a loop or a goal.
 #[derive(clap::Args)]
 pub struct Args {
     #[command(subcommand)]
@@ -48,11 +49,29 @@ enum Action {
         #[arg(long, default_value_t = DEFAULT_TURNS)]
         turns: u32,
     },
+    /// One line per new note of the named cards until the deadline; reads only. For Monitor.
+    Watch {
+        /// A card to watch, by its C-number; repeat for each card the lane holds.
+        #[arg(long = "card", required = true)]
+        cards: Vec<String>,
+        /// Seconds until the watch ends with status 0 (60 to 1700), before Monitor's 30 minutes.
+        #[arg(long, default_value_t = WATCH_DEADLINE_SECS)]
+        deadline_secs: u64,
+        /// Seconds between reads (1 to 60).
+        #[arg(long, default_value_t = WATCH_EVERY_SECS)]
+        every_secs: u64,
+    },
 }
 
 pub const OPERATION: &str = "lane.run";
 
 const DEFAULT_TURNS: u32 = 40;
+const WATCH_DEADLINE_SECS: u64 = 1500;
+const WATCH_DEADLINES: std::ops::RangeInclusive<u64> = 60..=1700;
+const WATCH_EVERY_SECS: u64 = 30;
+const WATCH_EVERIES: std::ops::RangeInclusive<u64> = 1..=60;
+/// Events read per timeline call; more pages follow while `more` is true.
+const WATCH_PAGE: i64 = 500;
 const MAX_TURNS: u32 = 200;
 /// The longest `/goal` condition Claude Code takes.
 const GOAL_MAX_CHARS: usize = 4000;
@@ -90,7 +109,144 @@ pub fn run(args: Args) -> Result<Value, String> {
             }
         }
         Action::Goal { card, turns } => goal(&card, turns),
+        Action::Watch {
+            cards,
+            deadline_secs,
+            every_secs,
+        } => watch(&root, &cards, deadline_secs, every_secs),
     }
+}
+
+/// One watched card: where its reading stands.
+enum Watched {
+    /// Read up to this timeline cursor; only later notes are printed.
+    At(String),
+    /// Not readable now; when it reads again, it starts after the notes it has then.
+    Unreadable,
+}
+
+/// The cursor after every event the card has now, or why it cannot be read.
+fn watch_start(root: &Path, home: &Path, card: &str) -> Result<String, String> {
+    let page = moai_cli::card::timeline::timeline(root, home, None, card, None, Some(1), false)?;
+    // `end` names the newest event; a card always has its `card.add` event.
+    page["end"]
+        .as_str()
+        .or_else(|| page["next"].as_str())
+        .map(str::to_string)
+        .ok_or_else(|| "the timeline gave no cursor".to_string())
+}
+
+/// The notes of `card` after `cursor`, as printed lines, and the cursor after them.
+fn watch_read(
+    root: &Path,
+    home: &Path,
+    card: &str,
+    cursor: &str,
+) -> Result<(Vec<String>, String), String> {
+    let mut lines = Vec::new();
+    let mut at = cursor.to_string();
+    loop {
+        let page = moai_cli::card::timeline::timeline(
+            root,
+            home,
+            None,
+            card,
+            Some(&at),
+            Some(WATCH_PAGE),
+            false,
+        )?;
+        for e in page["events"].as_array().into_iter().flatten() {
+            if e["kind"] != json!("card.note") {
+                continue;
+            }
+            let line = e["note"]["line"].as_str().unwrap_or("");
+            lines.push(format!(
+                "{card} note {} {} {}",
+                e["detail"]["note_id"],
+                e["detail"]["kind"].as_str().unwrap_or("note"),
+                line.lines().next().unwrap_or("")
+            ));
+        }
+        at = page["next"].as_str().unwrap_or(&at).to_string();
+        if page["more"] != json!(true) {
+            return Ok((lines, at));
+        }
+    }
+}
+
+/// `watch`: the command a lane's Monitor runs (SPEC REQ-7, REQ-8, D-5). It reads the named
+/// cards read-only through the card timeline cursor every `every` seconds and prints one line
+/// per note that is new since it started, nothing for no change, and one `unreadable` line when
+/// a card stops reading. It ends with status 0 at its own deadline, before Monitor's.
+fn watch(root: &Path, cards: &[String], deadline: u64, every: u64) -> Result<Value, String> {
+    if !WATCH_DEADLINES.contains(&deadline) {
+        return Err(format!(
+            "watch refused: a deadline of {deadline} seconds is outside 60 to 1700"
+        ));
+    }
+    if !WATCH_EVERIES.contains(&every) {
+        return Err(format!(
+            "watch refused: a read every {every} seconds is outside 1 to 60"
+        ));
+    }
+    let home = moai_cli::ledger::command::resolve_home(None)?;
+    let end = std::time::Instant::now() + std::time::Duration::from_secs(deadline);
+    let mut out = std::io::stdout().lock();
+    let mut printed = 0usize;
+    let mut say = |text: &str| {
+        // A closed pipe means the Monitor is gone; the deadline still ends the run.
+        let _ = writeln!(out, "{text}");
+        let _ = out.flush();
+    };
+    let mut state: Vec<Watched> = Vec::new();
+    for card in cards {
+        state.push(match watch_start(root, &home, card) {
+            Ok(cursor) => Watched::At(cursor),
+            Err(e) => {
+                say(&format!("{card} unreadable: {e}"));
+                Watched::Unreadable
+            }
+        });
+    }
+    loop {
+        let now = std::time::Instant::now();
+        if now >= end {
+            break;
+        }
+        std::thread::sleep((end - now).min(std::time::Duration::from_secs(every)));
+        for (card, watched) in cards.iter().zip(state.iter_mut()) {
+            let next = match watched {
+                Watched::At(cursor) => match watch_read(root, &home, card, cursor) {
+                    Ok((lines, at)) => {
+                        for l in &lines {
+                            say(l);
+                        }
+                        printed += lines.len();
+                        Watched::At(at)
+                    }
+                    Err(e) => {
+                        say(&format!("{card} unreadable: {e}"));
+                        Watched::Unreadable
+                    }
+                },
+                Watched::Unreadable => match watch_start(root, &home, card) {
+                    Ok(cursor) => Watched::At(cursor),
+                    Err(_) => Watched::Unreadable,
+                },
+            };
+            *watched = next;
+        }
+    }
+    let unreadable: Vec<&String> = cards
+        .iter()
+        .zip(&state)
+        .filter(|(_, w)| matches!(w, Watched::Unreadable))
+        .map(|(c, _)| c)
+        .collect();
+    Ok(json!({
+        "action": "watch", "cards": cards, "deadline_secs": deadline, "every_secs": every,
+        "printed": printed, "unreadable": unreadable, "ended": "deadline", "writes": false,
+    }))
 }
 
 fn checked_lane(lane: Option<&str>) -> Result<Option<&str>, String> {
@@ -241,9 +397,10 @@ fn prompt(lane: &str) -> String {
          1. Keep the current card: if a card is in progress, continue it first.\n\
          2. After you post a READY note, run `moai card next` and take the card it names; read \
          its body and notes whole, then write the SPEC and the tests first.\n\
-         3. While you wait for an audit verdict or an answer, keep a Monitor that reads `moai \
-         card show` of each card you hold for new notes, and work the next card meanwhile; \
-         start the watch again when it ends.\n\
+         3. While you wait for an audit verdict or an answer, keep a Monitor that runs `moai \
+         lane-run watch --card <card>` with one --card for each card you hold; it prints one \
+         line per new note and ends by itself before the Monitor does. Work the next card \
+         meanwhile, and start the watch again when it ends.\n\
          4. A verdict or a repair request comes first: handle it before anything else.\n\
          5. A decision you need goes into a LANE-BLOCKED kind=decision note on its card; do not \
          ask the user from the loop.\n\

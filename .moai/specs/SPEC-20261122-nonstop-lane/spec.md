@@ -2,7 +2,7 @@
 id: SPEC-20261122-nonstop-lane
 title: "Non-stop lane running is a built-in choice: one selection, one stored pick, one generated loop prompt and one ledger watch"
 status: draft
-revision: 3
+revision: 4
 created: 2026-11-22
 ---
 
@@ -22,7 +22,7 @@ Read whole on 2026-11-22 before this SPEC (the pages of code.claude.com/docs/en:
 
 The code already holds the older parts this SPEC replaces for Claude Code: `lane-loop-line` prints a fixed five-minute `/loop` for the Issue era, and the MODE-AGENT workflow names the wake and keep-going rules in text. This SPEC adds the stored pick, the generated card-ledger prompt and the ledger watch; the Codex and OMP arms of `lane-loop-line` belong to the removal cards and are not touched here.
 
-Slice 1 was this SPEC. Slice 2 (revision 3) writes `show`, `set`, `prompt` and `goal`, their tests and the operation document; `watch`, the skill text and the help follow in slices 3 and 4 of the Plan.
+Slice 1 was this SPEC. Slice 2 (revision 3) writes `show`, `set`, `prompt` and `goal`, their tests and the operation document. Slice 3 (revision 4) writes `watch`, its tests and its part of the operation document, and puts the watch command back into the prompt (D-11). The skill text and the help follow in slice 4 of the Plan.
 
 ### What a user reads
 
@@ -90,6 +90,10 @@ What a user reads once this lands (written in the operation document and, in sli
 - D-11 (revision 3, slice-2 audit): until `watch` lands in slice 3, the loop prompt names only commands that exist. Its wait step has Monitor read `moai card show` of each held card, and slice 3 puts the watch command back into the prompt together with AC-3's watch needle.
 - D-12 (revision 3, slice-2 audit): `lane_run` is an object or absent, by one rule on `show`, `set` and `prompt`. `null` and `[]`, which the profile reader takes as unset or empty, are refused by `lane-run` itself, with the setting's message. A string or a number already fails the reader, the same on every command. The rule sits in `src/ops/lane_run.rs` because `src/profile.rs` is reserved by another card; moving it into the reader is a later change of that file's owner.
 - D-13 (revision 3, slice-2 audit): `set` copies the profile's mode onto its temporary file before the rename, as `apply` does, so a 0644 profile stays 0644.
+- D-14 (revision 4, slice 3): D-11 is closed. The prompt's wait step names `moai lane-run watch --card <card>`, one `--card` per held card, and AC-3's needle is that command.
+- D-15 (revision 4, slice 3): The watch reads every 30 seconds by default. `--every-secs` (1 to 60) shortens the wait between reads so that AC-4's test runs at the shortest deadline in about a minute; a value outside it refuses before reading, like the deadline.
+- D-16 (revision 4, slice 3): The watch reads each card through the same function as `card timeline`, so the ledger is open only for one read transaction per card and read. It starts after the card's newest event (`end`). It follows `more` page by page, so a burst of events between two reads is not cut. A printed line is the note's first line as the timeline gives it (at most 200 characters). An event that is not a note prints nothing.
+- D-17 (revision 4, slice 3): A card that cannot be read prints one `unreadable` line when it stops reading and nothing more while it stays so. When it reads again, the watch starts after the notes it has then and does not replay them. At its deadline the watch prints one summary JSON line (`printed`, `unreadable`, `ended: "deadline"`, `writes: false`) and exits 0.
 
 ## Plan
 
