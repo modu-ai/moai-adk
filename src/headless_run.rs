@@ -13,13 +13,23 @@ use std::path::{Path, PathBuf};
 
 type Result<T> = std::result::Result<T, String>;
 
-/// The credential-carrying variables scrubbed from the child environment (SPEC D-10); a caller
-/// that needs one for a gateway run passes it as `gateway_credential` and the runner sets it
-/// again after the scrub.
-const CREDENTIAL_ENVS: [&str; 3] = [
+/// The credential-carrying variables scrubbed from the child environment (SPEC D-10, audit
+/// N-5: not only the Anthropic three — git, GitHub and the cloud providers' tokens stay out
+/// too); a caller that needs one for a gateway run passes it as `gateway_credential` and the
+/// runner sets it again after the scrub.
+const CREDENTIAL_ENVS: [&str; 12] = [
     "ANTHROPIC_API_KEY",
     "ANTHROPIC_AUTH_TOKEN",
     "CLAUDE_CODE_OAUTH_TOKEN",
+    "GH_TOKEN",
+    "GITHUB_TOKEN",
+    "AWS_ACCESS_KEY_ID",
+    "AWS_SECRET_ACCESS_KEY",
+    "AWS_SESSION_TOKEN",
+    "AWS_BEARER_TOKEN_BEDROCK",
+    "AWS_WEB_IDENTITY_TOKEN_FILE",
+    "GOOGLE_APPLICATION_CREDENTIALS",
+    "GOOGLE_OAUTH_ACCESS_TOKEN",
 ];
 
 /// The session-identity variables of the *starting* session, removed so the child is its own
@@ -228,9 +238,17 @@ pub fn build(
         env.insert(name.clone(), value.clone());
     }
     let credential_warning = parent_env.contains_key("ANTHROPIC_API_KEY").then(|| {
-        "moai: ANTHROPIC_API_KEY is set in the parent environment; this headless run keeps it \
-         out of the child, and interactive sessions still bill to that key"
-            .to_string()
+        // N-6: a caller-named gateway credential may carry the key back in — the warning then
+        // says so instead of claiming the child is free of it.
+        if matches!(&spec.gateway_credential, Some((name, _)) if name == "ANTHROPIC_API_KEY") {
+            "moai: ANTHROPIC_API_KEY is set in the parent environment and the caller-named \
+             gateway credential carries it into this child; interactive sessions still bill \
+             to that key"
+        } else {
+            "moai: ANTHROPIC_API_KEY is set in the parent environment; this headless run keeps \
+             it out of the child, and interactive sessions still bill to that key"
+        }
+        .to_string()
     });
 
     // The prompt is the positional argument, last.
@@ -307,7 +325,8 @@ pub fn parse_result(raw: &RawRun) -> RunOutcome {
         return no("the model refused the request");
     }
     match value.get("structured_output") {
-        Some(answer) => RunOutcome::Answered(answer.clone()),
+        Some(answer) if !answer.is_null() => RunOutcome::Answered(answer.clone()),
+        Some(_) => no("structured_output is null"),
         None => no("a success subtype without structured_output"),
     }
 }
@@ -371,22 +390,56 @@ pub fn record_run(
     Ok(key)
 }
 
-/// A tool rule the builder accepts: never a blanket `Bash` or `PowerShell` and never a
-/// wildcard-only scope, the entries auto mode drops (SPEC REQ-2).
+/// A tool rule the builder accepts: never a blanket `Bash`·`PowerShell`·`Agent`·`Monitor`,
+/// never a wildcard-only scope in any of its spellings (`*`, `:*`, empty), never a
+/// wildcarded interpreter or wrapper (`python *`, `sh -c *`, `timeout *`) — every shape auto
+/// mode drops (SPEC REQ-2, audit N-3).
 fn narrow_rule(tool: &str) -> Result<()> {
-    let blanket = matches!(tool, "Bash" | "PowerShell");
-    let wildcard_scope = tool
+    let blanket = matches!(tool, "Bash" | "PowerShell" | "Agent" | "Monitor");
+    let scope = tool
         .strip_prefix("Bash(")
         .or_else(|| tool.strip_prefix("PowerShell("))
-        .and_then(|inner| inner.strip_suffix(')'))
-        .is_some_and(|inner| inner.trim().is_empty() || inner.trim_start().starts_with('*'));
-    if blanket || wildcard_scope {
+        .and_then(|inner| inner.strip_suffix(')'));
+    let wildcard_only = scope.is_some_and(|inner| {
+        let inner = inner.trim();
+        inner.is_empty() || inner.starts_with('*') || inner == ":*"
+    });
+    let wildcarded_word = scope.is_some_and(|inner| {
+        if !inner.contains('*') {
+            return false;
+        }
+        inner
+            .split_whitespace()
+            .next()
+            .is_some_and(|word| INTERPRETERS_AND_WRAPPERS.contains(&word))
+    });
+    if blanket || wildcard_only || wildcarded_word {
         return Err(format!(
             "blanket tool rule {tool:?} is not allowed; use a narrow rule"
         ));
     }
     Ok(())
 }
+
+/// The first words that turn a wildcarded command rule into a blanket one: interpreters and
+/// the wrappers that run what follows them (permission-modes.md's dropped-rules list).
+const INTERPRETERS_AND_WRAPPERS: [&str; 15] = [
+    "python",
+    "python3",
+    "node",
+    "deno",
+    "ruby",
+    "perl",
+    "sh",
+    "bash",
+    "zsh",
+    "fish",
+    "osascript",
+    "timeout",
+    "time",
+    "nice",
+    "nohup",
+];
 
 /// Whether a platform `managed-mcp.json` is deployed (SPEC REQ-3, D-2). A test passes its own
 /// platform root; production reads the real per-OS directory.

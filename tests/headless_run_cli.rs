@@ -335,7 +335,16 @@ fn blanket_tool_rules_refuse_to_build() {
     let root = tmp.path().join("platform");
     fs::create_dir_all(&root).unwrap();
     let env = standin_env(&standin_dir(tmp.path()));
-    for blanket in ["Bash", "Bash(*)", "PowerShell"] {
+    for blanket in [
+        "Bash",
+        "Bash(*)",
+        "PowerShell",
+        // N-3: the colon wildcard, wildcarded interpreters and a shell escape, and bare agents
+        "Bash(:*)",
+        "Bash(python *)",
+        "Bash(sh -c *)",
+        "Agent",
+    ] {
         let mut spec = audit_spec();
         spec.allowed_tools = vec![blanket.to_string()];
         assert!(
@@ -343,6 +352,49 @@ fn blanket_tool_rules_refuse_to_build() {
             "blanket rule {blanket} must refuse"
         );
     }
+    // narrow rules that must keep building
+    let mut spec = audit_spec();
+    spec.allowed_tools = vec![
+        "Read".to_string(),
+        "Bash(git diff *)".to_string(),
+        "Bash(npm test)".to_string(),
+    ];
+    assert!(build(&spec, &ctx(&root), &env).is_ok());
+}
+
+/// N-5: other credential names reach the child no more than the API key does — every
+/// credential value is scrubbed and its name recorded, and a caller-named gateway
+/// credential is the only one set back (N-6: the warning then says so).
+#[test]
+fn credential_families_stay_out_of_the_child() {
+    let tmp = tempfile::tempdir().unwrap();
+    let fixtures = tmp.path().join("bin");
+    fs::create_dir_all(&fixtures).unwrap();
+    let record = tmp.path().join("record.txt");
+    standin_claude(&fixtures);
+    let root = tmp.path().join("platform");
+    fs::create_dir_all(&root).unwrap();
+
+    let mut env = parent_env(&fixtures, &record);
+    env.insert("GH_TOKEN".to_string(), SECRET.to_string());
+    env.insert("AWS_BEARER_TOKEN_BEDROCK".to_string(), SECRET.to_string());
+
+    let built = build(&audit_spec(), &ctx(&root), &env).unwrap();
+    assert!(!built.env.contains_key("GH_TOKEN"));
+    assert!(!built.env.contains_key("AWS_BEARER_TOKEN_BEDROCK"));
+    assert!(built.scrubbed.contains(&"GH_TOKEN".to_string()));
+    assert!(built
+        .scrubbed
+        .contains(&"AWS_BEARER_TOKEN_BEDROCK".to_string()));
+
+    // N-6: with a gateway credential re-adding the API key, the warning names that the
+    // gateway carries it — it no longer claims the child is free of the key.
+    let mut gw = audit_spec();
+    gw.gateway_credential = Some(("ANTHROPIC_API_KEY".to_string(), "gw-plain".to_string()));
+    let built = build(&gw, &ctx(&root), &env).unwrap();
+    let warning = built.credential_warning.expect("warning present");
+    assert!(warning.contains("gateway"), "{warning}");
+    assert!(!warning.contains("keeps it out of the child"), "{warning}");
 }
 
 /// REQ-5 + REQ-1: an audit run needs a schema and an agent, and the foreign-tree audit run
@@ -401,6 +453,12 @@ fn success_without_structured_output_is_no_verdict() {
         ),
         raw(false, 2, ""),
         raw(true, 0, "not json"),
+        // B-1: a null structured_output is no verdict, not an empty answer
+        raw(
+            true,
+            0,
+            r#"{"type":"result","subtype":"success","is_error":false,"structured_output":null,"session_id":"s"}"#,
+        ),
     ];
     for (i, case) in cases.iter().enumerate() {
         assert!(
