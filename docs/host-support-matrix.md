@@ -120,16 +120,16 @@ Codex 공식 문서는 Desktop 앱, CLI, IDE 확장을 함께 설명한다. 세 
 | 론처 하위 명령 `moai <host> -l\|-a` | yes | yes | yes | `src/main.rs::Omp(HostLaunch)` | - |
 | 론처 도움말과 사용법 줄 | yes | yes | yes | `src/help.rs::LAUNCHERS` | - |
 | 론처 첫 실행의 프로젝트 설정 | yes | yes | yes | `src/launcher_init.rs::default_profile` | - |
-| 세션 등록의 host 목록 | yes | yes | yes | `src/session.rs::HOSTS` (list) | - |
+| 세션 등록의 host 목록 | yes | n/a | yes | `src/session.rs::HOSTS` (list) | - |
 | glm 키가 세션에 닿는 길 | yes | n/a | yes | `src/session.rs::read_here` | - |
 | 프로필이 적을 수 있는 host | yes | yes | yes | `src/profile.rs::KNOWN_HOSTS` (list) | - |
 | 에이전트 정의 렌더링 | yes | yes | yes | `src/agent_defs.rs::HOSTS` (list) | - |
-| hook 설치와 전달 | yes | yes | yes | `src/hooks.rs::HOSTS` (list) | - |
+| hook 설치와 전달 | yes | n/a | n/a | `src/hooks.rs::HOSTS` (list) | - |
 | 레인 의무 줄(`lane-duty-line`) | yes | yes | yes | `src/lane_duty.rs::HOSTS` | - |
 | host 폴더 해석 | yes | yes | yes | `src/host_home.rs::Omp` | - |
-| 프로젝트 host 단계(codex·omp) | n/a | yes | yes | `src/project_hosts.rs::omp-agents` | - |
+| 프로젝트 host 단계(codex·omp) | n/a | n/a | n/a | `src/project_hosts.rs::retired_hosts_step` | - |
 | 사용자 범위 AGENTS 라우팅 | yes | yes | n/a | `src/home_routing.rs::shadows every other user context file` | - |
-| 상태줄 설정 | yes | yes | n/a | `src/project_hosts.rs::OMP_CONFIG_REASON` | - |
+| 상태줄 설정 | yes | n/a | n/a | `src/project_update.rs::statusLine` | - |
 | skill 설치(`moai update`)의 host 목록 | yes | yes | gap | `src/update.rs::HOSTS` (list) | leader card: OMP는 `.agents/skills`(codex 단계가 쓰는 폴더)와 `~/.omp/agent/skills`를 읽으므로(`src/skills_legacy.rs`) 일부는 이미 닿는다; 2026-11-19 `omp skills list` 관찰(무비용)은 Claude 사용자 skill 폴더도 읽어 moai 스킬을 `source claude:user`로 발견함을 보여 주므로 읽는 폴더는 이 가정보다 넓다; 빠진 것은 이 목록과 `~/.omp/agent/skills`로의 설치이고, `src/update.rs`는 카드 C-47 범위 |
 | 프로젝트 skill 설치 | yes | yes | gap | `src/project_skills.rs::host_folder` | leader card: 같은 폴더 규칙(OMP는 `.agents/skills`를 읽으므로 codex용 설치가 OMP에도 보이는지 먼저 확인; 2026-11-19 `omp skills list` 관찰은 OMP가 가정 밖의 Claude 사용자 skill 폴더도 `source claude:user`로 읽음을 보여 주므로, 확인할 폴더에 그 폴더와 `~/.omp/agent/skills`도 더한다) |
 | 출력 스타일 설치 | yes | yes | gap | `src/home_style.rs::HOSTS` (list) | leader card: OMP에 출력 스타일이 있는지 먼저 조사한다 |
