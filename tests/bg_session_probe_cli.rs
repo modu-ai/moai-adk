@@ -59,7 +59,7 @@ const MODEL_ROWS: &[(&str, &str)] = &[
 
 /// What a signal or idle measurement needs from a live session process.
 const NO_LIVE_PROCESS: &str =
-    "no live session process: a session without credentials stops at its first request";
+    "no live session process at this row (the session_alive_* facts say when it ended)";
 
 fn child_env(root: &Path) -> BTreeMap<String, String> {
     let home = root.join("home");
@@ -460,6 +460,9 @@ fn measure_model_free(sb: &Sandbox, idle_required: Duration, idle_budget: Durati
     );
     rep.row(&listed);
     let session = first_session(&listed.stdout);
+    if let Some((_, Some(pid))) = &session {
+        rep.fact("session_alive_after_first_listing", json!(alive(*pid)));
+    }
 
     let wt_list = sb.git(&repo, &["worktree", "list", "--porcelain"]);
     let wt_dir = repo.join(".claude/worktrees/probe-wt");
@@ -474,29 +477,8 @@ fn measure_model_free(sb: &Sandbox, idle_required: Duration, idle_budget: Durati
         }),
     );
 
-    // Removal rules on that worktree: uncommitted change, then an unpushed commit, then a lock.
-    if let Some((id, _)) = session.clone() {
-        if wt_dir.is_dir() {
-            fs::write(wt_dir.join("dirty.txt"), "dirty\n").unwrap();
-            let r = sb.claude("rm_with_uncommitted_changes", &["rm", &id], &repo, SHORT);
-            rep.row(&r);
-            rep.fact(
-                "rm_with_uncommitted_changes_dir_exists",
-                json!(wt_dir.is_dir()),
-            );
-            sb.git(&wt_dir, &["add", "dirty.txt"]);
-            sb.git(&wt_dir, &["commit", "-q", "-m", "unpushed"]);
-            let r = sb.claude("rm_with_unpushed_commit", &["rm", &id], &repo, SHORT);
-            rep.row(&r);
-            rep.fact("rm_with_unpushed_commit_dir_exists", json!(wt_dir.is_dir()));
-        } else {
-            rep.not_run(
-                "rm_rules",
-                "the session made no worktree directory to remove",
-            );
-        }
-    } else {
-        rep.not_run("rm_rules", "no background session was listed");
+    if let Some((_, Some(pid))) = &session {
+        rep.fact("session_alive_after_placement_reads", json!(alive(*pid)));
     }
 
     // Idle stop first, while the session still lives: only with a live session and a wait that
@@ -552,6 +534,36 @@ fn measure_model_free(sb: &Sandbox, idle_required: Duration, idle_budget: Durati
             }
         }
         None => rep.not_run("signals", NO_LIVE_PROCESS),
+    }
+
+    // Removal rules on that worktree, after the signals (the session may be gone by now, which
+    // the liveness facts around this block record): an uncommitted change, then an unpushed commit.
+    if let Some((id, _)) = session.clone() {
+        if wt_dir.is_dir() {
+            fs::write(wt_dir.join("dirty.txt"), "dirty\n").unwrap();
+            let r = sb.claude("rm_with_uncommitted_changes", &["rm", &id], &repo, SHORT);
+            rep.row(&r);
+            rep.fact(
+                "rm_with_uncommitted_changes_dir_exists",
+                json!(wt_dir.is_dir()),
+            );
+            sb.git(&wt_dir, &["add", "dirty.txt"]);
+            sb.git(&wt_dir, &["commit", "-q", "-m", "unpushed"]);
+            let r = sb.claude("rm_with_unpushed_commit", &["rm", &id], &repo, SHORT);
+            rep.row(&r);
+            rep.fact("rm_with_unpushed_commit_dir_exists", json!(wt_dir.is_dir()));
+        } else {
+            rep.not_run(
+                "rm_rules",
+                "the session made no worktree directory to remove",
+            );
+        }
+    } else {
+        rep.not_run("rm_rules", "no background session was listed");
+    }
+
+    if let Some((_, Some(pid))) = &session {
+        rep.fact("session_alive_after_removal_rows", json!(alive(*pid)));
     }
 
     for (id, why) in MODEL_ROWS {
