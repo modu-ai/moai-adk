@@ -857,12 +857,16 @@ fn assignment_prefixed_wildcard_rules_refuse_in_every_spelling() {
     assert!(build(&spec, &ctx(&root), &env).is_ok());
 }
 
-/// Q-1: the REAL reaped-elsewhere case — SIGCHLD set to SIG_IGN makes the kernel reap
-/// children at exit, so waitid answers ECHILD, wait() fails and the arm under test runs:
-/// success false, code none, the drained answer kept, and therefore no verdict.
+/// Q-1: the REAL reaped-elsewhere case, in a process of its own (the audit's wording):
+/// SIGCHLD set to SIG_IGN makes the kernel reap children at exit, so waitid answers ECHILD,
+/// wait() fails and the arm under test runs — success false, code none, the answer kept,
+/// no verdict. The disposition is process-wide, so the child of this test re-execs the
+/// test binary with a marker env var and prints the RawRun as JSON for the parent to
+/// assert on; a leaked SIG_IGN would break every sibling test (measured: ECHILD in
+/// common::write_executable's sh).
 #[test]
 fn a_reaped_elsewhere_child_returns_its_drained_output() {
-    use moai_cli::headless_run::{parse_result, run_with_limit, RunOutcome};
+    use moai_cli::headless_run::run_with_limit;
     use std::time::Duration;
     let tmp = tempfile::tempdir().unwrap();
     let fixtures = tmp.path().join("bin");
@@ -875,19 +879,54 @@ exit 0\n";
     let root = tmp.path().join("platform");
     fs::create_dir_all(&root).unwrap();
     let built = build(&audit_spec(), &ctx(&root), &parent_env(&fixtures, &record)).unwrap();
-    // In-process real case: ignore SIGCHLD for this thread's lifetime — the kernel then
-    // auto-reaps the child at its exit and waitid answers ECHILD, exactly the arm Q-1 pins.
-    unsafe {
-        let previous = libc::signal(libc::SIGCHLD, libc::SIG_IGN);
+
+    // Child mode: ignore SIGCHLD, run once, print the outcome, exit — never return.
+    if std::env::var_os("REAPED_ELSEWHERE_CHILD").is_some() {
+        unsafe {
+            libc::signal(libc::SIGCHLD, libc::SIG_IGN);
+        }
         let raw = run_with_limit(&built, tmp.path(), Duration::from_secs(5)).unwrap();
-        libc::signal(libc::SIGCHLD, previous);
-        assert!(!raw.success, "an unknown exit status is not a success");
-        assert!(raw.code.is_none(), "the exit code is unknown");
-        assert!(raw.stderr.contains("unknown"), "{}", raw.stderr);
-        assert!(
-            matches!(parse_result(&raw), RunOutcome::NoVerdict { .. }),
-            "a kept answer still cannot be a verdict without a status: {}",
-            raw.stdout
+        println!(
+            "REAPED_JSON:{}",
+            serde_json::json!({
+                "success": raw.success,
+                "code": raw.code,
+                "stdout": raw.stdout,
+                "stderr": raw.stderr,
+            })
         );
+        std::process::exit(0);
     }
+
+    // Parent mode: re-exec this same test in a fresh process with the marker set.
+    let exe = std::env::current_exe().unwrap();
+    let out = std::process::Command::new(exe)
+        .args([
+            "a_reaped_elsewhere_child_returns_its_drained_output",
+            "--exact",
+            "--nocapture",
+        ])
+        .env("REAPED_ELSEWHERE_CHILD", "1")
+        .output()
+        .expect("spawn the reaped-elsewhere child process");
+    assert!(out.status.success(), "child test process failed");
+    let text = String::from_utf8_lossy(&out.stdout);
+    let line = text
+        .lines()
+        .rev()
+        .find_map(|l| l.strip_prefix("REAPED_JSON:"))
+        .expect("the child printed its RawRun json");
+    let raw: Value = serde_json::from_str(line).expect("the json parses");
+    assert!(
+        !raw["success"].as_bool().unwrap(),
+        "unknown status is not a success"
+    );
+    assert!(raw["code"].is_null(), "the exit code is unknown");
+    let stderr = raw["stderr"].as_str().unwrap();
+    assert!(stderr.contains("unknown"), "{stderr}");
+    // the drained answer was kept, and without a status it can be no verdict
+    assert!(raw["stdout"]
+        .as_str()
+        .unwrap()
+        .contains("structured_output"));
 }
