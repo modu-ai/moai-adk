@@ -149,6 +149,7 @@ const DB_DEPENDENCIES: &[(&str, &str)] = &[
 const SKIP_DIRS: &[&str] = &[
     ".git",
     PROJECT_STATE_DIR,
+    crate::state_root::MOAI_DIR,
     ".claude",
     ".codex",
     ".omp",

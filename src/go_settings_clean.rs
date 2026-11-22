@@ -10,8 +10,9 @@
 //! character is the user's and is never touched — and plans, applies and reverts their removal
 //! (`go-settings-plan`, `go-settings-apply`, `go-settings-revert`; the shape follows
 //! [`crate::go_hooks`]). `plansDirectory` and `subagentStatusLine` go; `statusLine` becomes a
-//! command that runs the Rust launcher by its direct path (`"$HOME/.moai-cli/path/moai-cli"
-//! statusline`, not the PATH name `moai`, which a routing shim may send to the Go build). That
+//! command that runs the Rust launcher by its direct path (`"$HOME/.moai/path/moai-cli"
+//! statusline`, or `.moai-cli` for a HOME that keeps the earlier folder, [`launcher_shown`]; not
+//! the PATH name `moai`, which a routing shim may send to the Go build). That
 //! write is planned only after the launcher is shown to be the Rust build; when it cannot be
 //! shown the plan is `held`, writes nothing and says what to check.
 //!
@@ -31,12 +32,21 @@ const SETTINGS: &str = ".claude/settings.json";
 /// The Go tool's plans folder, the only `plansDirectory` value taken for its own.
 const PLANS_DIR: &str = ".moai/plans";
 
-/// The Rust launcher as the status line command spells it (Claude Code's shell expands `$HOME`),
-/// and as every preview shows it.
+/// The launcher as a preview shows it when no HOME is known (the status line is then never
+/// written: the plan is blocked on `home_unavailable`).
 pub const LAUNCHER_SHOWN: &str = "$HOME/.moai-cli/path/moai-cli";
 
-/// The same file under HOME.
-const LAUNCHER_REL: [&str; 3] = [crate::fixed_state!(), "path", "moai-cli"];
+/// The Rust launcher as the status line command spells it (Claude Code's shell expands `$HOME`)
+/// and as every preview shows it: under the folder the HOME resolves to
+/// ([`crate::home_root::path`], SPEC-20261121-path-root-moai-default REQ-11).
+pub fn launcher_shown(home: &Path) -> String {
+    let root = crate::home_root::path(home);
+    let rel = root
+        .strip_prefix(home)
+        .map(|r| r.to_string_lossy().into_owned())
+        .unwrap_or_else(|_| crate::home_root::dir(home).to_string());
+    format!("$HOME/{rel}/path/moai-cli")
+}
 
 /// The most directory entries the `.moai/plans` count looks at (#2936 L2a, D1 condition 2): the
 /// walk stops at the next one and the count is reported as `more_than_limit`.
@@ -329,10 +339,10 @@ pub fn classify(map: &Map<String, Value>) -> (Vec<GoKey>, Vec<String>) {
 }
 
 /// The status line object a project gets: the Rust launcher by its direct path.
-pub fn rust_status_line() -> Value {
+pub fn rust_status_line(home: &Path) -> Value {
     json!({
         "type": "command",
-        "command": format!("\"{LAUNCHER_SHOWN}\" {}", crate::status_line::SUBCOMMAND),
+        "command": format!("\"{}\" {}", launcher_shown(home), crate::status_line::SUBCOMMAND),
     })
 }
 
@@ -364,12 +374,10 @@ impl LauncherState {
 }
 
 fn launcher_path(home: &Path) -> PathBuf {
-    LAUNCHER_REL
-        .iter()
-        .fold(home.to_path_buf(), |p, s| p.join(s))
+    crate::home_root::path(home).join("path").join("moai-cli")
 }
 
-/// Looks at `$HOME/.moai-cli/path/moai-cli`: it must be a file, or a link that resolves to one,
+/// Looks at `path/moai-cli` under the folder the HOME resolves to (REQ-12): it must be a file, or a link that resolves to one,
 /// with an execute bit; it is then run as `statusline --help` by the safe probe the status line
 /// gate uses (HOME the only variable, a fixed PATH, the system temporary folder as working
 /// folder, stdin closed, output capped, killed on time-out) and must print
@@ -479,7 +487,7 @@ struct Planned {
 
 /// The settings object with the Go-made keys removed or replaced; every other key keeps its
 /// value and its place.
-fn rewrite(map: &Map<String, Value>, go: &[GoKey]) -> Result<Vec<u8>> {
+fn rewrite(map: &Map<String, Value>, go: &[GoKey], status_line: &Value) -> Result<Vec<u8>> {
     let mut out = map.clone();
     for g in go {
         match g.change {
@@ -487,7 +495,7 @@ fn rewrite(map: &Map<String, Value>, go: &[GoKey]) -> Result<Vec<u8>> {
                 out.shift_remove(g.key);
             }
             Change::Replace => {
-                out.insert(g.key.to_string(), rust_status_line());
+                out.insert(g.key.to_string(), status_line.clone());
             }
         }
     }
@@ -522,6 +530,7 @@ fn plan_inner(project: &Path, home: Option<&Path>) -> Result<Planned> {
         (Some(b), false) => numbers_that_change(b),
         _ => Vec::new(),
     };
+    let shown = home.map_or_else(|| LAUNCHER_SHOWN.to_string(), launcher_shown);
     let launcher = match (needs_launcher, home) {
         (false, _) => LauncherState::NotNeeded,
         (true, Some(h)) => launcher_state(&root, h),
@@ -555,19 +564,19 @@ fn plan_inner(project: &Path, home: Option<&Path>) -> Result<Planned> {
         ));
     } else if needs_launcher && launcher != LauncherState::Rust {
         let why = match launcher {
-            LauncherState::Missing => format!(
-                "the Rust launcher {LAUNCHER_SHOWN} is missing or is not an executable file"
-            ),
+            LauncherState::Missing => {
+                format!("the Rust launcher {shown} is missing or is not an executable file")
+            }
             LauncherState::NotRust => format!(
-                "{LAUNCHER_SHOWN} answers `statusline --help` as something other than the Rust build"
+                "{shown} answers `statusline --help` as something other than the Rust build"
             ),
             _ => format!(
-                "{LAUNCHER_SHOWN} did not answer `statusline --help` within the probe limit (or \
+                "{shown} did not answer `statusline --help` within the probe limit (or \
                  lies inside the project, where it is never run)"
             ),
         };
         let next = format!(
-            "run `\"{LAUNCHER_SHOWN}\" statusline --help`: its first line must read \"{}\"; \
+            "run `\"{shown}\" statusline --help`: its first line must read \"{}\"; \
              install or repair the Rust launcher if it does not, then run `moai go-settings-plan \
              <project>` again; nothing was written and the Go keys stay",
             crate::status_line::RUST_HELP_LINE
@@ -585,7 +594,10 @@ fn plan_inner(project: &Path, home: Option<&Path>) -> Result<Planned> {
     };
 
     let after = match (&map, action) {
-        (Some(m), "replace") => Some(rewrite(m, &go)?),
+        (Some(m), "replace") => match home {
+            Some(h) => Some(rewrite(m, &go, &rust_status_line(h))?),
+            None => None,
+        },
         _ => None,
     };
     let go_json: Vec<Value> = go
@@ -631,7 +643,7 @@ fn plan_inner(project: &Path, home: Option<&Path>) -> Result<Planned> {
         "action": action,
         "go_keys": go_json,
         "kept": kept,
-        "launcher": {"path": LAUNCHER_SHOWN, "state": launcher.name()},
+        "launcher": {"path": shown, "state": launcher.name()},
         "plans_files": plans_files,
         "local_settings": "never written",
         "kept_copy": if go.is_empty() {
@@ -1026,12 +1038,15 @@ mod tests {
             "d": null,
         }));
         let (go, _) = classify(&m);
-        let out: Value = serde_json::from_slice(&rewrite(&m, &go).unwrap()).unwrap();
+        let home = tempfile::tempdir().unwrap();
+        fs::create_dir(home.path().join(crate::HOME_STATE_DIR)).unwrap();
+        let line = rust_status_line(home.path());
+        let out: Value = serde_json::from_slice(&rewrite(&m, &go, &line).unwrap()).unwrap();
         let keys: Vec<&String> = out.as_object().unwrap().keys().collect();
         assert_eq!(keys, ["a", "b", "statusLine", "c", "d"]);
-        assert_eq!(out["statusLine"], rust_status_line());
+        assert_eq!(out["statusLine"], line);
         assert_eq!(
-            rust_status_line()["command"],
+            line["command"],
             json!("\"$HOME/.moai-cli/path/moai-cli\" statusline")
         );
         assert_eq!(out["b"], m["b"]);

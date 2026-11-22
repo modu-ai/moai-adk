@@ -3,7 +3,9 @@
 //! Rust launcher under the folder the HOME resolves to (REQ-11, REQ-12), and project detection
 //! skips `.moai` as it skips `.moai-cli` (REQ-13). Every case uses temporary folders only.
 
-use moai_cli::go_settings_clean::{launcher_shown, launcher_state, rust_status_line, LauncherState};
+use moai_cli::go_settings_clean::{
+    launcher_shown, launcher_state, rust_status_line, LauncherState,
+};
 use moai_cli::project_detect::detect;
 use std::fs;
 use std::os::unix::fs::PermissionsExt as _;
