@@ -12,7 +12,6 @@
 pub mod color;
 pub mod config;
 pub mod counts;
-pub mod godecode;
 pub mod input;
 pub mod render;
 pub mod segments;
@@ -26,20 +25,18 @@ pub const RENDER_BUDGET: Duration = Duration::from_millis(800);
 
 /// The complete stdout for one render of `stdin`, final newline included.
 pub fn render(stdin: &[u8], ctx: &state::Context) -> String {
-    let input = (stdin.len() <= STDIN_CAP as usize)
-        .then(|| input::parse(stdin))
-        .flatten();
+    let input = read_input(stdin);
     // Subagent rows (Claude Code v2.1.293+): a present `tasks` array switches the output
     // to one JSON line per row and skips every collector.
-    if let Some(tasks) = input.as_ref().and_then(|i| i.tasks.as_ref()) {
+    if let Some(tasks) = input.tasks.as_ref() {
         return segments::subagent_rows(tasks) + "\n";
     }
-    let config = state::display_config(input.as_ref(), ctx);
+    let config = state::display_config(Some(&input), ctx);
     // #2559: Claude Code reads stdout through a pipe, so color never depends on a TTY
     // (the regression PR #2552 introduced); only NO_COLOR / MOAI_NO_COLOR turn it off.
     let profile = (!ctx.no_color())
         .then(|| color::Profile::from_colorterm(ctx.var("COLORTERM").unwrap_or("")));
-    let status = state::collect(input.as_ref(), ctx);
+    let status = state::collect(Some(&input), ctx);
     // The weekly reset countdown measures against the render's clock (the --now-unix seam,
     // SPEC-20261121-statusline-detached REQ-6): without it the renderer would count from
     // epoch 0 (audit B1 on the slice head).
@@ -56,6 +53,16 @@ pub fn render(stdin: &[u8], ctx: &state::Context) -> String {
 /// Largest accepted stdin payload. One extra byte is read so an oversized stream
 /// degrades to no input even when its prefix is valid JSON.
 pub const STDIN_CAP: u64 = 4 * 1024 * 1024;
+
+/// The payload of `stdin` (SPEC-20261122-statusline-limits REQ-10); a stream above
+/// [`STDIN_CAP`] reads as empty, like any payload that is not a JSON object.
+fn read_input(stdin: &[u8]) -> input::Input {
+    if stdin.len() <= STDIN_CAP as usize {
+        input::parse(stdin)
+    } else {
+        input::Input::default()
+    }
+}
 
 fn read_capped(reader: impl std::io::Read) -> Vec<u8> {
     use std::io::Read;
@@ -98,13 +105,10 @@ fn unix_now() -> i64 {
 /// stops it. Subagent rows and inputs without `rate_limits` write nothing; a failed write
 /// never changes the rendered line.
 fn record_usage_after_render(stdin: &[u8], home: &std::path::Path, now: i64) -> bool {
-    let Some(input) = (stdin.len() <= STDIN_CAP as usize)
-        .then(|| input::parse(stdin))
-        .flatten()
-        .filter(|i| i.tasks.is_none())
-    else {
+    let input = read_input(stdin);
+    if input.tasks.is_some() {
         return false;
-    };
+    }
     let Some(limits) = input.rate_limits.as_ref() else {
         return false;
     };
@@ -128,13 +132,11 @@ fn record_usage_after_render(stdin: &[u8], home: &std::path::Path, now: i64) -> 
 /// #2588: after a render, start the detached counts refresh when the cache needs one.
 /// The render itself stays read-only and never waits for it.
 fn refresh_counts_after_render(stdin: &[u8]) {
-    let Some(anchor) = (stdin.len() <= STDIN_CAP as usize)
-        .then(|| input::parse(stdin))
-        .flatten()
-        .filter(|i| i.tasks.is_none())
-        .as_ref()
-        .and_then(state::resolve_anchor)
-    else {
+    let input = read_input(stdin);
+    if input.tasks.is_some() {
+        return;
+    }
+    let Some(anchor) = state::resolve_anchor(&input) else {
         return;
     };
     if let Ok(exe) = std::env::current_exe() {
@@ -259,14 +261,18 @@ mod tests {
         );
     }
 
+    /// SPEC-20261122-statusline-limits REQ-10: a mistyped field, shown or not, changes only
+    /// itself; the model of the same payload stays (the Go decoder blanked the whole line).
     #[test]
-    fn hidden_main_fields_still_receive_typed_input_validation() {
-        let ctx = state::Context::for_test(&[], None);
+    fn a_mistyped_field_keeps_the_rest_of_the_payload() {
+        let ctx = state::Context::for_test(&[("NO_COLOR", "1")], None);
+        let model_only = render(br#"{"model":"MODEL_SENTINEL"}"#, &ctx);
+        assert!(model_only.contains("🧠 MODEL_SENTINEL"), "{model_only}");
         for stdin in [
-            br#"{"model":"INVALID_SENTINEL","agent":{"name":123}}"#.as_slice(),
-            br#"{"model":"INVALID_SENTINEL","pr":{"number":"wrong"}}"#.as_slice(),
+            br#"{"model":"MODEL_SENTINEL","agent":{"name":123}}"#.as_slice(),
+            br#"{"model":"MODEL_SENTINEL","pr":{"number":"wrong"}}"#.as_slice(),
         ] {
-            assert_eq!(render(stdin, &ctx), render(&[], &ctx));
+            assert_eq!(render(stdin, &ctx), model_only);
         }
     }
 }

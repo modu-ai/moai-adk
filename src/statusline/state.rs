@@ -105,17 +105,13 @@ impl Context {
 #[derive(Debug, Default)]
 pub struct Status {
     pub model: String,
-    pub session_ms: i64,
     pub memory: Memory,
     pub auto_compact: i64,
     pub version: Option<Version>,
     pub claude_version: String,
-    pub output_style: String,
     /// `Some` when `effort` is present, even with an empty level.
     pub effort: Option<String>,
     pub thinking: Option<bool>,
-    /// (cache read, cache creation) from `current_usage`.
-    pub cache: Option<(i64, i64)>,
     pub five_hour: Option<input::RateWindow>,
     pub seven_day: Option<input::RateWindow>,
     pub git: Option<GitStatus>,
@@ -124,11 +120,8 @@ pub struct Status {
     /// The cards of the project's local ledger by stage, for the flow line; `None` when there
     /// is no ledger to read (see [`read_flow`]).
     pub flow: Option<Flow>,
-    pub goal_armed: bool,
     /// #2756 AC-7: the open pull request of the current branch.
     pub pr: Option<PrInfo>,
-    /// #2756 AC-8: how long the prompt cache stays warm.
-    pub cache_timer: Option<CacheTimer>,
     /// #2756 AC-9: the worktree name the host gave; empty in the main checkout. The `🌳` item
     /// shows it as it is (D-4 of SPEC-20261122-statusline-where).
     pub worktree: String,
@@ -148,15 +141,6 @@ pub struct PrInfo {
     /// SPEC-20261122-statusline-where REQ-9: the host says the request is a GitLab merge
     /// request (`pr.kind` is `mr`), so the item is written `!<n>`.
     pub merge_request: bool,
-}
-
-/// The prompt cache state from `prompt_cache` (Unix-second timestamps).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum CacheTimer {
-    /// Warm, with whole minutes left until `expires_at` (rounded down).
-    Warm(i64),
-    /// `warm` is false, or `expires_at` has passed.
-    Cold,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -290,33 +274,16 @@ pub fn collect(input: Option<&Input>, ctx: &Context) -> Status {
     let Some(input) = input else {
         return status;
     };
-    status.session_ms = input
-        .cost
-        .as_ref()
-        .and_then(|c| c.total_duration_ms)
-        .unwrap_or(0);
+    // SPEC-20261122-statusline-limits REQ-11: only what a shown item needs is collected — not
+    // the session duration, the output style, the cache hit ratio, the prompt cache timer or
+    // the goal file.
     status.memory = collect_memory(input, ctx, auto_compact);
-    status.output_style = input
-        .output_style
-        .as_ref()
-        .map_or("", |s| input::text(&s.name))
-        .to_string();
     status.claude_version = input::text(&input.version).to_string();
     status.effort = input
         .effort
         .as_ref()
         .map(|e| input::text(&e.level).to_string());
     status.thinking = input.thinking.as_ref().map(|t| t.enabled.unwrap_or(false));
-    status.cache = input
-        .context_window
-        .as_ref()
-        .and_then(|cw| cw.current_usage.as_ref())
-        .map(|u| {
-            (
-                u.cache_read_input_tokens.unwrap_or(0),
-                u.cache_creation_input_tokens.unwrap_or(0),
-            )
-        });
     if let Some(limits) = &input.rate_limits {
         status.five_hour = limits.five_hour;
         status.seven_day = limits.seven_day;
@@ -333,7 +300,6 @@ pub fn collect(input: Option<&Input>, ctx: &Context) -> Status {
         });
     if let Some(anchor) = &anchor {
         status.github = github_counts(anchor);
-        status.goal_armed = goal_armed(anchor, input::text(&input.session_id));
     }
     let dir = session_dir(input);
     status.flow = anchor
@@ -353,13 +319,9 @@ pub fn collect(input: Option<&Input>, ctx: &Context) -> Status {
             review_state: input::text(&p.review_state).to_string(),
             // Official statusline page: `pr.kind` is `mr` for a GitLab merge request and absent
             // for a GitHub pull request; any other value is a pull request.
-            merge_request: matches!(&p.kind, Some(serde_json::Value::String(k)) if k == "mr"),
+            merge_request: p.kind.as_deref() == Some("mr"),
         })
     });
-    status.cache_timer = input
-        .prompt_cache
-        .as_ref()
-        .and_then(|c| cache_timer(c, ctx.now));
     let worktree = input.worktree.as_ref().map_or("", |w| input::text(&w.name));
     status.worktree = if worktree.is_empty() {
         input
@@ -386,28 +348,6 @@ fn session_dir(input: &Input) -> Option<PathBuf> {
         dir
     };
     (!dir.is_empty()).then(|| PathBuf::from(dir))
-}
-
-/// #2756 AC-8: `warm: false` is cold; `warm: true` with `expires_at` gives the whole minutes
-/// left (a passed `expires_at` is cold). Anything else — no `warm`, a warm cache without
-/// `expires_at`, a value of another type — shows no timer.
-fn cache_timer(cache: &serde_json::Value, now: i64) -> Option<CacheTimer> {
-    match cache.get("warm").and_then(serde_json::Value::as_bool)? {
-        false => Some(CacheTimer::Cold),
-        true => {
-            // The decoder may hand numbers over as floats (Go `encoding/json` rules).
-            let expires = cache.get("expires_at").and_then(|v| {
-                v.as_i64()
-                    .or_else(|| v.as_f64().filter(|f| f.is_finite()).map(|f| f as i64))
-            })?;
-            let left = expires - now;
-            Some(if left <= 0 {
-                CacheTimer::Cold
-            } else {
-                CacheTimer::Warm(left / 60)
-            })
-        }
-    }
 }
 
 /// #2756 AC-7: a URL usable inside an OSC 8 hyperlink — `http://` or `https://` and no
@@ -1417,26 +1357,6 @@ fn run_git(dir: &Path, args: &[&str], ctx: &Context) -> Option<String> {
 
 // ---- local state files ----
 
-/// `resolveGoalArmed`: `<anchor>/.moai/state/goal/<session_id>.json` has `status: armed`.
-/// A session id carrying a path separator is refused rather than joined.
-fn goal_armed(anchor: &Path, session_id: &str) -> bool {
-    if session_id.is_empty() || session_id.contains(['/', '\\']) || session_id == ".." {
-        return false;
-    }
-    #[derive(Deserialize, Default)]
-    #[serde(default)]
-    struct Goal {
-        status: Option<String>,
-    }
-    let path = anchor
-        .join(".moai/state/goal")
-        .join(format!("{session_id}.json"));
-    std::fs::read(path)
-        .ok()
-        .and_then(|b| serde_json::from_slice::<Goal>(&b).ok())
-        .is_some_and(|g| g.status.as_deref() == Some("armed"))
-}
-
 /// `resolveGitHubCounts`: the cache only, never the network (#2588: the refresh runs
 /// in a detached child, see [`super::counts`]); an explicit `statusline.forge` naming no
 /// forge suppresses the pair, and counts fetched longer ago than
@@ -2259,14 +2179,8 @@ mod tests {
     }
 
     #[test]
-    fn goal_and_forge_reads() {
+    fn forge_reads() {
         let tmp = tempfile::tempdir().unwrap();
-        let goal = tmp.path().join(".moai/state/goal");
-        std::fs::create_dir_all(&goal).unwrap();
-        std::fs::write(goal.join("s1.json"), r#"{"status":"armed"}"#).unwrap();
-        assert!(goal_armed(tmp.path(), "s1"));
-        assert!(!goal_armed(tmp.path(), "s2"));
-        assert!(!goal_armed(tmp.path(), "../goal/s1"));
         assert_eq!(github_counts(tmp.path()), GitHubCounts::default());
         let gh = tmp.path().join(".moai/state/github");
         std::fs::create_dir_all(&gh).unwrap();
@@ -2453,51 +2367,17 @@ mod tests {
     }
 }
 
-/// #2756 AC-7–AC-9: the pull request, prompt cache and worktree values the renderer shows.
+/// #2756 AC-7 and AC-9: the pull request and worktree values the renderer shows.
 #[cfg(test)]
 mod extras_tests {
     use super::*;
     use serde_json::json;
 
     fn collect_json(value: serde_json::Value, now: i64) -> Status {
-        let input = input::parse(value.to_string().as_bytes()).unwrap();
+        let input = input::parse(value.to_string().as_bytes());
         let mut ctx = Context::for_test(&[], None);
         ctx.now = now;
         collect(Some(&input), &ctx)
-    }
-
-    #[test]
-    fn the_cache_timer_counts_whole_minutes_and_turns_cold_at_expiry() {
-        let at = |cache: serde_json::Value| cache_timer(&cache, 1000);
-        assert_eq!(
-            at(json!({"warm": true, "expires_at": 1000 + 299})),
-            Some(CacheTimer::Warm(4))
-        );
-        assert_eq!(
-            at(json!({"warm": true, "expires_at": 1000 + 60})),
-            Some(CacheTimer::Warm(1))
-        );
-        assert_eq!(
-            at(json!({"warm": true, "expires_at": 1000 + 59})),
-            Some(CacheTimer::Warm(0))
-        );
-        assert_eq!(
-            at(json!({"warm": true, "expires_at": 1000 + 1})),
-            Some(CacheTimer::Warm(0))
-        );
-        assert_eq!(
-            at(json!({"warm": true, "expires_at": 1000})),
-            Some(CacheTimer::Cold)
-        );
-        assert_eq!(
-            at(json!({"warm": false, "expires_at": null})),
-            Some(CacheTimer::Cold)
-        );
-        // No value to show: no `warm`, a warm cache without `expires_at`, other types.
-        assert_eq!(at(json!({"expires_at": 1300})), None);
-        assert_eq!(at(json!({"warm": true, "expires_at": null})), None);
-        assert_eq!(at(json!({"warm": "yes"})), None);
-        assert_eq!(at(json!("warm")), None);
     }
 
     #[test]
@@ -2523,13 +2403,12 @@ mod extras_tests {
     }
 
     #[test]
-    fn pr_worktree_and_cache_come_from_the_input_or_stay_empty() {
+    fn pr_and_worktree_come_from_the_input_or_stay_empty() {
         let s = collect_json(
             json!({
                 "pr": {"number": 12, "url": "https://github.com/o/r/pull/12", "review_state": "approved"},
                 "worktree": {"name": "wt-session"},
-                "workspace": {"git_worktree": "linked"},
-                "prompt_cache": {"warm": true, "expires_at": 600}
+                "workspace": {"git_worktree": "linked"}
             }),
             0,
         );
@@ -2546,7 +2425,6 @@ mod extras_tests {
             s.worktree, "wt-session",
             "worktree.name wins over git_worktree"
         );
-        assert_eq!(s.cache_timer, Some(CacheTimer::Warm(10)));
         let s = collect_json(
             json!({"workspace": {"git_worktree": "linked"}, "pr": {"number": 3}}),
             0,
@@ -2558,13 +2436,7 @@ mod extras_tests {
         let pr = s.pr.unwrap();
         assert!(pr.url.is_empty() && pr.review_state.is_empty());
         let s = collect_json(json!({"pr": {"number": 0}, "workspace": {}}), 0);
-        assert_eq!((s.pr, s.worktree.as_str(), s.cache_timer), (None, "", None));
-        // A mistyped prompt_cache leaves the timer out but keeps the rest of the payload.
-        let s = collect_json(
-            json!({"model": {"display_name": "x"}, "prompt_cache": 7}),
-            0,
-        );
-        assert_eq!((s.model.as_str(), s.cache_timer), ("x", None));
+        assert_eq!((s.pr, s.worktree.as_str()), (None, ""));
     }
 }
 
@@ -3137,12 +3009,11 @@ mod stage_tests {
             serde_json::json!({"workspace": {"project_dir": f.project}})
                 .to_string()
                 .as_bytes(),
-        )
-        .unwrap();
+        );
         let ctx = Context::for_test(&[("HOME", home)], Some(&elsewhere));
         let counts_of = |status: Status| status.flow.map(legacy);
         assert_eq!(counts_of(collect(Some(&named), &ctx)), counts(0, 2, 1));
-        let empty = input::parse(b"{}").unwrap();
+        let empty = input::parse(b"{}");
         assert_eq!(
             counts_of(collect(Some(&empty), &ctx)),
             None,
@@ -4227,7 +4098,7 @@ mod where_tests {
 
     fn collect_pr(pr: serde_json::Value) -> Option<PrInfo> {
         let stdin = serde_json::json!({ "pr": pr }).to_string();
-        let input = input::parse(stdin.as_bytes()).unwrap();
+        let input = input::parse(stdin.as_bytes());
         collect(Some(&input), &Context::for_test(&[], None)).pr
     }
 

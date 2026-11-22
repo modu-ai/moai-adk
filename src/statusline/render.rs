@@ -622,9 +622,7 @@ fn apply_base_color(text: &str, base: &str) -> String {
 mod tests {
     use super::*;
     use crate::statusline::input::{self, RateWindow};
-    use crate::statusline::state::{
-        self, CacheTimer, Context, Flow, GitHubCounts, MyCard, Stage, Version,
-    };
+    use crate::statusline::state::{self, Context, Flow, GitHubCounts, MyCard, Stage, Version};
 
     fn plain(status: &Status, disabled: &[&str]) -> String {
         let config = DisplayConfig {
@@ -639,14 +637,11 @@ mod tests {
             model: "Opus".into(),
             effort: Some("high".into()),
             thinking: Some(true),
-            cache: Some((300, 100)),
             claude_version: "2.1.293".into(),
             version: Some(Version {
                 current: "2.0".into(),
                 latest: Some("3.0".into()),
             }),
-            session_ms: 5_400_000,
-            output_style: "MoAI".into(),
             memory: segments::Memory {
                 tokens_used: 50,
                 token_budget: 100,
@@ -723,15 +718,13 @@ mod tests {
     /// The user's picked example (2026-11-20T21:5xZ), in the layout of
     /// SPEC-20261122-statusline-where: every segment present gives exactly these lines in plain
     /// output — line 1 says who and where, the flow line stands under it and the usage windows
-    /// close the screen with the two versions. The cache data is in the input and, by D-1,
-    /// shows nothing; the host's worktree name is its own item before the branch (the names
+    /// close the screen with the two versions. The host's worktree name is its own item before the branch (the names
     /// differ); the weekly window carries its reset countdown measured from the render's clock.
     fn example_status() -> Status {
         Status {
             model: "Opus 5.5".into(),
             effort: Some("high".into()),
             thinking: Some(true),
-            cache: Some((90, 10)),
             claude_version: "2.1.325".into(),
             version: Some(Version {
                 current: "4.2647.10".into(),
@@ -886,27 +879,24 @@ mod tests {
         );
     }
 
-    /// #2559 AC-7 (user instruction 2026-11-12T16:5xZ): the output style is not shown,
-    /// even when the input names one and the `output_style` option is left enabled.
+    /// #2559 AC-7 (user instruction 2026-11-12T16:5xZ): the output style is not shown, even
+    /// with the `output_style` option left enabled; since SPEC-20261122-statusline-limits REQ-11
+    /// it is not read either (`input::tolerant_reader_tests`).
     #[test]
     fn the_output_style_is_never_shown() {
         let status = full_status();
-        assert_eq!(status.output_style, "MoAI", "the input names a style");
         let out = plain(&status, &[]);
         assert!(!out.contains('💬'), "{out}");
         assert!(!out.contains("MoAI"), "{out}");
         assert!(out.lines().last().unwrap().ends_with("🗿 v3.0"), "{out}");
     }
 
-    /// #2756 AC-1 (user instruction 2026-11-13): the session time is not shown, even with a
-    /// session length in the input and the `session_time` option left enabled.
+    /// #2756 AC-1 (user instruction 2026-11-13): the session time is not shown, even with the
+    /// `session_time` option left enabled; since SPEC-20261122-statusline-limits REQ-11 it is not
+    /// read either (`input::tolerant_reader_tests`).
     #[test]
     fn the_session_time_is_never_shown() {
         let status = full_status();
-        assert_eq!(
-            status.session_ms, 5_400_000,
-            "the input carries a session length"
-        );
         let out = plain(&status, &[]);
         assert!(!out.contains('⏳'), "{out}");
         let config = DisplayConfig {
@@ -1314,8 +1304,7 @@ mod tests {
                 "agent":{"name":"AGENT_SENTINEL"},
                 "pr":{"number":987,"review_state":"approved"}
             }"#,
-        )
-        .unwrap();
+        );
         let status = state::collect(Some(&input), &ctx);
         let config = DisplayConfig {
             segments: ["directory", "pr", "task", "session"]
@@ -1359,13 +1348,12 @@ mod tests {
     }
 
     /// #2756 AC-7–AC-9, reworked by the user instruction 2026-11-20 (D-1 of
-    /// SPEC-20261120-statusline-layout): the cache segment is not in the layout — the value
-    /// and the warm or cold timer show nothing wherever they used to stand — the worktree and
+    /// SPEC-20261120-statusline-layout): the cache segment is not in the layout (and since
+    /// SPEC-20261122-statusline-limits REQ-11 its values are not collected), the worktree and
     /// the pull request stay on their lines, and the Claude Code version ends line 3.
     #[test]
     fn cache_timer_worktree_and_pr_segments() {
         let mut status = full_status();
-        status.cache_timer = Some(CacheTimer::Warm(4));
         status.worktree = "wt".into();
         status.pr = Some(state::PrInfo {
             number: 42,
@@ -1390,22 +1378,12 @@ mod tests {
             !out.contains('\x1b'),
             "plain output carries no link escape: {out:?}"
         );
-        // The warm and cold markers never appear, with or without a value, and with the
-        // `cache_hit` option left enabled.
-        status.cache_timer = Some(CacheTimer::Cold);
-        let cold = plain(&status, &[]);
-        assert!(!cold.contains('♻'), "{cold}");
-        assert!(!cold.contains('⏱') && !cold.contains('🧊'), "{cold}");
-        status.cache = None;
-        let timer_alone = plain(&status, &[]);
+        // The cache and its warm or cold markers never appear, with the `cache_hit` option
+        // left enabled.
+        let out = plain(&status, &[]);
         assert!(
-            !timer_alone.contains('♻') && !timer_alone.contains('🧊'),
-            "{timer_alone}"
-        );
-        status.cache_timer = None;
-        assert!(
-            !plain(&status, &[]).contains('♻'),
-            "neither value: no segment"
+            !out.contains('♻') && !out.contains('⏱') && !out.contains('🧊'),
+            "{out}"
         );
         status.pr.as_mut().unwrap().review_state.clear();
         // The worktree item sits before the branch; without it the PR still closes line 1.
@@ -1505,8 +1483,6 @@ mod tests {
         assert_eq!(plain(&status, &off), "🪫 CW 100%");
         assert_eq!(plain(&status, &[]), "🪫 CW 100%");
         status.memory.tokens_used = 190_000;
-        assert_eq!(plain(&status, &off), "🪫 CW 100%");
-        status.goal_armed = true;
         assert_eq!(plain(&status, &off), "🪫 CW 100%");
         assert_eq!(plain(&status, &["context", "session"]), "MoAI");
         assert_eq!(plain(&status, &["context"]), "MoAI");

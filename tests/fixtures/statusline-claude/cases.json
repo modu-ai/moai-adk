@@ -362,7 +362,7 @@
       "class": "a",
       "stdin": "../statusline/stdin/a13-duplicate-top-level-keys.json",
       "covers": [
-        "duplicate top-level keys: the later model replaces, a later null leaves a plain string (#2350 audit 2)"
+        "duplicate top-level keys: the later model replaces the earlier one whole (SPEC-20261122-statusline-limits REQ-10; session_name is not read)"
       ],
       "recorded_with": {
         "implementation": "Rust moai-cli",
@@ -390,24 +390,24 @@
       "class": "a",
       "stdin": "../statusline/stdin/a14-duplicate-nested-keys.json",
       "covers": [
-        "duplicate pointer-struct keys merge field by field; a nested duplicate takes the later value (#2350 audit 2)"
+        "a duplicated key keeps its last value whole, objects are not merged: the later context_window has no percentage, so CW n/a; a nested duplicate takes the later value (SPEC-20261122-statusline-limits REQ-10)"
       ],
       "recorded_with": {
         "implementation": "Rust moai-cli",
         "variants": {
           "plain": {
             "version": "4.2647.0",
-            "sha256": "9d25a03cd45c2a9a9f2f0b63699219f42755355bff4f18a9e821833e93c6e0c2",
+            "sha256": "76647ded53225cc901bb369f66baf5be2025e937c686c2c6fe37eeaf021f8bb0",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "4.2647.0",
-            "sha256": "9d25a03cd45c2a9a9f2f0b63699219f42755355bff4f18a9e821833e93c6e0c2",
+            "sha256": "76647ded53225cc901bb369f66baf5be2025e937c686c2c6fe37eeaf021f8bb0",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "4.2647.0",
-            "sha256": "9d25a03cd45c2a9a9f2f0b63699219f42755355bff4f18a9e821833e93c6e0c2",
+            "sha256": "76647ded53225cc901bb369f66baf5be2025e937c686c2c6fe37eeaf021f8bb0",
             "stdout": "PTY"
           }
         }
@@ -418,24 +418,24 @@
       "class": "a",
       "stdin": "../statusline/stdin/a15-case-folded-keys.json",
       "covers": [
-        "keys match case-insensitively with Go foldName (long s), -0 is an integer (#2350 audit 2)"
+        "keys match exactly: MODEL and Display_Name are other keys, so no model line (SPEC-20261122-statusline-limits REQ-10)"
       ],
       "recorded_with": {
         "implementation": "Rust moai-cli",
         "variants": {
           "plain": {
             "version": "4.2647.0",
-            "sha256": "9d25a03cd45c2a9a9f2f0b63699219f42755355bff4f18a9e821833e93c6e0c2",
+            "sha256": "76647ded53225cc901bb369f66baf5be2025e937c686c2c6fe37eeaf021f8bb0",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "4.2647.0",
-            "sha256": "9d25a03cd45c2a9a9f2f0b63699219f42755355bff4f18a9e821833e93c6e0c2",
+            "sha256": "76647ded53225cc901bb369f66baf5be2025e937c686c2c6fe37eeaf021f8bb0",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "4.2647.0",
-            "sha256": "9d25a03cd45c2a9a9f2f0b63699219f42755355bff4f18a9e821833e93c6e0c2",
+            "sha256": "76647ded53225cc901bb369f66baf5be2025e937c686c2c6fe37eeaf021f8bb0",
             "stdout": "PTY"
           }
         }
