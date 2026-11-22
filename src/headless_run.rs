@@ -488,10 +488,10 @@ fn interpret_waitid(rc: i32, reported_pid: i32, errno: Option<i32>) -> WaitPoll 
     }
 }
 
-/// Polls the child WITHOUT reaping it (L-2): the zombie still owns the process group, so
-/// the straggler kill that follows cannot hit a recycled group. A waitid error with errno
-/// ECHILD means the child was reaped elsewhere (M-1: skip the group kill; P-2: the drained
-/// output returns with an unknown exit status); every other answer counts as running.
+/// Polls the child WITHOUT reaping it: the zombie still owns the process group, so the
+/// straggler kill that follows cannot hit a recycled group. A waitid error with errno
+/// ECHILD means the child was reaped elsewhere — skip the group kill and let the drained
+/// output return with an unknown exit status; every other answer counts as running.
 #[cfg(unix)]
 fn poll_unreaped(pid: u32) -> WaitPoll {
     // SAFETY: waitid with WNOWAIT reports an exited child and leaves it un-reaped; a
@@ -751,7 +751,12 @@ fn narrow_rule(tool: &str) -> Result<()> {
         // += and array-index assignments count too: the name may carry an index suffix
         // or a + before the =.
         inner.split_once('=').is_some_and(|(name, _)| {
-            let name = name.split_once('[').map_or(name, |(base, _)| base);
+            // an index suffix counts only closed ([0]); an open bracket fails closed —
+            // the word is not a plain assignment name, so it is not an assignment
+            let name = name
+                .split_once('[')
+                .and_then(|(base, rest)| rest.split_once(']').map(|_| base))
+                .unwrap_or(name);
             let name = name.strip_suffix('+').unwrap_or(name);
             !name.is_empty()
                 && name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
@@ -782,7 +787,26 @@ fn narrow_rule(tool: &str) -> Result<()> {
         {
             return true;
         }
-        broad_first_word(first)
+        // A first word that is a substitution, a brace or glob form of an interpreter,
+        // upper case, or a shape a shell re-parses (compound commands, builtin, eval)
+        // cannot be matched as written either — refuse rather than guess.
+        if first.contains('$')
+            || first.contains('`')
+            || first.contains('{')
+            || first.contains('}')
+            || first.contains('?')
+            || first.contains(';')
+            || first.contains('|')
+            || first.contains('(')
+            || first.contains('!')
+            || first.ends_with('*')
+        {
+            return true;
+        }
+        if matches!(first, "builtin" | "eval" | "true" | "cd") {
+            return true;
+        }
+        broad_first_word(&first.to_ascii_lowercase())
     });
     if blanket || wildcard_only || wildcarded_word {
         return Err(format!(
@@ -808,12 +832,13 @@ fn broad_first_word(word: &str) -> bool {
         .is_some_and(|rest| rest.chars().all(|c| c.is_ascii_digit() || c == '.'))
 }
 
-/// The first words that run what follows them (permission-modes.md's dropped-rules list,
-/// the env/xargs/sudo/npx escapes of audit R-2, command/exec/uv of R-4, busybox/bun/php
-/// of L-4, doas/pkexec of M-2).
-const INTERPRETERS_AND_WRAPPERS: [&str; 27] = [
+/// The first words that run what follows them (permission-modes.md's dropped-rules list
+/// plus the escapes each repair added: env/xargs/sudo/npx, command/exec/uv, busybox/bun/
+/// php, doas/pkexec, pypy3 — the match is case-insensitive).
+const INTERPRETERS_AND_WRAPPERS: [&str; 28] = [
     "python",
     "python3",
+    "pypy3",
     "node",
     "deno",
     "ruby",

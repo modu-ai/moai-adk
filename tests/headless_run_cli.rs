@@ -390,13 +390,30 @@ fn blanket_tool_rules_refuse_to_build() {
         "Bash(\\python *)",
         "Bash(\"python\" *)",
         "Bash(>/dev/null python *)",
-        // B-1: descriptor and & redirection prefixes
+        // descriptor and & redirection prefixes
         "Bash(2>&1 python *)",
         "Bash(2>/dev/null python *)",
         "Bash(&>/dev/null python *)",
-        // N-2: the < and single-quote legs, each pinned on its own
+        // the < and single-quote legs, each pinned on its own
         "Bash(</dev/null python *)",
         "Bash('python' *)",
+        // the other first-word spellings: substitutions, brace and glob forms, upper
+        // case, pypy3, compound commands, builtin, eval
+        "Bash($(which python) *)",
+        "Bash(`which python` *)",
+        "Bash({python,python3} *)",
+        "Bash($PY *)",
+        "Bash(pytho? *)",
+        "Bash(python* *)",
+        "Bash(python*)",
+        "Bash(PYTHON *)",
+        "Bash(pypy3 *)",
+        "Bash(true; python *)",
+        "Bash(cd x && python *)",
+        "Bash((python) *)",
+        "Bash(! python *)",
+        "Bash(builtin python *)",
+        "Bash(eval python *)",
         // R-3: the Monitor allow rule the dropped-rules list forbids
         "Monitor",
     ] {
