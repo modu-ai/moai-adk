@@ -283,24 +283,48 @@ pub fn run(built: &BuiltRun, cwd: &Path) -> Result<RawRun> {
     run_with_limit(built, cwd, std::time::Duration::from_secs(1800))
 }
 
-/// Starts a built run under a wall-clock limit (N-2): prints the credential warning once,
-/// spawns the resolved program with the exact argv and environment, and kills the child at
-/// the deadline, reporting no success.
+/// Starts a built run under a wall-clock limit (N-2, audit B-1 and B-1b): prints the
+/// credential warning once, spawns the resolved program with the exact argv and environment
+/// in a process group of its own, drains stdout and stderr on threads while it waits (a
+/// full pipe never turns an answer into a timeout), and kills the whole group at the
+/// deadline, reporting no success.
 pub fn run_with_limit(built: &BuiltRun, cwd: &Path, limit: std::time::Duration) -> Result<RawRun> {
+    use std::io::Read;
     use std::process::Stdio;
     if let Some(warning) = &built.credential_warning {
         eprintln!("{warning}");
     }
-    let mut child = std::process::Command::new(&built.program)
+    let mut command = std::process::Command::new(&built.program);
+    command
         .args(&built.args)
         .env_clear()
         .envs(&built.env)
         .current_dir(cwd)
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
+        .stderr(Stdio::piped());
+    new_group(&mut command);
+    let mut child = command
         .spawn()
         .map_err(|e| format!("starting {}: {e}", built.program.display()))?;
+    let group = child.id();
+    // B-1: drain both pipes on threads while the deadline is polled.
+    let mut stdout_pipe = child.stdout.take();
+    let mut stderr_pipe = child.stderr.take();
+    let stdout_thread = std::thread::spawn(move || {
+        let mut buf = Vec::new();
+        if let Some(pipe) = stdout_pipe.as_mut() {
+            let _ = pipe.read_to_end(&mut buf);
+        }
+        buf
+    });
+    let stderr_thread = std::thread::spawn(move || {
+        let mut buf = Vec::new();
+        if let Some(pipe) = stderr_pipe.as_mut() {
+            let _ = pipe.read_to_end(&mut buf);
+        }
+        buf
+    });
     let deadline = std::time::Instant::now() + limit;
     let mut timed_out = false;
     loop {
@@ -308,34 +332,64 @@ pub fn run_with_limit(built: &BuiltRun, cwd: &Path, limit: std::time::Duration) 
             Ok(Some(_)) => break,
             Ok(None) => {
                 if std::time::Instant::now() >= deadline {
-                    let _ = child.kill();
+                    kill_group(group);
                     timed_out = true;
                     break;
                 }
-                std::thread::sleep(std::time::Duration::from_millis(50));
+                std::thread::sleep(std::time::Duration::from_millis(20));
             }
             Err(e) => return Err(format!("waiting for {}: {e}", built.program.display())),
         }
     }
-    let output = child
-        .wait_with_output()
+    let stdout = stdout_thread
+        .join()
+        .map_err(|_| "the stdout drain thread panicked".to_string())?;
+    let stderr_bytes = stderr_thread
+        .join()
+        .map_err(|_| "the stderr drain thread panicked".to_string())?;
+    let status = child
+        .wait()
         .map_err(|e| format!("collecting {}: {e}", built.program.display()))?;
     let stderr = if timed_out {
         format!(
             "{}\nmoai: wall-clock limit of {} seconds exceeded; the child was killed",
-            String::from_utf8_lossy(&output.stderr),
+            String::from_utf8_lossy(&stderr_bytes),
             limit.as_secs()
         )
     } else {
-        String::from_utf8_lossy(&output.stderr).into_owned()
+        String::from_utf8_lossy(&stderr_bytes).into_owned()
     };
     Ok(RawRun {
-        success: output.status.success() && !timed_out,
-        code: output.status.code(),
-        stdout: String::from_utf8_lossy(&output.stdout).into_owned(),
+        success: status.success() && !timed_out,
+        code: status.code(),
+        stdout: String::from_utf8_lossy(&stdout).into_owned(),
         stderr,
     })
 }
+
+/// Puts the child in a process group of its own (B-1b: a group kill reaches grandchildren
+/// that hold the pipes).
+#[cfg(unix)]
+fn new_group(command: &mut std::process::Command) {
+    use std::os::unix::process::CommandExt;
+    command.process_group(0);
+}
+
+#[cfg(not(unix))]
+fn new_group(_command: &mut std::process::Command) {}
+
+/// Kills the child's whole process group.
+#[cfg(unix)]
+fn kill_group(pgid: u32) {
+    // SAFETY: libc kill with a negative pid signals the process group; failure (the group
+    // already gone) is fine at the deadline.
+    unsafe {
+        libc::kill(-(pgid as i32), libc::SIGKILL);
+    }
+}
+
+#[cfg(not(unix))]
+fn kill_group(_pid: u32) {}
 
 /// What one run's result is, checked before it is trusted (SPEC REQ-11): a `success` subtype
 /// alone is not an answer.

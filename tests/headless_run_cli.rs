@@ -566,24 +566,62 @@ fn the_verdict_field_is_checked_against_the_schema() {
     assert!(check_verdict(&wrong_type, &schema).is_err());
 }
 
-/// N-2: a run past its wall-clock limit is killed and reports no success.
+/// N-2 + B-1b: a run past its wall-clock limit is killed — the whole process group, so a
+/// background grandchild holding the pipe cannot stretch the wait — and reports no success.
 #[test]
 fn a_wall_clock_limit_kills_the_run() {
     use moai_cli::headless_run::run_with_limit;
-    use std::time::Duration;
+    use std::time::{Duration, Instant};
     let tmp = tempfile::tempdir().unwrap();
     let fixtures = tmp.path().join("bin");
     fs::create_dir_all(&fixtures).unwrap();
-    // a stand-in that outlives the limit
-    let slow = "#!/bin/sh\nsleep 30\n";
+    // a stand-in that outlives the limit and leaves a grandchild holding the pipe
+    let slow = "#!/bin/sh\nsleep 30 &\nwait\n";
     common::write_executable(&fixtures.join("claude"), slow);
     let record = tmp.path().join("record.txt");
     let root = tmp.path().join("platform");
     fs::create_dir_all(&root).unwrap();
     let built = build(&audit_spec(), &ctx(&root), &parent_env(&fixtures, &record)).unwrap();
+    let started = Instant::now();
     let raw = run_with_limit(&built, tmp.path(), Duration::from_millis(300)).unwrap();
+    let elapsed = started.elapsed();
     assert!(!raw.success, "a killed run is not a success");
     assert!(raw.stderr.contains("wall-clock"), "{}", raw.stderr);
+    assert!(
+        elapsed < Duration::from_secs(5),
+        "the group kill must not wait for the grandchild: {elapsed:?}"
+    );
+}
+
+/// B-1: a large answer must come back quickly — the wait drains stdout and stderr while it
+/// polls, so a full pipe never turns an answer into a timeout.
+#[test]
+fn a_large_answer_is_not_killed_by_a_full_pipe() {
+    use moai_cli::headless_run::{parse_result, run_with_limit, RunOutcome};
+    use std::time::{Duration, Instant};
+    let tmp = tempfile::tempdir().unwrap();
+    let fixtures = tmp.path().join("bin");
+    fs::create_dir_all(&fixtures).unwrap();
+    // ~300 KB of answer inside one JSON result
+    let big = "#!/bin/sh\n\
+printf '%s' '{\"type\":\"result\",\"subtype\":\"success\",\"is_error\":false,\"session_id\":\"standin\",\"structured_output\":{\"verdict\":\"pass\",\"detail\":\"'\n\
+head -c 300000 /dev/zero | tr '\\0' 'x'\n\
+printf '%s\\n' '\"}}'\n";
+    common::write_executable(&fixtures.join("claude"), big);
+    let record = tmp.path().join("record.txt");
+    let root = tmp.path().join("platform");
+    fs::create_dir_all(&root).unwrap();
+    let built = build(&audit_spec(), &ctx(&root), &parent_env(&fixtures, &record)).unwrap();
+    let started = Instant::now();
+    let raw = run_with_limit(&built, tmp.path(), Duration::from_secs(5)).unwrap();
+    let elapsed = started.elapsed();
+    assert!(
+        elapsed < Duration::from_secs(5),
+        "a large answer must not hit the limit: {elapsed:?}"
+    );
+    assert!(raw.success, "{}", raw.stderr);
+    assert!(raw.stdout.len() > 300_000, "{} bytes", raw.stdout.len());
+    assert!(matches!(parse_result(&raw), RunOutcome::Answered(_)));
 }
 
 /// N-7 and N-8: the prompt sits behind `--`, and the author comparison ignores case and
