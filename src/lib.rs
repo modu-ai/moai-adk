@@ -120,6 +120,7 @@ pub mod plan;
 pub mod pr_link;
 pub mod profile;
 pub mod progress;
+pub mod project_check;
 pub mod project_ci;
 pub mod project_ci_estimate;
 pub mod project_ci_plan;
