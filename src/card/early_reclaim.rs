@@ -518,27 +518,33 @@ mod tests {
 mod cache_tests {
     use super::is_tool_cache_entry;
 
-    /// AC-10 (REQ-12): only an untracked, listed cache file is a cache. The folder name the
-    /// worktree uses comes from its own state root, here a worktree with no marker.
+    /// SPEC-20261122-test-defects-session-reclaim REQ-3, REQ-4: every untracked file under the
+    /// runtime state folder is tool state, in the folder the worktree uses now and in the earlier
+    /// generation's; a changed tracked file, a file beside the folder, a name that only starts
+    /// like it and a path below another folder are work. The folder name the worktree uses
+    /// comes from its own state root, here a worktree with no marker.
     #[test]
-    fn only_an_untracked_listed_file_is_a_cache() {
+    fn only_an_untracked_state_folder_file_is_a_cache() {
         let tmp = tempfile::tempdir().unwrap();
         let root = tmp.path();
-        let current = crate::state_root::rel(root, "state/github/counts.json");
+        let state = crate::state_root::rel(root, "state");
         let is = |line: &str| is_tool_cache_entry(root, line);
-        assert!(is(&format!("?? {current}")));
+        assert!(is(&format!("?? {state}/github/counts.json")));
+        assert!(is(&format!("?? {state}/github/other.json")));
+        assert!(is(&format!("?? {state}/deep/er/inner.txt")));
         assert!(is("?? .moai/state/github/counts.json"));
+        assert!(is("?? .moai/state/earlier.json"));
         // A changed tracked file of the same name is work.
-        assert!(!is(&format!(" M {current}")));
-        assert!(!is(&format!("A  {current}")));
-        // An unlisted name, a folder and a path that only ends alike are work.
-        assert!(!is(&format!("?? {}", current.replace("counts", "other"))));
+        assert!(!is(&format!(" M {state}/github/counts.json")));
+        assert!(!is(&format!("A  {state}/github/counts.json")));
+        // A file beside the folder, a name that only starts alike, a path below another
+        // folder and a line that is empty are work.
         assert!(!is(&format!(
-            "?? {}/",
-            crate::state_root::rel(root, "state")
+            "?? {}/other.json",
+            crate::state_root::dir(root)
         )));
-        assert!(!is(&format!("?? sub/{current}")));
-        assert!(!is(&format!("?? {current}.bak")));
+        assert!(!is(&format!("?? {state}man/x.json")));
+        assert!(!is(&format!("?? sub/{state}/github/counts.json")));
         assert!(!is(""));
     }
 }
