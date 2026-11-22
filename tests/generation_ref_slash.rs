@@ -85,13 +85,13 @@ fn agents_entry(plan: &Value) -> &Value {
         .as_array()
         .unwrap()
         .iter()
-        .find(|f| f["path"] == json!("AGENTS.md"))
-        .expect("AGENTS.md in the plan")
+        .find(|f| f["path"] == json!("CLAUDE.md"))
+        .expect("CLAUDE.md in the plan")
 }
 
 /// AC-1: the slash and no-slash spellings of one `workflow_reference` produce the
 /// same generation-plan output — same plan digest, same canonical request field,
-/// same AGENTS.md render sha. The canonical form keeps the trailing slash (the
+/// same CLAUDE.md render sha. The canonical form keeps the trailing slash (the
 /// recorded configuration and the golden renders carry it).
 #[test]
 fn generation_plan_reference_slash_is_canonical() {
@@ -115,7 +115,7 @@ fn generation_plan_reference_slash_is_canonical() {
     assert_eq!(
         agents_entry(&with_slash)["rendered_sha256"],
         agents_entry(&without_slash)["rendered_sha256"],
-        "the AGENTS.md render is byte-identical"
+        "the CLAUDE.md render is byte-identical"
     );
 }
 
@@ -147,13 +147,20 @@ fn generation_apply_normalizes_raw_spelling_to_canonical() {
         "{}",
         String::from_utf8_lossy(&out.stderr)
     );
-    let agents_md = fs::read_to_string(root.path().join("AGENTS.md")).unwrap();
-    assert!(
-        agents_md.contains("Read only the workflow you need from `skills/moai/workflows/`."),
-        "the managed block renders the canonical slash-terminated reference"
-    );
-    assert!(
-        !agents_md.contains("from `skills/moai/workflows`."),
-        "the raw spelling never reaches the render"
+    // Since the CLAUDE.md layout the managed block names no workflow folder; the generation
+    // manifest records the reference, and it holds the canonical slash-terminated form.
+    assert!(root.path().join("CLAUDE.md").is_file());
+    let manifest: Value = serde_json::from_slice(
+        &fs::read(moai_cli::state_root::path(
+            root.path(),
+            "manifests/generation.json",
+        ))
+        .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(
+        manifest["workflow_reference"],
+        json!("skills/moai/workflows/"),
+        "the raw spelling never reaches the record"
     );
 }
