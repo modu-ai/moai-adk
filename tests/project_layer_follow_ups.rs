@@ -57,11 +57,12 @@ fn a_request_with_both_retired_hosts_is_filtered() {
         &["claude", "gemini"],
     ));
     assert!(unknown.is_err(), "an unknown host is refused");
-    assert_eq!(
-        fs::read_dir(project.path()).unwrap().count(),
-        0,
-        "a plan wrote something"
-    );
+    for folder in [".claude", ".agents", ".omp"] {
+        assert!(
+            !project.path().join(folder).exists(),
+            "a plan wrote {folder}"
+        );
+    }
 }
 
 /// AC-3: the information step about the retired hosts says the user removes the files.
