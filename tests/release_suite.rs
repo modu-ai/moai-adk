@@ -613,11 +613,11 @@ fn host<'a>(v: &'a Value, name: &str) -> &'a Value {
         .unwrap()
 }
 
-/// One crash point of a real v1→v2 update: the codex apply stopped after the first `k`
+/// One crash point of a real v1→v2 update: the Claude apply stopped after the first `k`
 /// receipt entries were published, before the receipt commit. Recovery must return the
-/// whole codex projection to its v1 bytes from the known-good copies the real v2 apply
-/// stored, leave the committed claude host and the fake Go state untouched, and end
-/// `recovered`.
+/// whole Claude projection to its v1 bytes from the known-good copies the real v2 apply
+/// stored, leave an unrelated user folder under the host root and the fake Go state
+/// untouched, and end `recovered`.
 struct Sweep {
     k: usize,
     paths: Vec<String>,
@@ -645,29 +645,36 @@ fn crash_and_recover(k: usize) -> Sweep {
             ("workflows/new.md", NEW_V2),
         ],
     );
-    let codex = home.join(".agents/skills/moai");
     let claude = home.join(".claude/skills/moai");
+    let user_skill = home.join(".claude/skills/my-skill");
     let go_before = digest(&home.join(".moai"));
 
     plan_and_apply(&home, &stage1);
-    let codex_v1 = digest(&codex);
+    let claude_v1 = digest(&claude);
+    fs::create_dir_all(&user_skill).unwrap();
+    fs::write(user_skill.join("SKILL.md"), "# the user's own skill\n").unwrap();
+    let user_before = digest(&user_skill);
     plan_and_apply(&home, &stage2);
-    let claude_v2 = digest(&claude);
+    assert_ne!(
+        digest(&claude),
+        claude_v1,
+        "k={k}: the v2 apply changed files"
+    );
     let hosts = hosts_dir(&home);
 
     // The real v2 apply stored the overwritten v1 bytes as known-good copies.
     for body in [SKILL_V1, UPDATE_V1] {
         let copy = hosts
-            .join("codex/known-good")
+            .join("claude/known-good")
             .join(sha_hex(body.as_bytes()));
         assert_eq!(fs::read_to_string(&copy).unwrap(), body, "{copy:?}");
     }
 
-    // Rewind the committed v2 codex state to the crash point: entries at index >= k never
+    // Rewind the committed v2 Claude state to the crash point: entries at index >= k never
     // published (bytes back to v1, a created file absent); the receipt is pending. The
     // entry at k-1 keeps `published: false`, as a crash between its rename and the
     // receipt save leaves it.
-    let receipt_path = hosts.join("codex.json");
+    let receipt_path = hosts.join("claude.json");
     let mut receipt: Value = serde_json::from_slice(&fs::read(&receipt_path).unwrap()).unwrap();
     assert_eq!(receipt["status"], json!("committed"));
     let v1_bytes = |path: &str| match path {
@@ -685,8 +692,8 @@ fn crash_and_recover(k: usize) -> Sweep {
         let path = e["path"].as_str().unwrap().to_string();
         if i >= k {
             match v1_bytes(&path) {
-                Some(body) => fs::write(codex.join(&path), body).unwrap(),
-                None => fs::remove_file(codex.join(&path)).unwrap(),
+                Some(body) => fs::write(claude.join(&path), body).unwrap(),
+                None => fs::remove_file(claude.join(&path)).unwrap(),
             }
         }
         e["published"] = json!(i + 1 < k);
@@ -703,7 +710,7 @@ fn crash_and_recover(k: usize) -> Sweep {
     let classes: Vec<String> = paths
         .iter()
         .map(|p| {
-            host(&plan, "codex")["files"]
+            host(&plan, "claude")["files"]
                 .as_array()
                 .unwrap()
                 .iter()
@@ -727,7 +734,7 @@ fn crash_and_recover(k: usize) -> Sweep {
         Some(&plan),
     );
     assert!(ok, "k={k}: {v}");
-    let result = host(&v["result"], "codex");
+    let result = host(&v["result"], "claude");
     assert_eq!(result["receipt_status"], json!("recovered"), "k={k}: {v}");
     assert_eq!(result["conflicts"], json!([]), "k={k}: {v}");
     let recovered: Vec<String> = result["recovered"]
@@ -736,8 +743,11 @@ fn crash_and_recover(k: usize) -> Sweep {
         .iter()
         .map(|p| p.as_str().unwrap().to_string())
         .collect();
-    assert_eq!(digest(&claude), claude_v2, "k={k}: committed host moved");
-    assert_eq!(host(&v["result"], "claude")["written"], json!(false));
+    assert_eq!(
+        digest(&user_skill),
+        user_before,
+        "k={k}: unrelated user folder moved"
+    );
     assert_eq!(
         digest(&home.join(".moai")),
         go_before,
@@ -748,7 +758,7 @@ fn crash_and_recover(k: usize) -> Sweep {
         paths,
         classes,
         recovered,
-        v1_restored: digest(&codex) == codex_v1,
+        v1_restored: digest(&claude) == claude_v1,
     }
 }
 
@@ -756,7 +766,7 @@ fn crash_and_recover(k: usize) -> Sweep {
 /// k = 0 (nothing published) through 3 (all published, receipt never committed).
 #[test]
 fn interrupted_update_recovers_known_good_at_every_crash_point() {
-    println!("E6 interrupted update recovery sweep (codex host, real known-good copies)");
+    println!("E6 interrupted update recovery sweep (Claude host, real known-good copies)");
     for k in 0..=3 {
         let s = crash_and_recover(k);
         // The receipt's entry order is the crash order; pinned so the sweep cannot follow
@@ -767,7 +777,7 @@ fn interrupted_update_recovers_known_good_at_every_crash_point() {
             "receipt entry order"
         );
         println!(
-            "| k={} | entries={:?} | classes={:?} | recovered={:?} | codex==v1: {} |",
+            "| k={} | entries={:?} | classes={:?} | recovered={:?} | claude==v1: {} |",
             s.k, s.paths, s.classes, s.recovered, s.v1_restored
         );
         let want_classes: Vec<&str> = (0..3)
@@ -782,6 +792,6 @@ fn interrupted_update_recovers_known_good_at_every_crash_point() {
         assert_eq!(s.classes, want_classes, "k={k}");
         let all = ["SKILL.md", "workflows/new.md", "workflows/update.md"];
         assert_eq!(s.recovered, all[..k].to_vec(), "k={k}");
-        assert!(s.v1_restored, "k={k}: codex projection not back at v1");
+        assert!(s.v1_restored, "k={k}: Claude projection not back at v1");
     }
 }
