@@ -25,7 +25,7 @@ created: 2026-11-22
 
 - REQ-1: When check affected reaches its first cargo step, it shall take one heavy slot and hold it until its last cargo step ends · failure: none — REQ-2 handles a refused slot.
 - REQ-2 (REQ-1): IF the heavy slot is refused or the machine is too busy, THEN check affected shall record the slot's exit code for every cargo step and start no cargo.
-- REQ-3: When check affected runs tests, it shall run the library, binary and selected target tests in one call labelled `test`, with `cargo nextest run` when `cargo nextest --version` succeeds and `cargo test` otherwise · failure: none — a failed call is its exit code under `test`.
+- REQ-3: When check affected runs tests, it shall run the library tests, the `moai-cli` binary tests and the selected target tests in one call labelled `test`, with `cargo nextest run` when `cargo nextest --version` succeeds and `cargo test` otherwise · failure: none — a failed call is its exit code under `test`.
 - REQ-4: When a caller asks heavy-slot for a slot, it shall start only after every live waiter that arrived earlier has started or left · failure: none — a dead waiter's unlocked file is not counted.
 - REQ-5: When a process that inherited an open held slot file asks for a slot in the same folder, heavy-slot shall reuse that slot without queueing · failure: none — without the inherited file it queues as before.
 - REQ-6: When check affected starts a cargo step and the caller set no CARGO_BUILD_JOBS, it shall set CARGO_BUILD_JOBS to the larger of 2 and the logical CPU count divided by the effective slot count · failure: none — a caller's value passes through unchanged.
@@ -33,7 +33,7 @@ created: 2026-11-22
 ## Acceptance
 
 - AC-1 (REQ-1, REQ-3): 가짜 cargo 와 임시 자리 폴더로 한 번 실행하면 자리를 잡은 기록이 한 번이고, 시험 호출은 `nextest run` 한 번이며 `cargo test` 호출은 없어요 · verify: `cargo test --locked --offline --test check_affected_one_slot one_run_takes_one_slot_and_one_nextest_call`
-- AC-2 (REQ-3): `cargo nextest --version` 이 실패하는 가짜 cargo 에서는 `cargo test --lib --bins --test …` 한 번만 불러요 · verify: `cargo test --locked --offline --test check_affected_one_slot without_nextest_one_cargo_test_call`
+- AC-2 (REQ-3): `cargo nextest --version` 이 실패하는 가짜 cargo 에서는 `cargo test --lib --bin moai-cli --test …` 한 번만 불러요. 두 호출 모두 `--bins` 를 쓰지 않아요 · verify: `cargo test --locked --offline --test check_affected_one_slot without_nextest_one_cargo_test_call`
 - AC-3 (REQ-2): 자리가 거절되면 요약에 cargo 단계마다 그 종료 코드가 있고(`test=` 포함) cargo 는 한 번도 불리지 않아요 · verify: `cargo test --locked --offline --test check_affected_one_slot a_refused_slot_marks_every_cargo_step_and_runs_none`
 - AC-4 (REQ-6): 호출자가 값을 주지 않으면 cargo 가 받은 `CARGO_BUILD_JOBS` 가 규칙의 값이고, 호출자가 주면 그 값이 그대로 가요 · verify: `cargo test --locked --offline --test check_affected_one_slot cargo_build_jobs_defaults_from_the_slot_count_and_a_caller_value_wins`
 - AC-5 (REQ-4): 먼저 와서 살아 있는 기다림이 있으면 새로 온 쪽은 빈 자리가 있어도 기다리고, 둘이 기다리면 도착 순서로 시작해요 · verify: `cargo test --locked --offline --test heavy_slot_fifo_cli a_newcomer_waits_behind_an_earlier_live_waiter` and `cargo test --locked --offline --test heavy_slot_fifo_cli two_waiters_start_in_arrival_order`
@@ -67,6 +67,7 @@ created: 2026-11-22
 | D-2 | 자리는 마지막 cargo 단계 뒤, python 전에 놓아요. | python 단계는 cargo 를 부르지 않아요. | 카드 열림 |
 | D-3 | nextest 가 없으면 `cargo test` 한 번으로 돌려요. | 시험 검토 F1-b·F2 의 대안. | 카드 열림 |
 | D-4 | 호출자가 준 `CARGO_BUILD_JOBS` 가 이겨요. | 레인이 리더 규칙으로 값을 내보내요. | 카드 열림 |
+| D-5 | 시험 호출은 `--bins` 대신 `--bin moai-cli` 를 골라요. | 명시한 `--bins` 는 `test = false` 인 바이너리의 시험 하네스까지 지어요(같은 28개 시험이 `moai`·`moai-cli` 두 번, 리더 결정 2026-11-22). | 카드 열림 |
 
 ## Result
 
