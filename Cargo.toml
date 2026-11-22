@@ -22,6 +22,9 @@ path = "src/main.rs"
 [[bin]]
 name = "moai"
 path = "src/bin/moai.rs"
+# src/bin/moai.rs loads src/main.rs as a module; moai-cli already runs those tests once
+# (SPEC-20261122-bin-test-false).
+test = false
 
 [dependencies]
 # `wrap_help` (Issue #2805, leader decision 6866652365 (가)): help text wraps to the terminal

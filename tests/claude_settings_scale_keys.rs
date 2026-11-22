@@ -3,7 +3,7 @@
 //! `worktree.symlinkDirectories` and `permissions.additionalDirectories`. Every value is checked
 //! before any write; the plan functions write nothing. Temporary folders only, no HOME.
 
-use moai_cli::claude::{plan_settings, user_settings_desired_in, SettingsScope};
+use moai_cli::claude::{plan_settings, settings_plan_in, user_settings_desired_in, SettingsScope};
 use serde_json::{json, Map, Value};
 use std::fs;
 use tempfile::TempDir;
@@ -227,4 +227,146 @@ fn an_additional_directory_stays_inside_the_repository() {
         SettingsScope::Project,
     )
     .is_ok());
+}
+
+#[test]
+fn a_token_shaped_plugin_key_is_refused_and_hidden() {
+    // an obviously fake token, shaped like one.
+    let token = format!("ghp_{}", "x".repeat(36));
+    let mut plugins = Map::new();
+    plugins.insert(format!("{token}@claude-plugins-official"), json!(true));
+    let err = plan(json!({"enabledPlugins": plugins})).unwrap_err();
+    assert!(err.contains("enabledPlugins"), "{err}");
+    assert!(err.contains("looks like a credential"), "{err}");
+    assert!(!err.contains(&token) && !err.contains("ghp_"), "{err}");
+    // a plugin name that only starts like one is still a plugin name.
+    assert!(plan(json!({"enabledPlugins": {"ghp_lsp@claude-plugins-official": true}})).is_ok());
+    // an unmanaged key shaped like a token is refused without being echoed.
+    let mut desired = Map::new();
+    desired.insert(token.clone(), json!(true));
+    let err = plan_settings(&Map::new(), &Map::new(), &desired).unwrap_err();
+    assert!(
+        err.contains("unmanaged claude settings key refused"),
+        "{err}"
+    );
+    assert!(err.contains("looks like a credential"), "{err}");
+    assert!(!err.contains(&token) && !err.contains("ghp_"), "{err}");
+    // a plain unmanaged key is still named.
+    let err = plan_settings(&Map::new(), &Map::new(), &obj(json!({"theme": "dark"}))).unwrap_err();
+    assert!(err.contains("theme"), "{err}");
+}
+
+#[test]
+fn a_token_split_by_a_control_character_or_named_as_an_env_entry_is_never_echoed() {
+    // an obviously fake token, shaped like one.
+    let token = format!("ghp_{}", "x".repeat(36));
+    // a control character inside the token hides its shape until it is stripped; the stripped
+    // text is what a message would print, so it is screened too.
+    let split = format!("ghp_{}\u{7}{}", "x".repeat(18), "x".repeat(18));
+    let mut desired = Map::new();
+    desired.insert(split.clone(), json!(true));
+    let err = plan_settings(&Map::new(), &Map::new(), &desired).unwrap_err();
+    assert!(
+        err.contains("unmanaged claude settings key refused"),
+        "{err}"
+    );
+    assert!(err.contains("looks like a credential"), "{err}");
+    assert!(!err.contains(&token) && !err.contains("ghp_"), "{err}");
+    // an env entry named like a token is refused, and its name is not printed back, whether the
+    // refusal is about the name or about the value.
+    for value in [json!("1"), json!("two\nlines")] {
+        let mut env = Map::new();
+        env.insert(token.clone(), value);
+        let err = plan(json!({ "env": env })).unwrap_err();
+        assert!(err.contains("env entry"), "{err}");
+        assert!(err.contains("looks like a credential"), "{err}");
+        assert!(!err.contains(&token) && !err.contains("ghp_"), "{err}");
+    }
+    // a plain refused env name is still named.
+    let err = plan(json!({"env": {"PLAIN_NAME": "two\nlines"}})).unwrap_err();
+    assert!(err.contains("PLAIN_NAME"), "{err}");
+}
+
+#[test]
+fn a_token_split_by_an_invisible_format_or_separator_character_is_never_echoed() {
+    // an obviously fake token, shaped like one.
+    let token = format!("ghp_{}", "x".repeat(36));
+    for mark in [
+        '\u{200B}',
+        '\u{00AD}',
+        '\u{202E}',
+        '\u{2028}',
+        '\u{2029}',
+        '\u{FEFF}',
+        '\u{2060}',
+        '\u{E0041}',
+    ] {
+        let split = format!("ghp_{}{mark}{}", "x".repeat(18), "x".repeat(18));
+        let mut desired = Map::new();
+        desired.insert(split, json!(true));
+        let err = plan_settings(&Map::new(), &Map::new(), &desired).unwrap_err();
+        assert!(
+            err.contains("unmanaged claude settings key refused"),
+            "{mark:?}: {err}"
+        );
+        assert!(err.contains("looks like a credential"), "{mark:?}: {err}");
+        assert!(
+            !err.contains(&token) && !err.contains("ghp_"),
+            "{mark:?}: {err}"
+        );
+    }
+    // a plain name is still named, without the invisible character that could hide or reorder
+    // what the reader sees.
+    let mut desired = Map::new();
+    desired.insert("the\u{202E}me".into(), json!("dark"));
+    let err = plan_settings(&Map::new(), &Map::new(), &desired).unwrap_err();
+    assert!(err.contains("theme"), "{err}");
+    assert!(!err.contains('\u{202E}'), "{err:?}");
+}
+
+#[test]
+fn the_writer_refuses_an_additional_directory_outside_the_repository() {
+    let repo = TempDir::new().unwrap();
+    fs::create_dir_all(repo.path().join(".git")).unwrap();
+    let pkg = repo.path().join("packages");
+    fs::create_dir_all(&pkg).unwrap();
+    let dirs = |d: Value| obj(json!({"permissions": {"additionalDirectories": d}}));
+    // the settings plan itself refuses, not only the caller's desired map: one `..` from the
+    // repository root leaves it.
+    let err = settings_plan_in(
+        repo.path(),
+        &dirs(json!(["../outside"])),
+        SettingsScope::Project,
+    )
+    .unwrap_err();
+    assert!(err.contains("additionalDirectories"), "{err}");
+    // from a folder one level down, one `..` stays inside and two leave.
+    assert!(settings_plan_in(&pkg, &dirs(json!(["../web"])), SettingsScope::Project).is_ok());
+    let err =
+        settings_plan_in(&pkg, &dirs(json!(["../../x"])), SettingsScope::Project).unwrap_err();
+    assert!(err.contains("additionalDirectories"), "{err}");
+    // the search for `.git` stops at the repository root: an outer repository above it does
+    // not widen what may be named.
+    let outer = TempDir::new().unwrap();
+    fs::create_dir_all(outer.path().join(".git")).unwrap();
+    let inner = outer.path().join("inner");
+    fs::create_dir_all(inner.join(".git")).unwrap();
+    fs::create_dir_all(inner.join("pkg")).unwrap();
+    assert!(settings_plan_in(
+        &inner.join("pkg"),
+        &dirs(json!([".."])),
+        SettingsScope::Project
+    )
+    .is_ok());
+    let err = settings_plan_in(
+        &inner.join("pkg"),
+        &dirs(json!(["../../x"])),
+        SettingsScope::Project,
+    )
+    .unwrap_err();
+    assert!(err.contains("additionalDirectories"), "{err}");
+    // planning wrote nothing.
+    assert!(!repo.path().join(".claude").exists());
+    assert!(!pkg.join(".claude").exists());
+    assert!(!inner.join("pkg/.claude").exists());
 }

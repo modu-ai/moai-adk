@@ -1001,7 +1001,7 @@ const STOP_MODES: &str = "per rule in [hooks.modes] of the HOME hook-config.toml
 const AC_VERIFY_LIMITS: [&str; 11] = [
     "the generated host settings do not call tool-observe or turn-validation yet, so the rule runs only where hook-dispatch is called directly (a later slice wires them)",
     "a commit changes HEAD, so runs recorded before it no longer count and the verify commands run again",
-    "shell writes (sed -i) are not writes, and a redirection is not one either: only the file-writing tools count as the session's last write, and of those a failed one and one outside the project folder do not count while one with an unknown outcome or no path does",
+    "shell writes (sed -i) are not writes, and a redirection is not one either: only the file-writing tools count as the session's last write, and of those a failed one and one outside the project folder do not count while one with no path does",
     "a run counts only when the called command must equal the verify command, white space collapsed: a pipe, an env prefix or an added word does not match",
     "the engine log is a plain file: a line can be written by hand, so the rule stops forgetting, not cheating (the auditor checks the rest)",
     "the log has a size limit: past it nothing more is recorded and the rule reads no lines, so it lets the turn end",
@@ -1033,8 +1033,8 @@ fn ac_verify_recorded(ctx: &StopContext) -> Option<String> {
                 && l["session"] == json!(ctx.session)
                 // SPEC-20261119-ac-verify-recorded-limits REQ-10 (leader decision, C-130 note
                 // 3387): a failed write and a write outside the project folder are no write to
-                // ask about; an unknown outcome and a line with no path count (dropping them
-                // would weaken the rule quietly).
+                // ask about; a line with no path counts (dropping it would weaken the rule
+                // quietly). Claude Code reports every call as a success or a failure.
                 && l["outcome"] != json!("failure")
                 && l["path"] != json!("outside")
         })

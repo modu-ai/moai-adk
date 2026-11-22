@@ -694,13 +694,13 @@ mod tests {
             ("archived copy removal write failed", Io),
             ("search query must be 1 to 256 characters", InvalidInput),
             // hooks-plan / hooks-apply (rc.2 I1 #2238)
-            ("unknown hook host; must be claude, codex or omp", InvalidInput),
+            ("unknown hook host; must be claude", InvalidInput),
             (
                 "home directory refused; hooks are written to a project tree only",
                 InvalidInput,
             ),
-            ("existing .codex/hooks.json requires preservation review", Conflict),
-            (".codex/hooks.json receipt requires preservation review", Conflict),
+            ("existing .claude/settings.json requires preservation review", Conflict),
+            (".claude/settings.json receipt requires preservation review", Conflict),
             // incremental index (rc.2 C6 #2182); every current message of the module
             ("index build failed; previous generation kept: a.txt read failed", Io),
             ("index source unavailable: no HEAD commit", Io),

@@ -58,14 +58,16 @@ fn host_folder(host: &str) -> Result<&'static str> {
     }
 }
 
-/// Hosts moai no longer manages. A request that lists one has it filtered out; a receipt
-/// entry that names one is skipped and reported at revert. Its folder is never touched.
+/// Hosts moai no longer manages, by the shared rule of [`crate::retired_hosts`] with `claude` as
+/// the one active host. A request that lists one has it filtered out; a receipt entry that names
+/// one is skipped and reported at revert. Its folder is never touched.
 fn retired(host: &str) -> bool {
-    matches!(host, "codex" | "omp")
+    crate::retired_hosts::retired(host, &["claude"])
 }
 
-/// The reason a skipped receipt entry carries.
-const RETIRED_REASON: &str = "retired host; not managed";
+/// The reason a skipped receipt entry carries: the one the other retired-host readers give
+/// (agent install, home routing, home style, update hooks).
+const RETIRED_REASON: &str = "host_retired";
 
 /// The hosts of a request that moai manages, and the retired ones it dropped. A list that is
 /// empty after the filter reads as `["claude"]`.
@@ -172,10 +174,12 @@ fn validate(req: &ProjectSkillRequest) -> Result<()> {
     if req.protocol_version != PROJECT_SKILL_SCHEMA_VERSION {
         return Err("unsupported protocol_version; supported: 1".into());
     }
-    if req.hosts.is_empty() || req.hosts.len() > 2 {
+    // A retired host (codex, omp) is accepted here and filtered by the plan, so only the hosts
+    // moai manages count against the limit: a profile that lists claude, codex and omp plans.
+    let managed = req.hosts.iter().filter(|h| !retired(h)).count();
+    if req.hosts.is_empty() || managed > 2 {
         return Err("hosts must list one or two entries of claude".into());
     }
-    // A retired host (codex, omp) is accepted here and filtered by the plan.
     if !req
         .hosts
         .iter()

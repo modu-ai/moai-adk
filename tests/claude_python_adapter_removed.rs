@@ -195,7 +195,7 @@ fn nothing_tells_anyone_to_run_the_removed_files() {
     ] {
         text_files(&root.join(dir), &mut files);
     }
-    for top in ["README.md", "AGENTS.md"] {
+    for top in ["README.md", "CLAUDE.md"] {
         let p = root.join(top);
         if p.is_file() {
             files.push(p);

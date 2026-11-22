@@ -47,7 +47,7 @@ const RETIRED_HOST_PATHS: [&str; 6] = [
     ".omp/agents",
 ];
 
-const RETIRED_HOSTS_REASON: &str = "MoAI no longer manages these files and leaves them as they are";
+const RETIRED_HOSTS_REASON: &str = "MoAI no longer manages these files and leaves them as they are; remove them yourself if you do not use them";
 
 /// The one information step about the retired hosts: it lists those of the paths MoAI used to
 /// write that exist under `root`, sorted. A path counts as present by `symlink_metadata`, so a
