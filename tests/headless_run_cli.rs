@@ -336,7 +336,12 @@ fn api_key_warning_names_presence_only() {
     assert!(built.credential_warning.is_none());
 }
 
-/// REQ-2: blanket tool rules refuse to build.
+/// REQ-2: blanket tool rules and every rule outside the allowed shape refuse to build — the
+/// wildcard-only spellings, an interpreter or wrapper as the first word of a wildcarded rule,
+/// a compound command, a glob, a substitution, a brace, a quote, a redirection or an
+/// assignment in the first word, a substitution or a redirection in a later argument, a star
+/// that is not the one trailing wildcard form, and a character outside the set in a rule with
+/// no star. The ordinary narrow rules keep building.
 #[test]
 fn blanket_tool_rules_refuse_to_build() {
     let tmp = tempfile::tempdir().unwrap();
@@ -429,6 +434,51 @@ fn blanket_tool_rules_refuse_to_build() {
         "Bash(/usr/bin/py*n *)",
         "Bash(pytho[n] *)",
         "Bash(python[23] *)",
+        // a substitution or a redirection in a later argument: each runs or writes what it
+        // names, wherever in the rule it sits
+        "Bash(echo $(python *))",
+        "Bash(echo `python *`)",
+        "Bash(ls <(python *))",
+        "Bash(ls >(python *))",
+        "Bash(echo ${x:-$(python *)})",
+        "Bash(echo x >/tmp/y *)",
+        "Bash(ls > x *)",
+        "Bash(ls < x *)",
+        // a star that is not the one trailing wildcard form matches from the first star on
+        "Bash(git diff*)",
+        "Bash(* --version)",
+        "Bash(git * main)",
+        "Bash(* --help *)",
+        // the colon form of an interpreter
+        "Bash(python:*)",
+        // the shells and interpreters the list names, in a versioned spelling too
+        "Bash(dash *)",
+        "Bash(ksh *)",
+        "Bash(pypy *)",
+        "Bash(pypy3.10 *)",
+        "Bash(lua *)",
+        "Bash(lua5.4 *)",
+        "Bash(nodejs *)",
+        "Bash(node22 *)",
+        "Bash(pythonw *)",
+        "Bash(Rscript *)",
+        // the wrappers the permissions page names
+        "Bash(stdbuf *)",
+        "Bash(noglob *)",
+        "Bash(watch *)",
+        "Bash(setsid *)",
+        "Bash(ionice *)",
+        "Bash(flock *)",
+        "Bash(docker *)",
+        "Bash(mise exec *)",
+        "Bash(devbox run *)",
+        "Bash(direnv exec *)",
+        // a rule with no star meets the character set
+        "Bash(ls\npython)",
+        "Bash(echo $(whoami))",
+        "Bash(ls; python)",
+        "Bash(cat <<EOF)",
+        "Bash(ls\tpython)",
         // R-3: the Monitor allow rule the dropped-rules list forbids
         "Monitor",
     ] {
@@ -447,8 +497,89 @@ fn blanket_tool_rules_refuse_to_build() {
         "Bash(npm test)".to_string(),
         // a named subcommand with the colon wildcard stays narrow
         "Bash(git log:*)".to_string(),
+        // a one-word colon rule and a rule with no star beyond the bare command word
+        "Bash(ls:*)".to_string(),
+        "Bash(git:*)".to_string(),
+        "Bash(git status)".to_string(),
+        "Bash(moai card show)".to_string(),
     ];
     assert!(build(&spec, &ctx(&root), &env).is_ok());
+}
+
+/// REQ-2 states one set of characters for the whole rule; this pins it over every ASCII byte.
+/// A byte of the set, placed in an argument, builds, and every other byte refuses — in a
+/// wildcarded rule and in a rule without a star alike. The set is spelled out here a second
+/// time on purpose: the test is a second opinion, not a copy of the code's constant.
+#[test]
+fn every_ascii_byte_outside_the_set_refuses_in_an_argument() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path().join("platform");
+    fs::create_dir_all(&root).unwrap();
+    let env = standin_env(&standin_dir(tmp.path()));
+    let mut in_set = 0;
+    for byte in 0u8..=127 {
+        let c = byte as char;
+        let allowed = c.is_ascii_alphanumeric()
+            || matches!(
+                c,
+                ' ' | '.' | '_' | '/' | '-' | '=' | ':' | ',' | '@' | '%' | '+'
+            );
+        for rule in [format!("Bash(echo a{c}b *)"), format!("Bash(echo a{c}b)")] {
+            let mut spec = audit_spec();
+            spec.allowed_tools = vec![rule.clone()];
+            assert_eq!(
+                build(&spec, &ctx(&root), &env).is_ok(),
+                allowed,
+                "ASCII byte {byte} in {rule:?}: a byte of the set builds, any other refuses"
+            );
+        }
+        in_set += usize::from(allowed);
+    }
+    // 62 letters and digits, the space, and ten punctuation characters
+    assert_eq!(in_set, 73);
+}
+
+/// REQ-2: a rule without a wildcard meets the character set alone. Its first word is not
+/// judged, so an exact rule that starts with an interpreter builds (it names commands, not a
+/// family), and a character outside the set refuses in either kind of rule.
+#[test]
+fn a_rule_without_a_star_meets_the_set_and_keeps_its_first_word() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path().join("platform");
+    fs::create_dir_all(&root).unwrap();
+    let env = standin_env(&standin_dir(tmp.path()));
+    for rule in [
+        "Bash(python x.py)",
+        "Bash(sh)",
+        "Bash(sudo ls)",
+        "Bash(builtin ls)",
+        "Bash(uv run pytest)",
+        "Bash(devbox run npm test)",
+    ] {
+        let mut spec = audit_spec();
+        spec.allowed_tools = vec![rule.to_string()];
+        assert!(
+            build(&spec, &ctx(&root), &env).is_ok(),
+            "{rule} names commands without a wildcard and must build"
+        );
+    }
+    for rule in [
+        "Bash(ls\npython)",
+        "Bash(echo $(whoami))",
+        "Bash(ls; python)",
+        "Bash(ls\tpython)",
+        "Bash(echo \"hi\")",
+        "Bash(ls\u{00a0}*)",
+        "Bash(ls\u{200b} *)",
+        "Bash(ls\u{ff4c}s *)",
+    ] {
+        let mut spec = audit_spec();
+        spec.allowed_tools = vec![rule.to_string()];
+        assert!(
+            build(&spec, &ctx(&root), &env).is_err(),
+            "{rule:?} is outside the character set and must refuse"
+        );
+    }
 }
 
 /// N-5: other credential names reach the child no more than the API key does — every
@@ -868,8 +999,9 @@ fn prompt_sits_behind_a_dashdash_and_the_author_check_ignores_case() {
     );
 }
 
-/// P-1: any wildcarded rule whose text starts with an assignment refuses, in every quote
-/// spelling — and an assignment-free narrow rule still builds.
+/// REQ-2: any wildcarded rule whose text starts with an assignment refuses, in every quote
+/// spelling — a word before `=` is not a plain command word, and no quoting can be told
+/// apart safely — and a narrow rule with an equals-bearing argument still builds.
 #[test]
 fn assignment_prefixed_wildcard_rules_refuse_in_every_spelling() {
     let tmp = tempfile::tempdir().unwrap();
@@ -894,9 +1026,9 @@ fn assignment_prefixed_wildcard_rules_refuse_in_every_spelling() {
     let mut spec = audit_spec();
     spec.allowed_tools = vec!["Bash(git diff *)".to_string()];
     assert!(build(&spec, &ctx(&root), &env).is_ok());
-    // the ALLOWED shape holds: a plain command word, a colon-wildcard suffix, an
-    // equals-bearing argument (the assignment check fires on the first word only),
-    // and cd/true on their own (no compound operator)
+    // the allowed shape holds: a plain command word, a colon-wildcard suffix, an
+    // equals-bearing argument (the word before `=` is not the first word), and cd/true
+    // on their own (no compound operator)
     for rule in [
         "Bash(git log:*)",
         "Bash(git log --foo=bar *)",

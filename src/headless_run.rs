@@ -731,77 +731,34 @@ pub fn record_run(
     Ok(key)
 }
 
-/// A tool rule the builder accepts: never a blanket `Bash`·`PowerShell`·`Agent`·`Monitor`,
-/// never a wildcard-only scope in any of its spellings (`*`, `:*`, empty), never a
-/// wildcarded interpreter or wrapper (`python *`, `sh -c *`, `timeout *`), and — the
-/// stricter rule of audit P-1 — never a wildcarded rule whose text starts with an env
-/// assignment in ANY spelling (`FOO=… python *`, quotes included), because no quoting can
-/// be told apart safely here.
+/// A tool rule the builder accepts (SPEC REQ-2): never a blanket `Bash`·`PowerShell`·`Agent`·
+/// `Monitor`, and a Bash or PowerShell rule only in one shape. Without its leading and
+/// trailing spaces and one trailing wildcard form (a final space-star or colon-star, the two
+/// spellings of one rule), every character of the rule is in the set below, and the first word
+/// of a wildcarded rule is a plain command word that is neither `builtin` nor `eval` nor an
+/// interpreter or wrapper of the documented list. A rule without a wildcard meets the set
+/// alone: it names one exact command, so its first word is not judged. Anything a shell would
+/// read — an operator, a quote, a substitution, a glob, a backslash, a redirection, a tab, a
+/// newline, NUL, every non-ASCII character — is not in the set, so the rule refuses by
+/// construction and there is no list of bad characters to keep complete.
 fn narrow_rule(tool: &str) -> Result<()> {
     let blanket = matches!(tool, "Bash" | "PowerShell" | "Agent" | "Monitor");
     let scope = tool
         .strip_prefix("Bash(")
         .or_else(|| tool.strip_prefix("PowerShell("))
         .and_then(|inner| inner.strip_suffix(')'));
-    let wildcard_only = scope.is_some_and(|inner| {
-        let inner = inner.trim();
-        inner.is_empty() || inner.starts_with('*') || inner == ":*"
-    });
-    let starts_with_assignment = |inner: &str| {
-        // += and array-index assignments count too: the name may carry an index suffix
-        // or a + before the =.
-        inner.split_once('=').is_some_and(|(name, _)| {
-            // an index suffix counts only closed ([0]); an open bracket fails closed —
-            // the word is not a plain assignment name, so it is not an assignment
-            let name = name
-                .split_once('[')
-                .and_then(|(base, rest)| rest.split_once(']').map(|_| base))
-                .unwrap_or(name);
-            let name = name.strip_suffix('+').unwrap_or(name);
-            !name.is_empty()
-                && name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
-                && name.chars().next().is_some_and(|c| !c.is_ascii_digit())
-        })
+    let plain = |inner: &str| {
+        let text = inner.trim_matches(' ');
+        let (wildcarded, body) = match text.strip_suffix(" *").or_else(|| text.strip_suffix(":*")) {
+            Some(body) => (true, body),
+            None => (false, text),
+        };
+        // A wildcard with nothing before it names every command, so an empty body refuses.
+        !body.is_empty()
+            && body.chars().all(plain_rule_char)
+            && !(wildcarded && broad_first_word_of(body))
     };
-    let wildcarded_word = scope.is_some_and(|inner| {
-        if !inner.contains('*') {
-            return false;
-        }
-        // The ALLOWED shape (SPEC revision 3): one plain command word of letters, digits
-        // and . _ / - then arguments — anything else on a wildcarded rule refuses.
-        // A compound command anywhere in the text (; | & or a newline, the documented
-        // name:* colon form apart) widens the rule past what was written.
-        let plain = inner.replace(":*", "");
-        if plain.contains(';') || plain.contains('|') || plain.contains('&') || plain.contains('\n')
-        {
-            return true;
-        }
-        // An assignment prefix refuses outright — every quote spelling is covered by the
-        // refusal, not by parsing.
-        if starts_with_assignment(inner.trim_start()) {
-            return true;
-        }
-        let Some(first) = inner.split_whitespace().next() else {
-            return false;
-        };
-        // The first word must be plain: no quote, backslash, redirection, substitution,
-        // brace or glob character anywhere (a star matches any text at any position,
-        // permissions.md line 157), no & prefix, nothing a shell would re-parse.
-        let plain_word = |w: &str| {
-            w.chars()
-                .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '/' | '-'))
-        };
-        if !plain_word(first) {
-            return true;
-        }
-        // builtin and eval run what follows them; cd && cmd and true; cmd are compound
-        // commands already refused above, so only these two words remain of that class.
-        if matches!(first.to_ascii_lowercase().as_str(), "builtin" | "eval") {
-            return true;
-        }
-        broad_first_word(&first.to_ascii_lowercase())
-    });
-    if blanket || wildcard_only || wildcarded_word {
+    if blanket || scope.is_some_and(|inner| !plain(inner)) {
         return Err(format!(
             "blanket tool rule {tool:?} is not allowed; use a narrow rule"
         ));
@@ -809,37 +766,71 @@ fn narrow_rule(tool: &str) -> Result<()> {
     Ok(())
 }
 
-/// Whether a command rule's first word turns a wildcarded rule into a blanket one: the
-/// interpreters and wrappers that run what follows them, in every spelling — a versioned
-/// interpreter (python3.12), the `:*` colon suffix and the word's basename
-/// (`/usr/bin/env`) included (permission-modes.md's dropped-rules list, audits R-1 R-2
-/// R-4 and L-4).
-fn broad_first_word(word: &str) -> bool {
-    let word = word.split(':').next().unwrap_or(word);
-    let word = word.rsplit('/').next().unwrap_or(word);
-    if INTERPRETERS_AND_WRAPPERS.contains(&word) {
-        return true;
-    }
-    // a versioned python: python3, python3.12, pypy-style digits and dots after the name
-    word.strip_prefix("python")
-        .is_some_and(|rest| rest.chars().all(|c| c.is_ascii_digit() || c == '.'))
+/// The punctuation a rule may hold besides ASCII letters, digits and the space (SPEC REQ-2):
+/// the path, option and list forms of a read-only command.
+const PLAIN_RULE_CHARS: [char; 10] = ['.', '_', '/', '-', '=', ':', ',', '@', '%', '+'];
+
+/// Whether one character is in the set a rule may be written with.
+fn plain_rule_char(c: char) -> bool {
+    c.is_ascii_alphanumeric() || c == ' ' || PLAIN_RULE_CHARS.contains(&c)
 }
 
-/// The interpreter and wrapper words the runner never lets a wildcarded rule start with
-/// (permission-modes.md's dropped-rules list plus the escapes each repair added; the
-/// match is case-insensitive). The list is the documented set, not every interpreter
-/// that exists: pypy, lua, awk, make, ssh and friends are NOT here, and whether they
-/// join is a SPEC decision, not a code one.
-const INTERPRETERS_AND_WRAPPERS: [&str; 28] = [
+/// The first-word rules on top of the character set: the command word is plain (letters,
+/// digits and `. _ / -`), is neither `builtin` nor `eval` (each runs what follows it), and is
+/// never an interpreter or wrapper of the documented list. The body holds spaces only, so the
+/// first word ends at the first space.
+fn broad_first_word_of(body: &str) -> bool {
+    let first = body.split(' ').find(|w| !w.is_empty()).unwrap_or("");
+    let plain_word = |w: &str| {
+        w.chars()
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '/' | '-'))
+    };
+    if !plain_word(first) {
+        return true;
+    }
+    let first = first.to_ascii_lowercase();
+    matches!(first.as_str(), "builtin" | "eval") || broad_first_word(&first)
+}
+
+/// Whether a plain command word is an interpreter or wrapper that runs what follows it, in
+/// every spelling: the word's basename (`/usr/bin/env`) and a versioned spelling of a list
+/// word (`python3.12`, `pypy3.10`, `node22`). The word arrives lower-cased, so the list is
+/// written lower-case.
+fn broad_first_word(word: &str) -> bool {
+    let word = word.rsplit('/').next().unwrap_or(word);
+    INTERPRETERS_AND_WRAPPERS.iter().any(|known| {
+        word == *known
+            || word.strip_prefix(known).is_some_and(|rest| {
+                rest.starts_with(|c: char| c.is_ascii_digit())
+                    && rest.chars().all(|c| c.is_ascii_digit() || c == '.')
+            })
+    })
+}
+
+/// The interpreters and wrappers a wildcarded rule never starts with: the words that run what
+/// follows them as code or as a command line on this machine. It is the dropped-rules set of
+/// permission-modes.md — the interpreters and the wrappers that execute their arguments,
+/// which permissions.md names (`timeout`, `time`, `nice`, `nohup`, `stdbuf`, `noglob`, bare
+/// `xargs`, the environment runners and the exec wrappers) — plus the privilege escalators.
+/// Which names belong is the SPEC's decision (D-12), not this constant's: `make`, `ssh`, `awk`
+/// and `find` are not on it, and a name that is missing here does not make a rule harmless.
+const INTERPRETERS_AND_WRAPPERS: [&str; 45] = [
     "python",
     "python3",
+    "pythonw",
+    "pypy",
     "pypy3",
     "node",
+    "nodejs",
     "deno",
     "ruby",
     "perl",
+    "lua",
+    "rscript",
     "sh",
     "bash",
+    "dash",
+    "ksh",
     "zsh",
     "fish",
     "osascript",
@@ -847,7 +838,17 @@ const INTERPRETERS_AND_WRAPPERS: [&str; 28] = [
     "time",
     "nice",
     "nohup",
+    "stdbuf",
+    "noglob",
+    "watch",
+    "setsid",
+    "ionice",
+    "flock",
     "env",
+    "direnv",
+    "devbox",
+    "mise",
+    "docker",
     "xargs",
     "sudo",
     "npx",
