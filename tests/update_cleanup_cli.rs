@@ -744,9 +744,12 @@ fn an_empty_sibling_skill_folder_is_not_proven() {
     fs::create_dir_all(f.home.join(".claude/skills/moai-empty")).unwrap();
     fs::create_dir_all(f.home.join(".agents/skills/moai-empty")).unwrap();
     let a = actions(&f.plan());
-    for p in [".claude/skills/moai-empty", ".agents/skills/moai-empty"] {
-        assert_eq!(a[p], ("keep".into(), "unrecorded".into()), "{p}");
-    }
+    assert_eq!(
+        a[".claude/skills/moai-empty"],
+        ("keep".into(), "unrecorded".into())
+    );
+    // The shared agents skills folder is not the cleanup's: its empty folder is not listed.
+    assert!(!a.contains_key(".agents/skills/moai-empty"), "{a:?}");
 }
 
 #[test]
