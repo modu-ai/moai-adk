@@ -1,0 +1,269 @@
+//! `lane-run` (SPEC-20261122-nonstop-lane): the pick of running a lane non-stop or one card at a
+//! time, kept in the project profile's top-level `lane_run` key, and the texts that follow it.
+
+use moai_cli::profile::{read_profile, read_rel, LaneRunSettings, LANE_RUNS};
+use serde_json::{json, Value};
+use std::io::Write as _;
+use std::path::{Path, PathBuf};
+
+/// Run a lane non-stop or one card at a time
+///
+/// `show` reads the pick in force for the project or a lane (the lane's own value before the
+/// project's) and the host facts that turn it into `single`; `set` saves a pick without asking;
+/// `prompt` prints the self-paced loop text for a non-stop lane; `goal` prints a `/goal`
+/// condition for one card. Only `set` writes, and only the profile's `lane_run` key. Nothing
+/// here starts a loop or a goal.
+#[derive(clap::Args)]
+pub struct Args {
+    #[command(subcommand)]
+    action: Action,
+    /// The project folder.
+    #[arg(long, global = true, default_value = ".")]
+    project: PathBuf,
+}
+
+#[derive(clap::Subcommand)]
+enum Action {
+    /// The saved pick, the pick in force and the facts behind it.
+    Show {
+        /// A lane name, as `session-register` gave it.
+        #[arg(long)]
+        lane: Option<String>,
+    },
+    /// Save `nonstop` or `single` for the project, or for one lane with `--lane`.
+    Set {
+        value: String,
+        #[arg(long)]
+        lane: Option<String>,
+    },
+    /// The loop text for a lane whose pick in force is `nonstop`; none for `single`.
+    Prompt {
+        #[arg(long)]
+        lane: String,
+    },
+    /// A `/goal` condition for one card, with a turn limit.
+    Goal {
+        #[arg(long)]
+        card: String,
+        #[arg(long, default_value_t = DEFAULT_TURNS)]
+        turns: u32,
+    },
+}
+
+pub const OPERATION: &str = "lane.run";
+
+const DEFAULT_TURNS: u32 = 40;
+const MAX_TURNS: u32 = 200;
+/// The longest `/goal` condition Claude Code takes.
+const GOAL_MAX_CHARS: usize = 4000;
+const FLOORS: &str = "Claude Code 2.1.248 or later for the self-paced loop; 2.1.310 or later \
+                      for Monitor on Bedrock, Claude Platform on AWS, Google Cloud's Agent \
+                      Platform, Microsoft Foundry, or with telemetry or non-essential traffic \
+                      off; Git Bash on Windows";
+
+pub fn run(args: Args) -> Result<Value, String> {
+    let root = args.project;
+    match args.action {
+        Action::Show { lane } => {
+            let lane = checked_lane(lane.as_deref())?;
+            let state = State::read(&root, lane)?;
+            Ok(state.json(lane))
+        }
+        Action::Set { value, lane } => set(&root, &value, checked_lane(lane.as_deref())?),
+        Action::Prompt { lane } => {
+            let lane = checked_lane(Some(&lane))?.unwrap_or_default();
+            let state = State::read(&root, Some(lane))?;
+            if state.effective == "nonstop" {
+                Ok(json!({
+                    "lane": lane, "pick": "nonstop", "started": false,
+                    "prompt": prompt(lane),
+                    "note": "give this text to the self-paced loop of Claude Code (the loop \
+                             command with no interval); it ends after seven days and is not \
+                             restored by a resume",
+                }))
+            } else {
+                Ok(json!({
+                    "lane": lane, "pick": "single", "started": false, "prompt": null,
+                    "facts": state.facts,
+                    "note": "the pick in force is single: no loop is started",
+                }))
+            }
+        }
+        Action::Goal { card, turns } => goal(&card, turns),
+    }
+}
+
+fn checked_lane(lane: Option<&str>) -> Result<Option<&str>, String> {
+    match lane {
+        Some(l) if !moai_cli::lane_registry::valid_name(l) => Err(
+            "invalid lane name: 1 to 64 letters, digits, `.`, `_` or `-`, starting with a \
+             letter or digit"
+                .into(),
+        ),
+        other => Ok(other),
+    }
+}
+
+/// The saved pick, where it came from, the facts and the pick in force.
+struct State {
+    saved: &'static str,
+    source: &'static str,
+    effective: &'static str,
+    facts: Value,
+}
+
+fn pick_name(v: &str) -> &'static str {
+    LANE_RUNS
+        .iter()
+        .copied()
+        .find(|p| *p == v)
+        .unwrap_or("unset")
+}
+
+/// A true value of an environment switch, the way Claude Code's switches are written.
+fn truthy(v: &str) -> bool {
+    matches!(
+        v.trim().to_ascii_lowercase().as_str(),
+        "1" | "true" | "yes" | "on"
+    )
+}
+
+impl State {
+    fn read(root: &Path, lane: Option<&str>) -> Result<State, String> {
+        let (profile, _) = read_profile(root)?;
+        let settings = profile.lane_run.unwrap_or_default();
+        let (saved, source) = match lane.and_then(|l| settings.lanes.get(l)) {
+            Some(v) => (pick_name(v), "lane"),
+            None => match settings.default.as_deref() {
+                Some(v) => (pick_name(v), "project"),
+                None => ("unset", "none"),
+            },
+        };
+        let cron_off = std::env::var("CLAUDE_CODE_DISABLE_CRON").is_ok_and(|v| truthy(&v));
+        let facts = json!([
+            {"name": "CLAUDE_CODE_DISABLE_CRON", "read": true, "blocks": cron_off,
+             "says": "set to a true value, it removes the loop and the scheduled wakes"},
+            {"name": "loop_available", "read": false, "blocks": false,
+             "says": "whether Claude Code can be asked for a loop here; moai cannot read it"},
+            {"name": "claude_code_version", "read": false, "blocks": false,
+             "says": "moai reads no host version; see floors"},
+        ]);
+        let effective = if saved == "nonstop" && !cron_off {
+            "nonstop"
+        } else {
+            "single"
+        };
+        Ok(State {
+            saved,
+            source,
+            effective,
+            facts,
+        })
+    }
+
+    fn json(&self, lane: Option<&str>) -> Value {
+        json!({
+            "lane": lane, "saved": self.saved, "source": self.source,
+            "effective": self.effective, "facts": self.facts, "floors": FLOORS,
+        })
+    }
+}
+
+fn set(root: &Path, value: &str, lane: Option<&str>) -> Result<Value, String> {
+    if !LANE_RUNS.contains(&value) {
+        return Err("invalid pick: nonstop or single".into());
+    }
+    // The profile must read before it is changed; its raw bytes keep every other key in order.
+    let (_, bytes) = read_profile(root)?;
+    let path = root.join(read_rel(root));
+    let meta = std::fs::symlink_metadata(&path).map_err(|e| format!("profile: {e}"))?;
+    if !meta.file_type().is_file() {
+        return Err("profile is not a regular file; nothing was written".into());
+    }
+    let mut map: serde_json::Map<String, Value> =
+        serde_json::from_slice(&bytes).map_err(|_| "profile is not a JSON object".to_string())?;
+    let mut settings: LaneRunSettings = match map.get("lane_run") {
+        Some(v) => serde_json::from_value(v.clone()).map_err(|_| "invalid lane_run setting")?,
+        None => LaneRunSettings::default(),
+    };
+    match lane {
+        Some(l) => {
+            settings.lanes.insert(l.to_string(), value.to_string());
+        }
+        None => settings.default = Some(value.to_string()),
+    }
+    map.insert(
+        "lane_run".into(),
+        serde_json::to_value(&settings).map_err(|e| e.to_string())?,
+    );
+    let mut out = serde_json::to_vec_pretty(&map).map_err(|e| e.to_string())?;
+    out.push(b'\n');
+    let dir = path.parent().ok_or("profile has no folder")?;
+    let mut tmp = tempfile::NamedTempFile::new_in(dir).map_err(|e| format!("profile: {e}"))?;
+    tmp.write_all(&out)
+        .and_then(|_| tmp.as_file().sync_all())
+        .map_err(|e| format!("profile: {e}"))?;
+    tmp.persist(&path)
+        .map_err(|e| format!("profile: {}", e.error))?;
+    // Read back: the written profile must still read, with the value in it.
+    let check = State::read(root, lane)?;
+    Ok(json!({
+        "written": true, "key": "lane_run", "lane": lane, "value": value,
+        "saved": check.saved, "source": check.source, "profile": read_rel(root),
+    }))
+}
+
+/// The plain text a non-stop lane gives to the self-paced loop: no card, no leader and no
+/// path; the next card is whatever `moai card next` names.
+fn prompt(lane: &str) -> String {
+    format!(
+        "Lane {lane}: keep running cards without stopping, as a self-paced loop with no \
+         interval.\n\
+         1. Keep the current card: if a card is in progress, continue it first.\n\
+         2. After you post a READY note, run `moai card next` and take the card it names; read \
+         its body and notes whole, then write the SPEC and the tests first.\n\
+         3. While you wait for an audit verdict or an answer, keep a Monitor running `moai \
+         lane-run watch --lane {lane} --card <each card you hold>` and work the next card \
+         meanwhile; start the watch again when it ends.\n\
+         4. A verdict or a repair request comes first: handle it before anything else.\n\
+         5. A decision you need goes into a LANE-BLOCKED kind=decision note on its card; do not \
+         ask the user from the loop.\n\
+         6. never end a turn with neither a card in progress nor a watch: before a turn ends, \
+         schedule the next wake with ScheduleWakeup (1200 to 1800 seconds while a Monitor \
+         runs).\n\
+         7. When `moai card next` names no card and no pull request of this lane is open, print \
+         one idle line (lane {lane} idle: no card to take), stop the watch and end the loop \
+         with ScheduleWakeup and stop: true.\n\
+         Read and write the ledger only through moai commands. The loop ends after seven days \
+         and is not restored by a resume."
+    )
+}
+
+/// A card name the goal text takes: `C-` and 1 to 6 digits, no leading zero.
+fn card_name(s: &str) -> bool {
+    s.strip_prefix("C-").is_some_and(|n| {
+        (1..=6).contains(&n.len()) && !n.starts_with('0') && n.bytes().all(|b| b.is_ascii_digit())
+    })
+}
+
+fn goal(card: &str, turns: u32) -> Result<Value, String> {
+    if !card_name(card) {
+        return Err("invalid card name: C- and 1 to 6 digits".into());
+    }
+    if !(1..=MAX_TURNS).contains(&turns) {
+        return Err(format!("invalid turn limit: 1 to {MAX_TURNS}"));
+    }
+    let condition = format!(
+        "Card {card} is in review: its READY note exists and names the head and base read from \
+         git (the head commit of the card's branch and its merge base with the integration \
+         branch), the card's own tests pass on that head, and `moai card show {card}` reads its \
+         state as review. Or stop after {turns} turns and say what is left."
+    );
+    debug_assert!(condition.chars().count() <= GOAL_MAX_CHARS);
+    Ok(json!({
+        "card": card, "turns": turns, "condition": condition, "started": false,
+        "max_chars": GOAL_MAX_CHARS,
+        "note": "the user types /goal with this condition; a goal adds a second model's check \
+                 after every turn and its tokens",
+    }))
+}
