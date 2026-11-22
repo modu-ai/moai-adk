@@ -2293,7 +2293,7 @@ impl World {
 fn ac40_the_four_refusals_of_the_card_each_name_their_code_and_write_nothing() {
     let w = World::enforced();
     let card = w.review_card(&["one"]);
-    let lane = w.lane_adding("docs/x.md", S_A);
+    let lane = w.lane_adding("notes/x.md", S_A);
     let cand = w.join(&lane, S_LEAD);
 
     // No verdict at all.
@@ -2327,7 +2327,7 @@ fn ac40_the_four_refusals_of_the_card_each_name_their_code_and_write_nothing() {
     // A PASS by the session that wrote the lane commit.
     let w = World::enforced();
     let card = w.review_card(&["one"]);
-    let lane = w.lane_adding("docs/x.md", S_A);
+    let lane = w.lane_adding("notes/x.md", S_A);
     let cand = w.join(&lane, S_LEAD);
     w.verdict(&card, &cand, true, 0, S_A, None);
     let before = w.dump();
@@ -2342,7 +2342,7 @@ fn ac40_the_four_refusals_of_the_card_each_name_their_code_and_write_nothing() {
 fn ac41_one_reviewers_newest_fail_refuses_until_the_same_reviewer_passes() {
     let w = World::enforced();
     let card = w.review_card(&["one"]);
-    let lane = w.lane_adding("docs/x.md", S_A);
+    let lane = w.lane_adding("notes/x.md", S_A);
     let cand = w.join(&lane, S_LEAD);
     w.verdict(&card, &cand, false, 0, S_AUD, None);
     w.verdict(&card, &cand, true, 0, S_OTHER, None);
@@ -2365,7 +2365,7 @@ fn ac42_a_reservation_holder_and_a_bare_trailer_id_are_authors() {
     let w = World::enforced();
     let card = w.review_card(&["one"]);
     // The lane commit is signed by another session; the holder of the card is `S_A`.
-    let lane = w.lane_adding("docs/x.md", S_OTHER);
+    let lane = w.lane_adding("notes/x.md", S_OTHER);
     let cand = w.join(&lane, S_LEAD);
     w.verdict(&card, &cand, true, 0, S_A, None);
     let before = w.dump();
@@ -2376,7 +2376,7 @@ fn ac42_a_reservation_holder_and_a_bare_trailer_id_are_authors() {
     let bare = put_on_msg(
         &w.project,
         &w.head,
-        "docs/y.md",
+        "notes/y.md",
         "y\n",
         &format!("the lane change\n\nMoai-Spec: SPEC-20261123-fixture\nMoai-Session: {S_AUD}\nMoai-Verified: none"),
     );
@@ -2392,7 +2392,7 @@ fn ac42_a_reservation_holder_and_a_bare_trailer_id_are_authors() {
 fn ac43_a_range_with_no_session_trailer_refuses_as_authors_unknown() {
     let w = World::enforced();
     let card = w.review_card(&["one"]);
-    let lane = put_on_msg(&w.project, &w.head, "docs/x.md", "x\n", "the lane change");
+    let lane = put_on_msg(&w.project, &w.head, "notes/x.md", "x\n", "the lane change");
     let cand = w.join(&lane, S_LEAD);
     w.verdict(&card, &cand, true, 0, S_AUD, None);
     let before = w.dump();
@@ -2469,7 +2469,7 @@ fn ac45_an_independent_pass_lands_and_the_record_names_the_verdict() {
 fn ac46_a_done_card_answers_done_whatever_the_verdicts_say_now() {
     let w = World::enforced();
     let card = w.review_card(&["one"]);
-    let lane = w.lane_adding("docs/x.md", S_A);
+    let lane = w.lane_adding("notes/x.md", S_A);
     let cand = w.join(&lane, S_LEAD);
     w.verdict(&card, &cand, true, 0, S_AUD, None);
     result(&w.land_as(Some(S_LEAD), &card, &cand));
@@ -2486,7 +2486,7 @@ fn ac46_a_done_card_answers_done_whatever_the_verdicts_say_now() {
 fn ac47_a_rerun_after_the_move_uses_the_start_rows_verdict_and_names_a_late_fail() {
     let w = World::enforced();
     let card = w.review_card(&["one"]);
-    let lane = w.lane_adding("docs/x.md", S_A);
+    let lane = w.lane_adding("notes/x.md", S_A);
     let cand = w.join(&lane, S_LEAD);
     let event = w.verdict(&card, &cand, true, 0, S_AUD, None);
     w.wrap_update_ref("git-kills-the-lander", "", "kill -9 $PPID");
@@ -2525,7 +2525,7 @@ fn ac48_a_kill_before_the_move_and_a_kill_after_it_each_end_in_one_landing() {
     ] {
         let w = World::enforced();
         let card = w.review_card(&["one"]);
-        let lane = w.lane_adding("docs/x.md", S_A);
+        let lane = w.lane_adding("notes/x.md", S_A);
         let cand = w.join(&lane, S_LEAD);
         w.verdict(&card, &cand, true, 0, S_AUD, None);
         w.wrap_update_ref("git-kills-the-lander", before, after);
@@ -2554,7 +2554,7 @@ fn ac48_a_kill_before_the_move_and_a_kill_after_it_each_end_in_one_landing() {
 fn ac49_a_failure_between_the_steps_is_repaired_by_running_the_call_again() {
     let w = World::enforced();
     let card = w.review_card(&["one"]);
-    let lane = w.lane_adding("docs/x.md", S_A);
+    let lane = w.lane_adding("notes/x.md", S_A);
     let cand = w.join(&lane, S_LEAD);
     w.verdict(&card, &cand, true, 0, S_AUD, None);
     let lock = w.project.join(".git/refs/heads/integ.lock");
@@ -2582,7 +2582,7 @@ fn ac49_a_failure_between_the_steps_is_repaired_by_running_the_call_again() {
 fn ac50_a_moved_integration_branch_gives_tip_moved_stale_base_or_a_close() {
     let w = World::enforced();
     let card = w.review_card(&["one"]);
-    let lane = w.lane_adding("docs/x.md", S_A);
+    let lane = w.lane_adding("notes/x.md", S_A);
     let cand = w.join(&lane, S_LEAD);
     w.verdict(&card, &cand, true, 0, S_AUD, None);
     let other = commit_with(&w.project, &w.tip, &[&w.tip], "somebody else landed first");
@@ -2618,7 +2618,7 @@ fn ac50_a_moved_integration_branch_gives_tip_moved_stale_base_or_a_close() {
     // another head, so the PASS of the first head does not carry over to it.
     let w = World::enforced();
     let card = w.review_card(&["one"]);
-    let lane = w.lane_adding("docs/x.md", S_A);
+    let lane = w.lane_adding("notes/x.md", S_A);
     let cand = w.join(&lane, S_LEAD);
     w.verdict(&card, &cand, true, 0, S_AUD, None);
     let other = commit_with(&w.project, &w.tip, &[&w.tip], "somebody else landed first");
@@ -2653,7 +2653,7 @@ fn ac50_a_moved_integration_branch_gives_tip_moved_stale_base_or_a_close() {
 fn ac51_a_note_that_reads_like_a_verdict_is_no_verdict() {
     let w = World::enforced();
     let card = w.review_card(&["one"]);
-    let lane = w.lane_adding("docs/x.md", S_A);
+    let lane = w.lane_adding("notes/x.md", S_A);
     let cand = w.join(&lane, S_LEAD);
     let note = format!(
         "AUDIT {card} (the fixture) head {cand} base {} — verdict: PASS",
@@ -2679,7 +2679,7 @@ fn ac52_observe_mode_reports_would_refuse_and_lands() {
     let w = World::new();
     w.set_profile(OBSERVE_PROFILE);
     let card = w.review_card(&["one"]);
-    let lane = w.lane_adding("docs/x.md", S_A);
+    let lane = w.lane_adding("notes/x.md", S_A);
     let cand = w.join(&lane, S_LEAD);
     let got = result(&w.land_as(Some(S_LEAD), &card, &cand));
     assert_eq!(got["moved"], json!(true), "{got}");
@@ -2698,7 +2698,7 @@ fn ac52_observe_mode_reports_would_refuse_and_lands() {
 fn ac53_the_lander_may_review_tier_zero_and_both_identities_are_recorded() {
     let w = World::enforced();
     let card = w.review_card(&["one"]);
-    let lane = w.lane_adding("docs/x.md", S_A);
+    let lane = w.lane_adding("notes/x.md", S_A);
     let cand = w.join(&lane, S_LEAD);
     let event = w.verdict(&card, &cand, true, 0, S_LEAD, None);
     let got = result(&w.land_as(Some(S_LEAD), &card, &cand));
@@ -2752,10 +2752,10 @@ fn ac55_a_clean_join_is_no_authorship_and_an_edited_merge_is() {
     // merge commit of the lander counts as authored and refuses the lander's PASS.
     let w = World::enforced();
     let card = w.review_card(&["one"]);
-    let lane = w.lane_adding("docs/x.md", S_A);
+    let lane = w.lane_adding("notes/x.md", S_A);
     let clean = w.join(&lane, S_LEAD);
     let edited_tree = {
-        let with_extra = put_on_msg(&w.project, &clean, "docs/evil.md", "e\n", "tmp");
+        let with_extra = put_on_msg(&w.project, &clean, "notes/evil.md", "e\n", "tmp");
         git(
             &w.project,
             &["rev-parse", &format!("{with_extra}^{{tree}}")],
@@ -2782,12 +2782,18 @@ fn ac55_a_clean_join_is_no_authorship_and_an_edited_merge_is() {
     // A merge that git cannot compute (the two sides change one file) counts as authored.
     let w = World::enforced();
     let card = w.review_card(&["one"]);
-    let tip_b = put_on_msg(&w.project, &w.head, "docs/z.md", "B\n", "the tip changes z");
+    let tip_b = put_on_msg(
+        &w.project,
+        &w.head,
+        "notes/z.md",
+        "B\n",
+        "the tip changes z",
+    );
     git(&w.project, &["update-ref", "refs/heads/integ", &tip_b]);
     let lane = put_on_msg(
         &w.project,
         &w.head,
-        "docs/z.md",
+        "notes/z.md",
         "A\n",
         &signed("the lane changes z", S_A),
     );
@@ -2817,7 +2823,7 @@ fn ac55_a_clean_join_is_no_authorship_and_an_edited_merge_is() {
 fn ac56_the_profile_names_the_mode_and_another_word_is_refused() {
     let w = World::new();
     let card = w.review_card(&["one"]);
-    let lane = w.lane_adding("docs/x.md", S_A);
+    let lane = w.lane_adding("notes/x.md", S_A);
     let cand = w.join(&lane, S_LEAD);
 
     w.set_profile(BAD_MODE_PROFILE);
