@@ -315,7 +315,8 @@ fn repeated_opens(opened: &[String], targets: usize) -> Vec<(String, usize)> {
 /// the test sources), under `root`.
 #[cfg(unix)]
 fn outside_opens<'a>(opened: &'a [String], root: &str) -> Vec<&'a String> {
-    let allowed = ["docs", ".moai-cli/reports", "tests"].map(|d| format!("{root}/{d}/"));
+    let reports = format!("{}/reports", moai_cli::PROJECT_STATE_DIR);
+    let allowed = ["docs", reports.as_str(), "tests"].map(|d| format!("{root}/{d}/"));
     opened
         .iter()
         .filter(|p| !allowed.iter().any(|a| p.starts_with(a.as_str())))
