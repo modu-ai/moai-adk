@@ -90,7 +90,7 @@ fn a_receipt_that_names_codex_is_skipped_and_reported() {
     assert_eq!(reverted["state"], "reverted", "{reverted}");
     assert_eq!(
         reverted["skipped"],
-        serde_json::json!([{"host": "codex", "reason": "retired host; not managed"}]),
+        serde_json::json!([{"host": "codex", "reason": "host_retired"}]),
         "{reverted}"
     );
     assert!(
