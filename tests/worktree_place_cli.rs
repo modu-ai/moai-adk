@@ -384,6 +384,45 @@ fn worktree_place_links_real_folders_and_missing_ones_are_accepted() {
     home_workdir::refuse_linked_place(&project, &folder).unwrap();
 }
 
+/// Scene 9 (REQ-6, AC-4): the tree digest that RUN records and AUDIT compares leaves the
+/// project place out, so a worktree made inside the project does not change it, and the
+/// project's other `.claude` files still count.
+#[test]
+fn worktree_place_scans_the_tree_digest_skips_the_place() {
+    let project = tempfile::tempdir().unwrap();
+    let root = project.path();
+    std::fs::write(root.join("a.txt"), "a\n").unwrap();
+    let digest = || moai_cli::tree_digest(root, &moai_cli::run::TREE_EXCLUDES).unwrap();
+    let before = digest();
+    let inside = root.join(".claude/worktrees/p-1-k/src");
+    std::fs::create_dir_all(&inside).unwrap();
+    std::fs::write(inside.join("b.rs"), "fn b() {}\n").unwrap();
+    assert_eq!(
+        digest(),
+        before,
+        "a file under the place changed the digest"
+    );
+    std::fs::write(root.join(".claude/settings.json"), "{}\n").unwrap();
+    assert_ne!(
+        digest(),
+        before,
+        "the project's own .claude file must still count"
+    );
+}
+
+/// Scene 10 (REQ-6, AC-4): the affected-test selection reads changed paths only, and a path
+/// under the place selects nothing (a pin: it holds by construction today).
+#[test]
+fn worktree_place_scans_the_selection_ignores_the_place() {
+    let changed = vec![
+        ".claude/worktrees/p-1-k/src/ops/worktree.rs".to_string(),
+        ".claude/worktrees/p-1-k/tests/worktree_cli.rs".to_string(),
+    ];
+    let sel = moai_cli::check_affected::select(&changed, &[], None, "macos");
+    assert!(sel.rust.is_empty() && sel.python.is_empty(), "{sel:?}");
+    assert_eq!(sel.scans, moai_cli::check_affected::Scans::None);
+    assert_eq!(moai_cli::check_affected::area(&changed[0]), None);
+}
 /// Audit B1 (REQ-13): the owner of a place path is found by what the ancestors resolve to. A
 /// path spelled through a linked alias of the project finds the project, a linked `.claude` is
 /// not followed to reach it, and a path outside the place has no owner.
