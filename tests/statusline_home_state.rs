@@ -260,3 +260,281 @@ fn home_dot_moai_is_not_project_configuration() {
         assert!(!out.contains("9.9.9"), "{cwd:?}: {out}");
     }
 }
+
+// ---- SPEC-20261122-statusline-limits REQ-7, AC-5: the usage record ----
+//
+// The record of the usage windows lives in the status line's cache folder under `TMPDIR`, one
+// file per HOME named `usage-<12 hex of the SHA-256 of the canonical HOME path>.record`. The file
+// is found here by that name anywhere below `TMPDIR`, not through the product's own function.
+
+fn unix_now() -> i64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs() as i64
+}
+
+/// A subscriber's stdin with the five-hour window at `used` percent, resetting at `resets_at`.
+fn limits_stdin(used: u32, resets_at: i64) -> String {
+    format!(
+        r#"{{"model":{{"display_name":"Opus"}},"rate_limits":{{"five_hour":{{"used_percentage":{used},"resets_at":{resets_at}}}}}}}"#
+    )
+}
+
+/// One render of `stdin` with HOME `home`, the given `TMPDIR` and working directory `cwd`.
+fn render_with(home: &Path, cwd: &Path, tmpdir: impl AsRef<std::ffi::OsStr>, stdin: &str) {
+    let mut child = Command::new(crate::common::MOAI_BIN)
+        .args(["statusline", "--render-budget-ms", "3600000"])
+        .current_dir(cwd)
+        .clean_env()
+        .env("PATH", std::env::var_os("PATH").unwrap_or_default())
+        .env("HOME", home)
+        .env("TMPDIR", tmpdir)
+        .env("NO_COLOR", "1")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(stdin.as_bytes())
+        .unwrap();
+    let out = child.wait_with_output().unwrap();
+    assert!(
+        out.status.success(),
+        "statusline exit {:?}: {}",
+        out.status.code(),
+        String::from_utf8_lossy(&out.stderr)
+    );
+}
+
+/// The file name the record of `home` has: `usage-` and the first 12 hex digits of the SHA-256
+/// of the canonical path.
+fn record_name(home: &Path) -> String {
+    use sha2::{Digest, Sha256};
+    let canonical = std::fs::canonicalize(home).unwrap();
+    let hex = format!(
+        "{:x}",
+        Sha256::digest(canonical.as_os_str().as_encoded_bytes())
+    );
+    format!("usage-{}.record", &hex[..12])
+}
+
+/// The one record of `home` below `tmpdir`; it must sit in a folder directly under `tmpdir`.
+fn record_file(home: &Path, tmpdir: &Path) -> PathBuf {
+    let name = record_name(home);
+    let found: Vec<PathBuf> = snapshot(tmpdir)
+        .into_iter()
+        .map(|(p, _)| p)
+        .filter(|p| p.file_name().is_some_and(|n| n.to_string_lossy() == name))
+        .collect();
+    assert_eq!(found.len(), 1, "one {name} below {tmpdir:?}: {found:?}");
+    assert_eq!(
+        found[0].parent().and_then(Path::parent),
+        Some(tmpdir),
+        "the record sits in the cache folder directly under TMPDIR"
+    );
+    found[0].clone()
+}
+
+/// `moai ARGS` with the given `TMPDIR`, `input` on stdin; the `result` of its envelope.
+fn moai_result(
+    args: &[&str],
+    tmpdir: impl AsRef<std::ffi::OsStr>,
+    input: &str,
+) -> serde_json::Value {
+    let mut child = Command::new(crate::common::MOAI_BIN)
+        .args(args)
+        .clean_env()
+        .env("PATH", "/usr/bin:/bin")
+        .env("TMPDIR", tmpdir)
+        .env("LC_ALL", "C")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(input.as_bytes())
+        .unwrap();
+    let out = child.wait_with_output().unwrap();
+    let v: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap_or_else(|_| {
+        panic!(
+            "{}{}",
+            String::from_utf8_lossy(&out.stdout),
+            String::from_utf8_lossy(&out.stderr)
+        )
+    });
+    assert_eq!(v["ok"], true, "{v}");
+    v["result"].clone()
+}
+
+/// AC-5: a render with a percentage the record does not hold writes the record in the cache
+/// folder (0600 in a 0700 folder); a new percentage replaces it.
+#[test]
+fn usage_record_a_changed_percentage_is_written_in_the_cache_folder() {
+    let f = fixture();
+    let tmp = tempfile::tempdir().unwrap();
+    let reset = unix_now() + 3600;
+    render_with(&f.home, &f.work, tmp.path(), &limits_stdin(42, reset));
+    let path = record_file(&f.home, tmp.path());
+    let first = std::fs::read(&path).unwrap();
+    assert!(String::from_utf8_lossy(&first).contains("42"), "{path:?}");
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mode = |p: &Path| std::fs::symlink_metadata(p).unwrap().permissions().mode() & 0o777;
+        assert_eq!(mode(&path), 0o600);
+        assert_eq!(mode(path.parent().unwrap()), 0o700);
+    }
+    render_with(&f.home, &f.work, tmp.path(), &limits_stdin(43, reset));
+    let second = std::fs::read(record_file(&f.home, tmp.path())).unwrap();
+    assert_ne!(first, second);
+    assert!(String::from_utf8_lossy(&second).contains("43"));
+}
+
+/// AC-5: the same percentage and reset time leave the record as it is (bytes, modified time and,
+/// on Unix, the file itself); a new reset time alone writes it again.
+#[test]
+fn usage_record_an_unchanged_render_does_not_rewrite_it() {
+    let f = fixture();
+    let tmp = tempfile::tempdir().unwrap();
+    let reset = unix_now() + 3600;
+    render_with(&f.home, &f.work, tmp.path(), &limits_stdin(42, reset));
+    let path = record_file(&f.home, tmp.path());
+    let old = std::time::UNIX_EPOCH + std::time::Duration::from_secs(1_000_000_000);
+    std::fs::File::options()
+        .write(true)
+        .open(&path)
+        .unwrap()
+        .set_modified(old)
+        .unwrap();
+    let bytes = std::fs::read(&path).unwrap();
+    #[cfg(unix)]
+    let inode = std::os::unix::fs::MetadataExt::ino(&std::fs::metadata(&path).unwrap());
+
+    render_with(&f.home, &f.work, tmp.path(), &limits_stdin(42, reset));
+    let meta = std::fs::metadata(&path).unwrap();
+    assert_eq!(
+        meta.modified().unwrap(),
+        old,
+        "an unchanged record was rewritten"
+    );
+    assert_eq!(std::fs::read(&path).unwrap(), bytes);
+    #[cfg(unix)]
+    assert_eq!(std::os::unix::fs::MetadataExt::ino(&meta), inode);
+
+    render_with(&f.home, &f.work, tmp.path(), &limits_stdin(42, reset + 60));
+    assert_ne!(
+        std::fs::metadata(&path).unwrap().modified().unwrap(),
+        old,
+        "a new reset time is a change"
+    );
+}
+
+/// AC-5: renders with and without usage windows leave the HOME tree as it was.
+#[test]
+fn usage_record_leaves_the_home_tree_as_it_was() {
+    let f = fixture();
+    let tmp = tempfile::tempdir().unwrap();
+    let before = snapshot(&f.home);
+    let reset = unix_now() + 3600;
+    for stdin in [
+        limits_stdin(42, reset),
+        limits_stdin(95, reset),
+        limits_stdin(95, reset),
+        r#"{"model":{"display_name":"Opus"}}"#.to_string(),
+    ] {
+        render_with(&f.home, &f.work, tmp.path(), &stdin);
+    }
+    assert_eq!(snapshot(&f.home), before, "HOME changed during render");
+    record_file(&f.home, tmp.path());
+}
+
+/// AC-5: both lane readers find the new record through the lane's HOME and the same `TMPDIR`:
+/// `usage-limit` says `near` at 90 and `lane-screen --home` takes the reset of a window at 100.
+/// Another `TMPDIR` holds no record, so the answer is `unknown` there.
+#[test]
+fn usage_record_is_read_by_the_lane_readers() {
+    let f = fixture();
+    let tmp = tempfile::tempdir().unwrap();
+    let home = f.home.to_str().unwrap();
+    let reset = unix_now() + 3600;
+    render_with(&f.home, &f.work, tmp.path(), &limits_stdin(90, reset));
+    let v = moai_result(&["usage-limit", home], tmp.path(), "");
+    assert_eq!(v["state"], "near", "{v}");
+    assert_eq!(v["window"], "five_hour", "{v}");
+    let other = tempfile::tempdir().unwrap();
+    let v = moai_result(&["usage-limit", home], other.path(), "");
+    assert_eq!(v["state"], "unknown", "another TMPDIR: {v}");
+
+    render_with(&f.home, &f.work, tmp.path(), &limits_stdin(100, reset));
+    let screen = "Your limit will reset at 2026-11-19 17:30:55\n";
+    let v = moai_result(&["lane-screen", "--home", home], tmp.path(), screen);
+    assert_eq!(v["state"], "usage_limit", "{v}");
+    assert_eq!(v["reset"]["source"], "home", "{v}");
+    let v = moai_result(&["lane-screen", "--home", home], other.path(), screen);
+    assert_ne!(v["reset"]["source"], "home", "another TMPDIR: {v}");
+}
+
+/// REQ-7: the session cache's clean-up of old files in the same folder leaves the usage record,
+/// however old: a record that has not changed for two days is still there after a render that
+/// writes a session cache and cleans, and the lane reader still finds it.
+#[test]
+fn usage_record_survives_the_session_cache_clean_up() {
+    let f = fixture();
+    common::git::git_ok(&f.work, &["init", "-q", "-b", "main"]);
+    let tmp = tempfile::tempdir().unwrap();
+    let reset = unix_now() + 3600;
+    render_with(&f.home, &f.work, tmp.path(), &limits_stdin(90, reset));
+    let path = record_file(&f.home, tmp.path());
+    let two_days_ago = std::time::SystemTime::now() - std::time::Duration::from_secs(2 * 86_400);
+    std::fs::File::options()
+        .write(true)
+        .open(&path)
+        .unwrap()
+        .set_modified(two_days_ago)
+        .unwrap();
+    // A render with a session id in a repository writes its session cache and cleans old files.
+    render_with(
+        &f.home,
+        &f.work,
+        tmp.path(),
+        r#"{"session_id":"s-clean","model":{"display_name":"Opus"}}"#,
+    );
+    let session = path.parent().unwrap().join("s-clean.json");
+    assert!(session.is_file(), "the session cache was written");
+    assert!(path.is_file(), "the clean-up removed the usage record");
+    let v = moai_result(&["usage-limit", f.home.to_str().unwrap()], tmp.path(), "");
+    assert_eq!(v["state"], "near", "{v}");
+}
+
+/// REQ-7 / the cache folder rule: a relative `TMPDIR` names no cache folder, so a render writes
+/// nothing (neither in the working directory it would resolve against nor under HOME) and the
+/// reader with the same `TMPDIR` finds no record.
+#[test]
+fn usage_record_a_relative_tmpdir_writes_nothing() {
+    let f = fixture();
+    let home_before = snapshot(&f.home);
+    let work_before = snapshot(&f.work);
+    render_with(
+        &f.home,
+        &f.work,
+        "rel-tmp",
+        &limits_stdin(95, unix_now() + 3600),
+    );
+    assert_eq!(snapshot(&f.home), home_before, "HOME changed");
+    assert_eq!(
+        snapshot(&f.work),
+        work_before,
+        "the working directory changed"
+    );
+    let v = moai_result(&["usage-limit", f.home.to_str().unwrap()], "rel-tmp", "");
+    assert_eq!(v["state"], "unknown", "{v}");
+}

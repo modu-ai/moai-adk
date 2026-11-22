@@ -2,7 +2,7 @@
 id: SPEC-20261122-statusline-limits
 title: "The third line of the status line shows the limits as the host gives them, and the render stops doing work nobody sees"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-22
 parent: SPEC-20261122-statusline-flow
 ---
@@ -82,11 +82,11 @@ Widths as `unicode-width` counts them (probe 2026-11-22). Fixture values only.
 | | Z3, Z4 | `🪫 CW 74% \| 🔋 7D 21%` | 21 |
 | update pending | Z0 | `🪫 CW 74% \| 🪫 5H 85% (1h 10m) \| 🔋 7D 21% (6d 21h) \| 🤖 2.1.330 \| 🗿 4.2647.15 -> 4.2647.16` | 92 |
 | | Z1 no Claude Code version | `🪫 CW 74% \| 🪫 5H 85% (1h 10m) \| 🔋 7D 21% (6d 21h) \| 🗿 4.2647.15 -> 4.2647.16` | 79 |
-| API key user | Z0 | `🪫 CW 41% \| 💰 3.87 \| 🤖 2.1.330 \| 🗿 4.2647.16` | 47 |
-| | Z2 | `🪫 CW 41% \| 💰 3.87` | 19 |
-| | Z4 | `🪫 CW 41%` | 9 |
+| API key user | Z0 | `🔋 CW 41% \| 💰 3.87 \| 🤖 2.1.330 \| 🗿 4.2647.16` | 47 |
+| | Z2 | `🔋 CW 41% \| 💰 3.87` | 19 |
+| | Z4 | `🔋 CW 41%` | 9 |
 
-The forms drop in the order: the Claude Code version (Z1, keeping an update arrow), the MoAI version (Z2, the arrow with it), the countdowns (Z3), the five-hour window (Z4). Cost and the seven-day window are the last items to go.
+The forms drop in the order: the Claude Code version (Z1, keeping an update arrow), the MoAI version (Z2, the arrow with it), the countdowns (Z3), the five-hour window and the cost (Z4). The context window and the seven-day window are never dropped. Revision 2 (leader decision on Q1 and Q2 of the limits slice, option (a), as the code and its tests already do): a context window at 41 percent shows `🔋` (at most 70), and the cost goes at Z4.
 
 ## Scope
 

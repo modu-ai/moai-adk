@@ -88,7 +88,8 @@ pub fn run(budget: Duration, now: Option<i64>) -> String {
     let out = render(&stdin, &ctx);
     refresh_counts_after_render(&stdin);
     if let Some(home) = std::env::var_os("HOME").filter(|h| !h.is_empty()) {
-        record_usage_after_render(&stdin, std::path::Path::new(&home), unix_now());
+        let home = std::path::Path::new(&home);
+        record_usage_after_render(&stdin, home, ctx.var("TMPDIR"), unix_now());
     }
     out
 }
@@ -100,11 +101,17 @@ fn unix_now() -> i64 {
         .unwrap_or(0)
 }
 
-/// #2668 S1: keep the usage windows Claude Code gave this render in
-/// `$HOME/.moai-cli/state/usage-limits.json`, so a lane can renew its leases before a limit
-/// stops it. Subagent rows and inputs without `rate_limits` write nothing; a failed write
-/// never changes the rendered line.
-fn record_usage_after_render(stdin: &[u8], home: &std::path::Path, now: i64) -> bool {
+/// #2668 S1: keep the usage windows Claude Code gave this render in the record of `home` in the
+/// cache folder for `tmpdir` (SPEC-20261122-statusline-limits REQ-7, [`crate::usage_limit`]), so
+/// a lane can renew its leases before a limit stops it; written only when a window changed.
+/// Subagent rows and inputs without `rate_limits` write nothing; a failed write never changes
+/// the rendered line.
+fn record_usage_after_render(
+    stdin: &[u8],
+    home: &std::path::Path,
+    tmpdir: Option<&str>,
+    now: i64,
+) -> bool {
     let input = read_input(stdin);
     if input.tasks.is_some() {
         return false;
@@ -126,7 +133,7 @@ fn record_usage_after_render(stdin: &[u8], home: &std::path::Path, now: i64) -> 
         ],
         now,
     );
-    crate::usage_limit::record(home, windows, now).unwrap_or(false)
+    crate::usage_limit::record(home, tmpdir, windows, now).unwrap_or(false)
 }
 
 /// #2588: after a render, start the detached counts refresh when the cache needs one.
@@ -154,18 +161,30 @@ mod tests {
     fn render_input_with_rate_limits_records_the_usage_windows() {
         let now = 1_800_000_000;
         let home = tempfile::TempDir::new().unwrap();
+        let tmp = tempfile::TempDir::new().unwrap();
+        let tmpdir = tmp.path().to_str();
         let none: [&[u8]; 3] = [
             br#"{"model":{"display_name":"Opus"}}"#,
             br#"{"tasks":[],"rate_limits":{"five_hour":{"used_percentage":95,"resets_at":1800003600}}}"#,
             b"not json",
         ];
         for stdin in none {
-            assert!(!record_usage_after_render(stdin, home.path(), now));
+            assert!(!record_usage_after_render(stdin, home.path(), tmpdir, now));
         }
-        assert!(!crate::usage_limit::record_path(home.path()).exists());
+        assert!(!crate::usage_limit::record_path(home.path(), tmpdir)
+            .unwrap()
+            .exists());
         let stdin = br#"{"rate_limits":{"five_hour":{"used_percentage":95,"resets_at":1800003600},"seven_day":{"used_percentage":40,"resets_at":1800600000}}}"#;
-        assert!(record_usage_after_render(stdin, home.path(), now));
-        let v = crate::usage_limit::evaluate(home.path(), now);
+        assert!(record_usage_after_render(stdin, home.path(), tmpdir, now));
+        // The same windows again: nothing to write (REQ-7).
+        assert!(!record_usage_after_render(
+            stdin,
+            home.path(),
+            tmpdir,
+            now + 1
+        ));
+        assert_eq!(std::fs::read_dir(home.path()).unwrap().count(), 0);
+        let v = crate::usage_limit::evaluate(home.path(), tmpdir, now);
         assert_eq!(v["state"], "near");
         assert_eq!(v["window"], "five_hour");
         assert_eq!(
