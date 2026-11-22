@@ -29,6 +29,8 @@
 //! The answer names `variants` (branches that differ from the integration branch's name only in
 //! letter case) and `profile_disagrees` (the profile's branch when it is not the recorded one).
 
+pub mod check;
+
 use super::command::open_for_write;
 use super::drift;
 use super::finish::{parse_met, previous_json};
@@ -257,6 +259,35 @@ pub fn land(project: &Path, home: &Path, reference: &str, req: &LandRequest<'_>)
     )
     .map_err(finish_refusal)?;
 
+    // The audit verdict (SPEC-20261123-landing-reads-verdict): read before the first write. A
+    // landing that already started relies on the verdict its start row names. In observe mode a
+    // refusal is only reported, and the landing goes on as it did before the check existed.
+    let mode = check::mode(project).map_err(unchanged)?;
+    let mut relied: Option<Value> = None;
+    let mut would_refuse: Option<Value> = None;
+    if let Some(named) = workflow::land_started_verdict(ledger.conn(), card_id, req.head)
+        .map_err(|e| e.to_string())?
+    {
+        relied = Some(named);
+    } else {
+        let input = check::Input {
+            project,
+            conn: ledger.conn(),
+            card_id,
+            head: req.head,
+            tip: &tip,
+            on_tip: standing == Standing::OnTip,
+            lander: req.session,
+        };
+        match check::judge(&input).map_err(unchanged)? {
+            check::Outcome::Relied(r) => relied = Some(r.json()),
+            check::Outcome::Refused(refusal) => match mode {
+                check::Mode::Enforce => return Err(unchanged(refusal.text())),
+                check::Mode::Observe => would_refuse = Some(refusal.json()),
+            },
+        }
+    }
+
     // The one value for the whole repository: the record seeds from the profile once, and a
     // profile that disagrees with it is reported. Case variants that already exist are reported.
     let guarded = guard::protected(project, true).map_err(unchanged)?;
@@ -278,6 +309,7 @@ pub fn land(project: &Path, home: &Path, reference: &str, req: &LandRequest<'_>)
             req.generation,
             &branch,
             &tip,
+            relied.as_ref(),
         )
         .map_err(finish_refusal)?;
         guard::write_intent(&common, &full, &tip, req.head).map_err(after_start_row)?;
@@ -326,7 +358,7 @@ pub fn land(project: &Path, home: &Path, reference: &str, req: &LandRequest<'_>)
         }
     })?;
     let applied: &[(i64, String)] = if done.closed { &met } else { &[] };
-    Ok(json!({
+    let mut answer = json!({
         "action": "land", "project_id": id, "name": name, "card_id": card_id,
         "branch": branch, "moved": moved, "from_tip": tip, "to_tip": to_tip, "head": req.head,
         "variants": variants, "profile_disagrees": profile_disagrees,
@@ -336,5 +368,19 @@ pub fn land(project: &Path, home: &Path, reference: &str, req: &LandRequest<'_>)
         "by": req.by, "session": req.session,
         "previous": previous_json(&done.previous), "released": done.released,
         "events": done.events, "writes": done.events > 0 || moved,
-    }))
+    });
+    if let Some(verdict) = &relied {
+        answer["verdict"] = verdict.clone();
+        if let Some(after) = verdict["event"].as_i64() {
+            if let Some(late) =
+                check::late_fail(ledger.conn(), card_id, req.head, after).map_err(unchanged)?
+            {
+                answer["late_fail"] = late;
+            }
+        }
+    }
+    if let Some(refusal) = would_refuse {
+        answer["would_refuse"] = refusal;
+    }
+    Ok(answer)
 }

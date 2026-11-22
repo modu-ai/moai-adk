@@ -820,6 +820,46 @@ enum Action {
         #[arg(long)]
         home: Option<PathBuf>,
     },
+    /// Writes the ledger. Record the audit verdict of one exact head as an event of the card
+    ///
+    /// Writes one `card.verdict` event of the card: the head and the base it was judged against
+    /// (40 lowercase hex, commits of this repository, the base an ancestor of the head), `pass`
+    /// or `fail`, the tier the reviewer judged (0 to 2), the evidence (one line that passes the
+    /// secret screen) and, for a PASS above tier 0, the check receipt (`--receipt-head` and
+    /// `--receipt-step NAME=EXIT` for each step). The reviewer is the session id the host sets;
+    /// no option names one. The same call again writes nothing and answers the first event.
+    /// `card land` reads these events and lands a head only on an independent PASS of it.
+    Verdict {
+        /// The card the audit belongs to (`C-12`).
+        card: String,
+        /// The audited head (40 lowercase hex).
+        #[arg(long)]
+        head: String,
+        /// The base the head was judged against (40 lowercase hex, an ancestor of the head).
+        #[arg(long)]
+        base: String,
+        /// `pass` or `fail`.
+        #[arg(long)]
+        verdict: String,
+        /// The tier the reviewer judged, 0 to 2.
+        #[arg(long, value_parser = clap::value_parser!(u8).range(0..=2))]
+        tier: u8,
+        /// What was read and run, on one line.
+        #[arg(long)]
+        evidence: String,
+        /// The head the check receipt names.
+        #[arg(long)]
+        receipt_head: Option<String>,
+        /// One step of the receipt, `NAME=EXIT`; repeat for each step.
+        #[arg(long = "receipt-step", requires = "receipt_head")]
+        receipt_step: Vec<String>,
+        /// The project folder (its profile holds the project id).
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// The HOME holding the ledger (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+    },
     /// Writes the git folder and the ledger only with `--restore`. Show where the integration branch stands against the ledger, and put it back
     ///
     /// The plain view writes nothing. `--restore` writes one file, the preview's one-use nonce in
@@ -1430,6 +1470,35 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
                 map.insert("remote_copy".to_string(), copy.json());
             }
             Ok(landed)
+        }
+        Action::Verdict {
+            card,
+            head,
+            base,
+            verdict,
+            tier,
+            evidence,
+            receipt_head,
+            receipt_step,
+            project,
+            home,
+        } => {
+            let session = d::session_holder("verdict", env).ok();
+            moai_cli::card::verdict::verdict(
+                &project,
+                &resolve_home(home)?,
+                &card,
+                &moai_cli::card::verdict::VerdictRequest {
+                    session: session.as_deref(),
+                    head: &head,
+                    base: &base,
+                    verdict: &verdict,
+                    tier,
+                    evidence: &evidence,
+                    receipt_head: receipt_head.as_deref(),
+                    steps: &receipt_step,
+                },
+            )
         }
         Action::RemoteCopy { project } => Ok(moai_cli::card::remote_copy::entry(&project)),
         Action::Drift {

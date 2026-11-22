@@ -53,6 +53,11 @@ fn commit_with(project: &Path, tree_of: &str, parents: &[&str], message: &str) -
 
 /// A commit on top of `parent` that adds `path` with `content`; no ref moves.
 fn put_on(project: &Path, parent: &str, path: &str, content: &str) -> String {
+    put_on_msg(project, parent, path, content, "docs: add a file")
+}
+
+/// [`put_on`] with the commit message given.
+fn put_on_msg(project: &Path, parent: &str, path: &str, content: &str, message: &str) -> String {
     let blob_file = project.join("put-on-blob.tmp");
     fs::write(&blob_file, content).unwrap();
     let blob = git(project, &["hash-object", "-w", "put-on-blob.tmp"]);
@@ -80,7 +85,7 @@ fn put_on(project: &Path, parent: &str, path: &str, content: &str) -> String {
     fs::remove_file(&index).unwrap();
     git(
         project,
-        &["commit-tree", &tree, "-p", parent, "-m", "docs: add a file"],
+        &["commit-tree", &tree, "-p", parent, "-m", message],
     )
 }
 
@@ -2148,4 +2153,688 @@ fn ac30_the_restore_names_what_it_drops_and_refuses_a_stale_digest() {
         String::from_utf8_lossy(&out.stdout)
     );
     assert_eq!(w.integ(), later, "a stale digest moved the branch");
+}
+
+// ---- SPEC-20261123-landing-reads-verdict --------------------------------------------------------
+//
+// The landing reads the verdict events of the card. The events are written here as ledger rows
+// with the payload the SPEC names (D-1), so the record's shape is pinned by these tests and the
+// landing is tested apart from the `card verdict` command (`tests/card_verdict_cli.rs`).
+
+/// The profile of the fixture with the verdict check in enforce mode.
+const ENFORCE_PROFILE: &[u8] = b"{\"schema_version\": 1, \"project_id\": \"demo\", \"purpose\": \"fixture\", \"tools\": [\"rust\"], \"development_methods\": [\"sdd\"], \"hosts\": [\"claude\"], \"work_flow\": {\"flow\": \"m-flow\", \"integration_branch\": \"integ\", \"land_verdict\": \"enforce\"}}";
+/// The same profile in observe mode.
+const OBSERVE_PROFILE: &[u8] = b"{\"schema_version\": 1, \"project_id\": \"demo\", \"purpose\": \"fixture\", \"tools\": [\"rust\"], \"development_methods\": [\"sdd\"], \"hosts\": [\"claude\"], \"work_flow\": {\"flow\": \"m-flow\", \"integration_branch\": \"integ\", \"land_verdict\": \"observe\"}}";
+/// The same profile with a word the key does not take.
+const BAD_MODE_PROFILE: &[u8] = b"{\"schema_version\": 1, \"project_id\": \"demo\", \"purpose\": \"fixture\", \"tools\": [\"rust\"], \"development_methods\": [\"sdd\"], \"hosts\": [\"claude\"], \"work_flow\": {\"flow\": \"m-flow\", \"integration_branch\": \"integ\", \"land_verdict\": \"block\"}}";
+/// The independent reviewer, another reviewer and the lander (the leader's session).
+const S_AUD: &str = "cccccccc-0000-4000-8000-00000000000c";
+const S_OTHER: &str = "eeeeeeee-0000-4000-8000-00000000000e";
+const S_LEAD: &str = "dddddddd-0000-4000-8000-00000000000d";
+const WORKTREE_KEY: &str = "0123456789ab";
+
+/// A commit message with the trailer block of `session`.
+fn signed(subject: &str, session: &str) -> String {
+    format!(
+        "{subject}\n\nMoai-Spec: SPEC-20261123-fixture\nMoai-Session: {session}:{WORKTREE_KEY}\nMoai-Verified: none"
+    )
+}
+
+impl World {
+    /// A fixture whose profile asks for the verdict check.
+    fn enforced() -> Self {
+        let w = World::new();
+        w.set_profile(ENFORCE_PROFILE);
+        w
+    }
+
+    /// A lane commit on the card's head that adds `path`, written by `session`.
+    fn lane_adding(&self, path: &str, session: &str) -> String {
+        put_on_msg(
+            &self.project,
+            &self.head,
+            path,
+            "lane\n",
+            &signed("the lane change", session),
+        )
+    }
+
+    /// The commit the leader lands: the lane on the tip, the tree git makes of the two, signed
+    /// by the lander.
+    fn join(&self, lane: &str, lander: &str) -> String {
+        let tree = git(
+            &self.project,
+            &["merge-tree", "--write-tree", &self.tip, lane],
+        );
+        git(
+            &self.project,
+            &[
+                "commit-tree",
+                &tree,
+                "-p",
+                &self.tip,
+                "-p",
+                lane,
+                "-m",
+                &signed("merge the lane on the tip", lander),
+            ],
+        )
+    }
+
+    /// One verdict event of `card` on `head`, written as the `card verdict` command writes it;
+    /// returns the event id.
+    fn verdict(
+        &self,
+        card: &str,
+        head: &str,
+        pass: bool,
+        tier: u8,
+        reviewer: &str,
+        receipt: Option<Value>,
+    ) -> i64 {
+        let conn =
+            Connection::open(ledger::ledger_path(self.home.path(), "demo").unwrap()).unwrap();
+        let rows = self.count("SELECT count(*) FROM event");
+        let payload = json!({
+            "head": head, "base": self.tip, "verdict": if pass { "pass" } else { "fail" },
+            "tier": tier, "evidence": "the fixture's evidence", "receipt": receipt,
+            "reviewer": reviewer,
+        });
+        conn.execute(
+            "INSERT INTO event (event_key, at, actor, card_id, kind, payload) \
+             VALUES (?1, unixepoch(), ?2, ?3, 'card.verdict', ?4)",
+            rusqlite::params![
+                format!("test-verdict-{rows}"),
+                reviewer,
+                number(card),
+                payload.to_string()
+            ],
+        )
+        .unwrap();
+        conn.last_insert_rowid()
+    }
+
+    /// A receipt of `head` with two steps at exit 0.
+    fn good_receipt(&self, head: &str) -> Value {
+        json!({"head": head, "steps": [{"name": "fmt", "exit": 0}, {"name": "test", "exit": 0}]})
+    }
+
+    /// `card land` as `session` (the lander) for `head`.
+    fn land_as(&self, session: Option<&str>, card: &str, head: &str) -> Output {
+        self.card(
+            session,
+            &[
+                "land",
+                card,
+                "--head",
+                head,
+                "--met",
+                "1=the test",
+                "--by",
+                "leader",
+            ],
+        )
+    }
+
+    /// The payload of the newest event of `kind` of `card`.
+    fn payload(&self, card: &str, kind: &str) -> Value {
+        let text = self.text(&format!(
+            "SELECT payload FROM event WHERE card_id = {} AND kind = '{kind}' \
+             ORDER BY event_id DESC LIMIT 1",
+            number(card)
+        ));
+        serde_json::from_str(&text).unwrap()
+    }
+}
+
+/// AC-4 (REQ-7, REQ-8, REQ-9, REQ-10): the four refusals of the card, each with its own code,
+/// the branch and every table unchanged and not even a start row.
+#[test]
+fn ac40_the_four_refusals_of_the_card_each_name_their_code_and_write_nothing() {
+    let w = World::enforced();
+    let card = w.review_card(&["one"]);
+    let lane = w.lane_adding("docs/x.md", S_A);
+    let cand = w.join(&lane, S_LEAD);
+
+    // No verdict at all.
+    let before = w.dump();
+    let out = w.land_as(Some(S_LEAD), &card, &cand);
+    w.refuse(&out, "invalid_input", &["no_verdict"], &before, &w.tip);
+
+    // A PASS recorded for another head only.
+    w.verdict(&card, &w.head, true, 0, S_AUD, None);
+    let before = w.dump();
+    let out = w.land_as(Some(S_LEAD), &card, &cand);
+    let message = w.refuse(
+        &out,
+        "invalid_input",
+        &["verdict_other_head"],
+        &before,
+        &w.tip,
+    );
+    assert!(
+        message.contains(&w.head),
+        "names the newest verdict head: {message}"
+    );
+
+    // A FAIL on the head.
+    w.verdict(&card, &cand, false, 0, S_AUD, None);
+    let before = w.dump();
+    let out = w.land_as(Some(S_LEAD), &card, &cand);
+    w.refuse(&out, "invalid_input", &["verdict_fail"], &before, &w.tip);
+    assert_eq!(w.events(&card, "card.land_started"), 0);
+
+    // A PASS by the session that wrote the lane commit.
+    let w = World::enforced();
+    let card = w.review_card(&["one"]);
+    let lane = w.lane_adding("docs/x.md", S_A);
+    let cand = w.join(&lane, S_LEAD);
+    w.verdict(&card, &cand, true, 0, S_A, None);
+    let before = w.dump();
+    let out = w.land_as(Some(S_LEAD), &card, &cand);
+    w.refuse(&out, "invalid_input", &["self_verdict"], &before, &w.tip);
+    assert_eq!(w.events(&card, "card.land_started"), 0);
+}
+
+/// AC-5 (REQ-8): one reviewer's newest FAIL refuses whoever else passed the head; the same
+/// reviewer's later PASS lands it.
+#[test]
+fn ac41_one_reviewers_newest_fail_refuses_until_the_same_reviewer_passes() {
+    let w = World::enforced();
+    let card = w.review_card(&["one"]);
+    let lane = w.lane_adding("docs/x.md", S_A);
+    let cand = w.join(&lane, S_LEAD);
+    w.verdict(&card, &cand, false, 0, S_AUD, None);
+    w.verdict(&card, &cand, true, 0, S_OTHER, None);
+    let before = w.dump();
+    let out = w.land_as(Some(S_LEAD), &card, &cand);
+    w.refuse(&out, "invalid_input", &["verdict_fail"], &before, &w.tip);
+
+    w.verdict(&card, &cand, true, 0, S_AUD, None);
+    let got = result(&w.land_as(Some(S_LEAD), &card, &cand));
+    assert_eq!(got["moved"], json!(true), "{got}");
+    assert_eq!(got["closed"], json!(true), "{got}");
+    assert_eq!(w.integ(), cand);
+}
+
+/// AC-6 (REQ-10): the holder of a reservation of the card is an author even when no commit
+/// carries the holder's trailer, and a bare session id in a trailer is the same session as the
+/// full value.
+#[test]
+fn ac42_a_reservation_holder_and_a_bare_trailer_id_are_authors() {
+    let w = World::enforced();
+    let card = w.review_card(&["one"]);
+    // The lane commit is signed by another session; the holder of the card is `S_A`.
+    let lane = w.lane_adding("docs/x.md", S_OTHER);
+    let cand = w.join(&lane, S_LEAD);
+    w.verdict(&card, &cand, true, 0, S_A, None);
+    let before = w.dump();
+    let out = w.land_as(Some(S_LEAD), &card, &cand);
+    w.refuse(&out, "invalid_input", &["self_verdict"], &before, &w.tip);
+
+    // A trailer with the bare session id (no worktree key) names the same session.
+    let bare = put_on_msg(
+        &w.project,
+        &w.head,
+        "docs/y.md",
+        "y\n",
+        &format!("the lane change\n\nMoai-Spec: SPEC-20261123-fixture\nMoai-Session: {S_AUD}\nMoai-Verified: none"),
+    );
+    let cand = w.join(&bare, S_LEAD);
+    w.verdict(&card, &cand, true, 0, S_AUD, None);
+    let before = w.dump();
+    let out = w.land_as(Some(S_LEAD), &card, &cand);
+    w.refuse(&out, "invalid_input", &["self_verdict"], &before, &w.tip);
+}
+
+/// AC-7 (REQ-11): commits that carry no `Moai-Session` trailer leave the authors unknown.
+#[test]
+fn ac43_a_range_with_no_session_trailer_refuses_as_authors_unknown() {
+    let w = World::enforced();
+    let card = w.review_card(&["one"]);
+    let lane = put_on_msg(&w.project, &w.head, "docs/x.md", "x\n", "the lane change");
+    let cand = w.join(&lane, S_LEAD);
+    w.verdict(&card, &cand, true, 0, S_AUD, None);
+    let before = w.dump();
+    let out = w.land_as(Some(S_LEAD), &card, &cand);
+    w.refuse(&out, "invalid_input", &["authors_unknown"], &before, &w.tip);
+}
+
+/// AC-8 (REQ-12): at tier 1 and above a PASS needs a receipt of the head with a step and every
+/// step at exit 0; the tier is the higher of the stated one and the floor of the paths.
+#[test]
+fn ac44_a_tier_one_pass_needs_a_receipt_of_the_head_with_every_step_green() {
+    let w = World::enforced();
+    let card = w.review_card(&["one"]);
+    let lane = w.lane_adding("src/a.rs", S_A);
+    let cand = w.join(&lane, S_LEAD);
+    let bad = [
+        None,
+        Some(w.good_receipt(&w.tip)),
+        Some(json!({"head": cand, "steps": []})),
+        Some(json!({"head": cand, "steps": [{"name": "test", "exit": 1}]})),
+    ];
+    for receipt in bad {
+        // A stated tier 0 on a path that is not tier 0 safe is judged at tier 1.
+        w.verdict(&card, &cand, true, 0, S_AUD, receipt.clone());
+        let before = w.dump();
+        let out = w.land_as(Some(S_LEAD), &card, &cand);
+        w.refuse(&out, "invalid_input", &["receipt_missing"], &before, &w.tip);
+    }
+    w.verdict(&card, &cand, true, 1, S_AUD, Some(w.good_receipt(&cand)));
+    let got = result(&w.land_as(Some(S_LEAD), &card, &cand));
+    assert_eq!(got["closed"], json!(true), "{got}");
+
+    // The floor of a tier 2 path beats a stated tier 0.
+    let w = World::enforced();
+    let card = w.review_card(&["one"]);
+    let lane = w.lane_adding("src/gate_x.rs", S_A);
+    let cand = w.join(&lane, S_LEAD);
+    w.verdict(&card, &cand, true, 0, S_AUD, None);
+    let before = w.dump();
+    let out = w.land_as(Some(S_LEAD), &card, &cand);
+    w.refuse(&out, "invalid_input", &["receipt_missing"], &before, &w.tip);
+}
+
+/// AC-9 and AC-17 (REQ-6, REQ-13): an independent PASS lands the head in one call, and the start
+/// row, the landing event and the answer name the verdict event, the reviewer, the tier and the
+/// lander as separate values.
+#[test]
+fn ac45_an_independent_pass_lands_and_the_record_names_the_verdict() {
+    let w = World::enforced();
+    let card = w.review_card(&["one"]);
+    let lane = w.lane_adding("src/a.rs", S_A);
+    let cand = w.join(&lane, S_LEAD);
+    let event = w.verdict(&card, &cand, true, 1, S_AUD, Some(w.good_receipt(&cand)));
+    let got = result(&w.land_as(Some(S_LEAD), &card, &cand));
+    assert_eq!(got["moved"], json!(true), "{got}");
+    assert_eq!(got["closed"], json!(true), "{got}");
+    assert_eq!(w.integ(), cand);
+    let named = json!({"event": event, "reviewer": S_AUD, "tier": 1, "lander": S_LEAD});
+    assert_eq!(got["verdict"], named, "{got}");
+    assert_eq!(w.payload(&card, "card.land_started")["verdict"], named);
+    assert_eq!(w.payload(&card, "card.landed")["verdict"], named);
+    let id = number(&card);
+    assert_eq!(
+        w.text(&format!(
+            "SELECT status FROM reservation WHERE card_id = {id} ORDER BY generation DESC LIMIT 1"
+        )),
+        "released"
+    );
+}
+
+/// AC-10 (REQ-16): a second call on the landed card answers done and writes nothing, also after a
+/// FAIL was recorded for the head.
+#[test]
+fn ac46_a_done_card_answers_done_whatever_the_verdicts_say_now() {
+    let w = World::enforced();
+    let card = w.review_card(&["one"]);
+    let lane = w.lane_adding("docs/x.md", S_A);
+    let cand = w.join(&lane, S_LEAD);
+    w.verdict(&card, &cand, true, 0, S_AUD, None);
+    result(&w.land_as(Some(S_LEAD), &card, &cand));
+    w.verdict(&card, &cand, false, 0, S_OTHER, None);
+    let before = w.dump();
+    let again = result(&w.land_as(Some(S_LEAD), &card, &cand));
+    assert_eq!(again["already_done"], json!(true), "{again}");
+    assert_eq!(w.dump(), before, "a call on a done card wrote");
+}
+
+/// AC-11 (REQ-15, REQ-17): a landing killed after the move is closed by the same call run again
+/// from the verdict the start row names, and a FAIL recorded in between is named, not obeyed.
+#[test]
+fn ac47_a_rerun_after_the_move_uses_the_start_rows_verdict_and_names_a_late_fail() {
+    let w = World::enforced();
+    let card = w.review_card(&["one"]);
+    let lane = w.lane_adding("docs/x.md", S_A);
+    let cand = w.join(&lane, S_LEAD);
+    let event = w.verdict(&card, &cand, true, 0, S_AUD, None);
+    w.wrap_update_ref("git-kills-the-lander", "", "kill -9 $PPID");
+    let out = w.land_as(Some(S_LEAD), &card, &cand);
+    assert_ne!(out.status.code(), Some(0), "the lander was not killed");
+    assert_eq!(w.integ(), cand);
+    assert_eq!(w.events(&card, "card.land_started"), 1);
+    assert_eq!(w.events(&card, "card.landed"), 0);
+
+    let late = w.verdict(&card, &cand, false, 0, S_OTHER, None);
+    *w.git_bin.borrow_mut() = git_executable();
+    let rerun = result(&w.land_as(Some(S_LEAD), &card, &cand));
+    assert_eq!(rerun["moved"], json!(false), "{rerun}");
+    assert_eq!(rerun["closed"], json!(true), "{rerun}");
+    assert_eq!(rerun["verdict"]["event"], json!(event), "{rerun}");
+    assert_eq!(
+        rerun["late_fail"],
+        json!({"event": late, "reviewer": S_OTHER}),
+        "{rerun}"
+    );
+    assert_eq!(w.events(&card, "card.land_started"), 1);
+    assert_eq!(w.events(&card, "card.landed"), 1);
+}
+
+/// AC-12 (REQ-18): a landing killed after the start row and before the move, and one killed
+/// after the move and before the close, each end with one start row, one landing event and one
+/// finish event when a fresh process runs the same call again. (The close is one write
+/// transaction, so it has no stop point of its own.)
+#[test]
+fn ac48_a_kill_before_the_move_and_a_kill_after_it_each_end_in_one_landing() {
+    // The script keeps running after it kills its parent, so the first kill also stops the
+    // script and the branch is not moved.
+    for (before, after, moved_again) in [
+        ("kill -9 $PPID; exit 9", "", true),
+        ("", "kill -9 $PPID", false),
+    ] {
+        let w = World::enforced();
+        let card = w.review_card(&["one"]);
+        let lane = w.lane_adding("docs/x.md", S_A);
+        let cand = w.join(&lane, S_LEAD);
+        w.verdict(&card, &cand, true, 0, S_AUD, None);
+        w.wrap_update_ref("git-kills-the-lander", before, after);
+        let out = w.land_as(Some(S_LEAD), &card, &cand);
+        assert_ne!(out.status.code(), Some(0), "the lander was not killed");
+        assert_eq!(w.events(&card, "card.land_started"), 1);
+        assert_eq!(w.events(&card, "card.landed"), 0);
+        *w.git_bin.borrow_mut() = git_executable();
+        let rerun = result(&w.land_as(Some(S_LEAD), &card, &cand));
+        assert_eq!(rerun["moved"], json!(moved_again), "{rerun}");
+        assert_eq!(rerun["closed"], json!(true), "{rerun}");
+        assert_eq!(w.integ(), cand);
+        assert_eq!(
+            w.events(&card, "card.land_started"),
+            1,
+            "a second start row"
+        );
+        assert_eq!(w.events(&card, "card.landed"), 1);
+        assert_eq!(w.events(&card, "card.finish"), 1);
+    }
+}
+
+/// AC-13 (REQ-18): a lock file on the branch reference refuses with git's reason, and the same
+/// call run again after the cause is gone lands once.
+#[test]
+fn ac49_a_failure_between_the_steps_is_repaired_by_running_the_call_again() {
+    let w = World::enforced();
+    let card = w.review_card(&["one"]);
+    let lane = w.lane_adding("docs/x.md", S_A);
+    let cand = w.join(&lane, S_LEAD);
+    w.verdict(&card, &cand, true, 0, S_AUD, None);
+    let lock = w.project.join(".git/refs/heads/integ.lock");
+    fs::write(&lock, "").unwrap();
+    let out = w.land_as(Some(S_LEAD), &card, &cand);
+    assert_eq!(out.status.code(), Some(1));
+    assert_eq!(w.integ(), w.tip);
+    assert_eq!(w.events(&card, "card.land_started"), 1);
+    fs::remove_file(&lock).unwrap();
+    let got = result(&w.land_as(Some(S_LEAD), &card, &cand));
+    assert_eq!(got["moved"], json!(true), "{got}");
+    assert_eq!(
+        w.events(&card, "card.land_started"),
+        1,
+        "a second start row"
+    );
+    assert_eq!(w.events(&card, "card.landed"), 1);
+}
+
+/// AC-14 (REQ-6, REQ-18): a moved integration branch gives its three outcomes: `tip_moved` under
+/// the call, which keeps the verdict valid for a later call; `stale_base` when the tip moved
+/// before the call, which does not carry the PASS to the head that merges the new tip; and a
+/// branch that already holds the head, which closes with no second move.
+#[test]
+fn ac50_a_moved_integration_branch_gives_tip_moved_stale_base_or_a_close() {
+    let w = World::enforced();
+    let card = w.review_card(&["one"]);
+    let lane = w.lane_adding("docs/x.md", S_A);
+    let cand = w.join(&lane, S_LEAD);
+    w.verdict(&card, &cand, true, 0, S_AUD, None);
+    let other = commit_with(&w.project, &w.tip, &[&w.tip], "somebody else landed first");
+
+    // The tip read is still current, then another process moves the branch under the update.
+    let wrapper = w.dir.path().join("git-moves-integ");
+    common::write_executable(
+        &wrapper,
+        &format!(
+            "#!/bin/sh\nfor a in \"$@\"; do\n  if [ \"$a\" = update-ref ]; then\n    '{git}' -C '{project}' update-ref refs/heads/integ {other}\n  fi\ndone\nexec '{git}' \"$@\"\n",
+            git = git_executable().display(),
+            project = w.project.display(),
+        ),
+    );
+    *w.git_bin.borrow_mut() = wrapper;
+    let before = w.dump();
+    let out = w.land_as(Some(S_LEAD), &card, &cand);
+    w.refuse_the_move(&out, "conflict", &["tip_moved"], &before, &other, &card);
+
+    // The tip moved before the call: the head no longer has it on its first-parent line.
+    *w.git_bin.borrow_mut() = git_executable();
+    let before = w.dump();
+    let out = w.land_as(Some(S_LEAD), &card, &cand);
+    w.refuse(&out, "conflict", &["stale_base"], &before, &other);
+
+    // The branch is put back; the PASS of the first head is still valid and lands it.
+    git(&w.project, &["update-ref", "refs/heads/integ", &w.tip]);
+    let got = result(&w.land_as(Some(S_LEAD), &card, &cand));
+    assert_eq!(got["moved"], json!(true), "{got}");
+    assert_eq!(got["closed"], json!(true), "{got}");
+
+    // A tip that moved before any landing of the card: the head that merges the new tip is
+    // another head, so the PASS of the first head does not carry over to it.
+    let w = World::enforced();
+    let card = w.review_card(&["one"]);
+    let lane = w.lane_adding("docs/x.md", S_A);
+    let cand = w.join(&lane, S_LEAD);
+    w.verdict(&card, &cand, true, 0, S_AUD, None);
+    let other = commit_with(&w.project, &w.tip, &[&w.tip], "somebody else landed first");
+    git(&w.project, &["update-ref", "refs/heads/integ", &other]);
+    let tree = git(&w.project, &["merge-tree", "--write-tree", &other, &lane]);
+    let merged = git(
+        &w.project,
+        &[
+            "commit-tree",
+            &tree,
+            "-p",
+            &other,
+            "-p",
+            &lane,
+            "-m",
+            &signed("merge the lane on the new tip", S_LEAD),
+        ],
+    );
+    let before = w.dump();
+    let out = w.land_as(Some(S_LEAD), &card, &merged);
+    w.refuse(
+        &out,
+        "invalid_input",
+        &["verdict_other_head"],
+        &before,
+        &other,
+    );
+}
+
+/// AC-15 (REQ-19): a note whose first line is a well-formed verdict line is no verdict.
+#[test]
+fn ac51_a_note_that_reads_like_a_verdict_is_no_verdict() {
+    let w = World::enforced();
+    let card = w.review_card(&["one"]);
+    let lane = w.lane_adding("docs/x.md", S_A);
+    let cand = w.join(&lane, S_LEAD);
+    let note = format!(
+        "AUDIT {card} (the fixture) head {cand} base {} — verdict: PASS",
+        w.tip
+    );
+    let note_file = w.dir.path().join("verdict-note.md");
+    fs::write(&note_file, &note).unwrap();
+    let mut cmd = w
+        .home
+        .command(&["card", "note", &card, "--kind", "report", "--project", &w.p]);
+    cmd.env(SESSION_VAR, S_AUD)
+        .stdin(fs::File::open(&note_file).unwrap());
+    result(&cmd.output().unwrap());
+    let before = w.dump();
+    let out = w.land_as(Some(S_LEAD), &card, &cand);
+    w.refuse(&out, "invalid_input", &["no_verdict"], &before, &w.tip);
+}
+
+/// AC-16 (REQ-14): in observe mode a head with no verdict lands as it did before, with the
+/// refusal it would have made in the answer; the same call in enforce mode refuses.
+#[test]
+fn ac52_observe_mode_reports_would_refuse_and_lands() {
+    let w = World::new();
+    w.set_profile(OBSERVE_PROFILE);
+    let card = w.review_card(&["one"]);
+    let lane = w.lane_adding("docs/x.md", S_A);
+    let cand = w.join(&lane, S_LEAD);
+    let got = result(&w.land_as(Some(S_LEAD), &card, &cand));
+    assert_eq!(got["moved"], json!(true), "{got}");
+    assert_eq!(got["closed"], json!(true), "{got}");
+    assert_eq!(got["would_refuse"]["code"], json!("no_verdict"), "{got}");
+    assert!(got.get("verdict").is_none(), "{got}");
+    assert!(w
+        .payload(&card, "card.land_started")
+        .get("verdict")
+        .is_none());
+}
+
+/// AC-17 (REQ-13, REQ-20): at tier 0 the reviewer and the lander may be one session and both are
+/// recorded, as two values.
+#[test]
+fn ac53_the_lander_may_review_tier_zero_and_both_identities_are_recorded() {
+    let w = World::enforced();
+    let card = w.review_card(&["one"]);
+    let lane = w.lane_adding("docs/x.md", S_A);
+    let cand = w.join(&lane, S_LEAD);
+    let event = w.verdict(&card, &cand, true, 0, S_LEAD, None);
+    let got = result(&w.land_as(Some(S_LEAD), &card, &cand));
+    assert_eq!(
+        got["verdict"],
+        json!({"event": event, "reviewer": S_LEAD, "tier": 0, "lander": S_LEAD}),
+        "{got}"
+    );
+}
+
+/// AC-19 (REQ-20): the lander's own PASS lands tier 0 and refuses with `lander_review` at tier 1
+/// and 2 (also when the floor of the paths raises a stated tier 0), and a landing with no
+/// session cannot be told from the reviewer at tier 1.
+#[test]
+fn ac54_the_lander_may_not_review_above_tier_zero() {
+    let w = World::enforced();
+    let card = w.review_card(&["one"]);
+    let lane = w.lane_adding("src/a.rs", S_A);
+    let cand = w.join(&lane, S_LEAD);
+    w.verdict(&card, &cand, true, 1, S_LEAD, Some(w.good_receipt(&cand)));
+    let before = w.dump();
+    let out = w.land_as(Some(S_LEAD), &card, &cand);
+    w.refuse(&out, "invalid_input", &["lander_review"], &before, &w.tip);
+
+    // Stated tier 0 on a tier 2 path: judged at tier 2, so the lander's PASS does not count.
+    let w = World::enforced();
+    let card = w.review_card(&["one"]);
+    let lane = w.lane_adding("src/gate_x.rs", S_A);
+    let cand = w.join(&lane, S_LEAD);
+    w.verdict(&card, &cand, true, 0, S_LEAD, None);
+    let before = w.dump();
+    let out = w.land_as(Some(S_LEAD), &card, &cand);
+    w.refuse(&out, "invalid_input", &["lander_review"], &before, &w.tip);
+
+    // An independent PASS at tier 1 with a landing that has no session of its own.
+    let w = World::enforced();
+    let card = w.review_card(&["one"]);
+    let lane = w.lane_adding("src/a.rs", S_A);
+    let cand = w.join(&lane, S_LEAD);
+    w.verdict(&card, &cand, true, 1, S_AUD, Some(w.good_receipt(&cand)));
+    let before = w.dump();
+    let out = w.land_as(None, &card, &cand);
+    w.refuse(&out, "invalid_input", &["lander_review"], &before, &w.tip);
+}
+
+/// AC-20 (REQ-10, REQ-21): the lander's clean merge commit is no authorship; a merge commit with
+/// another tree is, and so is a merge that git cannot compute.
+#[test]
+fn ac55_a_clean_join_is_no_authorship_and_an_edited_merge_is() {
+    // A clean join signed by the lander: the lander may review tier 0 (done by ac53_); an edited
+    // merge commit of the lander counts as authored and refuses the lander's PASS.
+    let w = World::enforced();
+    let card = w.review_card(&["one"]);
+    let lane = w.lane_adding("docs/x.md", S_A);
+    let clean = w.join(&lane, S_LEAD);
+    let edited_tree = {
+        let with_extra = put_on_msg(&w.project, &clean, "docs/evil.md", "e\n", "tmp");
+        git(
+            &w.project,
+            &["rev-parse", &format!("{with_extra}^{{tree}}")],
+        )
+    };
+    let edited = git(
+        &w.project,
+        &[
+            "commit-tree",
+            &edited_tree,
+            "-p",
+            &w.tip,
+            "-p",
+            &lane,
+            "-m",
+            &signed("merge the lane and add a file", S_LEAD),
+        ],
+    );
+    w.verdict(&card, &edited, true, 0, S_LEAD, None);
+    let before = w.dump();
+    let out = w.land_as(Some(S_LEAD), &card, &edited);
+    w.refuse(&out, "invalid_input", &["self_verdict"], &before, &w.tip);
+
+    // A merge that git cannot compute (the two sides change one file) counts as authored.
+    let w = World::enforced();
+    let card = w.review_card(&["one"]);
+    let tip_b = put_on_msg(&w.project, &w.head, "docs/z.md", "B\n", "the tip changes z");
+    git(&w.project, &["update-ref", "refs/heads/integ", &tip_b]);
+    let lane = put_on_msg(
+        &w.project,
+        &w.head,
+        "docs/z.md",
+        "A\n",
+        &signed("the lane changes z", S_A),
+    );
+    let tree = git(&w.project, &["rev-parse", &format!("{lane}^{{tree}}")]);
+    let cand = git(
+        &w.project,
+        &[
+            "commit-tree",
+            &tree,
+            "-p",
+            &tip_b,
+            "-p",
+            &lane,
+            "-m",
+            &signed("merge by hand", S_LEAD),
+        ],
+    );
+    w.verdict(&card, &cand, true, 0, S_LEAD, None);
+    let before = w.dump();
+    let out = w.land_as(Some(S_LEAD), &card, &cand);
+    w.refuse(&out, "invalid_input", &["self_verdict"], &before, &tip_b);
+}
+
+/// AC-21 (REQ-22, REQ-23): the profile's `land_verdict` picks the mode, none means observe, and
+/// another word makes the profile unreadable for the landing.
+#[test]
+fn ac56_the_profile_names_the_mode_and_another_word_is_refused() {
+    let w = World::new();
+    let card = w.review_card(&["one"]);
+    let lane = w.lane_adding("docs/x.md", S_A);
+    let cand = w.join(&lane, S_LEAD);
+
+    w.set_profile(BAD_MODE_PROFILE);
+    let before = w.dump();
+    let out = w.land_as(Some(S_LEAD), &card, &cand);
+    assert_eq!(out.status.code(), Some(1));
+    assert_eq!(w.dump(), before);
+    assert_eq!(w.integ(), w.tip);
+
+    w.set_profile(ENFORCE_PROFILE);
+    let before = w.dump();
+    let out = w.land_as(Some(S_LEAD), &card, &cand);
+    w.refuse(&out, "invalid_input", &["no_verdict"], &before, &w.tip);
+
+    // No `land_verdict` key at all: observe.
+    w.set_profile(MFLOW_PROFILE);
+    let got = result(&w.land_as(Some(S_LEAD), &card, &cand));
+    assert_eq!(got["would_refuse"]["code"], json!("no_verdict"), "{got}");
+    assert_eq!(got["closed"], json!(true), "{got}");
 }
