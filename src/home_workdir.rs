@@ -205,7 +205,42 @@ pub struct PlaceRefusal {
 /// runs through a link, or when it lies in the place by name and resolves outside it. A path
 /// outside the place passes untouched.
 pub fn place_verdict(primary: &Path, target: &Path) -> std::result::Result<(), PlaceRefusal> {
-    let _ = (primary, target);
+    // A `.` or `..` part is refused as text, plainly: `Path::components` drops an interior `.`
+    // and a `..` is folded by the file system after a link was followed, so neither can be
+    // judged by the parts the path is made of.
+    let text = target.to_string_lossy();
+    if text.split(['/', '\\']).any(|p| p == "." || p == "..") {
+        return Err(PlaceRefusal {
+            reason: "place_path_refused",
+            detail: format!(
+                "worktree path refused: {} holds a '.' or '..' part; give the path without it and nothing was changed",
+                target.display()
+            ),
+        });
+    }
+    // Outside the place of that checkout the path is the caller's own business.
+    let Some(owner) = place_owner(primary, target) else {
+        return Ok(());
+    };
+    // Inside it: no link in any existing part from the owner down ...
+    refuse_linked_place(&owner, target).map_err(|detail| PlaceRefusal {
+        reason: "place_is_a_link",
+        detail,
+    })?;
+    // ... and the real path of the target lies under the real place of the owner.
+    let place = crate::worktree::resolve_existing(&owner)
+        .join(".claude")
+        .join("worktrees");
+    if !crate::worktree::resolve_existing(target).starts_with(&place) {
+        return Err(PlaceRefusal {
+            reason: "place_path_refused",
+            detail: format!(
+                "worktree path refused: {} resolves outside {}; nothing was changed",
+                target.display(),
+                place.display()
+            ),
+        });
+    }
     Ok(())
 }
 

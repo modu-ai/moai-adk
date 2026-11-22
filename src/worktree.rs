@@ -640,18 +640,16 @@ pub fn apply(
         ));
     }
     // REQ-13: a link in the place is refused before anything is made behind it.
-    // The owner is found by what each ancestor resolves to, so a `--path` spelled through a
-    // linked parent reaches the check as well.
+    // One verdict on the place: a `.` or `..` part, a link in any part and a path that resolves
+    // out of the place are refused before anything is made (REQ-13).
     if let Some(primary) = entries.first().map(|e| PathBuf::from(&e.path)) {
-        if let Some(owner) = crate::home_workdir::place_owner(&primary, &target) {
-            if let Err(msg) = crate::home_workdir::refuse_linked_place(&owner, &target) {
-                return Ok(conflict(
-                    rec,
-                    "place_is_a_link",
-                    &p,
-                    vec![json!({ "detail": msg })],
-                ));
-            }
+        if let Err(r) = crate::home_workdir::place_verdict(&primary, &target) {
+            return Ok(conflict(
+                rec,
+                r.reason,
+                &p,
+                vec![json!({ "detail": r.detail })],
+            ));
         }
     }
     if target.exists() {

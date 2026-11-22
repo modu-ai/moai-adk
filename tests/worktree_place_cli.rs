@@ -356,6 +356,22 @@ fn worktree_place_verdict_names_a_link_in_any_part() {
     assert_eq!(r.reason, "place_is_a_link");
 }
 
+/// Audit B3 (REQ-13): a path that is in the place by name but whose real path is not under the
+/// real place is refused as well: here a changed case where no `.claude` exists yet, so the
+/// spelling is a folder of its own.
+#[test]
+fn worktree_place_verdict_refuses_a_path_that_resolves_outside_the_place() {
+    let tmp = tempfile::tempdir().unwrap();
+    let project = tmp.path().join("p");
+    std::fs::create_dir_all(&project).unwrap();
+    let r =
+        home_workdir::place_verdict(&project, &project.join(".CLAUDE/worktrees/w")).unwrap_err();
+    assert_eq!(r.reason, "place_path_refused");
+    assert!(r.detail.contains("resolves outside"), "{r:?}");
+    // The plain spelling passes, with or without the place made yet.
+    assert!(home_workdir::place_verdict(&project, &project.join(".claude/worktrees/w")).is_ok());
+}
+
 /// Scene 11 (REQ-13): real folders, or none yet, are accepted.
 #[test]
 fn worktree_place_links_real_folders_and_missing_ones_are_accepted() {
