@@ -2,7 +2,7 @@
 id: SPEC-20261122-nonstop-lane
 title: "Non-stop lane running is a built-in choice: one selection, one stored pick, one generated loop prompt and one ledger watch"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-22
 ---
 
@@ -23,6 +23,15 @@ Read whole on 2026-11-22 before this SPEC (the pages of code.claude.com/docs/en:
 The code already holds the older parts this SPEC replaces for Claude Code: `lane-loop-line` prints a fixed five-minute `/loop` for the Issue era, and the MODE-AGENT workflow names the wake and keep-going rules in text. This SPEC adds the stored pick, the generated card-ledger prompt and the ledger watch; the Codex and OMP arms of `lane-loop-line` belong to the removal cards and are not touched here.
 
 This SPEC is slice 1 of the work: the SPEC only. The code, the skill text and the tests follow in the slices of the Plan.
+
+## Docs
+
+What a user reads once this lands (written in the operation document and, in slice 4, the help text and the skill):
+
+- `/moai work` asks once: run this lane non-stop (recommended with several lanes) or one card at a time. The answer is saved in the project profile; `moai lane-run set nonstop|single [--lane <name>]` changes it without asking again, and `moai lane-run show [--lane <name>]` tells the pick in force and why.
+- With the non-stop pick, `moai lane-run prompt --lane <name>` prints the text the lane gives to Claude Code's own `/loop`; it keeps working cards from the ledger and watches its own cards' notes with Monitor. A loop spends tokens and runs tools while nobody watches, needs auto mode or allow rules for unattended turns, ends after seven days and is not restored by a resume.
+- `CLAUDE_CODE_DISABLE_CRON=1` turns the pick into one card at a time, and `show` says so.
+- `moai lane-run goal --card <name>` prints a `/goal` condition for one card; the user types `/goal` themselves, and a goal adds a second model's check and its tokens.
 
 ## Non-goals
 
@@ -52,7 +61,7 @@ This SPEC is slice 1 of the work: the SPEC only. The code, the skill text and th
 ## Acceptance
 
 - AC-1 (REQ-1, REQ-11): the `mode-agent` and project workflows of the skill carry the selection with the recommended option first and the rule that an unanswerable run asks nothing; a test reads the skill files from the package and finds both texts, and the source manifest lists the changed files · verify: `cargo test --locked --offline --test lane_run_cli skill_text_` and the skill package manifest test
-- AC-2 (REQ-2, REQ-3): in a temporary project, `lane-run set nonstop` and `lane-run set single --lane <name>` write the project value and the lane value and no other key changes (the file is compared before and after outside the two keys), the effective pick is the lane's before the project's, `unset` is reported when neither exists, and a wrong value refuses with nothing written · verify: `cargo test --locked --offline --test lane_run_cli pick_`
+- AC-2 (REQ-2, REQ-3): in a temporary project, `lane-run set nonstop` and `lane-run set single --lane <name>` write the project value and the lane value and no other key changes (the file is compared before and after outside the `lane_run` key), the effective pick is the lane's before the project's, `unset` is reported when neither exists, a wrong value or a project without a profile refuses with nothing written, and the written profile still reads through the profile reader (an unknown field under `lane_run` refuses) · verify: `cargo test --locked --offline --test lane_run_cli pick_`
 - AC-3 (REQ-4, REQ-6, REQ-12): with `nonstop`, the prompt names the lane, the current card rule, `moai card next`, the watch command, the blocked-note rule, the never-end-a-turn rule and the idle stop with `stop: true`; it holds no card number, no key-shaped text and no absolute path outside the project; with `single`, no prompt is printed · verify: `cargo test --locked --offline --test lane_run_cli prompt_`
 - AC-4 (REQ-7, REQ-8): in a temporary ledger with two cards, the watch prints one line for each new note of either card and nothing for a quiet minute, an unreadable card prints one line and the other is still watched, and the watch exits 0 at its deadline; a deadline of 59 or 1,701 seconds refuses before reading · verify: `cargo test --locked --offline --test lane_run_cli watch_`
 - AC-5 (REQ-9): with `CLAUDE_CODE_DISABLE_CRON=1` the show answer names that fact and the effective pick reads `single` although the saved pick is `nonstop`; with it unset the saved pick stands, and a fact that cannot be read is reported unread · verify: `cargo test --locked --offline --test lane_run_cli facts_`
@@ -62,13 +71,14 @@ This SPEC is slice 1 of the work: the SPEC only. The code, the skill text and th
 ## Scope
 
 - write: `.moai/specs/SPEC-20261122-nonstop-lane/spec.md`
-- write (slices 2 to 4): `src/lane_run.rs`, `src/ops/lane_run.rs`, `tests/lane_run_cli.rs`, `docs/design-review/appendix/operations/lane-run.md`, `skills/moai/workflows/mode-agent.md`, `skills/moai/workflows/project.md` and the skill source manifest
-- last step, by pair request: `src/main.rs` and `src/help.rs` (the four actions and their examples) and the profile reader module for the two keys
+- write (slice 2, revision 2, leader decision on the ledger): `src/profile.rs` (the optional top-level `lane_run` key in the reader, its table row, its check and the profile's own test literals; the profile also gains another lane's field, so the later landing side matches the literals)
+- write (slices 2 to 4): `src/ops/lane_run.rs` (the operation and its logic in one file, so `src/lib.rs` is not touched), `tests/lane_run_cli.rs`, `docs/design-review/appendix/operations/lane-run.md`, `skills/moai/workflows/mode-agent.md`, `skills/moai/workflows/project.md` and the skill source manifest
+- last step, by pair request: `src/main.rs` and `src/help.rs` (the four actions and their examples)
 
 ## Decisions
 
 - D-1: One operation `lane-run` with the actions `show`, `set`, `prompt`, `watch` and `goal`, in the flat style of `lane-loop-line` and `goal-block`. `show` and `prompt` and `goal` read only; `set` is the only write; `watch` reads only and runs until its deadline.
-- D-2: The profile keys are `work_flow.lane_run` (`nonstop` or `single`) and `work_flow.lane_runs.<lane>`, next to the keys `work_flow` already holds. The profile file is rewritten as the existing project-apply does, by a temporary file and a rename, keeping every other key.
+- D-2 (revision 2): The pick lives in one optional top-level profile key `lane_run` with `default` (`nonstop` or `single`, the project's pick) and `lanes` (lane name to `nonstop` or `single`). Revision 1 put it under `work_flow`, but that key requires `flow` and refuses unknown fields, so a project without a recorded flow could not hold the pick and a written pick would make every later profile read fail; the leader picked the top-level key. The profile reader learns the key in the same slice that first writes it (an absent key reads as before, an unknown field under it refuses). `set` rewrites the profile file by a temporary file and a rename, keeping every other key and its order; a project without a profile refuses.
 - D-3: The pick is asked where a person can answer, as a selection with `nonstop` first and marked recommended when the project has several lanes; the question says in one line that unattended turns need auto mode or allow rules for the moai commands and that the loop ends after seven days or a resume. In the agent mode, where the lane may ask no user, an unset pick is `single`: a started loop spends tokens and permission, so it needs a person's yes; the leader decides whether the leader's own lanes get an unset default of `nonstop` (open decision for the leader, reversible).
 - D-4: The generated prompt is plain text, never a slash command, because a fire runs only skills Claude may invoke on its own and `/moai` may not be one; it tells the lane to use the host's `/loop` self-pacing and to read the ledger through moai commands. It names no card, no row of cards and no leader: the next card is whatever `moai card next` names.
 - D-5: The watch is one command that Monitor runs: it keeps one cursor per card from `card timeline` (`--after` never waits and has no gap or overlap), reads every 30 seconds with the ledger opened read-only, prints a line `<card> note <id> <kind> <first line>` for each new note only, and ends at its own deadline (default 1,500 seconds, at most 1,700) so the Monitor deadline of 30 minutes is never the one that ends it. It starts after the notes that already exist, so a restart prints no old note.
@@ -80,7 +90,7 @@ This SPEC is slice 1 of the work: the SPEC only. The code, the skill text and th
 ## Plan
 
 1. This SPEC, read by the leader and by the audit before any code.
-2. Slice 2, tests first (RED): `tests/lane_run_cli.rs` `pick_`, `facts_`, `prompt_` and `goal_` on a temporary project; then `src/lane_run.rs` and the operation; the document row.
+2. Slice 2, tests first (RED): `tests/lane_run_cli.rs` `pick_`, `facts_`, `prompt_` and `goal_` on a temporary project; then the profile reader key, the operation `src/ops/lane_run.rs` and its document.
 3. Slice 3, tests first: `watch_` on a temporary ledger with a card writer between reads; the watch command and its deadline.
 4. Slice 4, tests first: `skill_text_` and `help_`; the selection text in the project and agent workflows, the source manifest, the help examples and the pair request for `src/main.rs`, `src/help.rs` and the profile reader.
 5. Per slice: light checks, at most the mutant cap, one affected run, then the READY note with head and base only.
