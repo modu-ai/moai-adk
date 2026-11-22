@@ -40,8 +40,8 @@ they hold whatever the library looks like after that card lands.
 ## Requirements
 
 - REQ-1: The bare command shall select today's full set, so the full set contains every set `--lane` selects for the same range.
-- REQ-2: When `--lane` is given, a scan of `tools/repo_scans.json` shall add its targets only when a changed path matches that scan's `scope`. · failure: none — a scan without a readable scope is left out of the lane and kept in the full set
-- REQ-3: When `--lane` is given and only `tests/common/<sub>.rs` changed in `tests/common`, the selection shall hold the consumers that declare `<sub>` and no other consumer. · failure: none — a change to `tests/common/mod.rs` keeps every consumer
+- REQ-2: When `--lane` is given, a scan of `tools/repo_scans.json` shall add its targets only when a changed path matches that scan's `scope` or is one of its `rules` files. · failure: none — a scan without a readable scope is left out of the lane and kept in the full set
+- REQ-3: When `--lane` is given and only `tests/common/<sub>.rs` changed in `tests/common`, the selection shall hold the consumers whose source names `common::<sub>` and no other consumer. · failure: none — a change to `tests/common/mod.rs` keeps every consumer
 - REQ-4: When `--lane` is given, an OS-tagged test shall be selected only when its name's first word names the area of a changed path. · failure: none — the full set keeps every OS-tagged test of the host
 - REQ-5: The answers of `--list` and of a run shall name the selection in a `selection` field that reads `lane` or `full`.
 - REQ-6: When a changed path under `skills/` or `docs/` appears literally in a Rust test file, the selection shall include that test in both selections. · failure: none — a test file that cannot be read adds nothing by this rule
@@ -50,11 +50,11 @@ they hold whatever the library looks like after that card lands.
 
 ## Acceptance
 
-- AC-1 (REQ-1, REQ-2): a scan whose scope misses the diff is left out with `--lane` and kept without it, a scan without a scope is left out with `--lane`, and the full set contains the lane set · verify: `cargo test --locked --offline --test check_affected_modes_cli scan`
+- AC-1 (REQ-1, REQ-2): a scan whose scope misses the diff is left out with `--lane` and kept without it, a scan without a scope is left out with `--lane`, a scan whose rule file changed is kept with `--lane`, and the full set contains the lane set · verify: `cargo test --locked --offline --test check_affected_modes_cli scan`
 - AC-2 (REQ-3): a change to `tests/common/home.rs` selects the `home` consumer and not the `cli` consumer with `--lane`, and both without it · verify: `cargo test --locked --offline --test check_affected_modes_cli common`
 - AC-3 (REQ-4): with `--lane` a host-OS test whose first word misses the diff areas is left out and one whose first word matches is kept · verify: `cargo test --locked --offline --test check_affected_modes_cli os`
 - AC-4 (REQ-5): `selection` reads `lane` with `--lane` and `full` without it, in `--list` · verify: `cargo test --locked --offline --test check_affected_modes_cli selection`
-- AC-5 (REQ-6): a change to `skills/moai/workflows/x.md` or `docs/y.md` selects the test whose source names that path, with and without `--lane` · verify: `cargo test --locked --offline --test check_affected_modes_cli text`
+- AC-5 (REQ-6): a change to `skills/moai/workflows/x.md` or `docs/a.md` selects the test whose source names that path, with and without `--lane` · verify: `cargo test --locked --offline --test check_affected_modes_cli text`
 - AC-6 (REQ-7): a range from an old fork point after the tip was merged in carries `range_note` with the merge base and the extra count, and a range from the merge base carries none · verify: `cargo test --locked --offline --test check_affected_modes_cli range`
 - AC-7 (REQ-8): the operations page names `--lane`, `selection`, the text-pin rule and `range_note` · verify: `cargo test --locked --offline --test check_affected_modes_cli page`
 - AC-8: the existing tests of the command pass unchanged · verify: `cargo test --locked --offline --test check_affected_cli`
