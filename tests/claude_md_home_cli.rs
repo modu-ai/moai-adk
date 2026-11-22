@@ -579,6 +579,21 @@ fn flow_text_holds_the_four_contents() {
     for want in ["TaskCreate", "task list", "progress board"] {
         assert!(board[0].contains(want), "{want}");
     }
+    // The lander, not a fixed role, lands; the card records who.
+    assert!(
+        text.contains("by the lander (today the leader session; the card records who lands)"),
+        "the landing line"
+    );
+    // Exactly one pointer to the full flow text, which lives in the skill's flow reference.
+    let pointer: Vec<&str> = text
+        .lines()
+        .filter(|l| l.contains("references/flows/next-flow.md"))
+        .collect();
+    assert_eq!(
+        pointer,
+        ["The full flow is the moai skill's references/flows/next-flow.md."],
+        "{pointer:?}"
+    );
     // The Compact Instructions section and what it keeps.
     let (_, compact) = text.split_once("## Compact Instructions").expect("section");
     for want in [
@@ -601,7 +616,13 @@ fn flow_text_holds_the_four_contents() {
         .filter(|l| l.contains("reset --hard") && l.contains("--no-verify"))
         .collect();
     assert_eq!(safety.len(), 1, "{safety:?}");
-    for want in ["force-push", "clean -f", "add -A"] {
+    for want in [
+        "force-push",
+        "clean -f",
+        "add -A",
+        "Delete only inside your own worktree or a temporary folder, by cd and a relative path",
+        "never rm an absolute or home path",
+    ] {
         assert!(safety[0].contains(want), "{want}");
     }
 }

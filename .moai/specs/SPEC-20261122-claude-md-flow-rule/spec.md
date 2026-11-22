@@ -2,7 +2,7 @@
 id: SPEC-20261122-claude-md-flow-rule
 title: "One flow rule file in the Claude config folder carries the NeXT-Flow git rule for every project"
 status: draft
-revision: 2
+revision: 3
 created: 2026-11-22
 parent: SPEC-20261122-claude-md-layout
 ---
@@ -15,11 +15,13 @@ parent: SPEC-20261122-claude-md-layout
 
 개정 2(사용자 결정 두 가지, 2026-11-22): 착지 뒤 fast-forward push 는 사용자가 원격 복사를 켰을 때만 해요(기본 꺼짐). 그리고 백그라운드 작업이 남은 채 턴을 끝낼 때의 행동 한 줄(작업 목록 도구가 있으면 목록을 최신으로, 없으면 진행 보드)이 이 파일에 들어가요. 보드 모양은 출력 스타일이 맡고, 프로젝트 `CLAUDE.md` 에는 넣지 않아요. 흐름 전문은 스킬의 흐름 참조 한 곳에 두고, 이 파일은 짧은 규칙만 가져요. 그 참조를 가리키는 한 줄은 참조 파일이 생기는 스킬 조각에서 더해요.
 
+개정 3(리더의 글 검토, 2026-11-22): 착지 줄은 "착지자(지금은 리더 세션; 카드가 착지자를 기록)"로, 안전 줄에 삭제 규칙(자기 작업트리나 임시 폴더 안에서 cd 뒤 상대 경로로만 지우고, 절대·홈 경로 rm 금지)을 더하고, 흐름 참조를 가리키는 한 줄을 지금 이 파일에 둬요.
+
 ## Requirements
 
 - REQ-1: When the update plans the routing layer for a config folder, the planner shall plan exactly one file `rules/moai/flow.md` inside that folder, with the NeXT-Flow text, without the `paths` key, within 80 lines and 5 KiB. · failure: none — nothing is written without the update's confirm token
 - REQ-2 (REQ-1): IF `rules/moai/flow.md` exists and its bytes differ from the bytes moai last wrote, or the file or a folder above it inside the config folder is a link or the file is not valid UTF-8, THEN the planner shall report a conflict and keep the file.
-- REQ-3: The flow text shall carry the NeXT-Flow git rule (worktrees inside the project's `.claude/worktrees`, the lane submits head and base only, exactly one landing, no push or pull request by a background session, the fast-forward push after a landing only when the user has turned the remote copy on), one line on ending a turn while background work still runs (the task list when the TaskCreate tool is offered, otherwise the progress board), a `## Compact Instructions` section, one line that the project's `CLAUDE.md` wins on a conflict, and one safety line (no force push, `reset --hard`, `git clean -f`, `--no-verify` or `git add -A`).
+- REQ-3: The flow text shall carry the NeXT-Flow git rule (worktrees inside the project's `.claude/worktrees`, the lane submits head and base only, exactly one landing by the lander the card records, no push or pull request by a background session, the fast-forward push after a landing only when the user has turned the remote copy on), one line on ending a turn while background work still runs (the task list when the TaskCreate tool is offered, otherwise the progress board), a `## Compact Instructions` section, one line that the project's `CLAUDE.md` wins on a conflict, one line that points to the skill's flow reference, and one safety line (no force push, `reset --hard`, `git clean -f`, `--no-verify` or `git add -A`, and deletion only inside the own worktree or a temporary folder by a relative path).
 - REQ-4: The flow text shall contain neither an explanation of the four letters of the flow nor the retired name, because the one shipped text that explains the flow is the skill text of the flow SPEC.
 - REQ-5 (REQ-1): IF the source text of the flow rule is over its limits or holds the `paths` key, THEN the planner shall refuse the plan and name the limit.
 
@@ -57,7 +59,7 @@ parent: SPEC-20261122-claude-md-layout
 | D-3 | The commit-only text (no push, no pull request, submit head and base, land with the landing command) is the git rule of the flow text. | The leader's answer on the wording; the text is shown to the leader before it lands. | Describe landing in the skill text only. |
 | D-4 | The push line says the lander pushes only when the user has turned the remote copy on, off by default. | User decision relayed in the leader's landing note of the skill package SPECs (2026-11-22). | Push after every landing. |
 | D-5 | The background-work behaviour line sits in this file; the board's look stays in the output style; no project `CLAUDE.md` carries it. | User decision of 2026-11-22 recorded on this card: the rule file holds whatever output style the user picked. | Put the line in the output style only. |
-| D-6 | This file holds the short rules; the full flow text lives in the skill's flow reference, and the pointer line to it is added by the skill slice that creates the reference. | Pair decision with the skill package card, asked by the leader: only one side carries the full text, and the rule file loads in every session. | Carry the full text here. |
+| D-6 | This file holds the short rules; the full flow text lives in the skill's flow reference, and this file carries the one pointer line to it now (revision 3, leader review; the reference itself comes with the skill slice). | Pair decision with the skill package card, asked by the leader: only one side carries the full text, and the rule file loads in every session. | Carry the full text here. |
 
 ## Result
 

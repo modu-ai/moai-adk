@@ -96,7 +96,7 @@
       }
     },
     "references/home/flow.md": {
-      "sha256": "2740079577e1fe445a6644a4296958d755fb541f2564ce0b50c9af62c95f3456",
+      "sha256": "86250ab39f05f8f377f87c7b1e55d25db44102c9f25567f432e76e95488c0161",
       "origin": {
         "kind": "design-spec",
         "template_id": "home-flow-rule",
