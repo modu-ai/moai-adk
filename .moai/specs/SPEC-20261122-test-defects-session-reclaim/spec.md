@@ -57,3 +57,10 @@ Every lane shell turns `moai check affected` red because the session-register te
 
 - A person who keeps an untracked file of their own under the state folder loses the refusal for it; the folder is tool state by definition and the file is untracked, so a changed tracked file stays work (REQ-4).
 - The entry rule lives in a file another card reserves for a flow rename; the edit is one rule and its comment and the other card's hunks are not touched.
+
+## Result
+
+- AC-1: met. `session_registry_children_do_not_inherit_the_shell_session_id` was red first (the command left the variable to the shell) and passes; the whole `session_registry_cli` target passes with the real session id set in the shell (23 passed); 2 mutants killed (the removal dropped, another variable name removed).
+- AC-2: met. `a_runtime_state_folder_is_not_work` was red first (holds 3 uncommitted change(s)) and passes: the counts file, a file beside it, a file two folders below and the earlier generation's state folder are reclaimed and every file stays.
+- AC-3: met. `a_listed_tool_cache_is_not_work` keeps its refusals for an untracked file outside the state folder and a changed tracked file, one uncommitted change each; the unit test `only_an_untracked_state_folder_file_is_a_cache` was rewritten red first; 3 mutants killed (no trailing slash, the earlier folder dropped, the untracked check dropped).
+- The rule lives in `src/card/early_reclaim.rs`, a file another card reserves; its holder answered that the hunk does not overlap theirs (note 6346), and the edit is by explicit path.
