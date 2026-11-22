@@ -94,7 +94,8 @@ fn excluded(path: &str) -> bool {
 /// (SPEC-20261122-worktree-place REQ-17, REQ-18): the exclude entries are written with `/`, so
 /// the platform's own separator is read as `/` before the compare.
 fn slash_rel(rel: &Path) -> Option<String> {
-    rel.to_str().map(str::to_string)
+    let parts: Option<Vec<&str>> = rel.components().map(|c| c.as_os_str().to_str()).collect();
+    parts.map(|p| p.join("/"))
 }
 /// `rel` is excluded when it equals an entry (trailing `/` ignored) or lies under it.
 fn excluded_by(rel: &str, excludes: &[&str]) -> bool {
