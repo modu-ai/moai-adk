@@ -34,6 +34,19 @@ fn check_name(name: &str) -> Result<()> {
     }
 }
 
+/// Refuses a slot path that is a symbolic link: every write of `prep` and `done` would land in
+/// whatever it points at (another worktree, a shared folder). Checked before the first write and
+/// again under the slot lock.
+fn not_a_link(slot: &Path, rel: &str) -> Result<()> {
+    if fs::symlink_metadata(slot).is_ok_and(|m| m.file_type().is_symlink()) {
+        Err(format!(
+            "audit-slot refused {rel}: it is a link, not a slot folder; nothing was changed"
+        ))
+    } else {
+        Ok(())
+    }
+}
+
 /// Runs git and names the step on failure (`git failed` reads as an I/O error).
 fn git_step(dir: &Path, step: &str, args: &[&str]) -> Result<String> {
     git(dir, args).map_err(|e| format!("git failed ({step}): {e}"))
@@ -212,6 +225,9 @@ pub fn prep(
     check_name(name)?;
     let common = worktree_slot::common_dir(project)?;
     let primary = worktree_slot::primary_of(&common)?;
+    let slot = primary.join(SLOT_DIR).join(name);
+    let rel = format!("{SLOT_DIR}/{name}");
+    not_a_link(&slot, &rel)?;
     let sha = commit_of(&primary, head)?;
     let from = match lane {
         Some(lane) => Some(lane_target(lane, &primary, &sha)?),
@@ -221,8 +237,7 @@ pub fn prep(
     let added = ensured["added"] == json!(true);
     let seeded = ensured["warmed"] != json!("none");
     let _lock = worktree_slot::lock(&common)?;
-    let slot = primary.join(SLOT_DIR).join(name);
-    let rel = format!("{SLOT_DIR}/{name}");
+    not_a_link(&slot, &rel)?;
     let dirty = changes(&slot)?;
     if !dirty.is_empty() {
         return Err(format!(
@@ -270,6 +285,7 @@ pub fn done(project: &Path, name: &str, discard: bool) -> Result<Value> {
     let primary = worktree_slot::primary_of(&common)?;
     let slot = primary.join(SLOT_DIR).join(name);
     let rel = format!("{SLOT_DIR}/{name}");
+    not_a_link(&slot, &rel)?;
     let registered = worktree_slot::linked(&primary)?
         .iter()
         .any(|e| worktree_slot::same(&e.path, &slot));
@@ -279,6 +295,7 @@ pub fn done(project: &Path, name: &str, discard: bool) -> Result<Value> {
         ));
     }
     let _lock = worktree_slot::lock(&common)?;
+    not_a_link(&slot, &rel)?;
     let found = changes(&slot)?;
     if !found.is_empty() && !discard {
         return Err(format!(

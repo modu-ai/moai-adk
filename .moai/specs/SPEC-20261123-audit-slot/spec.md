@@ -2,7 +2,7 @@
 id: SPEC-20261123-audit-slot
 title: "An audit takes a fixed audit slot, switches it to the head and inherits the lane's build, and leaves it clean"
 status: draft
-revision: 2
+revision: 3
 created: 2026-11-23
 ---
 
@@ -43,6 +43,7 @@ Readers: the leader and the auditor, who prepare and finish an audit; the lane, 
 - REQ-7: When an audit slot is finished with discard, the audit-slot command shall revert its tracked changes, remove its untracked files outside `target/`, keep its `target/` and report every reverted and removed path.
 - REQ-8 (REQ-7): If an audit slot holds changes and discard is not given, then the audit-slot command shall refuse and name the files.
 - REQ-9: The audit-slot command shall hold the repository's slot lock while it changes a slot.
+- REQ-10: If the slot path is a symbolic link, then the audit-slot command shall refuse every prep and done before its first write.
 
 ## Acceptance
 
@@ -53,6 +54,9 @@ Readers: the leader and the auditor, who prepare and finish an audit; the lane, 
 - AC-3 (REQ-4): on macOS, a temporary crate with a dependency outside the repository, built in the lane worktree, then prepared into an audit slot from it, builds in the slot without compiling the dependency; a one-line change then recompiles only the crate.
   verify: `cargo nextest run --locked --offline --test audit_slot_cli`
 - AC-4 (REQ-7, REQ-8): after an audit changed a tracked file and left an untracked file, `done audit-1` refuses and names both; `done audit-1 --discard` reverts and removes them, keeps `target/`, reports both paths, and leaves an empty `status --porcelain`.
+  verify: `cargo nextest run --locked --offline --test audit_slot_cli`
+
+- AC-5 (REQ-10): a slot path that is a link to another registered worktree is refused by prep without a lane, by prep with a lane, by done, and by done --discard. Each refusal names the link. The linked worktree keeps every byte, its tracked change, its untracked file and its HEAD.
   verify: `cargo nextest run --locked --offline --test audit_slot_cli`
 
 ## Scope
@@ -81,6 +85,8 @@ Readers: the leader and the auditor, who prepare and finish an audit; the lane, 
 - D-7: a refusal message contains `refused`, so the envelope reports it as `invalid_input`. A git failure reads `git failed (<step>)` and is reported as `io`.
 - D-4: The branch starts from the head of SPEC-20261123-worktree-slots, which is in the leader queue, and merges the integration tip once after that lands.
 
+- D-8: The link check runs first in prep (before the lane check and before `worktree-slot ensure`, which on this branch does not refuse a linked slot yet) and first in done. Both commands check again after taking the slot lock. Leader decision on the card, made before the audit was dispatched.
+
 ## Plan
 
 1. This SPEC.
@@ -101,3 +107,4 @@ Readers: the leader and the auditor, who prepare and finish an audit; the lane, 
 - AC-3 was measured on macOS: the dependency is `Fresh`; the crate is `Dirty` once (D-6).
 - The integration tip 072e359488 was merged once (fbd40fd1da). The four help goldens were then regenerated, adding the one audit-slot row (a3ee3bfc6f), under the recorded leader decision.
 - After the merge, `build.rs` writes no absolute path. The ops list holds names only, and the bundle packs use `env!("CARGO_MANIFEST_DIR")`, which the compile resolves to the slot. So a copied build never points at the lane's files.
+- Repair before the audit: a linked slot path is refused by every writing action (REQ-10, AC-5). Test: `every_writing_action_refuses_a_slot_path_that_is_a_link`.
