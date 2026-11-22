@@ -121,6 +121,7 @@ fn the_named_files_choose_their_table() {
 }
 
 /// AC-6: stopping a group-started shell holder leaves no process of its group behind.
+#[cfg(unix)]
 #[test]
 fn a_group_started_shell_holder_leaves_no_child() {
     use std::time::{Duration, Instant};
