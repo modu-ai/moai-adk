@@ -692,3 +692,34 @@ fn recovery_rerun_is_noop() {
         "generation: go\n"
     );
 }
+
+/// REQ-04C-05: recovery never writes a committed host. On a clean v1 install the plan lists
+/// the host as committed with no files, and the apply succeeds without writing anything: no
+/// projection file, no receipt change, no recovery record.
+#[test]
+fn recovery_never_writes_a_committed_host() {
+    let f = fixture();
+    let receipt_path = f.hosts_dir().join("claude.json");
+    let receipt_before = fs::read(&receipt_path).unwrap();
+    assert_eq!(f.receipt("claude")["status"], json!("committed"));
+    let before = f.digest_of(&f.home);
+    let plan = f.plan();
+    let claude = host(&plan, "claude");
+    assert_eq!(claude["receipt_status"], json!("committed"));
+    assert_eq!(claude["files"], json!([]));
+    assert_eq!(f.digest_of(&f.home), before, "recovery-plan writes nothing");
+    let (ok, v) = f.apply(&plan);
+    assert!(ok, "{v}");
+    assert_eq!(v["result"]["status"], json!("success"));
+    let claude = host(&v["result"], "claude");
+    assert_eq!(claude["receipt_status"], json!("committed"));
+    assert_eq!(claude["written"], json!(false));
+    assert_eq!(claude["recovered"], json!([]));
+    assert_eq!(claude["applied"], json!([]));
+    assert_eq!(fs::read(&receipt_path).unwrap(), receipt_before);
+    assert_eq!(
+        f.digest_of(&f.home),
+        before,
+        "recovery-apply writes nothing for a committed host"
+    );
+}
