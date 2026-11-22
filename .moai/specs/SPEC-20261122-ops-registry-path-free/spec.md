@@ -2,7 +2,7 @@
 id: SPEC-20261122-ops-registry-path-free
 title: "The generated operation registry names no file path, so a copied or shared build folder compiles this worktree's operations"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-22
 ---
 
@@ -31,19 +31,19 @@ The registry becomes a list of names: `build.rs` writes a `with_ops!` macro that
 
 ## Acceptance
 
-- AC-1 (REQ-1, REQ-2): the generated `ops_registry.rs` (read by the test from the build script's output folder) holds a `macro_rules! with_ops` list with one entry per `src/ops/<word>.rs` in file-name order, and holds no `#[path`, no `src/ops/` and no part of `CARGO_MANIFEST_DIR` · verify: `cargo test --offline --locked --test ops_registry_path_free`
-- AC-2 (REQ-3, REQ-4): for every operation file, `moai <word with - for _> --help` exits 0 and its first line is the first `///` line above that file's `pub struct Args`; the registry's word list equals the files under `src/ops/` · verify: `cargo test --offline --locked --test ops_registry_path_free --test hot_file_ops_merge`
-- AC-3 (REQ-5): the test's path finder, fed registry samples that hold an absolute path, a `#[path` attribute or `src/ops/`, names that line, and fed the real registry it names nothing · verify: `cargo test --offline --locked --test ops_registry_path_free a_path_in_the_registry_is_named`
+- AC-1 (REQ-1, REQ-2): the generated `ops_registry.rs` (read by the test from the build script's output folder) holds a `macro_rules! with_ops` list with one entry per `src/ops/<word>.rs` in file-name order, and holds no `#[path`, no `src/ops/` and no part of `CARGO_MANIFEST_DIR` · verify: `cargo test --offline --locked --test hot_file_ops_merge the_registry_is_a_list_of_names_with_no_path`
+- AC-2 (REQ-3, REQ-4): for every operation file, `moai <word with - for _> --help` exits 0 and its first line is the first `///` line above that file's `pub struct Args`; the registry's word list equals the files under `src/ops/` · verify: `cargo test --offline --locked --test hot_file_ops_merge`
+- AC-3 (REQ-5): the test's path finder, fed registry samples that hold an absolute path, a `#[path` attribute or `src/ops/`, names that line, and fed the real registry it names nothing · verify: `cargo test --offline --locked --test hot_file_ops_merge a_path_in_the_registry_is_named`
 
 ## Scope
 
-- write: `build.rs`, `src/ops/mod.rs`, `tests/ops_registry_path_free.rs`, `tests/hot_file_ops_merge.rs`, `.moai/specs/SPEC-20261122-ops-registry-path-free/`
+- write: `build.rs`, `src/ops/mod.rs`, `tests/hot_file_ops_merge.rs`, `.moai/specs/SPEC-20261122-ops-registry-path-free/` (`tests/ops_registry_path_free.rs` was written and is removed again, D-4)
 - read-only: `src/ops/*.rs` (the operation files), `src/main.rs`, `src/bin/moai.rs`, `Cargo.toml`
 - forbidden: every other file
 
 ## Plan
 
-1. This slice: the SPEC, the red test (`tests/ops_registry_path_free.rs`, which fails today on the `#[path` lines), then `build.rs` and `src/ops/mod.rs`, then `tests/hot_file_ops_merge.rs` reads the new list, then one check affected and READY.
+1. This slice: the SPEC, the red test (written as `tests/ops_registry_path_free.rs`, which fails today on the `#[path` lines, then moved into `tests/hot_file_ops_merge.rs`, D-4), then `build.rs` and `src/ops/mod.rs`, then `tests/hot_file_ops_merge.rs` reads the new list, then one check affected and READY.
 
 ## Risks
 
@@ -58,6 +58,7 @@ The registry becomes a list of names: `build.rs` writes a `with_ops!` macro that
 | D-1 | Each registry entry carries the variant name (`AgentsApply`) beside the file word (`agents_apply`). | `macro_rules!` cannot build an identifier from another one; a name-pasting crate would be a new dependency for one line each. | a later card that adds such a crate |
 | D-2 | The `Ops` enum, `operation()` and `run()` move from generated text into the `declare_ops!` macro in `src/ops/mod.rs`. | The generated text keeps only inputs (names and help lines), as build-review section 6 asks; the code shape is reviewed source instead of generated strings. | restore the generated functions |
 | D-3 | `tests/hot_file_ops_merge.rs` reads the operation words from the new list instead of `pub mod` lines. | Its registry check (#2617) parses the generated text; the list is the new shape of the same fact. | none needed |
+| D-4 | The registry tests live in `tests/hot_file_ops_merge.rs`, not in a file of their own. | They read `src/ops/`, and `tests/repo_scans_test.py` requires every test that walks the tree to be listed in `tools/repo_scans.json`; that file already lists `tests/hot_file_ops_merge.rs` under the `operation-files` scan with the `src/ops/` scope, and `tools/repo_scans.json` is reserved by another card. The scan's check now runs these tests too. | a new file plus its own `tools/repo_scans.json` entry |
 
 ### Research
 
