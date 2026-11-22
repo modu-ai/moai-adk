@@ -43,13 +43,26 @@ pub struct WriteInput<'a> {
     pub backup_dir: &'a Path,
     pub candidate: &'a Map<String, Value>,
     pub picked: bool,
+    /// The `claude` binary for the doctor check: a stand-in path in tests, `None` in
+    /// production so the PATH of this process resolves it.
+    pub doctor_program: Option<&'a Path>,
 }
 
 /// What one checked write produced.
 #[derive(Debug)]
 pub enum CheckOutcome {
-    Written { backup: PathBuf },
-    Refused { report: CheckReport },
+    Written {
+        backup: PathBuf,
+        guide_line: String,
+        doctor_notice: Option<String>,
+    },
+    RolledBack {
+        backup: PathBuf,
+        entry: String,
+    },
+    Refused {
+        report: CheckReport,
+    },
 }
 
 /// Validates a candidate (SPEC REQ-2, REQ-4, REQ-5, REQ-6): the forbidden list, the env
@@ -288,7 +301,114 @@ pub fn write_checked(input: &WriteInput) -> Result<CheckOutcome, String> {
 
     // The atomic swap through the shared writer: no swap, no change.
     crate::agents::write_replace(input.settings_path, existing.as_deref(), bytes.as_bytes())?;
-    Ok(CheckOutcome::Written { backup })
+
+    // REQ-7: the doctor check after the swap, reduced to the named entry (REQ-12); a doctor
+    // that cannot run leaves the write in place with one notice (D-3).
+    match run_doctor(input) {
+        DoctorResult::Named(entry) => {
+            roll_back(input, existing.as_deref(), &backup_bytes);
+            Ok(CheckOutcome::RolledBack { backup, entry })
+        }
+        DoctorResult::CannotRun => Ok(CheckOutcome::Written {
+            backup,
+            guide_line: GUIDE_LINE.to_string(),
+            doctor_notice: Some(
+                "claude doctor could not run; the settings-write doctor check was skipped"
+                    .to_string(),
+            ),
+        }),
+        DoctorResult::Clean => Ok(CheckOutcome::Written {
+            backup,
+            guide_line: GUIDE_LINE.to_string(),
+            doctor_notice: None,
+        }),
+    }
+}
+
+/// The one guide line after a successful write (SPEC REQ-9).
+const GUIDE_LINE: &str =
+    "Settings written. Check the Setting sources row in /status to confirm the file loaded.";
+
+enum DoctorResult {
+    Clean,
+    Named(String),
+    CannotRun,
+}
+
+/// Runs `claude doctor` read-only with `CLAUDE_CONFIG_DIR` at the written folder (and the
+/// project as the working directory for a project-scope file) and reduces what it says to
+/// the named entry, never a value.
+fn run_doctor(input: &WriteInput) -> DoctorResult {
+    let program = input
+        .doctor_program
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from("claude"));
+    let config_dir = input
+        .settings_path
+        .parent()
+        .map(Path::to_path_buf)
+        .unwrap_or_default();
+    let cwd = match input.scope {
+        WriteScope::Project => config_dir
+            .parent()
+            .map(Path::to_path_buf)
+            .unwrap_or_else(|| config_dir.clone()),
+        _ => config_dir.clone(),
+    };
+    let output = std::process::Command::new(&program)
+        .arg("doctor")
+        .envs(std::env::vars_os())
+        .env("CLAUDE_CONFIG_DIR", &config_dir)
+        .current_dir(&cwd)
+        .output();
+    let Ok(output) = output else {
+        return DoctorResult::CannotRun;
+    };
+    let file_name = input
+        .settings_path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("settings.json")
+        .to_string();
+    for line in String::from_utf8_lossy(&output.stdout).lines() {
+        let lower = line.to_ascii_lowercase();
+        let rejects =
+            lower.contains("reject") || lower.contains("invalid") || lower.contains("error");
+        if rejects && lower.contains(&file_name.to_ascii_lowercase()) {
+            return DoctorResult::Named(reduce_entry(line, &file_name));
+        }
+    }
+    DoctorResult::Clean
+}
+
+/// Reduces one doctor line to the entry it names (SPEC REQ-12): the text after the last
+/// colon when it looks like an entry name, otherwise the file name — never a longer quote
+/// that could carry a value.
+fn reduce_entry(line: &str, file_name: &str) -> String {
+    let named = line.rsplit(':').next().unwrap_or("").trim();
+    let looks_like_entry =
+        !named.is_empty() && named.len() <= 120 && !named.contains('=') && !named.contains(' ');
+    if looks_like_entry {
+        named.to_string()
+    } else {
+        format!("an entry in {file_name}")
+    }
+}
+
+/// Rolls the written file back to the backup byte-exactly (SPEC REQ-7, REQ-8): a replace
+/// for a file that existed, a removal for one that did not.
+fn roll_back(input: &WriteInput, existing: Option<&[u8]>, backup_bytes: &[u8]) {
+    match existing {
+        Some(old) => {
+            let current = std::fs::read(input.settings_path).unwrap_or_default();
+            let _ =
+                crate::agents::write_replace(input.settings_path, Some(current.as_slice()), old);
+            debug_assert_eq!(backup_bytes, old);
+        }
+        None => {
+            let _ = std::fs::remove_file(input.settings_path);
+        }
+    }
 }
 
 #[cfg(unix)]
