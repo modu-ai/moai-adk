@@ -1383,7 +1383,7 @@ fn merge_steps(root: &Path, shown: &str, backup: &[Step], install: &[Step]) -> V
         if holds_agents {
             steps.push(Step::waiting(PICKS, "blocked", AFTER_BACKUP));
         } else {
-            steps.push(picks_none());
+            steps.push(picks_none(root));
         }
         steps.push(Step::waiting(NAME, "blocked", AFTER_BACKUP));
         steps.push(Step::waiting(SETTINGS, "blocked", AFTER_BACKUP));
@@ -1398,7 +1398,7 @@ fn merge_steps(root: &Path, shown: &str, backup: &[Step], install: &[Step]) -> V
     // The pick plans the generation writer, whose digest binds the profile and every file the
     // generation step is still to write: with either to run, its digest would be stale.
     let picks = if !holds_agents {
-        picks_none()
+        picks_none(root)
     } else if state_of("generation") == Some("ready") {
         Step::waiting(PICKS, "blocked", AFTER_INSTALL)
     } else if state_of("profile") == Some("ready") {
@@ -1432,12 +1432,18 @@ const PICKS: &str = "agents-picks";
 const AFTER_PICKS: &str =
     "the text of AGENTS.local.md goes into CLAUDE.local.md through the pick `move` of the agents-picks step";
 
-fn picks_none() -> Step {
-    Step::waiting(
+/// No pick is offered, but a project that holds only `.claude/AGENTS.md` is still warned: the
+/// first CLAUDE file the generation step writes makes Claude Code stop reading it.
+fn picks_none(root: &Path) -> Step {
+    let mut step = Step::waiting(
         PICKS,
         "skip",
         "no AGENTS.md and no AGENTS.local.md in this project",
-    )
+    );
+    if let Some(warning) = agents_local_merge::hidden_files_warning(root, "CLAUDE.md") {
+        step.preview = json!({"offer": "none", "warnings": [warning]});
+    }
+    step
 }
 
 /// The picks `move`, `import` and `leave` for a project that holds `AGENTS.md` or

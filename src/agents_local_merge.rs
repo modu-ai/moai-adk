@@ -172,6 +172,9 @@ struct Source {
     text: Vec<u8>,
     /// What the preview says about text that is not carried over.
     notes: Vec<String>,
+    /// For each line of `text`, its line number in the whole file; empty when `text` is the whole
+    /// file (or is not read from it), so a line keeps its own number.
+    line_map: Vec<usize>,
 }
 
 impl Source {
@@ -182,7 +185,21 @@ impl Source {
             text: bytes.clone(),
             bytes,
             notes: Vec::new(),
+            line_map: Vec::new(),
         }
+    }
+
+    /// The lines of the copied text shaped like a credential, numbered from the first line of the
+    /// whole file: text that is not copied (MoAI's managed section, a block an earlier merge
+    /// wrote) is not scanned and does not block the plan.
+    fn suspects(&self) -> Vec<(usize, &'static str)> {
+        let Ok(text) = std::str::from_utf8(&self.text) else {
+            return Vec::new();
+        };
+        secret_suspects(text)
+            .into_iter()
+            .map(|(n, kind)| (self.line_map.get(n - 1).copied().unwrap_or(n), kind))
+            .collect()
     }
 }
 
@@ -658,7 +675,7 @@ fn find_source(root: &Path) -> Result<Found> {
 /// that holds `end`, and joins what was around it with one blank line. `None` when the text has
 /// no such block, a second one, or an end marker that is not its own (the caller keeps the text
 /// whole and the marker check blocks the plan).
-fn remove_block(text: &str, begin: &str, end: &str) -> Option<(String, usize)> {
+fn remove_block(text: &str, begin: &str, end: &str) -> Option<Removed> {
     let mut starts = text.match_indices(begin).map(|(i, _)| i);
     let start = starts.next()?;
     if starts.next().is_some() || text.matches(end).count() != 1 {
@@ -682,7 +699,40 @@ fn remove_block(text: &str, begin: &str, end: &str) -> Option<(String, usize)> {
         (_, true) => format!("{before}\n"),
         _ => format!("{before}\n\n{tail}"),
     };
-    Some((joined, lines))
+    // Where each line of the joined text stood in `text` (1-based): the lines before the block
+    // keep their numbers, the one blank line stands for the blank lines it replaced, and the
+    // lines after the block start at the line of the first one that was kept.
+    let before_lines = if before.is_empty() {
+        0
+    } else {
+        before.lines().count()
+    };
+    let mut line_map: Vec<usize> = (1..=before_lines).collect();
+    let both = !before.is_empty() && !tail.is_empty();
+    if both {
+        line_map.push(before_lines + 1);
+    }
+    let tail_at = 1 + text[..text.len() - tail.len()].matches('\n').count();
+    line_map.extend((0..tail.lines().count()).map(|i| tail_at + i));
+    Some(Removed {
+        joined,
+        lines,
+        collapsed: both,
+        line_map,
+    })
+}
+
+/// What [`remove_block`] took out of a text.
+#[derive(Debug, PartialEq, Eq)]
+struct Removed {
+    /// The text without the block, the lines around it joined with one blank line.
+    joined: String,
+    /// How many lines the block held.
+    lines: usize,
+    /// Text stayed on both sides, so the blank lines around the block became one.
+    collapsed: bool,
+    /// For each line of `joined`, its line number in the text the block came out of.
+    line_map: Vec<usize>,
 }
 
 /// A text that is nothing but one `# title` line: the heading MoAI puts above its managed section
@@ -709,22 +759,42 @@ fn find_guidance(root: &Path) -> Result<Found> {
     };
     let mut own = whole.to_string();
     let mut notes = Vec::new();
+    // Each line of `own` as the whole file numbers it; a removal maps through the one before it.
+    let mut line_map: Vec<usize> = (1..=own.lines().count()).collect();
+    let mut joined_around: Vec<&str> = Vec::new();
     let (managed_begin, managed_end) =
         crate::agents::markers(crate::agents::AGENTS_SECTION, "html");
-    if let Some((rest, lines)) = remove_block(&own, &managed_begin, &managed_end) {
+    if let Some(removed) = remove_block(&own, &managed_begin, &managed_end) {
         notes.push(format!(
-            "MoAI's managed section of {LEGACY_TARGET} ({lines} lines) is not copied; the \
+            "MoAI's managed section of {LEGACY_TARGET} ({} lines) is not copied; the \
              generation writes it into {GUIDANCE_TARGET}. Text you wrote inside that section is \
-             not carried over."
+             not carried over.",
+            removed.lines
         ));
-        own = rest;
+        if removed.collapsed {
+            joined_around.push("MoAI's managed section");
+        }
+        line_map = compose_lines(&line_map, &removed.line_map);
+        own = removed.joined;
     }
-    if let Some((rest, lines)) = remove_block(&own, BEGIN, END) {
+    if let Some(removed) = remove_block(&own, BEGIN, END) {
         notes.push(format!(
-            "A block an earlier personal-file merge put into {LEGACY_TARGET} ({lines} lines) is \
-             not copied; it is personal text and belongs in CLAUDE.local.md."
+            "A block an earlier personal-file merge put into {LEGACY_TARGET} ({} lines) is \
+             not copied; it is personal text and belongs in CLAUDE.local.md.",
+            removed.lines
         ));
-        own = rest;
+        if removed.collapsed {
+            joined_around.push("the personal-file block");
+        }
+        line_map = compose_lines(&line_map, &removed.line_map);
+        own = removed.joined;
+    }
+    if !joined_around.is_empty() {
+        notes.push(format!(
+            "The blank lines around {} in {LEGACY_TARGET} are joined into one blank line in the \
+             copy; the text itself is copied as it is and {LEGACY_TARGET} is not changed.",
+            joined_around.join(" and around ")
+        ));
     }
     if own.trim().is_empty() || is_title_only(&own) {
         return Ok(Found::Nothing(format!(
@@ -737,7 +807,17 @@ fn find_guidance(root: &Path) -> Result<Found> {
         text: normalized(&own).into_bytes(),
         bytes,
         notes,
+        line_map,
     }))
+}
+
+/// `outer[inner[i] - 1]` for each line of an inner map: the line numbers of a text that went
+/// through two removals, counted in the first text.
+fn compose_lines(outer: &[usize], inner: &[usize]) -> Vec<usize> {
+    inner
+        .iter()
+        .map(|&n| outer.get(n - 1).copied().unwrap_or(n))
+        .collect()
 }
 
 /// The import kind's source: `AGENTS.md` must be there, and what is written is the one import
@@ -752,6 +832,7 @@ fn find_import(root: &Path) -> Result<Found> {
             text: normalized(IMPORT_LINE).into_bytes(),
             bytes,
             notes: Vec::new(),
+            line_map: Vec::new(),
         }),
     })
 }
@@ -789,9 +870,7 @@ pub fn agents_md_state(root: &Path) -> AgentsMdState {
         Err(reason) => return AgentsMdState::Blocked(reason),
     };
     let suspects = match &found {
-        Found::Source(s) => std::str::from_utf8(&s.bytes)
-            .map(secret_suspects)
-            .unwrap_or_default(),
+        Found::Source(s) => s.suspects(),
         _ => Vec::new(),
     };
     // A missing `CLAUDE.md` is the case that matters: the decision is what a create would do.
@@ -839,27 +918,43 @@ struct Inner {
 /// AGENTS.md"). The warning applies when this merge would create the first of them over such a
 /// file; it names the official setting that keeps both read.
 fn hidden_agents_md_warning(root: &Path, action: &str, target_exists: bool) -> Vec<String> {
+    if action == "merge" && !target_exists {
+        return hidden_files_warning(root, TARGET).into_iter().collect();
+    }
+    Vec::new()
+}
+
+/// The files of the project Claude Code reads only while no CLAUDE file exists: the root
+/// `AGENTS.md` and `.claude/AGENTS.md`, each when it is there.
+const HIDDEN_CANDIDATES: [&str; 2] = [LEGACY_TARGET, ".claude/AGENTS.md"];
+
+/// The one warning for the writer, the picks and the update preview: creating `creating` (the
+/// first CLAUDE file of the project) makes Claude Code stop reading `AGENTS.md` and
+/// `.claude/AGENTS.md`, each one that exists, and the warning names them. `None` when neither
+/// exists or a CLAUDE file (`CLAUDE.md`, `.claude/CLAUDE.md`, `CLAUDE.local.md`) is already
+/// there: Claude Code has stopped reading them then, and the caller creates nothing new to hide.
+/// The caller decides that a CLAUDE file would be created.
+pub(crate) fn hidden_files_warning(root: &Path, creating: &str) -> Option<String> {
     let exists = |rel: &str| fs::symlink_metadata(root.join(rel)).is_ok();
-    let hidden: Vec<&str> = [LEGACY_TARGET, ".claude/AGENTS.md"]
+    let hidden: Vec<&str> = HIDDEN_CANDIDATES
         .into_iter()
         .filter(|f| exists(f))
         .collect();
-    if action == "merge"
-        && !target_exists
-        && !hidden.is_empty()
-        && !exists("CLAUDE.md")
-        && !exists(".claude/CLAUDE.md")
+    if hidden.is_empty()
+        || ["CLAUDE.md", ".claude/CLAUDE.md", TARGET]
+            .iter()
+            .any(|f| exists(f))
     {
-        let files = hidden.join(" and ");
-        return vec![format!(
-            "Claude Code reads {files} only while no CLAUDE.md, .claude/CLAUDE.md or \
-             CLAUDE.local.md exists; creating {TARGET} makes it stop reading {files} in this \
-             project. Move that text into a CLAUDE.md first, or confirm that {files} will no \
-             longer be read. To keep both read, set Project instructions to \
-             claude-md-and-agents-md in /config (Claude Code's own setting)."
-        )];
+        return None;
     }
-    Vec::new()
+    let files = hidden.join(" and ");
+    Some(format!(
+        "Claude Code reads {files} only while no CLAUDE.md, .claude/CLAUDE.md or \
+         CLAUDE.local.md exists; creating {creating} makes it stop reading {files} in this \
+         project. Move that text into a CLAUDE.md first, or confirm that {files} will no \
+         longer be read. To keep both read, set Project instructions to \
+         claude-md-and-agents-md in /config (Claude Code's own setting)."
+    ))
 }
 
 /// The exit code of `git -C <root> <args>`, or `None` when git cannot run. Nothing is printed.
@@ -878,86 +973,177 @@ fn git_code(root: &Path, args: &[&str]) -> Option<i32> {
         .and_then(|s| s.code())
 }
 
-/// What git says about the personal file, and the `.gitignore` write that follows from it.
+/// What git says about the personal file and the receipt folder, and the `.gitignore` write that
+/// follows from it.
 struct IgnoreFacts {
     json: Value,
     write: Option<IgnoreWrite>,
     /// Git already tracks `CLAUDE.local.md`: it is committed whatever `.gitignore` says.
     tracked: bool,
-    /// A sentence for the plan's warnings, when the file is neither ignored nor made ignored.
-    warning: Option<String>,
+    /// Sentences for the plan's warnings, for what is neither ignored nor made ignored.
+    warnings: Vec<String>,
 }
 
-fn plan_ignore(root: &Path) -> IgnoreFacts {
-    let line = IGNORE_LINE;
-    let skip = |why: &str, exists: bool, warning: Option<String>, tracked: bool| IgnoreFacts {
-        json: json!({
-            "path": GITIGNORE, "line": line, "action": "skip", "exists": exists, "note": why,
-        }),
-        write: None,
-        tracked,
-        warning,
+/// One line a plan may add to `.gitignore`: the personal file's, or the receipt folder's.
+struct Rule {
+    line: String,
+    /// The path git is asked about. For the receipt folder it is a path inside it, so a rule for
+    /// the folder holds before the folder exists.
+    probe: String,
+    /// What the line keeps out of git, as the plan's sentences name it.
+    what: &'static str,
+    /// What the person does by hand when no line is added.
+    consequence: &'static str,
+    /// The spellings of a rule the person wrote that un-ignores it.
+    negations: Vec<String>,
+}
+
+impl Rule {
+    fn new(line: String, probe: String, what: &'static str, consequence: &'static str) -> Rule {
+        let bare = line.trim_end_matches('/').to_string();
+        let negations = [bare.clone(), format!("{bare}/")]
+            .into_iter()
+            .flat_map(|p| [format!("!{p}"), format!("!/{p}"), format!("!**/{p}")])
+            .collect();
+        Rule {
+            line,
+            probe,
+            what,
+            consequence,
+            negations,
+        }
+    }
+}
+
+/// What the plan does with one rule: `add`, `present` (git ignores it already) or `skip`.
+struct Judged {
+    action: &'static str,
+    note: Option<String>,
+}
+
+/// The `gitignore` object of a plan. The top-level `line`, `action` and `note` are the first
+/// rule's (the personal file's when the kind has one, the receipt folder's otherwise);
+/// `receipts` is the receipt folder's own.
+fn ignore_json(rules: &[Rule], judged: &[Judged], exists: bool) -> Value {
+    let part = |i: usize| json!({"line": rules[i].line, "action": judged[i].action, "note": judged[i].note});
+    json!({
+        "path": GITIGNORE,
+        "line": rules[0].line,
+        "action": judged[0].action,
+        "exists": exists,
+        "note": judged[0].note,
+        "receipts": part(rules.len() - 1),
+    })
+}
+
+/// The `.gitignore` lines a merge adds: the personal file's line when `personal`, and the line of
+/// the receipt folder the apply writes into (a project whose managed block is absent has none),
+/// each only when git does not ignore the path yet and no rule the person wrote un-ignores it.
+fn plan_ignore(root: &Path, personal: bool) -> IgnoreFacts {
+    let mut rules = Vec::new();
+    if personal {
+        rules.push(Rule::new(
+            IGNORE_LINE.to_string(),
+            IGNORE_LINE.to_string(),
+            "the file",
+            "so the file is not committed",
+        ));
+    }
+    let receipts = crate::apply::receipts_rel(root);
+    rules.push(Rule::new(
+        format!("{receipts}/"),
+        format!("{receipts}/receipt.json"),
+        "the receipt folder",
+        "so the receipts are not committed",
+    ));
+    let skip_all = |why: &str, exists: bool, warnings: Vec<String>, tracked: bool| {
+        let judged: Vec<Judged> = rules
+            .iter()
+            .map(|_| Judged {
+                action: "skip",
+                note: Some(why.to_string()),
+            })
+            .collect();
+        IgnoreFacts {
+            json: ignore_json(&rules, &judged, exists),
+            write: None,
+            tracked,
+            warnings,
+        }
     };
     match git_code(root, &["rev-parse", "--is-inside-work-tree"]) {
         None => {
-            return skip(
+            return skip_all(
                 "git is not available, so .gitignore was not checked",
                 false,
-                None,
+                Vec::new(),
                 false,
             )
         }
         Some(0) => {}
         Some(_) => {
-            return skip(
+            return skip_all(
                 "this folder is not a git repository, so there is no .gitignore line to add",
                 false,
-                None,
+                Vec::new(),
                 false,
             )
         }
     }
-    let tracked = git_code(root, &["ls-files", "--error-unmatch", "--", line]) == Some(0);
-    let ignored = git_code(root, &["check-ignore", "-q", "--", line]) == Some(0);
+    let tracked =
+        personal && git_code(root, &["ls-files", "--error-unmatch", "--", IGNORE_LINE]) == Some(0);
+    let ignored = |r: &Rule| git_code(root, &["check-ignore", "-q", "--", &r.probe]) == Some(0);
     let located = crate::apply::target(root, GITIGNORE).and_then(|p| crate::apply::read_opt(&p));
     let existing = match located {
         Ok(bytes) => bytes,
         Err(e) => {
             let why = format!("{GITIGNORE} cannot be changed ({e})");
-            let warning = (!ignored).then(|| {
-                format!("{line} is not ignored by git and {GITIGNORE} cannot be changed here; add the line yourself so the file is not committed")
-            });
-            return skip(&why, true, warning, tracked);
+            let warnings = rules
+                .iter()
+                .filter(|r| !ignored(r))
+                .map(|r| {
+                    format!("{} is not ignored by git and {GITIGNORE} cannot be changed here; add the line yourself {}", r.line, r.consequence)
+                })
+                .collect();
+            return skip_all(&why, true, warnings, tracked);
         }
     };
     let exists = existing.is_some();
-    if ignored {
-        return IgnoreFacts {
-            json: json!({"path": GITIGNORE, "line": line, "action": "present", "exists": exists, "note": null}),
-            write: None,
-            tracked,
-            warning: None,
-        };
-    }
-    // A rule the person wrote that makes the file not ignored (`!CLAUDE.local.md`) wins: a line
-    // added after it would flip their choice without their knowing, so none is added.
-    let negated = existing.as_deref().is_some_and(|b| {
-        String::from_utf8_lossy(b).lines().any(|l| {
-            matches!(
-                l.trim(),
-                "!CLAUDE.local.md" | "!/CLAUDE.local.md" | "!**/CLAUDE.local.md"
-            )
-        })
-    });
-    if negated {
-        return skip(
-            &format!("{GITIGNORE} has a rule you wrote that keeps {line} out of the ignore list"),
-            exists,
-            Some(format!(
-                "{GITIGNORE} holds a rule that un-ignores {line}; a rule you wrote wins, so no line is added and git will see the file. Remove that rule yourself if the file should stay out of the repo"
-            )),
-            tracked,
-        );
+    let mut judged: Vec<Judged> = Vec::new();
+    let mut warnings: Vec<String> = Vec::new();
+    for r in &rules {
+        if ignored(r) {
+            judged.push(Judged {
+                action: "present",
+                note: None,
+            });
+            continue;
+        }
+        // A rule the person wrote that makes the path not ignored (`!CLAUDE.local.md`) wins: a
+        // line added after it would flip their choice without their knowing, so none is added.
+        let negated = existing.as_deref().is_some_and(|b| {
+            String::from_utf8_lossy(b)
+                .lines()
+                .any(|l| r.negations.iter().any(|n| n == l.trim()))
+        });
+        if negated {
+            warnings.push(format!(
+                "{GITIGNORE} holds a rule that un-ignores {}; a rule you wrote wins, so no line is added and git will see {}. Remove that rule yourself if {} should stay out of the repo",
+                r.line, r.what, r.what
+            ));
+            judged.push(Judged {
+                action: "skip",
+                note: Some(format!(
+                    "{GITIGNORE} has a rule you wrote that keeps {} out of the ignore list",
+                    r.line
+                )),
+            });
+            continue;
+        }
+        judged.push(Judged {
+            action: "add",
+            note: None,
+        });
     }
     let old = existing.clone().unwrap_or_default();
     let eol = if old.windows(2).any(|w| w == b"\r\n") {
@@ -965,24 +1151,40 @@ fn plan_ignore(root: &Path) -> IgnoreFacts {
     } else {
         "\n"
     };
-    let separator = if old.is_empty() || old.ends_with(b"\n") {
+    let mut new_bytes = old.clone();
+    let mut separator = if old.is_empty() || old.ends_with(b"\n") {
         ""
     } else {
         eol
     };
-    let mut new_bytes = old;
-    new_bytes.extend_from_slice(format!("{separator}{line}{eol}").as_bytes());
-    if new_bytes.len() as u64 > crate::apply::RECEIPT_LIMIT {
-        return skip(&format!("{GITIGNORE} is too large to change here"), exists, Some(format!("{line} is not ignored by git and {GITIGNORE} is too large to change here; add the line yourself so the file is not committed")), tracked);
+    let mut any = false;
+    for (r, j) in rules.iter().zip(&judged) {
+        if j.action == "add" {
+            new_bytes.extend_from_slice(format!("{separator}{}{eol}", r.line).as_bytes());
+            separator = "";
+            any = true;
+        }
+    }
+    if any && new_bytes.len() as u64 > crate::apply::RECEIPT_LIMIT {
+        for (r, j) in rules.iter().zip(judged.iter_mut()) {
+            if j.action == "add" {
+                warnings.push(format!("{} is not ignored by git and {GITIGNORE} is too large to change here; add the line yourself {}", r.line, r.consequence));
+                *j = Judged {
+                    action: "skip",
+                    note: Some(format!("{GITIGNORE} is too large to change here")),
+                };
+            }
+        }
+        any = false;
     }
     IgnoreFacts {
-        json: json!({"path": GITIGNORE, "line": line, "action": "add", "exists": exists, "note": null}),
-        write: Some(IgnoreWrite {
+        json: ignore_json(&rules, &judged, exists),
+        write: any.then_some(IgnoreWrite {
             before: existing,
             new_bytes,
         }),
         tracked,
-        warning: None,
+        warnings,
     }
 }
 
@@ -1015,19 +1217,11 @@ fn plan_inner(kind: Kind, root: &Path) -> Result<Inner> {
         Err(e) => (None, Some(format!("{target}: {e}"))),
     };
     let found = find_source_for(kind, root)?;
-    // The import kind copies none of `AGENTS.md`, so only the line it writes is scanned.
-    let scanned = |s: &Source| -> Vec<(usize, &'static str)> {
-        let bytes = if kind == Kind::Import {
-            &s.text
-        } else {
-            &s.bytes
-        };
-        std::str::from_utf8(bytes)
-            .map(secret_suspects)
-            .unwrap_or_default()
-    };
+    // Only the text the merge copies is scanned, whatever the kind: the import kind copies none of
+    // `AGENTS.md`, so its one line is all there is, and the guidance kind leaves out MoAI's
+    // managed section and the blocks an earlier merge wrote. Line numbers are the whole file's.
     let suspects = match &found {
-        Found::Source(s) => scanned(s),
+        Found::Source(s) => s.suspects(),
         _ => Vec::new(),
     };
     let mut decision = match target_error {
@@ -1070,14 +1264,16 @@ fn plan_inner(kind: Kind, root: &Path) -> Result<Inner> {
     let mut warnings = hidden;
     // What git says about the personal file: ignored or made ignored by one `.gitignore` line,
     // or tracked (committed whatever `.gitignore` says).
-    let ignore = (kind == Kind::Local && decision.action == "merge").then(|| plan_ignore(root));
+    // Every merge writes a receipt folder, so every merge also keeps that folder out of git when
+    // no managed block does.
+    let ignore = (decision.action == "merge").then(|| plan_ignore(root, kind == Kind::Local));
     let mut notice = kind.commit_notice();
     if let Some(facts) = &ignore {
         if facts.tracked {
             notice = TRACKED_NOTICE;
             warnings.push(TRACKED_WARNING.to_string());
         }
-        warnings.extend(facts.warning.iter().cloned());
+        warnings.extend(facts.warnings.iter().cloned());
     }
     if decision.action == "merge" {
         if let Found::Source(s) = &found {
@@ -1208,6 +1404,7 @@ fn clone_found(found: &Found) -> Found {
             bytes: s.bytes.clone(),
             text: s.text.clone(),
             notes: s.notes.clone(),
+            line_map: s.line_map.clone(),
         }),
         Found::Nothing(r) => Found::Nothing(r.clone()),
         Found::Blocked(r) => Found::Blocked(r.clone()),
@@ -1661,32 +1858,87 @@ mod tests {
         ))
     }
 
+    /// The text a block came out of, and how many lines the block held.
+    fn removed(text: &str, b: &str, e: &str) -> Option<(String, usize)> {
+        remove_block(text, b, e).map(|r| (r.joined, r.lines))
+    }
+
     #[test]
     fn remove_block_joins_with_one_blank_line_and_refuses_odd_markers() {
         let (b, e) = ("<!-- b -->", "<!-- /b -->");
         let text = format!("one\n\n{b}\nx\n{e}\n\ntwo\n");
-        assert_eq!(remove_block(&text, b, e), Some(("one\n\ntwo\n".into(), 3)));
+        assert_eq!(removed(&text, b, e), Some(("one\n\ntwo\n".into(), 3)));
         // Only the block: nothing is left to join.
         assert_eq!(
-            remove_block(&format!("{b}\nx\n{e}\n"), b, e),
+            removed(&format!("{b}\nx\n{e}\n"), b, e),
             Some((String::new(), 3))
         );
         // Text before the block only, and text after it only.
         assert_eq!(
-            remove_block(&format!("one\n{b}\nx\n{e}\n"), b, e),
+            removed(&format!("one\n{b}\nx\n{e}\n"), b, e),
             Some(("one\n".into(), 3))
         );
         assert_eq!(
-            remove_block(&format!("{b}\nx\n{e}\ntwo\n"), b, e),
+            removed(&format!("{b}\nx\n{e}\ntwo\n"), b, e),
             Some(("two\n".into(), 3))
         );
         // No block, two blocks, an end marker alone, a start that is not at a line start.
-        assert_eq!(remove_block("one\n", b, e), None);
-        assert_eq!(remove_block(&format!("{b}\n{e}\n{b}\n{e}\n"), b, e), None);
-        assert_eq!(remove_block(&format!("one\n{e}\n"), b, e), None);
-        assert_eq!(remove_block(&format!("a {b}\nx\n{e}\n"), b, e), None);
+        assert_eq!(removed("one\n", b, e), None);
+        assert_eq!(removed(&format!("{b}\n{e}\n{b}\n{e}\n"), b, e), None);
+        assert_eq!(removed(&format!("one\n{e}\n"), b, e), None);
+        assert_eq!(removed(&format!("a {b}\nx\n{e}\n"), b, e), None);
         // An end marker before the start marker is not a block.
-        assert_eq!(remove_block(&format!("{e}\n{b}\n"), b, e), None);
+        assert_eq!(removed(&format!("{e}\n{b}\n"), b, e), None);
+    }
+
+    /// The blank lines around a block are joined only when text stays on both sides.
+    #[test]
+    fn remove_block_says_when_the_blank_lines_around_it_were_joined() {
+        let (b, e) = ("<!-- b -->", "<!-- /b -->");
+        let collapsed = |text: &str| remove_block(text, b, e).unwrap().collapsed;
+        assert!(collapsed(&format!("one\n\n\n{b}\nx\n{e}\n\n\ntwo\n")));
+        assert!(collapsed(&format!("one\n{b}\nx\n{e}\ntwo\n")));
+        assert!(!collapsed(&format!("one\n\n{b}\nx\n{e}\n")));
+        assert!(!collapsed(&format!("{b}\nx\n{e}\n\ntwo\n")));
+        assert!(!collapsed(&format!("{b}\nx\n{e}\n")));
+    }
+
+    /// Each line that stays maps back to its line in the text the block came out of.
+    #[test]
+    fn remove_block_maps_the_lines_that_stay_back_to_where_they_were() {
+        let (b, e) = ("<!-- b -->", "<!-- /b -->");
+        // 1 one, 2 blank, 3 blank, 4 b, 5 x, 6 e, 7 blank, 8 blank, 9 two, 10 three
+        let text = format!("one\n\n\n{b}\nx\n{e}\n\n\ntwo\nthree\n");
+        let r = remove_block(&text, b, e).unwrap();
+        assert_eq!(r.joined, "one\n\ntwo\nthree\n");
+        assert_eq!(r.line_map, vec![1, 2, 9, 10]);
+        assert_eq!(r.joined.lines().count(), r.line_map.len());
+        // Nothing before the block: the text after it keeps its own numbers.
+        let r = remove_block(&format!("{b}\nx\n{e}\n\ntwo\n"), b, e).unwrap();
+        assert_eq!(r.line_map, vec![5]);
+        // Nothing after it.
+        let r = remove_block(&format!("one\ntwo\n{b}\nx\n{e}\n"), b, e).unwrap();
+        assert_eq!(r.line_map, vec![1, 2]);
+        // Two removals compose into the numbers of the whole file.
+        let outer = vec![1, 2, 9, 10];
+        assert_eq!(compose_lines(&outer, &[2, 4]), vec![2, 10]);
+    }
+
+    /// A credential on a line of the copied text is reported at its line of the whole file; one
+    /// in text that is not copied is not reported at all.
+    #[test]
+    fn the_copied_texts_suspects_are_numbered_in_the_whole_file() {
+        let key = shaped("sk-", 24);
+        let mut s = Source::whole("in_place", LEGACY_TARGET.into(), Vec::new());
+        s.text = format!("one\n{key}\nthree\n").into_bytes();
+        s.line_map = vec![1, 6, 7];
+        assert_eq!(s.suspects(), vec![(6, "api_key")]);
+        s.line_map = Vec::new();
+        assert_eq!(s.suspects(), vec![(2, "api_key")]);
+        // The whole file holds a credential the copy does not: nothing is reported.
+        s.bytes = format!("{key}\n").into_bytes();
+        s.text = b"one\n".to_vec();
+        assert_eq!(s.suspects(), vec![]);
     }
 
     #[test]
@@ -1713,7 +1965,7 @@ mod tests {
 
     fn action(agents: Option<&str>, found: Found) -> &'static str {
         let suspects = match &found {
-            Found::Source(s) => secret_suspects(std::str::from_utf8(&s.bytes).unwrap()),
+            Found::Source(s) => s.suspects(),
             _ => Vec::new(),
         };
         decide(agents.map(str::as_bytes), found, &suspects).action
