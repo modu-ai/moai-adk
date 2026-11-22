@@ -839,7 +839,7 @@ fn without_flags_the_decided_limits_apply() {
     assert_eq!(limits["override"], false, "{limits}");
 }
 
-// ---- #2811 W2: new worktrees under <HOME>/.moai/worktrees ----
+// ---- new worktrees under the project's .claude/worktrees (#2811 W2 named the home folder) ----
 
 /// #3030 L3b (the #3048 acceptance): when the folder, the branch or the task already has a
 /// worktree, the `conflict` answer names the command that links that worktree to the claim:

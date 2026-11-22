@@ -84,13 +84,10 @@ fn repo(dir: &Path) {
 /// Points git at an empty global config for this whole test binary, so no test here reads the
 /// runner's own git settings (its global ignore list could hide the folder under test).
 fn isolate_git_config() {
-    static EMPTY: std::sync::OnceLock<std::path::PathBuf> = std::sync::OnceLock::new();
-    EMPTY.get_or_init(|| {
-        let file = tempfile::NamedTempFile::new().unwrap();
-        let (_, path) = file.keep().unwrap();
-        std::env::set_var("GIT_CONFIG_GLOBAL", &path);
+    static ONCE: std::sync::Once = std::sync::Once::new();
+    ONCE.call_once(|| {
+        std::env::set_var("GIT_CONFIG_GLOBAL", "/dev/null");
         std::env::set_var("GIT_CONFIG_SYSTEM", "/dev/null");
-        path
     });
 }
 

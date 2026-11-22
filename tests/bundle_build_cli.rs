@@ -1107,6 +1107,23 @@ fn worktree_place_links_the_bundle_refuses_a_linked_claude_folder() {
     assert_eq!(w.refs(), refs, "no ref was made");
 }
 
+/// Audit M11: the exclude line follows a successful add. A build whose add cannot happen (a
+/// plain file where `.claude` should be) leaves the exclude file exactly as it was.
+#[test]
+fn worktree_place_status_a_refused_bundle_leaves_the_exclude_file_alone() {
+    let w = World::new();
+    w.identity();
+    let a = w.head("spec/a", TIP, &[("notes/a.md", "a\n")], SPEC, &[1, 2], true);
+    let c1 = w.ready_card(&a);
+    w.git(&["checkout", "-q", "trunk"]);
+    std::fs::write(w.work.join(".claude"), "not a folder\n").unwrap();
+    let exclude = w.work.join(".git/info/exclude");
+    let before = std::fs::read(&exclude).ok();
+    let (v, code) = w.build(&[&c1]);
+    assert_ne!(code, 0, "{v}");
+    assert_eq!(std::fs::read(&exclude).ok(), before, "{v}");
+}
+
 #[test]
 fn the_help_and_the_ops_doc_say_what_build_writes() {
     let w = World::new();

@@ -25,7 +25,8 @@ type Result<T> = std::result::Result<T, String>;
 
 /// The HOME state folder every OS uses (D1).
 pub const STATE_DIR: &str = ".moai";
-/// New worktrees, under [`STATE_DIR`].
+/// The home folder of the earlier worktrees, under [`STATE_DIR`]: the classifier still names it,
+/// and no new worktree is made there (new ones go to the project's `.claude/worktrees`).
 pub const WORKTREES: &str = "worktrees";
 /// The default parent of new projects, under [`STATE_DIR`]; also the Go generation's folder
 /// under [`WORKTREES`] (D8).
