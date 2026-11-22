@@ -2,7 +2,7 @@
 id: SPEC-20261122-output-style-moai-easy
 title: "The MoAI-Easy output style reads for Claude Code only and its installer takes an unchanged file as its own"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-22
 ---
 
@@ -12,6 +12,8 @@ created: 2026-11-22
 
 사용자 선택 2026-11-22: 리더 보고서(출력 스타일 개선과 moai-adk용 Claude mods 설계, 2-3절)의 개선된 스타일 문장을 제품 템플릿 `skills/moai/references/home/output-style.md` 에 반영해요. 배너는 `MoAI 🗿` 이고 Codex·"모든 도구" 문구가 없어요. 아울러 스타일 설치기(`src/home_style.rs`)가 지금 템플릿 렌더와 같거나 과거에 배포한 렌더와 같은 파일을 MoAI 소유로 받아서, 손으로 옮겨 둔 설치본이 "충돌"에 갇히지 않게 해요(지금은 소유 기록이 옛 판을 가리키면 다음 템플릿 변경이 영영 적용되지 않아요).
 
+개정 2: 리더 노트와 전체 문서 조사 보고서 9-2절(사용자 결정 2026-11-22)이 두 가지를 더했어요 — 설치 뒤 스타일이 켜졌는지 `moai update` 가 확인하고 알리는 것, 그리고 스타일을 사용자가 쓰는 Claude 설정 폴더마다 한 벌씩 폴더별 기록과 함께 쓰는 것. 요구가 12개를 넘으면 쪼갠다는 크기 규칙에 따라 이 둘은 자식 SPEC `SPEC-20261122-output-style-install-checks` 가 가져요(`parent` 로 이 SPEC 을 이어요). 이 SPEC 의 요구 REQ-1…REQ-10 은 바뀌지 않았어요.
+
 공식 문서 근거(2026-11-22 원문 `.md` 전체 읽음: output-styles 204줄, settings 344줄, memory 667줄): 스타일은 지시일 뿐 강제가 아니에요. 맞춤 스타일은 `keep-coding-instructions: true` 가 없으면 기본 소프트웨어 공학 지침을 빼요. 사용자 범위 위치는 `~/.claude/output-styles` 이고, 값 `outputStyle` 은 대소문자를 가려요. 파일은 시작할 때 읽어서 고치면 재시작해야 반영돼요. 프로젝트 `.claude/output-styles` 도 읽히지만 moai 는 쓰지 않아요(사용자 결정, 아래 Decisions D-8).
 
 ## Non-goals
@@ -20,7 +22,7 @@ created: 2026-11-22
 - `outputStyle` 설정 규칙(없을 때만 넣고 다른 값은 충돌)과 `settings.json` 바이트 보존은 바꾸지 않아요.
 - 스타일 이름 `MoAI-Easy`, 설치 경로, 영수증·되돌리기 형식은 바꾸지 않아요.
 - 설치 소유 기록 파일의 위치(`~/.moai-cli/home-style/`)는 다른 카드(경로 이전)의 몫이에요. 이 SPEC 의 시험은 위치를 `moai_cli::home_root::path` 로 물어요.
-- 설치하지 않는 옛 템플릿 `templates/claude/output-styles/*` 정리, 프로필(`CLAUDE_CONFIG_DIR`)별 복사본, mods 는 이 SPEC 밖이에요.
+- 설치하지 않는 옛 템플릿 `templates/claude/output-styles/*` 정리와 mods 는 이 SPEC 밖이에요. 설정 폴더별 복사본과 설치 점검·알림은 자식 SPEC 이 가져요.
 
 ## Requirements
 
@@ -66,7 +68,7 @@ created: 2026-11-22
 - 옛 렌더 목록은 사람이 관리해요: 템플릿이나 앞머리 형식을 바꾸고 목록에 나가는 렌더를 안 더하면 그 렌더를 가진 설치본이 충돌에 갇혀요. 현재 렌더의 sha256 을 시험에 못 박아서 바꿀 때 시험이 실패하게 해요(AC-7).
 - 채택(`merge`)은 같은 바이트를 다시 써요. `update_tux` 미리보기는 이를 "갱신할 것"으로 세어요. 파일 바이트는 바뀌지 않지만 미리보기 숫자에는 한 건이 보여요. 새 동작 이름을 만들면 다른 카드의 미리보기 코드를 건드려서 이름을 늘리지 않았어요(D-3).
 - 한국어 어투 한 문장(해요체)이 일반 제품 템플릿에 들어가요. 사용자가 보고서 2-3절을 골랐어요. 되돌리기는 그 문장을 지우는 한 줄 변경이에요(D-6).
-- 문서는 `CLAUDE_CONFIG_DIR` 가 설정·세션 기록·플러그인을 옮긴다고만 적고 `output-styles` 는 이름을 대지 않아요. 프로필 폴더가 자기 `output-styles` 를 읽는지는 문서로 확인하지 못했어요. 이 SPEC 은 설치 위치를 지금처럼 `host_home` 이 정하는 폴더로 두고 프로필별 복사는 하지 않아요.
+- 문서는 `CLAUDE_CONFIG_DIR` 가 설정·세션 기록·플러그인을 옮긴다고만 적고 `output-styles` 는 이름을 대지 않아요. 프로필 폴더가 자기 `output-styles` 를 읽는지는 문서로 확인하지 못했어요. 이 SPEC 은 설치 위치를 지금처럼 `host_home` 이 정하는 폴더로 두고, 폴더별 복사는 자식 SPEC 이 맡아요(그쪽에도 같은 위험이 있어요).
 - 옛 소유 기록이 `~/.moai-cli/home-style/` 에 있어요. 위치가 이전되면 그 기록을 읽는 곳이 바뀌어요. 시험은 `home_root::path` 로 위치를 물어서 이전에 끌려가요.
 - `docs/claude-adapter-contract.md` 는 "MoAI 는 `outputStyle` 을 스스로 정하지 않는다"고 적었는데 `moai update` 는 비어 있을 때 넣어요. 이 SPEC 은 문서를 고치지 않아요(범위 밖); 감사가 보면 따로 알려요.
 
