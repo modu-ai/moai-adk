@@ -380,6 +380,15 @@ impl World {
             .push(("PATH".to_string(), path.to_string_lossy().into_owned()));
     }
 
+    /// Moves the integration branch to `commit` the way `git branch -C` does: no reference
+    /// transaction, so no hook sees it.
+    fn copy_over(&self, commit: &str) {
+        git(&self.project, &["branch", "-f", "copy-source", commit]);
+        git(&self.project, &["branch", "-C", "copy-source", "integ"]);
+        git(&self.project, &["branch", "-D", "copy-source"]);
+        assert_eq!(self.integ(), commit);
+    }
+
     /// A git wrapper that runs `before` (shell text) just before the real `update-ref` and
     /// `after` just after it, then returns the real exit code.
     fn wrap_update_ref(&self, name: &str, before: &str, after: &str) {
@@ -1443,6 +1452,7 @@ fn link_moai(bin: &Path) {
 #[test]
 fn ac23_a_branch_moved_outside_the_landing_command_is_a_drift() {
     let w = World::new();
+    w.install_guard();
     // No landing recorded yet: there is nothing to compare, so a first landing goes through.
     let first = w.review_card(&["one"]);
     let landed = w.candidate();
@@ -1740,6 +1750,226 @@ fn ac31_an_interrupted_landing_after_a_landing_is_not_the_recorded_commit() {
     assert_ne!(drift["expected"]["card"], json!(three), "{drift}");
 }
 
+/// A name-to-bytes snapshot of every file under `dir`, so two moments can be compared.
+fn tree_of(dir: &Path) -> std::collections::BTreeMap<String, Vec<u8>> {
+    fn walk(base: &Path, dir: &Path, out: &mut std::collections::BTreeMap<String, Vec<u8>>) {
+        for entry in fs::read_dir(dir).unwrap().flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                walk(base, &path, out);
+            } else {
+                out.insert(
+                    path.strip_prefix(base).unwrap().display().to_string(),
+                    fs::read(&path).unwrap_or_default(),
+                );
+            }
+        }
+    }
+    let mut out = std::collections::BTreeMap::new();
+    walk(dir, dir, &mut out);
+    out
+}
+
+/// AC-32 (B-4 of the third re-check): with the hook installed, the restore passes the guard for a
+/// descendant nobody landed and for an unrelated copy, not only for a rewind. Every restore test
+/// runs with the guard; a bare `git update-ref` over the branch is still refused.
+#[test]
+fn ac32_the_restore_passes_the_installed_guard_for_a_descendant_and_an_unrelated_copy() {
+    let (w, first, second) = two_landings();
+    w.install_guard();
+    let apply = |digest: &str, reference: &str| {
+        w.card(
+            None,
+            &[
+                "drift",
+                "--restore",
+                "--apply",
+                "--plan-digest",
+                digest,
+                "--permission-reference",
+                reference,
+                "--by",
+                "leader",
+            ],
+        )
+    };
+    let preview = || {
+        let plan = result(&w.card(None, &["drift", "--restore"]));
+        plan["plan"]["plan_digest"].as_str().unwrap().to_string()
+    };
+
+    // (a) A descendant of the last landing that nobody landed.
+    let ahead = commit_with(&w.project, &second, &[&second], "an unlanded change");
+    w.copy_over(&ahead);
+    let digest = preview();
+    result(&apply(&digest, "user-pick-descendant"));
+    assert_eq!(w.integ(), second, "the descendant was not restored");
+
+    // (b) An unrelated copy: neither an ancestor nor a descendant of the last landing.
+    let stray = commit_with(&w.project, &first, &[&w.head], "a commit nobody landed");
+    w.copy_over(&stray);
+    let digest = preview();
+    result(&apply(&digest, "user-pick-unrelated"));
+    assert_eq!(w.integ(), second, "the unrelated copy was not restored");
+    assert_eq!(
+        w.count("SELECT count(*) FROM event WHERE kind = 'card.tip_restored'"),
+        2
+    );
+    assert!(
+        !w.common().join("moai/land-intent").exists(),
+        "the intent record stays after the restore"
+    );
+
+    // A bare update-ref over the branch is refused: the restore intent belongs to the command.
+    let bare = Command::new(git_executable())
+        .args(["update-ref", "refs/heads/integ", &stray, &second])
+        .current_dir(&w.project)
+        .env(
+            "PATH",
+            w.extra_env
+                .borrow()
+                .iter()
+                .find(|(k, _)| k == "PATH")
+                .unwrap()
+                .1
+                .clone(),
+        )
+        .env("HOME", w.home.path())
+        .output()
+        .unwrap();
+    assert!(!bare.status.success(), "a bare update-ref passed the guard");
+    assert_eq!(w.integ(), second);
+}
+
+/// AC-33 (N-20): the digest is bound to a nonce the preview writes into the git folder. A digest
+/// made without the preview (the plain hash of the move), one from an older preview and one that
+/// was already used are all refused; the apply consumes the nonce.
+#[test]
+fn ac33_the_digest_needs_the_nonce_of_the_latest_preview_and_is_used_once() {
+    use sha2::{Digest, Sha256};
+    let (w, first, second) = two_landings();
+    w.install_guard();
+    w.copy_over(&first);
+    let apply = |digest: &str| {
+        w.card(
+            None,
+            &[
+                "drift",
+                "--restore",
+                "--apply",
+                "--plan-digest",
+                digest,
+                "--permission-reference",
+                "user-pick",
+                "--by",
+                "leader",
+            ],
+        )
+    };
+    let before = w.dump();
+    let one = result(&w.card(None, &["drift", "--restore"]));
+    let first_digest = one["plan"]["plan_digest"].as_str().unwrap().to_string();
+    assert!(
+        w.common().join("moai/drift-nonce").is_file(),
+        "the preview wrote no nonce"
+    );
+    assert_eq!(w.dump(), before, "the preview wrote to the ledger");
+    let two = result(&w.card(None, &["drift", "--restore"]));
+    let second_digest = two["plan"]["plan_digest"].as_str().unwrap().to_string();
+    assert_ne!(first_digest, second_digest, "two previews share a digest");
+
+    // The plain hash of the move, computable without the preview, is refused.
+    let card_number = two["plan"]["card"]
+        .as_str()
+        .unwrap()
+        .trim_start_matches("C-")
+        .to_string();
+    let plain = format!(
+        "{:x}",
+        Sha256::digest(format!(
+            "moai card drift --restore\ninteg\n{first}\n{second}\n{card_number}\n"
+        ))
+    );
+    for (what, digest) in [
+        ("the plain hash", plain.as_str()),
+        ("an older preview's digest", first_digest.as_str()),
+    ] {
+        let out = apply(digest);
+        assert_eq!(
+            out.status.code(),
+            Some(1),
+            "{what}: {}",
+            String::from_utf8_lossy(&out.stdout)
+        );
+        assert_eq!(w.integ(), first, "{what} moved the branch");
+        assert_eq!(w.dump(), before, "{what} wrote to the ledger");
+    }
+
+    result(&apply(&second_digest));
+    assert_eq!(w.integ(), second);
+    assert!(
+        !w.common().join("moai/drift-nonce").exists(),
+        "the apply left the nonce"
+    );
+
+    // The same digest after the state drifts again: the nonce is gone, so it is refused.
+    w.copy_over(&first);
+    let replay = apply(&second_digest);
+    assert_eq!(
+        replay.status.code(),
+        Some(1),
+        "{}",
+        String::from_utf8_lossy(&replay.stdout)
+    );
+    assert_eq!(w.integ(), first, "a used digest moved the branch");
+}
+
+/// AC-34 (N-21): the plain view writes no file, neither in the ledger nor in the git folder, in
+/// the states ok, drift and no_landing; the preview writes only the nonce file.
+#[test]
+fn ac34_the_view_writes_no_file_and_the_preview_writes_only_the_nonce() {
+    let w = World::new();
+    w.install_guard();
+    let git_before = tree_of(&w.common());
+    let ledger_before = w.dump();
+    let none = result(&w.card(None, &["drift"]));
+    assert_eq!(none["state"], json!("no_landing"), "{none}");
+    assert_eq!(tree_of(&w.common()), git_before, "the view wrote a file");
+    assert_eq!(w.dump(), ledger_before);
+
+    let (w, first, _second) = two_landings();
+    w.install_guard();
+    let git_before = tree_of(&w.common());
+    let ledger_before = w.dump();
+    let ok = result(&w.card(None, &["drift"]));
+    assert_eq!(ok["state"], json!("ok"), "{ok}");
+    assert_eq!(tree_of(&w.common()), git_before, "the view wrote a file");
+    assert_eq!(w.dump(), ledger_before);
+
+    w.copy_over(&first);
+    let git_before = tree_of(&w.common());
+    let drift = result(&w.card(None, &["drift"]));
+    assert_eq!(drift["state"], json!("drift"), "{drift}");
+    assert_eq!(tree_of(&w.common()), git_before, "the view wrote a file");
+    assert_eq!(w.dump(), ledger_before);
+
+    result(&w.card(None, &["drift", "--restore"]));
+    let after = tree_of(&w.common());
+    let added: Vec<&String> = after
+        .keys()
+        .filter(|k| !git_before.contains_key(*k))
+        .collect();
+    assert_eq!(
+        added,
+        vec!["moai/drift-nonce"],
+        "the preview wrote more than the nonce"
+    );
+    for (name, bytes) in &git_before {
+        assert_eq!(after.get(name), Some(bytes), "the preview changed {name}");
+    }
+    assert_eq!(w.dump(), ledger_before);
+}
+
 /// AC-29: the restore previews first and moves only on the user's yes. The preview names the
 /// move and carries a digest and moves nothing; the apply needs the leader word, the digest of a
 /// preview of the same state and a permission reference; it moves the branch to the recorded
@@ -1860,6 +2090,7 @@ fn ac29_the_restore_needs_the_preview_digest_and_a_permission_reference() {
 #[test]
 fn ac30_the_restore_names_what_it_drops_and_refuses_a_stale_digest() {
     let w = World::new();
+    w.install_guard();
     let first = w.review_card(&["one"]);
     let landed = w.candidate();
     result(&w.land(
@@ -1883,10 +2114,7 @@ fn ac30_the_restore_names_what_it_drops_and_refuses_a_stale_digest() {
     );
 
     let ahead = commit_with(&w.project, &landed, &[&landed], "an unlanded change");
-    git(
-        &w.project,
-        &["update-ref", "refs/heads/integ", &ahead, &landed],
-    );
+    w.copy_over(&ahead);
     let plan = result(&w.card(None, &["drift", "--restore"]));
     let drops = plan["plan"]["drops"].as_array().unwrap();
     assert_eq!(drops.len(), 1, "{plan}");
@@ -1898,10 +2126,7 @@ fn ac30_the_restore_names_what_it_drops_and_refuses_a_stale_digest() {
 
     // The state changes after the preview: the digest no longer matches.
     let later = commit_with(&w.project, &ahead, &[&ahead], "another unlanded change");
-    git(
-        &w.project,
-        &["update-ref", "refs/heads/integ", &later, &ahead],
-    );
+    w.copy_over(&later);
     let out = w.card(
         None,
         &[

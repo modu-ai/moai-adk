@@ -271,16 +271,38 @@ pub struct Intent {
     pub reference: String,
     pub old: String,
     pub new: String,
+    /// Set for a restore intent (`card drift --restore --apply`): the ledger's recorded landing
+    /// commit the move answers and the ledger row it was read from.
+    pub restore: Option<Restore>,
+}
+
+/// What a restore intent names besides the move: the result commit of the ledger's last landing
+/// and the id of the ledger row it was read from.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Restore {
+    pub landing: String,
+    pub row: i64,
 }
 
 fn read_intent(common: &Path) -> Option<Intent> {
     let text = fs::read_to_string(common.join(INTENT_FILE)).ok()?;
     let value: Value = serde_json::from_str(&text).ok()?;
     let field = |key: &str| value.get(key)?.as_str().map(str::to_string);
+    let restore = if value.get("kind").and_then(Value::as_str) == Some("restore") {
+        // A restore intent that does not name its landing and its row is read as one that names
+        // nothing: the guard then refuses the move it would have allowed.
+        Some(Restore {
+            landing: field("landing").unwrap_or_default(),
+            row: value.get("row").and_then(Value::as_i64).unwrap_or(0),
+        })
+    } else {
+        None
+    };
     Some(Intent {
         reference: field("ref")?,
         old: field("old")?,
         new: field("new")?,
+        restore,
     })
 }
 
@@ -293,6 +315,47 @@ pub fn write_intent(common: &Path, reference: &str, old: &str, new: &str) -> Res
         "ref": reference, "old": old, "new": new, "by": "card land", "at": at,
     });
     write_atomically(&common.join(INTENT_FILE), body.to_string().as_bytes(), true)
+}
+
+/// Writes the intent record of a restore: the one move of `reference` from `old` to `new` that is
+/// allowed to be no fast-forward, because `new` is the result commit (`landing`) of the ledger row
+/// `row` that `card drift --restore` answers. Replaces any older record.
+pub fn write_restore_intent(
+    common: &Path,
+    reference: &str,
+    old: &str,
+    new: &str,
+    landing: &str,
+    row: i64,
+) -> Result<(), String> {
+    let at = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.as_secs());
+    let body = json!({
+        "ref": reference, "old": old, "new": new, "by": "card drift", "at": at,
+        "kind": "restore", "landing": landing, "row": row,
+    });
+    write_atomically(&common.join(INTENT_FILE), body.to_string().as_bytes(), true)
+}
+
+/// The preview's one-use nonce of `card drift --restore`, in the common git folder.
+pub const NONCE_FILE: &str = "moai/drift-nonce";
+
+/// Writes the nonce a preview made, replacing an older one (mode 0600).
+pub fn write_nonce(common: &Path, nonce: &str) -> Result<(), String> {
+    write_atomically(&common.join(NONCE_FILE), nonce.as_bytes(), true)
+}
+
+/// The nonce the latest preview wrote, or `None`.
+pub fn read_nonce(common: &Path) -> Option<String> {
+    let text = fs::read_to_string(common.join(NONCE_FILE)).ok()?;
+    let nonce = text.trim();
+    (!nonce.is_empty()).then(|| nonce.to_string())
+}
+
+/// Removes the nonce; a nonce that is not there is fine.
+pub fn remove_nonce(common: &Path) {
+    let _ = fs::remove_file(common.join(NONCE_FILE));
 }
 
 /// Removes the intent record; a record that is not there is fine.
@@ -504,6 +567,16 @@ fn judge_move(facts: &Facts<'_>, line: &Line) -> Result<(), String> {
             "the intent record names {} {} -> {}, not this move ({} -> {})",
             intent.reference, intent.old, intent.new, old, line.new
         ));
+    }
+    if let Some(restore) = &intent.restore {
+        // The one non-fast-forward move: back to the commit the ledger recorded.
+        if restore.landing != line.new || restore.row <= 0 {
+            return Err(format!(
+                "the restore intent names landing {} of row {}, not this move to {}",
+                restore.landing, restore.row, line.new
+            ));
+        }
+        return Ok(());
     }
     if let Some(cur) = &current {
         if !(facts.is_ancestor)(cur, &line.new) {

@@ -15,9 +15,11 @@
 //! this module is the layer that notices it at the next landing and shows it without landing.
 //!
 //! The way back is `card drift --restore`: a preview with the move, the commits it drops and a
-//! digest, and, only with the digest of a preview of the same state, a permission reference and
-//! the leader word, the move itself under the guard (the same intent record `card land` writes)
-//! and one `card.tip_restored` ledger row. Nothing here prints or runs a bare `git update-ref`.
+//! digest bound to a one-use nonce the preview writes into the git folder (the only file it
+//! writes), and, only with the digest of the latest preview of the same state, a permission
+//! reference and the leader word, the move itself under the guard (a restore intent that names the
+//! ledger's recorded landing and its row: the one move that may be no fast-forward) and one
+//! `card.tip_restored` ledger row. The plain view writes no file at all. Nothing here prints or runs a bare `git update-ref`.
 
 use super::command::open_for_write;
 use super::guard;
@@ -43,6 +45,9 @@ pub struct Expected {
     pub commit: String,
     /// The card that landing belongs to.
     pub card: i64,
+    /// The ledger row the commit was read from: the landed row of the newest successful landing,
+    /// or the start row of an interrupted first landing.
+    pub row: i64,
     /// `landing` or `interrupted_landing`.
     pub source: &'static str,
     /// Every tip that is no drift.
@@ -53,7 +58,10 @@ struct Row {
     card: i64,
     from: String,
     head: String,
-    landed: bool,
+    /// The id of the `card.landed` row that follows this start row, when there is one.
+    landed_row: Option<i64>,
+    /// The id of the start row itself.
+    start_row: i64,
 }
 
 fn sql_err(e: rusqlite::Error) -> String {
@@ -66,9 +74,10 @@ fn rows(conn: &Connection, branch: &str) -> Result<Vec<Row>> {
     let mut stmt = conn
         .prepare(
             "SELECT s.card_id, json_extract(s.payload, '$.tip'), json_extract(s.payload, '$.head'), \
-                    EXISTS (SELECT 1 FROM event l WHERE l.card_id = s.card_id \
+                    (SELECT min(l.event_id) FROM event l WHERE l.card_id = s.card_id \
                               AND l.kind = 'card.landed' AND l.event_id > s.event_id \
-                              AND json_extract(l.payload, '$.head') = json_extract(s.payload, '$.head')) \
+                              AND json_extract(l.payload, '$.head') = json_extract(s.payload, '$.head')), \
+                    s.event_id \
              FROM event s WHERE s.kind = 'card.land_started' \
                AND json_extract(s.payload, '$.branch') = ?1 \
                AND json_type(s.payload, '$.head') = 'text' AND json_type(s.payload, '$.tip') = 'text' \
@@ -81,7 +90,8 @@ fn rows(conn: &Connection, branch: &str) -> Result<Vec<Row>> {
                 card: r.get(0)?,
                 from: r.get(1)?,
                 head: r.get(2)?,
-                landed: r.get(3)?,
+                landed_row: r.get(3)?,
+                start_row: r.get(4)?,
             })
         })
         .map_err(sql_err)?
@@ -102,15 +112,16 @@ pub fn expected(conn: &Connection, branch: &str) -> Result<Option<Expected>> {
         }
     };
     let mut accepted = Vec::new();
-    if let Some(done) = all.iter().find(|r| r.landed) {
+    if let Some((done, landed_row)) = all.iter().find_map(|r| r.landed_row.map(|l| (r, l))) {
         push(&mut accepted, &done.head);
-        if !newest.landed {
+        if newest.landed_row.is_none() {
             push(&mut accepted, &newest.from);
             push(&mut accepted, &newest.head);
         }
         return Ok(Some(Expected {
             commit: done.head.clone(),
             card: done.card,
+            row: landed_row,
             source: "landing",
             accepted,
         }));
@@ -120,6 +131,7 @@ pub fn expected(conn: &Connection, branch: &str) -> Result<Option<Expected>> {
     Ok(Some(Expected {
         commit: newest.from.clone(),
         card: newest.card,
+        row: newest.start_row,
         source: "interrupted_landing",
         accepted,
     }))
@@ -174,21 +186,42 @@ struct Plan {
     from: String,
     to: String,
     card: i64,
+    row: i64,
     drops: Vec<String>,
     drops_total: usize,
     digest: String,
 }
 
-fn digest_of(branch: &str, from: &str, to: &str, card: i64) -> String {
+/// The digest of a restore plan: the move, the card and the nonce the preview wrote into the git
+/// folder, so it cannot be computed without that preview and a used or older one never matches.
+fn digest_of(branch: &str, from: &str, to: &str, card: i64, nonce: &str) -> String {
     format!(
         "{:x}",
         Sha256::digest(format!(
-            "moai card drift --restore\n{branch}\n{from}\n{to}\n{card}\n"
+            "moai card drift --restore\n{branch}\n{from}\n{to}\n{card}\n{nonce}\n"
         ))
     )
 }
 
-fn plan(project: &Path, conn: &Connection, branch: &str, tip: &str) -> Result<Plan> {
+/// 128 random bits as hex: from the operating system when it has a source, otherwise from the
+/// clock, the process id and the address of a local.
+fn new_nonce() -> String {
+    use std::io::Read;
+    let mut bytes = [0u8; 16];
+    let ok = std::fs::File::open("/dev/urandom")
+        .and_then(|mut f| f.read_exact(&mut bytes))
+        .is_ok();
+    if !ok {
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0, |d| d.as_nanos());
+        let seed = format!("{now}:{}:{:p}", std::process::id(), &bytes);
+        bytes.copy_from_slice(&Sha256::digest(seed)[..16]);
+    }
+    bytes.iter().map(|b| format!("{b:02x}")).collect()
+}
+
+fn plan(project: &Path, conn: &Connection, branch: &str, tip: &str, nonce: &str) -> Result<Plan> {
     let want = expected(conn, branch)?;
     let Some(w) = want else {
         return Err(format!(
@@ -207,12 +240,13 @@ fn plan(project: &Path, conn: &Connection, branch: &str, tip: &str) -> Result<Pl
     let drops_total = all.len();
     let drops: Vec<String> = all.into_iter().take(DROPS_LISTED).collect();
     Ok(Plan {
-        digest: digest_of(branch, tip, &w.commit, w.card),
+        digest: digest_of(branch, tip, &w.commit, w.card, nonce),
         branch: branch.to_string(),
         full,
         from: tip.to_string(),
         to: w.commit,
         card: w.card,
+        row: w.row,
         drops,
         drops_total,
     })
@@ -295,8 +329,12 @@ pub fn drift(project: &Path, home: &Path, req: &DriftRequest<'_>) -> Result<Valu
         out["project_id"] = json!(id);
         out["writes"] = json!(false);
         if req.restore {
-            let p = plan(project, reader.conn(), &branch, &tip)?;
+            let nonce = new_nonce();
+            let p = plan(project, reader.conn(), &branch, &tip, &nonce)?;
+            let common = guard::common_dir_of(project).map_err(refused)?;
+            guard::write_nonce(&common, &nonce).map_err(refused)?;
             out["plan"] = plan_json(&p, false);
+            out["writes_file"] = json!(guard::NONCE_FILE);
         }
         return Ok(out);
     }
@@ -324,8 +362,14 @@ pub fn drift(project: &Path, home: &Path, req: &DriftRequest<'_>) -> Result<Valu
              changed",
         ));
     }
+    let common = guard::common_dir_of(project).map_err(refused)?;
+    let Some(nonce) = guard::read_nonce(&common) else {
+        return Err(refused(
+            "no preview is waiting (the nonce of a preview is used once): run              `moai card drift --restore` again; nothing was changed",
+        ));
+    };
     let (id, mut writer) = open_for_write(project, home)?;
-    let p = plan(project, writer.conn(), &branch, &tip)?;
+    let p = plan(project, writer.conn(), &branch, &tip, &nonce)?;
     if p.digest != digest {
         return Err(format!(
             "card conflict in drift: the plan digest is not the digest of the state now ({branch} \
@@ -341,8 +385,10 @@ pub fn drift(project: &Path, home: &Path, req: &DriftRequest<'_>) -> Result<Valu
             trees.join(", ")
         ));
     }
-    let common = guard::common_dir_of(project).map_err(refused)?;
-    guard::write_intent(&common, &p.full, &p.from, &p.to).map_err(refused)?;
+    // The digest matched: the nonce is spent whatever follows, and the one move that may be no
+    // fast-forward is named by a restore intent that holds the recorded landing and its row.
+    guard::remove_nonce(&common);
+    guard::write_restore_intent(&common, &p.full, &p.from, &p.to, &p.to, p.row).map_err(refused)?;
     let message = format!("moai card drift --restore {}", &p.to[..12.min(p.to.len())]);
     let attempt = landed::move_branch(project, &p.full, &p.to, &p.from, &message);
     guard::remove_intent(&common);
@@ -398,11 +444,12 @@ mod tests {
 
     #[test]
     fn the_digest_changes_with_every_part_of_the_move() {
-        let base = digest_of("integ", "a", "b", 1);
-        assert_ne!(base, digest_of("other", "a", "b", 1));
-        assert_ne!(base, digest_of("integ", "x", "b", 1));
-        assert_ne!(base, digest_of("integ", "a", "y", 1));
-        assert_ne!(base, digest_of("integ", "a", "b", 2));
-        assert_eq!(base, digest_of("integ", "a", "b", 1));
+        let base = digest_of("integ", "a", "b", 1, "n");
+        assert_ne!(base, digest_of("other", "a", "b", 1, "n"));
+        assert_ne!(base, digest_of("integ", "x", "b", 1, "n"));
+        assert_ne!(base, digest_of("integ", "a", "y", 1, "n"));
+        assert_ne!(base, digest_of("integ", "a", "b", 2, "n"));
+        assert_ne!(base, digest_of("integ", "a", "b", 1, "m"));
+        assert_eq!(base, digest_of("integ", "a", "b", 1, "n"));
     }
 }

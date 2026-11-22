@@ -477,6 +477,53 @@ fn ac2_the_move_the_intent_record_names_passes_and_only_that_one() {
     assert_eq!(w.rev("refs/heads/Fresh"), Some(a));
 }
 
+// ---- AC-22: the restore intent ---------------------------------------------------------------
+
+/// AC-22 (B-4 of the third re-check): a restore intent, which names the commit the ledger
+/// recorded, lets the one non-fast-forward move through; an ordinary intent never does, and a
+/// restore intent that names another landing, another old value or no ledger row is refused.
+#[test]
+fn ac22_a_restore_intent_allows_one_non_fast_forward_move_and_nothing_else() {
+    let w = Repo::new(false);
+    w.install();
+    let (a, b, c, d) = (w.a.clone(), w.b.clone(), w.c.clone(), w.d.clone());
+    let repo = w.repo.clone();
+    w.write_intent("refs/heads/Integ", &a, &d);
+    w.git(&repo, &["update-ref", "refs/heads/Integ", &d, &a]);
+    assert_eq!(w.integ(), d);
+
+    // An ordinary intent for a move to a commit that is no descendant is refused.
+    w.write_intent("refs/heads/Integ", &d, &c);
+    let message = w.refused(&w.try_git(&repo, &["update-ref", "refs/heads/Integ", &c, &d]));
+    assert!(message.contains("fast-forward"), "{message}");
+    assert_eq!(w.integ(), d);
+
+    // Restore intents that are not what the ledger recorded are refused.
+    let bad: Vec<(&str, String, String, String, i64)> = vec![
+        ("another landing", d.clone(), c.clone(), b.clone(), 7),
+        ("another old value", b.clone(), c.clone(), c.clone(), 7),
+        ("no ledger row", d.clone(), c.clone(), c.clone(), 0),
+    ];
+    for (label, old, new, landing, row) in bad {
+        guard::write_restore_intent(&w.common(), "refs/heads/Integ", &old, &new, &landing, row)
+            .unwrap();
+        let out = w.try_git(&repo, &["update-ref", "refs/heads/Integ", &new, &d]);
+        w.refused(&out);
+        assert_eq!(w.integ(), d, "{label}: the branch moved");
+    }
+
+    // The restore intent that names the recorded landing passes, once, and is consumed.
+    guard::write_restore_intent(&w.common(), "refs/heads/Integ", &d, &c, &c, 7).unwrap();
+    w.git(&repo, &["update-ref", "refs/heads/Integ", &c, &d]);
+    assert_eq!(w.integ(), c);
+    assert!(
+        !w.intent_exists(),
+        "the restore intent stays after its move"
+    );
+    w.refused(&w.try_git(&repo, &["update-ref", "refs/heads/Integ", &d, &c]));
+    assert_eq!(w.integ(), c);
+}
+
 // ---- AC-3: packing and gc are not deletions ------------------------------------------------
 
 /// AC-3: `pack-refs` and `gc` pass in the loose and in the packed state and from a linked
