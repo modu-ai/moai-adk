@@ -213,9 +213,29 @@ fn poll(home: &Path, project_id: &str, mark: i64) -> Result<Vec<Row>> {
     }
 }
 
+/// The clock the wait reads and sleeps on. The command uses [`SystemClock`]; a test drives the
+/// wait with a clock it moves by hand, so what it checks about time is a count and not a measure.
+trait Clock {
+    fn now(&self) -> Instant;
+    fn sleep(&self, duration: Duration);
+}
+
+/// The machine's clock.
+struct SystemClock;
+
+impl Clock for SystemClock {
+    fn now(&self) -> Instant {
+        Instant::now()
+    }
+    fn sleep(&self, duration: Duration) {
+        std::thread::sleep(duration);
+    }
+}
+
 /// Polls until `found` returns something or `deadline` passes: the first poll at once, then one
 /// every `every`, the last one at the deadline. It never runs past the deadline plus one poll.
 fn until<T>(
+    clock: &dyn Clock,
     deadline: Instant,
     every: Duration,
     mut found: impl FnMut() -> Result<Vec<T>>,
@@ -225,12 +245,41 @@ fn until<T>(
         if !got.is_empty() {
             return Ok(got);
         }
-        let now = Instant::now();
+        let now = clock.now();
         if now >= deadline {
             return Ok(got);
         }
-        std::thread::sleep(every.min(deadline - now));
+        clock.sleep(every.min(deadline - now));
     }
+}
+
+/// A finished wait: what the start read gave, what the polls kept and how long it took.
+struct Waited<S, T> {
+    start: S,
+    rows: Vec<T>,
+    waited: Duration,
+}
+
+/// The whole wait on `clock`: fix the start time, run the start read, then poll. The clock is read
+/// before the start read, so a ledger another process holds at the start counts in the timeout
+/// (the read waits at most the ledger's own limit): a start read that used up the whole timeout
+/// leaves one poll and the timeout, not the timeout over again.
+fn run_wait<S, T>(
+    clock: &dyn Clock,
+    timeout: Duration,
+    every: Duration,
+    start: impl FnOnce() -> Result<S>,
+    mut poll: impl FnMut(&S) -> Result<Vec<T>>,
+) -> Result<Waited<S, T>> {
+    let started = clock.now();
+    let deadline = started + timeout;
+    let start = start()?;
+    let rows = until(clock, deadline, every, || poll(&start))?;
+    Ok(Waited {
+        start,
+        rows,
+        waited: clock.now().saturating_duration_since(started),
+    })
 }
 
 /// The first line of a note, cut to [`LINE_MAX_CHARS`] characters.
@@ -270,37 +319,40 @@ pub fn wait(project: &Path, home: &Path, request: &WaitRequest) -> Result<Value>
         return Err(refused("--since must be 0 or more"));
     }
     let id = ledger::command::project_id_of(project)?;
-    // The clock starts before the first read of the ledger, so a ledger another process holds at
-    // the start counts in the timeout (the read waits at most the ledger's own limit).
-    let started = Instant::now();
-    let deadline = started + Duration::from_secs(request.timeout_secs);
-    // The names and the mark come from one read-only connection, closed before the wait.
-    let (cards, mark) = {
-        let ledger = ledger::open_read_only(home, &id).map_err(|e| match e {
-            LedgerError::Absent => super::command::ABSENT_HINT.to_string(),
-            other => other.to_string(),
-        })?;
-        let conn = ledger.conn();
-        let cards = resolve(conn, &refs)?;
-        let mark = match request.since {
-            Some(n) => n,
-            None => conn
-                .query_row("SELECT COALESCE(MAX(note_id), 0) FROM card_note", [], |r| {
-                    r.get(0)
-                })
-                .map_err(db)?,
-        };
-        (cards, mark)
-    };
-    let rows = until(deadline, Duration::from_secs(request.every_secs), || {
-        let rows = poll(home, &id, mark)?;
-        let kept: Vec<Row> = matching(&rows, &cards, request.not_authors, mark)
-            .into_iter()
-            .cloned()
-            .collect();
-        Ok(kept)
-    })?;
-    let waited = started.elapsed().as_secs();
+    let waited = run_wait(
+        &SystemClock,
+        Duration::from_secs(request.timeout_secs),
+        Duration::from_secs(request.every_secs),
+        // The names and the mark come from one read-only connection, closed before the wait.
+        || {
+            let ledger = ledger::open_read_only(home, &id).map_err(|e| match e {
+                LedgerError::Absent => super::command::ABSENT_HINT.to_string(),
+                other => other.to_string(),
+            })?;
+            let conn = ledger.conn();
+            let cards = resolve(conn, &refs)?;
+            let mark = match request.since {
+                Some(n) => n,
+                None => conn
+                    .query_row("SELECT COALESCE(MAX(note_id), 0) FROM card_note", [], |r| {
+                        r.get(0)
+                    })
+                    .map_err(db)?,
+            };
+            Ok((cards, mark))
+        },
+        |(cards, mark)| {
+            let rows = poll(home, &id, *mark)?;
+            let kept: Vec<Row> = matching(&rows, cards, request.not_authors, *mark)
+                .into_iter()
+                .cloned()
+                .collect();
+            Ok(kept)
+        },
+    )?;
+    let (cards, mark) = waited.start;
+    let rows = waited.rows;
+    let waited = waited.waited.as_secs();
     let items: Vec<Value> = rows
         .iter()
         .map(|row| {
@@ -432,57 +484,155 @@ mod tests {
         }
     }
 
+    use std::cell::{Cell, RefCell};
+
+    /// A clock moved by hand: `sleep` moves the time and is recorded, nothing really waits, so a
+    /// test counts polls and sleeps and never measures a duration.
+    struct FakeClock {
+        base: Instant,
+        moved: Cell<Duration>,
+        slept: RefCell<Vec<Duration>>,
+    }
+
+    impl FakeClock {
+        fn new() -> Self {
+            FakeClock {
+                base: Instant::now(),
+                moved: Cell::new(Duration::ZERO),
+                slept: RefCell::new(Vec::new()),
+            }
+        }
+        fn advance(&self, duration: Duration) {
+            self.moved.set(self.moved.get() + duration);
+        }
+        fn slept(&self) -> Vec<Duration> {
+            self.slept.borrow().clone()
+        }
+    }
+
+    impl Clock for FakeClock {
+        fn now(&self) -> Instant {
+            self.base + self.moved.get()
+        }
+        fn sleep(&self, duration: Duration) {
+            self.advance(duration);
+            self.slept.borrow_mut().push(duration);
+        }
+    }
+
+    const MS: fn(u64) -> Duration = Duration::from_millis;
+
     #[test]
     fn the_wait_polls_until_something_is_found_or_the_deadline_passes() {
-        // Found on the third poll: the wait ends there.
+        // Found on the third poll: the wait ends there, after two sleeps of one interval.
+        let clock = FakeClock::new();
         let mut polls = 0;
-        let got = until(
-            Instant::now() + Duration::from_secs(30),
-            Duration::from_millis(1),
-            || {
-                polls += 1;
-                Ok(if polls == 3 { vec![polls] } else { vec![] })
-            },
-        )
+        let got = until(&clock, clock.now() + MS(30_000), MS(1), || {
+            polls += 1;
+            Ok(if polls == 3 { vec![polls] } else { vec![] })
+        })
         .unwrap();
         assert_eq!((got, polls), (vec![3], 3));
-        // A deadline already passed: one poll, then the timeout.
+        assert_eq!(clock.slept(), vec![MS(1), MS(1)]);
+        // A deadline already passed: one poll, then the timeout, and no sleep.
+        let clock = FakeClock::new();
         let mut polls = 0;
-        let got: Vec<i32> = until(Instant::now(), Duration::from_secs(300), || {
+        let got: Vec<i32> = until(&clock, clock.now(), MS(300_000), || {
             polls += 1;
             Ok(vec![])
         })
         .unwrap();
         assert_eq!((got, polls), (vec![], 1));
+        assert!(clock.slept().is_empty());
         // A refused poll ends the wait with its error.
-        let err = until::<i32>(
-            Instant::now() + Duration::from_secs(30),
-            Duration::from_millis(1),
-            || Err("ledger blocked: x".to_string()),
-        )
+        let clock = FakeClock::new();
+        let err = until::<i32>(&clock, clock.now() + MS(30_000), MS(1), || {
+            Err("ledger blocked: x".to_string())
+        })
         .unwrap_err();
         assert_eq!(err, "ledger blocked: x");
     }
 
     #[test]
     fn the_sleep_between_polls_never_passes_the_deadline() {
-        // An interval far longer than the time left: one poll now, one at the deadline, and no
-        // sleep of the whole interval. Without the cap this test sleeps for the full 30 s.
-        let started = Instant::now();
+        // An interval far longer than the time left: one poll now, one at the deadline, and one
+        // sleep that stops at the deadline, never the whole interval of 30 s.
+        let clock = FakeClock::new();
         let mut polls = 0;
-        let got: Vec<i32> = until(
-            started + Duration::from_millis(300),
-            Duration::from_secs(30),
+        let got: Vec<i32> = until(&clock, clock.now() + MS(300), MS(30_000), || {
+            polls += 1;
+            Ok(vec![])
+        })
+        .unwrap();
+        assert_eq!((got, polls), (vec![], 2));
+        assert_eq!(clock.slept(), vec![MS(300)]);
+        assert_eq!(clock.moved.get(), MS(300));
+    }
+
+    #[test]
+    fn a_start_read_that_used_up_the_timeout_leaves_one_poll() {
+        // The start read takes 3.5 s (a ledger another process holds) against a timeout of 2 s:
+        // the clock was read before it, so the deadline is already past when it ends. One poll,
+        // the timeout and no sleep. A deadline fixed after the start read would be 2 s further on
+        // and give three polls and two sleeps.
+        let clock = FakeClock::new();
+        let mut polls = 0;
+        let waited = run_wait(
+            &clock,
+            Duration::from_secs(2),
+            Duration::from_secs(1),
             || {
+                clock.advance(MS(3_500));
+                Ok(())
+            },
+            |_| {
                 polls += 1;
-                Ok(vec![])
+                Ok(Vec::<i32>::new())
             },
         )
         .unwrap();
-        let elapsed = started.elapsed();
-        assert_eq!((got, polls), (vec![], 2));
-        assert!(elapsed >= Duration::from_millis(300), "{elapsed:?}");
-        assert!(elapsed < Duration::from_secs(10), "{elapsed:?}");
+        assert_eq!(polls, 1);
+        assert!(waited.rows.is_empty());
+        assert!(clock.slept().is_empty());
+        assert_eq!(waited.waited, MS(3_500));
+    }
+
+    #[test]
+    fn a_start_read_counts_in_the_timeout_and_the_last_poll_is_at_the_deadline() {
+        // A start read of 0.5 s, a timeout of 2 s, a poll every 1 s: polls at 0.5 s, 1.5 s and at
+        // the deadline (2 s), with sleeps of 1 s and 0.5 s, and the wait took exactly the timeout.
+        let clock = FakeClock::new();
+        let mut polls = 0;
+        let waited = run_wait(
+            &clock,
+            Duration::from_secs(2),
+            Duration::from_secs(1),
+            || {
+                clock.advance(MS(500));
+                Ok("start")
+            },
+            |start| {
+                assert_eq!(*start, "start");
+                polls += 1;
+                Ok(Vec::<i32>::new())
+            },
+        )
+        .unwrap();
+        assert_eq!(polls, 3);
+        assert_eq!(clock.slept(), vec![MS(1_000), MS(500)]);
+        assert_eq!(waited.waited, Duration::from_secs(2));
+        // A refused start read ends the wait before any poll.
+        let clock = FakeClock::new();
+        let err = run_wait(
+            &clock,
+            Duration::from_secs(2),
+            Duration::from_secs(1),
+            || Err::<(), _>("ledger blocked: y".to_string()),
+            |_| -> Result<Vec<i32>> { panic!("no poll after a refused start") },
+        )
+        .err()
+        .unwrap();
+        assert_eq!(err, "ledger blocked: y");
     }
 
     #[test]

@@ -206,8 +206,10 @@ SPAWN = ("subprocess.Popen", "os.system", "os.exec", "os.posix_spawn", "os.spawn
 lines = []
 def hook(event, args):
     if event == "open":
+        # One event per file read: Python 3.9 reads through an opener, so `os.open` raises a second
+        # `open` event for the same read, and that one has no mode string.
         path = args[0]
-        if isinstance(path, int):
+        if isinstance(path, int) or not isinstance(args[1], str):
             return
         path = os.fsdecode(path)
         if path.startswith(root) and path != script:

@@ -354,17 +354,19 @@ fn a_ledger_held_at_the_start_counts_in_the_wait() {
     w.cards(&["watched"]);
     let lock = Lock::take(&w);
     let started = Instant::now();
-    let child = w.spawn_wait(&["--card", "C-1", "--timeout", "2s", "--every", "1s"]);
-    // The start read waits for the lock (the ledger's own limit is 5 s), then finds its time
-    // limit already used up: one poll and the timeout, not the whole timeout over again.
-    std::thread::sleep(Duration::from_millis(3500));
+    let child = w.spawn_wait(&["--card", "C-1", "--timeout", "1s", "--every", "1s"]);
+    // The start read waits for the lock (the ledger's own limit is 5 s, so the 2.5 s hold leaves
+    // it room under load), and the wait ends as a timeout once it is free. The order of the clock
+    // and the start read is pinned without a clock by the unit test
+    // `a_start_read_that_used_up_the_timeout_leaves_one_poll` in src/card/wait.rs; this test only
+    // checks that the wired command reports the time spent at the start. Every bound here is a
+    // lower one, which load can only make easier to meet.
+    std::thread::sleep(Duration::from_millis(2500));
     lock.release();
     let out = finish(child, started + HARD_LIMIT);
-    let elapsed = started.elapsed();
     let r = result(&out);
     assert_eq!(r["outcome"], json!("timeout"), "{r}");
-    assert!(r["waited_secs"].as_u64().unwrap() >= 3, "{r}");
-    assert!(elapsed < Duration::from_millis(5000), "{elapsed:?}");
+    assert!(r["waited_secs"].as_u64().unwrap() >= 2, "{r}");
 }
 
 #[test]
