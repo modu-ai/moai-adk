@@ -24,12 +24,12 @@ paths with `state_root::dir` or `home_root::path`). This slice fixes them.
 
 - Old-layout fixtures keep their literal `.moai-cli` (leader decision 6588): `tests/hooks_cli.rs`
   retired manifests, `tests/retired_hosts_layer.rs`, `tests/update_hooks_cli.rs`.
-- Literal lines in files other cards hold go to those cards or to the C-199 integration merge
+- Literal lines in files other cards hold go to those cards or to the state-folder integration merge
   (leader decision 6588): `tests/project_update_plan_cli.rs:1918` and
-  `tests/update_end_to_end_cli.rs:519` (held by C-328), `tests/generation_apply_result_cli.rs:147-153`
-  (held by C-308).
-- `skills/moai/workflows/update.md:24,28` (held by C-328; the shipped-text card C-292 takes it) and
-  `docs/codex-adapter-contract.md:86` (C-292 deletes the whole page).
+  `tests/update_end_to_end_cli.rs:519` (held by the update flow card), `tests/generation_apply_result_cli.rs:147-153`
+  (held by the generation result card).
+- `skills/moai/workflows/update.md:24,28` (held by the update flow card; the shipped-text card takes it) and
+  `docs/codex-adapter-contract.md:86` (the shipped-text card deletes the whole page).
 - The kept protection that refuses a project inside `CODEX_HOME` (`src/hooks.rs` loop over
   `Host::Codex`) stays; only its comment changes.
 
@@ -55,14 +55,14 @@ paths with `state_root::dir` or `home_root::path`). This slice fixes them.
 - AC-5 (REQ-5, REQ-6, REQ-7): the named texts hold none of the stale words · verify: `cargo test --locked --offline --test project_layer_follow_ups the_follow_up_texts_are_current`
 - AC-6 (REQ-8): the owned test files build the state folder through the resolver and still pass · verify: `cargo test --locked --offline --test boundary_d3_skill_revert --test hooks_cli --test lane_stop_hook_cli --test project_skills_generation`
 - AC-7 (REQ-9): the parent Result names `src/go_state.rs` and `src/hosts/config_backup.rs` as read-only files edited · verify: `cargo test --locked --offline --test project_layer_follow_ups the_parent_result_records_the_read_only_files`
-- AC-8 (REQ-10): the update screen's Korean rows for codex and omp read from `ui_text` · verify: `cargo test --locked --offline --lib update_tux`
+- AC-8 (REQ-10): the update screen's Korean rows for codex and omp read from `ui_text` · verify: `cargo test --locked --offline --lib ui_text::tests::update_tux_reads_the_unmanaged_rows_from_the_table`
 
 ## Scope
 
 - write: this SPEC folder and `.moai/specs/SPEC-20261121-remove-codex-project-layer/**` (its Result)
 - write: `src/project_skills.rs`, `src/project_hosts.rs`, `src/hook_engine.rs`, `src/hooks.rs`, `src/update_cleanup.rs`, `src/update_tux.rs`, `docs/design-review/appendix/operations/cleanup_plan.md`
 - write: `tests/boundary_d3_skill_revert.rs`, `tests/hooks_cli.rs`, `tests/lane_stop_hook_cli.rs`, `tests/project_skills_generation.rs`, the new `tests/project_layer_follow_ups.rs`
-- write after C-316 lands (it holds the file): `src/ui_text.rs` for AC-8
+- write after the runner and installer card lands (it holds the file): `src/ui_text.rs` for AC-8
 - read-only: everything else
 
 ## Plan
@@ -71,7 +71,7 @@ paths with `state_root::dir` or `home_root::path`). This slice fixes them.
 2. GREEN code: `project_skills.rs` uses `crate::retired_hosts::retired` with the active list `["claude"]` and the reason `host_retired`, and counts only managed hosts against the two-entry limit; `project_hosts.rs` adds the remove-yourself sentence.
 3. GREEN text: the limit line and the Stop-rule comment in `hook_engine.rs`, the guard comment in `hooks.rs`, the comment in `tests/hooks_cli.rs`, the module text of `update_cleanup.rs`, the operation page, and the parent Result.
 4. Resolver lines: `boundary_d3_skill_revert.rs:64`, `hooks_cli.rs:570`, `lane_stop_hook_cli.rs:26`, the doc line of `project_skills_generation.rs:3`.
-5. After C-316 lands: move the two Korean rows of `update_tux.rs:715-716` into `ui_text` (AC-8).
+5. After the runner and installer card lands: move the two Korean rows of `update_tux.rs:715-716` into `ui_text` (AC-8).
 
 ## Risks
 
@@ -82,7 +82,7 @@ paths with `state_root::dir` or `home_root::path`). This slice fixes them.
 
 - D-1: The new behaviour tests go into one new test file instead of files other cards hold (planning default).
 - D-2: N6 of the first audit was the landing work (goldens, fixture, `host_home_cli.rs`), done in the merge ae7cf4185f; nothing is left of it (planning default, from the audit text).
-- D-3: AC-8 waits for C-316 to land and give `src/ui_text.rs` back; the slice can go to audit without it if the leader says so (planning default).
+- D-3: AC-8 waits for the runner and installer card to land and give `src/ui_text.rs` back; the slice can go to audit without it if the leader says so (planning default).
 
 ## Result
 
@@ -95,6 +95,6 @@ RED 1f3b4d783b, GREEN 49107290a8, on the tip 8b6219cc7f. The RED lines are this 
 - AC-5 met: `the_follow_up_texts_are_current` failed first (`src/hooks.rs` named `codex_config.rs`) and passes now.
 - AC-6 met: `boundary_d3_skill_revert`, `hooks_cli`, `lane_stop_hook_cli` and `project_skills_generation` pass with the state folder from `state_root::dir`; `project_skills_generation` also had five older literal lines, changed the same way.
 - AC-7 met: `the_parent_result_records_the_read_only_files` failed first and passes now.
-- AC-8 not met yet: `src/ui_text.rs` is held by C-316 (in audit); the two Korean rows of `update_tux.rs:715-716` move when it lands (D-3).
-- Left to other cards (Non-goals): the literal lines of `tests/project_update_plan_cli.rs`, `tests/update_end_to_end_cli.rs` (C-328) and `tests/generation_apply_result_cli.rs` (C-308); `skills/moai/workflows/update.md:24,28` and `docs/codex-adapter-contract.md:86` (C-292).
+- AC-8 met (second slice, RED f6606f375e, GREEN dd79d05328 on the tip c91859e4b8): `update_tux_reads_the_unmanaged_rows_from_the_table` failed first by assertion ("src/update_tux.rs writes 더는 관리하지 않아요 itself", `target/red.log`) and passes now; the English rows of `CodexUnmanaged` and `OmpUnmanaged` equal the reasons of `src/update.rs`, and the 17 `ui_text`, `update_tux`, unmanaged and notice cases pass with `home_update_notice_follow_ups` (`target/green.log`).
+- Left to other cards (Non-goals): the literal lines of `tests/project_update_plan_cli.rs`, `tests/update_end_to_end_cli.rs` and `tests/generation_apply_result_cli.rs`; `skills/moai/workflows/update.md:24,28` (the Codex adapter contract has since been deleted by the shipped-text card).
 - Not run: the whole suite, a test run after merging the tip, and the independent audit.
