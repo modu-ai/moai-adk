@@ -1,8 +1,8 @@
 ---
 id: SPEC-20261122-claude-md-layout
-title: "CLAUDE.md and CLAUDE.local.md replace AGENTS.md and AGENTS.local.md in the files moai owns, with one flow rule file"
+title: "CLAUDE.md and CLAUDE.local.md replace AGENTS.md and AGENTS.local.md in the files moai owns, and the flow rule is global"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-22
 parent: null
 ---
@@ -17,11 +17,14 @@ moai 가 사용자 프로젝트에서 관리하는 지침 파일을 Claude Code 
 | --- | --- | --- | --- | --- |
 | `<project>/CLAUDE.md` | 프로젝트, moai 는 블록 하나 | 추적 | 사용자 글 + `moai-workflow` 블록(사실만, 15줄 이내) | 이 SPEC |
 | `<project>/CLAUDE.local.md` | 사용자 | 무시 | 개인 메모. moai 는 사용자가 고를 때만 만들어요 | 이 SPEC |
-| `<project>/.claude/rules/moai/flow.md` | moai | 추적 | `work_flow` 가 고른 흐름 글 하나. `paths:` 없음 | 이 SPEC |
+| `<config dir>/rules/moai/flow.md` | moai | 해당 없음 | 모든 프로젝트에 공통인 NeXT-Flow 글 하나. `paths:` 없음. 설정 폴더마다 하나 | 이 SPEC(요구), `SPEC-20261122-claude-md-home-routing`(쓰기) |
+| `<project>/.claude/rules`, `skills`, `agents`, `commands`, `output-styles` | 사용자 | 해당 없음 | moai 는 기본으로 쓰지 않아요. 프로젝트 맞춤 하네스는 사용자가 고를 때만 | 이 SPEC(REQ-9) |
 | 프로젝트의 AGENTS 파일 옮기기 | 사용자 선택 | | `move` / `import` / `leave` | `SPEC-20261122-claude-md-project-picks` |
 | 프로젝트 레이어의 쓰기 규칙 | moai | | 영수증, 링크·UTF-8 거부, baseline, 미리보기 키, 토큰 | `SPEC-20261122-claude-md-project-layer` |
 | `<config dir>/rules/moai.md` | moai | 해당 없음 | `/moai` 진입 안내 12줄 이내. `<config dir>` 는 `CLAUDE_CONFIG_DIR` 또는 `~/.claude` | `SPEC-20261122-claude-md-home-routing` |
 | `.gitignore` 와 글 시험 | | | `.claude/` 통째 무시 해제, 이름 시험, 배너 고정 | `SPEC-20261122-claude-md-text-and-ignore` |
+
+개정 2(2026-11-22, 사용자 결정): moai 의 공통 내용 — 흐름 규칙, 라우팅, 스킬, 에이전트, 명령, 출력 스타일 — 은 전역 설정 폴더(`CLAUDE_CONFIG_DIR`, 없으면 `~/.claude`)에 설치하고, moai 는 프로젝트의 `.claude/rules` 등에 기본으로 쓰지 않아요. 프로젝트 `CLAUDE.md` 의 블록은 이 프로젝트만의 사실(도구, 검사 명령, 언어, 흐름 이름과 통합 브랜치, SPEC·카드 자리)이라서 남아요. 슬롯 0 탐침이 보여 준 대로 프로필 폴더는 자기 `rules/` 만 읽으니, 설정 폴더(Orca 프로필마다 하나)마다 자기 사본을 받아요. 전역 파일을 쓰는 일은 사용자의 선택이고 쓰기 구현은 `SPEC-20261122-claude-md-home-routing` 이 맡아요.
 
 이 SPEC 은 첫 조각(조사 + SPEC)이에요. 코드, 시험, 이 저장소 자신의 `AGENTS.md` 이동은 아래 Plan 의 뒤 조각에서 해요. 요구가 12개를 넘으면 쪼개라는 규칙(SPEC 크기 예산)에 따라 다섯 SPEC 으로 나눴고, 넷은 이 SPEC 을 `parent` 로 이어요. `import` 를 고르면 `AGENTS.local.md` 는 아무 일도 없어요(Claude Code 가 원래 읽지 않던 파일이에요).
 
@@ -55,16 +58,16 @@ moai 가 사용자 프로젝트에서 관리하는 지침 파일을 Claude Code 
 
 - REQ-1: When no `AGENTS.md` exists at the project root, or `CLAUDE.md` already holds the managed block or the line `@AGENTS.md`, or the pick `import` or `move` was given, the generator shall plan the managed block `moai-workflow` inside `CLAUDE.md` at the project root.
 - REQ-2 (REQ-1): IF `AGENTS.md` exists and none of those holds, THEN the generator shall plan no CLAUDE file and report that a pick is needed.
-- REQ-3: The renderer shall produce at most 15 lines between the two marker lines of the managed block and state in them only the project id, the tools, the check command, the language, the versioning line, the flow name with its integration branch, the places of SPECs and cards, and the path of the flow rule file when one is planned.
+- REQ-3: The renderer shall produce at most 15 lines between the two marker lines of the managed block and state in them only the project id, the tools, the check command, the language, the versioning line, the flow name with its integration branch, and the places of SPECs and cards.
 - REQ-4: When `CLAUDE.md` exists without the managed block, the generator shall append the block on a new line after the last byte and keep every earlier byte.
-- REQ-5 (REQ-4): IF the text between the block markers was edited after the recorded baseline, or `CLAUDE.md`, `CLAUDE.local.md` or the flow file, or a folder above one of them inside the project, is a link or is not valid UTF-8, THEN the generator shall report a conflict and write nothing to that file.
+- REQ-5 (REQ-4): IF the text between the block markers was edited after the recorded baseline, or `CLAUDE.md` or `CLAUDE.local.md`, or a folder above one of them inside the project, is a link or is not valid UTF-8, THEN the generator shall report a conflict and write nothing to that file.
 - REQ-6: When `CLAUDE.local.md` is absent, the generator shall create it only on the user's pick of a personal file. · failure: none — without the pick nothing is written, so nothing can fail
 - REQ-7: Where the profile value `local_file` reads `tracked`, the generator shall treat it as `ignored` and say so in the preview.
-- REQ-8: When the profile value `work_flow` names a known flow, the generator shall plan exactly one file `.claude/rules/moai/flow.md` that holds the text of that flow.
-- REQ-9 (REQ-8): IF the profile value `work_flow` names no known flow or a known flow that has no shipped text, THEN the generator shall plan no flow file and name the accepted values.
+- REQ-8: When the user picks the install of the flow rule, the home layer shall plan exactly one file `rules/moai/flow.md` inside the Claude config folder that holds the NeXT-Flow text. · failure: none — the conflict cases are REQ-12
+- REQ-9: The generator shall plan no file under the project's `.claude/rules`, `.claude/skills`, `.claude/agents`, `.claude/commands` or `.claude/output-styles` unless the user picked a project harness. · failure: none — without the pick nothing is written, so nothing can fail
 - REQ-10: The renderer shall keep the flow text within 80 lines and 5 KiB and omit the `paths` frontmatter key so that the rule loads at session start.
-- REQ-11: When the flow file exists, the generator shall replace it only when its bytes equal the bytes moai last wrote.
-- REQ-12 (REQ-11): IF the flow file differs from the bytes moai last wrote, THEN the generator shall report a conflict and keep the file.
+- REQ-11: When the flow file exists, the home layer shall replace it only when its bytes equal the bytes moai last wrote.
+- REQ-12 (REQ-11): IF the flow file differs from the bytes moai last wrote, or the file, the config folder or a folder above the file inside it is a link or is not valid UTF-8, THEN the home layer shall report a conflict and keep the file.
 
 ## Acceptance
 
@@ -72,8 +75,10 @@ moai 가 사용자 프로젝트에서 관리하는 지침 파일을 Claude Code 
   verify: `cargo test --locked --offline --test claude_md_layout_cli blocks_`
 - AC-2 (REQ-6, REQ-7): `CLAUDE.local.md` is created only on the pick, and a profile with `tracked` plans like `ignored` with a preview note.
   verify: `cargo test --locked --offline --test claude_md_layout_cli local_`
-- AC-3 (REQ-8…REQ-12): one flow file is planned from `work_flow`, an unknown flow plans none, the text has no `paths` key and stays within its limits, and a hand-edited flow file is a conflict.
+- AC-3 (REQ-9, REQ-3): whatever flow the profile names, the project plan holds no file under the project's `.claude/rules`, `.claude/skills`, `.claude/agents`, `.claude/commands` or `.claude/output-styles`, and the block names the flow and its integration branch and no file path.
   verify: `cargo test --locked --offline --test claude_md_layout_cli flow_`
+- AC-5 (REQ-8, REQ-10…REQ-12): one flow file is planned in the config folder on the user's pick, its text has no `paths` key and stays within its limits, a hand-edited file and a link are conflicts. The writer is the home layer of slice 3, so this criterion runs there and is not counted at slice 1.
+  verify: `cargo test --locked --offline --test claude_md_home_cli flow_`
 - AC-4: neighbouring checks on the changed files.
   verify: `cargo fmt --check`
   verify: `cargo clippy --locked --offline --all-targets -- -D warnings`
@@ -89,20 +94,20 @@ moai 가 사용자 프로젝트에서 관리하는 지침 파일을 Claude Code 
 Slices in this order. Each is one SPEC-backed change with its own audit tier; the Codex removal work lands first where it touches the same lines (`home_routing.rs` HOSTS, `home_style.rs` block, `update.rs` HOSTS, `generation.rs` HOSTS).
 
 0. Probe (no product code): an `InstructionsLoaded` hook in a `claude --worktree` session logs `file_path`, `memory_type`, `load_reason` and `cwd` to show whether the primary checkout's `CLAUDE.md` and `CLAUDE.local.md` load in a linked worktree. The result decides D-11.
-1. Engine (this SPEC): file names become constants; `CLAUDE.md` is the block target; the block text is rewritten (facts, 15 lines, no Issue wording); `CLAUDE.local.md` and the flow file are new targets; the `AGENTS.local.md` merge, `claude_shadow` and `claude-import` leave the writer but their revert path stays for old receipts. Re-pin the tests that read these names (measured at the tip with a search over `tests/`: 81 files name `AGENTS.md` or `AGENTS.local.md`, 34 name `CLAUDE.md` or `CLAUDE.local.md`). The flow texts come from the four `work_flow` values (`src/profile.rs:171`); a value that is not yet a shipped text plans no flow file (REQ-9), and the block then omits the path (REQ-3). The name `NeXT-Flow` arrives with the naming work.
+1. Engine (this SPEC): file names become constants; `CLAUDE.md` is the block target; the block text is rewritten (facts, 15 lines, no Issue wording); `CLAUDE.local.md` is a new target (on the pick only) and the project plan writes nothing under the project's `.claude` folders (REQ-9); the `AGENTS.local.md` merge, `claude_shadow` and `claude-import` leave the writer (the pick `claude-import` is refused as an unknown id; see D-12 for old receipts), and a writer pick `import` or `move` plans no `CLAUDE.md` of its own: only the project picks step carries them out, because a block-only `CLAUDE.md` would hide the user's `AGENTS.md` rules from Claude Code. Re-pin the tests that read these names (measured at the tip with a search over `tests/`: 81 files name `AGENTS.md` or `AGENTS.local.md`, 34 name `CLAUDE.md` or `CLAUDE.local.md`). The block names the profile's flow and integration branch (`src/profile.rs:171`) and no file path (REQ-3). The flow rule text itself is the NeXT-Flow text and is written in slice 3 (REQ-8).
    Every `verify:` filter in these SPECs (`blocks_`, `local_`, `flow_` and the filters of the child SPECs) must match at least one test name; the slice counts the tests that ran, because a filter that matches nothing reports zero tests and counts as not run.
 2. Project layer in `moai update` (`SPEC-20261122-claude-md-project-picks` for the picks and `SPEC-20261122-claude-md-project-layer` for receipt, link and UTF-8 refusal, baseline, token, revert order and key `project_files`). It reuses the `choices` shape of `project-update-plan`.
-3. Routing (`SPEC-20261122-claude-md-home-routing`): `rules/moai.md` through the style-file pattern, the removal pick for the old block, receipt behaviour.
+3. Routing (`SPEC-20261122-claude-md-home-routing`): `rules/moai.md` and `rules/moai/flow.md` (REQ-8, REQ-10…REQ-12 of this SPEC) through the style-file pattern, the removal pick for the old block, receipt behaviour. That SPEC takes the flow file into its next revision when slice 3 starts; its test target `claude_md_home_cli` then holds the tests named `flow_`.
 4. Ignore and texts (`SPEC-20261122-claude-md-text-and-ignore`): the managed ignore block, the repository `.gitignore` allow list, skill texts, language label, first launch, the text test and its exception list, the source manifest.
 5. This repository's own `AGENTS.md` and `AGENTS.local.md`: split into `CLAUDE.md`, `.claude/rules/`, `CLAUDE.local.md` and `docs/`, only by the user's pick, with `tests/repo_agents_md.rs` replaced.
 
 ## Risks
 
 - Claude Code stops reading `AGENTS.md` as soon as moai writes a `CLAUDE.md`. `move` and `import` keep the user's text reachable; `leave` writes no CLAUDE file for that reason.
-- Orca profiles have their own config folder without `rules/`, and their `CLAUDE.md` imports `~/.claude/CLAUDE.md`. A file `~/.claude/rules/moai.md` would not load there, and removing the old block from `~/.claude/CLAUDE.md` would silently drop routing for those sessions. That is why removal is a separate pick (D-8). Whether Claude Code loads `rules/` under a profile folder is unverified.
-- Whether a linked worktree session also loads the primary checkout's `CLAUDE.md` and `CLAUDE.local.md` is unverified (the docs are silent; the local measurement of 2026-11-13 was for `AGENTS.md`). A wrong guess either loads the file twice or leaves a worktree without it.
+- Orca profiles have their own config folder without `rules/`, and their `CLAUDE.md` imports `~/.claude/CLAUDE.md`. A file `~/.claude/rules/moai.md` would not load there, and removing the old block from `~/.claude/CLAUDE.md` would silently drop routing for those sessions. That is why removal is a separate pick (D-8). Measured in slice 0 (Claude Code 2.1.330, report `claude-md-slice0-probe-2026-11-22.md`): a config folder reads its own `rules/`, and a profile whose `CLAUDE.md` imports another folder's `CLAUDE.md` loads that file but not the other folder's `rules/`, so the risk is real and D-8 stays.
+- Measured in slice 0: a linked worktree loads its own tracked `CLAUDE.md` and `.claude/rules/*`, and the primary checkout's `CLAUDE.local.md` only when the worktree sits inside the primary checkout folder (`.claude/worktrees/*`, which `claude --worktree` uses); a worktree outside it does not get the personal file. Edits that exist only in the primary checkout do not reach a worktree.
 - Narrowing the repository `.gitignore` shows the installed Go-generation `.claude/` content in `git status`. The slice must use an allow list and read `settings.json` first (it may carry a per-machine `PATH`).
-- Two earlier draft SPECs (`agents-conflict-choices`, `agents-choices-step`) and their tests describe `claude-import`. Old receipts that hold such rows must still revert.
+- Two earlier draft SPECs (`agents-conflict-choices`, `agents-choices-step`) and their tests describe `claude-import`. A writer receipt records no pick id, so an old receipt's `CLAUDE.md` row reverts through the generic apply recovery like any other row (the saved earlier bytes come back while the file is unchanged; a changed file is skipped and named). `agents-merge-revert` refuses that receipt id as unknown, and no code reads `claude-import` by name.
 - Many tests pin names. A new always-present preview key breaks `update_user_layer_cli`; the layer key is conditional for that reason.
 - `SPEC-20261122-worktree-place` also edits the managed block template in `src/agents.rs`; whichever lands second rebases a text change.
 
@@ -111,21 +116,28 @@ Slices in this order. Each is one SPEC-backed change with its own audit tier; th
 | Id | Decision | Basis | Undo |
 | --- | --- | --- | --- |
 | D-1 | The block lives in the root `CLAUDE.md`, not in `.claude/CLAUDE.md`. | Both load at launch (memory.md L55-62); the project-root file survives compaction (context-window.md L64). | Change the target constant. |
-| D-2 | The pick order is `import` (recommended), `move`, `leave`; the user chooses. | `import` changes least and keeps one source of truth; nothing is copied twice. | Reorder the choices. |
+| D-2 | The pick order is `move` (recommended), `import`, `leave`; the user chooses. The preview of `move` says that the originals stay and that the user may delete them later. | The user's direction of 2026-11-22: moai projects use `CLAUDE.md` and `CLAUDE.local.md` and not `AGENTS.md`, so `move` ends with one source of truth in the files Claude Code reads; the leader recorded it as decision 1 on the card. Replaces the earlier order `import`, `move`, `leave`. | Reorder the choices. |
 | D-3 | Originals are never deleted or changed; `move` copies. | The rule that nothing of the user's is deleted; the card criterion says originals are kept. | None needed. |
 | D-4 | A moai-generated `AGENTS.local.md` (the first-creation text) is not copied. | `is_generated_local` already recognises it (`a:396`); copying moai's own template would be noise. | Copy it too. |
 | D-5 | The old managed block inside `AGENTS.md` is not copied and not touched; the preview says it is no longer updated. | Originals stay as they are; a fresh block is rendered in `CLAUDE.md`. | Strip it on a later pick. |
-| D-6 | The flow rule has no `paths` key. | Unscoped rules load at launch and survive compaction (context-window.md L64, L79). | Add `paths` for a scoped rule. |
+| D-6 | The flow rule is global: one file `<config dir>/rules/moai/flow.md` per config folder, the NeXT-Flow text, no `paths` key. A project on another flow gets a project rule only through the project harness pick. | The user's decision of 2026-11-22: moai's common content is installed in the config folder and moai writes nothing into a project's `.claude` folders by default. Unscoped rules load at launch and survive compaction (context-window.md L64, L79); a profile folder reads only its own `rules/` (slice 0), so each config folder gets its own copy on the user's pick. Replaces the revision 1 decision of a project file `.claude/rules/moai/flow.md` written from `work_flow`. | Return to a project file, or add `paths` for a scoped rule. |
 | D-7 | `rules/moai.md` is a whole file owned by moai, judged by the last-written hash like the style file. | The file is moai's alone; markers add nothing. | Use a marker block. |
 | D-8 | Removing the old routing block is a separate pick and never the default. | Orca profiles import `~/.claude/CLAUDE.md` and have no `rules/` folder. | Make removal the default once the Orca path is verified. |
 | D-9 | The repository `.gitignore` is narrowed with an allow list: ignore `.claude/*`, re-include `settings.json` and `rules/` after reading what they hold; `.claude/worktrees/` and `CLAUDE.local.md` stay ignored. | A blanket `.claude/` rule blocks tracked settings and rules; the checkout holds untracked Go-generation state. | Restore the two old lines. |
 | D-10 | The project layer is a project layer of `moai update` with its own token outside the plan digest and a key shown only when there is work. | Matches `git_hooks`; keeps the 13 fixed keys. | Move it inside the digest. |
-| D-11 | `.worktreeinclude` is not written until slice 0 answers whether the primary `CLAUDE.local.md` loads in a worktree. | Docs are silent; a copy could load twice. | Write the line after the probe. |
-| D-12 | This SPEC family supersedes in part `SPEC-20261119-agents-conflict-choices` (REQ-11…REQ-14, REQ-16, REQ-17) and `SPEC-20261119-agents-choices-step` (REQ-5, REQ-8, REQ-9, REQ-11); `claude-import` stays only as a revert path. | The shadow model no longer holds when `CLAUDE.md` is moai's file. | Keep both SPECs and the pick. |
+| D-11 | `.worktreeinclude` is not written for `CLAUDE.local.md`. | Slice 0 measured that a worktree inside the primary checkout already reads the primary's `CLAUDE.local.md`, so a copy could load it twice; a worktree outside the checkout does not get it, and the preview of the personal-file pick says so. | Write the line if a copy is wanted for outside worktrees. |
+| D-12 | This SPEC family supersedes in part `SPEC-20261119-agents-conflict-choices` (REQ-11…REQ-14, REQ-16, REQ-17) and `SPEC-20261119-agents-choices-step` (REQ-5, REQ-8, REQ-9, REQ-11); the pick `claude-import` is gone and refused as an unknown id; an old receipt's rows revert through the generic apply recovery (see the risks). | The shadow model no longer holds when `CLAUDE.md` is moai's file. | Keep both SPECs and the pick. |
 | D-13 | `local_file` value `tracked` is read as `ignored` with a preview note. | A personal file is not shared. | Keep `tracked` for `CLAUDE.local.md`. |
 | D-14 | The banner stays as `SPEC-20261121-style-banner` decided. | Implemented and pinned. | None. |
 | D-15 | The requirements are split over five SPECs with this one as parent. | Twelve requirements per SPEC is the size budget; each slice gets its own SPEC and audit. | Merge them. |
 
 ## Result
 
-(Filled when the work is done. This is the research-and-SPEC slice only; no acceptance criterion is met yet.)
+Slices 1 and the repair after its audit are done; slices 3 to 5 are not.
+
+- AC-1: met. `claude_md_layout_cli` filter `blocks_` runs 9 tests: the facts-only block within 15 lines, no CLAUDE file without a pick, append on a new line, and a writer pick `import` or `move` planning no block-only `CLAUDE.md` (the test reads the content: the user's sentence stays only in `AGENTS.md`).
+- AC-2: met. Filter `local_` runs 4 tests: `CLAUDE.local.md` only on the pick, `tracked` planned like `ignored`, a user `!CLAUDE.local.md` negation honoured.
+- AC-3: partly met. Filter `flow_` runs 3 tests of the project plan (no file under the project's `.claude` folders; the block names no flow path). The text of the flow rule belongs to slice 3.
+- AC-5: not met. `tests/claude_md_home_cli.rs` does not exist yet (slice 3).
+- AC-4: neighbouring checks are run again at each slice's READY.
+- The pick `move`, `import`, `leave` is carried out by `SPEC-20261122-claude-md-project-picks` (first part done: the composite, its receipt and revert); the `project_files` layer in `src/update.rs` is its own later change.

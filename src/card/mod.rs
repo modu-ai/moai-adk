@@ -18,11 +18,13 @@
 
 pub mod command;
 pub mod dispatch;
+pub mod drift;
 pub mod early_reclaim;
 pub mod export_db;
 pub mod export_dir;
 pub mod export_format;
 pub mod finish;
+pub mod guard;
 pub mod inbox;
 pub mod input;
 pub mod land;

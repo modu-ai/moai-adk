@@ -9,7 +9,8 @@
 //! backup MANIFEST and the moved tree equal the original bytes and modes, the projection
 //! equals the package; AC-3 recovery restores the original bytes and modes and records
 //! the restore; AC-4 injected failures (after the backup, mid replace) keep the original
-//! or the backup intact and surface as pending; AC-6 both host locations.
+//! or the backup intact and surface as pending; AC-6 the Claude host location, with the shared
+//! agents folder left alone.
 
 #![cfg(unix)]
 
@@ -26,10 +27,7 @@ use std::{
 use tempfile::TempDir;
 
 const EXE: &str = crate::common::MOAI_BIN;
-const ROOTS: [(&str, &str); 2] = [
-    ("claude", ".claude/skills/moai"),
-    ("codex", ".agents/skills/moai"),
-];
+const ROOTS: [(&str, &str); 1] = [("claude", ".claude/skills/moai")];
 
 fn write_pkg(dir: &Path) {
     let files = [
@@ -282,7 +280,7 @@ fn assert_package_installed(root: &Path, stage: &Path) {
     );
 }
 
-/// AC-1 (+AC-6): the plan previews backup-then-replace for both hosts — what, where,
+/// AC-1 (+AC-6): the plan previews backup-then-replace for the Claude host — what, where,
 /// how many files, which hashes — and writes nothing.
 #[test]
 fn plan_previews_backup_then_replace_and_writes_nothing() {
@@ -371,15 +369,15 @@ fn apply_without_token_or_with_a_wrong_token_changes_nothing() {
     assert!(backups(&f.home).is_empty());
 }
 
-/// AC-2 (second half) + AC-6: with the tokens, each host's original folder moves into
+/// AC-2 (second half) + AC-6: with the token, the host's original folder moves into
 /// a backup whose MANIFEST and tree equal the original bytes and modes, and the
 /// projection holds exactly the package.
 #[test]
-fn confirmed_apply_backs_up_and_replaces_both_hosts() {
+fn confirmed_apply_backs_up_and_replaces_the_host() {
     let f = fixture();
     let before = originals(&f);
     let p = plan(&f);
-    let toks = [token(&p, "claude"), token(&p, "codex")];
+    let toks = [token(&p, "claude")];
     let refs: Vec<&str> = toks.iter().map(String::as_str).collect();
     let r = result_of(&apply(&f, &p, &refs, None));
     assert_eq!(r["status"], json!("applied"), "{r}");
@@ -427,20 +425,25 @@ fn confirmed_apply_backs_up_and_replaces_both_hosts() {
     }
 }
 
-/// Only the confirmed host is replaced; the other stays blocked and untouched.
+/// A Go-type folder in the shared agents folder is not planned, backed up or replaced: moai no
+/// longer manages it, so the plan has no row for it and the apply leaves it byte for byte.
 #[test]
-fn a_token_replaces_only_its_host() {
+fn the_shared_agents_folder_is_not_planned_or_replaced() {
     let f = fixture();
-    let before = originals(&f);
+    let shared = f.home.join(".agents/skills/moai");
+    write_go_skill(&shared, "shared");
+    let shared_before = snapshot(&shared);
     let p = plan(&f);
-    let r = result_of(&apply(&f, &p, &[&token(&p, "codex")], None));
-    assert_eq!(host(&r, "claude")["status"], json!("blocked"));
-    assert_eq!(host(&r, "codex")["status"], json!("replaced"));
-    assert_eq!(
-        snapshot(&f.home.join(ROOTS[0].1)),
-        before[0],
-        "claude untouched"
-    );
+    let hosts: Vec<&str> = p["hosts"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|h| h["host"].as_str().unwrap())
+        .collect();
+    assert_eq!(hosts, ["claude"], "{p}");
+    let r = result_of(&apply(&f, &p, &[&token(&p, "claude")], None));
+    assert_eq!(host(&r, "claude")["status"], json!("replaced"), "{r}");
+    assert_eq!(snapshot(&shared), shared_before, "shared folder untouched");
     assert_eq!(backups(&f.home).len(), 1);
 }
 
@@ -451,7 +454,7 @@ fn recovery_restores_the_original_folder() {
     let f = fixture();
     let before = originals(&f);
     let p = plan(&f);
-    let toks = [token(&p, "claude"), token(&p, "codex")];
+    let toks = [token(&p, "claude")];
     let refs: Vec<&str> = toks.iter().map(String::as_str).collect();
     result_of(&apply(&f, &p, &refs, None));
 

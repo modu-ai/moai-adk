@@ -145,10 +145,19 @@ impl World {
         }
     }
 
+    /// Writes the profile to BOTH profile folders, named by the library's own constants (never a
+    /// literal): the merged reader prefers the newer folder when both exist, and a landing at the
+    /// tip rewrites that file — without this, a command would silently shadow the profile the
+    /// test just set.
     fn write_profile(&self) {
-        let cfg = self.project.join(".moai-cli/project.yaml");
-        fs::create_dir_all(cfg.parent().unwrap()).unwrap();
-        fs::write(&cfg, &self.profile).unwrap();
+        for dir in [
+            moai_cli::state_root::EARLIER_PROJECT_DIR,
+            moai_cli::state_root::MOAI_DIR,
+        ] {
+            let cfg = self.project.join(dir).join("project.yaml");
+            fs::create_dir_all(cfg.parent().unwrap()).unwrap();
+            fs::write(&cfg, &self.profile).unwrap();
+        }
     }
 
     fn set_profile(&mut self, bytes: &[u8]) {
@@ -448,9 +457,19 @@ fn the_local_completion_is_recorded_once() {
     assert_eq!(w.events(&card, "card.finish"), 1);
     let record = w.record();
     assert!(record.is_file(), "exactly one record file exists");
+    // The tip's guard keeps its own record in the same folder; only the copy's files count.
     let dir = record.parent().unwrap();
-    let moai_entries: Vec<_> = fs::read_dir(dir).unwrap().collect();
-    assert_eq!(moai_entries.len(), 1, "no second record was written");
+    let copy_files: Vec<_> = fs::read_dir(dir)
+        .unwrap()
+        .filter_map(|e| e.ok())
+        .filter(|e| {
+            e.file_name()
+                .to_string_lossy()
+                .to_ascii_lowercase()
+                .starts_with("remote-copy")
+        })
+        .collect();
+    assert_eq!(copy_files.len(), 1, "no second copy record was written");
     assert_eq!(w.record_state(), "done");
 }
 
@@ -471,12 +490,19 @@ fn an_absent_remote_branch_is_created_and_a_profile_without_a_branch_is_reported
     assert_eq!(landed["remote_copy"]["state"], json!("done"), "{landed}");
     assert_eq!(landed["remote_copy"]["pushed"], json!(true), "{landed}");
     assert_eq!(w.remote_tip(), candidate, "the branch was created");
+}
 
+/// A profile with no integration branch answers pending with the reason and pushes nothing — in a
+/// repository where no guard record names a branch either (once a landing has written the record
+/// `moai/integration-branch`, the record wins over the profile and the branch stays readable).
+#[test]
+fn a_profile_without_a_branch_answers_pending_where_no_record_names_one() {
+    let mut w = World::new();
     w.set_profile(NO_BRANCH_PROFILE);
     let reported = w.remote_copy();
     assert_eq!(reported["state"], json!("pending"), "{reported}");
     assert!(reported["why"].is_string(), "{reported}");
-    assert_eq!(w.integ(), candidate, "nothing moved");
+    assert_eq!(w.integ(), w.tip, "nothing moved");
 }
 
 // ---- B1: the copy is off by default and answers off with a preview ---------------------------
@@ -500,21 +526,22 @@ fn a_landing_with_the_copy_off_pushes_nothing_and_answers_off() {
 }
 
 /// B1: with the copy off the on-demand command answers a preview and writes nothing — no push,
-/// no record.
+/// no record, and no network at all: the remote is not even read, so the behind-by count stays
+/// unknown while the copy is off.
 #[test]
 fn the_off_command_answers_a_preview_and_writes_nothing() {
     let mut w = World::new();
     w.set_profile(COPY_OFF_PROFILE);
-    let seeded = w.remote_tip();
+    w.bare_away();
     let answered = w.remote_copy();
     assert_eq!(answered["state"], json!("off"), "{answered}");
     let preview = &answered["preview"];
     assert_eq!(preview["remote"], json!("origin"), "{answered}");
     assert_eq!(preview["branch"], json!("integ"), "{answered}");
-    assert!(preview["behind_by"].is_number(), "{answered}");
+    assert!(preview["behind_by"].is_null(), "{answered}");
     assert!(preview["ci"].is_string(), "{answered}");
     assert!(!w.record().exists(), "the off answer writes no record");
-    assert_eq!(w.remote_tip(), seeded, "nothing reached the remote");
+    w.bare_back();
 }
 
 // ---- B2: a token inside a push-remote URL never reaches an answer or the record --------------
@@ -605,12 +632,12 @@ fn the_push_arguments_carry_the_safety_flags() {
     assert!(!push_line.contains("+refs/"), "{push_line}");
 }
 
-// ---- N2 and N3: the unreachable push and the unknown descendant -------------------------------
+// ---- N2 and R2: the unreachable push and the unknown remote tip -------------------------------
 
-/// N3: a remote holding a descendant the local repository does not know settles as success,
-/// never as a hold (the parent SPEC's AC-3).
+/// R2: a remote tip the local repository does not know reads as a hold, never as a descendant —
+/// a rewritten remote is not settled as success without a look.
 #[test]
-fn an_unknown_descendant_settles_as_done() {
+fn an_unknown_remote_tip_reads_as_a_hold() {
     let w = World::new();
     // A third clone makes a commit on the remote that the project never fetched.
     let third = tempfile::Builder::new()
@@ -630,10 +657,10 @@ fn an_unknown_descendant_settles_as_done() {
     let pushed = git(&clone, &["rev-parse", "HEAD"]);
     git(&clone, &["push", "-q", "origin", "integ:refs/heads/integ"]);
     let settled = w.remote_copy();
-    assert_eq!(settled["state"], json!("done"), "{settled}");
-    assert_eq!(settled["pushed"], json!(false), "{settled}");
+    assert_eq!(settled["state"], json!("hold"), "{settled}");
+    assert!(settled["why"].is_string(), "{settled}");
     assert_eq!(w.remote_tip(), pushed);
-    assert!(!w.record_text().contains("\"hold\""));
+    assert_eq!(w.record_state(), "hold");
 }
 
 /// N2: a push that cannot reach the remote reads pending, never a hold.

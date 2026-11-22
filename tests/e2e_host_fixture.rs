@@ -179,10 +179,6 @@ impl Fixture {
         self.home.join(".claude/skills/moai")
     }
 
-    fn codex(&self) -> PathBuf {
-        self.home.join(".agents/skills/moai")
-    }
-
     fn hosts_dir(&self) -> PathBuf {
         let inst = self.home.join(".moai-cli/installations");
         let dirs: Vec<PathBuf> = fs::read_dir(&inst)
@@ -320,8 +316,8 @@ fn e2e_setup_update_interrupt_restore_preserves_user_edits() {
         .unwrap();
     assert_eq!(claude["receipt_status"], json!("recovered"), "{claude}");
 
-    // The interrupted host is back at v1 exactly; the user edit survived byte for byte;
-    // the other host keeps its committed v2.
+    // The interrupted host is back at v1 exactly; the user edit survived byte for byte; no
+    // shared agents copy was ever written.
     assert_eq!(
         fs::read(f.claude().join("SKILL.md")).unwrap(),
         SKILL_V1.as_bytes()
@@ -332,12 +328,7 @@ fn e2e_setup_update_interrupt_restore_preserves_user_edits() {
         UPDATE_V1.as_bytes()
     );
     assert!(!f.claude().join("workflows/new.md").exists());
-    assert_eq!(
-        fs::read(f.codex().join("SKILL.md")).unwrap(),
-        SKILL_V2.as_bytes(),
-        "the committed host must keep the applied v2"
-    );
-    assert_eq!(f.receipt("codex")["status"], json!("committed"));
+    assert!(!f.home.join(".agents").exists());
     assert_eq!(
         f.go_digest(),
         go_before,

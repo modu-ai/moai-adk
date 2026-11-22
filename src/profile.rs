@@ -60,6 +60,8 @@ const PROFILE_KEYS: &[(&str, bool)] = &[
     ("work_flow", true),
     ("remote_copy", true),
     ("test_paths", true),
+    ("ci", true),
+    ("checks", true),
 ];
 
 fn managed_keys() -> impl Iterator<Item = &'static str> {
@@ -172,6 +174,17 @@ pub struct Profile {
     /// this key reads unchanged.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub test_paths: Option<Vec<String>>,
+    /// The saved answers of the plain CI questions (SPEC-20261122-project-ci-design): what the
+    /// project is, which systems its users run, whether and where it deploys, public or
+    /// private with the monthly budget, and how strict the checks are. Absent means the
+    /// interview recorded none; a profile written before this key reads unchanged.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ci: Option<crate::project_ci::CiAnswers>,
+    /// The check commands the project declares, in the order they run: the one list the
+    /// generated workflow and the project's local check both read. Absent means none were
+    /// declared; a profile written before this key reads unchanged.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub checks: Option<Vec<crate::project_ci::CheckEntry>>,
 }
 
 /// The flows the `work_flow` key names (card C-70), m-flow first.
@@ -190,7 +203,7 @@ pub struct WorkFlowSettings {
 /// A branch name git takes, kept to a portable subset: 1 to 100 bytes of ASCII letters, digits
 /// and `. - _ /`; no leading `-`, `.` or `/`; no trailing `/` or `.`; no `..`, `//` or `/.`;
 /// no `/` component ending in `.lock`; not `HEAD` (as `git check-ref-format --branch` rules).
-fn branch_name(s: &str) -> bool {
+pub(crate) fn branch_name(s: &str) -> bool {
     !s.is_empty()
         && s.len() <= 100
         && s != "HEAD"
@@ -353,6 +366,12 @@ fn validate(p: &Profile) -> Result<()> {
     }
     if let Some(paths) = &p.test_paths {
         crate::tdd::validate_declared(paths)?;
+    }
+    if let Some(answers) = &p.ci {
+        crate::project_ci::validate_answers(answers)?;
+    }
+    if let Some(checks) = &p.checks {
+        crate::project_ci::validate_checks(checks)?;
     }
     let decisions_ok = p.decisions.len() <= DECISION_ITEM_LIMIT
         && p.decisions.iter().all(|d| {
@@ -1291,6 +1310,8 @@ mod tests {
             work_flow: None,
             remote_copy: None,
             test_paths: None,
+            ci: None,
+            checks: None,
         }
     }
 
@@ -1365,6 +1386,23 @@ mod tests {
             }),
             remote_copy: Some(true),
             test_paths: Some(vec!["qa/".into()]),
+            ci: Some(crate::project_ci::CiAnswers {
+                kind: "cli".into(),
+                systems: vec!["linux".into()],
+                deploy: crate::project_ci::CiDeploy {
+                    enabled: false,
+                    target: None,
+                },
+                visibility: "public".into(),
+                monthly_budget_usd: None,
+                macos_price_ack: None,
+                dependabot: None,
+                strict: "report".into(),
+            }),
+            checks: Some(vec![crate::project_ci::CheckEntry {
+                id: "test".into(),
+                command: "cargo test".into(),
+            }]),
             ..v2()
         };
         let fields: Vec<String> = serde_json::to_value(&full)
@@ -1397,7 +1435,9 @@ mod tests {
                 "versioning",
                 "work_flow",
                 "remote_copy",
-                "test_paths"
+                "test_paths",
+                "ci",
+                "checks"
             ]
         );
     }

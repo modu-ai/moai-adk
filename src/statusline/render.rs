@@ -4,18 +4,19 @@
 
 use super::color::Profile;
 use super::segments;
-use super::state::{DisplayConfig, Status};
+use super::state::{DisplayConfig, Flow, Status};
+use super::width;
 use std::collections::BTreeMap;
 
 const SEPARATOR: &str = " | ";
-/// User instruction 2026-11-19, line 2: the two git counts, the items of the card
-/// counts and the text after the repository and the branch icons are one space apart (leader
-/// decision, card note 3570, decision D-1 of SPEC-20261120-statusline-line2-order: the two
-/// spaces of the user's example are the terminal's drawing of the variation-selector icons).
-/// The gap between the two git counts, between the card items and after the repository and the
-/// branch icons is set here; the one space after each other icon sits in its own `format!`.
+/// User instruction 2026-11-19, line 2: the two git counts and the text after the repository and
+/// the branch icons are one space apart (leader decision, card note 3570, decision D-1 of
+/// SPEC-20261120-statusline-line2-order: the two spaces of the user's example are the
+/// terminal's drawing of the variation-selector icons). The gap between the two git counts and
+/// after the repository and the branch icons is set here; the one space after each other icon
+/// sits in its own `format!`. The flow line spaces its icons by [`width::icon_text`]
+/// (SPEC-20261122-statusline-flow D-6), and the other lines follow in their own steps.
 const GIT_COUNTS_GAP: &str = " ";
-const CARD_ITEMS_GAP: &str = " ";
 const REPO_ICON_GAP: &str = " ";
 const BRANCH_ICON_GAP: &str = " ";
 const SGR_NORMAL_INTENSITY: &str = "\x1b[22m";
@@ -105,6 +106,33 @@ pub struct Renderer {
     /// The render's clock (the `--now-unix` seam, `Context::now`): the weekly reset
     /// countdown is measured against it, so the goldens stay deterministic.
     now: i64,
+    /// The width a line may take (`COLUMNS` − 2 − padding, [`width::budget`]); `None` writes the
+    /// widest form of every line.
+    budget: Option<usize>,
+}
+
+/// One colored piece of a line; the text is plain.
+#[derive(Clone)]
+struct Piece {
+    color: &'static str,
+    text: String,
+}
+
+/// Pieces joined by one space (`🗂️  D43 R150 W14 E22 ✅ 19` is two pieces).
+type Group = Vec<Piece>;
+
+/// The plain text of a form: its groups, each group's pieces joined by a space, the groups
+/// joined by the separator. Its display width is what the form picker measures.
+fn form_text(form: &[Group]) -> String {
+    form.iter()
+        .map(|g| {
+            g.iter()
+                .map(|p| p.text.as_str())
+                .collect::<Vec<_>>()
+                .join(" ")
+        })
+        .collect::<Vec<_>>()
+        .join(SEPARATOR)
 }
 
 impl Renderer {
@@ -114,7 +142,14 @@ impl Renderer {
             theme: theme(&config.theme),
             segments: config.segments.clone(),
             now: 0,
+            budget: None,
         }
+    }
+
+    /// The width a line may take; see [`width::budget`].
+    pub fn with_budget(mut self, budget: Option<usize>) -> Renderer {
+        self.budget = budget;
+        self
     }
 
     /// The render's clock (`Context::now`); the weekly reset countdown measures against it.
@@ -137,11 +172,13 @@ impl Renderer {
     /// segment and the branch; line 3 opens with the card counts, carries the usage windows, and
     /// closes with the worktree label. The cache segment is not in the layout. A line with
     /// nothing in it is left out, so the numbers above shift up by one for each empty line
-    /// before it.
+    /// before it. SPEC-20261122-statusline-flow: the cards by stage are the flow line between
+    /// the repository line and the usage windows; the card counts no longer open line 3.
     pub fn render(&self, status: &Status) -> String {
         let lines: Vec<String> = [
             self.info_line(status),
             self.git_line(status),
+            self.flow_line(status),
             self.windows_line(status),
         ]
         .into_iter()
@@ -227,13 +264,10 @@ impl Renderer {
 
     fn windows_line(&self, s: &Status) -> String {
         let mut segs = Vec::new();
-        // #2928 (user instruction 6878415244, 2026-11-14): line 3 is the usage windows; the tag moved
-        // to the front of line 1. The user's third instruction of 2026-11-20: the card counts
-        // open this line (they read the project's local ledger, not git), and the worktree
-        // label closes it (was: it opened the line, user instruction 2026-11-19).
-        if let Some(cards) = self.cards(s) {
-            segs.push(cards);
-        }
+        // #2928 (user instruction 6878415244, 2026-11-14): the usage windows have a line of their
+        // own; the tag moved to the front of line 1. SPEC-20261122-statusline-flow: the cards by
+        // stage have their own line too ([`Renderer::flow_line`]), so this line is the windows
+        // only.
         // The user's final call (2026-11-21, SPEC-20261121-statusline-detached): the windows
         // render as numbers only — `🔋 CW 61%`, no graph, no trailing colon — and the
         // `(⚠️ /clear)` / `(🛑/clear!)` hints stay gone (REQ-5, REQ-7). An earlier "keep the
@@ -325,32 +359,101 @@ impl Renderer {
         segs.join(SEPARATOR)
     }
 
-    /// The card counts (user instructions 2026-11-16 and 2026-11-17; order and icons by the
-    /// user's decision 2026-11-19; one space between the items and no slash): it
-    /// opens line 3 since the user's third instruction of 2026-11-20
-    /// (SPEC-20261120-statusline-layout, was: line 1, then line 2),
-    /// `🗂️ <remaining> ▶️ <working> 🔃 <waiting for integration> ✅ <done>` from the project's
-    /// local ledger, under the one `cards` option;
-    /// `🔃` is left out when the notes could not be read. A ledger without cards shows zeros;
-    /// `None` when there is no ledger to read. Each number has its icon, so color is never the
-    /// only signal.
-    fn cards(&self, s: &Status) -> Option<String> {
-        let c = s.cards.filter(|_| self.enabled("cards"))?;
-        let remaining = self.paint(self.theme.cards_waiting, &format!("🗂️ {}", c.remaining));
-        let working = self.paint(self.theme.cards_active, &format!("▶️ {}", c.in_progress));
-        let done = self.paint(self.theme.cards_done, &format!("✅ {}", c.done));
-        // `🔃` only when the notes could be read; otherwise three numbers in the same order and
-        // with the same icons, never a guess.
-        Some(match c.waiting {
-            Some(w) => [
-                remaining,
-                working,
-                self.paint(self.theme.cards_posted, &format!("🔃 {w}")),
-                done,
-            ]
-            .join(CARD_ITEMS_GAP),
-            None => [remaining, working, done].join(CARD_ITEMS_GAP),
-        })
+    /// The flow line (SPEC-20261122-statusline-flow REQ-7 and REQ-9): the cards of the project's
+    /// local ledger by the stage of their progress — my card, what waits for me, what is blocked
+    /// or on hold, the flow and what closed today — under the one `cards` option. It is written
+    /// in the widest of its forms that fits the width budget; empty when there is no ledger to
+    /// read or nothing to show. Each number has its letter and each icon its spacing
+    /// ([`width::icon_text`]), so color is never the only signal.
+    fn flow_line(&self, s: &Status) -> String {
+        let Some(flow) = s.flow.filter(|_| self.enabled("cards")) else {
+            return String::new();
+        };
+        let forms = self.flow_forms(&flow);
+        let widths: Vec<usize> = forms
+            .iter()
+            .map(|f| width::display_width(&form_text(f)))
+            .collect();
+        if forms.is_empty() {
+            return String::new();
+        }
+        let form = &forms[width::pick(&widths, self.budget)];
+        form.iter()
+            .map(|g| {
+                g.iter()
+                    .map(|p| self.paint(p.color, &p.text))
+                    .collect::<Vec<_>>()
+                    .join(" ")
+            })
+            .collect::<Vec<_>>()
+            .join(SEPARATOR)
+    }
+
+    /// The forms of the flow line from the widest to the narrowest, never an empty one: the
+    /// groups drop from the right — the flow group, then the hold count, then the waits — and a
+    /// group whose counts are all zero is left out with its separator. Equal neighbours are
+    /// kept once. An unsplit [`Flow`] (the notes could not be read) has one form,
+    /// `🗂️  D<n> R<n> W<n>`, never a guess.
+    fn flow_forms(&self, f: &Flow) -> Vec<Vec<Group>> {
+        let t = &self.theme;
+        let piece = |color, icon, text: String| Piece {
+            color,
+            text: width::icon_text(icon, &text),
+        };
+        if !f.split {
+            let text = format!("D{} R{} W{}", f.draft, f.ready, f.working);
+            return vec![vec![vec![piece(t.cards_waiting, "🗂️", text)]]];
+        }
+        let mine: Option<Group> = f.mine.map(|m| {
+            vec![piece(
+                t.cards_active,
+                "🎯",
+                format!("c{} {}", m.card, m.stage.letter()),
+            )]
+        });
+        let waits: Option<Group> = (f.submitted + f.audited + f.landed > 0).then(|| {
+            vec![piece(
+                t.cards_posted,
+                "👀",
+                format!("S{} A{} L{}", f.submitted, f.audited, f.landed),
+            )]
+        });
+        let blocked = || piece(t.issues, "⛔", format!("B{}", f.blocked));
+        let held = || piece(t.issues, "⏸️", format!("H{}", f.hold));
+        let attention: Option<Group> = (f.blocked + f.hold > 0).then(|| vec![blocked(), held()]);
+        let attention_no_hold: Option<Group> = (f.blocked > 0).then(|| vec![blocked()]);
+        let flow: Option<Group> = (f.draft + f.ready + f.working + f.stale + f.done_today > 0)
+            .then(|| {
+                vec![
+                    piece(
+                        t.cards_waiting,
+                        "🗂️",
+                        format!("D{} R{} W{} E{}", f.draft, f.ready, f.working, f.stale),
+                    ),
+                    piece(t.cards_done, "✅", f.done_today.to_string()),
+                ]
+            });
+        let levels: [[Option<Group>; 4]; 4] = [
+            [mine.clone(), waits.clone(), attention.clone(), flow],
+            [mine.clone(), waits.clone(), attention, None],
+            [mine.clone(), waits, attention_no_hold.clone(), None],
+            [mine, None, attention_no_hold, None],
+        ];
+        let mut forms: Vec<Vec<Group>> = Vec::new();
+        for level in levels {
+            let form: Vec<Group> = level.into_iter().flatten().collect();
+            if form.is_empty() {
+                continue;
+            }
+            if forms
+                .last()
+                .is_some_and(|last| form_text(last) == form_text(&form))
+            {
+                continue;
+            }
+            forms.push(form);
+        }
+        forms
     }
 
     /// The three groups that retain the `git_branch` switch: the forge counts and the
@@ -503,7 +606,9 @@ fn apply_base_color(text: &str, base: &str) -> String {
 mod tests {
     use super::*;
     use crate::statusline::input::{self, RateWindow};
-    use crate::statusline::state::{self, CacheTimer, CardCounts, Context, GitHubCounts, Version};
+    use crate::statusline::state::{
+        self, CacheTimer, Context, Flow, GitHubCounts, MyCard, Stage, Version,
+    };
 
     fn plain(status: &Status, disabled: &[&str]) -> String {
         let config = DisplayConfig {
@@ -597,10 +702,11 @@ mod tests {
         assert_eq!(line, "📡 owner/repo, ⬇️ 7 🔀 3 | 🅱️ main ↑4 +2");
     }
 
-    /// The user's picked example (2026-11-20T21:5xZ): every segment present
-    /// gives exactly these three lines in plain output. The cache data is in the input and,
-    /// by D-1, shows nothing; the worktree label closes line 2; the weekly window carries
-    /// its reset countdown measured from the render's clock.
+    /// The user's picked example (2026-11-20T21:5xZ): every segment present gives exactly these
+    /// lines in plain output — since SPEC-20261122-statusline-flow the flow line stands between
+    /// the repository line and the usage windows. The cache data is in the input and, by D-1,
+    /// shows nothing; the worktree label closes line 2; the weekly window carries its reset
+    /// countdown measured from the render's clock.
     fn example_status() -> Status {
         Status {
             model: "Opus 5.5".into(),
@@ -634,30 +740,52 @@ mod tests {
             git: Some(segments::parse_porcelain(
                 "## v2026.11.0...origin/v2026.11.0 [ahead 207]\n M a\n M b\n M c\n M d\n M e\nA  f\nA  g\nA  h\n?? i\n?? j\n?? k\n",
             )),
-            cards: Some(CardCounts {
-                in_progress: 24,
-                waiting: Some(21),
-                remaining: 105,
-                done: 76,
-            }),
+            flow: Some(example_flow()),
             worktree: "c135".into(),
             ..Default::default()
         }
     }
 
+    /// The flow of the example: one card of mine, and every group of the flow line present.
+    fn example_flow() -> Flow {
+        Flow {
+            draft: 43,
+            ready: 150,
+            working: 14,
+            stale: 22,
+            submitted: 11,
+            audited: 2,
+            landed: 0,
+            blocked: 3,
+            hold: 7,
+            done_today: 19,
+            mine: Some(MyCard {
+                card: 12,
+                stage: Stage::Working,
+            }),
+            split: true,
+        }
+    }
+
+    /// The widest form of the flow line of [`example_flow`].
+    const P0: &str = "🎯 c12 W | 👀 S11 A2 L0 | ⛔ B3 ⏸️  H7 | 🗂️  D43 R150 W14 E22 ✅ 19";
+
     /// The render clock the example is measured at (`--now-unix` seam).
     const EXAMPLE_NOW: i64 = 1_700_000_000;
 
     #[test]
-    fn the_user_example_gives_exactly_the_three_lines() {
+    fn the_user_example_gives_exactly_these_lines() {
         let out = Renderer::new(&DisplayConfig::default(), None)
             .with_now(EXAMPLE_NOW)
             .render(&example_status());
         assert_eq!(
             out,
-            "🏷️ Leader | 🧠 Opus 5.5 | 🤔 high·t | 🤖 v2.1.325 | 🗿 v4.2647.10\n\
-             📡 modu-ai/moai-adk, ⬇️ 0 🔀 0 | 🅱️ v2026.11.0 ↑207 +11 | 🌳 c135\n\
-             🗂️ 105 ▶️ 24 🔃 21 ✅ 76 | 🪫 CW 97% | 🔋 7D 21% (resets in 6d 21h)"
+            format!(
+                "🏷️ Leader | 🧠 Opus 5.5 | 🤔 high·t | 🤖 v2.1.325 | 🗿 v4.2647.10\n\
+                 📡 modu-ai/moai-adk, ⬇️ 0 🔀 0 | 🅱️ v2026.11.0 ↑207 +11 | 🌳 c135\n\
+                 {P0}\n\
+                 🪫 CW 97% | 🔋 7D 21% (resets in 6d 21h)"
+            )
         );
     }
 
@@ -1165,73 +1293,63 @@ mod tests {
         assert!(plain(&status, &[]).contains("📡 n/a, ⬇️ 0 🔀 0"));
     }
 
-    /// The card counts (user instructions 2026-11-16 and 2026-11-17), moved to line 3 by the
-    /// user's third instruction of 2026-11-20: `🗂️ remaining ▶️ in progress ✅ done` opens
-    /// line 3 before the usage windows; zero is shown, and absent counts leave line 3 as it was.
+    /// SPEC-20261122-statusline-flow REQ-7 and REQ-8: the cards by stage have a line of their own
+    /// between the repository line and the usage windows. Lines 1 and 2 and the windows do not
+    /// change, the `cards` option hides the flow line and nothing else, and it does not depend
+    /// on git: forge counts, repository and branch change line 2, never the flow line.
     #[test]
-    fn the_card_counts_open_line_three_before_the_usage_windows() {
-        // The last line: line 3 in the full render, and the same line one up when the git
-        // line is gone.
-        let line3 = |s: &Status, off: &[&str]| plain(s, off).lines().last().unwrap().to_string();
+    fn the_flow_line_stands_between_the_repository_line_and_the_usage_windows() {
         let mut status = full_status();
         let without = plain(&status, &[]);
+        assert_eq!(without.lines().count(), 3, "no ledger: no flow line");
         assert_eq!(
-            line3(&status, &[]),
+            without.lines().last().unwrap(),
             "🔋 CW 50% | 🪫 7D 75%",
-            "no counts: the windows alone"
+            "no flow: the windows alone"
         );
-        status.cards = Some(CardCounts {
-            in_progress: 5,
-            waiting: None,
-            remaining: 50,
-            done: 12,
-        });
-        assert_eq!(
-            line3(&status, &[]),
-            "🗂️ 50 ▶️ 5 ✅ 12 | 🔋 CW 50% | 🪫 7D 75%"
-        );
-        // Lines 1 and 2 do not change.
+        status.flow = Some(example_flow());
         let with = plain(&status, &[]);
-        assert_eq!(with.lines().next(), without.lines().next());
-        assert_eq!(with.lines().nth(1), without.lines().nth(1));
-        assert_eq!(with.lines().count(), 3);
-        // The `cards` option hides the group and nothing else.
+        let lines: Vec<&str> = with.lines().collect();
+        assert_eq!(lines.len(), 4, "{with}");
+        assert_eq!(Some(lines[0]), without.lines().next());
+        assert_eq!(Some(lines[1]), without.lines().nth(1));
+        assert_eq!(lines[2], P0);
+        assert_eq!(Some(lines[3]), without.lines().nth(2));
+        // The `cards` option hides the flow line and nothing else.
         assert_eq!(plain(&status, &["cards"]), without);
-        // The counts come from the ledger, not from git: forge counts, the repository and the
-        // branch change line 2, never the place of the group on line 3.
-        let with_cards = with.lines().nth(2).unwrap().to_string();
-        assert_eq!(line3(&status, &["github"]), with_cards);
+        // The flow comes from the ledger, not from git.
+        let flow_line =
+            |s: &Status, off: &[&str]| plain(s, off).lines().nth(2).unwrap().to_string();
+        assert_eq!(flow_line(&status, &["github"]), P0);
         status.github.suppressed = true;
-        assert_eq!(line3(&status, &[]), with_cards);
-        status.github = GitHubCounts::default();
-        assert_eq!(line3(&status, &[]), with_cards);
+        assert_eq!(flow_line(&status, &[]), P0);
         status.repo = None;
-        assert_eq!(line3(&status, &[]), with_cards);
         status.git = None;
-        assert_eq!(line3(&status, &[]), with_cards);
-        // An empty ledger is not an absent one.
-        status.cards = Some(CardCounts::default());
+        let bare = plain(&status, &["git_branch"]);
         assert_eq!(
-            line3(&status, &[]),
-            "🗂️ 0 ▶️ 0 ✅ 0 | 🔋 CW 50% | 🪫 7D 75%"
+            bare.lines().nth(1),
+            Some(P0),
+            "line 2 is gone, the flow moves up"
         );
+        // A ledger without a card has nothing to show: the line is left out, not zeros.
+        status.flow = Some(Flow {
+            split: true,
+            ..Default::default()
+        });
+        // (Line 2 is gone here too: the model line and the windows are what is left.)
+        assert_eq!(plain(&status, &[]).lines().count(), 2);
     }
 
     /// SPEC-20261120-statusline-layout (user instruction 2026-11-20): line 2 opens with one
     /// segment `📡 owner/repo, ⬇️ n 🔀 n` — the comma right after the repository name, the
     /// forge counts in the same segment — then the branch, then the pull request, groups
-    /// joined by ` | `, and no group has a slash in it. The card counts stand on line 3
-    /// (the user's third instruction of 2026-11-20).
+    /// joined by ` | `, and no group has a slash in it. The flow line stands under it
+    /// (SPEC-20261122-statusline-flow) and the windows under that.
     #[test]
     fn line_two_reads_the_repository_with_the_forge_counts_then_the_branch_then_the_pr() {
         let line = |s: &Status, off: &[&str]| plain(s, off).lines().nth(1).unwrap().to_string();
         let mut status = full_status();
-        status.cards = Some(CardCounts {
-            in_progress: 5,
-            waiting: Some(15),
-            remaining: 50,
-            done: 65,
-        });
+        status.flow = Some(example_flow());
         status.pr = Some(state::PrInfo {
             number: 42,
             url: String::new(),
@@ -1258,25 +1376,18 @@ mod tests {
             plain(&status, &[]).lines().next().unwrap(),
             "🏷️ agent | 🧠 Opus | 🤔 high·t | 🤖 v2.1.293 | 🗿 v2.0 -> 🗿 v3.0"
         );
-        // Line 3 opens with the card counts, and the waiting count takes its own number
-        // between the working and the done number.
+        // The flow line is line 3 and the windows alone are line 4.
+        assert_eq!(plain(&status, &[]).lines().nth(2).unwrap(), P0);
         assert_eq!(
-            plain(&status, &[]).lines().nth(2).unwrap(),
-            "🗂️ 50 ▶️ 5 🔃 15 ✅ 65 | 🔋 CW 50% | 🪫 7D 75%"
+            plain(&status, &[]).lines().nth(3).unwrap(),
+            "🔋 CW 50% | 🪫 7D 75%"
         );
-        // Notes unreadable: the same place, three items.
-        status.cards.as_mut().unwrap().waiting = None;
-        assert_eq!(
-            plain(&status, &[]).lines().nth(2).unwrap(),
-            "🗂️ 50 ▶️ 5 ✅ 65 | 🔋 CW 50% | 🪫 7D 75%"
-        );
-        status.cards.as_mut().unwrap().waiting = Some(15);
         // Without the forge counts the repository name stands alone, with no comma.
         assert_eq!(
             line(&status, &["github"]),
             "📡 owner/repo | 🅱️ main ↑5 ↓2 +3 | 🔗 #42 pending"
         );
-        // The `cards` switch hides the group and nothing else.
+        // The `cards` switch hides the flow line and nothing else.
         assert_eq!(
             plain(&status, &["cards"]).lines().nth(2).unwrap(),
             "🔋 CW 50% | 🪫 7D 75%"
@@ -1288,115 +1399,44 @@ mod tests {
         );
     }
 
-    /// The counts come from the local ledger, not from the repository, so they are
-    /// shown without a repository name, without a branch and with `git_branch` off.
-    /// A known waiting count gives the four-number form with `🔃` between the working and the
-    /// done number; `None` (notes unreadable) gives the three-number form without it, and
-    /// `cards` off hides all of it.
+    /// The flow comes from the local ledger, not from the repository, so the flow line is shown
+    /// without a repository name, without a branch and with `git_branch` off; the worktree
+    /// label stands alone on line 2 (REQ-4 of the layout SPEC) and the windows close the output.
     #[test]
-    fn waiting_cards_get_their_own_number_on_line_three_and_none_gives_the_three_number_form() {
-        // The last line: line 3 in the full render, and the same line one up when the git
-        // line is gone.
-        let line3 = |s: &Status, off: &[&str]| plain(s, off).lines().last().unwrap().to_string();
+    fn the_flow_line_does_not_need_the_repository_or_the_branch() {
         let mut status = full_status();
-        status.worktree = "wt".into();
-        status.cards = Some(CardCounts {
-            in_progress: 2,
-            waiting: Some(26),
-            remaining: 50,
-            done: 12,
-        });
-        // The counts read the ledger, not git: with `git_branch` off they still open line 3,
-        // and the worktree label stands alone on line 2 (it closes line 2 now — REQ-4).
-        assert_eq!(
-            line3(&status, &["git_branch"]),
-            "🗂️ 50 ▶️ 2 🔃 26 ✅ 12 | 🔋 CW 50% | 🪫 7D 75%"
-        );
-        assert_eq!(
-            plain(&status, &["git_branch"]).lines().nth(1).unwrap(),
-            "🌳 wt"
-        );
-        // Without the ledger notes the four-number form becomes the three-number one.
-        status.cards = Some(CardCounts {
-            in_progress: 28,
-            waiting: None,
-            remaining: 50,
-            done: 12,
-        });
-        assert_eq!(
-            line3(&status, &["git_branch"]),
-            "🗂️ 50 ▶️ 28 ✅ 12 | 🔋 CW 50% | 🪫 7D 75%"
-        );
-    }
-
-    #[test]
-    fn card_counts_do_not_need_the_repository_or_the_branch() {
-        // The last line: line 3 in the full render, and the same line one up when the git
-        // line is gone.
-        let line3 = |s: &Status, off: &[&str]| plain(s, off).lines().last().unwrap().to_string();
-        let mut status = full_status();
-        status.cards = Some(CardCounts {
-            in_progress: 1,
-            waiting: None,
-            remaining: 2,
-            done: 3,
-        });
+        status.flow = Some(example_flow());
         status.worktree = "wt".into();
         let windows = "🔋 CW 50% | 🪫 7D 75%";
-        // With `git_branch` off the repository slot is gone and the worktree label stands
-        // alone on line 2 (REQ-4); the counts still open line 3.
         status.repo = None;
-        assert_eq!(
-            line3(&status, &["git_branch"]),
-            format!("🗂️ 2 ▶️ 1 ✅ 3 | {windows}")
-        );
-        assert_eq!(
-            plain(&status, &["git_branch"]).lines().nth(1).unwrap(),
-            "🌳 wt"
-        );
-        // The full render: an unresolved repository says `n/a` and keeps its line (REQ-2),
-        // the worktree label closes line 2, the counts open line 3.
+        let off = plain(&status, &["git_branch"]);
+        assert_eq!(off.lines().nth(1).unwrap(), "🌳 wt");
+        assert_eq!(off.lines().nth(2).unwrap(), P0);
+        assert_eq!(off.lines().nth(3).unwrap(), windows);
+        // The full render: an unresolved repository says `n/a` and keeps its line (REQ-2), the
+        // worktree label closes line 2, the flow line follows and the windows are last.
         let out = plain(&status, &[]);
-        assert_eq!(out.lines().count(), 3, "{out}");
+        assert_eq!(out.lines().count(), 4, "{out}");
         assert_eq!(
             out.lines().nth(1).unwrap(),
             "📡 n/a, ⬇️ 7 🔀 3 | 🅱️ main ↑5 ↓2 +3 | 🌳 wt"
         );
-        assert_eq!(
-            out.lines().nth(2).unwrap(),
-            format!("🗂️ 2 ▶️ 1 ✅ 3 | {windows}")
-        );
+        assert_eq!(out.lines().nth(2).unwrap(), P0);
+        // No git and no worktree: line 2 has nothing to carry and is left out whole.
         status.git = None;
-        assert_eq!(
-            line3(&status, &["git_branch"]),
-            format!("🗂️ 2 ▶️ 1 ✅ 3 | {windows}")
-        );
-        assert_eq!(
-            plain(&status, &["git_branch"]).lines().nth(1).unwrap(),
-            "🌳 wt"
-        );
         status.worktree.clear();
         let out = plain(&status, &[]);
-        // No git and no worktree: line 2 has nothing to carry and is left out whole.
-        assert_eq!(out.lines().count(), 2, "{out}");
-        assert_eq!(
-            out.lines().nth(1).unwrap(),
-            format!("🗂️ 2 ▶️ 1 ✅ 3 | {windows}")
-        );
+        assert_eq!(out.lines().count(), 3, "{out}");
+        assert_eq!(out.lines().nth(1).unwrap(), P0);
     }
 
-    /// Color is never the only signal. Each number keeps its icon, the three parts
-    /// take three colors of their own, and the text is the plain text once the escapes are
+    /// Color is never the only signal. Every number keeps its letter and every icon its text,
+    /// the groups take colors of their own, and the text is the plain text once the escapes are
     /// removed.
     #[test]
-    fn card_counts_keep_their_icons_under_every_color_profile() {
+    fn the_flow_line_keeps_its_letters_under_every_color_profile() {
         let mut status = full_status();
-        status.cards = Some(CardCounts {
-            in_progress: 5,
-            waiting: Some(26),
-            remaining: 50,
-            done: 12,
-        });
+        status.flow = Some(example_flow());
         let text = plain(&status, &[]);
         for name in ["mocha", "catppuccin-latte"] {
             let t = theme(name);
@@ -1404,21 +1444,22 @@ mod tests {
                 let out = colored(name, profile, &status);
                 assert_eq!(strip_sgr(&out), text, "{name} {profile:?}");
                 for (hex, part) in [
-                    (t.cards_waiting, "🗂️ 50"),
-                    (t.cards_active, "▶️ 5"),
-                    (t.cards_posted, "🔃 26"),
-                    (t.cards_done, "✅ 12"),
+                    (t.cards_active, "🎯 c12 W"),
+                    (t.cards_posted, "👀 S11 A2 L0"),
+                    (t.issues, "⛔ B3"),
+                    (t.issues, "⏸️  H7"),
+                    (t.cards_waiting, "🗂️  D43 R150 W14 E22"),
+                    (t.cards_done, "✅ 19"),
                 ] {
                     assert!(out.contains(&profile.paint(hex, part)), "{name} {part}");
                 }
             }
             let colors = [
-                t.effort,
-                t.cards_waiting,
                 t.cards_active,
                 t.cards_posted,
+                t.issues,
+                t.cards_waiting,
                 t.cards_done,
-                t.version,
             ];
             for pair in colors.windows(2) {
                 assert_ne!(pair[0], pair[1], "{name}: neighbours share a color");
@@ -1733,5 +1774,268 @@ mod tests {
         assert_eq!(theme("catppuccin-latte"), LATTE);
         assert_eq!(theme("dracula"), MOCHA);
         assert_eq!(theme(""), MOCHA);
+    }
+}
+
+/// AC-5, AC-7 (the flow line's share) and AC-8 (icon spacing) of SPEC-20261122-statusline-flow:
+/// the forms of the flow line, from the widest to the narrowest.
+#[cfg(test)]
+mod flow_line_tests {
+    use super::*;
+    use crate::statusline::state::{MyCard, Stage};
+
+    fn full() -> Flow {
+        Flow {
+            draft: 43,
+            ready: 150,
+            working: 14,
+            stale: 22,
+            submitted: 11,
+            audited: 2,
+            landed: 0,
+            blocked: 3,
+            hold: 7,
+            done_today: 19,
+            mine: Some(MyCard {
+                card: 12,
+                stage: Stage::Working,
+            }),
+            split: true,
+        }
+    }
+
+    fn no_card() -> Flow {
+        Flow {
+            mine: None,
+            ..full()
+        }
+    }
+
+    /// The flow line alone: the session tag and the context window are switched off, and every
+    /// other line has no input, so only the flow line is left. `MoAI` is the whole output when
+    /// the flow line is empty too.
+    fn only_flow(flow: Flow, budget: Option<usize>, profile: Option<Profile>) -> String {
+        let config = DisplayConfig {
+            segments: [("session", false), ("context", false)]
+                .into_iter()
+                .map(|(k, v)| (k.to_string(), v))
+                .collect(),
+            ..Default::default()
+        };
+        Renderer::new(&config, profile)
+            .with_budget(budget)
+            .render(&Status {
+                flow: Some(flow),
+                ..Default::default()
+            })
+    }
+
+    fn plain(flow: Flow, budget: Option<usize>) -> String {
+        only_flow(flow, budget, None)
+    }
+
+    const P: [(&str, usize); 4] = [
+        (
+            "🎯 c12 W | 👀 S11 A2 L0 | ⛔ B3 ⏸️  H7 | 🗂️  D43 R150 W14 E22 ✅ 19",
+            67,
+        ),
+        ("🎯 c12 W | 👀 S11 A2 L0 | ⛔ B3 ⏸️  H7", 38),
+        ("🎯 c12 W | 👀 S11 A2 L0 | ⛔ B3", 31),
+        ("🎯 c12 W | ⛔ B3", 16),
+    ];
+    const Q: [(&str, usize); 4] = [
+        (
+            "👀 S11 A2 L0 | ⛔ B3 ⏸️  H7 | 🗂️  D43 R150 W14 E22 ✅ 19",
+            56,
+        ),
+        ("👀 S11 A2 L0 | ⛔ B3 ⏸️  H7", 27),
+        ("👀 S11 A2 L0 | ⛔ B3", 20),
+        ("⛔ B3", 5),
+    ];
+
+    /// Every form is exactly the string of the Layouts section, with the width the section
+    /// gives, and changes at its boundary: a budget equal to the width keeps the form, one less
+    /// drops to the next.
+    #[test]
+    fn every_form_is_exactly_the_string_of_the_layouts_section() {
+        for (flow, forms) in [(full(), P), (no_card(), Q)] {
+            for (i, (text, cols)) in forms.iter().enumerate() {
+                assert_eq!(width::display_width(text), *cols, "{text}");
+                assert_eq!(&plain(flow, Some(*cols)), text, "budget {cols}");
+                if i == 0 {
+                    assert_eq!(&plain(flow, Some(*cols + 40)), text, "{cols} + 40");
+                }
+                if let Some((next, _)) = forms.get(i + 1) {
+                    assert_eq!(&plain(flow, Some(*cols - 1)), next, "budget {}", cols - 1);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn no_budget_writes_the_widest_form_and_a_budget_below_the_narrowest_the_narrowest() {
+        assert_eq!(plain(full(), None), P[0].0);
+        assert_eq!(plain(no_card(), None), Q[0].0);
+        for budget in [15, 5, 0] {
+            assert_eq!(plain(full(), Some(budget)), P[3].0, "{budget}");
+        }
+        assert_eq!(plain(no_card(), Some(0)), Q[3].0);
+    }
+
+    /// A group whose counts are all zero is left out with its separator; a line with nothing
+    /// to show is left out whole.
+    #[test]
+    fn groups_of_zero_counts_are_left_out_with_their_separator() {
+        let flow = Flow {
+            submitted: 0,
+            audited: 0,
+            landed: 0,
+            ..full()
+        };
+        assert_eq!(
+            plain(flow, None),
+            "🎯 c12 W | ⛔ B3 ⏸️  H7 | 🗂️  D43 R150 W14 E22 ✅ 19"
+        );
+        let flow = Flow {
+            blocked: 0,
+            hold: 0,
+            ..full()
+        };
+        assert_eq!(
+            plain(flow, None),
+            "🎯 c12 W | 👀 S11 A2 L0 | 🗂️  D43 R150 W14 E22 ✅ 19"
+        );
+        // Hold alone shows `B0` beside it, and drops with the hold count when narrow.
+        let hold_only = Flow {
+            blocked: 0,
+            ..full()
+        };
+        assert_eq!(
+            plain(hold_only, Some(38)),
+            "🎯 c12 W | 👀 S11 A2 L0 | ⛔ B0 ⏸️  H7"
+        );
+        assert_eq!(plain(hold_only, Some(37)), "🎯 c12 W | 👀 S11 A2 L0");
+        let flow_group = Flow {
+            draft: 0,
+            ready: 0,
+            working: 0,
+            stale: 0,
+            done_today: 0,
+            ..full()
+        };
+        assert_eq!(
+            plain(flow_group, None),
+            "🎯 c12 W | 👀 S11 A2 L0 | ⛔ B3 ⏸️  H7"
+        );
+        // Only my card, and only a stale one.
+        let mine_only = Flow {
+            mine: Some(MyCard {
+                card: 7,
+                stage: Stage::Stale,
+            }),
+            ..Flow {
+                split: true,
+                ..Default::default()
+            }
+        };
+        assert_eq!(plain(mine_only, None), "🎯 c7 E");
+        // Nothing at all: no flow line, so the renderer's own fallback is the whole output.
+        let nothing = Flow {
+            split: true,
+            ..Default::default()
+        };
+        assert_eq!(plain(nothing, None), "MoAI");
+    }
+
+    /// My card shows the letter of its stage: `🎯 c<n> <letter>` for each of the nine stages
+    /// (audit N2), with no other group when the ledger holds nothing else.
+    #[test]
+    fn my_card_shows_the_letter_of_each_stage() {
+        for (stage, letter) in [
+            (Stage::Draft, 'D'),
+            (Stage::Ready, 'R'),
+            (Stage::Working, 'W'),
+            (Stage::Stale, 'E'),
+            (Stage::Submitted, 'S'),
+            (Stage::Audited, 'A'),
+            (Stage::Landed, 'L'),
+            (Stage::Blocked, 'B'),
+            (Stage::Hold, 'H'),
+        ] {
+            let flow = Flow {
+                split: true,
+                mine: Some(MyCard { card: 3, stage }),
+                ..Default::default()
+            };
+            assert_eq!(plain(flow, None), format!("🎯 c3 {letter}"), "{stage:?}");
+        }
+    }
+
+    /// The unsplit flow (the notes could not be read) is one form of three numbers, never a
+    /// guess, at every width.
+    #[test]
+    fn the_unsplit_flow_has_one_form_and_never_a_guess() {
+        let unsplit = Flow {
+            draft: 43,
+            ready: 150,
+            working: 15,
+            hold: 7,
+            done_today: 19,
+            split: false,
+            ..Default::default()
+        };
+        for budget in [None, Some(200), Some(18), Some(0)] {
+            assert_eq!(plain(unsplit, budget), "🗂️  D43 R150 W15", "{budget:?}");
+        }
+    }
+
+    /// The colored line carries the same text once the escapes are removed, at every form.
+    #[test]
+    fn the_colored_line_has_the_plain_text_at_every_form() {
+        for flow in [full(), no_card()] {
+            for budget in [None, Some(60), Some(30), Some(10)] {
+                let text = plain(flow, budget);
+                for profile in [Profile::TrueColor, Profile::Ansi256] {
+                    let out = only_flow(flow, budget, Some(profile));
+                    let mut stripped = String::new();
+                    let mut rest = out.as_str();
+                    while let Some(at) = rest.find("\x1b[") {
+                        stripped.push_str(&rest[..at]);
+                        let tail = &rest[at..];
+                        rest = &tail[tail.find('m').unwrap() + 1..];
+                    }
+                    stripped.push_str(rest);
+                    assert_eq!(stripped, text, "{budget:?} {profile:?}");
+                }
+            }
+        }
+    }
+
+    /// AC-8: every icon the line writes is followed by the spacing of its width class — two
+    /// spaces for an icon that is narrow by default and written with a variation selector, one
+    /// for the others — and a letter or a number follows the spacing.
+    #[test]
+    fn every_icon_is_followed_by_the_spacing_of_its_width_class() {
+        let text = plain(full(), None);
+        let mut seen = 0;
+        for (icon, gap) in width::ICONS {
+            for (at, _) in text.match_indices(icon) {
+                seen += 1;
+                let after = &text[at + icon.len()..];
+                assert!(after.starts_with(gap), "{icon}: `{after}`");
+                assert!(
+                    !after[gap.len()..].starts_with(' '),
+                    "{icon}: more spaces than the class asks for: `{after}`"
+                );
+                assert!(
+                    after[gap.len()..]
+                        .chars()
+                        .next()
+                        .is_some_and(char::is_alphanumeric),
+                    "{icon} is followed by a letter or a number: `{after}`"
+                );
+            }
+        }
+        assert_eq!(seen, 6, "🎯 👀 ⛔ ⏸️ 🗂️ ✅ each once in {text}");
     }
 }

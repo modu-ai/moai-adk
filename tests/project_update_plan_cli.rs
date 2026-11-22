@@ -20,6 +20,7 @@ use tempfile::TempDir;
 const EXE: &str = crate::common::MOAI_BIN;
 const REF: &str = "test:2936";
 const PLACEHOLDER: &str = "<permission-reference>";
+const CONFIRM_PLACEHOLDER: &str = "<warning-confirmation>";
 const BLOCKED_BY_BACKUP: &str = "re-run after the backup phase";
 
 struct Fx {
@@ -253,14 +254,32 @@ impl Fx {
             .map(|w| w.as_str().unwrap().to_string())
             .collect();
         assert_eq!(argv[0], "moai", "{argv:?}");
+        // The permission reference is the only placeholder, plus the confirmation token of a
+        // plan that carries a warning (the step then says so in its preview).
+        let wants_token = step["preview"]["needs_confirmation"] == json!(true);
+        let expected: Vec<&str> = if wants_token {
+            vec![CONFIRM_PLACEHOLDER, PLACEHOLDER]
+        } else {
+            vec![PLACEHOLDER]
+        };
         assert_eq!(
-            argv.iter().filter(|w| w.contains('<')).collect::<Vec<_>>(),
-            vec![PLACEHOLDER],
-            "the only placeholder is the permission reference: {argv:?}"
+            argv.iter()
+                .filter(|w| w.contains('<'))
+                .map(String::as_str)
+                .collect::<Vec<_>>(),
+            expected,
+            "placeholders of the printed command: {argv:?}"
         );
+        let token = step["preview"]["confirm_token"]
+            .as_str()
+            .unwrap_or_default();
         let args: Vec<&str> = argv[1..]
             .iter()
-            .map(|w| if w == PLACEHOLDER { REF } else { w.as_str() })
+            .map(|w| match w.as_str() {
+                PLACEHOLDER => REF,
+                CONFIRM_PLACEHOLDER => token,
+                other => other,
+            })
             .collect();
         let stdin = match &step["apply"]["stdin"] {
             Value::Null => Vec::new(),
@@ -890,31 +909,36 @@ fn local_file_from_manifest() {
     let paths = generation_paths(&plan);
     // #3009 S3b: the managed `.gitignore` block (the state-folder allow-list) is planned for
     // every choice; the personal file is planned only when the choice makes it.
-    assert!(!paths.iter().any(|p| p == "AGENTS.local.md"), "{paths:?}");
+    assert!(!paths.iter().any(|p| p == "CLAUDE.local.md"), "{paths:?}");
     assert!(paths.iter().any(|p| p == ".gitignore"), "{paths:?}");
 
-    for (choice, lists_local) in [("tracked", false), ("ignored", true)] {
+    // A personal file is never shared, so `tracked` plans like `ignored` (the layout's REQ-7).
+    for (choice, lists_local) in [("tracked", true), ("ignored", true)] {
         let fx = Fx::new();
         fx.with_profile(false);
         let mut request = step(&fx.plan(), "generation")["apply"]["stdin"]["request"].clone();
         request["local_file"] = json!(choice);
+        request["picks"] = json!(["personal-file"]);
         fx.generate(&request);
         let plan = fx.plan();
         let generation = step(&plan, "generation");
         assert_eq!(generation["state"], "unchanged", "{choice}: {generation}");
         let paths = generation_paths(&plan);
+        // The personal file is planned on the pick only, and the file stays as it was written.
         assert!(
-            paths.iter().any(|p| p == "AGENTS.local.md"),
+            !paths.iter().any(|p| p == "CLAUDE.local.md"),
             "{choice}: {paths:?}"
         );
+        assert!(fx.root.join("CLAUDE.local.md").is_file(), "{choice}");
         assert!(
             paths.iter().any(|p| p == ".gitignore"),
             "{choice}: {paths:?}"
         );
-        // The block lists the personal file only for the `ignored` choice (condition 4).
+        // The block lists the personal file whenever the choice is not `none`, `tracked` too: a
+        // personal file is never shared, so both `ignored` and `tracked` keep it out of git.
         let ignore = fs::read_to_string(fx.root.join(".gitignore")).unwrap();
         assert_eq!(
-            ignore.lines().any(|l| l == "AGENTS.local.md"),
+            ignore.lines().any(|l| l == "CLAUDE.local.md"),
             lists_local,
             "{choice}: {ignore}"
         );
@@ -923,9 +947,10 @@ fn local_file_from_manifest() {
     // `ignored` over the user's own rule records no section: tracked or ignored is unknown.
     let fx = Fx::new();
     fx.with_profile(false);
-    fx.write(".gitignore", "AGENTS.local.md\n");
+    fx.write(".gitignore", "CLAUDE.local.md\n");
     let mut request = step(&fx.plan(), "generation")["apply"]["stdin"]["request"].clone();
     request["local_file"] = json!("ignored");
+    request["picks"] = json!(["personal-file"]);
     fx.generate(&request);
     let plan = fx.plan();
     let generation = step(&plan, "generation");
@@ -954,6 +979,7 @@ fn the_recorded_block_kind_tells_the_personal_file_choice() {
         fx.with_profile(false);
         let mut request = step(&fx.plan(), "generation")["apply"]["stdin"]["request"].clone();
         request["local_file"] = json!("ignored");
+        request["picks"] = json!(["personal-file"]);
         fx.generate(&request);
         let manifest_path = fx.generation_manifest(&fx.plan());
         let mut manifest: Value =
@@ -991,6 +1017,41 @@ fn the_recorded_block_kind_tells_the_personal_file_choice() {
             "{kind:?}: {generation}"
         );
     }
+}
+
+/// Generation moved to `CLAUDE.local.md`: a manifest of an earlier release that records the
+/// personal file under the old name reads like one that records it under the new name. Without
+/// that the record "file seen once, block lists it" is half a record and the update asks the user
+/// again.
+#[test]
+fn a_manifest_that_names_agents_local_md_gives_the_same_choice() {
+    let fx = Fx::new();
+    fx.with_profile(false);
+    let mut request = step(&fx.plan(), "generation")["apply"]["stdin"]["request"].clone();
+    request["local_file"] = json!("ignored");
+    request["picks"] = json!(["personal-file"]);
+    fx.generate(&request);
+    let manifest_path = fx.generation_manifest(&fx.plan());
+    let mut manifest: Value = serde_json::from_slice(&fs::read(&manifest_path).unwrap()).unwrap();
+    let recorded = manifest["created_once"].as_array_mut().unwrap();
+    assert!(
+        recorded.iter().any(|p| p == "CLAUDE.local.md"),
+        "the apply records the personal file: {recorded:?}"
+    );
+    // A manifest of an earlier release records it under the old name: it reads the same.
+    for p in recorded.iter_mut() {
+        if *p == "CLAUDE.local.md" {
+            *p = json!("AGENTS.local.md");
+        }
+    }
+    fs::write(
+        &manifest_path,
+        serde_json::to_vec_pretty(&manifest).unwrap(),
+    )
+    .unwrap();
+    let plan = fx.plan();
+    let generation = step(&plan, "generation");
+    assert_ne!(generation["state"], "needs_decision", "{generation}");
 }
 
 /// #2953 F3: a `ready` profile step holds the generation step until the preview is re-run.
@@ -1174,12 +1235,36 @@ fn request_defaults() {
     );
 }
 
+impl Fx {
+    /// Makes the settled project's `CLAUDE.md` import `AGENTS.md`, below its managed block. A
+    /// project like that is offered no pick (SPEC-20261122-claude-md-project-picks), so the
+    /// personal-file merge step stays the one that offers an `AGENTS.local.md`.
+    fn import_agents_md(&self) {
+        let path = self.root.join("CLAUDE.md");
+        let text = fs::read_to_string(&path).unwrap();
+        fs::write(&path, format!("{text}\n@AGENTS.md\n")).unwrap();
+    }
+}
+
 /// #2936 R10: a settled project with a personal `AGENTS.local.md` gets the merge as a decision
-/// that prints the apply command; applying it settles the preview again.
+/// that prints the apply command; applying it settles the preview again. A project whose
+/// `CLAUDE.md` does not import `AGENTS.md` is offered the picks instead, and the merge step skips
+/// while they are pending.
 #[test]
 fn the_merge_step_offers_the_personal_file_and_settles_after_the_apply() {
     let fx = Fx::new();
     fx.settled();
+    let pending = fx.root.join("AGENTS.local.md");
+    fs::write(&pending, "# My notes\n\nReply in Korean.\n").unwrap();
+    let plan = fx.plan();
+    assert_eq!(
+        step(&plan, "agents-picks")["state"],
+        "needs_decision",
+        "{plan}"
+    );
+    assert_eq!(step(&plan, "agents-local-merge")["state"], "skip", "{plan}");
+    fs::remove_file(&pending).unwrap();
+    fx.import_agents_md();
     let settled = fx.plan();
     assert_eq!(
         step(&settled, "agents-local-merge")["state"],
@@ -1218,6 +1303,96 @@ fn the_merge_step_offers_the_personal_file_and_settles_after_the_apply() {
         "{after}"
     );
     assert_eq!(after["all_unchanged"], json!(true), "{after}");
+}
+
+/// The audit of the personal-file move: a first `CLAUDE.local.md` over an `AGENTS.md` would hide
+/// that file from Claude Code, so the merge on its own warns in plain words and writes nothing
+/// until the confirmation token comes with it. The update preview offers the picks first for such
+/// a project: they write `CLAUDE.md` before the personal file, so their preview carries no such
+/// warning, and the merge step skips while they are pending.
+#[test]
+fn the_merge_preview_warns_and_the_apply_waits_for_the_confirmation() {
+    let fx = Fx::new();
+    // The project holds an AGENTS.md of its own and no CLAUDE file, so generation writes none.
+    fx.write("AGENTS.md", "# rules\n");
+    fx.write("AGENTS.local.md", "# My notes\n\nReply in Korean.\n");
+    fx.with_profile(false);
+    for s in steps(&fx.plan())
+        .into_iter()
+        .filter(|s| s["state"] == "ready")
+    {
+        assert_eq!(fx.apply_step(s)["ok"], json!(true), "{s}");
+    }
+    assert!(!fx.root.join("CLAUDE.md").exists());
+    let plan = fx.plan();
+    let picks = step(&plan, "agents-picks");
+    assert_eq!(picks["state"], "needs_decision", "{picks}");
+    assert!(
+        !picks.to_string().contains("claude-md-and-agents-md"),
+        "{picks}"
+    );
+    let merge = step(&plan, "agents-local-merge");
+    assert_eq!(merge["state"], "skip", "{merge}");
+    assert_eq!(merge["apply"], Value::Null, "{merge}");
+
+    // The merge on its own: the plan warns and carries the token that answers the warning.
+    let own = fx.call(&["agents-merge-plan", fx.p()], b"");
+    let warnings = own["warnings"].to_string();
+    assert!(
+        warnings.contains("AGENTS.md") && warnings.contains("claude-md-and-agents-md"),
+        "the warning names the file and the setting that keeps both read: {own}"
+    );
+    assert_eq!(own["needs_confirmation"], json!(true), "{own}");
+    let token = own["confirm_token"].as_str().expect("a token").to_string();
+    let digest = own["plan_digest"].as_str().unwrap().to_string();
+
+    // Without the token: refused, the project is unchanged.
+    let command = |token: Option<&str>| {
+        let mut args = vec![
+            "agents-merge-apply",
+            fx.p(),
+            "--plan-digest",
+            digest.as_str(),
+            "--permission-reference",
+            REF,
+        ];
+        if let Some(token) = token {
+            args.extend(["--confirm-warnings", token]);
+        }
+        fx.run(&args, b"")
+    };
+    let before = fx.tree();
+    let refused = command(None);
+    assert_eq!(refused["ok"], json!(false), "{refused}");
+    assert_eq!(before, fx.tree(), "a refused apply wrote something");
+    assert!(!fx.root.join("CLAUDE.local.md").exists());
+
+    // With the token the merge is applied.
+    assert_eq!(command(Some(&token))["ok"], json!(true));
+    assert!(fx.root.join("CLAUDE.local.md").exists());
+}
+
+/// The audit of the personal-file move: in a git project the preview shows the one `.gitignore`
+/// line and the apply writes it.
+#[test]
+fn the_merge_step_adds_the_ignore_line_in_a_git_project() {
+    let fx = Fx::new();
+    fx.settled();
+    let init = Command::new("/usr/bin/git")
+        .args(["init", "-q"])
+        .arg(&fx.root)
+        .clean_env()
+        .status()
+        .unwrap();
+    assert!(init.success());
+    fx.import_agents_md();
+    fx.write("AGENTS.local.md", "# My notes\n\nReply in Korean.\n");
+    let plan = fx.plan();
+    let merge = step(&plan, "agents-local-merge");
+    assert_eq!(merge["preview"]["gitignore"]["action"], "add", "{merge}");
+    assert_eq!(fx.apply_step(merge)["ok"], json!(true), "{merge}");
+    let ignore = fs::read_to_string(fx.root.join(".gitignore")).unwrap();
+    assert!(ignore.lines().any(|l| l == "CLAUDE.local.md"), "{ignore}");
 }
 
 /// #2936 R10: while the generation step still has files to write, the merge waits: that step's

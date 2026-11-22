@@ -13,7 +13,7 @@ use std::path::PathBuf;
 /// `body --out`, `Reads only. Writes one new file.` None of them fetches, pushes or opens a pull
 /// request: fetch first, and the leader chooses the heads, pushes and opens the pull request.
 /// `build` is the one action that writes: `Writes a new branch and worktree.` It creates
-/// `m-flow/bundle-<date>-<n>` and a worktree under `<HOME>/.moai/worktrees/`, merges the heads one
+/// `m-flow/bundle-<date>-<n>` and a worktree under `<project>/.claude/worktrees/`, merges the heads one
 /// merge commit each, drops a head that conflicts and names it; it never moves or deletes an
 /// existing branch or worktree.
 /// `verify` is the one action that runs commands: `Runs commands.` It runs the check list in the
@@ -121,7 +121,7 @@ enum Action {
     /// Writes a new branch and worktree. Merge heads, one merge commit each
     ///
     /// Writes a new branch and worktree. Creates `m-flow/bundle-<date>-<n>` (the lowest unused
-    /// `n`) and the worktree `<HOME>/.moai/worktrees/<project>-bundle-<n>` at the tip, merges each
+    /// `n`) and the worktree `<project>/.claude/worktrees/<project>-bundle-<n>` at the tip, merges each
     /// head in the order given with one merge commit under the text merge GitHub runs, and prints
     /// the pinned SHA. HEADS are `C-<n>` (the card's newest readable READY head) or
     /// `C-<n>=<40 hex>`. A head whose merge conflicts is aborted, left out and named with its

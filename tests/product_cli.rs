@@ -524,8 +524,14 @@ fn package_inspection_is_stable_and_covers_support_files() {
 
 // ---- AGENTS.md managed-section generation -------------------------------------------------
 
+/// The request of a project that asked for a personal file (`local_file` other than `none`) also
+/// carries the `personal-file` pick: the writer creates `CLAUDE.local.md` only on that pick.
 fn agents_request(language: &str, local_file: &str) -> Value {
-    json!({"protocol_version":1,"language":language,"workflow_reference":"skills/moai/workflows/","local_file":local_file})
+    let mut request = json!({"protocol_version":1,"language":language,"workflow_reference":"skills/moai/workflows/","local_file":local_file});
+    if local_file != "none" {
+        request["picks"] = json!(["personal-file"]);
+    }
+    request
 }
 fn agents_plan(root: &TempDir, request: &Value) -> std::process::Output {
     cli(&["agents-plan", root.path().to_str().unwrap()], request)
@@ -582,7 +588,7 @@ fn agents_generation_is_idempotent_and_preserves_user_body() {
     fs::create_dir_all(root.path().join("skills/moai/workflows")).unwrap();
     create(&root, &profile(None));
     let user_body = "# My project\r\n\r\nUser rules stay as written.\r\n";
-    fs::write(root.path().join("AGENTS.md"), user_body).unwrap();
+    fs::write(root.path().join("CLAUDE.md"), user_body).unwrap();
     fs::write(root.path().join(".gitignore"), "target/").unwrap(); // no trailing newline
     let request = agents_request("en", "ignored");
     let out = agents_plan(&root, &request);
@@ -591,8 +597,8 @@ fn agents_generation_is_idempotent_and_preserves_user_body() {
     assert_eq!(
         actions(&plan),
         vec![
-            ("AGENTS.md".into(), "append".into()),
-            ("AGENTS.local.md".into(), "create".into()),
+            ("CLAUDE.md".into(), "append".into()),
+            ("CLAUDE.local.md".into(), "create".into()),
             (".gitignore".into(), "append".into()),
             (
                 ".moai-cli/manifests/generation.json".into(),
@@ -601,27 +607,27 @@ fn agents_generation_is_idempotent_and_preserves_user_body() {
         ]
     );
     assert!(agents_apply(&root, &plan).status.success());
-    let agents = fs::read_to_string(root.path().join("AGENTS.md")).unwrap();
+    let agents = fs::read_to_string(root.path().join("CLAUDE.md")).unwrap();
     assert!(agents.starts_with(user_body));
     assert!(agents.contains("<!-- moai:managed:begin id=moai-workflow -->"));
-    assert!(agents.contains("skills/moai/workflows/"));
+    assert!(agents.contains("moai card list"));
     let ignore = fs::read_to_string(root.path().join(".gitignore")).unwrap();
     assert!(ignore.starts_with("target/\n"));
-    assert!(ignore.contains("\nAGENTS.local.md\n"));
-    assert!(root.path().join("AGENTS.local.md").is_file());
+    assert!(ignore.contains("\nCLAUDE.local.md\n"));
+    assert!(root.path().join("CLAUDE.local.md").is_file());
     let manifest: Value = serde_json::from_slice(
         &fs::read(root.path().join(".moai-cli/manifests/generation.json")).unwrap(),
     )
     .unwrap();
     assert_eq!(manifest["schema_version"], 1);
     assert_eq!(manifest["owned_files"].as_array().unwrap().len(), 2);
-    assert_eq!(manifest["created_once"], json!(["AGENTS.local.md"]));
+    assert_eq!(manifest["created_once"], json!(["CLAUDE.local.md"]));
     assert!(!manifest.to_string().contains(root.path().to_str().unwrap()));
 
     // Second run: diff 0 on every file.
     let before: Vec<Vec<u8>> = [
-        "AGENTS.md",
-        "AGENTS.local.md",
+        "CLAUDE.md",
+        "CLAUDE.local.md",
         ".gitignore",
         ".moai-cli/manifests/generation.json",
     ]
@@ -645,8 +651,8 @@ fn agents_generation_is_idempotent_and_preserves_user_body() {
     assert_eq!(value["state"], "unchanged");
     assert_eq!(value["host_loaded"], false);
     let after: Vec<Vec<u8>> = [
-        "AGENTS.md",
-        "AGENTS.local.md",
+        "CLAUDE.md",
+        "CLAUDE.local.md",
         ".gitignore",
         ".moai-cli/manifests/generation.json",
     ]
@@ -659,7 +665,7 @@ fn agents_generation_is_idempotent_and_preserves_user_body() {
 #[test]
 fn agents_user_edits_are_preserved_or_reported_as_conflict() {
     let (root, _) = agents_project("en", "none");
-    let file = root.path().join("AGENTS.md");
+    let file = root.path().join("CLAUDE.md");
     let generated = fs::read_to_string(&file).unwrap();
 
     // Edit outside the managed block: still unchanged, bytes preserved.
@@ -671,10 +677,7 @@ fn agents_user_edits_are_preserved_or_reported_as_conflict() {
     assert_eq!(fs::read_to_string(&file).unwrap(), outside);
 
     // Edit inside the managed block while the template is unchanged: preserved, no rewrite.
-    let edited = outside.replace(
-        "Read only the workflow you need",
-        "Read ONLY the workflow you need",
-    );
+    let edited = outside.replace("Checks:", "CHECKS:");
     assert_ne!(edited, outside);
     fs::write(&file, &edited).unwrap();
     let plan: Value = ok_result(&agents_plan(&root, &agents_request("en", "none")));
@@ -696,7 +699,7 @@ fn agents_user_edits_are_preserved_or_reported_as_conflict() {
     assert_eq!(actions(&plan)[0].1, "merge");
     assert!(agents_apply(&root, &plan).status.success());
     let merged = fs::read_to_string(&file).unwrap();
-    assert!(merged.contains("MoAI 작업 흐름"));
+    assert!(merged.contains("MoAI 프로젝트 사실"));
     assert!(merged.ends_with("\n## User appendix\nkeep me\n"));
     assert!(merged.starts_with("# demo\n\n"));
 
@@ -737,30 +740,31 @@ fn agents_user_edits_are_preserved_or_reported_as_conflict() {
 #[test]
 fn agents_local_file_is_opt_in_and_never_rewritten() {
     let (root, plan) = agents_project("en", "none");
-    assert!(!root.path().join("AGENTS.local.md").exists());
+    assert!(!root.path().join("CLAUDE.local.md").exists());
     // #3009 S3b: the managed `.gitignore` block is written for every choice; it lists the
     // personal file only for `ignored`.
     let ignore = fs::read_to_string(root.path().join(".gitignore")).unwrap();
-    assert!(!ignore.lines().any(|l| l == "AGENTS.local.md"), "{ignore}");
-    assert!(actions(&plan).iter().all(|(p, _)| p != "AGENTS.local.md"));
+    assert!(!ignore.lines().any(|l| l == "CLAUDE.local.md"), "{ignore}");
+    assert!(actions(&plan).iter().all(|(p, _)| p != "CLAUDE.local.md"));
 
     let (root, plan) = agents_project("ko", "tracked");
-    assert!(root.path().join("AGENTS.local.md").is_file());
+    assert!(root.path().join("CLAUDE.local.md").is_file());
+    // A personal file is never shared: `tracked` plans like `ignored` (the layout's REQ-7).
     let ignore = fs::read_to_string(root.path().join(".gitignore")).unwrap();
-    assert!(!ignore.lines().any(|l| l == "AGENTS.local.md"), "{ignore}");
+    assert!(ignore.lines().any(|l| l == "CLAUDE.local.md"), "{ignore}");
     assert!(actions(&plan).iter().any(|(p, _)| p == ".gitignore"));
-    fs::write(root.path().join("AGENTS.local.md"), "personal\n").unwrap();
+    fs::write(root.path().join("CLAUDE.local.md"), "personal\n").unwrap();
     let plan: Value = ok_result(&agents_plan(&root, &agents_request("ko", "tracked")));
     assert!(agents_apply(&root, &plan).status.success());
     assert_eq!(
-        fs::read(root.path().join("AGENTS.local.md")).unwrap(),
+        fs::read(root.path().join("CLAUDE.local.md")).unwrap(),
         b"personal\n"
     );
     // Deleted by the user: not recreated.
-    fs::remove_file(root.path().join("AGENTS.local.md")).unwrap();
+    fs::remove_file(root.path().join("CLAUDE.local.md")).unwrap();
     let plan: Value = ok_result(&agents_plan(&root, &agents_request("ko", "tracked")));
     assert!(agents_apply(&root, &plan).status.success());
-    assert!(!root.path().join("AGENTS.local.md").exists());
+    assert!(!root.path().join("CLAUDE.local.md").exists());
 }
 
 #[test]
@@ -772,34 +776,29 @@ fn agents_plan_rejects_replay_tamper_missing_reference_and_shadowing_is_reported
         .status
         .success());
     fs::create_dir_all(root.path().join("skills/moai/workflows")).unwrap();
-    fs::write(root.path().join("CLAUDE.md"), "existing\n").unwrap();
     fs::write(root.path().join("AGENTS.override.md"), "codex override\n").unwrap();
     let out = agents_plan(&root, &agents_request("en", "none"));
     assert!(out.status.success());
     let plan: Value = ok_result(&out);
-    let notes = plan["host_notes"].as_array().unwrap();
-    assert_eq!(notes.len(), 2);
+    // The writer reports no host note: CLAUDE.md is moai's file, nothing shadows it.
+    assert!(plan["host_notes"].as_array().unwrap().is_empty(), "{plan}");
     // Replay in another project is refused.
     let other = TempDir::new().unwrap();
     create(&other, &profile(None));
     fs::create_dir_all(other.path().join("skills/moai/workflows")).unwrap();
     assert!(!agents_apply(&other, &plan).status.success());
-    assert!(!other.path().join("AGENTS.md").exists());
+    assert!(!other.path().join("CLAUDE.md").exists());
     // Tampered plan is refused.
     let mut tampered = plan.clone();
     tampered["request"]["language"] = json!("ko");
     assert!(!agents_apply(&root, &tampered).status.success());
-    assert!(!root.path().join("AGENTS.md").exists());
+    assert!(!root.path().join("CLAUDE.md").exists());
     // Target changed after preview is refused.
-    fs::write(root.path().join("AGENTS.md"), "late user file\n").unwrap();
+    fs::write(root.path().join("CLAUDE.md"), "late user file\n").unwrap();
     assert!(!agents_apply(&root, &plan).status.success());
     assert_eq!(
-        fs::read(root.path().join("AGENTS.md")).unwrap(),
-        b"late user file\n"
-    );
-    assert_eq!(
         fs::read(root.path().join("CLAUDE.md")).unwrap(),
-        b"existing\n"
+        b"late user file\n"
     );
     assert_eq!(
         fs::read(root.path().join("AGENTS.override.md")).unwrap(),
@@ -826,13 +825,16 @@ fn agents_apply_refuses_symlinked_parents_and_recovers_from_partial_apply() {
     let outside = TempDir::new().unwrap();
     fs::create_dir_all(root.path().join("skills/moai/workflows")).unwrap();
     create(&root, &profile(None));
-    symlink(outside.path(), root.path().join("AGENTS.md")).unwrap();
-    assert!(!agents_plan(&root, &agents_request("en", "none"))
-        .status
-        .success());
-    fs::remove_file(root.path().join("AGENTS.md")).unwrap();
+    symlink(outside.path(), root.path().join("CLAUDE.md")).unwrap();
+    // A link is not an error of the plan: its row is a conflict, and the apply refuses it.
+    let linked: Value = ok_result(&agents_plan(&root, &agents_request("en", "none")));
+    assert!(actions(&linked)
+        .iter()
+        .any(|(p, a)| p == "CLAUDE.md" && a == "conflict"));
+    assert!(!agents_apply(&root, &linked).status.success());
+    fs::remove_file(root.path().join("CLAUDE.md")).unwrap();
 
-    // Force a failure after AGENTS.md and AGENTS.local.md are written: the manifest
+    // Force a failure after CLAUDE.md and CLAUDE.local.md are written: the manifest
     // directory is read-only, so the final manifest write fails and the apply is partial.
     use std::os::unix::fs::PermissionsExt;
     let manifests = root.path().join(".moai-cli/manifests");
@@ -843,11 +845,11 @@ fn agents_apply_refuses_symlinked_parents_and_recovers_from_partial_apply() {
     assert!(!result.status.success());
     let stderr = String::from_utf8_lossy(&result.stderr);
     assert!(
-        stderr.contains("partial apply") && stderr.contains("AGENTS.md"),
+        stderr.contains("partial apply") && stderr.contains("CLAUDE.md"),
         "{stderr}"
     );
-    assert!(root.path().join("AGENTS.md").is_file());
-    assert!(root.path().join("AGENTS.local.md").is_file());
+    assert!(root.path().join("CLAUDE.md").is_file());
+    assert!(root.path().join("CLAUDE.local.md").is_file());
     assert!(!manifests.join("generation.json").exists());
     // Resume: the already-written block is adopted as baseline and the rest completes.
     fs::set_permissions(&manifests, fs::Permissions::from_mode(0o755)).unwrap();
@@ -864,8 +866,8 @@ fn agents_apply_refuses_symlinked_parents_and_recovers_from_partial_apply() {
         .iter()
         .map(|f| f["path"].as_str().unwrap())
         .collect();
-    assert!(owned.contains(&"AGENTS.md"));
-    assert_eq!(manifest["created_once"], json!(["AGENTS.local.md"]));
+    assert!(owned.contains(&"CLAUDE.md"));
+    assert_eq!(manifest["created_once"], json!(["CLAUDE.local.md"]));
 }
 
 #[test]
@@ -878,7 +880,7 @@ fn interrupted_update_refreshes_baseline_instead_of_false_conflict() {
     let plan: Value = ok_result(&agents_plan(&root, &agents_request("ko", "none")));
     assert_eq!(actions(&plan)[0].1, "merge");
     assert!(agents_apply(&root, &plan).status.success());
-    // Simulate the crash between the AGENTS.md write and the manifest write.
+    // Simulate the crash between the CLAUDE.md write and the manifest write.
     fs::write(&manifest, &v1_manifest).unwrap();
     let plan: Value = ok_result(&agents_plan(&root, &agents_request("ko", "none")));
     assert_eq!(actions(&plan)[0].1, "unchanged");
@@ -889,7 +891,7 @@ fn interrupted_update_refreshes_baseline_instead_of_false_conflict() {
         .as_array()
         .unwrap()
         .iter()
-        .find(|f| f["path"] == "AGENTS.md")
+        .find(|f| f["path"] == "CLAUDE.md")
         .unwrap()["baseline_sha256"]
         .as_str()
         .unwrap();
@@ -897,11 +899,9 @@ fn interrupted_update_refreshes_baseline_instead_of_false_conflict() {
         baseline,
         plan["files"][0]["rendered_sha256"].as_str().unwrap()
     );
-    // A further template change is a merge, not a conflict.
-    fs::create_dir_all(root.path().join("docs/wf")).unwrap();
-    let mut request = agents_request("ko", "none");
-    request["workflow_reference"] = json!("docs/wf/");
-    let plan: Value = ok_result(&agents_plan(&root, &request));
+    // A further template change (the block names no workflow path, so the language is the lever)
+    // is a merge, not a conflict.
+    let plan: Value = ok_result(&agents_plan(&root, &agents_request("en", "none")));
     assert_eq!(actions(&plan)[0].1, "merge");
     assert!(agents_apply(&root, &plan).status.success());
 }
@@ -929,34 +929,34 @@ fn profile_values_cannot_inject_managed_markers() {
         let out = agents_plan(&root, &agents_request("en", "none"));
         assert!(!out.status.success(), "{field}");
         assert!(String::from_utf8_lossy(&out.stderr).contains("marker"));
-        assert!(!root.path().join("AGENTS.md").exists());
+        assert!(!root.path().join("CLAUDE.md").exists());
     }
 }
 
 #[test]
 fn legacy_manifest_with_personal_file_in_owned_files_is_still_read() {
-    // M2 compatibility: manifests written before `created_once` listed AGENTS.local.md in owned_files.
+    // M2 compatibility: manifests written before `created_once` listed CLAUDE.local.md in owned_files.
     let (root, _) = agents_project("en", "tracked");
     let manifest = root.path().join(".moai-cli/manifests/generation.json");
     let mut value: Value = serde_json::from_slice(&fs::read(&manifest).unwrap()).unwrap();
-    assert_eq!(value["created_once"], json!(["AGENTS.local.md"]));
-    let local_digest = moai_cli::digest(&fs::read(root.path().join("AGENTS.local.md")).unwrap());
+    assert_eq!(value["created_once"], json!(["CLAUDE.local.md"]));
+    let local_digest = moai_cli::digest(&fs::read(root.path().join("CLAUDE.local.md")).unwrap());
     value["owned_files"]
         .as_array_mut()
         .unwrap()
-        .push(json!({"path":"AGENTS.local.md","section_id":null,"baseline_sha256":local_digest}));
+        .push(json!({"path":"CLAUDE.local.md","section_id":null,"baseline_sha256":local_digest}));
     value.as_object_mut().unwrap().remove("created_once");
     fs::write(&manifest, serde_json::to_vec_pretty(&value).unwrap()).unwrap();
-    fs::remove_file(root.path().join("AGENTS.local.md")).unwrap();
+    fs::remove_file(root.path().join("CLAUDE.local.md")).unwrap();
     let plan: Value = ok_result(&agents_plan(&root, &agents_request("en", "tracked")));
     // Created once before: the user's deletion is respected and the file is not recreated.
     assert!(actions(&plan)
         .iter()
-        .any(|(p, a)| p == "AGENTS.local.md" && a == "unchanged"));
+        .any(|(p, a)| p == "CLAUDE.local.md" && a == "unchanged"));
     assert!(agents_apply(&root, &plan).status.success());
-    assert!(!root.path().join("AGENTS.local.md").exists());
+    assert!(!root.path().join("CLAUDE.local.md").exists());
     let migrated: Value = serde_json::from_slice(&fs::read(&manifest).unwrap()).unwrap();
-    assert_eq!(migrated["created_once"], json!(["AGENTS.local.md"]));
+    assert_eq!(migrated["created_once"], json!(["CLAUDE.local.md"]));
     assert!(migrated["owned_files"]
         .as_array()
         .unwrap()
@@ -3600,7 +3600,7 @@ fn actions_of(plan: &Value) -> Vec<(String, String)> {
 
 #[test]
 fn generation_default_has_no_native_roles() {
-    // 03C-AC-1: the default request generates the AGENTS.md managed section, the
+    // 03C-AC-1: the default request generates the CLAUDE.md managed block, the
     // portable workflow and the .gitignore section; nothing under the native role
     // folders exists or is planned (SETUP-03).
     let root = generation_project();
@@ -3612,7 +3612,7 @@ fn generation_default_has_no_native_roles() {
         .iter()
         .map(|f| f["path"].as_str().unwrap())
         .collect();
-    assert!(paths.iter().any(|p| p.starts_with("AGENTS.md")));
+    assert!(paths.iter().any(|p| p.starts_with("CLAUDE.md")));
     assert!(paths
         .iter()
         .any(|p| p.starts_with(".moai-cli/workflows/review-flow/")));
@@ -3620,12 +3620,13 @@ fn generation_default_has_no_native_roles() {
     assert!(!paths.iter().any(|p| p.starts_with(".claude/agents/")));
     assert!(!paths.iter().any(|p| p.starts_with(".codex/agents/")));
     // The plan wrote nothing.
-    assert!(!root.path().join("AGENTS.md").exists());
+    assert!(!root.path().join("CLAUDE.md").exists());
     assert!(!root.path().join(".moai-cli/workflows").exists());
     let applied = ok_result(&generation_apply_cli(&root, &plan));
     assert_eq!(applied["host_loaded"], json!(false));
     assert_eq!(applied["execution_verified"], json!(false));
-    assert!(root.path().join("AGENTS.md").exists());
+    assert!(root.path().join("CLAUDE.md").exists());
+    assert!(!root.path().join("AGENTS.md").exists());
     assert!(root
         .path()
         .join(".moai-cli/workflows/review-flow/SKILL.md")
@@ -3655,7 +3656,7 @@ fn generation_rerun_is_diff_zero() {
     let plan = ok_result(&generation_plan_cli(&root, &request));
     ok_result(&generation_apply_cli(&root, &plan));
     let sha = |p: &std::path::Path| moai_cli::digest(&fs::read(p).unwrap());
-    let agents_before = sha(&root.path().join("AGENTS.md"));
+    let agents_before = sha(&root.path().join("CLAUDE.md"));
     let workflow_before = sha(&root.path().join(".moai-cli/workflows/review-flow/SKILL.md"));
     let manifest_before = sha(&root.path().join(".moai-cli/manifests/generation.json"));
     let plan2 = ok_result(&generation_plan_cli(&root, &request));
@@ -3669,7 +3670,7 @@ fn generation_rerun_is_diff_zero() {
         assert_eq!(action, "unchanged", "{path}");
     }
     ok_result(&generation_apply_cli(&root, &plan2));
-    assert_eq!(sha(&root.path().join("AGENTS.md")), agents_before);
+    assert_eq!(sha(&root.path().join("CLAUDE.md")), agents_before);
     assert_eq!(
         sha(&root.path().join(".moai-cli/workflows/review-flow/SKILL.md")),
         workflow_before
@@ -3688,7 +3689,7 @@ fn generation_preserves_user_files_and_reports_conflict() {
     // conflict and writes nothing (SETUP-04).
     let root = generation_project();
     fs::write(
-        root.path().join("AGENTS.md"),
+        root.path().join("CLAUDE.md"),
         b"# user header\r\n\n# user footer without final newline",
     )
     .unwrap();
@@ -3703,7 +3704,7 @@ fn generation_preserves_user_files_and_reports_conflict() {
     let plan = ok_result(&generation_plan_cli(&root, &request));
     ok_result(&generation_apply_cli(&root, &plan));
     assert!(
-        String::from_utf8_lossy(&fs::read(root.path().join("AGENTS.md")).unwrap())
+        String::from_utf8_lossy(&fs::read(root.path().join("CLAUDE.md")).unwrap())
             .starts_with("# user header\r\n")
     );
     assert_eq!(
@@ -3716,28 +3717,28 @@ fn generation_preserves_user_files_and_reports_conflict() {
     assert!(gitignore.contains("moai:managed"));
     // The user edits inside the managed section; a template change (language) then
     // reports a conflict and nothing is written.
-    let agents = fs::read_to_string(root.path().join("AGENTS.md")).unwrap();
+    let agents = fs::read_to_string(root.path().join("CLAUDE.md")).unwrap();
     let edited = agents.replace(
-        "Confirm the approved SPEC and Issue scope",
-        "The user rewrote this managed line",
+        "Checks: `moai check affected`.",
+        "The user rewrote this line",
     );
     assert_ne!(
         agents, edited,
         "the fixture string must exist in the section"
     );
-    fs::write(root.path().join("AGENTS.md"), edited).unwrap();
-    let before = fs::read(root.path().join("AGENTS.md")).unwrap();
+    fs::write(root.path().join("CLAUDE.md"), edited).unwrap();
+    let before = fs::read(root.path().join("CLAUDE.md")).unwrap();
     let mut changed = generation_request("ignored");
     changed["language"] = json!("ko");
     let plan2 = ok_result(&generation_plan_cli(&root, &changed));
     assert!(actions_of(&plan2)
         .iter()
-        .any(|(p, a)| p == "AGENTS.md" && a == "conflict"));
+        .any(|(p, a)| p == "CLAUDE.md" && a == "conflict"));
     let out = generation_apply_cli(&root, &plan2);
     assert!(!out.status.success());
     let failure: Value = serde_json::from_slice(&out.stdout).unwrap();
     assert_eq!(failure["error"]["kind"], json!("conflict"));
-    assert_eq!(fs::read(root.path().join("AGENTS.md")).unwrap(), before);
+    assert_eq!(fs::read(root.path().join("CLAUDE.md")).unwrap(), before);
 }
 
 #[test]
@@ -3923,7 +3924,7 @@ fn generation_partial_apply_recovers() {
     let plan2 = ok_result(&generation_plan_cli(&root, &request));
     ok_result(&generation_apply_cli(&root, &plan2));
     for rel in [
-        "AGENTS.md",
+        "CLAUDE.md",
         ".moai-cli/workflows/review-flow/SKILL.md",
         ".moai-cli/workflows/review-flow/references/workflow.md",
         ".gitignore",

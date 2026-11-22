@@ -781,14 +781,66 @@ enum Action {
     },
     /// Copies the integration branch to its remote, fast-forward only
     ///
-    /// Writes no ledger row. The on-demand run of the copy a landing makes: the remote is
-    /// read first and pushed only behind or absent, never forced. A copy that could not
-    /// finish answers pending and is retried by this command or the next landing; diverged
-    /// histories answer hold and move nothing.
+    /// Writes no ledger row and, while the profile key is off, touches no network at all. The
+    /// on-demand run of the copy a landing makes: the remote is read first and pushed only
+    /// behind or absent, never forced. A copy that could not finish answers pending and is
+    /// retried by this command or the next landing; diverged histories and a remote tip this
+    /// repository does not know answer hold and move nothing.
     RemoteCopy {
         /// The project folder (its profile holds the project id and the integration branch).
         #[arg(long, default_value = ".")]
         project: PathBuf,
+    },
+    /// Writes the git folder and the ledger only with `--restore`. Show where the integration branch stands against the ledger, and put it back
+    ///
+    /// The plain view writes nothing. `--restore` writes one file, the preview's one-use nonce in
+    /// the common git folder, and `--apply` also moves the branch and writes the ledger row. Compares the integration branch's tip
+    /// with the ledger: it must be the result commit of the newest successful `card land` of the
+    /// branch (or, for a landing that was interrupted, the tip it started from or its target).
+    /// `state` is `ok`, `drift` or `no_landing` (the ledger never moved the branch). A commit
+    /// added by hand and a branch copied or rewound with `git branch -C` are drift. `--restore`
+    /// previews the move back to the recorded commit: the commits it drops and a plan digest bound
+    /// to the nonce; nothing moves. With `--apply` the move is made, and only with `--by leader`,
+    /// the digest of the latest preview of the same state (a digest is used once) and
+    /// `--permission-reference` naming the user's yes: the branch moves under the guard (a restore
+    /// intent that names the recorded landing and its ledger row, the one move that may be no
+    /// fast-forward) and one `card.tip_restored` row is written.
+    Drift {
+        /// Preview the move back to the recorded commit.
+        #[arg(long)]
+        restore: bool,
+        /// Make the move of `--restore`; needs `--plan-digest`, `--permission-reference` and `--by`.
+        #[arg(long)]
+        apply: bool,
+        /// The `plan_digest` of a preview of the same state.
+        #[arg(long)]
+        plan_digest: Option<String>,
+        /// The reference of the user's yes (1 to 80 letters, digits or . _ : / -).
+        #[arg(long)]
+        permission_reference: Option<String>,
+        /// Who restores the branch: only `leader` is accepted.
+        #[arg(long)]
+        by: Option<String>,
+        /// The project folder (its profile holds the project id and the integration branch).
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// The HOME holding the ledger (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+    },
+    /// Writes the git folder only. Guard the integration branch (run by git, never typed)
+    ///
+    /// Run by the `reference-transaction` hook, never by hand: git runs it with the state of a
+    /// reference transaction (`prepared` or `committed`) and the transaction's lines on standard
+    /// input. At `prepared` it refuses, with exit 1, every create, move or delete of the
+    /// integration branch that the intent record of `card land` (`moai/land-intent` in the common
+    /// git folder) does not name exactly, every case variant of the branch's name and every
+    /// symbolic alias of it; `pack-refs` and `gc` pass. The branch is the one the record
+    /// `moai/integration-branch` names. At `committed` it removes the intent record of a move that
+    /// went through. Any other state does nothing.
+    Guard {
+        /// The state git gives the hook: `prepared` or `committed`.
+        state: String,
     },
     /// Writes the ledger. Extend the lease of a taken card
     ///
@@ -1320,6 +1372,32 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             Ok(landed)
         }
         Action::RemoteCopy { project } => Ok(moai_cli::card::remote_copy::entry(&project)),
+        Action::Drift {
+            restore,
+            apply,
+            plan_digest,
+            permission_reference,
+            by,
+            project,
+            home,
+        } => moai_cli::card::drift::drift(
+            &project,
+            &resolve_home(home)?,
+            &moai_cli::card::drift::DriftRequest {
+                restore,
+                apply,
+                plan_digest: plan_digest.as_deref(),
+                permission_reference: permission_reference.as_deref(),
+                by: by.as_deref(),
+            },
+        ),
+        Action::Guard { state } => {
+            let mut input = String::new();
+            std::io::Read::read_to_string(&mut std::io::stdin(), &mut input)
+                .map_err(|e| format!("card guard refused: cannot read the transaction: {e}"))?;
+            moai_cli::card::guard::run(&state, &input)?;
+            Ok(serde_json::json!({"action": "guard", "state": state, "allowed": true}))
+        }
         Action::Renew {
             card,
             generation,
