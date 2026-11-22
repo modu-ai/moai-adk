@@ -53,22 +53,22 @@ moai 가 사용자 프로젝트에서 관리하는 지침 파일을 Claude Code 
 
 ## Requirements
 
-- REQ-1: When no `AGENTS.md` exists at the project root or a pick of the project layer was given, the generator shall plan the managed block `moai-workflow` inside `CLAUDE.md` at the project root.
-- REQ-2 (REQ-1): IF `AGENTS.md` exists and no pick was given, THEN the generator shall plan no CLAUDE file and report that a pick is needed.
+- REQ-1: When no `AGENTS.md` exists at the project root, or `CLAUDE.md` already holds the managed block or the line `@AGENTS.md`, or the pick `import` or `move` was given, the generator shall plan the managed block `moai-workflow` inside `CLAUDE.md` at the project root.
+- REQ-2 (REQ-1): IF `AGENTS.md` exists and none of those holds, THEN the generator shall plan no CLAUDE file and report that a pick is needed.
 - REQ-3: The renderer shall produce at most 15 lines between the two marker lines of the managed block and state in them only the project id, the tools, the check command, the language, the versioning line, the flow name with its integration branch, the places of SPECs and cards, and the path of the flow rule file when one is planned.
 - REQ-4: When `CLAUDE.md` exists without the managed block, the generator shall append the block on a new line after the last byte and keep every earlier byte.
-- REQ-5 (REQ-4): IF the text between the block markers was edited after the recorded baseline or the file is a link or is not valid UTF-8, THEN the generator shall report a conflict and write nothing to that file.
+- REQ-5 (REQ-4): IF the text between the block markers was edited after the recorded baseline, or `CLAUDE.md`, `CLAUDE.local.md` or the flow file, or a folder above one of them inside the project, is a link or is not valid UTF-8, THEN the generator shall report a conflict and write nothing to that file.
 - REQ-6: When `CLAUDE.local.md` is absent, the generator shall create it only on the user's pick of a personal file. · failure: none — without the pick nothing is written, so nothing can fail
 - REQ-7: Where the profile value `local_file` reads `tracked`, the generator shall treat it as `ignored` and say so in the preview.
 - REQ-8: When the profile value `work_flow` names a known flow, the generator shall plan exactly one file `.claude/rules/moai/flow.md` that holds the text of that flow.
-- REQ-9 (REQ-8): IF the profile value `work_flow` names no known flow, THEN the generator shall plan no flow file and name the accepted values.
+- REQ-9 (REQ-8): IF the profile value `work_flow` names no known flow or a known flow that has no shipped text, THEN the generator shall plan no flow file and name the accepted values.
 - REQ-10: The renderer shall keep the flow text within 80 lines and 5 KiB and omit the `paths` frontmatter key so that the rule loads at session start.
 - REQ-11: When the flow file exists, the generator shall replace it only when its bytes equal the bytes moai last wrote.
 - REQ-12 (REQ-11): IF the flow file differs from the bytes moai last wrote, THEN the generator shall report a conflict and keep the file.
 
 ## Acceptance
 
-- AC-1 (REQ-1…REQ-5): a temporary project without `AGENTS.md` gets the block in `CLAUDE.md` within 15 lines and with facts only; a project with `AGENTS.md` and no pick gets no CLAUDE file; an appended block starts on a new line and keeps every earlier byte; an edited block, a `CLAUDE.md` that is a link, and one that is not UTF-8 are conflicts that write nothing.
+- AC-1 (REQ-1…REQ-5): a temporary project without `AGENTS.md` gets the block in `CLAUDE.md` within 15 lines and with facts only; a project with `AGENTS.md`, no pick and no earlier block or import gets no CLAUDE file, while a project whose `CLAUDE.md` already holds the block or the import keeps getting its block refreshed; an appended block starts on a new line and keeps every earlier byte; an edited block, a `CLAUDE.md` that is a link, and one that is not UTF-8 are conflicts that write nothing.
   verify: `cargo test --locked --offline --test claude_md_layout_cli blocks_`
 - AC-2 (REQ-6, REQ-7): `CLAUDE.local.md` is created only on the pick, and a profile with `tracked` plans like `ignored` with a preview note.
   verify: `cargo test --locked --offline --test claude_md_layout_cli local_`
