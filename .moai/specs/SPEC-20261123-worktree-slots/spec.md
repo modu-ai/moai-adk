@@ -2,7 +2,7 @@
 id: SPEC-20261123-worktree-slots
 title: "Worktrees are fixed slots warmed from a seed by an APFS clone, under caps, and cleaned when their work ends"
 status: draft
-revision: 6
+revision: 7
 created: 2026-11-23
 ---
 
@@ -50,6 +50,8 @@ Readers: lanes and the leader, who create, reuse and clean worktrees, and the au
 - REQ-10: If a cap is exceeded, then the cleanup plan shall order its removal candidates oldest first with the number that brings the count back under the cap.
 - REQ-11: If a branch ref is deleted, then the reference-transaction hook shall only append one line naming the ref to a queue file.
 - REQ-12: If a card lands or its verdict is posted, then the landing and verdict steps shall apply the cleanup plan for that card's worktrees on a matching digest.
+- REQ-13: If a slot path is a symbolic link, then the slot command shall refuse it before any write.
+- REQ-14: If the cleanup apply is about to act on a worktree that a claim now names, or that now holds another worktree, or whose claims cannot be read, then the cleanup apply shall refuse that worktree.
 
 ## Acceptance
 
@@ -63,6 +65,15 @@ Readers: lanes and the leader, who create, reuse and clean worktrees, and the au
   verify: `cargo nextest run --locked --offline --test worktree_slot_cli`
 - AC-5 (REQ-7, REQ-8, REQ-9, REQ-10): a preview over a temporary repository keeps a fixed slot (`fixed_slot`), a worktree holding a nested worktree (`nested_worktree`) and a worktree an active card reservation names (`live_claim`); a merged clean worktree unchanged for 3 days stays a removal candidate; the `cap` block orders the candidates oldest first with the number needed (slice 2).
   verify: `cargo nextest run --locked --offline --test worktree_gc_slots`
+- AC-7 (REQ-13, REQ-14, REQ-5, REQ-6): the follow-ups of the slice 1 and 2 verdict, in temporary repositories.
+  - A linked slot path is refused, and nothing is written through it.
+  - Re-warming a present slot meets the free-disk floor.
+  - Leftover temporary copies are removed and named.
+  - A held lock makes ensure wait the configured time, then refuse.
+  - apply leaves a claimed worktree and a nested one, whether the claim or the nesting came before or after the plan.
+  - The act-time re-check refuses a nested worktree and unknown claims.
+  - An unreadable profile keeps every linked worktree.
+  verify: `cargo nextest run --locked --offline --test worktree_slot_cli --test worktree_gc_slots`
 - AC-6 (REQ-11, REQ-12): a deleted branch adds one queue line and removes nothing; a landing or a verdict cleans that card's worktrees on a matching digest (slice 3).
   verify: `cargo nextest run --locked --offline --test worktree_cleanup_triggers`
 
@@ -85,6 +96,10 @@ Readers: lanes and the leader, who create, reuse and clean worktrees, and the au
 
 - D-8: Slice 2 follows option (b) of the leader's recorded decision on the lane's deletion-scope question (category guarded): its rules only skip or report, and no path becomes removable that was not before. The Q8 preservation of every `.claude/worktrees/` path and its test `a_worktree_under_claude_worktrees_is_preserved` stay. Option (a) (this repository's own `.claude/worktrees/` under the normal safe criteria, slots trim-only) waits for the user's pick and becomes a slice of its own.
 - D-9: A claim is an active card reservation (`held`, `expired_candidate`, `held_for_review`) whose `worktree` names the path. A `held` reservation whose lease has ended still counts, because a lane's lease can end during a long run. A ledger that exists but cannot be read keeps every linked worktree (`claim_check_unavailable`); a project without a profile or a ledger has no claims.
+- D-11: Only a missing profile means no claims. A profile that exists but cannot be read is `claim_check_unavailable`, as an unreadable ledger is. This replaces part of D-9.
+- D-12: `apply` reads the nesting (from the worktree list it read) and the claims again right before it acts on each entry, beside the existing busy re-check. A claim or a nested worktree that appears after the plan already changes the recomputed digest. So the act-time re-check covers the window between the digest match and the action.
+- D-13: The lock wait is shortened by `MOAI_WORKTREE_SLOT_LOCK_WAIT_SECS`, for tests. The default stays 300 seconds.
+- D-14: Under the slot lock, a present slot's `.target-warming-*`, `.target-inherit-*` and `.target-old-*` folders belong to a killed run, because no other run copies while the lock is held. ensure removes them and names them in `cleaned`.
 - D-10: REQ-9 needs no new code: a merged, clean worktree whose newest change is older than the existing 120-minute window is already a `remove` candidate, and 3 days is past it. The control test measures it with the clock three days ahead.
 
 ## Plan
@@ -129,3 +144,11 @@ Slice 1 audit repair, measured 2026-11-23 on macOS.
   - git failures keep the `fatal:` line.
 - `tests/worktree_slot_cli.rs`: 14 passed, 7 of them new. One of them runs three concurrent ensures of one slot for three slots.
 - Mutants, all killed: the lock removed; the guard on an existing `target/` removed; the temporary copy kept after a failure; the `df` exit status ignored.
+
+Follow-ups of the slice 1 and 2 verdict, measured 2026-11-23 on macOS (before AC-6).
+- AC-7 met. Integration tests: 43 of 43 passed across `worktree_slot_cli`, `worktree_gc_slots` and `worktree_gc`. Unit tests of `worktree_gc` and `worktree_slot`: 18 of 18 passed.
+- The first runs failed in two fixtures, not in the code: two cards reserved one scope path, and a trim control had no `target/`. Both fixtures were fixed.
+- Six mutants were killed, each by its targeted test: the link refusal removed; the re-warm floor removed; the leftover cleanup removed; the act-time nesting check removed; unknown claims read as none at act time; a profile read error read as no profile.
+- REQ-7 was reworded to match the code: a fixed slot is offered neither for removal nor for a trim. The stale slice 1 line and the doc's `failed` warm value were fixed.
+- The commit messages that cite a decision number were left as they are; new ones carry none.
+- Branch: from the audit-slot head, because both change the slot module.
