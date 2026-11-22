@@ -242,8 +242,10 @@ fn a_missing_gh_marks_the_counts_suppressed_without_a_retry_storm() {
 // ---- SPEC-20261122-statusline-limits AC-6 (REQ-8, D-6): the Orca pass-through ----
 
 /// The Orca script below the temporary HOME (D-6: the file Orca installs).
+#[cfg(unix)]
 const ORCA_SCRIPT: &str = ".orca/agent-hooks/claude-statusline.sh";
 /// The three hook variables D-6 names, with fake values.
+#[cfg(unix)]
 const ORCA_VARS: [(&str, &str); 3] = [
     ("ORCA_AGENT_HOOK_PORT", "1"),
     ("ORCA_AGENT_HOOK_TOKEN", "fake"),
@@ -251,6 +253,7 @@ const ORCA_VARS: [(&str, &str); 3] = [
 ];
 
 /// A stdin payload with `rate_limits` (or without it).
+#[cfg(unix)]
 fn orca_stdin(f: &Fixture, with_limits: bool) -> String {
     let mut v = serde_json::json!({
         "workspace": {"project_dir": f.repo},
@@ -266,6 +269,7 @@ fn orca_stdin(f: &Fixture, with_limits: bool) -> String {
 
 /// A fake Orca script: keeps its stdin in `orca.in`, adds one line to `orca.calls`, then sleeps
 /// `delay` seconds. Only absolute programs, since PATH holds `git` alone.
+#[cfg(unix)]
 fn orca_script(f: &Fixture, delay: u32) -> String {
     let dir = f.log.parent().unwrap().display().to_string();
     format!(
@@ -275,6 +279,7 @@ fn orca_script(f: &Fixture, delay: u32) -> String {
 
 /// Writes the fake script the way Orca installs it: an executable file of mode 0755 in
 /// folders of mode 0755 (set, not left to the umask).
+#[cfg(unix)]
 fn orca_install(path: &Path, text: &str) {
     use std::os::unix::fs::PermissionsExt;
     let hooks = path.parent().unwrap();
@@ -286,6 +291,7 @@ fn orca_install(path: &Path, text: &str) {
     std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o755)).unwrap();
 }
 
+#[cfg(unix)]
 fn orca_calls(f: &Fixture) -> usize {
     std::fs::read_to_string(f.log.parent().unwrap().join("orca.calls"))
         .map(|s| s.lines().count())
@@ -293,6 +299,7 @@ fn orca_calls(f: &Fixture) -> usize {
 }
 
 /// One render with `stdin` and these extra variables; its output and how long it took.
+#[cfg(unix)]
 fn orca_render(f: &Fixture, stdin: &str, vars: &[(&str, &str)]) -> (String, Duration) {
     let tmp = tempfile::tempdir().unwrap();
     let started = Instant::now();
@@ -321,6 +328,7 @@ fn orca_render(f: &Fixture, stdin: &str, vars: &[(&str, &str)]) -> (String, Dura
 
 /// AC-6: with the hook variables, an executable script and `rate_limits` in the stdin, the
 /// script starts once and reads exactly the bytes the status line received.
+#[cfg(unix)]
 #[test]
 fn orca_pass_through_starts_the_script_once_with_the_stdin_bytes() {
     let f = fixture("https://github.com/acme/widgets.git", None);
@@ -336,6 +344,7 @@ fn orca_pass_through_starts_the_script_once_with_the_stdin_bytes() {
 }
 
 /// AC-6 (D-6): the endpoint file variable alone is enough to start the script.
+#[cfg(unix)]
 #[test]
 fn orca_pass_through_starts_with_the_endpoint_variable() {
     let f = fixture("https://github.com/acme/widgets.git", None);
@@ -355,6 +364,7 @@ fn orca_pass_through_starts_with_the_endpoint_variable() {
 /// that others may change: a link in its place or in place of a folder, a script or folder
 /// writable by group or others, or a script with only the group's execute bit. (A file of
 /// another owner needs a second user and is not tested here.)
+#[cfg(unix)]
 #[test]
 fn orca_pass_through_starts_nothing_without_limits_variables_or_an_executable() {
     let two = &ORCA_VARS[..2];
@@ -422,6 +432,7 @@ fn orca_pass_through_starts_nothing_without_limits_variables_or_an_executable() 
 }
 
 /// AC-6: the render returns before a slow script ends.
+#[cfg(unix)]
 #[test]
 fn orca_pass_through_does_not_wait_for_a_slow_script() {
     let f = fixture("https://github.com/acme/widgets.git", None);
