@@ -2,7 +2,7 @@
 id: SPEC-20261122-star-and-reports
 title: "A polite star line at install and update, and improvement reports that leave only on the user's yes under the user's own gh account"
 status: draft
-revision: 1
+revision: 3
 created: 2026-11-22
 parent: null
 ---
@@ -46,8 +46,8 @@ parent: null
 
 ## Scope
 
-- this slice, write: `.moai/specs/SPEC-20261122-star-and-reports/**`
-- later slices, write: the install and update endings (`src/update.rs`, `src/launcher_init.rs`, `src/home_install_apply.rs`), the ask and report module (new), the home-state entries (`src/home_state.rs`), the stand-in gh test harness (`tests/star_ask_cli.rs`, `tests/report_ask_cli.rs`)
+- the landed slices write: this SPEC, the star ask module and its command (`src/star_ask.rs`, `src/ops/star_ask.rs`), the home-layout rows, the help rows and the two star-ask rows of the UI text table (`src/ui_text.rs`, the leader's word), the stand-in gh test harness (`tests/star_ask_cli.rs`), the operation document
+- the later slices write: the install and update endings (`src/update.rs`, `src/launcher_init.rs`, `src/home_install_apply.rs`), the report module, `tests/report_ask_cli.rs`
 - forbidden in every slice: a star on the user's behalf (any PUT to the starred endpoint), an anonymous relay, sending any report without a fresh yes, real network calls in tests
 
 ## Plan
@@ -72,7 +72,8 @@ parent: null
 | D-3 | The report route is the user's own gh account; no anonymous relay exists in the product. | The user's pick recorded on the card. | Add a relay. |
 | D-4 | The dismissal and the report choice live in the home moai state. | The card body names the home moai state; the state module already plans entries. | Move them into a profile. |
 | D-5 | The preview runs the secret rule and the no-code, no-path, no-project-name limits before any yes is possible. | The card body; the check must precede the choice, not follow it. | Check after the yes. |
+| D-6 | `--dismiss` answers one shape on every outcome: `dismissed` is an object `{written, reason}` — `reason` null when the marker landed, the retired folder or the refusal named otherwise — and the command exits 0 whatever the write did. | An independent audit asked for one answer shape; REQ-3 says a failed state write never blocks a run. | Split the answer by outcome, with a different shape and exit code for each. |
 
 ## Result
 
-(Filled when the work is done. This is the SPEC-only slice: no code, no acceptance criterion run yet; the star endpoint facts, the issue endpoint facts and the gh manual behaviors are recorded above.)
+The star-ask slice has landed: the module answers the star state from exactly one read-only GET to the pinned URL (`https://api.github.com/user/starred/modu-ai/moai-adk`) through the user's gh login — no token read by moai, no body, no added header, the transport's 60-second bound, only the explicit command calls it. The line lives in the shared UI text table (`src/ui_text.rs`) with an English and a Korean text, and the command asks the one language mechanism every screen uses (`ui::ui_lang`). At this head that mechanism answers English on every stream, so the command prints the English text everywhere; the Korean text is in the table and is tested there, and it appears as soon as `ui_lang` answers Korean. A dismissed home makes no network call at all (checked before the transport is built). `--dismiss` records the marker in the current-generation home folder only (a home whose resolver answers the retired folder writes nothing) and answers one shape on every outcome — an object `{written, reason}` with the retired folder and a refused write named in `reason`, exit 0 always (D-6). A non-absolute HOME is refused. The report consent stores ask-each-time or never in the same folder with the same rules. The report preflight refuses code, file paths and secret shapes. AC-1 (star line, no write, no call when dismissed, the URL pinned) is met by `tests/star_ask_cli.rs`, which also pins the one-shape mappings of the retired folder and the refused write and the table as the line's source. The report module (the install question, the exact-text preview, the gh send, the prefilled URL) lands with its own slice.

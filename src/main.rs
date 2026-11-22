@@ -249,7 +249,7 @@ enum Command {
     ///
     /// Wait for one of N machine-wide heavy-run slots, run COMMAND holding it, and exit with
     /// COMMAND's code (#2677). Same folder and lock as `tools/heavy_check_slot.py`; while
-    /// waiting and on failure it prints the load averages and free disk space. The machine's
+    /// waiting and when COMMAND ends it prints the load averages and free disk space. The machine's
     /// limits come from `limits.json` in the slot folder (defaults 3 slots, 50 GB, 80 % swap on
     /// Linux, 10 % memory free on macOS); a flag only tightens them (#2930). Unix only.
     HeavySlotAcquire {
