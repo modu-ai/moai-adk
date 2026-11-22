@@ -316,3 +316,50 @@ fn ac6_a_socket_folder_open_to_group_or_world_writes_is_refused() {
         );
     }
 }
+
+/// The follow-up of the landed follow-ups: a symlinked sessions folder — and
+/// a symlinked config root — is followed on purpose (D-8): users link their
+/// config root, the listing only reads, and the socket-path guard checks
+/// every component between the socket and /tmp before any connect, so a link
+/// cannot redirect a send.
+#[cfg(unix)]
+#[test]
+fn ac7_a_linked_sessions_folder_and_a_linked_config_root_are_followed() {
+    let socks = SockFolder::new("linkcfg");
+    let socket_path = socks.0.join("wake.sock");
+    let _listener = std::os::unix::net::UnixListener::bind(&socket_path).unwrap();
+
+    // A real config root with a sessions folder, linked into place.
+    let real_root = TempDir::new().unwrap();
+    let real_sessions = real_root.path().join("sessions");
+    fs::create_dir_all(&real_sessions).unwrap();
+    fs::write(
+        real_sessions.join("1.json"),
+        format!(
+            r#"{{"name":"leader","messagingSocketPath":"{}"}}"#,
+            socket_path.display()
+        ),
+    )
+    .unwrap();
+
+    // Case 1: the sessions folder itself is a link.
+    let linked_sessions = TempDir::new().unwrap();
+    std::os::unix::fs::symlink(&real_sessions, linked_sessions.path().join("sessions")).unwrap();
+    let v = wake(&linked_sessions, "leader");
+    assert_eq!(v["shape"], json!("queued"), "sessions link: {v}");
+    assert_eq!(v["socket_write"], json!(true), "sessions link: {v}");
+
+    // Case 2: the whole config root is a link.
+    let linked_root = TempDir::new().unwrap();
+    std::os::unix::fs::symlink(real_root.path(), linked_root.path().join("root")).unwrap();
+    let v = ok(&run(&[
+        "host-wake",
+        "leader",
+        "--text",
+        "a verdict landed",
+        "--config-dir",
+        linked_root.path().join("root").to_str().unwrap(),
+    ]));
+    assert_eq!(v["shape"], json!("queued"), "root link: {v}");
+    assert_eq!(v["socket_write"], json!(true), "root link: {v}");
+}

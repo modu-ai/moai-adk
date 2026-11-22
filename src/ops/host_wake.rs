@@ -3,9 +3,9 @@
 //! folder answers with its path named, never an internal error — refuses with
 //! the reason when the addressee is unreachable, and answers the result
 //! shape: queued (one line written to the addressee's inbox socket), held
-//! with a notice, or refused (an unknown name, no channel, no inbox, an
-//! ambiguous name, the idle flag, or a socket path outside its guarded
-//! folder).
+//! with a notice, or refused (an unknown name, the sessions folder missing,
+//! no inbox, an ambiguous name, the idle flag, or a socket path outside its
+//! guarded folder).
 
 use serde_json::Value;
 use std::path::PathBuf;
