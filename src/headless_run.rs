@@ -731,39 +731,70 @@ pub fn record_run(
     Ok(key)
 }
 
-/// A tool rule the builder accepts (SPEC REQ-2): never a blanket `Bash`·`PowerShell`·`Agent`·
-/// `Monitor`, and a Bash or PowerShell rule only in one shape. Without its leading and
-/// trailing spaces and one trailing wildcard form (a final space-star or colon-star, the two
-/// spellings of one rule), every character of the rule is in the set below, and the first word
-/// of a wildcarded rule is a plain command word that is neither `builtin` nor `eval` nor an
-/// interpreter or wrapper of the documented list. A rule without a wildcard meets the set
-/// alone: it names one exact command, so its first word is not judged. Anything a shell would
-/// read — an operator, a quote, a substitution, a glob, a backslash, a redirection, a tab, a
-/// newline, NUL, every non-ASCII character — is not in the set, so the rule refuses by
-/// construction and there is no list of bad characters to keep complete.
-fn narrow_rule(tool: &str) -> Result<()> {
-    let blanket = matches!(tool, "Bash" | "PowerShell" | "Agent" | "Monitor");
-    let scope = tool
-        .strip_prefix("Bash(")
-        .or_else(|| tool.strip_prefix("PowerShell("))
-        .and_then(|inner| inner.strip_suffix(')'));
-    let plain = |inner: &str| {
-        let text = inner.trim_matches(' ');
-        let (wildcarded, body) = match text.strip_suffix(" *").or_else(|| text.strip_suffix(":*")) {
-            Some(body) => (true, body),
-            None => (false, text),
-        };
-        // A wildcard with nothing before it names every command, so an empty body refuses.
-        !body.is_empty()
-            && body.chars().all(plain_rule_char)
-            && !(wildcarded && broad_first_word_of(body))
+/// One `--allowedTools` entry the builder accepts (SPEC REQ-2). The WHOLE entry has one allowed
+/// shape: a tool name of ASCII letters, digits and underscores, then optionally one
+/// parenthesised body, nothing before the name, nothing after the closing parenthesis, no
+/// comma and no whitespace outside the body. Anything else refuses by construction, so an entry
+/// cannot carry a second entry into the comma-joined value and there is no list of bad
+/// spellings to keep complete. Per tool, in any letter case: `Monitor` never builds, `Bash`,
+/// `PowerShell` and `Agent` never build bare, a `Bash` or `PowerShell` body is a shell rule
+/// (`shell_rule`), and every other body is plain text (`plain_body`).
+fn narrow_rule(entry: &str) -> Result<()> {
+    let refuse = |why: &str| -> Result<()> {
+        Err(format!(
+            "tool entry {entry:?} is refused ({why}); use one narrow entry"
+        ))
     };
-    if blanket || scope.is_some_and(|inner| !plain(inner)) {
-        return Err(format!(
-            "blanket tool rule {tool:?} is not allowed; use a narrow rule"
-        ));
+    let (name, body) = match entry.split_once('(') {
+        None => (entry, None),
+        Some((name, rest)) => match rest.strip_suffix(')') {
+            Some(inner) => (name, Some(inner)),
+            None => return refuse("a body must end with the closing parenthesis, last"),
+        },
+    };
+    if name.is_empty() || !name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_') {
+        return refuse("the tool name is not ASCII letters, digits and underscores");
     }
-    Ok(())
+    match (name.to_ascii_lowercase().as_str(), body) {
+        ("monitor", _) => refuse("Monitor runs commands and has no narrow form"),
+        ("bash" | "powershell" | "agent", None) => refuse("a blanket tool"),
+        ("bash" | "powershell", Some(inner)) if !shell_rule(inner) => {
+            refuse("a shell rule outside the allowed shape")
+        }
+        ("bash" | "powershell", Some(_)) => Ok(()),
+        (_, Some(inner)) if !plain_body(inner) => refuse("a body that is not one plain text"),
+        _ => Ok(()),
+    }
+}
+
+/// The body of a tool entry that is not a shell rule: printable ASCII with no parenthesis and
+/// no comma, holding at least one character that is not a wildcard, a colon or a space — a body
+/// of nothing but wildcards names every call of the tool.
+fn plain_body(inner: &str) -> bool {
+    inner
+        .bytes()
+        .all(|b| (0x20..=0x7e).contains(&b) && !matches!(b, b'(' | b')' | b','))
+        && inner.chars().any(|c| !matches!(c, ' ' | '*' | ':'))
+}
+
+/// A Bash or PowerShell rule (SPEC REQ-2). Without its leading and trailing spaces and one
+/// trailing wildcard form (a final space-star or colon-star, the two spellings of one rule),
+/// every character of the rule is in the set below, and the first word of a wildcarded rule is
+/// a plain command word that is neither `builtin` nor `eval` nor an interpreter or wrapper of
+/// the documented list. A rule without a wildcard meets the set alone: it names one exact
+/// command, so its first word is not judged. Anything a shell would read — an operator, a
+/// quote, a substitution, a glob, a backslash, a redirection, a tab, a newline, NUL, every
+/// non-ASCII character — is not in the set, so the rule refuses by construction.
+fn shell_rule(inner: &str) -> bool {
+    let text = inner.trim_matches(' ');
+    let (wildcarded, body) = match text.strip_suffix(" *").or_else(|| text.strip_suffix(":*")) {
+        Some(body) => (true, body),
+        None => (false, text),
+    };
+    // A wildcard with nothing before it names every command, so an empty body refuses.
+    !body.is_empty()
+        && body.chars().all(plain_rule_char)
+        && !(wildcarded && broad_first_word_of(body))
 }
 
 /// The punctuation a rule may hold besides ASCII letters, digits and the space (SPEC REQ-2):
@@ -793,16 +824,20 @@ fn broad_first_word_of(body: &str) -> bool {
 }
 
 /// Whether a plain command word is an interpreter or wrapper that runs what follows it, in
-/// every spelling: the word's basename (`/usr/bin/env`) and a versioned spelling of a list
-/// word (`python3.12`, `pypy3.10`, `node22`). The word arrives lower-cased, so the list is
-/// written lower-case.
+/// every spelling: the word's basename (`/usr/bin/env`), the Windows `.exe` spelling
+/// (`powershell.exe`) and a versioned spelling of a list word — digits and dots, then any
+/// trailing letters (`python3.12`, `python3.13t`, `pypy3.10`, `node22`). A word that only
+/// starts like a list word (`python-config`, `suspend`) is not one. The word arrives
+/// lower-cased, so the list is written lower-case.
 fn broad_first_word(word: &str) -> bool {
     let word = word.rsplit('/').next().unwrap_or(word);
+    let word = word.strip_suffix(".exe").unwrap_or(word);
     INTERPRETERS_AND_WRAPPERS.iter().any(|known| {
         word == *known
             || word.strip_prefix(known).is_some_and(|rest| {
-                rest.starts_with(|c: char| c.is_ascii_digit())
-                    && rest.chars().all(|c| c.is_ascii_digit() || c == '.')
+                let version = rest.trim_end_matches(|c: char| c.is_ascii_alphabetic());
+                version.starts_with(|c: char| c.is_ascii_digit())
+                    && version.chars().all(|c| c.is_ascii_digit() || c == '.')
             })
     })
 }
@@ -811,10 +846,12 @@ fn broad_first_word(word: &str) -> bool {
 /// follows them as code or as a command line on this machine. It is the dropped-rules set of
 /// permission-modes.md — the interpreters and the wrappers that execute their arguments,
 /// which permissions.md names (`timeout`, `time`, `nice`, `nohup`, `stdbuf`, `noglob`, bare
-/// `xargs`, the environment runners and the exec wrappers) — plus the privilege escalators.
+/// `xargs`, the environment runners and the exec wrappers) — plus the privilege escalators
+/// and the shells of the other families (`csh`, `tcsh`, `ash`, `pwsh`, `powershell`, `cmd`,
+/// `su`, `chroot`), each of which runs the command line that follows it.
 /// Which names belong is the SPEC's decision (D-12), not this constant's: `make`, `ssh`, `awk`
 /// and `find` are not on it, and a name that is missing here does not make a rule harmless.
-const INTERPRETERS_AND_WRAPPERS: [&str; 45] = [
+const INTERPRETERS_AND_WRAPPERS: [&str; 53] = [
     "python",
     "python3",
     "pythonw",
@@ -860,6 +897,14 @@ const INTERPRETERS_AND_WRAPPERS: [&str; 45] = [
     "php",
     "doas",
     "pkexec",
+    "csh",
+    "tcsh",
+    "ash",
+    "pwsh",
+    "powershell",
+    "cmd",
+    "su",
+    "chroot",
 ];
 
 /// Whether a platform `managed-mcp.json` is deployed (SPEC REQ-3, D-2). A test passes its own

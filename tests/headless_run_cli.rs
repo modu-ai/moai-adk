@@ -481,6 +481,28 @@ fn blanket_tool_rules_refuse_to_build() {
         "Bash(ls\tpython)",
         // R-3: the Monitor allow rule the dropped-rules list forbids
         "Monitor",
+        // a versioned interpreter with a trailing letter suffix (free-threaded and debug builds)
+        "Bash(python3.13t *)",
+        "Bash(python3.13d *)",
+        "Bash(python3.14t *)",
+        "Bash(pypy3.10t *)",
+        // the shells and escalators that run what follows them
+        "Bash(csh *)",
+        "Bash(tcsh *)",
+        "Bash(ash *)",
+        "Bash(pwsh *)",
+        "Bash(powershell *)",
+        "Bash(cmd *)",
+        "Bash(su *)",
+        "Bash(su -c *)",
+        "Bash(su:*)",
+        "Bash(chroot *)",
+        "Bash(chroot:*)",
+        // the Windows spelling of an interpreter, in any letter case
+        "Bash(powershell.exe *)",
+        "Bash(cmd.exe *)",
+        "Bash(python.exe *)",
+        "Bash(PowerShell.EXE *)",
     ] {
         let mut spec = audit_spec();
         spec.allowed_tools = vec![blanket.to_string()];
@@ -502,8 +524,200 @@ fn blanket_tool_rules_refuse_to_build() {
         "Bash(git:*)".to_string(),
         "Bash(git status)".to_string(),
         "Bash(moai card show)".to_string(),
+        // words that only start like a list word stay narrow
+        "Bash(python-config *)".to_string(),
+        "Bash(suspend *)".to_string(),
+        "Bash(ashtray *)".to_string(),
     ];
     assert!(build(&spec, &ctx(&root), &env).is_ok());
+}
+
+/// REQ-2: the WHOLE entry has one allowed shape — a tool name of ASCII letters, digits and
+/// underscores, then optionally one parenthesised body, nothing before it and nothing after it,
+/// no comma and no whitespace outside the body. Everything else refuses, so an entry cannot
+/// smuggle a second entry into the comma-joined `--allowedTools` value, and `Agent`, `Monitor`
+/// and a bare star never build.
+#[test]
+fn a_whole_entry_has_one_allowed_shape() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path().join("platform");
+    fs::create_dir_all(&root).unwrap();
+    let env = standin_env(&standin_dir(tmp.path()));
+    let builds = |entry: &str| {
+        let mut spec = audit_spec();
+        spec.allowed_tools = vec![entry.to_string()];
+        build(&spec, &ctx(&root), &env).is_ok()
+    };
+    for entry in [
+        // a second entry smuggled behind the comma join, a space or a newline
+        "Read,Bash(*)",
+        "Read,Bash",
+        "Read, Bash(*)",
+        "Bash(git diff *),Bash",
+        "Read\nBash",
+        "Read Bash",
+        "Read\tBash(*)",
+        // whitespace or anything else before or after the entry
+        " Bash(*)",
+        "Bash(*) ",
+        " Read",
+        "Read ",
+        "Read\n",
+        "Read\0",
+        "Read (a)",
+        "Read(a) ",
+        "Read(a),",
+        ",Read",
+        "Read,",
+        // a missing or doubled parenthesis, and text after the closing one
+        "Bash(",
+        "Read(",
+        "Bash(git diff *",
+        "(Read)",
+        "(Read",
+        "Read)",
+        "Read(a)b",
+        "Read(a)(b)",
+        "Read(a))",
+        "Bash(git diff *)(x)",
+        "Bash(git diff *)x",
+        // no name, a bare star, and names outside letters, digits and underscores
+        "",
+        "*",
+        "mcp__*",
+        "mcp__server__*",
+        "Re-ad",
+        "Re.ad(a)",
+        "Re ad",
+        "Read\u{00e9}",
+        "R\u{0435}ad",
+        "()",
+        "(*)",
+        // the tools that run commands, in every spelling and letter case
+        "Bash",
+        "bash",
+        "BASH",
+        "bash(*)",
+        "BASH(*)",
+        "PowerShell",
+        "powershell",
+        "powershell(*)",
+        "Agent",
+        "agent",
+        "Agent(*)",
+        "agent(*)",
+        "Agent(:*)",
+        "Agent( * )",
+        "Monitor",
+        "monitor",
+        "Monitor(*)",
+        "Monitor(tail -f x)",
+        "Monitor()",
+        // a wildcard-only or empty body is blanket for every tool
+        "Read(*)",
+        "Read(**)",
+        "Read(*:*)",
+        "Read()",
+        "Read( )",
+        "WebFetch(*)",
+        "Edit(**)",
+        // a body that is not one plain ASCII text: a comma, a parenthesis, a control
+        // character, a non-ASCII character
+        "Read(a,b)",
+        "Read(a(b)",
+        "Read(a)b)",
+        "Read(a\nb)",
+        "Read(a\tb)",
+        "Read(a\0b)",
+        "Read(\u{00e9})",
+        "Read(\u{200b})",
+        "Read(\u{ff21})",
+    ] {
+        assert!(
+            !builds(entry),
+            "entry {entry:?} is outside the shape and must refuse"
+        );
+    }
+    for entry in [
+        "Read",
+        "Edit",
+        "Grep",
+        "Glob",
+        "mcp__server__tool",
+        "Tool_2",
+        "Read(./src/**)",
+        "Read(/tmp/a b/c.txt)",
+        "WebFetch(domain:example.com)",
+        "Skill(skill:review)",
+        "Agent(Explore)",
+        "Agent(my-custom-agent)",
+        "Agent(model:opus)",
+        "Agent(isolation:*)",
+        "Bash(git diff *)",
+        "Bash(git log:*)",
+        "Bash(npm test)",
+        "bash(git diff *)",
+        "PowerShell(Get-ChildItem *)",
+    ] {
+        assert!(
+            builds(entry),
+            "entry {entry:?} is one allowed entry and must build"
+        );
+    }
+}
+
+/// REQ-2: the byte sweep over the entry outside the body. Each ASCII byte is placed before the
+/// name, inside the name, between the name and the body, and after the closing parenthesis, in a
+/// non-shell entry and in a Bash entry. A byte builds in the three name positions only when it
+/// is an ASCII letter, a digit or an underscore (it then simply extends the name); after the
+/// closing parenthesis no byte builds at all; and a name with no body builds on the same set.
+/// The set is spelled out here a second time on purpose, as a second opinion.
+#[test]
+fn every_ascii_byte_outside_the_body_refuses() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path().join("platform");
+    fs::create_dir_all(&root).unwrap();
+    let env = standin_env(&standin_dir(tmp.path()));
+    let builds = |entry: &str| {
+        let mut spec = audit_spec();
+        spec.allowed_tools = vec![entry.to_string()];
+        build(&spec, &ctx(&root), &env).is_ok()
+    };
+    let mut name_bytes = 0;
+    for byte in 0u8..=127 {
+        let c = byte as char;
+        let name_char = c.is_ascii_alphanumeric() || c == '_';
+        for entry in [
+            format!("{c}Read(./a)"),
+            format!("Re{c}ad(./a)"),
+            format!("Read{c}(./a)"),
+            format!("Read{c}"),
+            format!("{c}Read"),
+            format!("Re{c}ad"),
+            format!("{c}Tool(git diff *)"),
+            format!("Tool{c}(git diff *)"),
+        ] {
+            assert_eq!(
+                builds(&entry),
+                name_char,
+                "ASCII byte {byte} in {entry:?}: a name character extends the name, any other refuses"
+            );
+        }
+        for entry in [
+            format!("Read(./a){c}"),
+            format!("Tool(git diff *){c}"),
+            format!("Bash(git diff *){c}"),
+            format!("Bash(git diff *){c}Bash(git diff *)"),
+        ] {
+            assert!(
+                !builds(&entry),
+                "ASCII byte {byte} after the closing parenthesis of {entry:?} must refuse"
+            );
+        }
+        name_bytes += usize::from(name_char);
+    }
+    // 52 letters, 10 digits and the underscore
+    assert_eq!(name_bytes, 63);
 }
 
 /// REQ-2 states one set of characters for the whole rule; this pins it over every ASCII byte.
