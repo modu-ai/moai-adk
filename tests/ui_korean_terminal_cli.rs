@@ -279,14 +279,31 @@ fn plain_output_under_a_korean_setting_is_english() {
     assert!(!hangul(&err), "{err}");
 }
 
+/// [`normal`] with the HOME state folder the resolver names written `<state>` first: the screen
+/// shows the key's path, and which folder a fresh HOME gets is the resolver's to say, not a
+/// literal in the golden (SPEC-20261122-state-folder-literal-scan).
+fn normal_state(text: &str, home: &Path) -> String {
+    let state = moai_cli::home_root::path(home);
+    let mut names = vec![state.display().to_string()];
+    if let Ok(real) = fs::canonicalize(&state) {
+        names.push(real.display().to_string());
+    }
+    names.sort_by_key(|n| std::cmp::Reverse(n.len()));
+    let mut text = text.to_string();
+    for n in &names {
+        text = text.replace(n.as_str(), "<state>");
+    }
+    normal(&text, &[home])
+}
+
 #[test]
 fn the_key_remove_screen_is_english_under_a_korean_setting() {
     let f = fx();
     let want = golden("key-remove-refused");
     let (out, term) = capture_key_refusal(&f.home, &f.work, &[]);
-    assert_eq!(normal(&term, &[&f.home]), want);
+    assert_eq!(normal_state(&term, &f.home), want);
     let (out_ko, term_ko) = capture_key_refusal(&f.home, &f.work, &KOREAN);
-    assert_eq!(normal(&term_ko, &[&f.home]), want);
+    assert_eq!(normal_state(&term_ko, &f.home), want);
     assert_eq!(out_ko, out, "the refusal answers with the same envelope");
     // The key is still there (both answers were no): a pipe never asks, in any language, and
     // answers with the same preview envelope.
@@ -308,7 +325,7 @@ fn the_key_remove_screen_is_english_under_a_korean_setting() {
         &f.work,
         &[("MOAI_OUTPUT", "quiet"), ("MOAI_LANG", "ko")],
     );
-    assert_eq!(normal(&quiet, &[&f.home]), want);
+    assert_eq!(normal_state(&quiet, &f.home), want);
 }
 
 #[test]
