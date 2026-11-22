@@ -2,8 +2,8 @@
 //! a leader that has no timer of its own types one round instruction into its own terminal every
 //! N seconds. This module only builds what the skill needs for that: the checked instruction,
 //! the interval and the argument list of the one `orca terminal send` call. It never runs
-//! `orca`, never sleeps and never reads a terminal; the loop and the call belong to the skill
-//! (`skills/moai/workflows/mode-leader.md`).
+//! `orca`, never sleeps and never reads a terminal; the loop and the call belonged to the skill's
+//! leader workflow, which left the package (the card loop is `skills/moai/workflows/work.md`).
 //!
 //! Rules the output carries (decision 3=A): a pulse whose turn did not start is reported, not
 //! sent again; the command never creates a terminal or a session.

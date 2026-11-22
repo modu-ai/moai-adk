@@ -555,10 +555,10 @@ fn render_claude(event: Event, verdict: Verdict) -> Answer {
 /// https://code.claude.com/docs/en/hooks; both read 2026-11-15); `PreCompact` and `PostCompact`
 /// cannot put text into the context on either host. The text is fixed: it names no instruction
 /// the user gave and echoes nothing from the input. The hook reads no comment, claim or pull
-/// request, so it cannot say that an instruction is done; it says how to find out (the rule of
-/// `skills/moai/workflows/mode-leader.md`: run an instruction again only when no comment, claim
-/// or pull request shows it done) and that a standing instruction still applies (audit B1 of
-/// #3075).
+/// request, so it cannot say that an instruction is done; it says how to find out (as the WORK
+/// route does in `skills/moai/workflows/work.md`: read the state afresh, never from memory, so a
+/// compacted conversation misses nothing) and that a standing instruction still applies
+/// (audit B1 of #3075).
 const COMPACTED: &str =
     "This session was just compacted. User instructions you can still see may already be done: \
      before you act on one, check whether a comment, a claim or a pull request already shows it \

@@ -10,6 +10,8 @@ REFERENCE = re.compile(
     r"skills/[A-Za-z0-9_.-]+/(?:[A-Za-z0-9_.-]+/)*"
     r"[A-Za-z0-9_.-]+\.[A-Za-z0-9_-]+"
 )
+# Folders under docs/ whose files are dated records (design reviews, surveys).
+HISTORY_DOCS = ("design-review", "surveys")
 
 
 def tracked_texts():
@@ -33,6 +35,12 @@ def reference_kind(name, line, start):
         # Its explicitly pinned measurement and dated #2405 annotations are history,
         # not instructions for loading the current skill package.
         return "dated-inventory"
+    top, _, rest = name.partition("/")
+    if (name.startswith(".moai/specs/")
+            or (top == "docs" and rest.split("/")[0] in HISTORY_DOCS and "/" in rest)
+            or (top == "docs" and re.fullmatch(r"decisions-[^/]*\.md", rest))):
+        # SPEC-20261122-next-flow-skills-agents: closed SPECs and dated docs record past states.
+        return "history"
     if start > 0 and line[start - 1] == "/":
         if "github.com/modu-ai/moai-adk/blob/" not in line[:start]:
             # Host projection paths and temporary-fixture paths are not repo paths.

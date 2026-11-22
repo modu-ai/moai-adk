@@ -712,7 +712,7 @@ const CASES: [Case; 14] = [
     ),
     (
         "skills-manifest-sha256",
-        &[("skills/moai/workflows/verify.md", "x\n")],
+        &[("skills/moai/workflows/run.md", "x\n")],
         Some(&[("notes/x.md", "x\n")]),
     ),
     (

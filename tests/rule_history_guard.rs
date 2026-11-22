@@ -18,11 +18,9 @@ const LIVE_FILES: [&str; 2] = [
     "skills/moai/references/internal/core-rules.md",
 ];
 /// Rule files that left the package with their route (SPEC-20261122-next-flow-skills-agents
-/// REQ-2): their history headings stay, and nothing live is left to compare them with.
-const RETIRED_SOURCES: [&str; 2] = [
-    "skills/moai/workflows/mode-leader.md",
-    "skills/moai/workflows/mode-agent.md",
-];
+/// REQ-2): their history headings stay, and nothing live is left to compare them with. They are
+/// written from the package folder, not the repository root: no live file of that name exists.
+const RETIRED_SOURCES: [&str; 2] = ["workflows/mode-leader.md", "workflows/mode-agent.md"];
 
 fn root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))

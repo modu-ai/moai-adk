@@ -42,7 +42,6 @@ tests/index_cli.rs
 tests/labels_sync.rs
 tests/lane_handoff_cli.rs
 tests/lane_next_cli.rs
-tests/lane_next_rules.rs
 tests/parity_cli.rs
 tests/plan_admission.rs
 tests/profile_apply_engine.rs
