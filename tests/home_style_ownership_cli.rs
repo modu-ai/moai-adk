@@ -13,8 +13,13 @@ use std::path::{Path, PathBuf};
 
 const PERM: &str = "test-permission";
 const STYLE: &str = ".claude/output-styles/MoAI-Easy.md";
-/// The record of what MoAI last wrote, below the state folder of a HOME without a marker.
-const RECORD: &str = ".moai-cli/home-style/claude.json";
+/// The record of what MoAI last wrote, below the state folder the resolver names for this HOME
+/// (never a folder name written out here).
+fn record_file(home: &Path) -> PathBuf {
+    moai_cli::home_root::path(home)
+        .join("home-style")
+        .join("claude.json")
+}
 const RENDERS: [&str; 3] = ["render-1.md", "render-2.md", "render-3.md"];
 
 fn package() -> PathBuf {
@@ -41,7 +46,10 @@ fn src() -> String {
 }
 
 fn write(home: &Path, rel: &str, bytes: &str) {
-    let p = home.join(rel);
+    write_at(&home.join(rel), bytes);
+}
+
+fn write_at(p: &Path, bytes: &str) {
     fs::create_dir_all(p.parent().unwrap()).unwrap();
     fs::write(p, bytes).unwrap();
 }
@@ -191,14 +199,14 @@ fn a_style_file_equal_to_the_current_text_is_taken_as_owned() {
         let (_t, home) = temp_home();
         write(&home, STYLE, &current);
         if let Some(r) = &record {
-            write(&home, RECORD, &record_naming(r));
+            write_at(&record_file(&home), &record_naming(r));
         }
         let p = plan(&home, &package()).unwrap();
         assert_eq!(style_action(&p), "merge", "record {:?}", record.is_some());
         apply(&home, &package(), &p.plan_digest, PERM).unwrap();
         assert_eq!(fs::read_to_string(home.join(STYLE)).unwrap(), current);
         assert_eq!(
-            fs::read_to_string(home.join(RECORD)).unwrap(),
+            fs::read_to_string(record_file(&home)).unwrap(),
             record_naming(&current)
         );
         // Owned now: a changed template is an update, never a conflict.
@@ -220,7 +228,7 @@ fn a_style_file_equal_to_an_earlier_shipped_text_is_updated() {
             let (_t, home) = temp_home();
             write(&home, STYLE, &fixture(name));
             if let Some(r) = record {
-                write(&home, RECORD, &record_naming(&fixture(r)));
+                write_at(&record_file(&home), &record_naming(&fixture(r)));
             }
             let p = plan(&home, &package()).unwrap();
             assert_eq!(style_action(&p), "merge", "{name} {record:?}");
@@ -244,7 +252,7 @@ fn a_real_user_edit_stays_a_conflict_on_every_known_text() {
         let (_t, home) = temp_home();
         let edited = format!("{base}my own line\n");
         write(&home, STYLE, &edited);
-        write(&home, RECORD, &record_naming(&base));
+        write_at(&record_file(&home), &record_naming(&base));
         let p = plan(&home, &package()).unwrap();
         assert_eq!(style_action(&p), "conflict");
         apply(&home, &package(), &p.plan_digest, PERM).unwrap();
@@ -266,20 +274,20 @@ fn reverting_an_adopted_or_replaced_style_file_gives_back_bytes_and_record() {
     let (_t, home) = temp_home();
     write(&home, STYLE, &current);
     let before_record = record_naming(&fixture("render-1.md"));
-    write(&home, RECORD, &before_record);
+    write_at(&record_file(&home), &before_record);
     let p = plan(&home, &package()).unwrap();
     let id = apply(&home, &package(), &p.plan_digest, PERM).unwrap()["receipt"]
         .as_str()
         .unwrap()
         .to_string();
     assert_eq!(
-        fs::read_to_string(home.join(RECORD)).unwrap(),
+        fs::read_to_string(record_file(&home)).unwrap(),
         record_naming(&current)
     );
     revert(&home, &id, PERM).unwrap();
     assert_eq!(fs::read_to_string(home.join(STYLE)).unwrap(), current);
     assert_eq!(
-        fs::read_to_string(home.join(RECORD)).unwrap(),
+        fs::read_to_string(record_file(&home)).unwrap(),
         before_record
     );
     // Replace: the file is an earlier render and there was no record.
@@ -295,8 +303,8 @@ fn reverting_an_adopted_or_replaced_style_file_gives_back_bytes_and_record() {
     revert(&home, &id, PERM).unwrap();
     assert_eq!(fs::read_to_string(home.join(STYLE)).unwrap(), earlier);
     assert!(
-        !home.join(RECORD).exists()
-            || !fs::read_to_string(home.join(RECORD))
+        !record_file(&home).exists()
+            || !fs::read_to_string(record_file(&home))
                 .unwrap()
                 .contains(&moai_cli::digest(current.as_bytes())),
         "the record still names the text the revert took away"

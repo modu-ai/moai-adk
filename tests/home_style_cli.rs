@@ -485,7 +485,7 @@ fn two_config_folders_keep_two_records() {
     let (_t, home) = home();
     assert!(moai_cli::home_root::adopt_new(&home, "test").unwrap());
     let second = home.join("profiles/b");
-    let records = home.join(".moai/home-style");
+    let records = moai_cli::home_root::path(&home).join("home-style");
     let (_, id_a) = folder_install(&home, None);
     let (_, id_b) = folder_install(&home, Some(&second));
     assert!(id_a.is_some() && id_b.is_some());
@@ -559,21 +559,23 @@ fn listing(root: &Path) -> Vec<(String, String)> {
 fn installing_into_a_second_config_folder_creates_nothing_under_the_earlier_state_folder() {
     let (_t, home) = home();
     assert!(moai_cli::home_root::adopt_new(&home, "test").unwrap());
-    fs::create_dir_all(home.join(".moai-cli/keep")).unwrap();
-    fs::write(home.join(".moai-cli/keep/a.txt"), "a\n").unwrap();
-    let before = listing(&home.join(".moai-cli"));
+    // The earlier generation's HOME state folder, by its named constant.
+    let earlier = home.join(moai_cli::HOME_STATE_DIR);
+    fs::create_dir_all(earlier.join("keep")).unwrap();
+    fs::write(earlier.join("keep/a.txt"), "a\n").unwrap();
+    let before = listing(&earlier);
     let second = home.join("profiles/b");
     folder_install(&home, Some(&second));
-    assert!(home
-        .join(".moai/home-style")
+    assert!(moai_cli::home_root::path(&home)
+        .join("home-style")
         .join(second_record_name(&second))
         .is_file());
-    assert_eq!(listing(&home.join(".moai-cli")), before);
+    assert_eq!(listing(&earlier), before);
     // And with no earlier folder at all, none appears.
     let (_t2, fresh) = project_with(&[]);
     assert!(moai_cli::home_root::adopt_new(&fresh, "test").unwrap());
     folder_install(&fresh, Some(&fresh.join("p")));
-    assert!(!fresh.join(".moai-cli").exists());
+    assert!(!fresh.join(moai_cli::HOME_STATE_DIR).exists());
 }
 
 /// AC-6 (REQ-7): while the HOME's state root is not this generation's, a second folder is blocked
@@ -581,7 +583,8 @@ fn installing_into_a_second_config_folder_creates_nothing_under_the_earlier_stat
 #[test]
 fn a_second_folder_is_blocked_while_the_state_root_is_not_this_generations() {
     let (_t, home) = home();
-    fs::create_dir_all(home.join(".moai-cli")).unwrap();
+    // A HOME on the earlier generation's state folder (by its named constant).
+    fs::create_dir_all(home.join(moai_cli::HOME_STATE_DIR)).unwrap();
     let second = home.join("profiles/b");
     let h = home.to_str().unwrap();
     let pkg = package();
@@ -764,7 +767,7 @@ fn revert_refuses_a_linked_receipts_folder() {
         .as_str()
         .unwrap()
         .to_string();
-    let receipts = home.join(".moai-cli/home-style/receipts");
+    let receipts = moai_cli::home_root::path(&home).join("home-style/receipts");
     fs::rename(&receipts, outside.join("receipts")).unwrap();
     std::os::unix::fs::symlink(outside.join("receipts"), &receipts).unwrap();
     let outside_receipt = outside.join("receipts").join(&id).join("receipt.json");
