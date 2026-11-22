@@ -30,6 +30,7 @@
 //! letter case) and `profile_disagrees` (the profile's branch when it is not the recorded one).
 
 use super::command::open_for_write;
+use super::drift;
 use super::finish::{parse_met, previous_json};
 use super::guard;
 use super::input::{self, CardRef};
@@ -102,49 +103,6 @@ const NOTHING_CHANGED: &str = "nothing was changed";
 /// A refusal of the finish checks, or of a finish that comes before the branch moved: said as
 /// `card finish` words it for an input mistake, and with `nothing was changed` once for a check
 /// that refused before any write.
-/// Whether the integration branch was moved by something other than this command: the tip must be
-/// where the newest start row of the branch left it (its head when the move happened, its tip
-/// when git refused the move) or a descendant of that head. A copy made by `git branch -C`
-/// writes the reference outside a reference transaction, so no hook can see it (SPEC-20261121-
-/// ref-guard D-13); this is the layer that notices it at the next landing. A branch with no start
-/// row has nothing to compare, and the answer is `None`.
-fn drift_of(
-    project: &Path,
-    conn: &rusqlite::Connection,
-    branch: &str,
-    tip: &str,
-) -> std::result::Result<Option<String>, String> {
-    let last: Option<(i64, String, String)> = conn
-        .query_row(
-            "SELECT card_id, json_extract(payload, '$.tip'), json_extract(payload, '$.head') \
-             FROM event WHERE kind = 'card.land_started' \
-               AND json_extract(payload, '$.branch') = ?1 \
-               AND json_type(payload, '$.head') = 'text' AND json_type(payload, '$.tip') = 'text' \
-             ORDER BY event_id DESC LIMIT 1",
-            [branch],
-            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
-        )
-        .optional()
-        .map_err(|e| LedgerError::from(e).to_string())?;
-    let Some((card, from, head)) = last else {
-        return Ok(None);
-    };
-    if tip == head || tip == from {
-        return Ok(None);
-    }
-    if landed::contained(project, &head, tip)? == Containment::Inside {
-        return Ok(None);
-    }
-    Ok(Some(format!(
-        "drift: the integration branch {branch} points at {tip}, but the last landing the ledger \
-         recorded ({}) left it at {head}, and {tip} does not contain that commit: something moved \
-         the branch outside `moai card land` (for example `git branch -C`, which no hook sees). \
-         Nothing was written. After the user's pick, put the branch back with `git update-ref \
-         refs/heads/{branch} {head} {tip}`, then land again",
-        input::card_name(card),
-    )))
-}
-
 fn finish_refusal(e: WorkflowError) -> String {
     match e {
         WorkflowError::InvalidInput(why) => refused(why),
@@ -271,7 +229,7 @@ pub fn land(project: &Path, home: &Path, reference: &str, req: &LandRequest<'_>)
             )))
         }
     }
-    if let Some(why) = drift_of(project, ledger.conn(), &branch, &tip).map_err(unchanged)? {
+    if let Some(why) = drift::refusal(ledger.conn(), &branch, &tip).map_err(unchanged)? {
         return Err(conflict(why));
     }
     let to_tip = if standing == Standing::OnTip {

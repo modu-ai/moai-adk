@@ -317,6 +317,40 @@ pub fn move_branch(
     }
 }
 
+/// The commits reachable from `tip` and not from `base`, newest first, as the first 12 hex digits
+/// of the commit, a space and the subject; at most `limit` of them. Read-only.
+pub fn dropped_by(
+    project: &Path,
+    tip: &str,
+    base: &str,
+    limit: usize,
+) -> Result<Vec<String>, String> {
+    let max = format!("--max-count={limit}");
+    let out = git(
+        project,
+        &[
+            "log",
+            &max,
+            "--format=%H %s",
+            "--end-of-options",
+            tip,
+            &format!("^{base}"),
+            "--",
+        ],
+    )?;
+    if !out.status.success() {
+        return Err(format!(
+            "git could not list the commits of {tip} that are not in {base}: {}",
+            String::from_utf8_lossy(&out.stderr).trim()
+        ));
+    }
+    Ok(String::from_utf8_lossy(&out.stdout)
+        .lines()
+        .filter(|l| l.len() > 12)
+        .map(|l| l[..12].to_string() + &l[40.min(l.len())..])
+        .collect())
+}
+
 /// The `Moai-Spec` trailers of the commits reachable from `tip`, newest first, in one pass: each
 /// SPEC id with the newest commit that names it, and whether the pass stopped at the limit.
 fn trailer_commits(project: &Path, tip: &str) -> Result<(BTreeMap<String, String>, bool), String> {

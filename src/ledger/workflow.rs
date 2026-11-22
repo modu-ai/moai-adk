@@ -1544,6 +1544,32 @@ pub fn record_land_started(
     })?
 }
 
+/// The ledger row `card drift --restore --apply` writes after it moved the integration branch back
+/// to the commit the ledger recorded: the free event kind `card.tip_restored` on the card of the
+/// landing that commit belongs to, with the branch, the tip it was moved from, the commit it was
+/// moved to and the permission reference of the user's yes.
+pub fn record_tip_restored(
+    w: &mut WriteLedger,
+    card_id: i64,
+    by: &str,
+    branch: &str,
+    from: &str,
+    to: &str,
+    reference: &str,
+) -> Result<(), WorkflowError> {
+    w.with_write_tx(|tx, now| {
+        reservation::add_event(
+            tx,
+            now,
+            by,
+            card_id,
+            "card.tip_restored",
+            &json!({"branch": branch, "from": from, "to": to, "reference": reference, "by": by}),
+        )?;
+        Ok(Ok(()))
+    })?
+}
+
 /// What [`finish`] would refuse before its first write, asked without writing anything: the same
 /// checks, run against the ledger as it is now. `Ok(())` is no promise: a call that gets in
 /// between can change the ledger, and the write transaction checks again. `card land` uses it so

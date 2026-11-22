@@ -1466,23 +1466,37 @@ fn ac23_a_branch_moved_outside_the_landing_command_is_a_drift() {
         &["--head", &next, "--met", "1=x", "--by", "leader"],
     );
     let message = w.refuse(&out, "conflict", &["drift"], &before, &stray);
-    for needle in [
-        stray.as_str(),
-        landed.as_str(),
-        "git update-ref refs/heads/integ",
-    ] {
+    for needle in [stray.as_str(), landed.as_str(), "moai card drift --restore"] {
         assert!(
             message.contains(needle),
             "the drift answer lacks {needle}: {message}"
         );
     }
+    assert!(
+        !message.contains("git update-ref"),
+        "the recovery is a moai command, never a bare git call: {message}"
+    );
     assert_eq!(w.events(&second, "card.land_started"), 0);
 
-    // After the recovery the same call lands.
-    git(
-        &w.project,
-        &["update-ref", "refs/heads/integ", &landed, &stray],
-    );
+    // After the recovery (the command's preview, then its apply with the user's yes) the same
+    // call lands.
+    let plan = result(&w.card(None, &["drift", "--restore"]));
+    let digest = plan["plan"]["plan_digest"].as_str().unwrap().to_string();
+    result(&w.card(
+        None,
+        &[
+            "drift",
+            "--restore",
+            "--apply",
+            "--plan-digest",
+            &digest,
+            "--permission-reference",
+            "user-pick-ac23",
+            "--by",
+            "leader",
+        ],
+    ));
+    assert_eq!(w.integ(), landed);
     let after = commit_with(
         &w.project,
         &landed,
@@ -1530,11 +1544,11 @@ fn ac24_a_kill_after_the_move_then_a_rerun_writes_no_second_row() {
     assert_eq!(w.integ(), candidate);
 }
 
-/// AC-25 (SPEC-20261121-ref-guard): a tip that moved forward from the last landing is no drift: a
-/// fast-forward made by hand keeps the last landed head inside the branch, so the next landing
-/// goes through; only a tip that does not contain it is refused.
+/// AC-25 (SPEC-20261121-ref-guard): an unlanded descendant is drift. A fast-forward made by hand
+/// keeps the last landed head inside the branch, but the commits it added were never landed by
+/// this command, so the next landing refuses and names the recorded commit.
 #[test]
-fn ac25_a_tip_that_contains_the_last_landed_head_is_no_drift() {
+fn ac25_an_unlanded_descendant_of_the_last_landing_is_a_drift() {
     let w = World::new();
     let first = w.review_card(&["one"]);
     let landed = w.candidate();
@@ -1550,9 +1564,327 @@ fn ac25_a_tip_that_contains_the_last_landed_head_is_no_drift() {
     );
     let second = w.review_card(&["one"]);
     let next = commit_with(&w.project, &ahead, &[&ahead], "a head on the moved tip");
-    result(&w.land(
+    let before = w.dump();
+    let out = w.land(
         &second,
         &["--head", &next, "--met", "1=x", "--by", "leader"],
+    );
+    let message = w.refuse(&out, "conflict", &["drift"], &before, &ahead);
+    assert!(message.contains(&landed), "{message}");
+    assert!(message.contains(&ahead), "{message}");
+}
+
+/// A fixture with two landings: card one lands `first`, card two lands `second` on top of it.
+/// Returns the world and the two result commits.
+fn two_landings() -> (World, String, String) {
+    let w = World::new();
+    let one = w.review_card(&["one"]);
+    let first = w.candidate();
+    result(&w.land(&one, &["--head", &first, "--met", "1=x", "--by", "leader"]));
+    let two = w.review_card(&["one"]);
+    let lane = commit_with(&w.project, &w.head, &[&w.head], "the second lane head");
+    let second = commit_with(
+        &w.project,
+        &first,
+        &[&first, &lane],
+        "merge the second lane",
+    );
+    result(&w.land(&two, &["--head", &second, "--met", "1=x", "--by", "leader"]));
+    assert_eq!(w.integ(), second);
+    (w, first, second)
+}
+
+/// AC-26 (SPEC-20261121-ref-guard, the second re-check's B-3): a copy that rewinds the branch to
+/// where the previous landing started is drift. The tip must be the result commit of the newest
+/// landing the ledger recorded; the tip the landing started from is not accepted, or the next
+/// landing would drop a landed change.
+#[test]
+fn ac26_a_rewind_to_the_previous_landings_start_is_a_drift() {
+    let (w, first, second) = two_landings();
+    git(&w.project, &["branch", "old", &first]);
+    git(&w.project, &["branch", "-C", "old", "integ"]);
+    assert_eq!(w.integ(), first);
+
+    let three = w.review_card(&["one"]);
+    let next = commit_with(&w.project, &first, &[&first], "a head on the rewound tip");
+    let before = w.dump();
+    let out = w.land(&three, &["--head", &next, "--met", "1=x", "--by", "leader"]);
+    let message = w.refuse(&out, "conflict", &["drift"], &before, &first);
+    assert!(
+        message.contains(&second),
+        "the result commit is not named: {message}"
+    );
+    assert_eq!(w.events(&three, "card.land_started"), 0);
+}
+
+/// AC-27: the two interrupted landings keep working. A move that git refused leaves a start row
+/// with no landed row and the branch at its from-tip; a move that was done and not closed leaves
+/// the branch at the row's head. A landing of another card is accepted on either tip.
+#[test]
+fn ac27_an_interrupted_landing_is_accepted_on_its_from_tip_and_its_target() {
+    // (a) The move was refused: git's update-ref fails and nothing moved.
+    let w = World::new();
+    let stuck = w.review_card(&["one"]);
+    let candidate = w.candidate();
+    w.wrap_update_ref("git-refuses", "exit 1", "");
+    let out = w.land(
+        &stuck,
+        &["--head", &candidate, "--met", "1=x", "--by", "leader"],
+    );
+    assert_ne!(out.status.code(), Some(0));
+    assert_eq!(w.integ(), w.tip, "the refused move changed the branch");
+    assert_eq!(w.events(&stuck, "card.land_started"), 1);
+    assert_eq!(w.events(&stuck, "card.landed"), 0);
+    *w.git_bin.borrow_mut() = git_executable();
+    let other = w.review_card(&["one"]);
+    result(&w.land(
+        &other,
+        &["--head", &candidate, "--met", "1=x", "--by", "leader"],
     ));
-    assert_eq!(w.integ(), next);
+    assert_eq!(w.integ(), candidate);
+
+    // (b) The move was done and the close is missing: the lander was killed after the move.
+    let v = World::new();
+    let killed = v.review_card(&["one"]);
+    let moved = v.candidate();
+    v.wrap_update_ref("git-kills-the-lander", "", "kill -9 $PPID");
+    let out = v.land(
+        &killed,
+        &["--head", &moved, "--met", "1=x", "--by", "leader"],
+    );
+    assert_ne!(out.status.code(), Some(0));
+    assert_eq!(v.integ(), moved);
+    *v.git_bin.borrow_mut() = git_executable();
+    let next_card = v.review_card(&["one"]);
+    let lane = commit_with(&v.project, &v.head, &[&v.head], "another lane head");
+    let on_top = commit_with(
+        &v.project,
+        &moved,
+        &[&moved, &lane],
+        "merge on the moved tip",
+    );
+    result(&v.land(
+        &next_card,
+        &["--head", &on_top, "--met", "1=x", "--by", "leader"],
+    ));
+    assert_eq!(v.integ(), on_top);
+}
+
+/// AC-28: `card drift` reads and writes nothing. It says `ok` on the recorded commit, `drift`
+/// with the restore command off it, and `no_landing` for a branch the ledger never moved.
+#[test]
+fn ac28_the_drift_view_compares_the_tip_with_the_ledger_and_writes_nothing() {
+    let w = World::new();
+    let none = result(&w.card(None, &["drift"]));
+    assert_eq!(none["state"], json!("no_landing"), "{none}");
+    assert_eq!(none["writes"], json!(false), "{none}");
+
+    let (w, first, second) = two_landings();
+    let before = w.dump();
+    let ok = result(&w.card(None, &["drift"]));
+    assert_eq!(ok["state"], json!("ok"), "{ok}");
+    assert_eq!(ok["branch"], json!("integ"), "{ok}");
+    assert_eq!(ok["tip"], json!(second), "{ok}");
+    assert_eq!(ok["expected"]["commit"], json!(second), "{ok}");
+
+    git(&w.project, &["branch", "old", &first]);
+    git(&w.project, &["branch", "-C", "old", "integ"]);
+    let drift = result(&w.card(None, &["drift"]));
+    assert_eq!(drift["state"], json!("drift"), "{drift}");
+    assert_eq!(drift["tip"], json!(first), "{drift}");
+    assert_eq!(drift["expected"]["commit"], json!(second), "{drift}");
+    assert!(
+        drift["restore_command"]
+            .as_str()
+            .unwrap()
+            .contains("moai card drift --restore"),
+        "{drift}"
+    );
+    assert_eq!(w.dump(), before, "the view wrote to the ledger");
+    assert_eq!(w.integ(), first, "the view moved the branch");
+}
+
+/// AC-29: the restore previews first and moves only on the user's yes. The preview names the
+/// move and carries a digest and moves nothing; the apply needs the leader word, the digest of a
+/// preview of the same state and a permission reference; it moves the branch to the recorded
+/// commit under the guard and records one event with the reference.
+#[test]
+fn ac29_the_restore_needs_the_preview_digest_and_a_permission_reference() {
+    let (w, first, second) = two_landings();
+    w.install_guard();
+    git(&w.project, &["branch", "old", &first]);
+    git(&w.project, &["branch", "-C", "old", "integ"]);
+    let before = w.dump();
+
+    let plan = result(&w.card(None, &["drift", "--restore"]));
+    assert_eq!(plan["plan"]["from"], json!(first), "{plan}");
+    assert_eq!(plan["plan"]["to"], json!(second), "{plan}");
+    assert_eq!(plan["plan"]["moved"], json!(false), "{plan}");
+    let digest = plan["plan"]["plan_digest"].as_str().unwrap().to_string();
+    assert_eq!(w.dump(), before, "the preview wrote to the ledger");
+    assert_eq!(w.integ(), first, "the preview moved the branch");
+
+    // Every apply that lacks one of its three inputs, or has a wrong one, refuses and moves nothing.
+    let apply = |extra: &[&str]| {
+        let mut args = vec!["drift", "--restore", "--apply"];
+        args.extend_from_slice(extra);
+        w.card(None, &args)
+    };
+    for (what, extra) in [
+        (
+            "no digest",
+            vec!["--permission-reference", "user-pick", "--by", "leader"],
+        ),
+        (
+            "no reference",
+            vec!["--plan-digest", digest.as_str(), "--by", "leader"],
+        ),
+        (
+            "a wrong digest",
+            vec![
+                "--plan-digest",
+                "0000000000000000000000000000000000000000000000000000000000000000",
+                "--permission-reference",
+                "user-pick",
+                "--by",
+                "leader",
+            ],
+        ),
+        (
+            "another caller",
+            vec![
+                "--plan-digest",
+                digest.as_str(),
+                "--permission-reference",
+                "user-pick",
+                "--by",
+                "agent-1",
+            ],
+        ),
+    ] {
+        let out = apply(&extra);
+        assert_eq!(
+            out.status.code(),
+            Some(1),
+            "{what}: {}",
+            String::from_utf8_lossy(&out.stdout)
+        );
+        assert_eq!(w.integ(), first, "{what} moved the branch");
+        assert_eq!(w.dump(), before, "{what} wrote to the ledger");
+    }
+    // A bare git call is still refused by the guard: only the command's intent record passes.
+    let bare = Command::new(git_executable())
+        .args(["update-ref", "refs/heads/integ", &second, &first])
+        .current_dir(&w.project)
+        .env(
+            "PATH",
+            w.extra_env
+                .borrow()
+                .iter()
+                .find(|(k, _)| k == "PATH")
+                .unwrap()
+                .1
+                .clone(),
+        )
+        .env("HOME", w.home.path())
+        .output()
+        .unwrap();
+    assert!(!bare.status.success(), "a bare update-ref passed the guard");
+    assert_eq!(w.integ(), first);
+
+    let done = result(&apply(&[
+        "--plan-digest",
+        &digest,
+        "--permission-reference",
+        "user-pick",
+        "--by",
+        "leader",
+    ]));
+    assert_eq!(done["plan"]["moved"], json!(true), "{done}");
+    assert_eq!(w.integ(), second);
+    assert_eq!(
+        w.count("SELECT count(*) FROM event WHERE kind = 'card.tip_restored'"),
+        1
+    );
+    assert!(
+        w.text("SELECT payload FROM event WHERE kind = 'card.tip_restored'")
+            .contains("user-pick"),
+        "the event lacks the permission reference"
+    );
+    assert!(
+        !w.common().join("moai/land-intent").exists(),
+        "the intent record stays after the restore"
+    );
+    // The branch is where the ledger says: the view is ok and the next landing goes through.
+    assert_eq!(result(&w.card(None, &["drift"]))["state"], json!("ok"));
+}
+
+/// AC-30: a restore of an unlanded descendant lists what it drops; a restore with no drift, and a
+/// digest of a state that has since changed, refuse and move nothing.
+#[test]
+fn ac30_the_restore_names_what_it_drops_and_refuses_a_stale_digest() {
+    let w = World::new();
+    let first = w.review_card(&["one"]);
+    let landed = w.candidate();
+    result(&w.land(
+        &first,
+        &["--head", &landed, "--met", "1=x", "--by", "leader"],
+    ));
+    let none = w.card(None, &["drift", "--restore"]);
+    assert_eq!(
+        none.status.code(),
+        Some(1),
+        "{}",
+        String::from_utf8_lossy(&none.stdout)
+    );
+    assert!(
+        envelope(&none)["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("no drift"),
+        "{}",
+        String::from_utf8_lossy(&none.stdout)
+    );
+
+    let ahead = commit_with(&w.project, &landed, &[&landed], "an unlanded change");
+    git(
+        &w.project,
+        &["update-ref", "refs/heads/integ", &ahead, &landed],
+    );
+    let plan = result(&w.card(None, &["drift", "--restore"]));
+    let drops = plan["plan"]["drops"].as_array().unwrap();
+    assert_eq!(drops.len(), 1, "{plan}");
+    assert!(
+        drops[0].as_str().unwrap().starts_with(&ahead[..12]),
+        "{plan}"
+    );
+    let digest = plan["plan"]["plan_digest"].as_str().unwrap().to_string();
+
+    // The state changes after the preview: the digest no longer matches.
+    let later = commit_with(&w.project, &ahead, &[&ahead], "another unlanded change");
+    git(
+        &w.project,
+        &["update-ref", "refs/heads/integ", &later, &ahead],
+    );
+    let out = w.card(
+        None,
+        &[
+            "drift",
+            "--restore",
+            "--apply",
+            "--plan-digest",
+            &digest,
+            "--permission-reference",
+            "user-pick",
+            "--by",
+            "leader",
+        ],
+    );
+    assert_eq!(
+        out.status.code(),
+        Some(1),
+        "{}",
+        String::from_utf8_lossy(&out.stdout)
+    );
+    assert_eq!(w.integ(), later, "a stale digest moved the branch");
 }
