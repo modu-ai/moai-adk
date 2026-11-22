@@ -179,18 +179,13 @@ fn state(home: &Path) -> Vec<(PathBuf, Vec<u8>)> {
 }
 
 fn agents_dir(home: &Path, host: &str) -> PathBuf {
-    match host {
-        "claude" => home.join(".claude/agents"),
-        "codex" => home.join(".codex/agents"),
-        _ => home.join(".omp/agent/agents"),
-    }
+    assert_eq!(host, "claude", "the home update writes Claude only");
+    home.join(".claude/agents")
 }
 
 fn skill_dir(home: &Path, agent_host: &str) -> PathBuf {
-    match agent_host {
-        "claude" => home.join(".claude/skills/moai"),
-        _ => home.join(".agents/skills/moai"),
-    }
+    assert_eq!(agent_host, "claude", "the home update writes Claude only");
+    home.join(".claude/skills/moai")
 }
 
 #[test]
@@ -205,10 +200,10 @@ fn update_previews_and_installs_the_whole_user_layer_then_has_nothing_to_apply()
         p["confirm_with"],
         json!(format!("moai update --confirm {top}"))
     );
-    assert_eq!(p["agents"]["hosts"].as_array().unwrap().len(), 3, "{p}");
-    assert_eq!(p["routing"]["hosts"].as_array().unwrap().len(), 2, "{p}");
-    // #2875: the style file, the default style and the Codex block.
-    assert_eq!(p["style"]["targets"].as_array().unwrap().len(), 3, "{p}");
+    assert_eq!(p["agents"]["hosts"].as_array().unwrap().len(), 1, "{p}");
+    assert_eq!(p["routing"]["hosts"].as_array().unwrap().len(), 1, "{p}");
+    // #2875: the style file and the default style, both Claude's.
+    assert_eq!(p["style"]["targets"].as_array().unwrap().len(), 2, "{p}");
     // A part's own digest is not a confirmation of the whole layer.
     for part in ["plan", "agents", "routing", "style"] {
         let d = p[part]["plan_digest"].as_str().unwrap();
@@ -235,31 +230,27 @@ fn update_previews_and_installs_the_whole_user_layer_then_has_nothing_to_apply()
         .unwrap()
         .starts_with("moai home-routing-revert"));
     // #2936 E1: the commands are only safe last applied first (style, then routing, then agents):
-    // reverting routing first leaves the Codex block behind for good. The envelope says so.
+    // reverting routing first is skipped as changed since the apply. The envelope says so.
     assert_eq!(
         r["revert_order"],
         json!(["style", "routing", "agents"]),
         "{r}"
     );
-    // The global instruction files carry the section; `~/.agents/AGENTS.md` is never made.
+    // The global instruction file carries the section; no Codex or shared-agents file is made.
     assert!(fs::read_to_string(home.join(".claude/CLAUDE.md"))
         .unwrap()
         .contains("(/moai)"));
-    assert!(fs::read_to_string(home.join(".codex/AGENTS.md"))
-        .unwrap()
-        .contains("($moai)"));
-    assert!(!home.join(".agents/AGENTS.md").exists());
-    // #2875: MoAI-Easy is Claude Code's default style, and Codex reads the same text beside the
-    // routing section.
+    for gone in [".codex", ".agents", ".omp"] {
+        assert!(!home.join(gone).exists(), "{gone} was made");
+    }
+    // #2875: MoAI-Easy is Claude Code's default style.
     assert!(home.join(".claude/output-styles/MoAI-Easy.md").is_file());
     let settings: serde_json::Value =
         serde_json::from_slice(&fs::read(home.join(".claude/settings.json")).unwrap()).unwrap();
     assert_eq!(settings["outputStyle"], json!("MoAI-Easy"));
-    let codex = fs::read_to_string(home.join(".codex/AGENTS.md")).unwrap();
-    assert!(codex.contains("id=moai-routing") && codex.contains("id=moai-output-style"));
     // Every `references/…` path an installed agent names exists in the skill copy it reads.
     let mut checked = 0;
-    for host in ["claude", "codex", "omp"] {
+    for host in ["claude"] {
         let dir = agents_dir(&home, host);
         let files: Vec<PathBuf> = fs::read_dir(&dir)
             .unwrap()
@@ -321,10 +312,9 @@ fn update_previews_and_installs_the_whole_user_layer_then_has_nothing_to_apply()
 fn the_printed_revert_order_gives_back_the_users_own_files_byte_for_byte() {
     let (_t, home, exe, _) = setup();
     let mine = [
-        (".codex/AGENTS.md", "# My Codex notes\n\nkeep this\n"),
         (".claude/CLAUDE.md", "# My Claude notes\n"),
         (".claude/settings.json", "{\"theme\":\"dark\"}\n"),
-        (".codex/agents/my-own.md", "---\nname: my-own\n---\nmine\n"),
+        (".claude/agents/my-own.md", "---\nname: my-own\n---\nmine\n"),
     ];
     for (rel, text) in mine {
         let path = home.join(rel);
@@ -338,7 +328,7 @@ fn the_printed_revert_order_gives_back_the_users_own_files_byte_for_byte() {
     for (rel, text) in mine {
         // The layer wrote beside or into these files; none is left as the user had it.
         let now = fs::read_to_string(home.join(rel)).unwrap();
-        if rel != ".codex/agents/my-own.md" {
+        if rel != ".claude/agents/my-own.md" {
             assert_ne!(now, text, "{rel} was not touched by the apply");
         }
     }
@@ -373,7 +363,7 @@ fn the_printed_revert_order_gives_back_the_users_own_files_byte_for_byte() {
             "{rel} is not as the user had it"
         );
     }
-    let left: Vec<String> = fs::read_dir(home.join(".codex/agents"))
+    let left: Vec<String> = fs::read_dir(home.join(".claude/agents"))
         .unwrap()
         .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
         .collect();
@@ -437,8 +427,8 @@ fn current_skills_with_missing_agents_still_have_something_to_apply() {
 #[test]
 fn a_blocked_skill_copy_gets_no_agents_and_no_section() {
     let (_t, home, exe, _) = setup();
-    // A skill this tool did not install blocks the Codex copy (`~/.agents/skills/moai`).
-    let foreign = home.join(".agents/skills/moai");
+    // A skill this tool did not install blocks the Claude copy (`~/.claude/skills/moai`).
+    let foreign = home.join(".claude/skills/moai");
     fs::create_dir_all(&foreign).unwrap();
     fs::write(
         foreign.join("SKILL.md"),
@@ -454,8 +444,8 @@ fn a_blocked_skill_copy_gets_no_agents_and_no_section() {
             .map(|h| h["host"].as_str().unwrap().to_string())
             .collect()
     };
-    assert_eq!(hosts("agents"), ["claude"], "{p}");
-    assert_eq!(hosts("routing"), ["claude"], "{p}");
+    assert!(hosts("agents").is_empty(), "{p}");
+    assert!(hosts("routing").is_empty(), "{p}");
     let skipped: Vec<String> = p["skipped"]
         .as_array()
         .unwrap()
@@ -470,24 +460,19 @@ fn a_blocked_skill_copy_gets_no_agents_and_no_section() {
         .collect();
     assert_eq!(
         skipped,
-        ["agents:codex", "agents:omp", "routing:codex", "style:codex"],
+        ["agents:claude", "routing:claude", "style:claude"],
         "{p}"
     );
-    let style_hosts: Vec<&str> = p["style"]["targets"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .map(|t| t["host"].as_str().unwrap())
-        .collect();
-    assert_eq!(style_hosts, ["claude", "claude"], "{p}");
+    assert!(p["style"]["targets"].as_array().unwrap().is_empty(), "{p}");
+    // The other parts still go in; the foreign skill and the agents and section stay out.
     let top = p["plan_digest"].as_str().unwrap().to_string();
-    let r = result(&run(&exe, &home, &["update", "--confirm", &top]));
-    assert_eq!(r["applied"], json!(true), "{r}");
-    assert!(agents_dir(&home, "claude").join("moai-impl.md").is_file());
-    assert!(!agents_dir(&home, "codex").exists());
-    assert!(!agents_dir(&home, "omp").exists());
-    assert!(home.join(".claude/CLAUDE.md").is_file());
-    assert!(!home.join(".codex/AGENTS.md").exists());
+    run(&exe, &home, &["update", "--confirm", &top]);
+    assert!(!agents_dir(&home, "claude").exists());
+    assert!(!home.join(".claude/CLAUDE.md").exists());
+    assert_eq!(
+        fs::read_to_string(foreign.join("SKILL.md")).unwrap(),
+        "---\nname: moai\ndescription: someone else's\n---\n"
+    );
 }
 
 /// #2872 stage 2: Go leftovers a cleanup plan archives — a Go `~/.moai` (no live session) whose

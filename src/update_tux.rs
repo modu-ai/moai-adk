@@ -462,9 +462,9 @@ fn w(lang: Lang, word: W) -> &'static str {
         ProjectNext => {
             if ko {
                 // A no-break space keeps each command on one line when the sentence wraps.
-                "다음: 기존 프로젝트는 각 프로젝트의 세션에서 /moai\u{a0}update (Codex CLI 는 $moai\u{a0}update)를 실행해 프로젝트 설정을 꼭 업데이트하세요."
+                "다음: 기존 프로젝트는 각 프로젝트의 세션에서 /moai\u{a0}update 를 실행해 프로젝트 설정을 꼭 업데이트하세요."
             } else {
-                "Next: in each existing project, run /moai\u{a0}update in a session there ($moai\u{a0}update in Codex CLI) to update the project's settings."
+                "Next: in each existing project, run /moai\u{a0}update in a session there to update the project's settings."
             }
         }
         ThisFolder => {

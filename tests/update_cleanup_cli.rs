@@ -208,7 +208,8 @@ fn fixture() -> Fixture {
         Some(&plan.to_string()),
     );
     assert!(home.join(".claude/skills/moai/b.md").is_file());
-    assert!(home.join(".agents/skills/moai/c.md").is_file());
+    // The update no longer writes the shared agents copy, so the Go-era cleanup finds none.
+    assert!(!home.join(".agents/skills/moai").exists());
 
     // Projection: an edit, an unrecorded file, a Go-recorded file and a secret.
     write(&home, ".claude/skills/moai/c.md", "c edited by the user\n");
@@ -304,9 +305,7 @@ fn actions(plan: &Value) -> BTreeMap<String, (String, String)> {
         .collect()
 }
 
-const ARCHIVED: [&str; 10] = [
-    ".agents/skills/moai/b.md",
-    ".agents/skills/moai/c.md",
+const ARCHIVED: [&str; 8] = [
     ".claude/agents/moai-a.md",
     ".claude/skills/moai-proven",
     ".claude/skills/moai/b.md",
@@ -768,11 +767,16 @@ fn an_unreadable_go_manifest_proves_nothing() {
 #[test]
 fn a_linked_skills_folder_is_kept_and_never_followed() {
     let f = fixture();
+    // The update no longer writes `.agents/skills/moai`; an earlier install left this one.
+    write(
+        &f.home,
+        ".agents/skills/moai/SKILL.md",
+        "from an earlier update\n",
+    );
     let skills = f.home.join(".agents/skills");
     fs::rename(&skills, f.home.join("agents-skills-real")).unwrap();
     std::os::unix::fs::symlink(f.home.join("agents-skills-real"), &skills).unwrap();
     let a = actions(&f.plan());
     assert_eq!(a[".agents/skills"], ("keep".into(), "symlink".into()));
-    assert_eq!(a[".agents/skills/moai"], ("keep".into(), "symlink".into()));
-    assert!(!a.keys().any(|k| k.starts_with(".agents/skills/moai/")));
+    assert!(!a.keys().any(|k| k.starts_with(".agents/skills/moai")));
 }
