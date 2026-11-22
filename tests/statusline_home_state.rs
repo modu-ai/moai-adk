@@ -79,6 +79,7 @@ const RC_TASK: &[u8] =
     br#"{"active_task": {"command": "rcmarker", "spec_id": "SPEC-RC-1", "stage": "green"}}"#;
 
 fn write_go_state(f: &Fixture) {
+    std::fs::create_dir_all(f.home.join(".moai-cli")).unwrap();
     write(&f.home, ".moai/state/last-model.txt", GO_MODEL);
     write(&f.home, ".moai/state/last-session-state.json", GO_TASK);
 }
