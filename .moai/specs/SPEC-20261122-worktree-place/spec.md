@@ -77,6 +77,7 @@ The survey read the worktree-path lines of every source file that mentions workt
 
 - `.claude/worktrees/` sits inside the repository: every scan, test selector and packaging list must skip it, or the tool starts reading worktrees as project content.
 - 측정 사실(리더, 2026-11-22): 루트 Cargo.toml 에 workspace 절이 없고, 이 저장소의 기존 `.claude/worktrees/<name>/` 안에서 cargo metadata 는 exit 0 — 겹친 워크트리도 자체적으로 빌드돼요. 스캔 빠뜨림 위험 선은 그대로 유지해요.
+- Two creations that run at the same moment may both see the folder as not ignored and both append the exclude line; a repeated line is harmless to git and the next creation adds nothing.
 - The classifier vocabulary (home, go, project, claude, other) is used by the guard, the clean-up and the move: a new place changes the default, not the words, so old places keep their names.
 - The home folder retire touches texts in the skill and the managed templates; a missed text keeps ordering the old place.
 
@@ -115,9 +116,9 @@ Measurement M-1 (open): that `moai card land` is accepted from an isolated lane 
 Slice 1 (the path keystone, the classifier and the status-clean creation). Status draft; only the lines below are claimed.
 
 - AC-1: partly met. A new worktree of the worktree command and of the bundle build lands in the project place (`worktree_place_creation_`, `tests/worktree_cli.rs` `a_new_worktree_goes_under_the_project_place`, `tests/bundle_build_cli.rs`). Not met: the refusal of a path outside the place with the new place named (REQ-2), no `worktree_place_refusal_` test yet.
-- AC-2: met. `worktree_place_host_made_` passes (any folder name under the project place is `claude`, a deeper path is `other`).
+- AC-2: met for the classifier only. `worktree_place_host_made_` passes (any folder name under the project place is `claude`, a deeper path is `other`); that the branch of a host-made worktree comes from the card take or the submit is not tested here.
 - AC-3, AC-4, AC-5, AC-7: not yet met (later slices).
-- AC-6: met. `worktree_place_old_places_` passes (home, go and project places keep their names).
-- AC-8: met for the helper and the two creators. `worktree_place_status_` 4 tests pass (one exclude line once, nothing written when git already ignores, a linked worktree writes the common folder, an exclude file that is a link is refused and not followed); the worktree apply and the bundle build call it before the add and put a failure in `place_exclude_error`. The answer key itself has no test of its own.
+- AC-6: met for the classifier only. `worktree_place_old_places_` passes (home, go and project places keep their names); that every command keeps working on a worktree in an old place is not tested here.
+- AC-8: met after the audit repair. `worktree_place_status_` passes in three targets: the helper writes one line once from the primary checkout, a linked worktree and a subfolder, writes nothing when git already ignores the folder, keeps a last line without a newline whole and refuses a link; the worktree apply and the bundle build write the line after a successful add (a failed add leaves the file alone) and put a failure under `place_exclude_error`, which a test per creator reads while the creation still happened.
 
 Checks run in `wt-keystone`: `cargo test --offline --locked --test worktree_place_cli` 7 passed, `worktree_cli` 23, `bundle_build_cli` 14, `worktree_branch_cli` 2, `worktree_build_root` 6 (1 ignored), `worktree_gc` 14; `moai check affected` (base 7f1da593d1eb, head b79bf531102a) PASS with 66 targets, every step exit 0; 4 mutants (apply call removed, bundle call removed, an ignored folder written anyway, the git dir instead of the common dir) all killed. Not run: the REQ-6 scans, settings base, guard and launcher paths, the instruction texts, a Windows type check.

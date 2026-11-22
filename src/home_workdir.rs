@@ -187,20 +187,41 @@ fn git_code(dir: &Path, args: &[&str]) -> Option<(i32, String)> {
     ))
 }
 
+/// The primary checkout of the repository `dir` belongs to: the first entry of
+/// `git worktree list`, whatever linked worktree or subfolder `dir` is. `None` for a bare
+/// repository or when git cannot say.
+fn primary_checkout(dir: &Path) -> Option<PathBuf> {
+    let (code, out) = git_code(dir, &["worktree", "list", "--porcelain"])?;
+    if code != 0 {
+        return None;
+    }
+    let mut lines = out.lines();
+    let first = lines.next()?.strip_prefix("worktree ")?;
+    if lines.take_while(|l| !l.is_empty()).any(|l| l == "bare") {
+        return None;
+    }
+    Some(PathBuf::from(first))
+}
+
 /// Makes sure the repository's local exclude file lists the project's worktree folder, so a
-/// worktree made there does not show in the main tree's status (REQ-10). Does nothing when git
-/// already ignores the folder (a tracked ignore file, the user's own list or an earlier call).
-/// The line goes to `<common git dir>/info/exclude`, which every linked worktree shares and
-/// which is never committed; a link in the way is not followed and is an error that names the
-/// exclude file (REQ-11). The folder itself is not created.
+/// worktree made there does not show in the main tree's status (REQ-10). `project` may be the
+/// primary checkout, a linked worktree or a subfolder: the folder is checked and the line is
+/// written for the primary checkout, where the line is anchored. Does nothing when git already
+/// ignores the folder (a tracked ignore file, the user's own list or an earlier call). The line
+/// goes to `<common git dir>/info/exclude`, which every linked worktree shares and which is
+/// never committed; a link in the way is not followed and is an error that names the exclude
+/// file (REQ-11). The folder itself is not created.
 pub fn ensure_place_ignored(project: &Path) -> Result<()> {
-    match git_code(project, &["check-ignore", "-q", "--", ".claude/worktrees/"]) {
+    let primary = primary_checkout(project).ok_or_else(|| {
+        "local exclude file not changed: the primary checkout is unknown".to_string()
+    })?;
+    match git_code(&primary, &["check-ignore", "-q", "--", ".claude/worktrees/"]) {
         Some((0, _)) => return Ok(()),
         Some((1, _)) => {}
         _ => return Err("local exclude file not changed: git could not say whether the worktree folder is ignored".into()),
     }
     let common = match git_code(
-        project,
+        &primary,
         &["rev-parse", "--path-format=absolute", "--git-common-dir"],
     ) {
         Some((0, dir)) if !dir.is_empty() => PathBuf::from(dir),

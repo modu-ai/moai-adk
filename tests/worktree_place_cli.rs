@@ -81,6 +81,19 @@ fn repo(dir: &Path) {
     git_ok(dir, &["commit", "-q", "-m", "init"]);
 }
 
+/// Points git at an empty global config for this whole test binary, so no test here reads the
+/// runner's own git settings (its global ignore list could hide the folder under test).
+fn isolate_git_config() {
+    static EMPTY: std::sync::OnceLock<std::path::PathBuf> = std::sync::OnceLock::new();
+    EMPTY.get_or_init(|| {
+        let file = tempfile::NamedTempFile::new().unwrap();
+        let (_, path) = file.keep().unwrap();
+        std::env::set_var("GIT_CONFIG_GLOBAL", &path);
+        std::env::set_var("GIT_CONFIG_SYSTEM", "/dev/null");
+        path
+    });
+}
+
 fn make_place_folder(dir: &Path) {
     std::fs::create_dir_all(dir.join(".claude/worktrees/x")).unwrap();
     std::fs::write(dir.join(".claude/worktrees/x/f.txt"), "f\n").unwrap();
@@ -98,6 +111,7 @@ fn exclude_lines(common_dir: &Path) -> usize {
 /// its status is clean afterwards, and a second call adds nothing.
 #[test]
 fn worktree_place_status_an_unignored_folder_gets_one_exclude_line() {
+    isolate_git_config();
     let t = tempfile::tempdir().unwrap();
     let p = t.path();
     repo(p);
@@ -113,6 +127,7 @@ fn worktree_place_status_an_unignored_folder_gets_one_exclude_line() {
 /// the exclude file exactly as it was.
 #[test]
 fn worktree_place_status_an_already_ignored_folder_writes_nothing() {
+    isolate_git_config();
     let t = tempfile::tempdir().unwrap();
     let p = t.path();
     repo(p);
@@ -129,6 +144,7 @@ fn worktree_place_status_an_already_ignored_folder_writes_nothing() {
 /// folder, so the primary tree is clean too.
 #[test]
 fn worktree_place_status_a_linked_worktree_writes_the_common_folder() {
+    isolate_git_config();
     let t = tempfile::tempdir().unwrap();
     let p = t.path().join("primary");
     std::fs::create_dir_all(&p).unwrap();
@@ -160,6 +176,7 @@ fn worktree_place_status_a_linked_worktree_writes_the_common_folder() {
 #[cfg(unix)]
 #[test]
 fn worktree_place_status_an_exclude_file_that_is_a_link_is_refused() {
+    isolate_git_config();
     let t = tempfile::tempdir().unwrap();
     let p = t.path().join("repo");
     std::fs::create_dir_all(&p).unwrap();
@@ -173,6 +190,39 @@ fn worktree_place_status_an_exclude_file_that_is_a_link_is_refused() {
     let err = home_workdir::ensure_place_ignored(&p).unwrap_err();
     assert!(err.contains("exclude"), "{err}");
     assert_eq!(std::fs::read_to_string(&outside).unwrap(), "keep\n");
+}
+
+/// Scene 12 (REQ-10, audit B1): a call made from a subfolder checks and writes at the root of
+/// the repository, so a second call from the same subfolder adds nothing.
+#[test]
+fn worktree_place_status_a_call_from_a_subfolder_works_at_the_root() {
+    isolate_git_config();
+    let t = tempfile::tempdir().unwrap();
+    let p = t.path();
+    repo(p);
+    std::fs::create_dir_all(p.join("sub/deeper")).unwrap();
+    make_place_folder(p);
+    home_workdir::ensure_place_ignored(&p.join("sub/deeper")).unwrap();
+    home_workdir::ensure_place_ignored(&p.join("sub")).unwrap();
+    assert_eq!(exclude_lines(&p.join(".git")), 1);
+    assert_eq!(git(p, &["status", "--porcelain"]), "");
+}
+
+/// Scene 13 (REQ-10, audit N1): an exclude file whose last line has no newline gets one
+/// before the new line, so the earlier line is not joined to it.
+#[test]
+fn worktree_place_status_a_last_line_without_a_newline_is_kept_whole() {
+    isolate_git_config();
+    let t = tempfile::tempdir().unwrap();
+    let p = t.path();
+    repo(p);
+    std::fs::create_dir_all(p.join(".git/info")).unwrap();
+    std::fs::write(p.join(".git/info/exclude"), "# mine").unwrap();
+    home_workdir::ensure_place_ignored(p).unwrap();
+    assert_eq!(
+        std::fs::read_to_string(p.join(".git/info/exclude")).unwrap(),
+        "# mine\n/.claude/worktrees/\n"
+    );
 }
 
 // ---- REQ-13: a place that runs through a link is refused ----
