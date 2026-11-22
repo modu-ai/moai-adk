@@ -35,6 +35,8 @@ use std::{
     path::{Path, PathBuf},
 };
 
+/// The skill folders installed beside the moai skill (SPEC-20261122-html-report-install).
+pub mod extra_skill;
 /// The name-switch script part of `moai update` (card C-33 S3, SPEC-20261119-update-switch-layer).
 pub mod switch;
 
@@ -1554,9 +1556,12 @@ pub struct UserLayerPlan {
     /// The git-hook retire and install (SPEC-20261121-go-path-removal), confirmed apart like
     /// the switch part.
     pub git_hooks: crate::git_hooks::update::Layer,
+    /// The skill folders beside the moai skill (SPEC-20261122-html-report-install); bound into
+    /// `plan_digest`.
+    pub extra_skills: extra_skill::Layer,
     /// Agent, routing and style hosts left out because their skill copy is blocked.
     pub skipped: Vec<serde_json::Value>,
-    /// One digest over the seven plan digests; the only value `--confirm` accepts.
+    /// One digest over the eight plan digests; the only value `--confirm` accepts.
     pub plan_digest: String,
     /// #2872 stage 2: the cleanup preview (`update_cleanup::plan`) from the same staged
     /// package, only when it archives something. Not part of `plan_digest`: only
@@ -1639,6 +1644,8 @@ fn user_layer_plan_in(
     let home_layer = crate::update_home::plan(home)?;
     let switch_layer = switch::plan(home)?;
     let git_hooks_layer = crate::git_hooks::update::plan(home, &cwd)?;
+    // SPEC-20261122-html-report-install: planned on its own, whatever the moai skill copy says.
+    let extra_skills = extra_skill::plan(home, package, allow_older)?;
     // One snapshot: what the agents and the section were rendered from is the staged package.
     if agents.package_digest != staged.digest
         || routing.package_digest != staged.digest
@@ -1654,6 +1661,7 @@ fn user_layer_plan_in(
             bin_names.plan_digest,
             hooks.plan_digest,
             style.plan_digest,
+            extra_skills.plan_digest,
             keys.plan_digest
         ]))
         .map_err(|_| "encode failed")?,
@@ -1673,6 +1681,7 @@ fn user_layer_plan_in(
         home: home_layer,
         switch: switch_layer,
         git_hooks: git_hooks_layer,
+        extra_skills,
         skipped,
         plan_digest,
         cleanup,
@@ -1859,6 +1868,7 @@ fn routing_writes_anything(p: &crate::home_routing::Plan) -> bool {
 pub fn layer_summary(p: &UserLayerPlan) -> String {
     let mut out = String::from("skills\n");
     out.push_str(&plan_summary(&p.skills));
+    out.push_str(&p.extra_skills.summary());
     out.push_str("agents\n");
     for h in &p.agents.hosts {
         let mut counts: BTreeMap<&str, usize> = BTreeMap::new();
@@ -1974,6 +1984,7 @@ fn update_command_core(
         || routing_writes_anything(&layer.routing)
         || crate::home_style::writes_anything(&layer.style)
         || layer.bin_names.writes()
+        || layer.extra_skills.writes()
         || layer.hooks.writes()
         || layer.keys.writes();
     let cleanup = cleanup_token(&layer, confirm_cleanup)?;
@@ -2010,6 +2021,10 @@ fn update_command_core(
                 layer.plan_digest
             ),
         });
+        // SPEC-20261122-html-report-install: only a release with another skill folder shows it.
+        if let Some(x) = layer.extra_skills.to_json() {
+            out["extra_skills"] = x;
+        }
         // #2871 I2 S3: only a HOME with legacy key files has a `keys` part.
         if !layer.keys.rows.is_empty() {
             out["keys"] = layer.keys.to_json();
@@ -2161,6 +2176,14 @@ fn update_command_core(
     ));
     // #2871 I2 S3: the vault import of a legacy key file; its plan was confirmed.
     let keys = part(crate::update_keys::apply(home, &fresh.keys, PERMISSION));
+    // SPEC-20261122-html-report-install: the skill folders beside the moai skill, on their own.
+    let extra_skills = part(extra_skill::apply(
+        home,
+        &package,
+        &fresh.extra_skills,
+        PERMISSION,
+        allow_older,
+    ));
     // #2540: `applied` says whether files were written, not only that the apply steps ran.
     let applied = keys["state"] == json!("applied")
         || matches!(skills["status"].as_str(), Some("applied" | "partial"))
@@ -2168,6 +2191,7 @@ fn update_command_core(
         || routing["state"] == json!("applied")
         || style["state"] == json!("applied")
         || bin_names["state"] == json!("applied")
+        || matches!(extra_skills["state"].as_str(), Some("applied" | "partial"))
         || matches!(hooks["state"].as_str(), Some("applied" | "partial"));
     // #2872 stage 2: the confirmed cleanup, after the layer; an error is reported beside it.
     let cleanup = cleanup.map(|t| part(run_cleanup(home, &staged, t, PERMISSION)));
@@ -2208,9 +2232,19 @@ fn update_command_core(
             "hooks": hooks["receipt"].as_str().map(|id| format!(
                 "moai hooks-revert <PROJECT> --receipt {id} --permission-reference <reference>"
             )),
-            "skills": "recovery-plan / recovery-apply for a host left pending",
+            "skills": "recovery-plan / recovery-apply for a moai skill host left pending",
         },
     });
+    if !fresh.extra_skills.parts.is_empty() {
+        out["extra_skills_result"] = extra_skills;
+        // `recovery-plan` reads only the moai skill's receipts: these parts undo their own
+        // failed apply, and a pending receipt's blocked reason gives the way out by hand.
+        out["revert"]["extra_skills"] = json!(
+            "none: a failed apply of a skill folder beside the moai skill removes the files it \
+             created and restores the ones it replaced; if that undo fails too, the part's \
+             reason names the pending receipt and the way out"
+        );
+    }
     if !fresh.keys.rows.is_empty() {
         out["revert"]["keys"] = json!(revert("keys-revert", &keys));
         out["keys_result"] = keys;
