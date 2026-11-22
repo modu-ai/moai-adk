@@ -8,15 +8,17 @@
 //! research file of SPEC-20261118-install-model-per-tool (read 2026-11-18); `ultracode` (Claude
 //! Code) is not offered.
 //!
-//! Codex is not a tool any more (SPEC-20261121-codex-launcher-and-models-removed). A
-//! `launcher.models.codex` value that an earlier version saved is ignored on every read and left
-//! out of every write: it is never validated, listed or resolved. The skip is the shared
-//! retired-host rule (`crate::retired_hosts`), which also covers `omp` once it is retired.
+//! Codex and OMP are not tools any more (SPEC-20261121-codex-launcher-and-models-removed,
+//! SPEC-20261122-remove-omp-launcher). A `launcher.models.codex` or `launcher.models.omp` value
+//! that an earlier version saved is ignored on every read and left out of every write: it is
+//! never validated, listed or resolved. The skip is the shared retired-host rule
+//! (`crate::retired_hosts`).
 use crate::retired_hosts::retired;
 use serde_json::{json, Map, Value};
 
-/// The tools that take a choice. `glm` is the `moai glm` launcher and shares the OMP table.
-pub const TOOLS: [&str; 3] = ["claude", "omp", "glm"];
+/// The tools that take a choice. `glm` is the `moai glm` launcher; its ids carry the `zai/`
+/// provider prefix.
+pub const TOOLS: [&str; 2] = ["claude", "glm"];
 /// The two roles: the leader entry (`-l`) and the agent entry (`-a`).
 pub const ROLES: [&str; 2] = ["leader", "agent"];
 
@@ -62,7 +64,7 @@ const GLM: &[ModelRow] = &[
 pub fn supported(tool: &str) -> Option<&'static [ModelRow]> {
     match tool {
         "claude" => Some(CLAUDE),
-        "omp" | "glm" => Some(GLM),
+        "glm" => Some(GLM),
         _ => None,
     }
 }
@@ -88,8 +90,8 @@ pub fn default_choice(tool: &str, role: &str) -> Option<Choice> {
     let (model, effort) = match (tool, role) {
         ("claude", "leader") => ("claude-opus-5-5", "high"),
         ("claude", "agent") => ("claude-sonnet-5-5", "high"),
-        ("omp" | "glm", "leader") => ("zai/glm-5.3", "high"),
-        ("omp" | "glm", "agent") => ("zai/glm-5.3-flash", "max"),
+        ("glm", "leader") => ("zai/glm-5.3", "high"),
+        ("glm", "agent") => ("zai/glm-5.3-flash", "max"),
         _ => return None,
     };
     Some(Choice {

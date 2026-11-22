@@ -54,7 +54,6 @@ pub struct Question {
 fn tool_label(tool: &str) -> &'static str {
     match tool {
         "claude" => "Claude",
-        "omp" => "OMP",
         "glm" => "GLM",
         _ => "",
     }
@@ -369,8 +368,8 @@ fn canon(value: &Value) -> String {
 }
 
 fn targets(tool: &str) -> Vec<&str> {
-    // A pick writes its own tool alone (the earlier OMP pick also set glm; OMP is no longer
-    // offered, and a saved OMP entry stays supported through the table).
+    // A pick writes its own tool alone (the earlier OMP pick also set glm; OMP is not a tool
+    // any more, and a saved OMP entry is ignored like a saved Codex entry).
     vec![tool]
 }
 
