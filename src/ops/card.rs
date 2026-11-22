@@ -311,6 +311,56 @@ enum Action {
         #[arg(long)]
         home: Option<PathBuf>,
     },
+    /// Writes the ledger. Write the typed verdict of an audit on a card in review
+    ///
+    /// Writes the ledger. One `card.verdict` event for a card in `review`: the commit it judges
+    /// (`--head`, a full 40-digit id), `--result` `pass` or `fail` and an optional `--evidence`
+    /// reference, with this session as the actor. Refused (`conflict`) when this session holds or
+    /// ever held a reservation of the card (the agent that implemented a change never writes its
+    /// verdict), when an auditor was assigned and it is another session, and when the card is not
+    /// in review; nothing is written then. The same session repeating the same head and result
+    /// writes no second row (`written` is false). No landing reads the row yet.
+    Verdict {
+        /// The card, `C-12`.
+        card: String,
+        /// The commit the verdict judges (40 lowercase hex).
+        #[arg(long)]
+        head: String,
+        /// `pass` or `fail`.
+        #[arg(long)]
+        result: String,
+        /// A reference to what the audit read (a note id, a report path), one line.
+        #[arg(long)]
+        evidence: Option<String>,
+        /// The project folder (its profile holds the project id).
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// The HOME to use (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+    },
+    /// Writes the ledger. Name the auditor of a card in review
+    ///
+    /// Writes the ledger. One `card.audit_assigned` event for a card in `review` with the
+    /// auditor's identity and `--by leader`; only the leader word assigns. Refused (`conflict`)
+    /// when the identity holds or ever held a reservation of the card, and when the card is not
+    /// in review; nothing is written then.
+    Assign {
+        /// The card, `C-12`.
+        card: String,
+        /// The auditor's identity (a session id), one word.
+        #[arg(long)]
+        auditor: String,
+        /// Who assigns: `leader`.
+        #[arg(long)]
+        by: String,
+        /// The project folder (its profile holds the project id).
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// The HOME to use (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+    },
     /// Writes the ledger. Link a card to the SPEC it works on, or unlink it
     ///
     /// Writes the ledger. Names the SPEC (`SPEC-<yyyymmdd>-<slug>`) the card works on, with one
@@ -898,7 +948,12 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             card,
             project,
             home,
-        } => c::show(&project, &resolve_home(home)?, &card),
+        } => {
+            let home = resolve_home(home)?;
+            let mut shown = c::show(&project, &home, &card)?;
+            shown["roles"] = moai_cli::card::roles::roles_of_shown(&project, &home, &shown)?;
+            Ok(shown)
+        }
         Action::Timeline {
             card,
             after,
@@ -1012,6 +1067,31 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
                 require_approved_spec,
             },
         ),
+        Action::Verdict {
+            card,
+            head,
+            result,
+            evidence,
+            project,
+            home,
+        } => moai_cli::card::roles::verdict(
+            &project,
+            &resolve_home(home)?,
+            &card,
+            &moai_cli::card::roles::VerdictRequest {
+                head: &head,
+                result: &result,
+                evidence: evidence.as_deref(),
+                session: &d::session_holder("verdict", env)?,
+            },
+        ),
+        Action::Assign {
+            card,
+            auditor,
+            by,
+            project,
+            home,
+        } => moai_cli::card::roles::assign(&project, &resolve_home(home)?, &card, &auditor, &by),
         Action::Spec {
             card,
             spec,
