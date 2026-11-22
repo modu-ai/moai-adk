@@ -63,7 +63,7 @@ pub fn shorten_model_name(model: &str) -> String {
     }
 }
 
-/// The context-window reading behind the CTX number (`MemoryData`).
+/// The context-window reading behind the CW number (`MemoryData`).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Memory {
     pub tokens_used: i64,
@@ -121,7 +121,7 @@ pub fn collect_memory(cw: Option<ContextReading>, size_override: i64, auto_compa
         };
     }
     // The window names no percentage, no usage and no totals: nothing was read, so the reading
-    // is unavailable and the screen says `CTX n/a`, never a guessed zero (REQ-9).
+    // is unavailable and the screen says `CW n/a`, never a guessed zero (REQ-9).
     Memory::default()
 }
 

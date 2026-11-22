@@ -9,7 +9,7 @@
       "stdin": "../statusline/stdin/a01-minimal.json",
       "covers": [
         "model",
-        "CTX n/a without context_window",
+        "CW n/a without context_window",
         "absent usage windows hidden",
         "no directory row"
       ],
@@ -18,17 +18,17 @@
         "variants": {
           "plain": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "PTY"
           }
         }
@@ -40,8 +40,8 @@
       "stdin": "../statusline/stdin/a02-doc-full.json",
       "covers": [
         "L1 model/effort/thinking/cache/versions/duration/style unchanged",
-        "session prefix then exactly two spaces before CTX",
-        "CTX -> 5H -> Week order",
+        "session prefix then exactly two spaces before CW",
+        "CW -> 5H -> 7D order",
         "weekly reset countdown shown",
         "repo identity hidden without git",
         "main PR state and agent hidden"
@@ -51,17 +51,17 @@
         "variants": {
           "plain": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "PTY"
           }
         }
@@ -72,7 +72,7 @@
       "class": "a",
       "stdin": "../statusline/stdin/a03-context-null.json",
       "covers": [
-        "context_window null -> CTX n/a",
+        "context_window null -> CW n/a",
         "absent usage windows hidden"
       ],
       "recorded_with": {
@@ -80,17 +80,17 @@
         "variants": {
           "plain": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "PTY"
           }
         }
@@ -108,17 +108,17 @@
         "variants": {
           "plain": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "PTY"
           }
         }
@@ -141,17 +141,17 @@
         "variants": {
           "plain": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "PTY"
           }
         }
@@ -169,17 +169,17 @@
         "variants": {
           "plain": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "PTY"
           }
         }
@@ -229,17 +229,17 @@
         "variants": {
           "plain": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "PTY"
           }
         }
@@ -257,17 +257,17 @@
         "variants": {
           "plain": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "PTY"
           }
         }
@@ -285,17 +285,17 @@
         "variants": {
           "plain": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "PTY"
           }
         }
@@ -313,17 +313,17 @@
         "variants": {
           "plain": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "PTY"
           }
         }
@@ -341,17 +341,17 @@
         "variants": {
           "plain": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "PTY"
           }
         }
@@ -369,17 +369,17 @@
         "variants": {
           "plain": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "PTY"
           }
         }
@@ -397,17 +397,17 @@
         "variants": {
           "plain": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "PTY"
           }
         }
@@ -425,17 +425,17 @@
         "variants": {
           "plain": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "PTY"
           }
         }
@@ -469,17 +469,17 @@
         "variants": {
           "plain": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "PTY"
           }
         }
@@ -536,17 +536,17 @@
         "variants": {
           "plain": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "PTY"
           }
         }
@@ -572,17 +572,17 @@
         "variants": {
           "plain": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "PTY"
           }
         }
@@ -607,17 +607,17 @@
         "variants": {
           "plain": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "PTY"
           }
         }
@@ -643,17 +643,17 @@
         "variants": {
           "plain": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "PTY"
           }
         }
@@ -678,17 +678,17 @@
         "variants": {
           "plain": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "PTY"
           }
         }
@@ -713,17 +713,17 @@
         "variants": {
           "plain": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "PTY"
           }
         }
@@ -736,7 +736,7 @@
       "covers": [
         "session prefix followed by exactly two spaces",
         "present 5H window missing percentage -> 0%",
-        "absent Week hidden",
+        "absent 7D hidden",
         "reset timestamp hidden"
       ],
       "recorded_with": {
@@ -744,17 +744,17 @@
         "variants": {
           "plain": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "PTY"
           }
         }
@@ -767,7 +767,7 @@
       "covers": [
         "absent session has no prefix or padding",
         "absent 5H hidden",
-        "present Week label retains usage_7d semantics",
+        "present 7D label retains usage_7d semantics",
         "reset timestamp hidden"
       ],
       "recorded_with": {
@@ -775,17 +775,17 @@
         "variants": {
           "plain": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "PTY"
           }
         }
@@ -796,7 +796,7 @@
       "class": "a",
       "stdin": "stdin/a18-context-percentage-null.json",
       "covers": [
-        "context_window with a size and a null percentage -> CTX n/a, no icon, never 0%",
+        "context_window with a size and a null percentage -> CW n/a, no icon, never 0%",
         "absent usage windows hidden"
       ],
       "recorded_with": {
@@ -804,17 +804,17 @@
         "variants": {
           "plain": {
             "version": "4.2647.0",
-            "sha256": "e78d66b340d367b54b96f4f37222175feebfa249a6009a07564babec2e33b06c",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "4.2647.0",
-            "sha256": "e78d66b340d367b54b96f4f37222175feebfa249a6009a07564babec2e33b06c",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "4.2647.0",
-            "sha256": "e78d66b340d367b54b96f4f37222175feebfa249a6009a07564babec2e33b06c",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "PTY"
           }
         }
@@ -833,17 +833,17 @@
         "variants": {
           "plain": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "PTY"
           }
         }
@@ -881,17 +881,17 @@
         "variants": {
           "plain": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "PTY"
           }
         }
@@ -940,17 +940,17 @@
         "variants": {
           "plain": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "PTY"
           }
         }
@@ -1029,7 +1029,7 @@
       "stdin": "../statusline/stdin/a02-doc-full.json",
       "covers": [
         "session-only second row has no trailing padding or separator",
-        "disabled CTX and usage windows omitted"
+        "disabled CW and usage windows omitted"
       ],
       "recorded_with": {
         "implementation": "Rust moai-cli",
@@ -1102,17 +1102,17 @@
         "variants": {
           "plain": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "PTY"
           }
         }
@@ -1161,17 +1161,17 @@
         "variants": {
           "plain": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "PTY"
           }
         }
@@ -1191,17 +1191,17 @@
         "variants": {
           "plain": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "PTY"
           }
         }
@@ -1220,17 +1220,17 @@
         "variants": {
           "plain": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "PTY"
           }
         }
@@ -1241,7 +1241,7 @@
       "class": "d",
       "stdin": "stdin/d01-leader-mode.json",
       "covers": [
-        "#2928 S-1: line 3 is the tag, then CTX, then Week",
+        "#2928 S-1: line 3 is the tag, then CW, then 7D",
         "#2928 S-2: a live registry entry for session_name with mode leader shows leader"
       ],
       "setup": [
@@ -1260,17 +1260,17 @@
         "variants": {
           "plain": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "PTY"
           }
         }
@@ -1299,17 +1299,17 @@
         "variants": {
           "plain": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "PTY"
           }
         }
@@ -1338,17 +1338,17 @@
         "variants": {
           "plain": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "PTY"
           }
         }
@@ -1372,17 +1372,17 @@
         "variants": {
           "plain": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "4.2647.0",
-            "sha256": "cfe74e86e7e6fa3b932831a1e0bb9b88452cc96e0e8305091ca4cb647e37e4de",
+            "sha256": "086ec83d6bdfe038c2a24f98b0a11b12cb96603b70b0eb8188c416dd08460765",
             "stdout": "PTY"
           }
         }

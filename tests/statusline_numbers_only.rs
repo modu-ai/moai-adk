@@ -113,6 +113,8 @@ fn the_statusline_doc_describes_the_numbers_only_look() {
     for stale in [
         "CTX:",
         "Week:",
+        "Week ",
+        "CTX",
         "(⚠️ /clear)",
         "(🛑/clear!)",
         "미확인",
@@ -125,7 +127,14 @@ fn the_statusline_doc_describes_the_numbers_only_look() {
         0,
         "the doc still names a bar"
     );
-    for wanted in ["numbers only", "resets in", "n/a", "no `/clear` hint"] {
+    for wanted in [
+        "numbers only",
+        "resets in",
+        "n/a",
+        "no `/clear` hint",
+        "7D",
+        "CW",
+    ] {
         assert!(section.contains(wanted), "the doc does not say `{wanted}`");
     }
 }
@@ -189,9 +198,9 @@ fn a_context_window_with_a_null_percentage_says_ctx_n_a() {
         let out = render_plain(window.clone());
         let line = out
             .lines()
-            .find(|l| l.contains("CTX"))
-            .unwrap_or_else(|| panic!("no CTX in the render of {window}: {out}"));
-        assert!(line.contains("CTX n/a"), "{window} gave `{line}`");
+            .find(|l| l.contains("CW"))
+            .unwrap_or_else(|| panic!("no CW in the render of {window}: {out}"));
+        assert!(line.contains("CW n/a"), "{window} gave `{line}`");
         assert!(!line.contains("0%"), "{window} gave `{line}`");
         assert!(
             !line.contains("🔋") && !line.contains("🪫"),
@@ -203,5 +212,5 @@ fn a_context_window_with_a_null_percentage_says_ctx_n_a() {
         "context_window_size": 200000,
         "used_percentage": 0
     }));
-    assert!(out.contains("🔋 CTX 0%"), "a real zero gave: {out}");
+    assert!(out.contains("🔋 CW 0%"), "a real zero gave: {out}");
 }
