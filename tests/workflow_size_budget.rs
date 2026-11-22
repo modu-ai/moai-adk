@@ -1,13 +1,14 @@
 //! SPEC-20261119-flaky-policy (card C-99, Verify D): a check that a re-run on the same SHA turned
-//! green is never simply passed. The merge train in `mode-leader.md` lets the merge through and
-//! records the test, both run ids and the SHA on one flaky card. Pinned here: what the rule says,
-//! that the "not a stop" sentence points to it, and that it stays inside its byte budget.
+//! green is never simply passed. The flaky rule lets the merge through and records the test, both
+//! run ids and the SHA on one flaky card. It moved from the merge train of the retired
+//! `mode-leader.md` to `run.md` (SPEC-20261122-next-flow-skills-agents). Pinned here: what the
+//! rule says and that it stays inside its byte budget.
 //!
 //! The tests read the workflow file of this checkout; nothing is run and no HOME is touched.
 
 use std::{fs, path::Path};
 
-const FILE: &str = "mode-leader.md";
+const FILE: &str = "run.md";
 /// Where the rule starts and the words it ends with; the tests cut the rule out between them.
 const RULE_START: &str = "Flaky rule (card C-99): ";
 const RULE_END: &str = "touches that test.";
@@ -35,16 +36,6 @@ fn rule(text: &str) -> &str {
         .find(RULE_END)
         .unwrap_or_else(|| panic!("the flaky rule does not end with `{RULE_END}`"));
     &rest[..end + RULE_END.len()]
-}
-
-/// The sentence of the merge-train step that calls the re-run result "not a stop".
-fn not_a_stop_sentence(text: &str) -> &str {
-    let at = text
-        .find("turned green is flaky, not a stop")
-        .expect("the merge-train step still calls a same-SHA re-run pass flaky, not a stop");
-    let from = text[..at].rfind("(Issues #2665").unwrap_or(at);
-    let to = text[at..].find(')').map_or(text.len(), |i| at + i + 1);
-    &text[from..to]
 }
 
 #[test]
@@ -108,15 +99,8 @@ fn flaky_rule_card_add_example_carries_a_criterion() {
     }
 }
 
-#[test]
-fn the_not_a_stop_sentence_points_to_the_flaky_rule() {
-    let text = workflow();
-    let sentence = not_a_stop_sentence(&text);
-    assert!(
-        sentence.contains("flaky rule"),
-        "the `not a stop` sentence does not point to the flaky rule: {sentence}"
-    );
-}
+// `the_not_a_stop_sentence_points_to_the_flaky_rule` is retired: the merge train is retired
+// (SPEC-20261122-next-flow-skills-agents REQ-2).
 
 /// The one place the budget bound is applied; the tests below drive it at N and N+1.
 fn budget_ok(len: usize) -> bool {
@@ -144,34 +128,11 @@ fn flaky_rule_stays_within_its_byte_budget() {
     );
 }
 
-/// The rule lives inside the merge-train step, not appended after the procedure
-/// (audit N1: the placement is pinned, a move to the file's end must fail here).
-#[test]
-fn the_flaky_rule_sits_inside_the_merge_train_step() {
-    let text = workflow();
-    let step = "9. **merge-train**";
-    let from = text
-        .find(step)
-        .unwrap_or_else(|| panic!("{FILE} has no `{step}` step"));
-    let to = text[from + step.len()..]
-        .find("\n10. **")
-        .map_or(text.len(), |i| from + step.len() + i);
-    let at = text
-        .find(RULE_START)
-        .unwrap_or_else(|| panic!("{FILE} has no `{RULE_START}…` rule"));
-    assert!(
-        at > from && at < to,
-        "the flaky rule sits outside the merge-train step (rule at byte {at}, step 9 spans {from}..{to})"
-    );
-}
+// `the_flaky_rule_sits_inside_the_merge_train_step` is retired: the merge train is retired
+// (SPEC-20261122-next-flow-skills-agents REQ-2).
 
 #[test]
 fn rule_cutting_reads_the_text_between_its_markers() {
     let sample = format!("before {RULE_START}one {RULE_END} after {RULE_END}");
     assert_eq!(rule(&sample), format!("{RULE_START}one {RULE_END}"));
-    let sentence = "x (Issues #2665, #2777; a failure that a re-run on the same SHA turned green is flaky, not a stop) y";
-    assert_eq!(
-        not_a_stop_sentence(sentence),
-        "(Issues #2665, #2777; a failure that a re-run on the same SHA turned green is flaky, not a stop)"
-    );
 }

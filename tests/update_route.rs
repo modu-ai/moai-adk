@@ -244,11 +244,11 @@ fn every_question_is_a_selection_through_the_hosts_question_tool() {
             assert!(r.contains(t), "questions.md {host} row lacks {t:?}: {r}");
         }
     }
-    // The routes that ask, and the question bank, name the reference.
+    // The routes that ask, and the question bank, name the reference. PROJECT carries the
+    // retired SETUP route (SPEC-20261122-next-flow-skills-agents).
     for file in [
         "workflows/update.md",
         "workflows/project.md",
-        "workflows/setup.md",
         "references/internal/interview.md",
     ] {
         assert!(
@@ -262,11 +262,7 @@ fn every_question_is_a_selection_through_the_hosts_question_tool() {
         "goes to the user and waits — no deadline applies it by default; it is still asked as a selection with the recommended option first, and once the user has picked, the session runs it (user decision 2026-11-16, card C-51)"
     ));
     // No route asks three or four at a time any more (the Codex CLI limit is three).
-    for file in [
-        "workflows/project.md",
-        "workflows/setup.md",
-        "references/internal/interview.md",
-    ] {
+    for file in ["workflows/project.md", "references/internal/interview.md"] {
         assert!(
             !skill(file).contains("three or four"),
             "{file} still asks three or four at a time"
@@ -313,7 +309,8 @@ fn the_ledger_is_local_cards_and_previews_run_without_asking() {
     ] {
         assert!(interview.contains(text), "interview.md lacks {text:?}");
     }
-    let setup = skill("workflows/setup.md");
+    // PROJECT carries the retired SETUP route (SPEC-20261122-next-flow-skills-agents).
+    let setup = skill("workflows/project.md");
     for text in [
         "record the first work item with `moai card add`",
         "do not offer GitHub Issues as the ledger",
@@ -326,11 +323,11 @@ fn the_ledger_is_local_cards_and_previews_run_without_asking() {
         "run `moai ledger-register-apply` only after its own pick in a selection",
         "never that the ledger is created unasked",
     ] {
-        assert!(setup.contains(text), "setup.md lacks {text:?}");
+        assert!(setup.contains(text), "project.md lacks {text:?}");
     }
     assert!(
         !setup.contains("to answer on the terminal"),
-        "setup.md still sends the language questions to the terminal"
+        "project.md still sends the language questions to the terminal"
     );
     let skill_md = skill("SKILL.md");
     assert!(

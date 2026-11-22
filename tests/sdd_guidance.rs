@@ -225,7 +225,8 @@ fn the_old_cc_sentences_are_gone() {
         .collect();
     files.push("skills/moai/references/chains/index.md".into());
     files.push("skills/moai/SKILL.md".into());
-    for wf in ["run", "verify", "sync", "audit", "plan"] {
+    // RUN carries the retired VERIFY route (SPEC-20261122-next-flow-skills-agents).
+    for wf in ["run", "sync", "audit", "plan"] {
         files.push(format!("skills/moai/workflows/{wf}.md"));
     }
     for agent in ["plan", "research", "impl", "audit", "docs"] {
@@ -301,13 +302,13 @@ fn no_card_number_or_ddd_wording_in_the_package_and_agents() {
     }
 }
 
-/// The five files that order work by the stages (the chain table and four workflows). Each
+/// The four files that order work by the stages (the chain table and three workflows). Each
 /// says that the order is the one `internal/sdd` gives and does not write it out
-/// (SPEC-20261121-stage-order-once, which replaces REQ-3 of this file's first SPEC).
-const POINTER_FILES: [&str; 5] = [
+/// (SPEC-20261121-stage-order-once, which replaces REQ-3 of this file's first SPEC). RUN
+/// carries the retired VERIFY route (SPEC-20261122-next-flow-skills-agents).
+const POINTER_FILES: [&str; 4] = [
     "skills/moai/references/chains/index.md",
     "skills/moai/workflows/run.md",
-    "skills/moai/workflows/verify.md",
     "skills/moai/workflows/sync.md",
     "skills/moai/workflows/audit.md",
 ];
@@ -315,7 +316,7 @@ const POINTER_FILES: [&str; 5] = [
 /// The sentence every pointer file carries instead of the order (compared in lower case).
 const POINTER: &str = "order of the stages is the one `internal/sdd` gives";
 
-/// SPEC-20261121-stage-order-once AC-1: the full order is in `sdd.md` only; the five pointer
+/// SPEC-20261121-stage-order-once AC-1: the full order is in `sdd.md` only; the four pointer
 /// files name `internal/sdd` as its owner. Named files only (no folder walk): the entry, every
 /// workflow the route table names, the chain table and the internal references.
 #[test]
@@ -372,7 +373,7 @@ fn each_stage_workflow_keeps_its_own_duty() {
              SPEC, the documents and the `@cc:` comments match the code",
         ),
         (
-            "skills/moai/workflows/verify.md",
+            "skills/moai/workflows/run.md",
             "SYNC writes them into the SPEC's `## Result` before the audit",
         ),
         (

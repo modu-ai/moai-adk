@@ -833,7 +833,8 @@ class SelfCheckSourcesTest(unittest.TestCase):
 
 
 MODE_AGENT = ROOT / "skills" / "moai" / "workflows" / "mode-agent.md"
-VERIFY = ROOT / "skills" / "moai" / "workflows" / "verify.md"
+# RUN carries the retired VERIFY route (SPEC-20261122-next-flow-skills-agents).
+VERIFY = ROOT / "skills" / "moai" / "workflows" / "run.md"
 
 
 def paragraph(path, start):

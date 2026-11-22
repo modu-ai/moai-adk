@@ -1046,8 +1046,10 @@ fn build_folder_reference_is_read_by_the_builders_and_states_the_rule() {
         "references/internal/git-safety.md",
         "references/internal/self-check.md",
         "workflows/mode-agent.md",
-        "workflows/verify.md",
-        "workflows/optimize.md",
+        // RUN and UPDATE carry the retired VERIFY and OPTIMIZE routes
+        // (SPEC-20261122-next-flow-skills-agents).
+        "workflows/run.md",
+        "workflows/update.md",
     ] {
         assert!(read(rel).contains("internal/build-folder"), "{rel}");
     }

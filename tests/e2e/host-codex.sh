@@ -54,7 +54,7 @@ keep() {
 #   2. the stream has a `turn.completed` event and no `turn.failed` or `error` event;
 #   3. the last message file is non-empty;
 #   4. route evidence: `command_execution` items whose `command` names the projected
-#      skill's references/routes.json and workflows/setup.md (the skill text says to
+#      skill's references/routes.json and workflows/project.md (the skill text says to
 #      pick the route from references/routes.json, then load that route's workflow).
 # Conditions 1-3 use the documented event types (thread.started, turn.started,
 # turn.completed, turn.failed, item.*, error). Condition 4 rests on an UNVERIFIED
@@ -90,7 +90,7 @@ else
      && jq -se 'all(.[]; (.type? != "turn.failed") and (.type? != "error"))' "$WORK/ac4.jsonl" >/dev/null 2>&1 \
      && [ -s "$WORK/last.md" ] \
      && route_cmd "references/routes.json" \
-     && route_cmd "workflows/setup.md"; then
+     && route_cmd "workflows/project.md"; then
     receipt "AC-08C-4" passed "$(keep ac4.jsonl)"
   else
     receipt "AC-08C-4" failed "$(keep ac4.jsonl) (exit $RC4)"

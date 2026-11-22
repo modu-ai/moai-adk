@@ -1307,8 +1307,8 @@ mod docs_tests {
         let docs = [
             ("src/heavy_slot.rs", include_str!("heavy_slot.rs")),
             (
-                "skills/moai/workflows/verify.md",
-                include_str!("../skills/moai/workflows/verify.md"),
+                "skills/moai/workflows/run.md",
+                include_str!("../skills/moai/workflows/run.md"),
             ),
             (
                 "docs/rust-product-path.md",

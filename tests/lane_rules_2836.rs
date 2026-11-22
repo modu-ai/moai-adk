@@ -61,10 +61,11 @@ fn mode_agent_keeps_a_check_apart_from_the_push_and_the_comments_it_guards() {
             "a guard refusal stops only the refused call, so the other calls of the same response still run",
         ],
     );
-    let verify = workflow("verify.md");
+    // The RUN workflow carries the retired VERIFY route (SPEC-20261122-next-flow-skills-agents).
+    let run = workflow("run.md");
     says(
-        &verify,
-        "verify.md",
+        &run,
+        "run.md",
         &["the shapes it accepts are listed in the MODE-AGENT workflow (\"Host worktree guard\")"],
     );
 }

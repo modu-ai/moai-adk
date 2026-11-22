@@ -208,13 +208,15 @@ class CheckRunRulesSingleSourceTest(unittest.TestCase):
             'VERIFY workflow의 \\"Check-run rules\\" 절(단일 출처)을 따른다.',
         ):
             self.assertEqual(template.count(line), 1, line)
-        self.assertEqual(self.read("skills/moai/workflows/verify.md").count("\n## Check-run rules\n"), 1)
+        # RUN carries the retired VERIFY route (SPEC-20261122-next-flow-skills-agents).
+        self.assertEqual(self.read("skills/moai/workflows/run.md").count("\n## Check-run rules\n"), 1)
         # The template points; it never restates the rules (no citation format, no role table).
         self.assertNotIn(CI_FORMAT, template)
         self.assertNotIn("Delta auditor: merge-only delta", template)
 
     def test_verify_holds_the_rules_once(self):
-        text = self.read("skills/moai/workflows/verify.md")
+        # RUN carries the retired VERIFY route (SPEC-20261122-next-flow-skills-agents).
+        text = self.read("skills/moai/workflows/run.md")
         self.assertEqual(text.count("\n## Check-run rules\n"), 1)
         self.assertIn(CI_FORMAT, text)
         for case in ("Author: new or changed code", "Author: a language or suite the change does not touch",
@@ -301,7 +303,7 @@ class NoAuthorCiLineTest(unittest.TestCase):
         return (ROOT / rel).read_text(encoding="utf-8")
 
     def test_rules_say_the_auditor_cites_ci(self):
-        verify = self.read("skills/moai/workflows/verify.md")
+        verify = self.read("skills/moai/workflows/run.md")
         self.assertIn("The auditor reads the run back itself and writes it in the verdict as one line", verify)
         self.assertIn("the author's `## Self-Audit` section needs no such line, and no verdict waits for one", verify)
         self.assertIn("passes a body with or without that line", verify)

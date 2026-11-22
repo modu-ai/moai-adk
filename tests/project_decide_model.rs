@@ -60,11 +60,11 @@ fn project_workflow_names_no_decision_model() {
 }
 
 /// The skill files of the routes that ask the user anything, named one by one (the scan reads
-/// these files, not the tree): SKILL.md, the three routes that ask and their two references.
-const ASKING_FILES: [&str; 6] = [
+/// these files, not the tree): SKILL.md, the two routes that ask and their two references.
+/// PROJECT carries the retired SETUP route (SPEC-20261122-next-flow-skills-agents).
+const ASKING_FILES: [&str; 5] = [
     "SKILL.md",
     "workflows/project.md",
-    "workflows/setup.md",
     "workflows/update.md",
     "references/internal/interview.md",
     "references/internal/questions.md",

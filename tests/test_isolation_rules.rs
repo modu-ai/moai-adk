@@ -111,7 +111,8 @@ fn the_scan_finds_both_forms_and_every_occurrence() {
 
 #[test]
 fn verify_workflow_states_the_flaky_rules() {
-    let text = fs::read_to_string(Path::new(ROOT).join("skills/moai/workflows/verify.md")).unwrap();
+    // RUN carries the retired VERIFY route (SPEC-20261122-next-flow-skills-agents).
+    let text = fs::read_to_string(Path::new(ROOT).join("skills/moai/workflows/run.md")).unwrap();
     for rule in [
         "passes when the same head is run again is flaky, not fixed (Issue #2666)",
         "the same `head_sha`, the same job, one failure and one later success",
@@ -122,6 +123,6 @@ fn verify_workflow_states_the_flaky_rules() {
         "with `no-such` in the name",
         "such a test runs alone under cargo-nextest",
     ] {
-        assert!(text.contains(rule), "verify.md lacks: {rule}");
+        assert!(text.contains(rule), "run.md lacks: {rule}");
     }
 }

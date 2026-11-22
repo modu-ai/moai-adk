@@ -60,12 +60,13 @@ fn the_never_delete_rule_names_the_card_cleanup_as_its_exception() {
     );
 }
 
+/// The RUN workflow carries the retired VERIFY route (SPEC-20261122-next-flow-skills-agents).
 #[test]
 fn verify_states_the_safe_ignored_rule_and_leaves_bulk_cleanup_to_the_leader() {
-    let verify = workflow("verify.md");
+    let run = workflow("run.md");
     says(
-        &verify,
-        "verify.md",
+        &run,
+        "run.md",
         &[
             "removes its own merged card worktree with `moai worktree-gc-apply --worktree <path>` (Issue #2879",
             "byte-identical copies of the primary checkout's same path",
@@ -73,8 +74,8 @@ fn verify_states_the_safe_ignored_rule_and_leaves_bulk_cleanup_to_the_leader() {
         ],
     );
     assert!(
-        !verify.contains("a worktree itself is removed only after a separate confirmation"),
-        "verify.md still carries the rule #2879 replaced"
+        !run.contains("a worktree itself is removed only after a separate confirmation"),
+        "run.md still carries the rule #2879 replaced"
     );
 }
 
@@ -95,10 +96,10 @@ fn the_leader_runs_the_same_plan_periodically_with_a_cursor() {
 
 #[test]
 fn verify_names_the_build_folder_warning() {
-    let verify = workflow("verify.md");
+    let run = workflow("run.md");
     says(
-        &verify,
-        "verify.md",
+        &run,
+        "run.md",
         // Card C-82 follow-up: only a folder shared with or inside another worktree is named
         // (was: "with any other `CARGO_TARGET_DIR`, unset included").
         &["prints one warning line when it wraps `cargo` with a `CARGO_TARGET_DIR` shared with another worktree or inside another worktree"],

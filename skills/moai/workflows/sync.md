@@ -2,7 +2,7 @@
 
 ## Input
 
-A candidate that passed VERIFY, its SPEC, the latest base, the document revisions, and the allowed effects.
+A candidate that passed the checks of RUN, its SPEC, the latest base, the document revisions, and the allowed effects.
 
 ## Output
 

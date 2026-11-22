@@ -70,11 +70,12 @@ else
   receipt "AC-08C-5" failed "$(keep ac5.out)"
 fi
 
-# AC-08C-3 (INVOKE): the skill must actually LOAD and reach the SETUP route — verified
+# AC-08C-3 (INVOKE): the skill must actually LOAD and reach the PROJECT route (which
+# carries the retired SETUP route) — verified
 # from the event stream, never from the prose or a file merely existing. The skill's
 # own instructions say to pick the route from references/routes.json and then load
-# that route's workflow, so a run that loaded the skill and reached SETUP shows tool
-# calls naming the fixture's references/routes.json and workflows/setup.md. A tool
+# that route's workflow, so a run that loaded the skill and reached PROJECT shows tool
+# calls naming the fixture's references/routes.json and workflows/project.md. A tool
 # call counts even if dontAsk denied it: the attempt itself shows the skill text was
 # followed. A plain answer without those calls fails. Requires ANTHROPIC_API_KEY
 # (`claude --bare` reads no OAuth credentials). Not run by the RC lane.
@@ -95,7 +96,7 @@ else
      && jq -se --arg p ".claude/skills/moai/references/routes.json" \
           'any(.[] | .. | objects | select(.type? == "tool_use") | .input | tostring; contains($p))' \
           "$WORK/ac3.jsonl" >/dev/null 2>&1 \
-     && jq -se --arg p ".claude/skills/moai/workflows/setup.md" \
+     && jq -se --arg p ".claude/skills/moai/workflows/project.md" \
           'any(.[] | .. | objects | select(.type? == "tool_use") | .input | tostring; contains($p))' \
           "$WORK/ac3.jsonl" >/dev/null 2>&1; then
     receipt "AC-08C-3" passed "$(keep ac3.jsonl)"

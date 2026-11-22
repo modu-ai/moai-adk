@@ -548,8 +548,8 @@ fn real_file() {
     assert_eq!(table_skips(&r).len(), 1, "{}", r["skipped"]);
 }
 
-/// The rules of `verify.md` ("Change-specific rules" and "Shell and helper rules"): each has an
-/// item whose `check` is the bullet's text word for word.
+/// The rules of `run.md`, formerly `verify.md` ("Change-specific rules" and "Shell and helper
+/// rules"): each has an item whose `check` is the bullet's text word for word.
 const VERIFY_RULES: [(&str, &str); 9] = [
     ("base-drift", "Base drift (WF-OBS #9):"),
     (
@@ -598,7 +598,8 @@ const REVIEW_RULES: [(&str, &str); 5] = [
 ];
 
 fn verify_bullets() -> Vec<String> {
-    let text = fs::read_to_string(root().join("skills/moai/workflows/verify.md")).unwrap();
+    // The RUN workflow carries the retired VERIFY route (SPEC-20261122-next-flow-skills-agents).
+    let text = fs::read_to_string(root().join("skills/moai/workflows/run.md")).unwrap();
     let mut in_section = false;
     let mut out = Vec::new();
     for line in text.lines() {
