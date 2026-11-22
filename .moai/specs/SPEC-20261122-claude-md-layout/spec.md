@@ -2,7 +2,7 @@
 id: SPEC-20261122-claude-md-layout
 title: "CLAUDE.md and CLAUDE.local.md replace AGENTS.md and AGENTS.local.md in the files moai owns, and the flow rule is global"
 status: draft
-revision: 2
+revision: 3
 created: 2026-11-22
 parent: null
 ---
@@ -19,14 +19,16 @@ moai 가 사용자 프로젝트에서 관리하는 지침 파일을 Claude Code 
 | `<project>/CLAUDE.local.md` | 사용자 | 무시 | 개인 메모. moai 는 사용자가 고를 때만 만들어요 | 이 SPEC |
 | `<config dir>/rules/moai/flow.md` | moai | 해당 없음 | 모든 프로젝트에 공통인 NeXT-Flow 글 하나. `paths:` 없음. 설정 폴더마다 하나 | 이 SPEC(요구), `SPEC-20261122-claude-md-home-routing`(쓰기) |
 | `<project>/.claude/rules`, `skills`, `agents`, `commands`, `output-styles` | 사용자 | 해당 없음 | moai 는 기본으로 쓰지 않아요. 프로젝트 맞춤 하네스는 사용자가 고를 때만 | 이 SPEC(REQ-9) |
-| 프로젝트의 AGENTS 파일 옮기기 | 사용자 선택 | | `move` / `import` / `leave` | `SPEC-20261122-claude-md-project-picks` |
+| 프로젝트의 AGENTS 파일 옮기기 | 사용자 선택 | | `move` / `leave`, 그리고 `move` 뒤 따로 고르는 원본 지우기 | `SPEC-20261122-claude-md-project-picks` |
 | 프로젝트 레이어의 쓰기 규칙 | moai | | 영수증, 링크·UTF-8 거부, baseline, 미리보기 키, 토큰 | `SPEC-20261122-claude-md-project-layer` |
 | `<config dir>/rules/moai.md` | moai | 해당 없음 | `/moai` 진입 안내 12줄 이내. `<config dir>` 는 `CLAUDE_CONFIG_DIR` 또는 `~/.claude` | `SPEC-20261122-claude-md-home-routing` |
 | `.gitignore` 와 글 시험 | | | `.claude/` 통째 무시 해제, 이름 시험, 배너 고정 | `SPEC-20261122-claude-md-text-and-ignore` |
 
 개정 2(2026-11-22, 사용자 결정): moai 의 공통 내용 — 흐름 규칙, 라우팅, 스킬, 에이전트, 명령, 출력 스타일 — 은 전역 설정 폴더(`CLAUDE_CONFIG_DIR`, 없으면 `~/.claude`)에 설치하고, moai 는 프로젝트의 `.claude/rules` 등에 기본으로 쓰지 않아요. 프로젝트 `CLAUDE.md` 의 블록은 이 프로젝트만의 사실(도구, 검사 명령, 언어, 흐름 이름과 통합 브랜치, SPEC·카드 자리)이라서 남아요. 슬롯 0 탐침이 보여 준 대로 프로필 폴더는 자기 `rules/` 만 읽으니, 설정 폴더(Orca 프로필마다 하나)마다 자기 사본을 받아요. 전역 파일을 쓰는 일은 사용자의 선택이고 쓰기 구현은 `SPEC-20261122-claude-md-home-routing` 이 맡아요.
 
-이 SPEC 은 첫 조각(조사 + SPEC)이에요. 코드, 시험, 이 저장소 자신의 `AGENTS.md` 이동은 아래 Plan 의 뒤 조각에서 해요. 요구가 12개를 넘으면 쪼개라는 규칙(SPEC 크기 예산)에 따라 다섯 SPEC 으로 나눴고, 넷은 이 SPEC 을 `parent` 로 이어요. `import` 를 고르면 `AGENTS.local.md` 는 아무 일도 없어요(Claude Code 가 원래 읽지 않던 파일이에요).
+이 SPEC 은 첫 조각(조사 + SPEC)이에요. 코드, 시험, 이 저장소 자신의 `AGENTS.md` 이동은 아래 Plan 의 뒤 조각에서 해요. 요구가 12개를 넘으면 쪼개라는 규칙(SPEC 크기 예산)에 따라 다섯 SPEC 으로 나눴고, 넷은 이 SPEC 을 `parent` 로 이어요.
+
+개정 3(2026-11-22, 사용자 결정 'AGENTS.md 제거해라. CLAUDE.md CLAUDE.local.md 만 사용한다', 범위는 제품과 이 저장소): moai 는 `CLAUDE.md` 와 `CLAUDE.local.md` 만 쓰고 `AGENTS.md` 는 어떤 경우에도 쓰지 않아요. `import` 선택(`@AGENTS.md` 한 줄)은 없어져요. 사용자의 기존 `AGENTS.md` 에는 `move`(글을 `CLAUDE.md` 로, `AGENTS.local.md` 는 `CLAUDE.local.md` 로)와 `leave`(moai 는 그 파일을 건드리지도 읽지도 않아요)를 보여 주고, 옮긴 뒤 확인이 끝나면 원본을 지우는 일은 따로 고르는 선택이에요. 그 선택 없이는 사용자 파일을 지우지 않아요. 이 저장소 자신의 `AGENTS.md` 는 `CLAUDE.md` 로, `AGENTS.local.md` 는 `CLAUDE.local.md`(개인, git 무시; 공유 규칙은 `CLAUDE.md` 로)로 옮기고 두 원본을 지워요. 그 파일을 읽는 시험도 함께 옮겨요(Plan 5).
 
 ### What exists (tip `012e9470cb`)
 
@@ -56,7 +58,7 @@ moai 가 사용자 프로젝트에서 관리하는 지침 파일을 Claude Code 
 
 ## Requirements
 
-- REQ-1: When no `AGENTS.md` exists at the project root, or `CLAUDE.md` already holds the managed block or the line `@AGENTS.md`, or the pick `import` or `move` was given, the generator shall plan the managed block `moai-workflow` inside `CLAUDE.md` at the project root.
+- REQ-1: When no `AGENTS.md` exists at the project root, or `CLAUDE.md` already holds the managed block or the line `@AGENTS.md`, or the pick `move` was given, the generator shall plan the managed block `moai-workflow` inside `CLAUDE.md` at the project root.
 - REQ-2 (REQ-1): IF `AGENTS.md` exists and none of those holds, THEN the generator shall plan no CLAUDE file and report that a pick is needed.
 - REQ-3: The renderer shall produce at most 15 lines between the two marker lines of the managed block and state in them only the project id, the tools, the check command, the language, the versioning line, the flow name with its integration branch, and the places of SPECs and cards.
 - REQ-4: When `CLAUDE.md` exists without the managed block, the generator shall append the block on a new line after the last byte and keep every earlier byte.
@@ -99,11 +101,11 @@ Slices in this order. Each is one SPEC-backed change with its own audit tier; th
 2. Project layer in `moai update` (`SPEC-20261122-claude-md-project-picks` for the picks and `SPEC-20261122-claude-md-project-layer` for receipt, link and UTF-8 refusal, baseline, token, revert order and key `project_files`). It reuses the `choices` shape of `project-update-plan`.
 3. Routing (`SPEC-20261122-claude-md-home-routing`): `rules/moai.md` and `rules/moai/flow.md` (REQ-8, REQ-10…REQ-12 of this SPEC) through the style-file pattern, the removal pick for the old block, receipt behaviour. That SPEC takes the flow file into its next revision when slice 3 starts; its test target `claude_md_home_cli` then holds the tests named `flow_`.
 4. Ignore and texts (`SPEC-20261122-claude-md-text-and-ignore`): the managed ignore block, the repository `.gitignore` allow list, skill texts, language label, first launch, the text test and its exception list, the source manifest.
-5. This repository's own `AGENTS.md` and `AGENTS.local.md`: split into `CLAUDE.md`, `.claude/rules/`, `CLAUDE.local.md` and `docs/`, only by the user's pick, with `tests/repo_agents_md.rs` replaced.
+5. This repository's own `AGENTS.md` and `AGENTS.local.md` (revision 3, the user's decision): `AGENTS.md` moves into `CLAUDE.md` and `AGENTS.local.md` into `CLAUDE.local.md` (personal and git-ignored; a shared rule it holds moves to `CLAUDE.md`), then both originals are removed, in one slice with every test that reads them (`tests/repo_agents_md.rs` and the others), before the lanes restart on build 17.
 
 ## Risks
 
-- Claude Code stops reading `AGENTS.md` as soon as moai writes a `CLAUDE.md`. `move` and `import` keep the user's text reachable; `leave` writes no CLAUDE file for that reason.
+- Claude Code stops reading `AGENTS.md` as soon as moai writes a `CLAUDE.md`. `move` keeps the user's text reachable; `leave` writes no CLAUDE file for that reason.
 - Orca profiles have their own config folder without `rules/`, and their `CLAUDE.md` imports `~/.claude/CLAUDE.md`. A file `~/.claude/rules/moai.md` would not load there, and removing the old block from `~/.claude/CLAUDE.md` would silently drop routing for those sessions. That is why removal is a separate pick (D-8). Measured in slice 0 (Claude Code 2.1.330, report `claude-md-slice0-probe-2026-11-22.md`): a config folder reads its own `rules/`, and a profile whose `CLAUDE.md` imports another folder's `CLAUDE.md` loads that file but not the other folder's `rules/`, so the risk is real and D-8 stays.
 - Measured in slice 0: a linked worktree loads its own tracked `CLAUDE.md` and `.claude/rules/*`, and the primary checkout's `CLAUDE.local.md` only when the worktree sits inside the primary checkout folder (`.claude/worktrees/*`, which `claude --worktree` uses); a worktree outside it does not get the personal file. Edits that exist only in the primary checkout do not reach a worktree.
 - Narrowing the repository `.gitignore` shows the installed Go-generation `.claude/` content in `git status`. The slice must use an allow list and read `settings.json` first (it may carry a per-machine `PATH`).
@@ -116,8 +118,8 @@ Slices in this order. Each is one SPEC-backed change with its own audit tier; th
 | Id | Decision | Basis | Undo |
 | --- | --- | --- | --- |
 | D-1 | The block lives in the root `CLAUDE.md`, not in `.claude/CLAUDE.md`. | Both load at launch (memory.md L55-62); the project-root file survives compaction (context-window.md L64). | Change the target constant. |
-| D-2 | The pick order is `move` (recommended), `import`, `leave`; the user chooses. The preview of `move` says that the originals stay and that the user may delete them later. | The user's direction of 2026-11-22: moai projects use `CLAUDE.md` and `CLAUDE.local.md` and not `AGENTS.md`, so `move` ends with one source of truth in the files Claude Code reads; the leader recorded it as decision 1 on the card. Replaces the earlier order `import`, `move`, `leave`. | Reorder the choices. |
-| D-3 | Originals are never deleted or changed; `move` copies. | The rule that nothing of the user's is deleted; the card criterion says originals are kept. | None needed. |
+| D-2 | The picks are `move` (recommended) and `leave`; the pick `import` is retired and moai never writes `AGENTS.md` or an `@AGENTS.md` line (revision 3). The preview of `move` says that the originals stay unless the removal pick is chosen. | The user's decision of 2026-11-22 ('AGENTS.md 제거해라. CLAUDE.md CLAUDE.local.md 만 사용한다', recorded on the card as the user decision note), which replaces the earlier order `move`, `import`, `leave`. | Bring `import` back as a third pick. |
+| D-3 | `move` copies and never changes an original; an original is deleted only by the separate removal pick after the copy is verified, through a receipt that can restore it. | The user's decision of 2026-11-22: no user file is deleted without that pick. | Drop the removal pick. |
 | D-4 | A moai-generated `AGENTS.local.md` (the first-creation text) is not copied. | `is_generated_local` already recognises it (`a:396`); copying moai's own template would be noise. | Copy it too. |
 | D-5 | The old managed block inside `AGENTS.md` is not copied and not touched; the preview says it is no longer updated. | Originals stay as they are; a fresh block is rendered in `CLAUDE.md`. | Strip it on a later pick. |
 | D-6 | The flow rule is global: one file `<config dir>/rules/moai/flow.md` per config folder, the NeXT-Flow text, no `paths` key. A project on another flow gets a project rule only through the project harness pick. | The user's decision of 2026-11-22: moai's common content is installed in the config folder and moai writes nothing into a project's `.claude` folders by default. Unscoped rules load at launch and survive compaction (context-window.md L64, L79); a profile folder reads only its own `rules/` (slice 0), so each config folder gets its own copy on the user's pick. Replaces the revision 1 decision of a project file `.claude/rules/moai/flow.md` written from `work_flow`. | Return to a project file, or add `paths` for a scoped rule. |
