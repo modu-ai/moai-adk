@@ -19,9 +19,9 @@ const LINE_THREE_STEPS: usize = 5;
 /// The used percentage above which a window counts as nearly spent
 /// (SPEC-20261122-statusline-limits D-2).
 const HIGH_USE_PERCENT: i64 = 70;
-/// With less than this share left a window shows `🪫` instead of `🔋`, and only then is the
-/// five-hour window shown: the same state as a use above [`HIGH_USE_PERCENT`], read from what is
-/// left (SPEC-20261122-statusline-limits-left REQ-2, REQ-3).
+/// With less than this share left a window shows `🪫` instead of `🔋`: the same state as a use
+/// above [`HIGH_USE_PERCENT`], read from what is left (SPEC-20261122-statusline-limits-left
+/// REQ-2).
 const LOW_LEFT_PERCENT: i64 = 100 - HIGH_USE_PERCENT;
 /// The cost is shown below this many US dollars (at most `999999.99`, nine characters); a larger
 /// value (`1e308` printed a 337-character line) is left out.
@@ -415,7 +415,8 @@ impl Renderer {
     /// equal neighbours. Each step drops more than the one before it, in the order under the
     /// Layouts table of the SPEC: the Claude Code version (Z1), the MoAI version with its update
     /// arrow (Z2), the countdowns (Z3), the five-hour window and the cost (Z4, as the table's
-    /// narrowest forms write it). The context window and the seven-day window stay in every form.
+    /// narrowest forms write it). The context window and the seven-day window stay in every form,
+    /// so the five-hour window always goes before them.
     ///
     /// The windows are numbers only — `🔋 CW 61%`, no graph, no colon, no `/clear` hint
     /// (SPEC-20261121-statusline-detached REQ-5, REQ-7) — and each number is the share left, not
@@ -446,14 +447,14 @@ impl Renderer {
             Some(pct) => vec![piece("", battery("CW", whole_percent(pct)))],
             None => unknown("CW"),
         });
-        // REQ-4 and D-2: the five-hour window only with less than the low-left share left, which
-        // is strictly above the high-use percentage used.
+        // SPEC-20261122-statusline-limits-left REQ-3: the five-hour window whenever the input
+        // carries its percentage, at any level; the host does not always send it, and a window
+        // without a percentage is left out, never `5H n/a`.
         let five_hour = live(s.five_hour)
             .filter(|_| self.enabled("usage_5h"))
             .and_then(|w| {
                 let used = whole_percent(w.used_percentage?);
-                (left_percent(used) < LOW_LEFT_PERCENT)
-                    .then(|| (vec![piece("", battery("5H", used))], countdown(&w)))
+                Some((vec![piece("", battery("5H", used))], countdown(&w)))
             });
         let seven_day = live(s.seven_day)
             .filter(|_| self.enabled("usage_7d"))
@@ -763,10 +764,11 @@ mod tests {
         }
     }
 
-    /// The line 3 of [`full_status`] (SPEC-20261122-statusline-limits-left): the five-hour window
-    /// at 25 percent used is hidden, each number is the share left (50 and 75 percent used), and
-    /// the update arrow names the template, then the build.
-    const FULL_WINDOWS: &str = "🔋 CW 50% | 🪫 7D 25% | 🤖 2.1.293 | 🗿 2.0 -> 3.0";
+    /// The line 3 of [`full_status`] (SPEC-20261122-statusline-limits-left): each number is the
+    /// share left (50, 25 and 75 percent used), the five-hour window resets one second after the
+    /// render's clock, and the update arrow names the template, then the build.
+    const FULL_WINDOWS: &str =
+        "🔋 CW 50% | 🔋 5H 75% (0m) | 🪫 7D 25% | 🤖 2.1.293 | 🗿 2.0 -> 3.0";
 
     /// SPEC-20261122-statusline-where: line 1 is the model with its effort, the repository with
     /// its forge counts and the branch with its marks; line 3 is the last line and ends with the
@@ -971,10 +973,10 @@ mod tests {
 
     /// #2756 leader decision 6862179411 item 2: no `💾` file-change segment, even with its
     /// `git_status` option left enabled; the branch keeps its `+N` changes. The five-hour window
-    /// at 25 percent used stays hidden: since SPEC-20261122-statusline-limits REQ-4 it shows only
-    /// above 70 percent used, which is under 30 percent left (`window_tests`).
+    /// the input carries is shown at any level (SPEC-20261122-statusline-limits-left REQ-3,
+    /// `window_tests`).
     #[test]
-    fn the_five_hour_window_and_the_file_change_segment_are_never_shown() {
+    fn the_file_change_segment_is_never_shown_and_the_five_hour_window_is() {
         let status = full_status();
         assert!(
             status.five_hour.is_some() && status.git.is_some(),
@@ -990,7 +992,7 @@ mod tests {
             ..Default::default()
         };
         let out = Renderer::new(&config, None).render(&status);
-        assert!(!out.contains("5H"), "{out}");
+        assert!(out.contains("🔋 5H 75%"), "{out}");
         assert!(!out.contains('💾'), "{out}");
         assert!(out.contains("🅱️  main ↑5 ↓2 +3"), "{out}");
     }
@@ -1500,7 +1502,7 @@ mod tests {
             Some("🔋 CW 50% | 🤖 2.1.293 | 🗿 2.0 -> 3.0")
         );
         // And they keep that line non-empty without any window.
-        let output = plain(&full_status(), &["usage_7d", "context"]);
+        let output = plain(&full_status(), &["usage_5h", "usage_7d", "context"]);
         assert_eq!(output.lines().nth(1), Some("🤖 2.1.293 | 🗿 2.0 -> 3.0"));
         // With the repository and the branch hidden, line 1 keeps the model.
         let output = plain(&full_status(), &["git_branch", "git_status"]);
@@ -2300,9 +2302,9 @@ mod line_three_support {
 
 /// AC-2 of SPEC-20261122-statusline-limits (REQ-3, REQ-4, D-2, D-4): the battery icon switches at
 /// 70/71, the reset countdown has three forms without `resets in`, a window whose reset has passed
-/// is left out, a week without a percentage says `7D n/a`, and the five-hour window is shown only
-/// strictly above 70 percent. Since SPEC-20261122-statusline-limits-left every number is the share
-/// left, so the percentages named here are 100 minus what the line writes.
+/// is left out, and a week without a percentage says `7D n/a`. Since
+/// SPEC-20261122-statusline-limits-left every number is the share left, so the percentages named
+/// here are 100 minus what the line writes, and the five-hour window is shown at any level.
 #[cfg(test)]
 mod window_tests {
     use super::line_three_support::{item, line, without_moai, NOW};
@@ -2402,8 +2404,8 @@ mod window_tests {
 
     /// AC-3 of SPEC-20261122-statusline-limits-left: the icon turns at the low-left boundary —
     /// exactly `LOW_LEFT_PERCENT` left (the high-use percentage used) is `🔋`, one percent less
-    /// left is `🪫` — and the five-hour window appears at that same step. The expected numbers
-    /// come from the constants the render reads.
+    /// left is `🪫` — for the context window, the five-hour window and the week alike. The
+    /// expected numbers come from the constants the render reads.
     #[test]
     fn the_battery_icon_turns_at_the_low_left_boundary() {
         use crate::statusline::render::{HIGH_USE_PERCENT, LOW_LEFT_PERCENT};
@@ -2423,7 +2425,7 @@ mod window_tests {
                 "5H",
             )
         };
-        assert_eq!(five(HIGH_USE_PERCENT), None);
+        assert_eq!(five(HIGH_USE_PERCENT), Some(format!("🔋 5H {n}%")));
         assert_eq!(
             five(HIGH_USE_PERCENT + 1),
             Some(format!("🪫 5H {}%", n - 1))
@@ -2513,12 +2515,13 @@ mod window_tests {
         assert_eq!(item(&windows(json!({})), "7D"), None, "an absent week");
     }
 
-    /// REQ-4 and D-2: the five-hour window shows strictly above 70 percent used (under 30 left),
-    /// with `🪫`, the share left and its countdown, between the context window and the week; at
-    /// 70 used or below, without a percentage or absent it is left out with its separator. A
-    /// fraction is read by the whole used percentage, so 70.9 is 70 and stays hidden.
+    /// REQ-3 of SPEC-20261122-statusline-limits-left: the five-hour window shows whenever the
+    /// input carries its percentage, at any level, with the share left, the icon of the low-left
+    /// rule and its countdown, between the context window and the week — 25 percent used is
+    /// `🔋 5H 75%`. Without a percentage or absent it is left out with its separator. A fraction
+    /// is read by the whole used percentage, so 70.9 is 70 used.
     #[test]
-    fn the_five_hour_window_shows_only_above_70() {
+    fn the_five_hour_window_shows_whenever_the_input_carries_it() {
         let five = |pct: Value| {
             item(
                 &windows(
@@ -2527,18 +2530,31 @@ mod window_tests {
                 "5H",
             )
         };
+        assert_eq!(five(json!(25)).as_deref(), Some("🔋 5H 75% (2h 10m)"));
+        assert_eq!(five(json!(0)).as_deref(), Some("🔋 5H 100% (2h 10m)"));
+        assert_eq!(five(json!(70.9)).as_deref(), Some("🔋 5H 30% (2h 10m)"));
         assert_eq!(five(json!(71)).as_deref(), Some("🪫 5H 29% (2h 10m)"));
         assert_eq!(five(json!(100)).as_deref(), Some("🪫 5H 0% (2h 10m)"));
         assert_eq!(five(json!(150)).as_deref(), Some("🪫 5H 0% (2h 10m)"));
-        assert_eq!(five(json!(70)), None);
-        assert_eq!(five(json!(70.9)), None);
-        assert_eq!(five(json!(23)), None);
         assert_eq!(five(json!(null)), None);
+        assert_eq!(five(json!("25")), None);
+        // A reset time is not needed: the item stands without a countdown.
         assert_eq!(
-            windows(json!({"five_hour": {"used_percentage": 70}})),
-            "🔋 CW 90%",
-            "a hidden window leaves no separator"
+            windows(json!({"five_hour": {"used_percentage": 25}})),
+            "🔋 CW 90% | 🔋 5H 75%"
         );
+        for absent in [
+            json!({}),
+            json!({"five_hour": {}}),
+            json!({"five_hour": {"resets_at": NOW + HOUR}}),
+            json!({"five_hour": null}),
+        ] {
+            assert_eq!(
+                windows(absent.clone()),
+                "🔋 CW 90%",
+                "{absent}: no item and no separator"
+            );
+        }
         assert_eq!(
             windows(json!({
                 "five_hour": {"used_percentage": 85, "resets_at": NOW + HOUR + 10 * MINUTE},
@@ -2592,7 +2608,7 @@ mod cost_tests {
     }
 
     /// A payload with either window shows no cost, also when the window itself is not drawn (a
-    /// five-hour window at 70 or below, a window whose reset has passed).
+    /// window whose reset has passed).
     #[test]
     fn the_cost_is_hidden_with_either_window() {
         for limits in [

@@ -1038,7 +1038,7 @@ fn assert_line_three(stdin: &serde_json::Value, template: Option<&str>, want: &s
 /// left (SPEC-20261122-statusline-limits-left): 74, 85 and 21 percent are used.
 const Z0_FIVE_HOUR: &str =
     "🪫 CW 26% | 🪫 5H 15% (1h 10m) | 🔋 7D 79% (6d 21h) | 🤖 2.1.330 | 🗿 4.2647.16";
-/// Z0 of the subscriber whose five-hour window is hidden.
+/// Z0 of the subscriber whose input carries no five-hour window.
 const Z0_NO_FIVE_HOUR: &str = "🪫 CW 26% | 🔋 7D 79% (6d 21h) | 🤖 2.1.330 | 🗿 4.2647.16";
 /// Z0 of the API key user, 41 percent used. The Layouts section of SPEC-20261122-statusline-limits
 /// wrote `🪫` there; the battery rule of the same SPEC (AC-2: `🔋` up to 70 percent used, `🪫` from
@@ -1052,18 +1052,37 @@ fn line_three_items_subscriber_with_the_five_hour_window() {
     assert_line_three(&subscriber(85), None, Z0_FIVE_HOUR);
 }
 
-/// REQ-4, REQ-5: at 70 percent or below the five-hour window is left out with its separator, as
-/// when the host sends none; the week alone still hides the cost.
+/// SPEC-20261122-statusline-limits-left REQ-3: the five-hour window shows at any level the input
+/// carries — 70 and 23 percent used are `🔋 5H 30%` and `🔋 5H 77%` with the countdown.
 #[test]
-fn line_three_items_subscriber_without_the_five_hour_window() {
-    assert_line_three(&subscriber(70), None, Z0_NO_FIVE_HOUR);
-    assert_line_three(&subscriber(23), None, Z0_NO_FIVE_HOUR);
+fn line_three_items_subscriber_with_a_five_hour_window_at_any_level() {
+    for (used, item) in [(70, "🔋 5H 30% (1h 10m)"), (23, "🔋 5H 77% (1h 10m)")] {
+        let want = format!("🪫 CW 26% | {item} | 🔋 7D 79% (6d 21h) | 🤖 2.1.330 | 🗿 4.2647.16");
+        assert_line_three(&subscriber(used), None, &want);
+    }
+}
+
+/// The subscriber's JSON without a five-hour window: the host does not always send one.
+fn subscriber_without_five_hour() -> serde_json::Value {
     let mut no_five = subscriber(85);
     no_five["rate_limits"]
         .as_object_mut()
         .unwrap()
         .remove("five_hour");
-    assert_line_three(&no_five, None, Z0_NO_FIVE_HOUR);
+    no_five
+}
+
+/// REQ-3, REQ-5: an input without a five-hour window, or with one that has no percentage, has no
+/// `5H` item and no separator for it; the week alone still hides the cost.
+#[test]
+fn line_three_items_subscriber_without_the_five_hour_window() {
+    assert_line_three(&subscriber_without_five_hour(), None, Z0_NO_FIVE_HOUR);
+    let mut no_percentage = subscriber(85);
+    no_percentage["rate_limits"]["five_hour"]
+        .as_object_mut()
+        .unwrap()
+        .remove("used_percentage");
+    assert_line_three(&no_percentage, None, Z0_NO_FIVE_HOUR);
 }
 
 /// REQ-5: with no usage window the cost stands after the context window, to two decimals.
@@ -1159,7 +1178,7 @@ const LADDERS: [(&str, &[(&str, usize)]); 4] = [
         ],
     ),
     (
-        "subscriber, 5H hidden",
+        "subscriber, no 5H",
         &[
             (Z0_NO_FIVE_HOUR, 58),
             ("🪫 CW 26% | 🔋 7D 79% (6d 21h) | 🗿 4.2647.16", 45),
@@ -1198,7 +1217,7 @@ const LADDERS: [(&str, &[(&str, usize)]); 4] = [
 fn ladder_case(name: &str) -> (serde_json::Value, Option<&'static str>) {
     match name {
         "subscriber, 5H over 70" => (subscriber(85), None),
-        "subscriber, 5H hidden" => (subscriber(23), None),
+        "subscriber, no 5H" => (subscriber_without_five_hour(), None),
         "update pending" => (subscriber(85), Some(OLD_TEMPLATE)),
         _ => (api_key_user(), None),
     }

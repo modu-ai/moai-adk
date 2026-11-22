@@ -988,9 +988,11 @@ is left out together with its separator.
    Tests: `tests/statusline_worktree_label.rs` (the host name, a released reservation
    is no holder, the main checkout, the `worktree` option, the line) and the golden cases
    `a02-doc-full` and `b14-card-counts-waiting`. With both windows off and no card counts the line is empty and
-   omitted like any empty line. The five-hour window stands between the two as `🪫 5H <left>%` with its
-   countdown only when the input carries it and less than 30% of it is left; the `usage_5h`
-   option turns it off. A missing weekly window is
+   omitted like any empty line. The five-hour window stands between the two as `<battery> 5H <left>%` with its
+   countdown whenever the input carries its percentage, at any level (25% used reads `🔋 5H 75%`);
+   the host does not always send it, and without it or without its percentage there is no `5H`
+   item. The `usage_5h` option turns it off, and the narrowest form of the line drops it before
+   `CW` and `7D`. A missing weekly window is
    hidden. The existing usage calculation is retained. The
    renderer shortens nothing: Claude Code sets `COLUMNS` for the status line command,
    but the renderer does not read it. When a line is wider than the status bar, the
