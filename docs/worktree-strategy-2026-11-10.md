@@ -156,7 +156,7 @@ git -C exp/single-gh config --get extensions.worktreeConfig                     
 - **줄이는 방법**: 공유가 아니라 수명 주기로 줄인다.
   - PR을 넘긴 뒤에는 `target/`을 먼저 지운다(재빌드 가능, §D5 trim).
   - 동시에 살아 있는 `target/` 수에 상한을 둔다(§D7).
-  - dev profile의 debuginfo 축소(`line-tables-only` 등)는 효과를 아직 재지 않았다. 측정 카드로 둔다.
+  - dev·test profile의 debuginfo 축소(이 크레이트 `line-tables-only`, 의존성 `debug = false`)는 2026-11-22에 적용·실측했다(`CARGO_INCREMENTAL=0`, sccache 없음, 새 빌드 폴더에서 before·after 번갈아 빌드): lib 시험 빌드 폴더 388,072→293,780 KiB, `.o` 166→17개, cold 빌드 평균 43.0→36.5 s, warm 재빌드 평균 35.7→27.0 s. release·dist는 무변화고 이 크레이트의 백트레이스(파일·줄 번호)는 유지된다. 기록은 `SPEC-20261121-debug-line-tables-only` Result.
 - **버린 대안**:
   - (a) `CARGO_TARGET_DIR` 하나를 공유: C1에서 다른 tree의 바이너리가 나왔다.
   - (b) `build.build-dir` 공유: C2에서 다른 tree의 바이너리가 나왔다.
@@ -265,7 +265,7 @@ done ─remove(사용자 확인)→ (없음)
 | WT-7 | 추적 원장 이동 | `.moai-cli/**`, `.gitignore`, 관련 시험 | Q2, 07-A/07-B |
 | WT-8 | 빈 임시 폴더를 만든 출처 찾기(11-06~11-08)와 시험 정리 보장 | `tests/**` 해당 파일 | 없음 |
 | WT-9 | 이전 실행(운영자) | 실행만, 코드 0 | WT-4, 사용자 확인 |
-| WT-10 (선택) | dev profile debuginfo 축소 효과 측정, sccache 측정 | `Cargo.toml` profile, 측정 문서 | Q9 |
+| WT-10 (선택) | dev·test profile debuginfo 축소는 2026-11-22 완료(이 크레이트 `line-tables-only`, 의존성 없음; 빌드 폴더 −24%, warm 재빌드 −24%); sccache 측정은 미실행 | `Cargo.toml` profile, 측정 문서 | Q9 |
 
 ## 7. not_run · unverified · 도구 기록
 

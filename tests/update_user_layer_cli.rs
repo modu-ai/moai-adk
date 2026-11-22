@@ -466,7 +466,8 @@ fn a_blocked_skill_copy_gets_no_agents_and_no_section() {
     assert!(p["style"]["targets"].as_array().unwrap().is_empty(), "{p}");
     // The other parts still go in; the foreign skill and the agents and section stay out.
     let top = p["plan_digest"].as_str().unwrap().to_string();
-    run(&exe, &home, &["update", "--confirm", &top]);
+    let r = result(&run(&exe, &home, &["update", "--confirm", &top]));
+    assert_eq!(r["applied"], json!(true), "{r}");
     assert!(!agents_dir(&home, "claude").exists());
     assert!(!home.join(".claude/CLAUDE.md").exists());
     assert_eq!(

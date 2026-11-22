@@ -186,6 +186,18 @@ pub fn format_verified(
     Ok(out)
 }
 
+/// The trailer a cloud session adds to the commits it makes (cloud-environments.md).
+pub const CLOUD_SESSION_KEY: &str = "Claude-Session";
+/// The start of the link a cloud session's trailer holds; the session id follows it.
+pub const CLOUD_SESSION_LINK: &str = "https://claude.ai/code/session_";
+
+/// True when `v` is a claude.ai session link: the start above and a non-empty id of ASCII
+/// letters and digits.
+pub fn is_cloud_session_link(v: &str) -> bool {
+    v.strip_prefix(CLOUD_SESSION_LINK)
+        .is_some_and(|id| !id.is_empty() && id.bytes().all(|b| b.is_ascii_alphanumeric()))
+}
+
 /// One commit's identity trailers as `git log` reads its trailer block.
 #[derive(Debug, PartialEq)]
 pub struct CommitTrailers {
@@ -198,6 +210,9 @@ pub struct CommitTrailers {
     /// of either).
     pub subject: String,
     pub body: String,
+    /// The `Claude-Session` values a cloud session adds (SPEC-20261122-host-small-fixes): the
+    /// host's trailer, read to name a cloud commit's session, never to fail one.
+    pub cloud_sessions: Vec<String>,
     /// The log line had more fields than it should: a trailer value held the log's own field
     /// separator (audit N3), so its values cannot be read apart.
     pub garbled: bool,
@@ -235,12 +250,37 @@ fn findings(c: &CommitTrailers, spec_branch: bool, under_rule: bool) -> Vec<Valu
             format!("{SPEC_KEY} must be one SPEC id (SPEC-<yyyymmdd>-<slug>)"),
         ),
     }
-    match c.sessions.as_slice() {
-        [] => add(
-            "missing_session",
+    // A cloud session's own trailer names the session of a commit that has no moai one; any
+    // other shape, or more than one, is named; neither ever fails (D-1).
+    let cloud = match c.cloud_sessions.as_slice() {
+        [] => None,
+        [one] if is_cloud_session_link(one) => Some(Ok(one.as_str())),
+        _ => Some(Err(())),
+    };
+    if cloud == Some(Err(())) {
+        add(
+            "malformed_cloud_session",
             false,
-            format!("no {SESSION_KEY} trailer; the audit gate reads the authors as unknown"),
-        ),
+            format!(
+                "{CLOUD_SESSION_KEY} must appear once as {CLOUD_SESSION_LINK}<id>; it is the host's trailer and never fails a check"
+            ),
+        );
+    }
+    match c.sessions.as_slice() {
+        [] => match cloud {
+            Some(Ok(link)) => add(
+                "cloud_session",
+                false,
+                format!(
+                    "no {SESSION_KEY} trailer; the commit names its cloud session {link}, which the audit gate does not read as an author"
+                ),
+            ),
+            _ => add(
+                "missing_session",
+                false,
+                format!("no {SESSION_KEY} trailer; the audit gate reads the authors as unknown"),
+            ),
+        },
         [one] => match value_shape(one) {
             Shape::Full => {}
             Shape::Legacy => add(
@@ -315,7 +355,8 @@ pub fn parse_log(text: &str) -> Vec<CommitTrailers> {
                 verified: split(parts.get(3).copied().unwrap_or("")),
                 subject: parts.get(4).copied().unwrap_or("").trim().to_string(),
                 body: parts.get(5).copied().unwrap_or("").trim().to_string(),
-                garbled: parts.len() > 6 || !real_sha,
+                cloud_sessions: split(parts.get(6).copied().unwrap_or("")),
+                garbled: parts.len() > 7 || !real_sha,
             })
         })
         .collect()
@@ -350,7 +391,7 @@ fn log_trailers(git: &impl Fn(&[&str]) -> Result<String>, range: &str) -> Result
         "log",
         "--no-merges",
         "--reverse",
-        "--format=%x1e%H%x1f%(trailers:key=Moai-Spec,valueonly,separator=%x03)%x1f%(trailers:key=Moai-Session,valueonly,separator=%x03)%x1f%(trailers:key=Moai-Verified,valueonly,separator=%x03)%x1f%s%x1f%b",
+        "--format=%x1e%H%x1f%(trailers:key=Moai-Spec,valueonly,separator=%x03)%x1f%(trailers:key=Moai-Session,valueonly,separator=%x03)%x1f%(trailers:key=Moai-Verified,valueonly,separator=%x03)%x1f%s%x1f%b%x1f%(trailers:key=Claude-Session,valueonly,separator=%x03)",
         range,
         "--",
     ])
@@ -824,7 +865,7 @@ mod tests {
     /// cannot be told apart from two values; the commit is malformed and fails, never misread.
     #[test]
     fn a_value_with_a_separator_or_control_character_is_malformed() {
-        let garbled = format!("a\x1fSPEC-20261117-x\x1fextra\x1f{S}\x1f{S}\x1f\x1f");
+        let garbled = format!("a\x1fSPEC-20261117-x\x1fextra\x1f{S}\x1f{S}\x1f\x1f\x1f");
         let c = parse_log(&garbled);
         assert_eq!(c.len(), 1);
         let v = judge(&c, "main");

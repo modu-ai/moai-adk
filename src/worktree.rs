@@ -487,6 +487,8 @@ pub fn plan(
         "branch": branch,
         "path": path.to_string_lossy(),
         "build_folder": build_folder.as_ref().map(|p| p.to_string_lossy().into_owned()),
+        // The name a session opens this worktree with: `claude --worktree <session_name>`.
+        "session_name": path.file_name().map(|n| n.to_string_lossy().into_owned()),
         "base_sha": rec.base_revision,
         "primary": primary.to_string_lossy(),
         "lock_reason": format!("moai claim {} e{}", rec.task_key, rec.epoch),
@@ -636,6 +638,19 @@ pub fn apply(
             &p,
             vec![json!({"branch": full_ref, "head": head.trim()})],
         ));
+    }
+    // REQ-13: a link in the place is refused before anything is made behind it.
+    // One verdict on the place: a `.` or `..` part, a link in any part and a path that resolves
+    // out of the place are refused before anything is made (REQ-13).
+    if let Some(primary) = entries.first().map(|e| PathBuf::from(&e.path)) {
+        if let Err(r) = crate::home_workdir::place_verdict(&primary, &target) {
+            return Ok(conflict(
+                rec,
+                r.reason,
+                &p,
+                vec![json!({ "detail": r.detail })],
+            ));
+        }
     }
     if target.exists() {
         let at: Vec<Value> = entries

@@ -253,7 +253,7 @@ fn engine_errors_exit_1_with_empty_stdout() {
     assert_engine_error(&dispatch("tool-observe", &root, &good, &[]));
     assert_engine_error(&dispatch("turn-validation", &root, &good, &[]));
     assert_engine_error(&dispatch("no-such-duty", &root, &good, &[]));
-    // Codex has an adapter since stage 3 (tests below); any other host is an engine error.
+    // Any host other than Claude Code is an engine error.
     for host in ["other", "Claude", ""] {
         let r = run_program(
             Path::new(BIN),
@@ -905,165 +905,33 @@ fn stage_two_duties_never_call_the_forge() {
     assert!(!marker.exists());
 }
 
-// ---- stage 3: the Codex adapter (https://learn.chatgpt.com/docs/hooks, read 2026-11-10) ----
+// ---- stage 3: the host capabilities ----
 
-fn codex(event: &str, cwd: &Path, stdin: &[u8]) -> Run {
-    run_program(
+#[test]
+fn hooks_plan_reports_the_claude_engine_capabilities() {
+    let (_d, root) = repo("main");
+    let r = run_program(
         Path::new(BIN),
-        &["hook-dispatch", "--host", "codex", "--event", event],
-        cwd,
-        stdin,
+        &["hooks-plan", root.to_str().unwrap(), "--host", "claude"],
+        &root,
+        b"",
         &[],
     )
-    .unwrap()
-}
-
-/// Fields the Codex page says are parsed but not supported (the hook run fails and the tool
-/// call continues) — never a way to block.
-fn assert_no_unsupported_codex_fields(stdout: &str) {
-    for field in [
-        "\"ask\"",
-        "\"approve\"",
-        "\"continue\"",
-        "\"stopReason\"",
-        "\"updatedInput\"",
-        "\"allow\"",
-    ] {
-        assert!(!stdout.contains(field), "{field} in {stdout}");
-    }
-}
-
-#[test]
-fn codex_tool_preflight_denies_with_the_documented_codex_shape() {
-    let (_d, root) = repo("issue/77-k");
-    let input = json!({"session_id": "s", "turn_id": "t", "hook_event_name": "PreToolUse",
-                       "tool_name": "Bash", "tool_use_id": "u", "model": "m",
-                       "tool_input": {"command": "git commit -m x"}, "cwd": root});
-    let r = codex("tool-preflight", &root, input.to_string().as_bytes());
-    let reason = assert_deny(&r);
-    assert!(reason.contains("Moai-Claim: 77#"), "{reason}");
-    assert_no_unsupported_codex_fields(&r.stdout);
-    let ok = json!({"hook_event_name": "PreToolUse", "tool_name": "Bash",
-                    "tool_input": {"command": "git commit -m 'x Moai-Claim: 77#5'"}, "cwd": root});
-    assert_allow(&codex("tool-preflight", &root, ok.to_string().as_bytes()));
-    // apply_patch cannot commit; a patch touching no protected path is allowed (stage 5 guards
-    // only .git internals, credential paths and secret content in patches).
-    let patch = json!({"hook_event_name": "PreToolUse", "tool_name": "apply_patch",
-                       "tool_input": {"command": "*** Begin Patch\n*** git commit\n*** End Patch"},
-                       "cwd": root});
-    assert_allow(&codex(
-        "tool-preflight",
-        &root,
-        patch.to_string().as_bytes(),
-    ));
-}
-
-#[test]
-fn codex_denied_commit_leaves_no_commit() {
-    let (_d, root) = repo("issue/77-k");
-    fs::write(root.join("a.txt"), "z\n").unwrap();
-    git(&root, &["add", "a.txt"]);
-    let before = commit_count(&root);
-    let input = json!({"hook_event_name": "PreToolUse", "tool_name": "Bash",
-                       "tool_input": {"command": "git commit -q -m 'no token'"}, "cwd": root});
-    let r = codex("tool-preflight", &root, input.to_string().as_bytes());
-    // Codex rules: exit 2, or the PreToolUse deny object, blocks the call.
-    let blocked = r.code == 2
-        || serde_json::from_str::<Value>(r.stdout.trim())
-            .map(|v| v["hookSpecificOutput"]["permissionDecision"] == "deny")
-            .unwrap_or(false);
-    assert!(blocked, "{}", r.stdout);
-    assert_eq!(commit_count(&root), before, "a blocked call never runs");
-}
-
-#[test]
-fn codex_session_check_and_turn_validation_answers() {
-    let (_d, root) = repo("issue/77-k");
-    let start =
-        br#"{"hook_event_name":"SessionStart","source":"startup","session_id":"s","model":"m"}"#;
-    let r = codex("session-check", &root, start);
-    assert_eq!(r.code, 0, "{}", r.stderr);
+    .unwrap();
+    assert_eq!(r.code, 0, "{}", r.stdout);
     let v: Value = serde_json::from_str(r.stdout.trim()).unwrap();
-    assert_eq!(v.as_object().unwrap().len(), 1);
-    assert_eq!(v["hookSpecificOutput"]["hookEventName"], "SessionStart");
-    assert!(v["hookSpecificOutput"]["additionalContext"]
-        .as_str()
-        .unwrap()
-        .contains("lane branch: Issue #77"));
-    assert_no_unsupported_codex_fields(&r.stdout);
-    let stop = br#"{"hook_event_name":"Stop","session_id":"s","turn_id":"t","stop_hook_active":false,"last_assistant_message":null}"#;
-    let r = codex("turn-validation", &root, stop);
-    assert_eq!((r.code, r.stdout.as_str(), r.stderr.as_str()), (0, "", ""));
-}
-
-#[test]
-fn codex_tool_observe_records_apply_patch_and_has_no_failure_event() {
-    let (_d, root) = repo("main");
-    fs::create_dir(root.join(".moai-cli")).unwrap();
-    let post = json!({"session_id": "s", "turn_id": "t", "hook_event_name": "PostToolUse",
-                      "tool_name": "apply_patch", "tool_use_id": "u",
-                      "tool_input": {"command": "*** Begin Patch PATCHMARK"},
-                      "tool_response": "RESPONSEMARK"});
-    let r = codex("tool-observe", &root, post.to_string().as_bytes());
-    assert_eq!((r.code, r.stdout.as_str(), r.stderr.as_str()), (0, "", ""));
-    let text = fs::read_to_string(engine_log(&root)).unwrap();
-    let line: Value = serde_json::from_str(text.lines().next().unwrap()).unwrap();
-    assert_eq!(line["tool"], "apply_patch");
-    assert_eq!(line["class"], "write");
-    assert_eq!(line["path"], Value::Null);
-    assert!(
-        !text.contains("PATCHMARK") && !text.contains("RESPONSEMARK"),
-        "{text}"
-    );
-    // Codex has no PostToolUseFailure: that name is a configuration error there.
-    let failure = json!({"hook_event_name": "PostToolUseFailure", "tool_name": "Bash"});
-    assert_engine_error(&codex(
-        "tool-observe",
-        &root,
-        failure.to_string().as_bytes(),
-    ));
-}
-
-#[test]
-fn hooks_plan_reports_per_host_engine_capabilities() {
-    let (_d, root) = repo("main");
-    let mut seen = Vec::new();
-    for host in ["claude", "codex"] {
-        let r = run_program(
-            Path::new(BIN),
-            &["hooks-plan", root.to_str().unwrap(), "--host", host],
-            &root,
-            b"",
-            &[],
-        )
-        .unwrap();
-        assert_eq!(r.code, 0, "{}", r.stdout);
-        let v: Value = serde_json::from_str(r.stdout.trim()).unwrap();
-        let caps = v["result"]["engine_capabilities"].clone();
-        assert_eq!(caps["host"], json!(host));
-        seen.push(caps);
-    }
-    let guards = |c: &Value| c["tool-preflight"]["guards"].to_string();
-    let not_guarded = |c: &Value| c["tool-preflight"]["not_guarded"].to_string();
-    // Codex file edits arrive as apply_patch, Claude's as Write/Edit/MultiEdit/NotebookEdit.
-    assert!(guards(&seen[1]).contains("apply_patch"));
-    assert!(!guards(&seen[0]).contains("apply_patch"));
-    assert!(guards(&seen[0]).contains("NotebookEdit"));
-    for caps in &seen {
-        assert!(not_guarded(caps).contains("outside the project"));
-        assert!(not_guarded(caps).contains("MCP tools"));
-    }
-    assert_eq!(seen[1]["tool-observe"]["events"], json!(["PostToolUse"]));
+    let caps = v["result"]["engine_capabilities"].clone();
+    assert_eq!(caps["host"], json!("claude"));
+    let guards = caps["tool-preflight"]["guards"].to_string();
+    let not_guarded = caps["tool-preflight"]["not_guarded"].to_string();
+    assert!(guards.contains("NotebookEdit"));
+    assert!(!guards.contains("apply_patch"));
+    assert!(not_guarded.contains("outside the project"));
+    assert!(not_guarded.contains("MCP tools"));
     assert_eq!(
-        seen[0]["tool-observe"]["events"],
+        caps["tool-observe"]["events"],
         json!(["PostToolUse", "PostToolUseFailure"])
     );
-    assert!(seen[1]["trust"].as_str().unwrap().contains("trust"));
-    for never in ["ask", "continue=false", "stopReason"] {
-        assert!(seen[1]["tool-preflight"]["never_uses"]
-            .to_string()
-            .contains(never));
-    }
     assert!(!root.join(".codex").exists() && !root.join(".claude").exists());
 }
 
@@ -1208,24 +1076,16 @@ fn session_check_through_a_symlinked_cwd_still_finds_the_local_record() {
     );
 }
 
-/// Audit #2402 H3-B1: Codex sends `PostToolUse` after a failed Bash command too, so the event
-/// alone never records success. Literal cases: exit 0 → success, exit 17 → failure, no
-/// `exit_code` / a string / another tool → unknown. Claude keeps its event-based outcome.
+/// Audit #2402 H3-B1: Claude Code's outcome comes from the event name: `PostToolUse` is a
+/// success whatever the response holds, `PostToolUseFailure` a failure.
 #[test]
-fn codex_observe_outcome_comes_from_the_tool_response_or_is_unknown() {
+fn claude_observe_outcome_comes_from_the_event() {
     let (_d, root) = repo("main");
     fs::create_dir(root.join(".moai-cli")).unwrap();
-    let observe = |host: &str, event: &str, tool: &str, response: Value| {
+    let observe = |event: &str, tool: &str, response: Value| {
         let input = json!({"hook_event_name": event, "session_id": "s", "tool_name": tool,
                            "tool_input": {"command": "x"}, "tool_response": response});
-        let r = run_program(
-            Path::new(BIN),
-            &["hook-dispatch", "--host", host, "--event", "tool-observe"],
-            &root,
-            input.to_string().as_bytes(),
-            &[],
-        )
-        .unwrap();
+        let r = dispatch("tool-observe", &root, input.to_string().as_bytes(), &[]);
         assert_eq!((r.code, r.stdout.as_str()), (0, ""));
         let text = fs::read_to_string(engine_log(&root)).unwrap();
         let last: Value = serde_json::from_str(text.lines().last().unwrap()).unwrap();
@@ -1234,27 +1094,12 @@ fn codex_observe_outcome_comes_from_the_tool_response_or_is_unknown() {
             last["outcome_source"].as_str().unwrap().to_string(),
         )
     };
-    let codex = |tool: &str, response: Value| observe("codex", "PostToolUse", tool, response);
-    let (o, src) = codex("Bash", json!({"exit_code": 0, "aggregated_output": ""}));
-    assert_eq!(o, "success");
-    assert!(src.contains("undocumented"), "{src}");
     assert_eq!(
-        codex("Bash", json!({"exit_code": 17, "aggregated_output": ""})).0,
-        "failure"
-    );
-    assert_eq!(codex("Bash", json!({"exit_code": -1})).0, "failure");
-    assert_eq!(codex("Bash", json!({"output": "done"})).0, "unknown");
-    assert_eq!(codex("Bash", json!("plain text output")).0, "unknown");
-    assert_eq!(codex("Bash", json!({"exit_code": "0"})).0, "unknown");
-    assert_eq!(codex("apply_patch", json!({"exit_code": 0})).0, "unknown");
-    assert_eq!(codex("mcp__fs__read", json!({"content": []})).0, "unknown");
-    // Claude: the event decides, as before.
-    assert_eq!(
-        observe("claude", "PostToolUse", "Bash", json!({"exit_code": 17})),
+        observe("PostToolUse", "Bash", json!({"exit_code": 17})),
         ("success".to_string(), "event".to_string())
     );
     assert_eq!(
-        observe("claude", "PostToolUseFailure", "Bash", json!({})).0,
+        observe("PostToolUseFailure", "Bash", json!({})).0,
         "failure"
     );
 }
@@ -1363,27 +1208,18 @@ fn a_refused_removal_runs_nothing_and_an_allowed_one_runs() {
 }
 
 #[test]
-fn stage_five_reasons_are_fixed_text_for_both_hosts() {
+fn stage_five_reasons_are_fixed_text() {
     let (_d, root) = repo("main");
     let marker = "UNIQUEMARK7";
     let cmd = format!("git push --force origin main # {marker}");
-    for host in ["claude", "codex"] {
-        let r = run_program(
-            Path::new(BIN),
-            &["hook-dispatch", "--host", host, "--event", "tool-preflight"],
-            &root,
-            &pre_tool(&cmd, &root),
-            &[],
-        )
-        .unwrap();
-        let reason = assert_deny(&r);
-        assert!(reason.contains("force push"), "{reason}");
-        assert!(!reason.contains(marker), "{reason}");
-    }
+    let r = dispatch("tool-preflight", &root, &pre_tool(&cmd, &root), &[]);
+    let reason = assert_deny(&r);
+    assert!(reason.contains("force push"), "{reason}");
+    assert!(!reason.contains(marker), "{reason}");
 }
 
 #[test]
-fn file_writes_into_git_internals_are_refused_for_both_hosts() {
+fn file_writes_into_git_internals_are_refused() {
     let (_d, root) = repo("main");
     let write = json!({"hook_event_name": "PreToolUse", "tool_name": "Write",
                        "tool_input": {"file_path": ".git/hooks/pre-commit", "content": "x"}, "cwd": root});
@@ -1392,14 +1228,6 @@ fn file_writes_into_git_internals_are_refused_for_both_hosts() {
         &root,
         write.to_string().as_bytes(),
         &[],
-    ));
-    let patch = json!({"hook_event_name": "PreToolUse", "tool_name": "apply_patch",
-                       "tool_input": {"command": "*** Begin Patch\n*** Update File: .git/config\n@@\n-a\n+b\n*** End Patch"},
-                       "cwd": root});
-    assert_deny(&codex(
-        "tool-preflight",
-        &root,
-        patch.to_string().as_bytes(),
     ));
     let fine = json!({"hook_event_name": "PreToolUse", "tool_name": "Write",
                       "tool_input": {"file_path": "src/ok.rs", "content": "x"}, "cwd": root});
@@ -1425,42 +1253,20 @@ fn decision(r: &Run) -> (String, String) {
     )
 }
 
-/// Decision B2 = A (Issue #2389 c6774899518 row 25): Claude asks, Codex refuses with a fixed
-/// suffix; nothing is recorded as a deny for an ask. Strings only, nothing is executed.
+/// Decision B2 = A (Issue #2389 c6774899518 row 25): Claude asks; nothing is recorded as a deny
+/// for an ask. Strings only, nothing is executed.
 #[test]
-fn a_confirmation_asks_on_claude_and_is_refused_on_codex() {
+fn a_confirmation_asks_on_claude() {
     let (_d, root) = repo("main");
     fs::create_dir_all(root.join(".moai-cli")).unwrap();
     let input = pre_tool("git reset --hard HEAD~1", &root);
     let (d, reason) = decision(&dispatch("tool-preflight", &root, &input, &[]));
     assert_eq!(d, "ask");
     assert!(reason.contains("discards uncommitted changes"), "{reason}");
-    let (d, reason) = decision(&codex("tool-preflight", &root, &input));
-    assert_eq!(d, "deny");
-    assert!(reason.contains("Codex cannot ask"), "{reason}");
     // An ask leaves no deny line (the user's answer is unknown).
     let log = root.join(".moai-cli/receipts/hook-engine.jsonl");
     let text = fs::read_to_string(&log).unwrap_or_default();
     assert!(!text.contains("\"kind\":\"deny\""), "{text}");
-}
-
-/// #2633 audit FAIL 6846708858 B1: OMP has no ask either, so a confirmation is a block whose
-/// reason is Claude's ask reason plus the Codex suffix — the module blocks only on
-/// `block === true`, so this is the line that stops `git reset --hard` on OMP.
-#[test]
-fn a_confirmation_is_a_block_on_omp_with_the_codex_suffix() {
-    let (_d, root) = repo("main");
-    let input = pre_tool("git reset --hard HEAD~1", &root);
-    let (_, ask_reason) = decision(&dispatch("tool-preflight", &root, &input, &[]));
-    let r = omp("tool-preflight", &root, &input);
-    assert_eq!(r.code, 0, "{}", r.stderr);
-    let v: Value = serde_json::from_str(r.stdout.trim()).unwrap();
-    assert_eq!(v.as_object().unwrap().len(), 2, "{v}");
-    assert_eq!(v["block"], json!(true), "{v}");
-    assert_eq!(
-        v["reason"].as_str().unwrap(),
-        format!("{ask_reason} {}", moai_cli::hook_engine::CODEX_ASK_SUFFIX)
-    );
 }
 
 /// A deny anywhere on the line wins over a confirmation (Claude's order deny > ask).
@@ -1531,8 +1337,6 @@ fn outside_project_writes_follow_the_config() {
     // Codex review of #3019: the denial names the file the loader reads, not the older name.
     assert!(reason.contains("~/.moai-cli/hook-config.toml"), "{reason}");
     assert!(!reason.contains("~/.moai-cli/config "), "{reason}");
-    let reason = assert_deny(&codex("tool-preflight", &root, &input));
-    assert!(reason.is_empty() || reason.contains("MoAI"), "{reason}");
     assert_allow(&dispatch(
         "tool-preflight",
         &root,
@@ -1827,92 +1631,6 @@ fn a_config_folder_is_the_launcher_folder_and_no_problem() {
     assert!(config_errors(&root).is_empty());
 }
 
-// ---- #2633: the OMP adapter (an extension module calls hook-dispatch --host omp) ----
-
-fn omp(event: &str, cwd: &Path, stdin: &[u8]) -> Run {
-    run_program(
-        Path::new(BIN),
-        &["hook-dispatch", "--host", "omp", "--event", event],
-        cwd,
-        stdin,
-        &[],
-    )
-    .unwrap()
-}
-
-/// The answer the module turns into OMP's `tool_call` result: exactly `{block: true, reason}`
-/// on a deny, nothing on an allow, and the reason is the same fixed text as for Claude Code.
-#[test]
-fn omp_tool_preflight_answers_block_and_reason_only() {
-    let (_d, root) = repo("issue/77-k");
-    let input = json!({"hook_event_name": "PreToolUse", "tool_name": "Bash",
-                       "tool_input": {"command": "git commit -m x"}, "cwd": root});
-    let r = omp("tool-preflight", &root, input.to_string().as_bytes());
-    assert_eq!(r.code, 0, "{}", r.stderr);
-    let v: Value = serde_json::from_str(r.stdout.trim()).unwrap();
-    assert_eq!(v.as_object().unwrap().len(), 2, "{v}");
-    assert_eq!(v["block"], true);
-    let claude = dispatch("tool-preflight", &root, input.to_string().as_bytes(), &[]);
-    assert_eq!(v["reason"].as_str().unwrap(), assert_deny(&claude));
-    let ok = json!({"hook_event_name": "PreToolUse", "tool_name": "Bash",
-                    "tool_input": {"command": "git commit -m 'x Moai-Claim: 77#5'"}, "cwd": root});
-    assert_allow(&omp("tool-preflight", &root, ok.to_string().as_bytes()));
-}
-
-/// Session context is `{context}` (the module puts it in `before_agent_start`'s systemPrompt);
-/// turn-validation is not wired for OMP (its `session_stop` exists, but the rules are empty and
-/// the module does not subscribe) and is an engine error, never a silent allow.
-#[test]
-fn omp_session_check_answers_context_and_turn_validation_is_an_engine_error() {
-    let (_d, root) = repo("issue/77-k");
-    let r = omp(
-        "session-check",
-        &root,
-        br#"{"hook_event_name":"SessionStart"}"#,
-    );
-    assert_eq!(r.code, 0, "{}", r.stderr);
-    let v: Value = serde_json::from_str(r.stdout.trim()).unwrap();
-    assert_eq!(v.as_object().unwrap().len(), 1, "{v}");
-    assert!(v["context"]
-        .as_str()
-        .unwrap()
-        .contains("lane branch: Issue #77"));
-    let r = omp("turn-validation", &root, br#"{"hook_event_name":"Stop"}"#);
-    assert_engine_error(&r);
-    assert!(
-        r.stderr.contains("not wired for OMP") && r.stderr.contains("session_stop"),
-        "{}",
-        r.stderr
-    );
-}
-
-/// OMP's `tool_result` carries `isError`; the module passes it as `tool_response.is_error`.
-#[test]
-fn omp_observe_outcome_comes_from_is_error_or_is_unknown() {
-    let (_d, root) = repo("main");
-    fs::create_dir(root.join(".moai-cli")).unwrap();
-    let observe = |response: Value| {
-        let input = json!({"hook_event_name": "PostToolUse", "tool_name": "Bash",
-                           "tool_input": {"command": "x"}, "tool_response": response});
-        let r = omp("tool-observe", &root, input.to_string().as_bytes());
-        assert_eq!((r.code, r.stdout.as_str()), (0, ""), "{}", r.stderr);
-        let text = fs::read_to_string(engine_log(&root)).unwrap();
-        let last: Value = serde_json::from_str(text.lines().last().unwrap()).unwrap();
-        assert_eq!(last["host"], "omp");
-        (
-            last["outcome"].as_str().unwrap().to_string(),
-            last["outcome_source"].as_str().unwrap().to_string(),
-        )
-    };
-    assert_eq!(
-        observe(json!({"is_error": false})),
-        ("success".into(), "tool_result.isError".into())
-    );
-    assert_eq!(observe(json!({"is_error": true})).0, "failure");
-    assert_eq!(observe(json!({"is_error": "true"})).0, "unknown");
-    assert_eq!(observe(json!({})).0, "unknown");
-}
-
 /// #2673 AC-3: a host without a built-in worktree tool commits with `git -C <worktree>` from
 /// the primary checkout (user decision on #2673). The branch is read in the folder `-C` names,
 /// not in the session's own folder, so the commit guard still sees the lane branch.
@@ -1994,7 +1712,7 @@ fn session_context(host: &str, root: &Path, source: Option<Value>) -> String {
         .to_string()
 }
 
-/// #3015 C6 (audit B1 of #3075): after a compaction (`source: "compact"`) both hosts run
+/// #3015 C6 (audit B1 of #3075): after a compaction (`source: "compact"`) Claude Code runs
 /// `SessionStart` again. The hook reads no comment, claim or pull request, so the answer never
 /// says an instruction is done: it says how to check, that a standing instruction still
 /// applies, and, only conditionally, where a card's newest `moai-resume:` comment is. Any other
@@ -2129,18 +1847,12 @@ fn only_the_exact_compact_source_changes_the_answer() {
 }
 
 #[test]
-fn a_compacted_codex_session_is_also_pointed_at_its_goal_and_claude_is_not() {
+fn a_compacted_claude_session_names_its_card_and_is_not_pointed_at_a_goal() {
     let (_d, root) = repo("issue/77-k");
-    let codex_ctx = session_context("codex", &root, Some(json!("compact")));
-    assert!(
-        codex_ctx.ends_with("Check the active /goal before you continue."),
-        "{codex_ctx}"
-    );
-    assert!(codex_ctx.contains("Issue #77"), "{codex_ctx}");
     let claude_ctx = session_context("claude", &root, Some(json!("compact")));
+    assert!(claude_ctx.contains("Issue #77"), "{claude_ctx}");
     assert!(!claude_ctx.contains("/goal"), "{claude_ctx}");
-    // Codex without a compaction gets no goal sentence.
-    assert!(!session_context("codex", &root, Some(json!("startup"))).contains("/goal"));
+    assert!(!session_context("claude", &root, Some(json!("startup"))).contains("/goal"));
 }
 
 #[test]
@@ -2157,18 +1869,67 @@ fn a_compacted_session_outside_a_lane_branch_names_no_issue_number() {
     assert!(ctx.contains("run it again only when none does."), "{ctx}");
 }
 
-/// OMP answers `{"context": …}`; a `source: "compact"` input (the generated module does not send
-/// `source` today) gets the same sentences, and any other input the plain text.
+/// Every path under `root`, relative and sorted, links not followed.
+fn tree_paths(root: &Path) -> Vec<String> {
+    fn walk(dir: &Path, root: &Path, out: &mut Vec<String>) {
+        for entry in fs::read_dir(dir).unwrap() {
+            let path = entry.unwrap().path();
+            out.push(path.strip_prefix(root).unwrap().display().to_string());
+            if fs::symlink_metadata(&path).unwrap().is_dir() {
+                walk(&path, root, out);
+            }
+        }
+    }
+    let mut out = Vec::new();
+    walk(root, root, &mut out);
+    out.sort();
+    out
+}
+
+/// A removed host (codex, omp) is answered with one line on standard error and nothing else:
+/// empty standard output, exit 0, no decision of any kind and no file written, for a harmless
+/// tool call and for the commit the guard denies on a lane branch, on both events.
 #[test]
-fn an_omp_input_with_source_compact_gets_the_same_sentences() {
+fn a_removed_host_gets_one_line_and_exit_zero() {
     let (_d, root) = repo("issue/77-k");
-    let plain = session_context("omp", &root, None);
-    let compact = session_context("omp", &root, Some(json!("compact")));
-    assert!(compact.starts_with(&plain), "{compact}");
-    assert!(
-        compact.contains("This session was just compacted."),
-        "{compact}"
-    );
-    assert!(!compact.contains("/goal"), "{compact}");
-    assert!(!plain.contains("compacted"), "{plain}");
+    let harmless = pre_tool("ls", &root);
+    let denied = pre_tool("git commit -m x", &root);
+    for host in ["codex", "omp"] {
+        for event in ["tool-preflight", "session-check"] {
+            for (what, input) in [("harmless", &harmless), ("denied commit", &denied)] {
+                let case = format!("{host} {event} {what}");
+                let before = tree_paths(&root);
+                let r = run_program(
+                    Path::new(BIN),
+                    &["hook-dispatch", "--host", host, "--event", event],
+                    &root,
+                    input,
+                    &[],
+                )
+                .unwrap();
+                assert_eq!(r.code, 0, "{case}: exit code, stderr: {}", r.stderr);
+                assert_eq!(r.stdout, "", "{case}: standard output is empty");
+                let lines: Vec<&str> = r.stderr.lines().collect();
+                assert!(
+                    lines.len() == 1 && !lines[0].trim().is_empty(),
+                    "{case}: standard error is exactly one non-empty line: {:?}",
+                    r.stderr
+                );
+                assert!(
+                    lines[0].contains("removed"),
+                    "{case}: the line says the host was removed: {:?}",
+                    lines[0]
+                );
+                for word in ["permissionDecision", "decision", "block"] {
+                    assert!(
+                        !r.stdout.contains(word) && !r.stderr.contains(word),
+                        "{case}: no decision, found {word}: {:?} {:?}",
+                        r.stdout,
+                        r.stderr
+                    );
+                }
+                assert_eq!(tree_paths(&root), before, "{case}: the call wrote nothing");
+            }
+        }
+    }
 }

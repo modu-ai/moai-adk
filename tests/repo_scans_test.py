@@ -37,6 +37,8 @@ EXEMPT = {
                                "tools/heavy_check_slot.py",
     "tests/home_style_ownership_cli.rs": "read_dir of the temporary home it built (before/after "
                                          "trees); reads the named template and fixtures",
+    "tests/home_update_notice_follow_ups.rs": "read_dir copies the named skills/moai and agents "
+                                              "folders into a temporary home; reads named fixtures",
     "tests/install_script_test.py": "os.walk of the test's temporary HOME and link folders; runs "
                                     "the named install/install.sh and install.ps1",
     "tests/launcher_settings_receipt.rs": "read_dir of the temp home's receipts folder; reads the "

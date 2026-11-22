@@ -65,7 +65,7 @@ fn hook_mode_success_prints_nothing() {
     let root = fs::canonicalize(p.path()).unwrap();
     fs::create_dir_all(root.join(".moai-cli")).unwrap();
     let session = br#"{"hook_event_name":"SessionStart","source":"startup"}"#;
-    for host in ["claude", "codex"] {
+    for host in moai_cli::hooks::HOSTS.iter().copied() {
         let r = run(&["hook-receipt", "--host", host], &root, session, &[]);
         assert_eq!((r.code, r.stdout.as_str()), (0, ""), "{host}: {}", r.stderr);
         let r = run(&["hook-receipt", "--host", host], &root, b"{oops", &[]);
@@ -74,8 +74,8 @@ fn hook_mode_success_prints_nothing() {
     let log = fs::read_to_string(root.join(".moai-cli/receipts/hooks.jsonl")).unwrap();
     assert_eq!(
         log.lines().count(),
-        2,
-        "two well-formed inputs, two receipt lines"
+        1,
+        "one well-formed input, one receipt line"
     );
     // A project without .moai-cli/ is a skip — still nothing on stdout.
     let bare = project();
@@ -224,7 +224,7 @@ fn hooks_plan_and_apply_report_an_unresolved_binary() {
     fs::create_dir_all(&empty).unwrap();
     let no_binary = empty.to_string_lossy().to_string();
     let r = run(
-        &["hooks-plan", ".", "--host", "codex"],
+        &["hooks-plan", ".", "--host", "claude"],
         &root,
         b"",
         &[("PATH", &no_binary)],
@@ -241,7 +241,7 @@ fn hooks_plan_and_apply_report_an_unresolved_binary() {
             "hooks-apply",
             ".",
             "--host",
-            "codex",
+            "claude",
             "--plan-digest",
             &digest,
             "--permission-reference",
