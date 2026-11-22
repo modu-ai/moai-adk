@@ -1662,12 +1662,20 @@ pub(crate) fn agents_plan_for(
         .map(|f| f.path.as_str())
         .or((!block_wanted).then_some(BLOCK_FILE));
     if let Some(creating) = creates_first {
-        // The block brings the root AGENTS.md along (a pick copies its text or imports it), so
-        // only the files nothing carries over are named.
+        // Only a CLAUDE.md brings the root AGENTS.md along (a pick copies its text or imports
+        // it). When the personal file is created first and no CLAUDE.md is, nothing carries the
+        // root AGENTS.md over, so it is named like every other file.
+        let carries_agents_md = creating == BLOCK_FILE
+            || files
+                .iter()
+                .any(|f| f.action == "create" && f.path == BLOCK_FILE);
+        let carried: &[&str] = if carries_agents_md {
+            &["AGENTS.md"]
+        } else {
+            &[]
+        };
         warnings.extend(crate::agents_local_merge::hidden_files_warning_except(
-            &root,
-            creating,
-            &["AGENTS.md"],
+            &root, creating, carried,
         ));
     }
 

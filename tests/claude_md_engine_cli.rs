@@ -472,6 +472,45 @@ fn hidden_nothing_is_warned_while_a_claude_file_exists() {
     }
 }
 
+/// The writer that creates `CLAUDE.local.md` first (the personal file is wanted, no pick carries
+/// the root `AGENTS.md` into a CLAUDE.md) names the root `AGENTS.md`: nothing carries it over, so
+/// Claude Code would stop reading it without a word. Only a created CLAUDE.md carries it.
+#[test]
+fn hidden_writer_names_root_agents_md_when_only_the_personal_file_is_created() {
+    let fx = project_with(&[AGENTS_MD]);
+    let request = generation_request(&fx);
+    let reference = request["workflow_reference"].as_str().unwrap();
+    fx.write(
+        &format!("{}/keep.md", reference.trim_end_matches('/')),
+        "x\n",
+    );
+    let agents_request = json!({
+        "protocol_version": 1, "language": "en", "local_file": "ignored",
+        "workflow_reference": request["workflow_reference"], "picks": ["personal-file"],
+    });
+    let plan = fx.call(
+        &["agents-plan", fx.p()],
+        &serde_json::to_vec(&agents_request).unwrap(),
+    );
+    let action = |path: &str| {
+        plan["files"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|f| f["path"] == path)
+            .map(|f| f["action"].clone())
+    };
+    assert_eq!(action("CLAUDE.local.md"), Some(json!("create")), "{plan}");
+    assert_ne!(action("CLAUDE.md"), Some(json!("create")), "{plan}");
+    let warning = hidden_warning(&plan["warnings"], AGENTS_MD)
+        .unwrap_or_else(|| panic!("no warning names AGENTS.md: {}", plan["warnings"]));
+    assert!(
+        warning.contains("creating CLAUDE.local.md makes it stop reading"),
+        "{warning}"
+    );
+    assert_eq!(fx.read(AGENTS_MD), TEAM);
+}
+
 /// The personal-file merge keeps its own text and its confirmation token.
 #[test]
 fn hidden_personal_file_merge_keeps_its_warning_and_token() {

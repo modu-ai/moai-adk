@@ -2,7 +2,7 @@
 id: SPEC-20261122-claude-md-engine-findings
 title: "The AGENTS.md merge engine and the first CLAUDE file warn about hidden files, scan only copied text and keep receipts out of git"
 status: draft
-revision: 2
+revision: 3
 created: 2026-11-22
 parent: SPEC-20261122-claude-md-layout
 ---
@@ -24,7 +24,7 @@ parent: SPEC-20261122-claude-md-layout
 
 ## Acceptance
 
-- AC-1 (REQ-1): a project that holds only `.claude/AGENTS.md` and one that holds both files are warned by the writer, the pick plan and the update preview, and the warning names `.claude/AGENTS.md`; a project that holds only the root `AGENTS.md` is not warned, because the block and the picks `move` and `import` carry that file into the new `CLAUDE.md`; the personal-file merge, which carries neither file, still names both; and a project that already holds a CLAUDE file is not warned.
+- AC-1 (REQ-1): a project that holds only `.claude/AGENTS.md` and one that holds both files are warned by the writer, the pick plan and the update preview, and the warning names `.claude/AGENTS.md`; a project that holds only the root `AGENTS.md` is not warned, because the block and the picks `move` and `import` carry that file into the new `CLAUDE.md`; the personal-file merge, which carries neither file, still names both; the writer that creates only `CLAUDE.local.md` (the personal-file pick, no `CLAUDE.md` created) names the root `AGENTS.md`, because nothing carries it; and a project that already holds a CLAUDE file is not warned.
   verify: `cargo test --locked --offline --test claude_md_engine_cli hidden_`
 - AC-2 (REQ-2): the guidance merge plan of an `AGENTS.md` that holds a managed region says that the blank lines around it are joined, and says nothing of the kind when there is no region.
   verify: `cargo test --locked --offline --test claude_md_engine_cli collapse_`
@@ -58,7 +58,7 @@ parent: SPEC-20261122-claude-md-layout
 |---|---|---|---|
 | D-1 | A project that holds only `.claude/AGENTS.md` gets the warning but no pick. | The picks move and import the root files; moving the second file is a separate feature with the subfolder question. | Offer picks for that file. |
 | D-2 | The collapse is told, not prevented. | The copy keeps the text; only blank lines change, and the original file is never touched. | Keep the blank lines. |
-| D-4 | The root `AGENTS.md` is not named by the writer, the picks or the preview. | Their new `CLAUDE.md` carries its text or imports it, so it stays read; naming it would tell the user a falsehood (the first check run on the branch caught the older preview test that pins this). | Name it in the picks too. |
+| D-4 | The root `AGENTS.md` is not named by the writer, the picks or the preview when the file they create is a `CLAUDE.md`; when the writer creates only `CLAUDE.local.md` it is named (revision 3, the audit's blocking finding). | Their new `CLAUDE.md` carries its text or imports it, so it stays read; naming it would tell the user a falsehood (the first check run on the branch caught the older preview test that pins this). | Name it in the picks too. |
 | D-3 | The new tests live in one new file with four prefixes. | One verify filter per criterion without touching the older files more than the one pinned line. | Spread the tests. |
 
 ## Result
