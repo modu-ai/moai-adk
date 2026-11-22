@@ -82,4 +82,9 @@ Pages read whole as raw markdown on 2026-11-22 between 11:05Z and 11:07Z (hooks.
 
 ## Result
 
-Not started.
+Slice 1. Status draft; only the lines below are claimed.
+
+- AC-1: met. `the_page_holds_every_statement` passes in `tests/troubleshooting_doc.rs`: `docs/troubleshooting.md` holds the seven statements (safe mode first, a clean `CLAUDE_CONFIG_DIR` folder and never `HOME`, the debug file and the verbose level with a hook's run line, cleaning a debug file before sharing it, the classifier notice and `CLAUDE_CODE_AUTO_MODE_SERVER=0` as temporary, the eight commands that show what loaded, and the three places moai does not reach), and the page names no card and no issue.
+- AC-2: met. `a_missing_statement_is_named` passes: for each statement, a copy of the page with that statement's words removed is reported missing by name; the card and issue finder is checked on built samples so the test file holds no card-shaped text.
+- The test was red first (760bc306d3: the page did not exist) and green with the page (423681f546).
+- Not claimed: that every sentence of the page matches the official pages word for word; the audit reads the page whole against R-1 to R-9.
