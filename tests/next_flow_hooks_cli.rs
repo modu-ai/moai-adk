@@ -1074,7 +1074,7 @@ fn ac17_the_update_layer_leaves_the_reload_stamp() {
 fn ac1_deletion_targets_outside_the_worktree_and_temp_are_refused() {
     let (_d, root, config) = world(BRANCH);
     let outside = "/Users/definitely-not-here/probe-deleted";
-    let temp = std::env::temp_dir().join("moai-ac1-temp-probe");
+    let temp = std::env::temp_dir().join(format!("moai-ac1-temp-{}", std::process::id()));
     let wt = root.display().to_string();
     let temp_s = temp.display().to_string();
     let refused = [
@@ -1134,7 +1134,7 @@ fn ac1_deletion_targets_outside_the_worktree_and_temp_are_refused() {
     // duty's own rm rules still apply to their dangerous shapes).
     let allowed = [
         format!("rm {wt}/scratch.txt"),
-        format!("rm -rf {temp_s}/moai-ac1-probe"),
+        format!("rm -rf {temp_s}/probe"),
         "rm $TMPDIR/moai-ac1-probe".to_string(),
         "rm".to_string(),
     ];

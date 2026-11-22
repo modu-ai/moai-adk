@@ -1726,6 +1726,7 @@ pub fn primary_checkout_guard(
 /// Author and committer emails this repository's tests use (#2878 E3). A commit under one of
 /// them in a real checkout means a test's identity leaked into git config or the environment.
 pub const TEST_IDENTITY_EMAILS: &[&str] = &[
+    "f@e.invalid",
     "t@example.invalid",
     "fixture@example.invalid",
     "test@example.invalid",
