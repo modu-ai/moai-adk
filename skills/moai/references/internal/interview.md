@@ -45,3 +45,18 @@ The `work_flow` row fills `work_flow` with `{"flow": "m-flow" | "github-flow" | 
 - **GitHub flow** — short branches from the default branch, a pull request per change, merge after review and CI, the default branch always deployable; the recommended default.
 - **trunk-based** — everyone commits to one trunk in small steps, often directly or through very short branches; unfinished work hides behind flags.
 - **git-flow** — `develop` for integration, `feature/*` branches from it, `release/*` and `hotfix/*` branches, and `main` holding only released versions.
+
+## CI questions (SPEC-20261122-project-ci-design)
+
+Offer these once the `work_flow` row is answered and the profile has no `ci` key: first one selection, "Set up automatic checks on GitHub now (recommended)" or "Not now"; on "Not now" ask nothing here and record nothing (the offer returns on the next run). Explain each technical word once, when it first comes up: "automatic checks" are the build and test commands, run by GitHub on every change; a "runner" is the machine GitHub lends for a run, and its time is what costs money on a private repository. The rows are asked in order, at most three questions per call and at most two calls, each a selection with the recommended option first and the host's own "Other" for an answer the options miss; never guess an unanswered row (record it as HOLD like any other axis, and ask it again next run).
+
+| id | Ask when | Question | Options | Goes to |
+| --- | --- | --- | --- | --- |
+| **ci_stack** | the profile has no `checks` | Which commands should the automatic checks run, in this order? | The commands `project-detect` found (build, test, then the lint and format commands), each shown with its text, all of them (recommended); only build and test; with none found, the usual commands of the detected language | profile `checks`, one `{"id", "command"}` per confirmed command, in the order shown |
+| **ci_kind** | the profile has no `ci` | What kind of project is this? | A web app; an API; a command-line tool; a library; a mobile app (the detected kind first, marked recommended) | `ci.kind` (`web`, `api`, `cli`, `library`, `mobile`) |
+| **ci_users** | the profile has no `ci` | Who uses it, and on which systems? | Only me, or a Linux server (recommended); also Windows users; also Mac users (the price line is shown first; a yes records `macos_price_ack`) | `ci.systems` (`linux`, then `windows` and `macos`) |
+| **ci_deploy** | `ci_kind` is not a library | Does it publish or deploy anywhere? | No (recommended); yes, with a name for the place (one line, no key or token in it) | `ci.deploy` (`enabled`, `target`) |
+| **ci_money** | the profile has no `ci` | Is the repository public or private, and how much may the checks cost a month? | Public, free (recommended when it is); private with a small, a medium or a custom amount in dollars | `ci.visibility`, `ci.monthly_budget_usd` |
+| **ci_strict** | the profile has no `ci` | Should a failing check block a merge, or only report? | Only report (recommended for a first run); block merges | `ci.strict` (`report`, `block`) |
+
+The answers go into the profile as the two additive keys `ci` and `checks` through `project-plan` and `project-apply` like every other key; `ci.dependabot` is a separate follow-up selection ("Also keep my tools' updates proposed automatically, a file you can delete"), asked only when the user wants it, and never part of the recommended answers. Read `project-detect` first and confirm what it found instead of asking it; the generated files, their estimate and their notes come from `project-ci-plan`, and its notes are English facts that you relay in the user's language, never printed as they are.
