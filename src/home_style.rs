@@ -398,6 +398,11 @@ fn setting_plan(home: &Path, style: &TargetPlan) -> TargetPlan {
     t
 }
 
+/// Stub for the red run.
+pub fn notices(_plan: &Plan, _project: &Path) -> Vec<Value> {
+    Vec::new()
+}
+
 /// Read-only preview of every host; writes nothing.
 pub fn plan(home: &Path, package: &Path) -> Result<Plan> {
     plan_for(home, package, &HOSTS)

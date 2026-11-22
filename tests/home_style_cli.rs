@@ -277,6 +277,346 @@ fn the_shipped_source_carries_the_style_items() {
     }
 }
 
+/// SPEC-20261122-output-style-install-checks AC-1 (REQ-1): `outputStyle` is case-sensitive, so a
+/// value that differs only in case is a conflict whose detail says so; the exact name is fine.
+#[test]
+fn the_setting_plan_says_the_style_name_is_case_sensitive() {
+    for wrong in ["moai-easy", "MOAI-EASY"] {
+        let (_t, home) = home();
+        write(
+            &home,
+            SETTINGS,
+            &format!("{{\"outputStyle\": \"{wrong}\"}}\n"),
+        );
+        let p = plan(&home, &package()).unwrap();
+        assert_eq!(action(&p, "setting"), "conflict", "{wrong}");
+        let d = detail(&p, "setting");
+        assert!(
+            d.contains("case-sensitive") && d.contains("default style"),
+            "{d}"
+        );
+    }
+    let (_t, home) = home();
+    write(&home, SETTINGS, "{\"outputStyle\": \"MoAI-Easy\"}\n");
+    let p = plan(&home, &package()).unwrap();
+    assert_eq!(action(&p, "setting"), "unchanged");
+    // A different name is still only the user's choice, with no case note.
+    write(&home, SETTINGS, "{\"outputStyle\": \"Explanatory\"}\n");
+    let d = detail(&plan(&home, &package()).unwrap(), "setting");
+    assert!(
+        d.contains("Explanatory") && !d.contains("case-sensitive"),
+        "{d}"
+    );
+}
+
+/// A temporary project folder with the named settings files.
+fn project_with(files: &[(&str, &str)]) -> (tempfile::TempDir, PathBuf) {
+    let (t, path) = home();
+    for (rel, bytes) in files {
+        write(&path, rel, bytes);
+    }
+    (t, path)
+}
+
+fn reasons(notices: &[Value]) -> Vec<String> {
+    notices
+        .iter()
+        .map(|n| n["reason"].as_str().unwrap().to_string())
+        .collect()
+}
+
+/// AC-2 (REQ-2): a project value other than the style hides it in that project; the notice names
+/// the file and the value, and neither file is written.
+#[test]
+fn a_project_setting_that_hides_the_style_gives_a_notice_and_writes_nothing() {
+    let local = "{\"outputStyle\": \"Learning\"}\n";
+    let shared = "{\"outputStyle\": \"Explanatory\", \"x\": 1}\n";
+    let (_t, project) = project_with(&[
+        (".claude/settings.local.json", local),
+        (".claude/settings.json", shared),
+    ]);
+    let (_h, home) = home();
+    let p = plan(&home, &package()).unwrap();
+    let notices = moai_cli::home_style::notices(&p, &project);
+    let r = reasons(&notices);
+    assert!(
+        r.iter().any(|s| s.contains("settings.local.json")
+            && s.contains("Learning")
+            && s.contains("this project uses")),
+        "{r:?}"
+    );
+    assert!(
+        r.iter()
+            .any(|s| s.contains("settings.json") && s.contains("Explanatory")),
+        "{r:?}"
+    );
+    assert!(notices
+        .iter()
+        .all(|n| n["part"] == "style" && n["host"] == "claude"));
+    assert_eq!(
+        fs::read_to_string(project.join(".claude/settings.local.json")).unwrap(),
+        local
+    );
+    assert_eq!(
+        fs::read_to_string(project.join(".claude/settings.json")).unwrap(),
+        shared
+    );
+    // The same name, or no `outputStyle`, hides nothing.
+    let (_t2, quiet) = project_with(&[
+        (
+            ".claude/settings.local.json",
+            "{\"outputStyle\": \"MoAI-Easy\"}\n",
+        ),
+        (".claude/settings.json", "{\"a\": 1}\n"),
+    ]);
+    assert!(!reasons(&moai_cli::home_style::notices(&p, &quiet))
+        .iter()
+        .any(|s| s.contains("this project uses")));
+}
+
+/// AC-2 (REQ-3): a file that cannot be read as a JSON object, or has no string value, gives no
+/// notice and does not stop the rest.
+#[test]
+fn an_unreadable_project_setting_gives_no_notice() {
+    let (_h, home) = home();
+    let p = plan(&home, &package()).unwrap();
+    for bytes in ["{", "[1]", "{\"outputStyle\": 3}\n", ""] {
+        let (_t, project) = project_with(&[(".claude/settings.local.json", bytes)]);
+        let n = moai_cli::home_style::notices(&p, &project);
+        assert!(
+            !reasons(&n).iter().any(|s| s.contains("this project uses")),
+            "{bytes:?}"
+        );
+    }
+    // A folder in the file's place and a missing project folder are the same quiet path.
+    let (_t, project) = project_with(&[]);
+    fs::create_dir_all(project.join(".claude/settings.json")).unwrap();
+    assert!(!reasons(&moai_cli::home_style::notices(&p, &project))
+        .iter()
+        .any(|s| s.contains("this project uses")));
+    let gone = project.join("missing");
+    let _ = moai_cli::home_style::notices(&p, &gone);
+}
+
+/// AC-3 (REQ-4): an update that creates or replaces the style file points to `/status`; one that
+/// changes nothing does not.
+#[test]
+fn the_update_points_to_status_after_a_style_write() {
+    let (_h, home) = home();
+    let (_t, project) = project_with(&[]);
+    let p = plan(&home, &package()).unwrap();
+    assert_eq!(action(&p, "style_file"), "create");
+    assert!(reasons(&moai_cli::home_style::notices(&p, &project))
+        .iter()
+        .any(|s| s.contains("/status")));
+    apply(&home, &package(), &p.plan_digest, PERM).unwrap();
+    let again = plan(&home, &package()).unwrap();
+    assert_eq!(action(&again, "style_file"), "unchanged");
+    assert!(!reasons(&moai_cli::home_style::notices(&again, &project))
+        .iter()
+        .any(|s| s.contains("/status")));
+}
+
+/// `home-style-*` through the binary for one Claude config folder of a temporary HOME: `folder`
+/// is `CLAUDE_CONFIG_DIR` (the HOME's own default folder when `None`).
+fn folder_run(home: &Path, folder: Option<&Path>, args: &[&str]) -> Value {
+    let mut c = std::process::Command::new(crate::common::MOAI_BIN);
+    c.args(args)
+        .env("HOME", home)
+        .env("MOAI_ACCOUNT_HOME", home)
+        .env_remove("CLAUDE_CONFIG_DIR");
+    if let Some(f) = folder {
+        c.env("CLAUDE_CONFIG_DIR", f);
+    }
+    let out = c.output().unwrap();
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    serde_json::from_slice(&out.stdout).unwrap()
+}
+
+/// Plans and applies in one folder; returns the plan result and the receipt id (when it wrote).
+fn folder_install(home: &Path, folder: Option<&Path>) -> (Value, Option<String>) {
+    let h = home.to_str().unwrap();
+    let pkg = package();
+    let pkg = pkg.to_str().unwrap();
+    let p = folder_run(home, folder, &["home-style-plan", h, pkg]);
+    let digest = p["result"]["plan_digest"].as_str().unwrap().to_string();
+    let a = folder_run(
+        home,
+        folder,
+        &[
+            "home-style-apply",
+            h,
+            pkg,
+            "--plan-digest",
+            &digest,
+            "--permission-reference",
+            PERM,
+        ],
+    );
+    let id = a["result"]["receipt"].as_str().map(str::to_string);
+    (p["result"].clone(), id)
+}
+
+fn folder_action(plan: &Value, kind: &str) -> String {
+    plan["targets"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|t| t["kind"] == kind)
+        .map(|t| t["action"].as_str().unwrap().to_string())
+        .unwrap()
+}
+
+/// The record name of a folder that is not the HOME's default: the first 12 hex digits of the
+/// sha256 of the folder path (the SPEC's D-1).
+fn second_record_name(folder: &Path) -> String {
+    let d = moai_cli::digest(folder.to_str().unwrap().as_bytes());
+    format!("claude-{}.json", &d["sha256:".len()..][..12])
+}
+
+/// AC-4 (REQ-5): each config folder has its own record; one folder's edit conflicts only there,
+/// and reverting one folder leaves the other's file and record alone.
+#[test]
+fn two_config_folders_keep_two_records() {
+    let (_t, home) = home();
+    assert!(moai_cli::home_root::adopt_new(&home, "test").unwrap());
+    let second = home.join("profiles/b");
+    let records = home.join(".moai/home-style");
+    let (_, id_a) = folder_install(&home, None);
+    let (_, id_b) = folder_install(&home, Some(&second));
+    assert!(id_a.is_some() && id_b.is_some());
+    assert!(
+        records.join("claude.json").is_file(),
+        "the default folder keeps its record name"
+    );
+    assert!(records.join(second_record_name(&second)).is_file());
+    let style_b = second.join("output-styles/MoAI-Easy.md");
+    assert_eq!(
+        fs::read(&style_b).unwrap(),
+        fs::read(home.join(STYLE)).unwrap()
+    );
+    // An edit in folder B is a conflict in B only.
+    fs::write(&style_b, "my own text\n").unwrap();
+    let h = home.to_str().unwrap();
+    let pkg = package();
+    let pkg = pkg.to_str().unwrap();
+    let in_b = folder_run(&home, Some(&second), &["home-style-plan", h, pkg]);
+    assert_eq!(folder_action(&in_b["result"], "style_file"), "conflict");
+    let in_a = folder_run(&home, None, &["home-style-plan", h, pkg]);
+    assert_eq!(folder_action(&in_a["result"], "style_file"), "unchanged");
+    // Reverting folder A leaves folder B's file and record as they are.
+    fs::write(&style_b, fs::read(home.join(STYLE)).unwrap()).unwrap();
+    let record_b = fs::read(records.join(second_record_name(&second))).unwrap();
+    folder_run(
+        &home,
+        None,
+        &[
+            "home-style-revert",
+            h,
+            "--receipt",
+            id_a.as_deref().unwrap(),
+            "--permission-reference",
+            PERM,
+        ],
+    );
+    assert!(!home.join(STYLE).exists());
+    assert!(style_b.is_file());
+    assert_eq!(
+        fs::read(records.join(second_record_name(&second))).unwrap(),
+        record_b
+    );
+}
+
+/// The names and sha256 of every file below `root`, sorted; empty when `root` is absent.
+fn listing(root: &Path) -> Vec<(String, String)> {
+    let mut out = Vec::new();
+    let mut stack = vec![root.to_path_buf()];
+    while let Some(dir) = stack.pop() {
+        let Ok(rd) = fs::read_dir(&dir) else { continue };
+        for e in rd {
+            let p = e.unwrap().path();
+            if p.is_dir() {
+                stack.push(p);
+            } else {
+                out.push((
+                    p.strip_prefix(root).unwrap().display().to_string(),
+                    moai_cli::digest(&fs::read(&p).unwrap()),
+                ));
+            }
+        }
+    }
+    out.sort();
+    out
+}
+
+/// AC-5 (REQ-6): a second folder's new record goes below this generation's state root; the
+/// earlier state folder of the HOME is the same before and after.
+#[test]
+fn installing_into_a_second_config_folder_creates_nothing_under_the_earlier_state_folder() {
+    let (_t, home) = home();
+    assert!(moai_cli::home_root::adopt_new(&home, "test").unwrap());
+    fs::create_dir_all(home.join(".moai-cli/keep")).unwrap();
+    fs::write(home.join(".moai-cli/keep/a.txt"), "a\n").unwrap();
+    let before = listing(&home.join(".moai-cli"));
+    let second = home.join("profiles/b");
+    folder_install(&home, Some(&second));
+    assert!(home
+        .join(".moai/home-style")
+        .join(second_record_name(&second))
+        .is_file());
+    assert_eq!(listing(&home.join(".moai-cli")), before);
+    // And with no earlier folder at all, none appears.
+    let (_t2, fresh) = project_with(&[]);
+    assert!(moai_cli::home_root::adopt_new(&fresh, "test").unwrap());
+    folder_install(&fresh, Some(&fresh.join("p")));
+    assert!(!fresh.join(".moai-cli").exists());
+}
+
+/// AC-6 (REQ-7): while the HOME's state root is not this generation's, a second folder is blocked
+/// with a reason and nothing is written for it; the default folder plans as before.
+#[test]
+fn a_second_folder_is_blocked_while_the_state_root_is_not_this_generations() {
+    let (_t, home) = home();
+    fs::create_dir_all(home.join(".moai-cli")).unwrap();
+    let second = home.join("profiles/b");
+    let h = home.to_str().unwrap();
+    let pkg = package();
+    let pkg = pkg.to_str().unwrap();
+    let in_b = folder_run(&home, Some(&second), &["home-style-plan", h, pkg]);
+    let targets = in_b["result"]["targets"].as_array().unwrap();
+    for t in targets {
+        assert_eq!(t["action"], "blocked", "{t}");
+        let d = t["detail"].as_str().unwrap();
+        assert!(d.contains("state") && d.contains("generation"), "{d}");
+    }
+    let digest = in_b["result"]["plan_digest"].as_str().unwrap().to_string();
+    let applied = folder_run(
+        &home,
+        Some(&second),
+        &[
+            "home-style-apply",
+            h,
+            pkg,
+            "--plan-digest",
+            &digest,
+            "--permission-reference",
+            PERM,
+        ],
+    );
+    assert_eq!(applied["result"]["state"], "unchanged");
+    assert!(
+        !second.exists(),
+        "no file or folder is made for the blocked folder"
+    );
+    let in_a = folder_run(&home, None, &["home-style-plan", h, pkg]);
+    assert_eq!(folder_action(&in_a["result"], "style_file"), "create");
+    assert_eq!(folder_action(&in_a["result"], "setting"), "set");
+}
+
 /// The three operations, through the binary, against a temporary HOME passed as an argument.
 #[test]
 fn the_operations_run_through_the_binary() {

@@ -143,6 +143,13 @@ const CURRENT_RENDER_SHA256: &str =
 #[test]
 fn the_earlier_renders_are_pinned_and_never_hold_the_current_one() {
     let list = moai_cli::home_style::EARLIER_RENDERS;
+    // An empty list would pass every check below; it must name every fixture.
+    assert_eq!(
+        list.len(),
+        RENDERS.len(),
+        "the list and the fixtures differ in length"
+    );
+    assert!(!list.is_empty());
     for entry in list {
         assert_eq!(entry.len(), 64, "{entry}");
         assert!(entry
