@@ -80,6 +80,21 @@ fn card_id(reference: &str) -> Result<i64> {
     }
 }
 
+/// What a refusal after the start row says in place of `nothing was changed`: the one row that
+/// was written and that the branch did not move.
+const START_ROW_KEPT: &str =
+    "only the start row of this landing was written to the ledger and the branch did not move";
+
+/// A refusal of the move after the start row was written.
+fn after_start_row(why: impl std::fmt::Display) -> String {
+    refused(format!("{why}; {START_ROW_KEPT}"))
+}
+
+/// A refusal about the state of the repository after the start row was written.
+fn conflict_after_start_row(why: impl std::fmt::Display) -> String {
+    format!("card conflict in landing: {why}; {START_ROW_KEPT}")
+}
+
 /// The sentence a refusal that wrote nothing ends with. Finish's own refusals end with it too, so
 /// it is added once.
 const NOTHING_CHANGED: &str = "nothing was changed";
@@ -261,26 +276,26 @@ pub fn land(project: &Path, home: &Path, reference: &str, req: &LandRequest<'_>)
             &tip,
         )
         .map_err(finish_refusal)?;
-        guard::write_intent(&common, &full, &tip, req.head).map_err(unchanged)?;
+        guard::write_intent(&common, &full, &tip, req.head).map_err(after_start_row)?;
         let message = format!("moai card land {}", &req.head[..12]);
         let attempt = landed::move_branch(project, &full, req.head, &tip, &message);
         guard::remove_intent(&common);
-        match attempt.map_err(unchanged)? {
+        match attempt.map_err(after_start_row)? {
             RefMove::Moved => moved = true,
             RefMove::Lost(why) => {
                 // Read where the branch is now: another call may have landed this very head a
                 // moment ago (nothing to move), the branch may have moved to something else
                 // (`tip_moved`), or it did not move at all and git refused for another reason (a
                 // lock file, a read-only store): that one is git's reason, not a moved tip.
-                let now = landed::tip_of(project, &branch).map_err(unchanged)?;
+                let now = landed::tip_of(project, &branch).map_err(after_start_row)?;
                 if now == tip {
-                    return Err(unchanged(format!(
+                    return Err(after_start_row(format!(
                         "git refused to move the integration branch {branch} to {}: {why}",
                         req.head
                     )));
                 }
                 if now != req.head {
-                    return Err(conflict(format!(
+                    return Err(conflict_after_start_row(format!(
                         "tip_moved: the integration branch {branch} no longer points at {tip} \
                          (now {now}; git said: {why}); read the tip again and run the call again"
                     )));

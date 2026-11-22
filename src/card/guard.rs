@@ -58,17 +58,44 @@ common=${GIT_COMMON_DIR:-}
 case "$common" in /*) ;; *) common=$(pwd)/$common ;; esac
 record="$common/moai/integration-branch"
 [ -f "$record" ] || exit 0
-name=$(sed -n '1s|^refs/heads/||p' "$record" | tr 'A-Z' 'a-z')
-[ -n "$name" ] || exit 0
+line=
+IFS= read -r line < "$record" || :
+line=${line#"${line%%[![:space:]]*}"}
+line=${line%"${line##*[![:space:]]}"}
+case "$line" in refs/heads/?*) name=${line#refs/heads/} ;; *) exit 0 ;; esac
 input=$(cat)
+lowered=$(printf '%s\n%s\n' "$name" "$input" | tr 'A-Z' 'a-z')
+nl='
+'
+name=${lowered%%"$nl"*}
+lines=${lowered#*"$nl"}
 hit=0
+deletes=0
+source=
 while read -r old new ref; do
-  case "$old $new" in *ref:*) hit=1; break ;; esac
-  lower=$(printf '%s' "$ref" | tr 'A-Z' 'a-z')
-  case "$lower" in "refs/heads/$name" | "refs/heads/$name"/*) hit=1; break ;; esac
+  for value in "$old" "$new"; do
+    case "$value" in "ref:refs/heads/$name" | "ref:refs/heads/$name"/*) hit=1 ;; esac
+  done
+  case "$ref" in "refs/heads/$name" | "refs/heads/$name"/*) hit=1 ;; esac
+  case "$ref" in refs/heads/*) case "$new" in *[!0]*) ;; *) deletes=1; source=$ref ;; esac ;; esac
+  [ "$hit" = 1 ] && break
 done <<EOF
-$input
+$lines
 EOF
+if [ "$hit" = 0 ] && [ "$deletes" = 1 ] && [ "$1" = prepared ]; then
+  words=$(ps -o command= -p "$PPID" 2>/dev/null | tr 'A-Z ' 'a-z\n')
+  case "$nl$words$nl" in
+    *"$nl$name$nl"* | *"${nl}refs/heads/$name$nl"*)
+      # git moved the source's reflog aside before this delete and does not move it back
+      moved="$common/logs/refs/.tmp-renamed-log"
+      if [ -n "$source" ] && [ -f "$moved" ] && [ ! -e "$common/logs/$source" ]; then
+        mkdir -p "${common}/logs/${source%/*}" 2>/dev/null
+        mv "$moved" "$common/logs/$source" 2>/dev/null
+      fi
+      echo "moai ref guard refused: this command renames a branch onto the integration branch, and git deletes the source branch before it touches the integration branch; nothing was changed. The integration branch moves only through the landing command (\`moai card land\`)" >&2
+      exit 1 ;;
+  esac
+fi
 [ "$hit" = 1 ] || exit 0
 moai=$(command -v moai 2>/dev/null)
 if [ -z "$moai" ] && [ -x "$HOME/.moai/bin/moai" ]; then moai="$HOME/.moai/bin/moai"; fi
@@ -166,8 +193,29 @@ fn packed_value(common: &Path, reference: &str) -> Option<String> {
 
 // ---- the record and the intent ----------------------------------------------------------------
 
+/// Opens a new file for writing; `private` makes it readable and writable by its owner only.
+#[cfg(unix)]
+fn create_file(path: &Path, private: bool) -> std::io::Result<fs::File> {
+    use std::os::unix::fs::OpenOptionsExt;
+    let mut options = fs::OpenOptions::new();
+    options.write(true).create_new(true);
+    if private {
+        options.mode(0o600);
+    }
+    options.open(path)
+}
+
+#[cfg(not(unix))]
+fn create_file(path: &Path, _private: bool) -> std::io::Result<fs::File> {
+    fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(path)
+}
+
 /// Writes `bytes` to `path` through a temporary file and a rename, so a reader never sees half.
-fn write_atomically(path: &Path, bytes: &[u8]) -> Result<(), String> {
+fn write_atomically(path: &Path, bytes: &[u8], private: bool) -> Result<(), String> {
+    use std::io::Write;
     let folder = path.parent().ok_or("no folder to write in")?;
     fs::create_dir_all(folder).map_err(|e| format!("cannot make {}: {e}", folder.display()))?;
     let tmp = folder.join(format!(
@@ -177,7 +225,10 @@ fn write_atomically(path: &Path, bytes: &[u8]) -> Result<(), String> {
             .unwrap_or("record"),
         std::process::id()
     ));
-    fs::write(&tmp, bytes).map_err(|e| format!("cannot write {}: {e}", tmp.display()))?;
+    let _ = fs::remove_file(&tmp);
+    create_file(&tmp, private)
+        .and_then(|mut f| f.write_all(bytes))
+        .map_err(|e| format!("cannot write {}: {e}", tmp.display()))?;
     fs::rename(&tmp, path).map_err(|e| format!("cannot write {}: {e}", path.display()))
 }
 
@@ -192,6 +243,7 @@ fn write_record(common: &Path, full_ref: &str) -> Result<(), String> {
     write_atomically(
         &common.join(RECORD_FILE),
         format!("{full_ref}\n").as_bytes(),
+        false,
     )
 }
 
@@ -228,7 +280,7 @@ pub fn write_intent(common: &Path, reference: &str, old: &str, new: &str) -> Res
     let body = json!({
         "ref": reference, "old": old, "new": new, "by": "card land", "at": at,
     });
-    write_atomically(&common.join(INTENT_FILE), body.to_string().as_bytes())
+    write_atomically(&common.join(INTENT_FILE), body.to_string().as_bytes(), true)
 }
 
 /// Removes the intent record; a record that is not there is fine.

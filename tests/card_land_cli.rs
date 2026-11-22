@@ -443,6 +443,10 @@ impl World {
             any_of.iter().any(|needle| message.contains(needle)),
             "the reason names none of {any_of:?}: {message}"
         );
+        assert!(
+            !message.contains("nothing was changed") && message.contains("start row"),
+            "a refusal after the start row says what was written: {message}"
+        );
         assert_eq!(self.integ(), integ_before, "the refused call moved integ");
         let split = |d: &[String]| {
             let rest: Vec<String> = d
@@ -1304,6 +1308,20 @@ fn ac20_the_start_row_comes_before_the_move_and_once() {
     );
     assert_eq!(w.integ(), after);
     assert_eq!(row(&raced).len(), 1, "the refused close lost the row");
+
+    // The same call again after the refused close: the branch is already at the head, so there
+    // is no move and no second row, and the refusal is the close's again.
+    let again = w.land(
+        &raced,
+        &["--head", &after, "--met", "1=x", "--by", "leader"],
+    );
+    assert_eq!(again.status.code(), Some(1));
+    assert_eq!(w.integ(), after);
+    assert_eq!(
+        row(&raced).len(),
+        1,
+        "the rerun after the move wrote a second row"
+    );
 }
 
 /// AC-11: a lane takes the ready card between the checks and the close while the call carries a

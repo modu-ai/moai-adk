@@ -512,6 +512,16 @@ fn ac3_packing_and_gc_pass_and_a_real_delete_does_not() {
     v.refused(&v.try_git(&v.repo, &["update-ref", "-d", "refs/heads/Integ"]));
     tree_clean(&v);
 
+    // The prune rule needs the loose copy: a branch that is only packed is deleted for real even
+    // when the delete names its value.
+    let p = Repo::new(false);
+    p.install();
+    p.git(&p.repo, &["pack-refs", "--all"]);
+    assert!(!p.common().join("refs/heads/Integ").exists());
+    let value = p.integ();
+    p.refused(&p.try_git(&p.repo, &["update-ref", "-d", "refs/heads/Integ", &value]));
+    tree_clean(&p);
+
     // Loose and packed at the same value (`pack-refs --no-prune`): a delete that names no old
     // value is a deletion, not the prune of a loose copy.
     v.git(&v.repo, &["pack-refs", "--all", "--no-prune"]);
@@ -719,6 +729,182 @@ fn ac9_the_record_is_the_one_value_and_the_profile_only_seeds_it() {
     write_profile(&v.repo, "Integ");
     assert_eq!(guard::protected(&v.repo, false), Ok(None));
     assert!(!v.common().join(guard::RECORD_FILE).exists());
+}
+
+// ---- AC-15: the filter forks nothing per line and ignores symbolic values elsewhere ----------
+
+/// AC-15: with no moai anywhere, switching and checking out branches in a linked worktree (every
+/// one writes a symbolic `HEAD`) passes and starts nothing, a symbolic value that points at the
+/// recorded branch or a variant still starts the guard, and the loop that reads the lines of a
+/// transaction holds no command substitution (one lower-casing for the whole transaction).
+#[test]
+fn ac15_the_filter_forks_nothing_per_line_and_ignores_unrelated_symbolic_values() {
+    let text = guard::hook_text();
+    let body = text
+        .split("while read")
+        .nth(1)
+        .and_then(|rest| rest.split("\nEOF").next())
+        .expect("the hook text has a line loop");
+    for forbidden in ["$(", "`", "printf", " tr ", "sed", "awk", "grep"] {
+        assert!(
+            !body.contains(forbidden),
+            "the line loop of the hook runs `{forbidden}` per line:\n{body}"
+        );
+    }
+
+    let mut w = Repo::new(false);
+    w.install();
+    let log = w.dir.path().join("standin.log");
+    let standin_dir = w.dir.path().join("standin");
+    fs::create_dir_all(&standin_dir).unwrap();
+    common::write_executable(&standin_dir.join("moai"), STANDIN);
+    w.standin = Some(standin_dir.clone());
+    w.env
+        .push(("STANDIN_LOG".into(), log.to_str().unwrap().into()));
+    let lane = w.lane_wt.clone();
+    let repo = w.repo.clone();
+
+    // Unrelated symbolic writes: no call at any state.
+    w.git(&lane, &["switch", "-q", "-c", "lane2"]);
+    w.git(&lane, &["switch", "-q", "lane"]);
+    w.git(&lane, &["checkout", "-q", "--detach"]);
+    w.git(&lane, &["checkout", "-q", "lane"]);
+    assert!(calls(&log).is_empty(), "{:?}", calls(&log));
+
+    // The same with no moai at all: still passes.
+    w.standin = None;
+    fs::remove_dir_all(w.home.path().join(".moai")).ok();
+    w.git(&lane, &["switch", "-q", "lane2"]);
+    w.git(&lane, &["switch", "-q", "lane"]);
+
+    // A symbolic value that points at the recorded branch, or at a variant, starts the guard.
+    w.standin = Some(standin_dir);
+    for target in ["refs/heads/Integ", "refs/heads/INTEG", "refs/heads/integ/x"] {
+        fs::write(&log, "").unwrap();
+        w.try_git(&repo, &["symbolic-ref", "refs/heads/alias", target]);
+        assert_eq!(
+            calls(&log).first().map(String::as_str),
+            Some("card guard prepared"),
+            "{target}"
+        );
+        w.try_git(&repo, &["update-ref", "-d", "refs/heads/alias"]);
+    }
+}
+
+// ---- AC-16: the intent file is private --------------------------------------------------------
+
+/// AC-16: the intent record is written with the mode 0600 (no other user can read or replace
+/// it), and so is the file it replaces.
+#[test]
+fn ac16_the_intent_file_is_private() {
+    use std::os::unix::fs::PermissionsExt;
+    let w = Repo::new(false);
+    let (a, b) = (w.a.clone(), w.b.clone());
+    guard::write_intent(&w.common(), "refs/heads/Integ", &a, &b).unwrap();
+    let mode = |p: &Path| fs::metadata(p).unwrap().permissions().mode() & 0o777;
+    let file = w.common().join(guard::INTENT_FILE);
+    assert_eq!(mode(&file), 0o600);
+    fs::set_permissions(&file, fs::Permissions::from_mode(0o644)).unwrap();
+    guard::write_intent(&w.common(), "refs/heads/Integ", &b, &a).unwrap();
+    assert_eq!(mode(&file), 0o600);
+}
+
+// ---- AC-17: the shell and the program read the record the same way -----------------------------
+
+/// AC-17: a record with leading or trailing blanks, a carriage return or no final newline protects
+/// the same branch in the shell filter and in the program; a line that is not a full branch
+/// reference protects nothing in either.
+#[test]
+fn ac17_the_shell_and_the_program_read_the_record_the_same_way() {
+    let w = Repo::new(false);
+    w.install();
+    let repo = w.repo.clone();
+    let (a, b) = (w.a.clone(), w.b.clone());
+    for bytes in [
+        "refs/heads/Integ\n",
+        "refs/heads/Integ",
+        "refs/heads/Integ \n",
+        "  refs/heads/Integ\n",
+        "refs/heads/Integ\r\n",
+        "refs/heads/Integ\nsecond line\n",
+    ] {
+        fs::write(w.common().join(guard::RECORD_FILE), bytes).unwrap();
+        let out = w.try_git(&repo, &["update-ref", "refs/heads/Integ", &b, &a]);
+        let message = w.refused(&out);
+        assert!(message.contains("`Integ`"), "{bytes:?}: {message}");
+        tree_clean(&w);
+    }
+    for bytes in ["Integ\n", "refs/heads/\n", "\n", "refs/tags/Integ\n"] {
+        fs::write(w.common().join(guard::RECORD_FILE), bytes).unwrap();
+        w.git(&repo, &["update-ref", "refs/heads/Integ", &b, &a]);
+        w.git(&repo, &["update-ref", "refs/heads/Integ", &a, &b]);
+    }
+}
+
+// ---- AC-18: a rename onto the integration branch loses nothing --------------------------------
+
+/// AC-18: `git branch -M <other> <integration branch>` deletes `<other>` in a transaction of its
+/// own before it touches the integration branch, so the guard refuses that delete when the git
+/// command it runs under names the integration branch (any spelling of case, with or without its
+/// full reference): `<other>` keeps its value and its reflog, the integration branch stays, and an
+/// ordinary delete of the same branch still passes.
+#[test]
+fn ac18_a_rename_onto_the_integration_branch_is_refused_before_the_source_is_deleted() {
+    let w = Repo::new(false);
+    w.install();
+    let repo = w.repo.clone();
+    let (a, b) = (w.a.clone(), w.b.clone());
+    for args in [
+        vec!["branch", "-M", "side", INTEG],
+        vec!["branch", "-M", "side", "INTEG"],
+        vec!["branch", "-M", "side", "integ", "--"],
+        vec!["branch", "-M", "side", INTEG, "--verbose"],
+        vec!["-C", ".", "branch", "-M", "side", INTEG],
+        vec!["-c", "alias.rn=branch -M", "rn", "side", INTEG],
+        vec!["branch", "--move", "--force", "side", INTEG],
+    ] {
+        w.git(&repo, &["branch", "-f", "side", &b]);
+        let before = w.git(&repo, &["reflog", "show", "side"]);
+        let out = w.try_git(&repo, &args);
+        let message = w.refused(&out);
+        assert!(
+            message.contains("rename"),
+            "{args:?} names no rename: {message}"
+        );
+        assert_eq!(w.rev("refs/heads/side"), Some(b.clone()), "{args:?}");
+        assert_eq!(
+            w.git(&repo, &["reflog", "show", "side"]),
+            before,
+            "{args:?}"
+        );
+        tree_clean(&w);
+        w.git(&repo, &["branch", "-D", "side"]);
+    }
+
+    // A worktree on the source branch is left alone.
+    w.git(&repo, &["branch", "-f", "side", &b]);
+    let wt = w.dir.path().join("side-wt");
+    w.git(
+        &repo,
+        &["worktree", "add", "-q", wt.to_str().unwrap(), "side"],
+    );
+    w.refused(&w.try_git(&wt, &["branch", "-M", "side", INTEG]));
+    assert_eq!(w.rev("refs/heads/side"), Some(b.clone()));
+    assert_eq!(w.git(&wt, &["rev-parse", "HEAD"]), b);
+    w.git(
+        &repo,
+        &["worktree", "remove", "--force", wt.to_str().unwrap()],
+    );
+
+    // The same deletes without the integration branch in the command pass.
+    w.git(&repo, &["branch", "-f", "side", &b]);
+    w.git(&repo, &["branch", "-D", "side"]);
+    w.git(&repo, &["branch", "side", &b]);
+    w.git(&repo, &["update-ref", "-d", "refs/heads/side"]);
+    w.git(&repo, &["branch", "side", &a]);
+    w.git(&repo, &["branch", "-M", "side", "other-name"]);
+    assert!(w.rev("refs/heads/other-name").is_some());
+    tree_clean(&w);
 }
 
 // ---- AC-10: the hook text and the aborted transaction ------------------------------------------
