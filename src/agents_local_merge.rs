@@ -32,10 +32,17 @@
 //! (outside MoAI's managed section and outside blocks an earlier merge wrote) goes into `CLAUDE.md`,
 //! the team file, between `moai:merged-agents` markers, with the same preview, receipt and revert.
 //! `AGENTS.md` is never written. A `CLAUDE.md` that already imports `AGENTS.md` is `unchanged`.
+//!
+//! The third kind, [`Kind::Import`], writes the one line `@AGENTS.md` into `CLAUDE.md` between
+//! `moai:merged-import` markers, so Claude Code reads `AGENTS.md` through it; the same preview,
+//! receipt, revert and idempotence apply. [`picks`] puts the three kinds and the generation writer
+//! together as the picks `move`, `import` and `leave` of `moai update`.
 
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::{fs, path::Path};
+
+pub mod picks;
 
 type Result<T> = std::result::Result<T, String>;
 
@@ -44,13 +51,25 @@ const TARGET: &str = "CLAUDE.local.md";
 /// guidance kind.
 const LEGACY_TARGET: &str = "AGENTS.md";
 const LOCAL: &str = "AGENTS.local.md";
-const BEGIN: &str = "<!-- moai:merged-local sha256=";
+/// The start of the block of the personal file's text; the 64 hex digits of the source's sha256
+/// and ` -->` follow.
+pub const BEGIN: &str = "<!-- moai:merged-local sha256=";
 const BEGIN_TAIL: &str = " -->";
-const END: &str = "<!-- /moai:merged-local -->";
+/// The end marker line of that block.
+pub const END: &str = "<!-- /moai:merged-local -->";
 const GUIDANCE_TARGET: &str = "CLAUDE.md";
-const GUIDANCE_BEGIN: &str = "<!-- moai:merged-agents sha256=";
-const GUIDANCE_END: &str = "<!-- /moai:merged-agents -->";
+/// The start of the block of the text a person wrote in `AGENTS.md`.
+pub const GUIDANCE_BEGIN: &str = "<!-- moai:merged-agents sha256=";
+/// The end marker line of that block.
+pub const GUIDANCE_END: &str = "<!-- /moai:merged-agents -->";
 const GUIDANCE_PREFIX: &str = "agents-md-migrate-";
+/// The start of the block that holds the one import line (`Kind::Import`).
+pub const IMPORT_BEGIN: &str = "<!-- moai:merged-import sha256=";
+/// The end marker line of that block.
+pub const IMPORT_END: &str = "<!-- /moai:merged-import -->";
+/// The line between the two markers: Claude Code reads `AGENTS.md` through it.
+pub const IMPORT_LINE: &str = "@AGENTS.md";
+const IMPORT_PREFIX: &str = "agents-import-";
 /// The start of this generation's managed-section markers (`agents.rs`); a source that holds it
 /// would be read as a second managed section.
 const MANAGED_MARKER: &str = "<!-- moai:managed";
@@ -65,14 +84,20 @@ pub const COMMIT_NOTICE: &str = "This text goes into CLAUDE.local.md, a personal
 const GUIDANCE_COMMIT_NOTICE: &str =
     "This text goes into CLAUDE.md, a team file that is committed \
      to the repository and read by everyone who works on it; AGENTS.md stays as it is.";
+/// The same line for the import kind.
+const IMPORT_COMMIT_NOTICE: &str = "This line goes into CLAUDE.md, a team file that is committed \
+     to the repository and read by everyone who works on it; Claude Code then reads AGENTS.md \
+     through it, and AGENTS.md stays as it is.";
 
-/// The two moves this engine makes. `Local`: the text of `AGENTS.local.md` goes into the personal
-/// file `CLAUDE.local.md`. `Guidance`: the text a person wrote in `AGENTS.md` goes into the team
-/// file `CLAUDE.md`.
+/// The three writes this engine makes. `Local`: the text of `AGENTS.local.md` goes into the
+/// personal file `CLAUDE.local.md`. `Guidance`: the text a person wrote in `AGENTS.md` goes into
+/// the team file `CLAUDE.md`. `Import`: the one line `@AGENTS.md` goes into `CLAUDE.md`, so Claude
+/// Code reads `AGENTS.md` through it.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Kind {
     Local,
     Guidance,
+    Import,
 }
 
 impl Kind {
@@ -80,7 +105,7 @@ impl Kind {
     fn target(self) -> &'static str {
         match self {
             Kind::Local => TARGET,
-            Kind::Guidance => GUIDANCE_TARGET,
+            Kind::Guidance | Kind::Import => GUIDANCE_TARGET,
         }
     }
 
@@ -88,7 +113,7 @@ impl Kind {
     fn source_name(self) -> &'static str {
         match self {
             Kind::Local => LOCAL,
-            Kind::Guidance => LEGACY_TARGET,
+            Kind::Guidance | Kind::Import => LEGACY_TARGET,
         }
     }
 
@@ -96,6 +121,7 @@ impl Kind {
         match self {
             Kind::Local => BEGIN,
             Kind::Guidance => GUIDANCE_BEGIN,
+            Kind::Import => IMPORT_BEGIN,
         }
     }
 
@@ -103,6 +129,7 @@ impl Kind {
         match self {
             Kind::Local => END,
             Kind::Guidance => GUIDANCE_END,
+            Kind::Import => IMPORT_END,
         }
     }
 
@@ -111,6 +138,7 @@ impl Kind {
         match self {
             Kind::Local => "merged-local",
             Kind::Guidance => "merged-agents",
+            Kind::Import => "merged-import",
         }
     }
 
@@ -118,6 +146,7 @@ impl Kind {
         match self {
             Kind::Local => RECEIPT_PREFIX,
             Kind::Guidance => GUIDANCE_PREFIX,
+            Kind::Import => IMPORT_PREFIX,
         }
     }
 
@@ -125,6 +154,7 @@ impl Kind {
         match self {
             Kind::Local => COMMIT_NOTICE,
             Kind::Guidance => GUIDANCE_COMMIT_NOTICE,
+            Kind::Import => IMPORT_COMMIT_NOTICE,
         }
     }
 }
@@ -458,7 +488,7 @@ fn decide_for(
     let Ok(agents) = std::str::from_utf8(agents.unwrap_or_default()) else {
         return Decision::of("blocked", format!("{target} is not UTF-8 text"));
     };
-    if kind == Kind::Guidance && imports_agents_md(agents) {
+    if matches!(kind, Kind::Guidance | Kind::Import) && imports_agents_md(agents) {
         return Decision::of(
             "unchanged",
             format!("{target} already reads {LEGACY_TARGET} through an @{LEGACY_TARGET} import"),
@@ -519,13 +549,17 @@ fn decide_for(
                     ),
                 );
             }
-            let from = kind.source_name();
+            let what = if kind == Kind::Import {
+                format!("the line {IMPORT_LINE}")
+            } else {
+                format!("the text of {}", kind.source_name())
+            };
             Decision {
                 action: "merge",
                 reason: if creates {
-                    format!("{target} does not exist; the text of {from} would create it")
+                    format!("{target} does not exist; {what} would create it")
                 } else {
-                    format!("the text of {from} is not in {target} yet")
+                    format!("{what} is not in {target} yet")
                 },
                 new_agents: Some(new_agents),
                 starts_at_line: Some(starts_at_line),
@@ -706,10 +740,27 @@ fn find_guidance(root: &Path) -> Result<Found> {
     }))
 }
 
+/// The import kind's source: `AGENTS.md` must be there, and what is written is the one import
+/// line, never the file's text. The file's bytes stay in the plan digest and in the receipt.
+fn find_import(root: &Path) -> Result<Found> {
+    Ok(match read_checked(root, LEGACY_TARGET) {
+        Err(reason) => Found::Blocked(reason),
+        Ok(None) => Found::Nothing(format!("no {LEGACY_TARGET} in this project to import")),
+        Ok(Some(bytes)) => Found::Source(Source {
+            kind: "in_place",
+            rel: LEGACY_TARGET.into(),
+            text: normalized(IMPORT_LINE).into_bytes(),
+            bytes,
+            notes: Vec::new(),
+        }),
+    })
+}
+
 fn find_source_for(kind: Kind, root: &Path) -> Result<Found> {
     match kind {
         Kind::Local => find_source(root),
         Kind::Guidance => find_guidance(root),
+        Kind::Import => find_import(root),
     }
 }
 
@@ -964,10 +1015,19 @@ fn plan_inner(kind: Kind, root: &Path) -> Result<Inner> {
         Err(e) => (None, Some(format!("{target}: {e}"))),
     };
     let found = find_source_for(kind, root)?;
-    let suspects = match &found {
-        Found::Source(s) => std::str::from_utf8(&s.bytes)
+    // The import kind copies none of `AGENTS.md`, so only the line it writes is scanned.
+    let scanned = |s: &Source| -> Vec<(usize, &'static str)> {
+        let bytes = if kind == Kind::Import {
+            &s.text
+        } else {
+            &s.bytes
+        };
+        std::str::from_utf8(bytes)
             .map(secret_suspects)
-            .unwrap_or_default(),
+            .unwrap_or_default()
+    };
+    let suspects = match &found {
+        Found::Source(s) => scanned(s),
         _ => Vec::new(),
     };
     let mut decision = match target_error {
@@ -1250,6 +1310,11 @@ fn write_private(path: &Path, bytes: &[u8]) -> Result<()> {
 }
 
 fn new_receipt_dir(kind: Kind, root: &Path) -> Result<(String, std::path::PathBuf)> {
+    new_receipt_dir_named(kind.receipt_prefix(), root)
+}
+
+/// A new receipt folder whose id starts with `prefix`.
+fn new_receipt_dir_named(prefix: &str, root: &Path) -> Result<(String, std::path::PathBuf)> {
     let state = crate::state_root::path(root, "");
     crate::claude::refuse_symlink_dir(&state)?;
     fs::create_dir_all(&state).map_err(|_| "receipt folder unavailable")?;
@@ -1259,7 +1324,7 @@ fn new_receipt_dir(kind: Kind, root: &Path) -> Result<(String, std::path::PathBu
         .map(|d| d.as_nanos())
         .unwrap_or(0);
     for n in 0..16 {
-        let id = format!("{}{nanos}-{n}", kind.receipt_prefix());
+        let id = format!("{prefix}{nanos}-{n}");
         let dir = receipts.join(&id);
         if create_private_dir(&dir).is_ok() {
             return Ok((id, dir));
@@ -1510,7 +1575,7 @@ pub fn revert_for(kind: Kind, project: &Path, receipt_id: &str, permission: &str
     let name: &str = match (kind, r.target_path.as_str()) {
         (Kind::Local, TARGET) => TARGET,
         (Kind::Local, LEGACY_TARGET) => LEGACY_TARGET,
-        (Kind::Guidance, GUIDANCE_TARGET) => GUIDANCE_TARGET,
+        (Kind::Guidance | Kind::Import, GUIDANCE_TARGET) => GUIDANCE_TARGET,
         _ => return Err("the receipt names a file this command never writes".into()),
     };
     let agents_path = crate::apply::target(&root, name)?;

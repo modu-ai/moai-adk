@@ -507,7 +507,7 @@
       }
     },
     "workflows/update.md": {
-      "sha256": "06dac0cdb7152efebec241b841af7a48303e9ca473291cb3b3e72088d4e00bc3",
+      "sha256": "05082021c8aa28ecb183a2301143a60874a310dfb482fcd208b1bd15d945fc39",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-update",

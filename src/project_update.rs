@@ -60,9 +60,11 @@ const INSTALL_REASON: &str = "profile, generation (AGENTS.md managed section and
 /// Why the merge step waits while the generation step has files to write: the merge reads and
 /// writes `AGENTS.md`, whose bytes that step's digest binds.
 pub const AFTER_INSTALL: &str = "re-run after the install phase";
-const MERGE_REASON: &str = "the text of AGENTS.local.md merges into AGENTS.md (#2936 R10); the \
-     user's earlier settings.json values merge back into the new one (#2936 R8); other \
-     backed-up instructions are a later slice (#2936 S1f)";
+const MERGE_REASON: &str = "AGENTS.md and AGENTS.local.md move into CLAUDE.md and \
+     CLAUDE.local.md, are imported or are left, as the user picks (agents-picks); the text of \
+     AGENTS.local.md alone merges into CLAUDE.local.md (#2936 R10); the user's earlier \
+     settings.json values merge back into the new one (#2936 R8); other backed-up instructions \
+     are a later slice (#2936 S1f)";
 
 /// Step states from least to most severe; a phase takes its worst step's state.
 /// `skip_in_use` (a file a running session reads, #2936 S2b) is reserved: this slice never
@@ -668,21 +670,48 @@ fn owned_entries(manifest: &Value) -> impl Iterator<Item = (&str, &str)> {
         .filter_map(|f| Some((f["section_id"].as_str()?, f["path"].as_str()?)))
 }
 
-fn generation_step(root: &Path, shown: &str, profile: &Profile) -> Result<Step> {
-    // Read without following a link on the way, like every other manifest read.
+/// The generation manifest, `Null` when there is none. Read without following a link on the way,
+/// like every other manifest read.
+fn read_generation_manifest(root: &Path) -> Result<Value> {
     let rel = format!("{}/manifests/generation.json", state_root::dir(root));
-    let manifest: Value = match crate::apply::read_opt(&crate::apply::target(root, &rel)?)? {
-        None => Value::Null,
-        Some(bytes) => serde_json::from_slice(&bytes)
-            .map_err(|_| "generation manifest unreadable; inspect before regenerating")?,
-    };
-    // Q1 A (#2936): until the manifest records the request fields of project agents and
-    // skills, a plan from the stored state would drop them (a project skill plans `remove`).
-    // The user decides instead; nothing is planned.
-    let unrebuildable: Vec<&str> = owned_entries(&manifest)
+    Ok(
+        match crate::apply::read_opt(&crate::apply::target(root, &rel)?)? {
+            None => Value::Null,
+            Some(bytes) => serde_json::from_slice(&bytes)
+                .map_err(|_| "generation manifest unreadable; inspect before regenerating")?,
+        },
+    )
+}
+
+/// The manifest's owned files whose request the manifest does not record (Q1 A, #2936): until it
+/// records the request fields of project agents and skills, a plan from the stored state would
+/// drop them (a project skill plans `remove`).
+fn unrebuildable_paths(manifest: &Value) -> Vec<&str> {
+    owned_entries(manifest)
         .filter(|(section, _)| UNREBUILDABLE.iter().any(|k| section.starts_with(k)))
         .map(|(_, path)| path)
-        .collect();
+        .collect()
+}
+
+/// The generation request the preview plans with, rebuilt from the profile and the manifest, for
+/// the picks of `agents-merge-*` (`agents_local_merge::picks`). `Err` says why no request exists:
+/// the generation step of the same preview reports the same cause.
+pub(crate) fn rebuilt_request(root: &Path) -> Result<GenerationRequest> {
+    let (profile, _) = crate::read_profile(root)?;
+    if profile.is_placeholder() {
+        return Err("the project profile is still the placeholder; run /moai project".into());
+    }
+    let manifest = read_generation_manifest(root)?;
+    if !unrebuildable_paths(&manifest).is_empty() {
+        return Err("the generation manifest owns project agent or skill files whose request is not recorded; regenerate them through /moai project".into());
+    }
+    generation_request(root, &profile, &manifest)
+}
+
+fn generation_step(root: &Path, shown: &str, profile: &Profile) -> Result<Step> {
+    let manifest = read_generation_manifest(root)?;
+    // The user decides instead; nothing is planned.
+    let unrebuildable = unrebuildable_paths(&manifest);
     if !unrebuildable.is_empty() {
         return Ok(Step {
             name: "generation",
@@ -1346,22 +1375,45 @@ fn backup_pending(backup: &[Step]) -> bool {
 fn merge_steps(root: &Path, shown: &str, backup: &[Step], install: &[Step]) -> Vec<Step> {
     const NAME: &str = "agents-local-merge";
     const SETTINGS: &str = "claude-settings-merge";
+    // A project without `AGENTS.md` and `AGENTS.local.md` has no pick to wait for.
+    let holds_agents = fs::symlink_metadata(root.join("AGENTS.md")).is_ok()
+        || fs::symlink_metadata(root.join("AGENTS.local.md")).is_ok();
     if backup_pending(backup) {
-        return vec![
-            Step::waiting(NAME, "blocked", AFTER_BACKUP),
-            Step::waiting(SETTINGS, "blocked", AFTER_BACKUP),
-        ];
+        let mut steps = Vec::new();
+        if holds_agents {
+            steps.push(Step::waiting(PICKS, "blocked", AFTER_BACKUP));
+        } else {
+            steps.push(picks_none());
+        }
+        steps.push(Step::waiting(NAME, "blocked", AFTER_BACKUP));
+        steps.push(Step::waiting(SETTINGS, "blocked", AFTER_BACKUP));
+        return steps;
     }
     let pending = |step: &str| {
         install
             .iter()
             .any(|s| s.name == step && matches!(s.state, "ready" | "needs_decision"))
     };
+    let state_of = |step: &str| install.iter().find(|s| s.name == step).map(|s| s.state);
+    // The pick plans the generation writer, whose digest binds the profile and every file the
+    // generation step is still to write: with either to run, its digest would be stale.
+    let picks = if !holds_agents {
+        picks_none()
+    } else if state_of("generation") == Some("ready") {
+        Step::waiting(PICKS, "blocked", AFTER_INSTALL)
+    } else if state_of("profile") == Some("ready") {
+        Step::waiting(PICKS, "blocked", AFTER_PROFILE)
+    } else {
+        or_blocked(PICKS, agents_picks_step(root, shown))
+    };
     let agents = if install
         .iter()
         .any(|s| s.name == "generation" && s.state == "ready")
     {
         Step::waiting(NAME, "blocked", AFTER_INSTALL)
+    } else if matches!(picks.state, "needs_decision" | "conflict") {
+        // The text of `AGENTS.local.md` goes into `CLAUDE.local.md` through the pick `move`.
+        Step::waiting(NAME, "skip", AFTER_PICKS)
     } else {
         or_blocked(NAME, agents_local_merge_step(root, shown))
     };
@@ -1371,7 +1423,116 @@ fn merge_steps(root: &Path, shown: &str, backup: &[Step], install: &[Step]) -> V
         SETTINGS,
         claude_settings_merge_step(root, shown, pending("claude-settings")),
     );
-    vec![agents, settings]
+    vec![picks, agents, settings]
+}
+
+/// The step name of the picks for a project that holds `AGENTS.md` or `AGENTS.local.md`.
+const PICKS: &str = "agents-picks";
+/// Why the personal-file merge skips while a pick is pending.
+const AFTER_PICKS: &str =
+    "the text of AGENTS.local.md goes into CLAUDE.local.md through the pick `move` of the agents-picks step";
+
+fn picks_none() -> Step {
+    Step::waiting(
+        PICKS,
+        "skip",
+        "no AGENTS.md and no AGENTS.local.md in this project",
+    )
+}
+
+/// The picks `move`, `import` and `leave` for a project that holds `AGENTS.md` or
+/// `AGENTS.local.md` (SPEC-20261122-claude-md-project-picks). Each choice prints the one command
+/// that applies it (`agents-merge-apply … --pick <id>`) and its own plan digest; nothing is
+/// written here. A pick that would be refused (a link, a file that is not text, a conflict) is not
+/// printed as a command and is named under `blocked`.
+///
+/// - `needs_decision`: the user picks one of the choices.
+/// - `conflict`: `move` and `import` are both refused; only `leave` remains.
+/// - `unchanged`: `CLAUDE.md` already imports `AGENTS.md` or holds its text; nothing is offered.
+/// - `skip`: nothing to offer, or no generation request can be built (the generation step says
+///   why).
+fn agents_picks_step(root: &Path, shown: &str) -> Result<Step> {
+    let offer = agents_local_merge::picks::offer(root, || rebuilt_request(root))?;
+    let reason = offer["reason"].as_str().unwrap_or_default().to_string();
+    match offer["offer"].as_str() {
+        Some("picks") => {}
+        Some("settled") => {
+            return Ok(Step {
+                name: PICKS,
+                state: "unchanged",
+                reason,
+                preview: json!({"offer": "settled"}),
+                plan_digest: None,
+                apply: None,
+            })
+        }
+        other => {
+            return Ok(Step {
+                name: PICKS,
+                state: "skip",
+                reason: if other == Some("unavailable") {
+                    format!("no pick can be planned: {reason}")
+                } else {
+                    reason
+                },
+                preview: json!({"offer": other}),
+                plan_digest: None,
+                apply: None,
+            })
+        }
+    }
+    let mut choices = Vec::new();
+    let mut blocked = Vec::new();
+    for c in offer["choices"].as_array().into_iter().flatten() {
+        let (Some(id), Some(digest)) = (c["id"].as_str(), c["plan_digest"].as_str()) else {
+            continue;
+        };
+        if c["state"] != "ready" {
+            blocked.push(json!({"id": id, "blocked": c["blocked"]}));
+            continue;
+        }
+        let mut words = argv("agents-merge-apply", shown, digest);
+        let at = words.len() - 2;
+        words.splice(at..at, ["--pick".to_string(), id.to_string()]);
+        choices.push(json!({
+            "id": id,
+            "recommended": c["recommended"],
+            "effect": c["effect"],
+            "plan_digest": digest,
+            "writes": c["writes"],
+            "parts": c["parts"],
+            "warnings": c["warnings"],
+            "apply": {"argv": words, "stdin": Value::Null},
+        }));
+    }
+    let refused = ["move", "import"]
+        .iter()
+        .all(|id| blocked.iter().any(|b| b["id"] == *id));
+    let (state, reason) = if refused {
+        (
+            "conflict",
+            "move and import are refused for the files named under blocked; only leave remains",
+        )
+    } else {
+        (
+            "needs_decision",
+            "the project holds AGENTS.md or AGENTS.local.md; the user picks move (recommended), \
+             import or leave",
+        )
+    };
+    Ok(Step {
+        name: PICKS,
+        state,
+        reason: reason.into(),
+        preview: json!({
+            "offer": "picks",
+            "warnings": offer["warnings"],
+            "blocked": blocked,
+            "choices": choices,
+        }),
+        plan_digest: None,
+        apply: None,
+    })
 }
 
 /// The settings merge (#2936 R8): what the user had set in the Go generation's

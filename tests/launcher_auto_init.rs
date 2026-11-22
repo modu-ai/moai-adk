@@ -257,6 +257,50 @@ fn a_repository_without_settings_gets_the_settings_only_and_keeps_its_agents_md(
     assert!(!p.path().join("CLAUDE.md").exists());
 }
 
+/// A first launch leaves the instruction file a project already holds as it is and says so: a
+/// user `CLAUDE.md` gets no managed block, and a project that only holds `AGENTS.md` gets no
+/// `CLAUDE.md` (the pick of `moai update` writes one).
+#[test]
+fn a_first_launch_leaves_an_existing_instruction_file_byte_identical_and_says_so() {
+    let cases = [
+        ("CLAUDE.md", "# My rules\n\nAlways run the linter.\n", None),
+        (
+            "AGENTS.md",
+            "# Team rules\n\nRun tests first.\n",
+            Some("CLAUDE.md"),
+        ),
+    ];
+    for (name, body, absent) in cases {
+        let f = fixture();
+        let p = tempfile::tempdir().unwrap();
+        git_init(p.path());
+        fs::write(p.path().join(name), body).unwrap();
+        let out = run_in(&f, p.path(), &["cc", "-a"]);
+        assert_eq!(json(&out)["name"], "agent-1", "{name}");
+        assert_eq!(init_lines(&out), 1, "{name}: {}", text(&out));
+        let said = format!("{name} present, unchanged");
+        assert!(
+            String::from_utf8_lossy(&out.stderr).contains(&said),
+            "{name}: {}",
+            text(&out)
+        );
+        assert_eq!(
+            fs::read(p.path().join(name)).unwrap(),
+            body.as_bytes(),
+            "{name} changed"
+        );
+        if let Some(other) = absent {
+            assert!(
+                !p.path().join(other).exists(),
+                "{name}: {other} was written"
+            );
+        }
+        // The settings are the only thing the first launch wrote.
+        assert!(p.path().join(".moai/project.yaml").is_file(), "{name}");
+        assert!(!p.path().join(".moai/workflows").exists(), "{name}");
+    }
+}
+
 #[test]
 fn a_project_that_has_settings_is_left_exactly_as_it_was() {
     let f = fixture();

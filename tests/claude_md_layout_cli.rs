@@ -265,6 +265,14 @@ fn blocks_wait_for_a_pick_when_agents_md_exists() {
     for word in ["AGENTS.md", "pick", "import", "move"] {
         assert!(w.contains(word), "{word:?} not in {w}");
     }
+    // The picks are named in the order the picks step offers them, `move` first and recommended.
+    let (at_move, at_import, at_leave) = (
+        w.find("`move`").expect("move"),
+        w.find("`import`").expect("import"),
+        w.find("`leave`").expect("leave"),
+    );
+    assert!(at_move < at_import && at_import < at_leave, "{w}");
+    assert!(w[at_move..at_import].contains("recommended"), "{w}");
     fx.apply_ok("none", &[]);
     assert!(!fx.exists("CLAUDE.md"), "no CLAUDE file without a pick");
     assert_eq!(
@@ -274,17 +282,38 @@ fn blocks_wait_for_a_pick_when_agents_md_exists() {
     );
 }
 
+/// The writer alone never carries `import` or `move` out: a `CLAUDE.md` holding only the managed
+/// block would stop Claude Code reading the rules in `AGENTS.md`. The project picks step
+/// (`agents-merge-plan --pick`) writes the block together with the import line or the copied text.
 #[test]
-fn blocks_follow_the_pick_import_or_move() {
+fn blocks_are_not_written_by_the_writer_for_the_pick_import_or_move() {
     for pick in ["import", "move"] {
         let fx = Fx::new(None);
-        fs::write(fx.path("AGENTS.md"), "# Team rules\n").unwrap();
+        let rules = "# Team rules\n\nAlways run the linter.\n";
+        fs::write(fx.path("AGENTS.md"), rules).unwrap();
         let plan = fx.plan("none", &[pick]);
-        assert_eq!(action(&plan, "CLAUDE.md"), "create", "{pick}: {plan}");
+        assert_eq!(action(&plan, "CLAUDE.md"), "absent", "{pick}: {plan}");
+        let w = warnings(&plan);
+        for word in ["AGENTS.md", "agents-merge", "--pick", pick] {
+            assert!(w.contains(word), "{pick}: {word:?} not in {w}");
+        }
         fx.apply_ok("none", &[pick]);
-        assert!(fx.read("CLAUDE.md").contains(BEGIN), "{pick}");
-        assert_eq!(fx.read("AGENTS.md"), "# Team rules\n", "{pick}");
+        assert!(!fx.exists("CLAUDE.md"), "{pick}: a CLAUDE.md was written");
+        assert_eq!(fx.read("AGENTS.md"), rules, "{pick}: AGENTS.md changed");
     }
+}
+
+/// Settled projects keep their block refreshed whatever the request picks: the file already holds
+/// the block, so it already says how Claude Code reads `AGENTS.md`.
+#[test]
+fn blocks_are_refreshed_for_a_settled_project_even_with_the_pick_import() {
+    let fx = Fx::new(None);
+    fx.apply_ok("none", &[]);
+    fs::write(fx.path("AGENTS.md"), "# Team rules\n").unwrap();
+    assert_eq!(
+        action(&fx.plan("none", &["import"]), "CLAUDE.md"),
+        "unchanged"
+    );
 }
 
 #[test]
@@ -408,6 +437,24 @@ fn local_file_is_listed_for_git_to_ignore_under_its_new_name() {
     let ignore = fx.read(".gitignore");
     assert!(ignore.lines().any(|l| l == "CLAUDE.local.md"), "{ignore}");
     assert!(!ignore.lines().any(|l| l == "AGENTS.local.md"), "{ignore}");
+}
+
+/// A line `!CLAUDE.local.md` in the user's own `.gitignore` text re-includes the file, so the
+/// managed block must not list it again below that line (git lets the later rule win).
+#[test]
+fn local_file_is_not_listed_below_a_user_negation_of_its_name() {
+    for negation in ["!CLAUDE.local.md", "!/CLAUDE.local.md"] {
+        let fx = Fx::new(None);
+        let mine = format!("target/\n{negation}\n");
+        fs::write(fx.path(".gitignore"), &mine).unwrap();
+        fx.apply_ok("ignored", &["personal-file"]);
+        let ignore = fx.read(".gitignore");
+        assert!(ignore.starts_with(&mine), "{negation}: {ignore}");
+        assert!(
+            !ignore.lines().any(|l| l == "CLAUDE.local.md"),
+            "{negation}: the block lists the file the user re-included: {ignore}"
+        );
+    }
 }
 
 #[test]

@@ -934,7 +934,8 @@ fn local_file_from_manifest() {
             paths.iter().any(|p| p == ".gitignore"),
             "{choice}: {paths:?}"
         );
-        // The block lists the personal file only for the `ignored` choice (condition 4).
+        // The block lists the personal file whenever the choice is not `none`, `tracked` too: a
+        // personal file is never shared, so both `ignored` and `tracked` keep it out of git.
         let ignore = fs::read_to_string(fx.root.join(".gitignore")).unwrap();
         assert_eq!(
             ignore.lines().any(|l| l == "CLAUDE.local.md"),
@@ -1234,12 +1235,36 @@ fn request_defaults() {
     );
 }
 
+impl Fx {
+    /// Makes the settled project's `CLAUDE.md` import `AGENTS.md`, below its managed block. A
+    /// project like that is offered no pick (SPEC-20261122-claude-md-project-picks), so the
+    /// personal-file merge step stays the one that offers an `AGENTS.local.md`.
+    fn import_agents_md(&self) {
+        let path = self.root.join("CLAUDE.md");
+        let text = fs::read_to_string(&path).unwrap();
+        fs::write(&path, format!("{text}\n@AGENTS.md\n")).unwrap();
+    }
+}
+
 /// #2936 R10: a settled project with a personal `AGENTS.local.md` gets the merge as a decision
-/// that prints the apply command; applying it settles the preview again.
+/// that prints the apply command; applying it settles the preview again. A project whose
+/// `CLAUDE.md` does not import `AGENTS.md` is offered the picks instead, and the merge step skips
+/// while they are pending.
 #[test]
 fn the_merge_step_offers_the_personal_file_and_settles_after_the_apply() {
     let fx = Fx::new();
     fx.settled();
+    let pending = fx.root.join("AGENTS.local.md");
+    fs::write(&pending, "# My notes\n\nReply in Korean.\n").unwrap();
+    let plan = fx.plan();
+    assert_eq!(
+        step(&plan, "agents-picks")["state"],
+        "needs_decision",
+        "{plan}"
+    );
+    assert_eq!(step(&plan, "agents-local-merge")["state"], "skip", "{plan}");
+    fs::remove_file(&pending).unwrap();
+    fx.import_agents_md();
     let settled = fx.plan();
     assert_eq!(
         step(&settled, "agents-local-merge")["state"],
@@ -1280,54 +1305,70 @@ fn the_merge_step_offers_the_personal_file_and_settles_after_the_apply() {
     assert_eq!(after["all_unchanged"], json!(true), "{after}");
 }
 
-/// The audit of the personal-file move: the preview says in plain words that Claude Code stops
-/// reading `AGENTS.md`, and the apply writes nothing until the confirmation token comes with it.
+/// The audit of the personal-file move: a first `CLAUDE.local.md` over an `AGENTS.md` would hide
+/// that file from Claude Code, so the merge on its own warns in plain words and writes nothing
+/// until the confirmation token comes with it. The update preview offers the picks first for such
+/// a project: they write `CLAUDE.md` before the personal file, so their preview carries no such
+/// warning, and the merge step skips while they are pending.
 #[test]
 fn the_merge_preview_warns_and_the_apply_waits_for_the_confirmation() {
     let fx = Fx::new();
-    fx.settled();
-    // Generation writes CLAUDE.md, so the warning belongs to a project whose CLAUDE.md is gone
-    // and that holds an AGENTS.md of its own: the first CLAUDE file would hide it.
-    fs::remove_file(fx.root.join("CLAUDE.md")).unwrap();
+    // The project holds an AGENTS.md of its own and no CLAUDE file, so generation writes none.
     fx.write("AGENTS.md", "# rules\n");
     fx.write("AGENTS.local.md", "# My notes\n\nReply in Korean.\n");
+    fx.with_profile(false);
+    for s in steps(&fx.plan())
+        .into_iter()
+        .filter(|s| s["state"] == "ready")
+    {
+        assert_eq!(fx.apply_step(s)["ok"], json!(true), "{s}");
+    }
+    assert!(!fx.root.join("CLAUDE.md").exists());
     let plan = fx.plan();
+    let picks = step(&plan, "agents-picks");
+    assert_eq!(picks["state"], "needs_decision", "{picks}");
+    assert!(
+        !picks.to_string().contains("claude-md-and-agents-md"),
+        "{picks}"
+    );
     let merge = step(&plan, "agents-local-merge");
-    assert_eq!(merge["state"], "needs_decision", "{merge}");
-    let warnings = merge["preview"]["warnings"].to_string();
+    assert_eq!(merge["state"], "skip", "{merge}");
+    assert_eq!(merge["apply"], Value::Null, "{merge}");
+
+    // The merge on its own: the plan warns and carries the token that answers the warning.
+    let own = fx.call(&["agents-merge-plan", fx.p()], b"");
+    let warnings = own["warnings"].to_string();
     assert!(
         warnings.contains("AGENTS.md") && warnings.contains("claude-md-and-agents-md"),
-        "the warning names the file and the setting that keeps both read: {merge}"
+        "the warning names the file and the setting that keeps both read: {own}"
     );
-    assert_eq!(
-        merge["preview"]["needs_confirmation"],
-        json!(true),
-        "{merge}"
-    );
-    assert!(merge["preview"]["confirm_token"].is_string(), "{merge}");
+    assert_eq!(own["needs_confirmation"], json!(true), "{own}");
+    let token = own["confirm_token"].as_str().expect("a token").to_string();
+    let digest = own["plan_digest"].as_str().unwrap().to_string();
 
-    // The printed command without the token and its flag: refused, the project is unchanged.
-    let argv: Vec<String> = merge["apply"]["argv"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .map(|w| w.as_str().unwrap().to_string())
-        .collect();
-    let at = argv.iter().position(|w| w == "--confirm-warnings").unwrap();
-    let without: Vec<&str> = argv[1..]
-        .iter()
-        .enumerate()
-        .filter(|(i, _)| *i + 1 != at && *i + 1 != at + 1)
-        .map(|(_, w)| if w == PLACEHOLDER { REF } else { w.as_str() })
-        .collect();
+    // Without the token: refused, the project is unchanged.
+    let command = |token: Option<&str>| {
+        let mut args = vec![
+            "agents-merge-apply",
+            fx.p(),
+            "--plan-digest",
+            digest.as_str(),
+            "--permission-reference",
+            REF,
+        ];
+        if let Some(token) = token {
+            args.extend(["--confirm-warnings", token]);
+        }
+        fx.run(&args, b"")
+    };
     let before = fx.tree();
-    let refused = fx.run(&without, b"");
+    let refused = command(None);
     assert_eq!(refused["ok"], json!(false), "{refused}");
     assert_eq!(before, fx.tree(), "a refused apply wrote something");
     assert!(!fx.root.join("CLAUDE.local.md").exists());
 
     // With the token the merge is applied.
-    assert_eq!(fx.apply_step(merge)["ok"], json!(true), "{merge}");
+    assert_eq!(command(Some(&token))["ok"], json!(true));
     assert!(fx.root.join("CLAUDE.local.md").exists());
 }
 
@@ -1344,6 +1385,7 @@ fn the_merge_step_adds_the_ignore_line_in_a_git_project() {
         .status()
         .unwrap();
     assert!(init.success());
+    fx.import_agents_md();
     fx.write("AGENTS.local.md", "# My notes\n\nReply in Korean.\n");
     let plan = fx.plan();
     let merge = step(&plan, "agents-local-merge");

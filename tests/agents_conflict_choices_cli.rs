@@ -324,8 +324,7 @@ fn skip_records_no_baseline_so_the_plain_plan_conflicts_again() {
 // ---- the earlier claude-import pick is gone from the writer ---------------------------------
 
 /// `CLAUDE.md` is moai's file now, so it shadows nothing: the plan carries no `claude_shadow`,
-/// and the earlier pick `claude-import` is refused like any unknown id. Only the revert of an old
-/// receipt still reads its rows (tests/agents_migrate_cli.rs).
+/// and the earlier pick `claude-import` is refused like any unknown id.
 #[test]
 fn claude_import_is_not_a_pick_and_no_shadow_is_reported() {
     let root = applied_project();
@@ -340,4 +339,65 @@ fn claude_import_is_not_a_pick_and_no_shadow_is_reported() {
         fs::read_to_string(root.path().join("CLAUDE.md")).unwrap(),
         "# mine\n"
     );
+}
+
+/// What `apply-recover` does with a receipt the earlier pick `claude-import` left: a receipt
+/// records paths and digests, never a pick id, so its `CLAUDE.md` row is read like any other row.
+/// The file goes back when it still holds the bytes the apply wrote, and is skipped, named, when
+/// it changed since. The receipt of the removed pick is neither refused by name nor ignored.
+#[test]
+fn an_old_claude_import_receipt_reverts_like_any_other_row() {
+    for edited in [false, true] {
+        let root = TempDir::new().unwrap();
+        let before = "# mine\n";
+        let written = "# mine\n@AGENTS.md\n";
+        let current = if edited {
+            "# mine\n@AGENTS.md\nmore\n"
+        } else {
+            written
+        };
+        fs::write(root.path().join("CLAUDE.md"), current).unwrap();
+        let store = moai_cli::state_root::path(root.path(), "receipts");
+        let id = "agents-apply-0123456789abcdef";
+        fs::create_dir_all(store.join(format!("{id}.before"))).unwrap();
+        fs::write(store.join(format!("{id}.before/CLAUDE.md")), before).unwrap();
+        let receipt = json!({
+            "schema_version": 1, "request_id": id, "operation": "agents.apply",
+            "clone_id": null, "workspace_id": null, "status": "complete",
+            "entries": [{
+                "path": "CLAUDE.md", "decision": "append",
+                "before_sha256": moai_cli::digest(before.as_bytes()),
+                "after_sha256": moai_cli::digest(written.as_bytes()),
+                "published": true, "error": null,
+            }],
+        });
+        fs::write(store.join(format!("{id}.json")), receipt.to_string()).unwrap();
+
+        let out = cli(
+            &[
+                "apply-recover",
+                root.path().to_str().unwrap(),
+                "--receipt",
+                id,
+                "--permission-reference",
+                "fixture-approved",
+            ],
+            &json!({}),
+        );
+        let body: Value = serde_json::from_slice(&out.stdout).unwrap();
+        assert_eq!(body["ok"], json!(true), "{body}");
+        let text = fs::read_to_string(root.path().join("CLAUDE.md")).unwrap();
+        if edited {
+            assert_eq!(text, current, "a changed file is left as it is");
+            assert_eq!(body["result"]["state"], "nothing_to_revert", "{body}");
+            assert_eq!(
+                body["result"]["skipped"],
+                json!([{"path": "CLAUDE.md", "reason": "user_changed_since_apply"}]),
+                "{body}"
+            );
+        } else {
+            assert_eq!(text, before, "{body}");
+            assert_eq!(body["result"]["reverted"], json!(["CLAUDE.md"]), "{body}");
+        }
+    }
 }
