@@ -53,6 +53,23 @@ pub fn kind_and_spec(
     .optional()
 }
 
+/// The SPEC id each card that is not `done` names now, as (card number, SPEC id) in card order;
+/// a card that names none is left out.
+pub fn linked_specs(conn: &Connection) -> rusqlite::Result<Vec<(i64, String)>> {
+    let mut stmt = conn.prepare(&format!(
+        "SELECT card_id, {LINKED_COLUMN} FROM card WHERE state <> 'done' ORDER BY card_id"
+    ))?;
+    let rows = stmt.query_map([], |r| {
+        Ok((r.get::<_, i64>(0)?, r.get::<_, Option<String>>(1)?))
+    })?;
+    let mut out = Vec::new();
+    for row in rows {
+        let (card_id, spec) = row?;
+        out.extend(spec.map(|s| (card_id, s)));
+    }
+    Ok(out)
+}
+
 /// The cards that name `spec_id` now, by number: name, title, kind and state.
 pub fn cards_of(conn: &Connection, spec_id: &str) -> rusqlite::Result<Vec<Value>> {
     let mut stmt = conn.prepare(&format!(
@@ -78,20 +95,58 @@ pub fn done_refusal(project: &Path, card: &str, spec: Option<&str>) -> Option<St
     let id = spec?;
     match spec_doc::find(project, id) {
         Err(e) => Some(format!("{card}: its SPEC {id} cannot be read: {e}")),
-        Ok(doc) if doc.errors() > 0 => Some(format!(
-            "{card}: its SPEC {id} has {} error(s); `moai spec check {id}` lists them",
-            doc.errors()
+        Ok(doc) => judge(card, id, &doc),
+    }
+}
+
+/// [`done_refusal`] for a card whose landing git proved: the SPEC is read from the integration
+/// branch tip, not from the working tree, which a checkout that was not moved after the
+/// fast-forward leaves stale. A SPEC the tip does not hold is refused.
+pub fn done_refusal_at_tip(
+    project: &Path,
+    card: &str,
+    spec: Option<&str>,
+    tip: &str,
+) -> Option<String> {
+    let id = spec?;
+    if spec_doc::id_form(id).is_none() {
+        return Some(format!("{card}: its SPEC {id} is not a SPEC id"));
+    }
+    let path = format!("{}/{id}/spec.md", spec_doc::SPECS_DIR);
+    match super::landed::show_at(project, tip, &path) {
+        Err(e) => Some(format!(
+            "{card}: its SPEC {id} cannot be read from the tip: {e}"
         )),
-        Ok(doc) => {
-            let open = spec_doc::unverified(&doc);
-            (!open.is_empty()).then(|| {
-                format!(
-                    "{card}: its SPEC {id} has no `verify:` command or `manual:` check for {}",
-                    open.join(", ")
-                )
-            })
+        Ok(None) => Some(format!(
+            "{card}: its SPEC {id} is not in the integration branch tip {tip} ({path} is absent \
+             there)"
+        )),
+        Ok(Some(text)) => {
+            let opts = spec_doc::Options {
+                folder: Some(id.to_string()),
+                closure: false,
+            };
+            judge(card, id, &spec_doc::parse(&text, &opts))
         }
     }
+}
+
+/// What `card done` asks of a SPEC that was read: no error finding and a check for every
+/// acceptance criterion.
+fn judge(card: &str, id: &str, doc: &spec_doc::SpecDoc) -> Option<String> {
+    if doc.errors() > 0 {
+        return Some(format!(
+            "{card}: its SPEC {id} has {} error(s); `moai spec check {id}` lists them",
+            doc.errors()
+        ));
+    }
+    let open = spec_doc::unverified(doc);
+    (!open.is_empty()).then(|| {
+        format!(
+            "{card}: its SPEC {id} has no `verify:` command or `manual:` check for {}",
+            open.join(", ")
+        )
+    })
 }
 
 /// What `next` and `take` say about the SPEC of card `card` (`C-n`) of `kind`: the SPEC's state

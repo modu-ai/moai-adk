@@ -694,7 +694,7 @@ enum Command {
         /// Branch prefix (HOLD: no default; the user decides it).
         #[arg(long)]
         branch_prefix: String,
-        /// Worktree path; default `<HOME>/.moai/worktrees/<project>-<issue>-<logical_key>` (#2811).
+        /// Worktree path; default `<project>/.claude/worktrees/<project>-<issue>-<logical_key>`.
         /// Refused inside a Cargo build folder (#2930 R-3).
         #[arg(long)]
         path: Option<PathBuf>,
@@ -937,6 +937,11 @@ enum Command {
         /// `moai.before-<UTC>`. Without --confirm the rest stays a preview.
         #[arg(long, value_name = "TOKEN")]
         confirm_switch: Option<String>,
+        /// The preview's `git_hooks.confirm_token` (SPEC-20261121-go-path-removal): retire the
+        /// Go-generation git hooks of the project and install the Rust hooks. Without --confirm
+        /// the rest stays a preview.
+        #[arg(long, value_name = "TOKEN")]
+        confirm_git_hooks: Option<String>,
         /// Put back the old name-switch script saved as `moai.before-<STAMP>` by an earlier
         /// --confirm-switch; runs alone (not combinable with a --confirm flag), nothing else changes.
         #[arg(long, value_name = "STAMP")]
@@ -2087,6 +2092,7 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             confirm_cleanup,
             confirm_home,
             confirm_switch,
+            confirm_git_hooks,
             revert_switch,
             allow_older,
             json: _,
@@ -2105,6 +2111,7 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 confirm_cleanup.as_deref(),
                 confirm_home.as_deref(),
                 confirm_switch.as_deref(),
+                confirm_git_hooks.as_deref(),
                 revert_switch.as_deref(),
                 allow_older,
                 |summary, preview| {
@@ -3919,6 +3926,15 @@ mod help_rules {
         (!actions.is_empty() && !reads_stdin(&rest.join("\n"))).then_some(actions)
     }
 
+    /// Actions that git or another program runs and nobody types: they read standard input but
+    /// have no help example, because the example slots of a command are for what people type.
+    /// `(command word, action, why)`; the stdin rule still checks every example that exists.
+    const MACHINE_RUN: [(&str, &str, &str); 1] = [(
+        "card",
+        "guard",
+        "git's reference-transaction hook runs it with the transaction on standard input",
+    )];
+
     /// An operation decided per action, and its actions that read standard input.
     type ActionReads = std::collections::BTreeMap<String, BTreeSet<String>>;
 
@@ -4014,8 +4030,18 @@ mod help_rules {
         );
         // An action that reads standard input has an example that shows it, so the ` < file`
         // form is on the help page of its command.
+        // The list holds only actions that really read standard input, each with its reason.
+        for (word, action, why) in MACHINE_RUN {
+            assert!(
+                per_action.get(word).is_some_and(|a| a.contains(action)) && !why.is_empty(),
+                "`{word} {action}` is listed as machine-run but does not read standard input"
+            );
+        }
         for (word, actions) in &per_action {
             for action in actions {
+                if MACHINE_RUN.iter().any(|(w, a, _)| w == word && a == action) {
+                    continue;
+                }
                 assert!(
                     shown.contains(&(word.clone(), action.clone())),
                     "`{word} {action}` reads standard input and has no example in help::EXAMPLES"
@@ -4024,15 +4050,18 @@ mod help_rules {
         }
     }
 
-    /// `card` is decided per action: `note` reads standard input, the other actions do not.
+    /// `card` is decided per action: `note` and `guard` (the hook's transaction) read standard
+    /// input, the other actions do not.
     #[test]
-    fn card_reads_stdin_for_note_only() {
+    fn card_reads_stdin_for_note_and_guard_only() {
         let (reads, per_action) = commands_reading_stdin();
         assert!(!reads.contains("card"), "card is decided per action");
-        let note: BTreeSet<String> = ["note".to_string()].into();
-        assert_eq!(per_action.get("card"), Some(&note));
+        let readers: BTreeSet<String> = ["guard".to_string(), "note".to_string()].into();
+        assert_eq!(per_action.get("card"), Some(&readers));
         for (example, wants) in [
             ("card note C-1 --kind report --project . < note.md", true),
+            ("card guard prepared < transaction.txt", true),
+            ("card guard committed", true),
             ("card note C-1 --kind report", true),
             ("card take C-1 --project .", false),
             ("card add --title t", false),

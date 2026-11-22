@@ -8,7 +8,7 @@ use std::path::PathBuf;
 /// create, update, unchanged, preserved (your edit), conflict or remove_blocked. Writes nothing.
 #[derive(clap::Args)]
 pub struct Args {
-    /// User home root whose `.claude/agents` and `.codex/agents` are inspected.
+    /// User home root whose `.claude/agents` is inspected.
     home: PathBuf,
     /// Skill package folder whose `references/` the agents' `reads` lists name.
     package: PathBuf,

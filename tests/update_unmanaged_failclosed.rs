@@ -137,8 +137,9 @@ fn tree(root: &Path) -> String {
     tree_digest(root, &[]).unwrap()
 }
 
-/// AC-1 + REQ-2 (#2268): the agent-9 repro — a non-RC1 SKILL.md already sits in both
-/// projection roots. The plan blocks BOTH hosts (fail-closed): the reason names the
+/// AC-1 + REQ-2 (#2268): the agent-9 repro — a non-RC1 SKILL.md already sits in the Claude
+/// projection root and in the shared agents folder. The plan blocks the Claude host
+/// (fail-closed) and has no row for the shared folder: the reason names the
 /// unmanaged existing package and the safe alternatives, and the per-file actions are
 /// informational only. update-apply exits 0 with per-host `blocked` and a
 /// byte-identical projection tree (zero writes).
@@ -166,24 +167,31 @@ fn unmanaged_existing_package_blocks_plan_and_apply() {
     let tree_before = (tree(&claude_root), tree(&agents_root));
 
     let (plan, digest) = plan_via_cli(&home, &stage);
-    for name in ["claude", "codex"] {
-        let h = host(&plan, name);
-        assert_eq!(h["preflight"], json!("blocked"), "{name}: {h}");
-        let reason = h["blocked_reason"].as_str().unwrap();
-        assert!(reason.contains("unmanaged existing package"), "{reason}");
-        assert!(reason.contains("separate location"), "{reason}");
-        assert!(reason.contains("backup-then-replace"), "{reason}");
-        // REQ-2: the per-file conflict (SKILL.md) and the pending creates are still
-        // visible — informational only.
-        let skill = h["files"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .find(|f| f["path"] == json!("SKILL.md"))
-            .unwrap();
-        assert_eq!(skill["action"], json!("conflict"));
-        assert_eq!(skill["baseline_sha256"], Value::Null, "unowned");
-    }
+    // The shared agents folder is no host any more: it gets no row, and the apply below leaves
+    // its tree as it was.
+    let names: Vec<&str> = plan["hosts"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|h| h["host"].as_str().unwrap())
+        .collect();
+    assert_eq!(names, ["claude"], "{plan}");
+    let h = host(&plan, "claude");
+    assert_eq!(h["preflight"], json!("blocked"), "claude: {h}");
+    let reason = h["blocked_reason"].as_str().unwrap();
+    assert!(reason.contains("unmanaged existing package"), "{reason}");
+    assert!(reason.contains("separate location"), "{reason}");
+    assert!(reason.contains("backup-then-replace"), "{reason}");
+    // REQ-2: the per-file conflict (SKILL.md) and the pending creates are still
+    // visible — informational only.
+    let skill = h["files"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|f| f["path"] == json!("SKILL.md"))
+        .unwrap();
+    assert_eq!(skill["action"], json!("conflict"));
+    assert_eq!(skill["baseline_sha256"], Value::Null, "unowned");
 
     // update-apply: exit 0 (the envelope reports the block), zero writes.
     let out = apply_via_cli(&home, &stage, &plan, &digest);

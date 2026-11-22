@@ -108,7 +108,7 @@ fn a_terminal_gets_the_table_and_the_envelope_stays_the_same() {
     assert!(plain.contains("home-routing-plan"), "{plain}");
     assert!(has_row(&plain, &["ACTION", "HOST"]), "{plain}");
     assert!(has_row(&plain, &["create", "claude"]), "{plain}");
-    assert!(has_row(&plain, &["create", "codex"]), "{plain}");
+    assert!(!plain.contains("codex"), "{plain}");
     assert!(plain.contains("writes nothing"), "{plain}");
     assert!(plain.contains("next:"), "{plain}");
     assert!(plain.contains("home-routing-apply"), "{plain}");

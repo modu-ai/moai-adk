@@ -1,7 +1,8 @@
 //! `moai bundle build` (card C-119, SPEC-20261119-bundle-build): one new branch
-//! `m-flow/bundle-<date>-<n>` and one new worktree `<HOME>/.moai/worktrees/<project>-bundle-<n>`
+//! `m-flow/bundle-<date>-<n>` and one new worktree `<project>/.claude/worktrees/<project>-bundle-<n>`
 //! at the tip, one merge commit per head in the order given, a head whose merge conflicts
-//! dropped and named. It writes a branch, a worktree and merge commits and nothing else (REQ-10):
+//! dropped and named. It writes a branch, a worktree, merge commits and, after the add, one line in the local exclude
+//! file (SPEC-20261122-worktree-place REQ-10) and nothing else (REQ-10):
 //! no push, no fetch, no pull request, no card note, no ledger row. An existing branch, ref,
 //! worktree or folder is never moved, reset, forced or deleted (REQ-6).
 
@@ -169,7 +170,7 @@ fn m_flow_refs(git: &Git) -> Result<HashSet<String>> {
 
 /// REQ-5: the lowest `n` whose branch (local and `origin`), registered worktree and folder are
 /// all unused. Returns `(n, branch, folder)`.
-fn number(git: &Git, dir: &Path, home: &Path, date: &str) -> Result<(u32, String, PathBuf)> {
+fn number(git: &Git, dir: &Path, date: &str) -> Result<(u32, String, PathBuf)> {
     let entries = worktree::worktrees(dir)?;
     let primary = entries
         .first()
@@ -182,7 +183,7 @@ fn number(git: &Git, dir: &Path, home: &Path, date: &str) -> Result<(u32, String
     let refs = m_flow_refs(git)?;
     for n in 1..=999u32 {
         let branch = format!("m-flow/bundle-{date}-{n}");
-        let folder = home_workdir::worktree_dir(home, &primary, &format!("bundle-{n}"))?;
+        let folder = home_workdir::worktree_dir(&primary, &format!("bundle-{n}"))?;
         let taken = refs.contains(&format!("refs/heads/{branch}"))
             || refs.contains(&format!("refs/remotes/origin/{branch}"))
             || registered.contains(&worktree::resolve_existing(&folder))
@@ -304,8 +305,15 @@ pub fn build(
     let git = Git { dir };
     let tip = tip_of(&git, tip)?;
     let wanted = resolve(&git, project, home, &tip, &args)?;
-    let (n, branch, folder) = number(&git, dir, home, &date)?;
+    let (n, branch, folder) = number(&git, dir, &date)?;
     create(dir, &branch, &folder, &tip.sha)?;
+    // REQ-10, REQ-11: after a successful add the local exclude file lists the worktree folder,
+    // so the main tree's status stays as it was; a failure is named in the answer, never a
+    // refusal, and a refused or failed add leaves the exclude file untouched.
+    let place_exclude_error = folder
+        .ancestors()
+        .nth(3)
+        .and_then(|project| home_workdir::ensure_place_ignored(project).err());
 
     let wt = Git { dir: &folder };
     let mut merged: Vec<Value> = Vec::new();
@@ -355,10 +363,14 @@ pub fn build(
             shell_word(&tip.name)
         )
     };
-    Ok(json!({
+    let mut answer = json!({
         "action": "build", "number": n, "branch": branch,
         "worktree": folder.to_string_lossy(), "tip": tip_json(&tip), "pinned": pinned,
         "merged": merged, "dropped": dropped, "skipped": skipped,
         "rebuild": rebuild, "ok": dropped.is_empty(), "writes": true,
-    }))
+    });
+    if let Some(err) = place_exclude_error {
+        answer["place_exclude_error"] = json!(err);
+    }
+    Ok(answer)
 }

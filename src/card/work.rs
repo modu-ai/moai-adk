@@ -18,6 +18,7 @@
 use super::command::{actor, open_for_write, ABSENT_HINT};
 use super::dispatch::{checked_scope, reservation_json, DEFAULT_LEASE_SECS};
 use super::input::{self, CardRef};
+use super::landed;
 use super::spec_link;
 use crate::forge::connector::{HostConnector, HostKind, PrPhase, ProjectRef};
 use crate::ledger::reservation;
@@ -63,11 +64,16 @@ pub fn next(project: &Path, home: &Path, holder: Option<&str>) -> Result<Value> 
                 "action": "next", "project_id": id, "ledger": "absent", "holder": holder,
                 "next": null, "next_is": null,
                 "mine": [], "ready": [], "skipped": [], "warnings": [], "writes": false,
+                "landing": landed::absent_json(),
             }));
         }
         Err(e) => return Err(e.to_string()),
     };
-    let found = workflow::next(ledger.conn(), holder).map_err(|e| e.to_string())?;
+    let mut found = workflow::next(ledger.conn(), holder).map_err(|e| e.to_string())?;
+    // A `ready` card whose landing is proven is not offered again: it leaves `ready` for
+    // `skipped` with `reason: "already_landed"` and the proof (`card finish` closes it).
+    let landing = landed::find(project, ledger.conn(), &landed::candidates(&found))?;
+    let landed_skips = landed::take_landed(&mut found, &landing);
     // The SPEC each card names and its status, with a warning for a card that changes the
     // repository without an approved SPEC (SDD-4), in the order the cards are listed.
     let mut warnings: Vec<String> = Vec::new();
@@ -98,7 +104,7 @@ pub fn next(project: &Path, home: &Path, holder: Option<&str>) -> Result<Value> 
             "spec": spec_of(c.card_id)?,
         }));
     }
-    let skipped: Vec<Value> = found
+    let mut skipped: Vec<Value> = found
         .skipped
         .iter()
         .map(|s| {
@@ -130,6 +136,7 @@ pub fn next(project: &Path, home: &Path, holder: Option<&str>) -> Result<Value> 
             v
         })
         .collect();
+    skipped.extend(landed_skips);
     // The card to work on now: one this session already holds, else the first it could take.
     let (next, next_is) = match (found.mine.first(), found.ready.first()) {
         (Some(m), _) => (
@@ -143,7 +150,7 @@ pub fn next(project: &Path, home: &Path, holder: Option<&str>) -> Result<Value> 
         "action": "next", "project_id": id, "ledger": "ready", "holder": holder,
         "now": found.now, "next": next, "next_is": next_is,
         "mine": mine, "ready": ready, "skipped": skipped, "warnings": warnings,
-        "writes": false,
+        "landing": landing.json(), "writes": false,
     }))
 }
 

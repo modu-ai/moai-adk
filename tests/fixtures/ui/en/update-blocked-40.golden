@@ -7,16 +7,12 @@ Checking
   ✗ skills claude
     blocked: SKILL.md was changed by
     hand since the last update
-  ✓ skills codex
-    32 up to date
   ✓ agents
-    claude 5 · codex 5 · omp 5 — 15 up
-    to date
+    claude 5 — 5 up to date
   ✓ routing
-    CLAUDE.md up to date · AGENTS.md up
-    to date
+    CLAUDE.md up to date
   ✓ output style
-    3 up to date
+    2 up to date
   ✓ command names
     up to date
   – hooks

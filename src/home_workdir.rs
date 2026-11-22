@@ -2,7 +2,9 @@
 //! decisions D1–D8 in the Issue body and its latest leader comment).
 //!
 //! Everything lives under the HOME state folder `<HOME>/.moai` — no visible `~/moai` folder:
-//! - `<HOME>/.moai/worktrees/<project>-<id>/` — where a new worktree is created;
+//! - `<HOME>/.moai/worktrees/<project>-<id>/` — where worktrees made before the worktree-place
+//!   decision live; a new worktree is created in the project's `.claude/worktrees/<name>/`
+//!   instead;
 //! - `<HOME>/.moai/projects/` — a reserved name ([`projects_root`]); nothing creates projects
 //!   there since `moai init` was removed (#2935 L3);
 //! - `<HOME>/.moai/<service>/` — the default folder of a MoAI service such as `moai-stock`.
@@ -152,9 +154,115 @@ pub fn worktree_name(project_root: &Path, id: &str) -> Result<String> {
     Ok(name)
 }
 
-/// `<HOME>/.moai/worktrees/<project>-<id>` (AC-2).
-pub fn worktree_dir(home: &Path, project_root: &Path, id: &str) -> Result<PathBuf> {
-    Ok(worktrees_root(home).join(worktree_name(project_root, id)?))
+/// The folder of a new worktree: `<project_root>/.claude/worktrees/<name>` — the one place
+/// a new worktree is created (the worktree-place decision). The old places keep their names
+/// in [`location_of`] and [`location_in`], and nothing here creates the folder: the callers
+/// create it when they first need it.
+pub fn worktree_dir(project_root: &Path, id: &str) -> Result<PathBuf> {
+    Ok(project_root
+        .join(".claude")
+        .join("worktrees")
+        .join(worktree_name(project_root, id)?))
+}
+
+/// The line this module adds to a repository's local exclude file, anchored at the root.
+const PLACE_EXCLUDE_LINE: &str = "/.claude/worktrees/";
+
+/// One git call in `dir` with the inherited git variables removed; the exit code (when the
+/// process ran and was not killed) and the trimmed stdout.
+fn git_code(dir: &Path, args: &[&str]) -> Option<(i32, String)> {
+    let mut cmd = std::process::Command::new("git");
+    crate::identity::scrub_git_env(&mut cmd);
+    let out = cmd.args(args).current_dir(dir).output().ok()?;
+    Some((
+        out.status.code()?,
+        String::from_utf8_lossy(&out.stdout).trim().to_string(),
+    ))
+}
+
+/// The primary checkout of the repository `dir` belongs to: the first entry of
+/// `git worktree list`, whatever linked worktree or subfolder `dir` is. `None` for a bare
+/// repository or when git cannot say.
+fn primary_checkout(dir: &Path) -> Option<PathBuf> {
+    let (code, out) = git_code(dir, &["worktree", "list", "--porcelain"])?;
+    if code != 0 {
+        return None;
+    }
+    let mut lines = out.lines();
+    let first = lines.next()?.strip_prefix("worktree ")?;
+    if lines.take_while(|l| !l.is_empty()).any(|l| l == "bare") {
+        return None;
+    }
+    Some(PathBuf::from(first))
+}
+
+/// Makes sure the repository's local exclude file lists the project's worktree folder, so a
+/// worktree made there does not show in the main tree's status (REQ-10). `project` may be the
+/// primary checkout, a linked worktree or a subfolder: the folder is checked and the line is
+/// written for the primary checkout, where the line is anchored. Does nothing when git already
+/// ignores the folder (a tracked ignore file, the user's own list or an earlier call). The line
+/// goes to `<common git dir>/info/exclude`, which every linked worktree shares and which is
+/// never committed; a link in the way is not followed and is an error that names the exclude
+/// file (REQ-11). The folder itself is not created.
+pub fn ensure_place_ignored(project: &Path) -> Result<()> {
+    let primary = primary_checkout(project).ok_or_else(|| {
+        "local exclude file not changed: the primary checkout is unknown".to_string()
+    })?;
+    match git_code(&primary, &["check-ignore", "-q", "--", ".claude/worktrees/"]) {
+        Some((0, _)) => return Ok(()),
+        Some((1, _)) => {}
+        _ => return Err("local exclude file not changed: git could not say whether the worktree folder is ignored".into()),
+    }
+    let common = match git_code(
+        &primary,
+        &["rev-parse", "--path-format=absolute", "--git-common-dir"],
+    ) {
+        Some((0, dir)) if !dir.is_empty() => PathBuf::from(dir),
+        _ => return Err("local exclude file not changed: the git common folder is unknown".into()),
+    };
+    let info = common.join("info");
+    match std::fs::symlink_metadata(&info) {
+        Ok(m) if m.is_dir() => {}
+        Ok(_) => {
+            return Err("local exclude file not written: info is a link or not a folder".into())
+        }
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => std::fs::create_dir(&info)
+            .map_err(|e| format!("local exclude file not written: info folder: {e}"))?,
+        Err(e) => return Err(format!("local exclude file not written: info folder: {e}")),
+    }
+    let exclude = info.join("exclude");
+    let mut existing = Vec::new();
+    match std::fs::symlink_metadata(&exclude) {
+        Ok(m) if m.is_file() => {
+            existing = std::fs::read(&exclude)
+                .map_err(|e| format!("local exclude file not written: read: {e}"))?;
+        }
+        Ok(_) => {
+            return Err("local exclude file not written: exclude is a link or not a file".into())
+        }
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+        Err(e) => return Err(format!("local exclude file not written: exclude: {e}")),
+    }
+    let mut line = Vec::new();
+    if !existing.is_empty() && !existing.ends_with(b"\n") {
+        line.push(b'\n');
+    }
+    line.extend_from_slice(PLACE_EXCLUDE_LINE.as_bytes());
+    line.push(b'\n');
+    let mut options = std::fs::OpenOptions::new();
+    options.append(true).create(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.custom_flags(libc::O_NOFOLLOW);
+    }
+    let mut file = options
+        .open(&exclude)
+        .map_err(|e| format!("local exclude file not written: open: {e}"))?;
+    use std::io::Write;
+    file.write_all(&line)
+        .and_then(|()| file.sync_data())
+        .map_err(|e| format!("local exclude file not written: write: {e}"))
 }
 
 /// Where a worktree path sits (D3, D8): `home` (`<HOME>/.moai/worktrees/<name>`), `go`
@@ -256,11 +364,22 @@ mod tests {
     }
 
     #[test]
-    fn worktree_names_are_project_dash_id_and_safe() {
-        let h = Path::new("/home/u");
+    fn worktree_dir_is_in_the_project_place_with_the_kept_name() {
         assert_eq!(
-            worktree_dir(h, Path::new("/src/moai-adk"), "2811-home-workdir").unwrap(),
-            PathBuf::from("/home/u/.moai/worktrees/moai-adk-2811-home-workdir")
+            worktree_dir(Path::new("/src/moai-adk"), "2811-home-workdir").unwrap(),
+            PathBuf::from("/src/moai-adk/.claude/worktrees/moai-adk-2811-home-workdir")
+        );
+        assert_eq!(
+            worktree_dir(Path::new("/src/My Repo (copy)"), "12-a b").unwrap(),
+            PathBuf::from("/src/My Repo (copy)/.claude/worktrees/My-Repo-copy-12-a-b")
+        );
+    }
+
+    #[test]
+    fn worktree_names_are_project_dash_id_and_safe() {
+        assert_eq!(
+            worktree_dir(Path::new("/src/moai-adk"), "2811-home-workdir").unwrap(),
+            PathBuf::from("/src/moai-adk/.claude/worktrees/moai-adk-2811-home-workdir")
         );
         assert_eq!(
             worktree_name(Path::new("/src/My Repo (copy)"), "12-a b").unwrap(),

@@ -11,9 +11,9 @@
 //! session task (`last-session-state.json`, 📋) is not read at all since the three-line layout
 //! (#2376, user decision 3: the task is never shown).
 //!
-//! Card C-65: the card counts are the one read under `$HOME/.moai/`: the project's local ledger
-//! in `$HOME/.moai/projects/<project_id>/`, opened read-only through `crate::ledger` with a
-//! short wait (see [`card_counts`]).
+//! The cards by stage are the one read under `$HOME/.moai/`: the project's local ledger in
+//! `$HOME/.moai/projects/<project_id>/`, opened read-only through `crate::ledger` with a short
+//! wait, in four statements (see [`read_flow`]).
 //!
 //! The only subprocess is `git`, and only when a `.git` entry is found above the
 //! directory Go would open; it runs read-only (`--no-optional-locks`) under the render
@@ -24,7 +24,7 @@ use super::config::{self, Node};
 use super::input::{self, Input};
 use super::segments::{self, ContextReading, GitStatus, Memory};
 use serde::Deserialize;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
@@ -122,9 +122,9 @@ pub struct Status {
     pub git: Option<GitStatus>,
     pub repo: Option<(String, String)>,
     pub github: GitHubCounts,
-    /// Card C-65: the card counts of the project's local ledger; `None` when there is no
-    /// ledger to read (see [`card_counts`]).
-    pub cards: Option<CardCounts>,
+    /// The cards of the project's local ledger by stage, for the flow line; `None` when there
+    /// is no ledger to read (see [`read_flow`]).
+    pub flow: Option<Flow>,
     pub goal_armed: bool,
     /// #2756 AC-7: the open pull request of the current branch.
     pub pr: Option<PrInfo>,
@@ -179,22 +179,84 @@ pub struct GitHubCounts {
     pub open_prs: i64,
 }
 
-/// Card C-65 (user instructions 2026-11-16 and 2026-11-17): the cards of the project's local
-/// ledger, as the repository line shows them (`🗂️ remaining ▶️ in_progress 🔃 waiting ✅ done`;
-/// without `waiting` the three-number form `🗂️ ▶️ ✅`).
+/// The stage of an open card in its progress (SPEC-20261122-statusline-flow REQ-1): the nine
+/// stages of the flow line, each with the letter the line writes for it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Stage {
+    /// `D`: drafted, not yet ready.
+    Draft,
+    /// `R`: ready to be taken.
+    Ready,
+    /// `W`: a lane holds it with a live lease and works on it.
+    Working,
+    /// `E`: it is worked on by nobody — the lease has ended or no reservation holds it.
+    Stale,
+    /// `S`: pushed, waiting for an audit or the leader's integration (every `review` card).
+    Submitted,
+    /// `A`: an audit passed for the head and nobody landed it.
+    Audited,
+    /// `L`: landed on the integration branch and not yet closed.
+    Landed,
+    /// `B`: the lane asked for a decision.
+    Blocked,
+    /// `H`: on hold.
+    Hold,
+}
+
+impl Stage {
+    /// The letter the flow line writes (D-9 of the SPEC); English only.
+    pub fn letter(self) -> char {
+        match self {
+            Stage::Draft => 'D',
+            Stage::Ready => 'R',
+            Stage::Working => 'W',
+            Stage::Stale => 'E',
+            Stage::Submitted => 'S',
+            Stage::Audited => 'A',
+            Stage::Landed => 'L',
+            Stage::Blocked => 'B',
+            Stage::Hold => 'H',
+        }
+    }
+}
+
+/// The card the session is on: its number and stage (SPEC REQ-6).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct MyCard {
+    pub card: i64,
+    pub stage: Stage,
+}
+
+/// The cards of the project's local ledger by the stage of their progress, for the flow line
+/// (SPEC-20261122-statusline-flow). The nine stage counts add up to the cards that are not
+/// `done`.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
-pub struct CardCounts {
-    /// The cards being worked on: `active` ones whose newest marker note is not a waiting one.
-    /// When `waiting` is `None` (the notes could not be read) it is `active` + `review`.
-    pub in_progress: i64,
-    /// The cards pushed and waiting for integration or an audit: every `review` card and each
-    /// `active` card whose newest marker note is a waiting one. `None` when the notes could not
-    /// be read, and the line then shows the three-number form.
-    pub waiting: Option<i64>,
-    /// `draft` + `ready` + `hold`.
-    pub remaining: i64,
-    /// `done`; counted in neither of the other two.
-    pub done: i64,
+pub struct Flow {
+    pub draft: i64,
+    pub ready: i64,
+    pub working: i64,
+    pub stale: i64,
+    pub submitted: i64,
+    pub audited: i64,
+    pub landed: i64,
+    pub blocked: i64,
+    pub hold: i64,
+    /// The cards closed at or after the start of the UTC day of the render's clock.
+    pub done_today: i64,
+    /// The card this session holds, when it holds one.
+    pub mine: Option<MyCard>,
+    /// `false` when the notes, the landing events or the reservations could not be read in the
+    /// budget: only `draft`, `ready`, `hold`, `done_today` and `working` (`active` + `review`,
+    /// unsplit) are set then and the line writes the unsplit form, never a guess.
+    pub split: bool,
+}
+
+/// Who asks: the stdin session id and the folder the session works in, for "my card"
+/// (SPEC REQ-6).
+#[derive(Debug, Clone, Copy, Default)]
+pub struct Whose<'a> {
+    pub session_id: &'a str,
+    pub dir: Option<&'a Path>,
 }
 
 /// `statusline.yaml` as the Go CLI reads it: theme and the segments map.
@@ -202,6 +264,9 @@ pub struct CardCounts {
 pub struct DisplayConfig {
     pub theme: String,
     pub segments: BTreeMap<String, bool>,
+    /// The `padding` of the host's `statusLine` block that this file mirrors, in characters
+    /// (default 0): the host adds it to every line, so the width budget subtracts it.
+    pub padding: usize,
 }
 
 /// Version this binary reports in the `🗿` segment.
@@ -269,10 +334,17 @@ pub fn collect(input: Option<&Input>, ctx: &Context) -> Status {
         status.github = github_counts(anchor);
         status.goal_armed = goal_armed(anchor, input::text(&input.session_id));
     }
-    status.cards = anchor
+    let dir = session_dir(input);
+    status.flow = anchor
         .as_deref()
         .or(project_root.as_deref())
-        .and_then(|project| card_counts(project, ctx));
+        .and_then(|project| {
+            let who = Whose {
+                session_id: input::text(&input.session_id),
+                dir: dir.as_deref(),
+            };
+            read_flow(project, ctx, &who)
+        });
     status.pr = input.pr.as_ref().and_then(|p| {
         Some(PrInfo {
             number: p.number.filter(|n| *n > 0)?,
@@ -298,8 +370,8 @@ pub fn collect(input: Option<&Input>, ctx: &Context) -> Status {
         status.worktree_label = anchor
             .as_deref()
             .or(project_root.as_deref())
-            .zip(session_dir(input))
-            .and_then(|(project, dir)| worktree_label(project, &dir, ctx));
+            .zip(dir.as_deref())
+            .and_then(|(project, dir)| worktree_label(project, dir, ctx));
     }
     status
 }
@@ -435,7 +507,16 @@ fn read_display_config(path: &Path) -> DisplayConfig {
             }
         }
     }
-    DisplayConfig { theme, segments }
+    // A `padding` that is not a plain non-negative number reads as 0, never as a failed file.
+    let padding = match doc.get(&["statusline", "padding"]) {
+        Some(Node::Scalar(s)) => s.trim().parse().unwrap_or(0),
+        _ => 0,
+    };
+    DisplayConfig {
+        theme,
+        segments,
+        padding,
+    }
 }
 
 /// `findProjectRoot` (cli/glm.go): walk up from the cwd to a directory holding `.moai`,
@@ -927,35 +1008,298 @@ pub const CARDS_BUSY_TIMEOUT: Duration = Duration::from_millis(50);
 // budget — 50 ms today, 100 ms at the very most. A value above the bound fails this build.
 const _: () = assert!(CARDS_BUSY_TIMEOUT.as_millis() <= 100);
 
-/// Card C-65: the card counts of `project`'s local ledger
-/// (`$HOME/.moai/projects/<project_id>/`), the one `moai card list` reads. Read-only like that
-/// command (`ledger::open`: no folder, no file, no journal; no process and no network), with
-/// [`CARDS_BUSY_TIMEOUT`] — or what is left of the render budget when that is less — in place of
-/// the ledger's own wait. `None`, and so no segment, whenever the counts cannot be read: no
-/// HOME, no project profile, no registered ledger, a file that is not this project's ledger
-/// (corrupt, another project's, a link), a lock held past the wait, or a spent budget.
-fn card_counts(project: &Path, ctx: &Context) -> Option<CardCounts> {
+/// The four statements of the flow read, in the order they run (SPEC-20261122-statusline-flow
+/// REQ-11): the open cards with the done-today count, the notes of the cards a lane works on,
+/// the landing events, and the reservations. Four short reads cost about 33 ms on the real
+/// ledger against 115 ms for one statement joining them all; a test counts them here.
+const FLOW_STATEMENTS: [&str; 4] = [
+    "SELECT card_id, state, 0 FROM card WHERE state <> 'done' \
+     UNION ALL SELECT -1, 'done_today', count(*) FROM card \
+     WHERE state = 'done' AND closed_at >= ?1",
+    // `NOTE_HEAD_CHARS` is 1000: the literal keeps the statement a constant.
+    "SELECT n.card_id, substr(n.body, 1, 1000) FROM card_note n \
+     JOIN card c ON c.card_id = n.card_id WHERE c.state IN ('active', 'review') \
+     ORDER BY n.card_id, n.note_id DESC",
+    "SELECT DISTINCT card_id FROM event WHERE kind = 'card.landed' AND card_id IS NOT NULL",
+    "SELECT card_id, holder, status, lease_until, worktree, acquired_at, reservation_id \
+     FROM reservation WHERE status IN ('held', 'held_for_review', 'expired_candidate')",
+];
+
+const _: () = assert!(NOTE_HEAD_CHARS == 1000);
+
+/// The cards of `project`'s local ledger (`$HOME/.moai/projects/<project_id>/`, the one
+/// `moai card list` reads) by the stage of their progress, for the flow line. Read-only like
+/// that command (`ledger::open`: no folder, no file, no journal; no process and no network),
+/// with [`CARDS_BUSY_TIMEOUT`] — or what is left of the render budget when that is less — in
+/// place of the ledger's own wait. `None`, and so no flow line, whenever the ledger cannot be
+/// read: no HOME, no project profile, no registered ledger, a file that is not this project's
+/// ledger (corrupt, another project's, a link), a lock held past the wait, or a spent budget.
+/// A budget spent after the open cards were read gives the unsplit [`Flow`] (`split` false).
+pub fn read_flow(project: &Path, ctx: &Context, who: &Whose) -> Option<Flow> {
     let (ledger, _) = open_project_ledger(project, ctx)?;
-    let mut counts = CardCounts::default();
-    for (state, n) in crate::ledger::command::state_counts(&ledger).ok()? {
-        match state.as_str() {
-            "active" | "review" => counts.in_progress += n,
-            "draft" | "ready" | "hold" => counts.remaining += n,
-            "done" => counts.done += n,
-            _ => {}
-        }
-    }
-    // Split the `active` + `review` total; when the notes cannot be read the total stays whole
-    // and the line shows the three-number form.
-    counts.waiting = waiting_cards(&ledger, ctx.deadline);
-    if let Some(waiting) = counts.waiting {
-        counts.in_progress = split_in_progress(counts.in_progress, waiting);
-    }
-    Some(counts)
+    let spent = || {
+        ctx.deadline
+            .is_some_and(|deadline| Instant::now() >= deadline)
+    };
+    read_flow_with(&ledger, ctx.now, who, &spent)
 }
 
-/// The project's ledger opened read-only the way [`card_counts`] reads it, with the project id.
-/// `None` for every case [`card_counts`] documents (no HOME, no profile, no registered ledger,
+/// [`read_flow`] on an open ledger with the render clock `now` and the "is the render budget
+/// spent" question as a parameter, so a test can spend it in the middle of a read.
+fn read_flow_with(
+    ledger: &crate::ledger::open::ReadLedger,
+    now: i64,
+    who: &Whose,
+    spent: &dyn Fn() -> bool,
+) -> Option<Flow> {
+    if spent() {
+        return None;
+    }
+    let conn = ledger.conn();
+    // The UTC day of the render's clock (D-4): done today is counted from its first second.
+    let day_start = now.div_euclid(86_400) * 86_400;
+    let mut stmt = conn.prepare(FLOW_STATEMENTS[0]).ok()?;
+    let rows = stmt
+        .query_map([day_start], |r| {
+            Ok((
+                r.get::<_, i64>(0)?,
+                r.get::<_, String>(1)?,
+                r.get::<_, i64>(2)?,
+            ))
+        })
+        .ok()?;
+    let mut open: Vec<(i64, String)> = Vec::new();
+    let mut flow = Flow::default();
+    for row in rows {
+        let (card, state, n) = row.ok()?;
+        match state.as_str() {
+            "done_today" => flow.done_today = n,
+            "draft" => flow.draft += 1,
+            "ready" => flow.ready += 1,
+            "hold" => flow.hold += 1,
+            // `active` and `review` stay whole until the notes are read.
+            "active" | "review" => flow.working += 1,
+            _ => continue,
+        }
+        if state != "done_today" {
+            open.push((card, state));
+        }
+    }
+    drop(stmt);
+    // The split reads three more statements; when the budget is spent or a read fails the
+    // unsplit counts above stand and the line writes the unsplit form.
+    Some(split_flow(conn, now, who, &open, spent, flow).unwrap_or(flow))
+}
+
+/// What the three statements after the first add: the stage of every open card and "my card".
+/// `None` when the budget is spent (checked before each statement and on every row) or a read
+/// fails; the caller then keeps the unsplit counts.
+fn split_flow(
+    conn: &rusqlite::Connection,
+    now: i64,
+    who: &Whose,
+    open: &[(i64, String)],
+    spent: &dyn Fn() -> bool,
+    unsplit: Flow,
+) -> Option<Flow> {
+    // Statement 2: the newest marker note of each card, first row of a card deciding it.
+    if spent() {
+        return None;
+    }
+    let mut stmt = conn.prepare(FLOW_STATEMENTS[1]).ok()?;
+    let rows = stmt
+        .query_map([], |r| Ok((r.get::<_, i64>(0)?, r.get::<_, String>(1)?)))
+        .ok()?;
+    let mut markers: HashMap<i64, Marker> = HashMap::new();
+    let mut decided: Option<i64> = None;
+    for row in rows {
+        if spent() {
+            return None;
+        }
+        let (card, body) = row.ok()?;
+        if decided == Some(card) {
+            continue;
+        }
+        if let Some(marker) = marker_of(&body) {
+            markers.insert(card, marker);
+            decided = Some(card);
+        }
+    }
+    drop(stmt);
+    // Statement 3: the cards with a landing event.
+    if spent() {
+        return None;
+    }
+    let mut stmt = conn.prepare(FLOW_STATEMENTS[2]).ok()?;
+    let rows = stmt.query_map([], |r| r.get::<_, i64>(0)).ok()?;
+    let mut landed: HashSet<i64> = HashSet::new();
+    for row in rows {
+        if spent() {
+            return None;
+        }
+        landed.insert(row.ok()?);
+    }
+    drop(stmt);
+    // Statement 4: the reservations that can hold a card.
+    if spent() {
+        return None;
+    }
+    let mut stmt = conn.prepare(FLOW_STATEMENTS[3]).ok()?;
+    let rows = stmt
+        .query_map([], |r| {
+            Ok(Reservation {
+                card: r.get(0)?,
+                holder: r.get(1)?,
+                status: r.get(2)?,
+                lease_until: r.get(3)?,
+                worktree: r.get(4)?,
+                acquired_at: r.get(5)?,
+                id: r.get(6)?,
+            })
+        })
+        .ok()?;
+    let mut reservations: Vec<Reservation> = Vec::new();
+    for row in rows {
+        if spent() {
+            return None;
+        }
+        reservations.push(row.ok()?);
+    }
+    drop(stmt);
+
+    let live: HashSet<i64> = reservations
+        .iter()
+        .filter(|r| r.is_live(now))
+        .map(|r| r.card)
+        .collect();
+    let mut flow = Flow {
+        working: 0,
+        split: true,
+        ..unsplit
+    };
+    let mut stages: HashMap<i64, Stage> = HashMap::new();
+    for (card, state) in open {
+        let Some(stage) = stage_of(
+            state,
+            markers.get(card).copied(),
+            landed.contains(card),
+            live.contains(card),
+        ) else {
+            continue;
+        };
+        match stage {
+            // Counted by their ledger state already.
+            Stage::Draft | Stage::Ready | Stage::Hold => {}
+            Stage::Working => flow.working += 1,
+            Stage::Stale => flow.stale += 1,
+            Stage::Submitted => flow.submitted += 1,
+            Stage::Audited => flow.audited += 1,
+            Stage::Landed => flow.landed += 1,
+            Stage::Blocked => flow.blocked += 1,
+        }
+        stages.insert(*card, stage);
+    }
+    flow.mine = my_card(&reservations, who, now).and_then(|card| {
+        stages.get(&card).map(|stage| MyCard {
+            card,
+            stage: *stage,
+        })
+    });
+    Some(flow)
+}
+
+/// One row of the reservation read.
+struct Reservation {
+    card: i64,
+    holder: String,
+    status: String,
+    lease_until: i64,
+    worktree: Option<String>,
+    acquired_at: i64,
+    id: i64,
+}
+
+impl Reservation {
+    /// Held (also for review) and with a lease that ends at or after the render's clock.
+    fn is_live(&self, now: i64) -> bool {
+        matches!(self.status.as_str(), "held" | "held_for_review") && self.lease_until >= now
+    }
+
+    fn is_held(&self) -> bool {
+        matches!(self.status.as_str(), "held" | "held_for_review")
+    }
+}
+
+/// The stage of one card by its ledger state, its newest marker, a landing event and a live
+/// lease (D-1 and D-2 of the SPEC). `None` for a state that is not open. `draft`, `ready` and
+/// `hold` keep their own stage; of the cards a lane works on, a landing event wins, then the
+/// newest marker (blocked, audited, submitted), then `review` itself is submitted, and the rest
+/// are working with a live lease and stale without one.
+fn stage_of(state: &str, marker: Option<Marker>, landed: bool, live: bool) -> Option<Stage> {
+    match state {
+        "draft" => Some(Stage::Draft),
+        "ready" => Some(Stage::Ready),
+        "hold" => Some(Stage::Hold),
+        "active" | "review" => Some(if landed {
+            Stage::Landed
+        } else {
+            match marker {
+                Some(Marker::Blocked) => Stage::Blocked,
+                Some(Marker::Audited) => Stage::Audited,
+                Some(Marker::Submitted) => Stage::Submitted,
+                _ if state == "review" => Stage::Submitted,
+                _ if live => Stage::Working,
+                _ => Stage::Stale,
+            }
+        }),
+        _ => None,
+    }
+}
+
+/// My card (SPEC REQ-6, D-3): the lowest-numbered card whose held reservation names the folder
+/// the session works in (the worktree), else the newest live held reservation of the stdin
+/// session id (`acquired_at`, then the reservation id, decides which is newest). Never the
+/// lowest number of a session's several cards.
+fn my_card(reservations: &[Reservation], who: &Whose, now: i64) -> Option<i64> {
+    if let Some((found, _)) = who.dir.and_then(find_dot_git) {
+        let canonical = std::fs::canonicalize(&found).unwrap_or_else(|_| found.clone());
+        let by_folder = reservations
+            .iter()
+            .filter(|r| r.is_held())
+            .filter(|r| {
+                r.worktree
+                    .as_deref()
+                    .is_some_and(|held| names_folder(Path::new(held), &found, &canonical))
+            })
+            .map(|r| r.card)
+            .min();
+        if by_folder.is_some() {
+            return by_folder;
+        }
+    }
+    if who.session_id.is_empty() {
+        return None;
+    }
+    reservations
+        .iter()
+        .filter(|r| r.is_live(now) && r.holder == who.session_id)
+        .max_by_key(|r| (r.acquired_at, r.id))
+        .map(|r| r.card)
+}
+
+/// Whether the folder a holder recorded (`named`) is the folder `found` (as found) or
+/// `canonical`. The holder typed the path (`card take --worktree`), so it may be a link
+/// spelling: it is compared as written and as a canonical path. A path that is not absolute
+/// names no folder from here (it would be read against this process's working directory).
+fn names_folder(named: &Path, found: &Path, canonical: &Path) -> bool {
+    named.is_absolute()
+        && (named == found
+            || named == canonical
+            || std::fs::canonicalize(named).is_ok_and(|c| c == canonical))
+}
+
+/// The project's ledger opened read-only the way [`read_flow`] reads it, with the project id.
+/// `None` for every case [`read_flow`] documents (no HOME, no profile, no registered ledger,
 /// a file that is not this project's ledger, a lock held past the wait, a spent budget).
 fn open_project_ledger(
     project: &Path,
@@ -1031,14 +1375,7 @@ fn holding_card(
         let Ok((card, branch, held)) = row else {
             continue;
         };
-        let named = Path::new(&held);
-        if !named.is_absolute() {
-            continue;
-        }
-        if named == found
-            || named == canonical
-            || std::fs::canonicalize(named).is_ok_and(|c| c == canonical)
-        {
+        if names_folder(Path::new(&held), found, canonical) {
             return Some((card, branch));
         }
     }
@@ -1120,38 +1457,42 @@ fn folder_rest(folder: &str, project_id: &str, card: i64) -> Option<String> {
 /// The longest `<name>` of the worktree label, in characters; one more is cut with `…`.
 const LABEL_NAME_CHARS: usize = 32;
 
-/// The working number once the waiting cards are taken out of the `active` + `review` total.
-/// The state count and the note read are two reads of a ledger that may change between them, so
-/// a card that moved can make `waiting` larger than the total: never below zero.
-fn split_in_progress(total: i64, waiting: i64) -> i64 {
-    (total - waiting).max(0)
-}
-
 /// How many characters of a note's body are read: enough for its first line, so a long report
 /// costs no more than a short one.
 const NOTE_HEAD_CHARS: usize = 1000;
 
-/// What a note's first line says about its card.
+/// What a note's first line says about its card (D-1 of SPEC-20261122-statusline-flow).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Marker {
     /// The card was pushed and waits for an audit or for the leader's integration.
-    Waiting,
+    Submitted,
+    /// An audit passed for the head.
+    Audited,
+    /// The lane asked for a decision.
+    Blocked,
     /// The lane is working on the card again (took or resumed it, planned, or was told FAIL).
     Working,
 }
 
 /// The marker a note's first line carries, if any. Only the lines the lanes already write by
-/// rule count; any other first line is no marker and changes nothing.
+/// rule count; any other first line is no marker and changes nothing (`RESUME`, `waiting:`,
+/// `LANE-HOLD` and `PAIR-` among them). This is the one first-line parser of the status line and
+/// a temporary one: typed submit, block and verdict rows will replace it.
 fn marker_of(body: &str) -> Option<Marker> {
     let first = body.lines().next().unwrap_or("");
     let audit = first.starts_with("AUDIT");
-    if first.starts_with("LANE-READY-INTEGRATION")
+    if first.starts_with("LANE-BLOCKED") {
+        Some(Marker::Blocked)
+    } else if audit && first.contains("verdict: PASS") {
+        Some(Marker::Audited)
+    } else if first.starts_with("LANE-READY-INTEGRATION")
+        || first.starts_with("MERGE-READY")
+        || first.starts_with("READY ")
         || first.starts_with("감사 요청")
         || (first.starts_with("LANE-DONE")
             && (first.contains("audit requested") || first.contains("감사 요청")))
-        || (audit && first.contains("verdict: PASS"))
     {
-        Some(Marker::Waiting)
+        Some(Marker::Submitted)
     } else if first.starts_with("ACK ")
         || first.starts_with("PLAN ")
         || (audit && first.contains("verdict: FAIL"))
@@ -1160,68 +1501,6 @@ fn marker_of(body: &str) -> Option<Marker> {
     } else {
         None
     }
-}
-
-/// The cards pushed and waiting for integration: every `review` card and each `active` card
-/// whose newest note with a marker (see [`marker_of`]) is a waiting one. One more `SELECT` over
-/// the notes of the `active` cards, newest first, each body cut to [`NOTE_HEAD_CHARS`]; no
-/// write. `None` when the render `deadline` has passed (checked before the read and on every
-/// row) or the read fails, so the caller shows the three-number form instead of a guess.
-fn waiting_cards(
-    ledger: &crate::ledger::open::ReadLedger,
-    deadline: Option<Instant>,
-) -> Option<i64> {
-    waiting_cards_with(ledger, &|| deadline.is_some_and(|d| Instant::now() >= d))
-}
-
-/// [`waiting_cards`] with the "is the render budget spent" question as a parameter, so a test
-/// can spend it in the middle of the row loop.
-fn waiting_cards_with(
-    ledger: &crate::ledger::open::ReadLedger,
-    spent: &dyn Fn() -> bool,
-) -> Option<i64> {
-    if spent() {
-        return None;
-    }
-    let review: i64 = ledger
-        .conn()
-        .query_row(
-            "SELECT count(*) FROM card WHERE state = 'review'",
-            [],
-            |r| r.get(0),
-        )
-        .ok()?;
-    let mut stmt = ledger
-        .conn()
-        .prepare(&format!(
-            "SELECT n.card_id, substr(n.body, 1, {NOTE_HEAD_CHARS}) FROM card_note n \
-             JOIN card c ON c.card_id = n.card_id WHERE c.state = 'active' \
-             ORDER BY n.card_id, n.note_id DESC"
-        ))
-        .ok()?;
-    let rows = stmt
-        .query_map([], |r| Ok((r.get::<_, i64>(0)?, r.get::<_, String>(1)?)))
-        .ok()?;
-    let mut decided: Option<i64> = None;
-    let mut waiting = review;
-    for row in rows {
-        if spent() {
-            return None;
-        }
-        let (card, body) = row.ok()?;
-        if decided == Some(card) {
-            continue;
-        }
-        match marker_of(&body) {
-            Some(Marker::Waiting) => {
-                waiting += 1;
-                decided = Some(card);
-            }
-            Some(Marker::Working) => decided = Some(card),
-            None => {}
-        }
-    }
-    Some(waiting)
 }
 
 /// An explicit `statusline.forge` naming neither github nor gitlab.
@@ -2023,9 +2302,35 @@ mod extras_tests {
 
 /// Card C-65: the card counts read from a ledger in a temporary HOME; the real HOME is never
 /// touched.
+/// AC-1 and AC-2 of SPEC-20261122-statusline-flow: the stage rule and the marker words, read
+/// from a fixture ledger. The older tests of the card-count era stay as the regression of what
+/// did not change: they read the flow through [`legacy`], the three numbers of that era
+/// (working = `W` + `E`, waiting = `S` + `A`, remaining = `D` + `R` + `H`).
 #[cfg(test)]
-mod card_counts_tests {
+mod stage_tests {
     use super::*;
+
+    /// The card-count era's four numbers, rebuilt from a [`Flow`] for the older tests.
+    #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+    struct CardCounts {
+        in_progress: i64,
+        waiting: Option<i64>,
+        remaining: i64,
+        done: i64,
+    }
+
+    fn legacy(flow: Flow) -> CardCounts {
+        CardCounts {
+            in_progress: flow.working + flow.stale,
+            waiting: flow.split.then_some(flow.submitted + flow.audited),
+            remaining: flow.draft + flow.ready + flow.hold,
+            done: flow.done_today,
+        }
+    }
+
+    fn card_counts(project: &Path, ctx: &Context) -> Option<CardCounts> {
+        read_flow(project, ctx, &Whose::default()).map(legacy)
+    }
 
     struct Fixture {
         _tmp: tempfile::TempDir,
@@ -2284,6 +2589,35 @@ mod card_counts_tests {
         assert_eq!(f.home_tree(), before, "no journal, no new file");
     }
 
+    /// REQ-11 and the read-only rule (audit N3): the connection the status line reads the ledger
+    /// through is a read-only one, so a statement that writes is refused by the database itself,
+    /// and a whole flow read leaves the ledger file as it was. A read-write open would fail
+    /// the first check.
+    #[test]
+    fn the_status_line_opens_the_ledger_read_only() {
+        let f = fixture();
+        crate::ledger::register(&f.home, "demo").unwrap();
+        f.add("active", 2);
+        let before = std::fs::read(f.ledger_file()).unwrap();
+
+        let (ledger, id) = open_project_ledger(&f.project, &f.ctx()).unwrap();
+        assert_eq!(id, "demo");
+        assert!(ledger.conn().is_readonly("main").unwrap());
+        let refused = ledger
+            .conn()
+            .execute("UPDATE card SET state = 'done'", [])
+            .unwrap_err();
+        assert!(
+            refused.to_string().to_lowercase().contains("readonly"),
+            "{refused}"
+        );
+        drop(ledger);
+
+        let flow = read_flow(&f.project, &f.ctx(), &Whose::default()).unwrap();
+        assert!(flow.split);
+        assert_eq!(std::fs::read(f.ledger_file()).unwrap(), before);
+    }
+
     #[test]
     fn a_failed_note_read_gives_the_three_number_form() {
         let f = fixture();
@@ -2293,13 +2627,13 @@ mod card_counts_tests {
         let ledger =
             crate::ledger::open::open_read_only_within(&f.home, "demo", Duration::from_millis(100))
                 .unwrap();
-        // The render deadline has passed: no reading of the notes.
-        let spent = Instant::now() - Duration::from_millis(1);
-        assert_eq!(waiting_cards(&ledger, Some(spent)), None);
+        let who = Whose::default();
+        // The render budget is spent before the read: no flow at all.
+        assert_eq!(read_flow_with(&ledger, 0, &who, &|| true), None);
         // With time left the same ledger reads: the active card and the review card wait.
-        let left = Instant::now() + Duration::from_secs(60);
-        assert_eq!(waiting_cards(&ledger, Some(left)), Some(2));
-        assert_eq!(waiting_cards(&ledger, None), Some(2));
+        let flow = read_flow_with(&ledger, 0, &who, &|| false).unwrap();
+        assert!(flow.split);
+        assert_eq!((flow.submitted, flow.working, flow.stale), (2, 0, 0));
     }
 
     /// A deadline that passes in the middle of the row loop (not only before it) gives `None`:
@@ -2317,10 +2651,22 @@ mod card_counts_tests {
             asked.set(asked.get() + 1);
             asked.get() > 1
         };
-        assert_eq!(waiting_cards_with(&ledger, &spent), None);
-        assert!(asked.get() >= 2, "the loop asked again after the first row");
-        // Never spent: the same ledger reads.
-        assert_eq!(waiting_cards_with(&ledger, &|| false), Some(1));
+        // The first question (before the read) is "no", the next ones "yes": the open cards
+        // were read, the notes were not, so the unsplit counts stand and say so.
+        let flow = read_flow_with(&ledger, 0, &Whose::default(), &spent).unwrap();
+        assert!(
+            !flow.split,
+            "a spent budget in the split gives the unsplit flow"
+        );
+        assert_eq!((flow.working, flow.submitted, flow.stale), (1, 0, 0));
+        assert!(
+            asked.get() >= 2,
+            "the split asked again after the first read"
+        );
+        // Never spent: the same ledger reads and the card waits.
+        let whole = read_flow_with(&ledger, 0, &Whose::default(), &|| false).unwrap();
+        assert!(whole.split);
+        assert_eq!((whole.submitted, whole.working, whole.stale), (1, 0, 0));
     }
 
     /// Several waiting notes on one card count that card once, and a waiting note keeps
@@ -2338,14 +2684,14 @@ mod card_counts_tests {
     }
 
     /// One line carrying both verdicts is read by the first word that decides it: `PASS` is
-    /// tested before `FAIL`, so a FAIL line that quotes an earlier PASS reads as waiting. The
+    /// tested before `FAIL`, so a FAIL line that quotes an earlier PASS reads as audited. The
     /// real verdict line ends at the verdict word, so this only pins the rule.
     #[test]
-    fn a_line_with_both_verdicts_reads_as_waiting() {
+    fn a_line_with_both_verdicts_reads_as_audited() {
         let both = "AUDIT C-1 (x) head abc base def — verdict: FAIL (was verdict: PASS)";
-        assert_eq!(marker_of(both), Some(Marker::Waiting));
+        assert_eq!(marker_of(both), Some(Marker::Audited));
         assert_eq!(marker_of(FAIL), Some(Marker::Working));
-        assert_eq!(marker_of(PASS), Some(Marker::Waiting));
+        assert_eq!(marker_of(PASS), Some(Marker::Audited));
     }
 
     /// Only the first `NOTE_HEAD_CHARS` characters of a note are read: a `LANE-DONE` line whose
@@ -2377,15 +2723,6 @@ mod card_counts_tests {
                 "{key} one past"
             );
         }
-    }
-
-    /// The working number never goes below zero: a card that moved between the state count and
-    /// the note read must not show `▶️ -1`.
-    #[test]
-    fn the_working_number_never_goes_below_zero() {
-        assert_eq!(split_in_progress(5, 2), 3);
-        assert_eq!(split_in_progress(2, 2), 0);
-        assert_eq!(split_in_progress(1, 3), 0);
     }
 
     #[test]
@@ -2535,12 +2872,629 @@ mod card_counts_tests {
         )
         .unwrap();
         let ctx = Context::for_test(&[("HOME", home)], Some(&elsewhere));
-        assert_eq!(collect(Some(&named), &ctx).cards, counts(0, 2, 1));
+        let counts_of = |status: Status| status.flow.map(legacy);
+        assert_eq!(counts_of(collect(Some(&named), &ctx)), counts(0, 2, 1));
         let empty = input::parse(b"{}").unwrap();
-        assert_eq!(collect(Some(&empty), &ctx).cards, None, "no project here");
+        assert_eq!(
+            counts_of(collect(Some(&empty), &ctx)),
+            None,
+            "no project here"
+        );
         std::fs::create_dir_all(f.project.join(".moai")).unwrap();
         let inside = Context::for_test(&[("HOME", home)], Some(&f.project));
-        assert_eq!(collect(Some(&empty), &inside).cards, counts(0, 2, 1));
+        assert_eq!(counts_of(collect(Some(&empty), &inside)), counts(0, 2, 1));
+    }
+}
+
+/// A fixture ledger for the stage tests: a HOME with the project `demo` and its registered
+/// ledger, with helpers to add cards, notes, reservations and landing events.
+#[cfg(test)]
+mod flow_support {
+    use super::*;
+
+    pub(super) struct Fx {
+        pub(super) _tmp: tempfile::TempDir,
+        pub(super) home: PathBuf,
+        pub(super) project: PathBuf,
+    }
+
+    pub(super) fn fx() -> Fx {
+        let tmp = tempfile::tempdir().unwrap();
+        let home = tmp.path().join("home");
+        let project = tmp.path().join("work/demo");
+        let state = project.join(crate::PROJECT_STATE_DIR);
+        std::fs::create_dir_all(&home).unwrap();
+        std::fs::create_dir_all(&state).unwrap();
+        std::fs::write(
+            state.join("project.yaml"),
+            "{\"schema_version\":2,\"project_id\":\"demo\"}\n",
+        )
+        .unwrap();
+        crate::ledger::register(&home, "demo").unwrap();
+        Fx {
+            _tmp: tmp,
+            home,
+            project,
+        }
+    }
+
+    impl Fx {
+        /// One card in `state` with its notes oldest first; returns its number. A `done` card
+        /// closes at the ledger's own clock.
+        pub(super) fn card(&self, state: &str, notes: &[(&str, &str)]) -> i64 {
+            let mut ledger = crate::ledger::open_write(&self.home, "demo").unwrap();
+            let mut id = 0;
+            ledger
+                .with_write_tx(|tx, now| {
+                    tx.execute(
+                        "INSERT INTO card (title, state, created_by, created_at, updated_at, closed_at) \
+                         VALUES ('t', ?1, 'test', ?2, ?2, iif(?1 = 'done', ?2, NULL))",
+                        rusqlite::params![state, now],
+                    )?;
+                    id = tx.last_insert_rowid();
+                    for (kind, body) in notes {
+                        tx.execute(
+                            "INSERT INTO card_note (card_id, kind, author, body, created_at) \
+                             VALUES (?1, ?2, 'test', ?3, ?4)",
+                            rusqlite::params![id, kind, body, now],
+                        )?;
+                    }
+                    Ok(())
+                })
+                .unwrap();
+            id
+        }
+
+        /// A `done` card closed at `closed_at`.
+        pub(super) fn done_at(&self, closed_at: i64) {
+            let mut ledger = crate::ledger::open_write(&self.home, "demo").unwrap();
+            ledger
+                .with_write_tx(|tx, now| {
+                    tx.execute(
+                        "INSERT INTO card (title, state, created_by, created_at, updated_at, closed_at) \
+                         VALUES ('t', 'done', 'test', ?1, ?1, ?2)",
+                        rusqlite::params![now, closed_at],
+                    )?;
+                    Ok(())
+                })
+                .unwrap();
+        }
+
+        /// A reservation of `card` (generation 1).
+        pub(super) fn reserve(
+            &self,
+            card: i64,
+            holder: &str,
+            status: &str,
+            acquired_at: i64,
+            lease_until: i64,
+            worktree: Option<&str>,
+        ) {
+            let mut ledger = crate::ledger::open_write(&self.home, "demo").unwrap();
+            ledger
+                .with_write_tx(|tx, _| {
+                    tx.execute(
+                        "INSERT INTO reservation (card_id, generation, holder, status, acquired_at, \
+                         lease_until, updated_at, worktree, branch) \
+                         VALUES (?1, 1, ?2, ?3, ?4, ?5, ?4, ?6, NULL)",
+                        rusqlite::params![card, holder, status, acquired_at, lease_until, worktree],
+                    )?;
+                    Ok(())
+                })
+                .unwrap();
+        }
+
+        /// A `card.landed` event of `card`.
+        pub(super) fn landed(&self, card: i64) {
+            let mut ledger = crate::ledger::open_write(&self.home, "demo").unwrap();
+            ledger
+                .with_write_tx(|tx, now| {
+                    tx.execute(
+                        "INSERT INTO event (event_key, at, actor, card_id, kind) \
+                         VALUES (?1, ?2, 'test', ?3, 'card.landed')",
+                        rusqlite::params![format!("landed-{card}"), now, card],
+                    )?;
+                    Ok(())
+                })
+                .unwrap();
+        }
+
+        /// The flow at the render clock `now` for `who`.
+        pub(super) fn flow(&self, now: i64, who: &Whose) -> Flow {
+            let mut ctx = Context::for_test(&[("HOME", self.home.to_str().unwrap())], None);
+            ctx.now = now;
+            read_flow(&self.project, &ctx, who).unwrap()
+        }
+    }
+}
+
+/// AC-1 of SPEC-20261122-statusline-flow: every edge of the stage rule has one answer, and the
+/// nine counts add up to the open cards.
+#[cfg(test)]
+mod stage_tests_edges {
+    use super::flow_support::fx;
+    use super::*;
+
+    const NOW: i64 = 1_800_000_000;
+
+    /// D-9 of the SPEC: the nine letters of the legend, one per stage, English only and all
+    /// different (audit N2: a letter swapped between two stages survived every other test).
+    #[test]
+    fn every_stage_has_its_letter_from_the_legend() {
+        let table = [
+            (Stage::Draft, 'D'),
+            (Stage::Ready, 'R'),
+            (Stage::Working, 'W'),
+            (Stage::Stale, 'E'),
+            (Stage::Submitted, 'S'),
+            (Stage::Audited, 'A'),
+            (Stage::Landed, 'L'),
+            (Stage::Blocked, 'B'),
+            (Stage::Hold, 'H'),
+        ];
+        for (stage, letter) in table {
+            assert_eq!(stage.letter(), letter, "{stage:?}");
+        }
+        let mut letters: Vec<char> = table.iter().map(|(s, _)| s.letter()).collect();
+        letters.sort_unstable();
+        letters.dedup();
+        assert_eq!(letters.len(), 9, "two stages share a letter");
+    }
+
+    #[test]
+    fn the_stage_rule_has_one_answer_for_every_edge() {
+        use Marker::{Audited, Blocked, Submitted, Working};
+        use Stage::{Draft, Hold, Landed, Ready, Stale};
+        let s = Stage::Submitted;
+        let a = Stage::Audited;
+        let b = Stage::Blocked;
+        let w = Stage::Working;
+        // (state, newest marker, landing event, live lease) -> stage
+        type Row = (&'static str, Option<Marker>, bool, bool, Option<Stage>);
+        let table: [Row; 30] = [
+            // draft, ready and hold keep their own stage whatever else is true of them.
+            ("draft", None, false, false, Some(Draft)),
+            ("draft", Some(Submitted), true, true, Some(Draft)),
+            ("ready", Some(Blocked), true, false, Some(Ready)),
+            ("hold", Some(Audited), true, true, Some(Hold)),
+            // active: working with a live lease, stale without one.
+            ("active", None, false, true, Some(w)),
+            ("active", None, false, false, Some(Stale)),
+            ("active", Some(Working), false, true, Some(w)),
+            ("active", Some(Working), false, false, Some(Stale)),
+            // submitted, audited and blocked keep their stage whatever the lease says.
+            ("active", Some(Submitted), false, false, Some(s)),
+            ("active", Some(Submitted), false, true, Some(s)),
+            ("active", Some(Audited), false, false, Some(a)),
+            ("active", Some(Audited), false, true, Some(a)),
+            ("active", Some(Blocked), false, true, Some(b)),
+            ("active", Some(Blocked), false, false, Some(b)),
+            // review is submitted unless a marker says audited or blocked.
+            ("review", None, false, false, Some(s)),
+            ("review", None, false, true, Some(s)),
+            ("review", Some(Working), false, true, Some(s)),
+            ("review", Some(Submitted), false, false, Some(s)),
+            ("review", Some(Audited), false, false, Some(a)),
+            ("review", Some(Blocked), false, false, Some(b)),
+            // a landing event wins over every marker and lease of an active or review card.
+            ("active", Some(Blocked), true, true, Some(Landed)),
+            ("active", None, true, false, Some(Landed)),
+            ("active", Some(Working), true, true, Some(Landed)),
+            ("review", Some(Audited), true, false, Some(Landed)),
+            ("review", None, true, true, Some(Landed)),
+            // a closed card, and a state the ledger does not have, are no open card.
+            ("done", None, false, false, None),
+            ("done", Some(Submitted), true, true, None),
+            ("bogus", None, false, false, None),
+            ("", Some(Audited), false, true, None),
+            ("Active", None, false, true, None),
+        ];
+        for (state, marker, landed, live, want) in table {
+            assert_eq!(
+                stage_of(state, marker, landed, live),
+                want,
+                "{state} {marker:?} landed={landed} live={live}"
+            );
+        }
+    }
+
+    #[test]
+    fn the_nine_counts_add_up_to_the_open_cards_of_a_fixture_ledger() {
+        let f = fx();
+        f.card("draft", &[]);
+        f.card("ready", &[]);
+        f.card("hold", &[]);
+        let working = f.card("active", &[]);
+        f.reserve(working, "s-1", "held", 10, NOW + 60, None);
+        f.card("active", &[]); // no reservation at all: stale
+        f.card("active", &[("report", "READY (head abc)")]);
+        f.card(
+            "active",
+            &[("report", "AUDIT C-1 head abc base def — verdict: PASS")],
+        );
+        f.card("active", &[("report", "LANE-BLOCKED kind=decision x")]);
+        let landed = f.card("active", &[("report", "READY (head abc)")]);
+        f.landed(landed);
+        // Three cards closed today, and one closed long ago that still carries a marker note: a
+        // closed card is never an open stage.
+        f.done_at(NOW);
+        f.done_at(NOW + 1);
+        f.done_at(NOW + 2);
+        f.card("done", &[("report", "READY (head abc)")]);
+        let flow = f.flow(NOW, &Whose::default());
+        assert!(flow.split);
+        assert_eq!(
+            (
+                flow.draft,
+                flow.ready,
+                flow.working,
+                flow.stale,
+                flow.submitted,
+                flow.audited,
+                flow.landed,
+                flow.blocked,
+                flow.hold,
+            ),
+            (1, 1, 1, 1, 1, 1, 1, 1, 1),
+            "one card in every stage"
+        );
+        let sum = flow.draft
+            + flow.ready
+            + flow.working
+            + flow.stale
+            + flow.submitted
+            + flow.audited
+            + flow.landed
+            + flow.blocked
+            + flow.hold;
+        assert_eq!(sum, 9, "the nine counts are the open cards");
+        assert_eq!(flow.done_today, 3, "closed cards are never an open stage");
+    }
+
+    /// A lease that ends at the render's clock is still live; one second less is over. Only
+    /// `held` and `held_for_review` reservations count as a live holder.
+    #[test]
+    fn the_lease_edge_and_the_status_of_a_reservation_decide_working_or_stale() {
+        let who = Whose::default();
+        for (status, lease, want_working) in [
+            ("held", NOW, true),
+            ("held", NOW + 1, true),
+            ("held", NOW - 1, false),
+            ("held_for_review", NOW + 60, true),
+            ("held_for_review", NOW - 1, false),
+            ("expired_candidate", NOW + 60, false),
+            ("released", NOW + 60, false),
+            ("reclaimed", NOW + 60, false),
+        ] {
+            let f = fx();
+            let card = f.card("active", &[]);
+            f.reserve(card, "s-1", status, 10, lease, None);
+            let flow = f.flow(NOW, &who);
+            assert_eq!(
+                (flow.working, flow.stale),
+                if want_working { (1, 0) } else { (0, 1) },
+                "{status} lease_until={lease}"
+            );
+        }
+    }
+
+    #[test]
+    fn the_four_statements_read_and_never_write() {
+        assert_eq!(FLOW_STATEMENTS.len(), 4);
+        for sql in FLOW_STATEMENTS {
+            assert!(sql.trim_start().starts_with("SELECT"), "{sql}");
+            let upper = sql.to_ascii_uppercase();
+            for word in [
+                "INSERT", "UPDATE", "DELETE", "CREATE", "DROP", "PRAGMA", "ALTER",
+            ] {
+                assert!(!upper.contains(word), "{word} in {sql}");
+            }
+        }
+    }
+
+    /// Two live holders, a worktree: the folder wins over the newer card of the session id.
+    #[test]
+    fn my_card_is_the_worktree_card_then_the_newest_live_card_of_the_session() {
+        let f = fx();
+        let wt = tempfile::tempdir().unwrap();
+        std::fs::create_dir(wt.path().join(".git")).unwrap();
+        let wt_path = std::fs::canonicalize(wt.path()).unwrap();
+        let folder = wt_path.to_str().unwrap();
+        let old = f.card("active", &[]);
+        let new = f.card("active", &[("report", "READY (head abc)")]);
+        let expired = f.card("active", &[]);
+        let in_folder = f.card("active", &[]);
+        f.reserve(old, "s-1", "held", 100, NOW + 60, None);
+        f.reserve(new, "s-1", "held", 200, NOW + 60, None);
+        f.reserve(expired, "s-1", "held", 300, NOW - 1, None);
+        f.reserve(in_folder, "s-2", "held", 50, NOW + 60, Some(folder));
+
+        let by_session = Whose {
+            session_id: "s-1",
+            dir: None,
+        };
+        let mine = f.flow(NOW, &by_session).mine.unwrap();
+        assert_eq!(
+            mine.card, new,
+            "the newest live card, not the lowest number"
+        );
+        assert_eq!(
+            mine.stage,
+            Stage::Submitted,
+            "its stage is the stage rule's"
+        );
+
+        let in_worktree = Whose {
+            session_id: "s-1",
+            dir: Some(wt_path.as_path()),
+        };
+        assert_eq!(
+            f.flow(NOW, &in_worktree).mine.map(|m| m.card),
+            Some(in_folder),
+            "the card whose reservation names the worktree comes first"
+        );
+        let stranger = Whose {
+            session_id: "s-9",
+            dir: None,
+        };
+        assert_eq!(
+            f.flow(NOW, &stranger).mine,
+            None,
+            "a session that holds nothing"
+        );
+        let anonymous = Whose::default();
+        assert_eq!(
+            f.flow(NOW, &anonymous).mine,
+            None,
+            "no session id, no folder"
+        );
+        // Only the expired card is left to the session: never chosen.
+        let g = fx();
+        let gone = g.card("active", &[]);
+        g.reserve(gone, "s-1", "held", 300, NOW - 1, None);
+        assert_eq!(g.flow(NOW, &by_session).mine, None);
+        // A card closed since the reservation is no open card, so no card of mine.
+        let h = fx();
+        let closed = h.card("done", &[]);
+        h.reserve(closed, "s-1", "held", 300, NOW + 60, None);
+        assert_eq!(h.flow(NOW, &by_session).mine, None);
+    }
+
+    #[test]
+    fn two_cards_naming_one_folder_give_the_lowest_number_and_a_relative_path_names_none() {
+        let f = fx();
+        let wt = tempfile::tempdir().unwrap();
+        std::fs::create_dir(wt.path().join(".git")).unwrap();
+        let wt_path = std::fs::canonicalize(wt.path()).unwrap();
+        let folder = wt_path.to_str().unwrap();
+        let first = f.card("active", &[]);
+        let second = f.card("active", &[]);
+        let relative = f.card("active", &[]);
+        // Each card holds one reservation; the second names the folder in a link spelling too.
+        f.reserve(second, "a", "held", 1, NOW + 60, Some(folder));
+        f.reserve(first, "b", "held_for_review", 1, NOW + 60, Some(folder));
+        f.reserve(relative, "c", "held", 1, NOW + 60, Some("relative/path"));
+        let here = Whose {
+            session_id: "",
+            dir: Some(wt_path.as_path()),
+        };
+        assert_eq!(f.flow(NOW, &here).mine.map(|m| m.card), Some(first));
+        let elsewhere = Whose {
+            session_id: "",
+            dir: Some(Path::new("relative/path")),
+        };
+        assert_eq!(f.flow(NOW, &elsewhere).mine, None);
+    }
+}
+
+/// AC-2 of SPEC-20261122-statusline-flow: the marker words at their edges.
+#[cfg(test)]
+mod marker_tests {
+    use super::flow_support::fx;
+    use super::*;
+
+    #[test]
+    fn each_word_alone_is_the_marker_the_rule_names() {
+        for (line, want) in [
+            ("LANE-READY-INTEGRATION C-1 head=abc", Marker::Submitted),
+            ("MERGE-READY (2026-11-20) lane x", Marker::Submitted),
+            ("READY (SPEC revision 2) agent-17", Marker::Submitted),
+            ("READY head abc", Marker::Submitted),
+            ("감사 요청 tier 1", Marker::Submitted),
+            (
+                "LANE-DONE a C-1 pushed — audit requested",
+                Marker::Submitted,
+            ),
+            ("LANE-DONE a C-1 pushed — 감사 요청", Marker::Submitted),
+            ("AUDIT C-1 head abc — verdict: PASS", Marker::Audited),
+            ("LANE-BLOCKED kind=decision question", Marker::Blocked),
+            ("LANE-BLOCKED", Marker::Blocked),
+            ("ACK agent-1 C-1", Marker::Working),
+            ("PLAN C-1 steps", Marker::Working),
+            ("AUDIT C-1 head abc — verdict: FAIL", Marker::Working),
+        ] {
+            assert_eq!(marker_of(line), Some(want), "{line}");
+        }
+    }
+
+    #[test]
+    fn the_words_that_are_no_marker_change_nothing() {
+        for line in [
+            "RESUME head abc",
+            "RESUME (weekly usage limit reached)",
+            "waiting: audit since 08:00Z",
+            "LANE-HOLD C-1",
+            "PAIR-REQUEST agent-2",
+            "PAIR-OK",
+            "MERGED-LOCAL (2026-11-22, leader): landed",
+            "LANE-DONE a C-1 slice done",
+            "AUDIT C-1 head abc",
+            "LEADER 2026-11-19 — decision",
+            "",
+            " READY (leading space)",
+            "ready (lower case)",
+        ] {
+            assert_eq!(marker_of(line), None, "{line:?}");
+        }
+    }
+
+    /// `READY ` is the word and one space: the same letters inside a longer word, at the end of
+    /// the line, or before a tab or a line break are no marker.
+    #[test]
+    fn ready_needs_its_space_and_is_not_a_prefix_of_a_longer_word() {
+        assert_eq!(marker_of("READY x"), Some(Marker::Submitted));
+        assert_eq!(marker_of("READY  two spaces"), Some(Marker::Submitted));
+        for line in [
+            "READYX",
+            "READY",
+            "READY\tx",
+            "READY\nx",
+            "READYNESS review",
+            "READY-FOR-AUDIT",
+        ] {
+            assert_eq!(marker_of(line), None, "{line:?}");
+        }
+        // `MERGE-READY` is a prefix match by design (the rule's word is the first token).
+        assert_eq!(marker_of("MERGE-READY"), Some(Marker::Submitted));
+        assert_eq!(marker_of("MERGE-READYX"), Some(Marker::Submitted));
+        assert_eq!(marker_of("XMERGE-READY"), None);
+    }
+
+    /// A marker word only counts on the first line: each word on line two is no marker.
+    #[test]
+    fn a_marker_on_the_second_line_is_none() {
+        for word in [
+            "READY (head abc)",
+            "MERGE-READY (x)",
+            "LANE-READY-INTEGRATION C-1",
+            "LANE-BLOCKED kind=decision",
+            "AUDIT C-1 — verdict: PASS",
+            "ACK agent-1",
+            "PLAN C-1",
+            "감사 요청 tier 2",
+        ] {
+            assert_eq!(marker_of(&format!("summary\n{word}")), None, "{word}");
+        }
+    }
+
+    /// The first 1000 characters of a note are read, counted in characters (Korean too): a
+    /// verdict that ends at the cut still reads and one character later does not.
+    #[test]
+    fn the_note_head_is_cut_at_exactly_one_thousand_characters() {
+        let line = |pad: usize| {
+            let mut s = String::from("AUDIT C-1 head abc ");
+            s.push_str(&"감".repeat(pad));
+            s.push_str(" verdict: PASS");
+            s
+        };
+        let base = line(0).chars().count();
+        for (pad, stage) in [
+            (1000 - base, Stage::Audited),
+            (1000 - base + 1, Stage::Stale),
+        ] {
+            let f = fx();
+            f.card("active", &[("report", &line(pad))]);
+            let flow = f.flow(0, &Whose::default());
+            let expected = if stage == Stage::Audited {
+                (1, 0)
+            } else {
+                (0, 1)
+            };
+            assert_eq!(
+                (flow.audited, flow.stale),
+                expected,
+                "pad {pad}: first line of {} characters",
+                line(pad).chars().count()
+            );
+        }
+    }
+
+    /// The newest marker wins, across kinds: every ordering of two notes reads as the newest.
+    #[test]
+    fn the_newest_marker_wins_over_an_older_one_of_another_kind() {
+        let ready = "READY (head abc)";
+        let blocked = "LANE-BLOCKED kind=decision";
+        let pass = "AUDIT C-1 head abc — verdict: PASS";
+        let ack = "ACK agent-1 C-1";
+        for (notes, submitted, audited, blocked_n, stale) in [
+            (vec![ready, blocked], 0, 0, 1, 0),
+            (vec![blocked, ready], 1, 0, 0, 0),
+            (vec![blocked, ack], 0, 0, 0, 1),
+            (vec![ready, pass], 0, 1, 0, 0),
+            (vec![pass, ready], 1, 0, 0, 0),
+            (vec![pass, ack], 0, 0, 0, 1),
+            // A note that is no marker, newer than the marker, changes nothing.
+            (
+                vec![blocked, "RESUME head abc", "waiting: a run"],
+                0,
+                0,
+                1,
+                0,
+            ),
+        ] {
+            let f = fx();
+            let all: Vec<(&str, &str)> = notes.iter().map(|n| ("report", *n)).collect();
+            f.card("active", &all);
+            let flow = f.flow(0, &Whose::default());
+            assert_eq!(
+                (flow.submitted, flow.audited, flow.blocked, flow.stale),
+                (submitted, audited, blocked_n, stale),
+                "{notes:?}"
+            );
+        }
+    }
+
+    /// Several markers on one card count that card once.
+    #[test]
+    fn several_markers_on_one_card_count_it_once() {
+        let f = fx();
+        f.card(
+            "active",
+            &[
+                ("report", "READY (a)"),
+                ("report", "READY (b)"),
+                ("report", "MERGE-READY (c)"),
+            ],
+        );
+        let flow = f.flow(0, &Whose::default());
+        assert_eq!((flow.submitted, flow.draft, flow.stale), (1, 0, 0));
+    }
+}
+
+/// AC-3 of SPEC-20261122-statusline-flow: done today changes at the UTC midnight.
+#[cfg(test)]
+mod done_today_tests {
+    use super::flow_support::fx;
+    use super::*;
+
+    /// 20000 days after the epoch, at 00:00:00 UTC.
+    const MIDNIGHT: i64 = 20_000 * 86_400;
+
+    #[test]
+    fn the_count_changes_at_the_utc_midnight_and_not_a_second_before() {
+        let f = fx();
+        f.done_at(MIDNIGHT - 1);
+        f.done_at(MIDNIGHT);
+        f.done_at(MIDNIGHT + 3_600);
+        let who = Whose::default();
+        // The last second of the day before: that day started a day earlier, so all three
+        // (closed at or after its start) count.
+        assert_eq!(f.flow(MIDNIGHT - 1, &who).done_today, 3);
+        assert_eq!(f.flow(MIDNIGHT - 2, &who).done_today, 3);
+        // At the midnight the new day starts: the card closed one second earlier is yesterday's.
+        assert_eq!(f.flow(MIDNIGHT, &who).done_today, 2);
+        assert_eq!(f.flow(MIDNIGHT + 86_399, &who).done_today, 2);
+        // The next midnight: all three are older.
+        assert_eq!(f.flow(MIDNIGHT + 86_400, &who).done_today, 0);
+    }
+
+    #[test]
+    fn open_cards_never_count_as_done_today() {
+        let f = fx();
+        f.card("active", &[]);
+        f.card("hold", &[]);
+        f.done_at(MIDNIGHT + 5);
+        assert_eq!(f.flow(MIDNIGHT + 10, &Whose::default()).done_today, 1);
     }
 }
 

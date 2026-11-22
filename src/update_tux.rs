@@ -161,6 +161,10 @@ enum W {
     SwitchDone,
     SwitchReverted,
     SwitchFailed,
+    GitHooks,
+    GitHooksNext,
+    GitHooksDone,
+    GitHooksFailed,
     Keys,
     KeyImport,
     KeyInVault,
@@ -182,6 +186,12 @@ fn home_ok(v: &Value) -> bool {
 /// Whether a confirmed switch part (C-33 S3), when there is one, ended applied.
 fn switch_ok(v: &Value) -> bool {
     let r = &v["switch_result"];
+    r.is_null() || r["state"].as_str() == Some("applied")
+}
+
+/// A git-hook step that ran must have applied; one that did not finish makes the run partial.
+fn git_hooks_ok(v: &Value) -> bool {
+    let r = &v["git_hooks_result"];
     r.is_null() || r["state"].as_str() == Some("applied")
 }
 
@@ -452,9 +462,9 @@ fn w(lang: Lang, word: W) -> &'static str {
         ProjectNext => {
             if ko {
                 // A no-break space keeps each command on one line when the sentence wraps.
-                "다음: 기존 프로젝트는 각 프로젝트의 세션에서 /moai\u{a0}update (Codex CLI 는 $moai\u{a0}update)를 실행해 프로젝트 설정을 꼭 업데이트하세요."
+                "다음: 기존 프로젝트는 각 프로젝트의 세션에서 /moai\u{a0}update 를 실행해 프로젝트 설정을 꼭 업데이트하세요."
             } else {
-                "Next: in each existing project, run /moai\u{a0}update in a session there ($moai\u{a0}update in Codex CLI) to update the project's settings."
+                "Next: in each existing project, run /moai\u{a0}update in a session there to update the project's settings."
             }
         }
         ThisFolder => {
@@ -618,6 +628,34 @@ fn w(lang: Lang, word: W) -> &'static str {
                 "Replacing the switch script did not finish"
             }
         }
+        GitHooks => {
+            if ko {
+                "git 훅"
+            } else {
+                "git hooks"
+            }
+        }
+        GitHooksNext => {
+            if ko {
+                "git 훅은 따로 확인해요:"
+            } else {
+                "the git hooks are confirmed on their own:"
+            }
+        }
+        GitHooksDone => {
+            if ko {
+                "git 훅을 바꿨어요 — 은퇴 보관:"
+            } else {
+                "Git hooks applied — the retire record:"
+            }
+        }
+        GitHooksFailed => {
+            if ko {
+                "git 훅 바꾸기가 끝나지 않았어요"
+            } else {
+                "Applying the git hooks did not finish"
+            }
+        }
     }
 }
 
@@ -665,6 +703,21 @@ struct Row {
     mark: Mark,
     label: String,
     text: String,
+}
+
+/// The row label and reason of one `skipped` entry. The label is the part and the host, on the
+/// preview and the apply screens alike. The "no longer managed" notice of a retired host reads in
+/// Korean on the Korean screens; every other reason is printed as the command gave it.
+fn skipped_row(lang: Lang, s: &Value) -> (String, String) {
+    let part = s["part"].as_str().unwrap_or("");
+    let host = s["host"].as_str().unwrap_or("");
+    let label = format!("{part} {host}").trim().to_string();
+    let reason = match (lang, part, host) {
+        (Lang::Ko, "unmanaged", "codex") => "~/.codex와 ~/.agents/skills의 Codex 파일은 그대로 두며 moai가 더는 관리하지 않아요. 쓰지 않으면 직접 지우세요",
+        (Lang::Ko, "unmanaged", "omp") => "~/.omp의 OMP 파일은 그대로 두며 moai가 더는 관리하지 않아요. 쓰지 않으면 직접 지우세요",
+        _ => s["reason"].as_str().unwrap_or(""),
+    };
+    (label, format!("{}: {reason}", w(lang, W::Skipped)))
 }
 
 fn row(mark: Mark, label: String, text: String) -> Row {
@@ -875,21 +928,8 @@ fn preview_rows(v: &Value, lang: Lang) -> Vec<Row> {
     }
     rows.extend(key_rows(v, lang));
     for s in v["skipped"].as_array().into_iter().flatten() {
-        rows.push(row(
-            Mark::Skip,
-            format!(
-                "{} {}",
-                s["part"].as_str().unwrap_or(""),
-                s["host"].as_str().unwrap_or("")
-            )
-            .trim()
-            .to_string(),
-            format!(
-                "{}: {}",
-                w(lang, W::Skipped),
-                s["reason"].as_str().unwrap_or("")
-            ),
-        ));
+        let (label, text) = skipped_row(lang, s);
+        rows.push(row(Mark::Skip, label, text));
     }
     // #2872 stage 2: Go leftovers the cleanup would archive (confirmed apart, never by the y).
     let c = &v["cleanup"];
@@ -938,6 +978,21 @@ fn preview_rows(v: &Value, lang: Lang) -> Vec<Row> {
             (Mark::Skip, W::SwitchLeft)
         };
         rows.push(row(mark, w(lang, W::Switch).into(), w(lang, word).into()));
+    }
+    // SPEC-20261121-go-path-removal: the git hooks a `--confirm-git-hooks` run would retire and
+    // install (confirmed apart, never by the y); shown only when something changes.
+    let g = &v["git_hooks"];
+    if g.is_object() && v["git_hooks_result"].is_null() {
+        let go = g["go_hooks"].as_array().map(Vec::len).unwrap_or(0);
+        let install = g["install"].as_array().map(Vec::len).unwrap_or(0);
+        let kept = g["kept"].as_array().map(Vec::len).unwrap_or(0);
+        let text = format!(
+            "{} · {} · {}",
+            counted(lang, W::Retire, go),
+            counted(lang, W::Installed, install),
+            counted(lang, W::Keep, kept)
+        );
+        rows.push(row(Mark::Update, w(lang, W::GitHooks).into(), text));
     }
     rows
 }
@@ -1288,6 +1343,29 @@ impl Out<'_> {
         );
         self.buf.push_str(&line);
     }
+    /// SPEC-20261121-go-path-removal: the git hooks are confirmed with their own token too; the
+    /// command is shown whole so it can be copied.
+    fn git_hooks_next(&mut self, v: &Value) {
+        let Some(flag) = v["git_hooks"]["apply_flag"].as_str() else {
+            return;
+        };
+        if !v["git_hooks_result"].is_null() {
+            return;
+        }
+        self.blank();
+        let line = format!(
+            "{} {}\n",
+            self.p().mark(Token::Info),
+            visible(w(self.lang(), W::GitHooksNext))
+        );
+        self.buf.push_str(&line);
+        let line = format!(
+            "  {}\n",
+            self.p()
+                .paint(Token::Code, &visible(&format!("moai update {flag}")))
+        );
+        self.buf.push_str(&line);
+    }
     /// A switch part that ran (`--confirm-switch`): where the old file is kept and the revert.
     fn switch_done(&mut self, v: &Value, with_revert: bool) {
         let r = &v["switch_result"];
@@ -1313,6 +1391,41 @@ impl Out<'_> {
             &format!("{} {}", w(lang, W::SwitchDone), visible(&saved)),
         );
         if let Some(c) = v["revert"]["switch"].as_str().filter(|_| with_revert) {
+            let line = format!(
+                "  {} {}\n",
+                self.p()
+                    .paint(Token::Muted, &format!("{}:", w(lang, W::Revert))),
+                self.p().paint(Token::Code, &visible(c))
+            );
+            self.buf.push_str(&line);
+        }
+    }
+    /// A git-hook part that ran (`--confirm-git-hooks`): the retire record folder and the
+    /// revert command for the project the update ran in.
+    fn git_hooks_done(&mut self, v: &Value, with_revert: bool) {
+        let r = &v["git_hooks_result"];
+        if r.is_null() {
+            return;
+        }
+        let lang = self.lang();
+        self.blank();
+        if r["state"].as_str() != Some("applied") {
+            let msg = r["message"]
+                .as_str()
+                .or(r["reason"].as_str())
+                .unwrap_or(r["state"].as_str().unwrap_or(""));
+            self.status(
+                Mark::Error,
+                &format!("{}: {}", w(lang, W::GitHooksFailed), visible(msg)),
+            );
+            return;
+        }
+        let folder = self.home(r["folder"].as_str().unwrap_or(""));
+        self.status(
+            Mark::Ok,
+            &format!("{} {}", w(lang, W::GitHooksDone), visible(&folder)),
+        );
+        if let Some(c) = v["revert"]["git_hooks"].as_str().filter(|_| with_revert) {
             let line = format!(
                 "  {} {}\n",
                 self.p()
@@ -1606,6 +1719,7 @@ pub fn screen(result: &Value, asked: Asked, view: &View) -> String {
             o.cleanup_next(result);
             o.home_next(result);
             o.switch_next(result);
+            o.git_hooks_next(result);
             return o.buf;
         }
         Asked::Stale => {
@@ -1651,6 +1765,8 @@ pub fn screen(result: &Value, asked: Asked, view: &View) -> String {
         o.home_next(result);
         o.switch_done(result, true);
         o.switch_next(result);
+        o.git_hooks_done(result, true);
+        o.git_hooks_next(result);
         o.project_next();
         return o.buf;
     }
@@ -1679,6 +1795,8 @@ pub fn screen(result: &Value, asked: Asked, view: &View) -> String {
     o.home_next(result);
     o.switch_done(result, true);
     o.switch_next(result);
+    o.git_hooks_done(result, true);
+    o.git_hooks_next(result);
     o.buf
 }
 
@@ -1791,15 +1909,8 @@ fn applied(v: &Value, view: &View) -> String {
     part(W::Hooks, &v["hooks_result"], &mut rows);
     part(W::Keys, &v["keys_result"], &mut rows);
     for s in v["skipped"].as_array().into_iter().flatten() {
-        rows.push(row(
-            Mark::Skip,
-            s["part"].as_str().unwrap_or("").to_string(),
-            format!(
-                "{}: {}",
-                w(lang, W::Skipped),
-                s["reason"].as_str().unwrap_or("")
-            ),
-        ));
+        let (label, text) = skipped_row(lang, s);
+        rows.push(row(Mark::Skip, label, text));
     }
     // A blank line after the answer typed at the question.
     o.blank();
@@ -1810,6 +1921,7 @@ fn applied(v: &Value, view: &View) -> String {
     bad |= !cleanup_ok(v);
     bad |= !home_ok(v);
     bad |= !switch_ok(v);
+    bad |= !git_hooks_ok(v);
     let head = if bad { W::Partial } else { W::Done };
     let m = if bad { Mark::Warn } else { Mark::Ok };
     let total = if lang == Lang::Ko {
@@ -1846,6 +1958,7 @@ fn applied(v: &Value, view: &View) -> String {
     o.cleanup_done(v, false);
     o.home_done(v, false);
     o.switch_done(v, false);
+    o.git_hooks_done(v, false);
     // A partly applied run ends with what failed, not the next step (#2894 7b).
     if !bad {
         o.project_next();

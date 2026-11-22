@@ -1,8 +1,9 @@
 //! Host projection UPDATE (Issue #1999, 04-B).
 //!
-//! `update-plan` inventories every host projection (Claude `~/.claude/skills/moai/`,
-//! Codex `~/.agents/skills/moai/` — the design-verified paths; project-level projections
-//! are a P04 HOLD and are not included), compares each file three-way (baseline = the
+//! `update-plan` inventories every host projection (Claude `~/.claude/skills/moai/` — the
+//! design-verified path; project-level projections are a P04 HOLD and are not included; the
+//! Codex copy under `~/.agents/skills/moai/` is no longer written), compares each file
+//! three-way (baseline = the
 //! ownership manifest of the latest host receipt, current = bytes on disk, new = the
 //! staged package) and writes nothing. `update-apply` recomputes the plan and refuses
 //! any other digest, then walks the host transaction (REQ-04B-04): pending receipt
@@ -17,7 +18,7 @@
 //! Host receipts live beside the 04-A install receipt:
 //! `~/.moai-cli/installations/<install_id>/hosts/moai/<host>.json`. The `install_id` is the
 //! 04-A derivation, obtained through the public `install::plan_receipt` so this module
-//! does not modify 04-A. Host config keys (Claude `settings.json`, Codex `config.toml`)
+//! does not modify 04-A. Host config keys (Claude `settings.json`)
 //! are out of scope (P04 HOLD — the REQs name projections only). Projections are
 //! independent copies; a symlinked projection is `blocked`, never followed (REQ-04B-08),
 //! and user files are never deleted or overwritten (REQ-04B-09).
@@ -43,7 +44,7 @@ const UPDATE_SCHEMA_VERSION: u32 = 1;
 /// Host projection roots under the home, in fixed plan order. 02-B/02-C expose explicit
 /// target paths rather than constants, so the design-verified values stand in here
 /// (Issue impl plan step 1).
-pub(crate) const HOSTS: [&str; 2] = ["claude", "codex"];
+pub(crate) const HOSTS: [&str; 1] = ["claude"];
 /// Same bounded-file rule as every other state file.
 pub(crate) const FILE_LIMIT: u64 = 262_144;
 const WALK_DEPTH: usize = 32;
@@ -54,7 +55,6 @@ const WALK_BYTES: usize = 16 * 1024 * 1024;
 fn skills_dir(host: &str) -> &'static str {
     match host {
         "claude" => ".claude/skills",
-        "codex" => ".agents/skills",
         other => unreachable!("unknown host {other}"),
     }
 }
@@ -78,27 +78,20 @@ pub(crate) const GO_ERA_GUIDANCE: &str = "this can be an earlier-generation (Go-
      yourself, or wait for a confirmed backup-then-replace procedure";
 
 /// The folder that holds the host's `skills/` folder: Claude's host folder
-/// ([`crate::host_home`]: `~/.claude` or `CLAUDE_CONFIG_DIR`, card C-79); Codex reads
-/// `~/.agents/skills`, which `CODEX_HOME` does not move, so its base is HOME.
+/// ([`crate::host_home`]: `~/.claude` or `CLAUDE_CONFIG_DIR`, card C-79).
 /// A relocated `skills` link to the default `~/.claude/skills` is followed there (user decision
 /// 2026-11-17, "기본 폴더 링크만 허용"), so preview and apply name the same folder; `base` is where
 /// the link checks start.
 fn skills_place(home: &Path, host: &str) -> Result<crate::host_home::Place> {
     let rel = skills_dir(host);
-    match host {
-        "claude" => crate::host_home::place(
-            crate::host_home::Host::Claude,
-            home,
-            &format!(
-                "{}/{SKILL_DIR}",
-                rel.strip_prefix(".claude/").unwrap_or(rel)
-            ),
+    crate::host_home::place(
+        crate::host_home::Host::Claude,
+        home,
+        &format!(
+            "{}/{SKILL_DIR}",
+            rel.strip_prefix(".claude/").unwrap_or(rel)
         ),
-        _ => Ok(crate::host_home::Place {
-            base: home.to_path_buf(),
-            rel: PathBuf::from(rel).join(SKILL_DIR),
-        }),
-    }
+    )
 }
 
 fn skills_parent(home: &Path, host: &str) -> Result<PathBuf> {
@@ -1512,13 +1505,29 @@ pub fn installed_agents_dir() -> Result<PathBuf> {
     }
 }
 
-/// The skill host whose installed copy an agent host reads (#2638): OMP reads the shared
-/// `~/.agents/skills` that the Codex copy is written to (#2635 6842183286).
-fn skill_host_of(agent_host: &str) -> &'static str {
-    match agent_host {
-        "claude" => "claude",
-        _ => "codex",
+/// The notice for a host whose files an earlier version wrote and this one leaves as they are
+/// (SPEC-20261122-codex-home-update-removed): one entry per host, only when its folder exists
+/// under the home (a link counts). It names the folder and says moai no longer manages it.
+/// Not part of `plan_digest`: nothing is applied for it.
+fn unmanaged_notices(home: &Path) -> Vec<serde_json::Value> {
+    let home = fs::canonicalize(home).unwrap_or_else(|_| home.to_path_buf());
+    let present = |rel: &str| fs::symlink_metadata(home.join(rel)).is_ok();
+    let mut out = Vec::new();
+    if present(".codex") || present(".agents/skills") {
+        out.push(json!({
+            "part": "unmanaged",
+            "host": "codex",
+            "reason": "Codex files under ~/.codex and ~/.agents/skills are left as they are; moai no longer manages them; remove them yourself if you do not use them",
+        }));
     }
+    if present(".omp") {
+        out.push(json!({
+            "part": "unmanaged",
+            "host": "omp",
+            "reason": "OMP files under ~/.omp are left as they are; moai no longer manages them; remove them yourself if you do not use them",
+        }));
+    }
+    out
 }
 
 /// The user layer `moai-cli update` installs (#2638): the skill copies, the base agents, the
@@ -1528,7 +1537,7 @@ pub struct UserLayerPlan {
     pub skills: UpdatePlan,
     pub agents: crate::agent_install::Plan,
     pub routing: crate::home_routing::Plan,
-    /// The MoAI-Easy output style (#2875): Claude's style file and `outputStyle`, Codex's block.
+    /// The MoAI-Easy output style (#2875): Claude's style file and `outputStyle`.
     pub style: crate::home_style::Plan,
     /// The `moai` hard link in this build's version folder (#2791 AC-1).
     pub bin_names: crate::bin_names::Plan,
@@ -1542,6 +1551,9 @@ pub struct UserLayerPlan {
     /// C-33 S3: the name-switch script `path/moai` (v1 -> v2) that only `--confirm-switch
     /// <token>` replaces. Not part of `plan_digest`, like `home`.
     pub switch: switch::Layer,
+    /// The git-hook retire and install (SPEC-20261121-go-path-removal), confirmed apart like
+    /// the switch part.
+    pub git_hooks: crate::git_hooks::update::Layer,
     /// Agent, routing and style hosts left out because their skill copy is blocked.
     pub skipped: Vec<serde_json::Value>,
     /// One digest over the seven plan digests; the only value `--confirm` accepts.
@@ -1581,10 +1593,10 @@ fn user_layer_plan_in(
     let mut skipped = Vec::new();
     let mut agent_hosts = Vec::new();
     for h in crate::agent_defs::HOSTS {
-        if skill_ok(skill_host_of(h)) {
+        if skill_ok(h) {
             agent_hosts.push(h);
         } else {
-            skipped.push(json!({"part": "agents", "host": h, "reason": format!("the {} skill copy is blocked", skill_host_of(h))}));
+            skipped.push(json!({"part": "agents", "host": h, "reason": format!("the {h} skill copy is blocked")}));
         }
     }
     let mut routing_hosts = Vec::new();
@@ -1611,6 +1623,8 @@ fn user_layer_plan_in(
             skipped.push(json!({"part": "style", "host": h, "reason": format!("the {h} skill copy is blocked")}));
         }
     }
+    // The hosts whose files are left alone, named once each (not part of the digest).
+    skipped.extend(unmanaged_notices(home));
     let agents = crate::agent_install::plan_for(home, package, agents, &agent_hosts)?;
     let routing = crate::home_routing::plan_for(home, package, &routing_hosts)?;
     let style = crate::home_style::plan_for(home, package, &style_hosts)?;
@@ -1621,6 +1635,7 @@ fn user_layer_plan_in(
     let keys = crate::update_keys::plan(home)?;
     let home_layer = crate::update_home::plan(home)?;
     let switch_layer = switch::plan(home)?;
+    let git_hooks_layer = crate::git_hooks::update::plan(home, &cwd)?;
     // One snapshot: what the agents and the section were rendered from is the staged package.
     if agents.package_digest != staged.digest
         || routing.package_digest != staged.digest
@@ -1654,6 +1669,7 @@ fn user_layer_plan_in(
         keys,
         home: home_layer,
         switch: switch_layer,
+        git_hooks: git_hooks_layer,
         skipped,
         plan_digest,
         cleanup,
@@ -1705,9 +1721,10 @@ fn layer_asks(
     cleanup: Option<&str>,
     home: Option<&str>,
     switch: Option<&str>,
+    git_hooks: Option<&str>,
     writes: bool,
 ) -> bool {
-    asks(cleanup, home.or(switch), writes)
+    asks(cleanup, home.or(switch).or(git_hooks), writes)
 }
 
 /// Archive the cleanup items (`update_cleanup::apply` re-plans and checks the token again).
@@ -1723,13 +1740,20 @@ fn run_cleanup(
 /// The keys of a result's `revert` object, in the one order the commands are safe to run: last
 /// applied first (#2936 E1). The apply order is agents, routing, style, command names, hooks,
 /// keys, then the confirmed cleanup, then the confirmed home part, then the confirmed switch
-/// script (C-33 S3: `path/moai`, which no other part touches). A file two layers changed, such
-/// as Codex's `~/.codex/AGENTS.md` (routing and style), is only given back in this order:
-/// reverting routing first is skipped as `user_changed_since_apply` and style then leaves the
-/// routing block behind for good. Only the commands that exist are listed. The terminal screen and
+/// script (C-33 S3: `path/moai`, which no other part touches). A file two layers changed
+/// (such as `~/.claude/settings.json`) is only given back in this order: reverting an earlier
+/// layer first is skipped as `user_changed_since_apply`. Only the commands that exist are listed. The terminal screen and
 /// the JSON result both take the order from here.
-pub const REVERT_ORDER: [&str; 8] = [
-    "switch", "home", "cleanup", "keys", "hooks", "style", "routing", "agents",
+pub const REVERT_ORDER: [&str; 9] = [
+    "git_hooks",
+    "switch",
+    "home",
+    "cleanup",
+    "keys",
+    "hooks",
+    "style",
+    "routing",
+    "agents",
 ];
 
 pub fn revert_order(revert: &serde_json::Value) -> Vec<&'static str> {
@@ -1769,7 +1793,7 @@ fn gate_on_skills(skills: &serde_json::Value, layer: &UserLayerPlan) -> SkillGat
         skipped: Vec::new(),
     };
     for h in &layer.agents.hosts {
-        if landed(skill_host_of(&h.host)) {
+        if landed(&h.host) {
             gate.agents.push(h.host.clone());
         } else {
             gate.skipped.push(
@@ -1805,7 +1829,7 @@ fn gate_on_skills(skills: &serde_json::Value, layer: &UserLayerPlan) -> SkillGat
     gate
 }
 
-/// How many hosts a style plan covers (Claude has two targets, Codex one).
+/// How many hosts a style plan covers (Claude has two targets).
 fn count_hosts(p: &crate::home_style::Plan) -> usize {
     let mut hosts: Vec<&str> = p.targets.iter().map(|t| t.host.as_str()).collect();
     hosts.dedup();
@@ -1869,6 +1893,7 @@ pub fn layer_summary(p: &UserLayerPlan) -> String {
     out.push_str(&p.keys.summary());
     out.push_str(&p.home.summary());
     out.push_str(&p.switch.summary());
+    out.push_str(&p.git_hooks.summary());
     for s in &p.skipped {
         out.push_str(&format!(
             "  skipped {} {}: {}\n",
@@ -1916,12 +1941,14 @@ pub fn layer_summary(p: &UserLayerPlan) -> String {
 /// Card C-67 (audit N1): `allow_older` (`--allow-older`) plans this build over a newer
 /// installed version instead of blocking it; each such host carries a `going_back` warning,
 /// and the digest binds the choice, so the confirm needs the flag again.
+#[allow(clippy::too_many_arguments)]
 fn update_command_core(
     home: &Path,
     confirm: Option<&str>,
     confirm_cleanup: Option<&str>,
     confirm_home: Option<&str>,
     confirm_switch: Option<&str>,
+    confirm_git_hooks: Option<&str>,
     allow_older: bool,
     ask: impl FnOnce(&str, &serde_json::Value) -> Result<bool>,
 ) -> Result<serde_json::Value> {
@@ -1948,6 +1975,8 @@ fn update_command_core(
     // C-33 S3: its own token, like the home part; the file it writes (`path/moai`) is no item of
     // `~/.moai`, so it combines with the cleanup and the home token.
     let switch_token = switch::check_token(&layer.switch, confirm_switch)?;
+    let git_hooks_token =
+        crate::git_hooks::update::check_token(&layer.git_hooks, confirm_git_hooks)?;
     if home_token.is_some() && cleanup.is_some() {
         return Err(
             "the home token and the cleanup token both move items of ~/.moai and would make each other's preview stale; confirm one at a time, nothing applied".into(),
@@ -1990,13 +2019,18 @@ fn update_command_core(
         if let Some(s) = layer.switch.to_json() {
             out["switch"] = s.clone();
         }
+        // SPEC-20261121-go-path-removal: only a repository with Go-generation or drifted hooks
+        // shows a `git_hooks` part.
+        if let Some(g) = layer.git_hooks.to_json() {
+            out["git_hooks"] = g.clone();
+        }
         out
     };
     let digest = match confirm {
         Some(d) => d.to_string(),
         // A cleanup or home run without `--confirm` leaves the layer a preview: a yes at the
         // question never applies a part with its own token.
-        None if layer_asks(cleanup, home_token, switch_token, writes)
+        None if layer_asks(cleanup, home_token, switch_token, git_hooks_token, writes)
             && ask(&layer_summary(&layer), &preview())? =>
         {
             layer.plan_digest.clone()
@@ -2020,6 +2054,14 @@ fn update_command_core(
                 out["revert"]["switch"] = r["revert"].clone();
                 out["revert_order"] = json!(revert_order(&out["revert"]));
                 out["switch_result"] = r;
+            }
+            if let Some(t) = git_hooks_token {
+                let cwd = std::env::current_dir()
+                    .map_err(|_| "current directory unavailable".to_string())?;
+                let r = crate::git_hooks::update::apply(&cwd, t, &crate::audit::utc_now())?;
+                out["revert"]["git_hooks"] = r["revert"].clone();
+                out["revert_order"] = json!(revert_order(&out["revert"]));
+                out["git_hooks_result"] = r;
             }
             return Ok(out);
         }
@@ -2082,7 +2124,7 @@ fn update_command_core(
     // #2875: the style, for the same confirmed hosts whose skill copy applied.
     let style = part((|| {
         let p = crate::home_style::plan_for(home, &package, &style_hosts)?;
-        // The routing apply may have just written the same Codex file: compare what is written.
+        // The apply of an earlier part may have just changed a file: compare what is written.
         if style_hosts.len() == count_hosts(&fresh.style)
             && !crate::home_style::same_writes(&p, &fresh.style)
         {
@@ -2127,6 +2169,15 @@ fn update_command_core(
     let home_part = home_token.map(|t| part(crate::update_home::apply(home, t, PERMISSION)));
     // C-33 S3: the confirmed switch part, last; an error is reported beside the rest.
     let switch_part = switch_token.map(|t| part(switch::apply(home, t, &crate::audit::utc_now())));
+    // SPEC-20261121-go-path-removal: the confirmed git-hook part; an error is reported beside
+    // the rest, and the hooks of the project the update runs in are the ones that change.
+    let git_hooks_part = git_hooks_token.map(|t| {
+        part((|| {
+            let cwd =
+                std::env::current_dir().map_err(|_| "current directory unavailable".to_string())?;
+            crate::git_hooks::update::apply(&cwd, t, &crate::audit::utc_now())
+        })())
+    });
     let revert = |op: &str, r: &serde_json::Value| {
         r["receipt"]
             .as_str()
@@ -2170,6 +2221,10 @@ fn update_command_core(
         out["revert"]["switch"] = s["revert"].clone();
         out["switch_result"] = s;
     }
+    if let Some(g) = git_hooks_part {
+        out["revert"]["git_hooks"] = g["revert"].clone();
+        out["git_hooks_result"] = g;
+    }
     out["revert_order"] = json!(revert_order(&out["revert"]));
     Ok(out)
 }
@@ -2196,6 +2251,7 @@ pub fn update_command(
         confirm_home,
         None,
         None,
+        None,
         allow_older,
         ask,
     )
@@ -2213,6 +2269,7 @@ pub fn update_command_switch(
     confirm_cleanup: Option<&str>,
     confirm_home: Option<&str>,
     confirm_switch: Option<&str>,
+    confirm_git_hooks: Option<&str>,
     revert_switch: Option<&str>,
     allow_older: bool,
     ask: impl FnOnce(&str, &serde_json::Value) -> Result<bool>,
@@ -2222,6 +2279,7 @@ pub fn update_command_switch(
             || confirm_cleanup.is_some()
             || confirm_home.is_some()
             || confirm_switch.is_some()
+            || confirm_git_hooks.is_some()
         {
             return Err(
                 "--revert-switch cannot be combined with a confirming flag; nothing changed".into(),
@@ -2233,13 +2291,15 @@ pub fn update_command_switch(
     let scripted = confirm.is_some()
         || confirm_cleanup.is_some()
         || confirm_home.is_some()
-        || confirm_switch.is_some();
+        || confirm_switch.is_some()
+        || confirm_git_hooks.is_some();
     let mut out = update_command_core(
         home,
         confirm,
         confirm_cleanup,
         confirm_home,
         confirm_switch,
+        confirm_git_hooks,
         allow_older,
         ask,
     )?;
@@ -2977,16 +3037,6 @@ fn reload_state(
                 ("no", "no files written".into())
             }
         }
-        "codex" => {
-            if wrote {
-                (
-                    "unknown",
-                    "Codex detects skill changes automatically; restart if they are not shown (learn.chatgpt.com/docs/build-skills, 2026-11-08)".into(),
-                )
-            } else {
-                ("no", "no files written".into())
-            }
-        }
         other => unreachable!("unknown host {other}"),
     }
 }
@@ -3134,13 +3184,20 @@ mod user_layer_tests {
         // C-33 S3: a switch token alone leaves the layer a preview too — the terminal yes never
         // confirms the switch — and no token at all still asks.
         let sw = Some("switch:0123456789abcdef");
-        assert!(layer_asks(None, None, None, true));
-        assert!(!layer_asks(None, None, sw, true));
-        assert!(!layer_asks(None, Some("home:0123456789abcdef"), None, true));
+        assert!(layer_asks(None, None, None, None, true));
+        assert!(!layer_asks(None, None, sw, None, true));
+        assert!(!layer_asks(
+            None,
+            Some("home:0123456789abcdef"),
+            None,
+            None,
+            true
+        ));
         assert!(!layer_asks(
             Some("cleanup:0123456789abcdef"),
             None,
             sw,
+            None,
             true
         ));
     }
@@ -3170,33 +3227,29 @@ mod user_layer_tests {
                 .collect::<Vec<_>>()
                 .join(",")
         };
-        // Both copies landed (applied or already unchanged): every host goes on.
-        let ok = json!({"hosts": [{"host": "claude", "status": "applied"}, {"host": "codex", "status": "unchanged"}]});
+        // The copy landed (applied or already unchanged): the Claude parts go on.
+        let ok = json!({"hosts": [{"host": "claude", "status": "unchanged"}]});
         let g = gate_on_skills(&ok, &layer);
-        assert_eq!(hosts(&g.agents), "claude,codex,omp");
-        assert_eq!(hosts(&g.routing), "claude,codex");
-        assert_eq!(hosts(&g.style), "claude,codex");
-        assert!(g.skipped.is_empty());
-        // The Codex copy failed during the apply: codex and omp agents and the codex section stop.
-        let failed = json!({"hosts": [{"host": "claude", "status": "applied"}, {"host": "codex", "status": "failed"}]});
-        let g = gate_on_skills(&failed, &layer);
         assert_eq!(hosts(&g.agents), "claude");
         assert_eq!(hosts(&g.routing), "claude");
-        // #2875: the codex style block points at the same copy, so it stops too.
         assert_eq!(hosts(&g.style), "claude");
-        assert_eq!(
-            skipped(&g),
-            "agents:codex,agents:omp,routing:codex,style:codex"
-        );
+        assert!(g.skipped.is_empty());
+        // The Claude copy failed during the apply: its agents, section and style stop.
+        let failed = json!({"hosts": [{"host": "claude", "status": "failed"}]});
+        let g = gate_on_skills(&failed, &layer);
+        assert_eq!(hosts(&g.agents), "");
+        assert_eq!(hosts(&g.routing), "");
+        assert_eq!(hosts(&g.style), "");
+        assert_eq!(skipped(&g), "agents:claude,routing:claude,style:claude");
         assert!(g
             .skipped
             .iter()
             .all(|s| s["reason"] == json!("the skill copy did not apply")));
         // A host missing from the result counts as not landed.
-        let missing = json!({"hosts": [{"host": "codex", "status": "applied"}]});
+        let missing = json!({"hosts": []});
         let g = gate_on_skills(&missing, &layer);
-        assert_eq!(hosts(&g.agents), "codex,omp");
-        assert_eq!(hosts(&g.routing), "codex");
-        assert_eq!(hosts(&g.style), "codex");
+        assert_eq!(hosts(&g.agents), "");
+        assert_eq!(hosts(&g.routing), "");
+        assert_eq!(hosts(&g.style), "");
     }
 }

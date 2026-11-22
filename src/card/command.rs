@@ -142,7 +142,13 @@ pub fn list_filtered(
     let mut stmt = conn
         .prepare(&format!(
             "SELECT card_id, title, kind, state, priority, rev, updated_at, \
-                    source_host, source_project, source_number, {} \
+                    source_host, source_project, source_number, {}, \
+                    (EXISTS (SELECT 1 FROM event \
+                              WHERE event.card_id = card.card_id AND event.kind = 'card.landed') \
+                     OR EXISTS (SELECT 1 FROM card_link \
+                                 WHERE card_link.from_card = card.card_id \
+                                   AND card_link.kind = 'pr' AND card_link.state = 'active' \
+                                   AND card_link.pr_state = 'merged')) \
                FROM card WHERE (?1 IS NULL OR state = ?1) \
                            AND (?2 IS NULL OR substr(title, 1, length(?2)) = ?2) \
                            AND (?3 OR ?1 IS NOT NULL OR card.state <> 'hold' \
@@ -173,6 +179,7 @@ pub fn list_filtered(
                     _ => Value::Null,
                 },
                 "spec": r.get::<_, Option<String>>(10)?,
+                "landed": r.get::<_, bool>(11)?,
             }))
         })
         .map_err(|e| LedgerError::from(e).to_string())?;

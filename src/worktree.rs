@@ -6,11 +6,13 @@
 //! worktree locked for the same task) and only then runs
 //! `git worktree add --lock --reason "moai claim <task_key> e<epoch>" -b <branch> <path> <base>`.
 //! It never forces the add, and the primary worktree's HEAD, branch and index are never
-//! written: the only mutating git call in this file is that `worktree add`.
+//! written: the only mutating git call in this file is that `worktree add`. After a successful
+//! add inside the project's `.claude/worktrees/`, one line goes to the repository's local exclude
+//! file (`crate::home_workdir::ensure_place_ignored`) so the main tree's status does not change.
 //!
-//! Decided inputs: the default path is `<HOME>/.moai/worktrees/<project>-<issue>-<logical_key>`
-//! (#2811 W2, `crate::home_workdir`; before it `<primary>/.moai-cli/worktrees/<issue>-<logical_key>`,
-//! decisions 16:5x→17:0x, where existing worktrees stay); any other path is accepted as given
+//! Decided inputs: the default path is `<project>/.claude/worktrees/<project>-<issue>-<logical_key>`
+//! (SPEC-20261122-worktree-place, `crate::home_workdir`; before it `<HOME>/.moai/worktrees/…` and
+//! `<primary>/.moai-cli/worktrees/<issue>-<logical_key>`, where existing worktrees stay); any other path is accepted as given
 //! (REQ-06C-12). `git worktree add` creates the missing parents of the default path (D5). The branch prefix is an open HOLD, so it is a required
 //! input with no default.
 //!
@@ -261,7 +263,7 @@ pub fn refuse_in_build_folder(path: &Path, what: &str) -> Result<()> {
     match cargo_build_folder(path) {
         Some(dir) => Err(format!(
             "{what} {} is inside the Cargo build folder {}; put worktrees outside \
-             build output, under the default <HOME>/.moai/worktrees",
+             build output, under the default <project>/.claude/worktrees",
             path.display(),
             dir.display()
         )),
@@ -436,8 +438,8 @@ fn valid_prefix(p: &str) -> bool {
 //   Issue); it still differs from 06-A's `claim_branch_suffix` (`c<issue>-<comment_id>`)
 // @MX:UPGRADE: when the user decides the prefix and its relation to the 06-A suffix
 /// The plan for a claim's worktree (REQ-06C-01): no git change, byte-identical for equal input.
-/// `home` is the user's home (`crate::home_workdir::home`); it is needed only when `path` is
-/// `None` and names the default `<HOME>/.moai/worktrees/<project>-<issue>-<logical_key>`.
+/// Without an explicit `path` the worktree lands in the project's
+/// `.claude/worktrees/<project>-<issue>-<logical_key>`; `home` only feeds the build folder.
 pub fn plan(
     project: &Path,
     rec: &ClaimRecord,
@@ -464,11 +466,9 @@ pub fn plan(
     let path = match path {
         Some(p) if p.is_absolute() => p.to_path_buf(),
         Some(p) => primary.join(p),
-        None => crate::home_workdir::worktree_dir(
-            home.ok_or("home directory missing; pass --path for the worktree")?,
-            &primary,
-            &format!("{issue}-{}", rec.logical_key),
-        )?,
+        None => {
+            crate::home_workdir::worktree_dir(&primary, &format!("{issue}-{}", rec.logical_key))?
+        }
     };
     refuse_in_build_folder(&path, "worktree path")?;
     // The worktree's build folder under the shared build root (S8, the C-82 convention):
@@ -668,6 +668,18 @@ pub fn apply(
             "worktree", "add", "--lock", "--reason", &reason, "-b", &branch, &target_s, &base,
         ],
     )?;
+    // REQ-10, REQ-11: a worktree made in the project's own folder must not show in the main
+    // tree's status. The exclude line follows a successful add (a failed add changes nothing),
+    // is written for the repository's first worktree whatever worktree or folder `project` is, and a
+    // failure is named in the answer and never undoes the creation.
+    let place_exclude_error = entries
+        .first()
+        .map(|e| PathBuf::from(&e.path))
+        .filter(|primary| {
+            resolve_existing(&target)
+                .starts_with(resolve_existing(&primary.join(".claude").join("worktrees")))
+        })
+        .and_then(|primary| crate::home_workdir::ensure_place_ignored(&primary).err());
     let id = identity(&target)?;
     // The created worktree builds under the shared build root (S8, the C-82 convention).
     // A creation failure is reported in the answer, never silent, and never fails the apply:
@@ -715,6 +727,9 @@ pub fn apply(
     });
     if let Some(err) = build_folder_error {
         out["build_folder_error"] = json!(err);
+    }
+    if let Some(err) = place_exclude_error {
+        out["place_exclude_error"] = json!(err);
     }
     Ok(out)
 }

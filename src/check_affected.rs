@@ -326,7 +326,11 @@ pub fn steps(sel: &Selection, present: &[String], range: &str, target_dir: &str)
         out.push(cargo_step("test_targets", &["test"], &refs));
     }
     if !sel.python.is_empty() {
-        out.push(cargo_step("build_cli", &["build"], &["--bin", "moai-cli"]));
+        // A selected Rust test target makes cargo build the binary into the same folder, so a
+        // separate build step would be a second build of it.
+        if sel.rust.is_empty() {
+            out.push(cargo_step("build_cli", &["build"], &["--bin", "moai-cli"]));
+        }
         let mut py = step("python", "python3", &["-m", "unittest"], false);
         py.args
             .extend(sel.python.iter().map(|m| format!("tests.{m}")));
@@ -617,7 +621,9 @@ fn summary_words(results: &[(String, i32)]) -> Vec<(String, i32)> {
 }
 
 /// `check affected <range>`: refuse unless the checkout is the range's head and clean, then run
-/// every step (never stopping at the first failure) and give one summary line (REQ-8 to REQ-11).
+/// every cheap step, then every heavy step unless a cheap one failed (the run stops before the
+/// heavy steps and the summary says `stopped_at=<step>`), and give one summary line (REQ-8 to
+/// REQ-11 of the earlier SPEC, changed by SPEC-20261122-check-light-stop).
 pub fn run(dir: &Path, range: &str, opts: &RunOptions) -> Result<serde_json::Value> {
     let facts = read_facts(dir, range)?;
     let dir = facts.root.as_path();
@@ -661,7 +667,17 @@ pub fn run(dir: &Path, range: &str, opts: &RunOptions) -> Result<serde_json::Val
     })?;
     let mut results: Vec<(String, i32)> = Vec::new();
     let mut records = Vec::new();
+    // The cheap steps are the ones planned before the first heavy step. They all run; when one
+    // failed, the run stops before the first heavy step (SPEC-20261122-check-light-stop).
+    let cheap = planned.iter().take_while(|s| !s.heavy).count();
+    let mut stopped_at: Option<String> = None;
     for (i, s) in planned.iter().enumerate() {
+        if i == cheap {
+            if let Some((label, _)) = results.iter().find(|(_, c)| *c != 0) {
+                stopped_at = Some(label.split(':').next().unwrap_or(label).to_string());
+                break;
+            }
+        }
         let log = out.join(format!(
             "{:02}-{}.log",
             i + 1,
@@ -685,12 +701,16 @@ pub fn run(dir: &Path, range: &str, opts: &RunOptions) -> Result<serde_json::Val
     for (k, c) in summary_words(&results) {
         line.push_str(&format!(" {k}={c}"));
     }
+    if let Some(label) = &stopped_at {
+        line.push_str(&format!(" stopped_at={label}"));
+    }
     line.push_str(if pass { " result=PASS" } else { " result=FAIL" });
     Ok(serde_json::json!({
         "action": "affected",
         "mode": "run",
         "summary": line,
         "result": if pass { "PASS" } else { "FAIL" },
+        "stopped_at": stopped_at,
         "steps": records,
         "out": out.to_string_lossy(),
         "writes": true,
@@ -892,6 +912,39 @@ mod tests {
         let python = planned.iter().find(|s| s.label == "python").unwrap();
         assert_eq!(python.args, ["-m", "unittest", "tests.x_test"]);
         assert!(planned.iter().any(|s| s.label == "build_cli"));
+    }
+
+    /// SPEC-20261122-check-light-stop REQ-5 and REQ-6: a run that already builds the binary for
+    /// its Rust test targets plans no `build_cli` step; one that selects only Python modules
+    /// plans exactly one, and it builds `moai-cli` alone.
+    #[test]
+    fn the_binary_is_built_by_one_step_at_most() {
+        let build_steps = |sel: &Selection| -> Vec<Step> {
+            steps(sel, &[], "a...b", "/t")
+                .into_iter()
+                .filter(|s| s.label == "build_cli")
+                .collect()
+        };
+        let both = select(
+            &paths(&["src/update_models.rs"]),
+            &[
+                rust("update_command_cli", &[], &[]),
+                py("update_tux_tty_test"),
+            ],
+            None,
+            "linux",
+        );
+        assert!(!both.rust.is_empty() && !both.python.is_empty());
+        assert!(build_steps(&both).is_empty());
+
+        let only_python = select(&paths(&["src/ops/x.rs"]), &[py("x_test")], None, "linux");
+        assert!(only_python.rust.is_empty() && !only_python.python.is_empty());
+        let built = build_steps(&only_python);
+        assert_eq!(built.len(), 1);
+        assert_eq!(
+            built[0].args,
+            ["build", "--locked", "--offline", "--bin", "moai-cli"]
+        );
     }
 
     #[test]

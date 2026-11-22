@@ -16,9 +16,10 @@
 #
 # The language of the conversation with the model (#2935 L1) comes from --language, else
 # MOAI_LANGUAGE, else (at a terminal) a numbered menu, else the locale, else English. After the
-# commands are linked the script runs `moai-cli language-set --home <code>` once; that never
-# overwrites an earlier choice, and a moai-cli without it only costs a warning. Everything this
-# script prints stays English whatever the language.
+# commands are linked the script runs `moai-cli language-set --home --if-absent <code>` once;
+# that records only when nothing is recorded yet, so a reinstall never overwrites an earlier
+# choice, and a moai-cli without it only costs a warning. Everything this script prints stays
+# English whatever the language.
 #
 # A release archive carries the skill package and the base agents beside the binary (`skills\`,
 # `agents\`); they go into the version folder next to `bin\`, where `moai update` reads them
@@ -86,11 +87,12 @@ function Test-Version([string]$V) {
     return ($V -match '^[0-9][0-9A-Za-z.+-]*$') -and ($V -notmatch '\.\.')
 }
 
-# A language code is BCP-47-shaped text only: 2-3 letters, then groups of 2-8 letters or digits
-# after a `-`, at most 35 characters (#2935 L1). `\z`, not `$`: a trailing newline must not slip
-# through. The code is passed to moai-cli as written.
+# The conversation language is one of the four codes the language module holds (#2935 L1, G6):
+# en, ko, ja and zh, the same list the install menu offers and moai-cli accepts. Anything else —
+# a well-shaped code like fr or pt-BR included — is refused here, so nothing outside the list
+# reaches the binary or the recorded file.
 function Test-Language([string]$V) {
-    return ($V.Length -le 35) -and ($V -match '^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*\z')
+    return (($V -ceq "en") -or ($V -ceq "ko") -or ($V -ceq "ja") -or ($V -ceq "zh"))
 }
 
 # The language of the first of LC_ALL, LC_MESSAGES, LANG that is set (`ko_KR.UTF-8` -> ko), else
@@ -128,22 +130,14 @@ function Read-LanguageChoice([string]$Default) {
     Write-Host ([string]::Concat("  2) ", [char]0xD55C, [char]0xAD6D, [char]0xC5B4))
     Write-Host ([string]::Concat("  3) ", [char]0x65E5, [char]0x672C, [char]0x8A9E))
     Write-Host ([string]::Concat("  4) ", [char]0x4E2D, [char]0x6587))
-    Write-Host "  5) Other (type a language code, for example fr or pt-BR)"
     $known = @{ "1" = "en"; "2" = "ko"; "3" = "ja"; "4" = "zh" }
     for ($try = 0; $try -lt 3; $try++) {
-        $answer = Read-Answer "Choose 1-5 [default: $Default]"
+        $answer = Read-Answer "Choose 1-4 [default: $Default]"
         if ($null -eq $answer) { break }
         $answer = $answer.Trim()
         if ($answer -eq "") { return $Default }
         if ($known.ContainsKey($answer)) { return $known[$answer] }
-        if ($answer -eq "5") {
-            $code = Read-Answer "Language code"
-            if ($null -eq $code) { break }
-            $code = $code.Trim()
-            if (Test-Language $code) { return $code }
-            Print-Warning "That is not a language code (for example en, ko, fr, pt-BR)."
-        }
-        else { Print-Warning "Please type a number from 1 to 5." }
+        Print-Warning "Please type a number from 1 to 4."
     }
     Print-Info "Using $Default."
     return $Default
@@ -565,13 +559,14 @@ function Main {
         Print-Success "Linked: $link -> $src"
     }
 
-    # Record the language once, with the installed moai-cli. It never overwrites a value that is
-    # already there, and a moai-cli that has no language-set (an older pinned version) or refuses
-    # the code costs a warning, not the install.
+    # Record the language once, with the installed moai-cli. It passes the record-once mode
+    # (--if-absent), so a value that is already recorded is never overwritten: only an explicit
+    # `moai language-set --home <code>` replaces it. A moai-cli that has no language-set (an
+    # older pinned version) or refuses the code costs a warning, not the install.
     $cli = Join-Path (Join-Path $dest "bin") "moai-cli$Exe"
     $recorded = $null
     try {
-        $answer = (& $cli language-set --home $Language 2>$null | Out-String)
+        $answer = (& $cli language-set --home --if-absent $Language 2>$null | Out-String)
         if ($LASTEXITCODE -eq 0) { $recorded = $answer | ConvertFrom-Json }
     }
     catch { $recorded = $null }
