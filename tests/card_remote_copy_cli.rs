@@ -225,9 +225,23 @@ impl World {
         git(&self.project, &["rev-parse", "refs/heads/integ"])
     }
 
-    /// The commit the bare remote's `integ` points at now.
+    /// The commit the bare remote's `integ` points at now; empty when the remote cannot be
+    /// reached (the bare is away).
     fn remote_tip(&self) -> String {
-        git(&self.project, &["ls-remote", "origin", "refs/heads/integ"])
+        let all = [
+            "-c",
+            "user.name=fixture",
+            "-c",
+            "user.email=fixture@example.invalid",
+            "ls-remote",
+            "origin",
+            "refs/heads/integ",
+        ];
+        let out = common::git::git_raw(&self.project, &all);
+        if !out.success {
+            return String::new();
+        }
+        out.stdout
             .split_whitespace()
             .next()
             .unwrap_or_default()
@@ -281,6 +295,13 @@ impl World {
         fs::read_to_string(self.record()).unwrap()
     }
 
+    /// The copy record as JSON (it is written pretty, so it is parsed, not searched).
+    fn record_state(&self) -> String {
+        let text = self.record_text();
+        let v: Value = serde_json::from_str(&text).unwrap();
+        v["state"].as_str().unwrap().to_string()
+    }
+
     fn events(&self, card: &str, kind: &str) -> i64 {
         let l = ledger::open_read_only(self.home.path(), "demo").unwrap();
         l.conn()
@@ -310,7 +331,7 @@ fn card_land_pushes_fast_forward_only_and_reports_a_refused_push() {
     assert_eq!(landed["remote_copy"]["pushed"], json!(true), "{landed}");
     assert_eq!(w.integ(), candidate);
     assert_eq!(w.remote_tip(), candidate, "the remote is fast-forwarded");
-    assert!(w.record_text().contains("\"state\":\"done\""));
+    assert_eq!(w.record_state(), "done");
 
     // No shared ancestry: the landing still completes and reports the refused push as a hold.
     let w2 = World::new();
@@ -327,7 +348,7 @@ fn card_land_pushes_fast_forward_only_and_reports_a_refused_push() {
         w2.unrelated(),
         "the remote stays where it was"
     );
-    assert!(w2.record_text().contains("\"state\":\"hold\""));
+    assert_eq!(w2.record_state(), "hold");
 }
 
 // ---- AC-2 (peer line a): offline landing, new run pushes ------------------------------------
@@ -348,7 +369,7 @@ fn an_offline_landing_completes_and_a_new_run_pushes_the_commit() {
         w.remote_tip().is_empty(),
         "the unreachable remote answers nothing"
     );
-    assert!(w.record_text().contains("\"state\":\"pending\""));
+    assert_eq!(w.record_state(), "pending");
 
     w.bare_back();
     let copied = w.remote_copy();
@@ -404,7 +425,7 @@ fn a_diverged_remote_is_recorded_as_a_hold_and_nothing_moves() {
     assert!(held["why"].is_string(), "{held}");
     assert_eq!(w.integ(), before, "the local branch stays");
     assert_eq!(w.remote_tip(), diverged, "the remote stays");
-    assert!(w.record_text().contains("\"state\":\"hold\""));
+    assert_eq!(w.record_state(), "hold");
 }
 
 // ---- AC-5 (peer line d): the local completion is recorded once -------------------------------
@@ -429,7 +450,7 @@ fn the_local_completion_is_recorded_once() {
     let dir = record.parent().unwrap();
     let moai_entries: Vec<_> = fs::read_dir(dir).unwrap().collect();
     assert_eq!(moai_entries.len(), 1, "no second record was written");
-    assert!(w.record_text().contains("\"state\":\"done\""));
+    assert_eq!(w.record_state(), "done");
 }
 
 // ---- AC-6: an absent remote branch is created; a profile without a branch is reported --------
