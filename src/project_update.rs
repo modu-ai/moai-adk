@@ -1803,8 +1803,8 @@ fn dead_update_lock(root: &Path) -> Option<String> {
 
 /// #2936 E1 (AUDIT #3117): how to take the update chain back, last applied first. Printed with
 /// every preview, because the order is not a matter of taste: `go-state-revert` refuses while the
-/// generation step's `AGENTS.md` is still in place ("revert refused: AGENTS.md is conflict"), and
-/// the generation step's `AGENTS.md` is a second receipt (`agents_receipt`) that its own undo does
+/// generation step's `CLAUDE.md` is still in place ("revert refused: CLAUDE.md is conflict"), and
+/// the generation step's instruction file is a second receipt (`agents_receipt`) that its own undo does
 /// not cover. Run in this order the project is back to its start bytes (what the steps added —
 /// receipts, `.moai.rust-<UTC>/`, the Codex and OMP files — stays). Each id is printed by the
 /// apply result of its step.

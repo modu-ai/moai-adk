@@ -500,10 +500,14 @@ fn go_references_in_the_local_settings_are_named_and_left_to_the_user() {
         "{:?}",
         open_steps(&rest.last)
     );
-    let agents = fs::read_to_string(fx.root.join("AGENTS.md")).unwrap();
+    // The managed section lives in CLAUDE.md (the instruction file the generation step writes); it
+    // holds project facts only, so it points into `.moai/` and never into the earlier state folder.
+    let managed = fs::read_to_string(fx.root.join("CLAUDE.md")).unwrap();
     assert!(
-        agents.contains(".moai/workflows/project/") && !agents.contains(".moai-cli/workflows"),
-        "{agents}"
+        managed.contains("<!-- moai:managed:begin id=moai-workflow -->")
+            && managed.contains("`.moai/specs/`")
+            && !managed.contains(".moai-cli/"),
+        "{managed}"
     );
     assert!(fx.root.join(".moai/workflows/project").is_dir());
     assert_eq!(rest.last["state_root"]["rust_marker"], json!("valid"));
@@ -553,8 +557,9 @@ fn applied<'a>(w: &'a Walk, step: &str) -> &'a Value {
 #[test]
 fn the_printed_undo_order_takes_the_chain_back_to_the_start_bytes() {
     let fx = shape_g();
-    // The user's own instruction file: the move keeps it in the backup, the generation step writes
-    // a managed one in its place, and the go-state revert must find that one still there or gone.
+    // The user's own instruction files: the move keeps the Go CLAUDE.md in the backup, the
+    // generation step writes the managed CLAUDE.md in its place, and the go-state revert must find
+    // that one gone before it puts the user's file back.
     fx.write("AGENTS.md", "# AGENTS\n\nmine\n");
     let start = project_nodes(&fx);
     let w = walk(&fx);
@@ -634,7 +639,7 @@ fn the_printed_undo_order_takes_the_chain_back_to_the_start_bytes() {
         refused["error"]["message"]
             .as_str()
             .unwrap_or_default()
-            .contains("AGENTS.md is conflict"),
+            .contains("CLAUDE.md is conflict"),
         "{refused}"
     );
     assert_eq!(
