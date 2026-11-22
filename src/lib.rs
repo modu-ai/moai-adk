@@ -157,6 +157,7 @@ pub mod spec_close;
 pub mod spec_doc;
 pub mod spec_links;
 pub mod spec_take;
+pub mod star_ask;
 pub mod startable;
 pub mod state_root;
 pub mod status_line;
