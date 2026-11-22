@@ -2,7 +2,7 @@
 id: SPEC-20261121-card-land
 title: "card land moves the integration branch to a candidate commit and closes the card in one call"
 status: draft
-revision: 5
+revision: 6
 created: 2026-11-21
 ---
 
@@ -62,7 +62,7 @@ The command is an action of `moai card` (decision D-1 of the flow skeleton). Unt
 - AC-20 (REQ-12): a commit added by hand on top of the last landing is drift, and so is a rewind to the tip the previous landing started from; an interrupted landing is accepted on its from-tip and on its target, and an interrupted landing after a landing does not change the commit a restore names · verify: `cargo test --locked --offline --test card_land_cli ac25_`, `ac26_`, `ac27_` and `ac31_`
 - AC-21 (REQ-9): the lander killed after the move and before the close, then run again, moves nothing, writes no second start row and closes · verify: `cargo test --locked --offline --test card_land_cli ac24_`
 - AC-22 (REQ-12): `moai card drift` reads and writes nothing and says `ok`, `drift` or `no_landing` with the recorded commit · verify: `cargo test --locked --offline --test card_land_cli ac28_`
-- AC-23 (REQ-12): `moai card drift --restore` previews the move and the commits it drops; with `--apply` it needs `--by leader`, the digest of a preview of the same state and a permission reference, moves the branch under the guard and writes one `card.tip_restored` row · verify: `cargo test --locked --offline --test card_land_cli ac29_` and `ac30_`
+- AC-23 (REQ-12): `moai card drift --restore` previews the move and the commits it drops and writes only a one-use nonce into the git folder; with `--apply` it needs `--by leader`, the digest of the latest preview of the same state and a permission reference, moves the branch with the hook installed (a rewind, a descendant or an unrelated copy) under a restore intent and writes one `card.tip_restored` row · verify: `cargo test --locked --offline --test card_land_cli ac29_`, `ac30_`, `ac32_`, `ac33_` and `ac34_`
 
 ## Scope
 
@@ -112,3 +112,4 @@ Slice 1a with the repairs of the first audit (the first audit of `4b43a97984` en
 - Not run: the re-audit (the first auditor's), the Windows type check, `self_check.sh`, a full test run outside the affected sets.
 - Left as the SPEC states them: who may land is the leader word only (D-3, D-6) and the ledger row of the move before the close comes with the next slice; the annotated tag object id that passes the commit check is not repaired here.
 - Revision 5 (the second re-check's B-3 and N-18, N-19): the drift rule is strict (REQ-12, AC-19 to AC-23), `card drift` is the read-only view and the preview-first restore, and the refusal says `nothing was written` once. Red first: `ac23_`, `ac25_`, `ac26_`, `ac28_` and `ac29_` failed on the earlier code. Whole `card_land_cli` target: 29 passed, none failed. Five mutants of the new module (byte-copy restore, tree clean after): M17 (the newest start row read as the landing) first survived and is now killed by `ac31_`; M18 (target of an interrupted first landing not accepted) killed by `ac13_`, `ac24_`, `ac27_`; M19 (the from-tip of a finished landing accepted) killed by `ac26_`, `ac28_`, `ac29_`; M20 (digest not compared) killed by `ac29_`, `ac30_`; M21 (leader word not checked) killed by `ac29_`.
+- Revision 6 (SPEC-20261121-ref-guard revision 8, D-17): the restore runs under the installed hook through a restore intent, the preview digest is bound to a one-use nonce, and the plain view writes no file. `card_land_cli` 32 passed, none failed.
