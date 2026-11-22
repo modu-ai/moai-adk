@@ -132,13 +132,55 @@ fn the_fixtures_are_the_three_renders_of_the_spec() {
     }
 }
 
+/// The sha256 of the render of the shipped text today. A change of the template or of the
+/// frontmatter makes this test fail until the outgoing render is appended to
+/// `EARLIER_RENDERS` and this constant names the new one (AC-7, REQ-8).
+const CURRENT_RENDER_SHA256: &str =
+    "a31d966b0486f501839121832eb6a99d3fc718996b22a901e9e17884a0ab369e";
+
+/// AC-7 (REQ-8): the list holds 64 hex digits each, all different, equal to the fixtures in
+/// order, and never the current render, which is pinned here.
+#[test]
+fn the_earlier_renders_are_pinned_and_never_hold_the_current_one() {
+    let list = moai_cli::home_style::EARLIER_RENDERS;
+    for entry in list {
+        assert_eq!(entry.len(), 64, "{entry}");
+        assert!(entry
+            .bytes()
+            .all(|b| b.is_ascii_hexdigit() && !b.is_ascii_uppercase()));
+    }
+    let mut sorted = list.to_vec();
+    sorted.sort_unstable();
+    sorted.dedup();
+    assert_eq!(sorted.len(), list.len(), "two entries are the same text");
+    for (entry, name) in list.iter().zip(RENDERS) {
+        assert_eq!(
+            moai_cli::digest(fixture(name).as_bytes()),
+            format!("sha256:{entry}"),
+            "{name}"
+        );
+    }
+    let current = moai_cli::digest(render_style_file(&src()).as_bytes());
+    assert_eq!(
+        current,
+        format!("sha256:{CURRENT_RENDER_SHA256}"),
+        "the render of the shipped text changed: append the outgoing render to EARLIER_RENDERS \
+         (with a fixture), then pin the new one here"
+    );
+    assert!(!list.contains(&CURRENT_RENDER_SHA256));
+}
+
 /// AC-4 (REQ-5): a file equal to the current render is taken as owned although the record names
 /// an earlier text or no text; the bytes stay and the record follows, so the next template
 /// change updates it.
 #[test]
 fn a_style_file_equal_to_the_current_text_is_taken_as_owned() {
     let current = render_style_file(&src());
-    for record in [Some(fixture("render-1.md")), Some(fixture("render-3.md")), None] {
+    for record in [
+        Some(fixture("render-1.md")),
+        Some(fixture("render-3.md")),
+        None,
+    ] {
         let (_t, home) = temp_home();
         write(&home, STYLE, &current);
         if let Some(r) = &record {
@@ -229,7 +271,10 @@ fn reverting_an_adopted_or_replaced_style_file_gives_back_bytes_and_record() {
     );
     revert(&home, &id, PERM).unwrap();
     assert_eq!(fs::read_to_string(home.join(STYLE)).unwrap(), current);
-    assert_eq!(fs::read_to_string(home.join(RECORD)).unwrap(), before_record);
+    assert_eq!(
+        fs::read_to_string(home.join(RECORD)).unwrap(),
+        before_record
+    );
     // Replace: the file is an earlier render and there was no record.
     let (_t, home) = temp_home();
     let earlier = fixture("render-2.md");

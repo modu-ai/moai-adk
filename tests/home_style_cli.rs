@@ -295,12 +295,12 @@ fn a_bad_style_source_is_refused() {
 fn the_shipped_source_carries_the_style_items() {
     let s = src();
     for item in [
-        "MoAI-Easy",
+        "MoAI 🗿",
         "four steps",
         "evidence",
         "46 `─`",
         "▓▓▓▓▓▓░░░░",
-        "user's conversation language",
+        "the user's language",
     ] {
         assert!(s.contains(item), "{item}");
     }

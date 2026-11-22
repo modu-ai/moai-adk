@@ -47,7 +47,19 @@ const CODEX_FILE: &str = "AGENTS.md";
 const HAND_BLOCK: &str = "<!-- moai:output-style";
 const SOURCE_LIMIT: usize = 64 * 1024;
 const SETTINGS_LIMIT: usize = 256 * 1024;
-const DESCRIPTION: &str = "Plain-words pair programming: four steps (Understand, Plan, Do, Check), evidence before done, banners and a progress board.";
+/// The frontmatter description. No double quote inside: [`render_style_file`] wraps it in two.
+const DESCRIPTION: &str = "Plain words, four steps (understand, plan, do, check), evidence before done, MoAI 🗿 banners and a progress board.";
+/// The sha256 (64 hex digits) of every style file text moai-cli rendered before the current one,
+/// oldest first: the first text with an unquoted description and a star banner, the YAML repair
+/// of its description, and the text with the `MoAI 🗿` banner. A style file equal to one of them
+/// is a text MoAI shipped, so it is updated and not left as a conflict. When the template or the
+/// frontmatter changes, the render this module made until then is appended here (the test
+/// `the_earlier_renders_are_pinned_and_never_hold_the_current_one` fails until it is).
+pub const EARLIER_RENDERS: [&str; 3] = [
+    "93e53607dd194da86abfbe7ea993303fff1d17af1a1a1ae6868788938ed785d2",
+    "d4e1851a65eb0ed21d16de888925dc6ae8a7bcebcae45973e1b8cce884d75e67",
+    "690c534220f9bb1614e27d608e56306da973e2fe7b53e2bc1a4d42d7d2b9c65e",
+];
 
 /// One write target of one host.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
@@ -310,10 +322,26 @@ fn style_file_plan(home: &Path, rendered: &str) -> TargetPlan {
     };
     t.expected_sha256 = cur.as_deref().map(sha);
     t.baseline_sha256 = state.owned_sha256.clone();
+    let record = state.owned_sha256.as_deref();
     t.action = match &cur {
         None => "create",
-        Some(b) if b.as_slice() == rendered.as_bytes() => "unchanged",
-        Some(b) if state.owned_sha256.as_deref() == Some(sha(b).as_str()) => "merge",
+        // The current text: owned when the record says so; otherwise the same bytes are written
+        // again and the record is brought to this text (a hand-copied install is adopted).
+        Some(b) if b.as_slice() == rendered.as_bytes() => {
+            if record == Some(sha(b).as_str()) {
+                "unchanged"
+            } else {
+                t.detail =
+                    Some("the file equals the current text; recorded as MoAI's own".into());
+                "merge"
+            }
+        }
+        // A text this module wrote earlier (the record names it) or shipped earlier (the list).
+        Some(b) if record == Some(sha(b).as_str()) => "merge",
+        Some(b) if is_earlier_render(&sha(b)) => {
+            t.detail = Some("the file equals a text MoAI shipped earlier; updated".into());
+            "merge"
+        }
         Some(_) => {
             t.detail = Some(
                 "the style file is not the one MoAI last wrote (edited or someone else's); preserve and review".into(),
@@ -323,6 +351,14 @@ fn style_file_plan(home: &Path, rendered: &str) -> TargetPlan {
     }
     .into();
     t
+}
+
+/// True when `digest` (as [`sha`] writes it, `sha256:` and 64 hex digits) is one of the texts
+/// in [`EARLIER_RENDERS`].
+fn is_earlier_render(digest: &str) -> bool {
+    digest
+        .strip_prefix("sha256:")
+        .is_some_and(|hex| EARLIER_RENDERS.contains(&hex))
 }
 
 /// The settings object, or why it cannot be read as one.
