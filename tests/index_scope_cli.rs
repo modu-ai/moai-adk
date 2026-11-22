@@ -177,7 +177,7 @@ fn query(project: &Path) -> Value {
 }
 
 fn index_dir(project: &Path) -> PathBuf {
-    project.join(".moai-cli/index")
+    moai_cli::state_root::path(project, "index")
 }
 
 fn pointer_gen(project: &Path) -> Option<String> {

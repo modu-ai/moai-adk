@@ -65,7 +65,7 @@ fn the_recogniser_flags_commands_and_passes_names_of_things() {
     for flagged in [
         "run `moai-cli --help` to see the commands",
         "to undo: moai-cli agents-merge-revert --receipt r <project>",
-        "use `moai-cli cc|glm|codex -l|-a`",
+        "use `moai-cli cc|glm -l|-a`",
         "store it with `moai-cli key-set glm`",
     ] {
         assert_eq!(as_command(flagged).len(), 1, "{flagged}");
@@ -111,9 +111,9 @@ fn assert_no_command_moai_cli(what: &str, args: &[&str]) -> Vec<String> {
 /// The legacy `session` launcher says how to start the other hosts.
 #[test]
 fn the_session_launcher_error_says_moai() {
-    let args = ["session", "--host", "codex", "--name", "guard", "--dry-run"];
-    for text in assert_no_command_moai_cli("session --host codex", &args) {
-        assert!(text.contains("use `moai cc|glm|codex|omp -l|-a`"), "{text}");
+    let args = ["session", "--host", "glm", "--name", "guard", "--dry-run"];
+    for text in assert_no_command_moai_cli("session --host glm", &args) {
+        assert!(text.contains("use `moai cc|glm|omp -l|-a`"), "{text}");
     }
 }
 

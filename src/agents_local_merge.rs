@@ -1,12 +1,13 @@
-//! `agents-merge-plan|apply|revert` (#2936 R10, user decision 6880117157): when a project
-//! has an `AGENTS.local.md` with text the user wrote, `/moai update` merges that text into
-//! `AGENTS.md`, outside the managed section, once.
+//! `agents-merge-plan|apply|revert` (#2936 R10): when a project has an `AGENTS.local.md` with
+//! text the user wrote, `/moai update` moves that text into `CLAUDE.local.md`, the personal file
+//! Claude Code reads and the project keeps out of git, once. A missing `CLAUDE.local.md` is
+//! created; its revert removes it again. The text never goes into a shared file.
 //!
 //! Where the text comes from: the file in place when it holds more than the text MoAI
 //! generates (`agents::is_generated_local`); otherwise the copy a committed `go-state-apply`
 //! moved into its backup's `root-files/`. Nothing is moved or deleted here: a file in place
 //! stays and a copy goes into the receipt folder; the moved copy is already in its dated
-//! backup. The text lands at the end of `AGENTS.md` between two marker lines:
+//! backup. The text lands at the end of `CLAUDE.local.md` between two marker lines:
 //!
 //! ```text
 //! <!-- moai:merged-local sha256=<sha256 of the source bytes> -->
@@ -18,28 +19,145 @@
 //! since the merge, is a `conflict`: nothing is overwritten. The preview shows the whole text,
 //! its position and that it goes into a committed file; a line shaped like a credential makes
 //! the plan `blocked` (the value is never printed). `plan_digest` binds the source bytes, the
-//! `AGENTS.md` bytes and the action.
+//! `CLAUDE.local.md` bytes and the action.
+//!
+//! Claude Code reads `AGENTS.md` only while no `CLAUDE.md`, `.claude/CLAUDE.md` or
+//! `CLAUDE.local.md` exists. A merge that creates `CLAUDE.local.md` over an `AGENTS.md` hides that
+//! file, so the plan carries a warning the user sees before they confirm.
+//!
+//! A receipt written before the personal file moved holds `AGENTS.md` as its target; it has no
+//! `target_path`, and its revert still restores that file.
+//!
+//! The same engine has a second kind, [`Kind::Guidance`]: the text a person wrote in `AGENTS.md`
+//! (outside MoAI's managed section and outside blocks an earlier merge wrote) goes into `CLAUDE.md`,
+//! the team file, between `moai:merged-agents` markers, with the same preview, receipt and revert.
+//! `AGENTS.md` is never written. A `CLAUDE.md` that already imports `AGENTS.md` is `unchanged`.
+//!
+//! The third kind, [`Kind::Import`], writes the one line `@AGENTS.md` into `CLAUDE.md` between
+//! `moai:merged-import` markers, so Claude Code reads `AGENTS.md` through it; the same preview,
+//! receipt, revert and idempotence apply. [`picks`] puts the three kinds and the generation writer
+//! together as the picks `move`, `import` and `leave` of `moai update`.
 
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::{fs, path::Path};
 
+pub mod picks;
+
 type Result<T> = std::result::Result<T, String>;
 
-const TARGET: &str = "AGENTS.md";
+const TARGET: &str = "CLAUDE.local.md";
+/// The target of a receipt written before the personal file moved; also the source of the
+/// guidance kind.
+const LEGACY_TARGET: &str = "AGENTS.md";
 const LOCAL: &str = "AGENTS.local.md";
-const BEGIN: &str = "<!-- moai:merged-local sha256=";
+/// The start of the block of the personal file's text; the 64 hex digits of the source's sha256
+/// and ` -->` follow.
+pub const BEGIN: &str = "<!-- moai:merged-local sha256=";
 const BEGIN_TAIL: &str = " -->";
-const END: &str = "<!-- /moai:merged-local -->";
+/// The end marker line of that block.
+pub const END: &str = "<!-- /moai:merged-local -->";
+const GUIDANCE_TARGET: &str = "CLAUDE.md";
+/// The start of the block of the text a person wrote in `AGENTS.md`.
+pub const GUIDANCE_BEGIN: &str = "<!-- moai:merged-agents sha256=";
+/// The end marker line of that block.
+pub const GUIDANCE_END: &str = "<!-- /moai:merged-agents -->";
+const GUIDANCE_PREFIX: &str = "agents-md-migrate-";
+/// The start of the block that holds the one import line (`Kind::Import`).
+pub const IMPORT_BEGIN: &str = "<!-- moai:merged-import sha256=";
+/// The end marker line of that block.
+pub const IMPORT_END: &str = "<!-- /moai:merged-import -->";
+/// The line between the two markers: Claude Code reads `AGENTS.md` through it.
+pub const IMPORT_LINE: &str = "@AGENTS.md";
+const IMPORT_PREFIX: &str = "agents-import-";
 /// The start of this generation's managed-section markers (`agents.rs`); a source that holds it
 /// would be read as a second managed section.
 const MANAGED_MARKER: &str = "<!-- moai:managed";
 /// The most a source file may hold.
 const SOURCE_LIMIT: usize = 128 * 1024;
 const RECEIPT_PREFIX: &str = "agents-local-merge-";
-/// The one line the preview shows about where the text goes (user decision 6880117157).
-pub const COMMIT_NOTICE: &str = "This text goes into AGENTS.md, a file that is committed to the \
-     repository; AGENTS.local.md may be a personal file.";
+/// The one line the preview shows about where the text goes. The key is still `commit_notice`:
+/// `project_update` forwards it under that name.
+pub const COMMIT_NOTICE: &str = "This text goes into CLAUDE.local.md, a personal file that is \
+     not committed to the repository (keep it in .gitignore); AGENTS.local.md stays as it is.";
+/// The same line for the guidance kind: `CLAUDE.md` is the team file everyone reads.
+const GUIDANCE_COMMIT_NOTICE: &str =
+    "This text goes into CLAUDE.md, a team file that is committed \
+     to the repository and read by everyone who works on it; AGENTS.md stays as it is.";
+/// The same line for the import kind.
+const IMPORT_COMMIT_NOTICE: &str = "This line goes into CLAUDE.md, a team file that is committed \
+     to the repository and read by everyone who works on it; Claude Code then reads AGENTS.md \
+     through it, and AGENTS.md stays as it is.";
+
+/// The three writes this engine makes. `Local`: the text of `AGENTS.local.md` goes into the
+/// personal file `CLAUDE.local.md`. `Guidance`: the text a person wrote in `AGENTS.md` goes into
+/// the team file `CLAUDE.md`. `Import`: the one line `@AGENTS.md` goes into `CLAUDE.md`, so Claude
+/// Code reads `AGENTS.md` through it.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Kind {
+    Local,
+    Guidance,
+    Import,
+}
+
+impl Kind {
+    /// The project-relative file the text is written into.
+    fn target(self) -> &'static str {
+        match self {
+            Kind::Local => TARGET,
+            Kind::Guidance | Kind::Import => GUIDANCE_TARGET,
+        }
+    }
+
+    /// The project-relative file the text is read from.
+    fn source_name(self) -> &'static str {
+        match self {
+            Kind::Local => LOCAL,
+            Kind::Guidance | Kind::Import => LEGACY_TARGET,
+        }
+    }
+
+    fn begin(self) -> &'static str {
+        match self {
+            Kind::Local => BEGIN,
+            Kind::Guidance => GUIDANCE_BEGIN,
+            Kind::Import => IMPORT_BEGIN,
+        }
+    }
+
+    fn end(self) -> &'static str {
+        match self {
+            Kind::Local => END,
+            Kind::Guidance => GUIDANCE_END,
+            Kind::Import => IMPORT_END,
+        }
+    }
+
+    /// How a block of this kind is named in a message.
+    fn label(self) -> &'static str {
+        match self {
+            Kind::Local => "merged-local",
+            Kind::Guidance => "merged-agents",
+            Kind::Import => "merged-import",
+        }
+    }
+
+    fn receipt_prefix(self) -> &'static str {
+        match self {
+            Kind::Local => RECEIPT_PREFIX,
+            Kind::Guidance => GUIDANCE_PREFIX,
+            Kind::Import => IMPORT_PREFIX,
+        }
+    }
+
+    fn commit_notice(self) -> &'static str {
+        match self {
+            Kind::Local => COMMIT_NOTICE,
+            Kind::Guidance => GUIDANCE_COMMIT_NOTICE,
+            Kind::Import => IMPORT_COMMIT_NOTICE,
+        }
+    }
+}
 
 /// Where the text to merge was read.
 struct Source {
@@ -47,7 +165,42 @@ struct Source {
     kind: &'static str,
     /// Project-relative path of the file read.
     rel: String,
+    /// The whole file read (the receipt keeps a copy of it).
     bytes: Vec<u8>,
+    /// The part that is merged: the whole file for `Kind::Local`, the person's text of
+    /// `AGENTS.md` for `Kind::Guidance`. The block's sha256 names these bytes.
+    text: Vec<u8>,
+    /// What the preview says about text that is not carried over.
+    notes: Vec<String>,
+    /// For each line of `text`, its line number in the whole file; empty when `text` is the whole
+    /// file (or is not read from it), so a line keeps its own number.
+    line_map: Vec<usize>,
+}
+
+impl Source {
+    fn whole(kind: &'static str, rel: String, bytes: Vec<u8>) -> Source {
+        Source {
+            kind,
+            rel,
+            text: bytes.clone(),
+            bytes,
+            notes: Vec::new(),
+            line_map: Vec::new(),
+        }
+    }
+
+    /// The lines of the copied text shaped like a credential, numbered from the first line of the
+    /// whole file: text that is not copied (MoAI's managed section, a block an earlier merge
+    /// wrote) is not scanned and does not block the plan.
+    fn suspects(&self) -> Vec<(usize, &'static str)> {
+        let Ok(text) = std::str::from_utf8(&self.text) else {
+            return Vec::new();
+        };
+        secret_suspects(text)
+            .into_iter()
+            .map(|(n, kind)| (self.line_map.get(n - 1).copied().unwrap_or(n), kind))
+            .collect()
+    }
 }
 
 enum Found {
@@ -88,34 +241,49 @@ fn hex(bytes: &[u8]) -> String {
         .to_string()
 }
 
-fn block_of(sha_hex: &str, body: &str) -> String {
-    format!("{BEGIN}{sha_hex}{BEGIN_TAIL}\n{body}{END}\n")
+fn block_of_for(kind: Kind, sha_hex: &str, body: &str) -> String {
+    format!(
+        "{}{sha_hex}{BEGIN_TAIL}\n{body}{}\n",
+        kind.begin(),
+        kind.end()
+    )
 }
 
-/// The block already in `AGENTS.md`: the sha256 its marker names and the text between the marks.
+#[cfg(test)]
+fn block_of(sha_hex: &str, body: &str) -> String {
+    block_of_for(Kind::Local, sha_hex, body)
+}
+
+/// The block already in the target: the sha256 its marker names and the text between the marks.
 struct Existing {
     sha: String,
     body: String,
 }
 
 /// `Ok(None)`: no block. `Err`: a block that cannot be read as one (the plan is a conflict).
-fn find_block(agents: &str) -> std::result::Result<Option<Existing>, String> {
-    let starts: Vec<usize> = agents.match_indices(BEGIN).map(|(i, _)| i).collect();
+fn find_block_for(kind: Kind, agents: &str) -> std::result::Result<Option<Existing>, String> {
+    let (begin, end_marker, label) = (kind.begin(), kind.end(), kind.label());
+    let starts: Vec<usize> = agents.match_indices(begin).map(|(i, _)| i).collect();
     let start = match starts.as_slice() {
         // An end marker alone means the start marker was deleted: the text may still be
         // there, and merging again would double it (#2982 audit N5).
-        [] if agents.contains(END) => {
-            return Err("the merged-local end marker has no start marker".into())
+        [] if agents.contains(end_marker) => {
+            return Err(format!("the {label} end marker has no start marker"))
         }
         [] => return Ok(None),
         [one] => *one,
-        _ => return Err("AGENTS.md holds more than one merged-local block".into()),
+        _ => {
+            return Err(format!(
+                "{} holds more than one {label} block",
+                kind.target()
+            ))
+        }
     };
     if start != 0 && !agents[..start].ends_with('\n') {
-        return Err("the merged-local marker is not at the start of a line".into());
+        return Err(format!("the {label} marker is not at the start of a line"));
     }
-    let after = &agents[start + BEGIN.len()..];
-    let damaged = || "the merged-local marker is damaged".to_string();
+    let after = &agents[start + begin.len()..];
+    let damaged = || format!("the {label} marker is damaged");
     let close = after.find(BEGIN_TAIL).ok_or_else(damaged)?;
     let sha = &after[..close];
     if sha.len() != 64 || !sha.bytes().all(|b| b.is_ascii_hexdigit()) {
@@ -124,13 +292,15 @@ fn find_block(agents: &str) -> std::result::Result<Option<Existing>, String> {
     let rest = after[close + BEGIN_TAIL.len()..]
         .strip_prefix('\n')
         .ok_or_else(damaged)?;
-    if rest.matches(END).count() != 1 {
-        return Err("the merged-local block needs exactly one end marker".into());
+    if rest.matches(end_marker).count() != 1 {
+        return Err(format!("the {label} block needs exactly one end marker"));
     }
-    let end = rest.find(END).ok_or_else(damaged)?;
+    let end = rest.find(end_marker).ok_or_else(damaged)?;
     let body = &rest[..end];
     if !(body.is_empty() || body.ends_with('\n')) {
-        return Err("the merged-local end marker is not at the start of a line".into());
+        return Err(format!(
+            "the {label} end marker is not at the start of a line"
+        ));
     }
     Ok(Some(Existing {
         sha: sha.to_ascii_lowercase(),
@@ -277,17 +447,51 @@ pub(crate) fn secret_kind(line: &str) -> Option<&'static str> {
     None
 }
 
+/// `true` when `text` imports `AGENTS.md` the way Claude Code reads an import: a word `@AGENTS.md`
+/// (or `@./AGENTS.md`) outside a fenced code block and outside backticks.
+fn imports_agents_md(text: &str) -> bool {
+    let mut fenced = false;
+    for line in text.lines() {
+        let t = line.trim_start();
+        if t.starts_with("```") || t.starts_with("~~~") {
+            fenced = !fenced;
+            continue;
+        }
+        if !fenced
+            && line
+                .split_whitespace()
+                .any(|w| w == "@AGENTS.md" || w == "@./AGENTS.md")
+        {
+            return true;
+        }
+    }
+    false
+}
+
 /// The plan's decision from the two files and the credential scan. Pure.
-fn decide(agents: Option<&[u8]>, found: Found, suspects: &[(usize, &'static str)]) -> Decision {
+fn decide_for(
+    kind: Kind,
+    agents: Option<&[u8]>,
+    found: Found,
+    suspects: &[(usize, &'static str)],
+) -> Decision {
+    let target = kind.target();
     let src = match found {
         Found::Nothing(reason) => return Decision::of("none", reason),
         Found::Blocked(reason) => return Decision::of("blocked", reason),
         Found::Source(s) => s,
     };
-    let Ok(text) = std::str::from_utf8(&src.bytes) else {
+    let Ok(text) = std::str::from_utf8(&src.text) else {
         return Decision::of("blocked", format!("{} is not UTF-8 text", src.rel));
     };
-    if text.contains(BEGIN) || text.contains(END) || text.contains(MANAGED_MARKER) {
+    // The guidance kind also refuses the personal-file markers: a damaged one that stayed in the
+    // text would be copied into a file that another merge reads.
+    let foreign = kind == Kind::Guidance && (text.contains(BEGIN) || text.contains(END));
+    if text.contains(kind.begin())
+        || text.contains(kind.end())
+        || text.contains(MANAGED_MARKER)
+        || foreign
+    {
         return Decision::of(
             "blocked",
             format!(
@@ -296,21 +500,23 @@ fn decide(agents: Option<&[u8]>, found: Found, suspects: &[(usize, &'static str)
             ),
         );
     }
-    let Some(agents) = agents else {
+    // A missing target is created: it holds the block alone.
+    let creates = agents.is_none();
+    let Ok(agents) = std::str::from_utf8(agents.unwrap_or_default()) else {
+        return Decision::of("blocked", format!("{target} is not UTF-8 text"));
+    };
+    if matches!(kind, Kind::Guidance | Kind::Import) && imports_agents_md(agents) {
         return Decision::of(
-            "blocked",
-            "AGENTS.md does not exist yet; re-run after the install phase",
+            "unchanged",
+            format!("{target} already reads {LEGACY_TARGET} through an @{LEGACY_TARGET} import"),
         );
-    };
-    let Ok(agents) = std::str::from_utf8(agents) else {
-        return Decision::of("blocked", "AGENTS.md is not UTF-8 text");
-    };
+    }
     let body = normalized(text);
-    let sha = hex(&src.bytes);
-    match find_block(agents) {
+    let sha = hex(&src.text);
+    match find_block_for(kind, agents) {
         Err(reason) => Decision::of("conflict", format!("{reason}; nothing is written")),
         Ok(Some(e)) if e.sha == sha && e.body == body => {
-            Decision::of("unchanged", "AGENTS.md already holds this text")
+            Decision::of("unchanged", format!("{target} already holds this text"))
         }
         Ok(Some(e)) if e.sha == sha => Decision::of(
             "conflict",
@@ -347,28 +553,42 @@ fn decide(agents: Option<&[u8]>, found: Found, suspects: &[(usize, &'static str)
             };
             let head = format!("{agents}{separator}");
             let starts_at_line = head.matches('\n').count() + 1;
-            let new_agents = format!("{head}{}", block_of(&sha, &body)).into_bytes();
-            // The plan, the revert and every later read of AGENTS.md go through
+            let new_agents = format!("{head}{}", block_of_for(kind, &sha, &body)).into_bytes();
+            // The plan, the revert and every later read of the target go through
             // `apply::read_opt`, which refuses a file above this size (#2982 audit B1).
             if new_agents.len() as u64 > crate::apply::RECEIPT_LIMIT {
                 return Decision::of(
                     "blocked",
                     format!(
-                        "AGENTS.md would grow to {} bytes with this text; the limit is {} bytes",
+                        "{target} would grow to {} bytes with this text; the limit is {} bytes",
                         new_agents.len(),
                         crate::apply::RECEIPT_LIMIT
                     ),
                 );
             }
+            let what = if kind == Kind::Import {
+                format!("the line {IMPORT_LINE}")
+            } else {
+                format!("the text of {}", kind.source_name())
+            };
             Decision {
                 action: "merge",
-                reason: "the text of AGENTS.local.md is not in AGENTS.md yet".into(),
+                reason: if creates {
+                    format!("{target} does not exist; {what} would create it")
+                } else {
+                    format!("{what} is not in {target} yet")
+                },
                 new_agents: Some(new_agents),
                 starts_at_line: Some(starts_at_line),
                 body: Some(body),
             }
         }
     }
+}
+
+#[cfg(test)]
+fn decide(agents: Option<&[u8]>, found: Found, suspects: &[(usize, &'static str)]) -> Decision {
+    decide_for(Kind::Local, agents, found, suspects)
 }
 
 /// What the personal file in place holds: text the user wrote, nothing, or MoAI's own text.
@@ -407,11 +627,11 @@ fn find_source(root: &Path) -> Result<Found> {
         Ok(None) => {}
         Ok(Some(bytes)) => match content_of(&bytes) {
             Content::Personal => {
-                return Ok(Found::Source(Source {
-                    kind: "in_place",
-                    rel: LOCAL.into(),
+                return Ok(Found::Source(Source::whole(
+                    "in_place",
+                    LOCAL.into(),
                     bytes,
-                }))
+                )))
             }
             Content::Blank => why_not = format!("{LOCAL} is empty"),
             Content::Generated => {
@@ -443,16 +663,244 @@ fn find_source(root: &Path) -> Result<Found> {
         )));
     }
     Ok(match content_of(&bytes) {
-        Content::Personal => Found::Source(Source {
-            kind: "backup",
-            rel: backed.rel,
-            bytes,
-        }),
+        Content::Personal => Found::Source(Source::whole("backup", backed.rel, bytes)),
         Content::Blank => Found::Nothing(format!("the backup copy of {LOCAL} is empty")),
         Content::Generated => Found::Nothing(format!(
             "the backup copy of {LOCAL} only holds the text MoAI generated"
         )),
     })
+}
+
+/// Removes the one block that opens with `begin` at the start of a line and closes on the line
+/// that holds `end`, and joins what was around it with one blank line. `None` when the text has
+/// no such block, a second one, or an end marker that is not its own (the caller keeps the text
+/// whole and the marker check blocks the plan).
+fn remove_block(text: &str, begin: &str, end: &str) -> Option<Removed> {
+    let mut starts = text.match_indices(begin).map(|(i, _)| i);
+    let start = starts.next()?;
+    if starts.next().is_some() || text.matches(end).count() != 1 {
+        return None;
+    }
+    if start != 0 && !text[..start].ends_with('\n') {
+        return None;
+    }
+    let finish = start + text[start..].find(end)?;
+    let after = finish + end.len();
+    let stop = match text[after..].find('\n') {
+        Some(n) => after + n + 1,
+        None => text.len(),
+    };
+    let removed = &text[start..stop];
+    let lines = removed.matches('\n').count() + usize::from(!removed.ends_with('\n'));
+    let before = text[..start].trim_end_matches('\n');
+    let tail = text[stop..].trim_start_matches('\n');
+    let joined = match (before.is_empty(), tail.is_empty()) {
+        (true, _) => tail.to_string(),
+        (_, true) => format!("{before}\n"),
+        _ => format!("{before}\n\n{tail}"),
+    };
+    // Where each line of the joined text stood in `text` (1-based): the lines before the block
+    // keep their numbers, the one blank line stands for the blank lines it replaced, and the
+    // lines after the block start at the line of the first one that was kept.
+    let before_lines = if before.is_empty() {
+        0
+    } else {
+        before.lines().count()
+    };
+    let mut line_map: Vec<usize> = (1..=before_lines).collect();
+    let both = !before.is_empty() && !tail.is_empty();
+    if both {
+        line_map.push(before_lines + 1);
+    }
+    let tail_at = 1 + text[..text.len() - tail.len()].matches('\n').count();
+    line_map.extend((0..tail.lines().count()).map(|i| tail_at + i));
+    Some(Removed {
+        joined,
+        lines,
+        collapsed: both,
+        line_map,
+    })
+}
+
+/// What [`remove_block`] took out of a text.
+#[derive(Debug, PartialEq, Eq)]
+struct Removed {
+    /// The text without the block, the lines around it joined with one blank line.
+    joined: String,
+    /// How many lines the block held.
+    lines: usize,
+    /// Text stayed on both sides, so the blank lines around the block became one.
+    collapsed: bool,
+    /// For each line of `joined`, its line number in the text the block came out of.
+    line_map: Vec<usize>,
+}
+
+/// A text that is nothing but one `# title` line: the heading MoAI puts above its managed section
+/// when it creates an `AGENTS.md`.
+fn is_title_only(text: &str) -> bool {
+    let mut lines = text.lines().filter(|l| !l.trim().is_empty());
+    matches!((lines.next(), lines.next()), (Some(first), None) if first.starts_with("# "))
+}
+
+/// The guidance kind's source: the text of `AGENTS.md` outside MoAI's managed section and outside
+/// the blocks a personal-file merge wrote into it. Nothing is read from a backup.
+fn find_guidance(root: &Path) -> Result<Found> {
+    let bytes = match read_checked(root, LEGACY_TARGET) {
+        Err(reason) => return Ok(Found::Blocked(reason)),
+        Ok(None) => {
+            return Ok(Found::Nothing(format!(
+                "no {LEGACY_TARGET} in this project"
+            )))
+        }
+        Ok(Some(b)) => b,
+    };
+    let Ok(whole) = std::str::from_utf8(&bytes) else {
+        return Ok(Found::Blocked(format!("{LEGACY_TARGET} is not UTF-8 text")));
+    };
+    let mut own = whole.to_string();
+    let mut notes = Vec::new();
+    // Each line of `own` as the whole file numbers it; a removal maps through the one before it.
+    let mut line_map: Vec<usize> = (1..=own.lines().count()).collect();
+    let mut joined_around: Vec<&str> = Vec::new();
+    let (managed_begin, managed_end) =
+        crate::agents::markers(crate::agents::AGENTS_SECTION, "html");
+    if let Some(removed) = remove_block(&own, &managed_begin, &managed_end) {
+        notes.push(format!(
+            "MoAI's managed section of {LEGACY_TARGET} ({} lines) is not copied; the \
+             generation writes it into {GUIDANCE_TARGET}. Text you wrote inside that section is \
+             not carried over.",
+            removed.lines
+        ));
+        if removed.collapsed {
+            joined_around.push("MoAI's managed section");
+        }
+        line_map = compose_lines(&line_map, &removed.line_map);
+        own = removed.joined;
+    }
+    if let Some(removed) = remove_block(&own, BEGIN, END) {
+        notes.push(format!(
+            "A block an earlier personal-file merge put into {LEGACY_TARGET} ({} lines) is \
+             not copied; it is personal text and belongs in CLAUDE.local.md.",
+            removed.lines
+        ));
+        if removed.collapsed {
+            joined_around.push("the personal-file block");
+        }
+        line_map = compose_lines(&line_map, &removed.line_map);
+        own = removed.joined;
+    }
+    if !joined_around.is_empty() {
+        notes.push(format!(
+            "The blank lines around {} in {LEGACY_TARGET} are joined into one blank line in the \
+             copy; the text itself is copied as it is and {LEGACY_TARGET} is not changed.",
+            joined_around.join(" and around ")
+        ));
+    }
+    if own.trim().is_empty() || is_title_only(&own) {
+        return Ok(Found::Nothing(format!(
+            "{LEGACY_TARGET} holds no text of its own (only MoAI's section and a title line)"
+        )));
+    }
+    Ok(Found::Source(Source {
+        kind: "in_place",
+        rel: LEGACY_TARGET.into(),
+        text: normalized(&own).into_bytes(),
+        bytes,
+        notes,
+        line_map,
+    }))
+}
+
+/// `outer[inner[i] - 1]` for each line of an inner map: the line numbers of a text that went
+/// through two removals, counted in the first text.
+fn compose_lines(outer: &[usize], inner: &[usize]) -> Vec<usize> {
+    inner
+        .iter()
+        .map(|&n| outer.get(n - 1).copied().unwrap_or(n))
+        .collect()
+}
+
+/// The import kind's source: `AGENTS.md` must be there, and what is written is the one import
+/// line, never the file's text. The file's bytes stay in the plan digest and in the receipt.
+fn find_import(root: &Path) -> Result<Found> {
+    Ok(match read_checked(root, LEGACY_TARGET) {
+        Err(reason) => Found::Blocked(reason),
+        Ok(None) => Found::Nothing(format!("no {LEGACY_TARGET} in this project to import")),
+        Ok(Some(bytes)) => Found::Source(Source {
+            kind: "in_place",
+            rel: LEGACY_TARGET.into(),
+            text: normalized(IMPORT_LINE).into_bytes(),
+            bytes,
+            notes: Vec::new(),
+            line_map: Vec::new(),
+        }),
+    })
+}
+
+fn find_source_for(kind: Kind, root: &Path) -> Result<Found> {
+    match kind {
+        Kind::Local => find_source(root),
+        Kind::Guidance => find_guidance(root),
+        Kind::Import => find_import(root),
+    }
+}
+
+/// What a project's `AGENTS.md` holds, for the guard that keeps a first `CLAUDE.md` or
+/// `CLAUDE.local.md` from hiding it (Claude Code reads `AGENTS.md` only while neither exists).
+#[derive(Debug)]
+pub enum AgentsMdState {
+    /// No `AGENTS.md`.
+    Absent,
+    /// Only MoAI's own section, with at most the one `# title` line MoAI writes above it.
+    OnlyMoai,
+    /// Text the person wrote: the migration has something to carry over.
+    HasText,
+    /// A link, a file that is not UTF-8 text or is too large, a credential-shaped line or a stray
+    /// MoAI marker. The reason never carries a value.
+    Blocked(String),
+}
+
+/// Reads `AGENTS.md` the way the guidance migration does and says what it holds. Writes nothing.
+pub fn agents_md_state(root: &Path) -> AgentsMdState {
+    if fs::symlink_metadata(root.join(LEGACY_TARGET)).is_err() {
+        return AgentsMdState::Absent;
+    }
+    let found = match find_guidance(root) {
+        Ok(found) => found,
+        Err(reason) => return AgentsMdState::Blocked(reason),
+    };
+    let suspects = match &found {
+        Found::Source(s) => s.suspects(),
+        _ => Vec::new(),
+    };
+    // A missing `CLAUDE.md` is the case that matters: the decision is what a create would do.
+    let decision = decide_for(Kind::Guidance, None, found, &suspects);
+    match decision.action {
+        "merge" => AgentsMdState::HasText,
+        "none" => AgentsMdState::OnlyMoai,
+        _ => AgentsMdState::Blocked(decision.reason),
+    }
+}
+
+/// The notice and the warning for a personal file git already tracks: it is committed whatever
+/// `.gitignore` says, and this move does not untrack it.
+const TRACKED_NOTICE: &str =
+    "This text goes into CLAUDE.local.md, which git already tracks, so it \
+     will be committed with your next commit; this move does not untrack it. AGENTS.local.md \
+     stays as it is.";
+const TRACKED_WARNING: &str = "CLAUDE.local.md is already tracked by git, so this text will be \
+     committed and shared; MoAI does not untrack it. Run git rm --cached CLAUDE.local.md yourself \
+     if you want it out of the repository.";
+
+/// The one line the personal file adds to `.gitignore`, and the file it goes into.
+const IGNORE_LINE: &str = "CLAUDE.local.md";
+const GITIGNORE: &str = ".gitignore";
+
+/// The `.gitignore` write a plan carries: the bytes the file holds now (`None`: it does not
+/// exist) and the bytes after the one line is added.
+struct IgnoreWrite {
+    before: Option<Vec<u8>>,
+    new_bytes: Vec<u8>,
 }
 
 struct Inner {
@@ -462,19 +910,419 @@ struct Inner {
     before: Option<Vec<u8>>,
     new_agents: Option<Vec<u8>>,
     source: Option<Source>,
+    ignore: Option<IgnoreWrite>,
 }
 
-fn plan_inner(root: &Path) -> Result<Inner> {
-    let agents_path = crate::apply::target(root, TARGET)?;
-    let before = crate::apply::read_opt(&agents_path)?;
-    let found = find_source(root)?;
+/// Claude Code reads `AGENTS.md` and `.claude/AGENTS.md` only while none of `CLAUDE.md`,
+/// `.claude/CLAUDE.md` and `CLAUDE.local.md` exists (the memory page, "When Claude Code reads
+/// AGENTS.md"). The warning applies when this merge would create the first of them over such a
+/// file; it names the official setting that keeps both read.
+fn hidden_agents_md_warning(root: &Path, action: &str, target_exists: bool) -> Vec<String> {
+    if action == "merge" && !target_exists {
+        return hidden_files_warning(root, TARGET).into_iter().collect();
+    }
+    Vec::new()
+}
+
+/// The files of the project Claude Code reads only while no CLAUDE file exists: the root
+/// `AGENTS.md` and `.claude/AGENTS.md`, each when it is there.
+const HIDDEN_CANDIDATES: [&str; 2] = [LEGACY_TARGET, ".claude/AGENTS.md"];
+
+/// The one warning for the writer, the picks and the update preview: creating `creating` (the
+/// first CLAUDE file of the project) makes Claude Code stop reading `AGENTS.md` and
+/// `.claude/AGENTS.md`, each one that exists, and the warning names them. `None` when neither
+/// exists or a CLAUDE file (`CLAUDE.md`, `.claude/CLAUDE.md`, `CLAUDE.local.md`) is already
+/// there: Claude Code has stopped reading them then, and the caller creates nothing new to hide.
+/// The caller decides that a CLAUDE file would be created.
+pub(crate) fn hidden_files_warning(root: &Path, creating: &str) -> Option<String> {
+    hidden_files_warning_except(root, creating, &[])
+}
+
+/// The same warning for a file that carries some of the hidden files over: the writer's block and
+/// the picks `move` and `import` bring the root `AGENTS.md` into the new `CLAUDE.md` (copied text
+/// or the `@AGENTS.md` line), so that file stays read and is not named. `carried` lists those.
+pub(crate) fn hidden_files_warning_except(
+    root: &Path,
+    creating: &str,
+    carried: &[&str],
+) -> Option<String> {
+    let exists = |rel: &str| fs::symlink_metadata(root.join(rel)).is_ok();
+    let hidden: Vec<&str> = HIDDEN_CANDIDATES
+        .into_iter()
+        .filter(|f| exists(f) && !carried.contains(f))
+        .collect();
+    if hidden.is_empty()
+        || ["CLAUDE.md", ".claude/CLAUDE.md", TARGET]
+            .iter()
+            .any(|f| exists(f))
+    {
+        return None;
+    }
+    let files = hidden.join(" and ");
+    Some(format!(
+        "Claude Code reads {files} only while no CLAUDE.md, .claude/CLAUDE.md or \
+         CLAUDE.local.md exists; creating {creating} makes it stop reading {files} in this \
+         project. Move that text into a CLAUDE.md first, or confirm that {files} will no \
+         longer be read. To keep both read, set Project instructions to \
+         claude-md-and-agents-md in /config (Claude Code's own setting)."
+    ))
+}
+
+/// The exit code of `git -C <root> <args>`, or `None` when git cannot run. Nothing is printed.
+fn git_code(root: &Path, args: &[&str]) -> Option<i32> {
+    use std::process::{Command, Stdio};
+    let mut cmd = Command::new("git");
+    crate::identity::scrub_git_env(&mut cmd);
+    cmd.arg("-C")
+        .arg(root)
+        .args(args)
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .ok()
+        .and_then(|s| s.code())
+}
+
+/// What git says about the personal file and the receipt folder, and the `.gitignore` write that
+/// follows from it.
+struct IgnoreFacts {
+    json: Value,
+    write: Option<IgnoreWrite>,
+    /// Git already tracks `CLAUDE.local.md`: it is committed whatever `.gitignore` says.
+    tracked: bool,
+    /// Sentences for the plan's warnings, for what is neither ignored nor made ignored.
+    warnings: Vec<String>,
+}
+
+/// One line a plan may add to `.gitignore`: the personal file's, or the receipt folder's.
+struct Rule {
+    line: String,
+    /// The path git is asked about. For the receipt folder it is a path inside it, so a rule for
+    /// the folder holds before the folder exists.
+    probe: String,
+    /// What the line keeps out of git, as the plan's sentences name it.
+    what: &'static str,
+    /// What the person does by hand when no line is added.
+    consequence: &'static str,
+    /// The spellings of a rule the person wrote that un-ignores it.
+    negations: Vec<String>,
+}
+
+impl Rule {
+    fn new(line: String, probe: String, what: &'static str, consequence: &'static str) -> Rule {
+        let bare = line.trim_end_matches('/').to_string();
+        let negations = [bare.clone(), format!("{bare}/")]
+            .into_iter()
+            .flat_map(|p| [format!("!{p}"), format!("!/{p}"), format!("!**/{p}")])
+            .collect();
+        Rule {
+            line,
+            probe,
+            what,
+            consequence,
+            negations,
+        }
+    }
+}
+
+/// What the plan does with one rule: `add`, `present` (git ignores it already) or `skip`.
+struct Judged {
+    action: &'static str,
+    note: Option<String>,
+}
+
+/// The `gitignore` object of a plan. The top-level `line`, `action` and `note` are the first
+/// rule's (the personal file's when the kind has one, the receipt folder's otherwise);
+/// `receipts` is the receipt folder's own.
+fn ignore_json(rules: &[Rule], judged: &[Judged], exists: bool) -> Value {
+    let part = |i: usize| json!({"line": rules[i].line, "action": judged[i].action, "note": judged[i].note});
+    json!({
+        "path": GITIGNORE,
+        "line": rules[0].line,
+        "action": judged[0].action,
+        "exists": exists,
+        "note": judged[0].note,
+        "receipts": part(rules.len() - 1),
+    })
+}
+
+/// The `.gitignore` lines a merge adds: the personal file's line when `personal`, and the line of
+/// the receipt folder the apply writes into (a project whose managed block is absent has none),
+/// each only when git does not ignore the path yet and no rule the person wrote un-ignores it.
+fn plan_ignore(root: &Path, personal: bool) -> IgnoreFacts {
+    let mut rules = Vec::new();
+    if personal {
+        rules.push(Rule::new(
+            IGNORE_LINE.to_string(),
+            IGNORE_LINE.to_string(),
+            "the file",
+            "so the file is not committed",
+        ));
+    }
+    let receipts = crate::apply::receipts_rel(root);
+    rules.push(Rule::new(
+        format!("{receipts}/"),
+        format!("{receipts}/receipt.json"),
+        "the receipt folder",
+        "so the receipts are not committed",
+    ));
+    let skip_all = |why: &str, exists: bool, warnings: Vec<String>, tracked: bool| {
+        let judged: Vec<Judged> = rules
+            .iter()
+            .map(|_| Judged {
+                action: "skip",
+                note: Some(why.to_string()),
+            })
+            .collect();
+        IgnoreFacts {
+            json: ignore_json(&rules, &judged, exists),
+            write: None,
+            tracked,
+            warnings,
+        }
+    };
+    match git_code(root, &["rev-parse", "--is-inside-work-tree"]) {
+        None => {
+            return skip_all(
+                "git is not available, so .gitignore was not checked",
+                false,
+                Vec::new(),
+                false,
+            )
+        }
+        Some(0) => {}
+        Some(_) => {
+            return skip_all(
+                "this folder is not a git repository, so there is no .gitignore line to add",
+                false,
+                Vec::new(),
+                false,
+            )
+        }
+    }
+    let tracked =
+        personal && git_code(root, &["ls-files", "--error-unmatch", "--", IGNORE_LINE]) == Some(0);
+    let ignored = |r: &Rule| git_code(root, &["check-ignore", "-q", "--", &r.probe]) == Some(0);
+    let located = crate::apply::target(root, GITIGNORE).and_then(|p| crate::apply::read_opt(&p));
+    let existing = match located {
+        Ok(bytes) => bytes,
+        Err(e) => {
+            let why = format!("{GITIGNORE} cannot be changed ({e})");
+            let warnings = rules
+                .iter()
+                .filter(|r| !ignored(r))
+                .map(|r| {
+                    format!("{} is not ignored by git and {GITIGNORE} cannot be changed here; add the line yourself {}", r.line, r.consequence)
+                })
+                .collect();
+            return skip_all(&why, true, warnings, tracked);
+        }
+    };
+    let exists = existing.is_some();
+    let mut judged: Vec<Judged> = Vec::new();
+    let mut warnings: Vec<String> = Vec::new();
+    for r in &rules {
+        if ignored(r) {
+            judged.push(Judged {
+                action: "present",
+                note: None,
+            });
+            continue;
+        }
+        // A rule the person wrote that makes the path not ignored (`!CLAUDE.local.md`) wins: a
+        // line added after it would flip their choice without their knowing, so none is added.
+        let negated = existing.as_deref().is_some_and(|b| {
+            String::from_utf8_lossy(b)
+                .lines()
+                .any(|l| r.negations.iter().any(|n| n == l.trim()))
+        });
+        if negated {
+            warnings.push(format!(
+                "{GITIGNORE} holds a rule that un-ignores {}; a rule you wrote wins, so no line is added and git will see {}. Remove that rule yourself if {} should stay out of the repo",
+                r.line, r.what, r.what
+            ));
+            judged.push(Judged {
+                action: "skip",
+                note: Some(format!(
+                    "{GITIGNORE} has a rule you wrote that keeps {} out of the ignore list",
+                    r.line
+                )),
+            });
+            continue;
+        }
+        judged.push(Judged {
+            action: "add",
+            note: None,
+        });
+    }
+    let old = existing.clone().unwrap_or_default();
+    let eol = if old.windows(2).any(|w| w == b"\r\n") {
+        "\r\n"
+    } else {
+        "\n"
+    };
+    let mut new_bytes = old.clone();
+    let mut separator = if old.is_empty() || old.ends_with(b"\n") {
+        ""
+    } else {
+        eol
+    };
+    let mut any = false;
+    for (r, j) in rules.iter().zip(&judged) {
+        if j.action == "add" {
+            new_bytes.extend_from_slice(format!("{separator}{}{eol}", r.line).as_bytes());
+            separator = "";
+            any = true;
+        }
+    }
+    if any && new_bytes.len() as u64 > crate::apply::RECEIPT_LIMIT {
+        for (r, j) in rules.iter().zip(judged.iter_mut()) {
+            if j.action == "add" {
+                warnings.push(format!("{} is not ignored by git and {GITIGNORE} is too large to change here; add the line yourself {}", r.line, r.consequence));
+                *j = Judged {
+                    action: "skip",
+                    note: Some(format!("{GITIGNORE} is too large to change here")),
+                };
+            }
+        }
+        any = false;
+    }
+    IgnoreFacts {
+        json: ignore_json(&rules, &judged, exists),
+        write: any.then_some(IgnoreWrite {
+            before: existing,
+            new_bytes,
+        }),
+        tracked,
+        warnings,
+    }
+}
+
+/// `true` when `bytes` holds a CRLF line ending.
+fn has_crlf(bytes: &[u8]) -> bool {
+    bytes.windows(2).any(|w| w == b"\r\n")
+}
+
+/// A text moved by an earlier generation into `AGENTS.md`: the same bytes in a `moai:merged-local`
+/// block there. Merging them again would put the personal text in two files.
+fn merged_into_agents_md(root: &Path, source: &Source) -> Option<String> {
+    let bytes = read_checked(root, LEGACY_TARGET).ok()??;
+    let agents = std::str::from_utf8(&bytes).ok()?;
+    let text = std::str::from_utf8(&source.text).ok()?;
+    let existing = find_block_for(Kind::Local, agents).ok()??;
+    (existing.sha == hex(&source.text) && existing.body == normalized(text)).then(|| {
+        format!(
+            "the text of {LOCAL} is already in {LEGACY_TARGET}, in a block an earlier generation \
+             merged there; moving that block belongs to the {GUIDANCE_TARGET} migration"
+        )
+    })
+}
+
+fn plan_inner(kind: Kind, root: &Path) -> Result<Inner> {
+    let target = kind.target();
+    // A target that cannot be read as a plain file (a link, a path through one) blocks the plan.
+    let located = crate::apply::target(root, target).and_then(|p| crate::apply::read_opt(&p));
+    let (before, target_error) = match located {
+        Ok(bytes) => (bytes, None),
+        Err(e) => (None, Some(format!("{target}: {e}"))),
+    };
+    let found = find_source_for(kind, root)?;
+    // Only the text the merge copies is scanned, whatever the kind: the import kind copies none of
+    // `AGENTS.md`, so its one line is all there is, and the guidance kind leaves out MoAI's
+    // managed section and the blocks an earlier merge wrote. Line numbers are the whole file's.
     let suspects = match &found {
-        Found::Source(s) => std::str::from_utf8(&s.bytes)
-            .map(secret_suspects)
-            .unwrap_or_default(),
+        Found::Source(s) => s.suspects(),
         _ => Vec::new(),
     };
-    let decision = decide(before.as_deref(), clone_found(&found), &suspects);
+    let mut decision = match target_error {
+        Some(reason) => Decision::of("blocked", reason),
+        None => decide_for(kind, before.as_deref(), clone_found(&found), &suspects),
+    };
+    // Text an earlier generation merged into `AGENTS.md` is not merged a second time.
+    if kind == Kind::Local && decision.action == "merge" {
+        if let Found::Source(s) = &found {
+            if let Some(reason) = merged_into_agents_md(root, s) {
+                decision = Decision::of("unchanged", reason);
+            }
+        }
+    }
+    // Creating the personal file over an `AGENTS.md` hides that file from Claude Code; the
+    // guidance kind moves the text of `AGENTS.md` itself, so it has no such warning. The apply
+    // refuses a plan with this warning unless the caller passes the token derived from it.
+    let hidden = if kind == Kind::Local {
+        hidden_agents_md_warning(root, decision.action, before.is_some())
+    } else {
+        Vec::new()
+    };
+    // The token is the user's yes to this plan, so it differs per project and per plan: it mixes
+    // the project path and the digests of the source and the target file into the warning text.
+    // A token learned from another project or an earlier plan does not open this one.
+    let confirm_token = (!hidden.is_empty()).then(|| {
+        let source_digest = match &found {
+            Found::Source(src) => crate::digest(&src.bytes),
+            _ => String::new(),
+        };
+        let seed = format!(
+            "{}\n{}\n{}\n{}",
+            hidden.join("\n"),
+            root.display(),
+            source_digest,
+            before.as_deref().map(crate::digest).unwrap_or_default()
+        );
+        hex(seed.as_bytes())[..16].to_string()
+    });
+    let mut warnings = hidden;
+    // What git says about the personal file: ignored or made ignored by one `.gitignore` line,
+    // or tracked (committed whatever `.gitignore` says).
+    // Every merge writes a receipt folder, so every merge also keeps that folder out of git when
+    // no managed block does.
+    let ignore = (decision.action == "merge").then(|| plan_ignore(root, kind == Kind::Local));
+    let mut notice = kind.commit_notice();
+    if let Some(facts) = &ignore {
+        if facts.tracked {
+            notice = TRACKED_NOTICE;
+            warnings.push(TRACKED_WARNING.to_string());
+        }
+        warnings.extend(facts.warnings.iter().cloned());
+    }
+    if decision.action == "merge" {
+        if let Found::Source(s) = &found {
+            warnings.extend(s.notes.iter().cloned());
+        }
+    }
+    let crlf: Vec<String> = [
+        before
+            .as_deref()
+            .filter(|b| has_crlf(b))
+            .map(|_| target.to_string()),
+        match &found {
+            Found::Source(s) if has_crlf(&s.text) => Some(s.rel.clone()),
+            _ => None,
+        },
+    ]
+    .into_iter()
+    .flatten()
+    .collect();
+    // One line for what the copy changes at the line ends: the marker lines are LF whatever the
+    // text uses, and a source that does not end with a line break gets one in the copy.
+    let mut ending_notes: Vec<String> = Vec::new();
+    if !crlf.is_empty() {
+        ending_notes.push(format!(
+            "{} use CRLF line endings; the marker lines are written with LF and the text keeps its own",
+            crlf.join(" and ")
+        ));
+    }
+    if let Found::Source(s) = &found {
+        if !s.text.is_empty() && !s.text.ends_with(b"\n") {
+            ending_notes.push(format!(
+                "{} does not end with a line break; the copy ends with one before the end marker",
+                s.rel
+            ));
+        }
+    }
+    let line_endings =
+        (decision.action == "merge" && !ending_notes.is_empty()).then(|| ending_notes.join("; "));
     let source = match found {
         Found::Source(s) => Some(s),
         _ => None,
@@ -491,11 +1339,20 @@ fn plan_inner(root: &Path) -> Result<Inner> {
         .iter()
         .map(|(line, kind)| json!({"line": line, "kind": kind}))
         .collect();
+    let ignore_json = ignore.as_ref().map(|f| f.json.clone());
+    let ignore_before = ignore
+        .as_ref()
+        .and_then(|f| f.write.as_ref())
+        .map(|w| w.before.as_deref().map(crate::digest));
     let bound = json!({
         "action": decision.action,
         "source": source_json,
         "agents_sha256": before.as_deref().map(crate::digest),
         "secret_suspects": suspects_json,
+        "warnings": warnings,
+        "gitignore": ignore_json,
+        "gitignore_sha256": ignore_before,
+        "confirm_token": confirm_token,
     });
     let digest = crate::digest(&serde_json::to_vec(&bound).map_err(|_| "encode failed")?);
     let mut json = json!({
@@ -504,24 +1361,38 @@ fn plan_inner(root: &Path) -> Result<Inner> {
         "reason": decision.reason,
         "source": source_json,
         "target": {
-            "path": TARGET,
+            "path": target,
             "exists": before.is_some(),
             "sha256_before": before.as_deref().map(crate::digest),
             "starts_at_line": decision.starts_at_line,
         },
-        "commit_notice": COMMIT_NOTICE,
+        "gitignore": ignore_json,
+        "commit_notice": notice,
+        "warnings": warnings,
+        "needs_confirmation": confirm_token.is_some(),
+        "confirm_token": confirm_token,
+        "line_endings": line_endings,
         "secret_suspects": suspects_json,
         "body": decision.body,
         "plan_digest": digest,
     });
-    json["next_actions"] = if decision.action == "merge" {
+    json["next_actions"] = if decision.action != "merge" {
+        json!([])
+    } else if kind == Kind::Local {
         json!([
-            "show the user the body, the position and the commit_notice; after their yes run \
+            "show the user the body, the position, the commit_notice and any warnings; after \
+             their yes run \
              `moai agents-merge-apply --plan-digest <plan_digest> \
-             --permission-reference <ref> <project>`"
+             --permission-reference <ref> <project>`; when needs_confirmation is true, add \
+             `--confirm-warnings <confirm_token>` only after the user has read the warning and \
+             said yes to it"
         ])
     } else {
-        json!([])
+        // No command carries this kind yet; the plan is applied by its digest.
+        json!([
+            "show the user the body, the position, the commit_notice and any warnings; apply this \
+             plan with its plan_digest only after their yes"
+        ])
     };
     Ok(Inner {
         json,
@@ -530,6 +1401,7 @@ fn plan_inner(root: &Path) -> Result<Inner> {
         before,
         new_agents: decision.new_agents,
         source,
+        ignore: ignore.and_then(|f| f.write),
     })
 }
 
@@ -541,16 +1413,24 @@ fn clone_found(found: &Found) -> Found {
             kind: s.kind,
             rel: s.rel.clone(),
             bytes: s.bytes.clone(),
+            text: s.text.clone(),
+            notes: s.notes.clone(),
+            line_map: s.line_map.clone(),
         }),
         Found::Nothing(r) => Found::Nothing(r.clone()),
         Found::Blocked(r) => Found::Blocked(r.clone()),
     }
 }
 
-/// The read-only preview. Writes nothing.
-pub fn plan(project: &Path) -> Result<Value> {
+/// The read-only preview of one kind. Writes nothing.
+pub fn plan_for(kind: Kind, project: &Path) -> Result<Value> {
     let root = fs::canonicalize(project).map_err(|_| crate::contract::PROJECT_PATH_UNAVAILABLE)?;
-    plan_inner(&root).map(|i| i.json)
+    plan_inner(kind, &root).map(|i| i.json)
+}
+
+/// The read-only preview of the personal-file move. Writes nothing.
+pub fn plan(project: &Path) -> Result<Value> {
+    plan_for(Kind::Local, project)
 }
 
 #[derive(Serialize, Deserialize)]
@@ -568,6 +1448,31 @@ struct Receipt {
     source_kind: String,
     source_path: String,
     source_sha256: String,
+    /// The project-relative file the apply wrote. A receipt of the earlier generation has no
+    /// such field and names `AGENTS.md`.
+    #[serde(default = "legacy_target")]
+    target_path: String,
+    /// False when the apply created the file; the revert then removes it.
+    #[serde(default = "target_existed_default")]
+    target_existed: bool,
+    /// The `.gitignore` the apply wrote the one line into; absent when it wrote none.
+    #[serde(default)]
+    gitignore_path: Option<String>,
+    /// False when the apply created `.gitignore`; the revert then removes it.
+    #[serde(default = "target_existed_default")]
+    gitignore_existed: bool,
+    #[serde(default)]
+    gitignore_before: Option<String>,
+    #[serde(default)]
+    gitignore_after: Option<String>,
+}
+
+fn legacy_target() -> String {
+    LEGACY_TARGET.to_string()
+}
+
+fn target_existed_default() -> bool {
+    true
 }
 
 fn receipts_dir(root: &Path) -> std::path::PathBuf {
@@ -612,7 +1517,12 @@ fn write_private(path: &Path, bytes: &[u8]) -> Result<()> {
         .map_err(|_| "receipt write failed".into())
 }
 
-fn new_receipt_dir(root: &Path) -> Result<(String, std::path::PathBuf)> {
+fn new_receipt_dir(kind: Kind, root: &Path) -> Result<(String, std::path::PathBuf)> {
+    new_receipt_dir_named(kind.receipt_prefix(), root)
+}
+
+/// A new receipt folder whose id starts with `prefix`.
+fn new_receipt_dir_named(prefix: &str, root: &Path) -> Result<(String, std::path::PathBuf)> {
     let state = crate::state_root::path(root, "");
     crate::claude::refuse_symlink_dir(&state)?;
     fs::create_dir_all(&state).map_err(|_| "receipt folder unavailable")?;
@@ -622,7 +1532,7 @@ fn new_receipt_dir(root: &Path) -> Result<(String, std::path::PathBuf)> {
         .map(|d| d.as_nanos())
         .unwrap_or(0);
     for n in 0..16 {
-        let id = format!("{RECEIPT_PREFIX}{nanos}-{n}");
+        let id = format!("{prefix}{nanos}-{n}");
         let dir = receipts.join(&id);
         if create_private_dir(&dir).is_ok() {
             return Ok((id, dir));
@@ -642,13 +1552,43 @@ fn write_receipt(dir: &Path, r: &Receipt) -> Result<()> {
     }
 }
 
-/// Merges the text after the user confirmed the plan whose digest is `plan_digest`.
+/// Merges the text of the personal file after the user confirmed the plan whose digest is
+/// `plan_digest`.
 pub fn apply(project: &Path, plan_digest: &str, permission: &str) -> Result<Value> {
+    apply_for(Kind::Local, project, plan_digest, permission)
+}
+
+/// Puts a file this module wrote back: its earlier bytes, or no file when there were none. The
+/// file must still hold `current`.
+fn restore_file(path: &Path, current: &[u8], earlier: Option<&[u8]>) -> Result<()> {
+    match earlier {
+        Some(bytes) => crate::apply::publish_replace(path, Some(current), bytes),
+        None => fs::remove_file(path).map_err(|_| "the created file could not be removed".into()),
+    }
+}
+
+/// Merges the text of one kind after the user confirmed the plan whose digest is `plan_digest`.
+/// A plan that carries the warning about `AGENTS.md` is refused here; `apply_confirmed` takes the
+/// token that answers it.
+pub fn apply_for(kind: Kind, project: &Path, plan_digest: &str, permission: &str) -> Result<Value> {
+    apply_confirmed(kind, project, plan_digest, permission, None)
+}
+
+/// `apply_for` with the confirmation token of the plan: the user's yes to the warning that Claude
+/// Code would stop reading `AGENTS.md`.
+pub fn apply_confirmed(
+    kind: Kind,
+    project: &Path,
+    plan_digest: &str,
+    permission: &str,
+    confirmation: Option<&str>,
+) -> Result<Value> {
+    let target = kind.target();
     if !crate::contract::permission_reference_ok(permission) {
         return Err("a permission reference is required; nothing was written".into());
     }
     let root = fs::canonicalize(project).map_err(|_| crate::contract::PROJECT_PATH_UNAVAILABLE)?;
-    let inner = plan_inner(&root)?;
+    let inner = plan_inner(kind, &root)?;
     if inner.json["plan_digest"].as_str() != Some(plan_digest) {
         return Err("stale or altered plan; re-preview required".into());
     }
@@ -657,25 +1597,45 @@ pub fn apply(project: &Path, plan_digest: &str, permission: &str) -> Result<Valu
         "none" | "unchanged" => return Ok(json!({"state": "unchanged", "writes": []})),
         other => return Err(format!("the plan is {other}: {}", inner.reason)),
     }
-    let (Some(before), Some(new_agents), Some(source)) =
-        (inner.before, inner.new_agents, inner.source)
-    else {
+    if let Some(token) = inner.json["confirm_token"].as_str() {
+        if confirmation != Some(token) {
+            return Err(
+                "the plan carries a warning that needs your explicit confirmation: read \
+                        it, then pass --confirm-warnings with the confirmation token printed \
+                        with the plan; nothing was written"
+                    .into(),
+            );
+        }
+    }
+    let (Some(new_agents), Some(source)) = (inner.new_agents, inner.source) else {
         return Err("the plan holds no merge".into());
     };
+    let ignore = inner.ignore;
+    let ignore_path = match &ignore {
+        Some(_) => Some(crate::apply::target(&root, GITIGNORE)?),
+        None => None,
+    };
+    // `None`: the target does not exist and the apply creates it.
+    let before = inner.before;
     if new_agents.len() as u64 > crate::apply::RECEIPT_LIMIT {
-        return Err(
-            "the merged AGENTS.md would be larger than the limit; nothing was written".into(),
-        );
+        return Err(format!(
+            "the merged {target} would be larger than the limit; nothing was written"
+        ));
     }
-    let agents_path = crate::apply::target(&root, TARGET)?;
-    let (id, dir) = new_receipt_dir(&root)?;
+    let agents_path = crate::apply::target(&root, target)?;
+    let (id, dir) = new_receipt_dir(kind, &root)?;
     let keep = create_private_dirs(&dir, &["before"])?;
-    write_private(&keep.join(TARGET), &before)?;
+    if let Some(before) = &before {
+        write_private(&keep.join(target), before)?;
+    }
+    if let Some(Some(earlier)) = ignore.as_ref().map(|g| g.before.as_ref()) {
+        write_private(&keep.join(GITIGNORE), earlier)?;
+    }
     // A file in place stays; the receipt keeps the copy that serves as its backup. A moved
     // copy is already in its dated go-state backup.
     if source.kind == "in_place" {
         let copy = create_private_dirs(&dir, &["source"])?;
-        write_private(&copy.join(LOCAL), &source.bytes)?;
+        write_private(&copy.join(kind.source_name()), &source.bytes)?;
     }
     let mut receipt = Receipt {
         schema_version: 1,
@@ -684,44 +1644,121 @@ pub fn apply(project: &Path, plan_digest: &str, permission: &str) -> Result<Valu
         plan_digest: plan_digest.to_string(),
         permission_reference: permission.to_string(),
         status: "pending".into(),
-        agents_before: crate::digest(&before),
+        agents_before: crate::digest(before.as_deref().unwrap_or_default()),
         // Known before the write, so a revert can tell an interrupted apply that did write
         // from one that did not (#2982 audit N2).
         agents_after: Some(crate::digest(&new_agents)),
-        block_sha256: hex(&source.bytes),
+        block_sha256: hex(&source.text),
         source_kind: source.kind.into(),
         source_path: source.rel.clone(),
         source_sha256: crate::digest(&source.bytes),
+        target_path: target.to_string(),
+        target_existed: before.is_some(),
+        gitignore_path: ignore.as_ref().map(|_| GITIGNORE.to_string()),
+        gitignore_existed: ignore.as_ref().is_none_or(|g| g.before.is_some()),
+        gitignore_before: ignore
+            .as_ref()
+            .and_then(|g| g.before.as_deref().map(crate::digest)),
+        gitignore_after: ignore.as_ref().map(|g| crate::digest(&g.new_bytes)),
     };
     write_receipt(&dir, &receipt)?;
-    if let Err(e) = crate::apply::publish_replace(&agents_path, Some(&before), &new_agents) {
+    // `.gitignore` first: when it cannot be written nothing else has changed.
+    if let (Some(g), Some(path)) = (&ignore, &ignore_path) {
+        if let Err(e) = crate::apply::publish_replace(path, g.before.as_deref(), &g.new_bytes) {
+            receipt.status = "failed".into();
+            receipt.agents_after = None;
+            receipt.gitignore_after = None;
+            write_receipt(&dir, &receipt)?;
+            return Err(format!("{GITIGNORE} was not written ({e})"));
+        }
+    }
+    if let Err(e) = crate::apply::publish_replace(&agents_path, before.as_deref(), &new_agents) {
+        if let (Some(g), Some(path)) = (&ignore, &ignore_path) {
+            // Best effort: the line goes back so the project is as it was.
+            let _ = restore_file(path, &g.new_bytes, g.before.as_deref());
+        }
         receipt.status = "failed".into();
         receipt.agents_after = None;
+        receipt.gitignore_after = None;
         write_receipt(&dir, &receipt)?;
-        return Err(format!("AGENTS.md was not written ({e})"));
+        return Err(format!("{target} was not written ({e})"));
     }
     receipt.status = "applied".into();
     write_receipt(&dir, &receipt)?;
+    let undo = if kind == Kind::Local {
+        format!(
+            "to undo: moai agents-merge-revert --receipt {id} --permission-reference <ref> <project>"
+        )
+    } else {
+        format!("to undo: revert receipt {id} with a permission reference")
+    };
     Ok(json!({
         "state": "applied",
         "project": root.display().to_string(),
         "source": {"kind": source.kind, "path": source.rel},
         "starts_at_line": inner.json["target"]["starts_at_line"],
         "receipt": id,
-        "writes": [TARGET],
-        "next_actions": [format!(
-            "to undo: moai agents-merge-revert --receipt {id} --permission-reference <ref> <project>"
-        )],
+        "writes": if ignore.is_some() { json!([GITIGNORE, target]) } else { json!([target]) },
+        "next_actions": [undo],
     }))
 }
 
-/// Undoes one merge while `AGENTS.md` still holds the bytes the apply wrote: it gets its
-/// earlier bytes back. The source file and its backup are not touched.
+/// Undoes one merge while the file it wrote still holds the bytes the apply wrote: the file
+/// gets its earlier bytes back, or is removed when the apply created it. The source file and its
+/// backup are not touched.
 pub fn revert(project: &Path, receipt_id: &str, permission: &str) -> Result<Value> {
+    revert_for(Kind::Local, project, receipt_id, permission)
+}
+
+/// Puts the `.gitignore` the apply changed back, only while it still holds the bytes the apply
+/// wrote. `None`: the receipt wrote none. `"reverted"`, `"unchanged"` (it is already as it was) or
+/// `"kept"` (it changed since, so it is left alone).
+fn revert_gitignore(root: &Path, dir: &Path, r: &Receipt) -> Result<Option<&'static str>> {
+    let Some(rel) = r.gitignore_path.as_deref() else {
+        return Ok(None);
+    };
+    if rel != GITIGNORE {
+        return Err("the receipt names a file this command never writes".into());
+    }
+    let path = crate::apply::target(root, rel)?;
+    let now = crate::apply::read_opt(&path)?;
+    let now_digest = now.as_deref().map(crate::digest);
+    let as_before = if r.gitignore_existed {
+        now_digest.as_deref() == r.gitignore_before.as_deref()
+    } else {
+        now.is_none()
+    };
+    if as_before {
+        return Ok(Some("unchanged"));
+    }
+    let (Some(now), Some(after)) = (now, r.gitignore_after.as_deref()) else {
+        return Ok(Some("kept"));
+    };
+    if crate::digest(&now) != after {
+        return Ok(Some("kept"));
+    }
+    if r.gitignore_existed {
+        crate::claude::refuse_symlink_dir(&dir.join("before"))?;
+        let earlier = crate::claude::read_existing(&dir.join("before").join(GITIGNORE))?
+            .ok_or_else(|| format!("the receipt has no copy of the earlier {GITIGNORE}"))?;
+        if Some(crate::digest(&earlier).as_str()) != r.gitignore_before.as_deref() {
+            return Err(format!(
+                "the receipt's copy of the earlier {GITIGNORE} was altered; nothing was written"
+            ));
+        }
+        restore_file(&path, &now, Some(&earlier))?;
+    } else {
+        restore_file(&path, &now, None)?;
+    }
+    Ok(Some("reverted"))
+}
+
+/// `revert` for a receipt of `kind`; a receipt id of the other kind is unknown to it.
+pub fn revert_for(kind: Kind, project: &Path, receipt_id: &str, permission: &str) -> Result<Value> {
     if !crate::contract::permission_reference_ok(permission) {
         return Err("a permission reference is required; nothing was written".into());
     }
-    if !(receipt_id.starts_with(RECEIPT_PREFIX)
+    if !(receipt_id.starts_with(kind.receipt_prefix())
         && receipt_id.len() <= 64
         && receipt_id
             .bytes()
@@ -741,45 +1778,82 @@ pub fn revert(project: &Path, receipt_id: &str, permission: &str) -> Result<Valu
     let bytes =
         crate::claude::read_existing(&dir.join("receipt.json"))?.ok_or("receipt not found")?;
     let mut r: Receipt = serde_json::from_slice(&bytes).map_err(|_| "receipt is unreadable")?;
-    let agents_path = crate::apply::target(&root, TARGET)?;
+    // The receipt names the file it wrote; only the files this kind ever wrote are valid. A
+    // personal-file receipt of the earlier generation names `AGENTS.md`.
+    let name: &str = match (kind, r.target_path.as_str()) {
+        (Kind::Local, TARGET) => TARGET,
+        (Kind::Local, LEGACY_TARGET) => LEGACY_TARGET,
+        (Kind::Guidance | Kind::Import, GUIDANCE_TARGET) => GUIDANCE_TARGET,
+        _ => return Err("the receipt names a file this command never writes".into()),
+    };
+    let agents_path = crate::apply::target(&root, name)?;
     match r.status.as_str() {
         "applied" => {}
         "reverted" => return Ok(json!({"state": "unchanged", "writes": []})),
-        // An apply that was interrupted: AGENTS.md holds either the bytes it was about to
-        // write (undo like an applied one) or its earlier bytes (it wrote nothing).
+        // An apply that was interrupted: the file holds either the bytes it was about to write
+        // (undo like an applied one) or its earlier state (it wrote nothing).
         "pending" => {
-            let now = crate::apply::read_opt(&agents_path)?.ok_or("AGENTS.md is missing")?;
-            let held = crate::digest(&now);
-            if held == r.agents_before {
+            let now = crate::apply::read_opt(&agents_path)?;
+            let wrote_nothing = match &now {
+                None => !r.target_existed,
+                Some(b) => r.target_existed && crate::digest(b) == r.agents_before,
+            };
+            if wrote_nothing {
+                // `.gitignore` is written first, so an interrupted apply may have changed it.
+                let gitignore = revert_gitignore(&root, &dir, &r)?;
                 r.status = "failed".into();
                 r.agents_after = None;
                 write_receipt(&dir, &r)?;
-                return Ok(json!({"state": "unchanged", "writes": []}));
+                let writes = if gitignore == Some("reverted") {
+                    json!([GITIGNORE])
+                } else {
+                    json!([])
+                };
+                return Ok(json!({"state": "unchanged", "writes": writes, "gitignore": gitignore}));
             }
-            // Any other bytes fall to the check below: AGENTS.md changed; nothing is written.
+            // Any other bytes fall to the check below: the file changed; nothing is written.
         }
         _ => return Err("that apply wrote nothing; there is nothing to undo".into()),
     }
-    let now = crate::apply::read_opt(&agents_path)?.ok_or("AGENTS.md is missing")?;
+    let now = crate::apply::read_opt(&agents_path)?.ok_or_else(|| format!("{name} is missing"))?;
     if r.agents_after.as_deref() != Some(crate::digest(&now).as_str()) {
-        return Err("AGENTS.md changed since the merge; nothing was written".into());
+        return Err(format!(
+            "{name} changed since the merge; nothing was written"
+        ));
     }
-    crate::claude::refuse_symlink_dir(&dir.join("before"))?;
-    let before = crate::claude::read_existing(&dir.join("before").join(TARGET))?
-        .ok_or("the receipt has no copy of the earlier AGENTS.md")?;
-    if crate::digest(&before) != r.agents_before {
-        return Err(
-            "the receipt's copy of the earlier AGENTS.md was altered; nothing was written".into(),
-        );
+    // The copy of the earlier file is checked before anything is written; `.gitignore` goes back
+    // first (it is the one that may stay as it is), then the file itself.
+    let gitignore;
+    if r.target_existed {
+        crate::claude::refuse_symlink_dir(&dir.join("before"))?;
+        let before = crate::claude::read_existing(&dir.join("before").join(name))?
+            .ok_or_else(|| format!("the receipt has no copy of the earlier {name}"))?;
+        if crate::digest(&before) != r.agents_before {
+            return Err(format!(
+                "the receipt's copy of the earlier {name} was altered; nothing was written"
+            ));
+        }
+        gitignore = revert_gitignore(&root, &dir, &r)?;
+        crate::apply::publish_replace(&agents_path, Some(&now), &before)?;
+    } else {
+        gitignore = revert_gitignore(&root, &dir, &r)?;
+        // The apply created the file and it still holds exactly those bytes: remove it, so the
+        // project is as it was (an empty `CLAUDE.local.md` would still count for Claude Code).
+        fs::remove_file(&agents_path).map_err(|_| format!("{name} could not be removed"))?;
     }
-    crate::apply::publish_replace(&agents_path, Some(&now), &before)?;
     r.status = "reverted".into();
     write_receipt(&dir, &r)?;
+    let writes = if gitignore == Some("reverted") {
+        json!([GITIGNORE, name])
+    } else {
+        json!([name])
+    };
     Ok(json!({
         "state": "reverted",
         "project": root.display().to_string(),
         "receipt": receipt_id,
-        "writes": [TARGET],
+        "writes": writes,
+        "gitignore": gitignore,
     }))
 }
 
@@ -788,16 +1862,121 @@ mod tests {
     use super::*;
 
     fn src(text: &str) -> Found {
-        Found::Source(Source {
-            kind: "in_place",
-            rel: LOCAL.into(),
-            bytes: text.as_bytes().to_vec(),
-        })
+        Found::Source(Source::whole(
+            "in_place",
+            LOCAL.into(),
+            text.as_bytes().to_vec(),
+        ))
+    }
+
+    /// The text a block came out of, and how many lines the block held.
+    fn removed(text: &str, b: &str, e: &str) -> Option<(String, usize)> {
+        remove_block(text, b, e).map(|r| (r.joined, r.lines))
+    }
+
+    #[test]
+    fn remove_block_joins_with_one_blank_line_and_refuses_odd_markers() {
+        let (b, e) = ("<!-- b -->", "<!-- /b -->");
+        let text = format!("one\n\n{b}\nx\n{e}\n\ntwo\n");
+        assert_eq!(removed(&text, b, e), Some(("one\n\ntwo\n".into(), 3)));
+        // Only the block: nothing is left to join.
+        assert_eq!(
+            removed(&format!("{b}\nx\n{e}\n"), b, e),
+            Some((String::new(), 3))
+        );
+        // Text before the block only, and text after it only.
+        assert_eq!(
+            removed(&format!("one\n{b}\nx\n{e}\n"), b, e),
+            Some(("one\n".into(), 3))
+        );
+        assert_eq!(
+            removed(&format!("{b}\nx\n{e}\ntwo\n"), b, e),
+            Some(("two\n".into(), 3))
+        );
+        // No block, two blocks, an end marker alone, a start that is not at a line start.
+        assert_eq!(removed("one\n", b, e), None);
+        assert_eq!(removed(&format!("{b}\n{e}\n{b}\n{e}\n"), b, e), None);
+        assert_eq!(removed(&format!("one\n{e}\n"), b, e), None);
+        assert_eq!(removed(&format!("a {b}\nx\n{e}\n"), b, e), None);
+        // An end marker before the start marker is not a block.
+        assert_eq!(removed(&format!("{e}\n{b}\n"), b, e), None);
+    }
+
+    /// The blank lines around a block are joined only when text stays on both sides.
+    #[test]
+    fn remove_block_says_when_the_blank_lines_around_it_were_joined() {
+        let (b, e) = ("<!-- b -->", "<!-- /b -->");
+        let collapsed = |text: &str| remove_block(text, b, e).unwrap().collapsed;
+        assert!(collapsed(&format!("one\n\n\n{b}\nx\n{e}\n\n\ntwo\n")));
+        assert!(collapsed(&format!("one\n{b}\nx\n{e}\ntwo\n")));
+        assert!(!collapsed(&format!("one\n\n{b}\nx\n{e}\n")));
+        assert!(!collapsed(&format!("{b}\nx\n{e}\n\ntwo\n")));
+        assert!(!collapsed(&format!("{b}\nx\n{e}\n")));
+    }
+
+    /// Each line that stays maps back to its line in the text the block came out of.
+    #[test]
+    fn remove_block_maps_the_lines_that_stay_back_to_where_they_were() {
+        let (b, e) = ("<!-- b -->", "<!-- /b -->");
+        // 1 one, 2 blank, 3 blank, 4 b, 5 x, 6 e, 7 blank, 8 blank, 9 two, 10 three
+        let text = format!("one\n\n\n{b}\nx\n{e}\n\n\ntwo\nthree\n");
+        let r = remove_block(&text, b, e).unwrap();
+        assert_eq!(r.joined, "one\n\ntwo\nthree\n");
+        assert_eq!(r.line_map, vec![1, 2, 9, 10]);
+        assert_eq!(r.joined.lines().count(), r.line_map.len());
+        // Nothing before the block: the text after it keeps its own numbers.
+        let r = remove_block(&format!("{b}\nx\n{e}\n\ntwo\n"), b, e).unwrap();
+        assert_eq!(r.line_map, vec![5]);
+        // Nothing after it.
+        let r = remove_block(&format!("one\ntwo\n{b}\nx\n{e}\n"), b, e).unwrap();
+        assert_eq!(r.line_map, vec![1, 2]);
+        // Two removals compose into the numbers of the whole file.
+        let outer = vec![1, 2, 9, 10];
+        assert_eq!(compose_lines(&outer, &[2, 4]), vec![2, 10]);
+    }
+
+    /// A credential on a line of the copied text is reported at its line of the whole file; one
+    /// in text that is not copied is not reported at all.
+    #[test]
+    fn the_copied_texts_suspects_are_numbered_in_the_whole_file() {
+        let key = shaped("sk-", 24);
+        let mut s = Source::whole("in_place", LEGACY_TARGET.into(), Vec::new());
+        s.text = format!("one\n{key}\nthree\n").into_bytes();
+        s.line_map = vec![1, 6, 7];
+        assert_eq!(s.suspects(), vec![(6, "api_key")]);
+        s.line_map = Vec::new();
+        assert_eq!(s.suspects(), vec![(2, "api_key")]);
+        // The whole file holds a credential the copy does not: nothing is reported.
+        s.bytes = format!("{key}\n").into_bytes();
+        s.text = b"one\n".to_vec();
+        assert_eq!(s.suspects(), vec![]);
+    }
+
+    #[test]
+    fn a_title_alone_is_the_heading_moai_wrote() {
+        assert!(is_title_only("# my-project\n"));
+        assert!(is_title_only("\n# my-project\n\n"));
+        assert!(!is_title_only("# my-project\n\nmore\n"));
+        assert!(!is_title_only("## sub\n"));
+        assert!(!is_title_only("plain\n"));
+        assert!(!is_title_only(""));
+    }
+
+    #[test]
+    fn an_import_counts_only_outside_code() {
+        assert!(imports_agents_md("# Team\n\n@AGENTS.md\n"));
+        assert!(imports_agents_md("See @./AGENTS.md for the rules.\n"));
+        assert!(!imports_agents_md("```\n@AGENTS.md\n```\n"));
+        assert!(!imports_agents_md("~~~\n@AGENTS.md\n~~~\n"));
+        assert!(!imports_agents_md("Use `@AGENTS.md` to import.\n"));
+        assert!(!imports_agents_md("@AGENTS.md.bak\n"));
+        // A fence that closes ends the code.
+        assert!(imports_agents_md("```\ncode\n```\n@AGENTS.md\n"));
     }
 
     fn action(agents: Option<&str>, found: Found) -> &'static str {
         let suspects = match &found {
-            Found::Source(s) => secret_suspects(std::str::from_utf8(&s.bytes).unwrap()),
+            Found::Source(s) => s.suspects(),
             _ => Vec::new(),
         };
         decide(agents.map(str::as_bytes), found, &suspects).action
@@ -888,8 +2067,22 @@ mod tests {
     fn nothing_to_merge_and_waiting_cases() {
         assert_eq!(action(Some("a\n"), Found::Nothing("none".into())), "none");
         assert_eq!(action(Some("a\n"), Found::Blocked("why".into())), "blocked");
-        assert_eq!(action(None, src("mine")), "blocked");
         assert_eq!(action(Some("a\n"), src("a\u{0}b")), "merge");
+    }
+
+    /// A missing target is created: the new file holds the block alone, from line 1.
+    #[test]
+    fn a_missing_target_is_created_with_the_block_alone() {
+        let d = decide(None, src("mine"), &[]);
+        assert_eq!(d.action, "merge");
+        assert_eq!(d.starts_at_line, Some(1));
+        let sha = hex(b"mine");
+        assert_eq!(
+            String::from_utf8(d.new_agents.unwrap()).unwrap(),
+            format!("{BEGIN}{sha}{BEGIN_TAIL}\nmine\n{END}\n")
+        );
+        // Nothing to merge still means nothing, with or without the target.
+        assert_eq!(action(None, Found::Nothing("none".into())), "none");
     }
 
     #[test]

@@ -1,5 +1,6 @@
-//! #2592 Codex parity: `skills-legacy HOME` lists the Go generation's `moai-*` skills beside
-//! `moai` in a temporary HOME and changes nothing.
+//! #2592: `skills-legacy HOME` lists the Go generation's `moai-*` skills beside `moai` in the
+//! Claude skill folder of a temporary HOME and changes nothing. The Codex, OMP and Cursor skill
+//! folders are not read (SPEC-20261122-codex-home-update-removed).
 mod common;
 use serde_json::Value;
 use std::{fs, path::Path, process::Command};
@@ -47,84 +48,81 @@ fn snapshot(root: &Path) -> Vec<(String, Vec<u8>)> {
     out
 }
 
-/// An empty HOME says `0건` and reports every host folder as absent.
+/// An empty HOME says `0건` and reports the Claude skill folder as absent.
 #[test]
 fn an_empty_home_reports_zero_in_words() {
     let home = tempfile::tempdir().unwrap();
     let r = run(home.path());
     assert_eq!(r["count"], 0, "{r}");
     assert!(r["summary"].as_str().unwrap().starts_with("0건"), "{r}");
-    assert_eq!(r["roots"].as_array().unwrap().len(), 5);
+    assert_eq!(r["roots"].as_array().unwrap().len(), 1);
     for root in r["roots"].as_array().unwrap() {
         assert_eq!(root["state"], "absent", "{root}");
     }
     assert_eq!(r["writes"], false);
 }
 
-/// Legacy folders are listed per host folder; `moai` itself and other skills are not; a link
-/// is reported as a link; the Codex disable entries cover only `.agents/skills`; nothing in HOME
-/// changes.
+/// Legacy folders are listed in the Claude skill folder; `moai` itself and other skills are
+/// not; a link is reported as a link; the folders of the hosts moai no longer manages are not
+/// read; nothing in HOME changes.
 #[cfg(unix)]
 #[test]
 fn legacy_moai_skills_are_listed_and_nothing_changes() {
     let home = tempfile::tempdir().unwrap();
     let h = fs::canonicalize(home.path()).unwrap();
-    skill(&h.join(".agents/skills/moai"), "moai");
-    skill(&h.join(".agents/skills/moai-plan"), "moai-plan");
-    skill(&h.join(".agents/skills/moai-run"), "moai-run");
-    skill(&h.join(".agents/skills/other"), "other");
+    skill(&h.join(".claude/skills/moai"), "moai");
+    skill(&h.join(".claude/skills/moai-plan"), "moai-plan");
     skill(&h.join(".claude/skills/moai-sync"), "moai-sync");
+    skill(&h.join(".claude/skills/other"), "other");
     skill(&h.join("elsewhere/moai-x"), "moai-x");
     std::os::unix::fs::symlink(
         h.join("elsewhere/moai-x"),
         h.join(".claude/skills/moai-linked"),
     )
     .unwrap();
+    // Folders of the hosts moai no longer manages hold legacy skills too; they are not read.
+    skill(&h.join(".agents/skills/moai-run"), "moai-run");
+    skill(&h.join(".codex/skills/moai-run"), "moai-run");
+    skill(&h.join(".omp/agent/skills/moai-run"), "moai-run");
+    skill(&h.join(".cursor/skills/moai-run"), "moai-run");
     let before = snapshot(&h);
 
     let r = run(&h);
-    assert_eq!(r["count"], 4, "{r}");
-    assert!(r["summary"].as_str().unwrap().starts_with("4건"), "{r}");
-    let root = |rel: &str| {
-        r["roots"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .find(|x| x["root"] == rel)
-            .unwrap()
-            .clone()
-    };
-    let agents = root(".agents/skills");
-    let folders: Vec<&str> = agents["legacy"]
+    assert_eq!(r["count"], 3, "{r}");
+    assert!(r["summary"].as_str().unwrap().starts_with("3건"), "{r}");
+    let roots: Vec<&str> = r["roots"]
         .as_array()
         .unwrap()
         .iter()
-        .map(|l| l["folder"].as_str().unwrap())
+        .map(|x| x["root"].as_str().unwrap())
         .collect();
-    assert_eq!(folders, ["moai-plan", "moai-run"]);
-    assert_eq!(agents["legacy"][0]["name"], "moai-plan");
-    assert_eq!(agents["legacy"][0]["skill_md"], "file");
-    let claude = root(".claude/skills");
+    assert_eq!(roots, [".claude/skills"], "{r}");
+    let claude = r["roots"][0].clone();
+    assert_eq!(claude["read_by"], "claude");
     let kinds: Vec<(&str, &str)> = claude["legacy"]
         .as_array()
         .unwrap()
         .iter()
         .map(|l| (l["folder"].as_str().unwrap(), l["kind"].as_str().unwrap()))
         .collect();
-    assert_eq!(kinds, [("moai-linked", "link"), ("moai-sync", "folder")]);
+    assert_eq!(
+        kinds,
+        [
+            ("moai-linked", "link"),
+            ("moai-plan", "folder"),
+            ("moai-sync", "folder")
+        ]
+    );
+    assert_eq!(claude["legacy"][1]["name"], "moai-plan");
+    assert_eq!(claude["legacy"][1]["skill_md"], "file");
     assert_eq!(
         claude["legacy"][0]["name"],
         Value::Null,
         "a link is not followed"
     );
-    let entries = r["codex_disable_entries"].as_array().unwrap();
-    assert_eq!(entries.len(), 2);
-    assert_eq!(
-        entries[0],
-        format!(
-            "[[skills.config]]\npath = \"{}/SKILL.md\"\nenabled = false",
-            h.join(".agents/skills/moai-plan").display()
-        )
+    assert!(
+        r.get("codex_disable_entries").is_none(),
+        "no Codex entry is printed: {r}"
     );
     assert_eq!(before, snapshot(&h), "skills-legacy writes nothing");
 }
@@ -151,7 +149,7 @@ fn legacy_entry(r: &Value, root: &str, folder: &str) -> Value {
 fn a_fifo_skill_md_is_reported_and_never_read() {
     let home = tempfile::tempdir().unwrap();
     let h = home.path();
-    let dir = h.join(".agents/skills/moai-b");
+    let dir = h.join(".claude/skills/moai-b");
     fs::create_dir_all(&dir).unwrap();
     let fifo = std::ffi::CString::new(dir.join("SKILL.md").to_string_lossy().as_bytes()).unwrap();
     assert_eq!(unsafe { libc::mkfifo(fifo.as_ptr(), 0o600) }, 0);
@@ -176,10 +174,9 @@ fn a_fifo_skill_md_is_reported_and_never_read() {
     let mut out = Vec::new();
     std::io::Read::read_to_end(&mut child.stdout.take().unwrap(), &mut out).unwrap();
     let r = serde_json::from_slice::<Value>(&out).unwrap()["result"].clone();
-    let entry = legacy_entry(&r, ".agents/skills", "moai-b");
+    let entry = legacy_entry(&r, ".claude/skills", "moai-b");
     assert_eq!(entry["skill_md"], "not_a_file", "{entry}");
     assert_eq!(entry["name"], Value::Null);
-    assert_eq!(r["codex_disable_entries"].as_array().unwrap().len(), 0);
 }
 
 /// Pre-audit 6852075845 B2: a linked `SKILL.md` is reported as a link and never read, so a
@@ -192,35 +189,34 @@ fn a_linked_skill_md_is_never_followed() {
     let h = home.path();
     let target = outside.path().join("target.md");
     fs::write(&target, "---\nname: secret-name-from-outside\n---\n").unwrap();
-    let dir = h.join(".agents/skills/moai-a");
+    let dir = h.join(".claude/skills/moai-a");
     fs::create_dir_all(&dir).unwrap();
     std::os::unix::fs::symlink(&target, dir.join("SKILL.md")).unwrap();
     let r = run(h);
-    let entry = legacy_entry(&r, ".agents/skills", "moai-a");
+    let entry = legacy_entry(&r, ".claude/skills", "moai-a");
     assert_eq!(entry["skill_md"], "link", "{entry}");
     assert_eq!(entry["name"], Value::Null);
     assert!(!r.to_string().contains("secret-name-from-outside"), "{r}");
-    assert_eq!(r["codex_disable_entries"].as_array().unwrap().len(), 0);
 }
 
-/// Pre-audit N2: a link between HOME and the skill folder (`.agents` itself) is not followed.
+/// Pre-audit N2: a link between HOME and the skill folder (`.claude` itself) is not followed.
 #[cfg(unix)]
 #[test]
 fn a_linked_folder_above_the_skill_root_is_not_followed() {
     let home = tempfile::tempdir().unwrap();
     let h = home.path();
     skill(&h.join("real/skills/moai-plan"), "moai-plan");
-    std::os::unix::fs::symlink(h.join("real"), h.join(".agents")).unwrap();
+    std::os::unix::fs::symlink(h.join("real"), h.join(".claude")).unwrap();
     let r = run(h);
     assert_eq!(r["count"], 0, "{r}");
-    let agents = r["roots"]
+    let claude = r["roots"]
         .as_array()
         .unwrap()
         .iter()
-        .find(|x| x["root"] == ".agents/skills")
+        .find(|x| x["root"] == ".claude/skills")
         .unwrap()
         .clone();
-    assert_eq!(agents["state"], "link_not_followed", "{agents}");
+    assert_eq!(claude["state"], "link_not_followed", "{claude}");
 }
 
 /// B1 repair bound, as literals: a 65536-byte `SKILL.md` is read, a 65537-byte one is not.
@@ -229,53 +225,19 @@ fn skill_md_is_read_up_to_64_kib_exactly() {
     let home = tempfile::tempdir().unwrap();
     let h = home.path();
     for (folder, len) in [("moai-at", 65536usize), ("moai-over", 65537usize)] {
-        let dir = h.join(".agents/skills").join(folder);
+        let dir = h.join(".claude/skills").join(folder);
         fs::create_dir_all(&dir).unwrap();
         let mut bytes = format!("---\nname: {folder}\n---\n").into_bytes();
         bytes.resize(len, b'x');
         fs::write(dir.join("SKILL.md"), bytes).unwrap();
     }
     let r = run(h);
-    let at = legacy_entry(&r, ".agents/skills", "moai-at");
+    let at = legacy_entry(&r, ".claude/skills", "moai-at");
     assert_eq!(at["skill_md"], "file", "{at}");
     assert_eq!(at["name"], "moai-at");
-    let over = legacy_entry(&r, ".agents/skills", "moai-over");
+    let over = legacy_entry(&r, ".claude/skills", "moai-over");
     assert_eq!(over["skill_md"], "too_large", "{over}");
     assert_eq!(over["name"], Value::Null);
-}
-
-/// Pre-audit N1: the Codex entry escapes the path as a TOML basic string, so a `"` or `\`
-/// in HOME cannot break or redirect it.
-#[cfg(unix)]
-#[test]
-fn the_codex_entry_escapes_the_path() {
-    let base = tempfile::tempdir().unwrap();
-    let h = base.path().join("q\"uo\\te");
-    skill(&h.join(".agents/skills/moai-plan"), "moai-plan");
-    let r = run(&h);
-    let entries = r["codex_disable_entries"].as_array().unwrap();
-    assert_eq!(entries.len(), 1, "{r}");
-    let escaped = format!("{}/.agents/skills/moai-plan/SKILL.md", h.display())
-        .replace('\\', "\\\\")
-        .replace('"', "\\\"");
-    assert_eq!(
-        entries[0],
-        format!("[[skills.config]]\npath = \"{escaped}\"\nenabled = false")
-    );
-}
-
-/// #2758 audit N1: a control character in the path (a newline in HOME) is escaped as `\uXXXX`,
-/// so the pasted entry stays one TOML line.
-#[cfg(unix)]
-#[test]
-fn the_codex_entry_escapes_control_characters() {
-    let base = tempfile::tempdir().unwrap();
-    let h = base.path().join("line\nbreak");
-    skill(&h.join(".agents/skills/moai-plan"), "moai-plan");
-    let r = run(&h);
-    let entry = r["codex_disable_entries"][0].as_str().unwrap().to_string();
-    assert!(entry.contains("line\\u000Abreak"), "{entry}");
-    assert_eq!(entry.lines().count(), 3, "{entry}");
 }
 
 /// #2758 audit N2: a file where a folder between HOME and the skill root should be is reported
@@ -284,35 +246,35 @@ fn the_codex_entry_escapes_control_characters() {
 fn a_file_in_place_of_a_folder_on_the_way_is_not_a_folder() {
     let home = tempfile::tempdir().unwrap();
     let h = home.path();
-    fs::write(h.join(".agents"), "not a folder\n").unwrap();
+    fs::write(h.join(".claude"), "not a folder\n").unwrap();
     let r = run(h);
-    let agents = r["roots"]
+    let claude = r["roots"]
         .as_array()
         .unwrap()
         .iter()
-        .find(|x| x["root"] == ".agents/skills")
+        .find(|x| x["root"] == ".claude/skills")
         .unwrap()
         .clone();
-    assert_eq!(agents["state"], "not_a_folder", "{agents}");
+    assert_eq!(claude["state"], "not_a_folder", "{claude}");
 }
 
-/// A linked host skill folder is not followed.
+/// A linked Claude skill folder is not followed.
 #[cfg(unix)]
 #[test]
 fn a_linked_skill_root_is_not_followed() {
     let home = tempfile::tempdir().unwrap();
     let h = home.path();
     skill(&h.join("real/moai-plan"), "moai-plan");
-    fs::create_dir_all(h.join(".agents")).unwrap();
-    std::os::unix::fs::symlink(h.join("real"), h.join(".agents/skills")).unwrap();
+    fs::create_dir_all(h.join(".claude")).unwrap();
+    std::os::unix::fs::symlink(h.join("real"), h.join(".claude/skills")).unwrap();
     let r = run(h);
     assert_eq!(r["count"], 0, "{r}");
-    let agents = r["roots"]
+    let claude = r["roots"]
         .as_array()
         .unwrap()
         .iter()
-        .find(|x| x["root"] == ".agents/skills")
+        .find(|x| x["root"] == ".claude/skills")
         .unwrap()
         .clone();
-    assert_eq!(agents["state"], "link_not_followed");
+    assert_eq!(claude["state"], "link_not_followed");
 }

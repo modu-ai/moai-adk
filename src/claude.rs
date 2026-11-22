@@ -382,6 +382,8 @@ pub const MANAGED_SETTINGS: &[&str] = &[
     "env",
     "model",
     "worktree",
+    "claudeMdExcludes",
+    "enabledPlugins",
 ];
 
 /// The managed keys a caller may set through `claude-settings-plan` / `-apply` (#2239, #2244):
@@ -393,6 +395,8 @@ pub const USER_SETTINGS: &[&str] = &[
     "env",
     "model",
     "worktree",
+    "claudeMdExcludes",
+    "enabledPlugins",
 ];
 
 /// Bounds for the `env` and `model` values a caller may set (#2936 R8).
@@ -476,23 +480,159 @@ fn check_env(value: &Value) -> Result<()> {
     Ok(())
 }
 
-/// Validates a desired `worktree` value (card C-70): exactly `{"baseRef": "head"}` or
-/// `{"baseRef": "fresh"}`, the two values Claude Code documents (`fresh` the remote default
-/// branch, `head` the local HEAD; https://code.claude.com/docs/en/worktrees, as read in
-/// `docs/worktree-strategy-2026-11-10.md` row H1). Other worktree keys are left to the user.
+/// Validates a desired `worktree` value: a non-empty object of `baseRef` (card C-70: `head` or
+/// `fresh`, the two values Claude Code documents; https://code.claude.com/docs/en/worktrees, as
+/// read in `docs/worktree-strategy-2026-11-10.md` row H1) and the large-codebase keys
+/// `sparsePaths` and `symlinkDirectories` (SPEC-20261122-project-scale-settings: arrays of
+/// repository-relative folder paths). Other worktree keys (`bgIsolation`, `location`) are left
+/// to the user.
 fn check_worktree(value: &Value) -> Result<()> {
-    let ok = value.as_object().is_some_and(|m| {
-        m.len() == 1
-            && matches!(
-                m.get("baseRef").and_then(Value::as_str),
-                Some("head" | "fresh")
-            )
-    });
-    if ok {
-        Ok(())
-    } else {
-        Err("worktree must be {\"baseRef\": \"head\"} or {\"baseRef\": \"fresh\"}".into())
+    let refuse = || -> Result<()> {
+        Err("worktree must be a non-empty object of baseRef (\"head\" or \"fresh\"), sparsePaths and symlinkDirectories".into())
+    };
+    let Some(map) = value.as_object().filter(|m| !m.is_empty()) else {
+        return refuse();
+    };
+    for (key, v) in map {
+        match key.as_str() {
+            "baseRef" if matches!(v.as_str(), Some("head" | "fresh")) => {}
+            "sparsePaths" | "symlinkDirectories" => {
+                check_scale_list(&format!("worktree.{key}"), v, |s| {
+                    relative_path_refusal(s, false)
+                })?
+            }
+            _ => return refuse(),
+        }
     }
+    Ok(())
+}
+
+/// Bounds for the large-codebase keys (SPEC-20261122-project-scale-settings REQ-9).
+pub const SCALE_LIST_MAX: usize = 256;
+pub const SCALE_VALUE_CHARS_MAX: usize = 256;
+pub const ENABLED_PLUGINS_MAX: usize = 64;
+
+/// One non-empty line within [`SCALE_VALUE_CHARS_MAX`] that does not look like a credential.
+fn scale_value_ok(s: &str) -> bool {
+    !s.trim().is_empty()
+        && s.chars().count() <= SCALE_VALUE_CHARS_MAX
+        && !s.chars().any(char::is_control)
+        && !credential_like(s)
+}
+
+/// Why a path is not a repository-relative path, or `None`: no root, no drive, no home, no
+/// network share, and `..` segments only at its start when `leading_up` allows them (REQ-10).
+fn relative_path_refusal(s: &str, leading_up: bool) -> Option<&'static str> {
+    if !scale_value_ok(s) {
+        return Some("not a one-line value within the size limit, or it looks like a credential");
+    }
+    let b = s.as_bytes();
+    if s.starts_with(['/', '\\', '~'])
+        || (b.len() >= 2 && b[1] == b':' && b[0].is_ascii_alphabetic())
+    {
+        return Some("not a relative path");
+    }
+    let mut named = false;
+    for part in s.split(['/', '\\']) {
+        if part == ".." {
+            if !leading_up || named {
+                return Some("a `..` leaves the repository");
+            }
+        } else if !part.is_empty() && part != "." {
+            named = true;
+        }
+    }
+    None
+}
+
+/// An array of at most [`SCALE_LIST_MAX`] strings, each passing `refusal`.
+fn check_scale_list(
+    name: &str,
+    value: &Value,
+    refusal: impl Fn(&str) -> Option<&'static str>,
+) -> Result<()> {
+    let Value::Array(items) = value else {
+        return Err(format!("{name} must be an array of strings"));
+    };
+    if items.len() > SCALE_LIST_MAX {
+        return Err(format!("{name} must have at most {SCALE_LIST_MAX} entries"));
+    }
+    for item in items {
+        let Some(s) = item.as_str() else {
+            return Err(format!("{name} entries must be strings"));
+        };
+        if let Some(why) = refusal(s) {
+            return Err(format!("{name} entry refused: {why}"));
+        }
+    }
+    Ok(())
+}
+
+/// `claudeMdExcludes`: glob patterns Claude Code matches against absolute paths; no `..`.
+fn check_claude_md_excludes(value: &Value) -> Result<()> {
+    check_scale_list("claudeMdExcludes", value, |s| {
+        if !scale_value_ok(s) {
+            Some("not a one-line value within the size limit, or it looks like a credential")
+        } else if s.split(['/', '\\']).any(|p| p == "..") {
+            Some("a `..` leaves the repository")
+        } else {
+            None
+        }
+    })
+}
+
+/// `enabledPlugins`: at most [`ENABLED_PLUGINS_MAX`] `name@marketplace` keys, each turned on.
+fn check_enabled_plugins(value: &Value) -> Result<()> {
+    let Value::Object(map) = value else {
+        return Err("enabledPlugins must be an object of name@marketplace keys".into());
+    };
+    if map.len() > ENABLED_PLUGINS_MAX {
+        return Err(format!(
+            "enabledPlugins must have at most {ENABLED_PLUGINS_MAX} entries"
+        ));
+    }
+    let part_ok = |p: &str| {
+        !p.is_empty()
+            && p.len() <= 128
+            && p.chars()
+                .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-'))
+    };
+    for (key, v) in map {
+        let named = key
+            .split_once('@')
+            .is_some_and(|(name, market)| part_ok(name) && part_ok(market));
+        if !named || v != &Value::Bool(true) {
+            return Err("enabledPlugins entries must be name@marketplace keys set to true".into());
+        }
+    }
+    Ok(())
+}
+
+/// REQ-10: every `permissions.additionalDirectories` entry, read from PROJECT, stays inside the
+/// repository that holds PROJECT (the nearest folder at or above it with a `.git` entry);
+/// without one, no entry may go up.
+fn check_additional_directories_inside(project: &Path, desired: &Map<String, Value>) -> Result<()> {
+    let Some(dirs) = desired
+        .get("permissions")
+        .and_then(|p| p.get("additionalDirectories"))
+        .and_then(Value::as_array)
+    else {
+        return Ok(());
+    };
+    let abs = fs::canonicalize(project).unwrap_or_else(|_| project.to_path_buf());
+    let depth = abs
+        .ancestors()
+        .position(|a| fs::symlink_metadata(a.join(".git")).is_ok())
+        .unwrap_or(0);
+    for dir in dirs.iter().filter_map(Value::as_str) {
+        let ups = dir.split(['/', '\\']).filter(|p| *p == "..").count();
+        if ups > depth {
+            return Err(
+                "permissions.additionalDirectories entry refused: it leaves the repository".into(),
+            );
+        }
+    }
+    Ok(())
 }
 
 /// Validates a desired `model` value: one non-empty line of at most [`MODEL_CHARS_MAX`] characters.
@@ -551,6 +691,7 @@ pub fn user_settings_desired_in(
     scope: SettingsScope,
 ) -> Result<Map<String, Value>> {
     refuse_unlisted(desired.keys().map(String::as_str), USER_SETTINGS)?;
+    check_additional_directories_inside(project, desired)?;
     let mut out = desired.clone();
     if scope == SettingsScope::Project {
         if let Some(hooks) = owned_settings(project)?.get("hooks") {
@@ -652,9 +793,10 @@ const PERMISSION_RULES_MAX: usize = 256;
 const PERMISSION_RULE_CHARS_MAX: usize = 256;
 
 /// Validates a desired `permissions` value: an object with only `allow`, `deny`, `ask`
-/// (arrays of non-empty one-line rules) and `defaultMode` (a narrowing mode). Any other
-/// sub-key (`additionalDirectories`, `disableBypassPermissionsMode`, ...) is undecided and
-/// refused.
+/// (arrays of non-empty one-line rules), `defaultMode` (a narrowing mode) and
+/// `additionalDirectories` (relative paths, SPEC-20261122-project-scale-settings; the file
+/// access applies only after the user trusts the folder). Any other sub-key
+/// (`disableBypassPermissionsMode`, ...) is undecided and refused.
 pub(crate) fn check_permissions(value: &Value) -> Result<()> {
     let Value::Object(map) = value else {
         return Err("permissions must be an object".into());
@@ -690,6 +832,11 @@ pub(crate) fn check_permissions(value: &Value) -> Result<()> {
                             .into(),
                     );
                 }
+            }
+            "additionalDirectories" => {
+                check_scale_list("permissions.additionalDirectories", v, |s| {
+                    relative_path_refusal(s, true)
+                })?
             }
             _ => return Err(format!("unknown permissions key {key} refused")),
         }
@@ -734,6 +881,12 @@ pub fn plan_settings(
     }
     if let Some(w) = desired.get("worktree") {
         check_worktree(w)?;
+    }
+    if let Some(c) = desired.get("claudeMdExcludes") {
+        check_claude_md_excludes(c)?;
+    }
+    if let Some(p) = desired.get("enabledPlugins") {
+        check_enabled_plugins(p)?;
     }
     let mut keys: Vec<&String> = baseline.keys().chain(desired.keys()).collect();
     keys.sort();
@@ -1784,9 +1937,10 @@ mod tests {
     fn claude_settings_refuses_unmanaged_keys_and_keeps_order() {
         for (b, d) in [
             // `permissions` (#2244), `hooks` (#2238), `env` and `model` (#2936 R8) are managed;
-            // `enabledPlugins` stays unmanaged.
-            (json!({}), json!({"enabledPlugins": {}})),
-            (json!({"enabledPlugins": {}}), json!({})),
+            // `enabledPlugins` is managed since SPEC-20261122-project-scale-settings;
+            // `cleanupPeriodDays` stays unmanaged.
+            (json!({}), json!({"cleanupPeriodDays": 30})),
+            (json!({"cleanupPeriodDays": 30}), json!({})),
         ] {
             let err = plan_settings(&obj(b), &Map::new(), &obj(d)).unwrap_err();
             assert_eq!(

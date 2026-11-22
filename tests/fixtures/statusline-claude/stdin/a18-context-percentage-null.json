@@ -1,0 +1,5 @@
+{
+  "model": {"display_name": "Sonnet"},
+  "workspace": {"current_dir": "{PROJECT}", "project_dir": "{PROJECT}"},
+  "context_window": {"context_window_size": 200000, "used_percentage": null}
+}

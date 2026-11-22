@@ -56,7 +56,11 @@ fn setup() -> (tempfile::TempDir, PathBuf) {
     let root = tmp.path().join("p");
     fs::create_dir_all(&root).unwrap();
     git(&root, &["init", "-q", "-b", "main"]);
-    write(&root, ".gitignore", ".moai-cli/index/\n");
+    write(
+        &root,
+        ".gitignore",
+        &format!("{}\n", moai_cli::state_root::rel(&root, "index/")),
+    );
     write(&root, "src/lib.rs", LIB);
     write(&root, "src/other.rs", OTHER);
     write(&root, "tests/pay.rs", TESTS);
@@ -87,7 +91,7 @@ fn records(root: &Path) -> Value {
 }
 
 fn gen_dir(root: &Path, gen: &str) -> PathBuf {
-    root.join(".moai-cli/index/generations").join(gen)
+    moai_cli::state_root::path(root, "index/generations").join(gen)
 }
 
 fn edges(doc: &Value) -> BTreeSet<(String, String, String)> {
@@ -220,7 +224,7 @@ fn incremental_build_equals_a_full_rebuild() {
         serde_json::from_slice(&fs::read(gen_dir(&root, &gen).join("manifest.json")).unwrap())
             .unwrap();
 
-    fs::remove_dir_all(root.join(".moai-cli/index")).unwrap();
+    fs::remove_dir_all(moai_cli::state_root::path(&root, "index")).unwrap();
     let full = build(&root);
     assert_eq!(full["generation_id"], gen.as_str());
     assert_eq!(full["records"]["reused_files"], 0);
@@ -446,7 +450,7 @@ fn unshallowing_a_clone_builds_a_new_generation_equal_to_a_full_rebuild() {
     assert!(!has_miss(&q, "history_shallow"));
 
     let incremental = view_bytes(&root, &gen);
-    fs::remove_dir_all(root.join(".moai-cli/index")).unwrap();
+    fs::remove_dir_all(moai_cli::state_root::path(&root, "index")).unwrap();
     let rebuilt = build(&root);
     assert_eq!(rebuilt["generation_id"], gen.as_str());
     assert_eq!(rebuilt["records"]["reused_files"], 0);
@@ -501,7 +505,7 @@ fn code_references_follow_the_file_set_and_rebuild_identically() {
         }
     }
     let incremental_views = view_bytes(&root, &gen);
-    fs::remove_dir_all(root.join(".moai-cli/index")).unwrap();
+    fs::remove_dir_all(moai_cli::state_root::path(&root, "index")).unwrap();
     let full = build(&root);
     assert_eq!(full["generation_id"], gen.as_str());
     assert_eq!(full["records"]["reused_files"], 0);
@@ -562,7 +566,7 @@ fn doc_references_rebuild_identically_when_only_the_definition_changes() {
         }
         let incremental = view_bytes(&root, gen);
         fs::rename(
-            root.join(".moai-cli/index"),
+            moai_cli::state_root::path(&root, "index"),
             tmp.path().join(format!("saved-index-{step}")),
         )
         .unwrap();
@@ -615,7 +619,7 @@ fn excluded_doc_blocks_survive_reuse_and_disappear_when_the_block_becomes_plain(
         assert_eq!(count, u64::from(!plain));
         let incremental = view_bytes(&root, gen);
         fs::rename(
-            root.join(".moai-cli/index"),
+            moai_cli::state_root::path(&root, "index"),
             tmp.path().join(format!("narrow-saved-{step}")),
         )
         .unwrap();

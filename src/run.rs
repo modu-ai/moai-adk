@@ -16,8 +16,10 @@ use std::time::Duration;
 
 pub type Result<T> = std::result::Result<T, String>;
 
-/// Paths a tree digest leaves out: git metadata and build output (#2003 leader decision H1).
-pub const TREE_EXCLUDES: [&str; 2] = [".git", "target"];
+/// Paths a tree digest leaves out: git metadata, build output (#2003 leader decision H1) and the
+/// project's own worktree place, where each worktree is a whole checkout of its own: a worktree
+/// made or removed must not change the digest that RUN records and AUDIT compares.
+pub const TREE_EXCLUDES: [&str; 3] = [".git", "target", ".claude/worktrees"];
 
 /// Required evidence per change strategy; the table, not the request, decides it.
 const STRATEGIES: [(&str, &[&str]); 6] = [

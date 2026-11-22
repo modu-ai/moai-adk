@@ -43,7 +43,7 @@ fn request(project: &Path, source: &Path) -> ProjectSkillRequest {
         opt_in: true,
         project_root: project.to_path_buf(),
         home: None,
-        hosts: vec!["claude".into(), "codex".into()],
+        hosts: vec!["claude".into()],
         source_dir: source.to_path_buf(),
     }
 }
@@ -97,24 +97,21 @@ fn update_plan_reason_names_the_go_era_skill_and_the_user_options() {
     }
 }
 
-/// (ii) A foreign `moai` folder inside the project plans `blocked` for both hosts;
-/// apply refuses before any write — the foreign trees are byte-identical and no
+/// (ii) A foreign `moai` folder inside the project plans `blocked`;
+/// apply refuses before any write — the foreign tree is byte-identical and no
 /// rollback directory is created.
 #[test]
 fn foreign_project_moai_is_blocked_and_apply_writes_nothing() {
     let project = TempDir::new().unwrap();
     let source = TempDir::new().unwrap();
     write_source(source.path(), "rc");
-    let mut before = Vec::new();
-    for host_dir in [".claude/skills", ".agents/skills"] {
-        let go = project.path().join(host_dir).join("moai");
-        write_go_skill(&go);
-        before.push((go.clone(), tree_digest(&go, &[]).unwrap()));
-    }
+    let go = project.path().join(".claude/skills/moai");
+    write_go_skill(&go);
+    let before = vec![(go.clone(), tree_digest(&go, &[]).unwrap())];
     let req = request(project.path(), source.path());
 
     let plan = project_skill_plan(&req).unwrap();
-    assert_eq!(plan.entries.len(), 2);
+    assert_eq!(plan.entries.len(), 1);
     for entry in &plan.entries {
         assert_eq!(entry.action, "blocked", "{}", entry.host);
         let reason = entry.blocked_reason.as_deref().unwrap();
@@ -136,8 +133,9 @@ fn foreign_project_moai_is_blocked_and_apply_writes_nothing() {
     );
 }
 
-/// (ii, one host) A single blocked host refuses the whole apply: the other, vacant
-/// host is not created either.
+/// (ii, one host) A blocked host refuses the whole apply: nothing is created, not even
+/// the rollback folder, and listing the retired `codex` beside it changes nothing (it is
+/// filtered out, so no `.agents` copy is made either).
 #[test]
 fn one_blocked_host_refuses_the_whole_apply() {
     let project = TempDir::new().unwrap();
@@ -153,10 +151,14 @@ fn one_blocked_host_refuses_the_whole_apply() {
         .iter()
         .map(|e| (e.host.as_str(), e.action.as_str()))
         .collect();
-    assert_eq!(actions, [("claude", "blocked"), ("codex", "create")]);
+    assert_eq!(actions, [("claude", "blocked")]);
     assert!(project_skill_apply(&req).is_err());
+    let mut with_codex = req.clone();
+    with_codex.hosts.push("codex".into());
+    let err = project_skill_apply(&with_codex).unwrap_err();
+    assert!(err.contains("blocked"), "{err}");
     assert_eq!(tree_digest(&go, &[]).unwrap(), digest);
-    assert!(!project.path().join(".agents/skills/moai").exists());
+    assert!(!project.path().join(".agents").exists());
     assert!(!project.path().join(".moai-cli").exists());
 }
 
@@ -190,8 +192,8 @@ fn own_earlier_copy_still_plans_replace() {
         "hand edited\n",
     );
     let edited = project_skill_plan(&req).unwrap();
+    assert_eq!(edited.entries.len(), 1);
     assert_eq!(edited.entries[0].action, "blocked");
-    assert_eq!(edited.entries[1].action, "replace");
 }
 
 /// A foreign folder the package digest cannot read (here: a symlink inside) is

@@ -35,7 +35,8 @@
 # python-slots`) with at most `MOAI_PYTHON_SLOT_MAX` (default 2) runs at a time, so a 38-minute
 # discover never holds one of the cargo slots.
 #
-# The base of diff-check and python is SELF_CHECK_BASE (default origin/v2026.11.0); the change
+# The base of diff-check and python is SELF_CHECK_BASE (default: the local branch v2026.11.0,
+# not its remote copy, which stays behind until someone pushes); the change
 # is everything from its merge base with HEAD to the working folder, untracked files included.
 # A base that does not resolve makes diff-check and python not_run (with --pre-ready:
 # diff-check and spec-check).
@@ -106,7 +107,7 @@ if [ -z "$py_slot_dir" ]; then
     py_slot_dir="$HOME/.cache/moai-cli/python-slots"
   fi
 fi
-base_ref="${SELF_CHECK_BASE:-origin/v2026.11.0}"
+base_ref="${SELF_CHECK_BASE:-v2026.11.0}"
 head="$(git rev-parse --verify -q 'HEAD^{commit}' 2>/dev/null || echo unknown)"
 failed=""
 not_run=""

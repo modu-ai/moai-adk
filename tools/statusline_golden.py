@@ -255,7 +255,11 @@ def run_case(binary, argv, case, variant, stdin_bytes=None, stdout_tty=None):
         home = root / "home"
         moai_home = home / ".moai"
         project = root / "work" / "demo-project"
-        for d in (home, moai_home, project):
+        # The render keeps a per-session cache under `$TMPDIR` (SPEC-20261122-statusline-where):
+        # a folder of its own per run, so no case reads another case's cache and nothing
+        # reaches the real temporary folder.
+        tmpdir = root / "tmp"
+        for d in (home, moai_home, project, tmpdir):
             d.mkdir(parents=True, exist_ok=True)
         for step in case.get("setup", []):
             apply_setup(step, root, project, moai_home)
@@ -267,7 +271,7 @@ def run_case(binary, argv, case, variant, stdin_bytes=None, stdout_tty=None):
                      if stdin_bytes is None else stdin_bytes)
         stdin = stdin_raw.replace(b"{PROJECT}", str(project).encode())
         env = {"PATH": "/usr/bin:/bin", "HOME": str(home), "MOAI_HOME": str(moai_home),
-               "TZ": "UTC", "LANG": "C.UTF-8", **developer_env()}
+               "TZ": "UTC", "LANG": "C.UTF-8", "TMPDIR": str(tmpdir), **developer_env()}
         env.update(VARIANTS[variant])
         cmd = [str(exe), *argv]
         if sys.platform == "darwin":

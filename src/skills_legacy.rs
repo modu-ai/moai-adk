@@ -1,15 +1,12 @@
-//! Legacy `moai-*` skills in the user's skill folders (Issue #2592, Codex parity).
+//! Legacy `moai-*` skills in the user's Claude skill folder (Issue #2592).
 //!
-//! Codex sessions measured on 2026-11-13 rarely opened the `moai` skill: the list held 387
+//! Sessions measured on 2026-11-13 rarely opened the `moai` skill: the list held 387
 //! skills with the Go generation's `moai-*` skills beside it (#2592 comment 6848426992).
 //! `moai-cli update` installs and owns only `moai`, so the older folders stay and compete for
-//! the same requests. This read-only check lists them per host folder so the person can back
-//! them up or turn them off; it never moves, deletes or edits anything.
-//!
-//! Codex reads user skills from `$HOME/.agents/skills` and can turn one off without deleting
-//! it: `[[skills.config]]` with `path = "<…>/SKILL.md"` and `enabled = false` in
-//! `~/.codex/config.toml` (https://learn.chatgpt.com/docs/build-skills, read 2026-11-13). The
-//! check prints that entry for each folder Codex reads; it does not write the config.
+//! the same requests. This read-only check lists them so the person can back them up or turn
+//! them off; it never moves, deletes or edits anything. The folders of hosts moai no longer
+//! manages (Codex, OMP, Cursor) are not read
+//! (SPEC-20261122-codex-home-update-removed).
 use serde_json::{json, Value};
 use std::io::Read;
 use std::path::Path;
@@ -17,14 +14,8 @@ use std::path::Path;
 /// The largest `SKILL.md` the check reads for its `name:` (#2592 pre-audit 6852075845 B1).
 pub const SKILL_MD_MAX: u64 = 64 * 1024;
 
-/// The user-level skill folders of the supported hosts, relative to HOME, with who reads them.
-pub const ROOTS: [(&str, &str); 5] = [
-    (".agents/skills", "codex, cursor, omp"),
-    (".claude/skills", "claude, cursor"),
-    (".codex/skills", "cursor"),
-    (".omp/agent/skills", "omp"),
-    (".cursor/skills", "cursor"),
-];
+/// The user-level skill folder of the supported host, relative to HOME, with who reads it.
+pub const ROOTS: [(&str, &str); 1] = [(".claude/skills", "claude")];
 
 /// The skill the installer owns; never reported.
 pub const OWNED: &str = "moai";
@@ -77,22 +68,6 @@ fn skill_md(path: &Path) -> (&'static str, Option<String>) {
         Ok(_) => ("too_large", None),
         Err(_) => ("unreadable", None),
     }
-}
-
-/// `s` as a TOML basic string, escaped (#2592 pre-audit N1: a `\` or `"` in a path, such as
-/// a Windows path, must not break or redirect the pasted entry).
-fn toml_string(s: &str) -> String {
-    let mut out = String::from("\"");
-    for c in s.chars() {
-        match c {
-            '\\' => out.push_str("\\\\"),
-            '"' => out.push_str("\\\""),
-            c if c.is_control() => out.push_str(&format!("\\u{:04X}", c as u32)),
-            c => out.push(c),
-        }
-    }
-    out.push('"');
-    out
 }
 
 /// One root: every `moai-*` entry directly under it. Links are reported, never followed —
@@ -149,8 +124,8 @@ fn scan_root(home: &Path, rel: &str) -> Value {
     json!({"root": rel, "state": "present", "legacy": legacy})
 }
 
-/// `skills-legacy`: the legacy `moai-*` skill folders under HOME's host skill folders, with
-/// the Codex `[[skills.config]]` entry that turns each Codex-read one off. Reads only.
+/// `skills-legacy`: the legacy `moai-*` skill folders under HOME's Claude skill folder.
+/// Reads only.
 pub fn check(home: &Path) -> Value {
     let roots: Vec<Value> = ROOTS
         .iter()
@@ -164,21 +139,6 @@ pub fn check(home: &Path) -> Value {
         .iter()
         .map(|r| r["legacy"].as_array().map_or(0, Vec::len))
         .sum();
-    let codex_off: Vec<String> = roots
-        .iter()
-        .filter(|r| r["root"] == ".agents/skills")
-        .flat_map(|r| r["legacy"].as_array().cloned().unwrap_or_default())
-        .filter(|l| l["skill_md"] == "file")
-        .map(|l| {
-            format!(
-                "[[skills.config]]\npath = {}\nenabled = false",
-                toml_string(&format!(
-                    "{}/SKILL.md",
-                    l["path"].as_str().unwrap_or_default()
-                ))
-            )
-        })
-        .collect();
     let summary = if count == 0 {
         "0건: no legacy moai-* skill folder under the host skill folders".to_string()
     } else {
@@ -191,7 +151,6 @@ pub fn check(home: &Path) -> Value {
         "count": count,
         "summary": summary,
         "roots": roots,
-        "codex_disable_entries": codex_off,
         "writes": false,
     })
 }

@@ -28,7 +28,7 @@ stays live when code, a hook or a gate reads it, or when it is the single copy o
 `tests/rule_history_guard.rs` fails when a row lacks its field, a heading lacks its tip, a named
 test file is missing, or a history entry is still word for word in the live file it left.
 
-## Live inventory — core-rules.md (21 rules)
+## Live inventory — core-rules.md (24 rules)
 
 | # | Rule (short) | Source | Enforcer |
 | --- | --- | --- | --- |
@@ -53,6 +53,9 @@ test file is missing, or a history entry is still word for word in the live file
 | 19 | two public implementations first | #2876 | `core_rules_2876.rs` (verbatim) |
 | 20 | no design for unasked rare cases | #2876 | `core_rules_2876.rs` (verbatim) |
 | 21 | code and output win over instruction text | #2876 | `core_rules_2876.rs` (verbatim) |
+| 22 | a second sighting of a problem opens a work item at the source | SPEC-20261120-guidance-sweep-core | text only |
+| 23 | completion needs an independent audit; the report file lives in the user home | moved from `SKILL.md` by SPEC-20261121-report-rules-in-core-rules | `report_rules_core.rs` (verbatim) |
+| 24 | every number, state and time comes from a named command | moved from `SKILL.md` by SPEC-20261121-report-rules-in-core-rules | `report_rules_core.rs` (verbatim), `product_cli.rs` (`open_questions_are_sorted_and_holds_name_five_categories`) |
 
 Judgement summary, from the counts below (read at tip e84d7c46ce). `workflows/audit.md` and
 `workflows/mode-agent.md` carry their source inline (nearly every rule line cites its Issue),
@@ -93,7 +96,7 @@ reason names the copy that stays.
 
 - A dispatch is a pointer: ownership still comes only from the lane's own reservation (SPEC §4). · reason: the same rule stays in the "Ownership comes only from a card's reservation (SPEC §4)…" sentence of the same file and in `workflows/mode-agent.md` (the `claim` step and its ownership line, which `mode_workflow_steps.rs` pins); the runtime text of `src/leader.rs:234` says the older claim-comment form of the rule, not this wording.
 - Without Orca (a timer only, `mode-channel` step) there is no `restart` or `clear_redispatch`: answer and dispatch through card notes alone. · reason: the `mode-channel` step keeps "a timer without Orca leads through card notes and pull request comments alone"; the moved sentence only repeated it.
-- Never report a verification or external effect that was not performed as complete. · reason: `SKILL.md` ("Report completion only after verifying…") and the `plan`, `read` and `audit` workflows say it; it was the only copy that stood alone at the end of this file.
+- Never report a verification or external effect that was not performed as complete. · reason: rule 23 of `references/internal/core-rules.md` ("Report completion only after verifying…", moved there from the skill entry by SPEC-20261121-report-rules-in-core-rules) and the `plan`, `read` and `audit` workflows say it; it was the only copy that stood alone at the end of this file.
 
 ## Sentence reading — workflows/mode-leader.md @ e84d7c46ce
 

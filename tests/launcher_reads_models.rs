@@ -15,7 +15,9 @@ use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 use std::process::{Command, Output};
 
-/// Every saved choice the support table accepts, one per tool and role.
+/// Every saved choice the support table accepts, one per tool and role. The `codex` entry is a
+/// value an earlier version saved: Codex is no longer a tool, so it is ignored on read and no
+/// launch takes anything from it (SPEC-20261121-codex-launcher-and-models-removed).
 const SAVED: &str = r#"{"launcher":{"future_key":"SENTINEL-SAVED-TEXT","models":{
     "claude":{"leader":{"model":"claude-opus-5-5","effort":"high"},
               "agent":{"model":"claude-haiku-5-5","effort":"low"}},
@@ -111,10 +113,6 @@ fn has_pair(argv: &[String], flag: &str, value: &str) -> bool {
     argv.windows(2).any(|w| w[0] == flag && w[1] == value)
 }
 
-fn effort_arg(e: &str) -> String {
-    format!("model_reasoning_effort=\"{e}\"")
-}
-
 /// `(launcher word, role flag, model flag, model, effort pair)` for the three hosts and two roles
 /// of `SAVED`: the flag each host takes the model in and the effort in.
 fn cases() -> Vec<(
@@ -138,20 +136,6 @@ fn cases() -> Vec<(
             "--model",
             "claude-haiku-5-5",
             ["--effort".into(), "low".into()],
-        ),
-        (
-            "codex",
-            "-l",
-            "-m",
-            "gpt-6.2-sol",
-            ["-c".into(), effort_arg("max")],
-        ),
-        (
-            "codex",
-            "-a",
-            "-m",
-            "gpt-6-luna",
-            ["-c".into(), effort_arg("low")],
         ),
         (
             "omp",
@@ -209,14 +193,13 @@ fn explicit_flags_win_per_field() {
     let a = argv(&f.dry(&["cc", "-l", "--effort", "medium"]));
     assert!(has_pair(&a, "--model", "claude-opus-5-5"), "{a:?}");
     assert!(has_pair(&a, "--effort", "medium"), "{a:?}");
-    // codex agent: saved gpt-6-luna / low.
-    let a = argv(&f.dry(&["codex", "-a", "--effort", "high"]));
-    assert!(has_pair(&a, "-m", "gpt-6-luna"), "{a:?}");
-    assert!(has_pair(&a, "-c", &effort_arg("high")), "{a:?}");
-    assert!(!has_pair(&a, "-c", &effort_arg("low")), "{a:?}");
-    let a = argv(&f.dry(&["codex", "-a", "--model", "gpt-6.1-sol"]));
-    assert!(has_pair(&a, "-m", "gpt-6.1-sol"), "{a:?}");
-    assert!(has_pair(&a, "-c", &effort_arg("low")), "{a:?}");
+    // claude agent: saved claude-haiku-5-5 / low.
+    let a = argv(&f.dry(&["cc", "-a", "--effort", "high"]));
+    assert!(has_pair(&a, "--model", "claude-haiku-5-5"), "{a:?}");
+    assert!(has_pair(&a, "--effort", "high"), "{a:?}");
+    let a = argv(&f.dry(&["cc", "-a", "--model", "claude-sonnet-5-5"]));
+    assert!(has_pair(&a, "--model", "claude-sonnet-5-5"), "{a:?}");
+    assert!(has_pair(&a, "--effort", "low"), "{a:?}");
     // glm leader: saved zai/glm-5.3-flash / max; an explicit alias stays as written (the zai/
     // prefix strip applies to the saved value only, and the alias still reaches the z.ai model
     // through the environment mapping).
@@ -251,14 +234,13 @@ fn without_a_saved_choice_nothing_changes() {
     let a = argv(&f.dry(&["cc", "-l"]));
     assert!(has_pair(&a, "--model", "opus"), "{a:?}");
     assert!(has_pair(&a, "--effort", "medium"), "{a:?}");
-    let a = argv(&f.dry(&["codex", "-l"]));
-    assert!(!a.iter().any(|x| x == "-m" || x == "-c"), "{a:?}");
     let a = argv(&f.dry(&["omp", "-a"]));
     assert!(
         !a.iter().any(|x| x == "--model" || x == "--thinking"),
         "{a:?}"
     );
-    // A file that saves only codex: the claude, omp and glm launches stay as they are (a glm role
+    // A file that saves only an old codex value: it is ignored, so the claude, omp and glm
+    // launches stay as they are (a glm role
     // session without a saved glm entry keeps the alias default of `claude_argv`, D-4).
     let bare = (
         argv(&f.dry(&["cc", "-a"])),
@@ -271,9 +253,6 @@ fn without_a_saved_choice_nothing_changes() {
     assert_eq!(argv(&f.dry(&["cc", "-a"])), bare.0);
     assert_eq!(argv(&f.dry(&["omp", "-l"])), bare.1);
     assert_eq!(argv(&f.dry(&["glm", "-l"])), bare.2);
-    // The codex agent has no saved entry either: nothing is passed for it.
-    let a = argv(&f.dry(&["codex", "-a"]));
-    assert!(!a.iter().any(|x| x == "-m" || x == "-c"), "{a:?}");
 }
 
 /// AC-3 (REQ-4 of the glm SPEC): a roleless session — `glm` included — ignores the saved choices;
@@ -283,7 +262,7 @@ fn a_roleless_session_ignores_saved_choices() {
     let with = Fixture::new();
     with.config(SAVED);
     let without = Fixture::new();
-    let launches: [&[&str]; 4] = [&["cc"], &["codex"], &["omp"], &["glm"]];
+    let launches: [&[&str]; 3] = [&["cc"], &["omp"], &["glm"]];
     for args in launches {
         // Both homes launch in the same project: a note names the project folder.
         let launch = |home: &Path| {
@@ -325,9 +304,9 @@ fn a_rewritten_file_is_used_by_the_next_launch() {
     assert!(has_pair(&third, "--effort", "medium"), "{third:?}");
 }
 
-/// AC-5: a saved entry outside the support table refuses a role launch on claude, codex, omp and
-/// glm (the entry of another tool counts: the whole file is checked), names key paths only, and
-/// does not refuse a roleless launch.
+/// AC-5: a saved entry outside the support table refuses a role launch on claude, omp and glm
+/// (the entry of another tool counts: the whole file is checked), names key paths only, and does
+/// not refuse a roleless launch.
 #[test]
 fn an_unsupported_saved_entry_refuses_a_role_launch() {
     // The file and the key path the refusal has to name (audit N5 of the first head).
@@ -344,14 +323,14 @@ fn an_unsupported_saved_entry_refuses_a_role_launch() {
         ),
         // The bad entry belongs to another tool than the one launched below.
         (
-            r#"{"launcher":{"models":{"codex":{"agent":{"model":"SECRET-other-tool","effort":"low"}}}}}"#,
-            "launcher.models.codex.agent",
+            r#"{"launcher":{"models":{"glm":{"agent":{"model":"SECRET-other-tool","effort":"low"}}}}}"#,
+            "launcher.models.glm.agent",
         ),
     ];
     for (bad, key_path) in bad_files {
         let f = Fixture::new();
         f.config(bad);
-        for args in [["cc", "-l"], ["codex", "-a"], ["omp", "-l"], ["glm", "-l"]] {
+        for args in [["cc", "-l"], ["cc", "-a"], ["omp", "-l"], ["glm", "-l"]] {
             let out = f.run(&args);
             assert_eq!(out.status.code(), Some(1), "{args:?} {bad}");
             assert!(out.stdout.is_empty(), "{args:?} {bad}");
@@ -366,6 +345,48 @@ fn an_unsupported_saved_entry_refuses_a_role_launch() {
                 "{args:?} {bad}: {}",
                 String::from_utf8_lossy(&out.stderr)
             );
+        }
+    }
+}
+
+/// A saved `launcher.models.codex` value of any shape is ignored: it neither refuses a launch of
+/// another tool nor changes its argv or environment, and no note names a key path.
+#[test]
+fn a_saved_codex_entry_of_any_shape_is_ignored() {
+    let clean = Fixture::new();
+    let baseline: Vec<Value> = [["cc", "-l"], ["cc", "-a"], ["omp", "-l"], ["glm", "-a"]]
+        .iter()
+        .map(|args| clean.dry(args))
+        .collect();
+    for codex in [
+        r#"{"agent":{"model":"gpt-6.2-sol","effort":"max"}}"#,
+        r#"{"agent":{"model":"SECRET-other-tool","effort":"low"}}"#,
+        r#""SECRET-not-an-object""#,
+        r#"{"SECRET-role":{}}"#,
+    ] {
+        let f = Fixture::new();
+        f.config(&format!(
+            r#"{{"launcher":{{"models":{{"codex":{codex}}}}}}}"#
+        ));
+        for (args, want) in [["cc", "-l"], ["cc", "-a"], ["omp", "-l"], ["glm", "-a"]]
+            .iter()
+            .zip(&baseline)
+        {
+            let out = f.run(args);
+            assert!(
+                out.status.success(),
+                "{args:?} {codex}: {}",
+                String::from_utf8_lossy(&out.stderr)
+            );
+            let v: Value = serde_json::from_slice(&out.stdout).unwrap();
+            assert_eq!(argv(&v), argv(want), "{args:?} {codex}");
+            assert_eq!(v["env_keys"], want["env_keys"], "{args:?} {codex}");
+            assert!(
+                !v["notes"].to_string().contains("launcher.models"),
+                "{args:?} {codex}: {}",
+                v["notes"]
+            );
+            assert!(!String::from_utf8_lossy(&out.stdout).contains("SECRET"));
         }
     }
 }

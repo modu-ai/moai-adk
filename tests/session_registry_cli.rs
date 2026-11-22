@@ -45,7 +45,7 @@ impl Fixture {
         }
     }
     fn sessions(&self) -> PathBuf {
-        self.repo.join(".git/.moai-cli/sessions")
+        moai_cli::clone_root::path(&self.repo.join(".git")).join("sessions")
     }
     fn entry(&self, name: &str) -> PathBuf {
         self.sessions().join(format!("{name}.json"))
@@ -209,7 +209,7 @@ fn show_without_a_project_reads_the_clone_of_the_current_folder() {
         assert_eq!(free["status"], "free");
     }
     assert!(!fx.entry("agent-9").exists(), "--show writes nothing");
-    assert!(!wt.join(".moai-cli/sessions").exists());
+    assert!(!moai_cli::state_root::path(&wt, "sessions").exists());
     // A folder that is no clone is refused, not read as "free".
     let plain = fx.home.join("plain");
     fs::create_dir_all(&plain).unwrap();
@@ -268,7 +268,7 @@ fn every_worktree_of_the_clone_sees_one_registry() {
         &[wt.to_str().unwrap(), "--name", "agent-8", "--now", T0],
     ));
     assert_eq!(kind, "conflict");
-    assert!(!wt.join(".moai-cli/sessions").exists());
+    assert!(!moai_cli::state_root::path(&wt, "sessions").exists());
 }
 
 #[test]
@@ -406,7 +406,7 @@ fn outside_a_repository_it_is_refused() {
         &[plain.to_str().unwrap(), "--name", "agent-8", "--now", T0],
     );
     refused(&out);
-    assert!(!plain.join(".moai-cli").exists());
+    assert!(!moai_cli::state_root::path(&plain, "").exists());
 }
 
 /// Eight concurrent registrations of one name, with the read-to-write window widened: exactly

@@ -38,6 +38,70 @@ fn revert(project: &Path, request_id: &str) -> Result<serde_json::Value, String>
     })
 }
 
+fn copy_tree(from: &Path, to: &Path) {
+    fs::create_dir_all(to).unwrap();
+    for e in fs::read_dir(from).unwrap() {
+        let e = e.unwrap();
+        let dest = to.join(e.file_name());
+        if e.file_type().unwrap().is_dir() {
+            copy_tree(&e.path(), &dest);
+        } else {
+            fs::copy(e.path(), dest).unwrap();
+        }
+    }
+}
+
+/// An apply no longer writes a Codex copy, so the receipt an earlier moai wrote for one is made
+/// by hand: a real Claude apply, then the same copy under `.agents/skills/moai`
+/// and a second `applied` row for host `codex` in the receipt. Returns the request id.
+fn apply_with_codex_receipt(project: &Path, source: &Path) -> String {
+    let request_id = apply(project, source, &["claude"]);
+    copy_tree(
+        &project.join(".claude/skills/moai"),
+        &project.join(".agents/skills/moai"),
+    );
+    let receipt_path = moai_cli::state_root::path(project, "project-skill-rollback")
+        .join(&request_id)
+        .join("receipt.json");
+    let mut receipt: serde_json::Value =
+        serde_json::from_slice(&fs::read(&receipt_path).unwrap()).unwrap();
+    let mut codex = receipt["applied"][0].clone();
+    codex["host"] = serde_json::json!("codex");
+    codex["path"] = serde_json::json!(".agents/skills/moai");
+    receipt["applied"].as_array_mut().unwrap().push(codex);
+    fs::write(&receipt_path, serde_json::to_vec_pretty(&receipt).unwrap()).unwrap();
+    request_id
+}
+
+/// A hand-written receipt that recorded a Codex copy: moai no longer manages Codex, so the
+/// `codex` entry is skipped and reported (host and reason), its copy is left exactly as it is,
+/// and every other entry is still reverted.
+#[test]
+fn a_receipt_that_names_codex_is_skipped_and_reported() {
+    let project = tempfile::TempDir::new().unwrap();
+    let source = tempfile::TempDir::new().unwrap();
+    write_source(source.path());
+    let request_id = apply_with_codex_receipt(project.path(), source.path());
+    let codex = project.path().join(".agents/skills/moai");
+    assert!(codex.join("SKILL.md").is_file(), "the recorded copy exists");
+
+    let reverted = revert(project.path(), &request_id).expect("the receipt reverts");
+    assert_eq!(reverted["state"], "reverted", "{reverted}");
+    assert_eq!(
+        reverted["skipped"],
+        serde_json::json!([{"host": "codex", "reason": "retired host; not managed"}]),
+        "{reverted}"
+    );
+    assert!(
+        codex.join("SKILL.md").is_file() && codex.join("references/a.md").is_file(),
+        "the retired host's copy was touched"
+    );
+    assert!(
+        !project.path().join(".claude/skills/moai").exists(),
+        "the claude copy is reverted"
+    );
+}
+
 /// D3-A "user dirty loss": reverting a project skill copy the apply created must not delete a
 /// file the user added to that folder afterwards. The revert removes a created folder only
 /// while its digest is still the one the apply recorded; a changed copy refuses the whole
@@ -75,28 +139,25 @@ fn d3a_revert_of_a_created_skill_keeps_a_user_file() {
     assert!(!skill.exists(), "the created copy is removed");
 }
 
-/// D3-A: an edited file counts as a change too, and one changed host refuses the whole revert,
-/// so the unchanged host's copy is not removed either (nothing half reverted).
+/// D3-A: an edited file counts as a change too, and a changed copy refuses the whole revert
+/// (nothing half reverted). A skipped retired-host entry in the same receipt is never touched.
 #[test]
 fn d3a_one_changed_host_refuses_the_whole_revert() {
     let project = tempfile::TempDir::new().unwrap();
     let source = tempfile::TempDir::new().unwrap();
     write_source(source.path());
-    let request_id = apply(project.path(), source.path(), &["claude", "codex"]);
+    let request_id = apply_with_codex_receipt(project.path(), source.path());
     let claude = project.path().join(".claude/skills/moai");
     let codex = project.path().join(".agents/skills/moai");
-    fs::write(codex.join("references/a.md"), b"edited by the user").unwrap();
+    fs::write(claude.join("references/a.md"), b"edited by the user").unwrap();
 
     let err = revert(project.path(), &request_id).expect_err("an edited copy refuses");
-    assert!(err.contains("codex") && !err.contains("claude"), "{err}");
-    assert!(
-        claude.join("SKILL.md").exists(),
-        "the unchanged host was not removed"
-    );
+    assert!(err.contains("claude") && !err.contains("codex"), "{err}");
     assert_eq!(
-        fs::read(codex.join("references/a.md")).unwrap(),
+        fs::read(claude.join("references/a.md")).unwrap(),
         b"edited by the user"
     );
+    assert!(codex.join("SKILL.md").exists(), "the skipped copy stays");
 }
 
 /// D3-A: a copy the digest cannot read (here the user added a symlink, which the staged-package

@@ -173,10 +173,10 @@ fn a_goal_set_once_is_read_from_every_worktree() {
         "one store per clone"
     );
     assert!(
-        seen["store"]
-            .as_str()
-            .unwrap()
-            .ends_with(".git/.moai-cli/goal/goal.json"),
+        seen["store"].as_str().unwrap().ends_with(&format!(
+            ".git/{}/goal/goal.json",
+            moai_cli::clone_root::dir(&f.primary.join(".git"))
+        )),
         "{seen}"
     );
     // The store is in the common git dir: neither checkout shows a change.

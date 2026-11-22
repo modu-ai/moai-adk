@@ -18,6 +18,7 @@
 use super::command::{actor, open_for_write, ABSENT_HINT};
 use super::dispatch::{checked_scope, reservation_json, DEFAULT_LEASE_SECS};
 use super::input::{self, CardRef};
+use super::landed;
 use super::spec_link;
 use crate::forge::connector::{HostConnector, HostKind, PrPhase, ProjectRef};
 use crate::ledger::reservation;
@@ -63,11 +64,16 @@ pub fn next(project: &Path, home: &Path, holder: Option<&str>) -> Result<Value> 
                 "action": "next", "project_id": id, "ledger": "absent", "holder": holder,
                 "next": null, "next_is": null,
                 "mine": [], "ready": [], "skipped": [], "warnings": [], "writes": false,
+                "landing": landed::absent_json(),
             }));
         }
         Err(e) => return Err(e.to_string()),
     };
-    let found = workflow::next(ledger.conn(), holder).map_err(|e| e.to_string())?;
+    let mut found = workflow::next(ledger.conn(), holder).map_err(|e| e.to_string())?;
+    // A `ready` card whose landing is proven is not offered again: it leaves `ready` for
+    // `skipped` with `reason: "already_landed"` and the proof (`card finish` closes it).
+    let landing = landed::find(project, ledger.conn(), &landed::candidates(&found))?;
+    let landed_skips = landed::take_landed(&mut found, &landing);
     // The SPEC each card names and its status, with a warning for a card that changes the
     // repository without an approved SPEC (SDD-4), in the order the cards are listed.
     let mut warnings: Vec<String> = Vec::new();
@@ -98,7 +104,7 @@ pub fn next(project: &Path, home: &Path, holder: Option<&str>) -> Result<Value> 
             "spec": spec_of(c.card_id)?,
         }));
     }
-    let skipped: Vec<Value> = found
+    let mut skipped: Vec<Value> = found
         .skipped
         .iter()
         .map(|s| {
@@ -130,6 +136,7 @@ pub fn next(project: &Path, home: &Path, holder: Option<&str>) -> Result<Value> 
             v
         })
         .collect();
+    skipped.extend(landed_skips);
     // The card to work on now: one this session already holds, else the first it could take.
     let (next, next_is) = match (found.mine.first(), found.ready.first()) {
         (Some(m), _) => (
@@ -143,7 +150,7 @@ pub fn next(project: &Path, home: &Path, holder: Option<&str>) -> Result<Value> 
         "action": "next", "project_id": id, "ledger": "ready", "holder": holder,
         "now": found.now, "next": next, "next_is": next_is,
         "mine": mine, "ready": ready, "skipped": skipped, "warnings": warnings,
-        "writes": false,
+        "landing": landing.json(), "writes": false,
     }))
 }
 
@@ -658,9 +665,17 @@ pub fn done(
     {
         return Err(format!("card done refused: {why}; nothing was changed"));
     }
-    let landing = mflow_landing(&mut ledger, project, card_id)?;
-    let moved = workflow::done(&mut ledger, card_id, holder, generation, landing)
-        .map_err(|e| refusal("done", e))?;
+    let (landing, hint) = mflow_landing(&mut ledger, project, card_id)?;
+    let moved = workflow::done(&mut ledger, card_id, holder, generation, landing).map_err(|e| {
+        let refused = refusal("done", e);
+        // The hint explains the landing: it belongs on the landing-related refusal only
+        // (the delta audit's N1) — a card refused for an open criterion or a missing
+        // reservation reads its own reason, not the profile's.
+        match (&hint, refused.contains("no merged pull request is linked")) {
+            (Some(h), true) => format!("{refused}; {h}"),
+            _ => refused,
+        }
+    })?;
     Ok(moved_json("done", &id, &moved))
 }
 
@@ -668,32 +683,77 @@ pub fn done(
 /// project's profile names the m-flow work_flow with an integration branch, the newest
 /// `card.landed` event's head must be an ancestor of that branch's tip — checked here with
 /// git, because the ledger never spawns commands. `None` for any other flow, which keeps the
-/// merged-pull-request rule.
+/// merged-pull-request rule. The profile problem is never swallowed silently
+/// (SPEC-20261121-mixed-profile-read): the second value is a hint for the merged-pull-request
+/// refusal of a card with a landing on record whose profile could not be read, or was read but
+/// does not name the m-flow work_flow with an integration branch: which profile, and why. A
+/// project whose profile is only a stub (the card commands write one) keeps the old rule and
+/// closes through a merged pull request.
 fn mflow_landing(
     ledger: &mut ledger::WriteLedger,
     project: &Path,
     card_id: i64,
-) -> Result<Option<workflow::Landing>> {
+) -> Result<(Option<workflow::Landing>, Option<String>)> {
+    let newest_head = |ledger: &mut ledger::WriteLedger| -> Option<String> {
+        ledger
+            .conn()
+            .query_row(
+                "SELECT json_extract(payload, '$.head') FROM event \
+                 WHERE card_id = ?1 AND kind = 'card.landed' \
+                 ORDER BY event_id DESC LIMIT 1",
+                [card_id],
+                |r| r.get(0),
+            )
+            .ok()
+    };
+    let profile_rel = crate::profile::read_rel(project);
+    let recorded = |detail: String, ledger: &mut ledger::WriteLedger| -> Option<String> {
+        newest_head(ledger).map(|_| {
+            format!(
+                "a local landing is recorded for this card, but {detail}, so the landing was not \
+                 used"
+            )
+        })
+    };
     let profile = match crate::profile::read_profile(project) {
         Ok((p, _)) => p,
-        Err(_) => return Ok(None),
+        Err(e) if e == crate::profile::PROFILE_MISSING => return Ok((None, None)),
+        Err(e) => {
+            let hint = recorded(
+                format!("the project profile {profile_rel} could not be read ({e})"),
+                ledger,
+            );
+            return Ok((None, hint));
+        }
     };
-    let Some(wf) = profile.work_flow.filter(|w| w.flow == "m-flow") else {
-        return Ok(None);
+    let not_used = |why: String, ledger: &mut ledger::WriteLedger| -> Option<String> {
+        recorded(
+            format!(
+                "the project profile {profile_rel} does not name the m-flow work_flow with an \
+                 integration branch ({why})"
+            ),
+            ledger,
+        )
+    };
+    let wf = match profile.work_flow {
+        Some(w) if w.flow == "m-flow" => w,
+        Some(w) => {
+            let hint = not_used(format!("its work_flow is {}", w.flow), ledger);
+            return Ok((None, hint));
+        }
+        None => {
+            let hint = not_used("it has no work_flow".to_string(), ledger);
+            return Ok((None, hint));
+        }
     };
     let Some(branch) = wf.integration_branch else {
-        return Ok(None);
+        let hint = not_used(
+            "its m-flow work_flow has no integration_branch".to_string(),
+            ledger,
+        );
+        return Ok((None, hint));
     };
-    let head: Option<String> = ledger
-        .conn()
-        .query_row(
-            "SELECT json_extract(payload, '$.head') FROM event \
-             WHERE card_id = ?1 AND kind = 'card.landed' \
-             ORDER BY event_id DESC LIMIT 1",
-            [card_id],
-            |r| r.get(0),
-        )
-        .ok();
+    let head: Option<String> = newest_head(ledger);
     let Some(head) = head else {
         return Err(
             "card done refused: cannot close: no local landing is linked (`card landed` after \
@@ -732,7 +792,7 @@ fn mflow_landing(
              integration branch {branch}; nothing was changed"
         ));
     }
-    Ok(Some(workflow::Landing { head, tip }))
+    Ok((Some(workflow::Landing { head, tip }), None))
 }
 
 /// `card landed C-n --head <sha>`: record that this card's head landed on the local

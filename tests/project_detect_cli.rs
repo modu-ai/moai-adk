@@ -172,8 +172,8 @@ fn symbolic_links_are_not_followed() {
     assert_eq!(d["project_kind"], "new", "{d}");
 }
 
-/// #2496 pre-audit B1/B2: no read leaves the project — a symlinked middle folder (`prisma`,
-/// `.codex`), a symlinked file (`Cargo.toml`, `.mcp.json`, `requirements.txt`) and a symlink
+/// #2496 pre-audit B1/B2: no read leaves the project — a symlinked middle folder (`prisma`), a
+/// symlinked file (`Cargo.toml`, `.mcp.json`, `requirements.txt`) and a symlink
 /// loop all count for nothing, while the same files in real folders are found.
 #[cfg(unix)]
 #[test]
@@ -185,11 +185,6 @@ fn symlinked_folders_and_files_never_lead_outside() {
         o,
         "prisma/schema.prisma",
         "datasource db {\n  provider = \"mysql\"\n}\n",
-    );
-    write(
-        o,
-        ".codex/config.toml",
-        "[mcp_servers.leaked]\ncommand = \"x\"\n",
     );
     write(
         o,
@@ -206,7 +201,6 @@ fn symlinked_folders_and_files_never_lead_outside() {
     let root = TempDir::new().unwrap();
     let r = root.path();
     symlink(o.join("prisma"), r.join("prisma")).unwrap();
-    symlink(o.join(".codex"), r.join(".codex")).unwrap();
     symlink(o.join("Cargo.toml"), r.join("Cargo.toml")).unwrap();
     symlink(o.join("mcp.json"), r.join(".mcp.json")).unwrap();
     symlink(o.join("requirements.txt"), r.join("requirements.txt")).unwrap();
@@ -221,12 +215,7 @@ fn symlinked_folders_and_files_never_lead_outside() {
 
     // Positive control: the same files inside the project are found.
     let real = TempDir::new().unwrap();
-    for rel in [
-        "prisma/schema.prisma",
-        ".codex/config.toml",
-        "Cargo.toml",
-        "requirements.txt",
-    ] {
+    for rel in ["prisma/schema.prisma", "Cargo.toml", "requirements.txt"] {
         write(real.path(), rel, &fs::read_to_string(o.join(rel)).unwrap());
     }
     write(
@@ -240,7 +229,7 @@ fn symlinked_folders_and_files_never_lead_outside() {
         json!(["mysql", "postgres", "sqlite"]),
         "{d}"
     );
-    assert_eq!(d["mcp_servers"], json!(["leaked", "leaked2"]), "{d}");
+    assert_eq!(d["mcp_servers"], json!(["leaked2"]), "{d}");
 }
 
 /// AC-3: MCP server names and database kinds are recorded in `project.yaml`; MCP files are
@@ -254,13 +243,6 @@ fn detected_facts_are_recorded_without_mcp_writes_or_secrets() {
         ".mcp.json",
         &json!({"mcpServers": {"github": {"command": "npx", "env": {"GITHUB_TOKEN": TOKEN}}}})
             .to_string(),
-    );
-    write(
-        root.path(),
-        ".codex/config.toml",
-        &format!(
-            "[mcp_servers.docs]\ncommand = \"docs-server\"\nenv = {{ API_KEY = \"{TOKEN}\" }}\n"
-        ),
     );
     write(
         root.path(),
@@ -285,7 +267,7 @@ fn detected_facts_are_recorded_without_mcp_writes_or_secrets() {
     let result = ok(&out);
     assert_eq!(tree(root.path()), before, "project-detect writes nothing");
     let d = &result["detected"];
-    assert_eq!(d["mcp_servers"], json!(["docs", "github"]));
+    assert_eq!(d["mcp_servers"], json!(["github"]));
     assert_eq!(
         d["databases"],
         json!(["mongodb", "mysql", "postgres", "sqlite"])
@@ -300,13 +282,10 @@ fn detected_facts_are_recorded_without_mcp_writes_or_secrets() {
     let stored: Value = serde_json::from_str(&yaml).unwrap();
     assert_eq!(&stored["detected"], d);
     // The MCP files are unchanged and no new MCP configuration exists.
-    for rel in [".mcp.json", ".codex/config.toml"] {
-        assert_eq!(
-            fs::read(root.path().join(rel)).unwrap(),
-            before[rel],
-            "{rel}"
-        );
-    }
+    assert_eq!(
+        fs::read(root.path().join(".mcp.json")).unwrap(),
+        before[".mcp.json"]
+    );
     let after = tree(root.path());
     let added: Vec<&String> = after.keys().filter(|k| !before.contains_key(*k)).collect();
     assert!(
@@ -414,8 +393,8 @@ fn nested_manifests_are_listed_but_databases_stay_at_the_root() {
 }
 
 /// #2535 AC-2 (item 4): `project_kind` speaks of code only. A folder holding nothing but a
-/// Prisma schema and a Codex MCP configuration is `new`, and its database and server names are
-/// still recorded as configuration facts.
+/// Prisma schema and an MCP configuration is `new`, and its database and server names are still
+/// recorded as configuration facts.
 #[test]
 fn a_configuration_only_folder_is_new_with_its_facts() {
     let root = TempDir::new().unwrap();
@@ -426,8 +405,8 @@ fn a_configuration_only_folder_is_new_with_its_facts() {
     );
     write(
         root.path(),
-        ".codex/config.toml",
-        "[mcp_servers.docs]\ncommand = \"x\"\n",
+        ".mcp.json",
+        &json!({"mcpServers": {"docs": {"command": "x"}}}).to_string(),
     );
     let d = detect(&root)["detected"].clone();
     assert_eq!(d["project_kind"], "new");
@@ -694,7 +673,7 @@ fn build_and_test_commands_and_ci_files_are_reported_beside_the_facts() {
     let empty = TempDir::new().unwrap();
     assert_eq!(
         detect(&empty)["commands"],
-        json!({"build": [], "test": [], "ci_files": []})
+        json!({"build": [], "test": [], "lint": [], "format": [], "ci_files": []})
     );
 
     let root = TempDir::new().unwrap();
@@ -728,6 +707,8 @@ fn build_and_test_commands_and_ci_files_are_reported_beside_the_facts() {
         json!({
             "build": ["./gradlew build", "cargo build", "go build ./...", "make build", "mvn package", "pnpm run build"],
             "test": ["./gradlew test", "cargo test", "go test ./...", "make test", "mvn test", "pnpm test", "pytest"],
+            "lint": ["cargo clippy --all-targets -- -D warnings", "go vet ./...", "make lint"],
+            "format": ["cargo fmt --check", "test -z \"$(gofmt -l .)\""],
             "ci_files": ["ci.yml", "release.yaml"],
         })
     );
@@ -785,10 +766,181 @@ fn build_and_test_commands_and_ci_files_are_reported_beside_the_facts() {
     let yarn = TempDir::new().unwrap();
     write(yarn.path(), "package.json", r#"{"scripts": {"lint": "x"}}"#);
     write(yarn.path(), "yarn.lock", "");
+    // The `lint` script is now a lint candidate; it still names no build or test command.
     assert_eq!(
         detect(&yarn)["commands"],
-        json!({"build": [], "test": [], "ci_files": []})
+        json!({"build": [], "test": [], "lint": ["yarn run lint"], "format": [], "ci_files": []})
     );
+}
+
+/// CI design slice A (REQ-4): lint and format command candidates beside build and test, from
+/// the same fixed templates, never a script body and never run. A script that formats in place
+/// (`format`) is not a check and is never offered; only a script that checks is.
+#[test]
+fn lint_and_format_candidates_come_from_fixed_templates_and_check_only() {
+    // Rust: the two usual tools, with the strict flags the project's own check uses.
+    let rust = TempDir::new().unwrap();
+    write(rust.path(), "Cargo.toml", "[package]\nname = \"x\"\n");
+    let c = detect(&rust)["commands"].clone();
+    assert_eq!(
+        c["lint"],
+        json!(["cargo clippy --all-targets -- -D warnings"])
+    );
+    assert_eq!(c["format"], json!(["cargo fmt --check"]));
+
+    // Node: only the scripts the manifest declares, through the lock file's package manager.
+    for (lock, pm) in [
+        ("", "npm"),
+        ("pnpm-lock.yaml", "pnpm"),
+        ("yarn.lock", "yarn"),
+        ("bun.lockb", "bun"),
+    ] {
+        let node = TempDir::new().unwrap();
+        write(
+            node.path(),
+            "package.json",
+            &format!(
+                r#"{{"scripts": {{"lint": "echo {TOKEN}", "format:check": "x", "format": "y"}}}}"#
+            ),
+        );
+        if !lock.is_empty() {
+            write(node.path(), lock, "");
+        }
+        let result = detect(&node);
+        let c = &result["commands"];
+        assert_eq!(c["lint"], json!([format!("{pm} run lint")]), "{pm}");
+        assert_eq!(
+            c["format"],
+            json!([format!("{pm} run format:check")]),
+            "{pm}"
+        );
+        assert!(!result.to_string().contains(TOKEN), "{result}");
+    }
+    let in_place = TempDir::new().unwrap();
+    write(
+        in_place.path(),
+        "package.json",
+        r#"{"scripts": {"format": "prettier --write ."}}"#,
+    );
+    assert_eq!(detect(&in_place)["commands"]["format"], json!([]));
+
+    // Go, Python (ruff, black from the dependency files) and a Makefile.
+    let go = TempDir::new().unwrap();
+    write(go.path(), "go.mod", "module example.com/x\n");
+    let c = detect(&go)["commands"].clone();
+    assert_eq!(c["lint"], json!(["go vet ./..."]));
+    assert_eq!(c["format"], json!(["test -z \"$(gofmt -l .)\""]));
+    let py = TempDir::new().unwrap();
+    write(py.path(), "requirements.txt", "ruff==0.5\nblack==24.1\n");
+    let c = detect(&py)["commands"].clone();
+    assert_eq!(c["lint"], json!(["ruff check ."]));
+    assert_eq!(
+        c["format"],
+        json!(["black --check .", "ruff format --check ."])
+    );
+    let py_group = TempDir::new().unwrap();
+    write(
+        py_group.path(),
+        "pyproject.toml",
+        "[dependency-groups]\nlint = [\"ruff>=0.5\"]\n",
+    );
+    assert_eq!(
+        detect(&py_group)["commands"]["lint"],
+        json!(["ruff check ."])
+    );
+    let make = TempDir::new().unwrap();
+    write(
+        make.path(),
+        "Makefile",
+        "lint:\n\techo\nformat:\n\techo\nformat-check:\n\techo\n",
+    );
+    let c = detect(&make)["commands"].clone();
+    assert_eq!(c["lint"], json!(["make lint"]));
+    assert_eq!(c["format"], json!(["make format-check"]));
+
+    // Nothing declared, nothing offered; and nothing is written.
+    let empty = TempDir::new().unwrap();
+    let before = tree(empty.path());
+    let c = detect(&empty)["commands"].clone();
+    assert_eq!(
+        (c["lint"].clone(), c["format"].clone()),
+        (json!([]), json!([]))
+    );
+    assert_eq!(tree(empty.path()), before);
+}
+
+/// Every candidate the detection offers is a command the profile's declared list accepts, so
+/// a confirmed detection can always be saved as it is.
+#[test]
+fn every_detected_command_is_accepted_as_a_declared_check() {
+    let root = TempDir::new().unwrap();
+    let r = root.path();
+    write(r, "Cargo.toml", "[package]\nname = \"x\"\n");
+    write(r, "go.mod", "module example.com/x\n");
+    write(r, "requirements.txt", "pytest\nruff\nblack\n");
+    write(
+        r,
+        "package.json",
+        r#"{"scripts": {"build": "a", "test": "b", "lint": "c", "format:check": "d"}}"#,
+    );
+    write(
+        r,
+        "Makefile",
+        "build:\n\techo\ntest:\n\techo\nlint:\n\techo\nformat-check:\n\techo\n",
+    );
+    let commands = detect(&root)["commands"].clone();
+    let mut checks = Vec::new();
+    for kind in ["build", "test", "lint", "format"] {
+        for (i, command) in commands[kind].as_array().unwrap().iter().enumerate() {
+            checks.push(json!({"id": format!("{kind}{i}"), "command": command}));
+        }
+    }
+    assert!(
+        checks.len() > 8,
+        "the fixture offers many commands: {checks:?}"
+    );
+    // Every candidate is tried: a plan holds at most 16 checks, so they go in groups of 16.
+    for group in checks.chunks(16) {
+        let mut profile = json!({
+            "schema_version": 2, "project_id": "demo", "purpose": "Build a small editor",
+            "tools": ["Rust"], "development_methods": ["TDD"], "hosts": ["claude"]
+        });
+        profile["checks"] = Value::Array(group.to_vec());
+        let out = run(&["project-plan", p(&root)], profile.to_string().as_bytes());
+        ok(&out);
+    }
+}
+
+/// Audit N4 on the CI profile keys: Python tool names count only when a Python file declares
+/// them; a Rust or Node dependency that happens to be called `ruff` or `black` offers nothing.
+#[test]
+fn python_lint_and_format_candidates_need_a_python_declaration() {
+    let root = TempDir::new().unwrap();
+    let r = root.path();
+    write(
+        r,
+        "Cargo.toml",
+        "[package]\nname = \"x\"\n[dependencies]\nruff = \"1\"\nblack = \"1\"\n",
+    );
+    write(
+        r,
+        "package.json",
+        r#"{"devDependencies": {"ruff": "1", "black": "1"}}"#,
+    );
+    let c = detect(&root)["commands"].clone();
+    for kind in ["lint", "format"] {
+        let listed = c[kind].to_string();
+        assert!(!listed.contains("ruff"), "{kind}: {listed}");
+        assert!(!listed.contains("black"), "{kind}: {listed}");
+    }
+    // The same names in a Python file still count.
+    write(r, "requirements.txt", "ruff==0.5\nblack==24.1\n");
+    let c = detect(&root)["commands"].clone();
+    assert_eq!(
+        c["lint"],
+        json!(["cargo clippy --all-targets -- -D warnings", "ruff check ."])
+    );
+    assert!(c["format"].to_string().contains("black --check ."), "{c}");
 }
 
 #[cfg(unix)]
@@ -843,7 +995,7 @@ fn ci_file_names_are_filtered_and_capped_and_make_targets_stay_apart() {
     write(make.path(), "Makefile", "test:\n\techo\n");
     assert_eq!(
         detect(&make)["commands"],
-        json!({"build": [], "test": ["make test"], "ci_files": []})
+        json!({"build": [], "test": ["make test"], "lint": [], "format": [], "ci_files": []})
     );
 }
 
@@ -861,6 +1013,33 @@ fn the_host_folders_are_not_the_projects_code() {
             "{dir} was read as project code: {found}"
         );
     }
+}
+
+/// moai no longer manages Codex or OMP: detection does not read `.codex/config.toml` for MCP
+/// server names and does not walk `.codex` or `.omp` for code. A `.mcp.json` beside them is
+/// still read, and a folder holding only those files is `new`.
+#[test]
+fn codex_folders_are_not_read_or_walked() {
+    let root = TempDir::new().unwrap();
+    write(
+        root.path(),
+        ".codex/config.toml",
+        "[mcp_servers.docs]\ncommand = \"docs-server\"\n",
+    );
+    write(root.path(), ".codex/hooks/run.py", "print('x')\n");
+    write(root.path(), ".omp/extensions/hook.ts", "export {};\n");
+    let d = detect(&root)["detected"].clone();
+    assert_eq!(d["mcp_servers"], json!([]), "{d}");
+    assert_eq!(d["languages"], json!([]), "{d}");
+    assert_eq!(d["project_kind"], "new", "{d}");
+
+    write(
+        root.path(),
+        ".mcp.json",
+        &json!({"mcpServers": {"github": {"command": "npx"}}}).to_string(),
+    );
+    let d = detect(&root)["detected"].clone();
+    assert_eq!(d["mcp_servers"], json!(["github"]), "{d}");
 }
 
 /// C-61 AC-1 (REQ-1, REQ-3, REQ-4): manifests below the root are found and listed by their

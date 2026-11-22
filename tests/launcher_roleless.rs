@@ -1,4 +1,4 @@
-//! Issue #2053: `moai-cli cc|glm|codex` without `-l|-a` composes a plain host session: no role,
+//! Issue #2053: `moai-cli cc|glm` without `-l|-a` composes a plain host session: no role,
 //! no session name and, since #2359 (user decision 2026-11-10, comment 6760976883), no
 //! permission flag at all — the host starts in the mode its own settings choose. Every case
 //! uses `--dry-run` in a temporary git project; no host is started (AC-4 stays not_run).
@@ -88,22 +88,6 @@ fn roleless_cc_is_a_plain_claude_session() {
 }
 
 #[test]
-fn roleless_codex_has_no_name_prompt() {
-    let (code, v, _) = dry(&["codex"], None);
-    assert_eq!(code, 0);
-    assert_eq!(v["role"], Value::Null);
-    // AC-2, #2359: no `-s` / `-a`, so `~/.codex/config.toml` decides.
-    assert_eq!(argv(&v), ["codex"], "AC-2");
-    assert!(v["notes"].to_string().contains("~/.codex/config.toml"));
-    // An extra prompt goes in as given, without a session-name line.
-    let (_, v, _) = dry(&["codex", "review the diff"], None);
-    assert_eq!(argv(&v), ["codex", "review the diff"]);
-    assert!(!v.to_string().contains("MoAI session name"));
-    let (_, v, _) = dry(&["codex", "--permissions"], None);
-    assert_eq!(argv(&v), ["codex"]);
-}
-
-#[test]
 fn roleless_glm_keeps_the_token_check() {
     // Without the token: blocked, naming the variable only.
     let (code, _, text) = dry(&["glm"], None);
@@ -139,8 +123,8 @@ fn roleless_glm_keeps_the_token_check() {
 }
 
 /// REQ-4 / AC-3: the role paths keep their argv byte for byte, with the #2359 changes: full
-/// access on codex too, and `-a` named `agent-N` from the project's counter (a fresh project
-/// previews `agent-1`).
+/// access, and `-a` named `agent-N` from the project's counter (a fresh project previews
+/// `agent-1`).
 #[test]
 fn role_paths_are_unchanged() {
     let skip = "--dangerously-skip-permissions";
@@ -154,19 +138,6 @@ fn role_paths_are_unchanged() {
     assert_eq!(
         argv(&v),
         ["claude", "--name", "agent-1", "--model", "opus", "--effort", "medium", skip]
-    );
-    let (_, v, _) = dry(&["codex", "-a", "--name", "agent-9"], None);
-    assert_eq!(
-        argv(&v),
-        [
-            "codex",
-            "-s",
-            "danger-full-access",
-            "-a",
-            "never",
-            // SPEC-20261118-launcher-agent-entry: `codex -a` starts agent mode.
-            "$moai --mode-agent\nMoAI session name: agent-9"
-        ]
     );
     let (_, v, _) = dry(&["glm", "-a"], Some("moai-dummy-token-value"));
     assert_eq!(

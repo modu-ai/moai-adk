@@ -694,6 +694,142 @@ enum Action {
         #[arg(long)]
         home: Option<PathBuf>,
     },
+    /// Writes the ledger. Close a ready, active or review card whose landing or report is proven
+    ///
+    /// Writes the ledger. Closes the card in one transaction: every open criterion is marked met
+    /// with its `--met N=REF` (one per open criterion), the card becomes `done` and a reservation
+    /// it holds is released, with one `card.landed` and one `card.finish` event naming `--by`.
+    /// A card that changes the repository needs a landing: `--head`, else its merged pull request
+    /// link, else the head `card landed` recorded, and git must show that head inside the
+    /// profile's integration branch (`work_flow` m-flow). When an open criterion of such a card
+    /// has no `--met`, the proven landing is recorded once (one `card.landed` event with the
+    /// head, the tip, the generation and `--by`), nothing else changes, and the answer says
+    /// `closed` false and lists `open_criteria`. A `research` or `audit` card gives exactly one
+    /// of `--evidence-report` (a file under `<HOME>/.moai/reports` or the project folder) or
+    /// `--evidence-note` (a report or decision note of the card) and no `--head`, and every open
+    /// criterion needs its `--met`. Another session's reservation whose lease has not ended is
+    /// refused; your own, or one that has ended, passes. With `--generation N` the call is
+    /// refused before any write unless N is the generation of the card's newest reservation (0
+    /// for a card that never had one). A card that is already `done` is refused, and when two
+    /// calls reach one card at the same time one closes it and the other is refused. Every
+    /// refusal writes nothing.
+    Finish {
+        /// The card to close (`C-12`).
+        card: String,
+        /// The head that landed (40 lowercase hex); not for a research or audit card.
+        #[arg(long)]
+        head: Option<String>,
+        /// One open criterion and its evidence, `N=REF` (repeat for each open criterion; REF is
+        /// one line of 1..=500 characters).
+        #[arg(long = "met")]
+        met: Vec<String>,
+        /// A report file under `<HOME>/.moai/reports` or the project folder (research and audit
+        /// cards only; a relative path is read from the project folder).
+        #[arg(long)]
+        evidence_report: Option<String>,
+        /// The `ref` of a report or decision note of the card (research and audit cards only).
+        #[arg(long)]
+        evidence_note: Option<String>,
+        /// The generation of the card's newest reservation you expect (0 when it never had
+        /// one); another number refuses the call before any write. Not checked when absent.
+        #[arg(long)]
+        generation: Option<i64>,
+        /// Who finishes the card (one line, 1..=200 characters).
+        #[arg(long)]
+        by: String,
+        /// The project folder (its profile holds the project id and the integration branch).
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// The HOME holding the ledger (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+    },
+    /// Writes the ledger and the integration branch. Move the branch to a candidate commit and close the card
+    ///
+    /// Writes the ledger and, when the candidate is not inside the tip yet, the profile's
+    /// integration branch (`work_flow` m-flow): one `git update-ref` that moves the branch to
+    /// `--head` only while it still points at the tip that was read, then the same close as `card
+    /// finish` with `--head` as the landed head. Only `--by leader` lands until the typed verdict
+    /// exists. Everything `card finish` would refuse is refused before the branch moves; so is a
+    /// candidate that is no commit, a branch checked out in a worktree, a SPEC that fails at the
+    /// candidate and a candidate that does not have the tip on its first-parent line
+    /// (`stale_base`). A branch that moved in between is refused as `tip_moved`. A close refused
+    /// after the move leaves the branch moved and says so; the same call run again skips the move
+    /// and closes. A card already `done` with the same head answers done and writes nothing.
+    Land {
+        /// The card to land (`C-12`).
+        card: String,
+        /// The candidate commit (40 lowercase hex) that has the integration tip on its
+        /// first-parent line.
+        #[arg(long)]
+        head: String,
+        /// One open criterion and its evidence, `N=REF`, as for `card finish`.
+        #[arg(long = "met")]
+        met: Vec<String>,
+        /// The generation of the card's newest reservation you expect; not checked when absent.
+        #[arg(long)]
+        generation: Option<i64>,
+        /// Who lands the card: only `leader` is accepted.
+        #[arg(long)]
+        by: String,
+        /// The project folder (its profile holds the project id and the integration branch).
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// The HOME holding the ledger (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+    },
+    /// Writes the git folder and the ledger only with `--restore`. Show where the integration branch stands against the ledger, and put it back
+    ///
+    /// The plain view writes nothing. `--restore` writes one file, the preview's one-use nonce in
+    /// the common git folder, and `--apply` also moves the branch and writes the ledger row. Compares the integration branch's tip
+    /// with the ledger: it must be the result commit of the newest successful `card land` of the
+    /// branch (or, for a landing that was interrupted, the tip it started from or its target).
+    /// `state` is `ok`, `drift` or `no_landing` (the ledger never moved the branch). A commit
+    /// added by hand and a branch copied or rewound with `git branch -C` are drift. `--restore`
+    /// previews the move back to the recorded commit: the commits it drops and a plan digest bound
+    /// to the nonce; nothing moves. With `--apply` the move is made, and only with `--by leader`,
+    /// the digest of the latest preview of the same state (a digest is used once) and
+    /// `--permission-reference` naming the user's yes: the branch moves under the guard (a restore
+    /// intent that names the recorded landing and its ledger row, the one move that may be no
+    /// fast-forward) and one `card.tip_restored` row is written.
+    Drift {
+        /// Preview the move back to the recorded commit.
+        #[arg(long)]
+        restore: bool,
+        /// Make the move of `--restore`; needs `--plan-digest`, `--permission-reference` and `--by`.
+        #[arg(long)]
+        apply: bool,
+        /// The `plan_digest` of a preview of the same state.
+        #[arg(long)]
+        plan_digest: Option<String>,
+        /// The reference of the user's yes (1 to 80 letters, digits or . _ : / -).
+        #[arg(long)]
+        permission_reference: Option<String>,
+        /// Who restores the branch: only `leader` is accepted.
+        #[arg(long)]
+        by: Option<String>,
+        /// The project folder (its profile holds the project id and the integration branch).
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// The HOME holding the ledger (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+    },
+    /// Writes the git folder only. Guard the integration branch (run by git, never typed)
+    ///
+    /// Run by the `reference-transaction` hook, never by hand: git runs it with the state of a
+    /// reference transaction (`prepared` or `committed`) and the transaction's lines on standard
+    /// input. At `prepared` it refuses, with exit 1, every create, move or delete of the
+    /// integration branch that the intent record of `card land` (`moai/land-intent` in the common
+    /// git folder) does not name exactly, every case variant of the branch's name and every
+    /// symbolic alias of it; `pack-refs` and `gc` pass. The branch is the one the record
+    /// `moai/integration-branch` names. At `committed` it removes the intent record of a move that
+    /// went through. Any other state does nothing.
+    Guard {
+        /// The state git gives the hook: `prepared` or `committed`.
+        state: String,
+    },
     /// Writes the ledger. Extend the lease of a taken card
     ///
     /// Writes the ledger. The lease of this session's reservation at `--generation` ends
@@ -1166,6 +1302,83 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             &d::session_holder("done", env)?,
             generation,
         ),
+        Action::Finish {
+            card,
+            head,
+            met,
+            evidence_report,
+            evidence_note,
+            generation,
+            by,
+            project,
+            home,
+        } => {
+            // No session id is not a refusal: the call passes the gate only on an ended lease.
+            let session = d::session_holder("finish", env).ok();
+            moai_cli::card::finish::finish(
+                &project,
+                &resolve_home(home)?,
+                &card,
+                &moai_cli::card::finish::FinishRequest {
+                    session: session.as_deref(),
+                    head: head.as_deref(),
+                    met: &met,
+                    evidence_report: evidence_report.as_deref(),
+                    evidence_note: evidence_note.as_deref(),
+                    generation,
+                    by: &by,
+                },
+            )
+        }
+        Action::Land {
+            card,
+            head,
+            met,
+            generation,
+            by,
+            project,
+            home,
+        } => {
+            let session = d::session_holder("land", env).ok();
+            moai_cli::card::land::land(
+                &project,
+                &resolve_home(home)?,
+                &card,
+                &moai_cli::card::land::LandRequest {
+                    session: session.as_deref(),
+                    head: &head,
+                    met: &met,
+                    generation,
+                    by: &by,
+                },
+            )
+        }
+        Action::Drift {
+            restore,
+            apply,
+            plan_digest,
+            permission_reference,
+            by,
+            project,
+            home,
+        } => moai_cli::card::drift::drift(
+            &project,
+            &resolve_home(home)?,
+            &moai_cli::card::drift::DriftRequest {
+                restore,
+                apply,
+                plan_digest: plan_digest.as_deref(),
+                permission_reference: permission_reference.as_deref(),
+                by: by.as_deref(),
+            },
+        ),
+        Action::Guard { state } => {
+            let mut input = String::new();
+            std::io::Read::read_to_string(&mut std::io::stdin(), &mut input)
+                .map_err(|e| format!("card guard refused: cannot read the transaction: {e}"))?;
+            moai_cli::card::guard::run(&state, &input)?;
+            Ok(serde_json::json!({"action": "guard", "state": state, "allowed": true}))
+        }
         Action::Renew {
             card,
             generation,

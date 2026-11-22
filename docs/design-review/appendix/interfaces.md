@@ -17,7 +17,6 @@
 | 배정·수락·착수 관측 (#2390 S2, #3067) | `dispatch-record` / `dispatch-ack` / `dispatch-start` / `dispatch-check` (`dispatch.record`·`dispatch.ack`·`dispatch.start`·`dispatch.check`) | S1 위의 revision·수신/수락/착수 구분·5분 경보. C3는 관측까지 충족, 감사 claim 소비·게이트 연동 미충족(#2403/#2388 후속). 계약은 `docs/rust-product-path.md`의 S2 절 |
 | 레인↔리더 영속 메시지 (#2390 S1) | `message-record` / `message-ack` / `message-reconcile` (`message.record`·`message.ack`·`message.reconcile`) | 로컬+Issue 기록과 명시 수신 ACK. `queued`·`received`·`received_ack`를 구분하며 dispatch 수락·소유권 이전·업무 완료는 아님. 입력/결과 계약은 `docs/rust-product-path.md`의 S1 절 |
 | 레인 통신 메타데이터 관측 (#2390 S6) | `lane-status` (`lane.status`)의 추가 `communication` 객체 | 기존 입력·출력 의미 유지. `available`, `observed_at`, `lanes`(세션별 `sent_reports`, `received_acks`, `unacknowledged_report_ids`, S2 `dispatches`), `errors: [{issue, reason}]`; payload 값은 노출하지 않음. 상세 필드는 `docs/rust-product-path.md`의 S6 절 |
-| — (문서 인터페이스명 없음) | `codex-projection-plan` (`codex.projection_plan`) | 대응 없음 — [83f] §6 host adapter projection을 측정하는 op이며 문서 인터페이스 어휘가 이를 이름으로 부르지 않는다 |
 
 S6의 `sent_reports`는 S1 wire의 sender session 기준이며, `received_acks`는 그 레인이 **보낸** 보고에 대한 명시적 receiver ACK다. GitHub 작성자 숫자 ID는 계정 증거이지 독립 세션 인증이 아니다. 기존 Issue/comment GET 스냅샷과 완전한 pagination을 재사용한다. 공용 목록 reader는 GitHub `Link`의 `/repos/{owner}/{repo}/...` → `/repositories/{id}/...` 전환을 그대로 따라가며, S6의 컬렉션 검사가 기존 목록을 자르지 않는다. `communication`만 캡처된 댓글 URL을 원래 slug 경로 또는 검증된 저장소 ID의 `/repositories/{id}/issues/<n>/comments` 경로와 대조한다. S1 marker가 있거나 댓글 URL의 저장소 identity 확인이 필요할 때 저장소 GET을 1회 추가하고 댓글은 다시 읽지 않는다. 다른 저장소 ID·host·컬렉션이면 관측을 unavailable로 남긴다. canonical packet·marker/digest·작성자·대상·실제 context를 검증한다. 선언 레인과 발견한 메시지 actor를 결정적으로 정렬하고, 정확히 같은 중복은 합친다. event/context 필터 전에 동일 report ID의 불변성 충돌을 검사하며, 관련 malformed packet·충돌·불완전 관측은 `communication.available=false`와 일반 오류 사유로 남긴다. 기존 상태 출력은 유지하고 ACK를 추정하지 않는다.
 
@@ -139,7 +138,7 @@ envelope 예외 하위 명령: `lane-env`(#2841). `--lane NAME [--base DIR]` 으
 
 | 문서 | 문서의 명령 체계 | RC1 대응 |
 | --- | --- | --- |
-| [25f] | `setup` / `project init` / `maintenance update` / `doctor` / `capabilities` | `project-plan/apply`(setup) · `update-plan/apply`(maintenance update) · `claude-doctor`·`codex-doctor`(doctor) · `capabilities`는 **RC1에 없음**(S11: "공통 명령은 capabilities뿐인데 RC1에 없다") |
+| [25f] | `setup` / `project init` / `maintenance update` / `doctor` / `capabilities` | `project-plan/apply`(setup) · `update-plan/apply`(maintenance update) · `claude-doctor`(doctor) · `capabilities`는 **RC1에 없음**(S11: "공통 명령은 capabilities뿐인데 RC1에 없다") |
 | [e08] | `spec plan` / `task status` / `skill show` | `agents-plan` + `plan-admit`(spec plan) · `claim-show`(task status) · skill show 없음(`install-inspect`·`context-bundle`이 부분 대체) |
 | [3d9] | `task submit/cancel` / `spec verify` / `artifacts list` | `claim-acquire`/`claim-release`(task) · `run-verify`(spec verify) · artifacts list 없음 |
 | [43fa] §18 | 문서 명령 전부 | RC1 OPERATIONS 전수 목록(위 절)으로 교체(S11 결정) |

@@ -14,7 +14,7 @@ The SPEC's `## Result` and status, a document and `@cc:` comment diff, an integr
 
 ## Before the audit
 
-The order is PLAN → RUN → VERIFY → SYNC → AUDIT → merge (`internal/sdd`): SYNC writes, AUDIT checks. On the candidate branch, before the audit, SYNC makes the SPEC, the documents and the `@cc:` comments match the code: it writes `## Result` from the VERIFY results (each AC met with its evidence, withdrawn with the reason, or what is missing), sets the status, fixes the document mismatches of step 3, keeps the `@cc:` comments true to the code and adds those the change calls for (agents and tools add and link them automatically), runs `moai spec check`, and commits these with the `Moai-Spec` trailer. A requirement without code or tests, or a change outside the SPEC's Scope, is reported and stops the step; it is never written as met. Only after the merge: the card is closed, the SPEC archived and the release note written.
+The order of the stages is the one `internal/sdd` gives: SYNC writes, AUDIT checks. On the candidate branch, before the audit, SYNC makes the SPEC, the documents and the `@cc:` comments match the code: it writes `## Result` from the VERIFY results (each AC met with its evidence, withdrawn with the reason, or what is missing), sets the status, fixes the document mismatches of step 3, keeps the `@cc:` comments true to the code and adds those the change calls for (agents and tools add and link them automatically), runs `moai spec check`, and commits these with the `Moai-Spec` trailer. A requirement without code or tests, or a change outside the SPEC's Scope, is reported and stops the step; it is never written as met. Only after the merge: the card is closed, the SPEC archived and the release note written.
 
 ## Procedure
 

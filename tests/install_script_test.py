@@ -40,12 +40,14 @@ case "$1" in
   --version) echo "moai-cli @VERSION@ (rust)" ;;
   language-set)
     if [ -n "${FAKE_LOG:-}" ]; then { for a in "$@"; do printf '%s\\n' "$a"; done; echo --; } >> "$FAKE_LOG"; fi
+    # The code is the last argument, after the flags (`--home`, `--if-absent`).
+    for a in "$@"; do :; done
     root="${FAKE_STATE_ROOT:-$HOME/.moai-cli}"
     if [ -e "$root/config/language.yaml" ]; then
       printf '{"ok":true,"result":{"written":false,"reason":"exists"}}\\n'
     else
       mkdir -p "$root/config"
-      printf 'language:\\n  conversation_language: %s\\n' "$3" > "$root/config/language.yaml"
+      printf 'language:\\n  conversation_language: %s\\n' "$a" > "$root/config/language.yaml"
       printf '{"ok":true,"result":{"written":true,"reason":null}}\\n'
     fi
     ;;
@@ -712,12 +714,13 @@ class InstallShTest(unittest.TestCase):
         return self.state("config", "language.yaml")
 
     def assert_language(self, code, *args, **env):
-        """Runs the installer and checks the one `language-set --home <code>` call it made."""
+        """Runs the installer and checks the one record-once call it made (`--home --if-absent`)."""
         if os.path.exists(self.log):
             os.remove(self.log)
         r = self.run_sh(*args, **env)
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
-        self.assertEqual(self.calls(), [["language-set", "--home", code, ""]], r.stdout)
+        self.assertEqual(
+            self.calls(), [["language-set", "--home", "--if-absent", code, ""]], r.stdout)
         return r
 
     def test_the_language_flag_is_recorded_with_the_exact_call(self):
@@ -736,12 +739,16 @@ class InstallShTest(unittest.TestCase):
         shutil.rmtree(self.state())
         self.assert_language("ja", MOAI_LANGUAGE="ja", LC_ALL="ko_KR.UTF-8")
         shutil.rmtree(self.state())
-        # A code is passed on exactly as typed: no case folding, no region trimming.
-        self.assert_language("KO", "--language", "KO")
-        shutil.rmtree(self.state())
-        self.assert_language("pt-BR", "--language", "pt-BR")
-        shutil.rmtree(self.state())
-        self.assert_language("es-419", MOAI_LANGUAGE="es-419")
+        # One code list everywhere: a well-shaped code outside the four is refused by the
+        # script itself, before anything is downloaded or written, whatever the path.
+        for args, env in ((("--language", "KO"), {}), (("--language", "pt-BR"), {}),
+                          ((), {"MOAI_LANGUAGE": "es-419"})):
+            with self.subTest(args=args, env=env):
+                if os.path.exists(self.log):
+                    os.remove(self.log)
+                r = self.assert_refused_without_writes(*args, **env)
+                self.assertIn("Not a language code", r.stdout + r.stderr)
+                self.assertEqual(self.calls(), [], "the binary was never run")
 
     def test_the_locale_is_read_from_lc_all_then_lc_messages_then_lang(self):
         cases = [
@@ -763,19 +770,19 @@ class InstallShTest(unittest.TestCase):
                 self.assert_language(want, **env)
 
     def test_a_language_that_is_not_a_code_is_refused_before_anything_is_written(self):
-        # The edges of `^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*$` and of the 35-character limit: the
-        # last text that passes and the first that does not, for the language part, for a `-`
-        # group and for the whole code.
+        # One code list everywhere: the four conversation codes are the only accepted values,
+        # and the shape-only era's well-formed codes (kor, ko-KR, zh-Hant-TW, KO-kr, a 35-byte
+        # tag) are refused like the never-were codes.
         longest = "ko" + "-abcdefgh" * 3 + "-abcde"
-        too_long = longest + "f"
-        self.assertEqual((len(longest), len(too_long)), (35, 36))
-        for good in ("ko", "kor", "ko-KR", "ko-ab", "ko-abcdefgh", "zh-Hant-TW", "KO-kr", longest):
+        self.assertEqual(len(longest), 35)
+        for good in ("en", "ko", "ja", "zh"):
             with self.subTest(good=good):
                 shutil.rmtree(self.state(), ignore_errors=True)
                 self.assert_language(good, "--language", good)
         for bad in ("", "k", "abcd", "ko-", "ko-a", "ko-abcdefghi", "ko--KR", "ko_KR", "ko KR",
                     "ko;id", "$(id)", "../ko", "한국어", "ko\n", "ko\nxx", "-ko", "--home",
-                    "ko'", 'ko"', "ko\t", too_long):
+                    "ko'", 'ko"', "ko\t", "kor", "ko-KR", "ko-ab", "ko-abcdefgh",
+                    "zh-Hant-TW", "KO-kr", longest, "fr", "pt-BR"):
             with self.subTest(bad=bad):
                 if os.path.exists(self.log):
                     os.remove(self.log)
@@ -803,7 +810,7 @@ class InstallShTest(unittest.TestCase):
         self.assertFalse(os.path.exists(self.language_file()))
         # The old binary was asked, once, and said no.
         with open(self.log) as f:
-            self.assertEqual(f.read(), "language-set --home ko\n")
+            self.assertEqual(f.read(), "language-set --home --if-absent ko\n")
         # The second run on top of it writes nothing either.
         before = snapshot(self.home)
         r = self.run_sh("--version", old, "--language", "ko")
@@ -819,7 +826,8 @@ class InstallShTest(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         self.assertIn("already recorded", r.stdout)
         self.assertEqual(snapshot(self.home), before)
-        self.assertEqual(self.calls()[-1], ["language-set", "--home", "ja", ""])
+        self.assertEqual(
+            self.calls()[-1], ["language-set", "--home", "--if-absent", "ja", ""])
         # A HOME that already had its own value keeps it through a first install.
         shutil.rmtree(self.state())
         os.makedirs(self.state("config"))
@@ -841,40 +849,48 @@ class InstallShTest(unittest.TestCase):
             self.assertEqual(f.read(), b"language:\n  conversation_language: ko\n")
         # Only the one file is new under the state folder's config.
         self.assertEqual(os.listdir(self.state("config")), ["language.yaml"])
-        before = snapshot(self.home)
-        r = self.run_sh("--version", "1.6.0", "--language", "ja", REAL_CLI=real)
-        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
-        self.assertIn("already recorded", r.stdout)
-        self.assertEqual(snapshot(self.home), before)
+        # The rules at the binary: the bare command replaces a recorded value with a valid
+        # code, and the installer's record-once mode (`--if-absent`) keeps it — a reinstall
+        # never overwrites; only an explicit `language-set --home` does. The install script's
+        # own call passes the keep mode with the installer slice, and that end-to-end pin
+        # returns with it.
+        env = {**os.environ, "HOME": self.home}
+        subprocess.run([real, "language-set", "--home", "ja"], check=True,
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=env)
+        with open(self.language_file(), "rb") as f:
+            self.assertEqual(f.read(), b"language:\n  conversation_language: ja\n")
+        subprocess.run([real, "language-set", "--home", "ko", "--if-absent"], check=True,
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=env)
+        with open(self.language_file(), "rb") as f:
+            self.assertEqual(f.read(), b"language:\n  conversation_language: ja\n")
 
-    def test_the_real_language_set_stores_a_code_moai_has_no_name_for(self):
+    def test_the_real_language_set_only_stores_the_four_codes(self):
         real = real_cli()
         if real is None:
             self.skipTest("no moai-cli built from this tree (set MOAI_TEST_CLI)")
         self.rel.add("1.6.0", cli=FAKE_CLI_REAL.replace("@VERSION@", "1.6.0"))
-        want = b"language:\n  conversation_language: pt-BR\n"
-        # By the flag, by the environment, and by menu choice 5 typing the code: the fake binary
-        # records `language-set --home pt-BR` and the real one writes the file as typed.
-        for how in ("flag", "environment", "menu"):
-            with self.subTest(how=how):
+        # One code list everywhere: a well-shaped code outside the four is refused by the
+        # script itself, before anything is downloaded or written — the binary is never run.
+        for how_args, how_env in ((("--language", "pt-BR"), {}), ((), {"MOAI_LANGUAGE": "pt-BR"})):
+            with self.subTest(how=how_args or how_env):
                 shutil.rmtree(self.state(), ignore_errors=True)
                 if os.path.exists(self.log):
                     os.remove(self.log)
-                if how == "flag":
-                    r = self.run_sh("--version", "1.6.0", "--language", "pt-BR", REAL_CLI=real)
-                    code, out = r.returncode, r.stdout + r.stderr
-                elif how == "environment":
-                    r = self.run_sh("--version", "1.6.0", MOAI_LANGUAGE="pt-BR", REAL_CLI=real)
-                    code, out = r.returncode, r.stdout + r.stderr
-                else:
-                    code, out = self.run_pty(["--version", "1.6.0"], "5\npt-BR\n", REAL_CLI=real)
-                self.assertEqual(code, 0, out)
-                self.assertIn("Conversation language recorded: pt-BR", out)
-                with open(self.log) as f:
-                    self.assertEqual(f.read(), "language-set --home pt-BR\n", out)
-                with open(self.language_file(), "rb") as f:
-                    self.assertEqual(f.read(), want)
-                self.assertEqual(os.listdir(self.state("config")), ["language.yaml"])
+                r = self.assert_refused_without_writes("--version", "1.6.0", REAL_CLI=real,
+                                                       *how_args, **how_env)
+                self.assertIn("Not a language code", r.stdout + r.stderr)
+                self.assertEqual(self.calls(), [], "the binary was never run")
+        # A listed code is stored exactly as given, by the record-once call the script makes.
+        shutil.rmtree(self.state(), ignore_errors=True)
+        if os.path.exists(self.log):
+            os.remove(self.log)
+        r = self.run_sh("--version", "1.6.0", "--language", "ja", REAL_CLI=real)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("Conversation language recorded: ja", r.stdout)
+        with open(self.log) as f:
+            self.assertEqual(f.read(), "language-set --home --if-absent ja\n")
+        with open(self.language_file(), "rb") as f:
+            self.assertEqual(f.read(), b"language:\n  conversation_language: ja\n")
 
     def test_the_installers_own_output_stays_english(self):
         r = self.assert_language("ko", "--language", "ko", LC_ALL="ko_KR.UTF-8")
@@ -1009,9 +1025,10 @@ class InstallShTest(unittest.TestCase):
         # nothing was waiting for an answer, and the script text was not eaten as one.
         text = out + err
         self.assertEqual(code, 0, text)
-        self.assertNotIn("Choose 1-5", text)
+        self.assertNotIn("Choose 1-4", text)
         self.assertNotIn("Which language should the model use", text)
-        self.assertEqual(self.calls(), [["language-set", "--home", "ko", ""]], text)
+        self.assertEqual(
+            self.calls(), [["language-set", "--home", "--if-absent", "ko", ""]], text)
         self.assertIn("Installation complete!", out)
         self.assertIn("Next steps:", out)
         self.assertEqual(os.listdir(os.path.join(self.tmp, "scratch")), [], text)
@@ -1074,8 +1091,9 @@ class InstallShTest(unittest.TestCase):
         out = self.run_curl_pipe_sh_at_a_terminal(b"3\ny\n")
         # The language menu and the install question are each asked once, and the answers typed
         # at the terminal are the ones taken (not the script text on stdin).
-        self.assertEqual(out.count("Choose 1-5"), 1, out)
-        self.assertEqual(self.calls(), [["language-set", "--home", "ja", ""]], out)
+        self.assertEqual(out.count("Choose 1-4"), 1, out)
+        self.assertEqual(
+            self.calls(), [["language-set", "--home", "--if-absent", "ja", ""]], out)
         self.assertEqual(out.count("Install them now?"), 1, out)
         calls = self.update_calls()
         self.assertEqual(len(calls), 2, f"{calls}\n{out}")
@@ -1084,7 +1102,8 @@ class InstallShTest(unittest.TestCase):
 
     def test_curl_pipe_sh_at_a_terminal_declined_writes_nothing(self):
         out = self.run_curl_pipe_sh_at_a_terminal(b"\nn\n")
-        self.assertEqual(self.calls(), [["language-set", "--home", "ko", ""]], out)
+        self.assertEqual(
+            self.calls(), [["language-set", "--home", "--if-absent", "ko", ""]], out)
         self.assertEqual(out.count("Install them now?"), 1, out)
         self.assertEqual(len(self.update_calls()), 1, out)
         self.assertIn("Nothing was written to your home folder", out)
@@ -1162,8 +1181,9 @@ class InstallShTest(unittest.TestCase):
         os.makedirs(scratch)
         code, out = self.run_pty([], answers, after=after, TMPDIR=scratch, **env)
         self.assertEqual(code, 0, out)
-        self.assertEqual(out.count("Choose 1-5"), prompts, out)
-        self.assertEqual(self.calls(), [["language-set", "--home", want, ""]], out)
+        self.assertEqual(out.count("Choose 1-4"), prompts, out)
+        self.assertEqual(
+            self.calls(), [["language-set", "--home", "--if-absent", want, ""]], out)
         # The install ran to its end whatever the answers were: the tail (the next steps) is
         # printed and the temporary folder is gone.
         self.assertIn("Installation complete!", out)
@@ -1171,21 +1191,19 @@ class InstallShTest(unittest.TestCase):
         self.assertEqual(os.listdir(scratch), [], out)
         return out
 
-    def test_the_menu_at_a_terminal_lists_the_five_choices_in_english(self):
+    def test_the_menu_at_a_terminal_lists_the_four_choices_in_english(self):
         out = self.assert_menu_choice("2\n", "ko")
-        for line in ("1) English", "2) 한국어", "3) 日本語", "4) 中文", "5) Other"):
+        # One code list everywhere: the menu offers exactly the four conversation codes and no
+        # typed-code option, so an outside code never reaches the binary.
+        for line in ("1) English", "2) 한국어", "3) 日本語", "4) 中文"):
             self.assertIn(line, out)
+        self.assertNotIn("Other", out)
         self.assertEqual(out.count("Which language should the model use"), 1)
 
     def test_each_menu_number_picks_its_language(self):
         for answers, want in (("1\n", "en"), ("2\n", "ko"), ("3\n", "ja"), ("4\n", "zh")):
             with self.subTest(answers=answers):
                 self.assert_menu_choice(answers, want)
-
-    def test_menu_choice_five_takes_a_typed_code_and_asks_again_for_a_bad_one(self):
-        self.assert_menu_choice("5\nfr-CA\n", "fr-CA")
-        out = self.assert_menu_choice("5\nbad!\n5\npt-BR\n", "pt-BR", prompts=2)
-        self.assertIn("not a language code", out)
 
     def test_a_wrong_menu_answer_is_asked_again_three_times_at_most(self):
         # Two wrong answers, then a right one.
@@ -1206,7 +1224,7 @@ class InstallShTest(unittest.TestCase):
     def assert_end_of_input_takes_the_default(self):
         # Ctrl-D on an empty line is the end of input; it is typed once the prompt is waiting.
         out = self.assert_menu_choice(
-            "\x04", "ko", after="Choose 1-5", LC_ALL="", LANG="ko_KR.UTF-8")
+            "\x04", "ko", after="Choose 1-4", LC_ALL="", LANG="ko_KR.UTF-8")
         self.assertIn("Using ko.", out)
 
     def test_no_menu_when_the_language_is_given_or_there_is_no_terminal(self):
@@ -1215,11 +1233,12 @@ class InstallShTest(unittest.TestCase):
                 shutil.rmtree(self.state(), ignore_errors=True)
                 code, out = self.run_pty(args, "3\n", **env)
                 self.assertEqual(code, 0, out)
-                self.assertNotIn("Choose 1-5", out)
-                self.assertEqual(self.calls()[-1], ["language-set", "--home", "ko", ""])
+                self.assertNotIn("Choose 1-4", out)
+                self.assertEqual(
+                    self.calls()[-1], ["language-set", "--home", "--if-absent", "ko", ""])
         # Piped output (every other test here) never shows it either.
         r = self.run_sh()
-        self.assertNotIn("Choose 1-5", r.stdout)
+        self.assertNotIn("Choose 1-4", r.stdout)
 
     # --- SPEC-20261117-supported-platforms: exactly macOS arm64, Linux x86_64, Windows x86_64 ---
 

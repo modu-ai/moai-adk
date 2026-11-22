@@ -1,5 +1,6 @@
 //! SPEC-20261118-omp-launcher (card C-62 slice B; user instruction 2026-11-17): `moai omp
-//! [-l|-a]` is the fourth launcher beside `cc`, `glm` and `codex`. It replaces the 2026-11-10
+//! [-l|-a]` is the third launcher beside `cc` and `glm` (the fourth until Codex was withdrawn,
+//! SPEC-20261121-codex-launcher-and-models-removed). It replaces the 2026-11-10
 //! decision of Issue #2378 that the launcher knew three hosts (`tests/launcher_three_hosts.rs`
 //! pinned that decision and is gone). Every case runs in a temporary git project with a temporary
 //! HOME and a stub `omp` on PATH that leaves traces; no real host starts. `--print-command` is
@@ -188,7 +189,7 @@ fn omp_roles_compose_an_omp_command() {
 #[test]
 fn print_command_is_dry_run_on_every_host() {
     let f = Fixture::new();
-    for host in ["cc", "glm", "codex", "omp"] {
+    for host in ["cc", "glm", "omp"] {
         let run = |flag: &str| {
             let mut c = f.command(&[host, "-l", flag]);
             c.env("ANTHROPIC_AUTH_TOKEN", ENV_KEY);
@@ -336,28 +337,26 @@ fn omp_key_reaches_the_process_for_a_glm_model_only() {
     assert_eq!(f3.zai_seen_by_host(), ENV_KEY);
 }
 
-/// AC-6: the key goes to the OMP process only. A codex or claude process started with a z.ai model
-/// name never sees `ZAI_API_KEY` (audit #3211 N2).
+/// AC-6: the key goes to the OMP process only. A claude process started with a z.ai model name
+/// never sees `ZAI_API_KEY` (audit #3211 N2).
 #[test]
 fn the_key_is_given_to_omp_only() {
-    for host in ["codex", "claude"] {
-        let f = Fixture::new();
-        f.store_shared_key(VAULT_KEY);
-        let stub = f.bin.path().join(host);
-        fs::write(&stub, STUB).unwrap();
-        fs::set_permissions(&stub, fs::Permissions::from_mode(0o755)).unwrap();
-        let word = if host == "claude" { "cc" } else { host };
-        let mut c = f.command(&[word, "-l", "--model", GLM_MODEL]);
-        c.env("ANTHROPIC_AUTH_TOKEN", ENV_KEY);
-        let out = c.output().unwrap();
-        assert!(out.status.success(), "{host}: {out:?}");
-        assert!(f.started(), "{host}");
-        assert_eq!(
-            f.zai_seen_by_host(),
-            "<unset>",
-            "{host} must not get the key"
-        );
-    }
+    let host = "claude";
+    let f = Fixture::new();
+    f.store_shared_key(VAULT_KEY);
+    let stub = f.bin.path().join(host);
+    fs::write(&stub, STUB).unwrap();
+    fs::set_permissions(&stub, fs::Permissions::from_mode(0o755)).unwrap();
+    let mut c = f.command(&["cc", "-l", "--model", GLM_MODEL]);
+    c.env("ANTHROPIC_AUTH_TOKEN", ENV_KEY);
+    let out = c.output().unwrap();
+    assert!(out.status.success(), "{host}: {out:?}");
+    assert!(f.started(), "{host}");
+    assert_eq!(
+        f.zai_seen_by_host(),
+        "<unset>",
+        "{host} must not get the key"
+    );
 }
 
 /// AC-6: for a z.ai model the OMP process gets exactly one more variable than for any other
@@ -490,7 +489,7 @@ fn omp_is_named_in_help_usage_and_errors() {
     let root = f.run(&["--help"]);
     assert!(root.status.success());
     let root = String::from_utf8_lossy(&root.stdout).to_string();
-    for host in ["cc", "glm", "codex", "omp"] {
+    for host in ["cc", "glm", "omp"] {
         assert!(
             words(&root).contains(&host.to_string()),
             "{host} in:\n{root}"
@@ -504,15 +503,19 @@ fn omp_is_named_in_help_usage_and_errors() {
         .filter_map(|l| l.strip_prefix("  "))
         .filter_map(|l| l.split_whitespace().next())
         .collect();
-    for host in ["cc", "glm", "codex", "omp"] {
+    for host in ["cc", "glm", "omp"] {
         assert!(commands.contains(&host), "{host} missing from:\n{all}");
     }
+    assert!(
+        !commands.contains(&"codex"),
+        "codex is not a launcher word:\n{all}"
+    );
 
     let bare = f.run(&[]);
-    assert!(text(&bare).contains("cc|glm|codex|omp"), "{}", text(&bare));
+    assert!(text(&bare).contains("cc|glm|omp"), "{}", text(&bare));
     let unknown = f.run(&["-a", "nope", "--dry-run"]);
     assert!(
-        text(&unknown).contains("(cc|glm|codex|omp)"),
+        text(&unknown).contains("(cc|glm|omp)"),
         "{}",
         text(&unknown)
     );

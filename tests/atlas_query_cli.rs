@@ -45,7 +45,11 @@ fn project() -> tempfile::TempDir {
     let dir = tempfile::TempDir::new().unwrap();
     let root = dir.path();
     git(root, &["init", "-q"]);
-    write(root, ".gitignore", ".moai-cli/index/\n");
+    write(
+        root,
+        ".gitignore",
+        &format!("{}\n", moai_cli::state_root::rel(root, "index/")),
+    );
     write(root, "src/lib.rs", LIB);
     write(root, "src/other.rs", OTHER);
     write(root, "tests/pay.rs", TESTS);
@@ -241,7 +245,7 @@ fn ac2_without_a_generation_both_ops_answer_unavailable() {
 fn ac2_a_tampered_view_makes_both_ops_unavailable() {
     let p = project();
     build(p.path());
-    let gens = p.path().join(".moai-cli/index/generations");
+    let gens = moai_cli::state_root::path(p.path(), "index/generations");
     let gen = fs::read_dir(&gens).unwrap().next().unwrap().unwrap().path();
     let mut bytes = fs::read(gen.join("graph.jsonl")).unwrap();
     bytes.extend_from_slice(b"{\"origin\":null,\"missing\":{\"kind\":\"forged\"}}\n");
@@ -548,7 +552,11 @@ fn snapshot_project() -> (tempfile::TempDir, Value) {
     let dir = tempfile::TempDir::new().unwrap();
     let root = dir.path();
     git(root, &["init", "-q"]);
-    write(root, ".gitignore", ".moai-cli/index/\n");
+    write(
+        root,
+        ".gitignore",
+        &format!("{}\n", moai_cli::state_root::rel(root, "index/")),
+    );
     for (path, entry) in snapshot["files"].as_object().unwrap() {
         write(root, path, entry["content"].as_str().unwrap());
     }

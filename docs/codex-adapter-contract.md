@@ -83,7 +83,7 @@ MoAI가 쓰는 키는 이 중 `interface.display_name`·`short_description`·`de
 
 ## AC와 시험 (Issue 본문 r30)
 
-| AC | 시험(`cargo test --offline --locked --test codex_adapter <이름>`) |
+| AC | 시험(`tests/codex_adapter.rs`는 Codex 명령과 함께 지웠어요; 이 문서는 문서 조각에서 정리해요) |
 | --- | --- |
 | AGENTS-BUDGET | `codex_agents_chain_plain`, `codex_agents_chain_override`, `codex_agents_chain_fallback`, `codex_agents_chain_over_budget`, `codex_agents_chain_skips_empty_files`(감사 지적으로 추가) |
 | TRUST-NO-CLAIM | `codex_doctor_never_claims_trust` |

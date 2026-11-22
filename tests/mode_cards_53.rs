@@ -38,7 +38,7 @@ const ACTIONS: [&str; 17] = [
 
 /// Actions only the leader workflow shows (the lanes never need them): allowed in a code span,
 /// not required of both files.
-const LEADER_ONLY: [&str; 1] = ["timeline"];
+const LEADER_ONLY: [&str; 2] = ["timeline", "reclaim"];
 
 fn workflow(name: &str) -> String {
     fs::read_to_string(

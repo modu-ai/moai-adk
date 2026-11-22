@@ -17,6 +17,7 @@ pub mod input;
 pub mod render;
 pub mod segments;
 pub mod state;
+pub mod width;
 
 use std::time::Duration;
 
@@ -42,8 +43,12 @@ pub fn render(stdin: &[u8], ctx: &state::Context) -> String {
     // The weekly reset countdown measures against the render's clock (the --now-unix seam,
     // SPEC-20261121-statusline-detached REQ-6): without it the renderer would count from
     // epoch 0 (audit B1 on the slice head).
+    // Each line picks the widest of its forms that fits `COLUMNS` − 2 − padding
+    // (SPEC-20261122-statusline-flow REQ-9); without a usable `COLUMNS` the widest form is written.
+    let budget = width::budget(ctx.var("COLUMNS"), config.padding);
     render::Renderer::new(&config, profile)
         .with_now(ctx.now)
+        .with_budget(budget)
         .render(&status)
         + "\n"
 }

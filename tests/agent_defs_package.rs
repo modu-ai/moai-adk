@@ -5,6 +5,10 @@
 use moai_cli::agent_defs::{package_agents, render, HOSTS, SOURCE_DIR};
 use std::path::Path;
 
+/// The renderings that still exist: the home installer's host and the OMP file the project layer
+/// writes until it moves out.
+const RENDERED_HOSTS: [&str; 2] = ["claude", "omp"];
+
 fn package() -> std::path::PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai")
 }
@@ -208,37 +212,18 @@ fn the_package_holds_the_five_roles_of_the_contract() {
 
 #[test]
 fn every_role_renders_for_every_host_deterministically() {
-    // #2633: OMP is rendered and installed (2026-11-13 confirmation of five supported hosts;
-    // Kiro and Cursor CLI follow).
-    assert_eq!(HOSTS, ["claude", "codex", "omp"]);
+    // The home installer writes Claude Code only; the OMP rendering stays for the project layer
+    // (`omp_agents`) and the Codex rendering is gone.
+    assert_eq!(HOSTS, ["claude"]);
     let defs = package_agents(&agents(), &package()).unwrap();
     for d in &defs {
-        for host in HOSTS {
+        for host in RENDERED_HOSTS {
             let a = render(d, host).unwrap();
             assert_eq!(a, render(d, host).unwrap());
             assert!(a.path.starts_with("agents/moai-"), "{}", a.path);
             assert!(a.text.contains(&d.name));
         }
-        let codex = render(d, "codex").unwrap();
-        // Codex cannot enforce read-only or isolation: named, never silently dropped.
-        assert_eq!(
-            codex
-                .not_supported
-                .iter()
-                .any(|n| n.starts_with("readonly")),
-            d.readonly,
-            "{}",
-            d.name
-        );
-        assert_eq!(
-            codex
-                .not_supported
-                .iter()
-                .any(|n| n.starts_with("isolation")),
-            d.isolation == "worktree",
-            "{}",
-            d.name
-        );
+        assert!(render(d, "codex").is_err(), "{}", d.name);
         // #2633: OMP enforces read-only by its tool list and names per-call isolation.
         let omp = render(d, "omp").unwrap();
         assert_eq!(
@@ -259,8 +244,7 @@ fn every_role_renders_for_every_host_deterministically() {
 /// #3096 S7: a rendered agent file names no model and no effort. In the one run per product
 /// measured on 2026-11-16 (`docs/agent-model-effort-inheritance.md`) a child of such a file
 /// showed its parent's model and effort. This test pins the files; it does not prove the host.
-/// The Codex file is parsed as TOML, so a table or a `key="v"` line without spaces is seen too
-/// (#3110 audit 6905677737 B2); the Claude Code and OMP frontmatter is read line by line.
+/// The Claude Code and OMP frontmatter is read line by line (#3110 audit 6905677737 B2).
 #[test]
 fn rendered_agent_files_name_no_model_and_no_effort() {
     const KEYS_CLAUDE_OMP: [&str; 5] = [
@@ -270,36 +254,26 @@ fn rendered_agent_files_name_no_model_and_no_effort() {
         "isolation",
         "tools",
     ];
-    const KEYS_CODEX: [&str; 3] = ["name", "description", "developer_instructions"];
     let defs = package_agents(&agents(), &package()).unwrap();
     assert!(!defs.is_empty());
     for d in &defs {
-        for host in HOSTS {
+        for host in RENDERED_HOSTS {
             let text = render(d, host).unwrap().text;
-            let (allowed, keys): (&[&str], Vec<String>) = if host == "codex" {
-                let doc: toml_edit::DocumentMut = text
-                    .parse()
-                    .unwrap_or_else(|e| panic!("{} codex file is not TOML: {e}", d.name));
-                let keys = doc.iter().map(|(k, _)| k.to_string()).collect();
-                (&KEYS_CODEX, keys)
-            } else {
-                let keys = text
-                    .lines()
-                    .skip(1)
-                    .take_while(|l| *l != "---")
-                    .map(|l| {
-                        l.split_once(':')
-                            .unwrap_or_else(|| panic!("{} {host}: frontmatter line {l:?}", d.name))
-                            .0
-                            .to_string()
-                    })
-                    .collect();
-                (&KEYS_CLAUDE_OMP, keys)
-            };
+            let keys: Vec<String> = text
+                .lines()
+                .skip(1)
+                .take_while(|l| *l != "---")
+                .map(|l| {
+                    l.split_once(':')
+                        .unwrap_or_else(|| panic!("{} {host}: frontmatter line {l:?}", d.name))
+                        .0
+                        .to_string()
+                })
+                .collect();
             assert!(!keys.is_empty(), "{} {host}", d.name);
             for k in &keys {
                 assert!(
-                    allowed.contains(&k.as_str()),
+                    KEYS_CLAUDE_OMP.contains(&k.as_str()),
                     "{} {host}: key {k:?}",
                     d.name
                 );
@@ -408,7 +382,7 @@ fn reads_lists_match_the_design_and_render_on_every_host() {
                 "{entry}"
             );
         }
-        for host in HOSTS {
+        for host in RENDERED_HOSTS {
             let text = render(d, host).unwrap().text;
             assert_eq!(
                 text.contains("Read first,"),

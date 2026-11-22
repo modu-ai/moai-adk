@@ -7,7 +7,7 @@ use std::{
     process::{Command, Output},
 };
 
-const HOSTS: [&str; 3] = ["cc", "glm", "codex"];
+const HOSTS: [&str; 2] = ["cc", "glm"];
 const ROLES: [&[&str]; 3] = [&["-l"], &["-a"], &[]];
 const INVALID: [&str; 17] = [
     r#"{"launcher":{"role_access":"SECRET-invalid-access"}}"#,
@@ -136,40 +136,6 @@ fn expected(host: &str, role: usize, prompt: bool) -> Vec<&'static str> {
             "claude", "--name", "agent-1", "--model", "opus", "--effort", "medium",
         ],
         ("glm", 2, _) => vec!["claude", "--model", "opus", "--effort", "medium"],
-        ("codex", 0, false) => vec![
-            "codex",
-            "-s",
-            "danger-full-access",
-            "-a",
-            "never",
-            "MoAI session name: leader",
-        ],
-        ("codex", 1, false) => vec![
-            "codex",
-            "-s",
-            "danger-full-access",
-            "-a",
-            "never",
-            // SPEC-20261118-launcher-agent-entry: `codex -a` starts agent mode.
-            "$moai --mode-agent\nMoAI session name: agent-1",
-        ],
-        ("codex", 0, true) => vec![
-            "codex",
-            "-s",
-            "workspace-write",
-            "-a",
-            "on-request",
-            "MoAI session name: leader",
-        ],
-        ("codex", 1, true) => vec![
-            "codex",
-            "-s",
-            "workspace-write",
-            "-a",
-            "on-request",
-            "$moai --mode-agent\nMoAI session name: agent-1",
-        ],
-        ("codex", 2, _) => vec!["codex"],
         _ => unreachable!(),
     }
 }
