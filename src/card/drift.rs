@@ -19,7 +19,8 @@
 //! writes), and, only with the digest of the latest preview of the same state, a permission
 //! reference and the leader word, the move itself under the guard (a restore intent that names the
 //! ledger's recorded landing and its row: the one move that may be no fast-forward) and one
-//! `card.tip_restored` ledger row. The plain view writes no file at all. Nothing here prints or runs a bare `git update-ref`.
+//! `card.tip_restored` ledger row. The plain view writes no file at all. Nothing here prints or
+//! runs a bare `git update-ref`.
 
 use super::command::open_for_write;
 use super::guard;
@@ -365,7 +366,7 @@ pub fn drift(project: &Path, home: &Path, req: &DriftRequest<'_>) -> Result<Valu
     let common = guard::common_dir_of(project).map_err(refused)?;
     let Some(nonce) = guard::read_nonce(&common) else {
         return Err(refused(
-            "no preview is waiting (the nonce of a preview is used once): run              `moai card drift --restore` again; nothing was changed",
+            "no preview is waiting (the nonce of a preview is used once): run `moai card drift --restore` again; nothing was changed",
         ));
     };
     let (id, mut writer) = open_for_write(project, home)?;

@@ -2149,3 +2149,45 @@ fn ac30_the_restore_names_what_it_drops_and_refuses_a_stale_digest() {
     );
     assert_eq!(w.integ(), later, "a stale digest moved the branch");
 }
+
+/// An apply with no nonce file (no preview was ever made, or its file is gone) is refused with the
+/// word "preview", moves nothing and writes nothing.
+#[test]
+fn ac35_an_apply_without_any_preview_is_refused_and_writes_nothing() {
+    let (w, first, _second) = two_landings();
+    w.install_guard();
+    w.copy_over(&first);
+    let before = w.dump();
+    assert!(
+        !w.common().join("moai/drift-nonce").exists(),
+        "a nonce file exists before any preview"
+    );
+    let out = w.card(
+        None,
+        &[
+            "drift",
+            "--restore",
+            "--apply",
+            "--plan-digest",
+            &"0".repeat(64),
+            "--permission-reference",
+            "user-pick",
+            "--by",
+            "leader",
+        ],
+    );
+    assert_eq!(
+        out.status.code(),
+        Some(1),
+        "{}",
+        String::from_utf8_lossy(&out.stdout)
+    );
+    let said = String::from_utf8_lossy(&out.stdout).to_string();
+    assert!(said.contains("preview"), "{said}");
+    assert_eq!(w.integ(), first, "the branch moved");
+    assert_eq!(w.dump(), before, "the ledger changed");
+    assert!(
+        !w.common().join("moai/drift-nonce").exists(),
+        "the refused apply left a nonce file"
+    );
+}
