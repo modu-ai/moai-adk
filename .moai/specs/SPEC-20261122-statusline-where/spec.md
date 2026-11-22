@@ -100,3 +100,15 @@ One landing after the flow line of the parent SPEC: (1) red tests for the file r
 ## Result
 
 SPEC 만이에요. 돌린 것: 줄 1 모양 너비 측정(`unicode-width` 프로브, 2026-11-22). 돌리지 않은 것: 실제 git 저장소에서의 캐시 적중 측정, 시험들.
+
+코드 조각(부모 SPEC Plan 3단계, 2026-11-22): 빨간 시험을 먼저 커밋하고 코드·옛 시험·골든·문서 문장을 다음 커밋에 넣었어요. 정한 것과 그 근거:
+
+- git 프로세스 하나(REQ-7): 레인 가지에서는 `git --no-optional-locks -c branch.<가지>.remote=. -c branch.<가지>.merge=refs/heads/<통합> status --porcelain --branch` 한 번으로 통합 가지와의 거리와 더러움 표시를 함께 읽어요(git 2.54 로 확인: `## lane/x...next [ahead 2, behind 1]`). 통합 가지 자신에서는 덮어쓰지 않아서 `↑n` 이 아직 밀지 않은 착지 수예요. 통합 가지를 모르면 원래 upstream 숫자를 가지 항목에 보여요. 그래서 `🌳`/`🅱️` 항목의 `↑` 와 `🧭` 의 `↑` 는 레인 가지에서 같은 수예요(Layouts 의 `↑3` 두 번).
+- 통합 가지 이름(Risk 3): 프로젝트 프로필(`profile::read_rel` 이 배치에 따라 고르는 `project.yaml` 의 `work_flow.integration_branch`, 안전한 이름만), 없으면 공통 git 폴더의 `refs/remotes/origin/HEAD` 파일, 둘 다 없으면 `🧭` 없음. 그 커밋은 `refs/heads/<이름>` 또는 `packed-refs` 파일에서 읽어요(프로세스 없음).
+- 캐시 열쇠(D-1 보탬): `HEAD` 내용과 통합 커밋에 **git 폴더(HEAD 를 가진 작업트리별 폴더)** 를 더했어요. 없으면 같은 세션 id 로 다른 저장소를 10초 안에 그릴 때 앞 저장소의 숫자를 보여요(빨간 시험 `session_cache_another_folder_with_the_same_head_starts_one_git` 으로 먼저 확인).
+- `pr.kind`: 공식 문서 `statusline.md`(1170줄 전체, 2026-11-22T08:29:32Z 받음) — "`pr.kind` | `mr` when `pr` describes a GitLab merge request. Absent for GitHub pull requests". 값 `mr` 만 `!` 로 써요.
+- 버전 두 개(`🤖`, `🗿`)는 줄 1 에서 빠져 줄 3(사용량 줄) 끝으로 옮겼어요. 지금 글자 모양 그대로이고, 줄 3 의 모양은 `limits` 단계가 바꿔요.
+- 태그·레인 등록부·`session_name` 읽기와 `WT-c<카드>-<이름>` 이름표(D-4)를 상태줄 코드에서 걷었어요. 이로써 `SPEC-20261119-statusline-worktree-label` 의 이름표 요구는 이 SPEC 이 대신해요(부모 SPEC 의 Supersedes 표에는 아직 없어요).
+- 시험 격리: 바이너리를 돌리는 상태줄 시험과 골든 도구(`tools/statusline_golden.py`)는 실행마다 자기 임시 `TMPDIR` 을 줘요. 세션 id 가 없는 다른 시험 파일은 캐시를 쓸 수 없어서 그대로 뒀어요.
+
+남은 것: 실제 터미널에서 `COLUMNS` 와 아이콘 너비를 재는 일(부모 Plan "3단계 전" 항목)은 하지 않았어요. 실제 저장소의 캐시 적중 측정도 하지 않았어요. 상태줄 문서의 레이아웃 예시와 줄 3 설명은 문서 단계(부모 Plan 5)의 몫이에요.
