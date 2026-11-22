@@ -779,6 +779,41 @@ enum Action {
         #[arg(long)]
         home: Option<PathBuf>,
     },
+    /// Writes the git folder and the ledger only with `--restore --apply`. Show where the integration branch stands against the ledger, and put it back
+    ///
+    /// Reads and writes nothing without `--restore --apply`. Compares the integration branch's tip
+    /// with the ledger: it must be the result commit of the newest successful `card land` of the
+    /// branch (or, for a landing that was interrupted, the tip it started from or its target).
+    /// `state` is `ok`, `drift` or `no_landing` (the ledger never moved the branch). A commit
+    /// added by hand and a branch copied or rewound with `git branch -C` are drift. `--restore`
+    /// previews the move back to the recorded commit: the commits it drops, the plan digest and
+    /// nothing moved. With `--apply` the move is made, and only with `--by leader`, the digest of
+    /// a preview of the same state and `--permission-reference` naming the user's yes: the branch
+    /// moves under the guard (the intent record `card land` writes) and one `card.tip_restored`
+    /// row is written. The preview and the plain view write nothing.
+    Drift {
+        /// Preview the move back to the recorded commit.
+        #[arg(long)]
+        restore: bool,
+        /// Make the move of `--restore`; needs `--plan-digest`, `--permission-reference` and `--by`.
+        #[arg(long)]
+        apply: bool,
+        /// The `plan_digest` of a preview of the same state.
+        #[arg(long)]
+        plan_digest: Option<String>,
+        /// The reference of the user's yes (1 to 80 letters, digits or . _ : / -).
+        #[arg(long)]
+        permission_reference: Option<String>,
+        /// Who restores the branch: only `leader` is accepted.
+        #[arg(long)]
+        by: Option<String>,
+        /// The project folder (its profile holds the project id and the integration branch).
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// The HOME holding the ledger (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+    },
     /// Writes the git folder only. Guard the integration branch (run by git, never typed)
     ///
     /// Run by the `reference-transaction` hook, never by hand: git runs it with the state of a
@@ -1316,6 +1351,25 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
                 },
             )
         }
+        Action::Drift {
+            restore,
+            apply,
+            plan_digest,
+            permission_reference,
+            by,
+            project,
+            home,
+        } => moai_cli::card::drift::drift(
+            &project,
+            &resolve_home(home)?,
+            &moai_cli::card::drift::DriftRequest {
+                restore,
+                apply,
+                plan_digest: plan_digest.as_deref(),
+                permission_reference: permission_reference.as_deref(),
+                by: by.as_deref(),
+            },
+        ),
         Action::Guard { state } => {
             let mut input = String::new();
             std::io::Read::read_to_string(&mut std::io::stdin(), &mut input)
