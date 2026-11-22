@@ -11,7 +11,7 @@ parent: SPEC-20261122-claude-md-layout
 
 ## Intent
 
-두 가지를 묶었어요. (1) `.gitignore`: `.claude/` 통째 무시를 풀어 `.claude/settings.json` 과 `.claude/rules/` 를 추적할 수 있게 해요. 지금 사용자 프로젝트용 관리 블록 `moai-local` 은 `.claude` 줄을 쓰지 않으므로 "쓰지 않는다"를 고정하고, 사용자 자신의 규칙이 그 파일을 가리면 알려만 줘요. 이 저장소 자신의 `.gitignore` 는 356행과 386행의 두 줄을 허용 목록으로 바꿔요(체크아웃의 `.claude/` 에는 추적되지 않는 Go 세대 설치본이 있고, `settings.json` 에는 기계별 `PATH` 가 있을 수 있어서 읽어 보고 정해요). (2) 글 시험: 출하 글·템플릿·도움말·생성 파일이 `AGENTS.md` 를 moai 의 파일로 적으면 저장소 시험이 실패해요. 정당한 예외(Go 세대 백업 글, 사용자 파일을 옮기는 `update.md` 문장, Codex 홈 파일)는 경로와 이유로 시험 안에 하나씩 적어요. 배너 `MoAI 🗿 <name>` 은 이미 있는 시험을 이 SPEC 의 수용 기준에서 가리켜 고정만 해요.
+두 가지를 묶었어요. (1) `.gitignore`: `.claude/` 통째 무시를 풀어 `.claude/settings.json` 과 `.claude/rules/` 를 추적할 수 있게 해요. 지금 사용자 프로젝트용 관리 블록 `moai-local` 은 `.claude` 줄을 쓰지 않으므로 "쓰지 않는다"를 고정하고, 사용자 자신의 규칙이 그 파일을 가리면 알려만 줘요. 이 저장소 자신의 `.gitignore` 는 356행과 386행의 두 줄을 허용 목록으로 바꿔요(체크아웃의 `.claude/` 에는 추적되지 않는 Go 세대 설치본이 있고, `settings.json` 에는 기계별 `PATH` 가 있을 수 있어서 읽어 보고 정해요). (2) 글 시험: 출하 글·템플릿·도움말·생성 파일이 `AGENTS.md` 를 moai 의 파일로 적으면 저장소 시험이 실패해요. 정당한 예외는 경로와 이유로 시험 안에 하나씩 적어요: Go 세대 백업 글, 사용자 파일을 옮기는 `update.md` 문장, Codex 홈 파일, 그리고 "사용자의 파일을 가리킬 뿐 moai 의 파일이 아니다"라는 이유의 셋 — `import` 가 쓰는 `@AGENTS.md` 줄, `leave` 경고 문장, 옛 영수증을 되돌리는 `claude-import` 글. 시험은 "moai 가 쓴다"는 문맥과 "사용자 파일을 가리킨다"는 문맥을 구분해요. 배너 `MoAI 🗿 <name>` 은 이미 있는 시험을 이 SPEC 의 수용 기준에서 가리켜 고정만 해요.
 
 ## Requirements
 

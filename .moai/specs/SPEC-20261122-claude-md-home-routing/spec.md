@@ -11,7 +11,7 @@ parent: SPEC-20261122-claude-md-layout
 
 ## Intent
 
-사용자 전역 `CLAUDE.md` 안의 `moai-routing` 블록(`src/home_routing.rs`)을 설정 폴더의 `rules/moai.md` 로 옮겨요. 설정 폴더는 `host_home` 이 정해요(`CLAUDE_CONFIG_DIR`, 없으면 `~/.claude`). 새 파일은 moai 혼자 쓰는 파일이라 마커 대신 홈 스타일 파일처럼 "마지막에 쓴 바이트와 같을 때만 덮어쓰기"로 판정해요(`src/home_style.rs:313-324`). 옛 블록은 사용자 `CLAUDE.md` 에 남아 있으므로 지우기는 따로 고르는 선택이고 기본이 아니에요: Orca 프로필은 `~/.claude/CLAUDE.md` 를 가져다 쓰고 `rules/` 폴더가 없어서, 블록을 지우면 그 세션들의 안내가 조용히 사라져요(결정 D-8 of `SPEC-20261122-claude-md-layout`). 이 SPEC 은 Codex 쪽 줄(`home_routing.rs` 의 codex 항목)을 건드리지 않아요.
+사용자 전역 `CLAUDE.md` 안의 `moai-routing` 블록(`src/home_routing.rs`)을 설정 폴더의 `rules/moai.md` 로 옮겨요. 설정 폴더는 `host_home` 이 정해요(`CLAUDE_CONFIG_DIR`, 없으면 `~/.claude`). 새 파일은 moai 혼자 쓰는 파일이라 마커 대신 홈 스타일 파일처럼 "마지막에 쓴 바이트와 같을 때만 덮어쓰기"로 판정해요(`src/home_style.rs:313-324`). 옛 블록은 사용자 `CLAUDE.md` 에 남아 있으므로 지우기는 따로 고르는 선택이고 기본이 아니에요: Orca 프로필은 `~/.claude/CLAUDE.md` 를 가져다 쓰고 `rules/` 폴더가 없어서, 블록을 지우면 그 세션들의 안내가 조용히 사라져요(결정 D-8 of `SPEC-20261122-claude-md-layout`). Claude Code 가 프로필 폴더의 `rules/` 를 읽는지는 아직 확인 전이에요. 이 SPEC 은 Codex 쪽 줄(`home_routing.rs` 의 codex 항목)을 건드리지 않아요.
 
 ## Requirements
 
@@ -19,7 +19,7 @@ parent: SPEC-20261122-claude-md-layout
 - REQ-2 (REQ-1): IF `host_home` refuses the config folder because the variable is empty, relative or a link, THEN the planner shall block the routing layer and name the variable without its value.
 - REQ-3 (REQ-1): IF `rules/moai.md` exists and its bytes differ from the bytes moai last wrote, THEN the planner shall report a conflict and keep the file.
 - REQ-4: The renderer shall keep the routing text within 12 lines and omit the `paths` frontmatter key.
-- REQ-5: When the earlier routing block sits in the `CLAUDE.md` of the config folder, the planner shall offer its removal only as a separate pick. · failure: none — nothing is removed without the pick
+- REQ-5: When the earlier routing block sits in the `CLAUDE.md` of the config folder, the planner shall offer its removal only as a separate pick whose text says that sessions of a profile that imports this `CLAUDE.md` may lose the routing text. · failure: none — nothing is removed without the pick
 - REQ-6: When the removal pick is given and the block bytes equal the recorded baseline, the updater shall remove exactly the block.
 - REQ-7 (REQ-6): IF the block bytes differ from the recorded baseline, THEN the updater shall leave the block in place and name the reason.
 - REQ-8: The updater shall write no other text into the `CLAUDE.md` of the user's config folder.

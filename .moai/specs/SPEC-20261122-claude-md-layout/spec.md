@@ -19,10 +19,11 @@ moai 가 사용자 프로젝트에서 관리하는 지침 파일을 Claude Code 
 | `<project>/CLAUDE.local.md` | 사용자 | 무시 | 개인 메모. moai 는 사용자가 고를 때만 만들어요 | 이 SPEC |
 | `<project>/.claude/rules/moai/flow.md` | moai | 추적 | `work_flow` 가 고른 흐름 글 하나. `paths:` 없음 | 이 SPEC |
 | 프로젝트의 AGENTS 파일 옮기기 | 사용자 선택 | | `move` / `import` / `leave` | `SPEC-20261122-claude-md-project-picks` |
+| 프로젝트 레이어의 쓰기 규칙 | moai | | 영수증, 링크·UTF-8 거부, baseline, 미리보기 키, 토큰 | `SPEC-20261122-claude-md-project-layer` |
 | `<config dir>/rules/moai.md` | moai | 해당 없음 | `/moai` 진입 안내 12줄 이내. `<config dir>` 는 `CLAUDE_CONFIG_DIR` 또는 `~/.claude` | `SPEC-20261122-claude-md-home-routing` |
 | `.gitignore` 와 글 시험 | | | `.claude/` 통째 무시 해제, 이름 시험, 배너 고정 | `SPEC-20261122-claude-md-text-and-ignore` |
 
-이 SPEC 은 첫 조각(조사 + SPEC)이에요. 코드, 시험, 이 저장소 자신의 `AGENTS.md` 이동은 아래 Plan 의 뒤 조각에서 해요. 요구가 12개를 넘으면 쪼개라는 규칙(SPEC 크기 예산)에 따라 네 SPEC 으로 나눴고, 셋은 이 SPEC 을 `parent` 로 이어요.
+이 SPEC 은 첫 조각(조사 + SPEC)이에요. 코드, 시험, 이 저장소 자신의 `AGENTS.md` 이동은 아래 Plan 의 뒤 조각에서 해요. 요구가 12개를 넘으면 쪼개라는 규칙(SPEC 크기 예산)에 따라 다섯 SPEC 으로 나눴고, 넷은 이 SPEC 을 `parent` 로 이어요. `import` 를 고르면 `AGENTS.local.md` 는 아무 일도 없어요(Claude Code 가 원래 읽지 않던 파일이에요).
 
 ### What exists (tip `012e9470cb`)
 
@@ -52,11 +53,11 @@ moai 가 사용자 프로젝트에서 관리하는 지침 파일을 Claude Code 
 
 ## Requirements
 
-- REQ-1: The generator shall plan the managed block `moai-workflow` inside `CLAUDE.md` at the project root.
-- REQ-2: The renderer shall produce at most 15 lines between the two marker lines of the managed block.
-- REQ-3: The renderer shall state in the managed block only the project id, the tools, the check command, the language, the versioning line, the flow name with its integration branch, the places of SPECs and cards, and the path of the flow rule file.
-- REQ-4: When `CLAUDE.md` exists without the managed block, the generator shall append the block after the last byte and keep every earlier byte.
-- REQ-5 (REQ-4): IF the text between the block markers was edited after the recorded baseline, THEN the generator shall report a conflict and write nothing to that file.
+- REQ-1: When no `AGENTS.md` exists at the project root or a pick of the project layer was given, the generator shall plan the managed block `moai-workflow` inside `CLAUDE.md` at the project root.
+- REQ-2 (REQ-1): IF `AGENTS.md` exists and no pick was given, THEN the generator shall plan no CLAUDE file and report that a pick is needed.
+- REQ-3: The renderer shall produce at most 15 lines between the two marker lines of the managed block and state in them only the project id, the tools, the check command, the language, the versioning line, the flow name with its integration branch, the places of SPECs and cards, and the path of the flow rule file when one is planned.
+- REQ-4: When `CLAUDE.md` exists without the managed block, the generator shall append the block on a new line after the last byte and keep every earlier byte.
+- REQ-5 (REQ-4): IF the text between the block markers was edited after the recorded baseline or the file is a link or is not valid UTF-8, THEN the generator shall report a conflict and write nothing to that file.
 - REQ-6: When `CLAUDE.local.md` is absent, the generator shall create it only on the user's pick of a personal file. · failure: none — without the pick nothing is written, so nothing can fail
 - REQ-7: Where the profile value `local_file` reads `tracked`, the generator shall treat it as `ignored` and say so in the preview.
 - REQ-8: When the profile value `work_flow` names a known flow, the generator shall plan exactly one file `.claude/rules/moai/flow.md` that holds the text of that flow.
@@ -67,7 +68,7 @@ moai 가 사용자 프로젝트에서 관리하는 지침 파일을 Claude Code 
 
 ## Acceptance
 
-- AC-1 (REQ-1…REQ-5): a temporary project gets the block in `CLAUDE.md` within 15 lines and with facts only, an appended block keeps every earlier byte, and an edited block is a conflict that writes nothing.
+- AC-1 (REQ-1…REQ-5): a temporary project without `AGENTS.md` gets the block in `CLAUDE.md` within 15 lines and with facts only; a project with `AGENTS.md` and no pick gets no CLAUDE file; an appended block starts on a new line and keeps every earlier byte; an edited block, a `CLAUDE.md` that is a link, and one that is not UTF-8 are conflicts that write nothing.
   verify: `cargo test --locked --offline --test claude_md_layout_cli blocks_`
 - AC-2 (REQ-6, REQ-7): `CLAUDE.local.md` is created only on the pick, and a profile with `tracked` plans like `ignored` with a preview note.
   verify: `cargo test --locked --offline --test claude_md_layout_cli local_`
@@ -79,7 +80,7 @@ moai 가 사용자 프로젝트에서 관리하는 지침 파일을 Claude Code 
 
 ## Scope
 
-- this slice, write: `.moai/specs/SPEC-20261122-claude-md-layout/**`, `.moai/specs/SPEC-20261122-claude-md-project-picks/**`, `.moai/specs/SPEC-20261122-claude-md-home-routing/**`, `.moai/specs/SPEC-20261122-claude-md-text-and-ignore/**`
+- this slice, write: `.moai/specs/SPEC-20261122-claude-md-layout/**`, `.moai/specs/SPEC-20261122-claude-md-project-picks/**`, `.moai/specs/SPEC-20261122-claude-md-project-layer/**`, `.moai/specs/SPEC-20261122-claude-md-home-routing/**`, `.moai/specs/SPEC-20261122-claude-md-text-and-ignore/**`
 - later slices, write: `src/agents.rs`, `src/agents_local_merge.rs`, `src/ops/agents_*.rs`, `src/update.rs`, `src/project_update.rs`, `src/generation.rs`, `src/launcher_init.rs`, `src/home_routing.rs`, `src/language.rs`, `src/claude.rs`, `skills/moai/**` (with `references/source-manifest.json`), `tests/**` that pin the names, `.gitignore`, `schemas/protocol/v1/agents-*.schema.json`
 - forbidden in every slice before the last: `AGENTS.md`, `AGENTS.local.md`, `docs/agents-md-maintenance.md` of this repository, the real HOME, `~/.moai-cli`, `.claude/` of this checkout (Go-generation installed state)
 
@@ -88,8 +89,9 @@ moai 가 사용자 프로젝트에서 관리하는 지침 파일을 Claude Code 
 Slices in this order. Each is one SPEC-backed change with its own audit tier; the Codex removal work lands first where it touches the same lines (`home_routing.rs` HOSTS, `home_style.rs` block, `update.rs` HOSTS, `generation.rs` HOSTS).
 
 0. Probe (no product code): an `InstructionsLoaded` hook in a `claude --worktree` session logs `file_path`, `memory_type`, `load_reason` and `cwd` to show whether the primary checkout's `CLAUDE.md` and `CLAUDE.local.md` load in a linked worktree. The result decides D-11.
-1. Engine (this SPEC): file names become constants; `CLAUDE.md` is the block target; the block text is rewritten (facts, 15 lines, no Issue wording); `CLAUDE.local.md` and the flow file are new targets; the `AGENTS.local.md` merge, `claude_shadow` and `claude-import` leave the writer but their revert path stays for old receipts. Re-pin the tests that read these names (the research memos list 81 test files that name AGENTS and 37 that name CLAUDE).
-2. Project layer in `moai update` (`SPEC-20261122-claude-md-project-picks`): picks, token, receipt, revert order, key `project_files`, shadow warning. It reuses the `choices` shape of `project-update-plan`.
+1. Engine (this SPEC): file names become constants; `CLAUDE.md` is the block target; the block text is rewritten (facts, 15 lines, no Issue wording); `CLAUDE.local.md` and the flow file are new targets; the `AGENTS.local.md` merge, `claude_shadow` and `claude-import` leave the writer but their revert path stays for old receipts. Re-pin the tests that read these names (measured at the tip with a search over `tests/`: 81 files name `AGENTS.md` or `AGENTS.local.md`, 34 name `CLAUDE.md` or `CLAUDE.local.md`). The flow texts come from the four `work_flow` values (`src/profile.rs:171`); a value that is not yet a shipped text plans no flow file (REQ-9), and the block then omits the path (REQ-3). The name `NeXT-Flow` arrives with the naming work.
+   Every `verify:` filter in these SPECs (`blocks_`, `local_`, `flow_` and the filters of the child SPECs) must match at least one test name; the slice counts the tests that ran, because a filter that matches nothing reports zero tests and counts as not run.
+2. Project layer in `moai update` (`SPEC-20261122-claude-md-project-picks` for the picks and `SPEC-20261122-claude-md-project-layer` for receipt, link and UTF-8 refusal, baseline, token, revert order and key `project_files`). It reuses the `choices` shape of `project-update-plan`.
 3. Routing (`SPEC-20261122-claude-md-home-routing`): `rules/moai.md` through the style-file pattern, the removal pick for the old block, receipt behaviour.
 4. Ignore and texts (`SPEC-20261122-claude-md-text-and-ignore`): the managed ignore block, the repository `.gitignore` allow list, skill texts, language label, first launch, the text test and its exception list, the source manifest.
 5. This repository's own `AGENTS.md` and `AGENTS.local.md`: split into `CLAUDE.md`, `.claude/rules/`, `CLAUDE.local.md` and `docs/`, only by the user's pick, with `tests/repo_agents_md.rs` replaced.
@@ -122,7 +124,7 @@ Slices in this order. Each is one SPEC-backed change with its own audit tier; th
 | D-12 | This SPEC family supersedes in part `SPEC-20261119-agents-conflict-choices` (REQ-11…REQ-14, REQ-16, REQ-17) and `SPEC-20261119-agents-choices-step` (REQ-5, REQ-8, REQ-9, REQ-11); `claude-import` stays only as a revert path. | The shadow model no longer holds when `CLAUDE.md` is moai's file. | Keep both SPECs and the pick. |
 | D-13 | `local_file` value `tracked` is read as `ignored` with a preview note. | A personal file is not shared. | Keep `tracked` for `CLAUDE.local.md`. |
 | D-14 | The banner stays as `SPEC-20261121-style-banner` decided. | Implemented and pinned. | None. |
-| D-15 | The requirements are split over four SPECs with this one as parent. | Twelve requirements per SPEC is the size budget; each slice gets its own SPEC and audit. | Merge them. |
+| D-15 | The requirements are split over five SPECs with this one as parent. | Twelve requirements per SPEC is the size budget; each slice gets its own SPEC and audit. | Merge them. |
 
 ## Result
 
