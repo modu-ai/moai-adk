@@ -94,4 +94,19 @@ Tests first, in four commits, each with a red record before its green change:
 
 ## Result
 
-(to be written after the unnarrowed check)
+Built tests first: the red cases of `tests/codex_home_update_removed.rs` were recorded with `moai tdd red` (9 failed, 1 passed), then the code went in, then the old tests and goldens that expected a second host were rewritten. The evidence below was read from the unnarrowed run `moai check affected c361d00634..babdc4a709` (`result=PASS`: 79 test targets, 10 python files, 43 listed scans, every step exit 0; the first run of it was `FAIL` on 71 tests of eleven files and one python test, which the second commit repaired and the same run then passed) and from the runs named per line. One commit after that run adds two cases to `tests/codex_home_update_removed.rs` (head `cb858e20b9`); its target, clippy and `git diff --check` were run on that head.
+
+- AC-1: met — `update_user_layer_cli` 11 passed: the plan names `claude` for the skill copy, the agents, the routing and the two style targets.
+- AC-2: met — `apply_leaves_the_codex_and_omp_folders_as_they_are` passes: the retired trees are byte for byte equal, only the Claude skill copy is written and no `.agents/skills/moai` appears.
+- AC-3: met — the four notice cases and the apply-result case pass, and two cases were added after two mutants survived (`the_codex_folder_alone_shows_the_codex_notice`, `the_shared_agents_folder_alone_shows_the_codex_notice`); `codex_home_update_removed` 12 passed.
+- AC-4: met — `the_notice_does_not_change_the_plan_digest` passes.
+- AC-5: met — `an_old_receipt_with_codex_entries_reverts_the_claude_ones` passes for routing, style and agents; `retired_hosts_layer` 31 passed with the receipt cases now adding the retired entries to an applied Claude receipt.
+- AC-6: met — `skills_legacy_cli` 8 passed.
+- AC-7: met — `agents_home_cli` 7, `home_routing_cli` 11 and `home_style_cli` 16 passed.
+- AC-8: met — `update_tux_golden` 14 passed and `grep -ril codex tests/fixtures/ui/en/update-*.golden tests/fixtures/ui/ko/update-*.golden | wc -l` printed 0.
+- AC-9: met in part — the two repaired model tests pass in `retired_hosts_layer`; putting the old expectation back and reading the failure was not run in this pass.
+- AC-10: met — the Claude cases of the home tests pass in the unnarrowed run (`result=PASS`).
+
+Mutants (7 runs of one line each, `tools/mutate.py`, `target/mutation-result.json` and `target/mutation-result2.json`): dropping the OMP notice, not adding the notices to `skipped` and pointing the legacy-skill scan at a wrong folder were each caught (the target failed). Dropping either folder check of the Codex notice survived the first run, because the case created both folders; after the two single-folder cases were added both were caught on the rerun. Every mutation reads `restored: true`, but both runs ended with `status: blocked` and "source HEAD/index/tracked state/refs changed" because the local integration branch moved while they ran, so the runs are evidence per mutant, not a clean tool exit.
+
+Not run: Windows and Linux, the independent audit, a trial merge with the branch that edits `src/home_style.rs` on its own, and the hooks part and the project-skill revert of old receipts (project slice).
