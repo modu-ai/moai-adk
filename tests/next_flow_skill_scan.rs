@@ -39,11 +39,11 @@ const ROUTES: [&str; 8] = [
     "AUDIT", "PLAN", "PROJECT", "READ", "RUN", "SYNC", "UPDATE", "WORK",
 ];
 
-/// REQ-2, the files text slices A and B remove. The list grows: slice B adds
-/// `references/internal/review.md` (absorbed into the audit contract);
-/// `references/internal/build-folder.md` moves in a later slice, and Plan step 6 adds
-/// `references/rule-history.md` when the rule history moves to `docs/`.
-const REMOVED: [&str; 7] = [
+/// REQ-2, the files text slices A, B and C remove. Slice B adds `references/internal/review.md`
+/// (absorbed into the audit contract), slice C `references/internal/build-folder.md` (its rule,
+/// rewritten, is part of RUN's "Check-run rules"); only the rule history is still to move: Plan
+/// step 6 adds `references/rule-history.md` when it moves to `docs/`.
+const REMOVED: [&str; 8] = [
     "workflows/mode-agent.md",
     "workflows/mode-leader.md",
     "workflows/setup.md",
@@ -51,6 +51,21 @@ const REMOVED: [&str; 7] = [
     "workflows/optimize.md",
     "references/adapters/herdr.md",
     "references/internal/review.md",
+    "references/internal/build-folder.md",
+];
+
+/// D-14: the build rule RUN's "Check-run rules" holds now that the build-folder reference left
+/// the package: worktrees under `.claude/worktrees`, each building into its own folder, fixed
+/// slots warmed by a clone of the seed's build folder, and removal when the work lands.
+const BUILD_RULE: [&str; 8] = [
+    "`.claude/worktrees/<name>`",
+    "the build tool's default folder inside that worktree",
+    "for cargo, the worktree's own `target/`",
+    "leave `CARGO_TARGET_DIR` unset or point it at that folder",
+    "`cp -c -R -p seed/target <slot>/target`",
+    "are removed when its branch lands or is deleted",
+    "an audit worktree when its verdict is posted",
+    "by relative path, never through an absolute or home path",
 ];
 
 /// REQ-5 and REQ-6: the byte budget of the flow reference and of the audit contract.
@@ -544,6 +559,37 @@ fn refs_audit_contract_points_to_the_check_run_rules() {
             "{AUDIT_REF} restates {restated:?}"
         );
     }
+}
+
+#[test]
+fn refs_run_check_run_rules_hold_the_build_rule() {
+    let run = read("workflows/run.md");
+    let rules = section(&run, "Check-run rules");
+    for phrase in BUILD_RULE {
+        assert!(
+            rules.contains(phrase),
+            "run.md \"Check-run rules\" lacks {phrase:?}"
+        );
+    }
+    // The retired rule's home build folder is not the rule any more.
+    let home_build = format!("~/{}/build", moai_cli::state_root::MOAI_DIR);
+    assert!(
+        !rules.contains(&home_build),
+        "run.md \"Check-run rules\" names {home_build}"
+    );
+}
+
+#[test]
+fn refs_no_shipped_text_names_the_removed_build_folder_reference() {
+    let naming: Vec<String> = shipped_texts()
+        .into_iter()
+        .filter(|(_, text)| text.contains("internal/build-folder"))
+        .map(|(path, _)| path)
+        .collect();
+    assert!(
+        naming.is_empty(),
+        "still name internal/build-folder: {naming:?}"
+    );
 }
 
 #[test]

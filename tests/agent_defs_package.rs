@@ -348,9 +348,9 @@ fn reads_lists_match_the_design_and_render_on_every_host() {
             "internal/git-safety",
             "internal/tdd-results",
             // C-77: the pre-PR self-check list, run before the change goes to the audit.
-            "internal/self-check",
-            // C-82: where builds go and how the build folder is emptied.
-            "internal/build-folder"
+            // SPEC-20261122-next-flow-skills-agents slice C: `internal/build-folder` left the
+            // package; where builds go is RUN's "Check-run rules", which the body points to.
+            "internal/self-check"
         ]
     );
     assert_eq!(
@@ -358,13 +358,13 @@ fn reads_lists_match_the_design_and_render_on_every_host() {
         [
             // SPEC-20261122-next-flow-skills-agents slice B: the review note became the audit
             // contract `references/audit.md`, which no `<folder>/<name>` entry can name; the
-            // source body points to it instead.
+            // source body points to it instead. Slice C: `internal/build-folder` left the
+            // package as well; the body points to RUN's "Check-run rules".
             "internal/core-rules",
             "internal/test-design",
             "internal/check-completeness",
             "internal/boundary-checks",
-            "internal/security-checklist",
-            "internal/build-folder"
+            "internal/security-checklist"
         ]
     );
     // SPEC-20261117-sdd-guidance: moai-docs is SYNC's writer and keeps the SPEC Result.
@@ -458,8 +458,8 @@ fn internal_references_say_when_to_read_them() {
         "sdd",
         // SPEC-20261117-atlas-in-read-plan: READ and PLAN read the code atlas when it is fresh.
         "code-atlas",
-        // C-82: where agent and audit builds go and how the build folder is emptied.
-        "build-folder",
+        // C-82's `build-folder` left the package in SPEC-20261122-next-flow-skills-agents slice C:
+        // its rule, rewritten (D-14), is part of RUN's "Check-run rules".
         // SDD-6 (user decision U-B): the identity trailers every agent commit carries.
         "commit-trailers",
         // SPEC-20261117-quality-guides: the project's own check commands, AC-to-test tracing
@@ -994,53 +994,78 @@ fn self_check_lists_the_pre_pr_checks_and_is_named_by_impl_and_the_chains() {
     );
 }
 
-/// C-82 (user decision 2026-11-17, "빌드 폴더를 한 곳으로 모으기"): the build-folder reference
-/// states the rule — one folder per worktree under `~/.moai/build/`, `CARGO_INCREMENTAL=0`, the
-/// owner record, the refusal path, evidence kept in the worktree, the end-of-task cleanup and the
-/// user-picked removal — and both builder agents read it; the places that used to name the
-/// per-lane folder point to it.
+/// The words that send a reader to where the build rule lives now: by path from an agent or an
+/// internal reference, by name from another workflow (a workflow names no package path).
+const BUILD_RULE_POINTER: &str = "(`workflows/run.md`, \"Check-run rules\")";
+const BUILD_RULE_WORKFLOW_POINTER: &str = "(the RUN workflow, \"Check-run rules\")";
+
+/// C-82 (user decision 2026-11-17) wrote the build rule as the reference
+/// `internal/build-folder`; SPEC-20261122-next-flow-skills-agents slice C (D-14, the user's build
+/// rule of 2026-11-22) removed that reference and rewrote the rule in RUN's "Check-run rules".
+/// The pins whose rule still holds moved with it: one build folder per worktree, never shared;
+/// the end-of-task cleanup of the cargo output the worker made; evidence kept apart from that
+/// cleanup; `CARGO_INCREMENTAL=0` in the builder agents; leftover agent build folders removed
+/// only as the rows the user picks (UPDATE). Retired, because each worktree now builds in its
+/// own folder and nothing is built in the real HOME: the folder per worktree in the home state
+/// folder, its owner record `.moai-build.json`, the refusal when HOME is not usable, and the
+/// HOME exception of the builder agents with its 0700 parents.
 #[test]
-fn build_folder_reference_is_read_by_the_builders_and_states_the_rule() {
+fn build_rule_lives_in_run_and_the_builders_point_to_it() {
     let read = |rel: &str| std::fs::read_to_string(package().join(rel)).unwrap();
-    let text = read("references/internal/build-folder.md");
-    assert!(
-        read("references/source-manifest.json").contains("\"references/internal/build-folder.md\"")
-    );
+    assert!(!package()
+        .join("references/internal/build-folder.md")
+        .exists());
+    assert!(!read("references/source-manifest.json").contains("internal/build-folder"));
+    let run = read("workflows/run.md");
+    let rules = run
+        .split("\n## Check-run rules\n")
+        .nth(1)
+        .and_then(|s| s.split("\n## ").next())
+        .expect("run.md has a `## Check-run rules` section");
     for needle in [
-        "set `CARGO_TARGET_DIR` to `~/.moai/build/<project>-<worktree name>/`: one folder per worktree, never shared between worktrees, never inside a worktree",
-        "Always set `CARGO_INCREMENTAL=0`",
-        "`.moai-build.json` with `schema_version` 1, `git_common_dir` and `worktree`",
-        "when HOME is not absolute or not writable, or a link sits on the folder's path, do not follow it and do not build there",
-        "Neither goes in the build folder; deleting the build output never deletes evidence",
-        "End of task: delete your folder's cargo output and report the freed size under `Cleanup`",
-        "One goes only after the user picks its row",
+        "Use one build folder per worktree",
+        "never share it with another worktree",
+        "a lane removes only the cargo output it made itself",
+        "the notes, evidence and scripts under `target/<name>/`",
     ] {
-        assert!(text.contains(needle), "build-folder.md lacks {needle:?}");
+        assert!(
+            rules.contains(needle),
+            "run.md \"Check-run rules\" lacks {needle:?}"
+        );
     }
+    assert!(
+        read("workflows/update.md").contains("go only as the rows the user picks"),
+        "update.md lacks the user-picked removal"
+    );
+    let home_build = format!("~/{}/build", moai_cli::state_root::MOAI_DIR);
     let defs = package_agents(&agents(), &package()).unwrap();
+    for d in &defs {
+        assert!(
+            !d.reads.iter().any(|r| r == "internal/build-folder"),
+            "{}",
+            d.name
+        );
+    }
     for name in ["moai-impl", "moai-audit"] {
         let d = defs.iter().find(|d| d.name == name).unwrap();
-        assert!(
-            d.reads.iter().any(|r| r == "internal/build-folder"),
-            "{name}"
-        );
         assert!(d.body.contains("`CARGO_INCREMENTAL=0`"), "{name}");
-        // Audit N6: the HOME exception names the parents `env` makes, too.
-        assert!(
-            d.body.contains(
-                "`~/.moai/build/` (`internal/build-folder`) and its parents `~/.moai` and `~/.moai/build`, made 0700 when missing"
-            ),
-            "{name}"
-        );
+        assert!(d.body.contains(BUILD_RULE_POINTER), "{name}");
+        assert!(!d.body.contains(&home_build), "{name} names {home_build}");
+        for host in RENDERED_HOSTS {
+            let text = render(d, host).unwrap().text;
+            assert!(text.contains(BUILD_RULE_POINTER), "{name} on {host}");
+        }
     }
-    for rel in [
-        "references/internal/git-safety.md",
-        "references/internal/self-check.md",
-        // RUN and UPDATE carry the retired VERIFY and OPTIMIZE routes
-        // (SPEC-20261122-next-flow-skills-agents).
-        "workflows/run.md",
-        "workflows/update.md",
+    for (rel, pointer) in [
+        ("references/internal/git-safety.md", BUILD_RULE_POINTER),
+        ("references/internal/self-check.md", BUILD_RULE_POINTER),
+        // UPDATE carries the retired OPTIMIZE route (SPEC-20261122-next-flow-skills-agents).
+        ("workflows/update.md", BUILD_RULE_WORKFLOW_POINTER),
     ] {
-        assert!(read(rel).contains("internal/build-folder"), "{rel}");
+        let text = read(rel);
+        assert!(text.contains(pointer), "{rel}");
+        assert!(!text.contains("internal/build-folder"), "{rel}");
     }
+    // RUN holds the rule itself; its other sections name it without the removed reference.
+    assert!(!run.contains("internal/build-folder"), "workflows/run.md");
 }

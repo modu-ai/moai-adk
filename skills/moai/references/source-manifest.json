@@ -134,15 +134,6 @@
         "license": "Apache-2.0"
       }
     },
-    "references/internal/build-folder.md": {
-      "sha256": "5197d549504678b70534e7ed403b92dfa1aed95b05f2115e9c5c810ea5f7c01e",
-      "origin": {
-        "kind": "design-spec",
-        "template_id": "internal-build-folder",
-        "adoption": "new",
-        "reason": "Written for card C-82 (user decision 2026-11-17, selection '빌드 폴더를 한 곳으로 모으기'; SPEC-20261117-agent-build-folder): where agent and audit builds put CARGO_TARGET_DIR (one folder per worktree under ~/.moai/build/, CARGO_INCREMENTAL=0, an owner record), what a refusal does, where evidence stays, the end-of-task cleanup and the user-picked removal of leftovers. Read by moai-impl and moai-audit (`reads:`); its moai-adk helper is the repository's tools/build_folder.py."
-      }
-    },
     "references/internal/check-completeness.md": {
       "sha256": "2d016c9036c51fd64cb388210e77fc2095318654ced07d9eb1704490b168ab2a",
       "origin": {
@@ -204,7 +195,7 @@
       }
     },
     "references/internal/git-safety.md": {
-      "sha256": "dff7fc84fecfd7e11cc30690a05ce9fb4dd6d30e724695e84862c21a3e65157b",
+      "sha256": "70a33e833027abf29d24dad1a8dcf6c967931180b642f9c9e45dfec663ecd882",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-git-safety",
@@ -270,7 +261,7 @@
       }
     },
     "references/internal/self-check.md": {
-      "sha256": "16f13834aaa9dba52b5b06b1f175b3913d9756fb0d3a9591b60c36b38b2a5cea",
+      "sha256": "199b6fb2560c891d236bff539cf9ea79b6cc3a0af6e0b275940c2b8d41361488",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-self-check",
@@ -453,7 +444,7 @@
       }
     },
     "workflows/run.md": {
-      "sha256": "bd14db1959e478b9740fc09bc338e2bac021adf19a48250364e8eb6c05244993",
+      "sha256": "4b9f7f0af98e64394848a8475bd8b8b4742595a78d9543b3698b3f603878bdee",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-run",
@@ -471,7 +462,7 @@
       }
     },
     "workflows/update.md": {
-      "sha256": "9f5284efd0550cba3429475cc286e95b8acb14d09597f8eb032296f80e51d76a",
+      "sha256": "b1614e71169afcfab08b62c51afb881540df45831cd25ed889058d49ce2ea489",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-update",
