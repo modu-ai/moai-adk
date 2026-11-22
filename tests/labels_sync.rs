@@ -90,7 +90,7 @@ fn project(text: &str) -> (tempfile::TempDir, PathBuf) {
 #[test]
 fn the_shipped_label_list_parses() {
     let specs = labels::parse_labels_yml(&shipped()).unwrap();
-    assert_eq!(specs.len(), 15);
+    assert_eq!(specs.len(), 14);
     assert!(specs.iter().any(|s| s.name == "needs:decision"));
     assert!(specs
         .iter()

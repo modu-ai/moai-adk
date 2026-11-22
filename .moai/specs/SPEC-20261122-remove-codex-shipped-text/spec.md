@@ -27,7 +27,7 @@ The user decided on 2026-11-21 that moai-adk supports Claude Code and GLM only. 
 - REQ-2: The interview question bank shall hold no row that asks which hosts the project uses.
 - REQ-3: The README files and the Cargo description and the root policy files shall name Claude Code and GLM as the supported hosts.
 - REQ-4: The repository issue forms and their product templates shall offer no Codex choice.
-- REQ-5: The repository label list shall list `host:codex` under `not_used` and the product label template shall hold no `host:codex` label.
+- REQ-5: The repository label list shall list `host:codex` under `not_used`.
 - REQ-6: The current product docs named by the scan shall hold no Codex or OMP support claim.
 - REQ-7: The repository shall carry no test or script or fixture that exists only for Codex or OMP.
 - REQ-8: The repository shall track no file under its own `.codex` folder.
@@ -35,6 +35,7 @@ The user decided on 2026-11-21 that moai-adk supports Claude Code and GLM only. 
 - REQ-10: When a file of the skill package changes, the change shall carry the source manifest that the manifest tool writes for it. · failure: none — a stale manifest fails the existing manifest check
 - REQ-11: The error-kind table shall hold no message of the removed hook adapters.
 - REQ-12: The change shall leave the kept readers of the leader decisions D1–D7 and their tests unchanged.
+- REQ-13: The product label template shall hold no `host:codex` label.
 
 ## Acceptance
 
@@ -42,7 +43,7 @@ The user decided on 2026-11-21 that moai-adk supports Claude Code and GLM only. 
 - AC-2 (REQ-2): the question bank has no `hosts` row, and a profile that lists codex still plans · verify: `cargo test --locked --offline --test question_bank_hosts`
 - AC-3 (REQ-3): the root docs hold no retired host word, and the Cargo description equals the README opening sentence · verify: `cargo test --locked --offline --test retired_host_words root_docs_have_no_retired_host_words`
 - AC-4 (REQ-4): the forms and their templates offer no Codex option · verify: `cargo test --locked --offline --test retired_host_words github_forms_have_no_retired_host_words`
-- AC-5 (REQ-5): `host:codex` sits under `not_used` in the repository label list, the product template has no `host:codex` entry, and the label axes still parse · verify: `cargo test --locked --offline --test retired_host_words host_codex_is_retired_in_the_label_lists`
+- AC-5 (REQ-5, REQ-13): `host:codex` sits under `not_used` in the repository label list, the product template has no `host:codex` entry, and the label axes still parse · verify: `cargo test --locked --offline --test retired_host_words host_codex_is_retired_in_the_label_lists`
 - AC-6 (REQ-6): the named product docs hold no retired host word · verify: `cargo test --locked --offline --test retired_host_words product_docs_have_no_retired_host_words`
 - AC-7 (REQ-7): the Codex-only and OMP-only files are absent · verify: `cargo test --locked --offline --test retired_host_words codex_only_files_are_absent`
 - AC-8 (REQ-8): the two tracked `.codex/agents` files are absent · verify: `cargo test --locked --offline --test retired_host_words the_repository_tracks_no_codex_folder`
