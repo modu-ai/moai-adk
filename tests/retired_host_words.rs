@@ -4,6 +4,7 @@
 //! slice. A retired host word is `codex` anywhere, `omp` or `oh my pi` as a whole word, the Codex
 //! entry spelling `$moai` followed by a space or a dash, and the OMP spelling `/skill:moai`. Each
 //! later slice adds its own case when its files change.
+mod common;
 use moai_cli::labels_check::parse_axes;
 use std::fs;
 use std::path::PathBuf;
@@ -201,12 +202,11 @@ fn product_docs_have_no_retired_host_words() {
 /// AC-7: the files that exist only for Codex or OMP are gone.
 #[test]
 fn codex_only_files_are_absent() {
-    for rel in ["docs/codex-adapter-contract.md"] {
-        assert!(
-            fs::symlink_metadata(root().join(rel)).is_err(),
-            "{rel} still exists"
-        );
-    }
+    let rel = "docs/codex-adapter-contract.md";
+    assert!(
+        fs::symlink_metadata(root().join(rel)).is_err(),
+        "{rel} still exists"
+    );
 }
 
 /// AC-11: the error-kind table samples the messages of the hooks commands as they are now: no
@@ -224,17 +224,9 @@ fn the_error_table_holds_no_removed_hook_adapter_message() {
 /// `.codex` entry (a tracked file would give it one). A local untracked `.codex` does not count.
 #[test]
 fn the_repository_tracks_no_codex_folder() {
-    let out = std::process::Command::new("git")
-        .args(["rev-parse", "--verify", "--quiet", "HEAD:.codex"])
-        .current_dir(root())
-        .env_remove("GIT_DIR")
-        .env_remove("GIT_INDEX_FILE")
-        .env_remove("GIT_WORK_TREE")
-        .output()
-        .unwrap();
-    assert!(
-        !out.status.success(),
-        "HEAD tracks .codex: {}",
-        String::from_utf8_lossy(&out.stdout)
+    let out = common::git::git_raw(
+        &root(),
+        &["rev-parse", "--verify", "--quiet", "HEAD:.codex"],
     );
+    assert!(!out.success, "HEAD tracks .codex: {}", out.stdout);
 }
