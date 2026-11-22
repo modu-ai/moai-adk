@@ -69,7 +69,7 @@
         ".moai/manifests/generation.json"
       ],
       "files_created": true,
-      "manifest_sha256": "sha256:2b5058e6db8961684afc6ac9ef760173f5087d33363fd569b3d8fbf2e0ce68ef",
+      "manifest_sha256": "sha256:67d0ba06e06eaa1511cf9504a0d93b6280ae6dd57a30e61e5a7576b35db7906e",
       "host_loaded": false,
       "execution_verified": false,
       "host_notes": []

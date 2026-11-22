@@ -63,8 +63,6 @@ pub const GROUPS: &[Group] = &[
             ("labels-apply", false),
             ("claude-settings-plan", false),
             ("claude-settings-apply", false),
-            ("codex-config-plan", false),
-            ("codex-config-apply", false),
             ("hooks-plan", false),
             ("hooks-apply", false),
             ("hooks-revert", false),
@@ -80,8 +78,6 @@ pub const GROUPS: &[Group] = &[
             ("agents-merge-plan", false),
             ("agents-merge-apply", false),
             ("agents-merge-revert", false),
-            ("agents-project-plan", false),
-            ("agents-project-apply", false),
         ],
     },
     Group {
@@ -153,7 +149,6 @@ pub const GROUPS: &[Group] = &[
         heading_ko: "진단",
         commands: &[
             ("claude-doctor", true),
-            ("codex-doctor", true),
             ("install-inspect", true),
             ("identity", true),
             ("worktree-report", true),
@@ -278,8 +273,6 @@ pub const GROUPS: &[Group] = &[
             ("snapshot-describe", false),
             ("package-inspect", false),
             ("package-resolve", false),
-            ("codex-projection-plan", false),
-            ("codex-projection-apply", false),
             ("project-skill-plan", false),
             ("project-skill-apply", false),
             ("project-skill-revert", false),
@@ -332,8 +325,6 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("labels-apply", &["labels-apply --plan-digest <digest> --permission-reference <ref> . < request.json"]),
     ("claude-settings-plan", &["claude-settings-plan . < request.json", "claude-settings-apply --plan-digest <digest> --permission-reference <ref> . < request.json"]),
     ("claude-settings-apply", &["claude-settings-apply --plan-digest <digest> --permission-reference <ref> . < request.json"]),
-    ("codex-config-plan", &["codex-config-plan . < request.json", "codex-config-apply --plan-digest <digest> --permission-reference <ref> . < request.json"]),
-    ("codex-config-apply", &["codex-config-apply --plan-digest <digest> --permission-reference <ref> . < request.json"]),
     ("hooks-plan", &["hooks-plan --host claude .", "hooks-apply --host claude --plan-digest <digest> --permission-reference <ref> ."]),
     ("hooks-apply", &["hooks-apply --host claude --plan-digest <digest> --permission-reference <ref> ."]),
     ("hooks-revert", &["hooks-revert --receipt <id> --permission-reference <ref> ."]),
@@ -349,8 +340,6 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("agents-merge-plan", &["agents-merge-plan .", "agents-merge-apply --plan-digest <digest> --permission-reference <ref> ."]),
     ("agents-merge-apply", &["agents-merge-apply --plan-digest <digest> --permission-reference <ref> ."]),
     ("agents-merge-revert", &["agents-merge-revert --receipt <id> --permission-reference <ref> ."]),
-    ("agents-project-plan", &["agents-project-plan . skills/moai agents", "agents-project-apply --plan-digest <digest> --permission-reference <ref> . skills/moai agents"]),
-    ("agents-project-apply", &["agents-project-apply --plan-digest <digest> --permission-reference <ref> . skills/moai agents"]),
     ("ledger-status", &["ledger-status ."]),
     (
         "card",
@@ -437,7 +426,6 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("keys-revert", &["keys-revert --receipt <keys-id> --permission-reference <ref> ~"]),
     ("models-revert", &["models-revert --receipt <models-id> --permission-reference <ref> ~"]),
     ("claude-doctor", &["claude-doctor ."]),
-    ("codex-doctor", &["codex-doctor ."]),
     ("install-inspect", &["install-inspect"]),
     ("identity", &["identity ."]),
     ("worktree-report", &["worktree-report ."]),
@@ -608,8 +596,6 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("snapshot-describe", &["snapshot-describe ."]),
     ("package-inspect", &["package-inspect skills/moai"]),
     ("package-resolve", &["package-resolve ."]),
-    ("codex-projection-plan", &["codex-projection-plan --target <folder> skills/moai", "codex-projection-apply --target <folder> --plan-digest <digest> --permission-reference <ref> skills/moai"]),
-    ("codex-projection-apply", &["codex-projection-apply --target <folder> --plan-digest <digest> --permission-reference <ref> skills/moai"]),
     ("project-skill-plan", &["project-skill-plan . < request.json", "project-skill-apply . < request.json"]),
     ("project-skill-apply", &["project-skill-apply . < request.json"]),
     ("project-skill-revert", &["project-skill-revert . < request.json"]),
@@ -744,51 +730,6 @@ pub const ARG_HELP_FOR: &[(&str, &str, &str)] = &[
     ),
     ("hooks-apply", "host", "`claude`"),
     ("hook-receipt", "host", "`claude`"),
-    (
-        "codex-projection-plan",
-        "package",
-        "Common skill package folder to project",
-    ),
-    (
-        "codex-projection-apply",
-        "package",
-        "Common skill package folder to project",
-    ),
-    (
-        "codex-projection-plan",
-        "display_name",
-        "`display_name` written to `agents/openai.yaml`",
-    ),
-    (
-        "codex-projection-apply",
-        "display_name",
-        "`display_name` written to `agents/openai.yaml`",
-    ),
-    (
-        "codex-projection-plan",
-        "short_description",
-        "`short_description` written to `agents/openai.yaml`",
-    ),
-    (
-        "codex-projection-apply",
-        "short_description",
-        "`short_description` written to `agents/openai.yaml`",
-    ),
-    (
-        "codex-projection-plan",
-        "default_prompt",
-        "`default_prompt` written to `agents/openai.yaml`",
-    ),
-    (
-        "codex-projection-apply",
-        "default_prompt",
-        "`default_prompt` written to `agents/openai.yaml`",
-    ),
-    (
-        "codex-projection-apply",
-        "allow_implicit_invocation",
-        "Write `policy.allow_implicit_invocation`; omitted keeps Codex's default",
-    ),
     (
         "worktree-apply",
         "branch_prefix",
@@ -952,7 +893,6 @@ pub const ABOUT_KO: &[(&str, &str)] = &[
     ("key-import-plan", "옛 키 파일 가져오기 미리 보기"),
     ("key-import-apply", "미리 본 옛 키 파일 가져오기"),
     ("claude-doctor", "Claude Code 가 AGENTS.md 를 읽는지 확인"),
-    ("codex-doctor", "Codex 지침과 스킬 확인"),
     ("install-inspect", "설치된 MoAI 실행 파일 보기"),
     ("identity", "경로가 클론 안 어디에 있는지 보기"),
     ("worktree-report", "worktree 가 쓰는 공간 보고"),
@@ -1650,10 +1590,6 @@ const LONG_ABOUT_KO: &[(&str, &str)] = &[
         "Claude Code 를 읽기만 하고 확인해요: PROJECT 에서 시작한 세션이 AGENTS.md 를 읽는지.",
     ),
     (
-        "codex-doctor",
-        "Codex 를 읽기만 하고 진단해요: AGENTS 사슬과 크기 한도, 겹친 스킬, `.codex/` 층.",
-    ),
-    (
         "install-inspect",
         "설치를 읽기만 하고 살펴봐요: PATH 의 세대, `~/.moai-cli/installations/` 의 \
          영수증, Go 세대 경로가 있는지. 아무것도 쓰지 않아요.",
@@ -1779,36 +1715,6 @@ const ARG_HELP_KO: &[(&str, &str, &str)] = &[
         "cc|glm|omp",
         "dry_run",
         "호스트를 시작하는 대신 만든 명령을 JSON 으로 찍기(`--print-command` 도 같은 뜻)",
-    ),
-    (
-        "codex-doctor",
-        "project",
-        "프로젝트 루트(Codex 는 여기서 작업 폴더까지 내려가며 읽음)",
-    ),
-    (
-        "codex-doctor",
-        "cwd",
-        "프로젝트 안의 작업 폴더(기본: 프로젝트 루트)",
-    ),
-    (
-        "codex-doctor",
-        "codex_home",
-        "전역 AGENTS 파일이 있는 Codex home(기본: $CODEX_HOME, 없으면 ~/.codex)",
-    ),
-    (
-        "codex-doctor",
-        "home",
-        "`.agents/skills` 가 있는 home(기본: $HOME)",
-    ),
-    (
-        "codex-doctor",
-        "fallback",
-        "`project_doc_fallback_filenames` 항목(되풀이 가능, config.toml 은 안 읽음)",
-    ),
-    (
-        "codex-doctor",
-        "max_bytes",
-        "`project_doc_max_bytes`(기본 32768, config.toml 은 안 읽음)",
     ),
     (
         "install-inspect",
@@ -2244,7 +2150,7 @@ fn korean_frame(c: Command) -> Command {
     // replaced by the same flag with Korean lines (`ArgAction::Help`: `-h` short, `--help` long).
     // Every help starts on the line after its name, `LONG_ARG_INDENT` in, in `-h` as in
     // `--help`: clap counts a Hangul letter as one cell, so beside a wide name it would judge a
-    // Korean help to fit when it does not (`codex-projection-plan -h` ran to 72 cells at 60).
+    // Korean help to fit when it does not (a long command's `-h` ran to 72 cells at 60).
     let room = width().saturating_sub(LONG_ARG_INDENT);
     c.disable_help_flag(true)
         .arg(

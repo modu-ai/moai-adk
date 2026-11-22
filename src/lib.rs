@@ -112,7 +112,6 @@ pub mod migrate;
 pub mod model_effort_questions;
 pub mod model_effort_settings;
 pub mod move_journal;
-pub mod omp_agents;
 pub mod ontology;
 pub mod optimize;
 pub mod parity;

@@ -1193,6 +1193,9 @@ fn compose_manifest(
     carried: Carried,
 ) -> Manifest {
     let (workflow_id, interview_revision, owned, created) = carried;
+    // The manifest names no projection for a retired host (SPEC-20261121-remove-codex-project-layer).
+    let mut projections = profile.hosts.clone();
+    crate::retired_hosts::retire_hosts(&mut projections, &crate::generation::HOSTS);
     Manifest {
         schema_version: 1,
         generator_version: env!("CARGO_PKG_VERSION").into(),
@@ -1205,7 +1208,7 @@ fn compose_manifest(
         source_kind: "generated".into(),
         sources: Vec::new(),
         canonical_sha256: None,
-        projections: profile.hosts.clone(),
+        projections,
         owned_files: owned,
         created_once: created,
         activation_status: "pending-validation".into(),

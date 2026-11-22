@@ -30,7 +30,7 @@ const PENDING: [&str; 13] = [
 ];
 
 /// The files this change cleaned; each has a section in the rationale document.
-const CLEANED: [&str; 17] = [
+const CLEANED: [&str; 16] = [
     "src/claim.rs",
     "src/claim_verify.rs",
     "src/gate_schedule.rs",
@@ -38,7 +38,6 @@ const CLEANED: [&str; 17] = [
     "src/heavy_slot.rs",
     "src/help.rs",
     "src/home_state.rs",
-    "src/hosts/codex.rs",
     "src/launcher_init.rs",
     "src/ledger/open.rs",
     "src/project_hosts.rs",

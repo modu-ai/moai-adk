@@ -362,8 +362,6 @@
         "tests/update_hooks_cli.rs (package copy)",
         "tests/update_keys_cli.rs (package copy)",
         "tests/update_home_layer_cli.rs (package copy)",
-        "tests/omp_agents.rs (package copy)",
-        "tests/agents_project_cli.rs (package copy)",
         "tests/project_update_plan_cli.rs (package copy)",
         "tests/update_headver.rs (package copy)",
         "tests/update_switch_cli.rs (package copy)",
@@ -371,20 +369,17 @@
         "tests/host_home_cli.rs (plans hash skills/moai and agents/)"
       ],
       "checks": [
-        "cargo test --offline --locked --test agent_defs_package --test agents_home_cli --test update_user_layer_cli --test update_hooks_cli --test update_keys_cli --test update_home_layer_cli --test omp_agents --test agents_project_cli --test project_update_plan_cli --test update_headver --test update_switch_cli --test update_git_hooks_cli --test host_home_cli"
+        "cargo test --offline --locked --test agent_defs_package --test agents_home_cli --test update_user_layer_cli --test update_hooks_cli --test update_keys_cli --test update_home_layer_cli --test project_update_plan_cli --test update_headver --test update_switch_cli --test update_git_hooks_cli --test host_home_cli"
       ],
       "rules": [
         "tests/agent_defs_package.rs",
         "src/agent_defs.rs",
         "src/agent_install.rs",
-        "src/omp_agents.rs",
         "tests/agents_home_cli.rs",
         "tests/update_user_layer_cli.rs",
         "tests/update_hooks_cli.rs",
         "tests/update_keys_cli.rs",
         "tests/update_home_layer_cli.rs",
-        "tests/omp_agents.rs",
-        "tests/agents_project_cli.rs",
         "tests/project_update_plan_cli.rs",
         "tests/update_headver.rs",
         "tests/update_switch_cli.rs",
@@ -404,23 +399,20 @@
     {
       "id": "skill-package-whole-tree",
       "tests": [
-        "tests/codex_adapter.rs (12)",
         "tests/home_routing_cli.rs (7)",
         "tests/exe_link_cli.rs::update_plan_through_a_link_matches_the_real_path",
         "src/claude.rs (2 unit)",
         "src/update.rs::a_skill_copy_that_did_not_apply_gets_no_agents_and_no_section"
       ],
       "checks": [
-        "cargo test --offline --locked --test codex_adapter --test home_routing_cli --test exe_link_cli",
+        "cargo test --offline --locked --test home_routing_cli --test exe_link_cli",
         "cargo test --offline --locked --lib -- projection_keeps_the_canonical_body_and_records_additions projection_refuses_overrides_grants_and_bad_values a_skill_copy_that_did_not_apply_gets_no_agents_and_no_section"
       ],
       "rules": [
         "src/lib.rs",
         "src/update.rs",
-        "src/hosts/codex.rs",
         "src/claude.rs",
         "src/home_routing.rs",
-        "tests/codex_adapter.rs",
         "tests/home_routing_cli.rs",
         "tests/exe_link_cli.rs"
       ],

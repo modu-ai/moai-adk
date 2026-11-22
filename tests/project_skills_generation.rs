@@ -1,7 +1,9 @@
 //! Issue #2706 P2: `generation-plan` builds project skills `prj-<name>` from the profile's
-//! interview answers into `.agents/skills/` (Codex CLI) and `.claude/skills/` (Claude Code),
-//! records them in `.moai-cli/manifests/generation.json`, never overwrites a hand edit and never
-//! claims a folder it did not write. A request without project skills plans as before.
+//! interview answers into `.claude/skills/` (Claude Code), records them in
+//! `.moai-cli/manifests/generation.json`, never overwrites a hand edit and never claims a folder
+//! it did not write. A request without project skills plans as before. The retired hosts codex and
+//! omp are left out of a request: nothing is written under `.agents` for them
+//! (SPEC-20261121-remove-codex-project-layer).
 
 mod common;
 
@@ -97,6 +99,7 @@ fn action(p: &Value, path: &str) -> Option<String> {
 }
 
 const CLAUDE: &str = ".claude/skills/prj-checks/SKILL.md";
+/// The path a Codex copy used to have; nothing is planned or written there any more.
 const CODEX: &str = ".agents/skills/prj-checks/SKILL.md";
 
 fn checks() -> Value {
@@ -104,30 +107,29 @@ fn checks() -> Value {
 }
 
 #[test]
-fn a_project_skill_is_written_for_both_hosts_from_the_answers() {
+fn a_project_skill_is_written_for_claude_only_from_the_answers() {
     let root = project();
     let r = root.path();
     let p = result(&plan(r, &request(checks())));
     assert_eq!(action(&p, CLAUDE).as_deref(), Some("create"));
-    assert_eq!(action(&p, CODEX).as_deref(), Some("create"));
+    assert_eq!(action(&p, CODEX), None, "no Codex copy is planned");
     assert!(!r.join(CLAUDE).exists(), "a plan writes nothing");
     result(&apply(r, &p));
-    for path in [CLAUDE, CODEX] {
-        let text = fs::read_to_string(r.join(path)).unwrap();
-        assert!(
-            text.starts_with(
-                "---\nname: prj-checks\ndescription: \"How this project is checked\"\n---\n"
-            ),
-            "{text}"
-        );
-        assert!(text.contains("- Run the tests: cargo test --locked"));
-        assert!(text.contains("- Review always stops: a change without a test"));
-        assert!(text.contains("- Never change without asking first: the billing module"));
-        assert!(
-            !text.contains("HOLD"),
-            "an unanswered axis is never written"
-        );
-    }
+    assert!(!r.join(".agents").exists(), "no Codex copy is written");
+    let text = fs::read_to_string(r.join(CLAUDE)).unwrap();
+    assert!(
+        text.starts_with(
+            "---\nname: prj-checks\ndescription: \"How this project is checked\"\n---\n"
+        ),
+        "{text}"
+    );
+    assert!(text.contains("- Run the tests: cargo test --locked"));
+    assert!(text.contains("- Review always stops: a change without a test"));
+    assert!(text.contains("- Never change without asking first: the billing module"));
+    assert!(
+        !text.contains("HOLD"),
+        "an unanswered axis is never written"
+    );
     let manifest: Value =
         serde_json::from_slice(&fs::read(r.join(".moai-cli/manifests/generation.json")).unwrap())
             .unwrap();
@@ -138,7 +140,7 @@ fn a_project_skill_is_written_for_both_hosts_from_the_answers() {
         .filter(|f| f["path"].as_str().unwrap().contains("prj-checks"))
         .map(|f| f["kind"].as_str().unwrap())
         .collect();
-    assert_eq!(kinds, vec!["project-skill", "project-skill"]);
+    assert_eq!(kinds, vec!["project-skill"]);
 }
 
 #[test]
@@ -161,11 +163,6 @@ fn a_rerun_keeps_hand_edits_and_conflicts_when_both_sides_move() {
     write_profile(r, changed);
     let moved = result(&plan(r, &request(checks())));
     assert_eq!(action(&moved, CLAUDE).as_deref(), Some("conflict"));
-    assert_eq!(
-        action(&moved, CODEX).as_deref(),
-        Some("merge"),
-        "the unedited copy follows the answers"
-    );
     assert!(!apply(r, &moved).status.success());
     assert_eq!(fs::read_to_string(r.join(CLAUDE)).unwrap(), edited);
 }
@@ -178,7 +175,6 @@ fn a_folder_it_did_not_write_is_never_claimed() {
     fs::write(r.join(CLAUDE), "someone else's skill\n").unwrap();
     let p = result(&plan(r, &request(checks())));
     assert_eq!(action(&p, CLAUDE).as_deref(), Some("conflict"));
-    assert_eq!(action(&p, CODEX).as_deref(), Some("create"));
     assert!(!apply(r, &p).status.success());
     assert_eq!(
         fs::read_to_string(r.join(CLAUDE)).unwrap(),
@@ -213,8 +209,17 @@ fn names_hosts_and_hosts_list_are_checked() {
             false,
         ),
         (
-            json!([{"id": "prj-x", "purpose": "p", "hosts": ["codex", "codex"]}]),
+            json!([{"id": "prj-x", "purpose": "p", "hosts": ["claude", "claude"]}]),
             false,
+        ),
+        // A retired host is filtered out before the repeat check, never refused.
+        (
+            json!([{"id": "prj-x", "purpose": "p", "hosts": ["codex", "codex"]}]),
+            true,
+        ),
+        (
+            json!([{"id": "prj-x", "purpose": "p", "hosts": ["claude", "codex", "omp"]}]),
+            true,
         ),
     ] {
         assert_eq!(
@@ -223,15 +228,21 @@ fn names_hosts_and_hosts_list_are_checked() {
             "{skills}"
         );
     }
+    // A request that lists only a retired host reads as claude: the Claude copy is planned and
+    // nothing is planned under `.agents`.
     let only_codex = result(&plan(
         r,
         &request(json!([{"id": "prj-x", "purpose": "p", "hosts": ["codex"]}])),
     ));
     assert_eq!(
-        action(&only_codex, ".agents/skills/prj-x/SKILL.md").as_deref(),
+        action(&only_codex, ".claude/skills/prj-x/SKILL.md").as_deref(),
         Some("create")
     );
-    assert_eq!(action(&only_codex, ".claude/skills/prj-x/SKILL.md"), None);
+    assert_eq!(action(&only_codex, ".agents/skills/prj-x/SKILL.md"), None);
+    assert_eq!(
+        only_codex["request"]["project_skills"][0]["hosts"],
+        json!(["claude"])
+    );
 }
 
 #[test]
@@ -259,7 +270,6 @@ fn recover(root: &Path, receipt: &str) -> std::process::Output {
 }
 
 const EXTRA_CLAUDE: &str = ".claude/skills/prj-extra/SKILL.md";
-const EXTRA_CODEX: &str = ".agents/skills/prj-extra/SKILL.md";
 
 fn two() -> Value {
     json!([{"id": "prj-checks", "purpose": "How this project is checked"},
@@ -277,11 +287,10 @@ fn a_skill_no_longer_requested_is_removed_and_can_be_recovered() {
 
     let p = result(&plan(r, &request(checks())));
     assert_eq!(action(&p, EXTRA_CLAUDE).as_deref(), Some("remove"));
-    assert_eq!(action(&p, EXTRA_CODEX).as_deref(), Some("remove"));
     assert_eq!(action(&p, CLAUDE).as_deref(), Some("unchanged"));
     assert!(r.join(EXTRA_CLAUDE).exists(), "a plan removes nothing");
     let applied = result(&apply(r, &p));
-    assert!(!r.join(EXTRA_CLAUDE).exists() && !r.join(EXTRA_CODEX).exists());
+    assert!(!r.join(EXTRA_CLAUDE).exists());
     assert!(
         !r.join(".claude/skills/prj-extra").exists(),
         "the emptied folder goes too"
@@ -303,7 +312,6 @@ fn a_skill_no_longer_requested_is_removed_and_can_be_recovered() {
     let receipt = applied["receipt"].as_str().unwrap().to_string();
     result(&recover(r, &receipt));
     assert_eq!(fs::read_to_string(r.join(EXTRA_CLAUDE)).unwrap(), original);
-    assert!(r.join(EXTRA_CODEX).exists());
 }
 
 /// An edited skill that is no longer requested is a conflict and is never removed.
@@ -315,15 +323,14 @@ fn an_edited_skill_no_longer_requested_is_kept() {
     fs::write(r.join(EXTRA_CLAUDE), "my own notes\n").unwrap();
     let p = result(&plan(r, &request(checks())));
     assert_eq!(action(&p, EXTRA_CLAUDE).as_deref(), Some("conflict"));
-    assert_eq!(action(&p, EXTRA_CODEX).as_deref(), Some("remove"));
     assert!(!apply(r, &p).status.success());
     assert_eq!(
         fs::read_to_string(r.join(EXTRA_CLAUDE)).unwrap(),
         "my own notes\n"
     );
     assert!(
-        r.join(EXTRA_CODEX).exists(),
-        "a refused apply removes nothing"
+        r.join(CLAUDE).exists(),
+        "a refused apply removes nothing else"
     );
 }
 
@@ -334,7 +341,7 @@ fn an_edited_skill_no_longer_requested_is_kept() {
 #[test]
 fn a_linked_host_folder_is_a_conflict_and_nothing_is_written_outside() {
     for (link, path) in [
-        (".agents", CODEX),
+        (".claude", CLAUDE),
         (".claude/skills", CLAUDE),
         (".claude/skills/prj-checks", CLAUDE),
     ] {
@@ -377,24 +384,24 @@ fn a_skill_file_that_became_a_link_is_a_conflict_for_update_and_remove() {
     result(&apply(r, &result(&plan(r, &request(checks())))));
     let outside = TempDir::new().unwrap();
     let target = outside.path().join("SKILL.md");
-    fs::rename(r.join(CODEX), &target).unwrap();
+    fs::rename(r.join(CLAUDE), &target).unwrap();
     let original = fs::read(&target).unwrap();
-    std::os::unix::fs::symlink(&target, r.join(CODEX)).unwrap();
+    std::os::unix::fs::symlink(&target, r.join(CLAUDE)).unwrap();
 
     let mut changed = answers();
     changed[0] = decision("test_command", "cargo nextest run", "user");
     write_profile(r, changed);
     let p = result(&plan(r, &request(checks())));
-    assert_eq!(action(&p, CODEX).as_deref(), Some("conflict"), "{p}");
+    assert_eq!(action(&p, CLAUDE).as_deref(), Some("conflict"), "{p}");
     assert!(!apply(r, &p).status.success());
     assert_eq!(fs::read(&target).unwrap(), original);
 
     let p = result(&plan(r, &request(json!([]))));
-    assert_eq!(action(&p, CODEX).as_deref(), Some("conflict"), "{p}");
+    assert_eq!(action(&p, CLAUDE).as_deref(), Some("conflict"), "{p}");
     assert!(!apply(r, &p).status.success());
     assert_eq!(fs::read(&target).unwrap(), original);
     assert!(r
-        .join(CODEX)
+        .join(CLAUDE)
         .symlink_metadata()
         .unwrap()
         .file_type()
@@ -423,16 +430,16 @@ fn a_purpose_with_a_colon_is_quoted_in_the_frontmatter() {
 #[cfg(unix)]
 #[test]
 fn a_remove_never_follows_a_link_or_a_recorded_path_of_another_kind() {
-    // `.agents` moved outside and linked back after apply: the outside copy stays.
+    // `.claude` moved outside and linked back after apply: the outside copy stays.
     let root = project();
     let r = root.path();
     result(&apply(r, &result(&plan(r, &request(two())))));
     let outside = TempDir::new().unwrap();
-    let moved = outside.path().join("agents");
-    fs::rename(r.join(".agents"), &moved).unwrap();
-    std::os::unix::fs::symlink(&moved, r.join(".agents")).unwrap();
+    let moved = outside.path().join("claude");
+    fs::rename(r.join(".claude"), &moved).unwrap();
+    std::os::unix::fs::symlink(&moved, r.join(".claude")).unwrap();
     let p = result(&plan(r, &request(checks())));
-    assert_eq!(action(&p, EXTRA_CODEX).as_deref(), Some("conflict"), "{p}");
+    assert_eq!(action(&p, EXTRA_CLAUDE).as_deref(), Some("conflict"), "{p}");
     assert!(!apply(r, &p).status.success());
     // Joined per component: a single `skills/<id>/SKILL.md` string reads as a package
     // reference to tests/skill_references_test.py.

@@ -262,23 +262,6 @@ fn an_empty_or_relative_variable_blocks_its_host_by_name() {
             "{style}"
         );
     }
-    // The Codex doctor refuses a relative CODEX_HOME.
-    let project = w.base.join("repo");
-    fs::create_dir_all(&project).unwrap();
-    let out = w.run(
-        &[("CODEX_HOME", "cx")],
-        true,
-        &["codex-doctor", &s(&project), "--home", w.h()],
-    );
-    assert_eq!(
-        out.status.code(),
-        Some(1),
-        "{}",
-        String::from_utf8_lossy(&out.stdout)
-    );
-    let v: Value = serde_json::from_slice(&out.stdout).unwrap();
-    let m = v["error"]["message"].as_str().unwrap();
-    assert!(m.contains("CODEX_HOME") && m.contains("absolute"), "{m}");
 }
 
 /// REQ-1: agents and the output style follow the variables; OMP stays under HOME.
@@ -485,40 +468,6 @@ fn a_linked_config_folder_is_refused_not_followed() {
         "{plan}"
     );
     assert_eq!(fs::read_dir(&far_real).unwrap().count(), 0);
-}
-
-/// REQ-1: the Codex doctor reads the global AGENTS file from `CODEX_HOME`; `--codex-home`
-/// still wins.
-#[test]
-fn the_codex_doctor_reads_codex_home() {
-    let w = World::new();
-    let cx = w.outside("codex-home");
-    fs::create_dir_all(&cx).unwrap();
-    fs::write(cx.join("AGENTS.md"), "relocated codex notes\n").unwrap();
-    let project = w.base.join("repo");
-    fs::create_dir_all(&project).unwrap();
-    let x = s(&cx);
-    let v = ok(&w.run(
-        &[("CODEX_HOME", x.as_str())],
-        true,
-        &["codex-doctor", &s(&project), "--home", w.h()],
-    ));
-    assert!(v.to_string().contains(&s(&cx.join("AGENTS.md"))), "{v}");
-    let flag = w.outside("flag-home");
-    fs::create_dir_all(&flag).unwrap();
-    let v = ok(&w.run(
-        &[("CODEX_HOME", x.as_str())],
-        true,
-        &[
-            "codex-doctor",
-            &s(&project),
-            "--home",
-            w.h(),
-            "--codex-home",
-            &s(&flag),
-        ],
-    ));
-    assert!(!v.to_string().contains(&s(&cx)), "{v}");
 }
 
 /// REQ-7 (audit B1): the hook writer refuses a project whose `.claude` is the folder
@@ -743,14 +692,13 @@ fn the_output_style_refuses_a_linked_config_folder() {
     );
 }
 
-/// Audit N1 (M6, M7): the Claude settings and Codex config guards refuse an empty or relative
-/// variable by name and write nothing.
+/// Audit N1 (M6): the Claude settings guard refuses an empty or relative variable by name and
+/// writes nothing.
 #[test]
 fn the_user_scope_guards_refuse_empty_and_relative_values() {
     let w = World::new();
     let project = w.outside("project");
     fs::create_dir_all(project.join(".claude")).unwrap();
-    fs::create_dir_all(project.join(".codex")).unwrap();
     for bad in ["", "rel"] {
         let m = refused(&w.run_os(
             &[("CLAUDE_CONFIG_DIR", std::ffi::OsStr::new(bad))],
@@ -758,19 +706,11 @@ fn the_user_scope_guards_refuse_empty_and_relative_values() {
             Some(br#"{"outputStyle":"MoAI-Easy"}"#),
         ));
         assert!(m.contains("CLAUDE_CONFIG_DIR"), "{bad:?}: {m}");
-        let m = refused(&w.run_os(
-            &[("CODEX_HOME", std::ffi::OsStr::new(bad))],
-            &["codex-config-plan", &s(&project)],
-            Some(br#"{"project_doc_max_bytes":32768}"#),
-        ));
-        assert!(m.contains("CODEX_HOME"), "{bad:?}: {m}");
     }
     assert!(!project.join(".claude/settings.json").exists());
-    assert!(!project.join(".codex/config.toml").exists());
 }
 
-/// Audit N3: a variable that is not UTF-8 blocks only that host in `update-plan`, and the Codex
-/// doctor refuses it without a panic.
+/// Audit N3: a variable that is not UTF-8 blocks only that host in `update-plan`.
 #[test]
 fn a_variable_that_is_not_utf8_blocks_only_its_host() {
     use std::os::unix::ffi::OsStrExt;
@@ -791,12 +731,4 @@ fn a_variable_that_is_not_utf8_blocks_only_its_host() {
         "{plan}"
     );
     assert!(host(&plan, "codex")["blocked_reason"].is_null(), "{plan}");
-    let project = w.base.join("repo");
-    fs::create_dir_all(&project).unwrap();
-    let m = refused(&w.run_os(
-        &[("CODEX_HOME", bad)],
-        &["codex-doctor", &s(&project), "--home", w.h()],
-        None,
-    ));
-    assert!(m.contains("CODEX_HOME") && m.contains("UTF-8"), "{m}");
 }

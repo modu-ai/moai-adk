@@ -1063,11 +1063,6 @@ fn input<T: serde::de::DeserializeOwned>() -> Result<T, String> {
     }
     moai_cli::contract::typed_json(&bytes)
 }
-/// The config writer takes an explicit user home. Refuse a project target that is also
-/// the host's relocated user config directory before either preview or apply can run.
-fn codex_config_home(project: &std::path::Path) -> Result<PathBuf, String> {
-    moai_cli::hosts::codex_config::config_home(project)
-}
 /// Upper bound on a typed plan fed back to its `*-apply` (#2349). A plan grows with the
 /// files it covers (about 330 bytes per file per host), so the 64 KiB request bound cut
 /// `update-apply` off near 99 files. 16 MiB matches the package walk's byte bound
