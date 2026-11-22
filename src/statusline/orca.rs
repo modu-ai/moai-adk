@@ -2,13 +2,16 @@
 //! in an Orca pane, the stdin the status line received is handed to Orca's own status line
 //! wrapper, so Orca still sees the usage windows although our command replaced its wrapper.
 //!
-//! The wrapper is not ours: it is started, never copied. It is started only when it is an
-//! executable file at the place Orca installs it, the Orca hook variables are set and the stdin
-//! holds `rate_limits`; its output is discarded and the render never waits for it.
+//! The wrapper is not ours: it is started, never copied. It is started only when the Orca hook
+//! variables are set, the stdin holds `rate_limits` and the file looks the way Orca installs it:
+//! a regular file (no link) with the owner's execute bit, inside `~/.orca/agent-hooks/`, the
+//! file and both folders owned by this user, none of them a link and none writable by group or
+//! others. Its output is discarded and the render never waits for it (no timeout either: it is
+//! not killed, it runs detached and ends on its own).
 
 use super::state::Context;
 use std::io::Write;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
 /// The wrapper Orca installs, below HOME.
@@ -28,24 +31,42 @@ const ENDPOINT_VAR: &str = "ORCA_AGENT_HOOK_ENDPOINT";
 const SYNC_WRITE_LIMIT: usize = 16 * 1024;
 
 /// The wrapper to start for this render: `None` without the hook variables (all three, or the
-/// endpoint file variable) or without an executable file at [`SCRIPT`].
+/// endpoint file variable) or when [`SCRIPT`] is not a wrapper this user installed
+/// ([`installed_by_user`]).
 pub fn script(ctx: &Context) -> Option<PathBuf> {
     let hooked = HOOK_VARS.iter().all(|k| ctx.var(k).is_some()) || ctx.var(ENDPOINT_VAR).is_some();
     if !hooked {
         return None;
     }
-    let path = ctx.home_dir()?.join(SCRIPT);
-    executable_file(&path).then_some(path)
+    let home = ctx.home_dir()?;
+    let path = home.join(SCRIPT);
+    installed_by_user(&home, &path).then_some(path)
 }
 
+/// The wrapper and the two folders it sits in (`~/.orca`, `~/.orca/agent-hooks`), read without
+/// following links: each must be of its kind (folder, regular file; a link is neither), owned by
+/// this user and not writable by group or others, and the file must carry the owner's execute
+/// bit. Anything else (another user's file, a link to elsewhere, a folder others may write
+/// into) is not started: the status line would otherwise run what someone else put there.
 #[cfg(unix)]
-fn executable_file(path: &std::path::Path) -> bool {
-    use std::os::unix::fs::PermissionsExt;
-    std::fs::metadata(path).is_ok_and(|m| m.is_file() && m.permissions().mode() & 0o111 != 0)
+fn installed_by_user(home: &Path, path: &Path) -> bool {
+    use std::os::unix::fs::MetadataExt;
+    // SAFETY: geteuid has no preconditions and cannot fail.
+    let me = unsafe { libc::geteuid() };
+    let ours = |p: &Path, folder: bool, mode_bits: u32| {
+        std::fs::symlink_metadata(p).is_ok_and(|m| {
+            (if folder { m.is_dir() } else { m.is_file() })
+                && m.uid() == me
+                && m.mode() & 0o022 == 0
+                && m.mode() & mode_bits == mode_bits
+        })
+    };
+    let orca = home.join(".orca");
+    ours(&orca, true, 0) && ours(&orca.join("agent-hooks"), true, 0) && ours(path, false, 0o100)
 }
 
 #[cfg(not(unix))]
-fn executable_file(_path: &std::path::Path) -> bool {
+fn installed_by_user(_home: &Path, _path: &Path) -> bool {
     false
 }
 

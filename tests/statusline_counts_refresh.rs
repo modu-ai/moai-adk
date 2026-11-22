@@ -273,10 +273,17 @@ fn orca_script(f: &Fixture, delay: u32) -> String {
     )
 }
 
-/// Writes the fake script as an executable file, its folders first.
+/// Writes the fake script the way Orca installs it: an executable file of mode 0755 in
+/// folders of mode 0755 (set, not left to the umask).
 fn orca_install(path: &Path, text: &str) {
-    std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+    use std::os::unix::fs::PermissionsExt;
+    let hooks = path.parent().unwrap();
+    std::fs::create_dir_all(hooks).unwrap();
+    for dir in [hooks, hooks.parent().unwrap()] {
+        std::fs::set_permissions(dir, std::fs::Permissions::from_mode(0o755)).unwrap();
+    }
     common::write_executable(path, text);
+    std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o755)).unwrap();
 }
 
 fn orca_calls(f: &Fixture) -> usize {
@@ -344,19 +351,28 @@ fn orca_pass_through_starts_with_the_endpoint_variable() {
 }
 
 /// AC-6: no `rate_limits`, no variable, only some of the three, a script that is not
-/// executable, a folder in its place or no script at all start nothing.
+/// executable, a folder in its place or no script at all start nothing; nor does a script
+/// that others may change: a link in its place or in place of a folder, a script or folder
+/// writable by group or others, or a script with only the group's execute bit. (A file of
+/// another owner needs a second user and is not tested here.)
 #[test]
 fn orca_pass_through_starts_nothing_without_limits_variables_or_an_executable() {
     let two = &ORCA_VARS[..2];
     // (case, stdin has rate_limits, hook variables set)
     type Case<'a> = (&'a str, bool, &'a [(&'a str, &'a str)]);
-    let cases: [Case; 6] = [
+    let cases: [Case; 12] = [
         ("no rate_limits", false, &ORCA_VARS),
         ("no variable", true, &[]),
         ("two of three variables", true, two),
         ("not executable", true, &ORCA_VARS),
         ("a folder", true, &ORCA_VARS),
         ("no script", true, &ORCA_VARS),
+        ("a link to the script", true, &ORCA_VARS),
+        ("a linked hooks folder", true, &ORCA_VARS),
+        ("a group-writable script", true, &ORCA_VARS),
+        ("an other-writable hooks folder", true, &ORCA_VARS),
+        ("a group-writable orca folder", true, &ORCA_VARS),
+        ("only the group may execute", true, &ORCA_VARS),
     ];
     for (name, limits, vars) in cases {
         let f = fixture("https://github.com/acme/widgets.git", None);
@@ -368,7 +384,35 @@ fn orca_pass_through_starts_nothing_without_limits_variables_or_an_executable() 
             }
             "a folder" => std::fs::create_dir_all(&script).unwrap(),
             "no script" => {}
-            _ => orca_install(&script, &orca_script(&f, 0)),
+            "a link to the script" => {
+                let real = f.home.join("real-statusline.sh");
+                orca_install(&script, &orca_script(&f, 0));
+                std::fs::rename(&script, &real).unwrap();
+                std::os::unix::fs::symlink(&real, &script).unwrap();
+            }
+            "a linked hooks folder" => {
+                let real = f.home.join("real-hooks/claude-statusline.sh");
+                orca_install(&real, &orca_script(&f, 0));
+                std::fs::create_dir_all(f.home.join(".orca")).unwrap();
+                std::os::unix::fs::symlink(real.parent().unwrap(), script.parent().unwrap())
+                    .unwrap();
+            }
+            _ => {
+                orca_install(&script, &orca_script(&f, 0));
+                let (target, mode) = match name {
+                    "a group-writable script" => (script.clone(), 0o775),
+                    "an other-writable hooks folder" => (script.parent().unwrap().into(), 0o757),
+                    "a group-writable orca folder" => (f.home.join(".orca"), 0o775),
+                    "only the group may execute" => (script.clone(), 0o654),
+                    // The other cases keep the install as it is.
+                    _ => (script.clone(), 0),
+                };
+                if mode != 0 {
+                    use std::os::unix::fs::PermissionsExt;
+                    std::fs::set_permissions(&target, std::fs::Permissions::from_mode(mode))
+                        .unwrap();
+                }
+            }
         }
         let (out, _) = orca_render(&f, &orca_stdin(&f, limits), vars);
         assert!(out.contains("CW 10%"), "{name}: {out}");
