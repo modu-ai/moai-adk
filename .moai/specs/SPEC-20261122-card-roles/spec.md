@@ -2,7 +2,7 @@
 id: SPEC-20261122-card-roles
 title: "Card roles: each card names its authors, auditor and lander from ledger rows, and a verdict from an author is refused"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-22
 ---
 
@@ -80,3 +80,21 @@ Grounded in the code at the integration tip `fd56877af5` before this SPEC:
 | D-3 | Only the leader word assigns an auditor | Until a typed verdict gates landing, the leader is the one who dispatches audits (plan decision D3) | Allow the holder-independent caller list to grow |
 | D-4 | A verdict is accepted only for a card in review | A card in review is the one that was submitted; a verdict on an active card judges unfinished work | Allow `done` cards for late findings |
 | D-5 | The head of a verdict must be a full 40-character commit id | A short id can name two commits and a verdict must name one | Accept a unique prefix after resolving it |
+
+## Result
+
+Slices 2 and 3, revision 2. Code head 60895b3320 over base b68fce6b5c (the SPEC commit, landed). Numbers come from runs made for this result.
+
+- AC-1 met: `roles_are_read_from_reservations_the_assignment_and_the_landing` passed; `card show` gains a `roles` object (`authors`, `auditor`, `lander`) read from the reservation, `card.audit_assigned` and `card.landed` rows.
+- AC-2 met: `verdict_author_sessions_are_refused_with_the_reason` passed (the current holder and an earlier holder are refused, the card is named, nothing is written).
+- AC-3 met: `verdict_rows_hold_the_head_the_result_the_evidence_and_the_writer` passed (a short head, a result of maybe and an active card refuse before any write).
+- AC-4 met: `assign_author_identities_are_refused` passed.
+- AC-5 met: `assign_rows_hold_the_auditor_and_the_caller_and_only_the_leader_writes_them` passed.
+- AC-6 met: `verdict_assigned_auditor_is_the_only_one_accepted` passed.
+- AC-7 met: `verdict_repeat_writes_no_second_row` passed.
+- Red first: the seven tests failed on the code before slice 3 (unknown subcommands `verdict` and `assign`, and no `roles` in `card show`).
+- Mutants (byte-copy restore, tree clean after): M1 author check of verdict off, M2 assigned-auditor check off, M3 repeat detection off, M4 author check of assign off, M5 review-state check of verdict off; all five killed, each by the test named for it.
+- `moai check affected b68fce6b5c..60895b3320`: PASS, 69 targets, 900 test-target tests passed and none failed, lib 1630 passed, bins 28 and 28 passed; diff check, fmt, ops rustfmt, clippy, lib, bins, build and python steps exit 0.
+- By the leader's word (decision on the lane's blocked note): the line `pub mod roles;` in `src/card/mod.rs` and one new row in the operations table, both files reserved by another card of this lane; new lines only. The roles answer of `card show` is described in that new row, so the existing `card show` row stays as it was.
+- Not run: a full test run outside the affected set, the Windows type check, a mutant on the evidence-length check and on the identity shape check (the unit test pins both shapes).
+- closure_status: open until the audit.
