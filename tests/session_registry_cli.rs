@@ -52,14 +52,36 @@ impl Fixture {
     }
 }
 
+/// The one place that builds a command for the binary under test: a temporary HOME and no git
+/// configuration of the machine (SPEC REQ-1).
+fn registrar(fx: &Fixture) -> Command {
+    let mut c = Command::new(BIN);
+    c.env("HOME", &fx.home)
+        .env("GIT_CONFIG_GLOBAL", "/dev/null")
+        .env("GIT_CONFIG_SYSTEM", "/dev/null");
+    c
+}
+
+/// REQ-1, REQ-2: a child of these tests never inherits the session id of the shell that runs
+/// them. The command says it by name: the variable is removed, not left to the environment.
+#[test]
+fn session_registry_children_do_not_inherit_the_shell_session_id() {
+    let fx = Fixture::new();
+    let cmd = registrar(&fx);
+    let removed = cmd
+        .get_envs()
+        .any(|(k, v)| k == "CLAUDE_CODE_SESSION_ID" && v.is_none());
+    assert!(
+        removed,
+        "the command leaves CLAUDE_CODE_SESSION_ID to the shell"
+    );
+}
+
 fn run_in(fx: &Fixture, cwd: &Path, args: &[&str]) -> Output {
-    Command::new(BIN)
+    registrar(fx)
         .arg("session-register")
         .args(args)
         .current_dir(cwd)
-        .env("HOME", &fx.home)
-        .env("GIT_CONFIG_GLOBAL", "/dev/null")
-        .env("GIT_CONFIG_SYSTEM", "/dev/null")
         .output()
         .unwrap()
 }
@@ -417,12 +439,9 @@ fn concurrent_registrations_admit_one() {
     let repo = fx.repo.to_str().unwrap().to_string();
     let children: Vec<_> = (0..8)
         .map(|_| {
-            Command::new(BIN)
+            registrar(&fx)
                 .args(["session-register", &repo, "--name", "agent-8", "--now", T0])
                 .current_dir(&fx.repo)
-                .env("HOME", &fx.home)
-                .env("GIT_CONFIG_GLOBAL", "/dev/null")
-                .env("GIT_CONFIG_SYSTEM", "/dev/null")
                 .env("MOAI_CLI_TEST_SESSION_REGISTRY_HOLD_MS", "150")
                 .stdout(std::process::Stdio::piped())
                 .stderr(std::process::Stdio::piped())
