@@ -26,7 +26,12 @@
 //! that is still left, or waits when none is: so a caller never passes an earlier waiter that
 //! can use the same slot, and never waits for a free slot of its own that no earlier waiter can
 //! use (a narrower waiter queued ahead keeps no wider caller off a slot it cannot take itself).
-//! An unlocked waiting file is a dead waiter and is not counted (it is left where it is). A
+//! An unlocked waiting file is a dead waiter and is not counted. A caller that asks for a slot
+//! first removes the waiting files of callers that are gone: plain files named like a waiter's
+//! own whose pid is not alive and which no process holds locked (SPEC-20261123-heavy-slot-leftover
+//! REQ-3); `status` only counts them (`stale_waiting`). Every command the wrapper starts gets
+//! `CARGO_BUILD_JOBS` = the logical CPUs shared out over the `--max` slots, at least 2, unless
+//! the caller or an outer holder already set one; `status` prints that cap (`build_jobs_cap`). A
 //! process started under a held slot finds `MOAI_HEAVY_SLOT_FD=<fd>:<slot path>`
 //! ([`SLOT_FD_ENV`]); asking for a slot in the same folder, it reuses that slot without queueing
 //! only when the path names `slot-<digits>` in that folder, the descriptor is open on that very
@@ -107,6 +112,33 @@ pub const LIMITS_FILE: &str = "limits.json";
 /// The variable a command run under a held slot finds: `<fd>:<slot path>`, the inherited open
 /// slot file and where it is. A nested caller in the same folder reuses that slot (REQ-5).
 pub const SLOT_FD_ENV: &str = "MOAI_HEAVY_SLOT_FD";
+
+/// The `CARGO_BUILD_JOBS` every command started under a slot gets when the caller set none: the
+/// logical CPUs shared out over the `slots`, at least 2 (SPEC-20261123-heavy-slot-leftover REQ-1;
+/// the rule of `check affected`, so both give the same number).
+pub fn build_jobs_cap(slots: usize) -> usize {
+    let cpus = std::thread::available_parallelism().map_or(1, |n| n.get());
+    crate::check_affected::default_jobs(cpus, slots)
+}
+
+/// The pid a waiting file names (`<digits>-<pid>` or `<digits>-<pid>-<max>`); `None` for any
+/// other name, a pid outside `1..=i32::MAX`, or empty parts. A name that is not a waiter's own
+/// is never cleaned up.
+#[cfg(unix)]
+fn waiter_pid(name: &str) -> Option<i64> {
+    let parts: Vec<&str> = name.split('-').collect();
+    if !(2..=3).contains(&parts.len())
+        || parts
+            .iter()
+            .any(|p| p.is_empty() || !p.bytes().all(|b| b.is_ascii_digit()))
+    {
+        return None;
+    }
+    parts[1]
+        .parse::<i64>()
+        .ok()
+        .filter(|p| (1..=i64::from(i32::MAX)).contains(p))
+}
 
 /// The largest limits file read; a bigger one is refused, not cut.
 const LIMITS_FILE_MAX_BYTES: u64 = 4096;
@@ -835,6 +867,30 @@ mod sys {
         names
     }
 
+    /// The waiting files of callers that are gone: a plain file (no link, no folder) named like
+    /// a waiter's own file, whose pid is not alive and which no process holds locked. `me` (the
+    /// caller's own file) is never one. A pid that cannot be judged, a name of any other shape
+    /// and a file that cannot be opened as a plain file are left out, so a mistake keeps a file
+    /// rather than removing a live waiter's (SPEC-20261123-heavy-slot-leftover REQ-3).
+    pub(super) fn stale_waiters(waiting: &Path, me: &str) -> Vec<PathBuf> {
+        let Ok(entries) = fs::read_dir(waiting) else {
+            return Vec::new();
+        };
+        let mut found: Vec<PathBuf> = entries
+            .filter_map(|e| e.ok())
+            .filter_map(|e| {
+                let name = e.file_name().to_string_lossy().into_owned();
+                let pid = super::waiter_pid(&name)?;
+                let path = e.path();
+                let plain = fs::symlink_metadata(&path).ok()?.file_type().is_file();
+                let dead = crate::home_state::pid_alive(pid) == Some(false);
+                (name != me && plain && dead && matches!(is_held(&path), Ok(false))).then_some(path)
+            })
+            .collect();
+        found.sort();
+        found
+    }
+
     /// 1-based place of `me` among `live` (oldest first by name), and their count.
     fn queue_place(live: &[String], me: &str) -> (usize, usize) {
         let place = live
@@ -1096,6 +1152,11 @@ mod sys {
             Err(Open::Io(e)) => return Err(io(&e)),
             Ok(f) => f,
         };
+        // The files of callers that died while waiting are removed once per call; this caller's
+        // own file is locked and never among them.
+        for stale in stale_waiters(&waiting, &me) {
+            let _ = fs::remove_file(stale);
+        }
         let mut last = None;
         let mut waited = false;
         let taken = loop {
@@ -1199,10 +1260,10 @@ mod sys {
         };
         eprintln!("{}", held.taken_line(name));
         let cwd = std::env::current_dir().unwrap_or_else(|_| folder.to_path_buf());
-        run_holding(held, name, command, &cwd)
+        run_holding(held, name, command, &cwd, max)
     }
 
-    fn run_holding(held: Held, name: &str, command: &[String], cwd: &Path) -> u8 {
+    fn run_holding(held: Held, name: &str, command: &[String], cwd: &Path, max: usize) -> u8 {
         // Forwarded signals are blocked before the command starts, so none lands in a gap
         // where the wrapper dies and leaves the command running; a waiter thread receives them
         // with sigwait and passes them on. The command unblocks them before it execs.
@@ -1221,6 +1282,11 @@ mod sys {
         let mut cmd = std::process::Command::new(&command[0]);
         cmd.args(&command[1..])
             .env(super::SLOT_FD_ENV, held.env_value());
+        // A value the caller (or an outer holder) already set stays; otherwise every command
+        // under a slot gets the cap, so the slots do not each spawn one rustc per CPU.
+        if std::env::var_os("CARGO_BUILD_JOBS").is_none() {
+            cmd.env("CARGO_BUILD_JOBS", super::build_jobs_cap(max).to_string());
+        }
         let unblock = set;
         // SAFETY: pthread_sigmask is async-signal-safe; nothing else runs between fork and exec.
         unsafe {
@@ -1334,10 +1400,25 @@ mod sys {
                 Err(Open::Io(e)) => return Err(e),
             }
         }
+        // The cap a command under a slot gets, from the slot count of `limits.json` (or the
+        // default); `null` when that file cannot be used, since acquire refuses then too.
+        let build_jobs_cap = match super::read_limits_file(folder) {
+            Ok(file) => {
+                let slots = file.and_then(|f| f.max).unwrap_or(super::DEFAULT_MAX);
+                json!({
+                    "slots": slots,
+                    "cpus": std::thread::available_parallelism().map_or(1, |n| n.get()),
+                    "jobs": super::build_jobs_cap(slots),
+                })
+            }
+            Err(_) => Value::Null,
+        };
         Ok(json!({
             "folder": folder.display().to_string(),
             "held": held,
             "refused": refused,
+            "build_jobs_cap": build_jobs_cap,
+            "stale_waiting": stale_waiters(&folder.join("waiting"), "").len(),
             "machine": machine_line(folder),
             "writes": false,
         }))
