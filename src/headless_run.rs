@@ -110,7 +110,15 @@ pub fn build(
     ctx: &RunContext,
     parent_env: &BTreeMap<String, String>,
 ) -> Result<BuiltRun> {
-    let requesting = ctx.requesting_session.trim().to_string();
+    // N-8: the requesting session comes from the caller or, when blank, from the
+    // environment's CLAUDE_CODE_SESSION_ID; the author comparison ignores case.
+    let requesting = match ctx.requesting_session.trim() {
+        "" => parent_env
+            .get("CLAUDE_CODE_SESSION_ID")
+            .map(|s| s.trim().to_string())
+            .unwrap_or_default(),
+        given => given.to_string(),
+    };
     if requesting.is_empty() {
         return Err("headless run without a requesting session".to_string());
     }
@@ -122,7 +130,7 @@ pub fn build(
             if author.is_empty() {
                 return Err("audit run names no author session".to_string());
             }
-            if author == requesting {
+            if author.eq_ignore_ascii_case(&requesting) {
                 return Err(format!(
                     "audit run requested by the change's author session {author}: the author never audits"
                 ));
@@ -251,7 +259,9 @@ pub fn build(
         .to_string()
     });
 
-    // The prompt is the positional argument, last.
+    // The prompt is the positional argument, last, behind `--` so a dash-leading prompt is
+    // never read as a flag (N-7).
+    args.push("--".into());
     args.push(spec.prompt.clone());
 
     let program = resolve_program(&env)?;
@@ -268,24 +278,62 @@ pub fn build(
     })
 }
 
-/// Starts a built run: prints the credential warning once, spawns the resolved program with the
-/// exact argv and environment, and returns the raw outcome (parsed in the next slice).
+/// Starts a built run with the default wall-clock limit of thirty minutes (N-2).
 pub fn run(built: &BuiltRun, cwd: &Path) -> Result<RawRun> {
+    run_with_limit(built, cwd, std::time::Duration::from_secs(1800))
+}
+
+/// Starts a built run under a wall-clock limit (N-2): prints the credential warning once,
+/// spawns the resolved program with the exact argv and environment, and kills the child at
+/// the deadline, reporting no success.
+pub fn run_with_limit(built: &BuiltRun, cwd: &Path, limit: std::time::Duration) -> Result<RawRun> {
+    use std::process::Stdio;
     if let Some(warning) = &built.credential_warning {
         eprintln!("{warning}");
     }
-    let output = std::process::Command::new(&built.program)
+    let mut child = std::process::Command::new(&built.program)
         .args(&built.args)
         .env_clear()
         .envs(&built.env)
         .current_dir(cwd)
-        .output()
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
         .map_err(|e| format!("starting {}: {e}", built.program.display()))?;
+    let deadline = std::time::Instant::now() + limit;
+    let mut timed_out = false;
+    loop {
+        match child.try_wait() {
+            Ok(Some(_)) => break,
+            Ok(None) => {
+                if std::time::Instant::now() >= deadline {
+                    let _ = child.kill();
+                    timed_out = true;
+                    break;
+                }
+                std::thread::sleep(std::time::Duration::from_millis(50));
+            }
+            Err(e) => return Err(format!("waiting for {}: {e}", built.program.display())),
+        }
+    }
+    let output = child
+        .wait_with_output()
+        .map_err(|e| format!("collecting {}: {e}", built.program.display()))?;
+    let stderr = if timed_out {
+        format!(
+            "{}\nmoai: wall-clock limit of {} seconds exceeded; the child was killed",
+            String::from_utf8_lossy(&output.stderr),
+            limit.as_secs()
+        )
+    } else {
+        String::from_utf8_lossy(&output.stderr).into_owned()
+    };
     Ok(RawRun {
-        success: output.status.success(),
+        success: output.status.success() && !timed_out,
         code: output.status.code(),
         stdout: String::from_utf8_lossy(&output.stdout).into_owned(),
-        stderr: String::from_utf8_lossy(&output.stderr).into_owned(),
+        stderr,
     })
 }
 
@@ -318,6 +366,10 @@ pub fn parse_result(raw: &RawRun) -> RunOutcome {
     let Ok(value) = serde_json::from_str::<Value>(&raw.stdout) else {
         return no("stdout is not one JSON object");
     };
+    // N-4: only the success subtype can carry an answer.
+    if value.get("subtype").and_then(Value::as_str) != Some("success") {
+        return no("the result subtype is not success");
+    }
     if value.get("is_error").and_then(Value::as_bool) != Some(false) {
         return no("the result carries is_error true or no is_error field");
     }
@@ -328,6 +380,45 @@ pub fn parse_result(raw: &RawRun) -> RunOutcome {
         Some(answer) if !answer.is_null() => RunOutcome::Answered(answer.clone()),
         Some(_) => no("structured_output is null"),
         None => no("a success subtype without structured_output"),
+    }
+}
+
+/// Checks the verdict field of an answered run against the schema that asked for it (N-1):
+/// the field must exist, carry the schema's type and, when the schema names an enum, be one
+/// of its words. Returns the verdict string; the message never carries other values.
+pub fn check_verdict(answer: &Value, schema: &Value) -> Result<String> {
+    let verdict = answer
+        .get("verdict")
+        .ok_or_else(|| "the answer carries no verdict field".to_string())?;
+    let field = schema
+        .get("properties")
+        .and_then(|p| p.get("verdict"))
+        .ok_or_else(|| "the schema names no verdict property".to_string())?;
+    if let Some(words) = field.get("enum").and_then(Value::as_array) {
+        let held = verdict.as_str().unwrap_or("");
+        if !words.iter().any(|w| w.as_str() == Some(held)) {
+            return Err("the verdict is not one of the schema's words".to_string());
+        }
+    }
+    match (field.get("type").and_then(Value::as_str), verdict) {
+        (Some("string"), Value::String(s)) => Ok(s.clone()),
+        (Some("string"), _) => Err("the verdict field must be a string".to_string()),
+        (_, Value::String(s)) => Ok(s.clone()),
+        (_, other) => Err(format!(
+            "the verdict field must be a scalar, not {}",
+            json_kind(other)
+        )),
+    }
+}
+
+fn json_kind(value: &Value) -> &'static str {
+    match value {
+        Value::Null => "null",
+        Value::Bool(_) => "a boolean",
+        Value::Number(_) => "a number",
+        Value::String(_) => "a string",
+        Value::Array(_) => "an array",
+        Value::Object(_) => "an object",
     }
 }
 
@@ -481,16 +572,23 @@ fn platform_dir() -> PathBuf {
 }
 
 /// Resolves `claude` from the PATH of the child environment, so a stand-in first on that PATH
-/// takes the program's place (SPEC D-5) and the spawn never depends on the parent's PATH.
+/// takes the program's place (SPEC D-5) and the spawn never depends on the parent's PATH. On
+/// Windows the PATH separator is `;` and the program carries an `.exe` suffix (N-10).
 fn resolve_program(env: &BTreeMap<String, String>) -> Result<PathBuf> {
     let path = env
         .get("PATH")
         .ok_or_else(|| "child environment has no PATH".to_string())?;
-    for dir in path.split(':') {
+    let program = if cfg!(windows) {
+        "claude.exe"
+    } else {
+        "claude"
+    };
+    let separator = if cfg!(windows) { ';' } else { ':' };
+    for dir in path.split(separator) {
         if dir.is_empty() {
             continue;
         }
-        let candidate = Path::new(dir).join("claude");
+        let candidate = Path::new(dir).join(program);
         if is_executable(&candidate) {
             return Ok(candidate);
         }

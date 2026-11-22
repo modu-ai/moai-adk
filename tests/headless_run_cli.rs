@@ -537,3 +537,93 @@ fn one_run_one_ledger_row() {
     let payload: serde_json::Value = serde_json::from_str(&payload).unwrap();
     assert_eq!(payload["session_id"], "standin");
 }
+
+/// N-4: only the success subtype can answer — anything else is no verdict.
+#[test]
+fn a_non_success_subtype_is_no_verdict() {
+    use moai_cli::headless_run::{parse_result, RawRun, RunOutcome};
+    let raw = RawRun {
+        success: true,
+        code: Some(0),
+        stdout: r#"{"type":"result","subtype":"error_max_turns","is_error":false,"structured_output":{"verdict":"pass"}}"#.into(),
+        stderr: String::new(),
+    };
+    assert!(matches!(parse_result(&raw), RunOutcome::NoVerdict { .. }));
+}
+
+/// N-1: the verdict field is checked against the schema before it is trusted.
+#[test]
+fn the_verdict_field_is_checked_against_the_schema() {
+    use moai_cli::headless_run::check_verdict;
+    let schema = json!({"type":"object","properties":{"verdict":{"type":"string","enum":["pass","fail"]}},"required":["verdict"]});
+    let ok = json!({"verdict":"pass"});
+    assert_eq!(check_verdict(&ok, &schema).unwrap(), "pass");
+    let wrong_enum = json!({"verdict":"maybe"});
+    assert!(check_verdict(&wrong_enum, &schema).is_err());
+    let missing = json!({"other": 1});
+    assert!(check_verdict(&missing, &schema).is_err());
+    let wrong_type = json!({"verdict": 3});
+    assert!(check_verdict(&wrong_type, &schema).is_err());
+}
+
+/// N-2: a run past its wall-clock limit is killed and reports no success.
+#[test]
+fn a_wall_clock_limit_kills_the_run() {
+    use moai_cli::headless_run::run_with_limit;
+    use std::time::Duration;
+    let tmp = tempfile::tempdir().unwrap();
+    let fixtures = tmp.path().join("bin");
+    fs::create_dir_all(&fixtures).unwrap();
+    // a stand-in that outlives the limit
+    let slow = "#!/bin/sh\nsleep 30\n";
+    common::write_executable(&fixtures.join("claude"), slow);
+    let record = tmp.path().join("record.txt");
+    let root = tmp.path().join("platform");
+    fs::create_dir_all(&root).unwrap();
+    let built = build(&audit_spec(), &ctx(&root), &parent_env(&fixtures, &record)).unwrap();
+    let raw = run_with_limit(&built, tmp.path(), Duration::from_millis(300)).unwrap();
+    assert!(!raw.success, "a killed run is not a success");
+    assert!(raw.stderr.contains("wall-clock"), "{}", raw.stderr);
+}
+
+/// N-7 and N-8: the prompt sits behind `--`, and the author comparison ignores case and
+/// falls back to the environment's session id.
+#[test]
+fn prompt_sits_behind_a_dashdash_and_the_author_check_ignores_case() {
+    let tmp = tempfile::tempdir().unwrap();
+    let fixtures = tmp.path().join("bin");
+    fs::create_dir_all(&fixtures).unwrap();
+    let record = tmp.path().join("record.txt");
+    standin_claude(&fixtures);
+    let root = tmp.path().join("platform");
+    fs::create_dir_all(&root).unwrap();
+    let mut env = parent_env(&fixtures, &record);
+
+    // N-7: the recorded argv ends "-- <prompt>", never a bare dash-prompt
+    let built = build(&audit_spec(), &ctx(&root), &env).unwrap();
+    let n = built.args.len();
+    assert_eq!(built.args[n - 2], "--");
+    assert_eq!(built.args[n - 1], "audit the head");
+
+    // N-8: an author id differing only in case is still the author
+    let mut self_audit = audit_spec();
+    self_audit.role = RunRole::Audit {
+        author_session: REQUESTING.to_ascii_uppercase(),
+    };
+    assert!(build(&self_audit, &ctx(&root), &env).is_err());
+
+    // N-8: an empty requesting session falls back to CLAUDE_CODE_SESSION_ID
+    env.insert("CLAUDE_CODE_SESSION_ID".into(), REQUESTING.into());
+    let blank_ctx = RunContext {
+        requesting_session: String::new(),
+        platform_root: Some(root.clone()),
+    };
+    let mut same_author = audit_spec();
+    same_author.role = RunRole::Audit {
+        author_session: REQUESTING.into(),
+    };
+    assert!(
+        build(&same_author, &blank_ctx, &env).is_err(),
+        "the env session id is the requester, so the author audit must refuse"
+    );
+}
