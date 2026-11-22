@@ -528,3 +528,341 @@ fn write_the_golden_ledger_fixture() {
     )
     .unwrap();
 }
+
+// ---- SPEC-20261122-statusline-where AC-1: the items of the first line ----
+//
+// Each case is a real repository in a temporary HOME and the real binary; `COLUMNS` is unset, so
+// the widest form is written. The strings are the ones of the Layouts section of the SPEC.
+
+/// The first line of the worktree session (form W0, 112 columns).
+const LINE_WORKTREE: &str = "🧠 Opus 5.5 high·t | 📡 modu-ai/moai-adk, ⬇️  7 🔀 3 | 🌳 statusline-flow ↑3 +2 | 🧭 next ↑3 ↓0 | 🔗 #12 pending";
+/// The first line of the main checkout on the integration branch (86 columns).
+const LINE_MAIN: &str =
+    "🧠 Opus 5.5 high·t | 📡 modu-ai/moai-adk, ⬇️  7 🔀 3 | 🅱️  next ↑2 +1 | 🔗 #12 pending";
+/// The first line of a project without an integration branch (77 columns).
+const LINE_GENERIC: &str =
+    "🧠 Sonnet 5.5 | 📡 acme/webapp | 🅱️  feature/login ↑2 ↓1 +4 | 🔗 #88 approved";
+
+/// One session: a HOME, the folder it runs in and the JSON the host would write on stdin.
+struct Session {
+    home: TempHome,
+    cwd: PathBuf,
+    stdin: serde_json::Value,
+}
+
+fn write_profile(project: &Path, integration: Option<&str>) {
+    let work_flow = integration
+        .map(|b| format!(",\"work_flow\":{{\"flow\":\"m-flow\",\"integration_branch\":\"{b}\"}}"))
+        .unwrap_or_default();
+    std::fs::write(
+        project.join(".moai-cli/project.yaml"),
+        format!("{{\"schema_version\":2,\"project_id\":\"demo\"{work_flow}}}\n"),
+    )
+    .unwrap();
+}
+
+fn write_forge_counts(project: &Path, issues: i64, prs: i64) {
+    let file = project.join(FORGE_CACHE);
+    std::fs::create_dir_all(file.parent().unwrap()).unwrap();
+    std::fs::write(
+        file,
+        format!("{{\"open_issues\":{issues},\"open_prs\":{prs},\"fetched_at\":4102444800}}\n"),
+    )
+    .unwrap();
+}
+
+fn commit(dir: &Path, message: &str) {
+    common::git::git_in(dir, &["commit", "-q", "--allow-empty", "-m", message]);
+}
+
+fn host_stdin(project: &Path, cwd: &Path, repo: (&str, &str)) -> serde_json::Value {
+    serde_json::json!({
+        "session_id": "s-where",
+        "cwd": cwd,
+        "model": {"display_name": "Opus 5.5"},
+        "effort": {"level": "high"},
+        "thinking": {"enabled": true},
+        "workspace": {
+            "current_dir": cwd,
+            "project_dir": project,
+            "repo": {"host": "github.com", "owner": repo.0, "name": repo.1},
+        },
+        "pr": {"number": 12, "review_state": "pending"},
+    })
+}
+
+/// A linked worktree `statusline-flow` on its own branch of the same name, three commits ahead
+/// of the integration branch `next`, one file changed and one untracked, a pull request, and
+/// forge counts of 7 issues and 3 pull requests.
+fn worktree_session() -> Session {
+    let home = TempHome::new();
+    let main = home.project("demo");
+    common::git::git_in(&main, &["init", "-q", "-b", "next"]);
+    std::fs::write(main.join("a.txt"), "a\n").unwrap();
+    common::git::git_in(&main, &["add", "a.txt"]);
+    commit(&main, "base");
+    write_profile(&main, Some("next"));
+    write_forge_counts(&main, 7, 3);
+    let wt = home.path().join("work/statusline-flow");
+    common::git::git_in(
+        &main,
+        &[
+            "worktree",
+            "add",
+            "-q",
+            "-b",
+            "statusline-flow",
+            wt.to_str().unwrap(),
+        ],
+    );
+    for i in 1..=3 {
+        commit(&wt, &format!("lane {i}"));
+    }
+    std::fs::write(wt.join("a.txt"), "changed\n").unwrap();
+    std::fs::write(wt.join("new.txt"), "new\n").unwrap();
+    let mut stdin = host_stdin(&main, &wt, ("modu-ai", "moai-adk"));
+    stdin["worktree"] = serde_json::json!({
+        "name": "statusline-flow", "path": wt, "branch": "statusline-flow", "original_cwd": main
+    });
+    Session {
+        home,
+        cwd: wt,
+        stdin,
+    }
+}
+
+/// The main checkout on `next`, two commits ahead of its upstream, with the project's untracked
+/// state folder as its one change.
+fn main_session() -> Session {
+    let home = TempHome::new();
+    let main = home.project("demo");
+    common::git::git_in(&main, &["init", "-q", "-b", "next"]);
+    std::fs::write(main.join("a.txt"), "a\n").unwrap();
+    common::git::git_in(&main, &["add", "a.txt"]);
+    commit(&main, "base");
+    commit(&main, "landing 1");
+    commit(&main, "landing 2");
+    common::git::git_in(&main, &["branch", "pushed", "HEAD~2"]);
+    common::git::git_in(&main, &["branch", "--set-upstream-to=pushed"]);
+    write_profile(&main, Some("next"));
+    write_forge_counts(&main, 7, 3);
+    let stdin = host_stdin(&main, &main, ("modu-ai", "moai-adk"));
+    Session {
+        home,
+        cwd: main,
+        stdin,
+    }
+}
+
+/// A project with no integration branch: `feature/login` is two commits ahead of and one behind
+/// its upstream, with the state folder and three more files untracked; the forge counts are off.
+fn generic_session() -> Session {
+    let home = TempHome::new();
+    let main = home.project("demo");
+    common::git::git_in(&main, &["init", "-q", "-b", "main"]);
+    std::fs::write(main.join("a.txt"), "a\n").unwrap();
+    common::git::git_in(&main, &["add", "a.txt"]);
+    commit(&main, "base");
+    common::git::git_in(&main, &["branch", "up"]);
+    common::git::git_in(&main, &["checkout", "-q", "-b", "feature/login"]);
+    commit(&main, "login 1");
+    commit(&main, "login 2");
+    common::git::git_in(&main, &["checkout", "-q", "up"]);
+    commit(&main, "upstream 1");
+    common::git::git_in(&main, &["checkout", "-q", "feature/login"]);
+    common::git::git_in(&main, &["branch", "--set-upstream-to=up"]);
+    for name in ["u1.txt", "u2.txt", "u3.txt"] {
+        std::fs::write(main.join(name), "u\n").unwrap();
+    }
+    write_profile(&main, None);
+    let config = main.join(".moai-cli/config/sections/statusline.yaml");
+    std::fs::create_dir_all(config.parent().unwrap()).unwrap();
+    std::fs::write(&config, "statusline:\n  segments:\n    github: false\n").unwrap();
+    let mut stdin = host_stdin(&main, &main, ("acme", "webapp"));
+    stdin["model"] = serde_json::json!({"display_name": "Sonnet 5.5"});
+    stdin["effort"] = serde_json::Value::Null;
+    stdin["thinking"] = serde_json::Value::Null;
+    stdin["pr"] = serde_json::json!({"number": 88, "review_state": "approved"});
+    Session {
+        home,
+        cwd: main,
+        stdin,
+    }
+}
+
+/// `text` without its color escapes.
+fn without_escapes(text: &str) -> String {
+    let mut out = String::new();
+    let mut rest = text;
+    while let Some(at) = rest.find("\x1b[") {
+        out.push_str(&rest[..at]);
+        let tail = &rest[at..];
+        rest = &tail[tail.find('m').unwrap() + 1..];
+    }
+    out.push_str(rest);
+    out
+}
+
+impl Session {
+    /// One render; the exit code must be 0. Returns stdout.
+    fn output(&self, env: &[(&str, &str)]) -> String {
+        let mut cmd = self
+            .home
+            .command(&["statusline", "--render-budget-ms", "3600000"]);
+        cmd.current_dir(&self.cwd)
+            .env("PATH", std::env::var_os("PATH").unwrap_or_default())
+            .env("TMPDIR", self.home.path().join("tmp"))
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped());
+        std::fs::create_dir_all(self.home.path().join("tmp")).unwrap();
+        for (k, v) in env {
+            cmd.env(k, v);
+        }
+        let mut child = cmd.spawn().unwrap();
+        child
+            .stdin
+            .take()
+            .unwrap()
+            .write_all(self.stdin.to_string().as_bytes())
+            .unwrap();
+        let out = child.wait_with_output().unwrap();
+        assert_eq!(
+            out.status.code(),
+            Some(0),
+            "{}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        String::from_utf8(out.stdout).unwrap()
+    }
+
+    fn first_line(&self, env: &[(&str, &str)]) -> String {
+        let mut env = env.to_vec();
+        env.push(("NO_COLOR", "1"));
+        self.output(&env).lines().next().unwrap_or("").to_string()
+    }
+
+    /// The first line with color, and its text once the escapes are removed.
+    fn first_line_colored(&self) -> (String, String) {
+        let out = self.output(&[("COLORTERM", "truecolor")]);
+        let line = out.lines().next().unwrap_or("").to_string();
+        let text = without_escapes(&line);
+        (line, text)
+    }
+}
+
+/// REQ-1, REQ-3, REQ-4, REQ-9: a worktree session whose branch has the worktree's name shows
+/// the worktree item alone, with the distance to the integration branch and the pull request.
+#[test]
+fn line_one_items_worktree_session_with_a_pull_request() {
+    let s = worktree_session();
+    assert_eq!(s.first_line(&[]), LINE_WORKTREE);
+    let (colored, text) = s.first_line_colored();
+    assert!(colored.contains('\x1b'), "{colored:?}");
+    assert_eq!(text, LINE_WORKTREE, "color changes no text");
+}
+
+/// REQ-3, REQ-4: the main checkout shows the branch item alone; on the integration branch `↑`
+/// counts the landings not yet pushed and there is no distance item.
+#[test]
+fn line_one_items_main_checkout() {
+    let s = main_session();
+    assert_eq!(s.first_line(&[]), LINE_MAIN);
+    let (_, text) = s.first_line_colored();
+    assert_eq!(text, LINE_MAIN);
+}
+
+/// REQ-4: a project with no integration branch has no distance item, and the branch item keeps
+/// the numbers against its own upstream.
+#[test]
+fn line_one_items_generic_project() {
+    let s = generic_session();
+    assert_eq!(s.first_line(&[]), LINE_GENERIC);
+    let (_, text) = s.first_line_colored();
+    assert_eq!(text, LINE_GENERIC);
+}
+
+/// REQ-9: the host says the request is a merge request, so the item is `!<n>`; any other kind,
+/// or a kind of another type, is a pull request and does not fail the input.
+#[test]
+fn line_one_items_merge_request() {
+    let mut s = generic_session();
+    s.stdin["pr"] =
+        serde_json::json!({"number": 31, "review_state": "pending", "kind": "merge_request"});
+    let want = "🧠 Sonnet 5.5 | 📡 acme/webapp | 🅱️  feature/login ↑2 ↓1 +4 | 🔗 !31 pending";
+    assert_eq!(s.first_line(&[]), want);
+    assert_eq!(s.first_line_colored().1, want);
+    for kind in [
+        serde_json::json!("pull_request"),
+        serde_json::json!(7),
+        serde_json::json!(null),
+    ] {
+        s.stdin["pr"] = serde_json::json!({"number": 31, "review_state": "pending", "kind": kind});
+        assert_eq!(s.first_line(&[]), want.replace("!31", "#31"), "kind {kind}");
+    }
+    s.stdin["pr"] = serde_json::Value::Null;
+    assert_eq!(
+        s.first_line(&[]),
+        "🧠 Sonnet 5.5 | 📡 acme/webapp | 🅱️  feature/login ↑2 ↓1 +4",
+        "no request: no item and no separator"
+    );
+}
+
+/// REQ-10: a missing model leaves the item out, a model id alone shows its shortened name, and
+/// the effort and thinking fields give `high`, `high·t` or nothing.
+#[test]
+fn line_one_items_missing_model() {
+    let mut s = generic_session();
+    let rest = "📡 acme/webapp | 🅱️  feature/login ↑2 ↓1 +4 | 🔗 #88 approved";
+    s.stdin["model"] = serde_json::Value::Null;
+    assert_eq!(s.first_line(&[]), rest);
+    s.stdin["model"] = serde_json::json!({});
+    assert_eq!(s.first_line(&[]), rest);
+    s.stdin["model"] = serde_json::json!({"id": "claude-opus-4-1-20250805"});
+    assert_eq!(s.first_line(&[]), format!("🧠 Opus 4.1 | {rest}"));
+    assert_eq!(s.first_line_colored().1, format!("🧠 Opus 4.1 | {rest}"));
+    s.stdin["effort"] = serde_json::json!({"level": "high"});
+    assert_eq!(s.first_line(&[]), format!("🧠 Opus 4.1 high | {rest}"));
+    s.stdin["thinking"] = serde_json::json!({"enabled": true});
+    assert_eq!(s.first_line(&[]), format!("🧠 Opus 4.1 high·t | {rest}"));
+    s.stdin["thinking"] = serde_json::json!({"enabled": false});
+    assert_eq!(s.first_line(&[]), format!("🧠 Opus 4.1 high | {rest}"));
+}
+
+/// REQ-1: with nothing to show the first line is left out and the usage line moves up, and the
+/// old tag never appears.
+#[test]
+fn line_one_items_empty_input_has_no_first_line() {
+    let home = TempHome::new();
+    let cwd = home.path().join("work/plain");
+    std::fs::create_dir_all(&cwd).unwrap();
+    let s = Session {
+        home,
+        cwd,
+        stdin: serde_json::json!({}),
+    };
+    let out = s.output(&[("NO_COLOR", "1")]);
+    assert!(out.starts_with("CW n/a"), "{out:?}");
+    assert!(!out.contains("🏷️"), "{out:?}");
+    assert!(!out.contains("🧠"), "{out:?}");
+}
+
+/// REQ-11: the widest form that fits `COLUMNS` − 2, in the binary.
+#[test]
+fn line_one_items_follow_columns() {
+    let s = worktree_session();
+    for (columns, want) in [
+        ("114", LINE_WORKTREE),
+        ("113", "🧠 Opus 5.5 high·t | 📡 modu-ai/moai-adk | 🌳 statusline-flow ↑3 +2 | 🧭 next ↑3 ↓0 | 🔗 #12 pending"),
+        ("102", "🧠 Opus 5.5 high·t | 📡 modu-ai/moai-adk | 🌳 statusline-flow ↑3 +2 | 🧭 next ↑3 ↓0 | 🔗 #12 pending"),
+        ("101", "🧠 Opus high | 📡 moai-adk | 🌳 statusline-flow ↑3 +2 | 🧭 next ↑3 ↓0 | 🔗 #12"),
+        ("80", "🧠 Opus high | 📡 moai-adk | 🌳 statusline-flow ↑3 +2 | 🧭 next ↑3 ↓0 | 🔗 #12"),
+        ("79", "🧠 Opus | 🌳 statusline-flow ↑3 +2 | 🧭 next ↓0 | 🔗 #12"),
+        ("58", "🧠 Opus | 🌳 statusline-flow ↑3 +2 | 🧭 next ↓0 | 🔗 #12"),
+        ("57", "🧠 Opus | 🌳 statusline-flow ↑3 +2"),
+        ("10", "🧠 Opus | 🌳 statusline-flow ↑3 +2"),
+        ("abc", LINE_WORKTREE),
+    ] {
+        assert_eq!(s.first_line(&[("COLUMNS", columns)]), want, "COLUMNS {columns}");
+    }
+}

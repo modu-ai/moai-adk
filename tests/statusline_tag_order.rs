@@ -201,3 +201,131 @@ fn line1_tag_first_under_ko_en_and_80_40_columns() {
     }
     assert_eq!(runs, CASES.len() * 2 * 2 * 2);
 }
+
+// ---- SPEC-20261122-statusline-where AC-5: no tag, and a session name changes nothing ----
+
+const STATE_SOURCE: &str = include_str!("../src/statusline/state.rs");
+const RENDER_SOURCE: &str = include_str!("../src/statusline/render.rs");
+
+/// The registry entry the golden case `d01-leader-mode` uses: a live `leader`.
+const LIVE_LEADER: &str = "{\"schema_version\":1,\"name\":\"leader\",\"instance\":\"11111111111111111111111111111111\",\"lease_until\":1738432600,\"registered_at\":1738429000,\"mode\":\"leader\"}\n";
+
+/// The first line of one render in a fresh repository, with the stdin session name `name` (no
+/// such field when `None`) and, when `registry` is set, a live `leader` entry in the lane
+/// registry of the repository.
+fn first_line_with(name: Option<&str>, registry: bool, color: bool) -> String {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = std::fs::canonicalize(tmp.path()).unwrap();
+    let home = root.join("home");
+    let project = root.join("work/demo-project");
+    for d in [&home, &home.join(".moai"), &project, &root.join("tmp")] {
+        std::fs::create_dir_all(d).unwrap();
+    }
+    common::git::git_ok(&project, &["init", "-q", "-b", "main"]);
+    if registry {
+        let file = project.join(".git/.moai-cli/sessions/leader.json");
+        std::fs::create_dir_all(file.parent().unwrap()).unwrap();
+        std::fs::write(file, LIVE_LEADER).unwrap();
+    }
+    let mut stdin = serde_json::json!({
+        "session_id": "fixture-where",
+        "cwd": project,
+        "model": {"display_name": "Opus"},
+        "workspace": {"current_dir": project, "project_dir": project},
+    });
+    if let Some(name) = name {
+        stdin["session_name"] = name.into();
+    }
+    let mut cmd = Command::new(common::MOAI_BIN);
+    cmd.args(ARGV)
+        .current_dir(&project)
+        .clean_env()
+        .env("PATH", "/usr/bin:/bin")
+        .env("HOME", &home)
+        .env("MOAI_HOME", home.join(".moai"))
+        .env("TMPDIR", root.join("tmp"))
+        .env("TZ", "UTC")
+        .env("GIT_CONFIG_GLOBAL", "/dev/null")
+        .env("GIT_CONFIG_SYSTEM", "/dev/null")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    if color {
+        cmd.env("COLORTERM", "truecolor");
+    } else {
+        cmd.env("NO_COLOR", "1");
+    }
+    let mut child = cmd.spawn().unwrap();
+    child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(stdin.to_string().as_bytes())
+        .unwrap();
+    let out = child.wait_with_output().unwrap();
+    assert!(
+        out.status.success(),
+        "exit {:?}: {}",
+        out.status.code(),
+        String::from_utf8_lossy(&out.stderr)
+    );
+    String::from_utf8(out.stdout)
+        .unwrap()
+        .lines()
+        .next()
+        .unwrap_or("")
+        .to_string()
+}
+
+/// REQ-8: a session name of `leader`, `agent-3` or anything else changes no byte of line 1,
+/// with or without a live `leader` entry in the lane registry, in plain text and in color; and
+/// the first line carries no tag.
+#[test]
+fn the_session_name_changes_nothing() {
+    let names: [Option<&str>; 8] = [
+        None,
+        Some(""),
+        Some("leader"),
+        Some("agent-3"),
+        Some("agent-027"),
+        Some("release"),
+        Some("\u{1b}]0;a title\u{7}"),
+        Some("LEADER"),
+    ];
+    for color in [false, true] {
+        let baseline = first_line_with(None, false, color);
+        assert!(!baseline.is_empty(), "a first line to compare");
+        for name in names {
+            for registry in [false, true] {
+                assert_eq!(
+                    first_line_with(name, registry, color),
+                    baseline,
+                    "name {name:?} registry {registry} color {color}"
+                );
+            }
+        }
+        for tag in ["🏷️", "Leader", "Agent-", "agent |"] {
+            assert!(!baseline.contains(tag), "{tag} in {baseline:?}");
+        }
+    }
+}
+
+/// REQ-8: the status line reads no lane registry and no session name: its sources name neither,
+/// and it keeps no tag text.
+#[test]
+fn the_session_name_changes_nothing_in_the_sources() {
+    for (file, text) in [("state.rs", STATE_SOURCE), ("render.rs", RENDER_SOURCE)] {
+        for gone in [
+            "lane_registry",
+            "session_name",
+            "is_leader",
+            "tag_text",
+            "🏷️",
+        ] {
+            assert!(
+                !text.contains(gone),
+                "{file} still holds `{gone}`: the first line has no tag"
+            );
+        }
+    }
+}

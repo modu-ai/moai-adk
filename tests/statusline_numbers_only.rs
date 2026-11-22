@@ -214,3 +214,38 @@ fn a_context_window_with_a_null_percentage_says_ctx_n_a() {
     }));
     assert!(out.contains("🔋 CW 0%"), "a real zero gave: {out}");
 }
+
+/// The part of the product document about the status line: from its heading to the next one.
+fn statusline_section() -> &'static str {
+    let from = DOC
+        .find("\n## Claude Code status line")
+        .expect("the status line section")
+        + 1;
+    let rest = &DOC[from..];
+    let end = rest[3..].find("\n## ").map_or(rest.len(), |at| at + 3);
+    &rest[..end]
+}
+
+/// SPEC-20261122-statusline-where AC-7 (REQ-12): the document says that the status line starts
+/// git and a detached `gh` refresh and writes a cache under `$TMPDIR`, and no longer says that
+/// rendering is read-only and free of the network.
+#[test]
+fn the_statusline_doc_describes_the_cache() {
+    let section = statusline_section();
+    for stale in [
+        "Rendering remains read-only and network-free",
+        "read-only and network-free",
+        "network-free",
+    ] {
+        assert!(!section.contains(stale), "the doc still says `{stale}`");
+    }
+    for wanted in [
+        "starts `git`",
+        "detached `gh` refresh",
+        "cache under `$TMPDIR`",
+        "moai-statusline/<session_id>.json",
+        "ten seconds",
+    ] {
+        assert!(section.contains(wanted), "the doc does not say `{wanted}`");
+    }
+}

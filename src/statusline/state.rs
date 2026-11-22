@@ -136,6 +136,10 @@ pub struct Status {
     /// the session's worktree folder, for `🌳 WT-c<card>-<name>`; `None` shows `worktree` as
     /// the host gave it.
     pub worktree_label: Option<WorktreeLabel>,
+    /// SPEC-20261122-statusline-where: the integration branch of the project (`work_flow` of its
+    /// profile, else the remote's default branch), `None` when neither names one. Stub of the red
+    /// step: nothing sets it yet.
+    pub integration: Option<String>,
 }
 
 /// The parts of `🌳 WT-c<card>-<name>`: the number of the card holding the worktree and the
@@ -154,6 +158,9 @@ pub struct PrInfo {
     pub url: String,
     /// Empty when absent.
     pub review_state: String,
+    /// SPEC-20261122-statusline-where REQ-9: the host says the request is a merge request, so
+    /// the item is written `!<n>`. Stub of the red step: nothing sets it yet.
+    pub merge_request: bool,
 }
 
 /// The prompt cache state from `prompt_cache` (Unix-second timestamps).
@@ -350,6 +357,7 @@ pub fn collect(input: Option<&Input>, ctx: &Context) -> Status {
             number: p.number.filter(|n| *n > 0)?,
             url: safe_link(input::text(&p.url)).to_string(),
             review_state: input::text(&p.review_state).to_string(),
+            merge_request: false,
         })
     });
     status.cache_timer = input
@@ -879,6 +887,111 @@ fn template_version(ctx: &Context) -> Option<String> {
         }
     }
     None
+}
+
+// ---- where: the items of line 1 (SPEC-20261122-statusline-where) ----
+//
+// Red step: these are the shapes and the signatures the tests pin; every function answers
+// "nothing" until the next step gives it behaviour.
+
+/// What the `HEAD` file of the git directory says (REQ-2): a branch, a detached commit
+/// (its first seven characters) or nothing usable.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Head<'a> {
+    Branch(&'a str),
+    Detached(&'a str),
+    Unreadable,
+}
+
+/// The seconds a cache of the git facts is trusted (REQ-6, D-1 of the SPEC): a cache is fresh
+/// while its age is below this.
+pub const CACHE_MAX_AGE_SECS: i64 = 10;
+/// A cache file older than this many seconds is removed by the render that writes a cache.
+pub const CACHE_KEEP_SECS: i64 = 86_400;
+/// The render that writes a cache removes at most this many old cache files.
+pub const CACHE_REMOVE_PER_RENDER: usize = 10;
+
+/// The text of a `HEAD` file read as a branch, a detached commit or nothing.
+pub fn head_of(_content: &str) -> Head<'_> {
+    Head::Unreadable
+}
+
+/// The integration branch: the name `work_flow.integration_branch` of the project profile text
+/// gives, else the remote's default branch from the text of `refs/remotes/origin/HEAD`, else
+/// `None`. A name git cannot be given safely is no name.
+pub fn integration_from(_profile: Option<&str>, _origin_head: Option<&str>) -> Option<String> {
+    None
+}
+
+/// The arguments of the one git process of a render, after the program name. The lane branch
+/// is measured against the integration branch with two `-c` overrides, only when both names are
+/// safe to hand to git and the branch is not the integration branch itself.
+pub fn status_args(_branch: Option<&str>, _integration: Option<&str>) -> Vec<String> {
+    Vec::new()
+}
+
+/// What the first line needs to know about where the session stands.
+#[derive(Debug, Clone, Copy)]
+pub struct WhereInput<'a> {
+    /// The host's worktree name; empty in the main checkout.
+    pub worktree: &'a str,
+    pub head: Head<'a>,
+    pub integration: Option<&'a str>,
+    /// The numbers of `git status --porcelain --branch`.
+    pub ahead: i64,
+    pub behind: i64,
+    pub dirty: i64,
+}
+
+/// The `↑ ↓ +` marks of the place items; a zero is not written.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct Marks {
+    pub ahead: i64,
+    pub behind: i64,
+    pub dirty: i64,
+}
+
+/// The `🧭` item: the commits the branch is ahead of and behind the integration branch.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Distance {
+    pub name: String,
+    pub ahead: i64,
+    pub behind: i64,
+}
+
+/// The place items of line 1. The marks follow the last of the worktree and branch items.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Where {
+    /// `🌳 <worktree>`.
+    pub worktree: Option<String>,
+    /// `🅱️  <branch>` or the short commit of a detached HEAD.
+    pub branch: Option<String>,
+    pub marks: Marks,
+    pub distance: Option<Distance>,
+}
+
+/// Which place items show and with which numbers (REQ-3, REQ-4).
+pub fn where_items(_input: &WhereInput) -> Where {
+    Where::default()
+}
+
+/// The file name of a session's cache: the stdin session id and `.json`, only for an id of
+/// 1 to 64 characters of `A-Z a-z 0-9 _ -` (REQ-5).
+pub fn cache_file_name(_session_id: &str) -> Option<String> {
+    None
+}
+
+/// Whether a cache may stand in for git (REQ-6): the same `HEAD` content, the same integration
+/// commit and an age below [`CACHE_MAX_AGE_SECS`].
+pub fn cache_is_fresh(
+    _written_at: i64,
+    _now: i64,
+    _cached_head: &str,
+    _head: &str,
+    _cached_integration: &str,
+    _integration: &str,
+) -> bool {
+    false
 }
 
 // ---- git ----
@@ -2273,7 +2386,8 @@ mod extras_tests {
             Some(PrInfo {
                 number: 12,
                 url: "https://github.com/o/r/pull/12".into(),
-                review_state: "approved".into()
+                review_state: "approved".into(),
+                merge_request: false,
             })
         );
         assert_eq!(
@@ -4022,5 +4136,490 @@ mod worktree_label_tests {
         assert!(f.label(&f.wt).is_some());
         assert_eq!(std::fs::read(&ledger_file).unwrap(), before);
         assert_eq!(listing(&f.home), tree, "no file or folder made in the HOME");
+    }
+}
+
+/// SPEC-20261122-statusline-where AC-3: the worktree-name rule, the integration distance and
+/// the readings behind them, as pure functions. `0123456` stands for a short commit and `next`
+/// for the integration branch of the fixtures.
+#[cfg(test)]
+mod where_tests {
+    use super::*;
+
+    const FULL_SHA: &str = "0123456789abcdef0123456789abcdef01234567";
+
+    fn at<'a>(
+        worktree: &'a str,
+        head: Head<'a>,
+        integration: Option<&'a str>,
+        numbers: (i64, i64, i64),
+    ) -> Where {
+        where_items(&WhereInput {
+            worktree,
+            head,
+            integration,
+            ahead: numbers.0,
+            behind: numbers.1,
+            dirty: numbers.2,
+        })
+    }
+
+    fn marks(ahead: i64, behind: i64, dirty: i64) -> Marks {
+        Marks {
+            ahead,
+            behind,
+            dirty,
+        }
+    }
+
+    fn distance(name: &str, ahead: i64, behind: i64) -> Option<Distance> {
+        Some(Distance {
+            name: name.into(),
+            ahead,
+            behind,
+        })
+    }
+
+    /// REQ-3: the same name shows the worktree item alone, and the marks and the distance stay.
+    #[test]
+    fn a_worktree_named_like_its_branch_shows_the_worktree_item_alone() {
+        let got = at(
+            "statusline-flow",
+            Head::Branch("statusline-flow"),
+            Some("next"),
+            (3, 0, 2),
+        );
+        assert_eq!(
+            got,
+            Where {
+                worktree: Some("statusline-flow".into()),
+                branch: None,
+                marks: marks(3, 0, 2),
+                distance: distance("next", 3, 0),
+            }
+        );
+    }
+
+    /// REQ-3: another name shows both items, the marks follow the branch, and the behind count
+    /// lives in the distance only.
+    #[test]
+    fn unequal_names_show_the_worktree_item_and_the_branch_item() {
+        let got = at(
+            "c135",
+            Head::Branch("spec-impl/20261122-statusline-where"),
+            Some("next"),
+            (1, 2, 0),
+        );
+        assert_eq!(
+            got,
+            Where {
+                worktree: Some("c135".into()),
+                branch: Some("spec-impl/20261122-statusline-where".into()),
+                marks: marks(1, 0, 0),
+                distance: distance("next", 1, 2),
+            }
+        );
+    }
+
+    /// The names are compared as they are: case and a longer name are two names.
+    #[test]
+    fn the_names_are_compared_exactly() {
+        for branch in [
+            "Statusline-Flow",
+            "statusline-flow/x",
+            "statusline-flo",
+            "x",
+        ] {
+            let got = at(
+                "statusline-flow",
+                Head::Branch(branch),
+                Some("next"),
+                (0, 0, 0),
+            );
+            assert_eq!(got.worktree.as_deref(), Some("statusline-flow"), "{branch}");
+            assert_eq!(got.branch.as_deref(), Some(branch), "{branch}");
+        }
+    }
+
+    /// REQ-3: the main checkout (no worktree name) shows the branch item alone.
+    #[test]
+    fn the_main_checkout_shows_the_branch_item_alone() {
+        let got = at("", Head::Branch("feature/login"), Some("next"), (1, 2, 3));
+        assert_eq!(
+            got,
+            Where {
+                worktree: None,
+                branch: Some("feature/login".into()),
+                marks: marks(1, 0, 3),
+                distance: distance("next", 1, 2),
+            }
+        );
+    }
+
+    /// REQ-4: on the integration branch itself there is no distance and `↑` is the landings not
+    /// yet pushed; in a worktree of that name the worktree item stands alone.
+    #[test]
+    fn on_the_integration_branch_the_ahead_count_is_the_landings_not_yet_pushed() {
+        let got = at("", Head::Branch("next"), Some("next"), (2, 5, 1));
+        assert_eq!(
+            got,
+            Where {
+                worktree: None,
+                branch: Some("next".into()),
+                marks: marks(2, 0, 1),
+                distance: None,
+            }
+        );
+        let got = at("next", Head::Branch("next"), Some("next"), (2, 5, 1));
+        assert_eq!(got.worktree.as_deref(), Some("next"));
+        assert_eq!(got.branch, None);
+        assert_eq!(got.distance, None);
+        assert_eq!(got.marks, marks(2, 0, 1));
+    }
+
+    /// REQ-4: with no integration branch known the item is left out and the branch item keeps
+    /// the numbers git gave against its own upstream, behind included.
+    #[test]
+    fn an_unknown_integration_branch_leaves_the_item_out() {
+        let got = at("", Head::Branch("feature/login"), None, (2, 1, 4));
+        assert_eq!(
+            got,
+            Where {
+                worktree: None,
+                branch: Some("feature/login".into()),
+                marks: marks(2, 1, 4),
+                distance: None,
+            }
+        );
+        let got = at("lane", Head::Branch("other"), None, (2, 1, 4));
+        assert_eq!(got.marks, marks(2, 1, 4));
+        assert_eq!(got.distance, None);
+    }
+
+    /// REQ-2, REQ-4: a detached HEAD shows its short commit in the branch item, has no distance
+    /// and no ahead or behind count whatever the input says, and keeps the dirty count.
+    #[test]
+    fn a_detached_head_shows_its_short_commit_and_no_distance() {
+        let got = at("", Head::Detached("0123456"), Some("next"), (4, 9, 3));
+        assert_eq!(
+            got,
+            Where {
+                worktree: None,
+                branch: Some("0123456".into()),
+                marks: marks(0, 0, 3),
+                distance: None,
+            }
+        );
+        let got = at("c135", Head::Detached("0123456"), Some("next"), (0, 0, 0));
+        assert_eq!(got.worktree.as_deref(), Some("c135"));
+        assert_eq!(got.branch.as_deref(), Some("0123456"));
+        assert_eq!(got.distance, None);
+    }
+
+    /// REQ-2: an unreadable `HEAD` leaves the branch item and the distance out.
+    #[test]
+    fn an_unreadable_head_leaves_the_branch_items_out() {
+        let got = at("", Head::Unreadable, Some("next"), (3, 1, 2));
+        assert_eq!(got.branch, None);
+        assert_eq!(got.distance, None);
+        assert_eq!(got.worktree, None);
+    }
+
+    /// REQ-4: the distance writes both numbers, a zero included.
+    #[test]
+    fn the_distance_keeps_both_numbers_at_zero() {
+        let got = at("", Head::Branch("lane"), Some("next"), (0, 0, 0));
+        assert_eq!(got.distance, distance("next", 0, 0));
+        assert_eq!(got.marks, marks(0, 0, 0));
+    }
+
+    /// REQ-2: the `HEAD` file read as a branch, a short commit or nothing, at the edges of the
+    /// commit length (a 40 and a 64 digit hash are commits, 39 and 41 are not).
+    #[test]
+    fn the_head_file_reads_as_a_branch_a_commit_or_nothing() {
+        assert_eq!(head_of("ref: refs/heads/main\n"), Head::Branch("main"));
+        assert_eq!(
+            head_of("ref: refs/heads/feature/login"),
+            Head::Branch("feature/login")
+        );
+        assert_eq!(
+            head_of("ref: refs/heads/v2026.11.0\n"),
+            Head::Branch("v2026.11.0")
+        );
+        assert_eq!(head_of(&format!("{FULL_SHA}\n")), Head::Detached("0123456"));
+        assert_eq!(head_of(FULL_SHA), Head::Detached("0123456"));
+        let long = FULL_SHA.repeat(2)[..64].to_string();
+        assert_eq!(head_of(&long), Head::Detached("0123456"), "64 digits");
+        assert_eq!(head_of(&FULL_SHA[..39]), Head::Unreadable, "39 digits");
+        assert_eq!(
+            head_of(&format!("{FULL_SHA}0")),
+            Head::Unreadable,
+            "41 digits"
+        );
+        for nothing in [
+            "",
+            "\n",
+            "garbage",
+            "ref: refs/heads/",
+            "ref: refs/heads/\n",
+            "ref: refs/tags/v1\n",
+            "ref: refs/remotes/origin/main\n",
+            "ref: refs/heads/a\u{1b}[31mb\n",
+            "ref: refs/heads/a\nb\n",
+            "xyz0123456789abcdef0123456789abcdef0123456",
+        ] {
+            assert_eq!(head_of(nothing), Head::Unreadable, "{nothing:?}");
+        }
+    }
+
+    const PROFILE: &str = r#"{"schema_version":2,"project_id":"p","work_flow":{"flow":"m-flow","integration_branch":"v2026.11.0"}}"#;
+
+    /// Risk 3 of the SPEC: the profile names the integration branch and else the remote's
+    /// default branch; a repository with neither shows no item.
+    #[test]
+    fn the_integration_branch_comes_from_the_profile_then_the_remote_default() {
+        let origin = "ref: refs/remotes/origin/main\n";
+        assert_eq!(
+            integration_from(Some(PROFILE), Some(origin)).as_deref(),
+            Some("v2026.11.0")
+        );
+        assert_eq!(
+            integration_from(Some(PROFILE), None).as_deref(),
+            Some("v2026.11.0")
+        );
+        assert_eq!(
+            integration_from(None, Some(origin)).as_deref(),
+            Some("main")
+        );
+        assert_eq!(
+            integration_from(None, Some("ref: refs/remotes/origin/release/1.2\n")).as_deref(),
+            Some("release/1.2")
+        );
+        for profile in [
+            r#"{"work_flow":{"flow":"trunk-based"}}"#,
+            r#"{"work_flow":{"flow":"m-flow","integration_branch":null}}"#,
+            r#"{"work_flow":null}"#,
+            r#"{}"#,
+            "not json",
+            "",
+        ] {
+            assert_eq!(
+                integration_from(Some(profile), Some(origin)).as_deref(),
+                Some("main"),
+                "{profile:?} falls to the remote default"
+            );
+            assert_eq!(integration_from(Some(profile), None), None, "{profile:?}");
+        }
+        assert_eq!(integration_from(None, None), None);
+        for origin in [
+            "",
+            "garbage",
+            "ref: refs/remotes/origin/\n",
+            "ref: refs/heads/main\n",
+            "0123456789abcdef0123456789abcdef01234567\n",
+        ] {
+            assert_eq!(integration_from(None, Some(origin)), None, "{origin:?}");
+        }
+    }
+
+    /// A profile that names a branch git cannot be given safely names none.
+    #[test]
+    fn an_unsafe_integration_name_is_no_name() {
+        for name in ["-x", "--upload-pack=x", "a b", "a..b", "HEAD", ""] {
+            let profile = format!(
+                r#"{{"work_flow":{{"flow":"m-flow","integration_branch":{}}}}}"#,
+                serde_json::Value::String(name.into())
+            );
+            assert_eq!(integration_from(Some(&profile), None), None, "{name:?}");
+        }
+    }
+
+    fn plain_args() -> Vec<String> {
+        ["--no-optional-locks", "status", "--porcelain", "--branch"]
+            .map(String::from)
+            .to_vec()
+    }
+
+    fn lane_args(branch: &str, integration: &str) -> Vec<String> {
+        vec![
+            "--no-optional-locks".into(),
+            "-c".into(),
+            format!("branch.{branch}.remote=."),
+            "-c".into(),
+            format!("branch.{branch}.merge=refs/heads/{integration}"),
+            "status".into(),
+            "--porcelain".into(),
+            "--branch".into(),
+        ]
+    }
+
+    /// REQ-4, REQ-7: one process, the lane branch measured against the integration branch.
+    #[test]
+    fn the_one_git_process_measures_a_lane_branch_against_the_integration_branch() {
+        assert_eq!(
+            status_args(Some("lane"), Some("next")),
+            lane_args("lane", "next")
+        );
+        assert_eq!(
+            status_args(
+                Some("spec-impl/20261122-statusline-where"),
+                Some("v2026.11.0")
+            ),
+            lane_args("spec-impl/20261122-statusline-where", "v2026.11.0")
+        );
+        // On the integration branch, with no integration branch, detached or unreadable: git's
+        // own numbers.
+        assert_eq!(status_args(Some("next"), Some("next")), plain_args());
+        assert_eq!(status_args(Some("lane"), None), plain_args());
+        assert_eq!(status_args(None, Some("next")), plain_args());
+        assert_eq!(status_args(None, None), plain_args());
+    }
+
+    /// A name that git could take as an option, as a revision range or as a config value is
+    /// never handed to it; a name of exactly 100 bytes is, and one of 101 is not.
+    #[test]
+    fn a_name_git_could_misread_is_never_passed() {
+        for bad in [
+            "",
+            "-x",
+            "--upload-pack=x",
+            "a b",
+            "a\tb",
+            "a..b",
+            "a=b",
+            "HEAD",
+            "é",
+            "a\nb",
+            "-c core.pager=x",
+        ] {
+            assert_eq!(
+                status_args(Some(bad), Some("next")),
+                plain_args(),
+                "{bad:?}"
+            );
+            assert_eq!(
+                status_args(Some("lane"), Some(bad)),
+                plain_args(),
+                "{bad:?}"
+            );
+        }
+        let hundred = "a".repeat(100);
+        assert_eq!(
+            status_args(Some(&hundred), Some("next")),
+            lane_args(&hundred, "next"),
+            "100 bytes"
+        );
+        let over = "a".repeat(101);
+        assert_eq!(
+            status_args(Some(&over), Some("next")),
+            plain_args(),
+            "101 bytes"
+        );
+        assert_eq!(
+            status_args(Some("lane"), Some(&over)),
+            plain_args(),
+            "101 bytes"
+        );
+    }
+
+    fn collect_pr(pr: serde_json::Value) -> Option<PrInfo> {
+        let stdin = serde_json::json!({ "pr": pr }).to_string();
+        let input = input::parse(stdin.as_bytes()).unwrap();
+        collect(Some(&input), &Context::for_test(&[], None)).pr
+    }
+
+    /// REQ-9: a merge request is the one the stdin says is one; anything else, including a
+    /// value of another type, is a pull request and never fails the payload.
+    #[test]
+    fn a_merge_request_is_the_one_the_stdin_kind_says() {
+        let pr = collect_pr(serde_json::json!({
+            "number": 12, "review_state": "pending", "kind": "merge_request"
+        }))
+        .expect("a pr");
+        assert!(pr.merge_request, "kind merge_request");
+        assert_eq!((pr.number, pr.review_state.as_str()), (12, "pending"));
+        for kind in [
+            serde_json::json!("pull_request"),
+            serde_json::json!(""),
+            serde_json::json!(null),
+            serde_json::json!(7),
+            serde_json::json!({"a": 1}),
+        ] {
+            let pr = collect_pr(serde_json::json!({"number": 12, "kind": kind}))
+                .unwrap_or_else(|| panic!("kind {kind} fails the payload"));
+            assert!(!pr.merge_request, "kind {kind}");
+        }
+        let pr = collect_pr(serde_json::json!({"number": 12})).expect("a pr without a kind");
+        assert!(!pr.merge_request);
+    }
+}
+
+/// SPEC-20261122-statusline-where REQ-5 and REQ-6: the name of a session's cache file and the
+/// rule that lets it stand in for git.
+#[cfg(test)]
+mod cache_key_tests {
+    use super::*;
+
+    #[test]
+    fn the_age_limit_is_ten_seconds() {
+        assert_eq!(CACHE_MAX_AGE_SECS, 10);
+        assert_eq!(CACHE_KEEP_SECS, 86_400);
+        assert_eq!(CACHE_REMOVE_PER_RENDER, 10);
+    }
+
+    /// Only the session id names the file, and only an id of 1 to 64 plain characters.
+    #[test]
+    fn only_a_plain_session_id_of_one_to_sixty_four_characters_names_a_file() {
+        assert_eq!(
+            cache_file_name("abc-DEF_123").as_deref(),
+            Some("abc-DEF_123.json")
+        );
+        assert_eq!(cache_file_name("a").as_deref(), Some("a.json"));
+        let n64 = "a".repeat(64);
+        assert_eq!(cache_file_name(&n64), Some(format!("{n64}.json")), "64");
+        for bad in [
+            "".to_string(),
+            "a".repeat(65),
+            "a/b".into(),
+            "../x".into(),
+            "..".into(),
+            "a.b".into(),
+            "a b".into(),
+            "a\0b".into(),
+            "a\nb".into(),
+            "é".into(),
+            "a\\b".into(),
+            "~".into(),
+        ] {
+            assert_eq!(cache_file_name(&bad), None, "{bad:?}");
+        }
+    }
+
+    /// REQ-6 at its edges: an age of 9 seconds is fresh, 10 and 11 are not; the same `HEAD`
+    /// content and the same integration commit are both needed.
+    #[test]
+    fn a_cache_is_fresh_below_ten_seconds_with_the_same_head_and_integration_commit() {
+        let fresh = |age: i64, cached_head: &str, head: &str, cached_i: &str, i: &str| {
+            cache_is_fresh(1_000, 1_000 + age, cached_head, head, cached_i, i)
+        };
+        let (h, i) = ("ref: refs/heads/main\n", "0123456789abcdef");
+        assert!(fresh(0, h, h, i, i), "age 0");
+        assert!(fresh(9, h, h, i, i), "age 9");
+        assert!(!fresh(10, h, h, i, i), "age 10");
+        assert!(!fresh(11, h, h, i, i), "age 11");
+        assert!(!fresh(3_600, h, h, i, i), "an hour");
+        assert!(
+            !fresh(1, h, "ref: refs/heads/other\n", i, i),
+            "another HEAD"
+        );
+        assert!(!fresh(1, h, h, i, "fedcba9876543210"), "another commit");
+        assert!(
+            !fresh(1, h, h, "", i),
+            "a cache without an integration commit"
+        );
+        assert!(
+            fresh(1, h, h, "", ""),
+            "no integration branch on both sides"
+        );
     }
 }

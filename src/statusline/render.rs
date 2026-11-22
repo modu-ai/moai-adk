@@ -1354,6 +1354,7 @@ mod tests {
             number: 42,
             url: String::new(),
             review_state: "pending".into(),
+            merge_request: false,
         });
         let full = line(&status, &[]);
         assert_eq!(
@@ -1548,6 +1549,7 @@ mod tests {
             number: 42,
             url: "https://github.com/owner/repo/pull/42".into(),
             review_state: "pending".into(),
+            merge_request: false,
         });
         let out = plain(&status, &[]);
         let lines: Vec<_> = out.lines().collect();
@@ -1611,6 +1613,7 @@ mod tests {
             number: 42,
             url: "https://github.com/owner/repo/pull/42".into(),
             review_state: String::new(),
+            merge_request: false,
         });
         let config = DisplayConfig::default();
         let colored = Renderer::new(&config, Some(Profile::Ansi256)).render(&status);
@@ -2037,5 +2040,371 @@ mod flow_line_tests {
             }
         }
         assert_eq!(seen, 6, "🎯 👀 ⛔ ⏸️ 🗂️ ✅ each once in {text}");
+    }
+}
+
+/// SPEC-20261122-statusline-where AC-6: the first line in each form of the Layouts section,
+/// exactly, changing at its width boundary. A fixture integration branch is `next`.
+#[cfg(test)]
+mod line_one_form_tests {
+    use super::*;
+    use crate::statusline::segments::GitStatus;
+    use crate::statusline::state::{GitHubCounts, PrInfo};
+
+    /// W0 to W4 of the Layouts section with the display width the section gives.
+    const W: [(&str, usize); 5] = [
+        (
+            "🧠 Opus 5.5 high·t | 📡 modu-ai/moai-adk, ⬇️  7 🔀 3 | 🌳 statusline-flow ↑3 +2 | 🧭 next ↑3 ↓0 | 🔗 #12 pending",
+            112,
+        ),
+        (
+            "🧠 Opus 5.5 high·t | 📡 modu-ai/moai-adk | 🌳 statusline-flow ↑3 +2 | 🧭 next ↑3 ↓0 | 🔗 #12 pending",
+            100,
+        ),
+        (
+            "🧠 Opus high | 📡 moai-adk | 🌳 statusline-flow ↑3 +2 | 🧭 next ↑3 ↓0 | 🔗 #12",
+            78,
+        ),
+        ("🧠 Opus | 🌳 statusline-flow ↑3 +2 | 🧭 next ↓0 | 🔗 #12", 56),
+        ("🧠 Opus | 🌳 statusline-flow ↑3 +2", 34),
+    ];
+    const MAIN: (&str, usize) = (
+        "🧠 Opus 5.5 high·t | 📡 modu-ai/moai-adk, ⬇️  7 🔀 3 | 🅱️  next ↑2 +1 | 🔗 #12 pending",
+        86,
+    );
+    /// The next form of the main checkout: the counts go first (the drop order of the section).
+    const MAIN_NO_COUNTS: &str =
+        "🧠 Opus 5.5 high·t | 📡 modu-ai/moai-adk | 🅱️  next ↑2 +1 | 🔗 #12 pending";
+    const GENERIC: (&str, usize) = (
+        "🧠 Sonnet 5.5 | 📡 acme/webapp | 🅱️  feature/login ↑2 ↓1 +4 | 🔗 #88 approved",
+        77,
+    );
+
+    fn pull_request(number: i64, state: &str, merge_request: bool) -> Option<PrInfo> {
+        Some(PrInfo {
+            number,
+            url: String::new(),
+            review_state: state.into(),
+            merge_request,
+        })
+    }
+
+    /// A session in a linked worktree named like its branch, three commits ahead of `next`,
+    /// two changed files and a pull request.
+    fn worktree_session() -> Status {
+        Status {
+            model: "Opus 5.5".into(),
+            effort: Some("high".into()),
+            thinking: Some(true),
+            repo: Some(("modu-ai".into(), "moai-adk".into())),
+            github: GitHubCounts {
+                available: true,
+                open_issues: 7,
+                open_prs: 3,
+                ..Default::default()
+            },
+            worktree: "statusline-flow".into(),
+            git: Some(GitStatus {
+                branch: "statusline-flow".into(),
+                ahead: 3,
+                modified: 1,
+                untracked: 1,
+                ..Default::default()
+            }),
+            integration: Some("next".into()),
+            pr: pull_request(12, "pending", false),
+            ..Default::default()
+        }
+    }
+
+    /// The main checkout on the integration branch: two landings not yet pushed, one change.
+    fn main_checkout() -> Status {
+        Status {
+            worktree: String::new(),
+            git: Some(GitStatus {
+                branch: "next".into(),
+                ahead: 2,
+                untracked: 1,
+                ..Default::default()
+            }),
+            ..worktree_session()
+        }
+    }
+
+    /// A project with no integration branch: the numbers are the branch's own upstream's.
+    fn generic_project() -> Status {
+        Status {
+            model: "Sonnet 5.5".into(),
+            effort: None,
+            thinking: None,
+            repo: Some(("acme".into(), "webapp".into())),
+            github: GitHubCounts {
+                suppressed: true,
+                ..Default::default()
+            },
+            worktree: String::new(),
+            git: Some(GitStatus {
+                branch: "feature/login".into(),
+                ahead: 2,
+                behind: 1,
+                untracked: 4,
+                ..Default::default()
+            }),
+            integration: None,
+            pr: pull_request(88, "approved", false),
+            ..Default::default()
+        }
+    }
+
+    /// The first line alone; the context window is switched off so no other line has text.
+    fn first_line(status: &Status, budget: Option<usize>, profile: Option<Profile>) -> String {
+        let config = DisplayConfig {
+            segments: [("context".to_string(), false)].into_iter().collect(),
+            ..Default::default()
+        };
+        Renderer::new(&config, profile)
+            .with_budget(budget)
+            .render(status)
+            .lines()
+            .next()
+            .unwrap_or_default()
+            .to_string()
+    }
+
+    fn plain(status: &Status, budget: Option<usize>) -> String {
+        first_line(status, budget, None)
+    }
+
+    fn strip(text: &str) -> String {
+        let mut out = String::new();
+        let mut rest = text;
+        while let Some(at) = rest.find("\x1b[") {
+            out.push_str(&rest[..at]);
+            let tail = &rest[at..];
+            rest = &tail[tail.find('m').unwrap() + 1..];
+        }
+        out.push_str(rest);
+        out
+    }
+
+    /// The widths of the section are what the crate counts (a guard on the table itself).
+    #[test]
+    fn the_layout_strings_have_the_widths_of_the_section() {
+        for (text, cols) in W.iter().chain([&MAIN, &GENERIC]) {
+            assert_eq!(width::display_width(text), *cols, "{text}");
+        }
+        assert!(width::display_width(MAIN_NO_COUNTS) < MAIN.1);
+    }
+
+    /// Every form is exactly the string of the Layouts section and changes at its boundary: a
+    /// budget equal to the width keeps the form, one less drops to the next.
+    #[test]
+    fn every_form_is_exactly_the_string_of_the_layouts_section() {
+        let status = worktree_session();
+        for (i, (text, cols)) in W.iter().enumerate() {
+            assert_eq!(&plain(&status, Some(*cols)), text, "budget {cols}");
+            if i == 0 {
+                assert_eq!(&plain(&status, Some(*cols + 40)), text, "{cols} + 40");
+            }
+            if let Some((next, _)) = W.get(i + 1) {
+                assert_eq!(
+                    &plain(&status, Some(*cols - 1)),
+                    next,
+                    "budget {}",
+                    cols - 1
+                );
+            }
+        }
+    }
+
+    /// No usable `COLUMNS` writes the widest form and a budget below the narrowest the narrowest.
+    #[test]
+    fn no_budget_writes_the_widest_form_and_a_small_budget_the_narrowest() {
+        let status = worktree_session();
+        assert_eq!(plain(&status, None), W[0].0);
+        for budget in [33, 10, 0] {
+            assert_eq!(plain(&status, Some(budget)), W[4].0, "{budget}");
+        }
+    }
+
+    /// The main checkout and a generic project: the string of the section at its width, and a
+    /// narrower form one column less.
+    #[test]
+    fn the_main_checkout_and_a_generic_project_are_the_strings_of_the_section() {
+        for (status, (text, cols)) in [(main_checkout(), MAIN), (generic_project(), GENERIC)] {
+            assert_eq!(plain(&status, None), text);
+            assert_eq!(plain(&status, Some(cols)), text, "budget {cols}");
+            assert_eq!(plain(&status, Some(cols + 40)), text);
+            let narrower = plain(&status, Some(cols - 1));
+            assert_ne!(narrower, text, "budget {}", cols - 1);
+            assert!(width::display_width(&narrower) < cols, "{narrower}");
+        }
+        assert_eq!(plain(&main_checkout(), Some(MAIN.1 - 1)), MAIN_NO_COUNTS);
+    }
+
+    /// The colored line carries the same text once the escapes are removed, at every form.
+    #[test]
+    fn the_colored_first_line_has_the_plain_text_at_every_form() {
+        for status in [worktree_session(), main_checkout(), generic_project()] {
+            for budget in [None, Some(100), Some(78), Some(56), Some(34), Some(0)] {
+                let text = plain(&status, budget);
+                for profile in [Profile::TrueColor, Profile::Ansi256] {
+                    let colored = first_line(&status, budget, Some(profile));
+                    assert!(colored.contains('\x1b'), "{budget:?} {profile:?}");
+                    assert_eq!(strip(&colored), text, "{budget:?} {profile:?}");
+                }
+            }
+        }
+    }
+
+    /// REQ-1, REQ-8: no tag, no `🤔`, no versions on the first line.
+    #[test]
+    fn the_first_line_has_no_tag_no_old_effort_icon_and_no_versions() {
+        let mut status = worktree_session();
+        status.claude_version = "2.1.330".into();
+        status.version = Some(crate::statusline::state::Version {
+            current: "4.2647.16".into(),
+            latest: Some("4.2648.1".into()),
+        });
+        let line = plain(&status, None);
+        assert_eq!(line, W[0].0);
+        // The tag icon is written as its code points, so this file names no tag text.
+        for gone in [
+            "\u{1F3F7}\u{FE0F}",
+            "🤔",
+            "🤖",
+            "🗿",
+            "Leader",
+            "Agent",
+            "agent",
+        ] {
+            assert!(!line.contains(gone), "{gone} in {line}");
+        }
+    }
+
+    /// REQ-9: a merge request is `!<n>`, a pull request `#<n>`, the state is optional and a
+    /// missing request leaves the item out with its separator.
+    #[test]
+    fn the_request_item_is_a_number_sign_or_an_exclamation_mark() {
+        let mut status = generic_project();
+        status.pr = pull_request(31, "pending", true);
+        assert_eq!(
+            plain(&status, None),
+            "🧠 Sonnet 5.5 | 📡 acme/webapp | 🅱️  feature/login ↑2 ↓1 +4 | 🔗 !31 pending"
+        );
+        status.pr = pull_request(31, "", true);
+        assert!(plain(&status, None).ends_with(" | 🔗 !31"), "no state");
+        status.pr = pull_request(31, "", false);
+        assert!(plain(&status, None).ends_with(" | 🔗 #31"), "no state");
+        status.pr = None;
+        assert_eq!(
+            plain(&status, None),
+            "🧠 Sonnet 5.5 | 📡 acme/webapp | 🅱️  feature/login ↑2 ↓1 +4"
+        );
+    }
+
+    /// REQ-10: the model comes from the model field and the effort from the effort and thinking
+    /// fields only; a missing model leaves the item out, and an effort without thinking has no
+    /// `·t`.
+    #[test]
+    fn the_model_and_the_effort_are_written_as_the_stdin_gives_them() {
+        let mut status = generic_project();
+        status.model = String::new();
+        assert_eq!(
+            plain(&status, None),
+            "📡 acme/webapp | 🅱️  feature/login ↑2 ↓1 +4 | 🔗 #88 approved"
+        );
+        status.model = "Opus 4.1".into();
+        status.effort = Some("high".into());
+        assert!(plain(&status, None).starts_with("🧠 Opus 4.1 high | "));
+        status.thinking = Some(false);
+        assert!(plain(&status, None).starts_with("🧠 Opus 4.1 high | "));
+        status.thinking = Some(true);
+        assert!(plain(&status, None).starts_with("🧠 Opus 4.1 high·t | "));
+        status.effort = Some(String::new());
+        status.thinking = None;
+        assert!(plain(&status, None).starts_with("🧠 Opus 4.1 | "));
+    }
+
+    /// REQ-1: an item without its input is left out with its separator, and the first line is
+    /// left out when all of them are.
+    #[test]
+    fn an_item_without_its_input_is_left_out_with_its_separator() {
+        let mut status = worktree_session();
+        status.integration = None;
+        status.git = Some(GitStatus {
+            branch: "statusline-flow".into(),
+            ahead: 3,
+            behind: 1,
+            modified: 1,
+            untracked: 1,
+            ..Default::default()
+        });
+        assert_eq!(
+            plain(&status, None),
+            "🧠 Opus 5.5 high·t | 📡 modu-ai/moai-adk, ⬇️  7 🔀 3 | 🌳 statusline-flow ↑3 ↓1 +2 | 🔗 #12 pending",
+            "no integration branch: the branch item keeps its own numbers"
+        );
+        assert_eq!(plain(&Status::default(), None), "MoAI");
+    }
+
+    /// A detached HEAD: its short commit in the branch item, no distance.
+    #[test]
+    fn a_detached_head_shows_its_short_commit_and_no_distance() {
+        let status = Status {
+            git: Some(GitStatus {
+                branch: String::new(),
+                head_sha: "0123456".into(),
+                untracked: 3,
+                ..Default::default()
+            }),
+            integration: Some("next".into()),
+            ..generic_project()
+        };
+        assert_eq!(
+            plain(&status, None),
+            "🧠 Sonnet 5.5 | 📡 acme/webapp | 🅱️  0123456 +3 | 🔗 #88 approved"
+        );
+    }
+
+    /// The integration branch name is cut with `…` over twelve characters, and written whole at
+    /// twelve.
+    #[test]
+    fn the_integration_name_is_cut_over_twelve_characters() {
+        let item = |name: &str| {
+            let mut status = worktree_session();
+            status.integration = Some(name.into());
+            let line = plain(&status, None);
+            let from = line.find("🧭 ").expect("the distance item") + "🧭 ".len();
+            let rest = &line[from..];
+            rest[..rest.find(" ↑").expect("its ahead count")].to_string()
+        };
+        assert_eq!(item("abcdefghijkl"), "abcdefghijkl", "12 characters");
+        let cut = item("abcdefghijklm");
+        assert!(cut.starts_with("abcdefghijk"), "{cut}");
+        assert!(cut.ends_with('…'), "{cut}");
+        assert!(!cut.contains('m'), "{cut}");
+    }
+
+    /// REQ-10 and D-6: every icon of the first line is followed by the spacing of its width
+    /// class: two spaces for `⬇️` and `🅱️`, one for the rest.
+    #[test]
+    fn every_icon_of_the_first_line_has_the_spacing_of_its_width_class() {
+        for (status, expected) in [(worktree_session(), 7), (main_checkout(), 6)] {
+            let text = plain(&status, None);
+            let mut seen = 0;
+            for (icon, gap) in width::ICONS {
+                for (at, _) in text.match_indices(icon) {
+                    seen += 1;
+                    let after = &text[at + icon.len()..];
+                    assert!(after.starts_with(gap), "{icon}: `{after}`");
+                    assert!(
+                        !after[gap.len()..].starts_with(' '),
+                        "{icon}: more spaces than the class asks for: `{after}`"
+                    );
+                }
+            }
+            assert_eq!(seen, expected, "icons in {text}");
+        }
     }
 }
