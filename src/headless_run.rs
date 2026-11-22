@@ -271,6 +271,106 @@ pub fn run(built: &BuiltRun, cwd: &Path) -> Result<RawRun> {
     })
 }
 
+/// What one run's result is, checked before it is trusted (SPEC REQ-11): a `success` subtype
+/// alone is not an answer.
+#[derive(Debug, Clone, PartialEq)]
+pub enum RunOutcome {
+    Answered(Value),
+    NoVerdict { reason: String },
+}
+
+/// The ledger event kind of one recorded run (SPEC REQ-12, D-7).
+pub const RUN_EVENT: &str = "claude.run";
+
+/// Checks one raw outcome before it is trusted (SPEC REQ-11): the process must have exited
+/// zero, the JSON result must carry `is_error` false and the `structured_output` field; a
+/// refusal `stop_reason` and a missing field are both no verdict.
+pub fn parse_result(raw: &RawRun) -> RunOutcome {
+    let no = |reason: &str| RunOutcome::NoVerdict {
+        reason: reason.to_string(),
+    };
+    if !raw.success {
+        return no(&format!(
+            "exit code {}",
+            raw.code
+                .map(|c| c.to_string())
+                .unwrap_or_else(|| "unknown".into())
+        ));
+    }
+    let Ok(value) = serde_json::from_str::<Value>(&raw.stdout) else {
+        return no("stdout is not one JSON object");
+    };
+    if value.get("is_error").and_then(Value::as_bool) != Some(false) {
+        return no("the result carries is_error true or no is_error field");
+    }
+    if value.get("stop_reason").and_then(Value::as_str) == Some("refusal") {
+        return no("the model refused the request");
+    }
+    match value.get("structured_output") {
+        Some(answer) => RunOutcome::Answered(answer.clone()),
+        None => no("a success subtype without structured_output"),
+    }
+}
+
+/// One `claude.run` ledger payload (SPEC REQ-12): the verdict, the session id, the cost as a
+/// marked estimate, the turns, the terminal reason and the permission denials.
+pub fn ledger_row(built: &BuiltRun, raw: &RawRun, outcome: &RunOutcome) -> Value {
+    let result: Value = serde_json::from_str(&raw.stdout).unwrap_or(Value::Null);
+    let verdict = match outcome {
+        RunOutcome::Answered(answer) => answer
+            .get("verdict")
+            .cloned()
+            .unwrap_or_else(|| Value::String("answered".into())),
+        RunOutcome::NoVerdict { reason } => json!({"no_verdict": reason}),
+    };
+    let terminal_reason = json!({
+        "subtype": result.get("subtype").cloned().unwrap_or(Value::Null),
+        "stop_reason": result.get("stop_reason").cloned().unwrap_or(Value::Null),
+        "exit_code": raw.code,
+        "success": raw.success,
+    });
+    json!({
+        "verdict": verdict,
+        "session_id": result.get("session_id").cloned().unwrap_or(Value::Null),
+        "total_cost_usd": result.get("total_cost_usd").cloned().unwrap_or(Value::Null),
+        "cost_is_estimate": true,
+        "num_turns": result.get("num_turns").cloned().unwrap_or(Value::Null),
+        "terminal_reason": terminal_reason,
+        "permission_denials": result
+            .get("permission_denials")
+            .cloned()
+            .unwrap_or_else(|| json!([])),
+        "requesting_session": built.requesting_session,
+        "permission_mode": built.permission_mode,
+        "mode_reason": built.mode_reason,
+        "managed_mcp_deployed": built.managed_mcp_deployed,
+        "scrubbed_credentials": built.scrubbed,
+    })
+}
+
+/// Records one run as a `claude.run` event row in one transaction (SPEC REQ-12): the row
+/// fits the existing free-text event table with no schema change.
+pub fn record_run(
+    conn: &mut rusqlite::Connection,
+    card_id: Option<i64>,
+    row: &Value,
+    by: &str,
+) -> Result<String> {
+    let tx = conn
+        .transaction()
+        .map_err(|e| format!("record_run transaction: {e}"))?;
+    let key = crate::ledger::open::new_event_key(&tx, RUN_EVENT, card_id)
+        .map_err(|e| format!("record_run key: {e}"))?;
+    tx.execute(
+        "INSERT INTO event (event_key, at, actor, card_id, kind, payload) \
+         VALUES (?1, unixepoch(), ?2, ?3, ?4, ?5)",
+        rusqlite::params![key, by, card_id, RUN_EVENT, row.to_string()],
+    )
+    .map_err(|e| format!("record_run insert: {e}"))?;
+    tx.commit().map_err(|e| format!("record_run commit: {e}"))?;
+    Ok(key)
+}
+
 /// A tool rule the builder accepts: never a blanket `Bash` or `PowerShell` and never a
 /// wildcard-only scope, the entries auto mode drops (SPEC REQ-2).
 fn narrow_rule(tool: &str) -> Result<()> {

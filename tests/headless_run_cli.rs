@@ -367,3 +367,102 @@ fn audit_needs_schema_and_foreign_tree_narrows_sources() {
     let built = build(&foreign, &ctx(&root), &env).unwrap();
     assert_eq!(after(&built.args, "--setting-sources"), "user");
 }
+
+/// AC-5: a `success` subtype with no `structured_output` is no verdict, and so are a
+/// refusal `stop_reason`, `is_error` true, a non-zero exit and unparseable output.
+#[test]
+fn success_without_structured_output_is_no_verdict() {
+    use moai_cli::headless_run::{parse_result, RawRun, RunOutcome};
+
+    fn raw(success: bool, code: i32, stdout: &str) -> RawRun {
+        RawRun {
+            success,
+            code: Some(code),
+            stdout: stdout.to_string(),
+            stderr: String::new(),
+        }
+    }
+
+    let cases = [
+        raw(
+            true,
+            0,
+            r#"{"type":"result","subtype":"success","is_error":false,"session_id":"s","total_cost_usd":0.1,"num_turns":2}"#,
+        ),
+        raw(
+            true,
+            0,
+            r#"{"type":"result","subtype":"success","is_error":false,"stop_reason":"refusal","structured_output":{"verdict":"pass"}}"#,
+        ),
+        raw(
+            true,
+            0,
+            r#"{"type":"result","subtype":"success","is_error":true,"structured_output":{"verdict":"pass"}}"#,
+        ),
+        raw(false, 2, ""),
+        raw(true, 0, "not json"),
+    ];
+    for (i, case) in cases.iter().enumerate() {
+        assert!(
+            matches!(parse_result(case), RunOutcome::NoVerdict { .. }),
+            "case {i} must be no verdict"
+        );
+    }
+
+    let answered = raw(
+        true,
+        0,
+        r#"{"type":"result","subtype":"success","is_error":false,"structured_output":{"verdict":"fail","blocking":["B-1"]},"session_id":"s","total_cost_usd":0.1,"num_turns":3}"#,
+    );
+    match parse_result(&answered) {
+        RunOutcome::Answered(v) => assert_eq!(v["verdict"], "fail"),
+        other => panic!("expected Answered, got {other:?}"),
+    }
+}
+
+/// AC-6: one finished run records exactly one `claude.run` event row whose payload names
+/// the verdict, the session id, the cost estimate marker, the turns, the terminal reason
+/// and the permission denials.
+#[test]
+fn one_run_one_ledger_row() {
+    use moai_cli::headless_run::{ledger_row, parse_result, record_run, RUN_EVENT};
+    use moai_cli::ledger::schema;
+    use rusqlite::Connection;
+
+    let tmp = tempfile::tempdir().unwrap();
+    let fixtures = tmp.path().join("bin");
+    fs::create_dir_all(&fixtures).unwrap();
+    let record = tmp.path().join("record.txt");
+    standin_claude(&fixtures);
+    let root = tmp.path().join("platform");
+    fs::create_dir_all(&root).unwrap();
+
+    let built = build(&audit_spec(), &ctx(&root), &parent_env(&fixtures, &record)).unwrap();
+    let raw = run(&built, tmp.path()).unwrap();
+    let outcome = parse_result(&raw);
+    let row = ledger_row(&built, &raw, &outcome);
+
+    assert_eq!(row["session_id"], "standin");
+    assert_eq!(row["cost_is_estimate"], true);
+    assert!(row["total_cost_usd"].is_number());
+    assert!(row["num_turns"].is_number());
+    assert!(row["terminal_reason"].is_object());
+    assert!(row.get("permission_denials").is_some());
+    assert_eq!(row["requesting_session"], REQUESTING);
+    assert!(row["scrubbed_credentials"].is_array());
+
+    let mut conn = Connection::open_in_memory().unwrap();
+    schema::create_v1(&mut conn, "demo", "test").unwrap();
+    let key = record_run(&mut conn, None, &row, "tester").unwrap();
+    assert!(key.starts_with("claude.run:"), "{key}");
+    let (count, payload): (i64, String) = conn
+        .query_row(
+            "SELECT COUNT(*), payload FROM event WHERE kind = ?1",
+            [RUN_EVENT],
+            |r| Ok((r.get(0)?, r.get(1)?)),
+        )
+        .unwrap();
+    assert_eq!(count, 1);
+    let payload: serde_json::Value = serde_json::from_str(&payload).unwrap();
+    assert_eq!(payload["session_id"], "standin");
+}
