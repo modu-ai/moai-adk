@@ -2,6 +2,7 @@
 //! folder directly follow the resolvers. The Go settings clean-up writes, shows and probes the
 //! Rust launcher under the folder the HOME resolves to (REQ-11, REQ-12), and project detection
 //! skips `.moai` as it skips `.moai-cli` (REQ-13). Every case uses temporary folders only.
+#![cfg(unix)]
 
 use moai_cli::go_settings_clean::{
     launcher_shown, launcher_state, rust_status_line, LauncherState,
