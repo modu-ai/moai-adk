@@ -58,6 +58,7 @@ const PROFILE_KEYS: &[(&str, bool)] = &[
     ("scopes", true),
     ("versioning", true),
     ("work_flow", true),
+    ("lane_run", true),
     ("test_paths", true),
     ("ci", true),
     ("checks", true),
@@ -161,6 +162,11 @@ pub struct Profile {
     /// written before this key reads unchanged.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub work_flow: Option<WorkFlowSettings>,
+    /// The pick of running a lane non-stop or one card at a time (SPEC-20261122-nonstop-lane
+    /// D-2): the project's `default` and a value per lane. Absent means nobody picked; a
+    /// profile written before this key reads unchanged.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub lane_run: Option<LaneRunSettings>,
     /// The project's own test paths beside the per-language table of `crate::tdd`
     /// (SPEC-20261117-green-test-lock D-4): relative folders or files, at most
     /// [`crate::tdd::MAX_DECLARED`]. Absent means none were declared; a profile written before
@@ -191,6 +197,21 @@ pub struct WorkFlowSettings {
     pub flow: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub integration_branch: Option<String>,
+}
+
+/// The two values of a lane-run pick (SPEC-20261122-nonstop-lane).
+pub const LANE_RUNS: &[&str] = &["nonstop", "single"];
+
+/// The `lane_run` key: the project's pick and the picks of named lanes, each one of
+/// [`LANE_RUNS`], lanes named by the rule of `session-register`
+/// ([`crate::lane_registry::valid_name`]); a lane's own value comes before the project's.
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct LaneRunSettings {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub default: Option<String>,
+    #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+    pub lanes: std::collections::BTreeMap<String, String>,
 }
 
 /// A branch name git takes, kept to a portable subset: 1 to 100 bytes of ASCII letters, digits
@@ -348,6 +369,17 @@ fn validate(p: &Profile) -> Result<()> {
                 .is_some_and(|b| !branch_name(b))
         {
             return Err("invalid work_flow setting; no values were logged".into());
+        }
+    }
+    if let Some(r) = &p.lane_run {
+        let pick = |v: &String| LANE_RUNS.contains(&v.as_str());
+        if !r.default.as_ref().is_none_or(pick)
+            || !r
+                .lanes
+                .iter()
+                .all(|(lane, v)| crate::lane_registry::valid_name(lane) && pick(v))
+        {
+            return Err("invalid lane_run setting; no values were logged".into());
         }
     }
     if let Some(versioning) = &p.versioning {
@@ -1301,6 +1333,7 @@ mod tests {
             scopes: None,
             versioning: None,
             work_flow: None,
+            lane_run: None,
             test_paths: None,
             ci: None,
             checks: None,
@@ -1376,6 +1409,10 @@ mod tests {
                 flow: "m-flow".into(),
                 integration_branch: Some("main".into()),
             }),
+            lane_run: Some(LaneRunSettings {
+                default: Some("nonstop".into()),
+                lanes: [("agent-1".to_string(), "single".to_string())].into(),
+            }),
             test_paths: Some(vec!["qa/".into()]),
             ci: Some(crate::project_ci::CiAnswers {
                 kind: "cli".into(),
@@ -1425,6 +1462,7 @@ mod tests {
                 "scopes",
                 "versioning",
                 "work_flow",
+                "lane_run",
                 "test_paths",
                 "ci",
                 "checks"
