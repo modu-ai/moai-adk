@@ -1937,9 +1937,10 @@ mod tests {
     fn claude_settings_refuses_unmanaged_keys_and_keeps_order() {
         for (b, d) in [
             // `permissions` (#2244), `hooks` (#2238), `env` and `model` (#2936 R8) are managed;
-            // `enabledPlugins` stays unmanaged.
-            (json!({}), json!({"enabledPlugins": {}})),
-            (json!({"enabledPlugins": {}}), json!({})),
+            // `enabledPlugins` is managed since SPEC-20261122-project-scale-settings;
+            // `cleanupPeriodDays` stays unmanaged.
+            (json!({}), json!({"cleanupPeriodDays": 30})),
+            (json!({"cleanupPeriodDays": 30}), json!({})),
         ] {
             let err = plan_settings(&obj(b), &Map::new(), &obj(d)).unwrap_err();
             assert_eq!(
