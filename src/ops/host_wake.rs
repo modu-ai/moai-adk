@@ -1,8 +1,11 @@
 //! `host-wake`: one flow wake through the host adapter (SPEC-20261122-session-messages).
-//! Lists the config root's session registry, refuses with the reason when the
-//! addressee is unreachable, and answers the result shape; the send itself
-//! rides the D-8 seam (the documented wake path today is a Claude session's
-//! SendMessage tool, so the CLI sender answers the open-item line).
+//! Lists the config root's session registry — a missing or unreadable registry
+//! folder is the no-channel refusal, never an internal error — refuses with
+//! the reason when the addressee is unreachable, and answers the result
+//! shape: queued (one line written to the addressee's inbox socket), held
+//! with a notice, or refused (an unknown name, no channel, no inbox, an
+//! ambiguous name, the idle flag, or a socket path outside its guarded
+//! folder).
 
 use std::path::PathBuf;
 
@@ -31,14 +34,38 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
         text: args.text,
         notify_when_idle: args.idle,
     };
-    let listing = moai_cli::host_wake::RegistryListing::read(&config_dir)?;
-    let answer = wake.send_once(&listing)?;
+    // B1 of the N-slice audit: a missing or unreadable registry folder is the
+    // no-channel refusal, never an internal error; the refused wrapper below
+    // answers it in the same shape as every other refusal.
+    let answer = match moai_cli::host_wake::RegistryListing::read(&config_dir) {
+        Ok(listing) => wake.send_once(&listing),
+        Err(_) => Ok(moai_cli::host_wake::SendShape::Refused(
+            moai_cli::host_wake::Refusal::NoChannel,
+        )),
+    };
+    // N3 and N9 of the first audit: the answer says queued, never delivered
+    // (the status notice goes to a sender socket this command does not have),
+    // and every failure answers the refused shape with its one-line reason.
+    let answer = match answer {
+        Ok(shape) => shape,
+        Err(reason) => {
+            return Ok(serde_json::json!({
+                "schema_version": 1,
+                "addressee": wake.addressee,
+                "shape": "refused",
+                "reason": reason,
+                "socket_write": false,
+            }));
+        }
+    };
     Ok(serde_json::json!({
         "schema_version": 1,
         "addressee": wake.addressee,
         "shape": shape_name(&answer),
         "reason": reason_line(&answer),
-        "writes": false,
+        // N4: a queued wake wrote one line to the addressee's inbox socket;
+        // nothing else was written.
+        "socket_write": matches!(answer, moai_cli::host_wake::SendShape::Queued),
     }))
 }
 
@@ -54,7 +81,7 @@ fn default_config_dir() -> PathBuf {
 
 fn shape_name(shape: &moai_cli::host_wake::SendShape) -> &'static str {
     match shape {
-        moai_cli::host_wake::SendShape::Delivered => "delivered",
+        moai_cli::host_wake::SendShape::Queued => "queued",
         moai_cli::host_wake::SendShape::HeldWithNotice => "held_with_notice",
         moai_cli::host_wake::SendShape::Refused(_) => "refused",
     }
