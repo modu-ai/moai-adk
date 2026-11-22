@@ -143,9 +143,9 @@ impl Sandbox {
             cmd.env(k, v);
         }
         cmd.env("GIT_AUTHOR_NAME", "probe")
-            .env("GIT_AUTHOR_EMAIL", "probe@invalid")
+            .env("GIT_AUTHOR_EMAIL", "fixture@example.invalid")
             .env("GIT_COMMITTER_NAME", "probe")
-            .env("GIT_COMMITTER_EMAIL", "probe@invalid")
+            .env("GIT_COMMITTER_EMAIL", "fixture@example.invalid")
             .stdin(Stdio::null());
         cmd
     }

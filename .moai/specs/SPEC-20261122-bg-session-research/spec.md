@@ -2,7 +2,7 @@
 id: SPEC-20261122-bg-session-research
 title: "Background sessions (claude --bg, agent view, claude agents --json) are measured in temporary repositories before any lane uses them"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-22
 ---
 
@@ -59,7 +59,7 @@ This SPEC is slice 1: the SPEC only. The measurement harness and the report foll
 ## Scope
 
 - write: `.moai/specs/SPEC-20261122-bg-session-research/spec.md`
-- write (slices 2 and 3): `tests/bg_session_probe_cli.rs`, `src/ops/bg_session_probe.rs` (read-only probe plumbing, no change of any shipped command), and the report under `~/.moai/reports/moai-adk/`
+- write (slices 2 and 3): `tests/bg_session_probe_cli.rs` (the harness lives in the test file; no file under `src/` was needed or changed), and the report under `~/.moai/reports/moai-adk/`
 - last step, by pair request: `src/main.rs` and `src/help.rs` only if the harness is exposed as a developer command; it need not be
 
 ## Decisions
@@ -88,3 +88,16 @@ This SPEC is slice 1: the SPEC only. The measurement harness and the report foll
 - Deleting or removing in a measurement could hit a real worktree: every removal takes a path that the harness itself created under the temporary root, and a path outside it refuses.
 - A measurement on macOS says nothing about Linux or Windows, and the report says which platform each row was measured on.
 - The agent's reading of a page can differ from the page: facts above carry the page's own words and line numbers in the research record, and the report re-checks each against the measured behaviour.
+
+## Result
+
+Slice 3, revision 2: the harness in `tests/bg_session_probe_cli.rs` (13 tests and one ignored real-run test) and the report `bg-session-research-2026-11-22/report.md` with the four real run files beside it. Measured on `claude` 2.1.330, macos-aarch64. Numbers come from runs made for this result.
+
+- AC-1 met: `isolation_` tests passed; the real runs end with `real_config_folder_unchanged: true` and `leftovers: []`.
+- AC-2 met: `report_` tests passed; the report cites each row's command, status, output and the version, and prints the `--json` outputs unchanged.
+- AC-3 met for the rows that need no model: `rows_` tests passed with the stub, and the real runs measured placement, signals, removal and environment-free rows. The rows that need a model reply are listed as not run with reasons (D-4: no provider was approved).
+- AC-4 met as written: the idle probe is listed as not run because the wait budget is shorter than the documented idle time; `idle_` tests passed.
+- AC-5 met: the report holds one recommendation, `trial`, each reason cites a measured row; the diff names only the SPEC and the test file (the report is outside the repository).
+- Affected run (`moai check affected`, base 96619a1896f9, head 2b47b0a8c07e): fmt, clippy, lib and bin tests passed; one target failed, `test_identity_list_2878`, because the probe set a git email that is not on the test identity list. Fixed by using a listed address; after the fix the two targets `test_identity_list_2878` and `bg_session_probe_cli` passed (3 and 13 passed, 1 ignored). The whole affected set was not run a second time.
+- Not run: the model-needing rows, the idle stop, a Linux or Windows measurement, a mutant run on the harness.
+- closure_status: open until the audit.
