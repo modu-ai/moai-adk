@@ -918,9 +918,10 @@ is left out together with its separator.
    (behind), then `+N` (dirty), each only when it is not 0
    (SPEC-20261120-statusline-ahead: under M-Flow the merges land on the local integration
    branch first, so the ahead count is the one that shows them landing; the count comes from
-   the `git status` header the renderer already reads). Forge counts that cannot be read say `⬇️ n/a 🔀 n/a`, never a zero, and a repository whose name cannot be
-   resolved says `📡 n/a`; a detached HEAD shows the short SHA in the branch slot (`🅱️ a1b2c3d`) and the
-   repository segment stays.
+   the `git status` header the renderer already reads). Forge counts that cannot be read say `⬇️ n/a 🔀 n/a`, never a zero, and a repository whose name the host did not
+   give leaves the repository item out with its separator (SPEC-20261122-statusline-where);
+   a detached HEAD shows the short SHA in the branch slot (`🅱️  a1b2c3d`) and the
+   repository item stays.
    The `pr` option turns its segment off.
    `▶️` and `🔃` split the cards in `active` or `review`: a card in `review` is waiting, and
    an `active` card is waiting only when the newest of its notes whose first line carries a
@@ -970,19 +971,11 @@ is left out together with its separator.
    layout of 2026-11-20, SPEC-20261120-statusline-layout and SPEC-20261121-statusline-detached),
    and the Claude Code version stands on line 1. The card counts stand at the front of the last
    line: line 3 while lines 1 and 2 are shown, and one line up when an empty line is left out. In a
-   linked worktree the label has three shapes. `🌳 WT-c<card>-<name>` when a live reservation of the project (status
-   `held`, `held_for_review` or `expired_candidate`, with an absolute worktree path)
-   names the session's folder (`<card>` is the number of the card that holds it, the
-   lowest number when several do; `<name>` is the part of the reservation's branch after
-   the eight-digit date and a dash in its last path segment, else the folder name without
-   its `<project_id>-` prefix (the project profile's `project_id`) and without the card
-   number). `🌳 WT-c<card>` when no name is left. `🌳 <worktree name>`
-   alone, with no `WT-` and no card number (the name the host gave: `worktree.name`, else
-   `workspace.git_worktree`), when no live reservation names the folder or the ledger
-   cannot be read within the render budget. A reservation whose recorded worktree path is
-   not absolute names no folder. `<name>` shows at most 32 characters, cut with `…` after
-   the 31st, and drops control characters and the invisible format characters that
-   reorder or hide text. There is no segment in the main checkout, and the `worktree`
+   linked worktree the first line carries `🌳 <worktree name>` (the name the host
+   gave: `worktree.name`, else `workspace.git_worktree`) as it is, before the branch item,
+   and the item stands alone when the branch has the same name
+   (SPEC-20261122-statusline-where, D-4); the card number is not part of it, and the
+   held card shows as `🎯` on the flow line. There is no item in the main checkout, and the `worktree`
    option turns it off. The ledger is opened read-only under the budget of the card
    counts, and nothing is created. Example (lines 2 and 3 of the golden
    `b14-card-counts-waiting`):
@@ -990,12 +983,9 @@ is left out together with its separator.
        📡 anthropics/claude-code, ⬇️ 46 🔀 0 | 🅱️ main | 🔗 #1234 pending | 🌳 feature-xyz
        🗂️ 50 ▶️ 2 🔃 3 ✅ 12 | 🔋 CW 9% | 🔋 7D 41% (resets in 4d 23h)
 
-   Tests: `tests/statusline_worktree_label.rs` (the three shapes, a released reservation
-   is no holder, the lowest card number, the main checkout, the `worktree` option, the
-   line), the unit tests in `src/statusline/state.rs`
-   (`the_name_is_cut_at_thirty_two_characters_and_drops_control_characters`,
-   `a_relative_recorded_path_never_matches`) and the golden cases `a02-doc-full` and
-   `b14-card-counts-waiting`. With both windows off and no card counts the line is empty and
+   Tests: `tests/statusline_worktree_label.rs` (the host name, a released reservation
+   is no holder, the main checkout, the `worktree` option, the line) and the golden cases
+   `a02-doc-full` and `b14-card-counts-waiting`. With both windows off and no card counts the line is empty and
    omitted like any empty line. The five-hour window is not shown — the user did not choose it (#2756,
    6858992949) — and the `usage_5h` option is still accepted. A missing weekly window is
    hidden. The existing usage calculation is retained. The
@@ -1015,9 +1005,18 @@ returns JSONL rows. It is not a second main layout. Empty, malformed and oversiz
 main input degrades to the normal nonempty fallback; the input ceiling is 4 MiB,
 including when an oversized stream begins with otherwise valid JSON.
 
-Rendering remains read-only and network-free. Local git retains its 800 ms render
-budget; no forge refresh is added. Existing configuration/cache sources are unchanged,
-and this command does not change Claude settings, Go scripts or Orca wrappers.
+Rendering is not read-only any more (SPEC-20261122-statusline-where). The status line
+starts `git` at most once in a render (the branch, or the short commit of a detached
+HEAD, is read from the `HEAD` file with no process), starts the detached `gh` refresh of
+the issue and pull request counts when their numbers are old, and writes a
+cache under `$TMPDIR`: `moai-statusline/<session_id>.json`, named only by the stdin
+session id, in a folder of mode 0700 and a file of mode 0600. While the cache holds the same `HEAD` text
+and the same integration branch commit and is less than ten seconds old, no `git`
+process is started; the render that writes a new file removes files older than a day, at
+most ten per render. The render itself waits for no network. Local git retains its
+800 ms render budget; the forge counts and their refresh are unchanged. Other
+configuration/cache sources are unchanged, and this command does not change Claude
+settings, Go scripts or Orca wrappers.
 
 `tests/fixtures/statusline/` preserves the historical Go recordings unchanged.
 The active Rust layout recordings are in `tests/fixtures/statusline-claude/`;

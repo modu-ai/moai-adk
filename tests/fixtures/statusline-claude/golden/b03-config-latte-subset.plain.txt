@@ -1,3 +1,2 @@
-🧠 Opus | 🤖 v2.1.90 | 🗿 v4.2647.0
-🌳 feature-xyz
-🔋 CW 9%
+🧠 Opus | 📡 anthropics/claude-code, ⬇️  n/a 🔀 n/a | 🌳 feature-xyz
+🔋 CW 9% | 🤖 v2.1.90 | 🗿 v4.2647.0

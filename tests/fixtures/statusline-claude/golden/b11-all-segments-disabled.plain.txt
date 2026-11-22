@@ -1,1 +1,1 @@
-🔗 #1234 pending | 🌳 feature-xyz
+🌳 feature-xyz | 🔗 #1234 pending

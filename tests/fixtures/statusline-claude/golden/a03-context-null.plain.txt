@@ -1,2 +1,2 @@
-🏷️ agent | 🧠 Sonnet | 🗿 v4.2647.0
-CW n/a
+🧠 Sonnet
+CW n/a | 🗿 v4.2647.0

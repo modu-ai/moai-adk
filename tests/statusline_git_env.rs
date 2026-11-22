@@ -91,17 +91,13 @@ fn an_inherited_git_dir_cannot_change_the_rendered_branch_or_counts() {
     fs::write(other.join("u2.txt"), "u\n").unwrap();
 
     let clean = render(&home, &project, &[], WITHIN);
-    assert!(clean.contains("🅱️ main"), "{clean}");
-    // #2756: the repository line is the second of the three lines, not the last. A clean
+    assert!(clean.contains("🅱️  main"), "{clean}");
+    // SPEC-20261122-statusline-where: the branch is on the first line, after the model. A clean
     // branch has no `+N` (the other repository's three changes would show as `+3`); there is
-    // no `💾` segment (leader decision 6862179411). The fixture has no remote and no forge
-    // cache, so the repository and the counts say `n/a`
-    // (SPEC-20261121-statusline-detached REQ-2, REQ-3) — the line stays, never a zero.
-    let repository_line = clean.lines().find(|l| l.contains("🅱️")).unwrap();
-    assert_eq!(
-        repository_line, "📡 n/a, ⬇️ n/a 🔀 n/a | 🅱️ main",
-        "{clean}"
-    );
+    // no `💾` segment (leader decision 6862179411). The input names no repository, so the
+    // repository item is left out with its separator (REQ-1): no `📡 n/a`.
+    let first_line = clean.lines().next().unwrap();
+    assert_eq!(first_line, "🧠 Opus | 🅱️  main", "{clean}");
     assert!(!clean.contains("📁"), "{clean}");
 
     let git_dir = other.join(".git");
@@ -123,11 +119,12 @@ fn an_inherited_git_dir_cannot_change_the_rendered_branch_or_counts() {
 /// A budget no git call can miss under any load.
 const WITHIN: u64 = 3_600_000;
 
-/// The over-budget path, deterministically: with an already expired budget no git is
-/// started, so the repository row is omitted entirely. Without the seam (budget ignored)
-/// git would run and this fails.
+/// The over-budget path, deterministically: with an already expired budget no git is started,
+/// so the numbers git gives (here one untracked file) are missing and nothing else moves; the
+/// branch comes from the `HEAD` file, which costs no process. Without the seam (budget
+/// ignored) git would run and the `+1` would show.
 #[test]
-fn an_expired_render_budget_drops_the_git_segment() {
+fn an_expired_render_budget_drops_the_git_numbers() {
     let tmp = tempfile::tempdir().unwrap();
     let root = fs::canonicalize(tmp.path()).unwrap();
     let home = root.join("home");
@@ -135,28 +132,23 @@ fn an_expired_render_budget_drops_the_git_segment() {
     let project = root.join("project");
     fs::create_dir(&project).unwrap();
     git(&project, &["init", "-q", "-b", "main"]);
+    fs::write(project.join("new.txt"), "n\n").unwrap();
 
     let within = render(&home, &project, &[], WITHIN);
-    // #2756: the repository line sits between the environment and usage lines; the
-    // fixture's missing remote and forge cache render as `n/a` slots
-    // (SPEC-20261121-statusline-detached REQ-2, REQ-3).
     assert_eq!(
-        within.lines().nth(1),
-        Some("📡 n/a, ⬇️ n/a 🔀 n/a | 🅱️ main"),
+        within.lines().next(),
+        Some("🧠 Opus | 🅱️  main +1"),
         "{within}"
     );
     for _ in 0..5 {
         let over = render(&home, &project, &[], 0);
-        assert!(
-            !over.contains("🅱️") && !over.contains("📁") && !over.contains("📡"),
+        assert_eq!(over.lines().next(), Some("🧠 Opus | 🅱️  main"), "{over}");
+        assert!(!over.contains("📁") && !over.contains("📡"), "{over}");
+        assert_eq!(
+            over.lines().skip(1).collect::<Vec<_>>(),
+            within.lines().skip(1).collect::<Vec<_>>(),
             "{over}"
         );
-        let within_without_repo: Vec<_> = within
-            .lines()
-            .filter(|l| !l.starts_with("📡") && !l.starts_with("🅱️"))
-            .collect();
-        let over_lines: Vec<_> = over.lines().collect();
-        assert_eq!(over_lines, within_without_repo, "{over}");
     }
 }
 
@@ -172,8 +164,10 @@ use std::os::unix::fs::{symlink, PermissionsExt};
 use std::path::PathBuf;
 use std::time::{Duration, Instant, SystemTime};
 
-/// The render's clock of the cases (the hidden `--now-unix` seam).
-const T: i64 = 1_800_000_000;
+/// The render's clock of the cases (the hidden `--now-unix` seam). It lies in the past on
+/// purpose: a file the render writes carries the real clock's time, which is then never a day
+/// older than the render's clock, so the cleanup of old cache files never meets it.
+const T: i64 = 1_700_000_000;
 /// A made-up commit.
 const SHA_A: &str = "0123456789abcdef0123456789abcdef01234567";
 const SHA_B: &str = "fedcba9876543210fedcba9876543210fedcba98";
@@ -575,6 +569,39 @@ fn session_cache_a_changed_head_starts_one_git() {
         s.starts()
     );
     assert_eq!(again, out);
+}
+
+/// REQ-5, REQ-6: the key holds the folder too. Two checkouts whose `HEAD` files read the same,
+/// rendered for one session id within ten seconds, are two keys: the second render starts one
+/// git and shows its own dirty count, not the first folder's.
+#[test]
+fn session_cache_another_folder_with_the_same_head_starts_one_git() {
+    let first = Scripted::new("ref: refs/heads/main\n");
+    let mut second = Scripted::new("ref: refs/heads/main\n");
+    // One TMPDIR for both folders, as one session that moves between them has.
+    second.tmp = first.tmp.clone();
+    // The first folder has one change, the second three.
+    fs::write(
+        second.log.parent().unwrap().join("canned.txt"),
+        "## elsewhere\n M a.txt\n M b.txt\n?? c.txt\n",
+    )
+    .unwrap();
+    let one = first.run(T, "s-moves");
+    assert!(branch_line(&one).contains("+1"), "{one}");
+    assert_eq!(first.starts().len(), 1, "{:?}", first.starts());
+    let other = second.run(T + 1, "s-moves");
+    assert_eq!(
+        second.starts().len(),
+        1,
+        "another folder asks git once: {:?}",
+        second.starts()
+    );
+    assert!(branch_line(&other).contains("+3"), "{other}");
+    assert!(!branch_line(&other).contains("+1"), "{other}");
+    // The cache now holds the second folder: the same folder within ten seconds starts no git.
+    let again = second.run(T + 2, "s-moves");
+    assert_eq!(second.starts().len(), 1, "{:?}", second.starts());
+    assert_eq!(again, other);
 }
 
 /// REQ-6: a changed commit of the integration branch starts one git, from a loose ref and from

@@ -1,8 +1,8 @@
 //! The flow line of the status line (SPEC-20261122-statusline-flow; it grew out of card C-65's
 //! card counts, user instructions 2026-11-16 and 2026-11-17): the cards of the project's local
 //! ledger by the stage of their progress, `👀 S3 A0 L0 | ⛔ B0 ⏸️  H5 | 🗂️  D20 R25 W0 E2 ✅ 12`,
-//! on a line of its own between the repository line and the usage windows. The repository line
-//! opens with the repository and its forge counts, `📡 owner/repo, ⬇️ 46 🔀 0 | 🅱️ …`.
+//! on a line of its own between the first line and the usage windows. The first line says who
+//! and where (SPEC-20261122-statusline-where): `🧠 Opus | 📡 owner/repo, ⬇️  46 🔀 0 | 🅱️  …`.
 //!
 //! Every case runs the real binary through `TempHome` (a temporary HOME, nothing of the real
 //! environment but a PATH for git) against a ledger built in that HOME. The read is local and
@@ -134,11 +134,15 @@ impl Fixture {
             },
         })
         .to_string();
+        // The render may keep a session cache under `$TMPDIR`: a folder of its own outside the
+        // HOME, so the HOME snapshot stays equal and nothing reaches the real temporary folder.
+        let tmp = tempfile::tempdir().unwrap();
         let mut cmd = self
             .home
             .command(&["statusline", "--render-budget-ms", "3600000"]);
         cmd.current_dir(cwd)
             .env("PATH", std::env::var_os("PATH").unwrap_or_default())
+            .env("TMPDIR", tmp.path())
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
@@ -171,23 +175,19 @@ impl Fixture {
         self.render_from(&self.project, &[("NO_COLOR", "1"), ("COLUMNS", columns)])
     }
 
-    fn line2(&self) -> String {
+    /// The flow line when the ledger has cards: the second line, under the first line.
+    fn flow_line(&self) -> String {
         self.plain().lines().nth(1).unwrap_or_default().to_string()
     }
 
-    /// The flow line when the ledger has cards: the third line, after the model line and the
-    /// repository line.
-    fn flow_line(&self) -> String {
-        self.plain().lines().nth(2).unwrap_or_default().to_string()
-    }
-
+    /// The first line: who and where.
     fn line1(&self) -> String {
         self.plain().lines().next().unwrap_or_default().to_string()
     }
 }
 
-/// `+1`: the project's untracked state folder.
-const WITHOUT_CARDS: &str = "📡 modu-ai/moai-adk, ⬇️ 46 🔀 0 | 🅱️ main +1";
+/// The first line of the fixture; `+1`: the project's untracked state folder.
+const WITHOUT_CARDS: &str = "🧠 Opus | 📡 modu-ai/moai-adk, ⬇️  46 🔀 0 | 🅱️  main +1";
 /// The flow line of the [`MIX`] ledger with the note of [`Fixture::with_mix`]: 3 submitted (2
 /// review, 1 by its note), 2 stale, 5 on hold, 20 draft, 25 ready, 12 done today, no card of
 /// mine (the session holds none).
@@ -197,11 +197,11 @@ const FLOW_MIX: &str = "👀 S3 A0 L0 | ⛔ B0 ⏸️  H5 | 🗂️  D20 R25 W0 
 const FLOW_CARDS: &str = "👀 S2 A0 L0 | ⛔ B0 ⏸️  H5 | 🗂️  D20 R25 W0 E3 ✅ 12";
 
 #[test]
-fn the_flow_line_stands_between_the_repository_line_and_the_usage_windows() {
+fn the_flow_line_stands_between_the_first_line_and_the_usage_windows() {
     let f = fixture();
     let baseline = f.plain();
-    assert_eq!(baseline.lines().nth(1), Some(WITHOUT_CARDS), "no ledger");
-    assert_eq!(baseline.lines().count(), 3, "{baseline}");
+    assert_eq!(baseline.lines().next(), Some(WITHOUT_CARDS), "no ledger");
+    assert_eq!(baseline.lines().count(), 2, "{baseline}");
     assert!(
         !baseline.contains("🗂️"),
         "no ledger: no flow line and no card icon"
@@ -209,21 +209,20 @@ fn the_flow_line_stands_between_the_repository_line_and_the_usage_windows() {
     f.with_mix();
     let with = f.plain();
     assert_eq!(
-        with.lines().nth(1),
+        with.lines().next(),
         Some(WITHOUT_CARDS),
-        "line 2 keeps the repository, the forge counts, the branch"
+        "line 1 keeps the model, the repository, the forge counts, the branch"
     );
-    assert_eq!(with.lines().nth(2), Some(FLOW_MIX), "{with}");
+    assert_eq!(with.lines().nth(1), Some(FLOW_MIX), "{with}");
     assert_eq!(
-        with.lines().nth(3),
-        baseline.lines().nth(2),
+        with.lines().nth(2),
+        baseline.lines().nth(1),
         "the usage windows follow, unchanged"
     );
     assert!(!f.line1().contains("🗂️"), "line 1 keeps no card counts");
-    // Lines 1 and 2 do not change from the render without a ledger.
+    // Line 1 does not change from the render without a ledger.
     assert_eq!(with.lines().next(), baseline.lines().next());
-    assert_eq!(with.lines().nth(1), baseline.lines().nth(1));
-    assert_eq!(with.lines().count(), 4);
+    assert_eq!(with.lines().count(), 3);
 }
 
 /// Without a marker note an `active` card nobody holds is stale, and a `review` card is
@@ -243,8 +242,8 @@ fn the_flow_line_keeps_its_place_without_fresh_forge_counts() {
     // SPEC-20261121-statusline-detached REQ-3: a failed forge read says `n/a` in place —
     // never a zero and never a hidden segment.
     assert_eq!(
-        f.line2(),
-        "📡 modu-ai/moai-adk, ⬇️ n/a 🔀 n/a | 🅱️ main +1",
+        f.line1(),
+        "🧠 Opus | 📡 modu-ai/moai-adk, ⬇️  n/a 🔀 n/a | 🅱️  main +1",
         "without fresh forge counts the slots say unknown, with the comma kept"
     );
     assert_eq!(f.flow_line(), FLOW_MIX);
@@ -262,8 +261,8 @@ fn the_branch_shows_the_ahead_count_against_the_upstream() {
     );
     common::git::git_in(&f.project, &["branch", "base", "HEAD~1"]);
     common::git::git_in(&f.project, &["branch", "--set-upstream-to=base"]);
-    let line = f.line2();
-    assert!(line.contains("🅱️ main ↑1"), "the ahead count: {line}");
+    let line = f.line1();
+    assert!(line.contains("🅱️  main ↑1"), "the ahead count: {line}");
     assert!(!line.contains('↓'), "behind 0 stays hidden: {line}");
     assert!(!line.contains("↑0"), "a zero ahead is never shown: {line}");
 }
@@ -275,8 +274,9 @@ const MIX_FORMS: [&str; 3] = [FLOW_MIX, "👀 S3 A0 L0 | ⛔ B0 ⏸️  H5", "�
 
 /// SPEC-20261122-statusline-flow REQ-9 (it replaces the same-bytes-at-80-and-40 rule of
 /// SPEC-20261120-statusline-line2-order): each line takes the widest of its forms that fits
-/// `COLUMNS` − 2 − padding. Lines 1 and 2 and the windows are the same bytes at every width; the
-/// flow line changes form exactly at each boundary.
+/// `COLUMNS` − 2 − padding. The windows are the same bytes at every width; the flow line changes
+/// form exactly at each boundary, and the first line has its own forms (AC-6 of
+/// SPEC-20261122-statusline-where).
 #[test]
 fn width_ladder_changes_the_flow_line_exactly_at_each_boundary() {
     let f = fixture();
@@ -287,7 +287,7 @@ fn width_ladder_changes_the_flow_line_exactly_at_each_boundary() {
         let at = |columns: usize| f.plain_at(&columns.to_string());
         let kept = at(w + 2);
         assert_eq!(
-            kept.lines().nth(2),
+            kept.lines().nth(1),
             Some(*form),
             "COLUMNS {} keeps form {i}",
             w + 2
@@ -295,28 +295,25 @@ fn width_ladder_changes_the_flow_line_exactly_at_each_boundary() {
         if let Some(next) = MIX_FORMS.get(i + 1) {
             let dropped = at(w + 1);
             assert_eq!(
-                dropped.lines().nth(2),
+                dropped.lines().nth(1),
                 Some(*next),
                 "COLUMNS {} drops form {i}",
                 w + 1
             );
         }
-        // Every other line is the same bytes at every width.
+        // The windows line is the same bytes at every width.
         for out in [&kept, &at(w + 1)] {
-            for n in [0, 1] {
-                assert_eq!(out.lines().nth(n), wide.lines().nth(n), "line {n}");
-            }
             assert_eq!(out.lines().last(), wide.lines().last(), "the windows line");
-            assert_eq!(out.lines().count(), 4);
+            assert_eq!(out.lines().count(), 3);
         }
     }
-    assert_eq!(wide.lines().nth(2), Some(FLOW_MIX));
-    assert_eq!(f.plain_at("120").lines().nth(2), Some(FLOW_MIX));
-    assert_eq!(f.plain_at("80").lines().nth(2), Some(FLOW_MIX));
+    assert_eq!(wide.lines().nth(1), Some(FLOW_MIX));
+    assert_eq!(f.plain_at("120").lines().nth(1), Some(FLOW_MIX));
+    assert_eq!(f.plain_at("80").lines().nth(1), Some(FLOW_MIX));
     // Below the narrowest form the narrowest is still written.
     for columns in ["20", "5", "3", "2", "1"] {
         assert_eq!(
-            f.plain_at(columns).lines().nth(2),
+            f.plain_at(columns).lines().nth(1),
             Some(MIX_FORMS[2]),
             "COLUMNS {columns}"
         );
@@ -332,7 +329,7 @@ fn width_ladder_writes_the_widest_form_without_a_usable_columns() {
     assert_eq!(f.flow_line(), FLOW_MIX, "COLUMNS unset");
     for columns in ["", "0", "abc", "-5", "8 0", "12x"] {
         assert_eq!(
-            f.plain_at(columns).lines().nth(2),
+            f.plain_at(columns).lines().nth(1),
             Some(FLOW_MIX),
             "COLUMNS {columns:?}"
         );
@@ -351,12 +348,12 @@ fn width_ladder_subtracts_the_configured_padding() {
     for padding in [1usize, 3, 10] {
         std::fs::write(&config, format!("statusline:\n  padding: {padding}\n")).unwrap();
         assert_eq!(
-            f.plain_at(&(w + 2 + padding).to_string()).lines().nth(2),
+            f.plain_at(&(w + 2 + padding).to_string()).lines().nth(1),
             Some(FLOW_MIX),
             "padding {padding} keeps the widest form at its edge"
         );
         assert_eq!(
-            f.plain_at(&(w + 1 + padding).to_string()).lines().nth(2),
+            f.plain_at(&(w + 1 + padding).to_string()).lines().nth(1),
             Some(MIX_FORMS[1]),
             "padding {padding}: one column less drops a form"
         );
@@ -365,7 +362,7 @@ fn width_ladder_subtracts_the_configured_padding() {
     for text in ["abc", "-2", "", "1.5"] {
         std::fs::write(&config, format!("statusline:\n  padding: {text}\n")).unwrap();
         assert_eq!(
-            f.plain_at(&(w + 2).to_string()).lines().nth(2),
+            f.plain_at(&(w + 2).to_string()).lines().nth(1),
             Some(FLOW_MIX),
             "padding {text:?}"
         );
@@ -380,7 +377,7 @@ fn a_registered_ledger_without_cards_shows_no_flow_line() {
     let f = fixture();
     let baseline = f.plain();
     f.register();
-    assert_eq!(f.line2(), WITHOUT_CARDS);
+    assert_eq!(f.line1(), WITHOUT_CARDS);
     assert_eq!(
         f.plain(),
         baseline,
@@ -470,8 +467,8 @@ fn the_cards_option_hides_the_segment() {
         "statusline:\n  segments:\n    github: false\n    git_branch: false\n",
     )
     .unwrap();
-    // Without forge counts and a branch line 2 is gone: the model line, the flow line, the
-    // windows.
+    // Without forge counts and a branch line 1 keeps the model: the first line, the flow line,
+    // the windows.
     let out = f.plain();
     assert_eq!(out.lines().count(), 3, "{out}");
     assert_eq!(out.lines().nth(1), Some(FLOW_MIX), "{out}");
@@ -782,18 +779,20 @@ fn line_one_items_generic_project() {
     assert_eq!(text, LINE_GENERIC);
 }
 
-/// REQ-9: the host says the request is a merge request, so the item is `!<n>`; any other kind,
-/// or a kind of another type, is a pull request and does not fail the input.
+/// REQ-9: the host says the request is a merge request (`pr.kind` is `mr`, as the official
+/// statusline page defines it), so the item is `!<n>`; any other kind, or a kind of another
+/// type, is a pull request and does not fail the input.
 #[test]
 fn line_one_items_merge_request() {
     let mut s = generic_session();
-    s.stdin["pr"] =
-        serde_json::json!({"number": 31, "review_state": "pending", "kind": "merge_request"});
+    s.stdin["pr"] = serde_json::json!({"number": 31, "review_state": "pending", "kind": "mr"});
     let want = "🧠 Sonnet 5.5 | 📡 acme/webapp | 🅱️  feature/login ↑2 ↓1 +4 | 🔗 !31 pending";
     assert_eq!(s.first_line(&[]), want);
     assert_eq!(s.first_line_colored().1, want);
     for kind in [
         serde_json::json!("pull_request"),
+        serde_json::json!("merge_request"),
+        serde_json::json!("MR"),
         serde_json::json!(7),
         serde_json::json!(null),
     ] {

@@ -293,6 +293,9 @@ const PR: &[Field] = &[
     Field("number", Kind::Int),
     Field("url", Kind::Str),
     Field("review_state", Kind::Str),
+    // Not in the Go struct: `mr` for a GitLab merge request (official statusline page). Kept
+    // raw so a value of another type never fails the payload.
+    Field("kind", Kind::Raw),
 ];
 const WORKTREE: &[Field] = &[
     Field("name", Kind::Str),

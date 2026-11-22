@@ -1,3 +1,2 @@
-🏷️ agent | 🧠 Opus | 🤔 high·t | 🤖 v2.1.90 | 🗿 v4.2647.0
-📡 anthropics/claude-code | 🅱️ main +1 | 🔗 #1234 pending | 🌳 feature-xyz
-🔋 CW 9% | 🔋 7D 41% (resets in 4d 23h)
+🧠 Opus high·t | 📡 anthropics/claude-code | 🌳 feature-xyz | 🅱️  main +1 | 🔗 #1234 pending
+🔋 CW 9% | 🔋 7D 41% (resets in 4d 23h) | 🤖 v2.1.90 | 🗿 v4.2647.0

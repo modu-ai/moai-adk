@@ -1,2 +1,2 @@
-🏷️ agent | 🧠 Opus | 🤔 high·t | 🤖 v2.1.90 | 🗿 v4.2647.0
-🔗 #1234 pending | 🌳 feature-xyz
+🧠 Opus high·t | 📡 anthropics/claude-code, ⬇️  n/a 🔀 n/a | 🌳 feature-xyz | 🔗 #1234 pending
+🤖 v2.1.90 | 🗿 v4.2647.0

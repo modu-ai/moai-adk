@@ -1,9 +1,7 @@
-//! #2928 (user instruction 6878415244, 2026-11-14, replacing S-1's tag-first line 3): line 1 of
-//! the Claude statusline starts with `🏷️ <Leader|Agent-N|agent> | ` (#2871), and line 3 is
-//! `🔋 CW … | 🪫 7D …` without the tag, the same bytes under every language. The worktree label
-//! (`🌳 <name>`, or `🌳 WT-c<card>-<name>`) closes line 2 when there is one, and with a ledger a
-//! flow line stands between line 2 and the windows (SPEC-20261122-statusline-flow); these cases
-//! have no ledger, so the check below still finds CW on line 3.
+//! SPEC-20261122-statusline-where (it replaces the tag-first rule of #2928): line 1 of the Claude
+//! statusline has no tag. It opens with the model, and the usage windows `🔋 CW … | 🪫 7D …` are
+//! the last line, the same bytes under every language. A session name changes nothing (see the
+//! last cases of this file).
 //!
 //! The renderer has no language text, and these cases have no ledger, so no line has more than
 //! one form: the width ladder only changes the flow line, and the other lines are the same bytes
@@ -18,6 +16,7 @@
 
 mod common;
 use common::CleanEnv;
+use moai_cli::statusline::width::display_width;
 use serde_json::Value;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -82,7 +81,10 @@ fn run_case(case: &Value, lang: &str, columns: &str, color: bool) -> String {
     let home = root.join("home");
     let moai_home = home.join(".moai");
     let project: PathBuf = root.join("work/demo-project");
-    for d in [&home, &moai_home, &project] {
+    // The render keeps a per-session cache under `$TMPDIR`: a folder of this run, like the
+    // harness gives it.
+    let tmpdir = root.join("tmp");
+    for d in [&home, &moai_home, &project, &tmpdir] {
         std::fs::create_dir_all(d).unwrap();
     }
     for step in case["setup"].as_array().into_iter().flatten() {
@@ -103,6 +105,7 @@ fn run_case(case: &Value, lang: &str, columns: &str, color: bool) -> String {
         .env("HOME", &home)
         .env("MOAI_HOME", &moai_home)
         .env("TZ", "UTC")
+        .env("TMPDIR", &tmpdir)
         .env("LANG", lang)
         .env("COLUMNS", columns)
         .env("GIT_CONFIG_GLOBAL", "/dev/null")
@@ -140,19 +143,27 @@ fn strip_sgr(text: &str) -> String {
     out
 }
 
+/// Removes the OSC 8 hyperlink openers and closers (`ESC ] 8 ; ; <uri> ESC \`).
+fn strip_links(text: &str) -> String {
+    let mut out = String::new();
+    let mut rest = text;
+    while let Some(at) = rest.find("\x1b]8;") {
+        out.push_str(&rest[..at]);
+        let tail = &rest[at..];
+        rest = &tail[tail.find("\x1b\\").map_or(tail.len(), |e| e + 2)..];
+    }
+    out.push_str(rest);
+    out
+}
+
 #[test]
-fn line1_tag_first_under_ko_en_and_80_40_columns() {
+fn line1_has_no_tag_under_ko_en_and_80_40_columns() {
     let manifest: Value =
         serde_json::from_slice(&std::fs::read(Path::new(FIXTURES).join("cases.json")).unwrap())
             .unwrap();
     let mut runs = 0;
     for name in CASES {
         let case = case(&manifest, name);
-        let want_tag = match name {
-            "d01-leader-mode" => "🏷️ Leader | ",
-            "d04-agent-name" => "🏷️ Agent-27 | ",
-            _ => "🏷️ agent | ",
-        };
         for (variant, color) in [("plain", false), ("ansi", true)] {
             let recorded = case["recorded_with"]["variants"][variant]["version"]
                 .as_str()
@@ -168,31 +179,34 @@ fn line1_tag_first_under_ko_en_and_80_40_columns() {
             for lang in ["ko_KR.UTF-8", "en_US.UTF-8"] {
                 for columns in ["80", "40"] {
                     let got = run_case(&case, lang, columns, color);
+                    // Line 1 has its own forms by width (SPEC-20261122-statusline-where REQ-11), so
+                    // it is read below; every line after it is the same bytes as the golden.
                     assert_eq!(
-                        got, golden,
+                        got.lines().skip(1).collect::<Vec<_>>(),
+                        golden.lines().skip(1).collect::<Vec<_>>(),
                         "{name} {variant} LANG={lang} COLUMNS={columns}"
                     );
                     let text = strip_sgr(&got);
-                    let line1 = text.lines().next().unwrap_or_default();
+                    let line1 = strip_links(text.lines().next().unwrap_or_default());
+                    let line1 = line1.as_str();
+                    let budget: usize = columns.parse::<usize>().unwrap() - 2;
                     assert!(
-                        line1.starts_with(want_tag),
+                        line1.starts_with("🧠 Opus"),
                         "{name} {variant} LANG={lang} COLUMNS={columns}: line 1 {line1:?}"
                     );
-                    let line3 = text.lines().nth(2).unwrap_or_default();
-                    // The worktree label closed line 2 since the picked layout
-                    // (SPEC-20261121-statusline-detached REQ-4); line 3 holds the counts and
-                    // the windows as numbers (REQ-5: no graph, no colon).
-                    let line3 = match line3.strip_prefix("🌳 ") {
-                        Some(rest) => rest.split_once(" | ").map_or(line3, |(_, after)| after),
-                        None => line3,
-                    };
                     assert!(
-                        line3.starts_with("🔋 CW ") || line3.starts_with("🪫 CW "),
-                        "{name} {variant} LANG={lang} COLUMNS={columns}: line 3 {line3:?}"
+                        display_width(line1) <= budget || !line1.contains(" | "),
+                        "{name} {variant} LANG={lang} COLUMNS={columns}: line 1 {line1:?} is too wide"
                     );
                     assert!(
-                        !text.lines().skip(1).any(|l| l.contains("🏷️")),
-                        "{name} {variant} LANG={lang} COLUMNS={columns}: tag after line 1"
+                        !text.contains("🏷️"),
+                        "{name} {variant} LANG={lang} COLUMNS={columns}: a tag in {text:?}"
+                    );
+                    // The windows are the last line: counts as numbers, no graph, no colon.
+                    let last = text.lines().last().unwrap_or_default();
+                    assert!(
+                        last.starts_with("🔋 CW ") || last.starts_with("🪫 CW "),
+                        "{name} {variant} LANG={lang} COLUMNS={columns}: last line {last:?}"
                     );
                     runs += 1;
                 }

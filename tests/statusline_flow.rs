@@ -108,11 +108,15 @@ impl Fixture {
         if let Some(name) = worktree_name {
             stdin["worktree"] = serde_json::json!({"name": name});
         }
+        // The render writes its session cache under `$TMPDIR`: a folder of its own outside the
+        // HOME, so the HOME snapshot below stays equal and nothing reaches the real `/tmp`.
+        let tmp = tempfile::tempdir().unwrap();
         let mut cmd = self
             .home
             .command(&["statusline", "--render-budget-ms", "3600000"]);
         cmd.current_dir(dir)
             .env("PATH", std::env::var_os("PATH").unwrap_or_default())
+            .env("TMPDIR", tmp.path())
             .env("NO_COLOR", "1")
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
@@ -159,7 +163,7 @@ fn my_card_is_the_card_held_in_this_worktree() {
     });
     let out = f.render(&wt, "this-session", Some("demo-1-work"));
     assert_eq!(
-        line(&out, 2),
+        line(&out, 1),
         format!("🎯 c{card} W | 🗂️  D0 R0 W1 E0 ✅ 0"),
         "{out}"
     );
@@ -167,7 +171,7 @@ fn my_card_is_the_card_held_in_this_worktree() {
     let out = f.render(&wt, "this-session", Some("demo-1-work"));
     // The group of the open stages has nothing left to count, so it is left out.
     assert_eq!(
-        line(&out, 2),
+        line(&out, 1),
         format!("🎯 c{card} S | 👀 S1 A0 L0"),
         "{out}"
     );
@@ -175,7 +179,7 @@ fn my_card_is_the_card_held_in_this_worktree() {
     let out = f.render(&wt, "this-session", Some("demo-1-work"));
     // The attention group shows both counts when either is not zero.
     assert_eq!(
-        line(&out, 2),
+        line(&out, 1),
         format!("🎯 c{card} B | ⛔ B1 ⏸️  H0"),
         "{out}"
     );
@@ -204,11 +208,11 @@ fn my_card_falls_back_to_the_newest_live_card_of_the_session() {
     });
     let out = f.render(&f.project, "this-session", None);
     assert!(
-        line(&out, 2).starts_with(&format!("🎯 c{mine} W | ")),
+        line(&out, 1).starts_with(&format!("🎯 c{mine} W | ")),
         "{out}"
     );
     let out = f.render(&f.project, "a-stranger", None);
-    assert!(!line(&out, 2).contains('🎯'), "no card of mine: {out}");
+    assert!(!line(&out, 1).contains('🎯'), "no card of mine: {out}");
 }
 
 /// A lease that is over makes the card stale (E), and it stays my card while its held
@@ -226,15 +230,15 @@ fn an_expired_lease_makes_my_card_stale_and_a_session_card_not_mine() {
         lease: -60,
     });
     let out = f.render(&wt, "this-session", Some("demo-1-work"));
-    assert_eq!(line(&out, 2), "🎯 c1 E | 🗂️  D0 R0 W0 E1 ✅ 0", "{out}");
+    assert_eq!(line(&out, 1), "🎯 c1 E | 🗂️  D0 R0 W0 E1 ✅ 0", "{out}");
     // From the main checkout the worktree does not match, and the session's own card has no
     // live lease: nothing is mine.
     let out = f.render(&f.project, "this-session", None);
-    assert_eq!(line(&out, 2), "🗂️  D0 R0 W0 E1 ✅ 0", "{out}");
+    assert_eq!(line(&out, 1), "🗂️  D0 R0 W0 E1 ✅ 0", "{out}");
 }
 
-/// Each line has one role: line 1 the session, line 2 the repository and the worktree, line 3
-/// the flow, the last line the usage windows. No icon of one role shows on another's line.
+/// Each line has one role: line 1 the session and where it stands, line 2 the flow, the last
+/// line the usage windows. No icon of one role shows on another's line.
 #[test]
 fn three_lines_have_their_roles() {
     let f = fixture();
@@ -248,19 +252,18 @@ fn three_lines_have_their_roles() {
     });
     let out = f.render(&wt, "this-session", Some("demo-1-work"));
     let lines: Vec<&str> = out.lines().collect();
-    assert_eq!(lines.len(), 4, "{out}");
-    assert!(lines[0].starts_with("🏷️"), "{out}");
-    assert!(lines[1].contains("🅱️") && lines[1].contains("🌳"), "{out}");
+    assert_eq!(lines.len(), 3, "{out}");
+    assert!(lines[0].starts_with("🧠"), "{out}");
+    assert!(lines[0].contains("🅱️") && lines[0].contains("🌳"), "{out}");
     assert!(
-        lines[2].starts_with("🎯") && lines[2].contains("🗂️"),
+        lines[1].starts_with("🎯") && lines[1].contains("🗂️"),
         "{out}"
     );
-    assert!(lines[3].contains("CW"), "{out}");
+    assert!(lines[2].contains("CW"), "{out}");
     for (n, role_icons) in [
         (0, ["🎯", "👀", "⛔", "⏸️", "🗂️", "✅"].as_slice()),
-        (1, ["🎯", "👀", "⛔", "⏸️", "🗂️", "✅"].as_slice()),
-        (2, ["🌳", "🅱️", "📡", "🧠"].as_slice()),
-        (3, ["🎯", "🗂️", "🌳", "🅱️"].as_slice()),
+        (1, ["🌳", "🅱️", "📡", "🧠"].as_slice()),
+        (2, ["🎯", "🗂️", "🌳", "🅱️"].as_slice()),
     ] {
         for icon in role_icons {
             assert!(!lines[n].contains(icon), "line {n} carries {icon}: {out}");
@@ -302,7 +305,7 @@ fn icon_spacing_in_the_real_output() {
         .unwrap();
     }
     let out = f.render(&wt, "this-session", Some("demo-1-work"));
-    let flow = line(&out, 2);
+    let flow = line(&out, 1);
     for icon in ["🎯", "⛔", "⏸️", "🗂️", "✅"] {
         assert!(flow.contains(icon), "{icon} missing in {flow}");
     }
