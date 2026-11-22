@@ -1232,8 +1232,7 @@ impl SessionCache {
     /// platform without Unix modes: every render then asks git.
     fn open(ctx: &Context, session_id: &str) -> Option<SessionCache> {
         let name = cache_file_name(session_id)?;
-        let base = cache_base(ctx.var("TMPDIR"))?;
-        let dir = base.join(CACHE_FOLDER);
+        let dir = cache_folder(ctx.var("TMPDIR"))?;
         private_folder(&dir).then(|| SessionCache {
             file: dir.join(name),
             dir,
@@ -1308,6 +1307,13 @@ fn cache_base(tmpdir: Option<&str>) -> Option<PathBuf> {
     }
 }
 
+/// The status line's cache folder for a `TMPDIR` value: `moai-statusline` in [`cache_base`],
+/// none for a relative `TMPDIR`. Makes nothing. The session caches and the usage record
+/// ([`crate::usage_limit`]) both live here.
+pub(crate) fn cache_folder(tmpdir: Option<&str>) -> Option<PathBuf> {
+    cache_base(tmpdir).map(|base| base.join(CACHE_FOLDER))
+}
+
 /// What a commit or a stage on the same branch changes while the `HEAD` text stays: the commit
 /// of the checked-out branch (none for a detached `HEAD`, whose text is the commit) and the size
 /// and modified time of the checkout's index file. Read from disk, no process.
@@ -1334,7 +1340,7 @@ fn work_state(dirs: &GitDirs, branch: Option<&str>) -> String {
 /// when missing, tightened to 0700 when it is the user's own with wider rights, refused when it
 /// is a link, another kind of file or another user's.
 #[cfg(unix)]
-fn private_folder(dir: &Path) -> bool {
+pub(crate) fn private_folder(dir: &Path) -> bool {
     use std::os::unix::fs::{DirBuilderExt, MetadataExt, PermissionsExt};
     if std::fs::symlink_metadata(dir).is_err() {
         // A render that made it first is as good: the checks below decide.
@@ -1352,7 +1358,25 @@ fn private_folder(dir: &Path) -> bool {
 }
 
 #[cfg(not(unix))]
-fn private_folder(_dir: &Path) -> bool {
+pub(crate) fn private_folder(_dir: &Path) -> bool {
+    false
+}
+
+/// What [`private_folder`] demands, checked without making or changing anything, for a reader
+/// that writes nothing: a plain folder (not a link) of this user that nobody else may enter.
+#[cfg(unix)]
+pub(crate) fn is_private_folder(dir: &Path) -> bool {
+    use std::os::unix::fs::MetadataExt;
+    let Ok(meta) = std::fs::symlink_metadata(dir) else {
+        return false;
+    };
+    // SAFETY: geteuid has no preconditions and cannot fail.
+    let me = unsafe { libc::geteuid() };
+    meta.file_type().is_dir() && meta.uid() == me && meta.mode() & 0o077 == 0
+}
+
+#[cfg(not(unix))]
+pub(crate) fn is_private_folder(_dir: &Path) -> bool {
     false
 }
 
