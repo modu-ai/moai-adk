@@ -1019,6 +1019,28 @@
         }
       ],
       "rejects": "the old banner wordings 'MoAI-Easy ★' or 'MoAI ★' left in shipped text; banners read '<emoji> MoAI 🗿 <name> ─…' (user instruction 2026-11-21)"
+    },
+    {
+      "id": "next-flow-shipped-texts",
+      "tests": [
+        "tests/next_flow_skill_scan.rs::refs_meaning_is_in_exactly_one_shipped_text",
+        "tests/next_flow_skill_scan.rs::refs_no_shipped_text_spells_the_rules_as_letters"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test next_flow_skill_scan refs_"
+      ],
+      "rules": [
+        "tests/next_flow_skill_scan.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "skills/moai/"
+        },
+        {
+          "prefix": "agents/"
+        }
+      ],
+      "rejects": "a second shipped text that explains the meaning of the NeXT name, or a shipped text that spells the four technical rules of the flow as the letters of the name (SPEC-20261122-next-flow-skills-agents AC-3)"
     }
   ]
 }
