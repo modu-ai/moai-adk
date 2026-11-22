@@ -434,7 +434,10 @@ pub(crate) fn env_entry_refusal(name: &str, value: &Value) -> Option<&'static st
         return Some("the value is not a one-line string within the size limit");
     }
     let upper = name.to_ascii_uppercase();
-    if SECRET_ENV_NAMES.iter().any(|s| upper.contains(s)) || credential_like(text) {
+    if SECRET_ENV_NAMES.iter().any(|s| upper.contains(s))
+        || credential_like(name)
+        || credential_like(text)
+    {
         return Some("the name or the value looks like a credential");
     }
     None
@@ -445,6 +448,18 @@ pub(crate) fn env_entry_refusal(name: &str, value: &Value) -> Option<&'static st
 pub(crate) fn credential_like(text: &str) -> bool {
     crate::agents_local_merge::secret_kind(text).is_some()
         || (text.contains("://") && text.contains('@'))
+}
+
+/// A picked or requested value as a refusal message may show it: at most 64 characters without
+/// control characters, or a placeholder when [`credential_like`] flags the value either as given
+/// or with its control characters stripped (a control character inside a token would otherwise
+/// hide its shape and the stripped token would be printed), so no message carries a secret back.
+pub(crate) fn shown_value(text: &str) -> String {
+    let clean: String = text.chars().filter(|c| !c.is_control()).collect();
+    if credential_like(text) || credential_like(&clean) {
+        return "<value hidden: looks like a credential>".into();
+    }
+    clean.chars().take(64).collect()
 }
 
 /// Whether any string inside `value` (a leaf or an object key) looks like a credential.
@@ -460,8 +475,15 @@ pub(crate) fn holds_credential(value: &Value) -> bool {
 }
 
 /// The settings keys, other than `env` (which has its own per-entry rule), whose value must not
-/// look like a credential: they go to a file that is usually committed.
-const CREDENTIAL_FREE_KEYS: [&str; 4] = ["permissions", "model", "statusLine", "outputStyle"];
+/// look like a credential: they go to a file that is usually committed. `enabledPlugins` is
+/// screened by its keys too, which its own check would accept in a token's shape.
+const CREDENTIAL_FREE_KEYS: [&str; 5] = [
+    "permissions",
+    "model",
+    "statusLine",
+    "outputStyle",
+    "enabledPlugins",
+];
 
 /// Validates a desired `env` value: an object of at most [`ENV_ENTRIES_MAX`] plain entries.
 fn check_env(value: &Value) -> Result<()> {
@@ -473,8 +495,7 @@ fn check_env(value: &Value) -> Result<()> {
     }
     for (name, v) in map {
         if let Some(why) = env_entry_refusal(name, v) {
-            let shown: String = name.chars().filter(|c| !c.is_control()).take(64).collect();
-            return Err(format!("env entry {shown} refused: {why}"));
+            return Err(format!("env entry {} refused: {why}", shown_value(name)));
         }
     }
     Ok(())
@@ -659,11 +680,7 @@ fn refuse_unlisted<'a>(keys: impl Iterator<Item = &'a str>, allowed: &[&str]) ->
     }
     refused.sort_unstable();
     refused.dedup();
-    let shown: Vec<String> = refused
-        .iter()
-        .take(8)
-        .map(|k| k.chars().filter(|c| !c.is_control()).take(64).collect())
-        .collect();
+    let shown: Vec<String> = refused.iter().take(8).map(|k| shown_value(k)).collect();
     Err(format!(
         "unmanaged claude settings key refused: {}{}; allowed: {}",
         shown.join(", "),
@@ -1144,6 +1161,9 @@ fn settings_state_with(
     if hooks_on_disk && !current.contains_key("hooks") {
         baseline.remove("hooks");
     }
+    // REQ-10: the plan itself refuses an additional directory that leaves the repository,
+    // whichever caller built the desired map.
+    check_additional_directories_inside(&root, desired)?;
     let (candidate, conflicts) = plan_settings(&baseline, &current, desired)?;
     let after = candidate.as_ref().filter(|c| **c != current).map(|c| {
         let mut b = serde_json::to_vec_pretty(c).expect("JSON object");
