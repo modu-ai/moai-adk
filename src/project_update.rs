@@ -16,6 +16,7 @@ use crate::claude::{self, SettingsScope};
 use crate::claude_settings_merge;
 use crate::generation::{self, GenerationRequest};
 use crate::github_templates::{self, GithubRequest};
+use crate::project_ci_plan::{self, CiRequest};
 use crate::{
     go_settings_clean, go_state, home_workdir, profile, project_detect, project_hosts,
     reports_move, state_root, status_line, Profile,
@@ -1239,6 +1240,68 @@ fn github_step(root: &Path, shown: &str) -> Result<Step> {
     })
 }
 
+/// `ci` (SPEC-20261122-project-ci-design REQ-6, REQ-7): the CI workflow files of the project's
+/// saved answers and declared checks. It is shown only once the profile holds CI answers, right
+/// after `github`, and its printed command is `project-ci-apply` with the plan's digest. A file
+/// MoAI wrote that the answers no longer produce is listed (`stale`) and kept; it never makes
+/// the step `ready` by itself, since only the user's pick removes it.
+fn ci_step(root: &Path, shown: &str) -> Result<Step> {
+    let plan = project_ci_plan::ci_plan(
+        root,
+        CiRequest {
+            protocol_version: 1,
+            runs_per_month: None,
+            language: None,
+            remove: Vec::new(),
+        },
+    )?;
+    let files: Vec<Value> = plan
+        .files
+        .iter()
+        .map(|f| json!({"path": f.path, "action": f.action, "jobs": f.jobs, "detail": f.detail}))
+        .collect();
+    let writes = |a: &str| matches!(a, "create" | "merge" | "remove");
+    let (state, reason) = if plan.files.is_empty() {
+        ("skip", "nothing is planned; the notes say why")
+    } else if plan.files.iter().any(|f| f.action == "conflict") {
+        ("conflict", "a workflow file was edited by hand; it is kept")
+    } else if plan
+        .files
+        .iter()
+        .any(|f| writes(&f.action) || f.adopt_baseline)
+    {
+        ("ready", "workflow files to write or record")
+    } else if plan.files.iter().any(|f| f.action == "stale") {
+        (
+            "unchanged",
+            "a workflow file is no longer generated and is kept until you pick its removal",
+        )
+    } else {
+        ("unchanged", "every workflow file is current")
+    };
+    let apply = (state == "ready")
+        .then(|| {
+            Ok::<_, String>((
+                argv("project-ci-apply", shown, &plan.plan_digest),
+                encode(&plan)?,
+            ))
+        })
+        .transpose()?;
+    Ok(Step {
+        name: "ci",
+        state,
+        reason: reason.into(),
+        preview: json!({
+            "files": files,
+            "notes": plan.notes,
+            "estimate": plan.estimate,
+            "preserved": plan.preserved,
+        }),
+        plan_digest: Some(plan.plan_digest),
+        apply,
+    })
+}
+
 /// The install steps in the order they are printed and applied; `hooks` follows
 /// `claude-settings` (#2936 R-B), the host steps follow `github` (#2936 R9 S5a).
 const INSTALL: [&str; 11] = [
@@ -1309,6 +1372,10 @@ fn install_steps(
         or_blocked("hooks", hooks_step(root, shown, claude)),
         or_blocked("github", github_step(root, shown)),
     ];
+    // The `ci` step follows `github` once the profile holds CI answers (before the host steps).
+    if profile.ci.is_some() {
+        steps.push(or_blocked("ci", ci_step(root, shown)));
+    }
     steps.extend(host_steps(root, shown, Some(&profile.hosts)));
     hooks_after_settings(&mut steps);
     steps
