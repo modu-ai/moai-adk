@@ -279,6 +279,35 @@ fn worktree_place_links_a_linked_worktree_folder_is_refused() {
     assert!(err.contains(&folder.display().to_string()), "{err}");
 }
 
+/// Audit B2 (REQ-13): the place is read ignoring case, so a path spelled `.CLAUDE/worktrees`
+/// still has its owner, and a link in a middle part of the path (here a group folder inside the
+/// place) is refused, whatever the spelling of the parts before it.
+#[cfg(unix)]
+#[test]
+fn worktree_place_links_every_part_below_the_owner_is_checked() {
+    let tmp = tempfile::tempdir().unwrap();
+    let project = tmp.path().join("p");
+    std::fs::create_dir_all(project.join(".claude/worktrees")).unwrap();
+    let elsewhere = tmp.path().join("elsewhere");
+    std::fs::create_dir_all(&elsewhere).unwrap();
+    std::os::unix::fs::symlink(&elsewhere, project.join(".claude/worktrees/group")).unwrap();
+    let folder = project.join(".claude/worktrees/group/w");
+    assert!(home_workdir::refuse_linked_place(&project, &folder)
+        .unwrap_err()
+        .contains("group"));
+    // The owner is found whatever the case of the place parts.
+    let upper = project.join(".CLAUDE/Worktrees/w");
+    assert_eq!(
+        home_workdir::place_owner(&project, &upper),
+        Some(project.clone())
+    );
+    // A folder below the project but outside the place has no owner.
+    assert_eq!(
+        home_workdir::place_owner(&project, &project.join("claude/worktrees/w")),
+        None
+    );
+}
+
 /// Scene 11 (REQ-13): real folders, or none yet, are accepted.
 #[test]
 fn worktree_place_links_real_folders_and_missing_ones_are_accepted() {
