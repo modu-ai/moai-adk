@@ -460,7 +460,7 @@ fn the_local_completion_is_recorded_once() {
 /// profile with no integration branch answers pending with the reason and no push.
 #[test]
 fn an_absent_remote_branch_is_created_and_a_profile_without_a_branch_is_reported() {
-    let mut w = World::new();
+    let w = World::new();
     git(
         &w.project,
         &["push", "-q", "origin", "--delete", "refs/heads/integ"],
