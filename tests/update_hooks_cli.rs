@@ -818,3 +818,80 @@ fn audit_b5_a_config_receipt_cannot_write_chosen_paths() {
 fn f_ref(f: &Fixture) -> &Fixture {
     f
 }
+
+/// REQ-18 (audit 6768 non-blocking 1): a project's own settings pair holding the old
+/// MoAI-installed set gets a removal row in the preview, the confirm drops exactly MoAI's
+/// generated entries, and the user's own entries and every other key stay.
+#[test]
+fn req18_an_old_project_set_is_removed_and_the_users_own_entries_stay() {
+    let f = setup();
+    layer_current(&f);
+    let project_claude = f.project.join(".claude");
+    fs::create_dir_all(&project_claude).unwrap();
+    let mine = json!({
+        "hooks": {
+            "PreToolUse": [
+                {"matcher": "Write|Edit|Bash",
+                 "hooks": [{"type": "command", "command": "orca guard", "timeout": 5}]},
+                {"hooks": [{"type": "command",
+                            "command": "moai claim-verify . --hook", "timeout": 10}]},
+                {"hooks": [{"type": "command",
+                            "command": "moai hook-receipt --host claude", "timeout": 10}]}
+            ],
+            "SessionStart": [
+                {"hooks": [{"type": "command", "command": "moai hook-dispatch --host claude --event session-check",
+                            "timeout": 10}]}
+            ]
+        },
+        "env": {"TOKEN_FOR_TEST": "keeps"}
+    });
+    let bytes = serde_json::to_vec_pretty(&mine).unwrap();
+    fs::write(project_claude.join("settings.json"), &bytes).unwrap();
+    // MoAI's ownership receipt for the project pair (the manifest names the file's sha).
+    let manifests = moai_cli::state_root::path(&f.project, "manifests");
+    fs::create_dir_all(&manifests).unwrap();
+    fs::write(
+        manifests.join("claude-settings.json"),
+        serde_json::to_vec_pretty(&json!({
+            "schema_version": 1,
+            "settings_path": ".claude/settings.json",
+            "owned": {"hooks": {}},
+            "settings_sha256": moai_cli::digest(&bytes),
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+
+    let p = update_preview(&f);
+    let rows = p["hooks"]["folders"].as_array().unwrap().clone();
+    let row = rows
+        .iter()
+        .find(|r| r["folder"].as_str() == Some(project_claude.display().to_string().as_str()))
+        .unwrap_or_else(|| panic!("{p}"));
+    assert_eq!(row["action"], json!("remove"), "{p}");
+    let removed = row["removed"].to_string();
+    assert!(removed.contains("claim-verify"), "{row}");
+    assert!(removed.contains("hook-receipt"), "{row}");
+    assert!(removed.contains("hook-dispatch"), "{row}");
+
+    let digest = p["plan_digest"].as_str().unwrap().to_string();
+    let r = result(&run(&f, &f.project, &["update", "--confirm", &digest]));
+    assert_eq!(r["hooks_result"]["state"], json!("applied"), "{r}");
+    let after: Value =
+        serde_json::from_slice(&fs::read(project_claude.join("settings.json")).unwrap()).unwrap();
+    let text = after.to_string();
+    assert!(text.contains("orca guard"), "{after}");
+    assert!(text.contains("keeps"), "{after}");
+    for gone in ["claim-verify", "hook-receipt", "hook-dispatch"] {
+        assert!(!text.contains(gone), "{gone}: {after}");
+    }
+    // A second preview has nothing of MoAI's left to remove: no removal row.
+    let again = update_preview(&f);
+    for row in again["hooks"]["folders"].as_array().unwrap() {
+        assert!(
+            row["folder"].as_str() != Some(project_claude.display().to_string().as_str())
+                || row["action"] != json!("remove"),
+            "{again}"
+        );
+    }
+}

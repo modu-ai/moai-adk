@@ -468,7 +468,7 @@ fn the_update_layer_plans_the_config_folder_and_gates_nothing() {
     use moai_cli::update_hooks;
     let w = update_world(CLAUDE);
     let before = w.files(CLAUDE);
-    let layer = update_hooks::plan_in(&w.home).unwrap();
+    let layer = update_hooks::plan_in(&w.home, &w.project).unwrap();
     let v = layer.to_json();
     assert!(
         v.get("hosts").is_none(),
@@ -478,16 +478,31 @@ fn the_update_layer_plans_the_config_folder_and_gates_nothing() {
         v.get("migration").is_none() && !v.to_string().contains("migration"),
         "no moai-cli rewrite count any more: {v}"
     );
-    assert_eq!(v["folders"].as_array().map(Vec::len), Some(1), "{v}");
+    // REQ-18: the config folder's row, and beside it the project pair's removal row (this
+    // fixture's project holds the old MoAI-installed set under MoAI's ownership manifest).
+    assert_eq!(v["folders"].as_array().map(Vec::len), Some(2), "{v}");
+    assert!(
+        v["folders"].as_array().unwrap().iter().any(|r| {
+            r["folder"]
+                .as_str()
+                .is_some_and(|f| f.ends_with("/project/.claude"))
+                && r["action"] == serde_json::json!("remove")
+        }),
+        "{v}"
+    );
     assert!(
         v["binary"].as_str().is_some_and(|b| b.starts_with('/')),
         "the preview names the absolute binary path: {v}"
     );
-    // The layer never touches the project's settings file.
+    // REQ-18: the confirmed apply removes MoAI's generated entries from the project's
+    // settings file. This fixture holds only MoAI's entries, so the file is `{}` after;
+    // the ownership manifest beside it is left as it was.
     let out = update_hooks::apply_in(&w.home, &layer, &layer.plan_digest, "test-3004", &w.rust())
         .unwrap();
     let _ = out;
-    assert_eq!(w.files(CLAUDE), before, "the project file must not change");
+    let (file, manifest) = w.files(CLAUDE);
+    assert_eq!(file, b"{}\n".to_vec(), "only MoAI's entries were there");
+    assert_eq!(manifest, before.1, "the manifest is left as it was");
 }
 
 /// `hook_status.configured` tells an old `moai-cli` install (it still runs) from a current one

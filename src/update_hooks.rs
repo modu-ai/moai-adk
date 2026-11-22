@@ -42,7 +42,7 @@ pub struct FolderPlan {
 
 impl FolderPlan {
     fn writes(&self) -> bool {
-        self.plan_digest.is_some() && matches!(self.action.as_str(), "create" | "update")
+        self.plan_digest.is_some() && matches!(self.action.as_str(), "create" | "update" | "remove")
     }
 
     fn to_json(&self) -> Value {
@@ -128,8 +128,7 @@ fn skip(reason: String) -> Value {
 }
 
 pub fn plan(home: &Path, cwd: &Path) -> Result<Layer> {
-    let _ = cwd;
-    plan_in(home)
+    plan_in(home, cwd)
 }
 
 /// [`apply`] with the PATH of the old per-project gate given (the config-folder layer gates no
@@ -148,7 +147,7 @@ pub fn apply_in(
 /// resolves (the picked-folders machinery of the install-place card extends this list), the
 /// generic hook set and the deny rules are offered into `<config>/settings.json`. Never
 /// writes; the digest binds every folder's action, entries and rules.
-pub fn plan_in(home: &Path) -> Result<Layer> {
+pub fn plan_in(home: &Path, cwd: &Path) -> Result<Layer> {
     let mut layer = Layer {
         folders: Vec::new(),
         skipped: Vec::new(),
@@ -165,8 +164,104 @@ pub fn plan_in(home: &Path) -> Result<Layer> {
         }
     };
     layer.folders.push(folder_plan(&folder)?);
+    // REQ-18 (audit 6768 non-blocking 1): a project whose own .claude/settings.json still
+    // holds the old MoAI-installed set gets a removal row beside the config folder's.
+    if let Some(row) = project_removal_row(cwd, &folder) {
+        layer.folders.push(row);
+    }
     layer.plan_digest = layer_digest(&layer);
     Ok(layer)
+}
+
+/// Whether a hook entry is one the project era wrote: a relative command naming MoAI's
+/// claim guard, receipt handler or hook-dispatch duty. The config-folder set's absolute
+/// exec-form commands are never the project pair's business (an absolute path is this era's).
+fn moai_generated_entry(command: &str, args: &str) -> bool {
+    if command.starts_with('/') {
+        return false;
+    }
+    let text = format!("{command} {args}");
+    text.contains("claim-verify") || text.contains("hook-receipt") || text.contains("hook-dispatch")
+}
+
+/// The project's own settings pair, planned as a removal when MoAI's manifest receipt owns its
+/// `hooks` key and the key still holds MoAI's generated entries (`None` outside a project,
+/// without the file, without MoAI's ownership, or with nothing of MoAI's in it; the user's
+/// own entries and every other key are never touched).
+fn project_removal_row(cwd: &Path, config_folder: &Path) -> Option<FolderPlan> {
+    let is_project = cwd.ancestors().any(|dir| {
+        [
+            crate::state_root::EARLIER_PROJECT_DIR,
+            crate::state_root::MOAI_DIR,
+        ]
+        .iter()
+        .any(|name| dir.join(name).is_dir())
+    });
+    if !is_project {
+        return None;
+    }
+    let folder = cwd.join(".claude");
+    if folder == config_folder {
+        return None;
+    }
+    let bytes = fs::read(folder.join("settings.json")).ok()?;
+    let v = settings_object(&bytes).ok()?;
+    if !crate::hooks::installed(cwd, "claude").unwrap_or(false) {
+        return None;
+    }
+    let mut removed: Vec<String> = Vec::new();
+    for groups in v.get("hooks")?.as_object()?.values() {
+        let Some(groups) = groups.as_array() else {
+            continue;
+        };
+        for g in groups {
+            let Some(handlers) = g["hooks"].as_array() else {
+                continue;
+            };
+            for h in handlers {
+                let cmd = h["command"].as_str().unwrap_or("");
+                let args = h["args"]
+                    .as_array()
+                    .map(|a| {
+                        a.iter()
+                            .filter_map(Value::as_str)
+                            .collect::<Vec<_>>()
+                            .join(" ")
+                    })
+                    .unwrap_or_default();
+                let text = format!("{cmd} {args}");
+                if moai_generated_entry(cmd, &args) {
+                    let name = if text.contains("claim-verify") {
+                        "claim-verify"
+                    } else if text.contains("hook-receipt") {
+                        "hook-receipt"
+                    } else {
+                        "hook-dispatch"
+                    };
+                    removed.push(name.to_string());
+                }
+            }
+        }
+    }
+    if removed.is_empty() {
+        return None;
+    }
+    let bound = serde_json::to_vec(&json!([
+        2,
+        folder.display().to_string(),
+        "remove",
+        &removed
+    ]))
+    .unwrap_or_default();
+    Some(FolderPlan {
+        folder,
+        action: "remove".into(),
+        reason: None,
+        plan_digest: Some(crate::digest(&bound)),
+        added: Vec::new(),
+        removed,
+        deny: Vec::new(),
+    })
 }
 
 fn layer_digest(layer: &Layer) -> String {
@@ -624,7 +719,12 @@ pub fn apply(home: &Path, layer: &Layer, plan_digest: &str, permission: &str) ->
     let mut results = Vec::new();
     let mut applied = 0usize;
     for f in &writes {
-        match apply_folder(f, home) {
+        let applied_step = if f.action == "remove" {
+            apply_removal(f)
+        } else {
+            apply_folder(f, home)
+        };
+        match applied_step {
             Ok(v) => {
                 applied += 1;
                 receipt.hosts.push(HostEntry {
@@ -762,6 +862,52 @@ fn apply_folder(f: &FolderPlan, home: &Path) -> Result<Value> {
         "after": crate::digest(&bytes),
         "deny_added": deny_added,
         "before_hex": before.as_deref().map(hex_encode),
+    }))
+}
+
+/// REQ-18 (audit 6768 non-blocking 1): the removal row's write — the hook groups MoAI
+/// generated leave the project's settings file; the user's own entries and every other key
+/// stay exactly as they are.
+fn apply_removal(f: &FolderPlan) -> Result<Value> {
+    let settings = f.folder.join("settings.json");
+    let before = crate::claude::read_existing(&settings)?
+        .ok_or("the settings file changed since the preview; re-preview required")?;
+    let mut v = settings_object(&before)?;
+    if let Some(hooks) = v.get_mut("hooks").and_then(Value::as_object_mut) {
+        for groups in hooks.values_mut() {
+            if let Some(list) = groups.as_array_mut() {
+                list.retain(|g| {
+                    g["hooks"].as_array().is_none_or(|hs| {
+                        !hs.iter().any(|h| {
+                            let cmd = h["command"].as_str().unwrap_or("");
+                            let args = h["args"]
+                                .as_array()
+                                .map(|a| {
+                                    a.iter()
+                                        .filter_map(Value::as_str)
+                                        .collect::<Vec<_>>()
+                                        .join(" ")
+                                })
+                                .unwrap_or_default();
+                            moai_generated_entry(cmd, &args)
+                        })
+                    })
+                });
+            }
+        }
+        hooks.retain(|_, groups| !groups.as_array().is_some_and(|a| a.is_empty()));
+        if hooks.is_empty() {
+            v.as_object_mut().map(|o| o.remove("hooks"));
+        }
+    }
+    let mut bytes = serde_json::to_vec_pretty(&v).map_err(|_| "encode failed".to_string())?;
+    bytes.push(b'\n');
+    crate::apply::publish_replace(&settings, Some(&before), &bytes)?;
+    Ok(json!({
+        "state": "applied",
+        "before": crate::digest(&before),
+        "after": crate::digest(&bytes),
+        "before_hex": hex_encode(&before),
     }))
 }
 
