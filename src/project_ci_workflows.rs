@@ -255,6 +255,31 @@ fn header(extra: &[&str], korean: bool) -> String {
         ]
     };
     lines.extend_from_slice(extra);
+    comment_block(&lines)
+}
+
+/// The header of the deploy file: it names what this file is. It runs no command of its own,
+/// so it must not say it runs the declared checks.
+fn deploy_header(korean: bool) -> String {
+    let lines: [&str; 4] = if korean {
+        [
+            "MoAI 가 만든 파일이에요. 자기 명령은 하나도 실행하지 않아요(runs no command).",
+            "배포 단계는 아래 작업 안에 직접 적어 넣어요. MoAI 는 배포 명령을 만들지 않아요.",
+            "자동으로 시작하지 않아요. Actions 탭에서 직접 실행할 때만 돌아요.",
+            "끄려면 이 파일을 지우거나, Actions 탭에서 이 워크플로를 골라 Disable workflow 를 누르세요.",
+        ]
+    } else {
+        [
+            "MoAI generated this file. It runs no command of its own.",
+            "Write your deploy steps in the job below; MoAI generates no deploy command.",
+            "It never starts by itself: it runs only when you start it from the Actions tab.",
+            "To turn it off: delete this file, or open the Actions tab, pick this workflow and choose Disable workflow.",
+        ]
+    };
+    comment_block(&lines)
+}
+
+fn comment_block(lines: &[&str]) -> String {
     let mut out = String::new();
     for l in lines {
         out.push_str(&format!("# {l}\n"));
@@ -414,14 +439,7 @@ pub fn generate(input: &Input) -> Result<Generated> {
         .as_deref()
         .filter(|_| input.answers.deploy.enabled)
     {
-        let mut deploy = header(
-            &[if korean {
-                "자동으로 시작하지 않아요. Actions 탭에서 직접 실행할 때만 돌아요."
-            } else {
-                "It never starts by itself: it runs only when you start it from the Actions tab."
-            }],
-            korean,
-        );
+        let mut deploy = deploy_header(korean);
         deploy.push_str("name: \"MoAI deploy\"\non:\n  workflow_dispatch:\n");
         deploy.push_str("permissions:\n  contents: read\n");
         deploy.push_str(
@@ -1112,6 +1130,18 @@ mod tests {
         // Audit B-N3: no run step of an undeclared command; the job body is a comment that
         // tells the user where their own deploy steps go.
         assert!(!text.contains("run:") && !text.contains("echo"), "{text}");
+        // Its header says what this file is, not what the check file does.
+        assert!(
+            !text.contains("runs the checks you declared")
+                && !text.contains("Only the commands in your project profile"),
+            "{text}"
+        );
+        assert!(text.contains("runs no command"), "{text}");
+        assert!(!file(
+            &make(Some("github-flow"), &answers(), &c, &l),
+            "moai-check.yml"
+        )
+        .contains("runs no command"));
         assert!(
             text.contains("\n      # Add your own deploy steps here"),
             "{text}"

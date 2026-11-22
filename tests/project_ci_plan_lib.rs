@@ -20,6 +20,14 @@ fn request() -> CiRequest {
         protocol_version: 1,
         runs_per_month: Some(40),
         language: None,
+        remove: Vec::new(),
+    }
+}
+
+fn request_removing(paths: &[&str]) -> CiRequest {
+    CiRequest {
+        remove: paths.iter().map(|p| p.to_string()).collect(),
+        ..request()
     }
 }
 
@@ -174,6 +182,186 @@ fn a_missing_wrong_or_stale_pick_writes_nothing() {
     let after = tree(root.path());
     assert_ne!(before, after, "the fixture profile itself changed");
     assert!(after.keys().all(|k| !k.contains("workflows")), "{after:?}");
+}
+
+/// Audit B2-N1: a file that appears after the plan was shown makes the plan stale. The apply
+/// refuses before it writes anything, so no earlier file of the plan is published and no
+/// receipt is left behind (a partial apply was the failure this check prevents).
+#[test]
+fn a_target_that_appears_after_the_plan_makes_it_stale_and_nothing_is_written() {
+    let root = project(&profile("m-flow", json!(["linux"]), "public", None));
+    let p = plan(&root);
+    assert_eq!(action(&p, CHECK), "create");
+    assert_eq!(action(&p, NIGHTLY), "create");
+    // The user creates the second planned file after the preview.
+    let theirs = root.path().join(NIGHTLY);
+    fs::create_dir_all(theirs.parent().unwrap()).unwrap();
+    fs::write(&theirs, "name: mine\n").unwrap();
+    let before = tree(root.path());
+    let err = apply(&root, &p).unwrap_err();
+    assert!(err.contains("stale"), "{err}");
+    assert_eq!(tree(root.path()), before, "a refused apply wrote something");
+    assert!(!root.path().join(CHECK).exists());
+    assert_eq!(read(&root, NIGHTLY), "name: mine\n");
+
+    // The same for a planned file the user edited after an earlier apply.
+    let root = project(&profile("github-flow", json!(["linux"]), "public", None));
+    apply(&root, &plan(&root)).unwrap();
+    set_profile(
+        root.path(),
+        &profile("github-flow", json!(["linux", "windows"]), "public", None),
+    );
+    let p = plan(&root);
+    assert_eq!(action(&p, CHECK), "merge");
+    let edited = format!("{}# edited after the preview\n", read(&root, CHECK));
+    fs::write(root.path().join(CHECK), &edited).unwrap();
+    let before = tree(root.path());
+    assert!(apply(&root, &p).unwrap_err().contains("stale"));
+    assert_eq!(tree(root.path()), before);
+}
+
+/// Audit B2-N2: a file the plan stopped owning (the nightly run after the project left
+/// m-flow) stays visible as `stale` and is never touched unless the user picks it.
+#[test]
+fn a_file_the_plan_no_longer_owns_stays_until_the_user_picks_its_removal() {
+    let root = project(&profile("m-flow", json!(["linux"]), "public", None));
+    apply(&root, &plan(&root)).unwrap();
+    assert!(root.path().join(NIGHTLY).exists());
+    set_profile(
+        root.path(),
+        &profile("github-flow", json!(["linux"]), "public", None),
+    );
+    let p = plan(&root);
+    assert_eq!(
+        action(&p, CHECK),
+        "merge",
+        "the trigger changed with the flow"
+    );
+    assert_eq!(action(&p, NIGHTLY), "stale");
+    let stale = p.files.iter().find(|f| f.path == NIGHTLY).unwrap();
+    assert!(
+        stale.detail.as_deref().unwrap_or("").contains("pick"),
+        "the preview says how to remove it: {stale:?}"
+    );
+    let nightly = read(&root, NIGHTLY);
+    let done = apply(&root, &p).unwrap();
+    assert_eq!(done["written"], json!([CHECK]), "{done}");
+    assert_eq!(done["removed"], json!([]), "{done}");
+    assert_eq!(
+        read(&root, NIGHTLY),
+        nightly,
+        "an unpicked stale file was touched"
+    );
+    // It stays recorded, so the next plan shows it again.
+    let manifest: Value = serde_json::from_str(&read(&root, &manifest_rel(root.path()))).unwrap();
+    assert!(manifest["owned_files"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|f| f["path"] == NIGHTLY));
+    assert_eq!(action(&plan(&root), NIGHTLY), "stale");
+}
+
+/// Audit B2-N2: the user picks the removal; the file goes, the manifest forgets it, the receipt
+/// holds the removed bytes and a recovery brings the file back.
+#[test]
+fn a_picked_removal_deletes_the_unedited_file_and_can_be_recovered() {
+    let root = project(&profile("m-flow", json!(["linux"]), "public", None));
+    apply(&root, &plan(&root)).unwrap();
+    let nightly = read(&root, NIGHTLY);
+    set_profile(
+        root.path(),
+        &profile("github-flow", json!(["linux"]), "public", None),
+    );
+    let p = ci_plan(root.path(), request_removing(&[NIGHTLY])).unwrap();
+    assert_eq!(action(&p, NIGHTLY), "remove");
+    assert!(root.path().join(NIGHTLY).exists(), "the plan removed it");
+    let done = apply(&root, &p).unwrap();
+    assert!(!root.path().join(NIGHTLY).exists(), "{done}");
+    assert_eq!(done["removed"], json!([NIGHTLY]), "{done}");
+    let manifest: Value = serde_json::from_str(&read(&root, &manifest_rel(root.path()))).unwrap();
+    assert!(manifest["owned_files"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .all(|f| f["path"] != NIGHTLY));
+    assert!(plan(&root).files.iter().all(|f| f.path != NIGHTLY));
+    // The receipt can bring it back.
+    let receipt = done["request_id"].as_str().unwrap();
+    let back = moai_cli::apply::recover(root.path(), receipt, PICK).unwrap();
+    assert!(
+        back["reverted"]
+            .as_array()
+            .unwrap()
+            .contains(&json!(NIGHTLY)),
+        "{back}"
+    );
+    assert_eq!(read(&root, NIGHTLY), nightly);
+}
+
+/// Audit B2-N2: only a file that still equals its recorded baseline can be picked for removal;
+/// an edited one, one that is still planned, and any path the plan does not own are refused,
+/// and the user's own workflow files are never reachable.
+#[test]
+fn a_removal_is_refused_for_an_edited_planned_or_unknown_file() {
+    let root = project(&profile("m-flow", json!(["linux"]), "public", None));
+    apply(&root, &plan(&root)).unwrap();
+    fs::write(root.path().join(".github/workflows/ci.yml"), "name: ci\n").unwrap();
+    set_profile(
+        root.path(),
+        &profile("github-flow", json!(["linux"]), "public", None),
+    );
+    for path in [
+        CHECK,                           // still planned
+        ".github/workflows/ci.yml",      // the user's own file
+        ".github/workflows/nothing.yml", // not owned at all
+        "../outside.yml",
+    ] {
+        assert!(
+            ci_plan(root.path(), request_removing(&[path])).is_err(),
+            "{path} was accepted"
+        );
+    }
+    // An edited stale file is shown as stale and cannot be picked.
+    let edited = format!("{}# mine\n", read(&root, NIGHTLY));
+    fs::write(root.path().join(NIGHTLY), &edited).unwrap();
+    assert_eq!(action(&plan(&root), NIGHTLY), "stale");
+    assert!(ci_plan(root.path(), request_removing(&[NIGHTLY])).is_err());
+    assert_eq!(read(&root, NIGHTLY), edited);
+    // A file edited after the removal was previewed is not deleted by the apply.
+    fs::write(
+        root.path().join(NIGHTLY),
+        read(&root, NIGHTLY).replace("# mine\n", ""),
+    )
+    .unwrap();
+    let p = ci_plan(root.path(), request_removing(&[NIGHTLY])).unwrap();
+    assert_eq!(action(&p, NIGHTLY), "remove");
+    fs::write(root.path().join(NIGHTLY), "name: mine now\n").unwrap();
+    // The re-plan inside the apply refuses a removal of a file that changed since the preview.
+    assert!(apply(&root, &p).unwrap_err().contains("cannot remove"));
+    assert_eq!(read(&root, NIGHTLY), "name: mine now\n");
+    assert_eq!(read(&root, ".github/workflows/ci.yml"), "name: ci\n");
+}
+
+/// Audit B2-N2: a stale file the user already deleted is simply forgotten by the manifest.
+#[test]
+fn a_stale_file_the_user_deleted_is_forgotten() {
+    let root = project(&profile("m-flow", json!(["linux"]), "public", None));
+    apply(&root, &plan(&root)).unwrap();
+    set_profile(
+        root.path(),
+        &profile("github-flow", json!(["linux"]), "public", None),
+    );
+    fs::remove_file(root.path().join(NIGHTLY)).unwrap();
+    let p = plan(&root);
+    assert!(p.files.iter().all(|f| f.path != NIGHTLY), "{:?}", p.files);
+    apply(&root, &p).unwrap();
+    let manifest: Value = serde_json::from_str(&read(&root, &manifest_rel(root.path()))).unwrap();
+    assert!(manifest["owned_files"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .all(|f| f["path"] != NIGHTLY));
 }
 
 /// AC-4: an existing workflow file with the planned name and no baseline is kept as a
@@ -360,6 +548,7 @@ fn runs_per_month_default_to_the_floor() {
             protocol_version: 1,
             runs_per_month: Some(3),
             language: None,
+            remove: Vec::new(),
         },
     )
     .unwrap();
@@ -369,6 +558,7 @@ fn runs_per_month_default_to_the_floor() {
             protocol_version: 1,
             runs_per_month: None,
             language: None,
+            remove: Vec::new(),
         },
     )
     .unwrap();
@@ -386,7 +576,8 @@ fn a_wrong_request_or_a_missing_profile_is_an_error() {
         CiRequest {
             protocol_version: 2,
             runs_per_month: None,
-            language: None
+            language: None,
+            remove: Vec::new(),
         }
     )
     .is_err());
@@ -405,6 +596,7 @@ fn the_comment_language_follows_the_request_and_links_are_not_followed() {
             protocol_version: 1,
             runs_per_month: None,
             language: Some("ko".into()),
+            remove: Vec::new(),
         },
     )
     .unwrap();
