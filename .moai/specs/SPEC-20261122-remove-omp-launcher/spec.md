@@ -36,7 +36,7 @@ The user decided on 2026-11-21 that moai-adk supports Claude Code and GLM only. 
 - AC-1 (REQ-1, REQ-9): `moai omp`, `moai omp -a` and `moai omp -l --model x` each print the notice once on standard error and in the usage envelope, exit 2, start nothing and leave a temporary OMP home folder byte-identical · verify: `cargo test --locked --offline --test omp_launcher_removed moai_omp_says_it_was_removed`
 - AC-2 (REQ-2): `moai help omp` and `moai help codex` print the same standard error and exit code as `moai omp` and `moai codex` · verify: `cargo test --locked --offline --test omp_launcher_removed help_omp_and_help_codex_print_the_removal_notice`
 - AC-3 (REQ-3): `moai -a omp` and `moai session --host omp` are refused with a message that lists `cc|glm` · verify: `cargo test --locked --offline --test omp_launcher_removed the_omp_host_word_is_refused_like_any_unknown_host`
-- AC-4 (REQ-4): the `cc -l`, `cc -a`, `glm -l` and `glm -a` dry runs print the argv pinned from the tip before the change, and no note names OMP or `/skill:moai` · verify: `cargo test --locked --offline --test omp_launcher_removed cc_and_glm_launches_are_unchanged_and_name_no_omp`
+- AC-4 (REQ-4): the `cc -l`, `cc -a`, `glm -l` and `glm -a` dry runs name no `omp`, no `ZAI_API_KEY` and no `/skill:moai` in their command, environment or notes · verify: `cargo test --locked --offline --test omp_launcher_removed cc_and_glm_launches_are_unchanged_and_name_no_omp`
 - AC-5 (REQ-5): the model settings list `claude` and `glm` and refuse an `omp` pick · verify: `cargo test --locked --offline --test model_effort_settings omp_is_not_a_tool_any_more`
 - AC-6 (REQ-6): a saved `launcher.models.omp` value as a string, a table and a number leaves the `cc` and `glm` dry runs unchanged · verify: `cargo test --locked --offline --test omp_launcher_removed a_saved_omp_value_of_any_shape_never_changes_a_cc_or_glm_launch`
 - AC-7 (REQ-7): the models step report lists no `omp` row, and a save for `claude` writes a file without `launcher.models.omp` · verify: `cargo test --locked --offline --test update_model_pick a_saved_omp_value_is_not_reported_and_leaves_the_file_on_the_next_save`
@@ -51,7 +51,7 @@ The user decided on 2026-11-21 that moai-adk supports Claude Code and GLM only. 
 
 ## Plan
 
-1. RED: the new `tests/omp_launcher_removed.rs` (AC-1, AC-2, AC-3, AC-4, AC-6, AC-8), `omp_is_not_a_tool_any_more` (AC-5) and the AC-7 case; each fails by assertion on the tip.
+1. RED: the new `tests/omp_launcher_removed.rs` (AC-1, AC-2, AC-3, AC-4, AC-6, AC-8), `omp_is_not_a_tool_any_more` (AC-5) and the AC-7 case; each fails by assertion on the tip, except AC-4 and AC-6 where the tip may already hold (they then guard the change).
 2. Launcher: the `Omp` command and the `omp` host word go, `OMP_REMOVED` and `Msg::OmpRemoved` join the Codex notice, `help omp` and `help codex` route to the notices, the session drops its OMP command line, key and spellings, and the help tables, goldens and recorded usage error follow; the tests that name removed things change in the same commit.
 3. Model settings: `TOOLS` becomes `claude` and `glm`; the retired-host read rule then ignores a saved `omp` value; the tests that used `omp` as the other tool move to `glm`.
 4. Install texts: the two scripts and the README name `moai cc` and `moai glm` only; the install script test follows.

@@ -188,6 +188,42 @@ fn a_saved_codex_value_is_ignored_and_dropped_on_the_next_save() {
     }
 }
 
+/// SPEC-20261122-remove-omp-launcher AC-7: a saved OMP value of any shape is neither listed nor
+/// quoted by the models step, and the next save drops it.
+#[test]
+fn a_saved_omp_value_is_not_reported_and_leaves_the_file_on_the_next_save() {
+    for omp in [
+        r#"{"agent":{"model":"zai/glm-5.3","effort":"low"}}"#,
+        r#"{"agent":"SECRET-OMP-MODEL"}"#,
+        r#""SECRET-OMP-MODEL""#,
+    ] {
+        let h = home();
+        fs::create_dir_all(h.path.join(".claude")).unwrap();
+        fs::create_dir_all(h.path.join(".omp")).unwrap();
+        let body = format!(r#"{{"launcher":{{"models":{{"omp":{omp}}}}}}}"#);
+        let path = write_settings(&h.path, &body);
+        let (result, out) = run_stage(&h.path, &enters(5));
+        assert_eq!(result["state"], json!("declined"), "{omp}: {result}");
+        assert!(
+            !out.contains("launcher.models.omp") && !out.contains("SECRET-OMP-MODEL"),
+            "{omp}: the saved OMP value is not listed or quoted: {out}"
+        );
+        assert!(
+            !out.contains("OMP"),
+            "{omp}: the models step offers OMP: {out}"
+        );
+        assert_eq!(fs::read_to_string(&path).unwrap(), body, "nothing written");
+        let (result, _) = run_stage(&h.path, &format!("{}y\n", enters(5)));
+        assert_eq!(result["state"], json!("applied"), "{omp}: {result}");
+        let saved: Value = serde_json::from_str(&fs::read_to_string(&path).unwrap()).unwrap();
+        assert!(
+            saved["launcher"]["models"].get("omp").is_none(),
+            "{omp}: the OMP value stayed: {saved}"
+        );
+        assert!(saved["launcher"]["models"]["claude"].is_object(), "{saved}");
+    }
+}
+
 #[test]
 fn a_no_and_an_unchanged_pick_write_nothing() {
     let h = home();

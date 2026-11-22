@@ -431,6 +431,22 @@ fn codex_is_not_a_tool_any_more() {
     assert!(resolve("codex", "agent", Some(&launcher)).is_err());
 }
 
+/// SPEC-20261122-remove-omp-launcher AC-5: the table, the defaults and the accepted choices hold
+/// `claude` and `glm` only; a saved OMP value is not read as a choice.
+#[test]
+fn omp_is_not_a_tool_any_more() {
+    assert_eq!(&TOOLS[..], &["claude", "glm"][..], "TOOLS");
+    assert!(supported("omp").is_none(), "the table still has an omp row");
+    for role in ROLES {
+        assert_eq!(default_choice("omp", role), None, "omp {role}");
+    }
+    let launcher = object(json!({
+        "models": {"omp": {"agent": {"model": "zai/glm-5.3-flash", "effort": "high"}}}
+    }));
+    assert_eq!(saved_choice(&launcher, "omp", "agent"), None);
+    assert!(resolve("omp", "agent", Some(&launcher)).is_err());
+}
+
 #[test]
 fn a_saved_codex_value_never_refuses_another_tool_and_is_not_listed() {
     for (shape, codex) in old_codex_shapes() {
