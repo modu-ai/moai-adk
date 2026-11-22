@@ -60,7 +60,7 @@ pub fn icon_text(icon: &str, text: &str) -> String {
 
 /// Every icon of the three line layouts with the gap pinned for it (the table of D-6). The code
 /// builds its text from [`icon_text`], and a test compares this table to the crate's width.
-pub const ICONS: [(&str, &str); 17] = [
+pub const ICONS: [(&str, &str); 20] = [
     ("🧠", " "),
     ("🤔", " "),
     ("📡", " "),
@@ -78,6 +78,9 @@ pub const ICONS: [(&str, &str); 17] = [
     ("🅱️", "  "),
     ("⬇️", "  "),
     ("🔀", " "),
+    ("🪫", " "),
+    ("🔋", " "),
+    ("💰", " "),
 ];
 
 #[cfg(test)]

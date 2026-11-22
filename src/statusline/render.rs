@@ -3,7 +3,7 @@
 //! and carries no escape sequence.
 
 use super::color::Profile;
-use super::segments;
+use super::input::RateWindow;
 use super::state::{where_items, DisplayConfig, Flow, Head, Marks, Status, Where, WhereInput};
 use super::width;
 use std::collections::BTreeMap;
@@ -14,6 +14,11 @@ const SEPARATOR: &str = " | ";
 const DISTANCE_NAME_CHARS: usize = 12;
 /// The forms of line 1, from the widest (step 0) to the narrowest (step 4).
 const LINE_ONE_STEPS: usize = 5;
+/// The forms of line 3, from the widest (Z0) to the narrowest (Z4).
+const LINE_THREE_STEPS: usize = 5;
+/// Above this percentage a window shows `🪫` instead of `🔋`, and only above it is the
+/// five-hour window shown (SPEC-20261122-statusline-limits D-2).
+const HIGH_USE_PERCENT: i64 = 70;
 const SGR_NORMAL_INTENSITY: &str = "\x1b[22m";
 const SGR_RESET: &str = "\x1b[0m";
 
@@ -168,15 +173,15 @@ impl Renderer {
     /// SPEC-20261122-statusline-where: line 1 says who the session is and where it stands — the
     /// model with its effort, the repository with its forge counts, the worktree or the branch,
     /// the distance to the integration branch and the pull request ([`Renderer::info_line`]);
-    /// the cards by stage are the flow line ([`Renderer::flow_line`]); the last line is the usage
-    /// windows ([`Renderer::windows_line`]). The cache segment is not in the layout. A line with
+    /// the cards by stage are the flow line ([`Renderer::flow_line`]); the last line is the limits
+    /// and the versions ([`Renderer::limits_line`]). The cache segment is not in the layout. A line with
     /// nothing in it is left out, so the numbers above shift up by one for each empty line
     /// before it.
     pub fn render(&self, status: &Status) -> String {
         let lines: Vec<String> = [
             self.info_line(status),
             self.flow_line(status),
-            self.windows_line(status),
+            self.limits_line(status),
         ]
         .into_iter()
         .filter(|l| !l.is_empty())
@@ -383,73 +388,124 @@ impl Renderer {
         })
     }
 
-    fn windows_line(&self, s: &Status) -> String {
-        let mut segs = Vec::new();
-        // #2928 (user instruction 6878415244, 2026-11-14): the usage windows have a line of their
-        // own. SPEC-20261122-statusline-flow: the cards by stage have their own line too
-        // ([`Renderer::flow_line`]), so this line is the windows only.
-        // The user's final call (2026-11-21, SPEC-20261121-statusline-detached): the windows
-        // render as numbers only — `🔋 CW 61%`, no graph, no trailing colon — and the
-        // `(⚠️ /clear)` / `(🛑/clear!)` hints stay gone (REQ-5, REQ-7). An earlier "keep the
-        // graph" reading of a relayed message was a misunderstanding, now corrected. A window
-        // whose percentage is unknown says `n/a` with no battery icon (REQ-9).
-        if self.enabled("context") {
-            if s.memory.available && s.memory.token_budget > 0 {
-                let pct = segments::usage_percent(s.memory.tokens_used, s.memory.token_budget);
-                segs.push(self.usage_number("CW", pct));
-            } else {
-                segs.push(self.unknown_number("CW"));
-            }
+    /// Line 3 (SPEC-20261122-statusline-limits REQ-1): the context window, the five-hour window,
+    /// the seven-day window, the cost, the Claude Code version and the MoAI version, in the widest
+    /// of its forms that fits the width budget. An item without its input is left out with its
+    /// separator, and the line is empty when all of them are.
+    fn limits_line(&self, s: &Status) -> String {
+        let forms = self.line_three_forms(s);
+        if forms.is_empty() {
+            return String::new();
         }
-        // #2756 leader decision 6862179411 item 1: the five-hour window is not shown (the user
-        // did not choose it, 6858992949); the `usage_5h` option is still accepted. The
-        // weekly reset countdown (the user's picked layout) measures against the
-        // render's clock (REQ-6).
-        if self.enabled("usage_7d") {
-            if let Some(w) = s.seven_day {
-                let mut seg = match w.used_percentage {
-                    Some(pct) => self.usage_number("7D", pct as i64),
-                    None => self.unknown_number("7D"),
+        let widths: Vec<usize> = forms
+            .iter()
+            .map(|f| width::display_width(&form_text(f)))
+            .collect();
+        self.paint_form(&forms[width::pick(&widths, self.budget)])
+    }
+
+    /// The forms of line 3 from the widest to the narrowest, never an empty one and never two
+    /// equal neighbours. Each step drops more than the one before it, in the order under the
+    /// Layouts table of the SPEC: the Claude Code version (Z1), the MoAI version with its update
+    /// arrow (Z2), the countdowns (Z3), the five-hour window and the cost (Z4, as the table's
+    /// narrowest forms write it). The context window and the seven-day window stay in every form.
+    ///
+    /// The windows are numbers only — `🔋 CW 61%`, no graph, no colon, no `/clear` hint
+    /// (SPEC-20261121-statusline-detached REQ-5, REQ-7); a window whose percentage is unknown says
+    /// `n/a` with no battery icon, never a guessed zero.
+    fn line_three_forms(&self, s: &Status) -> Vec<Vec<Group>> {
+        let t = &self.theme;
+        let piece = |color, text: String| Piece {
+            color,
+            text,
+            url: String::new(),
+        };
+        // An empty color leaves the text in the base color of the line.
+        let unknown =
+            |label: &str| vec![piece("", label.to_string()), piece(t.muted, "n/a".into())];
+        // REQ-3: the host drops a window once its reset time passes, so one that still names a
+        // passed reset is left out, never `(0m)`.
+        let live = |w: Option<RateWindow>| w.filter(|w| w.resets_at.is_none_or(|at| at > self.now));
+        let countdown = |w: &RateWindow| {
+            w.resets_at
+                .map(|at| piece(t.muted, reset_countdown(at - self.now)))
+        };
+        let context: Option<Group> = self.enabled("context").then(|| match s.context {
+            Some(pct) => vec![piece("", battery("CW", whole_percent(pct)))],
+            None => unknown("CW"),
+        });
+        // REQ-4 and D-2: the five-hour window only strictly above the high-use percentage.
+        let five_hour = live(s.five_hour)
+            .filter(|_| self.enabled("usage_5h"))
+            .and_then(|w| {
+                let pct = whole_percent(w.used_percentage?);
+                (pct > HIGH_USE_PERCENT)
+                    .then(|| (vec![piece("", battery("5H", pct))], countdown(&w)))
+            });
+        let seven_day = live(s.seven_day)
+            .filter(|_| self.enabled("usage_7d"))
+            .map(|w| {
+                let group = match w.used_percentage {
+                    Some(pct) => vec![piece("", battery("7D", whole_percent(pct)))],
+                    None => unknown("7D"),
                 };
-                if let Some(resets) = w.resets_at {
-                    seg.push(' ');
-                    seg.push_str(
-                        &self.paint(self.theme.muted, &reset_countdown(resets - self.now)),
-                    );
+                (group, countdown(&w))
+            });
+        // REQ-5 and D-3: the cost only when the payload carries neither window (a payload with
+        // only a spend limit included), to two decimals.
+        let cost: Option<Group> = s
+            .cost
+            .filter(|_| s.five_hour.is_none() && s.seven_day.is_none() && self.enabled("cost"))
+            .map(|usd| vec![piece("", width::icon_text("💰", &format!("{usd:.2}")))]);
+        // REQ-6: the versions without a `v`; the update arrow names the template, then the build.
+        let claude: Option<Group> = (self.enabled("claude_version")
+            && !s.claude_version.is_empty())
+        .then(|| vec![piece(t.version, width::icon_text("🤖", &s.claude_version))]);
+        let moai: Option<Group> = s
+            .version
+            .as_ref()
+            .filter(|v| self.enabled("moai_version") && !v.current.is_empty())
+            .map(|v| {
+                let text = match &v.latest {
+                    Some(build) => format!("{} -> {build}", v.current),
+                    None => v.current.clone(),
+                };
+                vec![piece(t.version, width::icon_text("🗿", &text))]
+            });
+        let window = |w: &Option<(Group, Option<Piece>)>, with_countdown: bool| {
+            w.as_ref().map(|(group, countdown)| {
+                let mut group = group.clone();
+                if with_countdown {
+                    group.extend(countdown.clone());
                 }
-                segs.push(seg);
+                group
+            })
+        };
+        let mut forms: Vec<Vec<Group>> = Vec::new();
+        for step in 0..LINE_THREE_STEPS {
+            let form: Vec<Group> = [
+                context.clone(),
+                window(&five_hour, step < 3).filter(|_| step < 4),
+                window(&seven_day, step < 3),
+                cost.clone().filter(|_| step < 4),
+                claude.clone().filter(|_| step < 1),
+                moai.clone().filter(|_| step < 2),
+            ]
+            .into_iter()
+            .flatten()
+            .collect();
+            if form.is_empty() {
+                continue;
             }
-        }
-        // A bridge until the `limits` step of SPEC-20261122-statusline-flow: the Claude Code and
-        // MoAI versions left line 1 (SPEC-20261122-statusline-where) and stand at the end of the
-        // usage-windows line, in their text of before, until that step gives them their place.
-        if self.enabled("claude_version") && !s.claude_version.is_empty() {
-            segs.push(self.paint(self.theme.version, &format!("🤖 v{}", s.claude_version)));
-        }
-        if self.enabled("moai_version") {
-            if let Some(v) = s.version.as_ref().filter(|v| !v.current.is_empty()) {
-                let mut seg = format!("🗿 v{}", v.current);
-                if let Some(latest) = &v.latest {
-                    seg.push_str(&format!(" -> 🗿 v{latest}"));
-                }
-                segs.push(self.paint(self.theme.version, &seg));
+            if forms
+                .last()
+                .is_some_and(|last| form_text(last) == form_text(&form))
+            {
+                continue;
             }
+            forms.push(form);
         }
-        segs.join(SEPARATOR)
-    }
-
-    /// A window whose numbers are unavailable: `<label> n/a` in the muted color with no
-    /// battery icon, never a guessed zero (REQ-9 of SPEC-20261121-statusline-detached).
-    fn unknown_number(&self, label: &str) -> String {
-        format!("{label} {}", self.unknown_text())
-    }
-
-    /// A window renders as a number with the battery icon — no graph, no trailing colon;
-    /// the icon switches at high use. The percentage is shown from 0 to 100 (REQ-10).
-    fn usage_number(&self, label: &str, pct: i64) -> String {
-        let pct = pct.clamp(0, 100);
-        let icon = if pct > 70 { "🪫" } else { "🔋" };
-        format!("{icon} {label} {pct}%")
+        forms
     }
 
     /// The flow line (SPEC-20261122-statusline-flow REQ-7 and REQ-9): the cards of the project's
@@ -474,12 +530,20 @@ impl Renderer {
     }
 
     /// A form written out: each piece in its color (and its link), the pieces of a group joined
-    /// by a space and the groups by the separator.
+    /// by a space and the groups by the separator. A piece without a color stays in the base
+    /// color of the line.
     fn paint_form(&self, form: &[Group]) -> String {
         form.iter()
             .map(|g| {
                 g.iter()
-                    .map(|p| self.link(&p.url, &self.paint(p.color, &p.text)))
+                    .map(|p| {
+                        let text = if p.color.is_empty() {
+                            p.text.clone()
+                        } else {
+                            self.paint(p.color, &p.text)
+                        };
+                        self.link(&p.url, &text)
+                    })
                     .collect::<Vec<_>>()
                     .join(" ")
             })
@@ -554,30 +618,39 @@ impl Renderer {
         }
         forms
     }
-
-    /// `n/a` in the muted color: a slot whose lookup failed says so, in place of a zero.
-    fn unknown_text(&self) -> String {
-        self.paint(self.theme.muted, "n/a")
-    }
 }
 
-/// `(resets in …)` from the seconds left (the user's picked layout): a day or
-/// more counts days and hours, under a day hours and minutes, under an hour minutes only.
+/// The whole percentage a window shows: the fraction cut off, from 0 to 100 (REQ-10 of
+/// SPEC-20261121-statusline-detached).
+fn whole_percent(pct: f64) -> i64 {
+    (pct as i64).clamp(0, 100)
+}
+
+/// `<battery> <label> <pct>%`: the battery icon turns from `🔋` to `🪫` above the high-use
+/// percentage.
+fn battery(label: &str, pct: i64) -> String {
+    let icon = if pct > HIGH_USE_PERCENT {
+        "🪫"
+    } else {
+        "🔋"
+    };
+    width::icon_text(icon, &format!("{label} {pct}%"))
+}
+
+/// The reset countdown from the seconds left, without the words `resets in`
+/// (SPEC-20261122-statusline-limits D-4): a day or more counts days and hours (`(6d 21h)`), under
+/// a day hours and minutes (`(2h 10m)`), under an hour minutes only (`(35m)`).
 fn reset_countdown(secs_left: i64) -> String {
     if secs_left >= 86_400 {
         format!(
-            "(resets in {}d {}h)",
+            "({}d {}h)",
             secs_left / 86_400,
             (secs_left % 86_400) / 3_600
         )
     } else if secs_left >= 3_600 {
-        format!(
-            "(resets in {}h {}m)",
-            secs_left / 3_600,
-            (secs_left % 3_600) / 60
-        )
+        format!("({}h {}m)", secs_left / 3_600, (secs_left % 3_600) / 60)
     } else {
-        format!("(resets in {}m)", (secs_left / 60).max(0))
+        format!("({}m)", (secs_left / 60).max(0))
     }
 }
 
@@ -621,7 +694,8 @@ fn apply_base_color(text: &str, base: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::statusline::input::{self, RateWindow};
+    use crate::statusline::input;
+    use crate::statusline::segments;
     use crate::statusline::state::{self, Context, Flow, GitHubCounts, MyCard, Stage, Version};
 
     fn plain(status: &Status, disabled: &[&str]) -> String {
@@ -642,13 +716,7 @@ mod tests {
                 current: "2.0".into(),
                 latest: Some("3.0".into()),
             }),
-            memory: segments::Memory {
-                tokens_used: 50,
-                token_budget: 100,
-                context_window_size: 200_000,
-                available: true,
-            },
-            auto_compact: 85,
+            context: Some(50.0),
             five_hour: Some(RateWindow {
                 used_percentage: Some(25.0),
                 resets_at: Some(1),
@@ -671,17 +739,22 @@ mod tests {
         }
     }
 
+    /// The line 3 of [`full_status`] (SPEC-20261122-statusline-limits): the five-hour window at
+    /// 25 percent is hidden, and the update arrow names the template, then the build.
+    const FULL_WINDOWS: &str = "🔋 CW 50% | 🪫 7D 75% | 🤖 2.1.293 | 🗿 2.0 -> 3.0";
+
     /// SPEC-20261122-statusline-where: line 1 is the model with its effort, the repository with
-    /// its forge counts and the branch with its marks; the usage windows are the last line and
-    /// end with the Claude Code version and the MoAI version (the bridge of the `limits` step).
+    /// its forge counts and the branch with its marks; line 3 is the last line and ends with the
+    /// Claude Code version and the MoAI version (SPEC-20261122-statusline-limits REQ-1).
     /// With no integration branch known the behind count stays on the branch item, after the
     /// ahead count (SPEC-20261120-statusline-ahead).
     #[test]
     fn full_layout_has_the_place_line_then_the_windows_with_ahead_before_behind() {
         assert_eq!(
             plain(&full_status(), &[]),
-            "🧠 Opus high·t | 📡 owner/repo, ⬇️  7 🔀 3 | 🅱️  main ↑5 ↓2 +3\n\
-             🔋 CW 50% | 🪫 7D 75% | 🤖 v2.1.293 | 🗿 v2.0 -> 🗿 v3.0"
+            format!(
+                "🧠 Opus high·t | 📡 owner/repo, ⬇️  7 🔀 3 | 🅱️  main ↑5 ↓2 +3\n{FULL_WINDOWS}"
+            )
         );
     }
 
@@ -730,12 +803,7 @@ mod tests {
                 current: "4.2647.10".into(),
                 latest: None,
             }),
-            memory: segments::Memory {
-                tokens_used: 97,
-                token_budget: 100,
-                context_window_size: 200_000,
-                available: true,
-            },
+            context: Some(97.0),
             seven_day: Some(RateWindow {
                 used_percentage: Some(21.0),
                 resets_at: Some(EXAMPLE_NOW + 6 * 86_400 + 21 * 3_600),
@@ -793,7 +861,7 @@ mod tests {
             format!(
                 "🧠 Opus 5.5 high·t | 📡 modu-ai/moai-adk, ⬇️  0 🔀 0 | 🌳 c135 | 🅱️  v2026.11.0 ↑207 +11\n\
                  {P0}\n\
-                 🪫 CW 97% | 🔋 7D 21% (resets in 6d 21h) | 🤖 v2.1.325 | 🗿 v4.2647.10"
+                 🪫 CW 97% | 🔋 7D 21% (6d 21h) | 🤖 2.1.325 | 🗿 4.2647.10"
             )
         );
     }
@@ -845,40 +913,6 @@ mod tests {
         assert!(!line.contains("n/a") && !line.contains('📡'), "{line}");
     }
 
-    /// REQ-6: the countdown picks its unit by the seconds left, measured from the render's
-    /// clock, and a window without a reset time ends at the percentage.
-    #[test]
-    fn the_reset_countdown_uses_the_three_formats() {
-        let at = |left: i64| {
-            let status = Status {
-                seven_day: Some(RateWindow {
-                    used_percentage: Some(21.0),
-                    resets_at: Some(EXAMPLE_NOW + left),
-                }),
-                ..Status::default()
-            };
-            Renderer::new(&DisplayConfig::default(), None)
-                .with_now(EXAMPLE_NOW)
-                .render(&status)
-                .lines()
-                .last()
-                .unwrap()
-                .to_string()
-        };
-        assert!(
-            at(6 * 86_400 + 21 * 3_600).ends_with("(resets in 6d 21h)"),
-            "{}",
-            at(6 * 86_400 + 21 * 3_600)
-        );
-        assert!(at(5 * 3_600 + 30 * 60).ends_with("(resets in 5h 30m)"));
-        assert!(at(40 * 60).ends_with("(resets in 40m)"));
-        assert!(
-            at(0).ends_with("(resets in 0m)"),
-            "an immediate reset still names itself: {}",
-            at(0)
-        );
-    }
-
     /// #2559 AC-7 (user instruction 2026-11-12T16:5xZ): the output style is not shown, even
     /// with the `output_style` option left enabled; since SPEC-20261122-statusline-limits REQ-11
     /// it is not read either (`input::tolerant_reader_tests`).
@@ -888,7 +922,10 @@ mod tests {
         let out = plain(&status, &[]);
         assert!(!out.contains('💬'), "{out}");
         assert!(!out.contains("MoAI"), "{out}");
-        assert!(out.lines().last().unwrap().ends_with("🗿 v3.0"), "{out}");
+        assert!(
+            out.lines().last().unwrap().ends_with("🗿 2.0 -> 3.0"),
+            "{out}"
+        );
     }
 
     /// #2756 AC-1 (user instruction 2026-11-13): the session time is not shown, even with the
@@ -907,9 +944,10 @@ mod tests {
         assert!(!enabled.contains('⏳'), "{enabled}");
     }
 
-    /// #2756 leader decision 6862179411 items 1–2: no five-hour window (the user did not choose
-    /// it) and no `💾` file-change segment, even with both in the input and their
-    /// `usage_5h` / `git_status` options left enabled. The branch keeps its `+N` changes.
+    /// #2756 leader decision 6862179411 item 2: no `💾` file-change segment, even with its
+    /// `git_status` option left enabled; the branch keeps its `+N` changes. The five-hour window
+    /// at 25 percent stays hidden: since SPEC-20261122-statusline-limits REQ-4 it shows only above
+    /// 70 percent (`window_tests`).
     #[test]
     fn the_five_hour_window_and_the_file_change_segment_are_never_shown() {
         let status = full_status();
@@ -956,16 +994,7 @@ mod tests {
         let line = plain(&unknown_ctx, &[]);
         assert_eq!(line, "CW n/a", "{line}");
         assert!(!line.contains('🪫') && !line.contains('🔋'), "{line}");
-        let no_budget = Status {
-            memory: segments::Memory {
-                tokens_used: 5,
-                token_budget: 0,
-                context_window_size: 200_000,
-                available: true,
-            },
-            ..Status::default()
-        };
-        assert_eq!(plain(&no_budget, &[]), "CW n/a");
+        // (A window with usage but no total is unknown too: `segments::context_percent`.)
         let week = Status {
             seven_day: Some(RateWindow {
                 used_percentage: None,
@@ -1003,12 +1032,7 @@ mod tests {
         assert_eq!(week(1_000_000.0), "🪫 7D 100%");
         let ctx = |used: i64| {
             let status = Status {
-                memory: segments::Memory {
-                    tokens_used: used,
-                    token_budget: 100,
-                    context_window_size: 200_000,
-                    available: true,
-                },
+                context: Some(used as f64),
                 ..Status::default()
             };
             plain(&status, &["usage_7d"])
@@ -1028,7 +1052,7 @@ mod tests {
         failed.repo = None;
         failed.github.available = false;
         failed.seven_day = Some(RateWindow::default());
-        failed.memory.available = false;
+        failed.context = None;
         let mut detached = full_status();
         detached.git = Some(segments::parse_porcelain("## HEAD (no branch)\n"));
         let screens = [Status::default(), full_status(), failed, detached];
@@ -1126,7 +1150,7 @@ mod tests {
     #[test]
     fn the_flow_line_stands_between_line_one_and_the_usage_windows() {
         let mut status = full_status();
-        let windows = "🔋 CW 50% | 🪫 7D 75% | 🤖 v2.1.293 | 🗿 v2.0 -> 🗿 v3.0";
+        let windows = FULL_WINDOWS;
         let without = plain(&status, &[]);
         assert_eq!(without.lines().count(), 2, "no ledger: no flow line");
         assert_eq!(
@@ -1170,7 +1194,7 @@ mod tests {
     #[test]
     fn line_one_reads_the_repository_with_the_forge_counts_then_the_branch_then_the_pr() {
         let line = |s: &Status, off: &[&str]| plain(s, off).lines().next().unwrap().to_string();
-        let windows = "🔋 CW 50% | 🪫 7D 75% | 🤖 v2.1.293 | 🗿 v2.0 -> 🗿 v3.0";
+        let windows = FULL_WINDOWS;
         let mut status = full_status();
         status.flow = Some(example_flow());
         status.pr = Some(state::PrInfo {
@@ -1221,7 +1245,7 @@ mod tests {
         let mut status = full_status();
         status.flow = Some(example_flow());
         status.worktree = "wt".into();
-        let windows = "🔋 CW 50% | 🪫 7D 75% | 🤖 v2.1.293 | 🗿 v2.0 -> 🗿 v3.0";
+        let windows = FULL_WINDOWS;
         status.repo = None;
         // With `git_branch` off the branch is unread, the worktree name (from the host) stays,
         // without marks.
@@ -1372,7 +1396,7 @@ mod tests {
         // The windows follow as numbers and the two versions close the line.
         assert!(lines[1].starts_with("🔋 CW 50%"), "{}", lines[1]);
         assert!(lines[1].contains("75%"), "{}", lines[1]);
-        assert!(lines[1].ends_with("🗿 v2.0 -> 🗿 v3.0"), "{}", lines[1]);
+        assert!(lines[1].ends_with("🗿 2.0 -> 3.0"), "{}", lines[1]);
         assert_eq!(lines.len(), 2, "{out}");
         assert!(
             !out.contains('\x1b'),
@@ -1447,14 +1471,11 @@ mod tests {
         // The two versions stay on the windows line without the weekly window.
         assert_eq!(
             output.lines().nth(1),
-            Some("🔋 CW 50% | 🤖 v2.1.293 | 🗿 v2.0 -> 🗿 v3.0")
+            Some("🔋 CW 50% | 🤖 2.1.293 | 🗿 2.0 -> 3.0")
         );
         // And they keep that line non-empty without any window.
         let output = plain(&full_status(), &["usage_7d", "context"]);
-        assert_eq!(
-            output.lines().nth(1),
-            Some("🤖 v2.1.293 | 🗿 v2.0 -> 🗿 v3.0")
-        );
+        assert_eq!(output.lines().nth(1), Some("🤖 2.1.293 | 🗿 2.0 -> 3.0"));
         // With the repository and the branch hidden, line 1 keeps the model.
         let output = plain(&full_status(), &["git_branch", "git_status"]);
         assert_eq!(output.lines().count(), 2);
@@ -1467,23 +1488,18 @@ mod tests {
 
     #[test]
     fn context_renders_without_the_handoff_hints() {
+        // The soft and the hard band of the old hints: 90 and 95 percent of a 200k window.
         let mut status = Status {
-            auto_compact: 85,
-            memory: segments::Memory {
-                tokens_used: 180_000,
-                token_budget: 170_000,
-                context_window_size: 200_000,
-                available: true,
-            },
+            context: Some(90.0),
             ..Default::default()
         };
         let off = ["session"];
         // REQ-7: the `(⚠️ /clear)` and `(🛑/clear!)` hints are gone at every band — the window
         // and the percentage stay exactly as they were.
-        assert_eq!(plain(&status, &off), "🪫 CW 100%");
-        assert_eq!(plain(&status, &[]), "🪫 CW 100%");
-        status.memory.tokens_used = 190_000;
-        assert_eq!(plain(&status, &off), "🪫 CW 100%");
+        assert_eq!(plain(&status, &off), "🪫 CW 90%");
+        assert_eq!(plain(&status, &[]), "🪫 CW 90%");
+        status.context = Some(95.0);
+        assert_eq!(plain(&status, &off), "🪫 CW 95%");
         assert_eq!(plain(&status, &["context", "session"]), "MoAI");
         assert_eq!(plain(&status, &["context"]), "MoAI");
     }
@@ -1536,8 +1552,8 @@ mod tests {
                     (t.effort, "high·t"),
                     // D-1: the cache segment is not in the layout, so nothing paints
                     // `theme.cache` any more; the palette entry itself stays distinct (below).
-                    (t.version, "🤖 v2.1.293"),
-                    (t.version, "🗿 v2.0 -> 🗿 v3.0"),
+                    (t.version, "🤖 2.1.293"),
+                    (t.version, "🗿 2.0 -> 3.0"),
                     (t.repo, "📡 owner/repo,"),
                     (t.issues, "⬇️  7"),
                     (t.prs, "🔀 3"),
@@ -1551,11 +1567,10 @@ mod tests {
                 // Escapes removed, the text is the NO_COLOR text (AC-2, AC-3 widths).
                 assert_eq!(strip_sgr(&out), plain(&status, &[]));
 
-                status.memory.token_budget = 200_000;
-                status.memory.tokens_used = 180_000;
+                status.context = Some(90.0);
                 let soft = colored(name, profile, &status);
                 assert!(!soft.contains("(⚠️ /clear)"), "{soft:?}");
-                status.memory.tokens_used = 190_000;
+                status.context = Some(95.0);
                 let hard = colored(name, profile, &status);
                 assert!(!hard.contains("(🛑/clear!)"), "{hard:?}");
 
@@ -1865,7 +1880,10 @@ mod line_one_form_tests {
             "🧠 Opus high | 📡 moai-adk | 🌳 statusline-flow ↑3 +2 | 🧭 next ↑3 ↓0 | 🔗 #12",
             78,
         ),
-        ("🧠 Opus | 🌳 statusline-flow ↑3 +2 | 🧭 next ↓0 | 🔗 #12", 56),
+        (
+            "🧠 Opus | 🌳 statusline-flow ↑3 +2 | 🧭 next ↓0 | 🔗 #12",
+            56,
+        ),
         ("🧠 Opus | 🌳 statusline-flow ↑3 +2", 34),
     ];
     const MAIN: (&str, usize) = (
@@ -2205,6 +2223,335 @@ mod line_one_form_tests {
                 }
             }
             assert_eq!(seen, expected, "icons in {text}");
+        }
+    }
+}
+
+/// What the three test modules of line 3 (SPEC-20261122-statusline-limits AC-2 to AC-4) share:
+/// one plain render of a stdin payload at a fixed clock, from a temporary HOME, and the items of
+/// its last line.
+#[cfg(test)]
+mod line_three_support {
+    use crate::statusline::state::Context;
+    use std::path::Path;
+
+    /// The render clock (`--now-unix` seam).
+    pub const NOW: i64 = 1_738_429_000;
+
+    /// The last line of one plain render of `payload` at [`NOW`], from the temporary `home`,
+    /// in `cwd` when given.
+    pub fn line_in(payload: &serde_json::Value, home: &Path, cwd: Option<&Path>) -> String {
+        let vars = [("HOME", home.to_str().unwrap()), ("NO_COLOR", "1")];
+        let mut ctx = Context::for_test(&vars, cwd);
+        ctx.now = NOW;
+        crate::statusline::render(payload.to_string().as_bytes(), &ctx)
+            .lines()
+            .last()
+            .unwrap_or_default()
+            .to_string()
+    }
+
+    /// [`line_in`] from a fresh temporary HOME and no working folder.
+    pub fn line(payload: &serde_json::Value) -> String {
+        let home = tempfile::tempdir().unwrap();
+        line_in(payload, home.path(), None)
+    }
+
+    /// `line` without the MoAI version of this build that closes it; the line as it is when it
+    /// does not end so.
+    pub fn without_moai(line: &str) -> String {
+        let tail = format!(" | 🗿 {}", crate::BUILD_VERSION);
+        line.strip_suffix(&tail).unwrap_or(line).to_string()
+    }
+
+    /// The item of `line` that holds `label`, `None` when no item does.
+    pub fn item(line: &str, label: &str) -> Option<String> {
+        line.split(" | ")
+            .find(|i| i.contains(label))
+            .map(str::to_string)
+    }
+}
+
+/// AC-2 of SPEC-20261122-statusline-limits (REQ-3, REQ-4, D-2, D-4): the battery icon switches at
+/// 70/71, the reset countdown has three forms without `resets in`, a window whose reset has passed
+/// is left out, a week without a percentage says `7D n/a`, and the five-hour window is shown only
+/// strictly above 70 percent.
+#[cfg(test)]
+mod window_tests {
+    use super::line_three_support::{item, line, without_moai, NOW};
+    use serde_json::{json, Value};
+
+    /// Line 3 of a payload with the context window at 10 percent and these `rate_limits`,
+    /// without the MoAI version that closes it.
+    fn windows(rate_limits: Value) -> String {
+        without_moai(&line(&json!({
+            "context_window": {"used_percentage": 10},
+            "rate_limits": rate_limits,
+        })))
+    }
+
+    fn week(pct: Value, resets_at: Option<i64>) -> Option<String> {
+        let mut w = json!({"used_percentage": pct});
+        if let Some(at) = resets_at {
+            w["resets_at"] = json!(at);
+        }
+        item(&windows(json!({ "seven_day": w })), "7D")
+    }
+
+    const DAY: i64 = 86_400;
+    const HOUR: i64 = 3_600;
+    const MINUTE: i64 = 60;
+
+    /// A guard: the battery icon of a window turns at 70/71.
+    #[test]
+    fn the_battery_icon_switches_at_70_and_71() {
+        assert_eq!(week(json!(70), None).as_deref(), Some("🔋 7D 70%"));
+        assert_eq!(week(json!(71), None).as_deref(), Some("🪫 7D 71%"));
+    }
+
+    /// D-4: `(6d 21h)`, `(2h 10m)`, `(35m)`, each unit changing at its edge, and never the words
+    /// `resets in`.
+    #[test]
+    fn the_countdown_has_three_forms_without_resets_in() {
+        for (left, want) in [
+            (6 * DAY + 21 * HOUR, "🔋 7D 21% (6d 21h)"),
+            (2 * HOUR + 10 * MINUTE, "🔋 7D 21% (2h 10m)"),
+            (35 * MINUTE, "🔋 7D 21% (35m)"),
+            (DAY, "🔋 7D 21% (1d 0h)"),
+            (DAY - 1, "🔋 7D 21% (23h 59m)"),
+            (HOUR, "🔋 7D 21% (1h 0m)"),
+            (HOUR - 1, "🔋 7D 21% (59m)"),
+            (MINUTE, "🔋 7D 21% (1m)"),
+            (1, "🔋 7D 21% (0m)"),
+        ] {
+            let got = week(json!(21), Some(NOW + left));
+            assert_eq!(got.as_deref(), Some(want), "{left} seconds left");
+        }
+        let full = windows(json!({
+            "five_hour": {"used_percentage": 85, "resets_at": NOW + HOUR + 10 * MINUTE},
+            "seven_day": {"used_percentage": 21, "resets_at": NOW + 6 * DAY + 21 * HOUR},
+        }));
+        assert!(!full.contains("resets in"), "{full}");
+    }
+
+    /// REQ-3: the host drops a window once its reset time passes; a window that still names a
+    /// passed reset is left out with its separator, never `(0m)`.
+    #[test]
+    fn a_window_whose_reset_has_passed_is_left_out() {
+        assert_eq!(
+            week(json!(21), Some(NOW)),
+            None,
+            "reset at the render's clock"
+        );
+        assert_eq!(week(json!(21), Some(NOW - 1)), None, "reset a second ago");
+        assert_eq!(
+            week(json!(21), Some(NOW + 1)).as_deref(),
+            Some("🔋 7D 21% (0m)")
+        );
+        assert_eq!(
+            windows(json!({"seven_day": {"used_percentage": 21, "resets_at": NOW - DAY}})),
+            "🔋 CW 10%"
+        );
+        assert_eq!(
+            windows(json!({"five_hour": {"used_percentage": 90, "resets_at": NOW}})),
+            "🔋 CW 10%"
+        );
+    }
+
+    /// REQ-3: a week without a usable percentage says `7D n/a`, with no battery icon and never
+    /// `0%`; its countdown still follows it.
+    #[test]
+    fn a_week_without_a_percentage_says_n_a() {
+        assert_eq!(
+            item(&windows(json!({"seven_day": {}})), "7D").as_deref(),
+            Some("7D n/a")
+        );
+        assert_eq!(week(json!("21"), None).as_deref(), Some("7D n/a"));
+        assert_eq!(week(json!(null), None).as_deref(), Some("7D n/a"));
+        assert_eq!(
+            week(json!(null), Some(NOW + 6 * DAY + 21 * HOUR)).as_deref(),
+            Some("7D n/a (6d 21h)")
+        );
+        assert_eq!(item(&windows(json!({})), "7D"), None, "an absent week");
+    }
+
+    /// REQ-4 and D-2: the five-hour window shows strictly above 70 percent, with `🪫` and its
+    /// countdown, between the context window and the week; at 70 or below, without a percentage
+    /// or absent it is left out with its separator. A fraction is read by the whole percentage
+    /// the line writes, so 70.9 is 70 and stays hidden.
+    #[test]
+    fn the_five_hour_window_shows_only_above_70() {
+        let five = |pct: Value| {
+            item(
+                &windows(
+                    json!({"five_hour": {"used_percentage": pct, "resets_at": NOW + 2 * HOUR + 10 * MINUTE}}),
+                ),
+                "5H",
+            )
+        };
+        assert_eq!(five(json!(71)).as_deref(), Some("🪫 5H 71% (2h 10m)"));
+        assert_eq!(five(json!(100)).as_deref(), Some("🪫 5H 100% (2h 10m)"));
+        assert_eq!(five(json!(150)).as_deref(), Some("🪫 5H 100% (2h 10m)"));
+        assert_eq!(five(json!(70)), None);
+        assert_eq!(five(json!(70.9)), None);
+        assert_eq!(five(json!(23)), None);
+        assert_eq!(five(json!(null)), None);
+        assert_eq!(
+            windows(json!({"five_hour": {"used_percentage": 70}})),
+            "🔋 CW 10%",
+            "a hidden window leaves no separator"
+        );
+        assert_eq!(
+            windows(json!({
+                "five_hour": {"used_percentage": 85, "resets_at": NOW + HOUR + 10 * MINUTE},
+                "seven_day": {"used_percentage": 21, "resets_at": NOW + 6 * DAY + 21 * HOUR},
+            })),
+            "🔋 CW 10% | 🪫 5H 85% (1h 10m) | 🔋 7D 21% (6d 21h)"
+        );
+    }
+}
+
+/// AC-3 of SPEC-20261122-statusline-limits (REQ-5, D-3): the cost shows only when the payload
+/// carries neither a five-hour nor a seven-day window — a payload with only a spend limit
+/// included — and is written to two decimals.
+#[cfg(test)]
+mod cost_tests {
+    use super::line_three_support::{item, line, without_moai, NOW};
+    use serde_json::{json, Value};
+
+    /// Line 3 of a payload with the context window at 10 percent, `cost` as given and these
+    /// `rate_limits` when given, without the MoAI version.
+    fn with_cost(cost: Value, rate_limits: Option<Value>) -> String {
+        let mut payload = json!({"context_window": {"used_percentage": 10}, "cost": cost});
+        if let Some(limits) = rate_limits {
+            payload["rate_limits"] = limits;
+        }
+        without_moai(&line(&payload))
+    }
+
+    fn usd(total: Value) -> Value {
+        json!({"total_cost_usd": total, "total_duration_ms": 45_000})
+    }
+
+    #[test]
+    fn the_cost_shows_without_a_window() {
+        assert_eq!(with_cost(usd(json!(3.87)), None), "🔋 CW 10% | 💰 3.87");
+        assert_eq!(
+            with_cost(usd(json!(3.87)), Some(json!({}))),
+            "🔋 CW 10% | 💰 3.87",
+            "rate_limits without a window"
+        );
+    }
+
+    /// D-3: a gateway user whose payload has only a spend limit sees the cost.
+    #[test]
+    fn the_cost_shows_with_only_a_spend_limit() {
+        let spend = json!({"spend_limit": {"used_percentage": 62.8, "resets_at": NOW + 3_600, "period": "monthly"}});
+        assert_eq!(
+            with_cost(usd(json!(3.87)), Some(spend)),
+            "🔋 CW 10% | 💰 3.87"
+        );
+    }
+
+    /// A payload with either window shows no cost, also when the window itself is not drawn (a
+    /// five-hour window at 70 or below, a window whose reset has passed).
+    #[test]
+    fn the_cost_is_hidden_with_either_window() {
+        for limits in [
+            json!({"five_hour": {"used_percentage": 23, "resets_at": NOW + 3_600}}),
+            json!({"five_hour": {"used_percentage": 85, "resets_at": NOW + 3_600}}),
+            json!({"seven_day": {"used_percentage": 21, "resets_at": NOW + 3_600}}),
+            json!({"seven_day": {"used_percentage": 21, "resets_at": NOW - 1}}),
+            json!({"five_hour": {"used_percentage": 23}, "seven_day": {"used_percentage": 21}, "spend_limit": {"used_percentage": 1}}),
+        ] {
+            let out = with_cost(usd(json!(3.87)), Some(limits.clone()));
+            assert_eq!(item(&out, "💰"), None, "{limits}: {out}");
+        }
+    }
+
+    #[test]
+    fn the_cost_rounds_to_two_decimals() {
+        for (total, want) in [
+            (json!(3.866), "💰 3.87"),
+            (json!(3.864), "💰 3.86"),
+            (json!(0.01234), "💰 0.01"),
+            (json!(0), "💰 0.00"),
+            (json!(12.5), "💰 12.50"),
+            (json!(1234.5), "💰 1234.50"),
+        ] {
+            let out = with_cost(usd(total.clone()), None);
+            assert_eq!(item(&out, "💰").as_deref(), Some(want), "{total}: {out}");
+        }
+    }
+
+    /// A guard for the missing cases, red for the mistyped one only if a wrong type ever showed:
+    /// a cost that is absent or not a number is left out with its separator.
+    #[test]
+    fn a_missing_or_mistyped_cost_is_left_out() {
+        for cost in [
+            json!(null),
+            json!({}),
+            usd(json!("3.87")),
+            usd(json!(null)),
+            json!(5),
+        ] {
+            assert_eq!(with_cost(cost.clone(), None), "🔋 CW 10%", "{cost}");
+        }
+    }
+}
+
+/// AC-4 of SPEC-20261122-statusline-limits (REQ-6): `🤖 <version>` from the stdin, then
+/// `🗿 <version>` of this build, or `🗿 <template> -> <build>` when the project's template is
+/// older; a missing version is left out.
+#[cfg(test)]
+mod version_tests {
+    use super::line_three_support::{line, line_in};
+    use serde_json::json;
+
+    const BUILD: &str = crate::BUILD_VERSION;
+
+    #[test]
+    fn both_versions_close_the_line_without_a_v() {
+        let out = line(&json!({"context_window": {"used_percentage": 10}, "version": "2.1.330"}));
+        assert_eq!(out, format!("🔋 CW 10% | 🤖 2.1.330 | 🗿 {BUILD}"));
+    }
+
+    #[test]
+    fn a_missing_claude_code_version_is_left_out() {
+        for version in [json!(null), json!(""), json!(5)] {
+            let out = line(&json!({"context_window": {"used_percentage": 10}, "version": version}));
+            assert_eq!(out, format!("🔋 CW 10% | 🗿 {BUILD}"), "{version}");
+        }
+    }
+
+    /// A project whose template is older than this build shows the update arrow, the template
+    /// first; a template equal to the build shows the build alone. The template is a HeadVer
+    /// version of an earlier week, so it stays older than any build of this head.
+    #[test]
+    fn an_older_template_shows_the_update_arrow() {
+        let home = tempfile::tempdir().unwrap();
+        let project = home.path().join("project");
+        let sections = project
+            .join(crate::state_root::MOAI_DIR)
+            .join("config/sections");
+        std::fs::create_dir_all(&sections).unwrap();
+        let payload = json!({"context_window": {"used_percentage": 10}, "version": "2.1.330"});
+        for (template, want) in [
+            ("4.2600.15", format!("🗿 4.2600.15 -> {BUILD}")),
+            ("v4.2600.15", format!("🗿 4.2600.15 -> {BUILD}")),
+            (BUILD, format!("🗿 {BUILD}")),
+        ] {
+            std::fs::write(
+                sections.join("system.yaml"),
+                format!("moai:\n  template_version: {template}\n"),
+            )
+            .unwrap();
+            let out = line_in(&payload, home.path(), Some(&project));
+            assert_eq!(
+                out,
+                format!("🔋 CW 10% | 🤖 2.1.330 | {want}"),
+                "template {template}"
+            );
         }
     }
 }

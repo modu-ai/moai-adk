@@ -173,23 +173,37 @@ fn line1_has_no_tag_under_ko_en_and_80_40_columns() {
             )
             .unwrap()
             .replace(
-                &format!("🗿 v{recorded}"),
-                &format!("🗿 v{}", moai_cli::BUILD_VERSION),
+                &format!("🗿 {recorded}"),
+                &format!("🗿 {}", moai_cli::BUILD_VERSION),
             );
             for lang in ["ko_KR.UTF-8", "en_US.UTF-8"] {
                 for columns in ["80", "40"] {
                     let got = run_case(&case, lang, columns, color);
-                    // Line 1 has its own forms by width (SPEC-20261122-statusline-where REQ-11), so
-                    // it is read below; every line after it is the same bytes as the golden.
+                    let budget: usize = columns.parse::<usize>().unwrap() - 2;
+                    // Line 1 and line 3 have their own forms by width
+                    // (SPEC-20261122-statusline-where REQ-11, SPEC-20261122-statusline-limits
+                    // REQ-1), so they are read below; every line between them is the same bytes
+                    // as the golden, and line 3 is the golden's when that fits the budget.
+                    let lines: Vec<&str> = got.lines().collect();
+                    let want: Vec<&str> = golden.lines().collect();
+                    assert_eq!(lines.len(), want.len(), "{name} {variant} {columns}");
+                    let inner = 1..lines.len().saturating_sub(1);
                     assert_eq!(
-                        got.lines().skip(1).collect::<Vec<_>>(),
-                        golden.lines().skip(1).collect::<Vec<_>>(),
+                        lines[inner.clone()],
+                        want[inner],
                         "{name} {variant} LANG={lang} COLUMNS={columns}"
                     );
+                    let golden_last = strip_sgr(want.last().copied().unwrap_or_default());
+                    if display_width(&golden_last) <= budget {
+                        assert_eq!(
+                            lines.last(),
+                            want.last(),
+                            "{name} {variant} LANG={lang} COLUMNS={columns}"
+                        );
+                    }
                     let text = strip_sgr(&got);
                     let line1 = strip_links(text.lines().next().unwrap_or_default());
                     let line1 = line1.as_str();
-                    let budget: usize = columns.parse::<usize>().unwrap() - 2;
                     assert!(
                         line1.starts_with("🧠 Opus"),
                         "{name} {variant} LANG={lang} COLUMNS={columns}: line 1 {line1:?}"
@@ -207,6 +221,10 @@ fn line1_has_no_tag_under_ko_en_and_80_40_columns() {
                     assert!(
                         last.starts_with("🔋 CW ") || last.starts_with("🪫 CW "),
                         "{name} {variant} LANG={lang} COLUMNS={columns}: last line {last:?}"
+                    );
+                    assert!(
+                        display_width(last) <= budget,
+                        "{name} {variant} LANG={lang} COLUMNS={columns}: line 3 {last:?} is too wide"
                     );
                     runs += 1;
                 }

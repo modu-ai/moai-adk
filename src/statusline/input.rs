@@ -13,8 +13,9 @@
 //! before the parse, so one bad string never empties the payload; a payload nested deeper than
 //! serde_json's recursion limit (128) does not parse and reads as empty.
 //!
-//! REQ-11: only what a shown item needs is read. The cost, the session duration, the output
-//! style, the agent name, the transcript path and the prompt cache are not.
+//! REQ-11: only what a shown item needs is read. Of `cost` only `total_cost_usd` is (the `💰`
+//! item); the session duration, the output style, the agent name, the transcript path and the
+//! prompt cache are not.
 
 use std::borrow::Cow;
 
@@ -28,6 +29,7 @@ pub struct Input {
     pub workspace: Option<Workspace>,
     pub context_window: Option<ContextWindow>,
     pub rate_limits: Option<RateLimits>,
+    pub cost: Option<Cost>,
     /// `Some` when `effort` is an object, even without a level.
     pub effort: Option<Effort>,
     pub thinking: Option<Thinking>,
@@ -88,6 +90,12 @@ pub struct RateWindow {
     pub used_percentage: Option<f64>,
     /// Unix epoch seconds.
     pub resets_at: Option<i64>,
+}
+
+/// The `cost` fields the line shows: the host's estimate of the session's cost in US dollars.
+#[derive(Debug, Default)]
+pub struct Cost {
+    pub total_cost_usd: Option<f64>,
 }
 
 #[derive(Debug, Default)]
@@ -185,6 +193,9 @@ fn read(v: &Value) -> Input {
         rate_limits: get_object(v, "rate_limits").map(|r| RateLimits {
             five_hour: rate_window(r, "five_hour"),
             seven_day: rate_window(r, "seven_day"),
+        }),
+        cost: get_object(v, "cost").map(|c| Cost {
+            total_cost_usd: get_f64(c, "total_cost_usd"),
         }),
         effort: get_object(v, "effort").map(|e| Effort {
             level: get_str(e, "level"),
@@ -527,15 +538,15 @@ mod tolerant_reader_tests {
         ] {
             assert!(base.contains(item), "{item}: {base}");
         }
-        assert!(base.contains("🤖 v2.1.330"), "{base}");
+        assert!(base.contains("🤖 2.1.330"), "{base}");
         // A shown field of the wrong type: its item goes and every other item stays.
         let no_model = render_value(&with("model", json!(5)), h);
         assert_eq!(no_model, render_value(&without("model"), h));
         assert!(!no_model.contains("🧠"), "{no_model}");
-        for item in ["📡 owner/repo", "🔗 #42 pending", "7D 21%", "🤖 v2.1.330"] {
+        for item in ["📡 owner/repo", "🔗 #42 pending", "7D 21%", "🤖 2.1.330"] {
             assert!(no_model.contains(item), "{item}: {no_model}");
         }
-        // A field no item shows changes nothing.
+        // A mistyped cost changes nothing: the payload has a window, so no cost is shown.
         assert_eq!(render_value(&with("cost", json!("x")), h), base);
         // Inside an object only the mistyped field goes: a text number drops the request, a text
         // percentage says `n/a`.
@@ -584,7 +595,7 @@ mod tolerant_reader_tests {
             h,
         );
         assert!(
-            out.contains("🤖 v2.1.330") && !out.contains("1.0.0"),
+            out.contains("🤖 2.1.330") && !out.contains("1.0.0"),
             "{out}"
         );
         assert!(!out.contains("First"), "{out}");

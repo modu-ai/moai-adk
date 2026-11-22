@@ -274,9 +274,10 @@ const MIX_FORMS: [&str; 3] = [FLOW_MIX, "👀 S3 A0 L0 | ⛔ B0 ⏸️  H5", "�
 
 /// SPEC-20261122-statusline-flow REQ-9 (it replaces the same-bytes-at-80-and-40 rule of
 /// SPEC-20261120-statusline-line2-order): each line takes the widest of its forms that fits
-/// `COLUMNS` − 2 − padding. The windows are the same bytes at every width; the flow line changes
-/// form exactly at each boundary, and the first line has its own forms (AC-6 of
-/// SPEC-20261122-statusline-where).
+/// `COLUMNS` − 2 − padding. The flow line changes form exactly at each boundary; the first line
+/// (AC-6 of SPEC-20261122-statusline-where) and line 3 (SPEC-20261122-statusline-limits AC-9,
+/// the `line_three_ladder_` tests) have their own forms, so line 3 here is its widest form
+/// wherever that fits.
 #[test]
 fn width_ladder_changes_the_flow_line_exactly_at_each_boundary() {
     let f = fixture();
@@ -301,9 +302,12 @@ fn width_ladder_changes_the_flow_line_exactly_at_each_boundary() {
                 w + 1
             );
         }
-        // The windows line is the same bytes at every width.
-        for out in [&kept, &at(w + 1)] {
-            assert_eq!(out.lines().last(), wide.lines().last(), "the windows line");
+        // Line 3 is its widest form wherever that fits the budget.
+        let widest = wide.lines().last().unwrap_or_default();
+        for (columns, out) in [(w + 2, &kept), (w + 1, &at(w + 1))] {
+            if display_width(widest) <= columns - 2 {
+                assert_eq!(out.lines().last(), Some(widest), "line 3 at {columns}");
+            }
             assert_eq!(out.lines().count(), 3);
         }
     }
@@ -852,16 +856,400 @@ fn line_one_items_follow_columns() {
     let s = worktree_session();
     for (columns, want) in [
         ("114", LINE_WORKTREE),
-        ("113", "🧠 Opus 5.5 high·t | 📡 modu-ai/moai-adk | 🌳 statusline-flow ↑3 +2 | 🧭 next ↑3 ↓0 | 🔗 #12 pending"),
-        ("102", "🧠 Opus 5.5 high·t | 📡 modu-ai/moai-adk | 🌳 statusline-flow ↑3 +2 | 🧭 next ↑3 ↓0 | 🔗 #12 pending"),
-        ("101", "🧠 Opus high | 📡 moai-adk | 🌳 statusline-flow ↑3 +2 | 🧭 next ↑3 ↓0 | 🔗 #12"),
-        ("80", "🧠 Opus high | 📡 moai-adk | 🌳 statusline-flow ↑3 +2 | 🧭 next ↑3 ↓0 | 🔗 #12"),
-        ("79", "🧠 Opus | 🌳 statusline-flow ↑3 +2 | 🧭 next ↓0 | 🔗 #12"),
-        ("58", "🧠 Opus | 🌳 statusline-flow ↑3 +2 | 🧭 next ↓0 | 🔗 #12"),
+        (
+            "113",
+            "🧠 Opus 5.5 high·t | 📡 modu-ai/moai-adk | 🌳 statusline-flow ↑3 +2 | 🧭 next ↑3 ↓0 | 🔗 #12 pending",
+        ),
+        (
+            "102",
+            "🧠 Opus 5.5 high·t | 📡 modu-ai/moai-adk | 🌳 statusline-flow ↑3 +2 | 🧭 next ↑3 ↓0 | 🔗 #12 pending",
+        ),
+        (
+            "101",
+            "🧠 Opus high | 📡 moai-adk | 🌳 statusline-flow ↑3 +2 | 🧭 next ↑3 ↓0 | 🔗 #12",
+        ),
+        (
+            "80",
+            "🧠 Opus high | 📡 moai-adk | 🌳 statusline-flow ↑3 +2 | 🧭 next ↑3 ↓0 | 🔗 #12",
+        ),
+        (
+            "79",
+            "🧠 Opus | 🌳 statusline-flow ↑3 +2 | 🧭 next ↓0 | 🔗 #12",
+        ),
+        (
+            "58",
+            "🧠 Opus | 🌳 statusline-flow ↑3 +2 | 🧭 next ↓0 | 🔗 #12",
+        ),
         ("57", "🧠 Opus | 🌳 statusline-flow ↑3 +2"),
         ("10", "🧠 Opus | 🌳 statusline-flow ↑3 +2"),
         ("abc", LINE_WORKTREE),
     ] {
-        assert_eq!(s.first_line(&[("COLUMNS", columns)]), want, "COLUMNS {columns}");
+        assert_eq!(
+            s.first_line(&[("COLUMNS", columns)]),
+            want,
+            "COLUMNS {columns}"
+        );
     }
+}
+
+// ---- SPEC-20261122-statusline-limits AC-1 and AC-9: the items and forms of line 3 ----
+//
+// Each render is the real binary in a temporary HOME and TMPDIR, at the fixed clock of the
+// `--now-unix` seam, from a folder that is no repository. The strings are the ones of the Layouts
+// section of the SPEC. Two tokens of a line depend on the build: the MoAI version of this build
+// stands where the section writes `4.2647.16`, and the update case uses a template of an earlier
+// week (`4.2600.15`, older than any build of this head) where the section writes `4.2647.15`;
+// [`as_in_the_layouts`] maps them back, and the widths are measured on the line the binary wrote.
+//
+// The process-count half of AC-9 (a fake `git` and a fake Orca script, at most one process each,
+// only the cache and the record written) belongs to the Orca pass-through step and has no test
+// here yet.
+
+/// The render clock of line 3 (`--now-unix` seam).
+const LIMITS_NOW: i64 = 1_738_429_000;
+/// The template version the update case writes into the project's `system.yaml`.
+const OLD_TEMPLATE: &str = "4.2600.15";
+
+/// The JSON a subscriber's host would write: the context window at 74 percent, the five-hour
+/// window at `five_hour` percent resetting in 1h 10m, the week at 21 percent resetting in 6d 21h,
+/// a cost and the Claude Code version.
+fn subscriber(five_hour: i64) -> serde_json::Value {
+    serde_json::json!({
+        "model": {"display_name": "Opus"},
+        "version": "2.1.330",
+        "context_window": {"used_percentage": 74, "context_window_size": 200000},
+        "cost": {"total_cost_usd": 1.23},
+        "rate_limits": {
+            "five_hour": {"used_percentage": five_hour, "resets_at": LIMITS_NOW + 3_600 + 600},
+            "seven_day": {"used_percentage": 21, "resets_at": LIMITS_NOW + 6 * 86_400 + 21 * 3_600},
+        },
+    })
+}
+
+/// The JSON of an API key user: no `rate_limits`, the context window at 41 percent and a cost.
+fn api_key_user() -> serde_json::Value {
+    serde_json::json!({
+        "model": {"display_name": "Opus"},
+        "version": "2.1.330",
+        "context_window": {"used_percentage": 41, "context_window_size": 200000},
+        "cost": {"total_cost_usd": 3.87},
+    })
+}
+
+/// Line 3 of one render of `stdin` (the last line), with `env` added; with `template`, the
+/// project's `system.yaml` names that template version. The exit code must be 0.
+fn line_three(stdin: &serde_json::Value, env: &[(&str, &str)], template: Option<&str>) -> String {
+    let home = TempHome::new();
+    let cwd = home.path().join("work/plain");
+    std::fs::create_dir_all(&cwd).unwrap();
+    if let Some(template) = template {
+        let sections = cwd
+            .join(moai_cli::state_root::MOAI_DIR)
+            .join("config/sections");
+        std::fs::create_dir_all(&sections).unwrap();
+        std::fs::write(
+            sections.join("system.yaml"),
+            format!("moai:\n  template_version: {template}\n"),
+        )
+        .unwrap();
+    }
+    let tmp = home.path().join("tmp");
+    std::fs::create_dir_all(&tmp).unwrap();
+    let now = LIMITS_NOW.to_string();
+    let mut cmd = home.command(&[
+        "statusline",
+        "--render-budget-ms",
+        "3600000",
+        "--now-unix",
+        &now,
+    ]);
+    cmd.current_dir(&cwd)
+        .env("PATH", std::env::var_os("PATH").unwrap_or_default())
+        .env("TMPDIR", &tmp)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    for (k, v) in env {
+        cmd.env(k, v);
+    }
+    let mut child = cmd.spawn().unwrap();
+    child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(stdin.to_string().as_bytes())
+        .unwrap();
+    let out = child.wait_with_output().unwrap();
+    assert_eq!(
+        out.status.code(),
+        Some(0),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    String::from_utf8(out.stdout)
+        .unwrap()
+        .lines()
+        .last()
+        .unwrap_or_default()
+        .to_string()
+}
+
+/// The plain line 3 of `stdin`.
+fn plain_three(stdin: &serde_json::Value, template: Option<&str>) -> String {
+    line_three(stdin, &[("NO_COLOR", "1")], template)
+}
+
+/// The plain line 3 of `stdin` at `columns`.
+fn plain_three_at(stdin: &serde_json::Value, template: Option<&str>, columns: &str) -> String {
+    line_three(stdin, &[("NO_COLOR", "1"), ("COLUMNS", columns)], template)
+}
+
+/// The build's tokens of a line written as the Layouts section writes them.
+fn as_in_the_layouts(line: &str) -> String {
+    let build = moai_cli::BUILD_VERSION;
+    line.replace(
+        &format!("🗿 {OLD_TEMPLATE} -> {build}"),
+        "🗿 4.2647.15 -> 4.2647.16",
+    )
+    .replace(&format!("🗿 {build}"), "🗿 4.2647.16")
+}
+
+/// A line of the Layouts section with the build's tokens: what the binary writes.
+fn as_the_build_writes(line: &str) -> String {
+    let build = moai_cli::BUILD_VERSION;
+    line.replace(
+        "🗿 4.2647.15 -> 4.2647.16",
+        &format!("🗿 {OLD_TEMPLATE} -> {build}"),
+    )
+    .replace("🗿 4.2647.16", &format!("🗿 {build}"))
+}
+
+/// The case `stdin` gives `want` (a Layouts string) in plain output, and the same text with color
+/// once the escapes are removed.
+fn assert_line_three(stdin: &serde_json::Value, template: Option<&str>, want: &str) {
+    let plain = plain_three(stdin, template);
+    assert_eq!(as_in_the_layouts(&plain), want, "plain");
+    let colored = line_three(stdin, &[("COLORTERM", "truecolor")], template);
+    assert!(colored.contains('\x1b'), "{colored:?}");
+    assert_eq!(without_escapes(&colored), plain, "color changes no text");
+}
+
+/// Z0 of the subscriber whose five-hour window is over 70 percent.
+const Z0_FIVE_HOUR: &str =
+    "🪫 CW 74% | 🪫 5H 85% (1h 10m) | 🔋 7D 21% (6d 21h) | 🤖 2.1.330 | 🗿 4.2647.16";
+/// Z0 of the subscriber whose five-hour window is hidden.
+const Z0_NO_FIVE_HOUR: &str = "🪫 CW 74% | 🔋 7D 21% (6d 21h) | 🤖 2.1.330 | 🗿 4.2647.16";
+/// Z0 of the API key user. The Layouts section writes `🪫 CW 41%`; the battery rule of the same
+/// SPEC (AC-2: `🔋` up to 70 percent, `🪫` from 71) gives `🔋` at 41, so the icon here follows the
+/// rule and the widths are the section's.
+const Z0_API_KEY: &str = "🔋 CW 41% | 💰 3.87 | 🤖 2.1.330 | 🗿 4.2647.16";
+
+/// REQ-1, REQ-4: a subscriber whose five-hour window is over 70 percent sees every window with
+/// its countdown, then the two versions, and no cost.
+#[test]
+fn line_three_items_subscriber_with_the_five_hour_window() {
+    assert_line_three(&subscriber(85), None, Z0_FIVE_HOUR);
+}
+
+/// REQ-4, REQ-5: at 70 percent or below the five-hour window is left out with its separator, as
+/// when the host sends none; the week alone still hides the cost.
+#[test]
+fn line_three_items_subscriber_without_the_five_hour_window() {
+    assert_line_three(&subscriber(70), None, Z0_NO_FIVE_HOUR);
+    assert_line_three(&subscriber(23), None, Z0_NO_FIVE_HOUR);
+    let mut no_five = subscriber(85);
+    no_five["rate_limits"]
+        .as_object_mut()
+        .unwrap()
+        .remove("five_hour");
+    assert_line_three(&no_five, None, Z0_NO_FIVE_HOUR);
+}
+
+/// REQ-5: with no usage window the cost stands after the context window, to two decimals.
+#[test]
+fn line_three_items_api_key_user() {
+    assert_line_three(&api_key_user(), None, Z0_API_KEY);
+}
+
+/// REQ-2: an empty context window says `CW n/a` with no battery icon, never `0%`; the other items
+/// keep their places.
+#[test]
+fn line_three_items_empty_context_window() {
+    let mut stdin = api_key_user();
+    stdin["context_window"] = serde_json::json!({});
+    assert_line_three(&stdin, None, "CW n/a | 💰 3.87 | 🤖 2.1.330 | 🗿 4.2647.16");
+    stdin.as_object_mut().unwrap().remove("context_window");
+    assert_line_three(&stdin, None, "CW n/a | 💰 3.87 | 🤖 2.1.330 | 🗿 4.2647.16");
+}
+
+/// REQ-2 and D-1: a null percentage falls back to the input tokens of `current_usage` over the
+/// window size, rescaled by nothing (60,000 of 200,000 is 30 percent, not the 35 the 85 percent
+/// budget gave); without `current_usage` it says `CW n/a`.
+#[test]
+fn line_three_items_null_percentage() {
+    let mut stdin = api_key_user();
+    stdin["context_window"] = serde_json::json!({
+        "used_percentage": null,
+        "context_window_size": 200000,
+        "current_usage": {
+            "input_tokens": 30000,
+            "output_tokens": 9999,
+            "cache_creation_input_tokens": 10000,
+            "cache_read_input_tokens": 20000,
+        },
+    });
+    assert_line_three(
+        &stdin,
+        None,
+        "🔋 CW 30% | 💰 3.87 | 🤖 2.1.330 | 🗿 4.2647.16",
+    );
+    stdin["context_window"] =
+        serde_json::json!({"used_percentage": null, "context_window_size": 200000});
+    assert_line_three(&stdin, None, "CW n/a | 💰 3.87 | 🤖 2.1.330 | 🗿 4.2647.16");
+}
+
+/// REQ-2: `CW` is the host's percentage unchanged — 25, 85 and 100 stay 25, 85 and 100 (the 85
+/// percent rescale wrote 29, 100 and 100).
+#[test]
+fn line_three_items_context_window_as_the_host_gives_it() {
+    for (pct, want) in [(25, "🔋 CW 25%"), (85, "🪫 CW 85%"), (100, "🪫 CW 100%")] {
+        let mut stdin = api_key_user();
+        stdin["context_window"]["used_percentage"] = serde_json::json!(pct);
+        let line = plain_three(&stdin, None);
+        assert_eq!(line.split(" | ").next(), Some(want), "{pct}: {line}");
+    }
+}
+
+/// Every icon of line 3 is followed by one space and then a letter or a number.
+#[test]
+fn line_three_items_every_icon_is_followed_by_a_space() {
+    let line = plain_three(&subscriber(85), None) + " | " + &plain_three(&api_key_user(), None);
+    let mut seen = 0;
+    for icon in ["🪫", "🔋", "💰", "🤖", "🗿"] {
+        for (at, _) in line.match_indices(icon) {
+            seen += 1;
+            let after = &line[at + icon.len()..];
+            assert!(after.starts_with(' '), "{icon}: `{after}`");
+            assert!(
+                after[1..].chars().next().is_some_and(char::is_alphanumeric),
+                "{icon}: `{after}`"
+            );
+        }
+    }
+    assert_eq!(seen, 9, "{line}");
+}
+
+/// The forms of each Layouts case from the widest to the narrowest, with the width the section
+/// gives. The section lists the forms by their number; a form it does not list for a case (Z1 of
+/// the subscriber and of the API key user) follows the drop order under the table: the Claude Code
+/// version goes first.
+const LADDERS: [(&str, &[(&str, usize)]); 4] = [
+    (
+        "subscriber, 5H over 70",
+        &[
+            (Z0_FIVE_HOUR, 79),
+            (
+                "🪫 CW 74% | 🪫 5H 85% (1h 10m) | 🔋 7D 21% (6d 21h) | 🗿 4.2647.16",
+                66,
+            ),
+            ("🪫 CW 74% | 🪫 5H 85% (1h 10m) | 🔋 7D 21% (6d 21h)", 51),
+            ("🪫 CW 74% | 🪫 5H 85% | 🔋 7D 21%", 33),
+            ("🪫 CW 74% | 🔋 7D 21%", 21),
+        ],
+    ),
+    (
+        "subscriber, 5H hidden",
+        &[
+            (Z0_NO_FIVE_HOUR, 58),
+            ("🪫 CW 74% | 🔋 7D 21% (6d 21h) | 🗿 4.2647.16", 45),
+            ("🪫 CW 74% | 🔋 7D 21% (6d 21h)", 30),
+            ("🪫 CW 74% | 🔋 7D 21%", 21),
+        ],
+    ),
+    (
+        "update pending",
+        &[
+            (
+                "🪫 CW 74% | 🪫 5H 85% (1h 10m) | 🔋 7D 21% (6d 21h) | 🤖 2.1.330 | 🗿 4.2647.15 -> 4.2647.16",
+                92,
+            ),
+            (
+                "🪫 CW 74% | 🪫 5H 85% (1h 10m) | 🔋 7D 21% (6d 21h) | 🗿 4.2647.15 -> 4.2647.16",
+                79,
+            ),
+            ("🪫 CW 74% | 🪫 5H 85% (1h 10m) | 🔋 7D 21% (6d 21h)", 51),
+            ("🪫 CW 74% | 🪫 5H 85% | 🔋 7D 21%", 33),
+            ("🪫 CW 74% | 🔋 7D 21%", 21),
+        ],
+    ),
+    (
+        "API key user",
+        &[
+            (Z0_API_KEY, 47),
+            ("🔋 CW 41% | 💰 3.87 | 🗿 4.2647.16", 34),
+            ("🔋 CW 41% | 💰 3.87", 19),
+            ("🔋 CW 41%", 9),
+        ],
+    ),
+];
+
+/// The stdin and the template of a Layouts case.
+fn ladder_case(name: &str) -> (serde_json::Value, Option<&'static str>) {
+    match name {
+        "subscriber, 5H over 70" => (subscriber(85), None),
+        "subscriber, 5H hidden" => (subscriber(23), None),
+        "update pending" => (subscriber(85), Some(OLD_TEMPLATE)),
+        _ => (api_key_user(), None),
+    }
+}
+
+/// AC-9 (REQ-1): every form is exactly the string of the Layouts section, with the section's
+/// width, and changes at its boundary: `COLUMNS` of the form's width plus the margin of two keeps
+/// it, one less drops to the next form.
+#[test]
+fn line_three_ladder_every_form_is_the_string_of_the_layouts_section() {
+    for (name, forms) in LADDERS {
+        let (stdin, template) = ladder_case(name);
+        for (i, (text, cols)) in forms.iter().enumerate() {
+            assert_eq!(display_width(text), *cols, "{name}: the width of `{text}`");
+            let written = display_width(&as_the_build_writes(text));
+            let kept = plain_three_at(&stdin, template, &(written + 2).to_string());
+            assert_eq!(
+                &as_in_the_layouts(&kept),
+                text,
+                "{name}: COLUMNS {}",
+                written + 2
+            );
+            if let Some((next, _)) = forms.get(i + 1) {
+                let dropped = plain_three_at(&stdin, template, &(written + 1).to_string());
+                assert_eq!(
+                    &as_in_the_layouts(&dropped),
+                    next,
+                    "{name}: COLUMNS {}",
+                    written + 1
+                );
+            }
+        }
+    }
+}
+
+/// REQ-1 and the width rule of the parent SPEC: no usable `COLUMNS` writes the widest form, and a
+/// `COLUMNS` below the narrowest form still writes the narrowest.
+#[test]
+fn line_three_ladder_without_a_usable_columns_and_below_the_narrowest() {
+    let (stdin, _) = ladder_case("subscriber, 5H over 70");
+    for columns in ["", "0", "abc", "8 0"] {
+        let line = plain_three_at(&stdin, None, columns);
+        assert_eq!(
+            as_in_the_layouts(&line),
+            Z0_FIVE_HOUR,
+            "COLUMNS {columns:?}"
+        );
+    }
+    for columns in ["22", "10", "2", "1"] {
+        let line = plain_three_at(&stdin, None, columns);
+        assert_eq!(line, "🪫 CW 74% | 🔋 7D 21%", "COLUMNS {columns}");
+    }
+    let line = plain_three_at(&api_key_user(), None, "3");
+    assert_eq!(line, "🔋 CW 41%");
 }

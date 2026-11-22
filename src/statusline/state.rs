@@ -26,7 +26,7 @@
 
 use super::config::{self, Node};
 use super::input::{self, Input};
-use super::segments::{self, ContextReading, GitStatus, Memory};
+use super::segments::{self, ContextReading, GitStatus};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::io::Read;
@@ -105,8 +105,11 @@ impl Context {
 #[derive(Debug, Default)]
 pub struct Status {
     pub model: String,
-    pub memory: Memory,
-    pub auto_compact: i64,
+    /// The `CW` percentage as the host gives it, or its fallback (SPEC-20261122-statusline-limits
+    /// D-1); `None` when the input names none.
+    pub context: Option<f64>,
+    /// `cost.total_cost_usd`, the host's estimate of the session's cost in US dollars.
+    pub cost: Option<f64>,
     pub version: Option<Version>,
     pub claude_version: String,
     /// `Some` when `effort` is present, even with an empty level.
@@ -253,10 +256,8 @@ pub const BINARY_VERSION: &str = crate::BUILD_VERSION;
 pub fn collect(input: Option<&Input>, ctx: &Context) -> Status {
     let project_root = find_project_root(ctx);
     let anchor = input.and_then(resolve_anchor);
-    let auto_compact = segments::auto_compact_threshold(ctx.var("CLAUDE_AUTOCOMPACT_PCT_OVERRIDE"));
     let mut status = Status {
         model: collect_model(input, ctx),
-        auto_compact,
         version: Some(collect_version(ctx, BINARY_VERSION)),
         ..Default::default()
     };
@@ -277,7 +278,8 @@ pub fn collect(input: Option<&Input>, ctx: &Context) -> Status {
     // SPEC-20261122-statusline-limits REQ-11: only what a shown item needs is collected — not
     // the session duration, the output style, the cache hit ratio, the prompt cache timer or
     // the goal file.
-    status.memory = collect_memory(input, ctx, auto_compact);
+    status.context = collect_context(input, ctx);
+    status.cost = input.cost.as_ref().and_then(|c| c.total_cost_usd);
     status.claude_version = input::text(&input.version).to_string();
     status.effort = input
         .effort
@@ -622,7 +624,7 @@ fn resolve_glm_model_name(display: &str, ctx: &Context) -> String {
 
 // ---- context window ----
 
-fn collect_memory(input: &Input, ctx: &Context, auto_compact: i64) -> Memory {
+fn collect_context(input: &Input, ctx: &Context) -> Option<f64> {
     let reading = input.context_window.as_ref().map(|cw| ContextReading {
         used_percentage: cw.used_percentage,
         context_window_size: cw.context_window_size.unwrap_or(0),
@@ -639,7 +641,7 @@ fn collect_memory(input: &Input, ctx: &Context, auto_compact: i64) -> Memory {
     } else {
         0
     };
-    segments::collect_memory(reading, size_override, auto_compact)
+    segments::context_percent(reading, size_override)
 }
 
 /// Built-in GLM context windows (memory.go `glmContextWindows`).
