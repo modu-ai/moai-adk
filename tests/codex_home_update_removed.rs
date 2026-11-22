@@ -107,9 +107,21 @@ fn put(home: &Path, rel: &str, text: &str) {
 /// What an earlier version left in a home: Codex files, shared-agents skills, OMP files.
 fn leave_retired_files(home: &Path) {
     put(home, ".codex/AGENTS.md", "# My Codex notes\n\nkeep this\n");
-    put(home, ".codex/agents/my-own.md", "---\nname: my-own\n---\nmine\n");
-    put(home, ".agents/skills/other/SKILL.md", "---\nname: other\n---\n");
-    put(home, ".omp/agent/agents/my-own.md", "---\nname: my-own\n---\nmine\n");
+    put(
+        home,
+        ".codex/agents/my-own.md",
+        "---\nname: my-own\n---\nmine\n",
+    );
+    put(
+        home,
+        ".agents/skills/other/SKILL.md",
+        "---\nname: other\n---\n",
+    );
+    put(
+        home,
+        ".omp/agent/agents/my-own.md",
+        "---\nname: my-own\n---\nmine\n",
+    );
 }
 
 fn retired_trees(home: &Path) -> Vec<BTreeSet<(String, Vec<u8>)>> {
@@ -181,7 +193,11 @@ fn the_three_plan_commands_name_claude_only() {
         .map(|h| h["host"].as_str().unwrap())
         .collect();
     assert_eq!(hosts, ["claude"], "{a}");
-    let r = result(&run(&exe, &home, &["home-routing-plan", home_text, pkg_text]));
+    let r = result(&run(
+        &exe,
+        &home,
+        &["home-routing-plan", home_text, pkg_text],
+    ));
     let hosts: Vec<&str> = r["hosts"]
         .as_array()
         .unwrap()
@@ -211,8 +227,18 @@ fn apply_leaves_the_codex_and_omp_folders_as_they_are() {
     assert_eq!(retired_trees(&home), before, "a preview writes nothing");
     let top = p["plan_digest"].as_str().unwrap();
     let r = result(&run(&exe, &home, &["update", "--confirm", top]));
-    assert_eq!(r["skills_result"]["hosts"].as_array().map(Vec::len), Some(1), "{r}");
-    assert_eq!(retired_trees(&home), before, "an apply writes nothing there");
+    let copied: Vec<&str> = r["result"]["hosts"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|h| h["host"].as_str().unwrap())
+        .collect();
+    assert_eq!(copied, ["claude"], "only the Claude skill copy is written");
+    assert_eq!(
+        retired_trees(&home),
+        before,
+        "an apply writes nothing there"
+    );
     assert!(!home.join(".agents/skills/moai").exists());
     // The Claude side did go in.
     assert!(home.join(".claude/skills/moai/SKILL.md").is_file());
@@ -342,7 +368,10 @@ fn an_old_receipt_with_codex_entries_reverts_the_claude_ones() {
         "{v}"
     );
     let reverted: Vec<String> = serde_json::from_value(v["reverted"].clone()).unwrap();
-    assert!(!reverted.is_empty() && reverted.iter().all(|t| t.starts_with("claude:")), "{v}");
+    assert!(
+        !reverted.is_empty() && reverted.iter().all(|t| t.starts_with("claude:")),
+        "{v}"
+    );
 
     // Agents.
     let p = agent_install::plan(&home, &package(), &agent_sources()).unwrap();
@@ -367,7 +396,14 @@ fn an_old_receipt_with_codex_entries_reverts_the_claude_ones() {
         .iter()
         .all(|s| s["reason"] == "host_retired"));
     let reverted: Vec<String> = serde_json::from_value(v["reverted"].clone()).unwrap();
-    assert!(!reverted.is_empty() && reverted.iter().all(|t| t.starts_with("claude:")), "{v}");
+    assert!(
+        !reverted.is_empty() && reverted.iter().all(|t| t.starts_with("claude:")),
+        "{v}"
+    );
 
-    assert_eq!(retired_trees(&home), codex_before, "their files are left alone");
+    assert_eq!(
+        retired_trees(&home),
+        codex_before,
+        "their files are left alone"
+    );
 }

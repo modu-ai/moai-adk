@@ -10,7 +10,7 @@ use std::path::PathBuf;
 /// Writes nothing.
 #[derive(clap::Args)]
 pub struct Args {
-    /// User home root whose `.claude/CLAUDE.md` and `.codex/AGENTS.md` are inspected.
+    /// User home root whose `.claude/CLAUDE.md` is inspected.
     home: PathBuf,
     /// Skill package folder carrying `references/home/routing.md`.
     package: PathBuf,

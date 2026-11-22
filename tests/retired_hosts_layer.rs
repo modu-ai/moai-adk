@@ -185,9 +185,7 @@ mod model_settings {
         assert!(!err.contains(SECRET), "{err}");
         let retired = object(json!({"models": {"codex": SECRET}}));
         assert!(resolve_in(&TOOLS, "claude", "leader", Some(&retired)).is_ok());
-        assert!(unsupported_entries_in(&TOOLS, &retired)
-            .unwrap()
-            .is_empty());
+        assert!(unsupported_entries_in(&TOOLS, &retired).unwrap().is_empty());
     }
 
     #[test]
@@ -281,14 +279,48 @@ mod receipts {
         out
     }
 
+    /// What an earlier version left in a home: files of the retired hosts the receipts name.
+    fn leave_retired_files(home: &Path) {
+        for (rel, text) in [
+            (".codex/AGENTS.md", "# kept\n"),
+            (".codex/agents/mine.md", "kept\n"),
+            (".omp/agent/agents/mine.md", "kept\n"),
+        ] {
+            let path = home.join(rel);
+            fs::create_dir_all(path.parent().unwrap()).unwrap();
+            fs::write(path, text).unwrap();
+        }
+    }
+
+    /// Adds an entry for `host` to receipt `id` of the part whose state folder is `part`: a copy
+    /// of its first entry with the host changed, the way an earlier version wrote it (the
+    /// apply of this version writes Claude entries only).
+    fn add_entry(home: &Path, part: &str, id: &str, host: &str, kind: Option<&str>) {
+        let path = moai_cli::home_root::path(home)
+            .join(part)
+            .join("receipts")
+            .join(id)
+            .join("receipt.json");
+        let mut receipt: Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+        let mut entry = receipt["entries"][0].clone();
+        entry["host"] = json!(host);
+        if let Some(kind) = kind {
+            entry["kind"] = json!(kind);
+        }
+        receipt["entries"].as_array_mut().unwrap().push(entry);
+        fs::write(&path, receipt.to_string()).unwrap();
+    }
+
     #[test]
     fn a_routing_receipt_skips_the_retired_host_and_reverts_the_other() {
         let (_t, home) = home();
         fs::create_dir_all(home.join(".claude")).unwrap();
         fs::write(home.join(".claude/CLAUDE.md"), "mine\n").unwrap();
+        leave_retired_files(&home);
         let p = home_routing::plan(&home, &package()).unwrap();
         let r = home_routing::apply(&home, &package(), &p.plan_digest, PERM).unwrap();
         let id = r["receipt"].as_str().unwrap().to_string();
+        add_entry(&home, "home-routing", &id, "codex", None);
         let codex_before = fs::read(home.join(".codex/AGENTS.md")).unwrap();
         let v = home_routing::revert_in(&AFTER, &home, &id, PERM).unwrap();
         assert_eq!(v["state"], "reverted", "{v}");
@@ -310,24 +342,13 @@ mod receipts {
     }
 
     #[test]
-    fn a_routing_receipt_reverts_both_hosts_while_both_are_active() {
-        let (_t, home) = home();
-        let p = home_routing::plan(&home, &package()).unwrap();
-        let r = home_routing::apply(&home, &package(), &p.plan_digest, PERM).unwrap();
-        let id = r["receipt"].as_str().unwrap().to_string();
-        let v = home_routing::revert_in(&["claude", "codex"], &home, &id, PERM).unwrap();
-        let mut reverted: Vec<String> = serde_json::from_value(v["reverted"].clone()).unwrap();
-        reverted.sort();
-        assert_eq!(reverted, ["claude", "codex"], "{v}");
-        assert_eq!(v["skipped"], json!([]), "{v}");
-    }
-
-    #[test]
     fn a_style_receipt_skips_the_retired_host_and_reverts_the_other() {
         let (_t, home) = home();
+        leave_retired_files(&home);
         let p = home_style::plan(&home, &package()).unwrap();
         let r = home_style::apply(&home, &package(), &p.plan_digest, PERM).unwrap();
         let id = r["receipt"].as_str().unwrap().to_string();
+        add_entry(&home, "home-style", &id, "codex", Some("block"));
         let codex_before = fs::read(home.join(".codex/AGENTS.md")).unwrap();
         let v = home_style::revert_in(&AFTER, &home, &id, PERM).unwrap();
         assert_eq!(v["state"], "reverted", "{v}");
@@ -348,9 +369,12 @@ mod receipts {
     #[test]
     fn an_agent_receipt_skips_the_retired_hosts_and_reverts_claude() {
         let (_t, home) = home();
+        leave_retired_files(&home);
         let p = agent_install::plan(&home, &package(), &agents()).unwrap();
         let r = agent_install::apply(&home, &package(), &agents(), &p.plan_digest, PERM).unwrap();
         let id = r["receipt"].as_str().unwrap().to_string();
+        add_entry(&home, "agents", &id, "codex", None);
+        add_entry(&home, "agents", &id, "omp", None);
         let codex_before = tree(&home.join(".codex"));
         let omp_before = tree(&home.join(".omp"));
         assert!(!codex_before.is_empty() && !omp_before.is_empty());

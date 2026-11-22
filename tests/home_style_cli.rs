@@ -1,12 +1,10 @@
 //! #2875 (#2871 I3): the MoAI-Easy output style in the user layer, against a temporary HOME
 //! only — never the real one. Covers create, idempotence, a changed source, the user's own
-//! style file, setting and hand-written block (conflicts, bytes kept), symlinks, a stale digest,
-//! and revert.
+//! style file and setting (conflicts, bytes kept), symlinks, a stale digest, and revert. The
+//! Codex block is no longer written (SPEC-20261122-codex-home-update-removed).
 
 mod common;
-use moai_cli::home_style::{
-    apply, plan, render_block, render_style_file, revert, Plan, SOURCE, STYLE_NAME,
-};
+use moai_cli::home_style::{apply, plan, render_style_file, revert, Plan, SOURCE, STYLE_NAME};
 use serde_json::{json, Value};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -14,7 +12,6 @@ use std::path::{Path, PathBuf};
 const PERM: &str = "test-permission";
 const STYLE: &str = ".claude/output-styles/MoAI-Easy.md";
 const SETTINGS: &str = ".claude/settings.json";
-const AGENTS: &str = ".codex/AGENTS.md";
 
 fn package() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai")
@@ -67,14 +64,15 @@ fn temp_package(source: &str) -> tempfile::TempDir {
 }
 
 #[test]
-fn a_fresh_home_gets_the_style_file_the_default_and_the_codex_block_once() {
+fn a_fresh_home_gets_the_style_file_and_the_default_once() {
     let (_t, home) = home();
     let p = plan(&home, &package()).unwrap();
     assert_eq!(action(&p, "style_file"), "create");
     assert_eq!(action(&p, "setting"), "set");
-    assert_eq!(action(&p, "block"), "create");
+    let kinds: Vec<&str> = p.targets.iter().map(|t| t.kind.as_str()).collect();
+    assert_eq!(kinds, ["style_file", "setting"], "no Codex block target");
     let hosts: Vec<&str> = p.not_supported.iter().map(|u| u.host.as_str()).collect();
-    assert_eq!(hosts, ["omp", "kiro", "cursor"]);
+    assert_eq!(hosts, ["kiro", "cursor"]);
     let r = apply(&home, &package(), &p.plan_digest, PERM).unwrap();
     assert_eq!(r["state"], "applied");
     assert_eq!(
@@ -82,18 +80,11 @@ fn a_fresh_home_gets_the_style_file_the_default_and_the_codex_block_once() {
         render_style_file(&src())
     );
     assert_eq!(settings(&home), json!({"outputStyle": STYLE_NAME}));
-    assert_eq!(
-        fs::read_to_string(home.join(AGENTS)).unwrap(),
-        render_block(&src())
-    );
-    // One source for both hosts: the Codex block carries the same text as the style file body.
     let style = fs::read_to_string(home.join(STYLE)).unwrap();
     assert!(style.ends_with(&src()));
-    assert!(fs::read_to_string(home.join(AGENTS))
-        .unwrap()
-        .contains(&src()));
+    assert!(!home.join(".codex").exists(), "no Codex file is made");
     let again = plan(&home, &package()).unwrap();
-    for kind in ["style_file", "setting", "block"] {
+    for kind in ["style_file", "setting"] {
         assert_eq!(action(&again, kind), "unchanged", "{kind}");
     }
     let r = apply(&home, &package(), &again.plan_digest, PERM).unwrap();
@@ -123,21 +114,16 @@ fn the_users_own_choices_are_conflicts_and_keep_every_byte() {
     let (_t, home) = home();
     let style = "---\nname: MoAI-Easy\n---\n\nmy own style\n";
     let set = "{\"outputStyle\": \"Explanatory\"}\n";
-    let agents = "notes\n<!-- moai:output-style moai-easy BEGIN -->\nmine\n<!-- moai:output-style moai-easy END -->\n";
     write(&home, STYLE, style);
     write(&home, SETTINGS, set);
-    write(&home, AGENTS, agents);
     let p = plan(&home, &package()).unwrap();
     assert_eq!(action(&p, "style_file"), "conflict");
     // The default is never pointed at a style file MoAI does not own.
     assert_eq!(action(&p, "setting"), "skipped");
-    assert_eq!(action(&p, "block"), "conflict");
-    assert!(detail(&p, "block").contains("hand-written"));
     let r = apply(&home, &package(), &p.plan_digest, PERM).unwrap();
     assert_eq!(r["state"], "unchanged");
     assert_eq!(fs::read_to_string(home.join(STYLE)).unwrap(), style);
     assert_eq!(fs::read_to_string(home.join(SETTINGS)).unwrap(), set);
-    assert_eq!(fs::read_to_string(home.join(AGENTS)).unwrap(), agents);
     // With the style file gone, a different outputStyle is still the user's choice.
     fs::remove_file(home.join(STYLE)).unwrap();
     let p = plan(&home, &package()).unwrap();
@@ -168,7 +154,6 @@ fn a_changed_source_updates_only_what_moai_wrote() {
     let p = plan(&home, two.path()).unwrap();
     assert_eq!(action(&p, "style_file"), "merge");
     assert_eq!(action(&p, "setting"), "unchanged");
-    assert_eq!(action(&p, "block"), "merge");
     let r = apply(&home, two.path(), &p.plan_digest, PERM).unwrap();
     assert_eq!(r["state"], "applied");
     assert!(fs::read_to_string(home.join(STYLE))
@@ -191,21 +176,13 @@ fn a_symlinked_folder_or_file_blocks_its_target() {
     let (_t, home) = home();
     fs::create_dir_all(home.join(".claude")).unwrap();
     std::os::unix::fs::symlink(&other, home.join(".claude/output-styles")).unwrap();
-    fs::create_dir_all(home.join(".codex")).unwrap();
-    fs::write(other.join("agents.md"), "elsewhere\n").unwrap();
-    std::os::unix::fs::symlink(other.join("agents.md"), home.join(AGENTS)).unwrap();
     let p = plan(&home, &package()).unwrap();
     assert_eq!(action(&p, "style_file"), "blocked");
     assert_eq!(action(&p, "setting"), "skipped");
-    assert_eq!(action(&p, "block"), "blocked");
     let r = apply(&home, &package(), &p.plan_digest, PERM).unwrap();
     assert_eq!(r["state"], "unchanged");
     // Nothing went through the linked folder.
     assert!(!other.join("MoAI-Easy.md").exists());
-    assert_eq!(
-        fs::read_to_string(other.join("agents.md")).unwrap(),
-        "elsewhere\n"
-    );
 }
 
 #[test]
@@ -228,11 +205,8 @@ fn a_stale_digest_a_changed_file_or_a_missing_permission_is_refused() {
 #[test]
 fn revert_removes_what_it_created_and_restores_what_it_changed() {
     let (_t, home) = home();
-    let user_agents = "Codex notes\n";
-    write(&home, AGENTS, user_agents);
     write(&home, SETTINGS, "{\"a\": 1}\n");
     let p = plan(&home, &package()).unwrap();
-    assert_eq!(action(&p, "block"), "append");
     let r = apply(&home, &package(), &p.plan_digest, PERM).unwrap();
     let id = r["receipt"].as_str().unwrap().to_string();
     // Claude Code rewrites settings.json on its own: the key still goes, the new key stays.
@@ -245,14 +219,12 @@ fn revert_removes_what_it_created_and_restores_what_it_changed() {
     assert_eq!(r["state"], "reverted");
     assert!(!home.join(STYLE).exists());
     assert_eq!(settings(&home), json!({"a": 1, "b": 2}));
-    assert_eq!(fs::read_to_string(home.join(AGENTS)).unwrap(), user_agents);
     assert!(revert(&home, &id, PERM)
         .unwrap_err()
         .contains("already reverted"));
     // After the revert nothing is owned: a plan creates again.
     let p = plan(&home, &package()).unwrap();
     assert_eq!(action(&p, "style_file"), "create");
-    assert_eq!(action(&p, "block"), "append");
 }
 
 #[test]
@@ -272,10 +244,9 @@ fn revert_skips_whatever_the_user_changed_since() {
         .map(|s| s["target"].as_str().unwrap())
         .collect();
     assert_eq!(skipped, ["claude:setting", "claude:style_file"]);
-    assert_eq!(r["reverted"], json!(["codex:block"]));
+    assert_eq!(r["reverted"], json!([]));
     assert_eq!(fs::read_to_string(home.join(STYLE)).unwrap(), style);
     assert_eq!(settings(&home), json!({"outputStyle": "Learning"}));
-    assert!(!home.join(AGENTS).exists());
 }
 
 #[test]

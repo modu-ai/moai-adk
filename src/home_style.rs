@@ -1,22 +1,21 @@
-//! The MoAI-Easy output style in each host's user layer (#2875, #2871 I3).
+//! The MoAI-Easy output style in Claude Code's user layer (#2875, #2871 I3).
 //!
-//! The style text is one package file, `references/home/output-style.md`, rendered per host:
-//! Claude Code reads it as the output style file `~/.claude/output-styles/MoAI-Easy.md`
-//! (frontmatter added) and selects it by default through `outputStyle` in
-//! `~/.claude/settings.json`; Codex reads it as a managed block with the id
-//! `moai-output-style` in `~/.codex/AGENTS.md`. Hosts without a user-level file this module can
-//! write are reported in `not_supported`, as for the routing section.
+//! The style text is one package file, `references/home/output-style.md`: Claude Code reads it
+//! as the output style file `~/.claude/output-styles/MoAI-Easy.md` (frontmatter added) and
+//! selects it by default through `outputStyle` in `~/.claude/settings.json`. Hosts without a
+//! user-level file this module can write are reported in `not_supported`, as for the routing
+//! section. The Codex block that an earlier version wrote into `~/.codex/AGENTS.md` is no longer
+//! written (SPEC-20261122-codex-home-update-removed); a receipt that names it is skipped.
 //!
-//! `plan` writes nothing. Every target is three-way: the style file and the block are ours only
-//! while they hold the bytes we last wrote (`~/.moai-cli/home-style/<host>.json`); anything else
-//! is a `conflict`, never overwritten. `outputStyle` is set only when the key is absent — another
-//! value is the user's choice and a `conflict`. A hand-written `<!-- moai:output-style` block in
-//! `AGENTS.md` is a `conflict` too. A symlinked folder or file blocks the host. `apply` re-plans,
+//! `plan` writes nothing. Every target is three-way: the style file is ours only while it holds
+//! the bytes we last wrote (`~/.moai-cli/home-style/<host>.json`); anything else is a
+//! `conflict`, never overwritten. `outputStyle` is set only when the key is absent — another
+//! value is the user's choice and a `conflict`. A symlinked folder or file blocks the host.
+//! `apply` re-plans,
 //! refuses any other digest and keeps the before bytes in a receipt; `revert` restores a file
 //! only while it still holds the bytes the apply wrote, and removes the `outputStyle` key only
 //! while it still names this style.
 
-use crate::agents::{assert_single_block, markers, section_plan, splice};
 use crate::apply::{publish_exclusive, publish_replace, read_opt};
 use crate::retired_hosts::retired;
 use serde::{Deserialize, Serialize};
@@ -32,19 +31,14 @@ const SCHEMA_VERSION: u32 = 1;
 const STATE_DIR: &str = "home-style";
 /// The style source inside the skill package.
 pub const SOURCE: &str = "references/home/output-style.md";
-/// The managed block id in Codex's `AGENTS.md`.
-pub const SECTION: &str = "moai-output-style";
 /// The style name Claude Code selects (`outputStyle` is case-sensitive).
 pub const STYLE_NAME: &str = "MoAI-Easy";
 /// Hosts written.
-pub const HOSTS: [&str; 2] = ["claude", "codex"];
+pub const HOSTS: [&str; 1] = ["claude"];
 /// The targets, each below its host folder ([`crate::host_home`]: `~/.claude` or
-/// `CLAUDE_CONFIG_DIR`, `~/.codex` or `CODEX_HOME`; card C-79).
+/// `CLAUDE_CONFIG_DIR`; card C-79).
 const CLAUDE_STYLE_FILE: &str = "output-styles/MoAI-Easy.md";
 const CLAUDE_SETTINGS: &str = "settings.json";
-const CODEX_FILE: &str = "AGENTS.md";
-/// The start of the block people pasted by hand before this module existed.
-const HAND_BLOCK: &str = "<!-- moai:output-style";
 const SOURCE_LIMIT: usize = 64 * 1024;
 const SETTINGS_LIMIT: usize = 256 * 1024;
 const DESCRIPTION: &str = "Plain-words pair programming: four steps (Understand, Plan, Do, Check), evidence before done, banners and a progress board.";
@@ -54,14 +48,14 @@ const DESCRIPTION: &str = "Plain-words pair programming: four steps (Understand,
 #[serde(deny_unknown_fields)]
 pub struct TargetPlan {
     pub host: String,
-    /// style_file | setting | block
+    /// style_file | setting
     pub kind: String,
     pub path: String,
     /// create | merge | append | set | unchanged | conflict | skipped | blocked
     pub action: String,
     /// The sha256 of the file's bytes the plan was made from; none when absent.
     pub expected_sha256: Option<String>,
-    /// What this module owned before (style file or block sha256).
+    /// What this module owned before (the style file's sha256).
     pub baseline_sha256: Option<String>,
     pub detail: Option<String>,
 }
@@ -85,7 +79,7 @@ pub struct Plan {
     pub plan_digest: String,
 }
 
-/// The style file or block we last wrote for one host.
+/// The style file we last wrote for one host.
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 struct HostState {
@@ -129,7 +123,6 @@ fn rel_path(host: &str, kind: &str) -> &'static str {
     match (host, kind) {
         ("claude", "style_file") => CLAUDE_STYLE_FILE,
         ("claude", "setting") => CLAUDE_SETTINGS,
-        ("codex", "block") => CODEX_FILE,
         _ => unreachable!("unknown style target {host}/{kind}"),
     }
 }
@@ -268,12 +261,6 @@ pub fn render_style_file(source: &str) -> String {
     )
 }
 
-/// Codex's managed block, markers included.
-pub fn render_block(source: &str) -> String {
-    let (begin, end) = markers(SECTION, "html");
-    format!("{begin}\n{source}{end}\n")
-}
-
 fn target(home: &Path, host: &str, kind: &str) -> TargetPlan {
     // An unnamed host folder shows the path under HOME; reading it blocks the target.
     let path = match place(home, host, kind) {
@@ -375,44 +362,6 @@ fn setting_plan(home: &Path, style: &TargetPlan) -> TargetPlan {
     t
 }
 
-fn block_plan(home: &Path, rendered: &str) -> TargetPlan {
-    let mut t = target(home, "codex", "block");
-    let read = read_target(home, "codex", "block")
-        .and_then(|(_, cur)| read_state(home, "codex").map(|s| (cur, s)));
-    let (cur, state) = match read {
-        Ok(v) => v,
-        Err(e) => return blocked(t, e),
-    };
-    t.expected_sha256 = cur.as_deref().map(sha);
-    t.baseline_sha256 = state.owned_sha256.clone();
-    if cur
-        .as_deref()
-        .is_some_and(|b| String::from_utf8_lossy(b).contains(HAND_BLOCK))
-    {
-        t.action = "conflict".into();
-        t.detail = Some(format!(
-            "a hand-written `{HAND_BLOCK}` block is in the file; remove it to let the managed block replace it"
-        ));
-        return t;
-    }
-    match section_plan(
-        &t.path.clone(),
-        false,
-        SECTION,
-        "html",
-        cur.as_deref(),
-        state.owned_sha256,
-        rendered,
-    ) {
-        Ok(section) => {
-            t.action = section.action;
-            t.detail = section.detail;
-            t
-        }
-        Err(e) => blocked(t, e),
-    }
-}
-
 /// Read-only preview of every host; writes nothing.
 pub fn plan(home: &Path, package: &Path) -> Result<Plan> {
     plan_for(home, package, &HOSTS)
@@ -437,9 +386,6 @@ pub fn plan_for(home: &Path, package: &Path, only: &[&str]) -> Result<Plan> {
         let setting = setting_plan(&home, &style);
         targets.push(style);
         targets.push(setting);
-    }
-    if only.contains(&"codex") {
-        targets.push(block_plan(&home, &render_block(&src)));
     }
     let mut plan = Plan {
         schema_version: SCHEMA_VERSION,
@@ -466,9 +412,8 @@ pub fn writes_anything(plan: &Plan) -> bool {
 }
 
 /// Whether two plans write the same targets (#2875): `moai update` re-plans the style after the
-/// routing section already went into the same `~/.codex/AGENTS.md`, so the file's sha256 — and
-/// a `create` that is now an `append` — differ from the confirmed preview; which targets are
-/// written must not.
+/// other parts of the layer were applied, so a file's sha256 may differ from the confirmed
+/// preview; which targets are written must not.
 pub fn same_writes(a: &Plan, b: &Plan) -> bool {
     let writes = |p: &Plan| -> Vec<(String, String, bool)> {
         p.targets
@@ -515,13 +460,7 @@ fn new_bytes(t: &TargetPlan, before: Option<&[u8]>, src: &str) -> Result<Vec<u8>
     match t.kind.as_str() {
         "style_file" => Ok(render_style_file(src).into_bytes()),
         "setting" => insert_style(before).map(|(out, _)| out),
-        _ => {
-            let (begin, end) = markers(SECTION, "html");
-            let rendered = render_block(src);
-            let out = splice(before, &begin, &end, &rendered, "")?;
-            assert_single_block(&out, &begin, &end, &rendered)?;
-            Ok(out)
-        }
+        other => unreachable!("unknown style target kind {other}"),
     }
 }
 
@@ -653,10 +592,8 @@ pub fn apply_for(
             Some(b) => publish_replace(&path, Some(b), &out)?,
             None => publish_exclusive(&path, &out)?,
         }
-        match t.kind.as_str() {
-            "style_file" => write_state(&home, &t.host, Some(sha(&out)))?,
-            "block" => write_state(&home, &t.host, Some(sha(render_block(&src).as_bytes())))?,
-            _ => {}
+        if t.kind == "style_file" {
+            write_state(&home, &t.host, Some(sha(&out)))?;
         }
         written.push(format!("{}:{}", t.host, t.kind));
     }
@@ -757,7 +694,7 @@ pub fn revert_in(
         }
         if !matches!(
             (e.host.as_str(), e.kind.as_str()),
-            ("claude", "style_file") | ("claude", "setting") | ("codex", "block")
+            ("claude", "style_file") | ("claude", "setting")
         ) {
             return Err("style receipt names an unknown target".into());
         }
@@ -824,15 +761,6 @@ mod tests {
     }
 
     #[test]
-    fn the_block_carries_the_managed_markers() {
-        let out = render_block("body\n");
-        assert_eq!(
-            out,
-            "<!-- moai:managed:begin id=moai-output-style -->\nbody\n<!-- moai:managed:end id=moai-output-style -->\n"
-        );
-    }
-
-    #[test]
     fn a_settings_file_that_is_not_an_object_is_refused() {
         assert!(settings_object(b"[]").is_err());
         assert!(settings_object(b"{").is_err());
@@ -864,26 +792,38 @@ mod tests {
     }
 
     /// #2875 audit N1: `moai update` accepts a re-plan that writes the same targets from the same
-    /// source — the routing apply turned `create` into `append` — and refuses any other change.
+    /// source — the style file went from `create` to `merge` — and refuses any other change.
     #[test]
     fn same_writes_accepts_only_the_same_written_targets() {
         let confirmed = plan_of(
             "s",
-            &[("claude", "setting", "set"), ("codex", "block", "create")],
+            &[
+                ("claude", "style_file", "create"),
+                ("claude", "setting", "set"),
+            ],
         );
-        let appended = plan_of(
+        let merged = plan_of(
             "s",
-            &[("claude", "setting", "set"), ("codex", "block", "append")],
+            &[
+                ("claude", "style_file", "merge"),
+                ("claude", "setting", "set"),
+            ],
         );
-        assert!(same_writes(&confirmed, &appended));
+        assert!(same_writes(&confirmed, &merged));
         let conflict = plan_of(
             "s",
-            &[("claude", "setting", "set"), ("codex", "block", "conflict")],
+            &[
+                ("claude", "style_file", "conflict"),
+                ("claude", "setting", "set"),
+            ],
         );
         assert!(!same_writes(&confirmed, &conflict));
         let other_source = plan_of(
             "t",
-            &[("claude", "setting", "set"), ("codex", "block", "append")],
+            &[
+                ("claude", "style_file", "merge"),
+                ("claude", "setting", "set"),
+            ],
         );
         assert!(!same_writes(&confirmed, &other_source));
         let fewer = plan_of("s", &[("claude", "setting", "set")]);

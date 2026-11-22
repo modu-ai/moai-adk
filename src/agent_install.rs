@@ -29,11 +29,10 @@ const SCHEMA_VERSION: u32 = 1;
 const STATE_DIR: &str = "agents";
 
 /// The user-level agent folder of a host: Claude Code `~/.claude/agents/`
-/// (code.claude.com/docs/en/sub-agents), Codex `~/.codex/agents/` (learn.chatgpt.com
-/// agent-configuration/subagents), OMP `~/.omp/agent/agents/` (github.com/can1357/oh-my-pi
-/// `docs/task-agent-discovery.md`, read 2026-11-13; #2633). The host folder is
-/// [`crate::host_home`]'s (`CLAUDE_CONFIG_DIR`, `CODEX_HOME`, card C-79); a relocated
-/// `agents` link to the default folder is followed there (decision "기본 폴더 링크만 허용").
+/// (code.claude.com/docs/en/sub-agents). The Codex and OMP folders are no longer written
+/// (SPEC-20261122-codex-home-update-removed). The host folder is [`crate::host_home`]'s
+/// (`CLAUDE_CONFIG_DIR`, card C-79); a relocated `agents` link to the default folder is
+/// followed there (decision "기본 폴더 링크만 허용").
 fn host_dir(home: &Path, host: &str) -> Result<PathBuf> {
     Ok(host_place(home, host)?.path())
 }
@@ -46,11 +45,8 @@ fn host_place(home: &Path, host: &str) -> Result<crate::host_home::Place> {
 }
 
 /// The agent folder below the host folder.
-fn host_rel(host: &str) -> &'static str {
-    match host {
-        "omp" => "agent/agents",
-        _ => "agents",
-    }
+fn host_rel(_host: &str) -> &'static str {
+    "agents"
 }
 
 fn state_root(home: &Path) -> PathBuf {
@@ -142,10 +138,9 @@ fn plain_dir_or_absent(path: &Path) -> Result<()> {
     }
 }
 
-/// Every folder from the host folder (`~/.claude`, `~/.omp`) down to its agent folder
-/// (`~/.claude/agents`, `~/.omp/agent/agents`) is a real folder or absent — never a link,
-/// never a file. OMP's agent folder sits two levels below `~/.omp`, so each level is checked
-/// (#2633). Plan, apply and revert all check it.
+/// Every folder from the host folder (`~/.claude`) down to its agent folder
+/// (`~/.claude/agents`) is a real folder or absent — never a link, never a file. Plan, apply
+/// and revert all check it.
 fn host_folders_plain(home: &Path, host: &str) -> Result<()> {
     let place = host_place(home, host)?;
     let mut path = place.base;
