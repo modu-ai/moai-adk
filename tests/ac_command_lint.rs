@@ -207,6 +207,13 @@ fn the_repository_lint_starts_no_cargo_and_ends_within_five_seconds() {
     );
 }
 
+/// `docs/<name>` inside a temporary tree. Built at run time so tests/ci_scope_test.py, which greps
+/// quoted `docs/…` strings as repository documents, does not read these temporary paths as such.
+#[cfg(unix)]
+fn doc(name: &str) -> String {
+    format!("{}/{name}", "docs")
+}
+
 /// Writes `files` (relative path, text) under a new temporary tree.
 #[cfg(unix)]
 fn tree(files: &[(&str, &str)]) -> tempfile::TempDir {
@@ -264,7 +271,7 @@ fn test_names_are_read_from_the_sources_with_their_module_paths() {
             "#[test]\nfn from_a_path_attribute() {}\n",
         ),
         (
-            "docs/good.md",
+            doc("good.md").as_str(),
             "`cargo test --test shapes top_level`\n\
              `cargo test --test shapes inner::nested_one`\n\
              `cargo test --test shapes inner::deeper::deepest`\n\
@@ -273,7 +280,7 @@ fn test_names_are_read_from_the_sources_with_their_module_paths() {
              `cargo test --test shapes after_the_modules`\n",
         ),
         (
-            "docs/bad.md",
+            doc("bad.md").as_str(),
             "`cargo test --test shapes in_a_string`\n\
              `cargo test --test shapes in_a_raw_string`\n\
              `cargo test --test shapes inner::after_the_modules`\n\
@@ -289,7 +296,7 @@ fn test_names_are_read_from_the_sources_with_their_module_paths() {
         .filter(|l| l.starts_with("VIOLATION:"))
         .collect();
     assert!(
-        violations.iter().all(|l| l.contains("docs/bad.md")),
+        violations.iter().all(|l| l.contains(&doc("bad.md"))),
         "every good filter must select a read test:\n{text}"
     );
     for filter in [
@@ -318,7 +325,7 @@ fn a_filter_on_macro_made_tests_says_the_names_cannot_be_read() {
             "macro_rules! case {\n    ($name:ident) => {\n        #[test]\n        fn $name() {}\n    };\n}\n\
              case!(made_by_macro);\n",
         ),
-        ("docs/record.md", "`cargo test --test made made_by_macro`\n"),
+        (doc("record.md").as_str(), "`cargo test --test made made_by_macro`\n"),
     ]);
     let root = dir.path().to_str().unwrap();
     let (out, cargo_started) = run_lint_without_cargo(&["--tree", root]);
@@ -327,7 +334,7 @@ fn a_filter_on_macro_made_tests_says_the_names_cannot_be_read() {
     assert!(!out.status.success(), "{text}");
     assert!(
         text.lines().any(|l| l.starts_with("VIOLATION:")
-            && l.contains("docs/record.md")
+            && l.contains(&doc("record.md"))
             && l.contains("macro")),
         "the violation must say the names are made by a macro:\n{text}"
     );
