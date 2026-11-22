@@ -40,6 +40,9 @@ Project
   generation-apply        Write previewed generated agent and skill files
   github-plan             Preview the project's GitHub templates
   github-apply            Write previewed GitHub templates
+  project-ci-plan         Preview the project's CI workflow files
+  project-ci-apply        Write previewed CI workflow files
+  project-check           Run the commands the project declares
   labels-plan             Preview syncing the project's GitHub labels
   labels-apply            Sync previewed GitHub labels
   claude-settings-plan    Preview the managed Claude Code settings keys
