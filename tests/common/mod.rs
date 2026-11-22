@@ -109,6 +109,21 @@ pub fn process_table() -> (&'static str, &'static str) {
     }
 }
 
+/// Start `cmd` as the leader of a process group of its own, so `kill_group` also stops the
+/// programs it starts: a shell holder's `sleep` outlives a kill of the shell alone.
+#[allow(dead_code)]
+pub fn spawn_group(cmd: &mut std::process::Command) -> std::process::Child {
+    use std::os::unix::process::CommandExt;
+    cmd.process_group(0).spawn().unwrap()
+}
+
+/// Stop the group `spawn_group` started and reap its leader.
+#[allow(dead_code)]
+pub fn kill_group(child: &mut std::process::Child) {
+    let _ = child.kill();
+    let _ = child.wait();
+}
+
 impl CleanEnv for std::process::Command {
     fn clean_env(&mut self) -> &mut Self {
         self.env_clear();
