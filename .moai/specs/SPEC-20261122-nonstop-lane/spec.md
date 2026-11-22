@@ -2,7 +2,7 @@
 id: SPEC-20261122-nonstop-lane
 title: "Non-stop lane running is a built-in choice: one selection, one stored pick, one generated loop prompt and one ledger watch"
 status: draft
-revision: 2
+revision: 3
 created: 2026-11-22
 ---
 
@@ -22,9 +22,9 @@ Read whole on 2026-11-22 before this SPEC (the pages of code.claude.com/docs/en:
 
 The code already holds the older parts this SPEC replaces for Claude Code: `lane-loop-line` prints a fixed five-minute `/loop` for the Issue era, and the MODE-AGENT workflow names the wake and keep-going rules in text. This SPEC adds the stored pick, the generated card-ledger prompt and the ledger watch; the Codex and OMP arms of `lane-loop-line` belong to the removal cards and are not touched here.
 
-This SPEC is slice 1 of the work: the SPEC only. The code, the skill text and the tests follow in the slices of the Plan.
+Slice 1 was this SPEC. Slice 2 (revision 3) writes `show`, `set`, `prompt` and `goal`, their tests and the operation document; `watch`, the skill text and the help follow in slices 3 and 4 of the Plan.
 
-## Docs
+### What a user reads
 
 What a user reads once this lands (written in the operation document and, in slice 4, the help text and the skill):
 
@@ -72,7 +72,7 @@ What a user reads once this lands (written in the operation document and, in sli
 
 - write: `.moai/specs/SPEC-20261122-nonstop-lane/spec.md`
 - write (slice 2, revision 2, leader decision on the ledger): `src/profile.rs` (the optional top-level `lane_run` key in the reader, its table row, its check and the profile's own test literals; the profile also gains another lane's field, so the later landing side matches the literals)
-- write (slices 2 to 4): `src/ops/lane_run.rs` (the operation and its logic in one file, so `src/lib.rs` is not touched), `tests/lane_run_cli.rs`, `docs/design-review/appendix/operations/lane-run.md`, `skills/moai/workflows/mode-agent.md`, `skills/moai/workflows/project.md` and the skill source manifest
+- write (slices 2 to 4): `src/ops/lane_run.rs` (the operation and its logic in one file, so `src/lib.rs` is not touched), `tests/lane_run_cli.rs`, `docs/design-review/appendix/operations/lane_run.md`, `skills/moai/workflows/mode-agent.md`, `skills/moai/workflows/project.md` and the skill source manifest
 - last step, by pair request: `src/main.rs` and `src/help.rs` (the four actions and their examples)
 
 ## Decisions
@@ -86,6 +86,10 @@ What a user reads once this lands (written in the operation document and, in sli
 - D-7: `/goal` is optional and per card, on the user's pick, and the text is the lane's end state for one card (the READY note exists with its head and base read from git, and the card is in review), with a turn clause. It adds a separate model's judgement and extra tokens, so the question names that; it is never the default.
 - D-8: The Issue-era `lane-loop-line` stays for the removal cards to retire; the skill's text stops pointing at its Claude arm for new lanes once this lands.
 - D-9: No lane identity is invented: the lane name is the one the lane registered with `session-register`, passed by the caller.
+- D-10 (revision 3, slice-2 audit): D-6 is partly implemented in slice 2. `show` reads `CLAUDE_CODE_DISABLE_CRON`; `goal` does not yet read `disableAllHooks` or `allowManagedHooksOnly` from the settings files, and that read lands with the skill text in slice 4.
+- D-11 (revision 3, slice-2 audit): until `watch` lands in slice 3, the loop prompt names only commands that exist. Its wait step has Monitor read `moai card show` of each held card, and slice 3 puts the watch command back into the prompt together with AC-3's watch needle.
+- D-12 (revision 3, slice-2 audit): `lane_run` is an object or absent, by one rule on `show`, `set` and `prompt`. `null` and `[]`, which the profile reader takes as unset or empty, are refused by `lane-run` itself, with the setting's message. A string or a number already fails the reader, the same on every command. The rule sits in `src/ops/lane_run.rs` because `src/profile.rs` is reserved by another card; moving it into the reader is a later change of that file's owner.
+- D-13 (revision 3, slice-2 audit): `set` copies the profile's mode onto its temporary file before the rename, as `apply` does, so a 0644 profile stays 0644.
 
 ## Plan
 
