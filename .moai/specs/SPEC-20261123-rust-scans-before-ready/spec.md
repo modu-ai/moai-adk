@@ -14,6 +14,8 @@ created: 2026-11-23
 
 이 조각은 (1)과 (2)만 해요.
 
+개정 2(2026-11-23): 독립 감사의 지적을 고쳤어요. 병합 드라이버 사실이 `.gitattributes` 를 git 이 읽는 대로 읽어요(AC-9), `id` 없는 표 항목이 스스로 실패해요(AC-10), 변형 표가 AC-2 의 세 가지를 모두 보여요, 일곱 파이썬 훑기 모듈과 그 실행 주체를 적어요(Risks, D13).
+
 - `tests/repo_scans_test.py` 의 사례 6개를 `tests/repo_scans_table.rs` 로 옮기고 파이썬 파일을 지워요. 사례는 모두 `tools/repo_scans.json` 표와 저장소의 시험 파일을 읽을 뿐이라 도구가 필요 없어요.
 - `tests/source_manifest_test.py` 의 "이 저장소 자체에 대한 사실"(매니페스트가 도구가 쓰는 글과 같음, 키 순서·중복 없음, 병합 드라이버 속성)을 `tests/source_manifest_facts.rs` 로 옮겨요. 도구의 동작을 임시 저장소에서 시험하는 사례는 `tools/source_manifest.py` 와 `tools/merge_driver_manifest.py` 가 `moai` 명령이 되는 조각(인벤토리 D1)에서 옮겨요.
 - `check affected` 는 파이썬 모듈을 고르지 않고, `build_cli` 와 `python` 단계와 요약의 `py=` 를 없애요.
@@ -45,6 +47,8 @@ created: 2026-11-23
 - AC-6 (REQ-3, REQ-4): 선택·단계 단위 시험이 파이썬을 고르지 않아요 · verify: `cargo test --offline --locked --lib check_affected`
 - AC-7 (REQ-5): 표 판정기가 새 규칙 이름으로 같은 판정을 해요 · verify: `cargo test --offline --locked --test repo_scans_cli`
 - AC-8 (REQ-7): 이 조각이 지운 파이썬 파일은 `tests/repo_scans_test.py` 하나예요 · verify: `git diff --name-status $(git merge-base HEAD v2026.11.0)..HEAD` 의 `D` 줄이 그 파일 하나예요.
+- AC-9 (REQ-2): 매니페스트의 병합 드라이버를 뒤집는 변형이 잡혀요: `.gitattributes` 뒤에 `-merge` 를 주는 글롭 줄, 다른 드라이버를 주는 파일 이름 줄, 길 위 폴더의 자기 `.gitattributes`. `git check-attr merge` 가 같은 파일에 `unset`·`ours` 를 답하는 변형이에요 · verify: Result 절의 변형 표.
+- AC-10 (REQ-1): `id` 가 없는 표 항목이 그것만으로 실패해요 · verify: Result 절의 변형 표.
 
 ## Scope
 
@@ -80,7 +84,7 @@ created: 2026-11-23
 
 ## Result
 
-구현 에이전트가 2026-11-23에 채웠어요. 감사가 다시 확인해요. 가지 `spec-impl/20261123-rust-only-repo-scans`, 기준 `178fde8beb`, 구현 커밋 `0d6b1aeb2d`, 이 worktree 의 `target/`, `CARGO_BUILD_JOBS=5`, `RUSTC_WRAPPER=sccache`, macOS arm64, cargo nextest. 같은 머신의 부하가 100 이상이었어요.
+구현 에이전트가 2026-11-23에 채웠어요. 감사가 다시 확인해요. 가지 `spec-impl/20261123-rust-only-repo-scans`, 기준 `178fde8beb`, 구현 커밋 `0d6b1aeb2d`, 이 worktree 의 `target/`, `CARGO_BUILD_JOBS=5`, `RUSTC_WRAPPER=sccache`, macOS arm64, cargo nextest. 같은 머신의 부하가 100 이상이었어요. 감사 뒤 수리(개정 2)는 그 위에 얹은 커밋이고, 수리 뒤의 영수증은 카드의 HANDOFF 노트에 있어요. 변형 표의 아래 다섯 줄은 수리 커밋에서 돌렸어요.
 
 사례 대조표(`tests/repo_scans_test.py` 6개):
 
@@ -97,15 +101,17 @@ created: 2026-11-23
 `tests/source_manifest_test.py` 에서 저장소 자신을 읽는 사실만 옮겼어요(`tests/source_manifest_facts.rs`): 도구가 쓰는 글과 같음 `this_repository_manifest_is_what_the_tool_writes`, 병합 드라이버 속성 `this_repository_names_the_driver_for_the_manifest`, 키 순서 `files_are_in_sorted_key_order`, 키 중복 없음 `a_duplicate_key_is_never_read_as_last_wins`, 항목과 파일이 하나씩 짝 `every_package_file_has_one_entry_and_every_entry_a_file`, 경로의 링크 `the_manifest_path_has_no_link`, 충돌 표시 없음 `the_manifest_and_the_package_hold_no_conflict_marker`. 임시 저장소에서 `tools/source_manifest.py` 와 병합 드라이버를 돌리는 나머지 사례는 파이썬 모듈에 그대로 남아요(도구가 `moai` 명령이 되는 조각, 인벤토리 D1).
 
 - AC-1: met — `repo_scans_table` 7 passed
-- AC-2: met — 변형 표(아래) 중 표 시험 둘이 의도한 시험에서 실패
-- AC-3: met — `source_manifest_facts` 7 passed
+- AC-2: met — 변형 표(아래)의 세 가지, 표에 없는 걷는 시험 파일·표가 가리키는 없는 파일·없는 시험 이름이 각각 의도한 시험에서 실패
+- AC-3: met — `source_manifest_facts` 8 passed
 - AC-4: met — 변형 표(아래) 셋이 의도한 시험에서 실패
+- AC-9: met — 변형 표(아래) 셋(병합 드라이버)이 `this_repository_names_the_driver_for_the_manifest` 에서 실패
+- AC-10: met — 변형 표(아래)의 `id` 없는 항목이 `entries_are_well_formed` 에서 실패
 - AC-5: met — `check_affected_cli` 16 passed, `check_affected_one_slot` 7 passed, `check_pipeline_config` 3 passed
 - AC-6: met — `--lib check_affected` 14 passed, `--bin moai-cli` 28 passed
 - AC-7: met — `repo_scans_cli` 19 passed
 - AC-8: met — 이 조각이 지운 파일은 `tests/repo_scans_test.py` 하나
 
-변형 5개와 하나 더(커밋한 트리에서 돌리고 `git checkout --` 로 되돌림), 모두 의도한 시험에서 KILLED:
+변형(커밋한 트리에서 돌리고 `git checkout --` 로 되돌림), 모두 의도한 시험에서 KILLED:
 
 | 변형 | 실패한 시험 |
 |---|---|
@@ -115,6 +121,11 @@ created: 2026-11-23
 | 표의 검사 이름 한 글자를 틀리게 함(없는 시험 이름) | `every_check_names_a_real_target_and_test` |
 | 걷는 시험 파일의 면제 행 하나를 지움(항목도 면제도 없음) | `every_walking_test_file_is_listed_or_exempt` |
 | 표의 `unittest` 검사의 `tests.<이름>` 을 다시 대상으로 읽음 | `no_python_module_is_selected_or_read_as_a_test`, `the_misses_of_the_integration_day_are_selected` |
+| 표의 규칙 파일 하나를 없는 파일 이름으로 바꿈(표가 가리키는 없는 파일) | `every_named_file_exists` |
+| `.gitattributes` 끝에 `skills/moai/references/*.json -merge` 를 붙임(`git check-attr merge` 가 `unset`) | `this_repository_names_the_driver_for_the_manifest` |
+| `.gitattributes` 끝에 `source-manifest.json merge=ours` 를 붙임(`git check-attr merge` 가 `ours`) | `this_repository_names_the_driver_for_the_manifest` |
+| `skills/moai/references/` 에 자기 `.gitattributes` 를 둠(`git check-attr merge` 가 `unset`) | `this_repository_names_the_driver_for_the_manifest` (+ 짝 시험 하나) |
+| 표 항목 하나의 `id` 키 이름을 바꿔 `id` 가 없게 함 | `entries_are_well_formed` |
 
 첫 시도의 마지막 변형(`--test` 뒤 낱말만 읽는 줄에 `tests.` 시작 조건을 더함)은 살아남았어요. 변형이 약했어요: `tests.<이름>` 뒤에는 다음 낱말이 없어서 아무것도 넣지 않았어요. 옛 동작을 제대로 되살리는 변형(`tests.` 뒤 이름을 대상으로 넣기)으로 바꿔서 위 표의 결과를 얻었어요.
 
