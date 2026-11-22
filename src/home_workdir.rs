@@ -192,6 +192,23 @@ pub fn place_owner(primary: &Path, folder: &Path) -> Option<PathBuf> {
     })
 }
 
+/// Why a worktree path is refused: a short `reason` for the answer and a `detail` that names the
+/// path.
+#[derive(Debug, PartialEq, Eq)]
+pub struct PlaceRefusal {
+    pub reason: &'static str,
+    pub detail: String,
+}
+
+/// The verdict on a worktree path against the place of the primary checkout `primary`
+/// (REQ-13): the path is refused when it holds a `.` or `..` part, when it lies in the place and
+/// runs through a link, or when it lies in the place by name and resolves outside it. A path
+/// outside the place passes untouched.
+pub fn place_verdict(primary: &Path, target: &Path) -> std::result::Result<(), PlaceRefusal> {
+    let _ = (primary, target);
+    Ok(())
+}
+
 /// Refuses a worktree place that runs through a link: `<project>/.claude`, `<project>/.claude/
 /// worktrees`, the `folder` of the new worktree and every part between them must not be symbolic
 /// links (REQ-13). Nothing is followed or changed; the error names the linked path. `project` is

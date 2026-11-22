@@ -308,6 +308,54 @@ fn worktree_place_links_every_part_below_the_owner_is_checked() {
     );
 }
 
+/// Audit B3 (REQ-13): the verdict refuses a `.` or `..` part anywhere in the path, plainly, and
+/// leaves a path outside the place and a plain place path alone.
+#[test]
+fn worktree_place_verdict_refuses_dot_parts_and_passes_plain_paths() {
+    let tmp = tempfile::tempdir().unwrap();
+    let project = tmp.path().join("p");
+    std::fs::create_dir_all(project.join(".claude/worktrees")).unwrap();
+    let refused = |t: &Path| home_workdir::place_verdict(&project, t).unwrap_err().reason;
+    assert_eq!(
+        refused(&project.join(".claude/zz/../worktrees/w")),
+        "place_path_refused"
+    );
+    assert_eq!(
+        refused(&project.join(".claude/../.claude/worktrees/w")),
+        "place_path_refused"
+    );
+    assert_eq!(refused(Path::new("a/./b")), "place_path_refused");
+    assert_eq!(refused(Path::new("./w")), "place_path_refused");
+    assert_eq!(refused(Path::new("../w")), "place_path_refused");
+    // Plain paths: in the place, below a missing place, outside the project.
+    assert!(home_workdir::place_verdict(&project, &project.join(".claude/worktrees/w")).is_ok());
+    assert!(home_workdir::place_verdict(&project, &tmp.path().join("elsewhere/w")).is_ok());
+    assert!(home_workdir::place_verdict(&project, Path::new("relative-name")).is_ok());
+}
+
+/// Audit B3 (REQ-13): a link anywhere between the owner and the folder is named, and the verdict
+/// of a path that is clean says nothing.
+#[cfg(unix)]
+#[test]
+fn worktree_place_verdict_names_a_link_in_any_part() {
+    let tmp = tempfile::tempdir().unwrap();
+    let project = tmp.path().join("p");
+    std::fs::create_dir_all(project.join(".claude/worktrees")).unwrap();
+    let elsewhere = tmp.path().join("elsewhere");
+    std::fs::create_dir_all(&elsewhere).unwrap();
+    std::os::unix::fs::symlink(&elsewhere, project.join(".claude/worktrees/group")).unwrap();
+    let r = home_workdir::place_verdict(&project, &project.join(".claude/worktrees/group/w"))
+        .unwrap_err();
+    assert_eq!(r.reason, "place_is_a_link");
+    assert!(r.detail.contains("group"), "{r:?}");
+    // The same path through a linked alias of the project is found as well.
+    let alias = tmp.path().join("alias");
+    std::os::unix::fs::symlink(&project, &alias).unwrap();
+    let r = home_workdir::place_verdict(&project, &alias.join(".claude/worktrees/group/w"))
+        .unwrap_err();
+    assert_eq!(r.reason, "place_is_a_link");
+}
+
 /// Scene 11 (REQ-13): real folders, or none yet, are accepted.
 #[test]
 fn worktree_place_links_real_folders_and_missing_ones_are_accepted() {
