@@ -488,12 +488,7 @@ fn usage_record_is_read_by_the_lane_readers() {
 #[test]
 fn usage_record_survives_the_session_cache_clean_up() {
     let f = fixture();
-    let git = Command::new("git")
-        .args(["init", "-q", "-b", "main"])
-        .current_dir(&f.work)
-        .status()
-        .unwrap();
-    assert!(git.success());
+    common::git::git_ok(&f.work, &["init", "-q", "-b", "main"]);
     let tmp = tempfile::tempdir().unwrap();
     let reset = unix_now() + 3600;
     render_with(&f.home, &f.work, tmp.path(), &limits_stdin(90, reset));
