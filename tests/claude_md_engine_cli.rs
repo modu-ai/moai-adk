@@ -798,3 +798,32 @@ fn receipts_the_revert_puts_gitignore_back_as_it_was() {
     assert_eq!(out["gitignore"], json!("reverted"), "{out}");
     assert_eq!(fx.read(".gitignore"), earlier);
 }
+
+// --- REQ-5: the generated block never restates the check-run rules --------------------------------
+
+/// The managed block the writer puts into a project holds facts only. The check-run rules live
+/// once in the VERIFY workflow, so the block carries neither the citation line format nor a line
+/// of the role table.
+#[test]
+fn check_run_the_generated_block_never_restates_the_rules() {
+    let fx = Fx::new();
+    fx.ready();
+    let text = fx.read("CLAUDE.md");
+    let begin = text.find(BEGIN).expect("begin marker");
+    let end = text.find(END).expect("end marker");
+    let block = &text[begin..end];
+    assert!(block.lines().count() > 2, "the block is empty: {text}");
+    for restated in [
+        "ci: ci run=<run id> head=<40-hex head SHA>",
+        "ci run=",
+        "Delta auditor: merge-only delta",
+        "Author: new or changed code",
+        "Auditor: the audited head changes code",
+        "Repair lane: the repair changes code",
+    ] {
+        assert!(
+            !block.contains(restated),
+            "the block restates {restated:?}: {block}"
+        );
+    }
+}

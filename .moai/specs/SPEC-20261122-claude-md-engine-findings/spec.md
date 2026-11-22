@@ -2,7 +2,7 @@
 id: SPEC-20261122-claude-md-engine-findings
 title: "The AGENTS.md merge engine and the first CLAUDE file warn about hidden files, scan only copied text and keep receipts out of git"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-22
 parent: SPEC-20261122-claude-md-layout
 ---
@@ -11,7 +11,7 @@ parent: SPEC-20261122-claude-md-layout
 
 ## Intent
 
-예전 감사가 AGENTS.md 이동 엔진에 남긴 네 가지 지적 중 지금도 열려 있는 것을 닫아요(코드 대조 결과, 2026-11-22). (1) 첫 CLAUDE 파일을 만들면 Claude Code 는 `AGENTS.md` 와 `.claude/AGENTS.md` 를 더는 읽지 않는데, 이 경고가 개인 파일 병합에만 있고 블록 작성기·선택·미리보기에는 없어요(`.claude/AGENTS.md` 만 있는 프로젝트는 아무 경고도 못 받아요). (2) 관리 영역을 빼고 복사할 때 그 둘레의 빈 줄이 한 줄로 합쳐지는데 미리보기가 말해 주지 않아요. (3) 비밀 검사가 복사하지 않는 관리 영역까지 파일 전체를 읽어서, 복사되지 않는 글 때문에 계획이 막힐 수 있어요. (4) 영수증 폴더를 `.gitignore` 에 올리는 줄이 관리 블록에만 있어서, 관리 블록이 아직 없는 프로젝트의 단독 병합은 영수증 폴더를 git 에 노출해요. 하위 폴더의 `AGENTS.md` 는 이 SPEC 의 범위가 아니에요(따로 결정).
+예전 감사가 AGENTS.md 이동 엔진에 남긴 네 가지 지적 중 지금도 열려 있는 것을 닫아요(코드 대조 결과, 2026-11-22). (1) 첫 CLAUDE 파일을 만들면 Claude Code 는 `AGENTS.md` 와 `.claude/AGENTS.md` 를 더는 읽지 않는데, 이 경고가 개인 파일 병합에만 있고 블록 작성기·선택·미리보기에는 없어요(`.claude/AGENTS.md` 만 있는 프로젝트는 아무 경고도 못 받아요). (2) 관리 영역을 빼고 복사할 때 그 둘레의 빈 줄이 한 줄로 합쳐지는데 미리보기가 말해 주지 않아요. (3) 비밀 검사가 복사하지 않는 관리 영역까지 파일 전체를 읽어서, 복사되지 않는 글 때문에 계획이 막힐 수 있어요. (4) 영수증 폴더를 `.gitignore` 에 올리는 줄이 관리 블록에만 있어서, 관리 블록이 아직 없는 프로젝트의 단독 병합은 영수증 폴더를 git 에 노출해요. 하위 폴더의 `AGENTS.md` 는 이 SPEC 의 범위가 아니에요(따로 결정). 개정 2: 첫 조각이 `AGENTS.md` 관리 구역 틀을 사실만 담은 블록으로 바꾸면서 그 틀의 "Check-run rules" 안내 문장이 설계상 없어졌고, 그 문장을 읽던 파이썬 시험 한 건이 빨개졌어요. 그 시험을 은퇴시키고, 아직 유효한 절반("블록이 규칙을 되풀이하지 않는다")을 러스트 고정 시험으로 옮겨요(REQ-5).
 
 ## Requirements
 
@@ -19,6 +19,8 @@ parent: SPEC-20261122-claude-md-layout
 - REQ-2: When the guidance merge removes a managed region from the text it copies, the plan shall tell the user that the blank lines around the removed region are joined into one blank line. · failure: none — the notice is a warning and the copy is unchanged
 - REQ-3: The guidance merge shall scan for credential-shaped lines only the text it copies and report line numbers of the whole file. · failure: a credential-shaped line in the copied text blocks the plan as today
 - REQ-4: When a merge or a pick writes a receipt folder and no managed `.gitignore` block holds the receipts line, the apply shall add the receipts line to `.gitignore` in the same apply. · failure: none — a folder that is already ignored gets no second line and a project that is not a git repository gets no `.gitignore`
+
+- REQ-5: The managed block that the writer puts into a project shall carry neither the citation line format nor a line of the role table of the VERIFY workflow's "Check-run rules". · failure: none — a test of the written block catches a restatement, and nothing is written at run time
 
 ## Acceptance
 
@@ -30,13 +32,15 @@ parent: SPEC-20261122-claude-md-layout
   verify: `cargo test --locked --offline --test claude_md_engine_cli scan_`
 - AC-4 (REQ-4): after a standalone merge and after a pick in a git project without a managed `.gitignore` block, `git check-ignore` says the receipts folder is ignored; a project that already ignores it gets no second line, and a project that is not a git repository gets no `.gitignore`.
   verify: `cargo test --locked --offline --test claude_md_engine_cli receipts_`
+- AC-6 (REQ-5): the block written into a fresh project holds neither the citation line format nor any role-table line, and the Python test that read the retired template sentence is gone.
+  verify: `cargo test --locked --offline --test claude_md_engine_cli check_run_`
 - AC-5: neighbouring checks on the changed files.
   verify: `cargo fmt --check`
   verify: `cargo clippy --locked --offline --all-targets -- -D warnings`
 
 ## Scope
 
-- write: `src/agents.rs`, `src/agents_local_merge.rs`, `src/agents_local_merge/picks.rs`, `src/project_update.rs`, `tests/claude_md_engine_cli.rs`, `tests/agents_local_merge_cli.rs`, `tests/agents_migrate_cli.rs`, `tests/claude_md_picks_cli.rs`, `.moai/specs/SPEC-20261122-claude-md-engine-findings/**`
+- write: `src/agents.rs`, `src/agents_local_merge.rs`, `src/agents_local_merge/picks.rs`, `src/project_update.rs`, `tests/claude_md_engine_cli.rs`, `tests/agents_local_merge_cli.rs`, `tests/agents_migrate_cli.rs`, `tests/claude_md_picks_cli.rs`, `tests/check_pr_self_audit_test.py`, `.moai/specs/SPEC-20261122-claude-md-engine-findings/**`
 - read-only: `src/apply.rs`, `src/claude.rs`, `src/generation.rs`
 - forbidden: `AGENTS.md`, `AGENTS.local.md` of this repository, the real HOME, the network, `.claude/` of this checkout
 
