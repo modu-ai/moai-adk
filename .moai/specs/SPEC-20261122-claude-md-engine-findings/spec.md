@@ -15,7 +15,7 @@ parent: SPEC-20261122-claude-md-layout
 
 ## Requirements
 
-- REQ-1: When the writer, a pick or the update preview would create the first CLAUDE file in a project that holds `AGENTS.md` or `.claude/AGENTS.md`, the plan shall warn that Claude Code stops reading each of those files and name the files it would stop reading. · failure: none — the warning needs the same confirmation as today and nothing is written without it
+- REQ-1: When the writer, a pick or the update preview would create the first CLAUDE file in a project that holds `AGENTS.md` or `.claude/AGENTS.md`, the plan shall warn that Claude Code stops reading each of those files that the new file does not carry over and name them. · failure: none — the warning needs the same confirmation as today and nothing is written without it
 - REQ-2: When the guidance merge removes a managed region from the text it copies, the plan shall tell the user that the blank lines around the removed region are joined into one blank line. · failure: none — the notice is a warning and the copy is unchanged
 - REQ-3: The guidance merge shall scan for credential-shaped lines only the text it copies and report line numbers of the whole file. · failure: a credential-shaped line in the copied text blocks the plan as today
 - REQ-4: When a merge or a pick writes a receipt folder and no managed `.gitignore` block holds the receipts line, the apply shall add the receipts line to `.gitignore` in the same apply. · failure: none — a folder that is already ignored gets no second line and a project that is not a git repository gets no `.gitignore`
@@ -24,7 +24,7 @@ parent: SPEC-20261122-claude-md-layout
 
 ## Acceptance
 
-- AC-1 (REQ-1): a project that holds only `.claude/AGENTS.md`, one that holds only `AGENTS.md` and one that holds both are each warned by the writer, the pick plan and the update preview, naming every file that would stop being read, and a project that already holds a CLAUDE file is not warned.
+- AC-1 (REQ-1): a project that holds only `.claude/AGENTS.md` and one that holds both files are warned by the writer, the pick plan and the update preview, and the warning names `.claude/AGENTS.md`; a project that holds only the root `AGENTS.md` is not warned, because the block and the picks `move` and `import` carry that file into the new `CLAUDE.md`; the personal-file merge, which carries neither file, still names both; and a project that already holds a CLAUDE file is not warned.
   verify: `cargo test --locked --offline --test claude_md_engine_cli hidden_`
 - AC-2 (REQ-2): the guidance merge plan of an `AGENTS.md` that holds a managed region says that the blank lines around it are joined, and says nothing of the kind when there is no region.
   verify: `cargo test --locked --offline --test claude_md_engine_cli collapse_`
@@ -58,6 +58,7 @@ parent: SPEC-20261122-claude-md-layout
 |---|---|---|---|
 | D-1 | A project that holds only `.claude/AGENTS.md` gets the warning but no pick. | The picks move and import the root files; moving the second file is a separate feature with the subfolder question. | Offer picks for that file. |
 | D-2 | The collapse is told, not prevented. | The copy keeps the text; only blank lines change, and the original file is never touched. | Keep the blank lines. |
+| D-4 | The root `AGENTS.md` is not named by the writer, the picks or the preview. | Their new `CLAUDE.md` carries its text or imports it, so it stays read; naming it would tell the user a falsehood (the first check run on the branch caught the older preview test that pins this). | Name it in the picks too. |
 | D-3 | The new tests live in one new file with four prefixes. | One verify filter per criterion without touching the older files more than the one pinned line. | Spread the tests. |
 
 ## Result

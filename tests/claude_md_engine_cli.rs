@@ -268,16 +268,31 @@ fn any_hidden(warnings: &Value) -> bool {
         .any(|w| w.contains("only while no CLAUDE.md"))
 }
 
-/// The three project shapes of the first requirement: the files that would stop being read.
-fn shapes() -> [(&'static str, Vec<&'static str>); 3] {
+/// The three project shapes of the first requirement: what the project holds and which files the
+/// writer, the picks and the preview warn would stop being read. The root `AGENTS.md` is carried
+/// into the new `CLAUDE.md` (copied text or an import), so only `.claude/AGENTS.md` is named.
+#[allow(clippy::type_complexity)]
+fn shapes() -> [(&'static str, Vec<&'static str>, Option<&'static str>); 3] {
     [
-        (HIDDEN_MD, vec![HIDDEN_MD]),
-        (AGENTS_MD, vec![AGENTS_MD]),
+        (HIDDEN_MD, vec![HIDDEN_MD], Some(HIDDEN_MD)),
+        (AGENTS_MD, vec![AGENTS_MD], None),
         (
             "AGENTS.md and .claude/AGENTS.md",
             vec![AGENTS_MD, HIDDEN_MD],
+            Some(HIDDEN_MD),
         ),
     ]
+}
+
+/// `warned` is the file the warning names, or `None` when no warning about hidden files belongs.
+fn assert_hidden(warnings: &Value, warned: Option<&str>, context: &str) {
+    match warned {
+        Some(files) => assert!(
+            hidden_warning(warnings, files).is_some(),
+            "{context}: {warnings}"
+        ),
+        None => assert!(!any_hidden(warnings), "{context}: {warnings}"),
+    }
 }
 
 fn project_with(files: &[&str]) -> Fx {
@@ -299,22 +314,18 @@ fn generation_request(fx: &Fx) -> Value {
 
 // --- REQ-1: the files Claude Code stops reading ---------------------------------------------------
 
-/// The generation writer names every file that would stop being read: in the plan of the whole
-/// generation, and in the plan of the agents writer alone.
+/// The generation writer names every file that would stop being read and that its block does not
+/// carry: in the plan of the whole generation, and in the plan of the agents writer alone.
 #[test]
 fn hidden_writer_names_every_file_it_would_stop_claude_code_reading() {
-    for (named, files) in shapes() {
+    for (named, files, warned) in shapes() {
         let fx = project_with(&files);
         let request = generation_request(&fx);
         let plan = fx.call(
             &["generation-plan", fx.p()],
             &serde_json::to_vec(&request).unwrap(),
         );
-        assert!(
-            hidden_warning(&plan["warnings"], named).is_some(),
-            "{named}: {}",
-            plan["warnings"]
-        );
+        assert_hidden(&plan["warnings"], warned, named);
 
         // The agents writer alone needs the workflow reference folder to exist.
         let reference = request["workflow_reference"].as_str().unwrap();
@@ -330,11 +341,7 @@ fn hidden_writer_names_every_file_it_would_stop_claude_code_reading() {
             &["agents-plan", fx.p()],
             &serde_json::to_vec(&agents_request).unwrap(),
         );
-        assert!(
-            hidden_warning(&agents["warnings"], named).is_some(),
-            "{named}: {}",
-            agents["warnings"]
-        );
+        assert_hidden(&agents["warnings"], warned, named);
     }
 }
 
@@ -367,15 +374,15 @@ fn hidden_claude_dir_agents_md_alone_is_warned_before_the_writer_creates_claude_
     assert_eq!(fx.read(HIDDEN_MD), TEAM);
 }
 
-/// The pick plan carries the warning in every shape; a project that holds only
-/// `.claude/AGENTS.md` is warned but offered no pick.
+/// The pick plan names `.claude/AGENTS.md` (no pick carries it) and not the root `AGENTS.md` (a
+/// pick copies or imports it); a project that holds only `.claude/AGENTS.md` is warned but offered
+/// no pick.
 #[test]
 fn hidden_pick_plan_names_every_file_and_offers_no_pick_for_the_claude_dir_file() {
-    for (named, files) in shapes() {
+    for (named, files, warned) in shapes() {
         let fx = project_with(&files);
         let plan = fx.pick_plan("move");
-        let warnings = &plan["shadow_warnings"];
-        assert!(hidden_warning(warnings, named).is_some(), "{named}: {plan}");
+        assert_hidden(&plan["shadow_warnings"], warned, named);
         if files == [HIDDEN_MD] {
             assert_eq!(plan["state"], json!("none"), "{plan}");
             assert!(
@@ -392,25 +399,22 @@ fn hidden_pick_plan_names_every_file_and_offers_no_pick_for_the_claude_dir_file(
 /// step once the project is ready.
 #[test]
 fn hidden_update_preview_warns_in_the_generation_and_the_picks_steps() {
-    for (named, files) in shapes() {
+    for (named, files, warned) in shapes() {
         let fx = project_with(&files);
         let update = fx.update_plan();
         let generation = step(&update, "generation");
-        assert!(
-            hidden_warning(&generation["preview"]["warnings"], named).is_some(),
-            "{named}: {generation}"
-        );
+        assert_hidden(&generation["preview"]["warnings"], warned, named);
         let picks = step(&update, "agents-picks");
         if files == [HIDDEN_MD] {
             // No pick is offered for this file (a separate feature), but the step carries the warning.
             assert_eq!(picks["state"], json!("skip"), "{picks}");
-            assert!(
-                hidden_warning(&picks["preview"]["warnings"], named).is_some(),
-                "{named}: {picks}"
-            );
+            assert_hidden(&picks["preview"]["warnings"], warned, named);
         }
     }
-    for (named, files) in shapes().into_iter().filter(|(_, f)| f.contains(&AGENTS_MD)) {
+    for (named, files, warned) in shapes()
+        .into_iter()
+        .filter(|(_, f, _)| f.contains(&AGENTS_MD))
+    {
         let fx = Fx::new();
         for f in &files {
             fx.write(f, TEAM);
@@ -418,10 +422,13 @@ fn hidden_update_preview_warns_in_the_generation_and_the_picks_steps() {
         fx.ready();
         let picks = step(&fx.update_plan(), "agents-picks").clone();
         assert_eq!(picks["state"], json!("needs_decision"), "{picks}");
-        assert!(
-            hidden_warning(&picks["preview"]["warnings"], named).is_some(),
-            "{named}: {picks}"
-        );
+        // A missing `warnings` key on the preview means no warning.
+        let warnings = &picks["preview"]["warnings"];
+        if warnings.is_null() {
+            assert!(warned.is_none(), "{named}: {picks}");
+        } else {
+            assert_hidden(warnings, warned, named);
+        }
     }
 }
 
@@ -430,7 +437,7 @@ fn hidden_update_preview_warns_in_the_generation_and_the_picks_steps() {
 #[test]
 fn hidden_nothing_is_warned_while_a_claude_file_exists() {
     for claude in ["CLAUDE.md", ".claude/CLAUDE.md", "CLAUDE.local.md"] {
-        for (named, files) in shapes() {
+        for (named, files, _) in shapes() {
             let fx = Fx::new();
             for f in &files {
                 fx.write(f, TEAM);

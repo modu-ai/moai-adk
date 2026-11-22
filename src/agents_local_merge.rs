@@ -935,10 +935,21 @@ const HIDDEN_CANDIDATES: [&str; 2] = [LEGACY_TARGET, ".claude/AGENTS.md"];
 /// there: Claude Code has stopped reading them then, and the caller creates nothing new to hide.
 /// The caller decides that a CLAUDE file would be created.
 pub(crate) fn hidden_files_warning(root: &Path, creating: &str) -> Option<String> {
+    hidden_files_warning_except(root, creating, &[])
+}
+
+/// The same warning for a file that carries some of the hidden files over: the writer's block and
+/// the picks `move` and `import` bring the root `AGENTS.md` into the new `CLAUDE.md` (copied text
+/// or the `@AGENTS.md` line), so that file stays read and is not named. `carried` lists those.
+pub(crate) fn hidden_files_warning_except(
+    root: &Path,
+    creating: &str,
+    carried: &[&str],
+) -> Option<String> {
     let exists = |rel: &str| fs::symlink_metadata(root.join(rel)).is_ok();
     let hidden: Vec<&str> = HIDDEN_CANDIDATES
         .into_iter()
-        .filter(|f| exists(f))
+        .filter(|f| exists(f) && !carried.contains(f))
         .collect();
     if hidden.is_empty()
         || ["CLAUDE.md", ".claude/CLAUDE.md", TARGET]

@@ -1662,8 +1662,12 @@ pub(crate) fn agents_plan_for(
         .map(|f| f.path.as_str())
         .or((!block_wanted).then_some(BLOCK_FILE));
     if let Some(creating) = creates_first {
-        warnings.extend(crate::agents_local_merge::hidden_files_warning(
-            &root, creating,
+        // The block brings the root AGENTS.md along (a pick copies its text or imports it), so
+        // only the files nothing carries over are named.
+        warnings.extend(crate::agents_local_merge::hidden_files_warning_except(
+            &root,
+            creating,
+            &["AGENTS.md"],
         ));
     }
 

@@ -1440,7 +1440,9 @@ fn picks_none(root: &Path) -> Step {
         "skip",
         "no AGENTS.md and no AGENTS.local.md in this project",
     );
-    if let Some(warning) = agents_local_merge::hidden_files_warning(root, "CLAUDE.md") {
+    if let Some(warning) =
+        agents_local_merge::hidden_files_warning_except(root, "CLAUDE.md", &["AGENTS.md"])
+    {
         step.preview = json!({"offer": "none", "warnings": [warning]});
     }
     step

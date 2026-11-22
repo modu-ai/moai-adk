@@ -20,9 +20,9 @@
 //! text, as a merged block or pasted by hand, and when nothing of `AGENTS.local.md` is left to move.
 
 use super::{
-    apply_confirmed, find_guidance, hidden_files_warning, imports_agents_md, new_receipt_dir_named,
-    plan_for, read_checked, receipts_dir, revert_for, write_private, Found, Kind, Result,
-    GUIDANCE_TARGET, LEGACY_TARGET, LOCAL, TARGET,
+    apply_confirmed, find_guidance, hidden_files_warning_except, imports_agents_md,
+    new_receipt_dir_named, plan_for, read_checked, receipts_dir, revert_for, write_private, Found,
+    Kind, Result, GUIDANCE_TARGET, LEGACY_TARGET, LOCAL, TARGET,
 };
 use crate::generation::{self, GenerationRequest};
 use serde::{Deserialize, Serialize};
@@ -378,7 +378,9 @@ pub fn offer(root: &Path, request: impl FnOnce() -> Result<GenerationRequest>) -
     // The first CLAUDE file of the project hides `AGENTS.md` and `.claude/AGENTS.md` from Claude
     // Code. A project that holds only `.claude/AGENTS.md` is warned and offered no pick: the
     // picks move and import the root files, and moving that file is a separate feature.
-    let hidden: Vec<String> = hidden_files_warning(root, GUIDANCE_TARGET)
+    // `move` and `import` carry the root AGENTS.md into the new CLAUDE.md, so it stays read and
+    // is not named; only `.claude/AGENTS.md` (nothing carries it) is.
+    let hidden: Vec<String> = hidden_files_warning_except(root, GUIDANCE_TARGET, &[LEGACY_TARGET])
         .into_iter()
         .collect();
     let other = |offer: &str, reason: &str| -> Result<Value> {
