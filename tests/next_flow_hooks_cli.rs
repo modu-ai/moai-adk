@@ -1135,7 +1135,7 @@ fn ac1_deletion_targets_outside_the_worktree_and_temp_are_refused() {
     let allowed = [
         format!("rm {wt}/scratch.txt"),
         format!("rm -rf {temp_s}/moai-ac1-probe"),
-        format!("rm $TMPDIR/moai-ac1-probe"),
+        "rm $TMPDIR/moai-ac1-probe".to_string(),
         "rm".to_string(),
     ];
     for command in &allowed {

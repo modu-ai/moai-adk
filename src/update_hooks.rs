@@ -273,15 +273,13 @@ fn folder_plan(folder: &Path) -> Result<FolderPlan> {
 /// one there). The receipt lives under the HOME state root, one per folder.
 fn owned_hooks_sha(folder: &Path) -> Option<String> {
     let home = std::env::var_os("HOME").map(PathBuf::from)?;
-    let record = crate::home_root::path(&home)
-        .join("manifests")
-        .join(format!(
-            "config-hooks-{}.json",
-            crate::digest(folder.to_string_lossy().as_bytes())
-                .trim_start_matches("sha256:")
-                .get(..16)
-                .unwrap_or("0")
-        ));
+    let record = crate::home_root::path(&home).join("receipts").join(format!(
+        "config-hooks-{}.json",
+        crate::digest(folder.to_string_lossy().as_bytes())
+            .trim_start_matches("sha256:")
+            .get(..16)
+            .unwrap_or("0")
+    ));
     let bytes = fs::read(record).ok()?;
     let v: Value = serde_json::from_slice(&bytes).ok()?;
     v["hooks_sha256"].as_str().map(str::to_string)
@@ -669,15 +667,15 @@ fn apply_folder(f: &FolderPlan, keep: &Path, home: &Path) -> Result<Value> {
         Some(b) => crate::apply::publish_replace(&settings, Some(b), &bytes),
     }?;
     // The ownership receipt: the hooks sha MoAI now owns in this folder.
-    let manifests = crate::home_root::path(home).join("manifests");
-    create_private_dir(&manifests, true).map_err(|_| "manifest folder unavailable".to_string())?;
+    let receipts = crate::home_root::path(home).join("receipts");
+    create_private_dir(&receipts, true).map_err(|_| "receipt folder unavailable".to_string())?;
     let hooks_sha = crate::digest(&serde_json::to_vec(&desired).unwrap_or_default());
     let record = json!({"schema_version": 1, "folder": f.folder.display().to_string(),
                         "hooks_sha256": hooks_sha, "settings_sha256": crate::digest(&bytes)});
     let mut record_bytes =
         serde_json::to_vec_pretty(&record).map_err(|_| "encode failed".to_string())?;
     record_bytes.push(b'\n');
-    let record_path = manifests.join(format!(
+    let record_path = receipts.join(format!(
         "config-hooks-{}.json",
         crate::digest(f.folder.to_string_lossy().as_bytes())
             .trim_start_matches("sha256:")

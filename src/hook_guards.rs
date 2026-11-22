@@ -2115,8 +2115,6 @@ pub fn recorded_integration_branch(cwd: &Path) -> Option<String> {
         .filter(|n| !n.is_empty())
 }
 
-const OUTSIDE_RECURSIVE_DELETE: &str =
-    "MoAI: a recursive delete outside the project tree cannot be undone";
 const GUARDED_SETTINGS_WRITE: &str =
     "MoAI: that settings file is guarded; change it through moai and a preview";
 
@@ -2452,7 +2450,7 @@ pub fn deletion_outside(command: &str, cwd: &Path) -> Option<&'static str> {
                     targets = args
                         .iter()
                         .take_while(|w| !w.as_str().starts_with('-'))
-                        .map(|w| w.clone())
+                        .cloned()
                         .collect();
                 }
             }

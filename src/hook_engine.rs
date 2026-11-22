@@ -882,9 +882,12 @@ pub const MERGE_CONFIRM_RULE: &str = "merge_confirm";
 /// not gets one process start and nothing else from every duty.
 fn moai_project(cwd: &Path) -> bool {
     cwd.ancestors().any(|dir| {
-        [crate::PROJECT_STATE_DIR, crate::state_root::MOAI_DIR]
-            .iter()
-            .any(|name| dir.join(name).is_dir())
+        [
+            crate::state_root::EARLIER_PROJECT_DIR,
+            crate::state_root::MOAI_DIR,
+        ]
+        .iter()
+        .any(|name| dir.join(name).is_dir())
     })
 }
 

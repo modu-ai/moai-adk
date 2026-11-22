@@ -1484,7 +1484,7 @@ pub(crate) fn append_receipt_line_in(
     // other one, and a log line must not be lost to the name it lacks.
     let state_dir = [
         crate::state_root::path(cwd, ""),
-        cwd.join(crate::PROJECT_STATE_DIR),
+        cwd.join(crate::state_root::EARLIER_PROJECT_DIR),
         cwd.join(crate::state_root::MOAI_DIR),
     ]
     .into_iter()
@@ -1495,7 +1495,7 @@ pub(crate) fn append_receipt_line_in(
     // only (never creating the retired folder); the read path keeps both places for lines
     // written before the move.
     let home_dir = home
-        .filter(|h| crate::home_root::dir(h) != crate::HOME_STATE_DIR)
+        .filter(|h| crate::home_root::dir(h) == crate::home_root::MOAI_DIR)
         .and_then(|h| home_receipts_dir(Some(h), cwd));
     let dir = match &home_dir {
         Some(dir) => {
