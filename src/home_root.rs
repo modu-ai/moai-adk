@@ -174,6 +174,11 @@ mod tests {
     fn home_state_paths_are_resolved_per_home() {
         let allowed: &[(&str, usize, &str)] = &[
             (
+                "star_ask.rs",
+                1,
+                "the unit test creates the retired folder for the B2 refusal; the code asks home_root::dir/path",
+            ),
+            (
                 "home_install.rs",
                 3,
                 "the install reads the earlier folder whatever generation the HOME is in (one use in `old_root`, which the plan, apply and revert ask, one in the install-journal lookup that tells the readers an earlier install id (R5), one in the unit-test fixture)",

@@ -2,7 +2,7 @@
 id: SPEC-20261122-star-and-reports
 title: "A polite star line at install and update, and improvement reports that leave only on the user's yes under the user's own gh account"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-22
 parent: null
 ---
@@ -46,8 +46,8 @@ parent: null
 
 ## Scope
 
-- this slice, write: `.moai/specs/SPEC-20261122-star-and-reports/**`
-- later slices, write: the install and update endings (`src/update.rs`, `src/launcher_init.rs`, `src/home_install_apply.rs`), the ask and report module (new), the home-state entries (`src/home_state.rs`), the stand-in gh test harness (`tests/star_ask_cli.rs`, `tests/report_ask_cli.rs`)
+- the landed slices write: this SPEC, the star ask module and its command (`src/star_ask.rs`, `src/ops/star_ask.rs`), the home-layout rows and help rows (the leader's word), the stand-in gh test harness (`tests/star_ask_cli.rs`), the operation document
+- the later slices write: the install and update endings (`src/update.rs`, `src/launcher_init.rs`, `src/home_install_apply.rs`), the report module, `tests/report_ask_cli.rs`
 - forbidden in every slice: a star on the user's behalf (any PUT to the starred endpoint), an anonymous relay, sending any report without a fresh yes, real network calls in tests
 
 ## Plan
@@ -75,4 +75,4 @@ parent: null
 
 ## Result
 
-(Filled when the work is done. This is the SPEC-only slice: no code, no acceptance criterion run yet; the star endpoint facts, the issue endpoint facts and the gh manual behaviors are recorded above.)
+The star-ask slice has landed: the module answers the star state from exactly one read-only GET to the pinned URL (`https://api.github.com/user/starred/modu-ai/moai-adk`) through the user's gh login — no token read by moai, no body, no added header, the transport's 60-second bound, only the explicit command calls it — and the line comes in English and Korean. A dismissed home makes no network call at all (checked before the transport is built). `--dismiss` records the marker in the current-generation home folder only (a home whose resolver answers the retired folder writes nothing and reports why), and reports the truth of its write. A non-absolute HOME is refused. The report consent stores ask-each-time or never in the same folder with the same rules. The report preflight refuses code, file paths and secret shapes. AC-1 (star line, no write, no call when dismissed, the URL pinned) is met by `tests/star_ask_cli.rs`; the language pair is tested there too. The report module (the install question, the exact-text preview, the gh send, the prefilled URL) lands with its own slice.
