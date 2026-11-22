@@ -1947,6 +1947,30 @@ mod flow_line_tests {
         assert_eq!(plain(nothing, None), "MoAI");
     }
 
+    /// My card shows the letter of its stage: `🎯 c<n> <letter>` for each of the nine stages
+    /// (audit N2), with no other group when the ledger holds nothing else.
+    #[test]
+    fn my_card_shows_the_letter_of_each_stage() {
+        for (stage, letter) in [
+            (Stage::Draft, 'D'),
+            (Stage::Ready, 'R'),
+            (Stage::Working, 'W'),
+            (Stage::Stale, 'E'),
+            (Stage::Submitted, 'S'),
+            (Stage::Audited, 'A'),
+            (Stage::Landed, 'L'),
+            (Stage::Blocked, 'B'),
+            (Stage::Hold, 'H'),
+        ] {
+            let flow = Flow {
+                split: true,
+                mine: Some(MyCard { card: 3, stage }),
+                ..Default::default()
+            };
+            assert_eq!(plain(flow, None), format!("🎯 c3 {letter}"), "{stage:?}");
+        }
+    }
+
     /// The unsplit flow (the notes could not be read) is one form of three numbers, never a
     /// guess, at every width.
     #[test]

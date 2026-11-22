@@ -20,7 +20,7 @@ pub fn display_width(text: &str) -> usize {
 /// `None` when `COLUMNS` is missing, empty, zero or not a number: the widest form is written then.
 pub fn budget(columns: Option<&str>, padding: usize) -> Option<usize> {
     let columns: usize = columns?.trim().parse().ok().filter(|c| *c > 0)?;
-    Some(columns.saturating_sub(LINE_MARGIN + padding))
+    Some(columns.saturating_sub(LINE_MARGIN.saturating_add(padding)))
 }
 
 /// The index of the form to write. `widths` lists the forms from the widest to the narrowest:
@@ -93,6 +93,11 @@ mod tests {
         // Smaller than the margin: zero, never an underflow.
         assert_eq!(budget(Some("2"), 0), Some(0));
         assert_eq!(budget(Some("1"), 5), Some(0));
+        // A padding as large as a number can be never overflows: the budget is zero, so the
+        // narrowest form is written (audit N1 of the flow line step).
+        assert_eq!(budget(Some("80"), usize::MAX), Some(0));
+        assert_eq!(budget(Some("80"), usize::MAX - 1), Some(0));
+        assert_eq!(budget(Some("80"), usize::MAX - LINE_MARGIN), Some(0));
     }
 
     #[test]

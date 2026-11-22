@@ -2588,6 +2588,35 @@ mod stage_tests {
         assert_eq!(f.home_tree(), before, "no journal, no new file");
     }
 
+    /// REQ-11 and the read-only rule (audit N3): the connection the status line reads the ledger
+    /// through is a read-only one, so a statement that writes is refused by the database itself,
+    /// and a whole flow read leaves the ledger file as it was. A read-write open would fail
+    /// the first check.
+    #[test]
+    fn the_status_line_opens_the_ledger_read_only() {
+        let f = fixture();
+        crate::ledger::register(&f.home, "demo").unwrap();
+        f.add("active", 2);
+        let before = std::fs::read(f.ledger_file()).unwrap();
+
+        let (ledger, id) = open_project_ledger(&f.project, &f.ctx()).unwrap();
+        assert_eq!(id, "demo");
+        assert!(ledger.conn().is_readonly("main").unwrap());
+        let refused = ledger
+            .conn()
+            .execute("UPDATE card SET state = 'done'", [])
+            .unwrap_err();
+        assert!(
+            refused.to_string().to_lowercase().contains("readonly"),
+            "{refused}"
+        );
+        drop(ledger);
+
+        let flow = read_flow(&f.project, &f.ctx(), &Whose::default()).unwrap();
+        assert!(flow.split);
+        assert_eq!(std::fs::read(f.ledger_file()).unwrap(), before);
+    }
+
     #[test]
     fn a_failed_note_read_gives_the_three_number_form() {
         let f = fixture();
@@ -2986,6 +3015,30 @@ mod stage_tests_edges {
     use super::*;
 
     const NOW: i64 = 1_800_000_000;
+
+    /// D-9 of the SPEC: the nine letters of the legend, one per stage, English only and all
+    /// different (audit N2: a letter swapped between two stages survived every other test).
+    #[test]
+    fn every_stage_has_its_letter_from_the_legend() {
+        let table = [
+            (Stage::Draft, 'D'),
+            (Stage::Ready, 'R'),
+            (Stage::Working, 'W'),
+            (Stage::Stale, 'E'),
+            (Stage::Submitted, 'S'),
+            (Stage::Audited, 'A'),
+            (Stage::Landed, 'L'),
+            (Stage::Blocked, 'B'),
+            (Stage::Hold, 'H'),
+        ];
+        for (stage, letter) in table {
+            assert_eq!(stage.letter(), letter, "{stage:?}");
+        }
+        let mut letters: Vec<char> = table.iter().map(|(s, _)| s.letter()).collect();
+        letters.sort_unstable();
+        letters.dedup();
+        assert_eq!(letters.len(), 9, "two stages share a letter");
+    }
 
     #[test]
     fn the_stage_rule_has_one_answer_for_every_edge() {
