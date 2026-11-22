@@ -778,10 +778,12 @@ fn lifecycle(
 }
 
 /// The worktrees active card reservations name, resolved (SPEC-20261123-worktree-slots REQ-8).
-/// A project without a profile or without a ledger has none; a ledger that exists but cannot
-/// be read is `Err`, and every linked worktree is then kept as `claim_check_unavailable`.
+/// A project without a profile or without a ledger has none. A profile or a ledger that exists
+/// but cannot be read is `Err`, and every linked worktree is then kept as
+/// `claim_check_unavailable`.
 fn claimed_worktrees(top: &Path) -> std::result::Result<Vec<PathBuf>, ()> {
-    let Ok(id) = crate::ledger::command::project_id_of(top) else {
+    let real = fs::canonicalize(top).map_err(|_| ())?;
+    let Some(id) = crate::project_id::read(&real).map_err(|_| ())? else {
         return Ok(Vec::new());
     };
     let home = crate::ledger::command::resolve_home(None).map_err(|_| ())?;
@@ -1193,6 +1195,25 @@ fn recheck_entry(wt: &Path, action: &str, primary: &Path) -> Option<&'static str
     busy_now(wt, action == "remove", Some(primary))
 }
 
+/// The ledger and nesting facts the plan read, read again right before `apply` acts on `wt`
+/// (SPEC-20261123-worktree-slots REQ-8): a card claim made after the plan, a ledger that can no
+/// longer be read, or a worktree added inside `wt` since, each refuse. `worktrees` is the list
+/// `apply` read, canonical paths with the primary first.
+fn recheck_claims_and_nesting(
+    wt: &Path,
+    top: &Path,
+    worktrees: &[PathBuf],
+) -> Option<&'static str> {
+    if worktrees.iter().any(|q| q != wt && q.starts_with(wt)) {
+        return Some("nested_worktree");
+    }
+    match claimed_worktrees(top) {
+        Ok(list) if list.iter().any(|c| c == wt) => Some("live_claim"),
+        Ok(_) => None,
+        Err(()) => Some("claim_check_unavailable"),
+    }
+}
+
 /// Deletes the cargo-owned trim paths of `wt` that the plan listed. Each path must still sit
 /// directly in `wt/target`, not be a symlink, and still be cargo-owned.
 fn trim(wt: &Path, trim_paths: &[String]) -> std::result::Result<(), String> {
@@ -1232,13 +1253,16 @@ fn act_on(
     action: &str,
     shown_path: &str,
     primary: &Path,
+    top: &Path,
     worktrees: &[PathBuf],
 ) -> std::result::Result<&'static str, String> {
     let wt =
         fs::canonicalize(primary.join(shown_path)).unwrap_or_else(|_| primary.join(shown_path));
     if wt == primary || !worktrees.contains(&wt) {
         Err("not a linked worktree of this repository".to_string())
-    } else if let Some(why) = recheck_entry(&wt, action, primary) {
+    } else if let Some(why) = recheck_claims_and_nesting(&wt, top, worktrees)
+        .or_else(|| recheck_entry(&wt, action, primary))
+    {
         Err(format!("refused: {why}"))
     } else if action == "trim" {
         let paths: Vec<String> = c["trim_paths"]
@@ -1323,7 +1347,7 @@ pub fn apply(
             continue;
         }
         let shown_path = c["path"].as_str().unwrap_or_default().to_string();
-        let outcome = act_on(c, action, &shown_path, &primary, &worktrees);
+        let outcome = act_on(c, action, &shown_path, &primary, &top, &worktrees);
         let (status, detail) = match outcome {
             Ok(s) => (s, Value::Null),
             Err(e) => {
@@ -1741,7 +1765,14 @@ mod tests {
         let entry = |action: &str| json!({"path": path, "action": action, "trim_paths": []});
 
         assert_eq!(
-            act_on(&entry("remove"), "remove", &path, &primary, &worktrees),
+            act_on(
+                &entry("remove"),
+                "remove",
+                &path,
+                &primary,
+                &primary,
+                &worktrees
+            ),
             Err("refused: files_outside_build_output".to_string())
         );
         assert!(
@@ -1749,7 +1780,14 @@ mod tests {
             "a refused entry leaves the worktree whole"
         );
         assert_eq!(
-            act_on(&entry("trim"), "trim", &path, &primary, &worktrees),
+            act_on(
+                &entry("trim"),
+                "trim",
+                &path,
+                &primary,
+                &primary,
+                &worktrees
+            ),
             Ok("trimmed")
         );
         assert!(
@@ -1762,10 +1800,65 @@ mod tests {
                 "trim",
                 &primary.to_string_lossy(),
                 &primary,
+                &primary,
                 &worktrees
             ),
             Err("not a linked worktree of this repository".to_string())
         );
+    }
+
+    /// SPEC-20261123-worktree-slots REQ-8: right before it acts, `apply` reads the nesting and
+    /// the claims again. A worktree added inside the entry since the plan, or a project profile
+    /// that can no longer be read (so the claims are unknown), refuses the entry and leaves it
+    /// whole; with both gone the same entry is trimmed.
+    #[cfg(unix)]
+    #[test]
+    fn apply_reads_nesting_and_claims_again_right_before_it_acts() {
+        let d = tempfile::tempdir().unwrap();
+        let base = fs::canonicalize(d.path()).unwrap();
+        let primary = base.join("primary");
+        fs::create_dir_all(&primary).unwrap();
+        gc_git(&primary, &["init", "-q", "-b", "main"]);
+        fs::write(primary.join(".gitignore"), "target/\n/inner/\n").unwrap();
+        fs::write(primary.join("a.txt"), "a\n").unwrap();
+        gc_git(&primary, &["add", ".gitignore", "a.txt"]);
+        gc_git(&primary, &["commit", "-q", "-m", "init"]);
+        let wt = base.join("wt");
+        gc_git(
+            &primary,
+            &["worktree", "add", "-q", "-b", "b", wt.to_str().unwrap()],
+        );
+        let inner = wt.join("inner");
+        gc_git(
+            &primary,
+            &["worktree", "add", "-q", "-b", "c", inner.to_str().unwrap()],
+        );
+        fs::create_dir_all(wt.join("target")).unwrap();
+        let path = wt.to_string_lossy().to_string();
+        let entry = |action: &str| json!({"path": path, "action": action, "trim_paths": []});
+        let act = |action: &str, worktrees: &[PathBuf]| {
+            act_on(&entry(action), action, &path, &primary, &primary, worktrees)
+        };
+
+        let with_inner = vec![primary.clone(), wt.clone(), inner.clone()];
+        for action in ["trim", "remove"] {
+            assert_eq!(
+                act(action, &with_inner),
+                Err("refused: nested_worktree".to_string())
+            );
+        }
+        assert!(wt.is_dir() && inner.is_dir());
+
+        let state = primary.join(crate::PROJECT_STATE_DIR);
+        fs::create_dir_all(&state).unwrap();
+        fs::write(state.join("project.yaml"), "not a profile").unwrap();
+        let without_inner = vec![primary.clone(), wt.clone()];
+        assert_eq!(
+            act("trim", &without_inner),
+            Err("refused: claim_check_unavailable".to_string())
+        );
+        fs::remove_file(state.join("project.yaml")).unwrap();
+        assert_eq!(act("trim", &without_inner), Ok("trimmed"));
     }
 
     /// Audit F1 on #3058: `decide` keeps a worktree with an install folder out of `remove` even

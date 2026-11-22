@@ -48,6 +48,10 @@ pub const SLOTS_GB: u64 = 300;
 pub const LOCK_FILE: &str = "moai-worktree-slot.lock";
 /// How long `ensure` waits for another run's lock before it refuses.
 pub const LOCK_WAIT: Duration = Duration::from_secs(300);
+/// Shortens [`LOCK_WAIT`] to this many seconds, for tests.
+pub const LOCK_WAIT_ENV: &str = "MOAI_WORKTREE_SLOT_LOCK_WAIT_SECS";
+/// The temporary folders a warm or an inherit leaves only when it was killed mid-copy.
+const TEMP_PREFIXES: [&str; 3] = [".target-warming-", ".target-inherit-", ".target-old-"];
 
 /// The limits a slot is checked against; the defaults are the user decision's.
 #[derive(Clone, Copy, Debug)]
@@ -231,7 +235,11 @@ pub(crate) fn lock(common: &Path) -> Result<fs::File> {
         .write(true)
         .open(common.join(LOCK_FILE))
         .map_err(|e| format!("the slot lock could not be opened: {e}"))?;
-    let deadline = Instant::now() + LOCK_WAIT;
+    let wait = std::env::var(LOCK_WAIT_ENV)
+        .ok()
+        .and_then(|v| v.parse::<u64>().ok())
+        .map_or(LOCK_WAIT, Duration::from_secs);
+    let deadline = Instant::now() + wait;
     loop {
         match file.try_lock() {
             Ok(()) => return Ok(file),
@@ -241,7 +249,7 @@ pub(crate) fn lock(common: &Path) -> Result<fs::File> {
             Err(fs::TryLockError::WouldBlock) => {
                 return Err(format!(
                     "another worktree-slot or audit-slot run held the slot lock for {} seconds; nothing was changed",
-                    LOCK_WAIT.as_secs()
+                    wait.as_secs()
                 ))
             }
             Err(fs::TryLockError::Error(e)) => {
@@ -306,6 +314,27 @@ fn warm(seed_target: &Path, slot: &Path) -> Result<&'static str> {
     renamed.map(|()| method)
 }
 
+/// Removes the temporary copies a killed warm or inherit left in a present slot. The caller holds
+/// the slot lock, so no other run is copying into the slot now. Returns the names removed.
+fn clean_leftovers(slot: &Path) -> Result<Vec<String>> {
+    let mut removed = Vec::new();
+    let entries = fs::read_dir(slot).map_err(|e| format!("{} unreadable: {e}", slot.display()))?;
+    for e in entries.flatten() {
+        let name = e.file_name().to_string_lossy().to_string();
+        if TEMP_PREFIXES.iter().any(|p| name.starts_with(p)) {
+            let p = e.path();
+            let gone = match fs::symlink_metadata(&p) {
+                Ok(m) if m.file_type().is_dir() => fs::remove_dir_all(&p),
+                _ => fs::remove_file(&p),
+            };
+            gone.map_err(|e| format!("{} could not be removed: {e}", p.display()))?;
+            removed.push(name);
+        }
+    }
+    removed.sort();
+    Ok(removed)
+}
+
 /// Adds the slot `name` detached at `at` when it is missing, and warms a slot without
 /// `target/` from the seed. A present slot keeps its checkout; one without `target/` is warmed.
 pub fn ensure(project: &Path, name: &str, at: &str, caps: Caps) -> Result<Value> {
@@ -319,6 +348,11 @@ pub fn ensure(project: &Path, name: &str, at: &str, caps: Caps) -> Result<Value>
     let _lock = lock(&common)?;
     let path = primary.join(SLOT_DIR).join(name);
     let rel = format!("{SLOT_DIR}/{name}");
+    if fs::symlink_metadata(&path).is_ok_and(|m| m.file_type().is_symlink()) {
+        return Err(format!(
+            "{rel} is a link, not a slot folder; refused, nothing was changed"
+        ));
+    }
     let linked = linked(&primary)?;
     let present = linked.iter().any(|e| same(&e.path, &path));
     if present && !path.is_dir() {
@@ -336,7 +370,23 @@ pub fn ensure(project: &Path, name: &str, at: &str, caps: Caps) -> Result<Value>
     } else {
         seed_target(&primary, &linked)?
     };
+    let cleaned = if present {
+        clean_leftovers(&path)?
+    } else {
+        Vec::new()
+    };
+    let needs_warm = seed.is_some() && fs::symlink_metadata(path.join("target")).is_err();
     let mut commit = Value::Null;
+    if present && needs_warm {
+        // A warm copy takes disk like an added slot does, so it meets the same floor.
+        let free = free_percent(&primary)?;
+        if free < caps.min_free_percent {
+            return Err(format!(
+                "free disk under the floor: limit {} percent, free {free} percent; {rel} was not warmed",
+                caps.min_free_percent
+            ));
+        }
+    }
     if !present {
         if linked.len() >= caps.max_worktrees {
             return Err(format!(
@@ -358,6 +408,7 @@ pub fn ensure(project: &Path, name: &str, at: &str, caps: Caps) -> Result<Value>
                 "rev-parse",
                 "--verify",
                 "--quiet",
+                "--end-of-options",
                 &format!("{at}^{{commit}}"),
             ],
         )
@@ -377,7 +428,7 @@ pub fn ensure(project: &Path, name: &str, at: &str, caps: Caps) -> Result<Value>
     };
     Ok(json!({
         "slot": name, "path": rel, "at": commit, "added": !present, "present": present,
-        "warmed": warmed,
+        "warmed": warmed, "cleaned": cleaned,
     }))
 }
 

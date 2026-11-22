@@ -44,7 +44,7 @@ Readers: lanes and the leader, who create, reuse and clean worktrees, and the au
 - REQ-4: If an ensured slot has no `target/` while the seed has one, then the slot command shall copy the seed's `target/` into it with `cp -c -R -p` on macOS or a recursive copy keeping times elsewhere, naming the method in its answer.
 - REQ-5: If the linked worktree count is already at the worktree cap or the free share of the disk is below the floor, then the slot command shall refuse to add a slot and name the cap, its limit and the measured value.
 - REQ-6: If an ensured slot already exists, then the slot command shall report it as present with its checkout as it was, warming it only when it has no `target/`.
-- REQ-7: The cleanup plan shall never offer a fixed slot for removal; a slot is offered only for a detach and a trim of its cargo output.
+- REQ-7: The cleanup plan shall never offer a fixed slot for removal or for a trim of its cargo output.
 - REQ-8: The cleanup plan shall skip a worktree that holds another linked worktree inside it or a live local claim, and name the reason.
 - REQ-9: The cleanup plan shall offer a merged one-off worktree unchanged for 3 days for removal under the existing safe criteria.
 - REQ-10: If a cap is exceeded, then the cleanup plan shall order its removal candidates oldest first with the number that brings the count back under the cap.
@@ -109,7 +109,7 @@ Slice 1, measured 2026-11-23 on macOS (APFS).
 - AC-3 met: `a_slot_warmed_from_the_seed_compiles_only_the_workspace_crate`. `cargo build -v` in the warmed slot prints `Fresh slotdep` and `Compiling slotapp`, and no `Compiling slotdep`.
 - AC-4 met: `ensure_refuses_past_the_worktree_cap_or_under_the_free_floor_and_adds_nothing` and `ensure_adds_right_at_the_caps` (N against N+1 for both caps). The two boundary mutants (`>=` to `>` on the count, `<` to `<=` on the free share) each fail one test.
 - Runs: red 6 run, 0 passed; green 7 run, 7 passed. `help_layout` and `git_env_scrub` pass with the new module (20 with the slot tests before the boundary test).
-- AC-5 and AC-6 belong to slices 2 and 3.
+- AC-5 belonged to slice 2 and is met there (below). AC-6 belongs to slice 3.
 - The first check affected (on cb078b1009) failed on the help table, the examples, the home isolation scan and the test identity list. The fixes are the help row with examples, TempHome in the tests and a listed test address. After one merge of the integration tip 6f4117db80, the four goldens gain only the `worktree-slot` row (4 files, 5 insertions).
 
 Slice 2, measured 2026-11-23 on macOS, under option (b) (D-8).

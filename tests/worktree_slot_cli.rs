@@ -615,3 +615,119 @@ fn a_failing_df_refuses() {
     }
     assert!(!r.slot("lane-10").exists());
 }
+
+// ---- follow-ups of the slice 1 and 2 verdict
+
+/// A slot path that is a link (here to another worktree) is refused, and nothing is written
+/// through it.
+#[cfg(unix)]
+#[test]
+fn a_slot_path_that_is_a_link_is_refused_and_nothing_is_written_through_it() {
+    let r = repo(&[("a.txt", "a\n")]);
+    seed_with_build(&r);
+    let other = r.root.parent().unwrap().join("other");
+    git(
+        &r.root,
+        &[
+            "worktree",
+            "add",
+            "-q",
+            "--detach",
+            other.to_str().unwrap(),
+            &r.head,
+        ],
+    );
+    std::os::unix::fs::symlink(&other, r.slot("lane-01")).unwrap();
+    let before = r.worktrees();
+    let (code, v) = r.run(&["ensure", "lane-01", "--at", &r.head]);
+    assert_ne!(code, 0, "{v}");
+    assert_eq!(v["error"]["kind"], json!("invalid_input"), "{v}");
+    let m = v["error"]["message"].as_str().unwrap();
+    assert!(m.contains("lane-01") && m.contains("is a link"), "{m}");
+    assert!(
+        !other.join("target").exists(),
+        "nothing was warmed through the link"
+    );
+    assert_eq!(r.worktrees(), before);
+}
+
+/// Warming a present slot that has no `target/` meets the free-disk floor like adding one does;
+/// under the floor nothing is copied, and at the default floor the same slot is warmed.
+#[test]
+fn rewarming_a_present_slot_meets_the_free_disk_floor() {
+    let r = repo(&[("a.txt", "a\n")]);
+    r.ok(&["ensure", "lane-01", "--at", &r.head]);
+    seed_with_build(&r);
+    let (code, v) = r.run(&[
+        "ensure",
+        "lane-01",
+        "--at",
+        &r.head,
+        "--min-free-percent",
+        "100",
+    ]);
+    assert_ne!(code, 0, "{v}");
+    let m = v["error"]["message"].as_str().unwrap();
+    assert!(
+        m.contains("free disk") && m.contains("was not warmed"),
+        "{m}"
+    );
+    assert!(!r.slot("lane-01").join("target").exists());
+    let warm = r.ok(&["ensure", "lane-01", "--at", &r.head]);
+    assert_ne!(warm["warmed"], json!("none"), "{warm}");
+    assert!(r.slot("lane-01").join("target/debug/built.txt").is_file());
+}
+
+/// The temporary copies a killed warm or inherit leaves are removed by the next ensure of the
+/// slot, which holds the lock, and the answer names them.
+#[test]
+fn ensure_removes_the_temporary_copies_a_killed_run_left() {
+    let r = repo(&[("a.txt", "a\n")]);
+    r.ok(&["ensure", "lane-02", "--at", &r.head]);
+    let slot = r.slot("lane-02");
+    fs::create_dir_all(slot.join(".target-warming-99999/debug")).unwrap();
+    fs::write(slot.join(".target-warming-99999/debug/x"), "x\n").unwrap();
+    fs::create_dir_all(slot.join(".target-inherit-88888")).unwrap();
+    fs::write(slot.join(".target-keep-me"), "not a temporary copy\n").unwrap();
+    let again = r.ok(&["ensure", "lane-02", "--at", &r.head]);
+    assert_eq!(
+        again["cleaned"],
+        json!([".target-inherit-88888", ".target-warming-99999"]),
+        "{again}"
+    );
+    assert!(leftovers(&slot).is_empty(), "{:?}", leftovers(&slot));
+    assert!(!slot.join(".target-inherit-88888").exists());
+    assert!(slot.join(".target-keep-me").is_file());
+}
+
+/// A run that cannot get the slot lock waits for the configured time, then refuses and adds
+/// nothing.
+#[test]
+fn ensure_waits_for_the_lock_then_refuses() {
+    let r = repo(&[("a.txt", "a\n")]);
+    let common = git(
+        &r.root,
+        &["rev-parse", "--path-format=absolute", "--git-common-dir"],
+    );
+    let held = fs::OpenOptions::new()
+        .create(true)
+        .truncate(false)
+        .write(true)
+        .open(Path::new(&common).join("moai-worktree-slot.lock"))
+        .unwrap();
+    held.lock().unwrap();
+    let started = std::time::Instant::now();
+    let (code, v) = r.run_env(
+        &["ensure", "lane-03", "--at", &r.head],
+        &[("MOAI_WORKTREE_SLOT_LOCK_WAIT_SECS", "1")],
+    );
+    let waited = started.elapsed();
+    assert_ne!(code, 0, "{v}");
+    let m = v["error"]["message"].as_str().unwrap();
+    assert!(m.contains("held the slot lock for 1 seconds"), "{m}");
+    assert!(waited >= Duration::from_secs(1), "{waited:?}");
+    assert!(!r.slot("lane-03").exists());
+    held.unlock().unwrap();
+    let added = r.ok(&["ensure", "lane-03", "--at", &r.head]);
+    assert_eq!(added["added"], json!(true), "{added}");
+}
