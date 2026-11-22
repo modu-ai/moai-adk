@@ -32,13 +32,29 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
         notify_when_idle: args.idle,
     };
     let listing = moai_cli::host_wake::RegistryListing::read(&config_dir)?;
-    let answer = wake.send_once(&listing)?;
+    // N3 and N9 of the first audit: the answer says queued, never delivered
+    // (the status notice goes to a sender socket this command does not have),
+    // and every failure answers the refused shape with its one-line reason.
+    let answer = match wake.send_once(&listing) {
+        Ok(shape) => shape,
+        Err(reason) => {
+            return Ok(serde_json::json!({
+                "schema_version": 1,
+                "addressee": wake.addressee,
+                "shape": "refused",
+                "reason": reason,
+                "socket_write": false,
+            }));
+        }
+    };
     Ok(serde_json::json!({
         "schema_version": 1,
         "addressee": wake.addressee,
         "shape": shape_name(&answer),
         "reason": reason_line(&answer),
-        "writes": false,
+        // N4: a queued wake wrote one line to the addressee's inbox socket;
+        // nothing else was written.
+        "socket_write": matches!(answer, moai_cli::host_wake::SendShape::Queued),
     }))
 }
 
@@ -54,7 +70,7 @@ fn default_config_dir() -> PathBuf {
 
 fn shape_name(shape: &moai_cli::host_wake::SendShape) -> &'static str {
     match shape {
-        moai_cli::host_wake::SendShape::Delivered => "delivered",
+        moai_cli::host_wake::SendShape::Queued => "queued",
         moai_cli::host_wake::SendShape::HeldWithNotice => "held_with_notice",
         moai_cli::host_wake::SendShape::Refused(_) => "refused",
     }

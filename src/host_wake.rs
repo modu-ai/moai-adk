@@ -41,12 +41,14 @@ pub trait PeerMessaging {
     fn send(&self, peer: &Peer, text: &str, notify_when_idle: bool) -> Result<SendShape, String>;
 }
 
-/// The three result shapes of a send (REQ-3, the docs' three shapes): delivered
-/// to the inbox, held with a delivery notice, or refused.
+/// The result shapes of a send (REQ-3, the docs' shapes): queued to the
+/// addressed session's inbox, held with a delivery notice, or refused.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SendShape {
-    /// The text reached the addressee's inbox.
-    Delivered,
+    /// The line left this process for the addressee's inbox socket — queued,
+    /// not delivered: the held-or-delivered status goes to a sender socket
+    /// this command does not have (N3 of the first audit).
+    Queued,
     /// The addressee's inbound control holds the message and a delivery notice
     /// follows; the wake reports it and sends nothing more.
     HeldWithNotice,
@@ -63,6 +65,12 @@ pub enum Refusal {
     NoChannel,
     /// The addressee is listed but binds no inbox (a bare worker).
     NoInbox,
+    /// The name answers to more than one live session; the wake refuses to
+    /// pick (N10 of the first audit).
+    Ambiguous,
+    /// The wake asked for the idle notice, which the minimum line does not
+    /// carry (N7 of the first audit).
+    IdleUnsupported,
 }
 
 impl Refusal {
@@ -74,6 +82,12 @@ impl Refusal {
                 "wake refused: this session has no message channel (the flag slot or the version)"
             }
             Refusal::NoInbox => "wake refused: the addressee binds no inbox",
+            Refusal::Ambiguous => {
+                "wake refused: the name answers to more than one live session; name one with its short reference"
+            }
+            Refusal::IdleUnsupported => {
+                "wake refused: the idle notice rides the model-session tool; the minimum line carries none"
+            }
         }
     }
 }
@@ -157,21 +171,32 @@ impl Wake {
     pub fn send_once(&self, transport: &dyn PeerMessaging) -> Result<SendShape, String> {
         self.validate()
             .map_err(|invalid| invalid.line().to_string())?;
+        if self.notify_when_idle {
+            return Ok(SendShape::Refused(Refusal::IdleUnsupported));
+        }
         let peers = match transport.list() {
             Ok(peers) => peers,
             Err(_) => {
                 return Ok(SendShape::Refused(Refusal::NoChannel));
             }
         };
-        let Some(peer) = peers.iter().find(|peer| peer.name == self.addressee) else {
-            return Ok(SendShape::Refused(Refusal::DifferentRoot));
-        };
-        if !peer.channel {
-            return Ok(SendShape::Refused(Refusal::NoChannel));
+        let matches: Vec<&Peer> = peers
+            .iter()
+            .filter(|peer| peer.name == self.addressee)
+            .collect();
+        match matches.as_slice() {
+            [] => return Ok(SendShape::Refused(Refusal::DifferentRoot)),
+            [peer] => {
+                if !peer.channel {
+                    return Ok(SendShape::Refused(Refusal::NoChannel));
+                }
+                if !peer.inbox() {
+                    return Ok(SendShape::Refused(Refusal::NoInbox));
+                }
+            }
+            _ => return Ok(SendShape::Refused(Refusal::Ambiguous)),
         }
-        if !peer.inbox() {
-            return Ok(SendShape::Refused(Refusal::NoInbox));
-        }
+        let peer = matches[0];
         transport.send(peer, &self.text, self.notify_when_idle)
     }
 }
@@ -244,16 +269,18 @@ impl PeerMessaging for RegistryListing {
     }
 }
 
-/// Check the registry's socket path before any connect (the audit's B1): the
-/// path must be absolute, no component of it may be a symbolic link (a linked
-/// socket is refused, so a moved registry entry cannot redirect the wake),
-/// its parent must be the registry's own socket folder — a directory directly
-/// under `/tmp` whose name starts with `cc-socks` (both spellings of the
-/// private per-user folder) — and the entry itself must be a socket file, so
-/// a dead path or a regular file never reaches `connect`.
+/// Check the registry's socket path before any connect (the audit's B1 and
+/// the landed slice's follow-up): the path must be absolute, no component of
+/// it may be a symbolic link (a linked socket or a linked parent folder is
+/// refused, so a moved registry entry cannot redirect the wake), its parent
+/// must be the registry's own socket folder — a directory directly under
+/// `/tmp` whose name starts with `cc-socks`, owned by this user and closed
+/// against group and world writes (/tmp itself is world-writable) — and the
+/// entry itself must be a socket file, so a dead path or a regular file never
+/// reaches `connect`.
 #[cfg(unix)]
 fn checked_socket_path(raw: &str) -> Result<std::path::PathBuf, String> {
-    use std::os::unix::fs::FileTypeExt as _;
+    use std::os::unix::fs::{FileTypeExt as _, MetadataExt as _};
     let refuse = |why: &str| Err(format!("wake refused: the socket path {why}"));
     let path = std::path::Path::new(raw);
     if !path.is_absolute() {
@@ -280,12 +307,33 @@ fn checked_socket_path(raw: &str) -> Result<std::path::PathBuf, String> {
         Some(name) if name.starts_with("cc-socks") => {}
         _ => return refuse("is outside the registry's socket folder"),
     }
+    let parent = parent.expect("the folder check above passed with this parent");
+    match std::fs::metadata(parent) {
+        Ok(data) if data.uid() == self_uid() && (data.mode() & 0o022) == 0 => {}
+        Ok(data) if data.uid() != self_uid() => {
+            return refuse("is in a socket folder another user owns")
+        }
+        Ok(_) => return refuse("is in a socket folder open to group or world writes"),
+        Err(_) => return refuse("is a dead path"),
+    }
     match std::fs::symlink_metadata(path) {
         Ok(data) if data.file_type().is_symlink() => refuse("is a linked socket"),
         Ok(data) if data.file_type().is_socket() => Ok(path.to_path_buf()),
         Ok(_) => refuse("is not a socket file"),
         Err(_) => refuse("is a dead path"),
     }
+}
+
+/// The current process's user id (the folder another account could have
+/// created in world-writable /tmp is what the owner check exists for).
+#[cfg(unix)]
+fn self_uid() -> u32 {
+    static UID: std::sync::OnceLock<u32> = std::sync::OnceLock::new();
+    *UID.get_or_init(|| {
+        // Safety: getuid reads the process's real user id and touches no
+        // memory of ours; it is async-signal-safe by POSIX.
+        unsafe { libc::getuid() }
+    })
 }
 
 /// Write one complete line to the addressee's inbox socket and close. The
@@ -302,7 +350,7 @@ fn write_line_to_socket(socket: &str, line: &str) -> Result<SendShape, String> {
         .and_then(|_| stream.flush())
         .map_err(|e| format!("wake send failed: {e}"))?;
     drop(stream);
-    Ok(SendShape::Delivered)
+    Ok(SendShape::Queued)
 }
 
 /// On a platform without the Unix domain inbox socket the wake answers the
@@ -410,7 +458,7 @@ mod tests {
             line
         });
         let shape = wake("leader", "a verdict landed; read the card timeline").send_once(&listing);
-        assert_eq!(shape, Ok(SendShape::Delivered));
+        assert_eq!(shape, Ok(SendShape::Queued));
         let line = reader.join().unwrap();
         assert!(
             line.ends_with('\n') && !line.ends_with("\n\n"),
@@ -444,6 +492,39 @@ mod tests {
             answer.as_ref().is_err_and(|line| line.contains("linked")),
             "{answer:?}"
         );
+    }
+
+    /// The landed slice's follow-up: a linked parent FOLDER is refused — the
+    /// registry entry may not route the wake through a symlinked directory
+    /// even when both ends carry the socket folder's name.
+    #[cfg(unix)]
+    #[test]
+    fn a_linked_parent_folder_is_refused() {
+        let real_folder = SockFolder::new("dirlink-real");
+        let real = real_folder.socket("wake.sock");
+        let _listener = std::os::unix::net::UnixListener::bind(&real).unwrap();
+        let linked_folder = std::path::Path::new("/tmp")
+            .join(format!("cc-socks-moai-test-dirlink-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&linked_folder);
+        std::os::unix::fs::symlink(
+            real_folder
+                .0
+                .parent()
+                .unwrap()
+                .join(real_folder.0.file_name().unwrap()),
+            &linked_folder,
+        )
+        .unwrap();
+        let dir = one_peer_config(&linked_folder.join("wake.sock").display().to_string());
+        let listing = RegistryListing::read(dir.path()).unwrap();
+        let answer = wake("leader", "wake").send_once(&listing);
+        assert!(
+            answer
+                .as_ref()
+                .is_err_and(|line| line.contains("linked component")),
+            "{answer:?}"
+        );
+        let _ = std::fs::remove_file(&linked_folder);
     }
 
     /// The audit's B1: a dead path (nothing bound, no socket file) never
@@ -507,7 +588,7 @@ mod tests {
                 socket: Some("/tmp/cc-socks-moai-test-fake/none.sock".into()),
                 channel: true,
             }],
-            shape: SendShape::Delivered,
+            shape: SendShape::Queued,
             sends: std::cell::RefCell::new(vec![]),
         };
         let answer = wake("leader", "\n").send_once(&fake);
@@ -554,12 +635,12 @@ mod tests {
                 socket: Some("/tmp/cc-socks-moai-test-fake/none.sock".into()),
                 channel: true,
             }],
-            shape: SendShape::Delivered,
+            shape: SendShape::Queued,
             sends: std::cell::RefCell::new(vec![]),
         };
         assert_eq!(
             wake("leader", "a verdict landed; read the card timeline").send_once(&fake),
-            Ok(SendShape::Delivered)
+            Ok(SendShape::Queued)
         );
         assert_eq!(fake.sends.borrow().len(), 1, "exactly one send");
     }
@@ -568,7 +649,7 @@ mod tests {
     fn an_unknown_addressee_is_the_different_root_refusal() {
         let fake = Fake {
             peers: vec![],
-            shape: SendShape::Delivered,
+            shape: SendShape::Queued,
             sends: std::cell::RefCell::new(vec![]),
         };
         let answer = wake("leader", "wake").send_once(&fake);
@@ -601,7 +682,7 @@ mod tests {
                 socket: None,
                 channel: true,
             }],
-            shape: SendShape::Delivered,
+            shape: SendShape::Queued,
             sends: std::cell::RefCell::new(vec![]),
         };
         assert_eq!(
@@ -645,7 +726,7 @@ mod tests {
                     socket: Some("/tmp/cc-socks-moai-test-fake/none.sock".into()),
                     channel: true,
                 }],
-                shape: SendShape::Delivered,
+                shape: SendShape::Queued,
                 sends: std::cell::RefCell::new(vec![]),
             };
             let answer = Wake {

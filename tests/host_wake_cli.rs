@@ -73,7 +73,7 @@ fn ac1_an_unknown_addressee_is_the_different_root_refusal() {
             .contains("different config root"),
         "{v}"
     );
-    assert_eq!(v["writes"], json!(false));
+    assert_eq!(v["socket_write"], json!(false));
 }
 
 #[test]
@@ -134,7 +134,8 @@ fn ac3_a_resolved_addressee_answers_the_queued_shape_and_writes_nothing() {
         line
     });
     let v = wake(&dir, "leader");
-    assert_eq!(v["shape"], json!("delivered"), "{v}");
+    assert_eq!(v["shape"], json!("queued"), "{v}");
+    assert_eq!(v["socket_write"], json!(true), "{v}");
     let line = reader.join().unwrap();
     // The audit's N2: the exact line, not a substring.
     assert_eq!(
@@ -142,5 +143,100 @@ fn ac3_a_resolved_addressee_answers_the_queued_shape_and_writes_nothing() {
         "{\"type\":\"user\",\"message\":{\"role\":\"user\",\"content\":\"a verdict landed; read the card timeline\"}}\n",
         "exactly the minimum user line and one newline"
     );
-    assert_eq!(v["writes"], json!(false));
+}
+
+/// N10 of the first audit: a name answering to two live sessions is refused
+/// outright; the wake never picks one.
+#[test]
+fn ac4_an_ambiguous_name_is_refused() {
+    let dir = TempDir::new().unwrap();
+    let sessions = dir.path().join("sessions");
+    fs::create_dir_all(&sessions).unwrap();
+    for (file, socket) in [("1.json", "a.sock"), ("2.json", "b.sock")] {
+        fs::write(
+            sessions.join(file),
+            format!(
+                r#"{{"name":"leader","messagingSocketPath":"/tmp/cc-socks-moai-test-two/{socket}"}}"#
+            ),
+        )
+        .unwrap();
+    }
+    let v = wake(&dir, "leader");
+    assert_eq!(v["shape"], json!("refused"), "{v}");
+    assert!(
+        v["reason"].as_str().unwrap().contains("more than one"),
+        "{v}"
+    );
+    assert_eq!(v["socket_write"], json!(false), "{v}");
+}
+
+/// N7 of the first audit: the idle notice rides the model-session tool; the
+/// minimum line carries none, so the flag is refused.
+#[test]
+fn ac5_the_idle_flag_is_refused_with_its_line() {
+    let dir = config_root();
+    let out = TempHome::new();
+    let _ = out;
+    let mut command = std::process::Command::new(common::MOAI_CLI_BIN);
+    command
+        .args([
+            "host-wake",
+            "leader",
+            "--text",
+            "a verdict landed",
+            "--idle",
+            "--config-dir",
+            dir.path().to_str().unwrap(),
+        ])
+        .env("HOME", TempHome::new().path())
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    let out = command.output().unwrap();
+    let v: Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(v["result"]["shape"], json!("refused"), "{v}");
+    assert!(
+        v["result"]["reason"]
+            .as_str()
+            .unwrap()
+            .contains("idle notice rides the model-session tool"),
+        "{v}"
+    );
+}
+
+/// The landed slice's follow-up: a socket folder open to group or world
+/// writes is refused (/tmp itself is world-writable).
+#[cfg(unix)]
+#[test]
+fn ac6_a_world_writable_socket_folder_is_refused() {
+    let folder = std::path::Path::new("/tmp")
+        .join(format!("cc-socks-moai-test-open-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&folder);
+    fs::create_dir_all(&folder).unwrap();
+    use std::os::unix::fs::PermissionsExt as _;
+    fs::set_permissions(&folder, fs::Permissions::from_mode(0o777)).unwrap();
+    let socket_path = folder.join("wake.sock");
+    let _listener = std::os::unix::net::UnixListener::bind(&socket_path).unwrap();
+    let dir = TempDir::new().unwrap();
+    let sessions = dir.path().join("sessions");
+    fs::create_dir_all(&sessions).unwrap();
+    fs::write(
+        sessions.join("1.json"),
+        format!(
+            r#"{{"name":"leader","messagingSocketPath":"{}"}}"#,
+            socket_path.display()
+        ),
+    )
+    .unwrap();
+    let v = wake(&dir, "leader");
+    assert_eq!(v["shape"], json!("refused"), "{v}");
+    assert!(
+        v["reason"]
+            .as_str()
+            .unwrap()
+            .contains("group or world writes"),
+        "{v}"
+    );
+    drop(_listener);
+    let _ = fs::remove_dir_all(&folder);
 }

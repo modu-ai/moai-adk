@@ -53,12 +53,12 @@ parent: null
 
 ## Acceptance
 
-- AC-1 (REQ-1): a wake is one SendMessage to a session name, the ledger row exists before the message leaves, and the text names the change and where to read it and nothing else · verify: `cargo test --locked --offline --test host_wake_cli ac1_`
-- AC-2 (REQ-2, REQ-3): an addressee missing from the listing refuses once with the reason and sends nothing; a delivered, a held-with-notice and a refused send each report their shape with no second send · verify: `cargo test --locked --offline --test host_wake_cli ac2_`
-- AC-3 (REQ-4): between two Claude Code sessions no Orca call is made, and the Orca transport appears only with an Orca bot or worker address · verify: `cargo test --locked --offline --test host_wake_cli ac3_`
-- AC-4 (REQ-5, REQ-7): lanes the launcher starts under a temporary shared config root appear in the listing of a session in that root and receive a message, and a lane in another root is reported unreachable — the listing comes from a fake session registry the test builds, no real session is started · verify: `cargo test --locked --offline --test host_wake_cli ac4_`
-- AC-5 (REQ-6): the wake path is the same call for a first-party and a GLM-routed addressee and reads no rate-limit field · verify: `cargo test --locked --offline --test host_wake_cli ac5_`
-- AC-6 (REQ-8, REQ-9, REQ-10): a landing sends one notification naming the card and the new head to the sibling sessions, a wait attaches the idle notice once instead of polling, and a headless worker starts with its inbound control set to accept in the settings file it reads · verify: `cargo test --locked --offline --test host_wake_cli ac6_`
+- AC-1 (REQ-1, REQ-3): one send writes exactly the minimum user line with one newline and answers queued; every send path sends exactly once · verify: `cargo test --locked --offline --test host_wake_cli ac3_` · verify: `cargo test --locked --offline --lib host_wake::tests::a_valid_wake`
+- AC-2 (REQ-2): the listing refusals answer their one-line reason and send nothing — different root, no inbox, no channel · verify: `cargo test --locked --offline --test host_wake_cli ac1_` · verify: `cargo test --locked --offline --test host_wake_cli ac2_`
+- AC-3 (REQ-4): the socket path is checked before any connect — absolute, no linked component (socket or parent folder), inside the user-owned cc-socks folder, closed against group and world writes, a real socket file · verify: `cargo test --locked --offline --test host_wake_cli ac6_` · verify: `cargo test --locked --offline --lib host_wake::tests::a_linked`
+- AC-4 (REQ-2): a name answering to two live sessions is refused, never picked · verify: `cargo test --locked --offline --test host_wake_cli ac4_`
+- AC-5 (REQ-9): the idle flag is refused with its line — the idle notice rides the model-session tool · verify: `cargo test --locked --offline --test host_wake_cli ac5_`
+- AC-6 (REQ-8, REQ-9, REQ-10), the land and launcher slice: a landing notifies the sibling sessions, a wait attaches the idle notice through the model-session tool, and a headless worker starts with accept in its settings file · verify: `cargo test --locked --offline --test host_wake_land_cli` (the tests land with that slice)
 
 ## Scope
 
@@ -95,12 +95,11 @@ parent: null
 | D-5 | When messaging is absent the wake surfaces the constraint; it does not fall back to the terminal send. | The 2026-11-19 screen-send accident is why the guard exists; silence with a reason beats typing blind. | Restore the screen fallback. |
 | D-6 | A wake may attach the one-shot idle notice instead of polling. | `notify_when_idle` replaces a polling loop (docs; step 4 of the redesign order: event wake instead of polling). | Poll the ledger. |
 
-### Open questions (the user's pick before approval)
+### Answered questions (the user's picks, note 6063 on this card)
 
-- REQ-5 — 흐름 세션 전체가 사용자가 말하는 세션과 하나의 config root 를 공유하는 것(Orca 프로필 구조와 얽힘).
-- D-1 — 머신 밖·클라우드로 메시지를 내보내지 않는 것(Remote Control 도입 여부).
-- D-2 — 탈출구 환경 변수를 쓰지 않고 루트 공유로 해결하는 것.
-셋 다 사용자가 고르기 전까지 이 SPEC 은 draft 로 있어요.
+- REQ-5 — 흐름 세션 전체가 사용자가 말하는 세션과 같은 config root 를 씀(사용자 확정).
+- D-1 — 메시지는 이 머신 안에서만 가요; Remote Control·클라우드 없음(사용자 확정).
+- D-2 — 닿음은 루트 공유로; 탈출구 환경 변수는 쓰지 않음(사용자 확정).
 
 ## Result
 
