@@ -1,12 +1,12 @@
-//! #2481 (user decisions 6810797000 and 6810818827, 2026-11-12): the first `cc|glm|omp`
+//! #2481 (user decisions 6810797000 and 6810818827, 2026-11-12): the first `cc|glm`
 //! launch in a folder that is not a git repository initializes it without asking — `git init`,
 //! then the MoAI project settings (`.moai/project.yaml` with its marker, #2696 C2b) and `CLAUDE.md` through the
 //! existing `project-apply` and `generation-apply` code — and says so on one stderr line. Files
 //! that already exist are never touched. HOME itself and the file-system root are never
 //! initialized (guidance, exit 1). Without git on PATH the launcher prints the install guidance
 //! for this OS (exit 1). `--dry-run` creates nothing and reports what it would initialize.
-//! Every launch runs in a temporary folder with a temporary HOME and stub `claude` / `omp`
-//! executables on PATH; no real host starts.
+//! Every launch runs in a temporary folder with a temporary HOME and a stub `claude`
+//! executable on PATH; no real host starts.
 #![cfg(unix)]
 mod common;
 use serde_json::Value;
@@ -27,11 +27,9 @@ struct Fixture {
 
 fn fixture() -> Fixture {
     let bin = tempfile::tempdir().unwrap();
-    for host in ["claude", "omp"] {
-        let path = bin.path().join(host);
-        fs::write(&path, STUB).unwrap();
-        fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).unwrap();
-    }
+    let path = bin.path().join("claude");
+    fs::write(&path, STUB).unwrap();
+    fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).unwrap();
     Fixture {
         bin,
         home: tempfile::tempdir().unwrap(),
@@ -188,7 +186,7 @@ fn profile(dir: &Path) -> Value {
 
 #[test]
 fn the_first_launch_outside_git_initializes_the_folder_on_every_host() {
-    for (host, profile_host) in [("cc", "claude"), ("glm", "claude"), ("omp", "omp")] {
+    for (host, profile_host) in [("cc", "claude"), ("glm", "claude")] {
         let f = fixture();
         let plain = tempfile::tempdir().unwrap();
         let dir = plain.path().join("My Project");
@@ -228,7 +226,7 @@ fn the_first_launch_outside_git_initializes_the_folder_on_every_host() {
 
 #[test]
 fn leader_and_roleless_launches_initialize_too() {
-    for args in [&["cc", "-l"][..], &["omp"][..]] {
+    for args in [&["cc", "-l"][..], &["cc"][..]] {
         let f = fixture();
         let plain = tempfile::tempdir().unwrap();
         let out = run_in(&f, plain.path(), args);

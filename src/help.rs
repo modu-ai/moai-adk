@@ -25,7 +25,7 @@ pub const GROUPS: &[Group] = &[
     Group {
         heading: "Start",
         heading_ko: "시작",
-        commands: &[("cc", true), ("glm", true), ("omp", true)],
+        commands: &[("cc", true), ("glm", true)],
     },
     Group {
         heading: "Project",
@@ -305,7 +305,6 @@ pub const GROUPS: &[Group] = &[
 pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("cc", &["cc -l", "cc -a"]),
     ("glm", &["glm -a"]),
-    ("omp", &["omp -a", "omp -l --print-command"]),
     ("project-detect", &["project-detect ."]),
     ("project-plan", &["project-plan . < request.json", "project-apply --plan-digest <digest> --permission-reference <ref> . < request.json"]),
     ("project-apply", &["project-apply --plan-digest <digest> --permission-reference <ref> . < request.json"]),
@@ -903,7 +902,7 @@ pub const ARG_HELP_FOR: &[(&str, &str, &str)] = &[
     (
         "session",
         "host",
-        "Only `claude`; other hosts start with `cc|glm|omp -l|-a`",
+        "Only `claude`; other hosts start with `cc|glm -l|-a`",
     ),
     ("session", "model", "Claude model"),
     ("session", "effort", "Claude effort"),
@@ -920,8 +919,8 @@ pub fn arg_help(command: &str, id: &str) -> Option<&'static str> {
 }
 
 /// The launchers the root help shows on one line.
-const LAUNCHERS: [&str; 3] = ["cc", "glm", "omp"];
-const LAUNCHER_LINE: (&str, &str) = ("cc, glm, omp", "Start a Claude Code, GLM or OMP session");
+const LAUNCHERS: [&str; 2] = ["cc", "glm"];
+const LAUNCHER_LINE: (&str, &str) = ("cc, glm", "Start a Claude Code or GLM session");
 
 /// The Korean one-line about of each command the root help shows (S6d, #2825; design 8). The
 /// other commands keep their English about in `help --all` until S6e moves the command help.
@@ -961,7 +960,7 @@ pub const ABOUT_KO: &[(&str, &str)] = &[
 ];
 
 /// The launcher line's about on a Korean terminal.
-const LAUNCHER_LINE_KO: &str = "Claude Code·GLM·OMP 세션 시작";
+const LAUNCHER_LINE_KO: &str = "Claude Code·GLM 세션 시작";
 /// clap's `Usage:` heading on a Korean terminal.
 const USAGE_KO: &str = "사용법:";
 /// clap's `Options:` heading of `help --all` on a Korean terminal.
@@ -1086,7 +1085,7 @@ pub fn render_groups_in(cmd: &Command, all: bool, width: usize, lang: Lang) -> S
 pub const GETTING_STARTED: &[(&str, &str)] = &[
     ("install-inspect", "Check the installed MoAI"),
     ("update", "Install or update the MoAI skill and agents"),
-    ("cc", "Start a session in this folder (or: glm, omp)"),
+    ("cc", "Start a session in this folder (or: glm)"),
     ("/moai project", "In the session: set up this project"),
 ];
 
@@ -1328,13 +1327,13 @@ pub fn configure_styled(
     // spells its usage lines out in the template instead. The second line starts under the
     // first one's command (`Usage:` is six cells, a Korean heading two per letter).
     let usage = format!(
-        "{bin} <command> [options]\n{}{bin} cc|glm|omp -l|-a    {LEAD_OR_AGENT}",
+        "{bin} <command> [options]\n{}{bin} cc|glm -l|-a    {LEAD_OR_AGENT}",
         " ".repeat("Usage:".width() + 1)
     );
     let usage_lines = match lang {
         Lang::En => "{usage-heading} {usage}".to_string(),
         Lang::Ko => format!(
-            "{USAGE_KO} {bin} <command> [options]\n{}{bin} cc|glm|omp -l|-a    {LEAD_OR_AGENT_KO}",
+            "{USAGE_KO} {bin} <command> [options]\n{}{bin} cc|glm -l|-a    {LEAD_OR_AGENT_KO}",
             " ".repeat(USAGE_KO.width() + 1)
         ),
     };
@@ -1640,12 +1639,6 @@ const LONG_ABOUT_KO: &[(&str, &str)] = &[
          `/moai --mode-leader`·`/moai --mode-agent` 로 시작.",
     ),
     (
-        "omp",
-        "Oh My Pi(OMP) 세션 실행기: `omp -l|-a`. `-l|-a` 는 세션 이름과 권한(`--approval-mode`)만 \
-         정하고, 역할은 세션 안의 `/skill:moai --mode-leader`·`/skill:moai --mode-agent` 로 \
-         시작. z.ai 모델이면 glm 키가 `ZAI_API_KEY` 로 OMP 에 가요(명령에는 없어요).",
-    ),
-    (
         "claude-doctor",
         "Claude Code 를 읽기만 하고 확인해요: PROJECT 에서 시작한 세션이 AGENTS.md 를 읽는지.",
     ),
@@ -1715,11 +1708,10 @@ const LONG_ABOUT_KO: &[(&str, &str)] = &[
     ),
 ];
 
-/// The launchers' own abouts (S6e-6): the root list shows the three on one line instead.
+/// The launchers' own abouts (S6e-6): the root list shows the two on one line instead.
 const LAUNCHER_ABOUT_KO: &[(&str, &str)] = &[
     ("cc", "Claude Code 세션 시작"),
     ("glm", "z.ai GLM 으로 Claude Code 세션 시작"),
-    ("omp", "Oh My Pi(OMP) 세션 시작"),
 ];
 
 /// The Korean help of a moved command's argument (S6e-2): `(command, id, text)`, an empty
@@ -1727,56 +1719,54 @@ const LAUNCHER_ABOUT_KO: &[(&str, &str)] = &[
 const ARG_HELP_KO: &[(&str, &str, &str)] = &[
     ("", "project", "프로젝트 루트"),
     (
-        "cc|glm|omp",
+        "cc|glm",
         "prompt",
         "첫 프롬프트에 덧붙일 글(받는 호스트가 없어요)",
     ),
     (
-        "cc|glm|omp",
+        "cc|glm",
         "leader",
-        "리더 세션(이름 `leader` 와 권한만 정함, 역할은 세션 안의 `/moai --mode-leader`, OMP 는 \
-         `/skill:moai --mode-leader`)",
+        "리더 세션(이름 `leader` 와 권한만 정함, 역할은 세션 안의 `/moai --mode-leader`)",
     ),
     (
-        "cc|glm|omp",
+        "cc|glm",
         "agent",
-        "에이전트 세션(이름과 권한만 정함, 역할은 세션 안의 `/moai --mode-agent`, OMP 는 \
-         `/skill:moai --mode-agent`)",
+        "에이전트 세션(이름과 권한만 정함, 역할은 세션 안의 `/moai --mode-agent`)",
     ),
     (
-        "cc|glm|omp",
+        "cc|glm",
         "name",
         "세션 이름(기본: -l 은 `leader`, -a 는 프로젝트의 다음 `agent-N`, 역할 없으면 없음)",
     ),
     (
-        "cc|glm|omp",
+        "cc|glm",
         "model",
-        "주 모델(Claude 호스트 기본 `opus`, omp 는 정하지 않으면 자기 기본값)",
+        "주 모델(Claude 호스트 기본 `opus`)",
     ),
     (
-        "cc|glm|omp",
+        "cc|glm",
         "effort",
-        "effort(Claude 기본 `medium`, omp 는 지정할 때만 low|medium|high|xhigh|max, omp 는 `--thinking` 으로)",
+        "effort(Claude 기본 `medium`)",
     ),
     (
-        "cc|glm|omp",
+        "cc|glm",
         "advisor",
         "Claude 호스트의 advisor 모델(fable|opus|sonnet 또는 claude-* 전체 id). 기본 없음 — \
          사용자 설정 `launcher.advisor` 로 켤 수 있음. 사용량 크레딧이 청구될 수 있음",
     ),
     (
-        "cc|glm|omp",
+        "cc|glm",
         "no_advisor",
         "사용자 설정 `launcher.advisor` 가 켜도 `--advisor` 를 넘기지 않기",
     ),
     (
-        "cc|glm|omp",
+        "cc|glm",
         "permissions",
-        "권한 질문 유지: `--dangerously-skip-permissions` 없음(Claude 호스트), omp 는 `--approval-mode always-ask-cached`. 없으면 \
-         -l|-a 세션은 전체 접근(omp: `--approval-mode yolo`), 역할 없는 세션은 권한 플래그를 받지 않음",
+        "권한 질문 유지: `--dangerously-skip-permissions` 없음(Claude 호스트). 없으면 \
+         -l|-a 세션은 전체 접근, 역할 없는 세션은 권한 플래그를 받지 않음",
     ),
     (
-        "cc|glm|omp",
+        "cc|glm",
         "dry_run",
         "호스트를 시작하는 대신 만든 명령을 JSON 으로 찍기(`--print-command` 도 같은 뜻)",
     ),
@@ -2200,7 +2190,7 @@ const ARG_HELP_KO: &[(&str, &str, &str)] = &[
 
 /// The Korean help of argument `id` of `command`, when the table has one.
 fn arg_help_ko(command: &str, id: &str) -> Option<&'static str> {
-    // A command field may name several commands, `cc|glm|omp`.
+    // A command field may name several commands, `cc|glm`.
     ARG_HELP_KO
         .iter()
         .find(|(c, i, _)| c.split('|').any(|w| w == command) && *i == id)
@@ -2466,9 +2456,9 @@ mod tests {
         let cmd = root_cmd();
         let en = render_groups(&cmd, false, 100);
         assert_eq!(render_groups_in(&cmd, false, 100, Lang::En), en);
-        assert!(en.starts_with("Start\n  cc, glm, omp"), "{en}");
+        assert!(en.starts_with("Start\n  cc, glm  "), "{en}");
         let ko = render_groups_in(&cmd, false, 100, Lang::Ko);
-        assert!(ko.starts_with("시작\n  cc, glm, omp"), "{ko}");
+        assert!(ko.starts_with("시작\n  cc, glm  "), "{ko}");
         assert!(ko.contains(LAUNCHER_LINE_KO), "{ko}");
         assert!(!ko.contains("About "), "{ko}");
         assert!(ko.contains("  project-detect  "), "{ko}");
@@ -2511,7 +2501,7 @@ mod tests {
                 "{text}"
             );
             assert!(
-                text.contains("\n\nCommands\n  Start\n    cc, glm, omp  "),
+                text.contains("\n\nCommands\n  Start\n    cc, glm  "),
                 "{text}"
             );
             assert!(text.contains("\n\nExamples\n  moai cc -l  "), "{text}");
@@ -2530,7 +2520,7 @@ mod tests {
                         "  1. moai install-inspect",
                         "  moai cc -l",
                         "  moai help --all",
-                        "    cc, glm, omp",
+                        "    cc, glm",
                     ]
                     .iter()
                     .find(|p| l.starts_with(**p))
@@ -2769,7 +2759,7 @@ mod tests {
         );
         let usage = format!("\n{USAGE_KO} moai <command> [options]\n");
         assert!(ko.contains(&usage), "{ko}");
-        let second = ko.lines().find(|l| l.contains("cc|glm|omp")).unwrap();
+        let second = ko.lines().find(|l| l.contains("cc|glm -l|-a")).unwrap();
         let first = ko.lines().find(|l| l.starts_with(USAGE_KO)).unwrap();
         assert_eq!(
             second.find("moai").map(|i| second[..i].width()),

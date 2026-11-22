@@ -205,11 +205,13 @@ pub enum Msg {
     InitRemoved,
     /// What `moai codex` says now that the launcher is gone (SPEC-20261121-codex-launcher-and-models-removed).
     CodexRemoved,
+    /// What `moai omp` says now that the launcher is gone (SPEC-20261122-remove-omp-launcher).
+    OmpRemoved,
 }
 
 impl Msg {
     /// Every variant, for the tests that walk the table.
-    pub const ALL: [Msg; 47] = [
+    pub const ALL: [Msg; 48] = [
         Msg::WordOk,
         Msg::WordWarning,
         Msg::WordError,
@@ -257,6 +259,7 @@ impl Msg {
         Msg::PathFirstNote,
         Msg::InitRemoved,
         Msg::CodexRemoved,
+        Msg::OmpRemoved,
     ];
 }
 
@@ -381,6 +384,12 @@ pub fn text(msg: Msg, lang: Lang) -> &'static str {
         }
         (CodexRemoved, Ko) => {
             "moai codex 는 없어졌어요: MoAI 는 Claude Code 와 GLM 만 지원해요 (moai cc | moai glm)"
+        }
+        (OmpRemoved, En) => {
+            "moai omp was removed: MoAI supports Claude Code and GLM only (moai cc | moai glm)"
+        }
+        (OmpRemoved, Ko) => {
+            "moai omp 는 없어졌어요: MoAI 는 Claude Code 와 GLM 만 지원해요 (moai cc | moai glm)"
         }
     }
 }
@@ -702,6 +711,19 @@ mod tests {
         for lang in [Lang::En, Lang::Ko] {
             let t = text(Msg::CodexRemoved, lang);
             for p in ["moai codex", "Claude Code", "GLM", "moai cc", "moai glm"] {
+                assert!(t.contains(p), "{lang:?} must name `{p}`: {t}");
+            }
+            assert!(!t.contains('\n'), "{lang:?} is one line: {t}");
+        }
+    }
+
+    /// The `moai omp` notice names the two launchers left in both languages; its English text
+    /// is the envelope message of `src/main.rs`.
+    #[test]
+    fn omp_notice_names_the_launchers_left_in_every_language() {
+        for lang in [Lang::En, Lang::Ko] {
+            let t = text(Msg::OmpRemoved, lang);
+            for p in ["moai omp", "Claude Code", "GLM", "moai cc", "moai glm"] {
                 assert!(t.contains(p), "{lang:?} must name `{p}`: {t}");
             }
             assert!(!t.contains('\n'), "{lang:?} is one line: {t}");

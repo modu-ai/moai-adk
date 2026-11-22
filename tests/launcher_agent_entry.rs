@@ -1,8 +1,9 @@
 //! SPEC-20261118-launcher-agent-entry (card C-47 slice; user decision 2026-11-18, card note
 //! 2092): `-l|-a` only name a session and set its access, and the role is entered inside the
-//! session with `/moai --mode-agent` / `/moai --mode-leader` (OMP: `/skill:moai ...`). The help and
+//! session with `/moai --mode-agent` / `/moai --mode-leader`. The help and
 //! the `--dry-run` notes say so. SPEC-20261121-codex-launcher-and-models-removed: Codex is not a
-//! launcher host any more, so no `$moai` spelling remains. Every case uses `--dry-run` in a
+//! launcher host any more, so no `$moai` spelling remains; SPEC-20261122-remove-omp-launcher: nor
+//! is OMP, so no `/skill:moai` spelling remains. Every case uses `--dry-run` in a
 //! temporary git project with a HOME that does not exist; no host is started.
 mod common;
 use common::CleanEnv;
@@ -112,7 +113,7 @@ fn the_help_says_how_the_role_is_entered() {
         assert!(text.contains("inside the session"), "{host}:\n{text}");
     }
     // No help names the Codex spelling any more.
-    for host in ["cc", "glm", "omp"] {
+    for host in ["cc", "glm"] {
         assert!(!help(&[host]).contains("$moai"), "{host} --help");
     }
     assert!(!help(&[]).contains("$moai"), "root --help");
@@ -199,30 +200,22 @@ fn other_launches_keep_their_argv() {
     );
 }
 
-/// AC-5 (REQ-5): every mode command the launcher help and notes name is one of the four
-/// spellings left (Claude Code's two, and OMP's `/skill:moai` form from
-/// SPEC-20261118-omp-launcher); the Codex `$moai` spelling is gone.
+/// AC-5 (REQ-5): every mode command the launcher help and notes name is one of the two
+/// spellings left (Claude Code's); the Codex `$moai` and the OMP `/skill:moai` spellings are gone.
 #[test]
 fn only_the_two_spellings_appear() {
-    let mut texts: Vec<String> = ["cc", "glm", "omp"].iter().map(|h| help(&[h])).collect();
+    let mut texts: Vec<String> = ["cc", "glm"].iter().map(|h| help(&[h])).collect();
     texts.push(help(&[]));
     for (args, token) in [
         (&["cc", "-l"][..], None),
         (&["cc", "-a"][..], None),
         (&["glm", "-a"][..], Some("t")),
-        (&["omp", "-l"][..], None),
-        (&["omp", "-a"][..], None),
     ] {
         let v = dry(args, token);
         texts.push(v["notes"].to_string());
         texts.push(v["argv"].to_string());
     }
-    let allowed = [
-        "/moai --mode-agent",
-        "/moai --mode-leader",
-        "/skill:moai --mode-agent",
-        "/skill:moai --mode-leader",
-    ];
+    let allowed = ["/moai --mode-agent", "/moai --mode-leader"];
     let mut seen = 0;
     for text in &texts {
         for (at, _) in text.match_indices("mode-") {
