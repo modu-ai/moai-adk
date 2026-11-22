@@ -13,7 +13,7 @@ use std::{
 };
 
 /// Source files that still carry citations, sorted. Remove an entry when its file is cleaned.
-const PENDING: [&str; 14] = [
+const PENDING: [&str; 13] = [
     "src/bundle.rs",
     "src/claim_timeout.rs",
     "src/claude.rs",
@@ -23,7 +23,6 @@ const PENDING: [&str; 14] = [
     "src/gate_merge.rs",
     "src/go_state.rs",
     "src/home_layout.rs",
-    "src/hooks.rs",
     "src/lane_env.rs",
     "src/optimize.rs",
     "src/project_update.rs",
