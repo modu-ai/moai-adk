@@ -12,9 +12,11 @@
 //! render that sees the windows and read before the limit.
 //!
 //! Where it lives (SPEC-20261122-statusline-limits REQ-7, D-5): in the status line's cache
-//! folder (`$TMPDIR/moai-statusline/`, `/tmp` when `TMPDIR` is unset or empty, none when it is
-//! relative: [`crate::statusline::state::cache_folder`]), one file per HOME named
-//! `usage-<first 12 hex digits of the SHA-256 of the canonical HOME path>.record`. The suffix is
+//! folder (`$TMPDIR/moai-statusline/`, `/tmp/moai-statusline-<uid>/` when `TMPDIR` is unset or
+//! empty, none when it is relative: [`crate::statusline::state::cache_folder`]), one file per
+//! HOME named `usage-<first 12 hex digits of the SHA-256 of the canonical HOME path>.record`.
+//! Only a system with Unix permissions has the private folder the record needs; elsewhere
+//! (Windows) no record is written and every read is `unknown` (the SPEC's D-7). The suffix is
 //! not `.json` on purpose: the session cache files of the same folder are `<session id>.json`
 //! and its clean-up removes old `.json` files, so the record is neither a session's name nor
 //! cleaned away however long it stays unchanged. Lane profiles
@@ -51,6 +53,15 @@ const FILE_SUFFIX: &str = ".record";
 const HOME_DIGITS: usize = 12;
 /// The two windows Claude Code names; any other key is ignored when reading.
 pub const WINDOWS: [&str; 2] = ["five_hour", "seven_day"];
+/// The furthest a window's reset may lie ahead of the render and still be kept: the longest
+/// window is seven days, so 31 days is generous, and an absurd `resets_at` (one that would
+/// overflow `resets_at + MARGIN_SECS` or the date printing) is never recorded or judged.
+pub const MAX_RESET_AHEAD_SECS: i64 = 31 * 86_400;
+
+/// A reset after `now` and no further ahead than [`MAX_RESET_AHEAD_SECS`].
+fn reset_in_range(resets_at: i64, now: i64) -> bool {
+    resets_at > now && resets_at <= now.saturating_add(MAX_RESET_AHEAD_SECS)
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -98,7 +109,8 @@ fn read_record(path: &Path) -> Result<Record, &'static str> {
 }
 
 /// The windows worth keeping: both fields present, a finite percentage in 0–100, and a reset
-/// still in the future (Claude Code drops a passed window too).
+/// still in the future (Claude Code drops a passed window too) but not past
+/// [`MAX_RESET_AHEAD_SECS`].
 pub fn windows_from(
     pairs: &[(&str, Option<f64>, Option<i64>)],
     now: i64,
@@ -110,16 +122,16 @@ pub fn windows_from(
             (WINDOWS.contains(name)
                 && used.is_finite()
                 && (0.0..=100.0).contains(&used)
-                && resets > now)
-                .then(|| {
-                    (
-                        name.to_string(),
-                        Window {
-                            used_percentage: used,
-                            resets_at: resets,
-                        },
-                    )
-                })
+                && reset_in_range(resets, now))
+            .then(|| {
+                (
+                    name.to_string(),
+                    Window {
+                        used_percentage: used,
+                        resets_at: resets,
+                    },
+                )
+            })
         })
         .collect()
 }
@@ -150,8 +162,10 @@ pub fn record(
     if read_record(&path).is_ok_and(|on_disk| on_disk.windows == windows) {
         return Ok(false);
     }
-    if std::fs::symlink_metadata(&path).is_ok_and(|m| !m.is_file()) {
-        return Err(format!("{} is not a regular file; refused", path.display()));
+    // A link at the record's name is replaced, not followed: the rename below swaps the folder
+    // entry itself, and the folder is this user's alone. A folder there is refused.
+    if std::fs::symlink_metadata(&path).is_ok_and(|m| m.is_dir()) {
+        return Err(format!("{} is a folder; refused", path.display()));
     }
     let rec = Record {
         schema_version: SCHEMA_VERSION,
@@ -220,7 +234,7 @@ pub fn evaluate(home: &Path, tmpdir: Option<&str>, now: i64) -> Value {
     let open: BTreeMap<&String, &Window> = rec
         .windows
         .iter()
-        .filter(|(k, w)| WINDOWS.contains(&k.as_str()) && w.resets_at > now)
+        .filter(|(k, w)| WINDOWS.contains(&k.as_str()) && reset_in_range(w.resets_at, now))
         .collect();
     if open.is_empty() {
         return unknown("no open window");
@@ -258,7 +272,7 @@ pub fn evaluate(home: &Path, tmpdir: Option<&str>, now: i64) -> Value {
     if let Some((window, resets)) = hit {
         out["window"] = json!(window);
         out["resets_at"] = json!(format_utc(resets));
-        out["renew_until"] = json!(format_utc(resets + MARGIN_SECS));
+        out["renew_until"] = json!(format_utc(resets.saturating_add(MARGIN_SECS)));
     }
     out
 }
@@ -542,5 +556,77 @@ mod tests {
             std::fs::write(&path, text).unwrap();
             assert_eq!(home.evaluate(NOW)["state"], "unknown", "{text}");
         }
+    }
+
+    /// The reader refuses a cache folder that others may enter: with group or other rights on
+    /// it the record reads as unknown although the record itself is fine.
+    #[cfg(unix)]
+    #[test]
+    fn a_cache_folder_others_may_enter_reads_as_unknown() {
+        use std::os::unix::fs::PermissionsExt;
+        let home = Place::new();
+        put(&home, Some(win(95.0, NOW + 60)), None);
+        let folder = home.file().parent().unwrap().to_path_buf();
+        assert_eq!(home.evaluate(NOW)["state"], "near");
+        for mode in [0o750, 0o705] {
+            std::fs::set_permissions(&folder, std::fs::Permissions::from_mode(mode)).unwrap();
+            let v = home.evaluate(NOW);
+            assert_eq!(v["state"], "unknown", "{mode:o}");
+            assert_eq!(
+                v["reason"], "cache folder is not a private folder",
+                "{mode:o}"
+            );
+        }
+    }
+
+    /// A reset further ahead than the longest window allows is neither recorded nor judged,
+    /// and an absurd one never overflows (a plain `resets_at + MARGIN_SECS` panicked in a debug
+    /// build); the edge itself is kept.
+    #[test]
+    fn a_reset_too_far_ahead_is_left_out_and_never_overflows() {
+        let edge = NOW + MAX_RESET_AHEAD_SECS;
+        for (resets, kept) in [(edge, true), (edge + 1, false), (i64::MAX, false)] {
+            let w = windows_from(&[("five_hour", Some(95.0), Some(resets))], NOW);
+            assert_eq!(w.len(), usize::from(kept), "{resets}");
+        }
+        let home = Place::new();
+        put(&home, Some(win(95.0, NOW + 60)), None);
+        std::fs::write(
+            home.file(),
+            format!(
+                r#"{{"schema_version":1,"observed_at":1,"windows":{{"five_hour":{{"used_percentage":95.0,"resets_at":{}}}}}}}"#,
+                i64::MAX
+            ),
+        )
+        .unwrap();
+        let v = home.evaluate(NOW);
+        assert_eq!(v["state"], "unknown", "{v}");
+        assert_eq!(v["reason"], "no open window", "{v}");
+    }
+
+    /// A link at the record's name is replaced by the record (the folder is this user's alone)
+    /// and its target is left as it was; a folder at that name is refused.
+    #[cfg(unix)]
+    #[test]
+    fn a_link_at_the_record_name_is_replaced_and_a_folder_is_refused() {
+        let home = Place::new();
+        put(&home, Some(win(50.0, NOW + 60)), None);
+        let path = home.file();
+        let target = home.tmp.path().join("target");
+        std::fs::write(&target, "kept").unwrap();
+        std::fs::remove_file(&path).unwrap();
+        std::os::unix::fs::symlink(&target, &path).unwrap();
+        assert_eq!(
+            home.record(windows(Some(win(95.0, NOW + 60)), None)),
+            Ok(true)
+        );
+        assert!(std::fs::symlink_metadata(&path).unwrap().is_file());
+        assert_eq!(std::fs::read_to_string(&target).unwrap(), "kept");
+        assert_eq!(home.evaluate(NOW)["state"], "near");
+        std::fs::remove_file(&path).unwrap();
+        std::fs::create_dir(&path).unwrap();
+        assert!(home
+            .record(windows(Some(win(96.0, NOW + 60)), None))
+            .is_err());
     }
 }

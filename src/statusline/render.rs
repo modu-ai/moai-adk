@@ -20,7 +20,7 @@ const LINE_THREE_STEPS: usize = 5;
 /// five-hour window shown (SPEC-20261122-statusline-limits D-2).
 const HIGH_USE_PERCENT: i64 = 70;
 /// The cost is shown below this many US dollars (at most `999999.99`, nine characters); a larger
-/// value (`1e308` printed a 337-character line) is left out (audit N-6 of the limits slice).
+/// value (`1e308` printed a 337-character line) is left out.
 const MAX_COST_USD: f64 = 1_000_000.0;
 const SGR_NORMAL_INTENSITY: &str = "\x1b[22m";
 const SGR_RESET: &str = "\x1b[0m";
@@ -459,9 +459,10 @@ impl Renderer {
         let cost: Option<Group> = s
             .cost
             .filter(|_| s.five_hour.is_none() && s.seven_day.is_none() && self.enabled("cost"))
-            // Audit N-6: a negative cost (`-0.00`) or one too large for the line is no spend
-            // to show, so it is left out.
+            // A negative cost or one too large for the line is no spend to show, so it is left
+            // out; a negative zero is shown as `0.00`, never `-0.00`.
             .filter(|usd| (0.0..MAX_COST_USD).contains(usd))
+            .map(|usd| if usd == 0.0 { 0.0 } else { usd })
             .map(|usd| vec![piece("", width::icon_text("💰", &format!("{usd:.2}")))]);
         // REQ-6: the versions without a `v`; the update arrow names the template, then the build.
         let claude: Option<Group> = (self.enabled("claude_version")
@@ -2505,7 +2506,8 @@ mod cost_tests {
         }
     }
 
-    /// Audit N-6: a negative cost (`-0.00`) and one too large for the line are left out; the
+    /// A negative cost and one too large for the line are left out, a negative zero prints
+    /// `0.00`; the
     /// largest shown value has two decimals.
     #[test]
     fn a_negative_or_huge_cost_is_left_out() {
@@ -2514,9 +2516,11 @@ mod cost_tests {
         }
         let out = with_cost(usd(json!(999_999.99)), None);
         assert_eq!(item(&out, "💰").as_deref(), Some("💰 999999.99"), "{out}");
+        let out = with_cost(usd(json!(-0.0)), None);
+        assert_eq!(item(&out, "💰").as_deref(), Some("💰 0.00"), "{out}");
     }
 
-    /// Audit N-2: the `cost` option off leaves the cost out of a payload that would show it.
+    /// The `cost` option off leaves the cost out of a payload that would show it.
     #[test]
     fn the_cost_option_off_leaves_the_cost_out() {
         use crate::statusline::render::Renderer;
@@ -2556,14 +2560,17 @@ mod version_tests {
         assert_eq!(out, format!("🔋 CW 10% | 🤖 2.1.330 | 🗿 {BUILD}"));
     }
 
-    /// Audit N-3: the version comes from stdin; an escape or a newline in it never reaches the
-    /// screen.
+    /// The version comes from stdin; an escape, a newline, a direction mark or a zero-width
+    /// character in it never reaches the screen.
     #[test]
     fn control_characters_in_the_claude_code_version_are_dropped() {
         let out = line(
             &json!({"context_window": {"used_percentage": 10}, "version": "2.1\u{1b}[31m.330\n"}),
         );
         assert_eq!(out, format!("🔋 CW 10% | 🤖 2.1[31m.330 | 🗿 {BUILD}"));
+        let hidden = "\u{202E}2.1\u{200B}.3\u{2066}30\u{FEFF}\u{00AD}\u{061C}";
+        let out = line(&json!({"context_window": {"used_percentage": 10}, "version": hidden}));
+        assert_eq!(out, format!("🔋 CW 10% | 🤖 2.1.330 | 🗿 {BUILD}"));
     }
 
     #[test]

@@ -1292,9 +1292,14 @@ fn line_three_ladder_one_render_starts_one_git_and_one_orca_wrapper_at_most() {
     let mut stdin = subscriber(85);
     stdin["session_id"] = serde_json::json!("s-ac9");
     // The usage record keeps a window by the wall clock (not the `--now-unix` seam), so its
-    // resets lie far ahead (2100-01-01).
+    // resets lie an hour after the real time.
+    let soon = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs() as i64
+        + 3_600;
     for w in ["five_hour", "seven_day"] {
-        stdin["rate_limits"][w]["resets_at"] = serde_json::json!(4_102_444_800_i64);
+        stdin["rate_limits"][w]["resets_at"] = serde_json::json!(soon);
     }
     stdin["cwd"] = serde_json::json!(f.project);
     stdin["workspace"] = serde_json::json!({
