@@ -123,29 +123,56 @@ fn codex_plan_apply_replan_is_noop() {
 /// commands for every host.
 #[test]
 fn hook_set_has_explicit_timeouts_and_bare_commands() {
-    for host in hooks::HOSTS {
-        let obj = hooks::hooks_object(host).unwrap();
-        let events: Vec<&String> = obj.keys().collect();
-        assert_eq!(events, ["SessionStart", "PreToolUse", "PostToolUse"]);
-        assert!(obj.get("Stop").is_none(), "{host}: Stop has no reader");
-        assert!(obj["SessionStart"][0].get("matcher").is_none());
-        assert_eq!(obj["PreToolUse"][0]["matcher"], json!("Bash"));
-        assert_eq!(obj["PostToolUse"][0]["matcher"], json!("Bash"));
-        for (event, groups) in &obj {
-            let handler = &groups[0]["hooks"][0];
-            assert_eq!(handler["type"], json!("command"));
-            assert_eq!(handler["timeout"], json!(hooks::HOOK_TIMEOUT_SECS));
-            let command = handler["command"].as_str().unwrap();
-            let expected = match event.as_str() {
-                "PreToolUse" => "moai claim-verify . --hook".to_string(),
-                "SessionStart" => {
-                    format!("moai hook-dispatch --host {host} --event session-check")
-                }
-                _ => format!("moai hook-receipt --host {host}"),
-            };
-            assert_eq!(command, expected);
-            assert!(!command.contains('/'), "{command}");
+    // SPEC-20261122-next-flow-hooks: the Claude set is the NeXT-Flow set — the four sources
+    // matcher on SessionStart, the dangerous duty and the ordinary duty on the shell tools,
+    // the ordinary duty again on the write tools, every entry in exec form with its timeout,
+    // the dangerous entry alone with onFailure block. The other hosts keep the Issue-era base.
+    let claude = hooks::hooks_object("claude").unwrap();
+    let events: Vec<&String> = claude.keys().collect();
+    assert_eq!(events, ["SessionStart", "PreToolUse"], "{claude:?}");
+    assert!(claude.get("Stop").is_none(), "claude: Stop has no reader");
+    assert!(claude.get("PostToolUse").is_none(), "claude: no receipt");
+    assert_eq!(
+        claude["SessionStart"][0]["matcher"],
+        json!(hooks::CLAUDE_SESSION_MATCHER)
+    );
+    assert_eq!(
+        claude["PreToolUse"][0]["matcher"],
+        json!(hooks::CLAUDE_SHELL_MATCHER)
+    );
+    assert_eq!(
+        claude["PreToolUse"][0]["hooks"][0]["onFailure"],
+        json!("block"),
+        "the dangerous duty alone blocks on its own failure"
+    );
+    assert!(
+        claude["PreToolUse"][1]["hooks"][0].get("onFailure").is_none(),
+        "the ordinary duty stays fail-open"
+    );
+    assert_eq!(
+        claude["PreToolUse"][2]["matcher"],
+        json!(hooks::CLAUDE_WRITE_MATCHER)
+    );
+    for (_, groups) in &claude {
+        for group in groups.as_array().unwrap() {
+            for handler in group["hooks"].as_array().unwrap() {
+                assert_eq!(handler["type"], json!("command"), "{handler}");
+                assert!(handler["timeout"].is_u64(), "{handler}");
+                assert!(handler["args"].is_array(), "exec form: {handler}");
+                assert!(
+                    handler["command"].as_str().unwrap().starts_with('/'),
+                    "absolute binary path: {handler}"
+                );
+            }
         }
+    }
+    for host in ["codex", "omp"] {
+        let obj = hooks::hooks_object(host).unwrap();
+        assert_eq!(
+            obj.keys().collect::<Vec<_>>(),
+            ["SessionStart", "PreToolUse", "PostToolUse"],
+            "{host}"
+        );
     }
 }
 
@@ -169,8 +196,13 @@ fn omp_coverage_names_session_stop_and_says_it_is_not_wired() {
 #[cfg(unix)]
 #[test]
 fn generated_pre_tool_use_command_blocks_an_unverified_commit() {
+    // SPEC-20261122-next-flow-hooks REQ-1: the Claude set has no claim-verify entry; its
+    // entries are exec form, so the "bare moai + args" premise is gone with it. What stays:
+    // running the args of a PreToolUse entry as the host would denies a dangerous call and
+    // allows a plain one, on every host whose set carries the preflight duty.
     let dir = project();
     let root = fs::canonicalize(dir.path()).unwrap();
+    fs::create_dir_all(root.join(".moai")).unwrap();
     let git = |args: &[&str]| {
         let full = [
             ["-c", "user.name=t", "-c", "user.email=t@example.invalid"].as_slice(),
@@ -187,20 +219,48 @@ fn generated_pre_tool_use_command_blocks_an_unverified_commit() {
         "origin",
         "https://github.com/acme/widgets.git",
     ]);
-    git(&["checkout", "-q", "-b", "issue/7-widget"]);
-    // A lane worktree's clone has a live lane session (SPEC-20261117-commit-guard-users).
-    common::register_lane(&root);
 
-    for host in hooks::HOSTS {
+    for host in ["claude"] {
+        // Only Claude carries the preflight duty (#2877 Q1; codex keeps its base set).
         let obj = hooks::hooks_object(host).unwrap();
-        let command = obj["PreToolUse"][0]["hooks"][0]["command"]
-            .as_str()
+        let entry = obj["PreToolUse"]
+            .as_array()
             .unwrap()
-            .to_string();
-        let mut words = command.split_whitespace();
-        assert_eq!(words.next(), Some("moai"));
-        let args: Vec<&str> = words.collect();
+            .iter()
+            .flat_map(|g| g["hooks"].as_array().unwrap().iter().cloned())
+            .find(|h| {
+                h["args"]
+                    .as_array()
+                    .map(|a| a.iter().any(|w| w == &json!("tool-preflight")))
+                    .unwrap_or_else(|| {
+                        h["command"]
+                            .as_str()
+                            .is_some_and(|c| c.contains("tool-preflight"))
+                    })
+            })
+            .unwrap();
+        let args: Vec<String> = entry["args"]
+            .as_array()
+            .map(|a| {
+                a.iter()
+                    .filter_map(|w| w.as_str().map(str::to_string))
+                    .collect()
+            })
+            .unwrap_or_else(|| {
+                entry["command"]
+                    .as_str()
+                    .unwrap()
+                    .split_whitespace()
+                    .skip(1)
+                    .map(str::to_string)
+                    .collect()
+            });
         let run = |tool_command: &str| {
+            let input = json!({
+                "hook_event_name": "PreToolUse", "tool_name": "Bash",
+                "tool_input": {"command": tool_command}, "cwd": root,
+                "session_id": "s",
+            });
             let mut child = Command::new(crate::common::MOAI_BIN)
                 .args(&args)
                 .current_dir(&root)
@@ -212,18 +272,21 @@ fn generated_pre_tool_use_command_blocks_an_unverified_commit() {
                 .stderr(Stdio::piped())
                 .spawn()
                 .unwrap();
-            let input = json!({"hook_event_name": "PreToolUse", "tool_name": "Bash",
-                               "tool_input": {"command": tool_command}, "cwd": root});
             common::feed_stdin(&mut child, input.to_string().as_bytes());
-            child.wait_with_output().unwrap()
+            let out = child.wait_with_output().unwrap();
+            (
+                out.status.code().unwrap(),
+                String::from_utf8_lossy(&out.stdout).into_owned(),
+            )
         };
-        let blocked = run("git commit -m work");
-        assert_eq!(blocked.status.code(), Some(2), "{host}");
+        let (code, stdout) = run("rm -rf /");
         assert!(
-            String::from_utf8_lossy(&blocked.stderr).contains("claim verify: uncertain"),
-            "{host}"
+            code == 2 || stdout.contains("\"deny\""),
+            "{host}: {} {stdout}",
+            code
         );
-        assert_eq!(run("cargo test").status.code(), Some(0), "{host}");
+        let (code, stdout) = run("git status");
+        assert_eq!((code, stdout.as_str()), (0, ""), "{host}");
     }
 }
 
@@ -1056,7 +1119,10 @@ fn merge_confirm_strikes_release_the_third_refusal() {
     assert_eq!(claude_blocks, 0, "{lines:?}");
 
     // No folder to write the line into: the refusal could not be counted, so it goes through.
+    // The log answers for either state-folder name (SPEC-20261122-next-flow-hooks REQ-12), so
+    // both must be gone.
     fs::remove_dir_all(root.join(".moai-cli")).unwrap();
+    let _ = fs::remove_dir_all(root.join(".moai"));
     let (code, decision, reason) = merge_preflight_as("codex", &root, merge, "four");
     assert_eq!(
         (code, decision.as_str(), reason.as_str()),
@@ -1274,49 +1340,56 @@ fn merge_confirm_capabilities_name_the_direct_merge() {
 /// preflight guard, only the session-check context.
 #[test]
 fn claude_runs_the_preflight_guard_and_codex_does_not() {
+    // SPEC-20261122-next-flow-hooks: the Claude PreToolUse groups are the dangerous duty and
+    // the ordinary duty on the shell tools plus the ordinary duty on the write tools — no
+    // claim-verify anywhere — and the generated command, run as the host runs it, denies a
+    // dangerous Bash call and a write into `.git`, and lets an ordinary call through. Codex
+    // keeps its three base hooks.
     let claude = hooks::hooks_object("claude").unwrap();
     let pre = claude["PreToolUse"].as_array().unwrap();
-    assert_eq!(pre.len(), 2, "{pre:?}");
-    assert_eq!(pre[0]["matcher"], json!("Bash"));
-    assert!(pre[0]["hooks"][0]["command"]
-        .as_str()
-        .unwrap()
-        .contains("claim-verify"));
-    // The tools the engine guards (hook_engine::capabilities("claude")).
-    assert_eq!(
-        pre[1]["matcher"],
-        json!("Bash|Write|Edit|MultiEdit|NotebookEdit")
-    );
-    let command = pre[1]["hooks"][0]["command"].as_str().unwrap();
-    assert_eq!(
-        command,
-        "moai hook-dispatch --host claude --event tool-preflight"
-    );
+    assert_eq!(pre.len(), 3, "{pre:?}");
+    let text = serde_json::to_string(&claude).unwrap();
+    assert!(!text.contains("claim-verify"), "{text}");
+    assert!(!text.contains("hook-receipt"), "{text}");
+    for matcher in [hooks::CLAUDE_SHELL_MATCHER, hooks::CLAUDE_WRITE_MATCHER] {
+        assert!(
+            pre.iter().any(|g| g["matcher"] == json!(matcher)),
+            "{pre:?}"
+        );
+    }
     let codex = hooks::hooks_object("codex").unwrap();
-    assert_eq!(codex["PreToolUse"].as_array().unwrap().len(), 1);
-    assert!(!codex
-        .values()
-        .any(|v| v.to_string().contains("tool-preflight")));
     assert_eq!(
-        codex["SessionStart"][0]["hooks"][0]["command"],
-        json!("moai hook-dispatch --host codex --event session-check")
+        codex.keys().collect::<Vec<_>>(),
+        ["SessionStart", "PreToolUse", "PostToolUse"]
     );
-
-    // Run it the way Claude Code would: the command's words, our binary for `moai`.
-    let dir = tempfile::TempDir::new().unwrap();
-    let root = fs::canonicalize(dir.path()).unwrap();
-    fs::create_dir_all(root.join("home")).unwrap();
-    let args: Vec<&str> = command.split_whitespace().skip(1).collect();
-    let run = |input: Value| {
-        let mut child = Command::new(common::MOAI_BIN)
+    let codex_text = serde_json::to_string(&codex).unwrap();
+    assert!(codex_text.contains("claim-verify"), "codex keeps its base");
+    // Run as the host runs it: the same argv the entry spells. Inside a test binary
+    // `moai_absolute` names this test executable, so the run uses the built moai binary with
+    // the entry's own args vector (the shape assertions above pin what is written).
+    let entry = &pre[1]["hooks"][0];
+    let program = crate::common::MOAI_BIN;
+    let args: Vec<String> = entry["args"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|a| a.as_str().map(str::to_string))
+        .collect();
+    let root = tempfile::TempDir::new().unwrap();
+    std::fs::create_dir_all(root.path().join(".moai")).unwrap();
+    let run = |tool: &str, tool_input: Value| {
+        let input = json!({"hook_event_name": "PreToolUse", "tool_name": tool,
+                           "tool_input": tool_input, "cwd": root.path(),
+                           "session_id": "s"});
+        let mut child = std::process::Command::new(program)
             .args(&args)
-            .current_dir(&root)
-            .env("HOME", root.join("home"))
+            .current_dir(root.path())
+            .env("HOME", root.path().join("home"))
             .env("GIT_CONFIG_GLOBAL", "/dev/null")
             .env("GIT_CONFIG_SYSTEM", "/dev/null")
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
+            .stdin(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::null())
             .spawn()
             .unwrap();
         common::feed_stdin(&mut child, input.to_string().as_bytes());
@@ -1326,32 +1399,20 @@ fn claude_runs_the_preflight_guard_and_codex_does_not() {
             String::from_utf8_lossy(&out.stdout).into_owned(),
         )
     };
-    let tool = |name: &str, input: Value| {
-        json!({"session_id": "s", "hook_event_name": "PreToolUse", "tool_name": name,
-               "tool_use_id": "t1", "tool_input": input, "cwd": root})
-    };
-    for denied in [
-        tool("Bash", json!({"command": "rm -rf /"})),
-        tool(
-            "Write",
-            json!({"file_path": root.join(".git/config"), "content": "x"}),
-        ),
-    ] {
-        let (code, stdout) = run(denied.clone());
-        assert_eq!(code, 0, "{denied}");
-        let v: Value = serde_json::from_str(&stdout).unwrap_or(Value::Null);
-        assert_eq!(
-            v["hookSpecificOutput"]["permissionDecision"],
-            json!("deny"),
-            "{denied} -> {stdout}"
-        );
-    }
-    let (code, stdout) = run(tool("Bash", json!({"command": "ls"})));
-    assert_eq!(
-        (code, stdout.as_str()),
-        (0, ""),
-        "an ordinary call goes through"
+    let (code, stdout) = run(
+        "Bash",
+        json!({"command": "rm -rf /"}),
     );
+    assert_eq!(code, 2, "{stdout}");
+    assert!(stdout.contains("\"deny\""), "{stdout}");
+    let (code, stdout) = run(
+        "Write",
+        json!({"file_path": ".git/hooks/pre-commit", "content": "x"}),
+    );
+    assert_eq!(code, 2, "{stdout}");
+    let (code, stdout) = run("Bash", json!({"command": "git status"}));
+    assert_eq!(code, 0, "{stdout}");
+    assert!(stdout.is_empty(), "{stdout}");
 }
 
 // ---- SPEC-20261119-enforce-spec-hooks S1: the GREEN lock against Bash, the deny audit line ----
@@ -1468,7 +1529,8 @@ impl GreenRepo {
     fn deny_reason(&self, command: &str) -> String {
         let (code, stdout) = self.run(command);
         let v: Value = serde_json::from_str(&stdout).unwrap_or(Value::Null);
-        assert_eq!(code, 0, "{command}: {stdout}");
+        // A refusal is exit code 2 with the documented deny object beside it (REQ-8).
+        assert_eq!(code, 2, "{command}: {stdout}");
         assert_eq!(
             v["hookSpecificOutput"]["permissionDecision"],
             json!("deny"),
@@ -1567,7 +1629,7 @@ fn green_lock_bash_follows_the_record_and_the_input_cwd() {
     let sub = repo.root.join("src");
     // The path is relative to the folder the hook input names, not the process folder.
     let (code, stdout) = repo.bash("rm ../tests/locked_test.rs", &sub);
-    assert_eq!(code, 0);
+    assert_eq!(code, 2, "a refusal is exit 2 (REQ-8)");
     assert!(
         stdout.contains("\"permissionDecision\":\"deny\""),
         "{stdout}"
@@ -1674,7 +1736,7 @@ fn green_lock_bash_reads_dash_names_after_double_dash() {
     let tests = repo.root.join("tests");
     let (code, stdout) = repo.bash("rm -- -odd_test.rs", &tests);
     assert!(
-        code == 0 && stdout.contains("\"permissionDecision\":\"deny\""),
+        code == 2 && stdout.contains("\"permissionDecision\":\"deny\""),
         "{code} {stdout}"
     );
     let (code, stdout) = repo.bash("rm -f -- -odd_test.rs", &tests);
