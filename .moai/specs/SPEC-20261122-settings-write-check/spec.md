@@ -2,7 +2,7 @@
 id: SPEC-20261122-settings-write-check
 title: "Every settings file moai writes is backed up first, merged key by key, re-read and validated before an atomic swap, doctor-checked after, and rolled back and named on rejection"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-22
 parent: SPEC-20261121-flow-skeleton
 ---
@@ -23,17 +23,18 @@ parent: SPEC-20261121-flow-skeleton
 
 ## Requirements
 
-- REQ-1: When moai writes any settings file, the writer shall keep a byte-exact backup of the existing file under the state root's backup folder before the first byte of the new file is written. · failure: none — a write with no place to keep the backup is refused, and the backup of a file that does not exist yet is recorded as absent rather than skipped.
+- REQ-1: When moai writes any settings file, the writer shall keep a byte-exact backup of the existing file under the state root's backup folder before the first byte of the new file is written, taking the user's pick of the previewed plan as its input and refusing a guarded file without that pick. · failure: none — a write with no place to keep the backup is refused, the backup of a file that does not exist yet is recorded as absent, and the backup folder (mode 0700) and its files (mode 0600) carry no wider permission.
 - REQ-2: The writer shall change only the keys the plan names, keeping every other user key and every user list entry and merging lists by adding entries without removing the user's. · failure: none — a plan whose merge drops a user key or list entry is refused before the swap.
 - REQ-3: Before the swap the writer shall re-read the produced bytes and parse them as one JSON object, refusing the write when the round-trip fails. · failure: none — a candidate that does not parse back is never written.
 - REQ-4: The writer shall refuse, before any write, an entry on the forbidden list: a hook matcher that is not one string, a `Write(path)` or `NotebookEdit(path)` rule where `Edit(path)` is the form that governs, a command rule with a wildcard before the rest of the command, a bare `Edit` in a committed project allowlist, and an `attribution` value that is not an object. · failure: none — each refusal names the entry and the rule it broke.
 - REQ-5: The writer shall refuse an `env` value that is not a string, warning on a value that looks like shell expansion and naming that settings `env` values are literal and an empty string means unset. · failure: none — the warning text carries no credential material.
-- REQ-6: When the target is a project-scope file, the writer shall refuse a key a project file cannot set and name the scope that may set it. · failure: none — the refused keys are the documented project-scope exclusions (`permissions.defaultMode` of `auto` or `bypassPermissions`, `autoMode`, an `env` name a project file ignores, `pluginConfigs`, `remoteControlAtStartup: true`, `permissions.denyInsteadOfPrompting`, `skipDangerousModePermissionPrompt`, a `crossSessionInbound` loosening, global-config-only keys).
-- REQ-7: After the swap the writer shall run `claude doctor` read-only and, when its diagnostics name a rejected entry for the written file, roll the file back from the backup byte-exactly and name the rejected entry. · failure: none — a doctor that cannot run leaves the write in place with one notice naming the skipped check.
+- REQ-6: When the target is a project-scope file, the writer shall refuse a key a project file cannot set and name the scope that may set it. · failure: none — the refused keys are the documented project-scope exclusions (`permissions.defaultMode` of `auto` or `bypassPermissions`, `autoMode`, an `env` name a project file ignores, `pluginConfigs`, `remoteControlAtStartup: true`, `permissions.denyInsteadOfPrompting`, `skipDangerousModePermissionPrompt`, a `crossSessionInbound` loosening, `isolatePeerMachines`, `blockReadsOutsideWorkingDirectories`, `blockWritesOutsideWorkingDirectories`, `enableArtifact`, `processWrapper`, global-config-only keys).
+- REQ-7: After the swap the writer shall run `claude doctor` read-only with `CLAUDE_CONFIG_DIR` set to the written folder (and the project as the working directory for a project-scope file) and, when its diagnostics name a rejected entry for the written file, roll the file back from the backup byte-exactly and name the rejected entry. · failure: none — a doctor that cannot run leaves the write in place with one notice naming the skipped check.
 - REQ-8: A refused or rolled-back write shall leave the previous file byte-identical, with the refusal named in the answer. · failure: none — the old file's bytes after a refusal equal its bytes before the plan.
 - REQ-9: After a successful write the writer shall print one guide line naming the `/status` Setting sources row as the place to confirm the file loaded. · failure: none — the line prints once per write.
 - REQ-10: Every test of the writer shall run against a temporary config folder and a stand-in `claude` for the doctor check, never the real user settings and never a real session. · failure: none — a test that touches the real config folder is a finding.
 - REQ-11: The Result of this SPEC shall record, from the real update previews of the release it lands in, the count of writes the new refusals would have refused, so a false positive is seen before users meet it. · failure: none — the count is recorded with the landing.
+- REQ-12: The writer shall name only the key's path or name — never a value — in every refusal and rollback and notice and doctor answer, with claude doctor output reduced to the named entries rather than passed through verbatim. · failure: none — a planted credential value in a refused candidate appears nowhere in the writer's output.
 
 ## Acceptance
 
@@ -41,14 +42,18 @@ parent: SPEC-20261121-flow-skeleton
   verify: `cargo test --locked --offline --test settings_write_cli invalid_values_refuse_before_the_swap` — red first in the code slice
 - AC-2 (REQ-6): a project-scope write naming a key a project file cannot set is refused with the key and the scope that may set it named.
   verify: `cargo test --locked --offline --test settings_write_cli project_only_keys_refuse_in_project_scope` — red first
-- AC-3 (REQ-1, REQ-7, REQ-8): a write whose doctor names a rejected entry is rolled back from the backup byte-exactly and the rejected entry is named, through a stand-in `claude`.
+- AC-3 (REQ-1, REQ-7, REQ-8, REQ-12): a write whose doctor names a rejected entry is rolled back from the backup byte-exactly, the rejected entry is named, a planted credential value in the candidate appears neither in the rollback notice nor in the reduced doctor answer, and the stand-in `claude` records `CLAUDE_CONFIG_DIR` pointing at the written folder.
   verify: `cargo test --locked --offline --test settings_write_cli doctor_rejection_rolls_back_byte_exact` — red first
 - AC-4 (REQ-2, REQ-9): a valid write keeps every user key and list entry it did not plan and prints the one guide line.
   verify: `cargo test --locked --offline --test settings_write_cli valid_write_keeps_user_keys` — red first
-- AC-5 (REQ-5): a non-string `env` value refuses and a value that looks like shell expansion warns without echoing any credential material.
+- AC-5 (REQ-5, REQ-12): a non-string `env` value refuses and a value that looks like shell expansion warns, with a planted credential value absent from the refusal and the warning.
   verify: `cargo test --locked --offline --test settings_write_cli env_values_refuse_and_warn` — red first
 - AC-6: the wider READY set passes.
   verify: `cargo test --locked --offline --bins` and `--lib`
+- AC-7 (REQ-1, REQ-10): a write to a guarded file without the user's pick is refused before any byte, and the test target runs wholly in a temporary config folder with the stand-in `claude`.
+  verify: `cargo test --locked --offline --test settings_write_cli guarded_file_needs_the_pick` — red first
+- AC-8 (REQ-11): the Result of this SPEC carries the would-refuse count from the real update previews when the slice lands.
+  verify: read in the Result at closure
 
 ## Scope
 
@@ -81,6 +86,8 @@ parent: SPEC-20261121-flow-skeleton
 | D-4 | 금지 목록은 문서가 이름하는 것만: 배열 매처, Write/NotebookEdit 경로 규칙, 하위 명령 앞 와일드카드, 커밋되는 allowlist 의 맨 `Edit`, 객체 아닌 attribution. 그 밖의 정책은 늘리지 않는다. | debug-your-config.md, agent-sdk__permissions.md, errors.md, settings-reference.md | 카드 열림 |
 | D-5 | 프로젝트 범위 전용 키 거부는 settings.md 3-3 표를 코드 한 곳의 목록으로. | settings.md "Troubleshoot a setting that doesn't apply" | 카드 열림 |
 | D-6 | 테스트는 임시 설정 폴더 + 스탠드인 claude(doctor 출력 가짜)만. | "테스트는 Rust 만" 결정, 카드 기준 1(임시 홈) | 카드 열림 |
+| D-7 | 거절·되돌림·알림·doctor 답은 키의 경로나 이름만 말한다(값 금지); doctor 출력은 지목된 항목으로 요약해 전달하고 통째로 그대로 옮기지 않는다. | 리뷰 6129 차단 항목, GLM 키 출력 금지 규칙과 같은 선 | 카드 열림 |
+| D-8 | 백업 폴더 0700, 백업 파일 0600. | 리뷰 6129 N3 | 카드 열림 |
 
 ## Result
 
