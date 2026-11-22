@@ -2,7 +2,7 @@
 id: SPEC-20261121-card-land
 title: "card land moves the integration branch to a candidate commit and closes the card in one call"
 status: draft
-revision: 3
+revision: 4
 created: 2026-11-21
 ---
 
@@ -36,6 +36,7 @@ The command is an action of `moai card` (decision D-1 of the flow skeleton). Unt
 - REQ-9: When the card land command is run again after a stop between the reference update and the close, the card land command shall answer as one uninterrupted run would · failure: none — the rerun finds the candidate inside the tip, skips the update and closes the card, with one landing event and one finish event.
 - REQ-10: When the profile names an integration branch that is not under refs/heads, the card land command shall refuse as the card finish command does · failure: none — nothing is written.
 - REQ-11: When the card land command runs git, the card land command shall run it through the git environment scrub and with a reference-log message that names the candidate and no card number · failure: none — a git that cannot run refuses before any write.
+- REQ-12: When the integration branch points at a commit that is neither where the newest start row of that branch left it nor a descendant of that row's head, the card land command shall refuse before any write and name the drift and the command that puts the branch back · failure: none — the answer is a conflict that holds both commits and the `git update-ref` line, the ledger is unchanged, and a branch with no start row has nothing to compare and lands.
 
 ## Acceptance
 
@@ -57,6 +58,9 @@ The command is an action of `moai card` (decision D-1 of the flow skeleton). Unt
 - AC-16 (REQ-4): a research card is refused with the words that a card closing on a report is the finish command's, and the branch and the ledger stay as they were · verify: `cargo test --locked --offline --test card_land_cli ac16_`
 - AC-17 (REQ-11): a caller whose environment names another repository (the git directory, work tree, index file and namespace variables) lands in the project's own repository · verify: `cargo test --locked --offline --test card_land_cli ac17_`
 - AC-18 (REQ-1): a reference update that git refuses because a lock file is in the way is reported with git's reason and not as tip_moved, and the branch stays and the ledger holds at most the start row of SPEC-20261121-ref-guard · verify: `cargo test --locked --offline --test card_land_cli ac18_`
+- AC-19 (REQ-12): `git branch -C` of an unrelated commit over the integration branch makes the next landing refuse with the word drift, both commits and the update-ref line, nothing written; after the recovery the same call lands · verify: `cargo test --locked --offline --test card_land_cli ac23_`
+- AC-20 (REQ-12): a tip that contains the last landed head (a fast-forward made by hand) is no drift and the next landing goes through · verify: `cargo test --locked --offline --test card_land_cli ac25_`
+- AC-21 (REQ-9): the lander killed after the move and before the close, then run again, moves nothing, writes no second start row and closes · verify: `cargo test --locked --offline --test card_land_cli ac24_`
 
 ## Scope
 
@@ -84,6 +88,7 @@ The command is an action of `moai card` (decision D-1 of the flow skeleton). Unt
 
 ## Risks
 
+- The drift check compares with the newest start row of the branch only, so a copy that happens before the first landing of a repository, or one that makes the branch a descendant of the last landed head, is not seen. A hand-made fast-forward looks the same as a copy of a descendant; both are accepted on purpose (AC-20). The hook of SPEC-20261121-ref-guard cannot see `git branch -c` and `-C`; this check is the layer that notices them, and the preflight hook of the tool is another card's work.
 - A move under a race is refused by git itself, but the close can still be refused after the move when the ledger changed between the checks and the write; the answer says the branch moved, and the rerun closes the card or repeats the refusal. That is the cost of git and the ledger being two stores.
 - `MOAI_GIT_BIN` lets a test put a wrapper around git; the wrapper that makes the branch move at the wrong moment (AC-2) is written by the test and is not a spawn of git by the test.
 
