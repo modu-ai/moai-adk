@@ -83,3 +83,18 @@ paths with `state_root::dir` or `home_root::path`). This slice fixes them.
 - D-1: The new behaviour tests go into one new test file instead of files other cards hold (planning default).
 - D-2: N6 of the first audit was the landing work (goldens, fixture, `host_home_cli.rs`), done in the merge ae7cf4185f; nothing is left of it (planning default, from the audit text).
 - D-3: AC-8 waits for C-316 to land and give `src/ui_text.rs` back; the slice can go to audit without it if the leader says so (planning default).
+
+## Result
+
+RED 1f3b4d783b, GREEN 49107290a8, on the tip 8b6219cc7f. The RED lines are this lane's run of the new tests on the tip (`target/red.log`: 6 failed by assertion, the 3 other revert tests passed); the GREEN lines are `cargo nextest run` of seven targets (`target/green.log`: 95 passed).
+
+- AC-1 met: `a_receipt_that_names_codex_is_skipped_and_reported` failed first (the reason was `retired host; not managed`) and passes now.
+- AC-2 met: `a_request_with_both_retired_hosts_is_filtered` failed first (`["claude","codex","omp"]` was refused by the two-entry limit) and passes now; `project_skill_links` and `project_skill_apply_gate_cli` pass in the same run.
+- AC-3 met: `the_retired_hosts_step_tells_the_user_to_remove_the_files` failed first and passes now.
+- AC-4 met: `the_stop_rule_limits_name_no_unknown_outcome` failed first and passes now.
+- AC-5 met: `the_follow_up_texts_are_current` failed first (`src/hooks.rs` named `codex_config.rs`) and passes now.
+- AC-6 met: `boundary_d3_skill_revert`, `hooks_cli`, `lane_stop_hook_cli` and `project_skills_generation` pass with the state folder from `state_root::dir`; `project_skills_generation` also had five older literal lines, changed the same way.
+- AC-7 met: `the_parent_result_records_the_read_only_files` failed first and passes now.
+- AC-8 not met yet: `src/ui_text.rs` is held by C-316 (in audit); the two Korean rows of `update_tux.rs:715-716` move when it lands (D-3).
+- Left to other cards (Non-goals): the literal lines of `tests/project_update_plan_cli.rs`, `tests/update_end_to_end_cli.rs` (C-328) and `tests/generation_apply_result_cli.rs` (C-308); `skills/moai/workflows/update.md:24,28` and `docs/codex-adapter-contract.md:86` (C-292).
+- Not run: the whole suite, a test run after merging the tip, and the independent audit.
