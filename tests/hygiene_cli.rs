@@ -154,13 +154,13 @@ fn users(fx: &Fx) -> (Child, Child) {
     // Named in its command line (`sh -c '/bin/sleep 61; :' sh <dir>` — no `exec`, so the shell
     // keeps its arguments). On Linux the environment
     // counts too; macOS shows no other process's environment (`hygiene::process_text`).
-    let named = Command::new("/bin/sh")
-        .args(["-c", "/bin/sleep 61; :", "sh"])
-        .arg(fx.tmp.join("build-env"))
-        .env("CARGO_TARGET_DIR", fx.tmp.join("build-env"))
-        .stdin(Stdio::null())
-        .spawn()
-        .unwrap();
+    let named = crate::common::spawn_group(
+        Command::new("/bin/sh")
+            .args(["-c", "/bin/sleep 61; :", "sh"])
+            .arg(fx.tmp.join("build-env"))
+            .env("CARGO_TARGET_DIR", fx.tmp.join("build-env"))
+            .stdin(Stdio::null()),
+    );
     (cwd, named)
 }
 
@@ -174,7 +174,8 @@ fn only_idle_unused_merged_clean_leftovers_are_held_and_nothing_is_written() {
     let r = plan(&fx, far);
     // The same state gives the same digest.
     let again = plan(&fx, far);
-    let _ = (a.kill(), b.kill(), a.wait(), b.wait());
+    let _ = (a.kill(), a.wait());
+    crate::common::kill_group(&mut b);
     assert_eq!(again["plan_digest"], r["plan_digest"]);
     assert_eq!(r["writes"], false);
     assert_eq!(

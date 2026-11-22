@@ -2,7 +2,7 @@
 id: SPEC-20261122-test-process-table-default
 title: "Tests skip the machine-wide process scan by default; the in-use tests opt back in"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-22
 parent: SPEC-20261121-cheap-process-scan
 ---
@@ -37,12 +37,16 @@ helpers, and only the tests that judge "a program uses this folder" read the rea
 - REQ-3: A test that judges whether a program uses a folder shall run its command with the real process table.
 - REQ-4: The shared test module shall name the switch and its two values in one place.
 - REQ-5: The slice Result shall record the time of the named test targets before and after the change.
+- REQ-6: Each function of a named file that starts a holder program shall call `use_real_process_table()` or carry the comment `process table not read:` with its reason.
+- REQ-7: A named test that starts a shell holder shall stop the shell's own children when it stops the shell.
 
 ## Acceptance
 
 - AC-1 (REQ-1, REQ-4): a child built with `clean_env` sees `MOAI_CLI_TEST_PROCESS_TABLE=empty`; after the test calls `use_real_process_table` its children see `real`, and another test thread still sees `empty` · verify: `cargo test --locked --offline --test process_table_default`
 - AC-2 (REQ-2, REQ-3): the named slow test files pass with the switch on, and their in-use tests still see the program that holds the folder · verify: `cargo test --locked --offline --test home_install_apply_cli --test home_retire_cli --test home_state_apply --test home_state_plan --test home_install_go_retire --test home_install_plan_cli --test update_home_layer_cli --test hygiene_apply_cli --test hygiene_cli --test optimize_plan_cli`
 - AC-3 (REQ-3): every named file sets the switch, and every named file that starts a holder program calls `use_real_process_table` · verify: `cargo test --locked --offline --test process_table_default the_named_files_choose_their_table`
+- AC-5 (REQ-6): the file scan reads each function, counts `python3` as a holder program, and fails on a function that starts a holder with neither line · verify: `cargo test --locked --offline --test process_table_default`
+- AC-6 (REQ-7): after a group-started shell holder is stopped, no process of its group is left · verify: `cargo test --locked --offline --test process_table_default group`
 - AC-4 (REQ-5): the Result lists the before and after time of each named target from one nextest run each, on the same machine · verify: read the Result
 
 ## Scope
@@ -59,12 +63,14 @@ helpers, and only the tests that judge "a program uses this folder" read the rea
 3. GREEN: `tests/common/mod.rs` names the switch (`PROCESS_TABLE_SWITCH`, `NO_PROCESS_TABLE`, `REAL_PROCESS_TABLE`) and keeps the choice per test thread: `process_table()` answers `empty` until the test calls `use_real_process_table()`; `clean_env` and the named files' command helpers pass `process_table()`; a test calls `use_real_process_table()` right before it starts a program that holds a folder or a file.
 4. The file-list case (AC-3) reads the named files only (no directory walk).
 5. After: the same nextest run; the Result records both.
+6. Follow-up slice (audit notes after the landing): the file scan reads functions instead of whole files and knows `python3`; the flock test of `tests/home_state_plan.rs` says why it needs no table; `tests/common/mod.rs` gains `spawn_group` and `kill_group`, and the two shell holders of `tests/hygiene_cli.rs` and `tests/hygiene_apply_cli.rs` use them; the thread rule is stated as libtest runs it.
 
 ## Risks
 
 - A test that judges "in use" left under the switch would pass for the wrong reason only if it did not assert the in-use answer; the in-use tests assert `skip-in-use` or a refusal, so under the switch they fail and are found.
 - `MOAI_CLI_TEST_PROCESS_TABLE` in a developer's shell does not reach these children: `clean_env` clears the environment first, and the named helpers set the variable explicitly.
-- The choice lives in a thread-local: with `--test-threads=1` libtest runs every test on one thread, so a test after an in-use test reads the real table too — slower, never wrong.
+- The choice lives in a thread-local: libtest runs every test on a thread of its own, also with `--test-threads=1`, so the choice never reaches the next test. A command a test builds on a helper thread it starts gets the default (`empty`) unless that thread opts in too.
+- A test that proceeds because nothing is in use passes under the switch without reading the table; the false-positive check under the real table stays in `tests/hygiene_cli.rs` (`only_idle_unused_merged_clean_leftovers_are_held_and_nothing_is_written` holds an idle build folder while the real scan runs).
 
 ## Decisions
 
@@ -80,3 +86,8 @@ RED e7f3785f18 on the tip 2fb33d76bf; GREEN is the next commit. Both runs are on
 - AC-3 met: `the_named_files_choose_their_table` passes.
 - AC-4 met: summed test time per target, before → after: `home_install_apply_cli` 313.2 → 119.9 s, `home_retire_cli` 179.7 → 60.5 s, `home_install_go_retire` 121.4 → 13.1 s, `update_home_layer_cli` 111.2 → 50.2 s, `optimize_plan_cli` 95.2 → 112.0 s (no gain: its time is not the process scan), `home_state_apply` 81.7 → 1.6 s, `home_state_plan` 52.4 → 34.0 s, `hygiene_apply_cli` 44.4 → 21.2 s, `home_install_plan_cli` 30.1 → 11.0 s, `hygiene_cli` 5.2 → 3.3 s; all ten 1,034.5 → 426.8 s, and the run's wall clock 212 s → 96 s. The before run is the tip's files (the RED commit changes none of them).
 - Not run: the lib unit tests that call the scans (a later slice), the whole suite, the independent audit.
+
+Follow-up slice (audit notes after the landing 37fbff0be4): RED 49a9cd5689 on that landing, then GREEN.
+
+- AC-5 met: `holder_scan_reads_each_function` passes; `the_named_files_choose_their_table` failed first by assertion on `tests/home_state_plan.rs` `a_live_go_session_blocks_the_move` (a `python3` holder with neither line, `target/red2.log`) and passes once that test says the lock decides.
+- AC-6 met: `a_group_started_shell_holder_leaves_no_child` failed first by assertion while `kill_group` stopped the shell alone (`group … still holds …`, the `sleep` left behind) and passes with `kill -KILL -- -<group>`; the shell holders of `tests/hygiene_cli.rs` (`users`) and `tests/hygiene_apply_cli.rs` (`a_worktree_named_by_a_process_is_skipped_right_before_the_move`) start and stop their group this way. The GREEN evidence is the slice's one check affected run, cited in its READY note.
