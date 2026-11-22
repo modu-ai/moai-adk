@@ -2,7 +2,7 @@
 id: SPEC-20261123-worktree-slots
 title: "Worktrees are fixed slots warmed from a seed by an APFS clone, under caps, and cleaned when their work ends"
 status: draft
-revision: 4
+revision: 5
 created: 2026-11-23
 ---
 
@@ -61,7 +61,7 @@ Readers: lanes and the leader, who create, reuse and clean worktrees, and the au
   verify: `cargo nextest run --locked --offline --test worktree_slot_cli`
 - AC-4 (REQ-5): with the worktree cap or the free-share floor set below the measured value through the test seams, ensuring a new slot is refused, the message names the cap and both numbers, and no worktree is added.
   verify: `cargo nextest run --locked --offline --test worktree_slot_cli`
-- AC-5 (REQ-7, REQ-8, REQ-9, REQ-10): a preview over a temporary repository lists exactly the worktrees that meet the safe criteria, never a slot, not one holding a nested worktree or a claim; apply removes them and their `target/` (slice 2).
+- AC-5 (REQ-7, REQ-8, REQ-9, REQ-10): a preview over a temporary repository keeps a fixed slot (`fixed_slot`), a worktree holding a nested worktree (`nested_worktree`) and a worktree an active card reservation names (`live_claim`); a merged clean worktree unchanged for 3 days stays a removal candidate; the `cap` block orders the candidates oldest first with the number needed (slice 2).
   verify: `cargo nextest run --locked --offline --test worktree_gc_slots`
 - AC-6 (REQ-11, REQ-12): a deleted branch adds one queue line and removes nothing; a landing or a verdict cleans that card's worktrees on a matching digest (slice 3).
   verify: `cargo nextest run --locked --offline --test worktree_cleanup_triggers`
@@ -69,7 +69,7 @@ Readers: lanes and the leader, who create, reuse and clean worktrees, and the au
 ## Scope
 
 - slice 1 write: `.moai/specs/SPEC-20261123-worktree-slots/spec.md`, `src/help.rs` (one table row and its examples), `tests/fixtures/help/all*.txt` (regenerated, leader decision 6837), `src/worktree_slot.rs` (new; the git calls must reach `identity::scrub_git_env`, which only the library sees), `src/lib.rs` (one `pub mod` line), `src/ops/worktree_slot.rs` (new), `tests/worktree_slot_cli.rs` (new), `docs/design-review/appendix/operations/worktree_slot.md` (new)
-- slice 2 write: `src/worktree_gc.rs`, `tests/worktree_gc*.rs`
+- slice 2 write: `src/worktree_gc.rs`, `src/ledger/reservation.rs` (one read-only query), `src/ops/worktree_gc_plan.rs` (`--max-worktrees`), `src/ops/worktree_gc_apply.rs` (the new `Pace` field), `tests/worktree_gc_slots.rs` (new), `docs/design-review/appendix/operations/worktree_gc_plan.md`
 - slice 3 write: the landing and verdict steps, a `reference-transaction` hook installer, the skill text
 - read-only: everything else
 
@@ -82,6 +82,10 @@ Readers: lanes and the leader, who create, reuse and clean worktrees, and the au
 - D-5: Caps are checked by the command that adds a slot. Entry gates in the launcher and a `PreToolUse` hook belong to slice 3.
 - D-6: Test seams (`--max-worktrees`, `--min-free-percent`) set lower limits for the refusal tests; the defaults are 25 and 15.
 - D-7: The help table row and its examples are in slice 1: the binary's `help_rules` tests require every command in the table with an `Examples:` section. The four `help --all` goldens (`tests/fixtures/help/all*.txt`) are reserved by another card; the leader decision 6837 on this card lets slice 1 regenerate them from the tree merged with the integration tip, and the diff is the one `worktree-slot` row.
+
+- D-8: Slice 2 follows option (b) of the leader decision 6854 on 6852 (category guarded, deletion scope): its rules only skip or report, and no path becomes removable that was not before. The Q8 preservation of every `.claude/worktrees/` path and its test `a_worktree_under_claude_worktrees_is_preserved` stay. Option (a) (this repository's own `.claude/worktrees/` under the normal safe criteria, slots trim-only) waits for the user's pick and becomes a slice of its own.
+- D-9: A claim is an active card reservation (`held`, `expired_candidate`, `held_for_review`) whose `worktree` names the path. A `held` reservation whose lease has ended still counts, because a lane's lease can end during a long run. A ledger that exists but cannot be read keeps every linked worktree (`claim_check_unavailable`); a project without a profile or a ledger has no claims.
+- D-10: REQ-9 needs no new code: a merged, clean worktree whose newest change is older than the existing 120-minute window is already a `remove` candidate, and 3 days is past it. The control test measures it with the clock three days ahead.
 
 ## Plan
 
@@ -107,3 +111,8 @@ Slice 1, measured 2026-11-23 on macOS (APFS).
 - Runs: red 6 run, 0 passed; green 7 run, 7 passed. `help_layout` and `git_env_scrub` pass with the new module (20 with the slot tests before the boundary test).
 - AC-5 and AC-6 belong to slices 2 and 3.
 - The first check affected (on cb078b1009) failed on the help table, the examples, the home isolation scan and the test identity list. The fixes are the help row with examples, TempHome in the tests and a listed test address. After one merge of the integration tip 6f4117db80, the four goldens gain only the `worktree-slot` row (4 files, 5 insertions).
+
+Slice 2, measured 2026-11-23 on macOS, under option (b) (D-8).
+- AC-5 met: `tests/worktree_gc_slots.rs`, 8 passed. The tests cover the control remove three days on, `nested_worktree`, `live_claim` and its end on release, `fixed_slot` only in the slot folder, an unreadable ledger giving `claim_check_unavailable`, and the `cap` block (oldest first, `needed`, `enough` at over equal to the candidates, outside the digest). `tests/worktree_gc.rs` still passes 14 of 14, the Q8 test included.
+- Red: 7 run, 2 passed (the two controls), 5 failed. Before this slice, a worktree that a held reservation named was a `remove` candidate.
+- Mutants, all killed: the nested check matching itself; the claim match inverted; claim_check_unavailable switched off; the age sort reversed; `needed` without the minimum; `enough` with `>`; a slot name matched outside the slot folder.
