@@ -292,20 +292,24 @@ fn the_cap_block_orders_removal_candidates_oldest_first_and_counts_what_is_neede
     let b = fx.worktree(&fx.wts.join("b"));
     let c = fx.worktree(&fx.wts.join("c"));
     // `b` is the oldest, `c` the newest: the cargo files carry the change times.
+    // The plan reads a change's age from the worktree folder, `target/`, the cargo folders and
+    // the worktree's git index, HEAD and HEAD log; each is set back by `days`.
     let old = |p: &Path, days: u64| {
+        let gitdir = PathBuf::from(git(p, &["rev-parse", "--absolute-git-dir"]));
+        let when = SystemTime::now() - std::time::Duration::from_secs(days * 86_400);
         for f in [
-            "target/debug/deps/lib.rlib",
-            "target/debug/.cargo-lock",
-            "target/CACHEDIR.TAG",
-            "a.txt",
-            ".git",
+            p.to_path_buf(),
+            p.join("target"),
+            p.join("target/debug"),
+            p.join("target/debug/deps"),
+            p.join("target/CACHEDIR.TAG"),
+            gitdir.join("index"),
+            gitdir.join("HEAD"),
+            gitdir.join("logs/HEAD"),
         ] {
-            fs::File::options()
-                .write(true)
-                .open(p.join(f))
-                .unwrap()
-                .set_modified(SystemTime::now() - std::time::Duration::from_secs(days * 86_400))
-                .unwrap();
+            if f.exists() {
+                fs::File::open(&f).unwrap().set_modified(when).unwrap();
+            }
         }
     };
     old(&b, 5);
@@ -323,6 +327,18 @@ fn the_cap_block_orders_removal_candidates_oldest_first_and_counts_what_is_neede
     );
     assert_eq!(cap["needed"], json!(2), "{cap}");
     assert_eq!(cap["enough"], json!(true), "{cap}");
+    // Exactly as many candidates as the count is over: still enough.
+    let zero = fx.plan(&["--max-worktrees", "0"]);
+    assert_eq!(
+        (
+            &zero["cap"]["over"],
+            &zero["cap"]["needed"],
+            &zero["cap"]["enough"]
+        ),
+        (&json!(3), &json!(3), &json!(true)),
+        "{}",
+        zero["cap"]
+    );
     // Under the cap: nothing is over and nothing is needed. The default cap is 25.
     let plan = fx.plan(&[]);
     assert_eq!(
@@ -354,4 +370,19 @@ fn the_cap_block_says_when_the_candidates_are_not_enough() {
     // The cap block is a report: the digest binds only the candidates.
     let again = fx.plan(&["--max-worktrees", "1"]);
     assert_eq!(plan["plan_digest"], again["plan_digest"]);
+}
+
+/// A ledger that exists but cannot be read rules no claim out: every linked worktree is kept.
+#[test]
+fn an_unreadable_ledger_keeps_every_linked_worktree() {
+    let fx = fixture();
+    let free = fx.worktree(&fx.wts.join("free"));
+    let file = ledger::ledger_path(fx.home.path(), "demo").unwrap();
+    fs::write(&file, b"not a ledger").unwrap();
+    let plan = fx.plan(&[]);
+    let e = entry(&plan, &free);
+    assert_eq!(e["action"], json!("skip"), "{e}");
+    assert_eq!(reasons(e), ["claim_check_unavailable"], "{e}");
+    // The primary is never a candidate, so it does not name the unreadable ledger.
+    assert!(!reasons(entry(&plan, Path::new("."))).contains(&"claim_check_unavailable".to_string()));
 }

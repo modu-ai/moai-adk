@@ -80,6 +80,15 @@ pub struct Facts {
     /// A real `node_modules` folder sits at the top (#3010 audit F1 on #3058): the worktree is
     /// never a `remove` candidate, whatever the file census says about what is inside.
     pub install_dir: bool,
+    /// Another linked worktree sits inside this one (SPEC-20261123-worktree-slots REQ-8):
+    /// removing it would take the nested checkout with it.
+    pub nested: bool,
+    /// An active card reservation names this worktree (REQ-8).
+    pub live_claim: bool,
+    /// The ledger exists but could not be read, so a claim cannot be ruled out.
+    pub claim_unknown: bool,
+    /// One of the fixed slots of `<primary>/.claude/worktrees/` (REQ-7): never removed.
+    pub fixed_slot: bool,
 }
 
 /// True when a change `age_secs` old falls inside the window.
@@ -97,6 +106,10 @@ pub fn decide(f: &Facts, window_secs: u64) -> (&'static str, Vec<&'static str>) 
         (f.locked, "locked"),
         (f.prunable, "prunable"),
         (f.budget_spent, "budget_spent"),
+        (f.fixed_slot, "fixed_slot"),
+        (f.nested, "nested_worktree"),
+        (f.live_claim, "live_claim"),
+        (f.claim_unknown, "claim_check_unavailable"),
     ] {
         if hit {
             reasons.push(why);
@@ -614,6 +627,9 @@ pub struct Pace {
     /// When not empty, only these worktrees are planned (#2879 D1: a lane cleans its own card
     /// worktrees and never another lane's). Each must be a worktree of this clone.
     pub only: Vec<PathBuf>,
+    /// The worktree cap the `cap` block reports against; `None` is
+    /// [`crate::worktree_slot::MAX_WORKTREES`].
+    pub max_worktrees: Option<usize>,
 }
 
 /// The home worktree folder and the Go generation's folder (#2811), each as written and as
@@ -761,6 +777,54 @@ fn lifecycle(
     })
 }
 
+/// The worktrees active card reservations name, resolved (SPEC-20261123-worktree-slots REQ-8).
+/// A project without a profile or without a ledger has none; a ledger that exists but cannot
+/// be read is `Err`, and every linked worktree is then kept as `claim_check_unavailable`.
+fn claimed_worktrees(top: &Path) -> std::result::Result<Vec<PathBuf>, ()> {
+    let Ok(id) = crate::ledger::command::project_id_of(top) else {
+        return Ok(Vec::new());
+    };
+    let home = crate::ledger::command::resolve_home(None).map_err(|_| ())?;
+    let file = crate::ledger::ledger_path(&home, &id).map_err(|_| ())?;
+    if !file.is_file() {
+        return Ok(Vec::new());
+    }
+    let read = crate::ledger::open_read_only(&home, &id).map_err(|_| ())?;
+    let rows = crate::ledger::reservation::active_worktrees(read.conn()).map_err(|_| ())?;
+    Ok(rows
+        .into_iter()
+        .map(|(_, w)| {
+            let p = PathBuf::from(w);
+            fs::canonicalize(&p).unwrap_or(p)
+        })
+        .collect())
+}
+
+/// The `cap` block (REQ-10): the linked worktree count against the cap, the `remove`
+/// candidates oldest change first, and how many of them bring the count back under the cap.
+/// A report only: it is not bound by the digest.
+fn cap_block(linked: usize, limit: usize, candidates: &[Value]) -> Value {
+    let mut removable: Vec<&Value> = candidates
+        .iter()
+        .filter(|c| c["action"] == "remove")
+        .collect();
+    removable.sort_by(|a, b| {
+        let age = |c: &Value| c["change_age_secs"].as_u64().unwrap_or(0);
+        age(b)
+            .cmp(&age(a))
+            .then_with(|| a["path"].as_str().cmp(&b["path"].as_str()))
+    });
+    let over = linked.saturating_sub(limit);
+    json!({
+        "limit": limit,
+        "count": linked,
+        "over": over,
+        "oldest_first": removable.iter().map(|c| c["path"].clone()).collect::<Vec<_>>(),
+        "needed": over.min(removable.len()),
+        "enough": removable.len() >= over,
+    })
+}
+
 /// Builds the plan. `now_unix` overrides the clock (tests); `None` uses the system time.
 /// Only an ancestor of the integration tip counts as merged here: `worktree.gc.apply`
 /// recomputes this plan, and a squash merge alone never makes it remove (#2724).
@@ -848,6 +912,12 @@ pub fn plan_paced(
     // #2811: the home work folders, as written and resolved, so a linked `~/.moai` still
     // names its worktrees. The Go generation's `worktrees/projects` is never touched (D8a).
     let (home_roots, go_roots) = work_roots();
+    let claims = claimed_worktrees(&top);
+    let slot_dir = primary.join(crate::worktree_slot::SLOT_DIR);
+    let entry_paths: Vec<PathBuf> = entries
+        .iter()
+        .map(|e| fs::canonicalize(&e.path).unwrap_or_else(|_| e.path.clone()))
+        .collect();
 
     let mut candidates = Vec::new();
     // #2879 D2: the primary first, then the linked worktrees starting after the cursor.
@@ -917,6 +987,21 @@ pub fn plan_paced(
             prunable: e.prunable,
             has_build_output: !cargo.is_empty(),
             install_dir: has_install_dir(&path),
+            nested: i != 0
+                && entry_paths
+                    .iter()
+                    .any(|q| q != &path && q.starts_with(&path)),
+            live_claim: i != 0
+                && claims
+                    .as_ref()
+                    .is_ok_and(|list| list.iter().any(|c| c == &path)),
+            claim_unknown: i != 0 && claims.is_err(),
+            fixed_slot: i != 0
+                && path.parent() == Some(slot_dir.as_path())
+                && path
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .is_some_and(crate::worktree_slot::is_slot),
             ..Default::default()
         };
         let mut merged_by: Option<&str> = None;
@@ -1014,6 +1099,13 @@ pub fn plan_paced(
         .collect();
     let plan_digest = crate::digest(serde_json::to_string(&bound).unwrap_or_default().as_bytes());
     let count = |a: &str| candidates.iter().filter(|c| c["action"] == a).count();
+    let linked = entries.iter().skip(1).filter(|e| !e.bare).count();
+    let cap = cap_block(
+        linked,
+        pace.max_worktrees
+            .unwrap_or(crate::worktree_slot::MAX_WORKTREES),
+        &candidates,
+    );
     let trim_total: u64 = candidates
         .iter()
         .filter_map(|c| c["trim_bytes"].as_u64())
@@ -1031,6 +1123,7 @@ pub fn plan_paced(
             "trim_bytes": trim_total,
         },
         "candidates": candidates,
+        "cap": cap,
         "remaining": remaining,
         "next_cursor": if remaining > 0 { json!(last_checked) } else { Value::Null },
         // #3010 P1: free bytes before any apply; a reclaimed figure is the later `df` minus
