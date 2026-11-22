@@ -20,12 +20,13 @@ struct Project {
     home: tempfile::TempDir,
 }
 
-/// A temporary project whose profile sits in the earlier project folder, read in place.
+/// A temporary project whose profile sits in the folder the resolver names for a new project.
 fn project() -> Project {
     let dir = tempfile::tempdir().unwrap();
     let root = fs::canonicalize(dir.path()).unwrap();
-    fs::create_dir_all(root.join(".moai-cli")).unwrap();
-    fs::write(root.join(".moai-cli/project.yaml"), PROFILE).unwrap();
+    let profile = moai_cli::state_root::path(&root, "project.yaml");
+    fs::create_dir_all(profile.parent().unwrap()).unwrap();
+    fs::write(profile, PROFILE).unwrap();
     Project {
         _dir: dir,
         root,
@@ -195,6 +196,83 @@ fn pick_an_unknown_field_under_lane_run_is_refused_on_read() {
     p.refused(&["show"]);
 }
 
+/// A hand-edited file is checked lane by lane: a lane name `session-register` would refuse, or a
+/// lane value that is no pick, makes the whole read refuse, on `show` and on `set`.
+#[test]
+fn pick_a_bad_lane_name_or_lane_value_in_the_file_is_refused_on_read() {
+    let p = project();
+    let mut v = p.profile();
+    for bad in [
+        json!({"default": "nonstop", "lanes": {"a b": "single"}}),
+        json!({"default": "nonstop", "lanes": {"../x": "single"}}),
+        json!({"lanes": {"agent-1": "always"}}),
+        json!({"lanes": {"agent-1": "single", "agent-2": "NONSTOP"}}),
+    ] {
+        v["lane_run"] = bad.clone();
+        fs::write(p.profile_path(), serde_json::to_vec_pretty(&v).unwrap()).unwrap();
+        assert!(moai_cli::profile::read_profile(&p.root).is_err(), "{bad}");
+        for args in [&["show"][..], &["set", "single", "--lane", "agent-1"][..]] {
+            let e = p.refused(args);
+            assert_eq!(
+                e["error"]["message"],
+                json!("invalid lane_run setting; no values were logged"),
+                "{bad} {args:?}: {e}"
+            );
+        }
+    }
+    // The same lanes, written well, read.
+    v["lane_run"] = json!({"default": "nonstop", "lanes": {"agent-1": "single"}});
+    fs::write(p.profile_path(), serde_json::to_vec_pretty(&v).unwrap()).unwrap();
+    assert_eq!(
+        p.ok(&["show", "--lane", "agent-1"])["saved"],
+        json!("single")
+    );
+}
+
+/// `lane_run` is an object or absent, by one rule on `show` and on `set`: `null` and any other
+/// non-object value are refused, never read as unset or as an empty setting.
+#[test]
+fn pick_a_null_or_non_object_lane_run_is_refused_on_show_and_on_set() {
+    let p = project();
+    let mut v = p.profile();
+    // The profile reader takes these as unset or empty; lane-run refuses them by its own rule.
+    // A string or a number already fails the reader. Either way show and set say the same.
+    for (bad, why) in [
+        (
+            json!(null),
+            "invalid lane_run setting; no values were logged",
+        ),
+        (json!([]), "invalid lane_run setting; no values were logged"),
+        (json!("nonstop"), "invalid profile"),
+        (json!(1), "invalid profile"),
+    ] {
+        v["lane_run"] = bad.clone();
+        fs::write(p.profile_path(), serde_json::to_vec_pretty(&v).unwrap()).unwrap();
+        for args in [
+            &["show"][..],
+            &["set", "nonstop"][..],
+            &["prompt", "--lane", "a"][..],
+        ] {
+            let e = p.refused(args);
+            assert_eq!(e["error"]["message"], json!(why), "{bad} {args:?}: {e}");
+        }
+    }
+}
+
+/// `set` writes through a temporary file, which is made 0600: the profile keeps its own mode.
+#[cfg(unix)]
+#[test]
+fn pick_set_keeps_the_profile_file_mode() {
+    use std::os::unix::fs::PermissionsExt;
+    let p = project();
+    for mode in [0o644, 0o600, 0o664] {
+        fs::set_permissions(p.profile_path(), fs::Permissions::from_mode(mode)).unwrap();
+        p.ok(&["set", "nonstop"]);
+        let now = fs::metadata(p.profile_path()).unwrap().permissions().mode() & 0o777;
+        assert_eq!(now, mode, "{mode:o} became {now:o}");
+    }
+}
+
 // ---- facts_ (AC-5: REQ-9)
 
 fn fact<'a>(shown: &'a Value, name: &str) -> &'a Value {
@@ -210,7 +288,7 @@ fn fact<'a>(shown: &'a Value, name: &str) -> &'a Value {
 fn facts_a_disabled_scheduler_makes_the_pick_single() {
     let p = project();
     p.ok(&["set", "nonstop"]);
-    for on in ["1", "true", "TRUE", "yes"] {
+    for on in ["1", "true", "TRUE", "yes", "on", "On", " 1 ", "true\n"] {
         let (code, v) = p.run_env(&["show"], &[("CLAUDE_CODE_DISABLE_CRON", on)]);
         assert_eq!(code, 0, "{v}");
         let shown = &v["result"];
@@ -223,7 +301,7 @@ fn facts_a_disabled_scheduler_makes_the_pick_single() {
             "{on}: {f}"
         );
     }
-    for off in ["0", "false", ""] {
+    for off in ["0", "false", "", "no", "off", "2", "enabled"] {
         let (_, v) = p.run_env(&["show"], &[("CLAUDE_CODE_DISABLE_CRON", off)]);
         assert_eq!(v["result"]["effective"], json!("nonstop"), "{off:?}: {v}");
     }
@@ -297,7 +375,7 @@ fn prompt_for_a_nonstop_lane_names_every_rule_and_nothing_else() {
         "current card",
         "READY",
         "moai card next",
-        "moai lane-run watch --lane agent-7",
+        "moai card show",
         "Monitor",
         "verdict",
         "LANE-BLOCKED",
@@ -312,6 +390,8 @@ fn prompt_for_a_nonstop_lane_names_every_rule_and_nothing_else() {
         !text.starts_with('/'),
         "a plain text, not a command: {text}"
     );
+    // Only commands that exist today: the watch command lands with a later slice.
+    assert!(!text.contains("lane-run watch"), "{text}");
     assert_clean(text, &p.root);
     // The same lane and pick give the same text.
     assert_eq!(
@@ -352,10 +432,22 @@ fn prompt_for_a_single_or_unset_lane_prints_no_loop() {
 fn prompt_refuses_a_lane_name_it_does_not_accept() {
     let p = project();
     p.ok(&["set", "nonstop"]);
-    for bad in ["", "a b", "../x", "x/y", "-a"] {
+    for bad in ["", "a b", "../x", "x/y", "a".repeat(65).as_str()] {
         let (code, v) = p.run(&["prompt", "--lane", bad]);
         assert_ne!(code, 0, "{bad:?}: {v}");
+        assert_eq!(v["error"]["kind"], json!("invalid_input"), "{bad:?}: {v}");
+        assert!(
+            v["error"]["message"]
+                .as_str()
+                .unwrap()
+                .starts_with("invalid lane name:"),
+            "{bad:?}: {v}"
+        );
     }
+    // A name that looks like an option never reaches the check: the parser refuses it.
+    let (code, v) = p.run(&["prompt", "--lane", "-a"]);
+    assert_ne!(code, 0, "{v}");
+    assert_eq!(v["error"]["kind"], json!("usage"), "{v}");
 }
 
 // ---- goal_ (AC-6: REQ-10)
@@ -382,14 +474,26 @@ fn goal_text_names_the_card_end_state_check_and_turns_within_the_limit() {
 #[test]
 fn goal_refuses_a_wrong_card_or_turn_limit() {
     let p = project();
-    for args in [
-        vec!["goal", "--card", "12"],
-        vec!["goal", "--card", "C-0"],
-        vec!["goal", "--card", "C-1234567"],
-        vec!["goal", "--card", "C-12", "--turns", "0"],
-        vec!["goal", "--card", "C-12", "--turns", "201"],
+    for (args, why) in [
+        (vec!["goal", "--card", "12"], "invalid card name"),
+        (vec!["goal", "--card", "C-0"], "invalid card name"),
+        (vec!["goal", "--card", "C-012"], "invalid card name"),
+        (vec!["goal", "--card", "C-1234567"], "invalid card name"),
+        (
+            vec!["goal", "--card", "C-12", "--turns", "0"],
+            "invalid turn limit",
+        ),
+        (
+            vec!["goal", "--card", "C-12", "--turns", "201"],
+            "invalid turn limit",
+        ),
     ] {
         let (code, v) = p.run(&args);
         assert_ne!(code, 0, "{args:?}: {v}");
+        assert_eq!(v["error"]["kind"], json!("invalid_input"), "{args:?}: {v}");
+        assert!(
+            v["error"]["message"].as_str().unwrap().starts_with(why),
+            "{args:?}: {v}"
+        );
     }
 }

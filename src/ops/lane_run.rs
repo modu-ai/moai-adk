@@ -128,9 +128,22 @@ fn truthy(v: &str) -> bool {
     )
 }
 
+/// The one rule for the key's shape, on `show` and on `set`: `lane_run` is an object or absent.
+/// The profile reader takes `null` as unset and `[]` as an empty setting; `lane-run` refuses
+/// both, as it refuses any other non-object value, before it reads or writes the key.
+fn lane_run_shape(bytes: &[u8]) -> Result<(), String> {
+    let map: serde_json::Map<String, Value> =
+        serde_json::from_slice(bytes).map_err(|_| "profile is not a JSON object".to_string())?;
+    match map.get("lane_run") {
+        Some(v) if !v.is_object() => Err("invalid lane_run setting; no values were logged".into()),
+        _ => Ok(()),
+    }
+}
+
 impl State {
     fn read(root: &Path, lane: Option<&str>) -> Result<State, String> {
-        let (profile, _) = read_profile(root)?;
+        let (profile, bytes) = read_profile(root)?;
+        lane_run_shape(&bytes)?;
         let settings = profile.lane_run.unwrap_or_default();
         let (saved, source) = match lane.and_then(|l| settings.lanes.get(l)) {
             Some(v) => (pick_name(v), "lane"),
@@ -175,6 +188,7 @@ fn set(root: &Path, value: &str, lane: Option<&str>) -> Result<Value, String> {
     }
     // The profile must read before it is changed; its raw bytes keep every other key in order.
     let (_, bytes) = read_profile(root)?;
+    lane_run_shape(&bytes)?;
     let path = root.join(read_rel(root));
     let meta = std::fs::symlink_metadata(&path).map_err(|e| format!("profile: {e}"))?;
     if !meta.file_type().is_file() {
@@ -200,6 +214,11 @@ fn set(root: &Path, value: &str, lane: Option<&str>) -> Result<Value, String> {
     out.push(b'\n');
     let dir = path.parent().ok_or("profile has no folder")?;
     let mut tmp = tempfile::NamedTempFile::new_in(dir).map_err(|e| format!("profile: {e}"))?;
+    // The temporary file is made 0600; the profile keeps the mode it had, as `apply` keeps it.
+    #[cfg(unix)]
+    tmp.as_file()
+        .set_permissions(meta.permissions())
+        .map_err(|e| format!("profile: {e}"))?;
     tmp.write_all(&out)
         .and_then(|_| tmp.as_file().sync_all())
         .map_err(|e| format!("profile: {e}"))?;
@@ -222,9 +241,9 @@ fn prompt(lane: &str) -> String {
          1. Keep the current card: if a card is in progress, continue it first.\n\
          2. After you post a READY note, run `moai card next` and take the card it names; read \
          its body and notes whole, then write the SPEC and the tests first.\n\
-         3. While you wait for an audit verdict or an answer, keep a Monitor running `moai \
-         lane-run watch --lane {lane} --card <each card you hold>` and work the next card \
-         meanwhile; start the watch again when it ends.\n\
+         3. While you wait for an audit verdict or an answer, keep a Monitor that reads `moai \
+         card show` of each card you hold for new notes, and work the next card meanwhile; \
+         start the watch again when it ends.\n\
          4. A verdict or a repair request comes first: handle it before anything else.\n\
          5. A decision you need goes into a LANE-BLOCKED kind=decision note on its card; do not \
          ask the user from the loop.\n\
