@@ -22,7 +22,7 @@ use std::{
 use tempfile::TempDir;
 
 const EXE: &str = crate::common::MOAI_BIN;
-const HOSTS: [&str; 2] = ["claude", "codex"];
+const HOSTS: [&str; 1] = ["claude"];
 
 fn skill_md(body: &str) -> String {
     format!("---\nname: moai\ndescription: fixture package\n---\n# MoAI\n{body}\n")
@@ -208,10 +208,7 @@ fn update_previews_then_applies_on_confirmation_then_is_unchanged() {
         let o = host(&r["result"]["hosts"], h);
         assert_eq!(o["status"], json!("applied"), "{r}");
         assert_eq!(o["receipt_status"], json!("committed"), "{r}");
-        let skill = f.home.join(match h {
-            "claude" => ".claude/skills/moai/SKILL.md",
-            _ => ".agents/skills/moai/SKILL.md",
-        });
+        let skill = f.home.join(".claude/skills/moai/SKILL.md");
         assert_eq!(fs::read_to_string(skill).unwrap(), skill_md("body v1"));
     }
     let again = preview(&a, &f.home);
@@ -428,7 +425,10 @@ fn in_a_terminal_an_applied_update_asks_the_model_stage_and_saves_after_a_yes() 
     let again = run_in_terminal_unanswered(&a, &f.home);
     assert!(again.contains("Everything is up to date"), "{again}");
     assert!(!again.contains("[y/N]"), "{again}");
-    assert!(flat_of(&again).contains("$moai update"), "{again}");
+    assert!(
+        !flat_of(&again).contains("$moai"),
+        "no Codex command: {again}"
+    );
 }
 
 // A scripted run (`--confirm`) asks nothing, also on a terminal: the model stage is for the
@@ -652,14 +652,12 @@ fn a_linked_package_folder_is_refused() {
 
 // ---- #2540: report what was actually applied; ask only when something would be written ----
 
-/// A `skills/moai` folder this tool did not install, in both hosts' projection roots, so
+/// A `skills/moai` folder this tool did not install, in the Claude projection root, so
 /// every host of the plan is `blocked`.
-fn foreign_skill_in_both_hosts(home: &Path) {
-    for root in [".claude/skills/moai", ".agents/skills/moai"] {
-        let dir = home.join(root);
-        fs::create_dir_all(&dir).unwrap();
-        fs::write(dir.join("SKILL.md"), skill_md("someone else's skill")).unwrap();
-    }
+fn foreign_skill_in_the_host(home: &Path) {
+    let dir = home.join(".claude/skills/moai");
+    fs::create_dir_all(&dir).unwrap();
+    fs::write(dir.join("SKILL.md"), skill_md("someone else's skill")).unwrap();
 }
 
 // #2540 AC-1: a confirmed plan whose hosts are all blocked writes nothing and is not
@@ -668,7 +666,7 @@ fn foreign_skill_in_both_hosts(home: &Path) {
 fn a_confirmed_plan_with_every_host_blocked_is_not_reported_as_applied() {
     let f = fx();
     let a = install_version(&f.home, "a", &v1());
-    foreign_skill_in_both_hosts(&f.home);
+    foreign_skill_in_the_host(&f.home);
     let p = preview(&a, &f.home);
     for h in HOSTS {
         assert_eq!(
@@ -703,7 +701,7 @@ fn a_confirmed_plan_with_nothing_to_write_is_not_reported_as_applied() {
 fn a_preview_with_nothing_to_write_says_so() {
     let f = fx();
     let a = install_version(&f.home, "a", &v1());
-    foreign_skill_in_both_hosts(&f.home);
+    foreign_skill_in_the_host(&f.home);
     let p = preview(&a, &f.home);
     assert_eq!(p["nothing_to_apply"], json!(true), "{p}");
     let g = fx();
@@ -768,14 +766,6 @@ fn a_preview_with_only_a_conflict_has_nothing_to_apply() {
             .any(|(_, a)| a == "create" || a == "update"),
         "{p}"
     );
-    // codex has no user edit, so it would update; only claude is conflict-only.
-    assert_eq!(p["nothing_to_apply"], json!(false), "{p}");
-    fs::write(
-        f.home.join(".agents/skills/moai/workflows/update.md"),
-        "# UPDATE\nmy own notes too\n",
-    )
-    .unwrap();
-    let p = preview(&a, &f.home);
     assert_eq!(p["nothing_to_apply"], json!(true), "{p}");
 }
 
@@ -804,7 +794,7 @@ fn with_a_saved_model_setting(home: &Path) {
 fn in_a_terminal_nothing_to_write_asks_nothing() {
     let f = fx();
     let a = install_version(&f.home, "a", &v1());
-    foreign_skill_in_both_hosts(&f.home);
+    foreign_skill_in_the_host(&f.home);
     with_a_saved_model_setting(&f.home);
     let before = state(&f.home);
     let text = run_in_terminal_unanswered(&a, &f.home);

@@ -125,11 +125,16 @@ fn action(plan: &Value, host: &str, file: &str) -> String {
 fn install_then_rerun_is_unchanged() {
     let fx = fx();
     let plan = fx.plan();
-    for host in ["claude", "codex", "omp"] {
-        let acts = actions(&plan, host);
-        assert_eq!(acts.len(), 5, "{host}: {acts:?}");
-        assert!(acts.iter().all(|(_, a)| a == "create"), "{acts:?}");
-    }
+    let planned: Vec<&str> = plan["hosts"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|h| h["host"].as_str().unwrap())
+        .collect();
+    assert_eq!(planned, ["claude"], "{plan}");
+    let acts = actions(&plan, "claude");
+    assert_eq!(acts.len(), 5, "{acts:?}");
+    assert!(acts.iter().all(|(_, a)| a == "create"), "{acts:?}");
     // #2721: the plan names the source folder's digest beside the skill package's.
     assert!(
         plan["agents_digest"]
@@ -140,25 +145,16 @@ fn install_then_rerun_is_unchanged() {
     assert_ne!(plan["agents_digest"], plan["package_digest"]);
     let v = fx.apply(&plan);
     assert_eq!(v["result"]["state"], "applied", "{v}");
-    assert_eq!(v["result"]["written"].as_array().unwrap().len(), 15);
-    // #2633: OMP reads its agents from ~/.omp/agent/agents/, with an explicit tool list.
-    let omp_audit = fs::read_to_string(fx.agent(".omp/agent", "moai-audit.md")).unwrap();
-    assert!(
-        omp_audit.starts_with("---\nname: moai-audit\n"),
-        "{omp_audit}"
-    );
-    assert!(omp_audit.contains("\ntools: read, grep, glob, find, bash, web_search\n"));
+    assert_eq!(v["result"]["written"].as_array().unwrap().len(), 5);
     let impl_md = fs::read_to_string(fx.agent(".claude", "moai-impl.md")).unwrap();
     assert!(impl_md.starts_with("---\nname: moai-impl\n"), "{impl_md}");
-    let audit_toml = fs::read_to_string(fx.agent(".codex", "moai-audit.toml")).unwrap();
-    assert!(
-        audit_toml.starts_with("name = \"moai-audit\"\n"),
-        "{audit_toml}"
-    );
+    // The Codex and OMP agent folders are never made.
+    assert!(!Path::new(&fx.home).join(".codex").exists());
+    assert!(!Path::new(&fx.home).join(".omp").exists());
     let again = fx.plan();
-    for host in ["claude", "codex", "omp"] {
-        assert!(actions(&again, host).iter().all(|(_, a)| a == "unchanged"));
-    }
+    assert!(actions(&again, "claude")
+        .iter()
+        .all(|(_, a)| a == "unchanged"));
     let v = fx.apply(&again);
     assert_eq!(v["result"]["state"], "unchanged", "{v}");
 }
@@ -216,10 +212,10 @@ fn a_foreign_file_is_never_overwritten_and_others_are_ignored() {
     );
 }
 
-/// A symlinked agent folder blocks that host; the other host still installs.
+/// A symlinked agent folder blocks the host: nothing is written through the link.
 #[cfg(unix)]
 #[test]
-fn a_symlinked_agent_folder_blocks_only_that_host() {
+fn a_symlinked_agent_folder_blocks_the_host() {
     let fx = fx();
     let outside = Path::new(&fx.home).parent().unwrap().join("outside");
     fs::create_dir_all(&outside).unwrap();
@@ -234,45 +230,36 @@ fn a_symlinked_agent_folder_blocks_only_that_host() {
         .unwrap();
     assert_eq!(claude["preflight"], "blocked", "{plan}");
     let v = fx.apply(&plan);
-    assert_eq!(v["result"]["written"].as_array().unwrap().len(), 10, "{v}");
+    assert_eq!(v["result"]["written"].as_array().unwrap().len(), 0, "{v}");
     assert!(
         fs::read_dir(&outside).unwrap().next().is_none(),
         "wrote through the link"
     );
-    assert!(fx.agent(".codex", "moai-impl.toml").is_file());
+    assert!(!Path::new(&fx.home).join(".codex").exists());
 }
 
-/// #2633: OMP's agent folder is two levels below `~/.omp`; a link at either level above it
-/// blocks OMP alone and nothing is written through the link.
+/// A link at the host folder itself blocks the host too, and nothing goes through it.
 #[cfg(unix)]
 #[test]
-fn a_symlink_anywhere_above_the_omp_agent_folder_blocks_only_omp() {
-    for linked in [".omp", ".omp/agent"] {
-        let fx = fx();
-        let outside = Path::new(&fx.home).parent().unwrap().join("outside");
-        fs::create_dir_all(&outside).unwrap();
-        let link = Path::new(&fx.home).join(linked);
-        fs::create_dir_all(link.parent().unwrap()).unwrap();
-        std::os::unix::fs::symlink(&outside, &link).unwrap();
-        let plan = fx.plan();
-        let omp = plan["hosts"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .find(|h| h["host"] == "omp")
-            .unwrap();
-        assert_eq!(omp["preflight"], "blocked", "{linked}: {plan}");
-        let v = fx.apply(&plan);
-        assert_eq!(
-            v["result"]["written"].as_array().unwrap().len(),
-            10,
-            "{linked}: {v}"
-        );
-        assert!(
-            fs::read_dir(&outside).unwrap().next().is_none(),
-            "{linked}: wrote through the link"
-        );
-    }
+fn a_symlinked_host_folder_blocks_the_host() {
+    let fx = fx();
+    let outside = Path::new(&fx.home).parent().unwrap().join("outside");
+    fs::create_dir_all(&outside).unwrap();
+    std::os::unix::fs::symlink(&outside, Path::new(&fx.home).join(".claude")).unwrap();
+    let plan = fx.plan();
+    let claude = plan["hosts"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|h| h["host"] == "claude")
+        .unwrap();
+    assert_eq!(claude["preflight"], "blocked", "{plan}");
+    let v = fx.apply(&plan);
+    assert_eq!(v["result"]["written"].as_array().unwrap().len(), 0, "{v}");
+    assert!(
+        fs::read_dir(&outside).unwrap().next().is_none(),
+        "wrote through the link"
+    );
 }
 
 /// Revert removes created files that are unchanged, skips the ones the user changed, and
@@ -289,12 +276,11 @@ fn revert_undoes_only_unchanged_files_and_stale_plans_are_refused() {
     .unwrap();
     let stale = fx.apply(&plan);
     assert_eq!(stale["ok"], Value::Bool(false), "{stale}");
-    assert!(!fx.agent(".codex", "moai-docs.toml").exists());
     fs::remove_file(fx.agent(".claude", "moai-docs.md")).unwrap();
 
     let v = fx.apply(&fx.plan());
     let id = v["result"]["receipt"].as_str().unwrap().to_string();
-    fs::write(fx.agent(".codex", "moai-plan.toml"), "edited after apply\n").unwrap();
+    fs::write(fx.agent(".claude", "moai-plan.md"), "edited after apply\n").unwrap();
     let r = call(&[
         "agents-home-revert",
         &fx.home,
@@ -304,12 +290,11 @@ fn revert_undoes_only_unchanged_files_and_stale_plans_are_refused() {
         PERMISSION,
     ]);
     assert_eq!(r["result"]["state"], "reverted", "{r}");
-    assert_eq!(r["result"]["reverted"].as_array().unwrap().len(), 14);
-    assert_eq!(r["result"]["skipped"][0]["file"], "moai-plan.toml");
+    assert_eq!(r["result"]["reverted"].as_array().unwrap().len(), 4);
+    assert_eq!(r["result"]["skipped"][0]["file"], "moai-plan.md");
     assert!(!fx.agent(".claude", "moai-impl.md").exists());
-    assert!(!fx.agent(".omp/agent", "moai-impl.md").exists());
     assert_eq!(
-        fs::read_to_string(fx.agent(".codex", "moai-plan.toml")).unwrap(),
+        fs::read_to_string(fx.agent(".claude", "moai-plan.md")).unwrap(),
         "edited after apply\n"
     );
     let again = call(&[
@@ -366,6 +351,6 @@ fn revert_never_writes_through_a_folder_that_became_a_link() {
             "{role} removed outside HOME"
         );
     }
-    // The other host was not linked and is reverted as usual.
-    assert!(!fx.agent(".codex", "moai-impl.toml").exists());
+    // No other host's folder was made.
+    assert!(!Path::new(&fx.home).join(".codex").exists());
 }

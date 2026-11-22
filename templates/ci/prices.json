@@ -1,0 +1,10 @@
+{
+  "read_on": "2026-11-22",
+  "source": "GitHub Docs: billing for GitHub Actions and the standard runner price table (docs.github.com), read 2026-11-22T00:53Z",
+  "note": "Prices are US dollars per minute in thousandths (mills). GitHub says prices and the included amount can change; the date above is when this table was read.",
+  "per_minute_mills": {
+    "linux": 6,
+    "windows": 10,
+    "macos": 62
+  }
+}

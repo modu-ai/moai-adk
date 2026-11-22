@@ -27,7 +27,7 @@ use std::{
 use tempfile::TempDir;
 
 const EXE: &str = crate::common::MOAI_BIN;
-const HOSTS: [&str; 2] = ["claude", "codex"];
+const HOSTS: [&str; 1] = ["claude"];
 const NOW: &str = "2026-11-14T10:00:00Z";
 
 struct Fixture {

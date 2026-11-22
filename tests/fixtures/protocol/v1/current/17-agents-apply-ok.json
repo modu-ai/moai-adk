@@ -21,13 +21,13 @@
     "target_binding": "<masked>",
     "files": [
       {
-        "path": "AGENTS.md",
+        "path": "CLAUDE.md",
         "action": "create",
         "tracked_by_default": true,
         "expected_sha256": null,
         "section_id": "moai-workflow",
         "baseline_sha256": null,
-        "rendered_sha256": "sha256:b4d025dccf10ef233d8fc860e93949dc06df6dd243203732d257480a50906e10",
+        "rendered_sha256": "sha256:0159a4e29c28601d5136bfe40115f4846875f63a35151425cb23a8713800e83d",
         "detail": null
       },
       {
@@ -64,12 +64,12 @@
       "state": "applied",
       "receipt": "<masked>",
       "applied": [
-        "AGENTS.md",
+        "CLAUDE.md",
         ".gitignore",
         ".moai/manifests/generation.json"
       ],
       "files_created": true,
-      "manifest_sha256": "sha256:67d0ba06e06eaa1511cf9504a0d93b6280ae6dd57a30e61e5a7576b35db7906e",
+      "manifest_sha256": "sha256:65dc861d4d27acc7e1cdf19e9f06c22a1dc82a83ecd1922e7531a861cd913da6",
       "host_loaded": false,
       "execution_verified": false,
       "host_notes": []

@@ -2,7 +2,7 @@
 //! 6810797000 and 6810818827, 2026-11-12).
 //!
 //! A launch in a folder that is not a git repository runs `git init` there without asking,
-//! then creates the MoAI project settings and `AGENTS.md` through the existing code paths —
+//! then creates the MoAI project settings and `CLAUDE.md` through the existing code paths —
 //! `profile::plan`/`apply` (`project-plan`/`project-apply`) and
 //! `generation::generation_plan`/`generation_apply` (`generation-plan`/`generation-apply`,
 //! the ordinary-project order of #2274). Nothing new is generated here: this module only
@@ -24,17 +24,17 @@ pub const INIT_LINE: &str = "moai: initialized";
 /// Recorded in the apply receipts as the reason for the writes: the user chose that a first
 /// launch sets the project up itself.
 const PERMISSION: &str = "launcher-auto-init: the user chose first-launch setup";
-/// The generated workflow id; AGENTS.md points at `.moai-cli/workflows/moai/`.
+/// The generated workflow id; CLAUDE.md points at `.moai-cli/workflows/moai/`.
 const WORKFLOW_ID: &str = "moai";
 /// Test-only: milliseconds a first launch holds `.init-lock` between writing the settings and
-/// generating `AGENTS.md` (at most 3000), so a test can show a concurrent launch waits.
+/// generating `CLAUDE.md` (at most 3000), so a test can show a concurrent launch waits.
 pub const INIT_TEST_HOLD_VAR: &str = "MOAI_CLI_TEST_INIT_HOLD_MS";
 /// Test-only: when set, a first launch stops with an error right after writing the settings,
 /// the interrupted state that the next launch must finish (Issue #2504).
 pub const INIT_TEST_FAIL_VAR: &str = "MOAI_CLI_TEST_INIT_FAIL_AFTER_PROFILE";
 /// Marker of a first-launch initialization that has started and not finished, in the clone's
 /// common dir beside `.init-lock` (never listed by git). Written before the settings, removed
-/// after the AGENTS.md step (Issue #2504).
+/// after the CLAUDE.md step (Issue #2504).
 const PENDING: &str = ".init-pending";
 
 /// What [`prepare`] did or, under `--dry-run`, would do.
@@ -120,7 +120,7 @@ fn prepare_project(cwd: &Path, host: &str, dry_run: bool) -> Result<Prepared, St
             if dry_run {
                 return Ok(Prepared {
                     note: Some(format!(
-                        "would initialize {}: git init, {}/project.yaml, AGENTS.md (--dry-run writes nothing)",
+                        "would initialize {}: git init, {}/project.yaml, CLAUDE.md (--dry-run writes nothing)",
                         dir.display(),
                         // The path a first launch creates (#2696 C2b), not the one read now.
                         crate::state_root::create_dir(&dir)
@@ -148,14 +148,14 @@ fn prepare_project(cwd: &Path, host: &str, dry_run: bool) -> Result<Prepared, St
                 let Some(common) = id["clone_anchor"].as_str().map(PathBuf::from) else {
                     return Ok(Prepared::default());
                 };
-                // A first launch that stopped between the settings and AGENTS.md left its
+                // A first launch that stopped between the settings and CLAUDE.md left its
                 // `.init-pending` marker (Issue #2504): finish it. Settings without the marker
                 // are the user's own (or a finished launch's) and stay exactly as they are.
                 if exists(&init_lock_dir(&common).join(PENDING)) {
                     if dry_run {
                         return Ok(Prepared {
                             note: Some(format!(
-                                "would finish the interrupted initialization of {}: AGENTS.md (--dry-run writes nothing)",
+                                "would finish the interrupted initialization of {}: CLAUDE.md (--dry-run writes nothing)",
                                 top.display()
                             )),
                             git_pending: false,
@@ -168,7 +168,7 @@ fn prepare_project(cwd: &Path, host: &str, dry_run: bool) -> Result<Prepared, St
                         git_pending: false,
                     });
                 }
-                // A first launch that is still generating AGENTS.md holds `.init-lock` (created
+                // A first launch that is still generating CLAUDE.md holds `.init-lock` (created
                 // before the settings file): wait for it, so this host does not start before the
                 // initialization it found has finished. No lock file, no wait and no write.
                 wait_for_initializer(&init_lock_dir(&common).join(".init-lock"));
@@ -184,10 +184,10 @@ fn prepare_project(cwd: &Path, host: &str, dry_run: bool) -> Result<Prepared, St
                 });
             }
             if dry_run {
-                let agents = if exists(&top.join("AGENTS.md")) {
+                let agents = if instruction_file(&top).is_some() {
                     ""
                 } else {
-                    ", AGENTS.md"
+                    ", CLAUDE.md"
                 };
                 return Ok(Prepared {
                     note: Some(format!(
@@ -330,8 +330,8 @@ fn owned_regular_file(is_file: bool, owner: u32, home_owner: Option<u32>) -> boo
     is_file && home_owner == Some(owner)
 }
 
-/// Creates the project settings and, when `AGENTS.md` is absent, the generated workflow and
-/// `AGENTS.md` in work tree `top`, under a lock in the clone's common dir so concurrent first
+/// Creates the project settings and, when no instruction file exists, the generated workflow and
+/// `CLAUDE.md` in work tree `top`, under a lock in the clone's common dir so concurrent first
 /// launches initialize once. Returns what it created.
 fn settings(top: &Path, anchor: &Path, host: &str) -> Result<Vec<String>, String> {
     let lock_dir = crate::session::agent_seq_dir(top)?;
@@ -379,16 +379,18 @@ fn settings(top: &Path, anchor: &Path, host: &str) -> Result<Vec<String>, String
         if std::env::var_os(INIT_TEST_FAIL_VAR).is_some() {
             return Err("moai: initialization stopped after the settings (test)".into());
         }
-        if exists(&top.join("AGENTS.md")) {
-            done.push("AGENTS.md present, unchanged".into());
+        if let Some(name) = instruction_file(top) {
+            done.push(format!("{name} present, unchanged"));
         } else {
             done.extend(agents(top)?);
         }
         let _ = fs::remove_file(&pending);
     } else if exists(&pending) {
-        // Resume an interrupted first launch (Issue #2504): only the AGENTS.md step is left.
-        if exists(&top.join("AGENTS.md")) {
-            done.push("AGENTS.md present, unchanged (interrupted initialization finished)".into());
+        // Resume an interrupted first launch (Issue #2504): only the CLAUDE.md step is left.
+        if let Some(name) = instruction_file(top) {
+            done.push(format!(
+                "{name} present, unchanged (interrupted initialization finished)"
+            ));
         } else {
             done.extend(
                 agents(top)?
@@ -400,6 +402,14 @@ fn settings(top: &Path, anchor: &Path, host: &str) -> Result<Vec<String>, String
     }
     drop(lock);
     Ok(done)
+}
+
+/// The instruction file a project already holds: a first launch leaves it as it is (the user's
+/// `CLAUDE.md` gets no managed block, and an `AGENTS.md` needs the pick of `moai update`).
+fn instruction_file(top: &Path) -> Option<&'static str> {
+    ["CLAUDE.md", "AGENTS.md"]
+        .into_iter()
+        .find(|name| exists(&top.join(name)))
 }
 
 /// `generation-plan`/`generation-apply` with the workflow under `.moai-cli/workflows/moai/`.
@@ -420,12 +430,12 @@ fn agents(top: &Path) -> Result<Vec<String>, String> {
     let plan = generation_plan(top, request)?;
     if plan.files.iter().any(|f| f.action == "conflict") {
         return Ok(vec![
-            "AGENTS.md not generated (a generated path is already in use)".into(),
+            "CLAUDE.md not generated (a generated path is already in use)".into(),
         ]);
     }
     let digest = plan.plan_digest.clone();
     generation_apply(top, plan, &digest, PERMISSION)?;
-    Ok(vec!["AGENTS.md".into()])
+    Ok(vec!["CLAUDE.md".into()])
 }
 
 /// The primary folder name exactly as `key_vault::project_scope` derives it from the clone

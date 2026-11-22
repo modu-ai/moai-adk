@@ -23,7 +23,7 @@ use std::{
 use tempfile::TempDir;
 
 const EXE: &str = crate::common::MOAI_BIN;
-const HOSTS: [&str; 2] = ["claude", "codex"];
+const HOSTS: [&str; 1] = ["claude"];
 
 struct Fixture {
     _tmp: TempDir,
@@ -433,7 +433,22 @@ fn a_receipt_naming_another_installation_or_host_lends_nothing() {
     edit_receipt(&f.home, &a_id, "claude", |v| {
         v["install_id"] = json!("0".repeat(64))
     });
-    edit_receipt(&f.home, &a_id, "codex", |v| v["host"] = json!("claude"));
+    let b = version_exe(&f.home, "b");
+    let p = plan(&b, &f.home, &f.v2);
+    for h in HOSTS {
+        assert_blocked_with(&p, h, "names another installation or host");
+    }
+}
+
+// The same for a receipt that names another host: the file of a host that moai no longer
+// installs, copied over the Claude receipt, lends nothing either.
+#[test]
+fn a_receipt_naming_another_host_lends_nothing() {
+    let f = fixture();
+    let a = version_exe(&f.home, "a");
+    install(&a, &f.home, &f.v1);
+    let [a_id]: [String; 1] = receipt_dirs(&f.home).try_into().unwrap();
+    edit_receipt(&f.home, &a_id, "claude", |v| v["host"] = json!("codex"));
     let b = version_exe(&f.home, "b");
     let p = plan(&b, &f.home, &f.v2);
     for h in HOSTS {

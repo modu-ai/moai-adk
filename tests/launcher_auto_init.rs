@@ -1,6 +1,6 @@
 //! #2481 (user decisions 6810797000 and 6810818827, 2026-11-12): the first `cc|glm|omp`
 //! launch in a folder that is not a git repository initializes it without asking — `git init`,
-//! then the MoAI project settings (`.moai/project.yaml` with its marker, #2696 C2b) and `AGENTS.md` through the
+//! then the MoAI project settings (`.moai/project.yaml` with its marker, #2696 C2b) and `CLAUDE.md` through the
 //! existing `project-apply` and `generation-apply` code — and says so on one stderr line. Files
 //! that already exist are never touched. HOME itself and the file-system root are never
 //! initialized (guidance, exit 1). Without git on PATH the launcher prints the install guidance
@@ -206,7 +206,7 @@ fn the_first_launch_outside_git_initializes_the_folder_on_every_host() {
         assert_eq!(p["schema_version"], 2, "{host}");
         assert_eq!(p["project_id"], "my-project", "{host}");
         assert_eq!(p["hosts"], serde_json::json!([profile_host]), "{host}");
-        let agents = fs::read_to_string(dir.join("AGENTS.md")).unwrap();
+        let agents = fs::read_to_string(dir.join("CLAUDE.md")).unwrap();
         assert!(
             agents.contains("<!-- moai:managed:begin id=moai-workflow -->"),
             "{host}: {agents}"
@@ -215,13 +215,14 @@ fn the_first_launch_outside_git_initializes_the_folder_on_every_host() {
 
         // The second launch does not initialize again and keeps every file byte for byte.
         let yaml = fs::read(dir.join(".moai/project.yaml")).unwrap();
-        let agents = fs::read(dir.join("AGENTS.md")).unwrap();
+        let agents = fs::read(dir.join("CLAUDE.md")).unwrap();
+        assert!(!dir.join("AGENTS.md").exists(), "{host}");
         let out = run_in(&f, &dir, &[host, "-a"]);
         // The first session has ended, so no `agent-*` is alive: the number starts over (#2971).
         assert_eq!(json(&out)["name"], "agent-1", "{host}");
         assert_eq!(init_lines(&out), 0, "{host}: {}", text(&out));
         assert_eq!(fs::read(dir.join(".moai/project.yaml")).unwrap(), yaml);
-        assert_eq!(fs::read(dir.join("AGENTS.md")).unwrap(), agents);
+        assert_eq!(fs::read(dir.join("CLAUDE.md")).unwrap(), agents);
     }
 }
 
@@ -252,6 +253,52 @@ fn a_repository_without_settings_gets_the_settings_only_and_keeps_its_agents_md(
     assert_eq!(init_lines(&out), 1, "{}", text(&out));
     assert!(p.path().join(".moai/project.yaml").is_file());
     assert_eq!(fs::read(p.path().join("AGENTS.md")).unwrap(), b"mine\n");
+    // The user's AGENTS.md needs a pick (move, import or leave) before moai writes a CLAUDE.md.
+    assert!(!p.path().join("CLAUDE.md").exists());
+}
+
+/// A first launch leaves the instruction file a project already holds as it is and says so: a
+/// user `CLAUDE.md` gets no managed block, and a project that only holds `AGENTS.md` gets no
+/// `CLAUDE.md` (the pick of `moai update` writes one).
+#[test]
+fn a_first_launch_leaves_an_existing_instruction_file_byte_identical_and_says_so() {
+    let cases = [
+        ("CLAUDE.md", "# My rules\n\nAlways run the linter.\n", None),
+        (
+            "AGENTS.md",
+            "# Team rules\n\nRun tests first.\n",
+            Some("CLAUDE.md"),
+        ),
+    ];
+    for (name, body, absent) in cases {
+        let f = fixture();
+        let p = tempfile::tempdir().unwrap();
+        git_init(p.path());
+        fs::write(p.path().join(name), body).unwrap();
+        let out = run_in(&f, p.path(), &["cc", "-a"]);
+        assert_eq!(json(&out)["name"], "agent-1", "{name}");
+        assert_eq!(init_lines(&out), 1, "{name}: {}", text(&out));
+        let said = format!("{name} present, unchanged");
+        assert!(
+            String::from_utf8_lossy(&out.stderr).contains(&said),
+            "{name}: {}",
+            text(&out)
+        );
+        assert_eq!(
+            fs::read(p.path().join(name)).unwrap(),
+            body.as_bytes(),
+            "{name} changed"
+        );
+        if let Some(other) = absent {
+            assert!(
+                !p.path().join(other).exists(),
+                "{name}: {other} was written"
+            );
+        }
+        // The settings are the only thing the first launch wrote.
+        assert!(p.path().join(".moai/project.yaml").is_file(), "{name}");
+        assert!(!p.path().join(".moai/workflows").exists(), "{name}");
+    }
 }
 
 #[test]
@@ -361,7 +408,7 @@ fn dry_run_creates_nothing_and_reports_what_it_would_initialize() {
     let v = json(&out);
     assert_eq!(v["name"], "agent-1");
     let notes = v["notes"].to_string();
-    for item in ["git init", ".moai/project.yaml", "AGENTS.md"] {
+    for item in ["git init", ".moai/project.yaml", "CLAUDE.md"] {
         assert!(notes.contains(item), "{item}: {notes}");
     }
     assert_eq!(init_lines(&out), 0, "{}", text(&out));
@@ -406,13 +453,13 @@ fn concurrent_first_launches_initialize_once_and_never_share_a_number() {
     names.sort();
     assert_eq!(names, ["agent-1", "agent-2", "agent-3", "agent-4"]);
     assert!(plain.path().join(".moai/project.yaml").is_file());
-    assert!(plain.path().join("AGENTS.md").is_file());
+    assert!(plain.path().join("CLAUDE.md").is_file());
 }
 
 #[test]
 fn a_home_that_already_is_a_repository_starts_the_host_but_gets_no_settings() {
     // Design 6810918398 §2: a dotfiles-repository HOME is launched as before; no settings and
-    // no AGENTS.md are written into HOME, and a note says why.
+    // no CLAUDE.md are written into HOME, and a note says why.
     let f = fixture();
     git_init(f.home.path());
     let out = run_in(&f, f.home.path(), &["cc", "-a"]);
@@ -426,6 +473,7 @@ fn a_home_that_already_is_a_repository_starts_the_host_but_gets_no_settings() {
     assert!(!f.home.path().join(".moai-cli/project.yaml").exists());
     assert!(!f.home.path().join(".moai").exists());
     assert!(!f.home.path().join("AGENTS.md").exists());
+    assert!(!f.home.path().join("CLAUDE.md").exists());
 }
 
 #[test]
@@ -474,19 +522,19 @@ fn a_launch_waits_for_a_first_launch_that_is_still_initializing() {
         );
         std::thread::sleep(std::time::Duration::from_millis(20));
     }
-    // The settings exist but AGENTS.md is still being generated: the second launch waits.
+    // The settings exist but CLAUDE.md is still being generated: the second launch waits.
     let second = run_in(&f, plain.path(), &["cc", "-l"]);
     json(&second);
     assert!(
-        plain.path().join("AGENTS.md").is_file(),
+        plain.path().join("CLAUDE.md").is_file(),
         "second launch started before the first finished initializing"
     );
     let first = first.wait_with_output().unwrap();
     assert_eq!(json(&first)["name"], "agent-1");
 }
 
-/// #2504: a first launch that stops between the settings and AGENTS.md leaves its marker in the
-/// clone's common dir; the next launch finishes the AGENTS.md step and removes the marker. A dry
+/// #2504: a first launch that stops between the settings and CLAUDE.md leaves its marker in the
+/// clone's common dir; the next launch finishes the CLAUDE.md step and removes the marker. A dry
 /// run in between only reports what it would finish.
 #[test]
 fn an_interrupted_first_launch_is_finished_by_the_next_launch() {
@@ -501,7 +549,7 @@ fn an_interrupted_first_launch_is_finished_by_the_next_launch() {
     assert_eq!(out.status.code(), Some(1), "{}", text(&out));
     assert!(!marker(&f).exists(), "the host must not start");
     assert!(dir.join(".moai/project.yaml").is_file());
-    assert!(!dir.join("AGENTS.md").exists());
+    assert!(!dir.join("CLAUDE.md").exists());
     assert!(
         marker_file.is_file(),
         "the interrupted launch leaves its marker"
@@ -514,7 +562,7 @@ fn an_interrupted_first_launch_is_finished_by_the_next_launch() {
             .contains("would finish the interrupted initialization"),
         "{v}"
     );
-    assert!(!dir.join("AGENTS.md").exists());
+    assert!(!dir.join("CLAUDE.md").exists());
 
     let out = run_in(&f, dir, &["cc", "-a"]);
     assert_eq!(json(&out)["name"], "agent-1");
@@ -524,7 +572,7 @@ fn an_interrupted_first_launch_is_finished_by_the_next_launch() {
         "{}",
         text(&out)
     );
-    let agents = fs::read(dir.join("AGENTS.md")).unwrap();
+    let agents = fs::read(dir.join("CLAUDE.md")).unwrap();
     assert!(
         String::from_utf8_lossy(&agents).contains("<!-- moai:managed:begin id=moai-workflow -->")
     );
@@ -533,23 +581,23 @@ fn an_interrupted_first_launch_is_finished_by_the_next_launch() {
     let out = run_in(&f, dir, &["cc", "-a"]);
     assert_eq!(json(&out)["name"], "agent-1");
     assert_eq!(init_lines(&out), 0, "{}", text(&out));
-    assert_eq!(fs::read(dir.join("AGENTS.md")).unwrap(), agents);
+    assert_eq!(fs::read(dir.join("CLAUDE.md")).unwrap(), agents);
 }
 
 /// #2504: only an interrupted first launch is finished. After a complete one the marker is gone,
-/// so an AGENTS.md the user deleted is not brought back (the agents engine's rule as well).
+/// so a CLAUDE.md the user deleted is not brought back (the agents engine's rule as well).
 #[test]
-fn an_agents_md_deleted_after_a_finished_first_launch_stays_deleted() {
+fn a_claude_md_deleted_after_a_finished_first_launch_stays_deleted() {
     let f = fixture();
     let plain = tempfile::tempdir().unwrap();
     let dir = plain.path();
     json(&run_in(&f, dir, &["cc", "-a"]));
     assert!(!dir.join(".git/.moai-cli/sessions/.init-pending").exists());
-    fs::remove_file(dir.join("AGENTS.md")).unwrap();
+    fs::remove_file(dir.join("CLAUDE.md")).unwrap();
     let out = run_in(&f, dir, &["cc", "-a"]);
     assert_eq!(json(&out)["name"], "agent-1");
     assert_eq!(init_lines(&out), 0, "{}", text(&out));
-    assert!(!dir.join("AGENTS.md").exists());
+    assert!(!dir.join("CLAUDE.md").exists());
 }
 
 /// #2489: two first launches race on `git init` (CI run 43146819966: "git init failed" while

@@ -124,9 +124,9 @@ fn s(p: &Path) -> String {
     p.to_str().unwrap().to_string()
 }
 
-/// REQ-1, REQ-2: the routing section goes to `$CLAUDE_CONFIG_DIR/CLAUDE.md` and
-/// `$CODEX_HOME/AGENTS.md`, and revert takes it back from there; nothing under `~/.claude` or
-/// `~/.codex`.
+/// REQ-1, REQ-2: the routing section goes to `$CLAUDE_CONFIG_DIR/CLAUDE.md`, and revert takes it
+/// back from there; nothing under `~/.claude`, and no file in the folder `CODEX_HOME` names (moai
+/// no longer writes there).
 #[test]
 fn routing_writes_and_reverts_in_the_relocated_folders() {
     let w = World::new();
@@ -140,10 +140,7 @@ fn routing_writes_and_reverts_in_the_relocated_folders() {
         json!(s(&conf.join("CLAUDE.md"))),
         "{plan}"
     );
-    assert_eq!(
-        host(&plan, "codex")["file"],
-        json!(s(&cx.join("AGENTS.md")))
-    );
+    assert_eq!(plan["hosts"].as_array().unwrap().len(), 1, "{plan}");
     let applied = ok(&w.run(
         &vars,
         true,
@@ -158,7 +155,7 @@ fn routing_writes_and_reverts_in_the_relocated_folders() {
         ],
     ));
     assert!(conf.join("CLAUDE.md").is_file(), "{applied}");
-    assert!(cx.join("AGENTS.md").is_file());
+    assert!(!cx.join("AGENTS.md").exists());
     assert!(!w.base.join(".claude").exists());
     assert!(!w.base.join(".codex").exists());
     let receipt = applied["receipt"].as_str().unwrap().to_string();
@@ -175,7 +172,6 @@ fn routing_writes_and_reverts_in_the_relocated_folders() {
         ],
     ));
     assert!(!conf.join("CLAUDE.md").exists());
-    assert!(!cx.join("AGENTS.md").exists());
 }
 
 /// REQ-5: a home that is not the account's own home keeps the folders under it, whatever the
@@ -195,10 +191,6 @@ fn the_variables_count_only_for_the_account_home() {
         host(&plan, "claude")["file"],
         json!(s(&w.base.join(".claude/CLAUDE.md"))),
         "{plan}"
-    );
-    assert_eq!(
-        host(&plan, "codex")["file"],
-        json!(s(&w.base.join(".codex/AGENTS.md")))
     );
     // Another account home named: the same.
     let other = w.outside("someone");
@@ -230,7 +222,6 @@ fn an_empty_or_relative_variable_blocks_its_host_by_name() {
             why.contains("CLAUDE_CONFIG_DIR") && why.contains(says),
             "{why}"
         );
-        assert_eq!(host(&plan, "codex")["preflight"], json!("ok"));
         // Agents and the output style block the Claude host the same way.
         let repo = Path::new(env!("CARGO_MANIFEST_DIR"));
         let plan = ok(&w.run(
@@ -243,7 +234,6 @@ fn an_empty_or_relative_variable_blocks_its_host_by_name() {
             json!("blocked"),
             "{plan}"
         );
-        assert_eq!(host(&plan, "codex")["preflight"], json!("ok"));
         let style = ok(&w.run(
             &[("CLAUDE_CONFIG_DIR", value)],
             true,
@@ -264,7 +254,7 @@ fn an_empty_or_relative_variable_blocks_its_host_by_name() {
     }
 }
 
-/// REQ-1: agents and the output style follow the variables; OMP stays under HOME.
+/// REQ-1: agents and the output style follow `CLAUDE_CONFIG_DIR`; no other host is planned.
 #[test]
 fn agents_and_the_output_style_follow_the_variables() {
     let w = World::new();
@@ -283,15 +273,7 @@ fn agents_and_the_output_style_follow_the_variables() {
         json!(s(&conf.join("agents"))),
         "{plan}"
     );
-    assert_eq!(host(&plan, "codex")["dir"], json!(s(&cx.join("agents"))));
-    if let Some(omp) = plan["hosts"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .find(|h| h["host"] == json!("omp"))
-    {
-        assert_eq!(omp["dir"], json!(s(&w.base.join(".omp/agent/agents"))));
-    }
+    assert_eq!(plan["hosts"].as_array().unwrap().len(), 1, "{plan}");
     let applied = ok(&w.run(
         &vars,
         true,
@@ -332,7 +314,6 @@ fn agents_and_the_output_style_follow_the_variables() {
                 s(&conf.join("output-styles/MoAI-Easy.md"))
             ),
             ("setting".to_string(), s(&conf.join("settings.json"))),
-            ("block".to_string(), s(&cx.join("AGENTS.md"))),
         ],
         "{style}"
     );
@@ -353,8 +334,8 @@ fn stage(dir: &Path) {
     }
 }
 
-/// REQ-1: the Claude skill copy goes to `$CLAUDE_CONFIG_DIR/skills/moai`; Codex's stays in
-/// `~/.agents/skills/moai` (not under `CODEX_HOME`).
+/// REQ-1: the Claude skill copy goes to `$CLAUDE_CONFIG_DIR/skills/moai`; no copy is planned
+/// for `~/.agents/skills/moai` or under `CODEX_HOME`.
 #[test]
 fn the_skill_copy_follows_claude_config_dir() {
     let w = World::new();
@@ -373,10 +354,7 @@ fn the_skill_copy_follows_claude_config_dir() {
         json!(s(&conf.join("skills/moai"))),
         "{plan}"
     );
-    assert_eq!(
-        host(&plan, "codex")["projection_root"],
-        json!(s(&w.base.join(".agents/skills/moai")))
-    );
+    assert_eq!(plan["hosts"].as_array().unwrap().len(), 1, "{plan}");
     // A relative value blocks the Claude host's copy by name.
     let plan = ok(&w.run(
         &[("CLAUDE_CONFIG_DIR", "conf")],
@@ -538,28 +516,18 @@ fn a_link_to_the_default_folder_is_followed_and_any_other_link_is_blocked() {
     let agents_src = s(&repo.join("agents"));
     let pkg = w.base.join("stage");
     stage(&pkg);
-    // Allowed: conf/skills → ~/.claude/skills, conf/agents → ~/.claude/agents,
-    // cx/agents → ~/.codex/agents.
+    // Allowed: conf/skills → ~/.claude/skills, conf/agents → ~/.claude/agents.
     let conf = w.outside("claude-conf");
-    let cx = w.outside("codex-home");
     fs::create_dir_all(&conf).unwrap();
-    fs::create_dir_all(&cx).unwrap();
     for (link, target) in [
         (conf.join("skills"), w.base.join(".claude/skills")),
         (conf.join("agents"), w.base.join(".claude/agents")),
-        (cx.join("agents"), w.base.join(".codex/agents")),
     ] {
         fs::create_dir_all(&target).unwrap();
         std::os::unix::fs::symlink(&target, &link).unwrap();
     }
-    let (c, x) = (
-        std::ffi::OsString::from(&conf),
-        std::ffi::OsString::from(&cx),
-    );
-    let vars = [
-        ("CLAUDE_CONFIG_DIR", c.as_os_str()),
-        ("CODEX_HOME", x.as_os_str()),
-    ];
+    let c = std::ffi::OsString::from(&conf);
+    let vars = [("CLAUDE_CONFIG_DIR", c.as_os_str())];
     let plan = ok(&w.run_os(&vars, &["update-plan", w.h(), &s(&pkg)], None));
     let claude = host(&plan, "claude");
     assert_eq!(
@@ -595,11 +563,6 @@ fn a_link_to_the_default_folder_is_followed_and_any_other_link_is_blocked() {
         "{plan}"
     );
     assert_eq!(host(&plan, "claude")["preflight"], json!("ok"));
-    assert_eq!(
-        host(&plan, "codex")["dir"],
-        json!(s(&w.base.join(".codex/agents")))
-    );
-    assert_eq!(host(&plan, "codex")["preflight"], json!("ok"));
     ok(&w.run_os(
         &vars,
         &[
@@ -615,7 +578,7 @@ fn a_link_to_the_default_folder_is_followed_and_any_other_link_is_blocked() {
         None,
     ));
     assert!(fs::read_dir(w.base.join(".claude/agents")).unwrap().count() > 0);
-    assert!(fs::read_dir(w.base.join(".codex/agents")).unwrap().count() > 0);
+    assert!(!w.base.join(".codex").exists());
 
     // Blocked: links to any other folder, or to a default folder that is not there.
     let conf2 = w.outside("claude-conf-2");
@@ -647,18 +610,18 @@ fn a_link_to_the_default_folder_is_followed_and_any_other_link_is_blocked() {
         "{plan}"
     );
     assert_eq!(fs::read_dir(&elsewhere).unwrap().count(), 0);
-    let codex_missing = w.outside("codex-home-2");
-    fs::create_dir_all(&codex_missing).unwrap();
-    std::os::unix::fs::symlink(w.base.join(".codex/nowhere"), codex_missing.join("agents"))
-        .unwrap();
-    let x2 = std::ffi::OsString::from(&codex_missing);
+    // A link to a default folder that is not there blocks the Claude host too.
+    let missing = w.outside("claude-conf-3");
+    fs::create_dir_all(&missing).unwrap();
+    std::os::unix::fs::symlink(w.base.join(".claude/nowhere"), missing.join("agents")).unwrap();
+    let x3 = std::ffi::OsString::from(&missing);
     let plan = ok(&w.run_os(
-        &[("CODEX_HOME", x2.as_os_str())],
+        &[("CLAUDE_CONFIG_DIR", x3.as_os_str())],
         &["agents-home-plan", w.h(), w.pkg(), &agents_src],
         None,
     ));
     assert_eq!(
-        host(&plan, "codex")["preflight"],
+        host(&plan, "claude")["preflight"],
         json!("blocked"),
         "{plan}"
     );
@@ -730,5 +693,5 @@ fn a_variable_that_is_not_utf8_blocks_only_its_host() {
             .is_some_and(|r| r.contains("UTF-8")),
         "{plan}"
     );
-    assert!(host(&plan, "codex")["blocked_reason"].is_null(), "{plan}");
+    assert_eq!(plan["hosts"].as_array().unwrap().len(), 1, "{plan}");
 }

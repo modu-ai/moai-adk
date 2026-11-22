@@ -96,7 +96,7 @@
       }
     },
     "references/home/output-style.md": {
-      "sha256": "eaaf9b05348bcb5eff83a54c8badd4a8eef62fbec59ae516d2cddb7a20e3d4ee",
+      "sha256": "c1b1e83187bf23b09c9b19ec943d09953ae72e12dc291f1fb6d35f55024628cb",
       "origin": {
         "kind": "design-spec",
         "template_id": "home-output-style",
@@ -507,7 +507,7 @@
       }
     },
     "workflows/update.md": {
-      "sha256": "c8067d5c0ead2811042548fec9fe435bc9072daa72aed5faaad3c0fa1670fdf5",
+      "sha256": "05082021c8aa28ecb183a2301143a60874a310dfb482fcd208b1bd15d945fc39",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-update",
