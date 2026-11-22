@@ -233,8 +233,10 @@ fn commands(file: &[u8]) -> Vec<String> {
     out
 }
 
-/// AC-1: every command a fresh install writes starts with `moai ` and `moai-cli` is in no file
-/// the install wrote, the receipts and the OMP module and the lane Stop group included.
+/// AC-1: every command a fresh install writes names `moai` — the Claude entries by absolute
+/// path in exec form (SPEC-20261122-next-flow-hooks REQ-5), the other hosts by the bare name —
+/// and `moai-cli` is in no file the install wrote, the receipts and the OMP module and the lane
+/// Stop group included.
 #[test]
 fn a_fresh_install_calls_moai_everywhere() {
     for h in ALL {
@@ -246,6 +248,13 @@ fn a_fresh_install_calls_moai_everywhere() {
         }
         if h.name == "omp" {
             assert_eq!(file, hooks::omp_module("moai").as_bytes());
+        } else if h.name == "claude" {
+            let cmds = commands(&file);
+            assert_eq!(cmds.len(), h.entries, "{cmds:?}");
+            assert!(
+                cmds.iter().all(|c| c.starts_with('/') && c.ends_with("/moai")),
+                "{cmds:?}"
+            );
         } else {
             let cmds = commands(&file);
             assert_eq!(cmds.len(), h.entries, "{cmds:?}");
@@ -287,9 +296,20 @@ fn a_legacy_install_is_previewed_as_a_rewrite_and_nothing_is_written() {
             );
         } else {
             for e in entries {
-                let (b, a) = (e["before"].as_str().unwrap(), e["after"].as_str().unwrap());
+                let b = e["before"].as_str().unwrap();
                 assert!(b.starts_with("moai-cli "), "{e}");
-                assert_eq!(a, b.replacen("moai-cli", "moai", 1), "{e}");
+                match e["after"].as_str() {
+                    // The rewrite's `after` names the binary the new set uses: the bare `moai`
+                    // for the shell-form hosts, the absolute path in exec form for Claude
+                    // (SPEC-20261122-next-flow-hooks REQ-5).
+                    Some(a) if h.name == "claude" => {
+                        assert!(a.starts_with('/') && a.ends_with("/moai"), "{e}")
+                    }
+                    Some(a) => assert_eq!(a, b.replacen("moai-cli", "moai", 1), "{e}"),
+                    // An entry the new Claude set dropped (claim-verify, hook-receipt) has no
+                    // after: the rewrite removes it.
+                    None => assert_eq!(h.name, "claude", "{e}"),
+                }
                 assert_eq!(e["decision"], json!("rewrite"), "{e}");
             }
         }

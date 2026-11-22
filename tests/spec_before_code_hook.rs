@@ -145,7 +145,9 @@ fn spec_text(id: &str) -> String {
 }
 
 fn assert_deny(r: &Run) -> String {
-    assert_eq!(r.code, 0, "deny exits 0: {}", r.stderr);
+    // A refusal is exit code 2 with the documented deny object beside it
+    // (SPEC-20261122-next-flow-hooks REQ-8).
+    assert_eq!(r.code, 2, "deny exits 2: {}", r.stderr);
     let v: Value = serde_json::from_str(r.stdout.trim()).expect("stdout is one JSON object");
     assert_eq!(v["hookSpecificOutput"]["permissionDecision"], "deny", "{v}");
     v["hookSpecificOutput"]["permissionDecisionReason"]

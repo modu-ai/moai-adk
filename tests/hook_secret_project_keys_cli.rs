@@ -23,6 +23,9 @@ struct Run {
 }
 
 fn dispatch(host: &str, cwd: &Path, tool: &str, tool_input: Value) -> Run {
+    // A moai project: outside one, every duty exits 0 at once
+    // (SPEC-20261122-next-flow-hooks REQ-15).
+    std::fs::create_dir_all(cwd.join(".moai")).unwrap();
     let input = json!({"hook_event_name": "PreToolUse", "tool_name": tool,
                        "tool_input": tool_input, "cwd": cwd});
     let mut child = Command::new(BIN)
@@ -45,7 +48,8 @@ fn dispatch(host: &str, cwd: &Path, tool: &str, tool_input: Value) -> Run {
 }
 
 fn denied(r: &Run) -> bool {
-    r.code == 0 && r.stdout.contains("\"permissionDecision\":\"deny\"")
+    // A refusal is exit code 2 with the documented deny object beside it (REQ-8).
+    matches!(r.code, 0 | 2) && r.stdout.contains("\"permissionDecision\":\"deny\"")
 }
 
 fn allowed(r: &Run) -> bool {

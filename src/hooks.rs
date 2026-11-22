@@ -363,6 +363,37 @@ pub fn hook_set(host: &str) -> Vec<(&'static str, Option<&'static str>, Handler)
     HOOK_SET.to_vec()
 }
 
+/// The pre-NeXT-Flow Claude set, the entries every release before the redesign wrote
+/// (`moai-cli` until #3004 P4-2, `moai` after): the Issue-era base plus the preflight guard on
+/// its old matcher. Only the legacy renders and the recognition of an installed old set use
+/// this ([`hooks_object_with`] with [`LEGACY_BINARY`], `hooks::status`); the generator never
+/// writes it again.
+pub fn legacy_claude_set() -> Vec<(&'static str, Option<&'static str>, Handler)> {
+    const LEGACY_CLAUDE_PREFLIGHT_MATCHER: &str = "Bash|Write|Edit|MultiEdit|NotebookEdit";
+    let mut set = HOOK_SET.to_vec();
+    set.insert(
+        set.iter()
+            .position(|(e, _, _)| *e == "PreToolUse")
+            .map_or(set.len(), |i| i + 1),
+        (
+            "PreToolUse",
+            Some(LEGACY_CLAUDE_PREFLIGHT_MATCHER),
+            Handler::Preflight,
+        ),
+    );
+    set
+}
+
+/// The set a render of `binary` on `host` holds: the legacy name renders the historical sets
+/// (that is what recognizing and rewriting an old install compares against); the current name
+/// renders [`hook_set`].
+fn effective_set(binary: &str, host: &str) -> Vec<(&'static str, Option<&'static str>, Handler)> {
+    if binary == LEGACY_BINARY && host == "claude" {
+        return legacy_claude_set();
+    }
+    hook_set(host)
+}
+
 /// The hook set as a host `hooks` object (event -> matcher groups -> handlers); two entries of
 /// one event are two matcher groups, in [`hook_set`] order.
 pub fn hooks_object(host: &str) -> Result<Map<String, Value>> {
@@ -406,7 +437,7 @@ fn handler_json(binary: &str, host: &str, handler: Handler) -> Value {
 pub fn hooks_object_with(binary: &str, host: &str) -> Result<Map<String, Value>> {
     check_host(host)?;
     let mut out = Map::new();
-    for (event, matcher, handler) in hook_set(host) {
+    for (event, matcher, handler) in effective_set(binary, host) {
         let mut group = Map::new();
         if let Some(m) = matcher {
             group.insert("matcher".into(), json!(m));
@@ -586,7 +617,7 @@ fn hook_list_with(binary: &str, host: &str) -> Value {
             })
             .collect();
     }
-    let mut list: Vec<Value> = hook_set(host)
+    let mut list: Vec<Value> = effective_set(binary, host)
         .into_iter()
         .map(|(event, matcher, handler)| {
             if host == "claude" {

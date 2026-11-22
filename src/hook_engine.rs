@@ -818,12 +818,15 @@ fn tool_preflight(
 /// The rule id of the direct-merge confirmation in `[hooks.modes]` and in the engine log.
 pub const MERGE_CONFIRM_RULE: &str = "merge_confirm";
 
-/// REQ-15: whether `cwd` is a moai project (a project state folder of either name at its
-/// root). A folder that is not gets one process start and nothing else from every duty.
+/// REQ-15: whether `cwd` is a moai project (a project state folder of either name at the
+/// work-tree root, found by walking up — a session may run in a subfolder). A folder that is
+/// not gets one process start and nothing else from every duty.
 fn moai_project(cwd: &Path) -> bool {
-    [crate::PROJECT_STATE_DIR, crate::state_root::MOAI_DIR]
-        .iter()
-        .any(|name| cwd.join(name).is_dir())
+    cwd.ancestors().any(|dir| {
+        [crate::PROJECT_STATE_DIR, crate::state_root::MOAI_DIR]
+            .iter()
+            .any(|name| dir.join(name).is_dir())
+    })
 }
 
 /// The dangerous-call duty (REQ-6 to REQ-9 of SPEC-20261122-next-flow-hooks): the calls that

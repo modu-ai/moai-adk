@@ -253,14 +253,16 @@ fn unrelated_or_earlier_observations_never_cancel_a_deny() {
 }
 
 /// Audit H4-B2: a deny produced by calling the engine directly (no host) leaves the same lines a
-/// host run would, so local evidence never sets `verified`.
+/// host run would, so local evidence never sets `verified`. The refusing call is a plain
+/// dangerous `rm` (the Issue claim-token rule the test used before is gone,
+/// SPEC-20261122-next-flow-hooks REQ-11).
 #[test]
 fn a_direct_engine_call_never_makes_the_hooks_verified() {
     let (_d, root) = project();
     configure(&root, "codex");
     let input = json!({"hook_event_name": "PreToolUse", "session_id": "direct-cli-no-host",
                        "tool_use_id": "fixture-direct-call", "tool_name": "Bash",
-                       "tool_input": {"command": "git commit -m no-token"}, "cwd": root});
+                       "tool_input": {"command": "rm -rf /"}, "cwd": root});
     common::git::command()
         .args(["init", "-q", "-b", "issue/77-x"])
         .current_dir(&root)
@@ -332,10 +334,12 @@ fn engine_deny_leaves_a_keyed_line_without_the_raw_call_id() {
         "-m",
         "i",
     ]);
-    // A lane clone (SPEC-20261117-commit-guard-users): the deny needs a live lane session.
+    // A lane clone (SPEC-20261117-commit-guard-users) — kept registered though the refusing
+    // call below no longer needs it: the Issue claim-token rule is gone and a plain dangerous
+    // `rm` denies (SPEC-20261122-next-flow-hooks REQ-11).
     common::register_lane(&root);
     let input = json!({"hook_event_name": "PreToolUse", "tool_name": "Bash", "session_id": "s",
-                       "tool_use_id": "RAWCALLID-123", "tool_input": {"command": "git commit -m x"},
+                       "tool_use_id": "RAWCALLID-123", "tool_input": {"command": "rm -rf /"},
                        "cwd": root});
     let mut child = Command::new(BIN)
         .args([
