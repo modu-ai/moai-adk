@@ -2,7 +2,7 @@
 id: SPEC-20261122-claude-md-project-picks
 title: "moai update offers move, import and leave for a project's AGENTS.md and AGENTS.local.md"
 status: draft
-revision: 2
+revision: 3
 created: 2026-11-22
 parent: SPEC-20261122-claude-md-layout
 ---
@@ -28,6 +28,7 @@ parent: SPEC-20261122-claude-md-layout
 - REQ-9: When the updater writes `CLAUDE.local.md` and no rule of the project ignores it, the updater shall add the ignore rule in the same apply. · failure: none — the rule is one line written through the receipt of the same pick
 - REQ-10: When `CLAUDE.md` already holds the line `@AGENTS.md` or the text of `AGENTS.md`, the update preview shall offer no pick for it. · failure: none — an already settled project has nothing to offer
 - REQ-11: When the preview lists the pick `move`, the preview shall state that `AGENTS.md` and `AGENTS.local.md` stay unchanged and that the user may delete them later. · failure: none — a preview writes nothing
+- REQ-12 (REQ-3): IF a part of the pick fails after another part wrote, THEN the updater shall undo the parts written before it through the same receipt and name any file it could not undo. · failure: the receipt says `partial` and names what is left; `agents-merge-revert` undoes the rest
 
 ## Acceptance
 
@@ -37,6 +38,10 @@ parent: SPEC-20261122-claude-md-layout
   verify: `cargo test --locked --offline --test claude_md_picks_cli shadow_`
 - AC-3 (REQ-9, REQ-10): the ignore rule for `CLAUDE.local.md` is added in the same apply, and a project that already holds the import or the copied text is offered no pick.
   verify: `cargo test --locked --offline --test claude_md_picks_cli settled_`
+- AC-5 (REQ-12): a failure after a part wrote rolls that part back through the same receipt, and a part that cannot be undone is named.
+  verify: `cargo test --locked --offline --lib agents_local_merge::picks::tests`
+- AC-6 (REQ-1): when only `AGENTS.local.md` exists and `move` is refused, the step reports a conflict and offers only `leave`.
+  verify: `cargo test --locked --offline --test claude_md_picks_cli refuse_only_agents_local_md`
 - AC-4: neighbouring checks on the changed files.
   verify: `cargo fmt --check`
   verify: `cargo clippy --locked --offline --all-targets -- -D warnings`

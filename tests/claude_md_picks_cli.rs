@@ -626,6 +626,21 @@ fn picks_only_agents_local_md_offers_move_and_leave() {
     assert_eq!(fx.snapshot(true), before);
 }
 
+#[test]
+fn refuse_only_agents_local_md_with_move_blocked_is_a_conflict_not_a_decision() {
+    // Only AGENTS.local.md exists, so the step lists `move` and `leave`. When CLAUDE.md
+    // is not UTF-8 text, `move` is refused and nothing that writes is left: the state is a
+    // conflict.
+    let fx = Fx::new();
+    fx.write("AGENTS.local.md", LOCAL);
+    fx.ready();
+    fs::write(fx.root.join("CLAUDE.md"), [0xff, 0xfe, b'\n']).unwrap();
+    let picks = fx.picks_step();
+    assert_eq!(choice_ids(&picks), ["leave"], "{picks}");
+    assert_eq!(picks["state"], "conflict", "{picks}");
+    assert!(picks.to_string().contains("CLAUDE.md"), "{picks}");
+}
+
 // --- the shadow warning --------------------------------------------------------------------------
 
 #[test]

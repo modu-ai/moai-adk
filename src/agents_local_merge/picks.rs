@@ -588,26 +588,7 @@ pub fn apply(project: &Path, pick: &str, plan_digest: &str, permission: &str) ->
         &mut parts_out,
     );
     if let Err(e) = outcome {
-        let applied: Vec<String> = receipt.parts.iter().map(|p| p.part.clone()).collect();
-        receipt.status = if applied.is_empty() {
-            "failed"
-        } else {
-            "partial"
-        }
-        .into();
-        let saved = save(&dir, &receipt);
-        let mut message = if applied.is_empty() {
-            e
-        } else {
-            format!(
-                "partial apply: applied [{}]; {e}; undo them with agents-merge-revert --receipt {id}",
-                applied.join(", ")
-            )
-        };
-        if let Err(se) = saved {
-            message.push_str(&format!("; receipt not recorded: {se}"));
-        }
-        return Err(message);
+        return Err(fail_with_rollback(&root, &dir, &mut receipt, e, permission));
     }
     receipt.status = "applied".into();
     save(&dir, &receipt)?;
@@ -629,6 +610,61 @@ pub fn apply(project: &Path, pick: &str, plan_digest: &str, permission: &str) ->
             "to undo: moai agents-merge-revert --receipt {id} --permission-reference <ref> <project>"
         )],
     }))
+}
+
+/// A pick is all or nothing: when a part fails after others wrote, the parts that did write go
+/// back through the same receipt. The message says what is left, if anything.
+fn fail_with_rollback(
+    root: &Path,
+    dir: &Path,
+    receipt: &mut PickReceipt,
+    cause: String,
+    permission: &str,
+) -> String {
+    let id = receipt.id.clone();
+    let applied: Vec<String> = receipt.parts.iter().map(|p| p.part.clone()).collect();
+    receipt.status = if applied.is_empty() {
+        "failed"
+    } else {
+        "partial"
+    }
+    .into();
+    let saved = save(dir, receipt);
+    if applied.is_empty() {
+        let mut message = cause;
+        if let Err(se) = saved {
+            message.push_str(&format!("; receipt not recorded: {se}"));
+        }
+        return message;
+    }
+    let rolled = match saved {
+        Ok(()) => revert(root, &id, permission),
+        Err(se) => Err(format!("receipt not recorded: {se}")),
+    };
+    match rolled {
+        Ok(out) if out["state"] == "reverted" => format!(
+            "{cause}; the parts written before it [{}] were rolled back, nothing is left changed \
+             (receipt {id})",
+            applied.join(", ")
+        ),
+        Ok(out) => format!(
+            "partial apply: applied [{}]; {cause}; the rollback kept {}; undo the rest with \
+             agents-merge-revert --receipt {id}",
+            applied.join(", "),
+            out["kept"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter_map(|k| k["path"].as_str())
+                .collect::<Vec<_>>()
+                .join(", ")
+        ),
+        Err(re) => format!(
+            "partial apply: applied [{}]; {cause}; the rollback failed: {re}; undo them with \
+             agents-merge-revert --receipt {id}",
+            applied.join(", ")
+        ),
+    }
 }
 
 /// The parts of a `move` or an `import`, each from a plan made now. A part that fails after
@@ -806,4 +842,116 @@ pub fn revert(project: &Path, receipt_id: &str, permission: &str) -> Result<Valu
         "writes": writes,
         "kept": kept,
     }))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const PERMISSION: &str = "fixture-approved";
+
+    fn receipt_with(id: &str, parts: Vec<PartRecord>) -> PickReceipt {
+        PickReceipt {
+            schema_version: 1,
+            id: id.to_string(),
+            at: "2026-11-22T00:00:00Z".into(),
+            pick: "move".into(),
+            plan_digest: "digest".into(),
+            permission_reference: PERMISSION.into(),
+            status: "pending".into(),
+            parts,
+            kept: Vec::new(),
+        }
+    }
+
+    /// A project folder with an empty receipt folder for `id`.
+    fn project(id: &str) -> (tempfile::TempDir, PathBuf, PathBuf) {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let root = fs::canonicalize(tmp.path()).unwrap();
+        let dir = receipts_dir(&root).join(id);
+        fs::create_dir_all(&dir).unwrap();
+        (tmp, root, dir)
+    }
+
+    fn status_on_disk(dir: &Path) -> String {
+        let bytes = fs::read(dir.join("receipt.json")).unwrap();
+        let v: Value = serde_json::from_slice(&bytes).unwrap();
+        v["status"].as_str().unwrap().to_string()
+    }
+
+    #[test]
+    fn failing_before_any_part_wrote_leaves_a_failed_receipt_and_the_cause_unchanged() {
+        let id = format!("{RECEIPT_PREFIX}1-0");
+        let (_tmp, root, dir) = project(&id);
+        let mut receipt = receipt_with(&id, Vec::new());
+        let message = fail_with_rollback(
+            &root,
+            &dir,
+            &mut receipt,
+            "failed at block: x".into(),
+            PERMISSION,
+        );
+        assert_eq!(message, "failed at block: x");
+        assert_eq!(status_on_disk(&dir), "failed");
+    }
+
+    #[test]
+    fn failing_after_a_part_wrote_rolls_it_back_through_the_same_receipt() {
+        let id = format!("{RECEIPT_PREFIX}2-0");
+        let (_tmp, root, dir) = project(&id);
+        // The block part with no engine receipts left to undo: the rollback has nothing to keep.
+        let part = PartRecord {
+            part: BLOCK.into(),
+            receipts: Vec::new(),
+            reverted: false,
+        };
+        let mut receipt = receipt_with(&id, vec![part]);
+        let message = fail_with_rollback(
+            &root,
+            &dir,
+            &mut receipt,
+            "failed at agents-text: x".into(),
+            PERMISSION,
+        );
+        assert!(message.contains("failed at agents-text: x"), "{message}");
+        assert!(
+            message.contains("were rolled back, nothing is left changed"),
+            "{message}"
+        );
+        assert!(!message.contains("partial apply"), "{message}");
+        assert_eq!(status_on_disk(&dir), "reverted");
+    }
+
+    #[test]
+    fn a_rollback_that_cannot_undo_a_part_names_the_file_it_kept() {
+        let id = format!("{RECEIPT_PREFIX}3-0");
+        let (_tmp, root, dir) = project(&id);
+        // An engine receipt that is not on disk: that part cannot be undone and is named.
+        let part = PartRecord {
+            part: AGENTS_TEXT.into(),
+            receipts: vec!["agents-guidance-0-0".into()],
+            reverted: false,
+        };
+        let mut receipt = receipt_with(&id, vec![part]);
+        let message = fail_with_rollback(
+            &root,
+            &dir,
+            &mut receipt,
+            "failed at personal-text: x".into(),
+            PERMISSION,
+        );
+        assert!(
+            message.starts_with("partial apply: applied [agents-text]"),
+            "{message}"
+        );
+        assert!(
+            message.contains(&format!("the rollback kept {GUIDANCE_TARGET}")),
+            "{message}"
+        );
+        assert!(
+            message.contains(&format!("agents-merge-revert --receipt {id}")),
+            "{message}"
+        );
+        assert_eq!(status_on_disk(&dir), "reverted_partly");
+    }
 }
