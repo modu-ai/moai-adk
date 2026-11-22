@@ -147,24 +147,27 @@ fn cloud_trailer_of_another_shape_or_doubled_is_named_without_failing() {
             "feat: twice\n\nMoai-Verified: none\nClaude-Session: {LINK}\nClaude-Session: {LINK}"
         ),
     );
+    // The link's start with no id, and an id holding a character other than a letter or digit.
+    for odd in [
+        "https://claude.ai/code/session_",
+        "https://claude.ai/code/session_011CU-mZ7",
+    ] {
+        commit(
+            tmp.path(),
+            &format!("feat: {odd}\n\nMoai-Verified: none\nClaude-Session: {odd}"),
+        );
+    }
     let (code, v) = check(tmp.path(), home.path(), &base);
     assert_eq!(code, Some(0), "{v}");
     assert_eq!(v["result"]["ok"], json!(true), "{v}");
     let mut got = kinds(&v);
     got.sort();
-    assert_eq!(
-        got,
-        vec![
-            ("malformed_cloud_session".to_string(), false),
-            ("malformed_cloud_session".to_string(), false),
-            ("missing_session".to_string(), false),
-            ("missing_session".to_string(), false),
-            // Off a `spec/` branch a missing SPEC is named and does not fail either.
-            ("missing_spec".to_string(), false),
-            ("missing_spec".to_string(), false),
-        ],
-        "{v}"
-    );
+    let mut want = Vec::new();
+    // Off a `spec/` branch a missing SPEC is named and does not fail either.
+    for kind in ["malformed_cloud_session", "missing_session", "missing_spec"] {
+        want.extend(std::iter::repeat_n((kind.to_string(), false), 4));
+    }
+    assert_eq!(got, want, "{v}");
 }
 
 /// The five statements of the README section (AC-5), each found by words every spelling of the
