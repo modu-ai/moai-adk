@@ -60,8 +60,6 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
         Action::Prep { slot, head, lane } => {
             moai_cli::audit_slot::prep(&args.project, &slot, &head, lane.as_deref(), caps)
         }
-        Action::Done { slot, discard } => {
-            moai_cli::audit_slot::done(&args.project, &slot, discard)
-        }
+        Action::Done { slot, discard } => moai_cli::audit_slot::done(&args.project, &slot, discard),
     }
 }
