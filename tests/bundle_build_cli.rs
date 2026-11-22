@@ -1102,7 +1102,8 @@ fn worktree_place_links_the_bundle_refuses_a_linked_claude_folder() {
     let (v, code) = w.build(&[&c1]);
     assert_ne!(code, 0, "{v}");
     assert!(v.to_string().contains(".claude"), "{v}");
-    assert_eq!(std::fs::read_dir(&outside).unwrap().count(), 0);
+    // `remove_dir` only removes an empty folder: nothing was made behind the link.
+    assert!(std::fs::remove_dir(&outside).is_ok(), "{v}");
     assert_eq!(w.refs(), refs, "no ref was made");
 }
 

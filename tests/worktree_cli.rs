@@ -1143,7 +1143,8 @@ fn worktree_place_links_the_apply_refuses_a_linked_claude_folder() {
     assert_eq!(env["result"]["decision"], "conflict", "{env}");
     assert_eq!(env["result"]["reason"], "place_is_a_link", "{env}");
     assert!(env.to_string().contains(".claude"), "{env}");
-    assert_eq!(fs::read_dir(&outside).unwrap().count(), 0);
+    // `remove_dir` only removes an empty folder: nothing was made behind the link.
+    assert!(fs::remove_dir(&outside).is_ok(), "{env}");
     assert!(!git(&f.repo, &["for-each-ref", "refs/heads"]).contains("lane/"));
 }
 
