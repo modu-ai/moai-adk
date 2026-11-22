@@ -1434,3 +1434,98 @@ fn link_moai(bin: &Path) {
         panic!("the guard hook is a shell script: unix only");
     }
 }
+
+/// AC-23 (SPEC-20261121-ref-guard): a branch that something moved outside the landing command is a
+/// drift. `git branch -C` copies a branch over the integration branch with no reference
+/// transaction, so no hook sees it; the next `card land` compares the tip with the tip the last
+/// landing left (or the head of a move that is under way) and refuses, naming the drift and the
+/// command that puts the branch back. Nothing is written, and after the recovery the call lands.
+#[test]
+fn ac23_a_branch_moved_outside_the_landing_command_is_a_drift() {
+    let w = World::new();
+    // No landing recorded yet: there is nothing to compare, so a first landing goes through.
+    let first = w.review_card(&["one"]);
+    let landed = w.candidate();
+    result(&w.land(
+        &first,
+        &["--head", &landed, "--met", "1=x", "--by", "leader"],
+    ));
+    assert_eq!(w.integ(), landed);
+
+    // A copy over the branch: an unrelated commit that is not on the first-parent line.
+    let stray = commit_with(&w.project, &landed, &[&w.head], "a commit nobody landed");
+    git(&w.project, &["branch", "stray", &stray]);
+    git(&w.project, &["branch", "-C", "stray", "integ"]);
+    assert_eq!(w.integ(), stray);
+
+    let second = w.review_card(&["one"]);
+    let next = commit_with(&w.project, &stray, &[&stray], "a head on the drifted tip");
+    let before = w.dump();
+    let out = w.land(
+        &second,
+        &["--head", &next, "--met", "1=x", "--by", "leader"],
+    );
+    let message = w.refuse(&out, "conflict", &["drift"], &before, &stray);
+    for needle in [
+        stray.as_str(),
+        landed.as_str(),
+        "git update-ref refs/heads/integ",
+    ] {
+        assert!(
+            message.contains(needle),
+            "the drift answer lacks {needle}: {message}"
+        );
+    }
+    assert_eq!(w.events(&second, "card.land_started"), 0);
+
+    // After the recovery the same call lands.
+    git(
+        &w.project,
+        &["update-ref", "refs/heads/integ", &landed, &stray],
+    );
+    let after = commit_with(
+        &w.project,
+        &landed,
+        &[&landed],
+        "a head on the recorded tip",
+    );
+    result(&w.land(
+        &second,
+        &["--head", &after, "--met", "1=x", "--by", "leader"],
+    ));
+    assert_eq!(w.integ(), after);
+}
+
+/// AC-24 (SPEC-20261121-ref-guard): the lander is killed right after the branch moved and before
+/// the close; the same call run again moves nothing, writes no second start row and closes. Only
+/// a call that dies at that point shows a rerun that writes the row for a head already inside
+/// the tip.
+#[test]
+fn ac24_a_kill_after_the_move_then_a_rerun_writes_no_second_row() {
+    let w = World::new();
+    let card = w.review_card(&["one"]);
+    let candidate = w.candidate();
+    w.wrap_update_ref("git-kills-the-lander", "", "kill -9 $PPID");
+    let out = w.land(
+        &card,
+        &["--head", &candidate, "--met", "1=x", "--by", "leader"],
+    );
+    assert_ne!(out.status.code(), Some(0), "the lander was not killed");
+    assert_eq!(w.integ(), candidate, "the branch did not move");
+    assert_eq!(w.events(&card, "card.land_started"), 1);
+    assert_eq!(w.events(&card, "card.landed"), 0);
+
+    *w.git_bin.borrow_mut() = git_executable();
+    let rerun = result(&w.land(
+        &card,
+        &["--head", &candidate, "--met", "1=x", "--by", "leader"],
+    ));
+    assert_eq!(rerun["moved"], json!(false), "{rerun}");
+    assert_eq!(
+        w.events(&card, "card.land_started"),
+        1,
+        "a second start row"
+    );
+    assert_eq!(w.events(&card, "card.landed"), 1);
+    assert_eq!(w.integ(), candidate);
+}
