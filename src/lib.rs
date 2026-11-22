@@ -59,6 +59,7 @@ pub mod go_state;
 pub mod goal;
 pub mod goal_block;
 pub mod handoff;
+pub mod headless_run;
 pub mod headver;
 pub mod heavy_slot;
 pub mod help;
