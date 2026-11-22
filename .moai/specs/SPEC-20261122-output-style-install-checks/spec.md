@@ -2,7 +2,7 @@
 id: SPEC-20261122-output-style-install-checks
 title: "The update checks that the MoAI-Easy style is the one in force and writes it once per Claude config folder"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-22
 parent: SPEC-20261122-output-style-moai-easy
 ---
@@ -75,3 +75,12 @@ parent: SPEC-20261122-output-style-moai-easy
 | D-2 | `outputStyle` 이 대소문자만 다르면 `conflict` 로 두고 고치지 않으며, 말은 detail 한 줄이다 | 공식 문서: 값은 대소문자를 가리고 틀리면 조용히 기본 스타일을 써요. 사용자 값은 "사용자의 선택"이라는 기존 규칙이 먼저예요 | detail 분기 한 곳 |
 | D-3 | 프로젝트 설정에서 `outputStyle` 을 읽기만 하고 알림만 낸다 | 보고서 9-2: `/output-style` 이 `.claude/settings.local.json` 에 써서 사용자 값을 이겨요. 사용자 결정: 프로젝트 `.claude` 에는 쓰지 않아요 | 알림 줄과 읽기 함수 삭제 |
 | D-4 | 깨진 스타일 파일은 우리가 검사하지 않고 `/status` 로 안내한다 | 공식 변경 기록 2.1.327: `/status` 가 깨진 스타일 파일을 보여 줘요(보고서 9-2) | 안내 한 줄 삭제 |
+| D-5 | (개정 2) 영수증은 적용한 설정 폴더를 적고, 되돌리기는 지금 환경이 고른 폴더가 영수증의 폴더와 다르면 아무것도 바꾸지 않고 그 폴더 이름으로 거절한다(영수증은 다시 쓸 수 있게 그대로). 폴더를 적지 않은 옛 영수증은 기본 폴더에서만 지금처럼 되돌린다 | 감사 B1: 폴더 B 의 영수증을 A 의 환경에서 되돌리면 A 가 되돌려졌어요(AC-4 의 "한 폴더 되돌리기는 다른 폴더를 건드리지 않는다"와 어긋남) | 영수증 필드와 비교 한 곳 |
+
+### 다음 조각으로 미룬 감사 지적 (개정 2)
+
+- N4: 상태가 없는 HOME 에 둘째 폴더가 있으면 첫 update 에서 막히고 둘째 실행에서야 스타일이 들어가요.
+- N5: 기본 폴더인지 판단이 경로 글자 비교예요(HOME 의 다른 이름 경로, 끝 `/`).
+- N6: HOME 에서 돌리면 프로젝트 알림이 사용자 자신의 설정 파일을 읽어요.
+- N7: 진행 보드 조각이 가리키는 `rules/moai/flow.md` 를 아직 어떤 카드도 배포하지 않아요.
+- N8: 범위와 트레일러 장부 정리.

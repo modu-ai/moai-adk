@@ -2,8 +2,8 @@
 //! the installer takes a style file that equals the current render or an earlier shipped render
 //! as MoAI's own while a real user edit stays a conflict. Against a temporary HOME only.
 //!
-//! The three earlier renders are kept as fixtures (`tests/fixtures/home-style/render-1.md` to
-//! `render-3.md`), rebuilt from the commits of the text history; their sha256 are the ones of
+//! The earlier renders are kept as fixtures (`tests/fixtures/home-style/render-1.md` to
+//! `render-4.md`), rebuilt from the commits of the text history; their sha256 are the ones of
 //! the SPEC decision D-4.
 
 mod common;
@@ -13,9 +13,14 @@ use std::path::{Path, PathBuf};
 
 const PERM: &str = "test-permission";
 const STYLE: &str = ".claude/output-styles/MoAI-Easy.md";
-/// The record of what MoAI last wrote, below the state folder of a HOME without a marker.
-const RECORD: &str = ".moai-cli/home-style/claude.json";
-const RENDERS: [&str; 3] = ["render-1.md", "render-2.md", "render-3.md"];
+/// The record of what MoAI last wrote, below the state folder the resolver names for this HOME
+/// (never a folder name written out here).
+fn record_file(home: &Path) -> PathBuf {
+    moai_cli::home_root::path(home)
+        .join("home-style")
+        .join("claude.json")
+}
+const RENDERS: [&str; 4] = ["render-1.md", "render-2.md", "render-3.md", "render-4.md"];
 
 fn package() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai")
@@ -41,7 +46,10 @@ fn src() -> String {
 }
 
 fn write(home: &Path, rel: &str, bytes: &str) {
-    let p = home.join(rel);
+    write_at(&home.join(rel), bytes);
+}
+
+fn write_at(p: &Path, bytes: &str) {
     fs::create_dir_all(p.parent().unwrap()).unwrap();
     fs::write(p, bytes).unwrap();
 }
@@ -100,6 +108,27 @@ fn the_shipped_source_names_only_claude_code_and_keeps_the_picked_sections() {
     assert!(!s.contains("MoAI-Easy ★"));
 }
 
+/// AC-11 (REQ-11): the progress board section keeps the board's look and points to the flow
+/// rule for when it closes a turn with background work still running; the choice between the
+/// board and the task list is the flow rule's, so the style names no task tool.
+#[test]
+fn the_progress_board_points_to_the_flow_rule_for_background_work() {
+    let s = src();
+    let start = s.find("## Progress board").unwrap();
+    let end = start + s[start..].find("## Format").unwrap();
+    let section = &s[start..end];
+    for item in [
+        "`rules/moai/flow.md`",
+        "background work",
+        "subagents, shells, monitors",
+    ] {
+        assert!(section.contains(item), "{item}");
+    }
+    for word in ["TaskCreate", "TaskUpdate", "task tool"] {
+        assert!(!section.contains(word), "{word}");
+    }
+}
+
 /// AC-3 (REQ-4): the description is the one of the SPEC, with no double quote inside.
 #[test]
 fn the_rendered_description_has_no_double_quote_and_names_the_banner() {
@@ -115,14 +144,16 @@ fn the_rendered_description_has_no_double_quote_and_names_the_banner() {
     assert!(!line["description: \"".len()..line.len() - 1].contains('"'));
 }
 
-/// The sha256 of the three earlier renders, kept in the SPEC (D-4), match the fixtures.
+/// The sha256 of the earlier renders, kept in the SPEC (D-4), match the fixtures.
 #[test]
-fn the_fixtures_are_the_three_renders_of_the_spec() {
+fn the_fixtures_are_the_earlier_renders_of_the_spec() {
     let want = [
         "93e53607dd194da86abfbe7ea993303fff1d17af1a1a1ae6868788938ed785d2",
         "d4e1851a65eb0ed21d16de888925dc6ae8a7bcebcae45973e1b8cce884d75e67",
         "690c534220f9bb1614e27d608e56306da973e2fe7b53e2bc1a4d42d7d2b9c65e",
+        "a31d966b0486f501839121832eb6a99d3fc718996b22a901e9e17884a0ab369e",
     ];
+    assert_eq!(want.len(), RENDERS.len());
     for (name, sha) in RENDERS.iter().zip(want) {
         assert_eq!(
             moai_cli::digest(fixture(name).as_bytes()),
@@ -136,13 +167,20 @@ fn the_fixtures_are_the_three_renders_of_the_spec() {
 /// frontmatter makes this test fail until the outgoing render is appended to
 /// `EARLIER_RENDERS` and this constant names the new one (AC-7, REQ-8).
 const CURRENT_RENDER_SHA256: &str =
-    "a31d966b0486f501839121832eb6a99d3fc718996b22a901e9e17884a0ab369e";
+    "80e189d27dd7be365724bbba2f38f1eddb3c0e96801da4caf82535ce80181a65";
 
 /// AC-7 (REQ-8): the list holds 64 hex digits each, all different, equal to the fixtures in
 /// order, and never the current render, which is pinned here.
 #[test]
 fn the_earlier_renders_are_pinned_and_never_hold_the_current_one() {
     let list = moai_cli::home_style::EARLIER_RENDERS;
+    // An empty list would pass every check below; it must name every fixture.
+    assert_eq!(
+        list.len(),
+        RENDERS.len(),
+        "the list and the fixtures differ in length"
+    );
+    assert!(!list.is_empty());
     for entry in list {
         assert_eq!(entry.len(), 64, "{entry}");
         assert!(entry
@@ -184,17 +222,14 @@ fn a_style_file_equal_to_the_current_text_is_taken_as_owned() {
         let (_t, home) = temp_home();
         write(&home, STYLE, &current);
         if let Some(r) = &record {
-            write(&home, RECORD, &record_naming(r));
+            write_at(&record_file(&home), &record_naming(r));
         }
         let p = plan(&home, &package()).unwrap();
         assert_eq!(style_action(&p), "merge", "record {:?}", record.is_some());
         apply(&home, &package(), &p.plan_digest, PERM).unwrap();
         assert_eq!(fs::read_to_string(home.join(STYLE)).unwrap(), current);
-        // The record lives under the folder the HOME resolves to: the earlier one when the case
-        // wrote it there, `~/.moai` for a HOME that held no state (SPEC-20261121-path-root-moai-default).
-        let written = moai_cli::home_root::path(&home).join("home-style/claude.json");
         assert_eq!(
-            fs::read_to_string(written).unwrap(),
+            fs::read_to_string(record_file(&home)).unwrap(),
             record_naming(&current)
         );
         // Owned now: a changed template is an update, never a conflict.
@@ -216,7 +251,7 @@ fn a_style_file_equal_to_an_earlier_shipped_text_is_updated() {
             let (_t, home) = temp_home();
             write(&home, STYLE, &fixture(name));
             if let Some(r) = record {
-                write(&home, RECORD, &record_naming(&fixture(r)));
+                write_at(&record_file(&home), &record_naming(&fixture(r)));
             }
             let p = plan(&home, &package()).unwrap();
             assert_eq!(style_action(&p), "merge", "{name} {record:?}");
@@ -240,7 +275,7 @@ fn a_real_user_edit_stays_a_conflict_on_every_known_text() {
         let (_t, home) = temp_home();
         let edited = format!("{base}my own line\n");
         write(&home, STYLE, &edited);
-        write(&home, RECORD, &record_naming(&base));
+        write_at(&record_file(&home), &record_naming(&base));
         let p = plan(&home, &package()).unwrap();
         assert_eq!(style_action(&p), "conflict");
         apply(&home, &package(), &p.plan_digest, PERM).unwrap();
@@ -262,20 +297,20 @@ fn reverting_an_adopted_or_replaced_style_file_gives_back_bytes_and_record() {
     let (_t, home) = temp_home();
     write(&home, STYLE, &current);
     let before_record = record_naming(&fixture("render-1.md"));
-    write(&home, RECORD, &before_record);
+    write_at(&record_file(&home), &before_record);
     let p = plan(&home, &package()).unwrap();
     let id = apply(&home, &package(), &p.plan_digest, PERM).unwrap()["receipt"]
         .as_str()
         .unwrap()
         .to_string();
     assert_eq!(
-        fs::read_to_string(home.join(RECORD)).unwrap(),
+        fs::read_to_string(record_file(&home)).unwrap(),
         record_naming(&current)
     );
     revert(&home, &id, PERM).unwrap();
     assert_eq!(fs::read_to_string(home.join(STYLE)).unwrap(), current);
     assert_eq!(
-        fs::read_to_string(home.join(RECORD)).unwrap(),
+        fs::read_to_string(record_file(&home)).unwrap(),
         before_record
     );
     // Replace: the file is an earlier render and there was no record.
@@ -291,8 +326,8 @@ fn reverting_an_adopted_or_replaced_style_file_gives_back_bytes_and_record() {
     revert(&home, &id, PERM).unwrap();
     assert_eq!(fs::read_to_string(home.join(STYLE)).unwrap(), earlier);
     assert!(
-        !home.join(RECORD).exists()
-            || !fs::read_to_string(home.join(RECORD))
+        !record_file(&home).exists()
+            || !fs::read_to_string(record_file(&home))
                 .unwrap()
                 .contains(&moai_cli::digest(current.as_bytes())),
         "the record still names the text the revert took away"
