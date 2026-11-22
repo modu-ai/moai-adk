@@ -531,6 +531,86 @@ fn two_config_folders_keep_two_records() {
     );
 }
 
+/// One `moai` run in a config folder like [`folder_run`], without asserting success: the exit
+/// status and the envelope on stdout.
+fn folder_run_any(home: &Path, folder: Option<&Path>, args: &[&str]) -> (bool, Value) {
+    let mut c = std::process::Command::new(crate::common::MOAI_BIN);
+    c.args(args)
+        .env("HOME", home)
+        .env("MOAI_ACCOUNT_HOME", home)
+        .env_remove("CLAUDE_CONFIG_DIR");
+    if let Some(f) = folder {
+        c.env("CLAUDE_CONFIG_DIR", f);
+    }
+    let out = c.output().unwrap();
+    let v = serde_json::from_slice(&out.stdout).unwrap_or_else(|_| {
+        panic!(
+            "{}{}",
+            String::from_utf8_lossy(&out.stdout),
+            String::from_utf8_lossy(&out.stderr)
+        )
+    });
+    (out.status.success(), v)
+}
+
+/// AC-4 (REQ-5), audit B1: a receipt belongs to the config folder it was applied in. Reverting
+/// folder B's receipt from folder A's environment (the variable unset) changes nothing in either
+/// folder, leaves the receipt usable, and names the folder it belongs to; run in folder B it then
+/// reverts B and leaves A alone.
+#[test]
+fn a_receipt_reverts_only_in_the_config_folder_it_was_applied_in() {
+    let (_t, home) = home();
+    assert!(moai_cli::home_root::adopt_new(&home, "test").unwrap());
+    let second = home.join("profiles/b");
+    let records = moai_cli::home_root::path(&home).join("home-style");
+    let (_, id_a) = folder_install(&home, None);
+    let (_, id_b) = folder_install(&home, Some(&second));
+    let id_b = id_b.unwrap();
+    assert!(id_a.is_some());
+    let style_a = home.join(STYLE);
+    let style_b = second.join("output-styles/MoAI-Easy.md");
+    let snapshot = |p: &Path| fs::read(p).ok();
+    let before = (
+        snapshot(&style_a),
+        snapshot(&home.join(SETTINGS)),
+        snapshot(&records.join("claude.json")),
+        snapshot(&style_b),
+        snapshot(&second.join("settings.json")),
+        snapshot(&records.join(second_record_name(&second))),
+    );
+    let h = home.to_str().unwrap();
+    let revert_b = [
+        "home-style-revert",
+        h,
+        "--receipt",
+        id_b.as_str(),
+        "--permission-reference",
+        PERM,
+    ];
+    let (ok, v) = folder_run_any(&home, None, &revert_b);
+    assert!(!ok || v["result"]["state"] != "reverted", "{v}");
+    let text = v.to_string();
+    assert!(
+        text.contains(second.to_str().unwrap()),
+        "the refusal names the receipt's folder: {v}"
+    );
+    let after = (
+        snapshot(&style_a),
+        snapshot(&home.join(SETTINGS)),
+        snapshot(&records.join("claude.json")),
+        snapshot(&style_b),
+        snapshot(&second.join("settings.json")),
+        snapshot(&records.join(second_record_name(&second))),
+    );
+    assert_eq!(after, before, "nothing changed in either folder");
+    // In its own folder the same receipt still reverts B, and A stays.
+    let v = folder_run(&home, Some(&second), &revert_b);
+    assert_eq!(v["result"]["state"], "reverted", "{v}");
+    assert!(!style_b.exists());
+    assert_eq!(snapshot(&style_a), before.0);
+    assert_eq!(snapshot(&records.join("claude.json")), before.2);
+}
+
 /// The names and sha256 of every file below `root`, sorted; empty when `root` is absent.
 fn listing(root: &Path) -> Vec<(String, String)> {
     let mut out = Vec::new();
