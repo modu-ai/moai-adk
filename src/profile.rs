@@ -1308,6 +1308,7 @@ mod tests {
             scopes: None,
             versioning: None,
             work_flow: None,
+            remote_copy: None,
             test_paths: None,
             ci: None,
             checks: None,
@@ -1383,6 +1384,7 @@ mod tests {
                 flow: "m-flow".into(),
                 integration_branch: Some("main".into()),
             }),
+            remote_copy: Some(true),
             test_paths: Some(vec!["qa/".into()]),
             ci: Some(crate::project_ci::CiAnswers {
                 kind: "cli".into(),
@@ -1434,7 +1436,8 @@ mod tests {
                 "work_flow",
                 "test_paths",
                 "ci",
-                "checks"
+                "checks",
+                "remote_copy"
             ]
         );
     }
