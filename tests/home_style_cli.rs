@@ -636,7 +636,11 @@ fn a_receipt_reverts_only_in_the_config_folder_it_was_applied_in() {
         PERM,
     ];
     let (ok, v) = folder_run_any(&home, None, &revert_b);
-    assert!(!ok || v["result"]["state"] != "reverted", "{v}");
+    // Audit R5: the one intended answer is a refusal (failed exit, `ok: false`), never a run
+    // that reports some other state.
+    assert!(!ok, "{v}");
+    assert_eq!(v["ok"], json!(false), "{v}");
+    assert!(v.get("result").is_none(), "{v}");
     let text = v.to_string();
     assert!(
         text.contains(second.to_str().unwrap()),
