@@ -2151,7 +2151,8 @@ fn ac30_the_restore_names_what_it_drops_and_refuses_a_stale_digest() {
 }
 
 /// An apply with no nonce file (no preview was ever made, or its file is gone) is refused with the
-/// word "preview", moves nothing and writes nothing.
+/// words "no preview is waiting", moves nothing and writes nothing; a digest mismatch is another
+/// refusal, so the words tell the two apart.
 #[test]
 fn ac35_an_apply_without_any_preview_is_refused_and_writes_nothing() {
     let (w, first, _second) = two_landings();
@@ -2183,7 +2184,7 @@ fn ac35_an_apply_without_any_preview_is_refused_and_writes_nothing() {
         String::from_utf8_lossy(&out.stdout)
     );
     let said = String::from_utf8_lossy(&out.stdout).to_string();
-    assert!(said.contains("preview"), "{said}");
+    assert!(said.contains("no preview is waiting"), "{said}");
     assert_eq!(w.integ(), first, "the branch moved");
     assert_eq!(w.dump(), before, "the ledger changed");
     assert!(
