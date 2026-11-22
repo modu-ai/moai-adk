@@ -391,7 +391,7 @@ fn incomplete_or_foreign_pagination_prevents_decision_and_leaves_journals_unchan
     let m = packet();
     send(root.path(), &m, &r).unwrap();
     r.actor.set(22);
-    let file = root.path().join(".moai-cli/messages/outbox/d1.json");
+    let file = moai_cli::state_root::path(root.path(), "messages/outbox/d1.json");
     let bytes = fs::read(&file).unwrap();
     let posts = r.posts();
     for link in [
@@ -553,7 +553,7 @@ fn malformed_inputs_and_missing_permission_do_not_contact_provider_or_create_fil
         dispatch::record_cli(root.path(), DispatchRecord { message: m }, "", &r, &Time).is_err()
     );
     assert!(r.sent.borrow().is_empty());
-    assert!(!root.path().join(".moai-cli").exists());
+    assert!(!moai_cli::state_root::path(root.path(), "").exists());
 }
 #[cfg(unix)]
 #[test]
@@ -774,7 +774,7 @@ fn unrelated_generic_packets_do_not_block_valid_dispatch_observation() {
 fn journal_bytes(root: &Path) -> Vec<(std::path::PathBuf, Vec<u8>)> {
     let mut files = Vec::new();
     for dir in ["outbox", "inbox"] {
-        for p in fs::read_dir(root.join(".moai-cli/messages").join(dir)).unwrap() {
+        for p in fs::read_dir(moai_cli::state_root::path(root, "messages").join(dir)).unwrap() {
             let p = p.unwrap().path();
             files.push((
                 p.strip_prefix(root).unwrap().to_path_buf(),
@@ -1167,7 +1167,7 @@ fn begin(
     )
 }
 fn outbox_has(root: &Path, report_id: &str) -> bool {
-    root.join(".moai-cli/messages/outbox")
+    moai_cli::state_root::path(root, "messages/outbox")
         .join(format!("{report_id}.json"))
         .exists()
 }
@@ -1207,7 +1207,7 @@ fn dispatch_start_write_is_idempotent() {
         assert_eq!(r.comments.borrow().len(), 4);
         assert!(outbox_has(folder, "d1-start"));
     }
-    let starts = fs::read_dir(root.path().join(".moai-cli/messages/outbox"))
+    let starts = fs::read_dir(moai_cli::state_root::path(root.path(), "messages/outbox"))
         .unwrap()
         .filter(|e| {
             e.as_ref()

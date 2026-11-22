@@ -518,7 +518,7 @@ fn done_requires_all_required_checks_passed() {
         !tmp.path().join("gh-called").exists(),
         "no request before the gate"
     );
-    assert!(!project.join(".moai-cli").exists());
+    assert!(!moai_cli::state_root::path(&project, "").exists());
     let (out, _) = cli(
         &project,
         &gh,
@@ -591,7 +591,8 @@ fn human_edited_comment_is_not_overwritten() {
     let e = run(&project, &p2, &t).unwrap_err();
     assert_eq!(kind_of(&e), "conflict");
     assert!(t.writes().is_empty(), "no PATCH over a human edit");
-    let proposal = project.join(".moai-cli/evidence/rc1-07c-demo/proposed-comment.md");
+    let proposal =
+        moai_cli::state_root::path(&project, "evidence/rc1-07c-demo/proposed-comment.md");
     assert_eq!(
         fs::read_to_string(&proposal).unwrap(),
         report::render(&p2).unwrap()
@@ -653,7 +654,7 @@ fn artifact_refs_require_digest_and_match_local_files() {
         kind_of(&run(&project, &p, &t).unwrap_err()),
         "invalid_input"
     );
-    assert!(!project.join(".moai-cli").exists());
+    assert!(!moai_cli::state_root::path(&project, "").exists());
     assert!(t.sent.borrow().is_empty());
 
     // A matching local file is preserved under .moai-cli/evidence/<run>/ and marked for export.
@@ -678,11 +679,15 @@ fn artifact_refs_require_digest_and_match_local_files() {
         ],
     ));
     let out = run(&project, &p, &t).unwrap();
-    let kept = fs::read(project.join(".moai-cli/evidence/rc1-07c-demo/full.log")).unwrap();
+    let kept = fs::read(moai_cli::state_root::path(
+        &project,
+        "evidence/rc1-07c-demo/full.log",
+    ))
+    .unwrap();
     assert_eq!(moai_cli::digest(&kept), digest);
     assert_eq!(
         out["artifacts"][0]["location"],
-        ".moai-cli/evidence/rc1-07c-demo/full.log"
+        moai_cli::state_root::rel(&project, "evidence/rc1-07c-demo/full.log")
     );
 
     // Without a source the file must already be in the evidence directory, unchanged.
@@ -694,7 +699,7 @@ fn artifact_refs_require_digest_and_match_local_files() {
     let p: ReportPayload = serde_json::from_value(in_place).unwrap();
     assert!(report::preserve_local(&project, &p).is_ok());
     fs::write(
-        project.join(".moai-cli/evidence/rc1-07c-demo/full.log"),
+        moai_cli::state_root::path(&project, "evidence/rc1-07c-demo/full.log"),
         b"tampered",
     )
     .unwrap();

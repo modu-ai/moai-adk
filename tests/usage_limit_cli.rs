@@ -100,7 +100,7 @@ fn statusline_render_feeds_usage_limit_in_a_temporary_home() {
         }
     }
     // Only the record under the temporary HOME was written.
-    let state = home.path().join(".moai-cli/state");
+    let state = moai_cli::home_root::path(home.path()).join("state");
     let names: Vec<String> = std::fs::read_dir(&state)
         .unwrap()
         .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())

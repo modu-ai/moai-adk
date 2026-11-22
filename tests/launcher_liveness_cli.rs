@@ -65,7 +65,7 @@ impl Fixture {
     }
 
     fn sessions(&self) -> PathBuf {
-        self.repo.join(".git/.moai-cli/sessions")
+        moai_cli::clone_root::path(&self.repo.join(".git")).join("sessions")
     }
 
     fn entry(&self, name: &str) -> Value {
@@ -422,10 +422,7 @@ fn an_unsafe_name_runs_without_a_lock_and_answers_unknown() {
     // No lock was taken for any unsafe name, and the live lock of a safe name that is absent
     // answers unknown for that id.
     assert!(
-        !f.repo
-            .join(".git/.moai-cli/sessions")
-            .join("영실이.live")
-            .exists(),
+        !f.sessions().join("영실이.live").exists(),
         "no lock for an unsafe name"
     );
     let (state, evidence) = liveness_of_session(&f.repo, S_A);

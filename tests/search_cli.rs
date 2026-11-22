@@ -82,7 +82,10 @@ fn without_a_generation_the_tracked_files_are_searched_and_coverage_says_so() {
     assert_eq!(hits[0]["grade"], "lexical");
     assert_eq!(hits[0]["state"], "fresh");
     assert_eq!(r["writes"], false);
-    assert!(!p.path().join(".moai-cli").exists(), "search wrote nothing");
+    assert!(
+        !moai_cli::state_root::path(p.path(), "").exists(),
+        "search wrote nothing"
+    );
 }
 
 #[test]
@@ -90,7 +93,7 @@ fn with_a_generation_its_file_list_is_the_source() {
     let p = project();
     let (code, _) = run(p.path(), "index-build", &json!({"protocol_version": 1}));
     assert_eq!(code, 0);
-    let before = fs::read_dir(p.path().join(".moai-cli/index"))
+    let before = fs::read_dir(moai_cli::state_root::path(p.path(), "index"))
         .unwrap()
         .count();
     let (code, v) = run(
@@ -108,7 +111,7 @@ fn with_a_generation_its_file_list_is_the_source() {
     assert_eq!(hits[0]["grade"], "exact");
     assert_eq!(hits[1]["path"], "a.txt");
     assert_eq!(
-        fs::read_dir(p.path().join(".moai-cli/index"))
+        fs::read_dir(moai_cli::state_root::path(p.path(), "index"))
             .unwrap()
             .count(),
         before,
@@ -333,7 +336,7 @@ fn a_graph_citation_of_a_file_edited_after_the_build_is_stale() {
 #[test]
 fn records_that_do_not_match_the_generation_make_the_graph_step_unavailable() {
     let p = graph_project();
-    let gens = p.path().join(".moai-cli/index/generations");
+    let gens = moai_cli::state_root::path(p.path(), "index/generations");
     let gen = fs::read_dir(&gens).unwrap().next().unwrap().unwrap().path();
     let graph = gen.join("graph.jsonl");
     let mut bytes = fs::read(&graph).unwrap();
