@@ -176,11 +176,18 @@ mod model_settings {
 
     #[test]
     fn while_the_tools_are_active_a_malformed_value_is_refused_as_before() {
-        let launcher = object(json!({"models": {"codex": SECRET}}));
+        // `omp` is still one of the launcher tools, so a malformed value under it is refused
+        // without its text; `codex` left the tool list with the launcher change and is skipped.
+        let launcher = object(json!({"models": {"omp": SECRET}}));
         let err = resolve_in(&TOOLS, "claude", "leader", Some(&launcher)).unwrap_err();
         assert!(!err.contains(SECRET), "{err}");
         let err = unsupported_entries_in(&TOOLS, &launcher).unwrap_err();
         assert!(!err.contains(SECRET), "{err}");
+        let retired = object(json!({"models": {"codex": SECRET}}));
+        assert!(resolve_in(&TOOLS, "claude", "leader", Some(&retired)).is_ok());
+        assert!(unsupported_entries_in(&TOOLS, &retired)
+            .unwrap()
+            .is_empty());
     }
 
     #[test]
@@ -210,7 +217,7 @@ mod model_settings {
     }
 
     #[test]
-    fn saving_a_choice_while_the_tools_are_active_keeps_every_tool_key() {
+    fn saving_a_choice_while_the_tools_are_active_keeps_every_active_tool_key() {
         let launcher = old_launcher();
         let saved = with_choice_in(
             &TOOLS,
@@ -221,7 +228,9 @@ mod model_settings {
             "high",
         )
         .unwrap();
-        assert_eq!(saved["models"]["codex"], launcher["models"]["codex"]);
+        // The Codex row left the model table with the launcher change: its saved key is dropped
+        // on this save, the key of a tool that is still active (OMP) is kept.
+        assert!(saved["models"].get("codex").is_none());
         assert_eq!(saved["models"]["omp"], launcher["models"]["omp"]);
     }
 }
