@@ -684,8 +684,10 @@ pub(super) fn worktree_gate(project: &Path, worktree: Option<&str>) -> Result<()
         Err(_) => return Err(unreadable()),
     }
     // One changed or untracked path per line, every untracked file on its own line (a folder
-    // git would show as one entry could hide real work beside a tool cache). A listed tool
-    // cache file is not work (SPEC-20261120-reclaim-dead-holder REQ-12).
+    // git would show as one entry could hide real work beside a tool cache). An untracked file
+    // under the runtime state folder is tool state, not work (SPEC-20261120-reclaim-dead-holder
+    // REQ-12, widened from one file to the folder by SPEC-20261122-test-defects-session-reclaim
+    // REQ-3).
     let uncommitted = git_output(path, &["status", "--porcelain=v1", "--untracked-files=all"])
         .ok_or_else(unreadable)?
         .lines()
