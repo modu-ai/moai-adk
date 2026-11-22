@@ -16,7 +16,7 @@
 //! empty, none when it is relative: [`crate::statusline::state::cache_folder`]), one file per
 //! HOME named `usage-<first 12 hex digits of the SHA-256 of the canonical HOME path>.record`.
 //! Only a system with Unix permissions has the private folder the record needs; elsewhere
-//! (Windows) no record is written and every read is `unknown` (the SPEC's D-7). The suffix is
+//! (Windows) no record is written and every read is `unknown` (the SPEC's D-9). The suffix is
 //! not `.json` on purpose: the session cache files of the same folder are `<session id>.json`
 //! and its clean-up removes old `.json` files, so the record is neither a session's name nor
 //! cleaned away however long it stays unchanged. Lane profiles
