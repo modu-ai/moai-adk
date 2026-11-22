@@ -43,11 +43,11 @@ const ROUTES: [&str; 8] = [
     "AUDIT", "PLAN", "PROJECT", "READ", "RUN", "SYNC", "UPDATE", "WORK",
 ];
 
-/// REQ-2, the files text slices A, B and C remove. Slice B adds `references/internal/review.md`
-/// (absorbed into the audit contract), slice C `references/internal/build-folder.md` (its rule,
-/// rewritten, is part of RUN's "Check-run rules"); only the rule history is still to move: Plan
-/// step 6 adds `references/rule-history.md` when it moves to `docs/`.
-const REMOVED: [&str; 8] = [
+/// REQ-2, the files text slices A, B and C and Plan step 6 remove. Slice B adds
+/// `references/internal/review.md` (absorbed into the audit contract), slice C
+/// `references/internal/build-folder.md` (its rule, rewritten, is part of RUN's "Check-run
+/// rules"), and Plan step 6 `references/rule-history.md` (moved to `docs/rule-history.md`).
+const REMOVED: [&str; 9] = [
     "workflows/mode-agent.md",
     "workflows/mode-leader.md",
     "workflows/setup.md",
@@ -56,6 +56,7 @@ const REMOVED: [&str; 8] = [
     "references/adapters/herdr.md",
     "references/internal/review.md",
     "references/internal/build-folder.md",
+    "references/rule-history.md",
 ];
 
 /// D-14: the build rule RUN's "Check-run rules" holds now that the build-folder reference left
@@ -218,10 +219,9 @@ fn letter_spellings(text: &str) -> Vec<(char, &'static str)> {
     hits
 }
 
-/// AC-4: the shipped texts the scrub scans leave out, each with its reason.
-const SCRUB_EXCEPTIONS: [&str; 3] = [
-    // The rule history records where each rule came from; it moves to `docs/` in Plan step 6.
-    "skills/moai/references/rule-history.md",
+/// AC-4: the shipped texts the scrub scans leave out, each with its reason. The rule history
+/// left the package in Plan step 6 (`docs/rule-history.md`), so it is no longer shipped.
+const SCRUB_EXCEPTIONS: [&str; 2] = [
     // Another card holds the interview question bank until it lands; its lines stay as they are.
     "skills/moai/references/internal/interview.md",
     // The manifest's origin reasons record where each file came from: history, not instructions.
@@ -1016,6 +1016,196 @@ fn refs_the_verdict_names_its_auditor_one_way() {
     );
 }
 
+/// D-19: REQ-8 keeps the retired second host's name out of the texts, so the tier 2 list names
+/// its dot folder by where it sits, once.
+const SECOND_HOST_FOLDER: &str = "the retired second host's dot folder";
+
+/// Where the tier 2 list of the audit contract opens and where its sentence ends.
+const TIER2_LIST_OPEN: &str = "sets the floor to tier 2: ";
+const TIER2_LIST_CLOSE: &str = ". This is the list the tier code reads";
+
+/// What is wrong with the tier 2 list of the audit contract's "Audit tiers" section against
+/// `src/gate.rs` `TIER2_PREFIXES`: an entry the code has and the list lacks, an entry the list
+/// has and the code lacks, an entry written twice, or a stand-in for the retired second host's
+/// folder that is not there exactly once. The list's entries are its backticked paths and the
+/// stand-in, which stands for the code's one prefix that names that host.
+fn tier2_list_problems(tiers: &str) -> Vec<String> {
+    let Some(start) = tiers
+        .find(TIER2_LIST_OPEN)
+        .map(|at| at + TIER2_LIST_OPEN.len())
+    else {
+        return vec![format!("no {TIER2_LIST_OPEN:?}")];
+    };
+    let Some(len) = tiers[start..].find(TIER2_LIST_CLOSE) else {
+        return vec![format!("no {TIER2_LIST_CLOSE:?}")];
+    };
+    let list = &tiers[start..start + len];
+    let host = moai_cli::gate::TIER2_PREFIXES
+        .iter()
+        .find(|p| p.contains("codex"))
+        .expect("the code names the retired second host's folder");
+    let stand_ins = list.matches(SECOND_HOST_FOLDER).count();
+    let mut problems = Vec::new();
+    if stand_ins != 1 {
+        problems.push(format!("{SECOND_HOST_FOLDER:?} stands {stand_ins} times"));
+    }
+    let mut entries: Vec<String> = list
+        .split('`')
+        .skip(1)
+        .step_by(2)
+        .map(str::to_string)
+        .collect();
+    entries.extend((0..stand_ins).map(|_| host.to_string()));
+    for prefix in moai_cli::gate::TIER2_PREFIXES {
+        if !entries.iter().any(|e| e == prefix) {
+            problems.push(format!("lacks `{prefix}`"));
+        }
+    }
+    let mut seen: Vec<&str> = Vec::new();
+    for entry in &entries {
+        if !moai_cli::gate::TIER2_PREFIXES.contains(&entry.as_str()) {
+            problems.push(format!("has `{entry}`, which the code lacks"));
+        } else if seen.contains(&entry.as_str()) {
+            problems.push(format!("has `{entry}` twice"));
+        }
+        seen.push(entry);
+    }
+    problems
+}
+
+/// Follow-up F4 of the slice C verdict: the tier 2 list check fails on an entry the code lacks
+/// as well as on one the list lacks, and keeps exactly one stand-in for the retired second
+/// host's dot folder.
+#[test]
+fn refs_audit_tier_list_check_fails_on_an_extra_entry() {
+    let contract = read(AUDIT_REF);
+    let tiers = section(&contract, "Audit tiers");
+    let extra = tiers.replacen("`CLAUDE.md`", "`CLAUDE.md`, `src/extra`", 1);
+    assert_ne!(extra, tiers, "the planted entry went in");
+    assert!(
+        !tier2_list_problems(&extra).is_empty(),
+        "an entry the code lacks passes"
+    );
+    let twice = tiers.replacen(
+        SECOND_HOST_FOLDER,
+        &format!("{SECOND_HOST_FOLDER}, {SECOND_HOST_FOLDER}"),
+        1,
+    );
+    assert!(
+        !tier2_list_problems(&twice).is_empty(),
+        "a second stand-in for the retired host's folder passes"
+    );
+    let missing = tiers.replacen("`REVIEW.md`, ", "", 1);
+    assert_ne!(missing, tiers, "the entry was taken out");
+    assert!(
+        !tier2_list_problems(&missing).is_empty(),
+        "a missing entry passes"
+    );
+}
+
+/// The words of a pull request: the words themselves, GitHub's event name and `PR` as a word.
+fn names_a_pull_request(text: &str) -> bool {
+    let lower = text.to_lowercase();
+    lower.contains("pull request") || lower.contains("pull_request") || has_whole_word(text, "PR")
+}
+
+/// Follow-up F2 of the slice C verdict: the lane-era words SYNC keeps out of every passage that
+/// is not about the release pull request (a lane pushes nothing; a card lands, it is not merged).
+const LANE_ERA: [&str; 3] = ["PR body", "will be pushed", "after the merge"];
+
+/// The passages of a workflow text: a heading, a paragraph, or a numbered step with the lines
+/// indented below it.
+fn passages(text: &str) -> Vec<String> {
+    let mut out: Vec<String> = Vec::new();
+    let mut open = false;
+    for line in text.lines() {
+        let step = line
+            .split_once(". ")
+            .is_some_and(|(n, _)| !n.is_empty() && n.chars().all(|c| c.is_ascii_digit()));
+        if line.trim().is_empty() {
+            open = false;
+        } else if !open || step || line.starts_with('#') {
+            out.push(line.to_string());
+            open = true;
+        } else if let Some(last) = out.last_mut() {
+            last.push('\n');
+            last.push_str(line);
+        }
+    }
+    out
+}
+
+/// The bold title of a numbered step (`5. **Landing and the release pull request.** …`), or
+/// nothing for a passage that is not one.
+fn step_title(passage: &str) -> &str {
+    passage
+        .split_once(". **")
+        .filter(|(n, _)| !n.is_empty() && n.chars().all(|c| c.is_ascii_digit()))
+        .and_then(|(_, rest)| rest.split_once("**"))
+        .map_or("", |(title, _)| title)
+}
+
+/// The sentences of `text` that name a pull request or a lane-era word and are not about the
+/// release pull request: neither the sentence nor the title of its step names it.
+fn pull_request_outside_a_release(text: &str) -> Vec<String> {
+    const RELEASE: &str = "release pull request";
+    let mut hits = Vec::new();
+    for passage in passages(text) {
+        if step_title(&passage).to_lowercase().contains(RELEASE) {
+            continue;
+        }
+        for sentence in passage.split(". ").flat_map(|s| s.split('\n')) {
+            let named =
+                names_a_pull_request(sentence) || LANE_ERA.iter().any(|w| sentence.contains(w));
+            if named && !sentence.to_lowercase().contains(RELEASE) {
+                hits.push(sentence.chars().take(100).collect());
+            }
+        }
+    }
+    hits
+}
+
+#[test]
+fn refs_sync_names_a_pull_request_only_for_a_release() {
+    // The checker reads what it says: a planted sentence is found, a release sentence or a step
+    // whose title names the release pull request is not, and `PR` counts only as a word.
+    assert_eq!(
+        passages("# T\n\na\nb\n\n1. x\n   - y\n2. z\n"),
+        ["# T", "a\nb", "1. x\n   - y", "2. z"]
+    );
+    assert_eq!(
+        pull_request_outside_a_release(
+            "1. **Gate.** Open a PR. The release pull request merges.\n\
+             2. **Release pull request merge.** The pull request merges.\n"
+        ),
+        ["**Gate.** Open a PR"]
+    );
+    assert_eq!(
+        pull_request_outside_a_release("A step after the merge. A PRESS kit.\n"),
+        ["A step after the merge"]
+    );
+    let hits = pull_request_outside_a_release(&read("workflows/sync.md"));
+    assert!(hits.is_empty(), "sync.md: {hits:#?}");
+}
+
+/// Follow-up F3 of the slice C verdict: SYNC's work ledger is the card ledger WORK reads.
+#[test]
+fn refs_sync_work_ledger_is_the_card_ledger() {
+    let sync = read("workflows/sync.md");
+    assert!(
+        read("workflows/work.md").contains("The project's card ledger"),
+        "work.md no longer reads the card ledger"
+    );
+    assert!(
+        sync.contains("The work ledger is the project's card ledger"),
+        "sync.md does not name the card ledger"
+    );
+    assert!(
+        !sync.contains("forge Issues only"),
+        "sync.md keeps the forge Issues ledger"
+    );
+}
+
 /// Slice C audit N-b, N-c, N-d and N-f: the tier paragraph names the ready note's form, points
 /// to the audit contract's list of the code's tier 2 prefixes, carries the three cases of the
 /// leader's answer with who audits tier 1, and says that a tier stated in a verdict's scope is
@@ -1039,17 +1229,8 @@ fn refs_audit_tiers_match_the_code_floor() {
     }
     // A workflow names no package path (`product_cli`), so the list lives in the contract.
     let contract = read(AUDIT_REF);
-    let tiers = section(&contract, "Audit tiers");
-    for prefix in moai_cli::gate::TIER2_PREFIXES {
-        // REQ-8 keeps the retired second host's name out of the texts; its folder is named by
-        // where it sits.
-        let want = if prefix.contains("codex") {
-            "the retired second host's dot folder".to_string()
-        } else {
-            format!("`{prefix}`")
-        };
-        assert!(tiers.contains(&want), "the tier 2 list lacks {want}");
-    }
+    let problems = tier2_list_problems(section(&contract, "Audit tiers"));
+    assert!(problems.is_empty(), "the tier 2 list: {problems:#?}");
     let note = &audit[audit.find("**Verdict note.**").unwrap()..];
     let note = &note[..note.find("```").unwrap()];
     assert!(

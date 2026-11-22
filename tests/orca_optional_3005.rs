@@ -95,13 +95,12 @@ const SRC_ORCA_FILES: [&str; 13] = [
 
 /// The only places in the skill package and the agent files that name Orca. The research
 /// agent lists the adapter among the documents it reads (checked below to be that line only).
-/// `rule-history.md` (C-103) is the record of the rule sentences the two modes carried: it quotes
-/// them word for word, so it names Orca; it holds no `orca` command line and no step of its own.
-/// The two mode files left with their routes (SPEC-20261122-next-flow-skills-agents REQ-2).
-const PACKAGE_ORCA_FILES: [&str; 3] = [
+/// The two mode files left with their routes (SPEC-20261122-next-flow-skills-agents REQ-2), and
+/// the rule history, which quotes their sentences word for word, left the package for
+/// `docs/rule-history.md` (the same SPEC's Plan step 6).
+const PACKAGE_ORCA_FILES: [&str; 2] = [
     "agents/research.md",
     "skills/moai/references/adapters/orca.md",
-    "skills/moai/references/rule-history.md",
 ];
 
 fn src_files() -> Vec<PathBuf> {
