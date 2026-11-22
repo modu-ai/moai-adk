@@ -2,7 +2,7 @@
 id: SPEC-20261122-statusline-limits
 title: "The third line of the status line shows the limits as the host gives them, and the render stops doing work nobody sees"
 status: draft
-revision: 2
+revision: 3
 created: 2026-11-22
 parent: SPEC-20261122-statusline-flow
 ---
@@ -118,9 +118,10 @@ Step 3 starts by listing every reader of `usage-limits.json` (`rg` over `src`, t
 | D-4 | the countdown loses `resets in`: `(6d 21h)`, `(2h 10m)`, `(35m)` | the user's own line example in note 5942 | restore the words |
 | D-5 | the usage record moves to the cache folder and is written only on change; its readers are re-pointed in the same commit | the home folder `~/.moai-cli` is retired and "reads only" is replaced by the cache rule (note 5935); lanes still need the record | drop the record and the lanes' near-limit check |
 | D-6 | the Orca pass-through starts `~/.orca/agent-hooks/claude-statusline.sh` (the file Orca installs) only when it is an executable file, the three hook variables (`ORCA_AGENT_HOOK_PORT`, `ORCA_AGENT_HOOK_TOKEN`, `ORCA_PANE_KEY`) or the endpoint file variable are set, and the stdin has `rate_limits`; stdin is the received bytes; stdout and stderr are discarded; the render never waits | user pick: "moai passes the stdin it receives to Orca's wrapper, loopback" (note 5935); the script read 2026-11-22 | remove the call |
+| D-7 | (개정 3) 사용량 기록은 Unix 권한이 있는 시스템에서만 쓰고 읽는다. Windows 에서는 기록이 없고 `usage-limit` 과 `lane-screen --home` 은 언제나 `unknown` 이다. `TMPDIR` 이 없거나 비면 캐시 폴더는 `/tmp/moai-statusline-<uid>` 이다 | 기록은 이 사용자만 들어갈 수 있는 폴더(0700, 자기 것, 링크 아님)를 요구하는데, 그 검사는 Unix 권한으로만 해요. 공유 `/tmp` 에서 다른 사용자가 같은 이름을 먼저 만들면 모든 읽기가 `unknown` 이 되므로 이름에 uid 를 붙여요(감사 6849) | Windows 용 접근 제어 검사를 더하거나 이름의 uid 를 빼기 |
 | D-7 | the tolerant reader (`serde_json` values, a field at a time) replaces `godecode.rs` | the doc's input fields keep growing; one mistyped field must not blank the line | none planned |
 | D-8 | the generated block carries `refreshInterval: 30` and `padding` from the status line configuration | user pick (note 5935); docs: `refreshInterval` re-runs the command every N seconds, minimum 1 | change the number |
 
 ## Result
 
-SPEC 만이에요. 돌린 것: 줄 3 모양 너비 측정(`unicode-width` 프로브), Orca 래퍼 스크립트 읽기(2026-11-22, 코드 변경 없음). 돌리지 않은 것: 레인의 사용량 파일 읽는 곳 전수 조사(계획 3단계의 시작에 해요), 시험들.
+진행 중이에요(2026-11-23). 계획 1·2단계(너그러운 입력 읽기, 줄 3 항목과 모양)는 착지했어요(5d899d8fd2). 3단계(사용량 기록을 상태줄 캐시 폴더로, 읽는 두 곳도 함께)와 감사 후속은 3784f7232f 로 착지했어요. 읽는 곳은 `src/ops/usage_limit.rs`·`src/lane_screen.rs` 두 곳이었고, HOME 의 예전 자리를 말하던 문서·코드 주석(`src/home_layout.rs`, 두 연산 문서, 두 이전 SPEC)은 이번 조각에서 새 자리로 고쳤어요. 4단계(Orca 넘겨주기, AC-6, AC-9 의 프로세스 수 절반)는 이번 조각에 있어요. 남은 것: 5단계(설정 생성기, REQ-9·AC-7, 범위 넓히기 필요), 6단계(문서), 그리고 이 SPEC 을 닫는 AC 별 결과 줄.
