@@ -60,8 +60,7 @@ fn apply_with_codex_receipt(project: &Path, source: &Path) -> String {
         &project.join(".claude/skills/moai"),
         &project.join(".agents/skills/moai"),
     );
-    let receipt_path = project
-        .join(".moai-cli/project-skill-rollback")
+    let receipt_path = moai_cli::state_root::path(project, "project-skill-rollback")
         .join(&request_id)
         .join("receipt.json");
     let mut receipt: serde_json::Value =

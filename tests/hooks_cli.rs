@@ -61,7 +61,10 @@ fn claude_plan_apply_replan_is_noop() {
         Value::Object(hooks::hooks_object("claude").unwrap())
     );
     // REQ-I1-02: the receipt records the generated hooks MoAI owns.
-    let receipt = read_json(&p.path().join(".moai-cli/manifests/claude-settings.json"));
+    let receipt = read_json(&moai_cli::state_root::path(
+        p.path(),
+        "manifests/claude-settings.json",
+    ));
     assert_eq!(receipt["owned"]["hooks"], settings["hooks"]);
 
     let again = hooks::plan(p.path(), "claude", None).unwrap();
@@ -222,7 +225,10 @@ fn claude_hooks_keep_other_owned_keys() {
     let settings = read_json(&p.path().join(".claude/settings.json"));
     assert_eq!(settings["outputStyle"], json!("MoAI"));
     assert!(settings["hooks"].is_object());
-    let receipt = read_json(&p.path().join(".moai-cli/manifests/claude-settings.json"));
+    let receipt = read_json(&moai_cli::state_root::path(
+        p.path(),
+        "manifests/claude-settings.json",
+    ));
     assert_eq!(receipt["owned"]["outputStyle"], json!("MoAI"));
 }
 
@@ -495,8 +501,8 @@ fn cli_round_trip_in_isolated_home() {
     );
 
     // Hook mode prints nothing (#2348); the receipt log is the record.
-    fs::create_dir(p.path().join(".moai-cli/receipts")).ok();
-    let log = p.path().join(".moai-cli/receipts/hooks.jsonl");
+    fs::create_dir(moai_cli::state_root::path(p.path(), "receipts")).ok();
+    let log = moai_cli::state_root::path(p.path(), "receipts/hooks.jsonl");
     let lines = || {
         fs::read_to_string(&log)
             .map(|s| s.lines().count())

@@ -212,11 +212,17 @@ fn personal_text_merges_once_and_a_rerun_changes_nothing() {
     assert_eq!(fx.read("AGENTS.local.md"), MINE);
     let id = applied["receipt"].as_str().unwrap();
     assert_eq!(
-        fx.read(&format!(".moai-cli/receipts/{id}/source/AGENTS.local.md")),
+        fx.read(&format!(
+            "{}/receipts/{id}/source/AGENTS.local.md",
+            fx.state()
+        )),
         MINE
     );
     assert_eq!(
-        fx.read(&format!(".moai-cli/receipts/{id}/before/CLAUDE.local.md")),
+        fx.read(&format!(
+            "{}/receipts/{id}/before/CLAUDE.local.md",
+            fx.state()
+        )),
         RULES
     );
 
@@ -548,8 +554,14 @@ impl Fx {
             .unwrap_or_else(|_| panic!("{args:?}: {}", String::from_utf8_lossy(&out.stderr)))
     }
 
+    /// The project's state folder as the resolver answers it (`.moai` for a project that holds
+    /// no earlier `.moai-cli`, SPEC-20261121-path-root-moai-default).
+    fn state(&self) -> &'static str {
+        moai_cli::state_root::dir(&self.root)
+    }
+
     fn receipt_path(&self, id: &str) -> PathBuf {
-        self.root.join(".moai-cli/receipts").join(id)
+        moai_cli::state_root::path(&self.root, "receipts").join(id)
     }
 
     fn set_status(&self, id: &str, status: &str) {
@@ -1103,15 +1115,16 @@ fn a_git_project_gets_one_ignore_line_through_the_same_receipt() {
     // managed block holds it in this project.
     assert_eq!(
         fx.read(".gitignore"),
-        "CLAUDE.local.md\n.moai-cli/receipts/\n"
+        format!("CLAUDE.local.md\n{}/receipts/\n", fx.state())
     );
     assert_eq!(
         fx.git(&["check-ignore", "CLAUDE.local.md"]).trim(),
         "CLAUDE.local.md"
     );
     assert_eq!(
-        fx.git(&["check-ignore", ".moai-cli/receipts"]).trim(),
-        ".moai-cli/receipts"
+        fx.git(&["check-ignore", &format!("{}/receipts", fx.state())])
+            .trim(),
+        format!("{}/receipts", fx.state())
     );
     let id = applied["receipt"].as_str().unwrap().to_string();
     let r = fx.receipt(&id);
@@ -1133,7 +1146,7 @@ fn a_git_project_gets_one_ignore_line_through_the_same_receipt() {
     let applied = fx.merge();
     assert_eq!(
         fx.read(".gitignore"),
-        format!("{earlier}\nCLAUDE.local.md\n.moai-cli/receipts/\n")
+        format!("{earlier}\nCLAUDE.local.md\n{}/receipts/\n", fx.state())
     );
     let id = applied["receipt"].as_str().unwrap().to_string();
     assert_eq!(fx.receipt(&id)["gitignore_existed"], json!(true));
@@ -1175,7 +1188,7 @@ fn an_ignored_file_gets_no_line_and_a_folder_without_git_gets_a_note() {
         );
         assert_eq!(
             fx.read(".gitignore"),
-            format!("{pattern}.moai-cli/receipts/\n"),
+            format!("{pattern}{}/receipts/\n", fx.state()),
             "an ignored file adds no line"
         );
     }
@@ -1412,7 +1425,7 @@ fn a_negated_ignore_rule_the_user_wrote_wins() {
     );
     assert_eq!(
         fx.read(".gitignore"),
-        format!("{earlier}.moai-cli/receipts/\n"),
+        format!("{earlier}{}/receipts/\n", fx.state()),
         "only the receipts line is added"
     );
 }

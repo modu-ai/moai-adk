@@ -34,6 +34,7 @@ fn fixture(origin_url: &str, gh_delay: Option<u32>) -> Fixture {
     for d in [&home, &repo, &bin] {
         std::fs::create_dir_all(d).unwrap();
     }
+    std::fs::create_dir_all(repo.join(".moai-cli")).unwrap();
     common::git::git_ok(&repo, &["init", "-q", "-b", "main"]);
     common::git::git_ok(&repo, &["remote", "add", "origin", origin_url]);
     let log = tmp.path().join("gh.log");

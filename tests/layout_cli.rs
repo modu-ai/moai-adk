@@ -185,7 +185,7 @@ fn home_layout_opt_in_moves_without_deleting_and_reverts() {
     let v = envelope(&out);
     assert_eq!(v["result"]["switched"], json!(true));
     assert_eq!(v["result"]["project_side_kept"], json!(true));
-    let home_dir = home.join(".moai-cli/projects/widgets");
+    let home_dir = moai_cli::home_root::path(&home).join("projects/widgets");
     assert!(home_dir.join("layout.json").is_file(), "the pointer exists");
     assert_eq!(
         fs::read(home_dir.join("receipts/req-1.json")).unwrap(),
@@ -313,7 +313,7 @@ fn layout_default_keeps_project_side() {
     // drive the journal through the product instead: layout-plan only reads).
     let _ = digest;
     assert!(
-        !home.join(".moai-cli/projects").exists(),
+        !moai_cli::home_root::path(&home).join("projects").exists(),
         "no home project dir without opt-in"
     );
     assert!(project.join(".moai-cli/receipts/req-1.json").is_file());
@@ -364,7 +364,7 @@ fn revert_then_reapply_refuses_and_keeps_home_data() {
         "{}",
         String::from_utf8_lossy(&out.stderr)
     );
-    let home_dir = home.join(".moai-cli/projects/widgets");
+    let home_dir = moai_cli::home_root::path(&home).join("projects/widgets");
 
     // New data lands on the home side during the switched window.
     fs::write(home_dir.join("receipts/req-2.json"), b"{\"r\":2}").unwrap();
@@ -542,7 +542,7 @@ fn outbox_reads_follow_the_active_store_without_creating_directories() {
                 .unwrap(),
             home.canonicalize().unwrap()
         );
-        let home_project = home.join(".moai-cli/projects/widgets");
+        let home_project = moai_cli::home_root::path(&home).join("projects/widgets");
         let store = home_project.join("forge/outbox");
         fs::remove_dir_all(&store).unwrap();
         assert!(outbox::load(&project, "p09-history").unwrap().is_none());
@@ -702,7 +702,7 @@ fn source_inspection_errors_are_aggregated_before_any_switch() {
             );
         }
     }
-    assert!(!home.join(".moai-cli/projects").exists());
+    assert!(!moai_cli::home_root::path(&home).join("projects").exists());
     assert_eq!(
         fs::read(project.join(".moai-cli/receipts/req-1.json")).unwrap(),
         b"{\"r\":1}"

@@ -124,7 +124,7 @@ fn warned(notes: &[String]) -> bool {
 }
 
 fn sessions(f: &Fixture) -> PathBuf {
-    f.project.path().join(".git/.moai-cli/sessions")
+    moai_cli::clone_root::path(&f.project.path().join(".git")).join("sessions")
 }
 /// The old counter. It is no longer read or written; tests seed it to prove that.
 fn store(f: &Fixture) -> PathBuf {
@@ -674,9 +674,8 @@ fn outside_a_git_project_the_first_launch_initializes_it_and_a_given_name_works(
     );
     assert!(!plain.path().join(".git").exists());
     assert_eq!(name(&run_in(&f, plain.path(), &["cc", "-a"])), "agent-1");
-    assert!(plain
-        .path()
-        .join(".git/.moai-cli/sessions/agent-1.live")
+    assert!(moai_cli::clone_root::path(&plain.path().join(".git"))
+        .join("sessions/agent-1.live")
         .is_file());
     assert_eq!(
         name(&run_in(&f, plain.path(), &["cc", "-a", "--name", "n1"])),

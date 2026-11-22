@@ -281,8 +281,12 @@ fn missing_git_stops_the_launch_even_with_a_shared_key() {
 #[test]
 fn an_identity_error_stops_the_launch_even_with_a_shared_key() {
     let h = home(false);
+    // The HOME state folder itself as a link: an earlier HOME's `.moai-cli`, the folder a link
+    // at that place keeps resolving to (a link named `.moai` is not adopted; the resolver falls
+    // back to the earlier name, which holds no vault).
+    fs::create_dir(h.path().join(".moai-cli")).unwrap();
     store(h.path(), true, SHARED_KEY);
-    let state = h.path().join(".moai-cli");
+    let state = moai_cli::home_root::path(h.path());
     let moved = h.path().join("state-fixture");
     fs::rename(&state, &moved).unwrap();
     std::os::unix::fs::symlink(&moved, &state).unwrap();
