@@ -165,13 +165,17 @@ fn no_codex_projection_is_written() {
     let profile = json!({"schema_version":2,"project_id":"demo","purpose":"Build a small editor","tools":["Rust"],"development_methods":["TDD"],"hosts":["claude","codex","omp"],"interview_revision":"rc1-fixture-1"});
     let mut bytes = serde_json::to_vec_pretty(&profile).unwrap();
     bytes.push(b'\n');
-    fs::write(root.path().join(".moai-cli/project.yaml"), &bytes).unwrap();
+    fs::write(
+        moai_cli::state_root::path(root.path(), "project.yaml"),
+        &bytes,
+    )
+    .unwrap();
     let sources = json!({"schema_version": 1, "sources": [
         {"source_url": "fixtures/skill-b", "license": {"status": "reviewed", "spdx": "MIT"},
          "resolved_revision": null}]});
-    fs::create_dir_all(root.path().join(".moai-cli/manifests")).unwrap();
+    fs::create_dir_all(moai_cli::state_root::path(root.path(), "manifests")).unwrap();
     fs::write(
-        root.path().join(".moai-cli/manifests/sources.json"),
+        moai_cli::state_root::path(root.path(), "manifests/sources.json"),
         serde_json::to_vec_pretty(&sources).unwrap(),
     )
     .unwrap();
@@ -212,14 +216,14 @@ fn no_codex_projection_is_written() {
         );
     }
     for claude in [
-        ".claude/agents/prj-fixer.md",
+        ".claude/agents/moai/prj-fixer.md",
         ".claude/skills/ref-b/SKILL.md",
         ".claude/skills/prj-checks/SKILL.md",
     ] {
         assert!(root.path().join(claude).exists(), "{claude}");
     }
     let manifest: Value =
-        serde_json::from_slice(&fs::read(root.path().join(MANIFEST)).unwrap()).unwrap();
+        serde_json::from_slice(&fs::read(root.path().join(manifest(&root))).unwrap()).unwrap();
     assert_eq!(manifest["projections"], json!(["claude"]), "{manifest}");
     for entry in manifest["owned_files"].as_array().unwrap() {
         let path = entry["path"].as_str().unwrap_or("");
