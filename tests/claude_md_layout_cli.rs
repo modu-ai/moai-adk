@@ -1,7 +1,8 @@
 //! The files `agents-plan` and `agents-apply` own in a user's project: the managed block in
-//! `CLAUDE.md`, the personal file `CLAUDE.local.md` on the user's pick, and one flow rule file
-//! `.claude/rules/moai/flow.md`. Never `AGENTS.md` or `AGENTS.local.md`. Every case runs through
-//! the binary in a temporary git repository with an empty temporary HOME.
+//! `CLAUDE.md` and the personal file `CLAUDE.local.md` on the user's pick. Never `AGENTS.md`,
+//! `AGENTS.local.md` or anything under the project's `.claude` folders (moai's common content is
+//! installed in the config folder). Every case runs through the binary in a temporary git
+//! repository with an empty temporary HOME.
 //!
 //! The test names start with `blocks_`, `local_` or `flow_`: the acceptance criteria of
 //! `SPEC-20261122-claude-md-layout` filter on those prefixes, and each prefix has tests.
@@ -21,7 +22,6 @@ use tempfile::TempDir;
 const PERMISSION: &str = "fixture-approved";
 const BEGIN: &str = "<!-- moai:managed:begin id=moai-workflow -->";
 const END: &str = "<!-- moai:managed:end id=moai-workflow -->";
-const FLOW_FILE: &str = ".claude/rules/moai/flow.md";
 const FLOWS: [&str; 4] = ["m-flow", "github-flow", "trunk-based", "git-flow"];
 
 struct Fx {
@@ -212,7 +212,8 @@ fn blocks_go_into_claude_md_and_never_into_agents_md() {
     assert_eq!(action(&plan, "CLAUDE.md"), "create", "{plan}");
     let all = paths(&plan);
     assert!(
-        !all.iter().any(|p| p == "AGENTS.md" || p == "AGENTS.local.md"),
+        !all.iter()
+            .any(|p| p == "AGENTS.md" || p == "AGENTS.local.md"),
         "{all:?}"
     );
     fx.apply_ok("none", &[]);
@@ -230,28 +231,28 @@ fn blocks_hold_facts_only_within_fifteen_lines() {
     fx.apply_ok("none", &[]);
     let text = fx.read("CLAUDE.md");
     let lines = block_lines(&text);
-    assert!(lines.len() <= 15, "{} lines:\n{}", lines.len(), lines.join("\n"));
+    assert!(
+        lines.len() <= 15,
+        "{} lines:\n{}",
+        lines.len(),
+        lines.join("\n")
+    );
     let joined = lines.join("\n");
-    for fact in ["demo", "Rust", "m-flow", "main", FLOW_FILE, ".moai/specs"] {
+    for fact in ["demo", "Rust", "m-flow", "main", ".moai/specs"] {
         assert!(joined.contains(fact), "missing {fact:?} in:\n{joined}");
     }
     // Only the facts REQ-3 lists: no purpose, no development methods, no hosts.
     for left_out in ["Build a small editor", "TDD", "hosts"] {
         assert!(!joined.contains(left_out), "{left_out:?} in:\n{joined}");
     }
-    assert!(joined.contains("moai check"), "the check command is stated:\n{joined}");
+    assert!(
+        joined.contains("moai check"),
+        "the check command is stated:\n{joined}"
+    );
     // Issue-era wording and instructions about the process are gone from the block.
     for word in ["Issue", "Issues", "independent audit", "PASS"] {
         assert!(!joined.contains(word), "{word:?} in:\n{joined}");
     }
-}
-
-#[test]
-fn blocks_hold_the_flow_path_only_when_a_flow_file_is_planned() {
-    let fx = Fx::new(None);
-    fx.apply_ok("none", &[]);
-    let text = fx.read("CLAUDE.md");
-    assert!(!block_lines(&text).join("\n").contains(FLOW_FILE), "{text}");
 }
 
 #[test]
@@ -364,15 +365,14 @@ fn blocks_report_a_link_or_non_utf8_file_as_a_conflict_row() {
     assert_eq!(fx.apply_raw(&plan)["ok"], json!(false));
     assert_eq!(fs::read(fx.path("CLAUDE.md")).unwrap(), [0xff, 0xfe, b'\n']);
 
-    // A folder above the flow file is a link: the flow file is a conflict row.
-    let fx = Fx::new(Some("m-flow"));
-    fs::create_dir_all(fx.path("elsewhere/rules")).unwrap();
-    fs::create_dir_all(fx.path(".claude")).unwrap();
-    std::os::unix::fs::symlink("../elsewhere/rules", fx.path(".claude/rules")).unwrap();
-    let plan = fx.plan("none", &[]);
-    assert_eq!(action(&plan, FLOW_FILE), "conflict", "{plan}");
+    // The personal file is a link and the user picked it: a conflict row, nothing written through it.
+    let fx = Fx::new(None);
+    fs::write(fx.path("elsewhere.md"), "kept\n").unwrap();
+    std::os::unix::fs::symlink("elsewhere.md", fx.path("CLAUDE.local.md")).unwrap();
+    let plan = fx.plan("ignored", &["personal-file"]);
+    assert_eq!(action(&plan, "CLAUDE.local.md"), "conflict", "{plan}");
     assert_eq!(fx.apply_raw(&plan)["ok"], json!(false));
-    assert!(!fx.exists("elsewhere/rules/moai/flow.md"));
+    assert_eq!(fx.read("elsewhere.md"), "kept\n");
 }
 
 // --- the personal file --------------------------------------------------------------------------
@@ -406,10 +406,7 @@ fn local_file_is_listed_for_git_to_ignore_under_its_new_name() {
     let fx = Fx::new(None);
     fx.apply_ok("ignored", &["personal-file"]);
     let ignore = fx.read(".gitignore");
-    assert!(
-        ignore.lines().any(|l| l == "CLAUDE.local.md"),
-        "{ignore}"
-    );
+    assert!(ignore.lines().any(|l| l == "CLAUDE.local.md"), "{ignore}");
     assert!(!ignore.lines().any(|l| l == "AGENTS.local.md"), "{ignore}");
 }
 
@@ -433,90 +430,59 @@ fn local_tracked_plans_like_ignored_with_a_preview_note() {
     assert!(ignore.lines().any(|l| l == "CLAUDE.local.md"), "{ignore}");
 }
 
-// --- the flow rule file ---------------------------------------------------------------------------
+// --- the flow: named in the block, written nowhere in the project's .claude folders -------------------
 
 #[test]
-fn flow_file_is_planned_from_the_profile_flow() {
-    let fx = Fx::new(Some("m-flow"));
-    let plan = fx.plan("none", &[]);
-    assert_eq!(action(&plan, FLOW_FILE), "create", "{plan}");
-    let flows: Vec<String> = paths(&plan)
-        .into_iter()
-        .filter(|p| p.starts_with(".claude/rules/"))
-        .collect();
-    assert_eq!(flows, vec![FLOW_FILE.to_string()], "exactly one rule file");
-    fx.apply_ok("none", &[]);
-    let text = fx.read(FLOW_FILE);
-    assert!(text.contains("m-flow") || text.contains("M-Flow"), "{text}");
-    // The file is moai's whole file: a second plan has nothing to do.
-    assert_eq!(action(&fx.plan("none", &[]), FLOW_FILE), "unchanged");
-}
-
-#[test]
-fn flow_none_is_planned_without_a_flow_and_the_accepted_values_are_named() {
-    let fx = Fx::new(None);
-    let plan = fx.plan("none", &[]);
-    assert_eq!(action(&plan, FLOW_FILE), "absent", "{plan}");
-    let w = warnings(&plan);
-    for flow in FLOWS {
-        assert!(w.contains(flow), "{flow} not named in {w}");
-    }
-    fx.apply_ok("none", &[]);
-    assert!(!fx.exists(FLOW_FILE));
-}
-
-#[test]
-fn flow_text_is_short_and_loads_at_session_start_for_every_flow() {
+fn flow_is_named_with_its_branch_and_no_path_for_every_flow() {
     for flow in FLOWS {
         let fx = Fx::new(Some(flow));
         fx.apply_ok("none", &[]);
-        let text = fx.read(FLOW_FILE);
-        assert!(text.lines().count() <= 80, "{flow}: {} lines", text.lines().count());
-        assert!(text.len() <= 5 * 1024, "{flow}: {} bytes", text.len());
-        // No `paths` key in a frontmatter: an unscoped rule loads at session start.
-        if let Some(rest) = text.strip_prefix("---\n") {
-            let front = rest.split("\n---").next().unwrap();
+        let text = fx.read("CLAUDE.md");
+        let joined = block_lines(&text).join("\n");
+        assert!(
+            joined.contains(&format!("Work flow: {flow} (integration branch `main`)")),
+            "{flow}:\n{joined}"
+        );
+        for path_word in [".claude", "rules/", "flow.md"] {
             assert!(
-                !front.lines().any(|l| l.trim_start().starts_with("paths")),
-                "{flow}: {front}"
+                !joined.contains(path_word),
+                "{flow}: {path_word:?} in:\n{joined}"
             );
         }
-        assert!(!text.contains("AGENTS.md"), "{flow}");
-        assert!(text.contains(flow) || text.to_lowercase().contains(&flow.replace('-', " ")), "{flow}: names its flow");
     }
 }
 
 #[test]
-fn flow_file_is_replaced_only_while_it_holds_the_last_written_bytes() {
-    let fx = Fx::new(Some("m-flow"));
+fn flow_profile_without_a_flow_has_no_flow_line() {
+    let fx = Fx::new(None);
     fx.apply_ok("none", &[]);
-    let written = fx.read(FLOW_FILE);
-
-    // A new flow in the profile replaces the untouched file.
-    fx.set_profile(Some("github-flow"));
-    let plan = fx.plan("none", &[]);
-    assert_eq!(action(&plan, FLOW_FILE), "merge", "{plan}");
-    fx.apply_ok("none", &[]);
-    let replaced = fx.read(FLOW_FILE);
-    assert_ne!(replaced, written);
-
-    // A hand edit is a conflict; the file and the other files stay as they are.
-    let edited = format!("{replaced}\nOur own note.\n");
-    fs::write(fx.path(FLOW_FILE), &edited).unwrap();
-    fx.set_profile(Some("trunk-based"));
-    let plan = fx.plan("none", &[]);
-    assert_eq!(action(&plan, FLOW_FILE), "conflict", "{plan}");
-    assert_eq!(fx.apply_raw(&plan)["ok"], json!(false));
-    assert_eq!(fx.read(FLOW_FILE), edited);
+    let text = fx.read("CLAUDE.md");
+    assert!(
+        !block_lines(&text).join("\n").contains("Work flow"),
+        "{text}"
+    );
 }
 
 #[test]
-fn flow_file_that_moai_never_wrote_is_a_conflict() {
-    let fx = Fx::new(Some("m-flow"));
-    fs::create_dir_all(fx.path(".claude/rules/moai")).unwrap();
-    fs::write(fx.path(FLOW_FILE), "# Our own flow\n").unwrap();
-    let plan = fx.plan("none", &[]);
-    assert_eq!(action(&plan, FLOW_FILE), "conflict", "{plan}");
-    assert_eq!(fx.apply_raw(&plan)["ok"], json!(false));
-    assert_eq!(fx.read(FLOW_FILE), "# Our own flow\n");
+fn flow_project_plan_writes_nothing_under_the_projects_claude_folders() {
+    let picks: [&[&str]; 3] = [
+        &[],
+        &["import", "personal-file"],
+        &["move", "personal-file"],
+    ];
+    for flow in FLOWS {
+        for chosen in picks {
+            let fx = Fx::new(Some(flow));
+            fs::write(fx.path("AGENTS.md"), "# Team rules\n").unwrap();
+            let plan = fx.plan("ignored", chosen);
+            for p in paths(&plan) {
+                assert!(!p.starts_with(".claude/"), "{flow} {chosen:?}: plans {p}");
+            }
+            fx.apply_ok("ignored", chosen);
+            assert!(
+                !fx.exists(".claude"),
+                "{flow} {chosen:?}: the apply made a .claude folder"
+            );
+        }
+    }
 }

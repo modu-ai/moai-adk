@@ -494,9 +494,9 @@ fn regenerating_the_managed_section_keeps_the_merged_block() {
     };
     let plan = merge(&["agents-merge-plan", p]);
     assert_eq!(plan["result"]["action"], json!("merge"), "{plan}");
-    // Generation wrote an AGENTS.md, so the plan warns it would stop being read and needs the
-    // token that answers the warning.
-    let token = plan["result"]["confirm_token"].as_str().unwrap();
+    // Generation writes CLAUDE.md and no AGENTS.md, so Claude Code keeps reading the project and
+    // the plan has no warning to answer: it carries no token.
+    assert!(plan["result"]["confirm_token"].is_null(), "{plan}");
     let applied = merge(&[
         "agents-merge-apply",
         p,
@@ -504,8 +504,6 @@ fn regenerating_the_managed_section_keeps_the_merged_block() {
         plan["result"]["plan_digest"].as_str().unwrap(),
         "--permission-reference",
         REF,
-        "--confirm-warnings",
-        token,
     ]);
     assert_eq!(applied["ok"], json!(true), "{applied}");
     let merged = fs::read_to_string(root.path().join("CLAUDE.local.md")).unwrap();
@@ -513,7 +511,7 @@ fn regenerating_the_managed_section_keeps_the_merged_block() {
 
     // The guidance file that generation owns (`GUIDANCE`) is regenerated; the personal file
     // is not part of that and keeps its one merged block.
-    const GUIDANCE: &str = "AGENTS.md";
+    const GUIDANCE: &str = "CLAUDE.md";
     let guidance_before = fs::read_to_string(root.path().join(GUIDANCE)).unwrap();
     agents("ko");
     let guidance_after = fs::read_to_string(root.path().join(GUIDANCE)).unwrap();
@@ -1272,7 +1270,7 @@ fn the_preview_has_one_line_about_crlf() {
 /// that file holds the very bytes the apply wrote, which would pass every later check.
 #[test]
 fn a_receipt_that_names_another_file_is_refused() {
-    for other in ["README.md", "CLAUDE.md", "docs/notes.md"] {
+    for other in ["README.md", "CLAUDE.md", "notes/todo.md"] {
         let fx = Fx::fresh(MINE);
         let applied = fx.merge();
         let id = applied["receipt"].as_str().unwrap().to_string();

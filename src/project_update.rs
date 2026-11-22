@@ -755,10 +755,12 @@ fn generation_step(root: &Path, shown: &str, profile: &Profile) -> Result<Step> 
 /// REQ-6..8, card C-57). Each one is the whole request planned again with that choice in
 /// `picks`, so its digest and its `generation-apply` command belong to that choice alone.
 ///
-/// - `AGENTS.md` is a conflict for a missing managed block: `append-managed` (recommended)
-///   and `skip-conflicts`, and with a shadowing CLAUDE.md also `append-managed+claude-import`
-///   (an import alone would be refused while the conflict stands).
-/// - No file conflicts and a CLAUDE.md shadows AGENTS.md: `claude-import`.
+/// - `CLAUDE.md` is a conflict for a missing managed block: `append-managed` (recommended)
+///   and `skip-conflicts`.
+///
+/// There is no import choice any more: the writer owns `CLAUDE.md`, so nothing shadows
+/// `AGENTS.md`, and a project that holds an `AGENTS.md` picks `move`, `import` or `leave` in the
+/// project questions instead.
 ///
 /// A choice whose own plan still has a conflict row is left out: it could not be applied.
 /// Nothing here writes.
@@ -769,38 +771,23 @@ fn generation_choices(
     plan: &generation::GenerationPlan,
 ) -> Result<Vec<Value>> {
     let missing_block = plan.files.iter().any(|f| {
-        f.path == "AGENTS.md"
+        f.path == "CLAUDE.md"
             && f.action == "conflict"
             && f.detail
                 .as_deref()
                 .is_some_and(|d| d.contains(crate::agents::BLOCK_MISSING))
     });
-    let any_conflict = plan.files.iter().any(|f| f.action == "conflict");
-    let shadow = plan.claude_shadow.is_some();
     let mut sets: Vec<(&str, Vec<&str>, &str)> = Vec::new();
     if missing_block {
         sets.push((
             "append-managed",
             vec!["append-managed"],
-            "add the managed section at the end of AGENTS.md; every other byte stays",
+            "add the managed section at the end of CLAUDE.md; every other byte stays",
         ));
         sets.push((
             "skip-conflicts",
             vec!["skip-conflicts"],
-            "keep AGENTS.md as it is; the other files are still written",
-        ));
-        if shadow {
-            sets.push((
-                "append-managed+claude-import",
-                vec!["append-managed", "claude-import"],
-                "append the managed section and add the one import line of AGENTS.md to CLAUDE.md",
-            ));
-        }
-    } else if shadow && !any_conflict {
-        sets.push((
-            "claude-import",
-            vec!["claude-import"],
-            "add the one import line of AGENTS.md to CLAUDE.md",
+            "keep CLAUDE.md as it is; the other files are still written",
         ));
     }
     let mut out = Vec::new();

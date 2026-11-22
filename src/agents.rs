@@ -4,8 +4,9 @@
 //! decides per file with a baseline/current/new three-way comparison. Everything outside
 //! the markers is preserved byte for byte. A conflict is reported, never resolved by
 //! overwriting. `CLAUDE.local.md` is created once, on the user's pick, and never modified
-//! afterwards. `.claude/rules/moai/flow.md` is a whole file of MoAI's, replaced only while
-//! it holds the bytes MoAI last wrote. `AGENTS.md` and `AGENTS.local.md` are never written.
+//! afterwards. Nothing is written under the project's `.claude` folders: moai's common
+//! content lives in the Claude config folder. `AGENTS.md` and `AGENTS.local.md` are never
+//! written.
 
 use crate::apply::{self, decide, read_opt, relative_ok, root_of, target, Decision};
 use crate::retired_hosts::owned_entry_retired;
@@ -15,8 +16,6 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::path::Path;
 
-mod flow_text;
-
 type Result<T> = std::result::Result<T, String>;
 
 pub const AGENTS_SECTION: &str = "moai-workflow";
@@ -25,10 +24,6 @@ pub const IGNORE_SECTION: &str = "moai-local";
 pub const BLOCK_FILE: &str = "CLAUDE.md";
 /// The personal file, created once and only on the user's pick.
 pub const LOCAL_FILE: &str = "CLAUDE.local.md";
-/// The one flow rule file: unscoped (no `paths` key), so it loads at session start.
-pub const FLOW_FILE: &str = ".claude/rules/moai/flow.md";
-/// The section id the flow file's baseline is recorded under (the whole file is MoAI's).
-const FLOW_SECTION: &str = "moai-flow";
 /// What the file `AGENTS.md` is called; it is read, never written.
 const AGENTS_FILE: &str = "AGENTS.md";
 /// The REVIEW.md section the PROJECT interview fills (#2639).
@@ -350,11 +345,8 @@ pub const BLOCK_MAX_LINES: usize = 15;
 /// carry the facts. `None` when the profile sets no language.
 fn writing_line(p: &Profile, ui: &str, root: &Path) -> Option<String> {
     let settings = p.language.as_ref()?;
-    let full = crate::language::render_lines(
-        settings,
-        ui,
-        &crate::state_root::rel(root, "project.yaml"),
-    );
+    let full =
+        crate::language::render_lines(settings, ui, &crate::state_root::rel(root, "project.yaml"));
     let rows: Vec<&str> = full.lines().filter_map(|l| l.strip_prefix("- ")).collect();
     if rows.is_empty() {
         return None;
@@ -369,9 +361,9 @@ fn writing_line(p: &Profile, ui: &str, root: &Path) -> Option<String> {
 
 /// The managed block of `CLAUDE.md`: facts only, within [`BLOCK_MAX_LINES`] lines (REQ-3): the
 /// project id, the tools, the check command, the language, the versioning line, the flow with its
-/// integration branch, the places of SPECs and cards, and the flow rule file when one is planned.
-/// What to do and how to decide is the flow file's and the skills' to say, not the block's.
-fn render_agents(p: &Profile, r: &AgentsRequest, root: &Path, flow_planned: bool) -> String {
+/// integration branch, and the places of SPECs and cards. What to do and how to decide is the
+/// flow rule's and the skills' to say, and those live in the config folder, not in the block.
+fn render_agents(p: &Profile, r: &AgentsRequest, root: &Path) -> String {
     let (begin, end) = markers(AGENTS_SECTION, "html");
     let lang = instruction_language(p, r);
     let ko = lang == "ko";
@@ -387,25 +379,13 @@ fn render_agents(p: &Profile, r: &AgentsRequest, root: &Path, flow_planned: bool
     let flow = p
         .work_flow
         .as_ref()
-        .map(|w| {
-            let branch = w.integration_branch.as_deref();
-            let rules = if flow_planned {
-                if ko {
-                    format!("; 규칙은 `{FLOW_FILE}`")
-                } else {
-                    format!("; rules in `{FLOW_FILE}`")
-                }
-            } else {
-                String::new()
-            };
-            match (ko, branch) {
-                (true, Some(b)) => format!("작업 흐름: {} (통합 브랜치 `{b}`){rules}.\n", w.flow),
-                (true, None) => format!("작업 흐름: {}{rules}.\n", w.flow),
-                (false, Some(b)) => {
-                    format!("Work flow: {} (integration branch `{b}`){rules}.\n", w.flow)
-                }
-                (false, None) => format!("Work flow: {}{rules}.\n", w.flow),
+        .map(|w| match (ko, w.integration_branch.as_deref()) {
+            (true, Some(b)) => format!("작업 흐름: {} (통합 브랜치 `{b}`).\n", w.flow),
+            (true, None) => format!("작업 흐름: {}.\n", w.flow),
+            (false, Some(b)) => {
+                format!("Work flow: {} (integration branch `{b}`).\n", w.flow)
             }
+            (false, None) => format!("Work flow: {}.\n", w.flow),
         })
         .unwrap_or_default();
     let body = if ko {
@@ -428,19 +408,6 @@ SPECs: `{specs}` · cards: `moai card list`.\n",
         )
     };
     format!("{begin}\n{body}{end}\n")
-}
-
-/// The flow rule file's text for the profile's `work_flow`, in the instruction language, or
-/// `None` when the profile names no flow (REQ-9: no file is planned and the accepted values are
-/// named). Every value `Profile` accepts has a shipped text, so a profile with a flow always
-/// gets one.
-fn render_flow(p: &Profile, r: &AgentsRequest) -> Option<String> {
-    let w = p.work_flow.as_ref()?;
-    flow_text::render(
-        &w.flow,
-        w.integration_branch.as_deref(),
-        instruction_language(p, r) == "ko",
-    )
 }
 
 /// The first-creation text of the personal file `CLAUDE.local.md`, in the request language. A
@@ -1176,51 +1143,6 @@ pub fn section_plan(
     Ok(plan)
 }
 
-/// The plan row of the flow rule file (REQ-11, REQ-12): the file is MoAI's whole, so it is
-/// replaced only while it holds the bytes MoAI last wrote (the recorded baseline); any other
-/// bytes, or a file MoAI never wrote, are a conflict and the file stays. A link or text that is
-/// not UTF-8 is a conflict row too (REQ-5).
-fn flow_row(root: &Path, m: Option<&Manifest>, text: &str) -> Result<FilePlan> {
-    let rendered = digest(text.as_bytes());
-    let baseline = baseline_for(m, FLOW_FILE);
-    let mut row = FilePlan {
-        path: FLOW_FILE.into(),
-        action: String::new(),
-        tracked_by_default: true,
-        expected_sha256: None,
-        section_id: Some(FLOW_SECTION.into()),
-        baseline_sha256: baseline.clone(),
-        rendered_sha256: Some(rendered.clone()),
-        detail: None,
-    };
-    match probe(root, FLOW_FILE)? {
-        Probe::Refused(why) => {
-            return Ok(refused_row(FLOW_FILE, true, Some(FLOW_SECTION), why));
-        }
-        Probe::Absent => row.action = "create".into(),
-        Probe::Text(bytes) => {
-            let current = digest(&bytes);
-            row.expected_sha256 = Some(current.clone());
-            if current == rendered {
-                row.action = "unchanged".into();
-            } else if baseline.as_deref() == Some(current.as_str()) {
-                row.action = "merge".into();
-            } else {
-                row.action = "conflict".into();
-                row.detail = Some(
-                    if baseline.is_none() {
-                        "the flow rule file exists and MoAI never wrote it; it is kept"
-                    } else {
-                        "the flow rule file differs from the bytes MoAI last wrote; it is kept"
-                    }
-                    .into(),
-                );
-            }
-        }
-    }
-    Ok(row)
-}
-
 fn plan_digest(p: &AgentsPlan) -> String {
     digest(
         &serde_json::to_vec(&(
@@ -1309,13 +1231,6 @@ fn adopt_unchanged(
         None => {
             if !created.contains(&f.path) {
                 created.push(f.path.clone());
-            }
-        }
-        // The flow file is a whole file of MoAI's: bytes equal to the rendering become the
-        // baseline (a first write, or an interrupted update).
-        Some(FLOW_SECTION) => {
-            if f.baseline_sha256.as_deref() != Some(rendered) && digest(bytes) == rendered {
-                record_owned(owned, &f.path, FLOW_SECTION, bytes);
             }
         }
         Some(section) if f.baseline_sha256.as_deref() != Some(rendered) => {
@@ -1470,8 +1385,7 @@ pub(crate) fn agents_plan_for(
     // targets now, and `AGENTS.override.md` belonged to a host this tool no longer writes for.
     let host_notes: Vec<String> = Vec::new();
 
-    let flow_rendered = render_flow(&profile, &request);
-    let agents_rendered = render_agents(&profile, &request, &root, flow_rendered.is_some());
+    let agents_rendered = render_agents(&profile, &request, &root);
     // REQ-1, REQ-2: the block goes into `CLAUDE.md` when the project holds no `AGENTS.md`, when
     // `CLAUDE.md` already holds the block or the import of `AGENTS.md` (a settled project keeps
     // getting its block refreshed), or when the user picked `import` or `move`. Otherwise Claude
@@ -1627,16 +1541,6 @@ pub(crate) fn agents_plan_for(
                 }
             }
         }
-    }
-
-    // REQ-8, REQ-9: one flow rule file from the profile's `work_flow`, or none and the accepted
-    // values named.
-    match &flow_rendered {
-        Some(text) => files.push(flow_row(&root, m, text)?),
-        None => warnings.push(format!(
-            "work_flow names no flow, so no flow rule file is planned; accepted values: {}",
-            crate::profile::WORK_FLOWS.join(", ")
-        )),
     }
 
     // #3009 S3b (leader decision A): the managed `.gitignore` block is always planned, for the
@@ -1966,12 +1870,7 @@ pub(crate) fn agents_apply_amended_for(
         let (bytes, section) = match f.path.as_str() {
             BLOCK_FILE => {
                 let (b, e) = markers(AGENTS_SECTION, "html");
-                let rendered = render_agents(
-                    &profile,
-                    &p.request,
-                    &root,
-                    render_flow(&profile, &p.request).is_some(),
-                );
+                let rendered = render_agents(&profile, &p.request, &root);
                 let prefix = format!("# {}\n\n", profile.project_id);
                 let out = splice(before.as_deref(), &b, &e, &rendered, &prefix)?;
                 assert_single_block(&out, &b, &e, &rendered)?;
@@ -1996,10 +1895,6 @@ pub(crate) fn agents_apply_amended_for(
                 (out, Some(IGNORE_SECTION))
             }
             LOCAL_FILE => (render_local(&p.request).into_bytes(), None),
-            FLOW_FILE => {
-                let text = render_flow(&profile, &p.request).ok_or("no flow text for the profile")?;
-                (text.into_bytes(), Some(FLOW_SECTION))
-            }
             _ => return Err("unknown planned path".into()),
         };
         // REQ-01B-08: keep the before bytes before publishing so recovery can restore
@@ -2066,16 +1961,8 @@ pub(crate) fn agents_apply_amended_for(
                 &mut owned,
                 &f.path,
                 AGENTS_SECTION,
-                render_agents(
-                    &profile,
-                    &p.request,
-                    &root,
-                    render_flow(&profile, &p.request).is_some(),
-                )
-                .as_bytes(),
+                render_agents(&profile, &p.request, &root).as_bytes(),
             ),
-            // The flow file is MoAI's whole file: its baseline is every byte written.
-            Some(FLOW_SECTION) => record_owned(&mut owned, &f.path, FLOW_SECTION, &bytes),
             // #2936: REVIEW.md is an owned section too; without a baseline a later language or
             // answer change planned `conflict` for a block nobody had edited.
             Some(REVIEW_SECTION) => {
@@ -2283,7 +2170,7 @@ mod tests {
             picks: Vec::new(),
         };
         let plain: Profile = serde_json::from_value(base.clone()).unwrap();
-        let without = render_agents(&plain, &request("en"), root.path(), false);
+        let without = render_agents(&plain, &request("en"), root.path());
         assert!(!without.contains("Versioning"), "{without}");
 
         let with = |versioning: Value| -> Profile {
@@ -2292,20 +2179,22 @@ mod tests {
             serde_json::from_value(v).expect("the profile takes a versioning key")
         };
         let calver = with(json!({"scheme": "calver", "format": "YYYY.0M.MICRO"}));
-        let text = render_agents(&calver, &request("en"), root.path(), false);
+        let text = render_agents(&calver, &request("en"), root.path());
         let line = "Versioning: CalVer (YYYY.0M.MICRO).\n";
         assert!(
-            text.contains(&format!(
-                "Purpose: Build a small editor\n{line}\nConfirm the approved"
-            )),
+            text.contains(&format!("Checks: `moai check affected`.\n{line}SPECs:")),
             "{text}"
         );
         assert_eq!(text.replace(line, ""), without);
-        let korean = render_agents(&calver, &request("ko"), root.path(), false);
+        let korean = render_agents(&calver, &request("ko"), root.path());
         assert!(
-            korean.contains("목적: Build a small editor\n버전 규칙: CalVer (YYYY.0M.MICRO).\n\n"),
+            korean.contains(
+                "검사: `moai check affected`.\n버전 규칙: CalVer (YYYY.0M.MICRO).\nSPEC:"
+            ),
             "{korean}"
         );
+        // The block holds at most BLOCK_MAX_LINES lines between its markers.
+        assert!(text.lines().count() - 2 <= BLOCK_MAX_LINES, "{text}");
 
         assert!(!injects_markers(&calver, &request("en")));
         let breaking = with(json!({"scheme": "custom", "format": "x --> y"}));
@@ -2350,7 +2239,7 @@ mod tests {
             "the first apply only created"
         );
 
-        // en -> ko merges AGENTS.md (its before bytes create this run's backup dir)
+        // en -> ko merges CLAUDE.md (its before bytes create this run's backup dir)
         // and changes the manifest, so the manifest backup is attempted.
         let second = agents_plan(root.path(), request("ko")).unwrap();
         let digest = second.plan_digest.clone();
@@ -2405,7 +2294,7 @@ mod tests {
     /// #2125 RED: a FILE backup failure in the loop returns through the bare `?`
     /// without a receipt row and without the receipt-gap note (REQ-01B-06: the
     /// receipt gap is never silent). The injection makes the receipts directory
-    /// unwritable, so the AGENTS.md merge in a language change cannot store its
+    /// unwritable, so the CLAUDE.md merge in a language change cannot store its
     /// before bytes; the fixed path records the file row (published=false, the
     /// error, the before digest) and calls receipt_failure, whose save attempt
     /// names the gap even though the directory refuses the file.
@@ -2470,7 +2359,7 @@ mod tests {
             .unwrap_err();
         fs::set_permissions(&receipts, fs::Permissions::from_mode(0o755)).unwrap();
         assert!(
-            err.contains("partial apply") && err.contains("AGENTS.md"),
+            err.contains("partial apply") && err.contains("CLAUDE.md"),
             "{err}"
         );
         // The fix names the receipt gap (receipt_failure ran); the buggy path
@@ -2479,7 +2368,7 @@ mod tests {
     }
 
     /// #2125 (audit round 2): the receipt FILE records the failed file row —
-    /// path=AGENTS.md, published=false, the error, the before digest — read from
+    /// path=CLAUDE.md, published=false, the error, the before digest — read from
     /// `receipts/*.json` after an apply whose file backup was injected to fail
     /// (#2122's amended_manifest_decode_failure style, through the #2125 test
     /// switch). Deleting the receipt.entries push breaks this assertion.
@@ -2524,7 +2413,7 @@ mod tests {
             &mut |_, _| Ok(()),
         )
         .unwrap();
-        let before_bytes = fs::read(root.path().join("AGENTS.md")).unwrap();
+        let before_bytes = fs::read(root.path().join("CLAUDE.md")).unwrap();
         let expected_before = digest(&before_bytes);
 
         FAIL_FILE_BACKUP.with(|cell| cell.set(true));
@@ -2544,7 +2433,7 @@ mod tests {
             .unwrap_err();
         FAIL_FILE_BACKUP.with(|cell| cell.set(false));
         assert!(
-            err.contains("partial apply") && err.contains("AGENTS.md"),
+            err.contains("partial apply") && err.contains("CLAUDE.md"),
             "{err}"
         );
 
@@ -2560,7 +2449,7 @@ mod tests {
                 continue;
             }
             for e in v["entries"].as_array().unwrap() {
-                if e["path"] == json!("AGENTS.md") {
+                if e["path"] == json!("CLAUDE.md") {
                     rows.push((v["status"].clone(), e.clone()));
                 }
             }
@@ -2780,7 +2669,7 @@ mod tests {
             "",
             "# CLAUDE.local.md\n",
             "CLAUDE.local.md.bak\n",
-            "docs/CLAUDE.local.md\n",
+            "notes/CLAUDE.local.md\n",
             "*.local.md\n",
         ] {
             assert!(!ignore_has_any_local_rule(text), "{text:?}");

@@ -12,9 +12,9 @@
     "workflow_reference": {"type": "string"},
     "local_file": {"enum": ["none", "ignored", "tracked"]},
     "picks": {
-      "description": "The choices the user picked for an AGENTS.md conflict (SPEC-20261119-agents-conflict-choices). Absent when empty; an id outside this list is refused as invalid input.",
+      "description": "The choices the user picked for a CLAUDE.md conflict, for a project that holds an AGENTS.md, and for the personal file. Absent when empty; an id outside this list is refused as invalid input.",
       "type": "array",
-      "items": {"enum": ["append-managed", "skip-conflicts", "claude-import"]}
+      "items": {"enum": ["append-managed", "skip-conflicts", "import", "move", "personal-file"]}
     }
   }
 }

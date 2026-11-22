@@ -909,23 +909,27 @@ fn local_file_from_manifest() {
     let paths = generation_paths(&plan);
     // #3009 S3b: the managed `.gitignore` block (the state-folder allow-list) is planned for
     // every choice; the personal file is planned only when the choice makes it.
-    assert!(!paths.iter().any(|p| p == "AGENTS.local.md"), "{paths:?}");
+    assert!(!paths.iter().any(|p| p == "CLAUDE.local.md"), "{paths:?}");
     assert!(paths.iter().any(|p| p == ".gitignore"), "{paths:?}");
 
-    for (choice, lists_local) in [("tracked", false), ("ignored", true)] {
+    // A personal file is never shared, so `tracked` plans like `ignored` (the layout's REQ-7).
+    for (choice, lists_local) in [("tracked", true), ("ignored", true)] {
         let fx = Fx::new();
         fx.with_profile(false);
         let mut request = step(&fx.plan(), "generation")["apply"]["stdin"]["request"].clone();
         request["local_file"] = json!(choice);
+        request["picks"] = json!(["personal-file"]);
         fx.generate(&request);
         let plan = fx.plan();
         let generation = step(&plan, "generation");
         assert_eq!(generation["state"], "unchanged", "{choice}: {generation}");
         let paths = generation_paths(&plan);
+        // The personal file is planned on the pick only, and the file stays as it was written.
         assert!(
-            paths.iter().any(|p| p == "AGENTS.local.md"),
+            !paths.iter().any(|p| p == "CLAUDE.local.md"),
             "{choice}: {paths:?}"
         );
+        assert!(fx.root.join("CLAUDE.local.md").is_file(), "{choice}");
         assert!(
             paths.iter().any(|p| p == ".gitignore"),
             "{choice}: {paths:?}"
@@ -933,7 +937,7 @@ fn local_file_from_manifest() {
         // The block lists the personal file only for the `ignored` choice (condition 4).
         let ignore = fs::read_to_string(fx.root.join(".gitignore")).unwrap();
         assert_eq!(
-            ignore.lines().any(|l| l == "AGENTS.local.md"),
+            ignore.lines().any(|l| l == "CLAUDE.local.md"),
             lists_local,
             "{choice}: {ignore}"
         );
@@ -942,9 +946,10 @@ fn local_file_from_manifest() {
     // `ignored` over the user's own rule records no section: tracked or ignored is unknown.
     let fx = Fx::new();
     fx.with_profile(false);
-    fx.write(".gitignore", "AGENTS.local.md\n");
+    fx.write(".gitignore", "CLAUDE.local.md\n");
     let mut request = step(&fx.plan(), "generation")["apply"]["stdin"]["request"].clone();
     request["local_file"] = json!("ignored");
+    request["picks"] = json!(["personal-file"]);
     fx.generate(&request);
     let plan = fx.plan();
     let generation = step(&plan, "generation");
@@ -973,6 +978,7 @@ fn the_recorded_block_kind_tells_the_personal_file_choice() {
         fx.with_profile(false);
         let mut request = step(&fx.plan(), "generation")["apply"]["stdin"]["request"].clone();
         request["local_file"] = json!("ignored");
+        request["picks"] = json!(["personal-file"]);
         fx.generate(&request);
         let manifest_path = fx.generation_manifest(&fx.plan());
         let mut manifest: Value =
@@ -1012,26 +1018,29 @@ fn the_recorded_block_kind_tells_the_personal_file_choice() {
     }
 }
 
-/// Generation moves to `CLAUDE.local.md`: a manifest that records the personal file under the
-/// new name reads like one that records it under the old name. Without that the record "file
-/// seen once, block lists it" is half a record and the update asks the user again.
+/// Generation moved to `CLAUDE.local.md`: a manifest of an earlier release that records the
+/// personal file under the old name reads like one that records it under the new name. Without
+/// that the record "file seen once, block lists it" is half a record and the update asks the user
+/// again.
 #[test]
-fn a_manifest_that_names_claude_local_md_gives_the_same_choice() {
+fn a_manifest_that_names_agents_local_md_gives_the_same_choice() {
     let fx = Fx::new();
     fx.with_profile(false);
     let mut request = step(&fx.plan(), "generation")["apply"]["stdin"]["request"].clone();
     request["local_file"] = json!("ignored");
+    request["picks"] = json!(["personal-file"]);
     fx.generate(&request);
     let manifest_path = fx.generation_manifest(&fx.plan());
     let mut manifest: Value = serde_json::from_slice(&fs::read(&manifest_path).unwrap()).unwrap();
     let recorded = manifest["created_once"].as_array_mut().unwrap();
     assert!(
-        recorded.iter().any(|p| p == "AGENTS.local.md"),
+        recorded.iter().any(|p| p == "CLAUDE.local.md"),
         "the apply records the personal file: {recorded:?}"
     );
+    // A manifest of an earlier release records it under the old name: it reads the same.
     for p in recorded.iter_mut() {
-        if *p == "AGENTS.local.md" {
-            *p = json!("CLAUDE.local.md");
+        if *p == "CLAUDE.local.md" {
+            *p = json!("AGENTS.local.md");
         }
     }
     fs::write(
@@ -1277,6 +1286,10 @@ fn the_merge_step_offers_the_personal_file_and_settles_after_the_apply() {
 fn the_merge_preview_warns_and_the_apply_waits_for_the_confirmation() {
     let fx = Fx::new();
     fx.settled();
+    // Generation writes CLAUDE.md, so the warning belongs to a project whose CLAUDE.md is gone
+    // and that holds an AGENTS.md of its own: the first CLAUDE file would hide it.
+    fs::remove_file(fx.root.join("CLAUDE.md")).unwrap();
+    fx.write("AGENTS.md", "# rules\n");
     fx.write("AGENTS.local.md", "# My notes\n\nReply in Korean.\n");
     let plan = fx.plan();
     let merge = step(&plan, "agents-local-merge");
