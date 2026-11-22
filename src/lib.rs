@@ -128,6 +128,8 @@ pub mod project_detect;
 pub mod project_home;
 pub mod project_hosts;
 pub mod project_id;
+pub mod project_scale;
+pub mod project_scale_detect;
 pub mod project_skills;
 pub mod project_update;
 pub mod queue;
