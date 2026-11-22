@@ -153,3 +153,20 @@ fn shortened_generic_part_keeps_its_gate_and_hold_sentences() {
     }
     assert!(full.contains("`EnterWorktree(~/.moai/worktrees/<project>-<id>)`"));
 }
+
+/// AC-6: the two personal lines of the old local file (the pointer to the user's auto-memory
+/// and the line about this machine) went to the ignored `CLAUDE.local.md`, never into the
+/// tracked file, which every lane worktree and every clone gets.
+#[test]
+fn tracked_claude_md_holds_neither_personal_line() {
+    let text = claude_md();
+    for personal in [
+        "- Memory: Claude auto-memory for this project",
+        "- Dev Mac; GitHub auth through `gh` as the operator",
+    ] {
+        assert!(
+            !text.contains(personal),
+            "CLAUDE.md holds the personal line starting {personal:?}"
+        );
+    }
+}

@@ -8,7 +8,7 @@ A chain is the order in which the parent session uses agents for one kind of req
 | --- | --- | --- | --- |
 | Build something new | PLAN, RUN, SYNC, AUDIT | moai-plan, moai-impl, moai-docs, moai-audit | internal/decide, internal/sdd |
 | Fix a bug | PLAN, RUN, SYNC, AUDIT | moai-research, moai-plan, moai-impl, moai-docs, moai-audit | internal/decide, internal/sdd |
-| Review a pull request | AUDIT | moai-audit | internal/review |
+| Review a pull request | AUDIT | moai-audit | audit |
 | Research or compare | READ | moai-research | none |
 | Check a page or do a web task | RUN | none | none |
 | Set up a project | PROJECT | none | internal/interview, internal/questions |

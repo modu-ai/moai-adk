@@ -144,6 +144,7 @@ Lane and leader
   lane-resume-note       Write a card's resume note
   lane-resume-check      Read a card's resume note from a comment
   lane-duty-line         Print the line a leader types into a lane
+  lane-run               Run a lane non-stop or one card at a time
   lane-status            Show the status table of the named lanes
   lane-screen            Read a lane's screen into a state
   lane-send              Send a text to a lane terminal if its screen allows it
@@ -235,6 +236,7 @@ Internal
   archive-search         Search the archived SPECs
   worktree-gc-plan       Preview removing or trimming merged worktrees
   worktree-gc-apply      Remove or trim the previewed worktrees
+  worktree-slot          Fixed worktree slots, warmed from the seed
   worktree-install-plan  Preview a scoped package install
   hygiene-plan           Preview what may move to the holding folder
   hygiene-apply          Move the previewed leftovers to the holding folder

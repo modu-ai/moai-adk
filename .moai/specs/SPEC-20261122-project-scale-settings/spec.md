@@ -29,7 +29,7 @@ parent: SPEC-20261122-project-scale
 - REQ-3: When the user picks packages they never work in, the plan shall list one `claudeMdExcludes` glob for each in `.claude/settings.local.json` · failure: none — the file is created only on this pick and a git ignore for it is asked as its own pick.
 - REQ-4: When the user picks generated or vendored folders that the repository tracks, the plan shall list a `Read` deny rule for each in `permissions.deny` of the root `.claude/settings.json` · failure: none — folders that `.gitignore` already lists are not offered.
 - REQ-5: When the user picks a code intelligence plugin for a detected language, the plan shall list its `enabledPlugins` key in the project settings and print the install command as text · failure: none — the plan installs nothing and names the language server binary the language needs.
-- REQ-6: When the user picks sparse worktrees, the plan shall list `worktree.sparsePaths` holding `.claude` and the picked folders and `worktree.symlinkDirectories` for the dependency folders found at the root · failure: none — the plan also offers the one `.gitignore` line for `.claude/worktrees/` as its own pick.
+- REQ-6: When the user picks sparse worktrees, the plan shall list `worktree.sparsePaths` holding `.claude` and the picked folders and `worktree.symlinkDirectories` for the dependency folders found at the root · failure: none — the plan also offers the one `.claude/worktrees/` line in `.git/info/exclude` (the common git dir's in a linked worktree) as its own pick.
 - REQ-7: When the user starts sessions from a package folder, the plan shall list a self-contained `.claude/settings.json` in that package whose `permissions.additionalDirectories` name only sibling folders that exist inside the repository · failure: none — the root settings file carries the deny rules again because a worktree session reads the root file.
 - REQ-8: When the user picks per-package skills, the plan shall list one `SKILL.md` per package with a `description` of at most 250 characters that begins with words a request would contain · failure: none — the body holds the package's detected facts only.
 - REQ-9: The Claude settings writer shall accept `claudeMdExcludes` as an array of one-line glob strings, `enabledPlugins` as an object of `name@marketplace` keys with `true` values, `worktree.sparsePaths` and `worktree.symlinkDirectories` as arrays of repository-relative folder paths and `permissions.additionalDirectories` as relative paths without a drive or an absolute root · failure: none — each value is checked before any write.
@@ -54,6 +54,17 @@ parent: SPEC-20261122-project-scale
 3. 조각 C: 설정·파일 행의 계획과 미리보기 줄마다의 문서 줄(REQ-1 에서 REQ-8, AC-1, AC-2). 문서 인용 데이터 파일이 읽은 날짜와 Claude Code 버전을 가져요.
 4. 조각 E(선택): 패키지별 스킬(REQ-8). 감지가 패키지 매니페스트의 바이트를 읽지 않아서 본문이 짧아요.
 
+### Slice C2 first items
+
+- 패키지 설정이 거절 규칙을 다시 실어요(REQ-7, D-2): `project_scale_plan_lib a_monorepo_preview_lists_every_native_setting_with_its_doc_line`
+- 토큰 모양의 `enabledPlugins` 키와 관리 밖 키는 거절되고 메시지에 값이 나오지 않아요(REQ-9): `claude_settings_scale_keys a_token_shaped_plugin_key_is_refused_and_hidden`
+- 설정 계획 자체가 저장소를 벗어나는 `additionalDirectories` 를 거절하고 `.git` 찾기는 저장소 루트에서 멈춰요(REQ-10): `claude_settings_scale_keys the_writer_refuses_an_additional_directory_outside_the_repository`
+
+### Slice C3 follow-ups (C2 감사의 막지 않는 두 항목)
+
+- 거절 메시지는 제어 문자뿐 아니라 보이지 않는 서식·구분 문자(폭 없는 공백, 소프트 하이픈, 방향 표시·뒤집기, 줄·문단 구분자, BOM, 태그 문자)도 지운 뒤 자격 증명 검사를 하고, 지운 글만 보여 줘요(REQ-9): `claude_settings_scale_keys a_token_split_by_an_invisible_format_or_separator_character_is_never_echoed`
+- 고른 플러그인 중 이미 같은 값인 것은 그대로 두고 나머지를 더해요. 다른 값으로 이미 있는 플러그인만 충돌이고, 충돌 글은 그 플러그인만 이름 대요(REQ-5): `project_scale_plan_lib a_picked_plugin_already_set_the_same_way_is_kept_and_the_rest_are_added`
+
 ## Risks
 
 - 거절 규칙은 보안 경계가 아니에요(문서: 하위 프로세스가 직접 여는 파일은 안 막아요). 미리보기가 그 한계를 한 줄로 말해요.
@@ -68,7 +79,7 @@ parent: SPEC-20261122-project-scale
 | Id | Decision | Basis | Undo |
 | --- | --- | --- | --- |
 | D-1 | `paths:` 없는 규칙과 200 줄 넘는 지침은 쓰지 않아요. | 문서(규칙 로드 시점, 200 줄 목표)와 슬라이스 0 측정. | 카드 열림 |
-| D-2 | 거절 규칙은 `./**/<폴더>/**/*` 꼴이고 루트 설정에 써요(패키지 설정에서 시작한 세션만 받는 것을 막고 워크트리 세션이 받도록). | 문서(`Put it together`, 거절 규칙 두 번째 사본). | 카드 열림 |
+| D-2 | 거절 규칙은 `./**/<폴더>/**/*` 꼴이고 루트 설정에 써요(워크트리 세션이 받도록). 패키지에서 시작하기를 고르면 REQ-7 그대로 그 패키지의 `.claude/settings.json` 도 자기 완결이어서, 그 패키지 안의 고른 폴더 규칙을 패키지 기준 경로로 다시 실어요(리더 결정 2026-11-22, 되돌릴 수 있어요; 예전 기록 "거절 규칙은 루트 파일에만" 을 바꿔요). | 문서(`Put it together`, 거절 규칙 두 번째 사본; 패키지 설정은 부모에서 상속되지 않아요). | 카드 열림 |
 | D-3 | 플러그인은 `enabledPlugins` 키와 설치 명령 글까지만 다뤄요. 설치는 사용자가 고른 뒤 이 세션이 그 명령을 돌려요. | 문서: 프로젝트 설정의 키는 설치하지 않아요. 설치는 GitHub 접속이 필요해요. | 카드 열림 |
 | D-4 | 계획 파일은 건드리지 않아요. | 문서: 계획은 압축 뒤 디스크에서 다시 들어와요. | 카드 열림 |
 | D-5 | 쓰는 파일의 자리는 문서의 자리 그대로예요: 패키지 `CLAUDE.md` 는 패키지 폴더, 제외·개인 항목은 `settings.local.json`, 팀 항목은 `settings.json`. | `large-codebases` 각 절의 "committed or local" 안내. | 카드 열림 |
