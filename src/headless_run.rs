@@ -734,7 +734,8 @@ pub fn record_run(
 /// One `--allowedTools` entry the builder accepts (SPEC REQ-2). The WHOLE entry has one allowed
 /// shape: a tool name of ASCII letters, digits and underscores, then optionally one
 /// parenthesised body, nothing before the name, nothing after the closing parenthesis, no
-/// comma and no whitespace outside the body. Anything else refuses by construction, so an entry
+/// comma anywhere in the entry, and no whitespace outside the body. Anything else refuses by
+/// construction, so an entry
 /// cannot carry a second entry into the comma-joined value and there is no list of bad
 /// spellings to keep complete. Per tool, in any letter case: `Monitor` never builds, `Bash`,
 /// `PowerShell` and `Agent` never build bare, a `Bash` or `PowerShell` body is a shell rule
@@ -745,6 +746,12 @@ fn narrow_rule(entry: &str) -> Result<()> {
             "tool entry {entry:?} is refused ({why}); use one narrow entry"
         ))
     };
+    // The comma is the join character of the `--allowedTools` value and the host's split inside
+    // parentheses is not documented, so a comma anywhere — the name, a shell body, any other
+    // body — is the one byte that can carry a second entry in: it refuses before anything else.
+    if entry.contains(',') {
+        return refuse("a comma joins entries and may never sit inside one");
+    }
     let (name, body) = match entry.split_once('(') {
         None => (entry, None),
         Some((name, rest)) => match rest.strip_suffix(')') {
@@ -799,7 +806,7 @@ fn shell_rule(inner: &str) -> bool {
 
 /// The punctuation a rule may hold besides ASCII letters, digits and the space (SPEC REQ-2):
 /// the path, option and list forms of a read-only command.
-const PLAIN_RULE_CHARS: [char; 10] = ['.', '_', '/', '-', '=', ':', ',', '@', '%', '+'];
+const PLAIN_RULE_CHARS: [char; 9] = ['.', '_', '/', '-', '=', ':', '@', '%', '+'];
 
 /// Whether one character is in the set a rule may be written with.
 fn plain_rule_char(c: char) -> bool {

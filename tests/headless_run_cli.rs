@@ -734,10 +734,7 @@ fn every_ascii_byte_outside_the_set_refuses_in_an_argument() {
     for byte in 0u8..=127 {
         let c = byte as char;
         let allowed = c.is_ascii_alphanumeric()
-            || matches!(
-                c,
-                ' ' | '.' | '_' | '/' | '-' | '=' | ':' | ',' | '@' | '%' | '+'
-            );
+            || matches!(c, ' ' | '.' | '_' | '/' | '-' | '=' | ':' | '@' | '%' | '+');
         for rule in [format!("Bash(echo a{c}b *)"), format!("Bash(echo a{c}b)")] {
             let mut spec = audit_spec();
             spec.allowed_tools = vec![rule.clone()];
@@ -749,8 +746,81 @@ fn every_ascii_byte_outside_the_set_refuses_in_an_argument() {
         }
         in_set += usize::from(allowed);
     }
-    // 62 letters and digits, the space, and ten punctuation characters
-    assert_eq!(in_set, 73);
+    // 62 letters and digits, the space, and nine punctuation characters — the comma is not
+    // one of them
+    assert_eq!(in_set, 72);
+}
+
+/// REQ-2: a comma refuses anywhere in an entry, a Bash or PowerShell body included. The entries
+/// travel as one comma-joined `--allowedTools` value and the host's split inside parentheses is
+/// not documented, so a comma is the one byte that can carry a second entry.
+#[test]
+fn a_comma_refuses_anywhere_in_an_entry() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path().join("platform");
+    fs::create_dir_all(&root).unwrap();
+    let env = standin_env(&standin_dir(tmp.path()));
+    let builds = |entry: &str| {
+        let mut spec = audit_spec();
+        spec.allowed_tools = vec![entry.to_string()];
+        build(&spec, &ctx(&root), &env).is_ok()
+    };
+    for entry in [
+        // a second entry smuggled inside a shell body, with and without a wildcard
+        "Bash(git log --format=a,Bash)",
+        "Bash(git log --format=a,Bash(*))",
+        "Bash(git log --format=a,Bash *)",
+        "Bash(git log:a,b *)",
+        "Bash(echo a,b)",
+        "Bash(echo a,b *)",
+        "Bash(echo a, b *)",
+        "Bash(echo a ,b)",
+        "Bash(,)",
+        "Bash(a,)",
+        "Bash(,a)",
+        "bash(echo a,b)",
+        "PowerShell(Get-ChildItem a,b)",
+        "PowerShell(Get-ChildItem a,b *)",
+        // a comma in the body of any other tool, and between or around entries
+        "Read(a,b)",
+        "Read(,)",
+        "Agent(model:opus,model:haiku)",
+        "WebFetch(domain:a.com,b.com)",
+        "Read,Bash",
+        "Read,Bash(*)",
+        "Read(a),Read(b)",
+        "Bash(git diff *),Read",
+        "Read,",
+        ",Read",
+        ",",
+        "mcp__a,b",
+    ] {
+        assert!(
+            !builds(entry),
+            "entry {entry:?} holds a comma and must refuse"
+        );
+    }
+    // the same entries without the comma keep building
+    for entry in [
+        "Bash(git log --format=a)",
+        "Bash(echo a b *)",
+        "Read(a)",
+        "Agent(model:opus)",
+        "Bash(git log --format=%H:%s -5)",
+    ] {
+        assert!(builds(entry), "entry {entry:?} has no comma and must build");
+    }
+    // a comma never travels in the built value: every comma in the joined argument is a join
+    let mut spec = audit_spec();
+    spec.allowed_tools = vec!["Read".to_string(), "Bash(git diff *)".to_string()];
+    let built = build(&spec, &ctx(&root), &env).unwrap();
+    let joined = built
+        .args
+        .iter()
+        .skip_while(|a| a.as_str() != "--allowedTools")
+        .nth(1)
+        .unwrap();
+    assert_eq!(joined, "Read,Bash(git diff *)");
 }
 
 /// REQ-2: a rule without a wildcard meets the character set alone. Its first word is not
