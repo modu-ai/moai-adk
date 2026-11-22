@@ -110,14 +110,17 @@ impl Fx {
     }
 
     fn plan(&self, extra: &[&str]) -> Value {
-        let later = later().to_string();
+        self.plan_at(&later().to_string(), extra)
+    }
+
+    fn plan_at(&self, now: &str, extra: &[&str]) -> Value {
         let mut args = vec![
             "worktree-gc-plan",
             self.project.to_str().unwrap(),
             "--integration-ref",
             "integ",
             "--now-unix",
-            &later,
+            now,
         ];
         args.extend_from_slice(extra);
         let out = self.moai(&args);
@@ -132,16 +135,41 @@ impl Fx {
         v["result"].clone()
     }
 
+    /// `worktree-gc-apply` of the plan with `digest`, made at `now`: the whole envelope.
+    fn apply_at(&self, now: &str, digest: &str) -> Value {
+        let out = self.moai(&[
+            "worktree-gc-apply",
+            self.project.to_str().unwrap(),
+            "--integration-ref",
+            "integ",
+            "--now-unix",
+            now,
+            "--plan-digest",
+            digest,
+            "--permission-reference",
+            "fixture-approved",
+        ]);
+        serde_json::from_slice(&out.stdout).unwrap_or_else(|_| {
+            panic!(
+                "not JSON: {} / {}",
+                String::from_utf8_lossy(&out.stdout),
+                String::from_utf8_lossy(&out.stderr)
+            )
+        })
+    }
+
     /// Takes a new card whose reservation names `worktree`.
     fn claim(&self, worktree: &Path) {
         let project = self.project.to_str().unwrap();
+        // One scope per worktree, so two held cards never reserve the same path.
+        let scope = format!("src/{}.rs", worktree.file_name().unwrap().to_string_lossy());
         let added = self.moai(&[
             "card",
             "add",
             "--title",
             "t",
             "--scope",
-            "src/a.rs",
+            &scope,
             "--project",
             project,
         ]);
@@ -385,4 +413,75 @@ fn an_unreadable_ledger_keeps_every_linked_worktree() {
     assert_eq!(reasons(e), ["claim_check_unavailable"], "{e}");
     // The primary is never a candidate, so it does not name the unreadable ledger.
     assert!(!reasons(entry(&plan, Path::new("."))).contains(&"claim_check_unavailable".to_string()));
+}
+
+/// Only a missing profile means "no claims": a profile that exists but cannot be read keeps every
+/// linked worktree, as an unreadable ledger does.
+#[test]
+fn an_unreadable_profile_keeps_every_linked_worktree() {
+    let fx = fixture();
+    let free = fx.worktree(&fx.wts.join("free"));
+    let profile = fx
+        .project
+        .join(moai_cli::PROJECT_STATE_DIR)
+        .join("project.yaml");
+    assert!(profile.is_file(), "the fixture has a profile");
+    fs::write(&profile, b"not a profile").unwrap();
+    let plan = fx.plan(&[]);
+    let e = entry(&plan, &free);
+    assert_eq!(e["action"], json!("skip"), "{e}");
+    assert_eq!(reasons(e), ["claim_check_unavailable"], "{e}");
+}
+
+/// `worktree-gc-apply` never removes a claimed worktree: with the claim in the plan the entry is
+/// a skip and stays; a claim made after the plan changes the recomputed digest, so apply refuses
+/// the whole plan and removes nothing. The control worktree beside it is removed.
+#[test]
+fn apply_leaves_a_claimed_worktree_whether_the_claim_came_before_or_after_the_plan() {
+    let fx = fixture();
+    let now = later().to_string();
+    let early = fx.worktree(&fx.wts.join("early"));
+    let late = fx.worktree(&fx.wts.join("late"));
+    fx.claim(&early);
+    let plan = fx.plan_at(&now, &[]);
+    assert_eq!(entry(&plan, &early)["action"], json!("skip"), "{plan}");
+    assert_eq!(entry(&plan, &late)["action"], json!("remove"), "{plan}");
+    fx.claim(&late);
+    let refused = fx.apply_at(&now, plan["plan_digest"].as_str().unwrap());
+    assert_eq!(refused["ok"], json!(false), "{refused}");
+    assert!(early.is_dir() && late.is_dir());
+
+    let control = fx.worktree(&fx.wts.join("control"));
+    let plan = fx.plan_at(&now, &[]);
+    assert_eq!(entry(&plan, &late)["action"], json!("skip"), "{plan}");
+    let done = fx.apply_at(&now, plan["plan_digest"].as_str().unwrap());
+    assert_eq!(done["ok"], json!(true), "{done}");
+    assert!(early.is_dir() && late.is_dir(), "{done}");
+    assert!(!control.exists(), "{done}");
+}
+
+/// A worktree added inside a removal candidate after the plan changes the recomputed digest, so
+/// apply refuses and both stay. With the nested one in the plan the outer one is a skip and
+/// stays, while the nested one, itself clean and merged, is removed.
+#[test]
+fn apply_leaves_a_worktree_that_holds_another_one() {
+    let fx = fixture();
+    let now = later().to_string();
+    let outer = fx.worktree(&fx.wts.join("outer"));
+    let plan = fx.plan_at(&now, &[]);
+    assert_eq!(entry(&plan, &outer)["action"], json!("remove"), "{plan}");
+    let inner = fx.worktree(&outer.join("inner"));
+    let refused = fx.apply_at(&now, plan["plan_digest"].as_str().unwrap());
+    assert_eq!(refused["ok"], json!(false), "{refused}");
+    assert!(outer.is_dir() && inner.is_dir());
+    let plan = fx.plan_at(&now, &[]);
+    assert!(
+        reasons(entry(&plan, &outer)).contains(&"nested_worktree".to_string()),
+        "{plan}"
+    );
+    assert_eq!(entry(&plan, &inner)["action"], json!("remove"), "{plan}");
+    let done = fx.apply_at(&now, plan["plan_digest"].as_str().unwrap());
+    assert_eq!(done["ok"], json!(true), "{done}");
+    assert!(outer.is_dir(), "{done}");
+    assert!(!inner.exists(), "{done}");
 }
