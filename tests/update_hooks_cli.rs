@@ -118,20 +118,15 @@ fn record_hex(f: &Fixture) -> String {
         .to_string()
 }
 
-/// Every receipts root the HOME may resolve (the first update adopts ~/.moai with a marker,
-/// so the product reads there; the version folder still sits under .moai-cli) — the fixture
-/// writes its record to each so whichever the layer reads, it finds.
+/// Every receipts root the HOME may resolve — the two names the state resolver knows, never
+/// literals (the first update adopts the new one with a marker, so the product reads there;
+/// the version folder still sits under the earlier one) — the fixture writes its record to
+/// each so whichever the layer reads, it finds.
 fn receipts_roots(home: &Path) -> Vec<PathBuf> {
-    vec![home.join(".moai-cli"), home.join(".moai")]
-}
-
-fn crate_dir_placeholder(home: &Path) -> PathBuf {
-    let marked = home.join(".moai");
-    if marked.join("moai.json").is_file() {
-        marked
-    } else {
-        home.join(".moai-cli")
-    }
+    vec![
+        home.join(moai_cli::state_root::EARLIER_PROJECT_DIR),
+        home.join(moai_cli::state_root::MOAI_DIR),
+    ]
 }
 
 /// The folder row of the hooks layer's preview.
@@ -596,14 +591,6 @@ fn a_receipt_id_of_another_shape_is_refused() {
     assert!(text.contains("hook receipt not found"), "{text}");
 }
 
-/// Edits the `PostToolUse` handler's timeout in the settings file only, as a user would.
-fn hand_edit_claude_hooks(f: &Fixture) {
-    let settings = f.project.join(".claude/settings.json");
-    let mut s: Value = serde_json::from_slice(&fs::read(&settings).unwrap()).unwrap();
-    s["hooks"]["PostToolUse"][0]["hooks"][0]["timeout"] = json!(99);
-    fs::write(&settings, serde_json::to_vec_pretty(&s).unwrap()).unwrap();
-}
-
 /// Walks `dir`, returning every folder and every file below it with its permission bits.
 fn modes_below(dir: &Path, out: &mut Vec<(PathBuf, bool, u32)>) {
     use std::os::unix::fs::PermissionsExt;
@@ -618,8 +605,8 @@ fn modes_below(dir: &Path, out: &mut Vec<(PathBuf, bool, u32)>) {
 }
 
 /// Audit FAIL 6882751326 B1 kept: the config-folder apply's receipt keeps the bytes it
-/// replaces under the HOME state root owner-only whatever the umask, and the kept copy of a
-/// settings file holds what the file held.
+/// replaces inside its flat receipt file under the HOME state root, owner-only whatever the
+/// umask, and the inline before bytes hold what the settings file held.
 #[test]
 fn the_hook_receipt_keeps_a_protected_settings_file_privately_under_any_umask() {
     use std::os::unix::fs::PermissionsExt;
@@ -661,11 +648,11 @@ fn the_hook_receipt_keeps_a_protected_settings_file_privately_under_any_umask() 
         );
         let id = r["hooks_result"]["receipt"].as_str().unwrap();
 
-        let receipts = [f.home.join(".moai-cli"), f.home.join(".moai")]
+        let receipts = receipts_roots(&f.home)
             .into_iter()
-            .map(|root| root.join("receipts").join(id))
-            .find(|d| d.join("receipt.json").is_file())
-            .unwrap_or_else(|| f.home.join(".moai").join("receipts").join(id));
+            .map(|root| root.join("receipts"))
+            .find(|d| d.join(format!("{id}.json")).is_file())
+            .unwrap_or_else(|| f.home.join(moai_cli::state_root::MOAI_DIR).join("receipts"));
         assert!(receipts.is_dir(), "umask {umask}: {receipts:?}");
         let mut seen = Vec::new();
         modes_below(&receipts, &mut seen);
@@ -675,8 +662,7 @@ fn the_hook_receipt_keeps_a_protected_settings_file_privately_under_any_umask() 
             .mode()
             & 0o777;
         assert_eq!(own & 0o077, 0, "umask {umask}: receipts folder is {own:o}");
-        let mut kept = 0;
-        for (path, is_dir, mode) in &seen {
+        for (path, _is_dir, mode) in &seen {
             if path.file_name().is_some_and(|n| n == ".gitignore") {
                 continue;
             }
@@ -686,14 +672,23 @@ fn the_hook_receipt_keeps_a_protected_settings_file_privately_under_any_umask() 
                 "umask {umask}: {} is {mode:o}",
                 path.display()
             );
-            if !is_dir && path.to_string_lossy().contains("/before/") {
-                let text = fs::read_to_string(path).unwrap();
-                kept += usize::from(text.contains("TESTVALUE-not-secret"));
-            }
         }
-        assert_eq!(
-            kept, 1,
-            "umask {umask}: the kept settings copy must exist: {seen:?}"
+        // The receipt is one flat file named `<id>.json`; the before bytes ride inside it
+        // (before_hex), and decoded they hold exactly the settings file the apply replaced.
+        let receipt: Value =
+            serde_json::from_slice(&fs::read(receipts.join(format!("{id}.json"))).unwrap())
+                .unwrap();
+        let hex = receipt["hosts"][0]["files"][0]["before_hex"]
+            .as_str()
+            .unwrap();
+        let before: Vec<u8> = (0..hex.len())
+            .step_by(2)
+            .map(|i| u8::from_str_radix(&hex[i..i + 2], 16).unwrap())
+            .collect();
+        let text = String::from_utf8(before).unwrap();
+        assert!(
+            text.contains("TESTVALUE-not-secret"),
+            "umask {umask}: the kept settings bytes must exist: {receipt}"
         );
         if let Ok(text) = fs::read_to_string(receipts.join(".gitignore")) {
             assert_eq!(text, "*\n", "umask {umask}");

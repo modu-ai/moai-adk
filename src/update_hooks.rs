@@ -11,7 +11,7 @@
 //! never installs hooks; that stays with `hooks-apply`.
 //!
 //! Each host is planned and applied by `hooks::plan` / `hooks::apply`, the rules `hooks-apply`
-//! uses. A confirmed apply keeps the bytes it replaced under a receipt, and `hooks-revert`
+//! uses. A confirmed apply keeps the bytes it replaced inside its receipt, and `hooks-revert`
 //! restores a host only while both of its files still hold what the apply wrote.
 
 use crate::retired_hosts::retired;
@@ -319,10 +319,51 @@ struct FileEntry {
     path: String,
     before_sha256: Option<String>,
     after_sha256: Option<String>,
+    /// The config-folder layer's inline before bytes (hex): its receipts are one flat
+    /// file in the HOME receipts folder, so no kept copy on disk exists.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    before_hex: Option<String>,
 }
 
 fn new_receipt_root(home: &Path) -> PathBuf {
     crate::home_root::path(home).join("receipts")
+}
+
+fn hex_encode(bytes: &[u8]) -> String {
+    bytes.iter().map(|b| format!("{b:02x}")).collect()
+}
+
+fn hex_decode(text: &str) -> std::result::Result<Vec<u8>, ()> {
+    let bytes = text.as_bytes();
+    if !bytes.len().is_multiple_of(2) {
+        return Err(());
+    }
+    let mut out = Vec::with_capacity(bytes.len() / 2);
+    for pair in bytes.chunks(2) {
+        let hi = (pair[0] as char).to_digit(16).ok_or(())?;
+        let lo = (pair[1] as char).to_digit(16).ok_or(())?;
+        out.push((hi * 16 + lo) as u8);
+    }
+    Ok(out)
+}
+
+/// The flat receipts folder of the HOME state root: one JSON file per hook apply, named
+/// `<id>.json` (the keys layer owns the same flat namespace and reads every entry as a
+/// file, so no subdirectories live there).
+fn flat_receipt_dir(home: &Path) -> Result<(String, PathBuf)> {
+    let receipts = new_receipt_root(home);
+    create_private_dir(&receipts, true).map_err(|_| "hook receipt folder unavailable")?;
+    let nanos = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_nanos())
+        .unwrap_or(0);
+    for n in 0..16 {
+        let id = format!("{RECEIPT_PREFIX}{nanos}-{n}");
+        if !receipts.join(format!("{id}.json")).exists() {
+            return Ok((id, receipts));
+        }
+    }
+    Err("hook receipt id unavailable".into())
 }
 
 fn receipts_dir(root: &Path) -> PathBuf {
@@ -450,6 +491,9 @@ impl KeptApply<'_> {
                         path: f.clone(),
                         before_sha256: b,
                         after_sha256: after.as_deref().map(crate::digest),
+                        // The project layer keeps its before copies on disk under the
+                        // receipt; only the config-folder layer rides them inline.
+                        before_hex: None,
                     });
                 }
                 receipt.hosts.push(HostEntry {
@@ -514,7 +558,7 @@ pub fn apply_direct(
         status: "pending".into(),
         hosts: Vec::new(),
     };
-    let receipt_path = dir.join("receipt.json");
+    let receipt_path = dir.join(format!("{id}.json"));
     write_json(&receipt_path, &receipt)?;
     let kept = KeptApply {
         root: &root,
@@ -556,7 +600,7 @@ pub fn apply(home: &Path, layer: &Layer, plan_digest: &str, permission: &str) ->
     if writes.is_empty() {
         return Ok(json!({"state": "unchanged", "folders": []}));
     }
-    let (id, dir) = new_receipt_dir(home)?;
+    let (id, dir) = flat_receipt_dir(home)?;
     let mut receipt = Receipt {
         schema_version: 1,
         id: id.clone(),
@@ -565,12 +609,12 @@ pub fn apply(home: &Path, layer: &Layer, plan_digest: &str, permission: &str) ->
         status: "pending".into(),
         hosts: Vec::new(),
     };
-    let receipt_path = dir.join("receipt.json");
+    let receipt_path = dir.join(format!("{id}.json"));
     write_json(&receipt_path, &receipt)?;
     let mut results = Vec::new();
     let mut applied = 0usize;
     for f in &writes {
-        match apply_folder(f, &dir, home) {
+        match apply_folder(f, home) {
             Ok(v) => {
                 applied += 1;
                 receipt.hosts.push(HostEntry {
@@ -579,6 +623,7 @@ pub fn apply(home: &Path, layer: &Layer, plan_digest: &str, permission: &str) ->
                         path: f.folder.join("settings.json").display().to_string(),
                         before_sha256: v["before"].as_str().map(str::to_string),
                         after_sha256: v["after"].as_str().map(str::to_string),
+                        before_hex: v["before_hex"].as_str().map(str::to_string),
                     }],
                 });
                 write_json(&receipt_path, &receipt)?;
@@ -620,8 +665,9 @@ pub fn apply(home: &Path, layer: &Layer, plan_digest: &str, permission: &str) ->
 }
 
 /// One folder's confirmed write: the desired `hooks`, the deny rules appended to
-/// `permissions.deny` (missing ones only, never a removal), the before bytes kept.
-fn apply_folder(f: &FolderPlan, keep: &Path, home: &Path) -> Result<Value> {
+/// `permissions.deny` (missing ones only, never a removal), the before bytes returned
+/// inline for the flat receipt to hold.
+fn apply_folder(f: &FolderPlan, home: &Path) -> Result<Value> {
     let settings = f.folder.join("settings.json");
     let desired = Value::Object(crate::hooks::hooks_object("claude").map_err(|e| e.to_string())?);
     let before = crate::claude::read_existing(&settings)?;
@@ -661,22 +707,6 @@ fn apply_folder(f: &FolderPlan, keep: &Path, home: &Path) -> Result<Value> {
     merged["permissions"]["deny"] = Value::Array(deny);
     let mut bytes = serde_json::to_vec_pretty(&merged).map_err(|_| "encode failed".to_string())?;
     bytes.push(b'\n');
-    if let Some(b) = &before {
-        let keep_dir = keep.join("before");
-        create_private_dir(&keep_dir, true).map_err(|_| "hook receipt folder unavailable")?;
-        crate::apply::publish_exclusive_mode(
-            &keep_dir.join(format!(
-                "settings-{}.json",
-                crate::digest(f.folder.to_string_lossy().as_bytes())
-                    .trim_start_matches("sha256:")
-                    .get(..8)
-                    .unwrap_or("0")
-            )),
-            b,
-            Some(PRIVATE_FILE),
-        )
-        .map_err(|_| "hook receipt write failed".to_string())?;
-    }
     match &before {
         None => {
             fs::create_dir_all(&f.folder).map_err(|_| "config folder unavailable".to_string())?;
@@ -705,11 +735,27 @@ fn apply_folder(f: &FolderPlan, keep: &Path, home: &Path) -> Result<Value> {
         crate::claude::read_existing(&record_path)?.as_deref(),
         &record_bytes,
     )?;
+    // The record holds no secret bytes, but it lives in the receipts folder the kept-bytes
+    // walk guards, so it is owner-only whatever the umask (B1 shape kept).
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt as _;
+        let mode = fs::metadata(&record_path)
+            .map_err(|_| "receipt folder unavailable".to_string())?
+            .permissions()
+            .mode();
+        fs::set_permissions(
+            &record_path,
+            std::fs::Permissions::from_mode(mode & 0o700),
+        )
+        .map_err(|_| "receipt folder unavailable".to_string())?;
+    }
     Ok(json!({
         "state": "applied",
         "before": before.as_deref().map(crate::digest),
         "after": crate::digest(&bytes),
         "deny_added": deny_added,
+        "before_hex": before.as_deref().map(hex_encode),
     }))
 }
 
@@ -740,10 +786,26 @@ pub fn revert_in(
     let mut candidates: Vec<PathBuf> = vec![receipts_dir(&root).join(receipt_id)];
     if let Some(h) = &home {
         candidates.push(new_receipt_root(h).join(receipt_id));
+        candidates.push(new_receipt_root(h).join(format!("{receipt_id}.json")));
     }
-    let dir = candidates
+    // An old per-receipt folder holds `receipt.json` inside; a flat receipt is the file
+    // itself, so its folder for the plain-dir checks is the receipts folder it lives in.
+    let (dir, path) = candidates
         .into_iter()
-        .find(|d| d.join("receipt.json").is_file())
+        .find_map(|c| {
+            if c.extension().map(|e| e == "json").unwrap_or(false) {
+                c.is_file().then(|| {
+                    (
+                        c.parent().map(Path::to_path_buf).unwrap_or_else(|| c.clone()),
+                        c,
+                    )
+                })
+            } else {
+                c.join("receipt.json")
+                    .is_file()
+                    .then(|| (c.clone(), c.join("receipt.json")))
+            }
+        })
         .ok_or("hook receipt not found")?;
     plain_dirs(&[
         crate::state_root::path(&root, ""),
@@ -752,7 +814,6 @@ pub fn revert_in(
             .unwrap_or_else(|| dir.clone()),
         dir.clone(),
     ])?;
-    let path = dir.join("receipt.json");
     let bytes = crate::claude::read_existing(&path)?.ok_or("hook receipt not found")?;
     let mut receipt: Receipt =
         serde_json::from_slice(&bytes).map_err(|_| "hook receipt is unreadable")?;
@@ -763,12 +824,13 @@ pub fn revert_in(
     let mut skipped = Vec::new();
     for h in &receipt.hosts {
         if h.host == "claude-config" {
-            // The config-folder layer's entry: every file path is absolute, the before copy
-            // sits under before/, and a file changed since the apply is skipped whole.
+            // The config-folder layer's entry: every file path is absolute, the before bytes
+            // ride inline in the receipt (before_hex), and a file changed since the apply is
+            // skipped whole.
             let mut restored = Vec::new();
             let mut skipped_config = Vec::new();
             let mut restore: Vec<(PathBuf, Option<Vec<u8>>)> = Vec::new();
-            for (n, f) in h.files.iter().enumerate() {
+            for f in h.files.iter() {
                 let target = PathBuf::from(&f.path);
                 let current = crate::claude::read_existing(&target)?;
                 if current.as_deref().map(crate::digest) != f.after_sha256.clone() {
@@ -779,15 +841,11 @@ pub fn revert_in(
                 let before = match &f.before_sha256 {
                     None => None,
                     Some(sha) => {
-                        let before_dir = dir.join("before");
-                        let mut kept: Option<PathBuf> = None;
-                        for e in fs::read_dir(&before_dir)
-                            .map_err(|_| "before bytes missing from the hook receipt")?
-                        {
-                            let e = e.map_err(|_| "before bytes missing from the hook receipt")?;
-                            kept = Some(e.path());
-                        }
-                        let b = fs::read(kept.ok_or("before bytes missing from the hook receipt")?)
+                        let hex = f
+                            .before_hex
+                            .as_deref()
+                            .ok_or("before bytes missing from the hook receipt")?;
+                        let b = hex_decode(hex)
                             .map_err(|_| "before bytes missing from the hook receipt")?;
                         if &crate::digest(&b) != sha {
                             return Err("before bytes do not match the hook receipt".into());
