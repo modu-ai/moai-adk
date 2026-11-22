@@ -91,3 +91,11 @@ Slice 2 (revision 2, the audit follow-ups):
 - AC-5: met. `every_child_is_built_by_the_one_helper` passes: the only line of `tests/session_registry_cli.rs` that builds a command is the one in `registrar`.
 - AC-6: met. `an_ignored_state_folder_file_is_not_work` was red first (a2a5a0407d: the refusal named the ignored `state/github/counts.json` as a draft) and passes (11b4621f3a): with the state folder ignored, an ignored file there is reclaimed and stays, and an ignored file outside it still refuses and is the one named.
 - The two comments that named one listed cache file now name the folder rule (`tests/card_reclaim_early_cli.rs`, `src/card/dispatch.rs`).
+
+Slice 3 (revision 3):
+
+- AC-7: met. `budget` and `over_budget` in `tests/common/prop.rs`: 30 s at or below one runnable thread per CPU, with no reading or with no CPU count; 30 s times load / CPUs above it, at most 240 s; the over-budget message names the property, the cases, the seed, the elapsed time, the budget and the load on the CPU count. Red at 587365b5ac (both budget tests failed on the 30 s stub), green at 2e904cfe01 (`prop_reservation`, `prop_headver`, `prop_scope_paths` passed).
+- AC-8: met. A mode-000 untracked folder let the reclaim through at 587365b5ac (`ok:true`, generation 2); at 2e904cfe01 the gate refuses it as unreadable and the ledger is unchanged. Removing the warning check makes the test fail again (mutant killed).
+- AC-9: met. `my notes.md` outside the state folder is one uncommitted change, and `my counts.json` under it is tool state: red at 587365b5ac (the quoted name counted as work), green at 2e904cfe01. Reading without `-z` makes the test fail again (mutant killed); `a_z_list_keeps_names_and_folds_a_rename_origin` pins the rename origin field.
+- The state folder is resolved once per check (`state_prefix`), and the note numbers left this SPEC.
+- Not claimed: the Python twin's 30 s budget in `tests/prop_manifest_test.py` (outside the card's write scope) and the text pin of `every_child_is_built_by_the_one_helper`, which stays as written.
