@@ -4,9 +4,9 @@
 //! (on stdin, or from git with `--refs`) and says whether the merge needs a re-merge and which
 //! checks to run. The judge always exits 0 with a report, except an unknown option, which is a
 //! usage error (exit 2) with no report. Every run uses a temporary HOME. Moved here from the
-//! Python module `repo_scans_test.py` (SPEC-20261120-python-binary-tests-to-rust); the six table
-//! cases of that module (`RepoScansTableTest`, which read `tools/repo_scans.json` and scan the
-//! repository's test files) stay in Python because they test the table, not the binary.
+//! Python module `repo_scans_test.py` (SPEC-20261120-python-binary-tests-to-rust); the table
+//! cases of that module (they read `tools/repo_scans.json` and scan the repository's test files)
+//! are in `tests/repo_scans_table.rs`, because they test the table, not the binary.
 
 mod common;
 use common::git::git_in;
@@ -205,13 +205,13 @@ fn hit_paths_are_sorted() {
     let home = Home::new();
     let (_, hits) = judge(
         &home,
-        &["tools/repo_scans.json", "tests/repo_scans_test.py"],
+        &["tools/repo_scans.json", "tests/repo_scans_table.rs"],
         &["tests/zz_test.py", "src/b.rs", "src/a.rs"],
     );
     let hit = hits.iter().find(|h| h["id"] == "repo-scans-table").unwrap();
     assert_eq!(
         hit["rules"],
-        json!(["tests/repo_scans_test.py", "tools/repo_scans.json"])
+        json!(["tests/repo_scans_table.rs", "tools/repo_scans.json"])
     );
     assert_eq!(
         hit["scope"],
@@ -265,7 +265,7 @@ fn checks_are_the_hit_scans_in_table_order_without_duplicates() {
     // two hits of one scan (both directions) give its checks once
     let both = judge_root(
         &home,
-        &json!({"pr": ["tests/repo_scans_test.py"], "tip": ["tests/repo_scans_test.py"]}),
+        &json!({"pr": ["tests/repo_scans_table.rs"], "tip": ["tests/repo_scans_table.rs"]}),
     );
     let table_hits = both["hits"]
         .as_array()
@@ -278,7 +278,7 @@ fn checks_are_the_hit_scans_in_table_order_without_duplicates() {
         .as_array()
         .unwrap()
         .iter()
-        .filter(|c| *c == "python3 -m unittest tests.repo_scans_test")
+        .filter(|c| *c == "cargo test --offline --locked --test repo_scans_table")
         .count();
     assert_eq!(once, 1, "{}", both["checks"]);
     // no hit, no check

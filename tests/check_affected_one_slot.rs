@@ -237,7 +237,6 @@ fn one_run_takes_one_slot_and_one_nextest_call() {
             "base",
             "head",
             "targets",
-            "py",
             "scans",
             "diff_check",
             "fmt",
@@ -316,8 +315,8 @@ fn without_nextest_one_cargo_test_call() {
 }
 
 /// AC-3 (REQ-2): a refused slot (an unusable limits file, 125) and a machine too short of disk
-/// (75) give their code to every cargo step — `test` and `build_cli` too — and no cargo starts
-/// but the cheap `fmt`.
+/// (75) give their code to every cargo step — `clippy` and `test` — and no cargo starts but the
+/// cheap `fmt`.
 #[test]
 fn a_refused_slot_marks_every_cargo_step_and_runs_none() {
     // A Rust target selected: clippy and test.
@@ -327,15 +326,14 @@ fn a_refused_slot_marks_every_cargo_step_and_runs_none() {
     let line = v["summary"].as_str().unwrap();
     assert!(line.ends_with(" clippy=125 test=125 result=FAIL"), "{line}");
     assert!(r.slot_log().contains("refused"), "{}", r.slot_log());
-    // Only Python selected: the binary build step gets the code too; Python still runs.
+    // Only a Python module changed: no target is selected, the two cargo steps still get the
+    // code, and there is no `build_cli` or `python` step.
     let only_python = Fixture::new(&[("tests/bundle_ops_test.py", "# b\n")]);
     let r2 = Run::new(true, 0);
     let v = run(r2.command(&only_python, &[]));
     let line = v["summary"].as_str().unwrap();
-    assert!(
-        line.ends_with(" clippy=125 test=125 build_cli=125 python=0 result=FAIL"),
-        "{line}"
-    );
+    assert!(line.ends_with(" clippy=125 test=125 result=FAIL"), "{line}");
+    assert!(r2.tools.starting("python3").is_empty());
     // A machine below the free-disk floor (the caller's 50 GB is stricter than the file's 0).
     let r3 = Run::new(true, 4);
     let mut busy = r3.command(&fx, &[]);
@@ -472,10 +470,10 @@ fn held_during(r: &Run, call: &str) -> Vec<Value> {
 }
 
 /// D-2 and the slot record: while a cargo step runs, the one slot is held and its record names
-/// this run and its own command line; the `python` step runs after the slot is let go, so the
-/// status it sees holds no slot.
+/// this run and its own command line. A changed Python module adds no step: nothing calls
+/// `python3` (SPEC-20261123-rust-scans-before-ready REQ-3).
 #[test]
-fn the_slot_record_names_the_run_and_python_runs_after_the_slot_is_let_go() {
+fn the_slot_record_names_the_run_and_a_changed_python_module_adds_no_step() {
     let fx = Fixture::new(&[
         ("src/update_models.rs", "// b\n"),
         ("tests/bundle_ops_test.py", "# b\n"),
@@ -485,7 +483,8 @@ fn the_slot_record_names_the_run_and_python_runs_after_the_slot_is_let_go() {
     cmd.env("FAKE_MOAI", BIN).env("FAKE_SLOTS", r.slots.path());
     let v = run(cmd);
     let line = v["summary"].as_str().unwrap();
-    assert!(line.ends_with(" python=0 result=PASS"), "{line}");
+    assert!(line.ends_with(" clippy=0 test=0 result=PASS"), "{line}");
+    assert!(!line.contains("python"), "{line}");
     let held = held_during(&r, "cargo-clippy");
     assert_eq!(held.len(), 1, "{held:?}");
     assert_eq!(held[0]["name"], "check-affected", "{held:?}");
@@ -504,11 +503,7 @@ fn the_slot_record_names_the_run_and_python_runs_after_the_slot_is_let_go() {
         1,
         "the test call holds it"
     );
-    let during_python = held_during(&r, "python3--m");
-    assert!(
-        during_python.is_empty(),
-        "python ran while the slot was held: {during_python:?}"
-    );
+    assert!(r.tools.starting("python3").is_empty());
 }
 
 /// A slot count of 0 and a slot folder that cannot be named (no HOME, no XDG_CACHE_HOME, no

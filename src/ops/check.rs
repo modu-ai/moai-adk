@@ -8,8 +8,8 @@ use std::path::PathBuf;
 /// `moai check affected <base>..<head>` picks, from the paths the range changes, every test
 /// target of the same area (the file, the folder or the operation) and of the area's first
 /// word, the changed test files, fixtures and shared helpers, every target
-/// `tools/repo_scans.json` names, the Python tests of the area and the tests that name this
-/// host's operating system. It adds the library and binary tests, `git diff --check`,
+/// `tools/repo_scans.json` names and the tests that name this host's operating system. It
+/// picks and runs no Python test. It adds the library and binary tests, `git diff --check`,
 /// `cargo fmt`, `rustfmt --edition 2021` of each changed operation file, `bash -n` of each
 /// changed script and `cargo clippy`; the tests run in one call.
 #[derive(clap::Args)]

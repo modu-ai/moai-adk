@@ -742,13 +742,13 @@
     {
       "id": "repo-scans-table",
       "tests": [
-        "tests/repo_scans_test.py::RepoScansTableTest"
+        "tests/repo_scans_table.rs::every_walking_test_file_is_listed_or_exempt"
       ],
       "checks": [
-        "python3 -m unittest tests.repo_scans_test"
+        "cargo test --offline --locked --test repo_scans_table"
       ],
       "rules": [
-        "tests/repo_scans_test.py",
+        "tests/repo_scans_table.rs",
         "tools/repo_scans.json",
         "src/repo_scans.rs"
       ],
@@ -835,12 +835,15 @@
     {
       "id": "source-manifest-tool-output",
       "tests": [
+        "tests/source_manifest_facts.rs::this_repository_manifest_is_what_the_tool_writes",
         "tests/source_manifest_test.py::test_this_repository_manifest_is_what_the_tool_writes"
       ],
       "checks": [
+        "cargo test --offline --locked --test source_manifest_facts",
         "python3 -m unittest tests.source_manifest_test"
       ],
       "rules": [
+        "tests/source_manifest_facts.rs",
         "tests/source_manifest_test.py",
         "tools/source_manifest.py",
         "skills/moai/references/source-manifest.json"
