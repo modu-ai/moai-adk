@@ -80,9 +80,12 @@ fn a_new_project_lists_everything_as_created_with_its_manifest_and_receipt() {
     let root = project();
     let r = generate(&root);
     let created = names(&r["files_created"]);
-    for path in ["AGENTS.md", MANIFEST] {
+    // The generation writes the managed block into CLAUDE.md and never writes AGENTS.md (user
+    // decision 6484: moai writes only CLAUDE.md and CLAUDE.local.md).
+    for path in ["CLAUDE.md", MANIFEST] {
         assert!(created.iter().any(|c| c == path), "{path} in {created:?}");
     }
+    assert!(!created.iter().any(|c| c == "AGENTS.md"), "{created:?}");
     assert!(names(&r["files_merged"]).is_empty(), "nothing existed: {r}");
 
     // The agents engine's receipt is named and is a receipt on disk.
@@ -114,15 +117,20 @@ fn a_new_project_lists_everything_as_created_with_its_manifest_and_receipt() {
 fn a_file_that_was_already_there_is_merged_not_created() {
     let root = project();
     let mine = "# My project notes\n\nKeep this line.\n";
-    fs::write(root.path().join("AGENTS.md"), mine).unwrap();
+    fs::write(root.path().join("CLAUDE.md"), mine).unwrap();
     fs::write(root.path().join(".gitignore"), "target/\n").unwrap();
+    // No AGENTS.md here: with one, no CLAUDE.md is planned until the user picks move, import or
+    // leave (SPEC-20261122-claude-md-project-picks), which is that SPEC's scene, not this one.
     let r = generate(&root);
 
     let created = names(&r["files_created"]);
     let merged = names(&r["files_merged"]);
-    assert!(merged.iter().any(|m| m == "AGENTS.md"), "merged {merged:?}");
+    assert!(
+        merged.iter().any(|m| m == "CLAUDE.md"),
+        "merged {merged:?}: {r}"
+    );
     // No file that was there before is called created (the request may not touch `.gitignore`).
-    for path in ["AGENTS.md", ".gitignore"] {
+    for path in ["CLAUDE.md", ".gitignore"] {
         assert!(
             !created.iter().any(|c| c == path),
             "{path} in created {created:?}"
@@ -130,8 +138,12 @@ fn a_file_that_was_already_there_is_merged_not_created() {
     }
     // The manifest did not exist, so it is a creation, and the user's text is still there.
     assert!(created.iter().any(|c| c == MANIFEST), "{created:?}");
-    let agents = fs::read_to_string(root.path().join("AGENTS.md")).unwrap();
-    assert!(agents.contains("Keep this line."), "{agents}");
+    let claude = fs::read_to_string(root.path().join("CLAUDE.md")).unwrap();
+    assert!(claude.contains("Keep this line."), "{claude}");
+    assert!(
+        !root.path().join("AGENTS.md").exists(),
+        "AGENTS.md was written"
+    );
 }
 
 /// SPEC-20261121-remove-codex-project-layer REQ-8 (AC-8): a project that lists claude, codex and
