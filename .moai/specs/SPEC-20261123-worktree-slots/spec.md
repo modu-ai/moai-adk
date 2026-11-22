@@ -2,7 +2,7 @@
 id: SPEC-20261123-worktree-slots
 title: "Worktrees are fixed slots warmed from a seed by an APFS clone, under caps, and cleaned when their work ends"
 status: draft
-revision: 2
+revision: 3
 created: 2026-11-23
 ---
 
@@ -68,7 +68,7 @@ Readers: lanes and the leader, who create, reuse and clean worktrees, and the au
 
 ## Scope
 
-- slice 1 write: `.moai/specs/SPEC-20261123-worktree-slots/spec.md`, `src/worktree_slot.rs` (new; the git calls must reach `identity::scrub_git_env`, which only the library sees), `src/lib.rs` (one `pub mod` line), `src/ops/worktree_slot.rs` (new), `tests/worktree_slot_cli.rs` (new), `docs/design-review/appendix/operations/worktree_slot.md` (new)
+- slice 1 write: `.moai/specs/SPEC-20261123-worktree-slots/spec.md`, `src/help.rs` (one table row and its examples), `tests/fixtures/help/all*.txt` (regenerated, after the reservation), `src/worktree_slot.rs` (new; the git calls must reach `identity::scrub_git_env`, which only the library sees), `src/lib.rs` (one `pub mod` line), `src/ops/worktree_slot.rs` (new), `tests/worktree_slot_cli.rs` (new), `docs/design-review/appendix/operations/worktree_slot.md` (new)
 - slice 2 write: `src/worktree_gc.rs`, `tests/worktree_gc*.rs`
 - slice 3 write: the landing and verdict steps, a `reference-transaction` hook installer, the skill text
 - read-only: everything else
@@ -81,7 +81,7 @@ Readers: lanes and the leader, who create, reuse and clean worktrees, and the au
 - D-4: The 300 GB cap is not enforced in slice 1. `du` overcounts APFS clones (research §4 experiment 1), and an honest per-folder figure needs block-sharing data that `df` does not give. Slice 1 enforces the worktree count and the free share from `statvfs`. The plan reports the 300 GB cap as `not_measured`; slice 2 measures it from the trims it makes.
 - D-5: Caps are checked by the command that adds a slot. Entry gates in the launcher and a `PreToolUse` hook belong to slice 3.
 - D-6: Test seams (`--max-worktrees`, `--min-free-percent`) set lower limits for the refusal tests; the defaults are 25 and 15.
-- D-7: The help table row and the regenerated help goldens wait for slice 2. The goldens are reserved by another card today, and `help --all` lists only the grouped commands, so the help tests pass without the row.
+- D-7: The help table row and its examples are in slice 1: the binary's `help_rules` tests require every command in the table with an `Examples:` section. The four `help --all` goldens (`tests/fixtures/help/all*.txt`) are reserved by another card, so they are regenerated with `MOAI_HELP_GOLDEN_WRITE=1` once that reservation ends or the leader shares it; until then `help_matches_its_goldens` fails on the one new line.
 
 ## Plan
 

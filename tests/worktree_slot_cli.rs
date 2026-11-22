@@ -6,7 +6,7 @@
 mod common;
 
 use common::git::git;
-use common::CleanEnv;
+use common::home::TempHome;
 use serde_json::{json, Value};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -20,6 +20,7 @@ const SLOTS: [&str; 14] = [
 
 struct Repo {
     _dir: tempfile::TempDir,
+    home: TempHome,
     root: PathBuf,
     head: String,
 }
@@ -43,7 +44,7 @@ fn repo(files: &[(&str, &str)]) -> Repo {
             "-c",
             "user.name=t",
             "-c",
-            "user.email=t@e",
+            "user.email=t@example.invalid",
             "commit",
             "-q",
             "-m",
@@ -53,6 +54,7 @@ fn repo(files: &[(&str, &str)]) -> Repo {
     let head = git(&root, &["rev-parse", "HEAD"]);
     Repo {
         _dir: dir,
+        home: TempHome::new(),
         root,
         head,
     }
@@ -64,10 +66,10 @@ impl Repo {
     }
 
     fn run(&self, args: &[&str]) -> (i32, Value) {
-        let out = Command::new(common::MOAI_BIN)
-            .clean_env()
+        let out = self
+            .home
+            .command(&["worktree-slot"])
             .current_dir(&self.root)
-            .arg("worktree-slot")
             .args(args)
             .args(["--project", self.root.to_str().unwrap()])
             .output()
