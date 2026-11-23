@@ -53,7 +53,10 @@ fn files_with_unguarded_git(dir: &Path) -> Vec<String> {
             .unwrap()
             .to_string_lossy()
             .to_string();
-        if rel.starts_with("common/") || rel == "ac_command_lint.rs" {
+        // A moved area keeps the file as a module (`tests/<area>/ac_command_lint.rs`), so compare
+        // the file name and not the path under `tests/`.
+        let file_name = path.file_name().map(|n| n.to_string_lossy().to_string());
+        if rel.starts_with("common/") || file_name.as_deref() == Some("ac_command_lint.rs") {
             continue;
         }
         let text =
@@ -75,6 +78,21 @@ fn git_fixture_calls_live_in_the_shared_helper() {
         "test files spawning git without the gc/maintenance fixture guards — route \
          them through tests/common/git.rs or add the guards:\n{}",
         violations.join("\n")
+    );
+}
+
+/// After an area move this file lives at `tests/<area>/ac_command_lint.rs` and keeps its
+/// exemption; any other file of the area with an unguarded git spawn is still reported.
+#[test]
+fn area_module_of_this_file_keeps_the_git_scan_exemption() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let spawn = "fn f() { std::process::Command::new(\"git\"); }\n";
+    fs::create_dir_all(dir.path().join("spec")).unwrap();
+    fs::write(dir.path().join("spec/ac_command_lint.rs"), spawn).unwrap();
+    fs::write(dir.path().join("spec/other_cli.rs"), spawn).unwrap();
+    assert_eq!(
+        files_with_unguarded_git(dir.path()),
+        vec!["tests/spec/other_cli.rs".to_string()]
     );
 }
 
