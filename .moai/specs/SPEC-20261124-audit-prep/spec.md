@@ -111,4 +111,13 @@ approval: {by: leader, at: 2026-11-23, basis: "leader decision note 7978 of card
 
 - 판 1 은 리더가 승인했어요(노트 7966, 요청 노트 7965 의 선택지 (b), 커밋 `eeba19c082`).
 - 판 2: 구현에 들어가기 전에 `audit-done` 이 연산 파일과 문서 조각을 따로 요구한다는 것을 읽었어요(D-7). Scope 에 `src/ops/audit_done.rs` 와 `operations/audit_done.md` 를 더했고 요구사항과 인수 기준은 판 1 과 같아요. 리더가 승인했어요(노트 7978, 선택지 (a), 커밋 `163c2571d1`).
-- 승인 조건(노트 7978): `audit_slot::prep` 과 `done` 의 동작이 그대로임을, `audit_slot_cli` 전체가 READY 영수증과 같은 head 에서 통과하는 것으로 보여요. 이 조건은 READY 의 확인 항목이고 지금은 아직 돌리지 않았어요(not_run).
+- 승인 조건(노트 7978): `audit_slot::prep` 과 `done` 의 동작이 그대로임을, `audit_slot_cli` 전체가 READY 영수증과 같은 head 에서 통과하는 것으로 보여요. 구현 커밋 `fd40aaee40` 에서 17개 전체가 통과했어요(nextest 41개 중 17개, exit 0). READY head 에서 다시 도는 것은 READY 노트의 영수증이 적어요.
+- RED: 구현 전 `audit_prep_cli` 9개가 모두 `unknown command` 로 실패했어요(실행 9, 통과 0, 커밋 `8ddc017965`).
+- AC-1: met — `prep_takes_a_slot_for_the_card_again_the_same_one_and_refuses_when_all_are_held`, `prep_prepares_the_slot_the_card_already_holds_not_the_first_free_one`, `prep_refuses_what_audit_slot_refuses_and_runs_no_build`.
+- AC-2: met on macOS — `one_build_compiles_the_workspace_units_once_and_every_dependency_fresh`.
+- AC-3: met — `a_build_that_does_not_compile_keeps_the_slot_held_and_names_the_errors`.
+- AC-4: met on unix (run on macOS) — `a_rebuilt_test_executable_reads_the_slot_and_holds_no_byte_of_the_lane_folder`.
+- AC-5: met — `audit_done_refuses_a_left_mutant_then_releases_and_takes_no_discard_or_force`, `the_card_is_the_holder_whatever_session_finishes_it`(D-6).
+- AC-6: met on macOS — `a_one_line_mutant_on_a_prepared_slot_recompiles_only_the_workspace_units`.
+- 가드 뮤턴트: 새 가드 테스트마다 코드 한 줄을 떼어 `exit 100` 으로 죽였어요(10개). 처음엔 셋이 살아남았어요(`exit 0`): 테스트에 단언이 없던 둘(준비한 빌드의 `compiled_dependencies`, holder 기록의 세션)과 제가 맞지 않는 테스트로 돌린 하나(`MAX_TESTS`)예요. 단언을 더하고(`8ce2d5d537`) 맞는 테스트로 다시 돌려 모두 `exit 100` 이에요.
+- 모르는 것(not_run): 멈춰 버린 cargo 자식에 대한 시간 제한은 이 조각에 없어요. `audit-prep` 은 cargo 가 끝날 때까지 무거운 자리를 쥐고 기다려요. Linux·Windows 결과는 맥 픽스처로 주장하지 않아요(AC-2 와 AC-6 은 macOS 에서만 돌고, 나머지는 unix 에서 돌지만 이 조각은 macOS 에서만 돌렸어요).
