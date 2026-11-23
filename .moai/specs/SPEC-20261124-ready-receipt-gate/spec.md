@@ -103,4 +103,21 @@ approval:
 
 ## Result
 
-(구현 뒤에 적어요.)
+구현은 브랜치 `spec/ready-receipt-gate-20261124`(기준 NeXT `05fec214a8`)의 커밋 RED `f4e768c054` → GREEN `1e00d3adbb` → 기존 테스트 보정 `735c581d0e` → 판 1 다듬기(노트 7693) `efc4786233` → RED `13ae27677d` → GREEN `c237d13118` 순서예요. RED 는 새 테스트 9개 중 7개 실패(`target/c414/red.log`), 조상 검사 RED 는 10개 중 1개 실패(`target/c414/red2.log`)였어요. 깨끗한 head 에서 `cargo nextest run --offline --locked --test card_ready_receipt_cli --lib -E 'binary(card_ready_receipt_cli) | test(ready_receipt)'` → exit 0, 13 passed(통합 10 + 라이브러리 3, `target/c414/final-new.log`).
+
+- AC-1: 충족. `check_affected_leaves_a_summary_file` passed — 첫 단계가 실패하는 임시 저장소 실행에서 `summary.txt` 첫 줄이 답의 `summary` 와 같아요.
+- AC-2: 충족. `a_ready_and_a_repaired_note_with_a_pass_receipt_are_kept` passed.
+- AC-3: 충족. `a_ready_note_without_a_receipt_is_refused_with_the_way_out` passed — 거절 문장이 head, 영수증 경로, `missing`, `moai check affected` 를 적고 노트 수가 0 이에요.
+- AC-4: 충족. `a_bad_receipt_counts_as_no_receipt` passed — FAIL, 다른 head, 두 줄, UTF-8 아님 네 가지가 모두 거절돼요.
+- AC-5: 충족. `the_receipt_is_looked_for_in_the_worktree_that_has_the_head` passed.
+- AC-6: 충족. `a_marker_line_of_the_wrong_shape_is_refused` passed — 여섯 가지 틀린 모양.
+- AC-7: 충족. `other_notes_are_kept_and_there_is_no_skip_flag` passed — 다섯 노트가 영수증 없이 받아지고 `card note --help` 에 건너뛰는 플래그 낱말이 없어요.
+- AC-8: 충족. `write_summary_names_the_path_and_the_reason`(라이브러리) passed.
+- AC-9: 충족. `a_failed_run_leaves_a_fail_receipt_and_the_refusal_says_so` passed — 거절 문장이 `result=FAIL` 을 말해요.
+- AC-10: 충족. `any_worktree_with_the_head_and_a_pass_receipt_is_enough` passed — 두 워크트리가 문장에 다 나오고, 하나가 PASS 가 되면 받아요.
+- AC-11: 충족. `a_receipt_whose_base_is_not_an_ancestor_of_the_head_is_refused` passed — 부모 없는 커밋과 이 저장소에 없는 커밋은 거절, 진짜 base 는 받아요.
+- AC-12: 충족. `git diff --stat 05fec214a8..HEAD -- src` → `src/card/ready_receipt.rs`(새 파일), `src/card/mod.rs`, `src/card/work.rs`, `src/ops/check.rs` 네 파일이고 `src/check_affected.rs` 는 건드리지 않았어요.
+- 뮤턴트(적용을 `git diff --stat` 으로 확인하고 되돌린 뒤 `git status` 가 깨끗함을 확인): ① `work.rs` 의 `check_note` 호출 삭제 → exit 100(6개 실패) ② `Some("PASS")` 를 `Some(_)` 로 → exit 100(3개 실패) ③ 조상 검사를 `|| true` 로 → exit 100(1개 실패).
+- 기존 테스트 영향: 구현 직후 후보 열 개 파일 125개 중 57개가 실패했어요(`target/c414/neighbors.log`). 여섯 파일(`bundle_body_cli`, `bundle_build_cli`, `bundle_check_cli`, `bundle_verify_cli`, `bundle_ready_cli`, `e2e_temp_home_cli`)이었고 리더 노트 7687 결정 3 의 후보 안이에요. 보정 뒤 일곱 파일(새 테스트 포함) 85개 모두 통과(`target/c414/neighbors2.log`). bundle 다섯 파일은 프로젝트 폴더와 저장소가 따로라서 가짜 영수증을 둘 워크트리가 없어 노트만 장부 라이브러리로 직접 쓰는 도우미(`add_note_unchecked`)를 써요(결정 3 의 "도우미 호출로 가짜 영수증" 과 방식이 다르다는 점은 READY 노트에 적었어요). e2e 카드 순환은 실제 워크트리가 있어 `write_receipt` 로 PASS 영수증을 써요.
+- 위험한 길(프로세스를 시작하는 변경): `card note` 가 `git worktree list` 와 `git merge-base` 를 임시 저장소에서 실제로 불러요(링크된 워크트리 둘, 부모 없는 커밋, 없는 커밋). 멈춘 git 자식은 테스트하지 않았어요(not_run).
+- 범위 밖·미검증: `card note --help`(`src/ops/card.rs`)의 설명은 이 카드 범위 밖이라 그대로예요. `CARGO_TARGET_DIR` 로 옮긴 `target` 은 영수증을 찾지 않아요(Risks). 실제 cargo 가 도는 PASS 실행이 `summary.txt` 를 남기는지는 READY 의 `check affected` 한 번으로 봐요.
