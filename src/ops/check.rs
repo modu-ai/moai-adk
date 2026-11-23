@@ -30,7 +30,11 @@ enum Action {
     /// CLI build) run under one heavy slot held from the first to the last; a slot that is not
     /// obtained gives its exit code to each of them and no cargo starts. The answer has one
     /// `summary` line of `key=value` words in a fixed order: `check-affected`, base, head,
-    /// targets, py, scans, the exit status of each step in the order they ran, then
+    /// targets, py, scans, `test-threads=<n>` (the cap on the `test` step's threads: `-j <n>` for
+    /// nextest, `RUST_TEST_THREADS=<n>` for `cargo test`; `test_threads` in the slot folder's
+    /// `limits.json`, 4 without it, and the caller's own `NEXTEST_TEST_THREADS` or
+    /// `RUST_TEST_THREADS` wins; a value of 0 or not a whole number refuses the run before any
+    /// step), the exit status of each step in the order they ran, then
     /// `result=PASS` when every status is 0 and `result=FAIL` otherwise. Writes the step logs and
     /// `heavy-slot.log` under `<build folder>/check-affected-<head>` (or `--out`).
     Affected {

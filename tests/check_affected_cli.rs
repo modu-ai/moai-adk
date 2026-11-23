@@ -83,7 +83,7 @@ impl Tools {
         let dir = tempfile::tempdir().unwrap();
         for n in names {
             let script = format!(
-                "#!/bin/sh\necho \"{n} $*\" >> \"$FAKE_CALLS\"\necho \"{n} env CTD=$CARGO_TARGET_DIR MB=$MOAI_CLI_BIN\" >> \"$FAKE_CALLS\"\ncase \"$FAKE_FAIL\" in\n  '') ;;\n  *) case \" $* \" in *\" $FAKE_FAIL \"*) exit 3 ;; esac ;;\nesac\nexit 0\n"
+                "#!/bin/sh\necho \"{n} $*\" >> \"$FAKE_CALLS\"\necho \"{n} env CTD=$CARGO_TARGET_DIR MB=$MOAI_CLI_BIN RTT=$RUST_TEST_THREADS\" >> \"$FAKE_CALLS\"\ncase \"$FAKE_FAIL\" in\n  '') ;;\n  *) case \" $* \" in *\" $FAKE_FAIL \"*) exit 3 ;; esac ;;\nesac\nexit 0\n"
             );
             let path = dir.path().join(n);
             fs::write(&path, script).unwrap();
@@ -135,6 +135,17 @@ fn slot_dir_with(max: u32) -> tempfile::TempDir {
 
 /// The whole answer: `(ok, result or error)`.
 fn affected(fx: &Fixture, extra: &[&str], tools: Option<(&Tools, &str)>) -> (bool, Value) {
+    affected_env(fx, extra, tools, &[])
+}
+
+/// [`affected`] with `envs` set for the run. The caller's own thread knobs never leak in from
+/// the machine running the tests: both are removed first.
+fn affected_env(
+    fx: &Fixture,
+    extra: &[&str],
+    tools: Option<(&Tools, &str)>,
+    envs: &[(&str, &str)],
+) -> (bool, Value) {
     let mut cmd = Command::new(BIN);
     // No caller build folder: the step logs go under the temporary repository's own
     // `target/`, never as `check-affected-<head>` folders into the build folder of this run.
@@ -143,6 +154,9 @@ fn affected(fx: &Fixture, extra: &[&str], tools: Option<(&Tools, &str)>) -> (boo
         .args(extra)
         .env_remove("MOAI_HOME")
         .env_remove("CARGO_TARGET_DIR")
+        .env_remove("RUST_TEST_THREADS")
+        .env_remove("NEXTEST_TEST_THREADS")
+        .envs(envs.iter().copied())
         .stdin(Stdio::null());
     if let Some((t, fail)) = tools {
         cmd.env("PATH", t.path())
@@ -446,6 +460,7 @@ fn a_failed_step_does_not_stop_the_rest_and_the_summary_says_fail() {
             "targets",
             "py",
             "scans",
+            "test-threads",
             "diff_check",
             "fmt",
             "clippy",
@@ -459,7 +474,7 @@ fn a_failed_step_does_not_stop_the_rest_and_the_summary_says_fail() {
     // The steps after the failed one still ran: one test call (the fake `cargo nextest
     // --version` succeeds, so nextest runs it).
     let calls = tools.calls_text();
-    let later = "cargo nextest run --locked --offline --no-fail-fast --lib --bin moai-cli --test home_isolation_scan --test update_command_cli";
+    let later = "cargo nextest run -j 4 --locked --offline --no-fail-fast --lib --bin moai-cli --test home_isolation_scan --test update_command_cli";
     assert!(calls.contains(later), "{later} in {calls}");
     assert!(
         calls.contains("python3 -m unittest tests.update_tux_tty_test"),
@@ -519,6 +534,7 @@ fn a_failed_cheap_step_stops_before_the_heavy_steps() {
             "targets",
             "py",
             "scans",
+            "test-threads",
             "diff_check",
             "fmt",
             "ops_rustfmt",
@@ -674,4 +690,124 @@ fn a_checkout_that_is_not_the_head_runs_nothing() {
         "{v}"
     );
     assert_eq!(tools.calls_text(), "", "no step may have run");
+}
+
+/// SPEC-20261120-test-parallelism-cap REQ-1: the summary names the cap (4 without a limit), the
+/// nextest `test` step gets `-j 4` and no other step does, and libtest gets `RUST_TEST_THREADS=4`
+/// on the `test` step alone.
+#[test]
+fn the_summary_names_the_thread_cap_and_only_the_test_step_gets_it() {
+    let fx = Fixture::new(true, &[("src/update_models.rs", "// b\n")]);
+    let slots = slot_dir();
+    let slot = slots.path().to_string_lossy().to_string();
+    let args = ["--slot-dir", slot.as_str()];
+
+    // nextest: the fake `cargo nextest --version` succeeds.
+    let tools = Tools::new(&["cargo", "python3", "rustfmt"]);
+    let (ok, r) = affected(&fx, &args, Some((&tools, "")));
+    assert!(ok, "{r}");
+    let line = r["summary"].as_str().unwrap();
+    assert!(line.contains(" scans=listed:1 test-threads=4 "), "{line}");
+    let calls = tools.calls_text();
+    for l in calls.lines().filter(|l| l.starts_with("cargo ")) {
+        assert_eq!(
+            l.contains(" -j "),
+            l.starts_with("cargo nextest run "),
+            "only the nextest test step is capped: {l}"
+        );
+    }
+    assert!(calls.contains("cargo nextest run -j 4 --locked"), "{calls}");
+
+    // libtest: `--version` fails, so `cargo test` runs and takes the cap from its env.
+    let tools = Tools::new(&["cargo", "python3", "rustfmt"]);
+    let (ok, r) = affected(&fx, &args, Some((&tools, "--version")));
+    assert!(ok, "{r}");
+    assert_eq!(r["runner"], "cargo-test", "{r}");
+    assert!(r["summary"].as_str().unwrap().contains(" test-threads=4 "));
+    let calls = tools.calls_text();
+    assert!(!calls.contains(" -j "), "{calls}");
+    let mut seen = 0;
+    let mut lines = calls.lines();
+    while let Some(l) = lines.next() {
+        // Each fake call logs its arguments, then the env it saw.
+        let Some(env) = lines.next() else { break };
+        if l.starts_with("cargo ") {
+            let capped = env.ends_with(" RTT=4");
+            assert_eq!(capped, l.starts_with("cargo test "), "{l} / {env}");
+            seen += usize::from(capped);
+        }
+    }
+    assert_eq!(seen, 1, "{calls}");
+}
+
+/// REQ-1: a knob the caller set is kept — no `-j` over nextest's, no env over libtest's — and the
+/// summary shows the caller's value.
+#[test]
+fn a_thread_knob_the_caller_set_is_kept() {
+    let fx = Fixture::new(true, &[("src/update_models.rs", "// b\n")]);
+    let slots = slot_dir();
+    let slot = slots.path().to_string_lossy().to_string();
+    let args = ["--slot-dir", slot.as_str()];
+
+    let tools = Tools::new(&["cargo", "python3", "rustfmt"]);
+    let (ok, r) = affected_env(
+        &fx,
+        &args,
+        Some((&tools, "")),
+        &[("NEXTEST_TEST_THREADS", "2")],
+    );
+    assert!(ok, "{r}");
+    assert!(
+        r["summary"].as_str().unwrap().contains(" test-threads=2 "),
+        "{r}"
+    );
+    let calls = tools.calls_text();
+    assert!(calls.contains("cargo nextest run --locked"), "{calls}");
+    assert!(!calls.contains(" -j "), "{calls}");
+
+    let tools = Tools::new(&["cargo", "python3", "rustfmt"]);
+    let (ok, r) = affected_env(
+        &fx,
+        &args,
+        Some((&tools, "--version")),
+        &[("RUST_TEST_THREADS", "8")],
+    );
+    assert!(ok, "{r}");
+    assert!(
+        r["summary"].as_str().unwrap().contains(" test-threads=8 "),
+        "{r}"
+    );
+    let calls = tools.calls_text();
+    assert!(calls.contains(" RTT=8"), "{calls}");
+    assert!(!calls.contains(" RTT=4"), "{calls}");
+}
+
+/// REQ-6: a `test_threads` of 0 or one that is not a whole number starts no step at all — not
+/// even the cheap ones — and the answer names the value.
+#[test]
+fn a_bad_test_threads_value_is_refused_before_any_step() {
+    let fx = Fixture::new(true, &[("src/update_models.rs", "// b\n")]);
+    for bad in ["0", "\"four\"", "-1", "2.5"] {
+        let tools = Tools::new(&["cargo", "python3", "rustfmt"]);
+        let slots = tempfile::tempdir().unwrap();
+        fs::write(
+            slots.path().join("limits.json"),
+            format!(
+                r#"{{"max":4,"min_free_gb":0,"max_swap_pct":100,"min_mem_free_pct":0,"test_threads":{bad}}}"#
+            ),
+        )
+        .unwrap();
+        let slot = slots.path().to_string_lossy().to_string();
+        let (ok, e) = affected(&fx, &["--slot-dir", slot.as_str()], Some((&tools, "")));
+        assert!(!ok, "{bad}: {e}");
+        let message = e["message"].as_str().unwrap();
+        assert!(
+            message.contains("test_threads")
+                && message.contains(bad)
+                && message.contains("no step ran"),
+            "{bad}: {message}"
+        );
+        assert_eq!(tools.calls_text(), "", "{bad}: no step may have run");
+        assert!(!fx.root().join("target").exists(), "{bad}: nothing written");
+    }
 }
