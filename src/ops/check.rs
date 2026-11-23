@@ -35,7 +35,14 @@ enum Action {
     /// order: `check-affected`, base, head, targets, scans, `test-threads=<n>` (the cap the
     /// `test` step ran with), the exit status of each step in the order they ran, then
     /// `result=PASS` when every status is 0 and `result=FAIL` otherwise. Writes the step logs and
-    /// `heavy-slot.log` under `<build folder>/check-affected-<head>` (or `--out`).
+    /// `heavy-slot.log` under `<build folder>/check-affected-<head>` (or `--out`). The bare command
+    /// selects the full set; `--lane` selects the precise lane set, a subset of it: a scan of
+    /// `tools/repo_scans.json` joins only when a changed path is in its scope or is one of its
+    /// rule files, a change to `tests/common/<sub>.rs` selects only the tests that name
+    /// `common::<sub>`, and a test tagged with the host OS joins only by its area. A changed
+    /// `skills/` or `docs/` path selects the tests whose source names that path, in both sets.
+    /// The answer's `selection` field says `lane` or `full`; with `--integration-ref <ref>` its
+    /// `range_note` warns when the base lies behind the merge base with that ref.
     Affected {
         /// The range, `<base>..<head>`.
         range: String,
@@ -57,6 +64,13 @@ enum Action {
         /// Where the step logs go.
         #[arg(long)]
         out: Option<PathBuf>,
+        /// Select the precise lane set instead of the full set (the default).
+        #[arg(long)]
+        lane: bool,
+        /// The integration branch: a range whose base lies behind its merge base with the head
+        /// gets a `range_note` in the answer.
+        #[arg(long)]
+        integration_ref: Option<String>,
     },
 }
 
@@ -72,15 +86,29 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             max,
             min_free_gb,
             out,
+            lane,
+            integration_ref,
         } => {
+            let pick = if lane {
+                moai_cli::check_affected::Pick::Lane
+            } else {
+                moai_cli::check_affected::Pick::Full
+            };
             if list {
-                return moai_cli::check_affected::list(&dir, &range);
+                return moai_cli::check_affected::list(
+                    &dir,
+                    &range,
+                    pick,
+                    integration_ref.as_deref(),
+                );
             }
             let opts = moai_cli::check_affected::RunOptions {
                 slot_dir,
                 max,
                 min_free_gb,
                 out,
+                pick,
+                integration_ref,
             };
             moai_cli::check_affected::run(&dir, &range, &opts)
         }

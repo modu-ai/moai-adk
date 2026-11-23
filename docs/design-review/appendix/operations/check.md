@@ -1,6 +1,6 @@
 # `check`
 
-operation `check.affected` · 코드 `src/ops/check.rs`, `src/check_affected.rs`, `src/heavy_slot.rs` · SPEC-20261120-check-affected, SPEC-20261122-check-affected-one-slot
+operation `check.affected` · 코드 `src/ops/check.rs`, `src/check_affected.rs`, `src/heavy_slot.rs` · SPEC-20261120-check-affected, SPEC-20261122-check-affected-one-slot, SPEC-20261123-check-precise-selection
 
 `check affected <base>..<head>` 는 바뀐 경로에서 그 변경이 깨뜨릴 수 있는 시험을 고르고, 검사 단계를 돌리고, 한 줄로 알려요. 레인이 READY 를 쓰기 전과 리더가 병합한 head 를 확인할 때 같은 규칙을 써요. 범위는 점 둘(`<base>..<head>`)이고, 바뀐 경로는 `<base>...<head>`(merge-base 기준)라서 옛 tip 위에서 만든 head 도 자기 변경만 골라요.
 
@@ -19,6 +19,24 @@ operation `check.affected` · 코드 `src/ops/check.rs`, `src/check_affected.rs`
 무거운 자리(SPEC-20261122-check-affected-one-slot): 첫 cargo 단계(`clippy`) 앞에서 무거운 자리 **하나**를 잡아 마지막 cargo 단계가 끝날 때까지 쥐고, 마지막 단계 뒤에 놓아요. 자리 폴더는 `--slot-dir`(없으면 기계의 기본 폴더), 한도는 `heavy-slot-acquire` 와 같은 규칙(자리 옆 `limits.json`, `--max 4`·`--min-free-gb 50` 은 더 엄할 때만 이김)이에요. 줄 서는 동안의 `heavy-slot: waiting …` 줄과 자리를 잡은 줄, 거절 이유는 로그 폴더의 `heavy-slot.log` 에 남고 stdout 에는 JSON 답만 나와요. cargo 단계는 자리를 쥔 채 직접 돌고 `MOAI_HEAVY_SLOT_FD=<fd>:<자리 파일>` 을 물려받아요. 그래서 이미 자리를 쥔 `heavy-slot-acquire` 안에서 같은 자리 폴더로 돌리면 새로 줄 서지 않고 물려받은 자리를 다시 써요(그 폴더의 `slot-<숫자>` 이고, 열린 파일의 장치·inode 가 그 자리 파일과 같고, 누군가 그 자리를 쥐고 있고, 그 설명자에 대한 비차단 배타 `flock` 이 성공할 때만 — `flock` 은 열린 파일 설명에 붙으니 쥔 쪽이 물려준 설명자만 성공하고, 스스로 새로 연 자리 파일은 줄을 서요). 자리 기록(`heavy-slot-status`)에는 이 실행의 명령 줄이 남아요. 자리를 얻지 못하면(125 거절, 75 기계가 바쁨, 2 자리 폴더 없음 또는 `--max 0`) 그 코드가 모든 cargo 단계(`clippy`·`test`)의 종료 코드가 되고 cargo 는 하나도 시작하지 않아요(nextest 확인도 자리를 잡은 뒤에만 해요). 호출한 쪽이 `CARGO_BUILD_JOBS` 를 주지 않았으면 cargo 단계에 `max(2, 논리 CPU 수 ÷ 실제 자리 수)` 를 넣고, 주었으면 그 값을 그대로 넘겨요.
 
 `heavy-slot-acquire` 의 줄은 도착 순서예요: 누구든 먼저 `waiting/<나노초 20자리>-<pid>-<max>` 파일을 만들어 잠가요(끝이 자기 `--max`). 볼 때마다 자기 `0..max` 의 빈 자리를 낮은 것부터 늘어놓고, 자기보다 먼저 온 **살아 있는**(잠긴) 기다림마다 도착 순서로 그 기다림이 쓸 수 있는 가장 낮은 빈 자리를 하나씩 내준 뒤, 남은 자리가 있을 때만 그것을 잡아요. 그래서 먼저 온 좁은(`--max 1`) 기다림은 자기가 못 쓰는 slot 1 을 넓은 호출자에게서 막지 않아요. `<max>` 가 없는 이름(Python 쌍둥이, 옛 빌드)은 어느 자리든 쓸 수 있다고 봐요. 잠기지 않은 기다림 파일(죽은 기다림)은 세지 않고 그대로 둬요. 기다림 목록은 한 번 볼 때 한 번만 읽어요.
+
+## 두 가지 선택 (SPEC-20261123-check-precise-selection)
+
+위의 "고르는 규칙" 표는 **전체 선택**(`selection: full`)이고, 맨 명령(`--lane` 없이)이 이것을 골라요. `--lane` 은 같은 범위에서 그 부분집합인 **레인 선택**(`selection: lane`)을 골라요: 레인이 READY 를 쓰기 전에는 `--lane`, 병합 후보 한 개마다 한 번 도는 열차 실행과 MERGE-READY 의 근거는 맨 명령의 `result=PASS` 예요. 레인 선택은 위 표의 세 규칙만 좁혀요.
+
+| 규칙 | 전체 선택 | 레인 선택 (`--lane`) |
+| --- | --- | --- |
+| 스캔 (`tools/repo_scans.json`) | 모든 스캔의 `--test` 대상 | 바뀐 경로가 그 스캔의 `scope`(`prefix` 아래이고, `suffixes` 가 있으면 그 중 하나로 끝남)에 들거나 `rules` 파일 중 하나일 때만. `scope` 가 없거나 읽을 수 없는 스캔은 `rules` 파일이 바뀐 때 말고는 빠져요 |
+| `tests/common/<이름>.rs` 가 바뀜 | `mod common;` 을 쓰는 모든 Rust 대상 | 소스에 `common::<이름>`(또는 `common::{<이름>, …}` 묶음의 항목)이 있는 대상만. `tests/common/mod.rs` 나 더 깊은 경로가 바뀌면 전체와 같아요 |
+| `cfg(target_os = "<이 호스트>")` 시험 | 모두 | 영역 규칙(이름의 첫 낱말이 바뀐 경로의 영역과 같음)으로 고른 것만 |
+
+도우미 경로 규칙(path-import rule)도 두 선택 모두에 같아요: 바뀐 경로가 `tests/common/` 아래이면 소스에 `common/<나머지 경로>` 가 글자 그대로 있는 대상(`#[path = "common/<이름>.rs"]` 로 불러 쓰는 시험, 다른 모듈 이름으로 불러도 같아요)과, `tests/common/<이름>.rs` 바로 아래 파일이면 `mod <이름>;` 을 선언한 대상을 골라요. `mod common;` 없이 도우미를 불러 쓰는 시험을 놓치지 않으려는 규칙이에요. 레인에서는 이 규칙이 고른 것에 위 표의 `common` 갈래가 더해져요.
+
+레인 선택은 스캔 `scope` 와 `rules` 밖의 변경(`README.md`, `Cargo.toml`, `build.rs`, `src/main.rs`, `REVIEW.md`, `CLAUDE.md`, `tools/repo_scans.json` 자체)을 스캔 대상으로 이어 주지 않아요. 그런 변경은 전체 선택(열차 실행)이 잡아요.
+
+글 고정 규칙은 두 선택 모두에 같아요: 바뀐 경로가 `skills/` 나 `docs/` 아래이고 그 경로가 어떤 `tests/*.rs` 소스에 글자 그대로 적혀 있으면 그 대상을 골라요(소스가 그 경로를 이름 그대로 부르는 시험, names that path). 경로를 실행 중에 조립하는 시험은 보이지 않아요.
+
+`--list` 와 돌리기의 답에는 `selection`(`lane` 또는 `full`)과 `range_note` 가 있어요. `--integration-ref <ref>` 를 주었고 범위의 base 가 head 와 그 ref 의 merge-base 보다 엄격히 앞선 조상이면 `range_note` 는 `{merge_base, integration_ref, extra_changed}` 객체예요: 그 merge-base 와, 범위가 merge-base 에서 시작한 범위보다 더 가진 바뀐 경로 수예요(옛 분기점에서 tip 을 병합한 뒤 범위를 잡으면 tip 이 이미 가진 변경을 다시 시험해요). 알리기만 하고 막지 않아요. 플래그가 없거나 ref 를 읽을 수 없거나 범위가 merge-base 에서 시작하면 `range_note` 는 `null` 이고 선택은 그대로예요. `summary` 줄의 낱말과 순서는 바뀌지 않아요.
 
 ## 시험 영역 표 (SPEC-20261123-test-area-crates)
 
