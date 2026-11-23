@@ -1,5 +1,6 @@
 //! Helpers shared by integration tests.
 pub mod cli;
+pub mod fake_exe;
 pub mod git;
 pub mod home;
 #[cfg(unix)]
