@@ -100,9 +100,11 @@ they hold whatever the library looks like after that card lands.
 
 ## Result
 
-구현 에이전트가 2026-11-23T05:03Z 에 채웠어요. 감사가 다시 확인해요. 코드 head `6a9e022ab5`(base `6817eb69ad` = NeXT 병합 지점), 이 worktree 의 `target/`, macOS arm64, 무거운 자리 1개, `CARGO_HOME=/tmp/moai-rc-cargo-c280`.
+구현 에이전트가 2026-11-23T05:03Z 에 채우고, 독립 감사 FAIL(막는 것 하나: `#[path]` 로 불러 쓰는 도우미)을 고친 수리가 2026-11-23T06:00Z 에 다시 채웠어요. 감사가 다시 확인해요. 수리 뒤 코드 head `18922b6ee2`(base `6817eb69ad` = NeXT 병합 지점; 수리 전 코드 head `6a9e022ab5`), 이 worktree 의 `target/`, macOS arm64, 무거운 자리 `--max 4`, `CARGO_HOME=/tmp/moai-rc-cargo-c280`.
 
 RED(`71f31169fc`): 9개 모두 단언 실패. GREEN: `cargo test --offline --locked --test check_affected_modes_cli` 9 passed(`target/c280/green1.log`).
+
+수리 RED(head `8c9102061d` 위에 시험만 더함, `target/c280r/red.log`): 새 시험 둘이 단언 실패(`lane keeps path_user: {}`, `lane keeps deep_user: {"alpha_cli"}`). 수리 GREEN: `cargo nextest run --test check_affected_modes_cli` 11 passed(`target/c280r/green2.log` 는 lib 까지 1734 passed).
 
 - AC-1: met — `scan_scope_decides_the_lane_and_the_full_set_keeps_every_scan`, `scan_rule_file_keeps_its_scan_in_the_lane` 통과(영수증의 같은 head 실행에서도 통과)
 - AC-2: met — `common_sub_module_change_selects_only_its_users_in_the_lane`, `common_mod_change_keeps_every_consumer_in_the_lane` 통과
@@ -111,10 +113,12 @@ RED(`71f31169fc`): 9개 모두 단언 실패. GREEN: `cargo test --offline --loc
 - AC-5: met — `text_change_selects_the_tests_that_name_the_file` 통과
 - AC-6: met — `range_from_an_old_fork_point_carries_a_note` 통과
 - AC-7: met — `page_describes_the_two_selections` 통과
-- AC-8: met — `check_affected_cli` 와 `check_affected_one_slot` 전부 통과(수정 없음): `moai check affected 6817eb69ad..6a9e022ab5` 가 `targets=52 scans=listed:37 diff_check=0 fmt=0 ops_rustfmt=0 clippy=0 test=0 result=PASS`, nextest 2459 passed, 0 skipped(`target/c280/receipt/05-test.log`)
+- AC-8: met — `check_affected_cli` 와 `check_affected_one_slot` 전부 통과(수정 없음): 수리 뒤 head 에서 `moai check affected 6817eb69ad..18922b6ee2 --max 4`(감싸지 않음, 한 번)가 `targets=52 scans=listed:37 diff_check=0 fmt=0 ops_rustfmt=0 clippy=0 test=0 result=PASS`, nextest 2461 passed, 0 skipped(`target/c280r/receipt/05-test.log`, 수리 전 head 는 2459 passed)
+- AC-9: met — `common_path_import_keeps_its_users_in_both_selections` 통과(`#[path = "common/spawn_cap.rs"]`·다른 모듈 이름·`mod spawn_cap;` 가 두 선택에 들고, 레인에는 파일 이름을 안 부르는 `mod common` 소비자가 안 들어요). 실제 기록으로도 확인: `check affected a53c9c7edd^..a53c9c7edd --list --lane`(`tests/common/go_project_real_run.rs` 변경)에 `go_project_real_run_cli`·`go_settings_cli`·`go_state_preview_cli`·`project_update_hooks_cli`·`update_end_to_end_cli` 가 들어요
+- AC-10: met — `common_deeper_path_keeps_every_consumer_and_its_path_users` 통과(더 깊은 경로 `tests/common/deep.rs/x.rs`: 레인에도 `mod common` 소비자 유지, 그 파일을 경로로 부르는 시험 추가, 다른 도우미의 경로 시험은 빠짐)
 
-뮤턴트 10개(지킴 코드를 하나씩 뺌) 모두 KILLED(`target/c280/mutants.log`): 스캔 scope 지킴(M1)·rules 파일 일치(M2)·`common` 하위 모듈 갈래(M3)·`mod.rs` 전체 유지(M4)·호스트 OS 지킴(M5)·글 고정(M6)·`selection` 낱말(M7)·`range_note` 조상 지킴(M8)·`range_note` 꺼짐(M9)은 `check_affected_modes_cli` 의 9개 중 하나 이상이 잡고, 식별자 전체 일치(M10)는 모듈 단위 시험이 잡아요.
+뮤턴트 10개(지킴 코드를 하나씩 뺌) 모두 KILLED(`target/c280/mutants.log`): 스캔 scope 지킴(M1)·rules 파일 일치(M2)·`common` 하위 모듈 갈래(M3)·`mod.rs` 전체 유지(M4)·호스트 OS 지킴(M5)·글 고정(M6)·`selection` 낱말(M7)·`range_note` 조상 지킴(M8)·`range_note` 꺼짐(M9)은 `check_affected_modes_cli` 의 9개 중 하나 이상이 잡고, 식별자 전체 일치(M10)는 모듈 단위 시험이 잡아요. 수리의 새 규칙은 뮤턴트 4개가 모두 KILLED(`target/c280r/mut-*.log`, 소스 복원 확인): `common/<경로>` 글자 갈래를 뺌(MA, 2개 실패)·`mod <이름>` 갈래를 뺌(MB, 1개)·레인에만 적용(MC, 2개; 레인이 전체의 부분집합이어야 한다는 단언이 잡음)·`["common", file]` 갈래를 `["common", file, ..]` 로 넓힘(MD, 1개; 감사의 O2). 수리 전 뮤턴트 10개는 이 수리에서 다시 돌리지 않았어요(고친 것만 다시 확인).
 
-측정(`target/debug/moai-cli check affected <병합>^1..<병합> --list`, NeXT 최근 첫 부모 병합 10개): 대상 수 합계 전체 992 → 레인 447(−55%). 병합별 전체/레인: 90/62, 390/129, 48/5, 54/25, 71/41, 58/27, 66/35, 51/14, 68/42, 96/67.
+측정(`target/debug/moai-cli check affected <병합>^1..<병합> --list`, NeXT 최근 첫 부모 병합 10개, 수리 뒤 새 바이너리): 대상 수 합계 전체 1304 → 레인 831(−36%). 병합별 전체/레인(`95a3a0e1df`부터 `0dfdfb31dc` 순): 80/69, 385/385, 49/21, 79/67, 90/62, 390/129, 48/5, 54/25, 71/41, 58/27. 앞의 측정과 겹치는 여섯 병합(90/62 에서 58/27 까지)은 값이 같아요. 앞 측정의 합계(992 → 447, 열 개가 달랐음)와 직접 견주지 않아요.
 
-실행 안 함·한계: Linux·Windows, `summary` 줄에 `selection` 낱말은 넣지 않았어요(답의 필드만; 줄의 낱말 순서를 고정한 시험을 건드리지 않으려고). 레인 선택은 `tools/repo_scans.json` 자체가 바뀌어도 그 파일을 규칙 파일로 보지 않아요; `common::*`(glob)로만 하위 모듈을 쓰는 시험은 하위 모듈 변경에서 빠져요. 둘 다 전체 선택(열차 실행)이 잡아요. 이 SPEC 의 `status` 는 draft 그대로예요(승인은 이 레인이 하지 않아요). 워크플로 가이드(mode-agent/leader)와 MERGE-READY 문구는 다른 카드가 쥔 파일이라 이 카드에서 바꾸지 않았어요.
+실행 안 함·한계: Linux·Windows, `summary` 줄에 `selection` 낱말은 넣지 않았어요(답의 필드만; 줄의 낱말 순서를 고정한 시험을 건드리지 않으려고). 레인 선택은 `tools/repo_scans.json` 자체와 스캔 범위 밖 변경(`README.md`, `Cargo.toml`, `build.rs`, `src/main.rs`, `REVIEW.md`, `CLAUDE.md`)에서 스캔 대상을 모두 빼요(Risks 에 적음); `common::*`(glob)로만 하위 모듈을 쓰는 시험은 하위 모듈 변경에서 빠져요. 모두 전체 선택(열차 실행)이 잡아요. 이 SPEC 의 `status` 는 draft 그대로예요(승인은 이 레인이 하지 않아요). 워크플로 가이드(mode-agent/leader)와 MERGE-READY 문구는 다른 카드가 쥔 파일이라 이 카드에서 바꾸지 않았어요: 그래서 카드 기준 1 의 "요약 줄이 모드를 말함·MERGE-READY 는 전체 실행" 중 요약 줄 낱말과 MERGE-READY 문구는 이 head 에서 되지 않았고(답의 `selection` 필드와 도움말 페이지만 있어요), 그 기준은 일부만 met 예요; SPEC 은 이를 Non-goals 로 두었어요. 수리 뒤 head 의 점검은 수리 커밋 두 개의 코드와 시험 위에서 돌렸고, 이 Result 커밋은 SPEC 파일만 바꿔요(`diff --check`만 다시 돌림).
