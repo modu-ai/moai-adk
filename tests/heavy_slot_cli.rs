@@ -1636,6 +1636,78 @@ fn status_lists_the_slots_held_in_the_earlier_folder() {
     );
 }
 
+/// The earlier folder's `limits.json` is still read when the default folder already exists but
+/// holds none (a build of the new name made the folder before the owner moved the file): the
+/// fallback is "no `limits.json` in the default folder", not "no default folder".
+#[test]
+fn the_earlier_limits_apply_while_the_new_folder_exists_without_limits() {
+    let (home, cache) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+    let earlier = cache.path().join("moai-cli/heavy-slots");
+    let newer = cache.path().join("moai/heavy-slots");
+    fs::create_dir_all(&earlier).unwrap();
+    fs::write(earlier.join("limits.json"), "{\"max\": 1}").unwrap();
+    fs::create_dir_all(&newer).unwrap();
+    fs::write(newer.join("slot-0"), "").unwrap();
+    let before = snapshot(&earlier);
+
+    let st = default_status(home.path(), cache.path());
+    assert_eq!(st["build_jobs_cap"]["slots"], 1, "{st}");
+    assert!(
+        !newer.join("limits.json").exists(),
+        "a limits file was made"
+    );
+    assert_eq!(snapshot(&earlier), before, "the earlier folder changed");
+}
+
+/// An acquire in the default folder applies the earlier folder's limit to the run itself, not
+/// only to what status prints: with an earlier `max` of 1 a second caller waits for the first.
+#[test]
+fn acquire_applies_the_earlier_limits_file_to_the_run() {
+    let (home, cache) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+    let earlier = cache.path().join("moai-cli/heavy-slots");
+    fs::create_dir_all(&earlier).unwrap();
+    fs::write(earlier.join("limits.json"), "{\"max\": 1}").unwrap();
+    let before = snapshot(&earlier);
+    let m = tempfile::tempdir().unwrap();
+    let (s1, r1, s2) = (
+        m.path().join("s1"),
+        m.path().join("r1"),
+        m.path().join("s2"),
+    );
+    let in_default_folder = |name: &str, body: &str| {
+        let mut c = Command::new(EXE);
+        c.clean_env()
+            .env("PATH", std::env::var_os("PATH").unwrap_or_default())
+            .env("HOME", home.path())
+            .env("XDG_CACHE_HOME", cache.path())
+            .env("MOAI_CLI_TEST_MACHINE", ROOMY)
+            .args(["heavy-slot-acquire", "--name", name, "--", "sh", "-c", body])
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped());
+        spawn(c)
+    };
+    let first = in_default_folder("first", &hold(&s1, &r1));
+    wait_for("first started", || s1.exists());
+    let second = in_default_folder("second", &format!("touch '{}'", s2.display()));
+    wait_for("second waiting", || {
+        fs::read_dir(cache.path().join("moai/heavy-slots/waiting"))
+            .map(|r| r.count() == 1)
+            .unwrap_or(false)
+    });
+    assert!(!s2.exists(), "second ran although the earlier limit is 1");
+    fs::write(&r1, "").unwrap();
+    let (a, b) = (first.finish(), second.finish());
+    assert!(a.status.success(), "{}", text(&a));
+    assert!(b.status.success(), "{}", text(&b));
+    assert!(s2.exists());
+    assert!(
+        text(&b).contains("waiting 1 of 1 for 1 slot(s)"),
+        "{}",
+        text(&b)
+    );
+    assert_eq!(snapshot(&earlier), before, "the earlier folder changed");
+}
+
 /// A repository `<root>/repo` with the worktrees `wt-one`, `wt-two` and `repo/.claude/worktrees/
 /// agent-3`, a temporary HOME, a slot folder and a stub named `cargo` that does nothing.
 struct BuildFx {

@@ -278,7 +278,7 @@ fn git_init(dir: &Path) -> Result<(), String> {
     }
 }
 
-/// The `git init` lock of `dir` (canonical): `moai-cli-git-init-<16 hex of sha256(path)>.lock`
+/// The `git init` lock of `dir` (canonical): `moai-git-init-<16 hex of sha256(path)>.lock`
 /// in the OS temporary directory, held exclusively while the guard lives. On Linux that folder
 /// can be the shared `/tmp`, where any account can predict the name (PR #2494 audit B1), so the
 /// file is opened without following a symlink (`O_NOFOLLOW`, mode 0600) and locked only when
@@ -289,7 +289,7 @@ fn git_init(dir: &Path) -> Result<(), String> {
 fn init_lock(dir: &Path) -> Option<fs::File> {
     let id = crate::digest(dir.as_os_str().as_encoded_bytes());
     let hex = id.strip_prefix("sha256:").unwrap_or(&id);
-    let path = std::env::temp_dir().join(format!("moai-cli-git-init-{}.lock", &hex[..16]));
+    let path = std::env::temp_dir().join(format!("moai-git-init-{}.lock", &hex[..16]));
     if fs::symlink_metadata(&path).is_ok_and(|m| !m.file_type().is_file()) {
         return None;
     }

@@ -454,3 +454,90 @@ fn the_release_list_bound_is_reachable_through_the_cli() {
         "{v}"
     );
 }
+
+/// The marker the product requires, spelled out so a renamed constant cannot hide a wrong
+/// name (SPEC-20261121-moai-name REQ-15), and the one an earlier build required.
+const MARKER: &str = ".moai-synthetic-home";
+const MARKER_TEXT: &[u8] = b"moai synthetic home v1\n";
+const EARLIER_MARKER: &str = ".moai-cli-synthetic-home";
+const EARLIER_MARKER_TEXT: &[u8] = b"moai-cli synthetic home v1\n";
+
+/// REQ-15, REQ-17: the marker is `.moai-synthetic-home` with `moai synthetic home v1`; a home
+/// that carries only the earlier marker is refused with a sentence naming the new one, and
+/// nothing in that home is changed.
+#[test]
+fn the_synthetic_home_marker_is_moai_and_the_earlier_marker_is_refused() {
+    assert_eq!(SYNTHETIC_MARKER, MARKER);
+    assert_eq!(SYNTHETIC_MARKER_TEXT, MARKER_TEXT);
+    let env = Env::new();
+    let req = request(&[hash(CONFIG)], None);
+
+    // The marker the product names opens the home; the preview writes nothing.
+    let good = env.home("good");
+    assert_eq!(fs::read(good.join(MARKER)).unwrap(), MARKER_TEXT);
+    let before = digest(&good);
+    let (code, v) = env.run(&["migrate-plan", s(&good)], &req);
+    assert_eq!(code, 0, "{v}");
+    assert_eq!(v["result"]["writes"], 0, "{v}");
+    assert_eq!(digest(&good), before, "the preview wrote");
+
+    // The earlier marker with its own text is no marker: refused, naming the new marker.
+    let old = env.home("old");
+    fs::remove_file(old.join(MARKER)).unwrap();
+    fs::write(old.join(EARLIER_MARKER), EARLIER_MARKER_TEXT).unwrap();
+    let before = digest(&old);
+    let (code, v) = env.run(&["migrate-plan", s(&old)], &req);
+    assert_ne!(code, 0, "{v}");
+    let message = v["error"]["message"].as_str().unwrap_or_default();
+    assert!(
+        message.contains(".moai-synthetic-home marker missing"),
+        "the refusal does not name the new marker: {v}"
+    );
+    assert!(
+        !message.contains(EARLIER_MARKER),
+        "the refusal still names the earlier marker: {v}"
+    );
+    assert_eq!(digest(&old), before, "the refused home changed");
+
+    // The new file name with the earlier text, and the earlier name with the new text, are
+    // refused too: both the name and the bytes are part of the marker.
+    for (name, marker, text) in [
+        ("name-new-text-old", MARKER, EARLIER_MARKER_TEXT),
+        ("name-old-text-new", EARLIER_MARKER, MARKER_TEXT),
+    ] {
+        let h = env.home(name);
+        fs::remove_file(h.join(MARKER)).unwrap();
+        fs::write(h.join(marker), text).unwrap();
+        let (code, v) = env.run(&["migrate-plan", s(&h)], &req);
+        assert_ne!(code, 0, "{name}: {v}");
+    }
+}
+
+/// REQ-15: the help of every `migrate-*` command that takes a home names the new marker and
+/// never the earlier one.
+#[test]
+fn migrate_help_names_the_moai_marker_only() {
+    let user = TempDir::new().unwrap();
+    for command in [
+        "migrate-plan",
+        "migrate-apply",
+        "migrate-recovery-plan",
+        "migrate-recover",
+    ] {
+        let out = Command::new(crate::common::MOAI_BIN)
+            .args([command, "--help"])
+            .env("HOME", user.path())
+            .output()
+            .unwrap();
+        let help = String::from_utf8_lossy(&out.stdout);
+        assert!(out.status.success(), "{command} --help failed: {help}");
+        assert!(
+            help.contains(MARKER),
+            "{command} --help does not name {MARKER}: {help}"
+        );
+        assert!(
+            !help.contains(EARLIER_MARKER),
+            "{command} --help still names {EARLIER_MARKER}: {help}"
+        );
+    }
+}

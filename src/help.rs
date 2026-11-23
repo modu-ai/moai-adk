@@ -692,17 +692,17 @@ pub const ARG_HELP_FOR: &[(&str, &str, &str)] = &[
     (
         "migrate-apply",
         "home",
-        "Synthetic home: a temporary directory carrying `.moai-cli-synthetic-home`",
+        "Synthetic home: a temporary directory carrying `.moai-synthetic-home`",
     ),
     (
         "migrate-recovery-plan",
         "home",
-        "Synthetic home: a temporary directory carrying `.moai-cli-synthetic-home`",
+        "Synthetic home: a temporary directory carrying `.moai-synthetic-home`",
     ),
     (
         "migrate-recover",
         "home",
-        "Synthetic home: a temporary directory carrying `.moai-cli-synthetic-home`",
+        "Synthetic home: a temporary directory carrying `.moai-synthetic-home`",
     ),
     (
         "migrate-recover",
