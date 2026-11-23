@@ -401,6 +401,49 @@ printf '%s' "$$""#,
     );
 }
 
+/// A probe that removes the reference file the wrapper compares times with (`mktemp` made it under
+/// `$TMPDIR` as `moai-test-home-ref.XXXXXX`).
+const VANISH_REF: &str = r#"rm -f "$TMPDIR"/moai-test-home-ref.*"#;
+
+#[test]
+fn a_reference_file_that_vanishes_does_not_let_a_test_pass() {
+    let g = Guard::new();
+    let out = g.run(Some("enforce"), None, VANISH_REF);
+    assert_ne!(
+        out.status.code(),
+        Some(0),
+        "the comparison could not run and the test passed: {}",
+        stderr(&out)
+    );
+    assert!(stderr(&out).contains("HOME-GUARD:"), "{}", stderr(&out));
+    assert_eq!(g.entries(), Vec::<String>::new(), "the wrapper left a folder");
+}
+
+#[test]
+fn a_home_that_vanishes_does_not_let_a_test_pass() {
+    let g = Guard::new();
+    let out = g.run(Some("enforce"), None, r#"rm -rf "$HOME""#);
+    assert_ne!(
+        out.status.code(),
+        Some(0),
+        "the comparison could not run and the test passed: {}",
+        stderr(&out)
+    );
+    assert!(stderr(&out).contains("HOME-GUARD:"), "{}", stderr(&out));
+}
+
+#[test]
+fn a_comparison_that_cannot_run_keeps_the_test_exit_code_and_never_fails_observe() {
+    let g = Guard::new();
+    let failing = format!("{VANISH_REF}; exit 7");
+    let out = g.run(Some("enforce"), None, &failing);
+    assert_eq!(out.status.code(), Some(7), "{}", stderr(&out));
+    assert!(stderr(&out).contains("HOME-GUARD:"), "{}", stderr(&out));
+    let out = g.run(Some("observe"), None, VANISH_REF);
+    assert_eq!(out.status.code(), Some(0), "{}", stderr(&out));
+    assert!(stderr(&out).contains("HOME-GUARD:"), "{}", stderr(&out));
+}
+
 #[test]
 fn a_cargo_child_of_a_test_still_finds_its_toolchain() {
     let g = Guard::new();
