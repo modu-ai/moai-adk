@@ -59,6 +59,9 @@ pub(crate) fn scrub_git_env(cmd: &mut Command) {
             cmd.env_remove(&key);
         }
     }
+    for key in GIT_TRACE2_OFF {
+        cmd.env(key, "0");
+    }
     cmd.env("LC_ALL", "C");
 }
 

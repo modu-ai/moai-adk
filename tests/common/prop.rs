@@ -90,7 +90,14 @@ fn seed_from_env() -> (u64, Option<u64>) {
 /// when it is one, and a message naming the value when it is set but is not a number, so a typo
 /// never turns a replay into a silent full run.
 pub fn replay_index(raw: Option<&str>) -> Result<Option<u64>, String> {
-    Ok(raw.and_then(|s| s.parse::<u64>().ok()))
+    match raw {
+        None => Ok(None),
+        Some(s) => s.parse::<u64>().map(Some).map_err(|_| {
+            format!(
+                "PROP_ONLY={s:?} is not a number; give the index of one case, or leave it unset"
+            )
+        }),
+    }
 }
 
 /// The failure message of a replay that names a case the run does not have (REQ-13), or `None`
