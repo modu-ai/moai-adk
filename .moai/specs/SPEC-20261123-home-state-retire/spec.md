@@ -66,7 +66,7 @@ created: 2026-11-23
 
 - write: `.moai/specs/SPEC-20261123-home-state-retire/**`
 - write: `src/home_state_retire.rs`, `src/ops/home_archive_plan.rs`, `src/ops/home_archive_apply.rs`, `src/ops/home_archive_revert.rs`, `src/lib.rs` (one `pub mod`), `src/help.rs` (the three commands)
-- write: `src/home_root.rs` (the resolver and its unit tests)
+- write: `src/home_root.rs` (the resolver and its unit tests), `src/state_root.rs` (the unused `Unknown::OnlyRustNames` answer removed with its helper)
 - write: `tests/home_state_retire_cli.rs`, `tests/path_root_default.rs`
 - write: `docs/design-review/appendix/operations/home_archive_plan.md`, `…_apply.md`, `…_revert.md`, `tests/fixtures/help/all*.txt`, `tests/fixtures/state_folder_literals/allow.tsv`, `docs/cli-text-rationale.md`
 - read-only: `src/update.rs`, `src/host_home.rs`, `src/bin_names.rs` (held by another change), `src/home_retire.rs`, `src/move_journal.rs`, `src/home_state.rs`, `src/home_layout.rs`
@@ -97,4 +97,16 @@ created: 2026-11-23
 
 ## Result
 
-(not yet — filled after the checks run)
+Checked on the head that carries this text, in this worktree, `cargo nextest` with `-j 4` in a heavy slot; the full unfiltered suite is the pull request's CI run.
+
+- AC-1: met — `home_state_retire_cli` `the_preview_*` pass (listing by lstat, one move, `none`, writes nothing).
+- AC-2: met — `blocked_*` pass (link, plain file, link as `.moai`, file as `archive`, taken name, held-open child, running binary inside, unreadable process table).
+- AC-3: met — `path_guidance_*` pass; `.zshrc` stays byte-identical.
+- AC-4: met — `the_apply_*` pass (no earlier folder left, same tree and modes, Go names untouched, stale token and missing reference write nothing).
+- AC-5: met — `the_revert_*` pass (same tree and modes, `revert_partial` on a replaced entry or a recreated folder, second revert changes nothing).
+- AC-6: met — `a_crash_*` pass (four injected fault points).
+- AC-7: partly met — the resolver cases of `path_root_default` and the `home_root` unit tests pass, and `install-inspect` reports `.moai` in an empty HOME; no test runs `key-set` in an empty HOME, so that half is not_run.
+- AC-8: met — `help_layout` goldens and `state_folder_literal_scan` pass; the help text exists for the three commands.
+- AC-9: met — one run of the binary built from the head in a throwaway HOME (preview, a held-open child that blocks, refusals, apply, revert, second revert, link and absent cases); the table is in the READY note.
+
+Not in this slice: the mover's read points, `committed_aliases`/`earlier_ids_of`, the fixture move and the `moai update` hook-up. With the resolver on `.moai`, about 190 tests whose fixtures build `<home>/.moai-cli` as the HOME state fail; the list is in the READY note.

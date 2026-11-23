@@ -595,9 +595,7 @@ pub(crate) fn resolves_to_moai(
     match generation {
         "rust" | "rust-first" => true,
         "none" | "empty" => earlier_absent(),
-        "unknown" => {
-            earlier_absent() && unknown == Unknown::Ours
-        }
+        "unknown" => earlier_absent() && unknown == Unknown::Ours,
         _ => false,
     }
 }
