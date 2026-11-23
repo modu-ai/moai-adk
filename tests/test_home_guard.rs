@@ -247,6 +247,29 @@ fn plant_home_is_guarded() {
 }
 "#;
 
+/// The repository configuration without its per-test overrides: their filters name test binaries
+/// of this repository, which a scratch crate does not have, and nextest refuses such a filter.
+/// The wrapper rule, the feature switch and the version pin stay as they are.
+fn config_without_overrides(config: &str) -> String {
+    let mut out = String::new();
+    let mut skipping = false;
+    for line in config.lines() {
+        if line.trim() == "[[profile.default.overrides]]" {
+            skipping = true;
+            continue;
+        }
+        if skipping {
+            if line.trim_start().starts_with("test-group") {
+                skipping = false;
+            }
+            continue;
+        }
+        out.push_str(line);
+        out.push('\n');
+    }
+    out
+}
+
 enum Wrapper {
     Repository,
     Missing,
@@ -265,7 +288,7 @@ fn scratch_crate(wrapper: Wrapper) -> TempDir {
     )
     .unwrap();
     fs::write(p.join("src/lib.rs"), PLANTS).unwrap();
-    fs::copy(Path::new(ROOT).join(CONFIG), p.join(CONFIG)).unwrap();
+    fs::write(p.join(CONFIG), config_without_overrides(&config_text())).unwrap();
     match wrapper {
         Wrapper::Repository => {
             fs::copy(script(), p.join(SCRIPT)).unwrap();
