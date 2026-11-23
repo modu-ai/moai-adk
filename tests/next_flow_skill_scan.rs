@@ -1875,7 +1875,7 @@ fn repo_scans_cargo_only_problems(flow: &str) -> Vec<String> {
         return vec![format!("{FLOW_REF} names no `moai repo-scans`")];
     };
     let lower = bullet.to_lowercase();
-    ["only their `cargo` checks", "python line"]
+    ["run only their `cargo` checks", "leaving out a python line"]
         .iter()
         .filter(|part| !lower.contains(**part))
         .map(|part| format!("the repo-scans bullet lacks {part:?}: {bullet}"))
@@ -1918,6 +1918,18 @@ fn land_scans_the_flow_cargo_only_mutants_are_caught() {
             flow.replace(&bullet, &without("Python line")),
         ),
         ("bullet removed", flow.replace(&bullet, "")),
+        (
+            "meaning reversed",
+            flow.replace(
+                &bullet,
+                &bullet
+                    .replace(
+                        "run only their `cargo` checks",
+                        "run all their checks, not only their `cargo` checks",
+                    )
+                    .replace("leaving out a Python line", "including a Python line"),
+            ),
+        ),
     ];
     for (name, mutant) in mutants {
         assert!(mutant != flow, "{name}: the mutant did not change the text");
