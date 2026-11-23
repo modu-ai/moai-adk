@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261124-home-env-readers
 title: "환경 HOME 을 직접 읽는 곳을 명령 가장자리로 모아요: 조각 1 은 layout, 조각 2 는 클레임 장부 호출부와 git 자식"
-status: draft
+status: approved
 revision: 2
 created: 2026-11-24
+approval:
+  by: leader
+  at: 2026-11-23
+  basis: "리더 결정 노트 7763 (2026-11-23T18:09:17Z, 사용자 위임 2026-11-23T13:57Z, 리더 판단이고 사용자 직접 선택은 아님, 노트 7762 의 결정 1 (a): 판 2 승인, REQ-6..12, D-5..D-9, 7단계); 리더가 노트에 적었고 레인은 그 노트를 인용만 해요"
+  digest: "sha256:a4afa73f88fe9b0d5f7bcc6b928383906cd7a215782a7a3fdf027514601b1ed5"
 ---
 
 # 환경 HOME 을 직접 읽는 곳을 명령 가장자리로 모아요: 조각 1 은 layout, 조각 2 는 클레임 장부 호출부와 git 자식
