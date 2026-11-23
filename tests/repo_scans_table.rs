@@ -10,11 +10,12 @@
 //!
 //! Moved here from the Python module `repo_scans_test.py` (SPEC-20261123-rust-scans-before-ready).
 
-use serde_json::Value;
+use serde_json::{json, Value};
 use std::{
     collections::{BTreeMap, BTreeSet},
     fs,
     path::{Path, PathBuf},
+    sync::OnceLock,
 };
 
 const ROOT: &str = env!("CARGO_MANIFEST_DIR");
@@ -474,9 +475,14 @@ fn scope_covers(scan: &Value, path: &str) -> bool {
 }
 
 /// The `file reads path` lines of the readers that no `always` scan covers: the file is one of the
-/// rule files of an `always` scan whose scope holds the path it reads.
-fn uncovered_readers(readers: &BTreeMap<String, Vec<String>>, scans: &[Value]) -> Vec<String> {
-    let exempt: BTreeSet<&str> = INCLUDE_STR_EXEMPT.iter().map(|(p, _)| *p).collect();
+/// rule files of an `always` scan whose scope holds the path it reads. `exempt` lists the files
+/// kept out, each with its reason (`INCLUDE_STR_EXEMPT` or `FILE_READ_EXEMPT`).
+fn uncovered_readers(
+    readers: &BTreeMap<String, Vec<String>>,
+    scans: &[Value],
+    exempt: &[(&str, &str)],
+) -> Vec<String> {
+    let exempt: BTreeSet<&str> = exempt.iter().map(|(p, _)| *p).collect();
     let mut out = Vec::new();
     for (file, paths) in readers {
         if exempt.contains(file.as_str()) {
@@ -534,7 +540,7 @@ fn every_include_str_reader_of_a_repository_file_has_an_always_scan() {
         readers.contains_key("tests/green_test_lock.rs"),
         "the reader scan finds no include_str! reader at all: {readers:?}"
     );
-    let uncovered = uncovered_readers(&readers, &load());
+    let uncovered = uncovered_readers(&readers, &load(), INCLUDE_STR_EXEMPT);
     assert!(
         uncovered.is_empty(),
         "a test reads a repository file with include_str! and no `always` scan names it as a rule \
@@ -558,7 +564,7 @@ fn the_include_str_check_sees_a_reader_with_no_scan_and_skips_what_it_should() {
         include_str_paths("tests/zz_reader.rs", text),
     )]);
     assert_eq!(
-        uncovered_readers(&readers, &load()),
+        uncovered_readers(&readers, &load(), INCLUDE_STR_EXEMPT),
         ["tests/zz_reader.rs reads src/zz_new_table.rs"]
     );
 }
@@ -576,4 +582,236 @@ fn the_green_test_lock_reader_is_covered_by_its_source_table() {
         .expect("an entry that names tests/green_test_lock.rs");
     assert_eq!(scan["always"], Value::Bool(true), "{}", id(scan));
     assert!(scope_covers(scan, "src/project_detect.rs"), "{}", id(scan));
+}
+
+// ---- readers that open a checked-in file at run time (SPEC-20261123-land-file-read-scans) ----
+
+/// Integration test files that name `CARGO_MANIFEST_DIR`, read, and spell tracked paths only as
+/// names inside the temporary projects they build, each with its reason. None yet.
+const FILE_READ_EXEMPT: &[(&str, &str)] = &[];
+
+/// The calls that open a file or a folder while the test runs.
+const FILE_READ_CALLS: &[&str] = &["read_to_string(", "fs::read(", "read_dir(", "File::open("];
+
+/// The files git tracks and every folder above them, relative to the root with `/`.
+struct Tracked {
+    files: BTreeSet<String>,
+    dirs: BTreeSet<String>,
+}
+
+impl Tracked {
+    fn from_paths<'a>(paths: impl IntoIterator<Item = &'a str>) -> Self {
+        let (mut files, mut dirs) = (BTreeSet::new(), BTreeSet::new());
+        for path in paths {
+            for (at, _) in path.match_indices('/') {
+                dirs.insert(path[..at].to_string());
+            }
+            files.insert(path.to_string());
+        }
+        Tracked { files, dirs }
+    }
+
+    /// `git ls-files` of the checkout; a checkout without git falls back to the files on disk
+    /// (more paths than git tracks, which only widens what a reader may spell).
+    fn of_repo() -> &'static Tracked {
+        static TRACKED: OnceLock<Tracked> = OnceLock::new();
+        TRACKED.get_or_init(|| {
+            let mut git = std::process::Command::new("git");
+            git.arg("-C").arg(root()).args(["ls-files", "-z"]);
+            for key in ["GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_COMMON_DIR"] {
+                git.env_remove(key);
+            }
+            match git.output() {
+                Ok(out) if out.status.success() => {
+                    let text = String::from_utf8_lossy(&out.stdout).into_owned();
+                    Tracked::from_paths(text.split('\0').filter(|p| !p.is_empty()))
+                }
+                _ => {
+                    let mut files = Vec::new();
+                    walk(root(), &mut files);
+                    let rel: Vec<String> = files.iter().map(|p| relative(p)).collect();
+                    Tracked::from_paths(
+                        rel.iter()
+                            .map(String::as_str)
+                            .filter(|p| !p.starts_with("target/") && !p.starts_with(".git/")),
+                    )
+                }
+            }
+        })
+    }
+}
+
+/// The repository paths a test file spells as string literals and so may read (RED stub).
+fn file_read_paths(_text: &str, _tracked: &Tracked) -> Vec<String> {
+    Vec::new()
+}
+
+/// Every top-level `tests/*.rs` file with the repository paths it may read at run time.
+fn file_readers() -> BTreeMap<String, Vec<String>> {
+    let mut files = Vec::new();
+    walk(&root().join("tests"), &mut files);
+    let mut out = BTreeMap::new();
+    for path in files {
+        let top = path.parent() == Some(&root().join("tests"));
+        if !top || path.extension().is_none_or(|e| e != "rs") {
+            continue;
+        }
+        let paths = file_read_paths(&read_lossy(&path), Tracked::of_repo());
+        if !paths.is_empty() {
+            out.insert(relative(&path), paths);
+        }
+    }
+    out
+}
+
+/// The `always` scans that name a top-level test file as a rule file and run no check with
+/// `--test <stem>` for it (RED stub).
+fn scans_not_running_readers(_scans: &[Value]) -> Vec<String> {
+    Vec::new()
+}
+
+#[test]
+fn file_read_paths_finds_what_a_reader_spells_and_skips_the_rest() {
+    let tracked = Tracked::from_paths([
+        "skills/moai/SKILL.md",
+        "skills/moai/workflows/work.md",
+        "docs/a.md",
+        "src/lib.rs",
+        "src/ops/x.rs",
+        "src/raw.rs",
+        "tests/fixtures/x",
+    ]);
+    let reader = "const R: &str = env!(\"CARGO_MANIFEST_DIR\");\n\
+        fn a() { std::fs::read_to_string(Path::new(R).join(\"skills/moai/SKILL.md\")).unwrap(); }\n\
+        fn b() { std::fs::read_dir(Path::new(R).join(\"skills/moai/workflows\")).unwrap(); }\n\
+        fn c() {\n\
+            let _ = \"docs\";\n\
+            let _ = \"docs/a.md\";\n\
+            let _ = \"src/ops/{name}.rs\";\n\
+            let _ = \"tests/fixtures/x\";\n\
+            let _ = \"docs/a.md and more\";\n\
+            let _ = \"/tmp/x/y\";\n\
+            let _ = concat!(env!(\"CARGO_MANIFEST_DIR\"), \"/src/lib.rs\");\n\
+        }\n\
+        // \"skills/moai/commented.md\"\n\
+        fn d() { let _ = r##\"src/raw.rs \"quoted\" \"##; let _q = '\"'; }\n";
+    assert_eq!(
+        file_read_paths(reader, &tracked),
+        [
+            "docs/a.md",
+            "skills/moai/SKILL.md",
+            "skills/moai/workflows",
+            "src/lib.rs",
+            "src/ops"
+        ]
+    );
+    // no manifest dir, or no read call: not a reader
+    let no_root = reader.replace("CARGO_MANIFEST_DIR", "OTHER");
+    assert!(file_read_paths(&no_root, &tracked).is_empty());
+    let no_read = reader
+        .replace("read_to_string(", "x(")
+        .replace("read_dir(", "y(");
+    assert!(file_read_paths(&no_read, &tracked).is_empty());
+}
+
+#[test]
+fn file_read_scan_finds_mode_workflow_steps_in_the_live_tree() {
+    let readers = file_readers();
+    let paths = readers
+        .get("tests/mode_workflow_steps.rs")
+        .unwrap_or_else(|| panic!("the reader scan does not find tests/mode_workflow_steps.rs"));
+    assert!(
+        paths.iter().any(|p| p == "skills/moai/workflows"),
+        "{paths:?}"
+    );
+}
+
+#[test]
+fn an_uncovered_file_reader_is_named_and_a_covering_always_scan_clears_it() {
+    let readers = BTreeMap::from([(
+        "tests/zz_reader.rs".to_string(),
+        vec!["skills/moai/SKILL.md".to_string()],
+    )]);
+    assert_eq!(
+        uncovered_readers(&readers, &[], FILE_READ_EXEMPT),
+        ["tests/zz_reader.rs reads skills/moai/SKILL.md"]
+    );
+    let scan = |extra: Value| {
+        let mut s = json!({"id": "reads-zz", "always": true, "rules": ["tests/zz_reader.rs"],
+                           "scope": [{"prefix": "skills/moai"}]});
+        for (k, v) in extra.as_object().unwrap() {
+            s[k.as_str()] = v.clone();
+        }
+        s
+    };
+    assert!(uncovered_readers(&readers, &[scan(json!({}))], &[]).is_empty());
+    // without `always`, with another rule file or with a scope elsewhere it stays uncovered
+    for broken in [
+        json!({"always": false}),
+        json!({"rules": ["tests/other.rs"]}),
+        json!({"scope": [{"prefix": "docs/"}]}),
+    ] {
+        assert_eq!(
+            uncovered_readers(&readers, &[scan(broken)], &[]).len(),
+            1,
+            "a scan that does not cover the reader must not clear it"
+        );
+    }
+    let exempt = [("tests/zz_reader.rs", "fixture names only")];
+    assert!(uncovered_readers(&readers, &[], &exempt).is_empty());
+}
+
+#[test]
+fn every_file_reader_has_an_always_scan_or_an_exemption() {
+    let readers = file_readers();
+    assert!(
+        readers.len() > 50,
+        "the reader scan finds only {} readers: {readers:?}",
+        readers.len()
+    );
+    let uncovered = uncovered_readers(&readers, &load(), FILE_READ_EXEMPT);
+    assert!(
+        uncovered.is_empty(),
+        "a test reads a checked-in file at run time and no `always` scan names it as a rule file \
+         with that path in its scope: add it to a `reads-` scan of tools/repo_scans.json, or to \
+         FILE_READ_EXEMPT with the reason it only names paths of the temporary project it builds: \
+         {uncovered:?}"
+    );
+}
+
+#[test]
+fn every_always_scan_runs_the_readers_it_names() {
+    assert_eq!(scans_not_running_readers(&load()), Vec::<String>::new());
+}
+
+#[test]
+fn a_scan_that_names_a_reader_but_never_runs_the_readers_is_named() {
+    let scan = |checks: Value, always: bool| {
+        json!({"id": "reads-zz", "always": always,
+               "rules": ["tests/zz_reader.rs", "tests/areas.toml", "tests/common/mod.rs"],
+               "checks": checks, "scope": [{"prefix": "docs/"}]})
+    };
+    let other = json!(["cargo test --offline --locked --test other"]);
+    assert_eq!(
+        scans_not_running_readers(&[scan(other.clone(), true)]),
+        ["reads-zz: tests/zz_reader.rs is a rule file but no check runs --test zz_reader"]
+    );
+    let runs = json!(["cargo test --offline --locked --test other --test zz_reader"]);
+    assert!(scans_not_running_readers(&[scan(runs, true)]).is_empty());
+    // a scan without `always` claims no coverage, so it is not held to this
+    assert!(scans_not_running_readers(&[scan(other, false)]).is_empty());
+}
+
+#[test]
+fn file_read_exemptions_are_readers_with_a_reason_once() {
+    let readers = file_readers();
+    let mut seen = BTreeSet::new();
+    for (path, reason) in FILE_READ_EXEMPT {
+        assert!(!reason.trim().is_empty(), "{path}: no reason");
+        assert!(seen.insert(*path), "{path} appears twice");
+        assert!(
+            readers.contains_key(*path),
+            "{path}: FILE_READ_EXEMPT names a file the reader scan no longer finds"
+        );
+    }
 }
