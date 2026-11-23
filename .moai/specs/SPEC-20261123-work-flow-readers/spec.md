@@ -8,8 +8,8 @@ parent: SPEC-20261119-plan-remote-branch
 approval:
   by: user
   at: 2026-11-23
-  basis: "사용자 선택 2026-11-23T11:58:16Z 리더 세션 (카드 C-105 노트 7468, '그대로 승인'); 리더가 옮겨 적음. 개정 2 는 REQ-4·5 의 열린 물음을 레인이 리더 결정 7458 ① 안에서 닫은 것(D-3·D-4)이라 리더 확인 대기"
-  digest: "sha256:4c268c73617d0818000c32ac9beac596fde04c709c6a0a8017a5cf541ccd0153"
+  basis: "사용자 선택 2026-11-23T13:05:16Z 리더 세션 AskUserQuestion '2판 승인 (Recommended)' (카드 C-105 노트 7518, AUDIT #105 노트 안의 사용자 선택); 리더가 옮겨 적고 레인은 그 노트를 인용만 해요. 1판 승인은 2026-11-23T11:58:16Z (노트 7468)"
+  digest: "sha256:83c7bc6372c240742bb6ae37f937b3029463ff852b16abaad86391fd47c1c58a"
 ---
 
 # work_flow readers: session-check, role entry text and help example follow the profile
@@ -49,7 +49,7 @@ approval:
 
 ## Scope
 
-- write: `src/hook_engine.rs`(session-check), `src/help.rs`(예시와 핀 시험), `skills/moai/workflows/work.md`(REQ-4, D-3), `tests/mode_workflow_steps.rs`(REQ-4 핀 시험), `.moai/specs/SPEC-20261123-work-flow-readers/spec.md`
+- write: `src/hook_engine.rs`(session-check), `src/help.rs`(예시와 핀 시험), `skills/moai/workflows/work.md`(REQ-4, D-3), `tests/mode_workflow_steps.rs`(REQ-4 핀 시험), `skills/moai/references/source-manifest.json`(work.md 가 바뀌면 따라가는 생성 파일, 리더 결정 7502), `.moai/specs/SPEC-20261123-work-flow-readers/spec.md`
 - read-only: `.moai/project.yaml`, `src/card/work.rs`, `src/card/dispatch.rs`(이미 `work_flow` 를 읽는 쪽의 읽기 형태)
 - forbidden: 실제 HOME·원장·키, 네트워크, `CLAUDE.md`
 
@@ -85,4 +85,5 @@ AC-1·2·3·5 는 구현 head `b898b647e2`(가지 `spec/work-flow-readers-202611
 - AC-3: 충족. `session_check_flags_a_missing_integration_branch` passed — 로컬에 `NeXT` 가 없는 저장소에서 같은 문장에 `(absent locally)` 가 붙어요.
 - AC-4: 충족(커밋 `8d9b2eb73f`). `work_take_reads_the_profile_flow_and_integration_branch` passed — `work.md` take 단계가 `moai work-flow-plan --project .` 로 흐름과 통합 브랜치를 읽어 첫 노트에 적으라고 말하고 값(`NeXT`, `m-flow`)은 글에 없어요. 뮤턴트(문장 삭제)는 exit 100 으로 실패했어요. `work.md` 가 바뀌어 `skills/moai/references/source-manifest.json` 의 work.md sha256 한 줄을 `tools/source_manifest.py write` 로 다시 썼고(리더 결정 7502, 카드 범위에 매니페스트 추가), `mode_workflow_steps`·`source_manifest_facts`·`next_flow_skill_scan`·`skill_structure`·`workflow_size_budget` 5개 파일 84 tests 가 모두 passed 예요.
 - AC-5: 충족. `project_apply_examples_read_the_plan_file` passed(예시가 `< plan.json` 이 아니면 실패; 뮤턴트로 `request.json` 으로 되돌리면 실패를 봤어요)이고 기존 `stdin_examples_match_the_commands_that_read_stdin` 도 passed.
+- 수리(AUDIT #105 FAIL 노트 7518, 감사 받은 head `91f5e78071`): B1 — `session_check_outside_a_git_repository_adds_no_absent_note` 를 더했어요. git 저장소가 아닌 폴더(git 이 128 로 끝남)에서 `(absent locally)` 가 나오면 실패하고, `local_branch_absent` 의 `== Some(1)` 을 `!out.status.success()` 로 바꾼 뮤턴트는 exit 100 으로 죽었어요. B2 — `session_check` 본문을 HOME 을 인자로 받는 `session_check_in` 으로 나눠, session-check 시험 네 개가 빈 임시 HOME 을 넘기고 실제 `$HOME/.moai` 를 읽지 않아요. B3 — `approval.basis` 가 노트 7518 의 사용자 선택(2026-11-23T13:05:16Z, '2판 승인')을 인용하고, Scope 에 `source-manifest.json` 을 더해 `approval.digest` 를 다시 계산했어요(`moai spec show` 의 digest).
 - 같은 어긋남(`*-apply` 예시가 `request.json` 인데 입력은 계획 결과)이 `agents-apply`·`generation-apply`·`github-apply`·`labels-apply`·`claude-settings-apply` 에도 있을 수 있어요. 이 조각은 `project-apply` 만 고쳤고 나머지는 읽어 확인하지 않았어요(후속 카드 후보).
