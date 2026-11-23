@@ -23,6 +23,11 @@ const HIGH_USE_PERCENT: i64 = 70;
 /// above [`HIGH_USE_PERCENT`], read from what is left (SPEC-20261122-statusline-limits-left
 /// REQ-2).
 const LOW_LEFT_PERCENT: i64 = 100 - HIGH_USE_PERCENT;
+/// The filled cells of a bar are green with this share left or more, yellow from
+/// [`LEVEL_YELLOW_FROM`], peach from [`LOW_LEFT_PERCENT`] and red below it, so the bar turns red
+/// where the battery icon turns to `🪫` (SPEC-20261124-statusline-bar-color REQ-2, D-1).
+const LEVEL_GREEN_FROM: i64 = 70;
+const LEVEL_YELLOW_FROM: i64 = 50;
 /// The cost is shown below this many US dollars (at most `999999.99`, nine characters); a larger
 /// value (`1e308` printed a 337-character line) is left out.
 const MAX_COST_USD: f64 = 1_000_000.0;
@@ -36,6 +41,9 @@ const SGR_RESET: &str = "\x1b[0m";
 pub struct Theme {
     pub text: &'static str,
     pub muted: &'static str,
+    /// The filled cells of a limit bar by the share left: green, yellow, peach, red
+    /// ([`level_color`]).
+    pub level: [&'static str; 4],
     /// `🧠` model (mauve).
     pub model: &'static str,
     /// The effort and thinking text after the model name (lavender).
@@ -68,6 +76,7 @@ pub struct Theme {
 pub const MOCHA: Theme = Theme {
     text: "#CDD6F4",
     muted: "#6C7086",
+    level: ["#A6E3A1", "#F9E2AF", "#FAB387", "#F38BA8"],
     model: "#CBA6F7",
     effort: "#B4BEFE",
     cache: "#94E2D5",
@@ -86,6 +95,7 @@ pub const MOCHA: Theme = Theme {
 pub const LATTE: Theme = Theme {
     text: "#4C4F69",
     muted: "#9CA0B0",
+    level: ["#40A02B", "#DF8E1D", "#FE640B", "#D20F39"],
     model: "#8839EF",
     effort: "#7287FD",
     cache: "#179299",
@@ -727,9 +737,10 @@ impl Window {
     /// from `🔋` to `🪫` when less than [`LOW_LEFT_PERCENT`] is left
     /// (SPEC-20261122-statusline-limits-left REQ-1, REQ-2), and the bar of [`BAR_WIDTH`] cells
     /// draws the same share: the first `left * BAR_WIDTH / 100` (rounded down) cells are `█` and
-    /// the others `░`. The filled cells keep the base color of the line and the empty cells take
-    /// the muted color, two runs with no space between them; the glyphs tell them apart without
-    /// color. `used` is the whole used percentage from 0 to 100.
+    /// the others `░`. The filled cells take the level color of the share left
+    /// ([`level_color`], SPEC-20261124-statusline-bar-color) and the empty cells the muted
+    /// color, two runs with no space between them; the glyphs tell them apart without color.
+    /// `used` is the whole used percentage from 0 to 100.
     fn known(t: &Theme, label: &str, used: i64, countdown: Option<Piece>) -> Window {
         let left = left_percent(used).clamp(0, 100);
         let icon = if left < LOW_LEFT_PERCENT {
@@ -743,7 +754,7 @@ impl Window {
         let mut bar = Vec::new();
         if filled > 0 {
             bar.push(Piece {
-                color: "",
+                color: level_color(t, left),
                 text: cells('█', filled),
                 url: String::new(),
                 glue: false,
@@ -811,6 +822,22 @@ impl Window {
 /// SPEC-20261121-statusline-detached).
 fn whole_percent(pct: f64) -> i64 {
     (pct as i64).clamp(0, 100)
+}
+
+/// The color of the filled cells of a bar with `left` percent left: green from
+/// [`LEVEL_GREEN_FROM`], yellow from [`LEVEL_YELLOW_FROM`], peach from [`LOW_LEFT_PERCENT`] and red
+/// below it (SPEC-20261124-statusline-bar-color REQ-2). It reads the share left that the number
+/// shows, never the share used.
+fn level_color(t: &Theme, left: i64) -> &'static str {
+    if left >= LEVEL_GREEN_FROM {
+        t.level[0]
+    } else if left >= LEVEL_YELLOW_FROM {
+        t.level[1]
+    } else if left >= LOW_LEFT_PERCENT {
+        t.level[2]
+    } else {
+        t.level[3]
+    }
 }
 
 /// The share of a window that is left, from its whole used percentage.
@@ -3008,9 +3035,9 @@ mod window_tests {
         }
     }
 
-    /// REQ-6: the filled cells are in the base color of the line and the empty cells in the muted
-    /// color, so the colored line without its escapes is the plain line, and the two kinds of
-    /// cell are separate color runs.
+    /// REQ-6: the filled cells and the empty cells are separate color runs (the filled ones in
+    /// their level color, the empty ones muted), so the colored line without its escapes is the
+    /// plain line.
     #[test]
     fn the_colored_bar_has_the_plain_text() {
         use crate::statusline::color::Profile;
@@ -3213,7 +3240,15 @@ mod window_tests {
         ] {
             assert_eq!(level_at(left), level, "{left} left");
         }
-        assert_eq!(super::LOW_LEFT_PERCENT, 30);
+        // The step points of the table above are the constants of the renderer.
+        assert_eq!(
+            [
+                super::LEVEL_GREEN_FROM,
+                super::LEVEL_YELLOW_FROM,
+                super::LOW_LEFT_PERCENT
+            ],
+            [70, 50, 30]
+        );
         let mut last = 0;
         for left in (10..=100).rev() {
             let level = level_at(left);
