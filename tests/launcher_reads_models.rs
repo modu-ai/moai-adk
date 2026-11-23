@@ -448,7 +448,10 @@ fn the_super_advisor_template_names_the_launchers_glm_model() {
         .find(|(key, _)| *key == "ANTHROPIC_DEFAULT_OPUS_MODEL")
         .map(|(_, value)| value.trim_end_matches("[1m]"))
         .expect("the launcher maps the opus alias");
-    assert_eq!(opus, "glm-5.4", "the launcher's main model (SPEC glm-54-model)");
+    assert_eq!(
+        opus, "glm-5.4",
+        "the launcher's main model (SPEC glm-54-model)"
+    );
     let path = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("templates/bundle-packs/.claude/agents/moai/super-advisor.md");
     let text = fs::read_to_string(&path).unwrap();
@@ -456,7 +459,10 @@ fn the_super_advisor_template_names_the_launchers_glm_model() {
         text.contains(&format!("reasoning model ({opus})")),
         "the carve-out names {opus}"
     );
-    assert!(!text.contains("glm-5.3"), "no stale glm-5.3 in the template");
+    assert!(
+        !text.contains("glm-5.3"),
+        "no stale glm-5.3 in the template"
+    );
     // The catalog line of the template carries the hash of the file as it is now (AC-3).
     use sha2::{Digest, Sha256};
     let catalog: Value = serde_json::from_slice(

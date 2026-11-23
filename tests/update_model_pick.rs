@@ -164,7 +164,10 @@ fn enter_saves_glm_54_for_the_leader_and_flash_for_the_agent() {
     // Tool pick "2" is glm; then model and effort for the leader and the agent; then the yes.
     let (result, out) = run_stage(&h.path, &format!("2\n{}y\n", enters(4)));
     assert_eq!(result["state"], json!("applied"), "{result}");
-    assert!(out.contains("zai/glm-5.4[1m]"), "the 5.4 option is offered: {out}");
+    assert!(
+        out.contains("zai/glm-5.4[1m]"),
+        "the 5.4 option is offered: {out}"
+    );
     let saved: Value = serde_json::from_str(&fs::read_to_string(&path).unwrap()).unwrap();
     assert_eq!(saved["launcher"]["advisor"], json!("x"));
     assert_eq!(
@@ -191,7 +194,8 @@ fn enter_saves_glm_54_for_the_leader_and_flash_for_the_agent() {
 #[test]
 fn a_saved_glm_53_leader_stays_through_enter_everywhere() {
     let h = home();
-    let body = r#"{"launcher":{"models":{"glm":{"leader":{"model":"zai/glm-5.3","effort":"low"}}}}}"#;
+    let body =
+        r#"{"launcher":{"models":{"glm":{"leader":{"model":"zai/glm-5.3","effort":"low"}}}}}"#;
     let path = write_settings(&h.path, body);
     let (result, out) = run_stage(&h.path, &format!("2\n{}", enters(4)));
     assert_eq!(result["state"], json!("declined"), "{result}");

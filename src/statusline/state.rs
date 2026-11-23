@@ -2045,16 +2045,20 @@ mod tests {
         assert_eq!(resolve_glm_model_name("Opus", &ctx), "glm-5.4");
         assert_eq!(resolve_glm_model_name("Haiku", &ctx), "glm-5.3-flash");
         // A claude model in the fable slot stays a claude name.
-        let claude =
-            Context::for_test(&[("ANTHROPIC_DEFAULT_FABLE_MODEL", "claude-fable-5-2")], None);
+        let claude = Context::for_test(
+            &[("ANTHROPIC_DEFAULT_FABLE_MODEL", "claude-fable-5-2")],
+            None,
+        );
         assert_eq!(resolve_glm_model_name("Fable", &claude), "Fable");
         // Only the fable slot holds a model: the window comes from it, with or without `[1m]`.
         for value in ["glm-5.4[1m]", "glm-5.4"] {
             let only = Context::for_test(&[("ANTHROPIC_DEFAULT_FABLE_MODEL", value)], None);
             assert_eq!(context_window_override(&only), 1_000_000, "{value}");
         }
-        let only_claude =
-            Context::for_test(&[("ANTHROPIC_DEFAULT_FABLE_MODEL", "claude-fable-5-2")], None);
+        let only_claude = Context::for_test(
+            &[("ANTHROPIC_DEFAULT_FABLE_MODEL", "claude-fable-5-2")],
+            None,
+        );
         assert_eq!(context_window_override(&only_claude), 0);
     }
 

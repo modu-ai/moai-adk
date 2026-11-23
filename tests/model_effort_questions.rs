@@ -239,13 +239,9 @@ fn the_glm_model_question_offers_54_first_and_keeps_a_saved_53() {
         values(&q),
         ["zai/glm-5.3", "zai/glm-5.4[1m]", "zai/glm-5.3-flash"]
     );
-    let e = model_effort_questions::effort_question_with(
-        "glm",
-        "leader",
-        "zai/glm-5.3",
-        Some(&saved),
-    )
-    .unwrap();
+    let e =
+        model_effort_questions::effort_question_with("glm", "leader", "zai/glm-5.3", Some(&saved))
+            .unwrap();
     assert_eq!(e.options[e.defaults[0]].value, "low");
 }
 
