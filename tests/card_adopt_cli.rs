@@ -564,7 +564,7 @@ fn ac5_an_entry_that_still_names_the_holder_is_refused() {
 
 /// AC-6 (REQ-7): a reservation recorded for another worktree, a link that resolves to another
 /// worktree, and an entry that records no worktree or another one each refuse with
-/// `other_worktree`.
+/// `other_worktree`; a link that resolves to the running worktree is adopted.
 #[test]
 fn ac6_a_worktree_that_is_not_the_running_one_is_refused() {
     // The reservation records another worktree.
@@ -586,6 +586,21 @@ fn ac6_a_worktree_that_is_not_the_running_one_is_refused() {
     let before = w.dump();
     let out = w.adopt(&w.wt_a, &sid(2), &card, "1");
     w.refused_with("a link to another worktree", out, "other_worktree", &before);
+
+    // The reservation records a symbolic link that resolves to the running worktree: the proof
+    // compares canonical paths, so the adoption goes through. Without the canonical path of the
+    // reserved worktree the link text would differ from the running worktree and be refused.
+    let w = world();
+    let link = w.host.path().join("link-to-a");
+    std::os::unix::fs::symlink(&w.wt_a, &link).unwrap();
+    let card = w.taken(&sid(1), &link, "lane-a", "src/lane/");
+    result(&w.register(NAME, &sid(1), &w.wt_a, false));
+    w.clear(NAME, &sid(2), &w.wt_a);
+    let got = result(&w.adopt(&w.wt_a, &sid(2), &card, "1"));
+    assert_eq!(got["reservation"]["holder"], json!(sid(2)));
+    assert_eq!(got["reservation"]["generation"], json!(2));
+    assert_eq!(got["worktree"], json!(w.wt_a.to_str().unwrap()));
+    assert_eq!(w.events_of("card.adopt").len(), 1);
 
     // The entry records no worktree, and then another worktree.
     let w = world();
