@@ -636,8 +636,12 @@ fn resolve_glm_model_name(display: &str, ctx: &Context) -> String {
     } else {
         return display.to_string();
     };
+    // The glm launcher's value carries Claude Code's 1M marker (`glm-5.4[1m]`); the line shows
+    // the model without it, as `shorten_model_name` does for an id.
     match ctx.var(key) {
-        Some(glm) if !glm.starts_with("claude-") => glm.to_string(),
+        Some(glm) if !glm.starts_with("claude-") => {
+            glm.strip_suffix("[1m]").unwrap_or(glm).trim().to_string()
+        }
         _ => display.to_string(),
     }
 }
@@ -695,9 +699,13 @@ fn collect_context(input: &Input, ctx: &Context) -> Option<f64> {
     segments::context_percent(reading, size_override)
 }
 
-/// Built-in GLM context windows (memory.go `glmContextWindows`).
-const GLM_CONTEXT_WINDOWS: [(&str, i64); 2] =
-    [("glm-5.3-flash", 1_000_000), ("glm-5.3", 1_000_000)];
+/// Built-in GLM context windows (memory.go `glmContextWindows`); `glm-5.4` is the glm
+/// launcher's main model since the user decision of 2026-11-23 (SPEC-20261123-glm-54-model).
+const GLM_CONTEXT_WINDOWS: [(&str, i64); 3] = [
+    ("glm-5.3-flash", 1_000_000),
+    ("glm-5.3", 1_000_000),
+    ("glm-5.4", 1_000_000),
+];
 const GLM_ENV_SLOTS: [&str; 3] = [
     "ANTHROPIC_DEFAULT_OPUS_MODEL",
     "ANTHROPIC_DEFAULT_SONNET_MODEL",
@@ -2005,9 +2013,15 @@ mod tests {
 
     #[test]
     fn glm_names_map_only_non_claude_slot_models() {
-        let ctx = Context::for_test(&[("ANTHROPIC_DEFAULT_OPUS_MODEL", "glm-5.3")], None);
-        assert_eq!(resolve_glm_model_name("Opus", &ctx), "glm-5.3");
+        let ctx = Context::for_test(&[("ANTHROPIC_DEFAULT_OPUS_MODEL", "glm-5.4")], None);
+        assert_eq!(resolve_glm_model_name("Opus", &ctx), "glm-5.4");
         assert_eq!(resolve_glm_model_name("Sonnet", &ctx), "Sonnet");
+        // The glm launcher's value carries Claude Code's 1M marker (SPEC-20261123-glm-54-model);
+        // the line shows the model without it, from the slot name and from the id alike.
+        let launcher = Context::for_test(&[("ANTHROPIC_DEFAULT_OPUS_MODEL", "glm-5.4[1m]")], None);
+        assert_eq!(resolve_glm_model_name("Opus", &launcher), "glm-5.4");
+        assert_eq!(resolve_glm_model_name("Opus[1m]", &launcher), "glm-5.4");
+        assert_eq!(resolve_glm_model_name("glm-5.4[1m]", &launcher), "glm-5.4");
         assert_eq!(resolve_glm_model_name("gpt-x[1m]", &ctx), "gpt-x");
         let claude =
             Context::for_test(&[("ANTHROPIC_DEFAULT_OPUS_MODEL", "claude-opus-5-5")], None);
@@ -2020,6 +2034,12 @@ mod tests {
         assert_eq!(context_window_override(&env), 128_000);
         let glm = Context::for_test(&[("ANTHROPIC_DEFAULT_SONNET_MODEL", "GLM-5.3-Flash")], None);
         assert_eq!(context_window_override(&glm), 1_000_000);
+        // glm-5.4 is a 1M model too, with or without the launcher's `[1m]` marker, when it is
+        // the only slot model (SPEC-20261123-glm-54-model AC-2).
+        for value in ["glm-5.4[1m]", "glm-5.4"] {
+            let glm = Context::for_test(&[("ANTHROPIC_DEFAULT_OPUS_MODEL", value)], None);
+            assert_eq!(context_window_override(&glm), 1_000_000, "{value}");
+        }
         assert_eq!(context_window_override(&Context::for_test(&[], None)), 0);
     }
 

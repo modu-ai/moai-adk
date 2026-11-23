@@ -254,6 +254,27 @@ fn a_roleless_session_ignores_saved_choices() {
     }
 }
 
+/// SPEC-20261123-glm-54-model AC-1: the glm dry run names the alias mapping it will set — opus,
+/// sonnet and fable to glm-5.4[1m] (user decision 2026-11-23), haiku to glm-5.3-flash — and no
+/// main alias to glm-5.3 any more; the env list stays names only.
+#[test]
+fn the_glm_dry_run_maps_the_main_aliases_to_glm_5_4() {
+    let f = Fixture::new();
+    for role in [&[][..], &["-l"][..], &["-a"][..]] {
+        let args: Vec<&str> = ["glm"].iter().chain(role).copied().collect();
+        let v = f.dry(&args);
+        let text = notes(&v);
+        assert!(
+            text.contains("opus, sonnet and fable to glm-5.4[1m], haiku to glm-5.3-flash"),
+            "{args:?}: {text}"
+        );
+        assert!(!text.contains("to glm-5.3,"), "{args:?}: {text}");
+        let keys = v["env_keys"].to_string();
+        assert!(keys.contains("ANTHROPIC_DEFAULT_FABLE_MODEL"), "{keys}");
+        assert!(!keys.contains("glm-5"), "values in the env list: {keys}");
+    }
+}
+
 /// AC-4: the file is read at every launch, so a rewritten file is used by the next one.
 #[test]
 fn a_rewritten_file_is_used_by_the_next_launch() {
@@ -419,12 +440,12 @@ fn a_saved_glm_model_reaches_the_started_host() {
         String::from_utf8_lossy(&out.stderr)
     );
     // The environment is the z.ai mapping of an unchanged launch: the alias still resolves to
-    // glm-5.3 even though the saved choice names the flash model, and the token is carried under
-    // its two names.
+    // glm-5.4[1m] even though the saved choice names the flash model, and the token is carried
+    // under its two names.
     let seen_token = fs::read_to_string(f.bin.path().join("token")).unwrap();
     assert_eq!(seen_token, "moai-test-token-not-real");
     let seen_opus = fs::read_to_string(f.bin.path().join("opus")).unwrap();
-    assert_eq!(seen_opus, "glm-5.3");
+    assert_eq!(seen_opus, "glm-5.4[1m]");
     let seen_base = fs::read_to_string(f.bin.path().join("base")).unwrap();
     assert_eq!(seen_base, "https://api.z.ai/api/anthropic");
     // The saved leader choice (zai/glm-5.3-flash / max) reaches the argv as the bare z.ai id.
