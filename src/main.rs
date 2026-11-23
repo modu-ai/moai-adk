@@ -262,7 +262,7 @@ enum Command {
         /// The caller's name, shown by `heavy-slot-status`.
         #[arg(long)]
         name: String,
-        /// Slot folder (default `${XDG_CACHE_HOME:-~/.cache}/moai-cli/heavy-slots`).
+        /// Slot folder (default `${XDG_CACHE_HOME:-~/.cache}/moai/heavy-slots`).
         #[arg(long)]
         dir: Option<PathBuf>,
         /// Start nothing (exit 75) while the working folder's file system has less free space,

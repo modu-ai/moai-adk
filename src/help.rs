@@ -712,7 +712,7 @@ pub const ARG_HELP_FOR: &[(&str, &str, &str)] = &[
     (
         "heavy-slot-status",
         "dir",
-        "Slot folder (default `${XDG_CACHE_HOME:-~/.cache}/moai-cli/heavy-slots`)",
+        "Slot folder (default `${XDG_CACHE_HOME:-~/.cache}/moai/heavy-slots`)",
     ),
     (
         "language-setup",

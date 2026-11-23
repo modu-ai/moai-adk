@@ -2,7 +2,7 @@
 id: SPEC-20261121-moai-name
 title: "The temporary name moai-cli leaves the product: every remaining occurrence, by kind and slice"
 status: draft
-revision: 5
+revision: 6
 created: 2026-11-21
 ---
 
@@ -12,7 +12,7 @@ created: 2026-11-21
 
 사용자 지시(2026-11-21, 리더 대화 원문): "moai-cli 전수 조사해서 또 수정에 빠져 있는거 찾아서 완전 제거해라". 사용자 결정(2026-11-22, 카드 노트 6286): 릴리스 태그는 `v4.<yearweek>.<build>`, 내려받는 파일은 `moai-adk-<version>-<platform>` 이고 `moai-cli` 이름은 남기지 않아요. 임시 이름 `moai-cli`(바이너리·패키지·크레이트·폴더·변수·릴리스 이름)는 제품에서 완전히 사라지고 이름은 `moai` 하나예요.
 
-이 SPEC 은 그 전체의 목록과 순서예요. 조각마다 이 SPEC 의 개정과 착지가 따로 있고, 각 조각의 요구는 아래 Requirements 에 그 조각이 시작될 때 더해요. 개정 2 는 조각 1a 예요: 남은 발생 전부를 종류별·조각별로 나열하고, 출력되는 버전 줄이 `moai` 를 이름하기 전에 읽는 쪽이 두 이름을 모두 받게 해요(착지됨). 개정 3 은 조각 1b 예요: 실제로 찍는 이름을 `moai` 로 바꾸고, 1a 감사에서 나온 비차단 지적(N1·N2·N4·N6)을 이 문서에서 바로잡아요. 개정 4 는 조각 1b 의 수리예요: 1b 감사가 막은 것(실제 바이너리의 버전 줄을 옛 이름으로 고정한 `tests/install_candidates.rs`)과, 원격 CI 를 미리 빨강으로 만들 읽는 쪽(`tools/smoke/smoke.py`, README 두 곳, `tests/oss_docs_test.py`)을 같은 조각에서 새 서명에 맞춰요. 개정 5 는 조각 2 예요: 사용자가 읽는 거절 문구·경고·안내 문장과 도움말 골든에서 제품 이름을 `moai` 로 쓰고(파일·폴더 이름은 다른 조각), 1b 감사의 비차단 지적 N-b(낡은 순서 문장과 읽는 쪽 표)·N-c(Result 에 없는 Python 단계)를 이 문서에서 바로잡아요.
+이 SPEC 은 그 전체의 목록과 순서예요. 조각마다 이 SPEC 의 개정과 착지가 따로 있고, 각 조각의 요구는 아래 Requirements 에 그 조각이 시작될 때 더해요. 개정 2 는 조각 1a 예요: 남은 발생 전부를 종류별·조각별로 나열하고, 출력되는 버전 줄이 `moai` 를 이름하기 전에 읽는 쪽이 두 이름을 모두 받게 해요(착지됨). 개정 3 은 조각 1b 예요: 실제로 찍는 이름을 `moai` 로 바꾸고, 1a 감사에서 나온 비차단 지적(N1·N2·N4·N6)을 이 문서에서 바로잡아요. 개정 4 는 조각 1b 의 수리예요: 1b 감사가 막은 것(실제 바이너리의 버전 줄을 옛 이름으로 고정한 `tests/install_candidates.rs`)과, 원격 CI 를 미리 빨강으로 만들 읽는 쪽(`tools/smoke/smoke.py`, README 두 곳, `tests/oss_docs_test.py`)을 같은 조각에서 새 서명에 맞춰요. 개정 5 는 조각 2 예요: 사용자가 읽는 거절 문구·경고·안내 문장과 도움말 골든에서 제품 이름을 `moai` 로 쓰고(파일·폴더 이름은 다른 조각), 1b 감사의 비차단 지적 N-b(낡은 순서 문장과 읽는 쪽 표)·N-c(Result 에 없는 Python 단계)를 이 문서에서 바로잡아요. 개정 6 은 조각 4 예요(heavy-slot 캐시 폴더 이름만): 슬롯 폴더의 기본값을 `moai-cli/heavy-slots` 에서 `moai/heavy-slots` 로 옮기고, 같은 폴더와 같은 잠금을 쓰는 Python 쌍둥이 도구를 한꺼번에 맞추며, 옛 폴더를 읽는 호환과 옮기는 방법을 아래 결정 D-9~D-13 으로 정해요.
 
 ### 왜 다시 쓰나 (2026-11-23 확인)
 
@@ -50,6 +50,10 @@ settings cleaner 는 버전 줄을 읽지 않아요(`~/.moai-cli/path/moai-cli` 
 - REQ-8: When a test, a script or a document reads or quotes the first `--version` line of the built binary, it shall accept `moai <version> (rust)` and, where a binary of an earlier build can still answer, `moai-cli <version> (rust)` · failure: none — a reader that stays pinned to the earlier name fails once REQ-5 has landed.
 - REQ-9: When the program tells a person about itself in a refusal, a warning, a note or a command to type, it shall call the product `moai` · failure: none — a sentence that names a file or folder on disk (`bin/moai-cli`, `~/.moai-cli/...`) keeps that name until the slice that renames the file (decisions D-6 to D-8).
 - REQ-10: The help goldens under `tests/fixtures/help/` shall contain `moai-cli` only inside a state folder path or in the two `bin-names-plan` sentences that name the file on disk · failure: none — a golden line that names the old name as a command fails the golden guard.
+- REQ-11: When `moai heavy-slot-acquire` or `moai heavy-slot-status` or `moai check affected` runs without a slot folder argument, it shall use the folder `moai/heavy-slots` of the user's cache folder · failure: none — a missing HOME and cache variable still refuses as before (`HOME is not set`, exit 2).
+- REQ-12: When the Python twin `tools/heavy_check_slot.py` runs without `--dir`, it shall use the same default folder as REQ-11 · failure: none — two tools on two folders would stop excluding each other, so the cross-tool test fails first.
+- REQ-13: When the default slot folder holds no `limits.json` and the earlier folder `moai-cli/heavy-slots` of the cache folder holds one, the limits reader shall read that earlier file by the same rules · failure: none — an earlier file that breaks those rules (symlink or folder or over 4096 bytes or not an object or an unknown key or `max` 0) refuses the run with exit 125 exactly as it would in the new folder, and nothing under the earlier folder is ever written, moved or created.
+- REQ-14: When `moai heavy-slot-status` reads the default folder and the earlier folder `moai-cli/heavy-slots` exists, it shall list the slots held there under the key `earlier_folder` · failure: none — an earlier folder that cannot be read answers `null`, and a run with `--dir` carries no such key.
 
 ## Order that keeps installed copies working
 
@@ -59,7 +63,8 @@ settings cleaner 는 버전 줄을 읽지 않아요(`~/.moai-cli/path/moai-cli` 
 2. **찍는 이름을 `moai` 로 바꾼다(조각 1b).** `src/main.rs` 의 clap 이름 한 줄과 그 위 주석, 그 줄을 보는 테스트. 옛 설치(`moai-cli <ver> (rust)` 를 찍는 빌드)는 읽는 쪽이 계속 받으므로 읽기가 안 깨져요. `src/main.rs` 는 리더 결정(2026-11-23 조각 1b 배차)으로 이 SPEC 쪽으로 풀렸어요.
 3. **거절 문구·경고·안내·도움말 골든(조각 2, 개정 5).** 사용자에게 보이는 글만이에요: 제품 이름을 말하는 문장은 `moai`, 파일·폴더 이름을 말하는 문장은 그 이름을 바꾸는 조각(3·4·5·7)까지 그대로예요.
 4. **바이너리와 패키지(조각 5).** 새 이름 `moai` 가 실제 파일이 되고 `moai-cli` 는 호환 링크로 남아, 옛 훅·설정이 부르는 `moai-cli` 가 계속 돼요. 링크는 업데이트 단계가 지워요(카드 본문 5). 임시 HOME 에서 도는 Rust 테스트가 이 호환 읽기를 증명해요.
-5. **릴리스 이름(조각 6).** 태그 `v4.<yearweek>.<build>`, 파일 `moai-adk-<version>-<platform>`(결정 6286). 옛 설치 스크립트가 보게 되는 것은 그때 이 SPEC 이 적어요.
+5. **슬롯 폴더 이름(조각 4, 개정 6).** 모든 레인이 한꺼번에 새 폴더로 옮겨요: 두 빌드가 서로 다른 슬롯 폴더를 쓰면 서로를 막지 못해요. 새 빌드는 새 폴더(`moai/heavy-slots`)를 쓰고, 기계 주인의 `limits.json` 은 새 폴더에 아직 없을 때만 옛 폴더에서 읽어요(읽기만). 옛 폴더는 코드가 옮기거나 지우지 않고 주인이 한 번 `mv` 해요(결정 D-9~D-13).
+6. **릴리스 이름(조각 6).** 태그 `v4.<yearweek>.<build>`, 파일 `moai-adk-<version>-<platform>`(결정 6286). 옛 설치 스크립트가 보게 되는 것은 그때 이 SPEC 이 적어요.
 
 ## Occurrence table
 
@@ -98,6 +103,9 @@ settings cleaner 는 버전 줄을 읽지 않아요(`~/.moai-cli/path/moai-cli` 
 - AC-7 (REQ-8): 실제 바이너리가 찍은 첫 줄을 읽는 `install-inspect` 테스트가 `moai <ver> (rust)` 와 `moai-cli <ver> (rust)` 를 모두 받고, 스모크 도구의 정규식과 README 두 곳의 서명, 문서 테스트의 기대가 새 서명이에요 — 조각 1b 수리 · verify: `cargo nextest run --test install_candidates -E 'test(every_moai_is_listed_in_order_and_told_apart_without_writing)'`. Python 쪽(`tools/smoke/smoke.py`, `tests/oss_docs_test.py`)은 고치기만 했고 돌리지 않았어요: 손으로도 `moai check affected` 로도 돌지 않으므로 `not_run` 이고, 원격 CI 의 첫 실행이 그 확인이에요.
 - AC-8 (REQ-9): 거절·경고·안내 문장이 `moai` 를 말하고 옛 이름의 문장은 소스에 없어요 · verify: `cargo nextest run --test help_text_names_moai -E 'test(every_refusal_and_note_sentence_names_moai)'`, `cargo nextest run --test skill_name_collision`, `cargo nextest run --test update_switch_cli --test update_switch_layer`, `cargo nextest run --lib -E 'test(/key_vault/)'`
 - AC-9 (REQ-10): 도움말 골든의 `moai-cli` 는 상태 폴더 경로와 `bin-names-plan` 의 파일 문장 둘뿐이에요 · verify: `cargo nextest run --test help_text_names_moai -E 'test(the_help_goldens_keep_the_old_name_only_for_folders_and_the_alias_file)'`, `cargo nextest run --test help_layout -E 'test(moai_cli_help_names_no_command_moai_cli)'`
+- AC-10 (REQ-11, REQ-12): `--dir` 없이 `heavy-slot-acquire`·`heavy-slot-status` 와 Python 쌍둥이가 임시 HOME 의 `moai/heavy-slots` 를 같은 폴더로 풀어 서로 번갈아 돌고(세 경우: 캐시 변수 있음·빈 값·없음), 옛 `moai-cli` 폴더에는 아무것도 만들지 않아요 · verify: `cargo nextest run --test heavy_slot_cli -E 'test(without_dir_both_tools_use_the_same_default_folder) | test(the_default_folder_is_moai_and_nothing_is_made_under_the_earlier_one)'`
+- AC-11 (REQ-13): 새 폴더에 `limits.json` 이 없으면 옛 폴더의 것을 읽고(`heavy-slot-status` 의 `build_jobs_cap.slots`), 새 폴더에 생기면 그쪽이 이기고, 옛 파일이 규칙을 어기면 125 이고, `--dir` 로 다른 폴더를 주면 옛 파일은 읽지 않고, 옛 폴더의 바이트·목록은 그대로예요 · verify: `cargo nextest run --test heavy_slot_cli -E 'test(the_earlier_limits_file_is_read_until_the_new_folder_has_one)'`
+- AC-12 (REQ-14): 옛 폴더에 쥔 슬롯이 있으면 `heavy-slot-status` 가 `earlier_folder.held` 에 보여 줘요 · verify: `cargo nextest run --test heavy_slot_cli -E 'test(status_lists_the_slots_held_in_the_earlier_folder)'`
 
 ## Scope
 
@@ -106,7 +114,8 @@ settings cleaner 는 버전 줄을 읽지 않아요(`~/.moai-cli/path/moai-cli` 
 - write (조각 1b): 이 SPEC 폴더, `src/main.rs`(clap `name` 한 줄과 그 위 주석, 단위 테스트 `every_binary_name_renders_the_same_moai_help` 의 기대값, 이름을 설명하는 주석), `src/lib.rs`·`src/bin/moai.rs`(주석만), `tests/cli_name_moai.rs`, `tests/help_layout.rs`
 - write (조각 1b 수리, 개정 4): `tests/install_candidates.rs`(실제 바이너리 버전 줄 기대), `tools/smoke/smoke.py`(버전 줄 정규식 한 곳), `README.md`·`README.ko.md`(서명 인용 한 줄씩), `tests/oss_docs_test.py`(서명 기대 한 줄), 이 SPEC 폴더. Python 파일은 위 한 줄씩만 고쳐요.
 - write (조각 2, 개정 5): 이 SPEC 폴더, `src/update.rs`(Go 시대 스킬 안내 문장 한 곳), `src/update/switch.rs`(되돌리기 명령 두 곳), `src/go_state.rs`(경고 두 곳), `src/session.rs`·`src/launcher_terminal.rs`(키 보관함 안내), `src/key_vault.rs`(거절 문장 한 곳과 그 단위 테스트), `src/launcher_init.rs`(첫 실행 profile 의 purpose 문장), `src/state_root.rs`(더 새로운 표식 거절 문장), `src/claude.rs`(설정 백업 폴더의 ignore 머리말), `tests/skill_name_collision.rs`, `tests/update_switch_cli.rs`, `tests/update_switch_layer.rs`, `tests/placeholder_profile_guard.rs`, `tests/help_text_names_moai.rs`(새)
-- forbidden: 다른 카드가 쥔 파일(상태 폴더 resolver·상수는 path-root 카드, Python 파일은 Rust-only 카드), 조각 4·10 의 파일, 설치된 홈 상태 폴더(`.moai`, `.moai-cli`), `Cargo.toml` 의 패키지·bin 이름과 `install.sh`(조각 5, 이번 조각이 아니에요), 카드 번호를 SPEC id·브랜치·커밋·코드에 넣기
+- write (조각 4, 개정 6): 이 SPEC 폴더, `src/heavy_slot.rs`(기본 폴더 함수·limits 읽기·status), `src/main.rs`(`--dir` 도움말 주석 한 곳), `src/help.rs`(같은 문장), `tools/heavy_check_slot.py`(기본 폴더 한 곳과 머리말, 돌리지 않아요), `tests/heavy_slot_cli.rs`, `docs/rust-product-path.md`·`skills/moai/workflows/run.md`·`skills/moai/references/source-manifest.json`(run.md 의 sha256 한 줄)에서 기본 폴더 경로를 말하는 문장
+- forbidden: 다른 카드가 쥔 파일(상태 폴더 resolver·상수는 path-root 카드, Python 파일은 Rust-only 카드), 조각 10 의 파일과 조각 4 중 개정 6 이 이름 붙이지 않은 것(파이썬 슬롯 폴더 `moai-cli/python-slots`, `tools/self_check.sh`·`tools/local_check.sh`, 임시 이름 `moai-cli-home-`·`moai-cli-git-init-`, 표식 `.moai-cli-synthetic-home`), 설치된 홈 상태 폴더(`.moai`, `.moai-cli`), `Cargo.toml` 의 패키지·bin 이름과 `install.sh`(조각 5, 이번 조각이 아니에요), 카드 번호를 SPEC id·브랜치·커밋·코드에 넣기
 
 ## Plan
 
@@ -141,11 +150,20 @@ settings cleaner 는 버전 줄을 읽지 않아요(`~/.moai-cli/path/moai-cli` 
 6. 1b 감사 N-b(낡은 순서 문장·읽는 쪽 표)와 N-c(AC-7 의 없는 Python 단계)를 이 문서에서 고쳐요(위 본문에 반영).
 7. 이번 조각이 아닌 것: 파일·폴더 이름(`bin/moai-cli`, `~/.moai-cli/...`, `moai-cli-home-` 같은 임시 이름), 환경 변수(조각 3), 캐시·임시 폴더 이름(조각 4), 패키지·bin 이름(조각 5), 스킬·템플릿 문장(조각 11).
 
+### Plan 4 (개정 6)
+
+1. 찾기: 슬롯 기본 폴더를 푸는 곳(`heavy_slot::default_dir` 와 그 호출자 셋: `main.rs` 의 acquire·status, `check_affected.rs`)과 쌍둥이 도구의 `default_dir`, 그 폴더를 말하는 도움말·문서 문장을 `rg` 로 모두 세요.
+2. RED: `tests/heavy_slot_cli.rs` 에서 `without_dir_both_tools_use_the_same_default_folder` 의 기대 폴더를 `moai/heavy-slots` 로 먼저 고치고, 새 테스트 셋(`the_default_folder_is_moai_and_nothing_is_made_under_the_earlier_one`, `the_earlier_limits_file_is_read_until_the_new_folder_has_one`, `status_lists_the_slots_held_in_the_earlier_folder`)을 써서 옛 이름·호환 없음 때문에 실패하는 것(exit 100)을 먼저 봐요. 실제 HOME·캐시는 건드리지 않고 임시 HOME·임시 `XDG_CACHE_HOME` 만 써요.
+3. `src/heavy_slot.rs`: `default_dir` 를 `moai/heavy-slots` 로, `read_limits_file` 이 기본 폴더에서 파일이 없을 때만 옛 폴더의 파일을 같은 규칙으로 읽게, `status` 가 기본 폴더일 때 `earlier_folder` 를 더해요. 쌍둥이 도구는 기본 폴더 한 곳과 머리말만 바꿔요.
+4. 문장: `main.rs`·`help.rs` 의 `--dir` 설명, `docs/rust-product-path.md`, `skills/moai/workflows/run.md`(와 매니페스트 해시 한 줄)의 슬롯 폴더 경로. 파이썬 슬롯 폴더 줄은 그대로예요(결정 D-12).
+5. 실제 바이너리 출력을 읽는 테스트: `heavy-slots|heavy_slot|heavy-slot-status|earlier_folder` 로 찾아 nextest 명시 `--test` 로 모두 돌려요.
+
 ## Risks
 
 - clap 이름을 바꾸는 순간 옛 이름만 받는 읽는 쪽이 깨져요 — 그래서 1a 가 1b 보다 먼저예요(위 Order).
 - 릴리스 워크플로우의 태그 이름 검사(`moai-adk-v${VERSION}`)는 이 조각에서 바꾸지 않아요 — 결정 6286 의 새 태그는 조각 6 이 바꿔요.
 - 스킬 문장은 옛 이름의 설치가 남는 동안에도 참이어야 해요 — fallback 은 계속 `moai-cli` 예요(조각 5 의 호환 링크가 사라질 때 같이 지워요).
+- 슬롯 폴더가 갈라지는 동안(옛 빌드는 옛 폴더, 새 빌드는 새 폴더)에는 두 빌드가 서로를 막지 못해 기계가 한도보다 많이 돌 수 있어요. 코드는 이를 막지 못하고 `earlier_folder` 로 보여 주기만 해요 — 그래서 이 조각은 레인이 멈춘 동안 한꺼번에 바꿔요(리더가 예약, 결정 D-11).
 
 ## Decisions
 
@@ -159,6 +177,11 @@ settings cleaner 는 버전 줄을 읽지 않아요(`~/.moai-cli/path/moai-cli` 
 | D-6 | `bin-names-plan` 의 두 문장(`Preview the moai link beside moai-cli`, `should be a hard link to \`moai-cli\``)은 조각 5 까지 그대로 | 실제 파일이 아직 `bin/moai-cli` 이고(조각 5 가 바꿔요) 문장은 디스크의 그 파일을 말해요; 조각 5 는 어느 쪽이 실제 파일인지가 뒤집히므로 이 명령과 문장을 함께 다시 써요; `tests/help_layout.rs` 의 `ALIAS_FILE` 이 같은 두 문장만 허용해요 | 문장을 중립으로 바꾸기 |
 | D-7 | 도움말의 `~/.moai-cli` 상태 폴더 줄(`home-install-*`, `key-*`, `hook-config`, 설정 안내 등)은 조각 7 까지 그대로 | 폴더 이름은 path-root 뒤 조각 7 이 옮기고 문장은 그때 같이 바뀌어요 | 문장만 먼저 바꾸기 |
 | D-8 | 파일·폴더·권한 참조·입력 이름을 말하는 문자열은 이번 조각에서 그대로: `update.rs` 의 `PERMISSION`(`moai-cli update confirmation`, 영수증에 남는 참조 문자열), `bundle/verify.rs` 의 `no built moai-cli`(`target/debug/moai-cli` 파일), `update_hooks.rs` 의 `moai-cli hook entries`(옛 훅 항목을 가리켜요), `key_vault.rs` 의 유도선, `state_root.rs` 의 표식 `created_by` | 이름을 바꾸면 기존 영수증·볼트 항목·실제 파일 이름과 어긋나요(조각 5·9) | 해당 조각에서 바꾸기 |
+| D-9 | 새 기본 슬롯 폴더는 `${XDG_CACHE_HOME:-~/.cache}/moai/heavy-slots` (선택지: 이 값 / `moai-adk/heavy-slots` / 위쪽 폴더만 두고 끝 이름만 바꾸기). 기본값: `moai/heavy-slots` | 제품 이름이 `moai` 하나이고 캐시의 앱 폴더는 그 이름을 따르는 것이 관례예요; 저장소에는 `.cache/moai/` 를 쓰는 곳이 없어요(`rg '\.cache/moai\b'` 로 확인; 이 기계의 실제 캐시는 열어 보지 않아서 `unverified`) | 한 상수와 두 도구의 기본값을 되돌리기 |
+| D-10 | 옛 폴더 호환은 두 가지 읽기뿐: `limits.json` 을 새 폴더에 없을 때 옛 폴더에서 읽기(REQ-13), `heavy-slot-status` 에 옛 폴더의 쥔 슬롯 보이기(REQ-14). 선택지: 호환 없음 / 이 두 읽기(기본값) / 코드가 옛 폴더를 새 폴더로 옮기고 옛 이름에 링크를 남기기 | `limits.json` 은 기계 주인이 손으로 쓴 안전 한도(디스크 여유·스왑)라 새 폴더에서 기본값으로 풀리면 주인이 정한 한도보다 느슨해질 수 있어요; 옮기기와 링크는 사용자 상태를 코드가 바꾸고 `moai-cli` 아래 새로 만드는 일이라 하지 않아요 | 두 읽기를 지우기 |
+| D-11 | 옛 폴더를 새 폴더로 옮기는 일은 기계 주인이 쥔 슬롯이 없을 때 `mv ~/.cache/moai-cli/heavy-slots ~/.cache/moai/heavy-slots` 한 번으로 해요; 코드는 옛 폴더에 쓰거나 옮기거나 지우거나 만들지 않아요. 모든 레인을 한꺼번에 바꾸는 시점은 리더가 예약해요 | 쥔 슬롯은 열린 파일의 잠금이라 폴더 이름 바꾸기에 영향이 없지만, 옛 빌드가 옛 경로를 열면 갈라져요; 이름 바꾸기는 되돌릴 수 있어요(`mv` 를 거꾸로) | 옮기지 않기: 새 폴더에서 새로 시작해요(한도는 D-10 읽기가 이어요) |
+| D-12 | 이번 조각에 넣지 않는 것: 파이썬 슬롯 폴더(`moai-cli/python-slots`: `tools/self_check.sh`, `tools/local_check.sh`, 그 Python 테스트 `tests/self_check_test.py`·`tests/local_check_test.py`, `docs/ci-rc-ci-spec.md`, 스킬 문장)와 임시 이름(`moai-cli-home-`, `moai-cli-git-init-*.lock`, 표식 `.moai-cli-synthetic-home`) | 파이썬 슬롯은 셸 스크립트와 손으로 못 돌리는 Python 테스트가 같이 움직여야 하고, 임시 이름은 슬롯과 잠금을 나누지 않아 한꺼번에 바꿀 필요가 없어요 | 같은 방식으로 다음 조각(4b)에서 바꾸기 |
+| D-13 | Python 쌍둥이 도구는 기본 폴더 한 곳과 머리말만 바꾸고 `limits.json` 호환 읽기는 옮기지 않는다 | 이 도구는 Rust 가 같은 잠금을 쓰는지 확인하는 교차 테스트와 옛 호출자를 위해 남아 있고, Python 도구가 없어질 때 같이 사라져요; 호환 읽기를 거기에도 두면 곧 지울 줄을 더하는 일이에요 | 쌍둥이에도 같은 읽기 더하기 |
 
 ## Result
 
@@ -209,3 +232,16 @@ settings cleaner 는 버전 줄을 읽지 않아요(`~/.moai-cli/path/moai-cli` 
 - 결정 D-6~D-8: `bin-names-plan` 파일 문장, `~/.moai-cli` 상태 폴더 줄, 권한 참조·파일 이름 문자열은 해당 조각까지 그대로예요(위 Decisions).
 - 1b 감사 비차단 N-b(낡은 순서 문장과 읽는 쪽 표)·N-c(AC-7 의 없는 Python 단계)는 이 개정에서 고쳤어요. 같은 head 영수증은 카드의 READY 노트에 있어요.
 - 이번 조각이 하지 않은 것: 스킬·템플릿 문장(조각 11), `bundle verify` 의 `--moai-cli` 플래그와 `target/debug/moai-cli` 설명(조각 5), 환경 변수(조각 3), 캐시 폴더 이름(조각 4). `README` 의 옛 문장(1b 감사 N-a)은 조각 11 이에요.
+
+### 조각 4 (heavy-slot 캐시 폴더 이름, 개정 6)
+
+2026-11-24, 브랜치 `spec/20261121-moai-name-c4`, base NeXT `1a8a7357a8a8004923bd3d0869627ca8296978ae`, 구현 커밋 `a3c7d8911630bd0eb39e9ff53af71c7beb0b50be`. 리더가 개정 6 의 결정 D-9~D-13 을 카드 노트 7594 에 대한 답으로 기본값 그대로 받았어요(승인 기록은 그 노트예요; 이 문서의 status 는 draft 그대로 두었어요).
+
+- AC-10: met — RED: 기대 폴더를 `moai/heavy-slots` 로 고친 `without_dir_both_tools_use_the_same_default_folder` 와 새 `the_default_folder_is_moai_and_nothing_is_made_under_the_earlier_one` 이 옛 폴더를 풀어 실패(exit 100, `target/moai-name-cache/red.log`), 바꾼 뒤 통과. 세 경우(캐시 변수 있음·빈 값·없음) 모두 Rust 와 Python 쌍둥이가 같은 새 폴더에서 번갈아 돌고 `<cache>/moai-cli` 는 생기지 않아요. 뮤턴트: 기본 폴더 이름을 `moai-cli` 로 되돌렸더니 두 테스트가 실패(exit 100).
+- AC-11: met — `the_earlier_limits_file_is_read_until_the_new_folder_has_one` 통과: 옛 폴더만 `limits.json` 을 가지면 `build_jobs_cap.slots` 가 그 값(1), 새 폴더에 생기면 새 값(2), `--dir` 로 다른 폴더를 주면 기본 3, 옛 폴더의 바이트·목록은 읽은 뒤에도 그대로, 규칙을 어긴 옛 파일(`{"bogus":1}`)은 exit 125 이고 명령은 돌지 않아요. 뮤턴트: 옛 파일 읽기를 `Ok(None)` 으로 바꾸면 실패(exit 100).
+- AC-12: met — `status_lists_the_slots_held_in_the_earlier_folder` 통과: 옛 폴더에 쥔 슬롯(임시 폴더의 `old-build`)이 `earlier_folder.held` 에 보이고 새 폴더의 `held` 는 비어 있고, 옛 폴더가 없거나 `--dir` 이면 키가 없고, 놓은 뒤에는 빈 목록이에요. 뮤턴트: `earlier_folder` 채우기를 빼면 실패(exit 100; 위 AC-11 뮤턴트와 한 번에 넣어 두 테스트가 각각 실패하는 것을 봤어요).
+- 실제 바이너리 출력을 읽는 테스트: `heavy-slots|heavy_slot|heavy-slot-status|earlier_folder|heavy-slot-acquire|heavy_check_slot` 로 찾은 테스트 파일 17개와 run.md·매니페스트·`rust-product-path.md` 를 읽는 테스트 7개, `--lib` 를 nextest 명시 `--test` 로 heavy-slot 4 에서 돌려 2167개 통과(exit 0, `target/moai-name-cache/real-output.log`).
+- 실제 HOME·캐시: 건드리지 않았어요. 모든 테스트는 임시 HOME 과 임시 `XDG_CACHE_HOME` 만 써요. 옛 폴더를 옮기는 `mv`(결정 D-11)는 하지 않았고 사용자 몫이에요.
+- Python 쪽: `tools/heavy_check_slot.py` 의 기본 폴더 한 곳과 머리말만 고쳤어요. 돌리지 않았어요(`not_run`): 손으로도 `moai check affected` 의 Python 단계로도; Rust 교차 테스트가 그 도구를 자식 프로세스로 돌려 같은 폴더를 쓰는 것을 확인해요.
+- 이번 조각이 하지 않은 것(결정 D-12): 파이썬 슬롯 폴더 `moai-cli/python-slots`(`tools/self_check.sh`·`tools/local_check.sh`·그 Python 테스트·`docs/ci-rc-ci-spec.md`)와 임시 이름 `moai-cli-home-`·`moai-cli-git-init-*.lock`·표식 `.moai-cli-synthetic-home` → 조각 4b. 스킬 문장의 나머지(조각 11).
+- 같은 head 영수증은 카드의 READY 노트에 있어요(이 문서를 담는 head 에서 돈 값이라 해시를 여기에 적지 않아요).
