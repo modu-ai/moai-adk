@@ -66,4 +66,12 @@ Grounded in the code at the integration tip `ec6233e7b4`: the raw branch of `cod
 
 ## Result
 
-Not yet implemented (draft, waiting for the leader's approval).
+Revision 1 on the branch cut from the integration tip `ec6233e7b4`. Approval basis: the leader's decision note 7783 of the card (2026-11-23T18:37:42Z), option (a) of request note 7782. Numbers come from runs made for this result in the worktree of the card.
+
+- AC-1 met (REQ-1): `temp_names_scan_reads_raw_byte_strings_as_raw` passed (a raw byte string ending in a backslash, one with hashes holding a quote, a raw C string ending in a backslash, and text inside raw literals not reported). Red first at commit `6c663f1b80`: `left: [] right: [2]` for `br with a backslash`, `cargo test --offline --locked --test test_temp_names_scan` exit 101.
+- AC-2 met (REQ-2): `temp_names_tree_walk_reads_a_file_named_like_the_scan_file` passed and `temp_names_tree_has_no_pid_names_under_the_temp_folder` passed unchanged with the file-name skip and `SELF_FILE` gone (5 of 5 tests of the file). Red first at `6c663f1b80`: `left: [] right: ["tests/test_temp_names_scan.rs:2"]`, exit 101.
+- Guard mutants (committed head `349c3fabc1`, each undone by the inverse edit, `git status` clean after): M1 the `b` and `c` prefix arm of `raw_literal_open` off (`if false && …`) killed by `temp_names_scan_reads_raw_byte_strings_as_raw` (exit 101); M2 the hash count returned as 0 killed by the same test (`br with hashes`) and by the tree test (exit 101); M3 the file-name skip put back killed by `temp_names_tree_walk_reads_a_file_named_like_the_scan_file` (exit 101).
+- Not changed: `tools/repo_scans.json` (same scan, same test name and check command), the other misses of AUDIT #417 N3 (variable bound in an earlier statement, `use std::process::id` then `id()`, a block inside the `join` argument, `TMPDIR` and `CARGO_TARGET_TMPDIR` with a pid), which stay follow-ups.
+- Not run: the whole `cargo test`, the Windows type check.
+- The `moai check affected` receipt of the head is in the READY note of the card.
+- closure_status: open until the audit.
