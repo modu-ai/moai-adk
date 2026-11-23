@@ -40,6 +40,10 @@ const EXEMPT: &[(&str, &str)] = &[
         "tests/e2e_host_fixture.rs",
         "clones into a temp dir, then checks named route and workflow files",
     ),
+    (
+        "tests/e2e_temp_home_cli.rs",
+        "read_dir copies the named skills/moai and agents folders into a temporary version folder and lists the temporary home it built; reads no other checked-in tree",
+    ),
     ("tests/forge_cli.rs", "recursive walks of TempDir only"),
     ("tests/github_cli.rs", "hashes temp dirs; templates are named include_str! files"),
     (
