@@ -79,3 +79,46 @@ created: 2026-11-23
 | D-4 | `none` 줄이 새 시험을 더하는 변경에 붙었는지는 기계가 보지 않아요. 기본값: 보지 않고 감사가 봐요. 관찰에서 이 빈틈으로 빠지는 일이 보이면 후속으로 다뤄요. | 규칙 20: 있을 법한 먼 일은 설계하지 않아요. | 해당 없음. |
 
 ## Result
+
+레인이 2026-11-23 에 채웠어요. 감사가 다시 확인해요. 가지 `spec/ready-mutant-line-20261123`, 기준 `0dfdfb31dc`, 구현 커밋 `b4dbae14f8` 과 그 위 두 커밋, 이 워크트리의 `target/`, `CARGO_BUILD_JOBS=5`, `RUSTC_WRAPPER=sccache`, 무거운 실행은 `moai heavy-slot-acquire --max 4`, macOS arm64. 같은 머신의 부하가 25~80 이었어요.
+
+- AC-1: met — `rg -c "guard-mutant:" skills/moai/references/flows/next-flow.md` 가 1, exit 0
+- AC-2: met — `rg -c "guard-mutant:" skills/moai/references/internal/self-check.md` 가 1, exit 0. `agent_defs_package` 가 고정한 지킴 문장은 그대로 두고 뒤에 더했어요(첫 시도는 낱말을 바꿔 그 시험이 실패했고 고쳤어요).
+- AC-3: met — `cargo test --offline --locked --lib bundle::mutant_line` 8 passed
+- AC-4: met — `cargo test --offline --locked --test bundle_check_cli` 16 passed(새 5개 `mutant_line_*` 포함)
+- AC-5: met — 같은 시험의 `mutant_line_a_note_without_the_line_warns_and_changes_nothing_else` 가 `ok` 참, `findings` 빈 배열, 종료 코드 0 을 단정
+- AC-6: met — `cargo test --offline --locked --test fake_exe_marker` 3 passed
+- AC-7: met — 아래 뮤턴트 표, 17개 모두 의도한 시험에서 실패
+- AC-8: met — `rg -c "guard-mutant" CLAUDE.md` 가 2(지키는 줄과 규칙 출처 줄), exit 0
+
+뮤턴트(커밋한 트리에서 한 번에 하나, 대상 한 개, 돌린 뒤 `git checkout --` 로 되돌림. 스크립트와 로그는 `target/lane/mutants.zsh`, `mutants-first.log`, `mutants.log`):
+
+| 뮤턴트 | 지키는 코드 | 실패한 시험 |
+|---|---|---|
+| m01 | `exit 0` 을 살아남음으로 읽음 | `a_mutant_that_survived_names_its_test` 외 1 |
+| m02 | 줄 없음 경고 | `a_note_without_a_line_is_missing_…` 외 2 |
+| m03 | 첫 줄(표식 줄)은 읽지 않음 | `the_marker_line_itself_is_never_read_as_a_mutant_line` |
+| m04 | 빈 칸이 있으면 못 읽음 | `a_line_that_fits_neither_form_is_unreadable_…` |
+| m05 | `exit` 뒤가 숫자인지 봄 | **첫 시도 생존**(`exit +1` 이 u32 로 읽힘) → 시험에 `exit +1` 을 더하고 같은 시험에서 실패 |
+| m06 | 줄머리 `- ` 허용 | `a_bullet_and_leading_spaces_are_allowed` |
+| m07 | 앞 공백 허용 | `a_bullet_and_leading_spaces_are_allowed` |
+| m08 | 줄이 접두어로 시작해야 읽음 | `a_line_must_start_with_the_prefix` |
+| m09 | `none` 모양 | `a_failing_mutant_line_and_a_none_line_give_no_warning` |
+| m10 | 줄 번호(첫 줄이 1) | `a_line_that_fits_neither_form_is_…` 외 1 |
+| m11 | 가장 새 노트를 읽음 | `mutant_line_is_read_from_the_newest_note_that_names_the_head` |
+| m12 | head 를 이름으로 가진 노트만 읽음 | `mutant_line_a_head_no_note_names_is_missing` 외 1 |
+| m13 | 경고가 `ok` 를 바꾸지 않음 | `mutant_line_a_note_without_the_line_…` 외 1 |
+| m14 | 경고가 head 를 실음 | `mutant_line_unreadable_and_survived_lines_each_warn` |
+| m15 | 도우미가 셸 리다이렉션으로 표식을 만듦(`touch` 로 되돌림) | `the_helpers_fake_leaves_its_marker_when_path_holds_nothing` 외 1 |
+| m16 | 표식 경로의 따옴표 처리 | `the_marker_path_is_quoted_and_the_rest_of_the_script_runs` |
+| m17 | 도우미가 뒤 줄을 이어 붙임 | `the_marker_path_is_quoted_and_the_rest_of_the_script_runs` |
+
+눈먼 경우: `a_touch_fake_under_a_path_without_touch_ran_and_left_no_marker` 가 `touch` 가짜가 PATH 에 `touch` 가 없을 때 실행되고(종료 127) 표식이 없음을 보여요. 도우미의 가짜는 같은 PATH 에서 표식을 남겨요.
+
+실행: `cargo test --offline --locked --lib` 1720 passed, `--bin moai` 28 passed, `--bin moai-cli` 28 passed, `--test` 의 `bundle_body_cli` 11, `bundle_build_cli` 18, `bundle_check_cli` 16, `bundle_ready_cli` 5, `bundle_verify_cli` 12, `bundle_user_assets_cli` 6, `fake_exe_marker` 3, `repo_claude_md` 5, `recurring_problems_rule` 5, `repo_scans_table` 7, `source_manifest_facts` 8, `repo_scans_cli` 19, 바뀐 문서를 `rg` 로 찾아낸 시험 대상(`target/lane/doc-readers.txt`, 첫 실행에서 `agent_defs_package` 가 실패해 고친 뒤 다시 돌려 통과)과 `product_cli skill_package::` 13 모두 exit 0. `cargo clippy --offline --locked --all-targets -- -D warnings` exit 0, `cargo fmt --check` exit 0, `git diff --check` exit 0, `moai spec check` 오류 0·경고 0, `moai trailer-check 0dfdfb31dc..HEAD` failing 0, `moai package-inspect skills/moai` exit 0, `moai repo-scans --refs 0dfdfb31dc HEAD` 가 걸리는 스캔 없음. clippy 는 구현 커밋 위에서 돌렸고 그 뒤 두 커밋은 문서와 매니페스트만 바꿔요.
+
+돌리지 않은 것: 파이썬 시험(규칙), CI, Linux·Windows, `--bin` 이 아닌 나머지 `--test` 전체. 위험 경로: 이 변경은 지우기·프로세스 시작·권한 규칙이 없고 표식은 셸 리다이렉션뿐이라 해당 없음.
+
+관찰(D-3): 이 검사가 들어간 뒤 `bundle check` 가 돈 번들이 아직 없어서 경고 횟수와 거짓 경고는 0 번 관찰이에요. 막는 쪽으로의 전환은 관찰 뒤 기록하는 결정이고, 이 SPEC 은 그것을 하지 않았어요.
+
+승인: 이 SPEC 은 초안(`draft`)이에요. 승인은 사용자의 선택이라 레인이 기록하지 않았어요.
