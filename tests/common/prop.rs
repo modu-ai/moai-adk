@@ -87,6 +87,12 @@ fn seed_from_env() -> (u64, Option<u64>) {
     (seed, only)
 }
 
+/// The failure message of a replay that names a case the run does not have (REQ-13), or `None`
+/// when `only` is absent or inside the run.
+pub fn replay_error(_name: &str, _cases: u64, _seed: u64, _only: Option<u64>) -> Option<String> {
+    None
+}
+
 /// Runs `property` for `cases` generated inputs and asserts the run stays within its budget
 /// (C-100 AC-3: at least 1000 cases, 30 seconds per property, the seed printed on failure).
 /// A failing case's panic is retold with the property's name, the seed and the case index.
@@ -214,5 +220,26 @@ fn the_property_budget_message_names_the_seed_and_the_load() {
         "8 CPUs",
     ] {
         assert!(over.contains(part), "{part:?} in {over}");
+    }
+}
+
+/// AC-11 (REQ-13, REQ-14): a replay index at or beyond the case count would run no case and
+/// pass; it fails and names the property, the index, the case count and the seed. An index
+/// inside the run, or none, is accepted.
+#[test]
+fn a_replay_index_beyond_the_cases_is_refused() {
+    assert_eq!(replay_error("p", 1000, 7, None), None);
+    assert_eq!(replay_error("p", 1000, 7, Some(0)), None);
+    assert_eq!(replay_error("p", 1000, 7, Some(999)), None);
+    for beyond in [1000, 1001, u64::MAX] {
+        let msg = replay_error("p", 1000, 7, Some(beyond)).expect("refused");
+        for part in [
+            "property p",
+            &format!("PROP_ONLY={beyond}"),
+            "1000 cases",
+            "seed 7",
+        ] {
+            assert!(msg.contains(part), "{part:?} in {msg}");
+        }
     }
 }
