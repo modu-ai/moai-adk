@@ -204,9 +204,11 @@ fn shown(name: &str) -> String {
 /// An Opus 4.8 model id in any letter case (`opus-4-8`, `opus-4.8`, an alias suffix included). The
 /// match ends there or goes on with `-`, `[` or `@` (a date, a context alias, a version tag); any
 /// other next character, a digit above all, is another model (`opus-4-80`, `opus-4.85`), which
-/// SPEC D-2 leaves alone.
+/// SPEC D-2 leaves alone. A space around the value is cut first (`one_line` accepts it, and
+/// whether the host trims is unverified), so `opus-4-8 ` still ends the match; the carried value
+/// is not touched (SPEC-20261124-model-value-trim).
 fn is_opus_48(model: &str) -> bool {
-    let lower = model.to_ascii_lowercase();
+    let lower = model.trim().to_ascii_lowercase();
     ["opus-4-8", "opus-4.8"].iter().any(|family| {
         lower.match_indices(family).any(|(at, _)| {
             matches!(
@@ -581,6 +583,47 @@ mod tests {
                 assert_eq!(row.carry, Some(json!(near)), "{near} + {key}");
             }
         }
+    }
+
+    // SPEC-20261124-model-value-trim: `one_line` accepts a space around the model value, so the
+    // pair check must see the family through it.
+    fn pair_row(model: &str, key: &str) -> Row {
+        let mut old = Map::new();
+        old.insert("model".into(), json!(model));
+        old.insert(key.into(), json!(true));
+        model_row_of(Value::Object(old))
+    }
+
+    #[test]
+    fn fast_pair_a_space_around_an_opus_48_value_does_not_hide_it() {
+        for model in [
+            " claude-opus-4-8",
+            "claude-opus-4-8 ",
+            " opus-4.8 ",
+            "Claude-OPUS-4-8[1m] ",
+        ] {
+            for key in ["fastMode", "fastModePerSessionOptIn"] {
+                let row = pair_row(model, key);
+                assert_eq!(row.state, "blocked", "{model:?} + {key}");
+                assert!(row.carry.is_none(), "{model:?} + {key}");
+                assert_eq!(row.reason, FAST_PAIR_BLOCK, "{model:?} + {key}");
+            }
+        }
+    }
+
+    #[test]
+    fn fast_pair_a_space_keeps_a_near_id_mergeable_and_the_carried_text_as_read() {
+        for near in ["claude-opus-4-80 ", "claude-opus-4.85 ", " claude-opus-4-7 "] {
+            for key in ["fastMode", "fastModePerSessionOptIn"] {
+                let row = pair_row(near, key);
+                assert_eq!(row.state, "mergeable", "{near:?} + {key}");
+                assert_eq!(row.carry, Some(json!(near)), "{near:?} + {key}");
+            }
+        }
+        // No fast-mode key: the value merges, and the spaces stay in the carried text.
+        let alone = model_row_of(json!({"model": " claude-opus-4-8 "}));
+        assert_eq!(alone.state, "mergeable");
+        assert_eq!(alone.carry, Some(json!(" claude-opus-4-8 ")));
     }
 
     #[test]
