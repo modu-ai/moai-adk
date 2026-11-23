@@ -1,6 +1,6 @@
 //! `moai bundle` refusal of a tip that is not a commit (SPEC-20261124-bundle-tip-doc-refusal): the
 //! refusal of a missing `origin/<name>` also names the local `refs/heads/<name>`. Every command
-//! runs against a temporary HOME and a temporary repository; the real `~/.moai` and the real
+//! runs against a temporary HOME and a temporary repository; the real home state and the real
 //! repository are not read or written.
 #![cfg(unix)]
 
