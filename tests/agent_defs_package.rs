@@ -1094,3 +1094,27 @@ fn build_rule_lives_in_run_and_the_builders_point_to_it() {
     // RUN holds the rule itself; its other sections name it without the removed reference.
     assert!(!run.contains("internal/build-folder"), "workflows/run.md");
 }
+
+/// SPEC-20261124-check-affected-touch AC-5 (REQ-4, REQ-5): the guard-mutant line of the
+/// self-check page tells a lane how to restore a mutated file: `git checkout` or a plain `cp`,
+/// never `cp -p`, with the reason (the old file time makes cargo keep the mutant build).
+#[test]
+fn the_guard_mutant_line_names_the_restore_rule() {
+    let page =
+        std::fs::read_to_string(package().join("references/internal/self-check.md")).unwrap();
+    let line = page
+        .lines()
+        .find(|l| l.starts_with("2. Guards:") && l.contains("guard-mutant:"))
+        .expect("the Guards line of the Tests list");
+    for needle in [
+        "`git checkout -- <path>`",
+        "plain `cp`",
+        "never `cp -p`",
+        "file time",
+    ] {
+        assert!(
+            line.contains(needle),
+            "the Guards line lacks {needle}: {line}"
+        );
+    }
+}

@@ -1,7 +1,7 @@
-//! SPEC-20261124-check-affected-touch (AC-1 to AC-5): `check affected` sets the modification time
+//! SPEC-20261124-check-affected-touch (AC-1 to AC-4): `check affected` sets the modification time
 //! of every changed file of the range to now before its first step, so a file restored with an old
 //! time (`cp -p`) is rebuilt; it never follows a link out of the checkout and `--list` touches
-//! nothing; the guard-mutant guidance names the restore rule. Temporary git repositories and a
+//! nothing (the pin of the guard-mutant guidance, AC-5, is in `agent_defs_package.rs`). Temporary git repositories and a
 //! temporary HOME; the real-cargo test builds one tiny crate in its own folder with the current
 //! toolchain's own binaries, and the others use a fake `cargo`.
 #![cfg(unix)]
@@ -262,27 +262,6 @@ fn list_mode_touches_no_file() {
     answer(&out);
 
     assert_eq!(mtime(&p.join("README.md")), old());
-}
-
-/// AC-5 (REQ-4, REQ-5): the guard-mutant line of the self-check page names the restore rule.
-#[test]
-fn the_guard_mutant_line_names_the_restore_rule() {
-    let page = include_str!("../skills/moai/references/internal/self-check.md");
-    let line = page
-        .lines()
-        .find(|l| l.contains("guard-mutant:") && l.starts_with("2. Guards:"))
-        .expect("the Guards line of the Tests list");
-    for needle in [
-        "`git checkout -- <path>`",
-        "plain `cp`",
-        "never `cp -p`",
-        "file time",
-    ] {
-        assert!(
-            line.contains(needle),
-            "the Guards line lacks {needle}: {line}"
-        );
-    }
 }
 
 const MANIFEST: &str = "[package]\nname = \"probe\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n\
