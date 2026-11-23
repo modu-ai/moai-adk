@@ -55,17 +55,28 @@ fn roleless_cc_is_a_plain_claude_session() {
     assert!(!a.iter().any(|x| x == "--name"), "AC-1: no session name");
     assert!(
         !a.iter().any(|x| x == "--dangerously-skip-permissions"),
-        "AC-1: no permission flag without a role (#2359)"
+        "AC-1: no bypass flag without a role (#2359)"
     );
     // User decision 2026-11-08 (HOLD-L1 = A, #2062): the launcher's Claude model/effort
     // defaults; no advisor since the user decision of 2026-11-12 (#2476).
     const { assert!(moai_cli::session::ROLELESS_LAUNCHER_DEFAULTS) };
-    assert_eq!(a, ["claude", "--model", "opus", "--effort", "medium"]);
+    assert_eq!(
+        a,
+        [
+            "claude",
+            "--model",
+            "opus",
+            "--effort",
+            "medium",
+            "--permission-mode",
+            "auto"
+        ]
+    );
     let notes = v["notes"].to_string();
     assert!(!notes.contains("HOLD"), "decided, no HOLD wording: {notes}");
     assert!(notes.contains("user decision 2026-11-08: A"), "{notes}");
     assert!(notes.contains("no role"));
-    assert!(notes.contains("no permission flag"), "{notes}");
+    assert!(notes.contains("--permission-mode auto"), "{notes}");
     // Options still apply; an explicit name is passed through, a role is never guessed.
     let (_, v, _) = dry(
         &["cc", "--name", "mine", "--model", "sonnet", "--no-advisor"],
@@ -74,7 +85,17 @@ fn roleless_cc_is_a_plain_claude_session() {
     assert_eq!(v["role"], Value::Null);
     assert_eq!(
         argv(&v),
-        ["claude", "--name", "mine", "--model", "sonnet", "--effort", "medium"]
+        [
+            "claude",
+            "--name",
+            "mine",
+            "--model",
+            "sonnet",
+            "--effort",
+            "medium",
+            "--permission-mode",
+            "auto"
+        ]
     );
     // `--permissions` is accepted and changes nothing: there is no flag to remove.
     let (_, v, _) = dry(&["cc", "--permissions"], None);
@@ -118,7 +139,15 @@ fn roleless_glm_keeps_the_token_check() {
     );
     assert_eq!(
         argv(&v),
-        ["claude", "--model", "opus", "--effort", "medium"]
+        [
+            "claude",
+            "--model",
+            "opus",
+            "--effort",
+            "medium",
+            "--permission-mode",
+            "auto"
+        ]
     );
 }
 
@@ -127,22 +156,51 @@ fn roleless_glm_keeps_the_token_check() {
 /// `agent-1`).
 #[test]
 fn role_paths_are_unchanged() {
-    let skip = "--dangerously-skip-permissions";
     let (_, v, _) = dry(&["cc", "-l"], None);
     assert_eq!(v["role"], "leader");
     assert_eq!(
         argv(&v),
-        ["claude", "--name", "leader", "--model", "opus", "--effort", "medium", skip]
+        [
+            "claude",
+            "--name",
+            "leader",
+            "--model",
+            "opus",
+            "--effort",
+            "medium",
+            "--permission-mode",
+            "auto"
+        ]
     );
     let (_, v, _) = dry(&["-a"], None);
     assert_eq!(
         argv(&v),
-        ["claude", "--name", "agent-1", "--model", "opus", "--effort", "medium", skip]
+        [
+            "claude",
+            "--name",
+            "agent-1",
+            "--model",
+            "opus",
+            "--effort",
+            "medium",
+            "--permission-mode",
+            "auto"
+        ]
     );
     let (_, v, _) = dry(&["glm", "-a"], Some("moai-dummy-token-value"));
     assert_eq!(
         argv(&v),
-        ["claude", "--name", "agent-1", "--model", "opus", "--effort", "medium", skip]
+        [
+            "claude",
+            "--name",
+            "agent-1",
+            "--model",
+            "opus",
+            "--effort",
+            "medium",
+            "--permission-mode",
+            "auto"
+        ]
     );
     // The legacy `session` subcommand is unchanged too.
     let (_, v, _) = dry(&["session", "--name", "s1"], None);

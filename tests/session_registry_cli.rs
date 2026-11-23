@@ -829,9 +829,12 @@ fn register_mode_is_stored_and_renewed() {
             "name",
             "instance",
             "lease_until",
-            "registered_at"
+            "registered_at",
+            // SPEC-20261123-lane-continues-card REQ-3: every registration inside a git worktree
+            // records it; `mode` still appears only when given.
+            "worktree"
         ],
-        "no --mode: the entry is unchanged"
+        "no --mode: the entry holds no `mode` key"
     );
     let show = ok(&run(&fx, &["--show", "--name", "leader", "--now", T0]));
     assert_eq!(keys(&show), ["status", "name", "instance", "lease_until"]);
@@ -936,4 +939,314 @@ fn show_never_prints_a_hand_written_mode() {
     fs::write(fx.entry("leader"), &text).unwrap();
     let show = ok(&run(&fx, &["--show", "--name", "leader", "--now", T0]));
     assert_eq!(show["mode"], "leader", "{show}");
+}
+
+// ---- `--continue`: a lane keeps its entry across a /clear (SPEC-20261123-lane-continues-card) ----
+
+/// A well-formed host session id for number `n`.
+fn sid(n: u64) -> String {
+    format!("{n:08x}-0000-4000-8000-{n:012x}")
+}
+
+/// `session-register` run in `cwd` as the host session `session` (none: the host gave no id).
+fn run_as(fx: &Fixture, cwd: &Path, session: Option<&str>, args: &[&str]) -> Output {
+    let mut cmd = registrar(fx);
+    cmd.arg("session-register")
+        .args(args)
+        .current_dir(cwd)
+        .env_remove("CODEX_THREAD_ID");
+    if let Some(s) = session {
+        cmd.env("CLAUDE_CODE_SESSION_ID", s);
+    }
+    cmd.output().unwrap()
+}
+
+/// A linked worktree of the fixture's repository, next to it, on its own branch.
+fn linked_worktree(fx: &Fixture, name: &str) -> PathBuf {
+    let wt = fx.repo.parent().unwrap().join(name);
+    git(
+        &fx.repo,
+        &["worktree", "add", "-q", "-b", name, wt.to_str().unwrap()],
+    );
+    fs::canonicalize(wt).unwrap()
+}
+
+fn entry_json(fx: &Fixture, name: &str) -> Value {
+    serde_json::from_slice(&fs::read(fx.entry(name)).unwrap()).unwrap()
+}
+
+fn repo_arg(fx: &Fixture) -> String {
+    fx.repo.to_str().unwrap().to_string()
+}
+
+/// AC-1 (REQ-1, REQ-3): after a simulated /clear — the same name, the same worktree, another host
+/// session id — `--continue` answers `continued`, the entry holds the new session id, the
+/// worktree and the old id first in `previous_sessions`; a third session lists both old ids
+/// newest first, and the ninth id drops the oldest.
+#[test]
+fn ac1_continue_takes_the_entry_over_and_keeps_the_old_ids() {
+    let fx = Fixture::new();
+    let repo = repo_arg(&fx);
+    let canon = fs::canonicalize(&fx.repo).unwrap();
+    let first = ok(&run_as(
+        &fx,
+        &fx.repo,
+        Some(&sid(1)),
+        &[&repo, "--name", "agent-9"],
+    ));
+    assert_eq!(first["status"], "registered", "{first}");
+    let e = entry_json(&fx, "agent-9");
+    assert_eq!(e["session"], sid(1).as_str());
+    assert_eq!(e["worktree"], canon.to_str().unwrap(), "REQ-3: {e}");
+    assert!(e["previous_sessions"].is_null(), "a first entry has none");
+
+    let second = ok(&run_as(
+        &fx,
+        &fx.repo,
+        Some(&sid(2)),
+        &[&repo, "--name", "agent-9", "--continue"],
+    ));
+    assert_eq!(second["status"], "continued", "{second}");
+    assert_ne!(second["instance"], first["instance"], "a fresh instance");
+    let e = entry_json(&fx, "agent-9");
+    assert_eq!(e["session"], sid(2).as_str());
+    assert_eq!(e["instance"], second["instance"]);
+    assert_eq!(e["worktree"], canon.to_str().unwrap());
+    assert_eq!(e["previous_sessions"], json!([sid(1)]));
+
+    ok(&run_as(
+        &fx,
+        &fx.repo,
+        Some(&sid(3)),
+        &[&repo, "--name", "agent-9", "--continue"],
+    ));
+    assert_eq!(
+        entry_json(&fx, "agent-9")["previous_sessions"],
+        json!([sid(2), sid(1)])
+    );
+
+    // Nine continuations in all: the list keeps eight ids, newest first, and drops sid(1).
+    for n in 4..=10 {
+        ok(&run_as(
+            &fx,
+            &fx.repo,
+            Some(&sid(n)),
+            &[&repo, "--name", "agent-9", "--continue"],
+        ));
+    }
+    let e = entry_json(&fx, "agent-9");
+    let kept: Vec<String> = e["previous_sessions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| v.as_str().unwrap().to_string())
+        .collect();
+    assert_eq!(kept.len(), 8, "{e}");
+    assert_eq!(kept[0], sid(9));
+    assert_eq!(kept[7], sid(2));
+    assert_eq!(e["session"], sid(10).as_str());
+}
+
+/// AC-1 (REQ-3): a registration from a linked worktree records that worktree, not the clone's
+/// main folder.
+#[test]
+fn ac1_a_registration_records_the_worktree_of_the_running_folder() {
+    let fx = Fixture::new();
+    let wt = linked_worktree(&fx, "lane-a");
+    ok(&run_as(
+        &fx,
+        &wt,
+        Some(&sid(1)),
+        &[&repo_arg(&fx), "--name", "agent-9"],
+    ));
+    assert_eq!(entry_json(&fx, "agent-9")["worktree"], wt.to_str().unwrap());
+}
+
+/// AC-1: a renewal with the instance keeps the session, worktree and previous sessions the
+/// entry had; they are not lost when the whole entry is written again.
+#[test]
+fn ac1_a_renewal_keeps_the_worktree_and_the_old_ids() {
+    let fx = Fixture::new();
+    let repo = repo_arg(&fx);
+    ok(&run_as(
+        &fx,
+        &fx.repo,
+        Some(&sid(1)),
+        &[&repo, "--name", "agent-9"],
+    ));
+    let second = ok(&run_as(
+        &fx,
+        &fx.repo,
+        Some(&sid(2)),
+        &[&repo, "--name", "agent-9", "--continue"],
+    ));
+    let instance = second["instance"].as_str().unwrap().to_string();
+    let before = entry_json(&fx, "agent-9");
+    let renewed = ok(&run_as(
+        &fx,
+        &fx.repo,
+        Some(&sid(2)),
+        &[&repo, "--name", "agent-9", "--instance", &instance],
+    ));
+    assert_eq!(renewed["status"], "renewed", "{renewed}");
+    let after = entry_json(&fx, "agent-9");
+    for key in ["session", "worktree", "previous_sessions", "instance"] {
+        assert_eq!(after[key], before[key], "{key}");
+    }
+}
+
+/// AC-2 (REQ-2): the same call without `--continue` still ends in `conflict`.
+#[test]
+fn ac2_a_plain_registration_over_a_live_entry_still_conflicts() {
+    let fx = Fixture::new();
+    let repo = repo_arg(&fx);
+    ok(&run_as(
+        &fx,
+        &fx.repo,
+        Some(&sid(1)),
+        &[&repo, "--name", "agent-9"],
+    ));
+    let before = fs::read(fx.entry("agent-9")).unwrap();
+    let (kind, message) = refused(&run_as(
+        &fx,
+        &fx.repo,
+        Some(&sid(2)),
+        &[&repo, "--name", "agent-9"],
+    ));
+    assert_eq!(kind, "conflict", "{message}");
+    assert!(
+        message.contains("conflict in session registry"),
+        "{message}"
+    );
+    assert_eq!(fs::read(fx.entry("agent-9")).unwrap(), before);
+}
+
+/// AC-2 (REQ-2): a `--continue` call without a proof refuses naming the missing proof and the
+/// entry file is byte for byte as it was.
+#[test]
+fn ac2_continue_without_a_proof_refuses_and_leaves_the_entry() {
+    let fx = Fixture::new();
+    let repo = repo_arg(&fx);
+    let other = linked_worktree(&fx, "lane-b");
+    ok(&run_as(
+        &fx,
+        &fx.repo,
+        Some(&sid(1)),
+        &[&repo, "--name", "agent-9"],
+    ));
+    let before = fs::read(fx.entry("agent-9")).unwrap();
+    let outside_git = tempfile::tempdir().unwrap();
+    let cases: Vec<(&str, PathBuf, Option<String>, &str)> = vec![
+        (
+            "another worktree",
+            other,
+            Some(sid(2)),
+            "records another worktree",
+        ),
+        (
+            "no session id",
+            fx.repo.clone(),
+            None,
+            "this session has no host session id",
+        ),
+        (
+            "a folder outside git",
+            outside_git.path().to_path_buf(),
+            Some(sid(2)),
+            "not inside a git worktree",
+        ),
+        (
+            "the same session",
+            fx.repo.clone(),
+            Some(sid(1)),
+            "already names this session",
+        ),
+    ];
+    for (label, cwd, session, needle) in cases {
+        let (kind, message) = refused(&run_as(
+            &fx,
+            &cwd,
+            session.as_deref(),
+            &[&repo, "--name", "agent-9", "--continue"],
+        ));
+        assert_eq!(kind, "invalid_input", "{label}: {message}");
+        assert!(message.contains(needle), "{label}: {message}");
+        assert_eq!(fs::read(fx.entry("agent-9")).unwrap(), before, "{label}");
+    }
+}
+
+/// AC-2 (REQ-2): an entry that records no worktree, or names no session id (an entry an older
+/// build wrote), cannot be continued.
+#[test]
+fn ac2_an_entry_without_a_worktree_or_a_session_cannot_be_continued() {
+    let fx = Fixture::new();
+    let repo = repo_arg(&fx);
+    fs::create_dir_all(fx.sessions()).unwrap();
+    let lease = 4_102_444_800_i64; // 2100
+    let instance = "1".repeat(32);
+    let cases = [
+        (
+            format!(
+                r#"{{"schema_version":1,"name":"agent-9","instance":"{instance}","lease_until":{lease},"registered_at":0,"session":"{}"}}"#,
+                sid(1)
+            ),
+            "records no worktree",
+        ),
+        (
+            format!(
+                r#"{{"schema_version":1,"name":"agent-9","instance":"{instance}","lease_until":{lease},"registered_at":0,"worktree":"{}"}}"#,
+                fs::canonicalize(&fx.repo).unwrap().display()
+            ),
+            "names no host session id",
+        ),
+    ];
+    for (text, needle) in cases {
+        fs::write(fx.entry("agent-9"), &text).unwrap();
+        let (kind, message) = refused(&run_as(
+            &fx,
+            &fx.repo,
+            Some(&sid(2)),
+            &[&repo, "--name", "agent-9", "--continue"],
+        ));
+        assert_eq!(kind, "invalid_input", "{message}");
+        assert!(message.contains(needle), "{message}");
+        assert_eq!(fs::read_to_string(fx.entry("agent-9")).unwrap(), text);
+    }
+}
+
+/// With no entry there is nothing to continue: the call is an ordinary registration and says so
+/// (`registered`, never `continued`).
+#[test]
+fn continue_with_no_entry_is_an_ordinary_registration() {
+    let fx = Fixture::new();
+    let got = ok(&run_as(
+        &fx,
+        &fx.repo,
+        Some(&sid(1)),
+        &[&repo_arg(&fx), "--name", "agent-9", "--continue"],
+    ));
+    assert_eq!(got["status"], "registered", "{got}");
+    assert_eq!(got["previous"], "none");
+    assert!(entry_json(&fx, "agent-9")["previous_sessions"].is_null());
+}
+
+/// `--continue` takes no instance, no release and no show: a usage error (exit 2).
+#[test]
+fn continue_does_not_combine_with_instance_release_or_show() {
+    let fx = Fixture::new();
+    let repo = repo_arg(&fx);
+    let instance = "2".repeat(32);
+    for extra in [
+        vec!["--instance", instance.as_str()],
+        vec!["--show"],
+        vec!["--release", "--instance", instance.as_str()],
+    ] {
+        let mut args = vec![repo.as_str(), "--name", "agent-9", "--continue"];
+        args.extend_from_slice(&extra);
+        assert_eq!(
+            run_as(&fx, &fx.repo, Some(&sid(1)), &args).status.code(),
+            Some(2),
+            "{args:?}"
+        );
+    }
 }

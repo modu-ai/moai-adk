@@ -189,7 +189,8 @@ fn other_launches_keep_their_argv() {
             "opus".into(),
             "--effort".into(),
             "medium".into(),
-            "--dangerously-skip-permissions".into(),
+            "--permission-mode".into(),
+            "auto".into(),
         ]
     };
     assert_eq!(argv(&dry(&["cc", "-l"], None)), claude("leader"));
@@ -198,7 +199,15 @@ fn other_launches_keep_their_argv() {
     assert_eq!(argv(&dry(&["glm", "-a"], Some("t"))), claude("agent-1"));
     assert_eq!(
         argv(&dry(&["cc"], None)),
-        ["claude", "--model", "opus", "--effort", "medium"]
+        [
+            "claude",
+            "--model",
+            "opus",
+            "--effort",
+            "medium",
+            "--permission-mode",
+            "auto"
+        ]
     );
 }
 

@@ -135,7 +135,8 @@ fn plain(host: &str, role: usize) -> Vec<&'static str> {
             "opus",
             "--effort",
             "medium",
-            "--dangerously-skip-permissions",
+            "--permission-mode",
+            "auto",
         ],
         ("cc" | "glm", 1) => vec![
             "claude",
@@ -145,9 +146,18 @@ fn plain(host: &str, role: usize) -> Vec<&'static str> {
             "opus",
             "--effort",
             "medium",
-            "--dangerously-skip-permissions",
+            "--permission-mode",
+            "auto",
         ],
-        ("cc" | "glm", 2) => vec!["claude", "--model", "opus", "--effort", "medium"],
+        ("cc" | "glm", 2) => vec![
+            "claude",
+            "--model",
+            "opus",
+            "--effort",
+            "medium",
+            "--permission-mode",
+            "auto",
+        ],
         _ => unreachable!(),
     }
 }
@@ -165,7 +175,8 @@ fn with_advisor(role: usize, advisor: &'static str) -> Vec<&'static str> {
             "medium",
             "--advisor",
             advisor,
-            "--dangerously-skip-permissions",
+            "--permission-mode",
+            "auto",
         ],
         1 => vec![
             "claude",
@@ -177,7 +188,8 @@ fn with_advisor(role: usize, advisor: &'static str) -> Vec<&'static str> {
             "medium",
             "--advisor",
             advisor,
-            "--dangerously-skip-permissions",
+            "--permission-mode",
+            "auto",
         ],
         2 => vec![
             "claude",
@@ -187,6 +199,8 @@ fn with_advisor(role: usize, advisor: &'static str) -> Vec<&'static str> {
             "medium",
             "--advisor",
             advisor,
+            "--permission-mode",
+            "auto",
         ],
         _ => unreachable!(),
     }
@@ -379,7 +393,8 @@ fn lower_ranked_setting_is_refused_before_numbering() {
             "medium",
             "--advisor",
             "sonnet",
-            "--dangerously-skip-permissions"
+            "--permission-mode",
+            "auto"
         ]
     );
 }

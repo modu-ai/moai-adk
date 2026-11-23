@@ -18,6 +18,7 @@
 //! note on its cards or an announcement to all lanes, with a timeout (`card wait`,
 //! SPEC-20261122-card-wait).
 
+pub mod adopt;
 pub mod command;
 pub mod dispatch;
 pub mod drift;
@@ -35,5 +36,6 @@ pub mod precheck;
 pub mod remote_copy;
 pub mod spec_link;
 pub mod timeline;
+pub mod verdict;
 pub mod wait;
 pub mod work;

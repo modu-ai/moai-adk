@@ -814,7 +814,8 @@ fn name_and_leader_launch_the_decided_full_access_argv_and_take_no_number() {
             "opus",
             "--effort",
             "medium",
-            "--dangerously-skip-permissions",
+            "--permission-mode",
+            "auto",
         ]
     };
     let cases: [(&[&str], Vec<&str>); 4] = [
