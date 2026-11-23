@@ -434,6 +434,32 @@ fn the_repository_gitignore_ignores_the_statusline_counts_cache() {
     ] {
         assert!(ignored(rel), "{rel} is not ignored");
     }
+    // The rule that decides must be the one this SPEC added, by name: `.moai/state/` is also
+    // ignored by the older `.moai/state/` and `/.moai/*` rules, so only the deciding rule shows
+    // that the added line is still there.
+    for (rel, rule) in [
+        (".moai-cli/state/github/counts.json", "/.moai-cli/state/"),
+        (".moai/state/github/counts.json", "/.moai/state/"),
+    ] {
+        let out = git_raw(
+            &root,
+            &[
+                "-c",
+                "core.excludesFile=/dev/null",
+                "check-ignore",
+                "-v",
+                "--no-index",
+                rel,
+            ],
+        );
+        let verdict = out.stdout.trim().to_string();
+        let pattern = verdict
+            .split('\t')
+            .next()
+            .and_then(|head| head.splitn(3, ':').nth(2))
+            .unwrap_or("");
+        assert_eq!(pattern, rule, "{rel} is decided by another rule: {verdict}");
+    }
     for rel in [
         ".moai-cli/project.yaml",
         ".moai-cli/manifests/profile-baseline.json",
