@@ -10,6 +10,8 @@
 //!
 //! Moved here from the Python module `repo_scans_test.py` (SPEC-20261123-rust-scans-before-ready).
 
+mod common;
+
 use serde_json::{json, Value};
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -762,31 +764,18 @@ impl Tracked {
     fn of_repo() -> &'static Tracked {
         static TRACKED: OnceLock<Tracked> = OnceLock::new();
         TRACKED.get_or_init(|| {
-            let mut git = std::process::Command::new("git");
-            git.arg("-C").arg(root()).args(["ls-files", "-z"]);
-            for key in [
-                "GIT_DIR",
-                "GIT_WORK_TREE",
-                "GIT_INDEX_FILE",
-                "GIT_COMMON_DIR",
-            ] {
-                git.env_remove(key);
-            }
-            match git.output() {
-                Ok(out) if out.status.success() => {
-                    let text = String::from_utf8_lossy(&out.stdout).into_owned();
-                    Tracked::from_paths(text.split('\0').filter(|p| !p.is_empty()))
-                }
-                _ => {
-                    let mut files = Vec::new();
-                    walk(root(), &mut files);
-                    let rel: Vec<String> = files.iter().map(|p| relative(p)).collect();
-                    Tracked::from_paths(
-                        rel.iter()
-                            .map(String::as_str)
-                            .filter(|p| !p.starts_with("target/") && !p.starts_with(".git/")),
-                    )
-                }
+            let out = common::git::git_raw(root(), &["ls-files", "-z"]);
+            if out.success {
+                Tracked::from_paths(out.stdout.split('\0').filter(|p| !p.is_empty()))
+            } else {
+                let mut files = Vec::new();
+                walk(root(), &mut files);
+                let rel: Vec<String> = files.iter().map(|p| relative(p)).collect();
+                Tracked::from_paths(
+                    rel.iter()
+                        .map(String::as_str)
+                        .filter(|p| !p.starts_with("target/") && !p.starts_with(".git/")),
+                )
             }
         })
     }
