@@ -70,7 +70,7 @@ created: 2026-11-23
 
 ## Acceptance
 
-- AC-1 (REQ-1, REQ-3): after a simulated `/clear` (the same lane name, the same worktree, another host session id in the environment) `session-register --continue` answers `continued`, the entry holds the new session id, the worktree and the old id first in `previous_sessions`; a third call from a third session id lists both old ids newest first; a ninth id drops the oldest · verify: `cargo test --locked --offline --test session_registry_cli ac1_`
+- AC-1 (REQ-1, REQ-3): after a simulated `/clear` (the same lane name, the same worktree, another host session id in the environment) `session-register --continue` answers `continued`, the entry holds the new session id, the worktree and the old id first in `previous_sessions`; a third call from a third session id lists both old ids newest first; a ninth id drops the oldest, and a session that comes back is never listed in its own `previous_sessions` · verify: `cargo test --locked --offline --test session_registry_cli --test card_adopt_cli ac1_`
 - AC-2 (REQ-2): the same call without `--continue` still ends in `conflict`; a `--continue` call for an entry of another worktree, for an entry without a worktree, from a session id-less environment and from a folder outside git each refuse naming the missing proof and the entry file is byte for byte as it was · verify: `cargo test --locked --offline --test session_registry_cli ac2_`
 - AC-3 (REQ-4, REQ-11): after the registration of AC-1, `card adopt` moves the reservation to the new session at generation + 1 with the same scope, worktree and branch and a four hour lease; the card's state (also `review`), notes, criteria and links are as before; a `card check` by the old session at the old generation refuses as stale · verify: `cargo test --locked --offline --test card_adopt_cli ac3_`
 - AC-4 (REQ-5): a session whose entry does not list the holder (another lane's entry, a fresh registration without `--continue`, an entry with an ended lease, no entry) is refused with `not_same_lane` and the ledger is as it was · verify: `cargo test --locked --offline --test card_adopt_cli ac4_`
@@ -103,7 +103,7 @@ created: 2026-11-23
 1. (this slice) The SPEC, status draft; the user's approval and the open decisions U-1 and U-2 are answered by the user, never written by a lane.
 2. After approval, tests first (RED): `tests/session_registry_cli.rs` AC-1, AC-2; `tests/card_adopt_cli.rs` AC-3 to AC-7, AC-9 to AC-12, on a temporary home and a temporary repository with a second worktree; the lib test AC-8 for the holder change inside the transaction.
 3. `src/lane_registry.rs`: the entry fields and the `--continue` branch of `register`; `src/ops/session_register.rs`: the flag; the answer word `continued`.
-4. `src/ledger/reservation.rs`: the adopt transaction (the reclaim steps without the lease rule and the reclaim count, one `card.adopt` event).
+4. `src/ledger/adopt.rs` (with its module line in `src/ledger/mod.rs`): the adopt transaction (the reclaim steps without the lease rule and the reclaim count, one `card.adopt` event); `src/ledger/reservation.rs` is not changed.
 5. `src/card/adopt.rs` and the `card adopt` command: the proofs in the order of REQ-5, REQ-6, REQ-7, each read-only.
 6. Dangerous-path run in a throwaway for the READY: a real second worktree, a real second session id in the environment, a real `/clear`-shaped sequence of the commands, and the stale refusal of the old id.
 7. Text slice, after the code lands: `mode-agent.md` (`Session reset`, `Waiting is switching`: after a `/clear` run `session-register --continue` and `card adopt`) and the registry help text; a separate card, the audit rule text of tier 2 applies to the code slice.
@@ -139,7 +139,7 @@ created: 2026-11-23
 
 Status: implemented on the code slice; the SPEC front matter is not changed here (approval is recorded by the user's pick, not by a lane). `session-register --continue` is in `src/lane_registry.rs` and `src/ops/session_register.rs`; `card adopt` is in `src/card/adopt.rs` (proofs, read only) and `src/ledger/adopt.rs` (one transaction, beside the reclaim transaction, which is untouched). U-1 is implemented as yes (the held launcher lock does not stop `--continue`); U-2 as written (a reclaimed card has a new generation and is refused with the answer `card reclaim` gives).
 
-- AC-1: met — `session_registry_cli` tests `ac1_continue_takes_the_entry_over_and_keeps_the_old_ids`, `ac1_a_registration_records_the_worktree_of_the_running_folder`, `ac1_a_renewal_keeps_the_worktree_and_the_old_ids`
+- AC-1: met — `session_registry_cli` tests `ac1_continue_takes_the_entry_over_and_keeps_the_old_ids`, `ac1_a_registration_records_the_worktree_of_the_running_folder`, `ac1_a_renewal_keeps_the_worktree_and_the_old_ids`, and `card_adopt_cli` test `ac1_a_session_that_comes_back_is_not_its_own_predecessor`
 - AC-2: met — `session_registry_cli` tests `ac2_a_plain_registration_over_a_live_entry_still_conflicts`, `ac2_continue_without_a_proof_refuses_and_leaves_the_entry`, `ac2_an_entry_without_a_worktree_or_a_session_cannot_be_continued`
 - AC-3: met — `card_adopt_cli` tests `ac3_adopt_continues_the_card_at_the_next_generation`, `ac3_a_card_in_review_is_adopted_and_stays_in_review`
 - AC-4: met — `card_adopt_cli` test `ac4_a_session_whose_entry_does_not_list_the_holder_is_refused`
