@@ -73,4 +73,15 @@ parent: SPEC-20261122-claude-md-layout
 
 ## Result
 
-(Filled when the checks of the final head have run.)
+All numbers come from the `verify` commands run on the head that carries this text (throwaway HOME for every test; the real HOME and config folder were never read or written).
+
+- AC-1 met: `claude_md_home_cli flow_plan_` runs 7 tests (one flow file per config folder, written only with the confirm token, no `paths` key, within 80 lines and 5 KiB, an over-limit source refused).
+- AC-2 met: `claude_md_home_cli flow_conflict_` runs 4 tests (an edited file, a link file, a link folder above it and a non-UTF-8 file are conflicts and keep their bytes).
+- AC-3 met: `claude_md_home_cli flow_text_` runs 4 tests (evidence and handoff rules, the project `CLAUDE.md` wins once, one pointer to the flow reference, no role or command detail).
+- AC-4 met: `claude_md_home_cli flow_text_binds` runs 1 test (both texts open with the condition).
+- AC-5 met by measurement, not by a test of this repository: see the Measured line of `SPEC-20261122-claude-md-home-routing`; the three marker sentences reach the model through the default folder, a `rules` link and a `CLAUDE.md` import, none through a profile with no reference, and the project folder is listed identical before and after.
+- AC-6 met: `claude_md_home_cli folders_a_` runs 5 tests, among them the three of this requirement (a linked profile is a reference, a reference to an edited file stays a conflict, a link out of the default folder is a conflict with nothing written).
+- AC-7 met: `cargo fmt --check` and `cargo clippy --locked --offline --all-targets -- -D warnings` exit 0.
+- Guard tests fail without their guard: five mutants on this revision each turned the named test red and were restored byte for byte (M7 reference off, M8 conflict relabelled, M9 condition removed, M10 "never a PASS" removed, M11 command word added); the list is in the Result of `SPEC-20261122-claude-md-home-routing`.
+- Open: the language line and a "PASS needs a command run" line beyond the existing "missing evidence is never a PASS" are absent; the leader decides.
+- closure_status: awaiting the independent audit.
