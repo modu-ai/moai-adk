@@ -582,6 +582,44 @@ fn registration_lists_only_leader_mode_entries() {
     assert_eq!(r["round"]["registration"]["status"], "absent", "{r}");
 }
 
+/// AC-5 (REQ-8): two leader entries whose leases both run are never `ok`; the status is
+/// `duplicate`, both are listed, and it outranks an ended lease.
+#[test]
+fn registration_two_live_leaders_are_a_duplicate_not_ok() {
+    let f = fixture();
+    leader_entry(&f, NOW_EPOCH + 3600, Some(LEADER_SESSION));
+    fs::write(
+        sessions_dir(&f).join("boss.json"),
+        json!({
+            "schema_version": 1, "name": "boss", "instance": "fedcba9876543210fedcba9876543210",
+            "lease_until": NOW_EPOCH + 7200, "mode": "leader", "session": OTHER_SESSION,
+        })
+        .to_string(),
+    )
+    .unwrap();
+    let r = round(&f, &observations(&f), None);
+    let reg = &r["round"]["registration"];
+    assert_eq!(reg["status"], "duplicate", "{r}");
+    assert_eq!(reg["leaders"].as_array().unwrap().len(), 2, "{r}");
+
+    fs::write(
+        sessions_dir(&f).join("old.json"),
+        json!({
+            "schema_version": 1, "name": "old", "instance": "00112233445566778899aabbccddeeff",
+            "lease_until": NOW_EPOCH - 60, "mode": "leader",
+        })
+        .to_string(),
+    )
+    .unwrap();
+    let r = round(&f, &observations(&f), None);
+    assert_eq!(r["round"]["registration"]["status"], "duplicate", "{r}");
+
+    // One live leader beside an ended one is not a duplicate.
+    fs::remove_file(sessions_dir(&f).join("boss.json")).unwrap();
+    let r = round(&f, &observations(&f), None);
+    assert_eq!(r["round"]["registration"]["status"], "expired", "{r}");
+}
+
 /// AC-9: the note names the three words a leader needs to renew at once.
 #[test]
 fn registration_note_names_the_renewal_words() {

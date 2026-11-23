@@ -275,3 +275,100 @@ fn ac4_only_a_leader_entry_is_alive_by_its_lease() {
     let v = f.run(None, &["--liveness-of", S_B, "--now", T0]);
     assert_ne!(v["result"]["state"], json!("alive"), "{v}");
 }
+
+/// The registered instance of a `registered` or `renewed` answer.
+fn instance_of(v: &Value) -> String {
+    v["result"]["instance"].as_str().unwrap().to_string()
+}
+
+/// AC-2 (REQ-3), the second repair: a renewal by the instance of a lane entry that asks for
+/// mode `leader` is a leader registration like any other, so a live leader entry refuses it —
+/// for an entry of mode `agent` and for one that has no mode and no session — and the entry
+/// is byte for byte as it was.
+#[test]
+fn ac2_a_renewal_into_mode_leader_is_refused_while_another_leader_lives() {
+    let f = Fixture::new();
+    let first = f.leader(Some(S_A), "leader", None, T0);
+    assert_eq!(first["ok"], json!(true), "{first}");
+
+    let lane = f.run(
+        Some(S_B),
+        &["--name", "agent-4", "--mode", "agent", "--now", T0],
+    );
+    let bare = f.run(None, &["--name", "agent-5", "--now", T0]);
+    for (name, v) in [("agent-4", &lane), ("agent-5", &bare)] {
+        assert_eq!(v["ok"], json!(true), "{v}");
+        let before = f.entry_bytes(name);
+        let before_leader = f.entry_bytes("leader");
+        let renewed = f.leader(
+            Some(S_B),
+            name,
+            Some(&instance_of(v)),
+            "2026-11-23T00:30:00Z",
+        );
+        assert_eq!(renewed["ok"], json!(false), "{name}: {renewed}");
+        assert!(message(&renewed).contains("conflict"), "{name}: {renewed}");
+        assert_eq!(f.entry_bytes(name), before, "{name} is as it was");
+        assert_eq!(f.entry_bytes("leader"), before_leader);
+    }
+
+    // The same renewal is accepted once the first leader's lease has ended.
+    let later = f.leader(Some(S_B), "agent-4", Some(&instance_of(&lane)), T5H);
+    assert_eq!(later["ok"], json!(true), "{later}");
+    assert_eq!(f.entry("agent-4")["mode"], json!("leader"));
+}
+
+/// AC-3 (REQ-4), the second repair: a leader entry held under a lease answers only to its own
+/// session whatever `--mode` the caller gives, so another session that read the instance
+/// from `--show` cannot renew it with no mode or with mode `agent`; the entry keeps its mode
+/// and its session. Its own session renews it with no mode and it stays a leader entry.
+#[test]
+fn ac3_a_leader_entry_answers_only_to_its_own_session_whatever_the_mode() {
+    let f = Fixture::new();
+    let first = f.leader(Some(S_A), "leader", None, T0);
+    let instance = instance_of(&first);
+    let at = "2026-11-23T01:00:00Z";
+    let before = f.entry_bytes("leader");
+
+    for extra in [&[][..], &["--mode", "agent"][..]] {
+        let mut args = vec!["--name", "leader", "--instance", &instance, "--now", at];
+        args.extend(extra);
+        let foreign = f.run(Some(S_B), &args);
+        assert_eq!(foreign["ok"], json!(false), "{extra:?}: {foreign}");
+        assert!(message(&foreign).contains("session"), "{foreign}");
+        assert_eq!(f.entry_bytes("leader"), before, "{extra:?}");
+        let none = f.run(None, &args);
+        assert_eq!(none["ok"], json!(false), "{extra:?}: {none}");
+        assert_eq!(f.entry_bytes("leader"), before, "{extra:?}");
+    }
+
+    let own = f.run(
+        Some(S_A),
+        &["--name", "leader", "--instance", &instance, "--now", at],
+    );
+    assert_eq!(own["ok"], json!(true), "{own}");
+    assert_eq!(own["result"]["status"], json!("renewed"), "{own}");
+    let entry = f.entry("leader");
+    assert_eq!(entry["mode"], json!("leader"), "{entry}");
+    assert_eq!(entry["session"], json!(S_A), "{entry}");
+    let shown = f.run(None, &["--show", "--name", "leader", "--now", at]);
+    assert_eq!(shown["result"]["mode"], json!("leader"), "{shown}");
+}
+
+/// AC-4 (REQ-6): a `.live` file is the launcher's word and the lease never overrides it: with
+/// the file present a leader entry whose lease runs is not `alive` by its lease.
+#[test]
+fn ac4_a_launcher_lock_file_is_never_overridden_by_the_lease() {
+    let f = Fixture::new();
+    let first = f.leader(Some(S_A), "leader", None, T0);
+    assert_eq!(first["ok"], json!(true), "{first}");
+    fs::write(f.sessions().join("leader.live"), b"").unwrap();
+    let v = f.run(None, &["--liveness-of", S_A, "--now", T0]);
+    assert_eq!(v["ok"], json!(true), "{v}");
+    assert_ne!(v["result"]["state"], json!("alive"), "{v}");
+    assert_ne!(
+        v["result"]["evidence"]["basis"],
+        json!("registry_lease"),
+        "{v}"
+    );
+}
