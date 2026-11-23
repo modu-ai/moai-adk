@@ -185,11 +185,7 @@ fn both_names_print_the_same_output() {
         format!("moai {} (rust)", moai_cli::BUILD_VERSION),
         "{first} names the build version"
     );
-    assert_eq!(
-        line,
-        format!("moai {}\n", moai_cli::LONG_VERSION),
-        "{line}"
-    );
+    assert_eq!(line, format!("moai {}\n", moai_cli::LONG_VERSION), "{line}");
     assert_eq!(
         text(&run(MOAI, &["-V"], b"").stdout),
         format!("moai {}\n", moai_cli::VERSION_SIGNATURE)
