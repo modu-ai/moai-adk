@@ -470,12 +470,12 @@ pub(crate) fn source_tree_sha256(files: &[BackupFile]) -> String {
     sha256_hex(text.as_bytes())
 }
 
-/// Test seam (#2544): `MOAI_CLI_TEST_FAULT=<point>` makes one rename report a failure as if
+/// Test seam (#2544): `MOAI_TEST_FAULT=<point>` makes one rename report a failure as if
 /// the OS refused it, without performing it, so the recovery after it runs for real. Debug
 /// builds only; a release build never consults it.
 fn injected_rename_error(point: &str) -> Option<std::io::Error> {
     #[cfg(debug_assertions)]
-    if std::env::var("MOAI_CLI_TEST_FAULT").as_deref() == Ok(point) {
+    if std::env::var("MOAI_TEST_FAULT").as_deref() == Ok(point) {
         return Some(std::io::Error::other(format!(
             "injected test fault at {point}"
         )));
@@ -484,24 +484,24 @@ fn injected_rename_error(point: &str) -> Option<std::io::Error> {
     None
 }
 
-/// Test seam (#2483 AC-4): `MOAI_CLI_TEST_FAULT=<point>` fails the backup-then-replace
+/// Test seam (#2483 AC-4): `MOAI_TEST_FAULT=<point>` fails the backup-then-replace
 /// at that point. Read only in debug builds; a release build never consults it.
 pub(crate) fn test_fault(point: &str) -> Result<()> {
     #[cfg(debug_assertions)]
-    if std::env::var("MOAI_CLI_TEST_FAULT").as_deref() == Ok(point) {
+    if std::env::var("MOAI_TEST_FAULT").as_deref() == Ok(point) {
         return Err(format!("injected test fault at {point}"));
     }
     let _ = point;
     Ok(())
 }
 
-/// Test seam (#2483 AC-5, #2505 X6): `MOAI_CLI_TEST_FAULT=<point>` appends one byte to the
+/// Test seam (#2483 AC-5, #2505 X6): `MOAI_TEST_FAULT=<point>` appends one byte to the
 /// first file of `files` under `dir`, standing in for a writer that changes a folder between
 /// a move and its manifest check (`corrupt_after_move` in the replace, `corrupt_after_restore`
 /// in recovery). Debug builds only.
 pub(crate) fn test_corrupt_first_file(point: &str, dir: &Path, files: &[BackupFile]) {
     #[cfg(debug_assertions)]
-    if std::env::var("MOAI_CLI_TEST_FAULT").as_deref() == Ok(point) {
+    if std::env::var("MOAI_TEST_FAULT").as_deref() == Ok(point) {
         if let Some(first) = files.first() {
             if let Ok(mut f) = fs::OpenOptions::new()
                 .append(true)
@@ -3013,10 +3013,10 @@ fn apply_update_in(
 }
 
 /// UTC `YYYYMMDDTHHMMSSZ` for backup directory names. Test seam (#2505): debug builds take
-/// an alphanumeric `MOAI_CLI_TEST_BACKUP_STAMP` instead, so same-second runs reproduce.
+/// an alphanumeric `MOAI_TEST_BACKUP_STAMP` instead, so same-second runs reproduce.
 pub(crate) fn compact_stamp() -> String {
     #[cfg(debug_assertions)]
-    if let Ok(s) = std::env::var("MOAI_CLI_TEST_BACKUP_STAMP") {
+    if let Ok(s) = std::env::var("MOAI_TEST_BACKUP_STAMP") {
         if !s.is_empty() && s.bytes().all(|b| b.is_ascii_alphanumeric()) {
             return s;
         }

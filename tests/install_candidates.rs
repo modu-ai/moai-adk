@@ -323,7 +323,7 @@ fn a_probe_gets_no_token_variable_and_runs_outside_the_project() {
 /// #2791 pre-audit 6865400825 B1, #2808 audit B1: the probe limit holds even when a shell
 /// wrapper's own child keeps stdout open — a wrapper waiting on a background `sleep 60`, and
 /// one that prints its line and exits while a background child still holds the pipe. The
-/// limit is injected (`MOAI_CLI_TEST_PROBE_TIMEOUT_MS`, debug builds only), so the test reads
+/// limit is injected (`MOAI_TEST_PROBE_TIMEOUT_MS`, debug builds only), so the test reads
 /// the results, not the clock: the first reports nothing, the second keeps the line printed
 /// before the limit, and both left-over children are gone (the process group was killed).
 /// The real 5 s value is pinned by the lib test `the_probe_limits_are_pinned`.
@@ -356,7 +356,7 @@ fn the_probe_limit_holds_when_a_wrapper_child_keeps_stdout_open() {
         .env("PATH", join(&[&stuck, &left]))
         // 2 s, not less: a loaded machine (load 27–39 seen, #2843) may need well over 300 ms
         // before the wrapper prints its line; the children still hold the pipe for 60 s.
-        .env("MOAI_CLI_TEST_PROBE_TIMEOUT_MS", "2000")
+        .env("MOAI_TEST_PROBE_TIMEOUT_MS", "2000")
         .env_remove("CLAUDE_PROJECT_DIR")
         .env_remove("GOBIN")
         .current_dir(&home)

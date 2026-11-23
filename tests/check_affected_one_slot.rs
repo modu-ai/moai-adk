@@ -182,7 +182,7 @@ impl Run {
             // running this test must not decide it (SPEC-20261120-test-parallelism-cap REQ-1).
             .env_remove("RUST_TEST_THREADS")
             .env_remove("NEXTEST_TEST_THREADS")
-            .env("MOAI_CLI_TEST_MACHINE", ROOMY)
+            .env("MOAI_TEST_MACHINE", ROOMY)
             .env("PATH", self.tools.path())
             .env("FAKE_CALLS", self.tools.calls())
             .stdin(Stdio::null());
@@ -343,7 +343,7 @@ fn a_refused_slot_marks_every_cargo_step_and_runs_none() {
     // A machine below the free-disk floor (the caller's 50 GB is stricter than the file's 0).
     let r3 = Run::new(true, 4);
     let mut busy = r3.command(&fx, &[]);
-    busy.env("MOAI_CLI_TEST_MACHINE", "free_gb=1,swap_pct=0");
+    busy.env("MOAI_TEST_MACHINE", "free_gb=1,swap_pct=0");
     let v = run(busy);
     let line = v["summary"].as_str().unwrap();
     assert!(line.ends_with(" clippy=75 test=75 result=FAIL"), "{line}");
@@ -540,7 +540,7 @@ fn no_slot_count_or_no_slot_folder_is_code_2_for_every_cargo_step() {
         .env_remove("MOAI_HEAVY_SLOT_FD")
         .env_remove("RUST_TEST_THREADS")
         .env_remove("NEXTEST_TEST_THREADS")
-        .env("MOAI_CLI_TEST_MACHINE", ROOMY)
+        .env("MOAI_TEST_MACHINE", ROOMY)
         .env("PATH", r2.tools.path())
         .env("FAKE_CALLS", r2.tools.calls())
         .stdin(Stdio::null());

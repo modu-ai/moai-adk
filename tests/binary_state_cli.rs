@@ -171,7 +171,7 @@ fn a_go_or_silent_or_hanging_moai_is_the_wrong_generation() {
     let m = moai_on_path(
         &w,
         w.bin.to_str().unwrap(),
-        &[("MOAI_CLI_TEST_PROBE_TIMEOUT_MS", "1000")],
+        &[("MOAI_TEST_PROBE_TIMEOUT_MS", "1000")],
     );
     assert_eq!(m["state"], json!("wrong_generation"), "{m}");
     assert_eq!(m["generation"], json!("unknown"), "{m}");
@@ -329,7 +329,7 @@ fn only_home_reaches_the_probed_moai() {
 /// probed, one that answers only well after it is killed and reads as unknown.
 #[test]
 fn the_probe_time_limit_has_a_pass_and_a_fail_side() {
-    let limit = [("MOAI_CLI_TEST_PROBE_TIMEOUT_MS", "2000")];
+    let limit = [("MOAI_TEST_PROBE_TIMEOUT_MS", "2000")];
     let w = world();
     script(
         &w.bin,

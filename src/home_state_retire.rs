@@ -39,7 +39,7 @@ const ARCHIVE_PREFIX: &str = "moai-cli-";
 /// `after_manifest_tmp` (this module's, the manifest is whole under its temporary name),
 /// `after_manifest` (this module's, between the manifest and the journal) or a point of
 /// [`crate::move_journal`].
-pub const FAULT_VAR: &str = "MOAI_CLI_TEST_STATE_RETIRE_FAULT";
+pub const FAULT_VAR: &str = "MOAI_TEST_STATE_RETIRE_FAULT";
 
 /// What the calling process knows that the library does not read itself.
 pub struct Facts {

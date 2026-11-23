@@ -28,10 +28,10 @@ const PERMISSION: &str = "launcher-auto-init: the user chose first-launch setup"
 const WORKFLOW_ID: &str = "moai";
 /// Test-only: milliseconds a first launch holds `.init-lock` between writing the settings and
 /// generating `CLAUDE.md` (at most 3000), so a test can show a concurrent launch waits.
-pub const INIT_TEST_HOLD_VAR: &str = "MOAI_CLI_TEST_INIT_HOLD_MS";
+pub const INIT_TEST_HOLD_VAR: &str = "MOAI_TEST_INIT_HOLD_MS";
 /// Test-only: when set, a first launch stops with an error right after writing the settings,
 /// the interrupted state that the next launch must finish (Issue #2504).
-pub const INIT_TEST_FAIL_VAR: &str = "MOAI_CLI_TEST_INIT_FAIL_AFTER_PROFILE";
+pub const INIT_TEST_FAIL_VAR: &str = "MOAI_TEST_INIT_FAIL_AFTER_PROFILE";
 /// Marker of a first-launch initialization that has started and not finished, in the clone's
 /// common dir beside `.init-lock` (never listed by git). Written before the settings, removed
 /// after the CLAUDE.md step (Issue #2504).

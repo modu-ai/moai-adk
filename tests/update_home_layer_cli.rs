@@ -500,7 +500,7 @@ fn update_home_with_an_unreadable_process_table_offers_nothing() {
             .env("PATH", "/usr/sbin:/usr/bin:/bin:/sbin")
             .env("HOME", &home)
             .env("LC_ALL", "C")
-            .env("MOAI_CLI_TEST_PROCESS_CHECK", "unavailable")
+            .env("MOAI_TEST_PROCESS_CHECK", "unavailable")
             .current_dir(&home)
             .stdin(Stdio::null())
             .output()

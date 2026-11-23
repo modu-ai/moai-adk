@@ -15,7 +15,7 @@ const V1: &[u8] = include_bytes!("../.moai/specs/SPEC-20261119-switch-script-v2/
 const NOW: &str = "2026-11-19T07:47:22Z";
 const STAMP: &str = "20261119T074722Z";
 
-/// The fault seam (`MOAI_CLI_TEST_FAULT`) is a process-wide variable: every test that applies
+/// The fault seam (`MOAI_TEST_FAULT`) is a process-wide variable: every test that applies
 /// takes this gate, so a fault set by one test is never seen by another.
 static GATE: Mutex<()> = Mutex::new(());
 
@@ -402,9 +402,9 @@ fn a_failed_step_leaves_a_whole_file() {
     for point in ["switch-after-save", "switch-rename"] {
         let h = Home::new();
         let token = h.token();
-        std::env::set_var("MOAI_CLI_TEST_FAULT", point);
+        std::env::set_var("MOAI_TEST_FAULT", point);
         let r = switch::apply(&h.root, &token, NOW);
-        std::env::remove_var("MOAI_CLI_TEST_FAULT");
+        std::env::remove_var("MOAI_TEST_FAULT");
         let e = r.unwrap_err();
         assert!(e.contains(point), "{point}: {e}");
         assert_eq!(h.read(), V1, "{point}: still the whole v1");

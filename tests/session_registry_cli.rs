@@ -471,7 +471,7 @@ fn concurrent_registrations_admit_one() {
             registrar(&fx)
                 .args(["session-register", &repo, "--name", "agent-8", "--now", T0])
                 .current_dir(&fx.repo)
-                .env("MOAI_CLI_TEST_SESSION_REGISTRY_HOLD_MS", "150")
+                .env("MOAI_TEST_SESSION_REGISTRY_HOLD_MS", "150")
                 .stdout(std::process::Stdio::piped())
                 .stderr(std::process::Stdio::piped())
                 .spawn()

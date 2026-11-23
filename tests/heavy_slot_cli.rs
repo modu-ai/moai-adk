@@ -134,7 +134,7 @@ const ROOMY: &str = "free_gb=1000,swap_pct=0";
 
 fn acquire(dir: &Path, max: &str, name: &str, cmd: &[&str]) -> Command {
     let mut c = Command::new(EXE);
-    c.env("MOAI_CLI_TEST_MACHINE", ROOMY)
+    c.env("MOAI_TEST_MACHINE", ROOMY)
         .args(["heavy-slot-acquire", "--max", max, "--name", name, "--dir"])
         .arg(dir)
         .arg("--")
@@ -690,7 +690,7 @@ fn a_machine_over_the_limits_starts_nothing() {
             fs::write(slots.join("limits.json"), body).unwrap();
         }
         let mut c = Command::new(EXE);
-        c.env("MOAI_CLI_TEST_MACHINE", machine)
+        c.env("MOAI_TEST_MACHINE", machine)
             .args([
                 "heavy-slot-acquire",
                 "--max",
@@ -713,6 +713,46 @@ fn a_machine_over_the_limits_starts_nothing() {
             assert!(err.contains("lane-l not started"), "{machine}: {err}");
             assert!(!ran.exists(), "{machine}: ran anyway");
             assert!(!slots.exists(), "{machine}: slot folder created");
+        }
+    }
+}
+
+/// SPEC-20261121-moai-name slice 3: the machine seam is `MOAI_TEST_MACHINE`; the earlier name
+/// (the same words with `CLI_` in front of `TEST_`) is read nowhere. A starved machine given
+/// under the new name refuses the run and the refusal shows the number; the same value given
+/// only under the earlier name is not shown, so the real machine decides and 37 GB free is not
+/// what it reports. The earlier name is joined at run time so this file does not spell it.
+#[test]
+fn the_earlier_test_machine_name_is_not_read() {
+    let earlier = concat!("MOAI_CLI_", "TEST_MACHINE");
+    let starved = "free_gb=37,swap_pct=0";
+    for (name, read) in [("MOAI_TEST_MACHINE", true), (earlier, false)] {
+        let d = tempfile::tempdir().unwrap();
+        let slots = d.path().join("slots");
+        let mut c = Command::new(EXE);
+        c.env_remove("MOAI_TEST_MACHINE")
+            .env_remove(earlier)
+            .env(name, starved)
+            .args([
+                "heavy-slot-acquire",
+                "--max",
+                "1",
+                "--name",
+                "lane-n",
+                "--dir",
+            ])
+            .arg(&slots)
+            .args(["--", "true"]);
+        let out = run(c);
+        let err = String::from_utf8_lossy(&out.stderr);
+        if read {
+            assert_eq!(out.status.code(), Some(75), "{name}: {}", text(&out));
+            assert!(err.contains("disk free 37.0 GB"), "{name}: {err}");
+        } else {
+            assert!(
+                !err.contains("disk free 37.0 GB"),
+                "the earlier name {name} was read: {err}"
+            );
         }
     }
 }
@@ -886,7 +926,7 @@ fn macos_is_judged_on_memory_pressure_not_swap() {
             fs::write(slots.join("limits.json"), body).unwrap();
         }
         let mut c = Command::new(EXE);
-        c.env("MOAI_CLI_TEST_MACHINE", machine)
+        c.env("MOAI_TEST_MACHINE", machine)
             .args([
                 "heavy-slot-acquire",
                 "--max",
@@ -937,21 +977,18 @@ fn a_start_under_100_gb_free_warns_once_on_stderr_only() {
         let _ = fs::remove_file(&ran);
         let d = tempfile::tempdir().unwrap();
         let mut c = Command::new(EXE);
-        c.env(
-            "MOAI_CLI_TEST_MACHINE",
-            format!("free_gb={free},swap_pct=0"),
-        )
-        .args([
-            "heavy-slot-acquire",
-            "--max",
-            "1",
-            "--name",
-            "lane-w",
-            "--dir",
-        ])
-        .arg(d.path().join("slots"))
-        .args(flags)
-        .args(["--", "sh", "-c", &touch]);
+        c.env("MOAI_TEST_MACHINE", format!("free_gb={free},swap_pct=0"))
+            .args([
+                "heavy-slot-acquire",
+                "--max",
+                "1",
+                "--name",
+                "lane-w",
+                "--dir",
+            ])
+            .arg(d.path().join("slots"))
+            .args(flags)
+            .args(["--", "sh", "-c", &touch]);
         let out = run(c);
         let (stdout, stderr) = (
             String::from_utf8_lossy(&out.stdout),
@@ -991,7 +1028,7 @@ fn limits_dir(body: &str) -> (tempfile::TempDir, PathBuf) {
 /// One caller on `machine` with `flags`, running `touch <ran>`.
 fn limited(slots: &Path, machine: &str, flags: &[&str], ran: &Path) -> Command {
     let mut c = Command::new(EXE);
-    c.env("MOAI_CLI_TEST_MACHINE", machine)
+    c.env("MOAI_TEST_MACHINE", machine)
         .args([
             "heavy-slot-acquire",
             "--max",
@@ -1089,7 +1126,7 @@ fn a_limits_file_beside_the_slots_wins_when_stricter() {
     let d = tempfile::tempdir().unwrap();
     let _ = fs::remove_file(&ran);
     let mut c = Command::new(EXE);
-    c.env("MOAI_CLI_TEST_MACHINE", ROOMY)
+    c.env("MOAI_TEST_MACHINE", ROOMY)
         .args(["heavy-slot-acquire", "--name", "lane-f", "--dir"])
         .arg(d.path())
         .args(["--", "sh", "-c", &format!("touch '{}'", ran.display())]);
@@ -1220,7 +1257,7 @@ fn the_limits_are_judged_again_after_a_wait() {
         "second",
         &["sh", "-c", &format!("touch '{}'", ran.display())],
     );
-    c.env("MOAI_CLI_TEST_MACHINE", format!("@{}", machine.display()))
+    c.env("MOAI_TEST_MACHINE", format!("@{}", machine.display()))
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
     let second = spawn(c);
@@ -1258,7 +1295,7 @@ fn a_waiter_whose_parent_ended_leaves_the_queue() {
     // A parent shell starts the waiter in the background and ends once the waiter is queued
     // (ending before the waiter even started would make it a child of pid 1 from the start).
     let script = format!(
-        "MOAI_CLI_TEST_MACHINE='{ROOMY}' '{EXE}' heavy-slot-acquire --max 1 --name orphan --dir '{dir}' -- touch '{}' 2>'{}' & echo $! > '{}'; while [ -z \"$(ls '{dir}/waiting')\" ]; do sleep 0.05; done",
+        "MOAI_TEST_MACHINE='{ROOMY}' '{EXE}' heavy-slot-acquire --max 1 --name orphan --dir '{dir}' -- touch '{}' 2>'{}' & echo $! > '{}'; while [ -z \"$(ls '{dir}/waiting')\" ]; do sleep 0.05; done",
         ran.display(),
         err.display(),
         pidfile.display(),
@@ -1316,7 +1353,7 @@ fn the_python_tool_and_the_command_take_turns_in_one_folder() {
             // The same roomy machine as the Rust side: without it the Python tool measures the
             // runner's real disk, a CI runner under 50 GB refuses to start (exit 75) and the
             // holder never runs (tip red on macos-arm64, #2829 6869898907).
-            c.env("MOAI_CLI_TEST_MACHINE", ROOMY)
+            c.env("MOAI_TEST_MACHINE", ROOMY)
                 .arg("-I")
                 .arg(python_tool())
                 .args(["acquire", "--max", "1", "--name", "py", "--dir"])
@@ -1379,7 +1416,7 @@ fn without_dir_both_tools_use_the_same_default_folder() {
             c.clean_env()
                 .env("PATH", std::env::var_os("PATH").unwrap_or_default())
                 .env("HOME", home.path())
-                .env("MOAI_CLI_TEST_MACHINE", ROOMY)
+                .env("MOAI_TEST_MACHINE", ROOMY)
                 .current_dir(work.path());
             match case {
                 "set" => {
@@ -1461,7 +1498,7 @@ fn default_folder_run(home: &Path, cache: &Path, args: &[&str]) -> Output {
         .env("PATH", std::env::var_os("PATH").unwrap_or_default())
         .env("HOME", home)
         .env("XDG_CACHE_HOME", cache)
-        .env("MOAI_CLI_TEST_MACHINE", ROOMY)
+        .env("MOAI_TEST_MACHINE", ROOMY)
         .args(args);
     run(c)
 }
@@ -1680,7 +1717,7 @@ fn acquire_applies_the_earlier_limits_file_to_the_run() {
             .env("PATH", std::env::var_os("PATH").unwrap_or_default())
             .env("HOME", home.path())
             .env("XDG_CACHE_HOME", cache.path())
-            .env("MOAI_CLI_TEST_MACHINE", ROOMY)
+            .env("MOAI_TEST_MACHINE", ROOMY)
             .args(["heavy-slot-acquire", "--name", name, "--", "sh", "-c", body])
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());

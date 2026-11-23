@@ -433,7 +433,7 @@ fn an_unreadable_process_table_keeps_run_data_in_place() {
     let p = plan_env(
         &home,
         &["--selective"],
-        &[("MOAI_CLI_TEST_PROCESS_CHECK", "unavailable")],
+        &[("MOAI_TEST_PROCESS_CHECK", "unavailable")],
     );
     for name in [
         "cache",

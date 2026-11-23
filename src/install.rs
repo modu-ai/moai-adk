@@ -36,12 +36,12 @@ const RECEIPT_LIMIT: u64 = 65536;
 /// A release binary may legitimately be tens of MiB; this only refuses absurd inputs.
 const BINARY_HASH_LIMIT: u64 = 512 * 1024 * 1024;
 const PROBE_TIMEOUT: Duration = Duration::from_secs(5);
-/// The probe limit in force. Debug builds take `MOAI_CLI_TEST_PROBE_TIMEOUT_MS=<1..=5000>`
+/// The probe limit in force. Debug builds take `MOAI_TEST_PROBE_TIMEOUT_MS=<1..=5000>`
 /// instead, so a test fixes the budget rather than waiting on the wall clock (#2808 audit
 /// B1, `verify.md`); release builds never read it.
 fn probe_timeout() -> Duration {
     #[cfg(debug_assertions)]
-    if let Some(ms) = std::env::var("MOAI_CLI_TEST_PROBE_TIMEOUT_MS")
+    if let Some(ms) = std::env::var("MOAI_TEST_PROBE_TIMEOUT_MS")
         .ok()
         .and_then(|v| v.parse::<u64>().ok())
         .filter(|ms| (1..=5000).contains(ms))
