@@ -90,7 +90,11 @@ Status: SPEC draft (revision 1), implemented in two slices. The SPEC carries no 
 - AC-2 (REQ-3): met by `leader_registration_cli ac2_` (2 passed), the lane-entry renewal into mode leader included.
 - AC-3 (REQ-4, REQ-15): met by `leader_registration_cli ac3_` (3 passed), a foreign session with no mode and with mode agent included.
 - AC-4 (REQ-5, REQ-6): met by `leader_registration_cli ac4_` (3 passed), the `.live` file case included.
-- AC-5 to AC-9 (REQ-7 to REQ-14): met by `cargo test --offline --locked --test leader_round_cli registration_` (12 passed), `duplicate` included.
+- AC-5 (REQ-7, REQ-8): met by `cargo test --offline --locked --test leader_round_cli registration_` (12 passed), `duplicate` included.
+- AC-6 (REQ-9): met by `leader_round_cli registration_an_unreadable_entry_makes_the_part_error`.
+- AC-7 (REQ-10, REQ-14): met by `leader_round_cli registration_renew_instance_renews_an_ended_lease` and `registration_renew_instance_refusals_leave_the_entry_alone`.
+- AC-8 (REQ-11): met by `leader_round_cli registration_read_writes_nothing`.
+- AC-9 (REQ-12, REQ-13): met by `leader_round_cli registration_note_names_the_renewal_words` and `registration_without_a_registry_is_absent_and_not_not_run`.
 - AC-10: met by `cargo test --offline --locked --test session_registry_cli --test launcher_liveness_cli --test leader_pulse_cli` (32, 7 and 2 passed).
 - A registration that has to judge whether a second leader is live fails with the unreadable entry's message when any entry of the registry cannot be read (fail closed; nothing is written).
 - Not done here: the `/moai leader` path text and the completion handshake (non-goals); a `/clear` of the coordination window still continues through `session-register --continue` (R-3).
