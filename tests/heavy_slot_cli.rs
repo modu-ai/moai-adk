@@ -1637,9 +1637,9 @@ fn heavy_slot_acquire_makes_nothing_under_home() {
     }
 }
 
-/// N1 and N2 of the audit of SPEC-20261123-lane-env-own-target: with `<HOME>/.moai` a link to
-/// another folder, the retired home build root is recognised both by the real path of that
-/// link's target (the resolved root) and by the value as written (`<HOME>/.moai/build/...`),
+/// N1 and N2 of the audit of SPEC-20261123-lane-env-own-target: with the state folder of the
+/// fixture HOME a link to another folder, the retired home build root is recognised both by the
+/// real path of that link's target (the resolved root) and by the value as written (under `f.build`),
 /// also when a link inside the root leads out of it. Each way is pinned by its own value: the
 /// resolved root alone misses the last one, the written root alone misses the first. The
 /// wrapper makes nothing in the folder the link leads to.
@@ -1651,7 +1651,7 @@ fn a_home_moai_link_is_followed_and_the_value_as_written_is_kept() {
     let outside = f.root.join("outside-build");
     fs::create_dir_all(real.join("build")).unwrap();
     fs::create_dir(&outside).unwrap();
-    std::os::unix::fs::symlink(&real, f.home.join(".moai")).unwrap();
+    std::os::unix::fs::symlink(&real, f.build.parent().unwrap()).unwrap();
     std::os::unix::fs::symlink(&outside, real.join("build/leads-out")).unwrap();
     let held = |dir: &Path| -> Vec<PathBuf> {
         let mut v: Vec<_> = fs::read_dir(dir)
@@ -1666,7 +1666,7 @@ fn a_home_moai_link_is_followed_and_the_value_as_written_is_kept() {
         (held(&f.home), held(&real), held(&real.join("build")));
 
     // Written under the link: the root is the resolved one, the value is shown as the folder.
-    let under_link = f.home.join(".moai/build/repo-wt-one");
+    let under_link = f.build.join("repo-wt-one");
     let err = f.stderr_of(&f.one, Some(&f.home), Some(&under_link), &f.cargo);
     assert!(err.contains("inside the retired home build root"), "{err}");
     // Written by the real path of the link's target: only the resolved root knows it.
@@ -1681,7 +1681,7 @@ fn a_home_moai_link_is_followed_and_the_value_as_written_is_kept() {
     );
     // Written under the root, with a link inside it leading out: only the value as written
     // knows it, and the warning shows the value and the root as written.
-    let leads_out = f.home.join(".moai/build/leads-out");
+    let leads_out = f.build.join("leads-out");
     let err = f.stderr_of(&f.one, Some(&f.home), Some(&leads_out), &f.cargo);
     assert!(
         err.contains(&format!(
