@@ -119,4 +119,32 @@ Official hooks documentation, https://code.claude.com/docs/en/hooks, fetched by 
 
 ## Result
 
-Status: draft, not implemented. The SPEC waits for the user's approval; no test and no code exists for it yet.
+Status: implemented on the code slice (RED `16ea1909cc`, handler `40fdf40ce4`). The SPEC stays `draft`: the approval is the user's pick, written on card C-403 by the leader, never by a lane. Nothing is installed, no settings file is read or written, and the installed hooks of this clone are untouched.
+
+- AC-1: met — `hook_bash_boundary_cli` tests `ac1_delete_table`, `ac1_git_state_table`, `ac1_protected_ref_table`, `ac1_hook_skip_table`, `ac1_unreadable_table` (each table is checked for at least 12 allowed and 12 denied cases and runs the real binary)
+- AC-2: met — `ac2_outside_a_moai_project_nothing_is_printed_for_any_case`, `ac2_a_denial_has_exactly_the_three_fields_and_an_allowed_case_prints_nothing`
+- AC-3: met — `ac3_other_tools_and_other_input_shapes_get_no_decision`
+- AC-4: met — `ac4_boundary_roots_and_a_literal_cd`, `ac4_the_project_folder_names_the_checkout_when_cwd_left_the_repository`
+- AC-5: met — `ac5_git_state_by_session_kind`
+- AC-6: met — `ac6_protected_names_and_the_checked_out_branch`
+- AC-7: met — `ac7_every_spelling_and_every_hook_running_subcommand`
+- AC-8: met — `ac8_nesting_is_judged_like_the_bare_command`, `ac8_the_depth_the_count_and_the_size_limits_take_their_boundary` (8 and 9 levels, 2048 and 2049 commands, 262144 and 262145 bytes)
+- AC-9: met — `ac9_reasons_carry_the_class_and_no_command_byte`
+- AC-10: met — `ac10_the_module_makes_no_process_network_environment_or_write_call`, `ac10_no_case_writes_a_file_and_the_mode_never_changes_the_answer`; the diff touches no settings file, `src/hook_guards.rs`, `src/hook_engine.rs`, `src/claim_verify.rs` or `src/main.rs`
+- AC-11: met — `ac11_the_prescan_never_hides_a_trigger_word`, `ac11_measured_latency_is_printed_and_only_a_tenfold_miss_fails`
+- AC-12: met — one `cargo nextest run` over `hook_bash_boundary_cli`, `hook_entry_cli`, `hook_latency_cli`, `hook_dispatch_cli`, `hook_legacy_cli`: 93 passed, 0 failed
+- AC-13: met — `moai spec check SPEC-20261123-hook-bash-boundary`, run after this Result was written
+
+Measurement (D-10), the real binary, 200 samples each, debug build, machine load average about 33 (`uptime` printed by the test): allowed command p50 4.9 ms, p90 5.3 ms, max 35.3 ms; denied command p50 4.6 ms, p90 5.1 ms, max 8.9 ms. Targets p50 20 ms and p90 40 ms are met in this run. A release-build run was not made (`not_run`); the numbers are for a debug build under load.
+
+Guard mutants: 20 single-guard removals, each run against the whole `hook_bash_boundary_cli` binary; every one failed at least one test (exit 100, no compile error) and the file was restored after each. The lines are in the READY note of the card.
+
+Dangerous-path run: the real debug binary on a throwaway project (a git repository with a link leading out, a folder outside, a temporary HOME) for a delete through the link, a glob through the link, a compound `cd` out, a push to the protected branch, a skipped hook, a reset in the primary checkout, a computed command word, a backgrounded command with a delete, input that is not JSON and 5,000,000 bytes of input. Every run exited 0; the delete cases were denied as `delete-outside`; the folder outside kept its file; no process was left behind.
+
+Choices made while implementing, inside the decisions above:
+
+- The pre-scan (D-11) removes quotes and backslashes before the substring scan, so a command word split by quoting (`r"m"`) is still seen, and any `$`, backtick, `<(` or `>(` also needs the walk.
+- When a command is both a hook skip and a ref change (a `commit -n` while `HEAD` names the integration branch), the ref class is reported first; the decision is a deny either way.
+- A `for` loop head is not judged as a command; its body words are judged as commands of their own. `case`, `function` and `coproc` are unreadable.
+
+Known gaps (not defects of this slice): the contents of a script file that a command runs are not judged (R-1); `cwd` drift between calls (R-3); whether a deny holds in `bypassPermissions`, `dontAsk` and `auto` modes stays unverified (R-5, the real-load check of 1-e); a release-build measurement was not made.
