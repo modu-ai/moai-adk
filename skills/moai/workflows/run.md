@@ -47,6 +47,8 @@ The tier lines, word for word as the audit contract writes them (its section "Au
 - code (tier 1): product code or skill text changes; a session that wrote none of it audits the head: it cites the lane's receipt instead of running the head again, and tries at most three mutants on changed lines, each against one or two targets.
 - high-risk (tier 2): a changed path starts with a prefix of the floor list below; a session that wrote none of it gives the full audit: the code steps plus the boundary, security and data-loss checks of this contract.
 
+The floor list of paths is in the audit contract, section "Audit tiers".
+
 The citation conditions and the two paragraphs after them apply to a release pull request: a lane opens no pull request (`flows/next-flow`), so a lane's head has no `pull_request` run to cite.
 
 Citation conditions — all must hold, or the CI result is not cited:
@@ -132,7 +134,7 @@ RUN hands one planned change at a time to `moai-impl`: in its own worktree where
 
 - Claude Code: the installed agent file sets `isolation: worktree`. That worktree starts from the default branch, so pass `base`; the agent checks it out and confirms `git rev-parse HEAD` before writing.
 - Kiro and Cursor CLI document no subagent worktree isolation. Fallback: the agent works in this worktree, one change at a time, and you wait for its result before the next step.
-- Cleanup: the agent deletes only the build output it made in its own worktree, from inside that worktree and by relative path (`rm -rf target/debug`), never by an absolute path, and reports in its `Cleanup` section what it could not delete. Read that section before you take the worktree's result.
+- Cleanup: the agent deletes only the build output it made in the worktree it works in (its own where the host offers one, else this worktree), from inside that worktree and by relative path (`rm -rf target/debug`), never by an absolute path, and reports in its `Cleanup` section what it could not delete. Read that section before you take the worktree's result.
 
 ## Web pages
 

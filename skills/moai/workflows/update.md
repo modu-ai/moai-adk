@@ -43,7 +43,7 @@ A running session that reads `.claude/` or writes `.moai/` cannot be detected, a
 
 Deleting is a `guarded` choice: only the user decides it, after seeing the leftover-space preview of step 7. Never touch the real HOME, keys or global settings, never delete a file, branch or worktree from that step, and never stand in for the missing apply step with `rm`, `git worktree remove` or `git clean`. A forge read that failed is reported as unread, never as an empty list.
 
-In a project, run the read-only `moai go-state-plan <project>` and show the user every warning it gives about `.worktreeinclude`: a line there that selects secret files such as `.env` makes Claude Code copy them into every new worktree, including the worktrees of the `moai-impl` and `moai-audit` agents (Issue #2670). Name the line and ask as a selection: remove that line (recommended: it stops the copying), or keep it; after the pick make that one change yourself. Never edit that file without the pick (user decision 2026-11-16, card C-51).
+In a project, run the read-only `moai go-state-plan <project>` and show the user every warning it gives about `.worktreeinclude`: a line there that selects secret files such as `.env` makes Claude Code copy them into every new worktree, including the worktrees of the `moai-impl` agent (Issue #2670); the audit worktree is made by the lander with plain git, which Claude Code does not create, so that file does not reach it. Name the line and ask as a selection: remove that line (recommended: it stops the copying), or keep it; after the pick make that one change yourself. Never edit that file without the pick (user decision 2026-11-16, card C-51).
 
 ## Completion Check
 
