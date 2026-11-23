@@ -1002,7 +1002,8 @@ fn file_read_paths_finds_what_a_reader_spells_and_skips_the_rest() {
 #[test]
 fn file_read_paths_counts_a_file_with_no_read_call() {
     let tracked = Tracked::from_paths(["skills/moai/SKILL.md", "tools/x.py"]);
-    let hands_a_path_over = "const P: &str = concat!(env!(\"CARGO_MANIFEST_DIR\"), \"/skills/moai\");\n\
+    let hands_a_path_over =
+        "const P: &str = concat!(env!(\"CARGO_MANIFEST_DIR\"), \"/skills/moai\");\n\
         fn run() { Command::new(BIN).arg(P).arg(\"tools/x.py\").output().unwrap(); }\n";
     assert_eq!(
         file_read_paths(hands_a_path_over, &tracked),
