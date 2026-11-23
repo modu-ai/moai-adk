@@ -41,6 +41,17 @@ Two landing audits left findings that block nothing. The plan of `SPEC-20261123-
 
 ## Decisions
 
-### Open decisions of the user
+| Id | Decision | Basis | Undo |
+| --- | --- | --- | --- |
+| D-1 | The launcher help is not changed: it does not call `-l|-a` deprecated. | The recorded user decision of 2026-11-10 (Issue #2359 comment 6760976883) keeps `-l|-a` and replaces decision D-1 of 2026-11-09 (deprecate); the code prints no deprecation warning. The leader answered the lane's question with the same reading on 2026-11-23 (card note 7258). | Mark `-l|-a` deprecated in the help, after the user reverses the 2026-11-10 decision. |
 
-- Launcher help for `-l|-a`: the card asked that the help say `-l|-a` is deprecated. The recorded user decision of 2026-11-10 (Issue #2359 comment 6760976883) says `-l|-a` stays, and the same text replaces decision D-1 of 2026-11-09 (deprecate); the code prints no deprecation warning. The help still says `-l|-a` "set its access" in `src/main.rs` (`HostLaunch`, `Cc`, `Glm` doc comments) and in `src/session.rs` (`role_entry_note`), while every launch now starts with the same access (SPEC-20261123-launcher-auto-mode). Whether to word it as deprecated, or only to drop "set its access", is the user's to pick through the leader; the files are outside this card's scope and `src/help.rs` is reserved by another card.
+Observed, not decided here: the help still says `-l|-a` "set its access" (`src/main.rs` `HostLaunch`, `Cc` and `Glm` doc comments, `src/session.rs` `role_entry_note`) while every launch now starts with the same access (SPEC-20261123-launcher-auto-mode). The leader left the help as it is.
+
+## Result
+
+Status: documents changed; the SPEC front matter is not changed here (approval is recorded by the user's pick, not by a lane).
+
+- AC-1: met — `rg -n "src/ledger/adopt.rs" .moai/specs/SPEC-20261123-lane-continues-card/spec.md` printed the Scope line, the Plan step 4 and the Result line (exit 0); Plan step 4 no longer puts the adopt transaction in `src/ledger/reservation.rs`.
+- AC-2: met — `cargo test --locked --offline --test session_registry_cli --test card_adopt_cli ac1_` exited 0: `card_adopt_cli` 1 passed (`ac1_a_session_that_comes_back_is_not_its_own_predecessor`) and `session_registry_cli` 3 passed.
+- AC-3: met — `rg -n "철회됨\(사용자 결정 2026-11-21\)" docs/host-support-matrix.md` printed line 83, before the Codex table (exit 0).
+- AC-4: met — `rg -n "cc\|glm\|codex" docs/host-support-matrix.md` printed nothing (exit 1, no match). `moai codex --dry-run -a` of the installed build prints `moai codex was removed: MoAI supports Claude Code and GLM only (moai cc | moai glm)`.
