@@ -2451,12 +2451,280 @@ fn temp_root() -> PathBuf {
     lexical_clean(resolve_existing(&raw))
 }
 
-/// The reason the deletion check refuses the line, or `None`.
+/// The reason a deleting command on the line is refused because it takes a command
+/// substitution (a backtick span or `$(…)`) that the segment reader cuts out of the words: the
+/// operands of `rm -rf `echo /`` are not visible, so the call is refused (repair audit 7149
+/// block 2: when in doubt, refuse).
+const DELETION_SUBSTITUTION: &str =
+    "MoAI: a delete command on this line takes a command substitution this guard cannot \
+     read; spell the paths out, or run it yourself outside the agent";
+
+/// The refusal for a delete target that still holds an expansion after the known variables
+/// expanded: a command or arithmetic substitution, `$'…'`, `$@`, `$*`, `$1`, `$$`, `$?`.
+const DELETION_EXPANSION: &str =
+    "MoAI: a delete target holds a substitution or special parameter whose value this guard \
+     cannot know; spell the path instead";
+
+/// The refusal that names the variable (N5(1): the reason says which variable and to spell
+/// the path).
+fn unknown_variable_reason(name: &str) -> String {
+    format!(
+        "MoAI: a delete target names the variable ${name}, whose value this guard \
+         cannot know; spell the path instead"
+    )
+}
+
+/// The refusal for a relative target (or a `git clean`) after a `cd`, `pushd` or `popd` whose
+/// folder this guard cannot know.
+fn unknown_folder_reason(why: &str) -> String {
+    format!(
+        "MoAI: a delete runs in a folder this guard cannot know ({why}); spell the path from \
+         the worktree"
+    )
+}
+
+/// The folder the line's `cd`, `pushd` and `popd` left the shell in, as far as this guard can
+/// read it. A folder it cannot read carries the full refusal sentence: a relative target (or a
+/// `git clean`) after it is refused with that sentence, while an absolute target is judged on
+/// its own.
+#[derive(Clone)]
+enum Dir {
+    Known(PathBuf),
+    Unknown(String),
+}
+
+/// One variable of the line: every literal value an assignment gave it, or no known value
+/// once something this guard cannot read assigned it. A repeated or conditional assignment
+/// adds a value and never replaces one: every value the variable may hold must stay inside.
+struct Var {
+    name: String,
+    values: Vec<String>,
+    unknown: bool,
+}
+
+#[derive(Default)]
+struct Vars {
+    list: Vec<Var>,
+}
+
+impl Vars {
+    fn get(&self, name: &str) -> Option<&Var> {
+        self.list.iter().find(|v| v.name == name)
+    }
+
+    fn entry(&mut self, name: &str) -> &mut Var {
+        let at = match self.list.iter().position(|v| v.name == name) {
+            Some(at) => at,
+            None => {
+                self.list.push(Var {
+                    name: name.to_string(),
+                    values: Vec::new(),
+                    unknown: false,
+                });
+                self.list.len() - 1
+            }
+        };
+        &mut self.list[at]
+    }
+
+    /// `NAME=value`, as a prefix assignment, an env-only segment or an `export`, `declare`,
+    /// `typeset`, `local` or `readonly` word.
+    fn assign(&mut self, name: &str, value: &str) {
+        if name.is_empty() || !name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_') {
+            return;
+        }
+        let readable = is_literal(value) || matches!(value, "$PWD" | "${PWD}");
+        let var = self.entry(name);
+        if !readable {
+            var.unknown = true;
+            return;
+        }
+        if !var.values.iter().any(|v| v == value) {
+            var.values.push(value.to_string());
+        }
+        if var.values.len() > 8 {
+            var.unknown = true;
+        }
+    }
+
+    /// Something this guard cannot read (a `read`, a `for` variable, an `unset`) set it.
+    fn poison(&mut self, name: &str) {
+        self.entry(name).unknown = true;
+    }
+
+    /// A `source` or `.` ran a file this guard does not read: every variable may have changed.
+    fn poison_all(&mut self) {
+        for var in &mut self.list {
+            var.unknown = true;
+        }
+    }
+}
+
+/// The variable references of a word as (start, end, name): `$name` and `${name}`.
+fn variable_refs(text: &str) -> Vec<(usize, usize, String)> {
+    let bytes = text.as_bytes();
+    let mut out = Vec::new();
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == b'$' {
+            if bytes.get(i + 1) == Some(&b'{') {
+                if let Some(end) = text[i + 2..].find('}') {
+                    out.push((i, i + 2 + end + 1, text[i + 2..i + 2 + end].to_string()));
+                    i += 2 + end + 1;
+                    continue;
+                }
+            } else {
+                let len = bytes[i + 1..]
+                    .iter()
+                    .take_while(|b| b.is_ascii_alphanumeric() || **b == b'_')
+                    .count();
+                if len > 0 {
+                    out.push((i, i + 1 + len, text[i + 1..i + 1 + len].to_string()));
+                    i += 1 + len;
+                    continue;
+                }
+            }
+        }
+        i += 1;
+    }
+    out
+}
+
+/// The most values one word may multiply out to (variables with several values).
+const MOST_CANDIDATES: usize = 32;
+
+/// The word with every variable of this line replaced by each value it may hold: `$PWD` is
+/// the folder the line is in, a variable of the table gives every literal it was assigned (a
+/// variable made unknown is a named refusal), and any other reference stays spelled for the
+/// caller (the known `$HOME` and `$TMPDIR` expand next; the rest is refused there).
+fn substitute_variables(word: &str, against: &Dir, vars: &Vars) -> Result<Vec<String>, String> {
+    let here = |against: &Dir| match against {
+        Dir::Known(p) => Ok(p.display().to_string()),
+        Dir::Unknown(reason) => Err(reason.clone()),
+    };
+    let mut candidates = vec![String::new()];
+    let mut at = 0;
+    for (start, end, name) in variable_refs(word) {
+        let piece = &word[at..start];
+        let options: Vec<String> = if let Some(var) = vars.get(&name) {
+            if var.unknown {
+                return Err(unknown_variable_reason(&name));
+            }
+            let mut options = Vec::new();
+            for value in &var.values {
+                options.push(if matches!(value.as_str(), "$PWD" | "${PWD}") {
+                    here(against)?
+                } else {
+                    value.clone()
+                });
+            }
+            options
+        } else if name == "PWD" {
+            vec![here(against)?]
+        } else {
+            vec![word[start..end].to_string()]
+        };
+        let mut next = Vec::new();
+        for c in &candidates {
+            for o in &options {
+                next.push(format!("{c}{piece}{o}"));
+            }
+        }
+        if next.len() > MOST_CANDIDATES {
+            return Err(unknown_variable_reason(&name));
+        }
+        candidates = next;
+        at = end;
+    }
+    let tail = &word[at..];
+    Ok(candidates
+        .into_iter()
+        .map(|c| format!("{c}{tail}"))
+        .collect())
+}
+
+/// One deletion target, resolved against the folder the line is in (N5(1), repair audit 7149):
+/// the variables of the line and `$PWD` first, the known `$HOME`/`$TMPDIR` next, and what is
+/// still an expansion after that — a variable this guard does not know, a command or backtick
+/// substitution, `$'…'`, `$@`, `$*`, `$1` — is a refusal, as is a relative word after a folder
+/// this guard cannot know. A `~user` home or a brace-expansion word can name anywhere, so
+/// both are outside. Every value the word may take is answered.
+fn resolve_target_word(word: &str, against: &Dir, vars: &Vars) -> Result<Vec<PathBuf>, String> {
+    if word.starts_with('~') && vars.get("HOME").is_some() {
+        return Err(unknown_variable_reason("HOME"));
+    }
+    let mut out = Vec::new();
+    for candidate in substitute_variables(word, against, vars)? {
+        let expanded = expand_known(&candidate);
+        if expanded.contains('$') || expanded.contains('`') {
+            return Err(match variable_refs(&expanded).first() {
+                Some((_, _, name)) => unknown_variable_reason(name),
+                None => DELETION_EXPANSION.to_string(),
+            });
+        }
+        if word.starts_with('~') && !word.starts_with("~/") {
+            // `~user` is another user's home (audit 6768 N4): outside every root.
+            out.push(PathBuf::from("/__moai_outside__/tilde-user"));
+            continue;
+        }
+        if expanded.contains('{') && expanded.contains('}') {
+            // A brace-expansion word can expand to anything (N4): outside every root. Only a
+            // literal brace pair is left here — every variable form is gone above.
+            out.push(PathBuf::from("/__moai_outside__/brace"));
+            continue;
+        }
+        let base = match against {
+            Dir::Known(p) => p.as_path(),
+            Dir::Unknown(reason) => {
+                if Path::new(&expanded).is_absolute() {
+                    Path::new("/")
+                } else {
+                    return Err(reason.clone());
+                }
+            }
+        };
+        out.push(resolve_target(&expanded, base));
+    }
+    Ok(out)
+}
+
+/// Whether an assignment's value is a literal this guard may resolve through: no variable,
+/// no substitution, no tilde beyond the leading home form.
+fn is_literal(value: &str) -> bool {
+    !value.contains('$') && !value.contains('`') && !value.contains('~')
+}
+
+/// The user's home folder as itself (a `cd` with no argument goes there).
+fn home_folder() -> PathBuf {
+    std::env::var_os("HOME")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from("/__moai_outside__/home"))
+}
+
+/// The folder a `cd` or `pushd` target names, as the next working folder.
+fn enter(target: &str, from: &Dir, vars: &Vars) -> Dir {
+    match resolve_target_word(target, from, vars) {
+        Ok(mut paths) if paths.len() == 1 => Dir::Known(paths.remove(0)),
+        Ok(_) => Dir::Unknown(unknown_folder_reason(
+            "a variable that holds more than one value",
+        )),
+        Err(reason) => Dir::Unknown(reason),
+    }
+}
+
+/// The reason the deletion check refuses the line, or `None`. The principle is "when in
+/// doubt, refuse" (repair audit 7149): a target, a folder, a variable or a script this guard
+/// cannot read is a refusal, never a pass.
 pub fn deletion_outside(command: &str, cwd: &Path) -> Option<String> {
     // N5(2) of audit 6768: a here-doc body is data unless it feeds a shell — cut the data
     // bodies before anything else reads the line.
     let command = strip_here_docs(command);
     let command = command.as_str();
+    // A backtick span or `$(…)` beside a deleting command is cut out of that command's words
+    // by the segment reader, so the operands it makes cannot be read.
+    if deleting_command_with_substitution(command) {
+        return Some(DELETION_SUBSTITUTION.to_string());
+    }
     let worktree = worktree_root(cwd);
     let temp = temp_root();
     let under = |p: &Path| p.starts_with(&worktree) || p.starts_with(&temp);
@@ -2467,43 +2735,100 @@ pub fn deletion_outside(command: &str, cwd: &Path) -> Option<String> {
     let feeds_xargs = command
         .split(|c: char| c.is_whitespace() || "|;&\n".contains(c))
         .any(|w| w.trim_matches(['\\', '"', '\'']) == "xargs");
-    // N5(1): the variables earlier segments of this same line assigned a literal, in order —
-    // a later target resolves through them; $PWD resolves to the working folder.
-    let mut vars: Vec<(String, String)> = Vec::new();
-    // The folder a `cd` or `pushd` on this line entered (audit 6768 B1, N4): a relative
-    // target after it names that folder, not the session cwd; `cd` alone goes home.
-    let mut base: Option<PathBuf> = None;
-    let resolve = |word: &str,
-                   against: &Path,
-                   vars: &Vec<(String, String)>|
-     -> Result<PathBuf, String> { resolve_target_word(word, against, vars) };
+    // N5(1): the variables of this same line, in order — a later target resolves through them;
+    // `$PWD` resolves to the working folder.
+    let mut vars = Vars::default();
+    // The folder the line's `cd`, `pushd` and `popd` entered (audit 6768 B1, N4; repair audit
+    // 7149): a relative target after it names that folder, not the session cwd.
+    let mut cur = Dir::Known(cwd.to_path_buf());
+    let mut remembered: Vec<Dir> = Vec::new();
     for (env, name, args) in crate::claim_verify::shell_commands_with_env(command) {
-        // The literal assignments of this segment become known to the segments after it
-        // (N5(1)); `$PWD` as a value is kept spelled and resolves to the working folder in
-        // the target resolution.
+        // The prefix assignments of this segment become known to it and to the segments
+        // after it.
         for word in &env {
-            let Some((k, v)) = word.split_once('=') else {
-                continue;
-            };
-            let usable = is_literal(v) || v == "$PWD" || v == "${PWD}";
-            if usable && !vars.iter().any(|(n, _)| n == k) {
-                vars.push((k.to_string(), v.to_string()));
+            if let Some((k, v)) = word.split_once('=') {
+                vars.assign(k, v);
             }
         }
         let mut targets: Vec<String> = Vec::new();
         match name.as_str() {
-            "cd" | "pushd" => {
-                let target = args.iter().find(|w| w.as_str() != "--").map(String::as_str);
-                base = Some(match target {
-                    None => home_folder(),
-                    Some(t) => match resolve(t, base.as_deref().unwrap_or(cwd), &vars) {
-                        Ok(p) => p,
-                        Err(reason) => return Some(reason),
-                    },
-                });
+            // An env-only segment: its assignments are all it does.
+            "" => continue,
+            "export" | "declare" | "typeset" | "local" | "readonly" => {
+                for word in args.iter().filter(|w| !w.starts_with('-')) {
+                    if let Some((k, v)) = word.split_once('=') {
+                        vars.assign(k, v);
+                    }
+                }
                 continue;
             }
-            "rm" | "rmdir" => {
+            // Builtins that set a variable from something this guard cannot read.
+            "read" | "mapfile" | "readarray" | "getopts" | "unset" | "select" => {
+                for word in args.iter().filter(|w| !w.starts_with('-')) {
+                    vars.poison(word);
+                }
+                continue;
+            }
+            "for" => {
+                if let Some(variable) = args.first() {
+                    vars.poison(variable);
+                }
+                continue;
+            }
+            "printf" => {
+                if let Some(at) = args.iter().position(|w| w == "-v") {
+                    if let Some(variable) = args.get(at + 1) {
+                        vars.poison(variable);
+                    }
+                }
+                continue;
+            }
+            "source" | "." => {
+                vars.poison_all();
+                continue;
+            }
+            "cd" | "pushd" | "popd" => {
+                let words: Vec<&str> = args.iter().map(String::as_str).collect();
+                let mut k = 0;
+                // `cd`'s own option words come first (`-L`, `-P`, `-e`, `-@`); `--` ends them.
+                while k < words.len() && matches!(words[k], "-L" | "-P" | "-e" | "-@") {
+                    k += 1;
+                }
+                if words.get(k) == Some(&"--") {
+                    k += 1;
+                }
+                let target = words.get(k).copied();
+                let next = match (name.as_str(), target) {
+                    ("popd", _) if words.is_empty() => remembered.pop().unwrap_or_else(|| {
+                        Dir::Unknown(unknown_folder_reason("`popd` with no folder remembered"))
+                    }),
+                    ("popd", _) => Dir::Unknown(unknown_folder_reason("`popd` with a position")),
+                    ("pushd", _) if words.iter().any(|w| matches!(*w, "-n" | "+0" | "+1")) => {
+                        Dir::Unknown(unknown_folder_reason("`pushd` with a stack position"))
+                    }
+                    ("cd", None) => {
+                        if vars.get("HOME").is_some() {
+                            Dir::Unknown(unknown_variable_reason("HOME"))
+                        } else {
+                            Dir::Known(home_folder())
+                        }
+                    }
+                    (_, None) => Dir::Unknown(unknown_folder_reason("`pushd` with no folder")),
+                    (_, Some("-")) => {
+                        Dir::Unknown(unknown_folder_reason("`cd -` goes to the previous folder"))
+                    }
+                    (_, Some(t)) if t.starts_with('+') && name == "pushd" => {
+                        Dir::Unknown(unknown_folder_reason("`pushd` with a stack position"))
+                    }
+                    (_, Some(t)) => enter(t, &cur, &vars),
+                };
+                if name == "pushd" {
+                    remembered.push(cur.clone());
+                }
+                cur = next;
+                continue;
+            }
+            "rm" | "rmdir" | "unlink" => {
                 targets = operands(&args).iter().map(|s| s.to_string()).collect();
                 if targets.is_empty() && feeds_xargs {
                     return Some(DELETION_OUTSIDE.to_string());
@@ -2512,14 +2837,15 @@ pub fn deletion_outside(command: &str, cwd: &Path) -> Option<String> {
             "git" => {
                 if let Some((sub, rest)) = git_subcommand(&args) {
                     if sub == "clean" {
-                        // The clean runs in the folder a leading `-C` names (audit 6768
-                        // B1, N4: also past -c pairs, the last -C, and --work-tree).
-                        if let Some(dir) = git_clean_dir(&args) {
-                            match resolve(&dir, base.as_deref().unwrap_or(cwd), &vars) {
-                                Ok(p) if !under(&p) => return Some(DELETION_OUTSIDE.to_string()),
-                                Ok(_) => {}
-                                Err(reason) => return Some(reason),
+                        // The clean runs in the work tree git resolves: the folder the `-C`
+                        // chain names, `--work-tree`, a `core.worktree` pair, GIT_WORK_TREE
+                        // and a git folder outside (audit 6768 B1, N4; repair audit 7149).
+                        match git_clean_dirs(&args, &vars, &cur) {
+                            Ok(dirs) if dirs.iter().any(|p| !under(p)) => {
+                                return Some(DELETION_OUTSIDE.to_string())
                             }
+                            Ok(_) => {}
+                            Err(reason) => return Some(reason),
                         }
                         targets = operands(rest).iter().map(|s| s.to_string()).collect();
                     }
@@ -2528,16 +2854,19 @@ pub fn deletion_outside(command: &str, cwd: &Path) -> Option<String> {
             "find" => {
                 // N5(3): -exec is a deletion only when the executed command is one.
                 let direct = args.iter().any(|w| w == "-delete");
-                let exec_deletes = find_exec_deletes(&args);
-                if direct || exec_deletes {
+                if direct || find_exec_deletes(&args) {
                     // The no-value flags lead the paths (`find -L <dir> -delete`, audit
-                    // 6768 B1/N4: also -E and -X).
+                    // 6768 B1/N4: also -E and -X); with no path find starts at `.`, the
+                    // folder the line is in (repair audit 7149).
                     targets = args
                         .iter()
                         .skip_while(|w| matches!(w.as_str(), "-H" | "-L" | "-P" | "-E" | "-X"))
                         .take_while(|w| !w.as_str().starts_with('-'))
                         .map(|w| w.to_string())
                         .collect();
+                    if targets.is_empty() {
+                        targets.push(".".to_string());
+                    }
                 }
             }
             "env" => {
@@ -2562,17 +2891,15 @@ pub fn deletion_outside(command: &str, cwd: &Path) -> Option<String> {
             }
             _ => {}
         }
-        if targets.is_empty() {
-            continue;
-        }
-        let against = base.as_deref().unwrap_or(cwd);
         for t in &targets {
             // A placeholder target stands for stdin items — unbounded (N4).
             if t.contains("{}") {
                 return Some(DELETION_OUTSIDE.to_string());
             }
-            match resolve(t, against, &vars) {
-                Ok(p) if !under(&p) => return Some(DELETION_OUTSIDE.to_string()),
+            match resolve_target_word(t, &cur, &vars) {
+                Ok(paths) if paths.iter().any(|p| !under(p)) => {
+                    return Some(DELETION_OUTSIDE.to_string())
+                }
                 Ok(_) => {}
                 Err(reason) => return Some(reason),
             }
@@ -2581,147 +2908,121 @@ pub fn deletion_outside(command: &str, cwd: &Path) -> Option<String> {
     None
 }
 
-/// One deletion target, resolved (N5(1)): `$PWD` and `${PWD}` name the working folder, a
-/// variable this same line assigned a literal names that literal, the known variables expand,
-/// and any other variable is a named refusal — the reason says which variable and to spell
-/// the path. A `~user` home or a brace-expansion word can name anywhere, so both are outside.
-fn resolve_target_word(
-    word: &str,
-    against: &Path,
-    vars: &[(String, String)],
-) -> Result<PathBuf, String> {
-    let mut text = word.to_string();
-    // A variable this same line assigned a literal names that literal first (N5(1)); a value
-    // spelled `$PWD` stays spelled here and resolves one step later.
-    for (k, v) in vars {
-        for form in [format!("${{{k}}}"), format!("${k}")] {
-            if text.contains(&form) {
-                text = text.replace(&form, v);
-            }
+/// The work trees a `git clean` may run in (repair audit 7149): the folder git runs in (every
+/// `-C` is relative to the one before it, N4), `--work-tree`, a `core.worktree` config pair
+/// given as `-c core.worktree=…` or `-ccore.worktree=…`, the GIT_WORK_TREE the line assigned,
+/// and the git folder (`--git-dir`, GIT_DIR) whose own config may name a work tree. A pair
+/// that takes its value from the environment (`--config-env core.worktree=…`) cannot be read
+/// and is a refusal.
+fn git_clean_dirs(args: &[String], vars: &Vars, cur: &Dir) -> Result<Vec<PathBuf>, String> {
+    fn config_pair(pair: &str, named: &mut Vec<String>) {
+        let lower = pair.to_ascii_lowercase();
+        if lower.starts_with("core.worktree=") {
+            named.push(pair["core.worktree=".len()..].to_string());
         }
     }
-    // $PWD next: it names the folder the resolution runs against (N5(1)) — including the
-    // braced form, which is a variable, never a brace expansion.
-    for form in ["${PWD}", "$PWD"] {
-        if text.contains(form) {
-            text = text.replace(form, &against.display().to_string());
-        }
-    }
-    let expanded = expand_known(&text);
-    // An unknown variable is a named refusal — after the known ones expanded, before any
-    // sentinel could hide it (N5(1)).
-    if let Some(name) = unknown_variable(&expanded) {
-        return Err(format!(
-            "MoAI: a delete target names the variable ${name}, whose value this guard \
-             cannot know; spell the path instead"
-        ));
-    }
-    if word.starts_with('~') && !word.starts_with("~/") {
-        // `~user` is another user's home (audit 6768 N4): outside every root.
-        return Ok(PathBuf::from("/__moai_outside__/tilde-user"));
-    }
-    if expanded.contains('{') && expanded.contains('}') {
-        // A brace-expansion word can expand to anything (N4): outside every root. Only a
-        // literal brace pair is left here — every variable form is gone above.
-        return Ok(PathBuf::from("/__moai_outside__/brace"));
-    }
-    Ok(resolve_target(&expanded, against))
-}
-
-/// The first variable name an expanded word still names (`None` when none is left).
-fn unknown_variable(word: &str) -> Option<&str> {
-    let mut rest = word;
-    while let Some(at) = rest.find('$') {
-        let tail = &rest[at..];
-        if let Some(inner) = tail.strip_prefix("${") {
-            if let Some(end) = inner.find('}') {
-                return Some(&inner[..end]);
-            }
-            return None;
-        }
-        let end = tail[1..]
-            .find(|c: char| !(c.is_ascii_alphanumeric() || c == '_'))
-            .map_or(tail.len(), |i| i + 1);
-        let name = &tail[1..end];
-        if !name.is_empty() {
-            return Some(name);
-        }
-        rest = &tail[1..];
-    }
-    None
-}
-
-/// Whether an assignment's value is a literal this guard may resolve through: no variable,
-/// no substitution, no tilde beyond the leading home form.
-fn is_literal(value: &str) -> bool {
-    !value.contains('$') && !value.contains('`') && !value.contains('~')
-}
-
-/// The user's home folder as itself (a `cd` with no argument goes there).
-fn home_folder() -> PathBuf {
-    std::env::var_os("HOME")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("/__moai_outside__/home"))
-}
-
-/// The folder a `git clean` runs in: the LAST `-C` before the subcommand, past `-c` and
-/// `--config-env` pairs, or the `--work-tree` the line names (N4).
-fn git_clean_dir(args: &[String]) -> Option<String> {
-    let mut dir = None;
+    let mut run_in = cur.clone();
+    let mut named: Vec<String> = Vec::new();
     let mut i = 0;
     while i < args.len() {
         let w = args[i].as_str();
-        if w == "-C" {
-            dir = args.get(i + 1).cloned();
-            i += 2;
-            continue;
+        let next = args.get(i + 1).map(String::as_str);
+        match w {
+            "-C" => {
+                if let Some(dir) = next {
+                    run_in = enter(dir, &run_in, vars);
+                }
+                i += 2;
+            }
+            "-c" => {
+                if let Some(pair) = next {
+                    config_pair(pair, &mut named);
+                }
+                i += 2;
+            }
+            "--config-env" => {
+                if next.is_some_and(|p| p.to_ascii_lowercase().starts_with("core.worktree=")) {
+                    return Err(DELETION_OUTSIDE.to_string());
+                }
+                i += 2;
+            }
+            "--work-tree" | "--git-dir" => {
+                if let Some(v) = next {
+                    named.push(v.to_string());
+                }
+                i += 2;
+            }
+            "--namespace" | "--super-prefix" | "--attr-source" => i += 2,
+            _ => {
+                if let Some(v) = w
+                    .strip_prefix("--work-tree=")
+                    .or_else(|| w.strip_prefix("--git-dir="))
+                {
+                    named.push(v.to_string());
+                } else if let Some(pair) = w.strip_prefix("--config-env=") {
+                    if pair.to_ascii_lowercase().starts_with("core.worktree=") {
+                        return Err(DELETION_OUTSIDE.to_string());
+                    }
+                } else if let Some(pair) = w.strip_prefix("-c").filter(|p| !p.is_empty()) {
+                    config_pair(pair, &mut named);
+                } else if !w.starts_with('-') {
+                    break;
+                }
+                i += 1;
+            }
         }
-        if w == "-c" || w == "--config-env" {
-            i += 2;
-            continue;
-        }
-        if let Some(v) = w.strip_prefix("--work-tree=") {
-            dir = Some(v.to_string());
-        } else if w == "--work-tree" {
-            dir = args.get(i + 1).cloned();
-            i += 2;
-            continue;
-        }
-        if !w.starts_with('-') {
-            break;
-        }
-        i += 1;
     }
-    dir
+    for name in ["GIT_WORK_TREE", "GIT_DIR"] {
+        if let Some(var) = vars.get(name) {
+            if var.unknown {
+                return Err(unknown_variable_reason(name));
+            }
+            named.extend(var.values.iter().cloned());
+        }
+    }
+    let mut out = Vec::new();
+    for spelling in &named {
+        out.extend(resolve_target_word(spelling, &run_in, vars)?);
+    }
+    match run_in {
+        Dir::Known(p) => out.push(p),
+        Dir::Unknown(reason) => return Err(reason),
+    }
+    Ok(out)
 }
 
-/// Whether the command a `find -exec` runs is a deletion (N5(3)): rm, rmdir or unlink by
-/// name, or one shell level whose script deletes.
+/// The last path component of a word (`/usr/bin/rm` → `rm`).
+fn base_name(word: &str) -> &str {
+    word.rsplit('/').next().unwrap_or(word)
+}
+
+/// The commands that delete a path by name.
+fn is_deleting_name(name: &str) -> bool {
+    matches!(base_name(name), "rm" | "rmdir" | "unlink" | "shred" | "srm")
+}
+
+/// Whether a word of a command a `find` runs (or a piece of the script text it hands a shell)
+/// names a deleting command: every whitespace and punctuation separated part is read, so
+/// `bash -lc 'rm -rf {}'` and `sudo -u root rm {}` both show their `rm`.
+fn word_runs_a_delete(word: &str) -> bool {
+    word.split(|c: char| c.is_whitespace() || ";|&()<>`\"'{}".contains(c))
+        .any(is_deleting_name)
+}
+
+/// Whether the command a `find` runs is a deletion: `-exec`, `-execdir`, `-ok` and `-okdir`
+/// all run it, and it may sit behind a wrapper (`env`, `command`, `sudo`, `xargs`) or a shell
+/// with bundled options (`bash -lc`). Any word of the executed command that names a deleting
+/// command makes the find a deletion; `grep`, `ls` and a script with no delete in it do not.
 fn find_exec_deletes(args: &[String]) -> bool {
     let mut i = 0;
     while i < args.len() {
-        if args[i] == "-exec" || args[i] == "-execdir" {
-            let inner: Vec<&str> = args[i + 1..]
+        if matches!(args[i].as_str(), "-exec" | "-execdir" | "-ok" | "-okdir") {
+            let mut inner = args[i + 1..]
                 .iter()
                 .map(String::as_str)
-                .take_while(|w| *w != ";" && *w != "+")
-                .collect();
-            if inner.first().is_some_and(|c| {
-                matches!(*c, "rm" | "rmdir" | "unlink" | "/bin/rm" | "/usr/bin/rm")
-            }) {
+                .take_while(|w| *w != ";" && *w != "+");
+            if inner.any(word_runs_a_delete) {
                 return true;
-            }
-            if let Some(at) = inner.iter().position(|w| *w == "-c") {
-                let name = inner.first().copied().unwrap_or("");
-                if matches!(name, "sh" | "bash" | "zsh" | "/bin/sh" | "/bin/bash") {
-                    let script = inner[at + 1..].join(" ");
-                    if crate::claim_verify::shell_commands(&script)
-                        .iter()
-                        .any(|(n, _)| matches!(n.as_str(), "rm" | "rmdir" | "unlink"))
-                    {
-                        return true;
-                    }
-                }
             }
         }
         i += 1;
@@ -2729,67 +3030,469 @@ fn find_exec_deletes(args: &[String]) -> bool {
     false
 }
 
-/// The line with its here-doc bodies cut (N5(2)): a body is data unless the command the
-/// redirect feeds is a shell (`sh`, `bash`, `zsh`, `eval`, `source`), in which case the body
-/// stays as code. Line based; the terminator is the word after `<<` (quotes stripped).
+/// The wrapper words that run the command after them (the same list the segment reader
+/// uses), for [`raw_command_deletes`].
+const RAW_WRAPPERS: &[&str] = &[
+    "builtin",
+    "caffeinate",
+    "chrt",
+    "command",
+    "doas",
+    "env",
+    "exec",
+    "ionice",
+    "nice",
+    "nohup",
+    "setsid",
+    "stdbuf",
+    "sudo",
+    "time",
+    "timeout",
+    "xargs",
+];
+
+/// Whether one raw simple command (the text between two separators, quotes kept) is a deleting
+/// command: its command word — past assignments, grouping keywords and wrappers — is
+/// `rm`/`rmdir`/`unlink`/`shred`, or `find` with a delete or an exec, or `git` with `clean`.
+fn raw_command_deletes(piece: &str) -> bool {
+    let words: Vec<&str> = piece
+        .split_whitespace()
+        .map(|w| w.trim_matches(['"', '\'', '(', ')', '{', '}', '\\', '`']))
+        .filter(|w| !w.is_empty())
+        .collect();
+    let mut i = 0;
+    while i < words.len()
+        && ((words[i].contains('=') && !words[i].starts_with('-'))
+            || matches!(
+                words[i],
+                "then" | "do" | "else" | "elif" | "fi" | "done" | "!" | "in"
+            ))
+    {
+        i += 1;
+    }
+    let Some(first) = words.get(i).copied() else {
+        return false;
+    };
+    let name = base_name(first);
+    if is_deleting_name(name) {
+        return true;
+    }
+    if RAW_WRAPPERS.contains(&name) {
+        return words[i + 1..].iter().any(|w| is_deleting_name(w));
+    }
+    match name {
+        "find" => words
+            .iter()
+            .any(|w| matches!(*w, "-delete" | "-exec" | "-execdir" | "-ok" | "-okdir")),
+        "git" => words.contains(&"clean"),
+        _ => false,
+    }
+}
+
+/// Whether one script has a deleting simple command that holds a backtick span or `$(…)`
+/// (outside single quotes): the segment reader cuts those out of the command's words.
+fn script_has_deleting_substitution(script: &str) -> bool {
+    fn finish(piece: &mut String, substituted: &mut bool) -> bool {
+        let hit = *substituted && raw_command_deletes(piece);
+        piece.clear();
+        *substituted = false;
+        hit
+    }
+    let chars: Vec<char> = script.chars().collect();
+    let mut piece = String::new();
+    let mut substituted = false;
+    let (mut single, mut double, mut in_tick) = (false, false, false);
+    let mut i = 0;
+    while i < chars.len() {
+        let c = chars[i];
+        if single {
+            piece.push(c);
+            if c == '\'' {
+                single = false;
+            }
+            i += 1;
+            continue;
+        }
+        match c {
+            '\\' => {
+                piece.push(c);
+                if let Some(n) = chars.get(i + 1) {
+                    piece.push(*n);
+                }
+                i += 2;
+                continue;
+            }
+            '\'' if !double => single = true,
+            '"' => double = !double,
+            // A substitution after the command's own words hides operands from the segment
+            // reader; one that opens the piece (`` `rm -rf x` ``, `$(rm -rf x)`) holds the
+            // command itself, which the substitution-body reading sees.
+            '`' => {
+                if !in_tick && !piece.trim().is_empty() {
+                    substituted = true;
+                }
+                in_tick = !in_tick;
+            }
+            '$' if chars.get(i + 1) == Some(&'(') && !piece.trim().is_empty() => substituted = true,
+            ';' | '&' | '|' | '\n' if !double => {
+                if finish(&mut piece, &mut substituted) {
+                    return true;
+                }
+                i += 1;
+                continue;
+            }
+            _ => {}
+        }
+        piece.push(c);
+        i += 1;
+    }
+    finish(&mut piece, &mut substituted)
+}
+
+/// [`script_has_deleting_substitution`] for the line and for every script it hands a shell or
+/// `eval` (one level, the segment reader's own reading), so quoting a script does not hide it.
+fn deleting_command_with_substitution(command: &str) -> bool {
+    crate::claim_verify::executed_scripts(command)
+        .iter()
+        .any(|script| script_has_deleting_substitution(script))
+}
+
+/// The commands that read a here-doc body as data and never as shell code.
+const DATA_READERS: &[&str] = &[
+    "awk",
+    "base64",
+    "cat",
+    "cd",
+    "cut",
+    "diff",
+    "echo",
+    "false",
+    "gh",
+    "git",
+    "grep",
+    "head",
+    "jq",
+    "md5sum",
+    "moai",
+    "patch",
+    "printf",
+    "read",
+    "sed",
+    "sha256sum",
+    "shasum",
+    "sort",
+    "tail",
+    "tee",
+    "tr",
+    "true",
+    "uniq",
+    "wc",
+];
+
+/// The first command word of a raw piece of a line, past assignments and grouping.
+fn first_command_word(piece: &str) -> Option<&str> {
+    piece
+        .split_whitespace()
+        .map(|w| w.trim_matches(['"', '\'', '(', ')', '{', '}', '\\', '`']))
+        .find(|w| !w.is_empty() && !(w.contains('=') && !w.starts_with('-')))
+}
+
+/// One here-doc a line opens: its terminator word, whether it is `<<-` (the terminator may sit
+/// behind tabs) and whether the body is data (cut) rather than code (kept).
+struct HereDoc {
+    tag: String,
+    dash: bool,
+    data: bool,
+}
+
+/// Whether the here-docs a line opens are read as data: only when no word of the line is a
+/// shell, `eval` or `source` (it may run what a substitution prints), the command the redirect
+/// feeds is a known data reader, and every command the line pipes into is one too.
+fn feeds_data(line: &str, receiver: &str, after_tag: &str) -> bool {
+    let shellish = |w: &str| {
+        let w = w.trim_matches(['"', '\'', '(', ')', '{', '}', '\\', '`', ';', '&', '|']);
+        matches!(
+            base_name(w),
+            "sh" | "bash" | "zsh" | "dash" | "ksh" | "eval" | "source" | "."
+        )
+    };
+    if line.split_whitespace().any(shellish) {
+        return false;
+    }
+    let reads_data = |piece: &str| {
+        first_command_word(piece).is_some_and(|w| DATA_READERS.contains(&base_name(w)))
+    };
+    if !reads_data(receiver) {
+        return false;
+    }
+    // Commands the redirect's line pipes the body into: the segments after a single `|`.
+    let chars: Vec<char> = after_tag.chars().collect();
+    let (mut single, mut double) = (false, false);
+    let mut piped: Vec<String> = Vec::new();
+    let mut current: Option<String> = None;
+    let mut i = 0;
+    while i < chars.len() {
+        let c = chars[i];
+        match c {
+            '\'' if !double => single = !single,
+            '"' if !single => double = !double,
+            '|' if !single && !double => {
+                if chars.get(i + 1) == Some(&'|') {
+                    // `||` ends the pipeline; the next command does not read the body.
+                    if let Some(done) = current.take() {
+                        piped.push(done);
+                    }
+                    i += 2;
+                    continue;
+                }
+                if let Some(done) = current.take() {
+                    piped.push(done);
+                }
+                current = Some(String::new());
+                i += 1;
+                continue;
+            }
+            ';' | '&' if !single && !double => {
+                if let Some(done) = current.take() {
+                    piped.push(done);
+                }
+            }
+            _ => {}
+        }
+        if let Some(text) = current.as_mut() {
+            text.push(c);
+        }
+        i += 1;
+    }
+    if let Some(done) = current.take() {
+        piped.push(done);
+    }
+    piped.iter().all(|piece| reads_data(piece))
+}
+
+/// The here-docs one line opens, in order. A `<<` opens one only where the shell reads it as
+/// the operator: not inside single or double quotes, `$'…'`, `$((…))`, `((…))` or a comment,
+/// and not as the here-string `<<<`; a `$(…)` inside double quotes starts reading anew (the
+/// `"$(cat <<'EOF'` commit-message form).
+fn here_docs_in(line: &str) -> Vec<HereDoc> {
+    #[derive(Clone, Copy)]
+    enum Ctx {
+        Normal,
+        Single,
+        AnsiC,
+        Double,
+        Arith(u32),
+        Subst(u32),
+    }
+    let chars: Vec<char> = line.chars().collect();
+    let text_of = |from: usize, to: usize| chars[from.min(to)..to].iter().collect::<String>();
+    let mut stack = vec![Ctx::Normal];
+    let mut out = Vec::new();
+    // Where the simple command that holds the current position began.
+    let mut seg_start = 0usize;
+    let mut i = 0;
+    while i < chars.len() {
+        let c = chars[i];
+        let next = chars.get(i + 1).copied();
+        let top = stack.last().copied().unwrap_or(Ctx::Normal);
+        match top {
+            Ctx::Single => {
+                if c == '\'' {
+                    stack.pop();
+                }
+                i += 1;
+            }
+            Ctx::AnsiC => {
+                if c == '\\' {
+                    i += 2;
+                } else {
+                    if c == '\'' {
+                        stack.pop();
+                    }
+                    i += 1;
+                }
+            }
+            Ctx::Double => {
+                if c == '\\' {
+                    i += 2;
+                } else if c == '"' {
+                    stack.pop();
+                    i += 1;
+                } else if c == '$' && next == Some('(') {
+                    if chars.get(i + 2) == Some(&'(') {
+                        stack.push(Ctx::Arith(2));
+                        i += 3;
+                    } else {
+                        stack.push(Ctx::Subst(1));
+                        i += 2;
+                        seg_start = i;
+                    }
+                } else {
+                    i += 1;
+                }
+            }
+            Ctx::Arith(depth) => {
+                let depth = match c {
+                    '(' => depth + 1,
+                    ')' => depth - 1,
+                    _ => depth,
+                };
+                stack.pop();
+                if depth > 0 {
+                    stack.push(Ctx::Arith(depth));
+                }
+                i += 1;
+            }
+            Ctx::Normal | Ctx::Subst(_) => match c {
+                '\\' => i += 2,
+                '\'' => {
+                    stack.push(Ctx::Single);
+                    i += 1;
+                }
+                '"' => {
+                    stack.push(Ctx::Double);
+                    i += 1;
+                }
+                '#' if i == 0 || chars[i - 1].is_whitespace() => break,
+                '$' if next == Some('\'') => {
+                    stack.push(Ctx::AnsiC);
+                    i += 2;
+                }
+                '$' if next == Some('"') => {
+                    stack.push(Ctx::Double);
+                    i += 2;
+                }
+                '$' if next == Some('(') => {
+                    if chars.get(i + 2) == Some(&'(') {
+                        stack.push(Ctx::Arith(2));
+                        i += 3;
+                    } else {
+                        stack.push(Ctx::Subst(1));
+                        i += 2;
+                        seg_start = i;
+                    }
+                }
+                '(' if next == Some('(') => {
+                    stack.push(Ctx::Arith(2));
+                    i += 2;
+                }
+                '(' => {
+                    if let Ctx::Subst(depth) = top {
+                        stack.pop();
+                        stack.push(Ctx::Subst(depth + 1));
+                    }
+                    seg_start = i + 1;
+                    i += 1;
+                }
+                ')' => {
+                    if let Ctx::Subst(depth) = top {
+                        stack.pop();
+                        if depth > 1 {
+                            stack.push(Ctx::Subst(depth - 1));
+                        }
+                    }
+                    i += 1;
+                }
+                '`' | ';' | '&' | '|' => {
+                    seg_start = i + 1;
+                    i += 1;
+                }
+                '<' if next == Some('<') => {
+                    if chars.get(i + 2) == Some(&'<') {
+                        // A here-string reads no body.
+                        i += 3;
+                        continue;
+                    }
+                    let mut j = i + 2;
+                    let dash = chars.get(j) == Some(&'-');
+                    if dash {
+                        j += 1;
+                    }
+                    while chars.get(j).is_some_and(|c| *c == ' ' || *c == '\t') {
+                        j += 1;
+                    }
+                    let mut tag = String::new();
+                    match chars.get(j).copied() {
+                        Some(q @ ('\'' | '"')) => {
+                            j += 1;
+                            while let Some(&t) = chars.get(j) {
+                                j += 1;
+                                if t == q {
+                                    break;
+                                }
+                                tag.push(t);
+                            }
+                        }
+                        _ => {
+                            while let Some(&t) = chars.get(j) {
+                                if t.is_whitespace() || ";|&()<>".contains(t) {
+                                    break;
+                                }
+                                if !matches!(t, '\'' | '"' | '\\') {
+                                    tag.push(t);
+                                }
+                                j += 1;
+                            }
+                        }
+                    }
+                    if tag.is_empty() {
+                        i += 2;
+                        continue;
+                    }
+                    let receiver = text_of(seg_start, i);
+                    let after_tag = text_of(j, chars.len());
+                    out.push(HereDoc {
+                        tag,
+                        dash,
+                        data: feeds_data(line, &receiver, &after_tag),
+                    });
+                    i = j;
+                }
+                _ => i += 1,
+            },
+        }
+    }
+    out
+}
+
+/// Whether a line is the terminator of a here-doc (`<<-` lets tabs lead it).
+fn ends_here_doc(line: &str, doc: &HereDoc) -> bool {
+    let line = if doc.dash {
+        line.trim_start_matches('\t')
+    } else {
+        line
+    };
+    line == doc.tag
+}
+
+/// The line with its here-doc bodies cut (N5(2), repair audit 7149): a body is data only when
+/// [`feeds_data`] says every command that reads it is a known data reader and the `<<` is the
+/// operator the shell reads; every other body stays as code. The body ends at its terminator
+/// line (behind tabs for `<<-`), and what follows the terminator is code again.
 fn strip_here_docs(command: &str) -> String {
     let lines: Vec<&str> = command.lines().collect();
     let mut out = String::new();
     let mut i = 0;
     while i < lines.len() {
         let line = lines[i];
-        if let Some(tag) = heredoc_tag(line) {
-            let mut end = lines.len();
-            for (j, l) in lines.iter().enumerate().skip(i + 1) {
-                if l.trim() == tag {
-                    end = j;
-                    break;
-                }
+        out.push_str(line);
+        out.push('\n');
+        i += 1;
+        for doc in here_docs_in(line) {
+            let mut end = i;
+            while end < lines.len() && !ends_here_doc(lines[end], &doc) {
+                end += 1;
             }
-            out.push_str(line);
-            out.push('\n');
-            if line_feeds_shell(line) {
-                for body in &lines[i + 1..end] {
+            if !doc.data {
+                for body in &lines[i..end] {
                     out.push_str(body);
                     out.push('\n');
                 }
             }
-            i = end + 1;
-        } else {
-            out.push_str(line);
-            out.push('\n');
-            i += 1;
+            i = (end + 1).min(lines.len());
         }
     }
     out
-}
-
-/// Whether a line's command is a shell that reads the here-doc as code.
-fn line_feeds_shell(line: &str) -> bool {
-    for word in line.split_whitespace() {
-        let w = word.trim_matches(['\\', '"', '\'']);
-        if w.contains('=') && !w.starts_with('-') {
-            continue;
-        }
-        let name = w.rsplit('/').next().unwrap_or(w);
-        return matches!(name, "sh" | "bash" | "zsh" | "eval" | "source" | ".");
-    }
-    false
-}
-
-/// The here-doc terminator word of a line, when it holds a `<<` redirect.
-fn heredoc_tag(line: &str) -> Option<String> {
-    let at = line.find("<<")?;
-    let rest = line[at + 2..].trim_start();
-    if rest.starts_with('<') {
-        return None;
-    }
-    let word: String = rest
-        .chars()
-        .take_while(|c| !c.is_whitespace() && *c != ';')
-        .collect();
-    let word = word.trim_matches(['\'', '"']);
-    (!word.is_empty()).then(|| word.to_string())
 }
 
 #[cfg(test)]
@@ -4316,5 +5019,273 @@ mod tests {
         assert!(deletion_outside(&rm, &wt).is_some(), "{rm}");
         let shell = format!("find {outside} -name x -exec sh -c 'rm -rf {{}}' \\;");
         assert!(deletion_outside(&shell, &wt).is_some(), "{shell}");
+    }
+
+    // ---- repair audit 7149 block 2 (each shape was a bypass; the principle is "when in
+    // doubt, refuse": a target, folder or script this guard cannot read is a refusal) ----
+
+    const OUT: &str = "/Users/definitely-not-here";
+
+    fn assert_all_refused(wt: &Path, cases: &[String]) {
+        for command in cases {
+            assert!(
+                deletion_outside(command, wt).is_some(),
+                "not refused: {command:?}"
+            );
+        }
+    }
+
+    fn assert_all_pass(wt: &Path, cases: &[String]) {
+        for command in cases {
+            assert_eq!(deletion_outside(command, wt), None, "refused: {command:?}");
+        }
+    }
+
+    fn owned(cases: &[&str]) -> Vec<String> {
+        cases.iter().map(|c| c.to_string()).collect()
+    }
+
+    /// A target that still holds an expansion this guard cannot read is refused: a command or
+    /// backtick substitution, an ANSI-C or locale quote, `$@`, `$*` and the other special
+    /// parameters (the earlier rule refused every leftover `$`; the repair audit found the
+    /// regression).
+    #[test]
+    fn repair_7149_a_target_with_an_unreadable_expansion_is_refused() {
+        let (_d, wt) = a_worktree();
+        assert_all_refused(
+            &wt,
+            &owned(&[
+                "rm -rf $(echo /)",
+                "rm -rf \"$(echo /)\"",
+                "rm -rf `echo /`",
+                "rm -rf \"`echo /`\"",
+                "rm -rf $'/Users/definitely-not-here'",
+                "rm -rf $\"/Users/definitely-not-here\"",
+                "set -- /; rm -rf \"$@\"",
+                "rm -rf \"$@\"",
+                "rm -rf $*",
+                "rm -rf $1",
+                "rm -rf $$",
+                "rm -rf $?",
+                "rm -rf $#",
+                "rm -rf build/$(date +%s)",
+                "bash -c 'rm -rf $(echo /)'",
+                "bash -c 'rm -rf `echo /`'",
+                "sh -c \"rm -rf `echo /`\"",
+                "env rm -rf `echo /`",
+                "echo x | xargs rm -rf `echo /`",
+            ]),
+        );
+        // The calls that only mention a substitution beside a command that deletes nothing.
+        assert_all_pass(
+            &wt,
+            &owned(&[
+                "echo $(date)",
+                "echo `date` && rm -rf build",
+                "ls $(pwd)",
+                "git log $(git rev-parse HEAD)",
+                "git commit -m \"fix $(date)\"",
+                "echo \"rm `date`\"",
+                "echo \"$@\"",
+                "rm -rf build",
+            ]),
+        );
+    }
+
+    /// cd/pushd/popd: the option words (`-P`, `-L`), `cd -`, a substitution target and a popd
+    /// with nothing remembered all leave a folder this guard cannot know, and a relative
+    /// deletion (or a find with no path, or a git clean) after it is refused; the same cd with
+    /// no deletion after it is not.
+    #[test]
+    fn repair_7149_cd_forms_that_leave_an_unknown_folder() {
+        let (_d, wt) = a_worktree();
+        assert_all_refused(
+            &wt,
+            &owned(&[
+                "cd -P / && rm -rf victim",
+                "cd -L / && rm -rf victim",
+                "cd -P -- / && rm -rf victim",
+                "cd $(echo /) && rm -rf victim",
+                "cd \"$(echo /)\" && rm -rf victim",
+                "cd `echo /` && rm -rf victim",
+                "pushd / && pushd src && popd && rm -rf victim",
+                "popd && rm -rf victim",
+                "cd - && rm -rf victim",
+                "cd / && find -name x -delete",
+                "cd / && git clean -fdx",
+                "cd $(git rev-parse --show-toplevel) && rm -rf build",
+            ]),
+        );
+        assert_all_pass(
+            &wt,
+            &owned(&[
+                "cd -P src && rm -rf build",
+                "cd -L -- src && rm -rf build",
+                "pushd src && popd && rm -rf build",
+                "cd src && find -name x -delete",
+                "cd $(git rev-parse --show-toplevel) && ls",
+                "cd $(git rev-parse --show-toplevel) && git status",
+                "cd src && git clean -fdx",
+            ]),
+        );
+    }
+
+    /// Variables assigned on the same line: a later assignment, `export`, a prefix assignment
+    /// and the declaring builtins all add a value; one that cannot be read, a `read`, a `for`
+    /// variable, an `unset` and a `source` make the variable unknown. Every value a variable
+    /// may hold must stay inside.
+    #[test]
+    fn repair_7149_variable_assignments_after_the_first() {
+        let (_d, wt) = a_worktree();
+        assert_all_refused(
+            &wt,
+            &owned(&[
+                "D=build; D=/; rm -rf $D",
+                "D=build; export D=/; rm -rf $D",
+                "export D=/; rm -rf $D",
+                "D=build; D=/ rm -rf $D",
+                "declare D=/; rm -rf $D",
+                "typeset -x D=/; rm -rf $D",
+                "local D=/; rm -rf $D",
+                "readonly D=/; rm -rf $D",
+                "D=build; D=$(echo /); rm -rf $D",
+                "D=build; read D; rm -rf $D",
+                "D=build; for D in /; do rm -rf $D; done",
+                "D=build; unset D; rm -rf $D/x",
+                "D=build; source ./x.sh; rm -rf $D",
+                "D=build; . ./x.sh; rm -rf $D",
+                "if true; then D=/; fi; D=build; rm -rf $D",
+                "env D=/ sh -c 'rm -rf $D'",
+            ]),
+        );
+        assert_all_pass(
+            &wt,
+            &owned(&[
+                "D=build; rm -rf $D",
+                "D=build; export D; rm -rf $D",
+                "D=build E=out; rm -rf $D $E",
+                "D=$PWD; rm -rf $D/build",
+                "source ./x.sh; rm -rf build",
+            ]),
+        );
+    }
+
+    /// A here-doc body is data only when the command the redirect feeds, and every command
+    /// the line pipes it to, is a known data reader; a quoted or arithmetic `<<`, a comment,
+    /// a here-string and a `<<-` terminator behind tabs are read the way the shell reads them.
+    #[test]
+    fn repair_7149_here_doc_bodies_are_cut_only_where_the_shell_cuts_them() {
+        let (_d, wt) = a_worktree();
+        let code = |first: &str| format!("{first}\nrm -rf {OUT}\nEOF");
+        assert_all_refused(
+            &wt,
+            &[
+                code("true && bash <<EOF"),
+                code("cat <<EOF | sh"),
+                code("cat <<EOF | tee x | bash"),
+                code("sudo bash <<EOF"),
+                code("env bash <<EOF"),
+                code("FOO=1 bash <<EOF"),
+                code("exec bash <<EOF"),
+                code("command sh <<EOF"),
+                code("bash <<-EOF"),
+                code("zsh <<'EOF'"),
+                format!("bash <<-EOF\n\trm -rf {OUT}\n\tEOF"),
+                // After the terminator the lines are code again.
+                format!("cat <<-EOF\n\tEOF\nrm -rf {OUT}"),
+                format!("cat <<EOF\nbody\nEOF\nrm -rf {OUT}"),
+                // A `<<` the shell does not read as a here-doc cuts nothing.
+                format!("echo \"<<EOF\"\nrm -rf {OUT}\nEOF"),
+                format!("echo '<<EOF'\nrm -rf {OUT}\nEOF"),
+                format!("echo $((1<<2))\nrm -rf {OUT}"),
+                format!("x=$((1<<2)); rm -rf {OUT}\nEOF"),
+                format!("cat <<<\"x\"\nrm -rf {OUT}"),
+                format!("echo hi # <<EOF\nrm -rf {OUT}\nEOF"),
+                // A shell inside the substitution that holds the here-doc.
+                format!("git commit -m \"$(sh <<'EOF'\nrm -rf {OUT}\nEOF\n)\""),
+            ],
+        );
+        assert_all_pass(
+            &wt,
+            &[
+                format!("git commit -F - <<EOF\nrm -rf {OUT}\nEOF"),
+                format!("git commit -m \"$(cat <<'EOF'\nrm -rf {OUT}\nEOF\n)\""),
+                format!("cat > notes <<'EOF'\nrm -rf {OUT}\nEOF"),
+                format!("cd src && git commit -F - <<EOF\nrm -rf {OUT}\nEOF"),
+                format!("moai card note C-1 <<'EOF'\nxargs rm -rf {OUT}\nEOF"),
+                format!("cat <<-EOF\n\trm -rf {OUT}\n\tEOF"),
+                format!("tee notes <<EOF\nrm -rf {OUT}\nEOF"),
+                format!("gh pr create --body-file - <<EOF\nrm -rf {OUT}\nEOF"),
+            ],
+        );
+    }
+
+    /// `find`'s `-ok`/`-okdir` run a command like `-exec` does, and the command may sit behind
+    /// a wrapper or a shell with bundled options; only a command that deletes makes the find a
+    /// deletion.
+    #[test]
+    fn repair_7149_find_exec_variants_that_delete() {
+        let (_d, wt) = a_worktree();
+        let refused: Vec<String> = [
+            "-ok rm {} \\;",
+            "-okdir rm {} \\;",
+            "-exec env rm {} \\;",
+            "-execdir env rm {} \\;",
+            "-exec command rm {} \\;",
+            "-exec sudo rm {} \\;",
+            "-exec sudo -u root rm {} \\;",
+            "-exec xargs rm {} \\;",
+            "-exec bash -lc 'rm -rf {}' \\;",
+            "-exec sh -ec 'rm {}' _ {} \\;",
+            "-exec /bin/rm {} +",
+            "-exec unlink {} \\;",
+            "-delete",
+        ]
+        .iter()
+        .map(|tail| format!("find {OUT} {tail}"))
+        .collect();
+        assert_all_refused(&wt, &refused);
+        let passes: Vec<String> = [
+            "-exec env ls {} \\;",
+            "-ok grep q {} \\;",
+            "-exec bash -c 'echo hi' \\;",
+            "-exec bash -lc 'echo hi' \\;",
+        ]
+        .iter()
+        .map(|tail| format!("find {OUT} {tail}"))
+        .collect();
+        assert_all_pass(&wt, &passes);
+    }
+
+    /// `git clean` deletes in the work tree git resolves: an environment variable, a `-c
+    /// core.worktree` pair (attached or not), `--config-env`, a chain of `-C` that climbs out,
+    /// and a git folder that lies outside all move it.
+    #[test]
+    fn repair_7149_git_clean_work_tree_forms() {
+        let (_d, wt) = a_worktree();
+        assert_all_refused(
+            &wt,
+            &[
+                format!("GIT_WORK_TREE={OUT} git clean -fdx"),
+                format!("export GIT_WORK_TREE={OUT}; git clean -fdx"),
+                format!("GIT_DIR={OUT}/.git git clean -fdx"),
+                format!("git -c core.worktree={OUT} clean -fdx"),
+                format!("git -ccore.worktree={OUT} clean -fdx"),
+                "git --config-env core.worktree=SOME_VAR clean -fdx".to_string(),
+                "git --config-env=core.worktree=SOME_VAR clean -fdx".to_string(),
+                "git -C src -C ../../.. clean -fdx".to_string(),
+                format!("git --git-dir={OUT}/.git clean -fdx"),
+                format!("git --work-tree {OUT} clean -fdx"),
+            ],
+        );
+        assert_all_pass(
+            &wt,
+            &[
+                "git clean -fdx".to_string(),
+                "git -C src -C .. clean -fdx".to_string(),
+                "GIT_WORK_TREE=$PWD git clean -fdx".to_string(),
+                "git -c core.autocrlf=false clean -fdx".to_string(),
+            ],
+        );
     }
 }

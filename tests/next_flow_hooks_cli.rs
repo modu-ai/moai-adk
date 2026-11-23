@@ -1144,3 +1144,51 @@ fn ac1_deletion_targets_outside_the_worktree_and_temp_are_refused() {
         assert!(!r.denies(), "refused: {command}");
     }
 }
+
+/// AC-1, repair audit 7149 block 2: the bypass shapes that slipped past the deletion check —
+/// expansions the guard cannot read, `cd` forms, reassigned variables, here-doc cuts, `find`
+/// variants and `git clean` work-tree switches — are refused through the real dispatch with
+/// exit 2, and the look-alikes that delete nothing outside pass. "When in doubt, refuse."
+#[test]
+fn ac1_the_repair_audit_bypass_shapes_are_refused_through_the_dispatch() {
+    let (_d, root, config) = world(BRANCH);
+    let out = "/Users/definitely-not-here";
+    let refused = [
+        "rm -rf $(echo /)".to_string(),
+        "rm -rf `echo /`".to_string(),
+        "rm -rf $'/Users/definitely-not-here'".to_string(),
+        "set -- /; rm -rf \"$@\"".to_string(),
+        "rm -rf $*".to_string(),
+        "cd -P / && rm -rf victim".to_string(),
+        "cd $(echo /) && rm -rf victim".to_string(),
+        "pushd / && pushd src && popd && rm -rf victim".to_string(),
+        "D=build; D=/; rm -rf $D".to_string(),
+        "export D=/; rm -rf $D".to_string(),
+        format!("true && bash <<EOF\nrm -rf {out}\nEOF"),
+        format!("cat <<EOF | sh\nrm -rf {out}\nEOF"),
+        format!("cat <<-EOF\n\tEOF\nrm -rf {out}"),
+        format!("echo \"<<EOF\"\nrm -rf {out}\nEOF"),
+        format!("find {out} -ok rm {{}} \\;"),
+        format!("find {out} -exec env rm {{}} \\;"),
+        format!("find {out} -exec bash -lc 'rm -rf {{}}' \\;"),
+        format!("GIT_WORK_TREE={out} git clean -fdx"),
+        format!("git -c core.worktree={out} clean -fdx"),
+    ];
+    for command in &refused {
+        let r = dangerous(&root, &config, &bash(command, &root));
+        assert!(r.denies(), "not refused: {command:?}");
+        assert_eq!(r.code, 2, "{command:?}: {} {}", r.code, r.stdout);
+    }
+    let allowed = [
+        "echo $(date)".to_string(),
+        "cd -P src && rm -rf build".to_string(),
+        "D=build; rm -rf $D".to_string(),
+        format!("git commit -F - <<EOF\nrm -rf {out}\nEOF"),
+        format!("find {out} -exec env ls {{}} \\;"),
+        "git clean -fdx".to_string(),
+    ];
+    for command in &allowed {
+        let r = dangerous(&root, &config, &bash(command, &root));
+        assert!(!r.denies(), "refused: {command:?}");
+    }
+}
