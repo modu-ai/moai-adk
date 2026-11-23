@@ -396,7 +396,11 @@ fn a_criterion_added_later_moves_a_skipped_card_to_ready() {
 
     criterion_add(&home, &project, &bare);
     let answer = next(&home, &project);
-    assert_eq!(names(&answer["ready"]), [bare.clone()], "{answer}");
+    assert_eq!(
+        names(&answer["ready"]),
+        std::slice::from_ref(&bare),
+        "{answer}"
+    );
     assert_eq!(answer["next"], json!(bare), "{answer}");
     assert_eq!(skip_reason(&answer, &bare), None, "{answer}");
     result(&take(&home, &project, &bare));
