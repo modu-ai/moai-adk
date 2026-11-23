@@ -47,15 +47,20 @@ const DESCRIPTION: &str = "Plain words, four steps (understand, plan, do, check)
 /// The sha256 (64 hex digits) of every style file text moai-cli rendered before the current one,
 /// oldest first: the first text with an unquoted description and a star banner, the YAML repair
 /// of its description, the text with the `MoAI 🗿` banner, and the text of the picked sections
-/// before its progress board pointed to the flow rule. A style file equal to one of them
+/// before its progress board pointed to the flow rule, and the text whose board pointed to the
+/// flow rule and listed seven icons, before the board became the one progress display with
+/// eleven flow icons, and that text before its board took the one icon set of the status line
+/// and the lane reports. A style file equal to one of them
 /// is a text MoAI shipped, so it is updated and not left as a conflict. When the template or the
 /// frontmatter changes, the render this module made until then is appended here (the test
 /// `the_earlier_renders_are_pinned_and_never_hold_the_current_one` fails until it is).
-pub const EARLIER_RENDERS: [&str; 4] = [
+pub const EARLIER_RENDERS: [&str; 6] = [
     "93e53607dd194da86abfbe7ea993303fff1d17af1a1a1ae6868788938ed785d2",
     "d4e1851a65eb0ed21d16de888925dc6ae8a7bcebcae45973e1b8cce884d75e67",
     "690c534220f9bb1614e27d608e56306da973e2fe7b53e2bc1a4d42d7d2b9c65e",
     "a31d966b0486f501839121832eb6a99d3fc718996b22a901e9e17884a0ab369e",
+    "80e189d27dd7be365724bbba2f38f1eddb3c0e96801da4caf82535ce80181a65",
+    "5f6b5fd1d93f3b0a4553ba74df113bba99bb018ca819120e1a25926fe242d006",
 ];
 
 /// One write target of one host.
@@ -502,8 +507,9 @@ fn hiding_style(path: &Path) -> Option<String> {
 /// The notices of a style plan for `moai update` (SPEC-20261122-output-style-install-checks):
 /// one entry per project settings file whose `outputStyle` hides ours in `project` (REQ-2, read
 /// only), and one `/status` pointer when the plan writes the style file (REQ-4). Entries have the
-/// shape of the update's `skipped` list plus `kind: notice`, which the update screens print with
-/// their own word; they are not part of any plan digest and nothing is written for them.
+/// shape of the update's `skipped` entries but go to its own `notices` list, which the update
+/// screens print with their own word; they are not part of any plan digest and nothing is
+/// written for them.
 pub fn notices(plan: &Plan, project: &Path) -> Vec<Value> {
     let mut out = Vec::new();
     for rel in [".claude/settings.local.json", ".claude/settings.json"] {
@@ -511,7 +517,6 @@ pub fn notices(plan: &Plan, project: &Path) -> Vec<Value> {
             out.push(json!({
                 "part": "style",
                 "host": "claude",
-                "kind": "notice",
                 "reason": format!("{rel} sets outputStyle \"{value}\": this project uses it, not {STYLE_NAME}; moai does not change project settings"),
             }));
         }
@@ -524,7 +529,6 @@ pub fn notices(plan: &Plan, project: &Path) -> Vec<Value> {
         out.push(json!({
             "part": "style",
             "host": "claude",
-            "kind": "notice",
             "reason": "if the style does not show up in Claude Code, `/status` lists a style file it could not load",
         }));
     }

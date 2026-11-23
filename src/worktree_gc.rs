@@ -80,6 +80,15 @@ pub struct Facts {
     /// A real `node_modules` folder sits at the top (#3010 audit F1 on #3058): the worktree is
     /// never a `remove` candidate, whatever the file census says about what is inside.
     pub install_dir: bool,
+    /// Another linked worktree sits inside this one (SPEC-20261123-worktree-slots REQ-8):
+    /// removing it would take the nested checkout with it.
+    pub nested: bool,
+    /// An active card reservation names this worktree (REQ-8).
+    pub live_claim: bool,
+    /// The ledger exists but could not be read, so a claim cannot be ruled out.
+    pub claim_unknown: bool,
+    /// One of the fixed slots of `<primary>/.claude/worktrees/` (REQ-7): never removed.
+    pub fixed_slot: bool,
 }
 
 /// True when a change `age_secs` old falls inside the window.
@@ -97,6 +106,10 @@ pub fn decide(f: &Facts, window_secs: u64) -> (&'static str, Vec<&'static str>) 
         (f.locked, "locked"),
         (f.prunable, "prunable"),
         (f.budget_spent, "budget_spent"),
+        (f.fixed_slot, "fixed_slot"),
+        (f.nested, "nested_worktree"),
+        (f.live_claim, "live_claim"),
+        (f.claim_unknown, "claim_check_unavailable"),
     ] {
         if hit {
             reasons.push(why);
@@ -614,6 +627,9 @@ pub struct Pace {
     /// When not empty, only these worktrees are planned (#2879 D1: a lane cleans its own card
     /// worktrees and never another lane's). Each must be a worktree of this clone.
     pub only: Vec<PathBuf>,
+    /// The worktree cap the `cap` block reports against; `None` is
+    /// [`crate::worktree_slot::MAX_WORKTREES`].
+    pub max_worktrees: Option<usize>,
 }
 
 /// The home worktree folder and the Go generation's folder (#2811), each as written and as
@@ -761,6 +777,56 @@ fn lifecycle(
     })
 }
 
+/// The worktrees active card reservations name, resolved (SPEC-20261123-worktree-slots REQ-8).
+/// A project without a profile or without a ledger has none. A profile or a ledger that exists
+/// but cannot be read is `Err`, and every linked worktree is then kept as
+/// `claim_check_unavailable`.
+fn claimed_worktrees(top: &Path) -> std::result::Result<Vec<PathBuf>, ()> {
+    let real = fs::canonicalize(top).map_err(|_| ())?;
+    let Some(id) = crate::project_id::read(&real).map_err(|_| ())? else {
+        return Ok(Vec::new());
+    };
+    let home = crate::ledger::command::resolve_home(None).map_err(|_| ())?;
+    let file = crate::ledger::ledger_path(&home, &id).map_err(|_| ())?;
+    if !file.is_file() {
+        return Ok(Vec::new());
+    }
+    let read = crate::ledger::open_read_only(&home, &id).map_err(|_| ())?;
+    let rows = crate::ledger::reservation::active_worktrees(read.conn()).map_err(|_| ())?;
+    Ok(rows
+        .into_iter()
+        .map(|(_, w)| {
+            let p = PathBuf::from(w);
+            fs::canonicalize(&p).unwrap_or(p)
+        })
+        .collect())
+}
+
+/// The `cap` block (REQ-10): the linked worktree count against the cap, the `remove`
+/// candidates oldest change first, and how many of them bring the count back under the cap.
+/// A report only: it is not bound by the digest.
+fn cap_block(linked: usize, limit: usize, candidates: &[Value]) -> Value {
+    let mut removable: Vec<&Value> = candidates
+        .iter()
+        .filter(|c| c["action"] == "remove")
+        .collect();
+    removable.sort_by(|a, b| {
+        let age = |c: &Value| c["change_age_secs"].as_u64().unwrap_or(0);
+        age(b)
+            .cmp(&age(a))
+            .then_with(|| a["path"].as_str().cmp(&b["path"].as_str()))
+    });
+    let over = linked.saturating_sub(limit);
+    json!({
+        "limit": limit,
+        "count": linked,
+        "over": over,
+        "oldest_first": removable.iter().map(|c| c["path"].clone()).collect::<Vec<_>>(),
+        "needed": over.min(removable.len()),
+        "enough": removable.len() >= over,
+    })
+}
+
 /// Builds the plan. `now_unix` overrides the clock (tests); `None` uses the system time.
 /// Only an ancestor of the integration tip counts as merged here: `worktree.gc.apply`
 /// recomputes this plan, and a squash merge alone never makes it remove (#2724).
@@ -848,6 +914,12 @@ pub fn plan_paced(
     // #2811: the home work folders, as written and resolved, so a linked `~/.moai` still
     // names its worktrees. The Go generation's `worktrees/projects` is never touched (D8a).
     let (home_roots, go_roots) = work_roots();
+    let claims = claimed_worktrees(&top);
+    let slot_dir = primary.join(crate::worktree_slot::SLOT_DIR);
+    let entry_paths: Vec<PathBuf> = entries
+        .iter()
+        .map(|e| fs::canonicalize(&e.path).unwrap_or_else(|_| e.path.clone()))
+        .collect();
 
     let mut candidates = Vec::new();
     // #2879 D2: the primary first, then the linked worktrees starting after the cursor.
@@ -917,6 +989,21 @@ pub fn plan_paced(
             prunable: e.prunable,
             has_build_output: !cargo.is_empty(),
             install_dir: has_install_dir(&path),
+            nested: i != 0
+                && entry_paths
+                    .iter()
+                    .any(|q| q != &path && q.starts_with(&path)),
+            live_claim: i != 0
+                && claims
+                    .as_ref()
+                    .is_ok_and(|list| list.iter().any(|c| c == &path)),
+            claim_unknown: i != 0 && claims.is_err(),
+            fixed_slot: i != 0
+                && path.parent() == Some(slot_dir.as_path())
+                && path
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .is_some_and(crate::worktree_slot::is_slot),
             ..Default::default()
         };
         let mut merged_by: Option<&str> = None;
@@ -1014,6 +1101,13 @@ pub fn plan_paced(
         .collect();
     let plan_digest = crate::digest(serde_json::to_string(&bound).unwrap_or_default().as_bytes());
     let count = |a: &str| candidates.iter().filter(|c| c["action"] == a).count();
+    let linked = entries.iter().skip(1).filter(|e| !e.bare).count();
+    let cap = cap_block(
+        linked,
+        pace.max_worktrees
+            .unwrap_or(crate::worktree_slot::MAX_WORKTREES),
+        &candidates,
+    );
     let trim_total: u64 = candidates
         .iter()
         .filter_map(|c| c["trim_bytes"].as_u64())
@@ -1031,6 +1125,7 @@ pub fn plan_paced(
             "trim_bytes": trim_total,
         },
         "candidates": candidates,
+        "cap": cap,
         "remaining": remaining,
         "next_cursor": if remaining > 0 { json!(last_checked) } else { Value::Null },
         // #3010 P1: free bytes before any apply; a reclaimed figure is the later `df` minus
@@ -1100,6 +1195,25 @@ fn recheck_entry(wt: &Path, action: &str, primary: &Path) -> Option<&'static str
     busy_now(wt, action == "remove", Some(primary))
 }
 
+/// The ledger and nesting facts the plan read, read again right before `apply` acts on `wt`
+/// (SPEC-20261123-worktree-slots REQ-8): a card claim made after the plan, a ledger that can no
+/// longer be read, or a worktree added inside `wt` since, each refuse. `worktrees` is the list
+/// `apply` read, canonical paths with the primary first.
+fn recheck_claims_and_nesting(
+    wt: &Path,
+    top: &Path,
+    worktrees: &[PathBuf],
+) -> Option<&'static str> {
+    if worktrees.iter().any(|q| q != wt && q.starts_with(wt)) {
+        return Some("nested_worktree");
+    }
+    match claimed_worktrees(top) {
+        Ok(list) if list.iter().any(|c| c == wt) => Some("live_claim"),
+        Ok(_) => None,
+        Err(()) => Some("claim_check_unavailable"),
+    }
+}
+
 /// Deletes the cargo-owned trim paths of `wt` that the plan listed. Each path must still sit
 /// directly in `wt/target`, not be a symlink, and still be cargo-owned.
 fn trim(wt: &Path, trim_paths: &[String]) -> std::result::Result<(), String> {
@@ -1139,13 +1253,16 @@ fn act_on(
     action: &str,
     shown_path: &str,
     primary: &Path,
+    top: &Path,
     worktrees: &[PathBuf],
 ) -> std::result::Result<&'static str, String> {
     let wt =
         fs::canonicalize(primary.join(shown_path)).unwrap_or_else(|_| primary.join(shown_path));
     if wt == primary || !worktrees.contains(&wt) {
         Err("not a linked worktree of this repository".to_string())
-    } else if let Some(why) = recheck_entry(&wt, action, primary) {
+    } else if let Some(why) = recheck_claims_and_nesting(&wt, top, worktrees)
+        .or_else(|| recheck_entry(&wt, action, primary))
+    {
         Err(format!("refused: {why}"))
     } else if action == "trim" {
         let paths: Vec<String> = c["trim_paths"]
@@ -1230,7 +1347,7 @@ pub fn apply(
             continue;
         }
         let shown_path = c["path"].as_str().unwrap_or_default().to_string();
-        let outcome = act_on(c, action, &shown_path, &primary, &worktrees);
+        let outcome = act_on(c, action, &shown_path, &primary, &top, &worktrees);
         let (status, detail) = match outcome {
             Ok(s) => (s, Value::Null),
             Err(e) => {
@@ -1648,7 +1765,14 @@ mod tests {
         let entry = |action: &str| json!({"path": path, "action": action, "trim_paths": []});
 
         assert_eq!(
-            act_on(&entry("remove"), "remove", &path, &primary, &worktrees),
+            act_on(
+                &entry("remove"),
+                "remove",
+                &path,
+                &primary,
+                &primary,
+                &worktrees
+            ),
             Err("refused: files_outside_build_output".to_string())
         );
         assert!(
@@ -1656,7 +1780,14 @@ mod tests {
             "a refused entry leaves the worktree whole"
         );
         assert_eq!(
-            act_on(&entry("trim"), "trim", &path, &primary, &worktrees),
+            act_on(
+                &entry("trim"),
+                "trim",
+                &path,
+                &primary,
+                &primary,
+                &worktrees
+            ),
             Ok("trimmed")
         );
         assert!(
@@ -1669,10 +1800,65 @@ mod tests {
                 "trim",
                 &primary.to_string_lossy(),
                 &primary,
+                &primary,
                 &worktrees
             ),
             Err("not a linked worktree of this repository".to_string())
         );
+    }
+
+    /// SPEC-20261123-worktree-slots REQ-8: right before it acts, `apply` reads the nesting and
+    /// the claims again. A worktree added inside the entry since the plan, or a project profile
+    /// that can no longer be read (so the claims are unknown), refuses the entry and leaves it
+    /// whole; with both gone the same entry is trimmed.
+    #[cfg(unix)]
+    #[test]
+    fn apply_reads_nesting_and_claims_again_right_before_it_acts() {
+        let d = tempfile::tempdir().unwrap();
+        let base = fs::canonicalize(d.path()).unwrap();
+        let primary = base.join("primary");
+        fs::create_dir_all(&primary).unwrap();
+        gc_git(&primary, &["init", "-q", "-b", "main"]);
+        fs::write(primary.join(".gitignore"), "target/\n/inner/\n").unwrap();
+        fs::write(primary.join("a.txt"), "a\n").unwrap();
+        gc_git(&primary, &["add", ".gitignore", "a.txt"]);
+        gc_git(&primary, &["commit", "-q", "-m", "init"]);
+        let wt = base.join("wt");
+        gc_git(
+            &primary,
+            &["worktree", "add", "-q", "-b", "b", wt.to_str().unwrap()],
+        );
+        let inner = wt.join("inner");
+        gc_git(
+            &primary,
+            &["worktree", "add", "-q", "-b", "c", inner.to_str().unwrap()],
+        );
+        fs::create_dir_all(wt.join("target")).unwrap();
+        let path = wt.to_string_lossy().to_string();
+        let entry = |action: &str| json!({"path": path, "action": action, "trim_paths": []});
+        let act = |action: &str, worktrees: &[PathBuf]| {
+            act_on(&entry(action), action, &path, &primary, &primary, worktrees)
+        };
+
+        let with_inner = vec![primary.clone(), wt.clone(), inner.clone()];
+        for action in ["trim", "remove"] {
+            assert_eq!(
+                act(action, &with_inner),
+                Err("refused: nested_worktree".to_string())
+            );
+        }
+        assert!(wt.is_dir() && inner.is_dir());
+
+        let state = primary.join(crate::PROJECT_STATE_DIR);
+        fs::create_dir_all(&state).unwrap();
+        fs::write(state.join("project.yaml"), "not a profile").unwrap();
+        let without_inner = vec![primary.clone(), wt.clone()];
+        assert_eq!(
+            act("trim", &without_inner),
+            Err("refused: claim_check_unavailable".to_string())
+        );
+        fs::remove_file(state.join("project.yaml")).unwrap();
+        assert_eq!(act("trim", &without_inner), Ok("trimmed"));
     }
 
     /// Audit F1 on #3058: `decide` keeps a worktree with an install folder out of `remove` even

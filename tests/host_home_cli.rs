@@ -695,3 +695,70 @@ fn a_variable_that_is_not_utf8_blocks_only_its_host() {
     );
     assert_eq!(plan["hosts"].as_array().unwrap().len(), 1, "{plan}");
 }
+
+fn copy_tree(from: &Path, to: &Path) {
+    fs::create_dir_all(to).unwrap();
+    for entry in fs::read_dir(from).unwrap() {
+        let p = entry.unwrap().path();
+        let dest = to.join(p.file_name().unwrap());
+        if p.is_dir() {
+            copy_tree(&p, &dest);
+        } else {
+            fs::copy(&p, &dest).unwrap();
+        }
+    }
+}
+
+/// SPEC-20261122-html-report-install AC-4: from a release laid out as installed (a copy of the
+/// binary in `versions/a/bin` of the HOME state folder, `skills/moai`, `skills/moai-html-report` and
+/// `agents` beside it), `moai update` puts both skill folders under `$CLAUDE_CONFIG_DIR/skills`
+/// and makes no `.claude` folder under the temporary HOME.
+#[test]
+fn the_html_report_skill_follows_claude_config_dir_beside_the_moai_skill() {
+    let w = World::new();
+    let repo = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let skill = moai_cli::update::extra_skill::SKILLS[0];
+    let folder = moai_cli::home_root::path(&w.base).join("versions/a");
+    fs::create_dir_all(folder.join("bin")).unwrap();
+    let exe = folder.join("bin/moai-cli");
+    common::copy_executable(Path::new(common::MOAI_BIN), &exe);
+    copy_tree(&w.package, &folder.join("skills/moai"));
+    copy_tree(
+        &repo.join("skills").join(skill),
+        &folder.join("skills").join(skill),
+    );
+    copy_tree(&repo.join("agents"), &folder.join("agents"));
+    let conf = w.outside("claude-conf");
+    let run = |args: &[&str]| -> Output {
+        let mut cmd = w.home.command_for(&exe, args);
+        cmd.env("HOME", &w.base)
+            .env("MOAI_ACCOUNT_HOME", &w.base)
+            .env("CLAUDE_CONFIG_DIR", &conf)
+            .env("PATH", "/usr/bin:/bin")
+            .current_dir(&w.base)
+            .stdin(std::process::Stdio::null());
+        cmd.output().expect("run moai")
+    };
+    let p = ok(&run(&["update"]));
+    assert_eq!(
+        host(&p["plan"], "claude")["projection_root"],
+        json!(s(&conf.join("skills/moai"))),
+        "{p}"
+    );
+    let part = &p["extra_skills"]["parts"][0];
+    assert_eq!(part["skill"], json!(skill), "{p}");
+    assert_eq!(
+        part["projection_root"],
+        json!(s(&conf.join("skills").join(skill))),
+        "{p}"
+    );
+    let r = ok(&run(&[
+        "update",
+        "--confirm",
+        p["plan_digest"].as_str().unwrap(),
+    ]));
+    assert_eq!(r["extra_skills_result"]["state"], json!("applied"), "{r}");
+    assert!(conf.join("skills/moai/SKILL.md").is_file(), "{r}");
+    assert!(conf.join("skills").join(skill).join("SKILL.md").is_file());
+    assert!(!w.base.join(".claude").exists());
+}

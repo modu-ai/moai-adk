@@ -1,6 +1,6 @@
 # Language: JavaScript and TypeScript
 
-When to read: `internal/quality` sent you here because the project's detected languages include `javascript` or `typescript`. The project's own declarations (CI steps, `package.json` `scripts`, `AGENTS.md`) win over every default below.
+When to read: `internal/quality` sent you here because the project's detected languages include `javascript` or `typescript`. The project's own declarations (CI steps, `package.json` `scripts`, `CLAUDE.md`) win over every default below.
 
 ## Which package manager
 

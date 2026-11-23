@@ -122,9 +122,10 @@ struct LaunchOpts {
     /// Pass no `--advisor` even when the user setting `launcher.advisor` turns it on.
     #[arg(long)]
     no_advisor: bool,
-    /// Keep permission prompts: no `--dangerously-skip-permissions` (Claude hosts). Without it a
-    /// -l|-a session has full access;
-    /// a session without a role never gets a permission flag.
+    /// Keep permission prompts: no permission flag at all (Claude hosts), so the host starts in the
+    /// mode its own settings choose. Without it every launch starts in auto mode
+    /// (`--permission-mode auto`) unless the user setting `launcher.role_access` says `full` or
+    /// `prompt`.
     #[arg(long)]
     permissions: bool,
     /// Print the composed command as JSON instead of starting the host.
@@ -249,7 +250,7 @@ enum Command {
     ///
     /// Wait for one of N machine-wide heavy-run slots, run COMMAND holding it, and exit with
     /// COMMAND's code (#2677). Same folder and lock as `tools/heavy_check_slot.py`; while
-    /// waiting and on failure it prints the load averages and free disk space. The machine's
+    /// waiting and when COMMAND ends it prints the load averages and free disk space. The machine's
     /// limits come from `limits.json` in the slot folder (defaults 3 slots, 50 GB, 80 % swap on
     /// Linux, 10 % memory free on macOS); a flag only tightens them (#2930). Unix only.
     HeavySlotAcquire {
@@ -1101,12 +1102,7 @@ fn launch(
     // Validate user configuration even for roleless sessions or a CLI override. Resolution
     // precedes host composition and any agent-number allocation. No advisor by default (user
     // decision 2026-11-12, #2476): only `--advisor` or the user setting `launcher.advisor`.
-    let settings = launch_settings(
-        role.is_some(),
-        o.permissions,
-        o.advisor.as_deref(),
-        o.no_advisor,
-    )?;
+    let settings = launch_settings(o.permissions, o.advisor.as_deref(), o.no_advisor)?;
     let advisor_note = (host == "claude"
         && settings.advisor.as_ref().map(|(_, s)| *s) == Some(AdvisorSource::UserSetting))
     .then_some("--advisor comes from the user setting launcher.advisor (~/.moai-cli/config/launcher.yaml); --no-advisor turns it off");
@@ -1117,7 +1113,7 @@ fn launch(
         model: o.model,
         effort: o.effort,
         advisor: settings.advisor.map(|(a, _)| a),
-        skip_permissions: settings.skip_permissions,
+        access: settings.access,
         prompt,
         claude_bin: "claude".into(),
     };
@@ -1389,7 +1385,7 @@ fn run_launcher(cli: Cli) -> Result<serde_json::Value, String> {
                     model: Some(model),
                     effort: Some(effort),
                     advisor,
-                    skip_permissions: false,
+                    access: moai_cli::session::Access::Prompt,
                     prompt: None,
                     claude_bin,
                 },
@@ -3622,22 +3618,28 @@ mod help_rules {
             let text = t.map(|h| h.to_string()).unwrap_or_default();
             text.split_whitespace().collect::<Vec<_>>().join(" ")
         };
-        for (host, prefix) in [("cc", "/moai"), ("glm", "/moai")] {
+        // The retired mode flags are gone from the launchers' help: `-a` names the entry
+        // command `/moai work`, `-l` only its name and permissions.
+        for host in ["cc", "glm"] {
             let cmd = korean.find_subcommand(host).unwrap();
-            for (id, mode) in [("leader", "leader"), ("agent", "agent")] {
+            for id in ["leader", "agent"] {
                 let arg = cmd.get_arguments().find(|a| a.get_id() == id).unwrap();
                 let short = flat(arg.get_help());
                 let long = flat(arg.get_long_help());
                 for text in [&short, &long] {
-                    let command = "`/moai --mode-".to_string() + mode + "`";
-                    assert!(text.contains(&command), "{host} -{id}: {text}");
-                    assert!(!text.contains("$moai"), "{host} -{id}: {text}");
                     assert!(text.contains("권한만 정함"), "{host} -{id}: {text}");
+                    assert!(!text.contains("--mode-"), "{host} -{id}: {text}");
+                    assert!(!text.contains("$moai"), "{host} -{id}: {text}");
+                    assert_eq!(
+                        text.contains("`/moai work`"),
+                        id == "agent",
+                        "{host} -{id}: {text}"
+                    );
                 }
             }
             let about = flat(cmd.get_long_about());
-            let both = format!("`{prefix} --mode-leader`·`{prefix} --mode-agent`");
-            assert!(about.contains(&both), "{host} long about: {about}");
+            assert!(!about.contains("--mode-"), "{host} long about: {about}");
+            assert!(about.contains("`/moai work`"), "{host} long about: {about}");
         }
     }
 

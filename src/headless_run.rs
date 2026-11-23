@@ -376,7 +376,7 @@ pub fn run_with_limit(built: &BuiltRun, cwd: &Path, limit: std::time::Duration) 
         &err_buf,
         drain_bound,
     );
-    // P-2: a child reaped elsewhere makes wait() fail — the drained answer is returned
+    // A child reaped elsewhere makes wait() fail — the drained answer is returned
     // with an unknown exit status (success stays false, the code None), never discarded.
     let (succeeded, code) = match child.wait() {
         Ok(status) => (status.success(), status.code()),
@@ -488,10 +488,10 @@ fn interpret_waitid(rc: i32, reported_pid: i32, errno: Option<i32>) -> WaitPoll 
     }
 }
 
-/// Polls the child WITHOUT reaping it (L-2): the zombie still owns the process group, so
-/// the straggler kill that follows cannot hit a recycled group. A waitid error is only
-/// "no such child" in practice here (the child was reaped elsewhere, M-1); anything else
-/// counts as running until the deadline ends the call anyway.
+/// Polls the child WITHOUT reaping it: the zombie still owns the process group, so the
+/// straggler kill that follows cannot hit a recycled group. A waitid error with errno
+/// ECHILD means the child was reaped elsewhere — skip the group kill and let the drained
+/// output return with an unknown exit status; every other answer counts as running.
 #[cfg(unix)]
 fn poll_unreaped(pid: u32) -> WaitPoll {
     // SAFETY: waitid with WNOWAIT reports an exited child and leaves it un-reaped; a
@@ -731,79 +731,150 @@ pub fn record_run(
     Ok(key)
 }
 
-/// A tool rule the builder accepts: never a blanket `Bash`·`PowerShell`·`Agent`·`Monitor`,
-/// never a wildcard-only scope in any of its spellings (`*`, `:*`, empty), never a
-/// wildcarded interpreter or wrapper (`python *`, `sh -c *`, `timeout *`), and — the
-/// stricter rule of audit P-1 — never a wildcarded rule whose text starts with an env
-/// assignment in ANY spelling (`FOO=… python *`, quotes included), because no quoting can
-/// be told apart safely here.
-fn narrow_rule(tool: &str) -> Result<()> {
-    let blanket = matches!(tool, "Bash" | "PowerShell" | "Agent" | "Monitor");
-    let scope = tool
-        .strip_prefix("Bash(")
-        .or_else(|| tool.strip_prefix("PowerShell("))
-        .and_then(|inner| inner.strip_suffix(')'));
-    let wildcard_only = scope.is_some_and(|inner| {
-        let inner = inner.trim();
-        inner.is_empty() || inner.starts_with('*') || inner == ":*"
-    });
-    let starts_with_assignment = |inner: &str| {
-        inner.split_once('=').is_some_and(|(name, _)| {
-            !name.is_empty()
-                && name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
-                && name.chars().next().is_some_and(|c| !c.is_ascii_digit())
-        })
+/// One `--allowedTools` entry the builder accepts (SPEC REQ-2). The WHOLE entry has one allowed
+/// shape: a tool name of ASCII letters, digits and underscores, then optionally one
+/// parenthesised body, nothing before the name, nothing after the closing parenthesis, no
+/// comma anywhere in the entry, and no whitespace outside the body. Anything else refuses by
+/// construction, so an entry
+/// cannot carry a second entry into the comma-joined value and there is no list of bad
+/// spellings to keep complete. Per tool, in any letter case: `Monitor` never builds, `Bash`,
+/// `PowerShell` and `Agent` never build bare, a `Bash` or `PowerShell` body is a shell rule
+/// (`shell_rule`), and every other body is plain text (`plain_body`).
+fn narrow_rule(entry: &str) -> Result<()> {
+    let refuse = |why: &str| -> Result<()> {
+        Err(format!(
+            "tool entry {entry:?} is refused ({why}); use one narrow entry"
+        ))
     };
-    let wildcarded_word = scope.is_some_and(|inner| {
-        if !inner.contains('*') {
-            return false;
-        }
-        // P-1 stricter rule: an assignment prefix on a wildcarded rule refuses outright —
-        // every quote spelling is covered by the refusal, not by parsing.
-        if starts_with_assignment(inner.trim_start()) {
-            return true;
-        }
-        inner
-            .split_whitespace()
-            .next()
-            .is_some_and(broad_first_word)
-    });
-    if blanket || wildcard_only || wildcarded_word {
-        return Err(format!(
-            "blanket tool rule {tool:?} is not allowed; use a narrow rule"
-        ));
+    // The comma is the join character of the `--allowedTools` value and the host's split inside
+    // parentheses is not documented, so a comma anywhere — the name, a shell body, any other
+    // body — is the one byte that can carry a second entry in: it refuses before anything else.
+    if entry.contains(',') {
+        return refuse("a comma joins entries and may never sit inside one");
     }
-    Ok(())
+    let (name, body) = match entry.split_once('(') {
+        None => (entry, None),
+        Some((name, rest)) => match rest.strip_suffix(')') {
+            Some(inner) => (name, Some(inner)),
+            None => return refuse("a body must end with the closing parenthesis, last"),
+        },
+    };
+    if name.is_empty() || !name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_') {
+        return refuse("the tool name is not ASCII letters, digits and underscores");
+    }
+    match (name.to_ascii_lowercase().as_str(), body) {
+        ("monitor", _) => refuse("Monitor runs commands and has no narrow form"),
+        ("bash" | "powershell" | "agent", None) => refuse("a blanket tool"),
+        ("bash" | "powershell", Some(inner)) if !shell_rule(inner) => {
+            refuse("a shell rule outside the allowed shape")
+        }
+        ("bash" | "powershell", Some(_)) => Ok(()),
+        (_, Some(inner)) if !plain_body(inner) => refuse("a body that is not one plain text"),
+        _ => Ok(()),
+    }
 }
 
-/// Whether a command rule's first word turns a wildcarded rule into a blanket one: the
-/// interpreters and wrappers that run what follows them, in every spelling — a versioned
-/// interpreter (python3.12), the `:*` colon suffix and the word's basename
-/// (`/usr/bin/env`) included (permission-modes.md's dropped-rules list, audits R-1 R-2
-/// R-4 and L-4).
-fn broad_first_word(word: &str) -> bool {
-    let word = word.split(':').next().unwrap_or(word);
-    let word = word.rsplit('/').next().unwrap_or(word);
-    if INTERPRETERS_AND_WRAPPERS.contains(&word) {
+/// The body of a tool entry that is not a shell rule: printable ASCII with no parenthesis and
+/// no comma, holding at least one character that is not a wildcard, a colon or a space — a body
+/// of nothing but wildcards names every call of the tool.
+fn plain_body(inner: &str) -> bool {
+    inner
+        .bytes()
+        .all(|b| (0x20..=0x7e).contains(&b) && !matches!(b, b'(' | b')' | b','))
+        && inner.chars().any(|c| !matches!(c, ' ' | '*' | ':'))
+}
+
+/// A Bash or PowerShell rule (SPEC REQ-2). Without its leading and trailing spaces and one
+/// trailing wildcard form (a final space-star or colon-star, the two spellings of one rule),
+/// every character of the rule is in the set below, and the first word of a wildcarded rule is
+/// a plain command word that is neither `builtin` nor `eval` nor an interpreter or wrapper of
+/// the documented list. A rule without a wildcard meets the set alone: it names one exact
+/// command, so its first word is not judged. Anything a shell would read — an operator, a
+/// quote, a substitution, a glob, a backslash, a redirection, a tab, a newline, NUL, every
+/// non-ASCII character — is not in the set, so the rule refuses by construction.
+fn shell_rule(inner: &str) -> bool {
+    let text = inner.trim_matches(' ');
+    let (wildcarded, body) = match text.strip_suffix(" *").or_else(|| text.strip_suffix(":*")) {
+        Some(body) => (true, body),
+        None => (false, text),
+    };
+    // A wildcard with nothing before it names every command, so an empty body refuses.
+    !body.is_empty()
+        && body.chars().all(plain_rule_char)
+        && !(wildcarded && broad_first_word_of(body))
+}
+
+/// The punctuation a rule may hold besides ASCII letters, digits and the space (SPEC REQ-2):
+/// the path, option and list forms of a read-only command.
+const PLAIN_RULE_CHARS: [char; 9] = ['.', '_', '/', '-', '=', ':', '@', '%', '+'];
+
+/// Whether one character is in the set a rule may be written with.
+fn plain_rule_char(c: char) -> bool {
+    c.is_ascii_alphanumeric() || c == ' ' || PLAIN_RULE_CHARS.contains(&c)
+}
+
+/// The first-word rules on top of the character set: the command word is plain (letters,
+/// digits and `. _ / -`), is neither `builtin` nor `eval` (each runs what follows it), and is
+/// never an interpreter or wrapper of the documented list. The body holds spaces only, so the
+/// first word ends at the first space.
+fn broad_first_word_of(body: &str) -> bool {
+    let first = body.split(' ').find(|w| !w.is_empty()).unwrap_or("");
+    let plain_word = |w: &str| {
+        w.chars()
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '/' | '-'))
+    };
+    if !plain_word(first) {
         return true;
     }
-    // a versioned python: python3, python3.12, pypy-style digits and dots after the name
-    word.strip_prefix("python")
-        .is_some_and(|rest| rest.chars().all(|c| c.is_ascii_digit() || c == '.'))
+    let first = first.to_ascii_lowercase();
+    matches!(first.as_str(), "builtin" | "eval") || broad_first_word(&first)
 }
 
-/// The first words that run what follows them (permission-modes.md's dropped-rules list,
-/// the env/xargs/sudo/npx escapes of audit R-2, command/exec/uv of R-4, busybox/bun/php
-/// of L-4, doas/pkexec of M-2).
-const INTERPRETERS_AND_WRAPPERS: [&str; 27] = [
+/// Whether a plain command word is an interpreter or wrapper that runs what follows it, in
+/// every spelling: the word's basename (`/usr/bin/env`), the Windows `.exe` spelling
+/// (`powershell.exe`) and a versioned spelling of a list word — digits and dots, then any
+/// trailing letters (`python3.12`, `python3.13t`, `pypy3.10`, `node22`). A word that only
+/// starts like a list word (`python-config`, `suspend`) is not one. The word arrives
+/// lower-cased, so the list is written lower-case.
+fn broad_first_word(word: &str) -> bool {
+    let word = word.rsplit('/').next().unwrap_or(word);
+    let word = word.strip_suffix(".exe").unwrap_or(word);
+    INTERPRETERS_AND_WRAPPERS.iter().any(|known| {
+        word == *known
+            || word.strip_prefix(known).is_some_and(|rest| {
+                let version = rest.trim_end_matches(|c: char| c.is_ascii_alphabetic());
+                version.starts_with(|c: char| c.is_ascii_digit())
+                    && version.chars().all(|c| c.is_ascii_digit() || c == '.')
+            })
+    })
+}
+
+/// The interpreters and wrappers a wildcarded rule never starts with: the words that run what
+/// follows them as code or as a command line on this machine. It is the dropped-rules set of
+/// permission-modes.md — the interpreters and the wrappers that execute their arguments,
+/// which permissions.md names (`timeout`, `time`, `nice`, `nohup`, `stdbuf`, `noglob`, bare
+/// `xargs`, the environment runners and the exec wrappers) — plus the privilege escalators
+/// and the shells of the other families (`csh`, `tcsh`, `ash`, `pwsh`, `powershell`, `cmd`,
+/// `su`, `chroot`), each of which runs the command line that follows it.
+/// Which names belong is the SPEC's decision (D-12), not this constant's: `make`, `ssh`, `awk`
+/// and `find` are not on it, and a name that is missing here does not make a rule harmless.
+const INTERPRETERS_AND_WRAPPERS: [&str; 53] = [
     "python",
     "python3",
+    "pythonw",
+    "pypy",
+    "pypy3",
     "node",
+    "nodejs",
     "deno",
     "ruby",
     "perl",
+    "lua",
+    "rscript",
     "sh",
     "bash",
+    "dash",
+    "ksh",
     "zsh",
     "fish",
     "osascript",
@@ -811,7 +882,17 @@ const INTERPRETERS_AND_WRAPPERS: [&str; 27] = [
     "time",
     "nice",
     "nohup",
+    "stdbuf",
+    "noglob",
+    "watch",
+    "setsid",
+    "ionice",
+    "flock",
     "env",
+    "direnv",
+    "devbox",
+    "mise",
+    "docker",
     "xargs",
     "sudo",
     "npx",
@@ -823,6 +904,14 @@ const INTERPRETERS_AND_WRAPPERS: [&str; 27] = [
     "php",
     "doas",
     "pkexec",
+    "csh",
+    "tcsh",
+    "ash",
+    "pwsh",
+    "powershell",
+    "cmd",
+    "su",
+    "chroot",
 ];
 
 /// Whether a platform `managed-mcp.json` is deployed (SPEC REQ-3, D-2). A test passes its own

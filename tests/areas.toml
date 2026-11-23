@@ -1,0 +1,28 @@
+# The integration test areas (SPEC-20261123-test-area-crates).
+#
+# A test file belongs to the area that lists the first word of its file name (the stem up to the
+# first underscore): `card_wait_cli.rs` has the word `card`. Every top-level `tests/*.rs` file and
+# every module file under `tests/<area>/` has to map to exactly one area; `tests/test_area_layout.rs`
+# fails on a word that is not listed here, so a new test file with a new first word adds that word
+# to one line below in the same change.
+#
+# Format: one array per line, so a plain line reader (tools/check_ac_commands.py runs on Python
+# versions without `tomllib`) and `toml_edit` read the same table. Do not wrap an array.
+#
+# An area counts as moved once `tests/<area>/main.rs` exists; until then its files stay separate
+# targets. A word may be listed before any file uses it.
+
+[areas]
+card = ["card", "claim", "ledger", "queue", "dispatch", "startable", "board", "journal", "handoff", "recurring", "close", "goal", "decision", "trailer", "commit", "forge", "labels", "github", "gitlab", "import", "release"]
+update = ["update", "install", "migrate", "migration", "generation", "versioning", "switch", "models", "model", "retired", "removed", "self", "freshness", "baseline", "go"]
+home = ["home", "hygiene", "worktree", "heavy", "process", "path", "exe", "binary", "bin", "archive", "recovery", "revert", "state", "apply", "star"]
+project = ["project", "profile", "language", "placeholder", "gitignore", "skeleton", "agents", "agent", "claude", "codex", "omp", "orca", "host", "hook", "hooks", "script", "secret", "key", "scope", "herdr", "optional"]
+lane = ["lane", "leader", "session", "launcher", "headless", "run", "work", "flow", "next", "message", "context", "usage", "pty", "stdin", "mode", "question", "bg"]
+screen = ["statusline", "status", "ui", "style", "banner", "output", "help", "cli", "error", "html", "report", "reports", "troubleshooting", "struct"]
+spec = ["spec", "sdd", "audit", "review", "gate", "check", "ac", "test", "flaky", "green", "parity", "boundary", "protected", "rule", "core", "bundle", "flake", "skills", "skill", "workflow", "product", "ontology", "public", "code", "doc", "source", "spawn"]
+repo = ["atlas", "search", "index", "prop", "plan", "optimize", "diff", "edit", "e2e", "windows", "cargo", "ops", "hot", "no", "empty", "generic", "git", "repo", "layout", "base", "sync", "never"]
+
+# Files that change process-global state (`set_var`, `remove_var`, `set_current_dir`) stay test
+# targets of their own: one process runs a whole area crate, and these would leak into its modules.
+[solo]
+files = ["commit_identity_guard_2878", "update_switch_layer", "worktree_place_cli"]

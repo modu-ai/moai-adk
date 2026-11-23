@@ -91,8 +91,32 @@ def filters_after_target(tokens):
     return out
 
 
+def resolve_target(root: Path, name: str):
+    """(file to read, folder its `mod x;` lines resolve in) of the test target `name`, or None.
+
+    A target is a top-level `tests/<name>.rs`, an area crate `tests/<name>/main.rs`, or the old
+    name of a file moved into an area (`tests/<area>/<name>.rs`, a module of that crate): closed
+    SPECs keep `--test <old name>` and it still resolves (SPEC-20261123-test-area-crates REQ-6).
+    Found by where the files are, so no table is read; tests/test_area_layout.rs keeps the table
+    and the files in step. Anything else is None (REQ-12).
+    """
+    tests_dir = root / "tests"
+    top = tests_dir / f"{name}.rs"
+    if top.is_file():
+        return top, tests_dir
+    crate = tests_dir / name / "main.rs"
+    if crate.is_file():
+        return crate, tests_dir / name
+    if name != "main" and tests_dir.is_dir():
+        for area in sorted(p for p in tests_dir.iterdir() if p.is_dir()):
+            module = area / f"{name}.rs"
+            if (area / "main.rs").is_file() and module.is_file():
+                return module, area / name
+    return None
+
+
 def target_exists(root: Path, name: str) -> bool:
-    return (root / "tests" / f"{name}.rs").is_file()
+    return resolve_target(root, name) is not None
 
 
 MOD_OPEN = re.compile(r"(?:pub(?:\([^)]*\))?\s+)?mod\s+([A-Za-z_][A-Za-z0-9_]*)\s*([{;])")
@@ -252,11 +276,12 @@ def read_tests(file: Path, base: Path, prefix: str, out: set, seen: set) -> bool
 
 def list_tests(root: Path, name: str, cache: dict):
     """(test names, whether a macro_rules! body makes tests) of `tests/<name>.rs`, read from
-    the sources: no cargo is started (SPEC-20261122-ac-lint-no-cargo)."""
+    the sources: no cargo is started (SPEC-20261122-ac-lint-no-cargo). A moved file's names keep
+    their old form (no module prefix), so an old recorded filter selects what it always did."""
     if name not in cache:
         tests: set = set()
-        tests_dir = root / "tests"
-        macro = read_tests(tests_dir / f"{name}.rs", tests_dir, "", tests, set())
+        source, base = resolve_target(root, name)
+        macro = read_tests(source, base, "", tests, set())
         cache[name] = (tests, macro)
     return cache[name]
 

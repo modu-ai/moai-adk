@@ -154,11 +154,11 @@ fn is_windows(line: &str) -> bool {
 
 /// The flow line when the one card of the ledger is held by a live lease in the session's
 /// worktree: it is my card, working, and the only card of the flow.
-const FLOW_HELD: &str = "🎯 c1 W | 🗂️  D0 R0 W1 E0 ✅ 0";
+const FLOW_HELD: &str = "🎯 C-1 🟡 | 🟡 1";
 
 /// The first line of the worktree session: the host's name, then the branch of the worktree
 /// (the names differ here, so both items stand).
-const LINE_WORKTREE: &str = "🧠 Opus | 🌳 demo-1-work | 🅱️  spec/20260101-demo-work";
+const LINE_WORKTREE: &str = "🧠 Opus | 🌳 demo-1-work | 🅱️ spec/20260101-demo-work";
 
 #[test]
 fn a_held_card_does_not_name_the_worktree_item() {
@@ -229,7 +229,7 @@ fn the_main_checkout_has_no_worktree_item() {
     let f = fixture();
     let out = f.plain(None);
     // `+1`: the project's untracked state folder.
-    assert_eq!(line(&out, 0), "🧠 Opus | 🅱️  main +1", "{out}");
+    assert_eq!(line(&out, 0), "🧠 Opus | 🅱️ main +1", "{out}");
     assert!(
         is_windows(&line(&out, 1)),
         "an empty ledger shows no flow line: {out}"
@@ -248,7 +248,7 @@ fn the_worktree_option_off_hides_the_item_on_every_line() {
     let out = f.plain(Some(&wt));
     assert_eq!(
         line(&out, 0),
-        "🧠 Opus | 🅱️  spec/20260101-demo-work",
+        "🧠 Opus | 🅱️ spec/20260101-demo-work",
         "{out}"
     );
     assert_eq!(line(&out, 1), FLOW_HELD, "{out}");

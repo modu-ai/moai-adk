@@ -457,6 +457,47 @@ pub fn current(conn: &Connection, card_id: i64) -> Result<Option<Reservation>, L
     )
 }
 
+/// The worktrees that active reservations name (`held`, `expired_candidate` or
+/// `held_for_review`), each with its card, ordered by card. A `held` reservation whose lease has
+/// ended still names its worktree here: a lane's lease can end during a long run, and the
+/// cleanup that reads this (SPEC-20261123-worktree-slots REQ-8) keeps the worktree rather than
+/// guess. Read-only: it works on a [`ReadLedger::conn`] too.
+pub fn active_worktrees(conn: &Connection) -> Result<Vec<(i64, String)>, LedgerError> {
+    let mut stmt = conn.prepare(&format!(
+        "SELECT card_id, worktree FROM reservation \
+         WHERE status IN {ACTIVE_STATUSES} AND worktree IS NOT NULL ORDER BY card_id"
+    ))?;
+    let rows = stmt
+        .query_map([], |r| Ok((r.get::<_, i64>(0)?, r.get::<_, String>(1)?)))?
+        .collect::<Result<_, _>>()?;
+    Ok(rows)
+}
+
+/// Every worktree a reservation of the card named, in any generation and status, each once and
+/// sorted. A released reservation still names the worktree the card was worked in, which is what
+/// the cleanup after a landing needs (SPEC-20261123-worktree-slots REQ-12). Read-only.
+pub fn worktrees_of_card(conn: &Connection, card_id: i64) -> Result<Vec<String>, LedgerError> {
+    let mut stmt = conn.prepare(
+        "SELECT DISTINCT worktree FROM reservation \
+         WHERE card_id = ?1 AND worktree IS NOT NULL ORDER BY worktree",
+    )?;
+    let rows = stmt
+        .query_map([card_id], |r| r.get::<_, String>(0))?
+        .collect::<Result<_, _>>()?;
+    Ok(rows)
+}
+
+/// The cards that ever held a reservation on the branch `branch` (a short name, as `card take
+/// --branch` stored it), by card number. Read-only.
+pub fn cards_of_branch(conn: &Connection, branch: &str) -> Result<Vec<i64>, LedgerError> {
+    let mut stmt = conn
+        .prepare("SELECT DISTINCT card_id FROM reservation WHERE branch = ?1 ORDER BY card_id")?;
+    let rows = stmt
+        .query_map([branch], |r| r.get::<_, i64>(0))?
+        .collect::<Result<_, _>>()?;
+    Ok(rows)
+}
+
 /// Every reservation of the card, oldest generation first. Read-only.
 pub fn history(conn: &Connection, card_id: i64) -> Result<Vec<Reservation>, LedgerError> {
     let mut stmt =

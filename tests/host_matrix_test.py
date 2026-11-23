@@ -11,7 +11,6 @@ import unittest
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 MATRIX = ROOT / "docs/host-support-matrix.md"
 ZCODE_SUPPORT = ROOT / "docs/zcode-support.md"
-CODEX_CONTRACT = ROOT / "docs/codex-adapter-contract.md"
 COLUMNS = ["host", "surface", "item", "capability_status", "unknown_class", "내용", "source"]
 STATUSES = {"unknown", "documented", "probed", "certified", "stale"}
 UNKNOWN_CLASSES = {"표시 불가", "대안", "시험 대기"}
@@ -139,8 +138,8 @@ class HostMatrixTest(unittest.TestCase):
                          "no host run has been recorded, so nothing is probed or certified")
 
     def test_support_doc_gap_rows_are_classified(self):
-        # ZCODE-GAP-01, and the same shape for the Codex gaps: a class and a follow-up proposal.
-        for doc in (ZCODE_SUPPORT, CODEX_CONTRACT):
+        # ZCODE-GAP-01: a class and a follow-up proposal.
+        for doc in (ZCODE_SUPPORT,):
             text = doc.read_text(encoding="utf-8")
             gaps = [split_row(line) for line in text.splitlines() if re.match(r"^\| [GC]\d+ \|", line)]
             with self.subTest(doc=doc.name):

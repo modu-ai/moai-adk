@@ -1,5 +1,5 @@
 {
-  "about": "Tests whose input is the checked-in tree itself (#2681). Each entry splits into rule files (the test, the code or tool that does the walk, and any expected-set file) and the scope the walk reads. Two branches that touch disjoint files still break when one changes a rule file and the other changes a path in that entry's scope (#2642 + #2632). `moai-cli repo-scans` judges a pull request against the tip with this table (#2708; formerly tools/repo_scans.py); tests/repo_scans_test.py keeps the table complete.",
+  "about": "Tests whose input is the checked-in tree itself (#2681). Each entry splits into rule files (the test, the code or tool that does the walk, and any expected-set file) and the scope the walk reads. Two branches that touch disjoint files still break when one changes a rule file and the other changes a path in that entry's scope (#2642 + #2632). `moai-cli repo-scans` judges a pull request against the tip with this table (#2708; formerly tools/repo_scans.py); tests/repo_scans_table.rs keeps the table complete.",
   "scans": [
     {
       "id": "clone-state-dir-resolved-per-clone",
@@ -247,6 +247,38 @@
         }
       ],
       "rejects": "a git fixture call outside the guarded shared helper"
+    },
+    {
+      "id": "test-area-layout",
+      "tests": [
+        "tests/test_area_layout.rs::area_table_maps_every_real_test_file",
+        "tests/test_area_layout.rs::scan_list_names_only_existing_targets_and_paths"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test test_area_layout"
+      ],
+      "rules": [
+        "tests/test_area_layout.rs",
+        "tests/areas.toml"
+      ],
+      "scope": [
+        {
+          "prefix": "tests/",
+          "suffixes": [
+            ".rs",
+            ".toml"
+          ]
+        },
+        {
+          "prefix": "tools/",
+          "suffixes": [
+            ".json",
+            ".sh",
+            ".py"
+          ]
+        }
+      ],
+      "rejects": "a test file whose first word is not in tests/areas.toml, or a scan list naming a missing test target"
     },
     {
       "id": "no-fixed-temp-paths",
@@ -742,13 +774,13 @@
     {
       "id": "repo-scans-table",
       "tests": [
-        "tests/repo_scans_test.py::RepoScansTableTest"
+        "tests/repo_scans_table.rs::every_walking_test_file_is_listed_or_exempt"
       ],
       "checks": [
-        "python3 -m unittest tests.repo_scans_test"
+        "cargo test --offline --locked --test repo_scans_table"
       ],
       "rules": [
-        "tests/repo_scans_test.py",
+        "tests/repo_scans_table.rs",
         "tools/repo_scans.json",
         "src/repo_scans.rs"
       ],
@@ -835,12 +867,15 @@
     {
       "id": "source-manifest-tool-output",
       "tests": [
+        "tests/source_manifest_facts.rs::this_repository_manifest_is_what_the_tool_writes",
         "tests/source_manifest_test.py::test_this_repository_manifest_is_what_the_tool_writes"
       ],
       "checks": [
+        "cargo test --offline --locked --test source_manifest_facts",
         "python3 -m unittest tests.source_manifest_test"
       ],
       "rules": [
+        "tests/source_manifest_facts.rs",
         "tests/source_manifest_test.py",
         "tools/source_manifest.py",
         "skills/moai/references/source-manifest.json"

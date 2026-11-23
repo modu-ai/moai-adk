@@ -81,6 +81,8 @@ fn the_process_scans_run_lsof_without_name_lookups_or_blocking_calls() {
     let stub = home.path().join("stub");
     let log = home.path().join("lsof.log");
     stub_lsof(&stub, &log);
+    // This test counts the lsof calls, so it reads the real process table.
+    common::use_real_process_table();
     plan(&home, &stub, &[]);
     let calls = fs::read_to_string(&log).unwrap_or_default();
     let calls: Vec<&str> = calls.lines().collect();

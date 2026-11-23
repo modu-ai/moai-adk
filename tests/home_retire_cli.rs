@@ -4,6 +4,8 @@
 #![cfg(unix)]
 
 mod common;
+#[path = "common/spawn_cap.rs"]
+mod spawn_cap;
 use serde_json::{json, Value};
 use std::fs;
 use std::os::unix::fs::{MetadataExt, PermissionsExt};
@@ -51,9 +53,12 @@ fn go_home() -> (tempfile::TempDir, PathBuf) {
 }
 
 fn call(args: &[&str], envs: &[(&str, &str)]) -> Value {
+    // REQ-3: one spawn permit per running child, so the binary's child count stays bounded.
+    let _permit = spawn_cap::acquire();
     let out = Command::new(BIN)
         .args(args)
         .env_remove("MOAI_HOME")
+        .envs([crate::common::process_table()])
         .envs(envs.iter().copied())
         .stdin(Stdio::null())
         .output()
@@ -178,8 +183,10 @@ impl Drop for Kill {
 /// waiting on a pipe nobody writes to. It lives until the test drops it (`Kill` stops it) or the
 /// test process ends (the pipe closes and `cat` reads end of file), so no clock decides how long
 /// it lasts — a stand-in that sleeps for a fixed time ended first when a loaded machine ran the
-/// test past it (SPEC-20261120-card-screen-work-count).
+/// test past it (SPEC-20261120-card-screen-work-count). The test's later commands read the real
+/// process table (SPEC-20261122-test-process-table-default).
 fn in_use(dir: PathBuf) -> Kill {
+    crate::common::use_real_process_table();
     Kill(
         Command::new("cat")
             .stdin(Stdio::piped())

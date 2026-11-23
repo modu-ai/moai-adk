@@ -91,13 +91,13 @@ fn an_inherited_git_dir_cannot_change_the_rendered_branch_or_counts() {
     fs::write(other.join("u2.txt"), "u\n").unwrap();
 
     let clean = render(&home, &project, &[], WITHIN);
-    assert!(clean.contains("🅱️  main"), "{clean}");
+    assert!(clean.contains("🅱️ main"), "{clean}");
     // SPEC-20261122-statusline-where: the branch is on the first line, after the model. A clean
     // branch has no `+N` (the other repository's three changes would show as `+3`); there is
     // no `💾` segment (leader decision 6862179411). The input names no repository, so the
     // repository item is left out with its separator (REQ-1): no `📡 n/a`.
     let first_line = clean.lines().next().unwrap();
-    assert_eq!(first_line, "🧠 Opus | 🅱️  main", "{clean}");
+    assert_eq!(first_line, "🧠 Opus | 🅱️ main", "{clean}");
     assert!(!clean.contains("📁"), "{clean}");
 
     let git_dir = other.join(".git");
@@ -137,12 +137,12 @@ fn an_expired_render_budget_drops_the_git_numbers() {
     let within = render(&home, &project, &[], WITHIN);
     assert_eq!(
         within.lines().next(),
-        Some("🧠 Opus | 🅱️  main +1"),
+        Some("🧠 Opus | 🅱️ main +1"),
         "{within}"
     );
     for _ in 0..5 {
         let over = render(&home, &project, &[], 0);
-        assert_eq!(over.lines().next(), Some("🧠 Opus | 🅱️  main"), "{over}");
+        assert_eq!(over.lines().next(), Some("🧠 Opus | 🅱️ main"), "{over}");
         assert!(!over.contains("📁") && !over.contains("📡"), "{over}");
         assert_eq!(
             over.lines().skip(1).collect::<Vec<_>>(),
@@ -173,6 +173,8 @@ const SHA_A: &str = "0123456789abcdef0123456789abcdef01234567";
 const SHA_B: &str = "fedcba9876543210fedcba9876543210fedcba98";
 /// What the scripted `git status` says: a branch nobody checked out, one changed file.
 const CANNED: &str = "## elsewhere\n M a.txt\n";
+/// What the scripted `git rev-list --left-right --count` says: 1 behind, 2 ahead.
+const CANNED_DISTANCE: &str = "1\t2\n";
 const BUDGET_WITHIN: u64 = 3_600_000;
 
 struct Scripted {
@@ -212,12 +214,17 @@ impl Scripted {
              echo \"$*\" >> '{log}'\n\
              for a in \"$@\"; do\n\
              \x20 if [ \"$a\" = status ]; then cat '{canned}'; exit 0; fi\n\
+             \x20 if [ \"$a\" = rev-list ]; then cat '{canned_distance}'; exit \"$(cat '{distance_exit}')\"; fi\n\
              done\n\
              exit 1\n",
             log = log.display(),
             canned = root.join("canned.txt").display(),
+            canned_distance = root.join("canned-distance.txt").display(),
+            distance_exit = root.join("distance-exit.txt").display(),
         );
         fs::write(root.join("canned.txt"), CANNED).unwrap();
+        fs::write(root.join("canned-distance.txt"), CANNED_DISTANCE).unwrap();
+        fs::write(root.join("distance-exit.txt"), "0").unwrap();
         let git = bin.join("git");
         fs::write(&git, script).unwrap();
         fs::set_permissions(&git, fs::Permissions::from_mode(0o755)).unwrap();
@@ -473,21 +480,26 @@ fn head_file_and_process_count_refuses_links_pipes_and_folders() {
     }
 }
 
-/// Lane decision 1: the lane branch is measured against the integration branch by the one
-/// process, with the two `-c` overrides in front of `status`.
+/// The lane branch is measured against the integration branch by a second process of its own,
+/// `rev-list`, which reads no setting of the branch; the `status` call carries no `-c` override
+/// and no branch header. SPEC-20261123-statusline-integration-distance REQ-1, REQ-4, REQ-6.
 #[test]
 fn head_file_and_process_count_lane_branch_is_measured_against_the_integration_branch() {
     let s = Scripted::new("ref: refs/heads/lane\n");
     s.integration("next", SHA_A);
-    s.run(T, "s-lane");
+    let out = s.run(T, "s-lane");
     assert_eq!(
         s.starts(),
         vec![
-            "--no-optional-locks -c branch.lane.remote=. -c branch.lane.merge=refs/heads/next status --porcelain --branch"
-                .to_string()
+            "--no-optional-locks status --porcelain".to_string(),
+            "rev-list --left-right --count refs/heads/next...HEAD".to_string(),
         ]
     );
-    // On the integration branch itself git's own numbers: no override.
+    assert!(
+        out.contains("🧭 next ↑2 ↓1"),
+        "the numbers of the rev-list call: {out}"
+    );
+    // On the integration branch itself git's own numbers: one `status` call with the header.
     let s = Scripted::new("ref: refs/heads/next\n");
     s.integration("next", SHA_A);
     s.run(T, "s-next");
@@ -495,6 +507,64 @@ fn head_file_and_process_count_lane_branch_is_measured_against_the_integration_b
         s.starts(),
         vec!["--no-optional-locks status --porcelain --branch".to_string()]
     );
+}
+
+/// A `rev-list` that fails shows zeros for the distance, keeps the dirty count of the `status`
+/// call and writes no cache record, so the next render asks git again (REQ-2).
+#[test]
+fn a_failed_distance_call_shows_zeros_and_writes_no_cache() {
+    let s = Scripted::new("ref: refs/heads/lane\n");
+    s.integration("next", SHA_A);
+    fs::write(s.project.parent().unwrap().join("distance-exit.txt"), "1").unwrap();
+    fs::write(s.project.parent().unwrap().join("canned-distance.txt"), "").unwrap();
+    let out = s.run(T, "s-failed-distance");
+    assert!(out.contains("🧭 next ↑0 ↓0"), "{out}");
+    assert!(
+        branch_line(&out).contains("+1"),
+        "the dirty count stays: {out}"
+    );
+    assert!(
+        !s.cache_dir().join("s-failed-distance.json").exists(),
+        "a render whose distance call failed writes no cache"
+    );
+    s.run(T + 1, "s-failed-distance");
+    assert_eq!(s.starts().len(), 4, "asked git again: {:?}", s.starts());
+}
+
+/// Text that is no pair of numbers is a failed call too (REQ-2).
+#[test]
+fn a_distance_answer_that_is_no_pair_of_numbers_shows_zeros() {
+    for text in ["", "x\ty\n", "1\n", "1\t2\t3\n", "-1\t2\n"] {
+        let s = Scripted::new("ref: refs/heads/lane\n");
+        s.integration("next", SHA_A);
+        fs::write(
+            s.project.parent().unwrap().join("canned-distance.txt"),
+            text,
+        )
+        .unwrap();
+        let out = s.run(T, "s-bad-distance");
+        assert!(out.contains("🧭 next ↑0 ↓0"), "{text:?}: {out}");
+        assert!(
+            !s.cache_dir().join("s-bad-distance.json").exists(),
+            "{text:?}: no cache"
+        );
+    }
+}
+
+/// With no local ref of the integration branch there is nothing to measure and no second
+/// process (REQ-5).
+#[test]
+fn a_missing_integration_ref_starts_no_distance_process() {
+    let s = Scripted::new("ref: refs/heads/lane\n");
+    s.integration("next", SHA_A);
+    fs::remove_file(s.git_dir().join("refs/heads/next")).unwrap();
+    let out = s.run(T, "s-missing-ref");
+    assert_eq!(
+        s.starts(),
+        vec!["--no-optional-locks status --porcelain".to_string()],
+        "only the status call"
+    );
+    assert!(out.contains("🧭 next ↑0 ↓0"), "{out}");
 }
 
 /// A branch name git could take as an option or a revision range never reaches git, whatever
@@ -604,20 +674,20 @@ fn session_cache_another_folder_with_the_same_head_starts_one_git() {
     assert_eq!(again, other);
 }
 
-/// REQ-6: a changed commit of the integration branch starts one git, from a loose ref and from
-/// `packed-refs` alike.
+/// REQ-6: a changed commit of the integration branch starts git again (the `status` call and the
+/// distance call of a lane branch), from a loose ref and from `packed-refs` alike.
 #[test]
 fn session_cache_a_changed_integration_commit_starts_one_git() {
     let s = Scripted::new("ref: refs/heads/lane\n");
     s.integration("next", SHA_A);
     s.run(T, "s-int");
     s.run(T + 1, "s-int");
-    assert_eq!(s.starts().len(), 1, "{:?}", s.starts());
+    assert_eq!(s.starts().len(), 2, "{:?}", s.starts());
     s.set_integration_commit("next", SHA_B);
     s.run(T + 2, "s-int");
-    assert_eq!(s.starts().len(), 2, "{:?}", s.starts());
+    assert_eq!(s.starts().len(), 4, "{:?}", s.starts());
     s.run(T + 3, "s-int");
-    assert_eq!(s.starts().len(), 2, "{:?}", s.starts());
+    assert_eq!(s.starts().len(), 4, "{:?}", s.starts());
 
     let s = Scripted::new("ref: refs/heads/lane\n");
     s.integration("next", SHA_A);
@@ -628,10 +698,10 @@ fn session_cache_a_changed_integration_commit_starts_one_git() {
     fs::write(s.git_dir().join("packed-refs"), packed(SHA_A)).unwrap();
     s.run(T, "s-packed");
     s.run(T + 1, "s-packed");
-    assert_eq!(s.starts().len(), 1, "{:?}", s.starts());
+    assert_eq!(s.starts().len(), 2, "{:?}", s.starts());
     fs::write(s.git_dir().join("packed-refs"), packed(SHA_B)).unwrap();
     s.run(T + 2, "s-packed");
-    assert_eq!(s.starts().len(), 2, "{:?}", s.starts());
+    assert_eq!(s.starts().len(), 4, "{:?}", s.starts());
 }
 
 /// REQ-6: a commit on the same branch changes the branch's ref but not the `HEAD` text; it is

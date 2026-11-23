@@ -419,7 +419,7 @@ fn worktree_place_scans_the_selection_ignores_the_place() {
         ".claude/worktrees/p-1-k/tests/worktree_cli.rs".to_string(),
     ];
     let sel = moai_cli::check_affected::select(&changed, &[], None, "macos");
-    assert!(sel.rust.is_empty() && sel.python.is_empty(), "{sel:?}");
+    assert!(sel.rust.is_empty(), "{sel:?}");
     assert_eq!(sel.scans, moai_cli::check_affected::Scans::None);
     assert_eq!(moai_cli::check_affected::area(&changed[0]), None);
 }

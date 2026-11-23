@@ -6,6 +6,8 @@
 #![cfg(unix)]
 
 mod common;
+#[path = "common/spawn_cap.rs"]
+mod spawn_cap;
 use common::CleanEnv;
 
 use serde_json::{json, Value};
@@ -74,6 +76,8 @@ fn go_items(home: &Path) {
 }
 
 fn run(exe: &Path, home: &Path, args: &[&str]) -> Output {
+    // REQ-3: one spawn permit per running child, so the child count stays bounded.
+    let _permit = spawn_cap::acquire();
     Command::new(exe)
         .args(args)
         .clean_env()
@@ -377,6 +381,7 @@ impl Drop for Holder {
 fn update_home_token_goes_stale_when_an_item_in_use_is_freed() {
     let (_t, home, exe) = setup();
     go_items(&home);
+    crate::common::use_real_process_table();
     let holder = Holder(
         Command::new("sleep")
             .arg("60")
@@ -487,17 +492,20 @@ fn update_home_with_an_unreadable_process_table_offers_nothing() {
     let (_t, home, exe) = setup();
     go_items(&home);
     let before = state(&home);
-    let out = Command::new(&exe)
-        .arg("update")
-        .clean_env()
-        .env("PATH", "/usr/sbin:/usr/bin:/bin:/sbin")
-        .env("HOME", &home)
-        .env("LC_ALL", "C")
-        .env("MOAI_CLI_TEST_PROCESS_CHECK", "unavailable")
-        .current_dir(&home)
-        .stdin(Stdio::null())
-        .output()
-        .unwrap();
+    let out = {
+        let _permit = spawn_cap::acquire();
+        Command::new(&exe)
+            .arg("update")
+            .clean_env()
+            .env("PATH", "/usr/sbin:/usr/bin:/bin:/sbin")
+            .env("HOME", &home)
+            .env("LC_ALL", "C")
+            .env("MOAI_CLI_TEST_PROCESS_CHECK", "unavailable")
+            .current_dir(&home)
+            .stdin(Stdio::null())
+            .output()
+            .unwrap()
+    };
     let p = result(&out);
     assert_eq!(p["home"]["action"], json!("none"), "{p}");
     assert!(p["home"]["confirm_token"].is_null(), "{p}");

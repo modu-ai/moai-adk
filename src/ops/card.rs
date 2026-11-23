@@ -418,6 +418,41 @@ enum Action {
         #[arg(long)]
         home: Option<PathBuf>,
     },
+    /// Writes the ledger. Continue your own card after a /clear or a restart
+    ///
+    /// Writes the ledger. For the same lane after a `/clear`: the lane runs `session-register
+    /// --continue` first, which keeps the old session id in its registry entry, then this command
+    /// moves the card's reservation at `--generation` to this session at the next generation, with
+    /// the same write scope, worktree and branch and a new lease from the ledger clock. The proofs
+    /// are the registry's own record and are read before anything is written: this session's entry
+    /// lists the holder session among its previous sessions (`not_same_lane`), no entry still names
+    /// the holder session (`holder_registered`), and the reservation, the running folder and the
+    /// entry name one git worktree (`other_worktree`); each is a `conflict` that names the code. A
+    /// card that is `done`, a reservation that is not `held` and a generation that is not the
+    /// current one are refused with the answer `card reclaim` gives for the same state, and a
+    /// reservation that changed holder while the proofs were read is `holder_changed`. Nothing is
+    /// written by a refusal. The card keeps its state (also `review`), notes, criteria and links;
+    /// one `card.adopt` event names both sessions, both generations, the lane and the proof, and
+    /// the reclaim count of the card is untouched. The worktree's changes, its processes and the
+    /// launcher's lock are not read: the same lane in the same tree has the work. The old
+    /// generation is stale from then on, so a session that is still running under the old id is
+    /// refused by `card check`. The new holder is this session's own id, never typed.
+    Adopt {
+        /// `C-12`.
+        card: String,
+        /// The generation the card has now (`card show` prints it).
+        #[arg(long)]
+        generation: i64,
+        /// Lease length of the new reservation in seconds, 60 to 86400 (default 14400).
+        #[arg(long)]
+        lease_secs: Option<i64>,
+        /// The project folder (its profile holds the project id).
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// The HOME holding the ledger (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+    },
     /// Reads the ledger only. Show the card to work on next
     ///
     /// Reads the ledger only. Prints the cards this session holds (`mine`: generation, lease
@@ -454,6 +489,47 @@ enum Action {
         /// The author name of the leader's notes (default `leader`).
         #[arg(long)]
         leader: Option<String>,
+        /// The HOME to read (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+    },
+    /// Reads the ledger only. Wait for the next note on the named cards, or for a timeout
+    ///
+    /// Reads the ledger only. Fixes a start mark (`--since`, else the largest note id in the
+    /// ledger), then reads the ledger every `--every` seconds (default 15, 1 to 300). A poll
+    /// keeps the local notes above the mark that are on a named card, or whose first line holds
+    /// `all lanes` in any case on a card that is not `done`, and leaves out the notes of each
+    /// `--not-author` name. The first poll that keeps any ends the wait with all of them, oldest
+    /// first, each with its first line cut to 200 characters (`outcome: "note"`); when the
+    /// timeout passes first the answer is `outcome: "timeout"` with the seconds waited. Both exit
+    /// 0, and nothing is printed while it waits. `--timeout` must be given: 1 second to 12
+    /// hours, written `<n>`, `<n>s`, `<n>m` or `<n>h`. An unknown card, an absent ledger or a
+    /// ledger that is refused is refused before the wait, and nothing is created. A poll that
+    /// finds the ledger busy counts as a poll that found nothing, and the timeout is counted from
+    /// before the first read of the ledger. A wait started in the background with `&` from a
+    /// shell that is not interactive ignores SIGINT (Ctrl-C); end it with SIGTERM
+    /// (`kill <pid>`).
+    Wait {
+        /// A card to watch, `C-<n>` or `#<number>` as `card show` reads it (repeat, or join with
+        /// commas).
+        #[arg(long = "card", required = true, value_delimiter = ',')]
+        cards: Vec<String>,
+        /// The longest wait: `<n>`, `<n>s`, `<n>m` or `<n>h`, 1 second to 12 hours.
+        #[arg(long, value_parser = moai_cli::card::wait::timeout_arg)]
+        timeout: u64,
+        /// The time between two polls, written as `--timeout` is: 1 to 300 seconds (default 15).
+        #[arg(long, value_parser = moai_cli::card::wait::every_arg)]
+        every: Option<u64>,
+        /// Return only notes with a larger note id (default: the largest note id at the start).
+        #[arg(long, value_parser = clap::value_parser!(i64).range(0..))]
+        since: Option<i64>,
+        /// Leave out the notes this author wrote, for example the lane's own name (repeat for
+        /// more).
+        #[arg(long = "not-author")]
+        not_authors: Vec<String>,
+        /// The project folder (its profile holds the project id).
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
         /// The HOME to read (default `$HOME`). Tests pass a temporary folder.
         #[arg(long)]
         home: Option<PathBuf>,
@@ -773,6 +849,46 @@ enum Action {
         #[arg(long)]
         by: String,
         /// The project folder (its profile holds the project id and the integration branch).
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// The HOME holding the ledger (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+    },
+    /// Writes the ledger. Record the audit verdict of one exact head as an event of the card
+    ///
+    /// Writes one `card.verdict` event of the card: the head and the base it was judged against
+    /// (40 lowercase hex, commits of this repository, the base an ancestor of the head), `pass`
+    /// or `fail`, the tier the reviewer judged (0 to 2), the evidence (one line that passes the
+    /// secret screen) and, for a PASS above tier 0, the check receipt (`--receipt-head` and
+    /// `--receipt-step NAME=EXIT` for each step). The reviewer is the session id the host sets;
+    /// no option names one. The same call again writes nothing and answers the first event.
+    /// `card land` reads these events and lands a head only on an independent PASS of it.
+    Verdict {
+        /// The card the audit belongs to (`C-12`).
+        card: String,
+        /// The audited head (40 lowercase hex).
+        #[arg(long)]
+        head: String,
+        /// The base the head was judged against (40 lowercase hex, an ancestor of the head).
+        #[arg(long)]
+        base: String,
+        /// `pass` or `fail`.
+        #[arg(long)]
+        verdict: String,
+        /// The tier the reviewer judged, 0 to 2.
+        #[arg(long, value_parser = clap::value_parser!(u8).range(0..=2))]
+        tier: u8,
+        /// What was read and run, on one line.
+        #[arg(long)]
+        evidence: String,
+        /// The head the check receipt names.
+        #[arg(long)]
+        receipt_head: Option<String>,
+        /// One step of the receipt, `NAME=EXIT`; repeat for each step.
+        #[arg(long = "receipt-step", requires = "receipt_head")]
+        receipt_step: Vec<String>,
+        /// The project folder (its profile holds the project id).
         #[arg(long, default_value = ".")]
         project: PathBuf,
         /// The HOME holding the ledger (default `$HOME`). Tests pass a temporary folder.
@@ -1135,6 +1251,28 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
                 lease_secs,
             },
         ),
+        Action::Adopt {
+            card,
+            generation,
+            lease_secs,
+            project,
+            home,
+        } => {
+            let running_dir = std::env::current_dir().map_err(|e| {
+                format!("card adopt refused: the running folder cannot be read: {e}")
+            })?;
+            moai_cli::card::adopt::adopt(
+                &project,
+                &resolve_home(home)?,
+                &card,
+                &moai_cli::card::adopt::AdoptRequest {
+                    to_holder: &d::session_holder("adopt", env)?,
+                    generation,
+                    lease_secs,
+                    running_dir: &running_dir,
+                },
+            )
+        }
         Action::Next { project, home } => w::next(
             &project,
             &resolve_home(home)?,
@@ -1145,6 +1283,25 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             leader,
             home,
         } => moai_cli::card::inbox::inbox(&project, &resolve_home(home)?, leader.as_deref()),
+        Action::Wait {
+            cards,
+            timeout,
+            every,
+            since,
+            not_authors,
+            project,
+            home,
+        } => moai_cli::card::wait::wait(
+            &project,
+            &resolve_home(home)?,
+            &moai_cli::card::wait::WaitRequest {
+                cards: &cards,
+                timeout_secs: timeout,
+                every_secs: every.unwrap_or(moai_cli::card::wait::EVERY_DEFAULT_SECS),
+                since,
+                not_authors: &not_authors,
+            },
+        ),
         Action::Note {
             card,
             kind,
@@ -1370,6 +1527,35 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
                 map.insert("remote_copy".to_string(), copy.json());
             }
             Ok(landed)
+        }
+        Action::Verdict {
+            card,
+            head,
+            base,
+            verdict,
+            tier,
+            evidence,
+            receipt_head,
+            receipt_step,
+            project,
+            home,
+        } => {
+            let session = d::session_holder("verdict", env).ok();
+            moai_cli::card::verdict::verdict(
+                &project,
+                &resolve_home(home)?,
+                &card,
+                &moai_cli::card::verdict::VerdictRequest {
+                    session: session.as_deref(),
+                    head: &head,
+                    base: &base,
+                    verdict: &verdict,
+                    tier,
+                    evidence: &evidence,
+                    receipt_head: receipt_head.as_deref(),
+                    steps: &receipt_step,
+                },
+            )
         }
         Action::RemoteCopy { project } => Ok(moai_cli::card::remote_copy::entry(&project)),
         Action::Drift {
