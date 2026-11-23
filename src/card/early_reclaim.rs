@@ -209,9 +209,10 @@ fn remaining_work(
         super::dispatch::git_output(path, args).ok_or_else(|| unreadable(what))
     };
     // The file lists: names unquoted (`-z`) and a warning is unreadable, not "nothing there"
-    // (REQ-9).
+    // (REQ-9), with the line git wrote beside the refusal (REQ-18).
     let listed = |args: &[&str], what: &str| {
-        super::dispatch::git_entries(path, args).ok_or_else(|| unreadable(what))
+        super::dispatch::git_entries(path, args)
+            .map_err(|why| format!("{}: {why}", unreadable(what)))
     };
     let state = state_prefix(path);
     let head = git(&["rev-parse", "--abbrev-ref", "HEAD"], "its branch")?;

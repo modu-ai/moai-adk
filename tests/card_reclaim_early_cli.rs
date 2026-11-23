@@ -692,7 +692,11 @@ fn a_missing_fsmonitor_hook_does_not_make_a_worktree_unreadable() {
     w.register_gone(NAME, &sid(1));
     git_in(
         &w.wt,
-        &["config", "core.fsmonitor", "/nonexistent/moai-test-fsmonitor-hook"],
+        &[
+            "config",
+            "core.fsmonitor",
+            "/nonexistent/moai-test-fsmonitor-hook",
+        ],
     );
 
     let got = result(&w.reclaim(&sid(2), &card, "1"));

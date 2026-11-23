@@ -728,8 +728,11 @@ pub(super) fn worktree_gate(project: &Path, worktree: Option<&str>) -> Result<()
     let Some(wt) = worktree.filter(|w| !w.is_empty()) else {
         return Ok(());
     };
-    let unreadable =
-        || format!("card conflict in worktree unknown: the worktree {wt} could not be read");
+    // The reason git or the file system gave comes with the refusal (SPEC-20261122-test-defects-
+    // session-reclaim REQ-18).
+    let unreadable = |why: &str| {
+        format!("card conflict in worktree unknown: the worktree {wt} could not be read: {why}")
+    };
     let path = Path::new(wt);
     // A relative path means a different folder under another working directory, so "it does
     // not exist here" proves nothing (audit-c43 B1).
@@ -743,8 +746,12 @@ pub(super) fn worktree_gate(project: &Path, worktree: Option<&str>) -> Result<()
     match path.try_exists() {
         Ok(false) => return Ok(()),
         Ok(true) => {}
-        Err(_) => return Err(unreadable()),
+        Err(e) => return Err(unreadable(&e.to_string())),
     }
+    // A folder that lost its own `.git` and lies inside another checkout would be judged by that
+    // checkout, which may ignore it: only a folder git calls the top of a checkout is judged
+    // (REQ-22, REQ-23).
+    checkout_top_is(path).map_err(|why| unreadable(&why))?;
     // One changed or untracked path per entry, every untracked file on its own (a folder git
     // would show as one entry could hide real work beside a tool cache), names unquoted (`-z`).
     // An untracked file under the runtime state folder is tool state, not work
@@ -756,12 +763,12 @@ pub(super) fn worktree_gate(project: &Path, worktree: Option<&str>) -> Result<()
         path,
         &["status", "--porcelain=v1", "-z", "--untracked-files=all"],
     )
-    .ok_or_else(unreadable)?
+    .map_err(|why| unreadable(&why))?
     .iter()
     .filter(|e| !super::early_reclaim::is_tool_cache_entry(&state, e))
     .count() as u64;
     let unpushed = unpushed_commits(path, "HEAD", integration_ref(project, path).as_deref())
-        .ok_or_else(unreadable)?;
+        .ok_or_else(|| unreadable("git could not count its unpushed commits"))?;
     if uncommitted > 0 || unpushed > 0 {
         return Err(format!(
             "card conflict in worktree dirty: {wt} holds {uncommitted} uncommitted change(s) \
@@ -808,29 +815,64 @@ pub(super) fn unpushed_commits(dir: &Path, tip: &str, integration: Option<&str>)
 /// every spawn (`identity::scrub_git_env`) and the meaning matches `lane_reset`'s probes — no
 /// fetch, untracked files counted, `None` on any failure.
 pub(super) fn git_output(dir: &Path, args: &[&str]) -> Option<String> {
-    git_run(dir, args).map(|out| String::from_utf8_lossy(&out.stdout).into_owned())
+    git_run(dir, args)
+        .ok()
+        .map(|out| String::from_utf8_lossy(&out.stdout).into_owned())
 }
 
 /// The entries of one git file list read with `-z` (`status` or `ls-files`), names as written.
-/// `None` on a failure and also when git wrote anything on its standard error: `git status`
-/// exits 0 with only a warning for a folder it cannot open and lists nothing for it, so a
-/// warning means the list is incomplete (SPEC-20261122-test-defects-session-reclaim REQ-9).
-pub(super) fn git_entries(dir: &Path, args: &[&str]) -> Option<Vec<String>> {
+/// `Err` with the reason on a failure and also when git wrote a line on its standard error that
+/// is no noise line: `git status` exits 0 with only a warning for a folder it cannot open and
+/// lists nothing for it, so a warning means the list is incomplete
+/// (SPEC-20261122-test-defects-session-reclaim REQ-9, REQ-18).
+pub(super) fn git_entries(dir: &Path, args: &[&str]) -> std::result::Result<Vec<String>, String> {
     let out = git_run(dir, args)?;
-    if first_unexpected_line(&out.stderr).is_some() {
-        return None;
+    if let Some(line) = first_unexpected_line(&out.stderr) {
+        return Err(format!("git said: {}", capped(&line)));
     }
     let status = args.first() == Some(&"status");
-    Some(split_entries(&String::from_utf8_lossy(&out.stdout), status))
+    Ok(split_entries(&String::from_utf8_lossy(&out.stdout), status))
 }
 
-/// The first line git wrote on its standard error, which is no noise line.
+/// One line of git's words, short enough to carry in a refusal.
+fn capped(line: &str) -> String {
+    line.chars().take(200).collect()
+}
+
+/// The first line git wrote on its standard error, which is no noise line (REQ-18).
 fn first_unexpected_line(stderr: &[u8]) -> Option<String> {
     String::from_utf8_lossy(stderr)
         .lines()
         .map(str::trim)
-        .find(|l| !l.is_empty())
+        .filter(|l| !l.is_empty())
+        .find(|l| !is_noise_line(l))
         .map(str::to_string)
+}
+
+/// A line git writes when it carried on and the list is complete (REQ-19, D-10): a name in an
+/// attributes file that is not a valid attribute name, with the file and the line it stands on.
+/// Every other line, one that only looks like it included, is a warning.
+fn is_noise_line(line: &str) -> bool {
+    line.split_once(" is not a valid attribute name: ")
+        .is_some_and(|(name, at)| {
+            !name.is_empty()
+                && at.rsplit_once(':').is_some_and(|(file, n)| {
+                    !file.is_empty() && !n.is_empty() && n.bytes().all(|b| b.is_ascii_digit())
+                })
+        })
+}
+
+/// `Ok` when git places the top of a checkout exactly at `dir`; the reason otherwise.
+fn checkout_top_is(dir: &Path) -> std::result::Result<(), String> {
+    let out = git_run(dir, &["rev-parse", "--show-toplevel"])?;
+    let top = String::from_utf8_lossy(&out.stdout).trim().to_string();
+    match (std::fs::canonicalize(&top), std::fs::canonicalize(dir)) {
+        (Ok(a), Ok(b)) if a == b => Ok(()),
+        _ => Err(format!(
+            "it is not the top of a git checkout of its own (git places it in the checkout at \
+             {top})"
+        )),
+    }
 }
 
 /// Splits `-z` output into entries. In `git status` output a renamed or copied entry (`R` or
@@ -849,22 +891,38 @@ fn split_entries(raw: &str, status: bool) -> Vec<String> {
     out
 }
 
-/// One read-only git command in `dir`, its output when it exits 0.
-fn git_run(dir: &Path, args: &[&str]) -> Option<std::process::Output> {
+/// One read-only git command in `dir`, its output when it exits 0, else the reason: how git
+/// ended and the first line it wrote (REQ-18). The file monitor is switched off for every read:
+/// a read gains nothing from a watcher, and a hook that does not exist would make git write two
+/// `fatal:` lines on every read (REQ-20, D-11).
+fn git_run(dir: &Path, args: &[&str]) -> std::result::Result<std::process::Output, String> {
     // `MOAI_GIT_BIN` names the git program for a runner whose child carries no `PATH`
     // (the same seam as `MOAI_FORGE_GH_BIN`); everyone else spawns `git`.
     let program = std::env::var("MOAI_GIT_BIN").unwrap_or_else(|_| "git".to_string());
     let mut cmd = std::process::Command::new(program);
     crate::identity::scrub_git_env(&mut cmd);
     let out = cmd
+        .args(["-c", "core.fsmonitor=false"])
         .arg("--no-optional-locks")
         .arg("-C")
         .arg(dir)
         .args(args)
         .stdin(std::process::Stdio::null())
         .output()
-        .ok()?;
-    out.status.success().then_some(out)
+        .map_err(|e| format!("git could not start: {e}"))?;
+    if out.status.success() {
+        return Ok(out);
+    }
+    let how = out
+        .status
+        .code()
+        .map_or("was stopped by a signal".to_string(), |c| {
+            format!("exited with {c}")
+        });
+    Err(match first_unexpected_line(&out.stderr) {
+        Some(line) => format!("git {how} and said: {}", capped(&line)),
+        None => format!("git {how}"),
+    })
 }
 
 #[cfg(test)]
@@ -897,7 +955,8 @@ mod tests {
         assert_eq!(first_unexpected_line(b"\n  \n"), None);
         let two = format!("{warn}\nwarning: another\n");
         assert_eq!(first_unexpected_line(two.as_bytes()).as_deref(), Some(warn));
-        let noise_first = format!("we!rd is not a valid attribute name: .gitattributes:1\n{warn}\n");
+        let noise_first =
+            format!("we!rd is not a valid attribute name: .gitattributes:1\n{warn}\n");
         assert_eq!(
             first_unexpected_line(noise_first.as_bytes()).as_deref(),
             Some(warn)
@@ -931,8 +990,18 @@ mod tests {
     /// One git command in `dir` with a fixture identity; the test fails when git does.
     fn fixture_git(dir: &Path, args: &[&str]) {
         let out = std::process::Command::new("git")
-            .args(["-c", "user.name=fixture", "-c", "user.email=fixture@example.invalid"])
-            .args(["-c", "commit.gpgsign=false", "-c", "core.excludesFile=/dev/null"])
+            .args([
+                "-c",
+                "user.name=fixture",
+                "-c",
+                "user.email=fixture@example.invalid",
+            ])
+            .args([
+                "-c",
+                "commit.gpgsign=false",
+                "-c",
+                "core.excludesFile=/dev/null",
+            ])
             .arg("-C")
             .arg(dir)
             .args(args)
