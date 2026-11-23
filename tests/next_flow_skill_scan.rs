@@ -2010,34 +2010,43 @@ fn self_check_tests_item_problems(text: &str) -> Vec<String> {
         .filter(|word| lower.contains(**word))
         .map(|word| format!("item 3 names {word:?}: {item}"))
         .collect();
-    for part in [
-        "can run. Tests are Rust only.",
-        "`--test <name>`",
-        "area, every `cargo` check of `tools/repo_scans.json`",
-        "`cfg(target_os)`",
-    ] {
-        if !item.contains(part) {
-            problems.push(format!("item 3 lacks {part:?}: {item}"));
-        }
+    // The sentence is read whole, from `The set before READY` to the end of the item, so a word
+    // changed or added anywhere in it, or after it, is not the sentence (revision 3).
+    // The sentence before it ends with `. `, so a word put in front of the first word fails too.
+    if !item.ends_with(&format!(". {SELF_CHECK_ITEM3_TAIL}")) {
+        problems.push(format!(
+            "item 3 does not end with {SELF_CHECK_ITEM3_TAIL:?}: {item}"
+        ));
     }
     problems
 }
 
+/// Item 3 of the self-check list from `The set before READY` to the end of its line.
+const SELF_CHECK_ITEM3_TAIL: &str = "The set before READY is never narrowed: also `cargo test --offline --locked --lib` whole, every test target (`--test <name>`) whose name shares the first word of the changed `src/` area, every `cargo` check of `tools/repo_scans.json`, and the macOS-only (`cfg(target_os)`) tests this host can run. Tests are Rust only. Write each command with its exit code in the READY note, and read every failing CI leg before you repair it.";
+
+/// Item 5 of the self-check list from its repo-scans command to the end of its line.
+const SELF_CHECK_ITEM5_TAIL: &str = "`moai repo-scans --refs <tip> HEAD` lists the repo-wide scans the change set needs; run only their `cargo` checks and leave out a Python line, as `moai card land` asks for cargo checks only.";
+
+/// The audit-brief bullet of the flow reference, the whole line.
+const FLOW_AUDIT_BRIEF_BULLET: &str = "- Audit brief: name the scan tests `moai repo-scans --refs <tip> <head>` picks; run only their `cargo` checks on the merge tree, leaving out a Python line, and record each as a receipt step `scan:<id>` of the PASS for `moai card land`.";
+
 /// What item 5 (`Files tests read:`) gets wrong: the repo-scans command must be named and its
-/// list read as cargo checks only, with a Python line left out. The phrase is read whole from
-/// `needs;` so that `never run only …` is not the sentence.
+/// list read as cargo checks only, with a Python line left out. The item is read whole from its
+/// command to the end of its line, so that `never run only …` and a word after it are not the
+/// sentence.
 fn self_check_repo_scans_item_problems(text: &str) -> Vec<String> {
     let Some(item) = item_holding(text, "Files tests read:") else {
         return vec![format!("{SELF_CHECK} has no `Files tests read:` item")];
     };
-    [
-        "`moai repo-scans --refs <tip> HEAD` lists the repo-wide scans",
-        "needs; run only their `cargo` checks and leave out a Python line",
-    ]
-    .iter()
-    .filter(|part| !item.contains(**part))
-    .map(|part| format!("item 5 lacks {part:?}: {item}"))
-    .collect()
+    // Read whole from the command to the end of the item (revision 3), not as two phrases.
+    // The clause before it ends with `; `, so a word put in front of the command fails too.
+    if item.ends_with(&format!("; {SELF_CHECK_ITEM5_TAIL}")) {
+        Vec::new()
+    } else {
+        vec![format!(
+            "item 5 does not end with {SELF_CHECK_ITEM5_TAIL:?}: {item}"
+        )]
+    }
 }
 
 /// SPEC-20261123-self-check-rust-only AC-1 (REQ-1): the tests item of the self-check list says
@@ -2142,20 +2151,18 @@ fn self_check_pins_reject_reversed_sentences() {
 
 /// What the audit-brief bullet of the flow reference lacks of its restored meanings, beside the
 /// cargo-only reading: the brief names the scan tests the command picks, and each is recorded as a
-/// receipt step of the PASS. Both phrases are read from their start, so `never name` and `never
-/// record` are not the sentence.
+/// receipt step of the PASS. The whole line is read, so `never name`, `never record` and a word
+/// after the phrases are not the sentence.
 fn flow_scan_receipt_problems(flow: &str) -> Vec<String> {
     let mut problems = repo_scans_cargo_only_problems(flow);
     let Some(bullet) = flow.lines().find(|l| l.contains("moai repo-scans")) else {
         return problems;
     };
-    for part in [
-        "Audit brief: name the scan tests `moai repo-scans --refs <tip> <head>` picks;",
-        ", and record each as a receipt step `scan:<id>` of the PASS",
-    ] {
-        if !bullet.contains(part) {
-            problems.push(format!("the audit-brief bullet lacks {part:?}: {bullet}"));
-        }
+    // The bullet is read whole, the line from its dash to its full stop (revision 3).
+    if bullet != FLOW_AUDIT_BRIEF_BULLET {
+        problems.push(format!(
+            "the audit-brief bullet is not {FLOW_AUDIT_BRIEF_BULLET:?}: {bullet}"
+        ));
     }
     problems
 }
@@ -2220,5 +2227,168 @@ fn land_scans_the_flow_scan_receipt_mutants_are_caught() {
             !flow_scan_receipt_problems(&text).is_empty(),
             "{name}: the pin passes without the sentence"
         );
+    }
+}
+
+// SPEC-20261123-self-check-rust-only revision 3: the three pins read their sentence whole to the
+// end of its line, so a word changed or added outside the pinned phrase fails them, and a sweep
+// shows that no single word of a pinned sentence is left unread.
+
+/// One pinned sentence: the text that holds it, the part of it a pin must read, and the pin.
+struct Pinned {
+    name: &'static str,
+    text: String,
+    region: String,
+    problems: fn(&str) -> Vec<String>,
+}
+
+/// The three pinned sentences as they stand in the shipped texts: item 3 of the self-check list
+/// from `The set before READY` to the end of its line, item 5 from its repo-scans command to the
+/// end of its line, and the whole audit-brief bullet of the flow reference.
+fn pinned_sentences() -> Vec<Pinned> {
+    let self_check = read(SELF_CHECK);
+    let flow = read(FLOW_REF);
+    let tail = |item: &str, from: &str| {
+        let at = item
+            .find(from)
+            .unwrap_or_else(|| panic!("{from:?} is not in {item:?}"));
+        item[at..].to_string()
+    };
+    let item3 = item_holding(&self_check, "Whole binaries:").expect("item 3");
+    let item5 = item_holding(&self_check, "Files tests read:").expect("item 5");
+    let bullet = flow
+        .lines()
+        .find(|l| l.contains("moai repo-scans"))
+        .expect("the audit-brief bullet");
+    vec![
+        Pinned {
+            name: "item 3",
+            region: tail(item3, "The set before READY"),
+            text: self_check.clone(),
+            problems: self_check_tests_item_problems,
+        },
+        Pinned {
+            name: "item 5",
+            region: tail(item5, "`moai repo-scans --refs <tip> HEAD`"),
+            text: self_check,
+            problems: self_check_repo_scans_item_problems,
+        },
+        Pinned {
+            name: "audit-brief bullet",
+            region: bullet.to_string(),
+            text: flow.clone(),
+            problems: flow_scan_receipt_problems,
+        },
+    ]
+}
+
+/// SPEC-20261123-self-check-rust-only AC-9 (REQ-8): a word changed or added where the pin used to
+/// stop reading (after the phrase, or in a word the phrase did not hold) is a problem; each mutant
+/// really changes the text.
+#[test]
+fn pinned_sentences_are_read_to_their_end() {
+    let pinned = pinned_sentences();
+    let by = |name: &str| pinned.iter().find(|p| p.name == name).expect(name);
+    let mutants: Vec<(&str, &str, String)> = vec![
+        (
+            "item 3",
+            "a word after the table checks",
+            by("item 3").region.replace(
+                "`tools/repo_scans.json`, and the macOS",
+                "`tools/repo_scans.json` left out, and the macOS",
+            ),
+        ),
+        (
+            "item 3",
+            "the changed area turned into the unchanged one",
+            by("item 3")
+                .region
+                .replace("the changed `src/` area", "the unchanged `src/` area"),
+        ),
+        (
+            "item 3",
+            "the whole-set sentence turned into a never",
+            by("item 3")
+                .region
+                .replace("also `cargo test", "never `cargo test"),
+        ),
+        (
+            "item 3",
+            "a sentence added at the end of the item",
+            format!("{} Never mind the rest.", by("item 3").region),
+        ),
+        (
+            "item 5",
+            "a clause added at the end of the item",
+            format!("{} Run the rest by hand.", by("item 5").region),
+        ),
+        (
+            "item 5",
+            "the cargo-only ending widened",
+            by("item 5")
+                .region
+                .replace("for cargo checks only", "for cargo checks and more"),
+        ),
+        (
+            "audit-brief bullet",
+            "the PASS receipt turned into a never",
+            by("audit-brief bullet").region.replace(
+                "of the PASS for `moai card land`",
+                "of the PASS, never for `moai card land`",
+            ),
+        ),
+        (
+            "audit-brief bullet",
+            "the merge tree turned into an unmerged one",
+            by("audit-brief bullet")
+                .region
+                .replace("on the merge tree", "on the unmerged tree"),
+        ),
+    ];
+    for (which, what, mutant) in mutants {
+        let p = by(which);
+        assert!(
+            mutant != p.region,
+            "{which} / {what}: the mutant did not change the text"
+        );
+        let text = p.text.replace(&p.region, &mutant);
+        assert!(
+            !(p.problems)(&text).is_empty(),
+            "{which} / {what}: the pin passes without the sentence"
+        );
+    }
+}
+
+/// SPEC-20261123-self-check-rust-only AC-10 (REQ-9): a pinned sentence with any one word deleted,
+/// or with `not` put before any one word, is a problem; each mutant really changes the text.
+#[test]
+fn every_word_of_a_pinned_sentence_is_read() {
+    for p in pinned_sentences() {
+        assert!(
+            (p.problems)(&p.text).is_empty(),
+            "{}: the shipped text is already a problem",
+            p.name
+        );
+        let words: Vec<&str> = p.region.split(' ').collect();
+        assert!(words.len() > 15, "{}: only {} words", p.name, words.len());
+        for (i, word) in words.iter().enumerate() {
+            let without = [&words[..i], &words[i + 1..]].concat().join(" ");
+            let mut negated = words.clone();
+            let marked = format!("not {word}");
+            negated[i] = &marked;
+            for (how, mutant) in [("deleted", without), ("negated", negated.join(" "))] {
+                assert!(
+                    mutant != p.region,
+                    "{} / word {i} {word:?} {how}: the mutant did not change the text",
+                    p.name
+                );
+                let text = p.text.replace(&p.region, &mutant);
+                assert!(
+                    !(p.problems)(&text).is_empty(),
+                    "{} / word {i} {word:?} {how}: the pin passes without the word",
+                    p.name
+                );
+            }
+        }
     }
 }
