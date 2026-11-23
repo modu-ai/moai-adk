@@ -11,7 +11,8 @@
 #                        user-assets.json (and its folders) gets a `tolerated` line and no failure.
 #
 # Exit codes: the test's own; 1 for an enforced touch; 70 when the folder cannot be made (the test
-# does not run); 64 when called without a test. A read is seen through the access time of the decoys,
+# does not run) or, in enforce mode, when the comparison afterwards could not run (the reference
+# file or the HOME vanished) while the test itself passed; 64 when called without a test. A read is seen through the access time of the decoys,
 # a change through the modification time of any entry: both are compared with a reference file made
 # after the decoys, so a host that keeps no access time does not see reads (the repository test of
 # this wrapper reads a decoy and fails there).
@@ -53,6 +54,21 @@ HOME="$d" USERPROFILE="$d" "$@"
 rc=$?
 
 hits=$(find "$d" \( -newer "$ref" -o -anewer "$ref" \) 2>/dev/null)
+frc=$?
+if [ "$frc" -ne 0 ]; then
+  # The comparison itself failed (the reference file or the HOME is gone): an empty answer would
+  # read as "touched nothing", so the failure is reported and, in enforce mode, stops a test that
+  # passed. A test that failed keeps its own exit code.
+  line="HOME-GUARD: could not compare its HOME with the reference (find exit $frc): $*"
+  printf '%s\n' "$line" >&2
+  if [ -n "${MOAI_HOME_GUARD_LOG:-}" ]; then
+    (exec 2>/dev/null; printf '%s\n' "$line" >> "$MOAI_HOME_GUARD_LOG") || :
+  fi
+  if [ "$rc" -eq 0 ] && [ "${MOAI_HOME_GUARD:-enforce}" != observe ]; then
+    exit 70
+  fi
+  exit "$rc"
+fi
 if [ -n "$hits" ]; then
   # A test listed in the baseline (`<binary><TAB><test name>` lines) is tolerated when it touched
   # nothing but the decoy user-assets.json and the two folders above it. nextest names the test
