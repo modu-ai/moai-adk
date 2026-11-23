@@ -70,7 +70,8 @@ pub fn marker_head(text: &str, card: &str) -> Result<Option<String>> {
 /// What a worktree's receipt folder says about a head.
 #[derive(Debug, PartialEq, Eq)]
 enum Receipt {
-    Pass,
+    /// A PASS summary line of the head; the base its range started from, as the line wrote it.
+    Pass(String),
     /// Anything else, in words: `missing`, `result=FAIL`, `names another head`, and so on.
     Not(String),
 }
@@ -94,8 +95,15 @@ fn judge(text: &str, head: &str) -> Receipt {
         Some(named) => return not(format!("names another head ({named})")),
         None => return not("names no head"),
     }
+    let base = words.iter().find_map(|w| w.strip_prefix("base="));
     match words.last().and_then(|w| w.strip_prefix("result=")) {
-        Some("PASS") => Receipt::Pass,
+        Some("PASS") => match base {
+            Some(b) if (12..=40).contains(&b.len()) && b.bytes().all(|c| c.is_ascii_hexdigit()) => {
+                Receipt::Pass(b.to_string())
+            }
+            Some(b) => not(format!("names a base that is no commit id ({b})")),
+            None => not("names no base"),
+        },
         Some(other) => not(format!("result={other}")),
         None => not("has no result word"),
     }
@@ -158,7 +166,16 @@ pub fn check_note(project: &Path, card: &str, text: &str) -> Result<()> {
             .join(format!("check-affected-{}", short(&head)))
             .join(SUMMARY_FILE);
         match read_receipt(&path, &head) {
-            Receipt::Pass => return Ok(()),
+            // The range of the run began at a commit the head grew from.
+            Receipt::Pass(base) => {
+                if git_text(project, &["merge-base", "--is-ancestor", &base, &head]).is_ok() {
+                    return Ok(());
+                }
+                seen.push(format!(
+                    "  - {}: base {base} is not an ancestor of the head (or not a commit of this repository)",
+                    path.display()
+                ));
+            }
             Receipt::Not(why) => seen.push(format!("  - {}: {why}", path.display())),
         }
     }
@@ -231,7 +248,21 @@ mod tests {
             format!("check-affected base=aaaaaaaaaaaa head={head} targets=1 test=0 {result}\n")
         };
         let own = short(HEAD);
-        assert_eq!(judge(&line(own, "result=PASS"), HEAD), Receipt::Pass);
+        assert_eq!(
+            judge(&line(own, "result=PASS"), HEAD),
+            Receipt::Pass("aaaaaaaaaaaa".to_string())
+        );
+        assert_eq!(
+            judge(&format!("check-affected head={own} result=PASS"), HEAD),
+            not("names no base")
+        );
+        assert_eq!(
+            judge(
+                &format!("check-affected base=--all head={own} result=PASS"),
+                HEAD
+            ),
+            not("names a base that is no commit id (--all)")
+        );
         assert_eq!(judge(&line(own, "result=FAIL"), HEAD), not("result=FAIL"));
         assert_eq!(
             judge(&line("bbbbbbbbbbbb", "result=PASS"), HEAD),
