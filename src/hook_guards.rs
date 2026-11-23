@@ -5436,7 +5436,7 @@ mod tests {
             &wt,
             &[
                 format!("CDPATH=/ cd {w}/src && rm -rf build"),
-                format!("CDPATH=/ cd $PWD/src && rm -rf build"),
+                "CDPATH=/ cd $PWD/src && rm -rf build".to_string(),
                 "CDPATH=/ cd etc".to_string(),
                 "CDPATH=/ cd etc; ls".to_string(),
                 "CDPATH= cd src && rm -rf build".to_string(),
