@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261124-identity-home-arg
 title: "identity takes the HOME as an argument: identity_in, then the claim group calls it with no HOME"
-status: draft
+status: approved
 revision: 4
 created: 2026-11-24
+approval:
+  by: leader
+  at: 2026-11-23
+  basis: "리더 결정 노트 7796 (2026-11-23T19:00:54Z, 사용자 위임 2026-11-23T13:57Z, 노트 7795 에 답함: 판 4 승인 — REQ-9, AC-10, D-7, D-5·REQ-7 바로잡기, 선택 (a) layout.json 이 저널을 홈 상태 폴더로 돌릴 때만 링크 거절, identity.rs refuse_symlink 가시성 한 줄 포함); 리더 판단이고 사용자 직접 선택이 아니에요; 리더가 노트에 적었고 레인은 그 노트를 인용만 해요"
+  digest: "sha256:68a6ebbd5a13cf37db1a6d5c3d79a19b44a3ecc4778d407067ed946f25367e8b"
 ---
 
 # identity takes the HOME as an argument: identity_in, then the claim group calls it with no HOME
