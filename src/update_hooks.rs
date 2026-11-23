@@ -184,29 +184,40 @@ fn moai_generated_entry(command: &str, args: &str) -> bool {
     text.contains("claim-verify") || text.contains("hook-receipt") || text.contains("hook-dispatch")
 }
 
+/// The project root a folder sits in: the nearest folder at or above it that holds one of
+/// MoAI's two state folders, resolved through links so it compares equal to a canonical
+/// path (`None` outside a project). The plan and the revert both read the project's settings
+/// pair through this one answer, so a session in a subfolder and a session at the root name
+/// the same file.
+fn project_root_of(dir: &Path) -> Option<PathBuf> {
+    dir.ancestors()
+        .find(|d| {
+            [
+                crate::state_root::EARLIER_PROJECT_DIR,
+                crate::state_root::MOAI_DIR,
+            ]
+            .iter()
+            .any(|name| d.join(name).is_dir())
+        })
+        .map(|d| fs::canonicalize(d).unwrap_or_else(|_| d.to_path_buf()))
+}
+
 /// The project's own settings pair, planned as a removal when MoAI's manifest receipt owns its
 /// `hooks` key and the key still holds MoAI's generated entries (`None` outside a project,
 /// without the file, without MoAI's ownership, or with nothing of MoAI's in it; the user's
 /// own entries and every other key are never touched).
 fn project_removal_row(cwd: &Path, config_folder: &Path) -> Option<FolderPlan> {
-    let is_project = cwd.ancestors().any(|dir| {
-        [
-            crate::state_root::EARLIER_PROJECT_DIR,
-            crate::state_root::MOAI_DIR,
-        ]
-        .iter()
-        .any(|name| dir.join(name).is_dir())
-    });
-    if !is_project {
-        return None;
-    }
-    let folder = cwd.join(".claude");
+    // The row names the PROJECT's settings pair, found from wherever the update runs (a
+    // subfolder session names the same file a session at the root does; repair audit 7149
+    // block 1), never `cwd/.claude`.
+    let root = project_root_of(cwd)?;
+    let folder = root.join(".claude");
     if folder == config_folder {
         return None;
     }
     let bytes = fs::read(folder.join("settings.json")).ok()?;
     let v = settings_object(&bytes).ok()?;
-    if !crate::hooks::installed(cwd, "claude").unwrap_or(false) {
+    if !crate::hooks::installed(&root, "claude").unwrap_or(false) {
         return None;
     }
     let mut removed: Vec<String> = Vec::new();
@@ -919,6 +930,14 @@ fn apply_removal(f: &FolderPlan) -> Result<Value> {
     }))
 }
 
+/// One host's restore, decided in the revert's first phase: for each file its path, the bytes
+/// it holds now, and the bytes it gets back (`None` removes it); `labels` are the host names
+/// the answer reports once the writes are done.
+struct Restore {
+    labels: Vec<String>,
+    files: Vec<(PathBuf, Option<Vec<u8>>, Option<Vec<u8>>)>,
+}
+
 /// Undoes one confirmed hook layer for the hosts whose files all still hold the bytes the apply
 /// wrote: each file gets its before bytes back, or is removed when the apply created it. A host
 /// with any file changed since is skipped as a whole, so a settings file and its ownership
@@ -1017,13 +1036,23 @@ pub fn revert_in(
             "receipt": receipt_id,
         }));
     }
+    // Repair audit 7149 block 1: the revert is two phases. Phase 1 reads and checks every
+    // host's path, plain folders and before bytes and decides what each file gets; nothing is
+    // written until the whole receipt has passed, so a check that fails for a later host never
+    // leaves an earlier host restored. Phase 2 only writes.
+    let project_settings = project_root_of(&root)
+        .unwrap_or_else(|| root.clone())
+        .join(".claude")
+        .join("settings.json");
+    let mut restores: Vec<Restore> = Vec::new();
     for h in &receipt.hosts {
         if h.host == "claude-config" || h.host == "claude-project" {
             // audit 6768 B5: a config-folder receipt is read only from the HOME receipts
             // folder, and every file it names must be the host's own settings file — a
             // receipt shipped inside a repository can never write or delete a chosen path.
             // The project pair's removal row (N3) rides under its own kind, accepted for
-            // exactly the project's own settings path.
+            // exactly the project's own settings path — the one the plan recorded, which is
+            // the project root's, wherever in the project the revert runs.
             if !from_home {
                 return Err(
                     "a config-folder receipt is read only from the HOME receipts folder".into(),
@@ -1037,7 +1066,7 @@ pub fn revert_in(
                 .map_err(|_| "the config folder is unavailable".to_string())?
                 .join("settings.json")
             } else {
-                root.join(".claude").join("settings.json")
+                project_settings.clone()
             };
             if h.files
                 .iter()
@@ -1047,7 +1076,7 @@ pub fn revert_in(
             }
             // The file paths are absolute and the before bytes ride inline in the receipt
             // (before_hex); the changed-since check already ran for the whole receipt.
-            let mut restored = Vec::new();
+            let mut files = Vec::new();
             for f in h.files.iter() {
                 let target = PathBuf::from(&f.path);
                 let before = match &f.before_sha256 {
@@ -1065,19 +1094,13 @@ pub fn revert_in(
                         Some(b)
                     }
                 };
-                match before {
-                    Some(b) => {
-                        let now = crate::claude::read_existing(&target)?;
-                        crate::apply::publish_replace(&target, now.as_deref(), &b)?;
-                    }
-                    None => {
-                        fs::remove_file(&target)
-                            .map_err(|_| format!("{} not removed", target.display()))?;
-                    }
-                }
-                restored.push(h.host.clone());
+                let now = crate::claude::read_existing(&target)?;
+                files.push((target, now, before));
             }
-            reverted.extend(restored);
+            restores.push(Restore {
+                labels: vec![h.host.clone(); files.len()],
+                files,
+            });
             continue;
         }
         if retired(&h.host, active) {
@@ -1110,8 +1133,8 @@ pub fn revert_in(
             continue;
         }
         // Read and check every before copy first, so a host is restored whole or not at all.
-        let mut restore = Vec::new();
-        for (n, f) in h.files.iter().enumerate() {
+        let mut files = Vec::new();
+        for (n, (f, now)) in h.files.iter().zip(&current).enumerate() {
             let before = match &f.before_sha256 {
                 None => None,
                 Some(sha) => {
@@ -1123,10 +1146,16 @@ pub fn revert_in(
                     Some(b)
                 }
             };
-            restore.push(before);
+            files.push((root.join(&f.path), now.clone(), before));
         }
-        for ((f, now), before) in h.files.iter().zip(&current).zip(restore) {
-            let target = root.join(&f.path);
+        restores.push(Restore {
+            labels: vec![host.to_string()],
+            files,
+        });
+    }
+    // Phase 2: every host passed, so the writes run.
+    for restore in restores {
+        for (target, now, before) in restore.files {
             match before {
                 Some(b) => crate::apply::publish_replace(&target, now.as_deref(), &b)?,
                 None if now.is_some() => fs::remove_file(&target)
@@ -1134,7 +1163,7 @@ pub fn revert_in(
                 None => {}
             }
         }
-        reverted.push(host.to_string());
+        reverted.extend(restore.labels);
     }
     // Nothing restored (every host changed since): the receipt stays usable, so a revert after
     // the user puts the files back still works (#2868 audit N1).

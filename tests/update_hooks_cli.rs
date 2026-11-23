@@ -821,6 +821,137 @@ fn f_ref(f: &Fixture) -> &Fixture {
     f
 }
 
+/// The project's own settings pair holding MoAI's old generated set beside a user entry, with
+/// MoAI's ownership manifest for it: the pair's folder and its bytes.
+fn write_old_project_pair(f: &Fixture) -> (PathBuf, Vec<u8>) {
+    let project_claude = f.project.join(".claude");
+    fs::create_dir_all(&project_claude).unwrap();
+    let mine = json!({
+        "hooks": {
+            "PreToolUse": [
+                {"matcher": "Write|Edit|Bash",
+                 "hooks": [{"type": "command", "command": "orca guard", "timeout": 5}]},
+                {"hooks": [{"type": "command",
+                            "command": "moai claim-verify . --hook", "timeout": 10}]}
+            ]
+        },
+        "env": {"TOKEN_FOR_TEST": "keeps"}
+    });
+    let bytes = serde_json::to_vec_pretty(&mine).unwrap();
+    fs::write(project_claude.join("settings.json"), &bytes).unwrap();
+    let manifests = moai_cli::state_root::path(&f.project, "manifests");
+    fs::create_dir_all(&manifests).unwrap();
+    fs::write(
+        manifests.join("claude-settings.json"),
+        serde_json::to_vec_pretty(&json!({
+            "schema_version": 1,
+            "settings_path": ".claude/settings.json",
+            "owned": {"hooks": {}},
+            "settings_sha256": moai_cli::digest(&bytes),
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    (project_claude, bytes)
+}
+
+fn revert_args<'a>(folder: &'a str, id: &'a str) -> [&'a str; 5] {
+    [
+        "hooks-revert",
+        folder,
+        "--receipt",
+        id,
+        "--permission-reference",
+    ]
+}
+
+/// REQ-18, repair audit 7149 block 1: an update and a revert that run in a SUBFOLDER of the
+/// project name the project root's settings pair (never `<subfolder>/.claude`), and the revert
+/// is checked whole before its first write — a revert from a folder that is not the receipt's
+/// project restores nothing at all, not the config folder's file either.
+#[test]
+fn req18_the_removal_row_and_its_revert_work_from_a_subfolder() {
+    let f = setup();
+    layer_current(&f);
+    make_hooks_old(&f);
+    let (project_claude, pair_before) = write_old_project_pair(&f);
+    let sub = f.project.join("deep").join("er");
+    fs::create_dir_all(&sub).unwrap();
+    let config_before = fs::read(config_settings(&f)).unwrap();
+
+    let p = result(&run(&f, &sub, &["update"]));
+    let rows = p["hooks"]["folders"].as_array().unwrap().clone();
+    let project_row = project_claude.display().to_string();
+    let row = rows
+        .iter()
+        .find(|r| r["folder"].as_str() == Some(project_row.as_str()))
+        .unwrap_or_else(|| panic!("the removal row names the project root's pair: {p}"));
+    assert_eq!(row["action"], json!("remove"), "{p}");
+    assert!(
+        !rows
+            .iter()
+            .any(|r| r["folder"].as_str().is_some_and(|s| s.contains("deep"))),
+        "no row names the subfolder: {p}"
+    );
+    assert!(!sub.join(".claude").exists(), "the preview wrote nothing");
+
+    let digest = p["plan_digest"].as_str().unwrap().to_string();
+    let r = result(&run(&f, &sub, &["update", "--confirm", &digest]));
+    assert_eq!(r["hooks_result"]["state"], json!("applied"), "{r}");
+    let id = r["hooks_result"]["receipt"].as_str().unwrap().to_string();
+    let pair_applied = fs::read(project_claude.join("settings.json")).unwrap();
+    assert!(!String::from_utf8_lossy(&pair_applied).contains("claim-verify"));
+    let config_applied = fs::read(config_settings(&f)).unwrap();
+    assert_ne!(
+        config_applied, config_before,
+        "the update wrote the config file"
+    );
+
+    // A revert from a folder that is not the receipt's project refuses before any write.
+    let other = f.project.parent().unwrap().join("other");
+    fs::create_dir_all(&other).unwrap();
+    let refused = run(
+        &f,
+        &other,
+        &[
+            revert_args(other.to_str().unwrap(), &id).as_slice(),
+            &["test-approval"],
+        ]
+        .concat(),
+    );
+    assert!(!refused.status.success(), "{refused:?}");
+    assert_eq!(
+        fs::read(config_settings(&f)).unwrap(),
+        config_applied,
+        "the config folder's file is not half-restored"
+    );
+    assert_eq!(
+        fs::read(project_claude.join("settings.json")).unwrap(),
+        pair_applied
+    );
+
+    // The revert from the subfolder restores both files byte for byte.
+    let reverted = result(&run(
+        &f,
+        &sub,
+        &[
+            revert_args(sub.to_str().unwrap(), &id).as_slice(),
+            &["test-approval"],
+        ]
+        .concat(),
+    ));
+    assert_eq!(reverted["state"], json!("reverted"), "{reverted}");
+    assert_eq!(fs::read(config_settings(&f)).unwrap(), config_before);
+    assert_eq!(
+        fs::read(project_claude.join("settings.json")).unwrap(),
+        pair_before
+    );
+    assert!(
+        !sub.join(".claude").exists(),
+        "no folder grew in the subfolder"
+    );
+}
+
 /// REQ-18 (audit 6768 non-blocking 1): a project's own settings pair holding the old
 /// MoAI-installed set gets a removal row in the preview, the confirm drops exactly MoAI's
 /// generated entries, and the user's own entries and every other key stay.
