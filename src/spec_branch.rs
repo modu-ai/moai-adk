@@ -170,14 +170,21 @@ fn linked_specs(branch: &str, specs_dir: &Path) -> Vec<String> {
 }
 
 /// Whether the frontmatter of `text` (the lines between the first two `---` lines) has the lines
-/// `id: <id>`, `branch: <branch>` and a `status:` of `draft` or `approved`, each unindented.
+/// `id: <id>`, `branch: <branch>` and a `status:` of `draft` or `approved`, each unindented. A text
+/// whose frontmatter has no closing `---` line counts for nothing: [`linked_specs`] reads only the
+/// first [`LINK_READ_LIMIT`] bytes, and a cut inside the frontmatter could leave a shortened
+/// `branch:` value that names another branch (audit of C-429, N1).
 fn names_branch(text: &str, id: &str, branch: &str) -> bool {
     let mut lines = text.lines();
     if lines.next().map(str::trim_end) != Some("---") {
         return false;
     }
-    let (mut same_id, mut same_branch, mut live) = (false, false, false);
-    for line in lines.take_while(|l| l.trim_end() != "---") {
+    let (mut same_id, mut same_branch, mut live, mut closed) = (false, false, false, false);
+    for line in lines {
+        if line.trim_end() == "---" {
+            closed = true;
+            break;
+        }
         if let Some(v) = frontmatter_value(line, "id") {
             same_id = v == id;
         } else if let Some(v) = frontmatter_value(line, "branch") {
@@ -186,7 +193,7 @@ fn names_branch(text: &str, id: &str, branch: &str) -> bool {
             live = matches!(v, "draft" | "approved");
         }
     }
-    same_id && same_branch && live
+    closed && same_id && same_branch && live
 }
 
 /// The value of an unindented `<key>: <value>` line, without surrounding blanks or one pair of
