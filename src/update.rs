@@ -2019,7 +2019,13 @@ fn routing_recheck_moved(
     previewed: &crate::home_routing::Plan,
     now: &crate::home_routing::Plan,
 ) -> bool {
-    confirmed_hosts == previewed.hosts.len() && now.plan_digest != previewed.plan_digest
+    let previewed_hosts = previewed
+        .hosts
+        .iter()
+        .map(|h| h.host.as_str())
+        .collect::<std::collections::BTreeSet<_>>()
+        .len();
+    confirmed_hosts == previewed_hosts && now.plan_digest != previewed.plan_digest
 }
 
 fn agents_write_anything(p: &crate::agent_install::Plan) -> bool {
