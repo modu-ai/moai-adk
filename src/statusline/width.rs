@@ -5,7 +5,7 @@
 //! written with a variation selector counts 2 columns, which is never less than what a terminal
 //! draws, so a line is never wider than counted.
 
-use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
+use unicode_width::UnicodeWidthStr;
 
 /// The margin the host keeps on a line (notifications and the cursor column): the budget of a
 /// line is `COLUMNS` minus this minus the configured padding.
@@ -36,51 +36,23 @@ pub fn pick(widths: &[usize], budget: Option<usize>) -> usize {
         .unwrap_or(widths.len().saturating_sub(1))
 }
 
-/// An icon that is narrow by default (its first character counts 1 column) and is written with
-/// the variation selector U+FE0F: a terminal may draw it in one column or in two, so two spaces
-/// follow it and the text never touches it. Every other icon is drawn in two columns and one
-/// space follows it.
-pub fn icon_gap(icon: &str) -> &'static str {
-    let narrow_first = icon
-        .chars()
-        .next()
-        .and_then(UnicodeWidthChar::width)
-        .is_some_and(|w| w == 1);
-    if narrow_first && icon.contains('\u{FE0F}') {
-        "  "
-    } else {
-        " "
-    }
-}
-
-/// `<icon><gap><text>`: the icon with the spacing its width class asks for.
+/// `<icon> <text>`: exactly one space after every icon, also after one that is narrow by default
+/// and written with the variation selector U+FE0F (`🗂️`, `🅱️`, `⬇️`), which used to take two
+/// (SPEC-20261122-statusline-limits-left REQ-5). The width of the result is counted from the
+/// text itself ([`display_width`]), so the form picker measures what is written.
 pub fn icon_text(icon: &str, text: &str) -> String {
-    format!("{icon}{}{text}", icon_gap(icon))
+    format!("{icon} {text}")
 }
 
-/// Every icon of the three line layouts with the gap pinned for it (the table of D-6). The code
-/// builds its text from [`icon_text`], and a test compares this table to the crate's width.
-pub const ICONS: [(&str, &str); 20] = [
-    ("🧠", " "),
-    ("🤔", " "),
-    ("📡", " "),
-    ("🌳", " "),
-    ("🧭", " "),
-    ("🔗", " "),
-    ("🎯", " "),
-    ("👀", " "),
-    ("⛔", " "),
-    ("✅", " "),
-    ("🤖", " "),
-    ("🗿", " "),
-    ("⏸️", "  "),
-    ("🗂️", "  "),
-    ("🅱️", "  "),
-    ("⬇️", "  "),
-    ("🔀", " "),
-    ("🪫", " "),
-    ("🔋", " "),
-    ("💰", " "),
+/// Every icon the three line layouts can print. The code builds its text from [`icon_text`], and
+/// the tests scan every rendered form for the one space after each of them.
+pub const ICONS: [&str; 22] = [
+    // Line 1: who and where.
+    "🧠", "🤔", "📡", "⬇️", "🔀", "🌳", "🅱️", "🧭", "🔗",
+    // The flow line: the one icon set of the progress board and the lane reports.
+    "🎯", "🗂️", "🟡", "📨", "🛬", "✅", "🚧", "🙋",
+    // Line 3: the limits and the versions.
+    "🔋", "🪫", "💰", "🤖", "🗿",
 ];
 
 #[cfg(test)]
@@ -141,44 +113,38 @@ mod tests {
         assert_eq!(pick(&[5], Some(1)), 0, "one form is always the form");
     }
 
+    /// Every icon of the table counts two columns as a whole, with or without a variation
+    /// selector, so the width of a form is the same whatever icon it holds; and no icon is
+    /// listed twice.
     #[test]
-    fn the_icon_table_matches_the_width_the_crate_counts() {
-        for (icon, gap) in ICONS {
-            let first = icon.chars().next().unwrap();
-            let narrow_first = UnicodeWidthChar::width(first) == Some(1);
-            let selector = icon.contains('\u{FE0F}');
-            assert_eq!(
-                gap == "  ",
-                narrow_first && selector,
-                "{icon}: the gap of the table"
-            );
-            assert_eq!(icon_gap(icon), gap, "{icon}");
-            // The whole sequence never counts less than two columns.
-            assert!(
-                display_width(icon) >= 2,
-                "{icon} counts {}",
-                display_width(icon)
-            );
+    fn every_icon_of_the_table_counts_two_columns() {
+        for icon in ICONS {
+            assert_eq!(display_width(icon), 2, "{icon}");
         }
+        let mut unique = ICONS.to_vec();
+        unique.sort_unstable();
+        unique.dedup();
+        assert_eq!(unique.len(), ICONS.len(), "an icon is listed twice");
     }
 
+    /// SPEC-20261122-statusline-limits-left REQ-5: exactly one space follows every icon, the
+    /// ones written with a variation selector (`🗂️`, `🅱️`, `⬇️`) too.
     #[test]
-    fn two_spaces_follow_the_narrow_icons_and_one_the_wide_ones() {
-        assert_eq!(icon_text("⏸️", "H7"), "⏸️  H7");
-        assert_eq!(icon_text("🗂️", "D43"), "🗂️  D43");
-        assert_eq!(icon_text("🎯", "c12 W"), "🎯 c12 W");
-        assert_eq!(icon_text("👀", "S1"), "👀 S1");
-        assert_eq!(icon_text("⛔", "B3"), "⛔ B3");
+    fn one_space_follows_every_icon() {
+        for icon in ICONS {
+            assert_eq!(icon_text(icon, "x"), format!("{icon} x"), "{icon}");
+        }
+        assert_eq!(icon_text("🗂️", "150"), "🗂️ 150");
+        assert_eq!(icon_text("🅱️", "main"), "🅱️ main");
+        assert_eq!(icon_text("⬇️", "7"), "⬇️ 7");
         assert_eq!(icon_text("✅", "19"), "✅ 19");
     }
 
     #[test]
     fn widths_are_counted_by_the_crate() {
-        assert_eq!(display_width("🎯 c12 W | ⛔ B3"), 16);
-        assert_eq!(
-            display_width("🎯 c12 W | 👀 S11 A2 L0 | ⛔ B3 ⏸️  H7 | 🗂️  D43 R150 W14 E22 ✅ 19"),
-            67
-        );
+        assert_eq!(display_width("🚧 3 🙋 7"), 9);
+        assert_eq!(display_width("🗂️ 150 → 🟡 14"), 14);
+        assert_eq!(display_width("🅱️ main"), 7);
         assert_eq!(display_width(""), 0);
     }
 }
