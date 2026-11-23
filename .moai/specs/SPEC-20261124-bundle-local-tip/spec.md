@@ -24,7 +24,7 @@ Readers: the lander and the auditors, who run `moai bundle check` and keep scrat
 - Changing which flow or profile key drives the default tip: only the m-flow integration branch of the profile does, as today.
 - Fetching, or reading the remote, to decide the default tip: the tool never fetches.
 - A tool that creates or checks the scratch folders: the line is a rule in the audit contract with a pinned text.
-- The rule-provenance table `docs/claude-md-rule-provenance.md`: outside this card's write scope; the cause line goes to a scope-expansion request.
+- Changing `CLAUDE.md`; the rule-provenance cause line is one added sentence in `docs/claude-md-rule-provenance.md` (D-3).
 
 ## Requirements
 
@@ -45,16 +45,16 @@ Readers: the lander and the auditors, who run `moai bundle check` and keep scrat
 
 ## Scope
 
-- write: `.moai/specs/SPEC-20261124-bundle-local-tip/spec.md`, `src/ops/bundle.rs`, `src/bundle.rs`, `tests/bundle_check_cli.rs`, `skills/moai/references/audit.md`, `skills/moai/references/source-manifest.json`
+- write: `.moai/specs/SPEC-20261124-bundle-local-tip/spec.md`, `src/ops/bundle.rs`, `src/bundle.rs`, `tests/bundle_check_cli.rs`, `tests/bundle_ready_cli.rs`, `skills/moai/references/audit.md`, `skills/moai/references/source-manifest.json`, `docs/claude-md-rule-provenance.md` (the last two added by D-3)
 - read-only: `tests/next_flow_skill_scan.rs` (the size cap and manifest pins), `src/audit_delta.rs` (the scrubbed git command)
-- forbidden: `docs/claude-md-rule-provenance.md` and `CLAUDE.md` until a card whose write scope names them (request below)
+- forbidden: `CLAUDE.md` until a card whose write scope names it
 
 ## Plan
 
 1. RED: `tests/bundle_check_cli.rs` gets a repository with a profile, a local integration branch and no `origin/<branch>`; `bundle check` without `--tip` fails today with the fetch-first refusal.
 2. `src/bundle.rs` gets one public function that resolves the default tip of a branch in a repository (the local ref when it is a commit, else `origin/<branch>`) through the existing scrubbed git helper; `src/ops/bundle.rs` calls it with the `--dir` repository and its help lines change.
 3. RED then GREEN for the help text and the audit contract line: a pinned test on the line, the line added to `audit.md` with room made under the 6144-byte cap, and the manifest checksum rewritten by the tool.
-4. Request the scope expansion for the rule-provenance cause line as a `LANE-BLOCKED kind=scope` note.
+4. The scope expansion for the rule-provenance cause line and the `bundle_ready_cli` expectation was asked as `LANE-BLOCKED kind=decision` notes and answered by D-3.
 
 ## Risks
 
@@ -68,3 +68,14 @@ Readers: the lander and the auditors, who run `moai bundle check` and keep scrat
 | --- | --- | --- | --- |
 | D-1 | The default tip is the local integration branch, `origin/<branch>` only as the fallback | user decision 2026-11-23 (the local `NeXT` is the integration branch, `origin` is behind) and card C-408 | restore `resolve_tip` to return `origin/<branch>` |
 | D-2 | The scratch rule is a line in `references/audit.md` with a pinned test, no new tool | card C-408 asks for one line and a pinned test | remove the line and its test |
+| D-3 | The write scope also names `docs/claude-md-rule-provenance.md` (one cause line) and `tests/bundle_ready_cli.rs` (the default-tip name now starts with `refs/heads/`, plus the origin fallback scene) | leader decision on card notes 7573 and 7574, recorded as note 7575 (2026-11-23T14:31:57Z, delegated by the user at 13:57Z) | drop the two paths and their edits |
+
+## Result
+
+Measured 2026-11-23 on macOS in the worktree `.claude/worktrees/bundle-local-tip`, head `5172c65a17dc262ff08ccda16d816de46e35a0a0`.
+- AC-1 met: `a_local_only_integration_branch_answers_the_tier_floor` (tip `refs/heads/NeXT`, `audit_floor` 1, no refusal), `the_local_branch_wins_over_a_stale_origin_branch`, `an_explicit_tip_wins_over_the_profile_branch` and `the_tip_comes_from_the_profile_integration_branch`. Before the change four of the six new tests failed (RED, commit `b08f501eca`); after it `cargo nextest run --locked --offline` over `bundle_check_cli`, `bundle_ready_cli`, `bundle_body_cli`, `next_flow_skill_scan`, `core_rules_2876`, `agent_defs_package` and `home_style_ownership_cli` ran 134 tests, 134 passed.
+- AC-2 met: `the_default_tip_falls_back_to_origin_and_refuses_naming_the_tip` (neither branch: exit 1 naming `origin/NeXT`; origin only: `origin/NeXT`; a `--tip` that is no commit: exit 1 naming it) and `the_tip_falls_back_to_origin_when_the_local_branch_is_missing`.
+- AC-3 met: `every_bundle_action_help_names_the_local_branch_tip` over `ready`, `check`, `body`, `build` and `verify`.
+- AC-4 met: `the_audit_contract_gives_each_audit_its_own_scratch_folder`; `audit.md` is 6141 bytes under the 6144-byte cap (it was 6106; the sentence "it reads and reports, changes no file and posts nothing" of the code-review side rule was dropped to make room, no pinned phrase moved); `python3 -I tools/source_manifest.py write` rewrote only the `references/audit.md` line.
+- guard mutants, each run on the committed head: `integration_tip` local check forced false, exit 100 (3 failed); the origin fallback replaced by the local name, exit 100 (2 failed); the scratch line deleted from `audit.md`, exit 100 (1 failed). Each was reverted and `git diff` was empty afterwards.
+- Gap: the default tip is judged for the m-flow profile only, as before; a non-m-flow profile still gets `origin/v2026.11.0` (`a_github_flow_profile_keeps_the_old_tip_default` passes).
