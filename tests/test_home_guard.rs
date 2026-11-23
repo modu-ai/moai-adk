@@ -416,7 +416,11 @@ fn a_reference_file_that_vanishes_does_not_let_a_test_pass() {
         stderr(&out)
     );
     assert!(stderr(&out).contains("HOME-GUARD:"), "{}", stderr(&out));
-    assert_eq!(g.entries(), Vec::<String>::new(), "the wrapper left a folder");
+    assert_eq!(
+        g.entries(),
+        Vec::<String>::new(),
+        "the wrapper left a folder"
+    );
 }
 
 #[test]
