@@ -73,4 +73,16 @@ SPEC-20261123-lane-completion-handshake 의 독립 감사(AUDIT #373, head a83a9
 
 ## Result
 
-Status: SPEC draft (revision 1). 사용자가 승인해요. 글과 테스트를 바꾼 뒤 이 절을 채워요.
+Status: SPEC draft (revision 1); 승인은 사용자 몫이에요. 글 네 곳과 테스트 한 파일, 매니페스트 두 줄을 바꿨어요.
+
+- `CLAUDE.md`: 12줄과 9단계의 끝 문장만 바꿨어요(`with no registered leader take the next card, otherwise wait for that leader's dispatch`). 줄 수는 120줄 그대로이고 12줄의 고정 문장은 그대로예요.
+- `skills/moai/references/flows/next-flow.md`: Transition 의 일반 `/clear` 줄에 `only after the ledger shows the lane's card done or released` 를 되살렸어요(7712 → 7778 바이트, 상한 8192).
+- `skills/moai/workflows/work.md`: 7단계 repeat 에 등록된 리더 조건과 `wait for that leader's dispatch` 를 더했어요.
+- `skills/moai/references/source-manifest.json`: 두 파일의 sha256 두 줄(`tools/source_manifest.py write`, 바뀐 항목은 두 개뿐이에요).
+- `tests/lane_completion_handshake.rs`: ac7(세 글과 세 곳 문장), ac8(`/clear` 줄)을 더하고 ac2 에 `with no matching row, send nothing` 바늘을 더했어요. RED 는 `target/next-card-rule/red.log`(7개 중 ac7·ac8 실패).
+- AC-1: met — `cargo nextest run --offline --locked -E 'binary(lane_completion_handshake) | binary(repo_claude_md) | binary(next_flow_skill_scan) | binary(core_rules_2876) | (binary(product_cli) & test(/skill_package::/))'` 108 passed, 0 failed (`ac7_`); 뮤턴트 M2·M3 이 `ac7_` 에서 exit 100.
+- AC-2: met — 같은 실행의 `ac7_`; 뮤턴트 M4 가 `ac7_` 에서 exit 100.
+- AC-3: met — 같은 실행의 `ac8_`; 뮤턴트 M5 가 `ac8_` 에서 exit 100.
+- AC-4: met — 같은 실행의 `ac2_`; 뮤턴트 M1(문장 제거)이 `ac2_` 에서 exit 100.
+- AC-5: met — 같은 실행에서 `repo_claude_md`, `next_flow_skill_scan`, `core_rules_2876`, `product_cli skill_package::` 가 전부 통과해요. 한도는 `wc -l CLAUDE.md` 120, `wc -c next-flow.md` 7778.
+- 이 SPEC 이 하지 않은 일: 감사 후속 E(핸드셰이크 SPEC 크기)·F(trailer-check 범위), 전역 흐름 규칙 글과 출력 스타일 원본(다른 카드).
