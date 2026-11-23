@@ -851,21 +851,24 @@ fn first_unexpected_line(stderr: &[u8]) -> Option<String> {
 
 /// A line git writes when it carried on and the list is complete (REQ-19, D-10): a name in an
 /// attributes file that is not a valid attribute name, with the file and the line it stands on.
-/// Every other line, one that only looks like it included, is a warning.
+/// Every other line, one that only looks like it included, is a warning. The line is trimmed
+/// before it gets here, so the space that opens the separator already means a name stands before it.
 fn is_noise_line(line: &str) -> bool {
     line.split_once(" is not a valid attribute name: ")
-        .is_some_and(|(name, at)| {
-            !name.is_empty()
-                && at.rsplit_once(':').is_some_and(|(file, n)| {
-                    !file.is_empty() && !n.is_empty() && n.bytes().all(|b| b.is_ascii_digit())
-                })
+        .is_some_and(|(_, at)| {
+            at.rsplit_once(':').is_some_and(|(file, n)| {
+                !file.is_empty() && !n.is_empty() && n.bytes().all(|b| b.is_ascii_digit())
+            })
         })
 }
 
 /// `Ok` when git places the top of a checkout exactly at `dir`; the reason otherwise.
 fn checkout_top_is(dir: &Path) -> std::result::Result<(), String> {
     let out = git_run(dir, &["rev-parse", "--show-toplevel"])?;
-    let top = String::from_utf8_lossy(&out.stdout).trim().to_string();
+    // Only git's closing line break goes: a folder name may itself end in a space.
+    let top = String::from_utf8_lossy(&out.stdout)
+        .trim_end_matches('\n')
+        .to_string();
     match (std::fs::canonicalize(&top), std::fs::canonicalize(dir)) {
         (Ok(a), Ok(b)) if a == b => Ok(()),
         _ => Err(format!(
