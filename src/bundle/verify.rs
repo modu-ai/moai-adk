@@ -68,8 +68,10 @@ fn verify_targets(spec_text: &str) -> Vec<String> {
         while let Some(w) = words.next() {
             if w == "--test" {
                 if let Some(name) = words.next() {
-                    let name = name.trim_matches(|c: char| !c.is_ascii_alphanumeric() && c != '_');
-                    if !name.is_empty() {
+                    // Only the punctuation that wraps a name in prose is cut off; a name with any
+                    // other character (`../x`, `a/b`, `a.b`) is no cargo target name and is left out.
+                    let name = name.trim_matches(|c: char| "`'\";,.:()[]*|".contains(c));
+                    if is_target_name(name) {
                         out.push(name.to_string());
                     }
                 }
@@ -79,10 +81,20 @@ fn verify_targets(spec_text: &str) -> Vec<String> {
     out
 }
 
+/// A cargo test target name as the check list spells it: letters, digits, `_` and `-`, not starting
+/// with `-`. Anything else (`..`, `a/b`, `a.b`, an option) is no target and never reaches a command.
+fn is_target_name(name: &str) -> bool {
+    !name.is_empty()
+        && !name.starts_with('-')
+        && name
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
+}
+
 /// `tests/<name>.rs` (a top-level file) as the cargo target `<name>`.
 fn test_target(path: &str) -> Option<&str> {
     let name = path.strip_prefix("tests/")?.strip_suffix(".rs")?;
-    (!name.is_empty() && !name.contains('/')).then_some(name)
+    is_target_name(name).then_some(name)
 }
 
 /// `tests/<area>/<file>.rs` as the area crate `<area>`: a changed module of an area crate runs the
@@ -91,7 +103,7 @@ fn test_target(path: &str) -> Option<&str> {
 fn area_target(path: &str) -> Option<&str> {
     let rest = path.strip_prefix("tests/")?.strip_suffix(".rs")?;
     let (dir, file) = rest.split_once('/')?;
-    let plain = !dir.is_empty() && !file.is_empty() && !file.contains('/');
+    let plain = is_target_name(dir) && !file.is_empty() && !file.contains('/');
     (plain && !matches!(dir, "common" | "fixtures" | "e2e")).then_some(dir)
 }
 
@@ -791,6 +803,24 @@ mod tests {
         assert_eq!(test_target("tests/alpha.rs"), Some("alpha"));
         assert_eq!(test_target("tests/common/mod.rs"), None);
         assert_eq!(test_target("src/alpha.rs"), None);
+    }
+
+    #[test]
+    fn a_target_name_is_letters_digits_underscore_and_dash_only() {
+        let text = "  verify: `cargo test --test ../evil`; `cargo test --test a/b`; `cargo test --test ..`; `cargo test --test -x`; `cargo test --test a.b`; `cargo test --test ok_1-b`.\n";
+        assert_eq!(verify_targets(text), vec!["ok_1-b"]);
+        assert_eq!(test_target("tests/a.b.rs"), None);
+        assert_eq!(test_target("tests/-x.rs"), None);
+        assert_eq!(test_target("tests/ok_1-b.rs"), Some("ok_1-b"));
+    }
+
+    #[test]
+    fn an_area_folder_of_dots_or_odd_characters_is_no_area() {
+        assert_eq!(area_target("tests/../x.rs"), None);
+        assert_eq!(area_target("tests/./x.rs"), None);
+        assert_eq!(area_target("tests/a.b/x.rs"), None);
+        assert_eq!(area_target("tests/-a/x.rs"), None);
+        assert_eq!(area_target("tests/a-b_1/x.rs"), Some("a-b_1"));
     }
 
     #[test]
