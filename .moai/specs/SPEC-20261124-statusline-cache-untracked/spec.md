@@ -96,4 +96,19 @@ The card's own scope is empty and the lane took it with the SPEC folder only; `.
 
 ## Result
 
-Status: SPEC approved by the leader (revision 1, note 7689, a leader judgment and not the user's own pick). No code or test is built yet.
+Status: SPEC approved by the leader (revision 1, note 7689, a leader judgment and not the user's own pick); the slice is built. No product code changed.
+
+As built:
+- `.gitignore`: `/.moai-cli/state/` and `/.moai/state/` after the receipts rule, with a comment naming the status line cache and this SPEC.
+- `tests/gitignore_block_cli.rs`: the test `the_repository_gitignore_ignores_the_statusline_counts_cache`. It reads the repository `.gitignore` in a temporary git repository without global rules, asserts that the cache, the lock, the temporary file and `.moai/state/github/counts.json` are ignored, that the deciding rule of the two cache paths is the added line (`git check-ignore -v`), and that five tracked team paths stay unignored.
+- The test was committed alone first and failed on the unchanged `.gitignore` (`.moai-cli/state/github/counts.json is not ignored`, exit 101), then the rule turned it green.
+
+Results (each from a command run on this branch):
+- AC-1 met: `cargo test --locked --offline --test gitignore_block_cli the_repository_gitignore_ignores_the_statusline_counts_cache` passes; the whole file passes, 33 tests, exit 0.
+- AC-2 met: the same test keeps `.moai-cli/project.yaml`, `.moai-cli/manifests/profile-baseline.json`, `.moai/project.yaml`, `.moai/specs/SPEC-x/spec.md` and `.moai/evals/audit/cases-tuning.json` unignored, and `the_repository_gitignore_tracks_specs_and_ignores_the_rest` stays green in the 33.
+- AC-3 met: `git diff --name-only 05fec214a8..HEAD` lists the SPEC file, `.gitignore` and `tests/gitignore_block_cli.rs` only; no `.moai-cli/state/` file was deleted or modified.
+- AC-4 met: in this worktree the real cache file the status line wrote at 01:29:18 KST is listed by `git status --short --ignored` as `!! .moai-cli/state/`, `git check-ignore -v` names `.gitignore:389:/.moai-cli/state/`, and `git status --short` prints no line.
+
+Guard mutants (each applied by an edit, confirmed with `git diff --stat`, run on the test above, then restored with `git checkout -- .gitignore`): removing `/.moai-cli/state/` fails (exit 101); widening it to `/.moai-cli/` fails (exit 101, decided by another rule); adding `/.moai-cli/project.yaml` fails (exit 101, `.moai-cli/project.yaml is ignored`); removing `/.moai/state/` first survived (exit 0) because the older `.moai/state/` and `/.moai/*` rules ignore the same path, so the test was changed to assert the deciding rule by name and the same mutant then fails (exit 101).
+
+Gaps: a full `check affected` over a checkout where no status line renders was not run, so "no test writes the cache" stays a static reading plus two measurements (R-1). The `/.moai/state/` line has no effect today (older rules already ignore the path); it is the approved insurance for the state move.
