@@ -37,6 +37,7 @@ parent: SPEC-20261122-claude-md-layout
   verify: `cargo test --locked --offline --test claude_md_home_cli target_`
 - AC-2 (REQ-5…REQ-8): the old block is removed only on the pick and only when unedited, and no other text reaches the user's `CLAUDE.md`.
   verify: `cargo test --locked --offline --test claude_md_home_cli removal_`
+  verify: `cargo test --locked --offline --test update_user_layer_cli update_confirm_never`
 - AC-3 (REQ-9, REQ-10, REQ-12): the revert restores the files and a removed block and skips a changed one by name, and a receipt without an entry kind still reverts.
   verify: `cargo test --locked --offline --test claude_md_home_cli revert_`
   verify: `cargo test --locked --offline --test update_user_layer_cli`
@@ -48,7 +49,7 @@ parent: SPEC-20261122-claude-md-layout
 
 ## Scope
 
-- write: `src/home_routing.rs`, `src/home_routing/rules.rs` (new, declared inside `src/home_routing.rs`), `src/agents.rs` (one visibility change), `src/ops/home_routing_plan.rs`, `src/ops/home_routing_apply.rs`, `src/ops/home_routing_revert.rs`, the three operation fragments of the home routing commands in the design-review appendix, `skills/moai/references/**` (the routing text, the flow text and the source manifest), `skills/moai/workflows/update.md`, `tests/claude_md_home_cli.rs`, `tests/home_routing_cli.rs`, `tests/host_home_cli.rs`, `tests/revert_twice_cli.rs`, `.moai/specs/SPEC-20261122-claude-md-home-routing/**`
+- write: `src/home_routing.rs`, `src/home_routing/rules.rs` (new, declared inside `src/home_routing.rs`), `src/agents.rs` (one visibility change), `src/ops/home_routing_plan.rs`, `src/ops/home_routing_apply.rs`, `src/ops/home_routing_revert.rs`, the three operation fragments of the home routing commands in the design-review appendix, `skills/moai/references/**` (the routing text, the flow text and the source manifest), `skills/moai/workflows/update.md`, `tests/claude_md_home_cli.rs`, `tests/home_routing_cli.rs`, `tests/host_home_cli.rs`, `tests/revert_twice_cli.rs`, `tests/codex_home_update_removed.rs`, `tests/update_user_layer_cli.rs`, `.moai/specs/SPEC-20261122-claude-md-home-routing/**`, `.moai/specs/SPEC-20261122-claude-md-flow-rule/**`, and the SPEC count in `.moai/specs/SPEC-20261122-claude-md-layout/spec.md`
 - read-only: `src/host_home.rs`, `src/home_style.rs`, `src/update.rs`
 - forbidden: the real HOME and the real config folder, the Codex entries of `src/home_routing.rs`, the network
 
@@ -80,10 +81,14 @@ parent: SPEC-20261122-claude-md-layout
 
 ## Result
 
+All numbers below come from the `verify` commands of this SPEC run on the head that carries this text (a throwaway HOME for every test; the real HOME and config folder were never read or written).
+
 - AC-1 met: `claude_md_home_cli target_` runs 7 tests and `host_home_cli` 12 (the routing file in the resolved folder with and without the config variable; an edited file and a link are conflicts; a refused variable blocks the layer).
-- AC-2 met: `claude_md_home_cli removal_` runs 8 tests (the old block goes only on the pick, only when it equals its recorded baseline and only while the routing file is in place; no other text reaches the user's `CLAUDE.md`).
-- AC-3 met: `claude_md_home_cli revert_` runs 6 tests and `update_user_layer_cli` 11 (files and the removed block come back, a changed file is skipped by name, a receipt entry without a kind reverts as the old block).
-- AC-5 met: `claude_md_home_cli folders_` runs 4 tests (each picked folder has its own routing file and state file; the others stay untouched).
-- AC-4 met: `moai check affected` on the slice reports fmt, ops rustfmt and clippy `--all-targets -D warnings` at exit 0.
-- Open: the update preview does not yet show the removal of the old block as its own pick; that row needs the update flow and waits for the slice that edits it. The CLI flags `--remove-old-block` and `--config-dir` are the pick for now.
+- AC-2 met: `claude_md_home_cli removal_` runs 9 tests and `update_user_layer_cli update_confirm_never` 1 (the old block goes only on the pick, only when it equals its recorded baseline and only while the routing file is in place; the real `moai update` preview writes nothing, its confirm writes the two rules files and leaves the user's `CLAUDE.md` byte for byte; no other text reaches that file).
+- AC-3 met: `claude_md_home_cli revert_` runs 7 tests and `update_user_layer_cli` 22 (files and the removed block come back, a changed file is skipped by name, a receipt entry without a kind reverts as the old block).
+- AC-5 met: `claude_md_home_cli folders_` runs 5 tests (each picked folder has its own routing file and state file; the others stay untouched).
+- AC-4 met: `cargo fmt --check` and `cargo clippy --locked --offline --all-targets -- -D warnings` exit 0 on this head.
+- Guard tests fail without their guard: six one-line mutants of the guard code each turn the named tests red and were restored byte for byte — the pick gate of the removal (`removal_is_offered_with_the_warning_and_never_applied_by_default` and the `update_confirm_never` test), the baseline comparison of the block (`removal_an_edited_block_stays_and_the_reason_is_named`), the owned-hash check of a rules file (`target_an_edited_routing_file_is_a_conflict` and two `flow_conflict_` tests), the links refusal (`flow_conflict_a_linked_file_or_folder…`, `removal_a_linked_or_non_utf8_claude_md_is_left` and two revert-through-a-link tests), the routing-file-in-place condition (`removal_waits_until_…` and the `update_confirm_never` test) and the revert skip of a changed file (`revert_skips_each_changed_file_by_name…`).
+- Open (D-10): the update has no confirm token of its own for the removal of the old block; the pick is `--remove-old-block` on the home routing commands and `moai update` never passes it. A token in `moai update` needs flags in `main.rs`, `help.rs` and the update screen, outside this change's scope.
+- Open: whether the routing and flow texts should also say that a PASS needs a command run in this run, that no secret enters the repository or the reports, and which language to answer in. Neither text carries those lines today; the wording is the leader's to read and decide.
 - closure_status: awaiting the independent audit.
