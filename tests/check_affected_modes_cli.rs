@@ -219,6 +219,82 @@ fn common_mod_change_keeps_every_consumer_in_the_lane() {
     }
 }
 
+fn path_import_files() -> Vec<(&'static str, &'static str)> {
+    vec![
+        ("tests/common/mod.rs", "pub mod git;\n"),
+        ("tests/common/git.rs", "pub fn g() {}\n"),
+        ("tests/common/spawn_cap.rs", "pub fn s() {}\n"),
+        ("tests/common/deep/x.rs", "pub fn d() {}\n"),
+        (
+            "tests/alpha_cli.rs",
+            "mod common;\nuse common::git::g;\nfn main() { g() }\n",
+        ),
+        (
+            "tests/path_user.rs",
+            "#[path = \"common/spawn_cap.rs\"]\nmod spawn_cap;\nfn main() { spawn_cap::s() }\n",
+        ),
+        (
+            "tests/renamed_user.rs",
+            "#[path = \"common/spawn_cap.rs\"]\nmod cap;\nfn main() { cap::s() }\n",
+        ),
+        (
+            "tests/stem_user.rs",
+            "mod spawn_cap; // helper\nfn main() { spawn_cap::s() }\n",
+        ),
+        (
+            "tests/deep_user.rs",
+            "#[path = \"common/deep/x.rs\"]\nmod x;\nfn main() { x::d() }\n",
+        ),
+        ("tests/gamma_plain.rs", PLAIN),
+    ]
+}
+
+// AC-9: a helper that a test imports by `#[path = "common/<file>"]` (or a module named like the
+// file) reaches that test in both selections; the lane adds no other consumer of `tests/common`.
+#[test]
+fn common_path_import_keeps_its_users_in_both_selections() {
+    let repo = Repo::new(
+        &path_import_files(),
+        &[("tests/common/spawn_cap.rs", "pub fn s() {}\n// b\n")],
+    );
+    let (lane, full) = lane_and_full(&repo);
+    for (label, set) in [("lane", &lane), ("full", &full)] {
+        for want in ["path_user", "renamed_user", "stem_user"] {
+            assert!(set.contains(want), "{label} keeps {want}: {set:?}");
+        }
+        for not in ["gamma_plain", "deep_user"] {
+            assert!(!set.contains(not), "{label} leaves {not} out: {set:?}");
+        }
+    }
+    assert!(
+        !lane.contains("alpha_cli"),
+        "the lane leaves a `mod common` consumer that does not name the file: {lane:?}"
+    );
+    assert!(
+        full.contains("alpha_cli"),
+        "the full set keeps every `mod common` consumer: {full:?}"
+    );
+}
+
+// AC-10: a deeper helper path keeps every `mod common` consumer in the lane, adds the tests that
+// import that very file by path, and leaves the other path importers out.
+#[test]
+fn common_deeper_path_keeps_every_consumer_and_its_path_users() {
+    let repo = Repo::new(
+        &path_import_files(),
+        &[("tests/common/deep/x.rs", "pub fn d() {}\n// b\n")],
+    );
+    let (lane, full) = lane_and_full(&repo);
+    for (label, set) in [("lane", &lane), ("full", &full)] {
+        for want in ["alpha_cli", "deep_user"] {
+            assert!(set.contains(want), "{label} keeps {want}: {set:?}");
+        }
+        for not in ["path_user", "renamed_user", "stem_user", "gamma_plain"] {
+            assert!(!set.contains(not), "{label} leaves {not} out: {set:?}");
+        }
+    }
+}
+
 // AC-3: a test tagged with the host OS joins the lane only when its first word names a changed
 // area; the full set keeps it.
 #[test]
@@ -351,7 +427,13 @@ fn page_describes_the_two_selections() {
             .join("docs/design-review/appendix/operations/check.md"),
     )
     .unwrap();
-    for word in ["--lane", "selection", "range_note", "names that path"] {
+    for word in [
+        "--lane",
+        "selection",
+        "range_note",
+        "names that path",
+        "path-import rule",
+    ] {
         assert!(page.contains(word), "check.md does not say `{word}`");
     }
 }

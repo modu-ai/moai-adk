@@ -16,8 +16,8 @@ train candidate run. The user decided on 2026-11-21 (test-load redesign
 `~/.moai/reports/moai-adk/test-load-redesign-2026-11-21.md` §S3): the lane runs a precise
 selection, the train runs the full set once per candidate, the answer says which one ran, and a
 MERGE-READY accepts only the full run's PASS. Two follow-ups were added to this card later: a
-change to skill or doc text selects the tests that read that text (leader note 5115, the C-218 and
-C-246 misses), and a range whose base lies behind the merge base with the integration tip is
+change to skill or doc text selects the tests that read that text (leader note 5115, two misses of
+tests that pin workflow sentences), and a range whose base lies behind the merge base with the integration tip is
 reported, because it re-tests the tip's own changes (leader note 5395, the 343-target run).
 
 What is kept from the earlier, unlanded branch `spec/check-two-modes-20261121` (12376225e5,
@@ -36,6 +36,11 @@ they hold whatever the library looks like after that card lands.
 - The workflow guidance of the lane and leader modes: the cards that hold those files update them;
   this SPEC writes the command's operations page only.
 - The ff gate: it keeps requiring `result=PASS` of a full run.
+- A `selection` word on the `summary` line (its word order is pinned by existing tests) and the
+  MERGE-READY full-run wording of the lane and leader guidance: here the answer's `selection` field
+  and the operations page name the selection, and the cards that hold the guidance files write the
+  rest. A card criterion that names the summary line or the MERGE-READY wording stays open until
+  they land.
 
 ## Requirements
 
@@ -46,7 +51,8 @@ they hold whatever the library looks like after that card lands.
 - REQ-5: The answers of `--list` and of a run shall name the selection in a `selection` field that reads `lane` or `full`.
 - REQ-6: When a changed path under `skills/` or `docs/` appears literally in a Rust test file, the selection shall include that test in both selections. · failure: none — a test file that cannot be read adds nothing by this rule
 - REQ-7: When the base of the range is a strict ancestor of the merge base of the head and the ref `--integration-ref` names, the answer shall carry a `range_note` that names that merge base and the count of extra changed paths. · failure: none — an unreadable ref gives no note and the selection is unchanged
-- REQ-8: The operations page of the command shall describe the two selections, the `selection` field, the text-pin rule and the range note.
+- REQ-8: The operations page of the command shall describe the two selections, the `selection` field, the text-pin rule, the helper path-import rule and the range note.
+- REQ-9: When a changed path is under `tests/common/`, the selection shall include, in both selections, the tests whose source holds `common/<rest>` for that path or, for a file directly in `tests/common/`, declares a module named like its stem. · failure: none — a test that builds the path at run time is not seen
 
 ## Acceptance
 
@@ -56,8 +62,10 @@ they hold whatever the library looks like after that card lands.
 - AC-4 (REQ-5): `selection` reads `lane` with `--lane` and `full` without it, in `--list` · verify: `cargo test --locked --offline --test check_affected_modes_cli selection`
 - AC-5 (REQ-6): a change to `skills/moai/workflows/x.md` or `docs/a.md` selects the test whose source names that path, with and without `--lane` · verify: `cargo test --locked --offline --test check_affected_modes_cli text`
 - AC-6 (REQ-7): a range from an old fork point after the tip was merged in carries `range_note` with the merge base and the extra count, and a range from the merge base carries none · verify: `cargo test --locked --offline --test check_affected_modes_cli range`
-- AC-7 (REQ-8): the operations page names `--lane`, `selection`, the text-pin rule and `range_note` · verify: `cargo test --locked --offline --test check_affected_modes_cli page`
+- AC-7 (REQ-8): the operations page names `--lane`, `selection`, the text-pin rule, the path-import rule and `range_note` · verify: `cargo test --locked --offline --test check_affected_modes_cli page`
 - AC-8: the existing tests of the command pass unchanged · verify: `cargo test --locked --offline --test check_affected_cli`
+- AC-9 (REQ-9, REQ-3): a change to `tests/common/spawn_cap.rs` selects the tests that import it by `#[path = "common/spawn_cap.rs"]` (also under another module name) or declare `mod spawn_cap;`, in both selections, and with `--lane` no `mod common` consumer that does not name the file · verify: `cargo test --locked --offline --test check_affected_modes_cli common_path`
+- AC-10 (REQ-9, REQ-3): a change to a deeper helper file `tests/common/deep/x.rs` keeps every `mod common` consumer with `--lane`, adds the test that imports that file by path, and leaves the importers of other helper files out · verify: `cargo test --locked --offline --test check_affected_modes_cli common_deeper`
 
 ## Scope
 
@@ -76,7 +84,9 @@ they hold whatever the library looks like after that card lands.
 
 - A scan scoped to all of `src/` still joins most lane runs; the Result records the measured drop.
 - A test whose name does not say its area is missed by a lane run on another OS; the full train run catches it, and the MERGE-READY rule keeps that run the gate.
-- The text-pin rule reads test sources for literal paths; a test that builds the path at run time is not seen (the doc-reference scan does the same today).
+- The text-pin rule reads test sources for literal paths; a test that builds the path at run time is not seen (the doc-reference scan does the same today); the rule reads only changes under `skills/` and `docs/`.
+- A change outside every scan's scope and rule files drops every scan target from the lane set: `README.md`, `Cargo.toml`, `build.rs`, `src/main.rs`, `REVIEW.md`, `CLAUDE.md` and `tools/repo_scans.json` itself are in no scope, so a lane run on such a change keeps only the area, helper and text-pin tests; the full train run catches it.
+- A test that gets a `tests/common` helper by `common::*` only (a glob import) is not seen by the sub-module rule when only that sub-module changes; the full train run catches it.
 
 ## Decisions
 
@@ -86,6 +96,7 @@ they hold whatever the library looks like after that card lands.
 | D-2 | The fixtures drive the command, not the library | the one-slot card is reshaping `src/check_affected.rs`; the command's `--list` answer is the stable surface (leader decision 6896: fixtures first, no src write) | call the library once it settles |
 | D-3 | The field is `selection: lane|full` beside the existing `mode: list|run` | `mode` already names list or run in the answer | rename both together |
 | D-4 | The range note warns and never refuses | a refusal would stop the merge-candidate runs that need the wide range on purpose; the note makes the cost visible (planning default) | refuse unless a flag allows it |
+| D-5 | The helper path-import rule (REQ-9) applies to both selections | `--lane` alone would put tests in the lane that the full set lacks, breaking REQ-1; the full set missed the `#[path]` importers too (the independent audit found it with a broken `GoFx::new`) | limit it to `--lane` and give up REQ-1 |
 
 ## Result
 

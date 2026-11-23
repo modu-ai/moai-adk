@@ -30,6 +30,10 @@ operation `check.affected` · 코드 `src/ops/check.rs`, `src/check_affected.rs`
 | `tests/common/<이름>.rs` 가 바뀜 | `mod common;` 을 쓰는 모든 Rust 대상 | 소스에 `common::<이름>`(또는 `common::{<이름>, …}` 묶음의 항목)이 있는 대상만. `tests/common/mod.rs` 나 더 깊은 경로가 바뀌면 전체와 같아요 |
 | `cfg(target_os = "<이 호스트>")` 시험 | 모두 | 영역 규칙(이름의 첫 낱말이 바뀐 경로의 영역과 같음)으로 고른 것만 |
 
+도우미 경로 규칙(path-import rule)도 두 선택 모두에 같아요: 바뀐 경로가 `tests/common/` 아래이면 소스에 `common/<나머지 경로>` 가 글자 그대로 있는 대상(`#[path = "common/<이름>.rs"]` 로 불러 쓰는 시험, 다른 모듈 이름으로 불러도 같아요)과, `tests/common/<이름>.rs` 바로 아래 파일이면 `mod <이름>;` 을 선언한 대상을 골라요. `mod common;` 없이 도우미를 불러 쓰는 시험을 놓치지 않으려는 규칙이에요. 레인에서는 이 규칙이 고른 것에 위 표의 `common` 갈래가 더해져요.
+
+레인 선택은 스캔 `scope` 와 `rules` 밖의 변경(`README.md`, `Cargo.toml`, `build.rs`, `src/main.rs`, `REVIEW.md`, `CLAUDE.md`, `tools/repo_scans.json` 자체)을 스캔 대상으로 이어 주지 않아요. 그런 변경은 전체 선택(열차 실행)이 잡아요.
+
 글 고정 규칙은 두 선택 모두에 같아요: 바뀐 경로가 `skills/` 나 `docs/` 아래이고 그 경로가 어떤 `tests/*.rs` 소스에 글자 그대로 적혀 있으면 그 대상을 골라요(소스가 그 경로를 이름 그대로 부르는 시험, names that path). 경로를 실행 중에 조립하는 시험은 보이지 않아요.
 
 `--list` 와 돌리기의 답에는 `selection`(`lane` 또는 `full`)과 `range_note` 가 있어요. `--integration-ref <ref>` 를 주었고 범위의 base 가 head 와 그 ref 의 merge-base 보다 엄격히 앞선 조상이면 `range_note` 는 `{merge_base, integration_ref, extra_changed}` 객체예요: 그 merge-base 와, 범위가 merge-base 에서 시작한 범위보다 더 가진 바뀐 경로 수예요(옛 분기점에서 tip 을 병합한 뒤 범위를 잡으면 tip 이 이미 가진 변경을 다시 시험해요). 알리기만 하고 막지 않아요. 플래그가 없거나 ref 를 읽을 수 없거나 범위가 merge-base 에서 시작하면 `range_note` 는 `null` 이고 선택은 그대로예요. `summary` 줄의 낱말과 순서는 바뀌지 않아요.

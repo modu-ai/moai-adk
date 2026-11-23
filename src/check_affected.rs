@@ -229,7 +229,8 @@ pub fn select(
 /// narrows three rules of the full set: a scan joins only when a changed path is in its scope or
 /// is one of its rule files (REQ-2); a change to `tests/common/<sub>.rs` selects only the
 /// consumers that name `common::<sub>` (REQ-3); an OS-tagged test joins only through the area
-/// rule, not for being tagged with the host (REQ-4). The text-pin rule adds to both (REQ-6).
+/// rule, not for being tagged with the host (REQ-4). The text-pin rule (REQ-6) and the helper
+/// path-import rule (REQ-9) add to both.
 pub fn select_pick(
     pick: Pick,
     changed: &[String],
@@ -258,6 +259,19 @@ pub fn select_pick(
         let Some(rest) = path.strip_prefix("tests/") else {
             continue;
         };
+        // REQ-9: a test that imports a helper file by path (`#[path = "common/<file>"]`), or
+        // declares a module named like it, uses it without `mod common;`; both selections keep it.
+        if let Some(under) = rest.strip_prefix("common/") {
+            let literal = format!("common/{under}");
+            let direct = (!under.contains('/') && under != "mod.rs" && under.ends_with(".rs"))
+                .then(|| stem(under));
+            for t in tests.iter().filter(|t| {
+                t.text.contains(literal.as_str())
+                    || direct.is_some_and(|s| t.modules.iter().any(|m| m == s))
+            }) {
+                rust.insert(t.name.clone());
+            }
+        }
         let parts: Vec<&str> = rest.split('/').collect();
         match parts.as_slice() {
             [file] => {
