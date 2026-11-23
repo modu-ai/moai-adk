@@ -46,8 +46,7 @@ fn assert_before(text: &str, first: &str, second: &str) {
 /// REQ-10: what the window is, and that it holds no standing role.
 const INTRO: &str = "`/moai leader` makes the window that types it the registered coordination window of the project; the window holds no standing role, and when it ends the lanes go on from the ledger alone.";
 /// REQ-3: the registry is read first.
-const READ_FIRST: &str =
-    "Read the entry with `moai session-register --show --name leader` first.";
+const READ_FIRST: &str = "Read the entry with `moai session-register --show --name leader` first.";
 /// REQ-3: the registration, on `free` only.
 const REGISTER: &str = "When it answers `free`, register this session with `moai session-register . --name leader --mode leader` and keep the `instance` the answer returns.";
 /// REQ-4: a held entry or a conflict stops the route; any other refusal is an error.
