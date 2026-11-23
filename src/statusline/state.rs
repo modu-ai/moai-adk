@@ -1984,9 +1984,10 @@ fn marker_of(body: &str) -> Option<Marker> {
         Some(Marker::Blocked)
     } else if audit && first.contains("verdict: PASS") {
         Some(Marker::Audited)
-    } else if first.starts_with("LANE-READY-INTEGRATION")
-        || first.starts_with("MERGE-READY")
-        || first.starts_with("READY ")
+    } else if matches!(
+        crate::card::ready_receipt::marker_of_line(first),
+        Some("LANE-READY-INTEGRATION" | "READY")
+    ) || first.starts_with("MERGE-READY")
         || first.starts_with("감사 요청")
         || (first.starts_with("LANE-DONE")
             && (first.contains("audit requested") || first.contains("감사 요청")))

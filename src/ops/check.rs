@@ -32,7 +32,9 @@ enum Action {
     /// (`-j 4` for nextest, `RUST_TEST_THREADS=4` for `cargo test`); a `NEXTEST_TEST_THREADS` or
     /// `RUST_TEST_THREADS` the caller set stays as it is, and the slot folder's `limits.json` does
     /// not carry the cap yet. The answer has one `summary` line of `key=value` words in a fixed
-    /// order: `check-affected`, base, head, targets, scans, `test-threads=<n>` (the cap the
+    /// order: `check-affected`, base, head, targets, scans, `selection=lane` (only a `--lane` run
+    /// writes it: its `summary.txt` is no receipt for a READY or REPAIRED note, a bare run is),
+    /// `test-threads=<n>` (the cap the
     /// `test` step ran with), the exit status of each step in the order they ran, then
     /// `result=PASS` when every status is 0 and `result=FAIL` otherwise. Writes the step logs,
     /// `heavy-slot.log` and `summary.txt` (the summary line, whatever its result: the receipt

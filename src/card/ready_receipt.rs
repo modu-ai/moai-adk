@@ -15,8 +15,13 @@ type Result<T> = std::result::Result<T, String>;
 /// The receipt file inside `target/check-affected-<head12>/`.
 pub const SUMMARY_FILE: &str = "summary.txt";
 
-/// The first words of a note that hand a head back.
-const MARKERS: [&str; 2] = ["LANE-READY-INTEGRATION", "REPAIRED"];
+/// What a note that hands a head back starts with, and the word it is called: `READY` needs its
+/// space so that a longer word is no marker.
+const MARKERS: [(&str, &str); 3] = [
+    ("LANE-READY-INTEGRATION", "LANE-READY-INTEGRATION"),
+    ("REPAIRED", "REPAIRED"),
+    ("READY ", "READY"),
+];
 
 /// A receipt is one short line; a larger file is not one.
 const MAX_RECEIPT_BYTES: u64 = 4096;
@@ -29,22 +34,26 @@ fn is_head(text: &str) -> bool {
     text.len() == 40 && text.bytes().all(|b| matches!(b, b'0'..=b'9' | b'a'..=b'f'))
 }
 
-/// RED placeholder: the judge as it is today (the first word equals a marker).
+/// The hand-back marker a line starts with (SPEC-20261124-ready-receipt-followup REQ-1, REQ-2,
+/// REQ-4): the one judge of the `card note` gate, `card inbox` and the status line. Whatever
+/// follows the marker does not matter here; the gate then demands the exact shape. Blanks before
+/// the marker are the caller's business: the gate and the inbox skip them, the status line does
+/// not (its own rule, pinned by its tests).
 pub fn marker_of_line(line: &str) -> Option<&'static str> {
-    let first = line.split_whitespace().next()?;
-    MARKERS.iter().copied().find(|m| *m == first)
+    MARKERS
+        .iter()
+        .find(|(prefix, _)| line.starts_with(prefix))
+        .map(|(_, word)| *word)
 }
 
-/// The head a hand-back note names: `Ok(None)` when its first line starts with neither marker,
-/// the head when the line reads `<marker> <card> head=<40 lowercase hex>` followed by the end of
-/// the line or a space, and the refusal when it starts with a marker and reads otherwise.
+/// The head a hand-back note names: `Ok(None)` when its first line starts with no marker, the
+/// head when the line reads `<marker> <card> head=<40 lowercase hex>` followed by the end of the
+/// line or a space, and the refusal when it starts with a marker and reads otherwise.
 pub fn marker_head(text: &str, card: &str) -> Result<Option<String>> {
     let first = text.lines().next().unwrap_or("");
-    let Some(marker) = first
-        .split_whitespace()
-        .next()
-        .filter(|w| MARKERS.contains(w))
-    else {
+    // Blanks before a marker do not hide it (`card inbox` counts such a line); the shape below is
+    // read from the line as it is, so such a line is refused.
+    let Some(marker) = marker_of_line(first.trim_start()) else {
         return Ok(None);
     };
     let shown: String = first.chars().take(120).collect();
@@ -100,6 +109,12 @@ fn judge(text: &str, head: &str) -> Receipt {
         Some(named) if named == short(head) => {}
         Some(named) => return not(format!("names another head ({named})")),
         None => return not("names no head"),
+    }
+    // A `--lane` run checked a part of what the head changed (SPEC-20261124-ready-receipt-followup).
+    if words.contains(&"selection=lane") {
+        return not(
+            "a --lane run (selection=lane) checks only a part; run the bare `moai check affected`",
+        );
     }
     let base = words.iter().find_map(|w| w.strip_prefix("base="));
     match words.last().and_then(|w| w.strip_prefix("result=")) {
@@ -260,7 +275,7 @@ mod tests {
 
     /// The one judge the gate, `card inbox` and the status line share (SPEC-20261124-ready-
     /// receipt-followup REQ-1, REQ-2, REQ-4): a first line that starts with a marker is that
-    /// marker, whatever follows; leading blanks do not hide it; `READY` needs its space.
+    /// marker, whatever follows; `READY` needs its space; a leading blank is no marker here.
     #[test]
     fn marker_of_line_table() {
         for (line, want) in [
@@ -273,10 +288,8 @@ mod tests {
                 Some("LANE-READY-INTEGRATION"),
             ),
             ("LANE-READY-INTEGRATIONC-1", Some("LANE-READY-INTEGRATION")),
-            (
-                "  LANE-READY-INTEGRATION C-1",
-                Some("LANE-READY-INTEGRATION"),
-            ),
+            // Blanks before the marker are the caller's business (see the doc of the function).
+            ("  LANE-READY-INTEGRATION C-1", None),
             ("LANE-READY-INTEGRATION", Some("LANE-READY-INTEGRATION")),
             ("REPAIRED C-1 head=abc", Some("REPAIRED")),
             ("REPAIRED-X C-1", Some("REPAIRED")),

@@ -55,7 +55,7 @@ pub fn family_of(first_line: &str) -> Option<Family> {
         Some(Family::AuditRequest)
     } else if line.starts_with("LANE-BLOCKED") {
         Some(Family::Blocked)
-    } else if line.starts_with("LANE-READY-INTEGRATION") {
+    } else if super::ready_receipt::marker_of_line(line) == Some("LANE-READY-INTEGRATION") {
         Some(Family::ReadyForIntegration)
     } else if line.starts_with("DECISION-QUESTION") {
         Some(Family::DecisionQuestion)
@@ -261,8 +261,9 @@ mod tests {
             "lane-ready-integration",
             "",
         ] {
-            let ready =
-                crate::card::ready_receipt::marker_of_line(line) == Some("LANE-READY-INTEGRATION");
+            // `family_of` skips blanks before the line, as the gate does.
+            let ready = crate::card::ready_receipt::marker_of_line(line.trim_start())
+                == Some("LANE-READY-INTEGRATION");
             assert_eq!(
                 family_of(line) == Some(Family::ReadyForIntegration),
                 ready,
