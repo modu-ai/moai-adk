@@ -18,6 +18,10 @@ const CONFIG: &str = ".config/nextest.toml";
 /// The decoys are found by file name, so no state folder name is spelled in this file.
 const DECOY_READ: &str = r#"find "$HOME" -type f -name user-assets.json -exec cat {} + > /dev/null"#;
 
+/// Reads only that decoy, the way the baselined tests do: the glob lists the HOME and opens the
+/// one file, and lists no other folder of it.
+const KNOWN_READ: &str = r#"cat "$HOME"/.[!.]*/user-assets.json > /dev/null"#;
+
 fn script() -> PathBuf {
     Path::new(ROOT).join(SCRIPT)
 }
@@ -178,7 +182,7 @@ fn run_fake_binary(g: &Guard, baseline: &str, body: &str, test: &str) -> Output 
 #[test]
 fn a_listed_test_that_reads_only_the_known_decoy_is_tolerated() {
     let g = Guard::new();
-    let out = run_fake_binary(&g, "fake_bin\tsome::test\n", DECOY_READ, "some::test");
+    let out = run_fake_binary(&g, "fake_bin\tsome::test\n", KNOWN_READ, "some::test");
     assert_eq!(out.status.code(), Some(0), "{}", stderr(&out));
     assert!(stderr(&out).contains("tolerated"), "{}", stderr(&out));
 }
@@ -186,7 +190,7 @@ fn a_listed_test_that_reads_only_the_known_decoy_is_tolerated() {
 #[test]
 fn a_listed_test_that_also_writes_is_not_tolerated() {
     let g = Guard::new();
-    let body = format!("{DECOY_READ}\necho x > \"$HOME/stray.txt\"");
+    let body = format!("{KNOWN_READ}\necho x > \"$HOME/stray.txt\"");
     let out = run_fake_binary(&g, "fake_bin\tsome::test\n", &body, "some::test");
     assert_eq!(out.status.code(), Some(1), "{}", stderr(&out));
     assert!(!stderr(&out).contains("tolerated"), "{}", stderr(&out));
@@ -203,16 +207,16 @@ fn a_listed_test_that_reads_another_decoy_is_not_tolerated() {
 #[test]
 fn a_test_that_is_not_listed_fails_and_so_does_one_under_another_binary() {
     let g = Guard::new();
-    let out = run_fake_binary(&g, "fake_bin\tother::test\n", DECOY_READ, "some::test");
+    let out = run_fake_binary(&g, "fake_bin\tother::test\n", KNOWN_READ, "some::test");
     assert_eq!(out.status.code(), Some(1), "{}", stderr(&out));
-    let out = run_fake_binary(&g, "other_bin\tsome::test\n", DECOY_READ, "some::test");
+    let out = run_fake_binary(&g, "other_bin\tsome::test\n", KNOWN_READ, "some::test");
     assert_eq!(out.status.code(), Some(1), "{}", stderr(&out));
 }
 
 #[test]
 fn a_tolerated_test_that_fails_keeps_its_own_exit_code() {
     let g = Guard::new();
-    let body = format!("{DECOY_READ}\nexit 9");
+    let body = format!("{KNOWN_READ}\nexit 9");
     let out = run_fake_binary(&g, "fake_bin\tsome::test\n", &body, "some::test");
     assert_eq!(out.status.code(), Some(9), "{}", stderr(&out));
 }
