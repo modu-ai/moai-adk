@@ -612,13 +612,7 @@ fn schema_describes_picks_and_the_skip_action() {
         .collect();
     assert_eq!(
         ids,
-        [
-            "append-managed",
-            "skip-conflicts",
-            "import",
-            "move",
-            "personal-file"
-        ]
+        ["append-managed", "skip-conflicts", "move", "personal-file"]
     );
     let plan = schema("agents-plan.schema.json");
     assert!(

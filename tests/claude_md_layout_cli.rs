@@ -262,17 +262,18 @@ fn blocks_wait_for_a_pick_when_agents_md_exists() {
     let plan = fx.plan("none", &[]);
     assert_eq!(action(&plan, "CLAUDE.md"), "absent", "{plan}");
     let w = warnings(&plan);
-    for word in ["AGENTS.md", "pick", "import", "move"] {
+    for word in ["AGENTS.md", "pick", "move"] {
         assert!(w.contains(word), "{word:?} not in {w}");
     }
-    // The picks are named in the order the picks step offers them, `move` first and recommended.
-    let (at_move, at_import, at_leave) = (
+    // The picks are named in the order the picks step offers them, `move` first and recommended;
+    // the retired pick `import` is not named.
+    let (at_move, at_leave) = (
         w.find("`move`").expect("move"),
-        w.find("`import`").expect("import"),
         w.find("`leave`").expect("leave"),
     );
-    assert!(at_move < at_import && at_import < at_leave, "{w}");
-    assert!(w[at_move..at_import].contains("recommended"), "{w}");
+    assert!(at_move < at_leave, "{w}");
+    assert!(w[at_move..at_leave].contains("recommended"), "{w}");
+    assert!(!w.contains("`import`"), "{w}");
     fx.apply_ok("none", &[]);
     assert!(!fx.exists("CLAUDE.md"), "no CLAUDE file without a pick");
     assert_eq!(
@@ -282,36 +283,35 @@ fn blocks_wait_for_a_pick_when_agents_md_exists() {
     );
 }
 
-/// The writer alone never carries `import` or `move` out: a `CLAUDE.md` holding only the managed
-/// block would stop Claude Code reading the rules in `AGENTS.md`. The project picks step
-/// (`agents-merge-plan --pick`) writes the block together with the import line or the copied text.
+/// The writer alone never carries `move` out: a `CLAUDE.md` holding only the managed block would
+/// stop Claude Code reading the rules in `AGENTS.md`. The project picks step
+/// (`agents-merge-plan --pick`) writes the block together with the copied text.
 #[test]
-fn blocks_are_not_written_by_the_writer_for_the_pick_import_or_move() {
-    for pick in ["import", "move"] {
-        let fx = Fx::new(None);
-        let rules = "# Team rules\n\nAlways run the linter.\n";
-        fs::write(fx.path("AGENTS.md"), rules).unwrap();
-        let plan = fx.plan("none", &[pick]);
-        assert_eq!(action(&plan, "CLAUDE.md"), "absent", "{pick}: {plan}");
-        let w = warnings(&plan);
-        for word in ["AGENTS.md", "agents-merge", "--pick", pick] {
-            assert!(w.contains(word), "{pick}: {word:?} not in {w}");
-        }
-        fx.apply_ok("none", &[pick]);
-        assert!(!fx.exists("CLAUDE.md"), "{pick}: a CLAUDE.md was written");
-        assert_eq!(fx.read("AGENTS.md"), rules, "{pick}: AGENTS.md changed");
+fn blocks_are_not_written_by_the_writer_for_the_pick_move() {
+    let pick = "move";
+    let fx = Fx::new(None);
+    let rules = "# Team rules\n\nAlways run the linter.\n";
+    fs::write(fx.path("AGENTS.md"), rules).unwrap();
+    let plan = fx.plan("none", &[pick]);
+    assert_eq!(action(&plan, "CLAUDE.md"), "absent", "{pick}: {plan}");
+    let w = warnings(&plan);
+    for word in ["AGENTS.md", "agents-merge", "--pick", pick] {
+        assert!(w.contains(word), "{pick}: {word:?} not in {w}");
     }
+    fx.apply_ok("none", &[pick]);
+    assert!(!fx.exists("CLAUDE.md"), "{pick}: a CLAUDE.md was written");
+    assert_eq!(fx.read("AGENTS.md"), rules, "{pick}: AGENTS.md changed");
 }
 
 /// Settled projects keep their block refreshed whatever the request picks: the file already holds
 /// the block, so it already says how Claude Code reads `AGENTS.md`.
 #[test]
-fn blocks_are_refreshed_for_a_settled_project_even_with_the_pick_import() {
+fn blocks_are_refreshed_for_a_settled_project_even_with_the_pick_move() {
     let fx = Fx::new(None);
     fx.apply_ok("none", &[]);
     fs::write(fx.path("AGENTS.md"), "# Team rules\n").unwrap();
     assert_eq!(
-        action(&fx.plan("none", &["import"]), "CLAUDE.md"),
+        action(&fx.plan("none", &["move"]), "CLAUDE.md"),
         "unchanged"
     );
 }
@@ -514,7 +514,7 @@ fn flow_profile_without_a_flow_has_no_flow_line() {
 fn flow_project_plan_writes_nothing_under_the_projects_claude_folders() {
     let picks: [&[&str]; 3] = [
         &[],
-        &["import", "personal-file"],
+        &["skip-conflicts", "personal-file"],
         &["move", "personal-file"],
     ];
     for flow in FLOWS {

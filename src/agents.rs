@@ -60,19 +60,13 @@ pub struct AgentsRequest {
 
 /// The ids a request's `picks` may hold. `append-managed` appends the managed section to a
 /// CLAUDE.md whose block was removed; `skip-conflicts` leaves each conflicting file as it is;
-/// `import` and `move` name the picks of the project picks step (`--pick` of `agents-merge-plan`
-/// and `agents-merge-apply`), which writes the block together with the import line or the copied
-/// text. The writer alone never carries them out: a `CLAUDE.md` that held only the block would
-/// stop Claude Code reading the `AGENTS.md` of the project, so a direct request that picks them
-/// plans no `CLAUDE.md` and says so. `personal-file` creates `CLAUDE.local.md` once. The earlier
-/// pick `claude-import` is gone: it is refused like any unknown id, and no code reads it by name.
-pub const PICKS: [&str; 5] = [
-    "append-managed",
-    "skip-conflicts",
-    "import",
-    "move",
-    "personal-file",
-];
+/// `move` names the pick of the project picks step (`--pick` of `agents-merge-plan` and
+/// `agents-merge-apply`), which writes the block together with the copied text. The writer alone
+/// never carries it out: a `CLAUDE.md` that held only the block would stop Claude Code reading the
+/// `AGENTS.md` of the project, so a direct request that picks it plans no `CLAUDE.md` and says so.
+/// `personal-file` creates `CLAUDE.local.md` once. The earlier picks `import` and `claude-import`
+/// are gone: they are refused like any unknown id, and no code reads them by name.
+pub const PICKS: [&str; 4] = ["append-managed", "skip-conflicts", "move", "personal-file"];
 
 fn picked(r: &AgentsRequest, id: &str) -> bool {
     r.picks.iter().any(|p| p == id)
@@ -83,10 +77,10 @@ thread_local! {
     static CARRIED_BY_PICKS: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
 }
 
-/// While it lives, the picks `import` and `move` of a request plan the block into `CLAUDE.md`:
-/// the project picks step holds it for the writer calls of its own composite, and writes the
-/// import line or the copied text in the same receipt. It is not a request value, so a plan
-/// that comes from outside (a command, a stored plan, another caller) cannot set it.
+/// While it lives, the pick `move` of a request plans the block into `CLAUDE.md`: the project
+/// picks step holds it for the writer calls of its own composite, and writes the copied text in
+/// the same receipt. It is not a request value, so a plan that comes from outside (a command, a
+/// stored plan, another caller) cannot set it.
 pub(crate) struct CarriedByPicks(());
 
 impl CarriedByPicks {
@@ -1437,11 +1431,11 @@ pub(crate) fn agents_plan_for(
     let agents_rendered = render_agents(&profile, &request, &root);
     // REQ-1, REQ-2: the block goes into `CLAUDE.md` when the project holds no `AGENTS.md`, when
     // `CLAUDE.md` already holds the block or the import of `AGENTS.md` (a settled project keeps
-    // getting its block refreshed), or when the project picks step carries out `import` or `move`
-    // (it adds the import line or the copied text in the same receipt). Otherwise Claude Code
-    // would stop reading the user's `AGENTS.md` the moment this tool wrote a CLAUDE file, so
-    // nothing is planned and the preview says a pick is needed; a request that picks `import` or
-    // `move` on its own gets the same, because a block alone would hide `AGENTS.md`.
+    // getting its block refreshed), or when the project picks step carries out `move` (it adds
+    // the copied text in the same receipt). Otherwise Claude Code would stop reading the user's
+    // `AGENTS.md` the moment this tool wrote a CLAUDE file, so nothing is planned and the preview
+    // says a pick is needed; a request that picks `move` on its own gets the same, because a
+    // block alone would hide `AGENTS.md`.
     let claude = probe(&root, BLOCK_FILE)?;
     let agents_md_exists = std::fs::symlink_metadata(root.join(AGENTS_FILE)).is_ok();
     let (block_begin, _) = markers(AGENTS_SECTION, "html");
@@ -1453,31 +1447,23 @@ pub(crate) fn agents_plan_for(
         }
         Probe::Absent | Probe::Refused(_) => false,
     };
-    let carried_pick =
-        carried_by_picks() && (picked(&request, "import") || picked(&request, "move"));
+    let carried_pick = carried_by_picks() && picked(&request, "move");
     let block_wanted = !agents_md_exists || settled || carried_pick;
     let mut claude_row = None;
     if !block_wanted {
-        let direct = ["import", "move"]
-            .into_iter()
-            .filter(|p| picked(&request, p))
-            .map(|p| format!("`{p}`"))
-            .collect::<Vec<_>>();
-        let direct = if direct.is_empty() {
-            String::new()
-        } else {
+        let direct = if picked(&request, "move") {
             format!(
-                "; the pick {} is carried out only by the project picks step (`--pick` of \
+                "; the pick `move` is carried out only by the project picks step (`--pick` of \
                  agents-merge-plan and agents-merge-apply), which writes the block together with \
-                 the text, so this request writes no {BLOCK_FILE}",
-                direct.join(" and ")
+                 the text, so this request writes no {BLOCK_FILE}"
             )
+        } else {
+            String::new()
         };
         warnings.push(format!(
             "{AGENTS_FILE} exists, so no {BLOCK_FILE} is planned: Claude Code reads {BLOCK_FILE} \
              instead of {AGENTS_FILE} once it exists. A pick is needed: `move` (recommended: the \
-             block and a copy of your text), `import` (the block and an `@{AGENTS_FILE}` line) or \
-             `leave` (nothing is written){direct}"
+             block and a copy of your text) or `leave` (nothing is written){direct}"
         ));
     } else {
         let row = match &claude {
@@ -1665,9 +1651,9 @@ pub(crate) fn agents_plan_for(
         .map(|f| f.path.as_str())
         .or((!block_wanted).then_some(BLOCK_FILE));
     if let Some(creating) = creates_first {
-        // Only a CLAUDE.md brings the root AGENTS.md along (a pick copies its text or imports
-        // it). When the personal file is created first and no CLAUDE.md is, nothing carries the
-        // root AGENTS.md over, so it is named like every other file.
+        // Only a CLAUDE.md brings the root AGENTS.md along (a pick copies its text). When the
+        // personal file is created first and no CLAUDE.md is, nothing carries the root AGENTS.md
+        // over, so it is named like every other file.
         let carries_agents_md = creating == BLOCK_FILE
             || files
                 .iter()

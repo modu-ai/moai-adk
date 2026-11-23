@@ -278,7 +278,7 @@ fn any_hidden(warnings: &Value) -> bool {
 
 /// The three project shapes of the first requirement: what the project holds and which files the
 /// writer, the picks and the preview warn would stop being read. The root `AGENTS.md` is carried
-/// into the new `CLAUDE.md` (copied text or an import), so only `.claude/AGENTS.md` is named.
+/// into the new `CLAUDE.md` (copied text), so only `.claude/AGENTS.md` is named.
 #[allow(clippy::type_complexity)]
 fn shapes() -> [(&'static str, Vec<&'static str>, Option<&'static str>); 3] {
     [
@@ -383,7 +383,7 @@ fn hidden_claude_dir_agents_md_alone_is_warned_before_the_writer_creates_claude_
 }
 
 /// The pick plan names `.claude/AGENTS.md` (no pick carries it) and not the root `AGENTS.md` (a
-/// pick copies or imports it); a project that holds only `.claude/AGENTS.md` is warned but offered
+/// pick copies it); a project that holds only `.claude/AGENTS.md` is warned but offered
 /// no pick.
 #[test]
 fn hidden_pick_plan_names_every_file_and_offers_no_pick_for_the_claude_dir_file() {
@@ -693,10 +693,6 @@ fn scan_a_credential_in_the_copied_text_blocks_the_plan_with_the_line_of_the_who
     assert!(!said.contains("sk-"), "the value is never printed: {said}");
     assert_eq!(fx.read(AGENTS_MD), file);
     assert!(!fx.exists("CLAUDE.md"));
-
-    // The import pick copies none of the file, so it is not blocked by it.
-    let import = fx.pick_plan("import");
-    assert_eq!(import["state"], json!("ready"), "{import}");
 }
 
 #[test]
@@ -766,30 +762,29 @@ fn receipts_a_standalone_merge_ignores_the_receipt_folder() {
 
 #[test]
 fn receipts_a_pick_in_a_project_without_a_managed_block_ignores_the_receipt_folder() {
-    for id in ["move", "import"] {
-        let fx = Fx::new();
-        fx.write(AGENTS_MD, TEAM);
-        fx.write("AGENTS.local.md", MINE);
-        fx.profile();
-        assert!(!fx.exists(".gitignore"), "no managed block yet");
-        fx.pick(id);
-        assert!(
-            fx.exists(RECEIPTS),
-            "{id}: the pick wrote its receipt folder"
-        );
-        assert!(fx.ignored(RECEIPTS), "{id}: git sees the receipt folder");
-        let lines = ignore_lines(&fx);
-        assert!(
-            lines
-                .iter()
-                .any(|l| l.starts_with(RECEIPTS) || l == ".moai/*"),
-            "{id}: {lines:?}"
-        );
-        assert!(
-            count_of(&lines, RECEIPTS_LINE) <= 1,
-            "{id}: one receipts line at most: {lines:?}"
-        );
-    }
+    let id = "move";
+    let fx = Fx::new();
+    fx.write(AGENTS_MD, TEAM);
+    fx.write("AGENTS.local.md", MINE);
+    fx.profile();
+    assert!(!fx.exists(".gitignore"), "no managed block yet");
+    fx.pick(id);
+    assert!(
+        fx.exists(RECEIPTS),
+        "{id}: the pick wrote its receipt folder"
+    );
+    assert!(fx.ignored(RECEIPTS), "{id}: git sees the receipt folder");
+    let lines = ignore_lines(&fx);
+    assert!(
+        lines
+            .iter()
+            .any(|l| l.starts_with(RECEIPTS) || l == ".moai/*"),
+        "{id}: {lines:?}"
+    );
+    assert!(
+        count_of(&lines, RECEIPTS_LINE) <= 1,
+        "{id}: one receipts line at most: {lines:?}"
+    );
 }
 
 #[test]

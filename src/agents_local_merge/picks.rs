@@ -1,28 +1,34 @@
-//! The picks `move`, `import` and `leave` of `moai update` for a project that holds an `AGENTS.md`
-//! or an `AGENTS.local.md` (SPEC-20261122-claude-md-project-picks): the composite of one pick, its
-//! preview, its apply and its revert.
+//! The picks `move`, `leave` and `remove-originals` of `moai update` for a project that holds an
+//! `AGENTS.md` or an `AGENTS.local.md` (SPEC-20261122-claude-md-project-picks,
+//! SPEC-20261124-claude-md-product-next): the composite of one pick, its preview, its apply and
+//! its revert.
 //!
 //! - `move`: the managed block goes into `CLAUDE.md` through the generation writer, the text a
 //!   person wrote in `AGENTS.md` goes below it ([`Kind::Guidance`]), and the text a person wrote in
 //!   `AGENTS.local.md` goes into `CLAUDE.local.md` together with its one `.gitignore` line
 //!   ([`Kind::Local`]). A personal file MoAI generated holds nothing to copy.
-//! - `import`: the managed block, then the one line `@AGENTS.md` between two marker lines
-//!   ([`Kind::Import`]).
 //! - `leave`: nothing is written; Claude Code keeps reading `AGENTS.md`.
+//! - `remove-originals`: once the text is whole in the CLAUDE files, the two originals are deleted,
+//!   all or none, and their bytes stay in the receipt (`originals`).
 //!
-//! `AGENTS.md` and `AGENTS.local.md` are never written. Each part runs from a plan of its own made
-//! just before it runs (a part digests the bytes the part before it changed), and the one digest of
-//! a pick binds the plans of every part on the project as it is before the apply. One receipt
-//! (`agents-pick-…`) lists the parts; the revert undoes them in the reverse order and names a file
-//! that changed after the apply instead of touching it, while the other parts still go back.
+//! `AGENTS.md` and `AGENTS.local.md` are written by no pick and deleted only by `remove-originals`.
+//! Each part runs from a plan of its own made just before it runs (a part digests the bytes the
+//! part before it changed), and the one digest of a pick binds the plans of every part on the
+//! project as it is before the apply. One receipt (`agents-pick-…`) lists the parts; the revert
+//! undoes them in the reverse order and names a file that changed after the apply instead of
+//! touching it, while the other parts still go back. A receipt that an earlier build wrote for the
+//! retired pick `import` holds a part `import-line`, which the revert still undoes.
 //!
-//! A project is offered no pick when `CLAUDE.md` already imports `AGENTS.md` or already holds its
-//! text, as a merged block or pasted by hand, and when nothing of `AGENTS.local.md` is left to move.
+//! A project is offered `move` and `leave` while the text of an original is not yet in its CLAUDE
+//! file. Once `CLAUDE.md` already holds the text of `AGENTS.md` (a merged block or pasted by hand)
+//! and nothing of `AGENTS.local.md` is left to move, it is offered `remove-originals` alone, or
+//! nothing when a text is not whole in its CLAUDE file or a CLAUDE file imports `AGENTS.md`.
 
 use super::{
     apply_confirmed, find_guidance, hidden_files_warning_except, imports_agents_md,
-    new_receipt_dir_named, plan_for, read_checked, receipts_dir, revert_for, write_private, Found,
-    Kind, Result, GUIDANCE_TARGET, LEGACY_TARGET, LOCAL, TARGET,
+    new_receipt_dir_named, originals, plan_for, read_checked, receipts_dir, revert_for,
+    revert_legacy_import, write_private, Found, Kind, Result, GUIDANCE_TARGET, LEGACY_TARGET,
+    LOCAL, TARGET,
 };
 use crate::generation::{self, GenerationRequest};
 use serde::{Deserialize, Serialize};
@@ -37,10 +43,12 @@ pub const RECEIPT_PREFIX: &str = "agents-pick-";
 
 const MOVE_EFFECT: &str = "write the managed section into CLAUDE.md, copy the text you wrote in \
      AGENTS.md below it and the text you wrote in AGENTS.local.md into CLAUDE.local.md; AGENTS.md \
-     and AGENTS.local.md stay unchanged and may be deleted later";
-const IMPORT_EFFECT: &str = "write the managed section into CLAUDE.md and the one line @AGENTS.md \
-     below it, so Claude Code reads AGENTS.md through CLAUDE.md; AGENTS.md and AGENTS.local.md \
-     stay unchanged";
+     and AGENTS.local.md stay unchanged unless you pick remove-originals after the move, the one \
+     way they are deleted";
+const REMOVE_EFFECT: &str = "delete the original AGENTS.md and AGENTS.local.md, whose text is \
+     already in CLAUDE.md and CLAUDE.local.md; all or none are deleted, their bytes and modes stay \
+     in the receipt of this pick and agents-merge-revert writes them back; a tracked AGENTS.md \
+     shows up as a git deletion, and another tool that reads AGENTS.md stops seeing it";
 const LEAVE_EFFECT: &str =
     "write nothing; Claude Code keeps reading AGENTS.md as it does now, and \
      these picks are offered again at the next update";
@@ -50,25 +58,25 @@ const LEFT_MESSAGE: &str = "Nothing was written. Claude Code keeps reading AGENT
 /// `CLAUDE.md` first, so that warning no longer applies to its preview.
 const HIDDEN_WARNING_PART: &str = "only while no CLAUDE.md";
 /// The files that carry the text of the project for Claude Code, besides `AGENTS.md`.
-const CLAUDE_FILES: [&str; 3] = ["CLAUDE.md", ".claude/CLAUDE.md", "CLAUDE.local.md"];
+pub(super) const CLAUDE_FILES: [&str; 3] = ["CLAUDE.md", ".claude/CLAUDE.md", "CLAUDE.local.md"];
 
 /// One of the three picks.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Pick {
     Move,
-    Import,
     Leave,
+    RemoveOriginals,
 }
 
 impl Pick {
     /// The order the picks are shown in.
-    pub const ALL: [Pick; 3] = [Pick::Move, Pick::Import, Pick::Leave];
+    pub const ALL: [Pick; 3] = [Pick::Move, Pick::Leave, Pick::RemoveOriginals];
 
     pub fn id(self) -> &'static str {
         match self {
             Pick::Move => "move",
-            Pick::Import => "import",
             Pick::Leave => "leave",
+            Pick::RemoveOriginals => "remove-originals",
         }
     }
 
@@ -76,37 +84,39 @@ impl Pick {
         Pick::ALL
             .into_iter()
             .find(|p| p.id() == text)
-            .ok_or_else(|| "the pick must be move, import or leave; nothing was written".into())
+            .ok_or_else(|| {
+                "the pick must be move, leave or remove-originals; nothing was written".into()
+            })
     }
 
     fn effect(self) -> &'static str {
         match self {
             Pick::Move => MOVE_EFFECT,
-            Pick::Import => IMPORT_EFFECT,
             Pick::Leave => LEAVE_EFFECT,
+            Pick::RemoveOriginals => REMOVE_EFFECT,
         }
     }
 }
 
-fn digest_of(value: &Value) -> Result<String> {
+pub(super) fn digest_of(value: &Value) -> Result<String> {
     Ok(crate::digest(
         &serde_json::to_vec(value).map_err(|_| "encode failed")?,
     ))
 }
 
-fn exists(root: &Path, rel: &str) -> bool {
+pub(super) fn exists(root: &Path, rel: &str) -> bool {
     fs::symlink_metadata(root.join(rel)).is_ok()
 }
 
 /// A regular, readable, UTF-8 text file of the project; a link, a file above the limit and text
 /// that is not UTF-8 read as no text.
-fn text_of(root: &Path, rel: &str) -> Option<String> {
+pub(super) fn text_of(root: &Path, rel: &str) -> Option<String> {
     let bytes = read_checked(root, rel).ok()??;
     String::from_utf8(bytes).ok()
 }
 
 /// `true` when `haystack` holds `text` as whole lines (line ends are compared as LF).
-fn holds_block(haystack: &str, text: &[u8]) -> bool {
+pub(super) fn holds_block(haystack: &str, text: &[u8]) -> bool {
     let Ok(text) = std::str::from_utf8(text) else {
         return false;
     };
@@ -130,7 +140,6 @@ struct State {
     has_local: bool,
     guidance: Option<Value>,
     local: Option<Value>,
-    import: Option<Value>,
 }
 
 impl State {
@@ -144,7 +153,6 @@ impl State {
             has_local,
             guidance: plan(Kind::Guidance, has_agents)?,
             local: plan(Kind::Local, has_local)?,
-            import: plan(Kind::Import, has_agents)?,
         })
     }
 
@@ -152,7 +160,10 @@ impl State {
         plan.as_ref().and_then(|p| p["action"].as_str())
     }
 
-    /// Why no pick is offered for a project that holds the files, or `None` when one is.
+    /// Why `move` is not needed for a project that holds the files, or `None` when it is. A plan
+    /// action `unchanged` only says nothing is left to move, not that the text is in a CLAUDE file
+    /// (an earlier generation merged personal text into `AGENTS.md`): the offer to delete the
+    /// originals asks [`originals::plan`], which reads the CLAUDE files themselves.
     fn settled(&self) -> Option<String> {
         let claude = text_of(&self.root, GUIDANCE_TARGET);
         if claude.as_deref().is_some_and(imports_agents_md) {
@@ -204,6 +215,8 @@ struct Candidate {
     blocked: Vec<Value>,
     plan_digest: String,
     writes: Vec<String>,
+    /// The files the pick deletes (`remove-originals` only).
+    deletes: Vec<String>,
     parts: Vec<Value>,
     warnings: Vec<String>,
 }
@@ -226,6 +239,7 @@ impl Candidate {
             "effect": self.pick.effect(),
             "plan_digest": self.plan_digest,
             "writes": self.writes,
+            "deletes": self.deletes,
             "parts": self.parts,
             "warnings": self.warnings,
         })
@@ -236,38 +250,33 @@ impl Candidate {
 const BLOCK: &str = "block";
 const AGENTS_TEXT: &str = "agents-text";
 const PERSONAL_TEXT: &str = "personal-text";
-const IMPORT_PART: &str = "import-line";
+/// The part of a receipt that an earlier build wrote for the retired pick `import`: it is only
+/// ever undone.
+const LEGACY_IMPORT_PART: &str = "import-line";
 
+/// `move` or `leave` as the preview shows it; `remove-originals` has its own [`removal_candidate`].
 fn candidate(st: &State, request: &GenerationRequest, pick: Pick) -> Result<Candidate> {
     let mut c = Candidate {
         pick,
         blocked: Vec::new(),
         plan_digest: String::new(),
         writes: Vec::new(),
+        deletes: Vec::new(),
         parts: Vec::new(),
         warnings: Vec::new(),
     };
     let mut bound: Vec<Value> = Vec::new();
     if pick == Pick::Leave {
-        for plan in [&st.guidance, &st.local, &st.import].into_iter().flatten() {
+        for plan in [&st.guidance, &st.local].into_iter().flatten() {
             bound.push(plan["plan_digest"].clone());
         }
     } else {
         block_part(st, request, &mut c, &mut bound);
-        if pick == Pick::Move {
-            if st.has_agents {
-                engine_part(AGENTS_TEXT, &st.guidance, &mut c, &mut bound);
-            }
-            if st.has_local {
-                engine_part(PERSONAL_TEXT, &st.local, &mut c, &mut bound);
-            }
-        } else if st.has_agents {
-            engine_part(IMPORT_PART, &st.import, &mut c, &mut bound);
-        } else {
-            c.blocked.push(json!({
-                "part": IMPORT_PART,
-                "reason": format!("{LEGACY_TARGET} is not in this project; there is nothing to import"),
-            }));
+        if st.has_agents {
+            engine_part(AGENTS_TEXT, &st.guidance, &mut c, &mut bound);
+        }
+        if st.has_local {
+            engine_part(PERSONAL_TEXT, &st.local, &mut c, &mut bound);
         }
     }
     let mut seen = std::collections::HashSet::new();
@@ -285,8 +294,8 @@ fn candidate(st: &State, request: &GenerationRequest, pick: Pick) -> Result<Cand
 fn block_part(st: &State, request: &GenerationRequest, c: &mut Candidate, bound: &mut Vec<Value>) {
     let mut picked = request.clone();
     picked.picks = vec![c.pick.id().to_string()];
-    // The writer plans the block for `import` and `move` only for this composite, which adds the
-    // import line or the text of AGENTS.md in the same receipt.
+    // The writer plans the block for `move` only for this composite, which adds the text of
+    // AGENTS.md in the same receipt.
     let _carried = crate::agents::CarriedByPicks::hold();
     let plan = match generation::generation_plan(&st.root, picked) {
         Ok(plan) => plan,
@@ -367,19 +376,37 @@ fn engine_part(name: &str, plan: &Option<Value>, c: &mut Candidate, bound: &mut 
     bound.push(plan["plan_digest"].clone());
 }
 
+/// The `remove-originals` choice of the preview, from a plan that found every text in its CLAUDE
+/// file.
+fn removal_choice(root: &Path, plan: &originals::Plan) -> Result<Value> {
+    Ok(json!({
+        "id": Pick::RemoveOriginals.id(),
+        "recommended": false,
+        "state": "ready",
+        "blocked": [],
+        "effect": Pick::RemoveOriginals.effect(),
+        "plan_digest": plan.digest(root)?,
+        "writes": plan.writes(),
+        "deletes": plan.deletes(),
+        "parts": [plan.part_json()],
+        "warnings": plan.warnings,
+    }))
+}
+
 /// The preview of the picks of a project. Writes nothing. `request` builds the generation request
-/// the writer plans with; it is called only when a pick is offered.
+/// the writer plans with; it is called only when `move` and `leave` are offered.
 ///
 /// `offer` is `none` (no `AGENTS.md` and no `AGENTS.local.md`), `settled` (nothing left to pick),
-/// `unavailable` (the request cannot be built, so the writer cannot be planned) or `picks`, which
-/// carries `choices` in the order `move`, `import`, `leave` and the shadow `warnings`.
+/// `unavailable` (the request cannot be built, so the writer cannot be planned), `originals` (the
+/// text is in the CLAUDE files; `choices` holds `remove-originals` alone) or `picks`, which
+/// carries `choices` in the order `move`, `leave` and the shadow `warnings`.
 pub fn offer(root: &Path, request: impl FnOnce() -> Result<GenerationRequest>) -> Result<Value> {
     let project = root.display().to_string();
     // The first CLAUDE file of the project hides `AGENTS.md` and `.claude/AGENTS.md` from Claude
     // Code. A project that holds only `.claude/AGENTS.md` is warned and offered no pick: the
-    // picks move and import the root files, and moving that file is a separate feature.
-    // `move` and `import` carry the root AGENTS.md into the new CLAUDE.md, so it stays read and
-    // is not named; only `.claude/AGENTS.md` (nothing carries it) is.
+    // picks move the root files, and moving that file is a separate feature. `move` carries the
+    // root AGENTS.md into the new CLAUDE.md, so it stays read and is not named; only
+    // `.claude/AGENTS.md` (nothing carries it) is.
     let hidden: Vec<String> = hidden_files_warning_except(root, GUIDANCE_TARGET, &[LEGACY_TARGET])
         .into_iter()
         .collect();
@@ -397,22 +424,36 @@ pub fn offer(root: &Path, request: impl FnOnce() -> Result<GenerationRequest>) -
     }
     let st = State::read(root)?;
     if let Some(reason) = st.settled() {
-        return other("settled", &reason);
+        // Nothing is left to move. The originals may go when every text of theirs is whole in its
+        // CLAUDE file; otherwise nothing is offered.
+        return match originals::plan(root) {
+            originals::Planned::Ready(plan) => {
+                let choice = removal_choice(root, &plan)?;
+                Ok(json!({
+                    "project": project,
+                    "offer": "originals",
+                    "reason": "the text of the originals is in the CLAUDE files; remove-originals \
+                               deletes AGENTS.md and AGENTS.local.md and keeps their bytes in the \
+                               receipt",
+                    "warnings": hidden.into_iter().chain(plan.warnings.iter().cloned()).collect::<Vec<_>>(),
+                    "choices": [choice],
+                }))
+            }
+            originals::Planned::Refused(_) => other("settled", &reason),
+        };
     }
     let request = match request() {
         Ok(request) => request,
         Err(reason) => return other("unavailable", &reason),
     };
-    // `import` would name a file that is not there.
-    let choices: Vec<Value> = Pick::ALL
+    let choices: Vec<Value> = [Pick::Move, Pick::Leave]
         .into_iter()
-        .filter(|p| *p != Pick::Import || st.has_agents)
         .map(|p| candidate(&st, &request, p).map(|c| c.to_json()))
         .collect::<Result<_>>()?;
     Ok(json!({
         "project": project,
         "offer": "picks",
-        "reason": "the project holds AGENTS.md or AGENTS.local.md; pick move, import or leave",
+        "reason": "the project holds AGENTS.md or AGENTS.local.md; pick move or leave",
         "warnings": hidden.into_iter().chain(st.shadow_warnings()).collect::<Vec<_>>(),
         "choices": choices,
     }))
@@ -441,8 +482,20 @@ fn plan_with(
             "shadow_warnings": offered["warnings"],
         }))
     };
+    // The deletion is available only when every text is whole in its CLAUDE file: a direct call
+    // before that is refused with the reason, never answered as nothing to do.
+    if pick == Pick::RemoveOriginals && offered["offer"] != "originals" {
+        let reason = match originals::plan(root) {
+            originals::Planned::Refused(reason) => reason,
+            originals::Planned::Ready(_) => {
+                "text of an original is still to move; pick move first".to_string()
+            }
+        };
+        return none("blocked", &json!(reason));
+    }
     match offered["offer"].as_str() {
         Some("picks") => {}
+        Some("originals") if pick == Pick::RemoveOriginals => {}
         Some("unavailable") => return none("blocked", &offered["reason"]),
         _ => return none("none", &offered["reason"]),
     }
@@ -455,11 +508,7 @@ fn plan_with(
     else {
         return none(
             "blocked",
-            &json!(format!(
-                "the pick {} is not offered: {LEGACY_TARGET} is not in this project, so there \
-                 is nothing to import",
-                pick.id()
-            )),
+            &json!(format!("the pick {} is not offered", pick.id())),
         );
     };
     chosen["pick"] = json!(pick.id());
@@ -478,13 +527,19 @@ pub fn plan(project: &Path, pick: &str) -> Result<Value> {
     })
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Default)]
 struct PartRecord {
     part: String,
     /// The receipts of the engines the part ran, in the order they are undone.
     receipts: Vec<String>,
     #[serde(default)]
     reverted: bool,
+    /// The originals a `remove-originals` part deleted, in the order it deleted them.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    files: Vec<originals::FileRecord>,
+    /// The `.gitignore` line a `remove-originals` part added.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    ignore: Option<originals::IgnoreRecord>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -574,7 +629,12 @@ pub fn apply(project: &Path, pick: &str, plan_digest: &str, permission: &str) ->
             "warnings": planned["shadow_warnings"],
         }));
     }
-    let request = request?;
+    // `remove-originals` plans nothing with the generation writer.
+    let request = if pick == Pick::RemoveOriginals {
+        None
+    } else {
+        Some(request?)
+    };
     let (id, dir) = new_receipt_dir_named(RECEIPT_PREFIX, &root)?;
     let mut receipt = PickReceipt {
         schema_version: 1,
@@ -589,17 +649,30 @@ pub fn apply(project: &Path, pick: &str, plan_digest: &str, permission: &str) ->
     };
     save(&dir, &receipt)?;
     let mut writes: Vec<String> = Vec::new();
+    let mut deletes: Vec<String> = Vec::new();
     let mut parts_out: Vec<Value> = Vec::new();
-    let outcome = run_parts(
-        &root,
-        pick,
-        &request,
-        permission,
-        &mut receipt,
-        &dir,
-        &mut writes,
-        &mut parts_out,
-    );
+    let outcome = match &request {
+        Some(request) => run_parts(
+            &root,
+            pick,
+            request,
+            permission,
+            &mut receipt,
+            &dir,
+            &mut writes,
+            &mut parts_out,
+        ),
+        None => run_removal(
+            &root,
+            plan_digest,
+            &mut receipt,
+            &dir,
+            &mut writes,
+            &mut deletes,
+            &mut parts_out,
+            &mut |_| Ok(()),
+        ),
+    };
     if let Err(e) = outcome {
         return Err(fail_with_rollback(&root, &dir, &mut receipt, e, permission));
     }
@@ -617,6 +690,7 @@ pub fn apply(project: &Path, pick: &str, plan_digest: &str, permission: &str) ->
         "project": root.display().to_string(),
         "receipt": id,
         "writes": writes,
+        "deletes": deletes,
         "parts": parts_out,
         "unchanged": originals,
         "next_actions": [format!(
@@ -680,7 +754,7 @@ fn fail_with_rollback(
     }
 }
 
-/// The parts of a `move` or an `import`, each from a plan made now. A part that fails after
+/// The parts of a `move`, each from a plan made now. A part that fails after
 /// another has written leaves the receipt to say what to undo.
 #[allow(clippy::too_many_arguments)]
 fn run_parts(
@@ -719,19 +793,16 @@ fn run_parts(
         receipt.parts.push(PartRecord {
             part: BLOCK.into(),
             receipts: receipts.clone(),
-            reverted: false,
+            ..PartRecord::default()
         });
         save(dir, receipt)?;
         parts_out.push(json!({"part": BLOCK, "writes": written, "receipts": receipts}));
     }
     // 2. and 3. The text merges, each from a plan made after the part before it wrote.
-    let merges: &[(Kind, &str, &str)] = match pick {
-        Pick::Move => &[
-            (Kind::Guidance, AGENTS_TEXT, LEGACY_TARGET),
-            (Kind::Local, PERSONAL_TEXT, LOCAL),
-        ],
-        _ => &[(Kind::Import, IMPORT_PART, LEGACY_TARGET)],
-    };
+    let merges: &[(Kind, &str, &str)] = &[
+        (Kind::Guidance, AGENTS_TEXT, LEGACY_TARGET),
+        (Kind::Local, PERSONAL_TEXT, LOCAL),
+    ];
     for (kind, name, source) in merges {
         if !exists(root, source) {
             continue;
@@ -760,11 +831,55 @@ fn run_parts(
         receipt.parts.push(PartRecord {
             part: (*name).into(),
             receipts: vec![engine_receipt.to_string()],
-            reverted: false,
+            ..PartRecord::default()
         });
         save(dir, receipt)?;
         parts_out.push(json!({"part": name, "writes": written, "receipts": [engine_receipt]}));
     }
+    Ok(())
+}
+
+/// The part of `remove-originals`, from a plan made now. The order is the one that keeps the
+/// project whole at every step: compare, write the private copies, name the files in the receipt,
+/// then write `.gitignore` and delete. A failure after the receipt names the files goes back
+/// through the same receipt. `after_each` runs after each deletion with its index.
+#[allow(clippy::too_many_arguments)]
+fn run_removal(
+    root: &Path,
+    plan_digest: &str,
+    receipt: &mut PickReceipt,
+    dir: &Path,
+    writes: &mut Vec<String>,
+    deletes: &mut Vec<String>,
+    parts_out: &mut Vec<Value>,
+    after_each: &mut dyn FnMut(usize) -> Result<()>,
+) -> Result<()> {
+    let originals::Planned::Ready(plan) = originals::plan(root) else {
+        return Err(format!(
+            "failed at {}: the originals are no longer ready",
+            originals::PART
+        ));
+    };
+    // The plan this apply was confirmed on, read again just before the first file is touched.
+    if plan.digest(root)? != plan_digest {
+        return Err("stale or altered plan; re-preview required".into());
+    }
+    let (files, ignore) = originals::stage(root, dir, &plan)
+        .map_err(|e| format!("failed at {}: {e}", originals::PART))?;
+    receipt.parts.push(PartRecord {
+        part: originals::PART.into(),
+        files,
+        ignore,
+        ..PartRecord::default()
+    });
+    save(dir, receipt)?;
+    let written = originals::commit(root, &plan, after_each)
+        .map_err(|e| format!("failed at {}: {e}", originals::PART))?;
+    writes.extend(written.clone());
+    deletes.extend(plan.deletes());
+    parts_out.push(json!({
+        "part": originals::PART, "writes": written, "deletes": plan.deletes(),
+    }));
     Ok(())
 }
 
@@ -806,20 +921,35 @@ pub fn revert(project: &Path, receipt_id: &str, permission: &str) -> Result<Valu
     let mut writes: Vec<String> = Vec::new();
     let mut kept: Vec<Value> = Vec::new();
     for part in receipt.parts.iter_mut().rev().filter(|p| !p.reverted) {
+        if part.part == originals::PART {
+            let (written, not_restored) =
+                originals::revert(&root, &dir, receipt_id, &part.files, part.ignore.as_ref());
+            writes.extend(written);
+            kept.extend(not_restored);
+            part.reverted = true;
+            continue;
+        }
+        // The part `import-line` is what the retired pick `import` wrote: only its undo is left.
         let engine = match part.part.as_str() {
-            AGENTS_TEXT => Some((Kind::Guidance, GUIDANCE_TARGET)),
-            PERSONAL_TEXT => Some((Kind::Local, TARGET)),
-            IMPORT_PART => Some((Kind::Import, GUIDANCE_TARGET)),
+            AGENTS_TEXT | LEGACY_IMPORT_PART => Some(GUIDANCE_TARGET),
+            PERSONAL_TEXT => Some(TARGET),
             _ => None,
         };
         for id in &part.receipts {
             match engine {
-                Some((kind, target)) => match revert_for(kind, &root, id, permission) {
-                    Ok(out) => writes.extend(paths_of(&out["writes"])),
-                    Err(reason) => kept.push(json!({
-                        "part": part.part, "path": target, "receipt": id, "reason": reason,
-                    })),
-                },
+                Some(target) => {
+                    let undone = match part.part.as_str() {
+                        AGENTS_TEXT => revert_for(Kind::Guidance, &root, id, permission),
+                        PERSONAL_TEXT => revert_for(Kind::Local, &root, id, permission),
+                        _ => revert_legacy_import(&root, id, permission),
+                    };
+                    match undone {
+                        Ok(out) => writes.extend(paths_of(&out["writes"])),
+                        Err(reason) => kept.push(json!({
+                            "part": part.part, "path": target, "receipt": id, "reason": reason,
+                        })),
+                    }
+                }
                 None => match crate::apply::recover(&root, id, permission) {
                     Ok(out) => {
                         writes.extend(paths_of(&out["reverted"]));
@@ -915,8 +1045,7 @@ mod tests {
         // The block part with no engine receipts left to undo: the rollback has nothing to keep.
         let part = PartRecord {
             part: BLOCK.into(),
-            receipts: Vec::new(),
-            reverted: false,
+            ..PartRecord::default()
         };
         let mut receipt = receipt_with(&id, vec![part]);
         let message = fail_with_rollback(
@@ -935,6 +1064,133 @@ mod tests {
         assert_eq!(status_on_disk(&dir), "reverted");
     }
 
+    const TEAM: &str = "# Team rules\n\nWrite tests first.\n";
+    const MINE: &str = "My own notes\nPrefer tabs.\n";
+
+    /// A project whose CLAUDE files hold the text of both originals, with a receipt folder for
+    /// `id` and the receipt saved as the apply saves it before its first write.
+    fn removal_project(id: &str) -> (tempfile::TempDir, PathBuf, PathBuf, PickReceipt) {
+        let (tmp, root, dir) = project(id);
+        for (rel, text) in [
+            ("AGENTS.md", TEAM),
+            ("CLAUDE.md", TEAM),
+            ("AGENTS.local.md", MINE),
+            ("CLAUDE.local.md", MINE),
+        ] {
+            fs::write(root.join(rel), text).unwrap();
+        }
+        let mut receipt = receipt_with(id, Vec::new());
+        receipt.pick = "remove-originals".into();
+        save(&dir, &receipt).unwrap();
+        (tmp, root, dir, receipt)
+    }
+
+    /// Runs the removal with a failure injected after the deletion at `fail_at`.
+    fn failing_removal(
+        root: &Path,
+        dir: &Path,
+        receipt: &mut PickReceipt,
+        fail_at: usize,
+    ) -> String {
+        let originals::Planned::Ready(plan) = originals::plan(root) else {
+            panic!("the originals are not ready");
+        };
+        let digest = plan.digest(root).unwrap();
+        let (mut writes, mut deletes, mut parts) = (Vec::new(), Vec::new(), Vec::new());
+        run_removal(
+            root,
+            &digest,
+            receipt,
+            dir,
+            &mut writes,
+            &mut deletes,
+            &mut parts,
+            &mut |i| {
+                if i == fail_at {
+                    Err("disk full".into())
+                } else {
+                    Ok(())
+                }
+            },
+        )
+        .unwrap_err()
+    }
+
+    #[test]
+    fn a_failure_after_the_first_original_was_deleted_puts_it_back_through_the_same_receipt() {
+        let id = format!("{RECEIPT_PREFIX}4-0");
+        let (_tmp, root, dir, mut receipt) = removal_project(&id);
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            fs::set_permissions(root.join("AGENTS.md"), fs::Permissions::from_mode(0o755)).unwrap();
+        }
+        let cause = failing_removal(&root, &dir, &mut receipt, 0);
+        assert!(cause.contains("disk full"), "{cause}");
+        assert!(
+            !root.join("AGENTS.md").exists(),
+            "the first original was deleted before the failure"
+        );
+        let message = fail_with_rollback(&root, &dir, &mut receipt, cause, PERMISSION);
+        assert!(
+            message.contains("were rolled back, nothing is left changed"),
+            "{message}"
+        );
+        assert_eq!(fs::read_to_string(root.join("AGENTS.md")).unwrap(), TEAM);
+        assert_eq!(
+            fs::read_to_string(root.join("AGENTS.local.md")).unwrap(),
+            MINE
+        );
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mode = fs::metadata(root.join("AGENTS.md"))
+                .unwrap()
+                .permissions()
+                .mode();
+            assert_eq!(mode & 0o7777, 0o755);
+        }
+        assert_eq!(status_on_disk(&dir), "reverted");
+    }
+
+    #[test]
+    fn a_rollback_names_the_original_it_could_not_put_back() {
+        let id = format!("{RECEIPT_PREFIX}5-0");
+        let (_tmp, root, dir, mut receipt) = removal_project(&id);
+        let cause = failing_removal(&root, &dir, &mut receipt, 0);
+        // The private copy was altered since: it must not be written back.
+        fs::write(dir.join("originals/AGENTS.md"), "tampered\n").unwrap();
+        let message = fail_with_rollback(&root, &dir, &mut receipt, cause, PERMISSION);
+        assert!(
+            message.starts_with("partial apply: applied [originals]"),
+            "{message}"
+        );
+        assert!(message.contains("the rollback kept AGENTS.md"), "{message}");
+        assert!(!root.join("AGENTS.md").exists());
+        assert_eq!(status_on_disk(&dir), "reverted_partly");
+    }
+
+    #[test]
+    fn a_stale_plan_digest_deletes_nothing_and_records_no_part() {
+        let id = format!("{RECEIPT_PREFIX}6-0");
+        let (_tmp, root, dir, mut receipt) = removal_project(&id);
+        let (mut writes, mut deletes, mut parts) = (Vec::new(), Vec::new(), Vec::new());
+        let err = run_removal(
+            &root,
+            "sha256:not-the-plan",
+            &mut receipt,
+            &dir,
+            &mut writes,
+            &mut deletes,
+            &mut parts,
+            &mut |_| Ok(()),
+        )
+        .unwrap_err();
+        assert!(err.contains("stale or altered plan"), "{err}");
+        assert!(receipt.parts.is_empty());
+        assert!(root.join("AGENTS.md").exists() && root.join("AGENTS.local.md").exists());
+    }
+
     #[test]
     fn a_rollback_that_cannot_undo_a_part_names_the_file_it_kept() {
         let id = format!("{RECEIPT_PREFIX}3-0");
@@ -943,7 +1199,7 @@ mod tests {
         let part = PartRecord {
             part: AGENTS_TEXT.into(),
             receipts: vec!["agents-guidance-0-0".into()],
-            reverted: false,
+            ..PartRecord::default()
         };
         let mut receipt = receipt_with(&id, vec![part]);
         let message = fail_with_rollback(
