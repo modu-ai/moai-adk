@@ -60,7 +60,8 @@ fn the_tool_question_lists_two_tools_and_defaults_to_the_installed_ones() {
 fn model_and_effort_questions_offer_only_table_values_with_the_default_first() {
     for (tool, role, default_model, default_effort) in [
         ("claude", "leader", "claude-opus-5-5", "high"),
-        ("glm", "leader", "zai/glm-5.3", "high"),
+        // SPEC-20261123-glm-54-followups D-3: the glm leader's default is 5.4, the agent's flash.
+        ("glm", "leader", "zai/glm-5.4[1m]", "high"),
         ("glm", "agent", "zai/glm-5.3-flash", "max"),
     ] {
         let q = model_question(tool, role).expect("known tool and role");
@@ -197,7 +198,7 @@ fn enter_everywhere_picks_the_defaults_of_the_installed_tools() {
         Outcome::Picks(vec![
             pick("claude", "leader", "claude-opus-5-5", "high"),
             pick("claude", "agent", "claude-sonnet-5-5", "high"),
-            pick("glm", "leader", "zai/glm-5.3", "high"),
+            pick("glm", "leader", "zai/glm-5.4[1m]", "high"),
             pick("glm", "agent", "zai/glm-5.3-flash", "max"),
         ])
     );
@@ -207,10 +208,45 @@ fn enter_everywhere_picks_the_defaults_of_the_installed_tools() {
     let outcome = run(&mut Cursor::new(input), &mut Vec::new(), &[]).unwrap();
     match outcome {
         Outcome::Picks(p) => {
-            assert_eq!(p[0], pick("glm", "leader", "zai/glm-5.3", "high"));
+            assert_eq!(p[0], pick("glm", "leader", "zai/glm-5.4[1m]", "high"));
         }
         other => panic!("{other:?}"),
     }
+}
+
+/// SPEC-20261123-glm-54-followups REQ-1..REQ-3 / AC-1: the glm leader's model question offers the
+/// 5.4 id first as the default and keeps both 5.3 rows after it; a 5.3 choice saved earlier is a
+/// supported value, so Enter keeps it as the default and its effort question still answers.
+#[test]
+fn the_glm_model_question_offers_54_first_and_keeps_a_saved_53() {
+    let q = model_question("glm", "leader").unwrap();
+    assert_eq!(
+        values(&q),
+        ["zai/glm-5.4[1m]", "zai/glm-5.3", "zai/glm-5.3-flash"]
+    );
+    assert_eq!(q.defaults, [0]);
+    // The 5.4 row offers the efforts the table lists, with high as the leader default.
+    let e = effort_question("glm", "leader", "zai/glm-5.4[1m]").unwrap();
+    assert_eq!(values(&e), ["low", "high", "max"]);
+    assert_eq!(e.options[e.defaults[0]].value, "high");
+    // A saved 5.3 choice: it is the default option, and the other two follow.
+    let saved = Choice {
+        model: "zai/glm-5.3".into(),
+        effort: "low".into(),
+    };
+    let q = model_effort_questions::model_question_with("glm", "leader", Some(&saved)).unwrap();
+    assert_eq!(
+        values(&q),
+        ["zai/glm-5.3", "zai/glm-5.4[1m]", "zai/glm-5.3-flash"]
+    );
+    let e = model_effort_questions::effort_question_with(
+        "glm",
+        "leader",
+        "zai/glm-5.3",
+        Some(&saved),
+    )
+    .unwrap();
+    assert_eq!(e.options[e.defaults[0]].value, "low");
 }
 
 #[test]

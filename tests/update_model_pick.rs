@@ -154,6 +154,61 @@ fn the_choice_is_written_through_the_digest_bound_apply_and_read_back() {
     assert_eq!(claude_agent["source"], json!("saved"), "{reported}");
 }
 
+/// SPEC-20261123-glm-54-followups AC-1 and AC-2 (REQ-3, REQ-4): with the glm tool picked, Enter
+/// everywhere saves the 5.4 id for the leader and the flash id for the agent, and the report
+/// reads the same values back as saved.
+#[test]
+fn enter_saves_glm_54_for_the_leader_and_flash_for_the_agent() {
+    let h = home();
+    let path = write_settings(&h.path, r#"{"launcher":{"advisor":"x"}}"#);
+    // Tool pick "2" is glm; then model and effort for the leader and the agent; then the yes.
+    let (result, out) = run_stage(&h.path, &format!("2\n{}y\n", enters(4)));
+    assert_eq!(result["state"], json!("applied"), "{result}");
+    assert!(out.contains("zai/glm-5.4[1m]"), "the 5.4 option is offered: {out}");
+    let saved: Value = serde_json::from_str(&fs::read_to_string(&path).unwrap()).unwrap();
+    assert_eq!(saved["launcher"]["advisor"], json!("x"));
+    assert_eq!(
+        saved["launcher"]["models"]["glm"]["leader"],
+        json!({"model": "zai/glm-5.4[1m]", "effort": "high"})
+    );
+    assert_eq!(
+        saved["launcher"]["models"]["glm"]["agent"],
+        json!({"model": "zai/glm-5.3-flash", "effort": "max"})
+    );
+    let reported = report(&h.path);
+    let leader = reported["values"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|v| v["tool"] == json!("glm") && v["role"] == json!("leader"))
+        .unwrap();
+    assert_eq!(leader["source"], json!("saved"), "{reported}");
+}
+
+/// SPEC-20261123-glm-54-followups AC-2 (REQ-2): a `zai/glm-5.3` leader saved before 5.4 is not
+/// reported as unsupported, is the default of the next model step, and stays as it is when the
+/// person presses Enter everywhere and saves.
+#[test]
+fn a_saved_glm_53_leader_stays_through_enter_everywhere() {
+    let h = home();
+    let body = r#"{"launcher":{"models":{"glm":{"leader":{"model":"zai/glm-5.3","effort":"low"}}}}}"#;
+    let path = write_settings(&h.path, body);
+    let (result, out) = run_stage(&h.path, &format!("2\n{}", enters(4)));
+    assert_eq!(result["state"], json!("declined"), "{result}");
+    assert!(
+        !out.contains("launcher.models.glm.leader"),
+        "a supported saved value is not listed as unsupported: {out}"
+    );
+    assert_eq!(fs::read_to_string(&path).unwrap(), body, "nothing written");
+    let (result, _) = run_stage(&h.path, &format!("2\n{}y\n", enters(4)));
+    assert_eq!(result["state"], json!("applied"), "{result}");
+    let saved: Value = serde_json::from_str(&fs::read_to_string(&path).unwrap()).unwrap();
+    assert_eq!(
+        saved["launcher"]["models"]["glm"]["leader"],
+        json!({"model": "zai/glm-5.3", "effort": "low"})
+    );
+}
+
 /// SPEC-20261121-codex-launcher-and-models-removed REQ-5, REQ-6, REQ-8: a saved
 /// `launcher.models.codex` value, whatever its shape, is no error of the model step, is not
 /// listed as unsupported, and is left out of the file once a Claude choice is written (leader
