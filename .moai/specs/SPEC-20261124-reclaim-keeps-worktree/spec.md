@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261124-reclaim-keeps-worktree
 title: "card reclaim lets a lane take over a card in the same worktree when it holds committed, unlanded commits, and still refuses uncommitted changes"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-24
+approval:
+  by: leader
+  at: 2026-11-23
+  basis: "리더 결정 노트 7826 (2026-11-23T19:35:06Z, 사용자 위임 2026-11-23T13:57Z, 리더 판단, 사용자 직접 선택 아님, 노트 7824 에 답함): 선택지 (A) 승인, 임대가 끝난 회수만 완화(REQ-1~4), 조기 회수(REQ-5)는 그대로, 미커밋 변경 거절은 약하게 하지 않아요; 조건: AC-2 의 미커밋+커밋 꼴을 guard-mutant 로 핀, 새 테스트 파일이면 areas.toml·allow.tsv 등록을 무거운 실행 전에 확인; 레인은 그 노트를 인용만 해요"
+  digest: "sha256:60f400b3cff8e2e2d70656828aa6831a264c52b29231209593e7fbb529b82a68"
 ---
 
 # card reclaim lets a lane take over a card in the same worktree when it holds committed, unlanded commits, and still refuses uncommitted changes
