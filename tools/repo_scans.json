@@ -2160,6 +2160,30 @@
         }
       ],
       "rejects": "a change to src/lib.rs that tests/test_home_guard.rs, which only writes a file of that name into the scratch crate it builds, did not re-run on the merge tree; a FILE_READ_EXEMPT line in tests/repo_scans_table.rs would replace this entry (SPEC-20261123-test-home-isolation)"
+    },
+    {
+      "id": "card-number-observe-specs-and-sdd",
+      "always": true,
+      "tests": [
+        "tests/spec_card_number_observe.rs::the_real_specs_before_the_date_get_no_notice",
+        "tests/spec_card_number_observe.rs::rule_10_sentence_is_pinned"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test spec_card_number_observe"
+      ],
+      "rules": [
+        "tests/spec_card_number_observe.rs",
+        "src/spec_doc.rs"
+      ],
+      "scope": [
+        {
+          "prefix": ".moai/specs"
+        },
+        {
+          "prefix": "skills/moai/references/internal/sdd.md"
+        }
+      ],
+      "rejects": "a change to a SPEC under .moai/specs or to rule 10 of internal/sdd.md that the card-number observe tests, which read every spec.md and the rule sentence at run time, did not re-run on the merge tree (SPEC-20261123-card-number-observe)"
     }
   ]
 }

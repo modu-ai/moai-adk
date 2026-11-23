@@ -687,6 +687,7 @@ pub fn parse(text: &str, opts: &Options) -> SpecDoc {
     digest(&mut doc, approval_line);
     unfinished(&lines, &mut doc);
     budget(text.lines().count(), &mut doc);
+    card_number_observe(&lines, &mut doc);
     if opts.closure {
         closure(&mut doc);
     }
@@ -701,6 +702,69 @@ pub fn parse(text: &str, opts: &Options) -> SpecDoc {
         }
     }
     doc
+}
+
+/// A new-form SPEC whose `created` date or `approval.at` date is on or after this date gets the
+/// card-number observe notice (SPEC-20261123-card-number-observe REQ-1): a new SPEC by its
+/// `created`, a revised one by the date of the approval it gets again. Older SPECs are not asked.
+const CARD_NUMBERS_FROM: &str = "2026-11-25";
+
+/// The number of card numbers in `line`: `C-` or `c-` and one or more digits, the letter not
+/// inside a longer word (`AC-1` and `SPEC-2026…` are not card numbers).
+fn card_numbers_in(line: &str) -> usize {
+    let b = line.as_bytes();
+    let (mut count, mut i) = (0, 0);
+    while i + 2 < b.len() {
+        let word_start = i == 0 || !b[i - 1].is_ascii_alphanumeric();
+        if word_start
+            && matches!(b[i], b'C' | b'c')
+            && b[i + 1] == b'-'
+            && b[i + 2].is_ascii_digit()
+        {
+            count += 1;
+            i += 2;
+            while i < b.len() && b[i].is_ascii_digit() {
+                i += 1;
+            }
+        } else {
+            i += 1;
+        }
+    }
+    count
+}
+
+/// Observe notice (sdd rule 11): a warning, never an error, that counts the card numbers of a
+/// new-form SPEC created or approved on or after [`CARD_NUMBERS_FROM`]. It names the count and
+/// the first line, never the author's text.
+fn card_number_observe(lines: &[&str], doc: &mut SpecDoc) {
+    if doc.id_form != Some(IdForm::New) {
+        return;
+    }
+    let late =
+        |d: Option<&String>| d.is_some_and(|d| valid_date(d) && d.as_str() >= CARD_NUMBERS_FROM);
+    let due = late(doc.created.as_ref()) || late(doc.approval.as_ref().and_then(|a| a.at.as_ref()));
+    if !due {
+        return;
+    }
+    let mut count = 0;
+    let mut first = None;
+    for (i, line) in lines.iter().enumerate() {
+        let n = card_numbers_in(line);
+        if n > 0 {
+            first.get_or_insert(i + 1);
+            count += n;
+        }
+    }
+    if let Some(first) = first {
+        doc.warn(
+            "card_number_observe",
+            Some(first),
+            format!(
+                "{count} card number(s) in this SPEC, the first on line {first}; observe notice \
+                 only, a card is personal (internal/sdd.md rule 10)"
+            ),
+        );
+    }
 }
 
 /// The marker of an open question an author left in a SPEC.
