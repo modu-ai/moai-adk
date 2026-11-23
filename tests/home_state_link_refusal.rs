@@ -397,12 +397,11 @@ fn move_tree() -> Move {
         common::git::git(dir, &all)
     };
     git(&repo, &["init", "-q", "-b", "main"]);
-    fs::write(repo.join(".gitignore"), ".moai-cli/\ntarget/\n").unwrap();
     fs::write(repo.join("a.txt"), "a\n").unwrap();
-    git(&repo, &["add", ".gitignore", "a.txt"]);
+    git(&repo, &["add", "a.txt"]);
     git(&repo, &["commit", "-q", "-m", "init"]);
     git(&repo, &["update-ref", "refs/remotes/origin/main", "HEAD"]);
-    let worktree = repo.join(".moai-cli/worktrees/clean");
+    let worktree = base.join("clean-worktree");
     git(
         &repo,
         &[
@@ -429,6 +428,16 @@ fn move_tree() -> Move {
 }
 
 impl Move {
+    /// The HOME state folder of the worktree work folders, through its resolver.
+    fn state(&self) -> PathBuf {
+        moai_cli::home_workdir::root(&self.home)
+    }
+
+    /// The default move root, below [`Move::state`].
+    fn worktrees(&self) -> PathBuf {
+        moai_cli::home_workdir::worktrees_root(&self.home)
+    }
+
     /// Runs the CLI in the clone with this HOME and returns the envelope on stdout.
     fn run(&self, args: &[&str]) -> Value {
         let out = Command::new(common::MOAI_BIN)
@@ -478,35 +487,35 @@ impl Move {
     }
 }
 
-/// AC-6 (REQ-6): `<HOME>/.moai` is itself a link; the default move root is below it.
+/// AC-6 (REQ-6): the HOME state folder is itself a link; the default move root is below it.
 #[test]
 fn worktree_move_plan_refuses_a_linked_state_folder() {
     let m = move_tree();
-    symlink(&m.behind, m.home.join(".moai")).unwrap();
+    symlink(&m.behind, m.state()).unwrap();
     m.plan_refused(&[], ROOT_REFUSED);
 }
 
-/// AC-6 (REQ-6): `<HOME>/.moai/worktrees`, the default move root, is a link.
+/// AC-6 (REQ-6): the `worktrees` folder of the HOME state folder, the default move root, is a link.
 #[test]
 fn worktree_move_plan_refuses_a_linked_worktrees_folder() {
     let m = move_tree();
-    fs::create_dir(m.home.join(".moai")).unwrap();
-    symlink(&m.behind, m.home.join(".moai/worktrees")).unwrap();
+    fs::create_dir(m.state()).unwrap();
+    symlink(&m.behind, m.worktrees()).unwrap();
     m.plan_refused(&[], FOLDER_REFUSED);
 }
 
-/// AC-6 (REQ-6): an explicit `--root` below `<HOME>/.moai` whose parent folder is a link.
+/// AC-6 (REQ-6): an explicit `--root` below the HOME state folder whose parent folder is a link.
 #[test]
 fn worktree_move_plan_refuses_a_linked_folder_below_an_explicit_root() {
     let m = move_tree();
-    fs::create_dir_all(m.home.join(".moai/worktrees")).unwrap();
-    symlink(&m.behind, m.home.join(".moai/worktrees/sub")).unwrap();
-    let root = m.home.join(".moai/worktrees/sub/x");
+    fs::create_dir_all(m.worktrees()).unwrap();
+    symlink(&m.behind, m.worktrees().join("sub")).unwrap();
+    let root = m.worktrees().join("sub/x");
     m.plan_refused(&["--root", root.to_str().unwrap()], FOLDER_REFUSED);
 }
 
-/// AC-7 (REQ-7): an explicit `--root` outside `<HOME>/.moai` whose parent is a link (the shape
-/// of a temporary folder on macOS) still plans.
+/// AC-7 (REQ-7): an explicit `--root` outside the HOME state folder whose parent is a link (the
+/// shape of a temporary folder on macOS) still plans.
 #[test]
 fn worktree_move_plan_accepts_a_linked_root_outside_the_home_state() {
     let m = move_tree();
@@ -523,8 +532,8 @@ fn worktree_move_plan_accepts_a_linked_root_outside_the_home_state() {
 #[test]
 fn worktree_move_apply_refuses_a_linked_root_and_moves_nothing() {
     let m = move_tree();
-    fs::create_dir(m.home.join(".moai")).unwrap();
-    symlink(&m.behind, m.home.join(".moai/worktrees")).unwrap();
+    fs::create_dir(m.state()).unwrap();
+    symlink(&m.behind, m.worktrees()).unwrap();
     let before = listing(&m.behind);
     let obs = m.obs();
     let v = m.run(&[
