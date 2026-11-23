@@ -22,11 +22,13 @@ For every card: the take outcome, what each stage produced, and either the lande
 
 When a card is handed back, write the READY or REPAIRED note and give the card back first; only then, with a registered leader, send it one cross-session message (`flows/next-flow`, "Completion message"). Read its session id with `moai session-register --show --name leader`, match that id to a row of the host's session list and address exactly that row, never a row picked by name; with no matching row, send nothing. With no leader, no live lease or no channel, write the ledger note only. Send one message per finished card, never a retry; `LANE-DONE` is your last line, after the message when one is sent. The message is a notice, not proof: never send `/clear` to yourself and never take the next card on your own while a leader is registered.
 
+Before you write the READY, REPAIRED or blocked note, read `git status --short` in the worktree: it must print nothing, so commit what is uncommitted first and the head the note names holds it. After a READY or REPAIRED note you make no commit, because the note names the head its checks ran on. After the note, giving the card back and the message to the leader (when one is sent), leave the card's worktree with `ExitWorktree(keep)`, and never remove the worktree or move out of it with a shell `cd`. Write `LANE-DONE` as the last line of the turn, after that tool call. The next card starts outside every card worktree: enter the worktree the leader made with `EnterWorktree` and its `path`, or leave the current one first before you make a new one.
+
 Where the project offers lane commands that run a card in a lane of its own, a step may run there; if the lane commands are missing, say so and run the step in the current session.
 
 ## Exceptions and Permissions
 
-A card that needs a user decision goes to the ledger: write `LANE-BLOCKED kind=decision <card> <the decision, its options and the default>` as a note on the card, never a question to the user. With no registered leader, take the next card; with a registered leader, leave the blocked card as its note and wait for that leader's dispatch. A HOLD or a `guarded` choice is reported the same way and never decided here. Without the `moai` command there is no card ledger: take nothing and report it once.
+A card that needs a user decision goes to the ledger: write `LANE-BLOCKED kind=decision <card> <the decision, its options and the default>` as a note on the card, never a question to the user. A session that works a card never opens a selection prompt for the person; whatever it needs decided goes in that note. With no registered leader, take the next card; with a registered leader, leave the blocked card as its note and wait for that leader's dispatch. A HOLD or a `guarded` choice is reported the same way and never decided here. Without the `moai` command there is no card ledger: take nothing and report it once.
 
 ## Completion Check
 
