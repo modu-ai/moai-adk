@@ -98,4 +98,21 @@ approval:
 
 ## Result
 
-(구현 뒤에 적어요.)
+판 1(승인: 리더 결정 노트 7908, 리더 판단이고 사용자 직접 선택은 아니에요). 브랜치 `spec/home-state-link-refusal-20261124`, 기준 NeXT `fb97c6af9a` 를 쫓지 않았어요. 구현 커밋은 `03612534f7`(RED), `a04e708ef7`(GREEN)이에요. 로그는 `target/c427/` 에 있고 카드가 열려 있는 동안만 둬요.
+
+- RED: 테스트 파일만 있고 함수가 없어서 컴파일이 exit 101 로 실패했어요(`E0432 unresolved import moai_cli::layout::refuse_linked_home_path`). 거절하지 않는 뼈대(`Ok(())`)를 더하고 `cargo nextest run --offline --locked --test home_state_link_refusal --no-fail-fast` → exit 100, 14개 중 4 통과·10 실패(거절 테스트 10개가 모두 실패, 통제·허용 4개는 통과). 실패 이유는 모두 거절하지 않아서예요. 감사 #409 프로브 S3 가 그대로 재현됐어요: `projects/` 가 링크이고 그 너머에 `layout.json` 이 있으면 `journal_root_in` 이 `Ok(<HOME>/.moai/projects/widgets/claims)` 를 돌려줬어요.
+- GREEN: 같은 명령 → exit 0, 14/14. 이웃: `cargo nextest run --offline --locked --lib --test worktree_move --no-fail-fast -E 'test(journal_root) | test(layout::) | test(worktree_move) | test(claim::) | test(open_locked_journal) | binary(worktree_move)'` → exit 0, 60 통과.
+- AC-1: 충족. `refuse_linked_home_path_names_the_linked_component`(뿌리·`projects`·`projects/widgets`·`claims` 가 각각 링크일 때 뿌리는 `home state root`, 아래는 `home state folder` 문장), `refuse_linked_home_path_accepts_a_plain_tree`(링크 없음, 아직 없는 폴더, 뿌리 자신은 통과).
+- AC-2: 충족. `refuse_linked_home_path_ignores_a_path_outside_the_root`(뿌리 밖은 앞쪽이 링크여도 통과, 끝 슬래시와 `.` 를 낀 철자도 같은 답).
+- AC-3: 충족. `journal_root_in_refuses_a_linked_projects_folder`, `..._project_folder`, `..._claims_folder`(세 경우 모두 `journal_root_in` 과 쓰기 진입점 `open_locked_journal_in` 이 `home state folder is a symlink; refused` 로 거절하고 링크 너머의 목록이 그대로예요).
+- AC-4: 충족. `journal_root_refuses_a_linked_home_folder_in_a_child`(자식 프로세스의 환경 HOME 만 바꿔 `journal_root` 와 `open_locked_journal` 이 같은 문장으로 거절, 링크 너머에 `.lock` 도 폴더도 없어요; 자식이 정확히 그 테스트 하나를 돌렸는지 `1 passed; 0 failed` 로 확인해요).
+- AC-5: 충족. `journal_root_in_keeps_the_clone_side_answer_without_a_pointer`(`projects/` 가 링크이고 포인터가 없으면 클론 쪽 폴더를 돌려주고 거절하지 않아요), `journal_root_in_keeps_the_home_side_answer_on_a_plain_tree`(대조).
+- AC-6: 충족. `worktree_move_plan_refuses_a_linked_state_folder`(`.moai` 링크, 뿌리 문장), `..._a_linked_worktrees_folder`(`.moai/worktrees` 링크, 폴더 문장), `..._a_linked_folder_below_an_explicit_root`(`--root` 아래 `sub` 링크, 폴더 문장); 셋 모두 링크 너머가 그대로예요.
+- AC-7: 충족. `worktree_move_plan_accepts_a_linked_root_outside_the_home_state`(`<HOME>/.moai` 밖 `--root` 의 앞쪽이 링크여도 계획을 돌려줘요).
+- AC-8: 충족. `worktree_move_apply_refuses_a_linked_root_and_moves_nothing`(`stale or altered plan` 이 아니라 링크 거절 문장으로 거절, worktree 는 제자리, 링크 너머가 그대로예요).
+- AC-9: 충족. `git diff --stat fb97c6af9a..HEAD` 가 `src/claim.rs`, `src/layout.rs`, `src/worktree_move.rs`, `tests/home_state_link_refusal.rs` 와 이 SPEC 다섯 개만 보여요.
+- AC-10: 충족. 위 이웃 명령 60개 통과(`layout`·`claim`·`worktree_move` 모듈과 `worktree_move` 통합 테스트).
+- 뮤턴트(적용을 `git diff --stat` 으로 확인하고 `git checkout -- <파일>` 로 되돌린 뒤 `git status --short` 가 비어 있음을 확인; 모두 `--test home_state_link_refusal`, exit 100): ① 구성요소 검사를 마지막 이름만으로 줄임(`src/layout.rs`) → 6개 실패 ② 뿌리 검사 삭제 → 2개 실패 ③ `journal_root_in` 이 예전 뿌리 하나만 보는 검사로 돌아감(`src/claim.rs`) → 4개 실패 ④ `plan` 의 `refuse_linked_move_root` 호출 삭제(`src/worktree_move.rs`) → 4개 실패 ⑤ "뿌리 아래인가" 판정을 뒤집음 → 11개 실패.
+- 동작이 바뀌는 곳: `layout.json` 이 저널을 홈 상태로 돌려 놓았고 `projects/` 나 `projects/<id>/` 나 `claims` 가 링크인 사용자의 저널이 거절돼요(Risks). 같은 틈이 `src/forge/outbox.rs`·`src/apply.rs`·`layout-apply` 에 있는지는 이 카드에서 읽지 않았고(unverified), 리더가 후속 카드 C-434 를 열었어요(노트 7908).
+- 하지 않은 것: N1(`journal_root_in` 의 git 설정 읽기)과 R1(home-env-readers SPEC 문장)은 D-5 대로 이 카드 밖이에요.
+- not_run: Windows·Linux(junction 은 이 검사가 못 잡아요), 실제 HOME 읽기 전후 비교(테스트는 임시 HOME 만 써요), 전체 `cargo test --locked`(리더 몫).
