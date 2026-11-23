@@ -1093,6 +1093,19 @@ fn a_scan_that_names_a_reader_but_never_runs_the_readers_is_named() {
 }
 
 #[test]
+fn file_read_exempt_keeps_out_the_listed_paths_of_the_listed_file_only() {
+    let (file, paths, _) = FILE_READ_EXEMPT
+        .iter()
+        .find(|(_, paths, _)| !paths.is_empty())
+        .expect("an exemption with a path list");
+    for path in *paths {
+        assert!(file_read_exempt(file, path), "{file} {path}");
+        assert!(!file_read_exempt("tests/zz_other.rs", path), "{path}");
+    }
+    assert!(!file_read_exempt(file, "zz/not-listed.md"), "{file}");
+}
+
+#[test]
 fn file_read_exemptions_are_readers_with_a_reason_once() {
     let readers = file_readers();
     let mut seen = BTreeSet::new();
