@@ -297,12 +297,22 @@ fn the_wrapper_removes_only_the_folder_it_made() {
     fs::create_dir(g.tmp.path().join("keep-me")).unwrap();
     fs::write(g.tmp.path().join("keep-me/file"), "x").unwrap();
     fs::create_dir(g.tmp.path().join("moai-test-home-lookalike")).unwrap();
+    // The folder and the reference file of another wrapper process that runs at the same time.
+    fs::create_dir(g.tmp.path().join("moai-test-home.1")).unwrap();
+    fs::write(g.tmp.path().join("moai-test-home.1/file"), "x").unwrap();
+    fs::write(g.tmp.path().join("moai-test-home.1.ref"), "").unwrap();
     let out = g.run(Some("enforce"), None, "true");
     assert_eq!(out.status.code(), Some(0), "{}", stderr(&out));
     assert_eq!(
         g.entries(),
-        vec!["keep-me".to_string(), "moai-test-home-lookalike".to_string()]
+        vec![
+            "keep-me".to_string(),
+            "moai-test-home-lookalike".to_string(),
+            "moai-test-home.1".to_string(),
+            "moai-test-home.1.ref".to_string(),
+        ]
     );
+    assert!(g.tmp.path().join("moai-test-home.1/file").exists());
 }
 
 #[test]
