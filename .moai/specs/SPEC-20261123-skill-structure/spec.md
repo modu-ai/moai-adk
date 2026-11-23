@@ -92,11 +92,16 @@ RED(`red1.out`, 구현 전 `67280bb683`): `cargo nextest run --test skill_struct
 
 - AC-1: met — `green3.out`: `loop_reference_refuses_an_unconfirmed_session_and_defines_the_leader` 통과. 확인한 명령 모양은 `moai session-register --show --name leader` 가 `status`·`mode`·`session` 을 출력하는 것(`tests/leader_registration_cli.rs` 의 `ac4_a_lane_reads_the_live_leader_session`)이에요.
 - AC-2: met — `green3.out`: `loop_reference_arms_one_timer` 통과(목록 → 제거 → 하나만 등록 순서까지).
-- AC-3: met — `green3.out`: `skill_entry_points_to_the_loop_reference_and_does_not_repeat_it`, `skill_entry_names_the_work_route_without_its_steps` 통과. `SKILL.md` 는 5,193 → 5,246 바이트(`wc -c`, `git show c395e5a50c:skills/moai/SKILL.md | wc -c`)로 오히려 53바이트 늘었어요: 포인터 한 줄을 더했고 WORK 단계 나열은 짧게 줄였어요.
+- AC-3: met — `green3.out`: `skill_entry_points_to_the_loop_reference_and_does_not_repeat_it`, `skill_entry_names_the_work_route_without_its_steps` 통과. `SKILL.md` 는 5,193 → 5,241 바이트(`wc -c`, `git show c395e5a50c:skills/moai/SKILL.md | wc -c`)로 오히려 48바이트 늘었어요: 포인터 한 줄을 더했고 WORK 단계 나열은 짧게 줄였어요. `SKILL.md` 는 경로표 외의 패키지 경로를 이름으로 부르지 않아서(`product_cli skill_package_frontmatter_is_host_neutral`, "One hop") WORK 문장은 파일 경로 없이 "as its route text says" 로 적었어요.
 - AC-4: met — `green3.out`: `resume_sits_before_the_exceptions_in_every_stage_workflow` 통과. `grep -c "^## Resume"` 가 read·plan·run·sync·audit·project 에서 1, work·update 에서 0 이에요.
 - AC-5: met — `green3.out`: `sdd_order_ends_in_the_landing_and_the_next_card` 와 `sdd_guidance` 13개 전부 통과(`stage_order_is_written_once` 포함).
 - AC-6: met — `green3.out`: `skill_structure` 7, `sdd_guidance` 13, `next_flow_skill_scan` 56, `agent_defs_package` 19, `core_rules_2876` 6, `report_rules_core` 3, `mode_workflow_steps` 7, `workflow_size_budget` 4, 증거용 `leader_registration_cli` 10 을 합쳐 125개 실행, 125개 통과, 건너뜀 0(로그의 `PASS` 줄을 타깃별로 센 값이에요).
 - AC-7: met — `python3 -I tools/source_manifest.py check` 가 `{"conflicted": false, "changed": [], "dropped": [], "ok": true}` 를 출력했어요(`line-lease` 안에서 `write` 뒤).
+
+### 영향 범위 검사에서 나온 것
+
+- `moai check affected c395e5a50c..33c880a445` 는 `fmt=1` 에서 멈췄어요(새 테스트 파일의 rustfmt 서식). `fffaa7a3b9` 에서 고쳤어요.
+- `c395e5a50c..fffaa7a3b9` 는 `diff_check=0 fmt=0 clippy=0` 뒤 `test=100`: 2430개 중 2429 통과, 1 실패 — `product_cli skill_package::skill_package_frontmatter_is_host_neutral`(`SKILL.md` 가 `workflows/work.md` 경로를 이름으로 불렀어요). 위 AC-3 줄의 이유대로 문장을 고치고 매니페스트 해시를 다시 썼어요.
 
 ### 계획과 달라진 것
 
