@@ -1,12 +1,17 @@
 ---
 id: SPEC-20261124-model-value-trim
 title: "The fast-mode pair check trims the model value before it matches the Opus 4.8 family"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-24
+approval: {by: leader, at: 2026-11-23, basis: "leader decision note 7952 of card C-436 (ref note:436:30859b1a563929e9623b460d21d0bb53, 2026-11-23T22:18:20Z, under the user's delegation of 2026-11-23T13:57Z, the leader's judgement and not a selection by the user) answering request note 7951 with option (a), approving revision 1 at head 9c1004de04; not approved by the lane", digest: "sha256:f84cb80984e8c3f454a954c9708e6a434d52326089b904e78c352382a6cd519a"}
 ---
 
 # The fast-mode pair check trims the model value before it matches the Opus 4.8 family
+
+## Interview
+
+- none: 별도 사용자 인터뷰는 없었어요. 요구사항은 카드 C-436 의 본문과 인수 기준 1, 그리고 C-353 의 `AUDIT #353` 델타 노트 N-a 가 정했어요.
 
 ## Intent
 
