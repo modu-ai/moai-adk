@@ -475,7 +475,11 @@ fn local_branch_absent(cwd: &Path, branch: &str) -> bool {
 /// has a card, points at its newest `moai-resume:` comment; any other `source`, or none, gives
 /// the text it always did.
 fn session_check(input: &Value, cwd: &Path) -> Verdict {
-    session_check_in(input, cwd, std::env::var_os("HOME").as_deref().map(Path::new))
+    session_check_in(
+        input,
+        cwd,
+        std::env::var_os("HOME").as_deref().map(Path::new),
+    )
 }
 
 /// [`session_check`] with the HOME that holds the recorded conversation language passed in, so a
