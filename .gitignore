@@ -382,6 +382,12 @@ dist-ssr/
 # Apply receipts and their before-bytes stay local (#2590, docs/rust-product-path.md "Per-file receipts
 # and recovery"); the profile baseline .moai-cli/manifests/profile-baseline.json is tracked with project.yaml
 /.moai-cli/receipts/
+# The status line of every session writes its forge counts cache and refresh lock under the state
+# folder of the checkout it renders in (src/statusline/counts.rs), so each worktree would list them
+# as untracked (SPEC-20261124-statusline-cache-untracked). `/.moai/state/` is the same folder after
+# the state move (#2725 S2); the `/.moai/*` rule below already covers it today.
+/.moai-cli/state/
+/.moai/state/
 # Go-generation MoAI state at any depth (user instruction 2026-11-08; the root entries above cover the primary).
 # The `.moai/` line matches below the root only (`*/**/`), so it does not undo `!/.moai/specs/` above.
 .claude/
