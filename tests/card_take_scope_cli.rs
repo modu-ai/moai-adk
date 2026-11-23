@@ -2,7 +2,7 @@
 //! fills an empty scope from the SPEC the card names or from the card's last reservation, names
 //! the two ways out when it has no source, and `moai card next` lists what a take could fill.
 //!
-//! Every command runs against a temporary HOME; the real `~/.moai` is not read or written. The
+//! Every command runs against a temporary HOME; the real home state is not read or written. The
 //! holder is the session id in the environment (`CLAUDE_CODE_SESSION_ID`).
 #![cfg(unix)]
 
@@ -132,7 +132,7 @@ impl World {
              ## Acceptance\n\n- AC-1 (REQ-1): it does the thing.\n  verify: `true`\n\n\
              ## Scope\n\n- write: {list}\n- read-only: every other file\n\n## Plan\n\n1. Do it.\n"
         );
-        let dir = self.root.join(".moai/specs").join(&id);
+        let dir = self.root.join(moai_cli::spec_doc::SPECS_DIR).join(&id);
         fs::create_dir_all(&dir).unwrap();
         fs::write(dir.join("spec.md"), body).unwrap();
         id
