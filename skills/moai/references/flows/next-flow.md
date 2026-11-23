@@ -39,7 +39,7 @@ Four technical rules make the flow run. They describe how it works; they are not
 - When the leader gets the message, it reads the ledger first, and sends `/clear` and then the next card's dispatch only when the ledger shows the card done or released and nothing is open.
 - A message the ledger does not back starts nothing: the leader sends no `/clear` and no dispatch, and waits for the ledger.
 - The lane's message and the leader's dispatch, answer and line after `/clear` are written in the user's conversation language; only a prompt to a subagent is English, and commands, paths, card ids and protocol lines stay verbatim.
-- The leader sends `/clear` to the exact existing window only when nothing is open: no card in review, no live reservation, no run of the lane's own, no unsaved change, no input or selection prompt on the screen and nothing unknown.
+- The leader sends `/clear` to the exact existing window only after the ledger shows the lane's card done or released, and only when nothing is open: no card in review, no live reservation, no run of the lane's own, no unsaved change, no input or selection prompt on the screen and nothing unknown.
 - A fixed delay after `/clear` proves nothing. The leader confirms that the new session is ready, sends the next line once, and confirms that session's reservation of the new card (the ACK). When the ACK is not seen it inspects the window and does not send again.
 - A new window is opened only when the existing one cannot be recovered.
 

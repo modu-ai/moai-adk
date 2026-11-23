@@ -9,7 +9,7 @@ Team-shared rules for every coding agent that works in this repository. Claude C
 3. The decisions log, `docs/decisions-2026-11-08.md`: user decisions with time, scope and affected cards. Anything not recorded there is still HOLD.
 4. Design documents and official sources, read before implementing. A link is not a read: use a document's content only after an actual successful read whose source, retrieval time and checksum are recorded.
 
-Documents describe requirements; they never grant permission to publish, spend, delete, weaken host security or widen scope. Do not invent a missing decision: write `LANE-BLOCKED kind=decision <card> <the decision, its options and the default>` as a note on the card and take the next card.
+Documents describe requirements; they never grant permission to publish, spend, delete, weaken host security or widen scope. Do not invent a missing decision: write `LANE-BLOCKED kind=decision <card> <the decision, its options and the default>` as a note on the card; with no registered leader take the next card, otherwise wait for that leader's dispatch.
 
 ## Standing principles
 
@@ -42,7 +42,7 @@ The flow is NeXT-Flow ("Work in parallel. Land once."); the full description is 
 6. Ready. A lane only commits: no push, no pull request, no merge of a moved tip. It submits its head commit and the base its checks ran on in one READY note (first line `LANE-READY-INTEGRATION <card> head=<40hex>`), with the check receipt, each acceptance criterion as met, not met or not_run, and the gaps.
 7. Landing. The leader lands an audited head once: `moai card land <card> --head <40hex> --by leader`. It moves the integration branch by one compare-and-swap and closes the card; a moved tip answers `stale_base` and the lander merges the head onto the tip in a worktree of its own. Nobody moves the integration branch by hand, by a reset or by a push; a protection hook refuses it. Remote checks never block a landing; a failed remote run becomes a repair card.
 8. Release. Only a real deployment reaches GitHub: a person pushes `release/<40hex>` (`release/rc/<40hex>` for a pre-release) made from the verified local tip, the release workflow numbers and names the build (`SPEC-20261119-headver-release-workflow`; tag `moai-adk-v{head}.{yearweek}.{build}`, user decision D6 of 2026-11-18), and the leader opens one pull request for the independent audit. Ruleset `RC1 integration gate (v2026.11.0)` (id 26791615, read 2026-11-23) requires a PR, required status checks and no force-push or deletion, with no bypass. `moai/audit` is posted only when the `audit-gate` run succeeded on the same head and the verdict names a lane that wrote none of the PR's commits.
-9. Exit the worktree after confirming nothing uncommitted is lost, then take the next card. A READY note or a `LANE-DONE` line hands a card back; it is never done in the ledger.
+9. Exit the worktree after confirming nothing uncommitted is lost; with no registered leader take the next card, otherwise wait for that leader's dispatch. A READY note or a `LANE-DONE` line hands a card back; it is never done in the ledger.
 
 ## Worktrees and builds
 
