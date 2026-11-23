@@ -1176,8 +1176,9 @@ fn glued_ids(line: &str) -> Vec<String> {
     let mut ids = Vec::new();
     for (dash, _) in t.match_indices("- ") {
         let ticks = t[..dash].matches('`').count();
+        let in_span = ticks % 2 == 1 && ticks < total;
         let separated = match t[..dash].chars().next_back() {
-            Some(' ') => !(ticks % 2 == 1 && ticks < total) && !ends_in_id(t[..dash].trim_end()),
+            Some(' ') => !in_span && !ends_in_id(t[..dash].trim_end()),
             Some('`') => ticks % 2 == 0,
             _ => false,
         };
