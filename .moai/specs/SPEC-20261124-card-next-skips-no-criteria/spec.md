@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261124-card-next-skips-no-criteria
 title: "card next 가 기준 없는 ready 카드를 건너뛰어요"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-24
+approval:
+  by: leader
+  at: 2026-11-23
+  basis: "리더 결정 노트 7811 (2026-11-23T19:11:44Z, 사용자 위임 2026-11-23T13:57Z, 리더 판단, 사용자 직접 선택 아님, 노트 7810 에 대한 답): (A) 판 1 승인, 날짜 id 로 옮긴 것과 D-3, 쓰기 범위에 src/card/dispatch.rs 포함; 리더가 노트에 적었고 레인은 그 노트를 옮겨 적었어요"
+  digest: "sha256:1b64265497831c37d293db533935d63ac3558f750151f764bc826940a7805989"
 ---
 
 # card next 가 기준 없는 ready 카드를 건너뛰어요
