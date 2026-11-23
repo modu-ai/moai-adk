@@ -477,7 +477,7 @@
         "adoption": "new",
         "reason": "Written for SPEC-20261122-next-flow-skills-agents (REQ-3, text slice A): `/moai work` takes one card at a time through PLAN, RUN, SYNC, AUDIT and the landing command and repeats until no card is left; a decision becomes a blocked note on the card. The card take, check, criterion and fresh-state sentences moved here from the retired MODE-AGENT workflow with their pins."
       },
-      "sha256": "5358db5333abbc193d92563c691f186cd25cc5e6099d044180b54e42594bd721"
+      "sha256": "da4a16e5133371d7addec4aa67595ea41cdbe4e5fd153d51764786bb57633be2"
     }
   }
 }

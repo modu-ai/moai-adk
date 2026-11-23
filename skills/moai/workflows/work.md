@@ -26,7 +26,7 @@ Where the project offers lane commands that run a card in a lane of its own, a s
 
 ## Exceptions and Permissions
 
-A card that needs a user decision is never a question to the user: write `LANE-BLOCKED kind=decision <card> <the decision, its options and the default>` as a note on the card. With no registered leader, take the next card; with a registered leader, leave the blocked card as its note and wait for that leader's dispatch. A HOLD or a `guarded` choice is reported the same way and never decided here. Without the `moai` command there is no card ledger: take nothing and report it once.
+A card that needs a user decision goes to the ledger: write `LANE-BLOCKED kind=decision <card> <the decision, its options and the default>` as a note on the card, never a question to the user. With no registered leader, take the next card; with a registered leader, leave the blocked card as its note and wait for that leader's dispatch. A HOLD or a `guarded` choice is reported the same way and never decided here. Without the `moai` command there is no card ledger: take nothing and report it once.
 
 ## Completion Check
 
