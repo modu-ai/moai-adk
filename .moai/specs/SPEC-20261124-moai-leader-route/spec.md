@@ -1,10 +1,15 @@
 ---
 id: SPEC-20261124-moai-leader-route
 title: "`/moai leader` is a ninth route: the window that types it registers as the coordination window, reads the ledger, lands audited heads and releases the registration when it ends"
-status: draft
+status: approved
 revision: 2
 created: 2026-11-24
 parent: SPEC-20261122-next-flow-skills-agents
+approval:
+  by: leader
+  at: 2026-11-23
+  basis: "리더 결정 노트 7892 (2026-11-23T20:59:32Z, 사용자 위임 2026-11-23T13:57Z, 리더 판단, 사용자 직접 선택 아님, 노트 7891 에 답함): 판 2 승인(head 95b41c4f78: REQ-3·5·7·8·9, D-2·D-7·D-8, Interview Q3, 테스트 문구); 수리 결정은 노트 7887; 레인은 그 노트들을 인용만 해요"
+  digest: "sha256:b04ed3ebd0a4aff00723890a8710bbf5784139a838174b96ade863698e8e5140"
 ---
 
 # The LEADER route of the moai skill
