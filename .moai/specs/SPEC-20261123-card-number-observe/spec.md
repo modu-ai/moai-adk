@@ -75,4 +75,16 @@ approval:
 
 ## Result
 
-(구현 전 초안이에요. 승인 전이라 아직 채우지 않았어요.)
+브랜치 `spec/card-number-observe-20261123` 에서 판 1 승인(리더 노트 7729) 뒤 RED → 구현 → guard-mutant 를 했고(구현 커밋 `5b5222ab8d`, 기준 `466b59fc62`), 판 2 승인(리더 노트 7747) 뒤 NeXT `29e15b53cc` 를 한 번 합치고 `tools/repo_scans.json` 에 등록 항목 하나를 더했어요(등록 커밋 `e96820dda9`). 시각은 리더 노트의 시각이에요.
+
+- RED(구현 전): `cargo nextest run --offline --locked --test spec_card_number_observe` 가 6개 중 4개 실패(알림 없음), 2개 통과(실제 SPEC 읽기·문장 핀은 처음부터 맞는 특성화), exit 100.
+- 구현 뒤: 같은 명령이 6개 모두 통과. 합친 뒤 `cargo nextest run --offline --locked --test repo_scans_table --test spec_card_number_observe` 가 28개 모두 통과, exit 0. 등록 전에는 `repo_scans_table` 의 `every_walking_test_file_is_listed_or_exempt` 와 `every_file_reader_has_an_always_scan_or_an_exemption` 가 이 테스트 파일 때문에 실패했어요.
+- guard-mutant 6개를 하나씩 넣어 모두 exit 100: ① 날짜 비교 삭제 → 3개 실패, ② 낱말 시작 검사 삭제 → 3개 실패, ③ 경고를 오류로(`doc.warn` → `doc.error`) → 2개 실패, ④ `approval.at` 갈래 삭제 → 1개 실패, ⑤ 새 형식 id 검사 삭제 → 1개 실패, ⑥ 핀 테스트의 문장 비교 삭제 → 1개 실패. 매번 `git checkout` 으로 되돌렸어요.
+
+- AC-1: met — `a_new_spec_with_card_numbers_gets_one_observe_warning` 통과. 경고 하나(번호 둘, 첫 줄 번호와 개수만 말하고 SPEC 글은 안 담아요), 낱말 안의 `AC-1`·`SPEC-…`·`ABC-5` 는 안 세고, 번호를 깬 같은 글과 오류 수가 같아요. 보조 `only_a_card_number_at_a_word_start_counts` 통과.
+- AC-2: met — `a_revised_spec_is_judged_by_its_approval_date` 통과. `created` 가 옛날이어도 `approval.at` 이 `2026-11-25` 면 경고 하나, `2026-11-24` 면 없어요.
+- AC-3: met — `older_go_and_undated_specs_get_no_notice` 통과. 경계 하루 전(`2026-11-24`), 날짜 없음, Go 세대 SPEC(늦은 날짜)은 알림이 없고 경계일(`2026-11-25`)은 하나예요.
+- AC-4: met — `the_real_specs_before_the_date_get_no_notice` 통과(이 저장소의 `.moai/specs/*/spec.md` 를 읽어 경계 전 SPEC 100개 넘게 알림 0, 경고 등급 확인). 이 브랜치의 빌드 `target/debug/moai-cli spec check --all` 은 `count 354, errors 0, warnings 26, card_number_observe 0` 이고, 이 변경이 없는 설치본 `moai spec check --all` 도 같은 `354, 0, 26` 이에요. 제한: 테스트는 번호를 깬 사본과 오류 코드를 비교하는데, 승인된 SPEC 의 요구·기준·범위 안 번호를 깨면 내용 digest 가 바뀌어서 그 코드 `approval_digest` 만 비교에서 뺐어요(테스트의 편집이지 알림이 아니에요).
+- AC-5: met — `rule_10_sentence_is_pinned` 통과. `sdd.md` 규칙 10 의 문장을 낱말 그대로 요구하고, `never appear` → `may appear`, `cards are personal` → `cards are shared`, 규칙 제목 바꿈, 빈 글 네 사본을 모두 거절해요.
+
+observe 기록(sdd 규칙 11): 경계 `2026-11-25` 가 아직 오지 않아서 새·개정 SPEC 에서 알림이 몇 번 나왔는지와 거짓 양성 수는 읽을 수 없어요(not_run). 기존 SPEC 354개에서는 0번이에요(위 `spec check --all`). 알림을 오류로 올리거나 규칙 10 을 좁히는 일은 이 SPEC 이 아니고 사용자 답과 observe 기록 뒤에 따로 정해요.
