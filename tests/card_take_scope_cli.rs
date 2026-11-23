@@ -381,6 +381,13 @@ const SCOPE_PROSE_LINE: &str = "- write: `.moai/specs/SPEC-20261121-remove-codex
 /// `SPEC-20261119-card-scope-widen`: an option (`--reason`) in the middle of a path's note.
 const SCOPE_OPTION_SPAN: &str = "- write: `src/card/dispatch.rs`, `src/ledger/reservation.rs`, `src/ops/card.rs` (the new `--reason` option and the help only), `tests/card_scope_widen_cli.rs`\n- read-only: `src/ledger/schema.rs`";
 
+/// `SPEC-20261119-flaky-policy`: a command with its argument inside one span (a `/` and a space).
+const SCOPE_SPACED_SPAN: &str = "- write: `src/flaky.rs`, `tools/source_manifest.py write`, `tests/flaky_cli.rs`";
+
+/// `SPEC-20261119-headver-release-workflow`: a call with a dot (`WorkflowTest.workflows()`): no
+/// `/`, and what follows the dot is no extension.
+const SCOPE_CALL_SPAN: &str = "- write: `.github/workflows/release.yml`, `WorkflowTest.workflows()`, `tests/headver_cli.rs`";
+
 /// `SPEC-20261122-worktree-place`: an untagged list whose items name the same file first.
 const SCOPE_REPEATED_PATH: &str = "- The path keystone (the functions the others call): `src/home_workdir.rs` (worktree_dir, worktrees_root), `src/lib.rs` (the WORKTREES_DIR constant).\n- The local exclude helper (one function every creator calls): `src/home_workdir.rs`; it reads `git rev-parse --git-common-dir`.\n- Creators of new worktrees: `src/worktree.rs` (the worktree command), `src/claude.rs` (the launcher).\n- Checkers and guards: `src/hooks.rs` (the hook path check).";
 
@@ -392,10 +399,12 @@ const SCOPE_CLEAN: &str = "- write:\n  - `.moai/specs/SPEC-20261123-audit-slot/s
 /// nothing is reserved or written.
 #[test]
 fn a_spec_list_with_a_word_is_refused_not_stored() {
-    let kinds: [(&str, &str, &str); 3] = [
+    let kinds: [(&str, &str, &str); 5] = [
         ("code-span", SCOPE_CODE_SPAN, "pub mod build;"),
         ("prose-line", SCOPE_PROSE_LINE, "the"),
         ("option-span", SCOPE_OPTION_SPAN, "--reason"),
+        ("spaced-span", SCOPE_SPACED_SPAN, "tools/source_manifest.py write"),
+        ("call-span", SCOPE_CALL_SPAN, "WorkflowTest.workflows()"),
     ];
     for (slug, scope, word) in kinds {
         let w = world();
