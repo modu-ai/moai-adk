@@ -1,9 +1,10 @@
 ---
 id: SPEC-20261124-test-temp-leftovers
 title: "테스트가 시스템 임시 폴더에 남기는 래퍼 파일을 막아요"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-24
+approval: {by: leader, at: 2026-11-23, basis: "leader decision note 7890 of card C-432 (2026-11-23T20:57:14Z, delegation of the user 2026-11-23T13:57Z, the leader's judgement and not a selection by the user) answering request note 7889 with D-1 option (a)", digest: "sha256:fc9b8e7afed524cc190282c4b109d30bca1564d6c882fc4cff01c98d74f54196"}
 ---
 
 # 테스트가 시스템 임시 폴더에 남기는 래퍼 파일을 막아요
@@ -56,6 +57,7 @@ created: 2026-11-24
 
 - 신호 경우는 프로브가 `kill -s <신호> $PPID` 로 래퍼 셸에 직접 신호를 보내요. 셸은 자식(프로브)이 끝난 뒤에 trap 을 돌리므로 결과가 정해져 있어요. 이것이 다른 셸에서도 같은지는 이 저장소의 `/bin/sh`(macOS)에서만 봤어요. Linux 결과는 주장하지 않아요.
 - 비공개 `TMPDIR` 는 `TempDir` 안이라 `cargo`/`rustc` 가 거기에 쓰는 임시 파일도 같이 지워져요. 중첩 실행이 시스템 임시 폴더를 쓰던 경로가 있었다면 달라질 수 있어서 여섯 테스트를 그대로 통과시켜 확인해요.
+- 래퍼가 SIGKILL 을 맞으면 `moai-test-home.*` 폴더 하나와 `moai-test-home-ref.*` 파일 하나가 남아요(이 SPEC 은 고치지 않아요, `D-1` (a)). 리더가 지운 339개의 원인이 SIGKILL 인지는 모르니, 다시 쌓이는 게 보이면 (b) 를 후속 카드로 해요.
 - guard-mutant(각각 한 번 적용하고 반대 편집으로 되돌려요, 되돌린 뒤 `git status` 가 깨끗해야 해요):
   - M1: `tools/test_home_guard.sh:40` 의 `rm -f "$ref"` 를 뺀다 → `a_wrapper_that_ends_leaves_nothing_in_its_tmpdir` 와 `nextest()` 도우미가 잡아야 해요.
   - M2: `tools/test_home_guard.sh:24` 의 `trap 'exit 143' HUP INT TERM` 를 뺀다 → 신호 경우가 잡아야 해요.
