@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261124-new-test-file-precheck
 title: "check affected stops before the heavy steps when an added test file is missing from the area table or the state-folder allow list"
-status: draft
+status: approved
 revision: 3
 created: 2026-11-24
+approval:
+  by: leader
+  at: 2026-11-23
+  basis: "리더 결정 노트 7847 (2026-11-23T20:13:39Z, 사용자 위임 2026-11-23T13:57Z, 리더 판단, 사용자 직접 선택 아님, 노트 7846 에 답함): (A) 판 3 승인, tools/repo_scans.json 을 예약 범위에 더하고 항목 하나(table-step-matches-the-two-repository-tests)만 더해요, 다른 항목·규칙은 건드리지 않아요; 레인은 그 노트를 인용만 해요"
+  digest: "sha256:424c9f4175791164ef982d3c37ab7db10b62170dff4588172f842225e8555acd"
 ---
 
 # check affected stops before the heavy steps when an added test file is missing from the area table or the state-folder allow list
