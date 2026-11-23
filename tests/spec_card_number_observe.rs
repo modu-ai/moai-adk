@@ -211,7 +211,16 @@ fn the_real_specs_before_the_date_get_no_notice() {
             assert_eq!(f.severity, Severity::Warning, "{folder}");
         }
         let broken = parse(&break_cards(t), &opts);
-        assert_eq!(d.errors(), broken.errors(), "{folder}: errors moved");
+        // A number inside a requirement, a criterion or the scope changes the content digest of an
+        // approved SPEC, which is the test's own edit and not the notice, so that code is left out.
+        let codes = |s: &SpecDoc| {
+            s.findings
+                .iter()
+                .filter(|f| f.severity == Severity::Error && f.code != "approval_digest")
+                .map(|f| f.code)
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(codes(&d), codes(&broken), "{folder}: errors moved");
         let late = |date: &Option<String>| date.as_deref().is_some_and(|c| c >= "2026-11-25");
         let new_or_revised =
             late(&d.created) || late(&d.approval.as_ref().and_then(|a| a.at.clone()));
