@@ -2646,6 +2646,20 @@ fn ac50_a_moved_integration_branch_gives_tip_moved_stale_base_or_a_close() {
         &before,
         &other,
     );
+
+    // The branch moved outside the call to contain the head: it closes the card with no second
+    // move and no start row.
+    let w = World::enforced();
+    let card = w.review_card(&["one"]);
+    let lane = w.lane_adding("notes/x.md", S_A);
+    let cand = w.join(&lane, S_LEAD);
+    w.verdict(&card, &cand, true, 0, S_AUD, None);
+    git(&w.project, &["update-ref", "refs/heads/integ", &cand]);
+    let got = result(&w.land_as(Some(S_LEAD), &card, &cand));
+    assert_eq!(got["moved"], json!(false), "{got}");
+    assert_eq!(got["closed"], json!(true), "{got}");
+    assert_eq!(w.events(&card, "card.land_started"), 0);
+    assert_eq!(w.integ(), cand);
 }
 
 /// AC-15 (REQ-19): a note whose first line is a well-formed verdict line is no verdict.
@@ -2843,4 +2857,391 @@ fn ac56_the_profile_names_the_mode_and_another_word_is_refused() {
     let got = result(&w.land_as(Some(S_LEAD), &card, &cand));
     assert_eq!(got["would_refuse"]["code"], json!("no_verdict"), "{got}");
     assert_eq!(got["closed"], json!(true), "{got}");
+}
+
+// ---- AC-35 to AC-38: a landing cleans the card's worktrees (SPEC-20261123-worktree-slots AC-6) ---
+
+impl World {
+    /// A linked worktree of the project, detached at the card's change (which the tip contains),
+    /// in a folder of its own outside the project.
+    fn linked_worktree(&self, name: &str) -> PathBuf {
+        let at = fs::canonicalize(self.dir.path()).unwrap().join(name);
+        git(
+            &self.project,
+            &[
+                "worktree",
+                "add",
+                "-q",
+                "--detach",
+                at.to_str().unwrap(),
+                &self.head,
+            ],
+        );
+        at
+    }
+
+    /// A task card with `criteria`, its own scope path, taken by `S_A` in `worktree` (on `branch`
+    /// when given); returns its name.
+    fn card_in(
+        &self,
+        scope: &str,
+        worktree: &Path,
+        branch: Option<&str>,
+        criteria: &[&str],
+    ) -> String {
+        let mut args = vec![
+            "add",
+            "--title",
+            "fixture card",
+            "--kind",
+            "task",
+            "--scope",
+            scope,
+        ];
+        for text in criteria {
+            args.push("--ac");
+            args.push(text);
+        }
+        let name = result(&self.card(None, &args))["name"]
+            .as_str()
+            .unwrap()
+            .to_string();
+        result(&self.card(None, &["ready", &name]));
+        let mut take = vec![
+            "take",
+            name.as_str(),
+            "--worktree",
+            worktree.to_str().unwrap(),
+        ];
+        if let Some(b) = branch {
+            take.extend(["--branch", b]);
+        }
+        result(&self.card(Some(S_A), &take));
+        name
+    }
+
+    /// The cleanup clock three days ahead, so every change in the fixture is old.
+    fn clock_three_days_on(&self) {
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+        let mut env = self.extra_env.borrow_mut();
+        env.push((
+            moai_cli::worktree_cleanup::NOW_SEAM.to_string(),
+            (now + 3 * 86_400).to_string(),
+        ));
+        // The cleanup's process check runs `lsof`, which it finds on the caller's PATH.
+        env.push((
+            "PATH".to_string(),
+            std::env::var("PATH").unwrap_or_default(),
+        ));
+    }
+
+    /// Sends the card to review and lands a candidate with the given `--met` options.
+    fn lands(&self, card: &str, met: &[&str]) -> Value {
+        result(&self.card(Some(S_A), &["review", card, "--generation", "1"]));
+        let candidate = self.candidate();
+        let mut args = vec!["--head", candidate.as_str()];
+        for m in met {
+            args.extend(["--met", m]);
+        }
+        args.extend(["--by", "leader"]);
+        result(&self.land(card, &args))
+    }
+
+    fn registered(&self, dir: &Path) -> bool {
+        git(&self.project, &["worktree", "list", "--porcelain"])
+            .contains(dir.file_name().unwrap().to_str().unwrap())
+    }
+}
+
+/// AC-35: after a landing closes the card, the cleanup plan lists the card's worktree and the
+/// apply removes it on the plan's digest; another card's worktree stays.
+#[test]
+fn ac35_a_landing_removes_the_closed_cards_merged_worktree_on_the_plans_digest() {
+    let w = World::new();
+    let mine = w.linked_worktree("wt-mine");
+    let other = w.linked_worktree("wt-other");
+    w.clock_three_days_on();
+    let card = w.card_in("apps/a/", &mine, None, &["one"]);
+    let _held = w.card_in("apps/b/", &other, None, &["two"]);
+    let got = w.lands(&card, &["1=the test"]);
+    assert_eq!(got["closed"], json!(true), "{got}");
+    let cleanup = &got["cleanup"];
+    assert_eq!(cleanup["trigger"], json!("landing"), "{got}");
+    assert_eq!(cleanup["error"], json!(null), "{got}");
+    assert_eq!(cleanup["applied"], json!(true), "{got}");
+    let digest = cleanup["plan_digest"].as_str().unwrap();
+    assert!(
+        digest.starts_with("sha256:") && digest.len() == "sha256:".len() + 64,
+        "{got}"
+    );
+    let listed = cleanup["worktrees"].as_array().unwrap();
+    assert_eq!(listed.len(), 1, "only the closed card's worktree: {got}");
+    assert_eq!(listed[0]["action"], json!("remove"), "{got}");
+    assert_eq!(listed[0]["status"], json!("removed"), "{got}");
+    assert!(!mine.exists(), "the merged worktree is still there");
+    assert!(!w.registered(&mine));
+    assert!(
+        other.is_dir() && w.registered(&other),
+        "another card's worktree was touched"
+    );
+    assert_eq!(
+        w.integ(),
+        got["to_tip"].as_str().unwrap(),
+        "the branch moved with the landing"
+    );
+}
+
+/// AC-36: a worktree under `.claude/worktrees` stays preserved: the plan names the reason, the
+/// apply acts on nothing and the folder is still a registered worktree.
+#[test]
+fn ac36_a_worktree_under_the_preserved_place_is_kept() {
+    let w = World::new();
+    w.clock_three_days_on();
+    let under = w.project.join(".claude/worktrees/lane-x");
+    fs::create_dir_all(under.parent().unwrap()).unwrap();
+    git(
+        &w.project,
+        &[
+            "worktree",
+            "add",
+            "-q",
+            "--detach",
+            under.to_str().unwrap(),
+            &w.head,
+        ],
+    );
+    let card = w.card_in("apps/a/", &under, None, &["one"]);
+    let got = w.lands(&card, &["1=the test"]);
+    assert_eq!(got["closed"], json!(true), "{got}");
+    let listed = got["cleanup"]["worktrees"].as_array().unwrap();
+    assert_eq!(listed[0]["action"], json!("skip"), "{got}");
+    assert!(
+        listed[0]["reasons"]
+            .to_string()
+            .contains("preserved_location"),
+        "{got}"
+    );
+    assert_eq!(got["cleanup"]["applied"], json!(false), "{got}");
+    assert!(
+        under.is_dir() && w.registered(&under),
+        "a preserved worktree was removed"
+    );
+}
+
+/// AC-36 (second half): a card that stays open because a criterion is not met is not cleaned.
+#[test]
+fn ac36_a_card_that_stays_open_is_not_cleaned() {
+    let w = World::new();
+    w.clock_three_days_on();
+    let kept = w.linked_worktree("wt-open");
+    let open = w.card_in("apps/c/", &kept, None, &["a", "b"]);
+    let got = w.lands(&open, &["1=only the first"]);
+    assert_eq!(got["closed"], json!(false), "{got}");
+    assert_eq!(
+        got["cleanup"],
+        json!(null),
+        "an open card was cleaned: {got}"
+    );
+    assert!(kept.is_dir() && w.registered(&kept));
+}
+
+/// AC-37: the queue the hook fills is read at a landing. A queued branch that is gone cleans the
+/// worktrees of the cards that held it; a queued branch that still exists only loses its line;
+/// the queue file is gone afterwards.
+#[test]
+fn ac37_a_landing_reads_the_queue_and_cleans_for_a_branch_that_is_gone() {
+    let w = World::new();
+    w.clock_three_days_on();
+    let mine = w.linked_worktree("wt-mine");
+    let old = w.linked_worktree("wt-old");
+    let keeps = w.linked_worktree("wt-keeps");
+    let card = w.card_in("apps/a/", &mine, None, &["one"]);
+    // Two earlier cards on branches; both gave their reservation back.
+    git(&w.project, &["branch", "card/live"]);
+    for (scope, wt, branch) in [
+        ("apps/d/", &old, "card/gone"),
+        ("apps/e/", &keeps, "card/live"),
+    ] {
+        let name = w.card_in(scope, wt, Some(branch), &["x"]);
+        result(&w.card(Some(S_A), &["release", &name, "--generation", "1"]));
+    }
+    let queue = w.common().join("moai/worktree-cleanup-queue");
+    fs::create_dir_all(queue.parent().unwrap()).unwrap();
+    fs::write(
+        &queue,
+        "refs/heads/card/gone\nrefs/heads/card/live\nrefs/heads/card/gone\n",
+    )
+    .unwrap();
+
+    let got = w.lands(&card, &["1=the test"]);
+    let cleanup = &got["cleanup"];
+    assert_eq!(cleanup["error"], json!(null), "{got}");
+    assert_eq!(
+        cleanup["queue"]["gone"],
+        json!(["refs/heads/card/gone"]),
+        "{got}"
+    );
+    assert_eq!(
+        cleanup["queue"]["still_there"],
+        json!(["refs/heads/card/live"]),
+        "{got}"
+    );
+    assert!(!old.exists(), "the gone branch's worktree was not cleaned");
+    assert!(
+        keeps.is_dir(),
+        "a branch that still exists had its worktree removed"
+    );
+    assert!(!mine.exists());
+    assert!(!queue.exists(), "the queue was not used up");
+}
+
+/// AC-38: a cleanup that cannot run never undoes the landing: the card is closed, the branch
+/// moved, the answer carries the cleanup's `error`, and the queue keeps its lines.
+#[cfg(unix)]
+#[test]
+fn ac38_a_cleanup_that_cannot_run_is_reported_and_the_landing_stands() {
+    use std::os::unix::fs::PermissionsExt;
+    let w = World::new();
+    let mine = w.linked_worktree("wt-mine");
+    let card = w.card_in("apps/a/", &mine, None, &["one"]);
+    // A queue nobody can read.
+    let queue = w.common().join("moai/worktree-cleanup-queue");
+    fs::create_dir_all(queue.parent().unwrap()).unwrap();
+    fs::write(&queue, "refs/heads/card/gone\n").unwrap();
+    fs::set_permissions(&queue, fs::Permissions::from_mode(0o000)).unwrap();
+    let got = w.lands(&card, &["1=the test"]);
+    fs::set_permissions(&queue, fs::Permissions::from_mode(0o600)).unwrap();
+    assert_eq!(got["closed"], json!(true), "{got}");
+    assert_eq!(got["moved"], json!(true), "{got}");
+    assert_eq!(got["cleanup"]["applied"], json!(false), "{got}");
+    assert!(got["cleanup"]["error"].is_string(), "{got}");
+    assert!(mine.is_dir(), "a cleanup that failed removed a worktree");
+    assert_eq!(
+        fs::read_to_string(&queue).unwrap(),
+        "refs/heads/card/gone\n",
+        "the queue lost its line"
+    );
+}
+
+/// AC-22 (REQ-8, REQ-24): a call killed after the start row and before the move, then a FAIL by
+/// another reviewer: the call run again refuses with `verdict_fail`, the branch stays at the tip
+/// and no landing is written; the same reviewer's later PASS lands the head once.
+#[test]
+fn ac57_a_fail_recorded_after_a_kill_before_the_move_refuses_the_rerun() {
+    let w = World::enforced();
+    let card = w.review_card(&["one"]);
+    let lane = w.lane_adding("notes/x.md", S_A);
+    let cand = w.join(&lane, S_LEAD);
+    w.verdict(&card, &cand, true, 0, S_AUD, None);
+    // The script keeps running after it kills its parent, so it exits too and the branch stays.
+    w.wrap_update_ref("git-kills-the-lander", "kill -9 $PPID; exit 9", "");
+    let out = w.land_as(Some(S_LEAD), &card, &cand);
+    assert_ne!(out.status.code(), Some(0), "the lander was not killed");
+    assert_eq!(w.integ(), w.tip, "the kill came after the move");
+    assert_eq!(w.events(&card, "card.land_started"), 1);
+    assert_eq!(w.events(&card, "card.landed"), 0);
+
+    // Another reviewer fails the head while the branch has not moved.
+    w.verdict(&card, &cand, false, 0, S_OTHER, None);
+    *w.git_bin.borrow_mut() = git_executable();
+    let before = w.dump();
+    let out = w.land_as(Some(S_LEAD), &card, &cand);
+    w.refuse(&out, "invalid_input", &["verdict_fail"], &before, &w.tip);
+    assert_eq!(
+        w.events(&card, "card.land_started"),
+        1,
+        "a second start row"
+    );
+    assert_eq!(w.events(&card, "card.landed"), 0);
+
+    // The reviewer that failed it passes it later: the landing goes through once.
+    w.verdict(&card, &cand, true, 0, S_OTHER, None);
+    let got = result(&w.land_as(Some(S_LEAD), &card, &cand));
+    assert_eq!(got["moved"], json!(true), "{got}");
+    assert_eq!(got["closed"], json!(true), "{got}");
+    assert_eq!(w.integ(), cand);
+    assert_eq!(
+        w.events(&card, "card.land_started"),
+        1,
+        "a second start row"
+    );
+    assert_eq!(w.events(&card, "card.landed"), 1);
+}
+
+/// AC-23 (REQ-9): a verdict event whose head differs from the candidate in the last hex digit only
+/// is a verdict for another head; the verdict of the full head lands it.
+#[test]
+fn ac58_a_verdict_names_the_whole_head_and_not_a_prefix_of_it() {
+    let w = World::enforced();
+    let card = w.review_card(&["one"]);
+    let lane = w.lane_adding("notes/x.md", S_A);
+    let cand = w.join(&lane, S_LEAD);
+    let last = cand.chars().last().unwrap();
+    let other_last = if last == '0' { '1' } else { '0' };
+    let near = format!("{}{other_last}", &cand[..cand.len() - 1]);
+    assert_ne!(near, cand);
+    w.verdict(&card, &near, true, 0, S_AUD, None);
+    let before = w.dump();
+    let out = w.land_as(Some(S_LEAD), &card, &cand);
+    let message = w.refuse(
+        &out,
+        "invalid_input",
+        &["verdict_other_head"],
+        &before,
+        &w.tip,
+    );
+    assert!(
+        message.contains(&near),
+        "names the verdict's own head: {message}"
+    );
+    w.verdict(&card, &cand, true, 0, S_AUD, None);
+    let got = result(&w.land_as(Some(S_LEAD), &card, &cand));
+    assert_eq!(got["moved"], json!(true), "{got}");
+}
+
+/// AC-24 (REQ-14): in observe mode a git that fails inside the verdict check only is reported as
+/// `would_refuse` with the code `check_unreadable` and the head lands; in enforce mode the same
+/// call refuses.
+#[test]
+fn ac59_a_check_that_cannot_read_git_is_reported_in_observe_and_refuses_in_enforce() {
+    for observe in [true, false] {
+        let w = World::new();
+        w.set_profile(if observe {
+            OBSERVE_PROFILE
+        } else {
+            ENFORCE_PROFILE
+        });
+        let card = w.review_card(&["one"]);
+        let lane = w.lane_adding("notes/x.md", S_A);
+        let cand = w.join(&lane, S_LEAD);
+        w.verdict(&card, &cand, true, 0, S_AUD, None);
+        // Only the `git log` of the verdict check (its format argument) fails.
+        let wrapper = w.dir.path().join("git-fails-in-the-check");
+        common::write_executable(
+            &wrapper,
+            &format!(
+                "#!/bin/sh\nfor a in \"$@\"; do\n  case \"$a\" in --format=%H%x1f%P%x1f%B%x1e) echo 'fatal: the check cannot read' >&2; exit 128;; esac\ndone\nexec '{git}' \"$@\"\n",
+                git = git_executable().display(),
+            ),
+        );
+        *w.git_bin.borrow_mut() = wrapper;
+        let before = w.dump();
+        let out = w.land_as(Some(S_LEAD), &card, &cand);
+        if observe {
+            let got = result(&out);
+            assert_eq!(got["moved"], json!(true), "{got}");
+            assert_eq!(got["closed"], json!(true), "{got}");
+            assert_eq!(
+                got["would_refuse"]["code"],
+                json!("check_unreadable"),
+                "{got}"
+            );
+            assert!(got.get("verdict").is_none(), "{got}");
+        } else {
+            w.refuse(&out, "invalid_input", &["cannot read"], &before, &w.tip);
+        }
+    }
 }

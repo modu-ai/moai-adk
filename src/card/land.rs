@@ -259,34 +259,24 @@ pub fn land(project: &Path, home: &Path, reference: &str, req: &LandRequest<'_>)
     )
     .map_err(finish_refusal)?;
 
-    // The audit verdict (SPEC-20261123-landing-reads-verdict): read before the first write. A
-    // landing that already started relies on the verdict its start row names. In observe mode a
-    // refusal is only reported, and the landing goes on as it did before the check existed.
+    // The audit verdict (SPEC-20261123-landing-reads-verdict): read before the first write. A head
+    // the branch already holds is closed on the verdict its start row names; a head that still
+    // stands on the tip has moved nothing, so its verdicts are judged again (REQ-15, REQ-24). In
+    // observe mode a refusal is only reported, and the landing goes on as it did before the check.
     let mode = check::mode(project).map_err(unchanged)?;
-    let mut relied: Option<Value> = None;
-    let mut would_refuse: Option<Value> = None;
-    if let Some(named) = workflow::land_started_verdict(ledger.conn(), card_id, req.head)
-        .map_err(|e| e.to_string())?
-    {
-        relied = Some(named);
-    } else {
-        let input = check::Input {
-            project,
-            conn: ledger.conn(),
-            card_id,
-            head: req.head,
-            tip: &tip,
-            on_tip: standing == Standing::OnTip,
-            lander: req.session,
-        };
-        match check::judge(&input).map_err(unchanged)? {
-            check::Outcome::Relied(r) => relied = Some(r.json()),
-            check::Outcome::Refused(refusal) => match mode {
-                check::Mode::Enforce => return Err(unchanged(refusal.text())),
-                check::Mode::Observe => would_refuse = Some(refusal.json()),
-            },
-        }
-    }
+    let input = check::Input {
+        project,
+        conn: ledger.conn(),
+        card_id,
+        head: req.head,
+        tip: &tip,
+        on_tip: standing == Standing::OnTip,
+        lander: req.session,
+    };
+    let check::Reading {
+        relied,
+        would_refuse,
+    } = check::read(&input, mode).map_err(unchanged)?;
 
     // The one value for the whole repository: the record seeds from the profile once, and a
     // profile that disagrees with it is reported. Case variants that already exist are reported.
@@ -358,6 +348,22 @@ pub fn land(project: &Path, home: &Path, reference: &str, req: &LandRequest<'_>)
         }
     })?;
     let applied: &[(i64, String)] = if done.closed { &met } else { &[] };
+    // A closed card's worktrees are cleaned through the cleanup plan and its apply on the plan's
+    // digest (SPEC-20261123-worktree-slots REQ-12). It runs after the close and never undoes it:
+    // a problem is the `error` key of the `cleanup` answer. A card that stays open keeps them.
+    let cleanup = if done.closed {
+        crate::worktree_cleanup::run(
+            project,
+            home,
+            &crate::worktree_cleanup::Request {
+                card_id,
+                integration_ref: &full,
+                trigger: crate::worktree_cleanup::Trigger::Landing,
+            },
+        )
+    } else {
+        Value::Null
+    };
     let mut answer = json!({
         "action": "land", "project_id": id, "name": name, "card_id": card_id,
         "branch": branch, "moved": moved, "from_tip": tip, "to_tip": to_tip, "head": req.head,
@@ -368,6 +374,7 @@ pub fn land(project: &Path, home: &Path, reference: &str, req: &LandRequest<'_>)
         "by": req.by, "session": req.session,
         "previous": previous_json(&done.previous), "released": done.released,
         "events": done.events, "writes": done.events > 0 || moved,
+        "cleanup": cleanup,
     });
     if let Some(verdict) = &relied {
         answer["verdict"] = verdict.clone();

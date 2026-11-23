@@ -207,6 +207,9 @@ pub enum Msg {
     CodexRemoved,
     /// What `moai omp` says now that the launcher is gone (SPEC-20261122-remove-omp-launcher).
     OmpRemoved,
+    /// The `star-ask` line: one polite ask for a star, with the repository
+    /// link in the text (SPEC-20261122-star-and-reports).
+    StarAskLine,
     /// The update's "no longer managed" notice of the retired Codex and OMP home files; the
     /// English texts are the `reason` of the `unmanaged` rows of `src/update.rs`.
     CodexUnmanaged,
@@ -215,7 +218,7 @@ pub enum Msg {
 
 impl Msg {
     /// Every variant, for the tests that walk the table.
-    pub const ALL: [Msg; 50] = [
+    pub const ALL: [Msg; 51] = [
         Msg::WordOk,
         Msg::WordWarning,
         Msg::WordError,
@@ -264,6 +267,7 @@ impl Msg {
         Msg::InitRemoved,
         Msg::CodexRemoved,
         Msg::OmpRemoved,
+        Msg::StarAskLine,
         Msg::CodexUnmanaged,
         Msg::OmpUnmanaged,
     ];
@@ -396,6 +400,12 @@ pub fn text(msg: Msg, lang: Lang) -> &'static str {
         }
         (OmpRemoved, Ko) => {
             "moai omp 는 없어졌어요: MoAI 는 Claude Code 와 GLM 만 지원해요 (moai cc | moai glm)"
+        }
+        (StarAskLine, En) => {
+            "Stars are real encouragement for this project — https://github.com/modu-ai/moai-adk if it helps you"
+        }
+        (StarAskLine, Ko) => {
+            "별은 이 프로젝트에 실제 힘이 돼요 — 도움이 되셨다면 https://github.com/modu-ai/moai-adk"
         }
         (CodexUnmanaged, En) => "Codex files under ~/.codex and ~/.agents/skills are left as they are; moai no longer manages them; remove them yourself if you do not use them",
         (CodexUnmanaged, Ko) => "~/.codex와 ~/.agents/skills의 Codex 파일은 그대로 두며 moai가 더는 관리하지 않아요. 쓰지 않으면 직접 지우세요",

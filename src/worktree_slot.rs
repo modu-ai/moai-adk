@@ -350,6 +350,35 @@ fn warm(seed_target: &Path, slot: &Path) -> Result<&'static str> {
     renamed.map(|()| method)
 }
 
+/// Removes the temporary copies a killed warm or inherit left in a present slot. The caller holds
+/// the slot lock, so no other run is copying into the slot now. Returns the names removed.
+fn clean_leftovers(slot: &Path) -> Result<Vec<String>> {
+    let removed = leftovers(slot)?;
+    for name in &removed {
+        let p = slot.join(name);
+        let gone = match fs::symlink_metadata(&p) {
+            Ok(m) if m.file_type().is_dir() => fs::remove_dir_all(&p),
+            _ => fs::remove_file(&p),
+        };
+        gone.map_err(|e| format!("{} could not be removed: {e}", p.display()))?;
+    }
+    Ok(removed)
+}
+
+/// The temporary copies of a killed warm or inherit that sit at the top of the slot, by name,
+/// sorted: a folder, a file or a link whose name starts with one of [`TEMP_PREFIXES`]. It reads
+/// the slot folder, not `git status`, so a copy that git ignores is named too.
+pub(crate) fn leftovers(slot: &Path) -> Result<Vec<String>> {
+    let entries = fs::read_dir(slot).map_err(|e| format!("{} unreadable: {e}", slot.display()))?;
+    let mut names: Vec<String> = entries
+        .flatten()
+        .map(|e| e.file_name().to_string_lossy().to_string())
+        .filter(|name| TEMP_PREFIXES.iter().any(|p| name.starts_with(p)))
+        .collect();
+    names.sort();
+    Ok(names)
+}
+
 /// Adds the slot `name` detached at `at` when it is missing, and warms a slot without
 /// `target/` from the seed. A present slot keeps its checkout; one without `target/` is warmed.
 pub fn ensure(project: &Path, name: &str, at: &str, caps: Caps) -> Result<Value> {
@@ -392,7 +421,25 @@ pub fn ensure(project: &Path, name: &str, at: &str, caps: Caps) -> Result<Value>
     } else {
         seed_target(&primary, &linked)?
     };
+    // An audit slot's leftover copy is audit-slot's to name and to discard with `done --discard`,
+    // so `ensure` leaves it there for `audit_slot` to refuse on.
+    let cleaned = if present && !crate::audit_slot::AUDIT_SLOTS.contains(&name) {
+        clean_leftovers(&path)?
+    } else {
+        Vec::new()
+    };
+    let needs_warm = seed.is_some() && fs::symlink_metadata(path.join("target")).is_err();
     let mut commit = Value::Null;
+    if present && needs_warm {
+        // A warm copy takes disk like an added slot does, so it meets the same floor.
+        let free = free_percent(&primary)?;
+        if free < caps.min_free_percent {
+            return Err(format!(
+                "free disk under the floor: limit {} percent, free {free} percent; {rel} was not warmed",
+                caps.min_free_percent
+            ));
+        }
+    }
     if !present {
         if linked.len() >= caps.max_worktrees {
             return Err(format!(
@@ -414,6 +461,7 @@ pub fn ensure(project: &Path, name: &str, at: &str, caps: Caps) -> Result<Value>
                 "rev-parse",
                 "--verify",
                 "--quiet",
+                "--end-of-options",
                 &format!("{at}^{{commit}}"),
             ],
         )
@@ -433,7 +481,7 @@ pub fn ensure(project: &Path, name: &str, at: &str, caps: Caps) -> Result<Value>
     };
     Ok(json!({
         "slot": name, "path": rel, "at": commit, "added": !present, "present": present,
-        "warmed": warmed,
+        "warmed": warmed, "cleaned": cleaned,
     }))
 }
 
