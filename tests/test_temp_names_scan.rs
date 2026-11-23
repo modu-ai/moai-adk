@@ -234,13 +234,41 @@ fn temp_names_scan_ignores_a_pid_that_is_data_and_text_that_is_not_code() {
     );
 }
 
-/// REQ-2, AC-4: the checked-in `tests/` folder holds no pid name under the temp folder.
+/// REQ-1, AC-1 (SPEC-20261124-pid-scan-followup): `br"…"` and `cr"…"` are raw literals, so a
+/// backslash before the closing quote does not swallow the code after them, and text inside them
+/// is not scanned.
 #[test]
-fn temp_names_tree_has_no_pid_names_under_the_temp_folder() {
-    let root = Path::new(ROOT);
+fn temp_names_scan_reads_raw_byte_strings_as_raw() {
+    let byte = r##"let a = br"C:\";
+let p = temp_dir().join(format!("{}", process::id()));
+"##;
+    assert_eq!(pid_names_under_temp(byte), vec![2], "br with a backslash");
+
+    let hashed = r##"let a = br#"a"b"#;
+let p = temp_dir().join(format!("{}", process::id()));
+"##;
+    assert_eq!(pid_names_under_temp(hashed), vec![2], "br with hashes");
+
+    let cstr = r##"let a = cr"x\";
+let p = temp_dir().join(format!("{}", process::id()));
+"##;
+    assert_eq!(pid_names_under_temp(cstr), vec![2], "cr with a backslash");
+
+    let inside = r##"let a = br"temp_dir() process::id()";
+let b = br#"temp_dir() "x" process::id()"#;
+let c = cr"temp_dir() process::id()";
+"##;
+    assert!(
+        pid_names_under_temp(inside).is_empty(),
+        "text inside raw literals"
+    );
+}
+
+/// The number of files read under `<root>/tests` and the `file:line` of every pid name found.
+fn tree_violations(root: &Path) -> (usize, Vec<String>) {
     let mut files = Vec::new();
     rust_files(&root.join("tests"), &mut files);
-    assert!(files.len() > 100, "the walk found {} files", files.len());
+    let count = files.len();
     let mut found = Vec::new();
     for file in files {
         let rel = file
@@ -256,8 +284,31 @@ fn temp_names_tree_has_no_pid_names_under_the_temp_folder() {
             found.push(format!("{rel}:{line}"));
         }
     }
+    (count, found)
+}
+
+/// REQ-2, AC-4: the checked-in `tests/` folder holds no pid name under the temp folder.
+#[test]
+fn temp_names_tree_has_no_pid_names_under_the_temp_folder() {
+    let (count, found) = tree_violations(Path::new(ROOT));
+    assert!(count > 100, "the walk found {count} files");
     assert!(
         found.is_empty(),
         "a scratch folder named from the process id (use tempfile::TempDir): {found:?}"
     );
+}
+
+/// REQ-2, AC-2 (SPEC-20261124-pid-scan-followup): the walk reads every file, one named like the
+/// scan file included, so a violation written into the scan file itself is reported.
+#[test]
+fn temp_names_tree_walk_reads_a_file_named_like_the_scan_file() {
+    let dir = tempfile::tempdir().unwrap();
+    let tests = dir.path().join("tests");
+    fs::create_dir_all(&tests).unwrap();
+    let bad = "fn f() {\n    let p = std::env::temp_dir().join(format!(\"x-{}\", std::process::id()));\n}\n";
+    fs::write(tests.join("test_temp_names_scan.rs"), bad).unwrap();
+    fs::write(tests.join("clean.rs"), "fn g() {}\n").unwrap();
+    let (count, found) = tree_violations(dir.path());
+    assert_eq!(count, 2);
+    assert_eq!(found, vec!["tests/test_temp_names_scan.rs:2".to_string()]);
 }
