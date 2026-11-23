@@ -31,6 +31,10 @@ On the interval (`leader.pr_check_interval_secs` of the profile, default 300, a 
 - Uses a duplicate session found after a restart: it freezes until the operator assigns it.
 - Publishes new cards from a report before the user confirms the report; each such card's body is mirrored with a "사용자 결정" section, and a card that edits a design page takes "sha256 of the corrected copy plus the leader's read-back" as its acceptance. Lanes get only `.md` paths in tracked locations, so a report moves to a tracked path such as `docs/design-review/` before its cards are issued.
 
+## Naming a lane branch
+
+The leader makes the lane worktree and its branch before the lane has picked its SPEC name, and the SPEC-first hook reads the branch name as the SPEC id (`spec/<slug>-<yyyymmdd>` for `SPEC-<yyyymmdd>-<slug>`). So the leader names the branch `spec/<slug>-<yyyymmdd>` after the card's own words, with the date of the day it is made, and tells the lane that name in the dispatch. A lane never renames the branch. When the SPEC the lane writes has another slug or date, the lane adds one line `branch: spec/<slug>-<yyyymmdd>` (the branch it is on, written exactly) to the SPEC's frontmatter while the SPEC is a draft; the hook then reads that SPEC for the branch (status `draft` or `approved`, the folder name equal to the `id:`, one level under `.moai/specs/`, no link followed; two SPECs naming one branch are refused). A branch with no SPEC and no such line stays refused: code waits for a SPEC (`SPEC-20261124-lane-branch-after-spec`).
+
 ## Bundles, clearing and the whole suite
 
 - Bundles stay small, 5 to 7 heads; a head that fails verification is dropped and the rest ships. (Bundle 5 shipped 13 heads and left out three after local verification failed on them; its audit took 41 minutes.)

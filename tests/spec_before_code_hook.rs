@@ -457,7 +457,12 @@ fn defects_open_nothing(defects: &[fn(&Path)]) {
         assert_deny(&code_write(&root));
         put_spec(&root, good, &linked_text(good, "draft", Some(LANE)));
         let run = code_write(&root);
-        assert_eq!((run.code, run.stdout.as_str()), (0, ""), "defect {n}: {}", run.stdout);
+        assert_eq!(
+            (run.code, run.stdout.as_str()),
+            (0, ""),
+            "defect {n}: {}",
+            run.stdout
+        );
     }
 }
 
@@ -467,9 +472,21 @@ fn defects_open_nothing(defects: &[fn(&Path)]) {
 fn a_link_that_is_not_a_live_spec_of_its_own_folder_opens_nothing() {
     defects_open_nothing(&[
         // The folder name differs from the `id:`.
-        |r| put_spec(r, "SPEC-20261124-bad", &linked_text("SPEC-20261124-else", "draft", Some(LANE))),
+        |r| {
+            put_spec(
+                r,
+                "SPEC-20261124-bad",
+                &linked_text("SPEC-20261124-else", "draft", Some(LANE)),
+            )
+        },
         // A landed SPEC.
-        |r| put_spec(r, "SPEC-20261124-bad", &linked_text("SPEC-20261124-bad", "completed", Some(LANE))),
+        |r| {
+            put_spec(
+                r,
+                "SPEC-20261124-bad",
+                &linked_text("SPEC-20261124-bad", "completed", Some(LANE)),
+            )
+        },
     ]);
 }
 
@@ -498,7 +515,13 @@ fn the_scan_reads_one_level_and_follows_no_link() {
             symlink(&real, dir.join("spec.md")).unwrap();
         },
         // One folder deeper than `.moai/specs/<id>/`.
-        |r| put_spec(r, "group/SPEC-20261124-bad", &linked_text("SPEC-20261124-bad", "draft", Some(LANE))),
+        |r| {
+            put_spec(
+                r,
+                "group/SPEC-20261124-bad",
+                &linked_text("SPEC-20261124-bad", "draft", Some(LANE)),
+            )
+        },
     ];
     defects_open_nothing(&defects);
 }
@@ -509,12 +532,24 @@ fn the_scan_reads_one_level_and_follows_no_link() {
 #[test]
 fn two_specs_naming_one_branch_are_refused() {
     let (_d, root) = repo(LANE);
-    put_spec(&root, "SPEC-20261124-one", &linked_text("SPEC-20261124-one", "draft", Some(LANE)));
-    put_spec(&root, "SPEC-20261124-two", &linked_text("SPEC-20261124-two", "approved", Some(LANE)));
+    put_spec(
+        &root,
+        "SPEC-20261124-one",
+        &linked_text("SPEC-20261124-one", "draft", Some(LANE)),
+    );
+    put_spec(
+        &root,
+        "SPEC-20261124-two",
+        &linked_text("SPEC-20261124-two", "approved", Some(LANE)),
+    );
     let reason = assert_deny(&code_write(&root));
     assert!(reason.contains("reads as two SPEC ids"), "{reason}");
     // The name reads a SPEC file of its own: no scan, so the two links do not matter.
-    put_spec(&root, "SPEC-20261124-lane-x", &spec_text("SPEC-20261124-lane-x"));
+    put_spec(
+        &root,
+        "SPEC-20261124-lane-x",
+        &spec_text("SPEC-20261124-lane-x"),
+    );
     assert_allow(&code_write(&root));
     fs::remove_dir_all(root.join(".moai/specs/SPEC-20261124-lane-x")).unwrap();
     fs::remove_dir_all(root.join(".moai/specs/SPEC-20261124-two")).unwrap();
