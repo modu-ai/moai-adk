@@ -1244,6 +1244,89 @@ fn text_that_only_looks_glued_is_not_an_error() {
     assert!(found[0].2.contains("AC-4"));
 }
 
+/// REQ-1 (audit 402 B1): the next item written right after the closing backtick of a span,
+/// with no space before the dash, is glued too. This is the line that gave the card its
+/// name (`SPEC-20261122-test-defects-session-reclaim` spec.md:47 at 267614fd4f).
+#[test]
+fn a_glued_item_right_after_a_closing_backtick_is_an_error() {
+    let text = changed(
+        ACS,
+        "## Acceptance\n\n- AC-9 (REQ-1): a name with a space is compared as written · verify: \
+         `cargo test --offline --locked --test card_reclaim_early_cli a_name`- AC-10 (REQ-1): \
+         the name test removes every documented trace variable · verify: `cargo nextest run \
+         --lib -E 'test(git_trace_variables)'`\n\n",
+    );
+    let d = doc(&text);
+    let found = glued(&d);
+    assert_eq!(found.len(), 1, "{:?}", d.findings);
+    assert_eq!(found[0].0, line_of(&text, "- AC-10"));
+    assert_eq!(found[0].1, Severity::Error);
+    assert!(found[0].2.contains("AC-10"), "{}", found[0].2);
+    // The dash right after an opening backtick, or with no space after it, is text.
+    for body in [
+        "- AC-1 (REQ-1): one · verify: `- AC-2 (REQ-1): two`\n",
+        "- AC-1 (REQ-1): one · verify: `a`-AC-2 (REQ-1): two\n",
+        "- AC-1 (REQ-1): one · verify: `a`- not an item\n",
+    ] {
+        let d = doc(&changed(ACS, &format!("## Acceptance\n\n{body}\n")));
+        assert!(glued(&d).is_empty(), "{body}: {:?}", d.findings);
+    }
+}
+
+/// REQ-1 (audit 402 N1): a list line that starts no `REQ-`, `AC-` or `D-` item is not read,
+/// whatever it holds after a ` - `.
+#[test]
+fn a_list_line_that_starts_no_item_is_not_read() {
+    let d = doc(&changed(
+        ACS,
+        "## Acceptance\n\n- Notes on how to check - AC-2 (REQ-1): two\n- AC-1 (REQ-1): one · \
+         verify: `cargo test`\n\n",
+    ));
+    assert!(glued(&d).is_empty(), "{:?}", d.findings);
+}
+
+/// REQ-2 (audit 402 N2): a backtick with no partner is a letter; a ` - ` after it is still
+/// checked.
+#[test]
+fn a_stray_last_backtick_is_text() {
+    let lone = changed(
+        ACS,
+        "## Acceptance\n\n- AC-1 (REQ-1): the quote ` is a letter - AC-2 (REQ-1): two\n\n",
+    );
+    let found = glued(&doc(&lone));
+    assert_eq!(found.len(), 1, "{found:?}");
+    assert_eq!(found[0].0, line_of(&lone, "- AC-2"));
+    assert!(found[0].2.contains("AC-2"));
+    // A paired span still hides its own ` - `; only the last, unpaired backtick is a letter.
+    let mixed = changed(
+        ACS,
+        "## Acceptance\n\n- AC-1 (REQ-1): `a - AC-9` and a stray ` then - AC-2 (REQ-1): two\n\n",
+    );
+    let found = glued(&doc(&mixed));
+    assert_eq!(found.len(), 1, "{found:?}");
+    assert!(found[0].2.contains("AC-2"));
+}
+
+/// REQ-2 (audit 402 N4): a ` - ` after an id is a range only when the id starts a word.
+#[test]
+fn a_dash_after_a_word_that_ends_in_an_id_is_not_a_range() {
+    let text = changed(
+        ACS,
+        "## Acceptance\n\n- AC-1 (REQ-1): one, see CD-1 - AC-2 (REQ-1): two\n\n",
+    );
+    let found = glued(&doc(&text));
+    assert_eq!(found.len(), 1, "{found:?}");
+    assert!(found[0].2.contains("AC-2"));
+    // An id after a bracket or a comma still starts a word.
+    for body in [
+        "- AC-1 (REQ-1): one, see (AC-3 - AC-5) · verify: `cargo test`\n",
+        "- AC-1 (REQ-1): one, see AC-3, D-1 - D-2 · verify: `cargo test`\n",
+    ] {
+        let d = doc(&changed(ACS, &format!("## Acceptance\n\n{body}\n")));
+        assert!(glued(&d).is_empty(), "{body}: {:?}", d.findings);
+    }
+}
+
 /// REQ-3: the same line in a Go-generation SPEC is a warning, like the other format codes.
 #[test]
 fn a_glued_item_is_a_warning_in_a_go_generation_spec() {

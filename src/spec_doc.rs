@@ -1149,28 +1149,42 @@ fn item(line: &str, prefix: &str) -> Option<(u32, String)> {
 /// The id prefixes of the list items of the item sections.
 const ITEM_PREFIXES: [&str; 3] = ["REQ-", "AC-", "D-"];
 
+/// Whether `before` ends in an id (`AC-3`) that starts a word: the prefix is not the tail of
+/// a longer word (`CD-1` is not a `D-1`).
+fn ends_in_id(before: &str) -> bool {
+    if !before.ends_with(|c: char| c.is_ascii_digit()) {
+        return false;
+    }
+    let head = before.trim_end_matches(|c: char| c.is_ascii_digit());
+    ITEM_PREFIXES.iter().any(|p| {
+        head.strip_suffix(p)
+            .is_some_and(|w| !w.ends_with(|c: char| c.is_alphanumeric() || c == '_'))
+    })
+}
+
 /// The ids of the items that start inside a line that already starts one: the `- <id>` items
-/// after the first. A ` - ` inside a backtick span, or right after an id (`AC-3 - AC-5`), is
-/// text; so is a line that is not itself a list item of one of the [`ITEM_PREFIXES`].
+/// after the first. The next item follows a space (` - AC-2`) or the closing backtick of a
+/// span (`` `a`- AC-2 ``). A dash inside a paired backtick span, or right after an id that
+/// starts a word (`AC-3 - AC-5`), is text; so is a line that is not itself a list item of one
+/// of the [`ITEM_PREFIXES`]. A last backtick with no partner is a letter, not a span.
 fn glued_ids(line: &str) -> Vec<String> {
     let (listed, t) = unlisted(line);
     if !listed || !ITEM_PREFIXES.iter().any(|p| item(t, p).is_some()) {
         return Vec::new();
     }
+    let total = t.matches('`').count();
     let mut ids = Vec::new();
-    for (at, _) in t.match_indices(" - ") {
-        let before = t[..at].trim_end();
-        let after_id = ITEM_PREFIXES.iter().any(|p| {
-            before
-                .trim_end_matches(|c: char| c.is_ascii_digit())
-                .strip_suffix(p)
-                .is_some()
-                && before.ends_with(|c: char| c.is_ascii_digit())
-        });
-        if t[..at].matches('`').count() % 2 == 1 || after_id {
+    for (dash, _) in t.match_indices("- ") {
+        let ticks = t[..dash].matches('`').count();
+        let separated = match t[..dash].chars().next_back() {
+            Some(' ') => !(ticks % 2 == 1 && ticks < total) && !ends_in_id(t[..dash].trim_end()),
+            Some('`') => ticks % 2 == 0,
+            _ => false,
+        };
+        if !separated {
             continue;
         }
-        let rest = t[at + 3..].trim_start();
+        let rest = t[dash + 2..].trim_start();
         if let Some((p, n)) = ITEM_PREFIXES
             .iter()
             .find_map(|p| item(rest, p).map(|(n, _)| (*p, n)))
