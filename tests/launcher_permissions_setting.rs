@@ -370,8 +370,9 @@ fn legacy_top_level_roles_use_the_same_access_resolution() {
 #[test]
 fn notes_name_the_mode_and_only_glm_points_at_the_classifier_notice() {
     let p = project();
-    let home = tempfile::tempdir().unwrap();
     for (host, expect_pointer) in [("cc", false), ("glm", true)] {
+        // A fresh HOME per host: the `full` setting written below must not reach the next host.
+        let home = tempfile::tempdir().unwrap();
         for flags in ROLES {
             let mut args = vec![host];
             args.extend_from_slice(flags);
@@ -394,8 +395,8 @@ fn notes_name_the_mode_and_only_glm_points_at_the_classifier_notice() {
         assert!(notes.contains("launcher.role_access"), "{notes}");
         assert!(!notes.contains("--permission-mode"), "{notes}");
         assert!(!notes.contains("docs/troubleshooting.md"), "{notes}");
-        fs::remove_dir_all(home.path().join(".moai-cli")).unwrap();
-        let notes = dry(p.path(), home.path(), &[host, "-a", "--permissions"])["notes"].to_string();
+        let bare = tempfile::tempdir().unwrap();
+        let notes = dry(p.path(), bare.path(), &[host, "-a", "--permissions"])["notes"].to_string();
         assert!(!notes.contains("--permission-mode"), "{notes}");
         assert!(!notes.contains("docs/troubleshooting.md"), "{notes}");
     }
