@@ -259,7 +259,7 @@ fn a_new_test_file_missing_from_the_area_table_stops_before_the_heavy_steps() {
     );
     let moved = line_of("tests/lane_extra_cli.rs");
     assert!(
-        moved.contains("moved area `lane`") && moved.contains("tests/lane/main.rs"),
+        moved.contains("area `lane` is moved") && moved.contains("tests/lane/main.rs"),
         "{moved}"
     );
     let krate = line_of("tests/spec.rs");
@@ -310,7 +310,9 @@ fn a_new_test_file_missing_from_the_state_folder_allow_list_stops_before_the_hea
         .find(|l| l.contains("tests/check_over_cli.rs"))
         .unwrap_or_else(|| panic!("{log}"));
     assert!(
-        over.contains(" 2 times") && over.contains("allows 1") && over.contains("tests/check_over_cli.rs\t0\t2"),
+        over.contains(" 2 times")
+            && over.contains("allows 1")
+            && over.contains("tests/check_over_cli.rs\t0\t2"),
         "{over}"
     );
     assert!(!log.contains("check_listed_cli"), "{log}");
@@ -322,12 +324,20 @@ fn a_new_test_file_missing_from_the_state_folder_allow_list_stops_before_the_hea
 #[test]
 fn a_registered_new_test_file_passes_and_other_ranges_plan_no_table_step() {
     let tools = fake_tools();
-    let fx = Fixture::new(true, &[("tests/check_fine_cli.rs", "fn main() {}\n".to_string())]);
+    let fx = Fixture::new(
+        true,
+        &[("tests/check_fine_cli.rs", "fn main() {}\n".to_string())],
+    );
     let (ok, r) = affected(&fx, Some(&tools));
     assert!(ok, "{r}");
     let line = r["summary"].as_str().unwrap();
     let words = keys(line);
-    let at = |k: &str| words.iter().position(|w| *w == k).unwrap_or_else(|| panic!("{k}: {line}"));
+    let at = |k: &str| {
+        words
+            .iter()
+            .position(|w| *w == k)
+            .unwrap_or_else(|| panic!("{k}: {line}"))
+    };
     assert_eq!(at("test_tables"), at("fmt") + 1, "{line}");
     assert!(at("test_tables") < at("clippy"), "{line}");
     assert!(line.contains(" test_tables=0 "), "{line}");
@@ -337,12 +347,18 @@ fn a_registered_new_test_file_passes_and_other_ranges_plan_no_table_step() {
     let src_only = Fixture::new(true, &[("src/update_models.rs", "// b\n".to_string())]);
     let (ok, r) = affected(&src_only, None);
     assert!(ok, "{r}");
-    assert!(!labels_of_list(&r).contains(&"test_tables".to_string()), "{r}");
+    assert!(
+        !labels_of_list(&r).contains(&"test_tables".to_string()),
+        "{r}"
+    );
 
     let no_tables = Fixture::new(false, &[plain("zzfresh_cli").into_pair()]);
     let (ok, r) = affected(&no_tables, None);
     assert!(ok, "{r}");
-    assert!(!labels_of_list(&r).contains(&"test_tables".to_string()), "{r}");
+    assert!(
+        !labels_of_list(&r).contains(&"test_tables".to_string()),
+        "{r}"
+    );
 }
 
 trait IntoPair {
