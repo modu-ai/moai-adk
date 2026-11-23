@@ -98,3 +98,12 @@ created: 2026-11-23
 - `tools/build_folder.py env` 와 `tests/build_folder_test.py` 는 옛 표식을 계속 써요(Rust 전용 테스트 카드가 정리해요).
 - `skills/moai/workflows/update.md` 의 홈 빌드 폴더 문장은 `marker_only` 행을 아직 말하지 않아요.
 - 레인이 새로 설치하기 전에는 옛 `lane-env` 가 계속 만들어요.
+
+### 병합 수리 (2026-11-23, 같은 가지, 작성자가 아닌 레인)
+
+- 병합: NeXT `6817eb69ad` 를 병합했어요(`3b3c22d4e0`). 충돌은 `src/lane_env.rs` 하나였고, NeXT 쪽 변경은 `prepare()` 의 `.metadata_never_index` 표식과 그 테스트 2개(`prepare_marks_the_build_folder_never_index`, `the_marker_never_follows_a_link_or_truncates`)뿐이라 이 카드의 뜻(홈 아래에 아무것도 만들지 않음, `prepare` 삭제)대로 가지 쪽 파일로 풀었어요. 병합 뒤 `lane_env::prepare` 를 부르는 곳과 표식 철자는 `tests/common/home.rs`(임시 HOME)에만 남아요.
+- REQ-4 결정: D-5 와 `SPEC-20261120-test-parallelism-cap` D5 에 적었어요. 빌드 폴더 쪽 표식은 접고(폴더가 없어요), 임시 HOME 쪽은 `tests/never_index_test.rs` 가 그대로 지켜요.
+- 비차단 N1(홈 빌드 폴더를 쓴 그대로의 값으로도 비교)·N2(홈의 `.moai` 가 링크일 때 테스트)·N3(`interfaces.md` 의 `lane-env` 문단)·N4(`next_flow_skill_scan.rs` 주석, `run.md` 의 경고 범위 문장)·N5(`optimize_plan_cli.rs` 도우미 문서 주석 자리)를 고쳤어요(`1a9866f43d`).
+- 새 지킴 테스트와 뮤턴트(수리 헤드 `1a9866f43d` 의 코드에서, 대상 테스트 4개로): M1 쓴 그대로의 뿌리 비교 삭제 → `the_home_build_root_is_matched_as_written_and_as_resolved`·`a_home_moai_link_is_followed_and_the_value_as_written_is_kept` 실패, M2 링크 푼 뿌리를 풀지 않음 → `a_home_moai_link_is_followed_and_the_value_as_written_is_kept` 실패, M3 `lane-env` 가 `$HOME/.moai/build/.metadata_never_index` 를 만듦 → `lane_env_makes_nothing_under_home` 실패. 셋 다 죽었고 트리는 되돌렸어요.
+- 위험 경로(수리 헤드에서 빌드한 `moai-cli`, 링크가 낀 일회용 HOME: `.moai` → 다른 폴더, 그 안의 `build/leads-out` → 바깥 폴더): 옛 `CARGO_TARGET_DIR` 을 쥔 셸에서 `e=$(moai lane-env …) && eval "$e"` 는 exit 0 이고 변수가 풀려요. `heavy-slot-acquire` 는 링크 아래로 쓴 값과 링크 대상의 실제 경로로 쓴 값 모두 홈 빌드 폴더 경고 한 줄을 내고 명령은 exit 0 이에요. HOME·링크 대상·바깥 폴더의 목록·크기·해시 스냅숏이 전후 같고 `.metadata_never_index` 는 어디에도 없어요.
+- 후속(이 카드 밖): `heavy_slot::settled` 는 존재하지 않는 경로에서 `..` 를 만나면 값을 그대로 돌려줘서, 없는 경로의 `<뿌리>/../x` 도 뿌리 아래로 보고 경고만 더 내요(이전부터 있던 동작이고 경고뿐이에요). `src/lane_env.rs` 머리 주석은 지워진 `AGENTS.local.md` 를 아직 가리켜요.
