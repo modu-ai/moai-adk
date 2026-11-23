@@ -1226,6 +1226,28 @@
       "rejects": "a change to a file that tests/hook_entry_cli.rs reads with include_str! that the test did not re-run on the merge tree (SPEC-20261123-land-repo-scans)"
     },
     {
+      "id": "include-str-hook-session-start-cli",
+      "always": true,
+      "tests": [
+        "tests/hook_session_start_cli.rs (all)"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test hook_session_start_cli"
+      ],
+      "rules": [
+        "tests/hook_session_start_cli.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "src/hook_entry.rs"
+        },
+        {
+          "prefix": "src/hook_session_start.rs"
+        }
+      ],
+      "rejects": "a change to a file that tests/hook_session_start_cli.rs reads with include_str! that the test did not re-run on the merge tree (SPEC-20261123-land-repo-scans)"
+    },
+    {
       "id": "include-str-host-connector",
       "always": true,
       "tests": [
