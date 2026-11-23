@@ -288,7 +288,7 @@ mod tests {
     fn only_warnings_and_the_number_are_printed_before_the_host_starts() {
         let composed = json!({"notes": [
             "no role: a plain host session; no role or session name is added (#2053)",
-            "model aliases map to z.ai models for this session: opus to glm-5.3",
+            "model aliases map to z.ai models for this session: opus to glm-5.4[1m]",
             NOTE_ADVISOR_OMITTED_GLM,
             "ANTHROPIC_AUTH_TOKEN comes from the moai-cli key vault; it is passed to the host process only",
         ]});

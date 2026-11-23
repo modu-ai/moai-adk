@@ -636,8 +636,12 @@ fn resolve_glm_model_name(display: &str, ctx: &Context) -> String {
     } else {
         return display.to_string();
     };
+    // The glm launcher's value carries Claude Code's 1M marker (`glm-5.4[1m]`); the line shows
+    // the model without it, as `shorten_model_name` does for an id.
     match ctx.var(key) {
-        Some(glm) if !glm.starts_with("claude-") => glm.to_string(),
+        Some(glm) if !glm.starts_with("claude-") => {
+            glm.strip_suffix("[1m]").unwrap_or(glm).trim().to_string()
+        }
         _ => display.to_string(),
     }
 }
@@ -695,9 +699,13 @@ fn collect_context(input: &Input, ctx: &Context) -> Option<f64> {
     segments::context_percent(reading, size_override)
 }
 
-/// Built-in GLM context windows (memory.go `glmContextWindows`).
-const GLM_CONTEXT_WINDOWS: [(&str, i64); 2] =
-    [("glm-5.3-flash", 1_000_000), ("glm-5.3", 1_000_000)];
+/// Built-in GLM context windows (memory.go `glmContextWindows`); `glm-5.4` is the glm
+/// launcher's main model since the user decision of 2026-11-23 (SPEC-20261123-glm-54-model).
+const GLM_CONTEXT_WINDOWS: [(&str, i64); 3] = [
+    ("glm-5.3-flash", 1_000_000),
+    ("glm-5.3", 1_000_000),
+    ("glm-5.4", 1_000_000),
+];
 const GLM_ENV_SLOTS: [&str; 3] = [
     "ANTHROPIC_DEFAULT_OPUS_MODEL",
     "ANTHROPIC_DEFAULT_SONNET_MODEL",
