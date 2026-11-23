@@ -38,7 +38,7 @@ fn parse_table(text: &str) -> Result<Table, String> {
         .map_err(|e| format!("areas.toml is not valid TOML: {e}"))?;
     for line in text.lines().map(str::trim) {
         let skip = line.is_empty() || line.starts_with('#') || line.starts_with('[');
-        if !skip && !(line.contains(" = [") && line.ends_with(']')) {
+        if !(skip || line.contains(" = [") && line.ends_with(']')) {
             return Err(format!("areas.toml: keep each array on one line: `{line}`"));
         }
     }
