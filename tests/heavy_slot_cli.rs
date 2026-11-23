@@ -977,21 +977,18 @@ fn a_start_under_100_gb_free_warns_once_on_stderr_only() {
         let _ = fs::remove_file(&ran);
         let d = tempfile::tempdir().unwrap();
         let mut c = Command::new(EXE);
-        c.env(
-            "MOAI_TEST_MACHINE",
-            format!("free_gb={free},swap_pct=0"),
-        )
-        .args([
-            "heavy-slot-acquire",
-            "--max",
-            "1",
-            "--name",
-            "lane-w",
-            "--dir",
-        ])
-        .arg(d.path().join("slots"))
-        .args(flags)
-        .args(["--", "sh", "-c", &touch]);
+        c.env("MOAI_TEST_MACHINE", format!("free_gb={free},swap_pct=0"))
+            .args([
+                "heavy-slot-acquire",
+                "--max",
+                "1",
+                "--name",
+                "lane-w",
+                "--dir",
+            ])
+            .arg(d.path().join("slots"))
+            .args(flags)
+            .args(["--", "sh", "-c", &touch]);
         let out = run(c);
         let (stdout, stderr) = (
             String::from_utf8_lossy(&out.stdout),

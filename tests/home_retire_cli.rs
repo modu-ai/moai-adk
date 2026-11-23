@@ -387,11 +387,7 @@ fn retire_in_use_entries_stay_and_an_unreadable_process_table_moves_nothing() {
     assert!(!retired(&home).join(STAMP).join("Logs").exists());
     // A machine whose process table cannot be read moves nothing (fail-closed).
     let (_d2, home2) = go_home();
-    let p2 = plan_with(
-        &home2,
-        NOW,
-        &[("MOAI_TEST_PROCESS_CHECK", "unavailable")],
-    );
+    let p2 = plan_with(&home2, NOW, &[("MOAI_TEST_PROCESS_CHECK", "unavailable")]);
     assert_eq!(p2["counts"]["retire"], json!(0), "{p2}");
     assert_eq!(act(&p2, "cache").0, "skip-in-use");
 }

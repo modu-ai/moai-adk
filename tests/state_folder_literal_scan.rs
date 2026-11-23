@@ -286,11 +286,20 @@ fn the_seam_scan_finds_a_planted_line_and_skips_what_it_should() {
     let root = dir.path();
     let p = earlier_seam_prefix();
     let files = [
-        ("src/a.rs", format!("fn a() {{}}\nconst V: &str = \"{p}FAULT\";\n")),
+        (
+            "src/a.rs",
+            format!("fn a() {{}}\nconst V: &str = \"{p}FAULT\";\n"),
+        ),
         ("src/deep/b.rs", format!("// {p}MACHINE in a comment\n")),
-        ("tests/c.py", format!("os.environ[\"{p}MACHINE\"] = \"x\"\n")),
+        (
+            "tests/c.py",
+            format!("os.environ[\"{p}MACHINE\"] = \"x\"\n"),
+        ),
         ("tests/fixtures/d.rs", format!("{p}FAULT\n")),
-        ("tests/e.rs", "const V: &str = \"MOAI_TEST_FAULT\";\n".to_string()),
+        (
+            "tests/e.rs",
+            "const V: &str = \"MOAI_TEST_FAULT\";\n".to_string(),
+        ),
         ("tests/notes.md", format!("{p}FAULT\n")),
     ];
     for (rel, text) in &files {
