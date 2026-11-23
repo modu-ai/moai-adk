@@ -841,7 +841,7 @@ const BASELINE: &str = "tests/fixtures/test_home_guard/baseline.tsv";
 /// The most lines the baseline may hold. The observation of SPEC-20261123-test-home-isolation (D-5)
 /// found 389 tests, and the file only shrinks: remove lines, then lower this number to the new
 /// count. A test that reads the decoy and is not listed fails instead of being added.
-const BASELINE_CAP: usize = 386;
+const BASELINE_CAP: usize = 361;
 
 /// Every `binary<TAB>test` line of a baseline: sorted without repeats, within `cap`, and naming a
 /// test that exists. The library tests use the binary name `moai_cli`; the name is a module path

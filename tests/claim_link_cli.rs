@@ -117,7 +117,9 @@ impl Fx {
 
     /// The record `claim-acquire` would have written from the project folder.
     fn record(&self, key: &str, issue: i64, comment: i64, lane: &str) -> ClaimRecord {
-        let id = moai_cli::identity::identity(&self.root).unwrap();
+        // Only `clone_anchor`, `workspace_git_dir` and `work_tree` are read, fields that do not
+        // depend on a HOME, so no HOME is given.
+        let id = moai_cli::identity::identity_in(&self.root, None).unwrap();
         let text = |k: &str| id[k].as_str().unwrap().to_string();
         ClaimRecord {
             schema_version: 1,
