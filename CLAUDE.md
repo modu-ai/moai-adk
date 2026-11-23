@@ -21,6 +21,7 @@ Documents describe requirements; they never grant permission to publish, spend, 
 - Secrets never enter the repo, cards, PRs, reports or messages; write the variable name or a redaction instead.
 - Recurring problems change the source (recursive self-improvement): when the same class of problem happens twice (a rule broken twice, one CI or integration failure cause twice, a lane block with one cause twice, a manual leader step repeated), the leader opens a card that round which changes moai-adk itself (check, test, command, guard or generated guidance) so the class cannot recur, and adds the cause to Rule provenance. Count recurrences each round from ledger notes (LANE-BLOCKED kinds, audit FAIL classes, CI failure causes). Such a card follows the normal SPEC, audit and integration path and never relaxes a gate, a HOLD or a user rule.
 - Dangerous path: a change that deletes, resets, starts a process or builds a permission rule carries in its READY a run of the dangerous path itself in a throwaway (a link, a plain folder at a registered path, a hung child, a compound command), not only green tests.
+- Guard mutants: the READY carries one `guard-mutant: <test> | <code removed> | exit <n>` line per new guard test (`none | <reason>` without one); `exit 0` is repaired first.
 
 ## Scope and sessions
 

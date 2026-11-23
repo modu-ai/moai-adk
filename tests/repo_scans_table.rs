@@ -72,6 +72,10 @@ const EXEMPT: &[(&str, &str)] = &[
         "reads only the named skills/moai/workflows/project.md; `git ls-files --error-unmatch` runs in TempDir repos",
     ),
     (
+        "tests/project_lsp_plugins_cli.rs",
+        "read_dir of the TempDir project and PATH folders it built (before/after trees); reads the named core-rules.md and project.md",
+    ),
+    (
         "tests/retired_hosts_layer.rs",
         "read_dir of temporary homes (before/after trees of a host folder); reads the named src files of the backup move and the skills/moai and agents packages",
     ),

@@ -33,6 +33,7 @@ The rows keep the wording of the table that stood in `CLAUDE.md` (moved here by 
 | `docs/lane-rules.md`: one card and one receipt check at a time | user instruction 2026-11-23; cause: 187 block notes in 48 h and seven of ten lanes waiting on one receipt check |
 | Verify: tests are Rust only, no Python module by hand | user rule 2026-11-21, repeated 2026-11-23; cause: Python tests were still run by hand |
 | Standing principles: a run of the dangerous path in the READY | user instruction 2026-11-23; cause: 19 FAIL of 65 verdicts with every lane check green |
+| `docs/lane-rules.md`: a `guard-mutant:` line per new guard test in the READY | leader dispatch 2026-11-23; cause: four guard tests passed with their code removed in one day |
 | Verify: every Rust test on the integration tip every five landings | user instruction 2026-11-23; cause: tests red on the tip itself (leader rule R4a of 2026-11-22) |
 | Authority 2 and Flow: the card ledger replaces GitHub Issues as the work ledger | user decision 2026-11-16 (`docs/decisions-2026-11-08.md` row "작업 원장 = 로컬 카드") |
 | Flow 7: a lane only commits; the leader lands with `moai card land`; a pull request only for a release | user decisions of 2026-11-20 (local landing) and 2026-11-21 (flow redesign, `SPEC-20261121-flow-skeleton`, `SPEC-20261121-card-land`, `SPEC-20261122-next-flow`) |

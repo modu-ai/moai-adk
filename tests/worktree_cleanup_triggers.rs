@@ -299,3 +299,420 @@ fn a_cleanup_that_fails_after_taking_the_queue_puts_every_line_back() {
     assert!(leftovers.is_empty(), "a taken file was left: {leftovers:?}");
     assert!(wt.is_dir(), "a failed cleanup removed a worktree");
 }
+
+// ---- SPEC-20261123-landing-cleanup-real-clock: the landing cleanup on the real clock ---------
+//
+// None of these tests sets `NOW_SEAM`: every worktree is seconds old, so a cleanup that waited for
+// the recent-change window or the empty-worktree guard would keep all of them.
+
+mod real_clock {
+    use super::{commit, git, Path, PathBuf, QUEUE};
+    use crate::common::home::TempHome;
+    use moai_cli::worktree_cleanup::{self, Request, Trigger};
+    use serde_json::Value;
+    use std::fs;
+
+    const S1: &str = "aaaaaaaa-0000-4000-8000-00000000000a";
+    const S2: &str = "bbbbbbbb-0000-4000-8000-00000000000b";
+
+    /// The plan reads the claims of the ledger under the process's own `HOME`, as the `moai`
+    /// program does under the `HOME` it is started with. These tests run in this process, so each
+    /// one points `HOME` at its own temporary home and holds this lock while it does.
+    static HOME_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+    struct Env {
+        home: TempHome,
+        project: PathBuf,
+        n: std::cell::Cell<u32>,
+        _lock: std::sync::MutexGuard<'static, ()>,
+    }
+
+    impl Env {
+        fn new() -> Env {
+            let lock = HOME_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+            let home = TempHome::new();
+            std::env::set_var("HOME", home.path());
+            let project = fs::canonicalize(home.project("demo")).unwrap();
+            moai_cli::ledger::register(home.path(), "demo").unwrap();
+            git(&project, &["init", "-q", "-b", "integ"]);
+            fs::write(project.join("a.txt"), "a\n").unwrap();
+            fs::write(project.join(".gitignore"), "target\n").unwrap();
+            git(&project, &["add", "a.txt", ".gitignore"]);
+            commit(&project, "one");
+            Env {
+                home,
+                project,
+                n: std::cell::Cell::new(0),
+                _lock: lock,
+            }
+        }
+
+        fn moai(&self, session: &str, args: &[&str]) -> Value {
+            let out = self
+                .home
+                .command(args)
+                .env("CLAUDE_CODE_SESSION_ID", session)
+                .output()
+                .unwrap();
+            assert!(
+                out.status.success(),
+                "{args:?}: {}",
+                String::from_utf8_lossy(&out.stdout)
+            );
+            serde_json::from_slice::<Value>(&out.stdout).unwrap()
+        }
+
+        /// A detached linked worktree of `integ`, outside the project.
+        fn worktree(&self, name: &str) -> PathBuf {
+            let at = fs::canonicalize(self.home.path()).unwrap().join(name);
+            self.worktree_at(&at)
+        }
+
+        fn worktree_at(&self, at: &Path) -> PathBuf {
+            fs::create_dir_all(at.parent().unwrap()).unwrap();
+            git(
+                &self.project,
+                &[
+                    "worktree",
+                    "add",
+                    "-q",
+                    "--detach",
+                    at.to_str().unwrap(),
+                    "integ",
+                ],
+            );
+            fs::canonicalize(at).unwrap()
+        }
+
+        /// A card with its own scope, taken by `session` in `wt`; returns its name.
+        fn card(&self, session: &str, wt: &Path, branch: Option<&str>) -> String {
+            self.n.set(self.n.get() + 1);
+            let scope = format!("apps/{}/", self.n.get());
+            let p = self.project.to_str().unwrap();
+            let added = self.moai(
+                session,
+                &[
+                    "card",
+                    "add",
+                    "--title",
+                    "t",
+                    "--scope",
+                    &scope,
+                    "--project",
+                    p,
+                ],
+            );
+            let name = added["result"]["name"].as_str().unwrap().to_string();
+            self.moai(session, &["card", "ready", &name, "--project", p]);
+            let mut take = vec!["card", "take", &name, "--worktree", wt.to_str().unwrap()];
+            if let Some(b) = branch {
+                take.extend(["--branch", b]);
+            }
+            take.extend(["--project", p]);
+            self.moai(session, &take);
+            name
+        }
+
+        /// The card's reservation ended, as a landing's close ends it.
+        fn end(&self, session: &str, name: &str) {
+            let p = self.project.to_str().unwrap();
+            self.moai(
+                session,
+                &["card", "release", name, "--generation", "1", "--project", p],
+            );
+        }
+
+        /// A card that ended in `wt`: the card a landing would have closed.
+        fn landed_card(&self, wt: &Path, branch: Option<&str>) -> String {
+            let name = self.card(S1, wt, branch);
+            self.end(S1, &name);
+            name
+        }
+
+        fn clean(&self, card: &str) -> Value {
+            worktree_cleanup::run(
+                &self.project,
+                self.home.path(),
+                &Request {
+                    card_id: card.trim_start_matches("C-").parse().unwrap(),
+                    integration_ref: "integ",
+                    trigger: Trigger::Landing,
+                },
+            )
+        }
+
+        fn registered(&self, wt: &Path) -> bool {
+            git(&self.project, &["worktree", "list", "--porcelain"])
+                .contains(wt.file_name().unwrap().to_str().unwrap())
+        }
+
+        fn queue(&self) -> PathBuf {
+            let q = self.project.join(".git").join(QUEUE);
+            fs::create_dir_all(q.parent().unwrap()).unwrap();
+            q
+        }
+    }
+
+    /// The control: a clean, merged worktree of the landed card goes on the real clock, with or
+    /// without build output.
+    #[test]
+    fn a_landing_removes_the_cards_clean_merged_worktree_on_the_real_clock() {
+        let e = Env::new();
+        let plain = e.worktree("wt-plain");
+        let built = e.worktree("wt-built");
+        fs::create_dir_all(built.join("target/debug")).unwrap();
+        fs::write(built.join("target/debug/.cargo-lock"), "").unwrap();
+        fs::write(built.join("target/debug/lib.rlib"), "x").unwrap();
+        for wt in [&plain, &built] {
+            let card = e.landed_card(wt, None);
+            let got = e.clean(&card);
+            assert_eq!(got["error"], Value::Null, "{got}");
+            assert_eq!(got["worktrees"][0]["action"], "remove", "{got}");
+            assert_eq!(got["worktrees"][0]["status"], "removed", "{got}");
+            assert!(!wt.exists(), "{got}");
+            assert!(!e.registered(wt));
+        }
+    }
+
+    /// The same real-clock run keeps what the safe criteria keep, and nothing outside a
+    /// worktree changes: a dirty tree, an unmerged commit, an untracked file, a linked `target`
+    /// that points outside, another card's claim and a `.claude/worktrees` path.
+    #[test]
+    fn a_landing_on_the_real_clock_keeps_every_worktree_the_safe_criteria_keep() {
+        let e = Env::new();
+        let outside = fs::canonicalize(e.home.path()).unwrap().join("outside");
+        fs::create_dir_all(&outside).unwrap();
+        fs::write(outside.join("keep.txt"), "do not touch\n").unwrap();
+        let bystander = fs::canonicalize(e.home.path())
+            .unwrap()
+            .join("bystander.txt");
+        fs::write(&bystander, "mine\n").unwrap();
+
+        type Spoil = Box<dyn Fn(&Env, &Path)>;
+        let cases: Vec<(&str, &str, Spoil)> = vec![
+            (
+                "wt-tracked",
+                "tracked_changes",
+                Box::new(|_, wt| fs::write(wt.join("a.txt"), "changed\n").unwrap()),
+            ),
+            (
+                "wt-unmerged",
+                "not_merged",
+                Box::new(|_, wt| {
+                    fs::write(wt.join("b.txt"), "b\n").unwrap();
+                    git(wt, &["add", "b.txt"]);
+                    commit(wt, "not in the tip");
+                }),
+            ),
+            (
+                "wt-untracked",
+                "untracked_files",
+                Box::new(|_, wt| fs::write(wt.join("note.txt"), "n\n").unwrap()),
+            ),
+            (
+                "wt-linked-target",
+                "ignored_files_outside_build_output",
+                Box::new({
+                    let outside = outside.clone();
+                    move |_, wt| {
+                        #[cfg(unix)]
+                        std::os::unix::fs::symlink(&outside, wt.join("target")).unwrap();
+                    }
+                }),
+            ),
+            (
+                "wt-claimed",
+                "live_claim",
+                Box::new(|e, wt| {
+                    e.card(S2, wt, None);
+                }),
+            ),
+        ];
+        for (name, reason, spoil) in cases {
+            let wt = e.worktree(name);
+            let card = e.landed_card(&wt, None);
+            spoil(&e, &wt);
+            let got = e.clean(&card);
+            assert_eq!(got["worktrees"][0]["action"], "skip", "{name}: {got}");
+            assert!(
+                got["worktrees"][0]["reasons"].to_string().contains(reason),
+                "{name}: {got}"
+            );
+            assert_eq!(got["applied"], false, "{name}: {got}");
+            assert!(wt.is_dir() && e.registered(&wt), "{name} was removed");
+        }
+        // The preserved place.
+        let under = e.project.join(".claude/worktrees/lane-x");
+        let wt = e.worktree_at(&under);
+        let card = e.landed_card(&wt, None);
+        let got = e.clean(&card);
+        assert!(
+            got["worktrees"][0]["reasons"]
+                .to_string()
+                .contains("preserved_location"),
+            "{got}"
+        );
+        assert!(wt.is_dir() && e.registered(&wt));
+        assert_eq!(
+            fs::read_to_string(outside.join("keep.txt")).unwrap(),
+            "do not touch\n"
+        );
+        assert_eq!(fs::read_to_string(&bystander).unwrap(), "mine\n");
+    }
+
+    /// `card land --home DIR` reads the ledger of DIR, and the cleanup after it must too: another
+    /// card's live claim is read from the same home, not from the process's own `HOME`. With
+    /// `HOME` pointing at an empty home, the claim of the second live card still keeps the
+    /// worktree the landed card shared with it; the same landing in a worktree nobody else holds
+    /// is still removed (the control, so the keep is not a blanket keep).
+    #[test]
+    fn a_landing_reads_the_other_cards_claim_from_the_given_home_not_from_the_process_home() {
+        let e = Env::new();
+        let shared = e.worktree("wt-shared");
+        let landed = e.landed_card(&shared, Some("card/shared"));
+        e.card(S2, &shared, None);
+        let alone = e.worktree("wt-alone");
+        let landed_alone = e.landed_card(&alone, None);
+
+        // The process's own HOME is another, empty home; the ledger is the one `e.home` holds.
+        let other = TempHome::new();
+        std::env::set_var("HOME", other.path());
+
+        let got = e.clean(&landed);
+        assert_eq!(got["error"], Value::Null, "{got}");
+        assert_eq!(got["worktrees"][0]["action"], "skip", "{got}");
+        assert!(
+            got["worktrees"][0]["reasons"]
+                .to_string()
+                .contains("live_claim"),
+            "{got}"
+        );
+        assert_eq!(got["applied"], false, "{got}");
+        assert!(
+            shared.is_dir() && e.registered(&shared),
+            "the shared worktree was removed: {got}"
+        );
+
+        let got = e.clean(&landed_alone);
+        assert_eq!(got["worktrees"][0]["status"], "removed", "{got}");
+        assert!(!alone.exists(), "{got}");
+
+        // The other way round: the process's own home holds a ledger of the same project in
+        // which a card claims a worktree the given home's ledger says is free. The given home
+        // decides, in the plan, in the apply's own plan and in its re-check, so it goes.
+        moai_cli::ledger::register(other.path(), "demo").unwrap();
+        let p = e.project.to_str().unwrap();
+        let by_other = |args: &[&str]| {
+            let out = other
+                .command(args)
+                .env("CLAUDE_CODE_SESSION_ID", S2)
+                .output()
+                .unwrap();
+            assert!(
+                out.status.success(),
+                "{args:?}: {}",
+                String::from_utf8_lossy(&out.stdout)
+            );
+            serde_json::from_slice::<Value>(&out.stdout).unwrap()
+        };
+        let free = e.worktree("wt-free-here");
+        let landed_free = e.landed_card(&free, None);
+        let added = by_other(&[
+            "card",
+            "add",
+            "--title",
+            "t",
+            "--scope",
+            "apps/other/",
+            "--project",
+            p,
+        ]);
+        let name = added["result"]["name"].as_str().unwrap().to_string();
+        by_other(&["card", "ready", &name, "--project", p]);
+        by_other(&[
+            "card",
+            "take",
+            &name,
+            "--worktree",
+            free.to_str().unwrap(),
+            "--project",
+            p,
+        ]);
+        let got = e.clean(&landed_free);
+        assert_eq!(got["error"], Value::Null, "{got}");
+        assert_eq!(got["worktrees"][0]["status"], "removed", "{got}");
+        assert!(!free.exists(), "{got}");
+    }
+
+    /// A queue line whose worktree was skipped for a temporary reason stays in the queue; one
+    /// whose worktree went, or is kept for a lasting reason, does not.
+    #[test]
+    fn a_queue_line_skipped_for_a_temporary_reason_stays_in_the_queue() {
+        let e = Env::new();
+        let own = e.worktree("wt-own");
+        let landing = e.landed_card(&own, Some("card/own"));
+
+        let claimed = e.worktree("wt-claimed");
+        e.landed_card(&claimed, Some("card/claimed"));
+        e.card(S2, &claimed, None);
+
+        let dirty = e.worktree("wt-dirty");
+        e.landed_card(&dirty, Some("card/dirty"));
+        fs::write(dirty.join("a.txt"), "changed\n").unwrap();
+
+        let fresh = e.worktree("wt-fresh");
+        fs::create_dir_all(fresh.join("target/debug")).unwrap();
+        fs::write(fresh.join("target/debug/.cargo-lock"), "").unwrap();
+        fs::write(fresh.join("target/debug/lib.rlib"), "x").unwrap();
+        e.landed_card(&fresh, Some("card/fresh"));
+
+        let queue = e.queue();
+        fs::write(
+            &queue,
+            "refs/heads/card/own\nrefs/heads/card/claimed\nrefs/heads/card/dirty\nrefs/heads/card/fresh\n",
+        )
+        .unwrap();
+        let got = e.clean(&landing);
+        assert_eq!(got["error"], Value::Null, "{got}");
+        assert!(!own.exists(), "{got}");
+        assert_eq!(
+            fs::read_to_string(&queue).unwrap(),
+            "refs/heads/card/claimed\nrefs/heads/card/fresh\n",
+            "{got}"
+        );
+        assert!(dirty.is_dir() && claimed.is_dir() && fresh.is_dir());
+        let left: Vec<String> = fs::read_dir(queue.parent().unwrap())
+            .unwrap()
+            .flatten()
+            .map(|d| d.file_name().to_string_lossy().to_string())
+            .filter(|n| n.contains("draining"))
+            .collect();
+        assert!(left.is_empty(), "{left:?}");
+    }
+
+    /// A taken file left by a run that died is read by the next run and removed after it.
+    #[test]
+    fn a_leftover_draining_file_is_read_by_the_next_run() {
+        let e = Env::new();
+        let own = e.worktree("wt-own");
+        let landing = e.landed_card(&own, Some("card/own"));
+        let old = e.worktree("wt-old");
+        e.landed_card(&old, Some("card/old"));
+        // Kept for a lasting reason, so its line is used up and no queue is left.
+        fs::write(old.join("a.txt"), "changed\n").unwrap();
+        let queue = e.queue();
+        let leftover = queue.with_file_name("worktree-cleanup-queue.draining-424242");
+        fs::write(&leftover, "refs/heads/card/old\n").unwrap();
+        let got = e.clean(&landing);
+        assert_eq!(got["error"], Value::Null, "{got}");
+        assert_eq!(
+            got["queue"]["gone"],
+            serde_json::json!(["refs/heads/card/old"]),
+            "{got}"
+        );
+        assert!(!leftover.exists(), "the leftover file was not used up");
+        assert!(!queue.exists());
+        assert!(!own.exists());
+        assert!(old.is_dir(), "a dirty worktree was removed");
+    }
+}

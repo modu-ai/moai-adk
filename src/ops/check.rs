@@ -28,9 +28,12 @@ enum Action {
     /// The cheap steps all run; when one fails, nothing after them runs. The cargo steps (clippy,
     /// one `test` call by `cargo nextest run`, or `cargo test` when nextest is missing) run under
     /// one heavy slot held from the first to the last; a slot that is not obtained gives its exit
-    /// code to each of them and no cargo starts. The answer has one `summary` line of
-    /// `key=value` words in a fixed order: `check-affected`, base, head, targets, scans, the exit
-    /// status of each step in the order they ran, then
+    /// code to each of them and no cargo starts. The `test` step runs with a cap of 4 threads
+    /// (`-j 4` for nextest, `RUST_TEST_THREADS=4` for `cargo test`); a `NEXTEST_TEST_THREADS` or
+    /// `RUST_TEST_THREADS` the caller set stays as it is, and the slot folder's `limits.json` does
+    /// not carry the cap yet. The answer has one `summary` line of `key=value` words in a fixed
+    /// order: `check-affected`, base, head, targets, scans, `test-threads=<n>` (the cap the
+    /// `test` step ran with), the exit status of each step in the order they ran, then
     /// `result=PASS` when every status is 0 and `result=FAIL` otherwise. Writes the step logs and
     /// `heavy-slot.log` under `<build folder>/check-affected-<head>` (or `--out`).
     Affected {

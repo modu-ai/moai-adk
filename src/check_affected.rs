@@ -282,8 +282,17 @@ fn step(label: &str, program: &str, args: &[&str], heavy: bool) -> Step {
 }
 
 /// The steps of a selection, in the order the summary names them (REQ-4, REQ-7). `present` are
-/// the changed paths that exist in the checkout; `runner` runs the one `test` step.
-pub fn steps(sel: &Selection, present: &[String], range: &str, runner: Runner) -> Vec<Step> {
+/// the changed paths that exist in the checkout; `runner` runs the one `test` step. `threads` is
+/// the test-thread cap of that step and of no other (SPEC-20261120-test-parallelism-cap REQ-1):
+/// `-j <n>` right after `run` for nextest, `RUST_TEST_THREADS=<n>` in the step env for libtest;
+/// `None` adds nothing (the caller set the knob, or nothing was asked).
+pub fn steps(
+    sel: &Selection,
+    present: &[String],
+    range: &str,
+    runner: Runner,
+    threads: Option<usize>,
+) -> Vec<Step> {
     let mut out = vec![
         step("diff_check", "git", &["diff", "--check", range], false),
         step("fmt", "cargo", &["fmt", "--all", "--", "--check"], false),
@@ -330,7 +339,19 @@ pub fn steps(sel: &Selection, present: &[String], range: &str, runner: Runner) -
         rest.push(t.clone());
     }
     let refs: Vec<&str> = rest.iter().map(String::as_str).collect();
-    out.push(cargo_step("test", runner.sub(), &refs));
+    let mut test = cargo_step("test", runner.sub(), &refs);
+    if let Some(n) = threads {
+        match runner {
+            Runner::Nextest => {
+                // After `nextest run`, before the flags the step was built with.
+                test.args.splice(2..2, ["-j".to_string(), n.to_string()]);
+            }
+            Runner::CargoTest => test
+                .env
+                .push(("RUST_TEST_THREADS".to_string(), n.to_string())),
+        }
+    }
+    out.push(test);
     out
 }
 
@@ -489,11 +510,13 @@ pub fn list(dir: &Path, range: &str) -> Result<serde_json::Value> {
         host_os(),
     );
     let runner = runner_in(&facts.root);
+    // `--list` reads nothing from the slot folder, so it names no cap.
     let planned = steps(
         &sel,
         &facts.present,
         &format!("{}...{}", facts.base, facts.head),
         runner,
+        None,
     );
     Ok(serde_json::json!({
         "action": "affected",
@@ -584,6 +607,35 @@ fn build_jobs(slots: usize) -> Option<std::ffi::OsString> {
     Some(default_jobs(cpus, slots).to_string().into())
 }
 
+/// The test-thread cap of the `test` step (SPEC-20261120-test-parallelism-cap REQ-1). The slots'
+/// `limits.json` does not carry it yet: `heavy_slot::LimitsFile` refuses unknown keys, so the key
+/// and its refusal of a bad value wait for the slice that adds the field there.
+pub const DEFAULT_TEST_THREADS: usize = 4;
+
+/// The value the caller already set for the test step's thread knob, if any: nextest's
+/// `NEXTEST_TEST_THREADS` or libtest's `RUST_TEST_THREADS`, `get` being the environment lookup.
+/// A set knob is kept as it is and no cap is injected over it (REQ-1).
+fn caller_threads(
+    runner: Runner,
+    get: impl Fn(&str) -> Option<std::ffi::OsString>,
+) -> Option<String> {
+    let key = match runner {
+        Runner::Nextest => "NEXTEST_TEST_THREADS",
+        Runner::CargoTest => "RUST_TEST_THREADS",
+    };
+    get(key)
+        .map(|v| v.to_string_lossy().into_owned())
+        .filter(|v| !v.is_empty())
+}
+
+/// The slot folder of a run: the caller's `--slot-dir`, else the machine's.
+fn slot_folder(opts: &RunOptions) -> Result<std::path::PathBuf> {
+    opts.slot_dir
+        .clone()
+        .map(Ok)
+        .unwrap_or_else(crate::heavy_slot::default_dir)
+}
+
 /// Takes the one heavy slot of a run, with its effective slot count. The waiting lines and any
 /// refusal reason go to `<out>/heavy-slot.log` — stdout is the JSON answer. `Err` is the slot's
 /// exit code: 125 refused, 75 machine too busy, 2 no usable slot folder or `--max 0`.
@@ -596,12 +648,7 @@ fn hold_slot(
         Ok(f) => Box::new(f),
         Err(_) => Box::new(std::io::sink()),
     };
-    let folder = match opts
-        .slot_dir
-        .clone()
-        .map(Ok)
-        .unwrap_or_else(crate::heavy_slot::default_dir)
-    {
+    let folder = match slot_folder(opts) {
         Ok(d) => d,
         Err(e) => {
             let _ = writeln!(log, "heavy-slot: {e}");
@@ -685,6 +732,7 @@ pub fn run(dir: &Path, range: &str, opts: &RunOptions) -> Result<serde_json::Val
                 .to_string(),
         );
     }
+    let threads = DEFAULT_TEST_THREADS;
     let sel = select(
         &facts.changed,
         &facts.tests,
@@ -693,9 +741,20 @@ pub fn run(dir: &Path, range: &str, opts: &RunOptions) -> Result<serde_json::Val
     );
     let target = target_dir(&std::fs::canonicalize(dir).unwrap_or_else(|_| dir.to_path_buf()));
     let range3 = format!("{}...{}", facts.base, facts.head);
+    // The cap goes onto the test step unless the caller set the runner's own knob; what the
+    // summary shows is the caller's value then.
+    let env = |k: &str| std::env::var_os(k);
+    let cap_for = |r: Runner| caller_threads(r, env).is_none().then_some(threads);
+    let mut shown = threads.to_string();
     // Planned with nextest until the slot is held: the runner is asked only then, so a refused
     // slot starts no cargo at all. The labels do not depend on the runner.
-    let mut planned = steps(&sel, &facts.present, &range3, Runner::Nextest);
+    let mut planned = steps(
+        &sel,
+        &facts.present,
+        &range3,
+        Runner::Nextest,
+        cap_for(Runner::Nextest),
+    );
     let out = opts
         .out
         .clone()
@@ -728,7 +787,10 @@ pub fn run(dir: &Path, range: &str, opts: &RunOptions) -> Result<serde_json::Val
             match hold_slot(opts, &out) {
                 Ok(h) => {
                     let r = runner_in(dir);
-                    planned = steps(&sel, &facts.present, &range3, r);
+                    planned = steps(&sel, &facts.present, &range3, r, cap_for(r));
+                    if let Some(theirs) = caller_threads(r, env) {
+                        shown = theirs;
+                    }
                     runner = Some(r);
                     held = Some(h);
                 }
@@ -770,11 +832,12 @@ pub fn run(dir: &Path, range: &str, opts: &RunOptions) -> Result<serde_json::Val
     drop(held);
     let pass = results.iter().all(|(_, c)| *c == 0);
     let mut line = format!(
-        "check-affected base={} head={} targets={} scans={}",
+        "check-affected base={} head={} targets={} scans={} test-threads={}",
         short(&facts.base),
         short(&facts.head),
         sel.rust.len(),
-        sel.scans.word()
+        sel.scans.word(),
+        shown
     );
     for (k, c) in summary_words(&results) {
         line.push_str(&format!(" {k}={c}"));
@@ -970,7 +1033,7 @@ mod tests {
     #[test]
     fn the_steps_always_hold_lib_bins_and_the_fixed_checks() {
         let sel = select(&paths(&["README.md"]), &[], None, "linux");
-        let planned = steps(&sel, &[], "a...b", Runner::Nextest);
+        let planned = steps(&sel, &[], "a...b", Runner::Nextest, None);
         let labels: Vec<&str> = planned.iter().map(|s| s.label.as_str()).collect();
         assert_eq!(labels, ["diff_check", "fmt", "clippy", "test"]);
         assert!(planned
@@ -978,7 +1041,7 @@ mod tests {
             .filter(|s| s.program == "cargo" && s.label != "fmt")
             .all(|s| s.heavy));
         let test = |runner: Runner, sel: &Selection| -> Vec<String> {
-            steps(sel, &[], "a...b", runner)
+            steps(sel, &[], "a...b", runner, None)
                 .into_iter()
                 .find(|s| s.label == "test")
                 .unwrap()
@@ -1019,7 +1082,7 @@ mod tests {
                 "update_x"
             ]
         );
-        let planned = steps(&targets, &[], "a...b", Runner::CargoTest);
+        let planned = steps(&targets, &[], "a...b", Runner::CargoTest, None);
         let labels: Vec<&str> = planned.iter().map(|s| s.label.as_str()).collect();
         assert_eq!(labels, ["diff_check", "fmt", "clippy", "test"]);
         // D-5: no step selects every binary's harness.
@@ -1028,6 +1091,83 @@ mod tests {
                 assert!(!test(runner, sel).iter().any(|a| a == "--bins"));
             }
         }
+    }
+
+    /// SPEC-20261120-test-parallelism-cap REQ-1: the cap goes onto the `test` step only —
+    /// `-j <n>` right after `run` for nextest, `RUST_TEST_THREADS` for libtest — and nowhere else.
+    #[test]
+    fn the_thread_cap_goes_onto_the_test_step_alone() {
+        let sel = select(&paths(&["README.md"]), &[], None, "linux");
+        let planned = steps(&sel, &[], "a...b", Runner::Nextest, Some(3));
+        for s in &planned {
+            let capped = s.args.iter().any(|a| a == "-j");
+            assert_eq!(capped, s.label == "test", "{}: {:?}", s.label, s.args);
+            assert!(s.env.is_empty(), "{}: {:?}", s.label, s.env);
+        }
+        let test = planned.iter().find(|s| s.label == "test").unwrap();
+        assert_eq!(
+            test.args[..5],
+            ["nextest", "run", "-j", "3", "--locked"],
+            "{:?}",
+            test.args
+        );
+
+        let planned = steps(&sel, &[], "a...b", Runner::CargoTest, Some(3));
+        for s in &planned {
+            let capped = s
+                .env
+                .contains(&("RUST_TEST_THREADS".to_string(), "3".to_string()));
+            assert_eq!(capped, s.label == "test", "{}: {:?}", s.label, s.env);
+            assert!(
+                !s.args.iter().any(|a| a == "-j"),
+                "{}: {:?}",
+                s.label,
+                s.args
+            );
+        }
+        // `None` (the caller's own knob, or no cap asked) adds nothing, to either runner.
+        for runner in [Runner::Nextest, Runner::CargoTest] {
+            for s in steps(&sel, &[], "a...b", runner, None) {
+                assert!(s.env.is_empty() && !s.args.iter().any(|a| a == "-j"));
+            }
+        }
+    }
+
+    /// REQ-1: the cap is 4 until the slots' `limits.json` can carry a value of its own.
+    #[test]
+    fn the_default_cap_is_four() {
+        assert_eq!(DEFAULT_TEST_THREADS, 4);
+    }
+
+    /// REQ-1: the caller's own knob is kept — nextest's for nextest, libtest's for `cargo test`,
+    /// and an empty value counts as not set.
+    #[test]
+    fn a_caller_set_knob_is_seen_for_its_own_runner_only() {
+        let env = |k: &str, v: &str| {
+            let (k, v) = (k.to_string(), std::ffi::OsString::from(v));
+            move |q: &str| (q == k).then(|| v.clone())
+        };
+        assert_eq!(
+            caller_threads(Runner::CargoTest, env("RUST_TEST_THREADS", "8")),
+            Some("8".to_string())
+        );
+        assert_eq!(
+            caller_threads(Runner::Nextest, env("NEXTEST_TEST_THREADS", "num-cpus")),
+            Some("num-cpus".to_string())
+        );
+        assert_eq!(
+            caller_threads(Runner::Nextest, env("RUST_TEST_THREADS", "8")),
+            None
+        );
+        assert_eq!(
+            caller_threads(Runner::CargoTest, env("NEXTEST_TEST_THREADS", "8")),
+            None
+        );
+        assert_eq!(
+            caller_threads(Runner::CargoTest, env("RUST_TEST_THREADS", "")),
+            None
+        );
+        assert_eq!(caller_threads(Runner::CargoTest, |_| None), None);
     }
 
     /// REQ-6: the logical CPUs shared out over the slots, never under 2.
@@ -1058,7 +1198,7 @@ mod tests {
             "linux",
         );
         let present = paths(&["src/ops/x.rs", "tools/a.sh"]);
-        let planned = steps(&sel, &present, "a...b", Runner::Nextest);
+        let planned = steps(&sel, &present, "a...b", Runner::Nextest, None);
         let ops = planned.iter().find(|s| s.label == "ops_rustfmt").unwrap();
         assert_eq!(ops.args, ["--edition", "2021", "--check", "src/ops/x.rs"]);
         assert!(planned.iter().any(|s| s.label == "bash_n:tools/a.sh"));
@@ -1075,7 +1215,7 @@ mod tests {
             paths(&["tests/update_tux_tty_test.py", "tools/mutate.py"]),
         ] {
             let sel = select(&changed, &tests, Some(SCANS), "linux");
-            let planned = steps(&sel, &changed, "a...b", Runner::Nextest);
+            let planned = steps(&sel, &changed, "a...b", Runner::Nextest, None);
             for s in &planned {
                 assert!(
                     !s.program.contains("python") && !s.args.iter().any(|a| a.contains("unittest")),
