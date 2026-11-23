@@ -3179,7 +3179,8 @@ mod window_tests {
         use crate::statusline::color::Profile;
         // (used of CW, 5H, 7D) → (left of each, level index of each): 73 green, 49 peach, 87 green;
         // 55 yellow, 19 red, 38 peach; 100 green with no empty cell.
-        let cases: [([i64; 3], [(i64, usize); 3]); 3] = [
+        type Case = ([i64; 3], [(i64, usize); 3]);
+        let cases: [Case; 3] = [
             ([27, 51, 13], [(73, 0), (49, 2), (87, 0)]),
             ([45, 81, 62], [(55, 1), (19, 3), (38, 2)]),
             ([0, 30, 100], [(100, 0), (70, 0), (0, 3)]),
