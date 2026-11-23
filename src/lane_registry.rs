@@ -837,17 +837,19 @@ pub fn register_with(
             ))
         }
     };
-    // REQ-3, REQ-4: one live leader entry at a time, renewed from its own host session.
-    if leader {
-        crate::leader_round::registration::check_leader_rules(
-            project,
-            name,
-            current.as_ref(),
-            previous,
-            own.as_deref(),
-            now,
-        )?;
-    }
+    // REQ-3, REQ-4: one live leader entry at a time, renewed from its own host session. A live
+    // leader entry answers to these rules whatever `--mode` the caller gives.
+    crate::leader_round::registration::check_leader_rules(
+        project,
+        name,
+        current.as_ref(),
+        previous,
+        own.as_deref(),
+        now,
+        leader,
+    )?;
+    let live_leader =
+        crate::leader_round::registration::holds_live_leader(current.as_ref(), previous);
     // Test seam: widens the read-to-write window (at most 2 s) so the concurrency test can
     // show the lock is what keeps two registrations apart. Unset in normal use.
     if let Some(ms) = std::env::var(TEST_HOLD_VAR)
@@ -865,7 +867,8 @@ pub fn register_with(
         "lease_until": lease_until,
         "registered_at": now,
     });
-    if let Some(m) = mode {
+    // A renewal of a live leader entry keeps the mode when the caller gives none.
+    if let Some(m) = mode.or(live_leader.then_some("leader")) {
         entry["mode"] = json!(m);
     }
     // BOARD 03 (가), SPEC-20261120-launcher-liveness REQ-1: the host session id rides along
@@ -875,7 +878,7 @@ pub fn register_with(
     let renewed = previous == "same_instance";
     // A leader entry written before the id was recorded gets the renewing session's id.
     let session = match (&current, renewed) {
-        (Some(cur), true) if leader => cur.session.clone().or_else(|| own.clone()),
+        (Some(cur), true) if leader || live_leader => cur.session.clone().or_else(|| own.clone()),
         (Some(cur), true) => cur.session.clone(),
         _ => own.clone(),
     };
@@ -951,7 +954,7 @@ pub fn register_with(
         "lease_until": crate::forge::policy::format_utc(lease_until),
         "entry": file.to_string_lossy(),
     });
-    if let Some(m) = mode {
+    if let Some(m) = mode.or(live_leader.then_some("leader")) {
         out["mode"] = json!(m);
     }
     Ok(out)

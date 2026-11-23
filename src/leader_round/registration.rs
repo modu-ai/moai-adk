@@ -81,7 +81,7 @@ fn read_leader(file: &Path, name: &str) -> Result<Option<LeaderEntry>, String> {
 /// Every entry of mode `leader` in the clone's registry, ended leases included, sorted by name.
 /// A missing registry folder has none. Reads only; nothing is created.
 pub fn leader_entries(project: &Path) -> Result<Vec<LeaderEntry>, String> {
-    // A link on any folder below the clone's git dir is an error, never "no entry" (C-80 N1).
+    // A link on any folder below the clone's git dir is an error, never "no entry".
     let dir = registry_dir_unlinked(project)?;
     match fs::symlink_metadata(&dir) {
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
@@ -149,15 +149,29 @@ pub(crate) fn require_session(own: Option<&str>) -> Result<(), String> {
     )
 }
 
+/// Whether the entry the name holds under a lease that still runs is of mode `leader`. The
+/// rules below apply to such an entry whatever mode the caller asks for, because the entry,
+/// not the request, is what another window reads (SPEC REQ-4).
+pub(crate) fn holds_live_leader(
+    current: Option<&crate::lane_registry::SessionEntry>,
+    previous: &str,
+) -> bool {
+    previous == "same_instance" && current.is_some_and(|c| c.mode.as_deref() == Some("leader"))
+}
+
 /// SPEC REQ-3 and REQ-4, judged under the registry lock after the registration's own conflict
 /// check passed. `previous` is that check's answer (`none`, `expired`, `same_instance` or
-/// `other_session`) and `current` the entry the name holds now.
+/// `other_session`), `current` the entry the name holds now and `requested` whether the caller
+/// asked for mode `leader`.
 ///
-/// - A renewal by the instance that holds the entry comes from the session the entry names; an
-///   entry that names none is filled in by the caller.
-/// - Any other registration is refused while an entry of another name is mode `leader` under a
-///   lease that runs past `now`: the refusal names that entry and its lease end, never its
-///   instance.
+/// - A renewal that touches mode `leader` — the entry is a live leader entry, or the caller
+///   asks for the mode — comes from the session the entry names, and that session must be
+///   known; an entry that names none is filled in by the caller.
+/// - A registration that asks for mode `leader`, and is not the renewal of a live leader entry,
+///   is refused while an entry of another name is mode `leader` under a lease that runs past
+///   `now`: the refusal names that entry and its lease end, never its instance. A renewal of a
+///   lane entry into mode `leader` is such a registration.
+/// - Any other registration is not touched by these rules.
 ///
 /// An entry the scan cannot read fails the call with its message: whether a second window is
 /// live cannot be judged, so nothing is written.
@@ -168,8 +182,11 @@ pub(crate) fn check_leader_rules(
     previous: &str,
     own: Option<&str>,
     now: i64,
+    requested: bool,
 ) -> Result<(), String> {
-    if previous == "same_instance" {
+    let live_leader = holds_live_leader(current, previous);
+    if previous == "same_instance" && (live_leader || requested) {
+        require_session(own)?;
         let held = current.and_then(|c| c.session.as_deref());
         if held.is_some() && held != own {
             return Err(
@@ -177,6 +194,8 @@ pub(crate) fn check_leader_rules(
                     .into(),
             );
         }
+    }
+    if live_leader || !requested {
         return Ok(());
     }
     match leader_entries(project)?
@@ -198,7 +217,8 @@ const NOTE: &str = "the leader registration lease is the window's own to renew e
 
 /// The `registration` part of the round (SPEC REQ-7 to REQ-9, REQ-12): every leader entry with
 /// its lease, its session id and either the seconds left or the seconds since the lease ended;
-/// the status is `absent`, `ok`, `no_session`, `expired` or `error` (the message alone).
+/// the status is `absent`, `duplicate` (two or more leases still run), `expired`, `no_session`,
+/// `ok` or `error` (the message alone), in that order of precedence.
 pub fn registration(project: &Path, now: i64) -> Value {
     let entries = match leader_entries(project) {
         Ok(e) => e,
@@ -206,8 +226,11 @@ pub fn registration(project: &Path, now: i64) -> Value {
     };
     let ended = entries.iter().any(|e| e.lease_until <= now);
     let unnamed = entries.iter().any(|e| e.session.is_none());
+    let live = entries.iter().filter(|e| e.lease_until > now).count();
     let status = if entries.is_empty() {
         "absent"
+    } else if live > 1 {
+        "duplicate"
     } else if ended {
         "expired"
     } else if unnamed {
