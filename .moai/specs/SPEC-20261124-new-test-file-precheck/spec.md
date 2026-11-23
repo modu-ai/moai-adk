@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261124-new-test-file-precheck
 title: "check affected stops before the heavy steps when an added test file is missing from the area table or the state-folder allow list"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-24
+approval:
+  by: leader
+  at: 2026-11-23
+  basis: "리더 결정 노트 7835 (2026-11-23T19:44:54Z, 사용자 위임 2026-11-23T13:57Z, 리더 판단, 사용자 직접 선택 아님, 노트 7834 에 답함): (A) 판 1 승인, 조건 넷(새 시험 파일이 새 단계를 통과, 멈춤과 통과 둘 다 임시 프로젝트 시험과 guard-mutant exit 100, 멈춤이 cargo 호출 없이 무거운 단계 앞이라는 시험, lane-rules.md 는 짧은 문장 하나); 레인은 그 노트를 인용만 해요"
+  digest: "sha256:c10c10d8eb247c7606ac826ade4e80aa85ce64da0cca0999b4dbbd43feda8eb9"
 ---
 
 # check affected stops before the heavy steps when an added test file is missing from the area table or the state-folder allow list
