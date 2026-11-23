@@ -463,3 +463,33 @@ fn new_blocking_gates_start_in_observe() {
         "the manifest entry reason does not name the rule change"
     );
 }
+
+/// SPEC-20261123-work-count-guidance AC-1: `test-design.md` carries one numbered rule that says how
+/// to bound a time limit by a count of work, with the parts the method needs.
+#[test]
+fn test_design_has_one_work_count_rule() {
+    let text = read("skills/moai/references/internal/test-design.md");
+    let rules: Vec<&str> = text
+        .lines()
+        .filter(|line| {
+            let digits = line.chars().take_while(|c| c.is_ascii_digit()).count();
+            digits > 0 && line[digits..].starts_with(". ") && line.contains("count of work")
+        })
+        .collect();
+    assert_eq!(
+        rules.len(),
+        1,
+        "test-design.md needs exactly one numbered rule about a count of work"
+    );
+    for part in [
+        "wall clock",
+        "on the thread that runs the code",
+        "input length",
+        "stops the code at the limit",
+        "counted less than the input length",
+        "quadratic",
+        "only the work that calls the counter",
+    ] {
+        assert!(rules[0].contains(part), "the work-count rule lacks {part:?}");
+    }
+}
