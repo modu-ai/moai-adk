@@ -666,7 +666,7 @@ fn a_symlink_planted_at_the_git_init_lock_is_not_followed() {
     let canonical = plain.path().canonicalize().unwrap();
     let id = moai_cli::digest(canonical.as_os_str().as_encoded_bytes());
     let lock = tmp.path().join(format!(
-        "moai-cli-git-init-{}.lock",
+        "moai-git-init-{}.lock",
         &id.strip_prefix("sha256:").unwrap()[..16]
     ));
     let target = tmp.path().join("planted-target");
@@ -696,7 +696,7 @@ fn a_git_init_lock_not_owned_by_the_home_owner_is_never_waited_on() {
     let canonical = plain.path().canonicalize().unwrap();
     let id = moai_cli::digest(canonical.as_os_str().as_encoded_bytes());
     let lock = tmp.path().join(format!(
-        "moai-cli-git-init-{}.lock",
+        "moai-git-init-{}.lock",
         &id.strip_prefix("sha256:").unwrap()[..16]
     ));
     let held = fs::File::create(&lock).unwrap();
@@ -728,4 +728,40 @@ fn a_git_init_lock_not_owned_by_the_home_owner_is_never_waited_on() {
     assert_eq!(json(&out)["name"], "agent-1");
     assert!(plain.path().join(".git").is_dir());
     drop(held);
+}
+
+/// The lock is named `moai-git-init-<16 hex>.lock`, and a lock file an earlier build left under
+/// its old name is neither read, locked, changed nor deleted: the new launcher keeps its own
+/// file next to it.
+#[test]
+fn the_git_init_lock_is_named_moai_and_an_earlier_one_is_left_alone() {
+    use std::os::unix::fs::MetadataExt;
+    let f = fixture();
+    let tmp = tempfile::tempdir().unwrap();
+    let plain = tempfile::tempdir().unwrap();
+    let canonical = plain.path().canonicalize().unwrap();
+    let id = moai_cli::digest(canonical.as_os_str().as_encoded_bytes());
+    let hex = &id.strip_prefix("sha256:").unwrap()[..16];
+    let earlier = tmp.path().join(format!("moai-cli-git-init-{hex}.lock"));
+    let current = tmp.path().join(format!("moai-git-init-{hex}.lock"));
+    fs::write(&earlier, b"left by an earlier build\n").unwrap();
+    let before = fs::metadata(&earlier).unwrap();
+    let out = command(&f, plain.path(), &with_git(&f), &["cc", "-a"])
+        .env("TMPDIR", tmp.path())
+        .output()
+        .unwrap();
+    assert_eq!(json(&out)["name"], "agent-1", "{}", text(&out));
+    assert!(plain.path().join(".git").is_dir());
+    assert!(
+        fs::symlink_metadata(&current).is_ok_and(|m| m.file_type().is_file()),
+        "no lock file named moai-git-init-<hex>.lock: {:?}",
+        entries(tmp.path())
+    );
+    let after = fs::metadata(&earlier).expect("the earlier lock file was deleted");
+    assert_eq!(fs::read(&earlier).unwrap(), b"left by an earlier build\n");
+    assert_eq!(
+        (before.len(), before.mtime(), before.mtime_nsec()),
+        (after.len(), after.mtime(), after.mtime_nsec()),
+        "the earlier lock file was written"
+    );
 }

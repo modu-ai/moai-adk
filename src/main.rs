@@ -206,7 +206,7 @@ enum Command {
     /// on stdin (`hosts`, `mode`, `go_release`, `selections`); shows ownership, the
     /// update-conflict preview and the plan digest. Writes nothing.
     MigratePlan {
-        /// Synthetic home: a temporary directory carrying `.moai-cli-synthetic-home`.
+        /// Synthetic home: a temporary directory carrying `.moai-synthetic-home`.
         home: PathBuf,
     },
     /// Apply a previewed Go MoAI migration
