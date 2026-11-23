@@ -637,6 +637,9 @@ fn resolve_glm_model_name(display: &str, ctx: &Context) -> String {
         "ANTHROPIC_DEFAULT_SONNET_MODEL"
     } else if lower.contains("haiku") {
         "ANTHROPIC_DEFAULT_HAIKU_MODEL"
+    } else if lower.contains("fable") {
+        // The glm launcher maps the fable alias too (SPEC-20261123-glm-54-followups D-5).
+        "ANTHROPIC_DEFAULT_FABLE_MODEL"
     } else if !lower.starts_with("claude") {
         return cleaned.to_string();
     } else {
@@ -712,10 +715,11 @@ const GLM_CONTEXT_WINDOWS: [(&str, i64); 3] = [
     ("glm-5.3", 1_000_000),
     ("glm-5.4", 1_000_000),
 ];
-const GLM_ENV_SLOTS: [&str; 3] = [
+const GLM_ENV_SLOTS: [&str; 4] = [
     "ANTHROPIC_DEFAULT_OPUS_MODEL",
     "ANTHROPIC_DEFAULT_SONNET_MODEL",
     "ANTHROPIC_DEFAULT_HAIKU_MODEL",
+    "ANTHROPIC_DEFAULT_FABLE_MODEL",
 ];
 
 /// `resolveContextWindowOverride`: `MOAI_STATUSLINE_CONTEXT_SIZE`, then `llm.yaml`
@@ -2050,6 +2054,36 @@ mod tests {
         let claude =
             Context::for_test(&[("ANTHROPIC_DEFAULT_OPUS_MODEL", "claude-opus-5-5")], None);
         assert_eq!(resolve_glm_model_name("Opus", &claude), "Opus");
+    }
+
+    /// SPEC-20261123-glm-54-followups REQ-8, REQ-9 (D-5): the launcher also maps the fable alias,
+    /// so a Fable slot name shows the fable slot's GLM model without the `[1m]` marker, and a
+    /// fable-only environment still gives the 1M window. The environment is the launcher's own
+    /// (`GLM_ENV`), so a change of the launcher's values cannot drift from this line unseen.
+    #[test]
+    fn glm_fable_slot_names_and_sizes_its_model() {
+        let launcher: Vec<(&str, &str)> = crate::session::GLM_ENV.to_vec();
+        let ctx = Context::for_test(&launcher, None);
+        assert_eq!(resolve_glm_model_name("Fable", &ctx), "glm-5.4");
+        assert_eq!(resolve_glm_model_name("Fable[1m]", &ctx), "glm-5.4");
+        assert_eq!(resolve_glm_model_name("Opus", &ctx), "glm-5.4");
+        assert_eq!(resolve_glm_model_name("Haiku", &ctx), "glm-5.3-flash");
+        // A claude model in the fable slot stays a claude name.
+        let claude = Context::for_test(
+            &[("ANTHROPIC_DEFAULT_FABLE_MODEL", "claude-fable-5-2")],
+            None,
+        );
+        assert_eq!(resolve_glm_model_name("Fable", &claude), "Fable");
+        // Only the fable slot holds a model: the window comes from it, with or without `[1m]`.
+        for value in ["glm-5.4[1m]", "glm-5.4"] {
+            let only = Context::for_test(&[("ANTHROPIC_DEFAULT_FABLE_MODEL", value)], None);
+            assert_eq!(context_window_override(&only), 1_000_000, "{value}");
+        }
+        let only_claude = Context::for_test(
+            &[("ANTHROPIC_DEFAULT_FABLE_MODEL", "claude-fable-5-2")],
+            None,
+        );
+        assert_eq!(context_window_override(&only_claude), 0);
     }
 
     #[test]

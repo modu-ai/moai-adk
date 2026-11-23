@@ -405,6 +405,86 @@ fn a_saved_value_adds_a_note_with_its_key_path() {
     }
 }
 
+/// SPEC-20261123-glm-54-followups AC-2 (REQ-5, REQ-6, D-1): a saved `zai/glm-5.4[1m]` reaches the
+/// argv as the bare `glm-5.4[1m]` (the same text as the launcher's alias values), and a
+/// `zai/glm-5.3` saved before 5.4 still reaches it as `glm-5.3`; the saved-value note names the
+/// key path. Dry run, synthetic HOME, no host started.
+#[test]
+fn a_saved_glm_54_reaches_the_argv_and_a_saved_53_still_does() {
+    let f = Fixture::new();
+    f.config(
+        r#"{"launcher":{"models":{"glm":{
+            "leader":{"model":"zai/glm-5.4[1m]","effort":"high"},
+            "agent":{"model":"zai/glm-5.3","effort":"low"}}}}}"#,
+    );
+    let leader = f.dry(&["glm", "-l"]);
+    let a = argv(&leader);
+    assert!(has_pair(&a, "--model", "glm-5.4[1m]"), "{a:?}");
+    assert!(has_pair(&a, "--effort", "high"), "{a:?}");
+    assert!(
+        notes(&leader).contains("launcher.models.glm.leader"),
+        "{}",
+        notes(&leader)
+    );
+    // The alias environment of the same launch is the same text, so the saved model is no
+    // different from the alias it replaces.
+    assert!(
+        notes(&leader).contains("opus, sonnet and fable to glm-5.4[1m]"),
+        "{}",
+        notes(&leader)
+    );
+    let agent = argv(&f.dry(&["glm", "-a"]));
+    assert!(has_pair(&agent, "--model", "glm-5.3"), "{agent:?}");
+    assert!(has_pair(&agent, "--effort", "low"), "{agent:?}");
+}
+
+/// SPEC-20261123-glm-54-followups AC-3 (REQ-7): the built-in super-advisor template names, as the
+/// model of the GLM carve-out, the launcher's own opus alias value without the `[1m]` marker —
+/// read from `GLM_ENV`, so the wording follows the launcher — and no longer says glm-5.3.
+#[test]
+fn the_super_advisor_template_names_the_launchers_glm_model() {
+    let opus = moai_cli::session::GLM_ENV
+        .iter()
+        .find(|(key, _)| *key == "ANTHROPIC_DEFAULT_OPUS_MODEL")
+        .map(|(_, value)| value.trim_end_matches("[1m]"))
+        .expect("the launcher maps the opus alias");
+    assert_eq!(
+        opus, "glm-5.4",
+        "the launcher's main model (SPEC glm-54-model)"
+    );
+    let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("templates/bundle-packs/.claude/agents/moai/super-advisor.md");
+    let text = fs::read_to_string(&path).unwrap();
+    assert!(
+        text.contains(&format!("reasoning model ({opus})")),
+        "the carve-out names {opus}"
+    );
+    assert!(
+        !text.contains("glm-5.3"),
+        "no stale glm-5.3 in the template"
+    );
+    // The catalog line of the template carries the hash of the file as it is now (AC-3).
+    use sha2::{Digest, Sha256};
+    let catalog: Value = serde_json::from_slice(
+        &fs::read(Path::new(env!("CARGO_MANIFEST_DIR")).join("templates/bundle-packs/packs.json"))
+            .unwrap(),
+    )
+    .unwrap();
+    let mut listed = Vec::new();
+    for pack in catalog["packs"].as_object().unwrap().values() {
+        for entry in pack["entries"].as_array().unwrap() {
+            if entry["path"] == ".claude/agents/moai/super-advisor.md" {
+                listed.push(entry["sha256"].as_str().unwrap().to_string());
+            }
+        }
+    }
+    assert!(!listed.is_empty(), "super-advisor is listed in the catalog");
+    let actual = format!("{:x}", Sha256::digest(text.as_bytes()));
+    for sha in listed {
+        assert_eq!(sha, actual, "the catalog hash of super-advisor.md");
+    }
+}
+
 /// AC-6 (REQ-7, the start path): a saved glm choice reaches the started host with the saved model
 /// and effort in its argv and the z.ai environment unchanged by the choice (endpoint, alias
 /// mapping, the glm token). A stub `claude` records the arguments and the environment it was
