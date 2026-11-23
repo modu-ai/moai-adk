@@ -166,8 +166,9 @@ fn receipt_lines(path: &Path) -> Vec<String> {
 fn ac1_a_registered_name_with_good_input_prints_nothing_and_writes_nothing() {
     let fx = Fx::new(true, true);
     let before = (snapshot(&fx.project), snapshot(&fx.home));
+    // `session-context` is no longer silent (SPEC-20261123-hook-session-start): its answers are
+    // pinned in `tests/hook_session_start_cli.rs`.
     for (name, event) in [
-        ("session-context", "SessionStart"),
         ("bash-boundary", "PreToolUse"),
         ("write-boundary", "PreToolUse"),
     ] {
