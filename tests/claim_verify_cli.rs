@@ -882,7 +882,7 @@ fn claimed_repo(comment_id: i64, session: &str) -> tempfile::TempDir {
         effects: vec![],
         last_observed_at: NOW.into(),
     };
-    let journal = Journal::open(&moai_cli::claim::journal_root(&root).unwrap()).unwrap();
+    let journal = Journal::open(&moai_cli::claim::journal_root_in(&root, None).unwrap()).unwrap();
     assert!(journal.try_lock().unwrap());
     journal.commit("acquire", &record).unwrap();
     dir
@@ -997,7 +997,7 @@ fn seed_record(
         effects: vec![],
         last_observed_at: NOW.into(),
     };
-    let journal = Journal::open(&moai_cli::claim::journal_root(root).unwrap()).unwrap();
+    let journal = Journal::open(&moai_cli::claim::journal_root_in(root, None).unwrap()).unwrap();
     assert!(journal.try_lock().unwrap());
     journal.commit("acquire", &record).unwrap();
 }
