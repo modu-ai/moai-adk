@@ -605,4 +605,59 @@ mod tests {
         assert!(!parse_trailers(&short).1);
         assert!(!parse_trailers("").1);
     }
+
+    fn skipped(card_id: i64, reason: SkipReason) -> workflow::Skipped {
+        workflow::Skipped {
+            card_id,
+            title: format!("card {card_id}"),
+            state: "ready".to_string(),
+            priority: "p3".to_string(),
+            reason,
+        }
+    }
+
+    /// `take_landed` takes a skip for its proof only when `is_landable_skip` says a proof can
+    /// replace it. `candidates` never looks a held card's proof up, so the gate cannot be reached
+    /// from `card next`; this test hands `take_landed` a proof for a held card and for a card with
+    /// no counted criterion to pin the gate on its own (SPEC-20261124-card-next-skip-reason, REQ-3).
+    #[test]
+    fn a_proof_replaces_a_landable_skip_and_never_a_held_one() {
+        let held = SkipReason::Held {
+            holder: "holder".to_string(),
+            generation: 1,
+            lease_until: 1,
+        };
+        let mut found = Next {
+            now: 0,
+            mine: Vec::new(),
+            ready: Vec::new(),
+            skipped: vec![
+                skipped(1, held),
+                skipped(2, SkipReason::NoCriteria),
+                skipped(3, SkipReason::EmptyScope),
+            ],
+        };
+        let head = "a".repeat(40);
+        let mut report = Report {
+            checked: true,
+            branch: Some("integ".to_string()),
+            truncated: false,
+            note: None,
+            proofs: BTreeMap::new(),
+            spec_trailer_hints: BTreeMap::new(),
+        };
+        for card_id in [1, 2, 3] {
+            report
+                .proofs
+                .insert(card_id, Proof::Head { head: head.clone() });
+        }
+        let taken = take_landed(&mut found, &report);
+        let taken_ids: Vec<i64> = taken
+            .iter()
+            .map(|v| v["card_id"].as_i64().unwrap())
+            .collect();
+        assert_eq!(taken_ids, vec![2, 3], "{taken:?}");
+        let left: Vec<i64> = found.skipped.iter().map(|s| s.card_id).collect();
+        assert_eq!(left, vec![1], "the held card stays held");
+    }
 }
