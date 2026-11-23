@@ -615,6 +615,25 @@ fn a_git_trace_variable_does_not_make_a_worktree_unreadable() {
     assert_eq!(got["reservation"]["generation"], json!(2));
 }
 
+/// AC-12 (REQ-16): git's own configuration can switch the trace2 target to standard error
+/// (`trace2.normalTarget`), which the reclaim reads as an unreadable worktree; the git children
+/// switch the target off, so a clean worktree is still reclaimed.
+#[test]
+fn a_trace2_config_does_not_make_a_worktree_unreadable() {
+    let w = world();
+    let card = w.taken(&sid(1), Some(&w.wt), "src/traced2/");
+    w.register_gone(NAME, &sid(1));
+    // The user-level configuration of the temporary home, which every git child reads.
+    fs::write(
+        w.home.path().join(".gitconfig"),
+        "[trace2]\n\tnormalTarget = 2\n",
+    )
+    .unwrap();
+
+    let got = result(&w.reclaim(&sid(2), &card, "1"));
+    assert_eq!(got["reservation"]["generation"], json!(2));
+}
+
 /// AC-5 (REQ-5, REQ-7): the event keeps its kind, carries the proof in its own field, and the
 /// ledger tables and the schema version are what they were; an ordinary reclaim of an ended
 /// lease carries no such field.

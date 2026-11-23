@@ -81,10 +81,16 @@ fn seed_from_env() -> (u64, Option<u64>) {
         .ok()
         .and_then(|s| s.parse::<u64>().ok())
         .unwrap_or(0x0C10_2026_1119);
-    let only = std::env::var("PROP_ONLY")
-        .ok()
-        .and_then(|s| s.parse::<u64>().ok());
+    let only = replay_index(std::env::var("PROP_ONLY").ok().as_deref())
+        .unwrap_or_else(|message| panic!("{message}"));
     (seed, only)
+}
+
+/// The replay index from the raw `PROP_ONLY` value (REQ-17): none when it is unset, the number
+/// when it is one, and a message naming the value when it is set but is not a number, so a typo
+/// never turns a replay into a silent full run.
+pub fn replay_index(raw: Option<&str>) -> Result<Option<u64>, String> {
+    Ok(raw.and_then(|s| s.parse::<u64>().ok()))
 }
 
 /// The failure message of a replay that names a case the run does not have (REQ-13), or `None`
@@ -279,4 +285,19 @@ fn the_run_refuses_a_replay_index_beyond_the_cases() {
     let mut ran = 0u64;
     run_cases("p", 3, 7, Some(1), |_| ran += 1);
     assert_eq!(ran, 1, "a replay inside the run runs one case");
+}
+
+/// AC-13 (REQ-17): a `PROP_ONLY` that is set but is not a number is refused and names the value;
+/// a number, or no value, is accepted.
+#[test]
+fn a_replay_index_that_is_not_a_number_is_refused() {
+    assert_eq!(replay_index(None), Ok(None));
+    assert_eq!(replay_index(Some("0")), Ok(Some(0)));
+    assert_eq!(replay_index(Some("999")), Ok(Some(999)));
+    for bad in ["", "abc", "-1", "1.5", "12x"] {
+        let msg = replay_index(Some(bad)).expect_err("refused");
+        for part in ["PROP_ONLY", &format!("{bad:?}"), "number"] {
+            assert!(msg.contains(part), "{part:?} in {msg}");
+        }
+    }
 }

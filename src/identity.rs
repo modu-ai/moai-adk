@@ -38,9 +38,16 @@ const GIT_ENV_REMOVED: &[&str] = &[
 /// Under `LC_ALL=C` git starts its "no repository here" message with this text.
 pub(crate) const NOT_A_REPOSITORY: &str = "not a git repository";
 
-/// Removes every variable in [`GIT_ENV_REMOVED`] and the numbered
-/// `GIT_CONFIG_KEY_<n>`/`GIT_CONFIG_VALUE_<n>` pairs from `cmd`, and fixes the locale so
-/// failures can be classified. Shared by every git subprocess (`plan`, Issue #2043).
+/// The trace2 targets set to `0` on every git child. Removing the variables is not enough: git's
+/// own configuration (`trace2.normalTarget` and its siblings) would switch the trace on again and
+/// write it to standard error (SPEC-20261122-test-defects-session-reclaim REQ-15).
+const GIT_TRACE2_OFF: &[&str] = &["GIT_TRACE2", "GIT_TRACE2_EVENT", "GIT_TRACE2_PERF"];
+
+/// Removes every variable in [`GIT_ENV_REMOVED`], the numbered
+/// `GIT_CONFIG_KEY_<n>`/`GIT_CONFIG_VALUE_<n>` pairs and every trace variable (a name starting
+/// with `GIT_TRACE`, see [`removed_by_prefix`]) from `cmd`, switches the three trace2 targets off
+/// ([`GIT_TRACE2_OFF`]), and fixes the locale so failures can be classified. Shared by every git
+/// subprocess (`plan`, Issue #2043).
 pub(crate) fn scrub_git_env(cmd: &mut Command) {
     for key in GIT_ENV_REMOVED {
         cmd.env_remove(key);
@@ -278,7 +285,24 @@ pub fn identity(path: &Path) -> Result<Value> {
 
 #[cfg(test)]
 mod scrub_tests {
-    use super::removed_by_prefix;
+    use super::{removed_by_prefix, scrub_git_env};
+    use std::{ffi::OsStr, process::Command};
+
+    /// SPEC-20261122-test-defects-session-reclaim AC-12 (REQ-15, REQ-16): the three trace2 targets are
+    /// set to `0` on the child, not left unset, because git's own configuration
+    /// (`trace2.normalTarget` and its siblings) would otherwise turn the trace on again.
+    #[test]
+    fn the_trace2_targets_are_switched_off_for_the_child() {
+        let mut cmd = Command::new("git");
+        scrub_git_env(&mut cmd);
+        let envs: Vec<_> = cmd.get_envs().collect();
+        for name in ["GIT_TRACE2", "GIT_TRACE2_EVENT", "GIT_TRACE2_PERF"] {
+            assert!(
+                envs.contains(&(OsStr::new(name), Some(OsStr::new("0")))),
+                "{name} should be 0, got {envs:?}"
+            );
+        }
+    }
 
     /// SPEC-20261122-test-defects-session-reclaim AC-10 (REQ-11): every trace variable git
     /// documents (`GIT_TRACE`, `GIT_TRACE_*`, `GIT_TRACE2`, `GIT_TRACE2_*`) is removed from a
