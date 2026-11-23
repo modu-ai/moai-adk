@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261124-check-affected-touch
 title: "check affected 가 빌드 전에 바뀐 파일의 시각을 갱신해 옛 파일 시각으로 되돌린 복구가 낡은 빌드를 남기지 않아요"
-status: draft
+status: approved
 revision: 2
 created: 2026-11-24
+approval:
+  by: leader
+  at: 2026-11-23
+  basis: "리더 결정 노트 8002 (2026-11-23T23:29:48Z, 사용자 위임 2026-11-23T13:57Z, 리더 판단, 사용자 직접 선택 아님, 노트 8000·8001 에 답함): 개정 2 승인, 커밋 0cfb2e5577, 선택지 (a); tests/agent_defs_package.rs 는 범위에 더했고 source-manifest.json 은 줄 임대(card line-lease)로 써요; 개정 1 의 조건(링크 대상 mtime 그대로)은 그대로예요; 리더가 노트에 적었고 레인은 그 노트를 인용만 해요"
+  digest: "sha256:49c100611bf42d78375e0bd7ef4cb159ecdf186ea011c31f9a5a14bedb26171c"
 ---
 
 # check affected 가 빌드 전에 바뀐 파일의 시각을 갱신해 옛 파일 시각으로 되돌린 복구가 낡은 빌드를 남기지 않아요
