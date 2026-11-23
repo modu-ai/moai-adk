@@ -1,0 +1,66 @@
+---
+id: SPEC-20261124-card-next-skip-reason
+title: "card next 가 이미 착지한 기준 없는 카드를 already_landed 로 말해요"
+status: draft
+revision: 1
+created: 2026-11-24
+---
+
+# card next 가 이미 착지한 기준 없는 카드를 already_landed 로 말해요
+
+## Interview
+
+- Q1: A `ready` card has no counted criterion and its head is already on the integration branch: which skip reason does `card next` give? -> A: the leader's default is `already_landed` (dispatch of C-430; to be confirmed by the leader's note, not by this lane). The proof (`via`, `head` or `pr`) tells the leader the work is in; `no_criteria` says only what `take` would refuse, which is no news for a card nobody will take.
+- Q2: Does `card finish` close such a card from the landing hint? -> A: No. `finish` refuses a card with no met criterion (`src/ledger/workflow.rs:1488`), so the hint means "landed: `card criterion-add`, mark it, then `card finish`", not "finish now". The hint is still the more useful word, because it names the head.
+- Q3: Where is the choice written? -> A: here. `docs/design-review/appendix/operations/card.md:22` is held by C-428, so the sentence for it is given under Scope and is added after C-428 lands (criterion 2 of the card).
+
+## Intent
+
+Since SPEC-20261124-card-next-skips-no-criteria, `next_filled` (`src/ledger/workflow.rs`) skips a `ready` card with no counted criterion as `no_criteria` before `src/card/landed.rs` asks whether the card landed. `landed::candidates` hands the proof lookup only the cards still `ready` and the cards skipped for a scope reason (`is_scope_skip`: `empty_scope`, `scope_overlap`), so a criteria-less card whose head is already on the integration branch gets `no_criteria` and no landing hint. This SPEC decides that the landing proof wins and says it in one place.
+
+읽는 사람: `moai card next` 로 카드를 고르는 레인과 리더, 이 규칙을 문서에 옮기는 C-428.
+
+## Non-goals
+
+- Changing `card take`, `card ready`, `card finish` or the counting rule `counted_criteria`.
+- Closing the card or adding a criterion to it; the landing hint only reports.
+- Changing the reason of a held card, a `review` card or a card that is not `ready`.
+
+## Requirements
+
+- REQ-1: When `moai card next` finds a `ready` card nobody holds that has no counted criterion and whose landing is proven, the tool shall list it under `skipped` with reason `already_landed` and the proof, and not under `ready` or with reason `no_criteria`.
+- REQ-2 (REQ-1): IF the `ready` card has no counted criterion and no landing proof, THEN the tool shall list it under `skipped` with reason `no_criteria` as before.
+- REQ-3: The tool shall give a held card, a `review` card with no holder, a card with an empty scope and a card whose scope overlaps another reservation the reason it gave before this change, and a card with a counted criterion the answer it gave before.
+- REQ-4: The tool shall write nothing to the ledger when `card next` skips a card.
+
+## Acceptance
+
+- AC-1 (REQ-1, REQ-4): on a temporary ledger and git project, a `ready` card with a landing event for a head inside the integration branch and all criteria withdrawn is listed under `skipped` with reason `already_landed`, `via` and `head`, is named neither in `ready` nor in `next`, and the ledger bytes are the same before and after · verify: `cargo nextest run --locked --offline --test card_next_skip_reason_cli`
+- AC-2 (REQ-2, REQ-3): a criteria-less `ready` card with no landing keeps reason `no_criteria`, and one whose recorded head is outside the integration branch keeps it too; a card with one open criterion and a landed head is `already_landed` as before; a held card with no criterion keeps `held` · verify: `cargo nextest run --locked --offline --test card_next_skip_reason_cli --test card_finish_cli --test card_needs_criteria_cli`
+
+## Scope
+
+- write: `.moai/specs/SPEC-20261124-card-next-skip-reason/spec.md`, `src/card/landed.rs`, `tests/card_next_skip_reason_cli.rs`
+- read-only: `src/ledger/workflow.rs`, `src/card/work.rs`, `src/ops/card.rs`, `tests/card_finish_cli.rs`, `tests/card_needs_criteria_cli.rs`
+- held by C-428, not written here: `docs/design-review/appendix/operations/card.md` (the row of `card next` at line 22). The sentence for it: "A `ready` card with no counted criterion is skipped as `no_criteria`, except that a landing proof makes it `already_landed` (the proof wins; `card finish` still needs one criterion marked met)."
+- forbidden: `CLAUDE.md`, the ledger file
+
+## Plan
+
+1. RED: `tests/card_next_skip_reason_cli.rs` builds a temporary HOME with a git project (an integration branch one commit past the card's head), makes a card with one criterion, records its landing and withdraws the criterion; `card next` must say `already_landed` and today says `no_criteria`.
+2. `src/card/landed.rs`: the filter that picks the skips a landing proof can remove (`is_scope_skip`, used by `candidates` and `take_landed`) also accepts `SkipReason::NoCriteria`; the function is renamed `is_landable_skip` so its name says what it asks. `src/ledger/workflow.rs` stays as it is.
+3. Guard mutant: take `NoCriteria` out of the filter again; the new test must fail with exit 100.
+4. `moai check affected` once at READY.
+
+## Risks
+
+- Both `candidates` and `take_landed` share one filter, so a card is looked up and taken in one place; a change to only one of them would leave the card in `skipped` twice or never. The test asserts the card appears exactly once.
+- `already_landed` on a criteria-less card does not mean `card finish` works; Q2 and the sentence for the operations doc say so.
+
+## Decisions
+
+| Id | Decision | Basis | Undo |
+| --- | --- | --- | --- |
+| D-1 | `already_landed` wins over `no_criteria` | leader's default in the dispatch of C-430: the landing hint is more useful; needs the leader's approval note (LANE-BLOCKED kind=decision), never recorded by the lane | make `is_landable_skip` ignore `NoCriteria` again and flip the test |
+| D-2 | The filter is renamed `is_landable_skip` | the old name `is_scope_skip` would lie once `no_criteria` is in it; both callers are in `src/card/landed.rs` | rename back |
+| D-3 | The operations document sentence waits for C-428 | C-428 holds `docs/design-review/appendix/operations/card.md`; this card's write scope does not name it | add the path to this card's scope after C-428 lands |
