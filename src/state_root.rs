@@ -560,13 +560,44 @@ fn classify_inner(
 }
 
 /// What an `unknown` verdict (a `.moai/` that holds files and no marker, none of them Go
-/// markers) means for the folder being resolved. The HOME no longer asks (it always answers
-/// `.moai`, SPEC-20261123-home-state-retire); a project's answer is the one left.
+/// markers) means for the folder being resolved.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Unknown {
     /// Ours: a project's tracked part of a worktree (SPECs, evals, `project.yaml`) or a git
     /// common folder, where no other tool writes.
     Ours,
+    /// Ours only when every first-level name is one this generation writes (a HOME that a
+    /// writer started before any marker); any other name may belong to another tool, such as a
+    /// Go HOME whose items [`crate::home_state::home_go_markers`] does not list.
+    OnlyRustNames,
+}
+
+/// First-level names under a HOME's `.moai` that this generation writes and
+/// [`crate::home_layout::HOME_TABLE`] does not list. The slice that owns the HOME move adds them
+/// to the table; until then they must not make the HOME look foreign.
+const RUST_NAMES_NOT_IN_THE_TABLE: &[&str] = &["build", "edit-diagnostics"];
+
+/// Every entry directly inside `moai` is a name this generation writes (a marker name, a
+/// `Writes` row of the HOME table, or one of [`RUST_NAMES_NOT_IN_THE_TABLE`]); Finder's
+/// `.DS_Store` is ignored. An unreadable folder answers no.
+fn only_rust_names(moai: &Path) -> bool {
+    let Ok(entries) = fs::read_dir(moai) else {
+        return false;
+    };
+    entries.into_iter().all(|e| {
+        let Ok(e) = e else {
+            return false;
+        };
+        let name = e.file_name();
+        let Some(name) = name.to_str() else {
+            return false;
+        };
+        name == ".DS_Store"
+            || is_marker_name(name)
+            || RUST_NAMES_NOT_IN_THE_TABLE.contains(&name)
+            || crate::home_layout::lookup(name)
+                .is_some_and(|row| row.rust == crate::home_layout::RustUse::Writes)
+    })
 }
 
 /// The one rule of the three resolvers ([`dir`], [`crate::home_root::dir`],
@@ -595,7 +626,9 @@ pub(crate) fn resolves_to_moai(
     match generation {
         "rust" | "rust-first" => true,
         "none" | "empty" => earlier_absent(),
-        "unknown" => earlier_absent() && unknown == Unknown::Ours,
+        "unknown" => {
+            earlier_absent() && (unknown == Unknown::Ours || only_rust_names(&root.join(MOAI_DIR)))
+        }
         _ => false,
     }
 }

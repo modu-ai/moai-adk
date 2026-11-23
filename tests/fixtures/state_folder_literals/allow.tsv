@@ -177,7 +177,7 @@ tests/no_moai_on_path.rs	3	1
 tests/ops_table_gen_cli.rs	0	1
 tests/optimize_plan_cli.rs	16	19
 tests/output_names_moai.rs	9	0
-tests/path_root_default.rs	11	52
+tests/path_root_default.rs	11	45
 tests/path_root_direct_sites.rs	9	9
 tests/placeholder_profile_guard.rs	0	1
 tests/process_scan_cost_cli.rs	0	5
