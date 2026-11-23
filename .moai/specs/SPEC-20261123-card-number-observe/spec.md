@@ -89,3 +89,5 @@ approval:
 - AC-5: met — `rule_10_sentence_is_pinned` 통과. `sdd.md` 규칙 10 의 문장을 낱말 그대로 요구하고, `never appear` → `may appear`, `cards are personal` → `cards are shared`, 규칙 제목 바꿈, 빈 글 네 사본을 모두 거절해요.
 
 observe 기록(sdd 규칙 11): 경계 `2026-11-25` 가 아직 오지 않아서 새·개정 SPEC 에서 알림이 몇 번 나왔는지와 거짓 양성 수는 읽을 수 없어요(not_run). 기존 SPEC 354개에서는 0번이에요(위 `spec check --all`). 알림을 오류로 올리거나 규칙 10 을 좁히는 일은 이 SPEC 이 아니고 사용자 답과 observe 기록 뒤에 따로 정해요.
+
+후속(테스트만, 동작·요구·기준 그대로): 감사의 비차단 N1(`src/spec_doc.rs` 의 `card_numbers_in` 루프 경계 `i + 2` → `i + 3` 뮤턴트가 살아남음)을 막으려고 `only_a_card_number_at_a_word_start_counts` 에 줄 끝에서 끝나는 한 자리 번호 표본 하나를 더했어요(커밋 `3eb31ca3ef`). 그 뮤턴트를 넣고 `cargo nextest run --offline --locked --test spec_card_number_observe` 를 돌리면 이 테스트가 실패해 exit 100, 되돌린 뒤 6개 모두 통과(exit 0)예요.
