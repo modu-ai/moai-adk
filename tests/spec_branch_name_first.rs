@@ -296,7 +296,7 @@ fn name_first_tdd_resolves_both_forms_and_repair_suffixes_to_one_spec() {
 fn a_linked_branch_reaches_tdd() {
     let linked = "SPEC-20261124-other";
     let (_d, root) = tdd_repo_with("spec/lane-x-20261124", |root| {
-        let folder = root.join(".moai/specs").join(linked);
+        let folder = moai_cli::state_root::path(root, "specs").join(linked);
         fs::create_dir_all(&folder).unwrap();
         let text = format!(
             "---\nid: {linked}\ntitle: \"demo\"\nstatus: draft\nrevision: 1\ncreated: 2026-11-24\n\

@@ -402,9 +402,14 @@ fn linked_text(id: &str, status: &str, branch: Option<&str>) -> String {
     format!("---\nid: {id}\ntitle: \"demo\"\nstatus: {status}\nrevision: 1\ncreated: 2026-11-24\n{line}---\n\n## Intent\n\nx\n")
 }
 
-/// Writes `.moai/specs/<folder>/spec.md` with `text` in the work tree.
+/// The SPEC folder of the project, found through the state folder resolver.
+fn specs(root: &Path) -> PathBuf {
+    moai_cli::state_root::path(root, "specs")
+}
+
+/// Writes `<SPEC folder>/<folder>/spec.md` with `text` in the work tree.
 fn put_spec(root: &Path, folder: &str, text: &str) {
-    let dir = root.join(".moai/specs").join(folder);
+    let dir = specs(root).join(folder);
     fs::create_dir_all(&dir).unwrap();
     fs::write(dir.join("spec.md"), text).unwrap();
 }
@@ -427,7 +432,11 @@ fn a_spec_that_names_the_branch_opens_code_writes() {
         assert_allow(&code_write(&root));
     }
     // The SPEC itself is never held back by this rule.
-    let spec_path = format!(".moai/specs/{OTHER}/spec.md");
+    let spec_path = specs(&root)
+        .join(OTHER)
+        .join("spec.md")
+        .display()
+        .to_string();
     assert_allow(&preflight("claude", &root, &write(&spec_path, &root)));
 }
 
@@ -490,7 +499,7 @@ fn a_link_that_is_not_a_live_spec_of_its_own_folder_opens_nothing() {
     ]);
 }
 
-/// AC-9 (REQ-3): the scan reads the direct children of `.moai/specs/` only and follows no link: a
+/// AC-9 (REQ-3): the scan reads the direct children of the SPEC folder only and follows no link: a
 /// folder that is a link, a `spec.md` that is a link and a SPEC one folder deeper open nothing.
 #[test]
 fn the_scan_reads_one_level_and_follows_no_link() {
@@ -502,19 +511,19 @@ fn the_scan_reads_one_level_and_follows_no_link() {
             fs::create_dir_all(&real).unwrap();
             let text = linked_text("SPEC-20261124-bad", "draft", Some(LANE));
             fs::write(real.join("spec.md"), text).unwrap();
-            fs::create_dir_all(r.join(".moai/specs")).unwrap();
-            symlink(&real, r.join(".moai/specs/SPEC-20261124-bad")).unwrap();
+            fs::create_dir_all(specs(r)).unwrap();
+            symlink(&real, specs(r).join("SPEC-20261124-bad")).unwrap();
         },
         // The `spec.md` is a link to a file elsewhere.
         |r| {
             let real = r.join("elsewhere/spec.md");
             fs::create_dir_all(real.parent().unwrap()).unwrap();
             fs::write(&real, linked_text("SPEC-20261124-bad", "draft", Some(LANE))).unwrap();
-            let dir = r.join(".moai/specs/SPEC-20261124-bad");
+            let dir = specs(r).join("SPEC-20261124-bad");
             fs::create_dir_all(&dir).unwrap();
             symlink(&real, dir.join("spec.md")).unwrap();
         },
-        // One folder deeper than `.moai/specs/<id>/`.
+        // One folder deeper than `<SPEC folder>/<id>/`.
         |r| {
             put_spec(
                 r,
@@ -551,7 +560,7 @@ fn two_specs_naming_one_branch_are_refused() {
         &spec_text("SPEC-20261124-lane-x"),
     );
     assert_allow(&code_write(&root));
-    fs::remove_dir_all(root.join(".moai/specs/SPEC-20261124-lane-x")).unwrap();
-    fs::remove_dir_all(root.join(".moai/specs/SPEC-20261124-two")).unwrap();
+    fs::remove_dir_all(specs(&root).join("SPEC-20261124-lane-x")).unwrap();
+    fs::remove_dir_all(specs(&root).join("SPEC-20261124-two")).unwrap();
     assert_allow(&code_write(&root));
 }
