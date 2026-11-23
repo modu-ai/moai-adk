@@ -2,7 +2,7 @@
 id: SPEC-20261122-test-defects-session-reclaim
 title: "Two defects: the registry tests read the shell's session id, and card reclaim counts the runtime state folder as work"
 status: draft
-revision: 6
+revision: 7
 created: 2026-11-22
 ---
 
@@ -36,7 +36,7 @@ Every lane shell turns `moai check affected` red because the session-register te
 - REQ-15: When moai starts a git child, the child shall run with the trace2 targets `GIT_TRACE2`, `GIT_TRACE2_EVENT` and `GIT_TRACE2_PERF` set to `0`.
 - REQ-16 (REQ-15): IF the git configuration of the user sets a trace2 target, THEN the child shall still write no trace.
 - REQ-17 (REQ-13): IF `PROP_ONLY` is set and is not a number, THEN the Rust property harness shall fail and name the value.
-- REQ-18: When a git read of a recorded worktree fails or writes a line on its standard error that is not a noise line, the refusal shall carry the first such line git wrote.
+- REQ-18: When the file-list read or the checkout-top read of a recorded worktree fails or writes a line on its standard error that is not a noise line, the refusal shall carry the first such line git wrote.
 - REQ-19 (REQ-18): IF the only lines git writes on its standard error say that a name in an attributes file is not a valid attribute name, THEN the read shall count as complete with its list as the answer.
 - REQ-20: When moai starts a git read of a recorded worktree, the child shall run with `core.fsmonitor` switched off.
 - REQ-21 (REQ-20): IF the configuration of the worktree names an fsmonitor hook that does not exist, THEN the read shall list the worktree without a line on its standard error.
@@ -60,9 +60,9 @@ Every lane shell turns `moai check affected` red because the session-register te
 - AC-12 (REQ-15, REQ-16): the scrub puts the three trace2 targets into the child's environment as `0`, and a `card reclaim` of a clean worktree whose user-level git configuration sets `trace2.normalTarget = 2` is reclaimed · verify: `cargo nextest run --lib -E 'test(the_trace2_targets_are_switched_off_for_the_child)'` and `cargo nextest run --test card_reclaim_early_cli -E 'test(a_trace2_config_does_not_make_a_worktree_unreadable)'`
 - AC-13 (REQ-17): a `PROP_ONLY` that is not a number is refused and the message names the value; a number or no value is accepted · verify: `cargo nextest run --test prop_reservation -E 'test(a_replay_index_that_is_not_a_number_is_refused)'`
 - AC-14 (REQ-18): the refusal of a worktree with an untracked folder that cannot be opened carries git's own line (`could not open directory`), and the first line that is not a noise line is the one carried · verify: `cargo nextest run --test card_reclaim_early_cli -E 'test(an_unreadable_folder_is_not_a_clean_worktree)'` and `cargo nextest run --lib -E 'test(the_refusal_names_the_first_line_git_wrote)'`
-- AC-15 (REQ-19): a clean worktree whose attributes file holds an invalid attribute name is reclaimed, and a line that only looks like the noise line still refuses · verify: `cargo nextest run --test card_reclaim_early_cli -E 'test(an_invalid_attribute_line_does_not_make_a_worktree_unreadable)'` and `cargo nextest run --lib -E 'test(a_noise_line_is_not_a_warning)'`
+- AC-15 (REQ-19): a clean worktree whose attributes file holds an invalid attribute name is reclaimed, and a line that only looks like the noise line (a line number that is empty included) still refuses · verify: `cargo nextest run --test card_reclaim_early_cli -E 'test(an_invalid_attribute_line_does_not_make_a_worktree_unreadable)'` and `cargo nextest run --lib -E 'test(a_noise_line_is_not_a_warning)'`
 - AC-16 (REQ-20, REQ-21): a clean worktree whose configuration names a `core.fsmonitor` hook that does not exist is reclaimed · verify: `cargo nextest run --test card_reclaim_early_cli -E 'test(a_missing_fsmonitor_hook_does_not_make_a_worktree_unreadable)'`
-- AC-17 (REQ-22, REQ-23): a folder that lost its `.git` inside a checkout that ignores it is refused as unreadable and the refusal names the checkout git finds, where the checkout around it alone would call it clean, and a checkout of its own, a linked worktree beside the checkout or inside it, and a link to a checkout are each judged by themselves · verify: `cargo nextest run --lib -E 'test(a_folder_that_lost_its_git_is_not_judged_by_the_checkout_around_it) | test(a_linked_worktree_and_a_link_to_a_checkout_are_judged_by_themselves)'`
+- AC-17 (REQ-22, REQ-23): a folder that lost its `.git` inside a checkout that ignores it is refused as unreadable and the refusal names the checkout git finds, where the checkout around it alone would call it clean, and a checkout of its own, a linked worktree beside the checkout or inside it, one whose folder name ends in a space, and a link to a checkout are each judged by themselves · verify: `cargo nextest run --lib -E 'test(a_folder_that_lost_its_git_is_not_judged_by_the_checkout_around_it) | test(a_linked_worktree_and_a_link_to_a_checkout_are_judged_by_themselves) | test(a_worktree_whose_name_ends_in_a_space_is_judged_by_itself)'`
 - AC-18 (REQ-9, REQ-24): an ignored folder git cannot open refuses the early reclaim as unreadable through the ignored-entry read, and a warning of the ignored-file list read refuses it through that read · verify: `cargo nextest run --test card_reclaim_early_cli -E 'test(an_unreadable_ignored_folder_is_not_a_clean_worktree) | test(a_warning_of_the_ignored_file_list_refuses)'`
 - AC-19 (REQ-15, REQ-16): a clean worktree whose user-level git configuration sets `trace2.eventTarget = 2`, and one that sets `trace2.perfTarget = 2`, is reclaimed · verify: `cargo nextest run --test card_reclaim_early_cli -E 'test(a_trace2_event_target_config_does_not_make_a_worktree_unreadable) | test(a_trace2_perf_target_config_does_not_make_a_worktree_unreadable)'`
 
@@ -81,6 +81,7 @@ Every lane shell turns `moai check affected` red because the session-register te
 7. Slice 5 (revision 5, the audit of slice 4): the line break lost before AC-10 is restored; the doc comment of `scrub_git_env` names the trace prefix; AC-12 and AC-13 red first, then the scrub sets the three trace2 targets to `0` and `PROP_ONLY` is parsed by one function that refuses a value that is not a number.
 
 8. Slice 6 (revision 6, the leader's slice 5 of the card: the follow-ups that wait for `src/card/dispatch.rs`, now free): the red tests first (the refusal's git line, the invalid attribute line, the missing fsmonitor hook, the folder that lost its `.git`, the ignored-entry and ignored-file list reads, the event and perf trace2 targets), then the git helpers return the reason with the failure, a noise line is skipped, `core.fsmonitor` is switched off on every read, and the gate checks that git places the checkout top at the recorded folder.
+9. Slice 7 (revision 7, the audit of slice 6): the red tests first (a linked worktree whose folder name ends in a space, and the noise look-alike with an empty line number), then the checkout top is cut only at its line break and the dead name guard of the noise rule goes; REQ-18 is narrowed to the two reads that carry git's line (D-14).
 
 ## Decisions
 
@@ -99,6 +100,7 @@ Every lane shell turns `moai check affected` red because the session-register te
 | D-11 | The missing fsmonitor hook is prevented, not filtered: every read runs with `-c core.fsmonitor=false`. A read of a worktree gains nothing from a watcher, and git would otherwise exec the hook or start the built-in daemon. | R-4 |
 | D-12 | The stderr rule is pinned on the ignored-entry read with a real folder git cannot open, and on the ignored-file list read with a stand-in git named by `MOAI_GIT_BIN`, because no real situation made the list read warn while the entry read stayed silent. | R-4 |
 | D-13 | A recorded folder that is not the top of a checkout of its own is unreadable, never clean: a leftover folder of a removed worktree keeps refusing until someone removes it. | the audit of slice 3 (N6) |
+| D-14 | REQ-18 is narrowed to the two reads that carry git's line, the file-list read and the checkout-top read. The reads that count unpushed commits, find the integration branch or read the stash (`git_output`) keep refusing as unreadable without a reason from git, which is the safe direction and the same refusal as before. The other choice, making `git_output` carry the reason, is not taken: the change is larger and the refusal does not change. | the audit of slice 6 (N1), the leader's decision on that audit (delegation of the user, 2026-11-23T13:57Z), reversible, category none |
 
 ### Research
 
@@ -117,6 +119,7 @@ Slices 4 and 5 left the follow-ups that write `src/card/dispatch.rs` for the car
 - The entry rule lives in a file another card reserves for a flow rename; the edit is one rule and its comment and the other card's hunks are not touched.
 - A folder that is left behind by a removed worktree and is no checkout of its own now refuses a reclaim until it is removed; before, the checkout around it decided (REQ-22, D-13). The refusal names where git places the folder, so the person knows what to remove.
 - A noise line is a guess about git's wording; another git version may word it differently, and then the read refuses (the safe direction) and the refusal carries that line (REQ-18).
+- `-c core.fsmonitor=false` (D-11) was confirmed on git 2.54.0 only (R-4). The audit of slice 6 named git before 2.36 as taking another path for a missing hook (not measured here); a line git still writes then keeps the refusal, the safe direction.
 
 ## Result
 
@@ -168,3 +171,10 @@ Slice 6 (revision 6, the follow-ups of the audits of slices 3 and 4 that write `
 - AC-19: met, pinned at birth (green at bf70f93465, behaviour already in the scrub). `trace2.eventTarget = 2` and `trace2.perfTarget = 2` in the user-level configuration; removing `GIT_TRACE2_EVENT`, or `GIT_TRACE2_PERF`, from the child's environment after the scrub (a mutant in `dispatch.rs`, the scrub itself is outside the card's scope) kills the matching test only.
 - Real runs of the dangerous path (a read that starts git): the CLI tests run the real binary on a mode-000 untracked folder, a mode-000 ignored folder, a missing fsmonitor hook, an attributes file with an invalid name and a stand-in git; the unit test runs the real git on a folder that lost its `.git`.
 - Not claimed, unchanged: the text pin of `every_child_is_built_by_the_one_helper`, the Python twin, `GIT_TRACEBACK` removed by the prefix (harmless), the card numbers of `tests/prop_headver.rs` and `tests/prop_scope_paths.rs` (outside the scope), and the checker `spec check` that misses two list items on one line (a checker card). A noise line other than the one shape keeps the refusal.
+
+Slice 7 (revision 7, the repair of the audit of slice 6):
+
+- AC-15: met. The look-alike `we!rd is not a valid attribute name: .gitattributes:` (the line number empty) joins `a_noise_line_is_not_a_warning`; it is green at birth because the guard stood already. Mutant: the empty-line-number guard removed makes the test fail (exit 100).
+- AC-17: met. `a_worktree_whose_name_ends_in_a_space_is_judged_by_itself`: a real linked worktree whose folder name ends in a space was refused as "not the top of a git checkout of its own" at d4270312e0 (red, exit 100) because the checkout top was trimmed of every white space; `checkout_top_is` now cuts only the closing line break and the worktree is `Ok` at 325dbb1e35.
+- The dead name guard of `is_noise_line` is gone: the line is trimmed before it is read, so the space that opens the separator already means a name stands before it.
+- REQ-18 is narrowed to the file-list read and the checkout-top read (D-14), the git version of the fsmonitor switch is a risk (Risks).
