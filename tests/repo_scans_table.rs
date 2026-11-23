@@ -1038,7 +1038,10 @@ fn a_scan_keeps_its_readers_in_rules_and_no_scan_has_a_readers_key() {
         );
     }
     let scans = load();
-    let reads: Vec<&Value> = scans.iter().filter(|s| id(s).starts_with("reads-")).collect();
+    let reads: Vec<&Value> = scans
+        .iter()
+        .filter(|s| id(s).starts_with("reads-"))
+        .collect();
     assert!(reads.len() >= 7, "{} reads- scans", reads.len());
     for scan in reads {
         let rules = strings(&scan["rules"]);
