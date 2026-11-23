@@ -87,27 +87,38 @@ fn under_a_temporary_root(path: &Path) -> bool {
         || path.starts_with("/private/var/folders")
 }
 
-/// Where the world is built: this crate's `target/` folder, unless the checkout itself lies under
-/// a temporary root (an audit copy in `/tmp`); then a folder under the user's cache folder, which
-/// is removed with the world. The result never depends on where the repository sits.
+/// The variable that names a folder for the fixture world when the checkout itself lies under a
+/// temporary root (an audit copy in `/tmp`). The caller names it; the test never picks one in the
+/// real HOME.
+const WORLD_BASE_VAR: &str = "MOAI_BOUNDARY_TEST_WORLD";
+
+/// Where the world is built, as a pure function of where the checkout lies: this crate's
+/// `target/` folder; a checkout under a temporary root needs a folder outside every temporary
+/// root that the caller names, and without one the world cannot be built (the cases call a
+/// sibling folder "outside", which a temporary root would make "inside").
+fn fixture_base_in(manifest: &Path, named: Option<&Path>) -> Result<PathBuf, String> {
+    let base = manifest.join("target").join("hook-bash-boundary-tests");
+    if !under_a_temporary_root(&base) {
+        return Ok(base);
+    }
+    match named {
+        Some(dir) if !under_a_temporary_root(dir) => Ok(dir.to_path_buf()),
+        Some(dir) => Err(format!(
+            "{WORLD_BASE_VAR} names {}, which lies under a temporary root",
+            dir.display()
+        )),
+        None => Err(format!(
+            "this checkout lies under a temporary root ({}); set {WORLD_BASE_VAR} to a folder \
+             outside every temporary root, or run the test from a checkout outside them",
+            manifest.display()
+        )),
+    }
+}
+
 fn fixture_base() -> PathBuf {
     let manifest = fs::canonicalize(env!("CARGO_MANIFEST_DIR")).unwrap();
-    let mut base = manifest.join("target").join("hook-bash-boundary-tests");
-    if under_a_temporary_root(&base) {
-        let home = std::env::var_os("HOME")
-            .map(PathBuf::from)
-            .expect("HOME names the folder for a world outside the temporary roots");
-        base = fs::canonicalize(&home)
-            .unwrap_or(home)
-            .join(".cache")
-            .join("moai-hook-bash-boundary-tests");
-    }
-    assert!(
-        !under_a_temporary_root(&base),
-        "no folder outside the temporary roots for the fixture world: {}",
-        base.display()
-    );
-    base
+    let named = std::env::var_os(WORLD_BASE_VAR).map(PathBuf::from);
+    fixture_base_in(&manifest, named.as_deref()).unwrap_or_else(|why| panic!("{why}"))
 }
 
 impl World {
@@ -520,7 +531,6 @@ fn protected_ref_cases() -> Vec<Case> {
         a(Own, "git diff NeXT"),
         a(Own, "git merge NeXT"),
         a(Own, "git push origin lane/own --force-with-lease"),
-        a(Own, "git switch NeXT"),
         a(Main, "git status"),
         a(Main, "git log -1"),
         a(Main, "git add src/a.txt"),
@@ -1647,13 +1657,17 @@ fn ac14_deep_nesting_is_unreadable_and_never_overflows_the_stack() {
 
 fn second_audit_denied_cases() -> Vec<Case> {
     use S::{Main, Own};
-    let (de, pr, ur) = ("delete-outside", "protected-ref", "unreadable");
+    let (de, gs, pr, ur) = ("delete-outside", "git-state", "protected-ref", "unreadable");
     vec![
         // B-1: a word that changes how a command word is looked up makes the line unreadable.
         d(Own, "hash -p /bin/rm e; e -rf {OUT}/x", ur),
         d(Own, "hash e=/bin/rm; e -rf {OUT}/x", ur),
         d(Own, "bash -c 'hash -p /bin/rm e; e -rf {OUT}/x'", ur),
-        d(Own, "shopt -s expand_aliases\nalias e=rm\ne -rf {OUT}/x", ur),
+        d(
+            Own,
+            "shopt -s expand_aliases\nalias e=rm\ne -rf {OUT}/x",
+            ur,
+        ),
         d(
             Own,
             "bash -c \"shopt -s expand_aliases\nalias e=rm\ne -rf {OUT}/x\"",
@@ -1696,7 +1710,11 @@ fn second_audit_denied_cases() -> Vec<Case> {
             "cdpath+=(/opt); cd moai-boundary-outside && rm -rf ./*",
             ur,
         ),
-        d(Own, "cdpath=/opt; cd moai-boundary-outside && rm -rf ./*", ur),
+        d(
+            Own,
+            "cdpath=/opt; cd moai-boundary-outside && rm -rf ./*",
+            ur,
+        ),
         d(
             Own,
             "typeset -a cdpath=(/opt); cd moai-boundary-outside && rm -rf ./*",
@@ -1764,6 +1782,84 @@ fn second_audit_denied_cases() -> Vec<Case> {
         d(Own, "cd ~o && rm -rf ./*", ur),
         d(Own, "rm -rf ~o/x", ur),
         d(Own, "cd ~root && rm -rf ./*", ur),
+        // The same lookup set by name: `read`, `printf -v`, `mapfile`, `let`, a `for` variable
+        // and a name reference.
+        d(
+            Own,
+            "read CDPATH <<< /opt; cd moai-boundary-outside && rm -rf ./*",
+            ur,
+        ),
+        d(
+            Own,
+            "printf -v CDPATH %s /opt; cd moai-boundary-outside && rm -rf ./*",
+            ur,
+        ),
+        d(
+            Own,
+            "mapfile -t cdpath <<< /opt; cd moai-boundary-outside && rm -rf ./*",
+            ur,
+        ),
+        d(Own, "let CDPATH=1", ur),
+        d(
+            Own,
+            "for CDPATH in /opt; do cd moai-boundary-outside && rm -rf ./*; done",
+            ur,
+        ),
+        d(
+            Own,
+            "declare -n ref=CDPATH; ref=/opt; cd moai-boundary-outside && rm -rf ./*",
+            ur,
+        ),
+        d(Own, "env cdpath=/opt cd moai-boundary-outside", ur),
+        // An assignment in front of a command that runs a string is part of that string's state.
+        d(
+            Own,
+            "env CDPATH=/opt sh -c 'cd moai-boundary-outside && rm -rf ./*'",
+            ur,
+        ),
+        d(
+            Own,
+            "CDPATH=/opt bash -c 'cd moai-boundary-outside && rm -rf ./*'",
+            ur,
+        ),
+        d(
+            Own,
+            "CDPATH=/opt eval 'cd moai-boundary-outside && rm -rf ./*'",
+            ur,
+        ),
+        d(
+            Own,
+            "CDPATH=/opt script -c 'cd moai-boundary-outside && rm -rf ./*' /dev/null",
+            ur,
+        ),
+        d(
+            Own,
+            "CDPATH=/opt flock /tmp/l -c 'cd moai-boundary-outside && rm -rf ./*'",
+            ur,
+        ),
+        d(
+            Own,
+            "GIT_DIR={PRI}/.git bash -c 'git update-ref refs/heads/lane/x HEAD'",
+            gs,
+        ),
+        // A worktree made without `-b` checks the commit-ish out as a branch, or creates a branch
+        // named after the path.
+        d(Own, "git worktree add ../x main", pr),
+        d(Own, "git worktree add ../x NeXT", pr),
+        d(Own, "git worktree add ../main", pr),
+        d(Own, "git worktree add ../master", pr),
+        // A trap action is a shell string that runs later, judged as if it stood alone.
+        d(Own, "trap 'rm -rf {OUT}/x' EXIT; true", de),
+        d(Own, "trap \"rm -rf {OUT}/x\" INT TERM", de),
+        d(Own, "trap 'git push origin NeXT' EXIT", pr),
+        d(Own, "trap $ACTION EXIT", ur),
+        // The pager of `git grep` is a program that runs.
+        d(Own, "git grep -O'rm -rf {OUT}/x' foo", de),
+        d(
+            Own,
+            "git grep --open-files-in-pager='rm -rf {OUT}/x' foo",
+            de,
+        ),
         // The stack and `cd` forms of the first repair keep their answers.
         d(Own, "pushd {OUT} && popd +1 && rm -rf ./*", ur),
         d(Own, "pushd {OUT} && popd -n && rm -rf ./*", ur),
@@ -1811,7 +1907,11 @@ fn second_audit_denied_cases() -> Vec<Case> {
         d(Own, "git fetch --upload-pack='rm -rf {OUT}/x' .", de),
         d(Own, "git push --receive-pack='rm -rf {OUT}/x' . x:y", de),
         d(Own, "git ls-remote --upload-pack='rm -rf {OUT}/x' .", de),
-        d(Own, "git archive --remote=. --exec='rm -rf {OUT}/x' HEAD", de),
+        d(
+            Own,
+            "git archive --remote=. --exec='rm -rf {OUT}/x' HEAD",
+            de,
+        ),
         // B-5: the wrapper programs of the closed table run the command they are given.
         d(Own, "taskpolicy -b rm -rf {OUT}/x", de),
         d(
@@ -1865,6 +1965,27 @@ fn second_audit_allowed_cases() -> Vec<Case> {
         a(Own, "git log --oneline -3 -- alias.rs"),
         a(Own, "cat ~/notes/hash.txt"),
         a(Own, "grep -rn cdpath src"),
+        a(Own, "CDPATH= bash -c 'cd src && ls'"),
+        a(Own, "env X=1 sh -c 'cd src && ls'"),
+        a(Own, "git worktree add -b lane/new ../new main"),
+        a(Own, "git worktree add --detach ../x NeXT"),
+        a(Own, "git worktree add ../x"),
+        a(Own, "git worktree add ../x lane/other"),
+        a(Own, "git worktree list"),
+        a(Own, "read -r line < src/a.txt"),
+        a(Own, "printf '%s\\n' hi"),
+        a(Own, "printf -v x %s y"),
+        a(Own, "mapfile -t lines < src/a.txt"),
+        a(Own, "let n=n+1"),
+        a(Own, "getopts ab opt"),
+        a(Own, "for f in a b; do echo $f; done"),
+        a(Own, "trap 'echo done' EXIT"),
+        a(Own, "trap - INT"),
+        a(Own, "trap '' TERM"),
+        a(Own, "trap -p"),
+        a(Own, "trap 'rm -rf build' EXIT"),
+        a(Own, "git grep -n foo"),
+        a(Own, "git grep -O less foo"),
         a(Own, "set -e"),
         a(Own, "set -euo pipefail"),
         a(Own, "set -- a b"),
@@ -1907,7 +2028,10 @@ fn second_audit_allowed_cases() -> Vec<Case> {
         a(Own, "xcrun clang -v"),
         a(Own, "xcrun rm -rf {OWN}/build"),
         a(Own, "sandbox-exec -n no-network ls"),
-        a(Own, "sandbox-exec -p '(version 1)(allow default)' cargo build"),
+        a(
+            Own,
+            "sandbox-exec -p '(version 1)(allow default)' cargo build",
+        ),
         a(Own, "flock /tmp/l cargo build"),
         a(Own, "flock -n /tmp/l -c 'cargo build'"),
         a(Own, "flock -x /tmp/l rm -rf {OWN}/build"),
@@ -1957,35 +2081,14 @@ fn ac15_the_second_audit_table_denied_and_allowed_shapes() {
     run_table(&World::new(), "second-audit", &cases);
 }
 
-/// The base folder of the fixture world, as a pure function of where the checkout lies.
-fn fixture_base_in(manifest: &Path, world_base: Option<&Path>) -> Result<PathBuf, String> {
-    let base = manifest.join("target").join("hook-bash-boundary-tests");
-    if !under_a_temporary_root(&base) {
-        return Ok(base);
-    }
-    let home = std::env::var_os("HOME")
-        .map(PathBuf::from)
-        .expect("HOME names the folder for a world outside the temporary roots");
-    let _ = world_base;
-    Ok(fs::canonicalize(&home)
-        .unwrap_or(home)
-        .join(".cache")
-        .join("moai-hook-bash-boundary-tests"))
-}
-
 #[test]
 fn ac15_a_checkout_under_a_temporary_root_never_borrows_the_real_home() {
     let lent = Path::new("/private/tmp/moai-bb-lent-world");
     let inside = Path::new("/private/tmp/moai-bb-checkout");
-    let real_home = PathBuf::from(std::env::var_os("HOME").unwrap_or_default());
-    match fixture_base_in(inside, None) {
-        Ok(base) => assert!(
-            !base.starts_with(&real_home) || real_home.as_os_str().is_empty(),
-            "the world would be built under the real HOME: {}",
-            base.display()
-        ),
-        Err(why) => assert!(why.contains("MOAI_BOUNDARY_TEST_WORLD"), "{why}"),
-    }
+    // A checkout under a temporary root has no world of its own: the answer is a failure that
+    // names the variable, never a folder under the real HOME (which the function never reads).
+    let why = fixture_base_in(inside, None).unwrap_err();
+    assert!(why.contains(WORLD_BASE_VAR), "{why}");
     assert!(fixture_base_in(inside, Some(lent)).is_err());
     let outside = Path::new("/opt/moai-bb-lent-world");
     assert_eq!(

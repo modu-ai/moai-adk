@@ -4,8 +4,10 @@
 //! It splits the text into commands with a small shell lexer (quotes, escapes, substitutions,
 //! here-documents, operators, groups), follows only the plain literal forms of `cd`, `pushd` and
 //! `popd` (a stack index, `CDPATH` or a bare `pushd` leaves the folder unreadable), looks through
-//! the commands that run another command (wrappers, `xargs`, `find -exec`, shell strings, the
-//! git subcommands that run a program), and judges
+//! the commands that run another command (the closed table of wrappers, `xargs`, `find -exec`,
+//! shell strings, `eval`, `trap`, the git subcommands that run a program), treats a word that
+//! changes how a command word or a `cd` operand is looked up (`alias`, `hash`, `enable`, the
+//! `cdable_vars` and `cdpath` options and variables) as unreadable (D-12), and judges
 //! four things: a delete outside the session checkout and the temporary folders, a git state
 //! change of another checkout (or a branch-moving command in the shared primary checkout), a
 //! direct change of a protected branch ref, and a skipped or replaced commit hook. The one
@@ -121,7 +123,18 @@ const TRIGGERS: &[&str] = &[
     "rm", "unlink", "shred", "find", "git", "xargs", "eval", "exec", "sh", "sudo", "doas", "env",
     "command", "builtin", "nohup", "nice", "time", "parallel", "watch", "busybox", "setsid",
 ];
-const TRIGGERS_MORE: &[&str] = &["stdbuf", "ionice", "caffeinate"];
+const TRIGGERS_MORE: &[&str] = &[
+    "stdbuf",
+    "ionice",
+    "caffeinate",
+    // The words that change how a command word or a `cd` operand is looked up (D-12).
+    "alias",
+    "hash",
+    "enable",
+    "setopt",
+    "cdpath",
+    "cdable",
+];
 
 /// Whether the command holds a word the checks react to (D-11). A glob character or a brace can
 /// spell a command word out of nothing a trigger word names, and a word that starts with `=`
@@ -1099,6 +1112,134 @@ fn searched_by_cdpath(text: &str) -> bool {
         || text.starts_with("../"))
 }
 
+/// The lower-case `cdpath` array of zsh is tied to `CDPATH`; any assignment of it leaves the
+/// folder of a later `cd` unreadable (the upper-case variable is followed by value).
+const CDPATH_ARRAY: &str = "cdpath";
+
+/// The state a command text that runs inside another command starts from: the working folder and
+/// the git variables of the outer state, with the assignments written in front of the command
+/// (`CDPATH=/opt bash -c '…'`, `env GIT_DIR=… sh -c '…'`) on top.
+fn with_prefix(state: &State, prefix: &BTreeMap<String, Option<String>>) -> State {
+    let mut inner = state.clone();
+    for (name, value) in prefix {
+        if is_git_env_name(name) {
+            inner.git_env.insert(name.clone(), value.clone());
+        }
+    }
+    inner
+}
+
+/// A word that is, or assigns, the `CDPATH` variable or the `cdpath` array: the name of a
+/// variable that `read`, `printf -v`, `mapfile`, `let`, `getopts` or a `for` loop can set.
+fn names_cdpath_variable(w: &Word) -> bool {
+    if w.dynamic {
+        return false;
+    }
+    let text = w.text();
+    let name = text.split_once('=').map_or(text.as_str(), |(n, _)| n);
+    matches!(name.trim_end_matches('+'), "CDPATH" | CDPATH_ARRAY)
+}
+
+/// Whether an option word names an option that changes how `cd` finds its operand (`cdable_vars`,
+/// `cdpath`). zsh ignores case and underscores in option names, so the match does too.
+fn names_cd_lookup_option(text: &str) -> bool {
+    let flat: String = text
+        .chars()
+        .filter(|c| !matches!(c, '_' | '-'))
+        .flat_map(char::to_lowercase)
+        .collect();
+    flat.contains("cdablevars") || flat.contains("cdpath")
+}
+
+/// `setopt`, `unsetopt`, `shopt` and `set` that turn an option of the `cd` lookup on or off, or
+/// (`set -A`, `+A`) assign an array such as the `cdpath` of zsh. A word of `setopt` that an
+/// expansion decides is unreadable too; the option list of `set` is data.
+fn changes_cd_lookup(name: &str, args: &[Word]) -> bool {
+    let strict = matches!(name, "setopt" | "unsetopt" | "shopt");
+    let mut option_value = false;
+    for w in args {
+        let after_o = std::mem::take(&mut option_value);
+        if w.dynamic {
+            if strict || after_o {
+                return true;
+            }
+            continue;
+        }
+        let text = w.text();
+        if name == "set" && text == "--" {
+            return false;
+        }
+        if names_cd_lookup_option(&text) {
+            return true;
+        }
+        if name == "set" {
+            let cluster = !text.starts_with("--") && (w.is_option() || text.starts_with('+'));
+            if cluster && text[1..].contains('A') {
+                return true;
+            }
+            option_value = text == "-o" || text == "+o";
+        }
+    }
+    false
+}
+
+/// The shell string of a util-linux `flock … FILE -c COMMAND` (also `--command` and a cluster
+/// that ends in `c`). Options may stand before and after the lock file; the first word after
+/// the file that is not an option is the program to run, and ends the scan.
+fn flock_string(args: &[Word]) -> Result<Option<String>, Class> {
+    let mut i = 0;
+    let mut file_seen = false;
+    while i < args.len() {
+        let w = &args[i];
+        if w.dynamic {
+            return Err(Class::Unreadable);
+        }
+        let t = w.text();
+        if t == "--" {
+            return Ok(None);
+        }
+        if !w.is_option() {
+            if file_seen {
+                return Ok(None);
+            }
+            file_seen = true;
+            i += 1;
+            continue;
+        }
+        let value = |at: usize| -> Result<Option<String>, Class> {
+            match args.get(at) {
+                Some(v) if v.dynamic => Err(Class::Unreadable),
+                Some(v) => Ok(Some(v.text())),
+                None => Ok(None),
+            }
+        };
+        if t == "--command" {
+            return value(i + 1);
+        }
+        if let Some(v) = t.strip_prefix("--command=") {
+            return Ok(Some(v.to_owned()));
+        }
+        if t.starts_with("--") {
+            if matches!(t.as_str(), "--timeout" | "--wait" | "--conflict-exit-code") {
+                i += 1;
+            }
+        } else {
+            let cluster = &t[1..];
+            if cluster.ends_with('c') {
+                return value(i + 1);
+            }
+            if let Some(p) = cluster.find('c') {
+                return Ok(Some(cluster[p + 1..].to_owned()));
+            }
+            if cluster.ends_with(['w', 'E']) {
+                i += 1;
+            }
+        }
+        i += 1;
+    }
+    Ok(None)
+}
+
 /// The shell string of a util-linux `script -c COMMAND` (also `--command` and a cluster that
 /// ends in `c`), `None` when the call has none.
 fn script_string(args: &[Word]) -> Result<Option<String>, Class> {
@@ -1245,6 +1386,9 @@ impl Walker<'_> {
         while at < cmd.words.len() {
             match split_assign(&cmd.words[at]) {
                 Some((name, value)) => {
+                    if name == CDPATH_ARRAY {
+                        return Err(Class::Unreadable);
+                    }
                     prefix.insert(name, value_of(&value));
                     at += 1;
                 }
@@ -1267,7 +1411,12 @@ impl Walker<'_> {
                 continue;
             }
             if bare && ["for", "select"].contains(&text.as_str()) {
-                return Ok(());
+                // `for CDPATH in …` sets the variable for the body.
+                return if rest.get(1).is_some_and(names_cdpath_variable) {
+                    Err(Class::Unreadable)
+                } else {
+                    Ok(())
+                };
             }
             if bare && ["case", "function", "coproc"].contains(&text.as_str()) {
                 return Err(Class::Unreadable);
@@ -1319,18 +1468,63 @@ impl Walker<'_> {
                     // util-linux `-c COMMAND` runs a shell string; the BSD form runs the words
                     // after the file name (peeled below).
                     if let Some(text) = script_string(args)? {
-                        return self.walk(&text, &mut state.clone(), depth + 1);
+                        return self.walk(&text, &mut with_prefix(state, &prefix), depth + 1);
                     }
                 }
                 "export" | "declare" | "typeset" | "readonly" | "local" => {
                     for w in args {
                         if let Some((n, v)) = split_assign(w) {
+                            // A name reference (`declare -n ref=CDPATH`) sets it by another name.
+                            if n == CDPATH_ARRAY || names_cdpath_variable(&v) {
+                                return Err(Class::Unreadable);
+                            }
                             if is_git_env_name(&n) {
                                 state.git_env.insert(n, value_of(&v));
                             }
+                        } else if !w.dynamic && w.text() == CDPATH_ARRAY {
+                            return Err(Class::Unreadable);
                         }
                     }
                     return Ok(());
+                }
+                // Commands that set a variable by name: the `CDPATH` they name is unreadable.
+                "read" | "printf" | "mapfile" | "readarray" | "let" | "getopts" => {
+                    return if args.iter().any(names_cdpath_variable) {
+                        Err(Class::Unreadable)
+                    } else {
+                        Ok(())
+                    };
+                }
+                // `trap ACTION SIGNAL…` runs ACTION, a shell string, later: it is judged as if it
+                // stood alone.
+                "trap" => {
+                    let operands: Vec<&Word> = args.iter().filter(|w| !w.is_option()).collect();
+                    let Some(action) = operands.first() else {
+                        return Ok(());
+                    };
+                    if action.dynamic {
+                        return Err(Class::Unreadable);
+                    }
+                    let text = action.text();
+                    if text.is_empty() || text == "-" || text.chars().all(|c| c.is_ascii_digit()) {
+                        return Ok(());
+                    }
+                    return self.walk(&text, &mut state.clone(), depth + 1);
+                }
+                // Words that change how a command word or a `cd` operand is looked up: the
+                // line is unreadable whatever follows (D-12). The list of words is closed.
+                "alias" | "unalias" | "hash" | "enable" => return Err(Class::Unreadable),
+                "setopt" | "unsetopt" | "shopt" | "set" => {
+                    return if changes_cd_lookup(name, args) {
+                        Err(Class::Unreadable)
+                    } else {
+                        Ok(())
+                    };
+                }
+                "flock" => {
+                    if let Some(text) = flock_string(args)? {
+                        self.walk(&text, &mut with_prefix(state, &prefix), depth + 1)?;
+                    }
                 }
                 "unset" => {
                     for w in args {
@@ -1341,7 +1535,7 @@ impl Walker<'_> {
                 "rm" | "rmdir" | "unlink" | "shred" => return self.delete(name, args, state),
                 "find" => return self.find(args, &prefix, stdin, state, depth),
                 "git" => return self.git(args, &prefix, state, depth),
-                "eval" => return self.eval(args, state, depth),
+                "eval" => return self.eval(args, &with_prefix(state, &prefix), depth),
                 "xargs" => return xargs(args),
                 "parallel" => {
                     return if args
@@ -1362,6 +1556,9 @@ impl Walker<'_> {
                         }
                         let t = w.text();
                         if let Some((n, v)) = split_assign(w) {
+                            if n == CDPATH_ARRAY {
+                                return Err(Class::Unreadable);
+                            }
                             prefix.insert(n, value_of(&v));
                             i += 1;
                         } else if matches!(
@@ -1387,7 +1584,7 @@ impl Walker<'_> {
                 _ => {}
             }
             if SHELLS.contains(&name) {
-                return self.shell(args, stdin, state, depth);
+                return self.shell(args, stdin, &with_prefix(state, &prefix), depth);
             }
             if name == "command"
                 && args
@@ -1941,7 +2138,7 @@ impl Walker<'_> {
         let name = sub_word.text();
         let rest = &args[i..];
         // A subcommand that runs another command: judge that command as if it stood alone.
-        self.git_runs_command(&name, rest, prefix, state, depth)?;
+        self.git_runs_command(&name, rest, prefix, &with_prefix(state, prefix), depth)?;
         let kind = classify_git(&name, rest)?;
         if kind == GitKind::Read {
             return Ok(());
@@ -2034,6 +2231,8 @@ impl Walker<'_> {
                 ],
                 &mut strings,
             )?,
+            "clone" => option_values(rest, &['u'], &["--upload-pack"], &mut strings)?,
+            "grep" => option_values(rest, &['O'], &["--open-files-in-pager"], &mut strings)?,
             "fetch" | "pull" | "push" | "ls-remote" | "archive" => option_values(
                 rest,
                 &[],
@@ -2233,6 +2432,35 @@ impl Walker<'_> {
                         }
                     }
                 }
+                // `worktree add <path> [<commit-ish>]` without `-b` checks the commit-ish out as a
+                // branch, or creates a branch named after the path, when it is not a commit.
+                if name == "worktree"
+                    && !named
+                    && !p.has_any(&["--detach", "-d"])
+                    && p.pos.first().is_some_and(|w| w.text() == "add")
+                {
+                    let created = p
+                        .pos
+                        .get(2)
+                        .map(|w| w.text())
+                        .or_else(|| p.pos.get(1).map(|w| basename(&w.text()).to_owned()));
+                    if created.is_some_and(|c| protected_name(&c)) {
+                        return Err(Class::ProtectedRef);
+                    }
+                }
+                // A plain `checkout main` or `switch main` creates the local branch from the
+                // remote-tracking one when it does not exist; a `--` makes the word a tree to
+                // restore from, and `--detach` makes it a commit.
+                if matches!(name, "checkout" | "switch")
+                    && !named
+                    && !track
+                    && p.tail.is_empty()
+                    && !p.has_any(&["--detach", "-d", "--orphan"])
+                    && p.pos.len() == 1
+                    && protected_name(&p.pos[0].text())
+                {
+                    return Err(Class::ProtectedRef);
+                }
                 for flag in [
                     "-b",
                     "-B",
@@ -2305,8 +2533,14 @@ impl Walker<'_> {
                 if p.dynamic {
                     return Err(Class::Unreadable);
                 }
-                // `git rebase <upstream> <branch>` checks `<branch>` out and moves it.
-                if let Some(branch) = p.pos.get(1) {
+                // `git rebase <upstream> <branch>` checks `<branch>` out and moves it; with
+                // `--root` there is no upstream and the one positional is the branch.
+                let moved = if p.has("--root") {
+                    p.pos.last()
+                } else {
+                    p.pos.get(1)
+                };
+                if let Some(branch) = moved {
                     if protected_name(&branch.text()) {
                         return Err(Class::ProtectedRef);
                     }
@@ -2533,6 +2767,72 @@ fn wrap_spec(name: &str) -> Option<WrapSpec> {
             &["-arm64", "-x86_64", "-x86_64h", "-i386", "-c"],
             &["-arch", "-e", "-d"],
             0,
+        ),
+        // macOS `taskpolicy [-d p] [-g p] [-c clamp] [-b] [-t tier] [-l tier] [-a] [-s] [-S shims]
+        // [-m limit] [-j pri] [-P action] program…`; `-p pid` names no program.
+        "taskpolicy" => (
+            &["-b", "-B", "-a", "-s", "-x", "-X"],
+            &["-d", "-g", "-c", "-t", "-l", "-m", "-j", "-P", "-S", "-p"],
+            0,
+        ),
+        // `xcrun [--sdk name] [--toolchain name] [-v -n -k -l -r -f] tool…` (the `--show-*` forms
+        // name no tool).
+        "xcrun" => (
+            &[
+                "-v",
+                "--verbose",
+                "-n",
+                "--no-cache",
+                "-k",
+                "--kill-cache",
+                "-l",
+                "--log",
+                "-r",
+                "--run",
+                "-f",
+                "--find",
+                "--show-sdk-path",
+                "--show-sdk-version",
+                "--show-sdk-build-version",
+                "--show-sdk-platform-path",
+                "--show-sdk-platform-version",
+                "--show-toolchain-path",
+            ],
+            &["--sdk", "-sdk", "--toolchain", "-toolchain"],
+            0,
+        ),
+        // `sandbox-exec [-f file] [-n name] [-p string] [-D key=value] command…`.
+        "sandbox-exec" => (&[], &["-f", "-n", "-p", "-D"], 0),
+        // util-linux `flock [-sxun o] [-w time] [-E code] FILE command…`; the `-c` string is read
+        // by `flock_string`, and the lock file is the one positional.
+        "flock" => (
+            &[
+                "-s",
+                "-x",
+                "-u",
+                "-n",
+                "-o",
+                "-F",
+                "-v",
+                "--shared",
+                "--exclusive",
+                "--unlock",
+                "--nonblock",
+                "--nb",
+                "--close",
+                "--no-fork",
+                "--verbose",
+            ],
+            &[
+                "-w",
+                "-E",
+                "-c",
+                "--timeout",
+                "--wait",
+                "--conflict-exit-code",
+                "--command",
+            ],
+            1,
         ),
         // BSD `script [-adefkqr] [-t time] [-F pipe] file command…` (the util-linux `-c` string
         // is read by `script_string`).
