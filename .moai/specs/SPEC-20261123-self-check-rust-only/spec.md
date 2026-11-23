@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261123-self-check-rust-only
 title: "self-check.md 의 테스트 문장이 Rust 전용 규칙을 말하고 repo-scans 는 cargo 검사만 돈다고 말하며, next-flow.md 의 감사 브리프 문장이 스캔 테스트 이름과 PASS 영수증 단계를 다시 말함"
-status: draft
+status: approved
 revision: 3
 created: 2026-11-23
+approval:
+  by: leader
+  at: 2026-11-23
+  basis: "리더 결정 노트 7663 (2026-11-23T16:04:18Z, 사용자 위임 2026-11-23T13:57Z): 개정 3(5a14a4ddca)을 (a) 줄 끝까지 읽기로 승인; 리더가 노트에 적었고 레인은 그 노트를 인용만 해요. 개정 1·2 의 승인은 카드 C-404 노트 7530 에 있어요"
+  digest: "sha256:031b79a664d2ee6b2f169148a7c9b1efbfe8c10f8794a76f62a1dcbd33c9201a"
 ---
 
 # self-check.md 의 테스트 문장이 Rust 전용 규칙을 말하고 repo-scans 는 cargo 검사만 돈다고 말하며, next-flow.md 의 감사 브리프 문장이 스캔 테스트 이름과 PASS 영수증 단계를 다시 말함
@@ -17,6 +22,12 @@ created: 2026-11-23
 개정 2(사용자 승인 때 리더가 덧붙인 범위): 같은 표를 말하는 `skills/moai/references/flows/next-flow.md` 의 감사 브리프 문장이 `SPEC-20261123-doc-sentence-pins` 로 cargo 검사만 돈다는 뜻을 얻는 대신 두 뜻을 잃었어요: 감사 브리프가 스캔 테스트의 이름을 대야 한다는 것, 그리고 각 스캔을 PASS 영수증의 `scan:<id>` 단계로 적는다는 것. 이 SPEC 이 두 뜻을 되살리고, 파일이 `7974` 바이트(그 SPEC 이 착지한 크기) 아래에 머물게 문장을 줄여 써요. 되살린 문장에도 뜻이 뒤집히면 실패하는 고정 테스트를 더해요.
 
 개정 3(카드 C-412, 감사 #404 의 비차단 N1·N2·N4): 수리 뒤의 핀은 문구를 앞뒤 낱말까지 읽지만 문구 뒤에 붙는 말은 읽지 않아요. 그래서 3번 항목의 `` `tools/repo_scans.json`, and the macOS `` 를 `` `tools/repo_scans.json` left out, and the macOS `` 로 바꿔도 테스트가 통과해요(N1). 핀이 읽지 않는 말, 곧 `the changed` → `the unchanged`, `also` → `never`, `of the PASS for` → `of the PASS, never for` 같은 바꾸기도 통과해요(N2). 이 개정은 핀 테스트가 문장을 항목(줄)의 끝까지 통째로 읽게 하고, 문장의 낱말 하나를 지우거나 그 앞에 `not` 을 붙인 글도 실패하는지 낱말마다 훑어 보이게 해요. 문서 문장은 바꾸지 않아요(핀만 엄격해져요). D-7 행의 중첩 백틱도 정리해요(N4).
+
+## Interview
+
+- Q1: `self-check.md` 의 어느 항목을 고치나요? → A: 3번과 5번만이에요(사용자 선택 2026-11-23T13:20:42Z `3·5번만`, 카드 C-404 노트 7530; D-1).
+- Q2: `next-flow.md` 의 감사 브리프 문장이 잃은 두 뜻도 되살리나요? → A: 되살려요(개정 2, 같은 노트 7530; D-5).
+- Q3: 핀은 문장을 얼마나 읽나요? → A: 줄 끝까지 통째로 읽어요(리더 결정 2026-11-23T16:04:18Z, 카드 C-412 노트 7663, 개정 3; D-8). 같은 줄에 다른 카드가 문장을 더하면 핀도 같이 고치는 비용은 받아들여요.
 
 ## Non-goals
 
