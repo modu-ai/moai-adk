@@ -594,9 +594,16 @@ fn ac5_the_branch_is_read_from_head_files_only() {
     fs::remove_file(fx.head()).unwrap();
     fs::remove_dir(fx.checkout.join(".git")).unwrap();
     assert_eq!(fx.context("startup"), unknown, "no .git");
+    mkfifo(&fx.checkout.join(".git"));
+    assert_eq!(fx.context("startup"), unknown, ".git is a FIFO");
+    fs::remove_file(fx.checkout.join(".git")).unwrap();
+    // A `.git` file that names a folder holding no `HEAD`.
+    fs::write(fx.checkout.join(".git"), "gitdir: /nonexistent-git-dir\n").unwrap();
+    assert_eq!(fx.context("startup"), unknown, "gitdir names nothing");
+    fs::remove_file(fx.checkout.join(".git")).unwrap();
 
     // The `HEAD` file is read up to 1024 bytes: 1024 is read, 1025 is unknown.
-    for (bytes, readable) in [(1024usize, true), (1025, false)] {
+    for (bytes, readable) in [(1024usize, true), (1025, false), (5 * 1024 * 1024, false)] {
         let fx = Fx::new(true);
         fs::create_dir_all(fx.checkout.join(".git")).unwrap();
         let name = "b".repeat(bytes - "ref: refs/heads/".len() - 1);
@@ -626,7 +633,7 @@ fn ac6_no_process_no_write_and_two_variables() {
     let marker = fx.root.join("git-was-started");
     common::write_executable(
         &bin.join("git"),
-        &format!("#!/bin/sh\ntouch '{}'\nexit 0\n", marker.display()),
+        &format!("#!/bin/sh\n/usr/bin/touch '{}'\nexit 0\n", marker.display()),
     );
     let before = snapshot(&fx.root);
     for source in ["startup", "compact"] {

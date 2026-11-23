@@ -39,8 +39,8 @@ created: 2026-11-23
 <!-- This SPEC adds no check that blocks a tool call: the SessionStart handler only adds context. -->
 - REQ-1: When `moai hook session-context` runs in a MoAI project with a JSON object on stdin, the handler shall print one JSON object `{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":<text>}}` on stdout and exit 0 · failure: none — a failure that stops the text from being built is handled under REQ-8.
 - REQ-2: The context text shall have at most 600 characters and no control character other than the line feed between its lines · failure: none — the title and the branch are cut to their limits under REQ-3 and REQ-4 before the whole is cut.
-- REQ-3: The first line of the text shall be `MoAI: branch <name>` with the name read from the `HEAD` file of the checkout holding the input's `cwd` (else the working folder) and cut to 100 characters with a trailing `…`, `MoAI: detached <12 hex digits>` for a detached head, or `MoAI: branch unknown` when `HEAD` cannot be read · failure: none — an unreadable `HEAD` reads as unknown.
-- REQ-4: When an active reservation of the ledger names the checkout's root as its `worktree` or the branch as its `branch`, the first line shall continue with ` · card C-<id> "<title>" (<state>)`, the title cut to 80 characters with its whitespace collapsed and the reservation that names the root preferred · failure: none — a ledger that cannot be read is handled under REQ-8.
+- REQ-3: The first line of the text shall be `MoAI: branch <name>` with the name read from the `HEAD` file of the checkout holding the input's `cwd` (else the working folder) and cut to 100 characters, the trailing `…` included, `MoAI: detached <12 hex digits>` for a detached head, or `MoAI: branch unknown` when `HEAD` cannot be read · failure: none — an unreadable `HEAD` reads as unknown.
+- REQ-4: When an active reservation of the ledger names the checkout's root as its `worktree` or the branch as its `branch`, the first line shall continue with ` · card C-<id> "<title>" (<state>)`, the title cut to 80 characters (the trailing `…` included) with its whitespace collapsed and the reservation that names the root preferred · failure: none — a ledger that cannot be read is handled under REQ-8.
 - REQ-5 (REQ-4): IF no active reservation names the checkout, THEN the first line shall continue with ` · no card reserved here`.
 - REQ-6: When the input's `source` is `compact` and a card is reserved here, the text shall have a second line `After compaction first read RESUME note #<note_id> of C-<id> (moai card show C-<id>)` naming the card's newest note whose body starts with `RESUME `, or `After compaction read the notes of C-<id>: no RESUME note yet` when the card has none, and for any other `source` or without a reserved card no second line · failure: none — a ledger that cannot be read is handled under REQ-8.
 - REQ-7: The handler shall read the ledger once through one read-only connection, read `HEAD` and `.git` as plain files, start no process (git included), make no network call, read no environment variable other than `CLAUDE_PROJECT_DIR` and `HOME`, and leave every file of the project and of HOME unchanged except the receipt of REQ-8 · failure: none.
@@ -113,4 +113,29 @@ created: 2026-11-23
 
 ## Result
 
-Status: draft, not implemented yet.
+Status: implemented on the code slice. The SPEC stays `draft`: approval is the user's pick, not a lane's. Nothing is installed, no settings file is read or written, the installed hooks of this clone are unchanged, and `src/main.rs` and `src/lib.rs` are not in the diff.
+
+- AC-1: met — `hook_session_start_cli` test `ac1_a_start_names_the_branch_and_the_reserved_card_in_one_json_line`
+- AC-2: met — `ac2_the_card_part_follows_the_reservation_of_this_checkout` (six reservation shapes and the root-over-branch order)
+- AC-3: met — `ac3_a_compact_start_names_the_newest_resume_note`
+- AC-4: met — `ac4_limits_hold_at_the_edge_and_control_characters_never_reach_the_text` (title 80/81, branch 100/101, single- and multi-byte, controls, the 600-character bound with every field at its limit)
+- AC-5: met — `ac5_the_branch_is_read_from_head_files_only` (plain checkout, linked worktree with absolute and relative `gitdir`, cwd below the root and no cwd, detached head, `HEAD` missing, a folder, a FIFO, `.git` a FIFO, `gitdir` naming nothing, `HEAD` of 1024, 1025 and 5 MiB bytes)
+- AC-6: met — `ac6_no_process_no_write_and_two_variables` (a stand-in `git` first on `PATH` never starts; project and HOME unchanged; the source scan and the two-variable scan)
+- AC-7: met — `ac7_an_unreadable_ledger_gives_the_branch_and_one_receipt_line` (absent, damaged, exclusive lock, no project folder; the locked case answered within 3 seconds)
+- AC-8: met — `ac8_links_under_home_are_not_followed` (a link at `.moai`, `projects` and the project folder; a receipt file that is a link and a FIFO); the 1-a test `ac5_a_receipt_link_is_not_followed_and_a_hostile_project_id_is_refused` still passes
+- AC-9: met — `ac9_a_closed_pipe_still_exits_zero` (stderr closed, stdout closed, both closed)
+- AC-10: met — `ac10_an_input_over_the_limit_is_read_to_its_end` (16 MiB written completely)
+- AC-11: met — `hook_latency_cli` test `ac11_the_project_case_runs_the_card_path`
+- AC-12: met — `hook_entry_cli` and `hook_latency_cli` pass; the 1-a test `ac1_…` no longer lists `session-context` (it now answers context) and `ac4_the_stdin_limit_…` takes the context answer at the limit for that name
+- AC-13: met — one `cargo nextest run` over `hook_dispatch_cli`, `hook_mode_cli`, `hook_legacy_cli`, `lane_stop_hook_cli`, `diff_go`, `help_layout` and the three new-or-changed hook targets: 111 passed, 0 failed (exit 0)
+- AC-14: met — `moai spec check SPEC-20261123-hook-session-start` answers 0 errors and 0 warnings
+
+Against the 1-a binary, all 11 new tests failed (commit `859ebca1fe`): the empty handler printed nothing, a link under HOME was followed, a closed pipe gave exit 101, an input over the limit cut the writer off, and the latency tool reserved no card. After the code (commit `708fae71b3`): the three hook targets 26 of 26 pass, `cargo clippy --offline --locked --all-targets -- -D warnings` exits 0.
+
+Mutants (each edits one guard of the committed code, then runs the test of that guard; "killed" means exit 100): wrong `hookEventName`, root match off, RESUME prefix loosened to "contains", title limit 81, `HEAD` limit 1025, a `git` process started in `read_head`, ledger wait 5 s, receipt link refusal removed, panicking output, stdin drain removed, no card reserved by the latency tool, receipt opened without `O_NOFOLLOW`, `HEAD` opened without `O_NONBLOCK` (the FIFO case then hangs until the test's 20-second kill), second line for every `source` — 14 of 14 killed. The first run of the `git` mutant was killed only by the source scan because the stand-in's `touch` was not found on its `PATH`; the stand-in now calls `/usr/bin/touch` and the marker kills it.
+
+Dangerous path: every hostile shape is a test of the real debug binary in a temporary checkout and HOME (FIFO and folder as `HEAD`, `.git` as a FIFO, a 5 MiB `HEAD`, a locked ledger, `.moai`, `projects` and the project folder as links to a folder holding a valid ledger, a closed stderr and stdout, a 16 MiB stdin); a separate shell run of the same shapes was refused by the session's worktree guard and was not made.
+
+Measurement (`moai hook latency --name session-context`, 2026-11-23, load average 130 at the time): release build, 200 samples, `not_moai_project` p50 6.563 ms, p90 8.877 ms, max 41.096 ms; `moai_project` (git checkout, registered ledger, one reserved card) p50 8.187 ms, p90 9.570 ms, max 13.113 ms. Debug build, 100 samples, load 47: p50 3.635 ms, p90 3.826 ms. The plan's targets (p50 ≤ 50 ms, p90 ≤ 100 ms) are met in the project case. The tool judges no number; the comparison is the reader's.
+
+Not done here: a real Claude Code session loading the entry (nothing is installed), a Windows run, the exec-form version check, and a run against the real HOME ledger (read-only, left for the leader's application after the user's pick). Deferred by decision: catching a panic of the handler; N3, N5 and N7 of the 1-a audit (optional there). The `check affected` receipt of the final head is on the card's READY note.
