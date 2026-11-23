@@ -136,8 +136,12 @@ pub fn pending(conn: &Connection) -> Result<Vec<Pending>, LedgerError> {
 /// What a claim attempt found.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Claim {
-    /// This caller holds the request now, as attempt `attempt`.
-    Taken { attempt: i64 },
+    /// This caller holds the request now, as attempt `attempt`. `abandoned` is the earlier attempt
+    /// whose lease ended with no release and no result, when this claim found one.
+    Taken {
+        attempt: i64,
+        abandoned: Option<i64>,
+    },
     /// Another attempt holds a lease that has not ended.
     Busy,
     /// The request already has a result.
@@ -149,6 +153,41 @@ fn result_exists(tx: &Transaction<'_>, request: i64, card_id: i64) -> Result<boo
         "SELECT EXISTS (SELECT 1 FROM event WHERE kind = 'cleanup.result' AND card_id = ?1 \
                          AND json_extract(payload, '$.request') = ?2)",
         params![card_id, request],
+        |r| r.get(0),
+    )?)
+}
+
+/// The newest attempt of the request: its number, its holder and the end of its lease.
+fn newest_attempt(
+    tx: &Transaction<'_>,
+    request: i64,
+    card_id: i64,
+) -> Result<Option<(i64, String, i64)>, LedgerError> {
+    Ok(tx
+        .query_row(
+            "SELECT json_extract(payload, '$.attempt'), json_extract(payload, '$.holder'), \
+                    json_extract(payload, '$.lease_until') \
+             FROM event WHERE kind = 'cleanup.started' AND card_id = ?1 \
+               AND json_extract(payload, '$.request') = ?2 \
+             ORDER BY json_extract(payload, '$.attempt') DESC LIMIT 1",
+            params![card_id, request],
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+        )
+        .optional()?)
+}
+
+/// True when the attempt gave its claim back.
+fn released(
+    tx: &Transaction<'_>,
+    request: i64,
+    card_id: i64,
+    attempt: i64,
+) -> Result<bool, LedgerError> {
+    Ok(tx.query_row(
+        "SELECT EXISTS (SELECT 1 FROM event WHERE kind = 'cleanup.released' \
+                         AND card_id = ?1 AND json_extract(payload, '$.request') = ?2 \
+                         AND json_extract(payload, '$.attempt') = ?3)",
+        params![card_id, request, attempt],
         |r| r.get(0),
     )?)
 }
@@ -185,32 +224,42 @@ pub fn claim(
             return Ok(Claim::Over);
         }
         // The newest attempt: its number, its lease and whether it gave the claim back.
-        let newest: Option<(i64, i64)> = tx
-            .query_row(
-                "SELECT json_extract(payload, '$.attempt'), json_extract(payload, '$.lease_until') \
-                 FROM event WHERE kind = 'cleanup.started' AND card_id = ?1 \
-                   AND json_extract(payload, '$.request') = ?2 \
-                 ORDER BY json_extract(payload, '$.attempt') DESC LIMIT 1",
-                params![card_id, request],
-                |r| Ok((r.get(0)?, r.get(1)?)),
-            )
-            .optional()?;
+        let newest = newest_attempt(tx, request, card_id)?;
+        let mut abandoned = None;
         let attempt = match newest {
             None => 1,
-            Some((attempt, lease_until)) => {
-                let released: bool = tx.query_row(
-                    "SELECT EXISTS (SELECT 1 FROM event WHERE kind = 'cleanup.released' \
-                                     AND card_id = ?1 AND json_extract(payload, '$.request') = ?2 \
-                                     AND json_extract(payload, '$.attempt') = ?3)",
-                    params![card_id, request, attempt],
-                    |r| r.get(0),
-                )?;
-                if !released && lease_until > now {
-                    return Ok(Claim::Busy);
+            Some((attempt, _, lease_until)) => {
+                if !released(tx, request, card_id, attempt)? {
+                    if lease_until > now {
+                        return Ok(Claim::Busy);
+                    }
+                    // Its lease is over and no end of it was recorded: a run that died, or one
+                    // that finished after its lease ended (it writes nothing then either). Neither
+                    // could leave a line, so this claim does, once (D-2 of the follow-up SPEC).
+                    abandoned = Some(attempt);
                 }
                 attempt + 1
             }
         };
+        if let (Some(dead), Some((_, holder_of_dead, lease_until))) = (abandoned, newest) {
+            put(
+                tx,
+                now,
+                holder,
+                card_id,
+                STEP,
+                &format!("{STEP}:{request}:{dead}:attempt:abandoned"),
+                &json!({
+                    "request": request, "attempt": dead, "kind": "attempt",
+                    "target": format!("attempt {dead}"), "status": "abandoned",
+                    "reasons": ["lease_ended"],
+                    "detail": format!(
+                        "held by {holder_of_dead} until {lease_until} (database clock); no end of it \
+                         was recorded: the run died, or its lease ended before it finished"
+                    ),
+                }),
+            )?;
+        }
         put(
             tx,
             now,
@@ -223,14 +272,15 @@ pub fn claim(
                 "lease_until": now + lease_secs,
             }),
         )?;
-        Ok(Claim::Taken { attempt })
+        Ok(Claim::Taken { attempt, abandoned })
     })
 }
 
 /// What one attempt did to one target.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Step {
-    /// `worktree` or `branch`.
+    /// `worktree`, `branch`, `queue` (a ref of the drained reference-transaction queue) or
+    /// `attempt` (the line a claim leaves for an earlier attempt that died).
     pub kind: &'static str,
     pub target: String,
     pub status: String,
@@ -247,8 +297,20 @@ pub enum Outcome {
     Release,
 }
 
+/// What [`finish_attempt`] did.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Finish {
+    /// The steps and the end of the attempt were written.
+    Written,
+    /// The request already has a result: nothing was written.
+    Over,
+    /// The attempt is not live (its lease ended, a newer attempt started or it gave the claim
+    /// back): nothing was written.
+    LeaseEnded,
+}
+
 /// Writes the steps of an attempt and its end in one transaction. A result is written once: when
-/// the request already has one, nothing is written and `false` comes back.
+/// the request already has one, nothing is written and [`Finish::Over`] comes back.
 pub fn finish_attempt(
     w: &mut WriteLedger,
     request: i64,
@@ -257,10 +319,23 @@ pub fn finish_attempt(
     holder: &str,
     steps: &[Step],
     outcome: &Outcome,
-) -> Result<bool, LedgerError> {
+) -> Result<Finish, LedgerError> {
     w.with_write_tx(|tx, now| {
         if result_exists(tx, request, card_id)? {
-            return Ok(false);
+            return Ok(Finish::Over);
+        }
+        // Only the newest attempt, still inside its lease and still holding the claim, writes.
+        let live = match newest_attempt(tx, request, card_id)? {
+            Some((newest, owner, lease_until)) => {
+                newest == attempt
+                    && owner == holder
+                    && lease_until > now
+                    && !released(tx, request, card_id, attempt)?
+            }
+            None => false,
+        };
+        if !live {
+            return Ok(Finish::LeaseEnded);
         }
         for step in steps {
             put(
@@ -301,6 +376,6 @@ pub fn finish_attempt(
                 )?;
             }
         }
-        Ok(true)
+        Ok(Finish::Written)
     })
 }

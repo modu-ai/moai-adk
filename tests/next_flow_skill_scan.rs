@@ -1867,6 +1867,96 @@ fn land_scans_the_flow_names_repo_scans_the_merge_tree_and_the_receipt_step() {
     );
 }
 
+/// What the repo-scans bullet of the flow reference lacks of its cargo-only reading: only the
+/// `cargo` checks of the picked scans run, and a Python line is left out, as the landing command
+/// itself reads the table (SPEC-20261123-land-repo-scans D-7).
+fn repo_scans_cargo_only_problems(flow: &str) -> Vec<String> {
+    let Some(bullet) = flow.lines().find(|l| l.contains("moai repo-scans")) else {
+        return vec![format!("{FLOW_REF} names no `moai repo-scans`")];
+    };
+    // One phrase, read whole from the word before it to the word after it, so that `never run
+    // only` and `not leaving out` (every word kept, the meaning reversed) are not the sentence.
+    [
+        "picks; run only their `cargo` checks on the merge tree, leaving out a Python line, and record each",
+    ]
+    .iter()
+    .filter(|part| !bullet.contains(**part))
+    .map(|part| format!("the repo-scans bullet lacks {part:?}: {bullet}"))
+    .collect()
+}
+
+/// SPEC-20261123-doc-sentence-pins AC-2 (REQ-3): the repo-scans bullet tells the session that
+/// briefs an audit to run only the `cargo` checks of the picked scans and to leave out a Python
+/// line, and the flow reference stays inside its byte budget.
+#[test]
+fn land_scans_the_flow_runs_cargo_checks_only() {
+    let flow = read(FLOW_REF);
+    let problems = repo_scans_cargo_only_problems(&flow);
+    assert!(problems.is_empty(), "{problems:?}");
+    assert!(
+        flow.len() <= FLOW_REF_LIMIT,
+        "{FLOW_REF} is {} bytes, over {FLOW_REF_LIMIT}",
+        flow.len()
+    );
+}
+
+/// SPEC-20261123-doc-sentence-pins AC-2 (REQ-4): the bullet without the cargo-only words, without
+/// the Python line, or without the bullet is a problem; each mutant really changes the text.
+#[test]
+fn land_scans_the_flow_cargo_only_mutants_are_caught() {
+    let flow = read(FLOW_REF);
+    let bullet = flow
+        .lines()
+        .find(|l| l.contains("moai repo-scans"))
+        .unwrap_or_else(|| panic!("{FLOW_REF} names no `moai repo-scans`"))
+        .to_string();
+    let without = |word: &str| bullet.replace(word, "");
+    let mutants = [
+        (
+            "cargo words removed",
+            flow.replace(&bullet, &without("only their `cargo` checks")),
+        ),
+        (
+            "python line removed",
+            flow.replace(&bullet, &without("Python line")),
+        ),
+        ("bullet removed", flow.replace(&bullet, "")),
+        (
+            "run-only negated with its words kept",
+            flow.replace(
+                &bullet,
+                &bullet.replace("picks; run only", "picks; never run only"),
+            ),
+        ),
+        (
+            "Python line kept with its words kept",
+            flow.replace(
+                &bullet,
+                &bullet.replace("leaving out a Python line", "not leaving out a Python line"),
+            ),
+        ),
+        (
+            "meaning reversed",
+            flow.replace(
+                &bullet,
+                &bullet
+                    .replace(
+                        "run only their `cargo` checks",
+                        "run all their checks, not only their `cargo` checks",
+                    )
+                    .replace("leaving out a Python line", "including a Python line"),
+            ),
+        ),
+    ];
+    for (name, mutant) in mutants {
+        assert!(mutant != flow, "{name}: the mutant did not change the text");
+        assert!(
+            !repo_scans_cargo_only_problems(&mutant).is_empty(),
+            "{name}: the pin passes without the sentence"
+        );
+    }
+}
+
 /// AC-5 (REQ-7): the three texts that carry the tier lines without the list say where the floor
 /// list is.
 #[test]
@@ -1888,4 +1978,417 @@ fn refs_audit_floor_list_is_pointed_to() {
         agent.contains("The floor list of paths is in the contract's section \"Audit tiers\""),
         "agents/audit.md lacks the floor-list pointer"
     );
+}
+
+// SPEC-20261123-self-check-rust-only: two items of the self-check list say that tests are Rust
+// only and that only the cargo checks of the repo-scans list are run, and the audit-brief bullet
+// of the flow reference names the scan tests and records each as a step of the PASS receipt. Each
+// sentence is pinned whole, and a text that keeps its words and reverses its meaning fails.
+
+const SELF_CHECK: &str = "references/internal/self-check.md";
+
+/// The byte size of the flow reference on the integration tip that landed the cargo-only pin
+/// (leader dispatch of 2026-11-23); the restored meanings fit inside it.
+const FLOW_REF_TIP_BYTES: usize = 7974;
+
+/// The first line of `text` that holds `marker`, a list item found by its first words so that a
+/// renumbered list does not break the pin.
+fn item_holding<'a>(text: &'a str, marker: &str) -> Option<&'a str> {
+    text.lines().find(|l| l.contains(marker))
+}
+
+/// What item 3 of the self-check list (`Whole binaries:`) gets wrong: it must say that tests are
+/// Rust only, run the cargo checks of the scan table and the macOS-only tests, and name no Python
+/// test.
+fn self_check_tests_item_problems(text: &str) -> Vec<String> {
+    let Some(item) = item_holding(text, "Whole binaries:") else {
+        return vec![format!("{SELF_CHECK} has no `Whole binaries:` item")];
+    };
+    let lower = item.to_lowercase();
+    let mut problems: Vec<String> = ["python", "unittest"]
+        .iter()
+        .filter(|word| lower.contains(**word))
+        .map(|word| format!("item 3 names {word:?}: {item}"))
+        .collect();
+    // The sentence is read whole, from `The set before READY` to the end of the item, so a word
+    // changed or added anywhere in it, or after it, is not the sentence (revision 3).
+    // The sentence before it ends with `. `, so a word put in front of the first word fails too.
+    if !item.ends_with(&format!(". {SELF_CHECK_ITEM3_TAIL}")) {
+        problems.push(format!(
+            "item 3 does not end with {SELF_CHECK_ITEM3_TAIL:?}: {item}"
+        ));
+    }
+    problems
+}
+
+/// Item 3 of the self-check list from `The set before READY` to the end of its line.
+const SELF_CHECK_ITEM3_TAIL: &str = "The set before READY is never narrowed: also `cargo test --offline --locked --lib` whole, every test target (`--test <name>`) whose name shares the first word of the changed `src/` area, every `cargo` check of `tools/repo_scans.json`, and the macOS-only (`cfg(target_os)`) tests this host can run. Tests are Rust only. Write each command with its exit code in the READY note, and read every failing CI leg before you repair it.";
+
+/// Item 5 of the self-check list from its repo-scans command to the end of its line.
+const SELF_CHECK_ITEM5_TAIL: &str = "`moai repo-scans --refs <tip> HEAD` lists the repo-wide scans the change set needs; run only their `cargo` checks and leave out a Python line, as `moai card land` asks for cargo checks only.";
+
+/// The audit-brief bullet of the flow reference, the whole line.
+const FLOW_AUDIT_BRIEF_BULLET: &str = "- Audit brief: name the scan tests `moai repo-scans --refs <tip> <head>` picks; run only their `cargo` checks on the merge tree, leaving out a Python line, and record each as a receipt step `scan:<id>` of the PASS for `moai card land`.";
+
+/// What item 5 (`Files tests read:`) gets wrong: the repo-scans command must be named and its
+/// list read as cargo checks only, with a Python line left out. The item is read whole from its
+/// command to the end of its line, so that `never run only …` and a word after it are not the
+/// sentence.
+fn self_check_repo_scans_item_problems(text: &str) -> Vec<String> {
+    let Some(item) = item_holding(text, "Files tests read:") else {
+        return vec![format!("{SELF_CHECK} has no `Files tests read:` item")];
+    };
+    // Read whole from the command to the end of the item (revision 3), not as two phrases.
+    // The clause before it ends with `; `, so a word put in front of the command fails too.
+    if item.ends_with(&format!("; {SELF_CHECK_ITEM5_TAIL}")) {
+        Vec::new()
+    } else {
+        vec![format!(
+            "item 5 does not end with {SELF_CHECK_ITEM5_TAIL:?}: {item}"
+        )]
+    }
+}
+
+/// SPEC-20261123-self-check-rust-only AC-1 (REQ-1): the tests item of the self-check list says
+/// that tests are Rust only and names no Python test.
+#[test]
+fn self_check_tests_item_names_no_python_test() {
+    let problems = self_check_tests_item_problems(&read(SELF_CHECK));
+    assert!(problems.is_empty(), "{problems:?}");
+}
+
+/// SPEC-20261123-self-check-rust-only AC-2 (REQ-2): the files item runs only the cargo checks of
+/// the repo-scans list and leaves out its Python lines.
+#[test]
+fn self_check_repo_scans_item_runs_cargo_checks_only() {
+    let problems = self_check_repo_scans_item_problems(&read(SELF_CHECK));
+    assert!(problems.is_empty(), "{problems:?}");
+}
+
+/// SPEC-20261123-self-check-rust-only AC-3 (REQ-3): each item with its words kept and its
+/// meaning reversed, or with the sentence removed, is a problem; each mutant really changes the
+/// text.
+#[test]
+fn self_check_pins_reject_reversed_sentences() {
+    let text = read(SELF_CHECK);
+    let item3 = item_holding(&text, "Whole binaries:")
+        .unwrap_or_else(|| panic!("{SELF_CHECK} has no `Whole binaries:` item"))
+        .to_string();
+    let item5 = item_holding(&text, "Files tests read:")
+        .unwrap_or_else(|| panic!("{SELF_CHECK} has no `Files tests read:` item"))
+        .to_string();
+    let item3_mutants = [
+        (
+            "Rust-only sentence reversed",
+            item3.replace("Tests are Rust only", "Tests are not Rust only"),
+        ),
+        (
+            "Rust-only sentence removed",
+            item3.replace("Tests are Rust only", ""),
+        ),
+        (
+            "Python tests asked for again",
+            format!("{item3} Also run the Python tests of the area."),
+        ),
+        (
+            "cargo word dropped from the table checks",
+            item3.replace("every `cargo` check of", "every check of"),
+        ),
+        (
+            "table checks negated with their words kept",
+            item3.replace(
+                "area, every `cargo` check of",
+                "area, not every `cargo` check of",
+            ),
+        ),
+        (
+            "Rust-only sentence disowned with its words kept",
+            item3.replace(
+                "can run. Tests are Rust only.",
+                "can run. Never assume Tests are Rust only.",
+            ),
+        ),
+    ];
+    for (name, mutant) in item3_mutants {
+        assert!(mutant != item3, "{name}: the mutant did not change item 3");
+        assert!(
+            !self_check_tests_item_problems(&text.replace(&item3, &mutant)).is_empty(),
+            "{name}: the pin passes without the sentence"
+        );
+    }
+    let item5_mutants = [
+        (
+            "meaning reversed",
+            item5.replace(
+                "run only their `cargo` checks and leave out a Python line",
+                "run all their checks and include a Python line",
+            ),
+        ),
+        (
+            "Python line kept",
+            item5.replace("leave out a Python line", "leave in a Python line"),
+        ),
+        (
+            "sentence negated",
+            item5.replace("needs; run only", "needs; never run only"),
+        ),
+        (
+            "clause removed",
+            item5.replace(
+                "run only their `cargo` checks and leave out a Python line",
+                "",
+            ),
+        ),
+    ];
+    for (name, mutant) in item5_mutants {
+        assert!(mutant != item5, "{name}: the mutant did not change item 5");
+        assert!(
+            !self_check_repo_scans_item_problems(&text.replace(&item5, &mutant)).is_empty(),
+            "{name}: the pin passes without the sentence"
+        );
+    }
+}
+
+/// What the audit-brief bullet of the flow reference lacks of its restored meanings, beside the
+/// cargo-only reading: the brief names the scan tests the command picks, and each is recorded as a
+/// receipt step of the PASS. The whole line is read, so `never name`, `never record` and a word
+/// after the phrases are not the sentence.
+fn flow_scan_receipt_problems(flow: &str) -> Vec<String> {
+    let mut problems = repo_scans_cargo_only_problems(flow);
+    let Some(bullet) = flow.lines().find(|l| l.contains("moai repo-scans")) else {
+        return problems;
+    };
+    // The bullet is read whole, the line from its dash to its full stop (revision 3).
+    if bullet != FLOW_AUDIT_BRIEF_BULLET {
+        problems.push(format!(
+            "the audit-brief bullet is not {FLOW_AUDIT_BRIEF_BULLET:?}: {bullet}"
+        ));
+    }
+    problems
+}
+
+/// SPEC-20261123-self-check-rust-only AC-6 (REQ-5, REQ-6): the audit-brief bullet names the scan
+/// tests and records each as a receipt step of the PASS, and the flow reference stays at the size
+/// the integration tip has.
+#[test]
+fn land_scans_the_flow_names_the_scan_tests_and_the_pass_receipt_step() {
+    let flow = read(FLOW_REF);
+    let problems = flow_scan_receipt_problems(&flow);
+    assert!(problems.is_empty(), "{problems:?}");
+    assert!(
+        flow.len() <= FLOW_REF_TIP_BYTES,
+        "{FLOW_REF} is {} bytes, over {FLOW_REF_TIP_BYTES}",
+        flow.len()
+    );
+}
+
+/// SPEC-20261123-self-check-rust-only AC-7 (REQ-7): the bullet without a restored meaning, with
+/// its words kept and one meaning reversed, or with the cargo-only reading reversed, is a
+/// problem; each mutant really changes the text.
+#[test]
+fn land_scans_the_flow_scan_receipt_mutants_are_caught() {
+    let flow = read(FLOW_REF);
+    let bullet = flow
+        .lines()
+        .find(|l| l.contains("moai repo-scans"))
+        .unwrap_or_else(|| panic!("{FLOW_REF} names no `moai repo-scans`"))
+        .to_string();
+    let mutants = [
+        (
+            "scan tests not named",
+            bullet.replace("name the scan tests ", ""),
+        ),
+        (
+            "naming reversed",
+            bullet.replace("name the scan tests", "never name the scan tests"),
+        ),
+        (
+            "recording reversed",
+            bullet.replace("and record each", "and never record each"),
+        ),
+        (
+            "receipt step moved off the PASS",
+            bullet.replace("of the PASS", "of a failed run"),
+        ),
+        (
+            "cargo-only reading reversed",
+            bullet
+                .replace(
+                    "run only their `cargo` checks",
+                    "run all their checks, not only their `cargo` checks",
+                )
+                .replace("leaving out a Python line", "including a Python line"),
+        ),
+    ];
+    for (name, mutant) in mutants {
+        let text = flow.replace(&bullet, &mutant);
+        assert!(text != flow, "{name}: the mutant did not change the text");
+        assert!(
+            !flow_scan_receipt_problems(&text).is_empty(),
+            "{name}: the pin passes without the sentence"
+        );
+    }
+}
+
+// SPEC-20261123-self-check-rust-only revision 3: the three pins read their sentence whole to the
+// end of its line, so a word changed or added outside the pinned phrase fails them, and a sweep
+// shows that no single word of a pinned sentence is left unread.
+
+/// One pinned sentence: the text that holds it, the part of it a pin must read, and the pin.
+struct Pinned {
+    name: &'static str,
+    text: String,
+    region: String,
+    problems: fn(&str) -> Vec<String>,
+}
+
+/// The three pinned sentences as they stand in the shipped texts: item 3 of the self-check list
+/// from `The set before READY` to the end of its line, item 5 from its repo-scans command to the
+/// end of its line, and the whole audit-brief bullet of the flow reference.
+fn pinned_sentences() -> Vec<Pinned> {
+    let self_check = read(SELF_CHECK);
+    let flow = read(FLOW_REF);
+    let tail = |item: &str, from: &str| {
+        let at = item
+            .find(from)
+            .unwrap_or_else(|| panic!("{from:?} is not in {item:?}"));
+        item[at..].to_string()
+    };
+    let item3 = item_holding(&self_check, "Whole binaries:").expect("item 3");
+    let item5 = item_holding(&self_check, "Files tests read:").expect("item 5");
+    let bullet = flow
+        .lines()
+        .find(|l| l.contains("moai repo-scans"))
+        .expect("the audit-brief bullet");
+    vec![
+        Pinned {
+            name: "item 3",
+            region: tail(item3, "The set before READY"),
+            text: self_check.clone(),
+            problems: self_check_tests_item_problems,
+        },
+        Pinned {
+            name: "item 5",
+            region: tail(item5, "`moai repo-scans --refs <tip> HEAD`"),
+            text: self_check,
+            problems: self_check_repo_scans_item_problems,
+        },
+        Pinned {
+            name: "audit-brief bullet",
+            region: bullet.to_string(),
+            text: flow.clone(),
+            problems: flow_scan_receipt_problems,
+        },
+    ]
+}
+
+/// SPEC-20261123-self-check-rust-only AC-9 (REQ-8): a word changed or added where the pin used to
+/// stop reading (after the phrase, or in a word the phrase did not hold) is a problem; each mutant
+/// really changes the text.
+#[test]
+fn pinned_sentences_are_read_to_their_end() {
+    let pinned = pinned_sentences();
+    let by = |name: &str| pinned.iter().find(|p| p.name == name).expect(name);
+    let mutants: Vec<(&str, &str, String)> = vec![
+        (
+            "item 3",
+            "a word after the table checks",
+            by("item 3").region.replace(
+                "`tools/repo_scans.json`, and the macOS",
+                "`tools/repo_scans.json` left out, and the macOS",
+            ),
+        ),
+        (
+            "item 3",
+            "the changed area turned into the unchanged one",
+            by("item 3")
+                .region
+                .replace("the changed `src/` area", "the unchanged `src/` area"),
+        ),
+        (
+            "item 3",
+            "the whole-set sentence turned into a never",
+            by("item 3")
+                .region
+                .replace("also `cargo test", "never `cargo test"),
+        ),
+        (
+            "item 3",
+            "a sentence added at the end of the item",
+            format!("{} Never mind the rest.", by("item 3").region),
+        ),
+        (
+            "item 5",
+            "a clause added at the end of the item",
+            format!("{} Run the rest by hand.", by("item 5").region),
+        ),
+        (
+            "item 5",
+            "the cargo-only ending widened",
+            by("item 5")
+                .region
+                .replace("for cargo checks only", "for cargo checks and more"),
+        ),
+        (
+            "audit-brief bullet",
+            "the PASS receipt turned into a never",
+            by("audit-brief bullet").region.replace(
+                "of the PASS for `moai card land`",
+                "of the PASS, never for `moai card land`",
+            ),
+        ),
+        (
+            "audit-brief bullet",
+            "the merge tree turned into an unmerged one",
+            by("audit-brief bullet")
+                .region
+                .replace("on the merge tree", "on the unmerged tree"),
+        ),
+    ];
+    for (which, what, mutant) in mutants {
+        let p = by(which);
+        assert!(
+            mutant != p.region,
+            "{which} / {what}: the mutant did not change the text"
+        );
+        let text = p.text.replace(&p.region, &mutant);
+        assert!(
+            !(p.problems)(&text).is_empty(),
+            "{which} / {what}: the pin passes without the sentence"
+        );
+    }
+}
+
+/// SPEC-20261123-self-check-rust-only AC-10 (REQ-9): a pinned sentence with any one word deleted,
+/// or with `not` put before any one word, is a problem; each mutant really changes the text.
+#[test]
+fn every_word_of_a_pinned_sentence_is_read() {
+    for p in pinned_sentences() {
+        assert!(
+            (p.problems)(&p.text).is_empty(),
+            "{}: the shipped text is already a problem",
+            p.name
+        );
+        let words: Vec<&str> = p.region.split(' ').collect();
+        assert!(words.len() > 15, "{}: only {} words", p.name, words.len());
+        for (i, word) in words.iter().enumerate() {
+            let without = [&words[..i], &words[i + 1..]].concat().join(" ");
+            let mut negated = words.clone();
+            let marked = format!("not {word}");
+            negated[i] = &marked;
+            for (how, mutant) in [("deleted", without), ("negated", negated.join(" "))] {
+                assert!(
+                    mutant != p.region,
+                    "{} / word {i} {word:?} {how}: the mutant did not change the text",
+                    p.name
+                );
+                let text = p.text.replace(&p.region, &mutant);
+                assert!(
+                    !(p.problems)(&text).is_empty(),
+                    "{} / word {i} {word:?} {how}: the pin passes without the word",
+                    p.name
+                );
+            }
+        }
+    }
 }

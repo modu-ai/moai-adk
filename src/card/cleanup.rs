@@ -21,7 +21,7 @@
 
 use super::command::open_for_write;
 use super::landed;
-use crate::ledger::cleanup_outbox::{self, Claim, Outcome, Pending, Step};
+use crate::ledger::cleanup_outbox::{self, Claim, Finish, Outcome, Pending, Step};
 use crate::ledger::WriteLedger;
 use crate::{branch_gc, worktree_cleanup, worktree_gc};
 use serde_json::{json, Value};
@@ -157,10 +157,10 @@ struct Target {
 
 impl Target {
     fn json(&self) -> Value {
-        let key = if self.kind == "worktree" {
-            "path"
-        } else {
-            "branch"
+        let key = match self.kind {
+            "worktree" => "path",
+            "queue" => "ref",
+            _ => "branch",
         };
         json!({
             key: self.name, "status": self.status, "reasons": self.reasons, "detail": self.detail,
@@ -184,7 +184,10 @@ impl Target {
 
     /// A target that was acted on or is already gone.
     fn clean(&self) -> bool {
-        matches!(self.status, "removed" | "deleted" | "absent")
+        matches!(
+            self.status,
+            "removed" | "deleted" | "absent" | "gone" | "still_there"
+        )
     }
 }
 
@@ -226,7 +229,7 @@ fn one(
     integration: std::result::Result<&str, &str>,
     request: &Pending,
 ) -> Result<Value> {
-    let name = |status: &str| {
+    let base = |status: &str| {
         json!({
             "request": request.request, "card_id": request.card_id, "status": status,
             "worktrees": [], "branches": [],
@@ -234,7 +237,7 @@ fn one(
     };
     // No integration ref: nothing can be measured, so nothing is claimed and nothing is written.
     let integration: &str = integration.map_err(str::to_string)?;
-    let attempt = match cleanup_outbox::claim(
+    let (attempt, abandoned) = match cleanup_outbox::claim(
         ledger,
         request.request,
         request.card_id,
@@ -243,24 +246,45 @@ fn one(
     )
     .map_err(|e| e.to_string())?
     {
-        Claim::Taken { attempt } => attempt,
-        Claim::Busy => return Ok(name("busy")),
-        Claim::Over => return Ok(name("over")),
+        Claim::Taken { attempt, abandoned } => (attempt, abandoned),
+        Claim::Busy => return Ok(base("busy")),
+        Claim::Over => return Ok(base("over")),
     };
-    // Whatever goes wrong from here, the claim is given back and the request stays pending.
-    let end = |ledger: &mut WriteLedger, steps: &[Step], outcome: &Outcome| -> Result<()> {
-        cleanup_outbox::finish_attempt(
-            ledger,
-            request.request,
-            request.card_id,
-            attempt,
-            session,
-            steps,
-            outcome,
-        )
-        .map(|_| ())
-        .map_err(|e| e.to_string())
+    // The earlier attempt this claim found dead, when there was one, is named in every answer.
+    let name = |status: &str| {
+        let mut answer = base(status);
+        if let Some(dead) = abandoned {
+            answer["abandoned_attempt"] = json!(dead);
+        }
+        answer
     };
+    // Whatever goes wrong from here, the claim is given back and the request stays pending. An
+    // attempt whose lease ended writes nothing (SPEC-20261123-cleanup-outbox-followups REQ-1): the
+    // answer is `lease_lost` and the next run takes the request again.
+    let end =
+        |ledger: &mut WriteLedger, steps: &[Step], outcome: &Outcome| -> Result<Option<Value>> {
+            let finished = cleanup_outbox::finish_attempt(
+                ledger,
+                request.request,
+                request.card_id,
+                attempt,
+                session,
+                steps,
+                outcome,
+            )
+            .map_err(|e| e.to_string())?;
+            if finished != Finish::LeaseEnded {
+                return Ok(None);
+            }
+            let mut lost = name("lease_lost");
+            lost["attempt"] = json!(attempt);
+            lost["error"] = json!(format!(
+                "the lease of attempt {attempt} of request {} ended before the run finished, so \
+             nothing of it was recorded; the next run takes the request again",
+                request.request
+            ));
+            Ok(Some(lost))
+        };
 
     // The card must still be done: a reopened card keeps its worktree and its branch.
     if state_of(ledger, request.card_id)? != "done" {
@@ -271,11 +295,13 @@ fn one(
             reasons: vec!["card_not_done".into()],
             detail: None,
         };
-        end(
+        if let Some(lost) = end(
             ledger,
             &[kept.step()],
             &Outcome::Result("skipped".to_string()),
-        )?;
+        )? {
+            return Ok(lost);
+        }
         return Ok(name("skipped"));
     }
     if let Some(head) = &request.head {
@@ -292,16 +318,19 @@ fn one(
                         "the landed head {head} is not inside {integration}"
                     )),
                 };
-                end(
+                if let Some(lost) = end(
                     ledger,
                     &[kept.step()],
                     &Outcome::Result("settled_with_kept".to_string()),
-                )?;
+                )? {
+                    return Ok(lost);
+                }
                 let mut answer = name("settled_with_kept");
                 answer["worktrees"] = json!([kept.json()]);
                 return Ok(answer);
             }
             Err(why) => {
+                // The git failure is the answer; a lease that ended meanwhile adds nothing to it.
                 end(ledger, &[], &Outcome::Release)?;
                 return Err(why);
             }
@@ -319,7 +348,9 @@ fn one(
         },
     );
     if let Some(why) = cleaned["error"].as_str() {
-        end(ledger, &[], &Outcome::Release)?;
+        if let Some(lost) = end(ledger, &[], &Outcome::Release)? {
+            return Ok(lost);
+        }
         let mut answer = name("error");
         answer["error"] = json!(why);
         answer["cleanup"] = cleaned.clone();
@@ -339,7 +370,14 @@ fn one(
     let all_gone = worktrees.iter().all(Target::clean);
     let branches = branch_targets(project, home, integration, request, &worktrees, all_gone);
 
-    let targets: Vec<&Target> = worktrees.iter().chain(branches.iter()).collect();
+    // The queue the worktree step drained: one step per ref, so the ledger says which lines the
+    // run consumed (SPEC-20261123-cleanup-outbox-followups REQ-5).
+    let queue = queue_targets(&cleaned);
+    let targets: Vec<&Target> = worktrees
+        .iter()
+        .chain(branches.iter())
+        .chain(queue.iter())
+        .collect();
     let steps: Vec<Step> = targets.iter().map(|t| t.step()).collect();
     let (status, outcome) = if targets.iter().any(|t| t.open()) {
         ("pending", Outcome::Release)
@@ -351,13 +389,46 @@ fn one(
             Outcome::Result("settled_with_kept".to_string()),
         )
     };
-    end(ledger, &steps, &outcome)?;
-    let mut answer = name(status);
-    answer["attempt"] = json!(attempt);
+    // The run has acted by now. An attempt whose lease ended writes no line, but its answer still
+    // names what it removed and deleted, so the caller (and `wrote`) is not told "nothing"
+    // (SPEC-20261123-cleanup-outbox-followups D-5).
+    let mut answer = match end(ledger, &steps, &outcome)? {
+        Some(lost) => lost,
+        None => {
+            let mut done = name(status);
+            done["attempt"] = json!(attempt);
+            done
+        }
+    };
     answer["worktrees"] = Value::Array(worktrees.iter().map(Target::json).collect());
     answer["branches"] = Value::Array(branches.iter().map(Target::json).collect());
+    answer["queue"] = Value::Array(queue.iter().map(Target::json).collect());
     answer["cleanup"] = cleaned;
     Ok(answer)
+}
+
+/// One target per ref of the queue the worktree step took, in ref order: `gone` for a ref that no
+/// longer exists, `still_there` for one that does (its line was a pack or a move and is dropped).
+fn queue_targets(cleaned: &Value) -> Vec<Target> {
+    let mut refs: Vec<(&str, &'static str)> = Vec::new();
+    for (key, status) in [("gone", "gone"), ("still_there", "still_there")] {
+        for full in cleaned["queue"][key].as_array().into_iter().flatten() {
+            if let Some(full) = full.as_str() {
+                refs.push((full, status));
+            }
+        }
+    }
+    refs.sort();
+    refs.dedup();
+    refs.into_iter()
+        .map(|(full, status)| Target {
+            kind: "queue",
+            name: full.to_string(),
+            status,
+            reasons: Vec::new(),
+            detail: None,
+        })
+        .collect()
 }
 
 /// What the worktree cleanup did to each worktree the request names.

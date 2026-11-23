@@ -119,7 +119,7 @@ impl Fx {
 fn placeholder() -> Value {
     json!({
         "schema_version": 2, "project_id": "demo",
-        "purpose": "Created by moai-cli on first launch; refine it in the project interview",
+        "purpose": "Created by moai on first launch; refine it in the project interview",
         "tools": ["unspecified"], "development_methods": ["unspecified"], "hosts": ["claude"],
         "decisions": [
             {"id": "auto-init-tools", "topic": "tools", "value": "unspecified", "source": "default", "scope": "project"},

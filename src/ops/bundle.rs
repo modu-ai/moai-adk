@@ -48,7 +48,8 @@ enum Action {
         #[arg(long, default_value = ".")]
         dir: PathBuf,
         /// The branch bundles are merged into; without it the profile's m-flow
-        /// integration branch becomes origin/<branch>, else origin/v2026.11.0.
+        /// integration branch becomes the local refs/heads/<branch> (origin/<branch>
+        /// only when the local branch does not exist), else origin/v2026.11.0.
         #[arg(long)]
         tip: Option<String>,
     },
@@ -80,7 +81,8 @@ enum Action {
         #[arg(long, default_value = ".")]
         dir: PathBuf,
         /// The branch bundles are merged into; without it the profile's m-flow
-        /// integration branch becomes origin/<branch>, else origin/v2026.11.0.
+        /// integration branch becomes the local refs/heads/<branch> (origin/<branch>
+        /// only when the local branch does not exist), else origin/v2026.11.0.
         #[arg(long)]
         tip: Option<String>,
     },
@@ -118,7 +120,8 @@ enum Action {
         #[arg(long, default_value = ".")]
         dir: PathBuf,
         /// The branch bundles are merged into; without it the profile's m-flow
-        /// integration branch becomes origin/<branch>, else origin/v2026.11.0.
+        /// integration branch becomes the local refs/heads/<branch> (origin/<branch>
+        /// only when the local branch does not exist), else origin/v2026.11.0.
         #[arg(long)]
         tip: Option<String>,
     },
@@ -149,7 +152,8 @@ enum Action {
         #[arg(long, default_value = ".")]
         dir: PathBuf,
         /// The branch bundles are merged into; without it the profile's m-flow
-        /// integration branch becomes origin/<branch>, else origin/v2026.11.0.
+        /// integration branch becomes the local refs/heads/<branch> (origin/<branch>
+        /// only when the local branch does not exist), else origin/v2026.11.0.
         #[arg(long)]
         tip: Option<String>,
     },
@@ -209,7 +213,8 @@ enum Action {
         #[arg(long, default_value = ".")]
         dir: PathBuf,
         /// The branch bundles are merged into; without it the profile's m-flow
-        /// integration branch becomes origin/<branch>, else origin/v2026.11.0.
+        /// integration branch becomes the local refs/heads/<branch> (origin/<branch>
+        /// only when the local branch does not exist), else origin/v2026.11.0.
         #[arg(long)]
         tip: Option<String>,
     },
@@ -236,10 +241,15 @@ pub const OPERATION: &str = "bundle";
 const DEFAULT_TIP: &str = "origin/v2026.11.0";
 
 /// The tip an action judges: an explicit `--tip` wins; without one, the project
-/// profile's m-flow integration branch becomes `origin/<branch>` (the stored
-/// value drives the integration ref), and without a recorded branch today's
-/// default stays, so every other repository keeps its answer.
-fn resolve_tip(project: &std::path::Path, tip: Option<&str>) -> Result<String, String> {
+/// profile's m-flow integration branch becomes the local `refs/heads/<branch>` of the
+/// repository `dir` (`origin/<branch>` only when that branch does not exist; the stored
+/// value drives the integration ref), and without a recorded branch today's default stays,
+/// so every other repository keeps its answer.
+fn resolve_tip(
+    project: &std::path::Path,
+    dir: &std::path::Path,
+    tip: Option<&str>,
+) -> Result<String, String> {
     if let Some(t) = tip {
         return Ok(t.to_string());
     }
@@ -251,7 +261,7 @@ fn resolve_tip(project: &std::path::Path, tip: Option<&str>) -> Result<String, S
             .and_then(|w| w.integration_branch)
             .filter(|b| !b.trim().is_empty())
         {
-            return Ok(format!("origin/{branch}"));
+            return Ok(moai_cli::bundle::integration_tip(dir, &branch));
         }
     }
     Ok(DEFAULT_TIP.to_string())
@@ -261,11 +271,21 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
     use moai_cli::bundle as b;
     use moai_cli::ledger::command::resolve_home;
     let tip = match &args.action {
-        Action::Ready { project, tip, .. }
-        | Action::Check { project, tip, .. }
-        | Action::Body { project, tip, .. }
-        | Action::Build { project, tip, .. }
-        | Action::Verify { project, tip, .. } => resolve_tip(project, tip.as_deref())?,
+        Action::Ready {
+            project, dir, tip, ..
+        }
+        | Action::Check {
+            project, dir, tip, ..
+        }
+        | Action::Body {
+            project, dir, tip, ..
+        }
+        | Action::Build {
+            project, dir, tip, ..
+        }
+        | Action::Verify {
+            project, dir, tip, ..
+        } => resolve_tip(project, dir, tip.as_deref())?,
         // The user-assets actions name no tip: they never judge a ref.
         Action::Add { .. } | Action::Remove { .. } | Action::List => String::new(),
     };

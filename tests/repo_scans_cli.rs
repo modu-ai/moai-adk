@@ -283,7 +283,7 @@ fn checks_are_the_hit_scans_in_table_order_without_duplicates() {
     assert_eq!(once, 1, "{}", both["checks"]);
     // no hit, no check
     assert_eq!(
-        judge_root(&home, &json!({"pr": ["README.md"], "tip": []}))["checks"],
+        judge_root(&home, &json!({"pr": ["notes/y.txt"], "tip": []}))["checks"],
         json!([])
     );
 }
@@ -303,8 +303,32 @@ fn incident_through_stdin() {
 fn disjoint_change_sets_pass() {
     let home = Home::new();
     assert_eq!(
-        judge_root(&home, &json!({"pr": ["README.md"], "tip": ["notes/x.txt"]})),
+        judge_root(
+            &home,
+            &json!({"pr": ["notes/y.txt"], "tip": ["notes/x.txt"]})
+        ),
         json!({"remerge": false, "hits": [], "checks": [], "reasons": []})
+    );
+}
+
+/// SPEC-20261123-land-file-read-scans AC-7: a head that edits a workflow text needs the checks of
+/// the tests that open it at run time, without a rule-file change on either side.
+#[test]
+fn always_reads_scan_needs_its_checks_for_a_head_that_edits_a_file_its_readers_open() {
+    let home = Home::new();
+    let report = judge_root(
+        &home,
+        &json!({"pr": ["skills/moai/workflows/work.md"], "tip": []}),
+    );
+    assert_eq!(report["remerge"], false, "{report}");
+    let own = report["own_hits"].as_array().expect("own_hits");
+    assert!(own.iter().any(|h| h["id"] == "reads-skills"), "{own:?}");
+    let checks = report["checks"].as_array().unwrap();
+    assert!(
+        checks
+            .iter()
+            .any(|c| c.as_str().unwrap().contains("--test mode_workflow_steps")),
+        "{checks:?}"
     );
 }
 

@@ -78,7 +78,7 @@
       }
     },
     "references/audit.md": {
-      "sha256": "8581870fa72bef1601b4236b1add98090fc733a3c73be417773b6c8e6afd51e5",
+      "sha256": "8888f05afebcbb0b68745aaf8ecf4fbcb61dba040962c3e591a1d4cb14ca969f",
       "origin": {
         "kind": "design-spec",
         "template_id": "audit-contract",
@@ -96,7 +96,7 @@
       }
     },
     "references/flows/next-flow.md": {
-      "sha256": "fe7cf662132bc346161f1ad681ee512d0ca0c862edf5bd9585cd50949fd54961",
+      "sha256": "acdd8ddd1dc73f89e5317bebf20f693d33ef4882954aa1d522dd057da296d80b",
       "origin": {
         "kind": "design-spec",
         "template_id": "flow-next-flow",
@@ -279,7 +279,7 @@
       }
     },
     "references/internal/self-check.md": {
-      "sha256": "14c90252276f0806a0e10b90e68b317de69a6a0704874ca66646d66c56afb0f8",
+      "sha256": "dc4e504a5b5d8e3f0b5bb70274da7b45aa0e2cd1f39cea21b88dbbfb9294c386",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-self-check",
@@ -453,7 +453,7 @@
       }
     },
     "workflows/run.md": {
-      "sha256": "4bee538feb3dd08b3a118a18eff83237802a052a23124ce4c4bb17708a6bca6f",
+      "sha256": "c18055d5025caac7aafeb3abf54bfa9b202e51752f5f42bc476ba9cb2af4db93",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-run",
@@ -486,7 +486,7 @@
         "adoption": "new",
         "reason": "Written for SPEC-20261122-next-flow-skills-agents (REQ-3, text slice A): `/moai work` takes one card at a time through PLAN, RUN, SYNC, AUDIT and the landing command and repeats until no card is left; a decision becomes a blocked note on the card. The card take, check, criterion and fresh-state sentences moved here from the retired MODE-AGENT workflow with their pins."
       },
-      "sha256": "a37bd16b7001c47f132bcc8eac57f7c14cdb1321ce582d287b5b6d5e96c3c441"
+      "sha256": "0a404e55dd4fd15d93887caf857e2db0f2afdbb50ad786513b48c966569d8fc6"
     }
   }
 }

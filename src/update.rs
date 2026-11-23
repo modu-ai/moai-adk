@@ -76,7 +76,7 @@ pub(crate) const SKILL_DIR: &str = "moai";
 /// backup-then-replace path is a separate, user-confirmed procedure (#2483): the plan
 /// previews it and `update-apply --confirm-backup-replace <token>` runs it.
 pub(crate) const GO_ERA_GUIDANCE: &str = "this can be an earlier-generation (Go-era) \
-     MoAI `moai` skill at that path; moai-cli will not replace it — move it aside \
+     MoAI `moai` skill at that path; moai will not replace it — move it aside \
      yourself, or wait for a confirmed backup-then-replace procedure";
 
 /// The folder that holds the host's `skills/` folder: Claude's host folder

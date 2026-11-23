@@ -467,8 +467,27 @@ fn the_tip_comes_from_the_profile_integration_branch() {
     let (v, code) = w.bundle_args(&["ready"], false);
     assert_eq!(code, 0, "{v}");
     assert_eq!(
-        v["result"]["tip"]["name"], "origin/trunk",
-        "the stored branch drives the tip: {v}"
+        v["result"]["tip"]["name"], "refs/heads/trunk",
+        "the stored branch drives the tip, the local branch first: {v}"
+    );
+}
+
+/// SPEC-20261124-bundle-local-tip: when the recorded branch exists only on `origin`, the
+/// default tip falls back to `origin/<branch>`.
+#[test]
+fn the_tip_falls_back_to_origin_when_the_local_branch_is_missing() {
+    let w = World::new();
+    w.git(&["push", "-q", "origin", "origin/trunk:refs/heads/NeXT"]);
+    w.git(&["fetch", "-q", "origin"]);
+    w.write_profile(Some(serde_json::json!({
+        "flow": "m-flow",
+        "integration_branch": "NeXT",
+    })));
+    let (v, code) = w.bundle_args(&["ready"], false);
+    assert_eq!(code, 0, "{v}");
+    assert_eq!(
+        v["result"]["tip"]["name"], "origin/NeXT",
+        "no local NeXT, so origin/NeXT: {v}"
     );
 }
 
