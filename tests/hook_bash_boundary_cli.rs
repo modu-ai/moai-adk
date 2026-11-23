@@ -687,6 +687,7 @@ fn all_cases() -> Vec<Case> {
     all.extend(hook_skip_cases());
     all.extend(unreadable_cases());
     all.extend(audit_denied_cases());
+    all.extend(second_audit_denied_cases());
     all
 }
 
@@ -1632,4 +1633,368 @@ fn ac14_deep_nesting_is_unreadable_and_never_overflows_the_stack() {
             "{label}"
         );
     }
+}
+
+// ------------------------------------------------------------------- AC-15
+//
+// The second audit repair (AUDIT #403 delta, note 7691). The audit's probe lists `probes3`,
+// `probes4` and `probes5` are copied whole with the answer this SPEC wants, and each family the
+// audit found a member of is closed by a rule instead of by that one shape: a word that changes
+// how a command word or a `cd` operand is looked up, a `rebase --root` branch, every transport
+// command that takes a program, the wrapper programs of one closed table, and a switch to a
+// protected branch that creates it. The wrapper table is closed: a wrapper that is not in it
+// reads as the command it is named (R-1).
+
+fn second_audit_denied_cases() -> Vec<Case> {
+    use S::{Main, Own};
+    let (de, pr, ur) = ("delete-outside", "protected-ref", "unreadable");
+    vec![
+        // B-1: a word that changes how a command word is looked up makes the line unreadable.
+        d(Own, "hash -p /bin/rm e; e -rf {OUT}/x", ur),
+        d(Own, "hash e=/bin/rm; e -rf {OUT}/x", ur),
+        d(Own, "bash -c 'hash -p /bin/rm e; e -rf {OUT}/x'", ur),
+        d(Own, "shopt -s expand_aliases\nalias e=rm\ne -rf {OUT}/x", ur),
+        d(
+            Own,
+            "bash -c \"shopt -s expand_aliases\nalias e=rm\ne -rf {OUT}/x\"",
+            ur,
+        ),
+        d(Own, "alias e=rm; eval e -rf {OUT}/x", ur),
+        d(Own, "alias ll='ls -l'", ur),
+        d(Own, "alias -g G='| rm'", ur),
+        d(Own, "unalias e", ur),
+        d(Own, "hash -r", ur),
+        d(Own, "hash", ur),
+        d(Own, "enable -n rm; rm -rf {OUT}/x", ur),
+        d(Own, "enable -f /opt/x.so evil", ur),
+        d(Own, "builtin alias e=rm", ur),
+        d(Own, "env alias e=rm", ur),
+        d(Own, "(alias e=rm); e -rf {OUT}/x", ur),
+        d(Own, "ls && alias e=rm", ur),
+        d(Own, "functions[e]='rm -rf {OUT}/x'; e", ur),
+        d(Own, "e() { rm -rf {OUT}/x; }; e", ur),
+        d(Own, "function e { rm -rf {OUT}/x; }; e", ur),
+        // B-2: a way to change where `cd` lands (the `cdpath` array, `cdable_vars`, a named
+        // directory) makes the line unreadable, in every shell spelling.
+        d(
+            Own,
+            "set -A cdpath /opt; cd moai-boundary-outside && rm -rf ./*",
+            ur,
+        ),
+        d(
+            Own,
+            "set +A cdpath /opt; cd moai-boundary-outside && rm -rf ./*",
+            ur,
+        ),
+        d(
+            Own,
+            "cdpath=(/opt); cd moai-boundary-outside && rm -rf ./*",
+            ur,
+        ),
+        d(
+            Own,
+            "cdpath+=(/opt); cd moai-boundary-outside && rm -rf ./*",
+            ur,
+        ),
+        d(Own, "cdpath=/opt; cd moai-boundary-outside && rm -rf ./*", ur),
+        d(
+            Own,
+            "typeset -a cdpath=(/opt); cd moai-boundary-outside && rm -rf ./*",
+            ur,
+        ),
+        d(
+            Own,
+            "declare -a cdpath=(/opt); cd moai-boundary-outside && rm -rf ./*",
+            ur,
+        ),
+        d(
+            Own,
+            "export cdpath=/opt; cd moai-boundary-outside && rm -rf ./*",
+            ur,
+        ),
+        d(
+            Own,
+            "declare -x CDPATH=/opt; cd moai-boundary-outside && rm -rf ./*",
+            ur,
+        ),
+        d(
+            Own,
+            "bash -c 'set -A cdpath /opt; cd moai-boundary-outside && rm -rf ./*'",
+            ur,
+        ),
+        d(
+            Own,
+            "(cdpath=(/opt); cd moai-boundary-outside && rm -rf ./*)",
+            ur,
+        ),
+        d(
+            Own,
+            "setopt cdable_vars; o=/opt/moai-boundary-outside; cd o && rm -rf ./*",
+            ur,
+        ),
+        d(
+            Own,
+            "setopt CDABLE_VARS; o=/opt/moai-boundary-outside; cd o && rm -rf ./*",
+            ur,
+        ),
+        d(
+            Own,
+            "setopt cdablevars; o=/opt/moai-boundary-outside; cd o && rm -rf ./*",
+            ur,
+        ),
+        d(Own, "setopt no_cdable_vars", ur),
+        d(Own, "unsetopt cdable_vars", ur),
+        d(
+            Own,
+            "set -o cdablevars; o=/opt/moai-boundary-outside; cd o && rm -rf ./*",
+            ur,
+        ),
+        d(
+            Own,
+            "shopt -s cdable_vars; o=/opt/moai-boundary-outside; cd o && rm -rf ./*",
+            ur,
+        ),
+        d(Own, "shopt -s cdspell cdable_vars", ur),
+        d(Own, "setopt $OPT", ur),
+        d(
+            Own,
+            "hash -d o=/opt/moai-boundary-outside; cd ~o && rm -rf ./*",
+            ur,
+        ),
+        d(Own, "cd ~o && rm -rf ./*", ur),
+        d(Own, "rm -rf ~o/x", ur),
+        d(Own, "cd ~root && rm -rf ./*", ur),
+        // The stack and `cd` forms of the first repair keep their answers.
+        d(Own, "pushd {OUT} && popd +1 && rm -rf ./*", ur),
+        d(Own, "pushd {OUT} && popd -n && rm -rf ./*", ur),
+        d(
+            Own,
+            "pushd {OUT} && pushd {OWN} && pushd +1 && rm -rf ./*",
+            ur,
+        ),
+        d(Own, "bash -c 'pushd {OUT}; popd +1; rm -rf ./*'", ur),
+        d(Own, "cd -- {OUT} && rm -rf x", de),
+        d(Own, "cd ~ && rm -rf x", de),
+        d(Own, "cd {OUT} || true; rm -rf x", de),
+        d(Own, "builtin cd {OUT} && rm -rf ./*", de),
+        d(Own, "[ -d x ] && rm -rf {OUT}/x", de),
+        d(Own, "[[ -d x ]] || rm -rf {OUT}/x", de),
+        // B-3: `rebase --root` names the branch it moves as its last positional.
+        d(Own, "git rebase -f --root NeXT", pr),
+        d(Own, "git rebase --onto lane/own --root main", pr),
+        d(Own, "git rebase --root --onto lane/own main", pr),
+        d(Own, "git rebase --root --autosquash master", pr),
+        d(Own, "git rebase --root NeXT", pr),
+        d(Own, "git -c x.y=z rebase lane/own NeXT", pr),
+        d(Main, "git rebase --root", pr),
+        d(Main, "git push origin +@", pr),
+        d(Main, "git branch --move moved", pr),
+        d(Main, "git branch -m -f moved", pr),
+        d(Own, "git checkout --track=direct origin/main", pr),
+        d(Own, "git fetch origin '+refs/heads/*:refs/heads/*'", pr),
+        d(Own, "git pull origin main:main", pr),
+        // N-b: a plain switch to a protected name creates the branch from the remote one.
+        d(Own, "git switch main", pr),
+        d(Own, "git switch master", pr),
+        d(Own, "git switch NeXT", pr),
+        d(Own, "git checkout main", pr),
+        d(Own, "git checkout NeXT", pr),
+        d(Own, "git checkout master", pr),
+        d(Main, "git switch NeXT", pr),
+        // B-4: every transport command that takes a program, `clone` included.
+        d(Own, "git clone --upload-pack='rm -rf {OUT}/x' . y", de),
+        d(Own, "git clone --upload-pack 'rm -rf {OUT}/x' . y", de),
+        d(Own, "git clone -u 'rm -rf {OUT}/x' . y", de),
+        d(Own, "git clone -qu 'rm -rf {OUT}/x' . y", de),
+        d(Own, "git clone -u'rm -rf {OUT}/x' . y", de),
+        d(Own, "git clone -u \"$CMD\" . y", ur),
+        d(Own, "git fetch --upload-pack='rm -rf {OUT}/x' .", de),
+        d(Own, "git push --receive-pack='rm -rf {OUT}/x' . x:y", de),
+        d(Own, "git ls-remote --upload-pack='rm -rf {OUT}/x' .", de),
+        d(Own, "git archive --remote=. --exec='rm -rf {OUT}/x' HEAD", de),
+        // B-5: the wrapper programs of the closed table run the command they are given.
+        d(Own, "taskpolicy -b rm -rf {OUT}/x", de),
+        d(
+            Own,
+            "taskpolicy -d throttle -g default -c utility rm -rf {OUT}/x",
+            de,
+        ),
+        d(
+            Own,
+            "taskpolicy -t 1 -l 1 -m 100 -j 5 -P kill rm -rf {OUT}/x",
+            de,
+        ),
+        d(Own, "taskpolicy -a -s -x rm -rf {OUT}/x", de),
+        d(Own, "taskpolicy -b $CMD", ur),
+        d(Own, "xcrun rm -rf {OUT}/x", de),
+        d(Own, "xcrun --sdk macosx rm -rf {OUT}/x", de),
+        d(Own, "xcrun -sdk macosx rm -rf {OUT}/x", de),
+        d(Own, "xcrun --toolchain default rm -rf {OUT}/x", de),
+        d(Own, "xcrun -l -v rm -rf {OUT}/x", de),
+        d(Own, "xcrun --run rm -rf {OUT}/x", de),
+        d(Own, "sandbox-exec -n no-network rm -rf {OUT}/x", de),
+        d(Own, "sandbox-exec -p '(version 1)' rm -rf {OUT}/x", de),
+        d(Own, "sandbox-exec -f p.sb rm -rf {OUT}/x", de),
+        d(Own, "sandbox-exec -D k=v -n x rm -rf {OUT}/x", de),
+        d(Own, "sandbox-exec -Dk=v -n x rm -rf {OUT}/x", de),
+        d(Own, "flock /tmp/l rm -rf {OUT}/x", de),
+        d(Own, "flock -n /tmp/l rm -rf {OUT}/x", de),
+        d(Own, "flock -w 5 -x /tmp/l rm -rf {OUT}/x", de),
+        d(Own, "flock -E 3 /tmp/l rm -rf {OUT}/x", de),
+        d(Own, "flock /tmp/l -c 'rm -rf {OUT}/x'", de),
+        d(Own, "flock -c 'rm -rf {OUT}/x' /tmp/l", de),
+        d(Own, "flock --command='rm -rf {OUT}/x' /tmp/l", de),
+        d(Own, "flock /tmp/l $CMD", ur),
+        d(Own, "nice taskpolicy -b flock /tmp/l rm -rf {OUT}/x", de),
+        d(Own, "nice -n 5 rm -rf {OUT}/x", de),
+        d(Own, "time rm -rf {OUT}/x", de),
+        d(Own, "nohup rm -rf {OUT}/x", de),
+        d(Own, "stdbuf -o0 rm -rf {OUT}/x", de),
+        d(Own, "caffeinate -i rm -rf {OUT}/x", de),
+    ]
+}
+
+fn second_audit_allowed_cases() -> Vec<Case> {
+    use S::{Main, Own, Pri};
+    vec![
+        // Words that only name the programs, and commands that look near the rules.
+        a(Own, "echo alias hash enable cdpath cdable_vars"),
+        a(Own, "command -v alias"),
+        a(Own, "type hash"),
+        a(Own, "git config --get alias.co"),
+        a(Own, "git log --oneline -3 -- alias.rs"),
+        a(Own, "cat ~/notes/hash.txt"),
+        a(Own, "grep -rn cdpath src"),
+        a(Own, "set -e"),
+        a(Own, "set -euo pipefail"),
+        a(Own, "set -- a b"),
+        a(Own, "shopt -s nullglob"),
+        a(Own, "setopt extendedglob"),
+        a(Own, "unsetopt nomatch"),
+        a(Own, "cd src && ls"),
+        a(Own, "cd ./src && cd .. && rm -rf build"),
+        a(Own, "(cd {OUT}) && rm -rf ./build"),
+        a(Own, "git rebase --root"),
+        a(Own, "git rebase --root lane/own"),
+        a(Own, "git rebase --root --onto NeXT lane/own"),
+        a(Own, "git rebase main lane/own"),
+        a(Own, "git rebase -i HEAD~2"),
+        a(Own, "git rebase --onto main HEAD~2"),
+        a(Own, "git clone . y"),
+        a(Own, "git clone --depth 1 . y"),
+        a(Own, "git clone --upload-pack=git-upload-pack . y"),
+        a(Own, "git clone -u git-upload-pack . y"),
+        a(Own, "git fetch origin"),
+        a(Own, "git push -u origin HEAD"),
+        a(Own, "git switch lane/own"),
+        a(Own, "git switch -"),
+        a(Own, "git switch -c feat main"),
+        a(Own, "git switch --detach main"),
+        a(Own, "git switch -d NeXT"),
+        a(Own, "git checkout lane/own"),
+        a(Own, "git checkout -b feat NeXT"),
+        a(Own, "git checkout --detach NeXT"),
+        a(Own, "git checkout main -- src/a.txt"),
+        a(Own, "git checkout NeXT -- build/x"),
+        a(Own, "git checkout origin/main"),
+        a(Own, "git checkout -- src/a.txt"),
+        a(Own, "git switch --track origin/feature"),
+        a(Own, "git checkout -b feat origin/main"),
+        a(Own, "taskpolicy -b cargo build"),
+        a(Own, "taskpolicy -p 1234 -b"),
+        a(Own, "xcrun --find clang"),
+        a(Own, "xcrun --sdk macosx --show-sdk-path"),
+        a(Own, "xcrun clang -v"),
+        a(Own, "xcrun rm -rf {OWN}/build"),
+        a(Own, "sandbox-exec -n no-network ls"),
+        a(Own, "sandbox-exec -p '(version 1)(allow default)' cargo build"),
+        a(Own, "flock /tmp/l cargo build"),
+        a(Own, "flock -n /tmp/l -c 'cargo build'"),
+        a(Own, "flock -x /tmp/l rm -rf {OWN}/build"),
+        a(Own, "rm -rf {SCR}/work"),
+        a(Own, "ls *.rs"),
+        a(Own, "echo {a,b}"),
+        a(Own, "ls src/{a,b}.rs"),
+        a(Own, "find . -name '*.rs' | xargs grep foo"),
+        a(Own, "[ -d x ] && echo y"),
+        a(Own, "[[ -n \"$x\" ]] && echo y"),
+        a(Own, "test -f x && cat x"),
+        a(Own, "for f in *.rs; do echo $f; done"),
+        a(Own, "rm -f *.log"),
+        a(Own, "rm -rf build/{a,b}"),
+        a(Own, "jq '.[0]' f.json"),
+        a(Own, "awk '{print $1}' f"),
+        a(Own, "rg 'foo|bar' src"),
+        a(Own, "cargo nextest run -E 'test(x)'"),
+        a(Own, "echo $((1+2))"),
+        a(Own, "git diff HEAD~1 -- '*.rs'"),
+        a(Own, "git log @{u}.."),
+        a(Own, "git rev-parse @{-1}"),
+        a(Own, "git show HEAD^{tree}"),
+        a(Own, "sqlite3 -readonly db.sqlite \"select * from t\""),
+        a(Own, "ls [abc]*"),
+        a(Own, "cat ./src/*.rs"),
+        a(Own, "git branch -m lane/renamed"),
+        a(Own, "git push origin @:refs/heads/lane/x"),
+        a(Own, "git config --default /x core.hooksPath"),
+        a(Own, "git config --global --get include.path"),
+        a(Own, "git merge-tree --write-tree NeXT HEAD"),
+        a(Own, "git lfs ls-files"),
+        a(Own, "git lfs pull"),
+        a(Own, "pushd src && ls; popd"),
+        a(Own, "make -j4"),
+        a(Own, "node -e '1'"),
+        a(Pri, "git merge-tree --write-tree NeXT lane/own"),
+        a(Main, "git switch -c feat NeXT"),
+        a(Main, "git checkout lane/own"),
+    ]
+}
+
+#[test]
+fn ac15_the_second_audit_table_denied_and_allowed_shapes() {
+    let mut cases = second_audit_denied_cases();
+    cases.extend(second_audit_allowed_cases());
+    run_table(&World::new(), "second-audit", &cases);
+}
+
+/// The base folder of the fixture world, as a pure function of where the checkout lies.
+fn fixture_base_in(manifest: &Path, world_base: Option<&Path>) -> Result<PathBuf, String> {
+    let base = manifest.join("target").join("hook-bash-boundary-tests");
+    if !under_a_temporary_root(&base) {
+        return Ok(base);
+    }
+    let home = std::env::var_os("HOME")
+        .map(PathBuf::from)
+        .expect("HOME names the folder for a world outside the temporary roots");
+    let _ = world_base;
+    Ok(fs::canonicalize(&home)
+        .unwrap_or(home)
+        .join(".cache")
+        .join("moai-hook-bash-boundary-tests"))
+}
+
+#[test]
+fn ac15_a_checkout_under_a_temporary_root_never_borrows_the_real_home() {
+    let lent = Path::new("/private/tmp/moai-bb-lent-world");
+    let inside = Path::new("/private/tmp/moai-bb-checkout");
+    let real_home = PathBuf::from(std::env::var_os("HOME").unwrap_or_default());
+    match fixture_base_in(inside, None) {
+        Ok(base) => assert!(
+            !base.starts_with(&real_home) || real_home.as_os_str().is_empty(),
+            "the world would be built under the real HOME: {}",
+            base.display()
+        ),
+        Err(why) => assert!(why.contains("MOAI_BOUNDARY_TEST_WORLD"), "{why}"),
+    }
+    assert!(fixture_base_in(inside, Some(lent)).is_err());
+    let outside = Path::new("/opt/moai-bb-lent-world");
+    assert_eq!(
+        fixture_base_in(inside, Some(outside)).unwrap(),
+        outside.to_path_buf()
+    );
+    let manifest = Path::new("/opt/moai-bb-checkout");
+    assert_eq!(
+        fixture_base_in(manifest, None).unwrap(),
+        manifest.join("target").join("hook-bash-boundary-tests")
+    );
 }
