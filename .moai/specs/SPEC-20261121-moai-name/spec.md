@@ -196,3 +196,16 @@ settings cleaner 는 버전 줄을 읽지 않아요(`~/.moai-cli/path/moai-cli` 
 - Python 쪽: `tools/smoke/smoke.py` 정규식은 `^(moai|moai-cli) \S+ \(rust\)$`, `tests/oss_docs_test.py` 의 서명 기대는 `moai `, README 두 곳의 인용은 `moai 2026.11.0-rc.1 (rust)` 로 고쳤어요. 돌리지 않았어요(`not_run`): 손으로 돌리지 않았고, 그 실행의 `moai check affected` 에는 Python 단계가 없었어요. 원격 CI 의 첫 실행이 확인이에요(개정 5 에서 이 문장을 바로잡았어요).
 - N5·N6: 감사 노트에는 이름만 있고 본문이 없어서, 이 SPEC 에서 읽히는 어긋남(AC-7·REQ-8·범위·계획에 수리 내용이 없던 것)을 개정 4 로 바로잡았어요. 리더가 가리킨 다른 문구가 있으면 알려 주세요.
 - 이번 수리가 하지 않은 것: `check affected` 가 `src/main.rs` 변경에 바이너리 출력을 고정한 테스트를 고르게 하는 일(반복 후보, 리더 기록)과 위 1b 의 관찰.
+
+### 조각 2 (거절·경고·안내 문장, 개정 5)
+
+2026-11-23, 브랜치 `spec/moai-name-20261121`, base NeXT `568bc8956c41be8cae7bbcd518e37fcf5239d5c3`.
+
+- 먼저 본 것: 두 바이너리의 `-h`·`--help`·`help --all` 과 모든 명령의 `--help`(최상위 237개 단어, `bundle verify` 등 일부 하위 명령 포함)에서 명령 이름으로 쓰인 `moai-cli` 는 `bin-names-plan` 의 파일 문장과 `bundle verify` 의 플래그 `--moai-cli`(이름 자체가 인터페이스, 조각 5 이후) 뿐이에요. 도움말 골든(`tests/fixtures/help/*.txt` 8개)에 남은 `moai-cli` 는 상태 폴더 경로(조각 7)와 `bin-names-plan` 파일 문장(결정 D-6) 뿐이라 골든 파일 내용은 바꾸지 않았어요.
+- AC-8: met — 문장 11곳(Go 시대 스킬 안내 `update.rs`, 되돌리기 명령 `update/switch.rs` 2곳, 상태 이전 경고 `go_state.rs` 2곳, 키 보관함 안내 `session.rs`·`launcher_terminal.rs`, 거절 `key_vault.rs`, 첫 실행 purpose `launcher_init.rs`, 더 새로운 표식 `state_root.rs`, 설정 백업 머리말 `claude.rs`)을 `moai` 로 바꿨어요. RED: 기대값을 먼저 새 문장으로 고친 테스트와 새 `tests/user_text_names_moai.rs` 가 옛 문장 때문에 7개 실패(exit 100, `target/moai-name-help/red.log`), 바꾼 뒤 초록 52/52(exit 0).
+- AC-9: met — `the_help_goldens_keep_the_old_name_only_for_folders_and_the_alias_file` 와 기존 `moai_cli_help_names_no_command_moai_cli` 통과.
+- 뮤턴트: 소스 문장 4곳(`session.rs`·`update/switch.rs`·`update.rs`·`key_vault.rs`)과 골든 한 줄을 옛 이름으로 되돌렸더니 8개 테스트가 실패(exit 100): 문장 표 테스트, 골든 guard, `skill_name_collision` 2개, `key_vault` 단위 테스트, `update_switch_layer`·`update_switch_cli` 3개. 커밋 뒤에 넣었고 `git checkout` 으로 되돌린 뒤 `git status` 가 깨끗한 것을 확인했어요.
+- 실제 바이너리 출력을 읽는 테스트: 바꾼 문장을 읽는 곳(`update_*`, `go_state_*`, `key_*`, `launcher_*`, `state_root_cli`, `claude_*`, `session_*`, `home_install_*`, `project_update_*`)과 1b 수리 때 찾은 버전 줄을 읽는 곳을 합친 83개 통합 테스트 대상을 nextest 명시 `--test` 로 heavy-slot 4 에서 돌려 1256개 통과(exit 0, `target/moai-name-help/real-output.log`).
+- 결정 D-6~D-8: `bin-names-plan` 파일 문장, `~/.moai-cli` 상태 폴더 줄, 권한 참조·파일 이름 문자열은 해당 조각까지 그대로예요(위 Decisions).
+- 1b 감사 비차단 N-b(낡은 순서 문장과 읽는 쪽 표)·N-c(AC-7 의 없는 Python 단계)는 이 개정에서 고쳤어요. 같은 head 영수증은 카드의 READY 노트에 있어요.
+- 이번 조각이 하지 않은 것: 스킬·템플릿 문장(조각 11), `bundle verify` 의 `--moai-cli` 플래그와 `target/debug/moai-cli` 설명(조각 5), 환경 변수(조각 3), 캐시 폴더 이름(조각 4). `README` 의 옛 문장(1b 감사 N-a)은 조각 11 이에요.
