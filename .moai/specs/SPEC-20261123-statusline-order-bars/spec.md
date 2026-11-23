@@ -153,10 +153,12 @@ L4 의 `🅱️ v2026.11.0` 처럼 좁은 모양은 이름만 남기고 `(🏷�
 
 ## Result
 
-구현했어요(2026-11-23, 브랜치 `spec/20261123-statusline-order-bars`, 코드 커밋 head `cf4ba47cd5215df2d407bfdb83ede1e40d10ec89`). red 테스트는 SPEC 커밋 `53fc2fecc4` 위에 `b1f6fd1ae5` 로 먼저 커밋했어요. 감사는 아직이에요.
+구현했어요(2026-11-23, 브랜치 `spec/20261123-statusline-order-bars`, 개정 2 까지 구현한 코드 커밋 head `3d929c4a07d20359806e7cb6a6fdcf961d991bef`). 개정 1(둘째·셋째 줄)은 red 테스트 `b1f6fd1ae5` 를 먼저 커밋한 뒤 코드 `cf4ba47cd5` 로, 개정 2(첫 줄)는 SPEC 커밋 `1a5d439858` 위에 red 테스트 `352d54a5e1`·`d4f7303c9c` 를 먼저 커밋한 뒤 코드 `3d929c4a07` 로 구현했어요. 감사는 아직이에요.
 
-- red(`b1f6fd1ae5`, 옛 코드): `cargo test --offline --locked --lib statusline::` exit 101, 181 passed 34 failed. `--test statusline_cards` exit 101, 14 passed 19 failed. `--test statusline_flow` 2 passed 3 failed. `--test statusline_numbers_only` 2 passed 3 failed. `--test statusline_worktree_label` 3 passed 4 failed. `--test statusline_counts_refresh` 8 passed 5 failed. 앞의 여섯 줄 모두 exit 101.
-- green(head `cf4ba47cd5` 에서 레인이 다시 돌림, 로그 `target/lane-notes/verify.log`): lib 215 passed, `statusline_cards` 33 passed 1 ignored, `statusline_counts_refresh` 13, `statusline_flow` 5, `statusline_git_env` 27, `statusline_golden` 1, `statusline_guard_false_positive` 3, `statusline_home_state` 12, `statusline_integration_distance` 7, `statusline_numbers_only` 5, `statusline_tag_order` 3, `statusline_worktree_label` 7, `status_line_cli` 16 가 모두 exit 0, failed 0. `cargo clippy --offline --locked --all-targets -- -D warnings` exit 0, `cargo fmt --check` exit 0, `git diff --check` exit 0, `moai spec check` exit 0.
+- red(개정 1, `b1f6fd1ae5`, 옛 코드): `cargo test --offline --locked --lib statusline::` exit 101, 181 passed 34 failed. `--test statusline_cards` exit 101, 14 passed 19 failed. `--test statusline_flow` 2 passed 3 failed. `--test statusline_numbers_only` 2 passed 3 failed. `--test statusline_worktree_label` 3 passed 4 failed. `--test statusline_counts_refresh` 8 passed 5 failed. 모두 exit 101.
+- red(개정 2, `352d54a5e1`·`d4f7303c9c`, 옛 코드): `--lib statusline::` exit 101, 194 passed 23 failed. `--test statusline_first_line` exit 101, 0 passed 5 failed. `statusline_cards` 23 passed 10 failed. `statusline_git_env` 18 passed 9 failed. `statusline_integration_distance` 0 passed 7 failed. `statusline_worktree_label` 1 passed 6 failed. `statusline_flow` 4 passed 1 failed. `statusline_numbers_only` 4 passed 1 failed. 모두 exit 101이고, 실패는 동작 때문이에요(예: detached 사례가 `🅱️ 74aa922 +1` 을 써서 `🅱️ v2026.11.0(🏷️ 2894f90)` 와 달랐어요).
+- green(head `3d929c4a07` 에서 레인이 `target/lane-notes/verify.sh` 로 다시 돌림, 로그 `target/lane-notes/verify.log`): lib 217 passed, `statusline_first_line` 5, `statusline_cards` 33 passed 1 ignored, `statusline_counts_refresh` 13, `statusline_flow` 5, `statusline_git_env` 27, `statusline_golden` 1, `statusline_guard_false_positive` 3, `statusline_home_state` 12, `statusline_integration_distance` 7, `statusline_numbers_only` 5, `statusline_tag_order` 3, `statusline_worktree_label` 7, `status_line_cli` 16 이 모두 exit 0, failed 0. `cargo clippy --offline --locked --all-targets -- -D warnings` exit 0, `cargo fmt --check` exit 0, `git diff --check` exit 0, `moai spec check` exit 0.
+- 뮤턴트(레인이 직접 실행, `target/lane-notes/mutant.sh`): `read_git` 의 통합 tip 을 `refs/heads/<통합>` 대신 `HEAD` 가 가리키는 커밋에서 읽게 바꾸고 `cargo test --offline --locked --test statusline_first_line` 을 돌리니 exit 101, 0 passed 5 failed(다섯 테스트 모두 실패: `the_lane_branch_shows_the_integration_tip_and_the_checked_out_branch`, `a_detached_leader_shows_the_integration_item_and_no_checked_out_item`, `the_tip_is_the_commit_of_the_integration_ref_and_never_the_one_of_head`, `an_integration_branch_without_a_local_ref_says_n_a`, `the_first_line_has_no_distance_and_no_ahead_behind_or_uncommitted_mark`). `git checkout -- src/statusline/state.rs` 로 되돌린 뒤 `git diff -- src` 가 0줄이에요. 뮤턴트 뒤에는 코드를 되돌린 head `3d929c4a07` 에서 바이너리를 다시 빌드해 아래 출력을 만들었어요.
 - 결정 D-1(막대는 남은 비율), D-2(내 카드는 단계 아이콘을 그대로 달아요), D-3(그라데이션 없이 두 색)은 위 Decisions 표에 이유와 되돌리는 방법이 있어요.
 
 - AC-1: met — `statusline::render::flow_line_tests::the_versions_open_the_flow_line_and_my_card_closes_it` 가 가장 넓은 흐름 줄 `🤖 2.1.330 | 🗿 4.2648.20 | 🗂️ 176 → 🟡 6 → 📨 13 → 🛬 8 → ✅ 6 | 🚧 7 🙋 9 | 🎯 C-12 🟡`, `claude_version`·`moai_version`·`cards` 옵션이 각자의 항목과 구분자만 숨기는 것, 흐름이 없을 때 두 버전만(`🤖 2.1.330 | 🗿 4.2648.20`), 버전이 없을 때 흐름만 나오는 것을 고정해요.
@@ -166,40 +168,72 @@ L4 의 `🅱️ v2026.11.0` 처럼 좁은 모양은 이름만 남기고 `(🏷�
 - AC-5: met — `statusline::render::window_tests::unknown_windows_and_the_hide_list_stay_as_they_were` 가 `CW n/a | 7D n/a` 에 아이콘과 `█`·`░` 가 없는 것과 `context`·`usage_5h`·`usage_7d` 숨김을, `tests/statusline_cards.rs` 의 `line_three_ladder_unknown_windows_never_draw_a_bar` 가 바이너리의 모든 폭에서 같은 것을 고정해요.
 - AC-6: met — `tests/statusline_cards.rs` 의 `line_three_ladder_every_form_is_the_string_of_the_layouts_section` 이 한도 줄의 모든 모양의 문자열과 폭, 폭 N+2 에서 그 모양, N+1 에서 다음 모양을, `line_three_ladder_without_a_usable_columns_and_below_the_narrowest` 가 `COLUMNS` 없음과 가장 좁은 폭 아래의 모양을 고정해요.
 - AC-7: met — `statusline::render::window_tests::the_colored_bar_has_the_plain_text` 가 두 테마(`catppuccin-mocha`, `catppuccin-latte`)에서 색 있는 줄에서 이스케이프를 뺀 글이 색 없는 줄과 같은 것과 채운 칸·빈 칸이 서로 다른 색 구간인 것을 고정해요.
-- AC-8: met — `--test statusline_golden` 이 골든 파일 전부의 실제 바이너리 출력을 고정해요. `tools/statusline_golden.py --write` 로 골든 파일 108개를 다시 썼고 바뀐 plain 파일 36개를 옛 것과 하나씩 비교했어요(레인이 `git show` 로 옛 파일을 읽어 비교). 줄 1(누구·어디)의 글과 한도 숫자·카운트다운은 바뀌지 않았고, 두 버전이 둘째 줄로 옮겨졌고 셋째 줄에 막대가 생겼어요. 줄 1 이 없는 세 사례(`a06`, `a09`, `a15`)는 옛 첫 줄이던 한도 줄 자리에 버전 줄이 올라와 맨 윗줄이 `🗿 …` 로 달라졌고, 막대의 채운 칸 수는 모든 골든 줄에서 숫자의 `left × 10 / 100` 내림과 같아요. 버전 글자는 하네스가 읽은 빌드 버전(`4.2647.0` → `4.2648.0`)이라 다시 쓰면 함께 바뀌어요.
+- AC-8: met — `--test statusline_golden` 이 골든 파일 전부의 실제 바이너리 출력을 고정해요. `tools/statusline_golden.py --write` 로 골든 파일 108개를 다시 썼고 바뀐 plain 파일 36개를 옛 것과 하나씩 비교했어요(레인이 `git show` 로 옛 파일을 읽어 비교). 한도 숫자·카운트다운은 바뀌지 않았고, 두 버전이 둘째 줄로 옮겨졌고 셋째 줄에 막대가 생겼어요(개정 1). 개정 2 는 골든 파일 56개를 다시 썼고, 그중 plain 17개의 줄 1 이 바뀌었는데 `🧠 → 📡 → 🅱️(🏷️) → 🌳 → 🔗` 순서, `🅱️ <통합>(🏷️ <7자리>)` 모양, `🧭`·`↑ ↓`·`+N` 없음만 확인했어요(`target/lane-notes/golden_line1.py` 로 옛 `1a5d439858` 과 새 head 의 줄 1 을 모두 비교, 의도하지 않은 변화 없음, 줄 2·3 은 그대로). 하네스 사례들은 통합 브랜치를 모르므로 `🌳 main` 만 남는 줄이 많아요(D-9). 줄 1 이 없는 세 사례(`a06`, `a09`, `a15`)는 옛 첫 줄이던 한도 줄 자리에 버전 줄이 올라와 맨 윗줄이 `🗿 …` 로 달라졌고, 막대의 채운 칸 수는 모든 골든 줄에서 숫자의 `left × 10 / 100` 내림과 같아요. 버전 글자는 하네스가 읽은 빌드 버전(`4.2647.0` → `4.2648.0`)이라 다시 쓰면 함께 바뀌어요.
 - AC-9: met — `tests/statusline_numbers_only.rs` 의 옛 "막대 낱말 없음" 세 테스트를 `the_renderer_draws_the_bar_and_carries_no_color_gradient_and_no_card_numbers`, `the_statusline_doc_describes_the_bars_and_the_line_order`, `the_statusline_tests_pin_the_bar` 로 바꿨고, `docs/rust-product-path.md` 가 새 줄 순서와 막대를 말해요(`--test statusline_numbers_only` 5 passed).
+- AC-10: met — `tests/statusline_first_line.rs` 의 `the_lane_branch_shows_the_integration_tip_and_the_checked_out_branch` 가 실제 임시 git 저장소(통합 `v2026.11.0` 에서 딴 레인 가지가 두 커밋 앞서고 `HEAD` 는 그 가지)와 실제 바이너리로 첫 줄이 `🧠 Sonnet 5.5 high·t | 📡 modu-ai/moai-adk, ⬇️ 1 🔀 0 | 🅱️ v2026.11.0(🏷️ <tip>) | 🌳 spec/ready-mutant-line-20261123` 인 것을 고정해요. `<tip>` 은 테스트가 `git rev-parse --short=7 refs/heads/<통합>` 으로 읽고, `HEAD` 의 7자리와 다르다는 것도 확인해요.
+- AC-11: met — `a_detached_leader_shows_the_integration_item_and_no_checked_out_item` 이 detached `HEAD`(통합 tip 과 다른 커밋)에서 첫 줄이 `🅱️ v2026.11.0(🏷️ <tip>)` 로 끝나고 `🌳` 도 `HEAD` 의 짧은 커밋도 없는 것을 고정해요.
+- AC-12: met — `the_tip_is_the_commit_of_the_integration_ref_and_never_the_one_of_head` 가 레인 가지(앞섬)와 detached(뒤처짐) 두 경우, 그리고 느슨한 ref 파일을 `git pack-refs` 로 없앤 `packed-refs` 만 있는 경우에도 7자리가 통합 ref 의 커밋인 것을 고정해요. tip 을 `HEAD` 에서 읽는 뮤턴트에서 이 테스트가 실패했어요(위 뮤턴트 항목).
+- AC-13: met — `an_integration_branch_without_a_local_ref_says_n_a` 가 로컬 ref 가 없는 통합 브랜치에서 `🅱️ <이름>(🏷️ n/a)` 를 고정해요.
+- AC-14: met — `the_first_line_has_no_distance_and_no_ahead_behind_or_uncommitted_mark` 가 앞선 커밋과 미커밋 변경이 있는 작업 트리에서 첫 줄에 `🧭`·`↑`·`↓`·`+N` 이 없고 저장소 숫자와 `🔗` 가 그대로인 것을 고정해요.
+- AC-15: met — `statusline::render::line_one_form_tests::every_form_is_exactly_the_string_of_the_layouts_section` 이 Layouts 표의 모양이 문자열 그대로이고 각 경계 폭에서 바뀌는 것을, `the_detached_missing_ref_and_unknown_integration_rows_are_the_strings_of_the_section` 이 detached·ref 없음·통합 모름 줄을, `the_first_line_has_no_distance_and_no_marks_in_any_form` 이 모든 모양에서 거리와 표시가 없는 것을 고정해요(`--lib statusline::` 217 passed 안에 있어요).
 
 ### 실제 바이너리 출력
 
-`target/debug/moai-cli statusline --render-budget-ms 3600000 --now-unix 1738429000`, 입력 `tests/fixtures/statusline/stdin/a02-doc-full.json`, 임시 `HOME` 과 프로젝트, `NO_COLOR=1`, `COLUMNS` 140·80·60·45·30(모두 exit 0):
+**첫 줄(개정 2)**, 레인이 `target/lane-notes/first_line_output.sh` 로 만든 임시 `HOME` 과 임시 git 저장소(통합 브랜치 `v2026.11.0`, 프로필이 그 이름을 말함, 이슈 1·PR 0), `target/debug/moai-cli statusline --render-budget-ms 3600000`, `NO_COLOR=1`, 입력의 모델 `Sonnet 5.5 high`, 저장소 `modu-ai/moai-adk`. 각 사례 앞의 `integration tip` 은 `git rev-parse --short=7 refs/heads/v2026.11.0`, `HEAD` 는 `git rev-parse --short=7 HEAD` 이고 둘이 달라요(저장소는 매번 새로 만들어서 값은 실행마다 달라요). 모두 exit 0:
+
+```
+### A: lane branch
+integration tip (7): 8c55a9b   HEAD (7): c037295   HEAD file: ref: refs/heads/spec/ready-mutant-line-20261123
+--- COLUMNS=140
+🧠 Sonnet 5.5 high·t | 📡 modu-ai/moai-adk, ⬇️ 1 🔀 0 | 🅱️ v2026.11.0(🏷️ 8c55a9b) | 🌳 spec/ready-mutant-line-20261123
+--- COLUMNS=80
+🧠 Sonnet | 🅱️ v2026.11.0(🏷️ 8c55a9b) | 🌳 spec/ready-mutant-line-20261123
+--- COLUMNS=50
+🧠 Sonnet | 🅱️ v2026.11.0 | 🌳 spec/ready-mutant-line-20261123
+### B: detached leader
+integration tip (7): 8c55a9b   HEAD (7): c037295   HEAD file: c037295e40cadb6dcd8e4ba8d70922e8364d1197
+--- COLUMNS=140
+🧠 Sonnet 5.5 high·t | 📡 modu-ai/moai-adk, ⬇️ 1 🔀 0 | 🅱️ v2026.11.0(🏷️ 8c55a9b)
+--- COLUMNS=80
+🧠 Sonnet 5.5 high·t | 📡 modu-ai/moai-adk | 🅱️ v2026.11.0(🏷️ 8c55a9b)
+--- COLUMNS=50
+🧠 Sonnet | 🅱️ v2026.11.0(🏷️ 8c55a9b)
+```
+
+**둘째·셋째 줄(개정 1)을 포함한 전체**, `target/debug/moai-cli statusline --render-budget-ms 3600000 --now-unix 1738429000`, 입력 `tests/fixtures/statusline/stdin/a02-doc-full.json`, 임시 `HOME` 과 git 이 아닌 임시 프로젝트(그래서 첫 줄에 `🅱️`·`🌳` 가 없어요), `NO_COLOR=1`, `COLUMNS` 140·80·60·45·30, 모두 exit 0:
 
 ```
 --- COLUMNS=140
-🧠 Opus high·t | 📡 anthropics/claude-code, ⬇️ n/a 🔀 n/a | 🌳 feature-xyz | 🔗 #1234 pending
+🧠 Opus high·t | 📡 anthropics/claude-code, ⬇️ n/a 🔀 n/a | 🔗 #1234 pending
 🤖 2.1.90 | 🗿 4.2648.0
 🔋 CW █████████░ 92% | 🔋 7D █████░░░░░ 59% (4d 23h)
+[exit=0]
 --- COLUMNS=80
-🧠 Opus high·t | 📡 anthropics/claude-code | 🌳 feature-xyz | 🔗 #1234 pending
+🧠 Opus high·t | 📡 anthropics/claude-code, ⬇️ n/a 🔀 n/a | 🔗 #1234 pending
 🤖 2.1.90 | 🗿 4.2648.0
 🔋 CW █████████░ 92% | 🔋 7D █████░░░░░ 59% (4d 23h)
+[exit=0]
 --- COLUMNS=60
-🧠 Opus high | 📡 claude-code | 🌳 feature-xyz | 🔗 #1234
+🧠 Opus high | 📡 claude-code | 🔗 #1234
 🤖 2.1.90 | 🗿 4.2648.0
 🔋 CW █████████░ 92% | 🔋 7D █████░░░░░ 59% (4d 23h)
+[exit=0]
 --- COLUMNS=45
-🧠 Opus | 🌳 feature-xyz | 🔗 #1234
+🧠 Opus high | 📡 claude-code | 🔗 #1234
 🤖 2.1.90 | 🗿 4.2648.0
 🔋 CW █████████░ 92% | 🔋 7D █████░░░░░ 59%
+[exit=0]
 --- COLUMNS=30
-🧠 Opus | 🌳 feature-xyz
+🧠 Opus | 🔗 #1234
 🤖 2.1.90 | 🗿 4.2648.0
 🔋 CW 92% | 🔋 7D 59%
+[exit=0]
 ```
 
-원장이 있는 예(`tests/fixtures/statusline-claude/golden/b14-card-counts-waiting.plain.txt`):
+원장이 있는 예(`tests/fixtures/statusline-claude/golden/b14-card-counts-waiting.plain.txt`, 이 골든의 하네스는 통합 브랜치를 모르므로 `🌳 main` 만 나와요):
 
 ```
-🧠 Opus high·t | 📡 anthropics/claude-code, ⬇️ 46 🔀 0 | 🌳 feature-xyz | 🅱️ main | 🔗 #1234 pending
+🧠 Opus high·t | 📡 anthropics/claude-code, ⬇️ 46 🔀 0 | 🌳 main | 🔗 #1234 pending
 🤖 2.1.90 | 🗿 4.2648.0 | 🗂️ 25 → 📨 3 → ✅ 12 | 🙋 5
 🔋 CW █████████░ 92% | 🔋 7D █████░░░░░ 59% (4d 23h)
 ```
@@ -210,4 +244,7 @@ L4 의 `🅱️ v2026.11.0` 처럼 좁은 모양은 이름만 남기고 `(🏷�
 - 원격 CI 실행은 읽지 않았어요.
 - Windows 와 Linux 에서는 돌리지 않았어요.
 - 한국어 로케일 터미널에서 `█`/`░` 의 칸 폭은 보지 못했어요(위 Risks 1).
+- 개정 2: "detached `HEAD` 가 `🌳` 를 지어내는" 뮤턴트는 제가 돌리지 않았어요(AC-11 의 테스트가 `🌳` 없음과 짧은 커밋 없음을 단언하는 것만 읽었어요). 돌린 뮤턴트는 "tip 을 `HEAD` 에서 읽기" 하나예요.
+- 개정 2: 첫 줄에서 빠진 거리·ahead/behind·미커밋 계산(`where_items`, `Where`, `Marks`, git 숫자 캐시)은 지우지 않았어요(D-12). 화면에 안 나오는 코드가 남아 있고, 정리는 다음 카드의 몫이에요. `cargo clippy --all-targets -D warnings` 는 exit 0 이라 죽은 코드 경고는 없었어요.
+- 통합 브랜치 tip 이 `0dfdfb31dc` 에서 `b3ba2b30d5` 로 다시 움직였지만 흐름 규칙대로 따라가지 않았어요. 합칠 때의 충돌은 착지하는 쪽이 다뤄요.
 - 독립 감사는 아직이에요.
