@@ -76,7 +76,7 @@ fn driver_names(config_output: &str) -> Vec<String> {
 /// What `check` says about its `warnings` (SPEC-20261123-ready-mutant-line, D-2 and D-3).
 const WARNING_NOTE: &str = "warnings are in observe: a missing, unreadable or surviving `guard-mutant:` line of the READY note is listed and never changes `ok`, `findings` or the exit status; the tool cannot tell whether a line is true";
 
-const AUDIT_NOTE: &str ="a `PASS` note naming the head counts; a stated `tier <N>` before ` head ` is read (a head whose floor is above it has `audit_tier_low`); the tool cannot tell who wrote it";
+const AUDIT_NOTE: &str = "a `PASS` note naming the head counts; a stated `tier <N>` before ` head ` is read (a head whose floor is above it has `audit_tier_low`); the tool cannot tell who wrote it";
 
 /// Byte ranges of the card numbers in `text`: `C-` or `c-` and one or more digits, the letter not
 /// inside a longer word (`AC-1` and `SPEC-2026…` are not card numbers). The card reference reader

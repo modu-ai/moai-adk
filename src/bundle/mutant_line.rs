@@ -20,9 +20,20 @@ pub fn warnings(body: Option<&str>) -> Vec<Warning> {
     };
     let mut out: Vec<Warning> = Vec::new();
     let mut seen = false;
+    // A line inside a code fence is quoted text (a pasted template), not a mutant line.
+    let mut fenced = false;
     // The first line is the marker line; line numbers count it as line 1.
     for (i, raw) in body.lines().enumerate().skip(1) {
         let line = raw.trim_start();
+        if line.starts_with("```") || line.starts_with("~~~") {
+            fenced = !fenced;
+            continue;
+        }
+        // Four or more leading spaces (or a tab) make an indented code block, a quote of a line.
+        let indent = &raw[..raw.len() - line.len()];
+        if fenced || indent.starts_with('\t') || indent.len() >= 4 {
+            continue;
+        }
         let line = line.strip_prefix("- ").unwrap_or(line);
         let Some(rest) = line.strip_prefix(PREFIX) else {
             continue;
@@ -59,7 +70,11 @@ enum Read {
 /// `none | <reason>`. `None` when it fits neither form.
 fn read(rest: &str) -> Option<Read> {
     let fields: Vec<&str> = rest.split('|').map(str::trim).collect();
-    if fields.iter().any(|f| f.is_empty()) {
+    // An empty field or a template placeholder left as it is (`<reason>`) is not a statement.
+    if fields
+        .iter()
+        .any(|f| f.is_empty() || (f.starts_with('<') && f.ends_with('>')))
+    {
         return None;
     }
     match fields.as_slice() {
@@ -171,6 +186,63 @@ mod tests {
             "guard-mutant: a | removed x | exit 1\nguard-mutant: b | flipped y | exit 0\nguard-mutant: oops",
         );
         assert_eq!(codes(&n), ["mutant_survived", "mutant_line_unreadable"]);
+    }
+
+    #[test]
+    fn a_line_inside_a_code_fence_is_quoted_text_and_not_read() {
+        for fence in ["```", "~~~", "```text", "  ```"] {
+            // A bad line and a good line inside the fence give no warning and no mutant line.
+            let n = note(&format!(
+                "{fence}\nguard-mutant: none | <reason>\nguard-mutant: a | removed x | exit 1\n{fence}"
+            ));
+            assert_eq!(codes(&n), ["mutant_line_missing"], "{fence}");
+        }
+        // The fence closes: a line after it is read again, and its line number counts the fence.
+        let n = note(
+            "```\nguard-mutant: a | removed x | exit 1\n```\nguard-mutant: b | flipped y | exit 0",
+        );
+        let w = warnings(Some(&n));
+        assert_eq!(w.len(), 1, "{w:?}");
+        assert_eq!(w[0].0, "mutant_survived");
+        assert_eq!(w[0].1, json!({"test": "b", "line": 5}));
+    }
+
+    #[test]
+    fn four_spaces_or_a_tab_make_an_indented_quote_that_is_not_read() {
+        for quoted in [
+            "    guard-mutant: a | removed x | exit 1",
+            "    - guard-mutant: a | removed x | exit 1",
+            "\tguard-mutant: a | removed x | exit 1",
+        ] {
+            assert_eq!(codes(&note(quoted)), ["mutant_line_missing"], "{quoted:?}");
+        }
+        // Three spaces are still a line of the note.
+        let n = note("   guard-mutant: a | removed x | exit 0");
+        assert_eq!(codes(&n), ["mutant_survived"]);
+    }
+
+    #[test]
+    fn a_template_placeholder_left_as_it_is_is_unreadable() {
+        for template in [
+            "guard-mutant: none | <reason>",
+            "guard-mutant: <test> | <code removed or flipped> | exit <n>",
+            "guard-mutant: <test> | removed x | exit 1",
+            "guard-mutant: a | <code removed or flipped> | exit 1",
+        ] {
+            assert_eq!(
+                codes(&note(template)),
+                ["mutant_line_unreadable"],
+                "{template}"
+            );
+        }
+    }
+
+    #[test]
+    fn exit_codes_are_read_as_numbers_so_00_is_zero_and_007_is_not() {
+        let zero = note("guard-mutant: a | removed x | exit 00");
+        assert_eq!(codes(&zero), ["mutant_survived"]);
+        let seven = note("guard-mutant: a | removed x | exit 007");
+        assert_eq!(codes(&seven), Vec::<&str>::new());
     }
 
     #[test]
