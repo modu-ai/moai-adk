@@ -98,7 +98,7 @@ approval:
 - A user's Claude may still not read `~/.claude/rules/` files below the top level or at all in a profile whose `rules/` is not a link to `~/.claude/rules`: the existing `not_linked` row says so; this SPEC does not change it. Noticed by the AC-4 text and the operator run of card criterion 3.
 - A receipt written by build 22 names kind `flow`: a revert that maps it to the new path would undo the wrong file. Pinned by AC-3.
 - `rules/moai/flow.md` and `rules/moai-flow.md` hold the same text until the user deletes the old one; if Claude loads both the rule appears twice. The text is short (at most 80 lines, 5 KiB); noticed by the operator run.
-- `tests/fixtures/home-style/render-5.md` and `skills/moai/references/source-manifest.json` still name the earlier path in prose; not changed here (out of write scope), reported in the READY gaps.
+- `tests/fixtures/home-style/render-5.md` still names the earlier path in prose; not changed here (out of write scope), reported in the READY gaps. The one line of `skills/moai/references/source-manifest.json` that named it was corrected in the repair after the first audit (under a line lease; see the Result).
 
 ## Decisions
 
@@ -137,8 +137,19 @@ approval:
 - AC-5: not_run — 알림 조각(REQ-8)은 이 조각에 없어요.
 - AC-6: 여섯 파일 중 `update_user_layer_cli` 를 포함해 모두 새 경로를 이름 붙였어요. `check affected` 본 실행의 결과는 READY 노트가 가지고 있어요(같은 head).
 
+### 첫 감사 뒤 수리 (2026-11-24, 같은 가지, 임시 HOME 만)
+
+감사(head `bf14074b7b`)가 FAIL 로 낸 B1·N2·N3 을 고쳤어요. 알림 조각(REQ-5 에서 REQ-9)은 이 수리에 없어요.
+
+- B1: 예전 `rules/moai/flow.md` 안내를 못박는 시험 둘을 `tests/desktop_folder_rules_cli.rs` 에 더했어요. `earlier_flow_note_is_added_after_an_existing_detail` 은 사용자 `rules/moai.md` 때문에 흐름 줄이 `held`(설명이 이미 있음)일 때 안내가 그 설명 뒤에 붙는지, `no_earlier_flow_file_means_no_note` 는 예전 파일이 없으면 두 경우(create, held) 모두 안내가 붙지 않는지 봐요. 같은 파일 5 passed(`moai heavy-slot-acquire … cargo nextest run --locked --test desktop_folder_rules_cli`, exit 0).
+- 뮤턴트(`src/home_routing/rules.rs`, 커밋 뒤 손으로 한 줄 변이, `git checkout` 으로 복구): `Some(d) => format!("{d}; {note}")` 를 `Some(d) => d` 로 바꾸면 `earlier_flow_note_is_added_after_an_existing_detail` 이 실패(exit 100). 예전 파일 존재 검사 `is_ok()` 를 `is_ok() || true` 로 바꾸면 `no_earlier_flow_file_means_no_note` 가 실패(exit 100).
+- N2: `## Scope` 의 `write:` 줄은 판 1 의 승인 내용이에요. 범위(scope)는 승인 digest 에 들어가서(`src/spec.rs:563` `content_digest`) 줄을 바꾸면 `spec check` 가 `approval_digest` 로 막히고 판 2 와 새 승인이 필요해요. 이 레인은 승인을 기록하지 않아서 줄은 그대로 두고, 판 1 승인 뒤 카드 예약 범위가 넓어진 경로를 여기 적어요(`write:` 줄에 없는 것): `tests/areas.toml`·`tools/repo_scans.json`(노트 7979), `docs/design-review/appendix/operations/home_routing_plan.md`·`home_routing_apply.md`(노트 8005), `skills/moai/references/source-manifest.json` 한 줄(노트 8005, `moai card line-lease` 안에서만; Scope 의 `read-only:` 줄과 다른 쓰기). 이 경로들은 리더 결정으로 범위에 들었고 `tests/update_user_layer_cli.rs` 는 판 1 `write:` 줄에 이미 있어요. 줄을 판 2 로 맞출지는 리더 몫이에요(승인 필요).
+- N3: `docs/design-review/appendix/operations/home_routing_plan.md` 와 `home_routing_apply.md` 의 흐름 파일 경로를 `rules/moai-flow.md` 로, 영수증 kind 목록을 `routing`·`moai_flow`·`old_block`(옛 `flow` 는 `rules/moai/flow.md` 만)으로, 계획 문서의 충돌 목록에서 더는 흐름 길이 아닌 `rules/moai` 를 빼고 예전 파일 안내를 한 줄 더했어요. `skills/moai/references/source-manifest.json` 의 한 줄(`rules/moai/flow.md` → `rules/moai-flow.md`)은 `moai card line-lease` 안에서 `sed` 로 바꿨어요.
+- 인수 기준은 위와 같아요(AC-1, AC-2, AC-3 met · AC-4, AC-5 not_run · AC-6 는 수리 head 의 `check affected` 영수증이 근거).
+
 ### 남은 것
 
 - 알림 조각(REQ-5 에서 REQ-9)은 `src/update.rs` 를 쥔 카드가 놓은 뒤 SCOPE-REQUEST 로 이어요.
-- `tests/fixtures/home-style/render-5.md` 와 `skills/moai/references/source-manifest.json` 의 설명 글이 옛 경로를 말로 적고 있어요(범위 밖, 이 조각에서 바꾸지 않았어요).
+- `tests/fixtures/home-style/render-5.md` 의 설명 글이 옛 경로를 말로 적고 있어요(범위 밖, 이 조각에서 바꾸지 않았어요).
+- 후속 카드 후보(감사 N1, N4): 예전 영수증을 새 apply 뒤에 되돌리면 공용 `flow_sha256` 칸이 비어 다음 새 판이 `conflict` 로 계획돼요(데이터 손실 없음, 순서대로 되돌리면 맞아요). 되돌리기가 `~/.moai` 의 상태 파일과 영수증 폴더를 남기는 것은 기존 동작이에요.
 - 카드 기준 3(임시 HOME 설치 뒤 진짜 claude 세션에서 /moai, 에이전트 다섯, rules 확인)은 운영자 단계라 not_run 이에요.

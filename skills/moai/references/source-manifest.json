@@ -110,7 +110,7 @@
         "kind": "design-spec",
         "template_id": "home-flow-rule",
         "adoption": "new",
-        "reason": "Written for SPEC-20261122-claude-md-flow-rule revision 4 against the leader's candidate (rules-redesign-2026-11-23): the short, project-generic evidence and handoff rule that moai-cli writes as rules/moai/flow.md into each Claude config folder the user picks (src/home_routing/rules.rs), plain text with no frontmatter, at most 80 lines and 5 KiB. Lane, card and landing detail stays in references/flows/next-flow.md, which this file points to; what hooks enforce (force push, reset, clean) is not repeated here."
+        "reason": "Written for SPEC-20261122-claude-md-flow-rule revision 4 against the leader's candidate (rules-redesign-2026-11-23): the short, project-generic evidence and handoff rule that moai-cli writes as rules/moai-flow.md into each Claude config folder the user picks (src/home_routing/rules.rs), plain text with no frontmatter, at most 80 lines and 5 KiB. Lane, card and landing detail stays in references/flows/next-flow.md, which this file points to; what hooks enforce (force push, reset, clean) is not repeated here."
       }
     },
     "references/home/output-style.md": {
