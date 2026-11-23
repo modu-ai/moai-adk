@@ -38,6 +38,7 @@ What was measured while writing this SPEC (Claude Code 2.1.330, temporary HOME, 
 - REQ-4: IF the `agents` link of the profile points at another folder, THEN the install shall block that host so that the available-agents list holds no base agent.
 - REQ-5: The check shall run on temporary folders with a cleared environment, so that no file outside them is read or written.
 - REQ-6: IF `claude` is not on the path, THEN the check shall print that it skipped and pass. · failure: none — nothing runs
+- REQ-7: When a known agent name runs through the child `claude`, the check shall end the run at the login step within a fixed deadline, with the background traffic switched off. · failure: none — the test fails and prints the answer
 
 ## Acceptance
 
@@ -46,6 +47,7 @@ What was measured while writing this SPEC (Claude Code 2.1.330, temporary HOME, 
 - AC-3 (REQ-3): all six names pass the name check in both shapes · verify: `cargo test --test base_agents_discovery_record`
 - AC-4 (REQ-4): with a profile link to another folder the preview is blocked and the list holds no base agent · verify: `cargo test --test base_agents_discovery_record a_profile_link_to_another_folder`
 - AC-5 (REQ-6): a `PATH` that is unset, empty or holds no `claude` finds no program, and each case then prints `skipped: \`claude\` is not on the PATH` and returns · verify: `cargo test --test base_agents_discovery_record no_claude_on_the_path_is_a_skip`
+- AC-6 (REQ-7): the child `claude` has `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1` and no variable outside the allowed set; a known name is accepted only when its answer holds `Not logged in` and no `not found`; a child that does not exit by the deadline is killed with its process group and reported · verify: `cargo test --test base_agents_discovery_record the_child_claude a_known_name_is_accepted a_child_is_killed`
 
 ## Scope
 
@@ -72,6 +74,7 @@ What was measured while writing this SPEC (Claude Code 2.1.330, temporary HOME, 
 | D-1 | "Invokes" is recorded as the name check reaching the login step, not as a model answer | A temporary config folder has no credentials and credentials are never copied (HOLD `secret`) | Add a model-answered call when the user supplies a throwaway key for tests |
 | D-2 | The Orca shape is a profile folder with an `agents` link only | The leader's read of 2026-11-23 shows the profile links agents to `~/.claude`; other entries do not change what is found here | Add the other links to the fixture when a card needs them |
 | D-3 | No product change; the checked behaviour is the one already on the tip | Both shapes pass on the tip (measured), so a change would have nothing to fix | none |
+| D-4 | A known name must end at `Not logged in`, the child gets the traffic switch and a deadline | Audit notes N1 and N2 of the card: a leaked credential would turn `-p hi` into a billed model call that still passed, and an unauthenticated run tried DNS lookups | Drop the three guards; the cost is a silent paid call |
 
 ## Result
 
@@ -84,3 +87,5 @@ Added `tests/base_agents_discovery_record.rs` and this SPEC; no product code cha
 - AC-5: met — `no_claude_on_the_path_is_a_skip` passed for an unset, an empty and a `claude`-less `PATH`; each of the three other cases returns with the skip line in that situation.
 - Mutant: renaming the installed `moai-plan.md`'s `name` to `moai-plan-x` after the install made `native_layout` fail with `moai-plan listed 0 times in [… "moai-plan-x" …]`; the edit was removed and the file re-run green.
 - Not run: Windows and Linux; a model-answered call of any agent; the real home, `~/.claude` and the Orca profile were never read or written.
+- Repair after the audit (tests only, D-4): the child `claude` is built by `claude_command` with `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1`; `run_with_deadline` kills a child that is still running after 60 s with its process group; every known-name run must hold `Not logged in` (`login_stop_error`). The three new unit tests need no `claude`, so they also run where it is absent. The blocked-profile case now also applies the blocked plan's digest and requires `unchanged` with nothing written; the Orca case also requires that no flat file exists in the canonical folder.
+- Mutants of the repair: dropping the traffic variable, the `Not logged in` check and the deadline check each fail their own test; planting a flat file after the Orca install fails `orca_profile_layout`. Two product mutants of `apply` for the blocked-profile case (the preflight filter, and the early return of the folder check) both survived: the plan returns blocked with no files at several steps, so that apply assertion is a regression pin and not shown to bite.
