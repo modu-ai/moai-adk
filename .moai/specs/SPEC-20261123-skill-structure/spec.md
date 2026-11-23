@@ -110,6 +110,15 @@ RED(`red1.out`, 구현 전 `67280bb683`): `cargo nextest run --test skill_struct
 - Plan 6단계의 임시 클론 시험은 하지 않았어요. 격리된 워크트리 세션은 자기 워크트리 밖의 저장소를 대상으로 하는 git 명령이 거절돼서, 같은 동작을 임시 저장소에서 이미 확인하는 `leader_registration_cli` 를 돌려 대신했어요.
 - `SKILL.md` 의 판단 순서는 옮기지 않았어요(D-1).
 
+### 수리 (감사 AUDIT #309 FAIL 뒤, head `21cf14e9ab` 기준)
+
+- B1: `internal/loop.md` 의 등록 명령에 프로젝트 인자를 넣어 `moai session-register . --name leader --mode leader` 로 적고, "다른 세션이 리더" 는 `conflict` 거절일 때만으로 좁혔어요. 다른 거절(인자 빠짐, 세션 id 없음)은 오류로 보고하고 아무것도 걸지 않아요. 새 테스트 `loop_reference_registration_command_runs_as_written` 은 글에 적힌 두 명령(`moai session-register . …`, `moai session-register --show …`)을 임시 저장소·임시 HOME 에서 그대로 실행해요: 첫 세션 등록 ok, `--show` 가 그 세션 id·`held`·`leader` 출력, 둘째 세션은 `conflict` 로 거절. Plan 6단계의 "기존 테스트로 대신" 은 이 테스트로 바뀌었어요.
+- N2: `RESUME_WORKFLOWS` 의 audit 토큰을 `head` 에서 `` `git rev-parse HEAD` `` 로 강화했어요.
+- N3: `workflows/audit.md` 의 `## Resume` 가 "감사 대상 트리의 head 가 READY 노트의 head 와 다르면 감사는 막힘(둘을 보고하고, 트리가 그 head 가 되기 전엔 검사를 시작하지 않아요)" 로 말해요. 테스트 `audit_resume_is_blocked_when_the_heads_differ`.
+- N4: 없는 기능을 고정하던 `resume_is_not_added_to_the_workflows_another_change_holds` 를 지웠어요.
+- N5: `internal/loop.md` 3번에 근거를 적었어요. 공식 문서(`code.claude.com/docs/en/scheduled-tasks`, 2026-11-23 UTC 읽음): 동적 `/loop` 는 "appears in your scheduled task list like any other task", 대기 중 wakeup 은 일회성 작업으로 보이고 `CronDelete` 는 ID 로 작업을 취소해요. 미확인으로 표시한 것: `CronList` 가 그 wakeup 을 실제로 찍는지(도구 표에서 읽었을 뿐 실행 안 함), `CronDelete` 가 그것을 지우는지(문서는 그 용도로 `ScheduleWakeup` 의 `stop: true` 를 말해요).
+- 매니페스트: `python3 -I tools/source_manifest.py write` 로 `loop.md`·`audit.md` 두 줄만 바뀌었고 `check` 는 ok 예요.
+
 ### 남은 일
 
 - `work.md`·`update.md` 의 `## Resume`: 각 파일을 쥔 변경이 착지한 뒤 따로 해요(D-4).

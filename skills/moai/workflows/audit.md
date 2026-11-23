@@ -117,7 +117,7 @@ Keep the browser's default permission mode; use a wider mode only when the user 
 
 ## Resume
 
-An audit is bound to one head. After a restart, read the candidate's head afresh (`git rev-parse HEAD` in the audited tree) and the head the lane's ready note names; findings recorded on another head are history, not a verdict, and the audit starts again on the current head in a context that did not write the change.
+An audit is bound to one head. After a restart, read the candidate's head afresh (`git rev-parse HEAD` in the audited tree) and the head the lane's ready note names. When the two heads differ the audit is blocked: report both heads and start no check until the tree is at the named head. Findings recorded on another head are history, not a verdict; the audit then starts again on that head in a context that did not write the change.
 
 ## Exceptions and Permissions
 

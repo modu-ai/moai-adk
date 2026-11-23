@@ -2,8 +2,11 @@
 //! stage workflows say how to resume, one reference says when a timer may be armed, and the
 //! stage order of the SDD reference ends in the landing and the next card.
 //!
-//! The tests read the named files of this checkout by path; they walk no folder, run nothing
-//! and touch no HOME.
+//! The tests read the named files of this checkout by path and walk no folder. One test runs the
+//! registration commands the loop reference writes, in a temporary repository with a temporary
+//! HOME; the real state folder of this machine is never read or written.
+
+mod common;
 
 use std::{fs, path::Path};
 
@@ -26,7 +29,7 @@ const RESUME_WORKFLOWS: [(&str, &str); 6] = [
     ("plan.md", "`moai spec check`"),
     ("run.md", "`moai card show"),
     ("sync.md", "`## Result`"),
-    ("audit.md", "head"),
+    ("audit.md", "`git rev-parse HEAD`"),
     ("project.md", "`moai project-update-plan"),
 ];
 
@@ -87,6 +90,85 @@ fn loop_reference_arms_one_timer() {
     assert!(
         list < remove && remove < arm,
         "the order is: list, remove, arm"
+    );
+}
+
+/// The first inline-code span of `text` that starts with `prefix` and contains `needle`.
+#[cfg(unix)]
+fn command_span<'a>(text: &'a str, prefix: &str, needle: &str) -> &'a str {
+    text.split('`')
+        .skip(1)
+        .step_by(2)
+        .find(|span| span.starts_with(prefix) && span.contains(needle))
+        .unwrap_or_else(|| panic!("the loop reference has no `{prefix}…{needle}` command"))
+}
+
+/// Audit repair B1 (REQ-3): the registration and the read command the loop reference writes run
+/// as written, from a checkout of a temporary repository. A first session registers; a second
+/// session is refused with a `conflict`; the read command prints the first session's id. The
+/// reference says that only a `conflict` refusal means another session is the leader.
+#[cfg(unix)]
+#[test]
+fn loop_reference_registration_command_runs_as_written() {
+    use serde_json::Value;
+    use std::process::Command;
+
+    const S_A: &str = "aaaaaaaa-0000-4000-8000-00000000000a";
+    const S_B: &str = "bbbbbbbb-0000-4000-8000-00000000000b";
+
+    let text = read(LOOP_REF);
+    let register = command_span(&text, "moai session-register ", "--mode leader");
+    let show = command_span(&text, "moai session-register --show", "--name leader");
+    assert!(
+        text.contains("only a `conflict` refusal means another session is the leader"),
+        "the loop reference does not tie the other-leader reading to a `conflict` refusal"
+    );
+
+    let dir = tempfile::tempdir().unwrap();
+    let base = fs::canonicalize(dir.path()).unwrap();
+    let repo = base.join("repo");
+    let home = base.join("home");
+    fs::create_dir_all(&repo).unwrap();
+    fs::create_dir_all(&home).unwrap();
+    common::git::git(&repo, &["init", "-q", "-b", "main"]);
+
+    // `moai <args>` as written, from the checkout, as the host session `session`.
+    let run = |command: &str, session: &str| -> Value {
+        let mut words = command.split_whitespace();
+        assert_eq!(words.next(), Some("moai"), "{command}");
+        let out = Command::new(common::MOAI_BIN)
+            .args(words)
+            .current_dir(&repo)
+            .env("HOME", &home)
+            .env("GIT_CONFIG_GLOBAL", "/dev/null")
+            .env("GIT_CONFIG_SYSTEM", "/dev/null")
+            .env_remove("CODEX_THREAD_ID")
+            .env("CLAUDE_CODE_SESSION_ID", session)
+            .output()
+            .unwrap();
+        serde_json::from_slice(&out.stdout).unwrap_or_else(|e| {
+            panic!(
+                "`{command}` printed no JSON ({e}): {}{}",
+                String::from_utf8_lossy(&out.stdout),
+                String::from_utf8_lossy(&out.stderr)
+            )
+        })
+    };
+
+    let first = run(register, S_A);
+    assert_eq!(first["ok"], Value::Bool(true), "`{register}`: {first}");
+    let shown = run(show, S_A);
+    assert_eq!(shown["ok"], Value::Bool(true), "`{show}`: {shown}");
+    assert_eq!(shown["result"]["session"], Value::from(S_A), "{shown}");
+    assert_eq!(shown["result"]["status"], Value::from("held"), "{shown}");
+    assert_eq!(shown["result"]["mode"], Value::from("leader"), "{shown}");
+
+    let second = run(register, S_B);
+    assert_eq!(second["ok"], Value::Bool(false), "`{register}`: {second}");
+    let message = second["error"]["message"].as_str().unwrap_or_default();
+    assert!(
+        message.contains("conflict"),
+        "a second live leader is refused with a `conflict`: {second}"
     );
 }
 
@@ -171,17 +253,16 @@ fn resume_sits_before_the_exceptions_in_every_stage_workflow() {
     }
 }
 
-/// REQ-9, D-4: the two workflows another change holds keep their own text for now, so this
-/// change does not add a Resume section to them.
+/// REQ-9 (audit repair, N3): an audit bound to one head is blocked, not restarted on another
+/// tree, when the head of the audited tree differs from the head the ready note names.
 #[test]
-fn resume_is_not_added_to_the_workflows_another_change_holds() {
-    for file in ["work.md", "update.md"] {
-        let text = read(&format!("skills/moai/workflows/{file}"));
-        assert!(
-            !text.contains("\n## Resume\n"),
-            "{file} gets its Resume section in the change that holds the file"
-        );
-    }
+fn audit_resume_is_blocked_when_the_heads_differ() {
+    let text = read("skills/moai/workflows/audit.md");
+    let resume = section(&text, "## Resume");
+    assert!(
+        resume.contains("When the two heads differ the audit is blocked"),
+        "the audit Resume does not say that differing heads block the audit: {resume}"
+    );
 }
 
 /// REQ-10: after the stage order the SDD reference names the landing, its closing of the card in
