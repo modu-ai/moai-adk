@@ -935,8 +935,11 @@ fn apply_removal(f: &FolderPlan) -> Result<Value> {
 /// the answer reports once the writes are done.
 struct Restore {
     labels: Vec<String>,
-    files: Vec<(PathBuf, Option<Vec<u8>>, Option<Vec<u8>>)>,
+    files: Vec<RestoreFile>,
 }
+
+/// One file of a [`Restore`]: its path, the bytes it holds now and the bytes it gets back.
+type RestoreFile = (PathBuf, Option<Vec<u8>>, Option<Vec<u8>>);
 
 /// Undoes one confirmed hook layer for the hosts whose files all still hold the bytes the apply
 /// wrote: each file gets its before bytes back, or is removed when the apply created it. A host

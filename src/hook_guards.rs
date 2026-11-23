@@ -3214,7 +3214,7 @@ fn first_command_word(piece: &str) -> Option<&str> {
     piece
         .split_whitespace()
         .map(|w| w.trim_matches(['"', '\'', '(', ')', '{', '}', '\\', '`']))
-        .find(|w| !w.is_empty() && !(w.contains('=') && !w.starts_with('-')))
+        .find(|w| !w.is_empty() && (!w.contains('=') || w.starts_with('-')))
 }
 
 /// One here-doc a line opens: its terminator word, whether it is `<<-` (the terminator may sit
