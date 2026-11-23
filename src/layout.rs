@@ -768,12 +768,10 @@ mod home_arg_tests {
             let home = symlinked_home(dir.path());
             let work = dir.path().join("work");
             fs::create_dir(&work).unwrap();
-            let init = Command::new("git")
-                .arg("init")
-                .arg("-q")
-                .arg(&work)
-                .status();
-            assert!(init.unwrap().success(), "git init");
+            let mut init = Command::new("git");
+            init.arg("init").arg("-q").arg(&work);
+            crate::identity::scrub_git_env(&mut init);
+            assert!(init.status().unwrap().success(), "git init");
             let id = crate::identity::identity_in(&work, None).unwrap();
             let anchor = id["clone_anchor"].as_str().expect("a clone anchor");
             let claims = crate::clone_root::path(Path::new(anchor)).join("claims");
