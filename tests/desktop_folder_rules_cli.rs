@@ -103,7 +103,10 @@ fn earlier_flow_note_is_added_after_an_existing_detail() {
     write(&home.join(OLD_FLOW), "an earlier build wrote this\n");
     let p = plan(&home, &package()).unwrap();
     let row = flow_row(&p);
-    assert_eq!(row.action, "held", "the flow file waits behind the conflict");
+    assert_eq!(
+        row.action, "held",
+        "the flow file waits behind the conflict"
+    );
     let detail = row.detail.as_deref().unwrap_or("");
     assert!(
         detail.contains("is a conflict"),
