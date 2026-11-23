@@ -86,4 +86,27 @@ created: 2026-11-23
 
 ## Result
 
-Not filled yet: SYNC writes it after the checks run.
+2026-11-23 (UTC), 구현 레인이 채웠고 감사가 다시 확인해요. 가지 `spec/skill-structure-20261123` 은 `c395e5a50c` 에서 갈라졌어요. SPEC `98076bc4a4`, RED `67280bb683`, 구현 `995d02e585`, 매니페스트 `79a85dc954`. 실행 기록은 `~/.moai/reports/moai-adk/skill-structure/` 의 `red1.out`·`green3.out` 이에요.
+
+RED(`red1.out`, 구현 전 `67280bb683`): `cargo nextest run --test skill_structure` 가 7개 중 6개 실패, 1개 통과(exit 100). 실패 이유는 각각 `loop.md` 없음, `## Resume` 없음, `SKILL.md` 의 WORK 단계 나열, `sdd.md` 의 착지 문장 없음이었어요. 통과한 하나는 `work.md`·`update.md` 에 Resume 이 없다는 가드예요.
+
+- AC-1: met — `green3.out`: `loop_reference_refuses_an_unconfirmed_session_and_defines_the_leader` 통과. 확인한 명령 모양은 `moai session-register --show --name leader` 가 `status`·`mode`·`session` 을 출력하는 것(`tests/leader_registration_cli.rs` 의 `ac4_a_lane_reads_the_live_leader_session`)이에요.
+- AC-2: met — `green3.out`: `loop_reference_arms_one_timer` 통과(목록 → 제거 → 하나만 등록 순서까지).
+- AC-3: met — `green3.out`: `skill_entry_points_to_the_loop_reference_and_does_not_repeat_it`, `skill_entry_names_the_work_route_without_its_steps` 통과. `SKILL.md` 는 5,193 → 5,246 바이트(`wc -c`, `git show c395e5a50c:skills/moai/SKILL.md | wc -c`)로 오히려 53바이트 늘었어요: 포인터 한 줄을 더했고 WORK 단계 나열은 짧게 줄였어요.
+- AC-4: met — `green3.out`: `resume_sits_before_the_exceptions_in_every_stage_workflow` 통과. `grep -c "^## Resume"` 가 read·plan·run·sync·audit·project 에서 1, work·update 에서 0 이에요.
+- AC-5: met — `green3.out`: `sdd_order_ends_in_the_landing_and_the_next_card` 와 `sdd_guidance` 13개 전부 통과(`stage_order_is_written_once` 포함).
+- AC-6: met — `green3.out`: `skill_structure` 7, `sdd_guidance` 13, `next_flow_skill_scan` 56, `agent_defs_package` 19, `core_rules_2876` 6, `report_rules_core` 3, `mode_workflow_steps` 7, `workflow_size_budget` 4, 증거용 `leader_registration_cli` 10 을 합쳐 125개 실행, 125개 통과, 건너뜀 0(로그의 `PASS` 줄을 타깃별로 센 값이에요).
+- AC-7: met — `python3 -I tools/source_manifest.py check` 가 `{"conflicted": false, "changed": [], "dropped": [], "ok": true}` 를 출력했어요(`line-lease` 안에서 `write` 뒤).
+
+### 계획과 달라진 것
+
+- 범위에 `skills/moai/references/chains/index.md` 와 `tests/agent_defs_package.rs` 를 더했어요. 내부 참조 목록을 닫힌 집합으로 고정한 `internal_references_say_when_to_read_them` 이 "에이전트나 체인표가 읽는다"를 요구해서, 체인 공통 규칙에 한 줄(`internal/loop`)을 적고 목록에 `loop` 를 더했어요.
+- REQ-3 의 명령에 `--name leader` 를 더했어요(`--show` 는 이름이 필요해요).
+- Plan 6단계의 임시 클론 시험은 하지 않았어요. 격리된 워크트리 세션은 자기 워크트리 밖의 저장소를 대상으로 하는 git 명령이 거절돼서, 같은 동작을 임시 저장소에서 이미 확인하는 `leader_registration_cli` 를 돌려 대신했어요.
+- `SKILL.md` 의 판단 순서는 옮기지 않았어요(D-1).
+
+### 남은 일
+
+- `work.md`·`update.md` 의 `## Resume`: 각 파일을 쥔 변경이 착지한 뒤 따로 해요(D-4).
+- 리더가 등록되지 않은 채로 시작하는 경우의 등록을 런처가 대신 할지는 따로 정할 일이에요.
+- SPEC 은 `draft` 예요. 승인은 사용자의 선택이에요(D-5).
