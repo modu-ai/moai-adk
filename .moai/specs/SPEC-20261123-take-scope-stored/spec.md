@@ -91,4 +91,15 @@ created: 2026-11-23
 
 ## Result
 
-(written at SYNC)
+- AC-1: met — `card_take_scope_cli a_given_scope_is_kept_on_the_card` (nextest, pass)
+- AC-2: met — `an_own_scope_is_never_changed_by_take` (pass; the guard is two layers, the take condition and the SQL condition, and a mutant that removes both fails this test, one layer alone is covered by the other)
+- AC-3: met — `an_empty_card_is_filled_from_its_spec` (pass)
+- AC-4: met — `an_empty_card_is_filled_from_its_last_reservation` (pass)
+- AC-5: met — `no_source_names_the_two_ways_out` (pass; a mutant that renames `card scope` in the message fails it)
+- AC-6: met — `a_fill_keeps_the_overlap_check` (pass; a mutant that stores the scope before the reservation fails it)
+- AC-7: met — `the_spec_list_has_the_same_limit` (pass)
+- AC-8: met — `next_lists_what_take_can_fill` (pass)
+- AC-9: met — `ledger_reservation`, `card_scope_widen_cli`, `card_cli`, `card_dispatch_cli`, `card_work_cli`, `ledger_workflow` pass inside the 3133 tests of `check affected` on the head
+- AC-10: met — `spec check SPEC-20261123-take-scope-stored` 0 errors 0 warnings
+- AC-11: met — `next_skips_a_fill_a_take_would_refuse` (pass; a mutant that removes the limit check in `take_scope::choose` fails it, which no test caught before it was added)
+- Check set on the head: `check affected` 93 targets, 3133 passed, 0 failed (diff-check, fmt, clippy 0).
