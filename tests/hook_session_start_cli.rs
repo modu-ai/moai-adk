@@ -339,12 +339,37 @@ fn ac2_the_card_part_follows_the_reservation_of_this_checkout() {
     let none = format!("{BRANCH_ONLY} · no card reserved here");
     // (label, how the reservation is made, expected card part of the first line)
     type Setup = fn(&Fx) -> Option<i64>;
-    let cases: [(&str, Setup, bool); 6] = [
+    let cases: [(&str, Setup, bool); 8] = [
         (
             "worktree only",
             |fx| {
                 let c = fx.add_card("by root");
                 fx.reserve(c, "held", Some(&fx.checkout), Some("other-branch"));
+                Some(c)
+            },
+            true,
+        ),
+        // The stored folder is a link to the checkout; only resolving links can match it (the
+        // branch differs, so the branch cannot).
+        (
+            "worktree stored as a link",
+            |fx| {
+                let link = fx.root.join("link-to-checkout");
+                symlink(&fx.checkout, &link).unwrap();
+                let c = fx.add_card("by link");
+                fx.reserve(c, "held", Some(&link), Some("other-branch"));
+                Some(c)
+            },
+            true,
+        ),
+        // The stored folder is spelled with `..`, so it is not the root as written.
+        (
+            "worktree stored with a dot-dot",
+            |fx| {
+                let spelled = fx.checkout.join("../checkout");
+                assert_ne!(spelled, fx.checkout);
+                let c = fx.add_card("by dot-dot");
+                fx.reserve(c, "held", Some(&spelled), Some("other-branch"));
                 Some(c)
             },
             true,
@@ -416,6 +441,21 @@ fn ac2_the_card_part_follows_the_reservation_of_this_checkout() {
     assert_eq!(
         fx.context("startup"),
         format!("{BRANCH_ONLY} · card C-{by_root} \"by root\" (active)")
+    );
+
+    // An input `cwd` that is not absolute is ignored: the working folder of the process decides.
+    // The reservation names the checkout by its folder only, so a relative `cwd` that were used
+    // would find a different (empty) root and show no card.
+    let fx = Fx::new(true);
+    let card = fx.add_card("by root");
+    fx.reserve(card, "held", Some(&fx.checkout), Some("other-branch"));
+    let relative = serde_json::json!({"hook_event_name": "SessionStart", "session_id": "s1",
+        "cwd": "no/such/dir", "source": "startup"})
+    .to_string();
+    let r = fx.hook("session-context", relative.as_bytes());
+    assert_eq!(
+        context_of(&r),
+        format!("{BRANCH_ONLY} · card C-{card} \"by root\" (active)")
     );
 }
 
