@@ -1,10 +1,15 @@
 ---
 id: SPEC-20261124-desktop-install-agents
 title: "moai update puts the flow rule directly under rules/ and the preview names each Claude folder it writes and says when Desktop would not read it"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-24
 parent: SPEC-20261122-claude-md-flow-rule
+approval:
+  by: leader
+  at: 2026-11-23
+  basis: "리더 결정 노트 7937 (2026-11-23T21:55:56Z, 사용자 위임 2026-11-23T13:57Z, 리더 판단, 사용자 직접 선택 아님, 노트 7934 에 답함): 판 1 승인(커밋 87c2c637375f), D-1 rules/moai-flow.md, D-2 옛 flow.md 는 그대로, D-3 새 옵션 없이 env -u 안내; 알림 부분(REQ-5 에서 REQ-9)은 src/update.rs 를 쥔 C-318 이 놓은 뒤 SCOPE-REQUEST; 레인은 그 노트를 인용만 해요"
+  digest: "sha256:a19038c1f5c7de7fcca492753ce845cb37e2dc554c18a19e3ab12a3a2344782c"
 ---
 
 # moai update puts the flow rule directly under rules/ and the preview names each Claude folder it writes and says when Desktop would not read it
