@@ -475,6 +475,12 @@ fn local_branch_absent(cwd: &Path, branch: &str) -> bool {
 /// has a card, points at its newest `moai-resume:` comment; any other `source`, or none, gives
 /// the text it always did.
 fn session_check(input: &Value, cwd: &Path) -> Verdict {
+    session_check_in(input, cwd, std::env::var_os("HOME").as_deref().map(Path::new))
+}
+
+/// [`session_check`] with the HOME that holds the recorded conversation language passed in, so a
+/// test reads a temporary HOME and never the real `$HOME/.moai`.
+fn session_check_in(input: &Value, cwd: &Path, home: Option<&Path>) -> Verdict {
     let state_dir = match std::fs::symlink_metadata(crate::state_root::path(cwd, "")) {
         Ok(m) if m.is_dir() => "present",
         Ok(_) => "not a directory",
@@ -509,7 +515,7 @@ fn session_check(input: &Value, cwd: &Path) -> Verdict {
     }
     // On every start, resume and compaction, so a compacted session keeps the
     // conversation language the user chose.
-    if let Some(line) = conversation_line(std::env::var_os("HOME").as_deref().map(Path::new)) {
+    if let Some(line) = conversation_line(home) {
         text.push(' ');
         text.push_str(&line);
     }
@@ -1603,8 +1609,11 @@ mod tests {
         write_profile_bytes(dir, profile.to_string().as_bytes());
     }
 
+    /// The session-check text for `dir`, with an empty temporary HOME so the real `$HOME/.moai`
+    /// is never read.
     fn session_text(dir: &Path) -> String {
-        match session_check(&json!({}), dir) {
+        let home = tempfile::TempDir::new().unwrap();
+        match session_check_in(&json!({}), dir, Some(home.path())) {
             Verdict::Context(text) => text,
             other => panic!("session-check answered {other:?}"),
         }
@@ -1655,5 +1664,22 @@ mod tests {
             text.contains("Work flow `m-flow`, integration branch `NeXT` (absent locally)."),
             "{text}"
         );
+    }
+
+    /// A folder that is no git repository (`git` exits 128, not 1) gives no "absent locally"
+    /// note: a lookup that cannot run is not an absent branch.
+    #[test]
+    fn session_check_outside_a_git_repository_adds_no_absent_note() {
+        let dir = tempfile::TempDir::new().unwrap();
+        write_profile(
+            dir.path(),
+            Some(json!({"flow": "m-flow", "integration_branch": "NeXT"})),
+        );
+        let text = session_text(dir.path());
+        assert!(
+            text.contains("Work flow `m-flow`, integration branch `NeXT`."),
+            "{text}"
+        );
+        assert!(!text.contains("absent locally"), "{text}");
     }
 }
