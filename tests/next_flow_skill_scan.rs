@@ -516,6 +516,72 @@ fn work_decision_becomes_a_blocked_note_on_the_card() {
     }
 }
 
+/// SPEC-20261124-lane-worktree-exit REQ-1 and REQ-2: the three sentences of the paragraph that
+/// leaves the card's worktree after the hand-back. Each is compared whole, so a mutant that
+/// drops one word of one sentence fails the test.
+const WORK_EXIT_SENTENCES: [&str; 3] = [
+    "After the READY, REPAIRED or blocked note and your `LANE-DONE` line, leave the card's worktree with `ExitWorktree(keep)`; it is a tool call that prints no line, so `LANE-DONE` stays the last line you write.",
+    "Before you leave, read `git status --short` in the worktree: commit what is uncommitted or name it in the note, and never remove the worktree or move out of it with a shell `cd`.",
+    "The next card starts outside every card worktree: enter the worktree the leader made with `EnterWorktree` and its `path`, or leave the current one first before you make a new one.",
+];
+
+/// SPEC-20261124-lane-worktree-exit REQ-3: the one sentence of "Exceptions and Permissions" that
+/// keeps a session that works a card from opening a selection prompt. It names no host tool
+/// (REQ-4; `work_decision_becomes_a_blocked_note_on_the_card` forbids the names).
+const WORK_NO_PROMPT_SENTENCE: &str =
+    "A session that works a card never opens a selection prompt for the person; whatever it needs decided goes in that note.";
+
+#[test]
+fn work_leaves_the_card_worktree_after_the_hand_back() {
+    let work = read("workflows/work.md");
+    for sentence in WORK_EXIT_SENTENCES {
+        assert!(work.contains(sentence), "work.md lacks {sentence:?}");
+    }
+    // One paragraph, the sentences in order.
+    let paragraph = work
+        .split("\n\n")
+        .find(|p| p.contains(WORK_EXIT_SENTENCES[0]))
+        .expect("a paragraph holds the exit sentence");
+    let at: Vec<usize> = WORK_EXIT_SENTENCES
+        .iter()
+        .map(|s| paragraph.find(s).unwrap_or(usize::MAX))
+        .collect();
+    assert!(
+        at.windows(2).all(|w| w[0] < w[1]),
+        "the exit sentences are not in one paragraph in order: {at:?}"
+    );
+    // It stands after the hand-back paragraph and before the exceptions.
+    let hand_back = work
+        .find("When a card is handed back, write the READY")
+        .expect("work.md has the hand-back paragraph");
+    let exit = work.find(WORK_EXIT_SENTENCES[0]).unwrap();
+    let exceptions = work
+        .find("\n## Exceptions and Permissions\n")
+        .expect("work.md has the exceptions section");
+    assert!(
+        hand_back < exit && exit < exceptions,
+        "the exit paragraph is out of place: {hand_back} {exit} {exceptions}"
+    );
+    assert!(
+        !work.contains("ExitWorktree(remove)"),
+        "work.md tells a lane to remove a worktree"
+    );
+}
+
+#[test]
+fn work_asks_by_note_and_never_by_a_selection_prompt() {
+    let work = read("workflows/work.md");
+    let exceptions = section(&work, "Exceptions and Permissions");
+    assert!(
+        exceptions.contains(WORK_NO_PROMPT_SENTENCE),
+        "the exceptions lack {WORK_NO_PROMPT_SENTENCE:?}"
+    );
+    assert!(
+        exceptions.contains("`LANE-BLOCKED kind=decision"),
+        "the exceptions no longer name the blocked note"
+    );
+}
+
 #[test]
 fn work_is_picked_by_the_leading_word() {
     let skill = read("SKILL.md");
