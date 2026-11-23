@@ -7,19 +7,30 @@
 #![cfg(unix)]
 
 mod common;
-use common::CleanEnv;
+use common::{kill_group, spawn_group, CleanEnv};
 use serde_json::Value;
 use std::{
     ffi::OsString,
     fs,
     os::unix::fs::symlink,
     path::{Path, PathBuf},
-    process::Command,
+    process::{Command, Stdio},
+    thread,
+    time::{Duration, Instant},
 };
 use tempfile::TempDir;
 
 const EXE: &str = crate::common::MOAI_BIN;
 const PERMISSION: &str = "fixture-approved";
+/// Stops the child's background network traffic (updates, telemetry) that is not needed for a
+/// name check: with it unset an unauthenticated run still tried DNS lookups.
+const NO_NONESSENTIAL_TRAFFIC: (&str, &str) = ("CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC", "1");
+/// What a known agent name must end in here: the temporary config folder holds no credential,
+/// so the run stops at the login step. Anything else (a model answer) means a credential reached
+/// the child and the run was a real, billed model call.
+const LOGIN_STOP: &str = "Not logged in";
+/// The longest one child `claude` may run; a name check ends in about a second.
+const CHILD_DEADLINE: Duration = Duration::from_secs(60);
 const BASE: [&str; 5] = [
     "moai-audit",
     "moai-docs",
@@ -62,6 +73,69 @@ fn copy_tree(from: &Path, to: &Path) {
 
 fn agent_file(name: &str) -> String {
     format!("---\nname: {name}\ndescription: probe agent {name}\ntools: Read\n---\n\nProbe.\n")
+}
+
+/// `<program> --agent <name> -p hi` in `project`: the environment is cleared, so only the
+/// variables set here reach it (no credential among them), and the background traffic is off.
+fn claude_command(
+    program: &Path,
+    project: &Path,
+    home: &Path,
+    config_dir: &Path,
+    name: &str,
+) -> Command {
+    let mut cmd = Command::new(program);
+    cmd.clean_env()
+        .args(["--agent", name, "-p", "hi"])
+        .current_dir(project)
+        .env("PATH", std::env::var_os("PATH").unwrap_or_default())
+        .env("HOME", home)
+        .env("CLAUDE_CONFIG_DIR", config_dir)
+        .envs([NO_NONESSENTIAL_TRAFFIC]);
+    cmd
+}
+
+/// Run `cmd` with no input, as a process group of its own, and give back its combined output and
+/// whether it succeeded. A child still running at `deadline` is killed with everything it
+/// started, and the answer is an error that holds the output so far.
+fn run_with_deadline(mut cmd: Command, deadline: Duration) -> Result<(String, bool), String> {
+    let dir = TempDir::new().unwrap();
+    let log = dir.path().join("out");
+    let out = fs::File::create(&log).unwrap();
+    let err = out.try_clone().unwrap();
+    cmd.stdin(Stdio::null()).stdout(out).stderr(err);
+    let mut child = spawn_group(&mut cmd);
+    let started = Instant::now();
+    let status = loop {
+        if let Some(status) = child.try_wait().unwrap() {
+            break status;
+        }
+        if started.elapsed() >= deadline {
+            kill_group(&mut child);
+            let text = String::from_utf8_lossy(&fs::read(&log).unwrap()).into_owned();
+            return Err(format!(
+                "no exit within {deadline:?}; output so far: {text}"
+            ));
+        }
+        thread::sleep(Duration::from_millis(50));
+    };
+    let text = String::from_utf8_lossy(&fs::read(&log).unwrap()).into_owned();
+    Ok((text, status.success()))
+}
+
+/// Why `text` is not the answer of a known agent name in a folder without a credential, or
+/// `None` when it is: the name is accepted (no "not found") and the run stops at the login step.
+fn login_stop_error(text: &str) -> Option<String> {
+    if text.contains("not found") {
+        return Some(format!("the name was not found: {text}"));
+    }
+    if !text.contains(LOGIN_STOP) {
+        return Some(format!(
+            "the run did not stop at `{LOGIN_STOP}`, so a credential may have reached the child \
+             and a model call was made: {text}"
+        ));
+    }
+    None
 }
 
 struct Fx {
@@ -166,21 +240,9 @@ impl Fx {
     /// `claude --agent <name> -p hi` in the project: its output and exit status, with the
     /// environment cleared (no credential reaches it) and `config_dir` as the config folder.
     fn claude(&self, claude: &Path, config_dir: &Path, name: &str) -> (String, bool) {
-        let out = Command::new(claude)
-            .clean_env()
-            .args(["--agent", name, "-p", "hi"])
-            .current_dir(&self.project)
-            .env("PATH", std::env::var_os("PATH").unwrap())
-            .env("HOME", &self.home)
-            .env("CLAUDE_CONFIG_DIR", config_dir)
-            .output()
-            .unwrap();
-        let text = format!(
-            "{}{}",
-            String::from_utf8_lossy(&out.stdout),
-            String::from_utf8_lossy(&out.stderr)
-        );
-        (text, out.status.success())
+        let cmd = claude_command(claude, &self.project, &self.home, config_dir, name);
+        run_with_deadline(cmd, CHILD_DEADLINE)
+            .unwrap_or_else(|why| panic!("`claude --agent {name}`: {why}"))
     }
 
     /// The names of the available-agents list `claude` prints for an unknown `--agent` name.
@@ -200,8 +262,8 @@ impl Fx {
     }
 
     /// Each name of both kinds is in the list once, and `claude --agent <name>` passes the name
-    /// check: it never answers that the agent is not found (it stops at the login step, because
-    /// the temporary config folder holds no credential and none is ever copied).
+    /// check and stops at the login step (`Not logged in`, asserted): the temporary config folder
+    /// holds no credential and none is ever copied, so any other answer is a leaked credential.
     fn assert_found_and_selectable(&self, claude: &Path, config_dir: &Path, label: &str) {
         let names = self.available(claude, config_dir);
         let wanted: Vec<&str> = BASE
@@ -221,10 +283,9 @@ impl Fx {
         assert!(!ok && unknown.contains("not found"), "{label}: {unknown}");
         for name in &wanted {
             let (text, _) = self.claude(claude, config_dir, name);
-            assert!(
-                !text.contains("not found"),
-                "{label}: `--agent {name}` was not found: {text}"
-            );
+            if let Some(why) = login_stop_error(&text) {
+                panic!("{label}: `--agent {name}`: {why}");
+            }
         }
     }
 }
@@ -286,6 +347,10 @@ fn orca_profile_layout() {
                 .is_file(),
             "{name} is not under the canonical agents/moai"
         );
+        assert!(
+            !fx.canonical_agents().join(format!("{name}.md")).exists(),
+            "{name} is also flat in the canonical agents folder"
+        );
     }
     // A reader through the profile finds both kinds and the personal agent.
     fx.assert_found_and_selectable(&claude, &profile, "orca profile");
@@ -332,6 +397,110 @@ fn a_profile_link_to_another_folder_is_blocked_and_finds_nothing() {
         );
     }
     assert!(names.iter().any(|n| n == PROJECT_ROLE), "{names:?}");
+    // The install itself refuses too: an apply with the blocked plan's digest writes no agent
+    // file, neither through the link nor into the canonical folder.
+    let applied = fx.moai(
+        &[
+            "agents-home-apply",
+            fx.home.to_str().unwrap(),
+            fx.package.to_str().unwrap(),
+            fx.agents.to_str().unwrap(),
+            "--plan-digest",
+            plan["plan_digest"].as_str().unwrap(),
+            "--permission-reference",
+            PERMISSION,
+        ],
+        &profile,
+    );
+    assert_ne!(applied["result"]["state"], "applied", "{applied}");
+    for dir in [elsewhere.join("moai"), fx.canonical_agents().join("moai")] {
+        assert!(!dir.exists(), "a blocked apply created {}", dir.display());
+    }
+}
+
+/// REQ-7: the child `claude` gets the traffic switch and nothing that could carry a credential:
+/// the variables set on it are exactly the allowed ones. Needs no `claude`, so it runs everywhere.
+#[test]
+fn the_child_claude_gets_the_traffic_switch_and_only_allowed_variables() {
+    let any = Path::new("/nonexistent");
+    let cmd = claude_command(any, any, any, any, "moai-plan");
+    let set: Vec<(String, String)> = cmd
+        .get_envs()
+        .filter_map(|(k, v)| {
+            Some((
+                k.to_string_lossy().into_owned(),
+                v?.to_string_lossy().into_owned(),
+            ))
+        })
+        .collect();
+    let (key, value) = NO_NONESSENTIAL_TRAFFIC;
+    assert!(
+        set.contains(&(key.to_string(), value.to_string())),
+        "{key}={value} is not set on the child: {set:?}"
+    );
+    let allowed = [
+        "PATH",
+        "HOME",
+        "CLAUDE_CONFIG_DIR",
+        key,
+        "DEVELOPER_DIR",
+        common::PROCESS_TABLE_SWITCH,
+    ];
+    for (name, _) in &set {
+        assert!(
+            allowed.contains(&name.as_str()),
+            "`{name}` reaches the child `claude`; allowed: {allowed:?}"
+        );
+    }
+}
+
+/// REQ-7: only a run that stops at the login step is accepted for a known name; a model answer
+/// (a credential reached the child) and a "not found" answer are both refused.
+#[test]
+fn a_known_name_is_accepted_only_at_the_login_stop() {
+    let login = "Not logged in · Please run /login";
+    assert_eq!(login_stop_error(login), None);
+    let answered = login_stop_error("Hello! How can I help you today?");
+    assert!(
+        answered.is_some_and(|m| m.contains("model call")),
+        "a model answer passed"
+    );
+    let missing = login_stop_error("--agent 'x' not found. Available agents: claude");
+    assert!(
+        missing.is_some_and(|m| m.contains("not found")),
+        "not found passed"
+    );
+    assert!(login_stop_error("").is_some(), "an empty answer passed");
+}
+
+/// REQ-7: a child that never exits is killed at the deadline with the output it printed, and a
+/// child that exits is read back whole with its status.
+#[test]
+fn a_child_is_killed_at_the_deadline_and_a_finished_one_is_read_whole() {
+    let dir = TempDir::new().unwrap();
+    let hang = dir.path().join("hang");
+    common::write_executable(&hang, "#!/bin/sh\necho started\nsleep 30\n");
+    let started = Instant::now();
+    let err = run_with_deadline(Command::new(&hang), Duration::from_secs(1)).unwrap_err();
+    assert!(
+        err.contains("no exit within") && err.contains("started"),
+        "{err}"
+    );
+    assert!(
+        started.elapsed() < Duration::from_secs(15),
+        "the hung child was not killed at the deadline: {:?}",
+        started.elapsed()
+    );
+    let done = dir.path().join("done");
+    common::write_executable(
+        &done,
+        "#!/bin/sh\necho Not logged in\necho oops >&2\nexit 1\n",
+    );
+    let (text, ok) = run_with_deadline(Command::new(&done), Duration::from_secs(30)).unwrap();
+    assert!(
+        !ok && text.contains("Not logged in") && text.contains("oops"),
+        "{text}"
+    );
 }
 
 /// REQ-6: no `claude` on the path is a skip, not a failure.
