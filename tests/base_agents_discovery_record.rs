@@ -10,6 +10,7 @@ mod common;
 use common::{kill_group, spawn_group, CleanEnv};
 use serde_json::Value;
 use std::{
+    collections::{BTreeMap, BTreeSet},
     ffi::OsString,
     fs,
     os::unix::fs::symlink,
@@ -31,6 +32,9 @@ const NO_NONESSENTIAL_TRAFFIC: (&str, &str) = ("CLAUDE_CODE_DISABLE_NONESSENTIAL
 const LOGIN_STOP: &str = "Not logged in";
 /// The longest one child `claude` may run; a name check ends in about a second.
 const CHILD_DEADLINE: Duration = Duration::from_secs(60);
+/// Variables a POSIX shell (and macOS's launcher) adds to its own environment on start, so the
+/// fake program below sees them although the test set none of them.
+const SHELL_ADDED: [&str; 5] = ["PWD", "OLDPWD", "SHLVL", "_", "__CF_USER_TEXT_ENCODING"];
 const BASE: [&str; 5] = [
     "moai-audit",
     "moai-docs",
@@ -136,6 +140,23 @@ fn login_stop_error(text: &str) -> Option<String> {
         ));
     }
     None
+}
+
+/// Why a run of `program --agent <name> -p hi` is not the answer of a known agent name in a
+/// folder without a credential, or `None` when it is: the run ends in time and stops at the login
+/// step (see `login_stop_error`).
+fn known_name_error(
+    program: &Path,
+    project: &Path,
+    home: &Path,
+    config_dir: &Path,
+    name: &str,
+) -> Option<String> {
+    let cmd = claude_command(program, project, home, config_dir, name);
+    match run_with_deadline(cmd, CHILD_DEADLINE) {
+        Err(why) => Some(why),
+        Ok((text, _)) => login_stop_error(&text),
+    }
 }
 
 struct Fx {
@@ -282,8 +303,8 @@ impl Fx {
         let (unknown, ok) = self.claude(claude, config_dir, UNKNOWN);
         assert!(!ok && unknown.contains("not found"), "{label}: {unknown}");
         for name in &wanted {
-            let (text, _) = self.claude(claude, config_dir, name);
-            if let Some(why) = login_stop_error(&text) {
+            if let Some(why) = known_name_error(claude, &self.project, &self.home, config_dir, name)
+            {
                 panic!("{label}: `--agent {name}`: {why}");
             }
         }
@@ -424,39 +445,110 @@ fn a_profile_link_to_another_folder_is_blocked_and_finds_nothing() {
     }
 }
 
-/// REQ-7: the child `claude` gets the traffic switch and nothing that could carry a credential:
-/// the variables set on it are exactly the allowed ones. Needs no `claude`, so it runs everywhere.
+/// REQ-7: the child `claude` gets the traffic switch and nothing that could carry a credential.
+/// The command built by `claude_command` is really started, with a fake program that prints the
+/// environment it received, so a dropped `.clean_env()` shows (the test process's own variables
+/// reach the child) where a look at the command's `get_envs()` would not. The keys the child
+/// sees are exactly the allowed ones. Needs no `claude`, so it runs everywhere.
 #[test]
 fn the_child_claude_gets_the_traffic_switch_and_only_allowed_variables() {
-    let any = Path::new("/nonexistent");
-    let cmd = claude_command(any, any, any, any, "moai-plan");
-    let set: Vec<(String, String)> = cmd
-        .get_envs()
-        .filter_map(|(k, v)| {
-            Some((
-                k.to_string_lossy().into_owned(),
-                v?.to_string_lossy().into_owned(),
-            ))
-        })
+    // The test process carries variables a credential could ride on; without this the check
+    // below proves nothing.
+    assert!(
+        std::env::var_os("CARGO_MANIFEST_DIR").is_some() && std::env::var_os("PATH").is_some(),
+        "this test must run under cargo or nextest"
+    );
+    let dir = TempDir::new().unwrap();
+    let (home, config_dir, project) = (
+        dir.path().join("home"),
+        dir.path().join("config"),
+        dir.path().join("project"),
+    );
+    fs::create_dir_all(&project).unwrap();
+    let printer = dir.path().join("claude");
+    common::write_executable(&printer, "#!/bin/sh\nexec /usr/bin/env\n");
+    let cmd = claude_command(&printer, &project, &home, &config_dir, "moai-plan");
+    let (text, ok) = run_with_deadline(cmd, Duration::from_secs(30)).unwrap();
+    assert!(ok, "the fake program failed: {text}");
+    let seen: BTreeMap<String, String> = text
+        .lines()
+        .filter_map(|l| l.split_once('='))
+        .map(|(k, v)| (k.to_string(), v.to_string()))
+        .filter(|(k, _)| !SHELL_ADDED.contains(&k.as_str()))
         .collect();
     let (key, value) = NO_NONESSENTIAL_TRAFFIC;
-    assert!(
-        set.contains(&(key.to_string(), value.to_string())),
-        "{key}={value} is not set on the child: {set:?}"
-    );
-    let allowed = [
+    let mut expected: BTreeSet<&str> = BTreeSet::from([
         "PATH",
         "HOME",
         "CLAUDE_CONFIG_DIR",
         key,
-        "DEVELOPER_DIR",
         common::PROCESS_TABLE_SWITCH,
+    ]);
+    // `clean_env` passes DEVELOPER_DIR on only when it names a folder that exists.
+    if std::env::var_os("DEVELOPER_DIR").is_some_and(|d| Path::new(&d).is_dir()) {
+        expected.insert("DEVELOPER_DIR");
+    }
+    let keys: BTreeSet<&str> = seen.keys().map(String::as_str).collect();
+    assert_eq!(
+        keys, expected,
+        "the child `claude` saw other variables than the allowed ones: {seen:?}"
+    );
+    assert_eq!(seen[key], value, "the traffic switch has the wrong value");
+    assert_eq!(seen["HOME"], home.to_string_lossy());
+    assert_eq!(seen["CLAUDE_CONFIG_DIR"], config_dir.to_string_lossy());
+}
+
+/// REQ-7: a known name is refused when the answer is not the login stop, end to end through the
+/// command a real run uses. A fake `claude` placed first on the PATH answers like a model (a
+/// credential reached the child), like a missing name, or like the login stop; needs no
+/// credential and no real `claude`, so it checks the guard in CI too.
+#[test]
+fn a_fake_claude_first_on_the_path_is_judged_by_the_known_name_check() {
+    let dir = TempDir::new().unwrap();
+    let (home, config_dir, project) = (
+        dir.path().join("home"),
+        dir.path().join("config"),
+        dir.path().join("project"),
+    );
+    fs::create_dir_all(&project).unwrap();
+    let cases = [
+        // (what the fake prints, exit status, the error text expected or None for accepted)
+        (
+            "Hello! How can I help you today?",
+            0,
+            Some("model call was made"),
+        ),
+        (
+            "--agent 'moai-plan' not found. Available agents: claude",
+            1,
+            Some("the name was not found"),
+        ),
+        ("Not logged in · Please run /login", 1, None),
     ];
-    for (name, _) in &set {
-        assert!(
-            allowed.contains(&name.as_str()),
-            "`{name}` reaches the child `claude`; allowed: {allowed:?}"
+    for (n, (answer, status, expected)) in cases.into_iter().enumerate() {
+        let bin = dir.path().join(format!("bin{n}"));
+        fs::create_dir_all(&bin).unwrap();
+        common::write_executable(
+            &bin.join("claude"),
+            &format!("#!/bin/sh\necho '{answer}'\nexit {status}\n"),
         );
+        let mut path = OsString::from(&bin);
+        path.push(":");
+        path.push(std::env::var_os("PATH").unwrap_or_default());
+        let found = find_claude(Some(path)).expect("a claude on the PATH");
+        assert_eq!(
+            found,
+            bin.join("claude"),
+            "the fake is not first on the PATH"
+        );
+        let why = known_name_error(&found, &project, &home, &config_dir, "moai-plan");
+        match (expected, why) {
+            (None, None) => {}
+            (Some(part), Some(why)) => {
+                assert!(why.contains(part), "case {n}: wrong reason: {why}");
+            }
+            (expected, why) => panic!("case {n} ({answer}): expected {expected:?}, got {why:?}"),
+        }
     }
 }
 
