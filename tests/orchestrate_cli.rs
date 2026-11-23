@@ -1,8 +1,8 @@
 //! `moai card orchestrate plan` (SPEC-20261124-orchestrate-plan): the coordination window's round
 //! as one read-only plan over the ledger and the lane registry.
 //!
-//! Every command runs against a temporary HOME and a temporary git project; the real `~/.moai`
-//! and the real registry are not read or written. Ledger rows are inserted with SQL so their
+//! Every command runs against a temporary HOME and a temporary git project; the user's real
+//! state folder and registry are not read or written. Ledger rows are inserted with SQL so their
 //! holder, state and time are exactly what a case needs. No `claude` or `orca` process is
 //! started: the host state is a fixture file in the shape of `claude agents --json`.
 #![cfg(unix)]

@@ -3,7 +3,7 @@
 //! is given, the host state in the shape of `claude agents --json`, and prints what a round would
 //! do: the lanes and whether each is free, the dispatches, the clears, the audit requests, the
 //! landing queue and what waits for the user. It never sends, starts, audits or lands anything,
-//! and it starts no `claude` or `orca` process.
+//! and it starts no host program.
 //!
 //! Every part is a function of rows the ledger and the registry already hold. Nothing in the
 //! answer depends on the clock, so two plans of an unchanged state are byte for byte equal.

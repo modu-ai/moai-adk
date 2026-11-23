@@ -559,7 +559,7 @@ enum Action {
     /// coordination window would do and does none of it: the registry's lanes and whether each is
     /// free, busy or unknown; the cards to dispatch to the free lanes; the lanes to clear; the
     /// heads that need an audit; the audited heads that wait to land; and what waits for the user.
-    /// It starts no `claude` or `orca` process and writes no file.
+    /// It starts no host program and writes no file.
     Orchestrate {
         #[command(subcommand)]
         action: OrchestrateAction,
