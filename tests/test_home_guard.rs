@@ -16,7 +16,8 @@ const CONFIG: &str = ".config/nextest.toml";
 
 /// The decoy a test would read when it opens the user's own state.
 /// The decoys are found by file name, so no state folder name is spelled in this file.
-const DECOY_READ: &str = r#"find "$HOME" -type f -name user-assets.json -exec cat {} + > /dev/null"#;
+const DECOY_READ: &str =
+    r#"find "$HOME" -type f -name user-assets.json -exec cat {} + > /dev/null"#;
 
 /// Reads only that decoy, the way the baselined tests do: the glob lists the HOME and opens the
 /// one file, and lists no other folder of it.
@@ -115,7 +116,11 @@ fn a_test_that_touches_nothing_passes_under_a_guarded_home() {
         home.starts_with(&format!("{}/moai-test-home.", tmp.trim_end_matches('/'))),
         "HOME is {home}, TMPDIR is {tmp}"
     );
-    assert_eq!(g.entries(), Vec::<String>::new(), "the wrapper left a folder");
+    assert_eq!(
+        g.entries(),
+        Vec::<String>::new(),
+        "the wrapper left a folder"
+    );
 }
 
 #[test]
@@ -203,7 +208,10 @@ fn a_listed_test_that_reads_only_the_known_decoy_is_tolerated() {
 fn the_baseline_next_to_the_script_is_found_without_a_path_setting() {
     // Needs a test of the baseline in the repository: its first listed line names the fake binary.
     let text = fs::read_to_string(Path::new(ROOT).join(BASELINE)).unwrap();
-    let line = text.lines().find(|l| !l.starts_with('#') && !l.is_empty()).unwrap();
+    let line = text
+        .lines()
+        .find(|l| !l.starts_with('#') && !l.is_empty())
+        .unwrap();
     let (bin, name) = line.split_once('\t').unwrap();
     let g = Guard::new();
     let bin_dir = TempDir::new().unwrap();
@@ -288,7 +296,10 @@ fn an_unwritable_tmpdir_stops_the_wrapper_with_70_before_the_test_runs() {
         .output()
         .unwrap();
     assert_eq!(out.status.code(), Some(70), "{}", stderr(&out));
-    assert!(!marker.exists(), "the test ran although the wrapper stopped");
+    assert!(
+        !marker.exists(),
+        "the test ran although the wrapper stopped"
+    );
 }
 
 #[test]
@@ -477,7 +488,9 @@ fn nextest(dir: &Path, mode: Option<&str>) -> (Option<i32>, String) {
     if let Some(mode) = mode {
         cmd.env("MOAI_HOME_GUARD", mode);
     }
-    let out = cmd.output().expect("cargo nextest must be installed for this test");
+    let out = cmd
+        .output()
+        .expect("cargo nextest must be installed for this test");
     let text = format!("{}\n{}", stdout(&out), stderr(&out));
     (out.status.code(), text)
 }
@@ -487,7 +500,15 @@ fn status(text: &str, name: &str) -> Option<String> {
     text.lines().find_map(|line| {
         let t = line.trim();
         let word = t.split_whitespace().next()?;
-        let known = ["PASS", "FAIL", "SIGABRT", "SIGSEGV", "TIMEOUT", "ERROR", "EXEC-FAIL"];
+        let known = [
+            "PASS",
+            "FAIL",
+            "SIGABRT",
+            "SIGSEGV",
+            "TIMEOUT",
+            "ERROR",
+            "EXEC-FAIL",
+        ];
         (known.contains(&word) && t.ends_with(&format!(" {name}"))).then(|| word.to_string())
     })
 }
@@ -498,7 +519,10 @@ fn require_nextest() {
         .output()
         .map(|o| o.status.success())
         .unwrap_or(false);
-    assert!(ok, "cargo-nextest is not installed, so the wrapper cannot be exercised here");
+    assert!(
+        ok,
+        "cargo-nextest is not installed, so the wrapper cannot be exercised here"
+    );
 }
 
 #[test]
@@ -509,10 +533,21 @@ fn nextest_applies_the_repository_configuration_to_a_scratch_crate() {
     let st = |n: &str| status(&text, n);
     assert_eq!(st("plant_reads_decoy").as_deref(), Some("FAIL"), "{text}");
     assert_eq!(st("plant_writes_home").as_deref(), Some("FAIL"), "{text}");
-    assert_eq!(st("plant_reads_then_fails").as_deref(), Some("FAIL"), "{text}");
-    assert!(text.contains("plant-own-failure"), "the test's own failure is lost: {text}");
+    assert_eq!(
+        st("plant_reads_then_fails").as_deref(),
+        Some("FAIL"),
+        "{text}"
+    );
+    assert!(
+        text.contains("plant-own-failure"),
+        "the test's own failure is lost: {text}"
+    );
     assert_eq!(st("plant_idle").as_deref(), Some("PASS"), "{text}");
-    assert_eq!(st("plant_home_is_guarded").as_deref(), Some("PASS"), "{text}");
+    assert_eq!(
+        st("plant_home_is_guarded").as_deref(),
+        Some("PASS"),
+        "{text}"
+    );
     assert!(text.contains("HOME-GUARD:"), "{text}");
     assert_eq!(code, Some(100), "{text}");
 }
@@ -522,7 +557,11 @@ fn the_default_mode_of_the_repository_configuration_fails_a_reading_test() {
     require_nextest();
     let dir = scratch_crate(Wrapper::Repository);
     let (_, text) = nextest(dir.path(), None);
-    assert_eq!(status(&text, "plant_reads_decoy").as_deref(), Some("FAIL"), "{text}");
+    assert_eq!(
+        status(&text, "plant_reads_decoy").as_deref(),
+        Some("FAIL"),
+        "{text}"
+    );
     assert!(text.contains("HOME-GUARD:"), "{text}");
 }
 
@@ -531,7 +570,11 @@ fn the_observe_mode_of_the_repository_configuration_does_not_fail_a_reading_test
     require_nextest();
     let dir = scratch_crate(Wrapper::Repository);
     let (_, text) = nextest(dir.path(), Some("observe"));
-    assert_eq!(status(&text, "plant_reads_decoy").as_deref(), Some("PASS"), "{text}");
+    assert_eq!(
+        status(&text, "plant_reads_decoy").as_deref(),
+        Some("PASS"),
+        "{text}"
+    );
     assert!(text.contains("HOME-GUARD:"), "{text}");
 }
 
@@ -600,7 +643,9 @@ fn check_allowlist(config: &str, root: &Path) -> Result<usize, String> {
                 return Err(format!("entry names no test function: {predicate}"));
             }
         } else {
-            return Err(format!("entry is neither binary(..) nor test(=..): {predicate}"));
+            return Err(format!(
+                "entry is neither binary(..) nor test(=..): {predicate}"
+            ));
         }
     }
     Ok(entries)
@@ -668,10 +713,22 @@ fn the_configuration_enables_the_wrapper_feature_and_pins_a_nextest_version() {
         cfg.contains(r#"experimental = ["wrapper-scripts"]"#),
         "the wrapper-scripts feature is not enabled"
     );
-    assert!(cfg.contains("nextest-version"), "no nextest-version is named");
-    assert!(cfg.contains("run-wrapper = 'home-guard'"), "no rule runs the wrapper");
-    assert!(cfg.contains("cfg(unix)"), "the rule is not limited to unix hosts");
-    assert!(cfg.contains("tools/test_home_guard.sh"), "the wrapper script is not named");
+    assert!(
+        cfg.contains("nextest-version"),
+        "no nextest-version is named"
+    );
+    assert!(
+        cfg.contains("run-wrapper = 'home-guard'"),
+        "no rule runs the wrapper"
+    );
+    assert!(
+        cfg.contains("cfg(unix)"),
+        "the rule is not limited to unix hosts"
+    );
+    assert!(
+        cfg.contains("tools/test_home_guard.sh"),
+        "the wrapper script is not named"
+    );
 }
 
 // ---- the baseline file --------------------------------------------------------------------------
@@ -693,11 +750,17 @@ fn check_baseline(text: &str, root: &Path, cap: usize) -> Result<usize, String> 
         .filter(|l| !l.trim().is_empty() && !l.starts_with('#'))
         .collect();
     if lines.len() > cap {
-        return Err(format!("the baseline has {} lines, more than its cap {cap}", lines.len()));
+        return Err(format!(
+            "the baseline has {} lines, more than its cap {cap}",
+            lines.len()
+        ));
     }
     for pair in lines.windows(2) {
         if pair[0] >= pair[1] {
-            return Err(format!("the baseline is not sorted without repeats at: {}", pair[1]));
+            return Err(format!(
+                "the baseline is not sorted without repeats at: {}",
+                pair[1]
+            ));
         }
     }
     let mut sources: std::collections::BTreeMap<String, String> = Default::default();
@@ -726,7 +789,10 @@ fn check_baseline(text: &str, root: &Path, cap: usize) -> Result<usize, String> 
 fn the_repository_baseline_stays_within_its_cap_and_names_real_tests() {
     let text = fs::read_to_string(Path::new(ROOT).join(BASELINE)).unwrap();
     let n = check_baseline(&text, Path::new(ROOT), BASELINE_CAP).unwrap();
-    assert!(n > 0, "an empty baseline means the cap and this file should be removed");
+    assert!(
+        n > 0,
+        "an empty baseline means the cap and this file should be removed"
+    );
 }
 
 #[test]
