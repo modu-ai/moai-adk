@@ -89,7 +89,7 @@ settings cleaner 는 버전 줄을 읽지 않아요(`~/.moai-cli/path/moai-cli` 
 - AC-1 (REQ-1): 별도 `bin/moai` 가 `moai <sig>` 또는 `moai-cli <sig>` 를 찍으면 `replace_copy`, 다른 빌드 번호·`moai-adk 3.2.0`·모르는 이름은 `blocked` 예요 · verify: `cargo nextest run --test bin_names_signature_cli -E 'test(/^a_separate_moai/)'`
 - AC-2 (REQ-2): 릴리스 워크플로우의 `verify` 단계 스크립트를 가짜 바이너리로 실제로 돌려, 두 이름의 네 조합은 통과하고 다른 버전·Go 줄·모르는 이름·`(rust)` 없는 줄은 실패해요 · verify: `cargo nextest run --test bin_names_signature_cli -E 'test(/^the_release_check/)'`
 - AC-3 (REQ-3): 스킬의 버전 검사 문장이 `moai <version> (rust)` 를 먼저, `moai-cli <version> (rust)` 를 같은 시그니처로 적고 fallback 은 `moai-cli` 예요 · verify: `cargo nextest run --test bin_names_signature_cli -E 'test(/^the_skill_fallback/)'`
-- AC-4 (REQ-4): 설치 세대 판별이 두 이름을 rust 로 받아요 · verify: `cargo nextest run --lib -E 'test(/generation_of|rust_signature/)'`
+- AC-4 (REQ-4): 설치 세대 판별이 두 이름을 rust 로 받아요 · verify: `cargo nextest run --lib -E 'test(the_rust_signature_is_matched_by_shape_under_both_names)'`
 - AC-5 (REQ-5): `--version` 의 첫 줄이 `moai <version> (rust)` 이고 usage·help 이름이 `moai` 예요 — 조각 1b · verify: 1b 개정에서 적어요.
 - AC-6 (REQ-6): 이 문서의 Occurrence table 이 종류별 줄 수·의미·조각을 전부 나열해요 · verify: `moai spec check .moai/specs/SPEC-20261121-moai-name/spec.md` 의 errors 가 0 이에요.
 
@@ -125,4 +125,13 @@ settings cleaner 는 버전 줄을 읽지 않아요(`~/.moai-cli/path/moai-cli` 
 
 ## Result
 
-- (조각 1a 진행 중)
+조각 1a (읽는 쪽이 두 이름을 받게, 출력 이름은 그대로) — 2026-11-23, 가지 `spec/20261123-moai-name`, base `2ade55ba2d1821d993de72d836f60bbebb140769`.
+
+- AC-1: met — `cargo nextest run --test bin_names_signature_cli` 의 `a_separate_moai_of_this_build_is_the_same_build_under_either_printed_name` 통과(`moai <sig>`·`moai-cli <sig>` 는 `replace_copy`, 다른 빌드 번호·Go 줄·모르는 이름은 `blocked`). 뮤턴트: 같은 빌드 검사에서 `moai` 이름을 뺐더니 이 시험이 실패(exit 100).
+- AC-2: met — `the_release_check_accepts_both_printed_names_and_nothing_else` 통과(워크플로우 `verify` 단계의 실제 스크립트를 가짜 바이너리로 돌림: 두 이름의 네 조합 통과, 다른 버전·Go 줄·모르는 이름·`(rust)` 없는 줄 실패). 뮤턴트: `case` 에서 `moai` 줄을 뺐더니 실패(exit 100).
+- AC-3: met — `the_skill_fallback_sentence_names_both_signatures` 통과. 뮤턴트: 문장을 옛 문구로 되돌렸더니 실패(exit 100). `source-manifest.json` 의 SKILL.md sha256 도 같은 커밋에서 갱신했어요.
+- AC-4: met(기존 동작) — `install::generation_tests::the_rust_signature_is_matched_by_shape_under_both_names` 가 `moai check affected` 의 test 단계에서 통과.
+- AC-5: not_met — `--version` 첫 줄을 `moai <version> (rust)` 로 바꾸는 clap 이름 한 줄(`src/main.rs`)은 조각 1b 예요. 리더 결정(C-397 노트 7419)으로 `src/main.rs` 가 이 SPEC 쪽으로 풀렸어요.
+- AC-6: met — 위 Occurrence table, `moai spec check SPEC-20261121-moai-name` errors 0 (경고 2개는 형식이 모르는 `##` 절 이름).
+- 같은 head 영수증: `moai check affected 2ade55ba2d..af048e1994` — 대상 50개, diff_check=0 fmt=0 clippy=0 test=0, 2432개 통과 (첫 실행은 새 시험이 상태 폴더 글자를 직접 써서 `state_folder_literal_scan` 1개 실패 → 리졸버로 고쳐 재실행).
+- 범위 밖으로 둔 것: NeXT 의 빨강 1개 `mode_workflow_steps`(수리 중) — 이번 실행에서는 대상에 들지 않아 관찰되지 않았어요(`not_run`).
