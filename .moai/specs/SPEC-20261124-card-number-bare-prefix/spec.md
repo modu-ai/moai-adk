@@ -1,9 +1,10 @@
 ---
 id: SPEC-20261124-card-number-bare-prefix
 title: "Pin a line that ends with a bare card prefix"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-24
+approval: {by: leader, at: 2026-11-23, basis: "leader decision note 7923 of the card (2026-11-23T21:47:02Z, delegation of the user 2026-11-23T13:57Z, the leader's judgement and not a selection by the user) answering request note 7922", digest: "sha256:408200a687bd6f9bd7161b7d70d7f7491c69a862c2bac992b4d8ab148ce16fc1"}
 ---
 
 # Pin a line that ends with a bare card prefix
