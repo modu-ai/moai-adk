@@ -135,8 +135,9 @@ fn fixture() -> Fx {
     put(&moai.join("reports/projA/old1.md"), 2048);
     put(&moai.join("reports/projA/old2.md"), 1024);
     age_tree(&moai.join("reports"), 5);
-    set_age(&moai.join("reports/projA/old1.md"), 300);
-    set_age(&moai.join("reports/projA/old2.md"), 200);
+    // The older file sorts last by name, so only an age sort puts it first.
+    set_age(&moai.join("reports/projA/old1.md"), 200);
+    set_age(&moai.join("reports/projA/old2.md"), 300);
     // owned, stale: nothing changed for a long time.
     put(&moai.join("handoffs/h1.md"), 512);
     age_tree(&moai.join("handoffs"), 100);
@@ -525,7 +526,7 @@ fn plan_over_threshold_offers_the_old_reports_oldest_first() {
         .collect();
     assert_eq!(
         archives,
-        vec!["reports/projA/old1.md", "reports/projA/old2.md"],
+        vec!["reports/projA/old2.md", "reports/projA/old1.md"],
         "300 days before 200 days"
     );
     let fresh = item(&p, "reports/projA/new.md");
