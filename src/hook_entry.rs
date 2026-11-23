@@ -1,7 +1,8 @@
 //! `moai hook <name>` (SPEC-20261123-hook-entry-skeleton): the entry point Claude Code's hook
 //! settings call. Three names are registered, one per planned duty: `session-context` (H1),
-//! `bash-boundary` (H2) and `write-boundary` (H3). In this slice every handler answers no
-//! decision, so a registered name prints nothing and exits 0; the judgments come in later slices.
+//! `bash-boundary` (H2) and `write-boundary` (H3). `session-context` adds context to the start
+//! of a session (SPEC-20261123-hook-session-start); the other two answer no decision, so they
+//! print nothing and exit 0, and their judgments come in later slices.
 //!
 //! What the entry does, in order: it reads standard input once (bounded); it looks for
 //! `.moai/project.yaml` in `CLAUDE_PROJECT_DIR`, else in the working folder, and without it
@@ -13,7 +14,13 @@
 use serde_json::{json, Map, Value};
 use std::fs;
 use std::io::{Read, Write};
+use std::os::unix::fs::OpenOptionsExt;
 use std::path::{Path, PathBuf};
+
+/// The SessionStart handler (H1). Declared here, by path, so the module needs no line in the
+/// crate root (SPEC-20261123-hook-session-start, D-6).
+#[path = "hook_session_start.rs"]
+mod session_start;
 
 /// The registered hook names, in the order of the plan (H1, H2, H3).
 pub const NAMES: [&str; 3] = ["session-context", "bash-boundary", "write-boundary"];
@@ -54,28 +61,69 @@ pub fn env() -> Env {
     }
 }
 
-/// Reads standard input once, at most [`STDIN_LIMIT`] + 1 bytes; a read error keeps what came.
+/// Reads standard input once: at most [`STDIN_LIMIT`] + 1 bytes are kept, and an input of more
+/// is read to its end and dropped, so the writer is never cut off by a closed pipe. A read
+/// error keeps what came.
 pub fn read_input(stdin: &mut impl Read) -> Vec<u8> {
     let mut bytes = Vec::new();
-    let _ = stdin.take(STDIN_LIMIT as u64 + 1).read_to_end(&mut bytes);
+    let _ = stdin
+        .by_ref()
+        .take(STDIN_LIMIT as u64 + 1)
+        .read_to_end(&mut bytes);
+    if bytes.len() > STDIN_LIMIT {
+        let _ = std::io::copy(stdin, &mut std::io::sink());
+    }
     bytes
 }
 
-/// Runs the entry for a registered `name`. `cwd` is the working folder, `now_ms` the clock in
+/// Runs the entry for a registered `name` and writes its answer: the text of stdout and the
+/// text of stderr, both ignoring a write error (a closed pipe never changes the exit code, and
+/// the caller prints nothing more). `cwd` is the working folder, `now_ms` the clock in
 /// milliseconds since 1970.
 pub fn run(name: &str, input: &[u8], cwd: &Path, env: &Env, now_ms: u128) -> Answer {
+    let answer = decide(name, input, cwd, env, now_ms);
+    if !answer.stdout.is_empty() {
+        let mut out = std::io::stdout();
+        let _ = writeln!(out, "{}", answer.stdout);
+        let _ = out.flush();
+    }
+    if !answer.stderr.is_empty() {
+        let _ = std::io::stderr().write_all(answer.stderr.as_bytes());
+    }
+    Answer::default()
+}
+
+fn decide(name: &str, input: &[u8], cwd: &Path, env: &Env, now_ms: u128) -> Answer {
     let root = env.project_dir.as_deref().unwrap_or(cwd);
     let Some(project) = moai_project(root) else {
         return Answer::default();
     };
-    match parse(input) {
-        Err(reason) => failure(name, reason, &project, env, now_ms),
-        Ok(object) => Answer {
-            stdout: handle(name, &object)
-                .map(|v| v.to_string())
-                .unwrap_or_default(),
-            stderr: String::new(),
-        },
+    let object = match parse(input) {
+        Err(reason) => return failure(name, reason, &project, env, now_ms),
+        Ok(object) => object,
+    };
+    if name == "session-context" {
+        let context = session_start::context(
+            &object,
+            root,
+            cwd,
+            env.home.as_deref(),
+            project.id.as_deref(),
+        );
+        let stderr = context
+            .ledger_failure
+            .map(|reason| failure(name, reason, &project, env, now_ms).stderr)
+            .unwrap_or_default();
+        return Answer {
+            stdout: context.output.to_string(),
+            stderr,
+        };
+    }
+    Answer {
+        stdout: handle(name, &object)
+            .map(|v| v.to_string())
+            .unwrap_or_default(),
+        stderr: String::new(),
     }
 }
 
@@ -110,19 +158,13 @@ fn parse(input: &[u8]) -> Result<Map<String, Value>, &'static str> {
     }
 }
 
-/// The handlers of this slice: none decides anything.
+/// The handlers that decide nothing yet; H1 (`session-context`) is `session_start::context`.
 fn handle(name: &str, input: &Map<String, Value>) -> Option<Value> {
     match name {
-        "session-context" => session_context(input),
         "bash-boundary" => bash_boundary(input),
         "write-boundary" => write_boundary(input),
         _ => None,
     }
-}
-
-/// H1 (a later slice fills it).
-fn session_context(_input: &Map<String, Value>) -> Option<Value> {
-    None
 }
 
 /// H2 (a later slice fills it).
@@ -162,27 +204,36 @@ fn append_receipt(project: &Project, env: &Env, line: &str) -> Result<(), String
         .ok_or("project.yaml has no project_id")?;
     let dir = moai_cli::ledger::location::project_dir(home, id)
         .map_err(|_| "project_id is not a portable id")?;
+    // `.moai`, `projects` and the project folder are never followed when they are links.
+    moai_cli::ledger::folders::refuse_links(home, id)
+        .map_err(|_| "a folder of the project state under HOME is a link")?;
     match fs::symlink_metadata(&dir) {
         Ok(m) if m.is_dir() => {}
         _ => return Err("the project is not registered under HOME".to_owned()),
     }
-    let file = dir.join(RECEIPT_FILE);
-    match fs::symlink_metadata(&file) {
-        Ok(m) if !m.is_file() => return Err("the receipt path is not a regular file".to_owned()),
-        Ok(m) if m.len() >= RECEIPT_LIMIT => {
-            return Err(format!(
-                "the receipt log is full ({RECEIPT_LIMIT} bytes), nothing appended"
-            ))
-        }
-        Ok(_) => {}
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
-        Err(_) => return Err("the receipt path cannot be read".to_owned()),
-    }
+    // The receipt file is opened without following a link (and without waiting on a FIFO), then
+    // judged by what was opened, so a swap after a check cannot lead the write elsewhere.
     let mut out = fs::OpenOptions::new()
         .create(true)
         .append(true)
-        .open(&file)
-        .map_err(|_| "the receipt log cannot be opened".to_owned())?;
+        .mode(0o600)
+        .custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK)
+        .open(dir.join(RECEIPT_FILE))
+        .map_err(|e| match e.raw_os_error() {
+            Some(libc::ELOOP) => "the receipt path is a link".to_owned(),
+            _ => "the receipt log cannot be opened".to_owned(),
+        })?;
+    let meta = out
+        .metadata()
+        .map_err(|_| "the receipt path cannot be read".to_owned())?;
+    if !meta.is_file() {
+        return Err("the receipt path is not a regular file".to_owned());
+    }
+    if meta.len() >= RECEIPT_LIMIT {
+        return Err(format!(
+            "the receipt log is full ({RECEIPT_LIMIT} bytes), nothing appended"
+        ));
+    }
     out.write_all(format!("{line}\n").as_bytes())
         .map_err(|_| "the receipt line cannot be written".to_owned())
 }

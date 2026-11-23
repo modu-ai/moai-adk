@@ -243,3 +243,47 @@ fn ac9_values_give_the_nearest_rank_and_judge_nothing() {
         assert_eq!(r.stdout, "", "{bad:?}");
     }
 }
+
+/// AC-11 (SPEC-20261123-hook-session-start): the `moai_project` case runs the card path of
+/// `session-context`: the tool registers a ledger in its temporary HOME and reserves one card for
+/// the measured project folder. A stand-in keeps what the built binary prints, with the folder it
+/// ran in; every `moai_project` sample shows the card line and no `not_moai_project` sample does.
+#[test]
+fn ac11_the_project_case_runs_the_card_path() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let log = dir.path().join("log");
+    let stand_in = dir.path().join("stand-in");
+    common::write_executable(
+        &stand_in,
+        &format!(
+            "#!/bin/sh\necho \"cwd=$PWD\" >> '{log}'\nexec '{real}' \"$@\" >> '{log}'\n",
+            log = log.display(),
+            real = common::MOAI_BIN
+        ),
+    );
+    let r = latency(&["--bin", stand_in.to_str().unwrap(), "--samples", "3"]);
+    assert_eq!(r.code, 0, "{}", r.stderr);
+    let text = fs::read_to_string(&log).unwrap();
+    let mut folder = "";
+    let (mut project, mut plain, mut cards) = (0, 0, 0);
+    for line in text.lines() {
+        if let Some(cwd) = line.strip_prefix("cwd=") {
+            folder = if cwd.ends_with("/project") {
+                project += 1;
+                "project"
+            } else {
+                plain += 1;
+                "plain"
+            };
+        } else {
+            assert_eq!(folder, "project", "output outside a project: {line}");
+            assert!(
+                line.contains("\"hookEventName\":\"SessionStart\""),
+                "{line}"
+            );
+            assert!(line.contains(" · card C-1 \\\""), "{line}");
+            cards += 1;
+        }
+    }
+    assert_eq!((project, plain, cards), (3, 3, 3), "{text}");
+}
