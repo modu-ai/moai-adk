@@ -2145,6 +2145,11 @@ fn third_audit_denied_cases() -> Vec<Case> {
             "emulate zsh -o cdablevars -c 'o=/opt/moai-boundary-outside; cd o && rm -rf ./*'",
             ur,
         ),
+        // `emulate` sets shell options like a start does, its `-c` string is judged as if it stood
+        // alone, and the word alone (nothing else in the line is a trigger) needs the walk.
+        d(Own, "emulate -o cd_able_vars -c 'cd o && ls'", ur),
+        d(Own, "emulate zsh -c 'rm -rf {OUT}/x'", de),
+        d(Own, "emulate -L zsh -c 'rm -rf {OUT}/x'", de),
         d(Own, "bash -o $OPT -c 'ls'", ur),
         d(Own, "bash -O \"$OPT\" -c 'ls'", ur),
         d(Own, "env CDPATH=/opt zsh -o cdablevars -c 'ls'", ur),
@@ -2174,6 +2179,9 @@ fn third_audit_denied_cases() -> Vec<Case> {
             de,
         ),
         d(Main, "git rebase --roo NeXT", pr),
+        // A read-or-write split by flag reads a prefix like the full name (`classify_git`).
+        d(Own, "git -C {PRI} symbolic-ref --delet HEAD", "git-state"),
+        d(Own, "git -C {PRI} branch --unset-up", "git-state"),
         // S-3: a dynamic value written against the option that carries a program is unreadable,
         // like the separate form.
         d(Own, "git clone --upload-pack=\"$(echo rm)\" . y", ur),
@@ -2219,6 +2227,8 @@ fn third_audit_allowed_cases() -> Vec<Case> {
         a(Own, "git rebase --exe='make test' HEAD~1"),
         a(Own, "git difftool --extc=meld HEAD~1"),
         a(Own, "git grep --open-files-in-p=less foo"),
+        a(Own, "git -C {PRI} tag --verif v1"),
+        a(Own, "git -C {PRI} branch --show-curr"),
         a(Own, "git push --tag origin v1"),
         a(Own, "git checkout --force lane/other"),
         a(Own, "git switch --crea lane/new"),
