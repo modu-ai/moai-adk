@@ -2482,6 +2482,20 @@ fn unknown_variable_reason(name: &str) -> String {
     )
 }
 
+/// The refusal for a variable whose value the shell would cut into several words (a space, a
+/// tab or a newline in it).
+fn unknown_split_reason(name: &str) -> String {
+    format!(
+        "MoAI: a delete target names the variable ${name}, whose value holds a space the shell \
+         splits on, so each part can name another path; spell the path instead"
+    )
+}
+
+/// The refusal for any variable in a delete target on a line that sets IFS.
+const DELETION_IFS: &str =
+    "MoAI: this line sets or unsets IFS, which changes how the shell splits a variable into \
+     words; a delete target that names a variable cannot be read, so spell the path instead";
+
 /// The refusal for a relative target (or a `git clean`) after a `cd`, `pushd` or `popd` whose
 /// folder this guard cannot know.
 fn unknown_folder_reason(why: &str) -> String {
@@ -2504,13 +2518,14 @@ enum Dir {
 /// One variable of the line: every literal value an assignment gave it, or no known value
 /// once something this guard cannot read assigned it. A repeated or conditional assignment
 /// adds a value and never replaces one: every value the variable may hold must stay inside.
+#[derive(Clone)]
 struct Var {
     name: String,
     values: Vec<String>,
     unknown: bool,
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 struct Vars {
     list: Vec<Var>,
 }
@@ -2535,8 +2550,10 @@ impl Vars {
         &mut self.list[at]
     }
 
-    /// `NAME=value`, as a prefix assignment, an env-only segment or an `export`, `declare`,
-    /// `typeset`, `local` or `readonly` word.
+    /// `NAME=value`, as an env-only segment or an `export`, `declare`, `typeset`, `local` or
+    /// `readonly` word. A prefix assignment of a command (`D=x rm …`) is never added here: the
+    /// shell expands the command's words before it applies the prefix and drops it after the
+    /// command, so it is neither a value of the command's own words nor of the next segment.
     fn assign(&mut self, name: &str, value: &str) {
         if name.is_empty() || !name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_') {
             return;
@@ -2610,13 +2627,30 @@ fn substitute_variables(word: &str, against: &Dir, vars: &Vars) -> Result<Vec<St
         Dir::Known(p) => Ok(p.display().to_string()),
         Dir::Unknown(reason) => Err(reason.clone()),
     };
+    let refs = variable_refs(word);
+    // A line that sets or unsets IFS changes where the shell cuts an unquoted expansion into
+    // words, and the quotes are gone from the words this guard reads: no variable of such a
+    // line can be read (repair audit 7215 B2).
+    if !refs.is_empty() && vars.get("IFS").is_some() {
+        return Err(DELETION_IFS.to_string());
+    }
     let mut candidates = vec![String::new()];
     let mut at = 0;
-    for (start, end, name) in variable_refs(word) {
+    for (start, end, name) in refs {
         let piece = &word[at..start];
         let options: Vec<String> = if let Some(var) = vars.get(&name) {
             if var.unknown {
                 return Err(unknown_variable_reason(&name));
+            }
+            // A value with a space, a tab or a newline is cut into several words when the
+            // reference is unquoted, and each word can name anywhere. The reader keeps no
+            // quotes, so a quoted reference is refused too.
+            if var
+                .values
+                .iter()
+                .any(|v| v.chars().any(char::is_whitespace))
+            {
+                return Err(unknown_split_reason(&name));
             }
             let mut options = Vec::new();
             for value in &var.values {
@@ -2713,6 +2747,62 @@ fn is_literal(value: &str) -> bool {
     !value.contains('$') && !value.contains('`') && !value.contains('~')
 }
 
+/// The names an array assignment (`a=(/x)`, `a+=(/x)`, `declare -a a=(/x)`) gives on the raw
+/// line. The segment reader cuts at the parenthesis and keeps an empty value, while `$a` reads
+/// the first element, so such a name is made unknown (repair audit 7215 B2). A match inside
+/// quotes only makes a name unknown that no delete target names.
+fn array_assigned_names(command: &str) -> Vec<String> {
+    let bytes = command.as_bytes();
+    let mut out = Vec::new();
+    let mut i = 0;
+    while i + 1 < bytes.len() {
+        if bytes[i] == b'=' && bytes[i + 1] == b'(' {
+            let mut end = i;
+            if end > 0 && bytes[end - 1] == b'+' {
+                end -= 1;
+            }
+            let mut start = end;
+            while start > 0
+                && (bytes[start - 1].is_ascii_alphanumeric() || bytes[start - 1] == b'_')
+            {
+                start -= 1;
+            }
+            if start < end && !bytes[start].is_ascii_digit() {
+                out.push(command[start..end].to_string());
+            }
+        }
+        i += 1;
+    }
+    out
+}
+
+/// Whether `CDPATH` can change what a `cd` on this line enters: the line assigned it (a value
+/// that is not empty, or one this guard cannot read) or the `cd` itself carries it as a prefix
+/// assignment (`CDPATH=/ cd etc`).
+fn cdpath_on(vars: &Vars, env: &[String]) -> bool {
+    let assigned = vars
+        .get("CDPATH")
+        .is_some_and(|v| v.unknown || v.values.iter().any(|x| !x.is_empty()));
+    let prefixed = env.iter().any(|w| {
+        w.split_once('=')
+            .is_some_and(|(k, v)| k == "CDPATH" && !v.is_empty())
+    });
+    assigned || prefixed
+}
+
+/// Whether a `cd` target is an absolute path as it is spelled, so `CDPATH` is not searched
+/// for it: a leading `/`, the home forms and `$PWD`/`$HOME` followed by a path.
+fn spelled_absolute(target: &str) -> bool {
+    if target.starts_with('/') || target == "~" || target.starts_with("~/") {
+        return true;
+    }
+    ["$PWD", "${PWD}", "$HOME", "${HOME}"].iter().any(|v| {
+        target
+            .strip_prefix(v)
+            .is_some_and(|r| r.is_empty() || r.starts_with('/'))
+    })
+}
+
 /// The user's home folder as itself (a `cd` with no argument goes there).
 fn home_folder() -> PathBuf {
     std::env::var_os("HOME")
@@ -2757,22 +2847,32 @@ pub fn deletion_outside(command: &str, cwd: &Path) -> Option<String> {
     // N5(1): the variables of this same line, in order — a later target resolves through them;
     // `$PWD` resolves to the working folder.
     let mut vars = Vars::default();
+    // An array assignment keeps its value apart from the segment words: the name holds
+    // something this guard cannot read (repair audit 7215 B2).
+    for name in array_assigned_names(command) {
+        vars.poison(&name);
+    }
     // The folder the line's `cd`, `pushd` and `popd` entered (audit 6768 B1, N4; repair audit
     // 7149): a relative target after it names that folder, not the session cwd.
     let mut cur = Dir::Known(cwd.to_path_buf());
     let mut remembered: Vec<Dir> = Vec::new();
     for (env, name, args) in crate::claim_verify::shell_commands_with_env(command) {
-        // The prefix assignments of this segment become known to it and to the segments
-        // after it.
-        for word in &env {
-            if let Some((k, v)) = word.split_once('=') {
-                vars.assign(k, v);
+        // An env-only segment: its assignments are all it does, and they hold from here on.
+        // The prefix assignments of a segment that runs a command are that command's own
+        // environment: the shell expands its words first and drops the prefix after it, so
+        // they are no value for the words or for the segments after it (repair audit 7215
+        // B2). The two things a prefix can change for the command itself are read below: the
+        // work tree of a `git clean` and the `CDPATH` of a `cd`.
+        if name.is_empty() {
+            for word in &env {
+                if let Some((k, v)) = word.split_once('=') {
+                    vars.assign(k, v);
+                }
             }
+            continue;
         }
         let mut targets: Vec<String> = Vec::new();
         match name.as_str() {
-            // An env-only segment: its assignments are all it does.
-            "" => continue,
             "export" | "declare" | "typeset" | "local" | "readonly" => {
                 for word in args.iter().filter(|w| !w.starts_with('-')) {
                     if let Some((k, v)) = word.split_once('=') {
@@ -2817,6 +2917,7 @@ pub fn deletion_outside(command: &str, cwd: &Path) -> Option<String> {
                     k += 1;
                 }
                 let target = words.get(k).copied();
+                let cdpath = cdpath_on(&vars, &env);
                 let next = match (name.as_str(), target) {
                     ("popd", _) if words.is_empty() => remembered.pop().unwrap_or_else(|| {
                         Dir::Unknown(unknown_folder_reason("`popd` with no folder remembered"))
@@ -2839,6 +2940,11 @@ pub fn deletion_outside(command: &str, cwd: &Path) -> Option<String> {
                     (_, Some(t)) if t.starts_with('+') && name == "pushd" => {
                         Dir::Unknown(unknown_folder_reason("`pushd` with a stack position"))
                     }
+                    // `CDPATH` is searched for a folder that is not spelled absolute, so the
+                    // folder a relative name enters cannot be read (repair audit 7215 B3).
+                    (_, Some(t)) if cdpath && !spelled_absolute(t) => Dir::Unknown(
+                        unknown_folder_reason("CDPATH is set on this line, so a relative name may enter another folder"),
+                    ),
                     (_, Some(t)) => enter(t, &cur, &vars),
                 };
                 if name == "pushd" {
@@ -2859,7 +2965,15 @@ pub fn deletion_outside(command: &str, cwd: &Path) -> Option<String> {
                         // The clean runs in the work tree git resolves: the folder the `-C`
                         // chain names, `--work-tree`, a `core.worktree` pair, GIT_WORK_TREE
                         // and a git folder outside (audit 6768 B1, N4; repair audit 7149).
-                        match git_clean_dirs(&args, &vars, &cur) {
+                        // The command's own prefix assignments (`GIT_WORK_TREE=/x git clean`)
+                        // are its environment: added as further values, never replacing.
+                        let mut with_env = vars.clone();
+                        for word in &env {
+                            if let Some((k, v)) = word.split_once('=') {
+                                with_env.assign(k, v);
+                            }
+                        }
+                        match git_clean_dirs(&args, &with_env, &cur) {
                             Ok(dirs) if dirs.iter().any(|p| !under(p)) => {
                                 return Some(DELETION_OUTSIDE.to_string())
                             }
@@ -5163,7 +5277,6 @@ mod tests {
                 "D=build; D=/; rm -rf $D",
                 "D=build; export D=/; rm -rf $D",
                 "export D=/; rm -rf $D",
-                "D=build; D=/ rm -rf $D",
                 "declare D=/; rm -rf $D",
                 "typeset -x D=/; rm -rf $D",
                 "local D=/; rm -rf $D",
@@ -5186,7 +5299,151 @@ mod tests {
                 "D=build E=out; rm -rf $D $E",
                 "D=$PWD; rm -rf $D/build",
                 "source ./x.sh; rm -rf build",
+                // The prefix assignment is the command's own: `$D` in its words is the value
+                // set before it (`build`), and the prefix value is dropped after the command.
+                "D=build; D=/ rm -rf $D",
             ]),
+        );
+    }
+
+    /// Repair audit 7215 B2, a prefix assignment (`D=x cmd`): the shell expands the command's
+    /// words before it applies the prefix and drops the prefix after the command, so the value
+    /// is no value for the same command's words and none for the next segment. A `D` that was
+    /// never assigned on the line is an unknown variable.
+    #[test]
+    fn repair_7215_a_prefix_assignment_is_not_a_value_of_the_words_or_the_next_segment() {
+        let (_d, wt) = a_worktree();
+        let w = wt.display().to_string();
+        assert_all_refused(
+            &wt,
+            &[
+                // `$D` is empty in real bash, so the target is `/x/` — outside; this guard used
+                // to read `/x/../..<worktree>` and judged it inside.
+                format!("D=../..{w} rm -rf /x/$D"),
+                format!("D=../..{w} true; rm -rf /x/$D"),
+                format!("D=../..{w} true && rm -rf /x/$D"),
+                format!("D=../..{w} env true; rm -rf /x/$D"),
+                format!("D=../..{w} echo x | rm -rf /x/$D"),
+                format!("D=../..{w} rm -rf /x/${{D}}"),
+                // The earlier value of D still counts for the words of the command.
+                "D=/; D=build rm -rf $D".to_string(),
+            ],
+        );
+        assert_all_pass(
+            &wt,
+            &[
+                "D=build rm -rf build".to_string(),
+                "D=build; D=/ true; rm -rf $D".to_string(),
+                format!("GIT_AUTHOR_NAME=x git status && rm -rf {w}/build"),
+            ],
+        );
+        // The command's own environment still reaches the work tree a `git clean` runs in.
+        assert!(deletion_outside(&format!("GIT_WORK_TREE={OUT} git clean -fdx"), &wt).is_some());
+    }
+
+    /// Repair audit 7215 B2, word splitting: the reader keeps no quotes, so a variable whose
+    /// value holds a space (or any variable on a line that sets or unsets IFS) is refused in a
+    /// delete target.
+    #[test]
+    fn repair_7215_a_variable_the_shell_splits_into_words_is_refused() {
+        let (_d, wt) = a_worktree();
+        assert_all_refused(
+            &wt,
+            &owned(&[
+                "X=\"build /x\"; rm -rf $X",
+                "X=\"build /x\"; rm -rf $X/y",
+                "X='build /x'; rm -rf ${X}",
+                "X=\"build /x\"; rm -rf \"$X\"",
+                "X=\"build\t/x\"; rm -rf $X",
+                "IFS=,; X=\"build,/x\"; rm -rf $X",
+                "IFS=,; X=build; rm -rf $X",
+                "export IFS=,; X=\"build,/x\"; rm -rf $X",
+                "X=\"build,/x\"; IFS=,; rm -rf $X",
+                "X=build; unset IFS; rm -rf $X",
+                "IFS=,; rm -rf $PWD/build",
+                "IFS=,; cd $X && rm -rf victim",
+            ]),
+        );
+        assert_all_pass(
+            &wt,
+            &owned(&[
+                "X=build; rm -rf $X",
+                "X=\"my build\"; echo $X",
+                "IFS=,; rm -rf build",
+                "IFS=,; echo $X",
+                // A prefix IFS belongs to the command and is gone after it.
+                "IFS= read -r y; X=build; rm -rf $X",
+                "IFS=, true; X=build; rm -rf $X",
+            ]),
+        );
+    }
+
+    /// Repair audit 7215 B2, arrays: `a=(/x)` is read by `$a` as its first element, while the
+    /// segment reader keeps nothing of the parenthesis, so every array name is unknown.
+    #[test]
+    fn repair_7215_an_array_value_is_unknown() {
+        let (_d, wt) = a_worktree();
+        assert_all_refused(
+            &wt,
+            &owned(&[
+                "a=(/x); rm -rf $a",
+                "a=(/x); rm -rf ${a}",
+                "a=(/x); rm -rf ${a[0]}",
+                "declare -a a=(/x); rm -rf $a",
+                "local -a a=(/x); rm -rf $a",
+                "a=(build); a+=(/x); rm -rf $a",
+                "a=([0]=/x); rm -rf $a",
+                "a=build; a=(/x); rm -rf $a",
+                "a=(/x) && rm -rf $a",
+                "declare -a a; a[0]=/x; rm -rf $a",
+            ]),
+        );
+        assert_all_pass(
+            &wt,
+            &owned(&[
+                "a=(build); rm -rf build",
+                "a=(/x); echo ${a[0]}",
+                "a=build; rm -rf $a",
+            ]),
+        );
+    }
+
+    /// Repair audit 7215 B3: with `CDPATH` set on the line (a prefix of the `cd`, an assignment,
+    /// an export), a relative name is searched in CDPATH first, so the folder it enters cannot
+    /// be read; an absolute spelling still can.
+    #[test]
+    fn repair_7215_cdpath_makes_a_relative_cd_unknown() {
+        let (_d, wt) = a_worktree();
+        let w = wt.display().to_string();
+        assert_all_refused(
+            &wt,
+            &owned(&[
+                "CDPATH=/ cd etc && rm -rf passwd",
+                "CDPATH=/ pushd etc && rm -rf passwd",
+                "CDPATH=/ cd -P etc && rm -rf passwd",
+                "CDPATH=/; cd etc && rm -rf passwd",
+                "CDPATH=/ ; cd etc ; rm -rf passwd",
+                "export CDPATH=/; cd etc && rm -rf passwd",
+                "declare -x CDPATH=/; pushd etc && rm -rf passwd",
+                "cd src && CDPATH=/ cd etc && rm -rf passwd",
+                "CDPATH=$X; cd etc && rm -rf passwd",
+                "CDPATH=/; cd src && find -name x -delete",
+                "CDPATH=/; cd src && git clean -fdx",
+                "unset CDPATH; cd src && rm -rf build",
+            ]),
+        );
+        assert_all_pass(
+            &wt,
+            &[
+                format!("CDPATH=/ cd {w}/src && rm -rf build"),
+                format!("CDPATH=/ cd $PWD/src && rm -rf build"),
+                "CDPATH=/ cd etc".to_string(),
+                "CDPATH=/ cd etc; ls".to_string(),
+                "CDPATH= cd src && rm -rf build".to_string(),
+                "CDPATH=/ true; cd src && rm -rf build".to_string(),
+                "cd src && rm -rf build".to_string(),
+                format!("CDPATH=/; cd /etc && rm -rf {w}/build"),
+            ],
         );
     }
 

@@ -1192,3 +1192,47 @@ fn ac1_the_repair_audit_bypass_shapes_are_refused_through_the_dispatch() {
         assert!(!r.denies(), "refused: {command:?}");
     }
 }
+
+/// AC-1, repair audit 7215 blocks B2 and B3, through the real dispatch: a prefix assignment is
+/// neither a value of the same command's words nor of the next segment, a variable the shell
+/// splits into words, any variable on a line that sets IFS, an array value and a relative `cd`
+/// on a line with CDPATH are refused with exit 2 ("what cannot be read is refused"), and the
+/// common look-alikes pass.
+#[test]
+fn ac1_the_variable_and_cdpath_shapes_are_refused_through_the_dispatch() {
+    let (_d, root, config) = world(BRANCH);
+    let wt = root.display().to_string();
+    let refused = [
+        format!("D=../..{wt} rm -rf /x/$D"),
+        format!("D=../..{wt} true; rm -rf /x/$D"),
+        "X=\"build /x\"; rm -rf $X".to_string(),
+        "X=\"build /x\"; rm -rf $X/y".to_string(),
+        "IFS=,; X=\"build,/x\"; rm -rf $X".to_string(),
+        "a=(/x); rm -rf $a".to_string(),
+        "declare -a a=(/x); rm -rf $a".to_string(),
+        "CDPATH=/ cd etc && rm -rf passwd".to_string(),
+        "CDPATH=/ pushd etc && rm -rf passwd".to_string(),
+        "export CDPATH=/; cd etc && rm -rf passwd".to_string(),
+    ];
+    for command in &refused {
+        let r = dangerous(&root, &config, &bash(command, &root));
+        assert!(r.denies(), "not refused: {command:?}");
+        assert_eq!(r.code, 2, "{command:?}: {} {}", r.code, r.stdout);
+    }
+    let allowed = [
+        "D=build; D=/ rm -rf $D".to_string(),
+        "D=build rm -rf build".to_string(),
+        "X=build; rm -rf $X".to_string(),
+        "X=\"my build\"; echo $X".to_string(),
+        "IFS= read -r y; X=build; rm -rf $X".to_string(),
+        "a=(build); rm -rf build".to_string(),
+        format!("CDPATH=/ cd {wt}/src && rm -rf build"),
+        "CDPATH=/ cd etc".to_string(),
+        "cd src && rm -rf build".to_string(),
+        "ls $HOME".to_string(),
+    ];
+    for command in &allowed {
+        let r = dangerous(&root, &config, &bash(command, &root));
+        assert!(!r.denies(), "refused: {command:?}");
+    }
+}
