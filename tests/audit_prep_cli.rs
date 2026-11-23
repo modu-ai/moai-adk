@@ -108,7 +108,14 @@ fn fixture() -> Fixture {
     let lane = base.join("lane");
     git(
         &root,
-        &["worktree", "add", "-q", "-b", "work", lane.to_str().unwrap()],
+        &[
+            "worktree",
+            "add",
+            "-q",
+            "-b",
+            "work",
+            lane.to_str().unwrap(),
+        ],
     );
     fs::write(lane.join("b.txt"), "b\n").unwrap();
     git(&lane, &["add", "b.txt"]);
@@ -257,7 +264,11 @@ impl Fixture {
     fn refused(&self, op: &str, args: &[&str], words: &[&str]) -> String {
         let (code, v) = self.json(op, args, &[]);
         assert_ne!(code, 0, "{op} {args:?}: {v}");
-        assert_eq!(v["error"]["kind"], json!("invalid_input"), "{op} {args:?}: {v}");
+        assert_eq!(
+            v["error"]["kind"],
+            json!("invalid_input"),
+            "{op} {args:?}: {v}"
+        );
         let m = v["error"]["message"].as_str().unwrap().to_string();
         for w in words {
             assert!(m.contains(w), "{op} {args:?}: {w:?} not in {m}");
@@ -293,7 +304,9 @@ impl Fixture {
     }
 
     fn holder_record(&self, slot: &str) -> PathBuf {
-        self.root.join(".git/moai-audit-slots").join(format!("{slot}.json"))
+        self.root
+            .join(".git/moai-audit-slots")
+            .join(format!("{slot}.json"))
     }
 
     /// Log files `audit-prep` left in a slot's `target/`.
@@ -363,11 +376,7 @@ fn prep_prepares_the_slot_the_card_already_holds_not_the_first_free_one() {
     let a = r.prep_ok("C-1", &r.second, &[]);
     assert_eq!(a["slot"], json!("audit-2"), "{a}");
     // audit-1 is free again; the card still gets the slot it holds.
-    let (code, v) = r.json(
-        "audit-slot",
-        &["done", "audit-1", "--holder", "h1"],
-        &[],
-    );
+    let (code, v) = r.json("audit-slot", &["done", "audit-1", "--holder", "h1"], &[]);
     assert_eq!((code, &v["ok"]), (0, &json!(true)), "{v}");
     let b = r.prep_ok("C-1", &r.second, &[]);
     assert_eq!(b["slot"], json!("audit-2"), "{b}");
@@ -388,7 +397,11 @@ fn prep_refuses_what_audit_slot_refuses_and_runs_no_build() {
         "0",
     ];
     let with = |first: &[&str]| -> Vec<String> {
-        first.iter().chain(common.iter()).map(|s| s.to_string()).collect()
+        first
+            .iter()
+            .chain(common.iter())
+            .map(|s| s.to_string())
+            .collect()
     };
     let go = |first: &[&str], words: &[&str]| {
         let args = with(first);
@@ -399,7 +412,13 @@ fn prep_refuses_what_audit_slot_refuses_and_runs_no_build() {
     go(&["nonsense", "--head", &r.second], &["card"]);
     go(&["C-1", "--head", &r.second[..12]], &["40"]);
     go(
-        &["C-1", "--head", &r.second, "--lane", r.root.join("nope").to_str().unwrap()],
+        &[
+            "C-1",
+            "--head",
+            &r.second,
+            "--lane",
+            r.root.join("nope").to_str().unwrap(),
+        ],
         &["lane"],
     );
     assert!(!r.slot("audit-1").exists(), "nothing was added");
@@ -443,22 +462,19 @@ fn one_build_compiles_the_workspace_units_once_and_every_dependency_fresh() {
             .any(|u| u["name"] == json!("auditdep") && u["fresh"] == json!(true)),
         "{a}"
     );
-    assert!(r.slot("audit-1").join("target").join(c["log"].as_str().unwrap()).exists()
-        || Path::new(c["log"].as_str().unwrap()).exists());
+    assert!(
+        r.slot("audit-1")
+            .join("target")
+            .join(c["log"].as_str().unwrap())
+            .exists()
+            || Path::new(c["log"].as_str().unwrap()).exists()
+    );
     // Three named targets are over the cap: refused before anything changes.
     let r2 = fixture();
     let m = r2.refused(
         "audit-prep",
         &[
-            "C-2",
-            "--head",
-            &r2.second,
-            "--test",
-            "a",
-            "--test",
-            "b",
-            "--test",
-            "c",
+            "C-2", "--head", &r2.second, "--test", "a", "--test", "b", "--test", "c",
         ],
         &["at most two"],
     );
@@ -483,7 +499,8 @@ fn a_build_that_does_not_compile_keeps_the_slot_held_and_names_the_errors() {
     let m = v["error"]["message"].as_str().unwrap();
     assert!(m.contains("broken"), "the compiler's lines are named: {m}");
     assert!(m.contains("audit-1"), "{m}");
-    let rec: Value = serde_json::from_slice(&fs::read(r.holder_record("audit-1")).unwrap()).unwrap();
+    let rec: Value =
+        serde_json::from_slice(&fs::read(r.holder_record("audit-1")).unwrap()).unwrap();
     assert_eq!(rec["holder"], json!("C-1"), "the card still holds the slot");
     // The auditor still finishes it.
     let done = r.done_ok("C-1");
@@ -565,7 +582,10 @@ fn audit_done_refuses_a_left_mutant_then_releases_and_takes_no_discard_or_force(
     assert_eq!(done["slot"], json!("audit-1"), "{done}");
     assert_eq!(done["released"], json!(true), "{done}");
     assert_eq!(done["target_kept"], json!(true), "{done}");
-    assert_eq!(git(&slot, &["status", "--porcelain", "--untracked-files=all"]), "");
+    assert_eq!(
+        git(&slot, &["status", "--porcelain", "--untracked-files=all"]),
+        ""
+    );
     // A card that holds no slot.
     r.refused("audit-done", &["C-1"], &["holds no audit slot"]);
 }
@@ -585,7 +605,11 @@ fn a_one_line_mutant_on_a_prepared_slot_recompiles_only_the_workspace_units() {
     // The prepared build itself used the lane's flags and compiled no dependency.
     assert_eq!(a["cargo"]["compiled_dependencies"], json!(0), "{a}");
     let slot = r.slot("audit-1");
-    fs::write(slot.join("src/lib.rs"), "pub fn two() -> u32 { auditdep::one() + 2 }\n").unwrap();
+    fs::write(
+        slot.join("src/lib.rs"),
+        "pub fn two() -> u32 { auditdep::one() + 2 }\n",
+    )
+    .unwrap();
     let out = cargo_ok(
         &slot,
         &[
@@ -601,7 +625,10 @@ fn a_one_line_mutant_on_a_prepared_slot_recompiles_only_the_workspace_units() {
     );
     let list = artifacts(&out);
     let compiled = compiled_in(&list, &slot);
-    assert!(compiled.contains(&("auditapp".to_string(), "lib".to_string())), "{compiled:?}");
+    assert!(
+        compiled.contains(&("auditapp".to_string(), "lib".to_string())),
+        "{compiled:?}"
+    );
     let outside = list
         .iter()
         .filter(|a| a["fresh"] == json!(false))
@@ -620,17 +647,24 @@ fn the_card_is_the_holder_whatever_session_finishes_it() {
         "C-1",
         &r.second,
         &[],
-        &[("CLAUDE_CODE_SESSION_ID", "11111111-1111-1111-1111-111111111111")],
+        &[(
+            "CLAUDE_CODE_SESSION_ID",
+            "11111111-1111-1111-1111-111111111111",
+        )],
     );
     assert_eq!((a.0, &a.1["ok"]), (0, &json!(true)), "{}", a.1);
     // The record names the card and no session, so no session can be the other holder.
-    let rec: Value = serde_json::from_slice(&fs::read(r.holder_record("audit-1")).unwrap()).unwrap();
+    let rec: Value =
+        serde_json::from_slice(&fs::read(r.holder_record("audit-1")).unwrap()).unwrap();
     assert_eq!(rec["holder"], json!("C-1"), "{rec}");
     assert!(rec["session"].is_null(), "{rec}");
     let (code, v) = r.json(
         "audit-done",
         &["C-1"],
-        &[("CLAUDE_CODE_SESSION_ID", "22222222-2222-2222-2222-222222222222")],
+        &[(
+            "CLAUDE_CODE_SESSION_ID",
+            "22222222-2222-2222-2222-222222222222",
+        )],
     );
     assert_eq!((code, &v["ok"]), (0, &json!(true)), "{v}");
     assert_eq!(v["result"]["released"], json!(true), "{v}");
