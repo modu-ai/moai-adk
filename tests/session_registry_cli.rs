@@ -840,10 +840,15 @@ fn register_mode_is_stored_and_renewed() {
     assert_eq!(keys(&show), ["status", "name", "instance", "lease_until"]);
     let instance = first["instance"].as_str().unwrap().to_string();
 
-    // The same instance renews and records the mode.
-    let renewed = ok(&run(
+    // The same instance renews and records the mode. A leader registration names the host
+    // session (SPEC-20261123-leader-registration-lease REQ-1), so this one runs as a session.
+    let repo = repo_arg(&fx);
+    let renewed = ok(&run_as(
         &fx,
+        &fx.repo,
+        Some(&sid(1)),
         &[
+            &repo,
             "--name",
             "leader",
             "--instance",
@@ -861,10 +866,31 @@ fn register_mode_is_stored_and_renewed() {
     let show = ok(&run(&fx, &["--show", "--name", "leader", "--now", T0]));
     assert_eq!(show["mode"], "leader", "{show}");
 
-    // A later renew with another mode replaces it.
-    ok(&run(
+    // A later renew with another mode replaces it, but a live leader entry answers only to its
+    // own session whatever mode the caller asks for (SPEC-20261123-leader-registration-lease
+    // REQ-4): a call from no session is refused and the entry is as it was.
+    let held = fs::read(fx.entry("leader")).unwrap();
+    let stranger = run(
         &fx,
         &[
+            "--name",
+            "leader",
+            "--instance",
+            &instance,
+            "--mode",
+            "agent",
+            "--now",
+            T0,
+        ],
+    );
+    assert_eq!(refused(&stranger).0, "invalid_input");
+    assert_eq!(fs::read(fx.entry("leader")).unwrap(), held);
+    ok(&run_as(
+        &fx,
+        &fx.repo,
+        Some(&sid(1)),
+        &[
+            &repo,
             "--name",
             "leader",
             "--instance",
