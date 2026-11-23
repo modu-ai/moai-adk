@@ -34,7 +34,7 @@ created: 2026-11-23
 - REQ-9: `card next` shall list a `ready` card whose empty scope a take would fill from its SPEC or its last reservation, showing the filled scope and its `scope_source`, instead of skipping it as `empty_scope`.
 - REQ-10: If an entry of the SPEC `write:` list is not shaped like a path (it has white space or a comma, starts with `-`, or has no `/`, glob character or file extension), then the take shall refuse, fill nothing and name the SPEC file, the entry, `card take <C-n> --scope <path>` and `card scope <C-n> --scope <path>`. · failure: the card stays empty and `card next` skips it as `empty_scope`.
 - REQ-11: When the SPEC `write:` list names a path more than once, the take shall reserve and store the path once and name the merged paths in the `warnings` of its answer. · failure: none — a merged list that still breaks REQ-8 or REQ-10 is refused by them.
-- REQ-12: If a `--scope` value holds a comma, then the command shall refuse it and say that one `--scope` names one path. · failure: nothing is written, for `take` and for `card scope`.
+- REQ-12: If a `--scope`, `--path` or `--keep` value holds a comma, then the command shall refuse it and say that one such option, named as the caller typed it, names one path. · failure: nothing is written, for `take`, `card scope`, `give-back`, `line-lease` and `review`.
 
 ## Acceptance
 
@@ -62,7 +62,7 @@ created: 2026-11-23
   verify: `cargo nextest run --locked --offline --test card_take_scope_cli -E 'test(a_spec_list_with_a_word_is_refused_not_stored) | test(a_clean_real_spec_list_still_fills)'`
 - AC-13 (REQ-11): a real untagged list whose items name `src/home_workdir.rs` twice is taken with the path once and a `merged` warning.
   verify: `cargo nextest run --locked --offline --test card_take_scope_cli -E 'test(a_spec_list_that_repeats_a_path_is_merged)'`
-- AC-14 (REQ-12): `take --scope a,b` and `card scope --scope a,b` are refused naming the comma and `one --scope per path`, with nothing reserved and the card scope unchanged.
+- AC-14 (REQ-12): `take --scope a,b` and `card scope --scope a,b` are refused naming the comma and `one --scope per path`, with nothing reserved and the card scope unchanged; `give-back`, `line-lease` and `review` name `--path`, `--path` and `--keep`.
   verify: `cargo nextest run --locked --offline --test card_take_scope_cli -E 'test(a_comma_in_a_scope_value_is_refused)'`
 - AC-15 (REQ-4): a card with two earlier reservations gets the newest one's scope.
   verify: `cargo nextest run --locked --offline --test card_take_scope_cli -E 'test(the_last_reservation_is_the_newest_one)'`
@@ -118,9 +118,10 @@ created: 2026-11-23
 - AC-9: met — `ledger_reservation`, `card_scope_widen_cli`, `card_cli`, `card_dispatch_cli`, `card_work_cli`, `ledger_workflow` pass inside the 3133 tests of `check affected` on the head
 - AC-10: met — `spec check SPEC-20261123-take-scope-stored` 0 errors 0 warnings
 - AC-11: met — `next_skips_a_fill_a_take_would_refuse` (pass; a mutant that removes the limit check in `take_scope::choose` fails it, which no test caught before it was added)
-- AC-12: met — `a_spec_list_with_a_word_is_refused_not_stored` over five `## Scope` sections copied from real SPECs (code span, prose line, option span, spaced span, call span) and `a_clean_real_spec_list_still_fills` (pass; mutants that turn the shape check off, drop its white-space rule, accept any extension, or drop `card scope` from the refusal each fail it)
+- AC-12: met — `a_spec_list_with_a_word_is_refused_not_stored` over five `## Scope` sections copied from real SPECs (code span, prose line, option span, spaced span, call span) plus a `--out/dir.rs` entry that only its leading `-` makes no path, and `a_clean_real_spec_list_still_fills` (pass; mutants that turn the shape check off, drop its white-space rule, drop its leading-`-` rule, accept any extension, or drop `card scope` from the refusal each fail it)
 - AC-13: met — `a_spec_list_that_repeats_a_path_is_merged` (pass; mutants that turn the merge off or drop the `merged` warning fail it)
-- AC-14: met — `a_comma_in_a_scope_value_is_refused` (pass; a mutant that removes the comma check fails it)
+- AC-14: met — `a_comma_in_a_scope_value_is_refused` and `the_comma_refusal_names_the_option_of_the_caller` (pass; a mutant that removes the comma check fails the first, one that names `--scope` for `review` fails the second)
 - AC-15: met — `the_last_reservation_is_the_newest_one` (pass; a mutant that orders the reservations oldest first fails it)
 - AC-16: met — `next_skips_a_fill_that_overlaps_a_held_scope` (pass; a mutant that skips the overlap check for a filled scope fails it)
+- Repair of the delta audit (B4 the leading-`-` rule had no killing fixture, N6 the comma refusal said `--scope` for `--path` and `--keep`): AC-12 and AC-14 above.
 - Repair of the first audit (B1 words stored as paths, B2 and B3 without a killing test, N1 stale help, N2 comma): D-4, D-5 and D-6 record the choices. The `check affected` receipt of the head is in the READY note of that head (a number in this file would name an earlier head).
