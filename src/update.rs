@@ -2011,6 +2011,46 @@ fn count_hosts(p: &crate::home_style::Plan) -> usize {
     hosts.len()
 }
 
+/// Whether the routing plan computed at apply time differs from the confirmed one. The digests
+/// are compared only when the same hosts are applied as were previewed. Both sides have one
+/// name per config folder row (the previewed plan has a row per folder, and `gate_on_skills`
+/// copies one name per row), so each side is counted by distinct name, never by row.
+fn routing_recheck_moved(
+    confirmed: &[&str],
+    previewed: &crate::home_routing::Plan,
+    now: &crate::home_routing::Plan,
+) -> bool {
+    let confirmed_hosts = confirmed
+        .iter()
+        .copied()
+        .collect::<std::collections::BTreeSet<_>>();
+    let previewed_hosts = previewed
+        .hosts
+        .iter()
+        .map(|h| h.host.as_str())
+        .collect::<std::collections::BTreeSet<_>>();
+    confirmed_hosts == previewed_hosts && now.plan_digest != previewed.plan_digest
+}
+
+/// The routing part of a confirmed apply: plan the confirmed hosts again, refuse when the plan
+/// moved since the preview, otherwise apply it. A function of its own so a test can run the
+/// whole step, the re-check included, against a home that changed after the preview.
+fn routing_part(
+    home: &Path,
+    package: &Path,
+    hosts: &[&str],
+    previewed: &crate::home_routing::Plan,
+    permission: &str,
+) -> Result<serde_json::Value> {
+    let p = crate::home_routing::plan_for(home, package, hosts)?;
+    if routing_recheck_moved(hosts, previewed, &p) {
+        return Ok(
+            json!({"state": "refused", "reason": "the routing plan changed after the confirmed preview; nothing written"}),
+        );
+    }
+    crate::home_routing::apply_for(home, package, hosts, &p.plan_digest, permission)
+}
+
 fn agents_write_anything(p: &crate::agent_install::Plan) -> bool {
     p.hosts
         .iter()
@@ -2292,17 +2332,13 @@ fn update_command_core(
             PERMISSION,
         )
     })());
-    let routing = part((|| {
-        let p = crate::home_routing::plan_for(home, &package, &routing_hosts)?;
-        if routing_hosts.len() == fresh.routing.hosts.len()
-            && p.plan_digest != fresh.routing.plan_digest
-        {
-            return Ok(
-                json!({"state": "refused", "reason": "the routing plan changed after the confirmed preview; nothing written"}),
-            );
-        }
-        crate::home_routing::apply_for(home, &package, &routing_hosts, &p.plan_digest, PERMISSION)
-    })());
+    let routing = part(routing_part(
+        home,
+        &package,
+        &routing_hosts,
+        &fresh.routing,
+        PERMISSION,
+    ));
     // #2875: the style, for the same confirmed hosts whose skill copy applied.
     let style = part((|| {
         let p = crate::home_style::plan_for(home, &package, &style_hosts)?;
@@ -3591,5 +3627,139 @@ mod user_layer_tests {
         assert_eq!(hosts(&g.agents), "");
         assert_eq!(hosts(&g.routing), "");
         assert_eq!(hosts(&g.style), "");
+    }
+}
+
+#[cfg(test)]
+mod routing_recheck_tests {
+    use super::*;
+    use crate::home_routing::{HostPlan, Plan};
+
+    fn row(dir: &str) -> HostPlan {
+        HostPlan {
+            host: "claude".into(),
+            config_dir: dir.into(),
+            file: format!("{dir}/rules/moai.md"),
+            preflight: "ok".into(),
+            blocked_reason: None,
+            section: None,
+            flow: None,
+            old_block: None,
+        }
+    }
+
+    fn plan(dirs: &[&str], digest: &str) -> Plan {
+        Plan {
+            schema_version: 1,
+            home: "/h".into(),
+            package_digest: "p".into(),
+            source_sha256: "s".into(),
+            flow_source_sha256: None,
+            hosts: dirs.iter().map(|d| row(d)).collect(),
+            not_supported: Vec::new(),
+            plan_digest: digest.into(),
+        }
+    }
+
+    #[test]
+    fn routing_recheck_sees_a_changed_digest_beside_a_profile_row() {
+        // One host, two rows (the default folder and a profile): the digest still counts. The
+        // confirmed names are what `gate_on_skills` gives, one per row.
+        let previewed = plan(&["/h/.claude", "/p"], "old");
+        assert!(routing_recheck_moved(
+            &["claude", "claude"],
+            &previewed,
+            &plan(&["/h/.claude", "/p"], "new")
+        ));
+    }
+
+    #[test]
+    fn routing_recheck_sees_a_changed_digest_with_one_row() {
+        let previewed = plan(&["/h/.claude"], "old");
+        assert!(routing_recheck_moved(
+            &["claude"],
+            &previewed,
+            &plan(&["/h/.claude"], "new")
+        ));
+    }
+
+    #[test]
+    fn routing_recheck_leaves_an_unchanged_digest_alone() {
+        let previewed = plan(&["/h/.claude", "/p"], "same");
+        assert!(!routing_recheck_moved(
+            &["claude", "claude"],
+            &previewed,
+            &plan(&["/h/.claude", "/p"], "same")
+        ));
+    }
+
+    /// Audit #394 B1: the apply does not pass the preview's host count of its own. It passes
+    /// what `gate_on_skills` gives, which holds one name per routing row, so a preview with a
+    /// profile row confirms two names for one host. The re-check has to read that shape.
+    #[test]
+    fn routing_recheck_reads_the_hosts_the_apply_gate_gives_for_a_profile_row() {
+        let tmp = tempfile::tempdir().unwrap();
+        let home = tmp.path().join("home");
+        fs::create_dir_all(&home).unwrap();
+        let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+        let pkg = root.join("skills/moai");
+        let agents = root.join(crate::agent_defs::SOURCE_DIR);
+        let mut layer =
+            user_layer_plan(&home, &pkg, &agents, &stage_package(&pkg).unwrap()).unwrap();
+        // The preview of a session with a profile folder: the default row plus the profile row.
+        let mut profile = layer.routing.hosts[0].clone();
+        profile.config_dir = "/p".into();
+        layer.routing.hosts.push(profile);
+        let landed = json!({"hosts": [{"host": "claude", "status": "applied"}]});
+        let gate = gate_on_skills(&landed, &layer);
+        let confirmed: Vec<&str> = gate.routing.iter().map(String::as_str).collect();
+        let mut now = layer.routing.clone();
+        now.plan_digest = "moved".into();
+        assert!(
+            routing_recheck_moved(&confirmed, &layer.routing, &now),
+            "confirmed {confirmed:?} for {} rows",
+            layer.routing.hosts.len()
+        );
+        // The same digest is left alone.
+        assert!(!routing_recheck_moved(
+            &confirmed,
+            &layer.routing,
+            &layer.routing.clone()
+        ));
+    }
+
+    /// Audit #394 M3: the apply step itself refuses a routing plan that moved after the
+    /// preview. The preview saw a user-owned file (a conflict); the file is gone when the apply
+    /// plans again, so the fresh plan would create both files. Nothing may be written.
+    #[test]
+    fn the_routing_part_refuses_a_plan_that_moved_after_the_preview_and_writes_nothing() {
+        const PERMISSION: &str = "moai-cli update confirmation";
+        let tmp = tempfile::tempdir().unwrap();
+        let home = tmp.path().join("home");
+        let rules = home.join(".claude/rules");
+        fs::create_dir_all(&rules).unwrap();
+        fs::write(rules.join("moai.md"), "user text\n").unwrap();
+        let pkg = Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai");
+        let previewed = crate::home_routing::plan_for(&home, &pkg, &["claude"]).unwrap();
+        assert_eq!(
+            previewed.hosts[0].section.as_ref().unwrap().action,
+            "conflict"
+        );
+        fs::remove_file(rules.join("moai.md")).unwrap();
+        let out = routing_part(&home, &pkg, &["claude"], &previewed, PERMISSION).unwrap();
+        assert_eq!(out["state"], json!("refused"), "{out}");
+        assert_eq!(fs::read_dir(&rules).unwrap().count(), 0, "{out}");
+        // Control: the plan the preview saw is applied, so the refusal above is the re-check's.
+        let fresh = crate::home_routing::plan_for(&home, &pkg, &["claude"]).unwrap();
+        let out = routing_part(&home, &pkg, &["claude"], &fresh, PERMISSION).unwrap();
+        assert_eq!(out["state"], json!("applied"), "{out}");
+        assert!(rules.join("moai.md").is_file());
+    }
+
+    #[test]
+    fn routing_recheck_skips_the_comparison_when_fewer_hosts_were_confirmed() {
+        // A blocked skill copy leaves a host out of the apply: that plan differs on purpose.
+        let previewed = plan(&["/h/.claude", "/p"], "old");
+        assert!(!routing_recheck_moved(&[], &previewed, &plan(&[], "new")));
     }
 }
