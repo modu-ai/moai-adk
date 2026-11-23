@@ -56,11 +56,12 @@ impl Fx {
         let root = fs::canonicalize(tmp.path()).unwrap();
         let checkout = root.join("checkout");
         let home = root.join("home");
-        fs::create_dir_all(checkout.join(".moai")).unwrap();
+        let state = checkout.join(moai_cli::state_root::MOAI_DIR);
+        fs::create_dir_all(&state).unwrap();
         fs::create_dir_all(checkout.join(".git")).unwrap();
         fs::create_dir_all(&home).unwrap();
         fs::write(
-            checkout.join(".moai/project.yaml"),
+            state.join("project.yaml"),
             format!("{{\"schema_version\": 2, \"project_id\": \"{PROJECT}\"}}\n"),
         )
         .unwrap();
@@ -743,7 +744,7 @@ fn ac7_an_unreadable_ledger_gives_the_branch_and_one_receipt_line() {
     assert_eq!(before, snapshot(&fx.home));
 }
 
-/// AC-8: a link at `.moai`, `projects` or the project folder is not followed, for the ledger or
+/// AC-8: a link at the state folder, `projects` or the project folder is not followed, for the ledger or
 /// for a receipt; a receipt file that is a link or a FIFO is refused.
 #[test]
 fn ac8_links_under_home_are_not_followed() {
@@ -775,16 +776,17 @@ fn ac8_links_under_home_are_not_followed() {
     type Link = fn(&Fx, &Path);
     let links: [(&str, Link); 3] = [
         ("moai", |fx, target_home| {
-            fs::remove_dir_all(fx.home.join(".moai")).unwrap();
-            symlink(target_home.join(".moai"), fx.home.join(".moai")).unwrap();
+            let (mine, theirs) = (
+                moai_cli::home_workdir::root(&fx.home),
+                moai_cli::home_workdir::root(target_home),
+            );
+            fs::remove_dir_all(&mine).unwrap();
+            symlink(theirs, mine).unwrap();
         }),
         ("projects", |fx, target_home| {
-            fs::remove_dir_all(fx.home.join(".moai/projects")).unwrap();
-            symlink(
-                target_home.join(".moai/projects"),
-                fx.home.join(".moai/projects"),
-            )
-            .unwrap();
+            let mine = moai_cli::home_workdir::projects_root(&fx.home);
+            fs::remove_dir_all(&mine).unwrap();
+            symlink(moai_cli::home_workdir::projects_root(target_home), mine).unwrap();
         }),
         ("project", |fx, target_home| {
             fs::remove_dir_all(project_dir_of(&fx.home)).unwrap();
