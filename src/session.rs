@@ -167,6 +167,7 @@ pub enum Access {
     /// `--dangerously-skip-permissions`: no permission prompt at all; only the user's own choice.
     Full,
     /// No permission flag: the host starts in the mode its own settings choose.
+    // Not ACCESS_DEFAULT: a serialized request without `access` adds no flag (the safe side).
     #[default]
     Prompt,
 }
