@@ -3147,6 +3147,62 @@ fn ac39_a_landing_on_the_real_clock_removes_the_closed_cards_clean_worktree() {
     assert_eq!(got["writes"], json!(true), "{got}");
 }
 
+/// AC-39 (third part; SPEC-20261123-landing-cleanup-real-clock AC-1, D-5): `card land --home DIR` reads the
+/// claims of the ledger it landed in, not of the process's own `HOME`. A second live card holds the
+/// landed card's worktree; the process `HOME` is an empty folder, `--home` is the ledger's. The
+/// worktree stays, whatever `HOME` the process has; a worktree nobody else holds is removed.
+#[test]
+fn ac39_a_landing_reads_the_other_cards_claim_from_the_given_home() {
+    let w = World::new();
+    let shared = w.linked_worktree("wt-shared");
+    let card = w.card_in("apps/a/", &shared, None, &["one"]);
+    let _second = w.card_in("apps/b/", &shared, None, &["two"]);
+    result(&w.card(Some(S_A), &["review", &card, "--generation", "1"]));
+    let candidate = w.candidate();
+    let process_home = TempHome::new();
+    let ledger_home = w.home.path().to_str().unwrap().to_string();
+    let mut cmd = w.home.command(&[
+        "card",
+        "land",
+        &card,
+        "--head",
+        &candidate,
+        "--met",
+        "1=the test",
+        "--by",
+        "leader",
+        "--project",
+        &w.p,
+        "--home",
+        &ledger_home,
+    ]);
+    cmd.env("HOME", process_home.path())
+        .env("USERPROFILE", process_home.path())
+        .env("MOAI_GIT_BIN", &*w.git_bin.borrow())
+        // The cleanup's process check runs `lsof`, which it finds on the caller's PATH.
+        .env("PATH", std::env::var("PATH").unwrap_or_default())
+        .stdin(Stdio::null());
+    let got = result(&cmd.output().expect("run moai"));
+    assert_eq!(got["closed"], json!(true), "{got}");
+    assert_eq!(got["cleanup"]["error"], json!(null), "{got}");
+    assert_eq!(got["cleanup"]["applied"], json!(false), "{got}");
+    assert_eq!(
+        got["cleanup"]["worktrees"][0]["action"],
+        json!("skip"),
+        "{got}"
+    );
+    assert!(
+        got["cleanup"]["worktrees"][0]["reasons"]
+            .to_string()
+            .contains("live_claim"),
+        "{got}"
+    );
+    assert!(
+        shared.is_dir() && w.registered(&shared),
+        "a worktree another live card holds was removed: {got}"
+    );
+}
+
 /// AC-39 (second half): on the real clock a landing keeps a worktree with a tracked change and one
 /// whose `target` links outside; what lies outside, and the changed file, are as they were.
 #[cfg(unix)]

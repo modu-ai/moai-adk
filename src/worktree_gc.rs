@@ -2,9 +2,11 @@
 //! §D5, §D8). Read-only: for every linked worktree it lists whether its cargo build output
 //! may be trimmed or the whole worktree removed, with the reasons, and a digest of the list.
 //! The plan deletes nothing. `worktree.gc.apply` ([`apply`], #2498) acts on a plan only when
-//! the recomputed digest is the same; under the user decision of 2026-11-10 (#2389 comment
-//! 6774899518, item 2) running it on the user's own machine is the leader's step after the
-//! user confirms.
+//! the recomputed digest is the same. Two callers run it: the `worktree-gc-apply` command, which
+//! under the user decision of 2026-11-10 (#2389 comment 6774899518, item 2) is the leader's step
+//! on the user's own machine after the user confirms; and `card land`, through
+//! [`crate::worktree_cleanup`], which removes the closed card's own merged, clean worktrees on
+//! the digest of the plan it just read, with no confirmation step of its own.
 //!
 //! Fail closed: a fact that cannot be established (git failed, no process table, the time
 //! budget spent) makes the worktree `skip` with a named reason, never a candidate.
@@ -787,13 +789,13 @@ fn lifecycle(
 /// The worktrees active card reservations name, resolved (SPEC-20261123-worktree-slots REQ-8).
 /// A project without a profile or without a ledger has none. A profile or a ledger that exists
 /// but cannot be read is `Err`, and every linked worktree is then kept as
-/// `claim_check_unavailable`.
-fn claimed_worktrees(top: &Path) -> std::result::Result<Vec<PathBuf>, ()> {
+/// `claim_check_unavailable`. The ledger is the one of `home` (`$HOME` when `None`).
+fn claimed_worktrees(top: &Path, home: Option<&Path>) -> std::result::Result<Vec<PathBuf>, ()> {
     let real = fs::canonicalize(top).map_err(|_| ())?;
     let Some(id) = crate::project_id::read(&real).map_err(|_| ())? else {
         return Ok(Vec::new());
     };
-    let home = crate::ledger::command::resolve_home(None).map_err(|_| ())?;
+    let home = crate::ledger::command::resolve_home(home.map(Path::to_path_buf)).map_err(|_| ())?;
     let file = crate::ledger::ledger_path(&home, &id).map_err(|_| ())?;
     if !file.is_file() {
         return Ok(Vec::new());
@@ -891,13 +893,16 @@ pub fn plan_paced(
         squash,
         pace,
         &[],
+        None,
     )
 }
 
 /// [`plan_paced`] where the worktrees in `settled` belong to a card whose reservations have all
 /// ended (a landing closed it): for them the recent-change window and the empty-worktree guard
 /// do not apply ([`Facts::settled`]). A claim, a process, a dirty or unmerged tree and every other
-/// reason still keep a worktree.
+/// reason still keep a worktree. The card claims are read from the ledger of `home` (`$HOME` when
+/// `None`): `card land --home DIR` passes DIR, the ledger the landing wrote, so another live
+/// card's worktree is kept whatever `$HOME` of the process is.
 #[allow(clippy::too_many_arguments)]
 pub fn plan_settled(
     project: &Path,
@@ -908,6 +913,7 @@ pub fn plan_settled(
     squash: bool,
     pace: &Pace,
     settled: &[PathBuf],
+    home: Option<&Path>,
 ) -> Result<Value> {
     if recent.as_secs() < MIN_RECENT_MINUTES * 60 {
         return Err(format!(
@@ -948,7 +954,7 @@ pub fn plan_settled(
     // #2811: the home work folders, as written and resolved, so a linked `~/.moai` still
     // names its worktrees. The Go generation's `worktrees/projects` is never touched (D8a).
     let (home_roots, go_roots) = work_roots();
-    let claims = claimed_worktrees(&top);
+    let claims = claimed_worktrees(&top, home);
     let slot_dir = primary.join(crate::worktree_slot::SLOT_DIR);
     let entry_paths: Vec<PathBuf> = entries
         .iter()
@@ -1171,7 +1177,7 @@ pub fn plan_settled(
         // this one, never a sum of sizes (clonefile and hard links make sums wrong).
         "before_free_bytes": crate::worktree_report::disk_bytes(&top).map(|(free, _)| free),
         "plan_digest": plan_digest,
-        "apply": "worktree-gc-apply with this plan_digest and a permission reference; on this machine the leader runs it only after the user confirms",
+        "apply": "worktree-gc-apply with this plan_digest and a permission reference; on this machine the leader runs it only after the user confirms. card land runs the same apply for the landed card's own worktrees, without that confirmation step",
         "network": "disabled",
         "writes": false,
     }))
@@ -1237,16 +1243,18 @@ fn recheck_entry(wt: &Path, action: &str, primary: &Path) -> Option<&'static str
 /// The ledger and nesting facts the plan read, read again right before `apply` acts on `wt`
 /// (SPEC-20261123-worktree-slots REQ-8): a card claim made after the plan, a ledger that can no
 /// longer be read, or a worktree added inside `wt` since, each refuse. `worktrees` is the list
-/// `apply` read, canonical paths with the primary first.
+/// `apply` read, canonical paths with the primary first. The claims are read from the ledger of
+/// `home` (`$HOME` when `None`), the same one the plan read.
 fn recheck_claims_and_nesting(
     wt: &Path,
     top: &Path,
     worktrees: &[PathBuf],
+    home: Option<&Path>,
 ) -> Option<&'static str> {
     if worktrees.iter().any(|q| q != wt && q.starts_with(wt)) {
         return Some("nested_worktree");
     }
-    match claimed_worktrees(top) {
+    match claimed_worktrees(top, home) {
         Ok(list) if list.iter().any(|c| c == wt) => Some("live_claim"),
         Ok(_) => None,
         Err(()) => Some("claim_check_unavailable"),
@@ -1294,12 +1302,13 @@ fn act_on(
     primary: &Path,
     top: &Path,
     worktrees: &[PathBuf],
+    home: Option<&Path>,
 ) -> std::result::Result<&'static str, String> {
     let wt =
         fs::canonicalize(primary.join(shown_path)).unwrap_or_else(|_| primary.join(shown_path));
     if wt == primary || !worktrees.contains(&wt) {
         Err("not a linked worktree of this repository".to_string())
-    } else if let Some(why) = recheck_claims_and_nesting(&wt, top, worktrees)
+    } else if let Some(why) = recheck_claims_and_nesting(&wt, top, worktrees, home)
         .or_else(|| recheck_entry(&wt, action, primary))
     {
         Err(format!("refused: {why}"))
@@ -1364,13 +1373,15 @@ pub fn apply(
         now_unix,
         pace,
         &[],
+        None,
         plan_digest,
         permission_reference,
     )
 }
 
-/// [`apply`] for a plan made by [`plan_settled`] with the same `settled` paths: the recomputed
-/// plan, and so its digest, is the one that treats those worktrees as settled.
+/// [`apply`] for a plan made by [`plan_settled`] with the same `settled` paths and `home`: the
+/// recomputed plan, and so its digest, is the one that treats those worktrees as settled, and the
+/// claims it reads again right before each entry come from the same `home`.
 #[allow(clippy::too_many_arguments)]
 pub fn apply_settled(
     project: &Path,
@@ -1380,6 +1391,7 @@ pub fn apply_settled(
     now_unix: Option<u64>,
     pace: &Pace,
     settled: &[PathBuf],
+    home: Option<&Path>,
     plan_digest: &str,
     permission_reference: &str,
 ) -> Result<Value> {
@@ -1393,6 +1405,7 @@ pub fn apply_settled(
         false,
         pace,
         settled,
+        home,
     )?;
     if fresh["plan_digest"].as_str() != Some(plan_digest) {
         return Err("stale or altered plan: the recomputed digest differs; re-preview required, nothing was written".into());
@@ -1421,7 +1434,7 @@ pub fn apply_settled(
             continue;
         }
         let shown_path = c["path"].as_str().unwrap_or_default().to_string();
-        let outcome = act_on(c, action, &shown_path, &primary, &top, &worktrees);
+        let outcome = act_on(c, action, &shown_path, &primary, &top, &worktrees, home);
         let (status, detail) = match outcome {
             Ok(s) => (s, Value::Null),
             Err(e) => {
@@ -1875,7 +1888,8 @@ mod tests {
                 &path,
                 &primary,
                 &primary,
-                &worktrees
+                &worktrees,
+                None
             ),
             Err("refused: files_outside_build_output".to_string())
         );
@@ -1890,7 +1904,8 @@ mod tests {
                 &path,
                 &primary,
                 &primary,
-                &worktrees
+                &worktrees,
+                None
             ),
             Ok("trimmed")
         );
@@ -1905,7 +1920,8 @@ mod tests {
                 &primary.to_string_lossy(),
                 &primary,
                 &primary,
-                &worktrees
+                &worktrees,
+                None
             ),
             Err("not a linked worktree of this repository".to_string())
         );
@@ -1941,7 +1957,15 @@ mod tests {
         let path = wt.to_string_lossy().to_string();
         let entry = |action: &str| json!({"path": path, "action": action, "trim_paths": []});
         let act = |action: &str, worktrees: &[PathBuf]| {
-            act_on(&entry(action), action, &path, &primary, &primary, worktrees)
+            act_on(
+                &entry(action),
+                action,
+                &path,
+                &primary,
+                &primary,
+                worktrees,
+                None,
+            )
         };
 
         let with_inner = vec![primary.clone(), wt.clone(), inner.clone()];
@@ -1963,6 +1987,94 @@ mod tests {
         );
         fs::remove_file(state.join("project.yaml")).unwrap();
         assert_eq!(act("trim", &without_inner), Ok("trimmed"));
+    }
+
+    /// The claims `apply` reads again right before it acts come from the ledger of the `home` it was
+    /// given, not from `$HOME` (`card land --home DIR`): a held card of that ledger refuses the
+    /// entry, and the same worktree is not refused when the home given holds no ledger.
+    #[cfg(unix)]
+    #[test]
+    fn the_recheck_reads_the_claims_of_the_given_home() {
+        let d = tempfile::tempdir().unwrap();
+        let base = fs::canonicalize(d.path()).unwrap();
+        let primary = base.join("primary");
+        fs::create_dir_all(&primary).unwrap();
+        gc_git(&primary, &["init", "-q", "-b", "main"]);
+        fs::write(primary.join("a.txt"), "a\n").unwrap();
+        gc_git(&primary, &["add", "a.txt"]);
+        gc_git(&primary, &["commit", "-q", "-m", "init"]);
+        let wt = base.join("wt");
+        gc_git(
+            &primary,
+            &["worktree", "add", "-q", "-b", "b", wt.to_str().unwrap()],
+        );
+        let state = primary.join(crate::PROJECT_STATE_DIR);
+        fs::create_dir_all(&state).unwrap();
+        fs::write(
+            state.join("project.yaml"),
+            "{\"schema_version\":2,\"project_id\":\"demo\"}\n",
+        )
+        .unwrap();
+        let ledger_home = base.join("ledger-home");
+        let empty_home = base.join("empty-home");
+        fs::create_dir_all(&ledger_home).unwrap();
+        fs::create_dir_all(&empty_home).unwrap();
+        crate::ledger::register(&ledger_home, "demo").unwrap();
+        let scope = vec!["apps/one/".to_string()];
+        crate::card::command::add(
+            &primary,
+            &ledger_home,
+            &crate::card::command::AddRequest {
+                title: "t",
+                body: "",
+                kind: None,
+                priority: None,
+                scope: &scope,
+                criteria: &[],
+                by: None,
+            },
+        )
+        .unwrap();
+        crate::card::dispatch::ready(&primary, &ledger_home, "C-1", None).unwrap();
+        let wt_text = wt.to_string_lossy().to_string();
+        crate::card::dispatch::take(
+            &primary,
+            &ledger_home,
+            "C-1",
+            &crate::card::dispatch::TakeRequest {
+                holder: "holder-b",
+                lease_secs: Some(3600),
+                scope: &[],
+                worktree: Some(&wt_text),
+                branch: None,
+                require_approved_spec: false,
+            },
+        )
+        .unwrap();
+
+        let worktrees = vec![primary.clone(), wt.clone()];
+        assert_eq!(
+            recheck_claims_and_nesting(&wt, &primary, &worktrees, Some(&ledger_home)),
+            Some("live_claim")
+        );
+        assert_eq!(
+            recheck_claims_and_nesting(&wt, &primary, &worktrees, Some(&empty_home)),
+            None
+        );
+        let entry = json!({"path": wt_text, "action": "remove", "trim_paths": []});
+        assert_eq!(
+            act_on(
+                &entry,
+                "remove",
+                &wt_text,
+                &primary,
+                &primary,
+                &worktrees,
+                Some(&ledger_home)
+            ),
+            Err("refused: live_claim".to_string())
+        );
+        assert!(wt.is_dir(), "a refused entry leaves the worktree whole");
     }
 
     /// Audit F1 on #3058: `decide` keeps a worktree with an install folder out of `remove` even

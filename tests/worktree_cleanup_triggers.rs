@@ -560,6 +560,44 @@ mod real_clock {
         assert_eq!(fs::read_to_string(&bystander).unwrap(), "mine\n");
     }
 
+    /// `card land --home DIR` reads the ledger of DIR, and the cleanup after it must too: another
+    /// card's live claim is read from the same home, not from the process's own `HOME`. With
+    /// `HOME` pointing at an empty home, the claim of the second live card still keeps the
+    /// worktree the landed card shared with it; the same landing in a worktree nobody else holds
+    /// is still removed (the control, so the keep is not a blanket keep).
+    #[test]
+    fn a_landing_reads_the_other_cards_claim_from_the_given_home_not_from_the_process_home() {
+        let e = Env::new();
+        let shared = e.worktree("wt-shared");
+        let landed = e.landed_card(&shared, Some("card/shared"));
+        e.card(S2, &shared, None);
+        let alone = e.worktree("wt-alone");
+        let landed_alone = e.landed_card(&alone, None);
+
+        // The process's own HOME is another, empty home; the ledger is the one `e.home` holds.
+        let other = TempHome::new();
+        std::env::set_var("HOME", other.path());
+
+        let got = e.clean(&landed);
+        assert_eq!(got["error"], Value::Null, "{got}");
+        assert_eq!(got["worktrees"][0]["action"], "skip", "{got}");
+        assert!(
+            got["worktrees"][0]["reasons"]
+                .to_string()
+                .contains("live_claim"),
+            "{got}"
+        );
+        assert_eq!(got["applied"], false, "{got}");
+        assert!(
+            shared.is_dir() && e.registered(&shared),
+            "the shared worktree was removed: {got}"
+        );
+
+        let got = e.clean(&landed_alone);
+        assert_eq!(got["worktrees"][0]["status"], "removed", "{got}");
+        assert!(!alone.exists(), "{got}");
+    }
+
     /// A queue line whose worktree was skipped for a temporary reason stays in the queue; one
     /// whose worktree went, or is kept for a lasting reason, does not.
     #[test]

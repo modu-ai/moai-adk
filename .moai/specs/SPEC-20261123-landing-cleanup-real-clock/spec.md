@@ -29,7 +29,7 @@ Readers: the leader and lanes who land cards, and the auditor.
 ## Requirements
 
 - REQ-1: When a landing closes a card, the cleanup shall plan that card's worktrees without the recent-change window and the empty-worktree guard, because every reservation of the card has ended.
-- REQ-2 (REQ-1): If another active reservation, a nested worktree, a process inside, an unmerged head, a tracked change, an untracked or non-regenerable ignored file, a linked `target/` or a path under `.claude/worktrees/` applies to a worktree, then the cleanup shall keep it as before.
+- REQ-2 (REQ-1): If another active reservation (read from the ledger the landing itself wrote, whatever `HOME` the process has), a nested worktree, a process inside, an unmerged head, a tracked change, an untracked or non-regenerable ignored file, a linked `target/` or a path under `.claude/worktrees/` applies to a worktree, then the cleanup shall keep it as before.
 - REQ-3 (REQ-4): If a worktree of a queue line is skipped for a temporary reason, then the cleanup shall write that line back to the queue.
 - REQ-4: When the cleanup reads the queue, it shall also read every `worktree-cleanup-queue.draining-*` file left in the common git folder and remove each one only after its lines are used or written back.
 - REQ-5 (REQ-4): If a hook appended a line to the taken queue file after the cleanup read it, then the cleanup shall write that line back to the queue.
@@ -40,7 +40,7 @@ Readers: the leader and lanes who land cards, and the auditor.
 
 ## Acceptance
 
-- AC-1 (REQ-1, REQ-2): in a temporary repository on the real clock (no clock seam), landing a card removes its clean merged worktree, including one with no `target/`; a worktree with a tracked change, an unmerged head, an untracked file, a linked `target/` pointing outside, another card's claim or a `.claude/worktrees/` path is kept and the file outside the worktree is unchanged; `git worktree remove` is never called with `--force`.
+- AC-1 (REQ-1, REQ-2): in a temporary repository on the real clock (no clock seam), landing a card removes its clean merged worktree, including one with no `target/`; a worktree with a tracked change, an unmerged head, an untracked file, a linked `target/` pointing outside, another card's claim or a `.claude/worktrees/` path is kept and the file outside the worktree is unchanged; `git worktree remove` is never called with `--force`. The other card's claim keeps the worktree also when the process `HOME` is not the `--home` the landing wrote (a second live card holds the same worktree; the landing's `HOME` is an empty folder).
   verify: `cargo nextest run --locked --offline --test card_land_cli --test worktree_cleanup_triggers`
 - AC-2 (REQ-3): a queue line whose worktree is skipped as `process_in_use`, `live_claim` or `recent_change` is in the queue after the call; a line whose worktree was removed or is kept for a lasting reason (`not_merged`, `tracked_changes`) is gone.
   verify: `cargo nextest run --locked --offline --test worktree_cleanup_triggers --test card_land_cli`
@@ -56,7 +56,8 @@ Readers: the leader and lanes who land cards, and the auditor.
 
 ## Decisions
 
-- D-1: The landing sets `Pace.settled` to the worktrees of the landed card only. A worktree reached through a queue line keeps the normal window, because its card ended earlier and nothing says how long ago. `settled` removes `recent_change` and `empty_worktree` and nothing else; `live_claim`, the process check and the file census still decide, and the apply re-checks them right before acting.
+- D-1: The landing passes the worktrees of the landed card only as the `settled` list of `plan_settled` / `apply_settled`. A worktree reached through a queue line keeps the normal window, because its card ended earlier and nothing says how long ago. `settled` removes `recent_change`, `change_age_unknown` (the change age is a time fact too, so a worktree whose age cannot be read is not kept for it) and `empty_worktree`, and nothing else; `live_claim`, the process check and the file census still decide, and the apply re-checks them right before acting.
+- D-5: The cleanup reads the card claims from the ledger of the `home` the landing wrote (`card land --home DIR`), in the plan and again in the apply's re-check right before each entry, never from the process's `$HOME`. `plan_settled` and `apply_settled` take it as `home: Option<&Path>`; the other callers pass `None` and read `$HOME` as before. Without D-5, `settled` (D-1) removed the only guard that kept another live card's worktree when the two homes differ.
 - D-2: Temporary reasons are `recent_change`, `empty_worktree`, `process_in_use`, `process_check_unavailable`, `file_open_in_use`, `open_file_check_unavailable`, `live_claim`, `claim_check_unavailable` and `budget_spent`. A dirty or unmerged worktree is not temporary: its line is used up as before.
 - D-3: The taken file gets a name with the process id and a time, so a second run in one process never replaces a leftover file.
 - D-4: A line is written back by appending to the queue path, never by a rename over it.
@@ -64,7 +65,7 @@ Readers: the leader and lanes who land cards, and the auditor.
 ## Plan
 
 1. Tests first (red): real-clock landing, kept worktrees, requeue, draining files, tail, restore, `writes`.
-2. `Pace.settled` and `Facts.settled` in `src/worktree_gc.rs`; `worktree_cleanup` sets it for a landing.
+2. The `settled` list and `Facts.settled` in `src/worktree_gc.rs`, and the `home` of D-5 for the claims; `worktree_cleanup` sets both for a landing.
 3. Queue handling in `src/worktree_cleanup.rs` (requeue, orphans, tail, restore).
 4. `writes` in `src/card/land.rs`; the document row and the `apply` comment.
 5. Light checks, one affected run, a run of the dangerous path in a temporary repository, the READY note.

@@ -362,6 +362,7 @@ fn clean(
         false,
         &pace,
         &settled,
+        Some(home),
     )?;
     let digest = plan["plan_digest"]
         .as_str()
@@ -382,6 +383,7 @@ fn clean(
             now,
             &pace,
             &settled,
+            Some(home),
             &digest,
             &format!("worktree-cleanup {} C-{}", req.trigger.word(), req.card_id),
         )?;
