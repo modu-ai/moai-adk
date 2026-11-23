@@ -53,6 +53,12 @@ pub fn default_home_root_in(home: Option<&Path>) -> Option<PathBuf> {
         .map(crate::home_root::path)
 }
 
+/// SPEC-20261124-home-state-link-refusal: refuses a symbolic link between the home state root
+/// and the folder that is written. Skeleton: it refuses nothing yet.
+pub fn refuse_linked_home_path(_home_root: &Path, _path: &Path) -> Result<()> {
+    Ok(())
+}
+
 /// The active home project directory — `Some` only when `layout.json` (the pointer a
 /// verified apply wrote) exists there. No profile, no HOME root, or no marker means the
 /// project side stays authoritative (AC-2: the default paths are unchanged).
