@@ -1,14 +1,9 @@
 ---
 id: SPEC-20261123-card-number-observe
 title: "spec check counts card numbers of new and revised SPECs as an observe notice"
-status: approved
-revision: 1
+status: draft
+revision: 2
 created: 2026-11-23
-approval:
-  by: leader
-  at: 2026-11-23
-  basis: "리더 결정 노트 7729 (2026-11-23T17:30:42Z, 사용자 위임 2026-11-23T13:57Z, 리더 판단, 사용자 직접 선택 아님): 판 1 승인, 경계 날짜 2026-11-25 그대로. 레인은 그 노트를 인용해 옮겨 적었어요"
-  digest: "sha256:1e13faabd56531a60658247f8d8002aa10c9fe7f1bac0881c15ac047176bdcc0"
 ---
 
 # spec check counts card numbers of new and revised SPECs as an observe notice
@@ -21,6 +16,7 @@ approval:
 
 - Q1: 규칙 10 을 좁히는 선택지 (a) 를 지금 정하나요? → A: 아니요. (a) 는 사용자가 2026-11-17 에 직접 정한 규칙(`docs/decisions-2026-11-08.md:134`)을 좁히는 일이라 사용자에게 올렸고, 그 답 전에는 규칙 글을 바꾸지 않아요(리더 결정 카드 노트 7726).
 - Q2: 그 사이 무엇을 하나요? → A: (d) 규칙을 그대로 두고 `spec check` 가 새 SPEC·개정 SPEC 의 카드 번호를 observe 알림으로 세고, 규칙 10 문장 핀 테스트를 더해요. 기존 SPEC 은 바꾸지 않아요(리더 결정 카드 노트 7726).
+- Q3: 새 테스트 파일이 저장소 트리를 읽는데 등록은 어디에 하나요? → A: `tools/repo_scans.json` 에 해요. 쓰는 순서는 리더가 알려 줘요(리더 결정 카드 노트 7729). 그래서 판 2 로 Scope 에 그 파일의 등록 항목을 더해요.
 
 ## Non-goals
 
@@ -46,7 +42,7 @@ approval:
 
 ## Scope
 
-- write: `src/spec_doc.rs`(알림 하나와 날짜 상수), `tests/spec_card_number_observe.rs`(새 파일), `.moai/specs/SPEC-20261123-card-number-observe/spec.md`
+- write: `src/spec_doc.rs`(알림 하나와 날짜 상수), `tests/spec_card_number_observe.rs`(새 파일), `.moai/specs/SPEC-20261123-card-number-observe/spec.md`, `tools/repo_scans.json`(새 테스트 파일의 등록 항목만, 리더가 정한 차례에, D-5)
 - read-only: `skills/moai/references/internal/sdd.md`(핀 테스트가 읽기만 해요, 고치지 않아요), 기존 `.moai/specs/*/spec.md`
 - forbidden: 기존 SPEC 의 수정, `skills/**`, `CLAUDE.md`, `docs/decisions-2026-11-08.md`, 실제 HOME, 네트워크
 
@@ -70,6 +66,7 @@ approval:
 | D-2 | 칸 구분 없이 파일 전체를 세요 | 규칙 10 은 "SPEC 에 없음"이라 칸을 가리지 않아요. 칸별 허용은 사용자가 정할 일이라 이 SPEC 에서 안 정해요 | 후속 SPEC |
 | D-3 | 경계는 `created` 또는 `approval.at` 이 `2026-11-25` 이상이에요 | 새 SPEC 은 `created` 로, 개정 SPEC 은 다시 받는 승인의 `approval.at`(sdd 규칙 6)으로 잡혀요. 기존 SPEC 을 고치지 않고 새 규칙의 시작일을 세울 수 있어요(리더 카드 노트 7726 의 예시 기준) | 상수를 바꿔요 |
 | D-4 | 번호를 세는 함수를 `spec_doc.rs` 안에 새로 두고 `bundle.rs` 의 것을 빌려 쓰지 않아요 | `card_number_spans` 는 다른 카드가 쥔 비공개 함수라 공유 인터페이스를 이 카드가 바꾸지 않아요. 같은 낱말 시작 규칙(`C-`·`c-` 와 숫자, 앞이 영문자·숫자면 아님)을 써요 | 두 구현을 하나로 합치는 후속 카드 |
+| D-5 | 판 2: Scope 에 `tools/repo_scans.json` 의 등록 항목만 더해요 | 새 테스트 파일이 `.moai/specs` 와 `sdd.md` 를 읽어서 `tests/repo_scans_table.rs` 의 `every_walking_test_file_is_listed_or_exempt` 와 `every_file_reader_has_an_always_scan_or_an_exemption` 가 실패해요(이 브랜치에서 `cargo nextest run --offline --locked --test repo_scans_table` 로 읽음). 리더가 판 1 승인 노트 7729 에서 등록과 쓰는 순서를 정했어요. 범위가 digest 에 묶여서 판을 올려요 | 등록 항목을 지우고 판 1 로 돌아가요 |
 
 ## Result
 
