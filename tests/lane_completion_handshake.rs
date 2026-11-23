@@ -160,11 +160,11 @@ fn ac6_a_blocked_card_moves_the_lane_on_only_when_no_leader_is_registered() {
         "With no registered leader the worker reserves the next eligible card once,",
     );
     let w = work();
-    for needle in [
+    assert_has(
+        &w,
+        WORK,
         "With no registered leader, take the next card; with a registered leader, leave the blocked card as its note and wait for that leader's dispatch.",
-    ] {
-        assert_has(&w, WORK, needle);
-    }
+    );
     // The old unconditional wording is gone from both files.
     assert_lacks(&w, WORK, "never stops the loop");
     assert_lacks(
