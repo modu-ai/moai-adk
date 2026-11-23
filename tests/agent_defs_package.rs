@@ -823,7 +823,7 @@ fn versioning_rows_and_reference_cover_the_three_schemes() {
     // Audit B1: detection starts no program, the versioning fact included.
     for text in [
         "`internal/versioning`",
-        "It never reads HOME, never probes PATH and never starts a program, because `project.yaml` is tracked and holds project facts only. That holds for `result.versioning` too",
+        "It never reads HOME and never starts a program, because `project.yaml` is tracked and holds project facts only. The one read outside the project is the `lsp_plugins` fact: it reads the names of the files in the PATH folders (never their content), starts nothing, writes nothing and is reported beside `detected`, never recorded. That holds for `result.versioning` too",
         "never from a git object or the git configuration",
         "is followed only for a linked worktree",
         "`tags: unavailable` with the reason",

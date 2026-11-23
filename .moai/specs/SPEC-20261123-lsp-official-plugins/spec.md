@@ -69,6 +69,8 @@ created: 2026-11-23
 - write: `src/project_detect.rs`
 - write: `tests/project_lsp_plugins_cli.rs`
 - write: `tests/core_rules_2876.rs` (only the `CORE_RULES_MAX_BYTES` cap, which the new rule makes too small)
+- write: `tests/agent_defs_package.rs` (only the pinned PATH sentence of `workflows/project.md`, which this SPEC rewrites)
+- write: `tests/repo_scans_table.rs` (only one `EXEMPT` row for the new test file)
 
 ## Plan
 
@@ -89,5 +91,7 @@ created: 2026-11-23
 - AC-5: met — same run, `the_path_check_writes_nothing_and_starts_nothing` passed.
 - AC-6: met — `cargo test --offline --locked --test project_detect_cli --test core_rules_2876` exit 0 (28 and 6 tests passed), and `cargo test --offline --locked --lib project_detect` exit 0 (7 passed).
 - AC-7: met — `cargo test --offline --locked --test product_cli skill_package::` exit 0 (13 passed) after `python3 tools/source_manifest.py write`.
+
+`check affected` on the first head found three pins that this change moved (`agent_defs_package` read the old PATH sentence, `home_isolation_scan` wanted the new test to run through `TempHome`, `repo_scans_table` wanted its `EXEMPT` row); they were repaired in a second commit and the four test targets pass again.
 
 Also run: `cargo clippy --offline --locked --all-targets -- -D warnings` exit 0, `cargo fmt` clean, `tools/smoke/run.sh project` printed `smoke: project pass steps=3`. Not run: Windows build (`cargo check --target x86_64-pc-windows-msvc`); the `executable_on_path` windows branch is read only by the `windows-build` run after landing.

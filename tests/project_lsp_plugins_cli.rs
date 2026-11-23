@@ -4,17 +4,16 @@
 //! binary sees is always a temporary folder the test builds; the real PATH is never read.
 
 mod common;
+use common::home::TempHome;
 use serde_json::{json, Value};
 use std::{
     collections::BTreeMap,
     ffi::OsStr,
     fs,
     path::{Path, PathBuf},
-    process::{Command, Output, Stdio},
+    process::{Output, Stdio},
 };
 use tempfile::TempDir;
-
-const EXE: &str = crate::common::MOAI_BIN;
 
 fn package(rel: &str) -> String {
     fs::read_to_string(
@@ -33,15 +32,15 @@ fn write(root: &Path, rel: &str, text: &str) {
 
 /// Runs `project-detect` on `root` with `PATH` set to `path` (`None` removes the variable).
 fn detect_with_path(root: &Path, path: Option<&OsStr>) -> Value {
-    let mut cmd = Command::new(EXE);
-    cmd.args(["project-detect", root.to_str().unwrap()])
-        .stdin(Stdio::null())
+    // The clean environment of a TempHome child holds no PATH; the test adds the one it wants.
+    let home = TempHome::new();
+    let mut cmd = home.command(&["project-detect", root.to_str().unwrap()]);
+    cmd.stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
-    match path {
-        Some(p) => cmd.env("PATH", p),
-        None => cmd.env_remove("PATH"),
-    };
+    if let Some(p) = path {
+        cmd.env("PATH", p);
+    }
     let out: Output = cmd.output().unwrap();
     assert!(
         out.status.success(),
