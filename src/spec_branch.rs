@@ -84,21 +84,28 @@ fn slug_ok(s: &str) -> bool {
             .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == b'-')
 }
 
-/// The SPEC of `branch`: first the one its name reads (see [`resolve_by_name`]); when that is not
-/// an existing SPEC file, the SPEC whose `branch:` frontmatter line names the branch
-/// (SPEC-20261124-lane-branch-after-spec). The link is looked for only then, so a branch whose
-/// name reads an existing SPEC is judged as before and reads no other file, and `specs_dir`
-/// `None` looks at nothing.
+/// The SPEC of `branch`: first the one its name reads (see [`resolve_by_name`]); when no reading
+/// of the name is an existing SPEC file, the SPEC whose `branch:` frontmatter line names the
+/// branch (SPEC-20261124-lane-branch-after-spec). The link is looked for only then, so a branch
+/// whose name reads an existing SPEC (one reading or several) is judged as before and reads no
+/// other file, and `specs_dir` `None` looks at nothing.
 pub fn resolve(branch: &str, specs_dir: Option<&Path>) -> Resolved {
     let named = resolve_by_name(branch, specs_dir);
     let Some(dir) = specs_dir else {
         return named;
     };
-    match &named {
-        // A name that reads no SPEC id is no SPEC branch: nothing to settle.
-        Resolved::NotSpec => return named,
-        Resolved::One(id) if spec_file_exists(dir, id) => return named,
-        _ => {}
+    // A name that reads no SPEC id is no SPEC branch: nothing to settle.
+    if named == Resolved::NotSpec {
+        return named;
+    }
+    // Any reading of the name that has a SPEC file settles the branch by its name, also when two
+    // readings do and the name stays ambiguous: a link never overrules the name (audit of C-429,
+    // B1).
+    if candidates(branch)
+        .iter()
+        .any(|id| spec_file_exists(dir, id))
+    {
+        return named;
     }
     let mut linked = linked_specs(branch, dir);
     match linked.len() {
