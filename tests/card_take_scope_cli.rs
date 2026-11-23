@@ -393,6 +393,10 @@ const SCOPE_CALL_SPAN: &str =
 /// `SPEC-20261122-worktree-place`: an untagged list whose items name the same file first.
 const SCOPE_REPEATED_PATH: &str = "- The path keystone (the functions the others call): `src/home_workdir.rs` (worktree_dir, worktrees_root), `src/lib.rs` (the WORKTREES_DIR constant).\n- The local exclude helper (one function every creator calls): `src/home_workdir.rs`; it reads `git rev-parse --git-common-dir`.\n- Creators of new worktrees: `src/worktree.rs` (the worktree command), `src/claude.rs` (the launcher).\n- Checkers and guards: `src/hooks.rs` (the hook path check).";
 
+/// An option written with a path (`--out/dir.rs`): it has a `/` and an extension, so only its
+/// leading `-` makes it no path (audit B4: removing that rule left every other fixture green).
+const SCOPE_DASH_PATH: &str = "- write: `src/dash.rs`, `--out/dir.rs`, `tests/dash_cli.rs`";
+
 /// `SPEC-20261123-audit-slot`: a clean list that wraps paths and notes the way real SPECs do.
 const SCOPE_CLEAN: &str = "- write:\n  - `docs/audit_slot.md`\n  - `src/audit_slot.rs` (new)\n  - `src/lib.rs` (one `pub mod` line)\n  - `tests/audit_slot_cli.rs` (new)\n- read-only: everything else";
 
@@ -401,7 +405,7 @@ const SCOPE_CLEAN: &str = "- write:\n  - `docs/audit_slot.md`\n  - `src/audit_sl
 /// nothing is reserved or written.
 #[test]
 fn a_spec_list_with_a_word_is_refused_not_stored() {
-    let kinds: [(&str, &str, &str); 5] = [
+    let kinds: [(&str, &str, &str); 6] = [
         ("code-span", SCOPE_CODE_SPAN, "pub mod build;"),
         ("prose-line", SCOPE_PROSE_LINE, "the"),
         ("option-span", SCOPE_OPTION_SPAN, "--reason"),
@@ -411,6 +415,7 @@ fn a_spec_list_with_a_word_is_refused_not_stored() {
             "tools/source_manifest.py write",
         ),
         ("call-span", SCOPE_CALL_SPAN, "WorkflowTest.workflows()"),
+        ("dash-path", SCOPE_DASH_PATH, "--out/dir.rs"),
     ];
     for (slug, scope, word) in kinds {
         let w = world();
@@ -554,4 +559,56 @@ fn a_comma_in_a_scope_value_is_refused() {
     ));
     assert!(message.contains("comma"), "{message}");
     assert_eq!(w.own_scope(&name), json!([]));
+}
+
+/// N6 (REQ-12): the comma refusal names the option the caller typed: `--scope` for take, scope and
+/// add, `--path` for give-back and line-lease, `--keep` for review.
+#[test]
+fn the_comma_refusal_names_the_option_of_the_caller() {
+    let w = world();
+    let name = w.empty_card("option names");
+    result(&w.card(Some(S_A), &["take", &name, "--scope", "src/a.rs"]));
+    let cases: [(&[&str], &str); 3] = [
+        (
+            &[
+                "give-back",
+                &name,
+                "--generation",
+                "1",
+                "--path",
+                "src/a.rs,src/b.rs",
+            ],
+            "one `--path` per path",
+        ),
+        (
+            &[
+                "line-lease",
+                &name,
+                "--generation",
+                "1",
+                "--path",
+                "src/a.rs,src/b.rs",
+                "--",
+                "true",
+            ],
+            "one `--path` per path",
+        ),
+        (
+            &[
+                "review",
+                &name,
+                "--generation",
+                "1",
+                "--keep",
+                "src/a.rs,src/b.rs",
+            ],
+            "one `--keep` per path",
+        ),
+    ];
+    for (args, expected) in cases {
+        let message = refusal(&w.card(Some(S_A), args));
+        assert!(message.contains("comma"), "{args:?}: {message}");
+        assert!(message.contains(expected), "{args:?}: {message}");
+        assert!(!message.contains("`--scope`"), "{args:?}: {message}");
+    }
 }
