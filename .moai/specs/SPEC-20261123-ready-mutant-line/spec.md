@@ -121,4 +121,21 @@ created: 2026-11-23
 
 관찰(D-3): 이 검사가 들어간 뒤 `bundle check` 가 돈 번들이 아직 없어서 경고 횟수와 거짓 경고는 0 번 관찰이에요. 막는 쪽으로의 전환은 관찰 뒤 기록하는 결정이고, 이 SPEC 은 그것을 하지 않았어요.
 
+수리(감사 FAIL 뒤, 2026-11-23): 같은 가지에서 NeXT 팁 `6817eb69ad` 를 병합했어요(병합 커밋 `cf4ff7cdf7`). 막는 것 B1: `tests/fake_exe_marker.rs` 의 첫 낱말 `fake` 가 `tests/areas.toml` 에 없어 병합 트리에서 `test_area_layout::area_table_maps_every_real_test_file` 가 실패했어요. `fake` 를 `home` 영역(`exe` 옆)에 넣었고 병합 트리에서 `test_area_layout` 19개가 통과해요. 비차단 N3(코드 펜스 안, 네 칸 이상·탭 들여쓴 줄, 채우지 않은 `<…>` 칸을 읽지 않음), N4(`exit 00` 은 살아남은 뮤턴트, `exit 007` 은 실패로 읽는 시험), N5(`src/bundle.rs` 의 `AUDIT_NOTE` 공백)는 커밋 `339ffbe2e2` 에서 고쳤어요. N2·N7 은 이 수리 범위 밖이라 그대로 두었어요.
+
+수리 뮤턴트(커밋한 트리에서 한 번에 하나, 적용 여부를 확인한 뒤 저장해 둔 사본으로 되돌림. 스크립트와 로그는 `target/lane/mutants-repair.zsh`, `mutants-repair.log`, `mutant-b1.log`): 8개 모두 exit 100 으로 의도한 시험에서 실패했어요.
+
+| 뮤턴트 | 지키는 코드 | 실패한 시험 |
+|---|---|---|
+| r1 | 코드 펜스 안 줄을 읽지 않음 | `a_line_inside_a_code_fence_is_quoted_text_and_not_read` |
+| r2 | 네 칸 들여쓰기를 인용으로 봄 | `four_spaces_or_a_tab_make_an_indented_quote_that_is_not_read` |
+| r3 | 탭 들여쓰기를 인용으로 봄 | `four_spaces_or_a_tab_make_an_indented_quote_that_is_not_read` |
+| r4 | 세 칸은 아직 노트의 줄(경계) | `four_spaces_or_a_tab_make_an_indented_quote_that_is_not_read` |
+| r5 | 채우지 않은 `<…>` 칸은 못 읽음 | `a_template_placeholder_left_as_it_is_is_unreadable` |
+| r6 | 종료 코드를 숫자로 읽음(`00` 은 0) | `exit_codes_are_read_as_numbers_so_00_is_zero_and_007_is_not` |
+| r7 | 앞자리 0 이 있는 숫자도 읽음(`007`) | `exit_codes_are_read_as_numbers_so_00_is_zero_and_007_is_not` |
+| r8 | 영역 표에 `fake` 가 있음 | `area_table_maps_every_real_test_file` |
+
+수리 실행(병합 트리 `339ffbe2e2`, nextest `-E 'all()'` 로 `--lib` 와 아래 `--test` 를 한 번에): `test_area_layout`, `bundle_check_cli`, `bundle_build_cli`, `bundle_verify_cli`, `bundle_ready_cli`, `bundle_body_cli`, `bundle_user_assets_cli`, `fake_exe_marker`, `repo_claude_md`, `recurring_problems_rule`, `repo_scans_table`, `source_manifest_facts`, `repo_scans_cli` 와 lib 합계 1871 passed, exit 0. `cargo clippy --offline --locked --all-targets -- -D warnings` exit 0, `cargo fmt --check` exit 0, `git diff --check` exit 0, `moai spec check SPEC-20261123-ready-mutant-line` 오류 0·경고 0, `moai trailer-check 6817eb69ad..HEAD` failing 0, `moai repo-scans --refs 6817eb69ad HEAD` 가 걸리는 스캔 없음. 돌리지 않은 것: 파이썬 시험(규칙), CI, Linux·Windows, 나머지 `--test` 전체, `moai check affected`(레인 한 번에 하나 규칙).
+
 승인: 이 SPEC 은 초안(`draft`)이에요. 승인은 사용자의 선택이라 레인이 기록하지 않았어요.
