@@ -1,14 +1,9 @@
 ---
-id: SPEC-20261123-card-next-skips-no-criteria
+id: SPEC-20261124-card-next-skips-no-criteria
 title: "card next 가 기준 없는 ready 카드를 건너뛰어요"
-status: approved
+status: draft
 revision: 1
-created: 2026-11-23
-approval:
-  by: leader
-  at: 2026-11-23
-  basis: "리더 결정 노트 7804 (2026-11-23T19:07:49Z, 사용자 위임 2026-11-23T13:57Z, 리더 판단, 사용자 직접 선택 아님, 노트 7801 에 대한 답): (A) 작은 새 SPEC 판 1 과 쓰기 범위 승인; 리더가 노트에 적었고 레인은 그 노트를 옮겨 적었어요"
-  digest: "sha256:d63022b94e69777228b51655ca5ce38d20cf1c1be7e4c4bd1837b597687f070c"
+created: 2026-11-24
 ---
 
 # card next 가 기준 없는 ready 카드를 건너뛰어요
@@ -48,21 +43,22 @@ approval:
 
 ## Scope
 
-- write: `.moai/specs/SPEC-20261123-card-next-skips-no-criteria/spec.md`, `src/ledger/workflow.rs`, `src/card/work.rs`, `src/ops/card.rs`, `tests/card_needs_criteria_cli.rs`, `tests/card_work_cli.rs`, `tests/ledger_workflow.rs`, `docs/design-review/appendix/operations/card.md`
-- read-only: `src/card/dispatch.rs` (the counting rule of `take`), `src/ledger/reservation.rs`
+- write: `.moai/specs/SPEC-20261124-card-next-skips-no-criteria/spec.md`, `src/ledger/workflow.rs`, `src/card/dispatch.rs`, `src/card/work.rs`, `src/ops/card.rs`, `tests/card_needs_criteria_cli.rs`, `tests/card_work_cli.rs`, `tests/ledger_workflow.rs`, `docs/design-review/appendix/operations/card.md`
+- the `src/card/dispatch.rs` path is a scope change to the earlier approval (leader note 7804): one call-through so `take` and `next` share one counting function (D-3); the rest of that file is read-only
+- read-only: `src/ledger/reservation.rs`
 - forbidden: `CLAUDE.md`, the ledger file, `src/ledger/migrate.rs`
 
 ## Plan
 
 1. RED: in `tests/card_needs_criteria_cli.rs` the cases of AC-1 and AC-2 (0 criteria, all withdrawn, 1 open, 1 met, a criterion added later), each also asking `card take` so `next` and `take` cannot drift apart; AC-1 fails today because `next` lists the card.
-2. `src/ledger/workflow.rs`: a new `SkipReason::NoCriteria` with code `no_criteria`; `next_filled` counts the card's non-withdrawn criteria once the card is known to be `ready` and unheld, before it looks at the scope, and skips the card when the count is 0. `src/card/work.rs` renders it like the reasons without extra fields.
+2. `src/ledger/workflow.rs`: one function `counted_criteria(conn, card_id)` that counts the criterion rows whose status is not `withdrawn`; a new `SkipReason::NoCriteria` with code `no_criteria`; `next_filled` calls the function for a card that is `ready`, unheld and has no other skip reason (a held, `review` or empty-scope card keeps its reason, REQ-4), and skips the card when the count is 0. `src/card/dispatch.rs`: `no_criteria_refusal` calls the same function instead of its own query. `src/card/work.rs` renders the new reason like the ones without extra fields.
 3. Documentation: the `skipped` reason lists in `src/ops/card.rs` help and `docs/design-review/appendix/operations/card.md`; the comment of AC-4.
 4. N4: search the sources and tests for what writes `.moai-cli/state/github/` and record the answer in a note on the card.
 5. Guard mutant, `moai bundle check`, then `moai check affected` once at READY.
 
 ## Risks
 
-- The count is repeated in `src/ledger/workflow.rs` because `take`'s helper (`src/card/dispatch.rs`) is read-only here. The AC-1 and AC-2 tests ask `next` and `take` about the same card, so a drift between the two shows up as a failed test.
+- `src/card/dispatch.rs` is the earlier card's file; the change there is one call replacing one query, and the existing `tests/card_needs_criteria_cli.rs` cases of `ready` and `take` pin its behavior. The AC-1 and AC-2 tests ask `next` and `take` about the same card as well.
 - A new reason code reaches every reader of `skipped[]`; the tests and documents that list the reasons are the ones named in Scope.
 
 ## Decisions
@@ -71,4 +67,5 @@ approval:
 | --- | --- | --- | --- |
 | D-1 | A new small SPEC instead of a revision of SPEC-20261123-card-needs-criteria | the dispatch for this card allows either; the earlier SPEC is approved and landed, and this one changes only `card next` | fold it into a revision |
 | D-2 | The reason is `no_criteria`, a new `SkipReason::NoCriteria` | card criterion 1 names the word | rename the code |
-| D-3 | The criterion count is made in `next_filled` with its own query, not by calling `take`'s helper | `src/card/dispatch.rs` is outside this scope; a test asks both commands about the same cards | call a shared helper once its owner exposes one |
+| D-3 | `take` and `next` count criteria with one function, `counted_criteria` in `src/ledger/workflow.rs`, and `src/card/dispatch.rs` calls it | leader note 7804: "if possible use the same function as take, so the two cannot drift apart"; this adds `src/card/dispatch.rs` to the write scope, which asks for the leader's approval again | keep two queries and the tests that compare them |
+| D-4 | The SPEC id is dated 20261124, the date of the branch | the preflight hook reads the SPEC from the branch name `spec/card-next-skips-no-criteria-20261124`; `moai spec new` dated the first draft 20261123 (UTC clock) | rename branch and SPEC together |
