@@ -288,8 +288,10 @@ fn the_other_skip_reasons_stay_as_they_were() {
     let with_criterion = w.card_with_one_criterion("apps/a/");
     w.land_and_reopen(&with_criterion, &w.head);
     w.release(&with_criterion);
+    // The held card carries a landing proof (its head is inside the integration branch) and no
+    // counted criterion, so only the held reason keeps it out of `already_landed`.
     let held = w.card_with_one_criterion("apps/b/");
-    w.card(Some(S_A), &["take", &held]);
+    w.land_and_reopen(&held, &w.head);
     w.withdraw_criterion_one(&held);
 
     let listing = w.next(S_B);
