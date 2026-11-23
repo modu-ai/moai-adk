@@ -66,7 +66,7 @@ created: 2026-11-23
 
 ## Scope
 
-- write: `.moai/specs/SPEC-20261123-hook-bash-boundary/**`, `src/hook_bash_boundary.rs` (new), `src/hook_entry.rs` (the `bash_boundary` branch, one line), `src/lib.rs` (one `pub mod` line), `tests/hook_bash_boundary_cli.rs` (new), `tests/areas.toml` (only when a new test-file word needs a line; `hook` is already listed).
+- write: `.moai/specs/SPEC-20261123-hook-bash-boundary/**`, `src/hook_bash_boundary.rs` (new), `src/hook_entry.rs` (the `bash_boundary` branch, one line), `src/lib.rs` (one `pub mod` line), `tests/hook_bash_boundary_cli.rs` (new), `tests/areas.toml` (only when a new test-file word needs a line; `hook` is already listed), `tests/repo_scans_table.rs` (one `EXEMPT` line for the new test file; added to the card scope by the leader).
 - read-only: `src/hook_entry.rs` (rest), `src/hook_latency.rs`, `src/card/guard.rs`, `src/ledger/location.rs`, `.moai/project.yaml`, the card notes of C-327 and C-240 as incident evidence.
 - forbidden: any settings file (`.claude/**` of the home and of the project), the installed hooks of this clone, `src/hook_guards.rs`, `src/hook_engine.rs`, `src/claim_verify.rs`, `src/main.rs`, `src/help.rs`, the real HOME and its `.moai/projects` folder, and any network call. Tests use temporary HOMEs, folders and repositories only, and a temporary HOME is set on the child process only.
 
@@ -145,6 +145,7 @@ Choices made while implementing, inside the decisions above:
 
 - The pre-scan (D-11) removes quotes and backslashes before the substring scan, so a command word split by quoting (`r"m"`) is still seen, and any `$`, backtick, `<(` or `>(` also needs the walk.
 - When a command is both a hook skip and a ref change (a `commit -n` while `HEAD` names the integration branch), the ref class is reported first; the decision is a deny either way.
+- The first `check affected` run failed three repository scans (a new test file is unlisted). Two were fixed inside the test (the state folder comes from `moai_cli::state_root::path`, the handler source is read by a named path, not `include_str!`); the third needed one `EXEMPT` line in `tests/repo_scans_table.rs`, which the leader added to this card's write scope on the card's decision note (note 7578 answered by option 1).
 - A `for` loop head is not judged as a command; its body words are judged as commands of their own. `case`, `function` and `coproc` are unreadable.
 
 Known gaps (not defects of this slice): the contents of a script file that a command runs are not judged (R-1); `cwd` drift between calls (R-3); whether a deny holds in `bypassPermissions`, `dontAsk` and `auto` modes stays unverified (R-5, the real-load check of 1-e); a release-build measurement was not made.

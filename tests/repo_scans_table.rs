@@ -59,6 +59,10 @@ const EXEMPT: &[(&str, &str)] = &[
         "read_dir copies the named skills/moai and agents folders into a temporary home; reads named fixtures",
     ),
     (
+        "tests/hook_bash_boundary_cli.rs",
+        "read_dir of the temporary world it built (before/after trees); reads the named src/hook_bash_boundary.rs",
+    ),
+    (
         "tests/install_script_test.py",
         "os.walk of the test's temporary HOME and link folders; runs the named install/install.sh and install.ps1",
     ),
