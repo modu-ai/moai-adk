@@ -141,6 +141,30 @@ fn the_statusline_doc_describes_the_bars_and_the_line_order() {
             "the doc does not say `{wanted}`"
         );
     }
+    // The first line (SPEC-20261123-statusline-order-bars REQ-8 to REQ-12): the integration item
+    // with the tip of its local ref, the checked-out branch, no distance and no marks.
+    for wanted in [
+        "`🅱️ <integration>(🏷️ <tip>)`",
+        "never from `HEAD`",
+        "`(🏷️ n/a)`",
+        "`🌳 <branch>`",
+        "no `🧭` item",
+        "no ahead, behind or uncommitted mark",
+    ] {
+        assert!(
+            statusline.contains(wanted),
+            "the doc does not say `{wanted}`"
+        );
+    }
+    for stale in [
+        "`🌳 <worktree name>`",
+        "branch with its ahead, behind and dirty counts",
+        "The branch shows `↑N`",
+        "shows the short SHA in the branch slot",
+        "The branch's `+N` is the only change",
+    ] {
+        assert!(!statusline.contains(stale), "the doc still holds `{stale}`");
+    }
 }
 
 /// The sibling test files pin the bar: the limits-line forms of the cards tests hold the glyphs of

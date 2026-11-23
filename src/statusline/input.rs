@@ -532,12 +532,14 @@ mod tolerant_reader_tests {
         for item in [
             "🧠 Opus high·t",
             "📡 owner/repo",
-            "🌳 wt-name",
             "🔗 #42 pending",
             "7D ███████░░░ 79%",
         ] {
             assert!(base.contains(item), "{item}: {base}");
         }
+        // The host's worktree name is no item of the first line (its `🌳` is the checked-out
+        // branch, which a payload without a repository does not have).
+        assert!(!base.contains("wt-name"), "{base}");
         assert!(base.contains("🤖 2.1.330"), "{base}");
         // A shown field of the wrong type: its item goes and every other item stays.
         let no_model = render_value(&with("model", json!(5)), h);
