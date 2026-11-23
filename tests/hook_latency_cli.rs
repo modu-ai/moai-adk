@@ -55,7 +55,11 @@ fn ac8_both_cases_are_measured_with_ordered_percentiles() {
     assert_eq!(names, ["not_moai_project", "moai_project"]);
     for c in cases {
         assert_eq!(c["samples"], 3, "{c}");
-        let (p50, p90, max) = (number(c, "p50_ms"), number(c, "p90_ms"), number(c, "max_ms"));
+        let (p50, p90, max) = (
+            number(c, "p50_ms"),
+            number(c, "p90_ms"),
+            number(c, "max_ms"),
+        );
         assert!(0.0 <= p50 && p50 <= p90 && p90 <= max, "{c}");
     }
 }
@@ -88,21 +92,36 @@ fn ac9_values_give_the_nearest_rank_and_judge_nothing() {
     };
     let ten = summary("10,1,9,2,8,3,7,4,6,5");
     assert_eq!(
-        (number(&ten, "p50_ms"), number(&ten, "p90_ms"), number(&ten, "max_ms")),
+        (
+            number(&ten, "p50_ms"),
+            number(&ten, "p90_ms"),
+            number(&ten, "max_ms")
+        ),
         (5.0, 9.0, 10.0)
     );
     assert_eq!(ten["samples"], 10);
-    let twenty = summary(&(1..=20).map(|n| n.to_string()).collect::<Vec<_>>().join(","));
+    let twenty = summary(
+        &(1..=20)
+            .map(|n| n.to_string())
+            .collect::<Vec<_>>()
+            .join(","),
+    );
     assert_eq!(number(&twenty, "p90_ms"), 18.0);
     assert_eq!(number(&twenty, "p50_ms"), 10.0);
     let one = summary("7.5");
     assert_eq!(
-        (number(&one, "p50_ms"), number(&one, "p90_ms"), number(&one, "max_ms")),
+        (
+            number(&one, "p50_ms"),
+            number(&one, "p90_ms"),
+            number(&one, "max_ms")
+        ),
         (7.5, 7.5, 7.5)
     );
     for v in [&ten, &twenty, &one] {
         assert!(v.get("cases").is_none(), "no process is started: {v}");
-        for verdict in ["ok", "pass", "passed", "fail", "verdict", "target", "within"] {
+        for verdict in [
+            "ok", "pass", "passed", "fail", "verdict", "target", "within",
+        ] {
             assert!(v.get(verdict).is_none(), "{verdict} in {v}");
         }
     }

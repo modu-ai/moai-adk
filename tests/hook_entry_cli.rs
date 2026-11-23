@@ -98,11 +98,18 @@ fn snapshot(root: &Path) -> BTreeMap<String, Vec<u8>> {
         };
         for entry in entries.flatten() {
             let path = entry.path();
-            let rel = path.strip_prefix(base).unwrap().to_string_lossy().into_owned();
+            let rel = path
+                .strip_prefix(base)
+                .unwrap()
+                .to_string_lossy()
+                .into_owned();
             let meta = fs::symlink_metadata(&path).unwrap();
             if meta.file_type().is_symlink() {
                 let target = fs::read_link(&path).unwrap();
-                out.insert(format!("{rel} -> link"), target.to_string_lossy().as_bytes().to_vec());
+                out.insert(
+                    format!("{rel} -> link"),
+                    target.to_string_lossy().as_bytes().to_vec(),
+                );
             } else if meta.is_dir() {
                 out.insert(format!("{rel}/"), Vec::new());
                 walk(base, &path, out);
@@ -153,7 +160,13 @@ fn ac2_an_unknown_name_exits_zero_with_nothing_on_stdout() {
     for moai in [true, false] {
         let fx = Fx::new(moai, true);
         let before = (snapshot(&fx.project), snapshot(&fx.home));
-        for name in ["pre-tool", "nonsense", "SESSION-CONTEXT", "session-context-x", "session_context"] {
+        for name in [
+            "pre-tool",
+            "nonsense",
+            "SESSION-CONTEXT",
+            "session-context-x",
+            "session_context",
+        ] {
             let r = fx.hook(name, &valid_input("PreToolUse"));
             assert_eq!(r.code, 0, "{name} (moai {moai}): {}", r.stderr);
             assert_eq!(r.stdout, "", "{name} (moai {moai})");
@@ -172,7 +185,8 @@ fn ac2_an_unknown_name_exits_zero_with_nothing_on_stdout() {
 /// even for bad input; `CLAUDE_PROJECT_DIR` wins over the working folder.
 #[test]
 fn ac3_outside_a_moai_project_a_registered_name_is_silent() {
-    let broken: [(&str, fn(&Path)); 3] = [
+    type Break = fn(&Path);
+    let broken: [(&str, Break); 3] = [
         ("no .moai folder", |_p| {}),
         ("project.yaml is a folder", |p| {
             fs::create_dir_all(p.join(".moai/project.yaml")).unwrap()
@@ -188,12 +202,23 @@ fn ac3_outside_a_moai_project_a_registered_name_is_silent() {
         make(&fx.project);
         let before = (snapshot(&fx.project), snapshot(&fx.home));
         for name in NAMES {
-            for input in [&b"SECRETMARKER not json"[..], &valid_input("SessionStart")[..]] {
+            for input in [
+                &b"SECRETMARKER not json"[..],
+                &valid_input("SessionStart")[..],
+            ] {
                 let r = fx.hook(name, input);
-                assert_eq!((r.code, r.stdout.as_str(), r.stderr.as_str()), (0, "", ""), "{what} {name}");
+                assert_eq!(
+                    (r.code, r.stdout.as_str(), r.stderr.as_str()),
+                    (0, "", ""),
+                    "{what} {name}"
+                );
             }
         }
-        assert_eq!(before, (snapshot(&fx.project), snapshot(&fx.home)), "{what}");
+        assert_eq!(
+            before,
+            (snapshot(&fx.project), snapshot(&fx.home)),
+            "{what}"
+        );
     }
 }
 
@@ -228,7 +253,7 @@ fn ac3_claude_project_dir_wins_over_the_working_folder() {
 fn ac4_bad_input_adds_one_receipt_line_without_the_input() {
     let big = {
         let mut v = br#"{"k":"SECRETMARKER"#.to_vec();
-        v.extend(std::iter::repeat(b'x').take(STDIN_CAP));
+        v.extend(std::iter::repeat_n(b'x', STDIN_CAP));
         v.extend_from_slice(br#""}"#);
         v
     };
@@ -237,7 +262,14 @@ fn ac4_bad_input_adds_one_receipt_line_without_the_input() {
         ("text", b"SECRETMARKER not json".to_vec(), "not_json"),
         ("array", br#"["SECRETMARKER"]"#.to_vec(), "not_object"),
         ("scalar", b"\"SECRETMARKER\"".to_vec(), "not_object"),
-        ("not utf-8", vec![b'{', 0xff, 0xfe, b'S', b'E', b'C', b'R', b'E', b'T', b'M', b'A', b'R', b'K', b'E', b'R'], "not_utf8"),
+        (
+            "not utf-8",
+            vec![
+                b'{', 0xff, 0xfe, b'S', b'E', b'C', b'R', b'E', b'T', b'M', b'A', b'R', b'K', b'E',
+                b'R',
+            ],
+            "not_utf8",
+        ),
         ("too large", big, "stdin_too_large"),
     ];
     for name in NAMES {
@@ -246,16 +278,25 @@ fn ac4_bad_input_adds_one_receipt_line_without_the_input() {
             let r = fx.hook(name, input);
             assert_eq!(r.code, 0, "{name} {what}: {}", r.stderr);
             assert_eq!(r.stdout, "", "{name} {what}");
-            assert_eq!(r.stderr, "", "{name} {what}: a recorded failure leaves stderr empty");
+            assert_eq!(
+                r.stderr, "",
+                "{name} {what}: a recorded failure leaves stderr empty"
+            );
             let lines = receipt_lines(&fx.receipt());
             assert_eq!(lines.len(), i + 1, "{name} {what}");
             let v: Value = serde_json::from_str(lines.last().unwrap()).unwrap();
             assert_eq!(v["name"], name, "{what}");
             assert_eq!(v["reason"], *reason, "{what}");
-            assert!(v["at_unix_ms"].as_u64().is_some_and(|t| t > 0), "{what}: {v}");
+            assert!(
+                v["at_unix_ms"].as_u64().is_some_and(|t| t > 0),
+                "{what}: {v}"
+            );
         }
         let text = fs::read_to_string(fx.receipt()).unwrap();
-        assert!(!text.contains("SECRETMARKER"), "the input must not reach the receipt");
+        assert!(
+            !text.contains("SECRETMARKER"),
+            "the input must not reach the receipt"
+        );
     }
 }
 
@@ -273,7 +314,11 @@ fn ac5_without_a_project_folder_the_failure_is_one_stderr_line() {
         "the line names the hook and the reason: {:?}",
         r.stderr
     );
-    assert_eq!(before, snapshot(&fx.home), "no folder and no file may be created in HOME");
+    assert_eq!(
+        before,
+        snapshot(&fx.home),
+        "no folder and no file may be created in HOME"
+    );
 }
 
 /// AC-6: a receipt file at 256 KiB takes no more lines and warns once; one byte below it still
@@ -306,10 +351,17 @@ fn ac7_orca_variables_change_nothing_and_no_settings_file_appears() {
     ];
     let plain = Fx::new(true, true);
     let with = Fx::new(true, true);
-    for (input, label) in [(&b"not json"[..], "bad"), (&valid_input("SessionStart")[..], "good")] {
+    for (input, label) in [
+        (&b"not json"[..], "bad"),
+        (&valid_input("SessionStart")[..], "good"),
+    ] {
         let a = plain.run(&["hook", "bash-boundary"], &plain.project, input, &[]);
         let b = with.run(&["hook", "bash-boundary"], &with.project, input, &orca);
-        assert_eq!((a.code, &a.stdout, &a.stderr), (b.code, &b.stdout, &b.stderr), "{label}");
+        assert_eq!(
+            (a.code, &a.stdout, &a.stderr),
+            (b.code, &b.stdout, &b.stderr),
+            "{label}"
+        );
     }
     let lines = |fx: &Fx| -> Vec<Value> {
         receipt_lines(&fx.receipt())
@@ -332,8 +384,9 @@ fn ac7_orca_variables_change_nothing_and_no_settings_file_appears() {
         }
     }
 
-    let source = fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("src/hook_entry.rs"))
-        .expect("src/hook_entry.rs");
+    let source =
+        fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("src/hook_entry.rs"))
+            .expect("src/hook_entry.rs");
     for word in [
         "Command::new",
         "std::process::Command",
