@@ -4,14 +4,11 @@
 
 use super::color::Profile;
 use super::input::RateWindow;
-use super::state::{where_items, DisplayConfig, Flow, Head, Marks, Status, Where, WhereInput};
+use super::state::{DisplayConfig, Flow, Status};
 use super::width;
 use std::collections::BTreeMap;
 
 const SEPARATOR: &str = " | ";
-/// The longest integration branch name the `🧭` item writes, in characters; a longer name is cut
-/// to one character fewer and `…` (SPEC-20261122-statusline-where, Layouts).
-const DISTANCE_NAME_CHARS: usize = 12;
 /// The forms of line 1, from the widest (step 0) to the narrowest (step 4).
 const LINE_ONE_STEPS: usize = 5;
 /// The forms of line 3, from the widest (Z0) to the narrowest (Z3).
@@ -271,11 +268,14 @@ impl Renderer {
         forms
     }
 
-    /// One form of line 1. Each step drops more than the one before it, in the order of the
-    /// Layouts section of the SPEC: the issue and pull request counts (step 1), the repository
-    /// owner, the model version, the thinking mark and the request state (step 2), the effort,
-    /// the repository and the ahead count of the distance (step 3), the distance and the request
-    /// (step 4). The place items and the model stay in every form.
+    /// One form of line 1 (SPEC-20261123-statusline-order-bars REQ-8 to REQ-12): the model with its
+    /// effort, the repository with its forge counts, the integration branch with the tip of its
+    /// local ref, the checked-out branch and the request. Each step drops more than the one before
+    /// it, in the order of the Layouts section of the SPEC: the issue and pull request counts
+    /// (step 1), the repository owner, the model version, the thinking mark and the request state
+    /// (step 2), the effort and the repository (step 3), the commit of the integration item and
+    /// the request (step 4). The model, the integration name and the checked-out branch stay in
+    /// every form.
     fn line_one_form(&self, s: &Status, step: usize) -> Vec<Group> {
         let t = &self.theme;
         let piece = |color, text: String| Piece {
@@ -342,34 +342,35 @@ impl Renderer {
                 form.push(group);
             }
         }
-        let place = self.place_items(s);
-        let marks = place_marks(&place.marks);
-        if let Some(name) = &place.worktree {
-            // The marks close the last of the two place items.
-            let own = if place.branch.is_none() {
-                marks.as_str()
-            } else {
-                ""
-            };
-            form.push(vec![piece(
-                t.branch,
-                format!("{}{own}", width::icon_text("🌳", name)),
-            )]);
-        }
-        if let Some(name) = &place.branch {
-            form.push(vec![piece(
-                t.branch,
-                format!("{}{marks}", width::icon_text("🅱️", name)),
-            )]);
-        }
-        if let Some(d) = place.distance.as_ref().filter(|_| step < 4) {
-            let name = cut_name(&d.name, DISTANCE_NAME_CHARS);
-            let text = if step < 3 {
-                format!("{name} ↑{} ↓{}", d.ahead, d.behind)
-            } else {
-                format!("{name} ↓{}", d.behind)
-            };
-            form.push(vec![piece(t.distance, width::icon_text("🧭", &text))]);
+        if self.enabled("git_branch") {
+            // REQ-9: the configured integration branch with the first seven characters of the
+            // commit its local ref names — `n/a` when the ref cannot be read, never a guessed
+            // commit, and never the commit of `HEAD`. Without an integration branch there is no
+            // item.
+            if let Some(name) = s.integration.as_deref().filter(|n| !n.is_empty()) {
+                let mut text = width::icon_text("🅱️", name);
+                if step < 4 {
+                    let tip = if s.integration_tip.is_empty() {
+                        "n/a"
+                    } else {
+                        &s.integration_tip
+                    };
+                    text.push_str(&format!("({})", width::icon_text("🏷️", tip)));
+                }
+                form.push(vec![piece(t.branch, text)]);
+            }
+            // REQ-10: the branch the `HEAD` file names, never the name of the working folder; a
+            // detached or unreadable `HEAD` has none and no name is invented.
+            if self.enabled("worktree") {
+                if let Some(branch) = s
+                    .git
+                    .as_ref()
+                    .map(|g| g.branch.as_str())
+                    .filter(|b| !b.is_empty())
+                {
+                    form.push(vec![piece(t.branch, width::icon_text("🌳", branch))]);
+                }
+            }
         }
         if self.enabled("pr") && step < 4 {
             if let Some(pr) = &s.pr {
@@ -388,29 +389,6 @@ impl Renderer {
             }
         }
         form
-    }
-
-    /// The place items of the status (REQ-2 to REQ-4): the branch or the short commit comes
-    /// from the `HEAD` file ([`state::collect`]), the numbers from git or its cache.
-    fn place_items(&self, s: &Status) -> Where {
-        let git = s.git.as_ref().filter(|_| self.enabled("git_branch"));
-        let head = match git {
-            Some(g) if !g.branch.is_empty() => Head::Branch(&g.branch),
-            Some(g) if !g.head_sha.is_empty() => Head::Detached(&g.head_sha),
-            _ => Head::Unreadable,
-        };
-        where_items(&WhereInput {
-            worktree: if self.enabled("worktree") {
-                &s.worktree
-            } else {
-                ""
-            },
-            head,
-            integration: s.integration.as_deref(),
-            ahead: git.map_or(0, |g| g.ahead),
-            behind: git.map_or(0, |g| g.behind),
-            dirty: git.map_or(0, |g| g.modified + g.staged + g.untracked),
-        })
     }
 
     /// Line 3 (SPEC-20261123-statusline-order-bars REQ-3 to REQ-5): the context window, the
@@ -854,31 +832,6 @@ fn reset_countdown(secs_left: i64) -> String {
     } else {
         format!("({}m)", (secs_left / 60).max(0))
     }
-}
-
-/// The ` ↑<n> ↓<n> +<n>` marks that close the place item; a zero is not written.
-fn place_marks(marks: &Marks) -> String {
-    let mut text = String::new();
-    if marks.ahead > 0 {
-        text.push_str(&format!(" ↑{}", marks.ahead));
-    }
-    if marks.behind > 0 {
-        text.push_str(&format!(" ↓{}", marks.behind));
-    }
-    if marks.dirty > 0 {
-        text.push_str(&format!(" +{}", marks.dirty));
-    }
-    text
-}
-
-/// `name` whole up to `max` characters, else its first `max - 1` characters and `…`.
-fn cut_name(name: &str, max: usize) -> String {
-    if name.chars().count() <= max {
-        return name.to_string();
-    }
-    let mut cut: String = name.chars().take(max.saturating_sub(1)).collect();
-    cut.push('…');
-    cut
 }
 
 /// `applyBaseColor`: every line opens with normal intensity and the base color, the base

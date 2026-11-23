@@ -289,6 +289,7 @@ pub fn collect(input: Option<&Input>, ctx: &Context) -> Status {
     {
         status.git = Some(read.git);
         status.integration = read.integration;
+        status.integration_tip = read.integration_tip;
     }
     let Some(input) = input else {
         return status;
@@ -868,6 +869,8 @@ const CACHE_FILE_CAP: u64 = 64 * 1024;
 const SMALL_FILE_CAP: u64 = 4096;
 /// `packed-refs` is searched only when the loose ref of the integration branch is missing.
 const PACKED_REFS_CAP: u64 = 8 * 1024 * 1024;
+/// How many characters of the integration commit the first line shows.
+const INTEGRATION_TIP_CHARS: usize = 7;
 
 /// The text of a `HEAD` file read as a branch, a detached commit or nothing. A branch name is
 /// taken only when it is one git can be given safely (`profile::branch_name`: a portable subset,
@@ -1122,10 +1125,12 @@ struct CacheRecord {
     counts: Counts,
 }
 
-/// What a render reads about git: the facts of the status line and the integration branch.
+/// What a render reads about git: the facts of the status line, the integration branch and the
+/// first seven characters of the commit its local ref names (empty when the ref cannot be read).
 struct GitRead {
     git: GitStatus,
     integration: Option<String>,
+    integration_tip: String,
 }
 
 /// Where the git directory of a checkout and the common directory of its repository are.
@@ -1177,7 +1182,8 @@ fn is_commit(text: &str) -> bool {
 }
 
 /// The commit of the local branch `name` (a name that passed `profile::branch_name`): its loose
-/// ref file, else its line of `packed-refs`; empty when neither says. Read for the cache key.
+/// ref file, else its line of `packed-refs`; empty when neither says. Read for the cache key and
+/// for the integration item of the first line.
 fn ref_commit(common: &Path, name: &str) -> String {
     if let Some(text) = read_small(&common.join("refs/heads").join(name), SMALL_FILE_CAP) {
         if is_commit(text.trim()) {
@@ -1213,6 +1219,14 @@ fn read_git(
         SMALL_FILE_CAP,
     );
     let integration = integration_from(profile.as_deref(), origin_head.as_deref());
+    // The integration commit is read before `HEAD` is, from the ref of the integration branch
+    // alone (a loose ref file, else `packed-refs`): a detached or unreadable `HEAD` shows the same
+    // seven characters as a branch does, and `HEAD` never stands in for it (REQ-9 of
+    // SPEC-20261123-statusline-order-bars).
+    let commit = integration
+        .as_deref()
+        .map_or_else(String::new, |name| ref_commit(&dirs.common, name));
+    let integration_tip: String = commit.chars().take(INTEGRATION_TIP_CHARS).collect();
     let mut git = GitStatus::default();
     let head_text = read_small(&dirs.git_dir.join("HEAD"), SMALL_FILE_CAP).unwrap_or_default();
     let branch = match head_of(&head_text) {
@@ -1226,12 +1240,13 @@ fn read_git(
         }
         // Nothing to measure: no branch, no distance and no process.
         Head::Unreadable => {
-            return Some(GitRead { git, integration });
+            return Some(GitRead {
+                git,
+                integration,
+                integration_tip,
+            });
         }
     };
-    let commit = integration
-        .as_deref()
-        .map_or_else(String::new, |name| ref_commit(&dirs.common, name));
     // The per-checkout git directory, as the disk spells it, is the folder of the key.
     let folder = std::fs::canonicalize(&dirs.git_dir)
         .unwrap_or_else(|_| dirs.git_dir.clone())
@@ -1255,7 +1270,11 @@ fn read_git(
     git.staged = counts.staged;
     git.modified = counts.modified;
     git.untracked = counts.untracked;
-    Some(GitRead { git, integration })
+    Some(GitRead {
+        git,
+        integration,
+        integration_tip,
+    })
 }
 
 /// The parts of the cache key besides the `HEAD` text and the integration commit.

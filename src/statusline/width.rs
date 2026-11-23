@@ -47,8 +47,9 @@ pub fn icon_text(icon: &str, text: &str) -> String {
 /// Every icon the three line layouts can print. The code builds its text from [`icon_text`], and
 /// the tests scan every rendered form for the one space after each of them.
 pub const ICONS: [&str; 22] = [
-    // Line 1: who and where.
-    "🧠", "🤔", "📡", "⬇️", "🔀", "🌳", "🅱️", "🧭", "🔗",
+    // Line 1: who and where. The tag icon belongs to the integration item `(🏷️ <commit>)`; the
+    // distance icon is gone with the item (SPEC-20261123-statusline-order-bars REQ-11).
+    "🧠", "🤔", "📡", "⬇️", "🔀", "🌳", "🅱️", "🏷️", "🔗",
     // The flow line: the one icon set of the progress board and the lane reports.
     "🎯", "🗂️", "🟡", "📨", "🛬", "✅", "🚧", "🙋",
     // Line 3: the limits and the versions.

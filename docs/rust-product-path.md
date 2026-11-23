@@ -903,25 +903,36 @@ no value is left out together with its separator.
    after the repository name and the available `⬇️` Issue and `🔀` PR counts when they
    are shown, `📡 owner/repo, ⬇️ 0 🔀 0`; without forge counts the repository name
    stands alone, with no comma (user instruction 2026-11-20,
-   SPEC-20261120-statusline-layout). Then `🅱️`
-   branch with its ahead, behind and dirty counts, then `🔗 #N state` this
-   branch's pull request (AC-7; an OSC 8 hyperlink to `pr.url` only when color is on and
-   the URL is plain `http(s)`):
-   `📡 owner/repo, ⬇️ 46 🔀 0 | 🅱️ main | 🔗 #1234 pending`. The
+   SPEC-20261120-statusline-layout). Then `🅱️ <integration>(🏷️ <tip>)`, the configured local
+   integration branch (the profile's `work_flow.integration_branch`, else the remote's default
+   branch) with the first seven characters of the commit that its local ref
+   `refs/heads/<integration>` names. The commit is read from that ref (the loose ref file, else
+   `packed-refs`) every render, never from `HEAD`, the remote ref or a tag, so a lane branch that is
+   ahead and a detached `HEAD` that is behind both show the same seven characters; when the ref
+   cannot be read the item says `(🏷️ n/a)` and no commit is guessed, and without a known
+   integration branch there is no `🅱️` item. Then `🌳 <branch>`, the branch the `HEAD` file names
+   (the branch, not the name of the working folder the host gave the worktree); a detached or
+   unreadable `HEAD` leaves it out and no name is invented, not even the short commit. Then
+   `🔗 #N state` this branch's pull request (AC-7; an OSC 8 hyperlink to `pr.url` only when color
+   is on and the URL is plain `http(s)`):
+   `📡 owner/repo, ⬇️ 46 🔀 0 | 🅱️ v2026.11.0(🏷️ b3ba2b3) | 🌳 spec/lane | 🔗 #1234 pending`. The
    groups are joined by ` | `; inside a group the items are one space apart and have no
    slash, and every icon is followed by one space (user instruction 2026-11-19,
    SPEC-20261120-statusline-line2-order; exactly one space also after the icons written with a
-   variation selector, `🅱️`, `⬇️` and `🗂️`, SPEC-20261122-statusline-limits-left). The branch's `+N` is the only change
-   count: there is no
+   variation selector, `🅱️`, `⬇️`, `🏷️` and `🗂️`, SPEC-20261122-statusline-limits-left). The first
+   line has no ahead, behind or uncommitted mark and no `🧭` item (SPEC-20261123-statusline-order-bars
+   REQ-11, the user instruction of 2026-11-23, which replaces the `↑N ↓N +N` marks and the
+   distance of SPEC-20261120-statusline-ahead and SPEC-20261123-statusline-integration-distance
+   on the screen; the git calls and the cache that count them are kept). There is no
    `💾` file-change segment (leader decision 6862179411 on #2756; the `git_status`
-   option is still accepted). The branch shows `↑N` (ahead of its upstream), then `↓N`
-   (behind), then `+N` (dirty), each only when it is not 0
-   (SPEC-20261120-statusline-ahead: under M-Flow the merges land on the local integration
-   branch first, so the ahead count is the one that shows them landing; the count comes from
-   the `git status` header the renderer already reads). Forge counts that cannot be read say `⬇️ n/a 🔀 n/a`, never a zero, and a repository whose name the host did not
-   give leaves the repository item out with its separator (SPEC-20261122-statusline-where);
-   a detached HEAD shows the short SHA in the branch slot (`🅱️ a1b2c3d`) and the
-   repository item stays.
+   option is still accepted). Forge counts that cannot be read say `⬇️ n/a 🔀 n/a`, never a zero,
+   and a repository whose name the host did not give leaves the repository item out with its
+   separator (SPEC-20261122-statusline-where). When the line is wider than the width budget it
+   drops the forge counts first, then the repository owner, the model version, the thinking mark
+   and the request state, then the effort and the repository, then the commit of the integration
+   item and the request; the model, the integration name and the checked-out branch stay in every
+   form. The `git_branch` option turns the repository, the integration item and the checked-out
+   item off, and the `worktree` option turns the checked-out item off.
    The `pr` option turns its segment off.
    `▶️` and `🔃` split the cards in `active` or `review`: a card in `review` is waiting, and
    an `active` card is waiting only when the newest of its notes whose first line carries a
@@ -975,22 +986,23 @@ no value is left out together with its separator.
    here; the worktree label closes line 2, after the branch and the pull-request link (the user's
    picked layout of 2026-11-20, SPEC-20261120-statusline-layout and
    SPEC-20261121-statusline-detached). The limits are the last line: line 3 while lines 1 and 2 are
-   shown, and one line up when an empty line is left out. In a
-   linked worktree the first line carries `🌳 <worktree name>` (the name the host
-   gave: `worktree.name`, else `workspace.git_worktree`) as it is, before the branch item,
-   and the item stands alone when the branch has the same name
-   (SPEC-20261122-statusline-where, D-4); the card number is not part of it, and the
-   held card shows as `🎯` on the flow line. There is no item in the main checkout, and the `worktree`
-   option turns it off. The ledger is opened read-only under the budget of the card
+   shown, and one line up when an empty line is left out. The `🌳` of the first line is the
+   checked-out branch, in a linked worktree and in the main checkout alike, and not the name the
+   host gave the worktree (`worktree.name`, else `workspace.git_worktree`), which the first line no
+   longer shows (SPEC-20261123-statusline-order-bars REQ-10, replacing the worktree item of
+   SPEC-20261122-statusline-where, D-4); the card number is not part of it, and the
+   held card shows as `🎯` on the flow line. The `worktree` option turns the item off. The
+   ledger is opened read-only under the budget of the card
    counts, and nothing is created. Example (the last two lines of the golden
    `b14-card-counts-waiting`):
 
        🤖 2.1.90 | 🗿 4.2648.0 | 🗂️ 25 → 📨 3 → ✅ 12 | 🙋 5
        🔋 CW █████████░ 92% | 🔋 7D █████░░░░░ 59% (4d 23h)
 
-   Tests: `tests/statusline_worktree_label.rs` (the host name, a released reservation
-   is no holder, the main checkout, the `worktree` option, the line) and the golden cases
-   `a02-doc-full` and `b14-card-counts-waiting`. With both windows off and no card counts the line is empty and
+   Tests: `tests/statusline_first_line.rs` (the integration tip, the detached leader, `n/a`, no
+   marks), `tests/statusline_worktree_label.rs` (the branch and never the host name, a released
+   reservation is no holder, the main checkout, the `worktree` option, the line) and the golden
+   cases `a02-doc-full` and `b14-card-counts-waiting`. With both windows off and no card counts the line is empty and
    omitted like any empty line. The five-hour window stands between the two as `<battery> 5H <left>%` with its
    countdown whenever the input carries its percentage, at any level (25% used reads `🔋 5H 75%`);
    the host does not always send it, and without it or without its percentage there is no `5H`
