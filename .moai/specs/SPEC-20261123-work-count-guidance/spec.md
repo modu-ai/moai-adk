@@ -53,6 +53,18 @@ created: 2026-11-23
 4. Evidence on the current tip: 30 runs under load and the camel-hump mutant (AC-4, AC-5); each run's load and result written in the Result.
 5. Neighbours: the guidance tests, the package tests, fmt, clippy, `git diff --check`, `moai trailer-check`, one bare `check affected`.
 
+## Result
+
+Commits on `spec/work-count-guidance-20261123` (base `4266b0586c`, the integration tip): SPEC `dc15cb21cc`, RED `0af132718d`, GREEN `f8cd1f56b5`, and the commit of this Result.
+
+- AC-1: met. RED: on the unchanged reference `nextest run --test sdd_guidance -E 'test(work_count)'` failed with `test-design.md needs exactly one numbered rule about a count of work, left: 0, right: 1`. GREEN: after rule 9 was added the same test passes (`sdd_guidance` and `agent_defs_package` together: 32 run, 32 passed).
+- AC-2: met. `tools/source_manifest.py write` changed one entry, `references/internal/test-design.md`, one `sha256` line (`960a3459…` → `895d9819…`); `agent_defs_package` passes with it.
+- AC-3: met. `sdd_guidance` passes in full (13 tests, among them the card-number scan of the package, `no_card_number_or_ddd_wording_in_the_package_and_agents`).
+- AC-4: met. The lib test binary named by cargo (`--message-format=json`, `moai_cli-e6527a7050b400ac`) ran `card::input::tests::secret_screen_work_stays_linear_on_one_long_word` 30 times with 75 `nice 10` CPU burners that end themselves by `alarm`; the one-minute load average read at the start of each run was 181 to 242, so all 30 runs were at 100 or more, and 30 of 30 passed. Every run printed the same worst work, 18.00 units per byte (limit 20), the same as the first round of this work on 2026-11-20, so the count is unchanged by the later edits of `src/card/input.rs`. A quiet single run took 2.82 s.
+- AC-5: met. A mutant that lower-cases the rest of the name at every camel hump (`ascii_lower(&name[at..])` in `camel_hump_secret`) failed the test in 0.075 s: `camel joined x 65536: the screen's work passed 20 units per byte: 1376095 units for 65538 bytes`. The file was restored with `git checkout -- src/card/input.rs` and `git status --short` showed no change to a tracked file afterwards.
+- Not run: a Linux or Windows build, the CI of a pull request, an independent audit (the leader assigns it at tier 1), the full `check affected` of the final head is named in the card note.
+- The other wall-clock assertions are those listed in the Result of SPEC-20261120-card-screen-work-count (AC-5) and of SPEC-20261123-ac-lint-work-count; this work added none and fixed none.
+
 ## Risks
 
 - A rule that is too long is skipped by readers: it is one numbered item like the others, with the method in four parts.
