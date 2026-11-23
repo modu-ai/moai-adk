@@ -34,6 +34,10 @@
     "WORK": {
       "reference": "../workflows/work.md",
       "requires_binary": true
+    },
+    "LEADER": {
+      "reference": "../workflows/leader.md",
+      "requires_binary": true
     }
   },
   "classification_is_authorization": false

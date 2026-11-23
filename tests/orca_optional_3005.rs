@@ -195,8 +195,8 @@ fn the_adapter_table_has_a_row_for_every_route_with_a_status_word() {
         .collect();
     assert_eq!(
         route_names.len(),
-        8,
-        "the route table counts 8 workflows (SPEC-20261122-next-flow-skills-agents REQ-1): {route_names:?}"
+        9,
+        "the route table counts 9 workflows (SPEC-20261124-moai-leader-route REQ-1, which changed the eight of SPEC-20261122-next-flow-skills-agents REQ-1): {route_names:?}"
     );
 
     let adapter = read("skills/moai/references/adapters/orca.md");

@@ -14,6 +14,7 @@ A chain is the order in which the parent session uses agents for one kind of req
 | Set up a project | PROJECT | none | internal/interview, internal/questions |
 | Update documents and the work card after a merge | SYNC | moai-docs | internal/decide |
 | Work through the cards | WORK | none | internal/git-safety, flows/next-flow |
+| Coordinate the lanes | LEADER | none | flows/next-flow |
 
 Rules for every chain:
 
