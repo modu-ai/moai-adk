@@ -2134,9 +2134,10 @@ mod skill_package {
     };
     use tempfile::TempDir;
 
-    /// The route table (SPEC-20261122-next-flow-skills-agents REQ-1).
-    const ROUTES: [&str; 8] = [
-        "READ", "PLAN", "RUN", "AUDIT", "SYNC", "PROJECT", "UPDATE", "WORK",
+    /// The route table (SPEC-20261122-next-flow-skills-agents REQ-1, nine routes since
+    /// SPEC-20261124-moai-leader-route REQ-1).
+    const ROUTES: [&str; 9] = [
+        "READ", "PLAN", "RUN", "AUDIT", "SYNC", "PROJECT", "UPDATE", "WORK", "LEADER",
     ];
     /// The intents the legacy asset map counts its rows by (`rows_by_intent`). SETUP and VERIFY
     /// left the route table (SPEC-20261122-next-flow-skills-agents REQ-2) but stay keys there.

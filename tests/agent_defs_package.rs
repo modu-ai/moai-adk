@@ -527,7 +527,8 @@ fn chains_name_real_routes_agents_and_references() {
         .filter(|l| l.starts_with("| ") && !l.starts_with("| Request") && !l.starts_with("| ---"))
         .map(|l| l.trim_matches('|').split('|').map(str::trim).collect())
         .collect();
-    assert_eq!(rows.len(), 8);
+    // Nine rows since SPEC-20261124-moai-leader-route REQ-11 added the LEADER row.
+    assert_eq!(rows.len(), 9);
     let mut covered: Vec<&str> = Vec::new();
     for row in &rows {
         assert_eq!(row.len(), 4, "{row:?}");
@@ -549,7 +550,9 @@ fn chains_name_real_routes_agents_and_references() {
             }
         }
     }
-    for route in ["PLAN", "RUN", "AUDIT", "READ", "PROJECT", "SYNC", "WORK"] {
+    for route in [
+        "PLAN", "RUN", "AUDIT", "READ", "PROJECT", "SYNC", "WORK", "LEADER",
+    ] {
         assert!(covered.contains(&route), "{route} has no chain");
     }
     for rule in [
