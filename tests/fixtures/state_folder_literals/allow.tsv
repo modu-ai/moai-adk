@@ -232,6 +232,7 @@ tests/statusline_tag_order.rs	1	3
 tests/statusline_worktree_label.rs	1	0
 tests/switch_script_v2.rs	2	2
 tests/ui_progress_confirm_terminal_cli.rs	1	0
+tests/update_adopt_cli.rs	1	1
 tests/update_backup_replace.rs	11	1
 tests/update_cleanup_cli.rs	8	43
 tests/update_cli.rs	4	14

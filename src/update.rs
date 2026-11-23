@@ -236,6 +236,11 @@ pub struct HostPlan {
     /// clean scan, nothing owned). Left out otherwise, so other plans keep their bytes.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub backup_then_replace: Option<BackupThenReplace>,
+    /// SPEC-20261123-update-adopt-unowned: the files of an unmanaged skill folder that the
+    /// confirmed update takes over (their bytes equal the package or an earlier generation).
+    /// Left out when nothing is adopted, so other plans keep their bytes.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub adopt: Option<AdoptPreview>,
     /// #2521: the `install_id` of the earlier version folder whose host receipt supplies
     /// this host's baseline (see [`resolve_host_receipt`]). Left out when the baseline is
     /// this installation's own receipt or there is none, so other plans keep their bytes.
@@ -246,6 +251,79 @@ pub struct HostPlan {
     /// plans keep their bytes; being part of the plan, it is bound by `plan_digest`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub going_back: Option<String>,
+}
+
+/// One file an update adopts (SPEC-20261123-update-adopt-unowned): the receipt does not own it,
+/// its bytes equal a file the tool wrote.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct AdoptFile {
+    pub path: String,
+    /// The sha256 on disk at plan time, which the receipt then owns.
+    pub sha256: String,
+    /// `package` (the file of this build's package) or `generation:<where it was found>`.
+    pub matched: String,
+}
+
+/// The adoption preview of one host. A confirmed update copies every file below and a manifest
+/// into a new folder under `backup_root`, then writes the receipt that owns them. No skill byte
+/// is rewritten by the adoption itself.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct AdoptPreview {
+    pub files: Vec<AdoptFile>,
+    pub backup_root: String,
+    pub backup_layout: String,
+}
+
+/// How many sibling version folders adoption reads, bounded like the projection scan.
+const GENERATION_FOLDERS: usize = 64;
+
+/// path -> sha256 -> where that file was found.
+type Generations = BTreeMap<String, BTreeMap<String, String>>;
+
+/// This build's `versions` folder and its own folder name, when the running binary sits in the
+/// version folder layout (either state folder name); `None` for any other location.
+fn current_layout(canonical_home: &Path) -> Option<(PathBuf, PathBuf)> {
+    let exe = fs::canonicalize(std::env::current_exe().ok()?).ok()?;
+    layout_folder(canonical_home, &crate::install::identity_exe(exe))
+}
+
+/// The files earlier generations of this tool put into a skill folder: the package of every
+/// other version folder next to this build's own, `<versions>/<v>/skills/moai`. Like the
+/// receipts of such a folder (#2521), they are read only for a build inside the layout; a link
+/// in place of a version folder lends nothing, and neither does a package that cannot be read.
+/// Reads only.
+fn earlier_generations(canonical_home: &Path) -> Generations {
+    let mut out: Generations = BTreeMap::new();
+    let Some((versions, own)) = current_layout(canonical_home) else {
+        return out;
+    };
+    let Ok(entries) = fs::read_dir(&versions) else {
+        return out;
+    };
+    let mut names: Vec<_> = entries.flatten().map(|e| e.file_name()).collect();
+    names.sort();
+    for name in names
+        .into_iter()
+        .filter(|n| n.as_os_str() != own.as_os_str())
+        .take(GENERATION_FOLDERS)
+    {
+        let folder = versions.join(&name);
+        if !fs::symlink_metadata(&folder).is_ok_and(|m| m.is_dir()) {
+            continue;
+        }
+        let Ok(files) = source_files(&folder.join("skills").join(SKILL_DIR)) else {
+            continue;
+        };
+        for f in files {
+            out.entry(f.path)
+                .or_default()
+                .entry(f.sha256)
+                .or_insert_with(|| format!("generation:version folder {}", name.to_string_lossy()));
+        }
+    }
+    out
 }
 
 /// One file of the folder a backup-then-replace moves (#2483).
@@ -295,6 +373,9 @@ pub struct ReplaceBackup {
 }
 
 const BACKUP_MANIFEST: &str = "MANIFEST.json";
+/// The manifest and the copied files of an adoption backup (same manifest name as a replace).
+const ADOPT_MANIFEST: &str = BACKUP_MANIFEST;
+const ADOPT_FILES: &str = "files";
 /// The moved original folder inside a backup directory.
 pub(crate) const BACKUP_TREE: &str = "moai";
 /// #2505: the package is staged and verified here before the original folder moves.
@@ -937,17 +1018,13 @@ pub(crate) struct ReceiptSource {
 /// `<home>/.moai-cli/versions/<version>/bin/<exe>` (decisions L165), and `install_id` is
 /// derived from that path, so each upgrade starts a new installation id. Returns the
 /// `versions` directory and this build's folder name when the canonical executable sits
-/// exactly there (compared by path components); `None` for any other location.
+/// exactly there (compared by path components); `None` for any other location. The state folder
+/// is either name (`~/.moai` or `~/.moai-cli`, [`crate::bin_names::versions_dir_of`]); the
+/// receipts stay under the one the HOME resolves to.
 fn layout_folder(canonical_home: &Path, canonical_exe: &Path) -> Option<(PathBuf, PathBuf)> {
     let bin = canonical_exe.parent()?;
-    if bin.file_name()? != "bin" {
-        return None;
-    }
+    let versions = crate::bin_names::versions_dir_of(canonical_home, bin)?;
     let folder = bin.parent()?;
-    let versions = crate::home_root::path(canonical_home).join("versions");
-    if folder.parent()? != versions {
-        return None;
-    }
     Some((versions, PathBuf::from(folder.file_name()?)))
 }
 
@@ -1242,10 +1319,65 @@ pub fn plan_update_in(
         let owned = owned_map(receipt.as_ref());
         let mut files = Vec::new();
 
+        // SPEC-20261123-update-adopt-unowned: a file the receipt does not own whose bytes equal
+        // the package's or an earlier generation's is ours, not the user's. All or nothing per
+        // host: one file that matches nothing keeps the host blocked below, and nothing is
+        // adopted. Only a host with no other block gets here with a scan.
+        let mut adopt_files: Vec<AdoptFile> = Vec::new();
+        let mut adopt_foreign = 0usize;
+        if blocked.is_none() {
+            if let Some(scan) = &scan {
+                let mut generations: Option<Generations> = None;
+                for (rel, new_bytes) in &staged.files {
+                    let Some(current) = scan.files.get(rel) else {
+                        continue;
+                    };
+                    if owned.contains_key(rel) {
+                        continue;
+                    }
+                    let matched = if *current == sha256_hex(new_bytes) {
+                        Some("package".to_string())
+                    } else {
+                        generations
+                            .get_or_insert_with(|| earlier_generations(&canonical_home))
+                            .get(rel)
+                            .and_then(|by_sha| by_sha.get(current))
+                            .cloned()
+                    };
+                    match matched {
+                        Some(matched) => adopt_files.push(AdoptFile {
+                            path: rel.clone(),
+                            sha256: current.clone(),
+                            matched,
+                        }),
+                        None => adopt_foreign += 1,
+                    }
+                }
+            }
+        }
+        let adopt_note = if !adopt_files.is_empty() && adopt_foreign > 0 {
+            let note = format!(
+                "{} of {} unowned file(s) match this package or an earlier generation, but {} do \
+                 not; nothing is adopted",
+                adopt_files.len(),
+                adopt_files.len() + adopt_foreign,
+                adopt_foreign
+            );
+            adopt_files.clear();
+            Some(note)
+        } else {
+            None
+        };
+        // The baseline of an adopted file is what is on disk: the receipt will own it.
+        let mut baselines = owned.clone();
+        for a in &adopt_files {
+            baselines.insert(a.path.clone(), a.sha256.clone());
+        }
+
         // Package files vs disk, three-way per file (REQ-04B-01).
         for (rel, new_bytes) in &staged.files {
             let new_sha = sha256_hex(new_bytes);
-            let baseline = owned.get(rel).cloned();
+            let baseline = baselines.get(rel).cloned();
             let current = scan.as_ref().and_then(|s| s.files.get(rel).cloned());
             let action = match decide(
                 baseline.as_deref(),
@@ -1379,9 +1511,13 @@ pub fn plan_update_in(
                      that install receipt {install_id} does not own ({}); \
                      safe alternatives: install to a separate location, or a \
                      user-confirmed backup-then-replace — never automatic; \
-                     per-file actions below are informational only; {GO_ERA_GUIDANCE}",
+                     per-file actions below are informational only; {GO_ERA_GUIDANCE}{}",
                     unmanaged.len(),
                     unmanaged.join(", "),
+                    adopt_note
+                        .as_ref()
+                        .map(|n| format!("; {n}"))
+                        .unwrap_or_default(),
                 )),
             )
         } else {
@@ -1405,6 +1541,19 @@ pub fn plan_update_in(
             },
             files,
             backup_then_replace,
+            adopt: (!adopt_files.is_empty()).then(|| AdoptPreview {
+                files: adopt_files,
+                backup_root: crate::home_root::path(&canonical_home)
+                    .join("backups")
+                    .to_string_lossy()
+                    .into_owned(),
+                backup_layout: format!(
+                    "<apply UTC>-{host}-adopt/{ADOPT_MANIFEST} and <apply UTC>-{host}-adopt/\
+                     {ADOPT_FILES}/<path> (a copy of every adopted file, taken before any \
+                     receipt is written; a second run in the same second uses \
+                     <apply UTC>.2-{host}-adopt)"
+                ),
+            }),
             receipt_from,
             going_back,
         });
@@ -2401,9 +2550,10 @@ pub fn models_saved(home: &Path) -> bool {
 pub fn plan_writes_anything(plan: &UpdatePlan) -> bool {
     plan.hosts.iter().any(|h| {
         h.preflight != "blocked"
-            && h.files
-                .iter()
-                .any(|f| f.action == "create" || f.action == "update")
+            && (h.adopt.is_some()
+                || h.files
+                    .iter()
+                    .any(|f| f.action == "create" || f.action == "update"))
     })
 }
 
@@ -2415,7 +2565,10 @@ pub fn plan_summary(plan: &UpdatePlan) -> String {
         for f in &h.files {
             *counts.entry(f.action.as_str()).or_default() += 1;
         }
-        let counts: Vec<String> = counts.iter().map(|(a, n)| format!("{a} {n}")).collect();
+        let mut counts: Vec<String> = counts.iter().map(|(a, n)| format!("{a} {n}")).collect();
+        if let Some(a) = &h.adopt {
+            counts.push(format!("adopt {}", a.files.len()));
+        }
         out.push_str(&format!(
             "  {}: {} — {}{}\n",
             h.host,
@@ -2548,7 +2701,7 @@ fn apply_update_in(
             .collect();
         let conflict_only = host_plan.files.iter().any(|f| f.action == "conflict");
 
-        if writes.is_empty() {
+        if writes.is_empty() && host_plan.adopt.is_none() {
             // Nothing to write: report, never touch (REQ-04B-07 rerun; conflicts keep
             // the user bytes, REQ-04B-09).
             let status = if conflict_only {
@@ -2573,6 +2726,29 @@ fn apply_update_in(
                 backup_dir: None,
             });
             continue;
+        }
+
+        // SPEC-20261123-update-adopt-unowned REQ-5: the adopted files are copied into a backup
+        // folder BEFORE any receipt is written; a failure starts nothing for this host.
+        let mut adopt_backup_dir: Option<String> = None;
+        if let Some(adopt) = &host_plan.adopt {
+            match adopt_backup(&canonical_home, host, &root, adopt, plan_digest) {
+                Ok(dir) => adopt_backup_dir = Some(dir.to_string_lossy().into_owned()),
+                Err(e) => {
+                    any_failed = true;
+                    outcomes.push(HostOutcome {
+                        host: host.to_string(),
+                        status: "failed".into(),
+                        files: Vec::new(),
+                        receipt_status: None,
+                        reload_required: "no".into(),
+                        reload_basis: format!("adoption backup failed; host not started: {e}"),
+                        blocked_reason: None,
+                        backup_dir: None,
+                    });
+                    continue;
+                }
+            }
         }
 
         // REQ-04C-03 (#2089): known-good copies of every overwritten file, BEFORE the
@@ -2633,6 +2809,12 @@ fn apply_update_in(
         // (b) per file: 01-B engine (unique temp + fsync + rename / exclusive create),
         // each re-verifying the target right before publish and fsyncing its directory.
         let mut owned_now = pre_owned.clone();
+        // REQ-6: the adopted files are owned from the commit on, at the bytes the plan saw.
+        if let Some(adopt) = &host_plan.adopt {
+            for a in &adopt.files {
+                owned_now.insert(a.path.clone(), a.sha256.clone());
+            }
+        }
         let mut host_published = 0usize;
         let mut failed: Option<String> = None;
         for (idx, w) in writes.iter().enumerate() {
@@ -2718,10 +2900,23 @@ fn apply_update_in(
                 return Err("published bytes do not match the plan".into());
             }
         }
+        // REQ-7: an adopted file that no write touched must still be the bytes the plan saw.
+        if let Some(adopt) = &host_plan.adopt {
+            for a in &adopt.files {
+                if writes.iter().any(|w| w.path == a.path) {
+                    continue;
+                }
+                let now = read_opt(&root.join(&a.path))?.map(|b| sha256_hex(&b));
+                if now.as_deref() != Some(a.sha256.as_str()) {
+                    return Err("an adopted file changed during apply; run recovery-plan".into());
+                }
+            }
+        }
         receipt.owned = owned_vec(host, &owned_now);
         receipt.status = "committed".into();
         receipt.finished_at = Some(now_rfc3339());
         save_host_receipt(&canonical_home, &install_id, &receipt)?;
+        published_anywhere |= host_plan.adopt.is_some();
 
         let (reload, basis) = reload_state(host, top_skills_existed, host_published > 0);
         let mut all: Vec<serde_json::Value> = writes
@@ -2744,7 +2939,7 @@ fn apply_update_in(
             reload_required: reload.into(),
             reload_basis: basis,
             blocked_reason: None,
-            backup_dir: None,
+            backup_dir: adopt_backup_dir,
         });
     }
 
@@ -2817,6 +3012,71 @@ pub(crate) fn create_backup_dir(backups: &Path, stamp: &str, host: &str) -> Resu
          nothing moved — retry in a second",
         backups.display()
     ))
+}
+
+/// SPEC-20261123-update-adopt-unowned REQ-5, REQ-7: copies every adopted file and a manifest
+/// into a new `<stamp>-<host>-adopt` folder under the HOME's `backups`, and returns it. Each
+/// file is read again first and must still have the sha256 the plan saw; nothing is written
+/// before that holds. The skill folder is only read. A failure after the folder was made leaves
+/// it as it is (it holds copies, nothing else) and the host starts nothing.
+fn adopt_backup(
+    home: &Path,
+    host: &str,
+    root: &Path,
+    adopt: &AdoptPreview,
+    plan_digest: &str,
+) -> Result<PathBuf> {
+    let mut copies: Vec<(String, Vec<u8>, u32)> = Vec::new();
+    for a in &adopt.files {
+        if !relative_ok(&a.path) {
+            return Err("an adopted path is not a plain relative path".into());
+        }
+        let target = root.join(&a.path);
+        let meta = fs::symlink_metadata(&target)
+            .map_err(|_| "an adopted file is missing; nothing written".to_string())?;
+        if !meta.is_file() {
+            return Err("an adopted file is not a regular file; nothing written".into());
+        }
+        let bytes = read_opt(&target)?
+            .ok_or_else(|| "an adopted file is missing; nothing written".to_string())?;
+        if sha256_hex(&bytes) != a.sha256 {
+            return Err("an adopted file changed since the plan; nothing written".into());
+        }
+        copies.push((a.path.clone(), bytes, file_mode(&meta)));
+    }
+    let backups = crate::home_root::path(home).join("backups");
+    refuse_state_symlinks(&backups, "backup")?;
+    fs::create_dir_all(&backups).map_err(|_| "backup directory unavailable")?;
+    refuse_state_symlinks(&backups, "backup")?;
+    let dir = create_backup_dir(&backups, &compact_stamp(), &format!("{host}-adopt"))?;
+    let files: Vec<serde_json::Value> = adopt
+        .files
+        .iter()
+        .zip(&copies)
+        .map(|(a, (_, _, mode))| {
+            json!({"path": a.path, "sha256": a.sha256, "matched": a.matched, "mode": mode})
+        })
+        .collect();
+    let manifest = json!({
+        "schema_version": 1,
+        "kind": "adopt",
+        "host": host,
+        "source_root": root.to_string_lossy(),
+        "plan_digest": plan_digest,
+        "created_at": now_rfc3339(),
+        "files": files,
+    });
+    let manifest_bytes =
+        serde_json::to_vec_pretty(&manifest).map_err(|_| "manifest encode failed".to_string())?;
+    publish_exclusive(&dir.join(ADOPT_MANIFEST), &manifest_bytes)?;
+    for (rel, bytes, _) in &copies {
+        let copy = dir.join(ADOPT_FILES).join(rel);
+        publish_exclusive(&copy, bytes)?;
+        if read_opt(&copy)?.map(|b| sha256_hex(&b)) != Some(sha256_hex(bytes)) {
+            return Err("an adoption backup copy does not match its source".into());
+        }
+    }
+    Ok(dir)
 }
 
 /// #2483: one confirmed backup-then-replace. Order: fresh scan equal to the preview →
