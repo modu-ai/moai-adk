@@ -516,12 +516,15 @@ fn work_decision_becomes_a_blocked_note_on_the_card() {
     }
 }
 
-/// SPEC-20261124-lane-worktree-exit REQ-1 and REQ-2: the three sentences of the paragraph that
-/// leaves the card's worktree after the hand-back. Each is compared whole, so a mutant that
-/// drops one word of one sentence fails the test.
-const WORK_EXIT_SENTENCES: [&str; 3] = [
-    "After the READY, REPAIRED or blocked note and your `LANE-DONE` line, leave the card's worktree with `ExitWorktree(keep)`; it is a tool call that prints no line, so `LANE-DONE` stays the last line you write.",
-    "Before you leave, read `git status --short` in the worktree: commit what is uncommitted or name it in the note, and never remove the worktree or move out of it with a shell `cd`.",
+/// SPEC-20261124-lane-worktree-exit REQ-1 and REQ-2 (revision 2): the five sentences of the
+/// paragraph that leaves the card's worktree after the hand-back, in the order of
+/// `docs/lane-rules.md` (clean tree, note, `ExitWorktree(keep)`, `LANE-DONE` as the last line).
+/// Each is compared whole, so a mutant that drops one word of one sentence fails the test.
+const WORK_EXIT_SENTENCES: [&str; 5] = [
+    "Before you write the READY, REPAIRED or blocked note, read `git status --short` in the worktree: it must print nothing, so commit what is uncommitted first and the head the note names holds it.",
+    "After a READY or REPAIRED note you make no commit, because the note names the head its checks ran on.",
+    "After the note, giving the card back and the message to the leader (when one is sent), leave the card's worktree with `ExitWorktree(keep)`, and never remove the worktree or move out of it with a shell `cd`.",
+    "Write `LANE-DONE` as the last line of the turn, after that tool call.",
     "The next card starts outside every card worktree: enter the worktree the leader made with `EnterWorktree` and its `path`, or leave the current one first before you make a new one.",
 ];
 
