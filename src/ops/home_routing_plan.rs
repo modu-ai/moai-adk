@@ -6,7 +6,7 @@ use std::path::PathBuf;
 /// Preview the routing section in HOME instructions
 ///
 /// Preview the MoAI routing files (#2638) in `~/.claude`, the one place moai keeps them: the
-/// routing file `rules/moai.md` and the flow rule `rules/moai/flow.md` are planned together
+/// routing file `rules/moai.md` and the flow rule `rules/moai-flow.md` are planned together
 /// (create, merge, unchanged or conflict), the earlier block in `CLAUDE.md` is offered for
 /// removal only with `--remove-old-block`, and the hosts not written are listed with the reason.
 /// The folder `CLAUDE_CONFIG_DIR` names and each `--config-dir` get a row that writes nothing

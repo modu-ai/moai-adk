@@ -84,7 +84,7 @@ fn a_second_routing_revert_is_a_conflict_and_changes_nothing() {
     assert_eq!(code, 0, "{first}");
     let watched = [
         home.join(".claude/rules/moai.md"),
-        home.join(".claude/rules/moai/flow.md"),
+        home.join(".claude/rules/moai-flow.md"),
         home.join(".codex/AGENTS.md"),
         moai_cli::home_root::path(&home).join(format!("home-routing/receipts/{id}/receipt.json")),
     ];
