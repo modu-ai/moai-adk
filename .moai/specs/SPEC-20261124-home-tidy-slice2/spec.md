@@ -1,14 +1,9 @@
 ---
 id: SPEC-20261124-home-tidy-slice2
 title: "The home moai folder inventory and the read-only tidy plan, with the memory index size line"
-status: approved
-revision: 1
+status: draft
+revision: 2
 created: 2026-11-24
-approval:
-  by: leader
-  at: 2026-11-23
-  basis: "리더 결정 노트 7943 (2026-11-23T22:03:17Z, 사용자 위임 2026-11-23T13:57Z, 리더 판단, 사용자 직접 선택 아님, 노트 7942 에 답함): 판 1 승인(head 1ebdb5aa7c); D-1~D-5 기본값; 레인은 그 노트를 인용만 해요"
-  digest: "sha256:b25f5577841c9de28edc389ee958c32f53ed7294d1414de78951c9d4d3445c5d"
 ---
 
 # The home moai folder inventory and the read-only tidy plan, with the memory index size line
@@ -58,13 +53,13 @@ Also in this slice, from the leader's coverage note of 2026-11-22 (card note 624
 - AC-3 (REQ-5, REQ-6, REQ-7, REQ-8): the plan names action, rule and reason for each candidate; a kind over its threshold offers oldest first, a kind under every threshold offers nothing, the only `delete` is an empty folder of the retired-tool class, a worktree, a build folder and an evidence folder are `keep` with `proof_pending`, and two runs on one folder give one digest while a changed folder gives another · verify: `cargo test --locked --offline --test home_tidy_cli plan_`
 - AC-4 (REQ-9, REQ-10): a crafted `MEMORY.md` of 150 lines, one of 170 lines and one of 30 KB give lines, bytes, percent and the over-80 flag as measured, a file under 80 percent gives no text, one over gives the three groups and the `claude purge --all` reference line, a missing file is reported with a reason, and the file is byte-identical after the run · verify: `cargo test --locked --offline --test home_tidy_cli memory_`
 - AC-5 (REQ-11): a run in a temporary home leaves every file of that home with the same bytes and times, and a `claude` and a `git` stand-in on the path record no call that writes · verify: `cargo test --locked --offline --test home_tidy_cli readonly_`
-- AC-6 (REQ-1, REQ-5): the help text of the two operations and their document fragments are present, and the SPEC checks · verify: `cargo test --locked --offline --test card_cli` and `moai spec check SPEC-20261124-home-tidy-slice2 --project .`
+- AC-6 (REQ-1, REQ-5): the help text of the two operations says they write nothing, the help table lists both once with an example each, the operations document fragments match the code, and the SPEC checks · verify: `cargo test --locked --offline --test home_tidy_cli help_`, `cargo test --locked --offline --bin moai-cli help_rules` and `operations_doc`, and `moai spec check SPEC-20261124-home-tidy-slice2 --project .`
 
 ## Scope
 
 - write: `.moai/specs/SPEC-20261124-home-tidy-slice2/spec.md`
 - write (after the approval): `src/tidy/` (`mod.rs`, `inventory.rs`, `rules.rs`, `plan.rs`, `memory.rs`), `src/ops/tidy_inventory.rs`, `src/ops/tidy_plan.rs`, `tests/home_tidy_cli.rs`, `docs/design-review/appendix/operations/tidy_inventory.md`, `docs/design-review/appendix/operations/tidy_plan.md`
-- shared line, by line lease: `src/lib.rs` (one line, `pub mod tidy;`); the operations register themselves from their files (`src/ops/mod.rs`), so `src/main.rs` and `src/help.rs` stay untouched
+- shared lines, by line lease: `src/lib.rs` (one line, `pub mod tidy;`) and `src/help.rs` (the `GROUPS` row and the `EXAMPLES` row of each of the two operations, four lines); the operations register themselves from their files (`src/ops/mod.rs`), so `src/main.rs` stays untouched
 - read-only: `src/home_state.rs` (`is_secret`, `table_class`), `src/hygiene.rs`, `src/optimize.rs`, `src/worktree_report.rs` (`bytes_under`), the parent SPEC
 - forbidden: `src/update.rs`, `src/profile.rs`, `src/hook_session_start.rs`, any file outside this list
 
@@ -86,7 +81,7 @@ Also in this slice, from the leader's coverage note of 2026-11-22 (card note 624
 
 | Id | Decision | Basis | Undo |
 | --- | --- | --- | --- |
-| D-1 | Slice 2 is read-only: no summary file, no archive, no delete, and the operations are `tidy-inventory` and `tidy-plan` (hyphen form, one file each), not the `moai tidy <action>` of parent D-1, so that `src/main.rs` and `src/help.rs` are not touched | Parent Scope lists `src/ops/tidy_*.rs`; the operations registry (`src/ops/mod.rs`) takes one file per operation; the one-command front is added with slice 4 by pair request | Add a `tidy` front command that calls the same functions |
+| D-1 | Slice 2 is read-only: no summary file, no archive, no delete, and the operations are `tidy-inventory` and `tidy-plan` (hyphen form, one file each), not the `moai tidy <action>` of parent D-1, so that `src/main.rs` is not touched; the help table `src/help.rs` takes one `GROUPS` row and one `EXAMPLES` row per operation by line lease (revision 2: revision 1 said the table stays untouched, which was wrong) | Parent Scope lists `src/ops/tidy_*.rs`; the operations registry (`src/ops/mod.rs`) takes one file per operation; the binary's help tests `help_table_names_every_command_once`, `every_command_has_examples` and `every_one_line_about_follows_the_rule` refuse an operation the table lacks (found by the READY check run, `home-tidy-slice2` log `05-test.log`); the one-command front is added with slice 4 by pair request | Add a `tidy` front command that calls the same functions |
 | D-2 | Kinds that need git proof are measured and kept with `proof_pending` in this slice | Parent D-3 and REQ-9: merged state is recomputed per item; no proof, no offer | Slice 4 replaces the reason with the recomputed proof |
 | D-3 | Thresholds are arguments with the parent D-5 defaults, not profile keys yet | `src/profile.rs` is a shared key table; the key wiring needs the update step's pair request | Slice 4 reads the profile keys and passes the same values |
 | D-4 | A26 (the project folder tidy proposal and a project `.moai/archive`) gets its own SPEC after slice 3 | Different tree and different proof rules (tracked files, untracked leftovers); keeping it out holds this slice to the home folder | Fold it into a later slice of this SPEC if the leader prefers |
