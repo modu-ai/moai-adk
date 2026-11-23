@@ -445,3 +445,261 @@ fn an_idle_lane_is_left_for_a_dispatch_and_named_in_the_round() {
     assert_eq!(act(&r), (Some("restart"), Some("continue")), "{r}");
     assert_eq!(r["idle_lanes"], json!([]), "{r}");
 }
+
+// SPEC-20261123-leader-registration-lease, AC-5 to AC-9: the `registration` part of the round.
+
+/// The epoch of `NOW` (2026-11-14T09:21:00Z), so registry entries can name lease ends around
+/// it without re-deriving the calendar in the test.
+const NOW_EPOCH: i64 = 1_794_648_060;
+/// A valid instance id for a fixture entry (32 lowercase hex digits).
+const LEADER_INSTANCE: &str = "0123456789abcdef0123456789abcdef";
+/// The host session id of the coordination window in the fixtures.
+const LEADER_SESSION: &str = "aaaaaaaa-0000-4000-8000-00000000000a";
+/// Another host session id.
+const OTHER_SESSION: &str = "bbbbbbbb-0000-4000-8000-00000000000b";
+
+/// Writes the registry entry `leader` (mode leader) with `lease_until` and, when given, the
+/// host `session`.
+fn leader_entry(f: &Fixture, lease_until: i64, session: Option<&str>) {
+    let dir = f.primary.join(".git/.moai-cli/sessions");
+    fs::create_dir_all(&dir).unwrap();
+    let mut entry = json!({
+        "schema_version": 1,
+        "name": "leader",
+        "instance": LEADER_INSTANCE,
+        "lease_until": lease_until,
+        "mode": "leader",
+    });
+    if let Some(s) = session {
+        entry["session"] = json!(s);
+    }
+    fs::write(dir.join("leader.json"), entry.to_string()).unwrap();
+}
+
+/// `leader-round` with `extra` arguments, run as the host session `session`.
+fn round_as(f: &Fixture, session: Option<&str>, extra: &[&str]) -> Value {
+    let mut args = inputs(f, &observations(f), None);
+    args.extend(extra.iter().map(|s| s.to_string()));
+    let mut cmd = Command::new(crate::common::MOAI_BIN);
+    cmd.clean_env()
+        .env("PATH", std::env::var_os("PATH").unwrap())
+        .env("HOME", &f.home)
+        .env("GIT_CONFIG_GLOBAL", "/dev/null")
+        .env("GIT_CONFIG_SYSTEM", "/dev/null")
+        .args(&args)
+        .envs(session.map(|s| ("CLAUDE_CODE_SESSION_ID", s)));
+    let out = cmd.output().unwrap();
+    let v: Value = serde_json::from_slice(&out.stdout).unwrap_or_else(|e| {
+        panic!(
+            "{e}: {}{}",
+            String::from_utf8_lossy(&out.stdout),
+            String::from_utf8_lossy(&out.stderr)
+        )
+    });
+    assert_eq!(v["ok"], true, "{v}");
+    v["result"].clone()
+}
+
+/// AC-5: a leader lease that ended 38 hours earlier is `expired`, named with the elapsed
+/// seconds and its session (the design's 3.1 finding: nothing showed it).
+#[test]
+fn registration_expired_lease_names_the_elapsed_seconds() {
+    let f = fixture();
+    leader_entry(&f, NOW_EPOCH - 38 * 3600, Some(LEADER_SESSION));
+    let r = round(&f, &observations(&f), None);
+    let reg = &r["round"]["registration"];
+    assert_eq!(reg["status"], "expired", "{r}");
+    let leaders = reg["leaders"].as_array().unwrap();
+    assert_eq!(leaders.len(), 1, "{r}");
+    assert_eq!(leaders[0]["name"], "leader", "{r}");
+    assert_eq!(leaders[0]["lease_until"], "2026-11-12T19:21:00Z", "{r}");
+    assert_eq!(leaders[0]["expired_for_secs"], 38 * 3600, "{r}");
+    assert_eq!(leaders[0]["session"], LEADER_SESSION, "{r}");
+    assert!(leaders[0].get("remaining_secs").is_none(), "{r}");
+}
+
+/// AC-5: a live lease with a session id is `ok` and names the seconds left, not elapsed ones.
+#[test]
+fn registration_live_lease_with_a_session_is_ok() {
+    let f = fixture();
+    leader_entry(&f, NOW_EPOCH + 3600, Some(LEADER_SESSION));
+    let r = round(&f, &observations(&f), None);
+    let reg = &r["round"]["registration"];
+    assert_eq!(reg["status"], "ok", "{r}");
+    assert_eq!(reg["leaders"][0]["remaining_secs"], 3600, "{r}");
+    assert!(reg["leaders"][0].get("expired_for_secs").is_none(), "{r}");
+}
+
+/// AC-5: a live lease whose entry has no session id is `no_session`; an ended lease wins over it.
+#[test]
+fn registration_a_live_entry_without_a_session_is_no_session() {
+    let f = fixture();
+    leader_entry(&f, NOW_EPOCH + 3600, None);
+    let r = round(&f, &observations(&f), None);
+    let reg = &r["round"]["registration"];
+    assert_eq!(reg["status"], "no_session", "{r}");
+    assert!(reg["leaders"][0].get("session").is_none(), "{r}");
+    leader_entry(&f, NOW_EPOCH - 60, None);
+    let r = round(&f, &observations(&f), None);
+    assert_eq!(r["round"]["registration"]["status"], "expired", "{r}");
+}
+
+/// AC-5, AC-9: no registry folder at all is `absent` — and the part is there without a GitHub
+/// snapshot while the other shared parts stay `not_run`.
+#[test]
+fn registration_without_a_registry_is_absent_and_not_not_run() {
+    let f = fixture();
+    let r = round(&f, &observations(&f), None);
+    let reg = &r["round"]["registration"];
+    assert_eq!(reg["status"], "absent", "{r}");
+    assert_eq!(reg["leaders"], json!([]), "{r}");
+    for key in ["close_candidates", "gate"] {
+        assert_eq!(r["round"][key]["status"], "not_run", "{key}: {r}");
+    }
+}
+
+/// AC-5: an entry of another mode is not a leader entry.
+#[test]
+fn registration_lists_only_leader_mode_entries() {
+    let f = fixture();
+    let dir = f.primary.join(".git/.moai-cli/sessions");
+    fs::create_dir_all(&dir).unwrap();
+    fs::write(
+        dir.join("agent-3.json"),
+        format!(
+            "{{\"schema_version\":1,\"name\":\"agent-3\",\"instance\":\"{LEADER_INSTANCE}\",\
+             \"lease_until\":{},\"mode\":\"agent\"}}",
+            NOW_EPOCH - 100
+        ),
+    )
+    .unwrap();
+    let r = round(&f, &observations(&f), None);
+    assert_eq!(r["round"]["registration"]["status"], "absent", "{r}");
+}
+
+/// AC-9: the note names the three words a leader needs to renew at once.
+#[test]
+fn registration_note_names_the_renewal_words() {
+    let f = fixture();
+    leader_entry(&f, NOW_EPOCH - 38 * 3600, Some(LEADER_SESSION));
+    let r = round(&f, &observations(&f), None);
+    let note = r["round"]["registration"]["note"].as_str().unwrap();
+    for word in [
+        "session-register",
+        "--instance",
+        "leader-round --renew-instance",
+    ] {
+        assert!(note.contains(word), "{word}: {note}");
+    }
+}
+
+/// AC-6: an entry that cannot be read makes the part `error` with that message and leaves
+/// every other shared part as it was.
+#[test]
+fn registration_an_unreadable_entry_makes_the_part_error() {
+    let f = fixture();
+    let dir = f.primary.join(".git/.moai-cli/sessions");
+    fs::create_dir_all(&dir).unwrap();
+    fs::write(dir.join("leader.json"), "not json").unwrap();
+    let r = round(&f, &observations(&f), None);
+    let reg = &r["round"]["registration"];
+    assert_eq!(reg["status"], "error", "{r}");
+    let message = reg["message"].as_str().unwrap();
+    assert!(message.contains("leader.json"), "{message}");
+    for key in [
+        "close_candidates",
+        "handoff_candidates",
+        "gate",
+        "end_condition",
+    ] {
+        assert_eq!(r["round"][key]["status"], "not_run", "{key}: {r}");
+    }
+}
+
+/// AC-8: a round without `--renew-instance` writes nothing: the whole git dir is byte for byte
+/// as it was, and the answer says `writes` false.
+#[test]
+fn registration_read_writes_nothing() {
+    let f = fixture();
+    leader_entry(&f, NOW_EPOCH - 38 * 3600, Some(LEADER_SESSION));
+    let before = tree_snapshot(&f.primary.join(".git"));
+    let r = round(&f, &observations(&f), None);
+    assert_eq!(r["writes"], false, "{r}");
+    let after = tree_snapshot(&f.primary.join(".git"));
+    assert_eq!(before, after);
+}
+
+/// AC-7: `--renew-instance` turns the 38 hour old entry into a live one in the same answer and
+/// keeps its session id.
+#[test]
+fn registration_renew_instance_renews_an_ended_lease() {
+    let f = fixture();
+    leader_entry(&f, NOW_EPOCH - 38 * 3600, Some(LEADER_SESSION));
+    let r = round_as(
+        &f,
+        Some(LEADER_SESSION),
+        &["--renew-instance", LEADER_INSTANCE],
+    );
+    assert_eq!(r["writes"], true, "{r}");
+    let reg = &r["round"]["registration"];
+    assert_eq!(reg["renewal"]["status"], "renewed", "{r}");
+    assert_eq!(reg["status"], "ok", "{r}");
+    assert_eq!(reg["leaders"][0]["session"], LEADER_SESSION, "{r}");
+    assert_eq!(reg["leaders"][0]["remaining_secs"], 14_400, "{r}");
+    let stored: Value = serde_json::from_str(
+        &fs::read_to_string(f.primary.join(".git/.moai-cli/sessions/leader.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(stored["instance"], LEADER_INSTANCE, "{stored}");
+    assert_eq!(stored["mode"], "leader", "{stored}");
+    assert_eq!(stored["session"], LEADER_SESSION, "{stored}");
+}
+
+/// AC-7: a wrong instance, and a renewal from another session, are refused: the round answers
+/// the rest as without the flag, says `writes` false and leaves the entry as it was.
+#[test]
+fn registration_renew_instance_refusals_leave_the_entry_alone() {
+    let f = fixture();
+    leader_entry(&f, NOW_EPOCH - 38 * 3600, Some(LEADER_SESSION));
+    let path = f.primary.join(".git/.moai-cli/sessions/leader.json");
+    let before = fs::read(&path).unwrap();
+    for (session, instance) in [
+        (LEADER_SESSION, "ffffffffffffffffffffffffffffffff"),
+        (OTHER_SESSION, LEADER_INSTANCE),
+    ] {
+        let r = round_as(&f, Some(session), &["--renew-instance", instance]);
+        let reg = &r["round"]["registration"];
+        assert_eq!(reg["renewal"]["status"], "refused", "{r}");
+        assert!(reg["renewal"]["message"].as_str().is_some(), "{r}");
+        assert_eq!(reg["status"], "expired", "{r}");
+        assert_eq!(r["writes"], false, "{r}");
+        assert_eq!(fs::read(&path).unwrap(), before);
+    }
+}
+
+/// Every file below `root` as `(path, bytes)` pairs, sorted.
+fn tree_snapshot(root: &Path) -> Vec<(String, Vec<u8>)> {
+    fn walk(out: &mut Vec<(String, Vec<u8>)>, dir: &Path, prefix: &str) {
+        let mut names: Vec<_> = fs::read_dir(dir)
+            .unwrap()
+            .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+            .collect();
+        names.sort();
+        for name in names {
+            let path = dir.join(&name);
+            let rel = if prefix.is_empty() {
+                name.clone()
+            } else {
+                format!("{prefix}/{name}")
+            };
+            if path.is_dir() {
+                walk(out, &path, &rel);
+            } else {
+                out.push((rel, fs::read(&path).unwrap()));
+            }
+        }
+    }
+    let mut out = Vec::new();
+    walk(&mut out, root, "");
+    out
+}
