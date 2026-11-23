@@ -353,22 +353,30 @@ fn warm(seed_target: &Path, slot: &Path) -> Result<&'static str> {
 /// Removes the temporary copies a killed warm or inherit left in a present slot. The caller holds
 /// the slot lock, so no other run is copying into the slot now. Returns the names removed.
 fn clean_leftovers(slot: &Path) -> Result<Vec<String>> {
-    let mut removed = Vec::new();
-    let entries = fs::read_dir(slot).map_err(|e| format!("{} unreadable: {e}", slot.display()))?;
-    for e in entries.flatten() {
-        let name = e.file_name().to_string_lossy().to_string();
-        if TEMP_PREFIXES.iter().any(|p| name.starts_with(p)) {
-            let p = e.path();
-            let gone = match fs::symlink_metadata(&p) {
-                Ok(m) if m.file_type().is_dir() => fs::remove_dir_all(&p),
-                _ => fs::remove_file(&p),
-            };
-            gone.map_err(|e| format!("{} could not be removed: {e}", p.display()))?;
-            removed.push(name);
-        }
+    let removed = leftovers(slot)?;
+    for name in &removed {
+        let p = slot.join(name);
+        let gone = match fs::symlink_metadata(&p) {
+            Ok(m) if m.file_type().is_dir() => fs::remove_dir_all(&p),
+            _ => fs::remove_file(&p),
+        };
+        gone.map_err(|e| format!("{} could not be removed: {e}", p.display()))?;
     }
-    removed.sort();
     Ok(removed)
+}
+
+/// The temporary copies of a killed warm or inherit that sit at the top of the slot, by name,
+/// sorted: a folder, a file or a link whose name starts with one of [`TEMP_PREFIXES`]. It reads
+/// the slot folder, not `git status`, so a copy that git ignores is named too.
+pub(crate) fn leftovers(slot: &Path) -> Result<Vec<String>> {
+    let entries = fs::read_dir(slot).map_err(|e| format!("{} unreadable: {e}", slot.display()))?;
+    let mut names: Vec<String> = entries
+        .flatten()
+        .map(|e| e.file_name().to_string_lossy().to_string())
+        .filter(|name| TEMP_PREFIXES.iter().any(|p| name.starts_with(p)))
+        .collect();
+    names.sort();
+    Ok(names)
 }
 
 /// Adds the slot `name` detached at `at` when it is missing, and warms a slot without
@@ -415,7 +423,7 @@ pub fn ensure(project: &Path, name: &str, at: &str, caps: Caps) -> Result<Value>
     };
     // An audit slot's leftover copy is audit-slot's to name and to discard with `done --discard`,
     // so `ensure` leaves it there for `audit_slot` to refuse on.
-    let cleaned = if present && !name.starts_with("audit-") {
+    let cleaned = if present && !crate::audit_slot::AUDIT_SLOTS.contains(&name) {
         clean_leftovers(&path)?
     } else {
         Vec::new()

@@ -1503,7 +1503,7 @@ const LONG_ABOUT_KO: &[(&str, &str)] = &[
     (
         "card",
         "프로젝트의 로컬 카드를 읽고 써요: `list`(목록), `show C-n`(카드 하나와 기준·메모·링크), \
-         `add`(draft 카드 하나와 기준을 한 트랜잭션으로), `ready`(draft 를 ready 로), `take`·`release`·`handoff`(예약을 잡고, 돌려주고, 넘겨요). `list`·`show` 는 읽기만 하고, 원장 파일과 \
+         `add`(draft 카드 하나와 기준을 한 트랜잭션으로), `ready`(draft 를 ready 로), `take`·`release`·`handoff`(예약을 잡고, 돌려주고, 넘겨요), `adopt`(`/clear` 뒤 같은 레인이 자기 카드를 다음 세대로 이어받아요). `list`·`show` 는 읽기만 하고, 원장 파일과 \
          폴더는 어떤 동작도 만들지 않아요(`ledger-register-apply` 만 만들어요). 원장이 없으면 \
          `list` 는 빈 목록, 나머지는 `ledger not found` 오류와 안내를 줘요.",
     ),
@@ -1715,8 +1715,9 @@ const ARG_HELP_KO: &[(&str, &str, &str)] = &[
     (
         "cc|glm",
         "permissions",
-        "권한 질문 유지: `--dangerously-skip-permissions` 없음(Claude 호스트). 없으면 \
-         -l|-a 세션은 전체 접근, 역할 없는 세션은 권한 플래그를 받지 않음",
+        "권한 플래그를 붙이지 않음(Claude 호스트): 호스트가 자기 설정의 모드로 시작. 없으면 \
+         모든 실행이 auto mode(`--permission-mode auto`)로 시작하고, 사용자 설정 \
+         `launcher.role_access` 가 `full`(우회) 또는 `prompt` 로 바꿀 수 있음",
     ),
     (
         "cc|glm",

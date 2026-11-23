@@ -162,6 +162,18 @@ fn the_files_that_take_permits_are_exactly_the_nextest_group() {
         config.contains("[test-groups]") && config.contains("spawning-moai"),
         "the spawning-moai test group is missing from .config/nextest.toml"
     );
+    // The group's bound is the cap the SPEC names (REQ-3, four): a larger number would let the
+    // spawning tests multiply processes again under nextest.
+    let group = config
+        .lines()
+        .find(|l| l.trim_start().starts_with("spawning-moai"))
+        .expect("the spawning-moai group has its own line");
+    let max: String = group
+        .split_once("max-threads")
+        .and_then(|(_, rest)| rest.split_once('='))
+        .map(|(_, n)| n.chars().filter(char::is_ascii_digit).collect())
+        .unwrap_or_default();
+    assert_eq!(max, "4", "the spawning-moai group bound: {group}");
     for name in USERS {
         let text = std::fs::read_to_string(root.join("tests").join(format!("{name}.rs")))
             .unwrap_or_else(|e| panic!("tests/{name}.rs: {e}"));

@@ -1069,7 +1069,8 @@ fn launcher_leader_default_claude() {
         "opus",
         "--effort",
         "medium",
-        "--dangerously-skip-permissions"
+        "--permission-mode",
+        "auto"
     ]);
     for args in [
         &["-l", "--dry-run"][..],
@@ -1143,7 +1144,8 @@ fn launcher_flags_can_be_disabled() {
             "sonnet",
             "--effort",
             "high",
-            "--dangerously-skip-permissions"
+            "--permission-mode",
+            "auto"
         ])
     );
     assert!(!launcher(&["-l", "--effort", "turbo", "--dry-run"], None)
@@ -1228,7 +1230,8 @@ fn launcher_glm_requires_token_name_only() {
             "opus",
             "--effort",
             "medium",
-            "--dangerously-skip-permissions"
+            "--permission-mode",
+            "auto"
         ])
     );
     // No advisor by default since #2476; an explicit one is dropped on glm with a note.

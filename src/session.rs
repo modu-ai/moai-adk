@@ -14,10 +14,11 @@
 //!   caller and only its presence is checked; its value is never kept, printed or written.
 //!
 //! Without a role (`moai-cli cc|glm` with neither `-l` nor `-a`, Issue #2053) the launcher
-//! opens a plain host session: no role is guessed, no session name is added and no permission
-//! flag is passed, so the host starts in the mode its own settings choose. A role session
-//! (`-l` named `leader`, `-a` named `agent-N`) starts with full access unless the user setting
-//! `launcher.role_access` selects prompts or `--permissions` is given. `-l|-a` only name the
+//! opens a plain host session: no role is guessed and no session name is added. Every launch,
+//! with or without a role (`-l` named `leader`, `-a` named `agent-N`), starts the host in auto
+//! mode (`--permission-mode auto`, user decision 2026-11-23, SPEC-20261123-launcher-auto-mode)
+//! unless `--permissions` is given (no permission flag) or the user setting
+//! `launcher.role_access` says `full` (the bypass) or `prompt`. `-l|-a` only name the
 //! session and set its access: the role is entered inside the session with `/moai --mode-agent`
 //! or `/moai --mode-leader`, which the `--dry-run` notes say
 //! (user decision 2026-11-18, SPEC-20261118-launcher-agent-entry). Codex and OMP are not hosts
@@ -57,13 +58,14 @@ const DEFAULT_EFFORT: &str = "medium";
 /// #2476, replacing the `--advisor fable` part of the 2026-11-08 decision): see
 /// [`launch_settings`].
 pub const ROLELESS_LAUNCHER_DEFAULTS: bool = true;
-/// User decision 2026-11-10 (#2359, comment 6760976883): a role session (`-l`, `-a`) on every
-/// host starts with full access and no permission prompt (`--dangerously-skip-permissions` on
-/// Claude hosts whatever the project's `permissions` key says); `--permissions` keeps the
-/// prompts. A roleless session gets no permission flag at
-/// all. The user-only `~/.moai-cli/config/launcher.yaml` key `launcher.role_access` can choose
-/// `full` or `prompt`; an absent file or key keeps this default. Project settings are ignored.
-pub const FULL_ACCESS_DEFAULT: bool = true;
+/// User decision 2026-11-23 (SPEC-20261123-launcher-auto-mode, replacing the 2026-11-10 decision
+/// of #2359): a launch on every host, with or without a role, starts in auto mode
+/// (`--permission-mode auto` on Claude hosts, whatever the project's `permissions` key says).
+/// `--permissions` keeps the host's own mode (no permission flag). The user-only
+/// `~/.moai-cli/config/launcher.yaml` key `launcher.role_access` can choose `auto`, `full` (the
+/// bypass, `--dangerously-skip-permissions`) or `prompt`; an absent file or key keeps this
+/// default. Project settings are ignored.
+pub const ACCESS_DEFAULT: Access = Access::Auto;
 /// The environment that points Claude Code at z.ai GLM. The set and its values follow the Go
 /// tool's `setGLMEnv` (user decision 2026-11-10): endpoint, timeout, the model each Claude
 /// alias maps to, the 1M context window of those models (Claude Code assumes 200K for an id
@@ -156,6 +158,20 @@ fn blocked_line(b: &crate::key_vault::Blocked) -> String {
     format!("blocked: {}: {} (next: {})", b.code, b.reason, b.next)
 }
 
+/// How a launch asks the host for permissions (SPEC-20261123-launcher-auto-mode).
+#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum Access {
+    /// `--permission-mode auto`: the host's auto mode (the launcher default).
+    Auto,
+    /// `--dangerously-skip-permissions`: no permission prompt at all; only the user's own choice.
+    Full,
+    /// No permission flag: the host starts in the mode its own settings choose.
+    // Not ACCESS_DEFAULT: a serialized request without `access` adds no flag (the safe side).
+    #[default]
+    Prompt,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct SessionRequest {
     /// `leader` or `agent`; `None` is a plain host session (#2053).
@@ -173,10 +189,10 @@ pub struct SessionRequest {
     pub effort: Option<String>,
     #[serde(default)]
     pub advisor: Option<String>,
-    /// Full access: `--dangerously-skip-permissions` on Claude hosts. The launcher sets it from
-    /// [`full_access`].
+    /// The permission flag of the Claude host. The launcher sets it from [`launch_settings`]; the
+    /// legacy `session` command leaves it at `Prompt` (no flag).
     #[serde(default)]
-    pub skip_permissions: bool,
+    pub access: Access,
     /// Extra first-prompt text (no host takes it: the Claude host is told it was not passed).
     #[serde(default)]
     pub prompt: Option<String>,
@@ -240,14 +256,15 @@ fn user_launcher() -> Result<Option<serde_json::Map<String, Value>>, String> {
     }
 }
 
-fn role_full_access(launcher: Option<&serde_json::Map<String, Value>>) -> Result<bool, String> {
+fn configured_access(launcher: Option<&serde_json::Map<String, Value>>) -> Result<Access, String> {
     match launcher.and_then(|l| l.get("role_access")) {
-        None => Ok(FULL_ACCESS_DEFAULT),
-        Some(Value::String(access)) if access == "full" => Ok(true),
-        Some(Value::String(access)) if access == "prompt" => Ok(false),
-        Some(_) => {
-            Err("user launcher configuration launcher.role_access must be full or prompt".into())
-        }
+        None => Ok(ACCESS_DEFAULT),
+        Some(Value::String(access)) if access == "auto" => Ok(Access::Auto),
+        Some(Value::String(access)) if access == "full" => Ok(Access::Full),
+        Some(Value::String(access)) if access == "prompt" => Ok(Access::Prompt),
+        Some(_) => Err(
+            "user launcher configuration launcher.role_access must be auto, full or prompt".into(),
+        ),
     }
 }
 
@@ -282,27 +299,26 @@ pub enum AdvisorSource {
 /// The launcher's resolution of the user-only settings for one launch.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LaunchSettings {
-    /// See [`full_access`].
-    pub skip_permissions: bool,
+    /// See [`launch_settings`].
+    pub access: Access,
     /// The advisor and its source; `None` passes no `--advisor`.
     pub advisor: Option<(String, AdvisorSource)>,
 }
 
 /// Resolves both user launcher settings from one read of the file (Issues #2413, #2476).
-/// Access: CLI `--permissions` > `launcher.role_access` > [`FULL_ACCESS_DEFAULT`], roleless
-/// sessions never get a permission flag. Advisor (user decision 2026-11-12, #2476, replacing
+/// Access: CLI `--permissions` (no flag) > `launcher.role_access` > [`ACCESS_DEFAULT`] (auto),
+/// the same with or without a role. Advisor (user decision 2026-11-12, #2476, replacing
 /// the 2026-11-08 default `fable`): CLI `--no-advisor` / `--advisor` > `launcher.advisor` >
 /// none; `--advisor` with `--no-advisor` is refused, and the setting applies to Claude hosts
 /// only. The file is validated for every launch, also when the CLI
 /// decides, so a broken file is never silently skipped. Project settings do not matter.
 pub fn launch_settings(
-    has_role: bool,
     keep_prompts: bool,
     cli_advisor: Option<&str>,
     no_advisor: bool,
 ) -> Result<LaunchSettings, String> {
     let launcher = user_launcher()?;
-    let configured_access = role_full_access(launcher.as_ref())?;
+    let configured_access = configured_access(launcher.as_ref())?;
     let configured = configured_advisor(launcher.as_ref())?;
     if cli_advisor.is_some() && no_advisor {
         return Err("--advisor and --no-advisor cannot be used together".into());
@@ -313,16 +329,19 @@ pub fn launch_settings(
         (None, false) => configured.map(|a| (a, AdvisorSource::UserSetting)),
     };
     Ok(LaunchSettings {
-        skip_permissions: has_role && !keep_prompts && configured_access,
+        access: if keep_prompts {
+            Access::Prompt
+        } else {
+            configured_access
+        },
         advisor,
     })
 }
 
-/// Resolves CLI `--permissions` > user `launcher.role_access` > [`FULL_ACCESS_DEFAULT`].
-/// The configuration is validated even for `--permissions` and roleless sessions; roleless
-/// sessions always leave permission flags to the host. Project settings do not matter.
-pub fn full_access(has_role: bool, keep_prompts: bool) -> Result<bool, String> {
-    Ok(launch_settings(has_role, keep_prompts, None, false)?.skip_permissions)
+/// Resolves CLI `--permissions` > user `launcher.role_access` > [`ACCESS_DEFAULT`]. The
+/// configuration is validated even for `--permissions`. Project settings do not matter.
+pub fn launch_access(keep_prompts: bool) -> Result<Access, String> {
+    Ok(launch_settings(keep_prompts, None, false)?.access)
 }
 
 // ---- agent-N numbering (#2359 decision 6760976883; resolves #2361; changed by #2971) ----
@@ -682,11 +701,23 @@ fn claude_argv(r: &SessionRequest, notes: &mut Vec<&'static str>) -> Result<Vec<
     if r.prompt.is_some() {
         notes.push("PROMPT was not passed to the Claude host");
     }
-    if r.skip_permissions {
-        notes.push("--dangerously-skip-permissions: every tool call runs without a permission prompt (role session, user decision 2026-11-10 #2359; keep prompts with --permissions)");
-        argv.push("--dangerously-skip-permissions".into());
-    } else if r.role.is_none() {
-        notes.push("no permission flag: Claude Code starts in the mode the user's and project's settings choose (roleless session, #2359)");
+    match r.access {
+        Access::Auto => {
+            notes.push("--permission-mode auto: Claude Code's auto mode checks each tool call (the launcher default since user decision 2026-11-23; --permissions keeps the host's own mode, launcher.role_access picks auto, full or prompt)");
+            if r.host == "glm" {
+                notes.push("glm runs Claude Code behind the z.ai gateway: the auto mode classifier may show a billing notice, see docs/troubleshooting.md section 5 (no setting is changed)");
+            }
+            argv.push("--permission-mode".into());
+            argv.push("auto".into());
+        }
+        Access::Full => {
+            notes.push("--dangerously-skip-permissions: every tool call runs without a permission prompt (chosen by the user in launcher.role_access; auto mode is the default, keep prompts with --permissions)");
+            argv.push("--dangerously-skip-permissions".into());
+        }
+        // A role session without a flag (`--permissions`, `prompt`, the legacy `session`
+        // command) added no note before; only the roleless form did, and keeps doing so.
+        Access::Prompt if r.role.is_none() => notes.push("no permission flag: Claude Code starts in the mode the user's and project's settings choose (--permissions or launcher.role_access prompt)"),
+        Access::Prompt => {}
     }
     Ok(argv)
 }

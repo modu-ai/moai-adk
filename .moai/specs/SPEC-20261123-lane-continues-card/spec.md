@@ -75,7 +75,7 @@ created: 2026-11-23
 - AC-3 (REQ-4, REQ-11): after the registration of AC-1, `card adopt` moves the reservation to the new session at generation + 1 with the same scope, worktree and branch and a four hour lease; the card's state (also `review`), notes, criteria and links are as before; a `card check` by the old session at the old generation refuses as stale · verify: `cargo test --locked --offline --test card_adopt_cli ac3_`
 - AC-4 (REQ-5): a session whose entry does not list the holder (another lane's entry, a fresh registration without `--continue`, an entry with an ended lease, no entry) is refused with `not_same_lane` and the ledger is as it was · verify: `cargo test --locked --offline --test card_adopt_cli ac4_`
 - AC-5 (REQ-6): an entry that still names the holder session id, under the same or another lane name, is refused with `holder_registered` naming the lane · verify: `cargo test --locked --offline --test card_adopt_cli ac5_`
-- AC-6 (REQ-7): a reservation recorded for another worktree, a symbolic link to the right worktree that resolves to another one and an entry that records no worktree each refuse with `other_worktree` · verify: `cargo test --locked --offline --test card_adopt_cli ac6_`
+- AC-6 (REQ-7): a reservation recorded for another worktree, a symbolic link that resolves to another worktree and an entry that records no worktree or another one each refuse with `other_worktree`; a reservation recorded as a symbolic link that resolves to the running worktree is adopted · verify: `cargo test --locked --offline --test card_adopt_cli ac6_`
 - AC-7 (REQ-8, REQ-11): a `done` card, a reservation that is released, a lower and a higher generation each refuse with the answer `card reclaim` gives for the same state, and a card that already carries three `card.reclaim` events is adopted · verify: `cargo test --locked --offline --test card_adopt_cli ac7_`
 - AC-8 (REQ-9): a reservation that changed holder between the proof and the write is refused with `holder_changed` and the ledger shows no `card.adopt` event · verify: `cargo test --locked --offline --lib ac8_`
 - AC-9 (REQ-10): a refused and a successful call leave the registry files and the running folder unchanged except for the ledger rows the success writes, compared by file digests before and after · verify: `cargo test --locked --offline --test card_adopt_cli ac9_`
@@ -89,7 +89,8 @@ created: 2026-11-23
 - write (this slice): `.moai/specs/SPEC-20261123-lane-continues-card/**`
 - write (code slice, after approval):
   - `src/card/adopt.rs` (new), `src/card/mod.rs` (one module line);
-  - `src/ledger/reservation.rs` (the adopt transaction beside `reclaim_with`);
+  - `src/ledger/adopt.rs` (new, the adopt transaction beside the reclaim transaction), `src/ledger/mod.rs` (one module line); `src/ledger/reservation.rs` is not changed;
+  - `src/help.rs` (the `session-register` and `card` help text);
   - `src/lane_registry.rs` (the `worktree` and `previous_sessions` fields, `register` with `--continue`, a read function that tells which entry names a session id);
   - `src/ops/session_register.rs` (the `--continue` flag), `src/ops/card.rs` (the `adopt` clap variant and its dispatch line);
   - `tests/card_adopt_cli.rs` (new), `tests/session_registry_cli.rs`, `docs/design-review/appendix/operations/card.md` (the operation line).
@@ -112,7 +113,7 @@ created: 2026-11-23
 
 - R-1: Two live sessions with one lane name in one worktree (a person opens a second window by mistake) let the later `--continue` take the name and the card; the first session loses its writes at the next `card check` (stale generation, the fence of `card check`) and its next `session-register` renewal fails. No data is lost, and nothing can stop it from outside because both sessions look the same to the registry. A person who sees the refusal in the first session decides which one to keep.
 - R-2: `previous_sessions` and `worktree` are plain text in an unsigned local file, like the rest of the registry; anyone who can write the clone's registry can forge a continuation. The registry is under the clone's common git dir and not written from the repository. The generation fence and the card's lease stay as the check on every write.
-- R-3: A path that is a symbolic link to the right worktree must not pass `other_worktree`; the proof compares canonical paths of both, and AC-6 covers the link.
+- R-3: A path is compared by its canonical form, so a symbolic link decides by where it resolves: a link that resolves to the running worktree passes `other_worktree` and a link that resolves to another worktree is refused. The proof compares the canonical path of the reserved worktree with the worktree of the running folder, and AC-6 covers both links.
 - R-4: Audit independence reads the full `Moai-Session` value, so the same lane before and after a `/clear` counts as two sessions in `src/audit_gate.rs` and in the landing rules. An adopted card does not make that worse, but it does not fix it either. `previous_sessions` is the record a later card can read for it.
 - R-5: Adoption carries no cap. A loop that clears and adopts without end writes one event each time; the lease is renewed to four hours each time. The `card.adopt` events make that visible in the ledger; a cap is added when it is seen.
 - R-6: The old session id stays in the entry only up to eight ids. A card held by a session older than the eighth `/clear` is not adopted and goes the `card reclaim` way (lease end or the early proof).
@@ -136,4 +137,20 @@ created: 2026-11-23
 
 ## Result
 
-Status: SPEC draft (revision 2: card and ledger note numbers replaced by what each source decided). Nothing is implemented and no acceptance line is met. The base is tip `caeac7689a`. The SPEC carries no approval; U-1 and U-2 wait for the user.
+Status: implemented on the code slice; the SPEC front matter is not changed here (approval is recorded by the user's pick, not by a lane). `session-register --continue` is in `src/lane_registry.rs` and `src/ops/session_register.rs`; `card adopt` is in `src/card/adopt.rs` (proofs, read only) and `src/ledger/adopt.rs` (one transaction, beside the reclaim transaction, which is untouched). U-1 is implemented as yes (the held launcher lock does not stop `--continue`); U-2 as written (a reclaimed card has a new generation and is refused with the answer `card reclaim` gives).
+
+- AC-1: met — `session_registry_cli` tests `ac1_continue_takes_the_entry_over_and_keeps_the_old_ids`, `ac1_a_registration_records_the_worktree_of_the_running_folder`, `ac1_a_renewal_keeps_the_worktree_and_the_old_ids`
+- AC-2: met — `session_registry_cli` tests `ac2_a_plain_registration_over_a_live_entry_still_conflicts`, `ac2_continue_without_a_proof_refuses_and_leaves_the_entry`, `ac2_an_entry_without_a_worktree_or_a_session_cannot_be_continued`
+- AC-3: met — `card_adopt_cli` tests `ac3_adopt_continues_the_card_at_the_next_generation`, `ac3_a_card_in_review_is_adopted_and_stays_in_review`
+- AC-4: met — `card_adopt_cli` test `ac4_a_session_whose_entry_does_not_list_the_holder_is_refused`
+- AC-5: met — `card_adopt_cli` test `ac5_an_entry_that_still_names_the_holder_is_refused`
+- AC-6: met — `card_adopt_cli` test `ac6_a_worktree_that_is_not_the_running_one_is_refused` (with the link that resolves to the running worktree, which is adopted; removing the `canonicalize` of the reserved worktree in `src/card/adopt.rs` fails this test)
+- AC-7: met — `card_adopt_cli` test `ac7_a_card_in_another_state_is_refused_like_reclaim`
+- AC-8: met — lib test `ledger::adopt::tests::ac8_a_holder_that_changed_after_the_proof_is_refused`
+- AC-9: met — `card_adopt_cli` test `ac9_the_proofs_read_and_write_nothing`
+- AC-10: met — `card_adopt_cli` test `ac10_the_worktree_and_the_launcher_lock_are_not_read`
+- AC-11: met — `card_adopt_cli` test `ac11_the_adopt_event_names_everything`
+- AC-12: met — `card_adopt_cli` test `ac12_adoptions_do_not_use_up_the_reclaim_allowance`
+- AC-13: met — `card_reclaim_cli`, `card_reclaim_early_cli` and `session_registry_cli` pass in the `check affected` test step of the same head (3291 tests, 3291 passed; an earlier run of the slice had one failure, a timing limit of an unrelated lint test that passes alone, and the run on this head had none)
+
+The dangerous path was also run with the real binary in a throwaway HOME and repository: a continue with a held launcher lock, a dirty tree and a process inside (adopted); the old session with the same name in the same worktree (its next `card check` refused as stale); another worktree (refused); a card the leader reclaimed (refused); a done card (refused); two adopts at once (one adopted, one refused as stale).

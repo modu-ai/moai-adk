@@ -336,7 +336,12 @@ fn api_key_warning_names_presence_only() {
     assert!(built.credential_warning.is_none());
 }
 
-/// REQ-2: blanket tool rules refuse to build.
+/// REQ-2: blanket tool rules and every rule outside the allowed shape refuse to build — the
+/// wildcard-only spellings, an interpreter or wrapper as the first word of a wildcarded rule,
+/// a compound command, a glob, a substitution, a brace, a quote, a redirection or an
+/// assignment in the first word, a substitution or a redirection in a later argument, a star
+/// that is not the one trailing wildcard form, and a character outside the set in a rule with
+/// no star. The ordinary narrow rules keep building.
 #[test]
 fn blanket_tool_rules_refuse_to_build() {
     let tmp = tempfile::tempdir().unwrap();
@@ -390,15 +395,114 @@ fn blanket_tool_rules_refuse_to_build() {
         "Bash(\\python *)",
         "Bash(\"python\" *)",
         "Bash(>/dev/null python *)",
-        // B-1: descriptor and & redirection prefixes
+        // descriptor and & redirection prefixes
         "Bash(2>&1 python *)",
         "Bash(2>/dev/null python *)",
         "Bash(&>/dev/null python *)",
-        // N-2: the < and single-quote legs, each pinned on its own
+        // the < and single-quote legs, each pinned on its own
         "Bash(</dev/null python *)",
         "Bash('python' *)",
+        // the other first-word spellings: substitutions, brace and glob forms, upper
+        // case, pypy3, compound commands, builtin, eval
+        "Bash($(which python) *)",
+        "Bash(`which python` *)",
+        "Bash({python,python3} *)",
+        "Bash($PY *)",
+        "Bash(pytho? *)",
+        "Bash(python* *)",
+        "Bash(python*)",
+        "Bash(PYTHON *)",
+        "Bash(pypy3 *)",
+        "Bash(true; python *)",
+        "Bash(cd x && python *)",
+        "Bash((python) *)",
+        "Bash(! python *)",
+        "Bash(builtin python *)",
+        "Bash(eval python *)",
+        // compound commands with another first word, and globs inside the first word
+        "Bash(ls && python *)",
+        "Bash(echo ok && python *)",
+        "Bash(ls ; python *)",
+        "Bash(false || python *)",
+        "Bash(: && python *)",
+        "Bash(cat x | python *)",
+        "Bash(ls & python *)",
+        "Bash(if true; then python *)",
+        "Bash(ls\npython *)",
+        "Bash(py*n *)",
+        "Bash(p*n*x)",
+        "Bash(/usr/bin/py*n *)",
+        "Bash(pytho[n] *)",
+        "Bash(python[23] *)",
+        // a substitution or a redirection in a later argument: each runs or writes what it
+        // names, wherever in the rule it sits
+        "Bash(echo $(python *))",
+        "Bash(echo `python *`)",
+        "Bash(ls <(python *))",
+        "Bash(ls >(python *))",
+        "Bash(echo ${x:-$(python *)})",
+        "Bash(echo x >/tmp/y *)",
+        "Bash(ls > x *)",
+        "Bash(ls < x *)",
+        // a star that is not the one trailing wildcard form matches from the first star on
+        "Bash(git diff*)",
+        "Bash(* --version)",
+        "Bash(git * main)",
+        "Bash(* --help *)",
+        // the colon form of an interpreter
+        "Bash(python:*)",
+        // the shells and interpreters the list names, in a versioned spelling too
+        "Bash(dash *)",
+        "Bash(ksh *)",
+        "Bash(pypy *)",
+        "Bash(pypy3.10 *)",
+        "Bash(lua *)",
+        "Bash(lua5.4 *)",
+        "Bash(nodejs *)",
+        "Bash(node22 *)",
+        "Bash(pythonw *)",
+        "Bash(Rscript *)",
+        // the wrappers the permissions page names
+        "Bash(stdbuf *)",
+        "Bash(noglob *)",
+        "Bash(watch *)",
+        "Bash(setsid *)",
+        "Bash(ionice *)",
+        "Bash(flock *)",
+        "Bash(docker *)",
+        "Bash(mise exec *)",
+        "Bash(devbox run *)",
+        "Bash(direnv exec *)",
+        // a rule with no star meets the character set
+        "Bash(ls\npython)",
+        "Bash(echo $(whoami))",
+        "Bash(ls; python)",
+        "Bash(cat <<EOF)",
+        "Bash(ls\tpython)",
         // R-3: the Monitor allow rule the dropped-rules list forbids
         "Monitor",
+        // a versioned interpreter with a trailing letter suffix (free-threaded and debug builds)
+        "Bash(python3.13t *)",
+        "Bash(python3.13d *)",
+        "Bash(python3.14t *)",
+        "Bash(pypy3.10t *)",
+        // the shells and escalators that run what follows them
+        "Bash(csh *)",
+        "Bash(tcsh *)",
+        "Bash(ash *)",
+        "Bash(pwsh *)",
+        "Bash(powershell *)",
+        "Bash(cmd *)",
+        "Bash(su *)",
+        "Bash(su -c *)",
+        "Bash(su:*)",
+        "Bash(chroot *)",
+        "Bash(chroot:*)",
+        // the Windows spelling of an interpreter, in any letter case
+        "Bash(powershell.exe *)",
+        "Bash(cmd.exe *)",
+        "Bash(python.exe *)",
+        "Bash(PowerShell.EXE *)",
     ] {
         let mut spec = audit_spec();
         spec.allowed_tools = vec![blanket.to_string()];
@@ -415,8 +519,351 @@ fn blanket_tool_rules_refuse_to_build() {
         "Bash(npm test)".to_string(),
         // a named subcommand with the colon wildcard stays narrow
         "Bash(git log:*)".to_string(),
+        // a one-word colon rule and a rule with no star beyond the bare command word
+        "Bash(ls:*)".to_string(),
+        "Bash(git:*)".to_string(),
+        "Bash(git status)".to_string(),
+        "Bash(moai card show)".to_string(),
+        // words that only start like a list word stay narrow
+        "Bash(python-config *)".to_string(),
+        "Bash(suspend *)".to_string(),
+        "Bash(ashtray *)".to_string(),
     ];
     assert!(build(&spec, &ctx(&root), &env).is_ok());
+}
+
+/// REQ-2: the WHOLE entry has one allowed shape — a tool name of ASCII letters, digits and
+/// underscores, then optionally one parenthesised body, nothing before it and nothing after it,
+/// no comma and no whitespace outside the body. Everything else refuses, so an entry cannot
+/// smuggle a second entry into the comma-joined `--allowedTools` value, and `Agent`, `Monitor`
+/// and a bare star never build.
+#[test]
+fn a_whole_entry_has_one_allowed_shape() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path().join("platform");
+    fs::create_dir_all(&root).unwrap();
+    let env = standin_env(&standin_dir(tmp.path()));
+    let builds = |entry: &str| {
+        let mut spec = audit_spec();
+        spec.allowed_tools = vec![entry.to_string()];
+        build(&spec, &ctx(&root), &env).is_ok()
+    };
+    for entry in [
+        // a second entry smuggled behind the comma join, a space or a newline
+        "Read,Bash(*)",
+        "Read,Bash",
+        "Read, Bash(*)",
+        "Bash(git diff *),Bash",
+        "Read\nBash",
+        "Read Bash",
+        "Read\tBash(*)",
+        // whitespace or anything else before or after the entry
+        " Bash(*)",
+        "Bash(*) ",
+        " Read",
+        "Read ",
+        "Read\n",
+        "Read\0",
+        "Read (a)",
+        "Read(a) ",
+        "Read(a),",
+        ",Read",
+        "Read,",
+        // a missing or doubled parenthesis, and text after the closing one
+        "Bash(",
+        "Read(",
+        "Bash(git diff *",
+        "(Read)",
+        "(Read",
+        "Read)",
+        "Read(a)b",
+        "Read(a)(b)",
+        "Read(a))",
+        "Bash(git diff *)(x)",
+        "Bash(git diff *)x",
+        // no name, a bare star, and names outside letters, digits and underscores
+        "",
+        "*",
+        "mcp__*",
+        "mcp__server__*",
+        "Re-ad",
+        "Re.ad(a)",
+        "Re ad",
+        "Read\u{00e9}",
+        "R\u{0435}ad",
+        "()",
+        "(*)",
+        // the tools that run commands, in every spelling and letter case
+        "Bash",
+        "bash",
+        "BASH",
+        "bash(*)",
+        "BASH(*)",
+        "PowerShell",
+        "powershell",
+        "powershell(*)",
+        "Agent",
+        "agent",
+        "Agent(*)",
+        "agent(*)",
+        "Agent(:*)",
+        "Agent( * )",
+        "Monitor",
+        "monitor",
+        "Monitor(*)",
+        "Monitor(tail -f x)",
+        "Monitor()",
+        // a wildcard-only or empty body is blanket for every tool
+        "Read(*)",
+        "Read(**)",
+        "Read(*:*)",
+        "Read()",
+        "Read( )",
+        "WebFetch(*)",
+        "Edit(**)",
+        // a body that is not one plain ASCII text: a comma, a parenthesis, a control
+        // character, a non-ASCII character
+        "Read(a,b)",
+        "Read(a(b)",
+        "Read(a)b)",
+        "Read(a\nb)",
+        "Read(a\tb)",
+        "Read(a\0b)",
+        "Read(\u{00e9})",
+        "Read(\u{200b})",
+        "Read(\u{ff21})",
+    ] {
+        assert!(
+            !builds(entry),
+            "entry {entry:?} is outside the shape and must refuse"
+        );
+    }
+    for entry in [
+        "Read",
+        "Edit",
+        "Grep",
+        "Glob",
+        "mcp__server__tool",
+        "Tool_2",
+        "Read(./src/**)",
+        "Read(/tmp/a b/c.txt)",
+        "WebFetch(domain:example.com)",
+        "Skill(skill:review)",
+        "Agent(Explore)",
+        "Agent(my-custom-agent)",
+        "Agent(model:opus)",
+        "Agent(isolation:*)",
+        "Bash(git diff *)",
+        "Bash(git log:*)",
+        "Bash(npm test)",
+        "bash(git diff *)",
+        "PowerShell(Get-ChildItem *)",
+    ] {
+        assert!(
+            builds(entry),
+            "entry {entry:?} is one allowed entry and must build"
+        );
+    }
+}
+
+/// REQ-2: the byte sweep over the entry outside the body. Each ASCII byte is placed before the
+/// name, inside the name, between the name and the body, and after the closing parenthesis, in a
+/// non-shell entry and in a Bash entry. A byte builds in the three name positions only when it
+/// is an ASCII letter, a digit or an underscore (it then simply extends the name); after the
+/// closing parenthesis no byte builds at all; and a name with no body builds on the same set.
+/// The set is spelled out here a second time on purpose, as a second opinion.
+#[test]
+fn every_ascii_byte_outside_the_body_refuses() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path().join("platform");
+    fs::create_dir_all(&root).unwrap();
+    let env = standin_env(&standin_dir(tmp.path()));
+    let builds = |entry: &str| {
+        let mut spec = audit_spec();
+        spec.allowed_tools = vec![entry.to_string()];
+        build(&spec, &ctx(&root), &env).is_ok()
+    };
+    let mut name_bytes = 0;
+    for byte in 0u8..=127 {
+        let c = byte as char;
+        let name_char = c.is_ascii_alphanumeric() || c == '_';
+        for entry in [
+            format!("{c}Read(./a)"),
+            format!("Re{c}ad(./a)"),
+            format!("Read{c}(./a)"),
+            format!("Read{c}"),
+            format!("{c}Read"),
+            format!("Re{c}ad"),
+            format!("{c}Tool(git diff *)"),
+            format!("Tool{c}(git diff *)"),
+        ] {
+            assert_eq!(
+                builds(&entry),
+                name_char,
+                "ASCII byte {byte} in {entry:?}: a name character extends the name, any other refuses"
+            );
+        }
+        for entry in [
+            format!("Read(./a){c}"),
+            format!("Tool(git diff *){c}"),
+            format!("Bash(git diff *){c}"),
+            format!("Bash(git diff *){c}Bash(git diff *)"),
+        ] {
+            assert!(
+                !builds(&entry),
+                "ASCII byte {byte} after the closing parenthesis of {entry:?} must refuse"
+            );
+        }
+        name_bytes += usize::from(name_char);
+    }
+    // 52 letters, 10 digits and the underscore
+    assert_eq!(name_bytes, 63);
+}
+
+/// REQ-2 states one set of characters for the whole rule; this pins it over every ASCII byte.
+/// A byte of the set, placed in an argument, builds, and every other byte refuses — in a
+/// wildcarded rule and in a rule without a star alike. The set is spelled out here a second
+/// time on purpose: the test is a second opinion, not a copy of the code's constant.
+#[test]
+fn every_ascii_byte_outside_the_set_refuses_in_an_argument() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path().join("platform");
+    fs::create_dir_all(&root).unwrap();
+    let env = standin_env(&standin_dir(tmp.path()));
+    let mut in_set = 0;
+    for byte in 0u8..=127 {
+        let c = byte as char;
+        let allowed = c.is_ascii_alphanumeric()
+            || matches!(c, ' ' | '.' | '_' | '/' | '-' | '=' | ':' | '@' | '%' | '+');
+        for rule in [format!("Bash(echo a{c}b *)"), format!("Bash(echo a{c}b)")] {
+            let mut spec = audit_spec();
+            spec.allowed_tools = vec![rule.clone()];
+            assert_eq!(
+                build(&spec, &ctx(&root), &env).is_ok(),
+                allowed,
+                "ASCII byte {byte} in {rule:?}: a byte of the set builds, any other refuses"
+            );
+        }
+        in_set += usize::from(allowed);
+    }
+    // 62 letters and digits, the space, and nine punctuation characters — the comma is not
+    // one of them
+    assert_eq!(in_set, 72);
+}
+
+/// REQ-2: a comma refuses anywhere in an entry, a Bash or PowerShell body included. The entries
+/// travel as one comma-joined `--allowedTools` value and the host's split inside parentheses is
+/// not documented, so a comma is the one byte that can carry a second entry.
+#[test]
+fn a_comma_refuses_anywhere_in_an_entry() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path().join("platform");
+    fs::create_dir_all(&root).unwrap();
+    let env = standin_env(&standin_dir(tmp.path()));
+    let builds = |entry: &str| {
+        let mut spec = audit_spec();
+        spec.allowed_tools = vec![entry.to_string()];
+        build(&spec, &ctx(&root), &env).is_ok()
+    };
+    for entry in [
+        // a second entry smuggled inside a shell body, with and without a wildcard
+        "Bash(git log --format=a,Bash)",
+        "Bash(git log --format=a,Bash(*))",
+        "Bash(git log --format=a,Bash *)",
+        "Bash(git log:a,b *)",
+        "Bash(echo a,b)",
+        "Bash(echo a,b *)",
+        "Bash(echo a, b *)",
+        "Bash(echo a ,b)",
+        "Bash(,)",
+        "Bash(a,)",
+        "Bash(,a)",
+        "bash(echo a,b)",
+        "PowerShell(Get-ChildItem a,b)",
+        "PowerShell(Get-ChildItem a,b *)",
+        // a comma in the body of any other tool, and between or around entries
+        "Read(a,b)",
+        "Read(,)",
+        "Agent(model:opus,model:haiku)",
+        "WebFetch(domain:a.com,b.com)",
+        "Read,Bash",
+        "Read,Bash(*)",
+        "Read(a),Read(b)",
+        "Bash(git diff *),Read",
+        "Read,",
+        ",Read",
+        ",",
+        "mcp__a,b",
+    ] {
+        assert!(
+            !builds(entry),
+            "entry {entry:?} holds a comma and must refuse"
+        );
+    }
+    // the same entries without the comma keep building
+    for entry in [
+        "Bash(git log --format=a)",
+        "Bash(echo a b *)",
+        "Read(a)",
+        "Agent(model:opus)",
+        "Bash(git log --format=%H:%s -5)",
+    ] {
+        assert!(builds(entry), "entry {entry:?} has no comma and must build");
+    }
+    // a comma never travels in the built value: every comma in the joined argument is a join
+    let mut spec = audit_spec();
+    spec.allowed_tools = vec!["Read".to_string(), "Bash(git diff *)".to_string()];
+    let built = build(&spec, &ctx(&root), &env).unwrap();
+    let joined = built
+        .args
+        .iter()
+        .skip_while(|a| a.as_str() != "--allowedTools")
+        .nth(1)
+        .unwrap();
+    assert_eq!(joined, "Read,Bash(git diff *)");
+}
+
+/// REQ-2: a rule without a wildcard meets the character set alone. Its first word is not
+/// judged, so an exact rule that starts with an interpreter builds (it names commands, not a
+/// family), and a character outside the set refuses in either kind of rule.
+#[test]
+fn a_rule_without_a_star_meets_the_set_and_keeps_its_first_word() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path().join("platform");
+    fs::create_dir_all(&root).unwrap();
+    let env = standin_env(&standin_dir(tmp.path()));
+    for rule in [
+        "Bash(python x.py)",
+        "Bash(sh)",
+        "Bash(sudo ls)",
+        "Bash(builtin ls)",
+        "Bash(uv run pytest)",
+        "Bash(devbox run npm test)",
+    ] {
+        let mut spec = audit_spec();
+        spec.allowed_tools = vec![rule.to_string()];
+        assert!(
+            build(&spec, &ctx(&root), &env).is_ok(),
+            "{rule} names commands without a wildcard and must build"
+        );
+    }
+    for rule in [
+        "Bash(ls\npython)",
+        "Bash(echo $(whoami))",
+        "Bash(ls; python)",
+        "Bash(ls\tpython)",
+        "Bash(echo \"hi\")",
+        "Bash(ls\u{00a0}*)",
+        "Bash(ls\u{200b} *)",
+        "Bash(ls\u{ff4c}s *)",
+    ] {
+        let mut spec = audit_spec();
+        spec.allowed_tools = vec![rule.to_string()];
+        assert!(
+            build(&spec, &ctx(&root), &env).is_err(),
+            "{rule:?} is outside the character set and must refuse"
+        );
+    }
 }
 
 /// N-5: other credential names reach the child no more than the API key does — every
@@ -836,8 +1283,9 @@ fn prompt_sits_behind_a_dashdash_and_the_author_check_ignores_case() {
     );
 }
 
-/// P-1: any wildcarded rule whose text starts with an assignment refuses, in every quote
-/// spelling — and an assignment-free narrow rule still builds.
+/// REQ-2: any wildcarded rule whose text starts with an assignment refuses, in every quote
+/// spelling — a word before `=` is not a plain command word, and no quoting can be told
+/// apart safely — and a narrow rule with an equals-bearing argument still builds.
 #[test]
 fn assignment_prefixed_wildcard_rules_refuse_in_every_spelling() {
     let tmp = tempfile::tempdir().unwrap();
@@ -862,6 +1310,23 @@ fn assignment_prefixed_wildcard_rules_refuse_in_every_spelling() {
     let mut spec = audit_spec();
     spec.allowed_tools = vec!["Bash(git diff *)".to_string()];
     assert!(build(&spec, &ctx(&root), &env).is_ok());
+    // the allowed shape holds: a plain command word, a colon-wildcard suffix, an
+    // equals-bearing argument (the word before `=` is not the first word), and cd/true
+    // on their own (no compound operator)
+    for rule in [
+        "Bash(git log:*)",
+        "Bash(git log --foo=bar *)",
+        "Bash(cd *)",
+        "Bash(true *)",
+        "Bash(npm run build:*)",
+    ] {
+        let mut spec = audit_spec();
+        spec.allowed_tools = vec![rule.to_string()];
+        assert!(
+            build(&spec, &ctx(&root), &env).is_ok(),
+            "{rule} is the allowed shape and must build"
+        );
+    }
 }
 
 /// The reaped-elsewhere case, in a process of its own: SIGCHLD set to SIG_IGN makes the

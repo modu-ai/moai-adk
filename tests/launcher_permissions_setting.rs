@@ -1,4 +1,6 @@
 //! User-only launcher access configuration; all homes and credentials are synthetic.
+//! SPEC-20261123-launcher-auto-mode: the default is auto mode; `full` (the bypass) is only the
+//! user's own choice.
 mod common;
 use serde_json::Value;
 use std::{
@@ -28,6 +30,29 @@ const INVALID: [&str; 17] = [
     r#""SECRET-invalid-root""#,
     "true",
 ];
+
+/// The three access modes a launch can end in.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Mode {
+    /// `--permission-mode auto` (the default).
+    Auto,
+    /// `--dangerously-skip-permissions` (only `launcher.role_access: full`).
+    Full,
+    /// No permission flag (`--permissions` or `launcher.role_access: prompt`).
+    Prompt,
+}
+
+/// The mode a launch resolves to: `--permissions` > the user key > auto.
+fn mode_of(setting: Option<&str>, cli_permissions: bool) -> Mode {
+    if cli_permissions {
+        return Mode::Prompt;
+    }
+    match setting {
+        Some("full") => Mode::Full,
+        Some("prompt") => Mode::Prompt,
+        _ => Mode::Auto,
+    }
+}
 
 fn project() -> tempfile::TempDir {
     let p = tempfile::tempdir().unwrap();
@@ -79,70 +104,27 @@ fn dry(project: &Path, home: &Path, args: &[&str]) -> Value {
     serde_json::from_slice(&out.stdout).unwrap()
 }
 
-// Literal complete host argv snapshots: order and defaults are part of the contract.
-fn expected(host: &str, role: usize, prompt: bool) -> Vec<&'static str> {
-    match (host, role, prompt) {
-        ("cc", 0, false) => vec![
-            "claude",
-            "--name",
-            "leader",
-            "--model",
-            "opus",
-            "--effort",
-            "medium",
-            "--dangerously-skip-permissions",
-        ],
-        ("cc", 1, false) => vec![
-            "claude",
-            "--name",
-            "agent-1",
-            "--model",
-            "opus",
-            "--effort",
-            "medium",
-            "--dangerously-skip-permissions",
-        ],
-        ("cc", 0, true) => vec![
-            "claude", "--name", "leader", "--model", "opus", "--effort", "medium",
-        ],
-        ("cc", 1, true) => vec![
-            "claude", "--name", "agent-1", "--model", "opus", "--effort", "medium",
-        ],
-        ("cc", 2, _) => vec!["claude", "--model", "opus", "--effort", "medium"],
-        ("glm", 0, false) => vec![
-            "claude",
-            "--name",
-            "leader",
-            "--model",
-            "opus",
-            "--effort",
-            "medium",
-            "--dangerously-skip-permissions",
-        ],
-        ("glm", 1, false) => vec![
-            "claude",
-            "--name",
-            "agent-1",
-            "--model",
-            "opus",
-            "--effort",
-            "medium",
-            "--dangerously-skip-permissions",
-        ],
-        ("glm", 0, true) => vec![
-            "claude", "--name", "leader", "--model", "opus", "--effort", "medium",
-        ],
-        ("glm", 1, true) => vec![
-            "claude", "--name", "agent-1", "--model", "opus", "--effort", "medium",
-        ],
-        ("glm", 2, _) => vec!["claude", "--model", "opus", "--effort", "medium"],
+// Literal complete host argv snapshots: order and defaults are part of the contract. Both hosts
+// start the same Claude Code argv (glm differs only by its environment).
+fn expected(role: usize, mode: Mode) -> Vec<&'static str> {
+    let mut argv = match role {
+        0 => vec!["claude", "--name", "leader"],
+        1 => vec!["claude", "--name", "agent-1"],
+        2 => vec!["claude"],
         _ => unreachable!(),
+    };
+    argv.extend(["--model", "opus", "--effort", "medium"]);
+    match mode {
+        Mode::Auto => argv.extend(["--permission-mode", "auto"]),
+        Mode::Full => argv.push("--dangerously-skip-permissions"),
+        Mode::Prompt => {}
     }
+    argv
 }
 
 #[test]
 fn access_matrix_and_cli_precedence_preserve_complete_host_argv() {
-    for setting in [None, Some("full"), Some("prompt")] {
+    for setting in [None, Some("auto"), Some("full"), Some("prompt")] {
         let home = tempfile::tempdir().unwrap();
         if let Some(value) = setting {
             config(
@@ -162,12 +144,49 @@ fn access_matrix_and_cli_precedence_preserve_complete_host_argv() {
                     let v = dry(p.path(), home.path(), &args);
                     assert_eq!(
                         v["argv"],
-                        serde_json::json!(expected(host, role, cli || setting == Some("prompt"))),
+                        serde_json::json!(expected(role, mode_of(setting, cli))),
                         "{args:?} {setting:?}"
                     );
                 }
             }
         }
+    }
+}
+
+/// REQ-1: with no key, no `--permissions` and a HOME without a launcher file, every launch form
+/// of both hosts, the top-level `-l|-a` included, starts in auto mode and never in the bypass.
+#[test]
+fn every_launch_form_defaults_to_auto_mode_and_never_to_the_bypass() {
+    let p = project();
+    let home = tempfile::tempdir().unwrap();
+    for host in HOSTS {
+        for flags in ROLES {
+            let mut args = vec![host];
+            args.extend_from_slice(flags);
+            let argv = dry(p.path(), home.path(), &args)["argv"].clone();
+            let list: Vec<&str> = argv
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|a| a.as_str().unwrap())
+                .collect();
+            assert!(
+                list.windows(2).any(|w| w == ["--permission-mode", "auto"]),
+                "{args:?}: {list:?}"
+            );
+            assert!(
+                !list.contains(&"--dangerously-skip-permissions"),
+                "{args:?}: {list:?}"
+            );
+        }
+    }
+    for args in [vec!["-l"], vec!["-a"], vec!["-a", "glm"]] {
+        let argv = dry(p.path(), home.path(), &args)["argv"].to_string();
+        assert!(
+            argv.contains(r#""--permission-mode","auto""#),
+            "{args:?}: {argv}"
+        );
+        assert!(!argv.contains("dangerously"), "{args:?}: {argv}");
     }
 }
 
@@ -217,7 +236,12 @@ fn absent_key_retains_byte_identical_output_and_project_config_is_ignored() {
 
 #[test]
 fn project_setting_cannot_override_either_user_setting() {
-    for (user, project_value) in [("full", "prompt"), ("prompt", "full")] {
+    for (user, project_value) in [
+        ("full", "prompt"),
+        ("prompt", "full"),
+        ("auto", "full"),
+        ("auto", "prompt"),
+    ] {
         let home = tempfile::tempdir().unwrap();
         config(
             home.path(),
@@ -245,7 +269,7 @@ fn project_setting_cannot_override_either_user_setting() {
                     args.extend_from_slice(flags);
                     assert_eq!(
                         dry(p.path(), home.path(), &args)["argv"],
-                        serde_json::json!(expected(host, role, user == "prompt"))
+                        serde_json::json!(expected(role, mode_of(Some(user), false)))
                     );
                 }
             }
@@ -285,6 +309,23 @@ fn invalid_config_is_refused_even_for_roleless_and_cli_override() {
     }
 }
 
+/// REQ-2: the refusal names the three values and never quotes the bad one.
+#[test]
+fn the_refusal_names_auto_full_and_prompt() {
+    let p = project();
+    let home = tempfile::tempdir().unwrap();
+    config(
+        home.path(),
+        r#"{"launcher":{"role_access":"SECRET-invalid-access"}}"#,
+    );
+    let out = command(p.path(), home.path(), &["cc", "--dry-run"])
+        .output()
+        .unwrap();
+    rejected(&out);
+    let err = String::from_utf8_lossy(&out.stderr);
+    assert!(err.contains("auto, full or prompt"), "{err}");
+}
+
 #[test]
 fn nonregular_user_config_is_refused() {
     let p = project();
@@ -306,20 +347,57 @@ fn nonregular_user_config_is_refused() {
 fn legacy_top_level_roles_use_the_same_access_resolution() {
     let p = project();
     let home = tempfile::tempdir().unwrap();
-    for setting in ["full", "prompt"] {
+    for setting in ["auto", "full", "prompt"] {
         config(
             home.path(),
             &format!(r#"{{"launcher":{{"role_access":"{setting}"}}}}"#),
         );
         assert_eq!(
             dry(p.path(), home.path(), &["-l"])["argv"],
-            serde_json::json!(expected("cc", 0, setting == "prompt"))
+            serde_json::json!(expected(0, mode_of(Some(setting), false)))
         );
         for host in HOSTS {
             assert_eq!(
                 dry(p.path(), home.path(), &["-a", host])["argv"],
-                serde_json::json!(expected(host, 1, setting == "prompt"))
+                serde_json::json!(expected(1, mode_of(Some(setting), false)))
             );
         }
+    }
+}
+
+/// REQ-7 and REQ-8: the notes say what the launch did; the bypass is never called the default,
+/// and only an auto-mode glm launch points at the troubleshooting notice.
+#[test]
+fn notes_name_the_mode_and_only_glm_points_at_the_classifier_notice() {
+    let p = project();
+    for (host, expect_pointer) in [("cc", false), ("glm", true)] {
+        // A fresh HOME per host: the `full` setting written below must not reach the next host.
+        let home = tempfile::tempdir().unwrap();
+        for flags in ROLES {
+            let mut args = vec![host];
+            args.extend_from_slice(flags);
+            let notes = dry(p.path(), home.path(), &args)["notes"].to_string();
+            assert!(
+                notes.contains("--permission-mode auto"),
+                "{args:?}: {notes}"
+            );
+            assert!(!notes.contains("dangerously"), "{args:?}: {notes}");
+            assert_eq!(
+                notes.contains("docs/troubleshooting.md"),
+                expect_pointer,
+                "{args:?}: {notes}"
+            );
+        }
+        // The bypass chosen by the user is named as the user's own choice; `--permissions` and
+        // `prompt` add no pointer either.
+        config(home.path(), r#"{"launcher":{"role_access":"full"}}"#);
+        let notes = dry(p.path(), home.path(), &[host, "-a"])["notes"].to_string();
+        assert!(notes.contains("launcher.role_access"), "{notes}");
+        assert!(!notes.contains("--permission-mode"), "{notes}");
+        assert!(!notes.contains("docs/troubleshooting.md"), "{notes}");
+        let bare = tempfile::tempdir().unwrap();
+        let notes = dry(p.path(), bare.path(), &[host, "-a", "--permissions"])["notes"].to_string();
+        assert!(!notes.contains("--permission-mode"), "{notes}");
+        assert!(!notes.contains("docs/troubleshooting.md"), "{notes}");
     }
 }
