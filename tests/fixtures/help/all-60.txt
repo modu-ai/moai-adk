@@ -372,6 +372,9 @@ Internal
                          worktrees
   worktree-gc-apply      Remove or trim the previewed
                          worktrees
+  branch-gc-plan         Preview deleting the merged, unused
+                         local branches
+  branch-gc-apply        Delete the previewed local branches
   worktree-slot          Fixed worktree slots, warmed from
                          the seed
   worktree-install-plan  Preview a scoped package install
