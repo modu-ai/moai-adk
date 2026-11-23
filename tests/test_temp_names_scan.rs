@@ -9,15 +9,14 @@
 //! rest is cut into statements at `;`, `{` and `}`, and a statement that holds both the temp folder
 //! call and the process id call is reported with the line of the pid call. The pid used as data (a
 //! key name, a lock owner, a file name inside a `TempDir`) shares no statement with the temp folder
-//! call and is not reported. A pid name hidden behind a helper function is not seen.
+//! call and is not reported. A pid name hidden behind a helper function, a temp folder bound to a
+//! variable in an earlier statement, and a bare `id()` after `use std::process::id` are not seen
+//! (SPEC-20261124-pid-scan-followup, Non-goals). Every file under `tests/` is read, this one too.
 
 use std::fs;
 use std::path::{Path, PathBuf};
 
 const ROOT: &str = env!("CARGO_MANIFEST_DIR");
-
-/// This file holds the two calls as fixture text.
-const SELF_FILE: &str = "tests/test_temp_names_scan.rs";
 
 const TEMP_CALL: &str = "temp_dir()";
 const PID_CALL: &str = "process::id()";
@@ -56,13 +55,8 @@ fn code_view(src: &str) -> String {
                     i += 1;
                 }
             }
-        } else if ch == 'r'
-            && (i == 0 || !(c[i - 1].is_alphanumeric() || c[i - 1] == '_'))
-            && raw_open(&c, i).is_some()
-        {
-            let hashes = raw_open(&c, i).unwrap_or(0);
-            // `r`, the hashes and the opening quote stay as they are.
-            let open_len = 1 + hashes + 1;
+        } else if let Some((open_len, hashes)) = raw_literal_open(&c, i) {
+            // The prefix (`r`, `br`, `cr`), the hashes and the opening quote stay as they are.
             out.extend(&c[i..i + open_len]);
             i += open_len;
             while i < c.len() {
@@ -121,13 +115,29 @@ fn code_view(src: &str) -> String {
     out.into_iter().collect()
 }
 
-/// The number of `#` of a raw string that opens at `i` (`r"`, `r#"`), or None.
+/// The number of `#` of a raw string whose `r` is at `i` (`r"`, `r#"`), or None.
 fn raw_open(c: &[char], i: usize) -> Option<usize> {
     let mut k = i + 1;
     while c.get(k) == Some(&'#') {
         k += 1;
     }
     (c.get(k) == Some(&'"')).then_some(k - i - 1)
+}
+
+/// The length of the opening of a raw literal that starts at `i` (`r"`, `br#"`, `cr"`) and its
+/// number of `#`, or None. The prefix must not be the end of a longer name. A raw byte string or a
+/// raw C string is raw like `r"…"`: a backslash in it is not an escape.
+fn raw_literal_open(c: &[char], i: usize) -> Option<(usize, usize)> {
+    if i > 0 && (c[i - 1].is_alphanumeric() || c[i - 1] == '_') {
+        return None;
+    }
+    let r_at = match c[i] {
+        'r' => i,
+        'b' | 'c' if c.get(i + 1) == Some(&'r') => i + 1,
+        _ => return None,
+    };
+    let hashes = raw_open(c, r_at)?;
+    Some((r_at - i + 1 + hashes + 1, hashes))
 }
 
 /// The 1-based lines of the pid calls that share a statement with the temp folder call.
@@ -234,13 +244,41 @@ fn temp_names_scan_ignores_a_pid_that_is_data_and_text_that_is_not_code() {
     );
 }
 
-/// REQ-2, AC-4: the checked-in `tests/` folder holds no pid name under the temp folder.
+/// REQ-1, AC-1 (SPEC-20261124-pid-scan-followup): `br"…"` and `cr"…"` are raw literals, so a
+/// backslash before the closing quote does not swallow the code after them, and text inside them
+/// is not scanned.
 #[test]
-fn temp_names_tree_has_no_pid_names_under_the_temp_folder() {
-    let root = Path::new(ROOT);
+fn temp_names_scan_reads_raw_byte_strings_as_raw() {
+    let byte = r##"let a = br"C:\";
+let p = temp_dir().join(format!("{}", process::id()));
+"##;
+    assert_eq!(pid_names_under_temp(byte), vec![2], "br with a backslash");
+
+    let hashed = r##"let a = br#"a"b"#;
+let p = temp_dir().join(format!("{}", process::id()));
+"##;
+    assert_eq!(pid_names_under_temp(hashed), vec![2], "br with hashes");
+
+    let cstr = r##"let a = cr"x\";
+let p = temp_dir().join(format!("{}", process::id()));
+"##;
+    assert_eq!(pid_names_under_temp(cstr), vec![2], "cr with a backslash");
+
+    let inside = r##"let a = br"temp_dir() process::id()";
+let b = br#"temp_dir() "x" process::id()"#;
+let c = cr"temp_dir() process::id()";
+"##;
+    assert!(
+        pid_names_under_temp(inside).is_empty(),
+        "text inside raw literals"
+    );
+}
+
+/// The number of files read under `<root>/tests` and the `file:line` of every pid name found.
+fn tree_violations(root: &Path) -> (usize, Vec<String>) {
     let mut files = Vec::new();
     rust_files(&root.join("tests"), &mut files);
-    assert!(files.len() > 100, "the walk found {} files", files.len());
+    let count = files.len();
     let mut found = Vec::new();
     for file in files {
         let rel = file
@@ -248,16 +286,36 @@ fn temp_names_tree_has_no_pid_names_under_the_temp_folder() {
             .unwrap()
             .to_string_lossy()
             .replace('\\', "/");
-        if rel == SELF_FILE {
-            continue;
-        }
         let text = String::from_utf8_lossy(&fs::read(&file).unwrap()).into_owned();
         for line in pid_names_under_temp(&text) {
             found.push(format!("{rel}:{line}"));
         }
     }
+    (count, found)
+}
+
+/// REQ-2, AC-4: the checked-in `tests/` folder holds no pid name under the temp folder.
+#[test]
+fn temp_names_tree_has_no_pid_names_under_the_temp_folder() {
+    let (count, found) = tree_violations(Path::new(ROOT));
+    assert!(count > 100, "the walk found {count} files");
     assert!(
         found.is_empty(),
         "a scratch folder named from the process id (use tempfile::TempDir): {found:?}"
     );
+}
+
+/// REQ-2, AC-2 (SPEC-20261124-pid-scan-followup): the walk reads every file, one named like the
+/// scan file included, so a violation written into the scan file itself is reported.
+#[test]
+fn temp_names_tree_walk_reads_a_file_named_like_the_scan_file() {
+    let dir = tempfile::tempdir().unwrap();
+    let tests = dir.path().join("tests");
+    fs::create_dir_all(&tests).unwrap();
+    let bad = "fn f() {\n    let p = std::env::temp_dir().join(format!(\"x-{}\", std::process::id()));\n}\n";
+    fs::write(tests.join("test_temp_names_scan.rs"), bad).unwrap();
+    fs::write(tests.join("clean.rs"), "fn g() {}\n").unwrap();
+    let (count, found) = tree_violations(dir.path());
+    assert_eq!(count, 2);
+    assert_eq!(found, vec!["tests/test_temp_names_scan.rs:2".to_string()]);
 }
