@@ -1,9 +1,10 @@
 ---
 id: SPEC-20261124-pid-scan-followup
 title: "The pid-name scan reads raw byte strings as raw and no longer skips its own file"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-24
+approval: {by: leader, at: 2026-11-23, basis: "leader decision note 7783 of card C-421 (2026-11-23T18:37:42Z, delegation of the user 2026-11-23T13:57Z, the leader's judgement and not a selection by the user) answering request note 7782 with option (a)", digest: "sha256:be82130c0d1436c5e295d4b110f6f1cc607258837fdfde7d39c9f5258b34db2b"}
 ---
 
 # The pid-name scan reads raw byte strings as raw and no longer skips its own file
