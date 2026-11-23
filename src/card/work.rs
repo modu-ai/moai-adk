@@ -145,7 +145,7 @@ pub fn next(project: &Path, home: &Path, holder: Option<&str>) -> Result<Value> 
                     v["mine"] = json!(mine);
                     v["theirs"] = json!(theirs);
                 }
-                SkipReason::EmptyScope | SkipReason::ReviewNoHolder => {}
+                SkipReason::EmptyScope | SkipReason::ReviewNoHolder | SkipReason::NoCriteria => {}
             }
             v
         })

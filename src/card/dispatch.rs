@@ -157,12 +157,7 @@ fn no_criteria_refusal(
     action: &str,
     card_id: i64,
 ) -> rusqlite::Result<Option<String>> {
-    let counted: i64 = conn.query_row(
-        "SELECT count(*) FROM card_ac WHERE card_id = ?1 AND status <> 'withdrawn'",
-        [card_id],
-        |r| r.get(0),
-    )?;
-    if counted > 0 {
+    if crate::ledger::workflow::counted_criteria(conn, card_id)? > 0 {
         return Ok(None);
     }
     let name = input::card_name(card_id);

@@ -230,6 +230,9 @@ pub enum SkipReason {
     EmptyScope,
     /// It is in `review` and nobody holds it, so nobody can close or reopen it.
     ReviewNoHolder,
+    /// It has no criterion that counts ([`counted_criteria`] is 0), so `take` refuses it
+    /// (SPEC-20261124-card-next-skips-no-criteria).
+    NoCriteria,
 }
 
 impl SkipReason {
@@ -239,8 +242,20 @@ impl SkipReason {
             SkipReason::ScopeOverlap { .. } => "scope_overlap",
             SkipReason::EmptyScope => "empty_scope",
             SkipReason::ReviewNoHolder => "review_no_holder",
+            SkipReason::NoCriteria => "no_criteria",
         }
     }
+}
+
+/// How many criterion rows of the card count: the rows whose status is not `withdrawn`. A card
+/// with 0 can never be closed, so `card take` refuses it and `card next` skips it; both ask this
+/// one function, so the two cannot drift apart (SPEC-20261124-card-next-skips-no-criteria).
+pub fn counted_criteria(conn: &Connection, card_id: i64) -> rusqlite::Result<i64> {
+    conn.query_row(
+        "SELECT count(*) FROM card_ac WHERE card_id = ?1 AND status <> 'withdrawn'",
+        [card_id],
+        |r| r.get(0),
+    )
 }
 
 /// A card that is not offered, with the reason.
@@ -350,7 +365,7 @@ pub fn next_filled(
                 scope_source = Some(source);
             }
         }
-        let reason = if scope.is_empty() {
+        let mut reason = if scope.is_empty() {
             Some(SkipReason::EmptyScope)
         } else {
             reservation::find_overlap(conn, now, card_id, &scope)?.map(|o| {
@@ -361,6 +376,11 @@ pub fn next_filled(
                 }
             })
         };
+        // A card `take` would refuse for want of a criterion is not offered. The check comes after
+        // the reasons above, so a card they skip keeps its reason.
+        if reason.is_none() && counted_criteria(conn, card_id)? == 0 {
+            reason = Some(SkipReason::NoCriteria);
+        }
         match reason {
             Some(reason) => out.skipped.push(Skipped {
                 card_id,
