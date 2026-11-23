@@ -1654,31 +1654,11 @@ fn hook_binary_exits_2_on_a_lane_branch_without_a_token() {
 
 // Retired with the MODE-AGENT route (SPEC-20261122-next-flow-skills-agents REQ-2): `mode_agent_workflow_names_claim_verify_before_writes` pinned the lane's claim-verify step, which left with the route.
 
-/// #3030 D2: CLAUDE.md states one order for the local claim record: claim in the folder you
-/// will work in, and run `claim-link` when the folder or branch changes afterwards. The agent-mode
-/// half left with the MODE-AGENT route (SPEC-20261122-next-flow-skills-agents REQ-2).
-#[test]
-fn claim_order_docs_agree() {
-    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
-    let agents = fs::read_to_string(root.join("CLAUDE.md")).unwrap();
-    let line = |text: &str, start: &str| -> String {
-        text.lines()
-            .find(|l| l.starts_with(start))
-            .unwrap_or_else(|| panic!("no line starting {start:?}"))
-            .to_string()
-    };
-    let step1 = line(&agents, "1. Claim.");
-    let step2 = line(&agents, "2. Worktree.");
-    assert!(
-        step1.contains("claim in the folder you will work in"),
-        "{step1}"
-    );
-    assert!(step1.contains("moai claim-link"), "{step1}");
-    assert!(
-        step2.contains("create it first, then claim in it"),
-        "{step2}"
-    );
-}
+// Retired with the Issue claim (user decision 2026-11-16, local card ledger;
+// SPEC-20261123-claude-md-rewrite rule-table rows R-13 to R-15): `claim_order_docs_agree` (#3030
+// D2) pinned the lines `1. Claim.` and `2. Worktree.` of CLAUDE.md, which left with the Issue
+// claim; `moai card take` records the worktree and branch of a reservation instead. The origin of
+// the claim-link rule stays in docs/claude-md-rule-provenance.md.
 
 /// #2673 AC-3: `claim-verify --hook` reads the branch, the claim record and the commits in the
 /// folder `git -C` names. Before, a commit sent from the primary checkout with

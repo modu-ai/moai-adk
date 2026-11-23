@@ -350,6 +350,7 @@ mod tests {
         assert_eq!(shorten_model_name("claude-sonnet-5-5"), "Sonnet 5.5");
         assert_eq!(shorten_model_name("claude-3-5-haiku-20241022"), "Haiku 3.5");
         assert_eq!(shorten_model_name("glm-5.3[1m]"), "glm-5.3");
+        assert_eq!(shorten_model_name("glm-5.4[1m]"), "glm-5.4");
         assert_eq!(shorten_model_name("claude-fable-5-1"), "Fable 5.1");
     }
 

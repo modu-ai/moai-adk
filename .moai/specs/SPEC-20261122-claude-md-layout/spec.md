@@ -2,7 +2,7 @@
 id: SPEC-20261122-claude-md-layout
 title: "CLAUDE.md and CLAUDE.local.md replace AGENTS.md and AGENTS.local.md in the files moai owns, and the flow rule is global"
 status: draft
-revision: 3
+revision: 4
 created: 2026-11-22
 parent: null
 ---
@@ -17,18 +17,20 @@ moai 가 사용자 프로젝트에서 관리하는 지침 파일을 Claude Code 
 | --- | --- | --- | --- | --- |
 | `<project>/CLAUDE.md` | 프로젝트, moai 는 블록 하나 | 추적 | 사용자 글 + `moai-workflow` 블록(사실만, 15줄 이내) | 이 SPEC |
 | `<project>/CLAUDE.local.md` | 사용자 | 무시 | 개인 메모. moai 는 사용자가 고를 때만 만들어요 | 이 SPEC |
-| `<config dir>/rules/moai/flow.md` | moai | 해당 없음 | 모든 프로젝트에 공통인 NeXT-Flow 글 하나. `paths:` 없음. 설정 폴더마다 하나 | 이 SPEC(요구), `SPEC-20261122-claude-md-home-routing`(쓰기) |
+| `<config dir>/rules/moai/flow.md` | moai | 해당 없음 | 모든 프로젝트에 공통인 NeXT-Flow 글 하나. `paths:` 없음. 전역 설정 폴더 `~/.claude` 에 하나(다른 폴더는 링크로 읽음) | 이 SPEC(요구), `SPEC-20261122-claude-md-home-routing`(쓰기) |
 | `<project>/.claude/rules`, `skills`, `agents`, `commands`, `output-styles` | 사용자 | 해당 없음 | moai 는 기본으로 쓰지 않아요. 프로젝트 맞춤 하네스는 사용자가 고를 때만 | 이 SPEC(REQ-9) |
 | 프로젝트의 AGENTS 파일 옮기기 | 사용자 선택 | | `move` / `leave`, 그리고 `move` 뒤 따로 고르는 원본 지우기 | `SPEC-20261122-claude-md-project-picks` |
 | 프로젝트 레이어의 쓰기 규칙 | moai | | 영수증, 링크·UTF-8 거부, baseline, 미리보기 키, 토큰 | `SPEC-20261122-claude-md-project-layer` |
-| `<config dir>/rules/moai.md` | moai | 해당 없음 | `/moai` 진입 안내 12줄 이내. `<config dir>` 는 `CLAUDE_CONFIG_DIR` 또는 `~/.claude` | `SPEC-20261122-claude-md-home-routing` |
+| `<config dir>/rules/moai.md` | moai | 해당 없음 | `/moai` 진입 안내 12줄 이내. `<config dir>` 는 `~/.claude` (`CLAUDE_CONFIG_DIR` 의 프로필은 `rules` 링크로 읽음) | `SPEC-20261122-claude-md-home-routing` |
 | `.gitignore` 와 글 시험 | | | `.claude/` 통째 무시 해제, 이름 시험, 배너 고정 | `SPEC-20261122-claude-md-text-and-ignore` |
 
-개정 2(2026-11-22, 사용자 결정): moai 의 공통 내용 — 흐름 규칙, 라우팅, 스킬, 에이전트, 명령, 출력 스타일 — 은 전역 설정 폴더(`CLAUDE_CONFIG_DIR`, 없으면 `~/.claude`)에 설치하고, moai 는 프로젝트의 `.claude/rules` 등에 기본으로 쓰지 않아요. 프로젝트 `CLAUDE.md` 의 블록은 이 프로젝트만의 사실(도구, 검사 명령, 언어, 흐름 이름과 통합 브랜치, SPEC·카드 자리)이라서 남아요. 슬롯 0 탐침이 보여 준 대로 프로필 폴더는 자기 `rules/` 만 읽으니, 설정 폴더(Orca 프로필마다 하나)마다 자기 사본을 받아요. 전역 파일을 쓰는 일은 사용자의 선택이고 쓰기 구현은 `SPEC-20261122-claude-md-home-routing` 이 맡아요.
+개정 2(2026-11-22, 사용자 결정): moai 의 공통 내용 — 흐름 규칙, 라우팅, 스킬, 에이전트, 명령, 출력 스타일 — 은 전역 설정 폴더 `~/.claude` 에 설치하고, moai 는 프로젝트의 `.claude/rules` 등에 기본으로 쓰지 않아요. 프로젝트 `CLAUDE.md` 의 블록은 이 프로젝트만의 사실(도구, 검사 명령, 언어, 흐름 이름과 통합 브랜치, SPEC·카드 자리)이라서 남아요. 슬롯 0 탐침이 보여 준 대로 프로필 폴더(Orca 프로필)는 자기 `rules/` 만 읽으니, 사본을 받지 않고 `rules` 를 `~/.claude/rules` 로 가는 링크로 두어 읽어요(개정 4). 링크는 사용자(또는 Orca)가 만들고 moai 는 만들지 않아요. 전역 파일을 쓰는 일은 사용자의 선택이고 쓰기 구현은 `SPEC-20261122-claude-md-home-routing` 이 맡아요.
 
-이 SPEC 은 첫 조각(조사 + SPEC)이에요. 코드, 시험, 이 저장소 자신의 `AGENTS.md` 이동은 아래 Plan 의 뒤 조각에서 해요. 요구가 12개를 넘으면 쪼개라는 규칙(SPEC 크기 예산)에 따라 다섯 SPEC 으로 나눴고, 넷은 이 SPEC 을 `parent` 로 이어요.
+이 SPEC 은 첫 조각(조사 + SPEC)이에요. 코드, 시험, 이 저장소 자신의 `AGENTS.md` 이동은 아래 Plan 의 뒤 조각에서 해요. 요구가 12개를 넘으면 쪼개라는 규칙(SPEC 크기 예산)에 따라 여섯 SPEC 으로 나눴고(흐름 규칙 파일의 내용과 한도는 `SPEC-20261122-claude-md-flow-rule`), 다섯은 이 SPEC 을 `parent` 로 이어요.
 
 개정 3(2026-11-22, 사용자 결정 'AGENTS.md 제거해라. CLAUDE.md CLAUDE.local.md 만 사용한다', 범위는 제품과 이 저장소): moai 는 `CLAUDE.md` 와 `CLAUDE.local.md` 만 쓰고 `AGENTS.md` 는 어떤 경우에도 쓰지 않아요. `import` 선택(`@AGENTS.md` 한 줄)은 없어져요. 사용자의 기존 `AGENTS.md` 에는 `move`(글을 `CLAUDE.md` 로, `AGENTS.local.md` 는 `CLAUDE.local.md` 로)와 `leave`(moai 는 그 파일을 건드리지도 읽지도 않아요)를 보여 주고, 옮긴 뒤 확인이 끝나면 원본을 지우는 일은 따로 고르는 선택이에요. 그 선택 없이는 사용자 파일을 지우지 않아요. 이 저장소 자신의 `AGENTS.md` 는 `CLAUDE.md` 로, `AGENTS.local.md` 는 `CLAUDE.local.md`(개인, git 무시; 공유 규칙은 `CLAUDE.md` 로)로 옮기고 두 원본을 지워요. 그 파일을 읽는 시험도 함께 옮겨요(Plan 5).
+
+개정 4(2026-11-23, 사용자 결정 `~/.claude` 가 공통 설정의 유일한 정본이고 Orca 프로필은 링크로 읽는 쪽, 독립 감사 FAIL 의 수리): 공통 rules 두 파일의 사본은 `~/.claude` 하나뿐이에요. `CLAUDE_CONFIG_DIR` 가 프로필을 가리켜도 쓰는 곳은 `~/.claude` 이고, 프로필과 `--config-dir` 폴더는 사본 없는 줄로 보고돼요(`rules` 가 `~/.claude/rules` 로 가는 링크면 `linked`, 아니면 `not_linked` 와 링크 안내). 위 개정 2 의 "설정 폴더마다" 는 이 개정이 대신해요.
 
 ### What exists (tip `012e9470cb`)
 
@@ -125,7 +127,7 @@ Slices in this order. Each is one SPEC-backed change with its own audit tier; th
 | D-3 | `move` copies and never changes an original; an original is deleted only by the separate removal pick after the copy is verified, through a receipt that can restore it. | The user's decision of 2026-11-22: no user file is deleted without that pick. | Drop the removal pick. |
 | D-4 | A moai-generated `AGENTS.local.md` (the first-creation text) is not copied. | `is_generated_local` already recognises it (`a:396`); copying moai's own template would be noise. | Copy it too. |
 | D-5 | The old managed block inside `AGENTS.md` is not copied and not touched; the preview says it is no longer updated. | Originals stay as they are; a fresh block is rendered in `CLAUDE.md`. | Strip it on a later pick. |
-| D-6 | The flow rule is global: one file `<config dir>/rules/moai/flow.md` per config folder, the NeXT-Flow text, no `paths` key. A project on another flow gets a project rule only through the project harness pick. | The user's decision of 2026-11-22: moai's common content is installed in the config folder and moai writes nothing into a project's `.claude` folders by default. Unscoped rules load at launch and survive compaction (context-window.md L64, L79); a profile folder reads only its own `rules/` (slice 0), so each config folder gets its own copy on the user's pick. Replaces the revision 1 decision of a project file `.claude/rules/moai/flow.md` written from `work_flow`. | Return to a project file, or add `paths` for a scoped rule. |
+| D-6 | The flow rule is global: one file `~/.claude/rules/moai/flow.md`, the NeXT-Flow text, no `paths` key. A project on another flow gets a project rule only through the project harness pick. | The user's decision of 2026-11-22: moai's common content is installed in the config folder and moai writes nothing into a project's `.claude` folders by default. Unscoped rules load at launch and survive compaction (context-window.md L64, L79); a profile folder reads only its own `rules/` (slice 0), so a profile folder reads the one copy through a `rules` link to `~/.claude/rules` and gets no copy of its own (revision 4). Replaces the revision 1 decision of a project file `.claude/rules/moai/flow.md` written from `work_flow`. | Return to a project file, or add `paths` for a scoped rule. |
 | D-7 | `rules/moai.md` is a whole file owned by moai, judged by the last-written hash like the style file. | The file is moai's alone; markers add nothing. | Use a marker block. |
 | D-8 | Removing the old routing block is a separate pick and never the default. | Orca profiles import `~/.claude/CLAUDE.md` and have no `rules/` folder. | Make removal the default once the Orca path is verified. |
 | D-9 | The repository `.gitignore` is narrowed with an allow list: ignore `.claude/*`, re-include `settings.json` and `rules/` after reading what they hold; `.claude/worktrees/` and `CLAUDE.local.md` stay ignored. | A blanket `.claude/` rule blocks tracked settings and rules; the checkout holds untracked Go-generation state. | Restore the two old lines. |
@@ -134,7 +136,7 @@ Slices in this order. Each is one SPEC-backed change with its own audit tier; th
 | D-12 | This SPEC family supersedes in part `SPEC-20261119-agents-conflict-choices` (REQ-11…REQ-14, REQ-16, REQ-17) and `SPEC-20261119-agents-choices-step` (REQ-5, REQ-8, REQ-9, REQ-11); the pick `claude-import` is gone and refused as an unknown id; an old receipt's rows revert through the generic apply recovery (see the risks). | The shadow model no longer holds when `CLAUDE.md` is moai's file. | Keep both SPECs and the pick. |
 | D-13 | `local_file` value `tracked` is read as `ignored` with a preview note. | A personal file is not shared. | Keep `tracked` for `CLAUDE.local.md`. |
 | D-14 | The banner stays as `SPEC-20261121-style-banner` decided. | Implemented and pinned. | None. |
-| D-15 | The requirements are split over five SPECs with this one as parent. | Twelve requirements per SPEC is the size budget; each slice gets its own SPEC and audit. | Merge them. |
+| D-15 | The requirements are split over six SPECs with this one as parent. | Twelve requirements per SPEC is the size budget; each slice gets its own SPEC and audit. | Merge them. |
 
 ## Result
 

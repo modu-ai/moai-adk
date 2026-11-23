@@ -66,17 +66,19 @@ pub const ROLELESS_LAUNCHER_DEFAULTS: bool = true;
 /// bypass, `--dangerously-skip-permissions`) or `prompt`; an absent file or key keeps this
 /// default. Project settings are ignored.
 pub const ACCESS_DEFAULT: Access = Access::Auto;
-/// The environment that points Claude Code at z.ai GLM. The set and its values follow the Go
-/// tool's `setGLMEnv` (user decision 2026-11-10): endpoint, timeout, the model each Claude
-/// alias maps to, the 1M context window of those models (Claude Code assumes 200K for an id
-/// it does not know) and the switch that strips Anthropic beta headers the proxy rejects.
+/// The environment that points Claude Code at z.ai GLM. The set follows the Go tool's
+/// `setGLMEnv` (user decision 2026-11-10): endpoint, timeout, the model each Claude alias maps
+/// to, the 1M context window of those models (Claude Code assumes 200K for an id it does not
+/// know) and the switch that strips Anthropic beta headers the proxy rejects. The opus, sonnet
+/// and fable aliases map to `glm-5.4[1m]` by the user decision of 2026-11-23
+/// (SPEC-20261123-glm-54-model); haiku stays `glm-5.3-flash`, as no 5.4 flash model was named.
 pub const GLM_ENV: [(&str, &str); 9] = [
     ("ANTHROPIC_BASE_URL", "https://api.z.ai/api/anthropic"),
     ("API_TIMEOUT_MS", "3000000"),
-    ("ANTHROPIC_DEFAULT_OPUS_MODEL", "glm-5.3"),
-    ("ANTHROPIC_DEFAULT_SONNET_MODEL", "glm-5.3"),
+    ("ANTHROPIC_DEFAULT_OPUS_MODEL", "glm-5.4[1m]"),
+    ("ANTHROPIC_DEFAULT_SONNET_MODEL", "glm-5.4[1m]"),
     ("ANTHROPIC_DEFAULT_HAIKU_MODEL", "glm-5.3-flash"),
-    ("ANTHROPIC_DEFAULT_FABLE_MODEL", "glm-5.3"),
+    ("ANTHROPIC_DEFAULT_FABLE_MODEL", "glm-5.4[1m]"),
     ("CLAUDE_CODE_AUTO_COMPACT_WINDOW", "1000000"),
     ("CLAUDE_CODE_MAX_CONTEXT_TOKENS", "1000000"),
     ("CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS", "1"),
@@ -834,7 +836,7 @@ fn compose_resolved(r: &SessionRequest, saved: Option<&'static str>) -> Result<V
             if plain.advisor.take().is_some() {
                 notes.push(NOTE_ADVISOR_OMITTED_GLM);
             }
-            notes.push("model aliases map to z.ai models for this session: opus, sonnet and fable to glm-5.3, haiku to glm-5.3-flash, with the 1M context window declared");
+            notes.push("model aliases map to z.ai models for this session: opus, sonnet and fable to glm-5.4[1m], haiku to glm-5.3-flash, with the 1M context window declared");
             env_keys.extend(GLM_ENV.iter().map(|(k, _)| *k));
             env_keys.push(GLM_TOKEN_VAR);
             env_keys.push(GLM_MCP_KEY_VAR);

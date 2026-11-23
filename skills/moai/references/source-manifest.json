@@ -51,7 +51,7 @@
   },
   "files": {
     "SKILL.md": {
-      "sha256": "aacdc777d334b2c7386b543af65b21e5fe81be61c0e4602046e030a16aa59e1c",
+      "sha256": "5950b9e4c35b67317fa9b9bb05e776f6dd1214f1a10ee0cef5066d9b48d5431b",
       "origin": {
         "kind": "design-template",
         "template_id": "router-core",
@@ -87,7 +87,7 @@
       }
     },
     "references/chains/index.md": {
-      "sha256": "556d738b0d07ec0dd85485d300490a8e9c12f741a5b2426c7c1896ba25419874",
+      "sha256": "70797a987d7d1b70985d6484a2404fb31deeffceeedec239c06dc8f4695ec03c",
       "origin": {
         "kind": "design-spec",
         "template_id": "chains-index",
@@ -96,12 +96,21 @@
       }
     },
     "references/flows/next-flow.md": {
-      "sha256": "22211d66958a9552c1a1add3b001891aca4881bc9daf1761784443cd717f397e",
+      "sha256": "f15730da94bc11a68a9f3b06c6c961c7a786379e9d616224c6f40c129ba80c89",
       "origin": {
         "kind": "design-spec",
         "template_id": "flow-next-flow",
         "adoption": "new",
         "reason": "Written for SPEC-20261122-next-flow-skills-agents (REQ-5, text slice B; decisions D-2, D-8, D-9): the one full description of the flow, at most 6144 bytes. It explains the name once, describes the four technical rules as how the flow runs, and states the worktree place, that a lane submits its head and base only, the landing command, the protection hook, the fast-forward push only when the user has turned the remote copy on, and that remote checks never block a landing. Each landing and hook statement was checked against src/card/land.rs and src/card/guard.rs. The flow rule file in the config folder points here (REQ-11)."
+      }
+    },
+    "references/home/flow.md": {
+      "sha256": "43c9b1a68fce3124a85c5925bc2296eab3c9d87af3494c4352f4b4c9cd39101f",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "home-flow-rule",
+        "adoption": "new",
+        "reason": "Written for SPEC-20261122-claude-md-flow-rule revision 4 against the leader's candidate (rules-redesign-2026-11-23): the short, project-generic evidence and handoff rule that moai-cli writes as rules/moai/flow.md into each Claude config folder the user picks (src/home_routing/rules.rs), plain text with no frontmatter, at most 80 lines and 5 KiB. Lane, card and landing detail stays in references/flows/next-flow.md, which this file points to; what hooks enforce (force push, reset, clean) is not repeated here."
       }
     },
     "references/home/output-style.md": {
@@ -114,12 +123,12 @@
       }
     },
     "references/home/routing.md": {
-      "sha256": "bf77375c082ebf5453be6ec4a9bf8612b7ece2cb84fb3317c63d163365905bc0",
+      "sha256": "b92620de66e2dc068ce776d567239d7398c8631d0709cdaa10a42f146f9399a2",
       "origin": {
         "kind": "design-spec",
         "template_id": "home-routing",
         "adoption": "new",
-        "reason": "Written for rc.2 #2638 from the leader's final design (#2634, layer 2) and user decision 6845654776: the routing section moai-cli writes between moai:managed markers into ~/.claude/CLAUDE.md and ~/.codex/AGENTS.md (src/home_routing.rs); {invoke} becomes /moai or $moai. A short pointer to routes.json and chains/index.md, never a copy of the chain table."
+        "reason": "Written for rc.2 #2638 from the leader's final design (#2634, layer 2) and user decision 6845654776, rewritten for SPEC-20261122-claude-md-home-routing revision 3 against the leader's candidate (rules-redesign-2026-11-23): the routing text moai-cli writes as rules/moai.md into the Claude config folder (src/home_routing/rules.rs); {invoke} becomes /moai. It opens with the condition that the rules apply only in a project configured for MoAI or when the user invokes MoAI, and stays a short pointer to routes.json and chains/index.md, never a copy of the chain table."
       }
     },
     "references/internal/boundary-checks.md": {
@@ -221,6 +230,15 @@
         "reason": "Written for rc.2 #3096 S1 (user instruction 2026-11-16, record in #1975): four ways of looking (state machine, CI in three stretches, what to keep if built again, refactor risk) read only when a question or plan needs one; each reports and changes no code."
       }
     },
+    "references/internal/loop.md": {
+      "sha256": "c5fa36b05f1d4bb002b98bbece29d76b7178729ada8b6d6a85399e9054a298ef",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "internal-loop",
+        "adoption": "new",
+        "reason": "Written for SPEC-20261123-skill-structure from the user-confirmed skill structure (2026-11-21): an internal reference read only before a session arms a timer that repeats the leader round; it defines the confirmed leader by the session registry (src/leader_round/registration.rs) and allows one timer, so the skill entry only points to it."
+      }
+    },
     "references/internal/quality.md": {
       "sha256": "1775e7ecc447b63561a74ec21f30bb86f7ca25688e162a3a9f1de35599a143c6",
       "origin": {
@@ -240,7 +258,7 @@
       }
     },
     "references/internal/sdd.md": {
-      "sha256": "b0a04a4d95d880d75470a8a09d2723e29d261a50976d81acdc0729e40d347129",
+      "sha256": "eb938d33488190502d1197a3843d76f87234eb3a331785287618cb86934a9c53",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-sdd",
@@ -399,7 +417,7 @@
       }
     },
     "workflows/audit.md": {
-      "sha256": "5a2323148ee8d726c297139696b897bad3e60aae3fa29e335e56dda1e1f60b65",
+      "sha256": "819816fbf8391b5a6efa157e2ed44afaa49c343f643771b2c7d44dad2e57908c",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-audit",
@@ -408,7 +426,7 @@
       }
     },
     "workflows/plan.md": {
-      "sha256": "463b1f9af6ca6957abe36a6bd91ab8829c1882e5995c894b96917686f3930683",
+      "sha256": "ab27f283d60333933a93aa8a6a5858d88e44018e7edcd0cab9b79e7fe9b27e51",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-plan",
@@ -417,7 +435,7 @@
       }
     },
     "workflows/project.md": {
-      "sha256": "b48577aa468c17c032d249948b8cb2a8ef460f054062d1d2d57dd683368a9f3c",
+      "sha256": "b98b979e7c4dc75d506a64c63eb6aa8623141724bac0afd7a2083c6c73528517",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-project",
@@ -426,7 +444,7 @@
       }
     },
     "workflows/read.md": {
-      "sha256": "bcad1ea09775fc577000f1802bc8fb9de9a36e3effd25480ca7dedcc4f524a22",
+      "sha256": "e7fb334685d277878925f7ec04756ece7a7001639bbd0a52c078b90d5912e2b2",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-read",
@@ -435,7 +453,7 @@
       }
     },
     "workflows/run.md": {
-      "sha256": "5c9b0293c263889a8698e856a9dfdb0cd5dff71a03bc84910e190cd63b331a98",
+      "sha256": "4bee538feb3dd08b3a118a18eff83237802a052a23124ce4c4bb17708a6bca6f",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-run",
@@ -444,7 +462,7 @@
       }
     },
     "workflows/sync.md": {
-      "sha256": "426c494e05d5343594d4583d579356458883baa7255f32a4e06e9d499c6d0987",
+      "sha256": "721e12773c8c7d47dfb3336d8dc9d2f2102897b008ffe13d3c8247f9c4aa388f",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-sync",
@@ -468,7 +486,7 @@
         "adoption": "new",
         "reason": "Written for SPEC-20261122-next-flow-skills-agents (REQ-3, text slice A): `/moai work` takes one card at a time through PLAN, RUN, SYNC, AUDIT and the landing command and repeats until no card is left; a decision becomes a blocked note on the card. The card take, check, criterion and fresh-state sentences moved here from the retired MODE-AGENT workflow with their pins."
       },
-      "sha256": "9745f40c0e564c29e375be9ca069283c432531bee60ea6a8b0f5b5c8e4364f13"
+      "sha256": "da4a16e5133371d7addec4aa67595ea41cdbe4e5fd153d51764786bb57633be2"
     }
   }
 }

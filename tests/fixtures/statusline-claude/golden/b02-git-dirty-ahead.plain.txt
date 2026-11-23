@@ -1,2 +1,3 @@
-🧠 Opus | 📡 modu-ai/moai-adk, ⬇️ n/a 🔀 n/a | 🅱️ main ↑1 +2
-🔋 CW 70% | 🗿 4.2647.0
+🧠 Opus | 📡 modu-ai/moai-adk, ⬇️ n/a 🔀 n/a | 🌳 main
+🗿 4.2648.0
+🔋 CW ███████░░░ 70%

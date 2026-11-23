@@ -1201,6 +1201,9 @@ pub fn done(
                     "mflow": landing.as_ref().map(|l| json!({"head": l.head, "tip": l.tip})),
                 }),
             )?;
+            // The cleanup request goes in the transaction that closes the card
+            // (SPEC-20261123-cleanup-outbox REQ-1).
+            super::cleanup_outbox::record_request(tx, now, holder, card_id, "done")?;
             let reservation =
                 reservation::load_reservation(tx, card_id, generation)?.ok_or_else(|| {
                     LedgerError::Sql("the closed card's reservation cannot be read".into())
@@ -1996,6 +1999,7 @@ pub fn finish_naming(
             }),
         )?;
         events += 1;
+        super::cleanup_outbox::record_request(tx, now, actor, card_id, "finish")?;
         Ok(Ok(Finished {
             card_id,
             from,

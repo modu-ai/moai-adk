@@ -243,7 +243,7 @@
      "kind": "agent",
      "root": "claude-agents",
      "path": ".claude/agents/moai/super-advisor.md",
-     "sha256": "d504ae7c5d064214636a8bfe3799cefd54c630b6ce2ad9df92af621fe6c254b2",
+     "sha256": "10636b55b04f0ae8df6706a2e6ce7c76e12edcde878e70ed9643e47c090030ed",
      "depends_skills": []
     }
    ]

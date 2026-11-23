@@ -36,6 +36,10 @@ READ fans out: split the question into independent parts, give each part a short
 - Claude Code: several agent calls in one message run at once; a background agent reports when it finishes.
 - Kiro and Cursor CLI: the documents read do not settle starting several at once and collecting them. Fallback: start them one after another.
 
+## Resume
+
+After a restart, a usage-limit stop or a compacted conversation, read the question and the sources afresh at their current revision. An earlier finding is kept only when its source is unchanged since you recorded its revision; otherwise it is read again.
+
 ## Exceptions and Permissions
 
 If read access is missing, only the affected material is blocked. Never guess the contents of a file that was not read. When a card cites a canonical document, read it from a copy you can open and record its path, line range and sha256; if no readable copy exists, say so on the first line of the answer and do not judge from a summary.

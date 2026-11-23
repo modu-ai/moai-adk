@@ -294,6 +294,19 @@ fn delete_one(
     Ok(())
 }
 
+/// Deletes one branch the plan listed as `delete`, for a caller that already holds that plan row
+/// (the cleanup executor, SPEC-20261123-cleanup-outbox): the tip and the checkouts are read again,
+/// then `git branch -d` runs and the ref is read back. `Err((status, detail))` is `refused` or
+/// `failed` with git's own words.
+pub(crate) fn delete_planned(
+    project: &Path,
+    branch: &str,
+    planned_tip: &str,
+) -> std::result::Result<(), (&'static str, String)> {
+    let top = top_of(project).map_err(|e| ("failed", e))?;
+    delete_one(&top, branch, planned_tip)
+}
+
 /// Acts on a plan (`branch.gc.apply`): recomputes it with the same input, refuses before any
 /// write unless its digest equals `plan_digest`, then deletes each `delete` branch. A refused or
 /// failed branch is reported and the rest go on; nothing is retried. `before_delete` is called

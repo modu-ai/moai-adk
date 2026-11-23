@@ -136,12 +136,17 @@ pub struct Status {
     pub flow: Option<Flow>,
     /// #2756 AC-7: the open pull request of the current branch.
     pub pr: Option<PrInfo>,
-    /// #2756 AC-9: the worktree name the host gave; empty in the main checkout. The `🌳` item
-    /// shows it as it is (D-4 of SPEC-20261122-statusline-where).
+    /// #2756 AC-9: the worktree name the host gave; empty in the main checkout. It is no item of
+    /// the first line (REQ-10 of SPEC-20261123-statusline-order-bars) and no layout reads it; the
+    /// card of the session is found from its working folder and its session id.
     pub worktree: String,
     /// SPEC-20261122-statusline-where: the integration branch of the project (`work_flow` of its
     /// profile, else the remote's default branch), `None` when neither names one.
     pub integration: Option<String>,
+    /// SPEC-20261123-statusline-order-bars REQ-9: the first seven characters of the commit that the
+    /// local ref `refs/heads/<integration>` names; empty when no integration branch is known or
+    /// its ref cannot be read.
+    pub integration_tip: String,
 }
 
 /// The `pr` fields the status line shows.
@@ -285,6 +290,7 @@ pub fn collect(input: Option<&Input>, ctx: &Context) -> Status {
     {
         status.git = Some(read.git);
         status.integration = read.integration;
+        status.integration_tip = read.integration_tip;
     }
     let Some(input) = input else {
         return status;
@@ -631,13 +637,20 @@ fn resolve_glm_model_name(display: &str, ctx: &Context) -> String {
         "ANTHROPIC_DEFAULT_SONNET_MODEL"
     } else if lower.contains("haiku") {
         "ANTHROPIC_DEFAULT_HAIKU_MODEL"
+    } else if lower.contains("fable") {
+        // The glm launcher maps the fable alias too (SPEC-20261123-glm-54-followups D-5).
+        "ANTHROPIC_DEFAULT_FABLE_MODEL"
     } else if !lower.starts_with("claude") {
         return cleaned.to_string();
     } else {
         return display.to_string();
     };
+    // The glm launcher's value carries Claude Code's 1M marker (`glm-5.4[1m]`); the line shows
+    // the model without it, as `shorten_model_name` does for an id.
     match ctx.var(key) {
-        Some(glm) if !glm.starts_with("claude-") => glm.to_string(),
+        Some(glm) if !glm.starts_with("claude-") => {
+            glm.strip_suffix("[1m]").unwrap_or(glm).trim().to_string()
+        }
         _ => display.to_string(),
     }
 }
@@ -695,13 +708,18 @@ fn collect_context(input: &Input, ctx: &Context) -> Option<f64> {
     segments::context_percent(reading, size_override)
 }
 
-/// Built-in GLM context windows (memory.go `glmContextWindows`).
-const GLM_CONTEXT_WINDOWS: [(&str, i64); 2] =
-    [("glm-5.3-flash", 1_000_000), ("glm-5.3", 1_000_000)];
-const GLM_ENV_SLOTS: [&str; 3] = [
+/// Built-in GLM context windows (memory.go `glmContextWindows`); `glm-5.4` is the glm
+/// launcher's main model since the user decision of 2026-11-23 (SPEC-20261123-glm-54-model).
+const GLM_CONTEXT_WINDOWS: [(&str, i64); 3] = [
+    ("glm-5.3-flash", 1_000_000),
+    ("glm-5.3", 1_000_000),
+    ("glm-5.4", 1_000_000),
+];
+const GLM_ENV_SLOTS: [&str; 4] = [
     "ANTHROPIC_DEFAULT_OPUS_MODEL",
     "ANTHROPIC_DEFAULT_SONNET_MODEL",
     "ANTHROPIC_DEFAULT_HAIKU_MODEL",
+    "ANTHROPIC_DEFAULT_FABLE_MODEL",
 ];
 
 /// `resolveContextWindowOverride`: `MOAI_STATUSLINE_CONTEXT_SIZE`, then `llm.yaml`
@@ -864,6 +882,8 @@ const CACHE_FILE_CAP: u64 = 64 * 1024;
 const SMALL_FILE_CAP: u64 = 4096;
 /// `packed-refs` is searched only when the loose ref of the integration branch is missing.
 const PACKED_REFS_CAP: u64 = 8 * 1024 * 1024;
+/// How many characters of the integration commit the first line shows.
+const INTEGRATION_TIP_CHARS: usize = 7;
 
 /// The text of a `HEAD` file read as a branch, a detached commit or nothing. A branch name is
 /// taken only when it is one git can be given safely (`profile::branch_name`: a portable subset,
@@ -1118,10 +1138,12 @@ struct CacheRecord {
     counts: Counts,
 }
 
-/// What a render reads about git: the facts of the status line and the integration branch.
+/// What a render reads about git: the facts of the status line, the integration branch and the
+/// first seven characters of the commit its local ref names (empty when the ref cannot be read).
 struct GitRead {
     git: GitStatus,
     integration: Option<String>,
+    integration_tip: String,
 }
 
 /// Where the git directory of a checkout and the common directory of its repository are.
@@ -1173,7 +1195,8 @@ fn is_commit(text: &str) -> bool {
 }
 
 /// The commit of the local branch `name` (a name that passed `profile::branch_name`): its loose
-/// ref file, else its line of `packed-refs`; empty when neither says. Read for the cache key.
+/// ref file, else its line of `packed-refs`; empty when neither says. Read for the cache key and
+/// for the integration item of the first line.
 fn ref_commit(common: &Path, name: &str) -> String {
     if let Some(text) = read_small(&common.join("refs/heads").join(name), SMALL_FILE_CAP) {
         if is_commit(text.trim()) {
@@ -1209,6 +1232,14 @@ fn read_git(
         SMALL_FILE_CAP,
     );
     let integration = integration_from(profile.as_deref(), origin_head.as_deref());
+    // The integration commit is read before `HEAD` is, from the ref of the integration branch
+    // alone (a loose ref file, else `packed-refs`): a detached or unreadable `HEAD` shows the same
+    // seven characters as a branch does, and `HEAD` never stands in for it (REQ-9 of
+    // SPEC-20261123-statusline-order-bars).
+    let commit = integration
+        .as_deref()
+        .map_or_else(String::new, |name| ref_commit(&dirs.common, name));
+    let integration_tip: String = commit.chars().take(INTEGRATION_TIP_CHARS).collect();
     let mut git = GitStatus::default();
     let head_text = read_small(&dirs.git_dir.join("HEAD"), SMALL_FILE_CAP).unwrap_or_default();
     let branch = match head_of(&head_text) {
@@ -1222,12 +1253,13 @@ fn read_git(
         }
         // Nothing to measure: no branch, no distance and no process.
         Head::Unreadable => {
-            return Some(GitRead { git, integration });
+            return Some(GitRead {
+                git,
+                integration,
+                integration_tip,
+            });
         }
     };
-    let commit = integration
-        .as_deref()
-        .map_or_else(String::new, |name| ref_commit(&dirs.common, name));
     // The per-checkout git directory, as the disk spells it, is the folder of the key.
     let folder = std::fs::canonicalize(&dirs.git_dir)
         .unwrap_or_else(|_| dirs.git_dir.clone())
@@ -1251,7 +1283,11 @@ fn read_git(
     git.staged = counts.staged;
     git.modified = counts.modified;
     git.untracked = counts.untracked;
-    Some(GitRead { git, integration })
+    Some(GitRead {
+        git,
+        integration,
+        integration_tip,
+    })
 }
 
 /// The parts of the cache key besides the `HEAD` text and the integration commit.
@@ -2005,13 +2041,49 @@ mod tests {
 
     #[test]
     fn glm_names_map_only_non_claude_slot_models() {
-        let ctx = Context::for_test(&[("ANTHROPIC_DEFAULT_OPUS_MODEL", "glm-5.3")], None);
-        assert_eq!(resolve_glm_model_name("Opus", &ctx), "glm-5.3");
+        let ctx = Context::for_test(&[("ANTHROPIC_DEFAULT_OPUS_MODEL", "glm-5.4")], None);
+        assert_eq!(resolve_glm_model_name("Opus", &ctx), "glm-5.4");
         assert_eq!(resolve_glm_model_name("Sonnet", &ctx), "Sonnet");
+        // The glm launcher's value carries Claude Code's 1M marker (SPEC-20261123-glm-54-model);
+        // the line shows the model without it, from the slot name and from the id alike.
+        let launcher = Context::for_test(&[("ANTHROPIC_DEFAULT_OPUS_MODEL", "glm-5.4[1m]")], None);
+        assert_eq!(resolve_glm_model_name("Opus", &launcher), "glm-5.4");
+        assert_eq!(resolve_glm_model_name("Opus[1m]", &launcher), "glm-5.4");
+        assert_eq!(resolve_glm_model_name("glm-5.4[1m]", &launcher), "glm-5.4");
         assert_eq!(resolve_glm_model_name("gpt-x[1m]", &ctx), "gpt-x");
         let claude =
             Context::for_test(&[("ANTHROPIC_DEFAULT_OPUS_MODEL", "claude-opus-5-5")], None);
         assert_eq!(resolve_glm_model_name("Opus", &claude), "Opus");
+    }
+
+    /// SPEC-20261123-glm-54-followups REQ-8, REQ-9 (D-5): the launcher also maps the fable alias,
+    /// so a Fable slot name shows the fable slot's GLM model without the `[1m]` marker, and a
+    /// fable-only environment still gives the 1M window. The environment is the launcher's own
+    /// (`GLM_ENV`), so a change of the launcher's values cannot drift from this line unseen.
+    #[test]
+    fn glm_fable_slot_names_and_sizes_its_model() {
+        let launcher: Vec<(&str, &str)> = crate::session::GLM_ENV.to_vec();
+        let ctx = Context::for_test(&launcher, None);
+        assert_eq!(resolve_glm_model_name("Fable", &ctx), "glm-5.4");
+        assert_eq!(resolve_glm_model_name("Fable[1m]", &ctx), "glm-5.4");
+        assert_eq!(resolve_glm_model_name("Opus", &ctx), "glm-5.4");
+        assert_eq!(resolve_glm_model_name("Haiku", &ctx), "glm-5.3-flash");
+        // A claude model in the fable slot stays a claude name.
+        let claude = Context::for_test(
+            &[("ANTHROPIC_DEFAULT_FABLE_MODEL", "claude-fable-5-2")],
+            None,
+        );
+        assert_eq!(resolve_glm_model_name("Fable", &claude), "Fable");
+        // Only the fable slot holds a model: the window comes from it, with or without `[1m]`.
+        for value in ["glm-5.4[1m]", "glm-5.4"] {
+            let only = Context::for_test(&[("ANTHROPIC_DEFAULT_FABLE_MODEL", value)], None);
+            assert_eq!(context_window_override(&only), 1_000_000, "{value}");
+        }
+        let only_claude = Context::for_test(
+            &[("ANTHROPIC_DEFAULT_FABLE_MODEL", "claude-fable-5-2")],
+            None,
+        );
+        assert_eq!(context_window_override(&only_claude), 0);
     }
 
     #[test]
@@ -2020,6 +2092,12 @@ mod tests {
         assert_eq!(context_window_override(&env), 128_000);
         let glm = Context::for_test(&[("ANTHROPIC_DEFAULT_SONNET_MODEL", "GLM-5.3-Flash")], None);
         assert_eq!(context_window_override(&glm), 1_000_000);
+        // glm-5.4 is a 1M model too, with or without the launcher's `[1m]` marker, when it is
+        // the only slot model (SPEC-20261123-glm-54-model AC-2).
+        for value in ["glm-5.4[1m]", "glm-5.4"] {
+            let glm = Context::for_test(&[("ANTHROPIC_DEFAULT_OPUS_MODEL", value)], None);
+            assert_eq!(context_window_override(&glm), 1_000_000, "{value}");
+        }
         assert_eq!(context_window_override(&Context::for_test(&[], None)), 0);
     }
 

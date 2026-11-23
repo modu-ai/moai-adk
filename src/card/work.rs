@@ -676,7 +676,13 @@ pub fn done(
             _ => refused,
         }
     })?;
-    Ok(moved_json("done", &id, &moved))
+    // The close wrote this card's cleanup request; the executor takes it, and every older pending
+    // one, after the close and never undoes it (SPEC-20261123-cleanup-outbox REQ-12).
+    let outbox =
+        super::cleanup::run_pending(project, home, holder, &super::cleanup::Options::default());
+    let mut answer = moved_json("done", &id, &moved);
+    answer["cleanup_outbox"] = outbox;
+    Ok(answer)
 }
 
 /// The M-Flow landing evidence for `card done` (SPEC-20261120-card-done-mflow): when the

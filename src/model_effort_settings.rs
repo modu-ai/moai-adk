@@ -49,7 +49,15 @@ const CLAUDE: &[ModelRow] = &[
         efforts: FIVE_EFFORTS,
     },
 ];
+// SPEC-20261123-glm-54-followups D-1, D-2, D-4: the 5.4 id carries the `zai/` prefix and the `[1m]`
+// marker, so that the id the launcher passes (the prefix removed) is the text of its alias values;
+// the 5.3 rows stay, so a choice saved earlier is still read. The 5.4 efforts are the 5.3 ones
+// (no official word on other efforts was read).
 const GLM: &[ModelRow] = &[
+    ModelRow {
+        id: "zai/glm-5.4[1m]",
+        efforts: THREE_EFFORTS,
+    },
     ModelRow {
         id: "zai/glm-5.3",
         efforts: THREE_EFFORTS,
@@ -85,12 +93,13 @@ pub enum Source {
 
 /// The default of a tool and role (decision D-4 of SPEC-20261118-model-effort-settings; the
 /// claude-leader effort changed by the user decision of 2026-11-19, from the research note of
-/// SPEC-20261120-update-three-tool-models).
+/// SPEC-20261120-update-three-tool-models; the glm leader moved to 5.4 by
+/// SPEC-20261123-glm-54-followups D-3, the glm agent stays on the flash model).
 pub fn default_choice(tool: &str, role: &str) -> Option<Choice> {
     let (model, effort) = match (tool, role) {
         ("claude", "leader") => ("claude-opus-5-5", "high"),
         ("claude", "agent") => ("claude-sonnet-5-5", "high"),
-        ("glm", "leader") => ("zai/glm-5.3", "high"),
+        ("glm", "leader") => ("zai/glm-5.4[1m]", "high"),
         ("glm", "agent") => ("zai/glm-5.3-flash", "max"),
         _ => return None,
     };

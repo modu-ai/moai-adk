@@ -62,6 +62,32 @@ const TEMPORARY: &[&str] = &[
     "budget_spent",
 ];
 
+/// True when `text` names a reason that passes by itself (see `TEMPORARY`): a reason word, or a
+/// refusal detail that holds one.
+pub fn is_temporary(text: &str) -> bool {
+    TEMPORARY.iter().any(|t| text.contains(t))
+}
+
+/// The path a reservation names, as an absolute path without a trailing separator. A relative
+/// path is read against the primary checkout (the project root), never against the folder the
+/// process happens to run in, so the same ledger gives the same answer from any folder.
+pub fn reserved_path(primary: &Path, named: &str) -> PathBuf {
+    let path = PathBuf::from(named);
+    let absolute = if path.is_absolute() {
+        path
+    } else {
+        primary.join(path)
+    };
+    // Collecting the components drops a trailing separator, which would make `lstat` follow a link.
+    absolute.components().collect()
+}
+
+/// True when the last element of `path` is a link. A link in a parent folder is fine (macOS keeps
+/// `/tmp` and `/var` behind links); only the element the cleanup would remove is refused.
+pub fn last_element_is_link(path: &Path) -> bool {
+    fs::symlink_metadata(path).is_ok_and(|m| m.file_type().is_symlink())
+}
+
 /// What started the cleanup.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Trigger {
@@ -307,7 +333,12 @@ fn clean(
     // Only a registered linked worktree of this clone goes to the plan; the rest are named.
     let linked = worktree_slot::linked(primary)?;
     let registered = |w: &str| -> Option<PathBuf> {
-        let p = PathBuf::from(w);
+        let p = reserved_path(primary, w);
+        // A path whose last element is a link names no worktree of its own: removing "it" would
+        // remove what the link points at.
+        if last_element_is_link(&p) {
+            return None;
+        }
         linked
             .iter()
             .find(|e| worktree_slot::same(&e.path, &p))
