@@ -577,11 +577,13 @@ fn audit_done_refuses_a_left_mutant_then_releases_and_takes_no_discard_or_force(
 fn a_one_line_mutant_on_a_prepared_slot_recompiles_only_the_workspace_units() {
     let r = fixture();
     r.build_lane();
-    r.prep_ok(
+    let a = r.prep_ok(
         "C-1",
         &r.second,
         &["--lane", r.lane_str(), "--test", "where"],
     );
+    // The prepared build itself used the lane's flags and compiled no dependency.
+    assert_eq!(a["cargo"]["compiled_dependencies"], json!(0), "{a}");
     let slot = r.slot("audit-1");
     fs::write(slot.join("src/lib.rs"), "pub fn two() -> u32 { auditdep::one() + 2 }\n").unwrap();
     let out = cargo_ok(
@@ -621,6 +623,10 @@ fn the_card_is_the_holder_whatever_session_finishes_it() {
         &[("CLAUDE_CODE_SESSION_ID", "11111111-1111-1111-1111-111111111111")],
     );
     assert_eq!((a.0, &a.1["ok"]), (0, &json!(true)), "{}", a.1);
+    // The record names the card and no session, so no session can be the other holder.
+    let rec: Value = serde_json::from_slice(&fs::read(r.holder_record("audit-1")).unwrap()).unwrap();
+    assert_eq!(rec["holder"], json!("C-1"), "{rec}");
+    assert!(rec["session"].is_null(), "{rec}");
     let (code, v) = r.json(
         "audit-done",
         &["C-1"],
