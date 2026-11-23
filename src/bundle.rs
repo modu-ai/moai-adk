@@ -9,6 +9,7 @@
 //! folder and runs commands.
 
 pub mod build;
+pub mod mutant_line;
 pub mod verify;
 
 use crate::card::{command as card_command, input as card_input};
@@ -71,6 +72,9 @@ fn driver_names(config_output: &str) -> Vec<String> {
         .map(String::from)
         .collect()
 }
+
+/// What `check` says about its `warnings` (SPEC-20261123-ready-mutant-line, D-2 and D-3).
+const WARNING_NOTE: &str = "warnings are in observe: a missing, unreadable or surviving `guard-mutant:` line of the READY note is listed and never changes `ok`, `findings` or the exit status; the tool cannot tell whether a line is true";
 
 const AUDIT_NOTE: &str = "a `PASS` note naming the head counts; a stated `tier <N>` before ` head ` is read (a head whose floor is above it has `audit_tier_low`); the tool cannot tell who wrote it";
 
@@ -410,6 +414,17 @@ fn newest_marker(card: &str, notes: &[Note]) -> Option<Ready> {
     })
 }
 
+/// The whole text of the newest note of the card whose marker line names `head` (the note a
+/// `guard-mutant:` line is read from); `None` when no marker note names it.
+fn ready_body_naming<'a>(card: &str, notes: &'a [Note], head: &str) -> Option<&'a str> {
+    notes
+        .iter()
+        .filter(|n| n.first_line().starts_with(MARKER))
+        .filter(|n| parse_ready(n.first_line(), card).is_some_and(|p| p.0 == head))
+        .max_by_key(|n| n.id)
+        .map(|n| n.body.as_str())
+}
+
 fn spec_id_shaped(s: &str) -> bool {
     // SPEC-<8 digits>-<slug of a-z, 0-9 and ->
     let Some(rest) = s.strip_prefix("SPEC-") else {
@@ -589,6 +604,8 @@ struct Judged {
     card: String,
     head: Option<String>,
     findings: Vec<Value>,
+    /// The `guard-mutant:` warnings (SPEC-20261123-ready-mutant-line): listed, never blocking.
+    warnings: Vec<Value>,
     floor: u8,
     pass_note: Option<i64>,
     pass_line: Option<String>,
@@ -613,6 +630,7 @@ fn judge(
         card: arg.card.clone(),
         head: None,
         findings: vec![],
+        warnings: vec![],
         floor: 0,
         pass_note: None,
         pass_line: None,
@@ -651,6 +669,10 @@ fn judge(
         },
     };
     j.head = Some(head.clone());
+    j.warnings = mutant_line::warnings(ready_body_naming(&arg.card, &notes, &head))
+        .into_iter()
+        .map(|(code, detail)| finding(code, &arg.card, &head, detail))
+        .collect();
     if git.commit(&head).is_none() {
         j.findings.push(finding(
             "head_missing",
@@ -922,6 +944,7 @@ pub fn check(
     let tip = tip_of(&git, tip)?;
     let judged = judge_all(&git, project, home, &tip, &args)?;
     let findings: Vec<Value> = judged.iter().flat_map(|j| j.findings.clone()).collect();
+    let warnings: Vec<Value> = judged.iter().flat_map(|j| j.warnings.clone()).collect();
     let unreadable: Vec<Value> = judged
         .iter()
         .flat_map(|j| j.unreadable_verdicts.clone())
@@ -931,12 +954,13 @@ pub fn check(
         .map(|j| {
             json!({"card": j.card, "head": j.head, "audit_floor": j.floor,
                    "pass_note": j.pass_note, "pass_tier": j.pass_tier, "specs": j.specs,
-                   "findings": j.findings.len()})
+                   "findings": j.findings.len(), "warnings": j.warnings.len()})
         })
         .collect();
     Ok(json!({
         "action": "check", "ok": findings.is_empty(), "tip": tip_json(&tip),
-        "heads": heads_json, "findings": findings,
+        "heads": heads_json, "findings": findings, "warnings": warnings,
+        "warning_note": WARNING_NOTE,
         "unreadable_verdict": unreadable,
         "audit_note": AUDIT_NOTE,
         "conflict_note": "each head is merged with the tip and with every earlier head, two at a time; `build` is the exact three-way check",

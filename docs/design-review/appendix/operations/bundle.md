@@ -28,6 +28,16 @@ HEADS 는 `C-<n>`(카드의 가장 새 읽히는 READY head) 또는 `C-<n>=<40�
 | `result_missing` | SPEC 의 AC 중 `## Result` 에 줄이 없는 것 |
 | `conflict` | tip 과 또는 앞선 head 와 병합하면 충돌한다. `detail.files`·`detail.with`. GitHub 가 돌리는 글자 병합으로 본다(복제본에 등록된 병합 드라이버를 덮는다) |
 
+**경고(`warnings[]`, SPEC-20261123-ready-mutant-line)**: 같은 모양 `{code, card, head, detail}` 이고 `ok`·`findings`·종료 코드를 바꾸지 않는다(관찰 단계, `warning_note`; `heads[].warnings` 는 개수). head 를 이름으로 가진 가장 새 READY 노트의 본문을 첫 줄 뒤부터 읽고, 줄은 `guard-mutant:` 로 시작할 때만(앞 공백과 `- ` 는 허용) 읽는다. 모양은 `guard-mutant: <시험> | <뺀·뒤집은 코드> | exit <n>`(n 은 그 시험이 뮤턴트에서 낸 종료 코드) 또는 `guard-mutant: none | <이유>`(새 지킴 시험이 없음)다.
+
+| code | 뜻 |
+| --- | --- |
+| `mutant_line_missing` | 노트 본문에 `guard-mutant:` 줄이 없다. 그 head 를 이름으로 가진 READY 노트가 없을 때도 같은 코드이고 `detail` 이 그렇게 말한다 |
+| `mutant_line_unreadable` | 두 모양 어느 쪽도 아니다(칸 수가 틀림, 빈 칸, `exit <숫자>` 가 아님). `detail.line`: 노트 안의 줄 번호(첫 줄이 1) |
+| `mutant_survived` | 줄이 `exit 0` 을 말한다: 그 시험이 뮤턴트에서 통과했다, 곧 빠진 시험이다. `detail`: `test`, `line` |
+
+도구는 줄이 사실인지 알 수 없다(`warning_note`); 사실 확인은 감사의 몫이다. 막는 쪽으로 바꾸는 일은 관찰 뒤 기록하는 결정이다.
+
 읽히지 않는 판정 노트(`AUDIT ` 로 시작하지만 읽히지 않음)는 `unreadable_verdict` 로 알리기만 하고 검사를 실패시키지 않는다. 충돌은 head 와 tip, head 와 앞선 head 를 둘씩 본다; 세 개 이상이 함께 만드는 충돌은 `build`(조각 3)의 몫이다. `PASS` 노트가 있다는 것을 보고 누가 썼는지는 알 수 없다(`audit_note`). **노트가 적은 tier**(SPEC-20261119-bundle-audit-tier, 리더 결정 D-7): 판정 줄의 마지막 ` head ` 앞에 `tier <N>`(N 은 0~2 한 자리, 앞은 줄 처음·공백·`(`·`,`, 뒤는 줄 끝·공백·`,`·`)`·`;`)이 있으면 읽고(`AUDIT C-<n> (<SPEC>, tier <N>) head <sha> base <sha> — verdict: PASS`) `heads[].pass_tier` 에 head 의 `PASS` 노트 중 가장 높은 값을 보인다. 모든 `PASS` 가 tier 를 적었고 가장 높은 것이 하한보다 낮으면 `audit_tier_low`; tier 가 없는 `PASS`·서로 다른 두 tier·2 를 넘는 숫자는 읽지 않고 이전처럼 하한을 채운다. 판정 줄은 `gate::parse_verdict` 가 그대로 읽는다(`src/gate.rs`·`src/audit_gate.rs` 는 바꾸지 않았다). tier 를 쓰는 일은 강제하지 않는다. `ok` 는 발견이 없을 때만 참이다. **결과로 알리는 발견은 exit 0 이다**(입력을 못 쓰면 — 없는 tip, 잘못된 head 인자 — exit 1, 사용법 오류는 2): `ok:false` 로 exit 1 을 내는 규칙은 `src/main.rs` 에 연산 이름으로 있고 그 파일은 다른 카드가 잡고 있어, 이 조각은 읽는 쪽이 `ok` 를 본다고 가정한다.
 
 ## `bundle body HEADS… --branch B --run FILE [--out FILE] [--tip …]`

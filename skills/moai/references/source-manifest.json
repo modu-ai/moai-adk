@@ -96,7 +96,7 @@
       }
     },
     "references/flows/next-flow.md": {
-      "sha256": "cdc7c7aa0cbb0e9cb8f43ec1edcf42a2481cdae358be15c65732f0516b3c6f84",
+      "sha256": "4846a36eb8a85995a0ebe7eea282501ca16d808aeab89d1f91d79db58f5748a4",
       "origin": {
         "kind": "design-spec",
         "template_id": "flow-next-flow",
@@ -261,7 +261,7 @@
       }
     },
     "references/internal/self-check.md": {
-      "sha256": "b3154c41e968a8aa3cd475f38a15ec638a8d67085dc5f2fab8601191986fef6a",
+      "sha256": "14c90252276f0806a0e10b90e68b317de69a6a0704874ca66646d66c56afb0f8",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-self-check",
