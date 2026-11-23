@@ -322,12 +322,15 @@ enum Action {
     ///
     /// Writes the ledger. One `card.audit_assigned` event for a card in `review` with the
     /// auditor's identity and `--by leader`; only the leader word assigns. Refused (`conflict`)
-    /// when the identity holds or ever held a reservation of the card, and when the card is not
-    /// in review; nothing is written then.
+    /// when the identity holds or ever held a reservation of the card, in any spelling (ASCII
+    /// case and a `:<12hex>` worktree suffix are ignored), and when the card is not in review.
+    /// Refused too when the value is not a session identity, a lane name such as `agent-4`
+    /// included: a session id (hex digits and dashes, 8 to 64 characters), optionally followed
+    /// by `:` and 12 hex digits. Nothing is written then.
     Assign {
         /// The card, `C-12`.
         card: String,
-        /// The auditor's identity (a session id), one word.
+        /// The auditor's identity (a session id, optionally `:<12hex>`), one word.
         #[arg(long)]
         auditor: String,
         /// Who assigns: `leader`.

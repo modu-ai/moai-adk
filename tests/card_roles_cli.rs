@@ -287,8 +287,12 @@ fn assign_help_states_the_refusals_and_the_shape() {
         .output()
         .expect("run moai");
     assert_eq!(out.status.code(), Some(0));
-    let help = String::from_utf8_lossy(&out.stdout).to_string();
-    assert!(help.contains("Writes the ledger."), "{help}");
+    // clap wraps the help at 100 columns; compare the words, not the line breaks.
+    let help = String::from_utf8_lossy(&out.stdout)
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ");
+    assert!(help.starts_with("Writes the ledger."), "{help}");
     for needle in [
         "ASCII case",
         ":<12hex>",

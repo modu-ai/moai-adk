@@ -4,6 +4,7 @@ title: "Card roles: each card names its authors, auditor and lander from ledger 
 status: draft
 revision: 5
 created: 2026-11-22
+approval: {by: leader, at: 2026-11-23, basis: "leader decision note 7720 on card C-415 (2026-11-23T17:22:40Z), answering the request of note 7719, option (a); leader judgment under the user's delegation of 2026-11-23T13:57Z, not a direct user pick", digest: "sha256:66dd2a069505880dbf961586ffcce76ea897aa085875235b36f81282fd6ceb29"}
 ---
 
 # Card roles: each card names its authors, auditor and lander from ledger rows, and a verdict from an author is refused
