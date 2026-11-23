@@ -105,6 +105,8 @@ fn ac2_the_address_is_the_registered_id_and_a_lane_never_clears_itself() {
         "never send `/clear` to yourself",
         "never take the next card on your own while a leader is registered",
         "match that id to a row of the host's session list",
+        // SPEC-20261123-lane-next-card-rule REQ-6: the no-row sentence is pinned.
+        "with no matching row, send nothing",
     ] {
         assert_has(&w, WORK, needle);
     }
@@ -172,4 +174,48 @@ fn ac6_a_blocked_card_moves_the_lane_on_only_when_no_leader_is_registered() {
         NEXT_FLOW,
         "as a blocked note (`workflows/work.md`); the lane takes the next card.",
     );
+}
+
+/// SPEC-20261123-lane-next-card-rule REQ-1, REQ-2: `CLAUDE.md` says the same thing in both places.
+const CLAUDE_BLOCKED: &str = "as a note on the card; with no registered leader take the next card, otherwise wait for that leader's dispatch.";
+const CLAUDE_STEP9: &str = "nothing uncommitted is lost; with no registered leader take the next card, otherwise wait for that leader's dispatch.";
+/// REQ-3: step 7 (repeat) of `work.md`.
+const WORK_REPEAT: &str = "is not the start signal: with no registered leader, take the next card once, when the ledger shows the previous card done or released (`flows/next-flow`); with a registered leader, wait for that leader's dispatch.";
+/// REQ-4: the general `/clear` line of the Transition part.
+const CLEAR_LINE: &str = "The leader sends `/clear` to the exact existing window only after the ledger shows the lane's card done or released, and only when nothing is open:";
+/// REQ-5: the two phrases all three texts share.
+const SHARED: [&str; 2] = ["no registered leader", "for that leader's dispatch"];
+
+fn claude_md() -> String {
+    let text = fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("CLAUDE.md"))
+        .unwrap_or_else(|e| panic!("CLAUDE.md: {e}"));
+    assert!(
+        text.lines().count() <= 120,
+        "CLAUDE.md grew past 120 lines (SPEC REQ-7)"
+    );
+    text.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+#[test]
+fn ac7_every_next_card_sentence_waits_for_a_registered_leader() {
+    let c = claude_md();
+    assert_has(&c, "CLAUDE.md", CLAUDE_BLOCKED);
+    assert_has(&c, "CLAUDE.md", CLAUDE_STEP9);
+    let w = work();
+    assert_has(&w, WORK, WORK_REPEAT);
+    // The three texts say the same thing: the same two phrases stand in each of them.
+    let nf = next_flow();
+    for (text, file) in [(&c, "CLAUDE.md"), (&nf, NEXT_FLOW), (&w, WORK)] {
+        for phrase in SHARED {
+            assert_has(text, file, phrase);
+        }
+    }
+    // The old unconditional wording is gone.
+    assert_lacks(&c, "CLAUDE.md", "as a note on the card and take the next card.");
+    assert_lacks(&c, "CLAUDE.md", "is lost, then take the next card.");
+}
+
+#[test]
+fn ac8_the_general_clear_line_needs_the_ledger_to_show_done_or_released() {
+    assert_has(&next_flow(), NEXT_FLOW, CLEAR_LINE);
 }
