@@ -972,9 +972,10 @@ no value is left out together with its separator.
    SPEC-20261122-statusline-limits-left). The ten-cell bar stands between the label and the
    number, with no colon, and draws the same share: the first `<n> × 10 / 100` cells (rounded
    down) are `█` and the others `░` (SPEC-20261123-statusline-order-bars, the user instruction of
-   2026-11-23, which replaces the earlier numbers-only look). The filled cells keep the
-   base color of the line and the empty cells take the muted color, so the colored line without its
-   escapes is the plain line. The battery icon is `🪫` when less than 30% is left and `🔋`
+   2026-11-23, which replaces the earlier numbers-only look). The filled cells take one level
+   color of the share left (green at 70% or more, yellow from 50%, peach from 30%, red below 30%,
+   the same point where the battery icon turns; SPEC-20261124-statusline-bar-color) and the empty
+   cells take the muted color, so the colored line without its escapes is the plain line. The battery icon is `🪫` when less than 30% is left and `🔋`
    otherwise; a percentage is shown from 0 to 100; and there is no `/clear` hint on any line (the
    user's final call of 2026-11-21, SPEC-20261121-statusline-detached). A window whose percentage is
    unavailable (the window is absent, its percentage is `null`, or its object is empty) says
