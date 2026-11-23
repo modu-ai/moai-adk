@@ -137,6 +137,7 @@ mod tests {
             "guard-mutant: a | removed x",
             "guard-mutant: a | removed x | exit",
             "guard-mutant: a | removed x | exit one",
+            "guard-mutant: a | removed x | exit +1",
             "guard-mutant: a | removed x | exit 1 extra",
             "guard-mutant: a | | exit 1",
             "guard-mutant:  | removed x | exit 1",
