@@ -967,7 +967,7 @@ fn run_with(exe: &Path, home: &Path, args: &[&str], var: (&str, &str)) -> Output
 }
 
 /// The fault seam that fails the last publish of a skill folder beside the moai skill.
-const LAST_PUBLISH_FAULT: (&str, &str) = ("MOAI_CLI_TEST_FAULT", "extra_skill_last_publish");
+const LAST_PUBLISH_FAULT: (&str, &str) = ("MOAI_TEST_FAULT", "extra_skill_last_publish");
 
 /// The receipt files of the html-report skill under HOME's state folder.
 fn html_report_receipt_files(home: &Path) -> Vec<PathBuf> {

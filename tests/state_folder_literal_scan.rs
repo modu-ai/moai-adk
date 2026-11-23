@@ -210,6 +210,101 @@ fn the_repository_tests_stay_within_the_state_folder_baseline() {
     );
 }
 
+/// SPEC-20261121-moai-name slice 3: the test seams are `MOAI_TEST_<NAME>`; the earlier prefix
+/// (`MOAI_`, `CLI_`, `TEST_` joined) stays nowhere in `src/` or `tests/`. It is joined at run
+/// time so this file does not spell it either. History documents are outside the scan.
+fn earlier_seam_prefix() -> String {
+    format!("MOAI_{}{}", "CLI_", "TEST_")
+}
+
+/// `path:line` of every line of `text` that spells the earlier seam prefix.
+fn seam_lines(path: &str, text: &str) -> Vec<String> {
+    let prefix = earlier_seam_prefix();
+    text.lines()
+        .enumerate()
+        .filter(|(_, line)| line.contains(&prefix))
+        .map(|(i, _)| format!("{path}:{}", i + 1))
+        .collect()
+}
+
+/// The hits under `<root>/src` (`.rs`) and `<root>/tests` (`.rs`, `.py`, outside
+/// `tests/fixtures`), sorted by path.
+fn seam_scan(root: &Path) -> Vec<String> {
+    let mut out = Vec::new();
+    for (top, exts) in [("src", &["rs"][..]), ("tests", &["rs", "py"][..])] {
+        let base = root.join(top);
+        let mut stack = vec![base.clone()];
+        while let Some(dir) = stack.pop() {
+            let Ok(entries) = fs::read_dir(&dir) else {
+                continue;
+            };
+            for entry in entries.flatten() {
+                let path = entry.path();
+                let Ok(kind) = entry.file_type() else {
+                    continue;
+                };
+                if kind.is_dir() {
+                    if path != base.join("fixtures") {
+                        stack.push(path);
+                    }
+                    continue;
+                }
+                let ext = path.extension().and_then(|e| e.to_str());
+                if !kind.is_file() || !ext.is_some_and(|e| exts.contains(&e)) {
+                    continue;
+                }
+                let Ok(text) = fs::read_to_string(&path) else {
+                    continue;
+                };
+                let rel = path
+                    .strip_prefix(root)
+                    .unwrap()
+                    .to_string_lossy()
+                    .replace('\\', "/");
+                out.extend(seam_lines(&rel, &text));
+            }
+        }
+    }
+    out.sort();
+    out
+}
+
+#[test]
+fn no_source_or_test_spells_the_earlier_test_seam_prefix() {
+    let hits = seam_scan(Path::new(MANIFEST));
+    assert!(
+        hits.is_empty(),
+        "{} line(s) spell the earlier test seam prefix; a test seam is MOAI_TEST_<NAME>:\n{}",
+        hits.len(),
+        hits.join("\n")
+    );
+}
+
+#[test]
+fn the_seam_scan_finds_a_planted_line_and_skips_what_it_should() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let root = dir.path();
+    let p = earlier_seam_prefix();
+    let files = [
+        ("src/a.rs", format!("fn a() {{}}\nconst V: &str = \"{p}FAULT\";\n")),
+        ("src/deep/b.rs", format!("// {p}MACHINE in a comment\n")),
+        ("tests/c.py", format!("os.environ[\"{p}MACHINE\"] = \"x\"\n")),
+        ("tests/fixtures/d.rs", format!("{p}FAULT\n")),
+        ("tests/e.rs", "const V: &str = \"MOAI_TEST_FAULT\";\n".to_string()),
+        ("tests/notes.md", format!("{p}FAULT\n")),
+    ];
+    for (rel, text) in &files {
+        let path = root.join(rel);
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        fs::write(path, text).unwrap();
+    }
+    assert_eq!(
+        seam_scan(root),
+        ["src/a.rs:2", "src/deep/b.rs:1", "tests/c.py:1"],
+        "fixtures, the new name and other file kinds are not hits"
+    );
+}
+
 /// An old-layout fixture text, as a listed file holds it: it builds the earlier folder first.
 fn fixture_text() -> String {
     format!(

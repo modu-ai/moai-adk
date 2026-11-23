@@ -349,7 +349,7 @@ pub fn launch_access(keep_prompts: bool) -> Result<Access, String> {
 // ---- agent-N numbering (#2359 decision 6760976883; resolves #2361; changed by #2971) ----
 
 /// Test-only: milliseconds to hold the counter lock between choosing a number and locking it.
-pub const AGENT_SEQ_TEST_HOLD_VAR: &str = "MOAI_CLI_TEST_AGENT_SEQ_HOLD_MS";
+pub const AGENT_SEQ_TEST_HOLD_VAR: &str = "MOAI_TEST_AGENT_SEQ_HOLD_MS";
 /// The one warning line for number 1 (leader decision 6880464413): `claim` and `claim-verify`
 /// judge ownership by the session name alone, so a claim an earlier `agent-1` left inside its
 /// lease still reads as this session's.

@@ -624,7 +624,7 @@ fn a_failure_right_after_the_rename_puts_the_go_folder_back() {
         .clean_env()
         .env("PATH", "/usr/bin:/bin")
         .env("LC_ALL", "C")
-        .env("MOAI_CLI_TEST_FAULT", "go_state_after_rename")
+        .env("MOAI_TEST_FAULT", "go_state_after_rename")
         .output()
         .unwrap();
     let v: Value = serde_json::from_slice(&out.stdout).unwrap();
@@ -1930,7 +1930,7 @@ fn the_unrecorded_count_stops_at_its_entry_limit() {
             .clean_env()
             .env("PATH", "/usr/bin:/bin")
             .env("LC_ALL", "C")
-            .env("MOAI_CLI_TEST_UNRECORDED_LIMIT", n)
+            .env("MOAI_TEST_UNRECORDED_LIMIT", n)
             .output()
             .unwrap();
         let v: Value = serde_json::from_slice(&out.stdout).unwrap();
@@ -2008,7 +2008,7 @@ fn a_moai_folder_past_the_entry_limit_stays() {
         .clean_env()
         .env("PATH", "/usr/bin:/bin")
         .env("LC_ALL", "C")
-        .env("MOAI_CLI_TEST_UNRECORDED_LIMIT", "2")
+        .env("MOAI_TEST_UNRECORDED_LIMIT", "2")
         .output()
         .unwrap();
     let v: Value = serde_json::from_slice(&out.stdout).unwrap();
@@ -2532,7 +2532,7 @@ fn an_earlier_root_move_failing_after_the_new_folder_leaves_nothing() {
         .clean_env()
         .env("PATH", "/usr/bin:/bin")
         .env("LC_ALL", "C")
-        .env("MOAI_CLI_TEST_FAULT", "go_state_legacy_after_mkdir")
+        .env("MOAI_TEST_FAULT", "go_state_legacy_after_mkdir")
         .output()
         .unwrap();
     let v: Value = serde_json::from_slice(&out.stdout).unwrap();
@@ -2542,7 +2542,7 @@ fn an_earlier_root_move_failing_after_the_new_folder_leaves_nothing() {
     assert!(!fx.root.join(".moai").exists());
 }
 
-/// `go-state-apply` with the debug-build fault point `point` set (`MOAI_CLI_TEST_FAULT`).
+/// `go-state-apply` with the debug-build fault point `point` set (`MOAI_TEST_FAULT`).
 fn apply_with_fault(fx: &Fx, digest: &str, point: &str) -> Value {
     let out = Command::new(EXE)
         .args([
@@ -2556,7 +2556,7 @@ fn apply_with_fault(fx: &Fx, digest: &str, point: &str) -> Value {
         .clean_env()
         .env("PATH", "/usr/bin:/bin")
         .env("LC_ALL", "C")
-        .env("MOAI_CLI_TEST_FAULT", point)
+        .env("MOAI_TEST_FAULT", point)
         .output()
         .unwrap();
     serde_json::from_slice(&out.stdout).unwrap_or_else(|_| {

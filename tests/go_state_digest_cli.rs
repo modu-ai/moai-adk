@@ -658,7 +658,7 @@ fn a_copy_folder_at_the_mirror_file_limit_is_bound_and_one_more_file_is_not_a_mo
     fx.write(".agents/skills/moai-a/SKILL.md", "# a\n");
     fx.write(".agents/skills/moai-a/ref/x.md", "x\n");
     fx.manifest();
-    let env = [("MOAI_CLI_TEST_MIRROR_FILE_LIMIT", "2")];
+    let env = [("MOAI_TEST_MIRROR_FILE_LIMIT", "2")];
     let old = fx.plan_env(&env);
     assert_eq!(
         ac(&old, ".agents/skills/moai-a"),
@@ -690,7 +690,7 @@ fn the_unrecorded_limit_changes_the_counts_but_not_the_digest_until_it_stops_the
     fx.manifest();
     // `.moai/` holds 3 entries (manifest.json, config, config/a.yaml).
     let wide = fx.plan();
-    let narrow = fx.plan_env(&[("MOAI_CLI_TEST_UNRECORDED_LIMIT", "8")]);
+    let narrow = fx.plan_env(&[("MOAI_TEST_UNRECORDED_LIMIT", "8")]);
     assert_eq!(ac(&narrow, ".moai"), ("move", "go_folder"), "{narrow}");
     assert_ne!(narrow["unrecorded"], wide["unrecorded"], "{narrow}");
     assert!(
@@ -701,7 +701,7 @@ fn the_unrecorded_limit_changes_the_counts_but_not_the_digest_until_it_stops_the
     // The apply under the narrow limit accepts the digest of the wide preview.
     let v = fx.apply_env(
         wide["plan_digest"].as_str().unwrap(),
-        &[("MOAI_CLI_TEST_UNRECORDED_LIMIT", "8")],
+        &[("MOAI_TEST_UNRECORDED_LIMIT", "8")],
     );
     assert_eq!(v["ok"], json!(true), "{v}");
     // Below the `.moai/` walk the folder stays: a different plan, a different digest.
@@ -712,13 +712,13 @@ fn the_unrecorded_limit_changes_the_counts_but_not_the_digest_until_it_stops_the
         fx
     };
     let wide = fx.plan();
-    let tiny = fx.plan_env(&[("MOAI_CLI_TEST_UNRECORDED_LIMIT", "2")]);
+    let tiny = fx.plan_env(&[("MOAI_TEST_UNRECORDED_LIMIT", "2")]);
     assert_eq!(ac(&tiny, ".moai"), ("leave", "go_folder"), "{tiny}");
     assert_ne!(tiny["plan_digest"], wide["plan_digest"]);
     let before = fx.tree();
     let v = fx.apply_env(
         wide["plan_digest"].as_str().unwrap(),
-        &[("MOAI_CLI_TEST_UNRECORDED_LIMIT", "2")],
+        &[("MOAI_TEST_UNRECORDED_LIMIT", "2")],
     );
     assert_eq!(v["ok"], json!(false), "{v}");
     assert_eq!(v["error"]["kind"], json!("stale_plan"), "{v}");
@@ -736,7 +736,7 @@ fn a_file_edited_after_the_fresh_preview_stops_the_move() {
     let p = fx.plan();
     let v = fx.apply_env(
         p["plan_digest"].as_str().unwrap(),
-        &[("MOAI_CLI_TEST_FAULT", "go_state_edit_after_plan")],
+        &[("MOAI_TEST_FAULT", "go_state_edit_after_plan")],
     );
     assert_eq!(v["ok"], json!(false), "{v}");
     assert!(
@@ -788,7 +788,7 @@ fn a_file_edited_after_the_fresh_preview_stops_the_move_in_the_staying_layout() 
     assert_eq!(ac(&p, ".claude/workflows/w.md").0, "move", "{p}");
     let v = fx.apply_env(
         p["plan_digest"].as_str().unwrap(),
-        &[("MOAI_CLI_TEST_FAULT", "go_state_edit_after_plan")],
+        &[("MOAI_TEST_FAULT", "go_state_edit_after_plan")],
     );
     assert_eq!(v["ok"], json!(false), "{v}");
     assert!(

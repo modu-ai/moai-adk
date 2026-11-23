@@ -30,7 +30,7 @@ fn expected_jobs(slots: usize) -> usize {
 fn acquire(dir: &Path, home: &Path, max: &str, cmd: &[&str]) -> Command {
     let mut c = Command::new(EXE);
     c.env("HOME", home)
-        .env("MOAI_CLI_TEST_MACHINE", ROOMY)
+        .env("MOAI_TEST_MACHINE", ROOMY)
         .env_remove("MOAI_HEAVY_SLOT_FD")
         .env_remove("CARGO_BUILD_JOBS")
         .args(["heavy-slot-acquire", "--max", max, "--name", "t", "--dir"])

@@ -834,7 +834,7 @@ fn archive_device(base: &Path) -> Option<u64> {
     }
     let dev = device(&p)?;
     #[cfg(debug_assertions)]
-    if std::env::var_os("MOAI_CLI_TEST_CLEANUP_DEVICE").is_some_and(|v| v == "other") {
+    if std::env::var_os("MOAI_TEST_CLEANUP_DEVICE").is_some_and(|v| v == "other") {
         return Some(dev.wrapping_add(1));
     }
     Some(dev)

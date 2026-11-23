@@ -2,7 +2,7 @@
 //! The real HOME is never read or written: every case passes `--home <tempdir>`, secrets are
 //! synthetic names with placeholder or no content and a snapshot never reads a file under a
 //! vault or with a secret-looking name. Faults are injected with the debug-only
-//! `MOAI_CLI_TEST_INSTALL_FAULT` knob. The Rust sessions are those of a temporary git project.
+//! `MOAI_TEST_INSTALL_FAULT` knob. The Rust sessions are those of a temporary git project.
 #![cfg(unix)]
 
 mod common;
@@ -17,7 +17,7 @@ const NOW: &str = "2026-11-14T12:00:00Z";
 const STAMP: &str = "20261114T120000Z";
 const LATER: &str = "2026-11-14T13:00:00Z";
 const PERM: &str = "user approved in the fixture";
-const FAULT: &str = "MOAI_CLI_TEST_INSTALL_FAULT";
+const FAULT: &str = "MOAI_TEST_INSTALL_FAULT";
 /// Far in the future for any test run (year 2100), so no test depends on the clock.
 const LEASE_RUNNING: i64 = 4_102_444_800;
 /// Long past: the lease is over.
@@ -1376,7 +1376,7 @@ fn apply_rolls_back_when_the_process_table_cannot_be_read() {
         NOW,
         &digest_of(&p),
         PERM,
-        &[("MOAI_CLI_TEST_PROCESS_CHECK", "unavailable")],
+        &[("MOAI_TEST_PROCESS_CHECK", "unavailable")],
     );
     assert_eq!(a["ok"], json!(true), "{a}");
     let r = &a["result"];

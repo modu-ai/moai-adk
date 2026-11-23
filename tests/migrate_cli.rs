@@ -513,6 +513,96 @@ fn the_synthetic_home_marker_is_moai_and_the_earlier_marker_is_refused() {
     }
 }
 
+/// REQ-21: `migrate-apply`, `migrate-recovery-plan` and `migrate-recover` open a home through
+/// the same gate as `migrate-plan`, so a home that carries only the earlier marker is refused
+/// by each with the sentence naming the new marker, and nothing in that home is changed. The
+/// plan and the digests come from a home that has the new marker, so a different refusal
+/// (a stale plan, a missing backup) cannot stand in for the marker one.
+#[test]
+fn every_migrate_command_refuses_a_home_with_only_the_earlier_marker() {
+    let env = Env::new();
+    let good = env.home("good");
+    let (code, v) = env.run(&["migrate-plan", s(&good)], &request(&[hash(CONFIG)], None));
+    assert_eq!(code, 0, "{v}");
+    let plan = v["result"]["plan"].clone();
+    let digest_of_plan = v["result"]["plan_digest"].as_str().unwrap().to_string();
+    // The recovery plan `migrate-recover` takes is the one `migrate-recovery-plan` printed for
+    // a real backup, so the input parses and only the marker can be what refuses it.
+    let (code, v) = env.run(
+        &[
+            "migrate-apply",
+            s(&good),
+            "--plan-digest",
+            &digest_of_plan,
+            "--permission-reference",
+            "decision 6784520717",
+        ],
+        &plan,
+    );
+    assert_eq!(code, 0, "{v}");
+    let backup = v["result"]["backup"].as_str().unwrap().to_string();
+    let (code, v) = env.run(
+        &["migrate-recovery-plan", s(&good), "--backup", &backup],
+        &json!(null),
+    );
+    assert_eq!(code, 0, "{v}");
+    let recovery_plan = v["result"]["plan"].clone();
+    let recovery_digest = v["result"]["plan_digest"].as_str().unwrap().to_string();
+
+    let old = env.home("only-the-earlier-marker");
+    fs::remove_file(old.join(MARKER)).unwrap();
+    fs::write(old.join(EARLIER_MARKER), EARLIER_MARKER_TEXT).unwrap();
+    let o = s(&old);
+    let cases: [(&str, Vec<&str>, Value); 3] = [
+        (
+            "migrate-apply",
+            vec![
+                "migrate-apply",
+                o,
+                "--plan-digest",
+                &digest_of_plan,
+                "--permission-reference",
+                "decision 6784520717",
+            ],
+            plan,
+        ),
+        (
+            "migrate-recovery-plan",
+            vec!["migrate-recovery-plan", o, "--backup", &backup],
+            json!(null),
+        ),
+        (
+            "migrate-recover",
+            vec![
+                "migrate-recover",
+                o,
+                "--backup",
+                &backup,
+                "--plan-digest",
+                &recovery_digest,
+                "--permission-reference",
+                "r",
+            ],
+            recovery_plan,
+        ),
+    ];
+    for (name, args, stdin) in cases {
+        let before = digest(&old);
+        let (code, v) = env.run(&args, &stdin);
+        assert_ne!(code, 0, "{name}: {v}");
+        let message = v["error"]["message"].as_str().unwrap_or_default();
+        assert!(
+            message.contains(".moai-synthetic-home marker missing"),
+            "{name} was not refused for the marker: {v}"
+        );
+        assert_eq!(digest(&old), before, "{name} changed the refused home");
+        assert!(
+            !old.join(".moai-go-backup").exists(),
+            "{name} wrote a backup under the refused home"
+        );
+    }
+}
+
 /// REQ-15: the help of every `migrate-*` command that takes a home names the new marker and
 /// never the earlier one.
 #[test]

@@ -28,7 +28,7 @@ flag wins only when it is stricter, so no caller turns a limit off; only the fil
 one. A limits file that is not a plain file (a symlink, even to a valid file, or a folder),
 is over 4096 bytes, does not parse, has another key or sets `max` 0 is refused: `acquire`
 exits 125 without running COMMAND or writing anything.
-Tests set MOAI_CLI_TEST_MACHINE=free_gb=<n>,swap_pct=<n>[,pressure=<n>,mem_free_pct=<n>] (or
+Tests set MOAI_TEST_MACHINE=free_gb=<n>,swap_pct=<n>[,pressure=<n>,mem_free_pct=<n>] (or
 `@<file>` holding that text, read on every check; a `pressure` or `mem_free_pct` key makes it a
 machine with memory readings, like macOS) — the same test-only input the Rust debug build
 reads.
@@ -107,9 +107,9 @@ FORWARDED = (signal.SIGINT, signal.SIGTERM, signal.SIGHUP)
 
 
 def _test_machine():
-    """(free_bytes, swap_pct, memory) from MOAI_CLI_TEST_MACHINE, or None when it is not set;
+    """(free_bytes, swap_pct, memory) from MOAI_TEST_MACHINE, or None when it is not set;
     memory is (pressure_level, free_pct) when a `pressure` or `mem_free_pct` key is given."""
-    text = os.environ.get("MOAI_CLI_TEST_MACHINE")
+    text = os.environ.get("MOAI_TEST_MACHINE")
     if text is None:
         return None
     if text.startswith("@"):

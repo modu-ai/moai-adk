@@ -447,7 +447,7 @@ fn apply_refuses_across_file_systems_before_moving() {
     let f = fixture();
     let before = tree(&f.home, &[]);
     let token = f.plan()["confirm_token"].as_str().unwrap().to_string();
-    let (v, success) = f.apply(&token, &[("MOAI_CLI_TEST_CLEANUP_DEVICE", "other")]);
+    let (v, success) = f.apply(&token, &[("MOAI_TEST_CLEANUP_DEVICE", "other")]);
     assert!(!success, "{v}");
     assert!(
         v["error"].to_string().contains("another file system"),

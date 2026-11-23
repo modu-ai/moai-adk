@@ -1124,6 +1124,34 @@
       "rejects": "a test file outside tests/fixtures that spells the earlier or the new state folder name and is not in the counted baseline, or spells one more often than its baseline count; a fresh project or HOME uses the resolvers (SPEC-20261122-state-folder-literal-scan)"
     },
     {
+      "id": "earlier-test-seam-prefix-in-src-and-tests",
+      "tests": [
+        "tests/state_folder_literal_scan.rs::no_source_or_test_spells_the_earlier_test_seam_prefix"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test state_folder_literal_scan no_source_or_test_spells_the_earlier_test_seam_prefix"
+      ],
+      "rules": [
+        "tests/state_folder_literal_scan.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "src/",
+          "suffixes": [
+            ".rs"
+          ]
+        },
+        {
+          "prefix": "tests/",
+          "suffixes": [
+            ".rs",
+            ".py"
+          ]
+        }
+      ],
+      "rejects": "a line in src/ or in a test file outside tests/fixtures that spells the earlier test seam prefix instead of MOAI_TEST_<NAME> (SPEC-20261121-moai-name slice 3)"
+    },
+    {
       "id": "include-str-card-generated-scope",
       "always": true,
       "tests": [

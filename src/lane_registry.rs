@@ -41,7 +41,7 @@ pub const MAX_NAME_LEN: usize = 64;
 /// Largest entry file read; a real entry is about 150 bytes.
 const MAX_ENTRY_BYTES: u64 = 4_096;
 /// Test-only: milliseconds to hold the registry lock between reading and writing.
-pub const TEST_HOLD_VAR: &str = "MOAI_CLI_TEST_SESSION_REGISTRY_HOLD_MS";
+pub const TEST_HOLD_VAR: &str = "MOAI_TEST_SESSION_REGISTRY_HOLD_MS";
 
 /// A session name that is safe as a file name: 1 to 64 of `A-Z a-z 0-9 . _ -`, starting with
 /// a letter or digit (so never `.`, `..` or a hidden file).
