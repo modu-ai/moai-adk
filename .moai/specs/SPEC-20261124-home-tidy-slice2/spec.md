@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261124-home-tidy-slice2
 title: "The home moai folder inventory and the read-only tidy plan, with the memory index size line"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-24
+approval:
+  by: leader
+  at: 2026-11-23
+  basis: "리더 결정 노트 7943 (2026-11-23T22:03:17Z, 사용자 위임 2026-11-23T13:57Z, 리더 판단, 사용자 직접 선택 아님, 노트 7942 에 답함): 판 1 승인(head 1ebdb5aa7c); D-1~D-5 기본값; 레인은 그 노트를 인용만 해요"
+  digest: "sha256:b25f5577841c9de28edc389ee958c32f53ed7294d1414de78951c9d4d3445c5d"
 ---
 
 # The home moai folder inventory and the read-only tidy plan, with the memory index size line
