@@ -98,9 +98,9 @@ impl World {
         }
         fs::write(elsewhere.join("x"), "x").unwrap();
         git(&primary, &["init", "-q", "-b", "NeXT"]);
-        fs::create_dir_all(primary.join(".moai")).unwrap();
+        fs::create_dir_all(moai_cli::state_root::path(&primary, "")).unwrap();
         fs::write(
-            primary.join(".moai/project.yaml"),
+            moai_cli::state_root::path(&primary, "project.yaml"),
             "{\"schema_version\":2,\"project_id\":\"demo\",\"work_flow\":{\"flow\":\"m-flow\",\"integration_branch\":\"NeXT\"}}\n",
         )
         .unwrap();
@@ -1047,7 +1047,9 @@ fn ac9_reasons_carry_the_class_and_no_command_byte() {
 
 #[test]
 fn ac10_the_module_makes_no_process_network_environment_or_write_call() {
-    let source = include_str!("../src/hook_bash_boundary.rs");
+    let source =
+        fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("src/hook_bash_boundary.rs"))
+            .unwrap();
     let code: String = source
         .lines()
         .filter(|l| !l.trim_start().starts_with("//"))
