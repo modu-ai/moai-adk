@@ -564,3 +564,19 @@ fn two_specs_naming_one_branch_are_refused() {
     fs::remove_dir_all(specs(&root).join("SPEC-20261124-two")).unwrap();
     assert_allow(&code_write(&root));
 }
+
+/// Audit of C-429 (B1): a name that reads as two ids whose SPEC files both exist stays ambiguous
+/// and is never scanned for links, so a third SPEC that names the branch opens nothing. The
+/// ambiguous name is a repair branch (`spec/20261124-demo-r2` reads as `…-demo-r2` and `…-demo`).
+#[test]
+fn a_name_that_reads_two_spec_files_is_never_scanned_for_links() {
+    let branch = "spec/20261124-demo-r2";
+    let (_d, root) = repo(branch);
+    for id in ["SPEC-20261124-demo-r2", "SPEC-20261124-demo"] {
+        put_spec(&root, id, &spec_text(id));
+    }
+    let third = "SPEC-20261124-third";
+    put_spec(&root, third, &linked_text(third, "draft", Some(branch)));
+    let reason = assert_deny(&code_write(&root));
+    assert!(reason.contains("reads as two SPEC ids"), "{reason}");
+}
