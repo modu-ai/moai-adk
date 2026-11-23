@@ -1543,3 +1543,122 @@ fn fu3_a_drained_ref_queue_leaves_one_step_per_ref() {
     );
     assert!(w.steps_of_kind(&next, "queue").is_empty());
 }
+
+#[cfg(unix)]
+impl World {
+    /// `moai card <args>` started in a process group of its own and not waited for, so a test can
+    /// kill the whole group the way `kill -9` on a stuck run would.
+    fn spawn_card(&self, session: &str, args: &[&str]) -> std::process::Child {
+        use std::os::unix::process::CommandExt;
+        self.write_profile();
+        let mut all = vec!["card"];
+        all.extend_from_slice(args);
+        all.extend_from_slice(&["--project", &self.p]);
+        let mut cmd: Command = self.home.command(&all);
+        cmd.env("MOAI_GIT_BIN", &self.git_bin);
+        for (key, value) in self.extra_env.borrow().iter() {
+            cmd.env(key, value);
+        }
+        cmd.env(SESSION_VAR, session)
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .process_group(0);
+        cmd.spawn().expect("start moai")
+    }
+}
+
+/// FU-2 (REQ-4), the real thing: `kill -9` on the process group of a closing command, in the middle
+/// of the branch delete. The worktree is gone, the branch and the request stay, the live lease
+/// keeps other runs away, and once it ended the next run leaves the `abandoned` line for the dead
+/// attempt and settles the request.
+#[cfg(unix)]
+#[test]
+fn fu2_a_killed_executor_leaves_its_lease_and_the_next_attempt_names_it() {
+    let w = World::new();
+    let wt = w.linked_worktree("wt-killed");
+    w.branch("lane/kill");
+    let marker = w.outside("kill-marker");
+    let hook = w.project.join(".git/hooks/reference-transaction");
+    // Stops a delete of the card's branch in its `prepared` phase, as a hung disk would.
+    common::write_executable(
+        &hook,
+        &format!(
+            "#!/bin/sh\n[ \"$1\" = prepared ] || exit 0\nwhile read old new ref; do\n  case \"$ref\" in\n    refs/heads/lane/kill) : > '{}'; sleep 30; exit 1 ;;\n  esac\ndone\nexit 0\n",
+            marker.display()
+        ),
+    );
+    let card = w.card_in("apps/a/", &wt, Some("lane/kill"), &["one"]);
+    let mut child = w.spawn_card(
+        S_A,
+        &[
+            "finish",
+            &card,
+            "--head",
+            &w.head,
+            "--met",
+            "1=the test",
+            "--by",
+            "leader",
+        ],
+    );
+    for _ in 0..200 {
+        if marker.exists() {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(100));
+    }
+    assert!(marker.exists(), "the branch delete never started");
+    let group = format!("-{}", child.id());
+    let killed = Command::new("kill")
+        .args(["-KILL", "--", &group])
+        .status()
+        .expect("run kill");
+    assert!(killed.success());
+    child.wait().expect("reap the killed command");
+
+    // What the dead run left: the worktree is gone, the branch, the request and its lease stay.
+    assert!(!wt.exists() && !w.registered(&wt));
+    assert!(w.has_branch("lane/kill"));
+    assert_eq!(w.events(&card, "cleanup.started"), 1);
+    assert_eq!(w.events(&card, "cleanup.result"), 0);
+    assert!(w.steps_of_kind(&card, "worktree").is_empty());
+    assert!(w.steps_of_kind(&card, "attempt").is_empty());
+
+    // The hook is gone, the ref lock the killed git left is cleared (what an operator would do),
+    // and the lease of the dead attempt is still live: another run leaves the request alone.
+    fs::remove_file(&hook).unwrap();
+    for lock in ["refs/heads/lane/kill.lock", "packed-refs.lock"] {
+        let _ = fs::remove_file(w.project.join(".git").join(lock));
+    }
+    let busy = w.run_pending();
+    assert_eq!(
+        World::entry(&busy, &card)["status"],
+        json!("busy"),
+        "{busy}"
+    );
+    assert!(w.has_branch("lane/kill"));
+
+    // Time passes: the lease of attempt 1 is over, and the next run names it.
+    let file = ledger::ledger_path(w.home.path(), "demo").unwrap();
+    let conn = rusqlite::Connection::open(&file).unwrap();
+    // Events are append-only in a real ledger; in this throwaway one the guard is lifted so the
+    // clock can be moved past the lease without waiting for it.
+    conn.execute_batch(
+        "DROP TRIGGER event_no_update; \
+         UPDATE event SET payload = json_set(payload, '$.lease_until', 1) \
+         WHERE kind = 'cleanup.started';",
+    )
+    .unwrap();
+    drop(conn);
+    let done = w.run_pending();
+    let entry = World::entry(&done, &card);
+    assert_eq!(entry["status"], json!("settled"), "{done}");
+    assert_eq!(entry["abandoned_attempt"], json!(1), "{done}");
+    let lines = w.steps_of_kind(&card, "attempt");
+    assert_eq!(lines.len(), 1, "{lines:?}");
+    assert_eq!(lines[0]["attempt"], json!(1));
+    assert_eq!(lines[0]["status"], json!("abandoned"));
+    assert!(!w.has_branch("lane/kill"));
+    assert_eq!(w.events(&card, "cleanup.result"), 1);
+}
