@@ -74,4 +74,11 @@ Readers: the lander and the auditors who run `moai bundle` and read its page and
 
 ## Result
 
-Not started.
+Measured 2026-11-24 on macOS in the worktree `.claude/worktrees/bundle-tip-doc-refusal`, code head `11f7a7c57a126ebcc53b830b75c49984fbb85b62`.
+- AC-1 met: `bundle.md` line 9 now says that an m-flow profile with a recorded integration branch judges the local `refs/heads/<branch>` of the `--dir` repository when it is a commit, `origin/<branch>` only when it is not, and `origin/v2026.11.0` without a recorded branch; `git grep -n "refs/heads/<branch>" docs/design-review/appendix/operations/bundle.md` prints that line.
+- AC-2 met: `a_missing_default_tip_refusal_names_the_local_and_the_origin_ref` (profile `NeXT`, no local `NeXT`, no `origin`: exit 1, the refusal names `origin/NeXT` and `refs/heads/NeXT`). RED at commit `0189f20340`: the test failed with `the tip origin/NeXT is not a commit here (fetch first)`; GREEN at `11f7a7c57a`.
+- AC-3 met: `a_tip_that_is_no_origin_ref_is_refused_by_its_own_value` (`--tip no-such-branch`: exit 1, names the value, no `refs/heads/`).
+- AC-4 met: `an_origin_tip_is_refused_by_its_own_value_when_the_local_branch_exists` (local `NeXT`, `--tip origin/NeXT`: exit 1, names `origin/NeXT`, no `refs/heads/`).
+- `cargo nextest run --locked --offline` over `bundle_tip_refusal_cli`, `bundle_check_cli`, `test_area_layout`, `bundle_body_cli`, `bundle_build_cli` and `bundle_verify_cli` ran 88 tests, 88 passed; `test_area_layout` accepts the new file (first word `bundle` is an area of `tests/areas.toml`), and the three tests that read the operations page still pass.
+- guard mutants, each run on the committed head and reverted (`git diff` empty afterwards): the local name never added (`.filter(|_| false)`) exit 100 (1 failed); the local name always added (`.filter(|_| true)`) exit 100 (1 failed).
+- Gap: no new test reads the operations page (D-2); the sentence of AC-1 is checked by reading, not by a pinned test. The refusal of the `build` and `verify` actions goes through the same `tip_of` and is not run separately.
