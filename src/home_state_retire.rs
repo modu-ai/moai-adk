@@ -10,7 +10,10 @@
 //! ([`crate::move_journal`], which publishes it and moves). A crash between the two leaves a
 //! manifest and no journal; the preview and the apply of the same clock take that manifest as
 //! their own (it names this kind, HOME and stamp) and replace it by one rename, so the rerun
-//! finishes. Another file at that name keeps the clock `stamp_taken`.
+//! finishes. Another file at that name keeps the clock `stamp_taken`. The manifest is never
+//! written in place: it goes whole to `<manifest>.tmp` (a name an earlier crash or anyone may have
+//! left, a link included, is removed first and never followed) and is published by one step, so a
+//! crash leaves either no manifest or a whole one, never an empty file.
 //!
 //! The step stops while a program uses a path under the folder, while the running binary lies
 //! inside it, and where the folder, `~/.moai`, its `archive` folder or the archive name is not
@@ -32,8 +35,10 @@ pub const ARCHIVE_DIR: &str = "archive";
 pub const KIND: &str = "state-retire";
 const MANIFEST_PREFIX: &str = "state-retire-manifest-";
 const ARCHIVE_PREFIX: &str = "moai-cli-";
-/// Test seam of the apply: stop at a step like a crash would (debug builds only): `after_manifest`
-/// (this module's, between the manifest and the journal) or a point of [`crate::move_journal`].
+/// Test seam of the apply: stop at a step like a crash would (debug builds only):
+/// `after_manifest_tmp` (this module's, the manifest is whole under its temporary name),
+/// `after_manifest` (this module's, between the manifest and the journal) or a point of
+/// [`crate::move_journal`].
 pub const FAULT_VAR: &str = "MOAI_CLI_TEST_STATE_RETIRE_FAULT";
 
 /// What the calling process knows that the library does not read itself.
@@ -317,23 +322,50 @@ fn make_dir(p: &Path) -> Result<(), String> {
     b.create(p).map_err(|e| format!("{}: {e}", p.display()))
 }
 
-/// Write `bytes` to `path` and flush them: `exclusive` refuses a name that exists; otherwise a
-/// leftover file of an earlier crash (the temporary name of the manifest) is overwritten.
-fn write_file(path: &Path, bytes: &[u8], exclusive: bool) -> Result<(), String> {
+/// Write `bytes` to a name that does not exist yet and flush them. `create_new` refuses any name
+/// that exists, a link included, and never follows one, so nothing outside `path` is written.
+fn write_new_file(path: &Path, bytes: &[u8]) -> Result<(), String> {
     use std::io::Write;
-    let mut opts = fs::OpenOptions::new();
-    opts.write(true);
-    if exclusive {
-        opts.create_new(true);
-    } else {
-        opts.create(true).truncate(true);
-    }
-    let mut f = opts
+    let mut f = fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
         .open(path)
         .map_err(|e| format!("{}: {e}", path.display()))?;
     f.write_all(bytes)
         .and_then(|()| f.sync_all())
         .map_err(|e| format!("{}: {e}", path.display()))
+}
+
+/// Put the manifest at `target` whole, by one step on the name: the bytes go to the temporary
+/// name beside it first, so a crash never leaves an empty or half-written file at `target`.
+/// Whatever an earlier crash (or anyone) left at the temporary name is removed first: `remove_file`
+/// takes away a link itself and never its target, and the new file is then made with `create_new`.
+/// `replace` puts this step's own earlier manifest out of the way by `rename`; otherwise the name
+/// must be free, and `hard_link` (which refuses an existing name) publishes the file.
+fn publish_manifest(
+    target: &Path,
+    bytes: &[u8],
+    replace: bool,
+    fault: Option<&str>,
+) -> Result<(), String> {
+    let tmp = target.with_extension("json.tmp");
+    match fs::remove_file(&tmp) {
+        Ok(()) => {}
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+        Err(e) => return Err(format!("{}: {e}", tmp.display())),
+    }
+    write_new_file(&tmp, bytes)?;
+    if fault == Some("after_manifest_tmp") {
+        return Err("injected crash at after_manifest_tmp".into());
+    }
+    if replace {
+        fs::rename(&tmp, target).map_err(|e| format!("{}: {e}", target.display()))
+    } else {
+        fs::hard_link(&tmp, target).map_err(|e| format!("{}: {e}", target.display()))?;
+        // The manifest is published; a temporary name that stays is removed by the next run.
+        let _ = fs::remove_file(&tmp);
+        Ok(())
+    }
 }
 
 /// Archive the earlier folder of an identical fresh preview whose action is `retire`. A journal
@@ -424,15 +456,14 @@ pub fn apply(
             "entries": fresh["entries"],
         });
         let bytes = format!("{manifest:#}\n");
-        if own_manifest(&n, home, &stamp) {
-            // A crash left this step's own manifest without a journal: replace it by one
-            // rename, so the name never holds a half-written file.
-            let tmp = n.manifest.with_extension("json.tmp");
-            write_file(&tmp, bytes.as_bytes(), false)?;
-            fs::rename(&tmp, &n.manifest).map_err(|e| format!("{}: {e}", n.manifest.display()))?;
-        } else {
-            write_file(&n.manifest, bytes.as_bytes(), true)?;
-        }
+        // The first manifest and the replacement of this step's own one (a crash left it without
+        // a journal) are written the same way: whole under a temporary name, then one step.
+        publish_manifest(
+            &n.manifest,
+            bytes.as_bytes(),
+            own_manifest(&n, home, &stamp),
+            fault.as_deref(),
+        )?;
         if fault.as_deref() == Some("after_manifest") {
             return Err("injected crash at after_manifest".into());
         }

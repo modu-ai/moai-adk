@@ -728,6 +728,93 @@ fn a_crash_between_the_manifest_and_the_journal_is_finished_by_a_rerun_of_the_sa
     assert_eq!(before, tree(&older(&home)));
 }
 
+fn temporary_manifest(home: &Path) -> PathBuf {
+    moai(home).join(format!("archive/state-retire-manifest-{STAMP}.json.tmp"))
+}
+
+#[test]
+fn a_link_planted_at_the_temporary_manifest_name_is_replaced_and_never_followed() {
+    let (_d, home) = earlier_home();
+    let before = tree(&older(&home));
+    let digest = digest_of(&plan(&home));
+    let crashed = apply_with(
+        &home,
+        NOW,
+        "--plan-digest",
+        &digest,
+        PERM,
+        &[(FAULT, "after_manifest")],
+    );
+    assert!(refused(&crashed).contains("injected crash"), "{crashed}");
+
+    // A file outside HOME, and a link to it at the name the rerun writes its manifest under.
+    let outside = tempfile::tempdir().unwrap();
+    let victim = outside.path().join("victim.txt");
+    fs::write(&victim, "precious outside file\n").unwrap();
+    chmod(&victim, 0o600);
+    symlink(&victim, temporary_manifest(&home)).unwrap();
+
+    let done = apply(&home, &digest);
+    assert_eq!(done["ok"], json!(true), "{done}");
+    assert_eq!(done["result"]["state"], json!("applied"), "{done}");
+    assert_eq!(
+        fs::read(&victim).unwrap(),
+        b"precious outside file\n",
+        "the file the link pointed at is untouched"
+    );
+    assert_eq!(
+        fs::metadata(&victim).unwrap().permissions().mode() & 0o777,
+        0o600
+    );
+    let name = fs::symlink_metadata(manifest(&home)).unwrap();
+    assert!(
+        name.is_file() && !name.file_type().is_symlink(),
+        "the manifest is a plain file of its own"
+    );
+    let m: Value = serde_json::from_slice(&fs::read(manifest(&home)).unwrap()).unwrap();
+    assert_eq!(m["plan_digest"], json!(digest));
+    assert!(
+        !exists(&temporary_manifest(&home)),
+        "the link is gone, not left"
+    );
+    assert_eq!(before, tree(&archive(&home)));
+}
+
+#[test]
+fn the_first_manifest_is_written_whole_under_a_temporary_name_and_published_by_one_step() {
+    let (_d, home) = earlier_home();
+    let before = tree(&older(&home));
+    let digest = digest_of(&plan(&home));
+    let crashed = apply_with(
+        &home,
+        NOW,
+        "--plan-digest",
+        &digest,
+        PERM,
+        &[(FAULT, "after_manifest_tmp")],
+    );
+    assert!(refused(&crashed).contains("injected crash"), "{crashed}");
+    // A crash here leaves no file at the manifest name, so no empty or half-written manifest.
+    assert!(!exists(&manifest(&home)), "no file at the manifest name");
+    let tmp: Value = serde_json::from_slice(&fs::read(temporary_manifest(&home)).unwrap())
+        .expect("the temporary file holds the whole manifest");
+    assert_eq!(tmp["plan_digest"], json!(digest));
+    assert!(!exists(&journal(&home)));
+    assert_eq!(before, tree(&older(&home)), "nothing moved");
+
+    // The leftover name does not block the clock, and a rerun replaces whatever sits there.
+    fs::write(temporary_manifest(&home), "junk of an earlier crash").unwrap();
+    let again = plan(&home);
+    assert_eq!(again["action"], json!("retire"), "{again}");
+    assert_eq!(digest_of(&again), digest);
+    let done = apply(&home, &digest);
+    assert_eq!(done["ok"], json!(true), "{done}");
+    assert!(!exists(&temporary_manifest(&home)));
+    let m: Value = serde_json::from_slice(&fs::read(manifest(&home)).unwrap()).unwrap();
+    assert_eq!(m["plan_digest"], json!(digest));
+    assert_eq!(before, tree(&archive(&home)));
+}
+
 #[test]
 fn a_crash_at_any_journal_step_is_finished_by_a_rerun_or_undone_by_the_revert() {
     for point in [
