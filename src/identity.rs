@@ -66,40 +66,6 @@ fn removed_by_prefix(name: &str) -> bool {
         || name.starts_with("GIT_TRACE")
 }
 
-#[cfg(test)]
-mod scrub_tests {
-    use super::removed_by_prefix;
-
-    /// SPEC-20261122-test-defects-session-reclaim AC-10 (REQ-11): every trace variable git
-    /// documents (`GIT_TRACE`, `GIT_TRACE_*`, `GIT_TRACE2`, `GIT_TRACE2_*`) is removed from a
-    /// git child, as are the numbered config pairs; an unrelated variable stays.
-    #[test]
-    fn git_trace_variables_are_removed_by_prefix() {
-        for name in [
-            "GIT_TRACE",
-            "GIT_TRACE2",
-            "GIT_TRACE2_EVENT",
-            "GIT_TRACE2_PERF",
-            "GIT_TRACE_PERFORMANCE",
-            "GIT_TRACE_SETUP",
-            "GIT_TRACE_CURL",
-            "GIT_CONFIG_KEY_0",
-            "GIT_CONFIG_VALUE_12",
-        ] {
-            assert!(removed_by_prefix(name), "{name} should be removed");
-        }
-        for name in [
-            "GIT_TRACKER",
-            "GIT_AUTHOR_NAME",
-            "TRACE",
-            "PATH",
-            "GIT_CONFIG_GLOBAL",
-        ] {
-            assert!(!removed_by_prefix(name), "{name} should stay");
-        }
-    }
-}
-
 enum Git {
     Unavailable,
     /// git ran and failed; carries a path-free summary of its message.
@@ -308,4 +274,38 @@ pub fn identity(path: &Path) -> Result<Value> {
         "id_derivation": ID_DERIVATION,
         "writes": false,
     }))
+}
+
+#[cfg(test)]
+mod scrub_tests {
+    use super::removed_by_prefix;
+
+    /// SPEC-20261122-test-defects-session-reclaim AC-10 (REQ-11): every trace variable git
+    /// documents (`GIT_TRACE`, `GIT_TRACE_*`, `GIT_TRACE2`, `GIT_TRACE2_*`) is removed from a
+    /// git child, as are the numbered config pairs; an unrelated variable stays.
+    #[test]
+    fn git_trace_variables_are_removed_by_prefix() {
+        for name in [
+            "GIT_TRACE",
+            "GIT_TRACE2",
+            "GIT_TRACE2_EVENT",
+            "GIT_TRACE2_PERF",
+            "GIT_TRACE_PERFORMANCE",
+            "GIT_TRACE_SETUP",
+            "GIT_TRACE_CURL",
+            "GIT_CONFIG_KEY_0",
+            "GIT_CONFIG_VALUE_12",
+        ] {
+            assert!(removed_by_prefix(name), "{name} should be removed");
+        }
+        for name in [
+            "GIT_TRACKER",
+            "GIT_AUTHOR_NAME",
+            "TRACE",
+            "PATH",
+            "GIT_CONFIG_GLOBAL",
+        ] {
+            assert!(!removed_by_prefix(name), "{name} should stay");
+        }
+    }
 }
