@@ -125,6 +125,13 @@ fn identity_ok(word: &str) -> bool {
         && word.chars().all(|c| !c.is_whitespace() && !c.is_control())
 }
 
+/// Whether the word has the shape of a session identity: a session id with an optional `:<12hex>`
+/// worktree key, ASCII case ignored. A lane name never does, and the verdict writer (which compares
+/// through `trailers::same_identity`) could never match it (SPEC-20261122-card-roles REQ-8).
+fn session_identity_ok(word: &str) -> bool {
+    crate::trailers::value_shape(&word.to_ascii_lowercase()) != crate::trailers::Shape::Bad
+}
+
 /// `card assign C-n --auditor ID --by leader`: one `card.audit_assigned` row for a card in review.
 /// Only the leader word assigns, and never an identity that holds or held the card.
 pub fn assign(
@@ -149,6 +156,14 @@ pub fn assign(
                 .to_string(),
         );
     }
+    if !session_identity_ok(auditor) {
+        return Err(format!(
+            "card assign refused: --auditor {auditor} is not a session identity: give a session \
+             id (hex digits and dashes, 8 to 64 characters), optionally followed by `:` and the \
+             12 hex digits of a worktree key; a lane name never matches the session that writes \
+             a verdict; nothing was written"
+        ));
+    }
     let (id, mut writer) = open_for_write(project, home)?;
     let event_id = writer
         .with_write_tx(|tx, now| {
@@ -166,7 +181,10 @@ pub fn assign(
                 Ok(h) => h,
                 Err(e) => return Ok(Err(e)),
             };
-            if held.iter().any(|h| h == auditor) {
+            if held
+                .iter()
+                .any(|h| crate::trailers::same_identity(h, auditor))
+            {
                 return Ok(Err(format!(
                     "card conflict in assign: {auditor} held {name}, and an auditor is never one \
                      of its authors; nothing was written"
@@ -205,5 +223,18 @@ mod tests {
         assert!(!identity_ok("two words"));
         assert!(!identity_ok(&"x".repeat(101)));
         assert!(identity_ok(&"x".repeat(100)));
+    }
+
+    #[test]
+    fn session_identities_are_session_ids_with_an_optional_worktree_key() {
+        let id = "aaaaaaaa-0000-4000-8000-00000000000a";
+        assert!(session_identity_ok(id));
+        assert!(session_identity_ok(&id.to_uppercase()));
+        assert!(session_identity_ok(&format!("{id}:0123456789ab")));
+        assert!(session_identity_ok(&format!("{id}:0123456789AB")));
+        assert!(!session_identity_ok("agent-4"));
+        assert!(!session_identity_ok("leader"));
+        assert!(!session_identity_ok(&format!("{id}:xyz")));
+        assert!(!session_identity_ok(&format!("{id}:0123456789a")));
     }
 }
