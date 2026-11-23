@@ -211,7 +211,6 @@ fn named_files(scans: &[Value]) -> BTreeSet<String> {
     let mut names = BTreeSet::new();
     for scan in scans {
         names.extend(strings(&scan["rules"]));
-        names.extend(strings(&scan["readers"]));
         for test in strings(&scan["tests"]) {
             names.insert(test_file(&test).to_string());
         }
@@ -481,15 +480,11 @@ fn scope_covers(scan: &Value, path: &str) -> bool {
     })
 }
 
-/// Whether a scan names `file`: as one of its rule files or as one of its `readers`, the tests of
-/// a `reads-` scan that open the scope files and that its check runs. A reader is no rule file of
-/// a `reads-` scan, because a change of any one of dozens of readers would then select and cross-hit
-/// the whole group (SPEC-20261123-land-file-read-scans D-6).
+/// Whether a scan names `file` as one of its rule files. The tests of a `reads-` scan that open the
+/// scope files are its rule files, as the user approved (SPEC-20261123-land-file-read-scans D-6):
+/// a change to one of them selects the whole group.
 fn names_file(scan: &Value, file: &str) -> bool {
-    strings(&scan["rules"])
-        .iter()
-        .chain(strings(&scan["readers"]).iter())
-        .any(|r| r == file)
+    strings(&scan["rules"]).iter().any(|r| r == file)
 }
 
 /// The `file reads path` lines of the readers that no `always` scan covers: the file is named by an
@@ -678,7 +673,7 @@ const FILE_READ_EXEMPT: &[(&str, &[&str], &str)] = &[
     (
         "tests/product_cli.rs",
         &[".moai/specs"],
-        "`is_dir` check of one named SPEC id, no content read; a change inside `.moai/specs` cannot break it",
+        "`repo.join(\".moai/specs\").join(arg).is_dir()` (product_cli.rs:2897) checks that a SPEC id named in its adoption records still has a folder and reads no content; only removing or renaming a SPEC folder breaks it, which a card does not do, while every card edits this folder",
     ),
     (
         "tests/project_flow_closing.rs",
@@ -790,6 +785,17 @@ impl Tracked {
         if literal.chars().any(|c| c.is_whitespace() || c == '\\') {
             return None;
         }
+        // a placeholder folder in front (`{}/skills/..`, `{manifest_dir}/Cargo.toml`) is the root
+        // the test formats in; it is no part of the path (D-8)
+        let mut literal = literal;
+        while let Some(rest) = literal
+            .strip_prefix('{')
+            .and_then(|r| r.split_once("}/"))
+            .filter(|(name, _)| !name.contains(['{', '}', '/']))
+            .map(|(_, rest)| rest)
+        {
+            literal = rest;
+        }
         let cut = literal
             .find(['{', '<', '*', '$'])
             .map_or(literal, |at| &literal[..at]);
@@ -894,8 +900,7 @@ fn file_readers() -> BTreeMap<String, Vec<String>> {
 }
 
 /// The `always` scans that name a top-level test file as a rule file and run no check with
-/// `--test <stem>` for it: the `readers` of a scan that has them, else its rule files. A scan
-/// without `always` claims no coverage and is not held to this.
+/// `--test <stem>` for it. A scan without `always` claims no coverage and is not held to this.
 fn scans_not_running_readers(scans: &[Value]) -> Vec<String> {
     let mut out = Vec::new();
     for scan in scans.iter().filter(|s| s["always"] == Value::Bool(true)) {
@@ -911,13 +916,7 @@ fn scans_not_running_readers(scans: &[Value]) -> Vec<String> {
                     .collect::<Vec<_>>()
             })
             .collect();
-        // a scan with `readers` runs those; its rule files only anchor it (D-6)
-        let named = if scan["readers"].is_array() {
-            strings(&scan["readers"])
-        } else {
-            strings(&scan["rules"])
-        };
-        for rule in named {
+        for rule in strings(&scan["rules"]) {
             let stem = rule
                 .strip_prefix("tests/")
                 .and_then(|r| r.strip_suffix(".rs"))
@@ -1146,16 +1145,6 @@ fn a_scan_that_names_a_reader_but_never_runs_the_readers_is_named() {
     assert!(scans_not_running_readers(&[scan(runs, true)]).is_empty());
     // a scan without `always` claims no coverage, so it is not held to this
     assert!(scans_not_running_readers(&[scan(other.clone(), false)]).is_empty());
-    // a scan with `readers` is held to those, and its rule file only anchors it
-    let mut grouped = scan(other, true);
-    grouped["rules"] = json!(["tests/anchor.rs"]);
-    grouped["readers"] = json!(["tests/zz_reader.rs"]);
-    assert_eq!(
-        scans_not_running_readers(&[grouped.clone()]),
-        ["reads-zz: tests/zz_reader.rs is a rule file but no check runs --test zz_reader"]
-    );
-    grouped["checks"] = json!(["cargo test --offline --locked --test zz_reader"]);
-    assert!(scans_not_running_readers(&[grouped]).is_empty());
 }
 
 #[test]
