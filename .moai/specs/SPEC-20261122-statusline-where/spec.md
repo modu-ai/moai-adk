@@ -31,7 +31,7 @@ parent: SPEC-20261122-statusline-flow
 - REQ-4: When the branch is not the integration branch, the status line shall show `🧭 <name> ↑<n> ↓<n>` as the commits it is ahead of and behind the integration branch · failure: none — on the integration branch itself the branch item shows `↑<n>` as the landings not yet pushed and an unknown integration branch leaves the item out
 - REQ-5: The status line shall keep the git facts it shows in a per-session cache file under `$TMPDIR` named by the stdin session id and owned by the user alone · failure: none — an unwritable cache folder means every render asks git and the line is still the same
 - REQ-6: While the cache of a session holds the same `HEAD` content, the same integration branch commit and an age below ten seconds, the status line shall start no process for git · failure: none — any difference or an older cache asks git once and rewrites the cache
-- REQ-7: The status line shall start at most one git process in one render and none for the short commit of a detached HEAD · failure: none — a second fact is read from the same output
+- REQ-7: The status line shall start at most one git process in one render, two for a branch measured against the integration branch (REQ-6 of SPEC-20261123-statusline-integration-distance), and none for the short commit of a detached HEAD · failure: none — a second fact is read from the same output
 - REQ-8: The status line shall show no tag on its first line · failure: none — the lane registry and the stdin session name are not read and a session name changes nothing on the line
 - REQ-9: The status line shall write the pull request item as `🔗 #<n> <state>` and as `🔗 !<n> <state>` when the host says the request kind is a merge request · failure: none — a missing pull request leaves the item out
 - REQ-10: The status line shall read the model name only from the stdin model and the effort only from the stdin effort and thinking fields · failure: none — a missing model shows the shortened model id and then nothing
@@ -42,7 +42,7 @@ parent: SPEC-20261122-statusline-flow
 
 - AC-1 (REQ-1, REQ-9, REQ-10): the first line of every case — worktree session with a pull request, main checkout, generic project, merge request, missing model — is exactly the string of its golden, plain and with color.
   verify: `cargo test --offline --locked --test statusline_cards line_one_items_`
-- AC-2 (REQ-2, REQ-7): with a fake `git` first on `PATH` that counts its starts, a branch, a detached HEAD and a missing `HEAD` start at most one process and none for the short commit.
+- AC-2 (REQ-2, REQ-7): with a fake `git` first on `PATH` that counts its starts, a branch, a detached HEAD and a missing `HEAD` start at most one process (two for a lane branch measured against the integration branch) and none for the short commit.
   verify: `cargo test --offline --locked --test statusline_git_env head_file_and_process_count`
 - AC-3 (REQ-3, REQ-4): the worktree-name rule and the integration distance are pinned for equal names, unequal names, the main checkout, a branch that is the integration branch, an unknown integration branch and a detached HEAD.
   verify: `cargo test --offline --locked --lib statusline::state::where_tests`
@@ -103,7 +103,7 @@ SPEC 만이에요. 돌린 것: 줄 1 모양 너비 측정(`unicode-width` 프로
 
 코드 조각(부모 SPEC Plan 3단계, 2026-11-22): 빨간 시험을 먼저 커밋하고 코드·옛 시험·골든·문서 문장을 다음 커밋에 넣었어요. 정한 것과 그 근거:
 
-- git 프로세스 하나(REQ-7): 레인 가지에서는 `git --no-optional-locks -c branch.<가지>.remote=. -c branch.<가지>.merge=refs/heads/<통합> status --porcelain --branch` 한 번으로 통합 가지와의 거리와 더러움 표시를 함께 읽어요(git 2.54 로 확인: `## lane/x...next [ahead 2, behind 1]`). 통합 가지 자신에서는 덮어쓰지 않아서 `↑n` 이 아직 밀지 않은 착지 수예요. 통합 가지를 모르면 원래 upstream 숫자를 가지 항목에 보여요. 그래서 `🌳`/`🅱️` 항목의 `↑` 와 `🧭` 의 `↑` 는 레인 가지에서 같은 수예요(Layouts 의 `↑3` 두 번).
+- git 프로세스 하나(REQ-7, 2026-11-23 정정): 아래의 "한 번" 과 `-c` 덮어쓰기는 `SPEC-20261123-statusline-integration-distance` 가 바꿨어요. `-c` 가 이미 있는 `branch.<가지>.merge` 값을 지우지 못해서 upstream 이 있는 가지의 숫자가 틀렸기 때문에, 통합 브랜치와 거리를 재는 레인 가지는 `status` 와 `rev-list` 두 프로세스를 불러요(REQ-7 은 그에 맞춰 "둘" 로 고쳤어요). 통합 가지 자신·통합 가지를 모름·분리된 `HEAD` 는 한 프로세스 이하, 캐시가 신선하면 0 이에요. 다음은 그 전의 결정이에요: 레인 가지에서는 `git --no-optional-locks -c branch.<가지>.remote=. -c branch.<가지>.merge=refs/heads/<통합> status --porcelain --branch` 한 번으로 통합 가지와의 거리와 더러움 표시를 함께 읽어요(git 2.54 로 확인: `## lane/x...next [ahead 2, behind 1]`). 통합 가지 자신에서는 덮어쓰지 않아서 `↑n` 이 아직 밀지 않은 착지 수예요. 통합 가지를 모르면 원래 upstream 숫자를 가지 항목에 보여요. 그래서 `🌳`/`🅱️` 항목의 `↑` 와 `🧭` 의 `↑` 는 레인 가지에서 같은 수예요(Layouts 의 `↑3` 두 번).
 - 통합 가지 이름(Risk 3): 프로젝트 프로필(`profile::read_rel` 이 배치에 따라 고르는 `project.yaml` 의 `work_flow.integration_branch`, 안전한 이름만), 없으면 공통 git 폴더의 `refs/remotes/origin/HEAD` 파일, 둘 다 없으면 `🧭` 없음. 그 커밋은 `refs/heads/<이름>` 또는 `packed-refs` 파일에서 읽어요(프로세스 없음).
 - 캐시 열쇠(D-1 보탬): `HEAD` 내용과 통합 커밋에 **git 폴더(HEAD 를 가진 작업트리별 폴더)** 를 더했어요. 없으면 같은 세션 id 로 다른 저장소를 10초 안에 그릴 때 앞 저장소의 숫자를 보여요(빨간 시험 `session_cache_another_folder_with_the_same_head_starts_one_git` 으로 먼저 확인).
 - `pr.kind`: 공식 문서 `statusline.md`(1170줄 전체, 2026-11-22T08:29:32Z 받음) — "`pr.kind` | `mr` when `pr` describes a GitLab merge request. Absent for GitHub pull requests". 값 `mr` 만 `!` 로 써요.

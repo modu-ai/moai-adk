@@ -74,7 +74,7 @@ created: 2026-11-23
 
 | Id | Decision | Basis | Undo |
 | --- | --- | --- | --- |
-| D-1 | A second process replaces the `-c` override. | `-c` cannot remove a value a multi-valued key already has, so no single `git status` can be pointed at the integration branch when the branch has its own upstream (reproduced with git 2.54). The other single-process ways (`status --porcelain=v2`, `for-each-ref --format=%(ahead-behind:…)`) either also read the branch's own upstream or need a git newer than the one Apple ships. | Go back to the override and accept the wrong numbers on a branch with an upstream. |
+| D-1 | A second process replaces the `-c` override. | `-c` cannot remove a value a multi-valued key already has, so no single `git status` can be pointed at the integration branch when the branch has its own upstream (reproduced with git 2.54). `status --porcelain=v2` also reads the branch's own upstream. `for-each-ref --format=%(ahead-behind:refs/heads/<integration>)` reads no upstream and works on the git Apple ships (Apple Git-157, git 2.54.0, run 2026-11-23T11:39Z: `NeXT 166 0`), but it gives only the two numbers: the dirty count still needs `git status`, so it is a second process too and costs no less than `rev-list`. | Go back to the override and accept the wrong numbers on a branch with an upstream. |
 | D-2 | Always the second process when REQ-1 applies, not a "status first, second call only when the header looks wrong" check. | The check would read `git`'s header format to decide, a second path to test and to keep in step with git versions; the second call costs a few milliseconds and the cache hides it for ten seconds. | Add the header check back later if a measurement shows the cost matters. |
 | D-3 | A failed `rev-list` shows zeros and writes no cache record. | The same rule the one process had: "a git that cannot answer gives zeros and writes nothing". A missing ref never reaches this branch (REQ-5). | Fall back to the numbers of the `status` header. |
 
@@ -107,4 +107,19 @@ Status: implemented on the branch `spec/20261123-statusline-integration-distance
 
 - 빨강: 고치기 전 `cargo test --offline --locked --test statusline_integration_distance` 는 `a_branch_with_its_own_upstream_is_measured_against_the_integration_branch` 와 `an_upstream_that_names_another_branch_does_not_change_the_distance` 가 `🧭 next ↑0 ↓0` 으로 실패(7개 중 5 통과 2 실패)했어요.
 - 초록: 같은 명령과 `--test statusline_git_env` 가 7 + 27 통과, `cargo test --offline --locked --lib statusline::` 212 통과, `cargo clippy --offline --locked --all-targets -- -D warnings` 와 `cargo fmt --check` 종료 0.
-- AC-1 met · AC-2 met · AC-3 met · AC-4 met · AC-5 met · AC-6 met · AC-7 met (위 측정).
+### 착지 뒤 정정 (2026-11-23)
+
+- 화면: `SPEC-20261123-statusline-order-bars` REQ-11 이 첫 줄에서 `🧭`·`↑ ↓`·`+N` 을 뺐어요. 위 "실제 상태 줄 출력" 표는 착지 때의 값이고 지금 화면에는 없어요. 계산 코드(`measure`, `distance_args`, `git_counts` 의 `rev-list`)는 그대로 돌아요(order-bars Non-goals).
+- 고친 것: 범위 뒤에 `--` 가 없어서 작업 트리에 `refs/heads/<통합>...HEAD` 라는 파일이 있으면 git 이 `ambiguous argument` 로 멈췄어요. 그러면 거리가 0 으로 정해지고 세션 캐시가 쓰이지 않아 렌더마다 git 이 두 번 돌아요. `distance_args` 끝에 `--` 를 더했어요(`fix(statusline-integration-distance)` 커밋 `173d271ac7`).
+- 빨강: 고치기 전 `cargo nextest run --offline --locked --test statusline_integration_distance -E 'test(a_file_named_like_the_range_does_not_stop_the_distance_call)'` 가 exit 100(캐시 기록 없음). 초록: 고친 뒤 `--lib --test statusline_integration_distance --test statusline_git_env` 의 `statusline::state::`·두 테스트 파일 119개가 모두 통과, exit 0. 뮤턴트(`--` 를 뺌)에서 같은 새 테스트가 exit 100 으로 실패하고 되돌렸어요.
+- 테스트 이름: 단언은 캐시 미스 한 번에 두 프로세스(2→4)인데 이름이 `starts_one_git` 이던 `session_cache_a_changed_integration_commit_starts_one_git` 을 `…starts_git_again` 으로 바꿨어요.
+
+### 수용 기준별 결과
+
+- AC-1: met — 착지 때 `a_branch_with_its_own_upstream_is_measured_against_the_integration_branch` 가 `↑2 ↓1` 로 통과했어요(위 "검증"). 숫자가 화면에서 빠진 뒤에는 이 테스트가 `a_branch_with_its_own_upstream_shows_the_integration_tip_and_no_distance` 로 바뀌어 첫 줄에 통합 항목과 가지만 있는 것을 고정하고, 거리 숫자 자체는 세션 캐시 기록(앞섬 2·뒤처짐 1)으로 `a_file_named_like_the_range_does_not_stop_the_distance_call` 이 봐요(upstream 이 있는 가지는 아니에요).
+- AC-2: met — 착지 때 upstream 없음·다른 가지 upstream·통합 브랜치 upstream·같은 높이가 모두 같은 값으로 통과했어요. 지금 같은 사례들은 `a_branch_without_an_upstream_shows_the_same_line` 등 같은 파일의 테스트가 첫 줄이 같은 것을 고정해요.
+- AC-3: withdrawn — 이 기준은 통합 브랜치 자신에서 `🧭` 가 없고 가지 항목에 git 자신의 숫자가 나오는 것이었는데, 그 숫자가 화면에서 빠져 볼 수 있는 출력이 없어요. 옛 테스트는 원격 없이 숫자 0 이어도 통과해서 실제 원격 사례를 보지 못했고(후속 지적), 철회로 정리했어요(리더 결정 2026-11-23T11:32Z). 통합 브랜치 자신의 첫 줄은 `the_integration_branch_itself_shows_both_items` 가 고정해요.
+- AC-4: met — 착지 때 통과. 지금은 `statusline_integration_distance` 의 `an_integration_branch_that_is_missing_locally_says_n_a` 와 `statusline_git_env` 의 `a_missing_integration_ref_starts_no_distance_process` 가 고정해요.
+- AC-5: met — 착지 때 `--test statusline_git_env` 통과. 지금 스크립트 git 의 `rev-list` 호출은 `rev-list --left-right --count refs/heads/next...HEAD --` 이에요.
+- AC-6: met — 단위 테스트가 두 호출의 인자 목록을 그대로 고정하고, 지금 `rev-list` 목록은 끝에 `--` 가 있어요(`a_lane_branch_is_measured_against_the_integration_branch_by_its_own_call`, 위 119개 안).
+- AC-7: met — 위 "측정"(착지 때)에 두 호출의 시간이 있어요. 이번 정정은 인자 하나를 더했을 뿐이라 다시 재지 않았어요(not_run).
