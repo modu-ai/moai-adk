@@ -86,7 +86,13 @@ pub fn journal_root(project: &Path) -> Result<PathBuf> {
     }
     // #2175: the P09 opt-in home layout switches the journal store to
     // ~/.moai-cli/projects/<id>/claims once layout.json is in place.
+    // The journal is written under the home state root of the environment HOME, which
+    // `identity_in(.., None)` no longer resolves: refuse a symlinked root here, before the
+    // switched path is handed to a writer (SPEC-20261124-identity-home-arg REQ-9).
     if let Some(home) = crate::layout::switched_dir(project, "claims") {
+        if let Some(root) = crate::layout::default_home_root() {
+            identity::refuse_symlink(&root, "home state root")?;
+        }
         return Ok(home);
     }
     let common = id["clone_anchor"]
@@ -1539,6 +1545,53 @@ mod tests {
             |f| {
                 let root = journal_root(&f.project).unwrap();
                 assert!(root.ends_with("claims"), "{}", root.display());
+            },
+        );
+    }
+
+    /// SPEC-20261124-identity-home-arg REQ-9: where `layout.json` switches the journal to the home
+    /// state, a symlinked home state folder of the environment HOME is refused before anything is
+    /// written, as `identity` refused it before the claim group stopped asking it. The child's
+    /// HOME holds the link and a `layout.json` behind it; the real write entry `release_cli` must
+    /// answer the refusal and nothing may appear in the link's target but the marker.
+    #[cfg(unix)]
+    #[test]
+    fn home_arg_claim_group_claim_journal_root_refuses_a_linked_home_when_switched() {
+        crate::identity::linked_home_test::run(
+            module_path!(),
+            "home_arg_claim_group_claim_journal_root_refuses_a_linked_home_when_switched",
+            |f| {
+                std::fs::create_dir_all(f.project.join(crate::PROJECT_STATE_DIR)).unwrap();
+                std::fs::write(
+                    f.project.join(crate::project_state!("project.yaml")),
+                    r#"{"schema_version": 1, "project_id": "widgets", "purpose": "claim fixture", "tools": ["Rust"], "development_methods": ["TDD"], "hosts": ["claude"]}"#,
+                )
+                .unwrap();
+                let home = std::path::PathBuf::from(std::env::var_os("HOME").unwrap());
+                let project_home = crate::home_root::path(&home)
+                    .join("projects")
+                    .join("widgets");
+                std::fs::create_dir_all(&project_home).unwrap();
+                std::fs::write(project_home.join("layout.json"), b"{}").unwrap();
+                let err = release_cli(
+                    &f.project,
+                    "0123456789abcdef",
+                    1,
+                    "x",
+                    &crate::forge::policy::SystemClock,
+                )
+                .unwrap_err();
+                assert_eq!(err.message, "home state root is a symlink; refused");
+                let mut names: Vec<_> = std::fs::read_dir(&project_home)
+                    .unwrap()
+                    .map(|e| e.unwrap().file_name())
+                    .collect();
+                names.sort();
+                assert_eq!(
+                    names,
+                    vec![std::ffi::OsString::from("layout.json")],
+                    "nothing is created behind the link"
+                );
             },
         );
     }

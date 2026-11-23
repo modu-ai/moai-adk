@@ -151,7 +151,7 @@ fn text(p: &Path) -> Result<String> {
         .map(str::to_string)
         .ok_or_else(|| "non UTF-8 path".into())
 }
-fn refuse_symlink(path: &Path, what: &str) -> Result<()> {
+pub(crate) fn refuse_symlink(path: &Path, what: &str) -> Result<()> {
     match fs::symlink_metadata(path) {
         Ok(m) if m.file_type().is_symlink() => Err(format!("{what} is a symlink; refused")),
         _ => Ok(()),
