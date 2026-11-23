@@ -303,6 +303,27 @@
       "rejects": "a fixed temp_dir() or CARGO_TARGET_TMPDIR join name shared across test processes (#2666)"
     },
     {
+      "id": "no-pid-named-temp-folders",
+      "tests": [
+        "tests/test_temp_names_scan.rs::temp_names_tree_has_no_pid_names_under_the_temp_folder"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test test_temp_names_scan"
+      ],
+      "rules": [
+        "tests/test_temp_names_scan.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "tests/",
+          "suffixes": [
+            ".rs"
+          ]
+        }
+      ],
+      "rejects": "a test statement that joins a name made from std::process::id() onto temp_dir(): the folder is predictable, is left behind, and meets a leftover when a later process has the same pid; use tempfile::TempDir (SPEC-20261124-test-temp-names)"
+    },
+    {
       "id": "recorded-ac-commands",
       "tests": [
         "tests/ac_command_lint.rs::recorded_ac_commands_name_existing_targets_and_select_tests"
