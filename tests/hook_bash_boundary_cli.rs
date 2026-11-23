@@ -1526,7 +1526,7 @@ fn audit_allowed_cases() -> Vec<Case> {
             Own,
             "git -C {OWN} log --oneline -3 && git -C {PRI} rev-parse NeXT",
         ),
-        a(Own, "sqlite3 -readonly ~/.moai/x.db 'select 1'"),
+        a(Own, "sqlite3 -readonly ~/data/x.db 'select 1'"),
         a(Own, "git show NeXT:REVIEW.md"),
         a(Own, "git stash push -u -m tag"),
         a(
