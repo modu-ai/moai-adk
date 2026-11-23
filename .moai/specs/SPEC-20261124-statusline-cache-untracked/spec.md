@@ -7,8 +7,8 @@ created: 2026-11-24
 approval:
   by: leader
   at: 2026-11-23
-  basis: "리더 결정 노트 7689 (2026-11-23T16:32:27Z, 사용자 위임 2026-11-23T13:57Z, 노트 7688 에 대한 답, 옵션 A 승인 + /.moai/state/ 한 줄 추가 + 카드 쓰기 범위를 .gitignore 와 tests/gitignore_block_cli.rs 로 넓힘); 리더가 노트에 적었고 레인은 그 노트를 인용만 해요. 사용자 직접 선택이 아니라 리더 판단이에요"
-  digest: "sha256:a7aee7feb4bf699c4b6fbddd22949624b36c3efb2e8d9cbbdf822b940efb8b32"
+  basis: "리더 결정 노트 7689 (2026-11-23T16:32:27Z, 사용자 위임 2026-11-23T13:57Z, 노트 7688 에 대한 답, 옵션 A 승인 + /.moai/state/ 한 줄 추가 + 카드 쓰기 범위를 .gitignore 와 tests/gitignore_block_cli.rs 로 넓힘); 리더가 노트에 적었고 레인은 그 노트를 인용만 해요. 사용자 직접 선택이 아니라 리더 판단이에요. 그 뒤 리더 결정 노트 7698 (2026-11-23T16:51:37Z, 노트 7697 에 대한 답): 쓰기 범위에 tests/fixtures/state_folder_literals/allow.tsv 를 더하고 tests/gitignore_block_cli.rs 한 줄만 110/65 에서 117/74 로 올림. 이 판의 REQ-4, AC-3, 범위 줄이 그에 맞게 바뀌었어요"
+  digest: "sha256:59f3b2990f43a89f12bfe0cd2eafe951dc1faa161d26fa92a0ba45377578d225"
 ---
 
 # The repository .gitignore ignores the statusline counts cache so no session or worktree shows an untracked .moai-cli/state/
@@ -61,19 +61,19 @@ approval:
 - REQ-1: The repository `.gitignore` shall ignore `.moai-cli/state/` and `.moai/state/` at the repository root with rules that carry a comment naming the statusline counts cache.
 - REQ-2: A test next to `the_repository_gitignore_tracks_specs_and_ignores_the_rest` in `tests/gitignore_block_cli.rs` shall fail when git, reading the repository `.gitignore`, does not ignore `.moai-cli/state/github/counts.json`, `.moai-cli/state/github/refresh.lock`, a temporary `.moai-cli/state/github/counts.json.<pid>.tmp` or `.moai/state/github/counts.json`.
 - REQ-3: The same test shall fail when git ignores a team file that the repository tracks: `.moai-cli/project.yaml`, `.moai-cli/manifests/profile-baseline.json`, `.moai/project.yaml`, a file under `.moai/specs/` or a file under `.moai/evals/`.
-- REQ-4: The change shall touch no file other than the SPEC folder, `.gitignore` and `tests/gitignore_block_cli.rs`.
+- REQ-4: The change shall touch no file other than the SPEC folder, `.gitignore`, `tests/gitignore_block_cli.rs` and the one `tests/gitignore_block_cli.rs` row of `tests/fixtures/state_folder_literals/allow.tsv`.
 - REQ-5: The lane shall delete or modify no existing `.moai-cli/state/` file in this worktree, in the primary checkout or in the HOME state folder.
 
 ## Acceptance
 
 - AC-1 (REQ-1, REQ-2): git ignores the three cache paths with the repository `.gitignore` as it stands at the head · verify: `cargo test --locked --offline --test gitignore_block_cli the_repository_gitignore_ignores_the_statusline_counts_cache`
 - AC-2 (REQ-3): the same test keeps the five tracked team paths of REQ-3 unignored, and `the_repository_gitignore_tracks_specs_and_ignores_the_rest` stays green · verify: `cargo test --locked --offline --test gitignore_block_cli`
-- AC-3 (REQ-4, REQ-5): the range changes exactly the three paths and no `.moai-cli/state/` file · verify: `git diff --name-only <base>..<head>`
+- AC-3 (REQ-4, REQ-5): the range changes exactly the four paths, the `allow.tsv` change being that one row, and no `.moai-cli/state/` file · verify: `git diff --name-only <base>..<head>`
 - AC-4 (REQ-1): in a worktree of the head, a statusline refresh leaves `git status --short` without `.moai-cli/state` · verify: the READY note records `git status --short` at the head after the lane's own session has rendered its status line (observed, not asserted from a test).
 
 ## Scope
 
-- write: `.moai/specs/SPEC-20261124-statusline-cache-untracked/**`, `.gitignore`, `tests/gitignore_block_cli.rs`
+- write: `.moai/specs/SPEC-20261124-statusline-cache-untracked/**`, `.gitignore`, `tests/gitignore_block_cli.rs`, `tests/fixtures/state_folder_literals/allow.tsv` (the one `tests/gitignore_block_cli.rs` row only)
 - read-only: `src/statusline/counts.rs`, `src/statusline/state.rs`, `src/agents.rs`, `.claude/settings.json`
 - forbidden: `src/**` (every change), the HOME state folders, the primary checkout's files, any deletion of a file named in REQ-5
 
@@ -106,7 +106,8 @@ As built:
 Results (each from a command run on this branch):
 - AC-1 met: `cargo test --locked --offline --test gitignore_block_cli the_repository_gitignore_ignores_the_statusline_counts_cache` passes; the whole file passes, 33 tests, exit 0.
 - AC-2 met: the same test keeps `.moai-cli/project.yaml`, `.moai-cli/manifests/profile-baseline.json`, `.moai/project.yaml`, `.moai/specs/SPEC-x/spec.md` and `.moai/evals/audit/cases-tuning.json` unignored, and `the_repository_gitignore_tracks_specs_and_ignores_the_rest` stays green in the 33.
-- AC-3 met: `git diff --name-only 05fec214a8..HEAD` lists the SPEC file, `.gitignore` and `tests/gitignore_block_cli.rs` only; no `.moai-cli/state/` file was deleted or modified.
+- AC-3 met: `git diff --name-only 05fec214a8..HEAD` lists the SPEC file, `.gitignore`, `tests/gitignore_block_cli.rs` and `tests/fixtures/state_folder_literals/allow.tsv` only, the last one changed in the one `tests/gitignore_block_cli.rs` row (110/65 to 117/74, by hand); no `.moai-cli/state/` file was deleted or modified.
+- The first `check affected` at head `84a31bc691` failed one test, `state_folder_literal_scan the_repository_tests_stay_within_the_state_folder_baseline` (117 and 74 literals against 110 and 65), because the new test spells both state folder names on purpose. Notes 7697 and 7698 raised that one row; the receipt in the READY note is from the later head.
 - AC-4 met: in this worktree the real cache file the status line wrote at 01:29:18 KST is listed by `git status --short --ignored` as `!! .moai-cli/state/`, `git check-ignore -v` names `.gitignore:389:/.moai-cli/state/`, and `git status --short` prints no line.
 
 Guard mutants (each applied by an edit, confirmed with `git diff --stat`, run on the test above, then restored with `git checkout -- .gitignore`): removing `/.moai-cli/state/` fails (exit 101); widening it to `/.moai-cli/` fails (exit 101, decided by another rule); adding `/.moai-cli/project.yaml` fails (exit 101, `.moai-cli/project.yaml is ignored`); removing `/.moai/state/` first survived (exit 0) because the older `.moai/state/` and `/.moai/*` rules ignore the same path, so the test was changed to assert the deciding rule by name and the same mutant then fails (exit 101).
