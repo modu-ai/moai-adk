@@ -290,6 +290,18 @@ impl World {
         )
     }
 
+    /// A lane commit that adds `path` straight on the tip: landing it moves the branch by a
+    /// fast-forward, with no merge commit on the first-parent line.
+    fn fast_forward_adding(&self, path: &str) -> String {
+        put_on(
+            &self.project,
+            &self.tip,
+            path,
+            "lane\n",
+            &signed("the lane change on the tip", S_A),
+        )
+    }
+
     /// The commit the leader lands: the lane on the tip, the tree git makes of the two, signed by
     /// the lander.
     fn join(&self, lane: &str) -> String {
@@ -678,4 +690,100 @@ fn ac7_a_head_inside_the_tip_skips_the_scans() {
         got["scans"].is_null() || got["scans"]["would_refuse"].is_null(),
         "{got}"
     );
+}
+
+/// AC-11 (REQ-3): a landing by fast-forward, whose first-parent line holds no merge commit, needs
+/// the scans of the range from the tip to the head as one change: the missing receipt refuses and
+/// a covered one lets the branch move.
+#[test]
+fn ac11_a_fast_forward_landing_needs_the_scans_of_its_range() {
+    let both = [("scan:test-area-layout", 0), ("scan:clean-env-only", 0)];
+    let w = World::with_table(ENFORCE_PROFILE);
+    let card = w.review_card();
+    let cand = w.fast_forward_adding("tests/branch_gc_cli.rs");
+    assert_eq!(
+        git(&w.project, &["rev-list", "--merges", &format!("{}..{cand}", w.tip)]),
+        "",
+        "the fixture head has a merge commit on its line"
+    );
+    w.pass(&card, &cand, &BASE_STEPS);
+    let before = w.dump();
+    let message = w.refuse(&w.land(&card, &cand), "scans_missing", &before);
+    assert!(message.contains("test-area-layout"), "{message}");
+    assert!(message.contains("clean-env-only"), "{message}");
+
+    w.pass(&card, &cand, &with_steps(&both));
+    let got = result(&w.land(&card, &cand));
+    assert_eq!(got["moved"], json!(true), "{got}");
+    assert_eq!(w.integ(), cand);
+    assert_eq!(got["scans"]["missing"], json!([]), "{got}");
+}
+
+/// The fixture table with two more whole-tree scans that a head touching `tests/` hits: one whose
+/// only check is a Python module and one that lists a cargo check and a Python module.
+fn table_with_python_checks() -> String {
+    let mut value: Value = serde_json::from_str(&table()).unwrap();
+    value["scans"].as_array_mut().unwrap().extend([
+        json!({"id": "python-only", "always": true,
+               "tests": ["tests/py_only_test.py"],
+               "checks": [PY_CHECK],
+               "rules": ["tests/py_only_rule.rs"],
+               "scope": [{"prefix": "tests/", "suffixes": [".rs"]}],
+               "rejects": "a fixture that only a Python module reads"}),
+        json!({"id": "cargo-and-python", "always": true,
+               "tests": ["tests/mixed_rule.rs::mixed"],
+               "checks": [MIXED_CHECK, PY_CHECK],
+               "rules": ["tests/mixed_rule.rs"],
+               "scope": [{"prefix": "tests/", "suffixes": [".rs"]}],
+               "rejects": "a fixture that a cargo test and a Python module read"}),
+    ]);
+    value.to_string()
+}
+
+const PY_CHECK: &str = "python3 -m unittest tests.fixture_test";
+const MIXED_CHECK: &str = "cargo test --offline --locked --test mixed_rule";
+
+/// AC-12 (REQ-15): the needed list and the refusal line name cargo checks only. A scan whose checks
+/// are all Python is not required (the gate does not ask for a Python run) and a scan with both
+/// keeps its cargo check alone; the table itself keeps its Python lines.
+#[test]
+fn ac12_the_required_scans_name_cargo_checks_only() {
+    let w = World::new(Some(&table_with_python_checks()), None, ENFORCE_PROFILE);
+    let card = w.review_card();
+    let cand = w.candidate_adding("tests/branch_gc_cli.rs");
+    w.pass(&card, &cand, &BASE_STEPS);
+    let before = w.dump();
+    let message = w.refuse(&w.land(&card, &cand), "scans_missing", &before);
+    assert!(message.contains(MIXED_CHECK), "{message}");
+    assert!(message.contains("scan:cargo-and-python"), "{message}");
+    assert!(message.contains(AREA_CHECK), "{message}");
+    assert!(!message.contains("python3"), "{message}");
+    assert!(!message.contains("scan:python-only"), "{message}");
+
+    // Receipts for the cargo scans alone let the landing move: no step for the Python scan.
+    let cargo_steps = [
+        ("scan:test-area-layout", 0),
+        ("scan:clean-env-only", 0),
+        ("scan:cargo-and-python", 0),
+    ];
+    w.pass(&card, &cand, &with_steps(&cargo_steps));
+    let got = result(&w.land(&card, &cand));
+    assert_eq!(got["moved"], json!(true), "{got}");
+    let required = got["scans"]["required"].as_array().unwrap();
+    let ids: Vec<&str> = required.iter().map(|s| s["id"].as_str().unwrap()).collect();
+    assert_eq!(
+        ids,
+        ["test-area-layout", "clean-env-only", "cargo-and-python"],
+        "{got}"
+    );
+    for scan in required {
+        let checks = scan["checks"].as_array().unwrap();
+        assert!(!checks.is_empty(), "{scan}");
+        assert!(
+            checks
+                .iter()
+                .all(|c| c.as_str().unwrap().starts_with("cargo ")),
+            "{scan}"
+        );
+    }
 }

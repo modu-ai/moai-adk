@@ -24,6 +24,25 @@ pub fn step_name(id: &str) -> String {
     format!("scan:{id}")
 }
 
+/// Whether a check line of the table is a cargo command: tests are Rust only, so the landing asks
+/// for no other kind of check (a Python line stays in the table for `moai repo-scans`).
+fn is_cargo_check(check: &str) -> bool {
+    check.split_whitespace().next() == Some("cargo")
+}
+
+/// The scans the landing asks for, from the scans the merge tree needs: each keeps its cargo
+/// checks only, and a scan with none is not asked for (SPEC-20261123-land-repo-scans REQ-15).
+fn cargo_only(needed: Vec<Needed>) -> Vec<Needed> {
+    needed
+        .into_iter()
+        .map(|mut need| {
+            need.checks.retain(|c| is_cargo_check(c));
+            need
+        })
+        .filter(|need| !need.checks.is_empty())
+        .collect()
+}
+
 /// The one line that tells what to run and what to record for the scans not covered.
 fn missing_line(missing: &[&Needed]) -> String {
     let parts: Vec<String> = missing
@@ -51,7 +70,7 @@ fn missing_line(missing: &[&Needed]) -> String {
 /// a would-refuse.
 pub fn read(input: &Input<'_>, mode: Mode) -> Result<Value> {
     let needed = match repo_scans::needed(input.project, input.tip, input.head) {
-        Ok(needed) => needed,
+        Ok(needed) => cargo_only(needed),
         Err(why) => {
             return refuse(
                 mode,

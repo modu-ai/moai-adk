@@ -1207,6 +1207,25 @@
       "rejects": "a change to a file that tests/green_test_lock.rs reads with include_str! that the test did not re-run on the merge tree (SPEC-20261123-land-repo-scans)"
     },
     {
+      "id": "include-str-hook-entry-cli",
+      "always": true,
+      "tests": [
+        "tests/hook_entry_cli.rs (all)"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test hook_entry_cli"
+      ],
+      "rules": [
+        "tests/hook_entry_cli.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "src/hook_entry.rs"
+        }
+      ],
+      "rejects": "a change to a file that tests/hook_entry_cli.rs reads with include_str! that the test did not re-run on the merge tree (SPEC-20261123-land-repo-scans)"
+    },
+    {
       "id": "include-str-host-connector",
       "always": true,
       "tests": [

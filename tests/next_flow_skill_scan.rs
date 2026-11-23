@@ -1861,8 +1861,8 @@ fn land_scans_the_flow_names_repo_scans_the_merge_tree_and_the_receipt_step() {
         );
     }
     assert!(
-        flow.len() <= REF_LIMIT,
-        "{FLOW_REF} is {} bytes, over {REF_LIMIT}",
+        flow.len() <= FLOW_REF_LIMIT,
+        "{FLOW_REF} is {} bytes, over {FLOW_REF_LIMIT}",
         flow.len()
     );
 }
