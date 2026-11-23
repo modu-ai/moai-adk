@@ -1483,7 +1483,7 @@
         "tests/repo_scans_table.rs::every_file_reader_has_an_always_scan_or_an_exemption"
       ],
       "checks": [
-        "cargo test --offline --locked --test card_finish_cli --test card_guard_cli --test codex_question_tool --test git_hooks_cli --test ops_table_gen_cli --test product_cli --test profile_apply_engine --test project_flow_closing --test project_layer_follow_ups --test recurring_problems_rule --test repo_claude_md --test retired_hosts_layer --test spec_cli --test switch_script_v2 --test worktree_cli --test repo_scans_table"
+        "cargo test --offline --locked --test card_finish_cli --test card_guard_cli --test codex_question_tool --test git_hooks_cli --test ops_table_gen_cli --test product_cli --test profile_apply_engine --test project_flow_closing --test project_layer_follow_ups --test recurring_problems_rule --test repo_claude_md --test retired_hosts_layer --test spec_cli --test switch_script_v2 --test update_switch_cli --test update_switch_layer --test worktree_cli --test repo_scans_table"
       ],
       "rules": [
         "tests/card_finish_cli.rs",
@@ -1500,6 +1500,8 @@
         "tests/retired_hosts_layer.rs",
         "tests/spec_cli.rs",
         "tests/switch_script_v2.rs",
+        "tests/update_switch_cli.rs",
+        "tests/update_switch_layer.rs",
         "tests/worktree_cli.rs",
         "tests/repo_scans_table.rs"
       ],
@@ -1533,6 +1535,9 @@
         },
         {
           "prefix": ".moai/specs/SPEC-20261123-claude-md-rewrite"
+        },
+        {
+          "prefix": "install/moai-switch.sh"
         }
       ],
       "rejects": "a change to a checked-in file that a test of this group opens at run time that the test did not re-run on the merge tree (SPEC-20261123-land-file-read-scans)"
@@ -1715,7 +1720,7 @@
         "tests/repo_scans_table.rs::every_file_reader_has_an_always_scan_or_an_exemption"
       ],
       "checks": [
-        "cargo test --offline --locked --test agent_defs_package --test agents_home_cli --test audit_scratch_rule --test base_agents_discovery_record --test base_agents_nested --test bin_names_signature_cli --test bundle_body_cli --test bundle_build_cli --test bundle_verify_cli --test card_generated_scope --test claim_verify_flags_2838 --test claude_md_home_cli --test code_atlas_reference --test codex_home_update_removed --test codex_question_tool --test core_rules_2876 --test e2e_host_fixture --test e2e_temp_home_cli --test exe_link_cli --test gate_collect --test generic_flow_questions --test home_routing_cli --test home_style_cli --test home_style_ownership_cli --test home_update_notice_follow_ups --test host_home_cli --test html_report_skill --test lane_completion_handshake --test lane_next_rules --test lane_rules_2401 --test lane_rules_2836 --test lane_rules_2879 --test mode_cards_53 --test mode_workflow_steps --test models_revert_cli --test next_flow_skill_scan --test orca_alignment --test orca_optional_3005 --test product_cli --test project_decide_model --test project_flow_closing --test project_lsp_plugins_cli --test project_preview_order --test project_worktree_move_choice --test protected_paths_one_list --test question_bank_hosts --test repo_scans_cli --test report_rules_core --test retired_hosts_layer --test revert_twice_cli --test review_check_cli --test review_checklist_cli --test rule_history_guard --test sdd_guidance --test self_audit_cli --test skill_structure --test source_manifest_facts --test spec_branch_name_first --test style_banner_scan --test test_isolation_rules --test ui_korean_terminal_cli --test update_adopt_cli --test update_always_asks --test update_git_hooks_cli --test update_headver --test update_home_layer_cli --test update_hooks_cli --test update_keys_cli --test update_route --test update_switch_cli --test update_user_layer_cli --test workflow_size_budget --test worktree_include_guard --test repo_scans_table"
+        "cargo test --offline --locked --test agent_defs_package --test agents_home_cli --test audit_scratch_rule --test base_agents_discovery_record --test base_agents_nested --test bin_names_signature_cli --test bundle_body_cli --test bundle_build_cli --test bundle_verify_cli --test card_generated_scope --test claim_verify_flags_2838 --test claude_md_home_cli --test code_atlas_reference --test codex_home_update_removed --test codex_question_tool --test core_rules_2876 --test e2e_host_fixture --test e2e_temp_home_cli --test exe_link_cli --test gate_collect --test generic_flow_questions --test home_routing_cli --test home_style_cli --test home_style_ownership_cli --test home_update_notice_follow_ups --test host_home_cli --test html_report_skill --test lane_completion_handshake --test lane_next_rules --test lane_rules_2401 --test lane_rules_2836 --test lane_rules_2879 --test mode_cards_53 --test mode_workflow_steps --test models_revert_cli --test next_flow_skill_scan --test orca_alignment --test orca_optional_3005 --test product_cli --test project_decide_model --test project_flow_closing --test project_lsp_plugins_cli --test project_preview_order --test project_worktree_move_choice --test protected_paths_one_list --test question_bank_hosts --test repo_scans_cli --test report_rules_core --test retired_hosts_layer --test revert_twice_cli --test review_check_cli --test review_checklist_cli --test rule_history_guard --test sdd_guidance --test self_audit_cli --test skill_structure --test source_manifest_facts --test spec_branch_name_first --test style_banner_scan --test test_isolation_rules --test ui_korean_terminal_cli --test ui_summary_terminal_cli --test update_adopt_cli --test update_always_asks --test update_git_hooks_cli --test update_headver --test update_home_layer_cli --test update_hooks_cli --test update_keys_cli --test update_route --test update_switch_cli --test update_user_layer_cli --test workflow_size_budget --test worktree_include_guard --test repo_scans_table"
       ],
       "rules": [
         "tests/agent_defs_package.rs",
@@ -1779,6 +1784,7 @@
         "tests/style_banner_scan.rs",
         "tests/test_isolation_rules.rs",
         "tests/ui_korean_terminal_cli.rs",
+        "tests/ui_summary_terminal_cli.rs",
         "tests/update_adopt_cli.rs",
         "tests/update_always_asks.rs",
         "tests/update_git_hooks_cli.rs",
@@ -2059,13 +2065,15 @@
         "tests/repo_scans_table.rs::every_file_reader_has_an_always_scan_or_an_exemption"
       ],
       "checks": [
-        "cargo test --offline --locked --test ac_command_lint --test audit_gate_cli --test check_affected_modes_cli --test check_pipeline_config --test cli_text_citations --test gate_collect --test heavy_slot_cli --test protected_paths_one_list --test repo_scans_cli --test review_checklist_cli --test search_atlas --test repo_scans_table"
+        "cargo test --offline --locked --test ac_command_lint --test atlas_three_arm --test audit_gate_cli --test check_affected_modes_cli --test check_pipeline_config --test claude_python_adapter_removed --test cli_text_citations --test gate_collect --test heavy_slot_cli --test protected_paths_one_list --test repo_scans_cli --test review_checklist_cli --test search_atlas --test statusline_golden --test repo_scans_table"
       ],
       "rules": [
         "tests/ac_command_lint.rs",
+        "tests/atlas_three_arm.rs",
         "tests/audit_gate_cli.rs",
         "tests/check_affected_modes_cli.rs",
         "tests/check_pipeline_config.rs",
+        "tests/claude_python_adapter_removed.rs",
         "tests/cli_text_citations.rs",
         "tests/gate_collect.rs",
         "tests/heavy_slot_cli.rs",
@@ -2073,9 +2081,13 @@
         "tests/repo_scans_cli.rs",
         "tests/review_checklist_cli.rs",
         "tests/search_atlas.rs",
+        "tests/statusline_golden.rs",
         "tests/repo_scans_table.rs"
       ],
       "scope": [
+        {
+          "prefix": "tools"
+        },
         {
           "prefix": "tools/atlas_baseline.py"
         },
