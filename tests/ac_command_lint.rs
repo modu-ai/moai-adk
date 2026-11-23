@@ -42,6 +42,10 @@ fn rs_sources(dir: &Path) -> Vec<PathBuf> {
     out
 }
 
+/// The paths under `tests/` this file has, before and after its area (`spec`, first word `ac`
+/// in `tests/areas.toml`) is moved into a crate.
+const SELF_PATHS: [&str; 2] = ["ac_command_lint.rs", "spec/ac_command_lint.rs"];
+
 /// Files that carry their own git spawns must guard them: a wrapper that spawns git
 /// without the fixture guards is exactly what this card routes into
 /// `tests/common/git.rs`. This file is exempt — it quotes the pattern it scans for.
@@ -52,8 +56,10 @@ fn files_with_unguarded_git(dir: &Path) -> Vec<String> {
             .strip_prefix(dir)
             .unwrap()
             .to_string_lossy()
-            .to_string();
-        if rel.starts_with("common/") || rel == "ac_command_lint.rs" {
+            .replace('\\', "/");
+        // This file is exempt at its two exact places: today at the top level and, once its area
+        // is moved, as a module of the `spec` crate. A same-named file anywhere else is not.
+        if rel.starts_with("common/") || SELF_PATHS.contains(&rel.as_str()) {
             continue;
         }
         let text =
@@ -75,6 +81,34 @@ fn git_fixture_calls_live_in_the_shared_helper() {
         "test files spawning git without the gc/maintenance fixture guards — route \
          them through tests/common/git.rs or add the guards:\n{}",
         violations.join("\n")
+    );
+}
+
+/// After an area move this file lives at `tests/spec/ac_command_lint.rs` and keeps its
+/// exemption; any other file with an unguarded git spawn is still reported, a file of the same
+/// name in another folder included.
+#[test]
+fn area_module_of_this_file_keeps_the_git_scan_exemption() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let spawn = "fn f() { std::process::Command::new(\"git\"); }\n";
+    for rel in [
+        "ac_command_lint.rs",
+        "spec/ac_command_lint.rs",
+        "spec/other_cli.rs",
+        "repo/ac_command_lint.rs",
+        "spec/deep/ac_command_lint.rs",
+    ] {
+        let file = dir.path().join(rel);
+        fs::create_dir_all(file.parent().unwrap()).unwrap();
+        fs::write(file, spawn).unwrap();
+    }
+    assert_eq!(
+        files_with_unguarded_git(dir.path()),
+        vec![
+            "tests/repo/ac_command_lint.rs".to_string(),
+            "tests/spec/deep/ac_command_lint.rs".to_string(),
+            "tests/spec/other_cli.rs".to_string(),
+        ]
     );
 }
 
@@ -582,6 +616,71 @@ fn a_filter_on_macro_made_tests_says_the_names_cannot_be_read() {
             && l.contains(&doc("record.md"))
             && l.contains("macro")),
         "the violation must say the names are made by a macro:\n{text}"
+    );
+}
+
+/// A repository tree with one moved area `repo`: the crate root declares the module `git_a`,
+/// which holds the test `finds_it`; `command` is the recorded line of `docs/record.md`. Returns
+/// the lint's output on that tree (SPEC-20261123-test-area-crates REQ-6, REQ-12).
+fn lint_area_tree(command: &str) -> std::process::Output {
+    let dir = tempfile::TempDir::new().unwrap();
+    let files = [
+        ("tests/repo/main.rs", "mod git_a;\n"),
+        ("tests/repo/git_a.rs", "#[test]\nfn finds_it() {}\n"),
+        ("tests/plain.rs", "#[test]\nfn plain_test() {}\n"),
+    ];
+    for (rel, text) in files {
+        let path = dir.path().join(rel);
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        fs::write(path, text).unwrap();
+    }
+    fs::create_dir_all(dir.path().join("docs")).unwrap();
+    fs::write(
+        dir.path().join("docs/record.md"),
+        format!("verification: `{command}`\n"),
+    )
+    .unwrap();
+    run_lint(&["--tree", dir.path().to_str().unwrap()])
+}
+
+fn lint_text(out: &std::process::Output) -> String {
+    format!(
+        "{}{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    )
+}
+
+/// A closed SPEC keeps `--test <old target>`: the old name is a module of an area crate and the
+/// recorded filter still selects its test.
+#[test]
+fn area_old_target_name_resolves_to_its_module() {
+    let out = lint_area_tree("cargo test --offline --locked --test git_a finds_it");
+    assert!(out.status.success(), "{}", lint_text(&out));
+}
+
+#[test]
+fn area_crate_name_with_a_module_filter_passes() {
+    let out = lint_area_tree("cargo test --offline --locked --test repo git_a::finds_it");
+    assert!(out.status.success(), "{}", lint_text(&out));
+}
+
+#[test]
+fn area_filter_that_selects_nothing_fails() {
+    let out = lint_area_tree("cargo test --offline --locked --test repo git_zzz::");
+    let text = lint_text(&out);
+    assert!(!out.status.success(), "{text}");
+    assert!(text.contains("select 0 tests in repo"), "{text}");
+}
+
+#[test]
+fn area_unknown_target_fails_even_beside_moved_areas() {
+    let out = lint_area_tree("cargo test --offline --locked --test never_moved some_test");
+    let text = lint_text(&out);
+    assert!(!out.status.success(), "{text}");
+    assert!(
+        text.contains("target tests/never_moved.rs does not exist"),
+        "{text}"
     );
 }
 

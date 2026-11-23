@@ -17,6 +17,9 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::path::Path;
 
+/// The leader registration lease the round shares and renews (SPEC-20261123-leader-registration-lease).
+pub mod registration;
+
 /// The observations file version this module reads.
 pub const SCHEMA_VERSION: u32 = 1;
 /// Oldest observation, in seconds, a decision may rest on (the `lane-safe-to-reset` limit).
@@ -572,6 +575,9 @@ pub fn handoff_candidates(snap: &Snapshot, now: i64) -> Vec<Value> {
 /// without `repo` the gate line is. The parts read from a snapshot whose `partial` names a
 /// gap are `partial`, never `ok` (#2948 audit I2).
 pub fn round(snap: Option<&Snapshot>, repo: Option<&str>, project: &Path, now: i64) -> Value {
+    // The registration part reads only the clone's local registry, so it is there with or
+    // without a GitHub snapshot (SPEC REQ-13).
+    let registration = registration::registration(project, now);
     let Some(snap) = snap else {
         let why = "no GitHub snapshot: pass --repo OWNER/REPO or --snapshot FILE";
         return json!({
@@ -579,6 +585,7 @@ pub fn round(snap: Option<&Snapshot>, repo: Option<&str>, project: &Path, now: i
             "handoff_candidates": not_run(why),
             "gate": not_run(why),
             "end_condition": not_run(why),
+            "registration": registration,
         });
     };
     let status = if snap.partial.is_empty() {
@@ -600,6 +607,7 @@ pub fn round(snap: Option<&Snapshot>, repo: Option<&str>, project: &Path, now: i
             None => not_run("no --repo: the gate line names the repository"),
         },
         "end_condition": end,
+        "registration": registration,
     })
 }
 
