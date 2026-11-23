@@ -31,6 +31,12 @@ const GO_STATE_DIR: &str = ".moai/";
 const CREDENTIAL_BLOCK: &str =
     "a value in it looks like a credential; the key stays in the backup and its value is not shown";
 
+/// Why an Opus 4.8 model value beside a fast-mode key is not carried (SPEC-20261122-model-fast-pair
+/// REQ-3, D-3): the API refuses that pair, so the value stays in the backup. A fixed text: it names
+/// no saved value and carries no date.
+const FAST_PAIR_BLOCK: &str =
+    "the model is Opus 4.8 and a fast-mode key sits beside it; the API refuses that pair, so the model stays in the backup";
+
 /// The keys a merge may carry, in the order they are shown.
 pub const MERGEABLE: [&str; 5] = ["permissions", "env", "model", "statusLine", "outputStyle"];
 
@@ -196,9 +202,19 @@ fn shown(name: &str) -> String {
     name.chars().filter(|c| !c.is_control()).take(64).collect()
 }
 
-fn model_row(v: &Value) -> Row {
+/// An Opus 4.8 model id in any letter case (`opus-4-8`, `opus-4.8`, an alias suffix included).
+fn is_opus_48(model: &str) -> bool {
+    let lower = model.to_ascii_lowercase();
+    lower.contains("opus-4-8") || lower.contains("opus-4.8")
+}
+
+fn model_row(v: &Value, old: &Map<String, Value>) -> Row {
     if claude::holds_credential(v) {
         return Row::other("model", "blocked", CREDENTIAL_BLOCK, json!({}));
+    }
+    let fast_key = old.contains_key("fastMode") || old.contains_key("fastModePerSessionOptIn");
+    if fast_key && v.as_str().is_some_and(is_opus_48) {
+        return Row::other("model", "blocked", FAST_PAIR_BLOCK, json!({}));
     }
     match v.as_str() {
         Some(s) if one_line(s, claude::MODEL_CHARS_MAX) => Row::mergeable(
@@ -324,7 +340,7 @@ fn rows_of(old: &Map<String, Value>) -> Vec<Row> {
             match k.as_str() {
                 "permissions" => permissions_row(v),
                 "env" => env_row(v),
-                "model" => model_row(v),
+                "model" => model_row(v, old),
                 "statusLine" => status_line_row(v),
                 "outputStyle" => output_style_row(v),
                 "hooks" => hooks_row(v),
@@ -497,5 +513,47 @@ mod tests {
         assert_eq!(p.carry.as_ref().unwrap(), &json!({"allow": ["Bash(ls)"]}));
         let left = p.summary["left_in_backup"].to_string();
         assert!(left.contains("additionalDirectories") && left.contains("defaultMode"));
+    }
+
+    // SPEC-20261122-model-fast-pair REQ-3: the API refuses an Opus 4.8 request with fast mode from
+    // 2026-11-30, so a backup that holds both is never offered for a merge.
+    fn model_row_of(v: Value) -> Row {
+        let mut r = rows(v);
+        let at = r.iter().position(|r| r.key == "model").unwrap();
+        r.swap_remove(at)
+    }
+
+    #[test]
+    fn fast_pair_an_opus_48_model_beside_a_fast_mode_key_is_blocked_with_the_fixed_reason() {
+        for model in ["claude-opus-4-8", "opus-4.8", "Claude-OPUS-4-8[1m]"] {
+            for key in ["fastMode", "fastModePerSessionOptIn"] {
+                let mut old = Map::new();
+                old.insert("model".into(), json!(model));
+                old.insert(key.into(), json!(true));
+                let row = model_row_of(Value::Object(old));
+                assert_eq!(row.state, "blocked", "{model} + {key}");
+                assert!(row.carry.is_none(), "{model} + {key}");
+                assert_eq!(row.reason, FAST_PAIR_BLOCK, "{model} + {key}");
+                let shown = format!("{} {}", row.reason, row.summary);
+                assert!(!shown.contains(model), "{model} + {key}: {shown}");
+            }
+        }
+    }
+
+    #[test]
+    fn fast_pair_a_model_alone_or_another_family_still_merges() {
+        let alone = model_row_of(json!({"model": "claude-opus-4-8"}));
+        assert_eq!(alone.state, "mergeable");
+        assert_eq!(alone.carry, Some(json!("claude-opus-4-8")));
+        let other = model_row_of(json!({"model": "claude-opus-5-5", "fastMode": true}));
+        assert_eq!(other.state, "mergeable");
+        assert_eq!(other.carry, Some(json!("claude-opus-5-5")));
+    }
+
+    #[test]
+    fn fast_pair_never_carries_a_fast_mode_key_itself() {
+        let r = rows(json!({"model": "claude-opus-4-8", "fastMode": true}));
+        assert!(r.iter().all(|r| r.carry.is_none()));
+        assert_eq!(state(&r, "fastMode"), "kept_in_backup");
     }
 }
