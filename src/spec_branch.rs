@@ -84,9 +84,133 @@ fn slug_ok(s: &str) -> bool {
             .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == b'-')
 }
 
-/// The SPEC of `branch`: the single candidate, or among several the one whose folder exists in
-/// `specs_dir` when exactly one does. `specs_dir` `None` looks at no folder.
+/// The SPEC of `branch`: first the one its name reads (see [`resolve_by_name`]); when no reading
+/// of the name is an existing SPEC file, the SPEC whose `branch:` frontmatter line names the
+/// branch (SPEC-20261124-lane-branch-after-spec). The link is looked for only then, so a branch
+/// whose name reads an existing SPEC (one reading or several) is judged as before and reads no
+/// other file, and `specs_dir` `None` looks at nothing.
 pub fn resolve(branch: &str, specs_dir: Option<&Path>) -> Resolved {
+    let named = resolve_by_name(branch, specs_dir);
+    let Some(dir) = specs_dir else {
+        return named;
+    };
+    // A name that reads no SPEC id is no SPEC branch: nothing to settle.
+    if named == Resolved::NotSpec {
+        return named;
+    }
+    // Any reading of the name that has a SPEC file settles the branch by its name, also when two
+    // readings do and the name stays ambiguous: a link never overrules the name (audit of C-429,
+    // B1).
+    if candidates(branch)
+        .iter()
+        .any(|id| spec_file_exists(dir, id))
+    {
+        return named;
+    }
+    let mut linked = linked_specs(branch, dir);
+    match linked.len() {
+        0 => named,
+        1 => Resolved::One(linked.remove(0)),
+        _ => Resolved::Ambiguous(linked),
+    }
+}
+
+/// Whether `<specs_dir>/<id>/spec.md` is a regular file (a link does not count).
+fn spec_file_exists(specs_dir: &Path, id: &str) -> bool {
+    std::fs::symlink_metadata(specs_dir.join(id).join("spec.md")).is_ok_and(|m| m.is_file())
+}
+
+/// A SPEC file is read for its `branch:` line up to this many bytes: the frontmatter is at the
+/// top, and a hundred SPECs are read in one scan.
+const LINK_READ_LIMIT: u64 = 16 * 1024;
+
+/// The ids of the SPECs under `specs_dir` that name `branch` in a `branch:` frontmatter line,
+/// sorted. Only the direct children of `specs_dir` are read and no link is followed: a child
+/// that is not a real folder, a `spec.md` that is not a regular file, a folder name that is not a
+/// SPEC id, an `id:` that differs from the folder name and a status other than `draft` or
+/// `approved` are all left out.
+fn linked_specs(branch: &str, specs_dir: &Path) -> Vec<String> {
+    use std::io::Read;
+    let Ok(entries) = std::fs::read_dir(specs_dir) else {
+        return Vec::new();
+    };
+    let mut ids = Vec::new();
+    for entry in entries.flatten() {
+        // `DirEntry::file_type` does not follow a link: a link to a folder is not a folder here.
+        if !entry.file_type().is_ok_and(|t| t.is_dir()) {
+            continue;
+        }
+        let Some(name) = entry.file_name().to_str().map(str::to_string) else {
+            continue;
+        };
+        if spec_doc::id_form(&name) != Some(IdForm::New) {
+            continue;
+        }
+        let file = entry.path().join("spec.md");
+        if !std::fs::symlink_metadata(&file).is_ok_and(|m| m.is_file()) {
+            continue;
+        }
+        let Ok(handle) = crate::hook_guards::open_for_reading(&file) else {
+            continue;
+        };
+        let mut bytes = Vec::new();
+        if handle
+            .take(LINK_READ_LIMIT)
+            .read_to_end(&mut bytes)
+            .is_err()
+        {
+            continue;
+        }
+        if names_branch(&String::from_utf8_lossy(&bytes), &name, branch) {
+            ids.push(name);
+        }
+    }
+    ids.sort();
+    ids
+}
+
+/// Whether the frontmatter of `text` (the lines between the first two `---` lines) has the lines
+/// `id: <id>`, `branch: <branch>` and a `status:` of `draft` or `approved`, each unindented. A text
+/// whose frontmatter has no closing `---` line counts for nothing: [`linked_specs`] reads only the
+/// first [`LINK_READ_LIMIT`] bytes, and a cut inside the frontmatter could leave a shortened
+/// `branch:` value that names another branch (audit of C-429, N1).
+fn names_branch(text: &str, id: &str, branch: &str) -> bool {
+    let mut lines = text.lines();
+    if lines.next().map(str::trim_end) != Some("---") {
+        return false;
+    }
+    let (mut same_id, mut same_branch, mut live, mut closed) = (false, false, false, false);
+    for line in lines {
+        if line.trim_end() == "---" {
+            closed = true;
+            break;
+        }
+        if let Some(v) = frontmatter_value(line, "id") {
+            same_id = v == id;
+        } else if let Some(v) = frontmatter_value(line, "branch") {
+            same_branch = v == branch;
+        } else if let Some(v) = frontmatter_value(line, "status") {
+            live = matches!(v, "draft" | "approved");
+        }
+    }
+    closed && same_id && same_branch && live
+}
+
+/// The value of an unindented `<key>: <value>` line, without surrounding blanks or one pair of
+/// quotes.
+fn frontmatter_value<'a>(line: &'a str, key: &str) -> Option<&'a str> {
+    let value = line.strip_prefix(key)?.strip_prefix(':')?.trim();
+    let quoted = |q: char| value.len() >= 2 && value.starts_with(q) && value.ends_with(q);
+    Some(if quoted('"') || quoted('\'') {
+        &value[1..value.len() - 1]
+    } else {
+        value
+    })
+}
+
+/// The SPEC the name of `branch` reads: the single candidate, or among several the one whose
+/// folder exists in `specs_dir` when exactly one does. `specs_dir` `None` looks at no folder.
+fn resolve_by_name(branch: &str, specs_dir: Option<&Path>) -> Resolved {
     let mut found = candidates(branch);
     match found.len() {
         0 => Resolved::NotSpec,

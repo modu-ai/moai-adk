@@ -1085,7 +1085,7 @@ pub fn bash_lock_guard(command: &str, cwd: &Path) -> Option<&'static str> {
     crate::tdd::lock_refusal(&paths, cwd)
 }
 
-const SPEC_FIRST: &str = "MoAI tool-preflight: on a SPEC work branch (spec/<slug>-<yyyymmdd>; the older spec/<yyyymmdd>-<slug> is still read), files outside .moai/specs/ are written only after the branch's SPEC exists; write .moai/specs/SPEC-<yyyymmdd>-<slug>/spec.md first (`moai spec new`; when the branch date is not today, `moai spec new --date YYYY-MM-DD`).";
+const SPEC_FIRST: &str = "MoAI tool-preflight: on a SPEC work branch (spec/<slug>-<yyyymmdd>; the older spec/<yyyymmdd>-<slug> is still read), files outside .moai/specs/ are written only after the branch's SPEC exists; write .moai/specs/SPEC-<yyyymmdd>-<slug>/spec.md first (`moai spec new`; when the branch date is not today, `moai spec new --date YYYY-MM-DD`); a SPEC whose id differs from the branch name is linked by a `branch:` line in its frontmatter that names this branch (status draft or approved).";
 
 /// Refusal for a branch name that reads as two SPEC ids with no SPEC folder of exactly one of
 /// them (SPEC-20261119-spec-branch-name-first REQ-5). A fixed string: the branch name is input
@@ -1170,7 +1170,7 @@ const GIT_SMALL_FILE_LIMIT: u64 = 4096;
 const PACKED_REFS_LIMIT: u64 = 8 * 1024 * 1024;
 
 /// Opens `path` for reading without waiting: on unix a FIFO opens at once (`O_NONBLOCK`).
-fn open_for_reading(path: &Path) -> std::io::Result<std::fs::File> {
+pub(crate) fn open_for_reading(path: &Path) -> std::io::Result<std::fs::File> {
     let mut options = std::fs::OpenOptions::new();
     options.read(true);
     #[cfg(unix)]

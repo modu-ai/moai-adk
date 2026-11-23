@@ -330,6 +330,22 @@ fn approval_fields_and_digest_are_checked() {
     );
 }
 
+/// SPEC-20261124-lane-branch-after-spec AC-6 (REQ-6): `branch` is a SPEC key, so it draws no
+/// `fm_unknown_key` warning; another key still does.
+#[test]
+fn branch_is_a_known_spec_key() {
+    let body = minimal_body();
+    let linked = doc(&format!(
+        "{}{body}",
+        front("draft", "branch: spec/lane-x-20261124\n")
+    ));
+    assert!(errors(&linked).is_empty(), "{:?}", linked.findings);
+    assert!(warnings(&linked).is_empty(), "{:?}", linked.findings);
+    assert!(linked.unknown_keys.is_empty(), "{:?}", linked.unknown_keys);
+    let unknown = doc(&format!("{}{body}", front("draft", "owner: someone\n")));
+    assert_eq!(warnings(&unknown), vec!["fm_unknown_key"]);
+}
+
 #[test]
 fn frontmatter_keys_shape_and_values() {
     let body = minimal_body();

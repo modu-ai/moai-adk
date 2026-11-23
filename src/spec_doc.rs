@@ -62,8 +62,8 @@ const LEGACY_STATUSES: [(&str, &str); 9] = [
     ("backfilled", "completed"),
     ("retired", "archived"),
 ];
-const KNOWN_KEYS: [&str; 7] = [
-    "id", "title", "status", "revision", "created", "parent", "approval",
+const KNOWN_KEYS: [&str; 8] = [
+    "id", "title", "status", "revision", "created", "parent", "approval", "branch",
 ];
 const APPROVAL_KEYS: [&str; 4] = ["by", "at", "basis", "digest"];
 const SECTIONS: [&str; 10] = [
