@@ -6,6 +6,8 @@
 #![cfg(unix)]
 
 mod common;
+#[path = "common/ready_receipt.rs"]
+mod ready_receipt;
 
 use common::CleanEnv;
 use moai_cli::tree_digest;
@@ -1028,6 +1030,8 @@ fn scenario_card_cycle_takes_checks_audits_lands_and_names_the_next_card() {
         ],
     );
     let head = git(&wt, &["rev-parse", "HEAD"]);
+    // The READY note needs the receipt of its head (SPEC-20261124-ready-receipt-gate).
+    ready_receipt::write_receipt(&wt, &head, "PASS");
 
     // The ready note, the review state, an independent verdict, then the landing.
     let note = format!("LANE-READY-INTEGRATION {first} head={head}\nbase {tip}\n");

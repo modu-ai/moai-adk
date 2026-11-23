@@ -26,6 +26,19 @@ pub fn summary_line(head: &str, result: &str) -> String {
     )
 }
 
+/// Adds `text` as a `report` note of `card` (`C-<n>`) signed `lane`, through the ledger the way
+/// `card note` stores it, without the receipt gate; returns the note's number. For a fixture
+/// whose project folder is not the repository that holds the heads (the bundle tests), so there
+/// is no worktree to put a receipt in, and whose subject is not the gate.
+#[allow(dead_code)]
+pub fn add_note_unchecked(home: &Path, project_id: &str, card: &str, text: &str) -> i64 {
+    let id: i64 = card.strip_prefix("C-").unwrap().parse().unwrap();
+    let mut w = moai_cli::ledger::open_write(home, project_id).unwrap();
+    moai_cli::ledger::workflow::add_note(&mut w, id, "report", "lane", None, text.trim_end(), None)
+        .unwrap()
+        .note_id
+}
+
 /// Writes the receipt of `head` under `worktree` and returns its path.
 #[allow(dead_code)]
 pub fn write_receipt(worktree: &Path, head: &str, result: &str) -> PathBuf {
