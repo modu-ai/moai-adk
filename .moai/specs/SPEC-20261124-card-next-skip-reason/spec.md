@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261124-card-next-skip-reason
 title: "card next 가 이미 착지한 기준 없는 카드를 already_landed 로 말해요"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-24
+approval:
+  by: leader
+  at: 2026-11-23
+  basis: "리더 결정 노트 (note:430:7926febfe9cfd528db74755ddc7ae960, 2026-11-23T21:42:33Z, 사용자 위임 2026-11-23T13:57Z, 리더 판단, 사용자 직접 선택 아님, 노트 7915 에 대한 답): D-1 선택지 A (already_landed 가 이김), 판 1 승인, is_landable_skip 이름 바꾸기 좋음, 힌트 문장에 criterion-add → met → finish 순서; 리더가 노트에 적었고 레인은 그 노트를 옮겨 적었어요"
+  digest: "sha256:ef41fce4b08e1c85ede4fcf47c0174ed4d6de2050d67b62917403d7673027882"
 ---
 
 # card next 가 이미 착지한 기준 없는 카드를 already_landed 로 말해요
