@@ -23,11 +23,12 @@ fn repo_file(rel: &str) -> String {
     fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join(rel)).unwrap()
 }
 
-/// A temporary HOME with `~/.moai-cli/versions/a/bin/moai-cli`; returns (guard, home, exe).
+/// A temporary HOME whose state folder (named by the resolver, never spelled here) holds
+/// `versions/a/bin/moai-cli`; returns (guard, home, exe).
 fn layout() -> (TempDir, PathBuf, PathBuf) {
     let d = TempDir::new().unwrap();
     let home = fs::canonicalize(d.path()).unwrap();
-    let bin = home.join(".moai-cli/versions/a/bin");
+    let bin = moai_cli::home_root::path(&home).join("versions/a/bin");
     fs::create_dir_all(&bin).unwrap();
     let exe = bin.join("moai-cli");
     common::copy_executable(Path::new(EXE), &exe);
