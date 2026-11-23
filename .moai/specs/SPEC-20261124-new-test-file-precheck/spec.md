@@ -1,14 +1,9 @@
 ---
 id: SPEC-20261124-new-test-file-precheck
 title: "check affected stops before the heavy steps when an added test file is missing from the area table or the state-folder allow list"
-status: approved
-revision: 1
+status: draft
+revision: 2
 created: 2026-11-24
-approval:
-  by: leader
-  at: 2026-11-23
-  basis: "리더 결정 노트 7835 (2026-11-23T19:44:54Z, 사용자 위임 2026-11-23T13:57Z, 리더 판단, 사용자 직접 선택 아님, 노트 7834 에 답함): (A) 판 1 승인, 조건 넷(새 시험 파일이 새 단계를 통과, 멈춤과 통과 둘 다 임시 프로젝트 시험과 guard-mutant exit 100, 멈춤이 cargo 호출 없이 무거운 단계 앞이라는 시험, lane-rules.md 는 짧은 문장 하나); 레인은 그 노트를 인용만 해요"
-  digest: "sha256:c10c10d8eb247c7606ac826ade4e80aa85ce64da0cca0999b4dbbd43feda8eb9"
 ---
 
 # check affected stops before the heavy steps when an added test file is missing from the area table or the state-folder allow list
@@ -54,8 +49,8 @@ approval:
 - AC-3 (REQ-5, REQ-6): 두 표에 맞는 새 시험 파일은 `test_tables=0` 으로 지나가 무거운 단계가 돌고, 시험 파일을 더하지 않았거나 표 파일이 없는 저장소의 요약 줄에는 `test_tables` 낱말이 없어요 · verify: `cargo nextest run --locked --offline --test check_affected_tables_cli a_registered_new_test_file_passes_and_other_ranges_plan_no_table_step`
 - AC-4 (REQ-7): `--list` 의 단계 목록에서 `test_tables` 는 `heavy: false` 이고 첫 `clippy` 앞에 있어요 · verify: `cargo nextest run --locked --offline --test check_affected_tables_cli list_shows_the_table_step_before_the_heavy_steps`
 - AC-5 (REQ-1…REQ-4): 순수 판정 함수 단위 시험이 위반 종류별 줄(미등록 낱말, 옮겨진 영역, 영역 크레이트 이름, 목록에 없는 행, 초과 행)과 위반 없음을 가려요 · verify: `cargo nextest run --locked --offline --lib check_affected::tests::table_violations`
-- AC-6 (REQ-8): 저장소의 실제 `tests/*.rs` 전체를 더한 파일로 놓고 판정하면 위반이 0 개예요 · verify: `cargo nextest run --locked --offline --test check_affected_tables_cli the_repository_tests_pass_the_table_step_as_added_files`
-- AC-7 (REQ-9): `check.md` 와 `docs/lane-rules.md` 가 `test_tables`, `tests/areas.toml`, `allow.tsv` 를 말해요 · verify: `cargo nextest run --locked --offline --test check_affected_tables_cli the_guidance_says_where_a_new_test_file_registers`
+- AC-6 (REQ-8): 저장소의 실제 `tests/*.rs` 전체를 더한 파일로 놓고 판정하면 위반이 0 개예요 · verify: `cargo nextest run --locked --offline --lib check_affected::tests::the_repository_tests_pass_the_table_step_as_added_files`
+- AC-7 (REQ-9): `check.md` 와 `docs/lane-rules.md` 가 `test_tables`, `tests/areas.toml`, `allow.tsv` 를 말해요 · verify: `cargo nextest run --locked --offline --lib check_affected::tests::the_guidance_says_where_a_new_test_file_registers`
 
 ## Scope
 
@@ -86,6 +81,7 @@ approval:
 | D-3 | 두 표는 읽기만 하고 규칙은 그대로예요 | 사용자 지시 "표를 풀지 않는다" | 없음 |
 | D-4 | observe 단계 없이 처음부터 막아요 | 새 규칙이 아니라 저장소의 두 시험이 이미 막는 규칙을 앞으로 당긴 것이고, 오탐은 AC-6 으로 재요 | 단계를 계획에서 빼기 |
 | D-5 | 첫 낱말이 미등록일 때 줄은 낱말 하나와 영역 이름들을 말하고, 어느 영역인지는 고르지 않아요 | 영역 선택은 사람(파일의 성격)의 일이에요 | 없음 |
+| D-6 | AC-6 와 AC-7 의 시험은 `tests/` 가 아니라 `src/check_affected.rs` 의 단위 시험이에요 | 저장소를 걷고 체크인된 문서를 읽는 시험 파일은 `tests/repo_scans_table.rs` 가 `tools/repo_scans.json` 등록이나 EXEMPT 를 요구하는데(영향 시험 실행에서 두 시험이 실패했어요), 두 파일은 이 SPEC 의 쓰기 범위 밖이에요. 그 스캔은 `tests/*.rs` 만 보고, `check affected` 는 `--lib` 를 늘 돌려요 | 시험을 `tests/` 로 옮기고 스캔에 등록하기 |
 
 ## Result
 
