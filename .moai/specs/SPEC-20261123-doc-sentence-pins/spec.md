@@ -36,7 +36,7 @@ created: 2026-11-23
 ## Acceptance
 
 - AC-1 (REQ-1, REQ-2): the lane-rules next-card bullet carries both halves of the leader condition, and the same text without the clause is reported as a problem by the checker that the test uses · verify: `cargo nextest run --locked --offline --test lane_next_rules -E 'test(next_card_leader_clause)'`
-- AC-2 (REQ-3, REQ-4): the repo-scans bullet says `cargo` and the Python line, and the same bullet without either word is reported as a problem · verify: `cargo nextest run --locked --offline --test next_flow_skill_scan -E 'test(land_scans_the_flow_)'`
+- AC-2 (REQ-3, REQ-4): the repo-scans bullet says "run only their `cargo` checks" and "leaving out a Python line", and the same bullet without either phrase, or with the meaning reversed (run all their checks, including a Python line), is reported as a problem · verify: `cargo nextest run --locked --offline --test next_flow_skill_scan -E 'test(land_scans_the_flow_)'`
 - AC-3 (REQ-5): the flow reference is 8192 bytes or less · verify: `cargo nextest run --locked --offline --test next_flow_skill_scan -E 'test(land_scans_the_flow_names_repo_scans_the_merge_tree_and_the_receipt_step)'`
 - AC-4 (REQ-3, REQ-5): the shipped-text scans and the stage and size tests still pass on the changed text · verify: `cargo nextest run --locked --offline --test mode_workflow_steps --test next_flow_skill_scan --test source_manifest_facts --test skill_structure --test workflow_size_budget --test lane_next_rules --test repo_claude_md`
 - AC-5 (REQ-6): the manifest matches the package · verify: `python3 -I tools/source_manifest.py check`
@@ -76,10 +76,11 @@ created: 2026-11-23
 
 2026-11-23 (UTC), 구현 레인이 채웠고 감사가 다시 확인해요. 가지 `spec/doc-sentence-pins-20261123` 은 통합 끝점 `737df06fdd` 에서 갈라졌어요. SPEC 과 RED `9a460dca6b`, 구현 `4192a0d92c`. 실행 기록은 이 워크트리의 `target/c400/` 의 `red2.out`·`green2.out`·`mutant1.out`·`mutant2.out` 이에요(카드가 열려 있는 동안만 둬요).
 
-- 계획과 달라진 것: 카드가 가리킨 `next-flow.md:43` 은 그 뒤 문단이 늘어서 56 행으로 밀려 있었어요. 파일 크기는 7974 B 에서 8022 B 가 되어(+48 B) "늘리지 말고"의 글자 그대로는 아니지만 한도 8192 B 안이에요.
+- 수리 (감사 `a6410159fd` 의 B1, 같은 가지 `771d3172c1`): 핀이 낱말 두 묶음만 봐서 56 행을 반대 뜻("run all their checks, not only their `cargo` checks, ... including a Python line")으로 바꿔도 통과했어요(M2 exit 0). 이제 `repo_scans_cargo_only_problems` 가 "run only their `cargo` checks" 와 "leaving out a python line" 을 통째로 고정하고, `land_scans_the_flow_cargo_only_mutants_are_caught` 에 뒤집은 문장 뮤턴트("meaning reversed")를 더했어요. 문장은 "run only" 를 "run all ... not only", "leaving out" 을 "including" 으로 바꿔 만들어서 문장을 다시 써도 따라가요. RED: 뮤턴트만 먼저 더하고 옛 핀으로 돌리면 "meaning reversed: the pin passes without the sentence" 로 exit 100.
+- 계획과 달라진 것: 카드가 가리킨 `next-flow.md:43` 은 그 뒤 문단이 늘어서 56 행으로 밀려 있었어요. 수리에서 같은 불릿을 다시 써서 파일 크기가 8022 B 에서 7974 B 로, 원래 크기 그대로가 되었어요(`wc -c`).
 - AC-1: met — `next_card_leader_clause_is_in_the_lane_rules` 와 `next_card_leader_clause_mutants_are_caught` 가 통과해요(절 지우기, 뒤쪽 반절 지우기, 앞쪽 반절 지우기, 불릿 지우기 네 뮤턴트를 모두 잡고 각 뮤턴트가 글을 실제로 바꾸는지도 확인해요). 가드 뮤턴트: `docs/lane-rules.md:8` 의 리더 절을 지우면 이 둘이 exit 100 으로 실패하고, 같은 때 `repo_claude_md`·`lane_completion_handshake` 는 통과해요(카드가 말한 빈틈). 복원했고 `git status` 가 깨끗해요.
-- AC-2: met — `land_scans_the_flow_runs_cargo_checks_only` 와 `land_scans_the_flow_cargo_only_mutants_are_caught` 가 통과해요. RED 에서는 첫째가 "only their `cargo` checks"·"python line" 이 없다고 실패했어요. 가드 뮤턴트: next-flow 의 새 말을 되돌리면 둘 다 exit 100.
-- AC-3: met — `next-flow.md` 는 8022 B 이고 `land_scans_the_flow_names_repo_scans_the_merge_tree_and_the_receipt_step` 와 새 테스트가 8192 B 이하를 확인해요.
+- AC-2: met — `land_scans_the_flow_runs_cargo_checks_only` 와 `land_scans_the_flow_cargo_only_mutants_are_caught` 가 통과해요. RED 에서는 첫째가 "only their `cargo` checks"·"python line" 이 없다고 실패했어요. 가드 뮤턴트: next-flow 의 새 말을 되돌리면 둘 다 exit 100, 56 행을 반대 뜻으로 바꾸면 첫째가 exit 100(M1), 핀을 옛 낱말 둘로 약하게 하면 둘째가 exit 100(M2).
+- AC-3: met — `next-flow.md` 는 7974 B 이고 `land_scans_the_flow_names_repo_scans_the_merge_tree_and_the_receipt_step` 와 새 테스트가 8192 B 이하를 확인해요.
 - AC-4: met — `mode_workflow_steps`·`next_flow_skill_scan`·`source_manifest_facts`·`skill_structure`·`workflow_size_budget`·`lane_next_rules`·`repo_claude_md` 의 nextest 실행이 116 중 116 통과(exit 0).
 - AC-5: met — `python3 -I tools/source_manifest.py write` 가 `references/flows/next-flow.md` 한 줄만 바꿨고 `check` 가 `ok: true`, `changed: []` 예요.
 - 남은 일: 없음. `docs/leader-rules.md` 와 "Final flow" 의 같은 뜻 문장은 이 SPEC 의 범위 밖이에요.
