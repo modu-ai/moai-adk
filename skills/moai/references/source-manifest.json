@@ -282,7 +282,7 @@
       }
     },
     "references/internal/test-design.md": {
-      "sha256": "960a3459430ce64537c66b0cf554eb3816e6c13a73d983dc90fbacc0063fb3d6",
+      "sha256": "895d9819b8b4428bfa7802ad1b1163306ab4f91ca5a6aee7fc267b42c5692b75",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-test-design",
