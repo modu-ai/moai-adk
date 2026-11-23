@@ -95,6 +95,57 @@ fn earlier_flow_file_is_left_in_place() {
 }
 
 #[test]
+fn earlier_flow_note_is_added_after_an_existing_detail() {
+    // The flow row already carries a detail (it waits behind a conflicting routing file); the
+    // note about the earlier file joins that detail and must not replace it.
+    let (_t, home) = temp_home();
+    write(&home.join(".claude/rules/moai.md"), "the user's own rule\n");
+    write(&home.join(OLD_FLOW), "an earlier build wrote this\n");
+    let p = plan(&home, &package()).unwrap();
+    let row = flow_row(&p);
+    assert_eq!(row.action, "held", "the flow file waits behind the conflict");
+    let detail = row.detail.as_deref().unwrap_or("");
+    assert!(
+        detail.contains("is a conflict"),
+        "the earlier reason stays in the detail: {detail:?}"
+    );
+    assert!(
+        detail.contains("rules/moai/flow.md") && detail.contains("left in place"),
+        "the note about the earlier file follows it: {detail:?}"
+    );
+}
+
+#[test]
+fn no_earlier_flow_file_means_no_note() {
+    // Without an earlier `rules/moai/flow.md` the preview says nothing about one, both for a
+    // plain create and for a row that already carries a detail.
+    let (_t, home) = temp_home();
+    let p = plan(&home, &package()).unwrap();
+    let row = flow_row(&p);
+    assert_eq!(row.action, "create");
+    let detail = row.detail.as_deref().unwrap_or("");
+    assert!(
+        !detail.contains("rules/moai/flow.md") && !detail.contains("earlier build"),
+        "no note without an earlier file: {detail:?}"
+    );
+
+    let (_t2, home) = temp_home();
+    write(&home.join(".claude/rules/moai.md"), "the user's own rule\n");
+    let p = plan(&home, &package()).unwrap();
+    let row = flow_row(&p);
+    assert_eq!(row.action, "held");
+    let detail = row.detail.as_deref().unwrap_or("");
+    assert!(
+        detail.contains("is a conflict"),
+        "the held reason is kept: {detail:?}"
+    );
+    assert!(
+        !detail.contains("rules/moai/flow.md") && !detail.contains("earlier build"),
+        "no note without an earlier file: {detail:?}"
+    );
+}
+
+#[test]
 fn revert_follows_the_kind() {
     // A receipt of the new apply reverts the new path.
     let (_t, home) = temp_home();
