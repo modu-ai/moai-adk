@@ -1,14 +1,9 @@
 ---
 id: SPEC-20261124-check-affected-touch
 title: "check affected 가 빌드 전에 바뀐 파일의 시각을 갱신해 옛 파일 시각으로 되돌린 복구가 낡은 빌드를 남기지 않아요"
-status: approved
-revision: 1
+status: draft
+revision: 2
 created: 2026-11-24
-approval:
-  by: leader
-  at: 2026-11-23
-  basis: "리더 결정 노트 7975 (2026-11-23T22:57:43Z, 사용자 위임 2026-11-23T13:57Z, 리더 판단, 사용자 직접 선택 아님, 노트 7973 에 답함): 선택지 (a) 승인, 커밋 f7b10a4a7e; 조건: 시각 갱신은 check affected 를 돌리는 체크아웃 안 파일만 하고 체크아웃 밖을 가리키는 경로(링크 대상 포함)는 건드리지 않아요, READY 에 링크 하나를 둔 임시 저장소에서 링크 대상의 mtime 이 그대로인 실행을 실어요; 리더가 노트에 적었고 레인은 그 노트를 인용만 해요"
-  digest: "sha256:233d8d5b086b3aa0eb4b0570cd89c6d9033328ede87abed2d1bf6dd9438bcf8f"
 ---
 
 # check affected 가 빌드 전에 바뀐 파일의 시각을 갱신해 옛 파일 시각으로 되돌린 복구가 낡은 빌드를 남기지 않아요
@@ -54,11 +49,11 @@ approval:
 - AC-2 (REQ-1): a run moves the time of a changed file to a time after the run started, keeps its bytes and mode, and leaves the time of a file outside the range alone. · verify: `cargo nextest run --offline --locked --test check_affected_touch -E 'test(the_run_refreshes_only_the_changed_files_time)'`
 - AC-3 (REQ-2): a changed path that is a symlink keeps its own time and its target's time, is named in `refresh.skipped`, and the run still finishes with the same steps. · verify: `cargo nextest run --offline --locked --test check_affected_touch -E 'test(a_changed_link_is_skipped_and_named)'`
 - AC-4 (REQ-3): `check affected --list` leaves the time of every changed file as it was. · verify: `cargo nextest run --offline --locked --test check_affected_touch -E 'test(list_mode_touches_no_file)'`
-- AC-5 (REQ-4, REQ-5): the guard-mutant line of `self-check.md` names `git checkout`, a plain `cp` and the ban of `cp -p` with its reason, and the pin test fails when one of them is removed. · verify: `cargo nextest run --offline --locked --test check_affected_touch -E 'test(the_guard_mutant_line_names_the_restore_rule)'`
+- AC-5 (REQ-4, REQ-5): the guard-mutant line of `self-check.md` names `git checkout`, a plain `cp` and the ban of `cp -p` with its reason, and the pin test fails when one of them is removed. · verify: `cargo nextest run --offline --locked --test agent_defs_package -E 'test(the_guard_mutant_line_names_the_restore_rule)'`
 
 ## Scope
 
-- write: `.moai/specs/SPEC-20261124-check-affected-touch/spec.md`, `src/check_affected.rs`, `tests/check_affected_touch.rs` (new), `skills/moai/references/internal/self-check.md`
+- write: `.moai/specs/SPEC-20261124-check-affected-touch/spec.md`, `src/check_affected.rs`, `tests/check_affected_touch.rs` (new), `skills/moai/references/internal/self-check.md`, `skills/moai/references/source-manifest.json`, `tests/agent_defs_package.rs`
 - read-only: `skills/moai/references/flows/next-flow.md`, `tests/check_affected_one_slot.rs`, `tests/common/`, `Cargo.toml`
 - forbidden: `tools/repo_scans.json`, `CLAUDE.md`, the cargo and rustup state of the user's home
 
@@ -87,6 +82,7 @@ approval:
 | D-3 | 시각은 읽기 전용 파일 핸들의 `File::set_modified` 로 바꿔요(내용·권한 불변) | Rust 1.94.1 표준 라이브러리; 새 의존성이 없어요 | 다른 방법(`touch`)으로 바꿔도 같은 결과예요 |
 | D-4 | 요약 줄은 바꾸지 않고 답에 `refresh` 필드만 더해요 | 영수증 판정(`src/card/ready_receipt.rs`)이 요약 줄 모양을 읽어요 | 필드를 지워요 |
 | D-5 | 안내는 `self-check.md` Tests 2번에 한 문장을 더해요; `next-flow.md:23` 은 그대로 둬요 | 카드가 말한 "guard-mutant 안내"는 mutant 를 만들고 되돌리는 방법이 있는 자리예요; 영수증 모양의 줄은 복구를 다루지 않아요 | 문장을 지워요 |
+| D-6 | 개정 2: 핀 테스트(AC-5)는 `tests/agent_defs_package.rs` 에 두고, `source-manifest.json` 의 `self-check.md` sha256 한 줄을 새 값으로 바꿔요 | 새 테스트 파일이 스킬 글을 `include_str!` 로 읽으면 `tools/repo_scans.json` 의 `always` 스캔에 올려야 하는데 그 파일은 다른 카드가 쥐고 있어요(`repo_scans_table` 이 짚었어요); `agent_defs_package.rs` 는 이미 스킬 글 읽기로 등록돼 있어요. 스킬 글이 바뀌면 원본 목록의 sha256 이 낡아져요(`source_manifest_facts`, `product_cli` 가 짚었어요). 개정 1 승인(노트 7975)은 바뀌지 않은 부분의 근거예요 | 핀 테스트를 `tests/check_affected_touch.rs` 로 되돌리고 `repo_scans.json` 에 항목을 더해요 |
 
 ## Result
 
