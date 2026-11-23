@@ -275,9 +275,7 @@ impl World {
                 "source": "user", "scope": "project"}],
             "work_flow": {"flow": "m-flow", "integration_branch": integration_branch},
         });
-        let path = Path::new(&self.project)
-            .join(".moai-cli")
-            .join("project.yaml");
+        let path = moai_cli::state_root::path(Path::new(&self.project), "project.yaml");
         fs::write(path, profile.to_string()).unwrap();
     }
 
