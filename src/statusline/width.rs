@@ -47,8 +47,9 @@ pub fn icon_text(icon: &str, text: &str) -> String {
 /// Every icon the three line layouts can print. The code builds its text from [`icon_text`], and
 /// the tests scan every rendered form for the one space after each of them.
 pub const ICONS: [&str; 22] = [
-    // Line 1: who and where.
-    "🧠", "🤔", "📡", "⬇️", "🔀", "🌳", "🅱️", "🧭", "🔗",
+    // Line 1: who and where. The tag icon belongs to the integration item `(🏷️ <commit>)`; the
+    // distance icon is gone with the item (SPEC-20261123-statusline-order-bars REQ-11).
+    "🧠", "🤔", "📡", "⬇️", "🔀", "🌳", "🅱️", "🏷️", "🔗",
     // The flow line: the one icon set of the progress board and the lane reports.
     "🎯", "🗂️", "🟡", "📨", "🛬", "✅", "🚧", "🙋",
     // Line 3: the limits and the versions.
@@ -125,6 +126,19 @@ mod tests {
         unique.sort_unstable();
         unique.dedup();
         assert_eq!(unique.len(), ICONS.len(), "an icon is listed twice");
+    }
+
+    /// SPEC-20261123-statusline-order-bars REQ-9: the tag icon of the integration item is in the
+    /// table the one-space scans walk, and the distance icon, which no layout prints any more,
+    /// is not (a table entry nothing prints would be a scan that can never see its icon).
+    #[test]
+    fn the_table_holds_the_tag_icon_and_not_the_distance_icon() {
+        assert!(ICONS.contains(&"\u{1F3F7}\u{FE0F}"));
+        assert_eq!(
+            icon_text("\u{1F3F7}\u{FE0F}", "b3ba2b3"),
+            "\u{1F3F7}\u{FE0F} b3ba2b3"
+        );
+        assert!(!ICONS.contains(&"\u{1F9ED}"));
     }
 
     /// SPEC-20261122-statusline-limits-left REQ-5: exactly one space follows every icon, the

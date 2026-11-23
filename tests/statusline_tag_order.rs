@@ -3,10 +3,10 @@
 //! the last line, the same bytes under every language. A session name changes nothing (see the
 //! last cases of this file).
 //!
-//! The renderer has no language text, and these cases have no ledger, so no line has more than
-//! one form: the width ladder only changes the flow line, and the other lines are the same bytes
-//! at `COLUMNS` 80 and 40. "Korean and English, 80 and 40 columns" is therefore proven as
-//! "byte-equal to the recorded golden": each case of `tests/fixtures/statusline-claude/cases.json` named below runs under
+//! The renderer has no language text, and these cases have no ledger, so the width ladder changes
+//! the lines by their own forms only: the second line (the two versions, SPEC-20261123-statusline-order-bars)
+//! and the limits line are the golden's when it fits the budget. "Korean and English, 80 and 40
+//! columns" is therefore proven as "byte-equal to the recorded golden": each case of `tests/fixtures/statusline-claude/cases.json` named below runs under
 //! `LANG` ko_KR.UTF-8 / en_US.UTF-8 × `COLUMNS` 80 / 40 × plain (`NO_COLOR=1`) / truecolor
 //! (`COLORTERM=truecolor`, through a pipe as Claude Code reads it), and must print exactly the
 //! `plain` / `ansi` golden. The run mirrors `tools/statusline_golden.py`: a fresh HOME and
@@ -180,26 +180,21 @@ fn line1_has_no_tag_under_ko_en_and_80_40_columns() {
                 for columns in ["80", "40"] {
                     let got = run_case(&case, lang, columns, color);
                     let budget: usize = columns.parse::<usize>().unwrap() - 2;
-                    // Line 1 and line 3 have their own forms by width
-                    // (SPEC-20261122-statusline-where REQ-11, SPEC-20261122-statusline-limits
-                    // REQ-1), so they are read below; every line between them is the same bytes
-                    // as the golden, and line 3 is the golden's when that fits the budget.
+                    // Every line has its own forms by width (SPEC-20261122-statusline-where
+                    // REQ-11, SPEC-20261123-statusline-order-bars REQ-2 and REQ-5), so line 1 is
+                    // read below; every line between line 1 and the last is the golden's when
+                    // that fits the budget, and so is line 3.
                     let lines: Vec<&str> = got.lines().collect();
                     let want: Vec<&str> = golden.lines().collect();
                     assert_eq!(lines.len(), want.len(), "{name} {variant} {columns}");
-                    let inner = 1..lines.len().saturating_sub(1);
-                    assert_eq!(
-                        lines[inner.clone()],
-                        want[inner],
-                        "{name} {variant} LANG={lang} COLUMNS={columns}"
-                    );
-                    let golden_last = strip_sgr(want.last().copied().unwrap_or_default());
-                    if display_width(&golden_last) <= budget {
-                        assert_eq!(
-                            lines.last(),
-                            want.last(),
-                            "{name} {variant} LANG={lang} COLUMNS={columns}"
-                        );
+                    for at in 1..lines.len() {
+                        let golden_line = strip_sgr(want[at]);
+                        if display_width(&golden_line) <= budget {
+                            assert_eq!(
+                                lines[at], want[at],
+                                "{name} {variant} LANG={lang} COLUMNS={columns} line {at}"
+                            );
+                        }
                     }
                     let text = strip_sgr(&got);
                     let line1 = strip_links(text.lines().next().unwrap_or_default());
@@ -212,11 +207,15 @@ fn line1_has_no_tag_under_ko_en_and_80_40_columns() {
                         display_width(line1) <= budget || !line1.contains(" | "),
                         "{name} {variant} LANG={lang} COLUMNS={columns}: line 1 {line1:?} is too wide"
                     );
-                    assert!(
-                        !text.contains("🏷️"),
-                        "{name} {variant} LANG={lang} COLUMNS={columns}: a tag in {text:?}"
-                    );
-                    // The windows are the last line: counts as numbers, no graph, no colon.
+                    // The tag icon is the one of the integration item `(🏷️ <commit>)` and
+                    // nothing else (SPEC-20261123-statusline-order-bars REQ-9).
+                    for (at, _) in text.match_indices("🏷️") {
+                        assert!(
+                            text[..at].ends_with('('),
+                            "{name} {variant} LANG={lang} COLUMNS={columns}: a tag in {text:?}"
+                        );
+                    }
+                    // The windows are the last line: a bar and a number, no colon.
                     let last = text.lines().last().unwrap_or_default();
                     assert!(
                         last.starts_with("🔋 CW ") || last.starts_with("🪫 CW "),
@@ -351,13 +350,7 @@ fn the_session_name_changes_nothing() {
 #[test]
 fn the_session_name_changes_nothing_in_the_sources() {
     for (file, text) in [("state.rs", STATE_SOURCE), ("render.rs", RENDER_SOURCE)] {
-        for gone in [
-            "lane_registry",
-            "session_name",
-            "is_leader",
-            "tag_text",
-            "🏷️",
-        ] {
+        for gone in ["lane_registry", "session_name", "is_leader", "tag_text"] {
             assert!(
                 !text.contains(gone),
                 "{file} still holds `{gone}`: the first line has no tag"
