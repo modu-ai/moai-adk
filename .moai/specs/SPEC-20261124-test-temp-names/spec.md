@@ -1,12 +1,17 @@
 ---
 id: SPEC-20261124-test-temp-names
 title: "Test scratch folders come from tempfile, and a scan refuses a temp folder named from the process id"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-24
+approval: {by: leader, at: 2026-11-23, basis: "leader decision note 7711 of card C-417 (2026-11-23T17:12:03Z, delegation of the user 2026-11-23T13:57Z, the leader's judgement and not a selection by the user) answering request note 7710 with option (a)", digest: "sha256:52ac711f7529e45c55fa74c9ae5422c169069ba1d1fcb804b24029806a155b25"}
 ---
 
 # Test scratch folders come from tempfile, and a scan refuses a temp folder named from the process id
+
+## Interview
+
+- none: 리더 배차가 요구사항을 전달했어요 — 카드 C-417 본문(수리 두 자리, 다른 자리의 목록, 막는 스캔 하나)과 리더의 배차 지시가 범위를 정했고, 별도 사용자 인터뷰는 없었어요.
 
 ## Intent
 
