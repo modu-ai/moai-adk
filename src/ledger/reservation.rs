@@ -1474,7 +1474,37 @@ pub fn reclaim(
     lease_secs: i64,
 ) -> Result<Reclaimed, ReclaimError> {
     reclaim_with(
-        w, card_id, to_holder, generation, by, reason, lease_secs, None,
+        w, card_id, to_holder, generation, by, reason, lease_secs, None, None,
+    )
+}
+
+/// [`reclaim`] or [`reclaim_early`] (`early`) that also records what the takeover keeps: the
+/// caller measured the commits of the recorded worktree that no remote-tracking ref holds, and
+/// `kept` goes into the `card.reclaim` event as `kept_commits`
+/// (SPEC-20261124-reclaim-keeps-worktree REQ-3). The reservation moves on with the same
+/// worktree and branch, so nothing is dropped; the ledger only writes down what it was told.
+#[allow(clippy::too_many_arguments)]
+pub fn reclaim_keeping(
+    w: &mut WriteLedger,
+    card_id: i64,
+    to_holder: &str,
+    generation: i64,
+    by: &str,
+    reason: &str,
+    lease_secs: i64,
+    early: Option<&EarlyProof<'_>>,
+    kept: &Value,
+) -> Result<Reclaimed, ReclaimError> {
+    reclaim_with(
+        w,
+        card_id,
+        to_holder,
+        generation,
+        by,
+        reason,
+        lease_secs,
+        early,
+        Some(kept),
     )
 }
 
@@ -1511,6 +1541,7 @@ pub fn reclaim_early(
         reason,
         lease_secs,
         Some(proof),
+        None,
     )
 }
 
@@ -1524,6 +1555,7 @@ fn reclaim_with(
     reason: &str,
     lease_secs: i64,
     early: Option<&EarlyProof<'_>>,
+    kept: Option<&Value>,
 ) -> Result<Reclaimed, ReclaimError> {
     check_holder(to_holder)
         .map_err(|why| ReclaimError::InvalidInput(format!("to_holder: {why}")))?;
@@ -1632,6 +1664,9 @@ fn reclaim_with(
         });
         if let Some(p) = early {
             payload["early_proof"] = p.detail.clone();
+        }
+        if let Some(k) = kept {
+            payload["kept_commits"] = k.clone();
         }
         add_event(tx, now, by, card_id, "card.reclaim", &payload)?;
         let previous = load_reservation(tx, card_id, current)?
