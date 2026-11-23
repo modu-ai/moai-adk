@@ -17,13 +17,28 @@ const RECEIPT: &str = "hook-entry.jsonl";
 const RECEIPT_CAP: usize = 262_144;
 const STDIN_CAP: usize = 4 * 1024 * 1024;
 
+/// The state folder of a project and the projects folder a registered project has under HOME,
+/// both read from the library's constants.
+fn state(project: &Path) -> PathBuf {
+    project.join(moai_cli::state_root::MOAI_DIR)
+}
+
+fn project_file(project: &Path) -> PathBuf {
+    state(project).join("project.yaml")
+}
+
+fn registered_dir(home: &Path) -> PathBuf {
+    moai_cli::home_workdir::projects_root(home).join("demo")
+}
+
 struct Run {
     code: i32,
     stdout: String,
     stderr: String,
 }
 
-/// A temporary project folder and HOME. `registered` makes `<HOME>/.moai/projects/demo/`.
+/// A temporary project folder and HOME. `registered` makes the project folder `demo` under the
+/// HOME's projects folder.
 struct Fx {
     _tmp: tempfile::TempDir,
     project: PathBuf,
@@ -39,15 +54,15 @@ impl Fx {
         fs::create_dir_all(&project).unwrap();
         fs::create_dir_all(&home).unwrap();
         if moai_project {
-            fs::create_dir_all(project.join(".moai")).unwrap();
+            fs::create_dir_all(state(&project)).unwrap();
             fs::write(
-                project.join(".moai/project.yaml"),
+                project_file(&project),
                 "{\n  \"schema_version\": 2,\n  \"project_id\": \"demo\"\n}\n",
             )
             .unwrap();
         }
         if registered {
-            fs::create_dir_all(home.join(".moai/projects/demo")).unwrap();
+            fs::create_dir_all(registered_dir(&home)).unwrap();
         }
         Fx {
             _tmp: tmp,
@@ -57,7 +72,7 @@ impl Fx {
     }
 
     fn receipt(&self) -> PathBuf {
-        self.home.join(".moai/projects/demo").join(RECEIPT)
+        registered_dir(&self.home).join(RECEIPT)
     }
 
     fn run(&self, args: &[&str], cwd: &Path, stdin: &[u8], env: &[(&str, &str)]) -> Run {
@@ -187,14 +202,13 @@ fn ac2_an_unknown_name_exits_zero_with_nothing_on_stdout() {
 fn ac3_outside_a_moai_project_a_registered_name_is_silent() {
     type Break = fn(&Path);
     let broken: [(&str, Break); 3] = [
-        ("no .moai folder", |_p| {}),
+        ("no state folder", |_p| {}),
         ("project.yaml is a folder", |p| {
-            fs::create_dir_all(p.join(".moai/project.yaml")).unwrap()
+            fs::create_dir_all(project_file(p)).unwrap()
         }),
         ("project.yaml is a link to nothing", |p| {
-            fs::create_dir_all(p.join(".moai")).unwrap();
-            std::os::unix::fs::symlink(p.join("no-such-target"), p.join(".moai/project.yaml"))
-                .unwrap();
+            fs::create_dir_all(state(p)).unwrap();
+            std::os::unix::fs::symlink(p.join("no-such-target"), project_file(p)).unwrap();
         }),
     ];
     for (what, make) in broken {
@@ -336,7 +350,7 @@ fn ac5_a_receipt_link_is_not_followed_and_a_hostile_project_id_is_refused() {
 
     fs::remove_file(fx.receipt()).unwrap();
     fs::write(
-        fx.project.join(".moai/project.yaml"),
+        project_file(&fx.project),
         r#"{"project_id":"../../outside"}"#,
     )
     .unwrap();
@@ -412,9 +426,7 @@ fn ac7_orca_variables_change_nothing_and_no_settings_file_appears() {
         }
     }
 
-    let source =
-        fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("src/hook_entry.rs"))
-            .expect("src/hook_entry.rs");
+    let source = include_str!("../src/hook_entry.rs");
     for word in [
         "Command::new",
         "std::process::Command",
@@ -432,7 +444,7 @@ fn ac7_orca_variables_change_nothing_and_no_settings_file_appears() {
     }
     let mut variables = Vec::new();
     for marker in ["var_os(\"", "var(\""] {
-        let mut rest = source.as_str();
+        let mut rest = source;
         while let Some(at) = rest.find(marker) {
             rest = &rest[at + marker.len()..];
             variables.push(rest[..rest.find('"').unwrap()].to_owned());
