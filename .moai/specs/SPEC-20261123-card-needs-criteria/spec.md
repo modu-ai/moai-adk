@@ -1,12 +1,23 @@
 ---
 id: SPEC-20261123-card-needs-criteria
 title: "기준 행이 없는 카드는 ready·take 로 못 가게"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-23
+approval:
+  by: leader
+  at: 2026-11-23
+  basis: "리더 결정 노트 7752 (2026-11-23T17:55:02Z, 사용자 위임 2026-11-23T13:57Z, 리더 판단, 사용자 직접 선택 아님, 노트 7751 에 대한 답): SPEC 승인, D-2 모두 허용, D-3 기본, D-1 은 철회되지 않은 기준이 하나 이상으로 변경; 리더가 노트에 적었고 레인은 그 노트를 옮겨 적었어요"
+  digest: "sha256:9a2b6bafe9e76caf3a6de2b95c7cadc6b096691ed8c358df91f04b041c67b4e0"
 ---
 
 # 기준 행이 없는 카드는 ready·take 로 못 가게
+
+## Interview
+
+- Q1: Does a card whose criteria are all withdrawn pass `ready` and `take`? -> A: No (D-1, leader note 7752): `card_done_guard` cannot close such a card either, so it is the trap this change closes.
+- Q2: Where does the refusal live, the commands or the ledger library `reserve`? -> A: The commands `card ready` and `card take` only (D-3); `reserve` stays as it is so the library fixtures that build cards by SQL keep working.
+- Q3: May the broken fixtures and the neighbouring files be edited? -> A: Yes (D-2, leader note 7752): the sixteen test files (card-creating lines and their helper only, no assertion changes), the one test in `src/worktree_gc.rs`, one help sentence and one rule-provenance line.
 
 ## Intent
 
@@ -19,7 +30,6 @@ created: 2026-11-23
 - 원장 파일, 트리거(`card_done_guard`), 마이그레이션(`src/ledger/migrate.rs`) 변경. 이미 있는 기준 0개 카드(착지했지만 열린 다섯 장)를 닫는 길은 이 SPEC 이 아니에요. 그건 guarded 라서 사용자 선택을 기다려요.
 - `moai card add` 가 기준 없이 만들어지는 것을 막는 일. draft 카드는 기준을 나중에 더할 수 있어요.
 - 원장 라이브러리(`src/ledger/**`)의 `reserve` 같은 함수 자체를 거절시키는 일. 막는 곳은 `moai card ready` 와 `moai card take` 명령 둘이에요.
-- 모두 철회된 기준만 남은 카드를 따로 다루는 일(D-1).
 
 ## Requirements
 
@@ -29,25 +39,25 @@ created: 2026-11-23
 - REQ-4: When `moai card take` names a `ready` card that has at least one criterion row, the tool shall reserve the card as it does today.
 - REQ-5 (REQ-4): IF the `ready` card has no criterion row, THEN the tool shall refuse as REQ-2 and REQ-3 say, and reserve nothing.
 - REQ-6: The tool shall give `moai card ready` and `moai card take` on a missing card, a card in a state they refuse or a held card the refusal it gave before this change, whether or not the card has criterion rows.
-- REQ-7: The tool shall count a criterion row of any status (`open`, `met` or `withdrawn`) as a criterion row.
+- REQ-7: The tool shall count only a criterion row whose status is `open` or `met` as a criterion row, so a card whose rows are all `withdrawn` has none.
 
 ## Acceptance
 
-- AC-1 (REQ-2, REQ-3, REQ-7): `moai card ready` on a `draft` card with no criterion row exits 1 with kind `invalid_input`, the message names `criterion-add`, and the card's state, `rev` and event count are the same before and after; after one `criterion-add` the same command succeeds · verify: `cargo nextest run --locked --offline --test card_needs_criteria_cli`
+- AC-1 (REQ-2, REQ-3, REQ-7): `moai card ready` on a `draft` card with no criterion row exits 1 with kind `invalid_input`, the message names `criterion-add`, and the card's state, `rev` and event count are the same before and after; the same refusal holds for a card whose only criterion is `withdrawn`; after one `criterion-add` the same command succeeds · verify: `cargo nextest run --locked --offline --test card_needs_criteria_cli`
 - AC-2 (REQ-5, REQ-3): `moai card take` on a `ready` card with no criterion row exits 1 with kind `invalid_input`, names `criterion-add`, and leaves no reservation and the card `ready`; after one `criterion-add` the same command takes the card · verify: `cargo nextest run --locked --offline --test card_needs_criteria_cli`
 - AC-3 (REQ-1, REQ-4, REQ-6): a card with at least one criterion keeps its `ready` and `take` behavior and every earlier refusal (missing card, state, live reservation, scope conflict): the existing tests of the broken fixtures pass once their cards carry a criterion · verify: `cargo nextest run --locked --offline --test branch_gc_cli --test card_criterion_add_cli --test card_dispatch_cli --test card_done_mflow_cli --test card_generated_scope --test card_reclaim_cli --test card_reclaim_early_cli --test card_roles_cli --test card_spec_cli --test card_take_scope_cli --test card_verdict_cli --test card_withdraw_cli --test card_work_cli --test ledger_readonly_cli --test worktree_cleanup_triggers --test worktree_gc_slots` and `cargo nextest run --locked --offline --lib the_recheck_reads_the_claims_of_the_given_home`
 
 ## Scope
 
-- write: `.moai/specs/SPEC-20261123-card-needs-criteria/spec.md`, `src/card/dispatch.rs`, `tests/card_needs_criteria_cli.rs`
-- write (added by decision D-2, only after the leader approves): `src/ops/card.rs` (one help sentence for `ready` and `take`), `docs/claude-md-rule-provenance.md` (one cause line), the sixteen fixture files named in AC-3 (`tests/<name>.rs`, only the lines that create a card without `--ac`) and the test module of `src/worktree_gc.rs` (the one test that readies and takes a card)
+- write: `.moai/specs/SPEC-20261123-card-needs-criteria/spec.md`, `src/card/dispatch.rs`, `tests/card_needs_criteria_cli.rs`, `src/ops/card.rs`, `docs/claude-md-rule-provenance.md`, `src/worktree_gc.rs`, `tests/branch_gc_cli.rs`, `tests/card_criterion_add_cli.rs`, `tests/card_dispatch_cli.rs`, `tests/card_done_mflow_cli.rs`, `tests/card_generated_scope.rs`, `tests/card_reclaim_cli.rs`, `tests/card_reclaim_early_cli.rs`, `tests/card_roles_cli.rs`, `tests/card_spec_cli.rs`, `tests/card_take_scope_cli.rs`, `tests/card_verdict_cli.rs`, `tests/card_withdraw_cli.rs`, `tests/card_work_cli.rs`, `tests/ledger_readonly_cli.rs`, `tests/worktree_cleanup_triggers.rs`, `tests/worktree_gc_slots.rs`
+- the paths from `src/ops/card.rs` on come from D-2 (approved on note 7752): one help sentence for `ready` and `take`, one cause line in the rule provenance, the fixture lines that create a card without `--ac` (no assertion changes) and the one test of `src/worktree_gc.rs` that readies and takes a card
 - read-only: `src/ledger/**` (the trigger and the migration stay as they are), `src/card/command.rs`
 - forbidden: `CLAUDE.md`, the ledger file, `src/ledger/migrate.rs`
 
 ## Plan
 
 1. RED: `tests/card_needs_criteria_cli.rs` pins AC-1 and AC-2 in a temporary HOME; both fail today because `ready` and `take` accept a card without criteria.
-2. `src/card/dispatch.rs`: one helper reads the criterion rows of the card; `ready` calls it inside its write transaction after the state and reservation checks, `take` calls it before it reserves a `ready` card. The rows are never deleted (trigger `card_ac_no_delete`), so a card that has a row when it is read cannot lose it before the reservation.
+2. `src/card/dispatch.rs`: one helper counts the card's `open` and `met` criterion rows; `ready` calls it inside its write transaction after the state and reservation checks, `take` calls it before it reserves a `ready` card. Rows are never deleted (trigger `card_ac_no_delete`); a withdraw between the read and the reservation of a card nobody holds is not guarded.
 3. Fixtures: each broken fixture card gets `--ac` where the test creates it (AC-3).
 4. Help sentences, the rule-provenance cause line, `moai bundle check`, then the guard mutants and `moai check affected` once at READY.
 
@@ -61,6 +71,6 @@ created: 2026-11-23
 
 | Id | Decision | Basis | Undo |
 | --- | --- | --- | --- |
-| D-1 | A card whose criteria are all `withdrawn` still has criterion rows and passes (any row counts) | the recurring case is a card with no row at all; a card with only withdrawn rows was never seen (rule: no design for a rare case) | count only non-withdrawn rows in the helper |
-| D-2 | The write scope also names the sixteen fixture files, the test module of `src/worktree_gc.rs`, `src/ops/card.rs` (help) and `docs/claude-md-rule-provenance.md` (cause line) | the card allows adding criteria to fixtures that break; the recurring-problem rule asks for the cause in the rule provenance; needs the leader's approval as a scope change | drop the paths and their edits; the check then breaks 169 tests |
+| D-1 | A card passes only with at least one non-withdrawn criterion row (`open` or `met`); a card whose rows are all `withdrawn` is refused like one with no row | leader decision on note 7752 (2026-11-23T17:55:02Z): `card_done_guard` cannot close a card with only withdrawn criteria either, so it is the same trap this change closes | count every row in the helper |
+| D-2 | The write scope also names the sixteen fixture files, the test module of `src/worktree_gc.rs`, `src/ops/card.rs` (help) and `docs/claude-md-rule-provenance.md` (cause line) | the card allows adding criteria to fixtures that break; the recurring-problem rule asks for the cause in the rule provenance; approved as a scope change by the leader on note 7752 | drop the paths and their edits; the check then breaks 169 tests |
 | D-3 | The refusal lives in the `card ready` and `card take` commands (`src/card/dispatch.rs`), not in `ledger::reservation::reserve` | the card names the two commands; a check in `reserve` would also break `tests/ledger_reservation.rs` and the other library fixtures, which build cards by SQL | move the call into `reserve` |
