@@ -874,8 +874,12 @@ pub fn register_with(
             previous_sessions.extend(cur.previous_sessions.iter().cloned());
         }
     }
+    // The session the entry names now is not its own predecessor: an older session of the lane
+    // that comes back after later /clears finds its own id in the list it inherited.
+    let named_now = entry["session"].as_str().map(str::to_string);
     let mut seen = std::collections::HashSet::new();
-    previous_sessions.retain(|s| seen.insert(s.clone()));
+    previous_sessions
+        .retain(|s| named_now.as_deref() != Some(s.as_str()) && seen.insert(s.clone()));
     previous_sessions.truncate(MAX_PREVIOUS_SESSIONS);
     if !previous_sessions.is_empty() {
         entry["previous_sessions"] = json!(previous_sessions);

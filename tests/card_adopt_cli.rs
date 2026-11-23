@@ -456,6 +456,30 @@ fn ac3_adopt_continues_the_card_at_the_next_generation() {
     result(&new);
 }
 
+/// AC-1 (REQ-1): the session an entry names now is never listed in its own `previous_sessions`,
+/// also when an older session of the lane comes back after a /clear and a second /clear.
+#[test]
+fn ac1_a_session_that_comes_back_is_not_its_own_predecessor() {
+    let w = world();
+    result(&w.register(NAME, &sid(1), &w.wt_a, false));
+    w.clear(NAME, &sid(2), &w.wt_a);
+    w.clear(NAME, &sid(3), &w.wt_a);
+    assert_eq!(
+        w.entry(NAME)["previous_sessions"],
+        json!([sid(2), sid(1)]),
+        "the replaced sessions, newest first"
+    );
+
+    w.clear(NAME, &sid(1), &w.wt_a);
+    let entry = w.entry(NAME);
+    assert_eq!(entry["session"], json!(sid(1)));
+    assert_eq!(
+        entry["previous_sessions"],
+        json!([sid(3), sid(2)]),
+        "the returning session is not its own predecessor"
+    );
+}
+
 /// AC-3: a card in `review` is adopted too and stays in `review`.
 #[test]
 fn ac3_a_card_in_review_is_adopted_and_stays_in_review() {
@@ -564,7 +588,7 @@ fn ac5_an_entry_that_still_names_the_holder_is_refused() {
 
 /// AC-6 (REQ-7): a reservation recorded for another worktree, a link that resolves to another
 /// worktree, and an entry that records no worktree or another one each refuse with
-/// `other_worktree`.
+/// `other_worktree`; a link that resolves to the running worktree is adopted.
 #[test]
 fn ac6_a_worktree_that_is_not_the_running_one_is_refused() {
     // The reservation records another worktree.
@@ -586,6 +610,21 @@ fn ac6_a_worktree_that_is_not_the_running_one_is_refused() {
     let before = w.dump();
     let out = w.adopt(&w.wt_a, &sid(2), &card, "1");
     w.refused_with("a link to another worktree", out, "other_worktree", &before);
+
+    // The reservation records a symbolic link that resolves to the running worktree: the proof
+    // compares canonical paths, so the adoption goes through. Without the canonical path of the
+    // reserved worktree the link text would differ from the running worktree and be refused.
+    let w = world();
+    let link = w.host.path().join("link-to-a");
+    std::os::unix::fs::symlink(&w.wt_a, &link).unwrap();
+    let card = w.taken(&sid(1), &link, "lane-a", "src/lane/");
+    result(&w.register(NAME, &sid(1), &w.wt_a, false));
+    w.clear(NAME, &sid(2), &w.wt_a);
+    let got = result(&w.adopt(&w.wt_a, &sid(2), &card, "1"));
+    assert_eq!(got["reservation"]["holder"], json!(sid(2)));
+    assert_eq!(got["reservation"]["generation"], json!(2));
+    assert_eq!(got["worktree"], json!(w.wt_a.to_str().unwrap()));
+    assert_eq!(w.events_of("card.adopt").len(), 1);
 
     // The entry records no worktree, and then another worktree.
     let w = world();
