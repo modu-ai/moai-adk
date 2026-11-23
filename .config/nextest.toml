@@ -10,9 +10,31 @@
 # in-process, and nextest runs every test as a process of its own, so under nextest the bound
 # is this group: at most four of these tests run at once, across all of them. Add a test file
 # that takes spawn permits to the filter (tests/spawn_cap_test.rs checks the list).
+#
+# Home guard (SPEC-20261123-test-home-isolation): on a unix host every test process runs through
+# tools/test_home_guard.sh, which gives it an empty temporary HOME with decoy files and reports a
+# test that reads or changes that HOME (a line that starts with `HOME-GUARD:`). The script's own
+# header says the modes. Wrapper scripts are an experimental nextest feature (0.9.98; the command
+# form with `relative-to` needs 0.9.99), so an older nextest stops with an error here instead of
+# running the tests unguarded. A test that needs the real HOME goes into the `all() - (...)` filter
+# below, with one `# allow: <predicate> | reason: <why>` line above it; tests/test_home_guard.rs
+# fails on an entry that has no reason or names no test.
+nextest-version = { required = "0.9.99", recommended = "0.9.152" }
+experimental = ["wrapper-scripts"]
+
 [test-groups]
 spawning-moai = { max-threads = 4 }
 
 [[profile.default.overrides]]
 filter = 'binary(home_retire_cli) | binary(update_home_layer_cli) | binary(update_keys_cli)'
 test-group = 'spawning-moai'
+
+# The home guard rule comes after the override above: tests/spawn_cap_test.rs reads the first
+# `filter =` line of this file as the test group's filter.
+[scripts.wrapper.home-guard]
+command = { command-line = 'tools/test_home_guard.sh', relative-to = 'workspace-root' }
+
+[[profile.default.scripts]]
+platform = { host = 'cfg(unix)' }
+filter = 'all()' # home-guard-filter
+run-wrapper = 'home-guard'

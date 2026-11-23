@@ -5,6 +5,8 @@
 #![cfg(unix)]
 
 mod common;
+#[path = "common/ready_receipt.rs"]
+mod ready_receipt;
 
 use common::home::TempHome;
 use moai_cli::ledger;
@@ -232,18 +234,9 @@ impl World {
 
     /// Adds a note and returns its number.
     fn note(&self, card: &str, text: &str) -> i64 {
-        self.card(
-            &["note", card, "--kind", "report", "--by", "lane"],
-            Some(text),
-        );
-        let shown = self.card(&["show", card], None);
-        shown["notes"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .map(|n| n["note_id"].as_i64().unwrap())
-            .max()
-            .unwrap()
+        // Not through `card note`: its READY receipt gate (SPEC-20261124-ready-receipt-gate)
+        // is not what this file judges, and the project folder is not the repository.
+        ready_receipt::add_note_unchecked(self.home.path(), "demo", card, text)
     }
 
     fn ready_note(&self, card: &str, head: &str) -> i64 {

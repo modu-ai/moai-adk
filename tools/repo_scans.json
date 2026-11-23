@@ -303,6 +303,27 @@
       "rejects": "a fixed temp_dir() or CARGO_TARGET_TMPDIR join name shared across test processes (#2666)"
     },
     {
+      "id": "no-pid-named-temp-folders",
+      "tests": [
+        "tests/test_temp_names_scan.rs::temp_names_tree_has_no_pid_names_under_the_temp_folder"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test test_temp_names_scan"
+      ],
+      "rules": [
+        "tests/test_temp_names_scan.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "tests/",
+          "suffixes": [
+            ".rs"
+          ]
+        }
+      ],
+      "rejects": "a test statement that joins a name made from std::process::id() onto temp_dir(): the folder is predictable, is left behind, and meets a leftover when a later process has the same pid; use tempfile::TempDir (SPEC-20261124-test-temp-names)"
+    },
+    {
       "id": "recorded-ac-commands",
       "tests": [
         "tests/ac_command_lint.rs::recorded_ac_commands_name_existing_targets_and_select_tests"
@@ -1544,7 +1565,7 @@
         "tests/repo_scans_table.rs::every_file_reader_has_an_always_scan_or_an_exemption"
       ],
       "checks": [
-        "cargo test --offline --locked --test ac_command_lint --test agents_choices_step_cli --test atlas_query_cli --test bin_test_once --test boundary_repro --test bundle_body_cli --test bundle_build_cli --test bundle_verify_cli --test card_generated_scope --test cargo_env_developer_dir --test check_pipeline_config --test claude_md_home_cli --test claude_python_adapter_removed --test e2e_temp_home_cli --test host_small_fixes_cli --test lane_completion_handshake --test lane_next_rules --test product_cli --test profile_apply_engine --test profile_debug_info --test project_flow_closing --test project_lsp_plugins_cli --test protected_paths_one_list --test recurring_problems_rule --test repo_claude_md --test review_checklist_cli --test review_md_repo --test run_verify --test source_manifest_facts --test spawn_cap_test --test spec_branch_name_first --test update_hooks_cli --test worktree_cli --test worktree_report --test repo_scans_table"
+        "cargo test --offline --locked --test ac_command_lint --test agents_choices_step_cli --test atlas_query_cli --test bin_test_once --test boundary_repro --test bundle_body_cli --test bundle_build_cli --test bundle_verify_cli --test card_generated_scope --test cargo_env_developer_dir --test check_pipeline_config --test claude_md_home_cli --test claude_python_adapter_removed --test e2e_temp_home_cli --test host_small_fixes_cli --test lane_completion_handshake --test lane_next_rules --test product_cli --test profile_apply_engine --test profile_debug_info --test project_flow_closing --test project_lsp_plugins_cli --test protected_paths_one_list --test recurring_problems_rule --test repo_claude_md --test review_checklist_cli --test review_md_repo --test run_verify --test source_manifest_facts --test spawn_cap_test --test spec_branch_name_first --test test_home_guard --test update_hooks_cli --test worktree_cli --test worktree_report --test repo_scans_table"
       ],
       "rules": [
         "tests/ac_command_lint.rs",
@@ -1578,6 +1599,7 @@
         "tests/source_manifest_facts.rs",
         "tests/spawn_cap_test.rs",
         "tests/spec_branch_name_first.rs",
+        "tests/test_home_guard.rs",
         "tests/update_hooks_cli.rs",
         "tests/worktree_cli.rs",
         "tests/worktree_report.rs",
@@ -2059,7 +2081,7 @@
         "tests/repo_scans_table.rs::every_file_reader_has_an_always_scan_or_an_exemption"
       ],
       "checks": [
-        "cargo test --offline --locked --test ac_command_lint --test audit_gate_cli --test check_affected_modes_cli --test check_pipeline_config --test cli_text_citations --test gate_collect --test heavy_slot_cli --test protected_paths_one_list --test repo_scans_cli --test review_checklist_cli --test search_atlas --test repo_scans_table"
+        "cargo test --offline --locked --test ac_command_lint --test audit_gate_cli --test check_affected_modes_cli --test check_pipeline_config --test cli_text_citations --test gate_collect --test heavy_slot_cli --test protected_paths_one_list --test repo_scans_cli --test review_checklist_cli --test search_atlas --test test_home_guard --test repo_scans_table"
       ],
       "rules": [
         "tests/ac_command_lint.rs",
@@ -2073,6 +2095,7 @@
         "tests/repo_scans_cli.rs",
         "tests/review_checklist_cli.rs",
         "tests/search_atlas.rs",
+        "tests/test_home_guard.rs",
         "tests/repo_scans_table.rs"
       ],
       "scope": [
@@ -2111,9 +2134,32 @@
         },
         {
           "prefix": "tools/source_manifest.py"
+        },
+        {
+          "prefix": "tools/test_home_guard.sh"
         }
       ],
       "rejects": "a change to a checked-in file that a test of this group opens at run time that the test did not re-run on the merge tree (SPEC-20261123-land-file-read-scans)"
+    },
+    {
+      "id": "test-home-guard-scratch-crate-lib",
+      "always": true,
+      "tests": [
+        "tests/repo_scans_table.rs::every_file_reader_has_an_always_scan_or_an_exemption"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test test_home_guard --test repo_scans_table"
+      ],
+      "rules": [
+        "tests/test_home_guard.rs",
+        "tests/repo_scans_table.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "src/lib.rs"
+        }
+      ],
+      "rejects": "a change to src/lib.rs that tests/test_home_guard.rs, which only writes a file of that name into the scratch crate it builds, did not re-run on the merge tree; a FILE_READ_EXEMPT line in tests/repo_scans_table.rs would replace this entry (SPEC-20261123-test-home-isolation)"
     }
   ]
 }

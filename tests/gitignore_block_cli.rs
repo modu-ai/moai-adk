@@ -399,6 +399,78 @@ fn the_repository_gitignore_tracks_specs_and_ignores_the_rest() {
     }
 }
 
+/// SPEC-20261124-statusline-cache-untracked REQ-1 to REQ-3: the status line of every session
+/// writes its forge counts cache and its refresh lock under the state folder of the checkout it
+/// renders in, so each worktree shows them as untracked unless this repository's own
+/// `.gitignore` ignores them. Read by git in a temporary repository without global rules, the
+/// `.gitignore` ignores the cache under both state folder names and still tracks the team files
+/// next to them.
+#[test]
+fn the_repository_gitignore_ignores_the_statusline_counts_cache() {
+    let tmp = TempDir::new().unwrap();
+    let root = fs::canonicalize(tmp.path()).unwrap();
+    git_ok(&root, &["init", "-q", "-b", "main"]);
+    // The one named file is compiled in, so a change to it rebuilds this test.
+    fs::write(root.join(".gitignore"), include_str!("../.gitignore")).unwrap();
+    let ignored = |rel: &str| {
+        git_raw(
+            &root,
+            &[
+                "-c",
+                "core.excludesFile=/dev/null",
+                "check-ignore",
+                "-q",
+                "--no-index",
+                rel,
+            ],
+        )
+        .success
+    };
+    for rel in [
+        ".moai-cli/state/github/counts.json",
+        ".moai-cli/state/github/refresh.lock",
+        ".moai-cli/state/github/counts.json.4242.tmp",
+        ".moai/state/github/counts.json",
+    ] {
+        assert!(ignored(rel), "{rel} is not ignored");
+    }
+    // The rule that decides must be the one this SPEC added, by name: `.moai/state/` is also
+    // ignored by the older `.moai/state/` and `/.moai/*` rules, so only the deciding rule shows
+    // that the added line is still there.
+    for (rel, rule) in [
+        (".moai-cli/state/github/counts.json", "/.moai-cli/state/"),
+        (".moai/state/github/counts.json", "/.moai/state/"),
+    ] {
+        let out = git_raw(
+            &root,
+            &[
+                "-c",
+                "core.excludesFile=/dev/null",
+                "check-ignore",
+                "-v",
+                "--no-index",
+                rel,
+            ],
+        );
+        let verdict = out.stdout.trim().to_string();
+        let pattern = verdict
+            .split('\t')
+            .next()
+            .and_then(|head| head.splitn(3, ':').nth(2))
+            .unwrap_or("");
+        assert_eq!(pattern, rule, "{rel} is decided by another rule: {verdict}");
+    }
+    for rel in [
+        ".moai-cli/project.yaml",
+        ".moai-cli/manifests/profile-baseline.json",
+        ".moai/project.yaml",
+        ".moai/specs/SPEC-x/spec.md",
+        ".moai/evals/audit/cases-tuning.json",
+    ] {
+        assert!(!ignored(rel), "{rel} is ignored");
+    }
+}
+
 #[test]
 fn the_plan_shows_the_new_block_line_by_line_and_writes_nothing() {
     let fx = Fx::new(None);

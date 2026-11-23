@@ -34,8 +34,10 @@ enum Action {
     /// not carry the cap yet. The answer has one `summary` line of `key=value` words in a fixed
     /// order: `check-affected`, base, head, targets, scans, `test-threads=<n>` (the cap the
     /// `test` step ran with), the exit status of each step in the order they ran, then
-    /// `result=PASS` when every status is 0 and `result=FAIL` otherwise. Writes the step logs and
-    /// `heavy-slot.log` under `<build folder>/check-affected-<head>` (or `--out`). The bare command
+    /// `result=PASS` when every status is 0 and `result=FAIL` otherwise. Writes the step logs,
+    /// `heavy-slot.log` and `summary.txt` (the summary line, whatever its result: the receipt
+    /// `card note` reads before it keeps a READY or REPAIRED note of this head) under
+    /// `<build folder>/check-affected-<head>` (or `--out`). The bare command
     /// selects the full set; `--lane` selects the precise lane set, a subset of it: a scan of
     /// `tools/repo_scans.json` joins only when a changed path is in its scope or is one of its
     /// rule files, a change to `tests/common/<sub>.rs` selects only the tests that name
@@ -110,7 +112,13 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
                 pick,
                 integration_ref,
             };
-            moai_cli::check_affected::run(&dir, &range, &opts)
+            let answer = moai_cli::check_affected::run(&dir, &range, &opts)?;
+            // SPEC-20261124-ready-receipt-gate: the summary line is the receipt `card note` reads.
+            if let (Some(out), Some(summary)) = (answer["out"].as_str(), answer["summary"].as_str())
+            {
+                moai_cli::card::ready_receipt::write_summary(std::path::Path::new(out), summary)?;
+            }
+            Ok(answer)
         }
     }
 }

@@ -29,13 +29,26 @@ pub const KINDS: &[(&str, &str, &str)] = &[
     ("claims", "claims", "claims"),
 ];
 
+/// The process-edge reader of the environment HOME (SPEC-20261124-home-env-readers): the one
+/// place in this module that reads it. A command's edge uses this and passes the result on;
+/// code that is given a HOME calls [`default_home_root_in`].
+///
 /// The default home root: `$HOME/.moai-cli` (the card's fixed location). `None` without
-/// a HOME — callers then stay on the project side.
+/// a HOME — callers then stay on the project side. An unset or empty HOME counts as no HOME.
 pub fn default_home_root() -> Option<PathBuf> {
-    std::env::var_os("HOME")
-        .map(PathBuf::from)
-        .filter(|h| !h.as_os_str().is_empty())
-        .map(|h| crate::home_root::path(&h))
+    default_home_root_in(environment_home().as_deref())
+}
+
+/// The environment HOME, read once per call: the only read of it in this module.
+fn environment_home() -> Option<PathBuf> {
+    std::env::var_os("HOME").map(PathBuf::from)
+}
+
+/// [`default_home_root`] with the HOME given instead of read from the environment: the home
+/// root of `home`, or `None` for no HOME or an empty one.
+pub fn default_home_root_in(home: Option<&Path>) -> Option<PathBuf> {
+    home.filter(|h| !h.as_os_str().is_empty())
+        .map(crate::home_root::path)
 }
 
 /// The active home project directory — `Some` only when `layout.json` (the pointer a
@@ -50,7 +63,12 @@ pub fn active_home(project: &Path, home_root: &Path) -> Option<PathBuf> {
 /// The `$HOME/.moai-cli` wrapper store modules use: the directory a store kind resolves
 /// to once the pointer is switched, `None` keeps the project side authoritative.
 pub fn switched_dir(project: &Path, subdir: &str) -> Option<PathBuf> {
-    let home_root = default_home_root()?;
+    switched_dir_in(project, subdir, environment_home().as_deref())
+}
+
+/// [`switched_dir`] with the HOME given instead of read from the environment.
+pub fn switched_dir_in(project: &Path, subdir: &str, home: Option<&Path>) -> Option<PathBuf> {
+    let home_root = default_home_root_in(home)?;
     active_home(project, &home_root).map(|dir| dir.join(subdir))
 }
 
@@ -83,7 +101,8 @@ pub struct LayoutPlan {
 /// The claim journal's project-side root lives on the git common dir, not the project
 /// root. Resolves per clone; absent for a non-repository or common-dir-less input.
 fn claims_legacy_dir(project: &Path) -> Result<Option<PathBuf>> {
-    let id = crate::identity::identity(project)?;
+    // Only `clone_anchor` is read, a field that does not depend on a HOME, so no HOME is given.
+    let id = crate::identity::identity_in(project, None)?;
     let Some(common) = id["clone_anchor"].as_str() else {
         return Ok(None);
     };
@@ -561,5 +580,212 @@ mod tests {
             b"old project data"
         );
         assert!(!home_root.join("projects/widgets/layout.json").exists());
+    }
+}
+
+/// SPEC-20261124-home-env-readers: `default_home_root_in` and `switched_dir_in` take the HOME as
+/// an argument, and `default_home_root` is the one process-edge reader of the environment HOME here.
+/// A test that needs the environment HOME to be another value re-runs itself in a child process,
+/// so no test changes this process's environment and none reads the real HOME.
+#[cfg(all(test, unix))]
+mod home_arg_tests {
+    use super::*;
+    use std::{ffi::OsString, fs, process::Command};
+
+    /// Set in the child process; names the project the child resolves stores for.
+    const CHILD_PROJECT: &str = "MOAI_LAYOUT_TEST_PROJECT";
+    /// Set in the child process; the HOME the child passes as an argument.
+    const CHILD_GIVEN: &str = "MOAI_LAYOUT_TEST_GIVEN_HOME";
+    /// Set in the child process; the path the child expects (a HOME or a claims folder).
+    const CHILD_EXPECT: &str = "MOAI_LAYOUT_TEST_EXPECT";
+    /// Set in the child process of the equality test, so the child tells itself from the parent.
+    const CHILD_FLAG: &str = "MOAI_LAYOUT_TEST_CHILD";
+
+    /// The libtest name of `test` in this module, as `--exact` wants it (no crate prefix).
+    fn libtest_name(test: &str) -> String {
+        let module = module_path!();
+        let inside = module.split_once("::").map_or(module, |(_, rest)| rest);
+        format!("{inside}::{test}")
+    }
+
+    /// Re-runs `test` of this module alone in a child process with `HOME` set to `home` (removed
+    /// when `None`) and `extra` added. Fails unless the child really ran that one test and it
+    /// passed: a name that matched nothing prints `0 passed`.
+    fn run_in_child(test: &str, home: Option<&OsString>, extra: &[(&str, &Path)]) {
+        let mut cmd = Command::new(std::env::current_exe().unwrap());
+        cmd.args([
+            "--exact",
+            &libtest_name(test),
+            "--nocapture",
+            "--test-threads=1",
+        ]);
+        match home {
+            Some(h) => cmd.env("HOME", h),
+            None => cmd.env_remove("HOME"),
+        };
+        for (k, v) in extra {
+            cmd.env(k, v);
+        }
+        let out = cmd.output().unwrap();
+        let text = format!(
+            "{}{}",
+            String::from_utf8_lossy(&out.stdout),
+            String::from_utf8_lossy(&out.stderr)
+        );
+        assert!(out.status.success(), "child failed:\n{text}");
+        assert!(
+            text.contains("1 passed; 0 failed"),
+            "child did not run exactly {test}:\n{text}"
+        );
+    }
+
+    fn child_var(name: &str) -> Option<PathBuf> {
+        std::env::var_os(name).map(PathBuf::from)
+    }
+
+    /// A project that has a profile, so `active_home` can read its project id (`widgets`).
+    fn profile_project(root: &Path) -> PathBuf {
+        let project = root.join("project");
+        fs::create_dir_all(project.join(crate::PROJECT_STATE_DIR)).unwrap();
+        fs::write(
+            project.join(crate::project_state!("project.yaml")),
+            r#"{"schema_version": 1, "project_id": "widgets", "purpose": "layout fixture", "tools": ["Rust"], "development_methods": ["TDD"], "hosts": ["claude"]}"#,
+        )
+        .unwrap();
+        project
+    }
+
+    /// Writes the pointer a verified apply writes, so `home`'s home root is switched on.
+    fn switch_on(home: &Path) {
+        let marker_dir = crate::home_root::path(home).join("projects/widgets");
+        fs::create_dir_all(&marker_dir).unwrap();
+        fs::write(marker_dir.join("layout.json"), b"{}").unwrap();
+    }
+
+    /// A home whose state folder is a symlink to a folder beside it: a read of it is refused. A
+    /// Go generation marker under `.moai` makes the earlier state folder the HOME's state root,
+    /// and that is where the link goes; the state root is read back to prove the link is on it.
+    fn symlinked_home(dir: &Path) -> PathBuf {
+        let home = dir.join("home");
+        let go = home.join(crate::home_root::MOAI_DIR);
+        fs::create_dir_all(&go).unwrap();
+        fs::write(
+            go.join("user-assets.json"),
+            br#"{"schema_version": 1, "files": {}}"#,
+        )
+        .unwrap();
+        fs::create_dir(home.join("elsewhere")).unwrap();
+        let link = crate::home_root::path(&home);
+        std::os::unix::fs::symlink(home.join("elsewhere"), &link).unwrap();
+        assert_eq!(
+            crate::home_root::path(&home),
+            link,
+            "the link is the state root"
+        );
+        assert!(fs::symlink_metadata(&link).unwrap().is_symlink());
+        home
+    }
+
+    /// AC-1 (REQ-1): the HOME that is passed decides the home root, whatever the environment is.
+    #[test]
+    fn default_home_root_in_uses_the_home_it_is_given() {
+        let home = tempfile::tempdir().unwrap();
+        let root = default_home_root_in(Some(home.path())).expect("a home root");
+        assert_eq!(root, crate::home_root::path(home.path()));
+        assert!(root.starts_with(home.path()), "{}", root.display());
+    }
+
+    /// AC-1 (REQ-2): no HOME and an empty HOME both mean no home root.
+    #[test]
+    fn default_home_root_in_without_a_home_is_none() {
+        assert_eq!(default_home_root_in(None), None);
+        assert_eq!(default_home_root_in(Some(Path::new(""))), None);
+    }
+
+    /// AC-2 (REQ-3), child side: the environment HOME is a folder with no pointer, so the
+    /// adapter finds no switched store while `switched_dir_in` answers from the HOME it is given.
+    #[test]
+    fn switched_dir_in_follows_the_home_it_is_given_not_the_environment() {
+        let (Some(project), Some(given)) = (child_var(CHILD_PROJECT), child_var(CHILD_GIVEN))
+        else {
+            let dir = tempfile::tempdir().unwrap();
+            let project = profile_project(dir.path());
+            let given = dir.path().join("given");
+            switch_on(&given);
+            let other = dir.path().join("other");
+            fs::create_dir(&other).unwrap();
+            assert_eq!(switched_dir_in(&project, "claims", None), None);
+            run_in_child(
+                "switched_dir_in_follows_the_home_it_is_given_not_the_environment",
+                Some(&other.clone().into_os_string()),
+                &[(CHILD_PROJECT, &project), (CHILD_GIVEN, &given)],
+            );
+            return;
+        };
+        assert_eq!(
+            switched_dir_in(&project, "claims", Some(&given)),
+            Some(crate::home_root::path(&given).join("projects/widgets/claims"))
+        );
+        assert_eq!(
+            switched_dir(&project, "claims"),
+            None,
+            "the adapter reads the environment HOME, which has no pointer"
+        );
+    }
+
+    /// AC-3 (REQ-4), child side: `default_home_root` answers what `default_home_root_in` answers
+    /// for the HOME the parent put in the environment (`CHILD_EXPECT`), or for no HOME when it
+    /// did not (unset or empty).
+    #[test]
+    fn default_home_root_equals_the_environment_home_read_once() {
+        let test = "default_home_root_equals_the_environment_home_read_once";
+        if std::env::var_os(CHILD_FLAG).is_none() {
+            let dir = tempfile::tempdir().unwrap();
+            let home = dir.path().join("home");
+            fs::create_dir(&home).unwrap();
+            let flag = Path::new("1");
+            run_in_child(
+                test,
+                Some(&home.clone().into_os_string()),
+                &[(CHILD_FLAG, flag), (CHILD_EXPECT, &home)],
+            );
+            run_in_child(test, Some(&OsString::new()), &[(CHILD_FLAG, flag)]);
+            run_in_child(test, None, &[(CHILD_FLAG, flag)]);
+            return;
+        }
+        let expect = child_var(CHILD_EXPECT);
+        assert_eq!(default_home_root(), default_home_root_in(expect.as_deref()));
+        assert_eq!(default_home_root().is_some(), expect.is_some());
+    }
+
+    /// AC-4 (REQ-5), child side: the environment HOME's state folder is a symlink, which a read
+    /// of it refuses. `identity` reads it and is refused; `claims_legacy_dir` does not read it
+    /// and answers the clone's claims folder.
+    #[test]
+    fn claims_legacy_dir_ignores_the_environment_home() {
+        let (Some(work), Some(claims)) = (child_var(CHILD_PROJECT), child_var(CHILD_EXPECT)) else {
+            let dir = tempfile::tempdir().unwrap();
+            let home = symlinked_home(dir.path());
+            let work = dir.path().join("work");
+            fs::create_dir(&work).unwrap();
+            let mut init = Command::new("git");
+            init.arg("init").arg("-q").arg(&work);
+            crate::identity::scrub_git_env(&mut init);
+            assert!(init.status().unwrap().success(), "git init");
+            let id = crate::identity::identity_in(&work, None).unwrap();
+            let anchor = id["clone_anchor"].as_str().expect("a clone anchor");
+            let claims = crate::clone_root::path(Path::new(anchor)).join("claims");
+            fs::create_dir_all(&claims).unwrap();
+            run_in_child(
+                "claims_legacy_dir_ignores_the_environment_home",
+                Some(&home.clone().into_os_string()),
+                &[(CHILD_PROJECT, &work), (CHILD_EXPECT, &claims)],
+            );
+            return;
+        };
+        let refused =
+            crate::identity::identity(&work).expect_err("identity reads the environment HOME");
+        assert_eq!(refused, "home state root is a symlink; refused");
+        assert_eq!(claims_legacy_dir(&work), Ok(Some(claims)));
     }
 }
