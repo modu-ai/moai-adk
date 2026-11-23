@@ -159,7 +159,23 @@ approval:
 
 ## Result
 
-Status: SPEC draft (revision 1); no code and no tests yet; the leader approves it.
+Status: approved (leader note 7945); first code slice done: `moai card orchestrate plan`, read only.
+
+Measured 2026-11-24 (UTC) on macOS in the worktree `.claude/worktrees/orchestrate-plan`, branch `spec/orchestrate-plan-20261124`, base `b175f6968b`. Code: `src/card/orchestrate.rs`, wired in `src/card/mod.rs` and `src/ops/card.rs`; the command row is in `docs/design-review/appendix/operations/card.md`. RED first: 18 of 18 tests of `tests/orchestrate_cli.rs` failed on `unrecognized subcommand 'orchestrate'` (commit `5e120d71ea`); after the code 18 of 18 passed, and the file now holds 19 tests.
+
+- AC-1 met (REQ-1, REQ-2, REQ-11): `plan_prints_the_six_parts_and_writes_nothing` pins that the temporary HOME (ledger file, registry folder, state folder) is byte for byte equal before and after; `plan_of_a_project_without_a_ledger_is_empty_and_exits_zero` pins `ledger: "absent"` with empty parts and exit 0; `plan_window_reads_registered_other_and_none` pins the three window states and that the entry file is not rewritten.
+- AC-2 met (REQ-3, REQ-4): `lanes_are_busy_free_or_unknown_by_their_reservations` (a previous session id counts, a leader entry is no lane), `lanes_a_free_lane_gets_the_first_ranked_card_and_the_next_lane_the_next`, `lanes_lane_order_is_numeric_not_alphabetical`, `lanes_cards_that_cannot_be_dispatched_are_blocked_with_a_reason`.
+- AC-3 met (REQ-5): `clear_a_lane_whose_card_closed_gets_a_clear_with_no_channel`, `clear_a_lane_that_holds_a_card_gets_none_even_with_a_done_note`, `clear_a_reclaimed_card_that_is_still_open_gets_none`. The channel is always `none` in this slice; the Orca channel is a later slice (D-6).
+- AC-4 met (REQ-6): `audit_a_ready_head_without_a_verdict_gets_one_audit_that_names_the_author`, `audit_a_head_with_a_verdict_gets_none_and_a_new_head_gets_one_again`; the action holds no runner field and the rule text never names the author.
+- AC-5 met (REQ-7): `land_lists_independent_passes_by_priority_then_number` (a fail head, an unjudged head and an author-reviewed head are absent; the ledger is equal before and after), `land_a_later_fail_removes_the_head_from_the_queue`.
+- AC-6 met (REQ-8, REQ-10): `attention_lists_decisions_and_waiting_sessions_and_answers_none` and `attention_an_unreadable_agent_file_is_unread_and_no_file_is_not_read`; the host file is a fixture file and no `claude` or `orca` process is started by the command or the tests.
+- AC-7 met (REQ-9): `keys_two_plans_of_one_ledger_are_equal_and_every_action_has_a_key` (stdout equal byte for byte, keys of the form `<kind>:<x>:<anchor>`, unique), `keys_a_new_note_changes_only_the_keys_it_answers`.
+- AC-8 met (REQ-12): `text_help_and_plan_hold_no_key_shaped_text_and_no_outside_path`.
+- AC-9 not_run here: the neighbour checks (help fixtures, card command tests, style checks) are the `check affected` receipt of the READY note, run once at the READY head.
+- Run: `moai heavy-slot-acquire --name orchestrate-plan --max 3 -- cargo nextest run --offline --locked --no-fail-fast --test orchestrate_cli` (with `RUSTC_WRAPPER=sccache`): 19 tests, 19 passed.
+- Guard mutants (applied one at a time to `458bd5cf82` plus the REQ-7 tidy-up, checked as applied, run with nextest on the named tests, restored): A land author guard removed, B land `pass` guard removed, C audit `judged` skip removed, D clear condition `done || released` made `true`, E busy lane made free, F numeric lane order made alphabetical, G window `mine` made `true`, H lane-held `held` skip removed, I `spec_not_approved` check removed, J a file write added to the plan, K an unreadable host file read as an empty list. All eleven exited 100 (killed); the unmutated run exited 0.
+- Deviation kept small: the first version of the landing queue also refused a head when any other reviewer's newest verdict was `fail`; REQ-7 asks only for the newest verdict, so that guard was removed (`7ae011e8a6`).
+- Not done and not claimed: the Orca `/clear` channel, any session started or messaged by code, the `leader.md` text that calls `plan`; they are the later slices of Plan item 3.
 
 - Read as listed under "Read before writing": the pages marked "전문" were read whole by three read-only research agents; hooks, tools-reference and settings-reference were read in part and `sandboxing`, `permissions` and `hooks-guide` were not read. REQ-1 to REQ-12 rest on none of the unread or partly read text.
 - Not run: nothing is built or tested here; the SPEC check is the only command of this slice and its result is in the card note that asks for the approval.
