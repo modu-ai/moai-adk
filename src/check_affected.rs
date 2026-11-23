@@ -18,6 +18,29 @@ pub struct TestFile {
     pub modules: Vec<String>,
     /// The operating systems named in `cfg(target_os = "<os>")`.
     pub os: Vec<String>,
+    /// The file's source text: the lane rule for `tests/common/<sub>.rs` and the text-pin rule
+    /// read it (SPEC-20261123-check-precise-selection REQ-3, REQ-6).
+    pub text: String,
+}
+
+/// Which set a caller gets: the full set (today's, the bare command) or the precise lane set
+/// (`--lane`), a subset of the full set for the same range (SPEC-20261123-check-precise-selection
+/// REQ-1).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Pick {
+    #[default]
+    Full,
+    Lane,
+}
+
+impl Pick {
+    /// The word of the answer's `selection` field.
+    pub fn word(self) -> &'static str {
+        match self {
+            Pick::Full => "full",
+            Pick::Lane => "lane",
+        }
+    }
 }
 
 /// What the scan list gave: no file, a readable one (with how many targets it named), or one
@@ -72,31 +95,143 @@ fn same_first_word(test: &str, word: &str) -> bool {
     test == word || test.strip_prefix(word).is_some_and(|r| r.starts_with('_'))
 }
 
-/// The targets a scan list (`tools/repo_scans.json`) names: `--test <name>` of a `cargo test`
-/// check. A `unittest` check names no target: no Python module is selected (SPEC-20261123-rust-
-/// scans-before-ready REQ-3). `None` for text that is not a scan list.
-fn scan_targets(text: &str) -> Option<BTreeSet<String>> {
+/// One scan of `tools/repo_scans.json`: its cargo targets, its rule files and its scope. A scope
+/// that is absent, empty or not a list of `{prefix, suffixes?}` objects is `None`.
+struct ScanEntry {
+    targets: BTreeSet<String>,
+    rules: Vec<String>,
+    scope: Option<Vec<(String, Vec<String>)>>,
+}
+
+impl ScanEntry {
+    /// REQ-2: a changed path is in the scope (under a `prefix`, and with one of its `suffixes`
+    /// when it names any) or is one of the rule files.
+    fn touched_by(&self, changed: &[String]) -> bool {
+        changed.iter().any(|p| {
+            self.rules.iter().any(|r| r == p)
+                || self.scope.iter().flatten().any(|(prefix, suffixes)| {
+                    p.starts_with(prefix.as_str())
+                        && (suffixes.is_empty() || suffixes.iter().any(|s| p.ends_with(s.as_str())))
+                })
+        })
+    }
+}
+
+/// The scans of a scan list (`tools/repo_scans.json`). A scan's targets are the `--test <name>` of
+/// its `cargo test` checks; a `unittest` check names no target: no Python module is selected
+/// (SPEC-20261123-rust-scans-before-ready REQ-3). `None` for text that is not a scan list.
+fn scan_entries(text: &str) -> Option<Vec<ScanEntry>> {
     let value: serde_json::Value = serde_json::from_str(text).ok()?;
     let scans = value.get("scans")?.as_array()?;
-    let mut rust = BTreeSet::new();
+    let strings = |v: Option<&serde_json::Value>| -> Vec<String> {
+        v.and_then(|v| v.as_array())
+            .map(|a| {
+                a.iter()
+                    .filter_map(|s| s.as_str().map(String::from))
+                    .collect()
+            })
+            .unwrap_or_default()
+    };
+    let mut out = Vec::new();
     for scan in scans {
+        let mut targets = BTreeSet::new();
         for check in scan.get("checks")?.as_array()? {
             let words: Vec<&str> = check.as_str()?.split_whitespace().collect();
             for (i, w) in words.iter().enumerate() {
                 if *w == "--test" {
                     if let Some(n) = words.get(i + 1) {
-                        rust.insert(n.to_string());
+                        targets.insert(n.to_string());
                     }
                 }
             }
         }
+        let scope: Vec<(String, Vec<String>)> = scan
+            .get("scope")
+            .and_then(|s| s.as_array())
+            .map(|a| {
+                a.iter()
+                    .filter_map(|e| {
+                        let prefix = e.get("prefix")?.as_str()?.to_string();
+                        Some((prefix, strings(e.get("suffixes"))))
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+        out.push(ScanEntry {
+            targets,
+            rules: strings(scan.get("rules")),
+            scope: (!scope.is_empty()).then_some(scope),
+        });
     }
-    Some(rust)
+    Some(out)
 }
 
-/// Pick the Rust test targets a change can break (REQ-1 to REQ-6). A Python test module is never
-/// picked: the Python tests that remain run in CI only.
+/// Whether `text` names the helper sub-module `common::<sub>`: `common::<sub>…` or `<sub>` as an
+/// item of a `common::{…}` group, with whole identifiers only.
+fn names_common_sub(text: &str, sub: &str) -> bool {
+    let ident = |c: char| c.is_alphanumeric() || c == '_';
+    let lead = |s: &str| -> String { s.trim_start().chars().take_while(|c| ident(*c)).collect() };
+    let mut rest = text;
+    while let Some(i) = rest.find("common::") {
+        let before_ok = !rest[..i].chars().next_back().is_some_and(ident);
+        let after = &rest[i + "common::".len()..];
+        rest = after;
+        if !before_ok {
+            continue;
+        }
+        let Some(group) = after.strip_prefix('{') else {
+            if lead(after) == sub {
+                return true;
+            }
+            continue;
+        };
+        let mut depth = 0usize;
+        let mut item = String::new();
+        for c in group.chars() {
+            match c {
+                '{' => {
+                    depth += 1;
+                    item.push(c);
+                }
+                '}' if depth == 0 => break,
+                '}' => {
+                    depth -= 1;
+                    item.push(c);
+                }
+                ',' if depth == 0 => {
+                    if lead(&item) == sub {
+                        return true;
+                    }
+                    item.clear();
+                }
+                _ => item.push(c),
+            }
+        }
+        if lead(&item) == sub {
+            return true;
+        }
+    }
+    false
+}
+
+/// Pick the full set of Rust test targets a change can break (REQ-1 to REQ-6 of the earlier SPEC).
+/// A Python test module is never picked: the Python tests that remain run in CI only.
 pub fn select(
+    changed: &[String],
+    tests: &[TestFile],
+    scan_list: Option<&str>,
+    host_os: &str,
+) -> Selection {
+    select_pick(Pick::Full, changed, tests, scan_list, host_os)
+}
+
+/// Pick the Rust test targets of `pick` (SPEC-20261123-check-precise-selection). The lane set
+/// narrows three rules of the full set: a scan joins only when a changed path is in its scope or
+/// is one of its rule files (REQ-2); a change to `tests/common/<sub>.rs` selects only the
+/// consumers that name `common::<sub>` (REQ-3); an OS-tagged test joins only through the area
+/// rule, not for being tagged with the host (REQ-4). The text-pin rule adds to both (REQ-6).
+pub fn select_pick(
+    pick: Pick,
     changed: &[String],
     tests: &[TestFile],
     scan_list: Option<&str>,
@@ -106,6 +241,11 @@ pub fn select(
     let mut scans = Scans::None;
     let rust_names: BTreeSet<&str> = tests.iter().map(|t| t.name.as_str()).collect();
     for path in changed {
+        if path.starts_with("skills/") || path.starts_with("docs/") {
+            for t in tests.iter().filter(|t| t.text.contains(path.as_str())) {
+                rust.insert(t.name.clone());
+            }
+        }
         if let Some(a) = area(path) {
             let word = first_word(&a);
             for t in tests {
@@ -139,6 +279,18 @@ pub fn select(
                     }
                 }
             }
+            // REQ-3: one sub-module of the helper folder reaches only the tests that name it;
+            // `mod.rs` and anything deeper keep every consumer.
+            ["common", file]
+                if pick == Pick::Lane && *file != "mod.rs" && file.ends_with(".rs") =>
+            {
+                let sub = stem(file);
+                for t in tests.iter().filter(|t| {
+                    t.modules.iter().any(|m| m == "common") && names_common_sub(&t.text, sub)
+                }) {
+                    rust.insert(t.name.clone());
+                }
+            }
             [dir, ..] => {
                 for t in tests.iter().filter(|t| t.modules.iter().any(|m| m == dir)) {
                     rust.insert(t.name.clone());
@@ -149,10 +301,15 @@ pub fn select(
     }
     match scan_list {
         None => {}
-        Some(text) => match scan_targets(text) {
-            Some(r) => {
-                scans = Scans::Listed(r.len());
-                rust.extend(r);
+        Some(text) => match scan_entries(text) {
+            Some(entries) => {
+                let picked: BTreeSet<String> = entries
+                    .into_iter()
+                    .filter(|e| pick == Pick::Full || e.touched_by(changed))
+                    .flat_map(|e| e.targets)
+                    .collect();
+                scans = Scans::Listed(picked.len());
+                rust.extend(picked);
             }
             None => {
                 scans = Scans::Unreadable;
@@ -160,9 +317,12 @@ pub fn select(
             }
         },
     }
-    for t in tests {
-        if t.os.iter().any(|o| o == host_os) {
-            rust.insert(t.name.clone());
+    // REQ-4: the lane keeps an OS-tagged test only by the area rule above.
+    if pick == Pick::Full {
+        for t in tests {
+            if t.os.iter().any(|o| o == host_os) {
+                rust.insert(t.name.clone());
+            }
         }
     }
     Selection { rust, scans }
@@ -470,6 +630,7 @@ pub fn read_facts(dir: &Path, range: &str) -> Result<Facts> {
                     name,
                     modules: declared_mods(&text),
                     os: os_names(&text),
+                    text,
                 });
             }
         }
@@ -500,10 +661,58 @@ fn short(sha: &str) -> &str {
     sha.get(..12).unwrap_or(sha)
 }
 
+/// REQ-7: when the range's base is a strict ancestor of the merge base of its head and
+/// `integration_ref`, the range re-tests the integration branch's own changes. The note names that
+/// merge base and how many changed paths the range has beyond the merge base's own range. It warns
+/// and refuses nothing (D-4); a ref that cannot be read gives no note.
+fn range_note(facts: &Facts, integration_ref: Option<&str>) -> serde_json::Value {
+    let note = || -> Result<Option<serde_json::Value>> {
+        let Some(integ) = integration_ref else {
+            return Ok(None);
+        };
+        let dir = facts.root.as_path();
+        let integ = commit(dir, integ)?;
+        let mb = git(dir, &["merge-base", &facts.head, &integ])?
+            .trim()
+            .to_string();
+        if mb == facts.base || git(dir, &["merge-base", "--is-ancestor", &facts.base, &mb]).is_err()
+        {
+            return Ok(None);
+        }
+        let own: BTreeSet<String> = git(
+            dir,
+            &[
+                "diff",
+                "--name-only",
+                "--no-renames",
+                "-z",
+                &format!("{mb}...{}", facts.head),
+            ],
+        )?
+        .split('\0')
+        .filter(|l| !l.is_empty())
+        .map(String::from)
+        .collect();
+        let extra = facts.changed.iter().filter(|p| !own.contains(*p)).count();
+        Ok(Some(serde_json::json!({
+            "merge_base": mb,
+            "integration_ref": integration_ref,
+            "extra_changed": extra,
+        })))
+    };
+    note().ok().flatten().unwrap_or(serde_json::Value::Null)
+}
+
 /// `check affected <range> --list`: the selection and the steps, nothing run or written.
-pub fn list(dir: &Path, range: &str) -> Result<serde_json::Value> {
+pub fn list(
+    dir: &Path,
+    range: &str,
+    pick: Pick,
+    integration_ref: Option<&str>,
+) -> Result<serde_json::Value> {
     let facts = read_facts(dir, range)?;
-    let sel = select(
+    let sel = select_pick(
+        pick,
         &facts.changed,
         &facts.tests,
         facts.scan_list.as_deref(),
@@ -521,6 +730,8 @@ pub fn list(dir: &Path, range: &str) -> Result<serde_json::Value> {
     Ok(serde_json::json!({
         "action": "affected",
         "mode": "list",
+        "selection": pick.word(),
+        "range_note": range_note(&facts, integration_ref),
         "base": facts.base,
         "head": facts.head,
         "changed": facts.changed.len(),
@@ -548,6 +759,10 @@ pub struct RunOptions {
     pub min_free_gb: u32,
     /// Where each step's log goes (default: `<dir>/target/check-affected-<head12>`).
     pub out: Option<std::path::PathBuf>,
+    /// The full set (the bare command) or the precise lane set (`--lane`).
+    pub pick: Pick,
+    /// The integration branch the range note compares the base with; none gives no note.
+    pub integration_ref: Option<String>,
 }
 
 /// The exit status of a finished process: its code, or 128 + the signal.
@@ -733,7 +948,8 @@ pub fn run(dir: &Path, range: &str, opts: &RunOptions) -> Result<serde_json::Val
         );
     }
     let threads = DEFAULT_TEST_THREADS;
-    let sel = select(
+    let sel = select_pick(
+        opts.pick,
         &facts.changed,
         &facts.tests,
         facts.scan_list.as_deref(),
@@ -849,6 +1065,8 @@ pub fn run(dir: &Path, range: &str, opts: &RunOptions) -> Result<serde_json::Val
     Ok(serde_json::json!({
         "action": "affected",
         "mode": "run",
+        "selection": opts.pick.word(),
+        "range_note": range_note(&facts, opts.integration_ref.as_deref()),
         "summary": line,
         "result": if pass { "PASS" } else { "FAIL" },
         "stopped_at": stopped_at,
@@ -882,6 +1100,7 @@ mod tests {
             name: name.to_string(),
             modules: modules.iter().map(|s| s.to_string()).collect(),
             os: os.iter().map(|s| s.to_string()).collect(),
+            text: String::new(),
         }
     }
 
@@ -958,10 +1177,12 @@ mod tests {
             "only the scan list's own cargo target is selected: {changed:?}"
         );
         // A `unittest` word of the scan list is not a target either.
-        assert_eq!(
-            scan_targets(SCANS).unwrap(),
-            ["home_isolation_scan".to_string()].into()
-        );
+        let named: BTreeSet<String> = scan_entries(SCANS)
+            .unwrap()
+            .into_iter()
+            .flat_map(|e| e.targets)
+            .collect();
+        assert_eq!(named, ["home_isolation_scan".to_string()].into());
     }
 
     #[test]
@@ -1131,6 +1352,52 @@ mod tests {
                 assert!(s.env.is_empty() && !s.args.iter().any(|a| a == "-j"));
             }
         }
+    }
+
+    /// SPEC-20261123-check-precise-selection REQ-3: a sub-module is named whole, by a path or as
+    /// an item of a group, never by a longer name or another path's tail.
+    #[test]
+    fn a_common_sub_module_is_named_by_whole_identifiers_only() {
+        assert!(names_common_sub("use common::git::g;", "git"));
+        assert!(names_common_sub("crate::common::home::h()", "home"));
+        assert!(names_common_sub(
+            "use common::{cli, git::{a, b}, home};",
+            "home"
+        ));
+        assert!(names_common_sub("use common::{cli,\n    git::g};", "git"));
+        assert!(!names_common_sub("use common::home_x::h;", "home"));
+        assert!(!names_common_sub("use common::{git::{home, b}};", "home"));
+        assert!(!names_common_sub("use mycommon::home::h;", "home"));
+        assert!(!names_common_sub("let common = home::h();", "home"));
+    }
+
+    fn pinned(name: &str, text: &str, modules: &[&str], os: &[&str]) -> TestFile {
+        TestFile {
+            text: text.to_string(),
+            ..rust(name, modules, os)
+        }
+    }
+
+    /// REQ-2/REQ-4/REQ-6 beside the command's own fixtures: the lane set of a library call is a
+    /// subset of the full set, and the text pin joins both.
+    #[test]
+    fn the_lane_set_is_inside_the_full_set_and_the_text_pin_joins_both() {
+        let tests = [
+            pinned("page_cli", "\"docs/a.md\"", &[], &[]),
+            pinned("mac_only", "", &[], &[host_os()]),
+            pinned("scan_a", "", &[], &[]),
+        ];
+        let list = r#"{"scans":[{"checks":["cargo test --test scan_a"]}]}"#;
+        let changed = paths(&["docs/a.md"]);
+        let full = select_pick(Pick::Full, &changed, &tests, Some(list), host_os());
+        let lane = select_pick(Pick::Lane, &changed, &tests, Some(list), host_os());
+        assert!(lane.rust.is_subset(&full.rust), "{lane:?} {full:?}");
+        assert_eq!(lane.rust, ["page_cli".to_string()].into());
+        assert_eq!(
+            full.rust,
+            ["mac_only", "page_cli", "scan_a"].map(String::from).into()
+        );
+        assert_eq!(select(&changed, &tests, Some(list), host_os()), full);
     }
 
     /// REQ-1: the cap is 4 until the slots' `limits.json` can carry a value of its own.
