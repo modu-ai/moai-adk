@@ -163,8 +163,14 @@ pub(super) fn checked_scope(action: &str, entries: &[String]) -> Result<Vec<Stri
     // path: it is a list typed into one value, which would be stored as a single pattern that
     // matches nothing (SPEC-20261123-take-scope-stored REQ-12).
     if let Some(i) = entries.iter().position(|e| e.contains(',')) {
+        // The option the caller typed: give-back and line-lease take `--path`, review `--keep`.
+        let option = match action {
+            "give-back" | "line-lease" => "--path",
+            "review" => "--keep",
+            _ => "--scope",
+        };
         return Err(format!(
-            "card {action} refused: scope entry {} has a comma; one `--scope` per path (repeat the \
+            "card {action} refused: scope entry {} has a comma; one `{option}` per path (repeat the \
              option), a comma does not separate paths",
             i + 1
         ));
