@@ -19,6 +19,7 @@
 //! SPEC-20261122-card-wait).
 
 pub mod adopt;
+pub mod cleanup;
 pub mod command;
 pub mod dispatch;
 pub mod drift;

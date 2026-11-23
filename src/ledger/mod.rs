@@ -14,6 +14,7 @@
 //! Nothing here calls a model, the network or `git`.
 
 pub mod adopt;
+pub mod cleanup_outbox;
 pub mod command;
 pub mod folders;
 pub mod import;

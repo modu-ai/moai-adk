@@ -351,19 +351,23 @@ pub fn land(project: &Path, home: &Path, reference: &str, req: &LandRequest<'_>)
         }
     })?;
     let applied: &[(i64, String)] = if done.closed { &met } else { &[] };
-    // A closed card's worktrees are cleaned through the cleanup plan and its apply on the plan's
-    // digest (SPEC-20261123-worktree-slots REQ-12). It runs after the close and never undoes it:
-    // a problem is the `error` key of the `cleanup` answer. A card that stays open keeps them.
-    let cleanup = if done.closed {
-        crate::worktree_cleanup::run(
+    // A closed card's worktrees and branches are cleaned by the cleanup executor
+    // (SPEC-20261123-cleanup-outbox): the close wrote this card's request, and the executor takes
+    // it with every older pending one. It runs after the close and never undoes it: a problem is
+    // the `error` of `cleanup_outbox`. The `cleanup` key keeps the worktree answer of this card.
+    // A card that stays open keeps its worktrees and branches.
+    let outbox = if done.closed {
+        super::cleanup::run_pending(
             project,
             home,
-            &crate::worktree_cleanup::Request {
-                card_id,
-                integration_ref: &full,
-                trigger: crate::worktree_cleanup::Trigger::Landing,
-            },
+            req.session.unwrap_or(req.by),
+            &super::cleanup::Options::default(),
         )
+    } else {
+        Value::Null
+    };
+    let cleanup = if done.closed {
+        super::cleanup::cleanup_of(&outbox, card_id)
     } else {
         Value::Null
     };
@@ -378,8 +382,9 @@ pub fn land(project: &Path, home: &Path, reference: &str, req: &LandRequest<'_>)
         "previous": previous_json(&done.previous), "released": done.released,
         // A worktree the cleanup removed or trimmed is a write too.
         "events": done.events,
-        "writes": done.events > 0 || moved || crate::worktree_cleanup::wrote(&cleanup),
+        "writes": done.events > 0 || moved || super::cleanup::wrote(&outbox),
         "cleanup": cleanup,
+        "cleanup_outbox": outbox,
     });
     if let Some(verdict) = &relied {
         answer["verdict"] = verdict.clone();
