@@ -42,10 +42,9 @@ fn rule() -> String {
 fn the_rule_asks_one_selection_through_the_host_after_the_preview_in_both_hosts() {
     let text = rule();
     for phrase in [
-        "Right after the preview is shown",
-        "`/moai update`",
-        "`$moai update`",
-        "alike",
+        // SPEC-20261122-next-flow-skills-agents REQ-8: the Codex spelling `$moai update` and its
+        // "alike" left with Codex; the rule holds for `/moai update`.
+        "Right after the preview is shown in `/moai update`",
         "one selection through the host's question tool",
         "the recommended option first",
     ] {
@@ -136,7 +135,8 @@ fn the_question_is_the_one_ask_of_step_two_and_has_a_plain_text_form_for_codex()
     let text = rule();
     for phrase in [
         "This question is the one ask of step 2 for the `ready` steps as a whole, never a second one",
-        "where the host cannot ask it as a selection (Codex in Default mode)",
+        // REQ-8: the Codex example left; the plain-text form holds for any such host.
+        "where the host cannot ask it as a selection, ask it as numbered plain-text choices",
         "numbered plain-text choices with the recommended one first, as `internal/questions` says",
     ] {
         assert!(text.contains(phrase), "the rule lacks {phrase:?}: {text}");

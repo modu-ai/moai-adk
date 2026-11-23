@@ -88,6 +88,16 @@ impl Context {
         self.var("HOME").map(PathBuf::from)
     }
 
+    /// `HOME` as this render sees it (the Orca pass-through finds its wrapper below it).
+    pub fn home_dir(&self) -> Option<PathBuf> {
+        self.home()
+    }
+
+    /// Every variable of this render, for a child started with the render's environment.
+    pub fn vars(&self) -> impl Iterator<Item = (&String, &String)> {
+        self.vars.iter()
+    }
+
     /// The HOME state folder `$HOME/.moai-cli/state` (Issue #2455, user decision
     /// 2026-11-11). The Go folder `$HOME/.moai` is never read, and `MOAI_HOME` — the Go
     /// tool's variable — is not consulted, so a Go setting cannot point back at it.
@@ -161,42 +171,44 @@ pub struct GitHubCounts {
 }
 
 /// The stage of an open card in its progress (SPEC-20261122-statusline-flow REQ-1): the nine
-/// stages of the flow line, each with the letter the line writes for it.
+/// stages the ledger tells apart, each with the icon the flow line writes for a card of mine in
+/// it (SPEC-20261122-statusline-limits-left REQ-6).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Stage {
-    /// `D`: drafted, not yet ready.
+    /// Drafted, not yet ready.
     Draft,
-    /// `R`: ready to be taken.
+    /// Ready to be taken.
     Ready,
-    /// `W`: a lane holds it with a live lease and works on it.
+    /// A lane holds it with a live lease and works on it.
     Working,
-    /// `E`: it is worked on by nobody — the lease has ended or no reservation holds it.
+    /// It is worked on by nobody — the lease has ended or no reservation holds it.
     Stale,
-    /// `S`: pushed, waiting for an audit or the leader's integration (every `review` card).
+    /// Pushed, waiting for an audit or the leader's integration (every `review` card).
     Submitted,
-    /// `A`: an audit passed for the head and nobody landed it.
+    /// An audit passed for the head and nobody landed it.
     Audited,
-    /// `L`: landed on the integration branch and not yet closed.
+    /// Landed on the integration branch and not yet closed.
     Landed,
-    /// `B`: the lane asked for a decision.
+    /// The lane asked for a decision.
     Blocked,
-    /// `H`: on hold.
+    /// On hold.
     Hold,
 }
 
 impl Stage {
-    /// The letter the flow line writes (D-9 of the SPEC); English only.
-    pub fn letter(self) -> char {
+    /// The icon of the stage in the one icon set of the progress board, the status line and the
+    /// lane reports: `🗂️` added and waiting its turn (a draft too), `🟡` in progress (a card
+    /// whose lease has ended is still the card in hand), `📨` handed over and waiting for a
+    /// check, `🛬` check passed and waiting to land or to be closed, `🚧` blocked, `🙋` needs
+    /// the user's pick.
+    pub fn icon(self) -> &'static str {
         match self {
-            Stage::Draft => 'D',
-            Stage::Ready => 'R',
-            Stage::Working => 'W',
-            Stage::Stale => 'E',
-            Stage::Submitted => 'S',
-            Stage::Audited => 'A',
-            Stage::Landed => 'L',
-            Stage::Blocked => 'B',
-            Stage::Hold => 'H',
+            Stage::Draft | Stage::Ready => "🗂️",
+            Stage::Working | Stage::Stale => "🟡",
+            Stage::Submitted => "📨",
+            Stage::Audited | Stage::Landed => "🛬",
+            Stage::Blocked => "🚧",
+            Stage::Hold => "🙋",
         }
     }
 }
@@ -280,11 +292,12 @@ pub fn collect(input: Option<&Input>, ctx: &Context) -> Status {
     // the goal file.
     status.context = collect_context(input, ctx);
     status.cost = input.cost.as_ref().and_then(|c| c.total_cost_usd);
-    // Audit N-3: the version comes from stdin; a control character (an escape, a newline) never
-    // reaches the screen.
+    // The version comes from stdin and is printed as text: a control character (an escape, a
+    // newline) or an invisible format character (a direction mark, a zero-width one) could
+    // move or hide what the line shows, so none reaches the screen.
     status.claude_version = input::text(&input.version)
         .chars()
-        .filter(|c| !c.is_control())
+        .filter(|c| !c.is_control() && !invisible_format_char(*c))
         .collect();
     status.effort = input
         .effort
@@ -629,6 +642,24 @@ fn resolve_glm_model_name(display: &str, ctx: &Context) -> String {
 
 // ---- context window ----
 
+/// An invisible Unicode format character that changes how a line reads without showing: the
+/// soft hyphen, the Arabic letter mark, the zero-width and direction marks, the direction
+/// embeddings, overrides and isolates, the word joiner and invisible operators, and the byte
+/// order mark.
+fn invisible_format_char(c: char) -> bool {
+    matches!(
+        c,
+        '\u{00AD}'
+            | '\u{061C}'
+            | '\u{180E}'
+            | '\u{200B}'..='\u{200F}'
+            | '\u{202A}'..='\u{202E}'
+            | '\u{2060}'..='\u{2064}'
+            | '\u{2066}'..='\u{206F}'
+            | '\u{FEFF}'
+    )
+}
+
 /// The tokens of `current_usage` the `CW` number falls back to: none when the object carries no
 /// count at all (REQ-2: `CW n/a`, never a guessed `0%`), and a sum that stops at `i64::MAX`
 /// instead of overflowing on absurd counts.
@@ -930,7 +961,7 @@ pub struct Distance {
 pub struct Where {
     /// `🌳 <worktree>`.
     pub worktree: Option<String>,
-    /// `🅱️  <branch>` or the short commit of a detached HEAD.
+    /// `🅱️ <branch>` or the short commit of a detached HEAD.
     pub branch: Option<String>,
     pub marks: Marks,
     pub distance: Option<Distance>,
@@ -1327,9 +1358,29 @@ fn cache_base(tmpdir: Option<&str>) -> Option<PathBuf> {
 
 /// The status line's cache folder for a `TMPDIR` value: `moai-statusline` in [`cache_base`],
 /// none for a relative `TMPDIR`. Makes nothing. The session caches and the usage record
-/// ([`crate::usage_limit`]) both live here.
+/// ([`crate::usage_limit`]) both live here. With `TMPDIR` unset or empty the folder is in the
+/// shared `/tmp`, so its name carries this user's id (`moai-statusline-<uid>`): another local
+/// user who made `/tmp/moai-statusline` first would otherwise own the name, and every read would
+/// be refused as not private.
 pub(crate) fn cache_folder(tmpdir: Option<&str>) -> Option<PathBuf> {
-    cache_base(tmpdir).map(|base| base.join(CACHE_FOLDER))
+    let base = cache_base(tmpdir)?;
+    Some(match tmpdir {
+        None | Some("") => base.join(shared_tmp_folder_name()),
+        Some(_) => base.join(CACHE_FOLDER),
+    })
+}
+
+/// [`CACHE_FOLDER`] with this user's id, for the shared `/tmp`.
+#[cfg(unix)]
+fn shared_tmp_folder_name() -> String {
+    // SAFETY: geteuid has no preconditions and cannot fail.
+    let me = unsafe { libc::geteuid() };
+    format!("{CACHE_FOLDER}-{me}")
+}
+
+#[cfg(not(unix))]
+fn shared_tmp_folder_name() -> String {
+    CACHE_FOLDER.to_string()
 }
 
 /// What a commit or a stage on the same branch changes while the `HEAD` text stays: the commit
@@ -1854,7 +1905,7 @@ mod tests {
         pub(super) static GIT_SPAWNS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
     }
 
-    /// Audit N-1 and N-5 of the limits slice: absurd counts stop at `i64::MAX` (a plain `+`
+    /// Absurd counts stop at `i64::MAX` (a plain `+`
     /// panics in a debug build), and an object with no count gives no number at all.
     #[test]
     fn usage_tokens_saturate_and_an_empty_object_has_none() {
@@ -2557,7 +2608,7 @@ mod extras_tests {
 /// AC-1 and AC-2 of SPEC-20261122-statusline-flow: the stage rule and the marker words, read
 /// from a fixture ledger. The older tests of the card-count era stay as the regression of what
 /// did not change: they read the flow through [`legacy`], the three numbers of that era
-/// (working = `W` + `E`, waiting = `S` + `A`, remaining = `D` + `R` + `H`).
+/// (working = working + stale, waiting = submitted + audited, remaining = draft + ready + hold).
 #[cfg(test)]
 mod stage_tests {
     use super::*;
@@ -3268,28 +3319,36 @@ mod stage_tests_edges {
 
     const NOW: i64 = 1_800_000_000;
 
-    /// D-9 of the SPEC: the nine letters of the legend, one per stage, English only and all
-    /// different (audit N2: a letter swapped between two stages survived every other test).
+    /// SPEC-20261122-statusline-limits-left REQ-6: every stage has its icon from the one icon
+    /// set — six icons for the nine stages, each one in the table of icons the lines print, and
+    /// none of the icons that left the set.
     #[test]
-    fn every_stage_has_its_letter_from_the_legend() {
+    fn every_stage_has_its_icon_from_the_one_icon_set() {
         let table = [
-            (Stage::Draft, 'D'),
-            (Stage::Ready, 'R'),
-            (Stage::Working, 'W'),
-            (Stage::Stale, 'E'),
-            (Stage::Submitted, 'S'),
-            (Stage::Audited, 'A'),
-            (Stage::Landed, 'L'),
-            (Stage::Blocked, 'B'),
-            (Stage::Hold, 'H'),
+            (Stage::Draft, "🗂️"),
+            (Stage::Ready, "🗂️"),
+            (Stage::Working, "🟡"),
+            (Stage::Stale, "🟡"),
+            (Stage::Submitted, "📨"),
+            (Stage::Audited, "🛬"),
+            (Stage::Landed, "🛬"),
+            (Stage::Blocked, "🚧"),
+            (Stage::Hold, "🙋"),
         ];
-        for (stage, letter) in table {
-            assert_eq!(stage.letter(), letter, "{stage:?}");
+        for (stage, icon) in table {
+            assert_eq!(stage.icon(), icon, "{stage:?}");
+            assert!(
+                crate::statusline::width::ICONS.contains(&icon),
+                "{icon} is not in the table"
+            );
         }
-        let mut letters: Vec<char> = table.iter().map(|(s, _)| s.letter()).collect();
-        letters.sort_unstable();
-        letters.dedup();
-        assert_eq!(letters.len(), 9, "two stages share a letter");
+        let mut icons: Vec<&str> = table.iter().map(|(s, _)| s.icon()).collect();
+        icons.sort_unstable();
+        icons.dedup();
+        assert_eq!(icons.len(), 6, "{icons:?}");
+        for gone in ["🔵", "🟢", "⬜", "👀", "⛔", "⏸️"] {
+            assert!(!icons.contains(&gone), "{gone} left the set");
+        }
     }
 
     #[test]
@@ -4296,7 +4355,53 @@ mod cache_key_tests {
         );
         for relative in [".", "./", "tmp", "./tmp", "../tmp"] {
             assert_eq!(cache_base(Some(relative)), None, "{relative:?}");
+            assert_eq!(cache_folder(Some(relative)), None, "{relative:?}");
         }
+    }
+
+    /// In the shared `/tmp` (TMPDIR unset or empty) the cache folder's name carries this user's
+    /// id, so a folder another user made first under the plain name is never this user's; with
+    /// a TMPDIR of the user's own the plain name stays.
+    #[cfg(unix)]
+    #[test]
+    fn the_shared_tmp_cache_folder_is_named_per_user() {
+        // SAFETY: geteuid has no preconditions and cannot fail.
+        let me = unsafe { libc::geteuid() };
+        let own = PathBuf::from(format!("/tmp/moai-statusline-{me}"));
+        assert_eq!(cache_folder(None), Some(own.clone()));
+        assert_eq!(cache_folder(Some("")), Some(own));
+        assert_eq!(
+            cache_folder(Some("/var/folders/x")),
+            Some(PathBuf::from("/var/folders/x/moai-statusline"))
+        );
+    }
+
+    /// The reader's guard: a folder that others may enter (group or other rights), a link to a
+    /// private folder and a file are all refused; only a 0700 folder of this user passes.
+    #[cfg(unix)]
+    #[test]
+    fn the_reader_accepts_only_a_private_folder() {
+        use std::os::unix::fs::PermissionsExt;
+        let t = tempfile::tempdir().unwrap();
+        let dir = t.path().join("c");
+        std::fs::create_dir(&dir).unwrap();
+        for (mode, want) in [
+            (0o700, true),
+            (0o750, false),
+            (0o705, false),
+            (0o770, false),
+        ] {
+            std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(mode)).unwrap();
+            assert_eq!(is_private_folder(&dir), want, "{mode:o}");
+        }
+        std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o700)).unwrap();
+        let link = t.path().join("link");
+        std::os::unix::fs::symlink(&dir, &link).unwrap();
+        assert!(!is_private_folder(&link));
+        let file = t.path().join("f");
+        std::fs::write(&file, "").unwrap();
+        assert!(!is_private_folder(&file));
+        assert!(!is_private_folder(&t.path().join("missing")));
     }
 
     /// REQ-6 at its edges: an age of 9 seconds is fresh, 10 and 11 are not; the same `HEAD`

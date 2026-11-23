@@ -72,6 +72,7 @@ fn call(args: &[&str], envs: &[(&str, &str)]) -> Value {
     let out = Command::new(BIN)
         .args(args)
         .env_remove("MOAI_HOME")
+        .envs([crate::common::process_table()])
         .envs(envs.iter().copied())
         .stdin(Stdio::null())
         .output()

@@ -13,7 +13,7 @@
 //! by display cells (Korean takes two).
 
 use crate::ui::{visible, Painter, Token};
-use crate::ui_text::Lang;
+use crate::ui_text::{text, Lang, Msg};
 use serde_json::Value;
 use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
@@ -721,8 +721,8 @@ fn skipped_row(lang: Lang, s: &Value) -> (String, String) {
     let host = s["host"].as_str().unwrap_or("");
     let label = format!("{part} {host}").trim().to_string();
     let reason = match (lang, part, host) {
-        (Lang::Ko, "unmanaged", "codex") => "~/.codex와 ~/.agents/skills의 Codex 파일은 그대로 두며 moai가 더는 관리하지 않아요. 쓰지 않으면 직접 지우세요",
-        (Lang::Ko, "unmanaged", "omp") => "~/.omp의 OMP 파일은 그대로 두며 moai가 더는 관리하지 않아요. 쓰지 않으면 직접 지우세요",
+        (Lang::Ko, "unmanaged", "codex") => text(Msg::CodexUnmanaged, lang),
+        (Lang::Ko, "unmanaged", "omp") => text(Msg::OmpUnmanaged, lang),
         _ => s["reason"].as_str().unwrap_or(""),
     };
     (label, format!("{}: {reason}", w(lang, W::Skipped)))

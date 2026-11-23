@@ -6,7 +6,7 @@ When to read: at VERIFY, and at RUN before the first check run, in a project MoA
 
 1. Read the project's facts first: `moai project-detect <project>` (it writes nothing) or the `project.yaml` it describes. `detected.languages` and `detected.manifests` name the languages and manifest files; the profile's `tools` holds what the interview confirmed.
 2. For each language, take each check from the first source that has it, and record that source as `file:line`:
-   - the project's own declaration: a CI workflow step, a manifest script (`package.json` `scripts`, `composer.json` `scripts`), a `Makefile` or `justfile` target, a task runner file, or the project's `AGENTS.md`;
+   - the project's own declaration: a CI workflow step, a manifest script (`package.json` `scripts`, `composer.json` `scripts`), a `Makefile` or `justfile` target, a task runner file, or the project's `CLAUDE.md`;
    - else the default of the language guide below, and only when the evidence that guide names is present (a config file, a lockfile, a dependency entry);
    - else nothing: record the check as `not_run: no <kind> configured in this project`.
 3. Never install a tool, never change a tool's configuration to make a check pass, and never put a tool on PATH for the run. A configured tool that is missing on the machine is `blocked: <tool> not installed`, not a pass.

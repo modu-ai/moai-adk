@@ -48,6 +48,11 @@ pub const SLOTS_GB: u64 = 300;
 pub const LOCK_FILE: &str = "moai-worktree-slot.lock";
 /// How long `ensure` waits for another run's lock before it refuses.
 pub const LOCK_WAIT: Duration = Duration::from_secs(300);
+/// Shortens [`LOCK_WAIT`] to this many seconds, for tests.
+pub const LOCK_WAIT_ENV: &str = "MOAI_WORKTREE_SLOT_LOCK_WAIT_SECS";
+/// The temporary folders a warm or an inherit leaves only when it was killed mid-copy.
+pub(crate) const TEMP_PREFIXES: [&str; 3] =
+    [".target-warming-", ".target-inherit-", ".target-old-"];
 
 /// The limits a slot is checked against; the defaults are the user decision's.
 #[derive(Clone, Copy, Debug)]
@@ -110,7 +115,7 @@ fn git(dir: &Path, args: &[&str]) -> Result<String> {
 }
 
 /// The git common directory of the repository that holds `project`.
-fn common_dir(project: &Path) -> Result<PathBuf> {
+pub(crate) fn common_dir(project: &Path) -> Result<PathBuf> {
     git(
         project,
         &["rev-parse", "--path-format=absolute", "--git-common-dir"],
@@ -119,20 +124,20 @@ fn common_dir(project: &Path) -> Result<PathBuf> {
 }
 
 /// The primary checkout of the repository whose common directory is `common`.
-fn primary_of(common: &Path) -> Result<PathBuf> {
+pub(crate) fn primary_of(common: &Path) -> Result<PathBuf> {
     let root = common
         .parent()
         .ok_or("the repository has no primary checkout")?;
     Ok(fs::canonicalize(root).unwrap_or_else(|_| root.to_path_buf()))
 }
 
-fn same(a: &Path, b: &Path) -> bool {
+pub(crate) fn same(a: &Path, b: &Path) -> bool {
     let canon = |p: &Path| fs::canonicalize(p).unwrap_or_else(|_| p.to_path_buf());
     canon(a) == canon(b)
 }
 
 /// The linked worktrees (the primary checkout left out).
-fn linked(primary: &Path) -> Result<Vec<WorktreeEntry>> {
+pub(crate) fn linked(primary: &Path) -> Result<Vec<WorktreeEntry>> {
     let text = git(primary, &["worktree", "list", "--porcelain"])?;
     Ok(parse_worktree_list(&text)
         .into_iter()
@@ -223,15 +228,54 @@ pub fn plan(project: &Path, caps: Caps) -> Result<Value> {
     }))
 }
 
+/// Whether `path` is its own linked worktree of the repository whose git common dir is
+/// `common`: git run in it names `path` as the top level and `common` as the common dir, and
+/// its private git dir points back at `path/.git`. A plain folder (git walks up to the primary
+/// checkout), another repository, or a `.git` file that borrows another worktree's git dir
+/// (git would use that worktree's index) each fail, with the reason.
+pub(crate) fn own_worktree(path: &Path, common: &Path) -> Result<()> {
+    let canon =
+        |p: &Path| fs::canonicalize(p).map_err(|e| format!("{} unreadable: {e}", p.display()));
+    let me = canon(path)?;
+    let top = git(path, &["rev-parse", "--show-toplevel"])
+        .map_err(|e| format!("git cannot read it: {e}"))?;
+    if canon(Path::new(&top))? != me {
+        return Err(format!("git in it works on {top}"));
+    }
+    let shared = git(
+        path,
+        &["rev-parse", "--path-format=absolute", "--git-common-dir"],
+    )
+    .map_err(|e| format!("git cannot read it: {e}"))?;
+    if canon(Path::new(&shared))? != canon(common)? {
+        return Err(format!("it belongs to the repository at {shared}"));
+    }
+    let own = git(path, &["rev-parse", "--path-format=absolute", "--git-dir"])
+        .map_err(|e| format!("git cannot read it: {e}"))?;
+    let back = fs::read_to_string(Path::new(&own).join("gitdir"))
+        .map_err(|_| format!("its git dir {own} names no linked worktree"))?;
+    if canon(Path::new(back.trim())).ok() != Some(me.join(".git")) {
+        return Err(format!(
+            "its git dir {own} belongs to the worktree at {}",
+            back.trim()
+        ));
+    }
+    Ok(())
+}
+
 /// Takes the repository's exclusive `ensure` lock, waiting at most [`LOCK_WAIT`].
-fn lock(common: &Path) -> Result<fs::File> {
+pub(crate) fn lock(common: &Path) -> Result<fs::File> {
     let file = fs::OpenOptions::new()
         .create(true)
         .truncate(false)
         .write(true)
         .open(common.join(LOCK_FILE))
         .map_err(|e| format!("the slot lock could not be opened: {e}"))?;
-    let deadline = Instant::now() + LOCK_WAIT;
+    let wait = std::env::var(LOCK_WAIT_ENV)
+        .ok()
+        .and_then(|v| v.parse::<u64>().ok())
+        .map_or(LOCK_WAIT, Duration::from_secs);
+    let deadline = Instant::now() + wait;
     loop {
         match file.try_lock() {
             Ok(()) => return Ok(file),
@@ -240,8 +284,8 @@ fn lock(common: &Path) -> Result<fs::File> {
             }
             Err(fs::TryLockError::WouldBlock) => {
                 return Err(format!(
-                    "another worktree-slot ensure held the lock for {} seconds; nothing was added",
-                    LOCK_WAIT.as_secs()
+                    "another worktree-slot or audit-slot run held the slot lock for {} seconds; nothing was changed",
+                    wait.as_secs()
                 ))
             }
             Err(fs::TryLockError::Error(e)) => {
@@ -306,6 +350,35 @@ fn warm(seed_target: &Path, slot: &Path) -> Result<&'static str> {
     renamed.map(|()| method)
 }
 
+/// Removes the temporary copies a killed warm or inherit left in a present slot. The caller holds
+/// the slot lock, so no other run is copying into the slot now. Returns the names removed.
+fn clean_leftovers(slot: &Path) -> Result<Vec<String>> {
+    let removed = leftovers(slot)?;
+    for name in &removed {
+        let p = slot.join(name);
+        let gone = match fs::symlink_metadata(&p) {
+            Ok(m) if m.file_type().is_dir() => fs::remove_dir_all(&p),
+            _ => fs::remove_file(&p),
+        };
+        gone.map_err(|e| format!("{} could not be removed: {e}", p.display()))?;
+    }
+    Ok(removed)
+}
+
+/// The temporary copies of a killed warm or inherit that sit at the top of the slot, by name,
+/// sorted: a folder, a file or a link whose name starts with one of [`TEMP_PREFIXES`]. It reads
+/// the slot folder, not `git status`, so a copy that git ignores is named too.
+pub(crate) fn leftovers(slot: &Path) -> Result<Vec<String>> {
+    let entries = fs::read_dir(slot).map_err(|e| format!("{} unreadable: {e}", slot.display()))?;
+    let mut names: Vec<String> = entries
+        .flatten()
+        .map(|e| e.file_name().to_string_lossy().to_string())
+        .filter(|name| TEMP_PREFIXES.iter().any(|p| name.starts_with(p)))
+        .collect();
+    names.sort();
+    Ok(names)
+}
+
 /// Adds the slot `name` detached at `at` when it is missing, and warms a slot without
 /// `target/` from the seed. A present slot keeps its checkout; one without `target/` is warmed.
 pub fn ensure(project: &Path, name: &str, at: &str, caps: Caps) -> Result<Value> {
@@ -319,6 +392,11 @@ pub fn ensure(project: &Path, name: &str, at: &str, caps: Caps) -> Result<Value>
     let _lock = lock(&common)?;
     let path = primary.join(SLOT_DIR).join(name);
     let rel = format!("{SLOT_DIR}/{name}");
+    if fs::symlink_metadata(&path).is_ok_and(|m| m.file_type().is_symlink()) {
+        return Err(format!(
+            "{rel} is a link, not a slot folder; refused, nothing was changed"
+        ));
+    }
     let linked = linked(&primary)?;
     let present = linked.iter().any(|e| same(&e.path, &path));
     if present && !path.is_dir() {
@@ -331,12 +409,37 @@ pub fn ensure(project: &Path, name: &str, at: &str, caps: Caps) -> Result<Value>
             "{rel} exists but is not a worktree of this repository; nothing was added"
         ));
     }
+    if present {
+        // A registered path holding a plain folder, another repository or a borrowed `.git`
+        // would take the seed copy, and git in it would act on another checkout.
+        own_worktree(&path, &common).map_err(|e| {
+            format!("{rel} is registered but is not its own worktree ({e}); refused, nothing was changed")
+        })?;
+    }
     let seed = if name == SEED {
         None
     } else {
         seed_target(&primary, &linked)?
     };
+    // An audit slot's leftover copy is audit-slot's to name and to discard with `done --discard`,
+    // so `ensure` leaves it there for `audit_slot` to refuse on.
+    let cleaned = if present && !crate::audit_slot::AUDIT_SLOTS.contains(&name) {
+        clean_leftovers(&path)?
+    } else {
+        Vec::new()
+    };
+    let needs_warm = seed.is_some() && fs::symlink_metadata(path.join("target")).is_err();
     let mut commit = Value::Null;
+    if present && needs_warm {
+        // A warm copy takes disk like an added slot does, so it meets the same floor.
+        let free = free_percent(&primary)?;
+        if free < caps.min_free_percent {
+            return Err(format!(
+                "free disk under the floor: limit {} percent, free {free} percent; {rel} was not warmed",
+                caps.min_free_percent
+            ));
+        }
+    }
     if !present {
         if linked.len() >= caps.max_worktrees {
             return Err(format!(
@@ -358,6 +461,7 @@ pub fn ensure(project: &Path, name: &str, at: &str, caps: Caps) -> Result<Value>
                 "rev-parse",
                 "--verify",
                 "--quiet",
+                "--end-of-options",
                 &format!("{at}^{{commit}}"),
             ],
         )
@@ -377,7 +481,7 @@ pub fn ensure(project: &Path, name: &str, at: &str, caps: Caps) -> Result<Value>
     };
     Ok(json!({
         "slot": name, "path": rel, "at": commit, "added": !present, "present": present,
-        "warmed": warmed,
+        "warmed": warmed, "cleaned": cleaned,
     }))
 }
 

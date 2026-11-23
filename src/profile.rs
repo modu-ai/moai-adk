@@ -204,7 +204,15 @@ pub struct WorkFlowSettings {
     pub flow: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub integration_branch: Option<String>,
+    /// How `card land` treats the audit verdict (SPEC-20261123-landing-reads-verdict, REQ-22):
+    /// one of [`LAND_VERDICT_MODES`]; no key means `observe`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub land_verdict: Option<String>,
 }
+
+/// The two words of `work_flow.land_verdict`: `observe` reports the refusal a landing would get
+/// and lands, `enforce` refuses.
+pub const LAND_VERDICT_MODES: &[&str] = &["observe", "enforce"];
 
 /// The two values of a lane-run pick (SPEC-20261122-nonstop-lane).
 pub const LANE_RUNS: &[&str] = &["nonstop", "single"];
@@ -376,6 +384,16 @@ fn validate(p: &Profile) -> Result<()> {
                 .is_some_and(|b| !branch_name(b))
         {
             return Err("invalid work_flow setting; no values were logged".into());
+        }
+        // The reason names the key and the two words, never the value that was read.
+        if w.land_verdict
+            .as_deref()
+            .is_some_and(|m| !LAND_VERDICT_MODES.contains(&m))
+        {
+            return Err(format!(
+                "invalid work_flow setting: land_verdict must be {}; no values were logged",
+                LAND_VERDICT_MODES.join(" or ")
+            ));
         }
     }
     if let Some(r) = &p.lane_run {
@@ -1416,6 +1434,7 @@ mod tests {
             work_flow: Some(WorkFlowSettings {
                 flow: "m-flow".into(),
                 integration_branch: Some("main".into()),
+                land_verdict: None,
             }),
             lane_run: Some(LaneRunSettings {
                 default: Some("nonstop".into()),
@@ -1754,6 +1773,75 @@ mod tests {
         assert!(serde_json::to_value(&profile)
             .unwrap()
             .get("work_flow")
+            .is_none());
+    }
+
+    /// SPEC-20261123-landing-reads-verdict REQ-22 and REQ-23: `work_flow.land_verdict` is
+    /// `observe` or `enforce`, loads from a hand-edited file and is kept when the profile is
+    /// written back; another word is refused as an invalid work_flow setting.
+    #[test]
+    fn land_verdict_key_is_validated() {
+        let tmp = tempfile::tempdir().unwrap();
+        let path = tmp
+            .path()
+            .join(crate::PROJECT_STATE_DIR)
+            .join("project.yaml");
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        for word in ["observe", "enforce"] {
+            let mut file = serde_json::to_value(v2()).unwrap();
+            file["work_flow"] =
+                json!({"flow": "m-flow", "integration_branch": "main", "land_verdict": word});
+            fs::write(&path, serde_json::to_vec(&file).unwrap()).unwrap();
+            let (profile, _) = read_profile(tmp.path()).unwrap();
+            let kept = serde_json::to_value(&profile).unwrap();
+            assert_eq!(kept["work_flow"]["land_verdict"], json!(word));
+            assert_eq!(
+                profile.work_flow.unwrap().land_verdict.as_deref(),
+                Some(word)
+            );
+        }
+        for bad in [
+            json!("Enforce"),
+            json!("block"),
+            json!(""),
+            json!(true),
+            json!(1),
+        ] {
+            let mut file = serde_json::to_value(v2()).unwrap();
+            file["work_flow"] =
+                json!({"flow": "m-flow", "integration_branch": "main", "land_verdict": bad});
+            fs::write(&path, serde_json::to_vec(&file).unwrap()).unwrap();
+            let why = read_profile(tmp.path()).err().map(|e| e.to_string());
+            let why = why.unwrap_or_else(|| panic!("{bad} must be refused"));
+            // A wrong word names the key and both words and never echoes the value; a value of
+            // another type fails in the reader's own type check, whose reason is generic.
+            if bad.is_string() {
+                assert!(
+                    why.contains("work_flow")
+                        && why.contains("land_verdict")
+                        && why.contains("observe or enforce"),
+                    "the reason must name the key and the words: {why}"
+                );
+            }
+        }
+        let mut file = serde_json::to_value(v2()).unwrap();
+        file["work_flow"] = json!({
+            "flow": "m-flow", "integration_branch": "main",
+            "land_verdict": "sentinel-word-not-echoed"
+        });
+        fs::write(&path, serde_json::to_vec(&file).unwrap()).unwrap();
+        let why = read_profile(tmp.path()).err().map(|e| e.to_string());
+        assert!(
+            why.is_some_and(|w| !w.contains("sentinel-word-not-echoed")),
+            "the refused value must not appear in the reason"
+        );
+        let mut file = serde_json::to_value(v2()).unwrap();
+        file["work_flow"] = json!({"flow": "m-flow", "integration_branch": "main"});
+        fs::write(&path, serde_json::to_vec(&file).unwrap()).unwrap();
+        let (profile, _) = read_profile(tmp.path()).unwrap();
+        assert_eq!(profile.work_flow.as_ref().unwrap().land_verdict, None);
+        assert!(serde_json::to_value(&profile).unwrap()["work_flow"]
+            .get("land_verdict")
             .is_none());
     }
 

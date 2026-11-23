@@ -168,8 +168,10 @@ fn the_root_example_names_the_entry_command() {
             .lines()
             .find(|l| l.trim_start().starts_with("moai cc -l "))
             .unwrap_or_else(|| panic!("COLUMNS={columns}: no cc -l example:\n{text}"));
+        // SPEC-20261122-next-flow-skills-agents REQ-8: the example names the leader session,
+        // not the retired `/moai --mode-leader` entry.
         assert!(
-            line.ends_with("leader, then /moai --mode-leader"),
+            line.ends_with("start the leader session"),
             "COLUMNS={columns}: {line:?}"
         );
     }
@@ -187,7 +189,8 @@ fn other_launches_keep_their_argv() {
             "opus".into(),
             "--effort".into(),
             "medium".into(),
-            "--dangerously-skip-permissions".into(),
+            "--permission-mode".into(),
+            "auto".into(),
         ]
     };
     assert_eq!(argv(&dry(&["cc", "-l"], None)), claude("leader"));
@@ -196,7 +199,15 @@ fn other_launches_keep_their_argv() {
     assert_eq!(argv(&dry(&["glm", "-a"], Some("t"))), claude("agent-1"));
     assert_eq!(
         argv(&dry(&["cc"], None)),
-        ["claude", "--model", "opus", "--effort", "medium"]
+        [
+            "claude",
+            "--model",
+            "opus",
+            "--effort",
+            "medium",
+            "--permission-mode",
+            "auto"
+        ]
     );
 }
 

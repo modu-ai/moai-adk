@@ -1497,12 +1497,237 @@ fn finish_plan(
     }))
 }
 
+// ---- the verdict record (SPEC-20261123-landing-reads-verdict) ---------------------------------
+
+/// The event kind of one verdict.
+pub const VERDICT_KIND: &str = "card.verdict";
+
+/// One step of the check receipt a verdict cites.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct VerdictStep {
+    pub name: String,
+    pub exit: i64,
+}
+
+/// The check receipt a verdict cites: the head it was made on and each step with its exit code.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct VerdictReceipt {
+    pub head: String,
+    pub steps: Vec<VerdictStep>,
+}
+
+impl VerdictReceipt {
+    fn json(&self) -> serde_json::Value {
+        json!({
+            "head": self.head,
+            "steps": self.steps.iter()
+                .map(|s| json!({"name": s.name, "exit": s.exit}))
+                .collect::<Vec<_>>(),
+        })
+    }
+
+    fn from_json(v: &serde_json::Value) -> Option<VerdictReceipt> {
+        let head = v.get("head")?.as_str()?.to_string();
+        let steps = v
+            .get("steps")?
+            .as_array()?
+            .iter()
+            .map(|s| {
+                Some(VerdictStep {
+                    name: s.get("name")?.as_str()?.to_string(),
+                    exit: s.get("exit")?.as_i64()?,
+                })
+            })
+            .collect::<Option<Vec<_>>>()?;
+        Some(VerdictReceipt { head, steps })
+    }
+}
+
+/// What `card verdict` records.
+#[derive(Debug, Clone)]
+pub struct NewVerdict<'a> {
+    pub head: &'a str,
+    pub base: &'a str,
+    pub pass: bool,
+    pub tier: u8,
+    pub evidence: &'a str,
+    pub receipt: Option<&'a VerdictReceipt>,
+    /// The session that records the verdict, read from the host's session id.
+    pub reviewer: &'a str,
+}
+
+/// One verdict event as `card land` reads it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct VerdictEvent {
+    pub event_id: i64,
+    pub reviewer: String,
+    pub head: String,
+    pub base: String,
+    pub pass: bool,
+    pub tier: u8,
+    pub evidence: String,
+    pub receipt: Option<VerdictReceipt>,
+}
+
+/// The answer of [`record_verdict`]: the event and whether this call wrote it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct VerdictRecorded {
+    pub event_id: i64,
+    pub written: bool,
+}
+
+impl NewVerdict<'_> {
+    fn payload(&self) -> serde_json::Value {
+        json!({
+            "head": self.head, "base": self.base,
+            "verdict": if self.pass { "pass" } else { "fail" },
+            "tier": self.tier, "evidence": self.evidence,
+            "receipt": self.receipt.map(VerdictReceipt::json),
+            "reviewer": self.reviewer,
+        })
+    }
+}
+
+fn verdict_from_row(event_id: i64, actor: &str, payload: &str) -> Option<VerdictEvent> {
+    let v: serde_json::Value = serde_json::from_str(payload).ok()?;
+    let word = v.get("verdict")?.as_str()?;
+    let pass = match word {
+        "pass" => true,
+        "fail" => false,
+        _ => return None,
+    };
+    let receipt = match v.get("receipt") {
+        Some(r) if !r.is_null() => Some(VerdictReceipt::from_json(r)?),
+        _ => None,
+    };
+    Some(VerdictEvent {
+        event_id,
+        reviewer: v
+            .get("reviewer")
+            .and_then(|r| r.as_str())
+            .unwrap_or(actor)
+            .to_string(),
+        head: v.get("head")?.as_str()?.to_string(),
+        base: v.get("base")?.as_str()?.to_string(),
+        pass,
+        tier: u8::try_from(v.get("tier")?.as_u64()?).ok()?,
+        evidence: v.get("evidence")?.as_str()?.to_string(),
+        receipt,
+    })
+}
+
+/// Appends one `card.verdict` event of the card, or finds the one a repeat of the same call
+/// wrote (the same head, base, verdict, tier, evidence, receipt and reviewer): then nothing is
+/// written. The checks of the values (hex shape, commits, secret screen) are the caller's.
+pub fn record_verdict(
+    w: &mut WriteLedger,
+    card_id: i64,
+    verdict: &NewVerdict<'_>,
+) -> Result<VerdictRecorded, WorkflowError> {
+    one_line("the evidence", verdict.evidence, MAX_LINE_CHARS)
+        .map_err(WorkflowError::InvalidInput)?;
+    one_line("the reviewer", verdict.reviewer, MAX_AUTHOR_CHARS)
+        .map_err(WorkflowError::InvalidInput)?;
+    let payload = verdict.payload();
+    w.with_write_tx(|tx, now| {
+        let exists: bool = tx.query_row(
+            "SELECT EXISTS (SELECT 1 FROM card WHERE card_id = ?1)",
+            [card_id],
+            |r| r.get(0),
+        )?;
+        if !exists {
+            return Ok(Err(WorkflowError::CardNotFound(card_id)));
+        }
+        let mut st = tx.prepare(
+            "SELECT event_id, payload FROM event WHERE card_id = ?1 AND kind = ?2 \
+             ORDER BY event_id",
+        )?;
+        let rows = st.query_map(params![card_id, VERDICT_KIND], |r| {
+            Ok((r.get::<_, i64>(0)?, r.get::<_, String>(1)?))
+        })?;
+        for row in rows {
+            let (event_id, text) = row?;
+            if serde_json::from_str::<serde_json::Value>(&text)
+                .ok()
+                .as_ref()
+                == Some(&payload)
+            {
+                return Ok(Ok(VerdictRecorded {
+                    event_id,
+                    written: false,
+                }));
+            }
+        }
+        drop(st);
+        reservation::add_event(tx, now, verdict.reviewer, card_id, VERDICT_KIND, &payload)?;
+        Ok(Ok(VerdictRecorded {
+            event_id: tx.last_insert_rowid(),
+            written: true,
+        }))
+    })?
+}
+
+/// The verdict events of the card, oldest first. A row whose payload is not a verdict (a hand
+/// written row) is left out.
+pub fn verdict_events(conn: &Connection, card_id: i64) -> Result<Vec<VerdictEvent>, LedgerError> {
+    let mut st = conn.prepare(
+        "SELECT event_id, actor, payload FROM event WHERE card_id = ?1 AND kind = ?2 \
+         ORDER BY event_id",
+    )?;
+    let rows = st.query_map(params![card_id, VERDICT_KIND], |r| {
+        Ok((
+            r.get::<_, i64>(0)?,
+            r.get::<_, String>(1)?,
+            r.get::<_, String>(2)?,
+        ))
+    })?;
+    let mut out = Vec::new();
+    for row in rows {
+        let (event_id, actor, payload) = row?;
+        out.extend(verdict_from_row(event_id, &actor, &payload));
+    }
+    Ok(out)
+}
+
+/// Every session that held a reservation of the card, in any generation and status.
+pub fn reservation_holders(conn: &Connection, card_id: i64) -> Result<Vec<String>, LedgerError> {
+    let mut st =
+        conn.prepare("SELECT DISTINCT holder FROM reservation WHERE card_id = ?1 ORDER BY holder")?;
+    let holders = st
+        .query_map([card_id], |r| r.get::<_, String>(0))?
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(holders)
+}
+
+/// The `verdict` object of the newest `card.land_started` row of the card and head, when the
+/// row has one: the verdict the landing relied on (REQ-15).
+pub fn land_started_verdict(
+    conn: &Connection,
+    card_id: i64,
+    head: &str,
+) -> Result<Option<serde_json::Value>, LedgerError> {
+    let text: Option<String> = conn
+        .query_row(
+            "SELECT json_extract(payload, '$.verdict') FROM event \
+             WHERE card_id = ?1 AND kind = 'card.land_started' \
+               AND json_extract(payload, '$.head') = ?2 \
+               AND json_type(payload, '$.verdict') = 'object' \
+             ORDER BY event_id DESC LIMIT 1",
+            params![card_id, head],
+            |r| r.get(0),
+        )
+        .optional()?;
+    Ok(text.and_then(|t| serde_json::from_str(&t).ok()))
+}
+
 /// The ledger row `card land` writes before it moves the integration branch (SPEC-20261121-ref-guard,
 /// D-8): the free event kind `card.land_started` with the branch, the tip that was read, the
-/// candidate head and the caller. It is written in one transaction that runs every check of
-/// [`finish`], so it is refused for the same reasons and a refused call leaves no row; one row
-/// exists per card, head and tip (a rerun finds it and writes none). Returns whether a row was
-/// written. A close refused after the move leaves the row as the ledger's record of the move.
+/// candidate head and the caller, and, when the landing relied on a verdict, that verdict
+/// (SPEC-20261123-landing-reads-verdict, REQ-13). It is written in one transaction that runs
+/// every check of [`finish`], so it is refused for the same reasons and a refused call leaves
+/// no row; one row exists per card, head and tip (a rerun finds it and writes none). Returns
+/// whether a row was written. A close refused after the move leaves the row as the ledger's
+/// record of the move.
 #[allow(clippy::too_many_arguments)]
 pub fn record_land_started(
     w: &mut WriteLedger,
@@ -1514,6 +1739,7 @@ pub fn record_land_started(
     generation: Option<i64>,
     branch: &str,
     from_tip: &str,
+    verdict: Option<&serde_json::Value>,
 ) -> Result<bool, WorkflowError> {
     finish_input_checks(by, met, evidence)?;
     w.with_write_tx(|tx, now| {
@@ -1532,13 +1758,17 @@ pub fn record_land_started(
         if exists {
             return Ok(Ok(false));
         }
+        let mut payload = json!({"branch": branch, "tip": from_tip, "head": head, "by": by});
+        if let Some(verdict) = verdict {
+            payload["verdict"] = verdict.clone();
+        }
         reservation::add_event(
             tx,
             now,
             session.unwrap_or("user"),
             card_id,
             "card.land_started",
-            &json!({"branch": branch, "tip": from_tip, "head": head, "by": by}),
+            &payload,
         )?;
         Ok(Ok(true))
     })?
@@ -1622,6 +1852,41 @@ pub fn finish(
     met: &[(i64, String)],
     generation: Option<i64>,
 ) -> Result<Finished, WorkflowError> {
+    finish_naming(
+        w,
+        card_id,
+        session,
+        by,
+        evidence,
+        met,
+        generation,
+        LandedVerdict::StartRow,
+    )
+}
+
+/// Which verdict the `card.landed` event of a close names.
+#[derive(Clone, Copy, Debug)]
+pub enum LandedVerdict<'a> {
+    /// The verdict of the newest start row of the head (what a close that judged nothing says).
+    StartRow,
+    /// The verdict this call relied on (or none): `card land` names what it read, so a rerun that
+    /// judged the verdicts again before the move does not write the PASS an earlier call's start
+    /// row names (SPEC-20261123-landing-reads-verdict, REQ-13).
+    Relied(Option<&'a serde_json::Value>),
+}
+
+/// [`finish`], with the verdict the landing event names given by the caller.
+#[allow(clippy::too_many_arguments)]
+pub fn finish_naming(
+    w: &mut WriteLedger,
+    card_id: i64,
+    session: Option<&str>,
+    by: &str,
+    evidence: &FinishEvidence<'_>,
+    met: &[(i64, String)],
+    generation: Option<i64>,
+    named: LandedVerdict<'_>,
+) -> Result<Finished, WorkflowError> {
     finish_input_checks(by, met, evidence)?;
     w.with_write_tx(|tx, now| {
         let FinishPlan {
@@ -1648,18 +1913,22 @@ pub fn finish(
         };
         let mut events = 0;
         if record_landing {
-            reservation::add_event(
-                tx,
-                now,
-                actor,
-                card_id,
-                "card.landed",
-                &json!({
-                    "head": head, "tip": tip, "generation": newest_generation, "by": by,
-                    "report": report, "note": note,
-                    "via": "finish", "no_code": head.is_none(),
-                }),
-            )?;
+            let mut payload = json!({
+                "head": head, "tip": tip, "generation": newest_generation, "by": by,
+                "report": report, "note": note,
+                "via": "finish", "no_code": head.is_none(),
+            });
+            // The verdict the landing relied on: the one the caller names, or the one the newest
+            // start row of the head names.
+            let verdict = match (named, head) {
+                (LandedVerdict::Relied(verdict), _) => verdict.cloned(),
+                (LandedVerdict::StartRow, Some(head)) => land_started_verdict(tx, card_id, head)?,
+                (LandedVerdict::StartRow, None) => None,
+            };
+            if let Some(verdict) = verdict {
+                payload["verdict"] = verdict;
+            }
+            reservation::add_event(tx, now, actor, card_id, "card.landed", &payload)?;
             events += 1;
         }
         if landing_only {

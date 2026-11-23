@@ -1,4 +1,8 @@
-# Internal: rule-history
+# Rule history
+
+This record was a file of the skill package until SPEC-20261122-next-flow-skills-agents
+(Plan step 6, decision D-3) moved it here: nothing reads it while a route runs. The sections
+below are kept as they were written.
 
 The rule inventory of card C-103 (SPEC-20261119-rule-prune, SPEC-20261119-rule-prune-leader):
 every rule sentence of `workflows/mode-agent.md`, `workflows/mode-leader.md`,
@@ -65,7 +69,9 @@ are read by no test, and `mode-leader.md` has 5 of 41. Those lines are a pool fo
 prune; this slice moved only what the sentence reading found to be a second copy.
 `workflows/mode-leader.md` lost three sentences, 316 bytes of text (45,194 → 44,875 bytes
 including the line breaks they stood in); `rule-history.md` grew, so the package's total
-rule text is larger than before. The cut is a duplicate removal, not a size win.
+rule text was larger than before while this record was a package file. The cut is a duplicate
+removal, not a size win. Since the move to `docs/` this record no longer counts toward the
+package's size.
 
 ## History — moved from core-rules.md
 

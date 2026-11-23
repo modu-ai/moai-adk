@@ -726,4 +726,34 @@ fn a_notice_is_its_own_row_never_a_skipped_one() {
             assert!(!lines[0].contains(skipped), "{text}");
         }
     }
+    // A narrow screen wraps the row and a dumb terminal draws it in ASCII; both keep the
+    // notice word and never the skipped one (goldens: a dumb terminal at 40 columns, and the
+    // Korean result screen at 40 columns).
+    let dumb = view(Lang::En, Look::Ascii, 40, None);
+    let narrow = view(Lang::Ko, Look::Plain, 40, None);
+    for (name, lang, text) in [
+        (
+            "question-notice-ascii-40",
+            Lang::En,
+            question(&changes, &dumb),
+        ),
+        (
+            "applied-notice-40",
+            Lang::Ko,
+            screen(&done, Asked::Yes, &narrow),
+        ),
+    ] {
+        let (word, skipped) = if lang == Lang::Ko {
+            ("알림", "건너뜀")
+        } else {
+            ("notice", "skipped")
+        };
+        let joined = flat(&text);
+        assert!(joined.contains(&format!("{word}: if the style")), "{text}");
+        assert!(
+            !joined.contains(&format!("{skipped}: if the style")),
+            "{text}"
+        );
+        check(name, lang, &text, 40);
+    }
 }

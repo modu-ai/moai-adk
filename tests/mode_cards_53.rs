@@ -1,6 +1,6 @@
 //! Card C-53: MODE-AGENT and MODE-LEADER ran their round on the local card ledger. Both left the
 //! package with their routes (SPEC-20261122-next-flow-skills-agents REQ-2); the file stays because
-//! `skills/moai/references/rule-history.md` names it (D-11). Pinned here now: every
+//! `docs/rule-history.md` names it (D-11). Pinned here now: every
 //! `moai card <action> --flag` the WORK workflow shows, checked against `--help` of this build.
 //!
 //! The binary runs with a temporary HOME; only `--help` is called and no ledger is made.

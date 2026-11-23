@@ -1069,7 +1069,8 @@ fn launcher_leader_default_claude() {
         "opus",
         "--effort",
         "medium",
-        "--dangerously-skip-permissions"
+        "--permission-mode",
+        "auto"
     ]);
     for args in [
         &["-l", "--dry-run"][..],
@@ -1143,7 +1144,8 @@ fn launcher_flags_can_be_disabled() {
             "sonnet",
             "--effort",
             "high",
-            "--dangerously-skip-permissions"
+            "--permission-mode",
+            "auto"
         ])
     );
     assert!(!launcher(&["-l", "--effort", "turbo", "--dry-run"], None)
@@ -1228,7 +1230,8 @@ fn launcher_glm_requires_token_name_only() {
             "opus",
             "--effort",
             "medium",
-            "--dangerously-skip-permissions"
+            "--permission-mode",
+            "auto"
         ])
     );
     // No advisor by default since #2476; an explicit one is dropped on glm with a note.
@@ -2784,7 +2787,8 @@ mod skill_package {
             "its `role_id` is `prj-<name>` for the project's own job",
             "a project agent never shadows a user-layer `moai-*` agent",
             "Offer project skills the same way: each is one `project_skills` entry",
-            "it writes the skill folder Claude Code reads and the one Codex CLI reads",
+            // SPEC-20261122-next-flow-skills-agents REQ-8: the Codex CLI folder left the text.
+            "it writes the skill folder Claude Code reads, and an unanswered axis is never written",
             "for any other host, say that none is written",
             "apply with `generation-apply` only after the user agrees",
             "planned `unchanged` while the answers stay the same, and `conflict` once they change too",

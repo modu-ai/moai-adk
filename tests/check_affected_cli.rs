@@ -1,6 +1,7 @@
 //! SPEC-20261120-check-affected: `check affected <base>..<head>` picks the tests a change can
 //! break and runs them. Temporary git repositories and fake `cargo`, `python3` and `rustfmt`
 //! scripts only: the real tools, the real HOME and the machine's heavy slots are never used.
+//! The fake `python3` is there to show that no step calls it.
 mod common;
 use common::git::{git, git_ok};
 use serde_json::Value;
@@ -136,10 +137,13 @@ fn slot_dir_with(max: u32) -> tempfile::TempDir {
 /// The whole answer: `(ok, result or error)`.
 fn affected(fx: &Fixture, extra: &[&str], tools: Option<(&Tools, &str)>) -> (bool, Value) {
     let mut cmd = Command::new(BIN);
+    // No caller build folder: the step logs go under the temporary repository's own
+    // `target/`, never as `check-affected-<head>` folders into the build folder of this run.
     cmd.args(["check", "affected", &fx.range(), "--dir"])
         .arg(fx.root())
         .args(extra)
         .env_remove("MOAI_HOME")
+        .env_remove("CARGO_TARGET_DIR")
         .stdin(Stdio::null());
     if let Some((t, fail)) = tools {
         cmd.env("PATH", t.path())
@@ -184,20 +188,40 @@ fn the_misses_of_the_integration_day_are_selected() {
     let (ok, r) = affected(&fx, &["--list"], None);
     assert!(ok, "{r}");
     let rust = names(&r["rust_targets"]);
-    let python = names(&r["python_modules"]);
     for want in ["update_command_cli", "home_isolation_scan"] {
         assert!(rust.contains(&want.to_string()), "{want} in {rust:?}");
     }
-    assert!(
-        python.contains(&"update_tux_tty_test".to_string()),
-        "{python:?}"
-    );
     assert!(!rust.contains(&"bundle_body_cli".to_string()), "{rust:?}");
-    assert!(
-        !python.contains(&"bundle_ops_test".to_string()),
-        "{python:?}"
-    );
+    // SPEC-20261123-rust-scans-before-ready REQ-3, REQ-4: the fixture holds Python test modules
+    // of the same area; none is selected, listed or counted.
+    assert!(r.get("python_modules").is_none(), "{r}");
+    assert!(!r.to_string().contains("update_tux_tty_test"), "{r}");
+    assert!(!r.to_string().contains("py="), "{r}");
     assert_eq!(r["scans"], "listed:1");
+}
+
+/// SPEC-20261123-rust-scans-before-ready REQ-3: a range that changes only Python test modules
+/// and tools plans the fixed steps and the one test step, and no step runs Python.
+#[test]
+fn a_range_of_python_files_plans_no_python_step() {
+    let fx = Fixture::new(
+        true,
+        &[
+            ("tests/update_tux_tty_test.py", "# b\n"),
+            ("tools/mutate.py", "# b\n"),
+        ],
+    );
+    let (ok, r) = affected(&fx, &["--list"], None);
+    assert!(ok, "{r}");
+    let l = labels(&r);
+    assert_eq!(l, ["diff_check", "fmt", "clippy", "test"], "{l:?}");
+    for step in r["steps"].as_array().unwrap() {
+        let command = step["command"].to_string();
+        assert!(
+            !command.contains("python") && !command.contains("unittest"),
+            "{command}"
+        );
+    }
 }
 
 #[test]
@@ -246,11 +270,13 @@ fn the_fixed_steps_and_the_host_targets_are_always_listed() {
         "ops_rustfmt",
         "bash_n:tools/a.sh",
         "clippy",
-        "test_lib",
-        "test_bins",
-        "test_targets",
+        "test",
     ] {
         assert!(l.contains(&want.to_string()), "{want} in {l:?}");
+    }
+    // SPEC-20261122-check-affected-one-slot REQ-3: one test step, no per-kind steps.
+    for gone in ["test_lib", "test_bins", "test_targets"] {
+        assert!(!l.contains(&gone.to_string()), "{gone} in {l:?}");
     }
     let ops = r["steps"]
         .as_array()
@@ -352,8 +378,10 @@ fn a_folder_inside_the_repository_reads_the_repository_root() {
     assert!(rust.contains(&"update_command_cli".to_string()), "{rust:?}");
 }
 
+/// The step logs go below the caller's build folder, never into a `target/` of the repository,
+/// and no step calls `python3` (SPEC-20261123-rust-scans-before-ready REQ-3).
 #[test]
-fn the_python_step_uses_the_target_folder_the_build_step_builds_into() {
+fn the_step_logs_go_to_the_callers_target_folder_and_no_step_calls_python() {
     let fx = Fixture::new(false, &[("src/update_models.rs", "// b\n")]);
     let tools = Tools::new(&["cargo", "python3", "rustfmt"]);
     let slots = slot_dir();
@@ -373,11 +401,16 @@ fn the_python_step_uses_the_target_folder_the_build_step_builds_into() {
     let v: Value = serde_json::from_slice(&out.stdout).unwrap();
     assert_eq!(v["ok"], true, "{v}");
     let calls = tools.calls_text();
-    let want = format!(
-        "python3 env CTD={0} MB={0}/debug/moai-cli",
-        theirs.path().display()
-    );
+    assert!(!calls.contains("python3"), "a step called python3: {calls}");
+    let want = format!("cargo env CTD={}", theirs.path().display());
+    assert!(!calls.contains("CTD= "), "{calls}");
     assert!(calls.contains(&want), "{want} in {calls}");
+    let logs = fs::read_dir(theirs.path()).unwrap().flatten().any(|e| {
+        e.file_name()
+            .to_string_lossy()
+            .starts_with("check-affected-")
+    });
+    assert!(logs, "the step logs are below the caller's target folder");
     assert!(
         !fx.root().join("target").exists(),
         "logs and builds go to the caller's target folder"
@@ -427,7 +460,7 @@ fn a_failed_step_does_not_stop_the_rest_and_the_summary_says_fail() {
     assert!(line.ends_with(" result=FAIL"), "{line}");
     assert!(!line.contains("stopped_at"), "{line}");
     // The keys come in the order the steps run, then the result. The binary is built by the
-    // test step, so no `build_cli` step is planned when a Rust target is selected (REQ-5).
+    // test step, so no `build_cli` step exists (SPEC-20261123-rust-scans-before-ready REQ-3).
     let keys: Vec<&str> = line
         .split(' ')
         .skip(1)
@@ -439,33 +472,23 @@ fn a_failed_step_does_not_stop_the_rest_and_the_summary_says_fail() {
             "base",
             "head",
             "targets",
-            "py",
             "scans",
             "diff_check",
             "fmt",
             "clippy",
-            "test_lib",
-            "test_bins",
-            "test_targets",
-            "python",
+            "test",
             "result"
         ],
         "{line}"
     );
     assert_eq!(r["result"], "FAIL");
-    // The steps after the failed one still ran.
+    // The steps after the failed one still ran: one test call (the fake `cargo nextest
+    // --version` succeeds, so nextest runs it).
     let calls = tools.calls_text();
-    for later in [
-        "test --locked --offline --no-fail-fast --lib",
-        "--bins",
-        "--test update_command_cli",
-    ] {
-        assert!(calls.contains(later), "{later} in {calls}");
-    }
-    assert!(
-        calls.contains("python3 -m unittest tests.update_tux_tty_test"),
-        "{calls}"
-    );
+    let later = "cargo nextest run --locked --offline --no-fail-fast --lib --bin moai-cli --test home_isolation_scan --test update_command_cli";
+    assert!(calls.contains(later), "{later} in {calls}");
+    // No step runs Python, though the fixture holds a module of the same area.
+    assert!(!calls.contains("python3"), "{calls}");
 
     // Every step passing gives PASS and exit 0 for each key.
     let tools = Tools::new(&["cargo", "python3", "rustfmt"]);
@@ -492,7 +515,7 @@ fn keys(line: &str) -> Vec<&str> {
 }
 
 /// SPEC-20261122-check-light-stop REQ-1 to REQ-3: a cheap step that fails stops the run before
-/// clippy, the build, the tests and the Python step; the other cheap steps still run; the
+/// clippy and the tests; the other cheap steps still run; the
 /// summary names the first failed one right before the result and has no word for a step that
 /// did not run.
 #[test]
@@ -518,7 +541,6 @@ fn a_failed_cheap_step_stops_before_the_heavy_steps() {
             "base",
             "head",
             "targets",
-            "py",
             "scans",
             "diff_check",
             "fmt",
@@ -532,7 +554,7 @@ fn a_failed_cheap_step_stops_before_the_heavy_steps() {
     // The other cheap steps ran; nothing heavy and no Python did.
     let calls = tools.calls_text();
     assert!(calls.contains("rustfmt --edition 2021 --check"), "{calls}");
-    for never in ["clippy", "--lib", "--bins", "--test ", "python3"] {
+    for never in ["clippy", "--lib", "--bin moai-cli", "--test ", "python3"] {
         assert!(!calls.contains(never), "{never} ran: {calls}");
     }
     for line in calls.lines().filter(|l| l.starts_with("cargo ")) {
@@ -589,7 +611,7 @@ fn every_kind_of_cheap_failure_stops_the_run() {
             "{stopped}: {line}"
         );
         let calls = tools.calls_text();
-        for never in ["clippy", "--lib", "--bins", "python3"] {
+        for never in ["clippy", "--lib", "--bin moai-cli", "python3"] {
             assert!(!calls.contains(never), "{stopped}: {never} ran: {calls}");
         }
     }
@@ -615,7 +637,7 @@ fn a_program_that_cannot_start_is_127_and_a_refused_slot_keeps_its_code() {
     let (ok, r) = affected(&fx, &["--slot-dir", refusing.as_str()], Some((&tools, "")));
     assert!(ok, "{r}");
     let line = r["summary"].as_str().unwrap();
-    assert!(line.contains(" clippy=125 "), "{line}");
+    assert!(line.contains(" clippy=125 test=125 "), "{line}");
     assert!(line.ends_with(" result=FAIL"), "{line}");
     let calls = tools.calls_text();
     assert!(

@@ -6,9 +6,12 @@
 use std::{fs, path::Path};
 
 fn skill(rel: &str) -> String {
-    let path = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("skills/moai")
-        .join(rel);
+    repo(&format!("skills/moai/{rel}"))
+}
+
+/// A file by its path from the repository root.
+fn repo(rel: &str) -> String {
+    let path = Path::new(env!("CARGO_MANIFEST_DIR")).join(rel);
     fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()))
 }
 
@@ -80,8 +83,9 @@ fn the_skill_entry_points_to_the_core_rules_and_keeps_the_decision_order() {
 #[test]
 fn no_other_file_points_to_the_skill_entry_for_the_moved_rules() {
     // The rule history lists the completion rule as a copy that stands alone: it is rule 23
-    // of the core rules now, not a sentence of the skill entry.
-    let history = skill("references/rule-history.md");
+    // of the core rules now, not a sentence of the skill entry. The history left the package
+    // for `docs/` (SPEC-20261122-next-flow-skills-agents Plan step 6).
+    let history = repo("docs/rule-history.md");
     let row = history
         .lines()
         .find(|l| l.starts_with("- Never report a verification or external effect"))

@@ -91,13 +91,13 @@ fn an_inherited_git_dir_cannot_change_the_rendered_branch_or_counts() {
     fs::write(other.join("u2.txt"), "u\n").unwrap();
 
     let clean = render(&home, &project, &[], WITHIN);
-    assert!(clean.contains("🅱️  main"), "{clean}");
+    assert!(clean.contains("🅱️ main"), "{clean}");
     // SPEC-20261122-statusline-where: the branch is on the first line, after the model. A clean
     // branch has no `+N` (the other repository's three changes would show as `+3`); there is
     // no `💾` segment (leader decision 6862179411). The input names no repository, so the
     // repository item is left out with its separator (REQ-1): no `📡 n/a`.
     let first_line = clean.lines().next().unwrap();
-    assert_eq!(first_line, "🧠 Opus | 🅱️  main", "{clean}");
+    assert_eq!(first_line, "🧠 Opus | 🅱️ main", "{clean}");
     assert!(!clean.contains("📁"), "{clean}");
 
     let git_dir = other.join(".git");
@@ -137,12 +137,12 @@ fn an_expired_render_budget_drops_the_git_numbers() {
     let within = render(&home, &project, &[], WITHIN);
     assert_eq!(
         within.lines().next(),
-        Some("🧠 Opus | 🅱️  main +1"),
+        Some("🧠 Opus | 🅱️ main +1"),
         "{within}"
     );
     for _ in 0..5 {
         let over = render(&home, &project, &[], 0);
-        assert_eq!(over.lines().next(), Some("🧠 Opus | 🅱️  main"), "{over}");
+        assert_eq!(over.lines().next(), Some("🧠 Opus | 🅱️ main"), "{over}");
         assert!(!over.contains("📁") && !over.contains("📡"), "{over}");
         assert_eq!(
             over.lines().skip(1).collect::<Vec<_>>(),

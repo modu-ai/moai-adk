@@ -74,6 +74,7 @@ Update and move
   home-install-apply     Move the ~/.moai-cli items to ~/.moai
   home-install-revert    Undo a ~/.moai-cli to ~/.moai move
   host-wake              One wake through the host adapter
+  star-ask               The polite star ask
   worktree-move-plan     Preview moving this clone's worktrees
   worktree-move-apply    Move the previewed worktrees
   update-plan            Preview an update of every host copy
@@ -180,6 +181,7 @@ Lane and leader
   trailer-check          Report commits with missing or malformed trailers
   bundle                 Assemble the M-Flow bundle from READY heads
   audit-clone-plan       Preview an independent audit clone
+  audit-slot             Audit slots that inherit the lane's build
   labels-check           Report Issues whose labels break the rule
   decision-due           Sort the unanswered decisions of a bundle
   decision-file-check    Check one decision bundle file
@@ -260,10 +262,12 @@ Options:
                            credits
       --no-advisor         Pass no `--advisor` even when the user setting
                            `launcher.advisor` turns it on
-      --permissions        Keep permission prompts: no
-                           `--dangerously-skip-permissions` (Claude hosts).
-                           Without it a -l|-a session has full access; a session
-                           without a role never gets a permission flag
+      --permissions        Keep permission prompts: no permission flag at all
+                           (Claude hosts), so the host starts in the mode its
+                           own settings choose. Without it every launch starts
+                           in auto mode (`--permission-mode auto`) unless the
+                           user setting `launcher.role_access` says `full` or
+                           `prompt`
       --dry-run            Print the composed command as JSON instead of
                            starting the host [aliases: --print-command]
   -h, --help               Print help

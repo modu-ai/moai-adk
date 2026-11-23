@@ -700,7 +700,7 @@ mod tests {
                 InvalidInput,
             ),
             ("existing .claude/settings.json requires preservation review", Conflict),
-            (".claude/settings.json receipt requires preservation review", Conflict),
+            ("claude settings receipt requires preservation review", Conflict),
             // incremental index (rc.2 C6 #2182); every current message of the module
             ("index build failed; previous generation kept: a.txt read failed", Io),
             ("index source unavailable: no HEAD commit", Io),
