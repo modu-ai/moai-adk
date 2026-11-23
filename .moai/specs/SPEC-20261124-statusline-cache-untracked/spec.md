@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261124-statusline-cache-untracked
 title: "The repository .gitignore ignores the statusline counts cache so no session or worktree shows an untracked .moai-cli/state/"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-24
+approval:
+  by: leader
+  at: 2026-11-23
+  basis: "리더 결정 노트 7689 (2026-11-23T16:32:27Z, 사용자 위임 2026-11-23T13:57Z, 노트 7688 에 대한 답, 옵션 A 승인 + /.moai/state/ 한 줄 추가 + 카드 쓰기 범위를 .gitignore 와 tests/gitignore_block_cli.rs 로 넓힘); 리더가 노트에 적었고 레인은 그 노트를 인용만 해요. 사용자 직접 선택이 아니라 리더 판단이에요"
+  digest: "sha256:a7aee7feb4bf699c4b6fbddd22949624b36c3efb2e8d9cbbdf822b940efb8b32"
 ---
 
 # The repository .gitignore ignores the statusline counts cache so no session or worktree shows an untracked .moai-cli/state/
@@ -31,6 +36,19 @@ created: 2026-11-24
 - 옵션 C: 낯선 파일만 지우기. 거절: 세션마다 다시 생기고(측정 A·B), 이 레인은 `~/.moai-cli` 와 루트 체크아웃의 파일을 지우지 않아요.
 - 기본값: 옵션 A. 되돌릴 수 있고 이 저장소 안이며 HOME·삭제·푸시·릴리스가 아니에요. 옵션 B 는 이 SPEC 에서 하지 않고 필요하면 따로 카드를 열어요.
 
+### 승인 결과 (리더 결정 노트 7689)
+
+옵션 A 가 승인됐어요. 리더가 덧붙인 것: `.gitignore` 에 `/.moai-cli/state/` 와 함께 `/.moai/state/` 도 한 줄 더해요(상태 폴더가 `.moai/` 로 옮겨 간 뒤 같은 일이 다시 생기지 않게. 리더가 NeXT 를 읽어 `src/lib.rs:257` 의 `PROJECT_STATE_DIR` 가 아직 `.moai-cli` 임을 확인했어요). `.moai/` 의 `specs`·`project.yaml`·`evals` 는 계속 추적되고 테스트가 그걸 함께 지켜요. 옵션 B 는 이 카드에서 하지 않고 옵션 C 는 거절했어요. 카드 쓰기 범위를 `.gitignore` 와 `tests/gitignore_block_cli.rs` 로 넓히는 것도 승인됐어요(`moai card` 범위 명령으로 하나씩).
+
+이 레인이 읽은 것 하나: 이 저장소의 `.gitignore` 는 이미 `.moai/state/`(242행)와 `/.moai/*`(361행, `specs`·`project.yaml`·`evals` 만 예외)로 `.moai/state/` 를 무시해요. 그래서 `/.moai/state/` 줄은 지금 효과가 겹쳐요. 승인된 대로 더하고, 겹침은 보고에 적어요.
+
+## Interview
+
+- Q1: 카드는 "테스트가 작업 폴더에 쓴다"고 했는데 고칠 대상이 테스트인가요? → A: 아니에요. 쓰는 쪽은 세션의 진짜 상태줄이에요(측정 A·B). 그래서 테스트를 임시 프로젝트로 고치지 않고 이 저장소의 `.gitignore` 빈틈을 닫아요(리더 노트 7689 가 옵션 A 로 승인).
+- Q2: 사용자 프로젝트도 고치나요? → A: 안 고쳐요. 관리 블록(`moai-local`)이 이미 `.moai-cli/state/` 를 무시해요(`tests/gitignore_block_cli.rs` 의 `MACHINE_FILES`).
+- Q3: `/.moai/state/` 줄도 더하나요? → A: 더해요(노트 7689 의 덧붙임). 지금은 242행과 361행 규칙으로 이미 무시돼서 효과가 겹쳐요. 상태 폴더가 `.moai/` 로 옮겨 간 뒤에도 규칙이 이름으로 남게 하는 보험이고, 테스트가 `.moai/state/github/counts.json` 무시와 `specs`·`project.yaml`·`evals` 추적을 함께 지켜요.
+- Q4: 카드 범위는요? → A: SPEC 폴더로 잡았고, `.gitignore` 와 `tests/gitignore_block_cli.rs` 를 `moai card scope` 로 하나씩 넓혀요(노트 7689).
+
 ## Non-goals
 
 - 상태줄 코드(`src/statusline/**`)의 변경, 캐시 위치 이동(옵션 B), `refresh` 자식의 시작 조건 변경.
@@ -40,16 +58,16 @@ created: 2026-11-24
 
 ## Requirements
 
-- REQ-1: The repository `.gitignore` shall ignore `.moai-cli/state/` at the repository root with a rule that carries a comment naming the statusline counts cache.
-- REQ-2: A test next to `the_repository_gitignore_tracks_specs_and_ignores_the_rest` in `tests/gitignore_block_cli.rs` shall fail when git, reading the repository `.gitignore`, does not ignore `.moai-cli/state/github/counts.json`, `.moai-cli/state/github/refresh.lock` or a temporary `.moai-cli/state/github/counts.json.<pid>.tmp`.
-- REQ-3: The same test shall fail when git ignores a team file under `.moai-cli/` that the repository tracks (`.moai-cli/project.yaml`, `.moai-cli/manifests/profile-baseline.json`).
+- REQ-1: The repository `.gitignore` shall ignore `.moai-cli/state/` and `.moai/state/` at the repository root with rules that carry a comment naming the statusline counts cache.
+- REQ-2: A test next to `the_repository_gitignore_tracks_specs_and_ignores_the_rest` in `tests/gitignore_block_cli.rs` shall fail when git, reading the repository `.gitignore`, does not ignore `.moai-cli/state/github/counts.json`, `.moai-cli/state/github/refresh.lock`, a temporary `.moai-cli/state/github/counts.json.<pid>.tmp` or `.moai/state/github/counts.json`.
+- REQ-3: The same test shall fail when git ignores a team file that the repository tracks: `.moai-cli/project.yaml`, `.moai-cli/manifests/profile-baseline.json`, `.moai/project.yaml`, a file under `.moai/specs/` or a file under `.moai/evals/`.
 - REQ-4: The change shall touch no file other than the SPEC folder, `.gitignore` and `tests/gitignore_block_cli.rs`.
 - REQ-5: The lane shall delete or modify no existing `.moai-cli/state/` file in this worktree, in the primary checkout or in the HOME state folder.
 
 ## Acceptance
 
 - AC-1 (REQ-1, REQ-2): git ignores the three cache paths with the repository `.gitignore` as it stands at the head · verify: `cargo test --locked --offline --test gitignore_block_cli the_repository_gitignore_ignores_the_statusline_counts_cache`
-- AC-2 (REQ-3): the same test keeps `.moai-cli/project.yaml` and `.moai-cli/manifests/profile-baseline.json` unignored, and `the_repository_gitignore_tracks_specs_and_ignores_the_rest` stays green · verify: `cargo test --locked --offline --test gitignore_block_cli`
+- AC-2 (REQ-3): the same test keeps the five tracked team paths of REQ-3 unignored, and `the_repository_gitignore_tracks_specs_and_ignores_the_rest` stays green · verify: `cargo test --locked --offline --test gitignore_block_cli`
 - AC-3 (REQ-4, REQ-5): the range changes exactly the three paths and no `.moai-cli/state/` file · verify: `git diff --name-only <base>..<head>`
 - AC-4 (REQ-1): in a worktree of the head, a statusline refresh leaves `git status --short` without `.moai-cli/state` · verify: the READY note records `git status --short` at the head after the lane's own session has rendered its status line (observed, not asserted from a test).
 
@@ -59,12 +77,12 @@ created: 2026-11-24
 - read-only: `src/statusline/counts.rs`, `src/statusline/state.rs`, `src/agents.rs`, `.claude/settings.json`
 - forbidden: `src/**` (every change), the HOME state folders, the primary checkout's files, any deletion of a file named in REQ-5
 
-The card's own scope is empty and the lane took it with the SPEC folder only; `.gitignore` and `tests/gitignore_block_cli.rs` are added after the user approves this SPEC, with `moai card` (scope widen) on the card's reservation.
+The card's own scope is empty and the lane took it with the SPEC folder only; `.gitignore` and `tests/gitignore_block_cli.rs` are added one at a time with `moai card` (scope widen) on the card's reservation, as the leader's note 7689 approved.
 
 ## Plan
 
-1. This SPEC, with the approval request as `LANE-BLOCKED kind=decision` on the card. The lane writes no approval.
-2. After approval: widen the card's write scope to the two paths.
+1. This SPEC, with the approval request as `LANE-BLOCKED kind=decision` on the card. The lane writes no approval; the leader's note 7689 is quoted in the front matter.
+2. Widen the card's write scope to the two paths, one at a time.
 3. RED test `the_repository_gitignore_ignores_the_statusline_counts_cache`, run once to show it fails on the unchanged `.gitignore`.
 4. The one-line `.gitignore` rule; the test turns green.
 5. Guard mutant: remove the rule, the test fails with a non-zero exit; restore.
@@ -78,6 +96,4 @@ The card's own scope is empty and the lane took it with the SPEC folder only; `.
 
 ## Result
 
-Status: SPEC draft (revision 1). The SPEC carries no approval; the user approves it.
-
-No code or test is built yet. The finding above is the whole result of this step.
+Status: SPEC approved by the leader (revision 1, note 7689, a leader judgment and not the user's own pick). No code or test is built yet.
