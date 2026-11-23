@@ -2,7 +2,7 @@
 id: SPEC-20261122-test-defects-session-reclaim
 title: "Two defects: the registry tests read the shell's session id, and card reclaim counts the runtime state folder as work"
 status: draft
-revision: 4
+revision: 5
 created: 2026-11-22
 ---
 
@@ -33,6 +33,9 @@ Every lane shell turns `moai check affected` red because the session-register te
 - REQ-12 (REQ-11): IF the shell that runs `card reclaim` sets a trace variable, THEN the reclaim shall judge the worktree by its work and not by the trace.
 - REQ-13: When the Rust property harness replays one case with `PROP_ONLY`, the index shall name a case of the run.
 - REQ-14 (REQ-13): IF the index is at or beyond the case count, THEN the run shall fail and name the property, the index, the case count and the seed.
+- REQ-15: When moai starts a git child, the child shall run with the trace2 targets `GIT_TRACE2`, `GIT_TRACE2_EVENT` and `GIT_TRACE2_PERF` set to `0`.
+- REQ-16 (REQ-15): IF the git configuration of the user sets a trace2 target, THEN the child shall still write no trace.
+- REQ-17 (REQ-13): IF `PROP_ONLY` is set and is not a number, THEN the Rust property harness shall fail and name the value.
 
 ## Acceptance
 
@@ -44,8 +47,11 @@ Every lane shell turns `moai check affected` red because the session-register te
 - AC-6 (REQ-5, REQ-6): a worktree that ignores its runtime state folder and holds an ignored file there is reclaimed early and the file stays, while an ignored file outside that folder still refuses the reclaim · verify: `cargo test --offline --locked --test card_reclaim_early_cli an_ignored_state_folder_file_is_not_work`
 - AC-7 (REQ-7, REQ-8): the budget of `tests/common/prop.rs` is 30 s when the load is at or below the CPU count or cannot be read, grows in proportion above it, and is capped; the over-budget message carries the seed, the elapsed time, the budget and the load · verify: `cargo test --offline --locked --test prop_reservation the_property_budget_`
 - AC-8 (REQ-9, REQ-10): a worktree with an untracked folder that cannot be opened (mode 000) is refused as unreadable, where git exits 0 and only warns · verify: `cargo test --offline --locked --test card_reclaim_early_cli an_unreadable_folder_is_not_a_clean_worktree`
-- AC-9 (REQ-3, REQ-4): an untracked file whose name holds a space is compared as written: under the runtime state folder it is tool state, outside it is one uncommitted change · verify: `cargo test --offline --locked --test card_reclaim_early_cli a_name_with_a_space_is_read_as_written`- AC-10 (REQ-11, REQ-12): the name test removes every documented trace variable and keeps an unrelated one, and a `card reclaim` run with `GIT_TRACE`, `GIT_TRACE2` and `GIT_TRACE_SETUP` set refuses a dirty worktree for its one change and reclaims a clean one · verify: `cargo nextest run --lib -E 'test(git_trace_variables_are_removed_by_prefix)'` and `cargo nextest run --test card_reclaim_early_cli -E 'test(a_git_trace_variable_does_not_make_a_worktree_unreadable)'`
+- AC-9 (REQ-3, REQ-4): an untracked file whose name holds a space is compared as written: under the runtime state folder it is tool state, outside it is one uncommitted change · verify: `cargo test --offline --locked --test card_reclaim_early_cli a_name_with_a_space_is_read_as_written`
+- AC-10 (REQ-11, REQ-12): the name test removes every documented trace variable and keeps an unrelated one, and a `card reclaim` run with `GIT_TRACE`, `GIT_TRACE2` and `GIT_TRACE_SETUP` set refuses a dirty worktree for its one change and reclaims a clean one · verify: `cargo nextest run --lib -E 'test(git_trace_variables_are_removed_by_prefix)'` and `cargo nextest run --test card_reclaim_early_cli -E 'test(a_git_trace_variable_does_not_make_a_worktree_unreadable)'`
 - AC-11 (REQ-13, REQ-14): an index at or beyond the case count is refused with the property, the index, the case count and the seed; an index inside the run or none is accepted · verify: `cargo nextest run --test prop_reservation -E 'test(a_replay_index_beyond_the_cases_is_refused)'`
+- AC-12 (REQ-15, REQ-16): the scrub puts the three trace2 targets into the child's environment as `0`, and a `card reclaim` of a clean worktree whose user-level git configuration sets `trace2.normalTarget = 2` is reclaimed · verify: `cargo nextest run --lib -E 'test(the_trace2_targets_are_switched_off_for_the_child)'` and `cargo nextest run --test card_reclaim_early_cli -E 'test(a_trace2_config_does_not_make_a_worktree_unreadable)'`
+- AC-13 (REQ-17): a `PROP_ONLY` that is not a number is refused and the message names the value; a number or no value is accepted · verify: `cargo nextest run --test prop_reservation -E 'test(a_replay_index_that_is_not_a_number_is_refused)'`
 
 ## Scope
 
@@ -59,6 +65,7 @@ Every lane shell turns `moai check affected` red because the session-register te
 4. Slice 3 (revision 3, the leader's note on the flaky property budget and the audit of slice 2): the budget function and its unit tests in `tests/common/prop.rs` first (red), then `run_property` checks the elapsed time against it and names the load in its message.
 5. Slice 3, the audit of slice 2: AC-8 and AC-9 red first, then the gate's git reads go through one helper that refuses on a warning and read paths NUL-separated (`-z`), and the state folder is resolved once per check instead of once per entry.
 6. Slice 4 (revision 4, the audit of slice 3), the part that needs no write in `src/card/dispatch.rs`: AC-10 and AC-11 red first (the name test and the CLI test with the trace variables set; the replay-index test), then the scrub removes the `GIT_TRACE` prefix and `run_property` refuses an index beyond the cases; the comments that named the property SPEC by its card number name its id.
+7. Slice 5 (revision 5, the audit of slice 4): the line break lost before AC-10 is restored; the doc comment of `scrub_git_env` names the trace prefix; AC-12 and AC-13 red first, then the scrub sets the three trace2 targets to `0` and `PROP_ONLY` is parsed by one function that refuses a value that is not a number.
 
 ## Decisions
 
@@ -71,6 +78,8 @@ Every lane shell turns `moai check affected` red because the session-register te
 | D-5 | The 30 s budget of SPEC-20261119-property-tests AC-3 is kept for an idle machine and multiplied by load / CPUs (at least 1, at most 8) instead of dropping the wall-time check; a failure still prints the seed. | the leader's note on the flaky budget offered "count cases, not wall time; or scale the budget"; scaling keeps the other SPEC's acceptance on an idle machine, which dropping it would remove |
 | D-6 | The scrub removes by the prefix `GIT_TRACE`, which covers `GIT_TRACE`, `GIT_TRACE_*`, `GIT_TRACE2` and `GIT_TRACE2_*`; moai's own git children never trace. | the audit of slice 3 (N2: with one variable set, every reclaim of an existing worktree is refused) |
 | D-7 | A replay index beyond the cases fails the run instead of running zero cases. | the audit of slice 3 (N7) |
+| D-8 | The three trace2 targets are set to `0`, not only removed, because the user's git configuration (`trace2.normalTarget`) turns the trace on when the variable is absent; the other trace variables stay removed. | the audit of slice 4 (N1) |
+| D-9 | A `PROP_ONLY` that is not a number fails the run; `PROP_SEED` keeps its reading. | the audit of slice 4 (N5) |
 
 ### Research
 
