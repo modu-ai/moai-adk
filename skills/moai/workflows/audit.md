@@ -97,13 +97,15 @@ The lander's brief to `moai-audit` carries the four tier lines of the audit cont
 - code (tier 1): product code or skill text changes; a session that wrote none of it audits the head: it cites the lane's receipt instead of running the head again, and tries at most three mutants on changed lines, each against one or two targets.
 - high-risk (tier 2): a changed path starts with a prefix of the floor list below; a session that wrote none of it gives the full audit: the code steps plus the boundary, security and data-loss checks of this contract.
 
+The floor list of paths is in the audit contract, section "Audit tiers".
+
 - A ready note whose receipt has a non-zero step is not ready: the lander sends it back to the lane and starts no audit.
 - Only the lander runs the merged tree, and only when the tip moved and the changed files overlap; the auditor never does.
 
 - Read-only is enforced by the host only where the installed agent file can carry it: Claude Code (the file denies the editing tools), and the host's own read-only setting on Kiro and Cursor CLI. On any other host read-only rests on the instructions alone; say so in the verdict.
 - On every host, confirm after the agent returns that `git status` in its worktree shows no change; a change there makes its findings unusable.
-- Isolation: the audit agent sets none of its own. It reads the audit worktree in `scope` and ends `blocked` when that worktree is missing or its HEAD is not `head`. The implementation agent keeps its worktree (RUN workflow).
-- Cleanup (Issue #3054): put the cleanup rule in the agent's brief and read its `Cleanup` section. The agent deletes only the build output it made in its own worktree (for example `target/debug`), from inside that worktree and by relative path (`rm -rf target/debug`); it never uses an absolute path, because the project's deny rules refuse every recursive delete by absolute path and the refusal says only that permission was denied. Logs and evidence folders stay until the verdict is recorded. A delete that failed is reported with its path and size, never retried in another form. The audit worktree itself is removed when the verdict is posted, through `moai worktree-gc-apply --worktree <path>` as the RUN workflow's "Check-run rules" say, never with a recursive delete.
+- Isolation: the audit agent sets none of its own. It reads the audit worktree in `scope`, runs every command inside it (its shell starts in the lander's folder) and ends `blocked` when that worktree is missing or its HEAD is not `head`. The implementation agent keeps its worktree (RUN workflow).
+- Cleanup (Issue #3054): put the cleanup rule in the agent's brief and read its `Cleanup` section. The agent deletes only the build output it made in the audit worktree named in `scope` (for example `target/debug`), from inside that worktree and by relative path (`rm -rf target/debug`), because a relative path run from the lander's folder would delete the lander's build output; it never uses an absolute path, because the project's deny rules refuse every recursive delete by absolute path and the refusal says only that permission was denied. Logs and evidence folders stay until the verdict is recorded. A delete that failed is reported with its path and size, never retried in another form. The audit worktree itself is removed when the verdict is posted, through `moai worktree-gc-apply --worktree <path>` as the RUN workflow's "Check-run rules" say, never with a recursive delete.
 
 ## Web pages
 

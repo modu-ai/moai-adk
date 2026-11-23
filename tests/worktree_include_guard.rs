@@ -32,7 +32,8 @@ fn the_update_workflow_reports_the_warning_and_never_edits_the_file() {
         "run the read-only `moai go-state-plan <project>` and show the user every warning it gives about `.worktreeinclude`",
         "selects secret files such as `.env`",
         "copy them into every new worktree",
-        "`moai-impl` and `moai-audit`",
+        "the worktrees of the `moai-impl` agent",
+        "the audit worktree is made by the lander with plain git",
         "Name the line and ask as a selection",
         "Never edit that file without the pick",
     ] {

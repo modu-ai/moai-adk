@@ -105,9 +105,22 @@ fn builders_clean_up_by_relative_path_inside_their_own_worktree() {
             .lines()
             .find(|l| l.starts_with("- Cleanup: "))
             .unwrap_or_else(|| panic!("{}: no `- Cleanup: ` rule in Boundaries", d.name));
+        // The implementation agent has a worktree of its own; the audit agent has none and
+        // cleans the audit worktree named in `scope` (SPEC-20261123-audit-scope-worktree-text).
+        let (made_in, inside) = if d.name == "moai-audit" {
+            (
+                "build output you made in the audit worktree named in `scope`",
+                "from inside the audit worktree with a relative path",
+            )
+        } else {
+            (
+                "build output you made in your own worktree",
+                "from inside your own worktree with a relative path",
+            )
+        };
         for needle in [
-            "build output you made in your own worktree",
-            "from inside your own worktree with a relative path",
+            made_in,
+            inside,
             "rm -rf target/debug",
             "Never pass an absolute path",
             "Keep logs and evidence folders until",
