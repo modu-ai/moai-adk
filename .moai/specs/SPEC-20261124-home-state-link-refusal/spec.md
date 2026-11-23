@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261124-home-state-link-refusal
 title: "홈 상태 뿌리와 쓰는 폴더 사이의 심볼릭 링크를 거절해요: 클레임 저널 뿌리와 worktree 이동 뿌리"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-24
+approval:
+  by: leader
+  at: 2026-11-23
+  basis: "리더 결정 노트 7908 (2026-11-23T21:22:01Z, 사용자 위임 2026-11-23T13:57Z, 리더 판단이고 사용자 직접 선택은 아님, 노트 7906 에 답함: 판 1 승인 — D-1 검사 함수 하나, D-2 문장, D-3 이동 뿌리 범위, D-5 N1·R1 비범위, D-6 쓰기 범위; 승인 커밋 ca269cda30); 리더가 노트에 적었고 레인은 그 노트를 인용만 해요"
+  digest: "sha256:dd49e7494cfb5feabc9274e6e958437945f80135c849e13a74ee8f79ee3dfea4"
 ---
 
 # 홈 상태 뿌리와 쓰는 폴더 사이의 심볼릭 링크를 거절해요: 클레임 저널 뿌리와 worktree 이동 뿌리
