@@ -532,7 +532,7 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
         "session-register",
         &[
             "session-register --name agent-1 .",
-            "session-register --continue --name agent-1 .",
+            "session-register --show --name agent-1 .",
             "session-register --release --by leader --name agent-1 --instance <instance> .",
         ],
     ),
