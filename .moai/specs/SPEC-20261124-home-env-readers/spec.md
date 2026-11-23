@@ -2,13 +2,13 @@
 id: SPEC-20261124-home-env-readers
 title: "환경 HOME 을 직접 읽는 곳을 명령 가장자리로 모아요: 조각 1 은 layout, 조각 2 는 클레임 장부 호출부와 git 자식"
 status: approved
-revision: 3
+revision: 4
 created: 2026-11-24
 approval:
   by: leader
   at: 2026-11-23
-  basis: "리더 결정 노트 7830 (2026-11-23T19:39:15Z, 사용자 위임 2026-11-23T13:57Z, 리더 판단이고 사용자 직접 선택은 아님, 노트 7828 에 답함: 판 3 승인 — 금지 문장을 src 의 호출 교체 줄로 좁히고 클레임 연결 테스트 도우미 한 줄을 바꾸며 기준선 상한 361 을 AC 에 적음); 리더가 노트에 적었고 레인은 그 노트를 인용만 해요"
-  digest: "sha256:bd9fa6b435e55fe4daf582f0b403ff46517a50c8ef065b538a6bc4b98bab056e"
+  basis: "리더 결정 노트 7858 (2026-11-23T20:31:59Z, 사용자 위임 2026-11-23T13:57Z, 리더 판단이고 사용자 직접 선택은 아님, 노트 7856 에 답함: 판 4 승인 — REQ-10 한 문장, D-8 고정 폐기와 같은 HOME 판정 한 곳, AC-14·15·16, N2·N3 문구; 앞 판은 노트 7763·7830); 리더가 노트에 적었고 레인은 그 노트를 인용만 해요"
+  digest: "sha256:5c22627fc9788b7bcc3948eef8a7a9fffdf18ea3572122152a355b8cafb3f174"
 ---
 
 # 환경 HOME 을 직접 읽는 곳을 명령 가장자리로 모아요: 조각 1 은 layout, 조각 2 는 클레임 장부 호출부와 git 자식
@@ -24,6 +24,8 @@ C-409 N1(감사 #409)도 이 카드 몫이에요: `identity_in` 이 부르는 gi
 판 2(조각 2)는 세 가지를 해요. ① 클레임 장부 호출부가 HOME 을 받아요: `claim::journal_root_in`, `worktree::open_locked_journal_in` 을 더하고 `layout::apply_at` 의 저널 잠금이 환경 HOME 을 읽지 않게 해요. ② git 자식의 전역 설정을 받은 HOME 으로 고정하고, 조각 1 테스트의 부모 쪽 git 자식이 임시 폴더 HOME 을 쓰게 해요(감사 #410 N2). ③ C-406 가드가 착지했으니(NeXT `132728a026`) 이 변경으로 더는 HOME 을 건드리지 않게 된 테스트의 기준선 줄을 같은 변경에서 지워요. 줄이 몇 개 줄어드는지는 변경 뒤 관찰 실행으로 재요(그 전은 unverified).
 
 판 3(조각 2 의 마무리)은 하나를 더해요. 클레임 연결 테스트(`tests/claim_link_cli.rs`)의 도우미 `record()` 가 `identity::identity` 를 불러 그 테스트 스물여섯 개가 가드 기준선에 남아 있었어요. 그 도우미가 읽는 칸(`clone_anchor`, `workspace_git_dir`, `work_tree`)은 HOME 과 무관하므로 `identity_in(.., None)` 으로 바꾸고, 관찰 실행으로 가드에서 빠진 것을 확인한 스물다섯 줄을 같은 변경에서 지워요(리더 결정 노트 7830).
+
+판 4(조각 2 수리, 감사 #410 막는 것 B1, 리더 결정 노트 7851)는 판 2 ② 의 git 자식 방식을 바꿔요. 판 2 는 받은 HOME 이 있으면 `GIT_CONFIG_GLOBAL` 을 그 HOME 의 `.gitconfig`(없으면 `/dev/null`)로 고정했어요. git 은 `GIT_CONFIG_GLOBAL` 이 있으면 `$XDG_CONFIG_HOME/git/config` 를 읽지 않아서(git 2.54.0, git(1) ENVIRONMENT), `identity()` 가 XDG 파일에 `safe.directory` 를 둔 사용자와 자기 `GIT_CONFIG_GLOBAL` 을 둔 사용자의 설정을 버렸어요. 판 4 는 그 고정을 없애요: 받은 HOME 이 프로세스의 환경 HOME 과 같거나 HOME 이 없으면 자식은 환경을 그대로 받고, 다르면 자식의 HOME 을 받은 HOME 으로 두고 `XDG_CONFIG_HOME` 과 `GIT_CONFIG_GLOBAL` 을 지워요. 같은 판에서 감사 #410 비차단 N2(Scope 의 금지 문장과 D-5 의 어긋남)와 N3(`spec show` 가 Scope 를 잘못 읽음)의 문구를 고쳐요.
 
 ## Non-goals
 
@@ -42,9 +44,10 @@ C-409 N1(감사 #409)도 이 카드 몫이에요: `identity_in` 이 부르는 gi
 - REQ-7: The `journal_root` function shall return what `journal_root_in` returns for the environment HOME read once.
 - REQ-8: The `open_locked_journal_in` function shall lock the journal that `journal_root_in` names for the HOME it is given.
 - REQ-9: The `apply_at` function shall lock the project-side claim journal without reading the environment HOME, because it refuses an already switched pointer before it locks.
-- REQ-10: The `identity_in` function shall run its git children with the global git configuration of the HOME it is given, and with the process's own lookup when it is given none.
+- REQ-10: The `identity_in` function shall run its git children with the HOME it is given as their HOME and without `XDG_CONFIG_HOME` and `GIT_CONFIG_GLOBAL` when that HOME is not the process's own HOME, and with the process's own environment when it is that HOME or none.
 - REQ-11: The layout tests shall run every git child they start with a HOME in a temporary folder.
 - REQ-12: The baseline of `tests/fixtures/test_home_guard/baseline.tsv` shall list no test that the observation run of the changed tree shows leaving its HOME untouched.
+
 ## Acceptance
 
 - AC-1 (REQ-1, REQ-2): 환경 변수 HOME 과 다른 임시 폴더를 넘기면 홈 뿌리가 그 폴더 아래 경로이고, `None` 과 빈 경로는 `None` 이에요. · verify: `cargo nextest run --offline --locked --lib -E 'test(default_home_root_in)'`
@@ -60,13 +63,19 @@ C-409 N1(감사 #409)도 이 카드 몫이에요: `identity_in` 이 부르는 gi
 - AC-11 (REQ-12): 줄을 지운 기준선이 `tests/test_home_guard.rs` 의 기준선 테스트를 통과하고(상한은 남은 줄 수 361 로 낮춰요), 지운 줄의 테스트를 관찰 모드로 돌렸을 때 가드 줄이 나오지 않아요. · verify: `cargo nextest run --offline --locked --test test_home_guard --test claim_link_cli --test hook_dispatch_cli` 와 `MOAI_HOME_GUARD=observe MOAI_HOME_GUARD_LOG=<파일> cargo nextest run --offline --locked --test claim_link_cli --test claim_verify_cli --test hook_dispatch_cli`
 - AC-12 (REQ-6..REQ-12): 조각 2 의 변경 경로는 이 SPEC 의 Scope write 목록 안이에요. · verify: `git diff --stat <base>..<head>`
 - AC-13 (REQ-12): 클레임 연결 테스트 도우미는 HOME 없이 클론 신원을 풀어요. `tests/claim_link_cli.rs` 의 `record()` 가 `identity_in(&self.root, None)` 을 부르고, 되돌리면(`identity(&self.root)`) 기준선에서 지운 스물다섯 테스트가 enforce 에서 실패해요. · verify: `git diff <base>..<head> -- tests/claim_link_cli.rs` 와 `cargo nextest run --offline --locked --test claim_link_cli`
+- AC-14 (REQ-10): 소유자가 다른 저장소에서, 신뢰(`safe.directory`)를 받은 HOME 의 `.config/git/config` 에만 둔 HOME 을 넘기면 `identity_in(path, Some(home))` 이 성공하고, 신뢰가 없는 HOME 은 거절 문구로 실패해요(판 2 의 `GIT_CONFIG_GLOBAL` 고정은 이 파일을 버렸어요). · verify: `cargo nextest run --offline --locked --lib -E 'test(identity_in_reads_the_xdg)'`
+- AC-15 (REQ-10): 환경이 `$XDG_CONFIG_HOME/git/config` 나 `GIT_CONFIG_GLOBAL` 이 가리키는 파일로만 신뢰를 두면 `identity(path)` 가 성공하고, 그 둘이 없으면 거절 문구로 실패해요; 환경 HOME 과 같은 HOME 을 넘긴 `identity_in` 도 같아요. · verify: `cargo nextest run --offline --locked --lib -E 'test(identity_keeps_the)'`
+- AC-16 (REQ-10): 환경이 `.gitconfig`·`$XDG_CONFIG_HOME/git/config`·`GIT_CONFIG_GLOBAL` 로 모두 신뢰해도, 환경 HOME 과 다른 HOME 을 넘기고 그 HOME 이 신뢰를 두지 않으면 `identity_in` 이 거절 문구로 실패해요. · verify: `cargo nextest run --offline --locked --lib -E 'test(identity_in_leaves_the)'`
 
 ## Scope
 
-- write(조각 2): `src/layout.rs`, `src/claim.rs`, `src/worktree.rs`, `src/identity.rs`, 클레임 장부를 프로세스 안에서 부르는 기준선 테스트 파일(`tests/claim_link_cli.rs`, `tests/claim_verify_cli.rs`, `tests/hook_dispatch_cli.rs` 와 관찰 실행이 더 보여 주는 같은 종류 파일; 확정 목록은 Result), `tests/test_home_guard.rs`(상한 한 줄), `tests/fixtures/test_home_guard/baseline.tsv`, `.moai/specs/SPEC-20261124-home-env-readers/spec.md`
-- 차례: `src/claim.rs`·`src/identity.rs` 는 identity 를 HOME 인자로 바꾸는 카드의 조각 2a 가 착지한 뒤(NeXT `5b6fcb4689`)에 이 카드가 예약을 넓혔어요(리더 결정 노트 7763). 기준선·`tools/repo_scans.json` 쓰기의 파일 차례는 지났어요.
+- write: `src/layout.rs`, `src/claim.rs`, `src/worktree.rs`, `src/identity.rs`, `tests/claim_link_cli.rs`, `tests/claim_verify_cli.rs`, `tests/hook_dispatch_cli.rs`, `tests/test_home_guard.rs`, `tests/fixtures/test_home_guard/baseline.tsv`, `.moai/specs/SPEC-20261124-home-env-readers/spec.md`
 - read-only: `src/home_root.rs`, `src/forge/outbox.rs`, `src/apply.rs`, `src/handoff.rs`, `src/scope.rs`
-- forbidden: 실제 HOME(읽기 전후 비교로도 건드리지 않아요, 임시 HOME 픽스처만), `CLAUDE.md`, 네트워크, `src/` 안의 `identity::identity` → `identity_in` 호출 교체 줄(identity 를 HOME 인자로 바꾸는 카드의 몫). `tests/claim_link_cli.rs` 도우미 한 줄은 이 금지에서 빠져요(D-10).
+- forbidden: `CLAUDE.md`
+
+조각 2 의 쓰기 칸에서 `tests/claim_link_cli.rs`, `tests/claim_verify_cli.rs`, `tests/hook_dispatch_cli.rs` 는 클레임 장부를 프로세스 안에서 부르는 기준선 테스트 파일이고, 관찰 실행이 같은 종류 파일을 더 보여 주면 확정 목록은 Result 에 적어요. `tests/test_home_guard.rs` 는 상한 한 줄만 바꿔요. `src/claim.rs`·`src/identity.rs` 는 identity 를 HOME 인자로 바꾸는 카드의 조각 2a 가 착지한 뒤(NeXT `5b6fcb4689`)에 이 카드가 예약을 넓혔어요(리더 결정 노트 7763). 기준선·`tools/repo_scans.json` 쓰기의 파일 차례는 지났어요.
+
+금지(위 `forbidden:` 줄의 나머지): 실제 HOME 은 읽기 전후 비교로도 건드리지 않아요(임시 HOME 픽스처만). 네트워크도 쓰지 않아요. `src/` 안에 이미 있는 `identity::identity` 호출 줄을 `identity_in` 으로 바꾸는 일은 identity 를 HOME 인자로 바꾸는 카드의 몫이라 하지 않아요. 새 함수 `journal_root_in`·`open_locked_journal_in` 이 처음부터 `identity_in(project, None)` 을 부르는 줄은 교체가 아니라 새 줄이라 이 금지에 걸리지 않아요(D-5). `tests/claim_link_cli.rs` 도우미 한 줄은 이 금지에서 빠져요(D-10).
 
 ## Plan
 
@@ -115,9 +124,12 @@ C-409 N1(감사 #409)도 이 카드 몫이에요: `identity_in` 이 부르는 gi
 | D-5 | `claim::journal_root_in(project, home: Option<&Path>)` 는 `identity_in(project, None)` 으로 클레임 원본을 찾고 `switched_dir_in(project, "claims", home)` 으로 전환 폴더를 봐요. `journal_root` 는 환경 HOME 을 한 번 읽어 넘기는 어댑터예요. `worktree::open_locked_journal_in` 도 같은 꼴이에요 | D-1 과 같은 방식; 호출부가 공개 함수 서명에 의존하는 곳이 많아서(`rg '[^_a-z]journal_root\(' src tests` 가 클레임 장부 함수 호출 스무 곳을 보여요) 서명을 바로 바꾸지 않아요 | `_in` 함수를 지우고 어댑터 본문을 되돌리기 |
 | D-6 | `apply_at` 은 `open_locked_journal_in(project, None)` 을 불러요 | 잠금 앞의 `check_destinations` 가 이미 전환된 포인터를 거절하므로 잠금 시점의 저널은 프로젝트 쪽이에요(읽어서 확인: `src/layout.rs:274`) | 이전 줄 `open_locked_journal(project)` 로 되돌리기 |
 | D-7 | `src/forge/outbox.rs`·`src/apply.rs` 의 `switched_dir` 호출은 조각 2 의 6단계 관찰 실행 결과를 보고 정해요: 그 뒤에도 기준선에 남는 줄이 이 두 모듈 때문이면 판 3 으로 `_in` 을 더하고, 아니면 조각 3 으로 미뤄요 | 기준선 바이너리 중 `tests/forge_report_cli.rs`(5줄)가 `outbox::load` 를, `tests/project_ci_plan_lib.rs`(9줄)가 `apply::recover` 를 프로세스 안에서 불러요(읽어서 확인: `rg 'outbox::|apply::recover' tests/<바이너리>.rs`). 그 줄이 이 두 호출 때문인지 `identity` 때문인지는 아직 못 쟀어요(unverified); 소비자가 확인되기 전에 `_in` 을 더하지 않아요(핵심 규칙 20) | 해당 없음 |
-| D-8 | git 전역 설정 고정의 기본은 (a)이고, `home` 이 `None` 이면 자식의 전역 설정 찾기를 건드리지 않아요(프로세스 환경 그대로). 실험 결과가 (a) 와 다르면 이 줄을 고쳐 다시 승인받아요 | (b) 는 `safe.directory` 를 막을 수 있어 실험 전에는 고르지 않기로 한 리더 결정(노트 7680); `None` 을 `/dev/null` 로 막으면 `identity_in(path, None)` 을 부르는 명령 경로의 사용자가 자기 `safe.directory` 설정을 잃어요 | `rev_parse` 의 환경 줄 삭제 |
+| D-8 | git 자식의 전역 설정은 `GIT_CONFIG_GLOBAL` 로 고정하지 않아요(판 4; 판 2 의 옵션 (a) 고정은 감사 #410 B1 이 막았어요). 받은 HOME 이 프로세스의 환경 HOME 과 같으면 자식은 환경을 그대로 받아 사용자의 `XDG_CONFIG_HOME`·`GIT_CONFIG_GLOBAL` 이 살아요. 다르면 자식의 HOME 을 받은 HOME 으로 두고 `XDG_CONFIG_HOME`·`GIT_CONFIG_GLOBAL` 을 지워 git 이 `<home>/.gitconfig` 와 `<home>/.config/git/config` 를 둘 다 읽어요. `home` 이 `None` 이면 건드리지 않아요(프로세스 환경 그대로) | git(1) ENVIRONMENT(git 2.54.0): `GIT_CONFIG_GLOBAL` 이 있으면 `$HOME/.gitconfig` 도 `$XDG_CONFIG_HOME/git/config` 도 읽지 않아요, 그래서 고정은 둘 중 하나를 버려요; (b) 는 `safe.directory` 를 막을 수 있어 고르지 않아요(리더 결정 노트 7680); `None` 을 `/dev/null` 로 막으면 `identity_in(path, None)` 을 부르는 명령 경로의 사용자가 자기 `safe.directory` 설정을 잃어요; 같은 HOME 의 판정은 `layout::environment_home` 한 곳을 거쳐요; 리더 결정 노트 7851 | `rev_parse` 의 환경 분기 삭제 |
 | D-9 | 기준선 줄은 마지막 단계에서 관찰 실행 결과로만 지워요; 상한(`BASELINE_CAP`)은 남은 줄 수로 같은 변경에서 낮춰요 | 줄 수는 "이 변경 뒤 가드가 건드렸다고 말하지 않는 테스트"만 줄일 수 있어요(핵심 규칙 10: 글자 일치는 가설) | 지운 줄을 되살리기 |
 | D-10 | `tests/claim_link_cli.rs` 도우미 `record()` 의 `identity::identity(&self.root)` 한 줄을 `identity_in(&self.root, None)` 으로 바꿔요. 금지 문장은 `src/` 안의 교체 줄로 좁혀요 | 리더 결정 노트 7830(7828 에 답함; 리더 판단, 사용자 위임). 그 도우미가 읽는 칸은 HOME 과 무관하고, 관찰 실행에서 그 한 줄이 스물다섯 테스트를 기준선에서 빼요(`guard-after2.log`). identity 를 HOME 인자로 바꾸는 카드의 범위에는 `tests/` 가 없어 부딪치는 카드가 없어요 | 그 한 줄을 `identity(&self.root)` 로 되돌리고 지운 스물다섯 줄을 되살리기 |
+
+- 판 4: 받은 HOME 이 환경 HOME 과 같은지는 경로 글자 그대로 비교해요. 같은 폴더를 다르게 적은 경로(끝 슬래시, 심볼릭 링크 경유)는 다른 HOME 으로 보아, 그때는 환경의 `XDG_CONFIG_HOME`·`GIT_CONFIG_GLOBAL` 이 자식에게 가지 않아요. `identity()` 는 환경 HOME 을 그대로 넘기므로 이 경우를 만나지 않아요(unverified: 다른 호출자가 그렇게 부르는 곳은 이 판에서 읽지 않았어요).
+- 판 4: 자식에게 HOME 을 주는 방식은 유닉스 가정이에요(Windows 의 git 은 `USERPROFILE` 도 읽어요); Windows 결과는 not_run 이에요.
 
 ## Interview
 
@@ -162,3 +174,14 @@ C-409 N1(감사 #409)도 이 카드 몫이에요: `identity_in` 이 부르는 gi
 - 카드 기준 2: 충족. 기준선 줄이 389 에서 361 로 줄었고 줄어든 테스트가 enforce 에서 통과해요(위 AC-11).
 - 합치기 주의: 이 브랜치는 조각 2a 가 착지하기 전 기준에서 이어졌어요. 조각 2a 가 같은 `claim::journal_root` 본문(`identity_in(.., None)` 과 링크 거절)과 `refuse_symlink` 가시성 한 줄을 바꿔서, 착지 때 `src/claim.rs` 의 `journal_root` 한 곳에서 합치기 충돌이 나요. 합친 결과는 이 브랜치의 `journal_root_in` 이 그 둘을 모두 가진 모양(받은 HOME 으로 `switched_dir_in`·`default_home_root_in` 을 부르고 링크 거절)이고 `journal_root` 는 그것을 부르는 어댑터예요.
 - not_run: `cargo test --locked` 전체(리더 몫), Windows·Linux, 명령줄 git 실험, 실제 HOME 읽기 전후 비교, `forge/outbox.rs`·`apply.rs` 원인 재기.
+
+**판 4 결과** (조각 2 수리; 감사 #410 FAIL 의 막는 것 B1; 승인은 리더 결정 노트 7858 이고 리더 판단이며 사용자 직접 선택은 아니에요; 수리 커밋 `b94c064c22`, 초안 커밋 `585f777a69`; 로그는 `target/c410/` 에 있고 카드가 열려 있는 동안만 둬요)
+
+- RED: 새 테스트 셋을 더하고 수리 전에 `cargo nextest run --offline --locked --lib -E 'test(identity_in_) | test(identity_keeps_the)'` → exit 100, 8개 중 6 통과·2 실패(`identity_in_reads_the_xdg_git_config_of_the_home_it_is_given`: `dubious ownership` 거절, `identity_keeps_the_git_config_of_the_environment`). 세 번째 `identity_in_leaves_the_environment_git_config_out_for_another_home` 는 옛 고정도 지켜서 수리 전에 통과했어요(회귀 방지용이고 RED 가 아니에요). GREEN: 같은 명령에 `test(identity::)` 를 더해 exit 0, 10/10.
+- 수리: `rev_parse`(`src/identity.rs`)가 `GIT_CONFIG_GLOBAL` 을 고정하지 않아요. 받은 HOME 이 `layout::environment_home` 과 다르면 자식 HOME 을 받은 HOME 으로 두고 `XDG_CONFIG_HOME`·`GIT_CONFIG_GLOBAL` 을 지우고, 같거나 없으면 환경 그대로예요. 자식 프로세스 도우미 `run_in_child_of`(`src/layout.rs`)는 개발자 환경의 `XDG_CONFIG_HOME`·`GIT_CONFIG_GLOBAL` 이 자식에게 새지 않게 먼저 지워요.
+- AC-14: 충족. `identity_in_reads_the_xdg_git_config_of_the_home_it_is_given`(`<home>/.config/git/config` 에만 `safe.directory` 가 있는 받은 HOME 은 성공, 신뢰가 없는 HOME 은 `dubious ownership`).
+- AC-15: 충족. `identity_keeps_the_git_config_of_the_environment`(자식 셋: XDG 파일만, `GIT_CONFIG_GLOBAL` 만, 둘 다 없음 = 통제는 거절; 신뢰가 있는 둘은 `identity()` 와 환경 HOME 을 넘긴 `identity_in` 이 모두 성공).
+- AC-16: 충족. `identity_in_leaves_the_environment_git_config_out_for_another_home`(환경이 `.gitconfig`·XDG·`GIT_CONFIG_GLOBAL` 로 모두 신뢰하고 통제로 `identity()` 가 성공하는데, 다른 받은 HOME 은 거절돼요).
+- 뮤턴트(적용을 `git diff --stat` 으로 확인하고 되돌린 뒤 `git status --short` 가 비어 있음을 확인; 모두 위 `-E` 필터, exit 100): ① `GIT_CONFIG_GLOBAL` 을 `/dev/null` 로 고정하는 판 2 모양으로 되돌림 → 2개 실패(XDG 테스트와 `identity_in_git_config_follows_the_home_it_is_given`) ② 같은 HOME 판정 삭제(항상 대체) → 1개 실패(`identity_keeps_the_git_config_of_the_environment`) ③ `XDG_CONFIG_HOME`·`GIT_CONFIG_GLOBAL` 을 지우지 않음 → 1개 실패(`identity_in_leaves_the_environment_git_config_out_for_another_home`).
+- N2·N3: 고쳤어요. `moai spec show` 가 이제 write 10개·read_only 5개·forbidden 1개(`CLAUDE.md`)로 읽고(옛 판은 write 2개, forbidden 에 `src/` 포함) `moai spec check` 가 오류 0·경고 0 이에요. N1(`journal_root_in` 의 git 자식이 환경 HOME 설정을 읽음)은 D-5·D-8 대로 후속 조각이고, N4(Windows)는 not_run 이에요.
+- not_run: 전체 `cargo test --locked`(리더 몫), Windows·Linux, 명령줄 git 실험(훅 거절, Rust 자식 프로세스 테스트로 대신), 실제 HOME 읽기 전후 비교.

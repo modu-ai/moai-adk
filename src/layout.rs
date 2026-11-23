@@ -639,6 +639,10 @@ pub(crate) mod home_arg_tests {
             Some(h) => cmd.env("HOME", h),
             None => cmd.env_remove("HOME"),
         };
+        // The two variables that name git's global configuration are the caller's to set through
+        // `extra`; whatever the developer's own environment holds must not reach the child.
+        cmd.env_remove("XDG_CONFIG_HOME")
+            .env_remove("GIT_CONFIG_GLOBAL");
         for (k, v) in extra {
             cmd.env(k, v);
         }
