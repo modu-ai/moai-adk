@@ -38,21 +38,42 @@ const GIT_ENV_REMOVED: &[&str] = &[
 /// Under `LC_ALL=C` git starts its "no repository here" message with this text.
 pub(crate) const NOT_A_REPOSITORY: &str = "not a git repository";
 
-/// Removes every variable in [`GIT_ENV_REMOVED`] and the numbered
-/// `GIT_CONFIG_KEY_<n>`/`GIT_CONFIG_VALUE_<n>` pairs from `cmd`, and fixes the locale so
-/// failures can be classified. Shared by every git subprocess (`plan`, Issue #2043).
+/// The trace2 targets set to `0` on every git child. Removing the variables is not enough: git's
+/// own configuration (`trace2.normalTarget` and its siblings) would switch the trace on again and
+/// write it to standard error (SPEC-20261122-test-defects-session-reclaim REQ-15).
+const GIT_TRACE2_OFF: &[&str] = &["GIT_TRACE2", "GIT_TRACE2_EVENT", "GIT_TRACE2_PERF"];
+
+/// Removes every variable in [`GIT_ENV_REMOVED`], the numbered
+/// `GIT_CONFIG_KEY_<n>`/`GIT_CONFIG_VALUE_<n>` pairs and every trace variable (a name starting
+/// with `GIT_TRACE`, see [`removed_by_prefix`]) from `cmd`, switches the three trace2 targets off
+/// ([`GIT_TRACE2_OFF`]), and fixes the locale so failures can be classified. Shared by every git
+/// subprocess (`plan`, Issue #2043).
 pub(crate) fn scrub_git_env(cmd: &mut Command) {
     for key in GIT_ENV_REMOVED {
         cmd.env_remove(key);
     }
-    // GIT_CONFIG_KEY_<n>/GIT_CONFIG_VALUE_<n> are numbered, so they are matched by prefix.
+    // GIT_CONFIG_KEY_<n>/GIT_CONFIG_VALUE_<n> are numbered and the trace variables are many, so
+    // they are matched by prefix.
     for (key, _) in std::env::vars_os() {
-        let k = key.to_string_lossy();
-        if k.starts_with("GIT_CONFIG_KEY_") || k.starts_with("GIT_CONFIG_VALUE_") {
+        if removed_by_prefix(&key.to_string_lossy()) {
             cmd.env_remove(&key);
         }
     }
+    for key in GIT_TRACE2_OFF {
+        cmd.env(key, "0");
+    }
     cmd.env("LC_ALL", "C");
+}
+
+/// True for a variable [`scrub_git_env`] removes by its name prefix, not by the fixed list: the
+/// numbered config pairs, and every trace variable (`GIT_TRACE`, `GIT_TRACE_*`, `GIT_TRACE2`,
+/// `GIT_TRACE2_*`), because a trace writes to git's standard error, which a caller that reads
+/// that stream as "git had a problem" cannot tell from a warning
+/// (SPEC-20261122-test-defects-session-reclaim REQ-11).
+fn removed_by_prefix(name: &str) -> bool {
+    name.starts_with("GIT_CONFIG_KEY_")
+        || name.starts_with("GIT_CONFIG_VALUE_")
+        || name.starts_with("GIT_TRACE")
 }
 
 enum Git {
@@ -263,4 +284,55 @@ pub fn identity(path: &Path) -> Result<Value> {
         "id_derivation": ID_DERIVATION,
         "writes": false,
     }))
+}
+
+#[cfg(test)]
+mod scrub_tests {
+    use super::{removed_by_prefix, scrub_git_env};
+    use std::{ffi::OsStr, process::Command};
+
+    /// SPEC-20261122-test-defects-session-reclaim AC-12 (REQ-15, REQ-16): the three trace2 targets are
+    /// set to `0` on the child, not left unset, because git's own configuration
+    /// (`trace2.normalTarget` and its siblings) would otherwise turn the trace on again.
+    #[test]
+    fn the_trace2_targets_are_switched_off_for_the_child() {
+        let mut cmd = Command::new("git");
+        scrub_git_env(&mut cmd);
+        let envs: Vec<_> = cmd.get_envs().collect();
+        for name in ["GIT_TRACE2", "GIT_TRACE2_EVENT", "GIT_TRACE2_PERF"] {
+            assert!(
+                envs.contains(&(OsStr::new(name), Some(OsStr::new("0")))),
+                "{name} should be 0, got {envs:?}"
+            );
+        }
+    }
+
+    /// SPEC-20261122-test-defects-session-reclaim AC-10 (REQ-11): every trace variable git
+    /// documents (`GIT_TRACE`, `GIT_TRACE_*`, `GIT_TRACE2`, `GIT_TRACE2_*`) is removed from a
+    /// git child, as are the numbered config pairs; an unrelated variable stays.
+    #[test]
+    fn git_trace_variables_are_removed_by_prefix() {
+        for name in [
+            "GIT_TRACE",
+            "GIT_TRACE2",
+            "GIT_TRACE2_EVENT",
+            "GIT_TRACE2_PERF",
+            "GIT_TRACE_PERFORMANCE",
+            "GIT_TRACE_SETUP",
+            "GIT_TRACE_CURL",
+            "GIT_CONFIG_KEY_0",
+            "GIT_CONFIG_VALUE_12",
+        ] {
+            assert!(removed_by_prefix(name), "{name} should be removed");
+        }
+        for name in [
+            "GIT_TRACKER",
+            "GIT_AUTHOR_NAME",
+            "TRACE",
+            "PATH",
+            "GIT_CONFIG_GLOBAL",
+        ] {
+            assert!(!removed_by_prefix(name), "{name} should stay");
+        }
+    }
 }

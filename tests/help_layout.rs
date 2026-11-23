@@ -167,7 +167,7 @@ fn every_name_prints_moai_and_the_version_line_is_unchanged() {
         let version = String::from_utf8(run(bin, &["--version"], &[]).stdout).unwrap();
         let first = version.lines().next().unwrap_or("");
         assert!(
-            first.starts_with("moai-cli ") && first.ends_with(" (rust)"),
+            first.starts_with("moai ") && first.ends_with(" (rust)"),
             "{version}"
         );
         assert_eq!(version.lines().count(), 2, "{version}");

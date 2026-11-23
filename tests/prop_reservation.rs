@@ -1,6 +1,6 @@
-//! Reservation state-machine property tests (C-100, SPEC-20261119-property-tests): under
+//! Reservation state-machine property tests (SPEC-20261119-property-tests): under
 //! random interleavings of the state machine in a temporary ledger, no card left in `review`
-//! is without a held reservation, and no two live reservations cover one path (C-68 N-A/N-B).
+//! is without a held reservation, and no two live reservations cover one path.
 //! The cases share one temporary HOME — each case works only on its own three cards and, at
 //! its end, walks them back through the system's own transitions (`reopen` then `release`,
 //! an ended lease through `reclaim`), so earlier cases never block a later take — and nothing

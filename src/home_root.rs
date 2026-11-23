@@ -184,6 +184,11 @@ mod tests {
                 "the install reads the earlier folder whatever generation the HOME is in (one use in `old_root`, which the plan, apply and revert ask, one in the install-journal lookup that tells the readers an earlier install id (R5), one in the unit-test fixture)",
             ),
             (
+                "home_state_retire.rs",
+                2,
+                "the one place that names the earlier folder on purpose: the archive step's source path and one unit-test fixture",
+            ),
+            (
                 "hooks.rs",
                 1,
                 "hooks are refused inside either HOME state root",

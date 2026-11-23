@@ -38,12 +38,12 @@ impl RecordSource {
 
 #[derive(Parser)]
 #[command(
-    // `--version` prints `<name> <version>`: it stays `moai-cli <ver> (rust)`, the build
-    // signature other tools compare (#2799 D3 decision 2(a), `bin_names` same-build check).
-    name = "moai-cli",
-    // One `main` serves both binary names (`moai`, `moai-cli`; #2790 R1). The default command
-    // name is `moai` (#2812 W3; `moai-cli` stays an alias): usage and help name `moai`
-    // whichever name ran, so the two binaries print the same text.
+    // `--version` prints `<name> <version>`: the first line is `moai <ver> (rust)`, the build
+    // signature other tools compare. Readers accept the earlier `moai-cli <ver> (rust)` too
+    // (`bin_names` same-build check, install generation, release check, skill text).
+    name = "moai",
+    // One `main` serves both binary names (`moai`, `moai-cli`; #2790 R1). Usage and help name
+    // `moai` whichever name ran (#2812 W3), so the two binaries print the same text.
     bin_name = "moai",
     version = moai_cli::VERSION_SIGNATURE,
     // Card C-67 S1: `--version` adds a second line naming the kind of build (local or
@@ -2967,7 +2967,7 @@ mod tests {
     /// #2802 S1; #3004 P1): Windows `moai.exe` and `moai-cli.exe` are judged like `moai` and
     /// `moai-cli` (the `.exe` never shows), help and usage errors name `moai` and are the same
     /// bytes for every name, and `--version` is the same build signature
-    /// `moai-cli <ver> (rust)` for every name. Windows paths are written with `/` so the test
+    /// `moai <ver> (rust)` for every name. Windows paths are written with `/` so the test
     /// reads them the same on every OS.
     #[test]
     fn every_binary_name_renders_the_same_moai_help() {
@@ -3013,7 +3013,7 @@ mod tests {
                     // Card C-67 S1: the signature line, then the line naming the build kind.
                     assert_eq!(
                         out.trim_end(),
-                        format!("moai-cli {}", moai_cli::LONG_VERSION),
+                        format!("moai {}", moai_cli::LONG_VERSION),
                         "{argv0}"
                     );
                 } else {

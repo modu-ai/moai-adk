@@ -95,6 +95,9 @@ pub const GROUPS: &[Group] = &[
             ("home-retire-plan", false),
             ("home-retire-apply", false),
             ("home-retire-revert", false),
+            ("home-archive-plan", false),
+            ("home-archive-apply", false),
+            ("home-archive-revert", false),
             ("home-install-plan", false),
             ("home-install-apply", false),
             ("home-install-revert", false),
@@ -390,6 +393,9 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("home-retire-plan", &["home-retire-plan", "home-retire-apply --now 2026-11-14T00:00:00Z --plan-digest <digest> --permission-reference <ref>"]),
     ("home-retire-apply", &["home-retire-apply --now 2026-11-14T00:00:00Z --plan-digest <digest> --permission-reference <ref>"]),
     ("home-retire-revert", &["home-retire-revert --permission-reference <ref>"]),
+    ("home-archive-plan", &["home-archive-plan", "home-archive-apply --now 2026-11-23T00:00:00Z --plan-digest <digest> --permission-reference <ref>"]),
+    ("home-archive-apply", &["home-archive-apply --now 2026-11-23T00:00:00Z --plan-digest <digest> --permission-reference <ref>"]),
+    ("home-archive-revert", &["home-archive-revert --permission-reference <ref>"]),
     ("home-install-plan", &["home-install-plan", "home-install-apply --home <HOME> --now 2026-11-14T00:00:00Z --plan-digest <digest> --permission-reference <ref>"]),
     ("home-install-apply", &["home-install-apply --home <HOME> --now 2026-11-14T00:00:00Z --plan-digest <digest> --permission-reference <ref>"]),
     ("home-install-revert", &["home-install-revert --home <HOME> --permission-reference <ref>"]),
@@ -1469,6 +1475,32 @@ const LONG_ABOUT_KO: &[(&str, &str)] = &[
          지우지 않아요.",
     ),
     (
+        "home-archive-plan",
+        "옛 HOME 상태 폴더(`~/.moai-cli`)를 `~/.moai/archive/` 아래로 통째로 치우는 일을 미리 \
+         봐요: 맨 위 항목마다 이름·종류·모드를 `lstat` 만으로 보여 주고(파일을 열지도 링크를 \
+         따라가지도 않아요), 폴더 전체를 이름 바꾸기 한 번으로 옮기는 계획을 세워요. 옛 폴더가 \
+         없으면 `none`, 링크이거나 `~/.moai`·`archive` 가 폴더가 아니거나 이름이 이미 있거나 파일 \
+         시스템이 다르거나 돌고 있는 프로그램이 쓰거나 실행 중인 바이너리가 그 안에 있으면 이유와 \
+         함께 `blocked` 예요. 이 프로세스의 `PATH` 에서 옛 폴더를 가리키는 항목과 `moai update` \
+         안내를 보여 주고, 셸 파일은 읽지도 고치지도 않아요. 적용에 필요한 `plan_digest` 와 \
+         `content_digest` 를 줘요. 아무것도 쓰지 않아요.",
+    ),
+    (
+        "home-archive-apply",
+        "미리 보기가 `retire` 로 정한 옛 상태 폴더를 `~/.moai/archive/moai-cli-<UTC>/` 로 옮겨요: \
+         먼저 매니페스트와 이동 저널을 쓰고, rename 한 번(덮어쓰지 않음, 같은 파일 시스템)이에요. \
+         같은 입력으로 다시 계산한 미리 보기의 `plan_digest`(또는 시계 없는 `content_digest`)가 \
+         같고 동작이 `retire` 일 때만 실행해요. 복사도 열기도 삭제도 없어서 바이트·모드·vault 의 \
+         owner-only 권한이 그대로예요. 같은 `--now` 의 저널이 크래시로 남았으면 그걸 끝내요. 실제 \
+         HOME 에서는 사용자가 확인한 뒤에만 리더가 실행해요.",
+    ),
+    (
+        "home-archive-revert",
+        "보관한 옛 상태 폴더를 되돌려 놓아요: 저널을 거꾸로 되짚어, 폴더가 옮긴 그 항목이 그대로이고 \
+         옛 자리가 비어 있을 때만 돌아가요. 그 사이 바뀌었으면 그 자리에 두고 상태가 \
+         `revert_partial` 이에요. `--stamp` 가 없으면 가장 새 보관을 써요. 아무것도 지우지 않아요.",
+    ),
+    (
         "home-install-plan",
         "`~/.moai-cli` 의 이 세대 항목을 `~/.moai` 맨 위로 옮기는 일을 미리 봐요: \
          HOME 이름 표로 맨 위 항목마다 `move`(`~/.moai/<이름>` 으로 rename)·`keep`(사용자 자료, \
@@ -1966,6 +1998,21 @@ const ARG_HELP_KO: &[(&str, &str, &str)] = &[
         "home-retire-revert",
         "stamp",
         "되돌릴 은퇴의 표지(`YYYYMMDDTHHMMSSZ`). 없으면 가장 새 은퇴",
+    ),
+    (
+        "home-archive-plan",
+        "now",
+        "`YYYY-MM-DDTHH:MM:SSZ`. 없으면 시스템 시계(보관 폴더 이름)",
+    ),
+    (
+        "home-archive-apply",
+        "now",
+        "미리 보기가 읽은 것과 같은 `--now`",
+    ),
+    (
+        "home-archive-revert",
+        "stamp",
+        "되돌릴 보관의 표지(`YYYYMMDDTHHMMSSZ`). 없으면 가장 새 보관",
     ),
     (
         "home-install-plan",

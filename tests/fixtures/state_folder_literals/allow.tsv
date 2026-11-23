@@ -117,6 +117,7 @@ tests/home_isolation_scan.rs	0	1
 tests/home_retire_cli.rs	0	61
 tests/home_state_apply.rs	0	26
 tests/home_state_plan.rs	0	28
+tests/home_state_retire_cli.rs	30	20
 tests/home_state_selective.rs	0	28
 tests/home_style_cli.rs	0	1
 tests/home_style_ownership_cli.rs	1	1
