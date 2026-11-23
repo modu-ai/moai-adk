@@ -1,17 +1,12 @@
 ---
 id: SPEC-20261124-home-env-readers
-title: "환경 HOME 을 직접 읽는 곳을 명령 가장자리로 모아요: 1조각은 layout 이 HOME 을 받아요"
-status: approved
-revision: 1
+title: "환경 HOME 을 직접 읽는 곳을 명령 가장자리로 모아요: 조각 1 은 layout, 조각 2 는 클레임 장부 호출부와 git 자식"
+status: draft
+revision: 2
 created: 2026-11-24
-approval:
-  by: leader
-  at: 2026-11-23
-  basis: "리더 결정 노트 7680 (2026-11-23T16:23:19Z, 사용자 위임 2026-11-23T13:57Z, 리더 판단이고 사용자 직접 선택은 아님, 노트 7677 의 결정 1 (a): 판 1 승인, 조각 1 은 src/layout.rs 와 그 테스트·SPEC 안만); 리더가 노트에 적었고 레인은 그 노트를 인용만 해요"
-  digest: "sha256:f5ca20be04d83880689839b23b79d7a58bca6200a8e07d306bc57039763c579e"
 ---
 
-# 환경 HOME 을 직접 읽는 곳을 명령 가장자리로 모아요: 1조각은 layout 이 HOME 을 받아요
+# 환경 HOME 을 직접 읽는 곳을 명령 가장자리로 모아요: 조각 1 은 layout, 조각 2 는 클레임 장부 호출부와 git 자식
 
 ## Intent
 
@@ -19,14 +14,15 @@ approval:
 
 방식은 C-409 와 같아요(그 SPEC 의 D-1): HOME 을 인자로 받는 `_in` 짝을 더하고, 기존 이름은 환경 HOME 을 한 번 읽어 위임하는 가장자리 어댑터로 남겨요. 이 카드의 쓰기 범위는 `src/layout.rs` 와 이 SPEC 폴더예요. 그래서 1조각은 layout 안만 고치고, 호출부와 다른 읽는 곳은 조각 2 이후에 리더 노트로 범위를 받아 이어가요.
 
-C-409 N1(감사 #409)도 이 카드 몫이에요: `identity_in` 이 부르는 git 자식은 프로세스 환경을 그대로 받아 환경 HOME 의 전역 git 설정을 읽어요. 그 고정은 `src/identity.rs` 안이라 1조각의 범위 밖이고, 조각 2 에 옵션과 함께 올려요(D-4).
+C-409 N1(감사 #409)도 이 카드 몫이에요: `identity_in` 이 부르는 git 자식은 프로세스 환경을 그대로 받아 환경 HOME 의 전역 git 설정을 읽어요. 그 고정은 `src/identity.rs` 안이라 1조각의 범위 밖이었고, 조각 2 에서 해요(D-4, D-8).
+
+판 2(조각 2)는 세 가지를 해요. ① 클레임 장부 호출부가 HOME 을 받아요: `claim::journal_root_in`, `worktree::open_locked_journal_in` 을 더하고 `layout::apply_at` 의 저널 잠금이 환경 HOME 을 읽지 않게 해요. ② git 자식의 전역 설정을 받은 HOME 으로 고정하고, 조각 1 테스트의 부모 쪽 git 자식이 임시 폴더 HOME 을 쓰게 해요(감사 #410 N2). ③ C-406 가드가 착지했으니(NeXT `132728a026`) 이 변경으로 더는 HOME 을 건드리지 않게 된 테스트의 기준선 줄을 같은 변경에서 지워요. 줄이 몇 개 줄어드는지는 변경 뒤 관찰 실행으로 재요(그 전은 unverified).
 
 ## Non-goals
 
-- 호출부 파일(`src/claim.rs`, `src/forge/outbox.rs`, `src/apply.rs`)과 아래 인벤토리의 다른 모듈을 이 조각에서 고치는 일 — 조각 2 이후.
+- 아래 인벤토리의 안쪽 읽기 A·B 모듈 — 조각 3 이후. `src/forge/outbox.rs`, `src/apply.rs` 는 관찰 실행 뒤에 정해요(D-7).
 - 명령 가장자리(`src/main.rs`, `src/ops/*::run`)의 읽기를 없애는 일. 가장자리는 한 번 읽는 자리라 남겨요.
-- `tests/fixtures/test_home_guard/baseline.tsv` 줄 지우기 — C-406 가드가 아직 착지하지 않았어요(읽어서 확인: NeXT `3d864da6f4` 에 그 폴더가 없어요).
-- git 자식의 전역 설정 고정(D-4, 조각 2).
+- `identity::identity` 호출을 `identity_in` 으로 바꾸는 일 — C-409 의 몫이에요. 이 카드는 `journal_root_in` 이 필요한 곳만 바꿔요.
 
 ## Requirements
 
@@ -35,6 +31,13 @@ C-409 N1(감사 #409)도 이 카드 몫이에요: `identity_in` 이 부르는 gi
 - REQ-3: The `switched_dir_in` function shall resolve the switched store directory from the HOME it is given and from no environment variable.
 - REQ-4: The `default_home_root` function shall return what `default_home_root_in` returns for the environment HOME read once, an unset or empty HOME counting as no HOME.
 - REQ-5: The `claims_legacy_dir` function shall resolve the clone identity without a HOME, because it reads no field that depends on one.
+- REQ-6: The `journal_root_in` function shall resolve the claim journal folder from the HOME it is given and from no environment variable.
+- REQ-7: The `journal_root` function shall return what `journal_root_in` returns for the environment HOME read once.
+- REQ-8: The `open_locked_journal_in` function shall lock the journal that `journal_root_in` names for the HOME it is given.
+- REQ-9: The `apply_at` function shall lock the project-side claim journal without reading the environment HOME, because it refuses an already switched pointer before it locks.
+- REQ-10: The `identity_in` function shall run its git children with the global git configuration of the HOME it is given, and with the process's own lookup when it is given none.
+- REQ-11: The layout tests shall run every git child they start with a HOME in a temporary folder.
+- REQ-12: The baseline of `tests/fixtures/test_home_guard/baseline.tsv` shall list no test that the observation run of the changed tree shows leaving its HOME untouched.
 
 ## Acceptance
 
@@ -42,13 +45,21 @@ C-409 N1(감사 #409)도 이 카드 몫이에요: `identity_in` 이 부르는 gi
 - AC-2 (REQ-3): 넘긴 HOME 아래에 `layout.json` 이 있는 프로젝트는 그 HOME 의 저장소 폴더를 답하고, 자식 프로세스의 환경 HOME 이 다른 폴더이거나 없어도 답이 같아요. · verify: `cargo nextest run --offline --locked --lib -E 'test(switched_dir_in)'`
 - AC-3 (REQ-4): 환경 HOME 이 설정·빈 값·없음 세 경우에 `default_home_root()` 의 답이 `default_home_root_in` 에 같은 값을 넘긴 답과 같아요(자식 프로세스에서 환경을 고정, 부모는 환경을 바꾸지 않아요). · verify: `cargo nextest run --offline --locked --lib -E 'test(default_home_root_equals)'`
 - AC-4 (REQ-5): 환경 HOME 의 홈 상태 폴더가 심볼릭 링크인 자식 프로세스에서도 `claims_legacy_dir` 가 거부 없이 같은 클레임 원본을 답해요(옛 코드는 `identity` 를 거쳐 거부했어요). · verify: `cargo nextest run --offline --locked --lib -E 'test(claims_legacy_dir_ignores)'`
-- AC-5 (REQ-1..REQ-5): 이 조각은 `src/layout.rs` 와 SPEC 폴더만 바꿨어요. · verify: `git diff --stat <base>..<head>`
+- AC-5 (REQ-1..REQ-5): 조각 1 은 `src/layout.rs` 와 SPEC 폴더만 바꿨어요(승인된 판 1 의 범위). · verify: `git diff --stat 3d864da6f4..4d22c99aac`
+- AC-6 (REQ-6, REQ-7): 환경 HOME 의 프로젝트에는 전환 포인터가 없고 넘긴 HOME 에만 있을 때 `journal_root_in` 은 넘긴 HOME 아래 클레임 폴더를, `journal_root` 는 프로젝트 쪽 폴더를 답해요; `None` 은 프로젝트 쪽 폴더예요(자식 프로세스에서 환경 HOME 을 고정). · verify: `cargo nextest run --offline --locked --lib -E 'test(journal_root_in)'`
+- AC-7 (REQ-8): 넘긴 HOME 에 전환 포인터가 있으면 `open_locked_journal_in` 이 잠그는 저널이 그 HOME 아래 클레임 폴더의 것이고, 같은 폴더를 이미 잠근 뒤에는 두 번째 호출이 사용 중 응답을 해요. · verify: `cargo nextest run --offline --locked --lib -E 'test(open_locked_journal_in)'`
+- AC-8 (REQ-9): `apply_at` 이 환경 HOME 에 전환 포인터가 있는 자식 프로세스에서도 프로젝트 쪽 저널을 잠가요(환경 HOME 을 읽지 않으니 답이 같아요); 이미 전환된 홈 폴더에는 지금처럼 `conflict` 로 거절해요. · verify: `cargo nextest run --offline --locked --lib -E 'test(apply_at_locks)'`
+- AC-9 (REQ-10): 소유자가 다른 저장소(`GIT_TEST_ASSUME_DIFFERENT_OWNER`)에서, 받은 HOME 의 `.gitconfig` 에 `safe.directory` 가 있으면 `identity_in(path, Some(home))` 이 성공하고 없으면 거절 문구로 실패해요; 자식 프로세스의 환경 HOME 이 어느 쪽이든 답이 같아요. · verify: `cargo nextest run --offline --locked --lib -E 'test(identity_in_git_config)'`
+- AC-10 (REQ-11): 조각 1 테스트(`claims_legacy_dir_ignores_the_environment_home`)의 `git init` 자식이 임시 폴더 HOME 으로 돌아요. · verify: `cargo nextest run --offline --locked --lib -E 'test(claims_legacy_dir_ignores)'` 와 `git diff <base>..<head> -- src/layout.rs` 로 `HOME` 을 주는 줄을 읽어요
+- AC-11 (REQ-12): 줄을 지운 기준선이 `tests/test_home_guard.rs` 의 기준선 테스트를 통과하고(상한은 남은 줄 수로 낮춰요), 지운 줄의 테스트를 관찰 모드로 돌렸을 때 가드 줄이 나오지 않아요. · verify: `cargo nextest run --offline --locked --test test_home_guard` 와 `MOAI_HOME_GUARD=observe MOAI_HOME_GUARD_LOG=<파일> cargo nextest run --offline --locked <지운 줄의 바이너리>`
+- AC-12 (REQ-6..REQ-12): 조각 2 의 변경 경로는 이 SPEC 의 Scope write 목록 안이에요. · verify: `git diff --stat <base>..<head>`
 
 ## Scope
 
-- write: `src/layout.rs`, `.moai/specs/SPEC-20261124-home-env-readers/spec.md`
-- read-only: `src/identity.rs`, `src/home_root.rs`, `src/claim.rs`, `src/forge/outbox.rs`, `src/apply.rs`, `src/worktree.rs`
-- forbidden: 실제 HOME(읽기 전후 비교로도 건드리지 않아요, 임시 HOME 픽스처만), `tests/fixtures/test_home_guard/baseline.tsv`, `CLAUDE.md`, 네트워크
+- write(조각 2): `src/layout.rs`, `src/claim.rs`, `src/worktree.rs`, `src/identity.rs`, 클레임 장부를 프로세스 안에서 부르는 기준선 테스트 파일(`tests/claim_link_cli.rs`, `tests/claim_verify_cli.rs`, `tests/hook_dispatch_cli.rs` 와 관찰 실행이 더 보여 주는 같은 종류 파일; 확정 목록은 Result), `tests/test_home_guard.rs`(상한 한 줄), `tests/fixtures/test_home_guard/baseline.tsv`, `.moai/specs/SPEC-20261124-home-env-readers/spec.md`
+- 차례: `src/claim.rs`·`src/identity.rs` 는 C-409 조각 2a 가 예약 중이에요. 그 조각이 착지한 뒤에 이 카드가 예약을 넓혀요. 기준선·`tools/repo_scans.json` 쓰기는 파일 차례(C-418 다음)를 따라요.
+- read-only: `src/home_root.rs`, `src/forge/outbox.rs`, `src/apply.rs`, `src/handoff.rs`, `src/scope.rs`
+- forbidden: 실제 HOME(읽기 전후 비교로도 건드리지 않아요, 임시 HOME 픽스처만), `CLAUDE.md`, 네트워크, C-409 의 `identity::identity` → `identity_in` 호출 교체 줄
 
 ## Plan
 
@@ -58,13 +69,23 @@ C-409 N1(감사 #409)도 이 카드 몫이에요: `identity_in` 이 부르는 gi
 | --- | --- | --- |
 | 가장자리(한 번 읽는 자리, 남겨요) | `src/main.rs` 여섯 곳, `src/ops/*::run` 열네 곳(`args.home` 이 없으면 환경), `src/ledger/command.rs::resolve_home`, `src/hook_entry.rs::env`, `src/statusline/mod.rs::run`, `src/identity.rs::identity`(C-409) | — |
 | layout 안 | `src/layout.rs::default_home_root`(읽는 곳), `switched_dir`, `claims_legacy_dir`(`identity` 호출) | 1(이 판) |
-| layout 호출부 | `src/claim.rs::journal_root`(`switched_dir`), `src/forge/outbox.rs:202`(`switched_dir`), `src/apply.rs:368`(`switched_dir`), `src/worktree.rs::open_locked_journal`(`apply_at` 이 부르며 `claim::journal_root` 를 거쳐 환경을 읽어요) | 2 |
-| git 자식 | `src/identity.rs::rev_parse`(환경 HOME 의 전역 git 설정을 읽음, C-409 N1) | 2 (D-4) |
+| layout 호출부(장부) | `src/claim.rs::journal_root`(`switched_dir`), `src/worktree.rs::open_locked_journal`(`apply_at` 이 부르며 `claim::journal_root` 를 거쳐 환경을 읽어요) | 2 |
+| layout 호출부(저장소) | `src/forge/outbox.rs:202`(`switched_dir`), `src/apply.rs:368`(`switched_dir`) | 관찰 실행 뒤 정해요(D-7) |
+| git 자식 | `src/identity.rs::rev_parse`(환경 HOME 의 전역 git 설정을 읽음, C-409 N1) | 2 (D-4, D-8) |
 | 안쪽 읽기 A | `src/key_vault.rs::home`, `src/home_workdir.rs::home`, `src/hooks.rs::env_home`, `src/hook_config.rs::load`, `src/hook_engine.rs::session_check`, `src/edit_diagnostics.rs::lock_dir`, `src/heavy_slot.rs::cache_dir` | 3 |
 | 안쪽 읽기 B | `src/claude.rs::doctor`·`refuse_user_scope`, `src/project_update.rs::go_settings_step`·`settings_step`, `src/baseline.rs::inventory`, `src/migrate.rs::open_cli_home`, `src/update_tux.rs::view_for`, `src/ops/host_wake.rs::default_config_dir`, `src/ops/star_ask.rs::run` | 4 |
 | 줄 지우기 | `tests/fixtures/test_home_guard/baseline.tsv` | C-406 착지 뒤 |
 
 1조각 순서: 1) 승인 노트를 받아요. 2) RED: 위 테스트 이름으로 `default_home_root_in`·`switched_dir_in` 이 없어 컴파일이 실패하는 것을 봐요. 3) GREEN: `default_home_root_in`·`switched_dir_in` 을 더하고 `default_home_root`·`switched_dir` 는 어댑터로, `claims_legacy_dir` 는 `identity_in(project, None)` 으로 바꿔요. 4) 이웃: `layout` 모듈 기존 테스트와 `claim` 의 `journal_root` 테스트, fmt, clippy.
+
+조각 2 순서(앞 단계가 끝나야 다음으로 가요):
+1. 승인(판 2)을 리더 노트로 받아요.
+2. git 전역 설정 실험(D-4): 소유자가 다른 저장소(`GIT_TEST_ASSUME_DIFFERENT_OWNER=1`)에서 아래 아홉 경우를 돌리고 결과를 Result 에 적어요 — HOME 만 다른 경우, `GIT_CONFIG_GLOBAL` 을 받은 HOME 의 `.gitconfig` 로 준 경우, `/dev/null` 로 준 경우, `GIT_CONFIG_NOSYSTEM` 을 더한 경우, `XDG_CONFIG_HOME` 이 있는 경우. 그 결과로 옵션 (a)·(b)·(c) 중 하나를 고르고 D-8 에 적어요.
+3. `src/layout.rs`(C-409 와 겹치지 않아요): RED→GREEN 으로 N2(조각 1 테스트의 `git init` 자식 HOME)와 `apply_at` 의 `open_locked_journal_in(project, None)` 호출(AC-8, AC-10). `open_locked_journal_in` 이 먼저 있어야 하므로 이 단계 뒤쪽은 5 번과 함께 가요.
+4. C-409 조각 2a 가 착지한 뒤: `moai card scope` 로 `src/claim.rs`·`src/identity.rs` 와 테스트 파일을 같은 generation 에 더해요(리더 승인 필요).
+5. `src/claim.rs::journal_root_in` → `src/worktree.rs::open_locked_journal_in` → `src/identity.rs` 의 git 전역 설정 고정(AC-6, AC-7, AC-9).
+6. 클레임 장부를 프로세스 안에서 부르는 기준선 테스트가 `journal_root_in(..., None)` 을 쓰게 바꿔요. 바꾼 파일마다 관찰 모드(`MOAI_HOME_GUARD=observe`)로 그 바이너리를 돌려 가드 줄이 사라진 테스트만 확인해요.
+7. 기준선 줄 지우기와 상한 낮추기(AC-11)는 맨 마지막이에요. 줄을 지운 테스트는 `MOAI_HOME_GUARD=enforce` 로 통과해야 하고, 파일 차례(C-418 다음)를 기다려요.
 
 ## Risks
 
@@ -72,6 +93,9 @@ C-409 N1(감사 #409)도 이 카드 몫이에요: `identity_in` 이 부르는 gi
 - REQ-5 는 `plan` 이 홈 상태 폴더가 심볼릭 링크일 때 내던 거부를 클레임 원본 찾기에서 없애요(그 거부는 클레임 원본과 관계없는 칸이었어요). 동작이 바뀌는 곳은 이것 하나이고 D-3 에 적었어요.
 - `apply_at` 의 저널 잠금(`open_locked_journal`)은 이 조각이 닿지 않는 `claim::journal_root` 를 거쳐 환경 HOME 을 읽어요. 조각 2 가 닫기 전까지 `apply_cli` 경로는 환경 HOME 을 읽는 채로 남아요.
 - 인벤토리의 본문 분류는 함수 이름까지만 확인했어요. 조각마다 읽어서 고쳐요.
+- 조각 2: `apply_at` 의 잠금이 `None`(프로젝트 쪽 저널)을 쓰면, 환경 HOME 과 다른 `home_root` 로 `apply_at` 을 부르는 호출에서 잠그는 저널이 달라질 수 있어요. 지금 그렇게 부르는 곳은 없어요(`apply_cli` 는 `default_home_root()` 를 넘겨요; `rg 'apply_at\(' src tests` 로 확인, 판 2 승인 뒤 한 번 더). `check_destinations` 가 이미 전환된 포인터를 잠금 앞에서 거절하므로(`src/layout.rs:274`) 잠금에 닿는 호출의 저널은 늘 프로젝트 쪽이에요.
+- 조각 2: 기준선 줄이 몇 개 줄지는 변경 뒤 관찰 실행 전에는 몰라요(unverified). `journal_root_in` 으로 바꾸는 테스트 도우미는 `identity::identity`(C-409 몫)도 불러서, 두 카드가 모두 끝나야 그 테스트가 HOME 을 안 건드릴 수 있어요. 한쪽만 끝난 파일은 줄을 지우지 않아요.
+- 조각 2: 실험(D-4)을 돌리려면 `HOME`·`GIT_CONFIG_GLOBAL` 을 정한 `git` 명령이 필요한데, 워크트리 격리 훅이 그런 명령을 막았어요(이 세션, 2026-11-23). 실험은 훅이 허락하거나 사람이 직접 돌릴 때까지 `not_run` 이고, 그 전에는 (a) 를 고르지 않아요.
 
 ## Decisions
 
@@ -80,12 +104,19 @@ C-409 N1(감사 #409)도 이 카드 몫이에요: `identity_in` 이 부르는 gi
 | D-1 | `default_home_root_in(home: Option<&Path>)` 와 `switched_dir_in(project, subdir, home: Option<&Path>)` 를 더하고 기존 두 함수는 환경 HOME 을 한 번 읽어 위임하는 어댑터로 남겨요 | C-409 D-1 과 같은 방식; 호출부 세 곳이 이 카드 범위 밖이라 서명을 바로 바꿀 수 없어요 | `_in` 두 함수를 지우고 본문을 되돌리기 |
 | D-2 | 가장자리(`main.rs`, `ops/*::run`, `ledger::resolve_home`)의 읽기는 남겨요 | 카드 기준 1 은 "명령 가장자리 밖에서는 0" 이에요; 가장자리가 한 번 읽는 자리예요 | 해당 없음 |
 | D-3 | `claims_legacy_dir` 는 `identity_in(project, None)` 을 불러요 | 그 함수는 `clone_anchor` 만 읽어요(`src/layout.rs:87`); 홈 상태 폴더 칸은 쓰지 않아요 | 이전 줄 `identity(project)` 로 되돌리기 |
-| D-4 | git 자식의 전역 설정 고정(C-409 N1)은 조각 2 에서 `src/identity.rs` 범위를 받아 해요. 옵션: (a) `rev_parse` 자식에 `GIT_CONFIG_GLOBAL` 을 받은 HOME 의 `.gitconfig`(없으면 `/dev/null`)로 줘요 (b) `GIT_CONFIG_NOSYSTEM`·`GIT_CONFIG_GLOBAL=/dev/null` 로 둘 다 막아요 (c) 고치지 않고 문서로만 남겨요. 기본 (a) — 단, `safe.directory` 가 전역 설정에서 오므로 (b) 는 소유자가 다른 저장소를 거부할 수 있어요(미확인, 조각 2 에서 git 문서와 실험으로 확인) | 이 조각에서 정하지 않고 범위 확장과 함께 리더 결정을 받아요 | 해당 없음 |
+| D-4 | git 자식의 전역 설정 고정(C-409 N1)은 조각 2 에서 `src/identity.rs` 범위를 받아 해요. 옵션: (a) `rev_parse` 자식에 `GIT_CONFIG_GLOBAL` 을 받은 HOME 의 `.gitconfig`(없으면 `/dev/null`)로 줘요 (b) `GIT_CONFIG_NOSYSTEM`·`GIT_CONFIG_GLOBAL=/dev/null` 로 둘 다 막아요 (c) 고치지 않고 문서로만 남겨요. 기본 (a) — 단, `safe.directory` 가 전역 설정에서 오므로 (b) 는 소유자가 다른 저장소를 거부할 수 있어요(미확인, 조각 2 에서 git 문서와 실험으로 확인) | 판 1 에서 정하지 않았고, 판 2 의 D-8 이 이어 받아요 | 해당 없음 |
+| D-5 | `claim::journal_root_in(project, home: Option<&Path>)` 는 `identity_in(project, None)` 으로 클레임 원본을 찾고 `switched_dir_in(project, "claims", home)` 으로 전환 폴더를 봐요. `journal_root` 는 환경 HOME 을 한 번 읽어 넘기는 어댑터예요. `worktree::open_locked_journal_in` 도 같은 꼴이에요 | D-1 과 같은 방식; 호출부가 공개 함수 서명에 의존하는 곳이 많아서(`rg '[^_a-z]journal_root\(' src tests` 가 클레임 장부 함수 호출 스무 곳을 보여요) 서명을 바로 바꾸지 않아요 | `_in` 함수를 지우고 어댑터 본문을 되돌리기 |
+| D-6 | `apply_at` 은 `open_locked_journal_in(project, None)` 을 불러요 | 잠금 앞의 `check_destinations` 가 이미 전환된 포인터를 거절하므로 잠금 시점의 저널은 프로젝트 쪽이에요(읽어서 확인: `src/layout.rs:274`) | 이전 줄 `open_locked_journal(project)` 로 되돌리기 |
+| D-7 | `src/forge/outbox.rs`·`src/apply.rs` 의 `switched_dir` 호출은 조각 2 의 6단계 관찰 실행 결과를 보고 정해요: 그 뒤에도 기준선에 남는 줄이 이 두 모듈 때문이면 판 3 으로 `_in` 을 더하고, 아니면 조각 3 으로 미뤄요 | 기준선 바이너리 중 `tests/forge_report_cli.rs`(5줄)가 `outbox::load` 를, `tests/project_ci_plan_lib.rs`(9줄)가 `apply::recover` 를 프로세스 안에서 불러요(읽어서 확인: `rg 'outbox::|apply::recover' tests/<바이너리>.rs`). 그 줄이 이 두 호출 때문인지 `identity` 때문인지는 아직 못 쟀어요(unverified); 소비자가 확인되기 전에 `_in` 을 더하지 않아요(핵심 규칙 20) | 해당 없음 |
+| D-8 | git 전역 설정 고정의 기본은 (a)이고, `home` 이 `None` 이면 자식의 전역 설정 찾기를 건드리지 않아요(프로세스 환경 그대로). 실험 결과가 (a) 와 다르면 이 줄을 고쳐 다시 승인받아요 | (b) 는 `safe.directory` 를 막을 수 있어 실험 전에는 고르지 않기로 한 리더 결정(노트 7680); `None` 을 `/dev/null` 로 막으면 `identity_in(path, None)` 을 부르는 명령 경로의 사용자가 자기 `safe.directory` 설정을 잃어요 | `rev_parse` 의 환경 줄 삭제 |
+| D-9 | 기준선 줄은 마지막 단계에서 관찰 실행 결과로만 지워요; 상한(`BASELINE_CAP`)은 남은 줄 수로 같은 변경에서 낮춰요 | 줄 수는 "이 변경 뒤 가드가 건드렸다고 말하지 않는 테스트"만 줄일 수 있어요(핵심 규칙 10: 글자 일치는 가설) | 지운 줄을 되살리기 |
 
 ## Interview
 
 - Q1: 서명을 바로 바꾸나요? → A: 아니요(D-1). `switched_dir` 호출부 세 곳이 범위 밖이에요.
 - Q2: 환경 HOME 읽기를 전부 이 카드 하나로 끝내나요? → A: 아니요. 인벤토리를 조각으로 나눠요; 조각 2 이후는 시작할 때 리더 노트로 범위를 받아요.
+- Q3: 조각 2 가 C-409 조각 2a 와 같은 파일(`src/claim.rs`, `src/identity.rs`)을 만지는데 어떻게 하나요? → A: C-409 가 먼저예요(카드 본문의 순서). 이 카드는 겹치지 않는 부분(`src/layout.rs`)을 먼저 하고, 겹치는 파일은 C-409 착지 뒤 `moai card scope` 로 예약을 넓혀 해요.
+- Q4: `journal_root` 호출부(서른 곳 넘음)를 모두 `journal_root_in` 으로 옮기나요? → A: 아니요. 어댑터를 남기고 기준선 테스트가 부르는 곳과 `apply_at` 만 옮겨요. 나머지 호출부는 가장자리에서 HOME 을 받아 내려오는 조각에서 옮겨요.
 
 ## Result
 
