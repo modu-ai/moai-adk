@@ -185,6 +185,48 @@ fn only_a_card_number_at_a_word_start_counts() {
     assert_eq!(notices(&line_end).len(), 1, "{:?}", line_end.findings);
 }
 
+/// SPEC-20261124-card-number-bare-prefix AC-1: a line, and a whole text, that ends with the bare
+/// prefix (no digit after the hyphen) gives no notice and no panic. The scan loop stops two bytes
+/// before the end, so the digit test never reads past the last byte; a loop bound one byte looser
+/// reads index `len` and panics.
+#[test]
+fn a_line_ending_with_a_bare_card_prefix_gives_no_notice_and_no_panic() {
+    for bare in ["C-", "c-"] {
+        // The bare prefix ends an Intent line, alone and after a word.
+        for intent in [bare.to_string(), format!("Seen on card {bare}")] {
+            let d = parse_text(&text(ID, "draft", Some("2026-11-25"), "", &intent));
+            assert!(
+                notices(&d).is_empty(),
+                "`{intent}` is no card number: {:?}",
+                d.findings
+            );
+        }
+        // The bare prefix is the last two bytes of the whole text, with no line break after it.
+        let whole = format!(
+            "{}Seen on card {bare}",
+            text(ID, "draft", Some("2026-11-25"), "", "No card here.")
+        );
+        assert!(whole.ends_with(bare));
+        let d = parse_text(&whole);
+        assert!(notices(&d).is_empty(), "`{whole}`: {:?}", d.findings);
+    }
+    // A real number earlier on the same line is still counted once, and the bare prefix after it
+    // adds nothing.
+    let mixed = parse_text(&text(
+        ID,
+        "draft",
+        Some("2026-11-25"),
+        "",
+        &format!("Seen on card {} and then C-", card(3)),
+    ));
+    assert_eq!(notices(&mixed).len(), 1, "{:?}", mixed.findings);
+    assert!(
+        notices(&mixed)[0].message.contains("1 card"),
+        "the count: {}",
+        notices(&mixed)[0].message
+    );
+}
+
 fn spec_texts() -> Vec<(String, String)> {
     let dir = Path::new(ROOT).join(moai_cli::spec_doc::SPECS_DIR);
     let mut out = Vec::new();
