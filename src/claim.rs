@@ -1790,7 +1790,7 @@ mod tests {
 mod journal_root_in_tests {
     use super::*;
     use crate::layout::home_arg_tests::{
-        child_var, init_repo, profile_project, run_in_child_of, switch_on, symlinked_home,
+        child_var, init_repo, profile_project, run_in_child_of, symlinked_home, write_pointer,
     };
     use std::{ffi::OsString, fs};
 
@@ -1822,7 +1822,7 @@ mod journal_root_in_tests {
             let project = profile_project(dir.path());
             init_repo(&project);
             let given = dir.path().join("given");
-            switch_on(&given);
+            write_pointer(&given);
             let other = dir.path().join("other");
             fs::create_dir(&other).unwrap();
             let clone = clone_side(&project);

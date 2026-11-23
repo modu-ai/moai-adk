@@ -806,13 +806,13 @@ mod open_locked_journal_in_tests {
     use super::*;
     use crate::contract::Kind;
     use crate::layout::home_arg_tests::{
-        child_var, init_repo, profile_project, run_in_child_of, switch_on,
+        child_var, init_repo, profile_project, run_in_child_of, write_pointer,
     };
     use std::ffi::OsString;
 
     /// Set in the child process; the project the child locks the journal of.
     const CHILD_PROJECT: &str = "MOAI_LOCK_TEST_PROJECT";
-    /// Set in the child process; the switched HOME the child passes as an argument.
+    /// Set in the child process; the HOME with the layout pointer that the child passes as an argument.
     const CHILD_GIVEN: &str = "MOAI_LOCK_TEST_GIVEN_HOME";
 
     fn busy(error: crate::contract::OpError) {
@@ -828,7 +828,7 @@ mod open_locked_journal_in_tests {
         let project = profile_project(dir.path());
         init_repo(&project);
         let given = dir.path().join("given");
-        switch_on(&given);
+        write_pointer(&given);
         let _held = open_locked_journal_in(&project, Some(&given)).unwrap();
         assert!(
             crate::home_root::path(&given)
@@ -853,7 +853,7 @@ mod open_locked_journal_in_tests {
             let project = profile_project(dir.path());
             init_repo(&project);
             let given = dir.path().join("given");
-            switch_on(&given);
+            write_pointer(&given);
             run_in_child_of(
                 module_path!(),
                 test,

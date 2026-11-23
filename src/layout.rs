@@ -672,7 +672,7 @@ pub(crate) mod home_arg_tests {
     }
 
     /// Writes the pointer a verified apply writes, so `home`'s home root is switched on.
-    pub(crate) fn switch_on(home: &Path) {
+    pub(crate) fn write_pointer(home: &Path) {
         let marker_dir = crate::home_root::path(home).join("projects/widgets");
         fs::create_dir_all(&marker_dir).unwrap();
         fs::write(marker_dir.join("layout.json"), b"{}").unwrap();
@@ -783,7 +783,7 @@ pub(crate) mod home_arg_tests {
             let dir = tempfile::tempdir().unwrap();
             let project = profile_project(dir.path());
             let given = dir.path().join("given");
-            switch_on(&given);
+            write_pointer(&given);
             let other = dir.path().join("other");
             fs::create_dir(&other).unwrap();
             assert_eq!(switched_dir_in(&project, "claims", None), None);
@@ -870,7 +870,7 @@ pub(crate) mod home_arg_tests {
             let project = profile_project(dir.path());
             init_repo(&project);
             let env_home = dir.path().join("env-home");
-            switch_on(&env_home);
+            write_pointer(&env_home);
             let home_root = dir.path().join("target-root");
             run_in_child(
                 "apply_at_locks_the_project_side_journal_without_reading_the_environment_home",
