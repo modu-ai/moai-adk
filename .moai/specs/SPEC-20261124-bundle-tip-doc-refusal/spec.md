@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261124-bundle-tip-doc-refusal
 title: "bundle operations page names the local integration tip, and the missing-tip refusal names both refs"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-24
+approval:
+  by: leader
+  at: 2026-11-23
+  basis: "리더 결정 노트 7703 (2026-11-23T16:57:18Z, 사용자 위임 2026-11-23T13:57Z, 리더 판단, 노트 7702 의 (a)): 판 1 과 D-1·D-2 승인; 리더가 노트에 적었고 레인은 그 노트를 인용만 해요"
+  digest: "sha256:4a15bccaa646a835785ee100b0712cfe2a7f9e3ddf5dce7bf46e437fc4d6fd8a"
 ---
 
 # bundle operations page names the local integration tip, and the missing-tip refusal names both refs
@@ -16,6 +21,12 @@ Follow-up of `SPEC-20261124-bundle-local-tip` (card C-408, AUDIT PASS with two n
 2. N3: when neither the local branch nor `origin/<branch>` exists, the refusal in `tip_of` (`src/bundle.rs`) names only `origin/NeXT`, so a reader cannot tell that the local branch was checked too.
 
 Readers: the lander and the auditors who run `moai bundle` and read its page and its refusal.
+
+## Interview
+
+- Q1: Does the refusal need to know that the tip was defaulted? -> A: No (D-1). `tip_of` is reached by `ready`, `check`, `body`, `build` and `verify`; a flag through five signatures costs more than one true extra fact in the message.
+- Q2: Does the operations page need a new pinned test? -> A: No (D-2). The three tests that read it pin other words and are held by C-414; a new reader needs a `tools/repo_scans.json` entry.
+- Q3: Where does the new test live? -> A: `tests/bundle_tip_refusal_cli.rs`; its first word `bundle` is an area of `tests/areas.toml`, which `test_area_layout` checks.
 
 ## Non-goals
 
