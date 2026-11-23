@@ -220,6 +220,61 @@ fn assign_author_identities_are_refused() {
     assert_eq!(w.count("card.audit_assigned"), 0);
 }
 
+/// AC-4 (REQ-4, card C-411): another spelling of an author, in upper case or with a `:<12hex>`
+/// worktree suffix, is the same identity (`trailers::same_identity`), so it is refused as well,
+/// and the ledger is unchanged. The card stays assignable to a session that never held it.
+#[test]
+fn assign_author_spellings_are_refused() {
+    let w = World::new();
+    let name = w.review_card();
+    let before = w.events();
+    let spellings = [
+        S_A.to_uppercase(),
+        format!("{S_B}:0123456789ab"),
+        format!("{}:0123456789AB", S_A.to_uppercase()),
+    ];
+    for who in &spellings {
+        let message = refusal(&w.assign("leader", &name, who));
+        assert!(message.contains(who.as_str()), "{message}");
+        assert!(message.contains(&name), "{message}");
+        assert_eq!(w.events(), before, "{who}: an event was written");
+    }
+    assert_eq!(w.count("card.audit_assigned"), 0);
+    result(&w.assign("leader", &name, S_C));
+    assert_eq!(w.count("card.audit_assigned"), 1);
+}
+
+/// AC-7 (REQ-8, card C-411): a value that is not a session identity (a lane name, a word that is
+/// too short, a bad worktree suffix) is refused with the value and the needed shape and writes
+/// nothing, because no verdict writer can ever match it; a session id with a worktree suffix is
+/// accepted.
+#[test]
+fn assign_identity_shapes_are_checked_with_a_reason() {
+    let w = World::new();
+    let name = w.review_card();
+    let before = w.events();
+    let bad = [
+        "agent-4".to_string(),
+        "lane-3".to_string(),
+        "abc".to_string(),
+        format!("{S_C}:xyz"),
+        format!("{S_C}:0123456789a"),
+    ];
+    for who in &bad {
+        let message = refusal(&w.assign("leader", &name, who));
+        assert!(message.contains(who.as_str()), "{message}");
+        assert!(message.contains("session"), "{message}");
+        assert_eq!(w.events(), before, "{who}: an event was written");
+    }
+    assert_eq!(w.count("card.audit_assigned"), 0);
+
+    let with_key = format!("{S_C}:0123456789ab");
+    result(&w.assign("leader", &name, &with_key));
+    assert_eq!(w.count("card.audit_assigned"), 1);
+    let (payload, _actor) = w.payload_of_last("card.audit_assigned");
+    assert_eq!(payload["auditor"], json!(with_key), "{payload}");
+}
+
 /// AC-5: the leader's assignment of a session that never held the card writes one row with the
 /// auditor and the caller; another caller word and a card that is not in review each refuse
 /// before any write.
@@ -227,13 +282,12 @@ fn assign_author_identities_are_refused() {
 fn assign_rows_hold_the_auditor_and_the_caller_and_only_the_leader_writes_them() {
     let w = World::new();
     let name = w.review_card();
+    let active = w.active_card();
     let before = w.events();
     refusal(&w.assign("agent-1", &name, S_C));
-    let active = w.active_card();
-    let after_active = w.events();
+    assert_eq!(w.events(), before, "a refused caller word wrote an event");
     refusal(&w.assign("leader", &active, S_C));
-    assert_eq!(w.events(), after_active);
-    assert!(after_active >= before);
+    assert_eq!(w.events(), before, "a card not in review took a row");
     assert_eq!(w.count("card.audit_assigned"), 0);
 
     result(&w.assign("leader", &name, S_C));
