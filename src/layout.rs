@@ -686,6 +686,62 @@ mod home_arg_tests {
         home
     }
 
+    /// `git init -q <dir>` for a test fixture. The child gets a HOME of its own, so it reads no
+    /// global git configuration of the environment HOME (SPEC-20261124-home-env-readers REQ-11).
+    fn init_repo(dir: &Path) {
+        let own_home = tempfile::tempdir().unwrap();
+        let mut init = Command::new("git");
+        init.arg("init").arg("-q").arg(dir);
+        crate::identity::scrub_git_env(&mut init);
+        init.env("HOME", own_home.path())
+            .env_remove("XDG_CONFIG_HOME")
+            .env("GIT_CONFIG_NOSYSTEM", "1");
+        assert!(init.status().unwrap().success(), "git init");
+    }
+
+    /// AC-10 (REQ-11), child side: the environment HOME holds a global git configuration that
+    /// names another default branch. A plain scrubbed `git init` follows it (the control, so this
+    /// test can fail); `init_repo` does not.
+    #[test]
+    fn init_repo_ignores_the_global_git_config_of_the_environment_home() {
+        let Some(work) = child_var(CHILD_PROJECT) else {
+            let dir = tempfile::tempdir().unwrap();
+            let leaky = dir.path().join("leaky");
+            fs::create_dir(&leaky).unwrap();
+            fs::write(
+                leaky.join(".gitconfig"),
+                "[init]\n\tdefaultBranch = leaked\n",
+            )
+            .unwrap();
+            let work = dir.path().join("work");
+            fs::create_dir(&work).unwrap();
+            run_in_child(
+                "init_repo_ignores_the_global_git_config_of_the_environment_home",
+                Some(&leaky.into_os_string()),
+                &[(CHILD_PROJECT, &work)],
+            );
+            return;
+        };
+        let head = |repo: &Path| fs::read_to_string(repo.join(".git/HEAD")).unwrap();
+        let control = work.with_file_name("control");
+        fs::create_dir(&control).unwrap();
+        let mut plain = Command::new("git");
+        plain.arg("init").arg("-q").arg(&control);
+        crate::identity::scrub_git_env(&mut plain);
+        assert!(plain.status().unwrap().success(), "git init (control)");
+        assert!(
+            head(&control).contains("leaked"),
+            "the control must follow the environment HOME's git config: {}",
+            head(&control)
+        );
+        init_repo(&work);
+        assert!(
+            !head(&work).contains("leaked"),
+            "init_repo read the environment HOME's git config: {}",
+            head(&work)
+        );
+    }
+
     /// AC-1 (REQ-1): the HOME that is passed decides the home root, whatever the environment is.
     #[test]
     fn default_home_root_in_uses_the_home_it_is_given() {
@@ -768,13 +824,9 @@ mod home_arg_tests {
             let home = symlinked_home(dir.path());
             let work = dir.path().join("work");
             fs::create_dir(&work).unwrap();
-            let mut init = Command::new("git");
-            init.arg("init").arg("-q").arg(&work);
-            crate::identity::scrub_git_env(&mut init);
-            assert!(init.status().unwrap().success(), "git init");
-            let id = crate::identity::identity_in(&work, None).unwrap();
-            let anchor = id["clone_anchor"].as_str().expect("a clone anchor");
-            let claims = crate::clone_root::path(Path::new(anchor)).join("claims");
+            init_repo(&work);
+            let anchor = fs::canonicalize(work.join(".git")).unwrap();
+            let claims = crate::clone_root::path(&anchor).join("claims");
             fs::create_dir_all(&claims).unwrap();
             run_in_child(
                 "claims_legacy_dir_ignores_the_environment_home",
