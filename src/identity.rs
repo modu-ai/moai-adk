@@ -413,12 +413,27 @@ mod home_arg_tests {
         std::env::var_os(CHILD_WORK).map(PathBuf::from)
     }
 
-    /// A home whose state folder is a symlink to a folder beside it: the refusal case.
+    /// A home whose state folder is a symlink to a folder beside it: the refusal case. A Go
+    /// generation marker under `.moai` makes the earlier state folder the HOME's state root, and
+    /// that is where the link goes; the state root is read back to prove the link is on it.
     fn symlinked_home(dir: &Path) -> PathBuf {
         let home = dir.join("home");
-        std::fs::create_dir_all(home.join("elsewhere")).unwrap();
-        std::os::unix::fs::symlink(home.join("elsewhere"), home.join(crate::HOME_STATE_DIR))
-            .unwrap();
+        let go = home.join(crate::home_root::MOAI_DIR);
+        std::fs::create_dir_all(&go).unwrap();
+        std::fs::write(
+            go.join("user-assets.json"),
+            br#"{"schema_version": 1, "files": {}}"#,
+        )
+        .unwrap();
+        std::fs::create_dir(home.join("elsewhere")).unwrap();
+        let link = crate::home_root::path(&home);
+        std::os::unix::fs::symlink(home.join("elsewhere"), &link).unwrap();
+        assert_eq!(
+            crate::home_root::path(&home),
+            link,
+            "the link is the state root"
+        );
+        assert!(std::fs::symlink_metadata(&link).unwrap().is_symlink());
         home
     }
 
