@@ -14,7 +14,7 @@ created: 2026-11-22
 
 개정 2(사용자 말: "5H 값이 있으면 쓰고, 없을 때도 있다"): `5H` 는 입력에 5시간 창의 비율이 있으면 **어느 수준이든** 보여요. 개정 1 은 오늘의 조건(70% 넘게 썼을 때만)을 남겨 두었어요. 호스트가 5시간 창을 항상 보내지는 않아서, 창이 없거나 창에 비율이 없으면 `5H` 항목은 없어요(`5H n/a` 는 쓰지 않아요).
 
-개정 3(사용자 결정: 진행판·상태줄·레인 보고가 **하나의 아이콘 세트**를 써요). 흐름은 `🗂️` 카드가 추가돼 차례를 기다림 → `🟡` 진행 중 → `📨` 넘겨서 확인을 기다림 → `🔍` 확인(감사) 중 → `🔁` 확인 실패 뒤 수리 → `🛬` 확인 통과, 랜딩을 기다림 → `✅` 완료(랜딩 또는 닫힘)이고, 흐름 옆에 `🚧` 막힘, `🙋` 사용자의 선택 필요, `🔴` 위험, `❌` 실패·취소가 있어요. `🔵 🟢 ⬜ 👀 ⛔ ⏸️` 와 글자 코드는 빠져요. 아이콘과 글 사이는 어디서나 **한 칸**이에요(`🗂️` 뒤도). 이 SPEC 의 브랜치에서 같이 고치라는 지시라 새 SPEC 을 만들지 않고 이 SPEC 의 개정으로 담았어요(브랜치의 SPEC 을 훅이 이 id 로 읽어요). 상태줄 2번째 줄(카드 흐름)은 REQ-5~REQ-7 이에요. 원장이 구분하지 않는 단계(`🔍` 확인 중, `🔁` 수리)는 상태줄에 나오지 않아요.
+개정 3(사용자 결정: 진행판·상태줄·레인 보고가 **하나의 아이콘 세트**를 써요). 흐름은 `🗂️` 카드가 추가돼 차례를 기다림 → `🟡` 진행 중 → `📨` 넘겨서 확인을 기다림 → `🔍` 확인(감사) 중 → `🔁` 확인 실패 뒤 수리 → `🛬` 확인 통과, 랜딩을 기다림 → `✅` 완료(랜딩 또는 닫힘)이고, 흐름 옆에 `🚧` 막힘, `🙋` 사용자의 선택 필요, `🔴` 위험, `❌` 실패·취소가 있어요. `🔵 🟢 ⬜ 👀 ⛔ ⏸️` 와 글자 코드는 빠져요. 아이콘과 글 사이는 어디서나 **한 칸**이에요(`🗂️` 뒤도). 이 SPEC 의 브랜치에서 같이 고치라는 지시라 새 SPEC 을 만들지 않고 이 SPEC 의 개정으로 담았어요(브랜치의 SPEC 을 훅이 이 id 로 읽어요). 상태줄 2번째 줄(카드 흐름)은 REQ-5~REQ-7, 출력 스타일의 진행판은 REQ-8 이에요. 진행판은 `SPEC-20261123-progress-board-flow-icons` 가 정한 열한 개 아이콘 가운데 `⬜ 🔵 🟢` 를 `🗂️ 🔍 🛬` 로 바꾸고 `✅` 를 "완료"로 옮겨요. 그 SPEC 의 나머지 규칙(호스트의 작업 목록을 쓰지 않음, 백그라운드 작업이 도는 채 턴이 끝나면 진행판으로 끝냄, 줄 순서)은 그대로예요. 원장이 구분하지 않는 단계(`🔍` 확인 중, `🔁` 수리)는 상태줄에 나오지 않아요.
 
 ## Requirements
 
@@ -25,6 +25,7 @@ created: 2026-11-22
 - REQ-5: The status line shall write exactly one space between every icon and its text on all three lines · failure: none — an icon written with a variation selector takes one space too and the width of a form is counted from the written text
 - REQ-6: The status line shall write its flow line as `🎯 C-<n> <stage icon> | 🗂️ <ready> → 🟡 <working> → 📨 <submitted> → 🛬 <audited plus landed> → ✅ <done today> | 🚧 <blocked> 🙋 <hold>` without letter codes · failure: none — an item whose count is zero is left out with its arrow or separator and the drafts and the ended leases are not on the line
 - REQ-7: When the width budget is smaller than the flow line, the status line shall drop the leftmost item of the flow first and keep the own card and `🚧 🙋` to the end · failure: none — when the notes cannot be read the line is `🗂️ <ready> 🟡 <working>` without an arrow and never a guess
+- REQ-8: The MoAI-Easy output style shall describe its progress board with the same icon set in the order `🙋 🔴 ✅ 🛬 🔍 📨 🟡 🔁 🚧 🗂️ ❌` and with one space between an icon and its text · failure: a style file that holds the earlier render is updated and not left as a conflict
 
 ## Acceptance
 
@@ -36,10 +37,11 @@ created: 2026-11-22
 - AC-6 (REQ-5): 표의 모든 아이콘 뒤가 한 칸이고(`🗂️`·`🅱️`·`⬇️` 포함), 흐름 줄이 그릴 수 있는 모든 모양(여러 흐름을 폭 0~70 과 폭 없음으로 렌더)에서 아이콘 뒤가 정확히 한 칸이에요 · verify: `cargo test --offline --locked --lib statusline::render::flow_line_tests::every_rendered_form_has_one_space_after_every_icon`
 - AC-7 (REQ-6): 흐름 줄이 `🎯 C-<n> 🟡 | 🗂️ 150 → 🟡 14 → 📨 11 → 🛬 3 → ✅ 19 | 🚧 3 🙋 7` 모양이고, 0 인 항목은 화살표·구분자와 함께 숨고, 초안과 리스가 끝난 카드는 줄에 없고, 내 카드는 아홉 단계마다 그 단계의 아이콘을 보여요 · verify: `cargo test --offline --locked --lib statusline::render::flow_line_tests::a_zero_count_hides_its_item`
 - AC-8 (REQ-7): 폭이 한 칸 모자랄 때마다 `🗂️`, `🟡`, `📨`, `🛬`, `✅` 순서로 빠지고 내 카드와 `🚧 🙋` 는 끝까지 남고, 노트를 못 읽으면 `🗂️ <ready> 🟡 <working>` 한 모양이에요 · verify: `cargo test --offline --locked --lib statusline::render::flow_line_tests::every_form_is_exactly_its_string_and_changes_at_its_boundary`
+- AC-9 (REQ-8): 진행판 절이 열한 개 아이콘의 견본 줄을 그 순서로, 흐름 줄과 "흐름 옆" 줄을, 막대가 `✅` 줄을 센다는 문장을 담고, 빠진 아이콘(`🔵 🟢 ⬜ 👀 ⛔ ⏸️`)은 스타일 어디에도 없고, 직전 렌더 `5f6b5fd1…` 가 `render-6.md` 픽스처와 함께 이전 렌더 목록에 있어요 · verify: `cargo test --offline --locked --test home_style_ownership_cli`
 
 ## Scope
 
-- write: `.moai/specs/SPEC-20261122-statusline-limits-left/**`, `src/statusline/render.rs`, `src/statusline/input.rs`, `src/statusline/state.rs`, `src/statusline/width.rs`, `tests/statusline_*.rs`, `tests/fixtures/statusline-claude/**`, `docs/rust-product-path.md`
+- write: `.moai/specs/SPEC-20261122-statusline-limits-left/**`, `src/statusline/render.rs`, `src/statusline/input.rs`, `src/statusline/state.rs`, `src/statusline/width.rs`, `tests/statusline_*.rs`, `tests/fixtures/statusline-claude/**`, `docs/rust-product-path.md`, `skills/moai/references/home` (its `output-style.md`), `skills/moai/references/source-manifest.json`, `src/home_style.rs`, `tests/home_style_ownership_cli.rs`, `tests/fixtures/home-style/render-6.md`
 
 ## Plan
 
@@ -48,6 +50,7 @@ created: 2026-11-22
 3. (개정 2) `5H` 의 "70% 넘게 썼을 때만" 조건을 빼요. 테스트 먼저, red 확인 뒤 코드.
 4. 통합 테스트, 골든 파일, 제품 문서를 맞춰요.
 5. (개정 3) 흐름 줄의 테스트를 새 아이콘 세트와 한 칸 간격으로 고쳐 red 를 확인한 뒤, `width::icon_text` 의 두 칸을 없애고 `flow_forms` 를 다시 써요. `Stage::letter()` 는 `Stage::icon()` 이 돼요.
+6. (개정 3) 통합 브랜치를 한 번 병합해 진행판의 직전 변경을 받은 뒤, 진행판 테스트와 렌더 고정값을 먼저 고쳐 red 를 확인하고, 스타일 원문의 진행판 절, 이전 렌더 목록, 매니페스트 해시를 고쳐요.
 
 ## Result
 
@@ -65,8 +68,9 @@ created: 2026-11-22
 - AC-6: met — `statusline::width::tests::one_space_follows_every_icon` 이 표의 아이콘 22개 뒤 한 칸을, `statusline::render::flow_line_tests::every_rendered_form_has_one_space_after_every_icon` 이 여러 흐름을 폭 0~70 과 폭 없음으로 렌더한 모든 모양의 아이콘 뒤 한 칸(두 칸 없음, 글자 코드 없음)을 고정해요. 첫 줄은 `every_icon_of_the_first_line_is_followed_by_one_space`, 셋째 줄은 `tests/statusline_cards.rs` 의 line 3 아이콘 테스트가 확인해요.
 - AC-7: met — `flow_line_tests` 의 `every_form_is_exactly_its_string_and_changes_at_its_boundary`(가장 넓은 모양 `🎯 C-<n> 🟡 | 🗂️ 150 → 🟡 14 → 📨 11 → 🛬 3 → ✅ 19 | 🚧 3 🙋 7`), `a_zero_count_hides_its_item`, `drafts_and_ended_leases_are_not_on_the_line`, `my_card_shows_the_icon_of_each_stage` 가 고정해요. 단계 아이콘은 `statusline::state::stage_tests_edges::every_stage_has_its_icon_from_the_one_icon_set` 이 고정해요: 초안·ready `🗂️`, working·리스 끝남 `🟡`, submitted `📨`, audited·landed `🛬`, blocked `🚧`, hold `🙋`.
 - AC-8: met — 같은 `every_form_is_exactly_its_string_and_changes_at_its_boundary` 가 각 모양의 폭 N 에서 그 모양, N-1 에서 다음 모양(`🗂️`, `🟡`, `📨`, `🛬`, `✅` 순서로 빠짐)을 고정하고, `the_unsplit_flow_has_one_form_and_never_a_guess` 가 `🗂️ 150 🟡 15` 한 모양을 고정해요. 바이너리로는 `tests/statusline_cards.rs` 의 `width_ladder_changes_the_flow_line_exactly_at_each_boundary` 가 확인해요.
+- AC-9: met — `tests/home_style_ownership_cli.rs` 의 `the_progress_board_is_the_one_progress_display_with_flow_icons`(다른 SPEC 의 verify 줄이 부르는 이름이라 그대로 뒀어요)가 절의 문장, 견본 줄 순서, 흐름 줄, "흐름 옆" 줄, 빠진 아이콘 없음, 아이콘 뒤 한 칸을 고정하고, `the_earlier_renders_are_pinned_and_never_hold_the_current_one` 과 `the_fixtures_are_the_earlier_renders_of_the_spec` 이 여섯 번째 이전 렌더 `5f6b5fd1d93f3b0a4553ba74df113bba99bb018ca819120e1a25926fe242d006`(`render-6.md`)와 새 렌더 `8468a4c95c48ab62975d13bac3041e60a393b2ba368f36c09544ef96df810847` 을 고정해요. red 는 `cargo nextest run --test home_style_ownership_cli` exit 100, 11개 중 2개(절에 새 문장 없음, 목록 길이 5 대 6)가 실패. 견본 줄은 `[아이콘] <step>` 모양을 그대로 두었고, 한 칸 규칙은 "아이콘(또는 그 괄호)과 글 사이"로 적었어요.
 
-개정 3 의 red 와 green: red 는 `cargo nextest run --lib -E 'test(statusline::)'` exit 100, 211개 중 33개가 새 아이콘·한 칸 기대값에서 실패. green 은 `--lib` 와 `--test` 25개(앞의 21개에 `home_style_cli`, `home_style_ownership_cli`, `update_user_layer_cli`, `product_cli`)가 exit 0, 2072 passed 0 failed 1 skipped. 첫 줄의 가장 넓은 모양은 두 칸이 한 칸이 되면서 112 칸에서 111 칸이 됐어요(메인 체크아웃 86→84, 일반 프로젝트 77→76). 골든 파일은 도구로 다시 썼고(114 outputs ok), 바뀐 plain 줄은 `🅱️`·`⬇️` 뒤의 한 칸과 `b13`·`b14` 의 흐름 줄(`🗂️ 25 → 📨 2 → ✅ 12 | 🙋 5`, `🗂️ 25 → 📨 3 → ✅ 12 | 🙋 5`)뿐이에요.
+개정 3 의 red 와 green: red 는 `cargo nextest run --lib -E 'test(statusline::)'` exit 100, 211개 중 33개가 새 아이콘·한 칸 기대값에서 실패. green 은 `--lib` 와 `--test` 25개(앞의 21개에 `home_style_cli`, `home_style_ownership_cli`, `update_user_layer_cli`, `product_cli`)가 exit 0, 2072 passed 0 failed 1 skipped(흐름 줄 커밋의 트리). 통합 브랜치를 병합하고 진행판을 고친 트리에서는 같은 타깃이 exit 0, 2088 passed 0 failed 1 skipped. 첫 줄의 가장 넓은 모양은 두 칸이 한 칸이 되면서 112 칸에서 111 칸이 됐어요(메인 체크아웃 86→84, 일반 프로젝트 77→76). 골든 파일은 도구로 다시 썼고(114 outputs ok), 바뀐 plain 줄은 `🅱️`·`⬇️` 뒤의 한 칸과 `b13`·`b14` 의 흐름 줄(`🗂️ 25 → 📨 2 → ✅ 12 | 🙋 5`, `🗂️ 25 → 📨 3 → ✅ 12 | 🙋 5`)뿐이에요.
 
 카운트다운: `5H` 는 `7D` 와 같은 규칙이에요 — 입력에 리셋 시각이 있으면 언제나 보이고(남은 양과 무관), 31일보다 먼 시각은 카운트다운 없이, 폭 Z3 부터는 두 창 모두 카운트다운이 빠져요.
 
