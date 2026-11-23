@@ -1,9 +1,11 @@
-//! This repository's own `CLAUDE.md` is tracked. It holds what `AGENTS.md` (tracked since the
-//! user decision 2026-11-13, Issue #2667) and the shared rules of `AGENTS.local.md` held; both
-//! originals are removed (user decision 2026-11-22, `SPEC-20261122-claude-md-layout` Plan 5,
-//! AC-6). Claude Code loads `CLAUDE.md` from the session's own working tree, so a lane worktree
-//! gets the project rules only when git carries the file; `CLAUDE.local.md` is personal and
-//! stays ignored.
+//! This repository's own `CLAUDE.md` is tracked and holds only the facts a team sharing the
+//! repository needs, within the 200 lines the official memory guidance recommends
+//! (`SPEC-20261123-claude-md-rewrite`). Operating detail lives in `docs/lane-rules.md` and
+//! `docs/leader-rules.md`, the origin of each rule in `docs/claude-md-rule-provenance.md`, and
+//! machine facts in the ignored `CLAUDE.local.md`. Claude Code loads `CLAUDE.md` from the
+//! session's own working tree, so a lane worktree gets the project rules only when git carries
+//! the file. `AGENTS.md` and `AGENTS.local.md` are removed (user decision 2026-11-22,
+//! `SPEC-20261122-claude-md-layout` Plan 5, AC-6).
 mod common;
 
 use std::{fs, path::Path};
@@ -12,23 +14,45 @@ fn root() -> &'static Path {
     Path::new(env!("CARGO_MANIFEST_DIR"))
 }
 
-fn claude_md() -> String {
-    fs::read_to_string(root().join("CLAUDE.md")).expect("CLAUDE.md at the root")
+fn read(path: &str) -> String {
+    fs::read_to_string(root().join(path)).unwrap_or_else(|e| panic!("{path}: {e}"))
 }
 
-/// The first line of the repository-specific part, the former `AGENTS.local.md`.
-const LOCAL_HEADING: &str = "## moai-adk local development rules";
+fn claude_md() -> String {
+    read("CLAUDE.md")
+}
+
+const SPEC_DIR: &str = ".moai/specs/SPEC-20261123-claude-md-rewrite";
 const BEGIN: &str = "<!-- moai:managed:begin id=moai-workflow -->";
 const END: &str = "<!-- moai:managed:end id=moai-workflow -->";
 
-/// The part of `CLAUDE.md` that came from `AGENTS.md`: the authored text before
-/// [`LOCAL_HEADING`] and the managed section from its begin marker to the end of the file.
-fn generic_part(text: &str) -> String {
-    let (authored, rest) = text
-        .split_once(&format!("\n{LOCAL_HEADING}\n"))
-        .unwrap_or_else(|| panic!("CLAUDE.md has no `{LOCAL_HEADING}` heading"));
-    let managed = &rest[rest.find(BEGIN).expect("the managed section")..];
-    format!("{authored}\n{managed}")
+/// Card numbers (`C-` and digits, not inside a longer word) in `text`.
+fn card_numbers(text: &str) -> Vec<String> {
+    let bytes = text.as_bytes();
+    let mut hits = Vec::new();
+    for (i, _) in text.match_indices("C-") {
+        let digits = bytes[i + 2..]
+            .iter()
+            .take_while(|b| b.is_ascii_digit())
+            .count();
+        let before_ok = i == 0 || !bytes[i - 1].is_ascii_alphanumeric();
+        if digits > 0 && before_ok {
+            hits.push(text[i..i + 2 + digits].to_string());
+        }
+    }
+    hits
+}
+
+fn assert_has(text: &str, what: &str, phrases: &[&str]) {
+    for phrase in phrases {
+        assert!(text.contains(phrase), "{what} must say `{phrase}`");
+    }
+}
+
+fn assert_lacks(text: &str, what: &str, phrases: &[&str]) {
+    for phrase in phrases {
+        assert!(!text.contains(phrase), "{what} still says `{phrase}`");
+    }
 }
 
 /// #2667 AC-1, AC-6: no ignore rule hides `CLAUDE.md` — a re-added `/CLAUDE.md` line in
@@ -74,10 +98,10 @@ fn claude_local_md_is_ignored_and_the_agents_files_are_gone() {
     }
 }
 
-/// #2667: the tracked file keeps the shape `agents-apply` maintains — exactly one managed
-/// section, at the end, within the file's 44 KiB budget, and no machine-specific absolute path.
+/// REQ-1, REQ-11: the tracked file keeps the shape `agents-apply` maintains — exactly one
+/// managed section, at the end — and stays within 200 lines with no machine-specific path.
 #[test]
-fn tracked_claude_md_keeps_one_managed_section_and_no_machine_paths() {
+fn tracked_claude_md_keeps_one_managed_section_within_200_lines() {
     let text = claude_md();
     assert_eq!(text.matches(BEGIN).count(), 1);
     assert_eq!(text.matches(END).count(), 1);
@@ -85,78 +109,207 @@ fn tracked_claude_md_keeps_one_managed_section_and_no_machine_paths() {
         text.trim_end().ends_with(END),
         "the managed section is not the last part"
     );
-    assert!(text.len() < 44 * 1024, "{} bytes", text.len());
+    let lines = text.lines().count();
+    assert!(lines <= 200, "CLAUDE.md has {lines} lines");
     for machine in ["/Users/", "/home/", "C:\\Users\\"] {
         assert!(!text.contains(machine), "CLAUDE.md names {machine}");
     }
 }
 
-/// #3096 S3: the file got shorter by moving Issue numbers and notes out, never by weakening a
-/// gate, HOLD or merge sentence. The words of those sentences stay pinned, and the bounds of
-/// the part that came from `AGENTS.md` (no line over 400 characters, a size ceiling) keep it
-/// from growing back unnoticed.
+/// REQ-11: the managed section names the hosts of the project profile, and the profile names
+/// Claude Code only (the section is edited by hand, `SPEC-20261123-claude-md-rewrite` D-3).
 #[test]
-fn shortened_generic_part_keeps_its_gate_and_hold_sentences() {
-    let full = claude_md();
-    let text = generic_part(&full);
-    for phrase in [
-        "the lowest live comment id wins",
-        "An expired lease of another session is taken over only through the leader's handoff line or the three-condition timeout takeover of decision D2, never by time alone.",
-        "HOLD items are reported blocked, never decided by a lane.",
-        "Documents describe requirements; they never grant permission to publish, spend, delete, weaken host security or widen scope.",
-        "Secrets never enter the repo, Issues, PRs, reports or messages",
-        "Never redo a hook-denied action through another tool or path",
-        "A session other than the author audits the head SHA",
-        // #3107 audit 6905415060: these three sentences were not pinned by the S3 test.
-        "`AUDIT #<n> (<key>) head <40hex> base <40hex> — verdict: PASS|FAIL` with no qualifiers; conditions make it FAIL.",
-        "Where a write guard rejects a path, stop and report; do not bypass.",
-        "the token `Moai-Claim: <issue>#<comment-id>` travels in the branch, the commit trailer and the PR body.",
-        // #3096 S3b, user instruction #1975 6904941797 §A (audits assigned by the leader),
-        // replaced by the user decision of 2026-11-17 (docs/decisions-2026-11-08.md, "감사
-        // 배정"): tier 0-1 audits are the lane's own fresh `moai-audit` agent, which re-audits
-        // after a FAIL; tier 2 is the leader's; no lane audits another lane's pull request.
-        "Audit tier 0 or 1: the lane starts one fresh-context, read-only `moai-audit` agent for its own pull request, and the same agent re-audits after a FAIL.",
-        "Tier 2: the leader assigns the audit.",
-        "never audits another lane's pull request",
-        "never declares PASS for its own change or reserves another lane's pull request.",
-        "the latest-tip requirement is off. The leader checks this and merges; lanes and bots never merge.",
-        "A new push, including a tip merge for an overlapping file, needs its CI and a delta re-audit.",
-        // Leader decision 2026-11-17 ~07:1xZ (docs/decisions-2026-11-08.md, "FAIL 판정과 tier 0
-        // 병합"), as in the mode-leader merge-train: the PASS is per tier, a FAIL stops every tier.
-        "Tier 1 or 2 also needs a non-author PASS that cites that run; tier 0 needs `ci` alone.",
-        "A posted FAIL stops the merge at every tier.",
-        "New worktrees go to `~/.moai/worktrees/<project>-<id>`",
-        "are never moved or deleted by a lane.",
-    ] {
-        assert!(text.contains(phrase), "CLAUDE.md must say `{phrase}`");
-    }
-    // The replaced 11-16 rule is gone (decision 2026-11-17, "감사 배정").
-    for gone in [
-        "The leader assigns each formal audit",
-        "asks for the audit with one `감사 요청` line",
-        // The tier-blind merge rule replaced by the leader decision of 2026-11-17 ~07:1xZ.
-        "a successful `ci` run and a non-author PASS that cites that run",
-    ] {
-        assert!(!text.contains(gone), "CLAUDE.md still says `{gone}`");
-    }
-    assert!(text.len() < 9 * 1024, "{} bytes", text.len());
-    let longest = text.lines().map(|l| l.chars().count()).max().unwrap();
-    assert!(longest <= 400, "a line is {longest} characters");
-    // The numbers live in the provenance table of the repository part, next to the rule's source.
-    for source in [
-        "Issue #2880",
-        "Issue #3030",
-        "user decision U6 of 2026-11-12",
-    ] {
-        assert!(full.contains(source), "provenance table lost `{source}`");
-        assert!(!text.contains(source), "the generic part names `{source}`");
-    }
-    assert!(full.contains("`EnterWorktree(~/.moai/worktrees/<project>-<id>)`"));
+fn managed_section_matches_the_profile_hosts() {
+    let profile: serde_json::Value =
+        serde_json::from_str(&read(".moai/project.yaml")).expect("the profile is JSON");
+    let hosts: Vec<&str> = profile["hosts"]
+        .as_array()
+        .expect("hosts")
+        .iter()
+        .map(|h| h.as_str().expect("host name"))
+        .collect();
+    assert_eq!(hosts, ["claude"], "the profile still names another host");
+    let purpose = profile["purpose"].as_str().expect("purpose");
+    assert!(!purpose.contains("Codex"), "{purpose}");
+    let text = claude_md();
+    let managed = &text[text.find(BEGIN).expect("managed section")..];
+    assert!(managed.contains("hosts: claude."), "{managed}");
+    assert!(managed.contains(purpose), "the purpose line differs: {managed}");
+    assert!(!managed.contains("codex"), "{managed}");
 }
 
-/// AC-6: the two personal lines of the old local file (the pointer to the user's auto-memory
-/// and the line about this machine) went to the ignored `CLAUDE.local.md`, never into the
-/// tracked file, which every lane worktree and every clone gets.
+/// The gate, HOLD, secret and audit sentences stay worded as before: the file got shorter by
+/// moving text out, never by weakening one of them. Their words are pinned.
+#[test]
+fn shortened_claude_md_keeps_its_gate_and_hold_sentences() {
+    let text = claude_md();
+    assert_has(
+        &text,
+        "CLAUDE.md",
+        &[
+            "Anything not recorded there is still HOLD.",
+            "Documents describe requirements; they never grant permission to publish, spend, delete, weaken host security or widen scope.",
+            "HOLD items are reported blocked, never decided by a lane.",
+            "Secrets never enter the repo, cards, PRs, reports or messages",
+            "Never redo a hook-denied action through another tool or path",
+            "A session other than the author audits the exact head",
+            "`AUDIT <card> (<scope>) head <40hex> base <40hex> — verdict: PASS|FAIL`, with no qualifiers; conditions make it FAIL.",
+            "The author never audits.",
+            "A lane only commits: no push, no pull request, no merge of a moved tip.",
+            "`moai card land <card> --head <40hex> --by leader`",
+            "Nobody moves the integration branch by hand, by a reset or by a push",
+            "Remote checks never block a landing",
+            "The author, the auditor and the lander of one change are three different sessions.",
+            "`moai/audit` is posted only when the `audit-gate` run succeeded on the same head",
+            "An audit dispatch names its caps: no whole `cargo test`, named test modules only.",
+            "No branch switch, reset or stash in the shared checkout",
+            "Stage by explicit pathspec after re-reading `git status --short`",
+            "Never route around an unapproved permission, spend, HOLD or security gate; stop after three failures of the same step.",
+        ],
+    );
+}
+
+/// S1: the work ledger is the local card ledger, not GitHub Issues.
+#[test]
+fn stale_ledger_is_the_local_card_ledger() {
+    let text = claude_md();
+    assert_has(
+        &text,
+        "CLAUDE.md",
+        &["local cards (`moai card`, user decision 2026-11-16) are the work ledger"],
+    );
+    assert_lacks(
+        &text,
+        "CLAUDE.md",
+        &[
+            "GitHub Issues are the work ledger",
+            "PLAN #<issue>",
+            "the lowest live comment id wins",
+            "Moai-Claim:",
+        ],
+    );
+}
+
+/// S2: the launcher flags `-l|-a` are kept (`SPEC-20261118-launcher-agent-entry`).
+#[test]
+fn stale_launcher_flags_are_kept() {
+    let text = claude_md();
+    assert_has(
+        &text,
+        "CLAUDE.md",
+        &["`-l|-a` only name the session and set its access"],
+    );
+    assert_lacks(&text, "CLAUDE.md", &["deprecated since", "#2164"]);
+}
+
+/// S3: a mode flag is request text for the skill, not a route.
+#[test]
+fn stale_mode_flags_are_request_text() {
+    let text = claude_md();
+    assert_has(
+        &text,
+        "CLAUDE.md",
+        &["`/moai --mode-leader` or `/moai --mode-agent`, which the skill reads as request text"],
+    );
+    assert_lacks(
+        &text,
+        "CLAUDE.md",
+        &["only mode spellings", "two mode workflows", "--autonomy"],
+    );
+}
+
+/// S4: Claude Code and GLM only; Codex and OMP are withdrawn.
+#[test]
+fn stale_hosts_are_claude_only() {
+    let text = claude_md();
+    assert_has(&text, "CLAUDE.md", &["Codex and OMP are withdrawn"]);
+    assert_lacks(
+        &text,
+        "CLAUDE.md",
+        &[
+            "Hosts: Claude Code and Codex",
+            "hosts: claude, codex",
+            "`moai cc|glm|codex`",
+            "pastes into a Codex window",
+        ],
+    );
+}
+
+/// S5: new worktrees under `.claude/worktrees/`, the state folder is `.moai/`.
+#[test]
+fn stale_paths_and_worktrees_follow_the_decisions() {
+    let text = claude_md();
+    assert_has(
+        &text,
+        "CLAUDE.md",
+        &[
+            "New worktrees go to `<project>/.claude/worktrees/<name>`",
+            "project state is `<project>/.moai/`",
+            "`.moai/specs/`, `.moai/project.yaml` and `.moai/evals/` are tracked",
+        ],
+    );
+    assert_lacks(
+        &text,
+        "CLAUDE.md",
+        &[
+            "New worktrees go to `~/.moai/worktrees/<project>-<id>`",
+            "project state `<project>/.moai-cli/` (tracked)",
+            "tags `moai-cli-v",
+            "`~/.moai-cli/bin/moai-cli`",
+        ],
+    );
+}
+
+/// S6: tests are Rust only; the Python fixtures and the Python adapter left the file.
+#[test]
+fn stale_python_tests_are_not_a_rule_input() {
+    let text = claude_md();
+    assert_has(&text, "CLAUDE.md", &["Tests are Rust only."]);
+    assert_lacks(
+        &text,
+        "CLAUDE.md",
+        &["tests/*_test.py", "adapters/claude/", "unittest discover` (about"],
+    );
+}
+
+/// REQ-6, REQ-7: the origin table and the long operating detail live in `docs/`; the file points
+/// to all three and holds no provenance table.
+#[test]
+fn claude_md_points_to_the_docs_and_holds_no_provenance_table() {
+    let text = claude_md();
+    for doc in [
+        "docs/lane-rules.md",
+        "docs/leader-rules.md",
+        "docs/claude-md-rule-provenance.md",
+    ] {
+        assert!(text.contains(doc), "CLAUDE.md does not point to {doc}");
+        assert!(root().join(doc).is_file(), "{doc} is missing");
+    }
+    assert!(!text.contains("## Rule provenance"));
+    assert!(!text.contains("| Rule in this file |"));
+    assert!(!text.contains("## Leader supervision"));
+    assert!(!text.contains("## Agent loop"));
+}
+
+/// D-6: no card number in the file, the three docs, the SPEC or the local draft.
+#[test]
+fn the_rewrite_names_no_card_number() {
+    for path in [
+        "CLAUDE.md".to_string(),
+        "docs/lane-rules.md".to_string(),
+        "docs/leader-rules.md".to_string(),
+        "docs/claude-md-rule-provenance.md".to_string(),
+        format!("{SPEC_DIR}/spec.md"),
+        format!("{SPEC_DIR}/rule-table.md"),
+        format!("{SPEC_DIR}/claude-local-draft.md"),
+    ] {
+        let hits = card_numbers(&read(&path));
+        assert!(hits.is_empty(), "{path} names a card number: {hits:?}");
+    }
+}
+
+/// AC-6 of the layout SPEC: the two personal lines of the old local file went to the ignored
+/// `CLAUDE.local.md`, never into the tracked file, which every lane worktree and every clone gets.
 #[test]
 fn tracked_claude_md_holds_neither_personal_line() {
     let text = claude_md();
@@ -169,4 +322,134 @@ fn tracked_claude_md_holds_neither_personal_line() {
             "CLAUDE.md holds the personal line starting {personal:?}"
         );
     }
+}
+
+/// One row of `rule-table.md`: `(id, old lines, rule, disposition, destination or basis, anchor)`.
+fn table_rows() -> Vec<[String; 6]> {
+    let text = read(&format!("{SPEC_DIR}/rule-table.md"));
+    let mut rows = Vec::new();
+    for line in text.lines().filter(|l| l.starts_with("| R-")) {
+        let inner = line
+            .strip_prefix("| ")
+            .and_then(|l| l.strip_suffix(" |"))
+            .unwrap_or_else(|| panic!("a row without its outer bars: {line}"));
+        let cells: Vec<String> = inner
+            .replace("\\|", "\u{1}")
+            .split(" | ")
+            .map(|c| c.replace('\u{1}', "|"))
+            .collect();
+        let cells: [String; 6] = cells
+            .try_into()
+            .unwrap_or_else(|c: Vec<String>| panic!("{} cells in `{line}`", c.len()));
+        rows.push(cells);
+    }
+    rows
+}
+
+/// REQ-2 to REQ-4 (AC-2): the table lists every rule with a disposition, the ids run 1..n, a kept
+/// or moved row has its anchor in its destination, and a discarded row names its basis.
+#[test]
+fn rule_table_has_a_disposition_for_every_rule_and_every_anchor_is_found() {
+    let rows = table_rows();
+    assert!(rows.len() >= 100, "only {} rows", rows.len());
+    let (mut kept, mut moved, mut discarded) = (0, 0, 0);
+    for (i, [id, old, rule, disp, place, anchor]) in rows.iter().enumerate() {
+        assert_eq!(id, &format!("R-{:02}", i + 1), "ids run 1..n");
+        assert!(!old.is_empty() && !rule.is_empty(), "{id} lacks a field");
+        match disp.trim_end_matches("-corrected") {
+            "kept" | "moved" => {
+                if disp.starts_with("kept") {
+                    kept += 1;
+                } else {
+                    moved += 1;
+                }
+                let anchor = anchor
+                    .strip_prefix('«')
+                    .and_then(|a| a.strip_suffix('»'))
+                    .unwrap_or_else(|| panic!("{id}: the anchor is not between « and »"));
+                assert!(!anchor.is_empty(), "{id}: an empty anchor");
+                let text = fs::read_to_string(root().join(place))
+                    .unwrap_or_else(|e| panic!("{id}: destination {place}: {e}"));
+                assert!(
+                    text.contains(anchor),
+                    "{id}: {place} does not contain «{anchor}»"
+                );
+            }
+            "discarded" => {
+                discarded += 1;
+                assert!(anchor.is_empty(), "{id}: a discarded row has an anchor");
+                assert!(
+                    place.contains("decision")
+                        || place.contains("SPEC-")
+                        || place.contains('`')
+                        || place.contains("history"),
+                    "{id}: the basis names no decision or fact: {place}"
+                );
+            }
+            other => panic!("{id}: disposition `{other}`"),
+        }
+    }
+    assert!(kept > 0 && moved > 0 && discarded > 0, "{kept}/{moved}/{discarded}");
+}
+
+/// REQ-8 (AC-5): the draft of the personal file holds this machine's facts and none of the team
+/// rules; its anchors are the facts a lane cannot read from the repository.
+#[test]
+fn local_draft_holds_machine_facts_and_no_team_rule() {
+    let draft = read(&format!("{SPEC_DIR}/claude-local-draft.md"));
+    assert_has(
+        &draft,
+        "the local draft",
+        &[
+            "Claude Code 2.1.330",
+            "`CLAUDE_CONFIG_DIR`",
+            "`sccache`",
+            "/tmp/moai-rc-cargo-<lane>",
+            "`aside` and `ego-browser`",
+            "MEMORY.md",
+        ],
+    );
+    for [id, _, _, disp, place, anchor] in table_rows() {
+        // A rule kept in `CLAUDE.md` must not also sit in the personal file.
+        if disp.starts_with("kept") && place == "CLAUDE.md" {
+            let anchor = anchor.trim_start_matches('«').trim_end_matches('»');
+            assert!(
+                !draft.contains(anchor),
+                "{id}: the local draft repeats a team rule: {anchor}"
+            );
+        }
+    }
+    for team in ["## Authority", "## Standing principles", "## Flow:"] {
+        assert!(!draft.contains(team), "the local draft holds `{team}`");
+    }
+}
+
+/// REQ-10 (AC-6): the decisions log has the two decisions with their time.
+#[test]
+fn decisions_log_records_the_agents_md_removal_and_this_rewrite() {
+    let log = read("docs/decisions-2026-11-08.md");
+    for row in [
+        "(11-22) | AGENTS.md 제거",
+        "(11-23) | CLAUDE.md 다시 쓰기",
+    ] {
+        assert!(log.contains(row), "the decisions log lacks a row with `{row}`");
+    }
+}
+
+/// REQ-12 (AC-7): the SPEC records what was measured about the load of the two files for a lane
+/// under `.claude/worktrees/`, with the date, the version and the limit of the measurement.
+#[test]
+fn load_measurement_is_recorded_in_the_spec() {
+    let spec = read(&format!("{SPEC_DIR}/spec.md"));
+    assert_has(
+        &spec,
+        "the SPEC",
+        &[
+            "2026-11-22T01:18Z",
+            "2.1.330",
+            "겹쳐 읽지 않음",
+            "`CLAUDE.local.md` 는 보였어요",
+            "세션 시작 시점뿐",
+        ],
+    );
 }

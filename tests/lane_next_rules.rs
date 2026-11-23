@@ -26,22 +26,18 @@ fn the_agent_loop_runs_lane_next_and_goes_on_with_reversible_defaults() {
     assert!(!text.contains("lane-next"), "work.md names `lane-next`");
 }
 
-/// #2880 W4 (AC-3): the project rules say the lane's PLAN comment is part of the design, next
-/// to the Issue body.
+/// #2880 W4 (AC-3), retired by the local card ledger (user decision 2026-11-16) and
+/// `SPEC-20261123-claude-md-rewrite` (rule-table row R-03): the project rules no longer say that
+/// the lane's PLAN comment on an Issue is part of the design; the SPEC the card names is. The
+/// provenance table keeps the origin of the retired rule.
 #[test]
-fn agents_md_names_the_plan_comment_as_part_of_the_design() {
-    let agents =
-        fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("CLAUDE.md")).unwrap();
-    // The Issue number (#2880) moved to the provenance table, now in CLAUDE.md (#3096 S3); the
-    // rule's words stay pinned.
-    assert!(
-        agents.contains("Each Issue body plus the lane's `PLAN #<issue>` comment is the design;")
-    );
-    assert!(!agents.contains("Each Issue body is the design;"));
-    let local =
-        fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("CLAUDE.md")).unwrap();
-    assert!(local.contains(
-        "| Authority 2: the lane's `PLAN #<issue>` comment is part of the design | Issue #2880 |"
+fn the_retired_plan_comment_rule_keeps_its_provenance_row() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let rules = fs::read_to_string(root.join("CLAUDE.md")).unwrap();
+    assert!(!rules.contains("PLAN #<issue>"));
+    let provenance = fs::read_to_string(root.join("docs/claude-md-rule-provenance.md")).unwrap();
+    assert!(provenance.contains(
+        "| Retired: the lane's `PLAN #<issue>` comment is part of the design (Authority 2 of the earlier file); the card and its SPEC replace it | Issue #2880;"
     ));
 }
 

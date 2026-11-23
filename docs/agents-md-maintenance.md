@@ -4,8 +4,8 @@
 
 ## How this file evolves: command forms
 
-1. Capture the lesson or decision first in its ledger: user decision in the decisions log and the affected Issue; agent correction in the project's memory store.
-2. Edit the authored body in small diffs, keep the whole file under its 44 KiB budget (`tests/repo_claude_md.rs`), then regenerate the managed section: `moai agents-plan <root>` with the typed request on stdin, review the plan, then `moai agents-apply <root> --plan-digest <d> --permission-reference <ref>`. Exactly one marker pair must remain.
+1. Capture the lesson or decision first in its ledger: user decision in the decisions log and the affected card; agent correction in the project's memory store.
+2. Edit the authored body in small diffs and keep the whole file within 200 lines (`tests/repo_claude_md.rs`; the official memory guidance recommends under 200 lines per file, and importing another file does not reduce the load). Long operating detail goes to `docs/lane-rules.md` and `docs/leader-rules.md`, the origin of a rule to `docs/claude-md-rule-provenance.md`. The managed section is kept by hand (decisions log, 2026-11-20): `moai agents-plan <root>` with the typed request on stdin reports a `conflict` on an edited block, so change the managed lines and `.moai/project.yaml` together and let `tests/repo_claude_md.rs` check that they agree. Exactly one marker pair must remain.
 3. Verify markers, `git diff --check`, no secrets or personal absolute paths; record the regeneration (date, plan digest, reason) in the decisions log.
 4. Lessons that should become product defaults are added to the MoAI templates through their own Issue, never copied blindly.
 
