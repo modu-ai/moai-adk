@@ -151,7 +151,7 @@ fn text(p: &Path) -> Result<String> {
         .map(str::to_string)
         .ok_or_else(|| "non UTF-8 path".into())
 }
-fn refuse_symlink(path: &Path, what: &str) -> Result<()> {
+pub(crate) fn refuse_symlink(path: &Path, what: &str) -> Result<()> {
     match fs::symlink_metadata(path) {
         Ok(m) if m.file_type().is_symlink() => Err(format!("{what} is a symlink; refused")),
         _ => Ok(()),
@@ -353,12 +353,155 @@ mod scrub_tests {
     }
 }
 
+/// SPEC-20261124-identity-home-arg slice 2a: the shared fixture of a test that proves code which
+/// asks `identity_in(path, None)` no longer touches the home state of the environment HOME. The
+/// test re-runs itself in a child process whose HOME holds a symlinked home state folder, the one
+/// state `identity` refuses, so no test changes this process's environment and none reads the real
+/// HOME. The child first checks that `identity` still refuses that HOME (the refusal where the
+/// home state is read stays), then runs the test body.
+#[cfg(all(test, unix))]
+pub(crate) mod linked_home_test {
+    use std::{
+        path::{Path, PathBuf},
+        process::Command,
+    };
+
+    /// Set in the child process; names the project folder the body works on.
+    const CHILD_PROJECT: &str = "MOAI_LINKED_HOME_TEST_PROJECT";
+
+    /// The folders a body works on, all beside each other in one temporary folder.
+    pub(crate) struct Folders {
+        /// A clone with one commit on `main`.
+        pub(crate) project: PathBuf,
+        /// A linked worktree of `project`.
+        pub(crate) linked: PathBuf,
+        /// An empty folder for the body's outputs.
+        pub(crate) scratch: PathBuf,
+    }
+
+    fn folders_of(project: &Path) -> Folders {
+        let base = project.parent().unwrap();
+        Folders {
+            project: project.to_path_buf(),
+            linked: base.join("linked"),
+            scratch: base.join("scratch"),
+        }
+    }
+
+    fn git(dir: &Path, args: &[&str]) {
+        let mut cmd = Command::new("git");
+        cmd.args([
+            "-c",
+            "user.name=test",
+            "-c",
+            "user.email=test@example.invalid",
+        ])
+        .args(args)
+        .current_dir(dir);
+        super::scrub_git_env(&mut cmd);
+        let out = cmd
+            .env("GIT_CONFIG_GLOBAL", "/dev/null")
+            .env("GIT_CONFIG_NOSYSTEM", "1")
+            .output()
+            .unwrap();
+        assert!(
+            out.status.success(),
+            "git {args:?} failed: {}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+    }
+
+    /// A home whose state folder is a symlink to a folder beside it: the refusal case. A Go
+    /// generation marker under `.moai` makes the earlier state folder the HOME's state root, and
+    /// that is where the link goes; the state root is read back to prove the link is on it.
+    pub(crate) fn symlinked_home(dir: &Path) -> PathBuf {
+        let home = dir.join("home");
+        let go = home.join(crate::home_root::MOAI_DIR);
+        std::fs::create_dir_all(&go).unwrap();
+        std::fs::write(
+            go.join("user-assets.json"),
+            br#"{"schema_version": 1, "files": {}}"#,
+        )
+        .unwrap();
+        std::fs::create_dir(home.join("elsewhere")).unwrap();
+        let link = crate::home_root::path(&home);
+        std::os::unix::fs::symlink(home.join("elsewhere"), &link).unwrap();
+        assert_eq!(
+            crate::home_root::path(&home),
+            link,
+            "the link is the state root"
+        );
+        assert!(std::fs::symlink_metadata(&link).unwrap().is_symlink());
+        home
+    }
+
+    /// Runs `body` in a child of this test binary whose HOME holds a symlinked home state folder.
+    /// `module` is the caller's `module_path!()` and `test` its own function name. The parent
+    /// builds the folders and fails unless the child ran exactly that one test and it passed: a
+    /// name that matched nothing prints `0 passed`.
+    pub(crate) fn run(module: &str, test: &str, body: impl FnOnce(&Folders)) {
+        if let Some(project) = std::env::var_os(CHILD_PROJECT) {
+            let folders = folders_of(Path::new(&project));
+            assert_eq!(
+                super::identity(&folders.project).unwrap_err(),
+                "home state root is a symlink; refused",
+                "where the home state is read, the environment HOME is still refused"
+            );
+            body(&folders);
+            return;
+        }
+        let dir = tempfile::tempdir().unwrap();
+        let base = std::fs::canonicalize(dir.path()).unwrap();
+        let project = base.join("project");
+        std::fs::create_dir(&project).unwrap();
+        git(&project, &["init", "-q", "-b", "main"]);
+        git(&project, &["commit", "-q", "--allow-empty", "-m", "base"]);
+        let folders = folders_of(&project);
+        git(
+            &project,
+            &[
+                "worktree",
+                "add",
+                "-q",
+                "-b",
+                "linked-branch",
+                folders.linked.to_str().unwrap(),
+            ],
+        );
+        std::fs::create_dir(&folders.scratch).unwrap();
+        let home = symlinked_home(&base);
+        let inside = module.split_once("::").map_or(module, |(_, rest)| rest);
+        let out = Command::new(std::env::current_exe().unwrap())
+            .args([
+                "--exact",
+                &format!("{inside}::{test}"),
+                "--nocapture",
+                "--test-threads=1",
+            ])
+            .env("HOME", &home)
+            .env(CHILD_PROJECT, &project)
+            .output()
+            .unwrap();
+        let text = format!(
+            "{}{}",
+            String::from_utf8_lossy(&out.stdout),
+            String::from_utf8_lossy(&out.stderr)
+        );
+        assert!(out.status.success(), "child failed:\n{text}");
+        assert!(
+            text.contains("1 passed; 0 failed"),
+            "child did not run exactly {test}:\n{text}"
+        );
+    }
+}
+
 /// SPEC-20261124-identity-home-arg: `identity_in` takes the HOME as an argument and `identity` is
 /// the one process-edge reader of the environment HOME. A test that must see the environment HOME
 /// run as another value re-runs itself in a child process, so no test changes this process's
 /// environment and none reads the real HOME.
 #[cfg(all(test, unix))]
 mod home_arg_tests {
+    use super::linked_home_test::symlinked_home;
     use super::{identity, identity_in};
     use std::{
         ffi::OsString,
@@ -413,30 +556,6 @@ mod home_arg_tests {
 
     fn child_work() -> Option<PathBuf> {
         std::env::var_os(CHILD_WORK).map(PathBuf::from)
-    }
-
-    /// A home whose state folder is a symlink to a folder beside it: the refusal case. A Go
-    /// generation marker under `.moai` makes the earlier state folder the HOME's state root, and
-    /// that is where the link goes; the state root is read back to prove the link is on it.
-    fn symlinked_home(dir: &Path) -> PathBuf {
-        let home = dir.join("home");
-        let go = home.join(crate::home_root::MOAI_DIR);
-        std::fs::create_dir_all(&go).unwrap();
-        std::fs::write(
-            go.join("user-assets.json"),
-            br#"{"schema_version": 1, "files": {}}"#,
-        )
-        .unwrap();
-        std::fs::create_dir(home.join("elsewhere")).unwrap();
-        let link = crate::home_root::path(&home);
-        std::os::unix::fs::symlink(home.join("elsewhere"), &link).unwrap();
-        assert_eq!(
-            crate::home_root::path(&home),
-            link,
-            "the link is the state root"
-        );
-        assert!(std::fs::symlink_metadata(&link).unwrap().is_symlink());
-        home
     }
 
     /// AC-1 (REQ-1, REQ-3): the HOME that is passed decides `home_state_root`, whatever the

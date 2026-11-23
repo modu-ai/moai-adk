@@ -214,7 +214,7 @@ pub fn plan(project: &Path, root: Option<&Path>, obs: &Observations) -> Result<V
         .first()
         .map(|e| fs::canonicalize(&e.path).unwrap_or_else(|_| e.path.clone()))
         .ok_or("no worktree listed")?;
-    let id = crate::identity::identity(&primary)?;
+    let id = crate::identity::identity_in(&primary, None)?;
     let clone_id = id["clone_id"].as_str().ok_or("clone id unavailable")?;
     let name = primary
         .file_name()
@@ -562,6 +562,26 @@ pub fn apply(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// SPEC-20261124-identity-home-arg REQ-7: with a symlinked home state folder in the
+    /// environment HOME the move plan answers as it does with a sound HOME.
+    #[cfg(unix)]
+    #[test]
+    fn home_arg_claim_group_worktree_move_plan() {
+        crate::identity::linked_home_test::run(
+            module_path!(),
+            "home_arg_claim_group_worktree_move_plan",
+            |f| {
+                let obs = Observations {
+                    schema_version: 1,
+                    holds: None,
+                };
+                let plan = plan(&f.project, Some(&f.scratch.join("moved")), &obs).unwrap();
+                assert_eq!(plan["items"].as_array().map(Vec::len), Some(2), "{plan}");
+                assert!(plan["project_key"].is_string(), "{plan}");
+            },
+        );
+    }
 
     #[test]
     fn project_key_is_name_and_twelve_hex() {

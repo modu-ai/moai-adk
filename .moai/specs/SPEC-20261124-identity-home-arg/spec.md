@@ -1,17 +1,17 @@
 ---
 id: SPEC-20261124-identity-home-arg
-title: "identity takes the HOME as an argument: slice 1 adds identity_in and keeps one process-edge reader"
+title: "identity takes the HOME as an argument: identity_in, then the claim group calls it with no HOME"
 status: approved
-revision: 2
+revision: 4
 created: 2026-11-24
 approval:
   by: leader
   at: 2026-11-23
-  basis: "리더 결정 노트 7614 (2026-11-23T15:09:12Z, 사용자 위임 2026-11-23T13:57Z, 노트 7613 의 결정 1 (a), 판 1 승인)과 노트 7647 (2026-11-23T15:49:32Z, 감사 #409 FAIL 수리 결정: N1 REQ-2 를 'home_state_root 는 환경 변수를 읽지 않음' 쪽으로 좁힘, N2 낱말, N3 승인자 leader); 리더가 노트에 적었고 레인은 그 노트를 인용만 해요"
-  digest: "sha256:79126f9c8b4653f288c59959da91819980ed9730b332c925b72513c729cbc283"
+  basis: "리더 결정 노트 7796 (2026-11-23T19:00:54Z, 사용자 위임 2026-11-23T13:57Z, 노트 7795 에 답함: 판 4 승인 — REQ-9, AC-10, D-7, D-5·REQ-7 바로잡기, 선택 (a) layout.json 이 저널을 홈 상태 폴더로 돌릴 때만 링크 거절, identity.rs refuse_symlink 가시성 한 줄 포함); 리더 판단이고 사용자 직접 선택이 아니에요; 리더가 노트에 적었고 레인은 그 노트를 인용만 해요"
+  digest: "sha256:68a6ebbd5a13cf37db1a6d5c3d79a19b44a3ecc4778d407067ed946f25367e8b"
 ---
 
-# identity takes the HOME as an argument: slice 1 adds identity_in and keeps one process-edge reader
+# identity takes the HOME as an argument: identity_in, then the claim group calls it with no HOME
 
 ## Intent
 
@@ -29,7 +29,7 @@ approval:
 
 - `layout::default_home_root` 와 `key_vault.rs`·`agents.rs`·`claude.rs` 등 환경 변수 HOME 을 읽는 다른 곳(src 에 40곳 가까이 있어요). 각자 HOME 을 받는지는 별도 판단이에요(D-3).
 - `tests/fixtures/test_home_guard/baseline.tsv` 줄 지우기 — C-406 이 그 파일을 쥐고 있어서 C-406 착지 뒤 조각이에요(조각 4).
-- 호출부 파일 변경(조각 2·3). 이 판은 `src/identity.rs` 만 써요.
+- 조각 2b·3 의 호출부 파일 변경. 판 3 은 조각 2a(클레임 묶음 7개 파일)만 더해요.
 - `identity` 답의 모양이나 `home_state_root` 의 값 규칙 바꾸기.
 
 ## Requirements
@@ -39,6 +39,10 @@ approval:
 - REQ-3: WHEN `identity_in` is given a HOME, `home_state_root` shall be the home state root of that HOME even when the environment HOME is another folder.
 - REQ-4 (REQ-3): IF the home state root of a given HOME is a symlink, THEN `identity_in` shall return the error `home state root is a symlink; refused` as `identity` returned it before.
 - REQ-5: The `identity` function shall return exactly what `identity_in` returns for the environment HOME read once, an unset or empty HOME counting as no HOME.
+- REQ-6 (slice 2a): The claim group shall resolve every identity through `identity_in(path, None)` and through no call of `identity`. · the group is the seven files of the Scope
+- REQ-7 (slice 2a): WHEN the environment HOME holds a symlinked home state root, each claim-group function other than `claim::journal_root` that resolves an identity shall answer as it answers with a sound HOME. · failure: none — these functions read and write nothing under that home state root
+- REQ-8 (slice 2a): The claim group shall read from an identity answer no field named `home_state_root`.
+- REQ-9 (slice 2a repair): WHEN the environment HOME holds a symlinked home state root and `layout.json` switches the claim journal to the home state, `claim::journal_root` shall return the error `home state root is a symlink; refused` before it returns the switched path. · failure: none — the answer is the refusal itself, and nothing is written behind the link
 
 ## Acceptance
 
@@ -46,12 +50,17 @@ approval:
 - AC-2 (REQ-2): 환경 변수 HOME 이 `.moai-cli` 가 심볼릭 링크인 폴더인 자식 프로세스에서, `identity_in(path, None)` 은 오류 없이 `home_state_root: null` 을 답하고 같은 환경의 `identity(path)` 는 심볼릭 링크 거부 오류를 답해요(None 이 환경 HOME 을 읽지 않는다는 관찰). · verify: `cargo nextest run --offline --locked --lib -E 'test(identity_in_without_a_home_ignores_the_environment_home)'`
 - AC-3 (REQ-4): 임시 HOME 의 `.moai-cli` 가 심볼릭 링크면 `identity_in(path, Some(home))` 이 거부 오류를 답해요. · verify: `cargo nextest run --offline --locked --lib -E 'test(identity_in_refuses_a_symlinked_home_state_root)'`
 - AC-4 (REQ-5): 환경 변수 HOME 이 설정·빈 값·없음 세 경우에 `identity(path)` 의 답이 `identity_in(path, 같은 값)` 의 답과 같아요(자식 프로세스에서 환경을 고정). · verify: `cargo nextest run --offline --locked --lib -E 'test(identity_equals_identity_in_with_the_environment_home)'`
-- AC-5 (REQ-1..REQ-5): 이 판은 `src/identity.rs` 와 SPEC 폴더만 바꿨고 호출부 파일 diff 는 0이에요. · verify: `git diff --stat <base>..<head> -- src`
+- AC-5 (REQ-1..REQ-5): 조각 1 은 `src/identity.rs` 와 SPEC 폴더만 바꿨고 호출부 파일 diff 는 0이었어요(착지한 head `95c87d1c71`, 기준 `acf8ab1997`). · verify: `git diff --stat acf8ab1997..686e9d88d8 -- src`
+- AC-6 (REQ-6): 클레임 묶음 7개 파일에 `identity::identity(` 호출이 하나도 없어요(테스트 모듈 안의 호출 포함). · verify: `grep -n "identity::identity(" src/claim.rs src/claim_link.rs src/lane_registry.rs src/session.rs src/worktree_move.rs src/run.rs src/goal.rs` 가 아무것도 찍지 않고 exit 1
+- AC-7 (REQ-7): 파일마다 테스트 하나가 자식 프로세스에서 환경 HOME 의 홈 상태 폴더를 심볼릭 링크로 만들고, 그 파일의 함수가 거부 없이 건전한 HOME 과 같은 답을 해요: `claim::journal_root`(`layout.json` 이 없는 HOME 에서), `claim_link` 의 worktree 검사(`mine`)와 `claim::worktree_id` 경로, `lane_registry::registry_paths`·`worktree_of`, `session::agent_seq_dir`, `worktree_move` 의 계획 함수, `run::baseline_store_dir`, `goal::store`. 테스트 이름은 RED 를 본 뒤 SPEC Result 에 적어요. · verify: `cargo nextest run --offline --locked --lib -E 'test(home_arg_claim_group)'` (테스트 이름이 모두 이 접두사를 가져요)
+- AC-8 (REQ-6, REQ-8): 판 3·4 의 diff 는 클레임 묶음 7개 파일, `src/identity.rs`(자식 프로세스 도우미를 `pub(crate)` 로 여는 `#[cfg(test)]` 부분과 `refuse_symlink` 를 `pub(crate)` 로 여는 한 줄만), SPEC 폴더만 닿아요. `home_state_root` 를 읽는 줄이 묶음에 새로 없어요. · verify: `git diff --name-only <base>..<head>` 와 `grep -n "home_state_root" src/claim.rs src/claim_link.rs src/lane_registry.rs src/session.rs src/worktree_move.rs src/run.rs src/goal.rs` 가 exit 1
+- AC-9 (REQ-6, REQ-7, REQ-9): 묶음의 기존 테스트가 그대로 통과해요. · verify: `moai check affected <base>..<head>` 가 PASS
+- AC-10 (REQ-9): 자식 프로세스의 환경 HOME 에서 홈 상태 폴더가 링크이고 그 링크 너머에 `projects/<id>/layout.json` 이 있을 때, 쓰기 진입점 `claim::release_cli` 가 `home state root is a symlink; refused` 로 거절하고 링크 대상의 `projects/<id>` 에 `layout.json` 말고는 아무 파일도 생기지 않아요. 이 거절을 지우면 이 테스트가 실패해요. · verify: `cargo nextest run --offline --locked --lib -E 'test(home_arg_claim_group_claim_journal_root_refuses_a_linked_home_when_switched)'`
 
 ## Scope
 
-- write: `src/identity.rs`, `.moai/specs/SPEC-20261124-identity-home-arg/spec.md`
-- read-only: `src/home_state.rs`(고치지 않아요, D-2), `src/home_root.rs`, `src/state_root.rs`, 호출부 파일들
+- write (판 3, 조각 2a): `src/claim.rs`, `src/claim_link.rs`, `src/lane_registry.rs`, `src/session.rs`, `src/worktree_move.rs`, `src/run.rs`, `src/goal.rs`, `src/identity.rs`(`#[cfg(test)]` 도우미와 `refuse_symlink` 가시성 한 줄만), `.moai/specs/SPEC-20261124-identity-home-arg/spec.md`. 앞의 7개 파일은 카드 C-409 의 write scope 에 리더가 노트 7748 로 넓혀 준 것이에요(D-5).
+- read-only: `src/home_state.rs`(고치지 않아요, D-2), `src/home_root.rs`, `src/state_root.rs`, `src/layout.rs`(C-410), 나머지 호출부 파일들
 - forbidden: 실제 HOME(읽기 전후 비교로도 건드리지 않아요, 임시 HOME 픽스처만), `tests/fixtures/test_home_guard/baseline.tsv`(C-406 이 쥐어요), 네트워크, `CLAUDE.md`
 
 ## Plan
@@ -61,11 +70,13 @@ approval:
 | 조각 | 무엇 | 파일 | 동작이 같다는 증거 |
 | --- | --- | --- | --- |
 | 1 (이 판) | `identity_in(path, home)` 추가, `identity` 는 환경 HOME 한 번 읽어 위임 | `src/identity.rs` | AC-1..4: 같은 입력이면 같은 답 |
-| 2 | HOME 칸을 안 쓰는 호출부가 `identity_in(path, None)` 을 불러요 | 2a 클레임 묶음: `src/claim.rs`, `src/claim_link.rs`, `src/lane_registry.rs`, `src/session.rs`, `src/worktree_move.rs`, `src/run.rs`, `src/goal.rs`. 2b 나머지: `src/layout.rs`(identity 호출만), `src/key_vault.rs`, `src/audit.rs`, `src/update_hooks.rs`, `src/apply.rs`, `src/launcher_init.rs`, `src/ops/lane_next.rs` | 이 파일들이 읽는 칸 목록(아래 읽기 증거)에 `home_state_root` 가 없어요; 파일마다 기존 테스트가 그대로 통과 |
+| 2 (2a 는 판 3) | HOME 칸을 안 쓰는 호출부가 `identity_in(path, None)` 을 불러요 | 2a 클레임 묶음: `src/claim.rs`, `src/claim_link.rs`, `src/lane_registry.rs`, `src/session.rs`, `src/worktree_move.rs`, `src/run.rs`, `src/goal.rs`. 2b 나머지: `src/layout.rs`(identity 호출만), `src/key_vault.rs`, `src/audit.rs`, `src/update_hooks.rs`, `src/apply.rs`, `src/launcher_init.rs`, `src/ops/lane_next.rs` | 이 파일들이 읽는 칸 목록(아래 읽기 증거)에 `home_state_root` 가 없어요; 파일마다 기존 테스트가 그대로 통과 |
 | 3 | HOME 칸을 쓰는 곳이 HOME 을 받아요: `audit_clone` 은 부르는 쪽에서 HOME 을 받고, 명령 가장자리(`src/ops/identity.rs`)는 환경 HOME 을 넘겨요. 마지막 호출부가 떠나면 `identity` 어댑터를 지워요 | `src/audit_clone.rs`, `src/ops/identity.rs`, `src/identity.rs` | `moai identity` 출력이 바이트 같아요(`tests/cli_diagnose.rs` 가 `home_state_root` 를 단언) |
 | 4 | C-406 착지 뒤 `baseline.tsv` 에서 줄어든 테스트 줄을 지워요 | `tests/fixtures/test_home_guard/baseline.tsv` | 가드가 enforce 에서 지워진 줄의 테스트를 통과시켜요 |
 
 읽기 증거(2026-11-24, `grep -rn "home_state_root" src` 와 호출부 읽기): `home_state_root` 키를 이름으로 읽는 제품 코드는 `src/audit_clone.rs:151` 뿐이에요. 호출부 `claim.rs`, `session.rs`, `lane_registry.rs`, `layout.rs`, `ops/lane_next.rs` 는 `identity_status`, `clone_anchor`, `work_tree`, `workspace_id` 같은 칸만 읽어요. 조각 2 는 파일마다 이 읽기를 다시 해서 증거로 남겨요.
+
+조각 2a 읽기 증거(2026-11-24, 판 3 초안을 쓰며 7개 파일의 호출 11곳과 테스트 호출 1곳을 열어 읽음): `claim_link.rs:274·299`(`identity_status`, `workspace_kind`, `clone_anchor`, `work_tree`, `claim::worktree_id` 로 `work_tree`·`clone_anchor`·`workspace_git_dir`), `claim_link.rs:440`(`work_tree`), `claim.rs:80`(`identity_status`, `clone_anchor`), `claim.rs:1488`(`worktree_id`), `session.rs:367`(`identity_status`, `clone_anchor`), `lane_registry.rs:91`(`identity_status`, `clone_anchor`), `lane_registry.rs:315`(`identity_status`, `work_tree`), `goal.rs:76`(`identity_status`, `clone_anchor`), `worktree_move.rs:217`(`clone_id`), `run.rs:552`(`clone_anchor`). 어느 곳도 `home_state_root` 를 읽지 않아요. `claim_link.rs:1202` 는 테스트 모듈 안의 호출이에요. 이 읽기는 판 3 의 RUN 에서 `grep` 으로 한 번 더 확인해요(AC-8).
 
 순서(이 판): 1) 결정 D-1..D-4 와 SPEC 승인을 리더에게 노트로 받아요. 2) RED: 위 테스트 이름들로 실패를 먼저 봐요. 3) GREEN: `identity` 본문을 `identity_in` 으로 옮기고 `identity` 는 한 줄 어댑터로 줄여요. 4) 이웃: `identity` 를 거치는 기존 테스트 대표 몇 개, fmt, clippy.
 
@@ -74,7 +85,11 @@ approval:
 - 이 조각만으로는 `baseline.tsv` 줄이 줄지 않아요(호출부가 아직 `identity` 를 불러요). 카드 기준 2 는 조각 2·3 뒤에 충족돼요 — 조각 1 의 READY 는 기준 2 를 not met 으로 적어요.
 - 두 번째 뿌리 `layout::default_home_root` 때문에 클레임 묶음 테스트(예: `claim_link_cli` 27개)는 조각 2 뒤에도 HOME 읽기가 남을 수 있어요. 몇 개가 줄지는 C-406 가드를 observe 로 다시 돌려 재야 해요(그 전에는 unverified).
 - `identity_in(path, None)` 은 `home_state_root` 를 null 로 만들어요. 그 칸을 쓰는 새 호출부가 생기면 조용히 null 을 받아요 — 조각 3 이 그 칸을 쓰는 곳을 HOME 인자로 못 박아요.
-- 자식 프로세스에서 환경을 고정하는 테스트은 프로세스 전체 환경을 바꾸지 않아 병렬 테스트을 깨지 않아요(부모는 `std::env::set_var` 를 쓰지 않아요).
+- 자식 프로세스에서 환경을 고정하는 테스트는 프로세스 전체 환경을 바꾸지 않아 병렬 테스트를 깨지 않아요(부모는 `std::env::set_var` 를 쓰지 않아요).
+
+- 조각 2a 는 동작이 하나 바뀌어요: 환경 HOME 의 홈 상태 폴더가 심볼릭 링크일 때 클레임 묶음의 함수들은 지금 `home state root is a symlink; refused` 로 실패하고, 2a 뒤에는 그 폴더를 풀지 않아 실패하지 않아요(REQ-7, D-5). 단 `claim::journal_root` 는 예외예요: `layout.json` 이 저널을 그 홈 상태 폴더로 돌려 놓았으면 `identity` 의 거절이 사라진 자리에서 링크 너머에 저널을 쓰게 되므로, `journal_root` 가 같은 문장으로 거절해요(REQ-9, D-7; 감사 B1 수리). 묶음의 나머지 함수는 홈 상태 폴더 아래에 읽거나 쓰지 않아요(`grep -nwE "switched_dir|default_home_root|active_home|store_dir" src/lane_registry.rs src/session.rs src/goal.rs src/run.rs src/worktree_move.rs src/claim_link.rs` 가 아무것도 찍지 않고 exit 1, 2026-11-24). 거부를 단언하는 기존 테스트는 `src/contract.rs:553` 의 오류 분류 표뿐이었어요(`grep -rn "home state root is a symlink" src tests`, 2026-11-24).
+- 조각 2a 도 `baseline.tsv` 줄을 줄이지 못할 수 있어요: 클레임 묶음은 `layout::switched_dir` → `layout::default_home_root` 로 환경 HOME 을 또 읽어요(C-410). 줄어드는 양은 판 3 뒤에 C-406 가드를 다시 돌려 재고, 그 전의 수는 unverified 예요(D-4).
+- 7개 파일 약 12곳을 한 조각에 바꿔요. 호출 한 줄씩의 기계적 교체이고 `identity` 어댑터는 그대로 남아 있어서(조각 3 이 지워요) 되돌리기는 쉬워요.
 
 ## Decisions
 
@@ -84,6 +99,9 @@ approval:
 | D-2 | `src/home_state.rs` 는 이 SPEC 에서 안 고쳐요 | `home_go_markers(moai: &Path)` 는 인자로 경로를 받고 환경 변수를 읽지 않아요(`src/home_state.rs:62`). 카드 범위에는 그대로 두고 쓰지 않아요 | 해당 없음 |
 | D-3 | 두 번째 뿌리 `layout::default_home_root`(`src/layout.rs:34`)와 환경 HOME 을 읽는 다른 곳은 이 SPEC 이 아니라 후속 카드예요 | 같은 종류가 두 번 보이면 소스를 고쳐요(재발 방지). 범위를 넓히지 않고 리더가 카드를 열어요 | 후속 카드를 닫기 |
 | D-4 | 줄어드는 양은 조각마다 C-406 가드(observe)를 다시 돌려 재요. 그 전의 수는 unverified 예요 | 한 조각이 몇 개를 줄일지는 읽기만으로 정할 수 없어요 | 해당 없음 |
+| D-5 | 조각 2a(판 3)는 클레임 묶음 7개 파일을 `identity_in(path, None)` 으로 바꿔요. 환경 HOME 의 홈 상태 폴더가 심볼릭 링크일 때 이 함수들이 더는 거부하지 않는 것을 받아들이되, `claim::journal_root` 는 예외로 거부를 유지해요(REQ-7, REQ-9). 이 파일들은 `home_state_root` 를 읽지 않아요 | 위 읽기 증거. 거부는 `identity` 가 `home_state_root` 를 풀 때 났어요. 묶음은 그 칸을 안 쓰지만 `journal_root` 는 같은 환경 HOME 의 홈 상태 폴더를 `layout::switched_dir` 로 거쳐 그 아래에 저널을 쓰므로 그 거부가 보호하던 길이에요(감사 B1). 카드 write scope 에 7개 파일은 리더가 노트 7748 로 넓혔어요 | 7개 파일의 호출 줄을 `identity::identity(` 로 되돌리기(어댑터가 남아 있어요) |
+| D-6 | 판 2 감사의 비차단 R1(SPEC 본문의 어긋난 조사 둘과 개발자가 안 쓰는 번역투 낱말 둘)을 판 3 에서 함께 고쳐요 | 리더 결정 노트 7667 | 해당 없음 |
+| D-7 | `claim::journal_root` 는 `layout::switched_dir` 가 홈 상태 경로를 돌려줄 때, 그 경로를 돌려주기 전에 환경 HOME 의 홈 상태 폴더가 링크이면 `home state root is a symlink; refused` 로 거절해요. 검사는 `identity` 의 기존 `refuse_symlink` 를 `pub(crate)` 로 열어 써요 | 감사 #409 판 3 B1 과 리더 결정 노트 7790. `src/layout.rs` 는 C-410 몫이라 고치지 않아요. `layout.json` 이 없으면 저널은 클론 쪽에 남고 홈 상태 폴더를 쓰지 않으므로 거절하지 않아요(2a 전에는 거절했어요, REQ-7 의 동작 변화에 든 부분이에요) | `journal_root` 의 검사 세 줄과 가시성 한 줄을 되돌리기 |
 
 ## Result
 
@@ -95,10 +113,23 @@ approval:
 - AC-4: 충족. `identity_equals_identity_in_with_the_environment_home` passed — 환경 HOME 이 설정·빈 값·없음일 때 `identity(path)` 가 `identity_in(path, 같은 값)` 과 같은 답이에요(자식 프로세스 셋, 부모는 환경을 바꾸지 않아요).
 - AC-5: 충족. `git diff --stat acf8ab1997..HEAD -- src` → `src/identity.rs` 한 파일(169 추가, 5 삭제), 호출부 파일 변경 0.
 - 뮤턴트(테스트마다 하나, 적용을 `git diff --stat` 으로 확인하고 되돌린 뒤 `git diff --stat` 이 비어 있음을 확인): ① `Some(h)` 분기가 받은 HOME 대신 다른 값을 읽음 → exit 100 (AC-1·AC-3·AC-2 실패) ② `None` 이 환경 HOME 으로 폴백 → exit 100 (AC-2 실패) ③ `refuse_symlink(&root, "home state root")` 삭제 → exit 100 (AC-2·AC-3 실패) ④ `identity` 가 빈 HOME 을 거르지 않음 → exit 100 (AC-4 실패).
-- 실제 HOME: 이 조각의 테스트은 부모 프로세스에서 `identity()` 를 부르지 않고(`identity_in` 에 임시 폴더나 `None` 만 넘겨요), 환경 HOME 을 바꿔야 하는 테스트은 자식 프로세스에 임시 폴더 HOME 을 줘요. 실제 HOME 의 읽기 전후 비교(atime)는 이 조각에서 재지 않았어요(not_run). 실제 HOME 읽기가 얼마나 줄었는지는 C-406 가드를 다시 돌려 재야 하고 unverified 예요(D-4).
+- 실제 HOME: 이 조각의 테스트는 부모 프로세스에서 `identity()` 를 부르지 않고(`identity_in` 에 임시 폴더나 `None` 만 넘겨요), 환경 HOME 을 바꿔야 하는 테스트는 자식 프로세스에 임시 폴더 HOME 을 줘요. 실제 HOME 의 읽기 전후 비교(atime)는 이 조각에서 재지 않았어요(not_run). 실제 HOME 읽기가 얼마나 줄었는지는 C-406 가드를 다시 돌려 재야 하고 unverified 예요(D-4).
 - 수리: `check affected`(head `16b01f6d05`)의 test 단계가 `state_dir_tests::project_state_dir_is_spelled_once` 하나를 실패시켰어요(2659개 중 2658 통과). 테스트 도우미가 상태 폴더 이름을 글자로 적어서 저장소의 "상태 폴더 이름은 한 곳에서만" 검사에 걸렸고, `crate::HOME_STATE_DIR` 로 바꿨어요(커밋 `c88fd1346d`). 그 헤드에서 `home_arg_tests` 4개와 `state_dir_tests` 3개 7개가 통과(exit 0), `cargo fmt --all -- --check`·`git diff --check`·`cargo clippy --locked --offline --all-targets -- -D warnings` 가 모두 exit 0 이에요.
-- 두 번째 수리: 위 수리 head `8594066284` 에서 돌린 `check affected` 가 다른 테스트 하나, `home_root::tests::home_state_paths_are_resolved_per_home`("상태 폴더 상수는 정해진 파일에서만")를 실패시켰어요(2659개 중 2658 통과). 첫 수리가 `crate::HOME_STATE_DIR` 를 identity.rs 에 들여와 그 목록 밖의 사용이 됐어요. 첫 수리를 확인할 때 `state_dir_tests` 만 돌려 이 테스트을 놓쳤어요(내 확인의 틈). 테스트 도우미가 Go 세대 표시(`.moai/user-assets.json`)로 HOME 의 상태 폴더를 정하고 `crate::home_root::path` 가 알려 준 곳에 링크를 걸도록 고쳤어요(커밋 `27299646c8`, 상수·이름 글자 없음, 링크가 상태 폴더인지 도우미가 읽어 확인해요). 이번엔 lib 전체를 돌려 `cargo nextest run --offline --locked --lib --no-fail-fast` → exit 0, 1769 passed 였고, 변이 ③(거부 삭제)을 새 도우미에서 다시 적용해 exit 100(AC-2·AC-3 실패)을 봤어요.
-- 감사 #409 FAIL 수리(리더 노트 7647, 판 2): B1 은 위 두 번째 수리예요. N1 — `identity_in` 이 부르는 `rev_parse` 의 git 자식 프로세스는 프로세스 환경을 그대로 받아 환경 HOME 의 전역 git 설정을 읽어요(이 조각 전부터 그랬어요). 그래서 `identity_in` 의 주석과 REQ-2 를 "home_state_root 는 환경 변수를 읽지 않고, None 이면 홈 상태 폴더를 풀지 않음"으로 좁혔고(REQ-2 의 "opening a file under any HOME" 삭제), git 자식의 전역 설정 고정은 카드 C-410 범위로 넘겼어요. N2 — SPEC 낱말 시험→테스트, 가지→브랜치(match 갈래는 분기). N3 — `approval.by` 를 `leader` 로(근거 노트 7614 와 7647). REQ-2 가 바뀌어 `revision` 을 2 로 올리고 `approval.digest` 를 `moai spec show` 로 다시 계산했어요. 판 1 의 AC·시험은 그대로예요(AC-2 는 `home_state_root: null` 과 거부 없음만 주장해요).
+- 두 번째 수리: 위 수리 head `8594066284` 에서 돌린 `check affected` 가 다른 테스트 하나, `home_root::tests::home_state_paths_are_resolved_per_home`("상태 폴더 상수는 정해진 파일에서만")를 실패시켰어요(2659개 중 2658 통과). 첫 수리가 `crate::HOME_STATE_DIR` 를 identity.rs 에 들여와 그 목록 밖의 사용이 됐어요. 첫 수리를 확인할 때 `state_dir_tests` 만 돌려 이 테스트를 놓쳤어요(내 확인의 틈). 테스트 도우미가 Go 세대 표시(`.moai/user-assets.json`)로 HOME 의 상태 폴더를 정하고 `crate::home_root::path` 가 알려 준 곳에 링크를 걸도록 고쳤어요(커밋 `27299646c8`, 상수·이름 글자 없음, 링크가 상태 폴더인지 도우미가 읽어 확인해요). 이번엔 lib 전체를 돌려 `cargo nextest run --offline --locked --lib --no-fail-fast` → exit 0, 1769 passed 였고, 뮤턴트 ③(거부 삭제)을 새 도우미에서 다시 적용해 exit 100(AC-2·AC-3 실패)을 봤어요.
+- 감사 #409 FAIL 수리(리더 노트 7647, 판 2): B1 은 위 두 번째 수리예요. N1 — `identity_in` 이 부르는 `rev_parse` 의 git 자식 프로세스는 프로세스 환경을 그대로 받아 환경 HOME 의 전역 git 설정을 읽어요(이 조각 전부터 그랬어요). 그래서 `identity_in` 의 주석과 REQ-2 를 "home_state_root 는 환경 변수를 읽지 않고, None 이면 홈 상태 폴더를 풀지 않음"으로 좁혔고(REQ-2 의 "opening a file under any HOME" 삭제), git 자식의 전역 설정 고정은 카드 C-410 범위로 넘겼어요. N2 — SPEC 의 번역투 낱말을 개발자가 쓰는 말(테스트, 브랜치)로 바꿨고 match 갈래는 분기로 적었어요. N3 — `approval.by` 를 `leader` 로(근거 노트 7614 와 7647). REQ-2 가 바뀌어 `revision` 을 2 로 올리고 `approval.digest` 를 `moai spec show` 로 다시 계산했어요. 판 1 의 AC·테스트는 그대로예요(AC-2 는 `home_state_root: null` 과 거부 없음만 주장해요).
 - 카드 기준 1(identity 가 env HOME 을 직접 읽지 않고 받은 HOME 을 씀)은 부분 충족이에요: `identity_in` 은 환경 변수를 읽지 않고, `identity` 어댑터 한 곳만 읽어요. 호출부가 아직 `identity` 를 불러요(조각 2·3).
 - 카드 기준 2(기준선 줄이 줄고 줄어든 테스트가 enforce 에서 통과)는 충족하지 않았어요(not met): 호출부 변경 없음, `baseline.tsv` 는 C-406 이 쥐고 있어요(조각 4).
-- 후속: 조각 2a·2b·3 은 조각을 시작할 때 범위 확장을 리더 노트로 받아요. `layout::default_home_root` 는 카드 C-410.
+- 후속: 조각 2b·3 은 조각을 시작할 때 범위 확장을 리더 노트로 받아요. `layout::default_home_root` 는 카드 C-410.
+- 조각 1 은 NeXT 에 `95c87d1c71` 로 착지했어요(`git merge-base --is-ancestor 95c87d1c71 NeXT` → exit 0, 2026-11-24 읽음).
+- 판 3(조각 2a, 리더 결정 노트 7748 승인, 브랜치 `spec/identity-home-arg-2a-20261124`, 기준 NeXT `466b59fc62`): 구현 커밋은 `e38199cf5d` 예요. RED 는 새 테스트 10개가 전부 실패했고(`cargo nextest run --offline --locked --lib --no-fail-fast -E 'test(home_arg_claim_group)'` → exit 100, 10 failed, 1771 skipped) 자식 프로세스의 본문이 `home state root is a symlink; refused` 로 실패했어요(`lane_registry::worktree_of` 만 `None` 을 답했어요). GREEN 은 `identity::identity(` 12곳을 `identity_in(.., None)` 으로 바꾼 뒤 `cargo nextest run --offline --locked --lib --no-fail-fast` → exit 0, 1781 passed 예요. 첫 GREEN 실행에서 `worktree_move` 테스트의 단언 키가 틀려(`worktrees` → 실제 키 `items`) 1개 실패했고, 테스트의 단언만 고쳐 다시 전체를 돌렸어요.
+- AC-6: 충족. `grep -n "identity::identity(" src/claim.rs src/claim_link.rs src/lane_registry.rs src/session.rs src/worktree_move.rs src/run.rs src/goal.rs` 가 아무것도 찍지 않고 exit 1 이에요.
+- AC-7: 충족. `home_arg_claim_group_*` 테스트 10개 passed(`claim_journal_root`, `claim_acquire_cli`, `claim_link_links_a_worktree`, `claim_link_mismatch_hint`, `lane_registry_registry_dir`, `lane_registry_worktree_of`, `session_agent_seq_dir`, `run_baseline_store_dir`, `goal_store`, `worktree_move_plan`). 자식 프로세스의 환경 HOME 에는 링크 상태 폴더가 있어요. 테스트 도우미 `identity::linked_home_test::run` 은 본문 전에 `identity(project)` 가 `home state root is a symlink; refused` 로 거절되는지 먼저 단언해요.
+- 링크 거절 핀(리더 조건, 노트 7748): 홈 상태를 실제로 읽는 길은 그대로 링크를 거절해요. 그 증거는 `identity_in_refuses_a_symlinked_home_state_root`(Some(HOME) 길), `identity_in_without_a_home_ignores_the_environment_home`(환경 HOME 길에서 `identity` 거절)과 위 도우미의 사전 단언 10곳, 명령 가장자리의 `tests/cli_diagnose.rs` `identity_refuses_symlinks_and_bad_paths_without_echo` 예요(`cargo nextest run --offline --locked --test cli_diagnose` → exit 0, 7 passed). 이 중 CLI 테스트는 링크 HOME 이 실패한다는 것만 단언하고 문장은 보지 않아요(`tests/cli_diagnose.rs:359-362`); 문장까지 핀하는 곳은 앞의 둘과 도우미예요.
+- AC-8: 충족(`git diff --name-only` 는 READY 노트에 적어요). `home_state_root` 를 읽는 줄이 묶음에 새로 없어요.
+- AC-9: `moai check affected` 결과는 READY 노트에 적어요(이 줄을 쓸 때는 not_run).
+- 뮤턴트(테스트마다 하나 이상, 호출 한 곳을 `identity(..)` 로 되돌려 해당 테스트만 돌림): 11개 모두 exit 100 이고 되돌린 뒤 `git diff --stat` 이 비었어요(`claim.rs:80`, `claim.rs:1488`, `session.rs:367`, `lane_registry.rs:91`, `lane_registry.rs:316`, `claim_link.rs:274`, `claim_link.rs:299`, `claim_link.rs:440`, `goal.rs:76`, `worktree_move.rs:217`, `run.rs:552`). 첫 실행은 로그 파일 경로 오류로 테스트가 돌지 않아 무효였고 다시 돌렸어요.
+- 수리: READY head `5699fe7a16` 의 `check affected` 가 test 단계에서 `every_git_subprocess_in_src_is_scrubbed` 하나를 실패시켰어요(4209개 중 4208 통과, exit 100; diff_check·fmt·clippy 는 0). 테스트 도우미 `linked_home_test::git` 의 `Command::new("git")` 가 `scrub_git_env` 를 거치지 않았어요(`src/identity.rs:392`). 도우미가 `scrub_git_env` 를 부른 뒤 자기 환경 변수를 얹도록 고쳤어요. 앞서 lib 전체와 `cli_diagnose` 만 돌려 저장소 전체를 읽는 스캔 테스트를 놓친 것은 제 확인의 틈이에요(앞 조각에서 본 같은 종류).
+- 판 4(감사 #409 판 3 FAIL B1 수리, 리더 결정 노트 7790, 같은 브랜치): `claim::journal_root` 가 `identity` 의 거절이 사라진 자리에서 `layout::switched_dir` 로 환경 HOME 의 홈 상태 폴더를 링크 검사 없이 풀었고, `layout.json` 이 있으면 링크 너머에 저널(`.lock`)을 썼어요. 수리 커밋은 `journal_root` 에서 switched 경로를 돌려주기 전에 `identity::refuse_symlink` 로 같은 문장 `home state root is a symlink; refused` 를 내는 거절이에요(REQ-9, D-7; `refuse_symlink` 는 `pub(crate)` 한 줄만 바뀌었어요, `src/layout.rs` 는 C-410 몫이라 닿지 않았어요).
+- AC-10: 충족. RED: 새 테스트 `home_arg_claim_group_claim_journal_root_refuses_a_linked_home_when_switched` 가 수리 전에 실패했어요(`cargo nextest run --offline --locked --lib --no-fail-fast -E 'test(home_arg_claim_group_claim_journal_root)'` → exit 100; `release_cli` 가 거절 대신 `Ok`(`outcome: unclaimed`)를 돌려줬어요, 즉 링크 너머에 저널이 열렸어요). GREEN: 수리 뒤 lib 전체 `cargo nextest run --offline --locked --lib --no-fail-fast` → exit 0, 1782 passed. 뮤턴트(거절 호출을 `let _ = &root;` 로 바꿈, `git diff --stat` 로 적용 확인) → 같은 이름 필터가 exit 100(새 테스트만 실패, 이전 `home_arg_claim_group_claim_journal_root` 는 통과), 되돌린 뒤 `git diff --stat` 이 비었어요.
+- 판 4 의 기준 AC-6..9 는 READY 보충(REPAIRED) 노트에 적어요: AC-9 의 `moai check affected` 결과는 이 줄을 쓸 때 not_run 이에요.
+- 줄어드는 양: C-406 가드를 이 판 뒤에 다시 돌려 재지 않았어요(unverified). 클레임 묶음은 `layout::switched_dir` → `layout::default_home_root` 로 환경 HOME 을 또 읽어서 C-410 뒤에야 줄 수 있어요. 카드 기준 1 은 부분, 기준 2 는 not met 이에요(조각 3·4 가 남음).

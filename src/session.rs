@@ -364,7 +364,7 @@ const LIVE_LOCK_TRIES: u32 = 200;
 /// alive while its launcher holds the lock on `agent-<n>.live` or while the registry entry
 /// `agent-<n>.json` has a running lease; `.lock` is the counter's `File::lock` target.
 pub fn agent_seq_dir(project: &Path) -> Result<PathBuf, String> {
-    let id = crate::identity::identity(project)
+    let id = crate::identity::identity_in(project, None)
         .map_err(|e| format!("agent numbering: {e}; pass --name"))?;
     if id["identity_status"].as_str() != Some("ok") {
         return Err(format!(
@@ -882,4 +882,23 @@ pub fn launch(r: &SessionRequest, dry_run: bool) -> Result<Value, String> {
     v["executed"] = json!(true);
     v["exit_code"] = json!(status.code());
     Ok(v)
+}
+
+/// SPEC-20261124-identity-home-arg REQ-7: with a symlinked home state folder in the environment
+/// HOME the agent number folder answers as it does with a sound HOME.
+#[cfg(all(test, unix))]
+mod home_arg_claim_group_tests {
+    use super::agent_seq_dir;
+
+    #[test]
+    fn home_arg_claim_group_session_agent_seq_dir() {
+        crate::identity::linked_home_test::run(
+            module_path!(),
+            "home_arg_claim_group_session_agent_seq_dir",
+            |f| {
+                let dir = agent_seq_dir(&f.project).unwrap();
+                assert!(dir.ends_with("sessions"), "{}", dir.display());
+            },
+        );
+    }
 }

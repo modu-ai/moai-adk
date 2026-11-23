@@ -88,7 +88,8 @@ pub fn registry_dir(project: &Path) -> Result<PathBuf, String> {
 
 /// The clone's git common dir and its registry folder.
 fn registry_paths(project: &Path) -> Result<(PathBuf, PathBuf), String> {
-    let id = crate::identity::identity(project).map_err(|e| format!("session registry: {e}"))?;
+    let id = crate::identity::identity_in(project, None)
+        .map_err(|e| format!("session registry: {e}"))?;
     if id["identity_status"].as_str() != Some("ok") {
         return Err(format!(
             "session registry requires a git repository (identity_status {})",
@@ -312,7 +313,7 @@ pub fn running_worktree() -> Option<String> {
 
 /// [`running_worktree`] for the folder `dir`.
 pub fn worktree_of(dir: &Path) -> Option<String> {
-    let id = crate::identity::identity(dir).ok()?;
+    let id = crate::identity::identity_in(dir, None).ok()?;
     if id["identity_status"].as_str() != Some("ok") {
         return None;
     }
@@ -967,6 +968,38 @@ pub fn register_with(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// SPEC-20261124-identity-home-arg REQ-7: with a symlinked home state folder in the
+    /// environment HOME the registry folder answers as it does with a sound HOME.
+    #[cfg(unix)]
+    #[test]
+    fn home_arg_claim_group_lane_registry_registry_dir() {
+        crate::identity::linked_home_test::run(
+            module_path!(),
+            "home_arg_claim_group_lane_registry_registry_dir",
+            |f| {
+                let dir = registry_dir(&f.project).unwrap();
+                assert!(dir.ends_with("sessions"), "{}", dir.display());
+            },
+        );
+    }
+
+    /// REQ-7 for `worktree_of`: the folder's work tree is still found.
+    #[cfg(unix)]
+    #[test]
+    fn home_arg_claim_group_lane_registry_worktree_of() {
+        crate::identity::linked_home_test::run(
+            module_path!(),
+            "home_arg_claim_group_lane_registry_worktree_of",
+            |f| {
+                assert_eq!(
+                    worktree_of(&f.project).as_deref(),
+                    f.project.to_str(),
+                    "the work tree of the project folder"
+                );
+            },
+        );
+    }
 
     #[test]
     fn names_are_file_safe() {
