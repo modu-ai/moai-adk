@@ -1,5 +1,5 @@
 //! SPEC-20261123-lane-completion-handshake: the shipped skill text tells a work lane, after its
-//! HANDOFF note and the release of the card, to send the leader one cross-session message to the
+//! READY or REPAIRED note and the release of the card, to send the leader one cross-session message to the
 //! registered session id, and tells the leader to read the ledger first and then clear and
 //! dispatch. The tests read the two package files and pin each sentence; whitespace is collapsed
 //! so a re-wrapped line does not break a pin.
@@ -36,11 +36,17 @@ fn assert_lacks(text: &str, file: &str, needle: &str) {
 
 /// REQ-1: the order, the hand-back before any message.
 const ORDER: &str =
-    "A lane writes its HANDOFF note and gives the card back before it sends any message.";
+    "A lane writes its READY or REPAIRED note and gives the card back before it sends any message.";
 /// REQ-2: the one message to the registered leader.
 const SEND: &str = "When a registered leader holds a live lease, the lane then sends that leader one cross-session message that names the card and the head.";
 /// REQ-3: the ledger-only fallback and no retry.
-const FALLBACK: &str = "Without a registered leader, a live lease or a cross-session channel, or when the send is refused or held, the lane writes the ledger note only and sends nothing more for that card; the leader's ledger watch picks the note up.";
+const FALLBACK: &str = "Without a registered leader, a live lease or a cross-session channel, or when the send is refused or held, the lane writes the ledger note only; the leader's ledger watch picks the note up.";
+/// REQ-3, audit #373 N1: one message per finished card, never a retry.
+const RETRY: &str = "One message per finished card, no retry loop.";
+/// Audit #373 N4: the order of the message and the `LANE-DONE` line.
+const LAST_LINE: &str = "`LANE-DONE` is the lane's last line, after the message when one is sent.";
+/// Audit #373 N5 (SPEC R-2): the registered id is matched to a row of the host's list.
+const MATCH: &str = "The lane matches that id to a row of the host's session list; with no matching row it sends nothing.";
 /// REQ-4: the address.
 const ADDRESS: &str = "The lane reads the leader's session id with `moai session-register --show --name leader` and addresses exactly that session; it never sends to a row picked by the name `leader`, because another project's session can carry that name.";
 /// The message is a notice only (Transition rule, ledger first).
@@ -54,7 +60,9 @@ const LEADER_ELSE: &str = "A message the ledger does not back starts nothing: th
 /// REQ-8: the sending command is not implemented.
 const GAP: &str = "No `moai` command sends this message yet; `moai host-wake` addresses a session by name, which the address rule forbids, so a lane sends with the host's own message tool until a command takes the registered id (see SPEC-20261122-session-messages for the wake that exists).";
 /// REQ-9: the language of the leader's lines.
-const LANG: &str = "The leader writes a dispatch, an answer and the line after `/clear` in the user's conversation language; only a prompt to a subagent is English, and commands, paths, card ids and protocol lines stay verbatim.";
+const LANG: &str = "The lane's message and the leader's dispatch, answer and line after `/clear` are written in the user's conversation language; only a prompt to a subagent is English, and commands, paths, card ids and protocol lines stay verbatim.";
+/// Audit #373 B2: a blocked card moves the lane on only when no leader is registered.
+const BLOCKED: &str = "A decision the lane cannot make goes on the card as a blocked note (`workflows/work.md`); with no registered leader the lane takes the next card, and with a registered leader it waits for that leader's dispatch.";
 
 const NEXT_FLOW: &str = "references/flows/next-flow.md";
 const WORK: &str = "workflows/work.md";
@@ -62,20 +70,26 @@ const WORK: &str = "workflows/work.md";
 #[test]
 fn ac1_the_lane_hands_back_then_sends_one_message_and_falls_back_to_the_ledger() {
     let nf = next_flow();
-    for s in [ORDER, SEND, FALLBACK] {
+    for s in [ORDER, SEND, FALLBACK, RETRY, MATCH, LAST_LINE] {
         assert_has(&nf, NEXT_FLOW, s);
     }
     // The order is the text's order: the hand-back sentence comes before the message sentence.
     assert!(nf.find(ORDER).unwrap() < nf.find(SEND).unwrap());
     let w = work();
     for needle in [
-        "HANDOFF note",
+        "READY or REPAIRED note",
         "one cross-session message",
         "ledger note only",
+        "one message per finished card, never a retry",
+        "`LANE-DONE` is your last line",
     ] {
         assert_has(&w, WORK, needle);
     }
-    assert!(w.find("HANDOFF note").unwrap() < w.find("one cross-session message").unwrap());
+    assert!(
+        w.find("READY or REPAIRED note").unwrap() < w.find("one cross-session message").unwrap()
+    );
+    assert_lacks(&w, WORK, "HANDOFF");
+    assert_lacks(&nf, NEXT_FLOW, "HANDOFF");
 }
 
 #[test]
@@ -90,7 +104,7 @@ fn ac2_the_address_is_the_registered_id_and_a_lane_never_clears_itself() {
         "never a row picked by name",
         "never send `/clear` to yourself",
         "never take the next card on your own while a leader is registered",
-        "flows/next-flow",
+        "match that id to a row of the host's session list",
     ] {
         assert_has(&w, WORK, needle);
     }
@@ -134,4 +148,23 @@ fn ac4_the_missing_command_and_the_language_rule_are_written_down() {
         assert_lacks(&nf.to_lowercase(), NEXT_FLOW, forbidden);
         assert_lacks(&work().to_lowercase(), WORK, forbidden);
     }
+}
+
+#[test]
+fn ac6_a_blocked_card_moves_the_lane_on_only_when_no_leader_is_registered() {
+    let nf = next_flow();
+    assert_has(&nf, NEXT_FLOW, BLOCKED);
+    let w = work();
+    for needle in [
+        "With no registered leader, take the next card; with a registered leader, leave the blocked card as its note and wait for that leader's dispatch.",
+    ] {
+        assert_has(&w, WORK, needle);
+    }
+    // The old unconditional wording is gone from both files.
+    assert_lacks(&w, WORK, "never stops the loop");
+    assert_lacks(
+        &nf,
+        NEXT_FLOW,
+        "as a blocked note (`workflows/work.md`); the lane takes the next card.",
+    );
 }
