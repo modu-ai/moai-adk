@@ -850,12 +850,13 @@ fn a_link_in_the_place_of_the_log_is_listed_and_not_read_through() {
 
 // ---- C-82: agent build folders under `<HOME>/.moai/build/` (read-only preview) ----
 
-/// One agent build folder under the fixture HOME: cargo output and, when `owner` is given, the
-/// owner record `tools/build_folder.py env` writes (`.moai-build.json`).
+/// The agent build folder `name` under the fixture HOME (made by nothing in this helper).
 fn agent_dir(fx: &Fixture, name: &str) -> PathBuf {
     fx.home.join(".moai/build").join(name)
 }
 
+/// One agent build folder under the fixture HOME: cargo output and, when `owner` is given, the
+/// owner record `tools/build_folder.py env` writes (`.moai-build.json`).
 fn agent_build(fx: &Fixture, name: &str, owner: Option<(&Path, &Path)>) -> PathBuf {
     let dir = agent_dir(fx, name);
     cargo_output(&dir);
