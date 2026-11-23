@@ -120,3 +120,12 @@ Revision 4 (the card of the non-blocking audit findings N1 to N3). Approval basi
 - Red first: before the code change both new tests failed because the assignment was written (exit 0 where 1 was expected).
 - Guard mutants (each undone by the inverse edit, `git status` clean after): M1 exact-string holder comparison back in `assign` killed by `assign_author_spellings_are_refused` (exit 100); M2 shape check off (`if false && …`) killed by `assign_identity_shapes_are_checked_with_a_reason` (exit 100).
 - closure_status: open until the audit.
+
+Revision 5 (the card of the non-blocking audit findings N1 to N3 of the audit of C-411). Approval basis: the leader's decision note 7720 on card C-415 (2026-11-23T17:22:40Z), option (a) of the request in note 7719; recorded in the front matter `approval`. Numbers come from runs made for this result in the worktree of the card.
+
+- AC-8 met (REQ-9): `assign_help_states_the_refusals_and_the_shape` passed: the help starts with `Writes the ledger.` and names ASCII case, `:<12hex>`, a lane name, `agent-4` and the shape `hex digits and dashes, 8 to 64 characters`. The words are compared after joining whitespace, because clap wraps the help at 100 columns. The operations row of `card assign` says the same (`operations_doc_matches_code` passed).
+- AC-9 met (REQ-10): `assign_value_refusals_state_the_needed_shape` passed: an empty value, a space, two words, a tab and 101 characters are refused with `session id` and `12 hex digits`, and the event rows are unchanged.
+- N1 done: the blank line before the revision 4 paragraph of this Result. The new tests read no document, so `tools/repo_scans.json` needs no entry; `operations_doc_matches_code`, which reads the operations folder, is already registered there.
+- Red first: both new tests failed before the change (exit 100): the help lacked the words and the empty-value refusal lacked `session id`.
+- Guard mutants (each undone by the inverse edit, `git status` clean after): M1 the lane-name sentence removed from the help of `assign` killed by `assign_help_states_the_refusals_and_the_shape` (exit 100); M2 the empty-value refusal back to its earlier text killed by `assign_value_refusals_state_the_needed_shape` (exit 100).
+- closure_status: open until the audit.
