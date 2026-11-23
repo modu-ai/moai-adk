@@ -773,8 +773,9 @@ fn card_state(ledger: &ledger::WriteLedger, card_id: i64) -> Result<Option<Strin
 /// Refusals keep the `conflict in` wording so `contract::classify` maps them to `conflict`.
 ///
 /// The answer is the commits the takeover keeps (`kept_commits`, SPEC-20261124-reclaim-keeps-
-/// worktree): only an uncommitted change stops the takeover, unpushed commits stay in the same
-/// worktree for the new holder. `None` when no worktree was read.
+/// worktree): in the takeover of an ended lease only an uncommitted change stops it, unpushed
+/// commits stay in the same worktree for the new holder. While the lease is live the strict
+/// [`worktree_gate`] judges, as it always did. `None` when no worktree was read or kept.
 fn takeover_gates(
     project: &Path,
     home: &Path,
@@ -795,7 +796,20 @@ fn takeover_gates(
     if cur.holder == to_holder {
         return Ok(None); // a self-reclaim renews its own reservation
     }
-    takeover_worktree_gate(project, cur.worktree.as_deref())
+    // Only the takeover of an ended lease keeps unpushed commits (SPEC-20261124-reclaim-keeps-
+    // worktree REQ-6, D-6). A live lease, a reservation that is not `held` and a clock that
+    // cannot be read all go through the strict gate, whose refusal text is the one the command
+    // always had; the ledger then refuses a live lease with its own reason after it.
+    let lease_ended = cur.status == "held"
+        && ro
+            .conn()
+            .query_row("SELECT unixepoch()", [], |r| r.get::<_, i64>(0))
+            .is_ok_and(|now| reservation::lease_ended(cur.lease_until, now));
+    if lease_ended {
+        takeover_worktree_gate(project, cur.worktree.as_deref())
+    } else {
+        worktree_gate(project, cur.worktree.as_deref()).map(|()| None)
+    }
 }
 
 /// REQ-1..3: refuse a worktree that exists and holds uncommitted or unpushed work, go on
