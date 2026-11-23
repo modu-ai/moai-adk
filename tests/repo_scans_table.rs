@@ -68,6 +68,10 @@ const EXEMPT: &[(&str, &str)] = &[
     ),
     ("tests/mutate_test.py", "ls-files and scandir on temporary clones"),
     (
+        "tests/next_flow_hooks_cli.rs",
+        "read_dir of the TempDir project and the temporary home it built (a before/after listing and a tree copy); reads no checked-in tree",
+    ),
+    (
         "tests/project_flow_closing.rs",
         "reads only the named skills/moai/workflows/project.md; `git ls-files --error-unmatch` runs in TempDir repos",
     ),
