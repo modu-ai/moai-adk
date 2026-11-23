@@ -6,7 +6,7 @@ operation `bundle` · 코드 `src/ops/bundle.rs`, `src/bundle.rs`, `src/bundle/b
 
 ## `bundle ready [--project .] [--home H] [--dir .] [--tip <tip>]`
 
-`--tip` 을 비우면 통합 대상은 프로필이 정해요: m-flow 이고 `work_flow.integration_branch` 가 기록돼 있으면 `origin/<branch>`, 기록이 없거나 프로필을 읽을 수 없으면 `origin/v2026.11.0`, 명시한 `--tip` 이 항상 이긴다(SPEC-20261120-mflow-integration-branch-choice).
+`--tip` 을 비우면 통합 대상은 프로필이 정해요: m-flow 이고 `work_flow.integration_branch` 가 기록돼 있으면 `--dir` 저장소의 로컬 `refs/heads/<branch>`(커밋일 때, 통합 브랜치는 로컬이고 `origin` 은 뒤에 있다), 그 로컬 브랜치가 없을 때만 `origin/<branch>`, 기록이 없거나 프로필을 읽을 수 없으면 `origin/v2026.11.0`, 명시한 `--tip` 이 항상 이긴다(SPEC-20261120-mflow-integration-branch-choice, SPEC-20261124-bundle-local-tip). 판단한 tip 이 `origin/<name>` 모양이고 그것도 로컬 `refs/heads/<name>` 도 커밋이 아니면 거절문이 두 이름을 모두 댄다(SPEC-20261124-bundle-tip-doc-refusal). 도구는 fetch 하지 않는다.
 
 카드마다 첫 줄이 `LANE-READY-INTEGRATION` 으로 시작하는 노트 중 번호가 가장 큰 것(가장 새 줄)을 읽는다. 읽히는 모양은 `LANE-READY-INTEGRATION C-<n> head=<40자리 소문자 16진수>` 다음에 줄 끝이나 공백이 오는 것이고, head 바로 뒤에 ` spec=<SPEC id>` 가 올 수 있다(없어도 된다). 노트가 놓인 카드와 줄의 카드가 같아야 한다. 가장 새 줄이 읽히지 않으면 그 카드는 `unreadable`(카드, 노트 번호)에 올라가고, 더 오래된 줄의 head 는 쓰지 않는다. 결과: `heads[]`(`card`, `note_id`, `head`, `spec`, `specs`(`<tip>..<head>` 의 `Moai-Spec` trailer), `present`, `on_origin`, `already_in_tip`, `ready_lines`), `unreadable[]`, `tip`(이름, SHA, 커밋 시각). 도구는 fetch 하지 않는다: git 은 worktree 가 함께 쓰는 fetch 시각을 남기지 않으므로 tip 의 SHA 와 커밋 시각을 보여 주고, 부르기 전에 fetch 하는 것은 부르는 쪽이다.
 

@@ -493,7 +493,19 @@ struct Tip {
 
 fn tip_of(git: &Git, tip: &str) -> Result<Tip> {
     let sha = git.commit(tip).ok_or_else(|| {
-        format!("bundle refused: the tip `{tip}` is not a commit here (fetch first)")
+        // SPEC-20261124-bundle-tip-doc-refusal: a missing `origin/<name>` whose local
+        // `refs/heads/<name>` is no commit either names both, so a reader sees the local
+        // integration branch is missing too.
+        let local = tip
+            .strip_prefix("origin/")
+            .map(|name| format!("refs/heads/{name}"))
+            .filter(|local| git.commit(local).is_none());
+        match local {
+            Some(local) => format!(
+                "bundle refused: the tip `{tip}` is not a commit here, and `{local}` is not either (fetch first)"
+            ),
+            None => format!("bundle refused: the tip `{tip}` is not a commit here (fetch first)"),
+        }
     })?;
     let committed = git
         .ok(&["log", "-1", "--format=%cI", &sha])
