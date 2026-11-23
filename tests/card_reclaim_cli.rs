@@ -934,7 +934,7 @@ impl World {
 }
 
 #[test]
-fn reclaim_gates_refuse_a_worktree_with_uncommitted_or_unpushed_work() {
+fn reclaim_gates_refuse_a_worktree_with_uncommitted_work() {
     let w = world();
     // Pushed but dirty: one untracked file.
     let wt = w.git_worktree(true, true);
@@ -949,18 +949,126 @@ fn reclaim_gates_refuse_a_worktree_with_uncommitted_or_unpushed_work() {
     );
     assert!(message.contains(&wt), "{message}");
     assert_eq!(w.dump(), before, "the refusal leaves every row as it was");
+}
 
-    // Clean but unpushed: one commit with no remote-tracking ref.
-    let wt2 = w.git_worktree(false, false);
-    let name2 = w.ended_card_at(&wt2);
-    let before2 = w.dump();
-    let (kind2, message2) = refusal(&w.reclaim(Some(S_B), &name2, "1"));
-    assert_eq!(kind2, "conflict", "{message2}");
-    assert!(
-        message2.contains("holds 0 uncommitted change(s) and 1 unpushed commit(s)"),
-        "{message2}"
+/// SPEC-20261124-reclaim-keeps-worktree REQ-2: an uncommitted change is refused whether or not
+/// the worktree also holds unpushed commits; the commits beside it never make the takeover pass.
+/// Guard: a gate that counts the uncommitted changes as zero lets both reclaims through.
+#[test]
+fn reclaim_still_refuses_an_uncommitted_change_with_or_without_commits() {
+    let w = world();
+    // One untracked file, the only commit pushed.
+    let pushed = w.git_worktree(true, true);
+    // One untracked file and two commits that sit on no remote-tracking ref.
+    let ahead = w.git_worktree(false, true);
+    commit_file(Path::new(&ahead), "lane-2.txt");
+    for (wt, counts) in [
+        (
+            pushed,
+            "holds 1 uncommitted change(s) and 0 unpushed commit(s)",
+        ),
+        (
+            ahead,
+            "holds 1 uncommitted change(s) and 2 unpushed commit(s)",
+        ),
+    ] {
+        let name = w.ended_card_at(&wt);
+        let before = w.dump();
+        let (kind, message) = refusal(&w.reclaim(Some(S_B), &name, "1"));
+        assert_eq!(kind, "conflict", "{wt}: {message}");
+        assert!(message.contains(counts), "{wt}: {message}");
+        assert!(message.contains(&wt), "{wt}: {message}");
+        assert_eq!(w.dump(), before, "{wt}: the refusal wrote something");
+    }
+}
+
+/// REQ-1: a worktree with committed, unpushed commits and no uncommitted change is taken over
+/// in place: the new reservation names the same worktree and branch, and nothing in the
+/// worktree moves.
+#[test]
+fn reclaim_keeps_a_worktree_that_holds_unpushed_commits() {
+    let w = world();
+    let wt = w.git_worktree(false, false);
+    commit_file(Path::new(&wt), "lane-2.txt");
+    let head = common::git::git(Path::new(&wt), &["rev-parse", "HEAD"]);
+    let name = w.ended_card_at(&wt);
+    let n: i64 = name.trim_start_matches("C-").parse().unwrap();
+    let done = result(&w.reclaim(Some(S_B), &name, "1"));
+    assert_eq!(done["reservation"]["status"], json!("held"), "{done}");
+    assert_eq!(done["reservation"]["holder"], json!(S_B), "{done}");
+    assert_eq!(done["reservation"]["generation"], json!(2), "{done}");
+    assert_eq!(done["reservation"]["worktree"], json!(wt), "{done}");
+    assert_eq!(
+        done["reservation"]["branch"],
+        json!(format!("card/{n}-gate")),
+        "{done}"
     );
-    assert_eq!(w.dump(), before2, "the refusal leaves every row as it was");
+    assert_eq!(
+        common::git::git(Path::new(&wt), &["rev-parse", "HEAD"]),
+        head,
+        "the takeover leaves the worktree's head where it was"
+    );
+    assert_eq!(
+        common::git::git(Path::new(&wt), &["status", "--porcelain"]),
+        "",
+        "the takeover leaves the worktree clean"
+    );
+}
+
+/// REQ-3: the event and the answer name the kept commits, newest first, as a count and up to
+/// twenty ids; a worktree with more commits than that lists twenty and counts all of them.
+#[test]
+fn the_reclaim_event_names_the_kept_commits() {
+    let w = world();
+    let wt = w.git_worktree(false, false);
+    commit_file(Path::new(&wt), "lane-2.txt");
+    let ids: Vec<String> = common::git::git(Path::new(&wt), &["rev-list", "HEAD"])
+        .lines()
+        .map(str::to_string)
+        .collect();
+    assert_eq!(ids.len(), 2, "the fixture holds two commits");
+    let name = w.ended_card_at(&wt);
+    let done = result(&w.reclaim(Some(S_B), &name, "1"));
+    assert_eq!(done["kept_commits"]["count"], json!(2), "{done}");
+    assert_eq!(done["kept_commits"]["ids"], json!(ids), "{done}");
+    let events = w.rows("SELECT payload FROM event WHERE kind = 'card.reclaim' ORDER BY event_id");
+    assert_eq!(events.len(), 1);
+    let p: Value = serde_json::from_str(events[0][0].as_str().unwrap()).unwrap();
+    assert_eq!(p["kept_commits"], done["kept_commits"], "{p}");
+
+    // N and N+1 around the cap: twenty-five commits are all counted, twenty ids are listed.
+    let big = w.git_worktree(false, false);
+    for i in 2..=25 {
+        common::git::git_in(
+            Path::new(&big),
+            &["commit", "--allow-empty", "-m", &format!("c{i}")],
+        );
+    }
+    let all: Vec<String> = common::git::git(Path::new(&big), &["rev-list", "HEAD"])
+        .lines()
+        .map(str::to_string)
+        .collect();
+    assert_eq!(all.len(), 25);
+    let name2 = w.ended_card_at(&big);
+    let done2 = result(&w.reclaim(Some(S_B), &name2, "1"));
+    assert_eq!(done2["kept_commits"]["count"], json!(25), "{done2}");
+    assert_eq!(done2["kept_commits"]["ids"], json!(&all[..20]), "{done2}");
+}
+
+/// REQ-4: when git cannot count the commits (a repository whose HEAD has no commit yet), the
+/// takeover refuses as unreadable and writes nothing; an unreadable count is never read as none.
+#[test]
+fn reclaim_refuses_a_worktree_whose_unpushed_commits_cannot_be_counted() {
+    let w = world();
+    let unborn = w.dir.join("unborn");
+    fs::create_dir_all(&unborn).unwrap();
+    common::git::git_in(&unborn, &["init"]);
+    let name = w.ended_card_at(unborn.to_str().unwrap());
+    let before = w.dump();
+    let (kind, message) = refusal(&w.reclaim(Some(S_B), &name, "1"));
+    assert_eq!(kind, "conflict", "{message}");
+    assert!(message.contains("could not be read"), "{message}");
+    assert_eq!(w.dump(), before, "the refusal leaves every row as it was");
 }
 
 #[test]
@@ -1098,28 +1206,23 @@ fn commits_inside_the_integration_branch_do_not_stop_a_takeover() {
     let name = w.ended_card_at(&wt);
     let done = result(&w.reclaim(Some(S_B), &name, "1"));
     assert_eq!(done["reservation"]["status"], json!("held"), "{done}");
+    // The four commits are inside the integration branch, so none of them is kept work.
+    assert_eq!(done["kept_commits"]["count"], json!(0), "{done}");
 }
 
-/// REQ-13, N and N+1: the fifth commit is not in the integration branch, so the gate refuses
-/// and its count is exactly that one; after it lands there too the takeover goes through.
+/// REQ-13, N and N+1 with the takeover relaxed: the fifth commit is not in the integration
+/// branch, so it is the one commit the takeover keeps and names; it does not stop the takeover.
 #[test]
-fn one_commit_outside_the_integration_branch_still_stops_a_takeover() {
+fn one_commit_outside_the_integration_branch_is_kept_by_a_takeover() {
     let w = world();
     let wt = w.landed_lane_worktree(Some(&flow_profile("m-flow", Some("integ"))), 4);
     commit_file(Path::new(&wt), "lane-5.txt");
+    let fifth = common::git::git(Path::new(&wt), &["rev-parse", "HEAD"]);
     let name = w.ended_card_at(&wt);
-    let before = w.dump();
-    let (kind, message) = refusal(&w.reclaim(Some(S_B), &name, "1"));
-    assert_eq!(kind, "conflict", "{message}");
-    assert!(
-        message.contains("holds 0 uncommitted change(s) and 1 unpushed commit(s)"),
-        "{message}"
-    );
-    assert_eq!(w.dump(), before, "the refusal leaves every row as it was");
-
-    common::git::git_in(Path::new(&wt), &["branch", "-f", "integ", "HEAD"]);
     let done = result(&w.reclaim(Some(S_B), &name, "1"));
     assert_eq!(done["reservation"]["status"], json!("held"), "{done}");
+    assert_eq!(done["kept_commits"]["count"], json!(1), "{done}");
+    assert_eq!(done["kept_commits"]["ids"], json!([fifth]), "{done}");
 }
 
 impl World {
@@ -1161,32 +1264,28 @@ fn the_project_folders_integration_branch_counts_when_the_worktree_profile_has_n
     w.mflow_project("integ");
     let done = result(&w.reclaim(Some(S_B), &name, "1"));
     assert_eq!(done["reservation"]["status"], json!("held"), "{done}");
+    assert_eq!(done["kept_commits"]["count"], json!(0), "{done}");
 }
 
-/// REQ-13, N and N+1 for the same shape: one more commit outside the integration branch makes
-/// the gate refuse with a count of exactly that one.
+/// REQ-13, N and N+1 for the same shape: one more commit outside the integration branch is the
+/// one commit the takeover keeps and counts.
 #[test]
-fn one_commit_outside_the_project_folders_integration_branch_still_stops_a_takeover() {
+fn one_commit_outside_the_project_folders_integration_branch_is_kept_by_a_takeover() {
     let w = world();
     let wt = w.landed_lane_worktree(Some(&plain_profile()), 4);
     commit_file(Path::new(&wt), "lane-5.txt");
     let name = w.ended_card_at(&wt);
     w.mflow_project("integ");
-    let before = w.dump();
-    let (kind, message) = refusal(&w.reclaim(Some(S_B), &name, "1"));
-    assert_eq!(kind, "conflict", "{message}");
-    assert!(
-        message.contains("holds 0 uncommitted change(s) and 1 unpushed commit(s)"),
-        "{message}"
-    );
-    assert_eq!(w.dump(), before, "the refusal leaves every row as it was");
+    let done = result(&w.reclaim(Some(S_B), &name, "1"));
+    assert_eq!(done["reservation"]["status"], json!("held"), "{done}");
+    assert_eq!(done["kept_commits"]["count"], json!(1), "{done}");
 }
 
-/// REQ-13: without a usable integration branch the gate counts every commit that is on no
-/// remote-tracking ref: no profile, another work flow, m-flow without a branch, a branch the
-/// clone does not have and a profile that cannot be read.
+/// REQ-13: without a usable integration branch the takeover keeps and counts every commit that
+/// is on no remote-tracking ref: no profile, another work flow, m-flow without a branch, a
+/// branch the clone does not have and a profile that cannot be read.
 #[test]
-fn without_a_usable_integration_branch_the_takeover_gate_counts_every_unpushed_commit() {
+fn without_a_usable_integration_branch_the_takeover_keeps_every_unpushed_commit() {
     let w = world();
     let cases: [(&str, Option<String>); 6] = [
         ("no profile", None),
@@ -1210,14 +1309,13 @@ fn without_a_usable_integration_branch_the_takeover_gate_counts_every_unpushed_c
     for (label, profile) in cases {
         let wt = w.landed_lane_worktree(profile.as_deref(), 4);
         let name = w.ended_card_at(&wt);
-        let before = w.dump();
-        let (kind, message) = refusal(&w.reclaim(Some(S_B), &name, "1"));
-        assert_eq!(kind, "conflict", "{label}: {message}");
-        assert!(
-            message.contains("holds 0 uncommitted change(s) and 4 unpushed commit(s)"),
-            "{label}: {message}"
+        let done = result(&w.reclaim(Some(S_B), &name, "1"));
+        assert_eq!(
+            done["reservation"]["status"],
+            json!("held"),
+            "{label}: {done}"
         );
-        assert_eq!(w.dump(), before, "{label}: the refusal wrote something");
+        assert_eq!(done["kept_commits"]["count"], json!(4), "{label}: {done}");
     }
 }
 
