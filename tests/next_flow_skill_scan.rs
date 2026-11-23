@@ -923,8 +923,10 @@ fn refs_run_check_run_rules_hold_the_build_rule() {
         !rules.contains(&home_build),
         "run.md \"Check-run rules\" names {home_build}"
     );
-    // Slice C audit B1: `moai lane-env` sets `CARGO_TARGET_DIR` to a folder under the home
-    // folder, so RUN names no lane-env step: the worktree's own `target/` needs none.
+    // Slice C audit B1, revised by SPEC-20261123-lane-env-own-target: `moai lane-env` only
+    // unsets `CARGO_TARGET_DIR` and points the cargo home at a prepared cache (it makes no
+    // build folder under the home), so RUN names no lane-env step: the worktree's own
+    // `target/` needs none.
     for step in ["lane-env", "eval \"$(moai lane-env", "eval \"$e\""] {
         assert!(!run.contains(step), "run.md names {step:?}");
     }

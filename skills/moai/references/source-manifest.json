@@ -96,7 +96,7 @@
       }
     },
     "references/flows/next-flow.md": {
-      "sha256": "a21f08ace7cbee7aba288fed2a42fec90cf982aecff43a73f58791e4a44474bd",
+      "sha256": "39aa2204586bfe886ad49b601d8c70b3a48269b3558d1ad2c90729e192a7bca0",
       "origin": {
         "kind": "design-spec",
         "template_id": "flow-next-flow",
@@ -261,7 +261,7 @@
       }
     },
     "references/internal/self-check.md": {
-      "sha256": "b3154c41e968a8aa3cd475f38a15ec638a8d67085dc5f2fab8601191986fef6a",
+      "sha256": "14c90252276f0806a0e10b90e68b317de69a6a0704874ca66646d66c56afb0f8",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-self-check",
@@ -282,7 +282,7 @@
       }
     },
     "references/internal/test-design.md": {
-      "sha256": "960a3459430ce64537c66b0cf554eb3816e6c13a73d983dc90fbacc0063fb3d6",
+      "sha256": "895d9819b8b4428bfa7802ad1b1163306ab4f91ca5a6aee7fc267b42c5692b75",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-test-design",
@@ -435,7 +435,7 @@
       }
     },
     "workflows/run.md": {
-      "sha256": "2e11f78b5ab61b9c6587297d8fa3ea8c46fdd54f5b4aa31bbceabd9ff97df929",
+      "sha256": "5c9b0293c263889a8698e856a9dfdb0cd5dff71a03bc84910e190cd63b331a98",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-run",

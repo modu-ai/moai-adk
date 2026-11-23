@@ -430,32 +430,37 @@ pub fn low_space_line(free: Option<u64>, floor_gb: u64, folder: &Path) -> Option
 }
 
 /// Where a wrapped command runs, for [`build_folder_note`]: its working folder, the worktree
-/// that holds it, every worktree of the repository (real paths) and this worktree's build
-/// folder `<HOME>/.moai/build/<name>` (card C-82).
+/// that holds it, every worktree of the repository (real paths) and the retired home build root
+/// `<HOME>/.moai/build` when the home is known, both with its links resolved (`home_build`) and
+/// as it is written (`home_build_named`). Nothing is read from or made under that root.
 #[derive(Debug, Clone)]
 pub struct Here {
     pub cwd: PathBuf,
     pub worktree: PathBuf,
     pub worktrees: Vec<PathBuf>,
-    pub folder: PathBuf,
+    pub home_build: Option<PathBuf>,
+    pub home_build_named: Option<PathBuf>,
 }
 
 impl Here {
-    /// `None` outside a git worktree or without an absolute HOME: nothing to compare with.
-    /// `home` and `userprofile` are the `HOME` and `USERPROFILE` values (the shared rule of
-    /// `lane_env::home_dir`: USERPROFILE stands in on Windows when HOME is unset).
+    /// `None` outside a git worktree: nothing to compare with. `home` and `userprofile` are the
+    /// `HOME` and `USERPROFILE` values (the shared rule of `lane_env::home_dir`: USERPROFILE
+    /// stands in on Windows when HOME is unset); without a usable home only the retired home
+    /// build root is not recognised.
     pub fn of(
         cwd: &Path,
         home: Option<&std::ffi::OsStr>,
         userprofile: Option<&std::ffi::OsStr>,
     ) -> Option<Here> {
-        let owner = crate::lane_env::owner(cwd).ok()?;
-        let home = crate::lane_env::home_dir(home, userprofile, cfg!(windows)).ok()?;
+        let named = crate::lane_env::home_dir(home, userprofile, cfg!(windows))
+            .ok()
+            .map(|h| crate::hook_config::normalize(&h.join(".moai").join("build")));
         Some(Here {
             cwd: cwd.to_path_buf(),
+            worktree: crate::lane_env::worktree_root(cwd).ok()?,
             worktrees: crate::lane_env::worktrees(cwd).ok()?,
-            folder: crate::lane_env::build_folder(&home, &owner.name),
-            worktree: owner.worktree,
+            home_build: named.as_deref().map(settled),
+            home_build_named: named,
         })
     }
 }
@@ -487,13 +492,13 @@ fn settled(path: &Path) -> PathBuf {
     }
 }
 
-/// #2879 D3, revised for card C-82 (user 2026-11-17 08:22Z): when the wrapped command is `cargo`
-/// and its `CARGO_TARGET_DIR` is shared with another worktree — the former per-lane
-/// `moai-rc-target-*` folder, another worktree's folder under `~/.moai/build/`, a folder whose
-/// owner record names another worktree — or lies inside another worktree, a one-line warning for
-/// stderr. A warning, not a refusal. `None` when the name is no lane name, `here` is unknown, the
-/// value is unset (cargo then builds in this worktree's own `target/`), or the folder is this
-/// worktree's own build folder or inside this worktree.
+/// #2879 D3, revised for the build rule of 2026-11-22 (a worktree builds in its own `target/`,
+/// `CARGO_TARGET_DIR` unset): when the wrapped command is `cargo` and its `CARGO_TARGET_DIR`
+/// names the retired per-lane `moai-rc-target-*` folder, a folder under the retired home build
+/// root `<HOME>/.moai/build` (this worktree's own old folder included) or a folder inside another
+/// worktree, a one-line warning for stderr. A warning, not a refusal; nothing is made anywhere.
+/// `None` when the name is no lane name, `here` is unknown, the value is unset or empty, or the
+/// folder is inside this worktree or in no place named above.
 pub fn build_folder_note(
     name: &str,
     command: &[String],
@@ -504,43 +509,42 @@ pub fn build_folder_note(
         return None;
     }
     let here = here?;
-    let t = settled(&here.cwd.join(target_dir.filter(|t| !t.is_empty())?));
-    let own = settled(&here.folder);
-    let owner = crate::lane_env::read_record(&t)
-        .ok()
-        .flatten()
-        .and_then(|r| r["worktree"].as_str().map(PathBuf::from));
-    // C-82 slot audit N3: a folder whose record names this worktree is its own, whatever its
-    // name (for example made before a rename); only another worktree's folder is warned about.
-    let own_by_record = owner.as_ref().is_some_and(|w| *w == here.worktree);
-    let recorded = owner.filter(|w| *w != here.worktree);
+    // The value as written (`.` and `..` applied, no link followed) and with its links
+    // resolved: a link inside the retired home build root may lead out of it, and a link
+    // above it may lead into it, so the root is looked for in both.
+    let written = here.cwd.join(target_dir.filter(|t| !t.is_empty())?);
+    let named = crate::hook_config::normalize(&written);
+    let t = settled(&written);
     let holder = here
         .worktrees
         .iter()
         .filter(|w| t.starts_with(w))
         .max_by_key(|w| w.components().count())
         .filter(|w| **w != here.worktree);
+    let mut shown = &t;
     let why = if t
         .file_name()
         .is_some_and(|n| n.to_string_lossy().starts_with("moai-rc-target-"))
     {
-        "the per-lane folder every worktree of the lane shares".to_string()
-    } else if let Some(w) = recorded {
-        format!(
-            "a build folder whose record names the worktree {}",
-            w.display()
-        )
-    } else if t != own && t.parent() == own.parent() && !own_by_record {
-        "another worktree's build folder".to_string()
+        "the retired per-lane folder every worktree of the lane shared".to_string()
+    } else if let Some(root) = here.home_build.as_ref().filter(|r| t.starts_with(r)) {
+        format!("inside the retired home build root {}", root.display())
+    } else if let Some(root) = here
+        .home_build_named
+        .as_ref()
+        .filter(|r| named.starts_with(r))
+    {
+        shown = &named;
+        format!("inside the retired home build root {}", root.display())
     } else if let Some(w) = holder {
         format!("inside the worktree {}", w.display())
     } else {
         return None;
     };
     Some(format!(
-        "heavy-slot: CARGO_TARGET_DIR {} is {why}; this worktree's build folder is {} (internal/build-folder): run `e=$(moai lane-env --lane {name}) && eval \"$e\"` first",
-        t.display(),
-        here.folder.display()
+        "heavy-slot: CARGO_TARGET_DIR {} is {why}; this worktree builds in its own target/ ({}): unset CARGO_TARGET_DIR (`moai lane-env --lane {name}` prints that)",
+        shown.display(),
+        here.worktree.join("target").display()
     ))
 }
 
@@ -2279,7 +2283,8 @@ mod build_folder_tests {
                 PathBuf::from(format!("{R}/r/repo/.claude/worktrees/one")),
                 PathBuf::from(format!("{R}/r/two")),
             ],
-            folder: PathBuf::from(format!("{R}/h/.moai/build/repo-one")),
+            home_build: Some(PathBuf::from(format!("{R}/h/.moai/build"))),
+            home_build_named: Some(PathBuf::from(format!("{R}/h/.moai/build"))),
         }
     }
 
@@ -2295,7 +2300,6 @@ mod build_folder_tests {
             Some(""),
             Some("target"),
             Some("target/../target"),
-            Some(&*format!("{R}/h/.moai/build/repo-one")),
             Some(&*format!("{R}/r/repo/.claude/worktrees/one/target")),
             Some(&*format!("{R}/elsewhere/build")),
         ] {
@@ -2303,20 +2307,51 @@ mod build_folder_tests {
         }
     }
 
+    /// N1 of the audit of SPEC-20261123-lane-env-own-target: the retired home build root is
+    /// looked for in the value as written as well as in the value with its links resolved. A
+    /// root whose links lead elsewhere (`real`) still names the folder written under `<HOME>`,
+    /// and the resolved root still names a folder written by its real path.
     #[test]
-    fn a_shared_or_foreign_folder_is_named() {
+    fn the_home_build_root_is_matched_as_written_and_as_resolved() {
+        let mut h = here();
+        h.home_build = Some(PathBuf::from(format!("{R}/real/moai/build")));
+        let cargo = cmd(&["cargo", "test"]);
+        let note = |t: &str| build_folder_note("agent-7", &cargo, Some(OsStr::new(t)), Some(&h));
+        // As written: under `<HOME>/.moai/build`, though the resolved root is elsewhere.
+        let written = format!("{R}/h/.moai/build/repo-two");
+        let n = note(&written).expect("a value written under the home build root");
+        assert!(
+            n.starts_with(&format!("heavy-slot: CARGO_TARGET_DIR {written} is ")),
+            "{n}"
+        );
+        assert!(
+            n.contains("inside the retired home build root /nonexistent-moai-c82/h/.moai/build;"),
+            "{n}"
+        );
+        // As resolved: written by the real path of the root.
+        let real = format!("{R}/real/moai/build/repo-two");
+        let n = note(&real).expect("a value written by the resolved root");
+        assert!(n.contains("/nonexistent-moai-c82/real/moai/build;"), "{n}");
+    }
+
+    #[test]
+    fn a_retired_or_foreign_folder_is_named() {
         for (t, says) in [
             (
                 format!("{R}/tmp/moai-rc-target-agent-7"),
-                "the per-lane folder",
+                "the retired per-lane folder",
             ),
             (
                 format!("{R}/tmp/moai-rc-target-x-a2846"),
-                "the per-lane folder",
+                "the retired per-lane folder",
             ),
             (
                 format!("{R}/h/.moai/build/repo-two"),
-                "another worktree's build folder",
+                "inside the retired home build root /nonexistent-moai-c82/h/.moai/build;",
+            ),
+            (
+                format!("{R}/h/.moai/build/repo-one"),
+                "inside the retired home build root",
             ),
             (
                 format!("{R}/r/repo/target"),
@@ -2334,61 +2369,28 @@ mod build_folder_tests {
                 "{n}"
             );
             assert!(
-                n.contains(&format!("build folder is {R}/h/.moai/build/repo-one")),
+                n.contains(&format!(
+                    "builds in its own target/ ({R}/r/repo/.claude/worktrees/one/target)"
+                )),
                 "{n}"
             );
+            assert!(n.contains("unset CARGO_TARGET_DIR"), "{n}");
             assert!(n.contains("moai lane-env --lane agent-7"), "{n}");
         }
+        // Without a known home the retired home build root is not recognised.
+        let mut no_home = here();
+        no_home.home_build = None;
+        no_home.home_build_named = None;
+        let cargo = cmd(&["cargo", "test"]);
+        let t = format!("{R}/h/.moai/build/repo-two");
+        assert_eq!(
+            build_folder_note("agent-7", &cargo, Some(OsStr::new(&t)), Some(&no_home)),
+            None
+        );
         // A full path to cargo counts as cargo too.
         let full = cmd(&["/usr/local/bin/cargo", "build"]);
         let t = format!("{R}/r/two/target");
         assert!(build_folder_note("agent-7", &full, Some(OsStr::new(&t)), Some(&here())).is_some());
-    }
-
-    #[test]
-    fn a_record_of_another_worktree_is_named() {
-        let d = tempfile::TempDir::new().unwrap();
-        let dir = std::fs::canonicalize(d.path()).unwrap();
-        let rec = |w: &str| {
-            std::fs::write(
-                dir.join(".moai-build.json"),
-                format!(r#"{{"schema_version": 1, "worktree": "{w}"}}"#),
-            )
-            .unwrap()
-        };
-        let t = dir.to_str().unwrap();
-        rec(&format!("{R}/r/two"));
-        assert!(note(Some(t)).unwrap().contains(
-            "a build folder whose record names the worktree /nonexistent-moai-c82/r/two;"
-        ));
-        rec(&format!("{R}/r/repo/.claude/worktrees/one"));
-        assert_eq!(note(Some(t)), None);
-    }
-
-    /// C-82 slot audit N3: a sibling build folder under another name is this worktree's own
-    /// when its record says so (no warning); without that record it is another worktree's.
-    #[test]
-    fn a_sibling_folder_recorded_for_this_worktree_is_its_own() {
-        let d = tempfile::TempDir::new().unwrap();
-        let root = std::fs::canonicalize(d.path()).unwrap();
-        let build = root.join("h/.moai/build");
-        let old = build.join("repo-old-name");
-        std::fs::create_dir_all(&old).unwrap();
-        let mut h = here();
-        h.folder = build.join("repo-one");
-        let cargo = cmd(&["cargo", "test"]);
-        let t = Some(old.as_os_str());
-        let n = build_folder_note("agent-7", &cargo, t, Some(&h)).unwrap();
-        assert!(n.contains("another worktree's build folder"), "{n}");
-        std::fs::write(
-            old.join(".moai-build.json"),
-            format!(
-                r#"{{"schema_version": 1, "worktree": "{}"}}"#,
-                h.worktree.display()
-            ),
-        )
-        .unwrap();
-        assert_eq!(build_folder_note("agent-7", &cargo, t, Some(&h)), None);
     }
 
     #[test]
