@@ -1867,6 +1867,79 @@ fn land_scans_the_flow_names_repo_scans_the_merge_tree_and_the_receipt_step() {
     );
 }
 
+/// What the repo-scans bullet of the flow reference lacks of its cargo-only reading: only the
+/// `cargo` checks of the picked scans run, and a Python line is left out, as the landing command
+/// itself reads the table (SPEC-20261123-land-repo-scans D-7).
+fn repo_scans_cargo_only_problems(flow: &str) -> Vec<String> {
+    let Some(bullet) = flow.lines().find(|l| l.contains("moai repo-scans")) else {
+        return vec![format!("{FLOW_REF} names no `moai repo-scans`")];
+    };
+    let lower = bullet.to_lowercase();
+    ["run only their `cargo` checks", "leaving out a python line"]
+        .iter()
+        .filter(|part| !lower.contains(**part))
+        .map(|part| format!("the repo-scans bullet lacks {part:?}: {bullet}"))
+        .collect()
+}
+
+/// SPEC-20261123-doc-sentence-pins AC-2 (REQ-3): the repo-scans bullet tells the session that
+/// briefs an audit to run only the `cargo` checks of the picked scans and to leave out a Python
+/// line, and the flow reference stays inside its byte budget.
+#[test]
+fn land_scans_the_flow_runs_cargo_checks_only() {
+    let flow = read(FLOW_REF);
+    let problems = repo_scans_cargo_only_problems(&flow);
+    assert!(problems.is_empty(), "{problems:?}");
+    assert!(
+        flow.len() <= FLOW_REF_LIMIT,
+        "{FLOW_REF} is {} bytes, over {FLOW_REF_LIMIT}",
+        flow.len()
+    );
+}
+
+/// SPEC-20261123-doc-sentence-pins AC-2 (REQ-4): the bullet without the cargo-only words, without
+/// the Python line, or without the bullet is a problem; each mutant really changes the text.
+#[test]
+fn land_scans_the_flow_cargo_only_mutants_are_caught() {
+    let flow = read(FLOW_REF);
+    let bullet = flow
+        .lines()
+        .find(|l| l.contains("moai repo-scans"))
+        .unwrap_or_else(|| panic!("{FLOW_REF} names no `moai repo-scans`"))
+        .to_string();
+    let without = |word: &str| bullet.replace(word, "");
+    let mutants = [
+        (
+            "cargo words removed",
+            flow.replace(&bullet, &without("only their `cargo` checks")),
+        ),
+        (
+            "python line removed",
+            flow.replace(&bullet, &without("Python line")),
+        ),
+        ("bullet removed", flow.replace(&bullet, "")),
+        (
+            "meaning reversed",
+            flow.replace(
+                &bullet,
+                &bullet
+                    .replace(
+                        "run only their `cargo` checks",
+                        "run all their checks, not only their `cargo` checks",
+                    )
+                    .replace("leaving out a Python line", "including a Python line"),
+            ),
+        ),
+    ];
+    for (name, mutant) in mutants {
+        assert!(mutant != flow, "{name}: the mutant did not change the text");
+        assert!(
+            !repo_scans_cargo_only_problems(&mutant).is_empty(),
+            "{name}: the pin passes without the sentence"
+        );
+    }
+}
+
 /// AC-5 (REQ-7): the three texts that carry the tier lines without the list say where the floor
 /// list is.
 #[test]

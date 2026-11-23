@@ -41,4 +41,78 @@ fn the_retired_plan_comment_rule_keeps_its_provenance_row() {
     ));
 }
 
+/// The leader condition of the next-card rule, as `docs/lane-rules.md` says it.
+const LEADER_CLAUSE: &str = ", and only when no leader is registered; with a registered leader the lane waits for that leader's dispatch.";
+
+/// What the next-card bullet of the lane rules lacks of its leader condition: with a registered
+/// leader a lane waits for that leader's dispatch, and only without one does it take the next
+/// card itself.
+fn next_card_leader_problems(rules: &str) -> Vec<String> {
+    let Some(bullet) = rules
+        .lines()
+        .find(|l| l.starts_with("- A READY note or a `LANE-DONE` line hands a card back"))
+    else {
+        return vec!["docs/lane-rules.md has no next-card bullet".to_string()];
+    };
+    [
+        "only when no leader is registered",
+        "with a registered leader the lane waits for that leader's dispatch",
+    ]
+    .iter()
+    .filter(|part| !bullet.contains(**part))
+    .map(|part| format!("the next-card bullet lacks {part:?}: {bullet}"))
+    .collect()
+}
+
+/// SPEC-20261123-doc-sentence-pins AC-1 (REQ-1): the lane rules keep both halves of the leader
+/// condition of the next-card rule.
+#[test]
+fn next_card_leader_clause_is_in_the_lane_rules() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let rules = fs::read_to_string(root.join("docs/lane-rules.md")).unwrap();
+    assert!(
+        rules.contains(LEADER_CLAUSE),
+        "the leader clause moved or changed"
+    );
+    let problems = next_card_leader_problems(&rules);
+    assert!(problems.is_empty(), "{problems:?}");
+}
+
+/// SPEC-20261123-doc-sentence-pins AC-1 (REQ-2): the same text without the clause, or with one
+/// half of it, or without the bullet, is a problem; each mutant really changes the text.
+#[test]
+fn next_card_leader_clause_mutants_are_caught() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let rules = fs::read_to_string(root.join("docs/lane-rules.md")).unwrap();
+    let wait = "; with a registered leader the lane waits for that leader's dispatch";
+    let mutants = [
+        ("clause removed", rules.replace(LEADER_CLAUSE, ".")),
+        ("wait half removed", rules.replace(wait, "")),
+        (
+            "condition half removed",
+            rules.replace(", and only when no leader is registered", ""),
+        ),
+        (
+            "bullet removed",
+            rules
+                .lines()
+                .filter(|l| {
+                    !l.starts_with("- A READY note or a `LANE-DONE` line hands a card back")
+                })
+                .collect::<Vec<_>>()
+                .join("\n"),
+        ),
+    ];
+    for (name, mutant) in mutants {
+        assert!(
+            mutant != rules,
+            "{name}: the mutant did not change the text"
+        );
+        assert!(
+            !next_card_leader_problems(&mutant).is_empty(),
+            "{name}: the pin passes without the clause"
+        );
+    }
+}
+
 // Retired with the MODE-AGENT route (SPEC-20261122-next-flow-skills-agents REQ-2): `the_flags_the_workflow_names_are_the_commands_own` pinned the `lane-next` and `moai wait` flags MODE-AGENT showed, and WORK names neither.
