@@ -20,20 +20,23 @@
 
 t="${TMPDIR:-/tmp}"
 t="${t%/}"
-d="$t/moai-test-home.$$"
-ref="$t/moai-test-home.$$.ref"
-
-# Only these two paths, built above from TMPDIR and this process id, are ever removed.
-trap 'rm -rf "$d" "$ref"' EXIT
 trap 'exit 143' HUP INT TERM
 
-mkdir -m 700 "$d" "$d/.moai" "$d/.claude" 2>/dev/null || exit 70
+# The folder and the reference file are made by mktemp under names nobody can predict, and a trap
+# that removes one is set only after mktemp made it: a folder or a link that already carries a
+# name (a leftover of an earlier process with the same id) is never created over, written through
+# or removed. Only the two paths mktemp printed are ever removed.
+d=$(mktemp -d "$t/moai-test-home.XXXXXX") || exit 70
+trap 'rm -rf "$d"' EXIT
+
+mkdir -m 700 "$d/.moai" "$d/.claude" 2>/dev/null || exit 70
 : > "$d/.moai/user-assets.json" || exit 70
 : > "$d/.moai/language.yaml" || exit 70
 : > "$d/.claude/settings.json" || exit 70
 touch -a -t 200001010000 "$d/.moai/user-assets.json" "$d/.moai/language.yaml" \
   "$d/.claude/settings.json" "$d/.moai" "$d/.claude" "$d" || exit 70
-: > "$ref" || exit 70
+ref=$(mktemp "$t/moai-test-home-ref.XXXXXX") || exit 70
+trap 'rm -rf "$d"; rm -f "$ref"' EXIT
 
 # cargo and rustup keep finding their toolchain where they found it before HOME was replaced.
 if [ -n "${HOME:-}" ]; then
