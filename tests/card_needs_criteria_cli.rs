@@ -1,8 +1,8 @@
 //! `moai card ready` and `moai card take` refuse a card that has no acceptance criterion
 //! (SPEC-20261123-card-needs-criteria): such a card can never be closed, because the done rule of
 //! the ledger needs a met criterion. A criterion counts when its status is `open` or `met`; a
-//! `withdrawn` one does not. Every command runs against a temporary HOME; the real `~/.moai` is
-//! not read or written.
+//! `withdrawn` one does not. Every command runs against a temporary HOME; the real
+//! home state is not read or written.
 
 mod common;
 
