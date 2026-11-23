@@ -1049,6 +1049,48 @@ mod tests {
         let own = base.join("own");
         assert_eq!(worktree_gate(&outer, Some(own.to_str().unwrap())), Ok(()));
     }
+
+    /// AC-17 (REQ-22): what a lane really records is judged by itself and not refused: a linked
+    /// worktree made by `git worktree add` beside the checkout and one inside it (the layout of
+    /// `.claude/worktrees`), and a link to a checkout, whose path git spells through the real one.
+    #[test]
+    fn a_linked_worktree_and_a_link_to_a_checkout_are_judged_by_themselves() {
+        let tmp = tempfile::tempdir().unwrap();
+        let base = tmp.path().canonicalize().unwrap();
+        let (bare, outer) = (base.join("remote.git"), base.join("outer"));
+        for d in [&bare, &outer] {
+            std::fs::create_dir_all(d).unwrap();
+        }
+        fixture_git(&bare, &["init", "-q", "--bare", "-b", "main"]);
+        fixture_git(&outer, &["init", "-q", "-b", "main"]);
+        std::fs::write(outer.join("a.txt"), "a\n").unwrap();
+        fixture_git(&outer, &["add", "a.txt"]);
+        fixture_git(&outer, &["commit", "-q", "-m", "first"]);
+        fixture_git(&outer, &["remote", "add", "origin", bare.to_str().unwrap()]);
+        fixture_git(&outer, &["push", "-q", "origin", "main"]);
+
+        let beside = base.join("beside");
+        let inside = outer.join("inside");
+        for (path, branch) in [(&beside, "lane-beside"), (&inside, "lane-inside")] {
+            fixture_git(
+                &outer,
+                &[
+                    "worktree",
+                    "add",
+                    "-q",
+                    "-b",
+                    branch,
+                    path.to_str().unwrap(),
+                ],
+            );
+            assert_eq!(worktree_gate(&outer, Some(path.to_str().unwrap())), Ok(()));
+        }
+
+        fixture_git(&base, &["clone", "-q", bare.to_str().unwrap(), "own"]);
+        let link = base.join("link");
+        std::os::unix::fs::symlink(base.join("own"), &link).unwrap();
+        assert_eq!(worktree_gate(&outer, Some(link.to_str().unwrap())), Ok(()));
+    }
     use std::collections::HashMap;
 
     const A: &str = "428e289a-1c67-492e-a23b-a5aca15b4d1f";
