@@ -77,4 +77,15 @@ parent: SPEC-20261123-cleanup-outbox
 
 ## Result
 
-Not yet implemented.
+C-363 감사 노트 7393 의 비차단 N2·N4·N5·N6 을 후속 조각으로 구현했어요. 이 SPEC 의 승인은 사용자 몫이고, 아래 숫자는 임시 HOME 과 임시 저장소에서 잰 값이에요(실제 원장·체크아웃·워크트리·브랜치는 읽지도 쓰지도 않았어요).
+
+- AC-1 met: `fu1_` 2 tests passed: 리스가 끝난 시도, 더 새 시도로 밀린 시도, 존재하지 않는 시도, 다른 holder, 이미 release 한 시도는 step 도 result 도 못 쓰고(`Finish::LeaseEnded`), 가장 새 살아 있는 시도만 써요. 실행기는 `lease_lost` 와 시도 번호를 담은 `error` 로 답하고 다음 실행이 `settled` 로 끝내요.
+- AC-2 met: `fu2_` 2 tests passed: 죽은 시도(중단 seam, 그리고 브랜치 삭제 중 프로세스 그룹에 실제 `kill -9`) 다음 시도가 `abandoned` step 한 줄(kind `attempt`, reason `lease_ended`)을 한 번 남기고 요청을 `settled` 로 끝내요. 답에 `abandoned_attempt` 가 있어요.
+- AC-3 met: `fu3_` 1 test passed: 큐에 있던 ref 마다 `queue` step 이 한 줄이고(`gone`·`still_there`), 큐가 없는 실행은 한 줄도 남기지 않아요.
+- AC-4 met: `fu4_` 1 test passed: `spec close --card` 가 닫은 카드의 깨끗하고 합쳐진 워크트리와 브랜치를 지우고 답의 `card.cleanup_outbox` 에 요청이 `settled` 로 나와요. 코드는 바뀌지 않았고(D-4) 테스트가 트리거를 고정해요.
+
+Other runs: `cargo nextest run --locked --offline --test card_cleanup_outbox_cli --test spec_close_cli --test card_finish_cli` 85 of 85 passed; `cargo clippy --offline --locked --all-targets -- -D warnings` exit 0; `cargo fmt --check` and `git diff --check` clean. RED: `fu1_`(2)·`fu2_`·`fu3_` 4 tests failed on the stubbed head before the change; `fu4_` passed from the start because it only pins existing behavior.
+
+Guard mutants (committed head, each mutated line restored afterwards, all red with nextest exit 100): 리스 검사, 가장 새 시도 검사, holder 검사, release 검사, abandoned 줄, queue step, `lease_lost` 답, `card done` 의 실행기 호출(`src/card/work.rs`) — 여덟 개가 모두 죽었어요.
+
+Gaps: `kill -9` 가 남기는 git 락(`refs/heads/<branch>.lock`, `packed-refs.lock`)은 실행기가 지우지 않아요. 다음 시도는 `failed` 로 요청을 보류하고, 락을 치운 뒤의 실행이 끝내요(테스트가 이 순서를 고정해요). 큐 줄이 임시 사유로 큐에 되돌아가도 step 은 `gone` 으로 남아요(D-3).
