@@ -23,6 +23,10 @@ What this slice does not yet decide by itself: an item whose safety needs git pr
 
 Also in this slice, from the leader's coverage note of 2026-11-22 (card note 6245): A27 the tidy text names `claude purge` (the host command `claude purge [options] [path]`, read from `claude purge --help` on 2026-11-24; it replaces the older name `claude project purge`), and A50 the memory index targets. A26, the project folder tidy proposal (untracked leftovers, empty folders, old tool traces, overlapping docs, a project `.moai/archive`), is a different tree (the project, not the home folder) and needs its own SPEC after slice 3; it is recorded in Decisions D-4 and is not a requirement here.
 
+## Interview
+
+- none: no question was put to the user for this slice; its choices D-1 to D-5 follow the parent SPEC and the leader's card notes 6060 and 6245, and each is listed in Decisions.
+
 ## Non-goals
 
 - Any write: both operations write nothing, not even the summary file for the session start notice (slice 4, parent REQ-12) and not an archive (slice 3).
