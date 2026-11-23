@@ -6,6 +6,8 @@ use std::{
     process::ExitCode,
 };
 
+mod hook_entry;
+mod hook_latency;
 mod ops;
 
 /// Where a 06-C command reads its claim record: the local journal, or a record file that must
@@ -2622,12 +2624,60 @@ fn go_hook_main(argv: &[String]) -> ExitCode {
     ExitCode::SUCCESS
 }
 
+/// `moai hook …` (SPEC-20261123-hook-entry-skeleton): the three registered hook names go to the
+/// new entry (`src/hook_entry.rs`), `latency` to the measuring tool (`src/hook_latency.rs`), and
+/// every other name keeps the Go-generation answer above. All paths exit 0 except a usage
+/// error of `latency`, which exits 2 (no host runs it as a hook).
+fn hook_word_main(argv: &[String]) -> ExitCode {
+    match argv.get(2).map(String::as_str) {
+        Some("latency") => match hook_latency::run(&argv[3..]) {
+            Ok(answer) => {
+                println!("{answer}");
+                ExitCode::SUCCESS
+            }
+            Err(message) => {
+                eprintln!("moai hook latency: {message}");
+                ExitCode::from(2)
+            }
+        },
+        Some(name) if hook_entry::is_registered(name) => hook_entry_main(name),
+        _ => go_hook_main(argv),
+    }
+}
+
+/// A registered hook name: stdin is read once (never from a terminal), the answer is printed
+/// as it is and the exit is 0.
+fn hook_entry_main(name: &str) -> ExitCode {
+    use std::io::IsTerminal as _;
+    let input = if io::stdin().is_terminal() {
+        Vec::new()
+    } else {
+        hook_entry::read_input(&mut io::stdin())
+    };
+    let answer = match std::env::current_dir() {
+        Ok(cwd) => {
+            let now = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map_or(0, |d| d.as_millis());
+            hook_entry::run(name, &input, &cwd, &hook_entry::env(), now)
+        }
+        Err(_) => hook_entry::Answer::default(),
+    };
+    if !answer.stdout.is_empty() {
+        println!("{}", answer.stdout);
+    }
+    if !answer.stderr.is_empty() {
+        eprint!("{}", answer.stderr);
+    }
+    ExitCode::SUCCESS
+}
+
 /// Entry point of both binaries: `moai-cli` (this file) and `moai` (`src/bin/moai.rs` loads
 /// this file as a module and calls this function; #2790 R1).
 pub(crate) fn main() -> ExitCode {
     let argv: Vec<String> = std::env::args().collect();
     if argv.get(1).is_some_and(|w| w == GO_HOOK_WORD) {
-        return go_hook_main(&argv);
+        return hook_word_main(&argv);
     }
     // #2799 ③: a leading `--color` is recorded before parsing, so a usage error drawn by the
     // failure paths below follows it too; the word readers see the line without it.
