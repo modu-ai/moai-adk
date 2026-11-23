@@ -329,19 +329,45 @@ fn ac4_the_stdin_limit_takes_exactly_the_limit_and_refuses_one_more() {
     for name in NAMES {
         let fx = Fx::new(true, true);
         let at_limit = fx.hook(name, &object_of_len(STDIN_CAP));
+        // `session-context` answers a context text (SPEC-20261123-hook-session-start) and, in
+        // this fixture without a ledger file, one `ledger_absent` receipt line; the other two
+        // names stay silent. In every case the input of exactly the limit is no "too large".
+        if name == "session-context" {
+            assert_eq!(
+                (at_limit.code, at_limit.stderr.as_str()),
+                (0, ""),
+                "{name} at the limit"
+            );
+            assert!(
+                at_limit
+                    .stdout
+                    .contains("\"hookEventName\":\"SessionStart\""),
+                "{name}: {}",
+                at_limit.stdout
+            );
+        } else {
+            assert_eq!(
+                (
+                    at_limit.code,
+                    at_limit.stdout.as_str(),
+                    at_limit.stderr.as_str()
+                ),
+                (0, "", ""),
+                "{name} at the limit"
+            );
+        }
+        let too_large = |fx: &Fx| {
+            receipt_lines(&fx.receipt())
+                .iter()
+                .filter(|l| l.contains("stdin_too_large"))
+                .count()
+        };
         assert_eq!(
-            (
-                at_limit.code,
-                at_limit.stdout.as_str(),
-                at_limit.stderr.as_str()
-            ),
-            (0, "", ""),
-            "{name} at the limit"
-        );
-        assert!(
-            receipt_lines(&fx.receipt()).is_empty(),
+            too_large(&fx),
+            0,
             "{name}: an input of exactly the limit is not a failure"
         );
+        let before = receipt_lines(&fx.receipt()).len();
         let over = fx.hook(name, &object_of_len(STDIN_CAP + 1));
         assert_eq!(
             (over.code, over.stdout.as_str(), over.stderr.as_str()),
@@ -349,9 +375,14 @@ fn ac4_the_stdin_limit_takes_exactly_the_limit_and_refuses_one_more() {
             "{name} one byte over"
         );
         let lines = receipt_lines(&fx.receipt());
-        assert_eq!(lines.len(), 1, "{name}: one byte over is one receipt line");
-        let v: Value = serde_json::from_str(&lines[0]).unwrap();
+        assert_eq!(
+            lines.len(),
+            before + 1,
+            "{name}: one byte over is one receipt line"
+        );
+        let v: Value = serde_json::from_str(lines.last().unwrap()).unwrap();
         assert_eq!(v["reason"], "stdin_too_large", "{name}");
+        assert_eq!(too_large(&fx), 1, "{name}");
     }
 }
 

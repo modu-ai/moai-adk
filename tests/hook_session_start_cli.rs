@@ -539,11 +539,12 @@ fn ac5_the_branch_is_read_from_head_files_only() {
         format!("{BRANCH_ONLY} · no card reserved here")
     );
     let bare = br#"{"hook_event_name":"SessionStart","source":"startup"}"#;
+    // The host sets `CLAUDE_PROJECT_DIR`; the process works in a folder below it.
     let r = fx.exec(
         &["hook", "session-context"],
         &sub,
         bare,
-        &[],
+        &[("CLAUDE_PROJECT_DIR", fx.checkout.to_str().unwrap())],
         Out::Pipe,
         Out::Pipe,
     );
@@ -581,7 +582,7 @@ fn ac5_the_branch_is_read_from_head_files_only() {
     );
 
     // Unreadable heads read as unknown: missing, a folder, a FIFO (no hang), no `.git` at all.
-    let unknown = "MoAI: branch unknown";
+    let unknown = "MoAI: branch unknown · no card reserved here";
     let fx = Fx::new(true);
     fs::remove_file(fx.head()).unwrap();
     assert_eq!(fx.context("startup"), unknown, "missing");
