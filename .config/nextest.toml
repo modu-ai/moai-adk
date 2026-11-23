@@ -25,6 +25,12 @@ experimental = ["wrapper-scripts"]
 [test-groups]
 spawning-moai = { max-threads = 4 }
 
+[[profile.default.overrides]]
+filter = 'binary(home_retire_cli) | binary(update_home_layer_cli) | binary(update_keys_cli)'
+test-group = 'spawning-moai'
+
+# The home guard rule comes after the override above: tests/spawn_cap_test.rs reads the first
+# `filter =` line of this file as the test group's filter.
 [scripts.wrapper.home-guard]
 command = { command-line = 'tools/test_home_guard.sh', relative-to = 'workspace-root' }
 
@@ -32,7 +38,3 @@ command = { command-line = 'tools/test_home_guard.sh', relative-to = 'workspace-
 platform = { host = 'cfg(unix)' }
 filter = 'all()' # home-guard-filter
 run-wrapper = 'home-guard'
-
-[[profile.default.overrides]]
-filter = 'binary(home_retire_cli) | binary(update_home_layer_cli) | binary(update_keys_cli)'
-test-group = 'spawning-moai'

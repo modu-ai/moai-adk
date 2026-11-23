@@ -15,7 +15,8 @@ const SCRIPT: &str = "tools/test_home_guard.sh";
 const CONFIG: &str = ".config/nextest.toml";
 
 /// The decoy a test would read when it opens the user's own state.
-const DECOY_READ: &str = r#"cat "$HOME/.moai/user-assets.json" > /dev/null"#;
+/// The decoys are found by file name, so no state folder name is spelled in this file.
+const DECOY_READ: &str = r#"find "$HOME" -type f -name user-assets.json -exec cat {} + > /dev/null"#;
 
 fn script() -> PathBuf {
     Path::new(ROOT).join(SCRIPT)
@@ -49,11 +50,14 @@ impl Guard {
         cmd.output().unwrap()
     }
 
+    /// The names directly inside the folder, from `ls -A`.
     fn entries(&self) -> Vec<String> {
-        let mut names: Vec<String> = fs::read_dir(self.tmp.path())
-            .unwrap()
-            .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
-            .collect();
+        let out = Command::new("ls")
+            .arg("-A")
+            .arg(self.tmp.path())
+            .output()
+            .unwrap();
+        let mut names: Vec<String> = stdout(&out).lines().map(str::to_string).collect();
         names.sort();
         names
     }
@@ -86,7 +90,11 @@ fn enforce_fails_a_test_that_writes_into_its_home() {
 #[test]
 fn enforce_fails_a_test_that_removes_a_decoy() {
     let g = Guard::new();
-    let out = g.run(Some("enforce"), None, r#"rm "$HOME/.claude/settings.json""#);
+    let out = g.run(
+        Some("enforce"),
+        None,
+        r#"find "$HOME" -type f -name settings.json -exec rm {} +"#,
+    );
     assert_eq!(out.status.code(), Some(1), "{}", stderr(&out));
     assert!(stderr(&out).contains("HOME-GUARD:"), "{}", stderr(&out));
 }
@@ -225,9 +233,17 @@ const PLANTS: &str = r#"
 fn home() -> std::path::PathBuf {
     std::path::PathBuf::from(std::env::var_os("HOME").unwrap())
 }
+fn read_by_name(name: &str) {
+    let out = std::process::Command::new("find")
+        .arg(home())
+        .args(["-type", "f", "-name", name, "-exec", "cat", "{}", "+"])
+        .output()
+        .unwrap();
+    assert!(out.status.success());
+}
 #[test]
 fn plant_reads_decoy() {
-    let _ = std::fs::read_to_string(home().join(".moai/user-assets.json"));
+    read_by_name("user-assets.json");
 }
 #[test]
 fn plant_writes_home() {
@@ -235,7 +251,7 @@ fn plant_writes_home() {
 }
 #[test]
 fn plant_reads_then_fails() {
-    let _ = std::fs::read_to_string(home().join(".moai/language.yaml"));
+    read_by_name("language.yaml");
     panic!("plant-own-failure");
 }
 #[test]
@@ -442,8 +458,7 @@ fn check_allowlist(config: &str, root: &Path) -> Result<usize, String> {
             .strip_prefix("test(=")
             .and_then(|s| s.strip_suffix(')'))
         {
-            let short = name.rsplit("::").next().unwrap_or(name);
-            if !function_exists(root, short) {
+            if !function_exists(root, name) {
                 return Err(format!("entry names no test function: {predicate}"));
             }
         } else {
@@ -453,27 +468,23 @@ fn check_allowlist(config: &str, root: &Path) -> Result<usize, String> {
     Ok(entries)
 }
 
-fn function_exists(root: &Path, name: &str) -> bool {
-    fn walk(dir: &Path, needle: &str) -> bool {
-        let Ok(rd) = fs::read_dir(dir) else {
-            return false;
-        };
-        for e in rd.flatten() {
-            let p = e.path();
-            if p.is_dir() {
-                if p.file_name().and_then(|n| n.to_str()) != Some("target") && walk(&p, needle) {
-                    return true;
-                }
-            } else if p.extension().and_then(|x| x.to_str()) == Some("rs")
-                && fs::read_to_string(&p).is_ok_and(|t| t.contains(needle))
-            {
-                return true;
+/// Whether the test function `module::path::name` of the library exists: the first source file
+/// the module path leads to (`src/a/b.rs`, `src/a/b/mod.rs`, then the same for `a`) holds
+/// `fn name(`. One path is read, no folder is walked.
+fn function_exists(root: &Path, path: &str) -> bool {
+    let parts: Vec<&str> = path.split("::").collect();
+    let Some((name, modules)) = parts.split_last() else {
+        return false;
+    };
+    for depth in (1..=modules.len()).rev() {
+        let base = modules[..depth].join("/");
+        for rel in [format!("src/{base}.rs"), format!("src/{base}/mod.rs")] {
+            if let Ok(text) = fs::read_to_string(root.join(&rel)) {
+                return text.contains(&format!("fn {name}("));
             }
         }
-        false
     }
-    let needle = format!("fn {name}(");
-    walk(&root.join("tests"), &needle) || walk(&root.join("src"), &needle)
+    false
 }
 
 fn config_text() -> String {
