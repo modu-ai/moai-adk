@@ -1,0 +1,47 @@
+---
+id: SPEC-20261123-spec-check-glued-items
+title: "spec check 가 한 줄에 붙은 REQ·AC·D 목록 항목을 오류로 잡아요"
+status: draft
+revision: 1
+created: 2026-11-23
+---
+
+# spec check 가 한 줄에 붙은 REQ·AC·D 목록 항목을 오류로 잡아요
+
+## Intent
+
+SPEC 의 `- AC-9 … - AC-10 …` 처럼 목록 항목 둘이 한 줄에 붙으면 파서는 줄 하나에서 항목 하나만 읽어서 `AC-10` 을 잃어요. 그런데 `moai spec check` 는 이때 오류 0 이라고 답해요(C-354 조각 4 감사 7456 에서 발견). 이 SPEC 은 그런 줄을 줄 번호와 붙은 id 와 함께 오류로 잡게 해서, 항목이 조용히 사라진 SPEC 이 검사를 통과하지 못하게 해요.
+
+## Requirements
+
+- REQ-1: When a line of `## Requirements`, `## Acceptance`, `## Decisions` or `## Result` starts a `- REQ-n`, `- AC-n` or `- D-n` list item and a second such item starts later on the same line, the checker shall report the error `item_glued` with the line number and the id of the second item. · failure: none — a line that holds one item is the normal case and REQ-2 keeps it clean.
+- REQ-2: The checker shall read a ` - ` that sits inside a backtick span, inside a fenced code block or right after an id as text and never as a second item.
+- REQ-3: The checker shall report `item_glued` as an error in a new-form SPEC and as a warning in a Go-generation SPEC, as it does for the other format codes.
+
+## Acceptance
+
+- AC-1 (REQ-1): a `## Acceptance` line `- AC-9 … - AC-10 …` gives one `item_glued` error that names that line number and `AC-10`, and a line with three items gives one error for each later item.
+  verify: `cargo nextest run --locked --offline --test spec_doc -E 'test(a_glued_item_is_an_error_with_its_line_and_id)'`
+- AC-2 (REQ-1): glued `REQ-n` items in `## Requirements`, `D-n` items in `## Decisions` and `AC-n` items in `## Result` give the same error, and a mixed pair such as `- REQ-1 … - AC-2 …` does too.
+  verify: `cargo nextest run --locked --offline --test spec_doc -E 'test(glued_items_are_found_in_every_item_section)'`
+- AC-3 (REQ-2): a ` - AC-n` inside a backtick span, inside a fenced block, after an id such as `AC-3 - AC-5` and on a line that starts no item gives no `item_glued` error.
+  verify: `cargo nextest run --locked --offline --test spec_doc -E 'test(text_that_only_looks_glued_is_not_an_error)'`
+- AC-4 (REQ-2): a SPEC whose items each start their own line stays free of `item_glued` and the existing parser tests still pass.
+  verify: `cargo nextest run --locked --offline --test spec_doc`
+- AC-5 (REQ-3): the same glued line is an error in a new-form SPEC and a warning in a Go-generation one.
+  verify: `cargo nextest run --locked --offline --test spec_doc -E 'test(a_glued_item_is_a_warning_in_a_go_generation_spec)'`
+- AC-6 (REQ-1, REQ-2, REQ-3): this SPEC passes the checker, and the number of `item_glued` errors over every SPEC in the repository is counted and written in the Result.
+  verify: `moai spec check SPEC-20261123-spec-check-glued-items`
+
+## Scope
+
+- write: `src/spec_doc.rs`
+- write: `tests/spec_doc.rs`
+- write: `.moai/specs/SPEC-20261123-spec-check-glued-items/**`
+
+## Plan
+
+1. Count the `item_glued` errors the new check gives over every SPEC in the repository before it is switched on for them, and record the number. SPECs that show errors are not edited; only their number goes to the leader.
+2. Write the tests of AC-1 to AC-5 first and watch them fail.
+3. Add a `glued_item` helper to `src/spec_doc.rs` and call it from `body()` for the four item sections, skipping fenced lines, backtick spans and a ` - ` that follows an id.
+4. Run the `spec_doc` tests and `moai spec check --all`, then write the Result with each AC and the count.
