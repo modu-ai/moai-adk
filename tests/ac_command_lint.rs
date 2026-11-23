@@ -603,6 +603,71 @@ fn a_filter_on_macro_made_tests_says_the_names_cannot_be_read() {
     );
 }
 
+/// A repository tree with one moved area `repo`: the crate root declares the module `git_a`,
+/// which holds the test `finds_it`; `command` is the recorded line of `docs/record.md`. Returns
+/// the lint's output on that tree (SPEC-20261123-test-area-crates REQ-6, REQ-12).
+fn lint_area_tree(command: &str) -> std::process::Output {
+    let dir = tempfile::TempDir::new().unwrap();
+    let files = [
+        ("tests/repo/main.rs", "mod git_a;\n"),
+        ("tests/repo/git_a.rs", "#[test]\nfn finds_it() {}\n"),
+        ("tests/plain.rs", "#[test]\nfn plain_test() {}\n"),
+    ];
+    for (rel, text) in files {
+        let path = dir.path().join(rel);
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        fs::write(path, text).unwrap();
+    }
+    fs::create_dir_all(dir.path().join("docs")).unwrap();
+    fs::write(
+        dir.path().join("docs/record.md"),
+        format!("verification: `{command}`\n"),
+    )
+    .unwrap();
+    run_lint(&["--tree", dir.path().to_str().unwrap()])
+}
+
+fn lint_text(out: &std::process::Output) -> String {
+    format!(
+        "{}{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    )
+}
+
+/// A closed SPEC keeps `--test <old target>`: the old name is a module of an area crate and the
+/// recorded filter still selects its test.
+#[test]
+fn area_old_target_name_resolves_to_its_module() {
+    let out = lint_area_tree("cargo test --offline --locked --test git_a finds_it");
+    assert!(out.status.success(), "{}", lint_text(&out));
+}
+
+#[test]
+fn area_crate_name_with_a_module_filter_passes() {
+    let out = lint_area_tree("cargo test --offline --locked --test repo git_a::finds_it");
+    assert!(out.status.success(), "{}", lint_text(&out));
+}
+
+#[test]
+fn area_filter_that_selects_nothing_fails() {
+    let out = lint_area_tree("cargo test --offline --locked --test repo git_zzz::");
+    let text = lint_text(&out);
+    assert!(!out.status.success(), "{text}");
+    assert!(text.contains("select 0 tests in repo"), "{text}");
+}
+
+#[test]
+fn area_unknown_target_fails_even_beside_moved_areas() {
+    let out = lint_area_tree("cargo test --offline --locked --test never_moved some_test");
+    let text = lint_text(&out);
+    assert!(!out.status.success(), "{text}");
+    assert!(
+        text.contains("target tests/never_moved.rs does not exist"),
+        "{text}"
+    );
+}
+
 #[test]
 fn recorded_ac_commands_name_existing_targets_and_select_tests() {
     let out = run_lint(&["--tree", MANIFEST]);

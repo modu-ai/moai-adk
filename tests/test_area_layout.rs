@@ -637,3 +637,64 @@ fn solo_rejects_a_missing_solo_file_and_a_global_state_call_in_a_module() {
         .iter()
         .any(|v| v.contains("tests/repo/git_a.rs:1")));
 }
+
+/// Runs `tools/ci_scope.py` on the given changed paths and returns its JSON answer.
+fn ci_scope(paths: &[&str]) -> serde_json::Value {
+    use std::io::Write;
+    let mut child = std::process::Command::new("python3")
+        .arg("-I")
+        .arg(root().join("tools/ci_scope.py"))
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .spawn()
+        .expect("spawn tools/ci_scope.py");
+    child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(paths.join("\n").as_bytes())
+        .unwrap();
+    let out = child.wait_with_output().unwrap();
+    assert!(out.status.success(), "ci_scope.py failed");
+    serde_json::from_slice(&out.stdout).expect("ci_scope.py prints JSON")
+}
+
+/// A platform-sensitive test file keeps selecting the macOS leg after it moves into an area
+/// crate: the platform tables are keyed by the old `tests/<name>.rs` path.
+#[test]
+fn scan_list_ci_scope_looks_a_moved_test_up_by_its_old_path() {
+    for moved in [
+        "tests/home/exe_link_cli.rs",
+        "tests/lane/launcher_auto_init.rs",
+        "tests/screen/statusline_numbers_only.rs",
+        "tests/update/update_hooks_cli.rs",
+    ] {
+        let answer = ci_scope(&[moved]);
+        assert_eq!(answer["macos_needed"], true, "{moved}: {answer}");
+    }
+    let plain = ci_scope(&["tests/card/card_wait_cli.rs"]);
+    assert_eq!(plain["macos_needed"], false, "{plain}");
+}
+
+/// An area crate root declares the area's modules, so a change to it cannot be judged as
+/// platform-free.
+#[test]
+fn scan_list_ci_scope_treats_an_area_crate_root_as_platform_sensitive() {
+    let answer = ci_scope(&["tests/repo/main.rs"]);
+    assert_eq!(answer["macos_needed"], true, "{answer}");
+}
+
+/// The area names inside `tools/ci_scope.py` are the area names of the table.
+#[test]
+fn scan_list_ci_scope_area_dirs_are_the_table_areas() {
+    let text = fs::read_to_string(root().join("tools/ci_scope.py")).unwrap();
+    let line = text
+        .lines()
+        .find(|l| l.starts_with("AREA_DIRS = ("))
+        .expect("tools/ci_scope.py names AREA_DIRS");
+    let mut listed: Vec<&str> = line.split('"').skip(1).step_by(2).collect();
+    listed.sort();
+    let mut expected = AREAS.to_vec();
+    expected.sort();
+    assert_eq!(listed, expected);
+}
