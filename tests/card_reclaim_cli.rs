@@ -901,6 +901,14 @@ impl World {
 
     /// A card taken by S_A whose reservation names `worktree`; the lease then ended.
     fn ended_card_at(&self, worktree: &str) -> String {
+        let name = self.live_card_at(worktree);
+        let n: i64 = name.trim_start_matches("C-").parse().unwrap();
+        self.end_lease(n);
+        name
+    }
+
+    /// A card taken by S_A whose reservation names `worktree`; the lease is live.
+    fn live_card_at(&self, worktree: &str) -> String {
         // A write scope of its own (named after the worktree folder), so two cards of one test
         // never meet the scope-overlap refusal.
         let scope = format!(
@@ -928,7 +936,6 @@ impl World {
                 &format!("card/{n}-gate"),
             ],
         ));
-        self.end_lease(n);
         name
     }
 }
@@ -1053,6 +1060,66 @@ fn the_reclaim_event_names_the_kept_commits() {
     let done2 = result(&w.reclaim(Some(S_B), &name2, "1"));
     assert_eq!(done2["kept_commits"]["count"], json!(25), "{done2}");
     assert_eq!(done2["kept_commits"]["ids"], json!(&all[..20]), "{done2}");
+}
+
+/// REQ-6 (SPEC-20261124-reclaim-keeps-worktree revision 2): while the lease is live the strict
+/// gate judges the worktree and its refusal text is the one the command always had. The lenient
+/// takeover gate must never run for a live lease: it would pass the commit and the refusal
+/// would come from the lease check with another text. The same card is taken over once its
+/// lease ended. Guard: the lenient gate for every reservation, or an inverted lease-end test,
+/// changes the first message and fails the prefix and tail checks.
+#[test]
+fn a_live_lease_keeps_the_strict_gate_and_its_refusal_text() {
+    let w = world();
+    let wt = w.git_worktree(false, false);
+    let name = w.live_card_at(&wt);
+    let n: i64 = name.trim_start_matches("C-").parse().unwrap();
+    let before = w.dump();
+    let (kind, message) = refusal(&w.reclaim(Some(S_B), &name, "1"));
+    assert_eq!(kind, "conflict", "{message}");
+    assert!(
+        message.starts_with("card conflict in worktree dirty"),
+        "{message}"
+    );
+    assert!(
+        message.contains(&format!(
+            "{wt} holds 0 uncommitted change(s) and 1 unpushed commit(s); \
+             a reclaim would orphan them"
+        )),
+        "{message}"
+    );
+    assert_eq!(w.dump(), before, "the refusal leaves every row as it was");
+
+    // The lease ends: the same worktree and the same commit are now kept by the takeover.
+    w.end_lease(n);
+    let done = result(&w.reclaim(Some(S_B), &name, "1"));
+    assert_eq!(done["kept_commits"]["count"], json!(1), "{done}");
+    assert_eq!(done["reservation"]["worktree"], json!(wt), "{done}");
+}
+
+/// REQ-7: the id list stops at twenty ids and the count stays exact on both sides of the cap:
+/// twenty commits list twenty ids, twenty-one commits list twenty ids and count twenty-one.
+#[test]
+fn the_kept_commit_list_is_capped_at_twenty_ids() {
+    let w = world();
+    for total in [20usize, 21] {
+        let wt = w.git_worktree(false, false);
+        for i in 2..=total {
+            common::git::git_in(
+                Path::new(&wt),
+                &["commit", "--allow-empty", "-m", &format!("c{i}")],
+            );
+        }
+        let all: Vec<String> = common::git::git(Path::new(&wt), &["rev-list", "HEAD"])
+            .lines()
+            .map(str::to_string)
+            .collect();
+        assert_eq!(all.len(), total, "the fixture holds {total} commits");
+        let name = w.ended_card_at(&wt);
+        let done = result(&w.reclaim(Some(S_B), &name, "1"));
+        assert_eq!(done["kept_commits"]["count"], json!(total), "{done}");
+        assert_eq!(done["kept_commits"]["ids"], json!(&all[..20]), "{done}");
+    }
 }
 
 /// REQ-4: when git cannot count the commits (a repository whose HEAD has no commit yet), the
