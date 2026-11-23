@@ -127,3 +127,11 @@ Slice 4 (revision 4):
 - The comments of `tests/common/prop.rs` and `tests/prop_reservation.rs` that named the property SPEC by a card number now name its id; one earlier commit body still carries a card number and stays as pushed.
 - `spec check`: 0 errors, 1 warning (more than 12 requirements).
 - Not claimed, waiting for `src/card/dispatch.rs` to be free: the standard-error line carried in the refusal and the noise lines of git (a missing fsmonitor hook, an invalid attribute line), and a recorded worktree that lost its `.git` inside a checkout. Not claimed, not run: the stderr rule pinned on each of its three reads; the probe of which situation makes the ignored-files read and the file-list read warn on their own was refused by the host and not repeated.
+
+Slice 5 (revision 5, the repair of the slice 4 audit):
+
+- Line break: AC-10 stood at the end of the AC-9 line, so `moai spec show` listed no AC-10; it is its own line again and the show lists AC-10, AC-11, AC-12 and AC-13.
+- AC-12: met. With `trace2.normalTarget = 2` in the user-level git configuration of the temporary home, the reclaim of a clean worktree answered "could not be read" at the red commit and passes now; `the_trace2_targets_are_switched_off_for_the_child` pins the three targets as `0`. Removing the loop that sets them makes both tests fail again (mutant killed). The configuration of the worktree itself (`git config` in the repository) does not turn the trace on in git 2.54.0, so the test uses the user-level file.
+- AC-13: met. `a_replay_index_that_is_not_a_number_is_refused`: a `PROP_ONLY` that is empty, a word, negative, fractional or followed by a letter fails and names the value; a number or no value passes. Reading the value leniently again makes the test fail (mutant killed).
+- The doc comment of `scrub_git_env` names the trace prefix, the trace2 targets and the numbered config pairs.
+- Not claimed, unchanged from slice 4: the follow-ups that write `src/card/dispatch.rs`, the stderr rule pinned on each of its three reads, the text pin and the Python twin. The checker `spec check` does not catch two list items on one line; that is for a checker card.
