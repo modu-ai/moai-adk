@@ -2089,6 +2089,29 @@ mod tests {
         assert_eq!(context_window_override(&only_claude), 0);
     }
 
+    /// SPEC-20261123-glm-fable-slot-test REQ-1, REQ-2: the launcher's own environment gives the
+    /// opus and fable slots one value, so it cannot tell the two slots apart. Here each slot holds
+    /// a model of its own, and a Fable name must show the fable slot's model, an Opus name the
+    /// opus slot's; a fable name never borrows the opus slot.
+    #[test]
+    fn glm_fable_and_opus_slots_resolve_their_own_models() {
+        let both = Context::for_test(
+            &[
+                ("ANTHROPIC_DEFAULT_OPUS_MODEL", "glm-opus-x[1m]"),
+                ("ANTHROPIC_DEFAULT_FABLE_MODEL", "glm-fable-y[1m]"),
+            ],
+            None,
+        );
+        assert_eq!(resolve_glm_model_name("Fable", &both), "glm-fable-y");
+        assert_eq!(resolve_glm_model_name("Fable[1m]", &both), "glm-fable-y");
+        assert_eq!(resolve_glm_model_name("Opus", &both), "glm-opus-x");
+        // Only the opus slot holds a GLM model: a Fable name has no slot model to show.
+        let only_opus =
+            Context::for_test(&[("ANTHROPIC_DEFAULT_OPUS_MODEL", "glm-opus-x[1m]")], None);
+        assert_eq!(resolve_glm_model_name("Fable", &only_opus), "Fable");
+        assert_eq!(resolve_glm_model_name("Opus", &only_opus), "glm-opus-x");
+    }
+
     #[test]
     fn context_override_prefers_env_then_longest_builtin_match() {
         let env = Context::for_test(&[("MOAI_STATUSLINE_CONTEXT_SIZE", "128000")], None);
