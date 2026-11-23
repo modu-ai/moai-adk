@@ -156,7 +156,10 @@ fn round_lands_through_one_command_and_never_without_a_pass() {
         "{LEADER} holds exactly one landing command"
     );
     // Every sentence that gives the landing command carries the `PASS` condition.
-    for sentence in t.split(". ").filter(|s| s.contains("moai card land <card>")) {
+    for sentence in t
+        .split(". ")
+        .filter(|s| s.contains("moai card land <card>"))
+    {
         assert!(
             sentence.contains("only after a verdict `PASS` for that exact head"),
             "{LEADER}: a landing sentence without the PASS condition: {sentence}"
