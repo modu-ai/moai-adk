@@ -1785,7 +1785,7 @@
         "tests/repo_scans_table.rs::every_file_reader_has_an_always_scan_or_an_exemption"
       ],
       "checks": [
-        "cargo test --offline --locked --test agent_defs_package --test atlas_query_cli --test board_bundle_link_cli --test check_affected_modes_cli --test cli_text_citations --test gate_collect --test git_hooks_cli --test home_isolation_scan --test hot_file_ops_merge --test ledger_recover --test next_flow_skill_scan --test orca_optional_3005 --test product_cli --test profile_apply_engine --test project_layer_follow_ups --test project_preview_order --test project_worktree_move_choice --test repo_scans_cli --test retired_host_words --test retired_hosts_layer --test worktree_cli --test repo_scans_table"
+        "cargo test --offline --locked --test agent_defs_package --test atlas_query_cli --test board_bundle_link_cli --test check_affected_modes_cli --test cli_text_citations --test gate_collect --test git_hooks_cli --test help_text_names_moai --test home_isolation_scan --test hot_file_ops_merge --test ledger_recover --test next_flow_skill_scan --test orca_optional_3005 --test product_cli --test profile_apply_engine --test project_layer_follow_ups --test project_preview_order --test project_worktree_move_choice --test repo_scans_cli --test retired_host_words --test retired_hosts_layer --test worktree_cli --test repo_scans_table"
       ],
       "rules": [
         "tests/agent_defs_package.rs",
@@ -1795,6 +1795,7 @@
         "tests/cli_text_citations.rs",
         "tests/gate_collect.rs",
         "tests/git_hooks_cli.rs",
+        "tests/help_text_names_moai.rs",
         "tests/home_isolation_scan.rs",
         "tests/hot_file_ops_merge.rs",
         "tests/ledger_recover.rs",
@@ -1933,6 +1934,9 @@
           "prefix": "src/launcher_init.rs"
         },
         {
+          "prefix": "src/launcher_terminal.rs"
+        },
+        {
           "prefix": "src/layout.rs"
         },
         {
@@ -1982,6 +1986,9 @@
         },
         {
           "prefix": "src/shim_check.rs"
+        },
+        {
+          "prefix": "src/state_root.rs"
         },
         {
           "prefix": "src/statusline/mod.rs"

@@ -131,3 +131,7 @@ AUDIT #398 on head `1df1b93c88` was FAIL (B1, B2; non-blocking N1 to N6). The us
 - N3 (`include_bytes!`, `tools/*.py` runs, paths passed to a binary) was handed to card C-405 by the leader and is not done here; N4 stays as SPEC R-4 says; N6 (C-397 needs only the `include-str-hook-session-start-cli` entry) is C-397's.
 - Guard mutants of the repair, each run on the committed GREEN tree and restored (`git status` clean after): M1 the prefix strip never matches (exit 100, both new reader tests failed), M2 strip once instead of repeatedly (100), M3 a `readers` key put back on `reads-docs` (100), M4 `select_pick` without the `always` filter (100), M5 a touched `always` scan dropped from the full set (100), M6 `lane_completion_handshake` removed from `reads-root-files` (100).
 - Not run here: the same-head `check affected` (in the REPAIRED note), Windows and Linux builds, PR CI, the independent delta audit, the whole `cargo test`.
+
+### Repair after the audit PASS (landing hold, one item)
+
+- Landing hold: on NeXT `c272ce2b2e` (merged into the branch) `every_file_reader_has_an_always_scan_or_an_exemption` was red because the new `tests/help_text_names_moai.rs` reads seven `src/` files and no `reads-` scan named it; it is now a rule file and `--test` target of `reads-src`, and `src/launcher_terminal.rs` and `src/state_root.rs` joined that scan's scope (data only, `tools/repo_scans.json`; `repo_scans_table`, `repo_scans_cli` and `help_text_names_moai` pass, 48 of 48).
