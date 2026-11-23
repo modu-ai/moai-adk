@@ -345,6 +345,62 @@ fn a_tmpdir_that_is_a_link_loses_nothing_but_the_wrapper_folder() {
     assert!(real.exists() && link.exists());
 }
 
+/// Runs `prepare` in a shell that then `exec`s the wrapper: `exec` keeps the process id, so a name
+/// built from `$$` in `prepare` is the name an earlier wrapper process with a reused id left behind.
+/// The shell's stdout is the process id (`prepare` prints it) and then the wrapper's.
+fn run_after_prepare(g: &Guard, prepare: &str) -> Output {
+    let script_text = format!("{prepare}\nexec sh \"$WRAPPER\" sh -c true");
+    Command::new("sh")
+        .args(["-c", &script_text])
+        .env("TMPDIR", g.tmp.path())
+        .env("WRAPPER", script())
+        .env_remove("MOAI_HOME_GUARD")
+        .env_remove("MOAI_HOME_GUARD_LOG")
+        .output()
+        .unwrap()
+}
+
+#[test]
+fn a_folder_left_under_the_name_of_this_process_is_not_removed() {
+    let g = Guard::new();
+    let out = run_after_prepare(
+        &g,
+        r#"mkdir "$TMPDIR/moai-test-home.$$" && echo precious > "$TMPDIR/moai-test-home.$$/keep"
+printf '%s' "$$""#,
+    );
+    let pid = stdout(&out);
+    assert_eq!(out.status.code(), Some(0), "{}", stderr(&out));
+    let kept = g.tmp.path().join(format!("moai-test-home.{pid}/keep"));
+    assert_eq!(
+        fs::read_to_string(&kept).unwrap_or_default(),
+        "precious\n",
+        "the wrapper removed a folder it did not make: {}",
+        kept.display()
+    );
+}
+
+#[test]
+fn a_link_left_in_the_place_of_the_reference_file_keeps_its_target() {
+    let g = Guard::new();
+    let out = run_after_prepare(
+        &g,
+        r#"echo precious > "$TMPDIR/target"
+ln -s "$TMPDIR/target" "$TMPDIR/moai-test-home.$$.ref"
+printf '%s' "$$""#,
+    );
+    let pid = stdout(&out);
+    assert_eq!(out.status.code(), Some(0), "{}", stderr(&out));
+    assert_eq!(
+        fs::read_to_string(g.tmp.path().join("target")).unwrap_or_default(),
+        "precious\n",
+        "the wrapper wrote through a link it did not make"
+    );
+    assert!(
+        fs::symlink_metadata(g.tmp.path().join(format!("moai-test-home.{pid}.ref"))).is_ok(),
+        "the wrapper removed a link it did not make"
+    );
+}
+
 #[test]
 fn a_cargo_child_of_a_test_still_finds_its_toolchain() {
     let g = Guard::new();
