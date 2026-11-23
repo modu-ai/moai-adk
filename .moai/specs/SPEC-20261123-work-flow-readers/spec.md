@@ -78,11 +78,11 @@ approval:
 
 ## Result
 
-구현 head `b898b647e2`(가지 `spec/work-flow-readers-20261123`)에서 검증 명령을 다시 돌렸어요: `cargo nextest run --offline --locked --lib --bin moai-cli -E '<아래 다섯 이름>'` → exit 0, 5 passed.
+AC-1·2·3·5 는 구현 head `b898b647e2`(가지 `spec/work-flow-readers-20261123`)에서 검증 명령을 다시 돌렸어요: `cargo nextest run --offline --locked --lib --bin moai-cli -E '<AC-1·2·3·5 의 다섯 이름>'` → exit 0, 5 passed. AC-4 는 그 뒤 커밋 `8d9b2eb73f` 에서 닫았어요.
 
 - AC-1: 충족. `session_check_names_the_profile_work_flow` passed — 프로필 `work_flow`(m-flow, `NeXT`)가 있는 임시 저장소에서 답에 ``Work flow `m-flow`, integration branch `NeXT`.`` 가 들어가요.
 - AC-2: 충족. `session_check_without_work_flow_is_unchanged` passed — 프로필 없음·깨진 프로필·`work_flow` 없음 셋의 답이 같은 글이고 새 문장이 없어요.
 - AC-3: 충족. `session_check_flags_a_missing_integration_branch` passed — 로컬에 `NeXT` 가 없는 저장소에서 같은 문장에 `(absent locally)` 가 붙어요.
-- AC-4: 미충족(not_run 아님: 구현과 핀 시험을 만들어 RED→GREEN 까지 봤으나 커밋하지 못했어요). `work.md` take 단계 문장과 `tests/mode_workflow_steps.rs` 의 `work_take_reads_the_profile_flow_and_integration_branch` 는 만들었고 passed 였지만, `work.md` 가 바뀌면 `skills/moai/references/source-manifest.json` 의 sha256 을 다시 써야 하고(`source_manifest_facts` 가 실패해요) 그 파일은 카드 쓰기 범위 밖이에요. 범위를 늘리는 명령이 거부돼서 이 조각은 커밋하지 않고 패치로만 보관했어요(`LANE-BLOCKED kind=permission`).
+- AC-4: 충족(커밋 `8d9b2eb73f`). `work_take_reads_the_profile_flow_and_integration_branch` passed — `work.md` take 단계가 `moai work-flow-plan --project .` 로 흐름과 통합 브랜치를 읽어 첫 노트에 적으라고 말하고 값(`NeXT`, `m-flow`)은 글에 없어요. 뮤턴트(문장 삭제)는 exit 100 으로 실패했어요. `work.md` 가 바뀌어 `skills/moai/references/source-manifest.json` 의 work.md sha256 한 줄을 `tools/source_manifest.py write` 로 다시 썼고(리더 결정 7502, 카드 범위에 매니페스트 추가), `mode_workflow_steps`·`source_manifest_facts`·`next_flow_skill_scan`·`skill_structure`·`workflow_size_budget` 5개 파일 84 tests 가 모두 passed 예요.
 - AC-5: 충족. `project_apply_examples_read_the_plan_file` passed(예시가 `< plan.json` 이 아니면 실패; 뮤턴트로 `request.json` 으로 되돌리면 실패를 봤어요)이고 기존 `stdin_examples_match_the_commands_that_read_stdin` 도 passed.
 - 같은 어긋남(`*-apply` 예시가 `request.json` 인데 입력은 계획 결과)이 `agents-apply`·`generation-apply`·`github-apply`·`labels-apply`·`claude-settings-apply` 에도 있을 수 있어요. 이 조각은 `project-apply` 만 고쳤고 나머지는 읽어 확인하지 않았어요(후속 카드 후보).
