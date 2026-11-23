@@ -88,4 +88,12 @@ created: 2026-11-23
 
 ## Result
 
-- (draft: filled in when the work is done)
+- AC-1: met — `self_check_tests_item_names_no_python_test` (red before the edit: item 3 named `python` and lacked `Tests are Rust only`; pass after; a mutant that puts `the Python tests of the area` back into item 3 fails it)
+- AC-2: met — `self_check_repo_scans_item_runs_cargo_checks_only` (red before, pass after; a mutant that turns item 5 into `run all their checks and include a Python line` fails it)
+- AC-3: met — `self_check_pins_reject_reversed_sentences` (red before, pass after; four mutants of item 3 and four of item 5 each change the text and each turn the pin red)
+- AC-4: met — `python3 -I tools/source_manifest.py write` then `check` exit 0; `moai package-inspect skills/moai` exit 0; `self-check.md` 6948 bytes, `next-flow.md` 7964 bytes
+- AC-5: met — `moai spec check SPEC-20261123-self-check-rust-only` 0 errors 0 warnings
+- AC-6: met — `land_scans_the_flow_names_the_scan_tests_and_the_pass_receipt_step` (red before: the bullet lacked both phrases; pass after, with the file at 7964 of 7974 bytes; a mutant `never name the scan tests` and a mutant `and never record each` each fail it)
+- AC-7: met — `land_scans_the_flow_scan_receipt_mutants_are_caught` (red before: the first mutant did not change the text; pass after, five mutants)
+- AC-8: met — `mode_workflow_steps`, `next_flow_skill_scan`, `source_manifest_facts`, `skill_structure`, `workflow_size_budget`, `lane_next_rules`, `repo_claude_md`: 119 passed, 0 failed (nextest, one heavy slot)
+- Gaps: item 6 and the header of `self-check.md` keep their Python lines (D-1); the Python lines of `tools/repo_scans.json` stay (non-goal). The `check affected` receipt of the head is in the READY note (a number in this file would name an earlier head).
