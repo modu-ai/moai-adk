@@ -1,10 +1,15 @@
 ---
 id: SPEC-20261124-ready-receipt-followup
 title: "READY 영수증 관문 후속: 표식 판정 하나와 맨몸 실행 영수증만 받기"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-24
 parent: SPEC-20261124-ready-receipt-gate
+approval:
+  by: leader
+  at: 2026-11-23
+  basis: "리더 결정 노트 7865 (2026-11-23T20:37:01Z, 사용자 위임 2026-11-23T13:57Z, 노트 7862 의 결정 1~4 를 기본값 B, b, a, a 로 승인, SPEC 커밋 a9f9e3080d); 리더가 노트에 적었고 레인은 그 노트를 인용만 해요"
+  digest: "sha256:0f9f9e99c25b16e7cd43fa5ecffab9a04316aa27f0fed48ff6a05962a81a7122"
 ---
 
 # READY 영수증 관문 후속: 표식 판정 하나와 맨몸 실행 영수증만 받기
