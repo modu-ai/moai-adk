@@ -2,9 +2,9 @@
 id: SPEC-20261123-test-home-isolation
 title: "테스트 프로세스는 빈 임시 HOME 아래에서 돌고, 실제 HOME 을 읽거나 바꾸면 그 테스트가 실패해요"
 status: approved
-revision: 1
+revision: 2
 created: 2026-11-23
-approval: {by: "leader (사용자 위임 2026-11-23T13:57Z)", at: "2026-11-23", basis: "리더 결정 노트 7562 (2026-11-23T14:15Z, 사용자 위임, 리더 판단): 결정 1 SPEC 판 1 을 (a) nextest wrapper 로 승인. 조건 4개(원문 읽기, 실험 위험을 R 에, fail-closed 시험, enforce 는 개수를 본 뒤 노트)는 이 판 본문에 반영했어요. 사용자가 직접 고른 승인이 아니에요", digest: "sha256:6b180fe5c23ae9de94987e5cbc35afbc06862ab76986b8313e938965b360ac8a"}
+approval: {by: "leader (사용자 위임 2026-11-23T13:57Z)", at: "2026-11-23", basis: "리더 결정 노트 7600 (2026-11-23T15:03:16Z, 사용자 위임, 리더 판단): 노트 7598 의 선택지 A(기준선 파일)에 따라 판 2(기준선 요구, 이름이 실제 테스트인지 확인하는 시험, 인수 기준 하나)를 승인으로 봐요. 조건(기준선은 줄기만 하고 늘지 않음, 기본 enforce, 389줄의 출처를 Result 에)은 이 판에 반영했어요. 판 1 은 노트 7562 가 승인했어요. 사용자가 직접 고른 승인이 아니에요", digest: "sha256:84b9bf41a063b339bce27fd32c78d07cc162d361dfd6edd6709d65fd2cd8f00c"}
 ---
 
 # 테스트 프로세스는 빈 임시 HOME 아래에서 돌고, 실제 HOME 을 읽거나 바꾸면 그 테스트가 실패해요
@@ -17,7 +17,7 @@ approval: {by: "leader (사용자 위임 2026-11-23T13:57Z)", at: "2026-11-23", 
 
 같은 원인이 두 번 나왔어요. 한 작업의 감사에서 lib 의 `session_check` 테스트가 실제 `$HOME/.moai` 를 읽었어요. 1차는 `language.yaml` 이었고, 고친 뒤에도 `identity::identity`(`src/identity.rs`, env `HOME`)에서 `home_state::home_go_markers` 로 `user-assets.json` 을 읽었어요. 감사자는 가짜 HOME 의 `atime`(마지막으로 읽은 시각)을 재서 네 테스트 모두에서 재현했어요. nextest 는 테스트 프로세스에 호출자의 HOME, 곧 실제 HOME 을 그대로 줘요. 그래서 "테스트가 실제 HOME 을 읽음"은 리뷰 규칙으로 사람이 눈으로만 잡았어요. `src` 에서 env `HOME` 을 읽는 파일이 41개라 어느 테스트든 닿을 수 있어요(`rg -c 'var_os\("HOME"\)|var\("HOME"\)|home_dir\(' src`).
 
-이 SPEC 은 nextest 의 wrapper script(테스트 프로세스마다 앞뒤로 도는 감싸기 스크립트)로 모든 테스트 프로세스에 빈 임시 HOME 을 주고, 그 안의 미끼 파일을 읽거나 폴더가 바뀌면 그 테스트를 실패시키는 장치(`enforce` 모드)를 만들어요. 쓰는 사람은 `moai check affected` 와 리더의 전체 `cargo nextest run` 을 돌리는 모든 세션이에요. 장치가 막는 것은 읽는 일이 아니라, 실제 사용자 폴더가 테스트 결과에 섞이는 일이에요. 새로 막는 검사이므로 처음 기본값은 `observe`(알리기만, 실패시키지 않음)이고, `enforce` 로 바꾸는 일은 개수를 본 뒤 리더의 기록(D-2)으로 해요.
+이 SPEC 은 nextest 의 wrapper script(테스트 프로세스마다 앞뒤로 도는 감싸기 스크립트)로 모든 테스트 프로세스에 빈 임시 HOME 을 주고, 그 안의 미끼 파일을 읽거나 폴더가 바뀌면 그 테스트를 실패시키는 장치(`enforce` 모드)를 만들어요. 쓰는 사람은 `moai check affected` 와 리더의 전체 `cargo nextest run` 을 돌리는 모든 세션이에요. 장치가 막는 것은 읽는 일이 아니라, 실제 사용자 폴더가 테스트 결과에 섞이는 일이에요. 새로 막는 검사라서 먼저 `observe`(알리기만, 실패시키지 않음)로 전체를 한 번 돌려 막힐 개수를 쟀고(D-5: 389개 테스트, 모두 `identity::identity` 를 거쳐 미끼 `user-assets.json` 을 읽음), 리더가 그 개수를 보고 기본을 `enforce` 로 정했어요(D-2). 389개는 뿌리 수리(identity 가 HOME 을 인자로 받음)가 따로 올 때까지 기준선 파일에 두고, 그 파일은 줄기만 하고 늘지 않아요. 기준선에 없는 테스트가 HOME 을 건드리면 실패해요.
 
 ## Non-goals
 
@@ -30,35 +30,37 @@ approval: {by: "leader (사용자 위임 2026-11-23T13:57Z)", at: "2026-11-23", 
 ## Requirements
 
 <!-- This SPEC adds a check that blocks, so it starts in observe: the Result records the would-block count and the false positives; the switch to enforce is recorded as D-2. -->
-- REQ-1: Where the host is unix, the nextest configuration shall run every test process through `tools/test_home_guard.sh`, except the tests named in its allowlist.
+- REQ-1: Where the host is unix, the nextest configuration shall run every test process through `tools/test_home_guard.sh`, except the tests named in its allowlist, with the `wrapper-scripts` feature enabled and a `nextest-version` that has it.
 - REQ-2: When the wrapper starts a test, it shall create a fresh folder under `TMPDIR` named `moai-test-home.*` that holds decoy files at `.moai/user-assets.json`, `.moai/language.yaml` and `.claude/settings.json` whose access time is older than their modification time, and run the test with `HOME` and `USERPROFILE` set to that folder.
 - REQ-3 (REQ-2): IF the wrapper cannot create the folder or its decoys, THEN the wrapper shall exit 70 without running the test.
 - REQ-4: When the test process ends and any entry under its HOME was read, added, changed or removed, the wrapper shall print a line that starts with `HOME-GUARD:` and names the test's arguments.
-- REQ-5 (REQ-4): IF `MOAI_HOME_GUARD` is `enforce` and the test exited 0, THEN the wrapper shall exit 1.
-- REQ-6: In every other case the wrapper shall keep the test's own exit code, and read an unset `MOAI_HOME_GUARD` as `observe`.
+- REQ-5 (REQ-4): IF `MOAI_HOME_GUARD` is not `observe` and the test exited 0, THEN the wrapper shall exit 1, unless REQ-12 tolerates the test.
+- REQ-6: In every other case the wrapper shall keep the test's own exit code, and read an unset `MOAI_HOME_GUARD` as `enforce`.
 - REQ-7: The wrapper shall remove only the folder it made, and only when its name starts with `moai-test-home.` under `TMPDIR`.
 - REQ-8: The wrapper shall keep `CARGO_HOME` and `RUSTUP_HOME` at the values they had, or at their default under the caller's HOME, so cargo and rustup children of a test behave as before.
 - REQ-9: When `MOAI_HOME_GUARD_LOG` names a file, the wrapper shall append each `HOME-GUARD:` line to it as well. · failure: none — a log write that fails is ignored and the test result is unchanged.
-- REQ-10: A repository test shall fail on an allowlist entry of `.config/nextest.toml` that has no `# reason:` line or names no existing test or binary.
+- REQ-10: A repository test shall fail on an allowlist entry of `.config/nextest.toml` that has no `# reason:` line or names no existing test or binary, and on a baseline that is longer than its recorded cap, is not sorted without repeats, or names a test that does not exist.
 - REQ-11 (REQ-1): IF `tools/test_home_guard.sh` is missing or cannot run the test binary, THEN a nextest run shall fail that test instead of passing it.
-- REQ-12: The nextest configuration shall name a `nextest-version` that has the wrapper-scripts feature and enable it with `experimental = ["wrapper-scripts"]`.
+- REQ-12: Where a test is listed in `tests/fixtures/test_home_guard/baseline.tsv` and touched nothing under its HOME but the decoy `user-assets.json` and the two folders above it, the wrapper shall print the line marked `tolerated` and keep the test's own exit code. · failure: none — a test that touches more, or one that is not listed, is REQ-5's case.
 
 ## Acceptance
 
-- AC-1 (REQ-1, REQ-2, REQ-4, REQ-5, REQ-6): in a scratch crate that uses the repository's `.config/nextest.toml` and wrapper with `MOAI_HOME_GUARD=enforce`, a test that reads `$HOME/.moai/user-assets.json` fails with a `HOME-GUARD:` line, a test that writes a file in its HOME fails the same way, a failing test that also reads keeps its own exit code, and a test that touches nothing passes; with the default mode the reading test passes and the line is printed.
+- AC-1 (REQ-1, REQ-2, REQ-4, REQ-5, REQ-6): in a scratch crate that uses the repository's `.config/nextest.toml` and wrapper in its default mode (`enforce`), a test that reads `$HOME/.moai/user-assets.json` fails with a `HOME-GUARD:` line, a test that writes a file in its HOME fails the same way, a failing test that also reads keeps its own exit code, and a test that touches nothing passes; with `MOAI_HOME_GUARD=observe` the reading test passes and the line is printed.
   verify: `cargo nextest run --locked --offline --test test_home_guard`
 - AC-2 (REQ-3, REQ-7, REQ-8, REQ-9): with `TMPDIR` pointing at a folder that cannot be written the wrapper exits 70 and runs no test; a link or a folder not named `moai-test-home.*` is never removed; a child `cargo --version` of a test still finds the toolchain; `MOAI_HOME_GUARD_LOG` receives the line.
   verify: `cargo nextest run --locked --offline --test test_home_guard`
-- AC-3 (REQ-10, REQ-12): an allowlist entry without a `# reason:` line fails, an entry that names no existing test or binary fails, the allowlist in the repository passes, and the configuration enables `wrapper-scripts` and names a `nextest-version`.
+- AC-3 (REQ-10, REQ-1): an allowlist entry without a `# reason:` line fails, an entry that names no existing test or binary fails, the allowlist in the repository passes, and the configuration enables `wrapper-scripts` and names a `nextest-version`.
+  verify: `cargo nextest run --locked --offline --test test_home_guard`
+- AC-6 (REQ-10, REQ-12): a listed test that reads only the decoy `user-assets.json` passes with a `tolerated` line, a listed test that also writes, and a test that is not listed, fail; the baseline in the repository is sorted without repeats, holds no more than 389 lines, and every line names a test that exists.
   verify: `cargo nextest run --locked --offline --test test_home_guard`
 - AC-4 (REQ-11): in the scratch crate with `tools/test_home_guard.sh` removed, and again with a copy of it that does not run its arguments, the planted test does not pass.
   verify: `cargo nextest run --locked --offline --test test_home_guard`
-- AC-5 (REQ-1): the whole `cargo nextest run --locked --offline --no-fail-fast` under the device passes, every test that touched its HOME is fixed or on the allowlist, and `moai check affected` runs under the same device.
+- AC-5 (REQ-1): the whole `cargo nextest run --locked --offline --no-fail-fast` under the device passes with the device on by default, every test that touched its HOME is on the baseline, and `moai check affected` runs under the same device.
   verify: `cargo nextest run --locked --offline --no-fail-fast`, and the count quoted in the Result
 
 ## Scope
 
-- write: `.moai/specs/SPEC-20261123-test-home-isolation/**`, `.config/nextest.toml`, `tools/test_home_guard.sh`, `tests/test_home_guard.rs`, and the test files the count names (listed in the Result before they change; the leader widens the card for them)
+- write: `.moai/specs/SPEC-20261123-test-home-isolation/**`, `.config/nextest.toml`, `tools/test_home_guard.sh`, `tests/test_home_guard.rs`, `tests/fixtures/test_home_guard/baseline.tsv`
 - read-only: `src/check_affected.rs` (held by another card; the device needs no change there because `check affected` runs `cargo nextest run` when nextest exists), every other `src/` and `tests/` file
 - forbidden: the real HOME folder and the `.claude` and `.moai` folders in it; any shell `HOME=` assignment in a session
 
@@ -67,15 +69,16 @@ approval: {by: "leader (사용자 위임 2026-11-23T13:57Z)", at: "2026-11-23", 
 1. RED: write `tests/test_home_guard.rs` first. It builds a scratch crate in a temporary folder, copies the repository's `.config/nextest.toml` and `tools/test_home_guard.sh` into it, plants the reading and the writing test, and expects `HOME-GUARD:`. It fails because the script and the nextest rule do not exist.
 2. GREEN: add `tools/test_home_guard.sh` and the rule and allowlist to `.config/nextest.toml` (`experimental = ["wrapper-scripts"]`, `nextest-version`, a `cfg(unix)` platform filter). Keep the number of child processes per test small and measure the added time per test.
 3. Observe: before the run put one line on the screen so it does not overlap the leader's full run, then run the whole suite once with `MOAI_HOME_GUARD=observe` and `MOAI_HOME_GUARD_LOG` in one heavy slot (`--max 4`), record the would-block count and each name in the Result, and sort each as a real read, a write, or a false positive.
-4. Fix each real read by giving the test its own temporary HOME, or add it to the allowlist with its reason; ask the leader to widen the card for each test file first.
-5. After the leader records D-2, set the default to `enforce`, run the whole suite again with no failure, then one `moai check affected` at READY.
+4. Baseline (D-5): write the 389 names of the observation into `tests/fixtures/test_home_guard/baseline.tsv`, let the wrapper tolerate a listed test that reads only the decoy `user-assets.json` (REQ-12), and add the tests that cap the file and check its names (REQ-10).
+5. Enforce (D-2): the default is `enforce`; run the whole suite again with no failure, then one `moai check affected` at READY.
 
 ## Risks
 
 - The `wrapper-scripts` feature of nextest is experimental in its own documentation ("This is an advanced feature, and it can cause your tests to silently stop working if used incorrectly") and can change in a later nextest. The configuration pins `nextest-version` and enables the feature by name, so an older nextest stops with an error instead of running unguarded. A newer nextest that changes the feature is not covered and shows up as failed tests first. The Result names the version run (0.9.152 here).
 - A wrapper that does not run its test makes nextest report a pass: the wrapper returns the test's own exit code and AC-4 plants a missing and a non-running wrapper to show the test does not pass.
 - Cost per test: the wrapper adds child processes to each of about 7300 test processes (about 56 ms added wall time in a scratch loop of 40 runs, mostly waiting on process start). Plan step 2 measures it on the repository and the Result quotes the run with and without the wrapper.
-- A decoy changes a test that expects an empty HOME: the observation run in step 3 finds these; the decoy list stays this short on purpose.
+- A decoy changes a test that expects an empty HOME: the observation run in step 3 found none (7317 of 7320 passed, the 3 failures were repository scans that the new files tripped, fixed since).
+- The baseline hides a new reader that arrives under the name of a listed test, or a listed test that stops reading: the first is bounded by REQ-12 (it tolerates only the one decoy and its folders), the second shows only when the baseline is rewritten by the follow-up that makes `identity` take HOME as an argument.
 - `atime` is not kept up on a file system mounted without it, and Linux and Windows were not measured here: AC-1 reads a decoy the same way on every host that runs the suite and fails there when the read is not seen, so a host that cannot see reads is not reported as guarded.
 - The wrapper replaces `HOME` for tools a test starts: git, cargo and rustup paths are the first ones to break, which the observation run shows by name.
 
@@ -84,6 +87,7 @@ approval: {by: "leader (사용자 위임 2026-11-23T13:57Z)", at: "2026-11-23", 
 | Id | Decision | Basis | Undo |
 | --- | --- | --- | --- |
 | D-1 | A wrapper script per test process, not a setup script and not cargo `[env]`. A setup script runs once and exports one HOME to every test through `$NEXTEST_ENV` (measured in a scratch crate: one run of the script, the same HOME in the lib and the integration binary, the caller's HOME overridden), so a read cannot be told apart per test, and nextest has no cleanup step after it. cargo `[env]` is static text and cannot make a temporary folder. | Documents read in full from the nextest repository at tag `cargo-nextest-0.9.152` on 2026-11-23T14:15:49Z: `site/src/docs/configuration/wrapper-scripts.md` and `setup-scripts.md` (raw.githubusercontent.com/nextest-rs/nextest/cargo-nextest-0.9.152/…): wrapper scripts since 0.9.98, `relative-to` since 0.9.99, `platform = { host = "cfg(unix)" }` is the platform form, a wrapper gets the test binary as its first argument; cargo `[env]` text read through a WebFetch digest on 2026-11-23 (https://doc.rust-lang.org/cargo/reference/config.html#env, digest only, so unverified as raw text); plus the scratch-crate runs of this lane (nextest 0.9.152, macOS arm64): the wrapper failed only the planted reading test of four. Unverified: Linux and Windows behavior, whether `$NEXTEST_ENV` of a later nextest still overrides the caller's HOME | Delete the rule and the script |
-| D-2 | The device starts in observe (the script default), and the leader records the switch to `enforce` after reading the would-block count and the false positives in the Result. | The observe-first rule of `internal/sdd`; the leader's note on the card: "enforce 를 기본으로 바꾸는 것은 개수를 본 뒤 다시 노트로" | Set the default to observe in the script |
+| D-2 | The default is `enforce`. The device started in observe, the whole suite ran once under it (D-5), and the leader read the count and chose to enforce with a baseline. | The observe-first rule of `internal/sdd`; the leader's notes 7562 ("enforce 를 기본으로 바꾸는 것은 개수를 본 뒤 다시 노트로") and 7600 ("기본은 enforce") | Set the default to observe in the script |
+| D-5 | The 389 tests that read the decoy through `identity::identity` go on a baseline file that only shrinks, until a separate change makes `identity` take HOME as an argument (the leader opened a card for it). Their source: one observe run of the whole suite, head `57bcc17de2`, nextest 0.9.152, 2026-11-23, 7320 tests run, log `scratchpad/guard-observe.log` of the lane session (389 lines, each a distinct test, one distinct set of touched paths, 0 writes), reduced to `binary<TAB>test` lines. | The leader's note 7600 (option A of note 7598) | Delete the file and the REQ-12 branch of the wrapper; the 389 tests then fail under enforce |
 | D-3 | A read is seen through the `atime` of decoy files and folders, a change through the modification time of the entries against a reference file made after the decoys. | Measured on APFS in a temporary folder: a read moves a decoy's `atime` from 2000-01-01 to now | Replace the decoys with a file-access tracer |
 | D-4 | unix only; a Windows host runs its tests as before. | The wrapper needs `sh`; no Windows run exists here | Add a Windows wrapper |
