@@ -26,7 +26,10 @@ fn packaged_flow() -> String {
 }
 
 fn flow_row(p: &Plan) -> &moai_cli::agents::FilePlan {
-    p.hosts[0].flow.as_ref().expect("the package has a flow rule")
+    p.hosts[0]
+        .flow
+        .as_ref()
+        .expect("the package has a flow rule")
 }
 
 fn write(path: &Path, bytes: &str) {
@@ -47,7 +50,10 @@ fn flow_rule_is_written_directly_under_rules() {
     );
     let r = apply(&home, &package(), &p.plan_digest, PERM).unwrap();
     assert_eq!(r["state"], "applied", "{r}");
-    assert_eq!(fs::read_to_string(home.join(NEW_FLOW)).unwrap(), packaged_flow());
+    assert_eq!(
+        fs::read_to_string(home.join(NEW_FLOW)).unwrap(),
+        packaged_flow()
+    );
     assert!(
         !home.join(".claude/rules/moai").exists(),
         "no rules/moai folder is made"
@@ -77,7 +83,10 @@ fn earlier_flow_file_is_left_in_place() {
         "an earlier build wrote this\n"
     );
     assert_eq!(fs::metadata(&old).unwrap().modified().unwrap(), before);
-    assert_eq!(fs::read_to_string(home.join(NEW_FLOW)).unwrap(), packaged_flow());
+    assert_eq!(
+        fs::read_to_string(home.join(NEW_FLOW)).unwrap(),
+        packaged_flow()
+    );
     let again = plan(&home, &package()).unwrap();
     assert_eq!(flow_row(&again).action, "unchanged");
     assert_eq!(again.hosts[0].section.as_ref().unwrap().action, "unchanged");
