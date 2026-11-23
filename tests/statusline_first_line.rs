@@ -22,7 +22,7 @@ const INTEGRATION: &str = "v2026.11.0";
 /// The lane branch of the fixtures.
 const LANE: &str = "spec/ready-mutant-line-20261123";
 /// The forge counts file the status line reads (`1` issue, `0` requests, fresh for good).
-const FORGE_CACHE: &str = ".moai-cli/state/github/counts.json";
+const FORGE_CACHE: &str = "state/github/counts.json";
 
 struct Repo {
     home: TempHome,
@@ -45,9 +45,10 @@ impl Repo {
             ),
         )
         .unwrap();
-        std::fs::create_dir_all(repo.project.join(FORGE_CACHE).parent().unwrap()).unwrap();
+        let forge_cache = moai_cli::state_root::path(&repo.project, FORGE_CACHE);
+        std::fs::create_dir_all(forge_cache.parent().unwrap()).unwrap();
         std::fs::write(
-            repo.project.join(FORGE_CACHE),
+            forge_cache,
             "{\"open_issues\":1,\"open_prs\":0,\"fetched_at\":4102444800}\n",
         )
         .unwrap();
