@@ -56,11 +56,17 @@ fn status(dir: &Path) -> Value {
     v["result"].clone()
 }
 
-/// A pid that was alive a moment ago and has been reaped.
+/// A pid no process has: above any `pid_max`, and checked with `kill(pid, 0)`. A reaped child's
+/// pid could be reused by an unrelated process before the case runs.
 fn dead_pid() -> u32 {
-    let mut child = Command::new("true").spawn().unwrap();
-    let pid = child.id();
-    child.wait().unwrap();
+    let pid = i32::MAX as u32 - 7;
+    // SAFETY: signal 0 only asks whether the pid exists.
+    let r = unsafe { libc::kill(pid as libc::pid_t, 0) };
+    assert_eq!(r, -1, "fixture: pid {pid} must not exist");
+    assert_eq!(
+        std::io::Error::last_os_error().raw_os_error(),
+        Some(libc::ESRCH)
+    );
     pid
 }
 
@@ -83,6 +89,17 @@ fn acquire_caps_cargo_build_jobs_and_a_given_value_wins() {
             .unwrap(),
     );
     assert_eq!(read_trim(&seen), expected_jobs(2).to_string());
+
+    // An empty value is no value: cargo cannot read it, so the cap replaces it.
+    let empty = d.path().join("empty");
+    let script = format!("echo \"$CARGO_BUILD_JOBS\" > '{}'", empty.display());
+    ran_ok(
+        &acquire(&slots, home.path(), "2", &["sh", "-c", &script])
+            .env("CARGO_BUILD_JOBS", "")
+            .output()
+            .unwrap(),
+    );
+    assert_eq!(read_trim(&empty), expected_jobs(2).to_string());
 
     // A value from the caller passes through unchanged.
     let given = d.path().join("given");
@@ -187,6 +204,21 @@ fn waiting_folder(slots: &Path) -> Waiting {
         fs::write(dir.join(name), "").unwrap();
         kept.push(name.to_string());
     }
+    // A dead waiter's name that is a second hard link of a file elsewhere: one write or removal
+    // would reach the other name, so it is not a plain file of its own and stays.
+    let hard = format!("{:020}-{dead}-2", 7);
+    fs::hard_link(&link_target, dir.join(&hard)).unwrap();
+    kept.push(hard);
+    // A dead waiter's file nobody can open (mode 000): it cannot be judged, so it stays. A
+    // superuser opens it anyway, so the case is left out there.
+    // SAFETY: geteuid has no failure mode.
+    if unsafe { libc::geteuid() } != 0 {
+        use std::os::unix::fs::PermissionsExt;
+        let closed = format!("{:020}-{dead}-2", 8);
+        fs::write(dir.join(&closed), "").unwrap();
+        fs::set_permissions(dir.join(&closed), fs::Permissions::from_mode(0o000)).unwrap();
+        kept.push(closed);
+    }
     stale.sort();
     kept.sort();
     Waiting {
@@ -245,4 +277,81 @@ fn status_counts_stale_waiting_files_and_removes_none() {
     // No waiting folder at all counts zero.
     let none = tempfile::tempdir().unwrap();
     assert_eq!(status(none.path())["stale_waiting"], 0);
+}
+
+/// B1 of the audit: `<slot folder>/waiting` that is a symlink to another folder. The cleanup
+/// listed and removed the dead-named files of that other folder. Now the waiting path must be a
+/// real folder of its own: a link there is refused before anything runs, nothing outside the
+/// slot folder is created, listed or removed, and `status` counts zero.
+#[test]
+fn a_symlinked_waiting_folder_is_refused_and_nothing_outside_is_touched() {
+    let d = tempfile::tempdir().unwrap();
+    let home = tempfile::tempdir().unwrap();
+    let slots = d.path().join("slots");
+    fs::create_dir_all(&slots).unwrap();
+    let outside = d.path().join("outside");
+    fs::create_dir_all(&outside).unwrap();
+    let dead = dead_pid();
+    // Outside files named like a dead waiter's and one more that must not be created.
+    let victim = format!("{:020}-{dead}-2", 1);
+    fs::write(outside.join(&victim), "victim").unwrap();
+    fs::write(outside.join("other"), "other").unwrap();
+    symlink(&outside, slots.join("waiting")).unwrap();
+    let before = names(&outside);
+
+    // `status` reads: the link is not a waiting folder, so it counts nothing and removes nothing.
+    let st = status(&slots);
+    assert_eq!(st["stale_waiting"], 0, "{st}");
+    assert_eq!(names(&outside), before, "status touched the outside folder");
+
+    // `acquire` refuses (125), COMMAND does not run, and the outside folder is as it was.
+    let ran = d.path().join("ran");
+    let script = format!("echo ran > '{}'", ran.display());
+    let out = acquire(&slots, home.path(), "3", &["sh", "-c", &script])
+        .output()
+        .unwrap();
+    assert_eq!(out.status.code(), Some(125), "{out:?}");
+    let err = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        err.contains("heavy-slot: refused") && err.contains("waiting"),
+        "{err}"
+    );
+    assert!(!ran.exists(), "COMMAND must not run");
+    assert_eq!(
+        names(&outside),
+        before,
+        "acquire touched the outside folder"
+    );
+    assert_eq!(read_trim(&outside.join(&victim)), "victim");
+    assert_eq!(read_trim(&outside.join("other")), "other");
+    assert!(
+        fs::symlink_metadata(slots.join("waiting"))
+            .unwrap()
+            .file_type()
+            .is_symlink(),
+        "the link itself is left for its owner"
+    );
+}
+
+/// A `waiting` path that is a plain file, or a link that points nowhere, is refused the same
+/// way and creates nothing behind it.
+#[test]
+fn a_waiting_path_that_is_a_file_or_a_dangling_link_is_refused() {
+    let d = tempfile::tempdir().unwrap();
+    let home = tempfile::tempdir().unwrap();
+    for case in ["file", "dangling"] {
+        let slots = d.path().join(case);
+        fs::create_dir_all(&slots).unwrap();
+        let gone = d.path().join(format!("{case}-gone"));
+        if case == "file" {
+            fs::write(slots.join("waiting"), "x").unwrap();
+        } else {
+            symlink(&gone, slots.join("waiting")).unwrap();
+        }
+        let out = acquire(&slots, home.path(), "3", &["true"])
+            .output()
+            .unwrap();
+        assert_eq!(out.status.code(), Some(125), "{case}: {out:?}");
+        assert!(!gone.exists(), "{case}: the link target was created");
+    }
 }
