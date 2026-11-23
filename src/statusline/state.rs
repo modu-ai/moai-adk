@@ -137,8 +137,8 @@ pub struct Status {
     /// #2756 AC-7: the open pull request of the current branch.
     pub pr: Option<PrInfo>,
     /// #2756 AC-9: the worktree name the host gave; empty in the main checkout. It is no item of
-    /// the first line (REQ-10 of SPEC-20261123-statusline-order-bars); the flow line compares it
-    /// with the card ledger to find the card of this session.
+    /// the first line (REQ-10 of SPEC-20261123-statusline-order-bars) and no layout reads it; the
+    /// card of the session is found from its working folder and its session id.
     pub worktree: String,
     /// SPEC-20261122-statusline-where: the integration branch of the project (`work_flow` of its
     /// profile, else the remote's default branch), `None` when neither names one.
