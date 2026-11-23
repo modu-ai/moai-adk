@@ -70,7 +70,10 @@ fn next_card_leader_problems(rules: &str) -> Vec<String> {
 fn next_card_leader_clause_is_in_the_lane_rules() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
     let rules = fs::read_to_string(root.join("docs/lane-rules.md")).unwrap();
-    assert!(rules.contains(LEADER_CLAUSE), "the leader clause moved or changed");
+    assert!(
+        rules.contains(LEADER_CLAUSE),
+        "the leader clause moved or changed"
+    );
     let problems = next_card_leader_problems(&rules);
     assert!(problems.is_empty(), "{problems:?}");
 }
@@ -93,13 +96,18 @@ fn next_card_leader_clause_mutants_are_caught() {
             "bullet removed",
             rules
                 .lines()
-                .filter(|l| !l.starts_with("- A READY note or a `LANE-DONE` line hands a card back"))
+                .filter(|l| {
+                    !l.starts_with("- A READY note or a `LANE-DONE` line hands a card back")
+                })
                 .collect::<Vec<_>>()
                 .join("\n"),
         ),
     ];
     for (name, mutant) in mutants {
-        assert!(mutant != rules, "{name}: the mutant did not change the text");
+        assert!(
+            mutant != rules,
+            "{name}: the mutant did not change the text"
+        );
         assert!(
             !next_card_leader_problems(&mutant).is_empty(),
             "{name}: the pin passes without the clause"

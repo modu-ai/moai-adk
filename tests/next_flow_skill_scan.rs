@@ -1909,8 +1909,14 @@ fn land_scans_the_flow_cargo_only_mutants_are_caught() {
         .to_string();
     let without = |word: &str| bullet.replace(word, "");
     let mutants = [
-        ("cargo words removed", flow.replace(&bullet, &without("only their `cargo` checks"))),
-        ("python line removed", flow.replace(&bullet, &without("Python line"))),
+        (
+            "cargo words removed",
+            flow.replace(&bullet, &without("only their `cargo` checks")),
+        ),
+        (
+            "python line removed",
+            flow.replace(&bullet, &without("Python line")),
+        ),
         ("bullet removed", flow.replace(&bullet, "")),
     ];
     for (name, mutant) in mutants {
