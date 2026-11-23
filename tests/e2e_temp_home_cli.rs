@@ -338,6 +338,35 @@ fn scenario_new_install_writes_exactly_the_previewed_files() {
     assert_eq!(tree_digest(&project, &[]).unwrap(), project_before);
 }
 
+/// REQ-3: an update started from inside a git project that has no MoAI profile writes nothing
+/// into that project, `.git` included.
+#[test]
+fn scenario_non_moai_project_is_untouched_by_an_update_started_inside_it() {
+    let w = World::new();
+    let project = w.root.join("work/plain-git");
+    write(&project.join("src/main.rs"), "fn main() {}\n");
+    git(&project, &["init", "-q", "-b", "main"]);
+    git(&project, &["add", "src/main.rs"]);
+    git(&project, &["commit", "-q", "-m", "init"]);
+    let before = tree_digest(&project, &[]).unwrap();
+    let out = w.run_in(&project, &["update"]);
+    let p = ok(&out);
+    assert_eq!(p["mode"], json!("preview"), "{p}");
+    assert_eq!(
+        tree_digest(&project, &[]).unwrap(),
+        before,
+        "the preview wrote"
+    );
+    let confirmed = ok(&w.run_in(&project, &["update", "--confirm", &digest_of(&p)]));
+    w.assert_inside(&confirmed);
+    assert_eq!(
+        tree_digest(&project, &[]).unwrap(),
+        before,
+        "the update wrote into a project that is not MoAI's"
+    );
+    assert!(w.home.join(".claude/skills/moai/SKILL.md").is_file());
+}
+
 /// REQ-5: a changed package writes only the changed files; a run of the same package after
 /// that leaves the home as it was.
 #[test]
