@@ -491,7 +491,8 @@ fn the_child_claude_gets_the_traffic_switch_and_only_allowed_variables() {
     let keys: BTreeSet<&str> = seen.keys().map(String::as_str).collect();
     assert_eq!(
         keys, expected,
-        "the child `claude` saw other variables than the allowed ones: {seen:?}"
+        "the child `claude` saw other variables than the allowed ones (names only, a value \
+         could be a secret)"
     );
     assert_eq!(seen[key], value, "the traffic switch has the wrong value");
     assert_eq!(seen["HOME"], home.to_string_lossy());
