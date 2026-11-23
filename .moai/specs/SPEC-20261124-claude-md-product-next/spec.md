@@ -109,4 +109,28 @@ approval: {by: leader, at: 2026-11-23, basis: "card note 7813 (leader judgment u
 
 ## Result
 
-(Filled when the work is done.)
+Slice A (the picks), code head `742eaec407`, base `13e8f7d98c`, branch `spec/claude-md-product-next-20261124`. Slice B (the text scan, the `.gitignore` allow list, the remaining texts) is not part of this Result.
+
+Evidence, all run in this worktree on 2026-11-23/24:
+
+- `env -u CLAUDE_CODE_SESSION_ID RUSTC_WRAPPER=sccache moai check affected 13e8f7d98c..742eaec407 --max 4`, unwrapped: `check-affected base=13e8f7d98c85 head=742eaec407e4 targets=172 scans=listed:146 diff_check=0 fmt=0 ops_rustfmt=0 clippy=0 test=0 result=PASS`; nextest `3985 tests run: 3985 passed (1 slow), 0 skipped`; log folder `target/check-affected-742eaec407e4/`.
+- AC-1 met: `picks_preview_lists_move_leave_in_order_with_one_command_each_writes_nothing`, `picks_import_is_refused_as_an_unknown_pick_and_writes_nothing`, `picks_a_direct_writer_call_with_move_writes_no_claude_md`, `schema_describes_picks_and_the_skip_action`, `schema_lists_every_key_of_a_real_plan_made_with_picks` pass in that run.
+- AC-2 met: the `settled_*` tests of `claude_md_picks_cli` pass, among them `settled_project_with_the_copied_text_is_offered_only_remove_originals`, `settled_text_not_whole_in_its_claude_file_is_never_offered_for_deletion`, `settled_a_claude_file_that_imports_or_links_agents_md_gets_no_remove_originals`, `settled_blank_or_generated_originals_do_not_hold_the_pick_back` and `settled_the_preview_names_the_old_managed_section_and_its_lines`.
+- AC-3 met: the `remove_*` tests pass (`remove_deletes_both_originals_keeps_bytes_and_modes_in_an_owner_only_folder`, `remove_adds_the_receipts_ignore_rule_in_the_same_apply_and_the_revert_takes_it_back`, `remove_refuses_a_changed_a_link_an_odd_or_a_large_original_and_deletes_nothing`, `remove_is_not_offered_before_the_text_is_copied_and_a_direct_call_is_refused`).
+- AC-4 met: the `receipt_*` tests pass (`receipt_revert_writes_both_originals_back_with_their_bytes_and_modes`, `receipt_revert_leaves_a_recreated_original_untouched_and_names_it`, `receipt_revert_restores_an_import_line_part_built_by_the_earlier_version`).
+- AC-5 met: lib tests `a_failure_after_the_first_original_was_deleted_puts_it_back_through_the_same_receipt` and `a_rollback_names_the_original_it_could_not_put_back` pass.
+- AC-6 met: `next_flow_skill_scan` and `source_manifest_facts` pass in the same run, with `skills/moai/workflows/update.md` and its manifest hash updated.
+- AC-7 met: `fmt=0`, `ops_rustfmt=0`, `clippy=0`, `diff_check=0` in the same run.
+- Not run: the whole `cargo test` (the leader's), any run on Windows or Linux, any run against a real user HOME. Every test uses a temporary project and a temporary HOME.
+
+Guard mutants, each run by this lane on the committed head (nextest, exit 100 = the named test failed; the file was restored and compared with `cmp`):
+
+- `guard-mutant: delete_keeps_a_file_that_changed_after_the_plan | sha256 compare in originals::verify | exit 100`
+- `guard-mutant: delete_is_all_or_nothing_when_the_second_original_changed | the verify pre-pass in originals::delete | exit 100`
+- `guard-mutant: the_plan_counts_a_merged_local_block_as_not_found | the D-3 check of the moai:merged-local block in plan_inner | exit 100`
+- `guard-mutant: the_plan_needs_the_whole_text_of_each_original_in_its_own_claude_file | the whole-text check of AGENTS.local.md in plan_inner | exit 100`
+- `guard-mutant: receipt_revert_writes_both_originals_back_with_their_bytes_and_modes | the recorded mode in restore_one (None instead) | exit 100`
+- `guard-mutant: receipt_revert_writes_both_originals_back_with_their_bytes_and_modes | the copied bytes in restore_one (empty bytes instead) | exit 100`
+- `guard-mutant: settled_the_preview_names_the_old_managed_section_and_its_lines | the D-6 warning push in plan_inner | exit 100`
+
+Remaining for the card: criterion 2 (a repository text test that no shipped text or generated file names AGENTS.md as moai's file) is slice B and is not met by this slice. Deferred: the `project_files` layer and the token for removing the old managed block. Comment leftovers outside this slice's write scope: `tests/generation_apply_result_cli.rs`, `tests/launcher_auto_init.rs`, `docs/rust-product-path.md`, `docs/surveys/update-project-user-requests.md`.
