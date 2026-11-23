@@ -979,6 +979,83 @@ fn file_read_paths_finds_what_a_reader_spells_and_skips_the_rest() {
     assert!(file_read_paths(&no_read, &tracked).is_empty());
 }
 
+/// SPEC-20261123-land-file-read-scans D-8: a test that formats the root into the path
+/// (`format!("{}/skills/moai/{rel}", env!("CARGO_MANIFEST_DIR"))`, `"{manifest_dir}/Cargo.toml"`)
+/// spells a repository path behind a placeholder folder; the placeholder folder is not part of it.
+#[test]
+fn file_read_paths_reads_through_a_placeholder_folder_in_front_of_the_path() {
+    let tracked = Tracked::from_paths([
+        "Cargo.toml",
+        "skills/moai/SKILL.md",
+        "src/lib.rs",
+        "src/ops/x.rs",
+    ]);
+    let reader = "fn skill_text(rel: &str) -> String {\n\
+        std::fs::read_to_string(format!(\"{}/skills/moai/{rel}\", env!(\"CARGO_MANIFEST_DIR\"))).unwrap()\n\
+        }\n\
+        fn manifest() -> String {\n\
+            let manifest_dir = env!(\"CARGO_MANIFEST_DIR\");\n\
+            std::fs::read_to_string(format!(\"{manifest_dir}/Cargo.toml\")).unwrap()\n\
+        }\n\
+        fn deeper() {\n\
+            let _ = format!(\"{root}/{sub}/src/lib.rs\");\n\
+            let _ = format!(\"{}/src/ops/{name}.rs\", 1);\n\
+            let _ = \"{}\";\n\
+            let _ = \"{x}/\";\n\
+            let _ = \"{x}.rs\";\n\
+            let _ = \"{x}/tests/fixtures/y\";\n\
+            let _ = \"{x}/../Cargo.toml\";\n\
+        }\n";
+    assert_eq!(
+        file_read_paths(reader, &tracked),
+        ["Cargo.toml", "skills/moai", "src/lib.rs", "src/ops"]
+    );
+}
+
+#[test]
+fn file_read_scan_finds_the_readers_that_format_the_root_into_the_path() {
+    let readers = file_readers();
+    for (file, want) in [
+        ("tests/project_decide_model.rs", "skills/moai"),
+        ("tests/project_flow_closing.rs", "skills/moai"),
+        ("tests/profile_debug_info.rs", "Cargo.toml"),
+    ] {
+        let paths = readers
+            .get(file)
+            .unwrap_or_else(|| panic!("the reader scan does not find {file}"));
+        assert!(paths.iter().any(|p| p == want), "{file}: {paths:?}");
+    }
+}
+
+/// SPEC-20261123-land-file-read-scans D-6 (revision 3): the readers of a `reads-` scan are rule
+/// files of the scan, as the user approved; no key of their own holds them.
+#[test]
+fn a_scan_keeps_its_readers_in_rules_and_no_scan_has_a_readers_key() {
+    for scan in load() {
+        assert!(
+            scan.get("readers").is_none(),
+            "{}: name the readers in `rules`, not in a `readers` key",
+            id(&scan)
+        );
+    }
+    let scans = load();
+    let reads: Vec<&Value> = scans.iter().filter(|s| id(s).starts_with("reads-")).collect();
+    assert!(reads.len() >= 7, "{} reads- scans", reads.len());
+    for scan in reads {
+        let rules = strings(&scan["rules"]);
+        assert!(
+            rules.len() > 2,
+            "{}: the readers are its rule files: {rules:?}",
+            id(scan)
+        );
+        assert!(
+            rules.iter().any(|r| r == "tests/repo_scans_table.rs"),
+            "{}: the test that keeps the scan whole is a rule file too",
+            id(scan)
+        );
+    }
+}
+
 #[test]
 fn file_read_scan_finds_mode_workflow_steps_in_the_live_tree() {
     let readers = file_readers();
