@@ -291,6 +291,10 @@ Lane and leader
   audit-clone-plan       Preview an independent audit clone
   audit-slot             Audit slots that inherit the lane's
                          build
+  audit-prep             Prepare the audit slot of a card at
+                         a head and build it once
+  audit-done             Finish the audit slot of a card and
+                         release it
   labels-check           Report Issues whose labels break
                          the rule
   decision-due           Sort the unanswered decisions of a
