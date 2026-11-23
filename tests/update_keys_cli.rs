@@ -359,15 +359,19 @@ fn keys_revert_removes_imported_entry() {
     assert_eq!(row_for(&p, &glm)["action"], json!("import"), "{p}");
     let r = confirm(&f, p["plan_digest"].as_str().unwrap());
     let id = r["keys_result"]["receipt"].as_str().unwrap().to_string();
-    let _permit = spawn_cap::acquire();
-    let mut child = command(&f, &f.work, &["key-set", "glm", "--shared"])
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .unwrap();
-    common::feed_stdin(&mut child, NEW_KEY.as_bytes());
-    let set = child.wait_with_output().unwrap();
+    // The permit covers this spawn and its wait only: `revert` below goes through `run`, which
+    // takes its own, and a permit held across it would be a second one from the same thread.
+    let set = {
+        let _permit = spawn_cap::acquire();
+        let mut child = command(&f, &f.work, &["key-set", "glm", "--shared"])
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .unwrap();
+        common::feed_stdin(&mut child, NEW_KEY.as_bytes());
+        child.wait_with_output().unwrap()
+    };
     result(&set);
     let replaced = fs::read(shared_entry(&f)).unwrap();
     let v = result(&revert(&f, &id));
@@ -533,6 +537,7 @@ fn glm_launch_unblocked_after_keys_layer() {
     fs::create_dir_all(&project).unwrap();
     common::git::git_ok(&project, &["init", "-q"]);
     let dry = |f: &Fixture| {
+        let _permit = spawn_cap::acquire();
         command(f, &project, &["glm", "-a", "--dry-run"])
             .stdin(Stdio::null())
             .output()

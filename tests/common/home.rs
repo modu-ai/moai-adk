@@ -39,7 +39,11 @@ impl TempHome {
         // REQ-4 of SPEC-20261120-test-parallelism-cap: mark the folder for macOS Spotlight
         // so a whole test run stops being indexed. Best-effort: the HOME is correct for its
         // purpose without the marker, so a failure to write it never fails the test.
-        let _ = std::fs::write(dir.path().join(".metadata_never_index"), b"");
+        // Exclusive creation, like the lane build folder's marker: never through a link.
+        let _ = std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(dir.path().join(".metadata_never_index"));
         Self { dir }
     }
 

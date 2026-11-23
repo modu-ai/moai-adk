@@ -492,17 +492,20 @@ fn update_home_with_an_unreadable_process_table_offers_nothing() {
     let (_t, home, exe) = setup();
     go_items(&home);
     let before = state(&home);
-    let out = Command::new(&exe)
-        .arg("update")
-        .clean_env()
-        .env("PATH", "/usr/sbin:/usr/bin:/bin:/sbin")
-        .env("HOME", &home)
-        .env("LC_ALL", "C")
-        .env("MOAI_CLI_TEST_PROCESS_CHECK", "unavailable")
-        .current_dir(&home)
-        .stdin(Stdio::null())
-        .output()
-        .unwrap();
+    let out = {
+        let _permit = spawn_cap::acquire();
+        Command::new(&exe)
+            .arg("update")
+            .clean_env()
+            .env("PATH", "/usr/sbin:/usr/bin:/bin:/sbin")
+            .env("HOME", &home)
+            .env("LC_ALL", "C")
+            .env("MOAI_CLI_TEST_PROCESS_CHECK", "unavailable")
+            .current_dir(&home)
+            .stdin(Stdio::null())
+            .output()
+            .unwrap()
+    };
     let p = result(&out);
     assert_eq!(p["home"]["action"], json!("none"), "{p}");
     assert!(p["home"]["confirm_token"].is_null(), "{p}");
