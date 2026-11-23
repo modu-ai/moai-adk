@@ -110,3 +110,11 @@ Slice 3 (revision 3):
 - AC-9: met. `my notes.md` outside the state folder is one uncommitted change, and `my counts.json` under it is tool state: red at 587365b5ac (the quoted name counted as work), green at 2e904cfe01. Reading without `-z` makes the test fail again (mutant killed); `a_z_list_keeps_names_and_folds_a_rename_origin` pins the rename origin field.
 - The state folder is resolved once per check (`state_prefix`), and the note numbers left this SPEC.
 - Not claimed: the Python twin's 30 s budget in `tests/prop_manifest_test.py` (outside the card's write scope) and the text pin of `every_child_is_built_by_the_one_helper`, which stays as written.
+
+Slice 4 (revision 4):
+
+- AC-10: met. `git_trace_variables_are_removed_by_prefix` (unit test, `src/identity.rs`) and `a_git_trace_variable_does_not_make_a_worktree_unreadable` were red first (the reclaim of a dirty worktree with `GIT_TRACE`, `GIT_TRACE2` and `GIT_TRACE_SETUP` set answered "could not be read" instead of naming its one change) and pass; removing the `GIT_TRACE` prefix from the scrub makes both fail again (mutant killed).
+- AC-11: met. `a_replay_index_beyond_the_cases_is_refused` and `the_run_refuses_a_replay_index_beyond_the_cases` (`tests/common/prop.rs`): an index at or beyond the cases fails with the property, the index, the cases and the seed, and a replay inside the run runs exactly one case; red first, and dropping the check from the run makes the second fail again (mutant killed).
+- The comments of `tests/common/prop.rs` and `tests/prop_reservation.rs` that named the property SPEC by a card number now name its id; one earlier commit body still carries a card number and stays as pushed.
+- `spec check`: 0 errors, 1 warning (more than 12 requirements).
+- Not claimed, waiting for `src/card/dispatch.rs` to be free: the standard-error line carried in the refusal and the noise lines of git (a missing fsmonitor hook, an invalid attribute line), and a recorded worktree that lost its `.git` inside a checkout. Not claimed, not run: the stderr rule pinned on each of its three reads; the probe of which situation makes the ignored-files read and the file-list read warn on their own was refused by the host and not repeated.
