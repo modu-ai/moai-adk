@@ -366,6 +366,11 @@ fn worktree_targets(project: &Path, cleaned: &Value, request: &Pending) -> Vec<T
         .and_then(|common| crate::worktree_slot::primary_of(&common))
         .ok()
         .map(|p| std::fs::canonicalize(&p).unwrap_or(p));
+    // What git lists as a worktree now, read after the cleanup ran: a worktree is gone only when
+    // it is no longer in this list, whatever the cleanup's own row said.
+    let listed: Option<Result<Vec<std::path::PathBuf>>> = primary.as_deref().map(|root| {
+        crate::worktree_slot::linked(root).map(|l| l.into_iter().map(|e| e.path).collect())
+    });
     let unregistered: Vec<&str> = cleaned["not_a_worktree"]
         .as_array()
         .map(|a| a.iter().filter_map(Value::as_str).collect())
@@ -381,10 +386,19 @@ fn worktree_targets(project: &Path, cleaned: &Value, request: &Pending) -> Vec<T
                 reasons: Vec::new(),
                 detail: None,
             };
+            // The reservation's relative path is the project's, never the folder of this run.
+            let named = worktree_cleanup::reserved_path(primary.as_deref().unwrap_or(project), w);
+            // A path whose last element is a link is never touched: it stands for what it points
+            // at, which may be a worktree the card does not own.
+            if worktree_cleanup::last_element_is_link(&named) {
+                target.status = "kept";
+                target.reasons = vec!["link_path".into()];
+                return target;
+            }
             if unregistered.contains(&w.as_str()) {
                 return target;
             }
-            let wanted = canonical(w);
+            let wanted = canonical(&named);
             let shown = primary.as_deref().map_or_else(
                 || wanted.to_string_lossy().into_owned(),
                 |root| worktree_gc::shown(&wanted, root),
@@ -408,7 +422,31 @@ fn worktree_targets(project: &Path, cleaned: &Value, request: &Pending) -> Vec<T
                 .unwrap_or_default();
             let detail = row["detail"].as_str().map(str::to_string);
             match row["status"].as_str() {
-                Some("removed" | "trimmed") => target.status = "removed",
+                Some("removed") => {
+                    // Removed only when git no longer lists it; a list that cannot be read
+                    // proves nothing, so the step fails and the request stays pending.
+                    match &listed {
+                        Some(Ok(still)) => {
+                            if still.iter().any(|p| crate::worktree_slot::same(p, &wanted)) {
+                                target.status = "kept";
+                                target.reasons = vec!["still_registered".into()];
+                            } else {
+                                target.status = "removed";
+                            }
+                        }
+                        _ => {
+                            target.status = "failed";
+                            target.detail = Some("the worktree list could not be read".into());
+                        }
+                    }
+                }
+                // The plan trimmed the build output and left the worktree standing: it is kept,
+                // and so is its branch.
+                Some("trimmed") => {
+                    target.status = "kept";
+                    target.reasons = vec!["trimmed_only".into()];
+                    target.detail = detail;
+                }
                 _ => {
                     let passes = (!reasons.is_empty()
                         && reasons.iter().all(|r| worktree_cleanup::is_temporary(r)))
@@ -427,14 +465,13 @@ fn worktree_targets(project: &Path, cleaned: &Value, request: &Pending) -> Vec<T
 
 /// The canonical form of a worktree path that may be gone: the folder itself when it exists, else
 /// its canonical parent and its name, so a removed worktree still names the row the plan listed.
-fn canonical(path: &str) -> std::path::PathBuf {
-    let given = std::path::PathBuf::from(path);
-    if let Ok(real) = std::fs::canonicalize(&given) {
+fn canonical(given: &Path) -> std::path::PathBuf {
+    if let Ok(real) = std::fs::canonicalize(given) {
         return real;
     }
     match (given.parent().map(std::fs::canonicalize), given.file_name()) {
         (Some(Ok(parent)), Some(name)) => parent.join(name),
-        _ => given,
+        _ => given.to_path_buf(),
     }
 }
 

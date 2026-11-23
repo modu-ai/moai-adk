@@ -115,6 +115,8 @@ struct World {
     git_bin: PathBuf,
     extra_env: RefCell<Vec<(String, String)>>,
     profile: RefCell<Vec<u8>>,
+    /// The folder the `moai` commands run in; `None` is the test process's own.
+    cwd: RefCell<Option<PathBuf>>,
     head: String,
 }
 
@@ -152,6 +154,7 @@ impl World {
                 ),
             ]),
             profile: RefCell::new(MFLOW_PROFILE.to_vec()),
+            cwd: RefCell::new(None),
             head,
         };
         world.write_profile();
@@ -173,6 +176,9 @@ impl World {
         }
         if let Some(id) = session {
             cmd.env(SESSION_VAR, id);
+        }
+        if let Some(dir) = self.cwd.borrow().as_ref() {
+            cmd.current_dir(dir);
         }
         cmd.stdin(Stdio::null());
         cmd.output().expect("run moai")
@@ -546,6 +552,130 @@ fn ac2_a_clean_merged_card_loses_its_worktree_and_its_branch() {
     assert_eq!(results[0]["status"], json!("settled"), "{results:?}");
 }
 
+/// AC-2 (N7): `card finish` closes a card whose worktree is clean and merged and whose branch is
+/// merged, and removes both; another card's worktree and branch stay.
+#[test]
+fn ac2_card_finish_removes_the_worktree_and_the_branch() {
+    let w = World::new();
+    let wt = w.linked_worktree("wt-fin");
+    let other = w.linked_worktree("keepme-fin");
+    w.branch("lane/fin");
+    w.branch("lane/fin-other");
+    let card = w.card_in("apps/a/", &wt, Some("lane/fin"), &["one"]);
+    let _held = w.card_in("apps/b/", &other, Some("lane/fin-other"), &["two"]);
+    let got = w.finish(&card);
+    assert_eq!(got["closed"], json!(true), "{got}");
+    let entry = World::outbox(&got, &card);
+    assert_eq!(entry["status"], json!("settled"), "{got}");
+    assert_eq!(entry["worktrees"][0]["status"], json!("removed"), "{got}");
+    assert_eq!(entry["branches"][0]["status"], json!("deleted"), "{got}");
+    assert!(
+        !wt.exists() && !w.registered(&wt),
+        "the worktree is still there"
+    );
+    assert!(!w.has_branch("lane/fin"), "the branch is still there");
+    assert!(other.is_dir() && w.registered(&other));
+    assert!(w.has_branch("lane/fin-other"));
+    let results = w.payloads(&card, "cleanup.result");
+    assert_eq!(results.len(), 1, "{results:?}");
+    assert_eq!(results[0]["status"], json!("settled"), "{results:?}");
+}
+
+/// AC-2 (N7): `card done` closes the card and removes the same two things.
+#[test]
+fn ac2_card_done_removes_the_worktree_and_the_branch() {
+    let w = World::new();
+    let wt = w.linked_worktree("wt-done");
+    let other = w.linked_worktree("keepme-done");
+    w.branch("lane/done");
+    w.branch("lane/done-other");
+    let card = w.card_in("apps/a/", &wt, Some("lane/done"), &["one"]);
+    let _held = w.card_in("apps/b/", &other, Some("lane/done-other"), &["two"]);
+    let got = w.done(&card);
+    let entry = World::outbox(&got, &card);
+    assert_eq!(entry["status"], json!("settled"), "{got}");
+    assert_eq!(entry["worktrees"][0]["status"], json!("removed"), "{got}");
+    assert_eq!(entry["branches"][0]["status"], json!("deleted"), "{got}");
+    assert!(
+        !wt.exists() && !w.registered(&wt),
+        "the worktree is still there"
+    );
+    assert!(!w.has_branch("lane/done"), "the branch is still there");
+    assert!(other.is_dir() && w.registered(&other));
+    assert!(w.has_branch("lane/done-other"));
+}
+
+/// AC-2 (B2): a worktree the reservation names by a relative path is read against the project, not
+/// against the folder the command runs in: a run in the project and a run in another folder give
+/// the same answer, and both remove the worktree and delete the branch.
+#[test]
+fn ac2_a_relative_worktree_path_gives_the_same_answer_in_any_folder() {
+    let mut answers = Vec::new();
+    for from_project in [true, false] {
+        let w = World::new();
+        let wt = w.project.join("wt-rel");
+        git(
+            &w.project,
+            &[
+                "worktree",
+                "add",
+                "-q",
+                "--detach",
+                wt.to_str().unwrap(),
+                &w.head,
+            ],
+        );
+        w.branch("lane/rel");
+        let elsewhere = w.outside("elsewhere");
+        fs::create_dir_all(&elsewhere).unwrap();
+        *w.cwd.borrow_mut() = Some(if from_project {
+            w.project.clone()
+        } else {
+            elsewhere
+        });
+        let card = w.card_in("apps/a/", Path::new("wt-rel"), Some("lane/rel"), &["one"]);
+        let got = w.finish(&card);
+        let entry = World::outbox(&got, &card);
+        assert_eq!(entry["worktrees"][0]["status"], json!("removed"), "{got}");
+        assert_eq!(entry["branches"][0]["status"], json!("deleted"), "{got}");
+        assert!(
+            !wt.exists() && !w.registered(&wt),
+            "the worktree is still there: {got}"
+        );
+        assert!(
+            !w.has_branch("lane/rel"),
+            "the branch is still there: {got}"
+        );
+        answers.push(json!({
+            "status": entry["status"], "worktrees": entry["worktrees"], "branches": entry["branches"],
+        }));
+    }
+    assert_eq!(
+        answers[0], answers[1],
+        "the answer depends on the folder of the run"
+    );
+}
+
+/// AC-3 (B2): a relative path that no registered worktree of the project matches is `absent`
+/// whatever the folder of the run, and a folder of that name in the run's own folder is not read.
+#[test]
+fn ac3_a_relative_path_is_not_matched_against_the_folder_of_the_run() {
+    let w = World::new();
+    // A real worktree sits in the run's folder under the relative name; the card's relative name
+    // is the same, but the project has no such folder, so it is the project's answer that counts.
+    let wt = w.linked_worktree("wt-cwd");
+    w.branch("lane/cwd");
+    *w.cwd.borrow_mut() = Some(w.outside(""));
+    let card = w.card_in("apps/a/", Path::new("wt-cwd"), Some("lane/cwd"), &["one"]);
+    let got = w.finish(&card);
+    let entry = World::outbox(&got, &card);
+    assert!(
+        wt.is_dir() && w.registered(&wt),
+        "a worktree found through the folder of the run was removed: {got}"
+    );
+    assert_eq!(entry["worktrees"][0]["status"], json!("absent"), "{got}");
+}
+
 // ---- AC-3: what stays ----------------------------------------------------------------------
 
 /// AC-3: a dirty worktree stays with its branch, and the request ends as settled with kept.
@@ -572,7 +702,8 @@ fn ac3_a_dirty_worktree_and_its_branch_stay() {
 }
 
 /// AC-3 (dangerous path): a worktree path that is a link to a folder holding someone's files is
-/// never followed: the folder behind the link and its files stay, and the card's branch stays.
+/// never followed: the folder behind the link and its files stay, the worktree is kept with the
+/// reason `link_path`, and so is the card's branch.
 #[test]
 #[cfg(unix)]
 fn ac3_a_worktree_path_that_is_a_link_is_not_followed() {
@@ -591,10 +722,136 @@ fn ac3_a_worktree_path_that_is_a_link_is_not_followed() {
         "the folder behind the link lost a file: {got}"
     );
     assert!(link.exists(), "the link or its target was removed: {got}");
-    // The path is no registered worktree of the project: nothing is removed there. The merged
-    // branch nobody has checked out is deleted by `git branch -d` as for any closed card.
     let entry = World::outbox(&got, &card);
-    assert_eq!(entry["worktrees"][0]["status"], json!("absent"), "{got}");
+    assert_eq!(entry["worktrees"][0]["status"], json!("kept"), "{got}");
+    assert!(
+        entry["worktrees"][0]["reasons"]
+            .to_string()
+            .contains("link_path"),
+        "{got}"
+    );
+    assert_eq!(entry["branches"][0]["status"], json!("kept"), "{got}");
+    assert!(w.has_branch("lane/link"), "{got}");
+}
+
+/// AC-3 (B3, dangerous path): the reservation names a link whose target is a clean, merged, registered
+/// worktree of the project. Nothing is touched: the link and the worktree behind it stay registered
+/// with their files, the answer says `link_path`, and the branch stays.
+#[test]
+#[cfg(unix)]
+fn ac3_a_link_to_a_registered_worktree_leaves_that_worktree_standing() {
+    let w = World::new();
+    let real = w.linked_worktree("wt-real");
+    let link = w.outside("wt-alias");
+    std::os::unix::fs::symlink(&real, &link).unwrap();
+    w.branch("lane/alias");
+    let card = w.card_in("apps/a/", &link, Some("lane/alias"), &["one"]);
+    let got = w.finish(&card);
+    assert_eq!(got["closed"], json!(true), "{got}");
+    let entry = World::outbox(&got, &card);
+    assert_eq!(entry["worktrees"][0]["status"], json!("kept"), "{got}");
+    assert!(
+        entry["worktrees"][0]["reasons"]
+            .to_string()
+            .contains("link_path"),
+        "{got}"
+    );
+    assert!(
+        real.is_dir() && w.registered(&real),
+        "the worktree behind the link was removed: {got}"
+    );
+    assert!(link.exists(), "{got}");
+    assert!(w.has_branch("lane/alias"), "{got}");
+    assert_eq!(entry["branches"][0]["status"], json!("kept"), "{got}");
+    // The step row says kept too, never removed.
+    let steps = w.payloads(&card, "cleanup.step");
+    assert!(
+        steps.iter().all(|s| s["status"] != json!("removed")),
+        "{steps:?}"
+    );
+}
+
+/// AC-2 (B3): a link in a parent folder is allowed (macOS keeps `/tmp` and `/var` behind links):
+/// only the last element of the path is refused. The worktree is removed and the branch deleted.
+#[test]
+#[cfg(unix)]
+fn ac2_a_link_in_a_parent_folder_does_not_stop_the_cleanup() {
+    let w = World::new();
+    let real_parent = w.outside("real-parent");
+    fs::create_dir_all(&real_parent).unwrap();
+    let wt = real_parent.join("wt-inner");
+    git(
+        &w.project,
+        &[
+            "worktree",
+            "add",
+            "-q",
+            "--detach",
+            wt.to_str().unwrap(),
+            &w.head,
+        ],
+    );
+    let parent_link = w.outside("parent-link");
+    std::os::unix::fs::symlink(&real_parent, &parent_link).unwrap();
+    w.branch("lane/parent");
+    let card = w.card_in(
+        "apps/a/",
+        &parent_link.join("wt-inner"),
+        Some("lane/parent"),
+        &["one"],
+    );
+    let got = w.finish(&card);
+    let entry = World::outbox(&got, &card);
+    assert_eq!(entry["worktrees"][0]["status"], json!("removed"), "{got}");
+    assert_eq!(entry["branches"][0]["status"], json!("deleted"), "{got}");
+    assert!(!wt.exists() && !w.registered(&wt), "{got}");
+    assert!(!w.has_branch("lane/parent"), "{got}");
+}
+
+/// AC-3 (B1): the plan trims a worktree that holds a file of its own next to a build folder: only
+/// the build output goes, the worktree stays registered, so the answer and the step row say `kept`
+/// with `trimmed_only` (never `removed`), and the card's branch is not deleted.
+#[test]
+fn ac3_a_trimmed_worktree_is_kept_and_so_is_its_branch() {
+    let w = World::new();
+    let wt = w.linked_worktree("wt-trim");
+    w.branch("lane/trim");
+    fs::write(wt.join("notes.txt"), "work in progress\n").unwrap();
+    let build = wt.join("target/debug");
+    fs::create_dir_all(&build).unwrap();
+    fs::write(
+        build.join("CACHEDIR.TAG"),
+        "Signature: 8a477f597d28d172789f06886806bc55\n",
+    )
+    .unwrap();
+    fs::write(build.join("artifact.o"), "x").unwrap();
+    let card = w.card_in("apps/a/", &wt, Some("lane/trim"), &["one"]);
+    let got = w.finish(&card);
+    assert_eq!(got["closed"], json!(true), "{got}");
+    let entry = World::outbox(&got, &card);
+    assert_eq!(entry["status"], json!("settled_with_kept"), "{got}");
+    assert_eq!(entry["worktrees"][0]["status"], json!("kept"), "{got}");
+    assert!(
+        entry["worktrees"][0]["reasons"]
+            .to_string()
+            .contains("trimmed_only"),
+        "{got}"
+    );
+    assert_eq!(entry["branches"][0]["status"], json!("kept"), "{got}");
+    assert!(
+        entry["branches"][0]["reasons"]
+            .to_string()
+            .contains("worktree_kept"),
+        "{got}"
+    );
+    assert!(wt.is_dir() && w.registered(&wt), "the worktree went: {got}");
+    assert!(wt.join("notes.txt").is_file(), "{got}");
+    assert!(w.has_branch("lane/trim"), "the branch was deleted: {got}");
+    let steps = w.payloads(&card, "cleanup.step");
+    assert!(
+        steps.iter().all(|s| s["status"] != json!("removed")),
+        "a step row says removed for a worktree that stands: {steps:?}"
+    );
 }
 
 /// AC-3: a branch the integration tip does not contain (a squash leaves no ancestry) stays, with
