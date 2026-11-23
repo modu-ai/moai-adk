@@ -935,10 +935,18 @@ fn an_ignored_or_linked_copy_is_named_and_removed_by_discard_in_each_audit_slot(
         removed.sort();
         assert_eq!(
             removed,
-            [".target-inherit-4242", ".target-old-9", ".target-warming-77"],
+            [
+                ".target-inherit-4242",
+                ".target-old-9",
+                ".target-warming-77"
+            ],
             "{name}: {done}"
         );
-        for gone in [".target-inherit-4242", ".target-old-9", ".target-warming-77"] {
+        for gone in [
+            ".target-inherit-4242",
+            ".target-old-9",
+            ".target-warming-77",
+        ] {
             assert!(
                 fs::symlink_metadata(slot.join(gone)).is_err(),
                 "{name}: {gone} is still there"

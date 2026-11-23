@@ -2159,7 +2159,14 @@ impl World {
         let at = fs::canonicalize(self.dir.path()).unwrap().join(name);
         git(
             &self.project,
-            &["worktree", "add", "-q", "--detach", at.to_str().unwrap(), &self.head],
+            &[
+                "worktree",
+                "add",
+                "-q",
+                "--detach",
+                at.to_str().unwrap(),
+                &self.head,
+            ],
         );
         at
     }
@@ -2173,7 +2180,15 @@ impl World {
         branch: Option<&str>,
         criteria: &[&str],
     ) -> String {
-        let mut args = vec!["add", "--title", "fixture card", "--kind", "task", "--scope", scope];
+        let mut args = vec![
+            "add",
+            "--title",
+            "fixture card",
+            "--kind",
+            "task",
+            "--scope",
+            scope,
+        ];
         for text in criteria {
             args.push("--ac");
             args.push(text);
@@ -2183,7 +2198,12 @@ impl World {
             .unwrap()
             .to_string();
         result(&self.card(None, &["ready", &name]));
-        let mut take = vec!["take", name.as_str(), "--worktree", worktree.to_str().unwrap()];
+        let mut take = vec![
+            "take",
+            name.as_str(),
+            "--worktree",
+            worktree.to_str().unwrap(),
+        ];
         if let Some(b) = branch {
             take.extend(["--branch", b]);
         }
@@ -2254,8 +2274,15 @@ fn ac35_a_landing_removes_the_closed_cards_merged_worktree_on_the_plans_digest()
     assert_eq!(listed[0]["status"], json!("removed"), "{got}");
     assert!(!mine.exists(), "the merged worktree is still there");
     assert!(!w.registered(&mine));
-    assert!(other.is_dir() && w.registered(&other), "another card's worktree was touched");
-    assert_eq!(w.integ(), got["to_tip"].as_str().unwrap(), "the branch moved with the landing");
+    assert!(
+        other.is_dir() && w.registered(&other),
+        "another card's worktree was touched"
+    );
+    assert_eq!(
+        w.integ(),
+        got["to_tip"].as_str().unwrap(),
+        "the branch moved with the landing"
+    );
 }
 
 /// AC-36: a worktree under `.claude/worktrees` stays preserved: the plan names the reason, the
@@ -2268,7 +2295,14 @@ fn ac36_a_worktree_under_the_preserved_place_is_kept() {
     fs::create_dir_all(under.parent().unwrap()).unwrap();
     git(
         &w.project,
-        &["worktree", "add", "-q", "--detach", under.to_str().unwrap(), &w.head],
+        &[
+            "worktree",
+            "add",
+            "-q",
+            "--detach",
+            under.to_str().unwrap(),
+            &w.head,
+        ],
     );
     let card = w.card_in("apps/a/", &under, None, &["one"]);
     let got = w.lands(&card, &["1=the test"]);
@@ -2276,11 +2310,16 @@ fn ac36_a_worktree_under_the_preserved_place_is_kept() {
     let listed = got["cleanup"]["worktrees"].as_array().unwrap();
     assert_eq!(listed[0]["action"], json!("skip"), "{got}");
     assert!(
-        listed[0]["reasons"].to_string().contains("preserved_location"),
+        listed[0]["reasons"]
+            .to_string()
+            .contains("preserved_location"),
         "{got}"
     );
     assert_eq!(got["cleanup"]["applied"], json!(false), "{got}");
-    assert!(under.is_dir() && w.registered(&under), "a preserved worktree was removed");
+    assert!(
+        under.is_dir() && w.registered(&under),
+        "a preserved worktree was removed"
+    );
 }
 
 /// AC-36 (second half): a card that stays open because a criterion is not met is not cleaned.
@@ -2292,7 +2331,11 @@ fn ac36_a_card_that_stays_open_is_not_cleaned() {
     let open = w.card_in("apps/c/", &kept, None, &["a", "b"]);
     let got = w.lands(&open, &["1=only the first"]);
     assert_eq!(got["closed"], json!(false), "{got}");
-    assert_eq!(got["cleanup"], json!(null), "an open card was cleaned: {got}");
+    assert_eq!(
+        got["cleanup"],
+        json!(null),
+        "an open card was cleaned: {got}"
+    );
     assert!(kept.is_dir() && w.registered(&kept));
 }
 
@@ -2309,7 +2352,10 @@ fn ac37_a_landing_reads_the_queue_and_cleans_for_a_branch_that_is_gone() {
     let card = w.card_in("apps/a/", &mine, None, &["one"]);
     // Two earlier cards on branches; both gave their reservation back.
     git(&w.project, &["branch", "card/live"]);
-    for (scope, wt, branch) in [("apps/d/", &old, "card/gone"), ("apps/e/", &keeps, "card/live")] {
+    for (scope, wt, branch) in [
+        ("apps/d/", &old, "card/gone"),
+        ("apps/e/", &keeps, "card/live"),
+    ] {
         let name = w.card_in(scope, wt, Some(branch), &["x"]);
         result(&w.card(Some(S_A), &["release", &name, "--generation", "1"]));
     }
@@ -2324,10 +2370,21 @@ fn ac37_a_landing_reads_the_queue_and_cleans_for_a_branch_that_is_gone() {
     let got = w.lands(&card, &["1=the test"]);
     let cleanup = &got["cleanup"];
     assert_eq!(cleanup["error"], json!(null), "{got}");
-    assert_eq!(cleanup["queue"]["gone"], json!(["refs/heads/card/gone"]), "{got}");
-    assert_eq!(cleanup["queue"]["still_there"], json!(["refs/heads/card/live"]), "{got}");
+    assert_eq!(
+        cleanup["queue"]["gone"],
+        json!(["refs/heads/card/gone"]),
+        "{got}"
+    );
+    assert_eq!(
+        cleanup["queue"]["still_there"],
+        json!(["refs/heads/card/live"]),
+        "{got}"
+    );
     assert!(!old.exists(), "the gone branch's worktree was not cleaned");
-    assert!(keeps.is_dir(), "a branch that still exists had its worktree removed");
+    assert!(
+        keeps.is_dir(),
+        "a branch that still exists had its worktree removed"
+    );
     assert!(!mine.exists());
     assert!(!queue.exists(), "the queue was not used up");
 }

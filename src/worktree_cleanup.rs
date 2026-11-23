@@ -138,7 +138,13 @@ fn try_run(project: &Path, home: &Path, req: &Request<'_>) -> Result<Value> {
     let common = worktree_slot::common_dir(project)?;
     let primary = worktree_slot::primary_of(&common)?;
     let taken = take_queue(&common)?;
-    let outcome = clean(project, home, req, &primary, taken.as_ref().map(|t| &t.refs[..]));
+    let outcome = clean(
+        project,
+        home,
+        req,
+        &primary,
+        taken.as_ref().map(|t| &t.refs[..]),
+    );
     match (taken, &outcome) {
         (Some(t), Ok(_)) => t.done(),
         (Some(t), Err(_)) => t.give_back(),
@@ -157,8 +163,8 @@ fn clean(
     let id = crate::project_id::read(project)?.ok_or("the project has no profile, so no ledger")?;
     let read = crate::ledger::open_read_only(home, &id).map_err(|e| e.to_string())?;
     let conn = read.conn();
-    let mut wanted: Vec<String> = reservation::worktrees_of_card(conn, req.card_id)
-        .map_err(|e| e.to_string())?;
+    let mut wanted: Vec<String> =
+        reservation::worktrees_of_card(conn, req.card_id).map_err(|e| e.to_string())?;
     // The queue: a ref that is still there was only a pack or a move, so its line is dropped.
     let mut gone = Vec::new();
     let mut still_there = Vec::new();
@@ -175,9 +181,7 @@ fn clean(
         gone.push(full.clone());
         let short = full.strip_prefix("refs/heads/").unwrap_or(full);
         for card in reservation::cards_of_branch(conn, short).map_err(|e| e.to_string())? {
-            wanted.extend(
-                reservation::worktrees_of_card(conn, card).map_err(|e| e.to_string())?,
-            );
+            wanted.extend(reservation::worktrees_of_card(conn, card).map_err(|e| e.to_string())?);
         }
     }
     wanted.sort();

@@ -490,9 +490,8 @@ pub fn worktrees_of_card(conn: &Connection, card_id: i64) -> Result<Vec<String>,
 /// The cards that ever held a reservation on the branch `branch` (a short name, as `card take
 /// --branch` stored it), by card number. Read-only.
 pub fn cards_of_branch(conn: &Connection, branch: &str) -> Result<Vec<i64>, LedgerError> {
-    let mut stmt = conn.prepare(
-        "SELECT DISTINCT card_id FROM reservation WHERE branch = ?1 ORDER BY card_id",
-    )?;
+    let mut stmt = conn
+        .prepare("SELECT DISTINCT card_id FROM reservation WHERE branch = ?1 ORDER BY card_id")?;
     let rows = stmt
         .query_map([branch], |r| r.get::<_, i64>(0))?
         .collect::<Result<_, _>>()?;
