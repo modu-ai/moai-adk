@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261124-new-test-file-precheck
 title: "check affected stops before the heavy steps when an added test file is missing from the area table or the state-folder allow list"
-status: draft
+status: approved
 revision: 2
 created: 2026-11-24
+approval:
+  by: leader
+  at: 2026-11-23
+  basis: "리더 결정 노트 7844 (2026-11-23T20:08:14Z, 사용자 위임 2026-11-23T13:57Z, 리더 판단, 사용자 직접 선택 아님, 노트 7843 에 답함): (A) 판 2 승인, AC-6·AC-7 테스트를 src/check_affected.rs 단위 테스트로 옮기고 verify 명령 둘만 바꿔요, 쓰기 범위 그대로, 앞 조건 넷 그대로; 레인은 그 노트를 인용만 해요"
+  digest: "sha256:9c2e85166cbf944bb290c1febba64cd017745ef914f8e8229a0d248e7361e10b"
 ---
 
 # check affected stops before the heavy steps when an added test file is missing from the area table or the state-folder allow list

@@ -1472,6 +1472,60 @@ mod tests {
         assert_eq!(count_state_name(&text, &earlier_state_name()), 0);
     }
 
+    const MANIFEST: &str = env!("CARGO_MANIFEST_DIR");
+
+    /// SPEC-20261124-new-test-file-precheck REQ-8: the repository's own test files, all taken as
+    /// added, pass the step: it cannot be stricter than the two repository tests, which pass on
+    /// the same tree. A unit test, not a `tests/` file: a test file that walks the tree needs a
+    /// row in `tools/repo_scans.json`.
+    #[test]
+    fn the_repository_tests_pass_the_table_step_as_added_files() {
+        let root = Path::new(MANIFEST);
+        let mut added = Vec::new();
+        let mut tests = Vec::new();
+        for entry in std::fs::read_dir(root.join("tests")).unwrap().flatten() {
+            let path = entry.path();
+            if !path.is_file() || path.extension().is_none_or(|e| e != "rs") {
+                continue;
+            }
+            let name = path.file_stem().unwrap().to_string_lossy().to_string();
+            added.push(format!("tests/{name}.rs"));
+            tests.push(TestFile {
+                text: std::fs::read_to_string(&path).unwrap(),
+                name,
+                ..Default::default()
+            });
+        }
+        assert!(added.len() > 100, "the scan found {} files", added.len());
+        let areas = std::fs::read_to_string(root.join("tests/areas.toml")).unwrap();
+        let allow =
+            std::fs::read_to_string(root.join("tests/fixtures/state_folder_literals/allow.tsv"))
+                .unwrap();
+        let moved: Vec<String> = std::fs::read_dir(root.join("tests"))
+            .unwrap()
+            .flatten()
+            .filter(|e| e.path().join("main.rs").is_file())
+            .map(|e| e.file_name().to_string_lossy().to_string())
+            .collect();
+        let found = table_violations(&added, &tests, Some(&areas), Some(&allow), &moved);
+        assert!(found.is_empty(), "{}", found.join("\n"));
+    }
+
+    /// REQ-9: the guidance says where a new test file registers and that the step stops the run.
+    #[test]
+    fn the_guidance_says_where_a_new_test_file_registers() {
+        let root = Path::new(MANIFEST);
+        for rel in [
+            "docs/design-review/appendix/operations/check.md",
+            "docs/lane-rules.md",
+        ] {
+            let text = std::fs::read_to_string(root.join(rel)).unwrap();
+            for word in ["test_tables", "tests/areas.toml", "allow.tsv"] {
+                assert!(text.contains(word), "{rel} does not name `{word}`");
+            }
+        }
+    }
+
     fn rust(name: &str, modules: &[&str], os: &[&str]) -> TestFile {
         TestFile {
             name: name.to_string(),

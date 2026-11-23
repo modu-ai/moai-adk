@@ -14,7 +14,6 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
 const BIN: &str = crate::common::MOAI_BIN;
-const MANIFEST: &str = env!("CARGO_MANIFEST_DIR");
 
 /// The earlier state folder name (the new name plus `-cli`) and the new one.
 fn earlier() -> String {
@@ -63,8 +62,8 @@ impl Fixture {
         git_ok(p, &["init", "-q", "-b", "main"]);
         git_ok(p, &["config", "user.email", "t@example.invalid"]);
         git_ok(p, &["config", "user.name", "t"]);
-        put(p, "README.md", "x\n");
-        put(p, "src/update_models.rs", "// a\n");
+        put(p, "notes.txt", "x\n");
+        put(p, "src/zz_stub.rs", "// a\n");
         put(p, "tests/card_cli.rs", "fn main() {}\n");
         put(p, "tests/lane/main.rs", "// a moved area\n");
         if tables {
@@ -344,41 +343,23 @@ fn a_registered_new_test_file_passes_and_other_ranges_plan_no_table_step() {
     assert!(line.ends_with(" result=PASS"), "{line}");
     assert!(tools.calls_text().contains("clippy"), "heavy steps ran");
 
-    let src_only = Fixture::new(true, &[("src/update_models.rs", "// b\n".to_string())]);
+    let src_only = Fixture::new(true, &[("src/zz_stub.rs", "// b\n".to_string())]);
     let (ok, r) = affected(&src_only, None);
     assert!(ok, "{r}");
-    assert!(
-        !labels_of_list(&r).contains(&"test_tables".to_string()),
-        "{r}"
-    );
+    assert!(!labels(&r).contains(&"test_tables".to_string()), "{r}");
 
-    let no_tables = Fixture::new(false, &[plain("zzfresh_cli").into_pair()]);
+    let fresh = ("tests/zzfresh_cli.rs", "fn main() {}\n".to_string());
+    let no_tables = Fixture::new(false, std::slice::from_ref(&fresh));
     let (ok, r) = affected(&no_tables, None);
     assert!(ok, "{r}");
-    assert!(
-        !labels_of_list(&r).contains(&"test_tables".to_string()),
-        "{r}"
-    );
-}
-
-trait IntoPair {
-    fn into_pair(&self) -> (&str, String);
-}
-
-impl IntoPair for (String, String) {
-    fn into_pair(&self) -> (&str, String) {
-        (self.0.as_str(), self.1.clone())
-    }
-}
-
-fn labels_of_list(r: &Value) -> Vec<String> {
-    labels(r)
+    assert!(!labels(&r).contains(&"test_tables".to_string()), "{r}");
 }
 
 /// SPEC REQ-7: `--list` shows the step, cheap, before the first heavy step.
 #[test]
 fn list_shows_the_table_step_before_the_heavy_steps() {
-    let fx = Fixture::new(true, &[plain("zzfresh_cli").into_pair()]);
+    let fresh = ("tests/zzfresh_cli.rs", "fn main() {}\n".to_string());
+    let fx = Fixture::new(true, std::slice::from_ref(&fresh));
     let (ok, r) = affected(&fx, None);
     assert!(ok, "{r}");
     let steps = r["steps"].as_array().unwrap();
@@ -390,59 +371,4 @@ fn list_shows_the_table_step_before_the_heavy_steps() {
     let clippy = steps.iter().position(|s| s["label"] == "clippy").unwrap();
     assert!(at < clippy, "{r}");
     assert_eq!(r["writes"], Value::Bool(false));
-}
-
-/// SPEC REQ-8: the repository's own test files, all taken as added, pass the step: it cannot be
-/// stricter than the two repository tests, which pass on the same tree.
-#[test]
-fn the_repository_tests_pass_the_table_step_as_added_files() {
-    let root = Path::new(MANIFEST);
-    let mut added = Vec::new();
-    let mut tests = Vec::new();
-    for entry in fs::read_dir(root.join("tests")).unwrap().flatten() {
-        let path = entry.path();
-        if !path.is_file() || path.extension().is_none_or(|e| e != "rs") {
-            continue;
-        }
-        let name = path.file_stem().unwrap().to_string_lossy().to_string();
-        added.push(format!("tests/{name}.rs"));
-        tests.push(moai_cli::check_affected::TestFile {
-            text: fs::read_to_string(&path).unwrap(),
-            name,
-            ..Default::default()
-        });
-    }
-    assert!(added.len() > 100, "the scan found {} files", added.len());
-    let areas = fs::read_to_string(root.join("tests/areas.toml")).unwrap();
-    let allow =
-        fs::read_to_string(root.join("tests/fixtures/state_folder_literals/allow.tsv")).unwrap();
-    let moved: Vec<String> = fs::read_dir(root.join("tests"))
-        .unwrap()
-        .flatten()
-        .filter(|e| e.path().join("main.rs").is_file())
-        .map(|e| e.file_name().to_string_lossy().to_string())
-        .collect();
-    let found = moai_cli::check_affected::table_violations(
-        &added,
-        &tests,
-        Some(&areas),
-        Some(&allow),
-        &moved,
-    );
-    assert!(found.is_empty(), "{}", found.join("\n"));
-}
-
-/// SPEC REQ-9: the guidance says where a new test file registers and that the step stops the run.
-#[test]
-fn the_guidance_says_where_a_new_test_file_registers() {
-    let root = Path::new(MANIFEST);
-    for rel in [
-        "docs/design-review/appendix/operations/check.md",
-        "docs/lane-rules.md",
-    ] {
-        let text = fs::read_to_string(root.join(rel)).unwrap();
-        for word in ["test_tables", "tests/areas.toml", "allow.tsv"] {
-            assert!(text.contains(word), "{rel} does not name `{word}`");
-        }
-    }
 }
