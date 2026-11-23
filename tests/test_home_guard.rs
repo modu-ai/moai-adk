@@ -119,6 +119,18 @@ fn a_test_that_touches_nothing_passes_under_a_guarded_home() {
 }
 
 #[test]
+fn every_decoy_starts_with_an_access_time_before_2001() {
+    let g = Guard::new();
+    // observe mode: the find of the probe reads folders, which enforce would count as a touch.
+    let out = g.run(
+        Some("observe"),
+        None,
+        r#"test -z "$(find "$HOME" -type f -newerat 2001-01-01)" && test -n "$(find "$HOME" -type f)""#,
+    );
+    assert_eq!(out.status.code(), Some(0), "{}", stderr(&out));
+}
+
+#[test]
 fn the_userprofile_follows_the_home() {
     let g = Guard::new();
     let out = g.run(
@@ -183,6 +195,34 @@ fn run_fake_binary(g: &Guard, baseline: &str, body: &str, test: &str) -> Output 
 fn a_listed_test_that_reads_only_the_known_decoy_is_tolerated() {
     let g = Guard::new();
     let out = run_fake_binary(&g, "fake_bin\tsome::test\n", KNOWN_READ, "some::test");
+    assert_eq!(out.status.code(), Some(0), "{}", stderr(&out));
+    assert!(stderr(&out).contains("tolerated"), "{}", stderr(&out));
+}
+
+#[test]
+fn the_baseline_next_to_the_script_is_found_without_a_path_setting() {
+    // Needs a test of the baseline in the repository: its first listed line names the fake binary.
+    let text = fs::read_to_string(Path::new(ROOT).join(BASELINE)).unwrap();
+    let line = text.lines().find(|l| !l.starts_with('#') && !l.is_empty()).unwrap();
+    let (bin, name) = line.split_once('\t').unwrap();
+    let g = Guard::new();
+    let bin_dir = TempDir::new().unwrap();
+    let fake = bin_dir.path().join(format!("{bin}-0123456789abcdef"));
+    fs::write(&fake, format!("#!/bin/sh\n{KNOWN_READ}\n")).unwrap();
+    {
+        use std::os::unix::fs::PermissionsExt;
+        fs::set_permissions(&fake, fs::Permissions::from_mode(0o755)).unwrap();
+    }
+    let out = Command::new("sh")
+        .arg(script())
+        .arg(&fake)
+        .args(["--exact", name, "--nocapture"])
+        .env("TMPDIR", g.tmp.path())
+        .env_remove("MOAI_HOME_GUARD")
+        .env_remove("MOAI_HOME_GUARD_LOG")
+        .env_remove("MOAI_HOME_GUARD_BASELINE")
+        .output()
+        .unwrap();
     assert_eq!(out.status.code(), Some(0), "{}", stderr(&out));
     assert!(stderr(&out).contains("tolerated"), "{}", stderr(&out));
 }
