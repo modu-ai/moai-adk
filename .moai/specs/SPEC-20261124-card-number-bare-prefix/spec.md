@@ -59,4 +59,9 @@ Grounded in the code at the integration tip `b77d1efe75`: the loop bound is `src
 
 ## Result
 
-Not yet run. Revision 1 is a draft.
+판 1 을 NeXT `b77d1efe75` 에서 자른 브랜치에서 리더 결정 노트 7923 으로 승인받은 뒤 테스트를 더했어요(테스트 커밋 `8e32b5a699`). 숫자는 이 워크트리와 복사본에서 이 결과를 쓰려고 돌린 실행에서 읽었어요.
+
+- 특성화(동작은 이미 맞아요): `cargo nextest run --offline --locked --test spec_card_number_observe` 가 7개 모두 통과, exit 0. 새 테스트는 `src/` 를 고치지 않고도 처음부터 통과해요.
+- guard-mutant: `src/spec_doc.rs:717` 의 `while i + 2 < b.len()` 를 `i + 1` 로 바꾼 뮤턴트는 `src/spec_doc.rs` 를 다른 카드가 예약하고 있어서(리더 결정 노트 7918) 이 워크트리가 아니라 scratch 의 `git archive` 복사본(자기 빌드 폴더)에서 돌렸어요. 같은 명령이 7개 중 새 테스트 하나를 `src/spec_doc.rs:722:16` 의 `index out of bounds: the len is 2 but the index is 2` 로 실패시켰고 exit 100 이에요. 복사본은 scratch 안에서 지웠어요.
+
+- AC-1: met — `a_line_ending_with_a_bare_card_prefix_gives_no_notice_and_no_panic` 통과. 줄 끝의 `C-`·`c-` (홀로, 낱말 뒤), 본문의 마지막 두 바이트가 `C-`·`c-` 인 본문은 알림이 없고, 진짜 번호 뒤에 맨 접두어가 오는 줄은 하나로 세요. 위 뮤턴트가 이 테스트로 죽어요.
