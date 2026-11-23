@@ -49,7 +49,10 @@ fn rule() -> String {
 
 /// A row of the provenance table, found by its first cell.
 fn provenance_row_for(first_cell: &str) -> String {
-    let table = section(&read("docs/claude-md-rule-provenance.md"), "Rule provenance");
+    let table = section(
+        &read("docs/claude-md-rule-provenance.md"),
+        "Rule provenance",
+    );
     table
         .lines()
         .find(|l| l.contains(first_cell))

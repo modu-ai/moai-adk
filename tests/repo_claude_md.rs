@@ -134,7 +134,10 @@ fn managed_section_matches_the_profile_hosts() {
     let text = claude_md();
     let managed = &text[text.find(BEGIN).expect("managed section")..];
     assert!(managed.contains("hosts: claude."), "{managed}");
-    assert!(managed.contains(purpose), "the purpose line differs: {managed}");
+    assert!(
+        managed.contains(purpose),
+        "the purpose line differs: {managed}"
+    );
     assert!(!managed.contains("codex"), "{managed}");
 }
 
@@ -284,7 +287,11 @@ fn stale_python_tests_are_not_a_rule_input() {
     assert_lacks(
         &text,
         "CLAUDE.md",
-        &["tests/*_test.py", "adapters/claude/", "unittest discover` (about"],
+        &[
+            "tests/*_test.py",
+            "adapters/claude/",
+            "unittest discover` (about",
+        ],
     );
 }
 
@@ -405,7 +412,10 @@ fn rule_table_has_a_disposition_for_every_rule_and_every_anchor_is_found() {
             other => panic!("{id}: disposition `{other}`"),
         }
     }
-    assert!(kept > 0 && moved > 0 && discarded > 0, "{kept}/{moved}/{discarded}");
+    assert!(
+        kept > 0 && moved > 0 && discarded > 0,
+        "{kept}/{moved}/{discarded}"
+    );
 }
 
 /// REQ-8 (AC-5): the draft of the personal file holds this machine's facts and none of the team
@@ -449,7 +459,10 @@ fn decisions_log_records_the_agents_md_removal_and_this_rewrite() {
         "(11-23) | CLAUDE.md 다시 쓰기",
         "(11-23) | 통합 브랜치 NeXT",
     ] {
-        assert!(log.contains(row), "the decisions log lacks a row with `{row}`");
+        assert!(
+            log.contains(row),
+            "the decisions log lacks a row with `{row}`"
+        );
     }
 }
 
