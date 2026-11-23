@@ -37,7 +37,7 @@
   },
   "work_flow": {
     "flow": "m-flow",
-    "integration_branch": "v2026.11.0"
+    "integration_branch": "NeXT"
   },
   "decisions": [
     {

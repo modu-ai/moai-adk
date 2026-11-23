@@ -249,6 +249,38 @@
       "rejects": "a git fixture call outside the guarded shared helper"
     },
     {
+      "id": "test-area-layout",
+      "tests": [
+        "tests/test_area_layout.rs::area_table_maps_every_real_test_file",
+        "tests/test_area_layout.rs::scan_list_names_only_existing_targets_and_paths"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test test_area_layout"
+      ],
+      "rules": [
+        "tests/test_area_layout.rs",
+        "tests/areas.toml"
+      ],
+      "scope": [
+        {
+          "prefix": "tests/",
+          "suffixes": [
+            ".rs",
+            ".toml"
+          ]
+        },
+        {
+          "prefix": "tools/",
+          "suffixes": [
+            ".json",
+            ".sh",
+            ".py"
+          ]
+        }
+      ],
+      "rejects": "a test file whose first word is not in tests/areas.toml, or a scan list naming a missing test target"
+    },
+    {
       "id": "no-fixed-temp-paths",
       "tests": [
         "tests/test_isolation_rules.rs::no_test_shares_a_fixed_temporary_path"

@@ -1,6 +1,18 @@
 # cargo-nextest configuration (CI runs `cargo nextest run`, .github/workflows/ci.yml).
 #
-# No overrides. tests/ac_command_lint.rs once took every test thread (#2661), because its lint
-# ran `cargo test --test <name> -- --list` and that call re-copied target/debug/moai-cli under
+# tests/ac_command_lint.rs once took every test thread (#2661), because its lint ran
+# `cargo test --test <name> -- --list` and that call re-copied target/debug/moai-cli under
 # the tests running beside it. The lint now reads test names from the sources and starts no
 # cargo (SPEC-20261122-ac-lint-no-cargo), so it runs beside the others.
+#
+# One override, for the tests that spawn the moai binary in temporary HOMEs
+# (SPEC-20261120-test-parallelism-cap REQ-3). The permit helper in tests/common/spawn_cap.rs is
+# in-process, and nextest runs every test as a process of its own, so under nextest the bound
+# is this group: at most four of these tests run at once, across all of them. Add a test file
+# that takes spawn permits to the filter (tests/spawn_cap_test.rs checks the list).
+[test-groups]
+spawning-moai = { max-threads = 4 }
+
+[[profile.default.overrides]]
+filter = 'binary(home_retire_cli) | binary(update_home_layer_cli) | binary(update_keys_cli)'
+test-group = 'spawning-moai'

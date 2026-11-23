@@ -178,6 +178,10 @@ impl Run {
             .env_remove("XDG_CACHE_HOME")
             .env_remove("CARGO_TARGET_DIR")
             .env_remove("MOAI_HEAVY_SLOT_FD")
+            // The caller's own thread knobs decide whether the run adds `-j <n>`; the machine
+            // running this test must not decide it (SPEC-20261120-test-parallelism-cap REQ-1).
+            .env_remove("RUST_TEST_THREADS")
+            .env_remove("NEXTEST_TEST_THREADS")
             .env("MOAI_CLI_TEST_MACHINE", ROOMY)
             .env("PATH", self.tools.path())
             .env("FAKE_CALLS", self.tools.calls())
@@ -238,6 +242,7 @@ fn one_run_takes_one_slot_and_one_nextest_call() {
             "head",
             "targets",
             "scans",
+            "test-threads",
             "diff_check",
             "fmt",
             "clippy",
@@ -246,6 +251,7 @@ fn one_run_takes_one_slot_and_one_nextest_call() {
         ],
         "{line}"
     );
+    assert!(line.contains(" test-threads=4 "), "{line}");
     // One slot taken, by this run, once.
     let log = r.slot_log();
     assert_eq!(
@@ -260,7 +266,7 @@ fn one_run_takes_one_slot_and_one_nextest_call() {
     assert_eq!(nextest.len(), 1, "{:?}", r.tools.lines());
     assert!(
         nextest[0].starts_with(
-            "cargo nextest run --locked --offline --no-fail-fast --lib --bin moai-cli --test update_command_cli |"
+            "cargo nextest run -j 4 --locked --offline --no-fail-fast --lib --bin moai-cli --test update_command_cli |"
         ),
         "{nextest:?}"
     );
@@ -532,6 +538,8 @@ fn no_slot_count_or_no_slot_folder_is_code_2_for_every_cargo_step() {
         .env_remove("XDG_CACHE_HOME")
         .env_remove("CARGO_TARGET_DIR")
         .env_remove("MOAI_HEAVY_SLOT_FD")
+        .env_remove("RUST_TEST_THREADS")
+        .env_remove("NEXTEST_TEST_THREADS")
         .env("MOAI_CLI_TEST_MACHINE", ROOMY)
         .env("PATH", r2.tools.path())
         .env("FAKE_CALLS", r2.tools.calls())

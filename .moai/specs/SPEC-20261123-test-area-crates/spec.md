@@ -178,4 +178,20 @@ The run time stays about the same because the same tests run. The saving is in c
 
 ## Result
 
-Status: SPEC draft (revision 1), plan only. No code or file move before build 19 is made (leader decision 6961).
+Status: slices 0 and 0b are written and waiting for the independent audit; no test file has moved into an area crate yet. `check affected` does not read area crates yet, so no area slice starts before the second slice of the test-thread-limit work lands and `src/check_affected.rs` can be widened.
+
+What the two slices hold (one tracked table, the scan of it, and the readers that must not drop a moved test):
+
+- `tests/areas.toml` maps every test file to one of the eight areas, and `tests/test_area_layout.rs` scans it.
+- `tools/check_ac_commands.py`, `tools/ci_scope.py`, `src/bundle/verify.rs`, `tests/cargo_env_developer_dir.rs` and `tests/home_isolation_scan.rs` read an area folder as well as the top level.
+- `moai bundle verify` puts the area crate of a changed module on its list, resolves a SPEC's old `--test <name>` to the crate, attributes a failing crate to the heads that touch its folder, and accepts only `[A-Za-z0-9_-]` target names.
+
+Per acceptance criterion:
+
+- AC-1: open — no area is moved, so no area crate runs.
+- AC-2: met — `area_table_maps_every_real_test_file`, `area_table_rejects_a_planted_unmapped_word` and `area_table_rejects_a_planted_file_of_a_moved_area` in `tests/test_area_layout.rs`.
+- AC-3: open — `check affected` is not area-aware yet (REQ-5, REQ-11); it waits for the second slice of the test-thread-limit work.
+- AC-4: met — `area_old_target_name_resolves_to_its_module`, `area_crate_name_with_a_module_filter_passes`, `area_filter_that_selects_nothing_fails` and `area_unknown_target_fails_even_beside_moved_areas` in `tests/ac_command_lint.rs`.
+- AC-5: partial — `scan_list_names_only_existing_targets_and_paths` holds at this head; each area slice must keep it true for the names it moves.
+- AC-6: met — `solo_files_stay_top_level_targets` and `solo_rejects_a_missing_solo_file_and_a_global_state_call_in_a_module` in `tests/test_area_layout.rs`.
+- AC-7: open — the before-and-after build numbers are taken in the first area slice.
