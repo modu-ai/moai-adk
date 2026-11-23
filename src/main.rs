@@ -721,12 +721,11 @@ enum Command {
     },
     /// Print a lane's cargo folders
     ///
-    /// Print a lane's build environment as shell `export` lines (#2841): `CARGO_TARGET_DIR` is
-    /// this worktree's own build folder `~/.moai/build/<project>-<worktree>` (card C-82; made
-    /// with its owner record when missing), and a prepared `CARGO_HOME` (the lane's own, else the
-    /// shared one, else unset). Use it as `e=$(moai lane-env --lane NAME) && eval "$e"`. Raw
-    /// text, not the envelope; a refusal prints nothing on stdout and exits 1, a usage error
-    /// exits 2.
+    /// Print a lane's build environment as shell lines (#2841): `unset CARGO_TARGET_DIR`, so
+    /// cargo builds in this worktree's own `target/` and nothing is made under HOME, and a
+    /// prepared `CARGO_HOME` (the lane's own, else the shared one, else unset). Use it as
+    /// `e=$(moai lane-env --lane NAME) && eval "$e"`. Raw text, not the envelope; a refusal
+    /// prints nothing on stdout and exits 1, a usage error exits 2.
     LaneEnv {
         /// The lane name, as in the claim line (`session=`).
         #[arg(long)]
@@ -2544,15 +2543,7 @@ fn lane_env(lane: &str, base: Option<&std::path::Path>) -> ExitCode {
         .unwrap_or_else(moai_cli::lane_env::default_base);
     let resolved = std::env::current_dir()
         .map_err(|e| format!("lane-env: no working folder: {e}"))
-        .and_then(|cwd| {
-            moai_cli::lane_env::resolve(
-                lane,
-                &base,
-                std::env::var_os("HOME").as_deref(),
-                std::env::var_os("USERPROFILE").as_deref(),
-                &cwd,
-            )
-        });
+        .and_then(|cwd| moai_cli::lane_env::resolve(lane, &base, &cwd));
     match resolved {
         Ok(env) => {
             print!("{}", moai_cli::lane_env::render(lane, &env));

@@ -341,9 +341,11 @@ fn build_folder_rows(
     Ok(rows)
 }
 
-/// C-82: the owner record `tools/build_folder.py env` writes into an agent build folder
-/// (`<HOME>/.moai/build/<project>-<worktree>/`): `schema_version` 1, the repository's
-/// `git_common_dir` and the `worktree` the folder builds, both absolute.
+/// C-82: the owner record that `tools/build_folder.py env` (and, until 2026-11-23, `lane-env`)
+/// wrote into an agent build folder (`<HOME>/.moai/build/<project>-<worktree>/`):
+/// `schema_version` 1, the repository's `git_common_dir` and the `worktree` the folder builds,
+/// both absolute. Only read now: builds run in each worktree's own `target/`, and the folders
+/// that remain are listed here for the user to pick from.
 pub const AGENT_BUILD_RECORD: &str = ".moai-build.json";
 
 /// The longest owner record read; a longer file counts as no record.
@@ -473,8 +475,14 @@ fn agent_build_rows(
                 .collect();
             (cargo, other)
         };
+        // A folder that holds only its owner record is what the retired `lane-env` left once
+        // builds moved into each worktree's own `target/`: its one trim path is the record.
+        let marker_only = why != "symlink"
+            && cargo.is_empty()
+            && other.is_empty()
+            && !reasons.contains(&"no_owner_record");
         if why != "symlink" {
-            if cargo.is_empty() {
+            if cargo.is_empty() && !marker_only {
                 reasons.push("not_cargo_output");
             }
             if !other.is_empty() {
@@ -503,15 +511,20 @@ fn agent_build_rows(
             "why": why,
             "reasons": reasons,
             "worktree": worktree,
-            "trim_paths": cargo.iter().map(|c| c.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default()).collect::<Vec<_>>(),
+            "marker_only": marker_only,
+            "trim_paths": if marker_only {
+                vec![AGENT_BUILD_RECORD.to_string()]
+            } else {
+                cargo.iter().map(|c| c.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default()).collect::<Vec<_>>()
+            },
             "preserved": other,
             "bytes": bytes,
             "bytes_partial": partial,
             "modified_unix": modified,
             "age_secs": modified.map(|t| now.saturating_sub(t)),
             "retention_until_unix": Value::Null,
-            "restore": "cargo rebuilds it on the next build with CARGO_TARGET_DIR set to this folder",
-            "apply": "only after the user picks this row: delete its cargo output (workflows/run.md; in the moai-adk repository `tools/build_folder.py remove`)",
+            "restore": "nothing needs this folder: builds run in each worktree's own target/, so a rebuild there is an ordinary cargo build",
+            "apply": "only after the user picks this row: delete its trim paths (its cargo output, or the owner record of a marker-only folder); this preview deletes nothing",
         }));
     }
     (rows, warnings)
