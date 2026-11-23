@@ -201,6 +201,8 @@ fn text_of(out: &std::process::Output) -> String {
 const AUDIT_RUNNER: &str = r#"
 import os, runpy, sys
 root, report, script = sys.argv[1:4]
+# The separator keeps a sibling folder that shares the root's name as a prefix out of the count.
+prefix = root.rstrip(os.sep) + os.sep
 sys.argv = [script] + sys.argv[4:]
 SPAWN = ("subprocess.Popen", "os.system", "os.exec", "os.posix_spawn", "os.spawn", "os.fork", "os.forkpty")
 lines = []
@@ -212,7 +214,7 @@ def hook(event, args):
         if isinstance(path, int) or not isinstance(args[1], str):
             return
         path = os.fsdecode(path)
-        if path.startswith(root) and path != script:
+        if path.startswith(prefix) and path != script:
             lines.append("open " + path)
     elif event in SPAWN:
         lines.append("spawn " + event)
@@ -411,6 +413,19 @@ fn the_audit_counter_sees_a_process_a_second_read_a_stray_read_and_a_silent_run(
     let stray_path = format!("{root}/secret.txt");
     let stray = run_script("stray.py", &format!("open('{stray_path}').read()\n"));
     assert_eq!(outside_opens(&stray.opened, &root), vec![&stray_path]);
+
+    // A folder next to the root whose name starts with the root's name is not under the root.
+    let sibling = format!("{root}-sibling");
+    fs::create_dir_all(&sibling).unwrap();
+    let sibling_file = format!("{sibling}/note.txt");
+    fs::write(&sibling_file, "x\n").unwrap();
+    let beside = run_script("beside.py", &format!("open('{sibling_file}').read()\n"));
+    fs::remove_dir_all(&sibling).unwrap();
+    assert!(
+        beside.opened.is_empty(),
+        "a sibling folder with the root's name as a prefix is not counted: {:?}",
+        beside.opened
+    );
 
     let silent = run_script(
         "silent.py",

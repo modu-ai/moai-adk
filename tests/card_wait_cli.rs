@@ -355,13 +355,19 @@ fn a_ledger_held_at_the_start_counts_in_the_wait() {
     let lock = Lock::take(&w);
     let started = Instant::now();
     let child = w.spawn_wait(&["--card", "C-1", "--timeout", "1s", "--every", "1s"]);
-    // The start read waits for the lock (the ledger's own limit is 5 s, so the 2.5 s hold leaves
-    // it room under load), and the wait ends as a timeout once it is free. The order of the clock
-    // and the start read is pinned without a clock by the unit test
+    // The start read waits for the lock and the wait ends as a timeout once it is free. The order
+    // of the clock and the start read is pinned without a clock by the unit test
     // `a_start_read_that_used_up_the_timeout_leaves_one_poll` in src/card/wait.rs; this test only
-    // checks that the wired command reports the time spent at the start. Every bound here is a
-    // lower one, which load can only make easier to meet.
-    std::thread::sleep(Duration::from_millis(2500));
+    // checks that the wired command reports the time spent at the start.
+    //
+    // `waited_secs` is measured from the moment the child reaches `run_wait`, not from the spawn,
+    // so it is the 3.5 s hold minus the child's start delay (process start and the project lookup).
+    // The `>= 2` bound therefore holds while that delay stays under 1.5 s; a slower start makes
+    // the test fail, and only a longer hold would make room for it. The hold is kept under the
+    // ledger's own 5 s busy limit (`BUSY_TIMEOUT`): a child that waits the whole hold gives up
+    // only if this thread oversleeps by more than 1.5 s. The timeout stays 1 s so that a
+    // wait that starts its clock after the start read (about 1 s) still falls under the bound.
+    std::thread::sleep(Duration::from_millis(3500));
     lock.release();
     let out = finish(child, started + HARD_LIMIT);
     let r = result(&out);
