@@ -554,7 +554,9 @@ fn ac7_a_branch_that_moved_or_was_checked_out_after_the_digest_check_is_refused(
     let fx = fixture();
     let plan = fx.plan();
     let digest = plan["plan_digest"].as_str().unwrap().to_string();
-    let moved_to = fx.tip("feat/open");
+    // A tip that is merged too, so `git branch -d` alone would delete the moved branch: only
+    // the re-check of the planned tip keeps it.
+    let moved_to = fx.tip("integ");
     let project = fx.project.clone();
     let wt = fx.wts.join("late");
     let v = moai_cli::branch_gc::apply(
@@ -589,8 +591,25 @@ fn ac7_a_branch_that_moved_or_was_checked_out_after_the_digest_check_is_refused(
             .unwrap_or_else(|| panic!("no result for {b}: {v}"))["status"]
             .clone()
     };
+    let detail = |b: &str| {
+        v["results"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|r| r["branch"] == json!(b))
+            .unwrap()["detail"]
+            .as_str()
+            .unwrap_or_default()
+            .to_string()
+    };
     assert_eq!(status("feat/at-base"), json!("refused"), "{v}");
+    assert!(detail("feat/at-base").contains("tip moved"), "{v}");
     assert_eq!(status("release/x"), json!("refused"), "{v}");
+    // Git would refuse a checked-out branch too, with its own words; ours came first.
+    assert!(
+        detail("release/x").contains("a worktree has the branch checked out"),
+        "{v}"
+    );
     assert_eq!(status("feat/done"), json!("deleted"), "{v}");
     assert_eq!(v["status"], json!("partial"), "{v}");
     let have = fx.branches();
