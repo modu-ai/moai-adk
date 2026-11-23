@@ -817,11 +817,20 @@ pub(super) fn git_output(dir: &Path, args: &[&str]) -> Option<String> {
 /// warning means the list is incomplete (SPEC-20261122-test-defects-session-reclaim REQ-9).
 pub(super) fn git_entries(dir: &Path, args: &[&str]) -> Option<Vec<String>> {
     let out = git_run(dir, args)?;
-    if !out.stderr.is_empty() {
+    if first_unexpected_line(&out.stderr).is_some() {
         return None;
     }
     let status = args.first() == Some(&"status");
     Some(split_entries(&String::from_utf8_lossy(&out.stdout), status))
+}
+
+/// The first line git wrote on its standard error, which is no noise line.
+fn first_unexpected_line(stderr: &[u8]) -> Option<String> {
+    String::from_utf8_lossy(stderr)
+        .lines()
+        .map(str::trim)
+        .find(|l| !l.is_empty())
+        .map(str::to_string)
 }
 
 /// Splits `-z` output into entries. In `git status` output a renamed or copied entry (`R` or
@@ -877,6 +886,97 @@ mod tests {
             ["R  x.rs", "C  y.rs"]
         );
         assert!(split_entries("", true).is_empty());
+    }
+
+    /// SPEC-20261122-test-defects-session-reclaim AC-14 (REQ-18): the line a refusal carries is
+    /// the first one git wrote that is no noise line, whatever stands before it.
+    #[test]
+    fn the_refusal_names_the_first_line_git_wrote() {
+        let warn = "warning: could not open directory 'a/': Permission denied";
+        assert_eq!(first_unexpected_line(b""), None);
+        assert_eq!(first_unexpected_line(b"\n  \n"), None);
+        let two = format!("{warn}\nwarning: another\n");
+        assert_eq!(first_unexpected_line(two.as_bytes()).as_deref(), Some(warn));
+        let noise_first = format!("we!rd is not a valid attribute name: .gitattributes:1\n{warn}\n");
+        assert_eq!(
+            first_unexpected_line(noise_first.as_bytes()).as_deref(),
+            Some(warn)
+        );
+    }
+
+    /// AC-15 (REQ-19): the one noise shape is a name that is not a valid attribute name, with the
+    /// file and the line it stands on; a line that only looks like it is still a warning.
+    #[test]
+    fn a_noise_line_is_not_a_warning() {
+        for noise in [
+            "we!rd is not a valid attribute name: .gitattributes:1\n",
+            "x is not a valid attribute name: sub dir/.gitattributes:12\n",
+        ] {
+            assert_eq!(first_unexpected_line(noise.as_bytes()), None, "{noise}");
+        }
+        for look_alike in [
+            "is not a valid attribute name\n",
+            "we!rd is not a valid attribute name: .gitattributes\n",
+            "we!rd is not a valid attribute name: .gitattributes:x\n",
+            "we!rd is not a valid attribute name: :3\n",
+            "warning: could not open directory 'x/': Permission denied\n",
+        ] {
+            assert!(
+                first_unexpected_line(look_alike.as_bytes()).is_some(),
+                "{look_alike}"
+            );
+        }
+    }
+
+    /// One git command in `dir` with a fixture identity; the test fails when git does.
+    fn fixture_git(dir: &Path, args: &[&str]) {
+        let out = std::process::Command::new("git")
+            .args(["-c", "user.name=fixture", "-c", "user.email=fixture@example.invalid"])
+            .args(["-c", "commit.gpgsign=false", "-c", "core.excludesFile=/dev/null"])
+            .arg("-C")
+            .arg(dir)
+            .args(args)
+            .env("GIT_CONFIG_GLOBAL", "/dev/null")
+            .env("GIT_CONFIG_SYSTEM", "/dev/null")
+            .output()
+            .unwrap();
+        assert!(
+            out.status.success(),
+            "git {args:?}: {}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+    }
+
+    /// AC-17 (REQ-22, REQ-23): a recorded folder that lost its `.git` inside a checkout that
+    /// ignores it is not clean because that checkout is: the gate refuses it as unreadable and
+    /// names the checkout git finds. A checkout of its own is still judged by itself.
+    #[test]
+    fn a_folder_that_lost_its_git_is_not_judged_by_the_checkout_around_it() {
+        let tmp = tempfile::tempdir().unwrap();
+        let base = tmp.path().canonicalize().unwrap();
+        let (bare, outer) = (base.join("remote.git"), base.join("outer"));
+        for d in [&bare, &outer] {
+            std::fs::create_dir_all(d).unwrap();
+        }
+        fixture_git(&bare, &["init", "-q", "--bare", "-b", "main"]);
+        fixture_git(&outer, &["init", "-q", "-b", "main"]);
+        std::fs::write(outer.join(".gitignore"), "lost/\n").unwrap();
+        fixture_git(&outer, &["add", ".gitignore"]);
+        fixture_git(&outer, &["commit", "-q", "-m", "ignore the folder"]);
+        fixture_git(&outer, &["remote", "add", "origin", bare.to_str().unwrap()]);
+        fixture_git(&outer, &["push", "-q", "origin", "main"]);
+        let lost = outer.join("lost");
+        std::fs::create_dir_all(&lost).unwrap();
+        std::fs::write(lost.join("work.txt"), "x\n").unwrap();
+
+        let err = worktree_gate(&outer, Some(lost.to_str().unwrap())).unwrap_err();
+        assert!(err.contains("worktree unknown"), "{err}");
+        assert!(err.contains("not the top of a git checkout"), "{err}");
+        assert!(err.contains(outer.to_str().unwrap()), "{err}");
+
+        fixture_git(&base, &["clone", "-q", bare.to_str().unwrap(), "own"]);
+        let own = base.join("own");
+        assert_eq!(worktree_gate(&outer, Some(own.to_str().unwrap())), Ok(()));
     }
     use std::collections::HashMap;
 
