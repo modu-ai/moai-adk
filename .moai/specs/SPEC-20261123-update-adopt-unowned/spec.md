@@ -2,7 +2,7 @@
 id: SPEC-20261123-update-adopt-unowned
 title: "moai update adopts an unowned skill folder whose files match the package or an earlier generation, and finds the version folders under either state name"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-23
 ---
 
@@ -51,7 +51,7 @@ Readers: the person who runs `moai update` on a HOME with a hand-copied or forei
 ## Acceptance
 
 - AC-1 (REQ-1, REQ-4): in a temporary HOME whose skill folder is a byte copy of the package and has no receipt, the preview shows the host not blocked with every file adopted from the package, and the skill folder, the receipts and the backups are byte for byte as before. · verify: `cargo nextest run --locked --offline --test update_adopt_cli`
-- AC-2 (REQ-2, REQ-3): a skill folder copied from an earlier version folder's package shows each file adopted with that generation and the rest of the plan as `update`; one file edited by the user keeps the host blocked with nothing adopted and names the file; a build outside the layout and a linked version folder lend no generation, so the same folder stays blocked. · verify: `cargo nextest run --locked --offline --test update_adopt_cli`
+- AC-2 (REQ-2, REQ-3): a skill folder copied from an earlier version folder's package shows each file adopted with that generation and the rest of the plan as `update`; one file edited by the user keeps the host blocked with nothing adopted and names the file; a build outside the layout, a linked version folder, a version folder whose `skills` or `skills/moai` is a link, and a sibling folder that holds the same path with other bytes than the user's file lend no generation, so the same folder stays blocked and the user's bytes are still there after a confirmed run; with two earlier folders that disagree on a file, the file is adopted from the folder whose bytes it equals. · verify: `cargo nextest run --locked --offline --test update_adopt_cli`
 - AC-3 (REQ-5, REQ-6, REQ-7): `moai update --confirm <plan_digest>` creates one backup folder holding the manifest and a copy of each adopted file, then the receipt owns them, and the skill folder equals the package. A file changed after the preview is refused by the confirmed run and nothing is written. · verify: `cargo nextest run --locked --offline --test update_adopt_cli`
 - AC-4 (REQ-8): after the confirmed run, a second preview lists no adoption, does not block the host and has nothing to apply. · verify: `cargo nextest run --locked --offline --test update_adopt_cli`
 - AC-5 (REQ-9, REQ-10, REQ-11): with the binary in the HOME's `.moai/versions/a/bin/` folder on a HOME whose state folder is `.moai-cli`, `bin-names-plan` is not `outside_layout`, and the update plan reads the receipt of a sibling version folder as its baseline; a binary elsewhere is `outside_layout` and the reason names both folders. · verify: `cargo nextest run --locked --offline --test update_adopt_cli --test bin_names_cli`
@@ -77,6 +77,7 @@ Readers: the person who runs `moai update` on a HOME with a hand-copied or forei
 
 - A hash match is evidence that a file is ours, not that nobody meant to keep it. The adoption writes no skill byte; the later update of an earlier-generation file keeps a known-good copy, and the backup folder holds every adopted file.
 - Reading many version folders and receipts costs time. The reads are bounded by the same limits as the projection scan, and a folder or receipt that cannot be read lends nothing.
+- A run that ends after the adoption backup is complete and before the receipt is written leaves a `<stamp>-claude-adopt` folder that no receipt names. Nothing records or removes it; the next confirmed run makes a second backup of the same files. Nothing is lost (the adopted files are still in place and in the backup), and a person may delete the older orphan after reading its `MANIFEST.json`. A later card may record and clean it.
 - Accepting `~/.moai/versions` on a HOME with a Go-generation `~/.moai` only takes the folder the running binary really sits in; no other path under it is read for layout.
 
 ## Decisions
@@ -101,4 +102,6 @@ Readers: the person who runs `moai update` on a HOME with a hand-copied or forei
 - AC-3 met: `the_confirmed_run_backs_up_then_owns_the_adopted_files`, `a_file_changed_after_the_preview_is_refused_and_nothing_is_written`.
 - AC-4 met: `the_next_update_lists_no_adoption_and_does_not_block`.
 - AC-5 met: `a_binary_in_the_moai_versions_folder_is_inside_the_layout`, `a_binary_elsewhere_is_outside_the_layout_and_the_reason_names_both_folders`, `the_receipt_of_a_sibling_folder_under_moai_versions_is_the_baseline`.
+- Audit repair (two blocking findings, same branch): B1, the earlier-generation read followed a `skills` link inside a sibling version folder (only the `versions/<name>` folder and the last path step were refused), so bytes outside the folder could make a user's file ours and the confirmed run rewrote it. `earlier_generations` now requires both `versions/<name>` and `versions/<name>/skills` to be plain folders (`is_plain_dir`, `symlink_metadata`); `source_files` still refuses a link at `skills/moai` and inside it. B2, nothing pinned the sha256 comparison of an earlier generation: a mutant that takes any generation's bytes for the same path (`by_sha.values().next()` in place of `by_sha.get(current)`) left every adopt test green. New tests in `update_adopt_cli`: `a_linked_skills_folder_inside_an_earlier_version_folder_lends_nothing` (failed before the repair: the preview adopted 46 files and the confirmed run rewrote `SKILL.md`), `a_linked_package_folder_inside_an_earlier_version_folder_lends_nothing`, `a_user_edit_of_a_path_an_earlier_version_folder_has_is_not_adopted` (fails on the mutant, passes on the code), `a_file_equal_to_the_second_of_two_earlier_generations_names_that_generation`. `update_adopt_cli` now runs 15, 15 passed.
+- Non-blocking notes of the audit: an adoption backup left without a receipt is written down under Risks (N1); the module comment of `src/bin_names.rs` names both state folders (N3). The race just before the receipt (N2) stays untested.
 - Not tested: the second check of an adopted file just before the receipt commits (a race inside one apply; the stale-plan refusal at the start is tested). The real HOME was not read or written by any test or run.

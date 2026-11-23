@@ -289,6 +289,11 @@ fn current_layout(canonical_home: &Path) -> Option<(PathBuf, PathBuf)> {
     layout_folder(canonical_home, &crate::install::identity_exe(exe))
 }
 
+/// A folder that is itself a folder, not a link to one (the link is not followed).
+fn is_plain_dir(path: &Path) -> bool {
+    fs::symlink_metadata(path).is_ok_and(|m| m.is_dir())
+}
+
 /// The files earlier generations of this tool put into a skill folder: the package of every
 /// other version folder next to this build's own, `<versions>/<v>/skills/moai`. Like the
 /// receipts of such a folder (#2521), they are read only for a build inside the layout; a link
@@ -309,11 +314,15 @@ fn earlier_generations(canonical_home: &Path) -> Generations {
         .filter(|n| n.as_os_str() != own.as_os_str())
         .take(GENERATION_FOLDERS)
     {
+        // Every step down to the package is a plain folder, never a link: `source_files` refuses a
+        // link at the package folder and inside it, so the two folders above it are checked here.
+        // A link in any of them would hand over bytes that live outside the version folder.
         let folder = versions.join(&name);
-        if !fs::symlink_metadata(&folder).is_ok_and(|m| m.is_dir()) {
+        let skills = folder.join("skills");
+        if !is_plain_dir(&folder) || !is_plain_dir(&skills) {
             continue;
         }
-        let Ok(files) = source_files(&folder.join("skills").join(SKILL_DIR)) else {
+        let Ok(files) = source_files(&skills.join(SKILL_DIR)) else {
             continue;
         };
         for f in files {
