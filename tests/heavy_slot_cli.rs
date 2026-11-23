@@ -1360,7 +1360,7 @@ fn the_python_tool_and_the_command_take_turns_in_one_folder() {
 }
 
 /// B2 of audit 6855554250: without `--dir` the command and the Python tool resolve the same
-/// default folder `${XDG_CACHE_HOME:-~/.cache}/moai-cli/heavy-slots` — with the variable set,
+/// default folder `${XDG_CACHE_HOME:-~/.cache}/moai/heavy-slots` — with the variable set,
 /// set but empty (both fall back to `~/.cache`; an empty value must not become a folder
 /// relative to the working directory), and unset — and take turns in it. HOME, the cache
 /// variable and the working directory are all temporary; the real HOME is never read.
@@ -1372,8 +1372,8 @@ fn without_dir_both_tools_use_the_same_default_folder() {
         let work = tempfile::tempdir().unwrap();
         let m = tempfile::tempdir().unwrap();
         let expected = match case {
-            "set" => xdg.path().join("moai-cli/heavy-slots"),
-            _ => home.path().join(".cache/moai-cli/heavy-slots"),
+            "set" => xdg.path().join("moai/heavy-slots"),
+            _ => home.path().join(".cache/moai/heavy-slots"),
         };
         let env = |c: &mut Command| {
             c.clean_env()
@@ -1422,8 +1422,13 @@ fn without_dir_both_tools_use_the_same_default_folder() {
             expected.display()
         );
         assert!(
-            !work.path().join("moai-cli").exists(),
+            !work.path().join("moai").exists() && !work.path().join("moai-cli").exists(),
             "{case}: a folder relative to the working directory was used"
+        );
+        let cache = expected.parent().unwrap().parent().unwrap();
+        assert!(
+            !cache.join("moai-cli").exists(),
+            "{case}: something was made under the earlier folder"
         );
 
         let mut py = Command::new("python3");
@@ -1446,6 +1451,181 @@ fn without_dir_both_tools_use_the_same_default_folder() {
         assert!(y.status.success(), "{case}: {}", text(&y));
         assert!(s2.exists(), "{case}: the python command never ran");
     }
+}
+
+/// Runs `args` of the product with a temporary HOME and `XDG_CACHE_HOME`, so the default slot
+/// folder is `<cache>/moai/heavy-slots` and the real HOME cache is never read.
+fn default_folder_run(home: &Path, cache: &Path, args: &[&str]) -> Output {
+    let mut c = Command::new(EXE);
+    c.clean_env()
+        .env("PATH", std::env::var_os("PATH").unwrap_or_default())
+        .env("HOME", home)
+        .env("XDG_CACHE_HOME", cache)
+        .env("MOAI_CLI_TEST_MACHINE", ROOMY)
+        .args(args);
+    run(c)
+}
+
+/// The `result` of `heavy-slot-status` of the default folder.
+fn default_status(home: &Path, cache: &Path) -> Value {
+    let out = default_folder_run(home, cache, &["heavy-slot-status"]);
+    assert!(out.status.success(), "{}", text(&out));
+    serde_json::from_slice::<Value>(&out.stdout).unwrap()["result"].clone()
+}
+
+/// Every file under `folder` with its bytes, in name order: what "untouched" means below.
+fn snapshot(folder: &Path) -> Vec<(PathBuf, Vec<u8>)> {
+    let mut all = Vec::new();
+    let mut todo = vec![folder.to_path_buf()];
+    while let Some(d) = todo.pop() {
+        for e in fs::read_dir(&d).unwrap() {
+            let p = e.unwrap().path();
+            if p.is_dir() {
+                todo.push(p);
+            } else {
+                all.push((p.clone(), fs::read(&p).unwrap()));
+            }
+        }
+    }
+    all.sort();
+    all
+}
+
+/// The default slot folder is the `moai` folder of the cache: an acquire without `--dir` makes
+/// `<cache>/moai/heavy-slots/slot-0` and nothing under `<cache>/moai-cli`.
+#[test]
+fn the_default_folder_is_moai_and_nothing_is_made_under_the_earlier_one() {
+    let (home, cache) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+    let out = default_folder_run(
+        home.path(),
+        cache.path(),
+        &["heavy-slot-acquire", "--max", "1", "--name", "t", "--", "true"],
+    );
+    assert!(out.status.success(), "{}", text(&out));
+    assert!(
+        cache.path().join("moai/heavy-slots/slot-0").is_file(),
+        "no slot in the moai folder"
+    );
+    assert!(
+        !cache.path().join("moai-cli").exists(),
+        "something was made under the earlier folder"
+    );
+    assert_eq!(
+        default_status(home.path(), cache.path())["folder"],
+        cache.path().join("moai/heavy-slots").display().to_string()
+    );
+}
+
+/// The earlier folder's `limits.json` is the machine owner's safety limit: it is read (never
+/// written) only while the default folder holds none, by the same rules, and only for the
+/// default folder.
+#[test]
+fn the_earlier_limits_file_is_read_until_the_new_folder_has_one() {
+    let (home, cache) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+    let earlier = cache.path().join("moai-cli/heavy-slots");
+    let newer = cache.path().join("moai/heavy-slots");
+    fs::create_dir_all(&earlier).unwrap();
+    fs::write(earlier.join("limits.json"), "{\"max\": 1}").unwrap();
+    let before = snapshot(&earlier);
+
+    // Only the earlier folder has a file: its `max` is the slot count.
+    let st = default_status(home.path(), cache.path());
+    assert_eq!(st["build_jobs_cap"]["slots"], 1, "{st}");
+    assert!(!cache.path().join("moai").exists(), "status made a folder");
+
+    // The default folder's own file wins once it exists.
+    fs::create_dir_all(&newer).unwrap();
+    fs::write(newer.join("limits.json"), "{\"max\": 2}").unwrap();
+    let st = default_status(home.path(), cache.path());
+    assert_eq!(st["build_jobs_cap"]["slots"], 2, "{st}");
+    fs::remove_file(newer.join("limits.json")).unwrap();
+
+    // Another folder named by `--dir` never reads the earlier file.
+    let other = tempfile::tempdir().unwrap();
+    assert_eq!(
+        status(other.path())["build_jobs_cap"]["slots"],
+        3,
+        "--dir read the earlier folder's limits"
+    );
+
+    // The earlier folder is exactly as the fixture made it after all the reads above.
+    assert_eq!(
+        snapshot(&earlier),
+        before,
+        "something under the earlier folder changed"
+    );
+
+    // An earlier file that breaks the rules refuses a run in the default folder, as it would
+    // in the new folder: exit 125 and the command did not run.
+    fs::write(earlier.join("limits.json"), "{\"bogus\": 1}").unwrap();
+    let ran = cache.path().join("ran");
+    let out = default_folder_run(
+        home.path(),
+        cache.path(),
+        &[
+            "heavy-slot-acquire",
+            "--name",
+            "t",
+            "--",
+            "touch",
+            &ran.display().to_string(),
+        ],
+    );
+    assert_eq!(out.status.code(), Some(125), "{}", text(&out));
+    assert!(!ran.exists(), "the command ran under a refused limits file");
+    assert!(
+        text(&out).contains("limits.json"),
+        "the refusal names no file: {}",
+        text(&out)
+    );
+}
+
+/// `heavy-slot-status` of the default folder shows the slots an older build still holds in the
+/// earlier folder (`earlier_folder`), so a person can see whether every lane has switched; a
+/// default folder without an earlier one, and a run with `--dir`, carry no such key.
+#[test]
+fn status_lists_the_slots_held_in_the_earlier_folder() {
+    let (home, cache) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+    let st = default_status(home.path(), cache.path());
+    assert!(
+        st.get("earlier_folder").is_none(),
+        "a key without an earlier folder: {st}"
+    );
+
+    let earlier = cache.path().join("moai-cli/heavy-slots");
+    let m = tempfile::tempdir().unwrap();
+    let (s1, r1) = (m.path().join("s1"), m.path().join("r1"));
+    let mut c = acquire(&earlier, "1", "old-build", &["sh", "-c", &hold(&s1, &r1)]);
+    c.stdout(Stdio::piped()).stderr(Stdio::piped());
+    let holder = spawn(c);
+    wait_for("the old build holds its slot", || s1.exists());
+
+    let st = default_status(home.path(), cache.path());
+    assert_eq!(
+        st["earlier_folder"]["folder"],
+        earlier.display().to_string(),
+        "{st}"
+    );
+    let held = st["earlier_folder"]["held"].as_array().unwrap();
+    assert_eq!(held.len(), 1, "{st}");
+    assert_eq!(held[0]["name"], "old-build", "{st}");
+    assert!(
+        st["held"].as_array().unwrap().is_empty(),
+        "the earlier slot shows as held in the new folder: {st}"
+    );
+    assert!(
+        status(&earlier).get("earlier_folder").is_none(),
+        "--dir carries the key"
+    );
+
+    fs::write(&r1, "").unwrap();
+    assert!(holder.finish().status.success());
+    let st = default_status(home.path(), cache.path());
+    assert_eq!(
+        st["earlier_folder"]["held"].as_array().map(Vec::len),
+        Some(0),
+        "{st}"
+    );
 }
 
 /// A repository `<root>/repo` with the worktrees `wt-one`, `wt-two` and `repo/.claude/worktrees/
