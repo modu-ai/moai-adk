@@ -143,6 +143,17 @@ fn valid_input(event: &str) -> Vec<u8> {
         .into_bytes()
 }
 
+/// A valid JSON object of exactly `len` bytes whose text holds `SECRETMARKER`.
+fn object_of_len(len: usize) -> Vec<u8> {
+    let head = br#"{"k":"SECRETMARKER"#;
+    let tail = br#""}"#;
+    let mut v = head.to_vec();
+    v.extend(std::iter::repeat_n(b'x', len - head.len() - tail.len()));
+    v.extend_from_slice(tail);
+    assert_eq!(v.len(), len);
+    v
+}
+
 fn receipt_lines(path: &Path) -> Vec<String> {
     match fs::read_to_string(path) {
         Ok(text) => text.lines().map(str::to_owned).collect(),
@@ -265,12 +276,7 @@ fn ac3_claude_project_dir_wins_over_the_working_folder() {
 /// name, a reason word and a time, and none of the input bytes.
 #[test]
 fn ac4_bad_input_adds_one_receipt_line_without_the_input() {
-    let big = {
-        let mut v = br#"{"k":"SECRETMARKER"#.to_vec();
-        v.extend(std::iter::repeat_n(b'x', STDIN_CAP));
-        v.extend_from_slice(br#""}"#);
-        v
-    };
+    let big = object_of_len(STDIN_CAP + 1);
     let cases: Vec<(&str, Vec<u8>, &str)> = vec![
         ("empty", Vec::new(), "not_json"),
         ("text", b"SECRETMARKER not json".to_vec(), "not_json"),
@@ -311,6 +317,40 @@ fn ac4_bad_input_adds_one_receipt_line_without_the_input() {
             !text.contains("SECRETMARKER"),
             "the input must not reach the receipt"
         );
+    }
+}
+
+/// AC-4: the stdin limit is the 4 MiB itself: an object of exactly 4194304 bytes is accepted
+/// without a receipt, and one more byte is the "too large" failure.
+#[test]
+fn ac4_the_stdin_limit_takes_exactly_the_limit_and_refuses_one_more() {
+    assert_eq!(STDIN_CAP, 4_194_304);
+    for name in NAMES {
+        let fx = Fx::new(true, true);
+        let at_limit = fx.hook(name, &object_of_len(STDIN_CAP));
+        assert_eq!(
+            (
+                at_limit.code,
+                at_limit.stdout.as_str(),
+                at_limit.stderr.as_str()
+            ),
+            (0, "", ""),
+            "{name} at the limit"
+        );
+        assert!(
+            receipt_lines(&fx.receipt()).is_empty(),
+            "{name}: an input of exactly the limit is not a failure"
+        );
+        let over = fx.hook(name, &object_of_len(STDIN_CAP + 1));
+        assert_eq!(
+            (over.code, over.stdout.as_str(), over.stderr.as_str()),
+            (0, "", ""),
+            "{name} one byte over"
+        );
+        let lines = receipt_lines(&fx.receipt());
+        assert_eq!(lines.len(), 1, "{name}: one byte over is one receipt line");
+        let v: Value = serde_json::from_str(&lines[0]).unwrap();
+        assert_eq!(v["reason"], "stdin_too_large", "{name}");
     }
 }
 

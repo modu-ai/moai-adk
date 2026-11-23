@@ -4,7 +4,8 @@
 //!
 //! Two cases are measured per run: a working folder that is not a MoAI project, and a MoAI
 //! project with a registered project folder under a temporary HOME. The folders are made under
-//! the system temporary folder and removed afterwards; the real HOME is never read. With
+//! the system temporary folder and only the folder this run made is removed afterwards; the real
+//! HOME is never read. With
 //! `--values` the tool only summarises the given numbers and starts nothing.
 
 use serde_json::{json, Value};
@@ -146,21 +147,18 @@ fn fixture(name: &str) -> Vec<u8> {
 }
 
 fn measure(bin: &Path, name: &str, samples: usize) -> Result<Vec<Value>, String> {
-    let nanos = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map_or(0, |d| d.as_nanos());
-    let root =
-        std::env::temp_dir().join(format!("moai-hook-latency-{}-{nanos}", std::process::id()));
-    let result = measure_in(&root, bin, name, samples);
-    // The folder was made by this call just above, under the temporary folder.
-    let _ = fs::remove_dir_all(&root);
-    result
+    // The folder is made new by this call and removed when `root` is dropped; a folder that was
+    // already there is never touched, and a failure to make it removes nothing.
+    let root = tempfile::Builder::new()
+        .prefix("moai-hook-latency-")
+        .tempdir()
+        .map_err(|e| format!("cannot prepare the measuring folders: {e}"))?;
+    measure_in(root.path(), bin, name, samples)
 }
 
 fn measure_in(root: &Path, bin: &Path, name: &str, samples: usize) -> Result<Vec<Value>, String> {
     let (plain, project, home) = (root.join("plain"), root.join("project"), root.join("home"));
     let made = (|| -> std::io::Result<()> {
-        fs::create_dir(root)?;
         fs::create_dir_all(&plain)?;
         fs::create_dir_all(project.join(".moai"))?;
         fs::write(
