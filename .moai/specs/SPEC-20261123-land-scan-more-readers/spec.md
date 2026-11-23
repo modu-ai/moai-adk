@@ -87,4 +87,17 @@ created: 2026-11-24
 
 ## Result
 
-(to be written after the work)
+Task: widen the reader scan of `tests/repo_scans_table.rs` (D-1 to D-3), add the table entries of `tools/repo_scans.json`, keep `e2e_temp_home_cli` under a live-tree check (D-4). Approval: the leader's note 7639 (option A). Changed paths: this SPEC, `tests/repo_scans_table.rs`, `tools/repo_scans.json`. Order of the work: RED tests (commit `6dfa1572f2`, 22 passed and 5 failed of 27), finder (`49c2c09bf5`, 25 passed and 2 failed: the two table tests, intended until the table), table (after the merge of NeXT `466b59fc62`, 51 of 51 passed on `repo_scans_table` and `repo_scans_cli`).
+
+- AC-1: met — `include_bytes_is_read_like_include_str` passes: `../install/zz.sh` and `../src/zz.rs` are found, a literal with no `..` and one that stays inside `tests/` are skipped. RED before the finder: it failed.
+- AC-2: met — `file_read_paths_counts_a_file_with_no_read_call` passes: a file with `CARGO_MANIFEST_DIR` and a spelled `skills/moai` has the path found, the same text with `CARGO_MANIFEST_DIR` replaced is no reader. RED before the finder: it failed.
+- AC-3: met — `file_read_paths_counts_the_tools_folder_next_to_an_interpreter` passes: `"python3"`, `"bash"` and `"sh"` each make `tools` found, the same file without an interpreter literal or without `CARGO_MANIFEST_DIR` does not. RED before the finder: it failed.
+- AC-4: met — `the_more_readers_in_the_live_tree_are_found` passes on the tree: `statusline_golden`, `atlas_three_arm`, `ui_summary_terminal_cli` and `e2e_temp_home_cli` as file readers, `update_switch_layer` and `update_switch_cli` (preview file and `moai-switch.sh`) as `include` readers. Tails are compared with `ends_with`, because a whole tracked path spelled in this file would make it a reader of that path (the first RED run failed that way and moved to tails).
+- AC-5: met — `every_file_reader_has_an_always_scan_or_an_exemption`, `every_include_str_reader_of_a_repository_file_has_an_always_scan` and `every_always_scan_runs_the_readers_it_names` pass on the merge tree. Before the table both of the first two were red with exactly the seven pairs: `atlas_three_arm`, `claude_python_adapter_removed` and `statusline_golden` (tools), `ui_summary_terminal_cli` (skills/moai), `update_switch_cli` twice and `update_switch_layer` (include).
+- AC-6: met — `a_planted_shape_without_a_scan_is_named_and_a_scan_clears_it` passes: each of the three shapes with no scan is named as `<file> reads <path>`, and an `always` scan that names the file and holds the path in its scope clears it.
+- AC-7: met — guard mutants, each applied to the committed tree, run with `--test repo_scans_table` and restored (`git status` clean after): M1 the `include_bytes!` open dropped (exit 100, 3 failed), M2 the read-call gate put back (100, 4), M3 the `tools` rule off (100, 4), M4 the `ui_summary_terminal_cli` rule deleted from `reads-skills` (100, 1).
+
+Repairs and notes:
+- Table: `reads-tools` got `atlas_three_arm`, `claude_python_adapter_removed` and `statusline_golden` (rules and `--test`) and a scope item `tools`; `reads-skills` got `ui_summary_terminal_cli`; `reads-moai-state` got `update_switch_cli` and `update_switch_layer` and a scope item `install/moai-switch.sh`.
+- Exemptions that the wider finder made necessary: `tests/check_pipeline_config.rs` (`tools` is a folder of the temporary project it builds) and `tests/repo_scans_table.rs` (`tools` is a fixture literal), each with its reason in `FILE_READ_EXEMPT`; `file_read_exemptions_are_readers_with_a_reason_once` holds both.
+- Not done: nothing of the card is left out. The state-folder literal baseline did not move (no new `.moai/specs` literal in the table test).
