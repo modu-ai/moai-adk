@@ -6,7 +6,7 @@ The detail behind the "Lane rules" section of `CLAUDE.md`. A lane is one session
 
 - A lane works one card at a time and runs one receipt check (`moai check affected`) at a time; a follow-up slice does not start while another card of the lane is open.
 - A READY note or a `LANE-DONE` line hands a card back; it is never the start signal for the next card. The next card is taken once, when the ledger shows the previous card done or released.
-- New lane sessions are opened only by the operator, or by the leader when an existing window cannot be recovered (`skills/moai/references/flows/next-flow.md`); no session spawns another.
+- New lane sessions are opened only by the operator; no session spawns another.
 - A session-end notice means: finish the card in hand, take no new card, then report `SESSION-END-READY`. It never means stop the work in hand. A card in `review` cannot be released (`card release` refuses it; `card reopen` first), so its session stays until the card is landed.
 
 ## Worktree entry and exit

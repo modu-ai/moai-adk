@@ -15,7 +15,7 @@ Ownership is the card reservation, never a local file or a message. The earlier 
 
 ## When a round runs
 
-On the interval (`leader.pr_check_interval_secs` of the profile, default 300, a user-set value and not a measured one), and also after every landing, every lane report or hand-off, every restart, whenever the leader would otherwise wait, and when a lane reports idle with an empty list. The user's decision of 2026-11-08 is that the leader always keeps checking lane progress; a later answer of 2026-11-21 turned the fixed polling loops off in favour of waking on ledger events (`moai card wait`, `moai card inbox`), see `docs/decisions-2026-11-08.md`.
+On the interval (`leader.pr_check_interval_secs` of the profile, default 300, a user-set value and not a measured one), and also after every landing, every lane report or hand-off, every restart, whenever the leader would otherwise wait, and when a lane reports idle with an empty list. The user's decision of 2026-11-08 is that the leader always keeps checking lane progress. A later reading that the fixed polling loops are off in favour of waking on ledger events (`moai card wait`, `moai card inbox`) is not recorded in the decisions log; its basis is not confirmed (card note 7366, finding N7), so the interval above stands until the leader records it.
 
 ## What a round does
 

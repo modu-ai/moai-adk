@@ -5,7 +5,7 @@ Machine and personal facts only. Team rules are in `CLAUDE.md`; nothing here is 
 ## This machine
 
 - macOS 27.2.1 on arm64 (`sw_vers`, `uname -m`); Claude Code 2.1.330 (`claude --version`), above the thresholds the earlier notes named (2.1.277 for `AGENTS.md`, 2.1.257 for Fable).
-- Sessions run through Orca. Orca gives each Claude profile its own config folder, and the session's `CLAUDE_CONFIG_DIR` is that folder: `~/Library/Application Support/orca/claude-profiles/<profile id>/home`. The user settings the session reads are the profile's `settings.json` and `CLAUDE.md`, not `~/.claude/settings.json` (a separate copy that no session reads). The profile's `CLAUDE.md` imports `~/.claude/CLAUDE.md` with one `@` line.
+- Sessions run through Orca. `~/.claude` is the canonical home of the user settings and `CLAUDE.md`. Orca gives each Claude profile its own config folder, written `<Orca profile>` below, and the session's `CLAUDE_CONFIG_DIR` is that folder. The profile reads the canonical home through links and an `@` import: `agents`, `skills` and `history.jsonl` there are links into `~/.claude`, and the profile's `CLAUDE.md` is the one line `@~/.claude/CLAUDE.md`. The profile's `settings.json` is a file of its own, not a link (read with `ls -l` on 2026-11-23), so a change to one copy does not reach the other.
 - Lane terminals are Orca windows; the leader reads and drives them with `orca terminal` (`orca` is `/usr/local/bin/orca`). A session started inside a lane worktree reads that worktree's `CLAUDE.md` and, because the worktree sits under the checkout's `.claude/worktrees/`, this file from the primary checkout too.
 
 ## Build and cache
@@ -24,8 +24,8 @@ Machine and personal facts only. Team rules are in `CLAUDE.md`; nothing here is 
 
 ## Memory
 
-- Claude auto-memory for this project: `~/Library/Application Support/orca/claude-profiles/<profile id>/home/projects/-Users-goos-MoAI-moai-adk/memory/MEMORY.md` (the index) with the `feedback_*.md`, `project_*.md` and `reference_*.md` files beside it. Re-read the index at session start.
+- Claude auto-memory for this project: `<Orca profile>/projects/<encoded project path>/memory/MEMORY.md` (the index) with the `feedback_*.md`, `project_*.md` and `reference_*.md` files beside it. Re-read the index at session start.
 
 ## Personal style
 
-- Chat in Korean, colloquial; written reports in a clean written register. Lane dispatches and notes to lanes in Korean; subagent prompts in English.
+- Chat is colloquial Korean; written reports use a clean written register. (That the conversation and the reports are in Korean, and that subagent prompts are in English, is a team rule in `CLAUDE.md`.)

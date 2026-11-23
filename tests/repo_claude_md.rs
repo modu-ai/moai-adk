@@ -272,11 +272,158 @@ fn stale_integration_branch_is_next() {
         &text,
         "CLAUDE.md",
         &[
-            "Integration target `NeXT` (local branch, user decision 2026-11-23); `v2026.11.0` is a recovery ref that stopped at `b3ba2b30d5`",
+            "Integration target `NeXT` (local branch, user decision 2026-11-23).",
             "`work_flow.integration_branch` of `.moai/project.yaml` (`NeXT`)",
         ],
     );
     assert_lacks(&text, "CLAUDE.md", &["Integration target `v2026.11.0`"]);
+}
+
+/// N2 of the audit: the local branch `v2026.11.0` and the remote one are two different things.
+/// The local one is a recovery ref; the remote one is ruleset-protected and is the base of the
+/// release pull request (`.github/workflows/audit-gate.yml` runs on pull requests to it).
+#[test]
+fn the_local_and_the_remote_v2026_branch_are_told_apart() {
+    let text = claude_md();
+    assert_has(
+        &text,
+        "CLAUDE.md",
+        &[
+            "The local branch `v2026.11.0` is a recovery ref that stopped at `b3ba2b30d5`",
+            "the remote `v2026.11.0`",
+            "ruleset 26791615",
+            "base of the release pull request",
+        ],
+    );
+    let gate = read(".github/workflows/audit-gate.yml");
+    assert!(
+        gate.contains("branches: [v2026.11.0]"),
+        "the release pull request base named in CLAUDE.md is no longer the gate's branch"
+    );
+}
+
+/// B1 of the audit: the staging rule keeps the raw `references/` folder out of git. The folder
+/// exists untracked in the checkout root and no ignore rule covers it, so the sentence and its
+/// row of the rule table must both say it.
+#[test]
+fn staging_rule_keeps_raw_references_unstaged() {
+    let text = claude_md();
+    assert_has(
+        &text,
+        "CLAUDE.md",
+        &["`.mcp.json` and raw `references/` are never staged"],
+    );
+    let rows = table_rows();
+    let row = rows.iter().find(|r| r[0] == "R-103").expect("R-103");
+    assert!(
+        row[2].contains("raw `references/`"),
+        "R-103 rule: {}",
+        row[2]
+    );
+    assert_eq!(row[4], "CLAUDE.md");
+    assert!(
+        row[5].contains("raw `references/` are never staged"),
+        "R-103 anchor: {}",
+        row[5]
+    );
+}
+
+/// N1 of the audit: three rules the first rewrite dropped stay in the file, each with a row of
+/// the rule table that holds its words as the anchor.
+#[test]
+fn the_three_dropped_rules_are_back_with_a_row_each() {
+    let phrases = [
+        "Commits already pushed are not rewritten.",
+        "the conversation with the user and reports to the user are written in Korean",
+        "This rule moves no tag and no package version in `Cargo.toml`",
+    ];
+    assert_has(&claude_md(), "CLAUDE.md", &phrases);
+    let rows = table_rows();
+    for phrase in phrases {
+        let row = rows
+            .iter()
+            .find(|r| r[5].contains(phrase))
+            .unwrap_or_else(|| panic!("no row of the rule table is anchored on `{phrase}`"));
+        assert_eq!(row[4], "CLAUDE.md", "{}: the destination", row[0]);
+    }
+}
+
+/// N3 of the audit: the tracked SPEC files and docs carry no personal path. The folder of the
+/// session's profile and the encoded project path of the memory folder are written as
+/// placeholders.
+#[test]
+fn tracked_rewrite_files_hold_no_personal_path() {
+    for path in [
+        "CLAUDE.md".to_string(),
+        "docs/lane-rules.md".to_string(),
+        "docs/leader-rules.md".to_string(),
+        "docs/claude-md-rule-provenance.md".to_string(),
+        format!("{SPEC_DIR}/spec.md"),
+        format!("{SPEC_DIR}/rule-table.md"),
+        format!("{SPEC_DIR}/claude-local-draft.md"),
+    ] {
+        assert_lacks(
+            &read(&path),
+            &path,
+            &["/Users/", "-Users-", "claude-profiles/", "goos"],
+        );
+    }
+    assert_has(
+        &read(&format!("{SPEC_DIR}/claude-local-draft.md")),
+        "the local draft",
+        &["<encoded project path>", "<Orca profile>"],
+    );
+}
+
+/// N4 of the audit: `~/.claude` is the one canonical home; the profile folder of Orca reads it
+/// through links and an `@` import. The draft must not read the other way round.
+#[test]
+fn local_draft_names_the_home_claude_folder_as_canonical() {
+    let draft = read(&format!("{SPEC_DIR}/claude-local-draft.md"));
+    assert_has(
+        &draft,
+        "the local draft",
+        &[
+            "`~/.claude` is the canonical home",
+            "links and an `@` import",
+        ],
+    );
+    assert_lacks(
+        &draft,
+        "the local draft",
+        &[
+            "not `~/.claude/settings.json`",
+            "a separate copy that no session reads",
+        ],
+    );
+}
+
+/// N6 of the audit: a lane does not widen a user rule. Only the operator opens a new session.
+#[test]
+fn lane_rules_keep_the_operator_as_the_only_one_who_opens_sessions() {
+    let rules = read("docs/lane-rules.md");
+    assert_has(
+        &rules,
+        "docs/lane-rules.md",
+        &["New lane sessions are opened only by the operator; no session spawns another."],
+    );
+    assert_lacks(&rules, "docs/lane-rules.md", &["or by the leader"]);
+}
+
+/// N7 of the audit: a lane does not turn a decision into a record. The decisions log holds the
+/// user's own decisions of this rewrite and no transcribed row, and the leader rules do not state
+/// as decided what the log does not record.
+#[test]
+fn the_decisions_log_holds_no_transcribed_row() {
+    let log = read("docs/decisions-2026-11-08.md");
+    assert_lacks(&log, "the decisions log", &["흐름 재설계 결정 옮겨 적기"]);
+    let rules = read("docs/leader-rules.md");
+    assert_lacks(
+        &rules,
+        "docs/leader-rules.md",
+        &["turned the fixed polling loops off"],
+    );
+    assert_has(&rules, "docs/leader-rules.md", &["card note 7366"]);
 }
 
 /// S6: tests are Rust only; the Python fixtures and the Python adapter left the file.

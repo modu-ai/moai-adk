@@ -74,8 +74,8 @@ The flow is NeXT-Flow ("Work in parallel. Land once."); the full description is 
 
 ## Repository and preservation boundaries
 
-- Integration target `NeXT` (local branch, user decision 2026-11-23); `v2026.11.0` is a recovery ref that stopped at `b3ba2b30d5`; `2026.11.0-rc.1` and `archive/main-based-2026.11.0-rc.1` are preserved refs; remote `main` is untouched. Re-read `HEAD` and the branch immediately before any commit; never reset, rebase, stash or switch branches in the shared checkout.
-- Stage by explicit pathspec after re-reading `git status --short`; never `git add -A`, `git add .` or `commit -a`. Scan staged bytes for secrets and personal paths. `.claude/`, `CLAUDE.local.md`, `target/` and `.mcp.json` are never staged; `.moai/specs/`, `.moai/project.yaml` and `.moai/evals/` are tracked.
+- Integration target `NeXT` (local branch, user decision 2026-11-23). The local branch `v2026.11.0` is a recovery ref that stopped at `b3ba2b30d5`; the remote `v2026.11.0` (`6a8fa9cacf` when read on 2026-11-23, protected by ruleset 26791615) is the base of the release pull request. `2026.11.0-rc.1` and `archive/main-based-2026.11.0-rc.1` are preserved refs; remote `main` is untouched. Re-read `HEAD` and the branch immediately before any commit; never reset, rebase, stash or switch branches in the shared checkout.
+- Stage by explicit pathspec after re-reading `git status --short`; never `git add -A`, `git add .` or `commit -a`. Scan staged bytes for secrets and personal paths; `.claude/`, `CLAUDE.local.md`, `target/`, `.mcp.json` and raw `references/` are never staged. `.moai/specs/`, `.moai/project.yaml` and `.moai/evals/` are tracked.
 - State folders: project state is `<project>/.moai/` and home state `~/.moai/`; the earlier `.moai-cli/` and `~/.moai-cli/` are read only where they exist and are never created or deleted by a lane. Never delete, overwrite or re-apply into the user's `.claude/` settings or `~/.moai/` data.
 - The sibling `moai-adk-go` repository is read-only reference; its binary and credentials are never invoked or copied. The Go-generation `.github` files were removed on the user's instruction; do not recreate them.
 - `experiments/` holds spikes, not integrated product features.
@@ -83,7 +83,7 @@ The flow is NeXT-Flow ("Work in parallel. Land once."); the full description is 
 
 ## Development build versions (HeadVer)
 
-Development builds use HeadVer (`https://github.com/line/headver`) `{head}.{yearweek}.{build}`, e.g. `4.2648.20`; releases of this generation follow the same form.
+Development builds use HeadVer (`https://github.com/line/headver`) `{head}.{yearweek}.{build}`, e.g. `4.2648.20`; releases of this generation follow the same form. This rule moves no tag and no package version in `Cargo.toml`.
 
 - `{head}` is the one manual number, `4` (the released generation is v3); only the user raises it. It comes from the tracked `HEADVER` file.
 - `{yearweek}` is automatic, four digits: two-digit year and ISO-8601 week of the build's UTC date, read from a clock in the same step.
@@ -98,7 +98,7 @@ Development builds use HeadVer (`https://github.com/line/headver`) `{head}.{year
 ## Language
 
 - Instruction files (this file, `CLAUDE.local.md`, rules, `skills/**`), subagent prompts and all code comments are written in English.
-- Commit messages, SPEC documents, card and decisions text, text typed into a session's chat input (including what the leader sends with `orca terminal send`) and reports to the user are written in Korean; every instruction to a lane (dispatch, answer, line after `/clear`, cross-session message) is in the user's conversation language. Identifiers, commands, paths and protocol lines (`AUDIT … verdict:`, `LANE-BLOCKED`, `LANE-READY-INTEGRATION`) stay verbatim. Auditors flag newly added or edited comments or instruction text that is not English; existing ones are rewritten only when a card asks.
+- Commit messages, SPEC documents, card and decisions text, text typed into a session's chat input (including what the leader sends with `orca terminal send`), the conversation with the user and reports to the user are written in Korean. Commits already pushed are not rewritten. Every instruction to a lane (dispatch, answer, line after `/clear`, cross-session message) is in the user's conversation language. Identifiers, commands, paths and protocol lines (`AUDIT … verdict:`, `LANE-BLOCKED`, `LANE-READY-INTEGRATION`) stay verbatim. Auditors flag newly added or edited comments or instruction text that is not English; existing ones are rewritten only when a card asks.
 - Korean text uses the words developers actually say (테스트, 브랜치, 커밋, 푸시, 머지, 리뷰, 워크트리, 뮤턴트, 픽스처, 골든 파일, 플레이키 테스트), never literal coinages such as 시험, 가지, 변이.
 
 ## How this file evolves
