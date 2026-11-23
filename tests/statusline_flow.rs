@@ -168,15 +168,27 @@ fn my_card_is_the_card_held_in_this_worktree() {
         lease: 3600,
     });
     let out = f.render(&wt, "this-session", Some("demo-1-work"));
-    assert_eq!(line(&out, 1), format!("🎯 C-{card} 🟡 | 🟡 1"), "{out}");
+    assert_eq!(
+        line(&out, 1),
+        format!("{} | 🟡 1 | 🎯 C-{card} 🟡", moai()),
+        "{out}"
+    );
     f.note(card, "LANE-READY-INTEGRATION C-1 head=abc");
     let out = f.render(&wt, "this-session", Some("demo-1-work"));
     // The card moved on: it is counted as handed over and no longer as in progress.
-    assert_eq!(line(&out, 1), format!("🎯 C-{card} 📨 | 📨 1"), "{out}");
+    assert_eq!(
+        line(&out, 1),
+        format!("{} | 📨 1 | 🎯 C-{card} 📨", moai()),
+        "{out}"
+    );
     f.note(card, "LANE-BLOCKED kind=decision which option");
     let out = f.render(&wt, "this-session", Some("demo-1-work"));
     // Blocked stands beside the flow; the zero of `🙋` is hidden.
-    assert_eq!(line(&out, 1), format!("🎯 C-{card} 🚧 | 🚧 1"), "{out}");
+    assert_eq!(
+        line(&out, 1),
+        format!("{} | 🚧 1 | 🎯 C-{card} 🚧", moai()),
+        "{out}"
+    );
 }
 
 /// From the main checkout, with no worktree of mine, the newest live card the session holds is
@@ -202,7 +214,7 @@ fn my_card_falls_back_to_the_newest_live_card_of_the_session() {
     });
     let out = f.render(&f.project, "this-session", None);
     assert!(
-        line(&out, 1).starts_with(&format!("🎯 C-{mine} 🟡 | ")),
+        line(&out, 1).ends_with(&format!(" | 🎯 C-{mine} 🟡")),
         "{out}"
     );
     let out = f.render(&f.project, "a-stranger", None);
@@ -311,7 +323,7 @@ fn icon_spacing_in_the_real_output() {
     let flow = line(&out, 1);
     assert_eq!(
         flow,
-        format!("🎯 C-{card} 🚧 | 🗂️ 1 → ✅ 1 | 🚧 1 🙋 1"),
+        format!("{} | 🗂️ 1 → ✅ 1 | 🚧 1 🙋 1 | 🎯 C-{card} 🚧", moai()),
         "{out}"
     );
     for icon in ["🎯", "🚧", "🙋", "🗂️", "✅"] {
@@ -320,6 +332,10 @@ fn icon_spacing_in_the_real_output() {
     for icon in ICONS {
         for (at, _) in flow.match_indices(icon) {
             let after = &flow[at + icon.len()..];
+            // The stage icon of my card closes the line: nothing follows it.
+            if after.is_empty() {
+                continue;
+            }
             assert!(after.starts_with(' '), "{icon}: `{after}` in {flow}");
             assert!(
                 !after[1..].starts_with(' '),

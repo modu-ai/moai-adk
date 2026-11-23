@@ -1,5 +1,5 @@
 //! The main Claude Code statusline: up to three lines joined by `\n`, usage
-//! windows as numbers, and two Catppuccin themes. Without color the text is identical
+//! windows as a bar and a number, and two Catppuccin themes. Without color the text is identical
 //! and carries no escape sequence.
 
 use super::color::Profile;
@@ -14,8 +14,11 @@ const SEPARATOR: &str = " | ";
 const DISTANCE_NAME_CHARS: usize = 12;
 /// The forms of line 1, from the widest (step 0) to the narrowest (step 4).
 const LINE_ONE_STEPS: usize = 5;
-/// The forms of line 3, from the widest (Z0) to the narrowest (Z4).
-const LINE_THREE_STEPS: usize = 5;
+/// The forms of line 3, from the widest (Z0) to the narrowest (Z3).
+const LINE_THREE_STEPS: usize = 4;
+/// The cells of the bar that shows the share left of a limit window
+/// (SPEC-20261123-statusline-order-bars REQ-3).
+const BAR_WIDTH: i64 = 10;
 /// The used percentage above which a window counts as nearly spent
 /// (SPEC-20261122-statusline-limits D-2).
 const HIGH_USE_PERCENT: i64 = 70;
@@ -129,21 +132,34 @@ struct Piece {
     text: String,
     /// An OSC 8 link around the painted text; empty for none ([`Renderer::link`]).
     url: String,
+    /// No space before this piece: it follows the piece before it directly. The filled and the
+    /// empty cells of a bar are two pieces of two colors in one run of text.
+    glue: bool,
 }
 
-/// Pieces joined by one space (`🚧 3 🙋 7` is two pieces, `🗂️ 150 → 🟡 14` three).
+/// Pieces joined by one space (`🚧 3 🙋 7` is two pieces, `🗂️ 150 → 🟡 14` three), except a piece
+/// that is glued to the one before it.
 type Group = Vec<Piece>;
 
-/// The plain text of a form: its groups, each group's pieces joined by a space, the groups
-/// joined by the separator. Its display width is what the form picker measures.
+/// The plain text of a group: its pieces, a space before each one but the first and the glued
+/// ones, each piece written by `write`.
+fn join_group<'a>(group: &'a [Piece], write: impl Fn(&'a Piece) -> String) -> String {
+    let mut text = String::new();
+    for (at, piece) in group.iter().enumerate() {
+        if at > 0 && !piece.glue {
+            text.push(' ');
+        }
+        text.push_str(&write(piece));
+    }
+    text
+}
+
+/// The plain text of a form: its groups, each group's pieces joined by a space (a glued piece
+/// without one), the groups joined by the separator. Its display width is what the form picker
+/// measures.
 fn form_text(form: &[Group]) -> String {
     form.iter()
-        .map(|g| {
-            g.iter()
-                .map(|p| p.text.as_str())
-                .collect::<Vec<_>>()
-                .join(" ")
-        })
+        .map(|g| join_group(g, |p| p.text.clone()))
         .collect::<Vec<_>>()
         .join(SEPARATOR)
 }
@@ -180,10 +196,10 @@ impl Renderer {
     /// SPEC-20261122-statusline-where: line 1 says who the session is and where it stands — the
     /// model with its effort, the repository with its forge counts, the worktree or the branch,
     /// the distance to the integration branch and the pull request ([`Renderer::info_line`]);
-    /// the cards by stage are the flow line ([`Renderer::flow_line`]); the last line is the limits
-    /// and the versions ([`Renderer::limits_line`]). The cache segment is not in the layout. A line with
-    /// nothing in it is left out, so the numbers above shift up by one for each empty line
-    /// before it.
+    /// the second line is the two versions, the cards by stage and my card
+    /// ([`Renderer::flow_line`], SPEC-20261123-statusline-order-bars); the last line is the limits
+    /// ([`Renderer::limits_line`]). The cache segment is not in the layout. A line with nothing
+    /// in it is left out, so the numbers above shift up by one for each empty line before it.
     pub fn render(&self, status: &Status) -> String {
         let lines: Vec<String> = [
             self.info_line(status),
@@ -266,6 +282,7 @@ impl Renderer {
             color,
             text,
             url: String::new(),
+            glue: false,
         };
         let mut form: Vec<Group> = Vec::new();
         if self.enabled("model") && !s.model.is_empty() {
@@ -366,6 +383,7 @@ impl Renderer {
                     color: t.prs,
                     text: width::icon_text("🔗", &text),
                     url: pr.url.clone(),
+                    glue: false,
                 }]);
             }
         }
@@ -395,10 +413,10 @@ impl Renderer {
         })
     }
 
-    /// Line 3 (SPEC-20261122-statusline-limits REQ-1): the context window, the five-hour window,
-    /// the seven-day window, the cost, the Claude Code version and the MoAI version, in the widest
-    /// of its forms that fits the width budget. An item without its input is left out with its
-    /// separator, and the line is empty when all of them are.
+    /// Line 3 (SPEC-20261123-statusline-order-bars REQ-3 to REQ-5): the context window, the
+    /// five-hour window, the seven-day window and the cost, in the widest of its forms that fits
+    /// the width budget. An item without its input is left out with its separator, and the line is
+    /// empty when all of them are. The two versions are on the second line.
     fn limits_line(&self, s: &Status) -> String {
         let forms = self.line_three_forms(s);
         if forms.is_empty() {
@@ -413,25 +431,22 @@ impl Renderer {
 
     /// The forms of line 3 from the widest to the narrowest, never an empty one and never two
     /// equal neighbours. Each step drops more than the one before it, in the order under the
-    /// Layouts table of the SPEC: the Claude Code version (Z1), the MoAI version with its update
-    /// arrow (Z2), the countdowns (Z3), the five-hour window and the cost (Z4, as the table's
-    /// narrowest forms write it). The context window and the seven-day window stay in every form,
-    /// so the five-hour window always goes before them.
+    /// Layouts table of the SPEC: the reset countdowns (Z1), the bars (Z2), the five-hour window
+    /// and the cost (Z3, the narrowest form). The context window and the seven-day window stay in
+    /// every form, so the five-hour window always goes before them.
     ///
-    /// The windows are numbers only — `🔋 CW 61%`, no graph, no colon, no `/clear` hint
-    /// (SPEC-20261121-statusline-detached REQ-5, REQ-7) — and each number is the share left, not
-    /// the share used (SPEC-20261122-statusline-limits-left REQ-1); a window whose percentage is
-    /// unknown says `n/a` with no battery icon, never a guessed number.
+    /// A known window is `<battery> <label> <bar> <n>%` — no colon, no `/clear` hint — and `<n>`
+    /// is the share left, not the share used (SPEC-20261122-statusline-limits-left REQ-1); the bar
+    /// draws the same share ([`Window`]). A window whose percentage is unknown says `n/a` with no
+    /// battery icon and no bar, never a guessed number.
     fn line_three_forms(&self, s: &Status) -> Vec<Vec<Group>> {
         let t = &self.theme;
         let piece = |color, text: String| Piece {
             color,
             text,
             url: String::new(),
+            glue: false,
         };
-        // An empty color leaves the text in the base color of the line.
-        let unknown =
-            |label: &str| vec![piece("", label.to_string()), piece(t.muted, "n/a".into())];
         // REQ-3: the host drops a window once its reset time passes, so one that still names a
         // passed reset is left out; under a minute left (1 to 59 s) prints `(0m)`.
         let live = |w: Option<RateWindow>| w.filter(|w| w.resets_at.is_none_or(|at| at > self.now));
@@ -443,28 +458,25 @@ impl Renderer {
                 .filter(|left| *left <= crate::usage_limit::MAX_RESET_AHEAD_SECS)
                 .map(|left| piece(t.muted, reset_countdown(left)))
         };
-        let context: Option<Group> = self.enabled("context").then(|| match s.context {
-            Some(pct) => vec![piece("", battery("CW", whole_percent(pct)))],
-            None => unknown("CW"),
-        });
+        let window = |label: &str, used: Option<f64>, countdown: Option<Piece>| match used {
+            Some(pct) => Window::known(t, label, whole_percent(pct), countdown),
+            None => Window::unknown(t, label, countdown),
+        };
+        let context: Option<Window> = self
+            .enabled("context")
+            .then(|| window("CW", s.context, None));
         // SPEC-20261122-statusline-limits-left REQ-3: the five-hour window whenever the input
         // carries its percentage, at any level; the host does not always send it, and a window
         // without a percentage is left out, never `5H n/a`.
         let five_hour = live(s.five_hour)
             .filter(|_| self.enabled("usage_5h"))
             .and_then(|w| {
-                let used = whole_percent(w.used_percentage?);
-                Some((vec![piece("", battery("5H", used))], countdown(&w)))
+                let used = w.used_percentage?;
+                Some(window("5H", Some(used), countdown(&w)))
             });
         let seven_day = live(s.seven_day)
             .filter(|_| self.enabled("usage_7d"))
-            .map(|w| {
-                let group = match w.used_percentage {
-                    Some(pct) => vec![piece("", battery("7D", whole_percent(pct)))],
-                    None => unknown("7D"),
-                };
-                (group, countdown(&w))
-            });
+            .map(|w| window("7D", w.used_percentage, countdown(&w)));
         // REQ-5 and D-3: the cost only when the payload carries neither window (a payload with
         // only a spend limit included), to two decimals.
         let cost: Option<Group> = s
@@ -475,39 +487,15 @@ impl Renderer {
             .filter(|usd| (0.0..MAX_COST_USD).contains(usd))
             .map(|usd| if usd == 0.0 { 0.0 } else { usd })
             .map(|usd| vec![piece("", width::icon_text("💰", &format!("{usd:.2}")))]);
-        // REQ-6: the versions without a `v`; the update arrow names the template, then the build.
-        let claude: Option<Group> = (self.enabled("claude_version")
-            && !s.claude_version.is_empty())
-        .then(|| vec![piece(t.version, width::icon_text("🤖", &s.claude_version))]);
-        let moai: Option<Group> = s
-            .version
-            .as_ref()
-            .filter(|v| self.enabled("moai_version") && !v.current.is_empty())
-            .map(|v| {
-                let text = match &v.latest {
-                    Some(build) => format!("{} -> {build}", v.current),
-                    None => v.current.clone(),
-                };
-                vec![piece(t.version, width::icon_text("🗿", &text))]
-            });
-        let window = |w: &Option<(Group, Option<Piece>)>, with_countdown: bool| {
-            w.as_ref().map(|(group, countdown)| {
-                let mut group = group.clone();
-                if with_countdown {
-                    group.extend(countdown.clone());
-                }
-                group
-            })
-        };
         let mut forms: Vec<Vec<Group>> = Vec::new();
         for step in 0..LINE_THREE_STEPS {
+            let (bars, countdowns, five_and_cost) = (step < 2, step < 1, step < 3);
+            let show = |w: &Option<Window>| w.as_ref().map(|w| w.group(bars, countdowns));
             let form: Vec<Group> = [
-                context.clone(),
-                window(&five_hour, step < 3).filter(|_| step < 4),
-                window(&seven_day, step < 3),
-                cost.clone().filter(|_| step < 4),
-                claude.clone().filter(|_| step < 1),
-                moai.clone().filter(|_| step < 2),
+                show(&context),
+                show(&five_hour).filter(|_| five_and_cost),
+                show(&seven_day),
+                cost.clone().filter(|_| five_and_cost),
             ]
             .into_iter()
             .flatten()
@@ -526,65 +514,143 @@ impl Renderer {
         forms
     }
 
-    /// The flow line (SPEC-20261122-statusline-flow REQ-7 and REQ-9): the cards of the project's
-    /// local ledger by the stage of their progress — my card, the flow from the cards waiting
-    /// their turn to the ones done today, and what is blocked or needs the user's pick — under
-    /// the one `cards` option. It is written in the widest of its forms that fits the width
-    /// budget; empty when there is no ledger to read or nothing to show. Each number has its
-    /// icon and one space after it ([`width::icon_text`]), so color is never the only signal.
+    /// The second line (SPEC-20261123-statusline-order-bars REQ-1 and REQ-2): the Claude Code
+    /// version, the MoAI version, then the cards of the project's local ledger by the stage of
+    /// their progress under the one `cards` option, then my card at the end. It is written in
+    /// the widest of its forms that fits the width budget; empty when there is nothing to show.
+    /// Each number has its icon and one space after it ([`width::icon_text`]), so color is never
+    /// the only signal.
     fn flow_line(&self, s: &Status) -> String {
-        let Some(flow) = s.flow.filter(|_| self.enabled("cards")) else {
+        let forms = self.flow_forms(s);
+        if forms.is_empty() {
             return String::new();
-        };
-        let forms = self.flow_forms(&flow);
+        }
         let widths: Vec<usize> = forms
             .iter()
             .map(|f| width::display_width(&form_text(f)))
             .collect();
-        if forms.is_empty() {
-            return String::new();
-        }
         self.paint_form(&forms[width::pick(&widths, self.budget)])
     }
 
     /// A form written out: each piece in its color (and its link), the pieces of a group joined
-    /// by a space and the groups by the separator. A piece without a color stays in the base
-    /// color of the line.
+    /// by a space (a glued piece without one) and the groups by the separator. A piece without a
+    /// color stays in the base color of the line.
     fn paint_form(&self, form: &[Group]) -> String {
         form.iter()
             .map(|g| {
-                g.iter()
-                    .map(|p| {
-                        let text = if p.color.is_empty() {
-                            p.text.clone()
-                        } else {
-                            self.paint(p.color, &p.text)
-                        };
-                        self.link(&p.url, &text)
-                    })
-                    .collect::<Vec<_>>()
-                    .join(" ")
+                join_group(g, |p| {
+                    let text = if p.color.is_empty() {
+                        p.text.clone()
+                    } else {
+                        self.paint(p.color, &p.text)
+                    };
+                    self.link(&p.url, &text)
+                })
             })
             .collect::<Vec<_>>()
             .join(SEPARATOR)
     }
 
-    /// The forms of the flow line from the widest to the narrowest, never an empty one
-    /// (SPEC-20261122-statusline-limits-left REQ-6 and REQ-7). The widest form is my card, the
-    /// flow and what stands beside it:
-    /// `🎯 C-<n> <stage icon> | 🗂️ <ready> → 🟡 <working> → 📨 <submitted> → 🛬 <audited + landed>
-    /// → ✅ <done today> | 🚧 <blocked> 🙋 <hold>`. There is no letter code, an item whose count
-    /// is zero is left out with its arrow or its separator, and the drafts and the cards whose
-    /// lease has ended are not on the line. Each narrower form drops the leftmost item still in
-    /// the flow — `🗂️` first, `✅` last — while my card and `🚧 🙋` stay in every form. An
-    /// unsplit [`Flow`] (the notes could not be read) has one form, `🗂️ <ready> 🟡 <working>`
-    /// without an arrow, never a guess.
-    fn flow_forms(&self, f: &Flow) -> Vec<Vec<Group>> {
+    /// The forms of the second line from the widest to the narrowest, never an empty one. The
+    /// widest form is the two versions, the flow and what stands beside it, then my card:
+    /// `🤖 <Claude Code version> | 🗿 <MoAI version> | 🗂️ <ready> → 🟡 <working> → 📨 <submitted>
+    /// → 🛬 <audited + landed> → ✅ <done today> | 🚧 <blocked> 🙋 <hold> | 🎯 C-<n> <stage icon>`.
+    /// An item without its input is left out with its separator: a line with no flow holds the
+    /// versions alone, one with no version the flow alone, and the options `claude_version`,
+    /// `moai_version` and `cards` each hide their own items.
+    ///
+    /// While the width budget is smaller than the form, the Claude Code version drops first, then
+    /// the MoAI version with its update arrow, then the leftmost item of the flow (`🗂️` first,
+    /// `✅` last); my card and `🚧 🙋` stay in every form
+    /// (SPEC-20261123-statusline-order-bars REQ-2, D-5).
+    fn flow_forms(&self, s: &Status) -> Vec<Vec<Group>> {
+        let t = &self.theme;
+        // REQ-6 of the limits SPEC: the versions without a `v`; the update arrow names the
+        // template, then the build.
+        let claude: Option<Group> =
+            (self.enabled("claude_version") && !s.claude_version.is_empty()).then(|| {
+                vec![Piece {
+                    color: t.version,
+                    text: width::icon_text("🤖", &s.claude_version),
+                    url: String::new(),
+                    glue: false,
+                }]
+            });
+        let moai: Option<Group> = s
+            .version
+            .as_ref()
+            .filter(|v| self.enabled("moai_version") && !v.current.is_empty())
+            .map(|v| {
+                let text = match &v.latest {
+                    Some(build) => format!("{} -> {build}", v.current),
+                    None => v.current.clone(),
+                };
+                vec![Piece {
+                    color: t.version,
+                    text: width::icon_text("🗿", &text),
+                    url: String::new(),
+                    glue: false,
+                }]
+            });
+        // The forms of what follows the versions, from the widest to the narrowest; one empty
+        // form when there is no flow to show.
+        let tails = match s.flow.filter(|_| self.enabled("cards")) {
+            Some(flow) => self.flow_tails(&flow),
+            None => vec![Vec::new()],
+        };
+        let widest = tails.first().cloned().unwrap_or_default();
+        // The ladder: both versions, then the MoAI version alone, then none, each in front of the
+        // widest tail; then each narrower tail alone.
+        let in_front = |with_claude: bool, with_moai: bool| -> Vec<Group> {
+            let mut groups: Vec<Group> = Vec::new();
+            if with_claude {
+                groups.extend(claude.clone());
+            }
+            if with_moai {
+                groups.extend(moai.clone());
+            }
+            groups.extend(widest.clone());
+            groups
+        };
+        let candidates = [
+            in_front(true, true),
+            in_front(false, true),
+            in_front(false, false),
+        ]
+        .into_iter()
+        .chain(tails.iter().skip(1).cloned());
+        let mut forms: Vec<Vec<Group>> = Vec::new();
+        for form in candidates {
+            if form.is_empty() {
+                continue;
+            }
+            if forms
+                .last()
+                .is_some_and(|last| form_text(last) == form_text(&form))
+            {
+                continue;
+            }
+            forms.push(form);
+        }
+        forms
+    }
+
+    /// What follows the versions on the second line, in the forms of the flow from the widest to
+    /// the narrowest (SPEC-20261122-statusline-limits-left REQ-6 and REQ-7, with my card moved to
+    /// the end by SPEC-20261123-statusline-order-bars REQ-1): the flow, what stands beside it,
+    /// my card. There is no letter code, an item whose count is zero is left out with its arrow
+    /// or its separator, and the drafts and the cards whose lease has ended are not on the line.
+    /// Each narrower form drops the leftmost item still in the flow — `🗂️` first, `✅` last —
+    /// while `🚧 🙋` and my card stay. An unsplit [`Flow`] (the notes could not be read) has one
+    /// form, `🗂️ <ready> 🟡 <working>` without an arrow, never a guess. One empty form is returned
+    /// when there is nothing to show.
+    fn flow_tails(&self, f: &Flow) -> Vec<Vec<Group>> {
         let t = &self.theme;
         let piece = |color, icon, text: String| Piece {
             color,
             text: width::icon_text(icon, &text),
             url: String::new(),
+            glue: false,
         };
         // An item of a count: left out when there is nothing to count.
         let item =
@@ -598,7 +664,7 @@ impl Renderer {
             .flatten()
             .collect();
             return if known.is_empty() {
-                Vec::new()
+                vec![Vec::new()]
             } else {
                 vec![vec![known]]
             };
@@ -631,6 +697,7 @@ impl Renderer {
             color: t.muted,
             text: "→".to_string(),
             url: String::new(),
+            glue: false,
         };
         let mut forms: Vec<Vec<Group>> = Vec::new();
         for dropped in 0..=chain.len() {
@@ -642,7 +709,7 @@ impl Renderer {
                 }
                 flow.push(item.clone());
             }
-            let form: Vec<Group> = [mine.clone(), Some(flow), Some(beside.clone())]
+            let form: Vec<Group> = [Some(flow), Some(beside.clone()), mine.clone()]
                 .into_iter()
                 .flatten()
                 .filter(|group| !group.is_empty())
@@ -658,7 +725,106 @@ impl Renderer {
             }
             forms.push(form);
         }
+        if forms.is_empty() {
+            forms.push(Vec::new());
+        }
         forms
+    }
+}
+
+/// One limit window of line 3 as pieces (SPEC-20261123-statusline-order-bars REQ-3, REQ-4,
+/// REQ-6): the head `<battery> <label>`, the bar, the number and the reset countdown. The pieces
+/// are the forms of the line, so a narrower form leaves some of them out.
+struct Window {
+    head: Piece,
+    /// The filled cells, then the empty cells; empty for a window with an unknown percentage.
+    bar: Vec<Piece>,
+    number: Piece,
+    countdown: Option<Piece>,
+}
+
+impl Window {
+    /// A window with a known percentage: the number is the share left, the battery icon turns
+    /// from `🔋` to `🪫` when less than [`LOW_LEFT_PERCENT`] is left
+    /// (SPEC-20261122-statusline-limits-left REQ-1, REQ-2), and the bar of [`BAR_WIDTH`] cells
+    /// draws the same share: the first `left * BAR_WIDTH / 100` (rounded down) cells are `█` and
+    /// the others `░`. The filled cells keep the base color of the line and the empty cells take
+    /// the muted color, two runs with no space between them; the glyphs tell them apart without
+    /// color. `used` is the whole used percentage from 0 to 100.
+    fn known(t: &Theme, label: &str, used: i64, countdown: Option<Piece>) -> Window {
+        let left = left_percent(used).clamp(0, 100);
+        let icon = if left < LOW_LEFT_PERCENT {
+            "🪫"
+        } else {
+            "🔋"
+        };
+        let filled = (left * BAR_WIDTH / 100) as usize;
+        let empty = (BAR_WIDTH as usize).saturating_sub(filled);
+        let cells = |glyph: char, n: usize| glyph.to_string().repeat(n);
+        let mut bar = Vec::new();
+        if filled > 0 {
+            bar.push(Piece {
+                color: "",
+                text: cells('█', filled),
+                url: String::new(),
+                glue: false,
+            });
+        }
+        if empty > 0 {
+            bar.push(Piece {
+                color: t.muted,
+                text: cells('░', empty),
+                url: String::new(),
+                // The two runs of a bar touch; the empty cells alone follow the label by a space.
+                glue: filled > 0,
+            });
+        }
+        Window {
+            head: Piece {
+                color: "",
+                text: width::icon_text(icon, label),
+                url: String::new(),
+                glue: false,
+            },
+            bar,
+            number: Piece {
+                color: "",
+                text: format!("{left}%"),
+                url: String::new(),
+                glue: false,
+            },
+            countdown,
+        }
+    }
+
+    /// A window whose percentage is unknown: `<label> n/a` with no battery icon and no bar.
+    fn unknown(t: &Theme, label: &str, countdown: Option<Piece>) -> Window {
+        let piece = |color, text: &str| Piece {
+            color,
+            text: text.to_string(),
+            url: String::new(),
+            glue: false,
+        };
+        Window {
+            head: piece("", label),
+            bar: Vec::new(),
+            number: piece(t.muted, "n/a"),
+            countdown,
+        }
+    }
+
+    /// The pieces of one form: the head, the bar when `bars`, the number and the countdown when
+    /// `countdown`.
+    fn group(&self, bars: bool, countdown: bool) -> Group {
+        let mut group = vec![self.head.clone()];
+        if bars {
+            group.extend(self.bar.iter().cloned());
+        }
+        group.push(self.number.clone());
+        if countdown {
+            group.extend(self.countdown.clone());
+        }
+        group
     }
 }
 
@@ -671,19 +837,6 @@ fn whole_percent(pct: f64) -> i64 {
 /// The share of a window that is left, from its whole used percentage.
 fn left_percent(used: i64) -> i64 {
     100 - used
-}
-
-/// `<battery> <label> <left>%` from the whole used percentage: the number is the share left, and
-/// the battery icon turns from `🔋` to `🪫` when less than [`LOW_LEFT_PERCENT`] is left
-/// (SPEC-20261122-statusline-limits-left REQ-1, REQ-2).
-fn battery(label: &str, used: i64) -> String {
-    let left = left_percent(used);
-    let icon = if left < LOW_LEFT_PERCENT {
-        "🪫"
-    } else {
-        "🔋"
-    };
-    width::icon_text(icon, &format!("{label} {left}%"))
 }
 
 /// The reset countdown from the seconds left, without the words `resets in`
@@ -2788,7 +2941,7 @@ mod line_three_support {
 /// between its label and its number.
 #[cfg(test)]
 mod window_tests {
-    use super::line_three_support::{item, line, lines, NOW};
+    use super::line_three_support::{item, line, NOW};
     use serde_json::{json, Value};
 
     /// The bar of a share left, written out from the formula of the SPEC (REQ-3): ten cells, the

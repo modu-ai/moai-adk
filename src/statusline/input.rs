@@ -534,7 +534,7 @@ mod tolerant_reader_tests {
             "📡 owner/repo",
             "🌳 wt-name",
             "🔗 #42 pending",
-            "7D 79%",
+            "7D ███████░░░ 79%",
         ] {
             assert!(base.contains(item), "{item}: {base}");
         }
@@ -543,7 +543,12 @@ mod tolerant_reader_tests {
         let no_model = render_value(&with("model", json!(5)), h);
         assert_eq!(no_model, render_value(&without("model"), h));
         assert!(!no_model.contains("🧠"), "{no_model}");
-        for item in ["📡 owner/repo", "🔗 #42 pending", "7D 79%", "🤖 2.1.330"] {
+        for item in [
+            "📡 owner/repo",
+            "🔗 #42 pending",
+            "7D ███████░░░ 79%",
+            "🤖 2.1.330",
+        ] {
             assert!(no_model.contains(item), "{item}: {no_model}");
         }
         // A mistyped cost changes nothing: the payload has a window, so no cost is shown.
@@ -555,7 +560,7 @@ mod tolerant_reader_tests {
         let out = render_value(&pr, h);
         assert!(!out.contains("🔗"), "{out}");
         assert!(
-            out.contains("🧠 Opus high·t") && out.contains("7D 79%"),
+            out.contains("🧠 Opus high·t") && out.contains("7D ███████░░░ 79%"),
             "{out}"
         );
         let mut week = full();
