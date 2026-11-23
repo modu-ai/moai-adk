@@ -441,6 +441,17 @@ pub fn runner_in(dir: &Path) -> Runner {
     }
 }
 
+/// RED stub (SPEC-20261124-new-test-file-precheck): finds nothing yet.
+pub fn table_violations(
+    _added: &[String],
+    _tests: &[TestFile],
+    _areas: Option<&str>,
+    _allow: Option<&str>,
+    _moved: &[String],
+) -> Vec<String> {
+    Vec::new()
+}
+
 /// One planned step. The `heavy` steps run one after another under one heavy slot hold.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Step {
