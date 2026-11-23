@@ -261,6 +261,27 @@ impl World {
     /// `moai bundle <args> --project … --dir … --tip origin/trunk`: the first stdout line as JSON
     /// and the exit status.
     fn bundle(&self, args: &[&str]) -> (Value, i32) {
+        self.bundle_with(args, Some(TIP))
+    }
+
+    /// The profile an m-flow project records: the integration branch the default tip follows.
+    /// `home.project` writes a file `read_profile` refuses, so a scene that needs the profile
+    /// calls this.
+    fn write_profile(&self, integration_branch: &str) {
+        let profile = serde_json::json!({
+            "schema_version": 2, "project_id": "demo", "purpose": "Fixture",
+            "tools": ["Rust"], "development_methods": ["TDD"], "hosts": ["claude"],
+            "decisions": [{"id": "d1", "topic": "tools", "value": "Rust",
+                "source": "user", "scope": "project"}],
+            "work_flow": {"flow": "m-flow", "integration_branch": integration_branch},
+        });
+        let path = moai_cli::state_root::path(Path::new(&self.project), "project.yaml");
+        fs::write(path, profile.to_string()).unwrap();
+    }
+
+    /// `bundle` with the tip the scene wants: `None` leaves `--tip` out, so the tool resolves the
+    /// default tip from the profile itself.
+    fn bundle_with(&self, args: &[&str], tip: Option<&str>) -> (Value, i32) {
         let mut all = vec!["bundle"];
         all.extend_from_slice(args);
         all.extend_from_slice(&[
@@ -268,9 +289,10 @@ impl World {
             &self.project,
             "--dir",
             self.work.to_str().unwrap(),
-            "--tip",
-            TIP,
         ]);
+        if let Some(t) = tip {
+            all.extend_from_slice(&["--tip", t]);
+        }
         let out = self
             .home
             .command(&all)
@@ -971,4 +993,123 @@ fn mutant_line_a_head_no_note_names_is_missing() {
     );
     let detail = v["result"]["warnings"][0]["detail"].to_string();
     assert!(detail.contains("no READY note names"), "{detail}");
+}
+
+// ---------------------------------------------------------------------------------------------
+// SPEC-20261124-bundle-local-tip: the default tip is the local integration branch
+
+/// One head with a source change on top of the tip, its READY note and the card that holds it.
+fn ready_source_head(w: &World, branch: &str) -> (String, String) {
+    let h = w.head(
+        branch,
+        TIP,
+        &[("src/local_tip.rs", "fn f() {}\n")],
+        SPEC,
+        &[1, 2],
+        true,
+    );
+    let c = w.new_card();
+    w.ready_note(&c, &h);
+    (c, h)
+}
+
+/// AC-1: with the profile naming `NeXT`, a local `NeXT` and no `origin/NeXT`, the default tip is
+/// the local branch and the check answers the tier floor instead of the fetch-first refusal.
+#[test]
+fn a_local_only_integration_branch_answers_the_tier_floor() {
+    let w = World::new();
+    w.git(&["branch", "NeXT", TIP]);
+    w.write_profile("NeXT");
+    let (c, h) = ready_source_head(&w, "spec/local-tip");
+    let arg = format!("{c}={h}");
+    let (v, _) = w.bundle_with(&["check", &arg], None);
+    assert_eq!(v["ok"], true, "no refusal for a local-only branch: {v}");
+    assert_eq!(v["result"]["tip"]["name"], "refs/heads/NeXT", "{v}");
+    assert_eq!(v["result"]["heads"][0]["audit_floor"], 1, "{v}");
+}
+
+/// AC-1: when both exist the local branch wins, because `origin` is behind it.
+#[test]
+fn the_local_branch_wins_over_a_stale_origin_branch() {
+    let w = World::new();
+    w.git(&["push", "-q", "origin", &format!("{TIP}:refs/heads/NeXT")]);
+    w.git(&["fetch", "-q", "origin"]);
+    let (c, h) = ready_source_head(&w, "spec/ahead");
+    // The local NeXT has one commit that origin/NeXT lacks.
+    w.git(&["checkout", "-q", "-B", "NeXT", TIP]);
+    w.put("notes/ahead.md", "a\n");
+    w.git(&["add", "-A"]);
+    w.git(&["commit", "-q", "-m", "chore: local tip moves"]);
+    w.write_profile("NeXT");
+    let arg = format!("{c}={h}");
+    let (v, _) = w.bundle_with(&["check", &arg], None);
+    assert_eq!(v["result"]["tip"]["name"], "refs/heads/NeXT", "{v}");
+    assert_eq!(
+        v["result"]["tip"]["sha"],
+        w.git(&["rev-parse", "refs/heads/NeXT"]).as_str(),
+        "{v}"
+    );
+}
+
+/// AC-1: an explicit `--tip` still judges the given value, even when the profile names a branch.
+#[test]
+fn an_explicit_tip_wins_over_the_profile_branch() {
+    let w = World::new();
+    w.git(&["branch", "NeXT", TIP]);
+    w.write_profile("NeXT");
+    let (c, h) = ready_source_head(&w, "spec/explicit");
+    let arg = format!("{c}={h}");
+    let (v, _) = w.bundle_with(&["check", &arg], Some(TIP));
+    assert_eq!(v["result"]["tip"]["name"], TIP, "{v}");
+}
+
+/// AC-2: without the local branch the default falls back to `origin/<branch>`; with neither the
+/// refusal names the tip it looked for; a given `--tip` that is no commit is refused by value.
+#[test]
+fn the_default_tip_falls_back_to_origin_and_refuses_naming_the_tip() {
+    let w = World::new();
+    w.write_profile("NeXT");
+    let (c, h) = ready_source_head(&w, "spec/fallback");
+    let arg = format!("{c}={h}");
+
+    let (v, code) = w.bundle_with(&["check", &arg], None);
+    assert_eq!(code, 1, "neither branch exists: {v}");
+    let message = v["error"]["message"].as_str().unwrap();
+    assert!(message.contains("origin/NeXT"), "names the tip: {v}");
+
+    w.git(&["push", "-q", "origin", &format!("{TIP}:refs/heads/NeXT")]);
+    w.git(&["fetch", "-q", "origin"]);
+    let (v, _) = w.bundle_with(&["check", &arg], None);
+    assert_eq!(v["result"]["tip"]["name"], "origin/NeXT", "{v}");
+
+    let (v, code) = w.bundle_with(&["check", &arg], Some("no-such-branch"));
+    assert_eq!(code, 1, "{v}");
+    let message = v["error"]["message"].as_str().unwrap();
+    assert!(message.contains("no-such-branch"), "names the value: {v}");
+}
+
+/// AC-3: the `--tip` help of every bundle action names the local branch first.
+#[test]
+fn every_bundle_action_help_names_the_local_branch_tip() {
+    let w = World::new();
+    for action in ["ready", "check", "body", "build", "verify"] {
+        let out = w
+            .home
+            .command(&["bundle", action, "--help"])
+            .stdin(Stdio::null())
+            .output()
+            .unwrap();
+        let text = String::from_utf8_lossy(&out.stdout)
+            .split_whitespace()
+            .collect::<Vec<_>>()
+            .join(" ");
+        assert!(
+            text.contains("refs/heads/<branch>") && text.contains("origin/<branch>"),
+            "bundle {action} --help names the local branch and the fallback: {text}"
+        );
+        assert!(
+            text.find("refs/heads/<branch>") < text.find("origin/<branch>"),
+            "bundle {action} --help names the local branch first: {text}"
+        );
+    }
 }

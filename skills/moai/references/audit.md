@@ -42,10 +42,11 @@ The tier a ready note states never goes below the floor of its changed paths (`s
 2. Which checks the auditor runs itself and when a remote run may be cited follow the RUN workflow's section "Check-run rules" (`workflows/run.md`). A cited run is read back by the auditor itself, and the verdict names its run id, head and conclusion.
 3. A first audit presents its whole threat model, boundaries and mutation list at once; a re-audit checks only the listed repairs and classifies anything new.
 4. A Critical or High security finding blocks. Only an exception record the user approved — finding, severity, reason, scope, approver, expiry — lowers one; a missing or stale scan is unverified, never a pass.
+5. Scratch: one folder per audit, named for it; never read or write another audit's folder.
 
 ## Side rules
 
-- A local code review of the `<base>..<head>` range is allowed evidence, never with its `--fix` or `--comment` option: it reads and reports, changes no file and posts nothing. Claude Code's `/code-review` is one; it does not read `REVIEW.md`, so it never replaces the review steps or the verdict.
+- A local code review of the `<base>..<head>` range is allowed evidence, never with its `--fix` or `--comment` option. Claude Code's `/code-review` is one; it does not read `REVIEW.md`, so it never replaces the review steps or the verdict.
 - A re-audit goes to the first auditor: the session that audited the head first checks the repairs, unless the lander hands the audit on with a note on the card.
 - A lane's tree-bound check receipt may be cited: the receipt its ready note quotes, made on the same tree as the audited head, with its targets, the exit code of each step and its log folder. A receipt from another tree is not cited.
 - No forked session and no advisor session audits: a fork carries the author's context; an advisor never sees the head.
