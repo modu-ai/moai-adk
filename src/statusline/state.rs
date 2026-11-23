@@ -979,13 +979,16 @@ pub fn status_args(measure: &Measure) -> Vec<String> {
 }
 
 /// The arguments of the second git call: the commits only the integration branch has (behind)
-/// and only `HEAD` has (ahead), from the full ref of the integration branch.
+/// and only `HEAD` has (ahead), from the full ref of the integration branch. The `--` after the
+/// range says that no path follows: a work tree file named like the range would otherwise stop
+/// git with "ambiguous argument".
 pub fn distance_args(integration: &str) -> Vec<String> {
     vec![
         "rev-list".to_string(),
         "--left-right".to_string(),
         "--count".to_string(),
         format!("refs/heads/{integration}...HEAD"),
+        "--".to_string(),
     ]
 }
 
@@ -4372,6 +4375,7 @@ mod where_tests {
                     "--left-right".into(),
                     "--count".into(),
                     format!("refs/heads/{integration}...HEAD"),
+                    "--".into(),
                 ]
             );
         }

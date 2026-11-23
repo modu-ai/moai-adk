@@ -491,7 +491,7 @@ fn head_file_and_process_count_lane_branch_is_measured_against_the_integration_b
         s.starts(),
         vec![
             "--no-optional-locks status --porcelain".to_string(),
-            "rev-list --left-right --count refs/heads/next...HEAD".to_string(),
+            "rev-list --left-right --count refs/heads/next...HEAD --".to_string(),
         ]
     );
     assert!(
@@ -684,9 +684,10 @@ fn session_cache_another_folder_with_the_same_head_starts_one_git() {
 }
 
 /// REQ-6: a changed commit of the integration branch starts git again (the `status` call and the
-/// distance call of a lane branch), from a loose ref and from `packed-refs` alike.
+/// distance call of a lane branch, two processes per miss), from a loose ref and from
+/// `packed-refs` alike.
 #[test]
-fn session_cache_a_changed_integration_commit_starts_one_git() {
+fn session_cache_a_changed_integration_commit_starts_git_again() {
     let s = Scripted::new("ref: refs/heads/lane\n");
     s.integration("next", SHA_A);
     s.run(T, "s-int");
