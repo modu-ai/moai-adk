@@ -105,7 +105,9 @@ fn skill_entry_points_to_the_loop_reference_and_does_not_repeat_it() {
         .find(|l| l.contains("`internal/loop`"))
         .unwrap();
     assert!(
-        pointer.starts_with("Before a session arms `/loop`, a cron task or a wakeup for the leader round, read "),
+        pointer.starts_with(
+            "Before a session arms `/loop`, a cron task or a wakeup for the leader round, read "
+        ),
         "the pointer line says when to read it: {pointer}"
     );
     for word in [
@@ -115,7 +117,10 @@ fn skill_entry_points_to_the_loop_reference_and_does_not_repeat_it() {
         "CronDelete",
         "confirmed leader",
     ] {
-        assert!(!entry.contains(word), "the entry holds the loop rule's {word}");
+        assert!(
+            !entry.contains(word),
+            "the entry holds the loop rule's {word}"
+        );
     }
 }
 
@@ -190,7 +195,9 @@ fn sdd_order_ends_in_the_landing_and_the_next_card() {
     let closes = rest
         .find("closes the card in the same call")
         .expect("the landing closes the card");
-    let next = rest.find("`moai card next`").expect("the next-card command");
+    let next = rest
+        .find("`moai card next`")
+        .expect("the next-card command");
     assert!(
         land < closes && closes < next,
         "the order is: land, close in the same call, next card"
