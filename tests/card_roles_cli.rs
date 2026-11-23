@@ -57,7 +57,7 @@ impl World {
 
     /// `moai card <args> --project <project>` as `session`, the profile written last.
     fn card(&self, session: Option<&str>, args: &[&str]) -> Output {
-        let cfg = Path::new(&self.p).join(".moai-cli/project.yaml");
+        let cfg = moai_cli::state_root::path(Path::new(&self.p), "project.yaml");
         std::fs::create_dir_all(cfg.parent().unwrap()).unwrap();
         std::fs::write(&cfg, PROFILE).unwrap();
         let mut all = vec!["card"];
