@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261124-identity-home-arg
 title: "identity takes the HOME as an argument: identity_in, then the claim group calls it with no HOME"
-status: draft
+status: approved
 revision: 3
 created: 2026-11-24
+approval:
+  by: leader
+  at: 2026-11-23
+  basis: "리더 결정 노트 7748 (2026-11-23T17:44:46Z, 사용자 위임 2026-11-23T13:57Z, 노트 7745 의 결정 1·2 에 답함: 판 3 승인, write scope 7개 파일 확장; 조건 하나: 홈 상태를 실제로 읽는 길의 링크 거절을 테스트로 핀); 리더가 노트에 적었고 레인은 그 노트를 인용만 해요"
+  digest: "sha256:410d850e96d77a9d3f29241cf278986d1467958822635f7114965c8dbc662858"
 ---
 
 # identity takes the HOME as an argument: identity_in, then the claim group calls it with no HOME

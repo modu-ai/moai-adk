@@ -77,7 +77,7 @@ pub const ACTIVE_STATES: &[&str] = &[
 /// One clone keeps one journal; the common dir is the clone boundary (01-A), so all worktrees
 /// resolve the same root and git never lists the files.
 pub fn journal_root(project: &Path) -> Result<PathBuf> {
-    let id = identity::identity(project)?;
+    let id = identity::identity_in(project, None)?;
     if id["identity_status"].as_str() != Some("ok") {
         return Err(format!(
             "claim journal requires a git repository; identity_status was {}",
@@ -1485,7 +1485,7 @@ pub fn acquire_cli<T: Transport, C: Clock>(
     clock: &C,
 ) -> std::result::Result<Value, OpError> {
     let root = journal_root(project)?;
-    let id = identity::identity(project)?;
+    let id = identity::identity_in(project, None)?;
     let worktree = worktree_id(&id)?;
     let journal = Journal::open(&root)?;
     if !journal.try_lock()? {
@@ -1525,6 +1525,61 @@ mod tests {
 
     fn task_ref() -> TaskRef {
         TaskRef::new("github", "github.com", "acme", "widgets", 101, 7001, 7)
+    }
+
+    /// SPEC-20261124-identity-home-arg REQ-7: with a symlinked home state folder in the
+    /// environment HOME the journal root answers as it does with a sound HOME, because it reads
+    /// no home state.
+    #[cfg(unix)]
+    #[test]
+    fn home_arg_claim_group_claim_journal_root() {
+        crate::identity::linked_home_test::run(
+            module_path!(),
+            "home_arg_claim_group_claim_journal_root",
+            |f| {
+                let root = journal_root(&f.project).unwrap();
+                assert!(root.ends_with("claims"), "{}", root.display());
+            },
+        );
+    }
+
+    /// REQ-7 for `acquire_cli`: the request is invalid on purpose, so the answer must be the
+    /// request's own refusal and not the home state refusal of the identity step before it.
+    #[cfg(unix)]
+    #[test]
+    fn home_arg_claim_group_claim_acquire_cli() {
+        crate::identity::linked_home_test::run(
+            module_path!(),
+            "home_arg_claim_group_claim_acquire_cli",
+            |f| {
+                let req = ClaimRequest::new(
+                    0,
+                    task_ref(),
+                    "key",
+                    Owner::new("session", "s"),
+                    "x",
+                    vec![],
+                    SpecRef {
+                        id: "SPEC-20261124-identity-home-arg".into(),
+                        revision: "1".into(),
+                        digest: None,
+                    },
+                );
+                let transport = crate::forge::transport::RecordedTransport::new(vec![]);
+                let err = acquire_cli(
+                    &f.project,
+                    req,
+                    &transport,
+                    &crate::forge::policy::SystemClock,
+                )
+                .unwrap_err();
+                assert!(
+                    err.message.contains("unsupported request schema_version"),
+                    "{}",
+                    err.message
+                );
+            },
+        );
     }
 
     #[test]
