@@ -135,11 +135,86 @@ fn a_failing_test_keeps_its_own_exit_code_and_the_line() {
 }
 
 #[test]
-fn the_default_mode_observes_and_never_fails_the_test() {
+fn the_default_mode_is_enforce() {
     let g = Guard::new();
     let out = g.run(None, None, DECOY_READ);
+    assert_eq!(out.status.code(), Some(1), "{}", stderr(&out));
+    assert!(stderr(&out).contains("HOME-GUARD:"), "{}", stderr(&out));
+}
+
+#[test]
+fn observe_mode_prints_the_line_and_never_fails_the_test() {
+    let g = Guard::new();
+    let out = g.run(Some("observe"), None, DECOY_READ);
     assert_eq!(out.status.code(), Some(0), "{}", stderr(&out));
     assert!(stderr(&out).contains("HOME-GUARD:"), "{}", stderr(&out));
+}
+
+// ---- the baseline: tests that read the known decoy without choosing a HOME -----------------------
+
+/// The wrapper run on a fake test binary the way nextest starts one: the binary path whose name
+/// ends in a 16-digit hash, then `--exact <test name> --nocapture`. `body` is the shell text of
+/// the binary; `baseline` is the baseline file the wrapper reads.
+fn run_fake_binary(g: &Guard, baseline: &str, body: &str, test: &str) -> Output {
+    use std::os::unix::fs::PermissionsExt;
+    let bin_dir = TempDir::new().unwrap();
+    let bin = bin_dir.path().join("fake_bin-0123456789abcdef");
+    fs::write(&bin, format!("#!/bin/sh\n{body}\n")).unwrap();
+    fs::set_permissions(&bin, fs::Permissions::from_mode(0o755)).unwrap();
+    let list = bin_dir.path().join("baseline.tsv");
+    fs::write(&list, baseline).unwrap();
+    Command::new("sh")
+        .arg(script())
+        .arg(&bin)
+        .args(["--exact", test, "--nocapture"])
+        .env("TMPDIR", g.tmp.path())
+        .env("MOAI_HOME_GUARD_BASELINE", &list)
+        .env_remove("MOAI_HOME_GUARD")
+        .env_remove("MOAI_HOME_GUARD_LOG")
+        .output()
+        .unwrap()
+}
+
+#[test]
+fn a_listed_test_that_reads_only_the_known_decoy_is_tolerated() {
+    let g = Guard::new();
+    let out = run_fake_binary(&g, "fake_bin\tsome::test\n", DECOY_READ, "some::test");
+    assert_eq!(out.status.code(), Some(0), "{}", stderr(&out));
+    assert!(stderr(&out).contains("tolerated"), "{}", stderr(&out));
+}
+
+#[test]
+fn a_listed_test_that_also_writes_is_not_tolerated() {
+    let g = Guard::new();
+    let body = format!("{DECOY_READ}\necho x > \"$HOME/stray.txt\"");
+    let out = run_fake_binary(&g, "fake_bin\tsome::test\n", &body, "some::test");
+    assert_eq!(out.status.code(), Some(1), "{}", stderr(&out));
+    assert!(!stderr(&out).contains("tolerated"), "{}", stderr(&out));
+}
+
+#[test]
+fn a_listed_test_that_reads_another_decoy_is_not_tolerated() {
+    let g = Guard::new();
+    let body = r#"find "$HOME" -type f -name language.yaml -exec cat {} + > /dev/null"#;
+    let out = run_fake_binary(&g, "fake_bin\tsome::test\n", body, "some::test");
+    assert_eq!(out.status.code(), Some(1), "{}", stderr(&out));
+}
+
+#[test]
+fn a_test_that_is_not_listed_fails_and_so_does_one_under_another_binary() {
+    let g = Guard::new();
+    let out = run_fake_binary(&g, "fake_bin\tother::test\n", DECOY_READ, "some::test");
+    assert_eq!(out.status.code(), Some(1), "{}", stderr(&out));
+    let out = run_fake_binary(&g, "other_bin\tsome::test\n", DECOY_READ, "some::test");
+    assert_eq!(out.status.code(), Some(1), "{}", stderr(&out));
+}
+
+#[test]
+fn a_tolerated_test_that_fails_keeps_its_own_exit_code() {
+    let g = Guard::new();
+    let body = format!("{DECOY_READ}\nexit 9");
+    let out = run_fake_binary(&g, "fake_bin\tsome::test\n", &body, "some::test");
+    assert_eq!(out.status.code(), Some(9), "{}", stderr(&out));
 }
 
 #[test]
@@ -389,10 +464,19 @@ fn nextest_applies_the_repository_configuration_to_a_scratch_crate() {
 }
 
 #[test]
-fn the_default_mode_of_the_repository_configuration_does_not_fail_a_reading_test() {
+fn the_default_mode_of_the_repository_configuration_fails_a_reading_test() {
     require_nextest();
     let dir = scratch_crate(Wrapper::Repository);
     let (_, text) = nextest(dir.path(), None);
+    assert_eq!(status(&text, "plant_reads_decoy").as_deref(), Some("FAIL"), "{text}");
+    assert!(text.contains("HOME-GUARD:"), "{text}");
+}
+
+#[test]
+fn the_observe_mode_of_the_repository_configuration_does_not_fail_a_reading_test() {
+    require_nextest();
+    let dir = scratch_crate(Wrapper::Repository);
+    let (_, text) = nextest(dir.path(), Some("observe"));
     assert_eq!(status(&text, "plant_reads_decoy").as_deref(), Some("PASS"), "{text}");
     assert!(text.contains("HOME-GUARD:"), "{text}");
 }
@@ -534,4 +618,91 @@ fn the_configuration_enables_the_wrapper_feature_and_pins_a_nextest_version() {
     assert!(cfg.contains("run-wrapper = 'home-guard'"), "no rule runs the wrapper");
     assert!(cfg.contains("cfg(unix)"), "the rule is not limited to unix hosts");
     assert!(cfg.contains("tools/test_home_guard.sh"), "the wrapper script is not named");
+}
+
+// ---- the baseline file --------------------------------------------------------------------------
+
+const BASELINE: &str = "tests/fixtures/test_home_guard/baseline.tsv";
+
+/// The most lines the baseline may hold. The observation of SPEC-20261123-test-home-isolation (D-5)
+/// found 389 tests, and the file only shrinks: remove lines, then lower this number to the new
+/// count. A test that reads the decoy and is not listed fails instead of being added.
+const BASELINE_CAP: usize = 389;
+
+/// Every `binary<TAB>test` line of a baseline: sorted without repeats, within `cap`, and naming a
+/// test that exists. The library tests use the binary name `moai_cli`; the name is a module path
+/// that leads to one source file. An integration test is found by its last name segment in
+/// `tests/<binary>.rs`. Returns the number of lines.
+fn check_baseline(text: &str, root: &Path, cap: usize) -> Result<usize, String> {
+    let lines: Vec<&str> = text
+        .lines()
+        .filter(|l| !l.trim().is_empty() && !l.starts_with('#'))
+        .collect();
+    if lines.len() > cap {
+        return Err(format!("the baseline has {} lines, more than its cap {cap}", lines.len()));
+    }
+    for pair in lines.windows(2) {
+        if pair[0] >= pair[1] {
+            return Err(format!("the baseline is not sorted without repeats at: {}", pair[1]));
+        }
+    }
+    let mut sources: std::collections::BTreeMap<String, String> = Default::default();
+    for line in &lines {
+        let (bin, name) = line
+            .split_once('\t')
+            .filter(|(b, n)| !b.is_empty() && !n.is_empty() && !n.contains('\t'))
+            .ok_or_else(|| format!("malformed baseline line: {line}"))?;
+        let exists = if bin == "moai_cli" {
+            function_exists(root, name)
+        } else {
+            let short = name.rsplit("::").next().unwrap_or(name);
+            let src = sources.entry(bin.to_string()).or_insert_with(|| {
+                fs::read_to_string(root.join("tests").join(format!("{bin}.rs"))).unwrap_or_default()
+            });
+            src.contains(&format!("fn {short}("))
+        };
+        if !exists {
+            return Err(format!("the baseline line names no existing test: {line}"));
+        }
+    }
+    Ok(lines.len())
+}
+
+#[test]
+fn the_repository_baseline_stays_within_its_cap_and_names_real_tests() {
+    let text = fs::read_to_string(Path::new(ROOT).join(BASELINE)).unwrap();
+    let n = check_baseline(&text, Path::new(ROOT), BASELINE_CAP).unwrap();
+    assert!(n > 0, "an empty baseline means the cap and this file should be removed");
+}
+
+#[test]
+fn a_baseline_that_grew_is_refused() {
+    let text = "test_home_guard\ta_baseline_that_grew_is_refused\n";
+    let err = check_baseline(text, Path::new(ROOT), 0).unwrap_err();
+    assert!(err.contains("more than its cap"), "{err}");
+}
+
+#[test]
+fn an_unsorted_or_repeating_baseline_is_refused() {
+    let a = "test_home_guard\tthe_default_mode_is_enforce";
+    let b = "test_home_guard\ta_baseline_that_grew_is_refused";
+    let err = check_baseline(&format!("{a}\n{b}\n"), Path::new(ROOT), 10).unwrap_err();
+    assert!(err.contains("not sorted"), "{err}");
+    let err = check_baseline(&format!("{a}\n{a}\n"), Path::new(ROOT), 10).unwrap_err();
+    assert!(err.contains("not sorted"), "{err}");
+}
+
+#[test]
+fn a_baseline_line_that_names_nothing_is_refused() {
+    let root = Path::new(ROOT);
+    for text in [
+        "test_home_guard\tno_such_test_anywhere\n",
+        "no_such_binary\tsome_test\n",
+        "moai_cli\tno_such_module::tests::some_test\n",
+    ] {
+        let err = check_baseline(text, root, 10).unwrap_err();
+        assert!(err.contains("names no existing test"), "{text}: {err}");
+    }
+    let err = check_baseline("no tab on this line\n", root, 10).unwrap_err();
+    assert!(err.contains("malformed"), "{err}");
 }
