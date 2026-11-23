@@ -112,4 +112,33 @@ approval:
 
 ## Result
 
-Not yet implemented. Approval is the leader's note, not this lane's.
+첫 조각(rules 자리 바꾸기와 되돌리기 kind, REQ-1 에서 REQ-4)을 구현했어요. 판 1 의 승인 근거는 카드 원장 노트 7937 의 `LEADER 결정 (2026-11-23T21:55:56Z, 사용자 위임 2026-11-23T13:57Z, 리더 판단, 되돌릴 수 있음, 분류 none)` 이고, 이 레인은 그 노트를 머리말에 인용만 했어요. 알림 조각(REQ-5 에서 REQ-9, AC-4, AC-5)은 `src/update.rs` 를 다른 카드가 쥐고 있어 이 조각에 넣지 않았어요(노트 7937). 에이전트 자리는 건드리지 않았어요(노트 7929).
+
+### 실행 기록 (2026-11-24, 이 워크트리, 임시 HOME 만)
+
+- RED: `moai heavy-slot-acquire --name desktop-install-agents --max 5 -- cargo test --locked --offline --test desktop_folder_rules_cli` (`RUSTC_WRAPPER=sccache`): exit 101, 3 failed (계획이 옛 경로 `rules/moai/flow.md` 를 말함, 옛 파일이 있으면 새 파일 계획이 `conflict`, 새 파일이 안 만들어짐).
+- GREEN: 같은 명령 exit 0, 3 passed.
+- 옛 경로를 못박은 시험 갱신 뒤: `claude_md_home_cli` 48, `home_routing_cli` 11, `host_home_cli` 12, `revert_twice_cli` 2, `e2e_temp_home_cli` 10 모두 passed. `update_user_layer_cli` 는 두 줄(296, 1293)을 바꾸기 전에 20 passed, 2 failed 였고 범위를 넓힌 뒤(노트 7955 의 리더 답) 그 두 줄을 새 경로로 맞췄어요.
+- `check affected` 본 실행의 영수증은 READY 노트에 있어요.
+
+### 뮤턴트 (이 워크트리에서 손으로 한 줄 변이, `cargo test --test desktop_folder_rules_cli`, 커밋 뒤 `git checkout` 으로 복구)
+
+- `revert_follows_the_kind`: `src/home_routing/rules.rs` 의 `"flow" => LEGACY_FLOW_FILE` 를 `FLOW_FILE` 로: exit 101 (죽음).
+- `revert_follows_the_kind`: 새 쓰기의 kind `"moai_flow"` 를 `"flow"` 로: exit 101 (죽음).
+- `earlier_flow_file_is_left_in_place`: 옛 파일 존재 검사 `is_ok()` 를 `is_err()` 로: exit 101 (죽음, 미리보기가 옛 파일 이름을 말하지 않음).
+- `flow_rule_is_written_directly_under_rules`: `FLOW_FILE` 을 옛 경로로: exit 101 (죽음, 세 시험 모두).
+
+### 인수 기준
+
+- AC-1: met — `flow_rule_is_written_directly_under_rules` 통과: 계획이 `rules/moai-flow.md` 를 말하고, 적용이 패키지 글 그대로 쓰고, `rules/moai/` 폴더가 생기지 않아요.
+- AC-2: met — `earlier_flow_file_is_left_in_place` 통과: 옛 `rules/moai/flow.md` 가 있으면 계획이 그 이름과 `left in place` 를 말하고, 적용 뒤 옛 파일의 바이트와 수정 시각이 그대로이고, 두 번째 계획은 `unchanged` 예요.
+- AC-3: met — `revert_follows_the_kind` 통과: 새 적용의 영수증은 `rules/moai-flow.md` 를 되돌리고, 옛 배치가 쓰던 kind `flow` 항목은 `rules/moai/flow.md` 만 되돌리며 새 경로를 건드리지 않아요.
+- AC-4: not_run — 알림 조각(REQ-5, REQ-6, REQ-7, REQ-9)은 이 조각에 없어요.
+- AC-5: not_run — 알림 조각(REQ-8)은 이 조각에 없어요.
+- AC-6: 여섯 파일 중 `update_user_layer_cli` 를 포함해 모두 새 경로를 이름 붙였어요. `check affected` 본 실행의 결과는 READY 노트가 가지고 있어요(같은 head).
+
+### 남은 것
+
+- 알림 조각(REQ-5 에서 REQ-9)은 `src/update.rs` 를 쥔 카드가 놓은 뒤 SCOPE-REQUEST 로 이어요.
+- `tests/fixtures/home-style/render-5.md` 와 `skills/moai/references/source-manifest.json` 의 설명 글이 옛 경로를 말로 적고 있어요(범위 밖, 이 조각에서 바꾸지 않았어요).
+- 카드 기준 3(임시 HOME 설치 뒤 진짜 claude 세션에서 /moai, 에이전트 다섯, rules 확인)은 운영자 단계라 not_run 이에요.
