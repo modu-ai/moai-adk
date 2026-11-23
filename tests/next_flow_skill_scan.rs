@@ -567,6 +567,48 @@ fn absorb_update_carries_a_leftover_preview_that_deletes_nothing() {
     }
 }
 
+/// The line of the `update.md` procedure that starts step `n` as `n. **`.
+fn update_step(text: &str, n: usize) -> &str {
+    let start = format!("{n}. **");
+    text.lines()
+        .find(|line| line.starts_with(&start))
+        .unwrap_or_else(|| panic!("update.md has no step {n}"))
+}
+
+/// What steps 2 and 5 of `update.md` must say about the picks for the older instruction files:
+/// the binary refuses `import`, offers `move` and `leave`, then `remove-originals` as an
+/// optional step, and an `optional` step does not keep the project from reading as up to date.
+fn update_picks_problems(text: &str) -> Vec<String> {
+    let mut problems = Vec::new();
+    let ask = update_step(text, 2);
+    if ask.contains("`import`") {
+        problems.push("step 2 offers `import`, which the binary refuses".to_string());
+    }
+    for want in ["`move`", "`leave`", "`remove-originals`", "optional"] {
+        if !ask.contains(want) {
+            problems.push(format!("step 2 lacks {want:?}"));
+        }
+    }
+    if !update_step(text, 5).contains("`optional`") {
+        problems.push("step 5 does not count an `optional` step as nothing to do".to_string());
+    }
+    problems
+}
+
+#[test]
+fn absorb_update_picks_are_move_leave_and_an_optional_remove_originals() {
+    let problems = update_picks_problems(&read("workflows/update.md"));
+    assert!(problems.is_empty(), "update.md: {problems:?}");
+}
+
+#[test]
+fn absorb_update_picks_check_reads_what_it_says() {
+    let old = "2. **Ask.** `move` (x), `import` (y) or `leave` (z).\n5. **Re-run and report.** a `skip` counts as nothing to do.";
+    assert_eq!(update_picks_problems(old).len(), 4, "{old}");
+    let good = "2. **Ask.** `move` or `leave`; later the optional step `remove-originals`.\n5. **Re-run and report.** a `skip` or an `optional` step counts as nothing to do.";
+    assert_eq!(update_picks_problems(good), Vec::<String>::new(), "{good}");
+}
+
 #[test]
 fn absorb_run_carries_the_verify_sections() {
     let run = read("workflows/run.md");
