@@ -321,11 +321,24 @@ impl World {
     /// One PASS verdict of `card` on `head` at tier 1 by the independent reviewer, written as the
     /// `card verdict` command writes it; the receipt names `head` and the steps `(name, exit)`.
     fn pass(&self, card: &str, head: &str, steps: &[(&str, i64)]) {
-        self.pass_naming(card, head, head, steps);
+        self.pass_naming(card, head, head, 1, steps);
     }
 
-    /// [`World::pass`] with the head the receipt names given apart from the verdict's head.
-    fn pass_naming(&self, card: &str, head: &str, receipt_head: &str, steps: &[(&str, i64)]) {
+    /// [`World::pass`] at tier 0, where the verdict check asks for no receipt, so what the scan
+    /// check reads from the receipt is judged by the scan check alone.
+    fn pass_tier0(&self, card: &str, head: &str, receipt_head: &str, steps: &[(&str, i64)]) {
+        self.pass_naming(card, head, receipt_head, 0, steps);
+    }
+
+    /// [`World::pass`] with the head the receipt names and the tier given.
+    fn pass_naming(
+        &self,
+        card: &str,
+        head: &str,
+        receipt_head: &str,
+        tier: u8,
+        steps: &[(&str, i64)],
+    ) {
         let conn =
             Connection::open(ledger::ledger_path(self.home.path(), "demo").unwrap()).unwrap();
         let rows = self.count("SELECT count(*) FROM event");
@@ -334,7 +347,7 @@ impl World {
             .map(|(name, exit)| json!({"name": name, "exit": exit}))
             .collect();
         let payload = json!({
-            "head": head, "base": self.tip, "verdict": "pass", "tier": 1,
+            "head": head, "base": self.tip, "verdict": "pass", "tier": tier,
             "evidence": "the fixture's evidence",
             "receipt": {"head": receipt_head, "steps": steps},
             "reviewer": S_AUD,
@@ -501,7 +514,33 @@ fn ac3_the_scan_steps_of_the_landing_head_cover_the_scans() {
         .iter()
         .all(|s| s["covered"] == json!(true)));
 
-    // A step at exit 1.
+    // A scan step at exit 1 does not cover its scan (tier 0: the verdict check reads no receipt).
+    let w = World::with_table(ENFORCE_PROFILE);
+    let card = w.review_card();
+    let cand = w.candidate_adding("tests/branch_gc_cli.rs");
+    w.pass_tier0(
+        &card,
+        &cand,
+        &cand,
+        &with_steps(&[("scan:test-area-layout", 1), ("scan:clean-env-only", 0)]),
+    );
+    let before = w.dump();
+    let message = w.refuse(&w.land(&card, &cand), "scans_missing", &before);
+    assert!(message.contains("test-area-layout"), "{message}");
+    assert!(!message.contains("clean-env-only"), "{message}");
+
+    // A receipt of another head than the verdict's covers nothing.
+    let w = World::with_table(ENFORCE_PROFILE);
+    let card = w.review_card();
+    let cand = w.candidate_adding("tests/branch_gc_cli.rs");
+    w.pass_tier0(&card, &cand, &w.tip, &with_steps(&both));
+    let before = w.dump();
+    let message = w.refuse(&w.land(&card, &cand), "scans_missing", &before);
+    assert!(message.contains("test-area-layout"), "{message}");
+    assert!(message.contains("clean-env-only"), "{message}");
+
+    // At tier 1 the verdict check itself asks every receipt step for exit 0, so a red scan step
+    // is refused there before the scan check.
     let w = World::with_table(ENFORCE_PROFILE);
     let card = w.review_card();
     let cand = w.candidate_adding("tests/branch_gc_cli.rs");
@@ -511,21 +550,7 @@ fn ac3_the_scan_steps_of_the_landing_head_cover_the_scans() {
         &with_steps(&[("scan:test-area-layout", 1), ("scan:clean-env-only", 0)]),
     );
     let before = w.dump();
-    let message = w.refuse(&w.land(&card, &cand), "scans_missing", &before);
-    assert!(message.contains("test-area-layout"), "{message}");
-    assert!(!message.contains("clean-env-only"), "{message}");
-
-    // The receipt names another head than the verdict's: the verdict check refuses it first at
-    // tier 1, so the scan steps of a receipt of another head never count.
-    let w = World::with_table(ENFORCE_PROFILE);
-    let card = w.review_card();
-    let cand = w.candidate_adding("tests/branch_gc_cli.rs");
-    w.pass_naming(&card, &cand, &w.tip, &with_steps(&both));
-    let before = w.dump();
-    let out = w.land(&card, &cand);
-    assert_eq!(out.status.code(), Some(1));
-    assert_eq!(w.dump(), before);
-    assert_eq!(w.integ(), w.tip);
+    w.refuse(&w.land(&card, &cand), "receipt_missing", &before);
 
     // A receipt that lacks one scan.
     let w = World::with_table(ENFORCE_PROFILE);
@@ -620,14 +645,14 @@ fn ac6_an_unreadable_table_is_refused_and_no_table_needs_no_scan() {
     let cand = w.candidate_adding("notes/x.md");
     w.pass(&card, &cand, &BASE_STEPS);
     let before = w.dump();
-    w.refuse(&w.land(&card, &cand), "scans_unreadable", &before);
+    w.refuse(&w.land(&card, &cand), "scans_not_read", &before);
 
     w.set_profile(OBSERVE_PROFILE);
     let got = result(&w.land(&card, &cand));
     assert_eq!(got["moved"], json!(true), "{got}");
     assert_eq!(
         got["scans"]["would_refuse"]["code"],
-        json!("scans_unreadable"),
+        json!("scans_not_read"),
         "{got}"
     );
 

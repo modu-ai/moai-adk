@@ -250,6 +250,7 @@
     },
     {
       "id": "test-area-layout",
+      "always": true,
       "tests": [
         "tests/test_area_layout.rs::area_table_maps_every_real_test_file",
         "tests/test_area_layout.rs::scan_list_names_only_existing_targets_and_paths"
@@ -649,6 +650,7 @@
     },
     {
       "id": "clean-env-only",
+      "always": true,
       "tests": [
         "tests/cargo_env_developer_dir.rs::tests_clear_child_environments_only_through_clean_env"
       ],
@@ -1099,6 +1101,233 @@
         }
       ],
       "rejects": "a test file outside tests/fixtures that spells the earlier or the new state folder name and is not in the counted baseline, or spells one more often than its baseline count; a fresh project or HOME uses the resolvers (SPEC-20261122-state-folder-literal-scan)"
+    },
+    {
+      "id": "include-str-card-generated-scope",
+      "always": true,
+      "tests": [
+        "tests/card_generated_scope.rs (all)"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test card_generated_scope"
+      ],
+      "rules": [
+        "tests/card_generated_scope.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "docs/design-review/appendix/ledger_reservation.md"
+        },
+        {
+          "prefix": "src/ledger/reservation.rs"
+        }
+      ],
+      "rejects": "a change to a file that tests/card_generated_scope.rs reads with include_str! that the test did not re-run on the merge tree (SPEC-20261123-land-repo-scans)"
+    },
+    {
+      "id": "include-str-flaky-followups",
+      "always": true,
+      "tests": [
+        "tests/flaky_followups.rs (all)"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test flaky_followups"
+      ],
+      "rules": [
+        "tests/flaky_followups.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "skills/moai/workflows/run.md"
+        }
+      ],
+      "rejects": "a change to a file that tests/flaky_followups.rs reads with include_str! that the test did not re-run on the merge tree (SPEC-20261123-land-repo-scans)"
+    },
+    {
+      "id": "include-str-gitignore-block-cli",
+      "always": true,
+      "tests": [
+        "tests/gitignore_block_cli.rs (all)"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test gitignore_block_cli"
+      ],
+      "rules": [
+        "tests/gitignore_block_cli.rs"
+      ],
+      "scope": [
+        {
+          "prefix": ".gitignore"
+        }
+      ],
+      "rejects": "a change to a file that tests/gitignore_block_cli.rs reads with include_str! that the test did not re-run on the merge tree (SPEC-20261123-land-repo-scans)"
+    },
+    {
+      "id": "include-str-go-state-classes-cli",
+      "always": true,
+      "tests": [
+        "tests/go_state_classes_cli.rs (all)"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test go_state_classes_cli"
+      ],
+      "rules": [
+        "tests/go_state_classes_cli.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "docs/rust-product-path.md"
+        },
+        {
+          "prefix": "skills/moai/workflows/project.md"
+        }
+      ],
+      "rejects": "a change to a file that tests/go_state_classes_cli.rs reads with include_str! that the test did not re-run on the merge tree (SPEC-20261123-land-repo-scans)"
+    },
+    {
+      "id": "include-str-green-test-lock",
+      "always": true,
+      "tests": [
+        "tests/green_test_lock.rs (all)"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test green_test_lock"
+      ],
+      "rules": [
+        "tests/green_test_lock.rs"
+      ],
+      "scope": [
+        {
+          "prefix": ".moai-cli/project.yaml"
+        },
+        {
+          "prefix": "src/project_detect.rs"
+        }
+      ],
+      "rejects": "a change to a file that tests/green_test_lock.rs reads with include_str! that the test did not re-run on the merge tree (SPEC-20261123-land-repo-scans)"
+    },
+    {
+      "id": "include-str-host-connector",
+      "always": true,
+      "tests": [
+        "tests/host_connector.rs (all)"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test host_connector"
+      ],
+      "rules": [
+        "tests/host_connector.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "src/forge/connector.rs"
+        }
+      ],
+      "rejects": "a change to a file that tests/host_connector.rs reads with include_str! that the test did not re-run on the merge tree (SPEC-20261123-land-repo-scans)"
+    },
+    {
+      "id": "include-str-project-applied-table",
+      "always": true,
+      "tests": [
+        "tests/project_applied_table.rs (all)"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test project_applied_table"
+      ],
+      "rules": [
+        "tests/project_applied_table.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "skills/moai/workflows/project.md"
+        }
+      ],
+      "rejects": "a change to a file that tests/project_applied_table.rs reads with include_str! that the test did not re-run on the merge tree (SPEC-20261123-land-repo-scans)"
+    },
+    {
+      "id": "include-str-project-detect-cli",
+      "always": true,
+      "tests": [
+        "tests/project_detect_cli.rs (all)"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test project_detect_cli"
+      ],
+      "rules": [
+        "tests/project_detect_cli.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "skills/moai/workflows/project.md"
+        }
+      ],
+      "rejects": "a change to a file that tests/project_detect_cli.rs reads with include_str! that the test did not re-run on the merge tree (SPEC-20261123-land-repo-scans)"
+    },
+    {
+      "id": "include-str-release-suite",
+      "always": true,
+      "tests": [
+        "tests/release_suite.rs (all)"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test release_suite"
+      ],
+      "rules": [
+        "tests/release_suite.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "docs/release-attestation.md"
+        }
+      ],
+      "rejects": "a change to a file that tests/release_suite.rs reads with include_str! that the test did not re-run on the merge tree (SPEC-20261123-land-repo-scans)"
+    },
+    {
+      "id": "include-str-statusline-numbers-only",
+      "always": true,
+      "tests": [
+        "tests/statusline_numbers_only.rs (all)"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test statusline_numbers_only"
+      ],
+      "rules": [
+        "tests/statusline_numbers_only.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "docs/rust-product-path.md"
+        },
+        {
+          "prefix": "src/statusline/render.rs"
+        },
+        {
+          "prefix": "src/statusline/segments.rs"
+        }
+      ],
+      "rejects": "a change to a file that tests/statusline_numbers_only.rs reads with include_str! that the test did not re-run on the merge tree (SPEC-20261123-land-repo-scans)"
+    },
+    {
+      "id": "include-str-statusline-tag-order",
+      "always": true,
+      "tests": [
+        "tests/statusline_tag_order.rs (all)"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test statusline_tag_order"
+      ],
+      "rules": [
+        "tests/statusline_tag_order.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "src/statusline/render.rs"
+        },
+        {
+          "prefix": "src/statusline/state.rs"
+        }
+      ],
+      "rejects": "a change to a file that tests/statusline_tag_order.rs reads with include_str! that the test did not re-run on the merge tree (SPEC-20261123-land-repo-scans)"
     }
   ]
 }

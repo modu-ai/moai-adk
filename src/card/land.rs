@@ -30,6 +30,7 @@
 //! letter case) and `profile_disagrees` (the profile's branch when it is not the recorded one).
 
 pub mod check;
+pub mod scans;
 
 use super::command::open_for_write;
 use super::drift;
@@ -278,6 +279,14 @@ pub fn land(project: &Path, home: &Path, reference: &str, req: &LandRequest<'_>)
         would_refuse,
     } = check::read(&input, mode).map_err(unchanged)?;
 
+    // The scans the merge tree needs (SPEC-20261123-land-repo-scans): only a landing that moves the
+    // branch asks for them; a head the branch already holds was judged when it moved (REQ-9).
+    let scans = if standing == Standing::OnTip {
+        scans::read(&input, mode).map_err(unchanged)?
+    } else {
+        Value::Null
+    };
+
     // The one value for the whole repository: the record seeds from the profile once, and a
     // profile that disagrees with it is reported. Case variants that already exist are reported.
     let guarded = guard::protected(project, true).map_err(unchanged)?;
@@ -380,6 +389,7 @@ pub fn land(project: &Path, home: &Path, reference: &str, req: &LandRequest<'_>)
         "events": done.events,
         "writes": done.events > 0 || moved || crate::worktree_cleanup::wrote(&cleanup),
         "cleanup": cleanup,
+        "scans": scans,
     });
     if let Some(verdict) = &relied {
         answer["verdict"] = verdict.clone();
