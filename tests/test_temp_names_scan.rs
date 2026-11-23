@@ -210,21 +210,30 @@ fn temp_names_scan_ignores_a_pid_that_is_data_and_text_that_is_not_code() {
     let owner = "let me = std::process::id();\nlet dir = std::env::temp_dir();\n";
     assert!(pid_names_under_temp(owner).is_empty(), "two statements");
 
-    let block = "fn f() { let a = std::env::temp_dir(); }\nfn g() { let me = std::process::id(); }\n";
+    let block =
+        "fn f() { let a = std::env::temp_dir(); }\nfn g() { let me = std::process::id(); }\n";
     assert!(pid_names_under_temp(block).is_empty(), "two blocks");
 
     let comment = "// let p = temp_dir().join(format!(\"{}\", std::process::id()));\n/* temp_dir() std::process::id() */\nlet x = 1;\n";
     assert!(pid_names_under_temp(comment).is_empty(), "comments");
 
-    let text = "let s = \"temp_dir() std::process::id()\";\nlet r = r#\"temp_dir() process::id()\"#;\n";
+    let text =
+        "let s = \"temp_dir() std::process::id()\";\nlet r = r#\"temp_dir() process::id()\"#;\n";
     assert!(pid_names_under_temp(text).is_empty(), "string literals");
 
     // A brace inside a string does not cut a statement; a quote inside a character literal does
     // not open a string.
     let braces = "let p = temp_dir().join(format!(\"a-{}-{}\", 1, 2));\nlet q = '\"';\nlet me = process::id();\n";
-    assert!(pid_names_under_temp(braces).is_empty(), "format braces and a quote char");
+    assert!(
+        pid_names_under_temp(braces).is_empty(),
+        "format braces and a quote char"
+    );
     let cut = "let p = temp_dir().join(format!(\"a-{}\", process::id()));\n";
-    assert_eq!(pid_names_under_temp(cut), vec![1], "format braces keep one statement");
+    assert_eq!(
+        pid_names_under_temp(cut),
+        vec![1],
+        "format braces keep one statement"
+    );
 }
 
 /// REQ-2, AC-4: the checked-in `tests/` folder holds no pid name under the temp folder.
