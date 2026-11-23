@@ -249,6 +249,9 @@ pub fn note(project: &Path, home: &Path, reference: &str, req: &NoteRequest<'_>)
             ));
         }
     }
+    // SPEC-20261124-ready-receipt-gate: a READY or REPAIRED note needs the PASS receipt of its
+    // head, and nothing is written without it.
+    super::ready_receipt::check_note(project, &input::card_name(card_id), text)?;
     let author = match (req.by, req.session) {
         (Some(by), _) => actor(Some(by), "note")?,
         (None, Some(session)) => session.to_string(),

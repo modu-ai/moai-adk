@@ -7,6 +7,8 @@
 #![cfg(unix)]
 
 mod common;
+#[path = "common/ready_receipt.rs"]
+mod ready_receipt;
 
 use common::home::TempHome;
 use moai_cli::ledger;
@@ -303,10 +305,10 @@ impl World {
             .as_str()
             .unwrap()
             .to_string();
-        self.card(
-            &["note", &c, "--kind", "report", "--by", "lane"],
-            Some(&format!("LANE-READY-INTEGRATION {c} head={head}")),
-        );
+        // Not through `card note`: its READY receipt gate (SPEC-20261124-ready-receipt-gate)
+        // is not what this file judges, and the project folder is not the repository.
+        let text = format!("LANE-READY-INTEGRATION {c} head={head}");
+        ready_receipt::add_note_unchecked(self.home.path(), "demo", &c, &text);
         c
     }
 

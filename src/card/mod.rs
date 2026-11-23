@@ -16,7 +16,9 @@
 //! (`card finish`), and `landed` is what `card next` and `finish` read of git to know a card
 //! already landed (SPEC-20261121-card-finish). `wait` is a lane's read-only wait for the next
 //! note on its cards or an announcement to all lanes, with a timeout (`card wait`,
-//! SPEC-20261122-card-wait).
+//! SPEC-20261122-card-wait). `ready_receipt` is the check `card note` makes before it keeps a
+//! `LANE-READY-INTEGRATION` or `REPAIRED` note: the head needs a PASS `check affected` receipt
+//! (SPEC-20261124-ready-receipt-gate).
 
 pub mod adopt;
 pub mod cleanup;
@@ -34,6 +36,7 @@ pub mod input;
 pub mod land;
 pub mod landed;
 pub mod precheck;
+pub mod ready_receipt;
 pub mod remote_copy;
 pub mod roles;
 pub mod spec_link;
