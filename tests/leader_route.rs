@@ -49,10 +49,13 @@ const INTRO: &str = "`/moai leader` makes the window that types it the registere
 const READ_FIRST: &str = "Read the entry with `moai session-register --show --name leader` first.";
 /// REQ-3: the registration, on `free` only.
 const REGISTER: &str = "When it answers `free`, register this session with `moai session-register . --name leader --mode leader` and keep the `instance` the answer returns.";
+/// REQ-3: an entry this window already holds is renewed, never registered a second time.
+const OWN_ENTRY: &str = "When it answers `held` and its `session` is this window's own host session id, register nothing again: renew that entry as step 2 says, with the `instance` the answer shows.";
 /// REQ-4: a held entry or a conflict stops the route; any other refusal is an error.
 const STOP: &str = "When another session holds the entry, or the registration is refused with `conflict`, stop with one line that names the holder's lease end and register nothing; a refusal of any other kind is an error to report, not an answer to who leads.";
-/// REQ-5: the renewal, once per round, before the ledger is read.
-const RENEW: &str = "Once per round, before you read the ledger, renew the registration with `moai session-register . --name leader --instance <instance>`.";
+/// REQ-5: the renewal, once per round, before the ledger is read; the mode is stored only when
+/// given, so every renewal passes it again (D-7).
+const RENEW: &str = "Once per round, before you read the ledger, renew the registration with `moai session-register . --name leader --mode leader --instance <instance>`; the mode is stored only when given, so pass `--mode leader` with every renewal.";
 /// REQ-6: the ledger is the input, a completion message a notice.
 const INPUT: &str = "Read the ledger with `moai card inbox`, `moai card wait` and `moai card next`; a lane's completion message is a notice that you check against the ledger before you act, as the \"Completion message\" and \"Transition\" sections of `flows/next-flow` say.";
 /// D-3: the dispatch channel.
@@ -61,12 +64,15 @@ const DISPATCH: &str = "Send the next card's dispatch with the host's message to
 const AUDIT: &str = "Send the audit of a head to a session that wrote none of the change (the AUDIT route); the author of a change never audits it.";
 /// REQ-7: landing after a `PASS` for the exact head, by the leader.
 const LAND: &str = "Land that head with `moai card land <card> --head <40 hex> --by leader` only after a verdict `PASS` for that exact head; the command accepts only `--by leader` today, so this window is the caller.";
-/// REQ-8: a decision note is sorted in the order of the skill entry.
-const DECIDE: &str = "A `LANE-BLOCKED kind=decision` note is sorted in the order of the skill entry: a reversible choice of category none is decided here and recorded as a note on the card, and a choice that touches a HOLD category or a `guarded` setting goes to the user as a selection with the recommended option first and waits for the pick.";
+/// REQ-8: a decision note is sorted in the order of the skill entry's paragraph, which the text
+/// points to and does not copy (D-8).
+const DECIDE: &str = "A `LANE-BLOCKED kind=decision` note is sorted in the order of the skill entry's paragraph that begins \"Sort an open question\", case by case: this window decides and records as a note on the card what that order leaves to the leader, and what it sends to the user goes to the user as a selection with the recommended option first and waits for the pick.";
 /// REQ-9: the release at the end.
 const RELEASE: &str = "When the route ends, release the registration with `moai session-register . --name leader --release --instance <instance>`.";
 /// REQ-9: a closed window releases nothing.
 const CLOSED: &str = "A window that is closed releases nothing: its lease ends by itself (four hours by default), and the lanes then write the ledger note only.";
+/// REQ-9: the user can free the entry of a closed window before its lease ends.
+const FREED_BY_LEADER: &str = "Until then the entry can be freed with `moai session-register . --name leader --release --by leader --instance <instance>`, taking the `instance` from `moai session-register --show --name leader`.";
 
 /// The procedure's step keys, in order.
 const STEPS: [&str; 6] = ["register", "round", "dispatch", "audit", "land", "end"];
@@ -83,6 +89,17 @@ fn register_reads_the_entry_first_and_registers_on_free() {
 #[test]
 fn register_stops_on_a_held_entry_or_a_conflict() {
     assert_has(&leader(), STOP);
+}
+
+#[test]
+fn register_renews_its_own_held_entry_instead_of_registering_again() {
+    let t = leader();
+    for s in [REGISTER, OWN_ENTRY, STOP] {
+        assert_has(&t, s);
+    }
+    // The own-entry case is read before the stop on a held entry, which names another session.
+    assert_before(&t, REGISTER, OWN_ENTRY);
+    assert_before(&t, OWN_ENTRY, STOP);
 }
 
 #[test]
@@ -129,8 +146,48 @@ fn round_sends_the_audit_to_another_session_and_lands_only_after_a_pass() {
 }
 
 #[test]
-fn round_sorts_a_decision_note_by_the_open_question_order() {
-    assert_has(&leader(), DECIDE);
+fn round_lands_through_one_command_and_never_without_a_pass() {
+    let t = leader();
+    // The landing instruction is the command with its arguments; the Completion Check only names
+    // the command to say when a head counts as landed.
+    assert_eq!(
+        t.matches("moai card land <card>").count(),
+        1,
+        "{LEADER} holds exactly one landing command"
+    );
+    // Every sentence that gives the landing command carries the `PASS` condition.
+    for sentence in t.split(". ").filter(|s| s.contains("moai card land <card>")) {
+        assert!(
+            sentence.contains("only after a verdict `PASS` for that exact head"),
+            "{LEADER}: a landing sentence without the PASS condition: {sentence}"
+        );
+    }
+    // No sentence lands a head by another condition.
+    for opposite in [
+        "without a verdict",
+        "without waiting",
+        "before the verdict",
+        "no verdict",
+        "regardless of the verdict",
+    ] {
+        assert!(!t.contains(opposite), "{LEADER} says `{opposite}`");
+    }
+}
+
+#[test]
+fn round_sorts_a_decision_note_by_pointing_to_the_open_question_order() {
+    let t = leader();
+    assert_has(&t, DECIDE);
+    // The skill entry still holds the paragraph the text points to (a pointer must not dangle).
+    assert!(
+        package("SKILL.md").contains("Sort an open question before asking anyone, in this order"),
+        "SKILL.md lost the open-question paragraph that {LEADER} points to"
+    );
+    // The revision 1 summary is not copied back (D-8).
+    assert!(
+        !t.contains("a reversible choice of category none is decided here"),
+        "{LEADER} copies the open-question cases"
+    );
 }
 
 #[test]
@@ -164,6 +221,15 @@ fn end_releases_the_registration() {
 #[test]
 fn end_a_closed_window_releases_nothing() {
     assert_has(&leader(), CLOSED);
+}
+
+#[test]
+fn end_a_closed_window_can_be_freed_by_the_leader() {
+    let t = leader();
+    for s in [CLOSED, FREED_BY_LEADER] {
+        assert_has(&t, s);
+    }
+    assert_before(&t, CLOSED, FREED_BY_LEADER);
 }
 
 #[test]
