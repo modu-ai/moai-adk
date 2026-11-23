@@ -116,6 +116,17 @@ fn layout_bin(home: &Path, exe: &Path) -> Option<PathBuf> {
     versions_dir_of(&canonical_home, bin).map(|_| bin.to_path_buf())
 }
 
+/// Whether a `--version` first line names this very build under either binary name: the
+/// signature (`<version> (rust)`) comes after `moai` or after the earlier name `moai-cli`, so
+/// the check holds before and after the printed name changes (SPEC-20261121-moai-name REQ-1).
+fn is_this_build(first_line: Option<&str>) -> bool {
+    first_line
+        .and_then(|l| l.split_once(' '))
+        .is_some_and(|(name, rest)| {
+            matches!(name, "moai" | "moai-cli") && rest == crate::VERSION_SIGNATURE
+        })
+}
+
 /// Preview the two names for the executable `exe` (the running binary in the CLI). Reads
 /// only; an existing `bin/moai` that is not the same bytes is run once with `--version`.
 pub fn plan_for(home: &Path, exe: &Path) -> Result<Plan> {
@@ -182,8 +193,7 @@ pub fn plan_for(home: &Path, exe: &Path) -> Result<Plan> {
     // A separate `moai` of this same build (the release bundle carries both binaries) is
     // replaced by the link; anything else is not this tool's to touch.
     let line = crate::install::probe_version(&alias);
-    let mine = format!("moai-cli {}", crate::VERSION_SIGNATURE);
-    if line.as_deref() == Some(mine.as_str()) {
+    if is_this_build(line.as_deref()) {
         finish(
             "replace_copy",
             None,

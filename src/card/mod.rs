@@ -19,6 +19,7 @@
 //! SPEC-20261122-card-wait).
 
 pub mod adopt;
+pub mod cleanup;
 pub mod command;
 pub mod dispatch;
 pub mod drift;
@@ -34,7 +35,9 @@ pub mod land;
 pub mod landed;
 pub mod precheck;
 pub mod remote_copy;
+pub mod roles;
 pub mod spec_link;
+pub mod take_scope;
 pub mod timeline;
 pub mod verdict;
 pub mod wait;

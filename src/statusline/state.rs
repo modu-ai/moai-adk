@@ -136,12 +136,17 @@ pub struct Status {
     pub flow: Option<Flow>,
     /// #2756 AC-7: the open pull request of the current branch.
     pub pr: Option<PrInfo>,
-    /// #2756 AC-9: the worktree name the host gave; empty in the main checkout. The `🌳` item
-    /// shows it as it is (D-4 of SPEC-20261122-statusline-where).
+    /// #2756 AC-9: the worktree name the host gave; empty in the main checkout. It is no item of
+    /// the first line (REQ-10 of SPEC-20261123-statusline-order-bars) and no layout reads it; the
+    /// card of the session is found from its working folder and its session id.
     pub worktree: String,
     /// SPEC-20261122-statusline-where: the integration branch of the project (`work_flow` of its
     /// profile, else the remote's default branch), `None` when neither names one.
     pub integration: Option<String>,
+    /// SPEC-20261123-statusline-order-bars REQ-9: the first seven characters of the commit that the
+    /// local ref `refs/heads/<integration>` names; empty when no integration branch is known or
+    /// its ref cannot be read.
+    pub integration_tip: String,
 }
 
 /// The `pr` fields the status line shows.
@@ -285,6 +290,7 @@ pub fn collect(input: Option<&Input>, ctx: &Context) -> Status {
     {
         status.git = Some(read.git);
         status.integration = read.integration;
+        status.integration_tip = read.integration_tip;
     }
     let Some(input) = input else {
         return status;
@@ -631,6 +637,9 @@ fn resolve_glm_model_name(display: &str, ctx: &Context) -> String {
         "ANTHROPIC_DEFAULT_SONNET_MODEL"
     } else if lower.contains("haiku") {
         "ANTHROPIC_DEFAULT_HAIKU_MODEL"
+    } else if lower.contains("fable") {
+        // The glm launcher maps the fable alias too (SPEC-20261123-glm-54-followups D-5).
+        "ANTHROPIC_DEFAULT_FABLE_MODEL"
     } else if !lower.starts_with("claude") {
         return cleaned.to_string();
     } else {
@@ -706,10 +715,11 @@ const GLM_CONTEXT_WINDOWS: [(&str, i64); 3] = [
     ("glm-5.3", 1_000_000),
     ("glm-5.4", 1_000_000),
 ];
-const GLM_ENV_SLOTS: [&str; 3] = [
+const GLM_ENV_SLOTS: [&str; 4] = [
     "ANTHROPIC_DEFAULT_OPUS_MODEL",
     "ANTHROPIC_DEFAULT_SONNET_MODEL",
     "ANTHROPIC_DEFAULT_HAIKU_MODEL",
+    "ANTHROPIC_DEFAULT_FABLE_MODEL",
 ];
 
 /// `resolveContextWindowOverride`: `MOAI_STATUSLINE_CONTEXT_SIZE`, then `llm.yaml`
@@ -872,6 +882,8 @@ const CACHE_FILE_CAP: u64 = 64 * 1024;
 const SMALL_FILE_CAP: u64 = 4096;
 /// `packed-refs` is searched only when the loose ref of the integration branch is missing.
 const PACKED_REFS_CAP: u64 = 8 * 1024 * 1024;
+/// How many characters of the integration commit the first line shows.
+const INTEGRATION_TIP_CHARS: usize = 7;
 
 /// The text of a `HEAD` file read as a branch, a detached commit or nothing. A branch name is
 /// taken only when it is one git can be given safely (`profile::branch_name`: a portable subset,
@@ -967,13 +979,16 @@ pub fn status_args(measure: &Measure) -> Vec<String> {
 }
 
 /// The arguments of the second git call: the commits only the integration branch has (behind)
-/// and only `HEAD` has (ahead), from the full ref of the integration branch.
+/// and only `HEAD` has (ahead), from the full ref of the integration branch. The `--` after the
+/// range says that no path follows: a work tree file named like the range would otherwise stop
+/// git with "ambiguous argument".
 pub fn distance_args(integration: &str) -> Vec<String> {
     vec![
         "rev-list".to_string(),
         "--left-right".to_string(),
         "--count".to_string(),
         format!("refs/heads/{integration}...HEAD"),
+        "--".to_string(),
     ]
 }
 
@@ -1126,10 +1141,12 @@ struct CacheRecord {
     counts: Counts,
 }
 
-/// What a render reads about git: the facts of the status line and the integration branch.
+/// What a render reads about git: the facts of the status line, the integration branch and the
+/// first seven characters of the commit its local ref names (empty when the ref cannot be read).
 struct GitRead {
     git: GitStatus,
     integration: Option<String>,
+    integration_tip: String,
 }
 
 /// Where the git directory of a checkout and the common directory of its repository are.
@@ -1181,7 +1198,8 @@ fn is_commit(text: &str) -> bool {
 }
 
 /// The commit of the local branch `name` (a name that passed `profile::branch_name`): its loose
-/// ref file, else its line of `packed-refs`; empty when neither says. Read for the cache key.
+/// ref file, else its line of `packed-refs`; empty when neither says. Read for the cache key and
+/// for the integration item of the first line.
 fn ref_commit(common: &Path, name: &str) -> String {
     if let Some(text) = read_small(&common.join("refs/heads").join(name), SMALL_FILE_CAP) {
         if is_commit(text.trim()) {
@@ -1217,6 +1235,14 @@ fn read_git(
         SMALL_FILE_CAP,
     );
     let integration = integration_from(profile.as_deref(), origin_head.as_deref());
+    // The integration commit is read before `HEAD` is, from the ref of the integration branch
+    // alone (a loose ref file, else `packed-refs`): a detached or unreadable `HEAD` shows the same
+    // seven characters as a branch does, and `HEAD` never stands in for it (REQ-9 of
+    // SPEC-20261123-statusline-order-bars).
+    let commit = integration
+        .as_deref()
+        .map_or_else(String::new, |name| ref_commit(&dirs.common, name));
+    let integration_tip: String = commit.chars().take(INTEGRATION_TIP_CHARS).collect();
     let mut git = GitStatus::default();
     let head_text = read_small(&dirs.git_dir.join("HEAD"), SMALL_FILE_CAP).unwrap_or_default();
     let branch = match head_of(&head_text) {
@@ -1230,12 +1256,13 @@ fn read_git(
         }
         // Nothing to measure: no branch, no distance and no process.
         Head::Unreadable => {
-            return Some(GitRead { git, integration });
+            return Some(GitRead {
+                git,
+                integration,
+                integration_tip,
+            });
         }
     };
-    let commit = integration
-        .as_deref()
-        .map_or_else(String::new, |name| ref_commit(&dirs.common, name));
     // The per-checkout git directory, as the disk spells it, is the folder of the key.
     let folder = std::fs::canonicalize(&dirs.git_dir)
         .unwrap_or_else(|_| dirs.git_dir.clone())
@@ -1259,7 +1286,11 @@ fn read_git(
     git.staged = counts.staged;
     git.modified = counts.modified;
     git.untracked = counts.untracked;
-    Some(GitRead { git, integration })
+    Some(GitRead {
+        git,
+        integration,
+        integration_tip,
+    })
 }
 
 /// The parts of the cache key besides the `HEAD` text and the integration commit.
@@ -2026,6 +2057,59 @@ mod tests {
         let claude =
             Context::for_test(&[("ANTHROPIC_DEFAULT_OPUS_MODEL", "claude-opus-5-5")], None);
         assert_eq!(resolve_glm_model_name("Opus", &claude), "Opus");
+    }
+
+    /// SPEC-20261123-glm-54-followups REQ-8, REQ-9 (D-5): the launcher also maps the fable alias,
+    /// so a Fable slot name shows the fable slot's GLM model without the `[1m]` marker, and a
+    /// fable-only environment still gives the 1M window. The environment is the launcher's own
+    /// (`GLM_ENV`), so a change of the launcher's values cannot drift from this line unseen.
+    #[test]
+    fn glm_fable_slot_names_and_sizes_its_model() {
+        let launcher: Vec<(&str, &str)> = crate::session::GLM_ENV.to_vec();
+        let ctx = Context::for_test(&launcher, None);
+        assert_eq!(resolve_glm_model_name("Fable", &ctx), "glm-5.4");
+        assert_eq!(resolve_glm_model_name("Fable[1m]", &ctx), "glm-5.4");
+        assert_eq!(resolve_glm_model_name("Opus", &ctx), "glm-5.4");
+        assert_eq!(resolve_glm_model_name("Haiku", &ctx), "glm-5.3-flash");
+        // A claude model in the fable slot stays a claude name.
+        let claude = Context::for_test(
+            &[("ANTHROPIC_DEFAULT_FABLE_MODEL", "claude-fable-5-2")],
+            None,
+        );
+        assert_eq!(resolve_glm_model_name("Fable", &claude), "Fable");
+        // Only the fable slot holds a model: the window comes from it, with or without `[1m]`.
+        for value in ["glm-5.4[1m]", "glm-5.4"] {
+            let only = Context::for_test(&[("ANTHROPIC_DEFAULT_FABLE_MODEL", value)], None);
+            assert_eq!(context_window_override(&only), 1_000_000, "{value}");
+        }
+        let only_claude = Context::for_test(
+            &[("ANTHROPIC_DEFAULT_FABLE_MODEL", "claude-fable-5-2")],
+            None,
+        );
+        assert_eq!(context_window_override(&only_claude), 0);
+    }
+
+    /// SPEC-20261123-glm-fable-slot-test REQ-1, REQ-2: the launcher's own environment gives the
+    /// opus and fable slots one value, so it cannot tell the two slots apart. Here each slot holds
+    /// a model of its own, and a Fable name must show the fable slot's model, an Opus name the
+    /// opus slot's; a fable name never borrows the opus slot.
+    #[test]
+    fn glm_fable_and_opus_slots_resolve_their_own_models() {
+        let both = Context::for_test(
+            &[
+                ("ANTHROPIC_DEFAULT_OPUS_MODEL", "glm-opus-x[1m]"),
+                ("ANTHROPIC_DEFAULT_FABLE_MODEL", "glm-fable-y[1m]"),
+            ],
+            None,
+        );
+        assert_eq!(resolve_glm_model_name("Fable", &both), "glm-fable-y");
+        assert_eq!(resolve_glm_model_name("Fable[1m]", &both), "glm-fable-y");
+        assert_eq!(resolve_glm_model_name("Opus", &both), "glm-opus-x");
+        // Only the opus slot holds a GLM model: a Fable name has no slot model to show.
+        let only_opus =
+            Context::for_test(&[("ANTHROPIC_DEFAULT_OPUS_MODEL", "glm-opus-x[1m]")], None);
+        assert_eq!(resolve_glm_model_name("Fable", &only_opus), "Fable");
+        assert_eq!(resolve_glm_model_name("Opus", &only_opus), "glm-opus-x");
     }
 
     #[test]
@@ -4314,6 +4398,7 @@ mod where_tests {
                     "--left-right".into(),
                     "--count".into(),
                     format!("refs/heads/{integration}...HEAD"),
+                    "--".into(),
                 ]
             );
         }

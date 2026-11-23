@@ -203,7 +203,13 @@ pub struct Candidate {
     pub kind: String,
     pub priority: String,
     pub write_scope: Vec<String>,
+    /// Set when `write_scope` is not the card's own but what a take would fill it with
+    /// (`spec` or `last_reservation`); `None` for a card that has its own scope.
+    pub scope_source: Option<&'static str>,
 }
+
+/// What a take would fill an empty scope with, by card: the scope and where it came from.
+pub type ScopeFill<'a> = &'a dyn Fn(i64) -> Option<(Vec<String>, &'static str)>;
 
 /// Why a card is not offered.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -261,6 +267,18 @@ pub struct Next {
 /// the cards it cannot take. Read-only; `holder` is `None` for a caller without a session id,
 /// who holds nothing.
 pub fn next(conn: &Connection, holder: Option<&str>) -> Result<Next, LedgerError> {
+    next_filled(conn, holder, &|_| None)
+}
+
+/// [`next`], where a `ready` card with an empty scope is offered when `fill` names the scope a
+/// take would give it (SPEC-20261123-take-scope-stored). The filled scope goes through the same
+/// overlap check as an own scope, and nothing is written. A card `fill` gives nothing for stays
+/// skipped as `empty_scope`.
+pub fn next_filled(
+    conn: &Connection,
+    holder: Option<&str>,
+    fill: ScopeFill<'_>,
+) -> Result<Next, LedgerError> {
     let now: i64 = conn.query_row("SELECT unixepoch()", [], |r| r.get(0))?;
     let mut stmt = conn.prepare(
         "SELECT card_id, title, kind, state, priority, write_scope FROM card \
@@ -324,7 +342,14 @@ pub fn next(conn: &Connection, holder: Option<&str>) -> Result<Next, LedgerError
             continue;
         }
         // A scope that is not a list of strings is no scope: `take` could not use it either.
-        let scope: Vec<String> = serde_json::from_str(&write_scope).unwrap_or_default();
+        let mut scope: Vec<String> = serde_json::from_str(&write_scope).unwrap_or_default();
+        let mut scope_source = None;
+        if scope.is_empty() {
+            if let Some((filled, source)) = fill(card_id) {
+                scope = filled;
+                scope_source = Some(source);
+            }
+        }
         let reason = if scope.is_empty() {
             Some(SkipReason::EmptyScope)
         } else {
@@ -350,6 +375,7 @@ pub fn next(conn: &Connection, holder: Option<&str>) -> Result<Next, LedgerError
                 kind,
                 priority,
                 write_scope: scope,
+                scope_source,
             }),
         }
     }
@@ -1201,6 +1227,9 @@ pub fn done(
                     "mflow": landing.as_ref().map(|l| json!({"head": l.head, "tip": l.tip})),
                 }),
             )?;
+            // The cleanup request goes in the transaction that closes the card
+            // (SPEC-20261123-cleanup-outbox REQ-1).
+            super::cleanup_outbox::record_request(tx, now, holder, card_id, "done")?;
             let reservation =
                 reservation::load_reservation(tx, card_id, generation)?.ok_or_else(|| {
                     LedgerError::Sql("the closed card's reservation cannot be read".into())
@@ -1638,6 +1667,12 @@ pub fn record_verdict(
         if !exists {
             return Ok(Err(WorkflowError::CardNotFound(card_id)));
         }
+        // SPEC-20261122-card-roles REQ-2 and REQ-6: the writer of a verdict is none of the
+        // card's authors and, when the leader assigned an auditor, is that auditor. Read in the
+        // write transaction, so a reservation or an assignment made in between cannot slip by.
+        if let Some(why) = verdict_writer_refusal(tx, card_id, verdict.reviewer)? {
+            return Ok(Err(WorkflowError::InvalidInput(why)));
+        }
         let mut st = tx.prepare(
             "SELECT event_id, payload FROM event WHERE card_id = ?1 AND kind = ?2 \
              ORDER BY event_id",
@@ -1665,6 +1700,46 @@ pub fn record_verdict(
             written: true,
         }))
     })?
+}
+
+/// The event kind of an audit assignment (`card assign`, SPEC-20261122-card-roles).
+pub const AUDIT_ASSIGNED_KIND: &str = "card.audit_assigned";
+
+/// The reason a session may not write a verdict of the card, or `None` when it may: it holds or
+/// ever held a reservation of the card (the agent that implemented a change never writes its
+/// verdict), or an auditor was assigned and it is another session.
+fn verdict_writer_refusal(
+    conn: &Connection,
+    card_id: i64,
+    reviewer: &str,
+) -> Result<Option<String>, LedgerError> {
+    let name = format!("C-{card_id}");
+    let holders = reservation_holders(conn, card_id)?;
+    if holders
+        .iter()
+        .any(|h| crate::trailers::same_identity(h, reviewer))
+    {
+        return Ok(Some(format!(
+            "this session held {name}, and the agent that implemented a change never writes its \
+             verdict; nothing was written"
+        )));
+    }
+    let assigned: Option<String> = conn
+        .query_row(
+            "SELECT payload FROM event WHERE card_id = ?1 AND kind = ?2 \
+             ORDER BY event_id DESC LIMIT 1",
+            params![card_id, AUDIT_ASSIGNED_KIND],
+            |r| r.get::<_, String>(0),
+        )
+        .optional()?
+        .and_then(|text| serde_json::from_str::<serde_json::Value>(&text).ok())
+        .and_then(|v| v.get("auditor")?.as_str().map(str::to_string));
+    Ok(match assigned {
+        Some(auditor) if !crate::trailers::same_identity(&auditor, reviewer) => Some(format!(
+            "the auditor assigned to {name} is {auditor}, not this session; nothing was written"
+        )),
+        _ => None,
+    })
 }
 
 /// The verdict events of the card, oldest first. A row whose payload is not a verdict (a hand
@@ -1996,6 +2071,7 @@ pub fn finish_naming(
             }),
         )?;
         events += 1;
+        super::cleanup_outbox::record_request(tx, now, actor, card_id, "finish")?;
         Ok(Ok(Finished {
             card_id,
             from,

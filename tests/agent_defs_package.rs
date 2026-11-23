@@ -478,6 +478,8 @@ fn internal_references_say_when_to_read_them() {
         // SPEC-20261117-quality-guides: the project's own check commands, AC-to-test tracing
         // and the dependency existence check, read by RUN through the chain rules.
         "quality",
+        // SPEC-20261123-skill-structure: when a timer may repeat the leader round.
+        "loop",
     ];
     let mut found: Vec<String> = std::fs::read_dir(package().join("references/internal"))
         .unwrap()

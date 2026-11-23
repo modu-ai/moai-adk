@@ -283,7 +283,7 @@ fn checks_are_the_hit_scans_in_table_order_without_duplicates() {
     assert_eq!(once, 1, "{}", both["checks"]);
     // no hit, no check
     assert_eq!(
-        judge_root(&home, &json!({"pr": ["README.md"], "tip": []}))["checks"],
+        judge_root(&home, &json!({"pr": ["notes/y.txt"], "tip": []}))["checks"],
         json!([])
     );
 }
@@ -303,8 +303,32 @@ fn incident_through_stdin() {
 fn disjoint_change_sets_pass() {
     let home = Home::new();
     assert_eq!(
-        judge_root(&home, &json!({"pr": ["README.md"], "tip": ["notes/x.txt"]})),
+        judge_root(
+            &home,
+            &json!({"pr": ["notes/y.txt"], "tip": ["notes/x.txt"]})
+        ),
         json!({"remerge": false, "hits": [], "checks": [], "reasons": []})
+    );
+}
+
+/// SPEC-20261123-land-file-read-scans AC-7: a head that edits a workflow text needs the checks of
+/// the tests that open it at run time, without a rule-file change on either side.
+#[test]
+fn always_reads_scan_needs_its_checks_for_a_head_that_edits_a_file_its_readers_open() {
+    let home = Home::new();
+    let report = judge_root(
+        &home,
+        &json!({"pr": ["skills/moai/workflows/work.md"], "tip": []}),
+    );
+    assert_eq!(report["remerge"], false, "{report}");
+    let own = report["own_hits"].as_array().expect("own_hits");
+    assert!(own.iter().any(|h| h["id"] == "reads-skills"), "{own:?}");
+    let checks = report["checks"].as_array().unwrap();
+    assert!(
+        checks
+            .iter()
+            .any(|c| c.as_str().unwrap().contains("--test mode_workflow_steps")),
+        "{checks:?}"
     );
 }
 
@@ -581,5 +605,112 @@ fn no_readable_table_at_all_says_hold() {
             .unwrap()
             .ends_with("hold the merge"),
         "{reasons:?}"
+    );
+}
+
+// ---- the `always` flag (SPEC-20261123-land-repo-scans) ----
+
+/// A table of two scans that read the same scope and the same rule file; only `flagged` carries
+/// `"always": true`.
+fn always_table(dir: &Path) -> PathBuf {
+    let table = dir.join("repo_scans.json");
+    fs::write(
+        &table,
+        json!({"scans": [
+            {"id": "plain", "rules": ["r"], "scope": [{"prefix": "s/"}], "checks": ["cp"]},
+            {"id": "flagged", "always": true, "rules": ["r"], "scope": [{"prefix": "s/"}],
+             "checks": ["cf"]}]})
+        .to_string(),
+    )
+    .unwrap();
+    table
+}
+
+#[test]
+fn always_a_flagged_scan_is_an_own_hit_without_a_rule_change() {
+    let home = Home::new();
+    let dir = TempDir::new().unwrap();
+    let table = always_table(dir.path());
+    let report = judge_run(
+        &home,
+        &[],
+        &json!({"pr": ["s/1"], "tip": []}).to_string(),
+        dir.path(),
+        &table,
+    );
+    assert_eq!(report["remerge"], false, "{report}");
+    assert_eq!(report["hits"], json!([]), "{report}");
+    assert_eq!(ids(report["own_hits"].as_array().unwrap()), ["flagged"]);
+    assert_eq!(report["own_hits"][0]["scope"], json!(["s/1"]), "{report}");
+    assert_eq!(report["checks"], json!(["cf"]), "{report}");
+    assert!(
+        report["reasons"][0]
+            .as_str()
+            .unwrap()
+            .starts_with("flagged:"),
+        "{report}"
+    );
+}
+
+#[test]
+fn always_a_change_on_the_tip_side_alone_is_no_own_hit() {
+    let home = Home::new();
+    let dir = TempDir::new().unwrap();
+    let table = always_table(dir.path());
+    let report = judge_run(
+        &home,
+        &[],
+        &json!({"pr": [], "tip": ["s/1"]}).to_string(),
+        dir.path(),
+        &table,
+    );
+    assert_eq!(
+        report,
+        json!({"remerge": false, "hits": [], "checks": [], "reasons": []})
+    );
+}
+
+#[test]
+fn always_a_scan_already_in_hits_is_not_listed_again_in_own_hits() {
+    let home = Home::new();
+    let dir = TempDir::new().unwrap();
+    let table = always_table(dir.path());
+    // `r` changed on the pull request side and `s/1` on the tip side: both scans hit across the
+    // sides; `s/2` also changed on the pull request side, which would be an own hit of `flagged`.
+    let report = judge_run(
+        &home,
+        &[],
+        &json!({"pr": ["r", "s/2"], "tip": ["s/1"]}).to_string(),
+        dir.path(),
+        &table,
+    );
+    assert_eq!(report["remerge"], true, "{report}");
+    assert_eq!(
+        ids(report["hits"].as_array().unwrap()),
+        ["plain", "flagged"]
+    );
+    assert!(report.get("own_hits").is_none(), "{report}");
+}
+
+#[test]
+fn always_the_checked_in_table_flags_the_two_whole_tree_scans() {
+    let home = Home::new();
+    let report = judge_root(&home, &json!({"pr": ["tests/zz_new_cli.rs"], "tip": []}));
+    assert_eq!(report["remerge"], false, "{report}");
+    let own = ids(report["own_hits"].as_array().unwrap_or(&Vec::new()));
+    assert!(own.contains(&"test-area-layout".to_string()), "{own:?}");
+    assert!(own.contains(&"clean-env-only".to_string()), "{own:?}");
+    let checks = report["checks"].as_array().unwrap();
+    for needle in ["--test test_area_layout", "--test cargo_env_developer_dir"] {
+        assert!(
+            checks.iter().any(|c| c.as_str().unwrap().contains(needle)),
+            "{needle}: {checks:?}"
+        );
+    }
+    // a docs-only change is no own hit
+    let docs = judge_root(&home, &json!({"pr": ["docs/notes.md"], "tip": []}));
+    assert_eq!(
+        docs,
+        json!({"remerge": false, "hits": [], "checks": [], "reasons": []})
     );
 }

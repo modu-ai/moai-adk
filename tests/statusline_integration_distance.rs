@@ -1,6 +1,9 @@
-//! The `🧭` item and the `↑↓` marks of the branch item are measured against the integration
-//! branch, whatever upstream the checked-out branch has configured itself. The cases run the real
-//! binary against a real repository in a temporary folder with the real `git`.
+//! The lane branch is still measured against the integration branch, whatever upstream the
+//! checked-out branch has configured itself (SPEC-20261123-statusline-integration-distance), but the
+//! numbers are not on the screen since SPEC-20261123-statusline-order-bars REQ-11: the first line
+//! holds the integration item with its tip and the checked-out branch, and no `🧭`, `↑`, `↓` or
+//! `+N`. The cases run the real binary against a real repository in a temporary folder with the
+//! real `git`.
 #![cfg(unix)]
 
 mod common;
@@ -81,15 +84,39 @@ impl Fixture {
 
     /// The lines of one render of the session in the project folder.
     fn render(&self) -> String {
-        let stdin = serde_json::json!({
+        self.render_as(None)
+    }
+
+    /// The `counts` of the session cache record a render of `session` wrote; `None` when it wrote
+    /// none, which a render does when its distance call could not answer.
+    fn cached_counts(&self, session: &str) -> Option<serde_json::Value> {
+        let file = self
+            .home
+            .join("tmp")
+            .join("moai-statusline")
+            .join(format!("{session}.json"));
+        let text = fs::read_to_string(file).ok()?;
+        let record: serde_json::Value = serde_json::from_str(&text).unwrap();
+        Some(record["counts"].clone())
+    }
+
+    /// One render; with a session id its numbers are cached under this fixture's `TMPDIR`.
+    fn render_as(&self, session: Option<&str>) -> String {
+        let mut stdin = serde_json::json!({
             "model": {"display_name": "Opus"},
             "workspace": {"current_dir": self.project, "project_dir": self.project},
         });
+        if let Some(id) = session {
+            stdin["session_id"] = id.into();
+        }
+        let tmp = self.home.join("tmp");
+        fs::create_dir_all(&tmp).unwrap();
         let mut cmd = Command::new(common::MOAI_BIN);
         cmd.args(["statusline", "--render-budget-ms", &WITHIN.to_string()])
             .current_dir(&self.project)
             .clean_env()
             .env("PATH", std::env::var_os("PATH").unwrap_or_default())
+            .env("TMPDIR", &tmp)
             .env("HOME", &self.home)
             .env("MOAI_HOME", self.home.join(moai_cli::home_root::MOAI_DIR))
             .env("NO_COLOR", "1")
@@ -108,17 +135,34 @@ impl Fixture {
     }
 }
 
-/// The text of the `🧭` item (from the icon to the next ` | ` or the end of its line).
-fn distance_item(out: &str) -> Option<&str> {
-    let line = out.lines().find(|l| l.contains("🧭"))?;
-    let from = line.find("🧭")?;
-    let rest = &line[from..];
-    Some(rest.split(" | ").next().unwrap_or(rest))
+/// The first line of one render.
+fn first_line(out: &str) -> &str {
+    out.lines().next().unwrap_or("")
 }
 
-/// The line that carries the branch item.
-fn branch_item_line(out: &str) -> &str {
-    out.lines().find(|l| l.contains("🅱️")).unwrap_or("")
+/// What the first line of the session is: the integration branch with the first seven characters
+/// of its local ref (`git rev-parse --short=7`, or `n/a` when the ref is gone), then the
+/// checked-out branch — and no `🧭` item, no `↑` or `↓` and no `+N`, however far the branch is
+/// from the integration branch (SPEC-20261123-statusline-order-bars REQ-9 and REQ-11).
+fn assert_first_line(f: &Fixture, out: &str, tip: Option<&str>, checked_out: &str) {
+    let tip = match tip {
+        Some(branch) => common::git::git(
+            &f.project,
+            &["rev-parse", "--short=7", &format!("refs/heads/{branch}")],
+        ),
+        None => "n/a".to_string(),
+    };
+    assert_eq!(
+        first_line(out),
+        format!("🧠 Opus | 🅱️ {INTEGRATION}(🏷️ {tip}) | 🌳 {checked_out}"),
+        "{out}"
+    );
+    for mark in ["🧭", "↑", "↓", "+"] {
+        assert!(
+            !first_line(out).contains(mark),
+            "{mark} on the first line: {out}"
+        );
+    }
 }
 
 /// Two lane commits, one commit that only the integration branch has: ahead 2, behind 1.
@@ -133,51 +177,41 @@ fn lane_two_ahead_one_behind(f: &Fixture, lane: &str) {
 }
 
 /// The card's case: a lane branch whose own upstream is set (`origin`, the branch of its own
-/// name) is still measured against the integration branch: `↑2 ↓1`, not `↑0 ↓0`.
+/// name) is still measured against the integration branch, which the code keeps doing; the line
+/// shows no distance (SPEC-20261123-statusline-order-bars REQ-11) and the integration tip is the
+/// commit of `next`, not the one `HEAD` is at.
 #[test]
-fn a_branch_with_its_own_upstream_is_measured_against_the_integration_branch() {
+fn a_branch_with_its_own_upstream_shows_the_integration_tip_and_no_distance() {
     let f = Fixture::new();
     lane_two_ahead_one_behind(&f, "lane");
     f.own_upstream("lane");
     let out = f.render();
-    assert_eq!(
-        distance_item(&out),
-        Some("🧭 next ↑2 ↓1"),
-        "the distance item must count against `{INTEGRATION}`: {out}"
-    );
-    let line = branch_item_line(&out);
-    assert!(line.contains("lane"), "{out}");
-    assert!(
-        line.contains("↑2"),
-        "the branch item's ahead mark uses the same count: {out}"
-    );
+    assert_first_line(&f, &out, Some(INTEGRATION), "lane");
 }
 
-/// The same lane without any own upstream shows the same numbers (the case that already worked).
+/// The same lane without any own upstream shows the same line.
 #[test]
-fn a_branch_without_an_upstream_is_measured_against_the_integration_branch() {
+fn a_branch_without_an_upstream_shows_the_same_line() {
     let f = Fixture::new();
     lane_two_ahead_one_behind(&f, "lane");
     let out = f.render();
-    assert_eq!(distance_item(&out), Some("🧭 next ↑2 ↓1"), "{out}");
-    assert!(branch_item_line(&out).contains("↑2"), "{out}");
+    assert_first_line(&f, &out, Some(INTEGRATION), "lane");
 }
 
 /// An own upstream that names a different branch of another remote changes nothing either.
 #[test]
-fn an_upstream_that_names_another_branch_does_not_change_the_distance() {
+fn an_upstream_that_names_another_branch_does_not_change_the_line() {
     let f = Fixture::new();
     lane_two_ahead_one_behind(&f, "lane");
     f.git(&["config", "branch.lane.remote", "origin"]);
     f.git(&["config", "branch.lane.merge", "refs/heads/somewhere-else"]);
     let out = f.render();
-    assert_eq!(distance_item(&out), Some("🧭 next ↑2 ↓1"), "{out}");
+    assert_first_line(&f, &out, Some(INTEGRATION), "lane");
 }
 
-/// A branch whose own upstream is the integration branch itself on a remote stays measured
-/// against the local integration branch.
+/// A branch whose own upstream is the integration branch itself on a remote shows the same line.
 #[test]
-fn an_upstream_that_names_the_integration_branch_keeps_the_local_numbers() {
+fn an_upstream_that_names_the_integration_branch_does_not_change_the_line() {
     let f = Fixture::new();
     lane_two_ahead_one_behind(&f, "lane");
     f.git(&["config", "branch.lane.remote", "origin"]);
@@ -187,43 +221,58 @@ fn an_upstream_that_names_the_integration_branch_keeps_the_local_numbers() {
         &format!("refs/heads/{INTEGRATION}"),
     ]);
     let out = f.render();
-    assert_eq!(distance_item(&out), Some("🧭 next ↑2 ↓1"), "{out}");
+    assert_first_line(&f, &out, Some(INTEGRATION), "lane");
 }
 
-/// A branch level with the integration branch shows `↑0 ↓0` — a real zero, not a failure.
+/// A branch level with the integration branch has no zero shown either: no `↑0 ↓0`.
 #[test]
-fn a_branch_level_with_the_integration_branch_shows_a_real_zero() {
+fn a_branch_level_with_the_integration_branch_shows_no_zero() {
     let f = Fixture::new();
     f.branch_from("lane", INTEGRATION);
     f.own_upstream("lane");
     let out = f.render();
-    assert_eq!(distance_item(&out), Some("🧭 next ↑0 ↓0"), "{out}");
+    assert_first_line(&f, &out, Some(INTEGRATION), "lane");
 }
 
-/// The integration branch itself has no `🧭` item and shows git's own numbers: with an upstream
-/// that is behind by one, `↑1` on the branch item is what it has not pushed.
+/// The integration branch itself, checked out: both items name it, with the commit `HEAD` is at,
+/// and no mark shows although its upstream configuration exists.
 #[test]
-fn the_integration_branch_itself_keeps_its_own_display() {
+fn the_integration_branch_itself_shows_both_items() {
     let f = Fixture::new();
     f.own_upstream(INTEGRATION);
     let out = f.render();
-    assert!(
-        distance_item(&out).is_none(),
-        "no distance item on the integration branch: {out}"
-    );
-    assert!(branch_item_line(&out).contains(INTEGRATION), "{out}");
-    // No remote exists, so git's own numbers are zeros and no mark shows.
-    assert!(!branch_item_line(&out).contains('↑'), "{out}");
+    assert_first_line(&f, &out, Some(INTEGRATION), INTEGRATION);
 }
 
-/// When the integration branch is not a local branch, nothing is measured: `↑0 ↓0`, as before.
+/// The distance call hands git the range `refs/heads/<integration>...HEAD`; a file of the work
+/// tree with that very name must not make git stop with "ambiguous argument". The line shows no
+/// number, so the proof is the session cache record, which a failed distance call never writes:
+/// it holds the real 2 ahead and 1 behind.
 #[test]
-fn an_integration_branch_that_is_missing_locally_measures_nothing() {
+fn a_file_named_like_the_range_does_not_stop_the_distance_call() {
+    let f = Fixture::new();
+    lane_two_ahead_one_behind(&f, "lane");
+    let range = f.project.join("refs").join("heads");
+    fs::create_dir_all(&range).unwrap();
+    fs::write(range.join(format!("{INTEGRATION}...HEAD")), "").unwrap();
+    let out = f.render_as(Some("s-range-file"));
+    assert_first_line(&f, &out, Some(INTEGRATION), "lane");
+    let counts = f
+        .cached_counts("s-range-file")
+        .expect("the distance call answered, so the render wrote its cache record");
+    assert_eq!(counts["ahead"], 2, "{counts}");
+    assert_eq!(counts["behind"], 1, "{counts}");
+}
+
+/// When the integration branch is not a local branch, nothing is measured and the commit part says
+/// `n/a`: no guessed commit.
+#[test]
+fn an_integration_branch_that_is_missing_locally_says_n_a() {
     let f = Fixture::new();
     f.branch_from("lane", INTEGRATION);
     f.commit("lane 1");
     f.git(&["branch", "-q", "-m", INTEGRATION, "renamed"]);
     f.own_upstream("lane");
     let out = f.render();
-    assert_eq!(distance_item(&out), Some("🧭 next ↑0 ↓0"), "{out}");
+    assert_first_line(&f, &out, None, "lane");
 }

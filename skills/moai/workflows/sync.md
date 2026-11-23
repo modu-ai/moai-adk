@@ -52,6 +52,10 @@ SYNC may hand the writing before the audit — the SPEC's `## Result` and status
 
 One JSON object, `schema_version` 1: `task_id`, `attempt`, `base_sha`, `candidate_sha`, `merge_base`, `spec_digest` (or `null` with "unapproved draft"), `audit_verdict_ref`, `local_checks[]` (`argv`, `exit_code`, `started`, `ended`), `ci_checks[]` (`name`, `head_sha`, `merge_sha`, `status`, `conclusion`, or `not_run`), `effects[]` (`kind`, `operation_id`, `status`), `status` (one of the states above). Generating it twice from the same inputs gives the same bytes and repeats no effect.
 
+## Resume
+
+Read the SPEC's `## Result`, `moai spec check` and the card's notes afresh, and continue at the first state of the list under "States" that is not confirmed. An external write whose result was not read back is reconciled by step 9, never repeated.
+
 ## Exceptions and Permissions
 
 SYNC does not merge, release, change branch protection or rulesets, or approve deployment by itself. Repository settings are admin effects and stay with the user.

@@ -231,7 +231,13 @@ enum Action {
     /// Writes the ledger. Take a ready card for a holder
     ///
     /// Writes the ledger. Reserves the card for this session: the next generation, a lease from the database
-    /// clock, its write scope (the card's own unless `--scope` is given) and `ready` → `active`.
+    /// clock, its write scope and `ready` → `active`. The scope is the given `--scope`, else the
+    /// card's own; a card with no scope of its own is filled from the `write:` list of the SPEC
+    /// it names (every entry must be a path or a glob, a path named twice is merged), else from
+    /// its last reservation, and the filled or given scope is then kept on the card (the answer's
+    /// `scope_source` is `given`, `card`, `spec` or `last_reservation`). With no source the take
+    /// is refused and names `card take <C-n> --scope <path>` and `card scope <C-n> --scope <path>`.
+    /// A `--scope` value is one path: a comma in it is refused.
     /// Refused when the card is not `ready`, is already held, or its scope overlaps another
     /// card's reservation (`conflict`). The answer's `generation` is what `release` and
     /// `handoff` need. The holder is this session's own id (`CLAUDE_CODE_SESSION_ID` or
@@ -245,7 +251,8 @@ enum Action {
         /// Lease length in seconds, 60 to 86400 (default 14400).
         #[arg(long)]
         lease_secs: Option<i64>,
-        /// A path pattern the holder may write, repeat for more (default: the card's own scope).
+        /// A path pattern the holder may write, repeat for more (default: the card's own scope,
+        /// else the SPEC's `write:` list, else its last reservation's scope).
         #[arg(long = "scope")]
         scope: Vec<String>,
         /// The worktree the holder works in.
@@ -302,6 +309,28 @@ enum Action {
         #[arg(long)]
         head: String,
         /// Who records the landing (one line, 1..=200 characters).
+        #[arg(long)]
+        by: String,
+        /// The project folder (its profile holds the project id).
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// The HOME to use (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+    },
+    /// Writes the ledger. Name the auditor of a card in review
+    ///
+    /// Writes the ledger. One `card.audit_assigned` event for a card in `review` with the
+    /// auditor's identity and `--by leader`; only the leader word assigns. Refused (`conflict`)
+    /// when the identity holds or ever held a reservation of the card, and when the card is not
+    /// in review; nothing is written then.
+    Assign {
+        /// The card, `C-12`.
+        card: String,
+        /// The auditor's identity (a session id), one word.
+        #[arg(long)]
+        auditor: String,
+        /// Who assigns: `leader`.
         #[arg(long)]
         by: String,
         /// The project folder (its profile holds the project id).
@@ -458,8 +487,10 @@ enum Action {
     /// Reads the ledger only. Prints the cards this session holds (`mine`: generation, lease
     /// end, worktree, branch), then the `ready` cards it could take, by priority and then by
     /// number, then every card it cannot take with the reason (`held` by another session,
-    /// `scope_overlap` with another card's reservation, `empty_scope`: `take` refuses a card
-    /// without a write scope). `next` names the card to work on now: one this session holds,
+    /// `scope_overlap` with another card's reservation, `empty_scope`: a card without a write
+    /// scope that has no usable SPEC `write:` list or earlier reservation to fill it from, so
+    /// `take` refuses it; a card that `take` could fill is listed `ready` with the scope it would
+    /// get and its `scope_source`). `next` names the card to work on now: one this session holds,
     /// else the first `ready` one. Each held and ready card carries its SPEC and that SPEC's
     /// status (`spec`); `warnings` names each card that changes the repository without an
     /// approved SPEC. A project without a ledger has no cards (`ledger: "absent"`, exit 0) and
@@ -1077,7 +1108,12 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             card,
             project,
             home,
-        } => c::show(&project, &resolve_home(home)?, &card),
+        } => {
+            let home = resolve_home(home)?;
+            let mut shown = c::show(&project, &home, &card)?;
+            shown["roles"] = moai_cli::card::roles::roles_of_shown(&project, &home, &shown)?;
+            Ok(shown)
+        }
         Action::Timeline {
             card,
             after,
@@ -1191,6 +1227,13 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
                 require_approved_spec,
             },
         ),
+        Action::Assign {
+            card,
+            auditor,
+            by,
+            project,
+            home,
+        } => moai_cli::card::roles::assign(&project, &resolve_home(home)?, &card, &auditor, &by),
         Action::Spec {
             card,
             spec,

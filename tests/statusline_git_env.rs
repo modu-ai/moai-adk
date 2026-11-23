@@ -91,13 +91,14 @@ fn an_inherited_git_dir_cannot_change_the_rendered_branch_or_counts() {
     fs::write(other.join("u2.txt"), "u\n").unwrap();
 
     let clean = render(&home, &project, &[], WITHIN);
-    assert!(clean.contains("🅱️ main"), "{clean}");
-    // SPEC-20261122-statusline-where: the branch is on the first line, after the model. A clean
-    // branch has no `+N` (the other repository's three changes would show as `+3`); there is
-    // no `💾` segment (leader decision 6862179411). The input names no repository, so the
-    // repository item is left out with its separator (REQ-1): no `📡 n/a`.
+    assert!(clean.contains("🌳 main"), "{clean}");
+    // SPEC-20261123-statusline-order-bars: the checked-out branch is on the first line, after the
+    // model, and no number is: neither the project's own change nor the other repository's three
+    // would show as `+N`; there is no `💾` segment (leader decision 6862179411). The input names
+    // no repository, so the repository item is left out with its separator (REQ-8): no
+    // `📡 n/a`; no integration branch is known, so no `🅱️` item.
     let first_line = clean.lines().next().unwrap();
-    assert_eq!(first_line, "🧠 Opus | 🅱️ main", "{clean}");
+    assert_eq!(first_line, "🧠 Opus | 🌳 main", "{clean}");
     assert!(!clean.contains("📁"), "{clean}");
 
     let git_dir = other.join(".git");
@@ -121,8 +122,8 @@ const WITHIN: u64 = 3_600_000;
 
 /// The over-budget path, deterministically: with an already expired budget no git is started,
 /// so the numbers git gives (here one untracked file) are missing and nothing else moves; the
-/// branch comes from the `HEAD` file, which costs no process. Without the seam (budget
-/// ignored) git would run and the `+1` would show.
+/// branch comes from the `HEAD` file, which costs no process. The first line shows no number
+/// either way (SPEC-20261123-statusline-order-bars REQ-11), so it is the same line.
 #[test]
 fn an_expired_render_budget_drops_the_git_numbers() {
     let tmp = tempfile::tempdir().unwrap();
@@ -135,14 +136,10 @@ fn an_expired_render_budget_drops_the_git_numbers() {
     fs::write(project.join("new.txt"), "n\n").unwrap();
 
     let within = render(&home, &project, &[], WITHIN);
-    assert_eq!(
-        within.lines().next(),
-        Some("🧠 Opus | 🅱️ main +1"),
-        "{within}"
-    );
+    assert_eq!(within.lines().next(), Some("🧠 Opus | 🌳 main"), "{within}");
     for _ in 0..5 {
         let over = render(&home, &project, &[], 0);
-        assert_eq!(over.lines().next(), Some("🧠 Opus | 🅱️ main"), "{over}");
+        assert_eq!(over.lines().next(), Some("🧠 Opus | 🌳 main"), "{over}");
         assert!(!over.contains("📁") && !over.contains("📡"), "{over}");
         assert_eq!(
             over.lines().skip(1).collect::<Vec<_>>(),
@@ -345,9 +342,9 @@ impl Scripted {
     }
 }
 
-/// The line that carries the branch item (the old and the new first line alike).
+/// The line that carries the checked-out item (the first line).
 fn branch_line(out: &str) -> &str {
-    out.lines().find(|l| l.contains("🅱️")).unwrap_or("")
+    out.lines().find(|l| l.contains("🌳")).unwrap_or("")
 }
 
 /// Every regular file under `dir`, recursively.
@@ -384,17 +381,18 @@ fn head_file_and_process_count_branch() {
         !out.contains("elsewhere"),
         "the branch name came from git's output, not from the HEAD file: {out}"
     );
-    assert!(line.contains("main"), "the HEAD file's branch: {out}");
+    assert!(line.ends_with("🌳 main"), "the HEAD file's branch: {out}");
     assert!(
-        line.contains("+1"),
-        "the dirty count of the one process: {out}"
+        !line.contains("+1"),
+        "the dirty count of the one process is no mark on the line: {out}"
     );
     assert_eq!(s.starts().len(), 1, "one process: {:?}", s.starts());
     assert!(s.starts()[0].contains("status"), "{:?}", s.starts());
 }
 
-/// AC-2, REQ-2, REQ-7, D-2: a detached HEAD shows the first seven characters of the commit in
-/// the `HEAD` file and starts no process for it.
+/// AC-2, REQ-2, REQ-7, D-2 (and REQ-10 of SPEC-20261123-statusline-order-bars): a detached HEAD
+/// shows no checked-out item and no invented name — the commit of the `HEAD` file is not on the
+/// line — and starts no process for it.
 #[test]
 fn head_file_and_process_count_detached_head() {
     let s = Scripted::new(&format!("{SHA_A}\n"));
@@ -414,11 +412,10 @@ fn head_file_and_process_count_detached_head() {
             "no process for the branch or the short commit: {starts:?}"
         );
     }
-    let line = branch_line(&out);
-    assert!(line.contains("0123456"), "the short commit: {out}");
+    assert!(!out.contains("🌳"), "no checked-out item: {out}");
     assert!(
-        !line.contains("01234567"),
-        "seven characters, no more: {out}"
+        !out.contains("0123456"),
+        "the short commit of HEAD is no name: {out}"
     );
 }
 
@@ -429,7 +426,7 @@ fn head_file_and_process_count_missing_head() {
     fs::remove_file(s.git_dir().join("HEAD")).unwrap();
     let out = s.run(T, "s-missing");
     assert!(s.starts().len() <= 1, "{:?}", s.starts());
-    assert!(!out.contains("🅱️"), "no branch item: {out}");
+    assert!(!out.contains("🌳"), "no checked-out item: {out}");
     assert!(!out.contains("🧭"), "no distance item: {out}");
     assert!(!out.contains("elsewhere"), "{out}");
 }
@@ -470,7 +467,7 @@ fn head_file_and_process_count_refuses_links_pipes_and_folders() {
             _ => fs::write(&head, "").unwrap(),
         }
         let out = s.run(T, "s-refuse");
-        assert!(!out.contains("🅱️"), "{kind}: no branch item: {out}");
+        assert!(!out.contains("🌳"), "{kind}: no checked-out item: {out}");
         assert!(!out.contains("elsewhere"), "{kind}: {out}");
         assert!(
             !out.contains('\x1b'),
@@ -482,7 +479,9 @@ fn head_file_and_process_count_refuses_links_pipes_and_folders() {
 
 /// The lane branch is measured against the integration branch by a second process of its own,
 /// `rev-list`, which reads no setting of the branch; the `status` call carries no `-c` override
-/// and no branch header. SPEC-20261123-statusline-integration-distance REQ-1, REQ-4, REQ-6.
+/// and no branch header. SPEC-20261123-statusline-integration-distance REQ-1, REQ-4, REQ-6; the
+/// numbers are not on the line any more (SPEC-20261123-statusline-order-bars REQ-11), which shows
+/// the integration item and the checked-out branch instead.
 #[test]
 fn head_file_and_process_count_lane_branch_is_measured_against_the_integration_branch() {
     let s = Scripted::new("ref: refs/heads/lane\n");
@@ -492,12 +491,17 @@ fn head_file_and_process_count_lane_branch_is_measured_against_the_integration_b
         s.starts(),
         vec![
             "--no-optional-locks status --porcelain".to_string(),
-            "rev-list --left-right --count refs/heads/next...HEAD".to_string(),
+            "rev-list --left-right --count refs/heads/next...HEAD --".to_string(),
         ]
     );
     assert!(
-        out.contains("🧭 next ↑2 ↓1"),
-        "the numbers of the rev-list call: {out}"
+        !out.contains("🧭") && !out.contains('↑'),
+        "no distance: {out}"
+    );
+    assert_eq!(
+        out.lines().next(),
+        Some("🧠 Opus | 🅱️ next(🏷️ 0123456) | 🌳 lane"),
+        "the integration tip is the commit of its ref file: {out}"
     );
     // On the integration branch itself git's own numbers: one `status` call with the header.
     let s = Scripted::new("ref: refs/heads/next\n");
@@ -518,10 +522,10 @@ fn a_failed_distance_call_shows_zeros_and_writes_no_cache() {
     fs::write(s.project.parent().unwrap().join("distance-exit.txt"), "1").unwrap();
     fs::write(s.project.parent().unwrap().join("canned-distance.txt"), "").unwrap();
     let out = s.run(T, "s-failed-distance");
-    assert!(out.contains("🧭 next ↑0 ↓0"), "{out}");
+    assert!(!out.contains("🧭"), "{out}");
     assert!(
-        branch_line(&out).contains("+1"),
-        "the dirty count stays: {out}"
+        !branch_line(&out).contains('+'),
+        "no count is on the line: {out}"
     );
     assert!(
         !s.cache_dir().join("s-failed-distance.json").exists(),
@@ -543,7 +547,7 @@ fn a_distance_answer_that_is_no_pair_of_numbers_shows_zeros() {
         )
         .unwrap();
         let out = s.run(T, "s-bad-distance");
-        assert!(out.contains("🧭 next ↑0 ↓0"), "{text:?}: {out}");
+        assert!(!out.contains("🧭"), "{text:?}: {out}");
         assert!(
             !s.cache_dir().join("s-bad-distance.json").exists(),
             "{text:?}: no cache"
@@ -564,7 +568,12 @@ fn a_missing_integration_ref_starts_no_distance_process() {
         vec!["--no-optional-locks status --porcelain".to_string()],
         "only the status call"
     );
-    assert!(out.contains("🧭 next ↑0 ↓0"), "{out}");
+    assert!(!out.contains("🧭"), "{out}");
+    assert_eq!(
+        out.lines().next(),
+        Some("🧠 Opus | 🅱️ next(🏷️ n/a) | 🌳 lane"),
+        "no local ref: `n/a`, never a guessed commit: {out}"
+    );
 }
 
 /// A branch name git could take as an option or a revision range never reaches git, whatever
@@ -643,7 +652,8 @@ fn session_cache_a_changed_head_starts_one_git() {
 
 /// REQ-5, REQ-6: the key holds the folder too. Two checkouts whose `HEAD` files read the same,
 /// rendered for one session id within ten seconds, are two keys: the second render starts one
-/// git and shows its own dirty count, not the first folder's.
+/// git of its own instead of reading the first folder's cache (the counts are not on the line
+/// any more, so the process count is what shows it).
 #[test]
 fn session_cache_another_folder_with_the_same_head_starts_one_git() {
     let first = Scripted::new("ref: refs/heads/main\n");
@@ -657,7 +667,7 @@ fn session_cache_another_folder_with_the_same_head_starts_one_git() {
     )
     .unwrap();
     let one = first.run(T, "s-moves");
-    assert!(branch_line(&one).contains("+1"), "{one}");
+    assert!(!branch_line(&one).contains('+'), "{one}");
     assert_eq!(first.starts().len(), 1, "{:?}", first.starts());
     let other = second.run(T + 1, "s-moves");
     assert_eq!(
@@ -666,8 +676,7 @@ fn session_cache_another_folder_with_the_same_head_starts_one_git() {
         "another folder asks git once: {:?}",
         second.starts()
     );
-    assert!(branch_line(&other).contains("+3"), "{other}");
-    assert!(!branch_line(&other).contains("+1"), "{other}");
+    assert!(!branch_line(&other).contains('+'), "{other}");
     // The cache now holds the second folder: the same folder within ten seconds starts no git.
     let again = second.run(T + 2, "s-moves");
     assert_eq!(second.starts().len(), 1, "{:?}", second.starts());
@@ -675,9 +684,10 @@ fn session_cache_another_folder_with_the_same_head_starts_one_git() {
 }
 
 /// REQ-6: a changed commit of the integration branch starts git again (the `status` call and the
-/// distance call of a lane branch), from a loose ref and from `packed-refs` alike.
+/// distance call of a lane branch, two processes per miss), from a loose ref and from
+/// `packed-refs` alike.
 #[test]
-fn session_cache_a_changed_integration_commit_starts_one_git() {
+fn session_cache_a_changed_integration_commit_starts_git_again() {
     let s = Scripted::new("ref: refs/heads/lane\n");
     s.integration("next", SHA_A);
     s.run(T, "s-int");

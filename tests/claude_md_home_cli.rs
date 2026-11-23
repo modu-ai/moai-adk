@@ -911,6 +911,38 @@ fn target_a_profile_link_whose_target_is_not_there_yet_is_still_linked() {
 }
 
 #[test]
+fn target_a_relative_profile_link_is_read_from_the_profile_folder() {
+    // The profile's `rules` is the relative link `../.claude/rules`: it is read from the folder
+    // the link sits in, so it reaches the default folder's `rules` and the rows say `linked`,
+    // whatever folder the command runs in.
+    let w0 = World::new();
+    let conf = w0.base.join("conf");
+    fs::create_dir_all(&conf).unwrap();
+    symlink("../.claude/rules", conf.join("rules")).unwrap();
+    let w = w0.var("CLAUDE_CONFIG_DIR", conf.as_os_str());
+    let plan = w.plan(&[]);
+    assert_eq!(routing_action(&plan, &w.default_dir()), "create", "{plan}");
+    assert_eq!(routing_action(&plan, &conf), "linked", "{plan}");
+    assert_eq!(flow_action(&plan, &conf), "linked", "{plan}");
+    w.apply(&[]);
+    assert!(w.default_dir().join("rules/moai.md").is_file());
+    // Once the target exists the link still reaches it, and nothing is written into the profile.
+    assert!(conf.join("rules/moai.md").is_file());
+    let again = w.plan(&[]);
+    assert_eq!(routing_action(&again, &conf), "linked", "{again}");
+
+    // A relative link that leaves for another folder is still not a reference.
+    let w0 = World::new();
+    let conf = w0.base.join("conf");
+    fs::create_dir_all(&conf).unwrap();
+    fs::create_dir_all(w0.base.join("other")).unwrap();
+    symlink("../other", conf.join("rules")).unwrap();
+    let w = w0.var("CLAUDE_CONFIG_DIR", conf.as_os_str());
+    let plan = w.plan(&[]);
+    assert_eq!(routing_action(&plan, &conf), "not_linked", "{plan}");
+}
+
+#[test]
 fn target_a_profile_with_its_own_rules_folder_is_not_linked_and_keeps_every_byte() {
     let w0 = World::new();
     let conf = w0.base.join("elsewhere/conf");

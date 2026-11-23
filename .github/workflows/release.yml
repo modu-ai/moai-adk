@@ -200,7 +200,10 @@ jobs:
             out="$("$path" --version)" || fail "${path} --version failed"
             first="$(printf '%s\n' "$out" | sed -n 1p)"
             second="$(printf '%s\n' "$out" | sed -n 2p)"
-            [ "$first" = "moai-cli ${VERSION} (rust)" ] || fail "${path} reports '${first}', expected 'moai-cli ${VERSION} (rust)'"
+            case "$first" in
+              "moai ${VERSION} (rust)"|"moai-cli ${VERSION} (rust)") ;;
+              *) fail "${path} reports '${first}', expected 'moai ${VERSION} (rust)' or 'moai-cli ${VERSION} (rust)'" ;;
+            esac
             case "$second" in
               "CI build ${BUILD} (MOAI_BUILD_NUMBER), built "*) ;;
               *) fail "${path} second line is '${second}', expected it to begin 'CI build ${BUILD} (MOAI_BUILD_NUMBER), built'" ;;
@@ -215,7 +218,7 @@ jobs:
             echo "- tag: ${TAG}"
             echo "- commit: ${SHA}"
             echo "- build number: ${BUILD} (this workflow's own first-attempt run number)"
-            echo "- --version: moai-cli ${VERSION} (rust); CI build ${BUILD} (MOAI_BUILD_NUMBER)"
+            echo "- --version: ${first}; CI build ${BUILD} (MOAI_BUILD_NUMBER)"
             echo "- pre-release: ${mark}"
             echo
             echo "This run made no tag and no release and uploaded nothing. Pushing the tag and publishing the release are the person's steps."

@@ -99,6 +99,10 @@ fn same_first_word(test: &str, word: &str) -> bool {
 /// that is absent, empty or not a list of `{prefix, suffixes?}` objects is `None`.
 struct ScanEntry {
     targets: BTreeSet<String>,
+    /// `"always": true`: the landing requires the scan whenever the diff touches it. The full set
+    /// adds its targets only then (SPEC-20261123-land-file-read-scans D-9); a scan that is not
+    /// `always` joins the full set whatever changed.
+    always: bool,
     rules: Vec<String>,
     scope: Option<Vec<(String, Vec<String>)>>,
 }
@@ -159,6 +163,7 @@ fn scan_entries(text: &str) -> Option<Vec<ScanEntry>> {
             .unwrap_or_default();
         out.push(ScanEntry {
             targets,
+            always: scan.get("always").and_then(|a| a.as_bool()) == Some(true),
             rules: strings(scan.get("rules")),
             scope: (!scope.is_empty()).then_some(scope),
         });
@@ -230,7 +235,8 @@ pub fn select(
 /// is one of its rule files (REQ-2); a change to `tests/common/<sub>.rs` selects only the
 /// consumers that name `common::<sub>` (REQ-3); an OS-tagged test joins only through the area
 /// rule, not for being tagged with the host (REQ-4). The text-pin rule (REQ-6) and the helper
-/// path-import rule (REQ-9) add to both.
+/// path-import rule (REQ-9) add to both. An `always` scan joins even the full set only when a
+/// changed path touches it (SPEC-20261123-land-file-read-scans D-9).
 pub fn select_pick(
     pick: Pick,
     changed: &[String],
@@ -319,7 +325,7 @@ pub fn select_pick(
             Some(entries) => {
                 let picked: BTreeSet<String> = entries
                     .into_iter()
-                    .filter(|e| pick == Pick::Full || e.touched_by(changed))
+                    .filter(|e| (pick == Pick::Full && !e.always) || e.touched_by(changed))
                     .flat_map(|e| e.targets)
                     .collect();
                 scans = Scans::Listed(picked.len());

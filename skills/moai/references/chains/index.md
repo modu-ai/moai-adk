@@ -29,4 +29,5 @@ Rules for every chain:
 - The `versioning` rows of the PROJECT interview are asked with `internal/versioning`, read only when those rows are asked or a release version is computed.
 - Any route that prepares, tags or publishes a release or release candidate runs `internal/versioning` `## At every release` first.
 - WORK takes one card at a time and runs the chain of that card's request, then lands it; its own steps are in `workflows/work.md`.
+- A timer that repeats the leader round (`/loop`, a cron task or a wakeup) is armed only as `internal/loop` says.
 - When the host cannot start agents, the parent session follows the same order itself and keeps the implementing and auditing contexts apart.

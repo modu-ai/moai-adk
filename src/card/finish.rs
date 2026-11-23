@@ -348,6 +348,18 @@ pub fn finish(
     };
     // A landing-only call applied no met option, so it reports none.
     let applied: &[(i64, String)] = if done.closed { &met } else { &[] };
+    // The close wrote this card's cleanup request; the executor takes it, and every older pending
+    // one, after the close and never undoes it (SPEC-20261123-cleanup-outbox REQ-12).
+    let outbox = if done.closed {
+        super::cleanup::run_pending(
+            project,
+            home,
+            req.session.unwrap_or(req.by),
+            &super::cleanup::Options::default(),
+        )
+    } else {
+        Value::Null
+    };
     Ok(json!({
         "action": "finish", "project_id": id,
         "name": input::card_name(card_id), "card_id": card_id,
@@ -358,5 +370,6 @@ pub fn finish(
         "by": req.by, "session": req.session,
         "previous": previous_json(&done.previous), "released": done.released,
         "events": done.events, "writes": done.events > 0,
+        "cleanup_outbox": outbox,
     }))
 }

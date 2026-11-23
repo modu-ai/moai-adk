@@ -88,7 +88,8 @@ fn update_plan_reason_names_the_go_era_skill_and_the_user_options() {
             reason.contains("earlier-generation (Go-era) MoAI `moai` skill"),
             "{reason}"
         );
-        assert!(reason.contains("will not replace it"), "{reason}");
+        assert!(reason.contains("moai will not replace it"), "{reason}");
+        assert!(!reason.contains("moai-cli"), "{reason}");
         assert!(reason.contains("move it aside"), "{reason}");
         assert!(
             reason.contains("confirmed backup-then-replace procedure"),
@@ -119,7 +120,7 @@ fn foreign_project_moai_is_blocked_and_apply_writes_nothing() {
             reason.contains("earlier-generation (Go-era) MoAI `moai` skill"),
             "{reason}"
         );
-        assert!(reason.contains("will not replace it"), "{reason}");
+        assert!(reason.contains("moai will not replace it"), "{reason}");
     }
 
     let err = project_skill_apply(&req).unwrap_err();

@@ -80,12 +80,18 @@ fn world() -> World {
 
 impl World {
     fn card(&self, session: Option<&str>, args: &[&str]) -> Output {
+        self.card_env(session, args, &[])
+    }
+
+    /// The same, with `extra` variables added to the command's environment.
+    fn card_env(&self, session: Option<&str>, args: &[&str], extra: &[(&str, &str)]) -> Output {
         let mut all = vec!["card"];
         all.extend_from_slice(args);
         let project = self.project.to_str().unwrap();
         all.extend_from_slice(&["--project", project]);
         let mut cmd = self.home.command(&all);
         cmd.env("PATH", &self.path_env);
+        cmd.envs(extra.iter().copied());
         if let Some(id) = session {
             cmd.env(SESSION_VAR, id);
         }
@@ -542,6 +548,8 @@ fn an_unreadable_folder_is_not_a_clean_worktree() {
     fs::set_permissions(&locked, fs::Permissions::from_mode(0o755)).unwrap();
     let m = w.refused_and_unchanged(out, "could not be read", &before);
     assert!(m.contains("worktree unknown"), "{m}");
+    // The refusal carries git's own line (AC-14, REQ-18).
+    assert!(m.contains("could not open directory"), "{m}");
 }
 
 /// AC-9 (REQ-3, REQ-4): an untracked name with a space is read as written (git quotes it in
@@ -566,6 +574,214 @@ fn a_name_with_a_space_is_read_as_written() {
     let got = result(&w.reclaim(&sid(2), &card, "1"));
     assert_eq!(got["reservation"]["generation"], json!(2));
     assert!(cache.exists(), "the proof deleted a file");
+}
+
+/// AC-10 (REQ-11, REQ-12): git writes to its standard error when a trace variable is set, and
+/// the reclaim reads any such line as an unreadable worktree; the trace variables of the shell
+/// that runs the reclaim never reach the git children, so a clean worktree is still reclaimed
+/// and a dirty one is still refused for its work, not for the trace.
+#[test]
+fn a_git_trace_variable_does_not_make_a_worktree_unreadable() {
+    let w = world();
+    let card = w.taken(&sid(1), Some(&w.wt), "src/traced/");
+    w.register_gone(NAME, &sid(1));
+    let before = w.dump();
+    let trace = [
+        ("GIT_TRACE", "1"),
+        ("GIT_TRACE2", "1"),
+        ("GIT_TRACE_SETUP", "1"),
+    ];
+    let reclaim = |generation: &str| {
+        w.card_env(
+            Some(&sid(2)),
+            &[
+                "reclaim",
+                &card,
+                "--generation",
+                generation,
+                "--by",
+                "leader",
+                "--reason",
+                REASON,
+            ],
+            &trace,
+        )
+    };
+
+    fs::write(w.wt.join("draft.md"), "x\n").unwrap();
+    let m = w.refused_and_unchanged(reclaim("1"), "worktree dirty", &before);
+    assert!(m.contains("holds 1 uncommitted change(s)"), "{m}");
+    fs::remove_file(w.wt.join("draft.md")).unwrap();
+
+    let got = result(&reclaim("1"));
+    assert_eq!(got["reservation"]["generation"], json!(2));
+}
+
+/// AC-12 (REQ-16): git's own configuration can switch the trace2 target to standard error
+/// (`trace2.normalTarget`), which the reclaim reads as an unreadable worktree; the git children
+/// switch the target off, so a clean worktree is still reclaimed.
+#[test]
+fn a_trace2_config_does_not_make_a_worktree_unreadable() {
+    let w = world();
+    let card = w.taken(&sid(1), Some(&w.wt), "src/traced2/");
+    w.register_gone(NAME, &sid(1));
+    // The user-level configuration of the temporary home, which every git child reads.
+    fs::write(
+        w.home.path().join(".gitconfig"),
+        "[trace2]\n\tnormalTarget = 2\n",
+    )
+    .unwrap();
+
+    let got = result(&w.reclaim(&sid(2), &card, "1"));
+    assert_eq!(got["reservation"]["generation"], json!(2));
+}
+
+/// A clean worktree whose user-level git configuration sends the trace2 target `key` to standard
+/// error (`2`) is still reclaimed: the git children switch every trace2 target off.
+fn a_trace2_target_config_is_switched_off(key: &str) {
+    let w = world();
+    let card = w.taken(&sid(1), Some(&w.wt), "src/traced2/");
+    w.register_gone(NAME, &sid(1));
+    fs::write(
+        w.home.path().join(".gitconfig"),
+        format!("[trace2]\n\t{key} = 2\n"),
+    )
+    .unwrap();
+    let got = result(&w.reclaim(&sid(2), &card, "1"));
+    assert_eq!(got["reservation"]["generation"], json!(2));
+}
+
+/// AC-19 (REQ-15, REQ-16): the event target of the user's git configuration.
+#[test]
+fn a_trace2_event_target_config_does_not_make_a_worktree_unreadable() {
+    a_trace2_target_config_is_switched_off("eventTarget");
+}
+
+/// AC-19 (REQ-15, REQ-16): the perf target of the user's git configuration.
+#[test]
+fn a_trace2_perf_target_config_does_not_make_a_worktree_unreadable() {
+    a_trace2_target_config_is_switched_off("perfTarget");
+}
+
+/// AC-15 (REQ-19): git writes one line for a name in an attributes file that is not a valid
+/// attribute name, exits 0 and lists the worktree completely; the line is noise, so a clean
+/// worktree with such a file is reclaimed. The test file is rewritten with the same bytes so git
+/// compares its content, reads the attributes and writes the line.
+#[test]
+fn an_invalid_attribute_line_does_not_make_a_worktree_unreadable() {
+    let w = world();
+    fs::write(w.wt.join(".gitattributes"), "a.txt we!rd\n").unwrap();
+    git_in(&w.wt, &["add", ".gitattributes"]);
+    git_in(&w.wt, &["commit", "-q", "-m", "attributes"]);
+    git_in(&w.wt, &["push", "-q", "origin", "main"]);
+    fs::write(w.wt.join("a.txt"), "a\n").unwrap();
+    let card = w.taken(&sid(1), Some(&w.wt), "src/attr/");
+    w.register_gone(NAME, &sid(1));
+
+    let got = result(&w.reclaim(&sid(2), &card, "1"));
+    assert_eq!(got["reservation"]["generation"], json!(2));
+}
+
+/// AC-16 (REQ-20, REQ-21): a `core.fsmonitor` hook that does not exist makes git write two
+/// `fatal:` lines on every read and exit 0 with the lists complete; the reads switch the monitor
+/// off, so a clean worktree with such a configuration is reclaimed.
+#[test]
+fn a_missing_fsmonitor_hook_does_not_make_a_worktree_unreadable() {
+    let w = world();
+    let card = w.taken(&sid(1), Some(&w.wt), "src/monitor/");
+    w.register_gone(NAME, &sid(1));
+    git_in(
+        &w.wt,
+        &[
+            "config",
+            "core.fsmonitor",
+            "/nonexistent/moai-test-fsmonitor-hook",
+        ],
+    );
+
+    let got = result(&w.reclaim(&sid(2), &card, "1"));
+    assert_eq!(got["reservation"]["generation"], json!(2));
+}
+
+/// A worktree that ignores `scratch/` (committed and pushed), for the two ignored-file reads.
+fn ignoring_scratch() -> World {
+    let w = world();
+    fs::write(w.wt.join(".gitignore"), "scratch/\n").unwrap();
+    git_in(&w.wt, &["add", ".gitignore"]);
+    git_in(&w.wt, &["commit", "-q", "-m", "ignore list"]);
+    git_in(&w.wt, &["push", "-q", "origin", "main"]);
+    w
+}
+
+/// AC-18 (REQ-9, REQ-24): an ignored folder git cannot open (mode 000) is seen by the
+/// ignored-entry read alone: the plain status read does not look into ignored folders and stays
+/// silent. The early reclaim refuses it as unreadable and carries git's line.
+#[test]
+fn an_unreadable_ignored_folder_is_not_a_clean_worktree() {
+    use std::os::unix::fs::PermissionsExt;
+    let w = ignoring_scratch();
+    let card = w.taken(&sid(1), Some(&w.wt), "src/ignored-locked/");
+    w.register_gone(NAME, &sid(1));
+    let before = w.dump();
+
+    let scratch = w.wt.join("scratch");
+    fs::create_dir_all(&scratch).unwrap();
+    fs::write(scratch.join("f"), "x\n").unwrap();
+    fs::set_permissions(&scratch, fs::Permissions::from_mode(0o000)).unwrap();
+    let out = w.reclaim(&sid(2), &card, "1");
+    // Opened again before any assertion, so the temporary folder can always be removed.
+    fs::set_permissions(&scratch, fs::Permissions::from_mode(0o755)).unwrap();
+    let m = w.refused_and_unchanged(out, "could not read the ignored files", &before);
+    assert!(m.contains("could not open directory"), "{m}");
+}
+
+/// AC-18 (REQ-24): the ignored-file list read (`ls-files --others --ignored`) is the second read
+/// of an ignored folder entry; no real situation made it warn while the entry read stayed silent
+/// (SPEC R-4), so a stand-in git (`MOAI_GIT_BIN`) writes a warning for that command alone. The
+/// early reclaim refuses as unreadable, and not as a draft listed by a read that ignored it.
+#[test]
+fn a_warning_of_the_ignored_file_list_refuses() {
+    use std::os::unix::fs::PermissionsExt;
+    let w = ignoring_scratch();
+    let card = w.taken(&sid(1), Some(&w.wt), "src/ignored-list/");
+    w.register_gone(NAME, &sid(1));
+    let before = w.dump();
+    fs::create_dir_all(w.wt.join("scratch")).unwrap();
+    fs::write(w.wt.join("scratch/f"), "x\n").unwrap();
+
+    let real = std::env::split_paths(&w.path_env)
+        .map(|d| d.join("git"))
+        .find(|g| g.is_file())
+        .expect("a git program");
+    let stand_in = w.host.path().join("git-stand-in");
+    fs::write(
+        &stand_in,
+        format!(
+            "#!/bin/sh\nfor a in \"$@\"; do\n  if [ \"$a\" = ls-files ]; then\n    \
+             echo 'warning: stand-in git warns on the file list' >&2\n  fi\ndone\n\
+             exec '{}' \"$@\"\n",
+            real.display()
+        ),
+    )
+    .unwrap();
+    fs::set_permissions(&stand_in, fs::Permissions::from_mode(0o755)).unwrap();
+
+    let out = w.card_env(
+        Some(&sid(2)),
+        &[
+            "reclaim",
+            &card,
+            "--generation",
+            "1",
+            "--by",
+            "leader",
+            "--reason",
+            REASON,
+        ],
+        &[("MOAI_GIT_BIN", stand_in.to_str().unwrap())],
+    );
+    let m = w.refused_and_unchanged(out, "could not read the ignored files", &before);
+    assert!(m.contains("stand-in git warns on the file list"), "{m}");
 }
 
 /// AC-5 (REQ-5, REQ-7): the event keeps its kind, carries the proof in its own field, and the

@@ -72,6 +72,7 @@ pub mod home_retire;
 pub mod home_root;
 pub mod home_routing;
 pub mod home_state;
+pub mod home_state_retire;
 pub mod home_style;
 pub mod home_workdir;
 pub mod hook_config;
@@ -211,7 +212,7 @@ type Result<T> = std::result::Result<T, String>;
 pub const BUILD_VERSION: &str = env!("MOAI_BUILD_VERSION");
 /// What `--version` prints after the command name (#2790 R1): the build version and the
 /// generation mark `(rust)`, so `moai --version` tells this build from the Go `moai`
-/// (`moai version v3…`). Both binary names print the same line, `moai-cli <ver> (rust)`.
+/// (`moai version v3…`). Both binary names print the same line, `moai <ver> (rust)`.
 pub const VERSION_SIGNATURE: &str = concat!(env!("MOAI_BUILD_VERSION"), " (rust)");
 /// What kind of build this is (`local build 5 (MOAI_LOCAL_BUILD)` or `unnumbered build …`),
 /// its UTC build date and ISO week, and the package version: the second line of `--version`,

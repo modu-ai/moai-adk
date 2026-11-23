@@ -404,3 +404,85 @@ fn ac3_a_receipt_is_stored_with_its_head_and_each_step_exit() {
     assert_ne!(out.status.code(), Some(0));
     assert_eq!(w.dump(), before);
 }
+
+const S_A: &str = "aaaaaaaa-0000-4000-8000-00000000000a";
+const S_B: &str = "bbbbbbbb-0000-4000-8000-00000000000b";
+const S_OTHER: &str = "dddddddd-0000-4000-8000-00000000000d";
+
+impl World {
+    /// A card taken by `S_A` (generation 1), given back, taken by `S_B` (generation 2) and sent
+    /// to review by `S_B`; returns its name.
+    fn reviewed_card(&self) -> String {
+        let added = result(&self.card_cmd(
+            None,
+            &[
+                "add", "--title", "fixture", "--kind", "task", "--scope", "apps/a/",
+            ],
+        ));
+        let name = added["name"].as_str().unwrap().to_string();
+        result(&self.card_cmd(None, &["ready", &name]));
+        result(&self.card_cmd(Some(S_A), &["take", &name]));
+        result(&self.card_cmd(Some(S_A), &["release", &name, "--generation", "1"]));
+        result(&self.card_cmd(Some(S_B), &["take", &name]));
+        result(&self.card_cmd(Some(S_B), &["review", &name, "--generation", "2"]));
+        name
+    }
+
+    /// A pass verdict of the fixture head as `session`.
+    fn pass(&self, session: &str, card: &str) -> Output {
+        self.verdict(
+            Some(session),
+            card,
+            &[
+                "--head",
+                &self.head,
+                "--base",
+                &self.base,
+                "--verdict",
+                "pass",
+                "--tier",
+                "0",
+                "--evidence",
+                "read the diff",
+            ],
+        )
+    }
+}
+
+/// SPEC-20261122-card-roles AC-2 (REQ-2): the session that holds the card and a session that held
+/// an earlier generation are both refused a verdict, the card and the reason are named, and
+/// nothing is written.
+#[test]
+fn verdict_author_sessions_are_refused_with_the_reason() {
+    let w = World::new();
+    let name = w.reviewed_card();
+    for (who, label) in [(S_B, "the current holder"), (S_A, "an earlier holder")] {
+        let before = w.dump();
+        let out = w.pass(who, &name);
+        w.refused(&out, &name, &before);
+        w.refused(&out, "held", &before);
+        assert!(w.events(&name).is_empty(), "{label}: a row was written");
+    }
+    // A session that never held the card still records its verdict.
+    result(&w.pass(S_AUD, &name));
+    assert_eq!(w.events(&name).len(), 1);
+}
+
+/// SPEC-20261122-card-roles AC-6 (REQ-6): after an assignment, a verdict from another session
+/// that never held the card is refused and names the assigned auditor; the assigned auditor's
+/// verdict is accepted.
+#[test]
+fn verdict_assigned_auditor_is_the_only_one_accepted() {
+    let w = World::new();
+    let name = w.reviewed_card();
+    result(&w.card_cmd(
+        None,
+        &["assign", &name, "--auditor", S_AUD, "--by", "leader"],
+    ));
+    let before = w.dump();
+    let out = w.pass(S_OTHER, &name);
+    w.refused(&out, S_AUD, &before);
+    assert!(w.events(&name).is_empty());
+    result(&w.pass(S_AUD, &name));
+    assert_eq!(w.events(&name).len(), 1);
+}

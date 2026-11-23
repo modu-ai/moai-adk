@@ -20,6 +20,7 @@ use super::command::{actor, open_for_write};
 use super::early_reclaim;
 use super::input::{self, CardRef};
 use super::spec_link;
+use super::take_scope;
 use crate::ledger::reservation::{self, Reservation};
 use crate::ledger::{self};
 use crate::session_current;
@@ -158,6 +159,22 @@ pub(super) fn checked_scope(action: &str, entries: &[String]) -> Result<Vec<Stri
             i + 1
         ));
     }
+    // One `--scope` names one path and a glob here has no braces, so a comma is never part of a
+    // path: it is a list typed into one value, which would be stored as a single pattern that
+    // matches nothing (SPEC-20261123-take-scope-stored REQ-12).
+    if let Some(i) = entries.iter().position(|e| e.contains(',')) {
+        // The option the caller typed: give-back and line-lease take `--path`, review `--keep`.
+        let option = match action {
+            "give-back" | "line-lease" => "--path",
+            "review" => "--keep",
+            _ => "--scope",
+        };
+        return Err(format!(
+            "card {action} refused: scope entry {} has a comma; one `{option}` per path (repeat the \
+             option), a comma does not separate paths",
+            i + 1
+        ));
+    }
     let scope =
         input::validate_scope(entries).map_err(|e| format!("card {action} refused: {e}"))?;
     if scope.len() > reservation::MAX_SCOPE_PATTERNS {
@@ -193,9 +210,10 @@ pub(super) fn checked_scope(action: &str, entries: &[String]) -> Result<Vec<Stri
 /// card's live reservation must be at it, else a `conflict` that names the generation the card
 /// has (or that it is not held), checked in the same write transaction (card C-129, SPEC
 /// SPEC-20261119-card-scope-widen-followup REQ-4 and REQ-5). A card added without `--scope` is
-/// skipped by `card next`
-/// (`empty_scope`), and nothing else sets a card's own scope (card C-53). Any other state is a
-/// conflict that names it; nothing is written then.
+/// skipped by `card next` (`empty_scope`) until it has a scope: this command sets it, and so does
+/// `take`, which keeps a given scope or fills an empty one from the card's SPEC or its last
+/// reservation (SPEC-20261123-take-scope-stored). Any other state is a conflict that names it;
+/// nothing is written then.
 pub fn scope(
     project: &Path,
     home: &Path,
@@ -374,11 +392,11 @@ pub fn take(project: &Path, home: &Path, reference: &str, req: &TakeRequest<'_>)
     };
     let (id, mut ledger) = open_for_write(project, home)?;
     // A card that is not there has no SPEC; `reserve` answers `card not found` for it.
-    let (spec, warning) = match spec_link::kind_and_spec(ledger.conn(), card_id)
-        .map_err(|e| ledger::LedgerError::from(e).to_string())?
-    {
+    let linked = spec_link::kind_and_spec(ledger.conn(), card_id)
+        .map_err(|e| ledger::LedgerError::from(e).to_string())?;
+    let (spec, warning) = match &linked {
         Some((kind, spec)) => {
-            spec_link::status(project, &input::card_name(card_id), &kind, spec.as_deref())
+            spec_link::status(project, &input::card_name(card_id), kind, spec.as_deref())
         }
         None => (Value::Null, None),
     };
@@ -388,7 +406,29 @@ pub fn take(project: &Path, home: &Path, reference: &str, req: &TakeRequest<'_>)
         ));
     }
     let lease = req.lease_secs.unwrap_or(DEFAULT_LEASE_SECS);
-    let r = match given {
+    // Where the scope comes from (SPEC-20261123-take-scope-stored): the given one, the card's
+    // own, the linked SPEC's `write:` list, the last reservation's scope. A scope that is not the
+    // card's own is kept on the card once the reservation is made, so a released card is not
+    // empty again; the overlap check of `reserve` runs first and a refusal stores nothing.
+    let own = take_scope::own_scope(ledger.conn(), card_id)
+        .map_err(|e| ledger::LedgerError::from(e).to_string())?;
+    let own_is_empty = own.as_ref().is_some_and(Vec::is_empty);
+    let mut merged: Vec<String> = Vec::new();
+    let (scope, source) = match given {
+        Some(scope) => (Some(scope), take_scope::Source::Given),
+        None if own_is_empty => {
+            let spec_id = linked.as_ref().and_then(|(_, spec)| spec.as_deref());
+            match take_scope::choose(project, ledger.conn(), card_id, spec_id)? {
+                Some(fill) => {
+                    merged = fill.merged;
+                    (Some(fill.scope), fill.source)
+                }
+                None => return Err(take_scope::no_source_message(&input::card_name(card_id))),
+            }
+        }
+        None => (None, take_scope::Source::Card),
+    };
+    let r = match scope {
         Some(scope) => reservation::reserve(
             &mut ledger,
             card_id,
@@ -408,9 +448,31 @@ pub fn take(project: &Path, home: &Path, reference: &str, req: &TakeRequest<'_>)
         ),
     }
     .map_err(|e| e.to_string())?;
+    let mut warnings: Vec<String> = warning.into_iter().collect();
+    if !merged.is_empty() {
+        let names: Vec<String> = merged.iter().map(|p| format!("`{p}`")).collect();
+        warnings.push(format!(
+            "{}: the `write:` list of the SPEC names {} more than once; each path is reserved \
+             once (merged)",
+            input::card_name(card_id),
+            names.join(", ")
+        ));
+    }
+    if own_is_empty && source != take_scope::Source::Card {
+        // The take already succeeded; a scope that could not be kept is a warning, never a
+        // failure that would leave the card taken and reported refused.
+        if let Err(why) =
+            take_scope::store(&mut ledger, card_id, &r.write_scope, req.holder, source)
+        {
+            warnings.push(format!(
+                "{}: the scope could not be kept on the card ({why}); `card scope` sets it",
+                input::card_name(card_id)
+            ));
+        }
+    }
     Ok(json!({
         "action": "take", "project_id": id, "reservation": reservation_json(&r),
-        "state": "active", "spec": spec, "warnings": warning.into_iter().collect::<Vec<_>>(),
+        "state": "active", "spec": spec, "scope_source": source.word(), "warnings": warnings,
         "writes": true,
     }))
 }
@@ -666,8 +728,11 @@ pub(super) fn worktree_gate(project: &Path, worktree: Option<&str>) -> Result<()
     let Some(wt) = worktree.filter(|w| !w.is_empty()) else {
         return Ok(());
     };
-    let unreadable =
-        || format!("card conflict in worktree unknown: the worktree {wt} could not be read");
+    // The reason git or the file system gave comes with the refusal (SPEC-20261122-test-defects-
+    // session-reclaim REQ-18).
+    let unreadable = |why: &str| {
+        format!("card conflict in worktree unknown: the worktree {wt} could not be read: {why}")
+    };
     let path = Path::new(wt);
     // A relative path means a different folder under another working directory, so "it does
     // not exist here" proves nothing (audit-c43 B1).
@@ -681,8 +746,12 @@ pub(super) fn worktree_gate(project: &Path, worktree: Option<&str>) -> Result<()
     match path.try_exists() {
         Ok(false) => return Ok(()),
         Ok(true) => {}
-        Err(_) => return Err(unreadable()),
+        Err(e) => return Err(unreadable(&e.to_string())),
     }
+    // A folder that lost its own `.git` and lies inside another checkout would be judged by that
+    // checkout, which may ignore it: only a folder git calls the top of a checkout is judged
+    // (REQ-22, REQ-23).
+    checkout_top_is(path).map_err(|why| unreadable(&why))?;
     // One changed or untracked path per entry, every untracked file on its own (a folder git
     // would show as one entry could hide real work beside a tool cache), names unquoted (`-z`).
     // An untracked file under the runtime state folder is tool state, not work
@@ -694,12 +763,12 @@ pub(super) fn worktree_gate(project: &Path, worktree: Option<&str>) -> Result<()
         path,
         &["status", "--porcelain=v1", "-z", "--untracked-files=all"],
     )
-    .ok_or_else(unreadable)?
+    .map_err(|why| unreadable(&why))?
     .iter()
     .filter(|e| !super::early_reclaim::is_tool_cache_entry(&state, e))
     .count() as u64;
     let unpushed = unpushed_commits(path, "HEAD", integration_ref(project, path).as_deref())
-        .ok_or_else(unreadable)?;
+        .ok_or_else(|| unreadable("git could not count its unpushed commits"))?;
     if uncommitted > 0 || unpushed > 0 {
         return Err(format!(
             "card conflict in worktree dirty: {wt} holds {uncommitted} uncommitted change(s) \
@@ -746,20 +815,67 @@ pub(super) fn unpushed_commits(dir: &Path, tip: &str, integration: Option<&str>)
 /// every spawn (`identity::scrub_git_env`) and the meaning matches `lane_reset`'s probes — no
 /// fetch, untracked files counted, `None` on any failure.
 pub(super) fn git_output(dir: &Path, args: &[&str]) -> Option<String> {
-    git_run(dir, args).map(|out| String::from_utf8_lossy(&out.stdout).into_owned())
+    git_run(dir, args)
+        .ok()
+        .map(|out| String::from_utf8_lossy(&out.stdout).into_owned())
 }
 
 /// The entries of one git file list read with `-z` (`status` or `ls-files`), names as written.
-/// `None` on a failure and also when git wrote anything on its standard error: `git status`
-/// exits 0 with only a warning for a folder it cannot open and lists nothing for it, so a
-/// warning means the list is incomplete (SPEC-20261122-test-defects-session-reclaim REQ-9).
-pub(super) fn git_entries(dir: &Path, args: &[&str]) -> Option<Vec<String>> {
+/// `Err` with the reason on a failure and also when git wrote a line on its standard error that
+/// is no noise line: `git status` exits 0 with only a warning for a folder it cannot open and
+/// lists nothing for it, so a warning means the list is incomplete
+/// (SPEC-20261122-test-defects-session-reclaim REQ-9, REQ-18).
+pub(super) fn git_entries(dir: &Path, args: &[&str]) -> std::result::Result<Vec<String>, String> {
     let out = git_run(dir, args)?;
-    if !out.stderr.is_empty() {
-        return None;
+    if let Some(line) = first_unexpected_line(&out.stderr) {
+        return Err(format!("git said: {}", capped(&line)));
     }
     let status = args.first() == Some(&"status");
-    Some(split_entries(&String::from_utf8_lossy(&out.stdout), status))
+    Ok(split_entries(&String::from_utf8_lossy(&out.stdout), status))
+}
+
+/// One line of git's words, short enough to carry in a refusal.
+fn capped(line: &str) -> String {
+    line.chars().take(200).collect()
+}
+
+/// The first line git wrote on its standard error, which is no noise line (REQ-18).
+fn first_unexpected_line(stderr: &[u8]) -> Option<String> {
+    String::from_utf8_lossy(stderr)
+        .lines()
+        .map(str::trim)
+        .filter(|l| !l.is_empty())
+        .find(|l| !is_noise_line(l))
+        .map(str::to_string)
+}
+
+/// A line git writes when it carried on and the list is complete (REQ-19, D-10): a name in an
+/// attributes file that is not a valid attribute name, with the file and the line it stands on.
+/// Every other line, one that only looks like it included, is a warning. The line is trimmed
+/// before it gets here, so the space that opens the separator already means a name stands before it.
+fn is_noise_line(line: &str) -> bool {
+    line.split_once(" is not a valid attribute name: ")
+        .is_some_and(|(_, at)| {
+            at.rsplit_once(':').is_some_and(|(file, n)| {
+                !file.is_empty() && !n.is_empty() && n.bytes().all(|b| b.is_ascii_digit())
+            })
+        })
+}
+
+/// `Ok` when git places the top of a checkout exactly at `dir`; the reason otherwise.
+fn checkout_top_is(dir: &Path) -> std::result::Result<(), String> {
+    let out = git_run(dir, &["rev-parse", "--show-toplevel"])?;
+    // Only git's closing line break goes: a folder name may itself end in a space.
+    let top = String::from_utf8_lossy(&out.stdout)
+        .trim_end_matches('\n')
+        .to_string();
+    match (std::fs::canonicalize(&top), std::fs::canonicalize(dir)) {
+        (Ok(a), Ok(b)) if a == b => Ok(()),
+        _ => Err(format!(
+            "it is not the top of a git checkout of its own (git places it in the checkout at \
+             {top})"
+        )),
+    }
 }
 
 /// Splits `-z` output into entries. In `git status` output a renamed or copied entry (`R` or
@@ -778,22 +894,38 @@ fn split_entries(raw: &str, status: bool) -> Vec<String> {
     out
 }
 
-/// One read-only git command in `dir`, its output when it exits 0.
-fn git_run(dir: &Path, args: &[&str]) -> Option<std::process::Output> {
+/// One read-only git command in `dir`, its output when it exits 0, else the reason: how git
+/// ended and the first line it wrote (REQ-18). The file monitor is switched off for every read:
+/// a read gains nothing from a watcher, and a hook that does not exist would make git write two
+/// `fatal:` lines on every read (REQ-20, D-11).
+fn git_run(dir: &Path, args: &[&str]) -> std::result::Result<std::process::Output, String> {
     // `MOAI_GIT_BIN` names the git program for a runner whose child carries no `PATH`
     // (the same seam as `MOAI_FORGE_GH_BIN`); everyone else spawns `git`.
     let program = std::env::var("MOAI_GIT_BIN").unwrap_or_else(|_| "git".to_string());
     let mut cmd = std::process::Command::new(program);
     crate::identity::scrub_git_env(&mut cmd);
     let out = cmd
+        .args(["-c", "core.fsmonitor=false"])
         .arg("--no-optional-locks")
         .arg("-C")
         .arg(dir)
         .args(args)
         .stdin(std::process::Stdio::null())
         .output()
-        .ok()?;
-    out.status.success().then_some(out)
+        .map_err(|e| format!("git could not start: {e}"))?;
+    if out.status.success() {
+        return Ok(out);
+    }
+    let how = out
+        .status
+        .code()
+        .map_or("was stopped by a signal".to_string(), |c| {
+            format!("exited with {c}")
+        });
+    Err(match first_unexpected_line(&out.stderr) {
+        Some(line) => format!("git {how} and said: {}", capped(&line)),
+        None => format!("git {how}"),
+    })
 }
 
 #[cfg(test)]
@@ -815,6 +947,189 @@ mod tests {
             ["R  x.rs", "C  y.rs"]
         );
         assert!(split_entries("", true).is_empty());
+    }
+
+    /// SPEC-20261122-test-defects-session-reclaim AC-14 (REQ-18): the line a refusal carries is
+    /// the first one git wrote that is no noise line, whatever stands before it.
+    #[test]
+    fn the_refusal_names_the_first_line_git_wrote() {
+        let warn = "warning: could not open directory 'a/': Permission denied";
+        assert_eq!(first_unexpected_line(b""), None);
+        assert_eq!(first_unexpected_line(b"\n  \n"), None);
+        let two = format!("{warn}\nwarning: another\n");
+        assert_eq!(first_unexpected_line(two.as_bytes()).as_deref(), Some(warn));
+        let noise_first =
+            format!("we!rd is not a valid attribute name: .gitattributes:1\n{warn}\n");
+        assert_eq!(
+            first_unexpected_line(noise_first.as_bytes()).as_deref(),
+            Some(warn)
+        );
+    }
+
+    /// AC-15 (REQ-19): the one noise shape is a name that is not a valid attribute name, with the
+    /// file and the line it stands on; a line that only looks like it is still a warning.
+    #[test]
+    fn a_noise_line_is_not_a_warning() {
+        for noise in [
+            "we!rd is not a valid attribute name: .gitattributes:1\n",
+            "x is not a valid attribute name: sub dir/.gitattributes:12\n",
+        ] {
+            assert_eq!(first_unexpected_line(noise.as_bytes()), None, "{noise}");
+        }
+        for look_alike in [
+            "is not a valid attribute name\n",
+            "we!rd is not a valid attribute name: .gitattributes\n",
+            "we!rd is not a valid attribute name: .gitattributes:x\n",
+            "we!rd is not a valid attribute name: :3\n",
+            "we!rd is not a valid attribute name: .gitattributes:\n",
+            "warning: could not open directory 'x/': Permission denied\n",
+        ] {
+            assert!(
+                first_unexpected_line(look_alike.as_bytes()).is_some(),
+                "{look_alike}"
+            );
+        }
+    }
+
+    /// One git command in `dir` with a fixture identity; the test fails when git does.
+    fn fixture_git(dir: &Path, args: &[&str]) {
+        let mut cmd = std::process::Command::new("git");
+        crate::identity::scrub_git_env(&mut cmd);
+        let out = cmd
+            .args([
+                "-c",
+                "user.name=fixture",
+                "-c",
+                "user.email=fixture@example.invalid",
+            ])
+            .args([
+                "-c",
+                "commit.gpgsign=false",
+                "-c",
+                "core.excludesFile=/dev/null",
+            ])
+            .arg("-C")
+            .arg(dir)
+            .args(args)
+            .env("GIT_CONFIG_GLOBAL", "/dev/null")
+            .env("GIT_CONFIG_SYSTEM", "/dev/null")
+            .output()
+            .unwrap();
+        assert!(
+            out.status.success(),
+            "git {args:?}: {}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+    }
+
+    /// AC-17 (REQ-22, REQ-23): a recorded folder that lost its `.git` inside a checkout that
+    /// ignores it is not clean because that checkout is: the gate refuses it as unreadable and
+    /// names the checkout git finds. A checkout of its own is still judged by itself.
+    #[test]
+    fn a_folder_that_lost_its_git_is_not_judged_by_the_checkout_around_it() {
+        let tmp = tempfile::tempdir().unwrap();
+        let base = tmp.path().canonicalize().unwrap();
+        let (bare, outer) = (base.join("remote.git"), base.join("outer"));
+        for d in [&bare, &outer] {
+            std::fs::create_dir_all(d).unwrap();
+        }
+        fixture_git(&bare, &["init", "-q", "--bare", "-b", "main"]);
+        fixture_git(&outer, &["init", "-q", "-b", "main"]);
+        std::fs::write(outer.join(".gitignore"), "lost/\n").unwrap();
+        fixture_git(&outer, &["add", ".gitignore"]);
+        fixture_git(&outer, &["commit", "-q", "-m", "ignore the folder"]);
+        fixture_git(&outer, &["remote", "add", "origin", bare.to_str().unwrap()]);
+        fixture_git(&outer, &["push", "-q", "origin", "main"]);
+        let lost = outer.join("lost");
+        std::fs::create_dir_all(&lost).unwrap();
+        std::fs::write(lost.join("work.txt"), "x\n").unwrap();
+
+        let err = worktree_gate(&outer, Some(lost.to_str().unwrap())).unwrap_err();
+        assert!(err.contains("worktree unknown"), "{err}");
+        assert!(err.contains("not the top of a git checkout"), "{err}");
+        assert!(err.contains(outer.to_str().unwrap()), "{err}");
+
+        fixture_git(&base, &["clone", "-q", bare.to_str().unwrap(), "own"]);
+        let own = base.join("own");
+        assert_eq!(worktree_gate(&outer, Some(own.to_str().unwrap())), Ok(()));
+    }
+
+    /// AC-17 (REQ-22): what a lane really records is judged by itself and not refused: a linked
+    /// worktree made by `git worktree add` beside the checkout and one inside it (the layout of
+    /// `.claude/worktrees`), and a link to a checkout, whose path git spells through the real one.
+    #[test]
+    fn a_linked_worktree_and_a_link_to_a_checkout_are_judged_by_themselves() {
+        let tmp = tempfile::tempdir().unwrap();
+        let base = tmp.path().canonicalize().unwrap();
+        let (bare, outer) = (base.join("remote.git"), base.join("outer"));
+        for d in [&bare, &outer] {
+            std::fs::create_dir_all(d).unwrap();
+        }
+        fixture_git(&bare, &["init", "-q", "--bare", "-b", "main"]);
+        fixture_git(&outer, &["init", "-q", "-b", "main"]);
+        std::fs::write(outer.join("a.txt"), "a\n").unwrap();
+        fixture_git(&outer, &["add", "a.txt"]);
+        fixture_git(&outer, &["commit", "-q", "-m", "first"]);
+        fixture_git(&outer, &["remote", "add", "origin", bare.to_str().unwrap()]);
+        fixture_git(&outer, &["push", "-q", "origin", "main"]);
+
+        let beside = base.join("beside");
+        let inside = outer.join("inside");
+        for (path, branch) in [(&beside, "lane-beside"), (&inside, "lane-inside")] {
+            fixture_git(
+                &outer,
+                &[
+                    "worktree",
+                    "add",
+                    "-q",
+                    "-b",
+                    branch,
+                    path.to_str().unwrap(),
+                ],
+            );
+            assert_eq!(worktree_gate(&outer, Some(path.to_str().unwrap())), Ok(()));
+        }
+
+        fixture_git(&base, &["clone", "-q", bare.to_str().unwrap(), "own"]);
+        let link = base.join("link");
+        std::os::unix::fs::symlink(base.join("own"), &link).unwrap();
+        assert_eq!(worktree_gate(&outer, Some(link.to_str().unwrap())), Ok(()));
+    }
+
+    /// AC-17 (REQ-22): the checkout top git prints is cut only at its line break, so a real
+    /// linked worktree whose folder name ends in a space is judged by itself.
+    #[test]
+    fn a_worktree_whose_name_ends_in_a_space_is_judged_by_itself() {
+        let tmp = tempfile::tempdir().unwrap();
+        let base = tmp.path().canonicalize().unwrap();
+        let (bare, outer) = (base.join("remote.git"), base.join("outer"));
+        for d in [&bare, &outer] {
+            std::fs::create_dir_all(d).unwrap();
+        }
+        fixture_git(&bare, &["init", "-q", "--bare", "-b", "main"]);
+        fixture_git(&outer, &["init", "-q", "-b", "main"]);
+        std::fs::write(outer.join("a.txt"), "a\n").unwrap();
+        fixture_git(&outer, &["add", "a.txt"]);
+        fixture_git(&outer, &["commit", "-q", "-m", "first"]);
+        fixture_git(&outer, &["remote", "add", "origin", bare.to_str().unwrap()]);
+        fixture_git(&outer, &["push", "-q", "origin", "main"]);
+
+        let spaced = base.join("lane ");
+        fixture_git(
+            &outer,
+            &[
+                "worktree",
+                "add",
+                "-q",
+                "-b",
+                "lane-spaced",
+                spaced.to_str().unwrap(),
+            ],
+        );
+        assert_eq!(
+            worktree_gate(&outer, Some(spaced.to_str().unwrap())),
+            Ok(())
+        );
     }
     use std::collections::HashMap;
 

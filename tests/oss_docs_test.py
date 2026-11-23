@@ -229,7 +229,7 @@ class ProductFactsTest(unittest.TestCase):
 
     def test_signature_reader_reads_the_source(self):
         signature = version_signature()
-        self.assertTrue(signature.startswith("moai-cli "), signature)
+        self.assertTrue(signature.startswith("moai "), signature)
         self.assertTrue(signature.endswith(" (rust)"), signature)
 
 

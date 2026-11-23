@@ -166,6 +166,58 @@ fn scan_rule_file_keeps_its_scan_in_the_lane() {
     );
 }
 
+/// The three scans above plus one `always` scan of the docs folder that reads its files at run
+/// time (SPEC-20261123-land-file-read-scans D-9).
+const ALWAYS_SCAN_LIST: &str = r#"{"scans": [
+  {"id": "update-scan", "rules": ["tests/update_switch_layer.rs"], "scope": [{"prefix": "src/update/", "suffixes": [".rs"]}], "checks": ["cargo test --offline --locked --test update_switch_layer"]},
+  {"id": "bare-scan", "checks": ["cargo test --offline --locked --test other_plain"]},
+  {"id": "reads-docs", "always": true, "rules": ["tests/doc_readers.rs"], "scope": [{"prefix": "docs/", "suffixes": [".md"]}], "checks": ["cargo test --offline --locked --test doc_readers"]}
+]}"#;
+
+fn always_scan_files() -> Vec<(&'static str, &'static str)> {
+    vec![
+        ("tools/repo_scans.json", ALWAYS_SCAN_LIST),
+        ("src/update/switch.rs", "// a\n"),
+        ("docs/a.md", "a\n"),
+        ("tests/update_switch_layer.rs", PLAIN),
+        ("tests/doc_readers.rs", PLAIN),
+        ("tests/other_plain.rs", PLAIN),
+    ]
+}
+
+// SPEC-20261123-land-file-read-scans D-9: an `always` scan joins the full set only when the diff
+// is in its scope or is one of its rule files; a scan that is not `always` keeps joining it.
+#[test]
+fn an_always_scan_joins_the_full_set_only_when_the_diff_touches_it() {
+    let miss = Repo::new(&always_scan_files(), &[("src/update/switch.rs", "// b\n")]);
+    let (lane, full) = lane_and_full(&miss);
+    assert!(
+        !full.contains("doc_readers"),
+        "the reads scan's scope misses the diff, so its tests stay out: {full:?}"
+    );
+    assert!(
+        full.contains("other_plain") && full.contains("update_switch_layer"),
+        "scans that are not `always` keep joining the full set: {full:?}"
+    );
+    assert!(!lane.contains("doc_readers"), "{lane:?}");
+
+    let scope_hit = Repo::new(&always_scan_files(), &[("docs/a.md", "b\n")]);
+    let (lane, full) = lane_and_full(&scope_hit);
+    for set in [&lane, &full] {
+        assert!(
+            set.contains("doc_readers"),
+            "a changed file in the scope selects the reads scan's tests: {set:?}"
+        );
+    }
+
+    let rule_hit = Repo::new(
+        &always_scan_files(),
+        &[("tests/doc_readers.rs", "fn main() { /* b */ }\n")],
+    );
+    let (_, full) = lane_and_full(&rule_hit);
+    assert!(full.contains("doc_readers"), "{full:?}");
+}
+
 fn common_files() -> Vec<(&'static str, &'static str)> {
     vec![
         ("tests/common/mod.rs", "pub mod git;\npub mod home;\n"),

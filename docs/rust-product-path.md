@@ -41,7 +41,7 @@ One row per internal operation: the name a skill adapter or a later MCP tool ref
 | `claude.doctor` | `claude-doctor PROJECT` | `moai_cli::claude::doctor` | — | — | `agents_md_status`, `reason`, `load_path`, `claude_version`, `minimum_version`, `agents_md_files`, `suppressing_files`, `importing_files`, `instruction_files`, `instruction_files_source`, `managed_settings`, `suggestions`, `basis`, `host_loaded`, `writes` | no |
 | `hooks.plan` (rc.2 I1 #2238) | `hooks-plan PROJECT --host H` | `moai_cli::hooks::plan` | — | `--host` (`claude`/`codex`) | `host`, `action` (`create`/`update`/`unchanged`/`conflict`), `path`, `conflicts`, `expected_sha256`, `planned_sha256`, `plan_digest`, `hooks`, `writes: false` | no |
 | `hooks.apply` (rc.2 I1 #2238) | `hooks-apply PROJECT --host H --plan-digest D --permission-reference R` | `moai_cli::hooks::apply` | — | `--host`, `--plan-digest`, `--permission-reference` | `host`, `state`, `files_changed`, `files_created`, `receipt_path`, `hooks_generated`, `trust_required`, `host_loaded: not_run` | Claude: `.claude/settings.json` + `.moai-cli/manifests/claude-settings.json`; Codex: `.codex/hooks.json` + `.moai-cli/manifests/codex-hooks.json` |
-| `heavy_slot.acquire` (rc.2 #2677) | `heavy-slot-acquire [--max N] --name LANE [--dir D] -- COMMAND…` | `moai_cli::heavy_slot::acquire` | none (argv) + `<dir>/limits.json` | `--name`, `--dir` (default `${XDG_CACHE_HOME:-~/.cache}/moai-cli/heavy-slots`, the folder of `tools/heavy_check_slot.py`); the machine's limits come from `<dir>/limits.json` (#2930 R-2: `max`, `min_free_gb`, `max_swap_pct`, `min_mem_free_pct`, each optional; defaults 5 slots, 50 decimal GB, 80 % — the leader's numbers, #2677 comment 6850581277 — and 10 % memory free, card C-88), and the optional `--max` (≥ 1), `--min-free-gb`, `--max-swap-pct` and `--min-mem-free-pct` win only when stricter (a smaller max, a larger free space, a smaller swap percent, a larger memory free percent; a looser flag is overridden with one stderr note), so only the file can turn a limit off; a limits file that is a symlink (even to a valid file), a folder or another non-plain file, over 4096 bytes, not a JSON object, carrying another key, or setting `max` 0 is refused with 125 (`heavy-slot: refused <path>: …; nothing was written and COMMAND did not run`) | none — no envelope: COMMAND's own output and exit code (128 + signal on a signal death); `heavy-slot: waiting P of W for N slot(s); load a/b/c; disk free X GiB at <cwd>` while waiting, `heavy-slot: <name> exited <code>; load …; disk free …` on every end of a started command, 0 included (SPEC-20261122-heavy-slot-exit-line); 75 = below the free-space limit or above the swap limit (Linux), or on macOS at critical memory pressure or below the memory free limit (card C-88: macOS keeps pages swapped long after the pressure drops, so there swap is shown for information only — `swap use …% (shown only; not a limit on macOS)`), judged before queueing and again after a wait (`<name> not started — disk free … is below … GB` / `swap use …% is above …%` / `memory pressure level 4 is at the critical level 4` / `memory free …% is below …%`, from `kern.memorystatus_vm_pressure_level` and `kern.memorystatus_level` by `sysctlbyname`; nothing written before the first check, COMMAND not run); a run that does start with under 100 GB free (`WARN_FREE_GB`, decimal GB; #2930 item 6) first prints one stderr line, `heavy-slot: free disk space is under 100 GB (disk free X GB at <cwd>); the floor is N GB`, and its stdout and exit code are unchanged (the Python twin prints the same words after `heavy-check-slot:`); 125 = a slot or queue path that is not a plain file (nothing written, COMMAND not run) or a waiter whose starting process ended (`<name> left the queue`, its waiting entry removed, COMMAND not run); 2 = usage or non-unix; debug builds read `MOAI_CLI_TEST_MACHINE` (`free_gb=…,swap_pct=…[,pressure=…,mem_free_pct=…]` or `@file`; a memory key makes it a macOS-like machine) instead of the machine | `<dir>/slot-<i>` (exclusive `flock`, record `name`/`command`/`pid`/`started_unix`/`slot`) and `<dir>/waiting/<ns>-<pid>-<max>` while waiting (its own `--max` last, SPEC-20261122-check-affected-one-slot); the slot's open file is handed to COMMAND, so the slot stays held while the wrapper, COMMAND or any child or descendant that still has the file open is alive, and the OS frees it when every one is gone (also after SIGKILL) — a background process COMMAND leaves behind keeps the slot after the wrapper has ended (`heavy-slot-status` shows `alive` and `holders`; a slot file is never edited or deleted by hand); SIGINT/SIGTERM/SIGHUP are forwarded to COMMAND |
+| `heavy_slot.acquire` (rc.2 #2677) | `heavy-slot-acquire [--max N] --name LANE [--dir D] -- COMMAND…` | `moai_cli::heavy_slot::acquire` | none (argv) + `<dir>/limits.json` | `--name`, `--dir` (default `${XDG_CACHE_HOME:-~/.cache}/moai/heavy-slots`, the folder of `tools/heavy_check_slot.py`; builds from before the name change used `…/moai-cli/heavy-slots`: while the default folder has no `limits.json` that earlier folder's file is read by the same rules, and `heavy-slot-status` lists the slots held there under `earlier_folder`; nothing under the earlier folder is written, moved or made); the machine's limits come from `<dir>/limits.json` (#2930 R-2: `max`, `min_free_gb`, `max_swap_pct`, `min_mem_free_pct`, each optional; defaults 5 slots, 50 decimal GB, 80 % — the leader's numbers, #2677 comment 6850581277 — and 10 % memory free, card C-88), and the optional `--max` (≥ 1), `--min-free-gb`, `--max-swap-pct` and `--min-mem-free-pct` win only when stricter (a smaller max, a larger free space, a smaller swap percent, a larger memory free percent; a looser flag is overridden with one stderr note), so only the file can turn a limit off; a limits file that is a symlink (even to a valid file), a folder or another non-plain file, over 4096 bytes, not a JSON object, carrying another key, or setting `max` 0 is refused with 125 (`heavy-slot: refused <path>: …; nothing was written and COMMAND did not run`) | none — no envelope: COMMAND's own output and exit code (128 + signal on a signal death); `heavy-slot: waiting P of W for N slot(s); load a/b/c; disk free X GiB at <cwd>` while waiting, `heavy-slot: <name> exited <code>; load …; disk free …` on every end of a started command, 0 included (SPEC-20261122-heavy-slot-exit-line); 75 = below the free-space limit or above the swap limit (Linux), or on macOS at critical memory pressure or below the memory free limit (card C-88: macOS keeps pages swapped long after the pressure drops, so there swap is shown for information only — `swap use …% (shown only; not a limit on macOS)`), judged before queueing and again after a wait (`<name> not started — disk free … is below … GB` / `swap use …% is above …%` / `memory pressure level 4 is at the critical level 4` / `memory free …% is below …%`, from `kern.memorystatus_vm_pressure_level` and `kern.memorystatus_level` by `sysctlbyname`; nothing written before the first check, COMMAND not run); a run that does start with under 100 GB free (`WARN_FREE_GB`, decimal GB; #2930 item 6) first prints one stderr line, `heavy-slot: free disk space is under 100 GB (disk free X GB at <cwd>); the floor is N GB`, and its stdout and exit code are unchanged (the Python twin prints the same words after `heavy-check-slot:`); 125 = a slot or queue path that is not a plain file (nothing written, COMMAND not run) or a waiter whose starting process ended (`<name> left the queue`, its waiting entry removed, COMMAND not run); 2 = usage or non-unix; debug builds read `MOAI_CLI_TEST_MACHINE` (`free_gb=…,swap_pct=…[,pressure=…,mem_free_pct=…]` or `@file`; a memory key makes it a macOS-like machine) instead of the machine | `<dir>/slot-<i>` (exclusive `flock`, record `name`/`command`/`pid`/`started_unix`/`slot`) and `<dir>/waiting/<ns>-<pid>-<max>` while waiting (its own `--max` last, SPEC-20261122-check-affected-one-slot); the slot's open file is handed to COMMAND, so the slot stays held while the wrapper, COMMAND or any child or descendant that still has the file open is alive, and the OS frees it when every one is gone (also after SIGKILL) — a background process COMMAND leaves behind keeps the slot after the wrapper has ended (`heavy-slot-status` shows `alive` and `holders`; a slot file is never edited or deleted by hand); SIGINT/SIGTERM/SIGHUP are forwarded to COMMAND |
 | `heavy_slot.status` (rc.2 #2677) | `heavy-slot-status [--dir D]` | `moai_cli::heavy_slot::status` | none | `--dir` | `folder`, `held` (records of held slots, each with `alive`: true/false by `kill(pid, 0)` on the recorded pid, null when the record names no process; for `alive` false also `holders` — `[{pid, comm}]` of the processes that have the slot file open, no argv — and `holders_source` `proc`/`lsof`, or `holders` null with `unavailable`; the Python twin has none of these keys), `refused` (slot names that are not plain files), `machine` (load and free disk line), `writes: false` | no |
 | `hook.dispatch` (rc.2 #2391 stage 1) | `hook-dispatch --host H --event E` (stdin: the host's hook JSON) | `moai_cli::hook_engine::dispatch` | host hook stdin (bounded 4 MiB, untyped; unknown fields ignored) | `--host` (`claude`, `codex` — each with its own renderer from that host's hooks page; per-host coverage in `hooks-plan`'s `engine_capabilities`), `--event` (`session-check`, `tool-preflight`, `tool-observe`, `turn-validation`); how a rule acts is set per rule id in the `[hooks.modes]` table of the HOME `hook-config.toml` (`off` switches the rule off, `observe` or `enforce`; absent or any other word reads as `observe`): `merge_confirm` (the direct pull request merge confirmation of tool-preflight, card C-86 S4; asked only where the work tree root holds a `.moai` directory) and `ac_verify_recorded` (the one Stop rule of `STOP_RULES`, card C-86 S3, decision note 2711) — `observe` writes one `would_block` line and lets the call or the turn go on, `enforce` confirms (Claude asks, Codex and OMP refuse; a refusal whose `rule_block` line cannot be written — no `.moai-cli/` in the working directory, a log that is full or not a regular file — goes through instead) or blocks the turn end with `decision=block` | none — prints the host's native answer instead of the envelope: empty (allow), the PreToolUse deny object, the SessionStart `additionalContext` object, or the Stop top-level `decision`/`reason` block; engine error = exit 1 with stderr | `./.moai-cli/receipts/hook-engine.jsonl` (append-only, bounded): one `observe` line per tool-observe plus one `ac_run` line (`spec`, `ac`, `cmd` = the position of the verify command in that criterion, not its text, `head`, `session`, `unix_ms`; no command text is stored; a command longer than 4096 bytes is not compared) for each acceptance-criterion verify command of the branch's SPEC that a successful, finished Bash call ran exactly (white space collapsed; only a success is recorded: on Claude a `PostToolUse` event, on Codex a `tool_response.exit_code` of 0, on OMP an `is_error` of false; a failed call, a call started in the background and an interrupted one record nothing; the marks `run_in_background` (also read as `runInBackground`, a spelling the hosts do not document), `interrupted` and `backgroundedByUser` read as unfinished unless they are `false` or `null`, so the string "true" and the number 1 count, and `backgroundTaskId`, `background_task_id` and `timedOutAfterMs` read as unfinished whenever they are not `null`, `false` and an empty task id included; and on OMP the extension sends only `isError`, so a background or timed-out OMP call still counts), one `stop_block` line per turn-validation block, one `deny` line per tool-preflight deny, one `would_block` line per refusal a rule in `observe` mode would have made, one `rule_block` line per refusal a rule in `enforce` mode made on Codex or OMP and one `rule_release` line when the third refusal of one rule in one session goes through (a call that names no session is refused every time and never released); (the Stop rule `ac_verify_recorded` writes the same line (rule, reason, session) at the third turn end of one session in a row that would have been blocked again and at every later turn end that goes through; it asks about the SPEC of the process folder, not of the cwd the call names), and one `config_error` line (fixed `reason`: `not_regular_file`, `too_large`, `unreadable`, `invalid_toml`; no path or config text) per tool-preflight that found `~/.moai-cli/config` present but unusable (#2391 N1), only when `./.moai-cli/` exists; never the network |
 | `hook.receipt` (rc.2 I1 #2238) | `hook-receipt --host H` (stdin: the host's hook JSON) | `moai_cli::hooks::receipt` | host hook stdin (bounded 4 MiB, untyped) | `--host` | `recorded`, `reason` or `path`, `fields`, `dropped` | `./.moai-cli/receipts/hooks.jsonl`, only when `./.moai-cli/` exists |
@@ -869,10 +869,11 @@ blocks the hooks. See `docs/hooks-generation.md` §3. `tools/claude-statusline.s
 
 The three lines follow the user instructions of 2026-11-13 (#2756) and, for the tag's
 place, #2928 (user instruction 6878415244, 2026-11-14); the card counts' place on line 1,
-the repository-and-forge-counts segment that opens line 2, and the Claude Code version at
-the end of line 3 follow the user instruction of 2026-11-20
-(SPEC-20261120-statusline-layout). Segments on a line are joined by ` | `, and a segment with no value
-is left out together with its separator.
+the repository-and-forge-counts segment that opens line 2 follow the user instruction of
+2026-11-20 (SPEC-20261120-statusline-layout); the two versions open the flow line and the limits
+line shows a bar beside each number since the user instruction of 2026-11-23
+(SPEC-20261123-statusline-order-bars). Segments on a line are joined by ` | `, and a segment with
+no value is left out together with its separator.
 
 1. Tag and running environment: `🏷️ <tag>` first (`🏷️ Leader | 🧠 … | 🗿 …`; #2928, user
    instruction 6878415244 on 2026-11-14, which moved it from the front of line 3). The tag
@@ -888,10 +889,9 @@ is left out together with its separator.
    only and never an authority decision. The tag is shown whenever
    the `session` option is on, even without stdin (decision Q2); with every other line-1
    segment off it stands alone, and with `session` off line 1 starts at `🧠`. Then `🧠`
-   model, `🤔` effort/thinking, `🤖` the Claude Code version, and `🗿` the MoAI version
-   (the user's third instruction of 2026-11-20 put `🤖` back on line 1, between the effort
-   and the MoAI version). The card counts open line 3 (item 3, the user's third instruction
-   of 2026-11-20; they read the project's ledger, so they stand there without any git). The
+   model and `🤔` effort/thinking. The two versions, `🤖` the Claude Code version and `🗿` the
+   MoAI version, are not on line 1: they open the second line (the flow line below,
+   SPEC-20261123-statusline-order-bars, the user instruction of 2026-11-23). The
    `♻️` cache segment is not in the layout (user
    instruction 2026-11-20, SPEC-20261120-statusline-layout): the hit ratio and its prompt
    cache timer (`⏱️ Nm` whole minutes until `prompt_cache.expires_at`, `🧊` once
@@ -903,25 +903,36 @@ is left out together with its separator.
    after the repository name and the available `⬇️` Issue and `🔀` PR counts when they
    are shown, `📡 owner/repo, ⬇️ 0 🔀 0`; without forge counts the repository name
    stands alone, with no comma (user instruction 2026-11-20,
-   SPEC-20261120-statusline-layout). Then `🅱️`
-   branch with its ahead, behind and dirty counts, then `🔗 #N state` this
-   branch's pull request (AC-7; an OSC 8 hyperlink to `pr.url` only when color is on and
-   the URL is plain `http(s)`):
-   `📡 owner/repo, ⬇️ 46 🔀 0 | 🅱️ main | 🔗 #1234 pending`. The
+   SPEC-20261120-statusline-layout). Then `🅱️ <integration>(🏷️ <tip>)`, the configured local
+   integration branch (the profile's `work_flow.integration_branch`, else the remote's default
+   branch) with the first seven characters of the commit that its local ref
+   `refs/heads/<integration>` names. The commit is read from that ref (the loose ref file, else
+   `packed-refs`) every render, never from `HEAD`, the remote ref or a tag, so a lane branch that is
+   ahead and a detached `HEAD` that is behind both show the same seven characters; when the ref
+   cannot be read the item says `(🏷️ n/a)` and no commit is guessed, and without a known
+   integration branch there is no `🅱️` item. Then `🌳 <branch>`, the branch the `HEAD` file names
+   (the branch, not the name of the working folder the host gave the worktree); a detached or
+   unreadable `HEAD` leaves it out and no name is invented, not even the short commit. Then
+   `🔗 #N state` this branch's pull request (AC-7; an OSC 8 hyperlink to `pr.url` only when color
+   is on and the URL is plain `http(s)`):
+   `📡 owner/repo, ⬇️ 46 🔀 0 | 🅱️ v2026.11.0(🏷️ b3ba2b3) | 🌳 spec/lane | 🔗 #1234 pending`. The
    groups are joined by ` | `; inside a group the items are one space apart and have no
    slash, and every icon is followed by one space (user instruction 2026-11-19,
    SPEC-20261120-statusline-line2-order; exactly one space also after the icons written with a
-   variation selector, `🅱️`, `⬇️` and `🗂️`, SPEC-20261122-statusline-limits-left). The branch's `+N` is the only change
-   count: there is no
+   variation selector, `🅱️`, `⬇️`, `🏷️` and `🗂️`, SPEC-20261122-statusline-limits-left). The first
+   line has no ahead, behind or uncommitted mark and no `🧭` item (SPEC-20261123-statusline-order-bars
+   REQ-11, the user instruction of 2026-11-23, which replaces the `↑N ↓N +N` marks and the
+   distance of SPEC-20261120-statusline-ahead and SPEC-20261123-statusline-integration-distance
+   on the screen; the git calls and the cache that count them are kept). There is no
    `💾` file-change segment (leader decision 6862179411 on #2756; the `git_status`
-   option is still accepted). The branch shows `↑N` (ahead of its upstream), then `↓N`
-   (behind), then `+N` (dirty), each only when it is not 0
-   (SPEC-20261120-statusline-ahead: under M-Flow the merges land on the local integration
-   branch first, so the ahead count is the one that shows them landing; the count comes from
-   the `git status` header the renderer already reads). Forge counts that cannot be read say `⬇️ n/a 🔀 n/a`, never a zero, and a repository whose name the host did not
-   give leaves the repository item out with its separator (SPEC-20261122-statusline-where);
-   a detached HEAD shows the short SHA in the branch slot (`🅱️ a1b2c3d`) and the
-   repository item stays.
+   option is still accepted). Forge counts that cannot be read say `⬇️ n/a 🔀 n/a`, never a zero,
+   and a repository whose name the host did not give leaves the repository item out with its
+   separator (SPEC-20261122-statusline-where). When the line is wider than the width budget it
+   drops the forge counts first, then the repository owner, the model version, the thinking mark
+   and the request state, then the effort and the repository, then the commit of the integration
+   item and the request; the model, the integration name and the checked-out branch stay in every
+   form. The `git_branch` option turns the repository, the integration item and the checked-out
+   item off, and the `worktree` option turns the checked-out item off.
    The `pr` option turns its segment off.
    `▶️` and `🔃` split the cards in `active` or `review`: a card in `review` is waiting, and
    an `active` card is waiting only when the newest of its notes whose first line carries a
@@ -954,45 +965,50 @@ is left out together with its separator.
    `tests/fixtures/statusline-claude/ledger/cards-5-50-12.sqlite` for `b13` and
    `cards-5-50-12-waiting.sqlite` for `b14`, which adds the notes that make one card wait;
    the ignored test `write_the_golden_ledger_fixture` writes both).
-3. Usage windows and card counts: the card counts of the project's local ledger first (item 2's
-   `🗂️ … ▶️ … 🔃 … ✅ …`, they read the ledger and need no git), then the `CW`
-   (the context window) and `7D` (the seven-day limit) windows as numbers only:
-   `🗂️ 50 ▶️ 2 🔃 3 ✅ 12 | 🔋 CW 91% | 🔋 7D 59% (resets in 4d 23h)`.
+3. Usage windows: the `CW` (the context window), `5H` and `7D` (the seven-day limit) windows,
+   each as `<battery> <label> <bar> <n>%`, a bar and a number:
+   `🔋 CW █████████░ 91% | 🔋 7D █████░░░░░ 59% (4d 23h)`.
    Each number is the share that is left, not the share used (9% used reads `CW 91%`;
-   SPEC-20261122-statusline-limits-left). There is no graph and no colon; the battery icon is
-   `🪫` when less than 30% is left and `🔋` otherwise; a
-   percentage is shown from 0 to 100; and there is no `/clear` hint on any line (the user's final
-   call of 2026-11-21, SPEC-20261121-statusline-detached). A window whose percentage is
+   SPEC-20261122-statusline-limits-left). The ten-cell bar stands between the label and the
+   number, with no colon, and draws the same share: the first `<n> × 10 / 100` cells (rounded
+   down) are `█` and the others `░` (SPEC-20261123-statusline-order-bars, the user instruction of
+   2026-11-23, which replaces the earlier numbers-only look). The filled cells keep the
+   base color of the line and the empty cells take the muted color, so the colored line without its
+   escapes is the plain line. The battery icon is `🪫` when less than 30% is left and `🔋`
+   otherwise; a percentage is shown from 0 to 100; and there is no `/clear` hint on any line (the
+   user's final call of 2026-11-21, SPEC-20261121-statusline-detached). A window whose percentage is
    unavailable (the window is absent, its percentage is `null`, or its object is empty) says
-   `CW n/a` or `7D n/a` with no battery icon and never a guessed number, and every value
-   that cannot be read says `n/a` (the screen is English only). `7D` ends with
-   `(resets in <d>d <h>h)` at a day or more, `(resets in <h>h <m>m)` under a day and
-   `(resets in <m>m)` under an hour, measured from the render's clock, when Claude Code gives a
-   reset time. Since #2928 user instruction 6878415244 the tag is on line 1, not here; the
-   worktree label closes line 2, after the branch and the pull-request link (the user's picked
-   layout of 2026-11-20, SPEC-20261120-statusline-layout and SPEC-20261121-statusline-detached),
-   and the Claude Code version stands on line 1. The card counts stand at the front of the last
-   line: line 3 while lines 1 and 2 are shown, and one line up when an empty line is left out. In a
-   linked worktree the first line carries `🌳 <worktree name>` (the name the host
-   gave: `worktree.name`, else `workspace.git_worktree`) as it is, before the branch item,
-   and the item stands alone when the branch has the same name
-   (SPEC-20261122-statusline-where, D-4); the card number is not part of it, and the
-   held card shows as `🎯` on the flow line. There is no item in the main checkout, and the `worktree`
-   option turns it off. The ledger is opened read-only under the budget of the card
-   counts, and nothing is created. Example (lines 2 and 3 of the golden
+   `CW n/a` or `7D n/a` with no battery icon and no bar, and never a guessed number, and every
+   value that cannot be read says `n/a` (the screen is English only). A window ends with its reset
+   countdown, written without the words `resets in`: `(<d>d <h>h)` at a day or more,
+   `(<h>h <m>m)` under a day and `(<m>m)` under an hour, measured from the render's clock, when
+   Claude Code gives a reset time. Since #2928 user instruction 6878415244 the tag is on line 1, not
+   here; the worktree label no longer closes line 2: it did in the user's picked layout of
+   2026-11-20 (SPEC-20261120-statusline-layout and SPEC-20261121-statusline-detached), and the
+   first line now shows the checked-out branch instead (SPEC-20261123-statusline-order-bars). The limits are the last line: line 3 while lines 1 and 2 are
+   shown, and one line up when an empty line is left out. The `🌳` of the first line is the
+   checked-out branch, in a linked worktree and in the main checkout alike, and not the name the
+   host gave the worktree (`worktree.name`, else `workspace.git_worktree`), which the first line no
+   longer shows (SPEC-20261123-statusline-order-bars REQ-10, replacing the worktree item of
+   SPEC-20261122-statusline-where, D-4); the card number is not part of it, and the
+   held card shows as `🎯` on the flow line. The `worktree` option turns the item off. The
+   ledger is opened read-only under the budget of the card
+   counts, and nothing is created. Example (the last two lines of the golden
    `b14-card-counts-waiting`):
 
-       📡 anthropics/claude-code, ⬇️ 46 🔀 0 | 🅱️ main | 🔗 #1234 pending | 🌳 feature-xyz
-       🗂️ 50 ▶️ 2 🔃 3 ✅ 12 | 🔋 CW 91% | 🔋 7D 59% (resets in 4d 23h)
+       🤖 2.1.90 | 🗿 4.2648.0 | 🗂️ 25 → 📨 3 → ✅ 12 | 🙋 5
+       🔋 CW █████████░ 92% | 🔋 7D █████░░░░░ 59% (4d 23h)
 
-   Tests: `tests/statusline_worktree_label.rs` (the host name, a released reservation
-   is no holder, the main checkout, the `worktree` option, the line) and the golden cases
-   `a02-doc-full` and `b14-card-counts-waiting`. With both windows off and no card counts the line is empty and
+   Tests: `tests/statusline_first_line.rs` (the integration tip, the detached leader, `n/a`, no
+   marks), `tests/statusline_worktree_label.rs` (the branch and never the host name, a released
+   reservation is no holder, the main checkout, the `worktree` option, the line) and the golden
+   cases `a02-doc-full` and `b14-card-counts-waiting`. With both windows off and no card counts the line is empty and
    omitted like any empty line. The five-hour window stands between the two as `<battery> 5H <left>%` with its
    countdown whenever the input carries its percentage, at any level (25% used reads `🔋 5H 75%`);
    the host does not always send it, and without it or without its percentage there is no `5H`
-   item. The `usage_5h` option turns it off, and the narrowest form of the line drops it before
-   `CW` and `7D`. A missing weekly window is
+   item. The `usage_5h` option turns it off. When the line is wider than the width budget it
+   drops the reset countdowns first, then the bars, then the five-hour window and the cost; `CW`
+   and `7D` stay in every form. A missing weekly window is
    hidden. The existing usage calculation is retained. The
    renderer shortens nothing: Claude Code sets `COLUMNS` for the status line command,
    but the renderer does not read it. When a line is wider than the status bar, the
@@ -1002,17 +1018,23 @@ is left out together with its separator.
 The flow line (SPEC-20261122-statusline-flow, with the one icon set of
 SPEC-20261122-statusline-limits-left) is the line between the first line and the limits, and
 it replaces the card counts described in items 2 and 3 above. Its widest form is
-`🎯 C-<n> <stage icon> | 🗂️ <ready> → 🟡 <working> → 📨 <submitted> → 🛬 <audited + landed, not
-closed> → ✅ <done today> | 🚧 <blocked> 🙋 <hold>`: the card the session holds with the icon
-of its stage, the flow, and what stands beside the flow. The icons are the ones of the
+`🤖 <Claude Code version> | 🗿 <MoAI version> | 🗂️ <ready> → 🟡 <working> → 📨 <submitted> →
+🛬 <audited + landed, not closed> → ✅ <done today> | 🚧 <blocked> 🙋 <hold> | 🎯 C-<n> <stage icon>`:
+the two versions (the MoAI version carries the update arrow `<template> -> <build>` when the
+project's template is older), the flow, what stands beside the flow, and at the end the card the
+session holds with the icon of its stage (SPEC-20261123-statusline-order-bars; before it the card
+came first and the versions closed the limits line). The icons are the ones of the
 progress board and the lane reports (`🗂️` added and waiting its turn, `🟡` in progress, `📨`
 handed over and waiting for a check, `🛬` check passed and waiting to land, `✅` done, `🚧`
 blocked, `🙋` needs the user's pick). There are no letter codes; an item whose count is zero is
 left out with its arrow; the drafts and the cards whose lease has ended are not on the line.
-A narrower form drops the leftmost item of the flow, `🗂️` first, and keeps the card of the
-session and `🚧 🙋` to the end. When the notes cannot be read within the render budget the
-line is `🗂️ <ready> 🟡 <active + review>` without an arrow, never a guess. Exactly one space
-follows every icon on all three lines. Tests: the `flow_line_tests` of
+A narrower form drops the Claude Code version first, then the MoAI version with its update
+arrow, then the leftmost item of the flow, `🗂️` first, and keeps the card of the session and
+`🚧 🙋` to the end. With no flow the line holds the two versions alone, and with no version the
+flow alone; the `claude_version`, `moai_version` and `cards` options each hide their own items.
+When the notes cannot be read within the render budget the line is
+`🗂️ <ready> 🟡 <active + review>` without an arrow, never a guess, behind the versions. Exactly
+one space follows every icon on all three lines. Tests: the `flow_line_tests` of
 `src/statusline/render.rs`, `tests/statusline_flow.rs` and `tests/statusline_cards.rs`.
 
 Directory, PR review state, agent name and active task segments are never rendered in

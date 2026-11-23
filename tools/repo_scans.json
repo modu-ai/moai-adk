@@ -250,6 +250,7 @@
     },
     {
       "id": "test-area-layout",
+      "always": true,
       "tests": [
         "tests/test_area_layout.rs::area_table_maps_every_real_test_file",
         "tests/test_area_layout.rs::scan_list_names_only_existing_targets_and_paths"
@@ -649,6 +650,7 @@
     },
     {
       "id": "clean-env-only",
+      "always": true,
       "tests": [
         "tests/cargo_env_developer_dir.rs::tests_clear_child_environments_only_through_clean_env"
       ],
@@ -1099,6 +1101,996 @@
         }
       ],
       "rejects": "a test file outside tests/fixtures that spells the earlier or the new state folder name and is not in the counted baseline, or spells one more often than its baseline count; a fresh project or HOME uses the resolvers (SPEC-20261122-state-folder-literal-scan)"
+    },
+    {
+      "id": "include-str-card-generated-scope",
+      "always": true,
+      "tests": [
+        "tests/card_generated_scope.rs (all)"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test card_generated_scope"
+      ],
+      "rules": [
+        "tests/card_generated_scope.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "docs/design-review/appendix/ledger_reservation.md"
+        },
+        {
+          "prefix": "src/ledger/reservation.rs"
+        }
+      ],
+      "rejects": "a change to a file that tests/card_generated_scope.rs reads with include_str! that the test did not re-run on the merge tree (SPEC-20261123-land-repo-scans)"
+    },
+    {
+      "id": "include-str-flaky-followups",
+      "always": true,
+      "tests": [
+        "tests/flaky_followups.rs (all)"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test flaky_followups"
+      ],
+      "rules": [
+        "tests/flaky_followups.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "skills/moai/workflows/run.md"
+        }
+      ],
+      "rejects": "a change to a file that tests/flaky_followups.rs reads with include_str! that the test did not re-run on the merge tree (SPEC-20261123-land-repo-scans)"
+    },
+    {
+      "id": "include-str-gitignore-block-cli",
+      "always": true,
+      "tests": [
+        "tests/gitignore_block_cli.rs (all)"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test gitignore_block_cli"
+      ],
+      "rules": [
+        "tests/gitignore_block_cli.rs"
+      ],
+      "scope": [
+        {
+          "prefix": ".gitignore"
+        }
+      ],
+      "rejects": "a change to a file that tests/gitignore_block_cli.rs reads with include_str! that the test did not re-run on the merge tree (SPEC-20261123-land-repo-scans)"
+    },
+    {
+      "id": "include-str-go-state-classes-cli",
+      "always": true,
+      "tests": [
+        "tests/go_state_classes_cli.rs (all)"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test go_state_classes_cli"
+      ],
+      "rules": [
+        "tests/go_state_classes_cli.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "docs/rust-product-path.md"
+        },
+        {
+          "prefix": "skills/moai/workflows/project.md"
+        }
+      ],
+      "rejects": "a change to a file that tests/go_state_classes_cli.rs reads with include_str! that the test did not re-run on the merge tree (SPEC-20261123-land-repo-scans)"
+    },
+    {
+      "id": "include-str-green-test-lock",
+      "always": true,
+      "tests": [
+        "tests/green_test_lock.rs (all)"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test green_test_lock"
+      ],
+      "rules": [
+        "tests/green_test_lock.rs"
+      ],
+      "scope": [
+        {
+          "prefix": ".moai-cli/project.yaml"
+        },
+        {
+          "prefix": "src/project_detect.rs"
+        }
+      ],
+      "rejects": "a change to a file that tests/green_test_lock.rs reads with include_str! that the test did not re-run on the merge tree (SPEC-20261123-land-repo-scans)"
+    },
+    {
+      "id": "include-str-hook-entry-cli",
+      "always": true,
+      "tests": [
+        "tests/hook_entry_cli.rs (all)"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test hook_entry_cli"
+      ],
+      "rules": [
+        "tests/hook_entry_cli.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "src/hook_entry.rs"
+        }
+      ],
+      "rejects": "a change to a file that tests/hook_entry_cli.rs reads with include_str! that the test did not re-run on the merge tree (SPEC-20261123-land-repo-scans)"
+    },
+    {
+      "id": "include-str-host-connector",
+      "always": true,
+      "tests": [
+        "tests/host_connector.rs (all)"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test host_connector"
+      ],
+      "rules": [
+        "tests/host_connector.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "src/forge/connector.rs"
+        }
+      ],
+      "rejects": "a change to a file that tests/host_connector.rs reads with include_str! that the test did not re-run on the merge tree (SPEC-20261123-land-repo-scans)"
+    },
+    {
+      "id": "include-str-project-applied-table",
+      "always": true,
+      "tests": [
+        "tests/project_applied_table.rs (all)"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test project_applied_table"
+      ],
+      "rules": [
+        "tests/project_applied_table.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "skills/moai/workflows/project.md"
+        }
+      ],
+      "rejects": "a change to a file that tests/project_applied_table.rs reads with include_str! that the test did not re-run on the merge tree (SPEC-20261123-land-repo-scans)"
+    },
+    {
+      "id": "include-str-project-detect-cli",
+      "always": true,
+      "tests": [
+        "tests/project_detect_cli.rs (all)"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test project_detect_cli"
+      ],
+      "rules": [
+        "tests/project_detect_cli.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "skills/moai/workflows/project.md"
+        }
+      ],
+      "rejects": "a change to a file that tests/project_detect_cli.rs reads with include_str! that the test did not re-run on the merge tree (SPEC-20261123-land-repo-scans)"
+    },
+    {
+      "id": "include-str-release-suite",
+      "always": true,
+      "tests": [
+        "tests/release_suite.rs (all)"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test release_suite"
+      ],
+      "rules": [
+        "tests/release_suite.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "docs/release-attestation.md"
+        }
+      ],
+      "rejects": "a change to a file that tests/release_suite.rs reads with include_str! that the test did not re-run on the merge tree (SPEC-20261123-land-repo-scans)"
+    },
+    {
+      "id": "include-str-statusline-numbers-only",
+      "always": true,
+      "tests": [
+        "tests/statusline_numbers_only.rs (all)"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test statusline_numbers_only"
+      ],
+      "rules": [
+        "tests/statusline_numbers_only.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "docs/rust-product-path.md"
+        },
+        {
+          "prefix": "src/statusline/render.rs"
+        },
+        {
+          "prefix": "src/statusline/segments.rs"
+        }
+      ],
+      "rejects": "a change to a file that tests/statusline_numbers_only.rs reads with include_str! that the test did not re-run on the merge tree (SPEC-20261123-land-repo-scans)"
+    },
+    {
+      "id": "include-str-statusline-tag-order",
+      "always": true,
+      "tests": [
+        "tests/statusline_tag_order.rs (all)"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test statusline_tag_order"
+      ],
+      "rules": [
+        "tests/statusline_tag_order.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "src/statusline/render.rs"
+        },
+        {
+          "prefix": "src/statusline/state.rs"
+        }
+      ],
+      "rejects": "a change to a file that tests/statusline_tag_order.rs reads with include_str! that the test did not re-run on the merge tree (SPEC-20261123-land-repo-scans)"
+    },
+    {
+      "id": "reads-docs",
+      "always": true,
+      "tests": [
+        "tests/repo_scans_table.rs::every_file_reader_has_an_always_scan_or_an_exemption"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test bundle_body_cli --test bundle_build_cli --test bundle_verify_cli --test card_criterion_add_cli --test card_finish_cli --test card_guard_cli --test card_line_lease_cli --test card_scope_widen_cli --test card_timeline_cli --test check_affected_modes_cli --test check_pipeline_config --test cli_text_citations --test decision_append_cli --test hot_file_ops_merge --test lane_next_rules --test launcher_settings_receipt --test ops_table_gen_cli --test product_cli --test project_layer_follow_ups --test recurring_problems_rule --test repo_claude_md --test repo_scans_cli --test report_rules_core --test retired_host_words --test rule_history_guard --test sdd_guidance --test troubleshooting_doc --test repo_scans_table"
+      ],
+      "rules": [
+        "tests/bundle_body_cli.rs",
+        "tests/bundle_build_cli.rs",
+        "tests/bundle_verify_cli.rs",
+        "tests/card_criterion_add_cli.rs",
+        "tests/card_finish_cli.rs",
+        "tests/card_guard_cli.rs",
+        "tests/card_line_lease_cli.rs",
+        "tests/card_scope_widen_cli.rs",
+        "tests/card_timeline_cli.rs",
+        "tests/check_affected_modes_cli.rs",
+        "tests/check_pipeline_config.rs",
+        "tests/cli_text_citations.rs",
+        "tests/decision_append_cli.rs",
+        "tests/hot_file_ops_merge.rs",
+        "tests/lane_next_rules.rs",
+        "tests/launcher_settings_receipt.rs",
+        "tests/ops_table_gen_cli.rs",
+        "tests/product_cli.rs",
+        "tests/project_layer_follow_ups.rs",
+        "tests/recurring_problems_rule.rs",
+        "tests/repo_claude_md.rs",
+        "tests/repo_scans_cli.rs",
+        "tests/report_rules_core.rs",
+        "tests/retired_host_words.rs",
+        "tests/rule_history_guard.rs",
+        "tests/sdd_guidance.rs",
+        "tests/troubleshooting_doc.rs",
+        "tests/repo_scans_table.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "docs/agent-model-effort-inheritance.md"
+        },
+        {
+          "prefix": "docs/agents-md-maintenance.md"
+        },
+        {
+          "prefix": "docs/claude-md-rule-provenance.md"
+        },
+        {
+          "prefix": "docs/cli-text-rationale.md"
+        },
+        {
+          "prefix": "docs/decisions-2026-11-08.md"
+        },
+        {
+          "prefix": "docs/design-review/appendix/interfaces.md"
+        },
+        {
+          "prefix": "docs/design-review/appendix/operations"
+        },
+        {
+          "prefix": "docs/design-review/autonomy-modes-spec.md"
+        },
+        {
+          "prefix": "docs/e2e-matrix.md"
+        },
+        {
+          "prefix": "docs/host-live-session-checklist.md"
+        },
+        {
+          "prefix": "docs/lane-loop-contract.md"
+        },
+        {
+          "prefix": "docs/lane-rules.md"
+        },
+        {
+          "prefix": "docs/leader-rules.md"
+        },
+        {
+          "prefix": "docs/llms.txt"
+        },
+        {
+          "prefix": "docs/protocol-v1.md"
+        },
+        {
+          "prefix": "docs/rule-history.md"
+        },
+        {
+          "prefix": "docs/rust-product-path.md"
+        },
+        {
+          "prefix": "docs/support-matrix.md"
+        },
+        {
+          "prefix": "docs/troubleshooting.md"
+        },
+        {
+          "prefix": "docs/user-entry-draft.md"
+        },
+        {
+          "prefix": "docs/zcode-support.md"
+        }
+      ],
+      "rejects": "a change to a checked-in file that a test of this group opens at run time that the test did not re-run on the merge tree (SPEC-20261123-land-file-read-scans)"
+    },
+    {
+      "id": "reads-moai-state",
+      "always": true,
+      "tests": [
+        "tests/repo_scans_table.rs::every_file_reader_has_an_always_scan_or_an_exemption"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test card_finish_cli --test card_guard_cli --test codex_question_tool --test git_hooks_cli --test ops_table_gen_cli --test product_cli --test profile_apply_engine --test project_flow_closing --test project_layer_follow_ups --test recurring_problems_rule --test repo_claude_md --test retired_hosts_layer --test spec_cli --test switch_script_v2 --test worktree_cli --test repo_scans_table"
+      ],
+      "rules": [
+        "tests/card_finish_cli.rs",
+        "tests/card_guard_cli.rs",
+        "tests/codex_question_tool.rs",
+        "tests/git_hooks_cli.rs",
+        "tests/ops_table_gen_cli.rs",
+        "tests/product_cli.rs",
+        "tests/profile_apply_engine.rs",
+        "tests/project_flow_closing.rs",
+        "tests/project_layer_follow_ups.rs",
+        "tests/recurring_problems_rule.rs",
+        "tests/repo_claude_md.rs",
+        "tests/retired_hosts_layer.rs",
+        "tests/spec_cli.rs",
+        "tests/switch_script_v2.rs",
+        "tests/worktree_cli.rs",
+        "tests/repo_scans_table.rs"
+      ],
+      "scope": [
+        {
+          "prefix": ".moai-cli/manifests"
+        },
+        {
+          "prefix": ".moai-cli/project.yaml"
+        },
+        {
+          "prefix": ".moai/project.yaml"
+        },
+        {
+          "prefix": ".moai/specs/SPEC-20261118-codex-question-tool/research.md"
+        },
+        {
+          "prefix": ".moai/specs/SPEC-20261119-sorted-registration/research.md"
+        },
+        {
+          "prefix": ".moai/specs/SPEC-20261119-switch-script-v2/preview"
+        },
+        {
+          "prefix": ".moai/specs/SPEC-20261119-switch-script-v2/spec.md"
+        },
+        {
+          "prefix": ".moai/specs/SPEC-20261121-go-path-removal/spec.md"
+        },
+        {
+          "prefix": ".moai/specs/SPEC-20261121-remove-codex-project-layer/spec.md"
+        },
+        {
+          "prefix": ".moai/specs/SPEC-20261123-claude-md-rewrite"
+        }
+      ],
+      "rejects": "a change to a checked-in file that a test of this group opens at run time that the test did not re-run on the merge tree (SPEC-20261123-land-file-read-scans)"
+    },
+    {
+      "id": "reads-root-files",
+      "always": true,
+      "tests": [
+        "tests/repo_scans_table.rs::every_file_reader_has_an_always_scan_or_an_exemption"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test ac_command_lint --test agents_choices_step_cli --test atlas_query_cli --test bin_test_once --test boundary_repro --test bundle_body_cli --test bundle_build_cli --test bundle_verify_cli --test card_generated_scope --test cargo_env_developer_dir --test check_pipeline_config --test claude_md_home_cli --test claude_python_adapter_removed --test e2e_temp_home_cli --test host_small_fixes_cli --test lane_completion_handshake --test lane_next_rules --test product_cli --test profile_apply_engine --test profile_debug_info --test project_flow_closing --test project_lsp_plugins_cli --test protected_paths_one_list --test recurring_problems_rule --test repo_claude_md --test review_checklist_cli --test review_md_repo --test run_verify --test source_manifest_facts --test spawn_cap_test --test spec_branch_name_first --test update_hooks_cli --test worktree_cli --test worktree_report --test repo_scans_table"
+      ],
+      "rules": [
+        "tests/ac_command_lint.rs",
+        "tests/agents_choices_step_cli.rs",
+        "tests/atlas_query_cli.rs",
+        "tests/bin_test_once.rs",
+        "tests/boundary_repro.rs",
+        "tests/bundle_body_cli.rs",
+        "tests/bundle_build_cli.rs",
+        "tests/bundle_verify_cli.rs",
+        "tests/card_generated_scope.rs",
+        "tests/cargo_env_developer_dir.rs",
+        "tests/check_pipeline_config.rs",
+        "tests/claude_md_home_cli.rs",
+        "tests/claude_python_adapter_removed.rs",
+        "tests/e2e_temp_home_cli.rs",
+        "tests/host_small_fixes_cli.rs",
+        "tests/lane_completion_handshake.rs",
+        "tests/lane_next_rules.rs",
+        "tests/product_cli.rs",
+        "tests/profile_apply_engine.rs",
+        "tests/profile_debug_info.rs",
+        "tests/project_flow_closing.rs",
+        "tests/project_lsp_plugins_cli.rs",
+        "tests/protected_paths_one_list.rs",
+        "tests/recurring_problems_rule.rs",
+        "tests/repo_claude_md.rs",
+        "tests/review_checklist_cli.rs",
+        "tests/review_md_repo.rs",
+        "tests/run_verify.rs",
+        "tests/source_manifest_facts.rs",
+        "tests/spawn_cap_test.rs",
+        "tests/spec_branch_name_first.rs",
+        "tests/update_hooks_cli.rs",
+        "tests/worktree_cli.rs",
+        "tests/worktree_report.rs",
+        "tests/repo_scans_table.rs"
+      ],
+      "scope": [
+        {
+          "prefix": ".cargo/config.toml"
+        },
+        {
+          "prefix": ".config/nextest.toml"
+        },
+        {
+          "prefix": ".gitattributes"
+        },
+        {
+          "prefix": ".gitignore"
+        },
+        {
+          "prefix": "CLAUDE.md"
+        },
+        {
+          "prefix": "Cargo.lock"
+        },
+        {
+          "prefix": "Cargo.toml"
+        },
+        {
+          "prefix": "LICENSE"
+        },
+        {
+          "prefix": "README.ko.md"
+        },
+        {
+          "prefix": "README.md"
+        },
+        {
+          "prefix": "REVIEW.md"
+        }
+      ],
+      "rejects": "a change to a checked-in file that a test of this group opens at run time that the test did not re-run on the merge tree (SPEC-20261123-land-file-read-scans)"
+    },
+    {
+      "id": "reads-shipped-files",
+      "always": true,
+      "tests": [
+        "tests/repo_scans_table.rs::every_file_reader_has_an_always_scan_or_an_exemption"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test agents_choices_step_cli --test audit_gate_cli --test bin_names_signature_cli --test bundle_user_assets_cli --test claude_python_adapter_removed --test git_hooks_cli --test github_cli --test labels_check --test labels_sync --test launcher_reads_models --test next_flow_skill_scan --test omp_launcher_removed --test orca_optional_3005 --test product_cli --test protected_paths_one_list --test repo_claude_md --test retired_host_words --test sdd_guidance --test style_banner_scan --test trailer_check_cli --test worktree_report --test repo_scans_table"
+      ],
+      "rules": [
+        "tests/agents_choices_step_cli.rs",
+        "tests/audit_gate_cli.rs",
+        "tests/bin_names_signature_cli.rs",
+        "tests/bundle_user_assets_cli.rs",
+        "tests/claude_python_adapter_removed.rs",
+        "tests/git_hooks_cli.rs",
+        "tests/github_cli.rs",
+        "tests/labels_check.rs",
+        "tests/labels_sync.rs",
+        "tests/launcher_reads_models.rs",
+        "tests/next_flow_skill_scan.rs",
+        "tests/omp_launcher_removed.rs",
+        "tests/orca_optional_3005.rs",
+        "tests/product_cli.rs",
+        "tests/protected_paths_one_list.rs",
+        "tests/repo_claude_md.rs",
+        "tests/retired_host_words.rs",
+        "tests/sdd_guidance.rs",
+        "tests/style_banner_scan.rs",
+        "tests/trailer_check_cli.rs",
+        "tests/worktree_report.rs",
+        "tests/repo_scans_table.rs"
+      ],
+      "scope": [
+        {
+          "prefix": ".github/ISSUE_TEMPLATE"
+        },
+        {
+          "prefix": ".github/moai"
+        },
+        {
+          "prefix": ".github/workflows"
+        },
+        {
+          "prefix": "agents/audit.md"
+        },
+        {
+          "prefix": "agents/docs.md"
+        },
+        {
+          "prefix": "agents/impl.md"
+        },
+        {
+          "prefix": "agents/research.md"
+        },
+        {
+          "prefix": "install/README.md"
+        },
+        {
+          "prefix": "install/commit-msg"
+        },
+        {
+          "prefix": "install/install.ps1"
+        },
+        {
+          "prefix": "install/install.sh"
+        },
+        {
+          "prefix": "schemas/protocol/v1"
+        },
+        {
+          "prefix": "schemas/worktree-report.schema.json"
+        },
+        {
+          "prefix": "templates/bundle-packs"
+        },
+        {
+          "prefix": "templates/claude/output-styles"
+        },
+        {
+          "prefix": "templates/github"
+        },
+        {
+          "prefix": "templates/spec/full.md"
+        }
+      ],
+      "rejects": "a change to a checked-in file that a test of this group opens at run time that the test did not re-run on the merge tree (SPEC-20261123-land-file-read-scans)"
+    },
+    {
+      "id": "reads-skills",
+      "always": true,
+      "tests": [
+        "tests/repo_scans_table.rs::every_file_reader_has_an_always_scan_or_an_exemption"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test agent_defs_package --test agents_home_cli --test base_agents_discovery_record --test base_agents_nested --test bin_names_signature_cli --test bundle_body_cli --test bundle_build_cli --test bundle_verify_cli --test card_generated_scope --test claim_verify_flags_2838 --test claude_md_home_cli --test code_atlas_reference --test codex_home_update_removed --test codex_question_tool --test core_rules_2876 --test e2e_host_fixture --test e2e_temp_home_cli --test exe_link_cli --test gate_collect --test generic_flow_questions --test home_routing_cli --test home_style_cli --test home_style_ownership_cli --test home_update_notice_follow_ups --test host_home_cli --test html_report_skill --test lane_completion_handshake --test lane_next_rules --test lane_rules_2401 --test lane_rules_2836 --test lane_rules_2879 --test mode_cards_53 --test mode_workflow_steps --test models_revert_cli --test next_flow_skill_scan --test orca_alignment --test orca_optional_3005 --test product_cli --test project_decide_model --test project_flow_closing --test project_lsp_plugins_cli --test project_preview_order --test project_worktree_move_choice --test protected_paths_one_list --test question_bank_hosts --test repo_scans_cli --test report_rules_core --test retired_hosts_layer --test revert_twice_cli --test review_check_cli --test review_checklist_cli --test rule_history_guard --test sdd_guidance --test self_audit_cli --test skill_structure --test source_manifest_facts --test spec_branch_name_first --test style_banner_scan --test test_isolation_rules --test ui_korean_terminal_cli --test update_adopt_cli --test update_always_asks --test update_git_hooks_cli --test update_headver --test update_home_layer_cli --test update_hooks_cli --test update_keys_cli --test update_route --test update_switch_cli --test update_user_layer_cli --test workflow_size_budget --test worktree_include_guard --test repo_scans_table"
+      ],
+      "rules": [
+        "tests/agent_defs_package.rs",
+        "tests/agents_home_cli.rs",
+        "tests/base_agents_discovery_record.rs",
+        "tests/base_agents_nested.rs",
+        "tests/bin_names_signature_cli.rs",
+        "tests/bundle_body_cli.rs",
+        "tests/bundle_build_cli.rs",
+        "tests/bundle_verify_cli.rs",
+        "tests/card_generated_scope.rs",
+        "tests/claim_verify_flags_2838.rs",
+        "tests/claude_md_home_cli.rs",
+        "tests/code_atlas_reference.rs",
+        "tests/codex_home_update_removed.rs",
+        "tests/codex_question_tool.rs",
+        "tests/core_rules_2876.rs",
+        "tests/e2e_host_fixture.rs",
+        "tests/e2e_temp_home_cli.rs",
+        "tests/exe_link_cli.rs",
+        "tests/gate_collect.rs",
+        "tests/generic_flow_questions.rs",
+        "tests/home_routing_cli.rs",
+        "tests/home_style_cli.rs",
+        "tests/home_style_ownership_cli.rs",
+        "tests/home_update_notice_follow_ups.rs",
+        "tests/host_home_cli.rs",
+        "tests/html_report_skill.rs",
+        "tests/lane_completion_handshake.rs",
+        "tests/lane_next_rules.rs",
+        "tests/lane_rules_2401.rs",
+        "tests/lane_rules_2836.rs",
+        "tests/lane_rules_2879.rs",
+        "tests/mode_cards_53.rs",
+        "tests/mode_workflow_steps.rs",
+        "tests/models_revert_cli.rs",
+        "tests/next_flow_skill_scan.rs",
+        "tests/orca_alignment.rs",
+        "tests/orca_optional_3005.rs",
+        "tests/product_cli.rs",
+        "tests/project_decide_model.rs",
+        "tests/project_flow_closing.rs",
+        "tests/project_lsp_plugins_cli.rs",
+        "tests/project_preview_order.rs",
+        "tests/project_worktree_move_choice.rs",
+        "tests/protected_paths_one_list.rs",
+        "tests/question_bank_hosts.rs",
+        "tests/repo_scans_cli.rs",
+        "tests/report_rules_core.rs",
+        "tests/retired_hosts_layer.rs",
+        "tests/revert_twice_cli.rs",
+        "tests/review_check_cli.rs",
+        "tests/review_checklist_cli.rs",
+        "tests/rule_history_guard.rs",
+        "tests/sdd_guidance.rs",
+        "tests/self_audit_cli.rs",
+        "tests/skill_structure.rs",
+        "tests/source_manifest_facts.rs",
+        "tests/spec_branch_name_first.rs",
+        "tests/style_banner_scan.rs",
+        "tests/test_isolation_rules.rs",
+        "tests/ui_korean_terminal_cli.rs",
+        "tests/update_adopt_cli.rs",
+        "tests/update_always_asks.rs",
+        "tests/update_git_hooks_cli.rs",
+        "tests/update_headver.rs",
+        "tests/update_home_layer_cli.rs",
+        "tests/update_hooks_cli.rs",
+        "tests/update_keys_cli.rs",
+        "tests/update_route.rs",
+        "tests/update_switch_cli.rs",
+        "tests/update_user_layer_cli.rs",
+        "tests/workflow_size_budget.rs",
+        "tests/worktree_include_guard.rs",
+        "tests/repo_scans_table.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "skills/moai"
+        },
+        {
+          "prefix": "skills/moai-html-report"
+        }
+      ],
+      "rejects": "a change to a checked-in file that a test of this group opens at run time that the test did not re-run on the merge tree (SPEC-20261123-land-file-read-scans)"
+    },
+    {
+      "id": "reads-src",
+      "always": true,
+      "tests": [
+        "tests/repo_scans_table.rs::every_file_reader_has_an_always_scan_or_an_exemption"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test agent_defs_package --test atlas_query_cli --test board_bundle_link_cli --test check_affected_modes_cli --test cli_text_citations --test e2e_temp_home_cli --test gate_collect --test git_hooks_cli --test help_text_names_moai --test home_isolation_scan --test hot_file_ops_merge --test ledger_recover --test next_flow_skill_scan --test orca_optional_3005 --test product_cli --test profile_apply_engine --test project_layer_follow_ups --test project_preview_order --test project_worktree_move_choice --test repo_scans_cli --test retired_host_words --test retired_hosts_layer --test worktree_cli --test repo_scans_table"
+      ],
+      "rules": [
+        "tests/agent_defs_package.rs",
+        "tests/atlas_query_cli.rs",
+        "tests/board_bundle_link_cli.rs",
+        "tests/check_affected_modes_cli.rs",
+        "tests/cli_text_citations.rs",
+        "tests/e2e_temp_home_cli.rs",
+        "tests/gate_collect.rs",
+        "tests/git_hooks_cli.rs",
+        "tests/help_text_names_moai.rs",
+        "tests/home_isolation_scan.rs",
+        "tests/hot_file_ops_merge.rs",
+        "tests/ledger_recover.rs",
+        "tests/next_flow_skill_scan.rs",
+        "tests/orca_optional_3005.rs",
+        "tests/product_cli.rs",
+        "tests/profile_apply_engine.rs",
+        "tests/project_layer_follow_ups.rs",
+        "tests/project_preview_order.rs",
+        "tests/project_worktree_move_choice.rs",
+        "tests/repo_scans_cli.rs",
+        "tests/retired_host_words.rs",
+        "tests/retired_hosts_layer.rs",
+        "tests/worktree_cli.rs",
+        "tests/repo_scans_table.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "src/agent_install.rs"
+        },
+        {
+          "prefix": "src/agents.rs"
+        },
+        {
+          "prefix": "src/apply.rs"
+        },
+        {
+          "prefix": "src/archive.rs"
+        },
+        {
+          "prefix": "src/board/link.rs"
+        },
+        {
+          "prefix": "src/bundle.rs"
+        },
+        {
+          "prefix": "src/claim.rs"
+        },
+        {
+          "prefix": "src/claim_timeout.rs"
+        },
+        {
+          "prefix": "src/claim_verify.rs"
+        },
+        {
+          "prefix": "src/claude.rs"
+        },
+        {
+          "prefix": "src/code_refs.rs"
+        },
+        {
+          "prefix": "src/contract.rs"
+        },
+        {
+          "prefix": "src/decision.rs"
+        },
+        {
+          "prefix": "src/decision_log.rs"
+        },
+        {
+          "prefix": "src/flake_record.rs"
+        },
+        {
+          "prefix": "src/forge/audit_status.rs"
+        },
+        {
+          "prefix": "src/forge/report.rs"
+        },
+        {
+          "prefix": "src/gate.rs"
+        },
+        {
+          "prefix": "src/gate_merge.rs"
+        },
+        {
+          "prefix": "src/gate_schedule.rs"
+        },
+        {
+          "prefix": "src/generation.rs"
+        },
+        {
+          "prefix": "src/git_hooks/mod.rs"
+        },
+        {
+          "prefix": "src/github_templates.rs"
+        },
+        {
+          "prefix": "src/go_hooks.rs"
+        },
+        {
+          "prefix": "src/go_state.rs"
+        },
+        {
+          "prefix": "src/handoff.rs"
+        },
+        {
+          "prefix": "src/heavy_slot.rs"
+        },
+        {
+          "prefix": "src/help.rs"
+        },
+        {
+          "prefix": "src/home_layout.rs"
+        },
+        {
+          "prefix": "src/home_state.rs"
+        },
+        {
+          "prefix": "src/hook_engine.rs"
+        },
+        {
+          "prefix": "src/hooks.rs"
+        },
+        {
+          "prefix": "src/hosts/config_backup.rs"
+        },
+        {
+          "prefix": "src/key_vault.rs"
+        },
+        {
+          "prefix": "src/lane_env.rs"
+        },
+        {
+          "prefix": "src/lane_reset.rs"
+        },
+        {
+          "prefix": "src/lane_screen.rs"
+        },
+        {
+          "prefix": "src/lane_send.rs"
+        },
+        {
+          "prefix": "src/lane_status.rs"
+        },
+        {
+          "prefix": "src/launcher_init.rs"
+        },
+        {
+          "prefix": "src/launcher_terminal.rs"
+        },
+        {
+          "prefix": "src/layout.rs"
+        },
+        {
+          "prefix": "src/leader_pulse.rs"
+        },
+        {
+          "prefix": "src/leader_round.rs"
+        },
+        {
+          "prefix": "src/ledger"
+        },
+        {
+          "prefix": "src/main.rs"
+        },
+        {
+          "prefix": "src/message.rs"
+        },
+        {
+          "prefix": "src/migrate.rs"
+        },
+        {
+          "prefix": "src/ops"
+        },
+        {
+          "prefix": "src/optimize.rs"
+        },
+        {
+          "prefix": "src/pr_link.rs"
+        },
+        {
+          "prefix": "src/profile.rs"
+        },
+        {
+          "prefix": "src/project_detect.rs"
+        },
+        {
+          "prefix": "src/project_hosts.rs"
+        },
+        {
+          "prefix": "src/project_update.rs"
+        },
+        {
+          "prefix": "src/recovery.rs"
+        },
+        {
+          "prefix": "src/session.rs"
+        },
+        {
+          "prefix": "src/shim_check.rs"
+        },
+        {
+          "prefix": "src/state_root.rs"
+        },
+        {
+          "prefix": "src/statusline/mod.rs"
+        },
+        {
+          "prefix": "src/statusline/orca.rs"
+        },
+        {
+          "prefix": "src/statusline/state.rs"
+        },
+        {
+          "prefix": "src/update.rs"
+        },
+        {
+          "prefix": "src/update/switch.rs"
+        },
+        {
+          "prefix": "src/update_cleanup.rs"
+        },
+        {
+          "prefix": "src/worktree.rs"
+        },
+        {
+          "prefix": "src/worktree_gc.rs"
+        },
+        {
+          "prefix": "src/worktree_include.rs"
+        },
+        {
+          "prefix": "src/worktree_move.rs"
+        },
+        {
+          "prefix": "src/worktree_report.rs"
+        }
+      ],
+      "rejects": "a change to a checked-in file that a test of this group opens at run time that the test did not re-run on the merge tree (SPEC-20261123-land-file-read-scans)"
+    },
+    {
+      "id": "reads-tools",
+      "always": true,
+      "tests": [
+        "tests/repo_scans_table.rs::every_file_reader_has_an_always_scan_or_an_exemption"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test ac_command_lint --test audit_gate_cli --test check_affected_modes_cli --test check_pipeline_config --test cli_text_citations --test gate_collect --test heavy_slot_cli --test protected_paths_one_list --test repo_scans_cli --test review_checklist_cli --test search_atlas --test repo_scans_table"
+      ],
+      "rules": [
+        "tests/ac_command_lint.rs",
+        "tests/audit_gate_cli.rs",
+        "tests/check_affected_modes_cli.rs",
+        "tests/check_pipeline_config.rs",
+        "tests/cli_text_citations.rs",
+        "tests/gate_collect.rs",
+        "tests/heavy_slot_cli.rs",
+        "tests/protected_paths_one_list.rs",
+        "tests/repo_scans_cli.rs",
+        "tests/review_checklist_cli.rs",
+        "tests/search_atlas.rs",
+        "tests/repo_scans_table.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "tools/atlas_baseline.py"
+        },
+        {
+          "prefix": "tools/build_folder.py"
+        },
+        {
+          "prefix": "tools/check_ac_commands.py"
+        },
+        {
+          "prefix": "tools/ci_scope.py"
+        },
+        {
+          "prefix": "tools/heavy_check_slot.py"
+        },
+        {
+          "prefix": "tools/local_check.sh"
+        },
+        {
+          "prefix": "tools/protected_checks.json"
+        },
+        {
+          "prefix": "tools/repo_scans.json"
+        },
+        {
+          "prefix": "tools/review_checklist.json"
+        },
+        {
+          "prefix": "tools/self_check.sh"
+        },
+        {
+          "prefix": "tools/smoke"
+        },
+        {
+          "prefix": "tools/source_manifest.py"
+        }
+      ],
+      "rejects": "a change to a checked-in file that a test of this group opens at run time that the test did not re-run on the merge tree (SPEC-20261123-land-file-read-scans)"
     }
   ]
 }
