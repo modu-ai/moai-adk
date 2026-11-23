@@ -35,6 +35,10 @@ Skip this section when you are a base agent yourself: base agents never start ot
 
 PLAN may hand the draft to one `moai-plan` at a time, read-only, and may first fan out `moai-research` for open facts as the READ workflow describes. The agent drafts steps and an AC table; approval and the decisions in steps 4 and 5 stay with this session and the user. Read-only is enforced only where the installed agent file can carry it; confirm afterwards that nothing changed.
 
+## Resume
+
+Read the SPEC file afresh, never from memory: run `moai spec check` and `moai spec show <id>`, and continue at the first step of the procedure whose output is missing. An approval recorded for an earlier `revision` does not cover a changed SPEC; it needs a new approval.
+
 ## Exceptions and Permissions
 
 Treat new requirements as amendments. Never mark a hard-to-test requirement or an unresolved safety boundary as approved on your own.
