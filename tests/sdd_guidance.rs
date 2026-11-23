@@ -490,6 +490,9 @@ fn test_design_has_one_work_count_rule() {
         "quadratic",
         "only the work that calls the counter",
     ] {
-        assert!(rules[0].contains(part), "the work-count rule lacks {part:?}");
+        assert!(
+            rules[0].contains(part),
+            "the work-count rule lacks {part:?}"
+        );
     }
 }
