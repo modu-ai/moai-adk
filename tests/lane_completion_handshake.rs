@@ -211,7 +211,11 @@ fn ac7_every_next_card_sentence_waits_for_a_registered_leader() {
         }
     }
     // The old unconditional wording is gone.
-    assert_lacks(&c, "CLAUDE.md", "as a note on the card and take the next card.");
+    assert_lacks(
+        &c,
+        "CLAUDE.md",
+        "as a note on the card and take the next card.",
+    );
     assert_lacks(&c, "CLAUDE.md", "is lost, then take the next card.");
 }
 
