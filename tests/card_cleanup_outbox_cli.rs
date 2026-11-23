@@ -13,6 +13,7 @@ mod common;
 use common::home::TempHome;
 use moai_cli::card::cleanup::{self, Options};
 use moai_cli::ledger;
+use moai_cli::ledger::cleanup_outbox::{self, Claim, Finish, Outcome, Step};
 use serde_json::{json, Value};
 use std::cell::RefCell;
 use std::fs;
@@ -1231,4 +1232,433 @@ fn ac8_a_problem_of_the_executor_is_reported_and_the_card_stays_closed() {
             .unwrap()
     };
     assert_eq!(state, "done");
+}
+
+// ---- SPEC-20261123-cleanup-outbox-followups ---------------------------------------------------
+
+fn a_step(target: &str) -> Step {
+    Step {
+        kind: "worktree",
+        target: target.to_string(),
+        status: "removed".to_string(),
+        reasons: Vec::new(),
+        detail: None,
+    }
+}
+
+impl World {
+    /// The name of the one pending request of the project.
+    fn the_request(&self) -> i64 {
+        let l = ledger::open_read_only(self.home.path(), "demo").unwrap();
+        let pending = cleanup_outbox::pending(l.conn()).unwrap();
+        assert_eq!(pending.len(), 1, "{pending:?}");
+        pending[0].request
+    }
+
+    /// The `cleanup.step` payloads of a card whose `kind` field is `kind`.
+    fn steps_of_kind(&self, card: &str, kind: &str) -> Vec<Value> {
+        self.payloads(card, "cleanup.step")
+            .into_iter()
+            .filter(|p| p["kind"] == json!(kind))
+            .collect()
+    }
+
+    /// What a card's close wrote under the cleanup reference-transaction queue.
+    fn queue_file(&self) -> PathBuf {
+        self.project
+            .join(".git")
+            .join(moai_cli::worktree_cleanup::QUEUE_FILE)
+    }
+}
+
+/// FU-1 (REQ-1, REQ-2): an attempt whose lease ended, or that a newer attempt replaced, writes no
+/// step and no result; the newest live attempt finishes as before.
+#[test]
+fn fu1_an_attempt_that_is_not_live_writes_nothing_and_the_newest_live_one_finishes() {
+    let w = World::new();
+    let (card, claimer, _wt, _branch) = w.pending("fu1-ledger");
+    w.release(&claimer);
+    let (request, id) = (w.the_request(), number(&card));
+    let mut write = ledger::open_write(w.home.path(), "demo").unwrap();
+    let end = Outcome::Result("settled".to_string());
+
+    // A lease of zero seconds is over the moment it starts.
+    let Claim::Taken { attempt: dead, .. } =
+        cleanup_outbox::claim(&mut write, request, id, S_EXEC, 0).unwrap()
+    else {
+        panic!("the request was not claimable")
+    };
+    let refused = cleanup_outbox::finish_attempt(
+        &mut write,
+        request,
+        id,
+        dead,
+        S_EXEC,
+        &[a_step("dead-target")],
+        &end,
+    )
+    .unwrap();
+    assert_eq!(refused, Finish::LeaseEnded);
+    assert_eq!(w.events(&card, "cleanup.result"), 0);
+    assert!(w
+        .steps_of_kind(&card, "worktree")
+        .iter()
+        .all(|s| s["target"] != json!("dead-target")));
+
+    // A newer attempt takes over; the older one stays refused, the newer one finishes.
+    let Claim::Taken { attempt: live, .. } =
+        cleanup_outbox::claim(&mut write, request, id, S_EXEC, 300).unwrap()
+    else {
+        panic!("the dead attempt's request was not claimable")
+    };
+    assert_eq!(live, dead + 1);
+    let late = cleanup_outbox::finish_attempt(
+        &mut write,
+        request,
+        id,
+        dead,
+        S_EXEC,
+        &[a_step("late-target")],
+        &end,
+    )
+    .unwrap();
+    assert_eq!(late, Finish::LeaseEnded);
+    assert_eq!(w.events(&card, "cleanup.result"), 0);
+
+    // The live attempt's own number and holder are both needed: an attempt nobody started and
+    // another holder's call are refused.
+    let unknown = cleanup_outbox::finish_attempt(
+        &mut write,
+        request,
+        id,
+        live + 5,
+        S_EXEC,
+        &[a_step("unknown-target")],
+        &end,
+    )
+    .unwrap();
+    assert_eq!(unknown, Finish::LeaseEnded);
+    let stranger = cleanup_outbox::finish_attempt(
+        &mut write,
+        request,
+        id,
+        live,
+        S_A,
+        &[a_step("stranger-target")],
+        &end,
+    )
+    .unwrap();
+    assert_eq!(stranger, Finish::LeaseEnded);
+
+    // An attempt that gave its claim back cannot finish afterwards, even inside its lease.
+    let gave_back = cleanup_outbox::finish_attempt(
+        &mut write,
+        request,
+        id,
+        live,
+        S_EXEC,
+        &[],
+        &Outcome::Release,
+    )
+    .unwrap();
+    assert_eq!(gave_back, Finish::Written);
+    let after = cleanup_outbox::finish_attempt(
+        &mut write,
+        request,
+        id,
+        live,
+        S_EXEC,
+        &[a_step("after-release-target")],
+        &end,
+    )
+    .unwrap();
+    assert_eq!(after, Finish::LeaseEnded);
+    assert_eq!(w.events(&card, "cleanup.result"), 0);
+
+    let Claim::Taken { attempt: live, .. } =
+        cleanup_outbox::claim(&mut write, request, id, S_EXEC, 300).unwrap()
+    else {
+        panic!("the released attempt's request was not claimable")
+    };
+    let written = cleanup_outbox::finish_attempt(
+        &mut write,
+        request,
+        id,
+        live,
+        S_EXEC,
+        &[a_step("live-target")],
+        &end,
+    )
+    .unwrap();
+    assert_eq!(written, Finish::Written);
+    assert_eq!(w.events(&card, "cleanup.result"), 1);
+    let targets: Vec<Value> = w
+        .steps_of_kind(&card, "worktree")
+        .into_iter()
+        .map(|s| s["target"].clone())
+        .collect();
+    assert!(targets.contains(&json!("live-target")), "{targets:?}");
+    assert!(!targets.contains(&json!("late-target")), "{targets:?}");
+    assert!(!targets.contains(&json!("dead-target")), "{targets:?}");
+    for refused in ["unknown-target", "stranger-target", "after-release-target"] {
+        assert!(!targets.contains(&json!(refused)), "{refused}: {targets:?}");
+    }
+
+    // A finished request is over for everyone, a dead attempt included.
+    let over =
+        cleanup_outbox::finish_attempt(&mut write, request, id, dead, S_EXEC, &[], &end).unwrap();
+    assert_eq!(over, Finish::Over);
+}
+
+/// FU-1 (REQ-3): an executor whose lease is over when it ends answers `lease_lost` with an error
+/// that names the attempt, writes no step and no result, and the next run settles the request.
+#[test]
+fn fu1_an_executor_whose_lease_ended_reports_lease_lost_and_the_next_run_settles() {
+    let w = World::new();
+    let (card, claimer, wt, branch) = w.pending("fu1-lost");
+    w.release(&claimer);
+    let got = w.run_pending_with(&Options {
+        lease_secs: 0,
+        ..Options::default()
+    });
+    let entry = World::entry(&got, &card);
+    assert_eq!(entry["status"], json!("lease_lost"), "{got}");
+    let why = entry["error"].as_str().unwrap_or_default();
+    assert!(why.contains("attempt 2"), "{got}");
+    assert_eq!(got["error"], entry["error"], "{got}");
+    assert_eq!(w.events(&card, "cleanup.result"), 0);
+    // Attempt 1 is the close's own run, which gave its claim back and left its steps.
+    let by_refused: Vec<Value> = ["worktree", "branch"]
+        .iter()
+        .flat_map(|kind| w.steps_of_kind(&card, kind))
+        .filter(|s| s["attempt"] == json!(2))
+        .collect();
+    assert!(
+        by_refused.is_empty(),
+        "a refused attempt wrote steps: {by_refused:?}"
+    );
+    // The run did remove what it removed; the ledger only lacks its rows.
+    assert!(!wt.exists() && !w.has_branch(&branch));
+
+    let next = w.run_pending();
+    assert_eq!(
+        World::entry(&next, &card)["status"],
+        json!("settled"),
+        "{next}"
+    );
+    assert_eq!(w.events(&card, "cleanup.result"), 1);
+}
+
+/// FU-2 (REQ-4): after a run that died without a trace, the next attempt leaves one `abandoned`
+/// line for it, and only for it.
+#[test]
+fn fu2_the_next_attempt_leaves_one_abandoned_line_for_a_run_that_died() {
+    let w = World::new();
+    let (card, claimer, _wt, _branch) = w.pending("fu2");
+    w.release(&claimer);
+    // Attempt 1 (the close's own run) gave its claim back. Attempt 2 stops as a killed run would.
+    let died = w.run_pending_with(&Options {
+        lease_secs: 0,
+        stop_after_worktrees: true,
+        ..Options::default()
+    });
+    assert_eq!(
+        World::entry(&died, &card)["status"],
+        json!("interrupted"),
+        "{died}"
+    );
+    assert!(w.steps_of_kind(&card, "attempt").is_empty());
+
+    let done = w.run_pending();
+    let entry = World::entry(&done, &card);
+    assert_eq!(entry["status"], json!("settled"), "{done}");
+    assert_eq!(entry["abandoned_attempt"], json!(2), "{done}");
+    let lines = w.steps_of_kind(&card, "attempt");
+    assert_eq!(lines.len(), 1, "{lines:?}");
+    assert_eq!(lines[0]["attempt"], json!(2));
+    assert_eq!(lines[0]["status"], json!("abandoned"));
+    assert_eq!(lines[0]["reasons"], json!(["lease_ended"]));
+    assert_eq!(w.events(&card, "cleanup.result"), 1);
+
+    // A settled request is not read again: no second line.
+    let again = w.run_pending();
+    assert_eq!(again["requests"], json!([]), "{again}");
+    assert_eq!(w.steps_of_kind(&card, "attempt").len(), 1);
+}
+
+/// FU-3 (REQ-5): the ref queue a run drains leaves one `queue` step per ref; no queue, no step.
+#[test]
+fn fu3_a_drained_ref_queue_leaves_one_step_per_ref() {
+    let w = World::new();
+    w.branch("lane/fu3-keep");
+    let (card, claimer, _wt, _branch) = w.pending("fu3");
+    w.release(&claimer);
+    // What the reference-transaction hook writes: one full ref name per deleted branch (a hint
+    // only; the cleanup reads each ref again).
+    let queue = w.queue_file();
+    fs::create_dir_all(queue.parent().unwrap()).unwrap();
+    fs::write(
+        &queue,
+        "refs/heads/lane/fu3-was\nrefs/heads/lane/fu3-keep\n",
+    )
+    .unwrap();
+
+    let got = w.run_pending();
+    assert_eq!(
+        World::entry(&got, &card)["status"],
+        json!("settled"),
+        "{got}"
+    );
+    let lines = w.steps_of_kind(&card, "queue");
+    let seen: Vec<(String, String)> = lines
+        .iter()
+        .map(|s| {
+            (
+                s["target"].as_str().unwrap().to_string(),
+                s["status"].as_str().unwrap().to_string(),
+            )
+        })
+        .collect();
+    assert_eq!(
+        seen,
+        vec![
+            (
+                "refs/heads/lane/fu3-keep".to_string(),
+                "still_there".to_string()
+            ),
+            ("refs/heads/lane/fu3-was".to_string(), "gone".to_string()),
+        ],
+        "{lines:?}"
+    );
+
+    // The next card's run finds no queue and writes no queue step.
+    let wt2 = w.linked_worktree("wt-fu3-next");
+    w.branch("lane/fu3-next");
+    let next = w.card_in("apps/fu3-next/", &wt2, Some("lane/fu3-next"), &["one"]);
+    let landed = w.land(&next, &["1=the test"]);
+    assert_eq!(
+        World::outbox(&landed, &next)["status"],
+        json!("settled"),
+        "{landed}"
+    );
+    assert!(w.steps_of_kind(&next, "queue").is_empty());
+}
+
+#[cfg(unix)]
+impl World {
+    /// `moai card <args>` started in a process group of its own and not waited for, so a test can
+    /// kill the whole group the way `kill -9` on a stuck run would.
+    fn spawn_card(&self, session: &str, args: &[&str]) -> std::process::Child {
+        use std::os::unix::process::CommandExt;
+        self.write_profile();
+        let mut all = vec!["card"];
+        all.extend_from_slice(args);
+        all.extend_from_slice(&["--project", &self.p]);
+        let mut cmd: Command = self.home.command(&all);
+        cmd.env("MOAI_GIT_BIN", &self.git_bin);
+        for (key, value) in self.extra_env.borrow().iter() {
+            cmd.env(key, value);
+        }
+        cmd.env(SESSION_VAR, session)
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .process_group(0);
+        cmd.spawn().expect("start moai")
+    }
+}
+
+/// FU-2 (REQ-4), the real thing: `kill -9` on the process group of a closing command, in the middle
+/// of the branch delete. The worktree is gone, the branch and the request stay, the live lease
+/// keeps other runs away, and once it ended the next run leaves the `abandoned` line for the dead
+/// attempt and settles the request.
+#[cfg(unix)]
+#[test]
+fn fu2_a_killed_executor_leaves_its_lease_and_the_next_attempt_names_it() {
+    let w = World::new();
+    let wt = w.linked_worktree("wt-killed");
+    w.branch("lane/kill");
+    let marker = w.outside("kill-marker");
+    let hook = w.project.join(".git/hooks/reference-transaction");
+    // Stops a delete of the card's branch in its `prepared` phase, as a hung disk would.
+    common::write_executable(
+        &hook,
+        &format!(
+            "#!/bin/sh\n[ \"$1\" = prepared ] || exit 0\nwhile read old new ref; do\n  case \"$ref\" in\n    refs/heads/lane/kill) : > '{}'; sleep 30; exit 1 ;;\n  esac\ndone\nexit 0\n",
+            marker.display()
+        ),
+    );
+    let card = w.card_in("apps/a/", &wt, Some("lane/kill"), &["one"]);
+    let mut child = w.spawn_card(
+        S_A,
+        &[
+            "finish",
+            &card,
+            "--head",
+            &w.head,
+            "--met",
+            "1=the test",
+            "--by",
+            "leader",
+        ],
+    );
+    for _ in 0..200 {
+        if marker.exists() {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(100));
+    }
+    assert!(marker.exists(), "the branch delete never started");
+    let group = format!("-{}", child.id());
+    let killed = Command::new("kill")
+        .args(["-KILL", "--", &group])
+        .status()
+        .expect("run kill");
+    assert!(killed.success());
+    child.wait().expect("reap the killed command");
+
+    // What the dead run left: the worktree is gone, the branch, the request and its lease stay.
+    assert!(!wt.exists() && !w.registered(&wt));
+    assert!(w.has_branch("lane/kill"));
+    assert_eq!(w.events(&card, "cleanup.started"), 1);
+    assert_eq!(w.events(&card, "cleanup.result"), 0);
+    assert!(w.steps_of_kind(&card, "worktree").is_empty());
+    assert!(w.steps_of_kind(&card, "attempt").is_empty());
+
+    // The hook is gone, the ref lock the killed git left is cleared (what an operator would do),
+    // and the lease of the dead attempt is still live: another run leaves the request alone.
+    fs::remove_file(&hook).unwrap();
+    for lock in ["refs/heads/lane/kill.lock", "packed-refs.lock"] {
+        let _ = fs::remove_file(w.project.join(".git").join(lock));
+    }
+    let busy = w.run_pending();
+    assert_eq!(
+        World::entry(&busy, &card)["status"],
+        json!("busy"),
+        "{busy}"
+    );
+    assert!(w.has_branch("lane/kill"));
+
+    // Time passes: the lease of attempt 1 is over, and the next run names it.
+    let file = ledger::ledger_path(w.home.path(), "demo").unwrap();
+    let conn = rusqlite::Connection::open(&file).unwrap();
+    // Events are append-only in a real ledger; in this throwaway one the guard is lifted so the
+    // clock can be moved past the lease without waiting for it.
+    conn.execute_batch(
+        "DROP TRIGGER event_no_update; \
+         UPDATE event SET payload = json_set(payload, '$.lease_until', 1) \
+         WHERE kind = 'cleanup.started';",
+    )
+    .unwrap();
+    drop(conn);
+    let done = w.run_pending();
+    let entry = World::entry(&done, &card);
+    assert_eq!(entry["status"], json!("settled"), "{done}");
+    assert_eq!(entry["abandoned_attempt"], json!(1), "{done}");
+    let lines = w.steps_of_kind(&card, "attempt");
+    assert_eq!(lines.len(), 1, "{lines:?}");
+    assert_eq!(lines[0]["attempt"], json!(1));
+    assert_eq!(lines[0]["status"], json!("abandoned"));
+    assert!(!w.has_branch("lane/kill"));
+    assert_eq!(w.events(&card, "cleanup.result"), 1);
 }
