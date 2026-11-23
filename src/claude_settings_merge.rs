@@ -32,10 +32,9 @@ const CREDENTIAL_BLOCK: &str =
     "a value in it looks like a credential; the key stays in the backup and its value is not shown";
 
 /// Why an Opus 4.8 model value beside a fast-mode key is not carried (SPEC-20261122-model-fast-pair
-/// REQ-3, D-3): the API refuses that pair, so the value stays in the backup. A fixed text: it names
-/// no saved value and carries no date.
-const FAST_PAIR_BLOCK: &str =
-    "the model is Opus 4.8 and a fast-mode key sits beside it; the API refuses that pair, so the model stays in the backup";
+/// REQ-3, D-3, D-6): the API refuses that pair from 2026-11-30, so the value stays in the backup.
+/// A fixed text: it names no saved value, and the date is words in it, never compared with a clock.
+const FAST_PAIR_BLOCK: &str = "the model is Opus 4.8 and a fast-mode key sits beside it; the API refuses that pair from 2026-11-30, so the model stays in the backup; switch to Opus 5.5 or turn fast mode off";
 
 /// The keys a merge may carry, in the order they are shown.
 pub const MERGEABLE: [&str; 5] = ["permissions", "env", "model", "statusLine", "outputStyle"];
@@ -534,6 +533,10 @@ mod tests {
                 assert_eq!(row.state, "blocked", "{model} + {key}");
                 assert!(row.carry.is_none(), "{model} + {key}");
                 assert_eq!(row.reason, FAST_PAIR_BLOCK, "{model} + {key}");
+                // Card criterion 2: one plain notice that names the date and the fix.
+                assert!(row.reason.contains("2026-11-30"), "{}", row.reason);
+                assert!(row.reason.contains("Opus 5.5"), "{}", row.reason);
+                assert!(row.reason.contains("fast mode"), "{}", row.reason);
                 let shown = format!("{} {}", row.reason, row.summary);
                 assert!(!shown.contains(model), "{model} + {key}: {shown}");
             }
