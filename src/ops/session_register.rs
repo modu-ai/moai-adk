@@ -48,6 +48,14 @@ pub struct Args {
     /// stored only when given, so pass it again with every renewal.
     #[arg(long, conflicts_with_all = ["show", "release"], value_parser = moai_cli::lane_registry::MODES.to_vec())]
     mode: Option<String>,
+    /// After a `/clear` or a restart: take over the entry of this name when it names another
+    /// host session in the same git worktree. The entry then lists the replaced session id first
+    /// in `previous_sessions` and gets a fresh `instance` (`continued`); `card adopt` reads that
+    /// list. Refused, with the missing proof named and the entry left as it was, when the entry
+    /// names no session or no worktree, names another worktree, or this session has no host id or
+    /// runs outside a git worktree. With no entry it is an ordinary registration.
+    #[arg(long = "continue", conflicts_with_all = ["instance", "release", "show", "liveness_of"])]
+    continue_session: bool,
     /// `YYYY-MM-DDTHH:MM:SSZ` to judge leases against; the system clock when absent.
     #[arg(long)]
     now: Option<String>,
@@ -97,13 +105,14 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
         (true, Some(i)) => {
             moai_cli::lane_registry::release(&project, &name, i, args.by.as_deref(), now)
         }
-        _ => moai_cli::lane_registry::register(
+        _ => moai_cli::lane_registry::register_with(
             &project,
             &name,
             instance,
             args.lease_secs,
             args.mode.as_deref(),
             now,
+            args.continue_session,
         ),
     }
 }
