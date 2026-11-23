@@ -148,30 +148,40 @@ fn the_cap_text_is_a_whole_number_of_at_least_one_else_four() {
 /// under nextest each test is its own process and the in-process set bounds nothing, so a file
 /// that takes permits but is not in the group is unbounded there.
 #[test]
-fn every_file_that_takes_permits_is_in_the_nextest_group() {
+fn the_files_that_take_permits_are_exactly_the_nextest_group() {
+    // The test files that take spawn permits, by name (no walk of `tests/`: a file that takes
+    // permits is added here and to the filter together).
+    const USERS: [&str; 3] = [
+        "home_retire_cli",
+        "update_home_layer_cli",
+        "update_keys_cli",
+    ];
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
     let config = std::fs::read_to_string(root.join(".config/nextest.toml")).unwrap();
     assert!(
         config.contains("[test-groups]") && config.contains("spawning-moai"),
         "the spawning-moai test group is missing from .config/nextest.toml"
     );
-    let mut users = Vec::new();
-    for entry in std::fs::read_dir(root.join("tests")).unwrap() {
-        let path = entry.unwrap().path();
-        if path.extension().is_some_and(|e| e == "rs") {
-            let text = std::fs::read_to_string(&path).unwrap();
-            if text.contains("common/spawn_cap.rs") {
-                users.push(path.file_stem().unwrap().to_string_lossy().into_owned());
-            }
-        }
-    }
-    users.retain(|n| n != "spawn_cap_test");
-    users.sort();
-    assert!(!users.is_empty(), "no test file takes permits any more");
-    for name in &users {
+    for name in USERS {
+        let text = std::fs::read_to_string(root.join("tests").join(format!("{name}.rs")))
+            .unwrap_or_else(|e| panic!("tests/{name}.rs: {e}"));
         assert!(
-            config.contains(&format!("binary({name})")),
-            "tests/{name}.rs takes spawn permits but is not in the nextest group: {config}"
+            text.contains("common/spawn_cap.rs") && text.contains("spawn_cap::acquire()"),
+            "tests/{name}.rs no longer takes spawn permits: take it off USERS and the filter"
         );
     }
+    // The group's filter names these files and no others.
+    let filter = config
+        .lines()
+        .find(|l| l.trim_start().starts_with("filter ="))
+        .expect("the override has a filter line");
+    let mut named: Vec<&str> = filter
+        .split("binary(")
+        .skip(1)
+        .filter_map(|rest| rest.split_once(')').map(|(name, _)| name))
+        .collect();
+    named.sort_unstable();
+    let mut want = USERS.to_vec();
+    want.sort_unstable();
+    assert_eq!(named, want, "the nextest group filter: {filter}");
 }
