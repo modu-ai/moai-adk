@@ -550,12 +550,17 @@ impl World {
         l.conn().query_row(sql, [], |r| r.get(0)).unwrap()
     }
 
-    /// The `n` newest events as (kind, payload with the actor added), newest first.
+    /// The `n` newest events as (kind, payload with the actor added), newest first. The cleanup
+    /// rows of the outbox (SPEC-20261123-cleanup-outbox) are a family of their own and are not
+    /// counted among the events of a close.
     fn newest_events(&self, n: i64) -> Vec<(String, Value)> {
         let l = ledger::open_read_only(self.home.path(), "demo").unwrap();
         let mut st = l
             .conn()
-            .prepare("SELECT kind, payload, actor FROM event ORDER BY event_id DESC LIMIT ?1")
+            .prepare(
+                "SELECT kind, payload, actor FROM event WHERE kind NOT LIKE 'cleanup.%' \
+                 ORDER BY event_id DESC LIMIT ?1",
+            )
             .unwrap();
         st.query_map([n], |r| {
             let payload: String = r.get(1)?;
@@ -647,7 +652,7 @@ fn assert_only_events_added(before: &[String], after: &[String], added: usize) {
 fn ac1_a_ready_card_with_a_head_inside_the_tip_closes_to_done() {
     let w = World::new();
     let card = w.card_named("task", "apps/a/", &["one", "two"]);
-    let events_before = w.count("SELECT count(*) FROM event");
+    let events_before = w.count("SELECT count(*) FROM event WHERE kind NOT LIKE 'cleanup.%'");
     assert_ne!(w.head, w.tip, "the fixture's head is behind the tip");
 
     let got = result(&w.finish(
@@ -709,7 +714,7 @@ fn ac1_a_ready_card_with_a_head_inside_the_tip_closes_to_done() {
         0
     );
     assert_eq!(
-        w.count("SELECT count(*) FROM event"),
+        w.count("SELECT count(*) FROM event WHERE kind NOT LIKE 'cleanup.%'"),
         events_before + 2,
         "exactly two events"
     );
@@ -1890,7 +1895,7 @@ fn landed_card_scenario(release: bool) {
     assert_eq!(listing["next"], json!(b), "{listing}");
     assert_eq!(listing["next_is"], json!("ready"), "{listing}");
 
-    let events_before = w.count("SELECT count(*) FROM event");
+    let events_before = w.count("SELECT count(*) FROM event WHERE kind NOT LIKE 'cleanup.%'");
     let got = result(&w.finish(
         Some(S_B),
         &a,
@@ -1929,7 +1934,7 @@ fn landed_card_scenario(release: bool) {
         "the landing event of the holder stays: {newest:?}"
     );
     assert!(
-        w.count("SELECT count(*) FROM event") > events_before,
+        w.count("SELECT count(*) FROM event WHERE kind NOT LIKE 'cleanup.%'") > events_before,
         "finish wrote its event"
     );
 

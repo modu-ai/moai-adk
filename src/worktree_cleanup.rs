@@ -62,6 +62,12 @@ const TEMPORARY: &[&str] = &[
     "budget_spent",
 ];
 
+/// True when `text` names a reason that passes by itself (see `TEMPORARY`): a reason word, or a
+/// refusal detail that holds one.
+pub fn is_temporary(text: &str) -> bool {
+    TEMPORARY.iter().any(|t| text.contains(t))
+}
+
 /// What started the cleanup.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Trigger {
