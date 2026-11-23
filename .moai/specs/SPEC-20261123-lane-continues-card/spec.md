@@ -136,4 +136,20 @@ created: 2026-11-23
 
 ## Result
 
-Status: SPEC draft (revision 2: card and ledger note numbers replaced by what each source decided). Nothing is implemented and no acceptance line is met. The base is tip `caeac7689a`. The SPEC carries no approval; U-1 and U-2 wait for the user.
+Status: implemented on the code slice; the SPEC front matter is not changed here (approval is recorded by the user's pick, not by a lane). `session-register --continue` is in `src/lane_registry.rs` and `src/ops/session_register.rs`; `card adopt` is in `src/card/adopt.rs` (proofs, read only) and `src/ledger/adopt.rs` (one transaction, beside the reclaim transaction, which is untouched). U-1 is implemented as yes (the held launcher lock does not stop `--continue`); U-2 as written (a reclaimed card has a new generation and is refused with the answer `card reclaim` gives).
+
+- AC-1: met — `session_registry_cli` tests `ac1_continue_takes_the_entry_over_and_keeps_the_old_ids`, `ac1_a_registration_records_the_worktree_of_the_running_folder`, `ac1_a_renewal_keeps_the_worktree_and_the_old_ids`
+- AC-2: met — `session_registry_cli` tests `ac2_a_plain_registration_over_a_live_entry_still_conflicts`, `ac2_continue_without_a_proof_refuses_and_leaves_the_entry`, `ac2_an_entry_without_a_worktree_or_a_session_cannot_be_continued`
+- AC-3: met — `card_adopt_cli` tests `ac3_adopt_continues_the_card_at_the_next_generation`, `ac3_a_card_in_review_is_adopted_and_stays_in_review`
+- AC-4: met — `card_adopt_cli` test `ac4_a_session_whose_entry_does_not_list_the_holder_is_refused`
+- AC-5: met — `card_adopt_cli` test `ac5_an_entry_that_still_names_the_holder_is_refused`
+- AC-6: met — `card_adopt_cli` test `ac6_a_worktree_that_is_not_the_running_one_is_refused`
+- AC-7: met — `card_adopt_cli` test `ac7_a_card_in_another_state_is_refused_like_reclaim`
+- AC-8: met — lib test `ledger::adopt::tests::ac8_a_holder_that_changed_after_the_proof_is_refused`
+- AC-9: met — `card_adopt_cli` test `ac9_the_proofs_read_and_write_nothing`
+- AC-10: met — `card_adopt_cli` test `ac10_the_worktree_and_the_launcher_lock_are_not_read`
+- AC-11: met — `card_adopt_cli` test `ac11_the_adopt_event_names_everything`
+- AC-12: met — `card_adopt_cli` test `ac12_adoptions_do_not_use_up_the_reclaim_allowance`
+- AC-13: met — `card_reclaim_cli`, `card_reclaim_early_cli` and `session_registry_cli` pass in the `check affected` test step of the same head (3290 of 3291 passed; the one failure is a timing limit of an unrelated lint test that passes alone)
+
+The dangerous path was also run with the real binary in a throwaway HOME and repository: a continue with a held launcher lock, a dirty tree and a process inside (adopted); the old session with the same name in the same worktree (its next `card check` refused as stale); another worktree (refused); a card the leader reclaimed (refused); a done card (refused); two adopts at once (one adopted, one refused as stale).
