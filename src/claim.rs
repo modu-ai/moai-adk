@@ -99,11 +99,12 @@ pub fn journal_root_in(project: &Path, home: Option<&Path>) -> Result<PathBuf> {
     // #2175: the P09 opt-in home layout switches the journal store to
     // ~/.moai-cli/projects/<id>/claims once layout.json is in place.
     // The journal is then written under the home state root of `home`, which
-    // `identity_in(.., None)` does not resolve: refuse a symlinked root here, before the
-    // switched path is handed to a writer (SPEC-20261124-identity-home-arg REQ-9).
+    // `identity_in(.., None)` does not resolve: refuse a symlinked root and every symlinked
+    // folder between it and the journal folder here, before the switched path is handed to a
+    // writer (SPEC-20261124-identity-home-arg REQ-9, SPEC-20261124-home-state-link-refusal REQ-4).
     if let Some(switched) = crate::layout::switched_dir_in(project, "claims", home) {
         if let Some(root) = crate::layout::default_home_root_in(home) {
-            identity::refuse_symlink(&root, "home state root")?;
+            crate::layout::refuse_linked_home_path(&root, &switched)?;
         }
         return Ok(switched);
     }
