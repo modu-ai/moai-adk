@@ -1,9 +1,10 @@
 ---
 id: SPEC-20261124-audit-prep
 title: "감사가 카드 이름으로 자리를 잡고 head 에서 증분 빌드 한 번 하고 깨끗하게 끝나요"
-status: draft
+status: approved
 revision: 2
 created: 2026-11-24
+approval: {by: leader, at: 2026-11-23, basis: "leader decision note 7978 of card C-364 (2026-11-23T22:59:29Z, delegation of the user 2026-11-23T13:57Z, the leader's judgement and not a selection by the user) answering request note 7976 with option (a) for revision 2 at commit 163c2571d1b24fadc05ec2232fcec492b29393c9, on the condition that the whole audit_slot_cli passes on the same head receipt", digest: "sha256:da5fd1d18591333fb17e5eb397bada1130b9883d4a783da7093760d6f0b079c7"}
 ---
 
 # 감사가 카드 이름으로 자리를 잡고 head 에서 증분 빌드 한 번 하고 깨끗하게 끝나요
@@ -83,7 +84,7 @@ created: 2026-11-24
 3. 테스트 먼저(RED): 임시 저장소와 임시 HOME 에서 `tests/audit_prep_cli.rs` 로 AC-1 ~ AC-6 을 써요.
 4. `src/audit_prep.rs` 와 `src/ops/audit_prep.rs`, 도움말 행과 골든, 운영 문서를 써요.
 5. 가드 뮤턴트를 돌려요. 새 가드 테스트마다 READY 에 한 줄씩 남겨요.
-6. READY 에서 `moai check affected` 를 맨몸으로 한 번 돌리고, head 와 base 를 적어 READY 를 내요.
+6. READY 에서 `moai check affected` 를 맨몸으로 한 번 돌리고, 같은 head 에서 `audit_slot_cli` 전체(승인 조건, 노트 7978)가 통과함을 영수증에 적고, head 와 base 를 적어 READY 를 내요.
 
 ## Risks
 
@@ -109,4 +110,5 @@ created: 2026-11-24
 ## Result
 
 - 판 1 은 리더가 승인했어요(노트 7966, 요청 노트 7965 의 선택지 (b), 커밋 `eeba19c082`).
-- 판 2: 구현에 들어가기 전에 `audit-done` 이 연산 파일과 문서 조각을 따로 요구한다는 것을 읽었어요(D-7). Scope 에 `src/ops/audit_done.rs` 와 `operations/audit_done.md` 를 더하고 판을 올려 재승인을 기다려요. 요구사항과 인수 기준은 판 1 과 같아요.
+- 판 2: 구현에 들어가기 전에 `audit-done` 이 연산 파일과 문서 조각을 따로 요구한다는 것을 읽었어요(D-7). Scope 에 `src/ops/audit_done.rs` 와 `operations/audit_done.md` 를 더했고 요구사항과 인수 기준은 판 1 과 같아요. 리더가 승인했어요(노트 7978, 선택지 (a), 커밋 `163c2571d1`).
+- 승인 조건(노트 7978): `audit_slot::prep` 과 `done` 의 동작이 그대로임을, `audit_slot_cli` 전체가 READY 영수증과 같은 head 에서 통과하는 것으로 보여요. 이 조건은 READY 의 확인 항목이고 지금은 아직 돌리지 않았어요(not_run).
