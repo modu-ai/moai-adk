@@ -13,6 +13,7 @@
 //!
 //! Nothing here calls a model, the network or `git`.
 
+pub mod adopt;
 pub mod command;
 pub mod folders;
 pub mod import;
