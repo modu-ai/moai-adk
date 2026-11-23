@@ -242,7 +242,7 @@ fn apply_leaves_the_codex_and_omp_folders_as_they_are() {
     assert!(!home.join(".agents/skills/moai").exists());
     // The Claude side did go in.
     assert!(home.join(".claude/skills/moai/SKILL.md").is_file());
-    assert!(home.join(".claude/CLAUDE.md").is_file());
+    assert!(home.join(".claude/rules/moai.md").is_file());
 }
 
 #[test]

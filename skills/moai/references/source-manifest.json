@@ -104,6 +104,15 @@
         "reason": "Written for SPEC-20261122-next-flow-skills-agents (REQ-5, text slice B; decisions D-2, D-8, D-9): the one full description of the flow, at most 6144 bytes. It explains the name once, describes the four technical rules as how the flow runs, and states the worktree place, that a lane submits its head and base only, the landing command, the protection hook, the fast-forward push only when the user has turned the remote copy on, and that remote checks never block a landing. Each landing and hook statement was checked against src/card/land.rs and src/card/guard.rs. The flow rule file in the config folder points here (REQ-11)."
       }
     },
+    "references/home/flow.md": {
+      "sha256": "86250ab39f05f8f377f87c7b1e55d25db44102c9f25567f432e76e95488c0161",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "home-flow-rule",
+        "adoption": "new",
+        "reason": "Written for SPEC-20261122-claude-md-flow-rule: the NeXT-Flow git rule that moai-cli writes as rules/moai/flow.md into each Claude config folder the user picks (src/home_routing/rules.rs), plain text with no frontmatter, at most 80 lines and 5 KiB; its Compact Instructions section lists what must survive a compaction."
+      }
+    },
     "references/home/output-style.md": {
       "sha256": "ad03088c5f712edea7fc27e8b28e3ca3d4d9db32d6e928fd7c4633f8d60610ff",
       "origin": {
