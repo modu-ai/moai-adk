@@ -6,13 +6,15 @@
 mod common;
 
 use common::fake_exe::{marker_script, write_marking_executable};
+use common::CleanEnv;
 use std::path::Path;
 use std::process::{Command, Stdio};
 
-/// Runs `exe` with exactly `path_env` as its PATH and nothing else of the environment.
+/// Runs `exe` with exactly `path_env` as its PATH under `.clean_env()`: of the rest of the
+/// environment only `DEVELOPER_DIR` (when that folder exists) and the process-table switch stay.
 fn run_with_path(exe: &Path, path_env: &Path) -> std::process::Output {
     Command::new(exe)
-        .env_clear()
+        .clean_env()
         .env("PATH", path_env)
         .stdin(Stdio::null())
         .output()
