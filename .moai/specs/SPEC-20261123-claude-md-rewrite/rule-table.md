@@ -104,7 +104,7 @@ Each row is one rule or one group of lines of `CLAUDE.md` as it stood at `b3ba2b
 | R-98 | 152 | compare the changed lines with the audited delta after every `update-branch` | moved | docs/leader-rules.md | «After every `update-branch`, compare the changed lines» |
 | R-99 | 153 | both autonomy levels keep the ruleset, the independent audit, no secrets in logs and no bypass | moved | docs/leader-rules.md | «Both autonomy levels keep the ruleset» |
 | R-100 | 154 | known gap: all sessions share one GitHub account | moved | docs/leader-rules.md | «Known gap: all sessions share one GitHub account» |
-| R-101 | 158 | integration target, preserved refs, remote `main` untouched; re-read HEAD before a commit; never reset, rebase, stash or switch in the shared checkout | kept-corrected | CLAUDE.md | «Integration target `v2026.11.0`» |
+| R-101 | 158 | integration target, preserved refs, remote `main` untouched; re-read HEAD before a commit; never reset, rebase, stash or switch in the shared checkout | kept-corrected | CLAUDE.md | «Integration target `NeXT` (local branch, user decision 2026-11-23); `v2026.11.0` is a recovery ref that stopped at `b3ba2b30d5`» |
 | R-102 | 158 | the first commit and design commit hashes of the integration branch | discarded | history that `git log` holds; not a rule |  |
 | R-103 | 159 | stage by explicit pathspec; scan staged bytes; never stage `.claude/`, `CLAUDE.local.md`, `target/`, `.mcp.json` | kept-corrected | CLAUDE.md | «Stage by explicit pathspec after re-reading `git status --short`» |
 | R-104 | 160 | the sibling `moai-adk-go` repository is read-only reference; Go-generation `.github` files are not recreated | kept | CLAUDE.md | «The sibling `moai-adk-go` repository is read-only reference» |

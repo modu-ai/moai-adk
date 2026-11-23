@@ -116,6 +116,7 @@ parent: SPEC-20261122-claude-md-layout
 | D-5 | `CLAUDE.md` is leader-owned: a lane changes it only through a card whose write scope names it. | The card of this SPEC and the earlier ownership line; the reservation guard (`moai card check`) enforces it. | Drop the sentence. |
 | D-6 | Card numbers appear in no SPEC, commit message or document written by this change. | User rule of 2026-11-20 recorded in the provenance table (card-number commit messages as a cause). | None. |
 | D-7 | Where a rule already has its full description in `skills/moai/references/audit.md` or `flows/next-flow.md`, `CLAUDE.md` and the docs point to it and copy only the one-line rule. | One full description per rule. | Copy the text. |
+| D-8 | `CLAUDE.md` names `NeXT` as the integration branch and keeps one line saying `v2026.11.0` is a recovery ref that stopped at `b3ba2b30d5`. | User decision of 2026-11-23 relayed by the leader (card note, 04:22:57Z); the local branch `NeXT` is at `1b775565be` and `.moai/project.yaml` `work_flow.integration_branch` is `NeXT` on that branch. | Name the earlier branch again. |
 
 ## Result
 

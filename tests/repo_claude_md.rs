@@ -260,6 +260,22 @@ fn stale_paths_and_worktrees_follow_the_decisions() {
     );
 }
 
+/// The integration branch is `NeXT` (user decision 2026-11-23); `v2026.11.0` is only a recovery
+/// ref that stopped at `b3ba2b30d5`.
+#[test]
+fn stale_integration_branch_is_next() {
+    let text = claude_md();
+    assert_has(
+        &text,
+        "CLAUDE.md",
+        &[
+            "Integration target `NeXT` (local branch, user decision 2026-11-23); `v2026.11.0` is a recovery ref that stopped at `b3ba2b30d5`",
+            "`work_flow.integration_branch` of `.moai/project.yaml` (`NeXT`)",
+        ],
+    );
+    assert_lacks(&text, "CLAUDE.md", &["Integration target `v2026.11.0`"]);
+}
+
 /// S6: tests are Rust only; the Python fixtures and the Python adapter left the file.
 #[test]
 fn stale_python_tests_are_not_a_rule_input() {
@@ -431,6 +447,7 @@ fn decisions_log_records_the_agents_md_removal_and_this_rewrite() {
     for row in [
         "(11-22) | AGENTS.md 제거",
         "(11-23) | CLAUDE.md 다시 쓰기",
+        "(11-23) | 통합 브랜치 NeXT",
     ] {
         assert!(log.contains(row), "the decisions log lacks a row with `{row}`");
     }
