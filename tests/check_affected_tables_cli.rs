@@ -41,6 +41,9 @@ tests/check_listed_cli.rs\t0\t2
 tests/check_over_cli.rs\t0\t1
 ";
 
+/// An older test file of the base, unlike any other file so that git pairs it with its move.
+const OLD_TEST: &str = "fn old() { /* an older file to edit or move */ }\n";
+
 fn put(root: &Path, rel: &str, text: &str) {
     let path = root.join(rel);
     fs::create_dir_all(path.parent().unwrap()).unwrap();
@@ -57,6 +60,13 @@ impl Fixture {
     /// A repository whose base holds the two tables (unless `tables` is false) and one commit on
     /// top of it that adds or changes `changed`.
     fn new(tables: bool, changed: &[(&str, String)]) -> Fixture {
+        Fixture::with_removed(tables, changed, &[])
+    }
+
+    /// Like `new`, and the commit on top also deletes the base files `removed`. The base holds two
+    /// older test files whose first words no table lists (`zzold`, `zzgone`): a range that only
+    /// edits, deletes or moves them adds no new name to the tables unless it moves one.
+    fn with_removed(tables: bool, changed: &[(&str, String)], removed: &[&str]) -> Fixture {
         let dir = tempfile::tempdir().unwrap();
         let p = dir.path();
         git_ok(p, &["init", "-q", "-b", "main"]);
@@ -66,6 +76,12 @@ impl Fixture {
         put(p, "src/zz_stub.rs", "// a\n");
         put(p, "tests/card_cli.rs", "fn main() {}\n");
         put(p, "tests/lane/main.rs", "// a moved area\n");
+        put(p, "tests/zzold_cli.rs", OLD_TEST);
+        put(
+            p,
+            "tests/zzgone_cli.rs",
+            "fn gone() { /* an older file to delete */ }\n",
+        );
         if tables {
             put(p, "tests/areas.toml", AREAS);
             put(p, "tests/fixtures/state_folder_literals/allow.tsv", ALLOW);
@@ -73,6 +89,9 @@ impl Fixture {
         git_ok(p, &["add", "-A"]);
         git_ok(p, &["commit", "-q", "-m", "base"]);
         let base = git(p, &["rev-parse", "HEAD"]).trim().to_string();
+        for rel in removed {
+            fs::remove_file(p.join(rel)).unwrap();
+        }
         for (rel, text) in changed {
             put(p, rel, text);
         }
@@ -353,6 +372,115 @@ fn a_registered_new_test_file_passes_and_other_ranges_plan_no_table_step() {
     let (ok, r) = affected(&no_tables, None);
     assert!(ok, "{r}");
     assert!(!labels(&r).contains(&"test_tables".to_string()), "{r}");
+
+    // SPEC REQ-11: editing or deleting an older test file adds no name, so no table step is planned
+    // although the first word of the file (`zzold`, `zzgone`) is in no table.
+    let edited = Fixture::new(
+        true,
+        &[("tests/zzold_cli.rs", format!("{OLD_TEST}// edited\n"))],
+    );
+    let (ok, r) = affected(&edited, None);
+    assert!(ok, "{r}");
+    assert!(
+        !labels(&r).contains(&"test_tables".to_string()),
+        "an edited older file is not an added one: {r}"
+    );
+    let deleted = Fixture::with_removed(true, &[], &["tests/zzgone_cli.rs"]);
+    let (ok, r) = affected(&deleted, None);
+    assert!(ok, "{r}");
+    assert!(
+        !labels(&r).contains(&"test_tables".to_string()),
+        "a deleted older file is not an added one: {r}"
+    );
+
+    // SPEC REQ-12: a move to a name no table lists is one deleted and one added path (git pairs
+    // the two as a rename unless the range is read with `--no-renames`), so the new name stops.
+    let moved = Fixture::with_removed(
+        true,
+        &[("tests/zzmoved_cli.rs", OLD_TEST.to_string())],
+        &["tests/zzold_cli.rs"],
+    );
+    let renamed = git(
+        moved.root(),
+        &[
+            "diff",
+            "--name-status",
+            &format!("{}...{}", moved.base, moved.head),
+        ],
+    );
+    assert!(
+        renamed.starts_with('R'),
+        "the fixture is a rename for git: {renamed}"
+    );
+    let tools = fake_tools();
+    let (ok, r) = affected(&moved, Some(&tools));
+    assert!(ok, "{r}");
+    let line = r["summary"].as_str().unwrap();
+    assert!(
+        line.ends_with(" test_tables=1 stopped_at=test_tables result=FAIL"),
+        "{line}"
+    );
+    assert_nothing_heavy_ran(&tools);
+    let log = step_log(&r, "test_tables");
+    assert!(
+        log.contains("tests/zzmoved_cli.rs") && log.contains("\"zzmoved\""),
+        "{log}"
+    );
+    assert_eq!(log.lines().count(), 1, "{log}");
+}
+
+/// Replace a table with bytes that are no UTF-8 in one more commit (the run refuses a modified
+/// tracked file), so the range now ends there.
+fn corrupt(fx: &mut Fixture, rel: &str) {
+    let p = fx.root();
+    fs::write(p.join(rel), [0xff, 0xfe, b'\n']).unwrap();
+    git_ok(p, &["add", "-A"]);
+    git_ok(p, &["commit", "-q", "-m", "corrupt a table"]);
+    fx.head = git(p, &["rev-parse", "HEAD"]).trim().to_string();
+}
+
+/// SPEC REQ-10: a table that exists but cannot be read is no absent table: a range that adds a
+/// test file stops before the heavy steps, and the line names the table and the read error.
+#[test]
+fn a_table_that_exists_but_cannot_be_read_stops_before_the_heavy_steps() {
+    for (table, other) in [
+        ("tests/areas.toml", "allow.tsv"),
+        (
+            "tests/fixtures/state_folder_literals/allow.tsv",
+            "areas.toml",
+        ),
+    ] {
+        // The added file is registered in both readable tables, so only the unreadable one can
+        // stop the run.
+        let mut fx = Fixture::new(
+            true,
+            &[("tests/check_fine_cli.rs", "fn main() {}\n".to_string())],
+        );
+        corrupt(&mut fx, table);
+        let tools = fake_tools();
+        let (ok, r) = affected(&fx, Some(&tools));
+        assert!(ok, "{table}: {r}");
+        let line = r["summary"].as_str().unwrap();
+        assert!(
+            line.ends_with(" test_tables=1 stopped_at=test_tables result=FAIL"),
+            "{table}: {line}"
+        );
+        assert_nothing_heavy_ran(&tools);
+        let log = step_log(&r, "test_tables");
+        let named = log
+            .lines()
+            .find(|l| l.contains(table))
+            .unwrap_or_else(|| panic!("{table}: {log}"));
+        assert!(
+            named.contains("cannot be read") && named.contains("UTF-8"),
+            "{named}"
+        );
+        assert!(
+            !log.contains(other),
+            "the readable table has no line: {log}"
+        );
+        assert_eq!(log.lines().count(), 1, "{table}: {log}");
+    }
 }
 
 /// SPEC REQ-7: `--list` shows the step, cheap, before the first heavy step.
