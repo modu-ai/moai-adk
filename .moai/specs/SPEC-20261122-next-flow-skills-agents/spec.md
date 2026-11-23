@@ -1,0 +1,183 @@
+---
+id: SPEC-20261122-next-flow-skills-agents
+title: "The moai skill has eight routes and /moai work, one flow reference and one audit contract, and the update removes what the package no longer ships"
+status: draft
+revision: 4
+created: 2026-11-22
+parent: null
+---
+
+# The NeXT-Flow skill package: routes, one flow reference, one audit contract
+
+## Intent
+
+사용자 결정(2026-11-22)에 따라 설정 폴더에 설치하는 `/moai` 스킬 묶음을 NeXT-Flow 에 맞춰 줄여요. 이 SPEC 은 스킬 글만 다루고, 기본 에이전트와 렌더러는 자식 SPEC `SPEC-20261122-next-flow-base-agents`, 갱신의 낡은 파일 정리와 실행기 역할 플래그는 자식 SPEC `SPEC-20261122-next-flow-update-and-launcher` 가 맡아요. 이 조각은 SPEC 만 쓰고 코드는 없어요. 개정 2(리더의 착지 노트, 2026-11-22): NeXT 의 뜻과 기술 규칙의 자리를 나누고, 착지 뒤 push 를 원격 복사를 켰을 때로 좁히고, 흐름 전문을 한쪽에만 두는 REQ-11 을 더했어요.
+
+바뀌는 것은 다섯 가지예요. (1) 경로(route)가 READ·PLAN·RUN·AUDIT·SYNC·PROJECT·UPDATE·WORK 여덟 개로 줄어요: SETUP 은 PROJECT 로, VERIFY 는 RUN 으로, OPTIMIZE 는 UPDATE 의 미리보기 단계로 흡수되고, 리더·에이전트 두 모드 글(합쳐 105 KB)과 `--mode-*` 플래그는 없어져요. (2) 진입은 `/moai` 와 `/moai work` 둘이에요. WORK 는 카드를 받아 PLAN → RUN → SYNC → AUDIT → 착지 명령까지 돌고 카드가 없을 때까지 되풀이해요. (3) 흐름 글은 `references/flows/next-flow.md` 한 파일이에요(약 5 KB). NeXT 의 뜻(사용자 결정: New · engineering · eXperience · Together, 한 줄 "Work in parallel. Land once.")을 설명하는 출하 글은 이 한 곳뿐이고, 기술 규칙 넷(끝 쫓기 없음, 착지 전 증거, 정확히 한 번 착지, 지켜지는 끝)은 글자 풀이가 아니라 흐름이 어떻게 도는지의 설명이에요. 설정 폴더의 흐름 규칙 파일(`rules/moai/flow.md`)은 짧은 규칙과 이 참조를 가리키는 한 줄만 담아서, 흐름 전문은 한쪽에만 있어요(REQ-11). (4) 감사 계약은 `references/audit.md` 한 파일이에요(약 5 KB; `review.md` 를 흡수). 받는 것, 돌려주는 것, 누가 판정을 적는가를 정하고, 로컬 `/code-review <base>..<head>` 를 증거로 허용하되 `--fix`·`--comment` 는 막고, "줄이 없으면 판정 없음"을 적어요. (5) 새 결정과 부딪히는 내부 참조를 고치고, Claude Code 에서 없어진 도구 이름을 글에서 지워요.
+
+이 묶음은 설정 폴더(Claude 설정 폴더마다 한 벌)에 설치돼요(사용자 결정 2026-11-22). 설치 자리와 순서는 이 SPEC 의 범위가 아니에요(전역 설치 조각이 맡아요). 사용자의 세 언어 질문(대화·문서·커밋)은 설치 때 한 번 묻고 사용자 범위에 저장하며 프로젝트는 그 값을 쓴다는 결정(2026-11-22)은 PROJECT 글에 "이미 사용자 범위에 있으면 다시 묻지 않는다"로 들어가요(REQ-10); 저장 코드는 전역 설치 조각의 일이에요.
+
+### What exists (tip `78c8a5a247`, 잰 시각 2026-11-22T07:15Z)
+
+- 스킬 글(`find skills agents -type f | xargs wc -c`): 파일 전체 485,958 바이트 중 스킬이 467,115, 기본 에이전트 다섯이 18,843. 워크플로 12개가 251,319 바이트(mode-agent 56,705, mode-leader 48,464, project 35,253, update 26,884, verify 26,307, audit 19,859, sync 15,981 …).
+- 경로표 `skills/moai/references/routes.json`: READ, SETUP, PROJECT, UPDATE, PLAN, RUN, VERIFY, AUDIT, SYNC, OPTIMIZE, MODE-LEADER, MODE-AGENT 열두 개. WORK 는 없어요. `SKILL.md`(6,081 바이트)는 `AGENTS.md` 를 읽으라 하고 `--mode-agent`·`--mode-leader` 를 모드 철자로 못 박아요.
+- 체인표 `references/chains/index.md`: 마지막 행이 `Keep working toward a goal | MODE-AGENT`, 규칙 한 줄이 MODE-AGENT 를 가리켜요. `Review a pull request | AUDIT | internal/review`.
+- 모드 글 이름을 담은 파일: `mode-agent`·`mode-leader` 문자열을 담은 파일이 tests·src·skills·agents 에 61곳(`grep -rlE 'mode-agent|mode-leader'`, 그중 tests/*.rs 26, src 11), docs 에 14곳. 워크플로 파일 `setup.md`·`verify.md`·`optimize.md` 를 경로로 부르는 파일이 24곳. 규칙 문장을 고정하는 시험이 많아요(보고서 기준 mode-agent 규칙 60줄 중 57줄).
+- 이름이 새 결정과 부딪히는 내부 참조 열한 개(보고서 8-2, 2차 읽기 조사): build-folder, commit-trailers(Codex 변수, PR 감사 관문, 리더 리뷰), decide("리더에게 묻는다"), git-safety(모드, 홈 작업트리, 끝 병합, Codex 행), interview, quality, questions(SETUP, Codex 한도), review(PR CI 인용), sdd("SPEC = PR 하나"), self-check(이 저장소 도구, Python 슬롯, PR 본문), versioning(자율 단계, 통합 브랜치 이름). 부딪힘 없는 여덟과 덧붙이기만 하나는 그대로예요.
+- 설치본과의 간격: 설치된 스킬은 51개 파일 중 27개가 저장소와 다르고 기본 에이전트 둘이 달라요(보고서 2-3, 실측 2026-11-22). 이 간격은 갱신이 메워요(자식 SPEC).
+- 갱신의 낡은 파일: 패키지에서 빠진 파일을 `remove_blocked` 로 보고만 하고 지우지 않아요(`src/update.rs:1295-1318`, `src/agent_install.rs:259-275` 를 읽음).
+
+## Non-goals
+
+- 설치 자리·순서·설정 폴더 목록: 전역 설치 조각의 일. 이 SPEC 은 패키지 안의 글을 정해요.
+- 기본 에이전트 정의와 렌더러: 자식 SPEC. 갱신 코드와 실행기 플래그: 자식 SPEC.
+- 레인 띄우기·중단·`/goal` 조건의 글과 명령(`moai lane`): 레인 운영 SPEC 들의 일이에요. WORK 글은 그 명령 이름을 부를 뿐 정의하지 않아요.
+- 규칙 모델(`rules/moai/flow.md`, `rules/moai.md`)의 글: 설정 폴더 규칙 SPEC 이 정해요. 이 SPEC 의 흐름 글은 스킬 안의 참조예요.
+- 감사 실행기(세션 띄우기·헤드리스 호출)의 방법: 감사 계약은 받는 것과 돌려주는 것만 정해요.
+- 이 저장소의 프로젝트 하네스 파일(`prj-reviewer`, `prj-local-check`)을 지우거나 얇게 하는 일: 추적되지 않는 사용자 파일이라 SPEC 의 산출물이 아니에요. 출하 글이 그 이름을 부르지 않게만 해요(REQ-8).
+
+## Requirements
+
+- REQ-1: The route table shall name exactly the routes READ, PLAN, RUN, AUDIT, SYNC, PROJECT, UPDATE and WORK, each with a reference file that the package ships.
+- REQ-2: The skill package shall hold none of the files workflows/mode-agent.md, workflows/mode-leader.md, workflows/setup.md, workflows/verify.md, workflows/optimize.md, references/adapters/herdr.md, references/internal/build-folder.md, references/internal/review.md and references/rule-history.md.
+- REQ-3: When a request after the skill name starts with the word work, the skill shall pick the WORK route, which takes one card, plans it, runs it, syncs it, audits it and lands it with the landing command, and repeats until no card is left. · failure: none — a request without that word picks its route from the route table, and a card that needs a user decision ends in a blocked note on the card, never in a question to the user.
+- REQ-4: The skill shall treat --mode-agent, --mode-leader, -a, -l and --autonomy in a request as plain text that picks no route.
+- REQ-5: The package shall carry exactly one flow reference, references/flows/next-flow.md of at most 6144 bytes, that explains once the meaning of NeXT as New · engineering · eXperience · Together with the line "Work in parallel. Land once.", describes how the flow works through its four technical rules (no tip chase, evidence before landing, exactly-once landing, a guarded tip) and states the worktree place, that a lane submits its head and base only, the landing command, the protection hook, that the fast-forward push after landing happens only when the user has turned the remote copy on and that remote checks never block landing.
+- REQ-6: The package shall carry exactly one audit contract, references/audit.md of at most 6144 bytes, that lists what the auditor receives, what it returns, which session records the verdict and that the author of a change never audits it.
+- REQ-7: The audit contract shall state five side rules: the local code review of the base..head range is allowed evidence without its fix or comment options, a re-audit goes to the first auditor, a lane's tree-bound check receipt may be cited, no forked or advisor session audits, and a finding that names no file and no line counts as no finding.
+- REQ-8: No shipped skill text shall name Codex, OMP, a resident leader, a mode flag, a pull-request audit gate, a merge train, AGENTS.md as a file moai writes, prj-reviewer or prj-local-check.
+- REQ-9: No shipped skill or agent text shall name a tool or option Claude Code no longer has (TodoWrite, TaskOutput, BashOutput, the resume and mode inputs of the Agent tool, the agents wizard), assume the Grep or Glob tool exists, hold a shell-injection command block, or set a model key in a skill file.
+- REQ-10: The PROJECT and UPDATE route texts shall absorb the retired SETUP and OPTIMIZE routes: PROJECT carries the steps of SETUP with the local tool language question and asks no conversation, document or commit language that the user scope already holds, and UPDATE carries a preview of leftover space that deletes nothing.
+- REQ-11: The flow rule file that moai installs into a config folder shall hold only the short operational rules and one line that points to the flow reference, so that no shipped text other than the flow reference carries the flow's full description.
+
+## Acceptance
+
+- AC-1 (REQ-1, REQ-2, REQ-4): the route table holds the eight routes and each reference file exists, the nine files are absent from the package, and SKILL.md names no mode flag as a route. Text slice A removes six of them; the review reference leaves in slice B, the build-folder reference in slice C and the rule history in Plan step 6, and the test's list of absent files grows with each.
+  verify: `cargo test --locked --offline --test next_flow_skill_scan routes_`
+- AC-2 (REQ-3): the WORK reference lists, in order, take a card, plan, run, sync, audit, land and repeat, and says that a decision goes to the card as a blocked note.
+  verify: `cargo test --locked --offline --test next_flow_skill_scan work_`
+- AC-3 (REQ-5, REQ-6, REQ-7): the flow reference and the audit contract exist, stay within their byte budget and hold each stated item; exactly one shipped text holds the meaning New · engineering · eXperience · Together, no shipped text spells the four technical rules as the letters of the name, and the push sentence names the remote copy as its condition.
+  verify: `cargo test --locked --offline --test next_flow_skill_scan refs_`
+- AC-7 (REQ-11): the installed flow rule file source holds the pointer line to the flow reference, none of the flow reference's descriptive paragraphs and at most 40 lines.
+  verify: `cargo test --locked --offline --test next_flow_skill_scan rule_file_`
+- AC-4 (REQ-8, REQ-9): the scan finds none of the named words or tools in the shipped skill and agent texts, and planting one in a copy fails it.
+  verify: `cargo test --locked --offline --test next_flow_skill_scan scrub_`
+- AC-5 (REQ-10): the PROJECT text holds the SETUP steps and the language rule, and the UPDATE text holds the preview step that says it deletes nothing.
+  verify: `cargo test --locked --offline --test next_flow_skill_scan absorb_`
+- AC-6: every older test that read a removed file or a removed rule sentence is moved to the sentence's new place or retired with a written reason, and the neighbouring checks pass.
+  verify: `cargo test --locked --offline --test agent_defs_package`
+  verify: `cargo fmt --check`
+  verify: `cargo clippy --locked --offline --all-targets -- -D warnings`
+
+## Scope
+
+- this slice, write: `.moai/specs/SPEC-20261122-next-flow-skills-agents/**`, `.moai/specs/SPEC-20261122-next-flow-base-agents/**`, `.moai/specs/SPEC-20261122-next-flow-update-and-launcher/**`
+- later slices, write: `skills/moai/**` (texts, the source of the installed flow rule file that the home routing slice adds, once that slice has landed, `references/routes.json`, `references/chains/index.md`, `references/source-manifest.json`), `docs/**` (the moved rule history), `tests/next_flow_skill_scan.rs`, and every test that reads a removed file or a removed sentence (the inventory is the first step of the text slice), and the one source file whose unit test embeds a removed workflow text, `src/heavy_slot.rs` (test module only)
+- read-only: `src/update.rs`, `src/agent_install.rs`, `tests/style_banner_scan.rs`
+- forbidden: `AGENTS.md`, `AGENTS.local.md` of this repository, the real HOME, the network, the integration branch, `.claude/` of this checkout
+
+## Plan
+
+1. (done) The three SPECs (this slice).
+2. Inventory: list every test and source line that names a removed file or a removed rule sentence (61 files name a mode file, 24 name `setup`, `verify` or `optimize`), and for each decide: the rule still matters → its sentence moves to the new place and the pin follows; the rule retires with the route → the test is retired with its reason written where it stood.
+3. Text slice A: routes and WORK: `routes.json`, `SKILL.md`, `chains/index.md`, the WORK reference, PROJECT absorbs SETUP, RUN absorbs VERIFY, UPDATE absorbs OPTIMIZE; the removed files go; `next_flow_skill_scan.rs` tests `routes_`, `work_`, `absorb_` are written first and fail first.
+4. Text slice B: the flow reference and the audit contract (the review text moves in, and review leaves the package); `refs_` tests first.
+5. Text slice C: the build-folder reference leaves the package, its rule rewritten where it moves (D-14); the scrub of the internal references that named the old flow (commit-trailers, decide, git-safety, interview, quality, questions, self-check, sdd, versioning), of the workflow texts and SKILL.md, and of the stale tool names; `scrub_` tests first; the source manifest is regenerated.
+6. Rule history moves from the package to `docs/`, and the guard test that pinned it follows.
+
+## Risks
+
+- The mode files carry many pinned sentences. Retiring a rule with its route is right only when the rule belongs to the retired route; the inventory step decides each one and writes the reason, so a rule that still matters (for example a safety line) moves instead of vanishing.
+- The flow reference and the flow-name rename slice both touch the single text that explains the name. The rename SPEC still describes the letters as the four technical rules; the user's later decision makes them New · engineering · eXperience · Together. Whoever lands second adjusts the other's text test to name `references/flows/next-flow.md` as the one explaining text and the technical rules as how the flow works.
+- The flow rule file source (`references/home/flow.md`) is written by the home routing slice of the CLAUDE.md card, which is in audit with a line that says the lander pushes after every landing; that line follows the remote-copy condition in that card's next slice, and REQ-11 is checked after both land.
+- WORK needs the lane-start and `/goal` texts of the lane operation SPECs. This SPEC writes WORK so that it calls those commands by name and keeps working when they are absent (it then runs in the current session).
+- Two unverified flow lines: the protection hook and "remote checks never block landing" are decisions in the notes of the flow cards; the reference states them as the decided rules and the slice checks each against the landing code before it ships. The push line is settled: only when the user has turned the remote copy on (user decision, off by default).
+- Measured sizes of the flow reference and the audit contract are estimates (about 5 KB each); the 6,144-byte limit is a ceiling the test enforces, not a prediction.
+
+## Decisions
+
+| Id | Decision | Basis | Undo |
+| --- | --- | --- | --- |
+| D-1 | The eight route tokens are READ, PLAN, RUN, AUDIT, SYNC, PROJECT, UPDATE, WORK. | The whole-docs report 4-3, the user's pick of the entry design. | Add a route. |
+| D-2 | The flow reference lives at `references/flows/next-flow.md`; it explains the meaning New · engineering · eXperience · Together once and describes the four technical rules as how the flow works. | The user's decision on the meaning (leader's landing note, 2026-11-22); one explaining text. | Move the explanation. |
+| D-8 | The full flow text lives in the flow reference; the config folder's flow rule file holds the short operational rules and one pointer line (the reverse arrangement was the other option). | The leader asked that only one side carries the full text, settled between this card and the CLAUDE.md card; both are held by the same lane, and the rule file loads in every session, so the short side belongs there. | Put the full text in the rule file and make the reference point to it. |
+| D-9 | The fast-forward push after landing happens only when the user has turned the remote copy on; it is off by default. | User decision (leader's landing note, 2026-11-22). | Push after every landing. |
+| D-10 | REQ-9 no longer lists TaskCreate; a shipped text may name it only as a tool used when the host offers it (revision 3). | The user decision on background progress makes the flow rule file say "keep the task list current if the TaskCreate tool is offered" (decision note req9-taskcreate). | Keep TaskCreate in the list and drop the tool name from the flow rule. |
+| D-11 | Text slice A, with the inventory folded in, keeps the retired test files that the rule history names as emptied files with a header giving the reason, until the rule history moves to `docs/`; sentences whose rule still holds move with their pin (verify's to RUN, setup's to PROJECT, optimize's to UPDATE, the lane's card steps to WORK). | The rule-history guard requires every test file it names to exist; the smallest change that keeps it green. | Move the rule history first. |
+| D-12 | The local tool language question of REQ-10 is the instruction-file language; PROJECT asks commit and document language only when the user scope lacks them. | The language module asks three items and the conversation language is set at install. | Ask all three every time. |
+| D-3 | `references/rule-history.md` moves to `docs/`. | The report 4-3 and the coverage note: nothing reads it while a route runs. | Keep it in the package. |
+| D-4 | `review.md` is absorbed into the audit contract and removed. | The report 4-3: one audit contract, about 5 KB. | Keep both. |
+| D-5 | A re-audit goes to the first auditor, a lane's receipt may be cited, no fork or advisor audits. | The coverage note on the audit side rules. | Loosen per rule. |
+| D-6 | The audit contract fixes what the auditor receives and returns, not how the session is started. | Starting audit sessions is the lane and headless SPECs' work. | Fold it in later. |
+| D-7 | The shipped texts do not name `prj-reviewer` or `prj-local-check`. | They are this repository's own harness files; a product text must not depend on them. | Name them again. |
+| D-13 | Text slice A also wrote, by the leader's word, the lines outside this Scope that pointed at the removed files (the PR template, the local rules file, three docs, two source comments, four tests, a fixture line and a tool), re-pointing references only; the reference test counts `.moai/specs/**`, `docs/design-review/**`, `docs/decisions-*.md` and `docs/surveys/**` as history and no longer requires their paths to resolve. | Leader decision on the slice A blocked note (2026-11-22): closed SPECs and dated docs record past states and are not rewritten; live references move to the routes that absorbed them, with no stub files. | Rewrite the history files, or restore stubs. |
+| D-14 | The build-folder reference leaves the package in slice C, not slice B, and its rule is rewritten where it moves: each worktree builds in its own `target/` (no shared build home for new work), with the fixed slots and the seeded copy of the redesign; its source and test readers are granted when slice C asks. | Leader decision on the slice B blocked note (2026-11-22) and the user's build rule of the same day. | Remove it in slice B with its old rule. |
+| D-15 | Slice B also wrote two lines outside this Scope by the leader's word: the `next-flow-shipped-texts` entry of `tools/repo_scans.json`, and the read list and step 2 of `agents/audit.md`. | Leader decision on the slice B blocked note (2026-11-22). | Drop the scan entry and the agent's read line. |
+| D-16 | Slice C also wrote lines outside this Scope by the leader's word, and only lines that named a removed file, a retired mode or gate, or a pull-request-era step:<br>- `src/help.rs`, `src/lane_idle.rs`, `src/lane_env.rs`, `src/optimize.rs`, `tools/review_checklist.json`, `tools/build_folder.py` and `docs/rust-product-path.md`;<br>- the pins of `agent_defs_package`, `codex_question_tool`, `flaky_followups`, `lane_rules_2836`, `launcher_agent_entry`, `mode_workflow_steps`, `orca_optional_3005`, `product_cli`, `update_always_asks` and `update_route`, and the root help goldens;<br>- `skills/moai/workflows/work.md` (one Input line);<br>- `tests/gate_collect.rs`, where the test of the pull-request example is re-pinned to the card-note example the gate parser reads, because no code builds a card-note line. | Leader decisions on the slice C blocked notes (2026-11-22, three answers). | Restore each line from the slice's parent commit. |
+| D-17 | Tier 0 gets a light audit by the lander instead of no audit, because a card lands only with a passing verdict. The tier is named in the lane's ready note, not in a pull-request body. | Leader answer on the slice C part 3 note (2026-11-22); the flow reference's landing rule. | Restore "tier 0 has no audit". |
+| D-18 | The product spellings of the retired modes stay for a product slice; they are listed in Result and are not rewritten here. | Leader answer on the slice C part 2 note (2026-11-22). | Rewrite them in this SPEC. |
+| D-19 | The audit contract's section "Audit tiers" lists the tier 2 prefixes of `src/gate.rs` one by one (AUDIT's tier step points to it, because a workflow names no package path), naming the retired second host's folder by where it sits because REQ-8 keeps its name out; the leader's three cases (documents read by the lander, tests or tools a light audit by the lander, code an independent audit) apply below tier 2, and tier 2 is always the full audit by an independent session. The verdict's second line is `Moai-Session: <value>`: the card verdict reader reads the first line only, so the recording session compares that value itself. | Slice C audit N-c, N-d and N-e and the leader's repair brief (2026-11-23). | Apply the three cases to tier 2 too, or teach `auditor: <lane>`. |
+| D-20 | Plan step 6 also wrote two lines outside this Scope by the leader's word: the `docs/rule-history.md` entry of `EXACT_DENY` in `tools/ci_scope.py`, and line 5 of `references/internal/core-rules.md`, which points to the moved history. | Leader decision on the step 6 blocked note (2026-11-22); the cards that held the two files had landed their slices. | Leave the pointer for a later step and keep the docs path out of the deny list. |
+
+## Result
+
+Status: text slices A, B and C landed. Plan step 6 (the rule history moves to `docs/`) is written; the child SPECs are open.
+
+What each slice delivered:
+- **Slice A:** route inventory and retired references removed.
+- **Slice B:** the flow reference `references/flows/next-flow.md` and the audit contract `references/audit.md`; `internal/review.md` removed and its readers re-pointed (D-15).
+- **Slice C:**
+  - The build-folder reference is removed, and its rule moves into the run workflow's check-run rules (D-14).
+  - The REQ-8 and REQ-9 scrub tests pass over every file under `skills/moai/` and `agents/`. Three named exceptions remain: the rule history, a text another card holds, and the source manifest's origin reasons.
+  - The points of the slice B audit:
+    - the verdict, reservation and interim result are card notes;
+    - pull-request passages are scoped to a release pull request;
+    - one rule says who records a verdict;
+    - the flow reference is named where WORK starts;
+    - the audit agent's input carries `head` and `base`;
+    - a finding has one wording: a file and a line, or no finding;
+    - the remote copy wording matches the `remote_copy` setting, off by default;
+    - `references/flows/` holds one file, and both new references begin with "When to read:".
+
+  - The repair of the slice C audit:
+    - RUN names no `moai lane-env` step: each worktree builds in its own `target/`;
+    - SYNC lands a card through the flow: the lane only commits, and the lander lands once with `moai card land` after a recorded verdict; the pull request is a release's;
+    - the scan's REQ-8 words gain `audit-gate`, `moai/audit`, `gh pr merge`, `update-branch` and `train number`;
+    - `internal/sdd` and `internal/git-safety` no longer tie a SPEC to a pull request or read a lane's merge state;
+    - AUDIT no longer sends its reader to SYNC for integration;
+    - the verdict's second line has one form, `Moai-Session: <value>`;
+    - the audit contract lists the tier 2 prefixes of `src/gate.rs` (a workflow names no package path), and AUDIT's tier step points to it and says who audits each kind of change.
+- **Plan step 6 (done, D-3):** `references/rule-history.md` moved to `docs/rule-history.md` with `git mv`. Its title, the note that it was a package file and the package-size note changed; the rest is as it was. The readers that moved:
+  - `tests/rule_history_guard.rs` reads `docs/rule-history.md`, keeps all three checks and fails while the package still holds the old file;
+  - `tests/next_flow_skill_scan.rs` lists the old path in `REMOVED` (nine files) and drops it from the scrub exceptions (two left);
+  - `tests/report_rules_core.rs` reads the history from the repository root;
+  - `tests/orca_optional_3005.rs` no longer lists it among the package files that name Orca;
+  - `tests/skill_references_test.py` drops its exception for the history, because no shipped file is left out now;
+  - the header comments of `tests/claim_renew_doc_3042.rs`, `tests/mode_cards_53.rs` and `tests/mode_workflow_steps.rs` name `docs/rule-history.md` (the guard still requires every test file the history names to exist, D-11);
+  - the source manifest is regenerated and drops the entry.
+- **The two granted lines (D-20):** line 5 of `references/internal/core-rules.md` now names the moai-adk repository's `docs/rule-history.md`, and `tools/ci_scope.py` lists `docs/rule-history.md` in `EXACT_DENY`, because code reads that docs path. Each file changed by that one line; the source manifest entry of `core-rules.md` is regenerated.
+- **Follow-ups of the slice C verdict:**
+  - F2 (done): SYNC names a pull request only where it speaks of the release pull request. The receipt is carried in a note on the card, the SPEC is archived after the landing, and step 2 checks the tree the lane's ready note names; a test scans every sentence of SYNC.
+  - F3 (done): SYNC's work ledger is the project's card ledger, as WORK reads it.
+  - F4 (done): the tier 2 list test fails on an entry the code lacks, on an entry written twice and on a missing entry, and keeps exactly one stand-in for the retired second host's dot folder.
+  - F1 and F5 moved to `SPEC-20261123-audit-rule-text`, which rewrites the AUDIT tier step and the RUN heavy-check paragraph.
+- **D-19 is a rule for the sessions, not a tool check.** The tools judge the floor (`tier_of`) and the tier a PASS note states (`moai bundle check`). Who audits is a rule the sessions follow, and `moai card land` reads no verdict.
+
+Left for a product slice (D-18), product spellings of the retired modes and of their help:
+- `src/main.rs:54`, `:57`, `:145-153` and `:1011-1027`;
+- `src/session.rs:21-22` and `:46-47`;
+- `src/lane_duty.rs:75` and `:88`;
+- `src/lane_loop.rs:5`, `:177` and `:189`;
+- `src/leader_round.rs:848`;
+- `src/lane_registry.rs:11` and `src/hook_engine.rs:503` (comments that name the retired agent workflow);
+- the operation comments `src/ops/lane_loop_line.rs:9` and `src/ops/lane_duty_line.rs:7`;
+- the claude-doctor line of `src/help.rs`.
+
+Left for a product slice, the home build folder (slice C audit B1): the texts no longer send a lane to `moai lane-env`, but the code still builds there:
+- `moai lane-env` sets `CARGO_TARGET_DIR` to a folder under the home folder and creates it (`src/lane_env.rs:301-302`, `:401`; its `--help` says so);
+- the warning of `moai heavy-slot-acquire` names that folder and the lane-env line (`src/heavy_slot.rs:461`);
+- the comments `src/lane_env.rs:7` and `tools/build_folder.py:7` still cite RUN's "Check-run rules" for the home build folder.
+
+Left as it is: RUN's cleanup item (3) keeps the words "after the card's closing table", which `tests/check_pr_self_audit_test.py` pins and this card's write scope does not hold; the build rule now names `moai worktree-gc-apply` for removing the worktree itself, so the two agree on how.
+
+Finding: the `remote_copy` setting is not on this branch's base. It is on the integration branch (`src/profile.rs`, `src/card/remote_copy.rs`), where `moai card land` runs the copy itself. The flow text names the setting and its behaviour, but not the `moai card remote-copy` command, until this branch takes the tip.

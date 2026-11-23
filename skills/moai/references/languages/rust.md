@@ -1,6 +1,6 @@
 # Language: Rust
 
-When to read: `internal/quality` sent you here because the project's detected languages include `rust`. The project's own declarations (CI steps, `Makefile`, `justfile`, `AGENTS.md`) win over every default below.
+When to read: `internal/quality` sent you here because the project's detected languages include `rust`. The project's own declarations (CI steps, `Makefile`, `justfile`, `CLAUDE.md`) win over every default below.
 
 ## Evidence and defaults
 

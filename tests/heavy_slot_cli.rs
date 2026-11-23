@@ -192,7 +192,7 @@ fn the_commands_exit_code_comes_back() {
 }
 
 /// AC-2: a failing command is reported with the load averages and the free disk space of the
-/// working folder; a passing one is not.
+/// working folder (a passing one too since SPEC-20261122-heavy-slot-exit-line).
 #[test]
 fn a_failure_reports_load_and_disk() {
     let d = tempfile::tempdir().unwrap();
@@ -202,8 +202,33 @@ fn a_failure_reports_load_and_disk() {
     assert!(err.contains("lane-x exited 1"), "{err}");
     assert!(err.contains("load "), "{err}");
     assert!(err.contains("disk free "), "{err}");
-    let ok = run(acquire(d.path(), "1", "lane-x", &["true"]));
-    assert!(!String::from_utf8_lossy(&ok.stderr).contains("disk free"));
+}
+
+/// SPEC-20261122-heavy-slot-exit-line AC-1: a started command's end is always announced with one
+/// exit line, 0 included, so a shell waiting for that line ends on success too; the command's
+/// own exit code and stdout come back unchanged.
+#[test]
+fn a_started_command_prints_its_exit_line_on_success_and_on_failure() {
+    let d = tempfile::tempdir().unwrap();
+    for (cmd, code) in [("echo out; exit 0", 0), ("echo out; exit 4", 4)] {
+        let out = run(acquire(d.path(), "1", "lane-x", &["sh", "-c", cmd]));
+        assert_eq!(out.status.code(), Some(code), "{cmd}: {}", text(&out));
+        assert_eq!(String::from_utf8_lossy(&out.stdout), "out\n", "{cmd}");
+        let err = String::from_utf8_lossy(&out.stderr);
+        let want = format!("heavy-slot: lane-x exited {code}; ");
+        let lines: Vec<&str> = err.lines().filter(|l| l.starts_with(&want)).collect();
+        assert_eq!(lines.len(), 1, "{cmd}: {err}");
+        assert!(
+            lines[0].contains("load ") && lines[0].contains("disk free "),
+            "{cmd}: {err}"
+        );
+        assert_eq!(
+            err.lines().filter(|l| l.contains(" exited ")).count(),
+            1,
+            "{cmd}: {err}"
+        );
+    }
+    assert_eq!(status(d.path())["held"], serde_json::json!([]));
 }
 
 /// AC-1: with one slot the second caller waits — printing its place with load and disk — and
@@ -1423,13 +1448,23 @@ fn without_dir_both_tools_use_the_same_default_folder() {
     }
 }
 
-/// Card C-82 follow-up (user 2026-11-17 08:22Z): a wrapped `cargo` is warned about only when its
-/// `CARGO_TARGET_DIR` is shared with another worktree (the former per-lane folder, another
-/// worktree's build folder, a folder whose owner record names another worktree) or lies inside
-/// another worktree. This worktree's own build folder, its own `target/` and an unset value say
-/// nothing. A temporary HOME; a stub named `cargo` stands in for cargo.
-#[test]
-fn a_cargo_run_is_warned_about_only_for_a_shared_or_foreign_folder() {
+/// A repository `<root>/repo` with the worktrees `wt-one`, `wt-two` and `repo/.claude/worktrees/
+/// agent-3`, a temporary HOME, a slot folder and a stub named `cargo` that does nothing.
+struct BuildFx {
+    _d: tempfile::TempDir,
+    root: PathBuf,
+    repo: PathBuf,
+    home: PathBuf,
+    slots: PathBuf,
+    one: PathBuf,
+    two: PathBuf,
+    nested: PathBuf,
+    cargo: PathBuf,
+    /// The retired home build root under the fixture HOME (never made).
+    build: PathBuf,
+}
+
+fn build_fx() -> BuildFx {
     use common::git::git;
     let d = tempfile::tempdir().unwrap();
     let root = fs::canonicalize(d.path()).unwrap();
@@ -1463,22 +1498,37 @@ fn a_cargo_run_is_warned_about_only_for_a_shared_or_foreign_folder() {
     }
     let cargo = root.join("bin/cargo");
     common::write_executable(&cargo, "#!/bin/sh\nexit 0\n");
-    let build = home.join(".moai/build");
-    let own = build.join("repo-wt-one");
-    let recorded = build.join("repo-recorded");
-    fs::create_dir_all(&recorded).unwrap();
-    fs::write(
-        recorded.join(".moai-build.json"),
-        format!(
-            r#"{{"schema_version": 1, "git_common_dir": "{}", "worktree": "{}"}}"#,
-            repo.join(".git").display(),
-            two.display()
-        ),
-    )
-    .unwrap();
-    let run_in = |cwd: &Path, target: Option<&Path>, program: &Path| {
-        let mut c = acquire(&slots, "2", "agent-7", &[program.to_str().unwrap()]);
-        c.current_dir(cwd).env("HOME", &home);
+    BuildFx {
+        _d: d,
+        build: home.join(".moai/build"),
+        root,
+        repo,
+        home,
+        slots,
+        one,
+        two,
+        nested,
+        cargo,
+    }
+}
+
+impl BuildFx {
+    /// `heavy-slot-acquire` of `program` run in `cwd` with HOME `home` (none: unset, and the
+    /// USERPROFILE stand-in is set to the fixture HOME) and `target` as `CARGO_TARGET_DIR`
+    /// (none: unset); its stderr, after checking the command succeeded.
+    fn stderr_of(
+        &self,
+        cwd: &Path,
+        home: Option<&Path>,
+        target: Option<&Path>,
+        program: &Path,
+    ) -> String {
+        let mut c = acquire(&self.slots, "2", "agent-7", &[program.to_str().unwrap()]);
+        c.current_dir(cwd);
+        match home {
+            Some(h) => c.env("HOME", h),
+            None => c.env_remove("HOME").env("USERPROFILE", &self.home),
+        };
         match target {
             Some(t) => c.env("CARGO_TARGET_DIR", t),
             None => c.env_remove("CARGO_TARGET_DIR"),
@@ -1486,74 +1536,180 @@ fn a_cargo_run_is_warned_about_only_for_a_shared_or_foreign_folder() {
         let out = run(c);
         assert!(out.status.success(), "{}", text(&out));
         String::from_utf8_lossy(&out.stderr).into_owned()
-    };
-    for (cwd, target) in [
-        (&one, None),
-        (&one, Some(own.clone())),
-        (&one, Some(one.join("target"))),
-        (&one, Some(PathBuf::from("target"))),
-        (&nested, Some(nested.join("target"))),
-        (&nested, Some(build.join("repo-agent-3"))),
-    ] {
-        let err = run_in(cwd, target.as_deref(), &cargo);
+    }
+}
+
+/// A wrapped `cargo` builds in its worktree's own `target/`: it is warned about when
+/// `CARGO_TARGET_DIR` names the retired per-lane folder, a folder under the retired home build
+/// root under HOME (this worktree's own old folder included) or a folder inside
+/// another worktree. An unset or empty value, this worktree's own `target/`, a relative `target`
+/// and any other folder say nothing, and neither does another command. The warning is one line
+/// that names the folder, the reason and the worktree's own `target/`, and the command still
+/// runs. A stub named `cargo` stands in for cargo.
+#[test]
+fn a_cargo_run_is_warned_about_a_retired_or_foreign_build_folder() {
+    let f = build_fx();
+    let build = f.build.clone();
+    let silent: Vec<(&Path, Option<PathBuf>)> = vec![
+        (&f.one, None),
+        (&f.one, Some(PathBuf::new())),
+        (&f.one, Some(f.one.join("target"))),
+        (&f.one, Some(PathBuf::from("target"))),
+        (&f.nested, Some(f.nested.join("target"))),
+        // Not a folder the plan names: unchanged, it is not warned about.
+        (&f.one, Some(f.root.join("elsewhere-target"))),
+    ];
+    for (cwd, target) in silent {
+        let err = f.stderr_of(cwd, Some(&f.home), target.as_deref(), &f.cargo);
         assert!(!err.contains("CARGO_TARGET_DIR"), "{target:?}: {err}");
     }
     let foreign = |w: &Path| format!("inside the worktree {}", w.display());
+    let retired_home = format!("inside the retired home build root {}", build.display());
     for (cwd, target, says) in [
         (
-            &one,
-            root.join("moai-rc-target-agent-7"),
-            "the per-lane folder".to_string(),
+            &f.one,
+            f.root.join("moai-rc-target-agent-7"),
+            "the retired per-lane folder".to_string(),
         ),
-        (
-            &one,
-            build.join("repo-wt-two"),
-            "another worktree's build folder".to_string(),
-        ),
-        (
-            &one,
-            recorded.clone(),
-            format!("record names the worktree {}", two.display()),
-        ),
-        (&one, repo.join("target"), foreign(&repo)),
-        (&nested, repo.join("target"), foreign(&repo)),
-        (&nested, two.join("target"), foreign(&two)),
+        (&f.one, build.join("repo-wt-one"), retired_home.clone()),
+        (&f.one, build.join("repo-wt-two"), retired_home.clone()),
+        (&f.nested, build.join("repo-agent-3"), retired_home.clone()),
+        (&f.one, f.repo.join("target"), foreign(&f.repo)),
+        (&f.nested, f.repo.join("target"), foreign(&f.repo)),
+        (&f.nested, f.two.join("target"), foreign(&f.two)),
     ] {
-        let err = run_in(cwd, Some(&target), &cargo);
+        let err = f.stderr_of(cwd, Some(&f.home), Some(&target), &f.cargo);
         assert!(
-            err.contains("heavy-slot: CARGO_TARGET_DIR"),
+            err.contains(&format!(
+                "heavy-slot: CARGO_TARGET_DIR {}",
+                target.display()
+            )),
             "{target:?}: {err}"
         );
         assert!(err.contains(&says), "{target:?}: {err}");
         assert!(
-            cwd != &one || err.contains(&own.display().to_string()),
+            err.contains(&format!(
+                "builds in its own target/ ({}/target)",
+                cwd.display()
+            )),
             "{err}"
         );
-        assert!(err.contains("moai lane-env --lane agent-7"), "{err}");
-        assert_eq!(
-            err.matches("CARGO_TARGET_DIR").count(),
-            1,
-            "one line: {err}"
+        assert!(err.contains("unset CARGO_TARGET_DIR"), "{err}");
+        assert!(
+            !err.contains("this worktree's build folder"),
+            "the former advice is gone: {err}"
         );
+        let lines = err
+            .lines()
+            .filter(|l| l.contains("CARGO_TARGET_DIR"))
+            .count();
+        assert_eq!(lines, 1, "one line: {err}");
     }
     // Not cargo: nothing to say, whatever the folder.
-    let other = root.join("bin/not-cargo");
+    let other = f.root.join("bin/not-cargo");
     common::write_executable(&other, "#!/bin/sh\nexit 0\n");
-    let err = run_in(&one, Some(&repo.join("target")), &other);
+    let err = f.stderr_of(&f.one, Some(&f.home), Some(&f.repo.join("target")), &other);
     assert!(!err.contains("CARGO_TARGET_DIR"), "{err}");
-    // C-82 slot audit N-a: off Windows, USERPROFILE is never the home. With HOME unset and only
-    // USERPROFILE set the worktree's build folder is unknown, so even a foreign folder gets no
-    // line: `Here::of` passes `cfg!(windows)`, not `true`.
-    let mut c = acquire(&slots, "2", "agent-7", &[cargo.to_str().unwrap()]);
-    c.current_dir(&one)
-        .env_remove("HOME")
-        .env("USERPROFILE", &home)
-        .env("CARGO_TARGET_DIR", repo.join("target"));
-    let out = run(c);
-    assert!(out.status.success(), "{}", text(&out));
+    // Off Windows USERPROFILE is never the home: with HOME unset, a folder under the build
+    // root of USERPROFILE is no retired home folder, while another worktree's folder is still
+    // found without a HOME.
+    let err = f.stderr_of(&f.one, None, Some(&build.join("repo-wt-one")), &f.cargo);
+    assert!(!err.contains("CARGO_TARGET_DIR"), "{err}");
+    let err = f.stderr_of(&f.one, None, Some(&f.repo.join("target")), &f.cargo);
+    assert!(err.contains(&foreign(&f.repo)), "{err}");
+}
+
+/// The wrapper makes nothing under HOME: with the retired build folder named in
+/// `CARGO_TARGET_DIR` and with no HOME, the temporary HOME stays empty.
+#[test]
+fn heavy_slot_acquire_makes_nothing_under_home() {
+    let f = build_fx();
+    let retired = f.build.join("repo-wt-one");
+    for home in [Some(f.home.as_path()), None] {
+        let err = f.stderr_of(&f.one, home, Some(&retired), &f.cargo);
+        assert_eq!(
+            err.contains("retired home build root"),
+            home.is_some(),
+            "{home:?}: {err}"
+        );
+        let held: Vec<_> = fs::read_dir(&f.home).unwrap().flatten().collect();
+        assert!(held.is_empty(), "{home:?}: HOME holds {held:?}");
+    }
+}
+
+/// N1 and N2 of the audit of SPEC-20261123-lane-env-own-target: with the state folder of the
+/// fixture HOME a link to another folder, the retired home build root is recognised both by the
+/// real path of that link's target (the resolved root) and by the value as written (under `f.build`),
+/// also when a link inside the root leads out of it. Each way is pinned by its own value: the
+/// resolved root alone misses the last one, the written root alone misses the first. The
+/// wrapper makes nothing in the folder the link leads to.
+#[cfg(unix)]
+#[test]
+fn a_home_moai_link_is_followed_and_the_value_as_written_is_kept() {
+    let f = build_fx();
+    let real = f.root.join("moai-real");
+    let outside = f.root.join("outside-build");
+    fs::create_dir_all(real.join("build")).unwrap();
+    fs::create_dir(&outside).unwrap();
+    std::os::unix::fs::symlink(&real, f.build.parent().unwrap()).unwrap();
+    std::os::unix::fs::symlink(&outside, real.join("build/leads-out")).unwrap();
+    let held = |dir: &Path| -> Vec<PathBuf> {
+        let mut v: Vec<_> = fs::read_dir(dir)
+            .unwrap()
+            .flatten()
+            .map(|e| e.path())
+            .collect();
+        v.sort();
+        v
+    };
+    let (home_before, real_before, build_before) =
+        (held(&f.home), held(&real), held(&real.join("build")));
+
+    // Written under the link: the root is the resolved one, the value is shown as the folder.
+    let under_link = f.build.join("repo-wt-one");
+    let err = f.stderr_of(&f.one, Some(&f.home), Some(&under_link), &f.cargo);
+    assert!(err.contains("inside the retired home build root"), "{err}");
+    // Written by the real path of the link's target: only the resolved root knows it.
+    let by_real_path = real.join("build/repo-wt-one");
+    let err = f.stderr_of(&f.one, Some(&f.home), Some(&by_real_path), &f.cargo);
     assert!(
-        !String::from_utf8_lossy(&out.stderr).contains("CARGO_TARGET_DIR"),
-        "{}",
-        text(&out)
+        err.contains(&format!(
+            "inside the retired home build root {}",
+            real.join("build").display()
+        )),
+        "{err}"
+    );
+    // Written under the root, with a link inside it leading out: only the value as written
+    // knows it, and the warning shows the value and the root as written.
+    let leads_out = f.build.join("leads-out");
+    let err = f.stderr_of(&f.one, Some(&f.home), Some(&leads_out), &f.cargo);
+    assert!(
+        err.contains(&format!(
+            "heavy-slot: CARGO_TARGET_DIR {} is ",
+            leads_out.display()
+        )),
+        "{err}"
+    );
+    assert!(
+        err.contains(&format!(
+            "inside the retired home build root {}",
+            f.build.display()
+        )),
+        "{err}"
+    );
+    // The folder the link leads out to is no retired folder when it is named by its own path.
+    let err = f.stderr_of(&f.one, Some(&f.home), Some(&outside), &f.cargo);
+    assert!(!err.contains("CARGO_TARGET_DIR"), "{err}");
+
+    assert_eq!(held(&f.home), home_before, "HOME changed");
+    assert_eq!(held(&real), real_before, "the link's target changed");
+    assert_eq!(
+        held(&real.join("build")),
+        build_before,
+        "the build root changed"
+    );
+    assert!(
+        held(&outside).is_empty(),
+        "the folder the link leads out to changed"
     );
 }

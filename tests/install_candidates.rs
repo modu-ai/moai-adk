@@ -132,10 +132,14 @@ fn every_moai_is_listed_in_order_and_told_apart_without_writing() {
         ]
     );
     assert_eq!(items[0]["version_line"], json!("moai-adk 3.2.0"));
-    assert!(items[1]["version_line"]
-        .as_str()
-        .unwrap()
-        .starts_with("moai-cli "));
+    // The built binary prints `moai <ver> (rust)`; a copy of the earlier build prints
+    // `moai-cli <ver> (rust)`. The reader accepts both names, so this test does too.
+    let rust_line = items[1]["version_line"].as_str().unwrap();
+    assert!(
+        (rust_line.starts_with("moai ") || rust_line.starts_with("moai-cli "))
+            && rust_line.ends_with(" (rust)"),
+        "{rust_line}"
+    );
     assert_eq!(items[3]["version_line"], json!(null), "no output");
     assert!(items[0]["sha256"].as_str().unwrap().starts_with("sha256:"));
     assert_eq!(c["more"], json!(0));

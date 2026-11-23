@@ -1,0 +1,1425 @@
+//! `moai` headless runs (SPEC-20261122-headless-run-contract): every `claude -p` command moai
+//! starts is built in one runner function that pins the permission mode, the MCP flags, the
+//! model, the output schema and the budgets, refuses an audit run requested by the change's
+//! author session, keeps credential values out of the child argv and environment, and warns once
+//! when `ANTHROPIC_API_KEY` is present. Every run goes through a stand-in `claude` script that
+//! records its argv and environment; no test starts a real `claude`, reaches the network or
+//! spends money.
+#![cfg(unix)]
+
+mod common;
+
+use moai_cli::headless_run::{build, run, HeadlessRunSpec, RunContext, RunRole};
+use serde_json::{json, Value};
+use std::collections::BTreeMap;
+use std::fs;
+use std::path::{Path, PathBuf};
+
+const REQUESTING: &str = "11111111-0000-4000-8000-000000000001";
+const AUTHOR_OTHER: &str = "22222222-0000-4000-8000-000000000002";
+const SECRET: &str = "super-secret-value-XYZ";
+
+fn audit_spec() -> HeadlessRunSpec {
+    HeadlessRunSpec {
+        role: RunRole::Audit {
+            author_session: AUTHOR_OTHER.to_string(),
+        },
+        model: "sonnet".to_string(),
+        agent: Some("moai-audit".to_string()),
+        schema: Some(
+            json!({"type": "object", "properties": {"verdict": {"type": "string"}}, "required": ["verdict"]}),
+        ),
+        prompt: "audit the head".to_string(),
+        max_turns: 40,
+        max_budget_usd: "5.00".to_string(),
+        allowed_tools: vec!["Read".to_string(), "Bash(git diff *)".to_string()],
+        foreign_tree: false,
+        gateway_credential: None,
+    }
+}
+
+fn ctx(platform_root: &Path) -> RunContext {
+    RunContext {
+        requesting_session: REQUESTING.to_string(),
+        platform_root: Some(platform_root.to_path_buf()),
+    }
+}
+
+/// The parent environment the runner inherits: a stand-in `claude` first on PATH, a planted
+/// credential, a nested-session marker, and the record path the stand-in writes to.
+fn parent_env(fixtures: &Path, record: &Path) -> BTreeMap<String, String> {
+    BTreeMap::from([
+        (
+            "PATH".to_string(),
+            format!("{}:/usr/bin:/bin", fixtures.display()),
+        ),
+        ("HOME".to_string(), "/tmp".to_string()),
+        ("ANTHROPIC_API_KEY".to_string(), SECRET.to_string()),
+        ("CLAUDECODE".to_string(), "1".to_string()),
+        (
+            "MOAI_STANDIN_RECORD".to_string(),
+            record.display().to_string(),
+        ),
+    ])
+}
+
+/// A stand-in `claude` (SPEC D-5): records its argv and environment to
+/// `$MOAI_STANDIN_RECORD` in the form `ARGV`, one arg per line, then `ENV`, sorted `env`
+/// lines, then answers one JSON result with a verdict and exits zero.
+fn standin_claude(fixtures: &Path) {
+    let script = "#!/bin/sh\n\
+r=\"$MOAI_STANDIN_RECORD\"\n\
+{ printf 'ARGV\\n'; for a in \"$@\"; do printf '%s\\n' \"$a\"; done; printf 'ENV\\n'; env | LC_ALL=C sort; } > \"$r\"\n\
+printf '%s' '{\"type\":\"result\",\"subtype\":\"success\",\"is_error\":false,\"session_id\":\"standin\",\"total_cost_usd\":0.01,\"num_turns\":1,\"structured_output\":{\"verdict\":\"fail\"}}'\n";
+    common::write_executable(&fixtures.join("claude"), script);
+}
+
+/// A minimal parent environment whose PATH carries the stand-in `claude`, for tests that
+/// assert on the built argv without starting the run.
+fn standin_env(fixtures: &Path) -> BTreeMap<String, String> {
+    BTreeMap::from([
+        (
+            "PATH".to_string(),
+            format!("{}:/usr/bin:/bin", fixtures.display()),
+        ),
+        ("HOME".to_string(), "/tmp".to_string()),
+    ])
+}
+
+/// `tmp/bin` with a stand-in `claude` in it.
+fn standin_dir(tmp: &Path) -> PathBuf {
+    let fixtures = tmp.join("bin");
+    fs::create_dir_all(&fixtures).unwrap();
+    standin_claude(&fixtures);
+    fixtures
+}
+
+/// Reads the stand-in's record as `(argv lines, raw text)`.
+fn read_record(record: &Path) -> (Vec<String>, String) {
+    let text = fs::read_to_string(record).unwrap();
+    let argv: Vec<String> = text
+        .lines()
+        .skip(1)
+        .take_while(|l| *l != "ENV")
+        .map(str::to_string)
+        .collect();
+    (argv, text)
+}
+
+/// The value of the argument that follows `flag` in the recorded argv.
+fn after<'a>(argv: &'a [String], flag: &str) -> &'a str {
+    let i = argv.iter().position(|a| a == flag).expect(flag);
+    &argv[i + 1]
+}
+
+fn count(argv: &[String], flag: &str) -> usize {
+    argv.iter().filter(|a| *a == flag).count()
+}
+
+fn settings_json(argv: &[String]) -> Value {
+    serde_json::from_str(after(argv, "--settings")).unwrap()
+}
+
+/// AC-1: the stand-in records the exact argv and environment, every pinned flag of REQ-2 to
+/// REQ-10 is present, and neither the argv nor the environment dump carries the planted
+/// credential value.
+#[test]
+fn standin_records_every_pinned_flag() {
+    let tmp = tempfile::tempdir().unwrap();
+    let fixtures = tmp.path().join("bin");
+    fs::create_dir_all(&fixtures).unwrap();
+    let record = tmp.path().join("record.txt");
+    standin_claude(&fixtures);
+    let root = tmp.path().join("platform");
+    fs::create_dir_all(&root).unwrap();
+
+    let built = build(&audit_spec(), &ctx(&root), &parent_env(&fixtures, &record)).unwrap();
+
+    assert_eq!(built.args.first().map(String::as_str), Some("-p"));
+    assert_eq!(after(&built.args, "--permission-mode"), "dontAsk");
+    assert_eq!(after(&built.args, "--permission-prompts"), "none");
+    assert_eq!(
+        after(&built.args, "--allowedTools"),
+        "Read,Bash(git diff *)"
+    );
+    assert!(built.args.contains(&"--strict-mcp-config".to_string()));
+    assert!(!built.args.iter().any(|a| a == "--mcp-config"));
+    assert_eq!(after(&built.args, "--model"), "sonnet");
+    assert_eq!(after(&built.args, "--agent"), "moai-audit");
+    assert_eq!(after(&built.args, "--output-format"), "json");
+    let schema: Value = serde_json::from_str(after(&built.args, "--json-schema")).unwrap();
+    assert_eq!(schema["required"][0], "verdict");
+    assert_eq!(after(&built.args, "--max-turns"), "40");
+    assert_eq!(after(&built.args, "--max-budget-usd"), "5.00");
+    assert_eq!(
+        after(&built.args, "--setting-sources"),
+        "user,project,local"
+    );
+    assert_eq!(count(&built.args, "--settings"), 1);
+    assert_eq!(
+        built.args.last().map(String::as_str),
+        Some("audit the head")
+    );
+    assert_eq!(
+        built
+            .env
+            .get("CLAUDE_CODE_RETRY_WATCHDOG")
+            .map(String::as_str),
+        Some("1")
+    );
+    assert!(
+        built
+            .env
+            .get("BASH_DEFAULT_TIMEOUT_MS")
+            .unwrap()
+            .parse::<u64>()
+            .unwrap()
+            >= 600000
+    );
+    assert!(!built.env.contains_key("ANTHROPIC_API_KEY"));
+    assert!(!built.env.contains_key("CLAUDECODE"));
+    assert!(built.scrubbed.contains(&"ANTHROPIC_API_KEY".to_string()));
+    assert!(built
+        .env
+        .get("PATH")
+        .unwrap()
+        .starts_with(fixtures.display().to_string().as_str()));
+
+    let raw = run(&built, tmp.path()).unwrap();
+    assert!(
+        raw.success,
+        "stand-in stdout: {} stderr: {}",
+        raw.stdout, raw.stderr
+    );
+    let (argv, text) = read_record(&record);
+    assert_eq!(argv, built.args);
+    assert!(text.contains("CLAUDE_CODE_RETRY_WATCHDOG=1"));
+    assert!(
+        !text.contains(SECRET),
+        "credential value leaked into the stand-in record"
+    );
+}
+
+/// AC-2: a deployed platform `managed-mcp.json` removes both MCP flags; no file keeps
+/// `--strict-mcp-config` and never `--mcp-config`.
+#[test]
+fn managed_mcp_adapts_the_flags() {
+    let tmp = tempfile::tempdir().unwrap();
+    let fixtures = tmp.path().join("bin");
+    fs::create_dir_all(&fixtures).unwrap();
+    let record = tmp.path().join("record.txt");
+    standin_claude(&fixtures);
+    let root = tmp.path().join("platform");
+    fs::create_dir_all(&root).unwrap();
+    let env = parent_env(&fixtures, &record);
+
+    let deployed = build(&audit_spec(), &ctx(&root), &env).unwrap();
+    assert!(deployed.args.contains(&"--strict-mcp-config".to_string()));
+    assert!(!deployed.args.iter().any(|a| a == "--mcp-config"));
+    assert!(!deployed.managed_mcp_deployed);
+
+    fs::write(root.join("managed-mcp.json"), "{\"mcpServers\": {}}").unwrap();
+    let bare = build(&audit_spec(), &ctx(&root), &env).unwrap();
+    assert!(!bare.args.contains(&"--strict-mcp-config".to_string()));
+    assert!(!bare.args.iter().any(|a| a == "--mcp-config"));
+    assert!(bare.managed_mcp_deployed);
+}
+
+/// AC-3: one `--settings` object, role-scoped — the lane run adds
+/// `permissions.denyInsteadOfPrompting` on top of the inbound accept, the plain worker run
+/// carries only the inbound key, and no run writes the key into a settings file.
+#[test]
+fn settings_object_is_one_and_role_scoped() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path().join("platform");
+    fs::create_dir_all(&root).unwrap();
+    let env = standin_env(&standin_dir(tmp.path()));
+
+    let mut lane = audit_spec();
+    lane.role = RunRole::Lane;
+    let built = build(&lane, &ctx(&root), &env).unwrap();
+    assert_eq!(count(&built.args, "--settings"), 1);
+    let settings = settings_json(&built.args);
+    assert_eq!(settings["crossSessionInbound"], "accept");
+    assert_eq!(settings["permissions"]["denyInsteadOfPrompting"], true);
+    assert_eq!(after(&built.args, "--permission-mode"), "auto");
+
+    // N-9 (AC-3): an Audit run's settings carry no permissions key at all
+    let audit_built = build(&audit_spec(), &ctx(&root), &env).unwrap();
+    let audit_settings = settings_json(&audit_built.args);
+    assert!(
+        audit_settings.get("permissions").is_none(),
+        "{audit_settings}"
+    );
+
+    let mut worker = audit_spec();
+    worker.role = RunRole::Worker;
+    worker.agent = None;
+    let built = build(&worker, &ctx(&root), &env).unwrap();
+    assert_eq!(count(&built.args, "--settings"), 1);
+    let settings = settings_json(&built.args);
+    assert_eq!(settings["crossSessionInbound"], "accept");
+    assert!(settings.get("permissions").is_none());
+}
+
+/// AC-4: a budget of `0` or an unusable budget or turn count refuses to build before any
+/// process starts.
+#[test]
+fn zero_or_missing_budget_refuses_to_build() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path().join("platform");
+    fs::create_dir_all(&root).unwrap();
+    let env = standin_env(&standin_dir(tmp.path()));
+
+    let mut spec = audit_spec();
+    spec.max_budget_usd = "0".to_string();
+    assert!(build(&spec, &ctx(&root), &env).is_err());
+
+    spec.max_budget_usd = "0.00".to_string();
+    assert!(build(&spec, &ctx(&root), &env).is_err());
+
+    spec.max_budget_usd = "five".to_string();
+    assert!(build(&spec, &ctx(&root), &env).is_err());
+
+    spec.max_budget_usd = "5.00".to_string();
+    spec.max_turns = 0;
+    assert!(build(&spec, &ctx(&root), &env).is_err());
+}
+
+/// AC-9: an audit run whose requesting session is the author session, or that names no
+/// author, refuses to build; a different author builds, and non-audit roles need no author.
+#[test]
+fn author_session_audit_refuses_to_build() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path().join("platform");
+    fs::create_dir_all(&root).unwrap();
+    let env = standin_env(&standin_dir(tmp.path()));
+
+    let mut self_audit = audit_spec();
+    self_audit.role = RunRole::Audit {
+        author_session: REQUESTING.to_string(),
+    };
+    let refused = build(&self_audit, &ctx(&root), &env).unwrap_err();
+    assert!(refused.to_string().contains("author"), "{refused}");
+
+    let mut no_author = audit_spec();
+    no_author.role = RunRole::Audit {
+        author_session: String::new(),
+    };
+    assert!(build(&no_author, &ctx(&root), &env).is_err());
+
+    let ok = build(&audit_spec(), &ctx(&root), &env).unwrap();
+    assert_eq!(ok.requesting_session, REQUESTING);
+
+    let mut worker = audit_spec();
+    worker.role = RunRole::Worker;
+    assert!(build(&worker, &ctx(&root), &env).is_ok());
+}
+
+/// AC-7: the warning names the key's presence, never its value, and appears only when the
+/// key is present.
+#[test]
+fn api_key_warning_names_presence_only() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path().join("platform");
+    fs::create_dir_all(&root).unwrap();
+    let fixtures = standin_dir(tmp.path());
+    let mut with_key = standin_env(&fixtures);
+    with_key.insert("ANTHROPIC_API_KEY".to_string(), SECRET.to_string());
+    let built = build(&audit_spec(), &ctx(&root), &with_key).unwrap();
+    let warning = built.credential_warning.expect("warning present");
+    assert!(warning.contains("ANTHROPIC_API_KEY"));
+    assert!(!warning.contains(SECRET));
+
+    let no_key = standin_env(&fixtures);
+    let built = build(&audit_spec(), &ctx(&root), &no_key).unwrap();
+    assert!(built.credential_warning.is_none());
+}
+
+/// REQ-2: blanket tool rules and every rule outside the allowed shape refuse to build — the
+/// wildcard-only spellings, an interpreter or wrapper as the first word of a wildcarded rule,
+/// a compound command, a glob, a substitution, a brace, a quote, a redirection or an
+/// assignment in the first word, a substitution or a redirection in a later argument, a star
+/// that is not the one trailing wildcard form, and a character outside the set in a rule with
+/// no star. The ordinary narrow rules keep building.
+#[test]
+fn blanket_tool_rules_refuse_to_build() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path().join("platform");
+    fs::create_dir_all(&root).unwrap();
+    let env = standin_env(&standin_dir(tmp.path()));
+    for blanket in [
+        "Bash",
+        "Bash(*)",
+        "PowerShell",
+        // N-3: the colon wildcard, wildcarded interpreters and a shell escape, and bare agents
+        "Bash(:*)",
+        "Bash(python *)",
+        "Bash(sh -c *)",
+        "Agent",
+        // R-1: the colon spelling of a wildcarded interpreter
+        "Bash(python:*)",
+        "Bash(bash:*)",
+        // R-2: the env/xargs/sudo/npx escapes and a versioned interpreter
+        "Bash(env *)",
+        "Bash(xargs *)",
+        "Bash(sudo *)",
+        "Bash(npx *)",
+        "Bash(python3.12 *)",
+        // R-4: command/exec/uv and a path-spelled interpreter (basename match)
+        "Bash(command *)",
+        "Bash(exec *)",
+        "Bash(uv *)",
+        "Bash(/usr/bin/env *)",
+        // L-4: an env assignment before the interpreter, busybox, bun, php
+        "Bash(FOO=1 python *)",
+        "Bash(busybox *)",
+        "Bash(busybox sh *)",
+        "Bash(bun *)",
+        "Bash(php *)",
+        // M-2: a quoted assignment with a space, and the privilege escalators
+        "Bash(FOO=\"a b\" python *)",
+        "Bash(doas *)",
+        "Bash(pkexec *)",
+        // P-1: every other assignment spelling — the stricter rule refuses any wildcarded
+        // rule whose text starts with an assignment
+        "Bash(FOO='a b' bash -c *)",
+        "Bash(FOO=$'a b' python *)",
+        "Bash(FOO=a\\ b python *)",
+        "Bash(FOO=\"say \\\"hi\\\"\" python *)",
+        "Bash(FOO=1 sh *)",
+        // assignment spellings a plain name check misses
+        "Bash(FOO+=1 python *)",
+        "Bash(arr[0]=1 python *)",
+        // a quoted, escaped or redirected first word
+        "Bash(\\python *)",
+        "Bash(\"python\" *)",
+        "Bash(>/dev/null python *)",
+        // descriptor and & redirection prefixes
+        "Bash(2>&1 python *)",
+        "Bash(2>/dev/null python *)",
+        "Bash(&>/dev/null python *)",
+        // the < and single-quote legs, each pinned on its own
+        "Bash(</dev/null python *)",
+        "Bash('python' *)",
+        // the other first-word spellings: substitutions, brace and glob forms, upper
+        // case, pypy3, compound commands, builtin, eval
+        "Bash($(which python) *)",
+        "Bash(`which python` *)",
+        "Bash({python,python3} *)",
+        "Bash($PY *)",
+        "Bash(pytho? *)",
+        "Bash(python* *)",
+        "Bash(python*)",
+        "Bash(PYTHON *)",
+        "Bash(pypy3 *)",
+        "Bash(true; python *)",
+        "Bash(cd x && python *)",
+        "Bash((python) *)",
+        "Bash(! python *)",
+        "Bash(builtin python *)",
+        "Bash(eval python *)",
+        // compound commands with another first word, and globs inside the first word
+        "Bash(ls && python *)",
+        "Bash(echo ok && python *)",
+        "Bash(ls ; python *)",
+        "Bash(false || python *)",
+        "Bash(: && python *)",
+        "Bash(cat x | python *)",
+        "Bash(ls & python *)",
+        "Bash(if true; then python *)",
+        "Bash(ls\npython *)",
+        "Bash(py*n *)",
+        "Bash(p*n*x)",
+        "Bash(/usr/bin/py*n *)",
+        "Bash(pytho[n] *)",
+        "Bash(python[23] *)",
+        // a substitution or a redirection in a later argument: each runs or writes what it
+        // names, wherever in the rule it sits
+        "Bash(echo $(python *))",
+        "Bash(echo `python *`)",
+        "Bash(ls <(python *))",
+        "Bash(ls >(python *))",
+        "Bash(echo ${x:-$(python *)})",
+        "Bash(echo x >/tmp/y *)",
+        "Bash(ls > x *)",
+        "Bash(ls < x *)",
+        // a star that is not the one trailing wildcard form matches from the first star on
+        "Bash(git diff*)",
+        "Bash(* --version)",
+        "Bash(git * main)",
+        "Bash(* --help *)",
+        // the colon form of an interpreter
+        "Bash(python:*)",
+        // the shells and interpreters the list names, in a versioned spelling too
+        "Bash(dash *)",
+        "Bash(ksh *)",
+        "Bash(pypy *)",
+        "Bash(pypy3.10 *)",
+        "Bash(lua *)",
+        "Bash(lua5.4 *)",
+        "Bash(nodejs *)",
+        "Bash(node22 *)",
+        "Bash(pythonw *)",
+        "Bash(Rscript *)",
+        // the wrappers the permissions page names
+        "Bash(stdbuf *)",
+        "Bash(noglob *)",
+        "Bash(watch *)",
+        "Bash(setsid *)",
+        "Bash(ionice *)",
+        "Bash(flock *)",
+        "Bash(docker *)",
+        "Bash(mise exec *)",
+        "Bash(devbox run *)",
+        "Bash(direnv exec *)",
+        // a rule with no star meets the character set
+        "Bash(ls\npython)",
+        "Bash(echo $(whoami))",
+        "Bash(ls; python)",
+        "Bash(cat <<EOF)",
+        "Bash(ls\tpython)",
+        // R-3: the Monitor allow rule the dropped-rules list forbids
+        "Monitor",
+        // a versioned interpreter with a trailing letter suffix (free-threaded and debug builds)
+        "Bash(python3.13t *)",
+        "Bash(python3.13d *)",
+        "Bash(python3.14t *)",
+        "Bash(pypy3.10t *)",
+        // the shells and escalators that run what follows them
+        "Bash(csh *)",
+        "Bash(tcsh *)",
+        "Bash(ash *)",
+        "Bash(pwsh *)",
+        "Bash(powershell *)",
+        "Bash(cmd *)",
+        "Bash(su *)",
+        "Bash(su -c *)",
+        "Bash(su:*)",
+        "Bash(chroot *)",
+        "Bash(chroot:*)",
+        // the Windows spelling of an interpreter, in any letter case
+        "Bash(powershell.exe *)",
+        "Bash(cmd.exe *)",
+        "Bash(python.exe *)",
+        "Bash(PowerShell.EXE *)",
+    ] {
+        let mut spec = audit_spec();
+        spec.allowed_tools = vec![blanket.to_string()];
+        assert!(
+            build(&spec, &ctx(&root), &env).is_err(),
+            "blanket rule {blanket} must refuse"
+        );
+    }
+    // narrow rules that must keep building
+    let mut spec = audit_spec();
+    spec.allowed_tools = vec![
+        "Read".to_string(),
+        "Bash(git diff *)".to_string(),
+        "Bash(npm test)".to_string(),
+        // a named subcommand with the colon wildcard stays narrow
+        "Bash(git log:*)".to_string(),
+        // a one-word colon rule and a rule with no star beyond the bare command word
+        "Bash(ls:*)".to_string(),
+        "Bash(git:*)".to_string(),
+        "Bash(git status)".to_string(),
+        "Bash(moai card show)".to_string(),
+        // words that only start like a list word stay narrow
+        "Bash(python-config *)".to_string(),
+        "Bash(suspend *)".to_string(),
+        "Bash(ashtray *)".to_string(),
+    ];
+    assert!(build(&spec, &ctx(&root), &env).is_ok());
+}
+
+/// REQ-2: the WHOLE entry has one allowed shape — a tool name of ASCII letters, digits and
+/// underscores, then optionally one parenthesised body, nothing before it and nothing after it,
+/// no comma and no whitespace outside the body. Everything else refuses, so an entry cannot
+/// smuggle a second entry into the comma-joined `--allowedTools` value, and `Agent`, `Monitor`
+/// and a bare star never build.
+#[test]
+fn a_whole_entry_has_one_allowed_shape() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path().join("platform");
+    fs::create_dir_all(&root).unwrap();
+    let env = standin_env(&standin_dir(tmp.path()));
+    let builds = |entry: &str| {
+        let mut spec = audit_spec();
+        spec.allowed_tools = vec![entry.to_string()];
+        build(&spec, &ctx(&root), &env).is_ok()
+    };
+    for entry in [
+        // a second entry smuggled behind the comma join, a space or a newline
+        "Read,Bash(*)",
+        "Read,Bash",
+        "Read, Bash(*)",
+        "Bash(git diff *),Bash",
+        "Read\nBash",
+        "Read Bash",
+        "Read\tBash(*)",
+        // whitespace or anything else before or after the entry
+        " Bash(*)",
+        "Bash(*) ",
+        " Read",
+        "Read ",
+        "Read\n",
+        "Read\0",
+        "Read (a)",
+        "Read(a) ",
+        "Read(a),",
+        ",Read",
+        "Read,",
+        // a missing or doubled parenthesis, and text after the closing one
+        "Bash(",
+        "Read(",
+        "Bash(git diff *",
+        "(Read)",
+        "(Read",
+        "Read)",
+        "Read(a)b",
+        "Read(a)(b)",
+        "Read(a))",
+        "Bash(git diff *)(x)",
+        "Bash(git diff *)x",
+        // no name, a bare star, and names outside letters, digits and underscores
+        "",
+        "*",
+        "mcp__*",
+        "mcp__server__*",
+        "Re-ad",
+        "Re.ad(a)",
+        "Re ad",
+        "Read\u{00e9}",
+        "R\u{0435}ad",
+        "()",
+        "(*)",
+        // the tools that run commands, in every spelling and letter case
+        "Bash",
+        "bash",
+        "BASH",
+        "bash(*)",
+        "BASH(*)",
+        "PowerShell",
+        "powershell",
+        "powershell(*)",
+        "Agent",
+        "agent",
+        "Agent(*)",
+        "agent(*)",
+        "Agent(:*)",
+        "Agent( * )",
+        "Monitor",
+        "monitor",
+        "Monitor(*)",
+        "Monitor(tail -f x)",
+        "Monitor()",
+        // a wildcard-only or empty body is blanket for every tool
+        "Read(*)",
+        "Read(**)",
+        "Read(*:*)",
+        "Read()",
+        "Read( )",
+        "WebFetch(*)",
+        "Edit(**)",
+        // a body that is not one plain ASCII text: a comma, a parenthesis, a control
+        // character, a non-ASCII character
+        "Read(a,b)",
+        "Read(a(b)",
+        "Read(a)b)",
+        "Read(a\nb)",
+        "Read(a\tb)",
+        "Read(a\0b)",
+        "Read(\u{00e9})",
+        "Read(\u{200b})",
+        "Read(\u{ff21})",
+    ] {
+        assert!(
+            !builds(entry),
+            "entry {entry:?} is outside the shape and must refuse"
+        );
+    }
+    for entry in [
+        "Read",
+        "Edit",
+        "Grep",
+        "Glob",
+        "mcp__server__tool",
+        "Tool_2",
+        "Read(./src/**)",
+        "Read(/tmp/a b/c.txt)",
+        "WebFetch(domain:example.com)",
+        "Skill(skill:review)",
+        "Agent(Explore)",
+        "Agent(my-custom-agent)",
+        "Agent(model:opus)",
+        "Agent(isolation:*)",
+        "Bash(git diff *)",
+        "Bash(git log:*)",
+        "Bash(npm test)",
+        "bash(git diff *)",
+        "PowerShell(Get-ChildItem *)",
+    ] {
+        assert!(
+            builds(entry),
+            "entry {entry:?} is one allowed entry and must build"
+        );
+    }
+}
+
+/// REQ-2: the byte sweep over the entry outside the body. Each ASCII byte is placed before the
+/// name, inside the name, between the name and the body, and after the closing parenthesis, in a
+/// non-shell entry and in a Bash entry. A byte builds in the three name positions only when it
+/// is an ASCII letter, a digit or an underscore (it then simply extends the name); after the
+/// closing parenthesis no byte builds at all; and a name with no body builds on the same set.
+/// The set is spelled out here a second time on purpose, as a second opinion.
+#[test]
+fn every_ascii_byte_outside_the_body_refuses() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path().join("platform");
+    fs::create_dir_all(&root).unwrap();
+    let env = standin_env(&standin_dir(tmp.path()));
+    let builds = |entry: &str| {
+        let mut spec = audit_spec();
+        spec.allowed_tools = vec![entry.to_string()];
+        build(&spec, &ctx(&root), &env).is_ok()
+    };
+    let mut name_bytes = 0;
+    for byte in 0u8..=127 {
+        let c = byte as char;
+        let name_char = c.is_ascii_alphanumeric() || c == '_';
+        for entry in [
+            format!("{c}Read(./a)"),
+            format!("Re{c}ad(./a)"),
+            format!("Read{c}(./a)"),
+            format!("Read{c}"),
+            format!("{c}Read"),
+            format!("Re{c}ad"),
+            format!("{c}Tool(git diff *)"),
+            format!("Tool{c}(git diff *)"),
+        ] {
+            assert_eq!(
+                builds(&entry),
+                name_char,
+                "ASCII byte {byte} in {entry:?}: a name character extends the name, any other refuses"
+            );
+        }
+        for entry in [
+            format!("Read(./a){c}"),
+            format!("Tool(git diff *){c}"),
+            format!("Bash(git diff *){c}"),
+            format!("Bash(git diff *){c}Bash(git diff *)"),
+        ] {
+            assert!(
+                !builds(&entry),
+                "ASCII byte {byte} after the closing parenthesis of {entry:?} must refuse"
+            );
+        }
+        name_bytes += usize::from(name_char);
+    }
+    // 52 letters, 10 digits and the underscore
+    assert_eq!(name_bytes, 63);
+}
+
+/// REQ-2 states one set of characters for the whole rule; this pins it over every ASCII byte.
+/// A byte of the set, placed in an argument, builds, and every other byte refuses — in a
+/// wildcarded rule and in a rule without a star alike. The set is spelled out here a second
+/// time on purpose: the test is a second opinion, not a copy of the code's constant.
+#[test]
+fn every_ascii_byte_outside_the_set_refuses_in_an_argument() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path().join("platform");
+    fs::create_dir_all(&root).unwrap();
+    let env = standin_env(&standin_dir(tmp.path()));
+    let mut in_set = 0;
+    for byte in 0u8..=127 {
+        let c = byte as char;
+        let allowed = c.is_ascii_alphanumeric()
+            || matches!(c, ' ' | '.' | '_' | '/' | '-' | '=' | ':' | '@' | '%' | '+');
+        for rule in [format!("Bash(echo a{c}b *)"), format!("Bash(echo a{c}b)")] {
+            let mut spec = audit_spec();
+            spec.allowed_tools = vec![rule.clone()];
+            assert_eq!(
+                build(&spec, &ctx(&root), &env).is_ok(),
+                allowed,
+                "ASCII byte {byte} in {rule:?}: a byte of the set builds, any other refuses"
+            );
+        }
+        in_set += usize::from(allowed);
+    }
+    // 62 letters and digits, the space, and nine punctuation characters — the comma is not
+    // one of them
+    assert_eq!(in_set, 72);
+}
+
+/// REQ-2: a comma refuses anywhere in an entry, a Bash or PowerShell body included. The entries
+/// travel as one comma-joined `--allowedTools` value and the host's split inside parentheses is
+/// not documented, so a comma is the one byte that can carry a second entry.
+#[test]
+fn a_comma_refuses_anywhere_in_an_entry() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path().join("platform");
+    fs::create_dir_all(&root).unwrap();
+    let env = standin_env(&standin_dir(tmp.path()));
+    let builds = |entry: &str| {
+        let mut spec = audit_spec();
+        spec.allowed_tools = vec![entry.to_string()];
+        build(&spec, &ctx(&root), &env).is_ok()
+    };
+    for entry in [
+        // a second entry smuggled inside a shell body, with and without a wildcard
+        "Bash(git log --format=a,Bash)",
+        "Bash(git log --format=a,Bash(*))",
+        "Bash(git log --format=a,Bash *)",
+        "Bash(git log:a,b *)",
+        "Bash(echo a,b)",
+        "Bash(echo a,b *)",
+        "Bash(echo a, b *)",
+        "Bash(echo a ,b)",
+        "Bash(,)",
+        "Bash(a,)",
+        "Bash(,a)",
+        "bash(echo a,b)",
+        "PowerShell(Get-ChildItem a,b)",
+        "PowerShell(Get-ChildItem a,b *)",
+        // a comma in the body of any other tool, and between or around entries
+        "Read(a,b)",
+        "Read(,)",
+        "Agent(model:opus,model:haiku)",
+        "WebFetch(domain:a.com,b.com)",
+        "Read,Bash",
+        "Read,Bash(*)",
+        "Read(a),Read(b)",
+        "Bash(git diff *),Read",
+        "Read,",
+        ",Read",
+        ",",
+        "mcp__a,b",
+    ] {
+        assert!(
+            !builds(entry),
+            "entry {entry:?} holds a comma and must refuse"
+        );
+    }
+    // the same entries without the comma keep building
+    for entry in [
+        "Bash(git log --format=a)",
+        "Bash(echo a b *)",
+        "Read(a)",
+        "Agent(model:opus)",
+        "Bash(git log --format=%H:%s -5)",
+    ] {
+        assert!(builds(entry), "entry {entry:?} has no comma and must build");
+    }
+    // a comma never travels in the built value: every comma in the joined argument is a join
+    let mut spec = audit_spec();
+    spec.allowed_tools = vec!["Read".to_string(), "Bash(git diff *)".to_string()];
+    let built = build(&spec, &ctx(&root), &env).unwrap();
+    let joined = built
+        .args
+        .iter()
+        .skip_while(|a| a.as_str() != "--allowedTools")
+        .nth(1)
+        .unwrap();
+    assert_eq!(joined, "Read,Bash(git diff *)");
+}
+
+/// REQ-2: a rule without a wildcard meets the character set alone. Its first word is not
+/// judged, so an exact rule that starts with an interpreter builds (it names commands, not a
+/// family), and a character outside the set refuses in either kind of rule.
+#[test]
+fn a_rule_without_a_star_meets_the_set_and_keeps_its_first_word() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path().join("platform");
+    fs::create_dir_all(&root).unwrap();
+    let env = standin_env(&standin_dir(tmp.path()));
+    for rule in [
+        "Bash(python x.py)",
+        "Bash(sh)",
+        "Bash(sudo ls)",
+        "Bash(builtin ls)",
+        "Bash(uv run pytest)",
+        "Bash(devbox run npm test)",
+    ] {
+        let mut spec = audit_spec();
+        spec.allowed_tools = vec![rule.to_string()];
+        assert!(
+            build(&spec, &ctx(&root), &env).is_ok(),
+            "{rule} names commands without a wildcard and must build"
+        );
+    }
+    for rule in [
+        "Bash(ls\npython)",
+        "Bash(echo $(whoami))",
+        "Bash(ls; python)",
+        "Bash(ls\tpython)",
+        "Bash(echo \"hi\")",
+        "Bash(ls\u{00a0}*)",
+        "Bash(ls\u{200b} *)",
+        "Bash(ls\u{ff4c}s *)",
+    ] {
+        let mut spec = audit_spec();
+        spec.allowed_tools = vec![rule.to_string()];
+        assert!(
+            build(&spec, &ctx(&root), &env).is_err(),
+            "{rule:?} is outside the character set and must refuse"
+        );
+    }
+}
+
+/// N-5: other credential names reach the child no more than the API key does — every
+/// credential value is scrubbed and its name recorded, and a caller-named gateway
+/// credential is the only one set back (N-6: the warning then says so).
+#[test]
+fn credential_families_stay_out_of_the_child() {
+    let tmp = tempfile::tempdir().unwrap();
+    let fixtures = tmp.path().join("bin");
+    fs::create_dir_all(&fixtures).unwrap();
+    let record = tmp.path().join("record.txt");
+    standin_claude(&fixtures);
+    let root = tmp.path().join("platform");
+    fs::create_dir_all(&root).unwrap();
+
+    let mut env = parent_env(&fixtures, &record);
+    env.insert("GH_TOKEN".to_string(), SECRET.to_string());
+    env.insert("AWS_BEARER_TOKEN_BEDROCK".to_string(), SECRET.to_string());
+
+    let built = build(&audit_spec(), &ctx(&root), &env).unwrap();
+    assert!(!built.env.contains_key("GH_TOKEN"));
+    assert!(!built.env.contains_key("AWS_BEARER_TOKEN_BEDROCK"));
+    assert!(built.scrubbed.contains(&"GH_TOKEN".to_string()));
+    assert!(built
+        .scrubbed
+        .contains(&"AWS_BEARER_TOKEN_BEDROCK".to_string()));
+
+    // N-6: with a gateway credential re-adding the API key, the warning names that the
+    // gateway carries it — it no longer claims the child is free of the key.
+    let mut gw = audit_spec();
+    gw.gateway_credential = Some(("ANTHROPIC_API_KEY".to_string(), "gw-plain".to_string()));
+    let built = build(&gw, &ctx(&root), &env).unwrap();
+    let warning = built.credential_warning.expect("warning present");
+    assert!(warning.contains("gateway"), "{warning}");
+    assert!(!warning.contains("keeps it out of the child"), "{warning}");
+}
+
+/// REQ-5 + REQ-1: an audit run needs a schema and an agent, and the foreign-tree audit run
+/// replaces the setting sources with `user` only (REQ-9).
+#[test]
+fn audit_needs_schema_and_foreign_tree_narrows_sources() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path().join("platform");
+    fs::create_dir_all(&root).unwrap();
+    let env = standin_env(&standin_dir(tmp.path()));
+
+    let mut no_schema = audit_spec();
+    no_schema.schema = None;
+    assert!(build(&no_schema, &ctx(&root), &env).is_err());
+
+    let mut no_agent = audit_spec();
+    no_agent.agent = None;
+    assert!(build(&no_agent, &ctx(&root), &env).is_err());
+
+    let mut foreign = audit_spec();
+    foreign.foreign_tree = true;
+    let built = build(&foreign, &ctx(&root), &env).unwrap();
+    assert_eq!(after(&built.args, "--setting-sources"), "user");
+}
+
+/// AC-5: a `success` subtype with no `structured_output` is no verdict, and so are a
+/// refusal `stop_reason`, `is_error` true, a non-zero exit and unparseable output.
+#[test]
+fn success_without_structured_output_is_no_verdict() {
+    use moai_cli::headless_run::{parse_result, RawRun, RunOutcome};
+
+    fn raw(success: bool, code: i32, stdout: &str) -> RawRun {
+        RawRun {
+            success,
+            code: Some(code),
+            stdout: stdout.to_string(),
+            stderr: String::new(),
+        }
+    }
+
+    let cases = [
+        raw(
+            true,
+            0,
+            r#"{"type":"result","subtype":"success","is_error":false,"session_id":"s","total_cost_usd":0.1,"num_turns":2}"#,
+        ),
+        raw(
+            true,
+            0,
+            r#"{"type":"result","subtype":"success","is_error":false,"stop_reason":"refusal","structured_output":{"verdict":"pass"}}"#,
+        ),
+        raw(
+            true,
+            0,
+            r#"{"type":"result","subtype":"success","is_error":true,"structured_output":{"verdict":"pass"}}"#,
+        ),
+        raw(false, 2, ""),
+        raw(true, 0, "not json"),
+        // B-1: a null structured_output is no verdict, not an empty answer
+        raw(
+            true,
+            0,
+            r#"{"type":"result","subtype":"success","is_error":false,"structured_output":null,"session_id":"s"}"#,
+        ),
+    ];
+    for (i, case) in cases.iter().enumerate() {
+        assert!(
+            matches!(parse_result(case), RunOutcome::NoVerdict { .. }),
+            "case {i} must be no verdict"
+        );
+    }
+
+    let answered = raw(
+        true,
+        0,
+        r#"{"type":"result","subtype":"success","is_error":false,"structured_output":{"verdict":"fail","blocking":["B-1"]},"session_id":"s","total_cost_usd":0.1,"num_turns":3}"#,
+    );
+    match parse_result(&answered) {
+        RunOutcome::Answered(v) => assert_eq!(v["verdict"], "fail"),
+        other => panic!("expected Answered, got {other:?}"),
+    }
+}
+
+/// AC-6: one finished run records exactly one `claude.run` event row whose payload names
+/// the verdict, the session id, the cost estimate marker, the turns, the terminal reason
+/// and the permission denials.
+#[test]
+fn one_run_one_ledger_row() {
+    use moai_cli::headless_run::{ledger_row, parse_result, record_run, RUN_EVENT};
+    use moai_cli::ledger::schema;
+    use rusqlite::Connection;
+
+    let tmp = tempfile::tempdir().unwrap();
+    let fixtures = tmp.path().join("bin");
+    fs::create_dir_all(&fixtures).unwrap();
+    let record = tmp.path().join("record.txt");
+    standin_claude(&fixtures);
+    let root = tmp.path().join("platform");
+    fs::create_dir_all(&root).unwrap();
+
+    let built = build(&audit_spec(), &ctx(&root), &parent_env(&fixtures, &record)).unwrap();
+    let raw = run(&built, tmp.path()).unwrap();
+    let outcome = parse_result(&raw);
+    let row = ledger_row(&built, &raw, &outcome);
+
+    // N-9 (AC-6): the verdict exists and is the schema-checked word
+    assert_eq!(row["verdict"], "fail");
+    assert_eq!(row["session_id"], "standin");
+    assert_eq!(row["cost_is_estimate"], true);
+    assert!(row["total_cost_usd"].is_number());
+    assert!(row["num_turns"].is_number());
+    assert!(row["terminal_reason"].is_object());
+    assert!(row.get("permission_denials").is_some());
+    assert_eq!(row["requesting_session"], REQUESTING);
+    assert!(row["scrubbed_credentials"].is_array());
+
+    let mut conn = Connection::open_in_memory().unwrap();
+    schema::create_v1(&mut conn, "demo", "test").unwrap();
+    let key = record_run(&mut conn, None, &row, "tester").unwrap();
+    assert!(key.starts_with("claude.run:"), "{key}");
+    let (count, payload): (i64, String) = conn
+        .query_row(
+            "SELECT COUNT(*), payload FROM event WHERE kind = ?1",
+            [RUN_EVENT],
+            |r| Ok((r.get(0)?, r.get(1)?)),
+        )
+        .unwrap();
+    assert_eq!(count, 1);
+    let payload: serde_json::Value = serde_json::from_str(&payload).unwrap();
+    assert_eq!(payload["session_id"], "standin");
+}
+
+/// N-4: only the success subtype can answer — anything else is no verdict.
+#[test]
+fn a_non_success_subtype_is_no_verdict() {
+    use moai_cli::headless_run::{parse_result, RawRun, RunOutcome};
+    let raw = RawRun {
+        success: true,
+        code: Some(0),
+        stdout: r#"{"type":"result","subtype":"error_max_turns","is_error":false,"structured_output":{"verdict":"pass"}}"#.into(),
+        stderr: String::new(),
+    };
+    assert!(matches!(parse_result(&raw), RunOutcome::NoVerdict { .. }));
+}
+
+/// N-1: the verdict field is checked against the schema before it is trusted.
+#[test]
+fn the_verdict_field_is_checked_against_the_schema() {
+    use moai_cli::headless_run::check_verdict;
+    let schema = json!({"type":"object","properties":{"verdict":{"type":"string","enum":["pass","fail"]}},"required":["verdict"]});
+    let ok = json!({"verdict":"pass"});
+    assert_eq!(check_verdict(&ok, &schema).unwrap(), "pass");
+    let wrong_enum = json!({"verdict":"maybe"});
+    assert!(check_verdict(&wrong_enum, &schema).is_err());
+    let missing = json!({"other": 1});
+    assert!(check_verdict(&missing, &schema).is_err());
+    let wrong_type = json!({"verdict": 3});
+    assert!(check_verdict(&wrong_type, &schema).is_err());
+}
+
+/// N-2 + B-1b: a run past its wall-clock limit is killed — the whole process group, so a
+/// background grandchild holding the pipe cannot stretch the wait — and reports no success.
+#[test]
+fn a_wall_clock_limit_kills_the_run() {
+    use moai_cli::headless_run::run_with_limit;
+    use std::time::{Duration, Instant};
+    let tmp = tempfile::tempdir().unwrap();
+    let fixtures = tmp.path().join("bin");
+    fs::create_dir_all(&fixtures).unwrap();
+    // a stand-in that outlives the limit and leaves a grandchild holding the pipe
+    let slow = "#!/bin/sh\nsleep 30 &\nwait\n";
+    common::write_executable(&fixtures.join("claude"), slow);
+    let record = tmp.path().join("record.txt");
+    let root = tmp.path().join("platform");
+    fs::create_dir_all(&root).unwrap();
+    let built = build(&audit_spec(), &ctx(&root), &parent_env(&fixtures, &record)).unwrap();
+    let started = Instant::now();
+    let raw = run_with_limit(&built, tmp.path(), Duration::from_millis(300)).unwrap();
+    let elapsed = started.elapsed();
+    assert!(!raw.success, "a killed run is not a success");
+    assert!(raw.stderr.contains("wall-clock"), "{}", raw.stderr);
+    assert!(
+        elapsed < Duration::from_secs(5),
+        "the group kill must not wait for the grandchild: {elapsed:?}"
+    );
+}
+
+/// B-1: a large answer must come back quickly — the wait drains stdout and stderr while it
+/// polls, so a full pipe never turns an answer into a timeout.
+#[test]
+fn a_large_answer_is_not_killed_by_a_full_pipe() {
+    use moai_cli::headless_run::{parse_result, run_with_limit, RunOutcome};
+    use std::time::{Duration, Instant};
+    let tmp = tempfile::tempdir().unwrap();
+    let fixtures = tmp.path().join("bin");
+    fs::create_dir_all(&fixtures).unwrap();
+    // ~300 KB of answer inside one JSON result
+    let big = "#!/bin/sh\n\
+printf '%s' '{\"type\":\"result\",\"subtype\":\"success\",\"is_error\":false,\"session_id\":\"standin\",\"structured_output\":{\"verdict\":\"pass\",\"detail\":\"'\n\
+head -c 300000 /dev/zero | tr '\\0' 'x'\n\
+printf '%s\\n' '\"}}'\n";
+    common::write_executable(&fixtures.join("claude"), big);
+    let record = tmp.path().join("record.txt");
+    let root = tmp.path().join("platform");
+    fs::create_dir_all(&root).unwrap();
+    let built = build(&audit_spec(), &ctx(&root), &parent_env(&fixtures, &record)).unwrap();
+    let started = Instant::now();
+    let raw = run_with_limit(&built, tmp.path(), Duration::from_secs(5)).unwrap();
+    let elapsed = started.elapsed();
+    assert!(
+        elapsed < Duration::from_secs(5),
+        "a large answer must not hit the limit: {elapsed:?}"
+    );
+    assert!(raw.success, "{}", raw.stderr);
+    assert!(raw.stdout.len() > 300_000, "{} bytes", raw.stdout.len());
+    assert!(matches!(parse_result(&raw), RunOutcome::Answered(_)));
+}
+
+/// F-1 case 1: a child that exits and leaves a background sleeper holding the pipe — the
+/// group is killed on normal exit too, so the call does not stretch past the limit.
+#[test]
+fn a_background_sleeper_does_not_stretch_the_call() {
+    use moai_cli::headless_run::run_with_limit;
+    use std::time::{Duration, Instant};
+    let tmp = tempfile::tempdir().unwrap();
+    let fixtures = tmp.path().join("bin");
+    fs::create_dir_all(&fixtures).unwrap();
+    let leaves_sleeper = "#!/bin/sh\nsleep 30 &\nexit 0\n";
+    common::write_executable(&fixtures.join("claude"), leaves_sleeper);
+    let record = tmp.path().join("record.txt");
+    let root = tmp.path().join("platform");
+    fs::create_dir_all(&root).unwrap();
+    let built = build(&audit_spec(), &ctx(&root), &parent_env(&fixtures, &record)).unwrap();
+    let started = Instant::now();
+    let raw = run_with_limit(&built, tmp.path(), Duration::from_secs(1)).unwrap();
+    let elapsed = started.elapsed();
+    assert!(raw.success, "{}", raw.stderr);
+    assert!(
+        elapsed < Duration::from_secs(4),
+        "the group kill on exit must not wait for the sleeper: {elapsed:?}"
+    );
+}
+
+/// F-1 case 2 / L-3a: a grandchild that has LEFT the group escapes the group kill, so only
+/// the bounded join ends the call — the escapee signals it has left before the parent
+/// exits, pinning the bound (a removed bound hangs this test).
+#[test]
+fn a_group_leaving_grandchild_does_not_stretch_the_call() {
+    use moai_cli::headless_run::run_with_limit;
+    use std::time::{Duration, Instant};
+    let tmp = tempfile::tempdir().unwrap();
+    let fixtures = tmp.path().join("bin");
+    fs::create_dir_all(&fixtures).unwrap();
+    let flag = tmp.path().join("left-the-group");
+    let leaves_group = format!(
+        "#!/bin/sh\npython3 -c 'import os,time; os.setsid(); open({flag:?}, \"w\"); time.sleep(30)' &\n\
+while [ ! -f {flag:?} ]; do sleep 0.05; done\nexit 0\n"
+    );
+    common::write_executable(&fixtures.join("claude"), &leaves_group);
+    let record = tmp.path().join("record.txt");
+    let root = tmp.path().join("platform");
+    fs::create_dir_all(&root).unwrap();
+    let built = build(&audit_spec(), &ctx(&root), &parent_env(&fixtures, &record)).unwrap();
+    let started = Instant::now();
+    let raw = run_with_limit(&built, tmp.path(), Duration::from_secs(1)).unwrap();
+    let elapsed = started.elapsed();
+    assert!(raw.success, "{}", raw.stderr);
+    assert!(
+        elapsed < Duration::from_secs(6),
+        "the bounded join must abandon the pipe, not wait out the escapee: {elapsed:?}"
+    );
+}
+
+/// L-1: an abandoned join keeps what was already read — a complete answer followed by a
+/// sleeper that has LEFT the group and holds stdout comes back with the answer, not empty.
+#[test]
+fn an_abandoned_join_keeps_the_answer_already_read() {
+    use moai_cli::headless_run::{parse_result, run_with_limit, RunOutcome};
+    use std::time::{Duration, Instant};
+    let tmp = tempfile::tempdir().unwrap();
+    let fixtures = tmp.path().join("bin");
+    fs::create_dir_all(&fixtures).unwrap();
+    let flag = tmp.path().join("escapee-left");
+    let answer_then_escapee = format!(
+        "#!/bin/sh\n\
+printf '%s' '{{\"type\":\"result\",\"subtype\":\"success\",\"is_error\":false,\"session_id\":\"standin\",\"structured_output\":{{\"verdict\":\"fail\"}}}}'\n\
+python3 -c 'import os,time; os.setsid(); open({flag:?}, \"w\"); time.sleep(30)' &\n\
+while [ ! -f {flag:?} ]; do sleep 0.05; done\nexit 0\n"
+    );
+    common::write_executable(&fixtures.join("claude"), &answer_then_escapee);
+    let record = tmp.path().join("record.txt");
+    let root = tmp.path().join("platform");
+    fs::create_dir_all(&root).unwrap();
+    let built = build(&audit_spec(), &ctx(&root), &parent_env(&fixtures, &record)).unwrap();
+    let started = Instant::now();
+    let raw = run_with_limit(&built, tmp.path(), Duration::from_secs(1)).unwrap();
+    let elapsed = started.elapsed();
+    assert!(raw.success, "{}", raw.stderr);
+    assert!(
+        elapsed < Duration::from_secs(6),
+        "the bounded join must not wait out the escapee: {elapsed:?}"
+    );
+    assert!(
+        matches!(parse_result(&raw), RunOutcome::Answered(_)),
+        "the already-read answer must survive: {}",
+        raw.stdout
+    );
+}
+
+/// L-3b: a verdict outside the schema is recorded as verdict_refused, never as a verdict.
+#[test]
+fn a_verdict_outside_the_schema_is_refused_in_the_row() {
+    use moai_cli::headless_run::{ledger_row, parse_result, RawRun};
+    let tmp = tempfile::tempdir().unwrap();
+    let fixtures = tmp.path().join("bin");
+    fs::create_dir_all(&fixtures).unwrap();
+    let record = tmp.path().join("record.txt");
+    standin_claude(&fixtures);
+    let root = tmp.path().join("platform");
+    fs::create_dir_all(&root).unwrap();
+    // a schema that names the words: pass or fail
+    let mut strict = audit_spec();
+    strict.schema = Some(
+        json!({"type":"object","properties":{"verdict":{"type":"string","enum":["pass","fail"]}},"required":["verdict"]}),
+    );
+    let built = build(&strict, &ctx(&root), &parent_env(&fixtures, &record)).unwrap();
+    // the answer says maybe
+    let raw = RawRun {
+        success: true,
+        code: Some(0),
+        stdout: r#"{"type":"result","subtype":"success","is_error":false,"structured_output":{"verdict":"maybe"},"session_id":"s"}"#.into(),
+        stderr: String::new(),
+    };
+    let outcome = parse_result(&raw);
+    let row = ledger_row(&built, &raw, &outcome);
+    assert!(
+        row["verdict"]["verdict_refused"].is_string(),
+        "{}",
+        row["verdict"]
+    );
+}
+
+/// N-7 and N-8: the prompt sits behind `--`, and the author comparison ignores case and
+/// falls back to the environment's session id.
+#[test]
+fn prompt_sits_behind_a_dashdash_and_the_author_check_ignores_case() {
+    let tmp = tempfile::tempdir().unwrap();
+    let fixtures = tmp.path().join("bin");
+    fs::create_dir_all(&fixtures).unwrap();
+    let record = tmp.path().join("record.txt");
+    standin_claude(&fixtures);
+    let root = tmp.path().join("platform");
+    fs::create_dir_all(&root).unwrap();
+    let mut env = parent_env(&fixtures, &record);
+
+    // N-7: the recorded argv ends "-- <prompt>", never a bare dash-prompt
+    let built = build(&audit_spec(), &ctx(&root), &env).unwrap();
+    let n = built.args.len();
+    assert_eq!(built.args[n - 2], "--");
+    assert_eq!(built.args[n - 1], "audit the head");
+
+    // N-8: an author id differing only in case is still the author
+    let mut self_audit = audit_spec();
+    self_audit.role = RunRole::Audit {
+        author_session: REQUESTING.to_ascii_uppercase(),
+    };
+    assert!(build(&self_audit, &ctx(&root), &env).is_err());
+
+    // N-8: an empty requesting session falls back to CLAUDE_CODE_SESSION_ID
+    env.insert("CLAUDE_CODE_SESSION_ID".into(), REQUESTING.into());
+    let blank_ctx = RunContext {
+        requesting_session: String::new(),
+        platform_root: Some(root.clone()),
+    };
+    let mut same_author = audit_spec();
+    same_author.role = RunRole::Audit {
+        author_session: REQUESTING.into(),
+    };
+    assert!(
+        build(&same_author, &blank_ctx, &env).is_err(),
+        "the env session id is the requester, so the author audit must refuse"
+    );
+}
+
+/// REQ-2: any wildcarded rule whose text starts with an assignment refuses, in every quote
+/// spelling — a word before `=` is not a plain command word, and no quoting can be told
+/// apart safely — and a narrow rule with an equals-bearing argument still builds.
+#[test]
+fn assignment_prefixed_wildcard_rules_refuse_in_every_spelling() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path().join("platform");
+    fs::create_dir_all(&root).unwrap();
+    let env = standin_env(&standin_dir(tmp.path()));
+    for rule in [
+        "Bash(FOO=1 python *)",
+        "Bash(FOO='a b' bash -c *)",
+        "Bash(FOO=$'a b' python *)",
+        "Bash(FOO=a\\ b python *)",
+        "Bash(FOO=\"say \\\"hi\\\"\" python *)",
+    ] {
+        let mut spec = audit_spec();
+        spec.allowed_tools = vec![rule.to_string()];
+        assert!(
+            build(&spec, &ctx(&root), &env).is_err(),
+            "{rule} must refuse"
+        );
+    }
+    // no assignment prefix: the narrow rule still builds
+    let mut spec = audit_spec();
+    spec.allowed_tools = vec!["Bash(git diff *)".to_string()];
+    assert!(build(&spec, &ctx(&root), &env).is_ok());
+    // the allowed shape holds: a plain command word, a colon-wildcard suffix, an
+    // equals-bearing argument (the word before `=` is not the first word), and cd/true
+    // on their own (no compound operator)
+    for rule in [
+        "Bash(git log:*)",
+        "Bash(git log --foo=bar *)",
+        "Bash(cd *)",
+        "Bash(true *)",
+        "Bash(npm run build:*)",
+    ] {
+        let mut spec = audit_spec();
+        spec.allowed_tools = vec![rule.to_string()];
+        assert!(
+            build(&spec, &ctx(&root), &env).is_ok(),
+            "{rule} is the allowed shape and must build"
+        );
+    }
+}
+
+/// The reaped-elsewhere case, in a process of its own: SIGCHLD set to SIG_IGN makes the
+/// kernel reap children at exit, so waitid answers ECHILD, wait() fails and the arm under
+/// test runs — success false, code none, the answer kept, no verdict. The disposition is
+/// process-wide, so the child of this test re-execs the test binary with a marker env var
+/// and writes its RawRun as JSON to a parent-named file; a leaked SIG_IGN would break every
+/// sibling test (measured: ECHILD in common::write_executable's sh).
+#[test]
+fn a_reaped_elsewhere_child_returns_its_drained_output() {
+    use moai_cli::headless_run::run_with_limit;
+    use std::time::Duration;
+    let tmp = tempfile::tempdir().unwrap();
+    let fixtures = tmp.path().join("bin");
+    fs::create_dir_all(&fixtures).unwrap();
+    let standin = "#!/bin/sh\n\
+printf '%s' '{\"type\":\"result\",\"subtype\":\"success\",\"is_error\":false,\"session_id\":\"standin\",\"structured_output\":{\"verdict\":\"fail\"}}'\n\
+exit 0\n";
+    common::write_executable(&fixtures.join("claude"), standin);
+    let record = tmp.path().join("record.txt");
+    let root = tmp.path().join("platform");
+    fs::create_dir_all(&root).unwrap();
+    let built = build(&audit_spec(), &ctx(&root), &parent_env(&fixtures, &record)).unwrap();
+
+    // Child mode: ignore SIGCHLD, run once, write the outcome file, clean, exit.
+    if std::env::var_os("REAPED_ELSEWHERE_CHILD").is_some() {
+        unsafe {
+            libc::signal(libc::SIGCHLD, libc::SIG_IGN);
+        }
+        let raw = run_with_limit(&built, tmp.path(), Duration::from_secs(5)).unwrap();
+        let out_path = std::env::var("REAPED_ELSEWHERE_OUT").unwrap();
+        fs::write(
+            &out_path,
+            serde_json::json!({
+                "success": raw.success,
+                "code": raw.code,
+                "stdout": raw.stdout,
+                "stderr": raw.stderr,
+            })
+            .to_string(),
+        )
+        .expect("write the outcome file");
+        drop(built);
+        drop(record);
+        drop(root);
+        drop(fixtures);
+        drop(tmp);
+        std::process::exit(0);
+    }
+
+    // Parent mode: re-exec this same test in a fresh process with the marker set and a
+    // known outcome path — a file sidesteps single-thread libtest interleaving stdout.
+    let outcome = tmp.path().join("reaped-outcome.json");
+    let exe = std::env::current_exe().unwrap();
+    let out = std::process::Command::new(exe)
+        .args([
+            "a_reaped_elsewhere_child_returns_its_drained_output",
+            "--exact",
+            "--nocapture",
+        ])
+        .env("REAPED_ELSEWHERE_CHILD", "1")
+        .env("REAPED_ELSEWHERE_OUT", outcome.display().to_string())
+        .output()
+        .expect("spawn the reaped-elsewhere child process");
+    assert!(out.status.success(), "child test process failed");
+    let raw: Value = serde_json::from_str(&fs::read_to_string(&outcome).expect("the outcome file"))
+        .expect("the json parses");
+    assert!(
+        !raw["success"].as_bool().unwrap(),
+        "unknown status is not a success"
+    );
+    assert!(raw["code"].is_null(), "the exit code is unknown");
+    let stderr = raw["stderr"].as_str().unwrap();
+    assert!(stderr.contains("unknown"), "{stderr}");
+    // the drained stdout itself is KEPT: the structured_output the child printed must be
+    // in the returned stdout (an empty-stdout return fails here)
+    assert!(
+        raw["stdout"]
+            .as_str()
+            .unwrap()
+            .contains("structured_output"),
+        "the drained stdout must be kept: {}",
+        raw["stdout"]
+    );
+    // and that kept answer is STILL no verdict without a status — asserted, not just said
+    let raw_run = moai_cli::headless_run::RawRun {
+        success: raw["success"].as_bool().unwrap(),
+        code: raw["code"].as_i64().map(|c| c as i32),
+        stdout: raw["stdout"].as_str().unwrap().to_string(),
+        stderr: stderr.to_string(),
+    };
+    assert!(matches!(
+        moai_cli::headless_run::parse_result(&raw_run),
+        moai_cli::headless_run::RunOutcome::NoVerdict { .. }
+    ));
+}

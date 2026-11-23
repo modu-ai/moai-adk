@@ -1,10 +1,9 @@
 //! Card roles (SPEC-20261122-card-roles): a card shows its authors, its auditor and its lander
-//! from ledger rows, an audit assignment never names an author, and a typed verdict row from a
-//! session that held the card is refused. Every test runs on a temporary home and a temporary
+//! from ledger rows, and an audit assignment never names an author. Every test runs on a temporary home and a temporary
 //! repository; nothing here touches the real ledger.
 //!
 //! Sessions are made with the host's session variable, one per role: `S_A` took the card first,
-//! `S_B` took it after `S_A` gave it back and sent it to review, `S_C` and `S_D` never held it.
+//! `S_B` took it after `S_A` gave it back and sent it to review, `S_C` never held it.
 
 mod common;
 
@@ -19,7 +18,6 @@ const SESSION_VAR: &str = "CLAUDE_CODE_SESSION_ID";
 const S_A: &str = "aaaaaaaa-0000-4000-8000-00000000000a";
 const S_B: &str = "bbbbbbbb-0000-4000-8000-00000000000b";
 const S_C: &str = "cccccccc-0000-4000-8000-00000000000c";
-const S_D: &str = "dddddddd-0000-4000-8000-00000000000d";
 const PROFILE: &[u8] = b"{\"schema_version\": 1, \"project_id\": \"demo\", \"purpose\": \"fixture\", \"tools\": [\"rust\"], \"development_methods\": [\"sdd\"], \"hosts\": [\"claude\"], \"work_flow\": {\"flow\": \"m-flow\", \"integration_branch\": \"integ\"}}";
 
 fn git(dir: &Path, args: &[&str]) -> String {
@@ -102,22 +100,6 @@ impl World {
         let name = self.ready_card();
         result(&self.card(Some(S_A), &["take", &name]));
         name
-    }
-
-    fn verdict(&self, session: &str, card: &str, head: &str, result_word: &str) -> Output {
-        self.card(
-            Some(session),
-            &[
-                "verdict",
-                card,
-                "--head",
-                head,
-                "--result",
-                result_word,
-                "--evidence",
-                "note-1",
-            ],
-        )
     }
 
     fn assign(&self, by: &str, card: &str, auditor: &str) -> Output {
@@ -219,83 +201,6 @@ fn roles_are_read_from_reservations_the_assignment_and_the_landing() {
     assert_eq!(shown["roles"]["auditor"], json!(S_C), "{shown}");
     assert_eq!(shown["roles"]["lander"]["by"], json!("leader"), "{shown}");
     assert_eq!(shown["roles"]["lander"]["head"], json!(w.head), "{shown}");
-}
-
-// ---- verdict_ ---------------------------------------------------------------------------------
-
-/// AC-2: the session that holds the card and a session that held an earlier generation are both
-/// refused a verdict, with the card and the reason named, and nothing is written.
-#[test]
-fn verdict_author_sessions_are_refused_with_the_reason() {
-    let w = World::new();
-    let name = w.review_card();
-    let before = w.events();
-    for (who, label) in [(S_B, "the current holder"), (S_A, "an earlier holder")] {
-        let message = refusal(&w.verdict(who, &name, &w.head, "pass"));
-        assert!(message.contains(&name), "{label}: {message}");
-        assert!(message.contains("held"), "{label}: {message}");
-        assert_eq!(w.events(), before, "{label}: an event was written");
-    }
-    assert_eq!(w.count("card.verdict"), 0);
-}
-
-/// AC-3: a session that never held a card in review writes one row with the head, the result, the
-/// evidence reference and itself as the actor; a short head, an unknown result and an active card
-/// each refuse before any write.
-#[test]
-fn verdict_rows_hold_the_head_the_result_the_evidence_and_the_writer() {
-    let w = World::new();
-    let name = w.review_card();
-    let before = w.events();
-    for (label, head, word) in [
-        ("a short head", &w.head[..39], "pass"),
-        ("a result of maybe", w.head.as_str(), "maybe"),
-    ] {
-        refusal(&w.verdict(S_C, &name, head, word));
-        assert_eq!(w.events(), before, "{label} wrote an event");
-    }
-    let active = w.active_card();
-    let before = w.events();
-    refusal(&w.verdict(S_C, &active, &w.head, "pass"));
-    assert_eq!(w.events(), before, "an active card took a verdict");
-
-    result(&w.verdict(S_C, &name, &w.head, "pass"));
-    assert_eq!(w.count("card.verdict"), 1);
-    let (payload, actor) = w.payload_of_last("card.verdict");
-    assert_eq!(payload["head"], json!(w.head), "{payload}");
-    assert_eq!(payload["result"], json!("pass"), "{payload}");
-    assert_eq!(payload["evidence"], json!("note-1"), "{payload}");
-    assert_eq!(actor, S_C);
-}
-
-/// AC-6: after an assignment, a verdict from another session that never held the card is refused
-/// and names the assigned auditor; the assigned auditor's verdict is accepted.
-#[test]
-fn verdict_assigned_auditor_is_the_only_one_accepted() {
-    let w = World::new();
-    let name = w.review_card();
-    result(&w.assign("leader", &name, S_C));
-    let before = w.events();
-    let message = refusal(&w.verdict(S_D, &name, &w.head, "pass"));
-    assert!(message.contains(S_C), "the auditor is not named: {message}");
-    assert_eq!(w.events(), before);
-    result(&w.verdict(S_C, &name, &w.head, "fail"));
-    assert_eq!(w.count("card.verdict"), 1);
-}
-
-/// AC-7: the same session repeating the same head and result writes no second row and says so; a
-/// different result for the same head is a new row.
-#[test]
-fn verdict_repeat_writes_no_second_row() {
-    let w = World::new();
-    let name = w.review_card();
-    result(&w.verdict(S_C, &name, &w.head, "pass"));
-    let again = result(&w.verdict(S_C, &name, &w.head, "pass"));
-    assert_eq!(again["written"], json!(false), "{again}");
-    assert_eq!(w.count("card.verdict"), 1);
-    let other = result(&w.verdict(S_C, &name, &w.head, "fail"));
-    assert_eq!(other["written"], json!(true), "{other}");
-    assert_eq!(w.count("card.verdict"), 2);
 }
 
 // ---- assign_ ----------------------------------------------------------------------------------

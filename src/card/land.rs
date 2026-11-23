@@ -14,16 +14,28 @@
 //!    branch checked out;
 //! 4. the SPEC the card names passes at the candidate, and every check `card finish` would make
 //!    passes ([`workflow::finish_preflight`], the same code the finish transaction runs first);
-//! 5. the move: `git update-ref <branch> <candidate> <tip read>` is git's own compare-and-swap, so
-//!    a branch that moved in between is refused as `tip_moved`;
-//! 6. the close: [`workflow::finish`] with the candidate as the landed head. A close that is
-//!    refused after the move leaves the branch moved and says so; the same call run again finds
-//!    the candidate inside the tip, skips the move and closes (or repeats the refusal). Git is
-//!    the record of the move and the ledger the record of the close, so no row is written
-//!    between them.
+//! 5. a move starts with one ledger row ([`workflow::record_land_started`], run through the same
+//!    checks as the close, once per card, head and tip) and the intent record the guard of the
+//!    integration branch reads (SPEC-20261121-ref-guard); the record is removed when the update
+//!    is over, whatever came of it;
+//! 6. the move: `git update-ref <branch> <candidate> <tip read>` is git's own compare-and-swap, so
+//!    a branch that moved in between is refused as `tip_moved`, and a reference update git
+//!    refuses for another reason (the guard, a lock file) is reported with git's reason;
+//! 7. the close: [`workflow::finish`] with the candidate as the landed head. A close that is
+//!    refused after the move leaves the branch moved and the start row in the ledger, and says
+//!    so; the same call run again finds the candidate inside the tip, skips the move and closes
+//!    (or repeats the refusal).
+//!
+//! The answer names `variants` (branches that differ from the integration branch's name only in
+//! letter case) and `profile_disagrees` (the profile's branch when it is not the recorded one).
+
+pub mod check;
+pub mod scans;
 
 use super::command::open_for_write;
+use super::drift;
 use super::finish::{parse_met, previous_json};
+use super::guard;
 use super::input::{self, CardRef};
 use super::landed::{self, Containment, RefMove, Standing};
 use super::spec_link;
@@ -70,6 +82,21 @@ fn card_id(reference: &str) -> Result<i64> {
             "name the card by its C-number (`card show #N` finds it)",
         )),
     }
+}
+
+/// What a refusal after the start row says in place of `nothing was changed`: the one row that
+/// was written and that the branch did not move.
+const START_ROW_KEPT: &str =
+    "only the start row of this landing was written to the ledger and the branch did not move";
+
+/// A refusal of the move after the start row was written.
+fn after_start_row(why: impl std::fmt::Display) -> String {
+    refused(format!("{why}; {START_ROW_KEPT}"))
+}
+
+/// A refusal about the state of the repository after the start row was written.
+fn conflict_after_start_row(why: impl std::fmt::Display) -> String {
+    format!("card conflict in landing: {why}; {START_ROW_KEPT}")
 }
 
 /// The sentence a refusal that wrote nothing ends with. Finish's own refusals end with it too, so
@@ -205,6 +232,9 @@ pub fn land(project: &Path, home: &Path, reference: &str, req: &LandRequest<'_>)
             )))
         }
     }
+    if let Some(why) = drift::refusal(ledger.conn(), &branch, &tip).map_err(unchanged)? {
+        return Err(conflict(why));
+    }
     let to_tip = if standing == Standing::OnTip {
         req.head.to_string()
     } else {
@@ -230,26 +260,77 @@ pub fn land(project: &Path, home: &Path, reference: &str, req: &LandRequest<'_>)
     )
     .map_err(finish_refusal)?;
 
-    // The move: git's compare-and-swap on the tip that was read.
+    // The audit verdict (SPEC-20261123-landing-reads-verdict): read before the first write. A head
+    // the branch already holds is closed on the verdict its start row names; a head that still
+    // stands on the tip has moved nothing, so its verdicts are judged again (REQ-15, REQ-24). In
+    // observe mode a refusal is only reported, and the landing goes on as it did before the check.
+    let mode = check::mode(project).map_err(unchanged)?;
+    let input = check::Input {
+        project,
+        conn: ledger.conn(),
+        card_id,
+        head: req.head,
+        tip: &tip,
+        on_tip: standing == Standing::OnTip,
+        lander: req.session,
+    };
+    let check::Reading {
+        relied,
+        would_refuse,
+    } = check::read(&input, mode).map_err(unchanged)?;
+
+    // The scans the merge tree needs (SPEC-20261123-land-repo-scans): only a landing that moves the
+    // branch asks for them; a head the branch already holds was judged when it moved (REQ-9).
+    let scans = if standing == Standing::OnTip {
+        scans::read(&input, mode).map_err(unchanged)?
+    } else {
+        Value::Null
+    };
+
+    // The one value for the whole repository: the record seeds from the profile once, and a
+    // profile that disagrees with it is reported. Case variants that already exist are reported.
+    let guarded = guard::protected(project, true).map_err(unchanged)?;
+    let profile_disagrees = guarded.and_then(|g| g.profile_disagrees);
+    let variants = guard::variants(project, &full).map_err(unchanged)?;
+
+    // The move: the ledger row first, then the intent record and git's compare-and-swap on the
+    // tip that was read.
     let mut moved = false;
     if standing == Standing::OnTip {
+        let common = guard::common_dir_of(project).map_err(unchanged)?;
+        workflow::record_land_started(
+            &mut ledger,
+            card_id,
+            req.session,
+            req.by,
+            &evidence,
+            &met,
+            req.generation,
+            &branch,
+            &tip,
+            relied.as_ref(),
+        )
+        .map_err(finish_refusal)?;
+        guard::write_intent(&common, &full, &tip, req.head).map_err(after_start_row)?;
         let message = format!("moai card land {}", &req.head[..12]);
-        match landed::move_branch(project, &full, req.head, &tip, &message).map_err(unchanged)? {
+        let attempt = landed::move_branch(project, &full, req.head, &tip, &message);
+        guard::remove_intent(&common);
+        match attempt.map_err(after_start_row)? {
             RefMove::Moved => moved = true,
             RefMove::Lost(why) => {
                 // Read where the branch is now: another call may have landed this very head a
                 // moment ago (nothing to move), the branch may have moved to something else
                 // (`tip_moved`), or it did not move at all and git refused for another reason (a
                 // lock file, a read-only store): that one is git's reason, not a moved tip.
-                let now = landed::tip_of(project, &branch).map_err(unchanged)?;
+                let now = landed::tip_of(project, &branch).map_err(after_start_row)?;
                 if now == tip {
-                    return Err(unchanged(format!(
+                    return Err(after_start_row(format!(
                         "git refused to move the integration branch {branch} to {}: {why}",
                         req.head
                     )));
                 }
                 if now != req.head {
-                    return Err(conflict(format!(
+                    return Err(conflict_after_start_row(format!(
                         "tip_moved: the integration branch {branch} no longer points at {tip} \
                          (now {now}; git said: {why}); read the tip again and run the call again"
                     )));
@@ -259,7 +340,9 @@ pub fn land(project: &Path, home: &Path, reference: &str, req: &LandRequest<'_>)
     }
 
     // The close. A refusal here comes after the move and says so.
-    let done = workflow::finish(
+    // The landing event names the verdict this call relied on, not the one an earlier call's start
+    // row names: a call that stopped before the move and judged again has a newer one (REQ-13).
+    let done = workflow::finish_naming(
         &mut ledger,
         card_id,
         req.session,
@@ -267,6 +350,7 @@ pub fn land(project: &Path, home: &Path, reference: &str, req: &LandRequest<'_>)
         &evidence,
         &met,
         req.generation,
+        workflow::LandedVerdict::Relied(relied.as_ref()),
     )
     .map_err(|e| {
         if moved {
@@ -276,14 +360,54 @@ pub fn land(project: &Path, home: &Path, reference: &str, req: &LandRequest<'_>)
         }
     })?;
     let applied: &[(i64, String)] = if done.closed { &met } else { &[] };
-    Ok(json!({
+    // A closed card's worktrees and branches are cleaned by the cleanup executor
+    // (SPEC-20261123-cleanup-outbox): the close wrote this card's request, and the executor takes
+    // it with every older pending one. It runs after the close and never undoes it: a problem is
+    // the `error` of `cleanup_outbox`. The `cleanup` key keeps the worktree answer of this card.
+    // A card that stays open keeps its worktrees and branches.
+    let outbox = if done.closed {
+        super::cleanup::run_pending(
+            project,
+            home,
+            req.session.unwrap_or(req.by),
+            &super::cleanup::Options::default(),
+        )
+    } else {
+        Value::Null
+    };
+    let cleanup = if done.closed {
+        super::cleanup::cleanup_of(&outbox, card_id)
+    } else {
+        Value::Null
+    };
+    let mut answer = json!({
         "action": "land", "project_id": id, "name": name, "card_id": card_id,
         "branch": branch, "moved": moved, "from_tip": tip, "to_tip": to_tip, "head": req.head,
+        "variants": variants, "profile_disagrees": profile_disagrees,
         "from": done.from, "state": done.state, "rev": done.rev, "closed_at": done.closed_at,
         "closed": done.closed, "open_criteria": done.open_criteria,
         "met": applied.iter().map(|(seq, text)| json!({"seq": seq, "evidence": text})).collect::<Vec<_>>(),
         "by": req.by, "session": req.session,
         "previous": previous_json(&done.previous), "released": done.released,
-        "events": done.events, "writes": done.events > 0 || moved,
-    }))
+        // A worktree the cleanup removed or trimmed is a write too.
+        "events": done.events,
+        "writes": done.events > 0 || moved || super::cleanup::wrote(&outbox),
+        "cleanup": cleanup,
+        "scans": scans,
+        "cleanup_outbox": outbox,
+    });
+    if let Some(verdict) = &relied {
+        answer["verdict"] = verdict.clone();
+        if let Some(after) = verdict["event"].as_i64() {
+            if let Some(late) =
+                check::late_fail(ledger.conn(), card_id, req.head, after).map_err(unchanged)?
+            {
+                answer["late_fail"] = late;
+            }
+        }
+    }
+    if let Some(refusal) = would_refuse {
+        answer["would_refuse"] = refusal;
+    }
+    Ok(answer)
 }

@@ -1,5 +1,6 @@
 //! Helpers shared by integration tests.
 pub mod cli;
+pub mod fake_exe;
 pub mod git;
 pub mod home;
 #[cfg(unix)]
@@ -73,13 +74,74 @@ pub trait CleanEnv {
     fn clean_env(&mut self) -> &mut Self;
 }
 
+/// The debug-build test switch of SPEC-20261121-cheap-process-scan: with `empty`, the two
+/// process scans of `src/worktree_gc.rs` answer "no process uses anything" without running
+/// `lsof` over the whole machine (SPEC-20261122-test-process-table-default). A child built by
+/// `clean_env`, or by the command helper of a named slow test file (`process_table()`), carries
+/// the switch; a test that judges whether a program uses a folder calls
+/// `use_real_process_table()` first, and its later commands read the real table.
+#[allow(dead_code)] // not every test crate spawns a command that reads the process table
+pub const PROCESS_TABLE_SWITCH: &str = "MOAI_CLI_TEST_PROCESS_TABLE";
+#[allow(dead_code)]
+pub const NO_PROCESS_TABLE: (&str, &str) = (PROCESS_TABLE_SWITCH, "empty");
+#[allow(dead_code)]
+pub const REAL_PROCESS_TABLE: (&str, &str) = (PROCESS_TABLE_SWITCH, "real");
+
+thread_local! {
+    // libtest runs each test on a thread of its own, so the choice stays with one test.
+    static REAL_TABLE: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// The calling test judges whether a program uses a folder: from now on its commands read the
+/// machine's real process table. A helper that starts a program in a folder calls it. The choice
+/// belongs to the calling thread: a command built on a thread the test starts gets the default
+/// (`empty`) unless that thread calls this too.
+#[allow(dead_code)]
+pub fn use_real_process_table() {
+    REAL_TABLE.with(|c| c.set(true));
+}
+
+/// The switch value for the calling test's next command: `NO_PROCESS_TABLE` unless the test
+/// called `use_real_process_table`.
+#[allow(dead_code)]
+pub fn process_table() -> (&'static str, &'static str) {
+    if REAL_TABLE.with(|c| c.get()) {
+        REAL_PROCESS_TABLE
+    } else {
+        NO_PROCESS_TABLE
+    }
+}
+
+/// Start `cmd` as the leader of a process group of its own, so `kill_group` also stops the
+/// programs it starts: a shell holder's `sleep` outlives a kill of the shell alone.
+#[cfg(unix)]
+#[allow(dead_code)]
+pub fn spawn_group(cmd: &mut std::process::Command) -> std::process::Child {
+    use std::os::unix::process::CommandExt;
+    cmd.process_group(0).spawn().unwrap()
+}
+
+/// Stop the group `spawn_group` started (`kill -KILL -- -<group>`) and reap its leader.
+#[cfg(unix)]
+#[allow(dead_code)]
+pub fn kill_group(child: &mut std::process::Child) {
+    let _ = std::process::Command::new("/bin/kill")
+        .args(["-KILL", "--", &format!("-{}", child.id())])
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status();
+    let _ = child.kill();
+    let _ = child.wait();
+}
+
 impl CleanEnv for std::process::Command {
     fn clean_env(&mut self) -> &mut Self {
         self.env_clear();
         if let Some(dir) = std::env::var_os("DEVELOPER_DIR").filter(|d| Path::new(d).is_dir()) {
             self.env("DEVELOPER_DIR", dir);
         }
-        self
+        self.envs([process_table()])
     }
 }
 

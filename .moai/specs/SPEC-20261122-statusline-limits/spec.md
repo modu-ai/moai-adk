@@ -2,7 +2,7 @@
 id: SPEC-20261122-statusline-limits
 title: "The third line of the status line shows the limits as the host gives them, and the render stops doing work nobody sees"
 status: draft
-revision: 1
+revision: 4
 created: 2026-11-22
 parent: SPEC-20261122-statusline-flow
 ---
@@ -82,11 +82,11 @@ Widths as `unicode-width` counts them (probe 2026-11-22). Fixture values only.
 | | Z3, Z4 | `🪫 CW 74% \| 🔋 7D 21%` | 21 |
 | update pending | Z0 | `🪫 CW 74% \| 🪫 5H 85% (1h 10m) \| 🔋 7D 21% (6d 21h) \| 🤖 2.1.330 \| 🗿 4.2647.15 -> 4.2647.16` | 92 |
 | | Z1 no Claude Code version | `🪫 CW 74% \| 🪫 5H 85% (1h 10m) \| 🔋 7D 21% (6d 21h) \| 🗿 4.2647.15 -> 4.2647.16` | 79 |
-| API key user | Z0 | `🪫 CW 41% \| 💰 3.87 \| 🤖 2.1.330 \| 🗿 4.2647.16` | 47 |
-| | Z2 | `🪫 CW 41% \| 💰 3.87` | 19 |
-| | Z4 | `🪫 CW 41%` | 9 |
+| API key user | Z0 | `🔋 CW 41% \| 💰 3.87 \| 🤖 2.1.330 \| 🗿 4.2647.16` | 47 |
+| | Z2 | `🔋 CW 41% \| 💰 3.87` | 19 |
+| | Z4 | `🔋 CW 41%` | 9 |
 
-The forms drop in the order: the Claude Code version (Z1, keeping an update arrow), the MoAI version (Z2, the arrow with it), the countdowns (Z3), the five-hour window (Z4). Cost and the seven-day window are the last items to go.
+The forms drop in the order: the Claude Code version (Z1, keeping an update arrow), the MoAI version (Z2, the arrow with it), the countdowns (Z3), the five-hour window and the cost (Z4). The context window and the seven-day window are never dropped. Revision 2 (leader decision on Q1 and Q2 of the limits slice, option (a), as the code and its tests already do): a context window at 41 percent shows `🔋` (at most 70), and the cost goes at Z4.
 
 ## Scope
 
@@ -120,7 +120,9 @@ Step 3 starts by listing every reader of `usage-limits.json` (`rg` over `src`, t
 | D-6 | the Orca pass-through starts `~/.orca/agent-hooks/claude-statusline.sh` (the file Orca installs) only when it is an executable file, the three hook variables (`ORCA_AGENT_HOOK_PORT`, `ORCA_AGENT_HOOK_TOKEN`, `ORCA_PANE_KEY`) or the endpoint file variable are set, and the stdin has `rate_limits`; stdin is the received bytes; stdout and stderr are discarded; the render never waits | user pick: "moai passes the stdin it receives to Orca's wrapper, loopback" (note 5935); the script read 2026-11-22 | remove the call |
 | D-7 | the tolerant reader (`serde_json` values, a field at a time) replaces `godecode.rs` | the doc's input fields keep growing; one mistyped field must not blank the line | none planned |
 | D-8 | the generated block carries `refreshInterval: 30` and `padding` from the status line configuration | user pick (note 5935); docs: `refreshInterval` re-runs the command every N seconds, minimum 1 | change the number |
+| D-9 | (개정 3) 사용량 기록은 Unix 권한이 있는 시스템에서만 쓰고 읽는다. Windows 에서는 기록이 없고 `usage-limit` 과 `lane-screen --home` 은 언제나 `unknown` 이다. `TMPDIR` 이 없거나 비면 캐시 폴더는 `/tmp/moai-statusline-<uid>` 이다 | 기록은 이 사용자만 들어갈 수 있는 폴더(0700, 자기 것, 링크 아님)를 요구하는데, 그 검사는 Unix 권한으로만 해요. 공유 `/tmp` 에서 다른 사용자의 폴더와 이름이 우연히 겹치지 않게 이름에 uid 를 붙여요. 다른 사용자가 이 이름을 먼저 만들어 두는 것을 막지는 못하고, 그때는 폴더 검사가 거절해서 기록이 없고 읽기는 `unknown` 이에요(안전한 쪽으로 실패) | Windows 용 접근 제어 검사를 더하거나 이름의 uid 를 빼기 |
+| D-10 | (개정 3, 개정 4) Orca 래퍼는 Orca 가 설치하는 모양일 때만 실행한다: `~/.orca`·`~/.orca/agent-hooks` 는 링크가 아닌 폴더, 스크립트는 링크가 아닌 일반 파일이고, 셋 다 이 사용자 소유이며 그룹·다른 사용자가 쓸 수 없고(쓰기 비트 0o022 없음), 스크립트에는 소유자 실행 비트(0o100)가 있다. 한 번에 하나만, 정해진 시간만 돈다: 렌더가 캐시 폴더의 `orca-wrapper.lock` 에 `flock` 을 잡아 래퍼에 열린 디스크립터로 넘기고(래퍼와 그 자식이 끝나면 커널이 푼다, pid 파일 없음), 잠금이 잡혀 있으면 아무것도 띄우지 않는다. 래퍼는 10초 뒤 `SIGALRM`(기본 동작으로 되돌려 둠, `exec` 뒤에도 남음)으로 끝난다. 환경은 래퍼가 읽는 변수만 넘긴다: 훅 변수 셋과 엔드포인트 변수, `ORCA_AGENT_HOOK_ENV`·`ORCA_AGENT_HOOK_VERSION`, `CLAUDE_JOB_DIR`·`CLAUDE_CONFIG_DIR`, `HOME`·`PATH`·`TMPDIR`, `LANG`·`LC_*`. 작업 폴더는 렌더의 폴더, stdin 은 받은 바이트를 렌더가 끝나기 전에 통째로 쓰고 16 KiB(새 파이프가 담는 크기)를 넘는 입력이면 띄우지 않는다. stdout·stderr 는 버리고, 자기 프로세스 그룹에서 돌며 렌더는 기다리지 않는다 | 상태줄이 HOME 아래의 남의 파일이나 다른 곳을 가리키는 링크를 실행하면 그 파일을 바꿀 수 있는 사람의 코드가 매 렌더마다 돌아요. 이 Mac 의 실제 설치(2026-11-22 확인)는 0755 파일, 0755 폴더, 0700 `.orca` 로 이 조건을 만족해요. 감사가 멈춘 래퍼가 렌더마다 하나씩 쌓이는 것을 쟀어요(45초 래퍼, 렌더 10번, 프로세스 10개): 잠금과 시간 제한이 그것을 하나로, 10초로 묶어요. 잠금은 사용자당 하나라서 두 창이 같은 순간에 렌더하면 한쪽은 이번 렌더를 건너뛰고 다음 렌더(30초)에 보내요. 래퍼가 띄운 자식은 알람을 물려받지 않아서, 자식이 멈추면 잠금이 그동안 남아요(Orca 래퍼의 `curl` 은 `--max-time 1.5`). 환경은 리더 결정(감사 노트와 같은 노트): moai 가 띄우는 프로세스라 세션의 비밀을 모두 넘기지 않아요. 넘기는 목록은 Orca 의 `claude-statusline.sh` 가 읽는 변수에서 왔어요. 다른 소유자의 파일은 uid 를 인자로 받는 lib 테스트로 확인해요 | 검사 함수(`installed_by`), 잠금(`take_lock`), 환경 목록(`wrapper_env`) |
 
 ## Result
 
-SPEC 만이에요. 돌린 것: 줄 3 모양 너비 측정(`unicode-width` 프로브), Orca 래퍼 스크립트 읽기(2026-11-22, 코드 변경 없음). 돌리지 않은 것: 레인의 사용량 파일 읽는 곳 전수 조사(계획 3단계의 시작에 해요), 시험들.
+진행 중이에요(2026-11-23). 계획 1·2단계(너그러운 입력 읽기, 줄 3 항목과 모양)는 착지했어요(5d899d8fd2). 3단계(사용량 기록을 상태줄 캐시 폴더로, 읽는 두 곳도 함께)와 감사 후속은 3784f7232f 로 착지했어요. 읽는 곳은 `src/ops/usage_limit.rs`·`src/lane_screen.rs` 두 곳이었고, HOME 의 예전 자리를 말하던 문서·코드 주석(`src/home_layout.rs`, 두 연산 문서, 두 이전 SPEC)은 이번 조각에서 새 자리로 고쳤어요. 4단계(Orca 넘겨주기, AC-6, AC-9 의 프로세스 수 절반)는 이번 조각에 있어요. 남은 것: 5단계(설정 생성기, REQ-9·AC-7, 범위 넓히기 필요), 6단계(문서), 그리고 이 SPEC 을 닫는 AC 별 결과 줄.

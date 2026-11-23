@@ -1,5 +1,5 @@
 //! Card roles (SPEC-20261122-card-roles): who wrote a card, who audits it and who landed it, read
-//! from ledger rows, and the two typed rows that record an audit assignment and a verdict.
+//! from ledger rows, and the typed row that records an audit assignment.
 //!
 //! The rule the instructions already state, now written in the ledger: the agent that implemented
 //! a change never audits it. An **author** is any session that holds or ever held a reservation of
@@ -8,14 +8,12 @@
 //! head of the newest `card.landed` event. Nothing here changes the schema: both new kinds are
 //! free-text event kinds with a JSON payload, the writing session as the actor.
 //!
-//! A verdict (`card verdict`) is the typed row of an audit: the head it judges, `pass` or `fail`
-//! and an optional evidence reference. It is refused for a card that is not in review, from an
-//! author, and, when an auditor was assigned, from any other session. It does not move the card
-//! and no landing reads it yet: that gate is the next slice.
+//! The verdict row itself is written by `card verdict` (`super::verdict`, SPEC-20261123-landing-
+//! reads-verdict); this module only reads the roles that command and `card assign` rely on.
 
 use super::command::open_for_write;
 use super::input::{self, CardRef};
-use crate::ledger::workflow::LEADER_BY;
+use crate::ledger::workflow::{AUDIT_ASSIGNED_KIND, LEADER_BY};
 use crate::ledger::{self, LedgerError};
 use rusqlite::{params, Connection, OptionalExtension};
 use serde_json::{json, Value};
@@ -23,8 +21,7 @@ use std::path::Path;
 
 type Result<T> = std::result::Result<T, String>;
 
-const VERDICT: &str = "card.verdict";
-const ASSIGNED: &str = "card.audit_assigned";
+const ASSIGNED: &str = AUDIT_ASSIGNED_KIND;
 
 fn sql_err(e: rusqlite::Error) -> String {
     LedgerError::from(e).to_string()
@@ -128,126 +125,6 @@ fn identity_ok(word: &str) -> bool {
         && word.chars().all(|c| !c.is_whitespace() && !c.is_control())
 }
 
-/// A full commit id: 40 lower-case hex digits.
-fn full_head_ok(head: &str) -> bool {
-    head.len() == 40 && head.bytes().all(|b| matches!(b, b'0'..=b'9' | b'a'..=b'f'))
-}
-
-/// What `card verdict` was given.
-pub struct VerdictRequest<'a> {
-    /// `--head`: the commit the verdict judges, a full 40-digit id.
-    pub head: &'a str,
-    /// `--result`: `pass` or `fail`.
-    pub result: &'a str,
-    /// `--evidence`: a reference to what the audit read (a note id, a report path), optional.
-    pub evidence: Option<&'a str>,
-    /// This session's id, read from the host's environment by the caller.
-    pub session: &'a str,
-}
-
-/// `card verdict C-n --head SHA --result pass|fail [--evidence REF]`: one `card.verdict` row for a
-/// card in review, written by this session. See the module comment for what refuses.
-pub fn verdict(
-    project: &Path,
-    home: &Path,
-    reference: &str,
-    req: &VerdictRequest<'_>,
-) -> Result<Value> {
-    let card_id = card_id_of("verdict", reference)?;
-    let name = input::card_name(card_id);
-    if !full_head_ok(req.head) {
-        return Err(
-            "card verdict refused: --head is a full 40-digit commit id (lower-case hex); \
-             nothing was written"
-                .to_string(),
-        );
-    }
-    if req.result != "pass" && req.result != "fail" {
-        return Err(
-            "card verdict refused: --result is pass or fail; nothing was written".to_string(),
-        );
-    }
-    if let Some(e) = req.evidence {
-        if e.is_empty() || e.chars().count() > 200 || e.chars().any(char::is_control) {
-            return Err(
-                "card verdict refused: --evidence is one line of at most 200 characters; \
-                 nothing was written"
-                    .to_string(),
-            );
-        }
-    }
-    let (id, mut writer) = open_for_write(project, home)?;
-    let outcome = writer
-        .with_write_tx(|tx, now| {
-            let state = match state_of(tx, "verdict", card_id) {
-                Ok(s) => s,
-                Err(e) => return Ok(Err(e)),
-            };
-            if state != "review" {
-                return Ok(Err(format!(
-                    "card conflict in verdict: {name} is {state}, and a verdict is written for a \
-                     card in review; nothing was written"
-                )));
-            }
-            let held = match authors(tx, card_id) {
-                Ok(h) => h,
-                Err(e) => return Ok(Err(e)),
-            };
-            if held.iter().any(|h| h == req.session) {
-                return Ok(Err(format!(
-                    "card conflict in verdict: this session held {name}, and the agent that \
-                     implemented a change never writes its verdict; nothing was written"
-                )));
-            }
-            match auditor_of(tx, card_id) {
-                Ok(Some(assigned)) if assigned != req.session => {
-                    return Ok(Err(format!(
-                        "card conflict in verdict: the auditor assigned to {name} is {assigned}, \
-                         not this session; nothing was written"
-                    )));
-                }
-                Ok(_) => {}
-                Err(e) => return Ok(Err(e)),
-            }
-            let repeated: Option<i64> = tx
-                .query_row(
-                    "SELECT event_id FROM event WHERE card_id = ?1 AND kind = ?2 AND actor = ?3 \
-                       AND json_extract(payload, '$.head') = ?4 \
-                       AND json_extract(payload, '$.result') = ?5 \
-                     ORDER BY event_id DESC LIMIT 1",
-                    params![card_id, VERDICT, req.session, req.head, req.result],
-                    |r| r.get(0),
-                )
-                .optional()?;
-            if let Some(event_id) = repeated {
-                return Ok(Ok((false, event_id)));
-            }
-            let key = ledger::new_event_key(tx, VERDICT, Some(card_id))?;
-            tx.execute(
-                "INSERT INTO event (event_key, at, actor, card_id, kind, payload) \
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-                params![
-                    key,
-                    now,
-                    req.session,
-                    card_id,
-                    VERDICT,
-                    json!({"head": req.head, "result": req.result, "evidence": req.evidence})
-                        .to_string()
-                ],
-            )?;
-            let event_id = tx.last_insert_rowid();
-            Ok(Ok((true, event_id)))
-        })
-        .map_err(|e| e.to_string())??;
-    let (written, event_id) = outcome;
-    Ok(json!({
-        "action": "verdict", "project_id": id, "name": name, "head": req.head,
-        "result": req.result, "evidence": req.evidence, "actor": req.session,
-        "event_id": event_id, "written": written, "writes": written,
-    }))
-}
-
 /// `card assign C-n --auditor ID --by leader`: one `card.audit_assigned` row for a card in review.
 /// Only the leader word assigns, and never an identity that holds or held the card.
 pub fn assign(
@@ -322,11 +199,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn heads_and_identities_are_checked_by_shape() {
-        assert!(full_head_ok(&"a".repeat(40)));
-        assert!(!full_head_ok(&"a".repeat(39)));
-        assert!(!full_head_ok(&"A".repeat(40)));
-        assert!(!full_head_ok(&"g".repeat(40)));
+    fn identities_are_checked_by_shape() {
         assert!(identity_ok("lane-3"));
         assert!(!identity_ok(""));
         assert!(!identity_ok("two words"));

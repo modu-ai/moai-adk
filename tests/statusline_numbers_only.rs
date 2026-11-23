@@ -1,6 +1,8 @@
-//! The statusline repair after the audit (SPEC-20261121-statusline-detached): the renderer
-//! sources carry no bar-graph leftovers and no card numbers in `render.rs` comments, and the
-//! product document describes the numbers-only look. The files are read with `include_str!`.
+//! The statusline limits line (SPEC-20261121-statusline-detached, whose "numbers only, no bar"
+//! decision SPEC-20261123-statusline-order-bars REQ-3 replaces): the renderer draws the ten-cell
+//! bar, carries no card numbers in `render.rs` comments and no color-gradient leftovers, and the
+//! product document describes the bars and the line order. The files are read with
+//! `include_str!`.
 
 mod common;
 
@@ -38,13 +40,6 @@ const RENDER: &str = include_str!("../src/statusline/render.rs");
 const SEGMENTS: &str = include_str!("../src/statusline/segments.rs");
 const DOC: &str = include_str!("../docs/rust-product-path.md");
 
-/// Whole-word occurrences of `word` in `text`, case-insensitive.
-fn words(text: &str, word: &str) -> usize {
-    text.split(|c: char| !c.is_alphanumeric())
-        .filter(|w| w.eq_ignore_ascii_case(word))
-        .count()
-}
-
 /// A card number in the shape `C-<digits>` or `card <digits>` / `card #<digits>`.
 fn card_numbers(text: &str) -> Vec<String> {
     let mut found = Vec::new();
@@ -74,19 +69,23 @@ fn card_numbers(text: &str) -> Vec<String> {
 }
 
 #[test]
-fn the_renderer_sources_carry_no_bar_leftovers_and_no_card_numbers() {
+fn the_renderer_draws_the_bar_and_carries_no_color_gradient_and_no_card_numbers() {
+    // The bar is drawn by the limits line of the renderer: a ten-cell width and the two glyphs.
+    for needle in ["const BAR_WIDTH: i64 = 10;", "'█'", "'░'"] {
+        assert!(
+            RENDER.contains(needle),
+            "render.rs does not hold `{needle}`"
+        );
+    }
+    // The segment readers draw nothing, and neither file brings the color gradient back: a bar
+    // has the base color for its filled cells and the muted color for the empty ones (D-3).
+    for mark in ['█', '░'] {
+        assert!(!SEGMENTS.contains(mark), "segments.rs holds `{mark}`");
+    }
     for (name, text) in [("render.rs", RENDER), ("segments.rs", SEGMENTS)] {
-        for mark in ['█', '░'] {
-            assert!(!text.contains(mark), "{name} still holds `{mark}`");
-        }
-        for phrase in ["gradient", "10-cell", "CTX bar", "context bar", "stops"] {
+        for phrase in ["gradient", "CTX bar", "context bar", "stops"] {
             assert!(!text.contains(phrase), "{name} still holds `{phrase}`");
         }
-        assert_eq!(
-            words(text, "bar") + words(text, "bars"),
-            0,
-            "{name} still names a bar"
-        );
     }
     let numbers = card_numbers(RENDER);
     assert!(
@@ -97,19 +96,14 @@ fn the_renderer_sources_carry_no_bar_leftovers_and_no_card_numbers() {
 
 /// The part of the product document that describes line 3.
 fn line_three_section() -> &'static str {
-    let from = DOC
-        .find("3. Usage windows and card counts:")
-        .expect("the line 3 item");
+    let from = DOC.find("3. Usage windows:").expect("the line 3 item");
     let rest = &DOC[from..];
     &rest[..rest.find("shortens nothing").expect("the end of the item")]
 }
 
 #[test]
-fn the_statusline_doc_describes_the_numbers_only_look() {
+fn the_statusline_doc_describes_the_bars_and_the_line_order() {
     let section = line_three_section();
-    for mark in ['█', '░'] {
-        assert!(!section.contains(mark), "the doc still draws `{mark}`");
-    }
     for stale in [
         "CTX:",
         "Week:",
@@ -119,16 +113,15 @@ fn the_statusline_doc_describes_the_numbers_only_look() {
         "(🛑/clear!)",
         "미확인",
         "five-hour bar",
+        "numbers only",
+        "no graph",
     ] {
         assert!(!section.contains(stale), "the doc still holds `{stale}`");
     }
-    assert_eq!(
-        words(section, "bar") + words(section, "bars"),
-        0,
-        "the doc still names a bar"
-    );
     for wanted in [
-        "numbers only",
+        "ten-cell bar",
+        "`█`",
+        "`░`",
         "resets in",
         "n/a",
         "no `/clear` hint",
@@ -137,16 +130,65 @@ fn the_statusline_doc_describes_the_numbers_only_look() {
     ] {
         assert!(section.contains(wanted), "the doc does not say `{wanted}`");
     }
+    // The second line opens with the two versions and closes with my card.
+    let statusline = statusline_section();
+    for wanted in [
+        "`🤖 <Claude Code version> | 🗿 <MoAI version> | ",
+        "🎯 C-<n> <stage icon>`",
+    ] {
+        assert!(
+            statusline.contains(wanted),
+            "the doc does not say `{wanted}`"
+        );
+    }
+    // The first line (SPEC-20261123-statusline-order-bars REQ-8 to REQ-12): the integration item
+    // with the tip of its local ref, the checked-out branch, no distance and no marks.
+    for wanted in [
+        "`🅱️ <integration>(🏷️ <tip>)`",
+        "never from `HEAD`",
+        "`(🏷️ n/a)`",
+        "`🌳 <branch>`",
+        "no `🧭` item",
+        "no ahead, behind or uncommitted mark",
+    ] {
+        assert!(
+            statusline.contains(wanted),
+            "the doc does not say `{wanted}`"
+        );
+    }
+    for stale in [
+        "`🌳 <worktree name>`",
+        "branch with its ahead, behind and dirty counts",
+        "The branch shows `↑N`",
+        "shows the short SHA in the branch slot",
+        "The branch's `+N` is the only change",
+    ] {
+        assert!(!statusline.contains(stale), "the doc still holds `{stale}`");
+    }
 }
 
+/// The sibling test files pin the bar: the limits-line forms of the cards tests hold the glyphs of
+/// the bar, and the renderer's own tests carry the named acceptance tests of
+/// SPEC-20261123-statusline-order-bars.
 #[test]
-fn the_statusline_test_files_carry_no_bar_wording() {
-    for (name, text) in SIBLING_TESTS {
-        assert_eq!(
-            words(text, "bar") + words(text, "bars"),
-            0,
-            "{name} still names a bar"
-        );
+fn the_statusline_tests_pin_the_bar() {
+    let cards = SIBLING_TESTS
+        .iter()
+        .find(|(name, _)| *name == "statusline_cards.rs")
+        .map(|(_, text)| *text)
+        .unwrap();
+    for mark in ['█', '░'] {
+        assert!(cards.contains(mark), "statusline_cards.rs lacks `{mark}`");
+    }
+    for name in [
+        "fn the_bar_has_ten_cells_and_changes_at_each_tenth",
+        "fn the_row_shows_what_is_left_of_each_window",
+        "fn unknown_windows_and_the_hide_list_stay_as_they_were",
+        "fn the_colored_bar_has_the_plain_text",
+        "fn the_versions_open_the_flow_line_and_my_card_closes_it",
+        "fn every_form_is_exactly_its_string_and_changes_at_its_boundary",
+    ] {
+        assert!(RENDER.contains(name), "render.rs lacks `{name}`");
     }
 }
 
@@ -212,5 +254,43 @@ fn a_context_window_with_a_null_percentage_says_ctx_n_a() {
         "context_window_size": 200000,
         "used_percentage": 0
     }));
-    assert!(out.contains("🔋 CW 0%"), "a real zero gave: {out}");
+    assert!(
+        out.contains("🔋 CW ██████████ 100%"),
+        "a real zero gave: {out}"
+    );
+}
+
+/// The part of the product document about the status line: from its heading to the next one.
+fn statusline_section() -> &'static str {
+    let from = DOC
+        .find("\n## Claude Code status line")
+        .expect("the status line section")
+        + 1;
+    let rest = &DOC[from..];
+    let end = rest[3..].find("\n## ").map_or(rest.len(), |at| at + 3);
+    &rest[..end]
+}
+
+/// SPEC-20261122-statusline-where AC-7 (REQ-12): the document says that the status line starts
+/// git and a detached `gh` refresh and writes a cache under `$TMPDIR`, and no longer says that
+/// rendering is read-only and free of the network.
+#[test]
+fn the_statusline_doc_describes_the_cache() {
+    let section = statusline_section();
+    for stale in [
+        "Rendering remains read-only and network-free",
+        "read-only and network-free",
+        "network-free",
+    ] {
+        assert!(!section.contains(stale), "the doc still says `{stale}`");
+    }
+    for wanted in [
+        "starts `git`",
+        "detached `gh` refresh",
+        "cache under `$TMPDIR`",
+        "moai-statusline/<session_id>.json",
+        "ten seconds",
+    ] {
+        assert!(section.contains(wanted), "the doc does not say `{wanted}`");
+    }
 }

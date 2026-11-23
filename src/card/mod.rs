@@ -14,21 +14,31 @@
 //! dispatching a card (card C-96): already-done on the tip, or colliding with a recorded
 //! decision. `finish` is the leader's one-step close of a landed or reported card
 //! (`card finish`), and `landed` is what `card next` and `finish` read of git to know a card
-//! already landed (SPEC-20261121-card-finish).
+//! already landed (SPEC-20261121-card-finish). `wait` is a lane's read-only wait for the next
+//! note on its cards or an announcement to all lanes, with a timeout (`card wait`,
+//! SPEC-20261122-card-wait).
 
+pub mod adopt;
+pub mod cleanup;
 pub mod command;
 pub mod dispatch;
+pub mod drift;
 pub mod early_reclaim;
 pub mod export_db;
 pub mod export_dir;
 pub mod export_format;
 pub mod finish;
+pub mod guard;
 pub mod inbox;
 pub mod input;
 pub mod land;
 pub mod landed;
 pub mod precheck;
+pub mod remote_copy;
 pub mod roles;
 pub mod spec_link;
+pub mod take_scope;
 pub mod timeline;
+pub mod verdict;
+pub mod wait;
 pub mod work;

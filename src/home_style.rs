@@ -7,14 +7,15 @@
 //! section. The Codex block that an earlier version wrote into `~/.codex/AGENTS.md` is no longer
 //! written (SPEC-20261122-codex-home-update-removed); a receipt that names it is skipped.
 //!
-//! `plan` writes nothing. Every target is three-way: the style file is ours only while it holds
-//! the bytes we last wrote (`~/.moai-cli/home-style/<host>.json`); anything else is a
-//! `conflict`, never overwritten. `outputStyle` is set only when the key is absent — another
+//! `plan` writes nothing. Every target is three-way: the style file is ours while it holds the
+//! bytes the record names (`<state folder>/home-style/<host>.json`; a config folder other than
+//! the HOME's default has its own record, see [`record_name`]), the current text (adopted into the
+//! record) or a text MoAI shipped earlier ([`EARLIER_RENDERS`]); anything else is a `conflict`,
+//! never overwritten. `outputStyle` is set only when the key is absent — another
 //! value is the user's choice and a `conflict`. A symlinked folder or file blocks the host.
-//! `apply` re-plans,
-//! refuses any other digest and keeps the before bytes in a receipt; `revert` restores a file
-//! only while it still holds the bytes the apply wrote, and removes the `outputStyle` key only
-//! while it still names this style.
+//! `apply` re-plans, refuses any other digest and keeps the before bytes in a receipt; `revert`
+//! restores a file only while it still holds the bytes the apply wrote, and removes the
+//! `outputStyle` key only while it still names this style.
 
 use crate::apply::{publish_exclusive, publish_replace, read_opt};
 use crate::retired_hosts::retired;
@@ -45,14 +46,21 @@ const SETTINGS_LIMIT: usize = 256 * 1024;
 const DESCRIPTION: &str = "Plain words, four steps (understand, plan, do, check), evidence before done, MoAI 🗿 banners and a progress board.";
 /// The sha256 (64 hex digits) of every style file text moai-cli rendered before the current one,
 /// oldest first: the first text with an unquoted description and a star banner, the YAML repair
-/// of its description, and the text with the `MoAI 🗿` banner. A style file equal to one of them
+/// of its description, the text with the `MoAI 🗿` banner, and the text of the picked sections
+/// before its progress board pointed to the flow rule, and the text whose board pointed to the
+/// flow rule and listed seven icons, before the board became the one progress display with
+/// eleven flow icons, and that text before its board took the one icon set of the status line
+/// and the lane reports. A style file equal to one of them
 /// is a text MoAI shipped, so it is updated and not left as a conflict. When the template or the
 /// frontmatter changes, the render this module made until then is appended here (the test
 /// `the_earlier_renders_are_pinned_and_never_hold_the_current_one` fails until it is).
-pub const EARLIER_RENDERS: [&str; 3] = [
+pub const EARLIER_RENDERS: [&str; 6] = [
     "93e53607dd194da86abfbe7ea993303fff1d17af1a1a1ae6868788938ed785d2",
     "d4e1851a65eb0ed21d16de888925dc6ae8a7bcebcae45973e1b8cce884d75e67",
     "690c534220f9bb1614e27d608e56306da973e2fe7b53e2bc1a4d42d7d2b9c65e",
+    "a31d966b0486f501839121832eb6a99d3fc718996b22a901e9e17884a0ab369e",
+    "80e189d27dd7be365724bbba2f38f1eddb3c0e96801da4caf82535ce80181a65",
+    "5f6b5fd1d93f3b0a4553ba74df113bba99bb018ca819120e1a25926fe242d006",
 ];
 
 /// One write target of one host.
@@ -125,6 +133,50 @@ pub struct Receipt {
     /// pending | committed | reverted
     pub status: String,
     pub entries: Vec<ReceiptEntry>,
+    /// The Claude config folder the apply wrote in (D-5 of
+    /// SPEC-20261122-output-style-install-checks): a revert runs only where the environment
+    /// picks this folder again. A receipt written before it has none and reverts in the
+    /// default folder only.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub config_folder: Option<String>,
+}
+
+/// The Claude config folder the environment picks for `home` ([`crate::host_home::resolve`]).
+fn claude_folder(home: &Path) -> Result<PathBuf> {
+    crate::host_home::resolve(crate::host_home::Host::Claude, home)
+}
+
+/// Two spellings of one folder: equal real paths, or equal text when either cannot be resolved.
+fn same_folder(a: &Path, b: &Path) -> bool {
+    match (fs::canonicalize(a), fs::canonicalize(b)) {
+        (Ok(x), Ok(y)) => x == y,
+        _ => a == b,
+    }
+}
+
+/// D-5: a revert changes nothing unless the environment picks the folder the receipt was
+/// applied in; a receipt without a folder belongs to the default folder.
+fn receipt_folder_matches(home: &Path, receipt: &Receipt) -> Result<()> {
+    let here = claude_folder(home)?;
+    let default = home.join(crate::host_home::Host::Claude.default_dir());
+    let theirs = receipt
+        .config_folder
+        .as_ref()
+        .map_or_else(|| default.clone(), PathBuf::from);
+    if same_folder(&here, &theirs) {
+        return Ok(());
+    }
+    Err(match &receipt.config_folder {
+        Some(f) => format!(
+            "this style receipt belongs to the Claude config folder {f}, not {}; run the revert with CLAUDE_CONFIG_DIR={f}; nothing was changed",
+            here.display()
+        ),
+        None => format!(
+            "this style receipt names no config folder, so it reverts only in the default folder {}, not {}; nothing was changed",
+            default.display(),
+            here.display()
+        ),
+    })
 }
 
 fn sha(bytes: &[u8]) -> String {
@@ -203,11 +255,38 @@ fn current_file(path: &Path) -> Result<Option<Vec<u8>>> {
     }
 }
 
+/// The name of the owned-text record of `host`'s folder in the state folder (D-1 of
+/// SPEC-20261122-output-style-install-checks). The HOME's default folder keeps `<host>.json`
+/// where it is today. Another config folder (`CLAUDE_CONFIG_DIR`) gets `<host>-<12 hex digits of
+/// the sha256 of its path>.json`, and only on a HOME whose state root is this generation's: the
+/// record is never made below the earlier state folder, so any other HOME blocks it.
+fn record_name(home: &Path, host: &str) -> Result<String> {
+    let Some(h) = crate::host_home::Host::from_name(host) else {
+        return Ok(format!("{host}.json"));
+    };
+    let folder = crate::host_home::resolve(h, home)?;
+    if folder == home.join(h.default_dir()) {
+        return Ok(format!("{host}.json"));
+    }
+    if !matches!(
+        crate::state_root::classify_home(home).generation,
+        "rust" | "rust-first"
+    ) {
+        return Err(format!(
+            "{} is not the default {host} folder, and this HOME's state root is not of this generation; its own record needs the moved state folder, so nothing is written for it",
+            folder.display()
+        ));
+    }
+    let digest = sha(folder.to_string_lossy().as_bytes());
+    let hex = digest.strip_prefix("sha256:").unwrap_or(&digest);
+    Ok(format!("{host}-{}.json", &hex[..12]))
+}
+
 fn read_state(home: &Path, host: &str) -> Result<HostState> {
     let root = state_root(home);
     plain_dir_or_absent(&crate::home_root::path(home))?;
     plain_dir_or_absent(&root)?;
-    match read_opt(&root.join(format!("{host}.json")))? {
+    match read_opt(&root.join(record_name(home, host)?))? {
         None => Ok(HostState {
             schema_version: SCHEMA_VERSION,
             owned_sha256: None,
@@ -225,7 +304,7 @@ fn read_state(home: &Path, host: &str) -> Result<HostState> {
 
 fn write_state(home: &Path, host: &str, owned: Option<String>) -> Result<()> {
     write_json(
-        &state_root(home).join(format!("{host}.json")),
+        &state_root(home).join(record_name(home, host)?),
         &HostState {
             schema_version: SCHEMA_VERSION,
             owned_sha256: owned,
@@ -365,6 +444,11 @@ fn setting_plan(home: &Path, style: &TargetPlan) -> TargetPlan {
         Ok((_, c)) => c,
         Err(e) => return blocked(t, e),
     };
+    // A folder whose record cannot be made blocks both of its targets (REQ-7); a folder that is
+    // refused for its own reason (a link) keeps that reason first.
+    if let Err(e) = record_name(home, "claude") {
+        return blocked(t, e);
+    }
     t.expected_sha256 = cur.as_deref().map(sha);
     if !["create", "merge", "unchanged"].contains(&style.action.as_str()) {
         t.action = "skipped".into();
@@ -386,6 +470,13 @@ fn setting_plan(home: &Path, style: &TargetPlan) -> TargetPlan {
         Ok(map) => match map.get("outputStyle") {
             None => "set",
             Some(Value::String(s)) if s == STYLE_NAME => "unchanged",
+            // Claude Code compares the name with case: a near miss silently selects its default.
+            Some(Value::String(s)) if s.eq_ignore_ascii_case(STYLE_NAME) => {
+                t.detail = Some(format!(
+                    "outputStyle is \"{s}\": the name is case-sensitive, so Claude Code uses its default style, not {STYLE_NAME}; not changed"
+                ));
+                "conflict"
+            }
             Some(other) => {
                 t.detail = Some(format!(
                     "outputStyle is {other}: the user's choice; not changed"
@@ -396,6 +487,52 @@ fn setting_plan(home: &Path, style: &TargetPlan) -> TargetPlan {
     }
     .into();
     t
+}
+
+/// The `outputStyle` string a project settings file holds when it is another name than ours; none
+/// for a file that is absent, linked, not a regular file, too large, not a JSON object, or without
+/// a string value (REQ-3). Reads only.
+fn hiding_style(path: &Path) -> Option<String> {
+    let meta = fs::symlink_metadata(path).ok()?;
+    if !meta.is_file() || meta.len() > SETTINGS_LIMIT as u64 {
+        return None;
+    }
+    let map = settings_object(&fs::read(path).ok()?).ok()?;
+    match map.get("outputStyle") {
+        Some(Value::String(s)) if s != STYLE_NAME => Some(s.clone()),
+        _ => None,
+    }
+}
+
+/// The notices of a style plan for `moai update` (SPEC-20261122-output-style-install-checks):
+/// one entry per project settings file whose `outputStyle` hides ours in `project` (REQ-2, read
+/// only), and one `/status` pointer when the plan writes the style file (REQ-4). Entries have the
+/// shape of the update's `skipped` entries but go to its own `notices` list, which the update
+/// screens print with their own word; they are not part of any plan digest and nothing is
+/// written for them.
+pub fn notices(plan: &Plan, project: &Path) -> Vec<Value> {
+    let mut out = Vec::new();
+    for rel in [".claude/settings.local.json", ".claude/settings.json"] {
+        if let Some(value) = hiding_style(&project.join(rel)) {
+            out.push(json!({
+                "part": "style",
+                "host": "claude",
+                "reason": format!("{rel} sets outputStyle \"{value}\": this project uses it, not {STYLE_NAME}; moai does not change project settings"),
+            }));
+        }
+    }
+    let writes_style = plan
+        .targets
+        .iter()
+        .any(|t| t.kind == "style_file" && matches!(t.action.as_str(), "create" | "merge"));
+    if writes_style {
+        out.push(json!({
+            "part": "style",
+            "host": "claude",
+            "reason": "if the style does not show up in Claude Code, `/status` lists a style file it could not load",
+        }));
+    }
+    out
 }
 
 /// Read-only preview of every host; writes nothing.
@@ -581,6 +718,7 @@ pub fn apply_for(
         permission_reference: permission.to_string(),
         status: "pending".into(),
         entries: Vec::new(),
+        config_folder: Some(claude_folder(&home)?.to_string_lossy().into_owned()),
     };
     let receipt_path = receipt_dir.join("receipt.json");
     write_json(&receipt_path, &receipt)?;
@@ -719,6 +857,7 @@ pub fn revert_in(
     if receipt.status == "reverted" {
         return Err("style receipt already reverted".into());
     }
+    receipt_folder_matches(&home, &receipt)?;
     let mut reverted = Vec::new();
     let mut skipped = Vec::new();
     for e in receipt.entries.iter().rev() {

@@ -4,8 +4,10 @@
 //! `project-detect` reads the project folder and writes nothing. It tells a new project from
 //! an existing one (a manifest or a code file makes it existing), names the languages and the
 //! language servers they call for, the MCP servers the project already configures, and the
-//! databases its dependencies name. Only project facts are recorded: no HOME read, no PATH
-//! probe, no process start, because `.moai-cli/project.yaml` is tracked. The `versioning`
+//! databases its dependencies name. Only project facts are recorded: no HOME read, no process
+//! start, because `.moai-cli/project.yaml` is tracked. The one machine fact, `lsp_plugins`
+//! (SPEC-20261123-lsp-official-plugins), looks at the file names of the PATH folders for each
+//! language's official LSP server and is reported beside `detected`, never recorded. The `versioning`
 //! fact (card C-69) is reported beside `detected` and never recorded; it reads the project's
 //! tag names from the files of its own `.git` and starts no program either. MCP configuration is
 //! read for server names only and is never created or changed (decision 21 keeps MCP itself
@@ -98,23 +100,50 @@ const EXTENSIONS: &[(&str, &str)] = &[
     ("cpp", "cpp"),
     ("cs", "csharp"),
     ("swift", "swift"),
+    ("lua", "lua"),
 ];
 
-/// Language → the language server it calls for.
-const LSP: &[(&str, &str)] = &[
-    ("rust", "rust-analyzer"),
-    ("python", "pyright"),
-    ("javascript", "typescript-language-server"),
-    ("typescript", "typescript-language-server"),
-    ("go", "gopls"),
-    ("java", "jdtls"),
-    ("kotlin", "kotlin-language-server"),
-    ("ruby", "ruby-lsp"),
-    ("php", "intelephense"),
-    ("c", "clangd"),
-    ("cpp", "clangd"),
-    ("csharp", "omnisharp"),
-    ("swift", "sourcekit-lsp"),
+/// The marketplace of the official Claude Code LSP plugins.
+const LSP_MARKETPLACE: &str = "claude-plugins-official";
+
+/// Language → (the server name recorded in `detected.lsp`, the official LSP plugin of that
+/// marketplace, the executable the plugin runs from PATH). Read 2026-11-23 from the marketplace's
+/// own `plugin.json` files (SPEC-20261123-lsp-official-plugins).
+const LSP_PLUGINS: &[(&str, &str, &str, &str)] = &[
+    (
+        "rust",
+        "rust-analyzer",
+        "rust-analyzer-lsp",
+        "rust-analyzer",
+    ),
+    ("python", "pyright", "pyright-lsp", "pyright-langserver"),
+    (
+        "javascript",
+        "typescript-language-server",
+        "typescript-lsp",
+        "typescript-language-server",
+    ),
+    (
+        "typescript",
+        "typescript-language-server",
+        "typescript-lsp",
+        "typescript-language-server",
+    ),
+    ("go", "gopls", "gopls-lsp", "gopls"),
+    ("java", "jdtls", "jdtls-lsp", "jdtls"),
+    ("kotlin", "kotlin-lsp", "kotlin-lsp", "kotlin-lsp"),
+    ("ruby", "ruby-lsp", "ruby-lsp", "ruby-lsp"),
+    ("php", "intelephense", "php-lsp", "intelephense"),
+    ("c", "clangd", "clangd-lsp", "clangd"),
+    ("cpp", "clangd", "clangd-lsp", "clangd"),
+    ("csharp", "csharp-ls", "csharp-lsp", "csharp-ls"),
+    ("swift", "sourcekit-lsp", "swift-lsp", "sourcekit-lsp"),
+    (
+        "lua",
+        "lua-language-server",
+        "lua-lsp",
+        "lua-language-server",
+    ),
 ];
 
 /// Dependency name → database kind (exact names, compared lower-case).
@@ -146,9 +175,10 @@ const DB_DEPENDENCIES: &[(&str, &str)] = &[
 /// Folders the code walk never enters: VCS and MoAI state, the host folders MoAI writes hook
 /// and agent files into (`.omp/extensions/moai-hooks.ts` is TypeScript, #2936 R9), build
 /// output, vendored deps.
-const SKIP_DIRS: &[&str] = &[
+pub(crate) const SKIP_DIRS: &[&str] = &[
     ".git",
     PROJECT_STATE_DIR,
+    crate::state_root::MOAI_DIR,
     ".claude",
     ".codex",
     ".omp",
@@ -191,7 +221,7 @@ fn file_in(root: &Path, parts: &[&str]) -> Option<(PathBuf, fs::Metadata)> {
 }
 
 /// The text of [`file_in`], at most `MAX_FILE` bytes.
-fn read_in(root: &Path, parts: &[&str]) -> Option<String> {
+pub(crate) fn read_in(root: &Path, parts: &[&str]) -> Option<String> {
     let (path, meta) = file_in(root, parts)?;
     if meta.len() > MAX_FILE {
         return None;
@@ -199,7 +229,7 @@ fn read_in(root: &Path, parts: &[&str]) -> Option<String> {
     fs::read_to_string(path).ok()
 }
 
-fn is_file_in(root: &Path, parts: &[&str]) -> bool {
+pub(crate) fn is_file_in(root: &Path, parts: &[&str]) -> bool {
     file_in(root, parts).is_some()
 }
 
@@ -424,7 +454,7 @@ fn root_ignore_lines(root: &Path) -> Vec<IgnoreLine> {
 /// the ignore lists exclude never entered. An ignore list that cannot be read (a link, over
 /// [`MAX_FILE`], not UTF-8) counts as no lines, so that failure can only read more, never
 /// less. The `seen` budget mirrors the code walk's [`MAX_ENTRIES`].
-fn nested_manifests(root: &Path) -> BTreeSet<String> {
+pub(crate) fn nested_manifests(root: &Path) -> BTreeSet<String> {
     let mut found = BTreeSet::new();
     let mut seen = 0usize;
     let mut stack = IgnoreStack(vec![(0, root_ignore_lines(root))]);
@@ -601,8 +631,8 @@ fn prisma_database(root: &Path) -> Option<String> {
     }
 }
 
-/// MCP server names from the project's `.mcp.json` (`mcpServers`) and
-/// `.codex/config.toml` (`[mcp_servers.<name>]`). Values are never read further.
+/// MCP server names from the project's `.mcp.json` (`mcpServers`). The `.codex` folder is not
+/// read: moai no longer manages it. Values are never read further.
 fn mcp_servers(root: &Path) -> BTreeSet<String> {
     let mut names = BTreeSet::new();
     if let Some(v) =
@@ -611,9 +641,6 @@ fn mcp_servers(root: &Path) -> BTreeSet<String> {
         if let Some(map) = v["mcpServers"].as_object() {
             names.extend(map.keys().cloned());
         }
-    }
-    if let Some(doc) = read_in(root, &[".codex", "config.toml"]).and_then(|t| toml_doc(&t)) {
-        names.extend(table_keys(doc.get("mcp_servers")));
     }
     names
 }
@@ -667,9 +694,10 @@ pub fn detect(root: &Path) -> Result<Detected> {
     let lsp: BTreeSet<String> = languages
         .iter()
         .filter_map(|l| {
-            LSP.iter()
-                .find(|(lang, _)| lang == l)
-                .map(|(_, s)| (*s).to_string())
+            LSP_PLUGINS
+                .iter()
+                .find(|(lang, ..)| lang == l)
+                .map(|(_, server, ..)| (*server).to_string())
         })
         .collect();
     let deps = dependency_names(root);
@@ -871,6 +899,71 @@ fn ci_files(root: &Path) -> Vec<String> {
     capped(names)
 }
 
+/// Whether `name` is an executable file in one of the folders of `path` (the value of the PATH
+/// variable). It only looks at file metadata: nothing is run, written or fetched, and an empty
+/// entry (which the shell reads as the current folder) is skipped.
+///
+/// A relative `PATH` entry is honoured as a shell does: it is read against the current folder.
+fn executable_on_path(name: &str, path: Option<&std::ffi::OsStr>) -> bool {
+    let Some(path) = path else {
+        return false;
+    };
+    std::env::split_paths(path)
+        .filter(|dir| !dir.as_os_str().is_empty())
+        .any(|dir| {
+            let candidates: &[&str] = if cfg!(windows) {
+                &[".exe", ".cmd", ".bat"]
+            } else {
+                &[""]
+            };
+            candidates.iter().any(|ext| {
+                fs::metadata(dir.join(format!("{name}{ext}"))).is_ok_and(|m| {
+                    #[cfg(unix)]
+                    let runnable = {
+                        use std::os::unix::fs::PermissionsExt;
+                        m.permissions().mode() & 0o111 != 0
+                    };
+                    #[cfg(not(unix))]
+                    let runnable = true;
+                    m.is_file() && runnable
+                })
+            })
+        })
+}
+
+/// The official Claude Code LSP plugin each detected language calls for, one row per plugin
+/// (SPEC-20261123-lsp-official-plugins), reported beside `detected`, never inside it: whether a
+/// server is installed is a fact about this machine, and `project.yaml` is tracked. `installed`
+/// says whether the plugin's server executable is on PATH; whether the plugin itself is enabled
+/// is not read here (that is HOME state): the PROJECT route asks `claude plugin list`.
+fn lsp_plugins_fact(languages: &[String], path: Option<&std::ffi::OsStr>) -> Value {
+    let mut plugins: BTreeMap<&str, (BTreeSet<&str>, &str)> = BTreeMap::new();
+    for lang in languages {
+        if let Some((l, _, plugin, executable)) =
+            LSP_PLUGINS.iter().find(|(l, ..)| *l == lang.as_str())
+        {
+            plugins
+                .entry(plugin)
+                .or_insert_with(|| (BTreeSet::new(), executable))
+                .0
+                .insert(l);
+        }
+    }
+    let rows: Vec<Value> = plugins
+        .into_iter()
+        .map(|(plugin, (langs, executable))| {
+            json!({
+                "plugin": plugin,
+                "marketplace": LSP_MARKETPLACE,
+                "languages": langs.into_iter().collect::<Vec<_>>(),
+                "executable": executable,
+                "installed": executable_on_path(executable, path),
+            })
+        })
+        .collect();
+    Value::Array(rows)
+}
+
 /// Go-generation project state as a fact (#2561), read only and without following links:
 /// what `.moai` is (`absent`, `folder`, `link` or `other`) and whether a real folder holds a
 /// regular `manifest.json`. Reported beside `detected`, never inside it, so the profile is
@@ -955,9 +1048,18 @@ pub fn detect_cli(root: &Path) -> Result<Value> {
         // #2725 S2a: whose `.moai/` this is, before anything may write or move it.
         "state_root": state_root.to_json(),
         "commands": commands_fact(root),
+        // SPEC-20261123-lsp-official-plugins: the official LSP plugin of each language and
+        // whether its server is on PATH, a fact beside `detected` like the commands.
+        "lsp_plugins": lsp_plugins_fact(
+            &detected.languages,
+            std::env::var_os("PATH").as_deref(),
+        ),
         // C-69: the versioning scheme the tag names and root manifests already show, a fact
         // beside `detected` like the commands; the interview offers keeping it.
         "versioning": crate::versioning::fact(root),
+        // SPEC-20261122-project-scale: small, large single tree or monorepo, a fact beside
+        // `detected` that the user's pick can override; never recorded inside `detected`.
+        "scale": crate::project_scale_detect::read(root),
         "next_actions": next_actions,
     }))
 }
@@ -971,8 +1073,11 @@ mod tests {
         for (f, l) in MANIFESTS {
             assert!(recordable(f) && recordable(l));
         }
-        for (_, s) in LSP {
-            assert!(recordable(s));
+        for (lang, server, plugin, executable) in LSP_PLUGINS {
+            for name in [lang, server, plugin, executable] {
+                assert!(recordable(name), "{name}");
+            }
+            assert!(EXTENSIONS.iter().any(|(_, l)| l == lang), "{lang}");
         }
         for (_, k) in DB_DEPENDENCIES {
             assert!(recordable(k));

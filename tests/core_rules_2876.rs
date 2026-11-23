@@ -7,8 +7,9 @@ use std::{fs, path::Path};
 /// 4096 to 4608 bytes by SPEC-20261120-guidance-sweep-core for the Korean developer-words
 /// sentence of rule 7 and the recurring-problem rule 22, and to 5120 bytes by
 /// SPEC-20261121-report-rules-in-core-rules for the two report rules that moved out of the
-/// skill entry (the same bytes leave `SKILL.md`, so the two files load as many bytes as before).
-const CORE_RULES_MAX_BYTES: usize = 5120;
+/// skill entry (the same bytes leave `SKILL.md`, so the two files load as many bytes as before),
+/// and to 5632 bytes by SPEC-20261123-lsp-official-plugins for rule 25 (official LSP plugins).
+const CORE_RULES_MAX_BYTES: usize = 5632;
 
 fn package(rel: &str) -> String {
     fs::read_to_string(
@@ -164,11 +165,11 @@ fn merged_rules_live_in_their_workflow_files() {
             "never switch, create, reset, stash, rebase or merge branches in the shared primary checkout",
         ),
         (
-            "references/internal/review.md",
+            "references/audit.md",
             "A Critical or High security finding blocks",
         ),
         (
-            "references/internal/review.md",
+            "references/audit.md",
             "a missing or stale scan is unverified, never a pass",
         ),
         (

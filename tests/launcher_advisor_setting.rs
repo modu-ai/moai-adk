@@ -120,9 +120,7 @@ fn host_started(f: &Fixture) -> bool {
     f.home.path().join("host-started").exists()
 }
 fn number_store(f: &Fixture) -> std::path::PathBuf {
-    f.project
-        .path()
-        .join(".git/.moai-cli/sessions/agent-1.live")
+    moai_cli::clone_root::path(&f.project.path().join(".git")).join("sessions/agent-1.live")
 }
 
 /// Literal complete argv with no advisor: the decided default for every host and role
@@ -137,7 +135,8 @@ fn plain(host: &str, role: usize) -> Vec<&'static str> {
             "opus",
             "--effort",
             "medium",
-            "--dangerously-skip-permissions",
+            "--permission-mode",
+            "auto",
         ],
         ("cc" | "glm", 1) => vec![
             "claude",
@@ -147,9 +146,18 @@ fn plain(host: &str, role: usize) -> Vec<&'static str> {
             "opus",
             "--effort",
             "medium",
-            "--dangerously-skip-permissions",
+            "--permission-mode",
+            "auto",
         ],
-        ("cc" | "glm", 2) => vec!["claude", "--model", "opus", "--effort", "medium"],
+        ("cc" | "glm", 2) => vec![
+            "claude",
+            "--model",
+            "opus",
+            "--effort",
+            "medium",
+            "--permission-mode",
+            "auto",
+        ],
         _ => unreachable!(),
     }
 }
@@ -167,7 +175,8 @@ fn with_advisor(role: usize, advisor: &'static str) -> Vec<&'static str> {
             "medium",
             "--advisor",
             advisor,
-            "--dangerously-skip-permissions",
+            "--permission-mode",
+            "auto",
         ],
         1 => vec![
             "claude",
@@ -179,7 +188,8 @@ fn with_advisor(role: usize, advisor: &'static str) -> Vec<&'static str> {
             "medium",
             "--advisor",
             advisor,
-            "--dangerously-skip-permissions",
+            "--permission-mode",
+            "auto",
         ],
         2 => vec![
             "claude",
@@ -189,6 +199,8 @@ fn with_advisor(role: usize, advisor: &'static str) -> Vec<&'static str> {
             "medium",
             "--advisor",
             advisor,
+            "--permission-mode",
+            "auto",
         ],
         _ => unreachable!(),
     }
@@ -381,7 +393,8 @@ fn lower_ranked_setting_is_refused_before_numbering() {
             "medium",
             "--advisor",
             "sonnet",
-            "--dangerously-skip-permissions"
+            "--permission-mode",
+            "auto"
         ]
     );
 }

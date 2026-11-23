@@ -1283,7 +1283,7 @@ fn envelope(out: &std::process::Output) -> Value {
 }
 
 fn journal_dir(repo: &Path) -> PathBuf {
-    repo.join(".git").join(".moai-cli").join("claims")
+    moai_cli::clone_root::path(&repo.join(".git")).join("claims")
 }
 
 #[test]
@@ -1516,9 +1516,12 @@ fn claim_go_paths_untouched() {
     let added: Vec<_> = after.difference(&before).collect();
     assert!(removed.is_empty(), "files vanished or changed: {removed:?}");
     assert!(!added.is_empty(), "no new files recorded");
+    // This generation's clone state folder, as the resolver names it for this clone; the fake
+    // Go trees are the project's `.moai/` and `~/.moai/`.
+    let state = format!(".git/{}/", moai_cli::clone_root::dir(&repo.join(".git")));
     for f in &added {
-        assert!(f.contains(".moai-cli"), "new file outside .moai-cli: {f}");
-        assert!(!f.contains("/.moai/") && !f.contains(".claude"), "{f}");
+        assert!(f.starts_with(&state), "new file outside {state}: {f}");
+        assert!(!f.starts_with(".moai/") && !f.contains(".claude"), "{f}");
     }
 }
 

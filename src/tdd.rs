@@ -89,6 +89,15 @@ pub const TEST_PATTERNS: &[(&str, &[Pattern])] = &[
         ],
     ),
     ("php", &[Dir("tests"), Suffix("Test.php")]),
+    (
+        "lua",
+        &[
+            Dir("spec"),
+            Suffix("_spec.lua"),
+            Suffix("_test.lua"),
+            PrefixExt("test_", ".lua"),
+        ],
+    ),
     ("c", C),
     ("cpp", C),
     ("csharp", DOTNET),

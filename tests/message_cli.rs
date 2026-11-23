@@ -172,9 +172,9 @@ fn ack(root: &Path, m: &Message, remote: &Remote) -> Result<Value, moai_cli::con
 fn entry(root: &Path, inbox: bool) -> Value {
     serde_json::from_slice(
         &fs::read(root.join(if inbox {
-            ".moai-cli/messages/inbox/r1.json"
+            ".moai/messages/inbox/r1.json"
         } else {
-            ".moai-cli/messages/outbox/r1.json"
+            ".moai/messages/outbox/r1.json"
         }))
         .unwrap(),
     )
@@ -211,7 +211,7 @@ fn assert_pagination_rejected(
         remote.comments_gets.set(0);
         remote.comments_get_limit.set(Some(2));
         remote.sent.borrow_mut().clear();
-        let outbox = root.path().join(".moai-cli/messages/outbox/r1.json");
+        let outbox = root.path().join(".moai/messages/outbox/r1.json");
         let before = fs::read(&outbox).unwrap();
         let comments = remote.comments.borrow().clone();
         let error = if explicit_ack {
@@ -235,10 +235,7 @@ fn assert_pagination_rejected(
         }
         assert_eq!(remote.posts(), 0);
         assert_eq!(fs::read(&outbox).unwrap(), before);
-        assert!(!root
-            .path()
-            .join(".moai-cli/messages/inbox/r1.json")
-            .exists());
+        assert!(!root.path().join(".moai/messages/inbox/r1.json").exists());
         assert_eq!(*remote.comments.borrow(), comments);
         if !explicit_ack {
             assert!(remote
@@ -307,8 +304,7 @@ fn durable_intent_survives_crash_before_any_network_and_restart_delivers_once() 
     let root = temp_root();
     let remote = Remote::new();
     let m = message();
-    *remote.expected_intent.borrow_mut() =
-        Some(root.path().join(".moai-cli/messages/outbox/r1.json"));
+    *remote.expected_intent.borrow_mut() = Some(root.path().join(".moai/messages/outbox/r1.json"));
     remote.crash.set(true);
     assert!(
         std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| record(
@@ -424,7 +420,7 @@ fn duplicate_identical_comments_are_one_receipt_but_changed_payload_conflicts() 
         100
     );
     assert_eq!(remote.posts(), 1);
-    let previous = fs::read(root.path().join(".moai-cli/messages/outbox/r1.json")).unwrap();
+    let previous = fs::read(root.path().join(".moai/messages/outbox/r1.json")).unwrap();
     let mut changed = m;
     changed.payload["text"] = json!("different");
     assert_eq!(
@@ -433,7 +429,7 @@ fn duplicate_identical_comments_are_one_receipt_but_changed_payload_conflicts() 
     );
     assert_eq!(
         previous,
-        fs::read(root.path().join(".moai-cli/messages/outbox/r1.json")).unwrap()
+        fs::read(root.path().join(".moai/messages/outbox/r1.json")).unwrap()
     );
 }
 #[test]
@@ -496,7 +492,7 @@ fn malformed_existing_data_is_preserved_without_network_or_post() {
         let root = temp_root();
         let remote = Remote::new();
         let m = message();
-        let dir = root.path().join(".moai-cli/messages").join(directory);
+        let dir = root.path().join(".moai/messages").join(directory);
         fs::create_dir_all(&dir).unwrap();
         let path = dir.join("r1.json");
         fs::write(&path, b"{broken draft").unwrap();
@@ -537,14 +533,14 @@ fn traversal_sensitive_payload_and_missing_permission_rejected_before_persistenc
         .kind,
         Kind::PermissionReferenceMissing
     );
-    assert!(!root.path().join(".moai-cli").exists());
+    assert!(!root.path().join(".moai").exists());
     assert!(remote.sent.borrow().is_empty());
 }
 #[test]
 fn advisory_lock_returns_unavailable_without_removing_existing_lock() {
     let root = temp_root();
     let remote = Remote::new();
-    let lock = root.path().join(".moai-cli/messages/.lock");
+    let lock = root.path().join(".moai/messages/.lock");
     fs::create_dir_all(lock.parent().unwrap()).unwrap();
     fs::write(&lock, "old holder").unwrap();
     let held = fs::OpenOptions::new()
@@ -584,10 +580,7 @@ fn publisher_account_must_match_and_receiver_requires_observed_sender() {
         Kind::Blocked
     );
     assert_eq!(remote.posts(), 1);
-    assert!(!root
-        .path()
-        .join(".moai-cli/messages/inbox/r1.json")
-        .exists());
+    assert!(!root.path().join(".moai/messages/inbox/r1.json").exists());
 }
 #[test]
 fn sorted_recursive_payload_digest_and_reconcile_do_not_imply_business_completion() {
@@ -617,7 +610,7 @@ fn sorted_recursive_payload_digest_and_reconcile_do_not_imply_business_completio
 fn unrelated_drafts_hold_and_remote_comments_are_preserved() {
     let root = temp_root();
     let remote = Remote::new();
-    let draft = root.path().join(".moai-cli/messages/draft.json");
+    let draft = root.path().join(".moai/messages/draft.json");
     fs::create_dir_all(draft.parent().unwrap()).unwrap();
     fs::write(&draft, b"HOLD\nprivate draft").unwrap();
     let hold = root.path().join("HOLD");
@@ -646,10 +639,11 @@ fn known_symlink_components_and_entry_paths_are_refused_without_target_change() 
         let target = outside.path().join("keep.json");
         fs::write(&target, b"HOLD draft").unwrap();
         if entry_link {
-            let dir = root.path().join(".moai-cli/messages/outbox");
+            let dir = root.path().join(".moai/messages/outbox");
             fs::create_dir_all(&dir).unwrap();
             symlink(&target, dir.join("r1.json")).unwrap();
         } else {
+            // A project that keeps its state in the earlier folder, and that folder is a link.
             symlink(outside.path(), root.path().join(".moai-cli")).unwrap();
         }
         assert_eq!(
@@ -756,12 +750,9 @@ fn ack_digest_and_remote_marker_boundaries_are_enforced_without_mutation() {
             .kind,
         Kind::Conflict
     );
-    assert!(!root
-        .path()
-        .join(".moai-cli/messages/inbox/r1.json")
-        .exists());
+    assert!(!root.path().join(".moai/messages/inbox/r1.json").exists());
     ack(root.path(), &m, &remote).unwrap();
-    let before = fs::read(root.path().join(".moai-cli/messages/outbox/r1.json")).unwrap();
+    let before = fs::read(root.path().join(".moai/messages/outbox/r1.json")).unwrap();
     {
         let mut comments = remote.comments.borrow_mut();
         let original = comments[1]["body"].as_str().unwrap().to_owned();
@@ -773,7 +764,7 @@ fn ack_digest_and_remote_marker_boundaries_are_enforced_without_mutation() {
     );
     assert_eq!(
         before,
-        fs::read(root.path().join(".moai-cli/messages/outbox/r1.json")).unwrap()
+        fs::read(root.path().join(".moai/messages/outbox/r1.json")).unwrap()
     );
     assert_eq!(remote.posts(), 2);
 }
@@ -788,7 +779,7 @@ fn disappearing_peer_publication_blocks_record_and_ack_without_republication() {
     ack(root.path(), &m, &remote).unwrap();
     // The receiver journal still remembers the publication even if this sender's
     // outbox was lost. Its stale observation must prevent a new sender POST.
-    fs::remove_file(root.path().join(".moai-cli/messages/outbox/r1.json")).unwrap();
+    fs::remove_file(root.path().join(".moai/messages/outbox/r1.json")).unwrap();
     remote.comments.borrow_mut().clear();
     remote.actor.set(11);
     assert_eq!(
@@ -806,7 +797,7 @@ fn disappearing_peer_publication_blocks_record_and_ack_without_republication() {
 fn persistent_unheld_lockfile_allows_restart_without_pid_or_file_removal() {
     let root = temp_root();
     let remote = Remote::new();
-    let lock = root.path().join(".moai-cli/messages/.lock");
+    let lock = root.path().join(".moai/messages/.lock");
     fs::create_dir_all(lock.parent().unwrap()).unwrap();
     fs::write(&lock, "terminated process metadata").unwrap();
     assert_eq!(
@@ -838,7 +829,7 @@ fn decoded_code_strings_are_not_mistaken_for_secrets_but_nested_secrets_are_reje
         record(clean.path(), &m, &no_network).unwrap_err().kind,
         Kind::Blocked
     );
-    assert!(!clean.path().join(".moai-cli").exists());
+    assert!(!clean.path().join(".moai").exists());
     assert!(no_network.sent.borrow().is_empty());
 }
 
@@ -888,7 +879,7 @@ fn rendered_comment_limit_accepts_exact_n_and_rejects_n_plus_one_before_persiste
                 record(root.path(), &m, &remote).unwrap_err().kind,
                 Kind::InputTooLarge
             );
-            assert!(!root.path().join(".moai-cli").exists());
+            assert!(!root.path().join(".moai").exists());
             assert!(remote.sent.borrow().is_empty());
         }
     }
@@ -1073,7 +1064,7 @@ fn opaque_identity_validation_rejects_only_empty_or_control_data_before_persiste
                 record(root.path(), &m, &remote).unwrap_err().kind,
                 Kind::InvalidInput
             );
-            assert!(!root.path().join(".moai-cli").exists());
+            assert!(!root.path().join(".moai").exists());
             assert!(remote.sent.borrow().is_empty());
         }
     }
@@ -1098,7 +1089,7 @@ fn marker_id_n_and_n_plus_one_preserve_the_shared_marker_contract() {
             } else {
                 assert_eq!(outcome.unwrap_err().kind, Kind::InvalidInput);
                 assert!(remote.sent.borrow().is_empty());
-                assert!(!root.path().join(".moai-cli").exists());
+                assert!(!root.path().join(".moai").exists());
             }
         }
     }
@@ -1122,6 +1113,6 @@ fn zero_actor_or_ownership_epoch_cannot_persist_or_publish() {
             Kind::InvalidInput
         );
         assert!(remote.sent.borrow().is_empty());
-        assert!(!root.path().join(".moai-cli").exists());
+        assert!(!root.path().join(".moai").exists());
     }
 }

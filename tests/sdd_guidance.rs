@@ -27,7 +27,9 @@ fn the_reference_states_the_rules_the_user_decided() {
     assert!(text.starts_with("# Internal: sdd\n\nWhen to read: "));
     for phrase in [
         "Every change that modifies the repository has a SPEC",
-        "One SPEC = one branch `spec/<slug>-<yyyymmdd>` = one pull request",
+        // SPEC-20261122-next-flow-skills-agents (slice C audit B2): a card lands once through the
+        // landing command; the pull request is a release's.
+        "One SPEC = one branch `spec/<slug>-<yyyymmdd>` = one landing",
         "--minimal",
         "exactly one `shall`",
         "IF <condition>, THEN",
@@ -225,7 +227,8 @@ fn the_old_cc_sentences_are_gone() {
         .collect();
     files.push("skills/moai/references/chains/index.md".into());
     files.push("skills/moai/SKILL.md".into());
-    for wf in ["run", "verify", "sync", "audit", "plan"] {
+    // RUN carries the retired VERIFY route (SPEC-20261122-next-flow-skills-agents).
+    for wf in ["run", "sync", "audit", "plan"] {
         files.push(format!("skills/moai/workflows/{wf}.md"));
     }
     for agent in ["plan", "research", "impl", "audit", "docs"] {
@@ -295,19 +298,21 @@ fn no_card_number_or_ddd_wording_in_the_package_and_agents() {
     for agent in ["plan", "research", "impl", "audit", "docs"] {
         files.push(format!("agents/{agent}.md"));
     }
-    assert!(files.len() >= 22, "{files:?}");
+    // Eight route texts (SPEC-20261122-next-flow-skills-agents REQ-1; twelve before), five
+    // internal references, the chain table, SKILL.md and five agents.
+    assert!(files.len() >= 20, "{files:?}");
     for rel in files {
         assert!(!read(&rel).contains("DDD"), "{rel} still says DDD");
     }
 }
 
-/// The five files that order work by the stages (the chain table and four workflows). Each
+/// The four files that order work by the stages (the chain table and three workflows). Each
 /// says that the order is the one `internal/sdd` gives and does not write it out
-/// (SPEC-20261121-stage-order-once, which replaces REQ-3 of this file's first SPEC).
-const POINTER_FILES: [&str; 5] = [
+/// (SPEC-20261121-stage-order-once, which replaces REQ-3 of this file's first SPEC). RUN
+/// carries the retired VERIFY route (SPEC-20261122-next-flow-skills-agents).
+const POINTER_FILES: [&str; 4] = [
     "skills/moai/references/chains/index.md",
     "skills/moai/workflows/run.md",
-    "skills/moai/workflows/verify.md",
     "skills/moai/workflows/sync.md",
     "skills/moai/workflows/audit.md",
 ];
@@ -315,7 +320,7 @@ const POINTER_FILES: [&str; 5] = [
 /// The sentence every pointer file carries instead of the order (compared in lower case).
 const POINTER: &str = "order of the stages is the one `internal/sdd` gives";
 
-/// SPEC-20261121-stage-order-once AC-1: the full order is in `sdd.md` only; the five pointer
+/// SPEC-20261121-stage-order-once AC-1: the full order is in `sdd.md` only; the four pointer
 /// files name `internal/sdd` as its owner. Named files only (no folder walk): the entry, every
 /// workflow the route table names, the chain table and the internal references.
 #[test]
@@ -372,7 +377,7 @@ fn each_stage_workflow_keeps_its_own_duty() {
              SPEC, the documents and the `@cc:` comments match the code",
         ),
         (
-            "skills/moai/workflows/verify.md",
+            "skills/moai/workflows/run.md",
             "SYNC writes them into the SPEC's `## Result` before the audit",
         ),
         (
@@ -457,4 +462,37 @@ fn new_blocking_gates_start_in_observe() {
         entry.contains("gates-start-in-observe"),
         "the manifest entry reason does not name the rule change"
     );
+}
+
+/// SPEC-20261123-work-count-guidance AC-1: `test-design.md` carries one numbered rule that says how
+/// to bound a time limit by a count of work, with the parts the method needs.
+#[test]
+fn test_design_has_one_work_count_rule() {
+    let text = read("skills/moai/references/internal/test-design.md");
+    let rules: Vec<&str> = text
+        .lines()
+        .filter(|line| {
+            let digits = line.chars().take_while(|c| c.is_ascii_digit()).count();
+            digits > 0 && line[digits..].starts_with(". ") && line.contains("count of work")
+        })
+        .collect();
+    assert_eq!(
+        rules.len(),
+        1,
+        "test-design.md needs exactly one numbered rule about a count of work"
+    );
+    for part in [
+        "wall clock",
+        "on the thread that runs the code",
+        "input length",
+        "stops the code at the limit",
+        "counted less than the input length",
+        "quadratic",
+        "only the work that calls the counter",
+    ] {
+        assert!(
+            rules[0].contains(part),
+            "the work-count rule lacks {part:?}"
+        );
+    }
 }

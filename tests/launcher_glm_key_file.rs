@@ -260,12 +260,13 @@ fn host_token(home: &Path, env_token: Option<&str>) -> String {
     assert!(out.status.success(), "{text}");
     let record = fs::read_to_string(&seen).unwrap();
     let (token, rest) = record.split_once('|').unwrap();
-    // The connection set of the Go tool, pinned by literal value; the last field is the
-    // same key under the name the z.ai MCP server reads.
+    // The connection set, pinned by literal value: opus, sonnet and fable map to glm-5.4[1m]
+    // (user decision 2026-11-23), haiku stays glm-5.3-flash; the last field is the same key
+    // under the name the z.ai MCP server reads.
     assert_eq!(
         rest,
         format!(
-            "https://api.z.ai/api/anthropic|3000000|glm-5.3|glm-5.3|glm-5.3-flash|glm-5.3|1000000|1000000|1|{token}"
+            "https://api.z.ai/api/anthropic|3000000|glm-5.4[1m]|glm-5.4[1m]|glm-5.3-flash|glm-5.4[1m]|1000000|1000000|1|{token}"
         )
     );
     if token.len() >= 8 {

@@ -20,6 +20,7 @@ use super::command::{actor, open_for_write};
 use super::early_reclaim;
 use super::input::{self, CardRef};
 use super::spec_link;
+use super::take_scope;
 use crate::ledger::reservation::{self, Reservation};
 use crate::ledger::{self};
 use crate::session_current;
@@ -158,6 +159,22 @@ pub(super) fn checked_scope(action: &str, entries: &[String]) -> Result<Vec<Stri
             i + 1
         ));
     }
+    // One `--scope` names one path and a glob here has no braces, so a comma is never part of a
+    // path: it is a list typed into one value, which would be stored as a single pattern that
+    // matches nothing (SPEC-20261123-take-scope-stored REQ-12).
+    if let Some(i) = entries.iter().position(|e| e.contains(',')) {
+        // The option the caller typed: give-back and line-lease take `--path`, review `--keep`.
+        let option = match action {
+            "give-back" | "line-lease" => "--path",
+            "review" => "--keep",
+            _ => "--scope",
+        };
+        return Err(format!(
+            "card {action} refused: scope entry {} has a comma; one `{option}` per path (repeat the \
+             option), a comma does not separate paths",
+            i + 1
+        ));
+    }
     let scope =
         input::validate_scope(entries).map_err(|e| format!("card {action} refused: {e}"))?;
     if scope.len() > reservation::MAX_SCOPE_PATTERNS {
@@ -193,9 +210,10 @@ pub(super) fn checked_scope(action: &str, entries: &[String]) -> Result<Vec<Stri
 /// card's live reservation must be at it, else a `conflict` that names the generation the card
 /// has (or that it is not held), checked in the same write transaction (card C-129, SPEC
 /// SPEC-20261119-card-scope-widen-followup REQ-4 and REQ-5). A card added without `--scope` is
-/// skipped by `card next`
-/// (`empty_scope`), and nothing else sets a card's own scope (card C-53). Any other state is a
-/// conflict that names it; nothing is written then.
+/// skipped by `card next` (`empty_scope`) until it has a scope: this command sets it, and so does
+/// `take`, which keeps a given scope or fills an empty one from the card's SPEC or its last
+/// reservation (SPEC-20261123-take-scope-stored). Any other state is a conflict that names it;
+/// nothing is written then.
 pub fn scope(
     project: &Path,
     home: &Path,
@@ -374,11 +392,11 @@ pub fn take(project: &Path, home: &Path, reference: &str, req: &TakeRequest<'_>)
     };
     let (id, mut ledger) = open_for_write(project, home)?;
     // A card that is not there has no SPEC; `reserve` answers `card not found` for it.
-    let (spec, warning) = match spec_link::kind_and_spec(ledger.conn(), card_id)
-        .map_err(|e| ledger::LedgerError::from(e).to_string())?
-    {
+    let linked = spec_link::kind_and_spec(ledger.conn(), card_id)
+        .map_err(|e| ledger::LedgerError::from(e).to_string())?;
+    let (spec, warning) = match &linked {
         Some((kind, spec)) => {
-            spec_link::status(project, &input::card_name(card_id), &kind, spec.as_deref())
+            spec_link::status(project, &input::card_name(card_id), kind, spec.as_deref())
         }
         None => (Value::Null, None),
     };
@@ -388,7 +406,29 @@ pub fn take(project: &Path, home: &Path, reference: &str, req: &TakeRequest<'_>)
         ));
     }
     let lease = req.lease_secs.unwrap_or(DEFAULT_LEASE_SECS);
-    let r = match given {
+    // Where the scope comes from (SPEC-20261123-take-scope-stored): the given one, the card's
+    // own, the linked SPEC's `write:` list, the last reservation's scope. A scope that is not the
+    // card's own is kept on the card once the reservation is made, so a released card is not
+    // empty again; the overlap check of `reserve` runs first and a refusal stores nothing.
+    let own = take_scope::own_scope(ledger.conn(), card_id)
+        .map_err(|e| ledger::LedgerError::from(e).to_string())?;
+    let own_is_empty = own.as_ref().is_some_and(Vec::is_empty);
+    let mut merged: Vec<String> = Vec::new();
+    let (scope, source) = match given {
+        Some(scope) => (Some(scope), take_scope::Source::Given),
+        None if own_is_empty => {
+            let spec_id = linked.as_ref().and_then(|(_, spec)| spec.as_deref());
+            match take_scope::choose(project, ledger.conn(), card_id, spec_id)? {
+                Some(fill) => {
+                    merged = fill.merged;
+                    (Some(fill.scope), fill.source)
+                }
+                None => return Err(take_scope::no_source_message(&input::card_name(card_id))),
+            }
+        }
+        None => (None, take_scope::Source::Card),
+    };
+    let r = match scope {
         Some(scope) => reservation::reserve(
             &mut ledger,
             card_id,
@@ -408,9 +448,31 @@ pub fn take(project: &Path, home: &Path, reference: &str, req: &TakeRequest<'_>)
         ),
     }
     .map_err(|e| e.to_string())?;
+    let mut warnings: Vec<String> = warning.into_iter().collect();
+    if !merged.is_empty() {
+        let names: Vec<String> = merged.iter().map(|p| format!("`{p}`")).collect();
+        warnings.push(format!(
+            "{}: the `write:` list of the SPEC names {} more than once; each path is reserved \
+             once (merged)",
+            input::card_name(card_id),
+            names.join(", ")
+        ));
+    }
+    if own_is_empty && source != take_scope::Source::Card {
+        // The take already succeeded; a scope that could not be kept is a warning, never a
+        // failure that would leave the card taken and reported refused.
+        if let Err(why) =
+            take_scope::store(&mut ledger, card_id, &r.write_scope, req.holder, source)
+        {
+            warnings.push(format!(
+                "{}: the scope could not be kept on the card ({why}); `card scope` sets it",
+                input::card_name(card_id)
+            ));
+        }
+    }
     Ok(json!({
         "action": "take", "project_id": id, "reservation": reservation_json(&r),
-        "state": "active", "spec": spec, "warnings": warning.into_iter().collect::<Vec<_>>(),
+        "state": "active", "spec": spec, "scope_source": source.word(), "warnings": warnings,
         "writes": true,
     }))
 }
@@ -683,14 +745,21 @@ pub(super) fn worktree_gate(project: &Path, worktree: Option<&str>) -> Result<()
         Ok(true) => {}
         Err(_) => return Err(unreadable()),
     }
-    // One changed or untracked path per line, every untracked file on its own line (a folder
-    // git would show as one entry could hide real work beside a tool cache). A listed tool
-    // cache file is not work (SPEC-20261120-reclaim-dead-holder REQ-12).
-    let uncommitted = git_output(path, &["status", "--porcelain=v1", "--untracked-files=all"])
-        .ok_or_else(unreadable)?
-        .lines()
-        .filter(|l| !l.trim().is_empty() && !super::early_reclaim::is_tool_cache_entry(path, l))
-        .count() as u64;
+    // One changed or untracked path per entry, every untracked file on its own (a folder git
+    // would show as one entry could hide real work beside a tool cache), names unquoted (`-z`).
+    // An untracked file under the runtime state folder is tool state, not work
+    // (SPEC-20261120-reclaim-dead-holder REQ-12, widened from one file to the folder by
+    // SPEC-20261122-test-defects-session-reclaim REQ-3). A folder git cannot open is only a
+    // warning to git, so any warning makes the worktree unreadable (REQ-9, REQ-10).
+    let state = super::early_reclaim::state_prefix(path);
+    let uncommitted = git_entries(
+        path,
+        &["status", "--porcelain=v1", "-z", "--untracked-files=all"],
+    )
+    .ok_or_else(unreadable)?
+    .iter()
+    .filter(|e| !super::early_reclaim::is_tool_cache_entry(&state, e))
+    .count() as u64;
     let unpushed = unpushed_commits(path, "HEAD", integration_ref(project, path).as_deref())
         .ok_or_else(unreadable)?;
     if uncommitted > 0 || unpushed > 0 {
@@ -739,6 +808,40 @@ pub(super) fn unpushed_commits(dir: &Path, tip: &str, integration: Option<&str>)
 /// every spawn (`identity::scrub_git_env`) and the meaning matches `lane_reset`'s probes — no
 /// fetch, untracked files counted, `None` on any failure.
 pub(super) fn git_output(dir: &Path, args: &[&str]) -> Option<String> {
+    git_run(dir, args).map(|out| String::from_utf8_lossy(&out.stdout).into_owned())
+}
+
+/// The entries of one git file list read with `-z` (`status` or `ls-files`), names as written.
+/// `None` on a failure and also when git wrote anything on its standard error: `git status`
+/// exits 0 with only a warning for a folder it cannot open and lists nothing for it, so a
+/// warning means the list is incomplete (SPEC-20261122-test-defects-session-reclaim REQ-9).
+pub(super) fn git_entries(dir: &Path, args: &[&str]) -> Option<Vec<String>> {
+    let out = git_run(dir, args)?;
+    if !out.stderr.is_empty() {
+        return None;
+    }
+    let status = args.first() == Some(&"status");
+    Some(split_entries(&String::from_utf8_lossy(&out.stdout), status))
+}
+
+/// Splits `-z` output into entries. In `git status` output a renamed or copied entry (`R` or
+/// `C` in either status column) is followed by its origin path as a field of its own, which is
+/// part of that entry and not one more.
+fn split_entries(raw: &str, status: bool) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut fields = raw.split('\0').filter(|f| !f.is_empty());
+    while let Some(entry) = fields.next() {
+        let code = entry.get(..2).unwrap_or("");
+        if status && code.contains(['R', 'C']) {
+            fields.next();
+        }
+        out.push(entry.to_string());
+    }
+    out
+}
+
+/// One read-only git command in `dir`, its output when it exits 0.
+fn git_run(dir: &Path, args: &[&str]) -> Option<std::process::Output> {
     // `MOAI_GIT_BIN` names the git program for a runner whose child carries no `PATH`
     // (the same seam as `MOAI_FORGE_GH_BIN`); everyone else spawns `git`.
     let program = std::env::var("MOAI_GIT_BIN").unwrap_or_else(|_| "git".to_string());
@@ -752,15 +855,29 @@ pub(super) fn git_output(dir: &Path, args: &[&str]) -> Option<String> {
         .stdin(std::process::Stdio::null())
         .output()
         .ok()?;
-    if !out.status.success() {
-        return None;
-    }
-    Some(String::from_utf8_lossy(&out.stdout).into_owned())
+    out.status.success().then_some(out)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// SPEC-20261122-test-defects-session-reclaim AC-9: `-z` entries keep a space as written; in
+    /// `git status` output a rename or copy carries its origin as one more field, which is part
+    /// of that entry, while an `ls-files` list has no status columns to read.
+    #[test]
+    fn a_z_list_keeps_names_and_folds_a_rename_origin() {
+        let status = "?? my notes.md\0R  new name.rs\0old name.rs\0 C a.rs\0b.rs\0 M c.rs\0";
+        assert_eq!(
+            split_entries(status, true),
+            ["?? my notes.md", "R  new name.rs", " C a.rs", " M c.rs"]
+        );
+        assert_eq!(
+            split_entries("R  x.rs\0C  y.rs\0", false),
+            ["R  x.rs", "C  y.rs"]
+        );
+        assert!(split_entries("", true).is_empty());
+    }
     use std::collections::HashMap;
 
     const A: &str = "428e289a-1c67-492e-a23b-a5aca15b4d1f";

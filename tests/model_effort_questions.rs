@@ -60,8 +60,9 @@ fn the_tool_question_lists_two_tools_and_defaults_to_the_installed_ones() {
 fn model_and_effort_questions_offer_only_table_values_with_the_default_first() {
     for (tool, role, default_model, default_effort) in [
         ("claude", "leader", "claude-opus-5-5", "high"),
-        ("glm", "leader", "zai/glm-5.3", "high"),
-        ("omp", "agent", "zai/glm-5.3-flash", "max"),
+        // SPEC-20261123-glm-54-followups D-3: the glm leader's default is 5.4, the agent's flash.
+        ("glm", "leader", "zai/glm-5.4[1m]", "high"),
+        ("glm", "agent", "zai/glm-5.3-flash", "max"),
     ] {
         let q = model_question(tool, role).expect("known tool and role");
         assert_eq!(q.kind, Kind::One);
@@ -197,7 +198,7 @@ fn enter_everywhere_picks_the_defaults_of_the_installed_tools() {
         Outcome::Picks(vec![
             pick("claude", "leader", "claude-opus-5-5", "high"),
             pick("claude", "agent", "claude-sonnet-5-5", "high"),
-            pick("glm", "leader", "zai/glm-5.3", "high"),
+            pick("glm", "leader", "zai/glm-5.4[1m]", "high"),
             pick("glm", "agent", "zai/glm-5.3-flash", "max"),
         ])
     );
@@ -207,10 +208,41 @@ fn enter_everywhere_picks_the_defaults_of_the_installed_tools() {
     let outcome = run(&mut Cursor::new(input), &mut Vec::new(), &[]).unwrap();
     match outcome {
         Outcome::Picks(p) => {
-            assert_eq!(p[0], pick("glm", "leader", "zai/glm-5.3", "high"));
+            assert_eq!(p[0], pick("glm", "leader", "zai/glm-5.4[1m]", "high"));
         }
         other => panic!("{other:?}"),
     }
+}
+
+/// SPEC-20261123-glm-54-followups REQ-1..REQ-3 / AC-1: the glm leader's model question offers the
+/// 5.4 id first as the default and keeps both 5.3 rows after it; a 5.3 choice saved earlier is a
+/// supported value, so Enter keeps it as the default and its effort question still answers.
+#[test]
+fn the_glm_model_question_offers_54_first_and_keeps_a_saved_53() {
+    let q = model_question("glm", "leader").unwrap();
+    assert_eq!(
+        values(&q),
+        ["zai/glm-5.4[1m]", "zai/glm-5.3", "zai/glm-5.3-flash"]
+    );
+    assert_eq!(q.defaults, [0]);
+    // The 5.4 row offers the efforts the table lists, with high as the leader default.
+    let e = effort_question("glm", "leader", "zai/glm-5.4[1m]").unwrap();
+    assert_eq!(values(&e), ["low", "high", "max"]);
+    assert_eq!(e.options[e.defaults[0]].value, "high");
+    // A saved 5.3 choice: it is the default option, and the other two follow.
+    let saved = Choice {
+        model: "zai/glm-5.3".into(),
+        effort: "low".into(),
+    };
+    let q = model_effort_questions::model_question_with("glm", "leader", Some(&saved)).unwrap();
+    assert_eq!(
+        values(&q),
+        ["zai/glm-5.3", "zai/glm-5.4[1m]", "zai/glm-5.3-flash"]
+    );
+    let e =
+        model_effort_questions::effort_question_with("glm", "leader", "zai/glm-5.3", Some(&saved))
+            .unwrap();
+    assert_eq!(e.options[e.defaults[0]].value, "low");
 }
 
 #[test]
@@ -219,16 +251,19 @@ fn the_plan_changes_only_the_picked_entries_and_lists_unsupported_ones() {
         "role_access": "prompt",
         "models": {
             "codex": {"agent": {"model": "gpt-6.2-sol", "effort": "max"}},
-            "claude": {"leader": {"model": SECRET, "effort": "high"}},
+            "claude": {
+                "leader": {"model": SECRET, "effort": "high"},
+                "agent": {"model": "claude-sonnet-5-5", "effort": "high"}
+            },
             "glm": {"agent": {"model": "zai/glm-5.3-flash"}},
             "omp": {"agent": {"model": "zai/glm-5.3-flash", "effort": "high"}}
         }
     }));
     let before = launcher.clone();
     let picks = [
-        pick("omp", "leader", "zai/glm-5.3", "high"),
+        pick("glm", "leader", "zai/glm-5.3", "high"),
         pick("claude", "leader", "claude-opus-5-5", "low"),
-        pick("omp", "agent", "zai/glm-5.3-flash", "max"),
+        pick("claude", "agent", "claude-haiku-5-5", "max"),
     ];
     let p = plan(&launcher, &picks).unwrap();
     assert_eq!(launcher, before, "the input is not changed");
@@ -239,11 +274,11 @@ fn the_plan_changes_only_the_picked_entries_and_lists_unsupported_ones() {
             .find(|c| c.tool == tool && c.role == role)
             .unwrap_or_else(|| panic!("{tool} {role}"))
     };
-    assert_eq!(change("omp", "leader").from, None);
+    assert_eq!(change("glm", "leader").from, None);
     assert_eq!(
-        change("omp", "agent").from,
+        change("claude", "agent").from,
         Some(Choice {
-            model: "zai/glm-5.3-flash".into(),
+            model: "claude-sonnet-5-5".into(),
             effort: "high".into()
         })
     );
@@ -256,10 +291,14 @@ fn the_plan_changes_only_the_picked_entries_and_lists_unsupported_ones() {
     // The unsupported glm.agent stays and is listed; the replaced claude.leader is not listed.
     assert_eq!(p.kept_unsupported, ["launcher.models.glm.agent"]);
     assert_eq!(p.after["role_access"], json!("prompt"));
-    assert_eq!(p.after["models"]["glm"], before["models"]["glm"]);
-    // The saved Codex value is not a choice of any tool: it is not listed, and the written file
-    // leaves it out (leader decision D2).
+    assert_eq!(
+        p.after["models"]["glm"]["agent"],
+        before["models"]["glm"]["agent"]
+    );
+    // The saved Codex and OMP values are not a choice of any tool: they are not listed, and the
+    // written file leaves them out (leader decision D2).
     assert!(p.after["models"].get("codex").is_none(), "{:?}", p.after);
+    assert!(p.after["models"].get("omp").is_none(), "{:?}", p.after);
     assert_eq!(
         p.after["models"]["claude"]["leader"],
         json!({"model": "claude-opus-5-5", "effort": "low"})
@@ -271,19 +310,24 @@ fn the_plan_changes_only_the_picked_entries_and_lists_unsupported_ones() {
     let reordered = object(json!({
         "models": {
             "glm": {"agent": {"model": "zai/glm-5.3-flash"}},
-            "claude": {"leader": {"effort": "high", "model": SECRET}},
+            "claude": {
+                "agent": {"effort": "high", "model": "claude-sonnet-5-5"},
+                "leader": {"effort": "high", "model": SECRET}
+            },
             "codex": {"agent": {"effort": "max", "model": "gpt-6.2-sol"}},
             "omp": {"agent": {"effort": "high", "model": "zai/glm-5.3-flash"}}
         },
         "role_access": "prompt"
     }));
     assert_eq!(plan(&reordered, &picks).unwrap().digest, p.digest);
-    let other = [pick("omp", "leader", "zai/glm-5.3", "low")];
+    let other = [pick("glm", "leader", "zai/glm-5.3", "low")];
     assert_ne!(plan(&launcher, &other).unwrap().digest, p.digest);
     assert_eq!(p.digest.len(), 64);
 
     // An unsupported pick is refused.
-    assert!(plan(&launcher, &[pick("omp", "leader", "zai/glm-5.3", "ultra")]).is_err());
+    assert!(plan(&launcher, &[pick("glm", "leader", "zai/glm-5.3", "ultra")]).is_err());
+    // A pick for OMP is refused, whatever it holds.
+    assert!(plan(&launcher, &[pick("omp", "leader", "zai/glm-5.3", "high")]).is_err());
     assert!(plan(&launcher, &[pick("nope", "leader", "gpt-6.1-sol", "high")]).is_err());
     // A pick for Codex is refused, whatever it holds.
     assert!(plan(&launcher, &[pick("codex", "leader", "gpt-6.2-sol", "high")]).is_err());
@@ -291,8 +335,8 @@ fn the_plan_changes_only_the_picked_entries_and_lists_unsupported_ones() {
 
 #[test]
 fn a_pick_writes_only_its_own_tool() {
-    // A glm pick is its own pick now (the earlier OMP pick also set glm; OMP is no longer
-    // offered, and this plan API still accepts an omp pick — it writes omp alone).
+    // A glm pick is its own pick now (the earlier OMP pick also set glm; OMP is not a tool any
+    // more, so this plan API refuses an omp pick).
     let p = plan(&Map::new(), &[pick("glm", "leader", "zai/glm-5.3", "low")]).unwrap();
     let tools: Vec<&str> = p.changes.iter().map(|c| c.tool.as_str()).collect();
     assert_eq!(tools, ["glm"]);
@@ -312,9 +356,7 @@ fn a_pick_writes_only_its_own_tool() {
         Source::Default
     );
     assert_eq!(p.after.get("models").and_then(|m| m.get("omp")), None);
-    let p = plan(&Map::new(), &[pick("omp", "leader", "zai/glm-5.3", "low")]).unwrap();
-    let tools: Vec<&str> = p.changes.iter().map(|c| c.tool.as_str()).collect();
-    assert_eq!(tools, ["omp"]);
+    assert!(plan(&Map::new(), &[pick("omp", "leader", "zai/glm-5.3", "low")]).is_err());
 }
 
 #[test]

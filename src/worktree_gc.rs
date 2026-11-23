@@ -2,9 +2,11 @@
 //! §D5, §D8). Read-only: for every linked worktree it lists whether its cargo build output
 //! may be trimmed or the whole worktree removed, with the reasons, and a digest of the list.
 //! The plan deletes nothing. `worktree.gc.apply` ([`apply`], #2498) acts on a plan only when
-//! the recomputed digest is the same; under the user decision of 2026-11-10 (#2389 comment
-//! 6774899518, item 2) running it on the user's own machine is the leader's step after the
-//! user confirms.
+//! the recomputed digest is the same. Two callers run it: the `worktree-gc-apply` command, which
+//! under the user decision of 2026-11-10 (#2389 comment 6774899518, item 2) is the leader's step
+//! on the user's own machine after the user confirms; and `card land`, through
+//! [`crate::worktree_cleanup`], which removes the closed card's own merged, clean worktrees on
+//! the digest of the plan it just read, with no confirmation step of its own.
 //!
 //! Fail closed: a fact that cannot be established (git failed, no process table, the time
 //! budget spent) makes the worktree `skip` with a named reason, never a candidate.
@@ -80,6 +82,19 @@ pub struct Facts {
     /// A real `node_modules` folder sits at the top (#3010 audit F1 on #3058): the worktree is
     /// never a `remove` candidate, whatever the file census says about what is inside.
     pub install_dir: bool,
+    /// Another linked worktree sits inside this one (SPEC-20261123-worktree-slots REQ-8):
+    /// removing it would take the nested checkout with it.
+    pub nested: bool,
+    /// An active card reservation names this worktree (REQ-8).
+    pub live_claim: bool,
+    /// The ledger exists but could not be read, so a claim cannot be ruled out.
+    pub claim_unknown: bool,
+    /// One of the fixed slots of `<primary>/.claude/worktrees/` (REQ-7): never removed.
+    pub fixed_slot: bool,
+    /// Every reservation of the card that worked here has ended (a landing closed it). Time then
+    /// says nothing more about whether a lane is still at work: the recent-change window and the
+    /// empty-worktree guard do not apply. Every other reason still does.
+    pub settled: bool,
 }
 
 /// True when a change `age_secs` old falls inside the window.
@@ -97,6 +112,10 @@ pub fn decide(f: &Facts, window_secs: u64) -> (&'static str, Vec<&'static str>) 
         (f.locked, "locked"),
         (f.prunable, "prunable"),
         (f.budget_spent, "budget_spent"),
+        (f.fixed_slot, "fixed_slot"),
+        (f.nested, "nested_worktree"),
+        (f.live_claim, "live_claim"),
+        (f.claim_unknown, "claim_check_unavailable"),
     ] {
         if hit {
             reasons.push(why);
@@ -118,6 +137,7 @@ pub fn decide(f: &Facts, window_secs: u64) -> (&'static str, Vec<&'static str>) 
         None => reasons.push("process_check_unavailable"),
     }
     match f.change_age_secs {
+        _ if f.settled => {}
         Some(age) if is_recent(age, window_secs) => reasons.push("recent_change"),
         Some(_) => {}
         None => reasons.push("change_age_unknown"),
@@ -130,7 +150,9 @@ pub fn decide(f: &Facts, window_secs: u64) -> (&'static str, Vec<&'static str>) 
         // of its own — looks exactly like one a lane has just created and not started; it
         // frees almost nothing, so it is kept.
         (Some(0), Some(0))
-            if !f.has_build_output && f.change_age_secs.is_some_and(|a| a < EMPTY_KEEP_SECS) =>
+            if !f.settled
+                && !f.has_build_output
+                && f.change_age_secs.is_some_and(|a| a < EMPTY_KEEP_SECS) =>
         {
             reasons.push("empty_worktree");
             return ("skip", reasons);
@@ -614,6 +636,9 @@ pub struct Pace {
     /// When not empty, only these worktrees are planned (#2879 D1: a lane cleans its own card
     /// worktrees and never another lane's). Each must be a worktree of this clone.
     pub only: Vec<PathBuf>,
+    /// The worktree cap the `cap` block reports against; `None` is
+    /// [`crate::worktree_slot::MAX_WORKTREES`].
+    pub max_worktrees: Option<usize>,
 }
 
 /// The home worktree folder and the Go generation's folder (#2811), each as written and as
@@ -637,7 +662,7 @@ fn work_roots() -> (Vec<PathBuf>, Vec<PathBuf>) {
     )
 }
 
-fn shown(path: &Path, root: &Path) -> String {
+pub(crate) fn shown(path: &Path, root: &Path) -> String {
     match path.strip_prefix(root) {
         Ok(rel) if rel.as_os_str().is_empty() => ".".into(),
         Ok(rel) => rel.to_string_lossy().into_owned(),
@@ -761,6 +786,56 @@ fn lifecycle(
     })
 }
 
+/// The worktrees active card reservations name, resolved (SPEC-20261123-worktree-slots REQ-8).
+/// A project without a profile or without a ledger has none. A profile or a ledger that exists
+/// but cannot be read is `Err`, and every linked worktree is then kept as
+/// `claim_check_unavailable`. The ledger is the one of `home` (`$HOME` when `None`).
+fn claimed_worktrees(top: &Path, home: Option<&Path>) -> std::result::Result<Vec<PathBuf>, ()> {
+    let real = fs::canonicalize(top).map_err(|_| ())?;
+    let Some(id) = crate::project_id::read(&real).map_err(|_| ())? else {
+        return Ok(Vec::new());
+    };
+    let home = crate::ledger::command::resolve_home(home.map(Path::to_path_buf)).map_err(|_| ())?;
+    let file = crate::ledger::ledger_path(&home, &id).map_err(|_| ())?;
+    if !file.is_file() {
+        return Ok(Vec::new());
+    }
+    let read = crate::ledger::open_read_only(&home, &id).map_err(|_| ())?;
+    let rows = crate::ledger::reservation::active_worktrees(read.conn()).map_err(|_| ())?;
+    Ok(rows
+        .into_iter()
+        .map(|(_, w)| {
+            let p = PathBuf::from(w);
+            fs::canonicalize(&p).unwrap_or(p)
+        })
+        .collect())
+}
+
+/// The `cap` block (REQ-10): the linked worktree count against the cap, the `remove`
+/// candidates oldest change first, and how many of them bring the count back under the cap.
+/// A report only: it is not bound by the digest.
+fn cap_block(linked: usize, limit: usize, candidates: &[Value]) -> Value {
+    let mut removable: Vec<&Value> = candidates
+        .iter()
+        .filter(|c| c["action"] == "remove")
+        .collect();
+    removable.sort_by(|a, b| {
+        let age = |c: &Value| c["change_age_secs"].as_u64().unwrap_or(0);
+        age(b)
+            .cmp(&age(a))
+            .then_with(|| a["path"].as_str().cmp(&b["path"].as_str()))
+    });
+    let over = linked.saturating_sub(limit);
+    json!({
+        "limit": limit,
+        "count": linked,
+        "over": over,
+        "oldest_first": removable.iter().map(|c| c["path"].clone()).collect::<Vec<_>>(),
+        "needed": over.min(removable.len()),
+        "enough": removable.len() >= over,
+    })
+}
+
 /// Builds the plan. `now_unix` overrides the clock (tests); `None` uses the system time.
 /// Only an ancestor of the integration tip counts as merged here: `worktree.gc.apply`
 /// recomputes this plan, and a squash merge alone never makes it remove (#2724).
@@ -809,6 +884,37 @@ pub fn plan_paced(
     squash: bool,
     pace: &Pace,
 ) -> Result<Value> {
+    plan_settled(
+        project,
+        integration_ref,
+        recent,
+        budget,
+        now_unix,
+        squash,
+        pace,
+        &[],
+        None,
+    )
+}
+
+/// [`plan_paced`] where the worktrees in `settled` belong to a card whose reservations have all
+/// ended (a landing closed it): for them the recent-change window and the empty-worktree guard
+/// do not apply ([`Facts::settled`]). A claim, a process, a dirty or unmerged tree and every other
+/// reason still keep a worktree. The card claims are read from the ledger of `home` (`$HOME` when
+/// `None`): `card land --home DIR` passes DIR, the ledger the landing wrote, so another live
+/// card's worktree is kept whatever `$HOME` of the process is.
+#[allow(clippy::too_many_arguments)]
+pub fn plan_settled(
+    project: &Path,
+    integration_ref: &str,
+    recent: Duration,
+    budget: Duration,
+    now_unix: Option<u64>,
+    squash: bool,
+    pace: &Pace,
+    settled: &[PathBuf],
+    home: Option<&Path>,
+) -> Result<Value> {
     if recent.as_secs() < MIN_RECENT_MINUTES * 60 {
         return Err(format!(
             "--recent-minutes must be at least {MIN_RECENT_MINUTES}; got {}",
@@ -848,6 +954,12 @@ pub fn plan_paced(
     // #2811: the home work folders, as written and resolved, so a linked `~/.moai` still
     // names its worktrees. The Go generation's `worktrees/projects` is never touched (D8a).
     let (home_roots, go_roots) = work_roots();
+    let claims = claimed_worktrees(&top, home);
+    let slot_dir = primary.join(crate::worktree_slot::SLOT_DIR);
+    let entry_paths: Vec<PathBuf> = entries
+        .iter()
+        .map(|e| fs::canonicalize(&e.path).unwrap_or_else(|_| e.path.clone()))
+        .collect();
 
     let mut candidates = Vec::new();
     // #2879 D2: the primary first, then the linked worktrees starting after the cursor.
@@ -869,6 +981,10 @@ pub fn plan_paced(
     let (mut checked, mut remaining, mut last_checked) = (0usize, 0usize, None::<String>);
     let only: Vec<PathBuf> = pace
         .only
+        .iter()
+        .map(|p| fs::canonicalize(p).unwrap_or_else(|_| p.clone()))
+        .collect();
+    let settled_paths: Vec<PathBuf> = settled
         .iter()
         .map(|p| fs::canonicalize(p).unwrap_or_else(|_| p.clone()))
         .collect();
@@ -917,6 +1033,22 @@ pub fn plan_paced(
             prunable: e.prunable,
             has_build_output: !cargo.is_empty(),
             install_dir: has_install_dir(&path),
+            nested: i != 0
+                && entry_paths
+                    .iter()
+                    .any(|q| q != &path && q.starts_with(&path)),
+            live_claim: i != 0
+                && claims
+                    .as_ref()
+                    .is_ok_and(|list| list.iter().any(|c| c == &path)),
+            claim_unknown: i != 0 && claims.is_err(),
+            fixed_slot: i != 0
+                && path.parent() == Some(slot_dir.as_path())
+                && path
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .is_some_and(crate::worktree_slot::is_slot),
+            settled: i != 0 && settled_paths.contains(&path),
             ..Default::default()
         };
         let mut merged_by: Option<&str> = None;
@@ -1014,6 +1146,13 @@ pub fn plan_paced(
         .collect();
     let plan_digest = crate::digest(serde_json::to_string(&bound).unwrap_or_default().as_bytes());
     let count = |a: &str| candidates.iter().filter(|c| c["action"] == a).count();
+    let linked = entries.iter().skip(1).filter(|e| !e.bare).count();
+    let cap = cap_block(
+        linked,
+        pace.max_worktrees
+            .unwrap_or(crate::worktree_slot::MAX_WORKTREES),
+        &candidates,
+    );
     let trim_total: u64 = candidates
         .iter()
         .filter_map(|c| c["trim_bytes"].as_u64())
@@ -1031,13 +1170,14 @@ pub fn plan_paced(
             "trim_bytes": trim_total,
         },
         "candidates": candidates,
+        "cap": cap,
         "remaining": remaining,
         "next_cursor": if remaining > 0 { json!(last_checked) } else { Value::Null },
         // #3010 P1: free bytes before any apply; a reclaimed figure is the later `df` minus
         // this one, never a sum of sizes (clonefile and hard links make sums wrong).
         "before_free_bytes": crate::worktree_report::disk_bytes(&top).map(|(free, _)| free),
         "plan_digest": plan_digest,
-        "apply": "worktree-gc-apply with this plan_digest and a permission reference; on this machine the leader runs it only after the user confirms",
+        "apply": "worktree-gc-apply with this plan_digest and a permission reference; on this machine the leader runs it only after the user confirms. card land runs the same apply for the landed card's own worktrees, without that confirmation step",
         "network": "disabled",
         "writes": false,
     }))
@@ -1100,6 +1240,27 @@ fn recheck_entry(wt: &Path, action: &str, primary: &Path) -> Option<&'static str
     busy_now(wt, action == "remove", Some(primary))
 }
 
+/// The ledger and nesting facts the plan read, read again right before `apply` acts on `wt`
+/// (SPEC-20261123-worktree-slots REQ-8): a card claim made after the plan, a ledger that can no
+/// longer be read, or a worktree added inside `wt` since, each refuse. `worktrees` is the list
+/// `apply` read, canonical paths with the primary first. The claims are read from the ledger of
+/// `home` (`$HOME` when `None`), the same one the plan read.
+fn recheck_claims_and_nesting(
+    wt: &Path,
+    top: &Path,
+    worktrees: &[PathBuf],
+    home: Option<&Path>,
+) -> Option<&'static str> {
+    if worktrees.iter().any(|q| q != wt && q.starts_with(wt)) {
+        return Some("nested_worktree");
+    }
+    match claimed_worktrees(top, home) {
+        Ok(list) if list.iter().any(|c| c == wt) => Some("live_claim"),
+        Ok(_) => None,
+        Err(()) => Some("claim_check_unavailable"),
+    }
+}
+
 /// Deletes the cargo-owned trim paths of `wt` that the plan listed. Each path must still sit
 /// directly in `wt/target`, not be a symlink, and still be cargo-owned.
 fn trim(wt: &Path, trim_paths: &[String]) -> std::result::Result<(), String> {
@@ -1139,13 +1300,17 @@ fn act_on(
     action: &str,
     shown_path: &str,
     primary: &Path,
+    top: &Path,
     worktrees: &[PathBuf],
+    home: Option<&Path>,
 ) -> std::result::Result<&'static str, String> {
     let wt =
         fs::canonicalize(primary.join(shown_path)).unwrap_or_else(|_| primary.join(shown_path));
     if wt == primary || !worktrees.contains(&wt) {
         Err("not a linked worktree of this repository".to_string())
-    } else if let Some(why) = recheck_entry(&wt, action, primary) {
+    } else if let Some(why) = recheck_claims_and_nesting(&wt, top, worktrees, home)
+        .or_else(|| recheck_entry(&wt, action, primary))
+    {
         Err(format!("refused: {why}"))
     } else if action == "trim" {
         let paths: Vec<String> = c["trim_paths"]
@@ -1181,7 +1346,14 @@ fn act_on(
 /// paths, `remove` runs `git worktree remove` without `--force` (git refuses a dirty tree;
 /// the branch is kept) — after re-checking each worktree right before touching it
 /// ([`busy_now`]). A refused or failed entry is reported and the rest go on; nothing is
-/// retried. Running this on the user's own machine is a user-confirmed step the leader takes.
+/// retried.
+///
+/// Who may run it: the `worktree-gc-apply` command is a user-confirmed step the leader takes on
+/// the user's own machine. `card land` also reaches it, through [`crate::worktree_cleanup`], with
+/// no confirmation step of its own: once a landing closes a card, its merged, clean worktrees
+/// outside `.claude/worktrees/` are removed by this function on the digest of the plan just read
+/// (`git worktree remove` without `--force`; the branch stays). The `cleanup` key of the landing
+/// answer reports what it did.
 #[allow(clippy::too_many_arguments)]
 pub fn apply(
     project: &Path,
@@ -1193,8 +1365,38 @@ pub fn apply(
     plan_digest: &str,
     permission_reference: &str,
 ) -> Result<Value> {
+    apply_settled(
+        project,
+        integration_ref,
+        recent,
+        budget,
+        now_unix,
+        pace,
+        &[],
+        None,
+        plan_digest,
+        permission_reference,
+    )
+}
+
+/// [`apply`] for a plan made by [`plan_settled`] with the same `settled` paths and `home`: the
+/// recomputed plan, and so its digest, is the one that treats those worktrees as settled, and the
+/// claims it reads again right before each entry come from the same `home`.
+#[allow(clippy::too_many_arguments)]
+pub fn apply_settled(
+    project: &Path,
+    integration_ref: &str,
+    recent: Duration,
+    budget: Duration,
+    now_unix: Option<u64>,
+    pace: &Pace,
+    settled: &[PathBuf],
+    home: Option<&Path>,
+    plan_digest: &str,
+    permission_reference: &str,
+) -> Result<Value> {
     validate_permission(permission_reference)?;
-    let fresh = plan_paced(
+    let fresh = plan_settled(
         project,
         integration_ref,
         recent,
@@ -1202,6 +1404,8 @@ pub fn apply(
         now_unix,
         false,
         pace,
+        settled,
+        home,
     )?;
     if fresh["plan_digest"].as_str() != Some(plan_digest) {
         return Err("stale or altered plan: the recomputed digest differs; re-preview required, nothing was written".into());
@@ -1230,7 +1434,7 @@ pub fn apply(
             continue;
         }
         let shown_path = c["path"].as_str().unwrap_or_default().to_string();
-        let outcome = act_on(c, action, &shown_path, &primary, &worktrees);
+        let outcome = act_on(c, action, &shown_path, &primary, &top, &worktrees, home);
         let (status, detail) = match outcome {
             Ok(s) => (s, Value::Null),
             Err(e) => {
@@ -1408,6 +1612,36 @@ mod tests {
         f.has_build_output = true;
         f.change_age_secs = Some(7_200);
         assert_eq!(decide(&f, 7_200), ("remove", vec![]));
+    }
+
+    /// A settled worktree (its card's reservations ended) is judged without the recent-change
+    /// window and the empty-worktree guard, and by every other reason as before.
+    #[test]
+    fn a_settled_worktree_ignores_time_and_nothing_else() {
+        let mut f = eligible();
+        f.settled = true;
+        f.has_build_output = false;
+        f.change_age_secs = Some(0);
+        assert_eq!(decide(&f, 7_200), ("remove", vec![]));
+        f.change_age_secs = None;
+        assert_eq!(decide(&f, 7_200), ("remove", vec![]));
+        f.change_age_secs = Some(0);
+        f.live_claim = true;
+        assert_eq!(decide(&f, 7_200), ("skip", vec!["live_claim"]));
+        f.live_claim = false;
+        f.in_use = Some(true);
+        assert_eq!(decide(&f, 7_200), ("skip", vec!["process_in_use"]));
+        f.in_use = Some(false);
+        f.tracked_dirty = Some(true);
+        assert_eq!(decide(&f, 7_200), ("skip", vec!["tracked_changes"]));
+        f.tracked_dirty = Some(false);
+        f.merged = Some(false);
+        assert_eq!(decide(&f, 7_200), ("skip", vec!["not_merged"]));
+        // The same facts without `settled` are kept by time.
+        let mut f = eligible();
+        f.has_build_output = false;
+        f.change_age_secs = Some(0);
+        assert_eq!(decide(&f, 7_200), ("skip", vec!["recent_change"]));
     }
 
     #[test]
@@ -1648,7 +1882,15 @@ mod tests {
         let entry = |action: &str| json!({"path": path, "action": action, "trim_paths": []});
 
         assert_eq!(
-            act_on(&entry("remove"), "remove", &path, &primary, &worktrees),
+            act_on(
+                &entry("remove"),
+                "remove",
+                &path,
+                &primary,
+                &primary,
+                &worktrees,
+                None
+            ),
             Err("refused: files_outside_build_output".to_string())
         );
         assert!(
@@ -1656,7 +1898,15 @@ mod tests {
             "a refused entry leaves the worktree whole"
         );
         assert_eq!(
-            act_on(&entry("trim"), "trim", &path, &primary, &worktrees),
+            act_on(
+                &entry("trim"),
+                "trim",
+                &path,
+                &primary,
+                &primary,
+                &worktrees,
+                None
+            ),
             Ok("trimmed")
         );
         assert!(
@@ -1669,10 +1919,162 @@ mod tests {
                 "trim",
                 &primary.to_string_lossy(),
                 &primary,
-                &worktrees
+                &primary,
+                &worktrees,
+                None
             ),
             Err("not a linked worktree of this repository".to_string())
         );
+    }
+
+    /// SPEC-20261123-worktree-slots REQ-8: right before it acts, `apply` reads the nesting and
+    /// the claims again. A worktree added inside the entry since the plan, or a project profile
+    /// that can no longer be read (so the claims are unknown), refuses the entry and leaves it
+    /// whole; with both gone the same entry is trimmed.
+    #[cfg(unix)]
+    #[test]
+    fn apply_reads_nesting_and_claims_again_right_before_it_acts() {
+        let d = tempfile::tempdir().unwrap();
+        let base = fs::canonicalize(d.path()).unwrap();
+        let primary = base.join("primary");
+        fs::create_dir_all(&primary).unwrap();
+        gc_git(&primary, &["init", "-q", "-b", "main"]);
+        fs::write(primary.join(".gitignore"), "target/\n/inner/\n").unwrap();
+        fs::write(primary.join("a.txt"), "a\n").unwrap();
+        gc_git(&primary, &["add", ".gitignore", "a.txt"]);
+        gc_git(&primary, &["commit", "-q", "-m", "init"]);
+        let wt = base.join("wt");
+        gc_git(
+            &primary,
+            &["worktree", "add", "-q", "-b", "b", wt.to_str().unwrap()],
+        );
+        let inner = wt.join("inner");
+        gc_git(
+            &primary,
+            &["worktree", "add", "-q", "-b", "c", inner.to_str().unwrap()],
+        );
+        fs::create_dir_all(wt.join("target")).unwrap();
+        let path = wt.to_string_lossy().to_string();
+        let entry = |action: &str| json!({"path": path, "action": action, "trim_paths": []});
+        let act = |action: &str, worktrees: &[PathBuf]| {
+            act_on(
+                &entry(action),
+                action,
+                &path,
+                &primary,
+                &primary,
+                worktrees,
+                None,
+            )
+        };
+
+        let with_inner = vec![primary.clone(), wt.clone(), inner.clone()];
+        for action in ["trim", "remove"] {
+            assert_eq!(
+                act(action, &with_inner),
+                Err("refused: nested_worktree".to_string())
+            );
+        }
+        assert!(wt.is_dir() && inner.is_dir());
+
+        let state = primary.join(crate::PROJECT_STATE_DIR);
+        fs::create_dir_all(&state).unwrap();
+        fs::write(state.join("project.yaml"), "not a profile").unwrap();
+        let without_inner = vec![primary.clone(), wt.clone()];
+        assert_eq!(
+            act("trim", &without_inner),
+            Err("refused: claim_check_unavailable".to_string())
+        );
+        fs::remove_file(state.join("project.yaml")).unwrap();
+        assert_eq!(act("trim", &without_inner), Ok("trimmed"));
+    }
+
+    /// The claims `apply` reads again right before it acts come from the ledger of the `home` it was
+    /// given, not from `$HOME` (`card land --home DIR`): a held card of that ledger refuses the
+    /// entry, and the same worktree is not refused when the home given holds no ledger.
+    #[cfg(unix)]
+    #[test]
+    fn the_recheck_reads_the_claims_of_the_given_home() {
+        let d = tempfile::tempdir().unwrap();
+        let base = fs::canonicalize(d.path()).unwrap();
+        let primary = base.join("primary");
+        fs::create_dir_all(&primary).unwrap();
+        gc_git(&primary, &["init", "-q", "-b", "main"]);
+        fs::write(primary.join("a.txt"), "a\n").unwrap();
+        gc_git(&primary, &["add", "a.txt"]);
+        gc_git(&primary, &["commit", "-q", "-m", "init"]);
+        let wt = base.join("wt");
+        gc_git(
+            &primary,
+            &["worktree", "add", "-q", "-b", "b", wt.to_str().unwrap()],
+        );
+        let state = primary.join(crate::PROJECT_STATE_DIR);
+        fs::create_dir_all(&state).unwrap();
+        fs::write(
+            state.join("project.yaml"),
+            "{\"schema_version\":2,\"project_id\":\"demo\"}\n",
+        )
+        .unwrap();
+        let ledger_home = base.join("ledger-home");
+        let empty_home = base.join("empty-home");
+        fs::create_dir_all(&ledger_home).unwrap();
+        fs::create_dir_all(&empty_home).unwrap();
+        crate::ledger::register(&ledger_home, "demo").unwrap();
+        let scope = vec!["apps/one/".to_string()];
+        crate::card::command::add(
+            &primary,
+            &ledger_home,
+            &crate::card::command::AddRequest {
+                title: "t",
+                body: "",
+                kind: None,
+                priority: None,
+                scope: &scope,
+                criteria: &[],
+                by: None,
+            },
+        )
+        .unwrap();
+        crate::card::dispatch::ready(&primary, &ledger_home, "C-1", None).unwrap();
+        let wt_text = wt.to_string_lossy().to_string();
+        crate::card::dispatch::take(
+            &primary,
+            &ledger_home,
+            "C-1",
+            &crate::card::dispatch::TakeRequest {
+                holder: "holder-b",
+                lease_secs: Some(3600),
+                scope: &[],
+                worktree: Some(&wt_text),
+                branch: None,
+                require_approved_spec: false,
+            },
+        )
+        .unwrap();
+
+        let worktrees = vec![primary.clone(), wt.clone()];
+        assert_eq!(
+            recheck_claims_and_nesting(&wt, &primary, &worktrees, Some(&ledger_home)),
+            Some("live_claim")
+        );
+        assert_eq!(
+            recheck_claims_and_nesting(&wt, &primary, &worktrees, Some(&empty_home)),
+            None
+        );
+        let entry = json!({"path": wt_text, "action": "remove", "trim_paths": []});
+        assert_eq!(
+            act_on(
+                &entry,
+                "remove",
+                &wt_text,
+                &primary,
+                &primary,
+                &worktrees,
+                Some(&ledger_home)
+            ),
+            Err("refused: live_claim".to_string())
+        );
+        assert!(wt.is_dir(), "a refused entry leaves the worktree whole");
     }
 
     /// Audit F1 on #3058: `decide` keeps a worktree with an install folder out of `remove` even

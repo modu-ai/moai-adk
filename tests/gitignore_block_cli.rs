@@ -214,7 +214,7 @@ const TEAM_FILES: [&str; 11] = [
     ".moai-cli/docs/design.md",
     ".moai-cli/specs/SPEC-1/spec.md",
     "src/main.rs",
-    "AGENTS.md",
+    "CLAUDE.md",
 ];
 
 const MACHINE_FILES: [&str; 6] = [
@@ -233,27 +233,29 @@ fn git_keeps_the_team_files_and_ignores_the_machine_output() {
     for rel in TEAM_FILES {
         assert!(!fx.ignored(rel), "{rel} is ignored:\n{}", fx.ignore());
     }
-    for rel in MACHINE_FILES.iter().chain(&["AGENTS.local.md"]) {
+    for rel in MACHINE_FILES.iter().chain(&["CLAUDE.local.md"]) {
         assert!(fx.ignored(rel), "{rel} is not ignored:\n{}", fx.ignore());
     }
 }
 
 #[test]
 fn the_personal_file_is_listed_only_when_it_is_ignored() {
+    // SPEC-20261122-claude-md-layout REQ-7: a personal file is never tracked, so `tracked` is
+    // read as `ignored` and lists the file too.
     for (choice, listed, kind) in [
         ("ignored", true, "agents:ignore-with-local"),
-        ("tracked", false, "agents:ignore-state"),
+        ("tracked", true, "agents:ignore-with-local"),
         ("none", false, "agents:ignore-state"),
     ] {
         let fx = Fx::new(None);
         fx.apply_ok(choice);
         let text = fx.ignore();
         assert_eq!(
-            text.lines().any(|l| l == "AGENTS.local.md"),
+            text.lines().any(|l| l == "CLAUDE.local.md"),
             listed,
             "{choice}:\n{text}"
         );
-        assert_eq!(fx.ignored("AGENTS.local.md"), listed, "{choice}");
+        assert_eq!(fx.ignored("CLAUDE.local.md"), listed, "{choice}");
         // The state-folder rules do not depend on the choice.
         for rel in MACHINE_FILES {
             assert!(fx.ignored(rel), "{choice}: {rel}");
@@ -406,7 +408,7 @@ fn the_plan_shows_the_new_block_line_by_line_and_writes_nothing() {
     let detail = row["detail"].as_str().unwrap();
     for line in [
         "managed block lines: 12 added, 0 removed",
-        "+ AGENTS.local.md",
+        "+ CLAUDE.local.md",
         "+ .moai-cli/receipts/",
         "+ .moai-cli/*",
         "+ !.moai-cli/project.yaml",
@@ -422,7 +424,7 @@ fn the_plan_shows_the_new_block_line_by_line_and_writes_nothing() {
         .as_str()
         .unwrap()
         .to_string();
-    assert!(!detail.contains("AGENTS.local.md"), "{detail}");
+    assert!(!detail.contains("CLAUDE.local.md"), "{detail}");
 }
 
 #[test]
@@ -907,7 +909,7 @@ fn the_plan_shows_the_lines_added_to_a_gitignore_without_a_block() {
     let detail = row["detail"].as_str().unwrap();
     for line in [
         "managed block lines: 12 added, 0 removed",
-        "+ AGENTS.local.md",
+        "+ CLAUDE.local.md",
         "+ .moai-cli/*",
         "+ !.moai-cli/specs/",
     ] {
@@ -931,17 +933,18 @@ fn the_plan_shows_the_lines_a_changed_block_loses() {
             .any(|l| l == "managed block lines: 0 added, 1 removed"),
         "{detail}"
     );
-    assert!(detail.lines().any(|l| l == "- AGENTS.local.md"), "{detail}");
+    assert!(detail.lines().any(|l| l == "- CLAUDE.local.md"), "{detail}");
 }
 
-/// B4: the block's own `AGENTS.local.md` line is not a user rule. With the generation manifest
+/// B4: the block's own `CLAUDE.local.md` line is not a user rule. With the generation manifest
 /// gone, the same choice plans `unchanged` for the file, applies, and records the block again
-/// with the kind its text says.
+/// with the kind its text says (`tracked` is read as `ignored`, SPEC-20261122-claude-md-layout
+/// REQ-7, so both list the file).
 #[test]
 fn a_block_listing_the_personal_file_is_not_a_user_rule_without_its_manifest() {
     for (choice, kind) in [
         ("ignored", "agents:ignore-with-local"),
-        ("tracked", "agents:ignore-state"),
+        ("tracked", "agents:ignore-with-local"),
     ] {
         let fx = Fx::new(None);
         fx.apply_ok(choice);

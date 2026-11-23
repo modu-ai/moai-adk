@@ -6,9 +6,12 @@
 use std::{fs, path::Path};
 
 fn skill(rel: &str) -> String {
-    let path = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("skills/moai")
-        .join(rel);
+    repo(&format!("skills/moai/{rel}"))
+}
+
+/// A file by its path from the repository root.
+fn repo(rel: &str) -> String {
+    let path = Path::new(env!("CARGO_MANIFEST_DIR")).join(rel);
     fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()))
 }
 
@@ -80,8 +83,9 @@ fn the_skill_entry_points_to_the_core_rules_and_keeps_the_decision_order() {
 #[test]
 fn no_other_file_points_to_the_skill_entry_for_the_moved_rules() {
     // The rule history lists the completion rule as a copy that stands alone: it is rule 23
-    // of the core rules now, not a sentence of the skill entry.
-    let history = skill("references/rule-history.md");
+    // of the core rules now, not a sentence of the skill entry. The history left the package
+    // for `docs/` (SPEC-20261122-next-flow-skills-agents Plan step 6).
+    let history = repo("docs/rule-history.md");
     let row = history
         .lines()
         .find(|l| l.starts_with("- Never report a verification or external effect"))
@@ -94,18 +98,6 @@ fn no_other_file_points_to_the_skill_entry_for_the_moved_rules() {
         row.contains("rule 23"),
         "rule-history.md does not name rule 23 of the core rules: {row}"
     );
-    // The leader workflow cites the report-number rule: rule 24 of the core rules.
-    let leader = skill("workflows/mode-leader.md");
-    let line = leader
-        .lines()
-        .find(|l| l.starts_with("Every row of a status, close or decision table you post"))
-        .expect("mode-leader.md keeps the source rule of table rows");
-    assert!(
-        !line.contains("(SKILL.md, Issue #2678)"),
-        "mode-leader.md still cites the skill entry for the report-number rule: {line}"
-    );
-    assert!(
-        line.contains("rule 24 of the core rules"),
-        "mode-leader.md does not cite rule 24 of the core rules: {line}"
-    );
+    // The MODE-LEADER half, which pinned its citation of rule 24, left with its route
+    // (SPEC-20261122-next-flow-skills-agents REQ-2).
 }

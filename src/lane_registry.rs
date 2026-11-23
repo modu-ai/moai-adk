@@ -183,6 +183,35 @@ pub(crate) fn refuse_symlink(path: &Path) -> Result<(), String> {
 type Entry = (String, i64, Option<String>);
 
 fn read_entry(file: &Path, name: &str) -> Result<Option<Entry>, String> {
+    Ok(read_full(file, name)?.map(|e| (e.instance, e.lease_until, e.mode)))
+}
+
+/// Most previous host session ids an entry keeps, newest first
+/// (SPEC-20261123-lane-continues-card D-5: eight ids of 36 characters stay far under
+/// [`MAX_ENTRY_BYTES`]).
+pub const MAX_PREVIOUS_SESSIONS: usize = 8;
+
+/// One entry of the registry as written, with the keys `session-register --continue` and
+/// `card adopt` read. The optional keys are read leniently: a key of the wrong type reads as
+/// absent, so an entry an older build wrote and one a person edited both read as "no proof".
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SessionEntry {
+    pub name: String,
+    pub instance: String,
+    pub lease_until: i64,
+    pub mode: Option<String>,
+    /// The host session id of the registration (`session`).
+    pub session: Option<String>,
+    /// The canonical path of the git worktree the session registered from (`worktree`).
+    pub worktree: Option<String>,
+    /// The host session ids this lane name had before, newest first (`previous_sessions`).
+    pub previous_sessions: Vec<String>,
+}
+
+/// The current entry — see [`SessionEntry`] — or `None` when there is none. A non-regular file,
+/// an oversized file or one that is not a well-formed entry for `name` is an error, never
+/// treated as absent. Unknown keys are ignored, so an entry with `mode` is still schema 1.
+fn read_full(file: &Path, name: &str) -> Result<Option<SessionEntry>, String> {
     let broken = || {
         format!(
             "session registry entry {} is invalid; remove it after checking that no session uses that name",
@@ -205,13 +234,94 @@ fn read_entry(file: &Path, name: &str) -> Result<Option<Entry>, String> {
         instance,
         lease,
     ) {
-        (Some(1), Some(n), Some(i), Some(l)) if n == name => Ok(Some((
-            i.to_string(),
-            l,
-            v["mode"].as_str().map(str::to_string),
-        ))),
+        (Some(1), Some(n), Some(i), Some(l)) if n == name => Ok(Some(SessionEntry {
+            name: n.to_string(),
+            instance: i.to_string(),
+            lease_until: l,
+            mode: v["mode"].as_str().map(str::to_string),
+            session: v["session"].as_str().map(str::to_string),
+            worktree: v["worktree"].as_str().map(str::to_string),
+            previous_sessions: v["previous_sessions"]
+                .as_array()
+                .map(|a| {
+                    a.iter()
+                        .filter_map(|s| s.as_str().map(str::to_string))
+                        .collect()
+                })
+                .unwrap_or_default(),
+        })),
         _ => Err(broken()),
     }
+}
+
+/// Every entry of the clone `project` belongs to, read without a lock or a write. Unlike the
+/// lenient scans above, anything that cannot be read is an error that names it — a symlinked
+/// folder or entry, a non-regular or oversized file, a malformed entry — because the caller
+/// (`card adopt`, REQ-10) must tell "no entry names this session" from "an entry could not be
+/// read". A folder that does not exist yet holds no entry.
+pub fn session_entries(project: &Path) -> Result<Vec<SessionEntry>, String> {
+    let dir = registry_dir_unlinked(project)?;
+    match fs::symlink_metadata(&dir) {
+        Ok(m) if m.is_dir() => {}
+        Ok(_) => {
+            return Err(format!(
+                "session registry {} is not a folder",
+                dir.display()
+            ))
+        }
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
+        Err(e) => {
+            return Err(format!(
+                "session registry {} cannot be read: {e}",
+                dir.display()
+            ))
+        }
+    }
+    let read = fs::read_dir(&dir)
+        .map_err(|e| format!("session registry {} cannot be read: {e}", dir.display()))?;
+    let mut out = Vec::new();
+    for item in read {
+        let item =
+            item.map_err(|e| format!("session registry {} cannot be read: {e}", dir.display()))?;
+        let path = item.path();
+        if path.extension().and_then(|x| x.to_str()) != Some("json") {
+            continue;
+        }
+        let Some(stem) = path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .filter(|s| valid_name(s))
+        else {
+            continue;
+        };
+        if let Some(entry) = read_full(&path, stem)? {
+            out.push(entry);
+        }
+    }
+    out.sort_by(|a, b| a.name.cmp(&b.name));
+    Ok(out)
+}
+
+/// The canonical path of the git worktree that holds the running folder (`git rev-parse
+/// --show-toplevel`, resolved), or `None` outside a git worktree or when git cannot answer. This
+/// is the "running worktree" of `session-register` and `card adopt`; nothing is written.
+pub fn running_worktree() -> Option<String> {
+    let cwd = std::env::current_dir().ok()?;
+    worktree_of(&cwd)
+}
+
+/// [`running_worktree`] for the folder `dir`.
+pub fn worktree_of(dir: &Path) -> Option<String> {
+    let id = crate::identity::identity(dir).ok()?;
+    if id["identity_status"].as_str() != Some("ok") {
+        return None;
+    }
+    id["work_tree"].as_str().map(str::to_string)
+}
+
+/// This session's own host session id, as `session-current` resolves it from the environment.
+pub fn running_session() -> Option<String> {
+    own_session_id()
 }
 
 /// The session modes an entry may carry (#2928, decision D1 = (A)).
@@ -232,13 +342,6 @@ fn own_session_id() -> Option<String> {
     crate::session_current::resolve(|name| std::env::var(name).ok())["source_session_id"]
         .as_str()
         .map(str::to_string)
-}
-
-/// The `session` field of the entry at `file`, read leniently: `None` when the file cannot be
-/// read as JSON or carries no session id.
-fn session_field(file: &Path) -> Option<String> {
-    let v: Value = serde_json::from_str(&fs::read_to_string(file).ok()?).ok()?;
-    v["session"].as_str().map(str::to_string)
 }
 
 /// REQ-2·REQ-3: the liveness of a session id — the name whose entry registers the id, then
@@ -535,17 +638,26 @@ pub fn show(project: &Path, name: &str, now: i64) -> Result<Value, String> {
     refuse_symlink(&dir)?;
     let file = dir.join(format!("{name}.json"));
     refuse_symlink(&file)?;
-    Ok(match read_entry(&file, name)? {
-        Some((instance, lease, mode)) if lease > now => {
+    Ok(match read_full(&file, name)? {
+        Some(held) if held.lease_until > now => {
             let mut out = json!({
                 "status": "held",
                 "name": name,
-                "instance": instance,
-                "lease_until": crate::forge::policy::format_utc(lease),
+                "instance": held.instance,
+                "lease_until": crate::forge::policy::format_utc(held.lease_until),
             });
             // #2928: only an accepted mode is shown; an entry without one keeps the output.
-            if let Some(m) = accepted_mode(mode.as_deref()) {
+            if let Some(m) = accepted_mode(held.mode.as_deref()) {
                 out["mode"] = json!(m);
+            }
+            // SPEC-20261123-leader-registration-lease REQ-5: the host session id a lane reads to
+            // reach the window; shown only in the shape a host id has, like `mode` above.
+            if let Some(s) = held
+                .session
+                .as_deref()
+                .filter(|s| crate::session_current::well_formed(s))
+            {
+                out["session"] = json!(s);
             }
             out
         }
@@ -619,12 +731,72 @@ pub fn register(
     mode: Option<&str>,
     now: i64,
 ) -> Result<Value, String> {
+    register_with(project, name, instance, lease_secs, mode, now, false)
+}
+
+/// The proofs `--continue` needs and the entry it replaces, as one refusal naming the first
+/// missing proof (SPEC-20261123-lane-continues-card REQ-2). `own` is the running session's host
+/// id and `worktree` the canonical worktree of the running folder.
+fn continue_proof(
+    current: &SessionEntry,
+    own: Option<&str>,
+    worktree: Option<&str>,
+) -> Result<(), String> {
+    let refuse = |why: String| Err(format!("session-register --continue refused: {why}"));
+    let Some(own) = own else {
+        return refuse(
+            "this session has no host session id, so there is nothing to continue as".into(),
+        );
+    };
+    let Some(worktree) = worktree else {
+        return refuse("the running folder is not inside a git worktree".into());
+    };
+    let name = &current.name;
+    let Some(held) = current.session.as_deref() else {
+        return refuse(format!("the entry of `{name}` names no host session id"));
+    };
+    match current.worktree.as_deref() {
+        None => return refuse(format!("the entry of `{name}` records no worktree")),
+        Some(w) if w != worktree => {
+            return refuse(format!("the entry of `{name}` records another worktree"))
+        }
+        Some(_) => {}
+    }
+    if held == own {
+        return refuse(format!(
+            "the entry of `{name}` already names this session; renew it with --instance"
+        ));
+    }
+    Ok(())
+}
+
+/// [`register`] with `continue_session`: when the entry of `name` names another host session in
+/// the same worktree, the running session takes the entry over and keeps the replaced session id
+/// first in `previous_sessions` (at most [`MAX_PREVIOUS_SESSIONS`], newest first); the answer
+/// is `continued` with a fresh `instance`. Without a proof the call is refused and the entry is
+/// left as it was; without an entry it is an ordinary registration
+/// (SPEC-20261123-lane-continues-card REQ-1, REQ-2). Every registration records the canonical
+/// worktree of the running folder (REQ-3).
+pub fn register_with(
+    project: &Path,
+    name: &str,
+    instance: Option<&str>,
+    lease_secs: u64,
+    mode: Option<&str>,
+    now: i64,
+    continue_session: bool,
+) -> Result<Value, String> {
     if let Some(m) = mode {
         if !MODES.contains(&m) {
             return Err("session mode is invalid: only `leader` or `agent` is accepted".into());
         }
     }
     check_name(name)?;
+    if continue_session && instance.is_some() {
+        return Err(
+            "session-register --continue refused: a continuation takes no --instance".into(),
+        );
+    }
     if !(MIN_LEASE_SECS..=MAX_LEASE_SECS).contains(&lease_secs) {
         return Err(format!(
             "lease must be {MIN_LEASE_SECS} to {MAX_LEASE_SECS} seconds, got {lease_secs}"
@@ -638,19 +810,46 @@ pub fn register(
             );
         }
     }
+    let own = own_session_id();
+    let leader = mode == Some("leader");
+    // SPEC-20261123-leader-registration-lease REQ-2: refused before the folder or the lock file
+    // is created, so a refusal leaves the registry as it was.
+    if leader {
+        crate::leader_round::registration::require_session(own.as_deref())?;
+    }
+    let running_worktree = running_worktree();
     let (dir, file, lock) = open_locked(project, name)?;
-    let current = read_entry(&file, name)?;
+    let current = read_full(&file, name)?;
     let previous = match (&current, instance) {
         (None, _) => "none",
-        (Some((_, lease, _)), _) if *lease <= now => "expired",
-        (Some((held, _, _)), Some(mine)) if held == mine => "same_instance",
-        (Some((_, lease, _)), _) => {
+        // The proofs are read under the registry lock; a lease that has ended does not matter
+        // here, the entry names the session that held the name last.
+        (Some(cur), None) if continue_session => {
+            continue_proof(cur, own.as_deref(), running_worktree.as_deref())?;
+            "other_session"
+        }
+        (Some(cur), _) if cur.lease_until <= now => "expired",
+        (Some(cur), Some(mine)) if cur.instance == mine => "same_instance",
+        (Some(cur), _) => {
             return Err(format!(
                 "conflict in session registry: name `{name}` is in use by another instance until {}; pick another name, or wait for that lease to end",
-                crate::forge::policy::format_utc(*lease)
+                crate::forge::policy::format_utc(cur.lease_until)
             ))
         }
     };
+    // REQ-3, REQ-4: one live leader entry at a time, renewed from its own host session. A live
+    // leader entry answers to these rules whatever `--mode` the caller gives.
+    crate::leader_round::registration::check_leader_rules(
+        project,
+        name,
+        current.as_ref(),
+        previous,
+        own.as_deref(),
+        now,
+        leader,
+    )?;
+    let live_leader =
+        crate::leader_round::registration::holds_live_leader(current.as_ref(), previous);
     // Test seam: widens the read-to-write window (at most 2 s) so the concurrency test can
     // show the lock is what keeps two registrations apart. Unset in normal use.
     if let Some(ms) = std::env::var(TEST_HOLD_VAR)
@@ -668,20 +867,66 @@ pub fn register(
         "lease_until": lease_until,
         "registered_at": now,
     });
-    if let Some(m) = mode {
+    // A renewal of a live leader entry keeps the mode when the caller gives none.
+    if let Some(m) = mode.or(live_leader.then_some("leader")) {
         entry["mode"] = json!(m);
     }
     // BOARD 03 (가), SPEC-20261120-launcher-liveness REQ-1: the host session id rides along
     // as one more field under schema version 1 — an older binary that ignores unknown keys
     // still reads the entry — and a renewal by the same instance keeps the session id of the
     // first registration (the host id does not change with the renewing process).
-    let session = if previous == "same_instance" {
-        session_field(&file)
-    } else {
-        own_session_id()
+    let renewed = previous == "same_instance";
+    // A leader entry written before the id was recorded gets the renewing session's id.
+    let session = match (&current, renewed) {
+        (Some(cur), true) if leader || live_leader => cur.session.clone().or_else(|| own.clone()),
+        (Some(cur), true) => cur.session.clone(),
+        _ => own.clone(),
     };
     if let Some(s) = session {
         entry["session"] = json!(s);
+    }
+    // SPEC-20261123-lane-continues-card REQ-3: the worktree the session registered from. A
+    // renewal keeps the one the entry has; a folder outside git leaves the key out.
+    let worktree = match (&current, renewed) {
+        (Some(cur), true) if cur.worktree.is_some() => cur.worktree.clone(),
+        _ => running_worktree,
+    };
+    if let Some(w) = &worktree {
+        entry["worktree"] = json!(w);
+    }
+    // The ids this lane name had before: a continuation puts the replaced session first, a
+    // renewal keeps the list, any other registration starts a new one.
+    let mut previous_sessions: Vec<String> = Vec::new();
+    if let Some(cur) = &current {
+        if previous == "other_session" {
+            previous_sessions.extend(cur.session.clone());
+            previous_sessions.extend(cur.previous_sessions.iter().cloned());
+        } else if renewed {
+            previous_sessions.extend(cur.previous_sessions.iter().cloned());
+        }
+    }
+    // The session the entry names now is not its own predecessor: an older session of the lane
+    // that comes back after later /clears finds its own id in the list it inherited.
+    let named_now = entry["session"].as_str().map(str::to_string);
+    let mut seen = std::collections::HashSet::new();
+    previous_sessions
+        .retain(|s| named_now.as_deref() != Some(s.as_str()) && seen.insert(s.clone()));
+    previous_sessions.truncate(MAX_PREVIOUS_SESSIONS);
+    if !previous_sessions.is_empty() {
+        entry["previous_sessions"] = json!(previous_sessions);
+    }
+    // A reader refuses an entry over MAX_ENTRY_BYTES, so an entry that would not be read back
+    // is never written: a continuation refuses, any other registration leaves the worktree out.
+    if format!("{entry}\n").len() as u64 > MAX_ENTRY_BYTES {
+        if continue_session {
+            return Err(
+                "session-register --continue refused: the entry would be over the registry's size limit"
+                    .into(),
+            );
+        }
+        if let Some(object) = entry.as_object_mut() {
+            object.remove("worktree");
+        }
     }
     let tmp = dir.join(format!("{name}.json.tmp-{}", std::process::id()));
     let written = OpenOptions::new()
@@ -702,14 +947,18 @@ pub fn register(
     }
     drop(lock);
     let mut out = json!({
-        "status": if previous == "same_instance" { "renewed" } else { "registered" },
+        "status": match previous {
+            "same_instance" => "renewed",
+            "other_session" => "continued",
+            _ => "registered",
+        },
         "previous": previous,
         "name": name,
         "instance": instance,
         "lease_until": crate::forge::policy::format_utc(lease_until),
         "entry": file.to_string_lossy(),
     });
-    if let Some(m) = mode {
+    if let Some(m) = mode.or(live_leader.then_some("leader")) {
         out["mode"] = json!(m);
     }
     Ok(out)

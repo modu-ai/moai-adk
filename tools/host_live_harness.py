@@ -1,21 +1,21 @@
 #!/usr/bin/env python3
 """I8 live-session harness (Issue #2245): AGENTS.md loading, skill exposure and hook
-firing on Claude Code and Codex, measured in isolated temporary projects.
+firing on Claude Code, measured in isolated temporary projects.
 
 Usage:
   python3 -I tools/host_live_harness.py --out DIR [--live] [--repo ROOT]
-                                        [--bin claude=PATH] [--bin codex=PATH] [--only AC]
+                                        [--bin claude=PATH] [--only AC]
 
 Without --live (the default, a dry run) no host is spawned — not even `--version` — and
 every item is written as not_run with the command it would have run. With --live an item
 runs only when its host binary is found AND its credential variable is set
-(ANTHROPIC_API_KEY for Claude Code, CODEX_API_KEY for Codex); otherwise it is not_run.
+(ANTHROPIC_API_KEY for Claude Code); otherwise it is not_run.
 Only the variable NAME is ever recorded; a value that shows up in raw host output is
 replaced by `[REDACTED:<NAME>]` before the file is kept.
 
 Isolation: each item gets a fresh temporary project and a fresh temporary HOME
-(HOME, CLAUDE_CONFIG_DIR, CODEX_HOME all point inside it), so the operator's
-~/.claude, ~/.codex, ~/.agents and ~/.moai-cli are neither read for configuration nor
+(HOME and CLAUDE_CONFIG_DIR both point inside it), so the operator's
+~/.claude, ~/.agents and ~/.moai-cli are neither read for configuration nor
 written. Nothing is written outside DIR and the temporary tree, which is removed.
 
 Output (REQ-I8-01): DIR/receipts.jsonl (schemas/e2e-receipt.schema.json fields, appended),
@@ -42,13 +42,10 @@ from pathlib import Path
 
 HOSTS = {
     "claude": {"receipt": "claude-code", "label": "Claude Code", "credential": "ANTHROPIC_API_KEY"},
-    "codex": {"receipt": "codex", "label": "Codex", "credential": "CODEX_API_KEY"},
 }
 PROMPT = "Reply with the value of MOAI_PROBE_MARKER from your project instructions, and nothing else."
 TIMEOUT_SECS = 600
-PENDING = "결정 대기: RC1 MoAI hook 0개(P04 = A), 양 호스트 hook 생성은 별도 결정(Codex 계약 C4)"
-CODEX_HOOK_MANUAL = ("manual only: Codex runs a project hook only after hook trust review (/hooks); "
-                     "the per-run trust bypass flag is a security bypass and is not used")
+PENDING = "결정 대기: RC1 MoAI hook 0개(P04 = A), hook 생성은 별도 결정"
 
 # (ac, host, kind, capability text). kind decides fixture, command and verdict.
 ITEMS = [
@@ -57,11 +54,6 @@ ITEMS = [
     ("AC-I8C-3", "claude", "skill", "project skill 노출·명시 호출 (/moai-probe)"),
     ("AC-I8C-4", "claude", "hook", "project SessionStart hook 발화 (host 메커니즘)"),
     ("AC-I8C-5", "claude", "pending", "MoAI hook 발화"),
-    ("AC-I8X-1", "codex", "agents", "AGENTS.md 로드"),
-    ("AC-I8X-2", "codex", "agents_override", "AGENTS.override.md가 AGENTS.md를 대체"),
-    ("AC-I8X-3", "codex", "skill", "project skill 노출·명시 호출 ($moai-probe)"),
-    ("AC-I8X-4", "codex", "manual", "project hook 발화 (host 메커니즘)"),
-    ("AC-I8X-5", "codex", "pending", "MoAI hook 발화"),
 ]
 
 
@@ -89,18 +81,14 @@ def probe_skill(marker: str) -> str:
 
 def build_fixture(kind: str, host: str, project: Path, repo: Path, markers: dict) -> None:
     """Writes the item's temporary project. markers gets the expected/forbidden values."""
-    skills = ".claude/skills" if host == "claude" else ".agents/skills"
+    skills = ".claude/skills"
     shutil.copytree(repo / "skills/moai", project / skills / "moai")
-    if kind in ("agents", "agents_shadowed", "agents_override"):
+    if kind in ("agents", "agents_shadowed"):
         markers["expect"] = "mp-" + secrets.token_hex(8)
         write(project / "AGENTS.md", agents_text(markers["expect"]))
     if kind == "agents_shadowed":
         markers["forbid"], markers["expect"] = markers["expect"], None
         write(project / "CLAUDE.md", "# Project notes\n\nNo imports here.\n")
-    if kind == "agents_override":
-        markers["forbid"] = markers["expect"]
-        markers["expect"] = "mp-" + secrets.token_hex(8)
-        write(project / "AGENTS.override.md", agents_text(markers["expect"]))
     if kind == "skill":
         markers["expect"] = "mp-" + secrets.token_hex(8)
         write(project / skills / "moai-probe/SKILL.md", probe_skill(markers["expect"]))
@@ -113,12 +101,8 @@ def build_fixture(kind: str, host: str, project: Path, repo: Path, markers: dict
 
 
 def command(kind: str, host: str, binary: str, out: Path, ac: str) -> list:
-    if host == "claude":
-        prompt = "/moai-probe" if kind == "skill" else ("Reply OK." if kind == "hook" else PROMPT)
-        return [binary, "-p", prompt, "--output-format", "json"]
-    prompt = "$moai-probe" if kind == "skill" else PROMPT
-    return [binary, "exec", "--json", "--ephemeral", "--skip-git-repo-check", "--sandbox", "read-only",
-            "-o", str(out / f"{ac}.last.md"), prompt]
+    prompt = "/moai-probe" if kind == "skill" else ("Reply OK." if kind == "hook" else PROMPT)
+    return [binary, "-p", prompt, "--output-format", "json"]
 
 
 def claude_result(stdout: str):
@@ -132,29 +116,11 @@ def claude_result(stdout: str):
     return result if isinstance(result, str) else None
 
 
-def jsonl_types(stdout: str) -> set:
-    types = set()
-    for line in stdout.splitlines():
-        try:
-            event = json.loads(line)
-        except json.JSONDecodeError:
-            continue
-        if isinstance(event, dict):
-            types.add(event.get("type"))
-    return types
-
-
 def verdict(kind: str, host: str, stdout: str, project: Path, out: Path, ac: str, markers: dict):
     """(result, reason). Structural only: a random marker present or absent, never prose."""
-    if host == "claude":
-        text = claude_result(stdout)
-        if text is None:
-            return "failed", "stdout is not a JSON result object with a string .result"
-    else:
-        if "turn.completed" not in jsonl_types(stdout):
-            return "failed", "no turn.completed event in the JSONL stream"
-        last = out / f"{ac}.last.md"
-        text = last.read_text(encoding="utf-8") if last.is_file() else ""
+    text = claude_result(stdout)
+    if text is None:
+        return "failed", "stdout is not a JSON result object with a string .result"
     if kind == "hook":
         fired = project / "hook-fired.txt"
         got = fired.read_text(encoding="utf-8") if fired.is_file() else ""
@@ -168,7 +134,7 @@ def verdict(kind: str, host: str, stdout: str, project: Path, out: Path, ac: str
 
 def isolated_env(home: Path, credential: str) -> dict:
     env = {k: os.environ[k] for k in ("PATH", "LANG", "LC_ALL", "TMPDIR") if k in os.environ}
-    env.update(HOME=str(home), CLAUDE_CONFIG_DIR=str(home / ".claude"), CODEX_HOME=str(home / ".codex"))
+    env.update(HOME=str(home), CLAUDE_CONFIG_DIR=str(home / ".claude"))
     if credential in os.environ:
         env[credential] = os.environ[credential]
     return env
@@ -206,8 +172,6 @@ def run_item(item, args, overrides: dict, skill_digest: str, cli_sha: str, versi
     binary = resolve_bin(host, overrides)
     if kind == "pending":
         return {**receipt, "result": "not_run", "ran_at": now(), "detail": PENDING}
-    if kind == "manual":
-        return {**receipt, "result": "not_run", "ran_at": now(), "detail": CODEX_HOOK_MANUAL}
     # Bare host name and an <out> placeholder: a receipt may later be committed, so it
     # carries no absolute machine path.
     argv_preview = " ".join(shlex.quote(a) for a in command(kind, host, host, Path("<out>"), ac))
@@ -226,8 +190,6 @@ def run_item(item, args, overrides: dict, skill_digest: str, cli_sha: str, versi
         if host not in versions:
             versions[host] = host_version(binary, env)
         receipt["host_exact_version"] = versions[host]
-        if host == "codex":  # Codex walks AGENTS.md from the project root (usually the Git root)
-            subprocess.run(["git", "init", "-q"], cwd=project, env=env, capture_output=True)
         build_fixture(kind, host, project, args.repo, markers)
         stdout_path, stderr_path = out / f"{ac}.out", out / f"{ac}.err"
         try:
@@ -241,7 +203,7 @@ def run_item(item, args, overrides: dict, skill_digest: str, cli_sha: str, versi
                 result, reason = verdict(kind, host, done.stdout, project, out, ac, markers)
         except subprocess.TimeoutExpired:
             result, reason = "failed", f"timed out after {TIMEOUT_SECS}s"
-        for path in (stdout_path, stderr_path, out / f"{ac}.last.md"):
+        for path in (stdout_path, stderr_path):
             redact(path, meta["credential"])
     return {**receipt, "result": result, "ran_at": now(), "detail": f"{stdout_path.name} ({reason})"}
 
@@ -256,7 +218,7 @@ def render_rows(receipts: list) -> str:
         label = HOSTS[host]["label"]
         osarch = f"{r['os']}/{r['arch']}"
         if r["result"] == "passed":
-            discovery = "✓" if kind in ("agents", "agents_shadowed", "agents_override", "skill") else "—"
+            discovery = "✓" if kind in ("agents", "agents_shadowed", "skill") else "—"
             invoke = "✓" if kind == "skill" else "—"
             supported.append(f"| {osarch} | {label} | {r['host_exact_version'] or 'unknown'} | {r['mode']} | `{r['skill_digest'][:8]}…` "
                              f"| {r['moai_cli_sha'] if r['moai_cli_sha'] == 'absent' else r['moai_cli_sha'][:8] + '…'} "
@@ -288,7 +250,7 @@ def parse_args(argv: list):
     for spec in args.bin:
         host, sep, path = spec.partition("=")
         if not sep or host not in HOSTS or not path:
-            parser.error(f"--bin expects claude=PATH or codex=PATH, got {spec!r}")
+            parser.error(f"--bin expects claude=PATH, got {spec!r}")
         overrides[host] = path
     known = {item[0] for item in ITEMS}
     unknown = [ac for ac in args.only if ac not in known]

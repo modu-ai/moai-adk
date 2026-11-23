@@ -6,6 +6,8 @@ use std::{
     process::ExitCode,
 };
 
+mod hook_entry;
+mod hook_latency;
 mod ops;
 
 /// Where a 06-C command reads its claim record: the local journal, or a record file that must
@@ -36,12 +38,12 @@ impl RecordSource {
 
 #[derive(Parser)]
 #[command(
-    // `--version` prints `<name> <version>`: it stays `moai-cli <ver> (rust)`, the build
-    // signature other tools compare (#2799 D3 decision 2(a), `bin_names` same-build check).
-    name = "moai-cli",
-    // One `main` serves both binary names (`moai`, `moai-cli`; #2790 R1). The default command
-    // name is `moai` (#2812 W3; `moai-cli` stays an alias): usage and help name `moai`
-    // whichever name ran, so the two binaries print the same text.
+    // `--version` prints `<name> <version>`: the first line is `moai <ver> (rust)`, the build
+    // signature other tools compare. Readers accept the earlier `moai-cli <ver> (rust)` too
+    // (`bin_names` same-build check, install generation, release check, skill text).
+    name = "moai",
+    // One `main` serves both binary names (`moai`, `moai-cli`; #2790 R1). Usage and help name
+    // `moai` whichever name ran (#2812 W3), so the two binaries print the same text.
     bin_name = "moai",
     version = moai_cli::VERSION_SIGNATURE,
     // Card C-67 S1: `--version` adds a second line naming the kind of build (local or
@@ -54,7 +56,7 @@ struct Cli {
     /// Start a leader session on the default host (cc); the role is entered inside it with `/moai --mode-leader`.
     #[arg(short = 'l', long = "leader", conflicts_with = "agent")]
     leader: bool,
-    /// Start an agent session on HOST (cc|glm|omp; default cc); the role is entered inside it with `/moai --mode-agent` (omp: `/skill:moai --mode-agent`).
+    /// Start an agent session on HOST (cc|glm; default cc); the role is entered inside it with `/moai --mode-agent`.
     #[arg(short = 'a', long = "agent", value_name = "HOST", num_args = 0..=1, default_missing_value = "cc")]
     agent: Option<String>,
     /// Color on a terminal: auto, always (even with NO_COLOR or TERM=dumb) or never; put it before the command.
@@ -103,7 +105,7 @@ fn without_leading_color(mut argv: Vec<String>) -> Vec<String> {
     argv
 }
 
-/// Options shared by `moai-cli -l|-a` and `moai-cli cc|glm|omp -l|-a` (00-F #2028).
+/// Options shared by `moai-cli -l|-a` and `moai-cli cc|glm -l|-a` (00-F #2028).
 #[derive(Args)]
 struct LaunchOpts {
     /// Session name (default `leader` for -l, the project's next `agent-N` for -a; none without a role).
@@ -122,9 +124,10 @@ struct LaunchOpts {
     /// Pass no `--advisor` even when the user setting `launcher.advisor` turns it on.
     #[arg(long)]
     no_advisor: bool,
-    /// Keep permission prompts: no `--dangerously-skip-permissions` (Claude hosts). Without it a
-    /// -l|-a session has full access;
-    /// a session without a role never gets a permission flag.
+    /// Keep permission prompts: no permission flag at all (Claude hosts), so the host starts in the
+    /// mode its own settings choose. Without it every launch starts in auto mode
+    /// (`--permission-mode auto`) unless the user setting `launcher.role_access` says `full` or
+    /// `prompt`.
     #[arg(long)]
     permissions: bool,
     /// Print the composed command as JSON instead of starting the host.
@@ -135,33 +138,7 @@ struct LaunchOpts {
     json: bool,
 }
 
-/// The Codex lane Stop hook of `hooks-plan` / `hooks-apply` (#2904 stage 2). Without either
-/// flag the plan keeps what the Codex receipt records.
-#[derive(Args)]
-struct LaneLoopArgs {
-    /// Add this lane's Stop hook (`lane-stop-hook`) to `.codex/hooks.json` (codex only).
-    #[arg(long, requires = "repo", conflicts_with = "lane_loop_off")]
-    lane_loop: Option<String>,
-    /// `OWNER/REPO` the lane Stop hook reads (with `--lane-loop`).
-    #[arg(long, requires = "lane_loop")]
-    repo: Option<String>,
-    /// Remove the lane Stop hook: the file returns to the base hook set (codex only).
-    #[arg(long)]
-    lane_loop_off: bool,
-}
-
-impl LaneLoopArgs {
-    fn lane_loop(self) -> moai_cli::hooks::LaneLoop {
-        use moai_cli::hooks::LaneLoop;
-        match (self.lane_loop, self.repo, self.lane_loop_off) {
-            (Some(lane), Some(repo), _) => LaneLoop::Set { lane, repo },
-            (_, _, true) => LaneLoop::Off,
-            _ => LaneLoop::Keep,
-        }
-    }
-}
-
-/// `moai-cli cc|glm|omp [-l|-a] [options] [PROMPT]`. Without `-l|-a` it is a plain host
+/// `moai-cli cc|glm [-l|-a] [options] [PROMPT]`. Without `-l|-a` it is a plain host
 /// session: no role is guessed (Issue #2053).
 #[derive(Args)]
 #[command(group(ArgGroup::new("role").args(["leader", "agent"])))]
@@ -169,14 +146,13 @@ struct HostLaunch {
     /// Leader session.
     ///
     /// Names the session `leader` and sets its access. The role is entered inside the session
-    /// with `/moai --mode-leader` (OMP: `/skill:moai --mode-leader`).
+    /// with `/moai --mode-leader`.
     #[arg(short = 'l', long = "leader")]
     leader: bool,
     /// Agent session.
     ///
     /// Names the session `agent-N` (or `--name`) and sets its access. The role is entered
-    /// inside the session with `/moai --mode-agent`; on OMP the line typed inside the session is
-    /// `/skill:moai --mode-agent`.
+    /// inside the session with `/moai --mode-agent`.
     #[arg(short = 'a', long = "agent")]
     agent: bool,
     #[command(flatten)]
@@ -276,7 +252,7 @@ enum Command {
     ///
     /// Wait for one of N machine-wide heavy-run slots, run COMMAND holding it, and exit with
     /// COMMAND's code (#2677). Same folder and lock as `tools/heavy_check_slot.py`; while
-    /// waiting and on failure it prints the load averages and free disk space. The machine's
+    /// waiting and when COMMAND ends it prints the load averages and free disk space. The machine's
     /// limits come from `limits.json` in the slot folder (defaults 3 slots, 50 GB, 80 % swap on
     /// Linux, 10 % memory free on macOS); a flag only tightens them (#2930). Unix only.
     HeavySlotAcquire {
@@ -609,15 +585,9 @@ enum Command {
     /// Preview the MoAI hook set for one host in PROJECT (rc.2 I1 #2238); writes nothing.
     HooksPlan {
         project: PathBuf,
-        /// `claude` (.claude/settings.json `hooks`) or `codex` (.codex/hooks.json).
+        /// `claude` (.claude/settings.json `hooks`).
         #[arg(long)]
         host: String,
-        /// With `--host codex` or `omp`, plan the replacement of a hook file MoAI does not own:
-        /// the plan names the copy kept first and lists the differing lines; writes nothing.
-        #[arg(long)]
-        replace_with_backup: bool,
-        #[command(flatten)]
-        lane: LaneLoopArgs,
     },
     /// Write a previewed hook set
     ///
@@ -630,12 +600,6 @@ enum Command {
         plan_digest: String,
         #[arg(long)]
         permission_reference: String,
-        /// The same `--replace-with-backup` the plan used: keep a copy of the existing hook
-        /// file in the `backups` folder of the project state folder, then replace it.
-        #[arg(long)]
-        replace_with_backup: bool,
-        #[command(flatten)]
-        lane: LaneLoopArgs,
     },
     /// Answer a Codex lane's Stop hook
     ///
@@ -676,7 +640,7 @@ enum Command {
     /// Hook engine (#2391): run one MoAI hook duty for a host and print the host's native
     /// answer; reads the host's hook JSON on stdin, no network.
     HookDispatch {
-        /// `claude` or `codex`.
+        /// `claude`. A removed host (`codex`, `omp`) gets one line on standard error and exit 0.
         #[arg(long)]
         host: String,
         /// `session-check`, `tool-preflight`, `tool-observe`, `turn-validation` or
@@ -759,12 +723,11 @@ enum Command {
     },
     /// Print a lane's cargo folders
     ///
-    /// Print a lane's build environment as shell `export` lines (#2841): `CARGO_TARGET_DIR` is
-    /// this worktree's own build folder `~/.moai/build/<project>-<worktree>` (card C-82; made
-    /// with its owner record when missing), and a prepared `CARGO_HOME` (the lane's own, else the
-    /// shared one, else unset). Use it as `e=$(moai lane-env --lane NAME) && eval "$e"`. Raw
-    /// text, not the envelope; a refusal prints nothing on stdout and exits 1, a usage error
-    /// exits 2.
+    /// Print a lane's build environment as shell lines (#2841): `unset CARGO_TARGET_DIR`, so
+    /// cargo builds in this worktree's own `target/` and nothing is made under HOME, and a
+    /// prepared `CARGO_HOME` (the lane's own, else the shared one, else unset). Use it as
+    /// `e=$(moai lane-env --lane NAME) && eval "$e"`. Raw text, not the envelope; a refusal
+    /// prints nothing on stdout and exits 1, a usage error exits 2.
     LaneEnv {
         /// The lane name, as in the claim line (`session=`).
         #[arg(long)]
@@ -1056,17 +1019,9 @@ enum Command {
     /// `-l|-a` only name the session and set its access; the role is entered inside the session
     /// with `/moai --mode-leader` or `/moai --mode-agent`.
     Glm(HostLaunch),
-    /// Start an Oh My Pi (OMP) session
-    ///
-    /// OMP session launcher: `omp -l|-a`. `-l|-a` only name the session and set its access
-    /// (`--approval-mode yolo`, or `always-ask-cached` with `--permissions`); the role is entered
-    /// inside the session with `/skill:moai --mode-leader` or `/skill:moai --mode-agent`. `--model`
-    /// and `--effort` go to OMP's `--model` and `--thinking`; for a z.ai model the glm key reaches
-    /// OMP as `ZAI_API_KEY`, never in the command.
-    Omp(HostLaunch),
     /// Start a Claude Code session (legacy form)
     ///
-    /// Legacy Claude-only launcher kept for compatibility; prefer `-l|-a` or `cc|glm|omp`.
+    /// Legacy Claude-only launcher kept for compatibility; prefer `-l|-a` or `cc|glm`.
     Session {
         /// leader | agent
         #[arg(long, default_value = "agent")]
@@ -1101,11 +1056,6 @@ fn input<T: serde::de::DeserializeOwned>() -> Result<T, String> {
     }
     moai_cli::contract::typed_json(&bytes)
 }
-/// The config writer takes an explicit user home. Refuse a project target that is also
-/// the host's relocated user config directory before either preview or apply can run.
-fn codex_config_home(project: &std::path::Path) -> Result<PathBuf, String> {
-    moai_cli::hosts::codex_config::config_home(project)
-}
 /// Upper bound on a typed plan fed back to its `*-apply` (#2349). A plan grows with the
 /// files it covers (about 330 bytes per file per host), so the 64 KiB request bound cut
 /// `update-apply` off near 99 files. 16 MiB matches the package walk's byte bound
@@ -1128,8 +1078,7 @@ fn host_of(word: &str) -> Result<&'static str, String> {
     match word {
         "cc" => Ok("claude"),
         "glm" => Ok("glm"),
-        "omp" => Ok("omp"),
-        other => Err(format!("unknown host {other} (cc|glm|omp)")),
+        other => Err(format!("unknown host {other} (cc|glm)")),
     }
 }
 
@@ -1154,13 +1103,7 @@ fn launch(
     // Validate user configuration even for roleless sessions or a CLI override. Resolution
     // precedes host composition and any agent-number allocation. No advisor by default (user
     // decision 2026-11-12, #2476): only `--advisor` or the user setting `launcher.advisor`.
-    let settings = launch_settings(
-        host,
-        role.is_some(),
-        o.permissions,
-        o.advisor.as_deref(),
-        o.no_advisor,
-    )?;
+    let settings = launch_settings(o.permissions, o.advisor.as_deref(), o.no_advisor)?;
     let advisor_note = (host == "claude"
         && settings.advisor.as_ref().map(|(_, s)| *s) == Some(AdvisorSource::UserSetting))
     .then_some("--advisor comes from the user setting launcher.advisor (~/.moai-cli/config/launcher.yaml); --no-advisor turns it off");
@@ -1171,7 +1114,7 @@ fn launch(
         model: o.model,
         effort: o.effort,
         advisor: settings.advisor.map(|(a, _)| a),
-        skip_permissions: settings.skip_permissions,
+        access: settings.access,
         prompt,
         claude_bin: "claude".into(),
     };
@@ -1281,7 +1224,6 @@ fn operation(command: &Command) -> Option<&'static str> {
         // Not envelope operations: the launchers, and the raw-text statusline (#2350).
         Cc(_)
         | Glm(_)
-        | Omp(_)
         | Session { .. }
         | Statusline { .. }
         | LaneEnv { .. }
@@ -1394,13 +1336,13 @@ fn role_of(h: &HostLaunch) -> Option<bool> {
 fn launcher_is_human(cli: &Cli) -> bool {
     let json = match &cli.command {
         None => cli.launch.json,
-        Some(Command::Cc(h) | Command::Glm(h) | Command::Omp(h)) => h.launch.json,
+        Some(Command::Cc(h) | Command::Glm(h)) => h.launch.json,
         Some(_) => return false,
     };
     moai_cli::launcher_terminal::wants_human(json)
 }
 
-/// Launcher paths (`-l`, `-a`, `cc|glm|omp`, `session`): plain JSON or a plain error line.
+/// Launcher paths (`-l`, `-a`, `cc|glm`, `session`): plain JSON or a plain error line.
 fn run_launcher(cli: Cli) -> Result<serde_json::Value, String> {
     let Some(command) = cli.command else {
         return match (cli.leader, cli.agent) {
@@ -1411,7 +1353,8 @@ fn run_launcher(cli: Cli) -> Result<serde_json::Value, String> {
                 // (Issue #2363); the usage error contract below is unchanged.
                 moai_cli::banner::maybe_print_banner();
                 Err(
-                    "usage: moai -l | -a [cc|glm|omp] | moai cc|glm|omp -l|-a | moai <command>; see --help".into(),
+                    "usage: moai -l | -a [cc|glm] | moai cc|glm -l|-a | moai <command>; see --help"
+                        .into(),
                 )
             }
         };
@@ -1419,7 +1362,6 @@ fn run_launcher(cli: Cli) -> Result<serde_json::Value, String> {
     match command {
         Command::Cc(h) => launch("claude", role_of(&h), h.launch, h.prompt),
         Command::Glm(h) => launch("glm", role_of(&h), h.launch, h.prompt),
-        Command::Omp(h) => launch("omp", role_of(&h), h.launch, h.prompt),
         Command::Session {
             role,
             host,
@@ -1433,7 +1375,7 @@ fn run_launcher(cli: Cli) -> Result<serde_json::Value, String> {
             // Legacy behaviour (REQ-00F-06): Claude only, no permission skip.
             if host != "claude" {
                 return Err(format!(
-                    "host {host} is not available on `session`; use `moai cc|glm|omp -l|-a`"
+                    "host {host} is not available on `session`; use `moai cc|glm -l|-a`"
                 ));
             }
             session_launch(
@@ -1444,7 +1386,7 @@ fn run_launcher(cli: Cli) -> Result<serde_json::Value, String> {
                     model: Some(model),
                     effort: Some(effort),
                     advisor,
-                    skip_permissions: false,
+                    access: moai_cli::session::Access::Prompt,
                     prompt: None,
                     claude_bin,
                 },
@@ -1939,20 +1881,9 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             );
             moai_cli::flow::wip_check_json(&client, &owner, &repo, &lane, lane_cap, total_cap)
         }
-        Command::HooksPlan {
-            project,
-            host,
-            replace_with_backup,
-            lane,
-        } => {
+        Command::HooksPlan { project, host } => {
             let home = std::env::var_os("HOME").map(PathBuf::from);
-            let mut out = moai_cli::hooks::plan_with_replace(
-                &project,
-                &host,
-                home.as_deref(),
-                lane.lane_loop(),
-                replace_with_backup,
-            )?;
+            let mut out = moai_cli::hooks::plan(&project, &host, home.as_deref())?;
             merge_binary_state(&mut out, &project, home.as_deref());
             // Outside the plan digest: the #2391 hook state from local evidence, read only.
             let path_env = std::env::var("PATH").unwrap_or_default();
@@ -1984,8 +1915,6 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             host,
             plan_digest,
             permission_reference,
-            replace_with_backup,
-            lane,
         } => {
             let home = std::env::var_os("HOME").map(PathBuf::from);
             let path_env = std::env::var("PATH").unwrap_or_default();
@@ -1995,8 +1924,6 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 home.as_deref(),
                 &plan_digest,
                 &permission_reference,
-                lane.lane_loop(),
-                replace_with_backup,
                 &path_env,
             )?;
             merge_binary_state(&mut out, &project, home.as_deref());
@@ -2268,6 +2195,10 @@ const INIT_REMOVED: &str = "moai init was removed; in a project folder run moai 
 /// the internal `codex-*` commands.
 const CODEX_REMOVED: &str =
     "moai codex was removed: MoAI supports Claude Code and GLM only (moai cc | moai glm)";
+/// `moai omp` is gone with the OMP launcher (SPEC-20261122-remove-omp-launcher): the same shape
+/// as [`CODEX_REMOVED`].
+const OMP_REMOVED: &str =
+    "moai omp was removed: MoAI supports Claude Code and GLM only (moai cc | moai glm)";
 
 /// True when clap refused `first` as a subcommand and `first` is a bare word that names no
 /// command (nor `help`): `moai no-such-command`. An option, `help <word>` or a known command
@@ -2285,12 +2216,19 @@ fn names_no_command(e: &clap::Error, first: &str) -> bool {
 fn usage_error(e: clap::Error) -> ExitCode {
     let words = command_argv();
     let first = words.get(1).cloned();
-    // #2935 L3-c (audit 6877895608 N3): `help init` names the same flow as `init`.
-    let help_init = first.as_deref() == Some("help")
-        && words.get(2).map(String::as_str) == Some("init")
-        && matches!(e.kind(), ErrorKind::InvalidSubcommand)
-        && Cli::command().find_subcommand("init").is_none();
-    if help_init || (first.as_deref() == Some("init") && names_no_command(&e, "init")) {
+    // #2935 L3-c (audit 6877895608 N3): `help init` names the same flow as `init`;
+    // `help codex` and `help omp` print the notices of `codex` and `omp`
+    // (SPEC-20261122-remove-omp-launcher REQ-2).
+    let help_of = |word: &str| {
+        first.as_deref() == Some("help")
+            && words.get(2).map(String::as_str) == Some(word)
+            && matches!(e.kind(), ErrorKind::InvalidSubcommand)
+            && Cli::command().find_subcommand(word).is_none()
+    };
+    let removed = |word: &str| {
+        help_of(word) || (first.as_deref() == Some(word) && names_no_command(&e, word))
+    };
+    if removed("init") {
         let lang = moai_cli::ui::ui_lang(moai_cli::ui::Stream::Stderr);
         eprintln!(
             "{}",
@@ -2306,7 +2244,7 @@ fn usage_error(e: clap::Error) -> ExitCode {
         );
         return ExitCode::from(2);
     }
-    if first.as_deref() == Some("codex") && names_no_command(&e, "codex") {
+    if removed("codex") {
         let lang = moai_cli::ui::ui_lang(moai_cli::ui::Stream::Stderr);
         eprintln!(
             "{}",
@@ -2318,6 +2256,22 @@ fn usage_error(e: clap::Error) -> ExitCode {
                 UNKNOWN_COMMAND_OPERATION,
                 contract::Kind::Usage,
                 CODEX_REMOVED
+            )
+        );
+        return ExitCode::from(2);
+    }
+    if removed("omp") {
+        let lang = moai_cli::ui::ui_lang(moai_cli::ui::Stream::Stderr);
+        eprintln!(
+            "{}",
+            moai_cli::ui_text::text(moai_cli::ui_text::Msg::OmpRemoved, lang)
+        );
+        println!(
+            "{}",
+            contract::failure(
+                UNKNOWN_COMMAND_OPERATION,
+                contract::Kind::Usage,
+                OMP_REMOVED
             )
         );
         return ExitCode::from(2);
@@ -2591,15 +2545,7 @@ fn lane_env(lane: &str, base: Option<&std::path::Path>) -> ExitCode {
         .unwrap_or_else(moai_cli::lane_env::default_base);
     let resolved = std::env::current_dir()
         .map_err(|e| format!("lane-env: no working folder: {e}"))
-        .and_then(|cwd| {
-            moai_cli::lane_env::resolve(
-                lane,
-                &base,
-                std::env::var_os("HOME").as_deref(),
-                std::env::var_os("USERPROFILE").as_deref(),
-                &cwd,
-            )
-        });
+        .and_then(|cwd| moai_cli::lane_env::resolve(lane, &base, &cwd));
     match resolved {
         Ok(env) => {
             print!("{}", moai_cli::lane_env::render(lane, &env));
@@ -2678,12 +2624,60 @@ fn go_hook_main(argv: &[String]) -> ExitCode {
     ExitCode::SUCCESS
 }
 
+/// `moai hook …` (SPEC-20261123-hook-entry-skeleton): the three registered hook names go to the
+/// new entry (`src/hook_entry.rs`), `latency` to the measuring tool (`src/hook_latency.rs`), and
+/// every other name keeps the Go-generation answer above. All paths exit 0 except a usage
+/// error of `latency`, which exits 2 (no host runs it as a hook).
+fn hook_word_main(argv: &[String]) -> ExitCode {
+    match argv.get(2).map(String::as_str) {
+        Some("latency") => match hook_latency::run(&argv[3..]) {
+            Ok(answer) => {
+                println!("{answer}");
+                ExitCode::SUCCESS
+            }
+            Err(message) => {
+                eprintln!("moai hook latency: {message}");
+                ExitCode::from(2)
+            }
+        },
+        Some(name) if hook_entry::is_registered(name) => hook_entry_main(name),
+        _ => go_hook_main(argv),
+    }
+}
+
+/// A registered hook name: stdin is read once (never from a terminal), the answer is printed
+/// as it is and the exit is 0.
+fn hook_entry_main(name: &str) -> ExitCode {
+    use std::io::IsTerminal as _;
+    let input = if io::stdin().is_terminal() {
+        Vec::new()
+    } else {
+        hook_entry::read_input(&mut io::stdin())
+    };
+    let answer = match std::env::current_dir() {
+        Ok(cwd) => {
+            let now = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map_or(0, |d| d.as_millis());
+            hook_entry::run(name, &input, &cwd, &hook_entry::env(), now)
+        }
+        Err(_) => hook_entry::Answer::default(),
+    };
+    if !answer.stdout.is_empty() {
+        println!("{}", answer.stdout);
+    }
+    if !answer.stderr.is_empty() {
+        eprint!("{}", answer.stderr);
+    }
+    ExitCode::SUCCESS
+}
+
 /// Entry point of both binaries: `moai-cli` (this file) and `moai` (`src/bin/moai.rs` loads
 /// this file as a module and calls this function; #2790 R1).
 pub(crate) fn main() -> ExitCode {
     let argv: Vec<String> = std::env::args().collect();
     if argv.get(1).is_some_and(|w| w == GO_HOOK_WORD) {
-        return go_hook_main(&argv);
+        return hook_word_main(&argv);
     }
     // #2799 ③: a leading `--color` is recorded before parsing, so a usage error drawn by the
     // failure paths below follows it too; the word readers see the line without it.
@@ -2915,7 +2909,7 @@ pub(crate) fn main() -> ExitCode {
 mod tests {
     use super::*;
 
-    const LAUNCHERS: [&str; 4] = ["cc", "glm", "omp", "session"];
+    const LAUNCHERS: [&str; 3] = ["cc", "glm", "session"];
 
     /// #2799 ③ C5: a leading valid `--color` is taken out before the word readers look at
     /// position 1; an invalid value, a later `--color` or a bare flag is left for clap.
@@ -2973,7 +2967,7 @@ mod tests {
     /// #2802 S1; #3004 P1): Windows `moai.exe` and `moai-cli.exe` are judged like `moai` and
     /// `moai-cli` (the `.exe` never shows), help and usage errors name `moai` and are the same
     /// bytes for every name, and `--version` is the same build signature
-    /// `moai-cli <ver> (rust)` for every name. Windows paths are written with `/` so the test
+    /// `moai <ver> (rust)` for every name. Windows paths are written with `/` so the test
     /// reads them the same on every OS.
     #[test]
     fn every_binary_name_renders_the_same_moai_help() {
@@ -3019,7 +3013,7 @@ mod tests {
                     // Card C-67 S1: the signature line, then the line naming the build kind.
                     assert_eq!(
                         out.trim_end(),
-                        format!("moai-cli {}", moai_cli::LONG_VERSION),
+                        format!("moai {}", moai_cli::LONG_VERSION),
                         "{argv0}"
                     );
                 } else {
@@ -3665,22 +3659,28 @@ mod help_rules {
             let text = t.map(|h| h.to_string()).unwrap_or_default();
             text.split_whitespace().collect::<Vec<_>>().join(" ")
         };
-        for (host, prefix) in [("cc", "/moai"), ("glm", "/moai"), ("omp", "/skill:moai")] {
+        // The retired mode flags are gone from the launchers' help: `-a` names the entry
+        // command `/moai work`, `-l` only its name and permissions.
+        for host in ["cc", "glm"] {
             let cmd = korean.find_subcommand(host).unwrap();
-            for (id, mode) in [("leader", "leader"), ("agent", "agent")] {
+            for id in ["leader", "agent"] {
                 let arg = cmd.get_arguments().find(|a| a.get_id() == id).unwrap();
                 let short = flat(arg.get_help());
                 let long = flat(arg.get_long_help());
                 for text in [&short, &long] {
-                    let command = "`/moai --mode-".to_string() + mode + "`";
-                    assert!(text.contains(&command), "{host} -{id}: {text}");
-                    assert!(!text.contains("$moai"), "{host} -{id}: {text}");
                     assert!(text.contains("권한만 정함"), "{host} -{id}: {text}");
+                    assert!(!text.contains("--mode-"), "{host} -{id}: {text}");
+                    assert!(!text.contains("$moai"), "{host} -{id}: {text}");
+                    assert_eq!(
+                        text.contains("`/moai work`"),
+                        id == "agent",
+                        "{host} -{id}: {text}"
+                    );
                 }
             }
             let about = flat(cmd.get_long_about());
-            let both = format!("`{prefix} --mode-leader`·`{prefix} --mode-agent`");
-            assert!(about.contains(&both), "{host} long about: {about}");
+            assert!(!about.contains("--mode-"), "{host} long about: {about}");
+            assert!(about.contains("`/moai work`"), "{host} long about: {about}");
         }
     }
 
@@ -3926,6 +3926,15 @@ mod help_rules {
         (!actions.is_empty() && !reads_stdin(&rest.join("\n"))).then_some(actions)
     }
 
+    /// Actions that git or another program runs and nobody types: they read standard input but
+    /// have no help example, because the example slots of a command are for what people type.
+    /// `(command word, action, why)`; the stdin rule still checks every example that exists.
+    const MACHINE_RUN: [(&str, &str, &str); 1] = [(
+        "card",
+        "guard",
+        "git's reference-transaction hook runs it with the transaction on standard input",
+    )];
+
     /// An operation decided per action, and its actions that read standard input.
     type ActionReads = std::collections::BTreeMap<String, BTreeSet<String>>;
 
@@ -4021,8 +4030,18 @@ mod help_rules {
         );
         // An action that reads standard input has an example that shows it, so the ` < file`
         // form is on the help page of its command.
+        // The list holds only actions that really read standard input, each with its reason.
+        for (word, action, why) in MACHINE_RUN {
+            assert!(
+                per_action.get(word).is_some_and(|a| a.contains(action)) && !why.is_empty(),
+                "`{word} {action}` is listed as machine-run but does not read standard input"
+            );
+        }
         for (word, actions) in &per_action {
             for action in actions {
+                if MACHINE_RUN.iter().any(|(w, a, _)| w == word && a == action) {
+                    continue;
+                }
                 assert!(
                     shown.contains(&(word.clone(), action.clone())),
                     "`{word} {action}` reads standard input and has no example in help::EXAMPLES"
@@ -4031,15 +4050,18 @@ mod help_rules {
         }
     }
 
-    /// `card` is decided per action: `note` reads standard input, the other actions do not.
+    /// `card` is decided per action: `note` and `guard` (the hook's transaction) read standard
+    /// input, the other actions do not.
     #[test]
-    fn card_reads_stdin_for_note_only() {
+    fn card_reads_stdin_for_note_and_guard_only() {
         let (reads, per_action) = commands_reading_stdin();
         assert!(!reads.contains("card"), "card is decided per action");
-        let note: BTreeSet<String> = ["note".to_string()].into();
-        assert_eq!(per_action.get("card"), Some(&note));
+        let readers: BTreeSet<String> = ["guard".to_string(), "note".to_string()].into();
+        assert_eq!(per_action.get("card"), Some(&readers));
         for (example, wants) in [
             ("card note C-1 --kind report --project . < note.md", true),
+            ("card guard prepared < transaction.txt", true),
+            ("card guard committed", true),
             ("card note C-1 --kind report", true),
             ("card take C-1 --project .", false),
             ("card add --title t", false),

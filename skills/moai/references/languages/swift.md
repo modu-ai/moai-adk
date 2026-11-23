@@ -1,6 +1,6 @@
 # Language: Swift
 
-When to read: `internal/quality` sent you here because the project's detected languages include `swift`. The project's own declarations (CI steps, `Makefile`, `AGENTS.md`) win over every default below.
+When to read: `internal/quality` sent you here because the project's detected languages include `swift`. The project's own declarations (CI steps, `Makefile`, `CLAUDE.md`) win over every default below.
 
 ## Which build tool
 

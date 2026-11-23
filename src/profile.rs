@@ -58,6 +58,8 @@ const PROFILE_KEYS: &[(&str, bool)] = &[
     ("scopes", true),
     ("versioning", true),
     ("work_flow", true),
+    ("lane_run", true),
+    ("remote_copy", true),
     ("test_paths", true),
     ("ci", true),
     ("checks", true),
@@ -161,6 +163,17 @@ pub struct Profile {
     /// written before this key reads unchanged.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub work_flow: Option<WorkFlowSettings>,
+    /// The pick of running a lane non-stop or one card at a time (SPEC-20261122-nonstop-lane
+    /// D-2): the project's `default` and a value per lane. Absent means nobody picked; a
+    /// profile written before this key reads unchanged.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub lane_run: Option<LaneRunSettings>,
+    /// Whether the landing's remote copy is on: the leader turns it on only after a preview
+    /// and the user's yes (decision of 2026-11-22); absent or false means the copy pushes
+    /// nothing. A bool needs no validator beyond its type: a non-boolean value fails the
+    /// read, and the key is listed in [`PROFILE_KEYS`] so it is a managed key.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub remote_copy: Option<bool>,
     /// The project's own test paths beside the per-language table of `crate::tdd`
     /// (SPEC-20261117-green-test-lock D-4): relative folders or files, at most
     /// [`crate::tdd::MAX_DECLARED`]. Absent means none were declared; a profile written before
@@ -191,6 +204,29 @@ pub struct WorkFlowSettings {
     pub flow: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub integration_branch: Option<String>,
+    /// How `card land` treats the audit verdict (SPEC-20261123-landing-reads-verdict, REQ-22):
+    /// one of [`LAND_VERDICT_MODES`]; no key means `observe`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub land_verdict: Option<String>,
+}
+
+/// The two words of `work_flow.land_verdict`: `observe` reports the refusal a landing would get
+/// and lands, `enforce` refuses.
+pub const LAND_VERDICT_MODES: &[&str] = &["observe", "enforce"];
+
+/// The two values of a lane-run pick (SPEC-20261122-nonstop-lane).
+pub const LANE_RUNS: &[&str] = &["nonstop", "single"];
+
+/// The `lane_run` key: the project's pick and the picks of named lanes, each one of
+/// [`LANE_RUNS`], lanes named by the rule of `session-register`
+/// ([`crate::lane_registry::valid_name`]); a lane's own value comes before the project's.
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct LaneRunSettings {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub default: Option<String>,
+    #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+    pub lanes: std::collections::BTreeMap<String, String>,
 }
 
 /// A branch name git takes, kept to a portable subset: 1 to 100 bytes of ASCII letters, digits
@@ -348,6 +384,27 @@ fn validate(p: &Profile) -> Result<()> {
                 .is_some_and(|b| !branch_name(b))
         {
             return Err("invalid work_flow setting; no values were logged".into());
+        }
+        // The reason names the key and the two words, never the value that was read.
+        if w.land_verdict
+            .as_deref()
+            .is_some_and(|m| !LAND_VERDICT_MODES.contains(&m))
+        {
+            return Err(format!(
+                "invalid work_flow setting: land_verdict must be {}; no values were logged",
+                LAND_VERDICT_MODES.join(" or ")
+            ));
+        }
+    }
+    if let Some(r) = &p.lane_run {
+        let pick = |v: &String| LANE_RUNS.contains(&v.as_str());
+        if !r.default.as_ref().is_none_or(pick)
+            || !r
+                .lanes
+                .iter()
+                .all(|(lane, v)| crate::lane_registry::valid_name(lane) && pick(v))
+        {
+            return Err("invalid lane_run setting; no values were logged".into());
         }
     }
     if let Some(versioning) = &p.versioning {
@@ -1301,6 +1358,8 @@ mod tests {
             scopes: None,
             versioning: None,
             work_flow: None,
+            lane_run: None,
+            remote_copy: None,
             test_paths: None,
             ci: None,
             checks: None,
@@ -1375,7 +1434,13 @@ mod tests {
             work_flow: Some(WorkFlowSettings {
                 flow: "m-flow".into(),
                 integration_branch: Some("main".into()),
+                land_verdict: None,
             }),
+            lane_run: Some(LaneRunSettings {
+                default: Some("nonstop".into()),
+                lanes: [("agent-1".to_string(), "single".to_string())].into(),
+            }),
+            remote_copy: Some(true),
             test_paths: Some(vec!["qa/".into()]),
             ci: Some(crate::project_ci::CiAnswers {
                 kind: "cli".into(),
@@ -1425,6 +1490,8 @@ mod tests {
                 "scopes",
                 "versioning",
                 "work_flow",
+                "lane_run",
+                "remote_copy",
                 "test_paths",
                 "ci",
                 "checks"
@@ -1709,6 +1776,75 @@ mod tests {
             .is_none());
     }
 
+    /// SPEC-20261123-landing-reads-verdict REQ-22 and REQ-23: `work_flow.land_verdict` is
+    /// `observe` or `enforce`, loads from a hand-edited file and is kept when the profile is
+    /// written back; another word is refused as an invalid work_flow setting.
+    #[test]
+    fn land_verdict_key_is_validated() {
+        let tmp = tempfile::tempdir().unwrap();
+        let path = tmp
+            .path()
+            .join(crate::PROJECT_STATE_DIR)
+            .join("project.yaml");
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        for word in ["observe", "enforce"] {
+            let mut file = serde_json::to_value(v2()).unwrap();
+            file["work_flow"] =
+                json!({"flow": "m-flow", "integration_branch": "main", "land_verdict": word});
+            fs::write(&path, serde_json::to_vec(&file).unwrap()).unwrap();
+            let (profile, _) = read_profile(tmp.path()).unwrap();
+            let kept = serde_json::to_value(&profile).unwrap();
+            assert_eq!(kept["work_flow"]["land_verdict"], json!(word));
+            assert_eq!(
+                profile.work_flow.unwrap().land_verdict.as_deref(),
+                Some(word)
+            );
+        }
+        for bad in [
+            json!("Enforce"),
+            json!("block"),
+            json!(""),
+            json!(true),
+            json!(1),
+        ] {
+            let mut file = serde_json::to_value(v2()).unwrap();
+            file["work_flow"] =
+                json!({"flow": "m-flow", "integration_branch": "main", "land_verdict": bad});
+            fs::write(&path, serde_json::to_vec(&file).unwrap()).unwrap();
+            let why = read_profile(tmp.path()).err().map(|e| e.to_string());
+            let why = why.unwrap_or_else(|| panic!("{bad} must be refused"));
+            // A wrong word names the key and both words and never echoes the value; a value of
+            // another type fails in the reader's own type check, whose reason is generic.
+            if bad.is_string() {
+                assert!(
+                    why.contains("work_flow")
+                        && why.contains("land_verdict")
+                        && why.contains("observe or enforce"),
+                    "the reason must name the key and the words: {why}"
+                );
+            }
+        }
+        let mut file = serde_json::to_value(v2()).unwrap();
+        file["work_flow"] = json!({
+            "flow": "m-flow", "integration_branch": "main",
+            "land_verdict": "sentinel-word-not-echoed"
+        });
+        fs::write(&path, serde_json::to_vec(&file).unwrap()).unwrap();
+        let why = read_profile(tmp.path()).err().map(|e| e.to_string());
+        assert!(
+            why.is_some_and(|w| !w.contains("sentinel-word-not-echoed")),
+            "the refused value must not appear in the reason"
+        );
+        let mut file = serde_json::to_value(v2()).unwrap();
+        file["work_flow"] = json!({"flow": "m-flow", "integration_branch": "main"});
+        fs::write(&path, serde_json::to_vec(&file).unwrap()).unwrap();
+        let (profile, _) = read_profile(tmp.path()).unwrap();
+        assert_eq!(profile.work_flow.as_ref().unwrap().land_verdict, None);
+        assert!(serde_json::to_value(&profile).unwrap()["work_flow"]
+            .get("land_verdict")
+            .is_none());
+    }
+
     /// AC-1 (#2293): `language` is additive, and an unknown item or an unsupported code is
     /// refused by `validate` and by `read_profile` on a hand-edited file.
     #[test]
@@ -1981,15 +2117,23 @@ mod tests {
         assert_eq!(mixed_flow(earlier.path()).as_deref(), Some("m-flow"));
         assert_eq!(read_rel(earlier.path()), format!("{EARLIER}/project.yaml"));
 
-        // Only the newer file and no marker: the layout is not `rust`, the earlier folder has no
-        // profile, so the reader still looks where it always did and finds none.
+        // Only the newer file, no marker and an earlier folder with no profile: the layout is not
+        // `rust`, so the reader still looks where it always did and finds none.
         let newer = tempfile::tempdir().unwrap();
         mixed_put(newer.path(), ".moai", MIXED_MFLOW);
+        fs::create_dir(newer.path().join(EARLIER)).unwrap();
         assert_eq!(
             read_profile(newer.path()).unwrap_err(),
             PROFILE_MISSING.to_string()
         );
         assert_eq!(read_rel(newer.path()), format!("{EARLIER}/project.yaml"));
+
+        // The same newer file with no earlier folder at all is a new tree: it resolves to
+        // `.moai` and the profile is read there.
+        let fresh = tempfile::tempdir().unwrap();
+        mixed_put(fresh.path(), ".moai", MIXED_MFLOW);
+        assert_eq!(read_rel(fresh.path()), ".moai/project.yaml");
+        assert!(read_profile(fresh.path()).is_ok());
 
         // A `rust` layout (valid marker) reads `.moai`, with or without the earlier file.
         for with_earlier in [false, true] {

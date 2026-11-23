@@ -35,6 +35,8 @@ use std::{
     path::{Path, PathBuf},
 };
 
+/// The skill folders installed beside the moai skill (SPEC-20261122-html-report-install).
+pub mod extra_skill;
 /// The name-switch script part of `moai update` (card C-33 S3, SPEC-20261119-update-switch-layer).
 pub mod switch;
 
@@ -234,6 +236,11 @@ pub struct HostPlan {
     /// clean scan, nothing owned). Left out otherwise, so other plans keep their bytes.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub backup_then_replace: Option<BackupThenReplace>,
+    /// SPEC-20261123-update-adopt-unowned: the files of an unmanaged skill folder that the
+    /// confirmed update takes over (their bytes equal the package or an earlier generation).
+    /// Left out when nothing is adopted, so other plans keep their bytes.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub adopt: Option<AdoptPreview>,
     /// #2521: the `install_id` of the earlier version folder whose host receipt supplies
     /// this host's baseline (see [`resolve_host_receipt`]). Left out when the baseline is
     /// this installation's own receipt or there is none, so other plans keep their bytes.
@@ -244,6 +251,88 @@ pub struct HostPlan {
     /// plans keep their bytes; being part of the plan, it is bound by `plan_digest`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub going_back: Option<String>,
+}
+
+/// One file an update adopts (SPEC-20261123-update-adopt-unowned): the receipt does not own it,
+/// its bytes equal a file the tool wrote.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct AdoptFile {
+    pub path: String,
+    /// The sha256 on disk at plan time, which the receipt then owns.
+    pub sha256: String,
+    /// `package` (the file of this build's package) or `generation:<where it was found>`.
+    pub matched: String,
+}
+
+/// The adoption preview of one host. A confirmed update copies every file below and a manifest
+/// into a new folder under `backup_root`, then writes the receipt that owns them. No skill byte
+/// is rewritten by the adoption itself.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct AdoptPreview {
+    pub files: Vec<AdoptFile>,
+    pub backup_root: String,
+    pub backup_layout: String,
+}
+
+/// How many sibling version folders adoption reads, bounded like the projection scan.
+const GENERATION_FOLDERS: usize = 64;
+
+/// path -> sha256 -> where that file was found.
+type Generations = BTreeMap<String, BTreeMap<String, String>>;
+
+/// This build's `versions` folder and its own folder name, when the running binary sits in the
+/// version folder layout (either state folder name); `None` for any other location.
+fn current_layout(canonical_home: &Path) -> Option<(PathBuf, PathBuf)> {
+    let exe = fs::canonicalize(std::env::current_exe().ok()?).ok()?;
+    layout_folder(canonical_home, &crate::install::identity_exe(exe))
+}
+
+/// A folder that is itself a folder, not a link to one (the link is not followed).
+fn is_plain_dir(path: &Path) -> bool {
+    fs::symlink_metadata(path).is_ok_and(|m| m.is_dir())
+}
+
+/// The files earlier generations of this tool put into a skill folder: the package of every
+/// other version folder next to this build's own, `<versions>/<v>/skills/moai`. Like the
+/// receipts of such a folder (#2521), they are read only for a build inside the layout; a link
+/// in place of a version folder lends nothing, and neither does a package that cannot be read.
+/// Reads only.
+fn earlier_generations(canonical_home: &Path) -> Generations {
+    let mut out: Generations = BTreeMap::new();
+    let Some((versions, own)) = current_layout(canonical_home) else {
+        return out;
+    };
+    let Ok(entries) = fs::read_dir(&versions) else {
+        return out;
+    };
+    let mut names: Vec<_> = entries.flatten().map(|e| e.file_name()).collect();
+    names.sort();
+    for name in names
+        .into_iter()
+        .filter(|n| n.as_os_str() != own.as_os_str())
+        .take(GENERATION_FOLDERS)
+    {
+        // Every step down to the package is a plain folder, never a link: `source_files` refuses a
+        // link at the package folder and inside it, so the two folders above it are checked here.
+        // A link in any of them would hand over bytes that live outside the version folder.
+        let folder = versions.join(&name);
+        let skills = folder.join("skills");
+        if !is_plain_dir(&folder) || !is_plain_dir(&skills) {
+            continue;
+        }
+        let Ok(files) = source_files(&skills.join(SKILL_DIR)) else {
+            continue;
+        };
+        for f in files {
+            out.entry(f.path)
+                .or_default()
+                .entry(f.sha256)
+                .or_insert_with(|| format!("generation:version folder {}", name.to_string_lossy()));
+        }
+    }
+    out
 }
 
 /// One file of the folder a backup-then-replace moves (#2483).
@@ -293,6 +382,9 @@ pub struct ReplaceBackup {
 }
 
 const BACKUP_MANIFEST: &str = "MANIFEST.json";
+/// The manifest and the copied files of an adoption backup (same manifest name as a replace).
+const ADOPT_MANIFEST: &str = BACKUP_MANIFEST;
+const ADOPT_FILES: &str = "files";
 /// The moved original folder inside a backup directory.
 pub(crate) const BACKUP_TREE: &str = "moai";
 /// #2505: the package is staged and verified here before the original folder moves.
@@ -935,17 +1027,13 @@ pub(crate) struct ReceiptSource {
 /// `<home>/.moai-cli/versions/<version>/bin/<exe>` (decisions L165), and `install_id` is
 /// derived from that path, so each upgrade starts a new installation id. Returns the
 /// `versions` directory and this build's folder name when the canonical executable sits
-/// exactly there (compared by path components); `None` for any other location.
+/// exactly there (compared by path components); `None` for any other location. The state folder
+/// is either name (`~/.moai` or `~/.moai-cli`, [`crate::bin_names::versions_dir_of`]); the
+/// receipts stay under the one the HOME resolves to.
 fn layout_folder(canonical_home: &Path, canonical_exe: &Path) -> Option<(PathBuf, PathBuf)> {
     let bin = canonical_exe.parent()?;
-    if bin.file_name()? != "bin" {
-        return None;
-    }
+    let versions = crate::bin_names::versions_dir_of(canonical_home, bin)?;
     let folder = bin.parent()?;
-    let versions = crate::home_root::path(canonical_home).join("versions");
-    if folder.parent()? != versions {
-        return None;
-    }
     Some((versions, PathBuf::from(folder.file_name()?)))
 }
 
@@ -1240,10 +1328,65 @@ pub fn plan_update_in(
         let owned = owned_map(receipt.as_ref());
         let mut files = Vec::new();
 
+        // SPEC-20261123-update-adopt-unowned: a file the receipt does not own whose bytes equal
+        // the package's or an earlier generation's is ours, not the user's. All or nothing per
+        // host: one file that matches nothing keeps the host blocked below, and nothing is
+        // adopted. Only a host with no other block gets here with a scan.
+        let mut adopt_files: Vec<AdoptFile> = Vec::new();
+        let mut adopt_foreign = 0usize;
+        if blocked.is_none() {
+            if let Some(scan) = &scan {
+                let mut generations: Option<Generations> = None;
+                for (rel, new_bytes) in &staged.files {
+                    let Some(current) = scan.files.get(rel) else {
+                        continue;
+                    };
+                    if owned.contains_key(rel) {
+                        continue;
+                    }
+                    let matched = if *current == sha256_hex(new_bytes) {
+                        Some("package".to_string())
+                    } else {
+                        generations
+                            .get_or_insert_with(|| earlier_generations(&canonical_home))
+                            .get(rel)
+                            .and_then(|by_sha| by_sha.get(current))
+                            .cloned()
+                    };
+                    match matched {
+                        Some(matched) => adopt_files.push(AdoptFile {
+                            path: rel.clone(),
+                            sha256: current.clone(),
+                            matched,
+                        }),
+                        None => adopt_foreign += 1,
+                    }
+                }
+            }
+        }
+        let adopt_note = if !adopt_files.is_empty() && adopt_foreign > 0 {
+            let note = format!(
+                "{} of {} unowned file(s) match this package or an earlier generation, but {} do \
+                 not; nothing is adopted",
+                adopt_files.len(),
+                adopt_files.len() + adopt_foreign,
+                adopt_foreign
+            );
+            adopt_files.clear();
+            Some(note)
+        } else {
+            None
+        };
+        // The baseline of an adopted file is what is on disk: the receipt will own it.
+        let mut baselines = owned.clone();
+        for a in &adopt_files {
+            baselines.insert(a.path.clone(), a.sha256.clone());
+        }
+
         // Package files vs disk, three-way per file (REQ-04B-01).
         for (rel, new_bytes) in &staged.files {
             let new_sha = sha256_hex(new_bytes);
-            let baseline = owned.get(rel).cloned();
+            let baseline = baselines.get(rel).cloned();
             let current = scan.as_ref().and_then(|s| s.files.get(rel).cloned());
             let action = match decide(
                 baseline.as_deref(),
@@ -1377,9 +1520,13 @@ pub fn plan_update_in(
                      that install receipt {install_id} does not own ({}); \
                      safe alternatives: install to a separate location, or a \
                      user-confirmed backup-then-replace — never automatic; \
-                     per-file actions below are informational only; {GO_ERA_GUIDANCE}",
+                     per-file actions below are informational only; {GO_ERA_GUIDANCE}{}",
                     unmanaged.len(),
                     unmanaged.join(", "),
+                    adopt_note
+                        .as_ref()
+                        .map(|n| format!("; {n}"))
+                        .unwrap_or_default(),
                 )),
             )
         } else {
@@ -1403,6 +1550,19 @@ pub fn plan_update_in(
             },
             files,
             backup_then_replace,
+            adopt: (!adopt_files.is_empty()).then(|| AdoptPreview {
+                files: adopt_files,
+                backup_root: crate::home_root::path(&canonical_home)
+                    .join("backups")
+                    .to_string_lossy()
+                    .into_owned(),
+                backup_layout: format!(
+                    "<apply UTC>-{host}-adopt/{ADOPT_MANIFEST} and <apply UTC>-{host}-adopt/\
+                     {ADOPT_FILES}/<path> (a copy of every adopted file, taken before any \
+                     receipt is written; a second run in the same second uses \
+                     <apply UTC>.2-{host}-adopt)"
+                ),
+            }),
             receipt_from,
             going_back,
         });
@@ -1517,14 +1677,14 @@ fn unmanaged_notices(home: &Path) -> Vec<serde_json::Value> {
         out.push(json!({
             "part": "unmanaged",
             "host": "codex",
-            "reason": "Codex files under ~/.codex and ~/.agents/skills are left as they are; moai no longer manages them",
+            "reason": "Codex files under ~/.codex and ~/.agents/skills are left as they are; moai no longer manages them; remove them yourself if you do not use them",
         }));
     }
     if present(".omp") {
         out.push(json!({
             "part": "unmanaged",
             "host": "omp",
-            "reason": "OMP files under ~/.omp are left as they are; moai no longer manages them",
+            "reason": "OMP files under ~/.omp are left as they are; moai no longer manages them; remove them yourself if you do not use them",
         }));
     }
     out
@@ -1554,9 +1714,16 @@ pub struct UserLayerPlan {
     /// The git-hook retire and install (SPEC-20261121-go-path-removal), confirmed apart like
     /// the switch part.
     pub git_hooks: crate::git_hooks::update::Layer,
+    /// The skill folders beside the moai skill (SPEC-20261122-html-report-install); bound into
+    /// `plan_digest`.
+    pub extra_skills: extra_skill::Layer,
     /// Agent, routing and style hosts left out because their skill copy is blocked.
     pub skipped: Vec<serde_json::Value>,
-    /// One digest over the seven plan digests; the only value `--confirm` accepts.
+    /// Things the user should know that are no skipped write: a project setting that hides the
+    /// style, and the `/status` pointer after a style write
+    /// (SPEC-20261122-output-style-install-checks D-6). Read only and outside every digest.
+    pub notices: Vec<serde_json::Value>,
+    /// One digest over the eight plan digests; the only value `--confirm` accepts.
     pub plan_digest: String,
     /// #2872 stage 2: the cleanup preview (`update_cleanup::plan`) from the same staged
     /// package, only when it archives something. Not part of `plan_digest`: only
@@ -1631,11 +1798,16 @@ fn user_layer_plan_in(
     let exe = std::env::current_exe().map_err(|_| "current executable unavailable".to_string())?;
     let bin_names = crate::bin_names::plan_for(home, &exe)?;
     let cwd = std::env::current_dir().map_err(|_| "current directory unavailable".to_string())?;
+    // A project value of `outputStyle` that hides ours, and the `/status` pointer after a style
+    // write: notices only, read-only and outside every digest (install-checks SPEC).
+    let notices = crate::home_style::notices(&style, &cwd);
     let hooks = crate::update_hooks::plan(home, &cwd)?;
     let keys = crate::update_keys::plan(home)?;
     let home_layer = crate::update_home::plan(home)?;
     let switch_layer = switch::plan(home)?;
     let git_hooks_layer = crate::git_hooks::update::plan(home, &cwd)?;
+    // SPEC-20261122-html-report-install: planned on its own, whatever the moai skill copy says.
+    let extra_skills = extra_skill::plan(home, package, allow_older)?;
     // One snapshot: what the agents and the section were rendered from is the staged package.
     if agents.package_digest != staged.digest
         || routing.package_digest != staged.digest
@@ -1651,6 +1823,7 @@ fn user_layer_plan_in(
             bin_names.plan_digest,
             hooks.plan_digest,
             style.plan_digest,
+            extra_skills.plan_digest,
             keys.plan_digest
         ]))
         .map_err(|_| "encode failed")?,
@@ -1670,7 +1843,9 @@ fn user_layer_plan_in(
         home: home_layer,
         switch: switch_layer,
         git_hooks: git_hooks_layer,
+        extra_skills,
         skipped,
+        notices,
         plan_digest,
         cleanup,
     })
@@ -1836,13 +2011,50 @@ fn count_hosts(p: &crate::home_style::Plan) -> usize {
     hosts.len()
 }
 
+/// Whether the routing plan computed at apply time differs from the confirmed one. The digests
+/// are compared only when the same hosts are applied as were previewed. Both sides have one
+/// name per config folder row (the previewed plan has a row per folder, and `gate_on_skills`
+/// copies one name per row), so each side is counted by distinct name, never by row.
+fn routing_recheck_moved(
+    confirmed: &[&str],
+    previewed: &crate::home_routing::Plan,
+    now: &crate::home_routing::Plan,
+) -> bool {
+    let confirmed_hosts = confirmed
+        .iter()
+        .copied()
+        .collect::<std::collections::BTreeSet<_>>();
+    let previewed_hosts = previewed
+        .hosts
+        .iter()
+        .map(|h| h.host.as_str())
+        .collect::<std::collections::BTreeSet<_>>();
+    confirmed_hosts == previewed_hosts && now.plan_digest != previewed.plan_digest
+}
+
+/// The routing part of a confirmed apply: plan the confirmed hosts again, refuse when the plan
+/// moved since the preview, otherwise apply it. A function of its own so a test can run the
+/// whole step, the re-check included, against a home that changed after the preview.
+fn routing_part(
+    home: &Path,
+    package: &Path,
+    hosts: &[&str],
+    previewed: &crate::home_routing::Plan,
+    permission: &str,
+) -> Result<serde_json::Value> {
+    let p = crate::home_routing::plan_for(home, package, hosts)?;
+    if routing_recheck_moved(hosts, previewed, &p) {
+        return Ok(
+            json!({"state": "refused", "reason": "the routing plan changed after the confirmed preview; nothing written"}),
+        );
+    }
+    crate::home_routing::apply_for(home, package, hosts, &p.plan_digest, permission)
+}
+
 fn agents_write_anything(p: &crate::agent_install::Plan) -> bool {
-    p.hosts.iter().any(|h| {
-        h.preflight == "ok"
-            && h.files
-                .iter()
-                .any(|f| f.action == "create" || f.action == "update")
-    })
+    p.hosts
+        .iter()
+        .any(|h| h.preflight == "ok" && h.files.iter().any(crate::agent_install::writes_anything))
 }
 
 fn routing_writes_anything(p: &crate::home_routing::Plan) -> bool {
@@ -1859,6 +2071,7 @@ fn routing_writes_anything(p: &crate::home_routing::Plan) -> bool {
 pub fn layer_summary(p: &UserLayerPlan) -> String {
     let mut out = String::from("skills\n");
     out.push_str(&plan_summary(&p.skills));
+    out.push_str(&p.extra_skills.summary());
     out.push_str("agents\n");
     for h in &p.agents.hosts {
         let mut counts: BTreeMap<&str, usize> = BTreeMap::new();
@@ -1894,13 +2107,16 @@ pub fn layer_summary(p: &UserLayerPlan) -> String {
     out.push_str(&p.home.summary());
     out.push_str(&p.switch.summary());
     out.push_str(&p.git_hooks.summary());
-    for s in &p.skipped {
-        out.push_str(&format!(
-            "  skipped {} {}: {}\n",
-            s["part"].as_str().unwrap_or(""),
-            s["host"].as_str().unwrap_or(""),
-            s["reason"].as_str().unwrap_or("")
-        ));
+    // A skipped write, then a notice (no write at all), each with its own word.
+    for (word, list) in [("skipped", &p.skipped), ("notice", &p.notices)] {
+        for s in list {
+            out.push_str(&format!(
+                "  {word} {} {}: {}\n",
+                s["part"].as_str().unwrap_or(""),
+                s["host"].as_str().unwrap_or(""),
+                s["reason"].as_str().unwrap_or("")
+            ));
+        }
     }
     out.push_str(&cleanup_summary(p.cleanup.as_ref()));
     out
@@ -1968,6 +2184,7 @@ fn update_command_core(
         || routing_writes_anything(&layer.routing)
         || crate::home_style::writes_anything(&layer.style)
         || layer.bin_names.writes()
+        || layer.extra_skills.writes()
         || layer.hooks.writes()
         || layer.keys.writes();
     let cleanup = cleanup_token(&layer, confirm_cleanup)?;
@@ -1998,12 +2215,17 @@ fn update_command_core(
             "bin_names": layer.bin_names.to_json(),
             "hooks": layer.hooks.to_json(),
             "skipped": layer.skipped,
+            "notices": layer.notices,
             "confirm_with": format!(
                 "moai update {}--confirm {}",
                 if allow_older { "--allow-older " } else { "" },
                 layer.plan_digest
             ),
         });
+        // SPEC-20261122-html-report-install: only a release with another skill folder shows it.
+        if let Some(x) = layer.extra_skills.to_json() {
+            out["extra_skills"] = x;
+        }
         // #2871 I2 S3: only a HOME with legacy key files has a `keys` part.
         if !layer.keys.rows.is_empty() {
             out["keys"] = layer.keys.to_json();
@@ -2110,17 +2332,13 @@ fn update_command_core(
             PERMISSION,
         )
     })());
-    let routing = part((|| {
-        let p = crate::home_routing::plan_for(home, &package, &routing_hosts)?;
-        if routing_hosts.len() == fresh.routing.hosts.len()
-            && p.plan_digest != fresh.routing.plan_digest
-        {
-            return Ok(
-                json!({"state": "refused", "reason": "the routing plan changed after the confirmed preview; nothing written"}),
-            );
-        }
-        crate::home_routing::apply_for(home, &package, &routing_hosts, &p.plan_digest, PERMISSION)
-    })());
+    let routing = part(routing_part(
+        home,
+        &package,
+        &routing_hosts,
+        &fresh.routing,
+        PERMISSION,
+    ));
     // #2875: the style, for the same confirmed hosts whose skill copy applied.
     let style = part((|| {
         let p = crate::home_style::plan_for(home, &package, &style_hosts)?;
@@ -2155,6 +2373,14 @@ fn update_command_core(
     ));
     // #2871 I2 S3: the vault import of a legacy key file; its plan was confirmed.
     let keys = part(crate::update_keys::apply(home, &fresh.keys, PERMISSION));
+    // SPEC-20261122-html-report-install: the skill folders beside the moai skill, on their own.
+    let extra_skills = part(extra_skill::apply(
+        home,
+        &package,
+        &fresh.extra_skills,
+        PERMISSION,
+        allow_older,
+    ));
     // #2540: `applied` says whether files were written, not only that the apply steps ran.
     let applied = keys["state"] == json!("applied")
         || matches!(skills["status"].as_str(), Some("applied" | "partial"))
@@ -2162,6 +2388,7 @@ fn update_command_core(
         || routing["state"] == json!("applied")
         || style["state"] == json!("applied")
         || bin_names["state"] == json!("applied")
+        || matches!(extra_skills["state"].as_str(), Some("applied" | "partial"))
         || matches!(hooks["state"].as_str(), Some("applied" | "partial"));
     // #2872 stage 2: the confirmed cleanup, after the layer; an error is reported beside it.
     let cleanup = cleanup.map(|t| part(run_cleanup(home, &staged, t, PERMISSION)));
@@ -2195,6 +2422,7 @@ fn update_command_core(
         "bin_names_result": bin_names,
         "hooks_result": hooks,
         "skipped": skipped,
+        "notices": fresh.notices,
         "revert": {
             "agents": revert("agents-home-revert", &agents),
             "routing": revert("home-routing-revert", &routing),
@@ -2202,9 +2430,19 @@ fn update_command_core(
             "hooks": hooks["receipt"].as_str().map(|id| format!(
                 "moai hooks-revert <PROJECT> --receipt {id} --permission-reference <reference>"
             )),
-            "skills": "recovery-plan / recovery-apply for a host left pending",
+            "skills": "recovery-plan / recovery-apply for a moai skill host left pending",
         },
     });
+    if !fresh.extra_skills.parts.is_empty() {
+        out["extra_skills_result"] = extra_skills;
+        // `recovery-plan` reads only the moai skill's receipts: these parts undo their own
+        // failed apply, and a pending receipt's blocked reason gives the way out by hand.
+        out["revert"]["extra_skills"] = json!(
+            "none: a failed apply of a skill folder beside the moai skill removes the files it \
+             created and restores the ones it replaced; if that undo fails too, the part's \
+             reason names the pending receipt and the way out"
+        );
+    }
     if !fresh.keys.rows.is_empty() {
         out["revert"]["keys"] = json!(revert("keys-revert", &keys));
         out["keys_result"] = keys;
@@ -2357,9 +2595,10 @@ pub fn models_saved(home: &Path) -> bool {
 pub fn plan_writes_anything(plan: &UpdatePlan) -> bool {
     plan.hosts.iter().any(|h| {
         h.preflight != "blocked"
-            && h.files
-                .iter()
-                .any(|f| f.action == "create" || f.action == "update")
+            && (h.adopt.is_some()
+                || h.files
+                    .iter()
+                    .any(|f| f.action == "create" || f.action == "update"))
     })
 }
 
@@ -2371,7 +2610,10 @@ pub fn plan_summary(plan: &UpdatePlan) -> String {
         for f in &h.files {
             *counts.entry(f.action.as_str()).or_default() += 1;
         }
-        let counts: Vec<String> = counts.iter().map(|(a, n)| format!("{a} {n}")).collect();
+        let mut counts: Vec<String> = counts.iter().map(|(a, n)| format!("{a} {n}")).collect();
+        if let Some(a) = &h.adopt {
+            counts.push(format!("adopt {}", a.files.len()));
+        }
         out.push_str(&format!(
             "  {}: {} — {}{}\n",
             h.host,
@@ -2504,7 +2746,7 @@ fn apply_update_in(
             .collect();
         let conflict_only = host_plan.files.iter().any(|f| f.action == "conflict");
 
-        if writes.is_empty() {
+        if writes.is_empty() && host_plan.adopt.is_none() {
             // Nothing to write: report, never touch (REQ-04B-07 rerun; conflicts keep
             // the user bytes, REQ-04B-09).
             let status = if conflict_only {
@@ -2529,6 +2771,29 @@ fn apply_update_in(
                 backup_dir: None,
             });
             continue;
+        }
+
+        // SPEC-20261123-update-adopt-unowned REQ-5: the adopted files are copied into a backup
+        // folder BEFORE any receipt is written; a failure starts nothing for this host.
+        let mut adopt_backup_dir: Option<String> = None;
+        if let Some(adopt) = &host_plan.adopt {
+            match adopt_backup(&canonical_home, host, &root, adopt, plan_digest) {
+                Ok(dir) => adopt_backup_dir = Some(dir.to_string_lossy().into_owned()),
+                Err(e) => {
+                    any_failed = true;
+                    outcomes.push(HostOutcome {
+                        host: host.to_string(),
+                        status: "failed".into(),
+                        files: Vec::new(),
+                        receipt_status: None,
+                        reload_required: "no".into(),
+                        reload_basis: format!("adoption backup failed; host not started: {e}"),
+                        blocked_reason: None,
+                        backup_dir: None,
+                    });
+                    continue;
+                }
+            }
         }
 
         // REQ-04C-03 (#2089): known-good copies of every overwritten file, BEFORE the
@@ -2589,6 +2854,12 @@ fn apply_update_in(
         // (b) per file: 01-B engine (unique temp + fsync + rename / exclusive create),
         // each re-verifying the target right before publish and fsyncing its directory.
         let mut owned_now = pre_owned.clone();
+        // REQ-6: the adopted files are owned from the commit on, at the bytes the plan saw.
+        if let Some(adopt) = &host_plan.adopt {
+            for a in &adopt.files {
+                owned_now.insert(a.path.clone(), a.sha256.clone());
+            }
+        }
         let mut host_published = 0usize;
         let mut failed: Option<String> = None;
         for (idx, w) in writes.iter().enumerate() {
@@ -2674,10 +2945,23 @@ fn apply_update_in(
                 return Err("published bytes do not match the plan".into());
             }
         }
+        // REQ-7: an adopted file that no write touched must still be the bytes the plan saw.
+        if let Some(adopt) = &host_plan.adopt {
+            for a in &adopt.files {
+                if writes.iter().any(|w| w.path == a.path) {
+                    continue;
+                }
+                let now = read_opt(&root.join(&a.path))?.map(|b| sha256_hex(&b));
+                if now.as_deref() != Some(a.sha256.as_str()) {
+                    return Err("an adopted file changed during apply; run recovery-plan".into());
+                }
+            }
+        }
         receipt.owned = owned_vec(host, &owned_now);
         receipt.status = "committed".into();
         receipt.finished_at = Some(now_rfc3339());
         save_host_receipt(&canonical_home, &install_id, &receipt)?;
+        published_anywhere |= host_plan.adopt.is_some();
 
         let (reload, basis) = reload_state(host, top_skills_existed, host_published > 0);
         let mut all: Vec<serde_json::Value> = writes
@@ -2700,7 +2984,7 @@ fn apply_update_in(
             reload_required: reload.into(),
             reload_basis: basis,
             blocked_reason: None,
-            backup_dir: None,
+            backup_dir: adopt_backup_dir,
         });
     }
 
@@ -2773,6 +3057,71 @@ pub(crate) fn create_backup_dir(backups: &Path, stamp: &str, host: &str) -> Resu
          nothing moved — retry in a second",
         backups.display()
     ))
+}
+
+/// SPEC-20261123-update-adopt-unowned REQ-5, REQ-7: copies every adopted file and a manifest
+/// into a new `<stamp>-<host>-adopt` folder under the HOME's `backups`, and returns it. Each
+/// file is read again first and must still have the sha256 the plan saw; nothing is written
+/// before that holds. The skill folder is only read. A failure after the folder was made leaves
+/// it as it is (it holds copies, nothing else) and the host starts nothing.
+fn adopt_backup(
+    home: &Path,
+    host: &str,
+    root: &Path,
+    adopt: &AdoptPreview,
+    plan_digest: &str,
+) -> Result<PathBuf> {
+    let mut copies: Vec<(String, Vec<u8>, u32)> = Vec::new();
+    for a in &adopt.files {
+        if !relative_ok(&a.path) {
+            return Err("an adopted path is not a plain relative path".into());
+        }
+        let target = root.join(&a.path);
+        let meta = fs::symlink_metadata(&target)
+            .map_err(|_| "an adopted file is missing; nothing written".to_string())?;
+        if !meta.is_file() {
+            return Err("an adopted file is not a regular file; nothing written".into());
+        }
+        let bytes = read_opt(&target)?
+            .ok_or_else(|| "an adopted file is missing; nothing written".to_string())?;
+        if sha256_hex(&bytes) != a.sha256 {
+            return Err("an adopted file changed since the plan; nothing written".into());
+        }
+        copies.push((a.path.clone(), bytes, file_mode(&meta)));
+    }
+    let backups = crate::home_root::path(home).join("backups");
+    refuse_state_symlinks(&backups, "backup")?;
+    fs::create_dir_all(&backups).map_err(|_| "backup directory unavailable")?;
+    refuse_state_symlinks(&backups, "backup")?;
+    let dir = create_backup_dir(&backups, &compact_stamp(), &format!("{host}-adopt"))?;
+    let files: Vec<serde_json::Value> = adopt
+        .files
+        .iter()
+        .zip(&copies)
+        .map(|(a, (_, _, mode))| {
+            json!({"path": a.path, "sha256": a.sha256, "matched": a.matched, "mode": mode})
+        })
+        .collect();
+    let manifest = json!({
+        "schema_version": 1,
+        "kind": "adopt",
+        "host": host,
+        "source_root": root.to_string_lossy(),
+        "plan_digest": plan_digest,
+        "created_at": now_rfc3339(),
+        "files": files,
+    });
+    let manifest_bytes =
+        serde_json::to_vec_pretty(&manifest).map_err(|_| "manifest encode failed".to_string())?;
+    publish_exclusive(&dir.join(ADOPT_MANIFEST), &manifest_bytes)?;
+    for (rel, bytes, _) in &copies {
+        let copy = dir.join(ADOPT_FILES).join(rel);
+        publish_exclusive(&copy, bytes)?;
+        if read_opt(&copy)?.map(|b| sha256_hex(&b)) != Some(sha256_hex(bytes)) {
+            return Err("an adoption backup copy does not match its source".into());
+        }
+    }
+    Ok(dir)
 }
 
 /// #2483: one confirmed backup-then-replace. Order: fresh scan equal to the preview →
@@ -3144,6 +3493,33 @@ mod user_layer_tests {
         assert!(e.contains("package changed"), "{e}");
     }
 
+    /// SPEC-20261122-output-style-install-checks: the update plan of an empty HOME writes the
+    /// style file, so its own `notices` list (never `skipped`) carries the `/status` pointer, and
+    /// the terminal summary prints it as a notice, not as a skipped write.
+    #[test]
+    fn the_update_plan_carries_the_style_notice_and_prints_it_as_a_notice() {
+        let tmp = tempfile::tempdir().unwrap();
+        let home = tmp.path().join("home");
+        fs::create_dir_all(&home).unwrap();
+        let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+        let pkg = root.join("skills/moai");
+        let agents = root.join(crate::agent_defs::SOURCE_DIR);
+        let layer = user_layer_plan(&home, &pkg, &agents, &stage_package(&pkg).unwrap()).unwrap();
+        let pointer = |list: &[serde_json::Value]| {
+            list.iter()
+                .filter(|s| s["reason"].as_str().is_some_and(|r| r.contains("/status")))
+                .count()
+        };
+        assert_eq!(pointer(&layer.notices), 1, "{:?}", layer.notices);
+        assert_eq!(pointer(&layer.skipped), 0, "{:?}", layer.skipped);
+        let text = layer_summary(&layer);
+        assert!(
+            text.contains("  notice style claude: if the style does not show up"),
+            "{text}"
+        );
+        assert!(!text.contains("  skipped style claude"), "{text}");
+    }
+
     /// #2872 stage 2: the terminal summary gets a cleanup block only when the cleanup plan
     /// archives something; otherwise it is the summary it was.
     #[test]
@@ -3251,5 +3627,139 @@ mod user_layer_tests {
         assert_eq!(hosts(&g.agents), "");
         assert_eq!(hosts(&g.routing), "");
         assert_eq!(hosts(&g.style), "");
+    }
+}
+
+#[cfg(test)]
+mod routing_recheck_tests {
+    use super::*;
+    use crate::home_routing::{HostPlan, Plan};
+
+    fn row(dir: &str) -> HostPlan {
+        HostPlan {
+            host: "claude".into(),
+            config_dir: dir.into(),
+            file: format!("{dir}/rules/moai.md"),
+            preflight: "ok".into(),
+            blocked_reason: None,
+            section: None,
+            flow: None,
+            old_block: None,
+        }
+    }
+
+    fn plan(dirs: &[&str], digest: &str) -> Plan {
+        Plan {
+            schema_version: 1,
+            home: "/h".into(),
+            package_digest: "p".into(),
+            source_sha256: "s".into(),
+            flow_source_sha256: None,
+            hosts: dirs.iter().map(|d| row(d)).collect(),
+            not_supported: Vec::new(),
+            plan_digest: digest.into(),
+        }
+    }
+
+    #[test]
+    fn routing_recheck_sees_a_changed_digest_beside_a_profile_row() {
+        // One host, two rows (the default folder and a profile): the digest still counts. The
+        // confirmed names are what `gate_on_skills` gives, one per row.
+        let previewed = plan(&["/h/.claude", "/p"], "old");
+        assert!(routing_recheck_moved(
+            &["claude", "claude"],
+            &previewed,
+            &plan(&["/h/.claude", "/p"], "new")
+        ));
+    }
+
+    #[test]
+    fn routing_recheck_sees_a_changed_digest_with_one_row() {
+        let previewed = plan(&["/h/.claude"], "old");
+        assert!(routing_recheck_moved(
+            &["claude"],
+            &previewed,
+            &plan(&["/h/.claude"], "new")
+        ));
+    }
+
+    #[test]
+    fn routing_recheck_leaves_an_unchanged_digest_alone() {
+        let previewed = plan(&["/h/.claude", "/p"], "same");
+        assert!(!routing_recheck_moved(
+            &["claude", "claude"],
+            &previewed,
+            &plan(&["/h/.claude", "/p"], "same")
+        ));
+    }
+
+    /// Audit #394 B1: the apply does not pass the preview's host count of its own. It passes
+    /// what `gate_on_skills` gives, which holds one name per routing row, so a preview with a
+    /// profile row confirms two names for one host. The re-check has to read that shape.
+    #[test]
+    fn routing_recheck_reads_the_hosts_the_apply_gate_gives_for_a_profile_row() {
+        let tmp = tempfile::tempdir().unwrap();
+        let home = tmp.path().join("home");
+        fs::create_dir_all(&home).unwrap();
+        let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+        let pkg = root.join("skills/moai");
+        let agents = root.join(crate::agent_defs::SOURCE_DIR);
+        let mut layer =
+            user_layer_plan(&home, &pkg, &agents, &stage_package(&pkg).unwrap()).unwrap();
+        // The preview of a session with a profile folder: the default row plus the profile row.
+        let mut profile = layer.routing.hosts[0].clone();
+        profile.config_dir = "/p".into();
+        layer.routing.hosts.push(profile);
+        let landed = json!({"hosts": [{"host": "claude", "status": "applied"}]});
+        let gate = gate_on_skills(&landed, &layer);
+        let confirmed: Vec<&str> = gate.routing.iter().map(String::as_str).collect();
+        let mut now = layer.routing.clone();
+        now.plan_digest = "moved".into();
+        assert!(
+            routing_recheck_moved(&confirmed, &layer.routing, &now),
+            "confirmed {confirmed:?} for {} rows",
+            layer.routing.hosts.len()
+        );
+        // The same digest is left alone.
+        assert!(!routing_recheck_moved(
+            &confirmed,
+            &layer.routing,
+            &layer.routing.clone()
+        ));
+    }
+
+    /// Audit #394 M3: the apply step itself refuses a routing plan that moved after the
+    /// preview. The preview saw a user-owned file (a conflict); the file is gone when the apply
+    /// plans again, so the fresh plan would create both files. Nothing may be written.
+    #[test]
+    fn the_routing_part_refuses_a_plan_that_moved_after_the_preview_and_writes_nothing() {
+        const PERMISSION: &str = "moai-cli update confirmation";
+        let tmp = tempfile::tempdir().unwrap();
+        let home = tmp.path().join("home");
+        let rules = home.join(".claude/rules");
+        fs::create_dir_all(&rules).unwrap();
+        fs::write(rules.join("moai.md"), "user text\n").unwrap();
+        let pkg = Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai");
+        let previewed = crate::home_routing::plan_for(&home, &pkg, &["claude"]).unwrap();
+        assert_eq!(
+            previewed.hosts[0].section.as_ref().unwrap().action,
+            "conflict"
+        );
+        fs::remove_file(rules.join("moai.md")).unwrap();
+        let out = routing_part(&home, &pkg, &["claude"], &previewed, PERMISSION).unwrap();
+        assert_eq!(out["state"], json!("refused"), "{out}");
+        assert_eq!(fs::read_dir(&rules).unwrap().count(), 0, "{out}");
+        // Control: the plan the preview saw is applied, so the refusal above is the re-check's.
+        let fresh = crate::home_routing::plan_for(&home, &pkg, &["claude"]).unwrap();
+        let out = routing_part(&home, &pkg, &["claude"], &fresh, PERMISSION).unwrap();
+        assert_eq!(out["state"], json!("applied"), "{out}");
+        assert!(rules.join("moai.md").is_file());
+    }
+
+    #[test]
+    fn routing_recheck_skips_the_comparison_when_fewer_hosts_were_confirmed() {
+        // A blocked skill copy leaves a host out of the apply: that plan differs on purpose.
+        let previewed = plan(&["/h/.claude", "/p"], "old");
+        assert!(!routing_recheck_moved(&[], &previewed, &plan(&[], "new")));
     }
 }

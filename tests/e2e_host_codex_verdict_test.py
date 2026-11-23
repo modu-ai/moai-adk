@@ -10,7 +10,7 @@ of them, so weakening any verdict line flips a case and fails the test:
   or `error` (`route-error`) event;
 - a non-empty last-message file (`route-nolast`);
 - `command_execution` items naming the skill's references/routes.json and
-  workflows/setup.md (`plain`, `route-one`, and `route-message-only`, where the paths
+  workflows/project.md (`plain`, `route-one`, and `route-message-only`, where the paths
   appear only in an agent message).
 
 The event and item shapes the fake emits follow the Codex non-interactive docs' sample
@@ -61,11 +61,11 @@ emit({"type": "thread.started", "thread_id": "t-1"})
 emit({"type": "turn.started"})
 if mode == "route-message-only":
     emit({"type": "item.completed", "item": {"id": "item_1", "type": "agent_message",
-          "text": "read %s/references/routes.json and %s/workflows/setup.md" % (skill, skill)}})
+          "text": "read %s/references/routes.json and %s/workflows/project.md" % (skill, skill)}})
 elif mode != "plain":
     cmd(1, skill + "/references/routes.json")
     if mode != "route-one":
-        cmd(2, skill + "/workflows/setup.md")
+        cmd(2, skill + "/workflows/project.md")
 if mode == "route-error":
     emit({"type": "error", "message": "stream interrupted"})
 if mode == "route-failed":

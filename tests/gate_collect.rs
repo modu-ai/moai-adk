@@ -1684,10 +1684,13 @@ fn a_verdict_line_the_gate_would_not_read_is_refused() {
     assert_eq!(gate::parse_verdict(&line), Some((h, b, "FAIL".to_string())));
 }
 
-/// AC-3 (document and gate agree): the example verdict line in the AUDIT workflow is exactly
-/// what the helper prints for the same values.
+/// AC-3 (document and gate agree), re-pinned for the card note (SPEC-20261122-next-flow-skills-agents,
+/// slice B audit N1): the example verdict line in the AUDIT workflow is one the gate's parser
+/// reads, and it has exactly the card-note shape. `gate::format_verdict_line` prints the release
+/// pull-request form (`AUDIT #<pr>`) only, so the expected line is rebuilt here from the parsed
+/// values.
 #[test]
-fn the_audit_workflow_example_is_the_helpers_line() {
+fn the_audit_workflow_example_is_read_by_the_gate_parser() {
     let text = fs::read_to_string(
         Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai/workflows/audit.md"),
     )
@@ -1695,14 +1698,20 @@ fn the_audit_workflow_example_is_the_helpers_line() {
     let example = text
         .lines()
         .map(str::trim)
-        .find(|l| l.starts_with("AUDIT #2786 "))
+        .find(|l| l.starts_with("AUDIT C-12 "))
         .expect("the example line");
     let (h, b, v) = gate::parse_verdict(example).expect("the gate reads the example");
-    let built = gate::format_verdict_line(2786, "#2708 4/4 repo-scans", &h, &b, &v).unwrap();
-    assert_eq!(built, example);
-    assert!(text.contains(
-        "moai audit-verdict-line --pr <n> --head <audited 40-hex> --verdict PASS|FAIL --title <scope>"
-    ));
+    assert!(gate::is_full_sha(&h) && gate::is_full_sha(&b), "{example}");
+    assert!(v == "PASS" || v == "FAIL", "{example}");
+    let scope = example
+        .strip_prefix("AUDIT C-12 (")
+        .and_then(|rest| rest.split_once(") head "))
+        .map(|(scope, _)| scope)
+        .expect("the example names its scope in parentheses");
+    assert_eq!(
+        format!("AUDIT C-12 ({scope}) head {h} base {b} — verdict: {v}"),
+        example
+    );
     assert!(text.contains("a verdict never names a head nobody audited"));
 }
 

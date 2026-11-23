@@ -156,34 +156,19 @@ fn research_note_quotes_each_host_from_its_source_with_url_and_read_time() {
     }
 }
 
-/// AC-2: the research and the table row of `questions.md` say the same about the tool names
-/// and the flag.
+/// AC-2 is retired: `research_note_agrees_with_the_hosts_rows_of_questions_md` compared this
+/// research with the Codex CLI and OMP rows of `questions.md`, and
+/// SPEC-20261122-next-flow-skills-agents REQ-8 removed both rows with their hosts. The table
+/// keeps no row the research could disagree with, so the check reads only that the rows are
+/// gone.
 #[test]
-fn research_note_agrees_with_the_hosts_rows_of_questions_md() {
+fn questions_md_has_no_codex_or_omp_row_left_to_compare() {
     let q = fs::read_to_string(QUESTIONS).unwrap();
-    let row = |host: &str| {
-        q.lines()
-            .find(|l| l.starts_with(&format!("| {host} |")))
-            .unwrap_or_else(|| panic!("no row for {host}"))
-            .to_string()
-    };
-    let text = research();
-    let codex = section(&text, "Codex CLI");
-    let omp = section(&text, "OMP");
-    let codex_row = row("Codex CLI");
-    for n in [
-        "`request_user_input`",
-        "`features.default_mode_request_user_input`",
-    ] {
-        assert!(codex_row.contains(n) && codex.contains(n), "Codex: {n}");
-    }
-    assert!(
-        codex_row.contains("off by default") && codex.contains("default: false"),
-        "the flag default must be off in the row and in the research"
-    );
-    let omp_row = row("OMP");
-    for n in ["`ask`", "`ask.timeout`"] {
-        assert!(omp_row.contains(n) && omp.contains(n), "OMP: {n}");
+    for host in ["Codex CLI", "OMP"] {
+        assert!(
+            !q.lines().any(|l| l.starts_with(&format!("| {host} |"))),
+            "questions.md still has a {host} row"
+        );
     }
 }
 

@@ -1,16 +1,11 @@
-//! SPEC-20261120-orca-1-4-267-alignment: the Orca rules of the adapter text and of the MODE-AGENT
-//! and MODE-LEADER workflows follow what Orca's official pages and its installed CLI say: no
-//! resend by `terminal send` on a null `delivered_at`, `--peek` for watching, Run, Task and
-//! Dispatch for tracked work, mail for notices, and every rule citing its page or local help.
-//! Reads the shipped text; writes nothing.
+//! SPEC-20261120-orca-1-4-267-alignment: the Orca rules of the adapter text follow what Orca's
+//! official pages and its installed CLI say, and every rule cites its page or local help. The
+//! MODE-AGENT and MODE-LEADER halves left with their routes (SPEC-20261122-next-flow-skills-agents
+//! REQ-2). Reads the shipped text; writes nothing.
 
 use std::path::Path;
 
 const ADAPTER: &str = "skills/moai/references/adapters/orca.md";
-const MODES: [&str; 2] = [
-    "skills/moai/workflows/mode-agent.md",
-    "skills/moai/workflows/mode-leader.md",
-];
 
 fn read(rel: &str) -> String {
     std::fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join(rel))
@@ -29,85 +24,17 @@ fn must_say(file: &str, phrases: &[&str]) {
     }
 }
 
-#[test]
-fn resend_rule_is_gone_from_both_mode_texts() {
-    for file in MODES {
-        let text = flat(&read(file));
-        for gone in [
-            "is not delivered until its `delivered_at` is set",
-            "send the same text with `orca terminal send`",
-            "Never resend a mail whose `delivered_at` is set",
-        ] {
-            assert!(!text.contains(gone), "{file} still says {gone:?}");
-        }
-    }
-}
+// Retired with the MODE-AGENT route (SPEC-20261122-next-flow-skills-agents REQ-2): `resend_rule_is_gone_from_both_mode_texts` scanned the two mode files for the old resend rule.
 
-#[test]
-fn resend_a_null_delivered_at_is_read_as_not_yet_known() {
-    for file in MODES {
-        must_say(
-            file,
-            &[
-                "read a `null` `delivered_at` as not yet known",
-                "never resend the mail as a new mail",
-            ],
-        );
-    }
-}
+// Retired with the MODE-AGENT route (SPEC-20261122-next-flow-skills-agents REQ-2): `resend_a_null_delivered_at_is_read_as_not_yet_known` pinned the delivered_at rule of the two mode files.
 
-#[test]
-fn rules_mail_states_are_written_as_shown_and_the_rest_as_unconfirmed() {
-    for file in MODES {
-        must_say(
-            file,
-            &[
-                "write which of stored, delivered and work done a command showed",
-                "write any other mail state as unconfirmed",
-            ],
-        );
-    }
-}
+// Retired with the MODE-AGENT route (SPEC-20261122-next-flow-skills-agents REQ-2): `rules_mail_states_are_written_as_shown_and_the_rest_as_unconfirmed` pinned the mail-state rule of the two mode files.
 
-#[test]
-fn rules_a_watcher_peeks_and_leaves_the_default_check_to_the_inbox_owner() {
-    for file in MODES {
-        must_say(
-            file,
-            &[
-                "`orca orchestration check --peek`",
-                "`--all`",
-                "leave the default check to the agent that owns the inbox",
-            ],
-        );
-    }
-}
+// Retired with the MODE-AGENT route (SPEC-20261122-next-flow-skills-agents REQ-2): `rules_a_watcher_peeks_and_leaves_the_default_check_to_the_inbox_owner` pinned the peek rule of the two mode files.
 
-#[test]
-fn rules_supervised_work_is_run_task_dispatch_and_a_notice_is_mail() {
-    for file in MODES {
-        must_say(
-            file,
-            &[
-                "supervised work as a Run, a Task and a Dispatch",
-                "a plain notice as mail",
-            ],
-        );
-    }
-}
+// Retired with the MODE-AGENT route (SPEC-20261122-next-flow-skills-agents REQ-2): `rules_supervised_work_is_run_task_dispatch_and_a_notice_is_mail` pinned the Run, Task and Dispatch rule of the two mode files.
 
-#[test]
-fn rules_an_unclear_send_is_followed_by_its_request_id() {
-    for file in MODES {
-        must_say(
-            file,
-            &[
-                "follow it by a card note and the request id the command printed",
-                "instead of sending again",
-            ],
-        );
-    }
-}
+// Retired with the MODE-AGENT route (SPEC-20261122-next-flow-skills-agents REQ-2): `rules_an_unclear_send_is_followed_by_its_request_id` pinned the request-id rule of the two mode files.
 
 #[test]
 fn adapter_names_the_pages_the_local_version_and_what_is_not_documented() {
@@ -159,7 +86,8 @@ fn adapter_says_what_a_screen_read_and_a_cursor_are() {
 
 #[test]
 fn cites_the_new_rules_name_a_page_or_the_local_help_and_no_card_or_issue() {
-    for file in [ADAPTER, MODES[0], MODES[1]] {
+    // The two mode files left with their routes (SPEC-20261122-next-flow-skills-agents REQ-2).
+    for file in [ADAPTER] {
         let text = read(file);
         let mut seen = 0;
         for line in text.lines().filter(|l| {

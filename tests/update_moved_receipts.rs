@@ -175,6 +175,9 @@ fn all_unchanged(plan: &Value) {
     for h in HOSTS {
         let hp = host(plan, h);
         assert_eq!(hp["preflight"], json!("ok"), "{h}: {plan}");
+        // The baseline came from a receipt: a folder whose bytes merely equal the package is
+        // adopted instead (SPEC-20261123-update-adopt-unowned), which shows as `adopt`.
+        assert!(hp.get("adopt").is_none(), "{h}: {plan}");
         assert!(
             hp["files"]
                 .as_array()
@@ -186,9 +189,16 @@ fn all_unchanged(plan: &Value) {
     }
 }
 
+/// No receipt was lent: the folder is blocked as unmanaged, or its bytes equal the package and
+/// it is adopted (`adopt`, no `receipt_from`) instead of owned.
 fn blocked_unmanaged(plan: &Value) {
     for h in HOSTS {
         let hp = host(plan, h);
+        if hp.get("adopt").is_some() {
+            assert_eq!(hp["preflight"], json!("ok"), "{h}: {plan}");
+            assert!(hp.get("receipt_from").is_none(), "{h}: {plan}");
+            continue;
+        }
         assert_eq!(hp["preflight"], json!("blocked"), "{h}: {plan}");
         let reason = hp["blocked_reason"].as_str().unwrap();
         assert!(

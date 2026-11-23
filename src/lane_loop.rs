@@ -1099,7 +1099,7 @@ mod tests {
         assert!(!outside.path().join("a.json").exists());
         // The state root itself is a link (#2926 audit N3): nothing is created behind it.
         let root = dir.path().join("p3");
-        let state_root = crate::state_root::path(&root, "");
+        let state_root = root.join(crate::fixed_state!());
         std::fs::create_dir_all(state_root.parent().unwrap()).unwrap();
         let elsewhere = outside.path().join("root");
         std::fs::create_dir(&elsewhere).unwrap();

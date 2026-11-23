@@ -829,3 +829,146 @@ fn the_gate_reads_a_verdict_line_with_a_tier_like_one_without() {
     assert_eq!(moai_cli::gate::parse_verdict(&plain), want);
     assert_eq!(moai_cli::gate::parse_verdict(&tiered), want);
 }
+
+// ---------------------------------------------------------------------------------------------
+// SPEC-20261123-ready-mutant-line: the `guard-mutant:` lines of a READY note are read, and a
+// missing, unreadable or surviving one is a warning that changes neither `ok`, `findings` nor the
+// exit status.
+
+impl World {
+    /// A READY note for `head` with `body` on the lines after the marker line.
+    fn ready_note_with(&self, card: &str, head: &str, body: &str) -> i64 {
+        self.note(
+            card,
+            &format!("LANE-READY-INTEGRATION {card} head={head} spec={SPEC}\n{body}"),
+        )
+    }
+
+    fn clean_head(&self, branch: &str) -> String {
+        self.head(branch, TIP, &[("notes/m.md", "m\n")], SPEC, &[1, 2], true)
+    }
+}
+
+/// `(card, code)` of every warning of a `check` answer.
+fn warnings(v: &Value) -> Vec<(String, String)> {
+    v["result"]["warnings"]
+        .as_array()
+        .unwrap_or_else(|| panic!("no `warnings` array: {v}"))
+        .iter()
+        .map(|f| {
+            (
+                f["card"].as_str().unwrap().to_string(),
+                f["code"].as_str().unwrap().to_string(),
+            )
+        })
+        .collect()
+}
+
+#[test]
+fn mutant_line_a_note_without_the_line_warns_and_changes_nothing_else() {
+    let w = World::new();
+    let h = w.clean_head("spec/m1");
+    let c = w.new_card();
+    w.ready_note_with(&c, &h, "base: origin/trunk\nchecks: all green");
+    let (v, code) = w.bundle(&["check", &c]);
+    assert_eq!(code, 0, "{v}");
+    assert_eq!(
+        warnings(&v),
+        vec![(c.clone(), "mutant_line_missing".to_string())],
+        "{v}"
+    );
+    let r = &v["result"];
+    assert_eq!(r["ok"], true, "{v}");
+    assert_eq!(r["findings"], serde_json::json!([]), "{v}");
+    assert_eq!(r["heads"][0]["warnings"], 1, "{v}");
+}
+
+#[test]
+fn mutant_line_good_lines_give_no_warning() {
+    let w = World::new();
+    let (a, b) = (w.clean_head("spec/m2a"), w.clean_head("spec/m2b"));
+    let (ca, cb) = (w.new_card(), w.new_card());
+    w.ready_note_with(
+        &ca,
+        &a,
+        "guard-mutant: cap_is_parsed | removed the cap parse | exit 101",
+    );
+    w.ready_note_with(
+        &cb,
+        &b,
+        "guard-mutant: none | the change adds no guard test",
+    );
+    let (v, code) = w.bundle(&["check", &ca, &cb]);
+    assert_eq!(code, 0, "{v}");
+    assert_eq!(warnings(&v), Vec::<(String, String)>::new(), "{v}");
+    assert_eq!(v["result"]["heads"][0]["warnings"], 0, "{v}");
+}
+
+#[test]
+fn mutant_line_unreadable_and_survived_lines_each_warn() {
+    let w = World::new();
+    let (a, b) = (w.clean_head("spec/m3a"), w.clean_head("spec/m3b"));
+    let (ca, cb) = (w.new_card(), w.new_card());
+    w.ready_note_with(&ca, &a, "base: x\nguard-mutant: only two | fields");
+    w.ready_note_with(
+        &cb,
+        &b,
+        "guard-mutant: cap_is_parsed | removed the cap parse | exit 0",
+    );
+    let (v, code) = w.bundle(&["check", &ca, &cb]);
+    assert_eq!(code, 0, "{v}");
+    assert_eq!(
+        warnings(&v),
+        vec![
+            (ca.clone(), "mutant_line_unreadable".to_string()),
+            (cb.clone(), "mutant_survived".to_string()),
+        ],
+        "{v}"
+    );
+    let list = v["result"]["warnings"].as_array().unwrap();
+    assert_eq!(list[0]["detail"], serde_json::json!({"line": 3}), "{v}");
+    assert_eq!(list[1]["detail"]["test"], "cap_is_parsed", "{v}");
+    assert_eq!(list[1]["head"], b.as_str(), "{v}");
+    assert_eq!(v["result"]["ok"], true, "{v}");
+}
+
+#[test]
+fn mutant_line_is_read_from_the_newest_note_that_names_the_head() {
+    let w = World::new();
+    let h = w.clean_head("spec/m4");
+    let c = w.new_card();
+    w.ready_note_with(&c, &h, "guard-mutant: a | removed x | exit 1");
+    w.ready_note_with(&c, &h, "checks: all green");
+    let (v, _) = w.bundle(&["check", &c]);
+    assert_eq!(
+        warnings(&v),
+        vec![(c.clone(), "mutant_line_missing".to_string())],
+        "{v}"
+    );
+
+    // A newer note for another head does not hide the line of the note that names this head.
+    let c2 = w.new_card();
+    let other = w.clean_head("spec/m4b");
+    w.ready_note_with(&c2, &h, "guard-mutant: a | removed x | exit 1");
+    w.ready_note_with(&c2, &other, "checks: all green");
+    let arg = format!("{c2}={h}");
+    let (v, _) = w.bundle(&["check", &arg]);
+    assert_eq!(warnings(&v), Vec::<(String, String)>::new(), "{v}");
+}
+
+#[test]
+fn mutant_line_a_head_no_note_names_is_missing() {
+    let w = World::new();
+    let (h, other) = (w.clean_head("spec/m5"), w.clean_head("spec/m5b"));
+    let c = w.new_card();
+    w.ready_note_with(&c, &other, "guard-mutant: a | removed x | exit 1");
+    let arg = format!("{c}={h}");
+    let (v, _) = w.bundle(&["check", &arg]);
+    assert_eq!(
+        warnings(&v),
+        vec![(c.clone(), "mutant_line_missing".to_string())],
+        "{v}"
+    );
+    let detail = v["result"]["warnings"][0]["detail"].to_string();
+    assert!(detail.contains("no READY note names"), "{detail}");
+}

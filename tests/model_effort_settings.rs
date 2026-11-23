@@ -3,8 +3,9 @@
 //! (no file access), so every test builds a launcher object in memory.
 //!
 //! SPEC-20261121-codex-launcher-and-models-removed: Codex is no longer a tool. A `codex` value
-//! saved by an earlier version is ignored on read (it never refuses a Claude, OMP or GLM launch)
+//! saved by an earlier version is ignored on read (it never refuses a Claude or GLM launch)
 //! and is left out of the file when another tool's choice is written (leader decision D2).
+//! SPEC-20261122-remove-omp-launcher: OMP leaves the tools the same way.
 use serde_json::{json, Map, Value};
 
 use moai_cli::model_effort_settings::{
@@ -61,9 +62,8 @@ fn no_saved_value_answers_the_default_for_every_tool_and_role() {
     let expected = [
         ("claude", "leader", "claude-opus-5-5", "high"),
         ("claude", "agent", "claude-sonnet-5-5", "high"),
-        ("omp", "leader", "zai/glm-5.3", "high"),
-        ("omp", "agent", "zai/glm-5.3-flash", "max"),
-        ("glm", "leader", "zai/glm-5.3", "high"),
+        // SPEC-20261123-glm-54-followups D-3: the leader default is 5.4, the agent stays flash.
+        ("glm", "leader", "zai/glm-5.4[1m]", "high"),
         ("glm", "agent", "zai/glm-5.3-flash", "max"),
     ];
     assert_eq!(expected.len(), TOOLS.len() * ROLES.len());
@@ -96,11 +96,51 @@ fn a_saved_supported_value_wins_and_is_marked_saved() {
     // The role and the tool next to it keep their defaults.
     assert_eq!(
         resolve("glm", "leader", Some(&launcher)).unwrap(),
-        (choice("zai/glm-5.3", "high"), Source::Default)
+        (choice("zai/glm-5.4[1m]", "high"), Source::Default)
     );
     assert_eq!(
         resolve("claude", "agent", Some(&launcher)).unwrap(),
         (choice("claude-sonnet-5-5", "high"), Source::Default)
+    );
+}
+
+/// SPEC-20261123-glm-54-followups REQ-1, REQ-2 (D-1, D-2, D-4): the support table lists the
+/// 5.4 id with the 1M marker, in the `zai/` form of the other rows, and keeps both 5.3 rows.
+#[test]
+fn the_glm_table_lists_54_and_keeps_the_53_rows() {
+    let rows = supported("glm").expect("glm is a tool");
+    let ids: Vec<&str> = rows.iter().map(|row| row.id).collect();
+    for id in ["zai/glm-5.4[1m]", "zai/glm-5.3", "zai/glm-5.3-flash"] {
+        assert!(ids.contains(&id), "{id} missing from {ids:?}");
+    }
+    let row = rows.iter().find(|row| row.id == "zai/glm-5.4[1m]").unwrap();
+    assert_eq!(row.efforts, ["low", "high", "max"]);
+}
+
+/// SPEC-20261123-glm-54-followups REQ-2 / AC-2: a `zai/glm-5.3` choice saved before 5.4 is still
+/// a supported value: it is not listed as unsupported and it resolves as saved, for both roles.
+#[test]
+fn a_glm_53_choice_saved_before_54_is_still_supported() {
+    let launcher = object(json!({
+        "models": {"glm": {
+            "leader": {"model": "zai/glm-5.3", "effort": "high"},
+            "agent": {"model": "zai/glm-5.3-flash", "effort": "max"}
+        }}
+    }));
+    assert_eq!(
+        unsupported_entries(&launcher).unwrap(),
+        Vec::<String>::new()
+    );
+    assert_eq!(
+        resolve("glm", "leader", Some(&launcher)).unwrap(),
+        (choice("zai/glm-5.3", "high"), Source::Saved)
+    );
+    // A 5.4 choice saved now is supported too, with the effort the table lists.
+    let saved = with_choice(&launcher, "glm", "leader", "zai/glm-5.4[1m]", "max").unwrap();
+    assert_eq!(unsupported_entries(&saved).unwrap(), Vec::<String>::new());
+    assert_eq!(
+        resolve("glm", "leader", Some(&saved)).unwrap(),
+        (choice("zai/glm-5.4[1m]", "max"), Source::Saved)
     );
 }
 
@@ -147,7 +187,7 @@ fn an_unsupported_or_malformed_saved_value_is_refused_without_quoting_it() {
         ),
         (
             "model has the wrong type",
-            json!({"models": {"omp": {"agent": entry(json!(7), json!("high"))}}}),
+            json!({"models": {"glm": {"agent": entry(json!(7), json!("high"))}}}),
         ),
         (
             "effort field missing",
@@ -387,24 +427,24 @@ fn the_slice_one_audit_cases_are_pinned() {
         json!({"model": "claude-haiku-5-5", "effort": "low"})
     );
 
-    // The omp tool with a saved value and with a set; glm is a separate entry.
+    // The glm tool with a saved value and with a set; the other role is a separate entry.
     let saved =
-        object(json!({"models": {"omp": {"leader": {"model": "zai/glm-5.3", "effort": "low"}}}}));
+        object(json!({"models": {"glm": {"leader": {"model": "zai/glm-5.3", "effort": "low"}}}}));
     assert_eq!(
-        resolve("omp", "leader", Some(&saved)).unwrap(),
+        resolve("glm", "leader", Some(&saved)).unwrap(),
         (choice("zai/glm-5.3", "low"), Source::Saved)
     );
     assert_eq!(
-        resolve("glm", "leader", Some(&saved)).unwrap().1,
+        resolve("glm", "agent", Some(&saved)).unwrap().1,
         Source::Default
     );
-    let set = with_choice(&saved, "omp", "agent", "zai/glm-5.3-flash", "high").unwrap();
+    let set = with_choice(&saved, "glm", "agent", "zai/glm-5.3-flash", "high").unwrap();
     assert_eq!(
-        set["models"]["omp"]["leader"],
-        saved["models"]["omp"]["leader"]
+        set["models"]["glm"]["leader"],
+        saved["models"]["glm"]["leader"]
     );
     assert_eq!(
-        resolve("omp", "agent", Some(&set)).unwrap(),
+        resolve("glm", "agent", Some(&set)).unwrap(),
         (choice("zai/glm-5.3-flash", "high"), Source::Saved)
     );
 
@@ -429,6 +469,22 @@ fn codex_is_not_a_tool_any_more() {
     }));
     assert_eq!(saved_choice(&launcher, "codex", "agent"), None);
     assert!(resolve("codex", "agent", Some(&launcher)).is_err());
+}
+
+/// SPEC-20261122-remove-omp-launcher AC-5: the table, the defaults and the accepted choices hold
+/// `claude` and `glm` only; a saved OMP value is not read as a choice.
+#[test]
+fn omp_is_not_a_tool_any_more() {
+    assert_eq!(&TOOLS[..], &["claude", "glm"][..], "TOOLS");
+    assert!(supported("omp").is_none(), "the table still has an omp row");
+    for role in ROLES {
+        assert_eq!(default_choice("omp", role), None, "omp {role}");
+    }
+    let launcher = object(json!({
+        "models": {"omp": {"agent": {"model": "zai/glm-5.3-flash", "effort": "high"}}}
+    }));
+    assert_eq!(saved_choice(&launcher, "omp", "agent"), None);
+    assert!(resolve("omp", "agent", Some(&launcher)).is_err());
 }
 
 #[test]

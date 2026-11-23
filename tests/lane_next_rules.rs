@@ -2,107 +2,117 @@
 //! reads GitHub afresh, lets a reversible decision go on with the safe default, and names
 //! only flags the command really has.
 
-mod common;
-use std::{fs, path::Path, process::Command};
+use std::{fs, path::Path};
 
-fn mode_agent() -> String {
-    fs::read_to_string(
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai/workflows/mode-agent.md"),
-    )
-    .unwrap()
+fn work() -> String {
+    fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai/workflows/work.md"))
+        .unwrap()
 }
 
+/// Re-pointed to WORK with the retired MODE-AGENT route (SPEC-20261122-next-flow-skills-agents
+/// REQ-3): the next card comes from the ledger, read afresh each time; the name stays.
 #[test]
 fn the_agent_loop_runs_lane_next_and_goes_on_with_reversible_defaults() {
-    let text = mode_agent();
-    // Card C-53 S5: the next task comes from the ledger (`moai card next`) and a wait is
-    // `moai wait`; `lane-next` reads Issue claims, so MODE-AGENT no longer names it, nor its
-    // `open_draft_pr` and `card_pr_merged` tasks (was: `moai lane-next --lane … --wait`, "reads
-    // GitHub afresh each time", its 3,600-second cap, Issue #2831, `open_draft_pr`,
-    // `card_pr_merged`, Issue #2873).
+    let text = work();
+    // Card C-53 S5: the next task comes from the ledger (`moai card next`); `lane-next` reads
+    // Issue claims, so the loop no longer names it. WORK opens no pull request, so the pull
+    // request, draft, decision-applied and tip-repair phrases left with MODE-AGENT.
     for phrase in [
-        "Read the state afresh each time (`moai card next`, your pull requests) — never what you remember",
+        "Read the state afresh each time (`moai card next`) — never what you remember",
         "a restart, a usage-limit stop or a compacted conversation misses nothing",
-        "go on with the safe default you named",
-        "only a `guarded` one waits for the answer",
-        "or a background `moai wait`",
-        "open it as a draft (`gh pr create --draft …`)",
-        "Issue #1975 comment 6870150891",
-        "`DECISION-APPLIED <decision id>`",
-        "A card of yours whose pull request has merged: `card pr`, `card done` and the cleanup",
-        "While a pull request with a `moai-tip-repair:` line is open, a red tip is that pull request's author's to repair",
     ] {
-        assert!(text.contains(phrase), "mode-agent.md must say `{phrase}`");
+        assert!(text.contains(phrase), "work.md must say `{phrase}`");
     }
-    assert!(
-        !text.contains("lane-next"),
-        "mode-agent.md still names `lane-next`"
-    );
+    assert!(!text.contains("lane-next"), "work.md names `lane-next`");
 }
 
-/// #2880 W4 (AC-3): the project rules say the lane's PLAN comment is part of the design, next
-/// to the Issue body.
+/// #2880 W4 (AC-3), retired by the local card ledger (user decision 2026-11-16) and
+/// `SPEC-20261123-claude-md-rewrite` (rule-table row R-03): the project rules no longer say that
+/// the lane's PLAN comment on an Issue is part of the design; the SPEC the card names is. The
+/// provenance table keeps the origin of the retired rule.
 #[test]
-fn agents_md_names_the_plan_comment_as_part_of_the_design() {
-    let agents =
-        fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("AGENTS.md")).unwrap();
-    // The Issue number (#2880) moved to the provenance table in AGENTS.local.md (#3096 S3); the
-    // rule's words stay pinned.
-    assert!(
-        agents.contains("Each Issue body plus the lane's `PLAN #<issue>` comment is the design;")
-    );
-    assert!(!agents.contains("Each Issue body is the design;"));
-    let local =
-        fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("AGENTS.local.md")).unwrap();
-    assert!(local.contains(
-        "| Authority 2: the lane's `PLAN #<issue>` comment is part of the design | Issue #2880 |"
+fn the_retired_plan_comment_rule_keeps_its_provenance_row() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let rules = fs::read_to_string(root.join("CLAUDE.md")).unwrap();
+    assert!(!rules.contains("PLAN #<issue>"));
+    let provenance = fs::read_to_string(root.join("docs/claude-md-rule-provenance.md")).unwrap();
+    assert!(provenance.contains(
+        "| Retired: the lane's `PLAN #<issue>` comment is part of the design (Authority 2 of the earlier file); the card and its SPEC replace it | Issue #2880;"
     ));
 }
 
-/// Every flag the workflow names exists on the command, and the limits it states match.
+/// The leader condition of the next-card rule, as `docs/lane-rules.md` says it.
+const LEADER_CLAUSE: &str = ", and only when no leader is registered; with a registered leader the lane waits for that leader's dispatch.";
+
+/// What the next-card bullet of the lane rules lacks of its leader condition: with a registered
+/// leader a lane waits for that leader's dispatch, and only without one does it take the next
+/// card itself.
+fn next_card_leader_problems(rules: &str) -> Vec<String> {
+    let Some(bullet) = rules
+        .lines()
+        .find(|l| l.starts_with("- A READY note or a `LANE-DONE` line hands a card back"))
+    else {
+        return vec!["docs/lane-rules.md has no next-card bullet".to_string()];
+    };
+    [
+        "only when no leader is registered",
+        "with a registered leader the lane waits for that leader's dispatch",
+    ]
+    .iter()
+    .filter(|part| !bullet.contains(**part))
+    .map(|part| format!("the next-card bullet lacks {part:?}: {bullet}"))
+    .collect()
+}
+
+/// SPEC-20261123-doc-sentence-pins AC-1 (REQ-1): the lane rules keep both halves of the leader
+/// condition of the next-card rule.
 #[test]
-fn the_flags_the_workflow_names_are_the_commands_own() {
-    let out = Command::new(crate::common::MOAI_BIN)
-        .args(["lane-next", "--help"])
-        .output()
-        .unwrap();
-    let help = String::from_utf8_lossy(&out.stdout);
-    for flag in [
-        "--lane",
-        "--repo",
-        "--wait",
-        "--tip",
-        "--snapshot",
-        "--shared-lanes",
-        "--explain",
-    ] {
-        assert!(help.contains(flag), "lane-next --help lacks {flag}: {help}");
-    }
-    assert!(help.contains("at most 3600"), "{help}");
-    assert!(help.contains("1 to 50"), "{help}");
-    // C-53 S5: MODE-AGENT waits with `moai wait` (was: `lane-next --wait`, its 3,600-second
-    // cap, its 432-second read interval and `--shared-lanes`); every flag the lane's watch shows
-    // is the command's own.
-    let out = Command::new(crate::common::MOAI_BIN)
-        .args(["wait", "--help"])
-        .output()
-        .unwrap();
-    assert!(out.status.success());
-    let wait = String::from_utf8_lossy(&out.stdout);
-    let text = mode_agent();
-    for (shown, flag) in [
-        ("`moai wait --repo <owner/repo> <kind>`", "--repo"),
-        ("`ci --head <h>`", "--head"),
+fn next_card_leader_clause_is_in_the_lane_rules() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let rules = fs::read_to_string(root.join("docs/lane-rules.md")).unwrap();
+    assert!(
+        rules.contains(LEADER_CLAUSE),
+        "the leader clause moved or changed"
+    );
+    let problems = next_card_leader_problems(&rules);
+    assert!(problems.is_empty(), "{problems:?}");
+}
+
+/// SPEC-20261123-doc-sentence-pins AC-1 (REQ-2): the same text without the clause, or with one
+/// half of it, or without the bullet, is a problem; each mutant really changes the text.
+#[test]
+fn next_card_leader_clause_mutants_are_caught() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let rules = fs::read_to_string(root.join("docs/lane-rules.md")).unwrap();
+    let wait = "; with a registered leader the lane waits for that leader's dispatch";
+    let mutants = [
+        ("clause removed", rules.replace(LEADER_CLAUSE, ".")),
+        ("wait half removed", rules.replace(wait, "")),
         (
-            "`comment --issue <pr> --after <id> --prefix AUDIT`",
-            "--prefix",
+            "condition half removed",
+            rules.replace(", and only when no leader is registered", ""),
         ),
-        ("`pr --pr <pr> --head <h>`", "--pr"),
-    ] {
-        assert!(text.contains(shown), "mode-agent.md must show {shown}");
-        assert!(wait.contains(flag), "wait --help lacks {flag}: {wait}");
-    }
-    for flag in ["--issue", "--after"] {
-        assert!(wait.contains(flag), "wait --help lacks {flag}: {wait}");
+        (
+            "bullet removed",
+            rules
+                .lines()
+                .filter(|l| {
+                    !l.starts_with("- A READY note or a `LANE-DONE` line hands a card back")
+                })
+                .collect::<Vec<_>>()
+                .join("\n"),
+        ),
+    ];
+    for (name, mutant) in mutants {
+        assert!(
+            mutant != rules,
+            "{name}: the mutant did not change the text"
+        );
+        assert!(
+            !next_card_leader_problems(&mutant).is_empty(),
+            "{name}: the pin passes without the clause"
+        );
     }
 }
+
+// Retired with the MODE-AGENT route (SPEC-20261122-next-flow-skills-agents REQ-2): `the_flags_the_workflow_names_are_the_commands_own` pinned the `lane-next` and `moai wait` flags MODE-AGENT showed, and WORK names neither.
