@@ -3,8 +3,8 @@
 //! ledger by the stage of their progress, `🗂️ 25 → 📨 3 → ✅ 12 | 🙋 5`,
 //! on a line of its own between the first line and the usage windows, behind the two versions
 //! (SPEC-20261123-statusline-order-bars): `🗿 4.2648.20 | 🗂️ 25 → 📨 3 → ✅ 12 | 🙋 5`. The first
-//! line says who and where (SPEC-20261122-statusline-where):
-//! `🧠 Opus | 📡 owner/repo, ⬇️ 46 🔀 0 | 🅱️ …`.
+//! line says who and where (SPEC-20261123-statusline-order-bars):
+//! `🧠 Opus | 📡 owner/repo, ⬇️ 46 🔀 0 | 🅱️ <integration>(🏷️ <tip>) | 🌳 <branch>`.
 //!
 //! Every case runs the real binary through `TempHome` (a temporary HOME, nothing of the real
 //! environment but a PATH for git) against a ledger built in that HOME. The read is local and
@@ -207,8 +207,9 @@ impl Fixture {
     }
 }
 
-/// The first line of the fixture; `+1`: the project's untracked state folder.
-const WITHOUT_CARDS: &str = "🧠 Opus | 📡 modu-ai/moai-adk, ⬇️ 46 🔀 0 | 🅱️ main +1";
+/// The first line of the fixture: the project names no integration branch, so only the checked-out
+/// branch follows the repository; the project's untracked state folder is no mark on the line.
+const WITHOUT_CARDS: &str = "🧠 Opus | 📡 modu-ai/moai-adk, ⬇️ 46 🔀 0 | 🌳 main";
 /// The flow line of the [`MIX`] ledger with the note of [`Fixture::with_mix`]: 3 submitted (2
 /// review, 1 by its note), 2 stale, 5 on hold, 20 draft, 25 ready, 12 done today, no card of
 /// mine (the session holds none). The drafts and the stale cards are not on the line, and the
@@ -276,17 +277,17 @@ fn the_flow_line_keeps_its_place_without_fresh_forge_counts() {
     // never a zero and never a hidden segment.
     assert_eq!(
         f.line1(),
-        "🧠 Opus | 📡 modu-ai/moai-adk, ⬇️ n/a 🔀 n/a | 🅱️ main +1",
+        "🧠 Opus | 📡 modu-ai/moai-adk, ⬇️ n/a 🔀 n/a | 🌳 main",
         "without fresh forge counts the slots say unknown, with the comma kept"
     );
     assert_eq!(f.flow_line(), FLOW_MIX);
 }
 
-/// SPEC-20261120-statusline-ahead: under M-Flow the local branch runs ahead of its upstream
-/// between releases, and the branch says so, before behind and dirty. With ahead 0 nothing
-/// appears — every other test here pins that byte-identical shape.
+/// SPEC-20261123-statusline-order-bars REQ-11 (it replaces the ahead count of
+/// SPEC-20261120-statusline-ahead on the first line): a branch ahead of its upstream shows its name
+/// alone, with no `↑`, and no zero is shown either.
 #[test]
-fn the_branch_shows_the_ahead_count_against_the_upstream() {
+fn the_branch_shows_no_ahead_count_against_the_upstream() {
     let f = fixture();
     common::git::git_in(
         &f.project,
@@ -295,9 +296,10 @@ fn the_branch_shows_the_ahead_count_against_the_upstream() {
     common::git::git_in(&f.project, &["branch", "base", "HEAD~1"]);
     common::git::git_in(&f.project, &["branch", "--set-upstream-to=base"]);
     let line = f.line1();
-    assert!(line.contains("🅱️ main ↑1"), "the ahead count: {line}");
-    assert!(!line.contains('↓'), "behind 0 stays hidden: {line}");
-    assert!(!line.contains("↑0"), "a zero ahead is never shown: {line}");
+    assert!(line.ends_with(" | 🌳 main"), "the branch alone: {line}");
+    for mark in ['↑', '↓', '+'] {
+        assert!(!line.contains(mark), "{mark} on the first line: {line}");
+    }
 }
 
 /// The forms of the second line for the [`FLOW_MIX`] ledger, from the widest to the narrowest.
@@ -581,14 +583,18 @@ fn write_the_golden_ledger_fixture() {
 // Each case is a real repository in a temporary HOME and the real binary; `COLUMNS` is unset, so
 // the widest form is written. The strings are the ones of the Layouts section of the SPEC.
 
-/// The first line of the worktree session (form W0, 111 columns).
-const LINE_WORKTREE: &str = "🧠 Opus 5.5 high·t | 📡 modu-ai/moai-adk, ⬇️ 7 🔀 3 | 🌳 statusline-flow ↑3 +2 | 🧭 next ↑3 ↓0 | 🔗 #12 pending";
-/// The first line of the main checkout on the integration branch (84 columns).
-const LINE_MAIN: &str =
-    "🧠 Opus 5.5 high·t | 📡 modu-ai/moai-adk, ⬇️ 7 🔀 3 | 🅱️ next ↑2 +1 | 🔗 #12 pending";
-/// The first line of a project without an integration branch (76 columns).
-const LINE_GENERIC: &str =
-    "🧠 Sonnet 5.5 | 📡 acme/webapp | 🅱️ feature/login ↑2 ↓1 +4 | 🔗 #88 approved";
+/// The first line of the worktree session (form L0, 111 columns): the integration branch `next`
+/// with the first seven characters of its tip, then the checked-out branch, no distance and no mark
+/// although the lane is three commits ahead with two changed files.
+fn line_worktree(tip: &str) -> String {
+    format!("🧠 Opus 5.5 high·t | 📡 modu-ai/moai-adk, ⬇️ 7 🔀 3 | 🅱️ next(🏷️ {tip}) | 🌳 statusline-flow | 🔗 #12 pending")
+}
+/// The first line of the main checkout on the integration branch: both items name `next`.
+fn line_main(tip: &str) -> String {
+    format!("🧠 Opus 5.5 high·t | 📡 modu-ai/moai-adk, ⬇️ 7 🔀 3 | 🅱️ next(🏷️ {tip}) | 🌳 next | 🔗 #12 pending")
+}
+/// The first line of a project without an integration branch: the checked-out branch alone.
+const LINE_GENERIC: &str = "🧠 Sonnet 5.5 | 📡 acme/webapp | 🌳 feature/login | 🔗 #88 approved";
 
 /// One session: a HOME, the folder it runs in and the JSON the host would write on stdin.
 struct Session {
@@ -751,6 +757,15 @@ fn without_escapes(text: &str) -> String {
 }
 
 impl Session {
+    /// The first seven characters of the commit the local branch `branch` names, as git says
+    /// them (`git rev-parse --short=7 refs/heads/<branch>`), never typed into a test.
+    fn tip(&self, branch: &str) -> String {
+        common::git::git(
+            &self.cwd,
+            &["rev-parse", "--short=7", &format!("refs/heads/{branch}")],
+        )
+    }
+
     /// One render; the exit code must be 0. Returns stdout.
     fn output(&self, env: &[(&str, &str)]) -> String {
         let mut cmd = self
@@ -798,29 +813,31 @@ impl Session {
     }
 }
 
-/// REQ-1, REQ-3, REQ-4, REQ-9: a worktree session whose branch has the worktree's name shows
-/// the worktree item alone, with the distance to the integration branch and the pull request.
+/// REQ-8 to REQ-11 of SPEC-20261123-statusline-order-bars: a worktree session shows the
+/// integration branch with its tip, then the checked-out branch and the pull request, with no
+/// distance and no mark.
 #[test]
 fn line_one_items_worktree_session_with_a_pull_request() {
     let s = worktree_session();
-    assert_eq!(s.first_line(&[]), LINE_WORKTREE);
+    let want = line_worktree(&s.tip("next"));
+    assert_eq!(s.first_line(&[]), want);
     let (colored, text) = s.first_line_colored();
     assert!(colored.contains('\x1b'), "{colored:?}");
-    assert_eq!(text, LINE_WORKTREE, "color changes no text");
+    assert_eq!(text, want, "color changes no text");
 }
 
-/// REQ-3, REQ-4: the main checkout shows the branch item alone; on the integration branch `↑`
-/// counts the landings not yet pushed and there is no distance item.
+/// REQ-9: the main checkout is on the integration branch, and both items name it.
 #[test]
 fn line_one_items_main_checkout() {
     let s = main_session();
-    assert_eq!(s.first_line(&[]), LINE_MAIN);
+    let want = line_main(&s.tip("next"));
+    assert_eq!(s.first_line(&[]), want);
     let (_, text) = s.first_line_colored();
-    assert_eq!(text, LINE_MAIN);
+    assert_eq!(text, want);
 }
 
-/// REQ-4: a project with no integration branch has no distance item, and the branch item keeps
-/// the numbers against its own upstream.
+/// REQ-9: a project with no integration branch has no `🅱️` item, and the checked-out branch is
+/// written without the numbers against its own upstream.
 #[test]
 fn line_one_items_generic_project() {
     let s = generic_session();
@@ -836,7 +853,7 @@ fn line_one_items_generic_project() {
 fn line_one_items_merge_request() {
     let mut s = generic_session();
     s.stdin["pr"] = serde_json::json!({"number": 31, "review_state": "pending", "kind": "mr"});
-    let want = "🧠 Sonnet 5.5 | 📡 acme/webapp | 🅱️ feature/login ↑2 ↓1 +4 | 🔗 !31 pending";
+    let want = "🧠 Sonnet 5.5 | 📡 acme/webapp | 🌳 feature/login | 🔗 !31 pending";
     assert_eq!(s.first_line(&[]), want);
     assert_eq!(s.first_line_colored().1, want);
     for kind in [
@@ -852,7 +869,7 @@ fn line_one_items_merge_request() {
     s.stdin["pr"] = serde_json::Value::Null;
     assert_eq!(
         s.first_line(&[]),
-        "🧠 Sonnet 5.5 | 📡 acme/webapp | 🅱️ feature/login ↑2 ↓1 +4",
+        "🧠 Sonnet 5.5 | 📡 acme/webapp | 🌳 feature/login",
         "no request: no item and no separator"
     );
 }
@@ -862,7 +879,7 @@ fn line_one_items_merge_request() {
 #[test]
 fn line_one_items_missing_model() {
     let mut s = generic_session();
-    let rest = "📡 acme/webapp | 🅱️ feature/login ↑2 ↓1 +4 | 🔗 #88 approved";
+    let rest = "📡 acme/webapp | 🌳 feature/login | 🔗 #88 approved";
     s.stdin["model"] = serde_json::Value::Null;
     assert_eq!(s.first_line(&[]), rest);
     s.stdin["model"] = serde_json::json!({});
@@ -897,42 +914,34 @@ fn line_one_items_empty_input_has_no_first_line() {
     assert!(!out.contains("🧠"), "{out:?}");
 }
 
-/// REQ-11: the widest form that fits `COLUMNS` − 2, in the binary.
+/// REQ-12: the widest form that fits `COLUMNS` − 2, in the binary: L0 at 113 columns (111 wide),
+/// L1 at 112, L2 at 101, L3 at 79, L4 at 60.
 #[test]
 fn line_one_items_follow_columns() {
     let s = worktree_session();
+    let t = s.tip("next");
+    let l0 = line_worktree(&t);
+    let l1 = format!("🧠 Opus 5.5 high·t | 📡 modu-ai/moai-adk | 🅱️ next(🏷️ {t}) | 🌳 statusline-flow | 🔗 #12 pending");
+    let l2 = format!("🧠 Opus high | 📡 moai-adk | 🅱️ next(🏷️ {t}) | 🌳 statusline-flow | 🔗 #12");
+    let l3 = format!("🧠 Opus | 🅱️ next(🏷️ {t}) | 🌳 statusline-flow | 🔗 #12");
+    let l4 = "🧠 Opus | 🅱️ next | 🌳 statusline-flow".to_string();
+    for (text, columns) in [(&l0, 113), (&l1, 102), (&l2, 80), (&l3, 61), (&l4, 40)] {
+        assert_eq!(display_width(text) + 2, columns, "{text}");
+    }
     for (columns, want) in [
-        ("113", LINE_WORKTREE),
-        (
-            "112",
-            "🧠 Opus 5.5 high·t | 📡 modu-ai/moai-adk | 🌳 statusline-flow ↑3 +2 | 🧭 next ↑3 ↓0 | 🔗 #12 pending",
-        ),
-        (
-            "102",
-            "🧠 Opus 5.5 high·t | 📡 modu-ai/moai-adk | 🌳 statusline-flow ↑3 +2 | 🧭 next ↑3 ↓0 | 🔗 #12 pending",
-        ),
-        (
-            "101",
-            "🧠 Opus high | 📡 moai-adk | 🌳 statusline-flow ↑3 +2 | 🧭 next ↑3 ↓0 | 🔗 #12",
-        ),
-        (
-            "80",
-            "🧠 Opus high | 📡 moai-adk | 🌳 statusline-flow ↑3 +2 | 🧭 next ↑3 ↓0 | 🔗 #12",
-        ),
-        (
-            "79",
-            "🧠 Opus | 🌳 statusline-flow ↑3 +2 | 🧭 next ↓0 | 🔗 #12",
-        ),
-        (
-            "58",
-            "🧠 Opus | 🌳 statusline-flow ↑3 +2 | 🧭 next ↓0 | 🔗 #12",
-        ),
-        ("57", "🧠 Opus | 🌳 statusline-flow ↑3 +2"),
-        ("10", "🧠 Opus | 🌳 statusline-flow ↑3 +2"),
-        ("abc", LINE_WORKTREE),
+        ("113", &l0),
+        ("112", &l1),
+        ("102", &l1),
+        ("101", &l2),
+        ("80", &l2),
+        ("79", &l3),
+        ("61", &l3),
+        ("60", &l4),
+        ("10", &l4),
+        ("abc", &l0),
     ] {
         assert_eq!(
-            s.first_line(&[("COLUMNS", columns)]),
+            &s.first_line(&[("COLUMNS", columns)]),
             want,
             "COLUMNS {columns}"
         );

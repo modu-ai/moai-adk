@@ -265,7 +265,8 @@ fn three_lines_have_their_roles() {
     let lines: Vec<&str> = out.lines().collect();
     assert_eq!(lines.len(), 3, "{out}");
     assert!(lines[0].starts_with("🧠"), "{out}");
-    assert!(lines[0].contains("🅱️") && lines[0].contains("🌳"), "{out}");
+    assert!(lines[0].ends_with("🌳 spec/20260101-demo-work"), "{out}");
+    assert!(!lines[0].contains("demo-1-work"), "{out}");
     // The version opens the flow line and my card closes it.
     assert!(lines[1].starts_with("🗿 "), "{out}");
     assert!(lines[1].ends_with("🎯 C-1 🟡"), "{out}");

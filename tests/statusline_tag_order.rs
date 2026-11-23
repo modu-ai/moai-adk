@@ -207,10 +207,14 @@ fn line1_has_no_tag_under_ko_en_and_80_40_columns() {
                         display_width(line1) <= budget || !line1.contains(" | "),
                         "{name} {variant} LANG={lang} COLUMNS={columns}: line 1 {line1:?} is too wide"
                     );
-                    assert!(
-                        !text.contains("🏷️"),
-                        "{name} {variant} LANG={lang} COLUMNS={columns}: a tag in {text:?}"
-                    );
+                    // The tag icon is the one of the integration item `(🏷️ <commit>)` and
+                    // nothing else (SPEC-20261123-statusline-order-bars REQ-9).
+                    for (at, _) in text.match_indices("🏷️") {
+                        assert!(
+                            text[..at].ends_with('('),
+                            "{name} {variant} LANG={lang} COLUMNS={columns}: a tag in {text:?}"
+                        );
+                    }
                     // The windows are the last line: a bar and a number, no colon.
                     let last = text.lines().last().unwrap_or_default();
                     assert!(
@@ -346,13 +350,7 @@ fn the_session_name_changes_nothing() {
 #[test]
 fn the_session_name_changes_nothing_in_the_sources() {
     for (file, text) in [("state.rs", STATE_SOURCE), ("render.rs", RENDER_SOURCE)] {
-        for gone in [
-            "lane_registry",
-            "session_name",
-            "is_leader",
-            "tag_text",
-            "🏷️",
-        ] {
+        for gone in ["lane_registry", "session_name", "is_leader", "tag_text"] {
             assert!(
                 !text.contains(gone),
                 "{file} still holds `{gone}`: the first line has no tag"

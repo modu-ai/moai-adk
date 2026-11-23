@@ -952,56 +952,44 @@ mod tests {
     /// the MoAI version with the update arrow naming the template, then the build.
     const FULL_VERSIONS: &str = "🤖 2.1.293 | 🗿 2.0 -> 3.0";
 
-    /// SPEC-20261122-statusline-where: line 1 is the model with its effort, the repository with
-    /// its forge counts and the branch with its marks; line 2 opens with the Claude Code version
-    /// and the MoAI version (SPEC-20261123-statusline-order-bars REQ-1) and the last line is the
-    /// limits. With no integration branch known the behind count stays on the branch item, after
-    /// the ahead count (SPEC-20261120-statusline-ahead).
+    /// SPEC-20261123-statusline-order-bars REQ-8 and REQ-11: line 1 is the model with its effort,
+    /// the repository with its forge counts and the checked-out branch, with no ahead, behind or
+    /// uncommitted mark; line 2 opens with the Claude Code version and the MoAI version (REQ-1) and
+    /// the last line is the limits. With no integration branch known there is no `🅱️` item.
     #[test]
     fn full_layout_has_the_place_line_then_the_windows_with_ahead_before_behind() {
         assert_eq!(
             plain(&full_status(), &[]),
             format!(
-                "🧠 Opus high·t | 📡 owner/repo, ⬇️ 7 🔀 3 | 🅱️ main ↑5 ↓2 +3\n{FULL_VERSIONS}\n{FULL_WINDOWS}"
+                "🧠 Opus high·t | 📡 owner/repo, ⬇️ 7 🔀 3 | 🌳 main\n{FULL_VERSIONS}\n{FULL_WINDOWS}"
             )
         );
     }
 
-    /// With ahead 0 the line is byte-identical to what it renders without the feature (no
-    /// `↑`, nothing else moves).
+    /// REQ-11: whatever git counts — ahead, behind, both, changed files — the first line carries
+    /// no `↑`, no `↓` and no `+N`; the branch item is the branch name alone.
     #[test]
-    fn ahead_zero_keeps_the_line_byte_identical() {
-        let mut status = full_status();
-        status.git = Some(segments::parse_porcelain(
+    fn the_first_line_has_no_ahead_behind_or_uncommitted_mark() {
+        for porcelain in [
             "## main...origin/main [behind 2]\n M a\nA  b\n?? c\n",
-        ));
-        let line = plain(&status, &[]).lines().next().unwrap().to_string();
-        assert_eq!(
-            line,
-            "🧠 Opus high·t | 📡 owner/repo, ⬇️ 7 🔀 3 | 🅱️ main ↓2 +3"
-        );
-        assert!(!line.contains('↑'), "{line}");
-    }
-
-    /// Ahead without behind: only `↑N` appears, and dirty stays last.
-    #[test]
-    fn ahead_without_behind_shows_only_up() {
-        let mut status = full_status();
-        status.git = Some(segments::parse_porcelain(
             "## main...origin/main [ahead 4]\n M a\n?? b\n",
-        ));
-        let line = plain(&status, &[]).lines().next().unwrap().to_string();
-        assert_eq!(
-            line,
-            "🧠 Opus high·t | 📡 owner/repo, ⬇️ 7 🔀 3 | 🅱️ main ↑4 +2"
-        );
+            "## main...origin/main [ahead 5, behind 2]\n M a\nA  b\n?? c\n",
+        ] {
+            let mut status = full_status();
+            status.git = Some(segments::parse_porcelain(porcelain));
+            let line = plain(&status, &[]).lines().next().unwrap().to_string();
+            assert_eq!(line, "🧠 Opus high·t | 📡 owner/repo, ⬇️ 7 🔀 3 | 🌳 main");
+            for mark in ['↑', '↓', '+', '🧭'] {
+                assert!(!line.contains(mark), "{mark} in {line}");
+            }
+        }
     }
 
     /// The user's picked example (2026-11-20T21:5xZ), in the layout of
     /// SPEC-20261122-statusline-where: every segment present gives exactly these lines in plain
     /// output — line 1 says who and where, the flow line stands under it with the two versions
     /// in front and my card at the end, and the usage windows close the screen. The host's
-    /// worktree name is its own item before the branch (the names differ); the weekly window
+    /// host's worktree name is not on the line (`🌳` is the checked-out branch); the weekly window
     /// carries its reset countdown measured from the render's clock.
     fn example_status() -> Status {
         Status {
@@ -1030,6 +1018,8 @@ mod tests {
             )),
             flow: Some(example_flow()),
             worktree: "c135".into(),
+            integration: Some("v2026.11.0".into()),
+            integration_tip: "b3ba2b3".into(),
             ..Default::default()
         }
     }
@@ -1083,7 +1073,7 @@ mod tests {
         assert_eq!(
             out,
             format!(
-                "🧠 Opus 5.5 high·t | 📡 modu-ai/moai-adk, ⬇️ 0 🔀 0 | 🌳 c135 | 🅱️ v2026.11.0 ↑207 +11\n\
+                "🧠 Opus 5.5 high·t | 📡 modu-ai/moai-adk, ⬇️ 0 🔀 0 | 🅱️ v2026.11.0(🏷️ b3ba2b3) | 🌳 v2026.11.0\n\
                  {flow}\n\
                  🪫 CW ░░░░░░░░░░ 3% | 🔋 7D ███████░░░ 79% (6d 21h)",
                 flow = p0_with_versions()
@@ -1091,10 +1081,11 @@ mod tests {
         );
     }
 
-    /// REQ-1 and REQ-8: a detached HEAD shows the short SHA in the branch slot while the
-    /// repository and its forge counts stay; without a SHA only the branch slot is omitted.
+    /// REQ-10 of SPEC-20261123-statusline-order-bars: a detached HEAD has no checked-out branch,
+    /// so `🌳` is left out and its short commit is not invented as one; the repository, its forge
+    /// counts and the integration item stay, and with no HEAD at all only `🌳` is omitted.
     #[test]
-    fn detached_head_shows_the_short_sha_and_keeps_the_repository() {
+    fn a_detached_head_leaves_the_checked_out_item_out_and_keeps_the_repository() {
         let mut status = full_status();
         status.git = Some(segments::GitStatus {
             branch: String::new(),
@@ -1102,11 +1093,17 @@ mod tests {
             ..Default::default()
         });
         let line = plain(&status, &[]).lines().next().unwrap().to_string();
+        assert_eq!(line, "🧠 Opus high·t | 📡 owner/repo, ⬇️ 7 🔀 3", "{line}");
+        assert!(!line.contains("a1b2c3d") && !line.contains('🌳'), "{line}");
+        status.integration = Some("next".into());
+        status.integration_tip = "b3ba2b3".into();
+        let line = plain(&status, &[]).lines().next().unwrap().to_string();
         assert_eq!(
-            line, "🧠 Opus high·t | 📡 owner/repo, ⬇️ 7 🔀 3 | 🅱️ a1b2c3d",
+            line, "🧠 Opus high·t | 📡 owner/repo, ⬇️ 7 🔀 3 | 🅱️ next(🏷️ b3ba2b3)",
             "{line}"
         );
-        assert!(!line.contains("↑"), "a detached head has no ahead: {line}");
+        status.integration = None;
+        status.integration_tip.clear();
 
         status.git = Some(segments::GitStatus::default());
         let line = plain(&status, &[]).lines().next().unwrap().to_string();
@@ -1125,7 +1122,7 @@ mod tests {
         status.github.available = false;
         let line = plain(&status, &[]).lines().next().unwrap().to_string();
         assert_eq!(
-            line, "🧠 Opus high·t | 📡 owner/repo, ⬇️ n/a 🔀 n/a | 🅱️ main ↑5 ↓2 +3",
+            line, "🧠 Opus high·t | 📡 owner/repo, ⬇️ n/a 🔀 n/a | 🌳 main",
             "{line}"
         );
         assert!(
@@ -1134,7 +1131,7 @@ mod tests {
         );
         status.repo = None;
         let line = plain(&status, &[]).lines().next().unwrap().to_string();
-        assert_eq!(line, "🧠 Opus high·t | 🅱️ main ↑5 ↓2 +3", "{line}");
+        assert_eq!(line, "🧠 Opus high·t | 🌳 main", "{line}");
         assert!(!line.contains("n/a") && !line.contains('📡'), "{line}");
     }
 
@@ -1189,7 +1186,8 @@ mod tests {
         let out = Renderer::new(&config, None).render(&status);
         assert!(out.contains("🔋 5H ███████░░░ 75%"), "{out}");
         assert!(!out.contains('💾'), "{out}");
-        assert!(out.contains("🅱️ main ↑5 ↓2 +3"), "{out}");
+        assert!(out.contains("🌳 main"), "{out}");
+        assert!(!out.contains("↑5") && !out.contains("+3"), "{out}");
     }
 
     #[test]
@@ -1334,14 +1332,14 @@ mod tests {
             ..Default::default()
         };
         let with_zero = plain(&status, &[]);
-        assert!(with_zero.contains("📡 owner/repo, ⬇️ 0 🔀 0 | 🅱️ main ↑5 ↓2 +3"));
+        assert!(with_zero.contains("📡 owner/repo, ⬇️ 0 🔀 0 | 🌳 main"));
         // #2559: icons, not the old letter labels.
         assert!(!with_zero.contains("I: ") && !with_zero.contains("PR: "));
         // A failed query says `n/a`, never a zero and never a hidden segment (REQ-3).
         status.github.available = false;
         let unknown = plain(&status, &[]);
         assert!(
-            unknown.contains("📡 owner/repo, ⬇️ n/a 🔀 n/a | 🅱️ main ↑5 ↓2 +3"),
+            unknown.contains("📡 owner/repo, ⬇️ n/a 🔀 n/a | 🌳 main"),
             "{unknown}"
         );
         assert!(!unknown.contains("⬇️ 0"), "{unknown}");
@@ -1350,11 +1348,11 @@ mod tests {
         status.github.suppressed = true;
         let suppressed = plain(&status, &[]);
         assert!(
-            suppressed.contains("📡 owner/repo | 🅱️ main ↑5 ↓2 +3"),
+            suppressed.contains("📡 owner/repo | 🌳 main"),
             "{suppressed}"
         );
         status.github.suppressed = false;
-        assert!(plain(&status, &["github"]).contains("📡 owner/repo | 🅱️ main ↑5 ↓2 +3"));
+        assert!(plain(&status, &["github"]).contains("📡 owner/repo | 🌳 main"));
         assert!(!plain(&status, &["git_branch"]).contains("📡"));
         assert!(!plain(&status, &["git_status"]).contains("💾"));
         // The repository name unknown: the item and its counts are left out (REQ-1).
@@ -1431,6 +1429,8 @@ mod tests {
         let windows = FULL_WINDOWS;
         let mut status = full_status();
         status.flow = Some(example_flow());
+        status.integration = Some("next".into());
+        status.integration_tip = "b3ba2b3".into();
         status.pr = Some(state::PrInfo {
             number: 42,
             url: String::new(),
@@ -1440,7 +1440,7 @@ mod tests {
         let full = line(&status, &[]);
         assert_eq!(
             full,
-            "🧠 Opus high·t | 📡 owner/repo, ⬇️ 7 🔀 3 | 🅱️ main ↑5 ↓2 +3 | 🔗 #42 pending"
+            "🧠 Opus high·t | 📡 owner/repo, ⬇️ 7 🔀 3 | 🅱️ next(🏷️ b3ba2b3) | 🌳 main | 🔗 #42 pending"
         );
         assert!(
             !full.replace("owner/repo", "").contains('/'),
@@ -1448,7 +1448,7 @@ mod tests {
         );
         let at = |icon: &str| full.find(icon).unwrap();
         assert!(at("🧠") < at("📡") && at("📡") < at("⬇️") && at("⬇️") < at("🔀"));
-        assert!(at("🔀") < at("🅱️") && at("🅱️") < at("🔗"));
+        assert!(at("🔀") < at("🅱️") && at("🅱️") < at("🌳") && at("🌳") < at("🔗"));
         // The comma sits right after the repository name, inside the item: no separator
         // between the repository and the forge counts.
         assert!(full.contains("owner/repo, ⬇️ 7 🔀 3 | "), "{full}");
@@ -1463,7 +1463,7 @@ mod tests {
         // Without the forge counts the repository name stands alone, with no comma.
         assert_eq!(
             line(&status, &["github"]),
-            "🧠 Opus high·t | 📡 owner/repo | 🅱️ main ↑5 ↓2 +3 | 🔗 #42 pending"
+            "🧠 Opus high·t | 📡 owner/repo | 🅱️ next(🏷️ b3ba2b3) | 🌳 main | 🔗 #42 pending"
         );
         // The `cards` switch hides the flow items and nothing else: the versions stay on line 2.
         assert_eq!(
@@ -1474,13 +1474,13 @@ mod tests {
         // The pull request keeps the last place of line 1.
         assert_eq!(
             line(&status, &["pr"]),
-            "🧠 Opus high·t | 📡 owner/repo, ⬇️ 7 🔀 3 | 🅱️ main ↑5 ↓2 +3"
+            "🧠 Opus high·t | 📡 owner/repo, ⬇️ 7 🔀 3 | 🅱️ next(🏷️ b3ba2b3) | 🌳 main"
         );
     }
 
     /// The flow comes from the local ledger, not from the repository, so the flow line is shown
-    /// without a repository name, without a branch and with `git_branch` off; the worktree item
-    /// stands with the model on line 1 and the windows close the output.
+    /// without a repository name, without a branch and with `git_branch` off; the checked-out
+    /// branch stands with the model on line 1 and the windows close the output.
     #[test]
     fn the_flow_line_does_not_need_the_repository_or_the_branch() {
         let mut status = full_status();
@@ -1488,23 +1488,20 @@ mod tests {
         status.worktree = "wt".into();
         let windows = FULL_WINDOWS;
         status.repo = None;
-        // With `git_branch` off the branch is unread, the worktree name (from the host) stays,
-        // without marks.
+        // With `git_branch` off the branch items are hidden and the host's worktree name is no
+        // item of line 1: the model stands alone.
         let off = plain(&status, &["git_branch"]);
-        assert_eq!(off.lines().next().unwrap(), "🧠 Opus high·t | 🌳 wt");
+        assert_eq!(off.lines().next().unwrap(), "🧠 Opus high·t");
         let with_versions = format!("{FULL_VERSIONS} | {}", p0());
         assert_eq!(off.lines().nth(1).unwrap(), with_versions);
         assert_eq!(off.lines().nth(2).unwrap(), windows);
-        // The full render: an unnamed repository leaves its item out (REQ-1), the worktree and
-        // the branch follow the model, the flow line comes next and the windows are last.
+        // The full render: an unnamed repository leaves its item out (REQ-1), the checked-out
+        // branch follows the model, the flow line comes next and the windows are last.
         let out = plain(&status, &[]);
         assert_eq!(out.lines().count(), 3, "{out}");
-        assert_eq!(
-            out.lines().next().unwrap(),
-            "🧠 Opus high·t | 🌳 wt | 🅱️ main ↑5 ↓2 +3"
-        );
+        assert_eq!(out.lines().next().unwrap(), "🧠 Opus high·t | 🌳 main");
         assert_eq!(out.lines().nth(1).unwrap(), with_versions);
-        // No git and no worktree: line 1 keeps the model, the flow line stays second.
+        // No git: line 1 keeps the model, the flow line stays second.
         status.git = None;
         status.worktree.clear();
         let out = plain(&status, &[]);
@@ -1593,30 +1590,30 @@ mod tests {
         assert!(output.contains("🔗 #987 approved"), "{output:?}");
     }
 
-    /// SPEC-20261122-statusline-where D-4 and REQ-3: the worktree item shows the host's name as
-    /// it is, before the branch item, when the two names differ; the `worktree` option removes
-    /// it; the main checkout has none. The card label `WT-c<card>-<name>` is gone.
+    /// REQ-10 of SPEC-20261123-statusline-order-bars: `🌳` is the branch the HEAD file names, never
+    /// the host's worktree name — whatever name the host gives (the same as the branch or not),
+    /// the line is the same; the `worktree` option hides the item too, and so does `git_branch`.
     #[test]
-    fn the_worktree_item_stands_before_the_branch_item_with_the_host_name() {
+    fn the_checked_out_item_is_the_branch_and_never_the_host_worktree_name() {
         let line1 = |s: &Status, off: &[&str]| plain(s, off).lines().next().unwrap().to_string();
         let mut status = full_status();
         let base = line1(&status, &[]);
+        assert_eq!(base, "🧠 Opus high·t | 📡 owner/repo, ⬇️ 7 🔀 3 | 🌳 main");
+        for name in ["host-name", "main", "wt"] {
+            status.worktree = name.into();
+            assert_eq!(line1(&status, &[]), base, "{name}");
+            assert!(!plain(&status, &[]).contains("WT-c"));
+        }
         status.worktree = "host-name".into();
         assert_eq!(
-            line1(&status, &[]),
-            "🧠 Opus high·t | 📡 owner/repo, ⬇️ 7 🔀 3 | 🌳 host-name | 🅱️ main ↑5 ↓2 +3"
+            line1(&status, &["worktree"]),
+            "🧠 Opus high·t | 📡 owner/repo, ⬇️ 7 🔀 3"
         );
-        assert!(!plain(&status, &[]).contains("WT-c"));
-        assert_eq!(line1(&status, &["worktree"]), base);
-        // The same name shows the worktree item alone and the marks move to it.
-        status.worktree = "main".into();
         assert_eq!(
-            line1(&status, &[]),
-            "🧠 Opus high·t | 📡 owner/repo, ⬇️ 7 🔀 3 | 🌳 main ↑5 ↓2 +3"
+            line1(&status, &["git_branch"]),
+            "🧠 Opus high·t",
+            "git_branch hides the repository, the integration item and the branch"
         );
-        // The main checkout (no host name) has no worktree item.
-        status.worktree.clear();
-        assert_eq!(line1(&status, &[]), base);
     }
 
     /// #2756 AC-7–AC-9, reworked by the user instruction 2026-11-20 (D-1 of
@@ -1636,8 +1633,7 @@ mod tests {
         let out = plain(&status, &[]);
         let lines: Vec<_> = out.lines().collect();
         assert_eq!(
-            lines[0],
-            "🧠 Opus high·t | 📡 owner/repo, ⬇️ 7 🔀 3 | 🌳 wt | 🅱️ main ↑5 ↓2 +3 | 🔗 #42 pending",
+            lines[0], "🧠 Opus high·t | 📡 owner/repo, ⬇️ 7 🔀 3 | 🌳 main | 🔗 #42 pending",
             "no cache segment: {}",
             lines[0]
         );
@@ -1659,7 +1655,8 @@ mod tests {
             "{out}"
         );
         status.pr.as_mut().unwrap().review_state.clear();
-        // The worktree item sits before the branch; without it the PR still closes line 1.
+        // Without the review state the PR still closes line 1, and the `worktree` option hides
+        // the checked-out item.
         status.worktree.clear();
         assert!(plain(&status, &[]).contains("| 🔗 #42\n"));
         assert!(!plain(&status, &["pr"]).contains('🔗'));
@@ -1668,7 +1665,7 @@ mod tests {
         status.worktree.clear();
         assert_eq!(
             plain(&status, &[]).lines().next(),
-            Some("🧠 Opus high·t | 📡 owner/repo, ⬇️ 7 🔀 3 | 🅱️ main ↑5 ↓2 +3"),
+            Some("🧠 Opus high·t | 📡 owner/repo, ⬇️ 7 🔀 3 | 🌳 main"),
             "no empty `| |`"
         );
     }
@@ -1806,7 +1803,7 @@ mod tests {
                     (t.repo, "📡 owner/repo,"),
                     (t.issues, "⬇️ 7"),
                     (t.prs, "🔀 3"),
-                    (t.branch, "🅱️ main ↑5 ↓2 +3"),
+                    (t.branch, "🌳 main"),
                 ] {
                     assert!(
                         out.contains(&profile.paint(hex, text)),
@@ -2514,46 +2511,56 @@ mod flow_line_tests {
     }
 }
 
-/// SPEC-20261122-statusline-where AC-6: the first line in each form of the Layouts section,
-/// exactly, changing at its width boundary. A fixture integration branch is `next`.
+/// SPEC-20261123-statusline-order-bars AC-15 (REQ-8 to REQ-12): the first line in each form of
+/// the Layouts section, exactly, changing at its width boundary. The integration branch of the
+/// fixtures is `v2026.11.0`, and its local ref is at `b3ba2b3`.
 #[cfg(test)]
 mod line_one_form_tests {
     use super::*;
     use crate::statusline::segments::GitStatus;
     use crate::statusline::state::{GitHubCounts, PrInfo};
 
-    /// W0 to W4 of the Layouts section, with one space after every icon
+    /// L0 to L4 of the Layouts section, with one space after every icon
     /// (SPEC-20261122-statusline-limits-left REQ-5), and their display widths.
-    const W: [(&str, usize); 5] = [
+    const L: [(&str, usize); 5] = [
         (
-            "🧠 Opus 5.5 high·t | 📡 modu-ai/moai-adk, ⬇️ 7 🔀 3 | 🌳 statusline-flow ↑3 +2 | 🧭 next ↑3 ↓0 | 🔗 #12 pending",
-            111,
+            "🧠 Sonnet 5.5 high·t | 📡 modu-ai/moai-adk, ⬇️ 1 🔀 0 | 🅱️ v2026.11.0(🏷️ b3ba2b3) | 🌳 spec/ready-mutant-line-20261123 | 🔗 #1234 pending",
+            137,
         ),
         (
-            "🧠 Opus 5.5 high·t | 📡 modu-ai/moai-adk | 🌳 statusline-flow ↑3 +2 | 🧭 next ↑3 ↓0 | 🔗 #12 pending",
-            100,
+            "🧠 Sonnet 5.5 high·t | 📡 modu-ai/moai-adk | 🅱️ v2026.11.0(🏷️ b3ba2b3) | 🌳 spec/ready-mutant-line-20261123 | 🔗 #1234 pending",
+            126,
         ),
         (
-            "🧠 Opus high | 📡 moai-adk | 🌳 statusline-flow ↑3 +2 | 🧭 next ↑3 ↓0 | 🔗 #12",
-            78,
+            "🧠 Sonnet high | 📡 moai-adk | 🅱️ v2026.11.0(🏷️ b3ba2b3) | 🌳 spec/ready-mutant-line-20261123 | 🔗 #1234",
+            104,
         ),
         (
-            "🧠 Opus | 🌳 statusline-flow ↑3 +2 | 🧭 next ↓0 | 🔗 #12",
-            56,
+            "🧠 Sonnet | 🅱️ v2026.11.0(🏷️ b3ba2b3) | 🌳 spec/ready-mutant-line-20261123 | 🔗 #1234",
+            85,
         ),
-        ("🧠 Opus | 🌳 statusline-flow ↑3 +2", 34),
+        (
+            "🧠 Sonnet | 🅱️ v2026.11.0 | 🌳 spec/ready-mutant-line-20261123",
+            62,
+        ),
     ];
-    const MAIN: (&str, usize) = (
-        "🧠 Opus 5.5 high·t | 📡 modu-ai/moai-adk, ⬇️ 7 🔀 3 | 🅱️ next ↑2 +1 | 🔗 #12 pending",
-        84,
+    /// The detached leader: no `🌳`, and no request either (the fixture has none).
+    const DETACHED: (&str, usize) = (
+        "🧠 Sonnet 5.5 high·t | 📡 modu-ai/moai-adk, ⬇️ 1 🔀 0 | 🅱️ v2026.11.0(🏷️ b3ba2b3)",
+        81,
     );
-    /// The next form of the main checkout: the counts go first (the drop order of the section).
-    const MAIN_NO_COUNTS: &str =
-        "🧠 Opus 5.5 high·t | 📡 modu-ai/moai-adk | 🅱️ next ↑2 +1 | 🔗 #12 pending";
-    const GENERIC: (&str, usize) = (
-        "🧠 Sonnet 5.5 | 📡 acme/webapp | 🅱️ feature/login ↑2 ↓1 +4 | 🔗 #88 approved",
-        76,
+    /// The integration ref cannot be read: `n/a`, never a guessed commit.
+    const NO_REF: (&str, usize) = (
+        "🧠 Sonnet 5.5 high·t | 📡 modu-ai/moai-adk, ⬇️ 1 🔀 0 | 🅱️ v2026.11.0(🏷️ n/a) | 🌳 spec/ready-mutant-line-20261123",
+        114,
     );
+    /// Neither the profile nor the remote names an integration branch: no `🅱️` item.
+    const UNKNOWN: (&str, usize) = (
+        "🧠 Sonnet 5.5 high·t | 📡 modu-ai/moai-adk, ⬇️ 1 🔀 0 | 🌳 main",
+        63,
+    );
+    /// The narrowest form of the detached leader: the model and the integration name.
+    const DETACHED_NARROWEST: &str = "🧠 Sonnet | 🅱️ v2026.11.0";
 
     fn pull_request(number: i64, state: &str, merge_request: bool) -> Option<PrInfo> {
         Some(PrInfo {
@@ -2564,77 +2571,65 @@ mod line_one_form_tests {
         })
     }
 
-    /// A session in a linked worktree named like its branch, three commits ahead of `next`,
-    /// two changed files and a pull request.
-    fn worktree_session() -> Status {
+    /// A lane branch checked out in a linked worktree, three commits ahead of the integration
+    /// branch with two changed files (none of that is on the line), and a pull request.
+    fn lane_session() -> Status {
         Status {
-            model: "Opus 5.5".into(),
+            model: "Sonnet 5.5".into(),
             effort: Some("high".into()),
             thinking: Some(true),
             repo: Some(("modu-ai".into(), "moai-adk".into())),
             github: GitHubCounts {
                 available: true,
-                open_issues: 7,
-                open_prs: 3,
+                open_issues: 1,
+                open_prs: 0,
                 ..Default::default()
             },
             worktree: "statusline-flow".into(),
             git: Some(GitStatus {
-                branch: "statusline-flow".into(),
+                branch: "spec/ready-mutant-line-20261123".into(),
                 ahead: 3,
                 modified: 1,
                 untracked: 1,
                 ..Default::default()
             }),
-            integration: Some("next".into()),
-            pr: pull_request(12, "pending", false),
+            integration: Some("v2026.11.0".into()),
+            integration_tip: "b3ba2b3".into(),
+            pr: pull_request(1234, "pending", false),
             ..Default::default()
         }
     }
 
-    /// The main checkout on the integration branch: two landings not yet pushed, one change.
-    fn main_checkout() -> Status {
+    /// The leader: HEAD detached at another commit than the integration tip, no request.
+    fn detached_leader() -> Status {
         Status {
-            worktree: String::new(),
             git: Some(GitStatus {
-                branch: "next".into(),
-                ahead: 2,
-                untracked: 1,
+                branch: String::new(),
+                head_sha: "0123456".into(),
+                untracked: 3,
                 ..Default::default()
             }),
-            ..worktree_session()
-        }
-    }
-
-    /// A project with no integration branch: the numbers are the branch's own upstream's.
-    fn generic_project() -> Status {
-        Status {
-            model: "Sonnet 5.5".into(),
-            effort: None,
-            thinking: None,
-            repo: Some(("acme".into(), "webapp".into())),
-            github: GitHubCounts {
-                suppressed: true,
-                ..Default::default()
-            },
-            worktree: String::new(),
-            git: Some(GitStatus {
-                branch: "feature/login".into(),
-                ahead: 2,
-                behind: 1,
-                untracked: 4,
-                ..Default::default()
-            }),
-            integration: None,
-            pr: pull_request(88, "approved", false),
-            ..Default::default()
+            pr: None,
+            ..lane_session()
         }
     }
 
     /// The first line alone; the context window is switched off so no other line has text.
     fn first_line(status: &Status, budget: Option<usize>, profile: Option<Profile>) -> String {
+        first_line_with(status, budget, profile, &[])
+    }
+
+    fn first_line_with(
+        status: &Status,
+        budget: Option<usize>,
+        profile: Option<Profile>,
+        off: &[&str],
+    ) -> String {
         let config = DisplayConfig {
-            segments: [("context".to_string(), false)].into_iter().collect(),
+            segments: std::iter::once("context")
+                .chain(off.iter().copied())
+                .map(|key| (key.to_string(), false))
+                .collect(),
             ..Default::default()
         };
         Renderer::new(&config, profile)
@@ -2665,23 +2660,23 @@ mod line_one_form_tests {
     /// The widths of the section are what the crate counts (a guard on the table itself).
     #[test]
     fn the_layout_strings_have_the_widths_of_the_section() {
-        for (text, cols) in W.iter().chain([&MAIN, &GENERIC]) {
+        for (text, cols) in L.iter().chain([&DETACHED, &NO_REF, &UNKNOWN]) {
             assert_eq!(width::display_width(text), *cols, "{text}");
         }
-        assert!(width::display_width(MAIN_NO_COUNTS) < MAIN.1);
     }
 
     /// Every form is exactly the string of the Layouts section and changes at its boundary: a
-    /// budget equal to the width keeps the form, one less drops to the next.
+    /// budget equal to the width keeps the form, one less drops to the next, and the narrowest
+    /// form stays when nothing fits.
     #[test]
     fn every_form_is_exactly_the_string_of_the_layouts_section() {
-        let status = worktree_session();
-        for (i, (text, cols)) in W.iter().enumerate() {
+        let status = lane_session();
+        for (i, (text, cols)) in L.iter().enumerate() {
             assert_eq!(&plain(&status, Some(*cols)), text, "budget {cols}");
             if i == 0 {
                 assert_eq!(&plain(&status, Some(*cols + 40)), text, "{cols} + 40");
             }
-            if let Some((next, _)) = W.get(i + 1) {
+            if let Some((next, _)) = L.get(i + 1) {
                 assert_eq!(
                     &plain(&status, Some(*cols - 1)),
                     next,
@@ -2690,38 +2685,62 @@ mod line_one_form_tests {
                 );
             }
         }
+        assert_eq!(&plain(&status, Some(L[4].1 - 1)), L[4].0, "nothing fits");
     }
 
     /// No usable `COLUMNS` writes the widest form and a budget below the narrowest the narrowest.
     #[test]
     fn no_budget_writes_the_widest_form_and_a_small_budget_the_narrowest() {
-        let status = worktree_session();
-        assert_eq!(plain(&status, None), W[0].0);
-        for budget in [33, 10, 0] {
-            assert_eq!(plain(&status, Some(budget)), W[4].0, "{budget}");
+        let status = lane_session();
+        assert_eq!(plain(&status, None), L[0].0);
+        for budget in [61, 10, 0] {
+            assert_eq!(plain(&status, Some(budget)), L[4].0, "{budget}");
         }
     }
 
-    /// The main checkout and a generic project: the string of the section at its width, and a
-    /// narrower form one column less.
+    /// The last three rows of the Layouts section: the detached leader (no `🌳`, no invented
+    /// name), a missing integration ref (`n/a`) and an unknown integration branch (no `🅱️`).
     #[test]
-    fn the_main_checkout_and_a_generic_project_are_the_strings_of_the_section() {
-        for (status, (text, cols)) in [(main_checkout(), MAIN), (generic_project(), GENERIC)] {
-            assert_eq!(plain(&status, None), text);
-            assert_eq!(plain(&status, Some(cols)), text, "budget {cols}");
-            assert_eq!(plain(&status, Some(cols + 40)), text);
-            let narrower = plain(&status, Some(cols - 1));
-            assert_ne!(narrower, text, "budget {}", cols - 1);
-            assert!(width::display_width(&narrower) < cols, "{narrower}");
-        }
-        assert_eq!(plain(&main_checkout(), Some(MAIN.1 - 1)), MAIN_NO_COUNTS);
+    fn the_detached_missing_ref_and_unknown_integration_rows_are_the_strings_of_the_section() {
+        let detached = detached_leader();
+        assert_eq!(plain(&detached, None), DETACHED.0);
+        assert_eq!(plain(&detached, Some(DETACHED.1)), DETACHED.0);
+        assert_eq!(
+            plain(&detached, Some(DETACHED.1 - 1)),
+            "🧠 Sonnet 5.5 high·t | 📡 modu-ai/moai-adk | 🅱️ v2026.11.0(🏷️ b3ba2b3)"
+        );
+        assert_eq!(plain(&detached, Some(0)), DETACHED_NARROWEST);
+
+        let mut no_ref = lane_session();
+        no_ref.integration_tip.clear();
+        no_ref.pr = None;
+        assert_eq!(plain(&no_ref, None), NO_REF.0);
+        assert_eq!(plain(&no_ref, Some(NO_REF.1)), NO_REF.0);
+        assert_ne!(plain(&no_ref, Some(NO_REF.1 - 1)), NO_REF.0);
+        // At the narrowest step the commit part goes whether it is a commit or `n/a`.
+        assert_eq!(
+            plain(&no_ref, Some(0)),
+            "🧠 Sonnet | 🅱️ v2026.11.0 | 🌳 spec/ready-mutant-line-20261123"
+        );
+
+        let mut unknown = lane_session();
+        unknown.integration = None;
+        unknown.integration_tip.clear();
+        unknown.pr = None;
+        unknown.git = Some(GitStatus {
+            branch: "main".into(),
+            ..Default::default()
+        });
+        assert_eq!(plain(&unknown, None), UNKNOWN.0);
+        assert_eq!(plain(&unknown, Some(UNKNOWN.1)), UNKNOWN.0);
+        assert_eq!(plain(&unknown, Some(0)), "🧠 Sonnet | 🌳 main");
     }
 
     /// The colored line carries the same text once the escapes are removed, at every form.
     #[test]
     fn the_colored_first_line_has_the_plain_text_at_every_form() {
-        for status in [worktree_session(), main_checkout(), generic_project()] {
-            for budget in [None, Some(100), Some(78), Some(56), Some(34), Some(0)] {
+        for status in [lane_session(), detached_leader()] {
+            for budget in [None, Some(126), Some(104), Some(85), Some(62), Some(0)] {
                 let text = plain(&status, budget);
                 for profile in [Profile::TrueColor, Profile::Ansi256] {
                     let colored = first_line(&status, budget, Some(profile));
@@ -2732,140 +2751,146 @@ mod line_one_form_tests {
         }
     }
 
-    /// REQ-1, REQ-8: no tag, no `🤔`, no versions on the first line.
+    /// REQ-1 of SPEC-20261122-statusline-where and REQ-8: no tag item, no `🤔`, no versions on the
+    /// first line; the tag icon appears only inside the parenthesis of the integration item.
     #[test]
-    fn the_first_line_has_no_tag_no_old_effort_icon_and_no_versions() {
-        let mut status = worktree_session();
+    fn the_first_line_has_no_tag_item_no_old_effort_icon_and_no_versions() {
+        let mut status = lane_session();
         status.claude_version = "2.1.330".into();
         status.version = Some(crate::statusline::state::Version {
             current: "4.2647.16".into(),
             latest: Some("4.2648.1".into()),
         });
         let line = plain(&status, None);
-        assert_eq!(line, W[0].0);
-        // The tag icon is written as its code points, so this file names no tag text.
-        for gone in [
-            "\u{1F3F7}\u{FE0F}",
-            "🤔",
-            "🤖",
-            "🗿",
-            "Leader",
-            "Agent",
-            "agent",
-        ] {
+        assert_eq!(line, L[0].0);
+        // The tag icon is the one of the integration item only, after an opening parenthesis.
+        let tag = "\u{1F3F7}\u{FE0F}";
+        for (at, _) in line.match_indices(tag) {
+            assert!(line[..at].ends_with('('), "a tag item in {line}");
+        }
+        assert!(!line.starts_with(tag), "{line}");
+        for gone in ["🤔", "🤖", "🗿", "Leader", "Agent", "agent"] {
             assert!(!line.contains(gone), "{gone} in {line}");
         }
     }
 
-    /// REQ-9: a merge request is `!<n>`, a pull request `#<n>`, the state is optional and a
-    /// missing request leaves the item out with its separator.
+    /// REQ-11: no distance item, no ahead or behind mark and no uncommitted mark, whatever the
+    /// numbers are, in every form of the line.
+    #[test]
+    fn the_first_line_has_no_distance_and_no_marks_in_any_form() {
+        let status = lane_session();
+        assert!(status.git.as_ref().is_some_and(|g| g.ahead == 3));
+        for budget in [None, Some(126), Some(104), Some(85), Some(62), Some(0)] {
+            let line = plain(&status, budget);
+            for mark in ['↑', '↓', '+', '🧭'] {
+                assert!(!line.contains(mark), "{mark} in {line}");
+            }
+        }
+    }
+
+    /// REQ-9: the tip is the status field and nothing else — a status whose HEAD says another
+    /// commit still shows the integration tip, and a longer or shorter field is not padded.
+    #[test]
+    fn the_tip_shown_is_the_integration_tip_of_the_status() {
+        let mut status = lane_session();
+        status.git = Some(GitStatus {
+            branch: "spec/ready-mutant-line-20261123".into(),
+            head_sha: "ffffff0".into(),
+            ..Default::default()
+        });
+        assert!(plain(&status, None).contains("(🏷️ b3ba2b3)"));
+        status.integration_tip = "1234567".into();
+        assert!(plain(&status, None).contains("🅱️ v2026.11.0(🏷️ 1234567) | "));
+        assert!(!plain(&status, None).contains("ffffff0"));
+    }
+
+    /// REQ-9 and the options: the `git_branch` option hides the repository, the integration item
+    /// and the checked-out item; the `worktree` option hides the checked-out item only.
+    #[test]
+    fn the_options_hide_the_items_they_name() {
+        let status = lane_session();
+        assert_eq!(
+            first_line_with(&status, None, None, &["git_branch"]),
+            "🧠 Sonnet 5.5 high·t | 🔗 #1234 pending"
+        );
+        assert_eq!(
+            first_line_with(&status, None, None, &["worktree"]),
+            "🧠 Sonnet 5.5 high·t | 📡 modu-ai/moai-adk, ⬇️ 1 🔀 0 | 🅱️ v2026.11.0(🏷️ b3ba2b3) | 🔗 #1234 pending"
+        );
+    }
+
+    /// REQ-9 of SPEC-20261122-statusline-where: a merge request is `!<n>`, a pull request `#<n>`,
+    /// the state is optional and a missing request leaves the item out with its separator.
     #[test]
     fn the_request_item_is_a_number_sign_or_an_exclamation_mark() {
-        let mut status = generic_project();
+        let mut status = lane_session();
         status.pr = pull_request(31, "pending", true);
-        assert_eq!(
-            plain(&status, None),
-            "🧠 Sonnet 5.5 | 📡 acme/webapp | 🅱️ feature/login ↑2 ↓1 +4 | 🔗 !31 pending"
-        );
+        assert!(plain(&status, None)
+            .ends_with(" | 🌳 spec/ready-mutant-line-20261123 | 🔗 !31 pending"));
         status.pr = pull_request(31, "", true);
         assert!(plain(&status, None).ends_with(" | 🔗 !31"), "no state");
         status.pr = pull_request(31, "", false);
         assert!(plain(&status, None).ends_with(" | 🔗 #31"), "no state");
         status.pr = None;
-        assert_eq!(
-            plain(&status, None),
-            "🧠 Sonnet 5.5 | 📡 acme/webapp | 🅱️ feature/login ↑2 ↓1 +4"
-        );
+        assert!(plain(&status, None).ends_with(" | 🌳 spec/ready-mutant-line-20261123"));
     }
 
-    /// REQ-10: the model comes from the model field and the effort from the effort and thinking
-    /// fields only; a missing model leaves the item out, and an effort without thinking has no
-    /// `·t`.
+    /// REQ-10 of SPEC-20261122-statusline-where: the model comes from the model field and the
+    /// effort from the effort and thinking fields only; a missing model leaves the item out, and
+    /// an effort without thinking has no `·t`.
     #[test]
     fn the_model_and_the_effort_are_written_as_the_stdin_gives_them() {
-        let mut status = generic_project();
+        let mut status = lane_session();
         status.model = String::new();
-        assert_eq!(
-            plain(&status, None),
-            "📡 acme/webapp | 🅱️ feature/login ↑2 ↓1 +4 | 🔗 #88 approved"
-        );
+        assert!(plain(&status, None).starts_with("📡 modu-ai/moai-adk, "));
         status.model = "Opus 4.1".into();
         status.effort = Some("high".into());
-        assert!(plain(&status, None).starts_with("🧠 Opus 4.1 high | "));
+        assert!(plain(&status, None).starts_with("🧠 Opus 4.1 high·t | "));
         status.thinking = Some(false);
         assert!(plain(&status, None).starts_with("🧠 Opus 4.1 high | "));
-        status.thinking = Some(true);
-        assert!(plain(&status, None).starts_with("🧠 Opus 4.1 high·t | "));
         status.effort = Some(String::new());
         status.thinking = None;
         assert!(plain(&status, None).starts_with("🧠 Opus 4.1 | "));
     }
 
-    /// REQ-1: an item without its input is left out with its separator, and the first line is
+    /// REQ-8: an item without its input is left out with its separator, and the first line is
     /// left out when all of them are.
     #[test]
     fn an_item_without_its_input_is_left_out_with_its_separator() {
-        let mut status = worktree_session();
-        status.integration = None;
-        status.git = Some(GitStatus {
-            branch: "statusline-flow".into(),
-            ahead: 3,
-            behind: 1,
-            modified: 1,
-            untracked: 1,
-            ..Default::default()
-        });
+        let mut status = lane_session();
+        status.repo = None;
+        status.pr = None;
         assert_eq!(
             plain(&status, None),
-            "🧠 Opus 5.5 high·t | 📡 modu-ai/moai-adk, ⬇️ 7 🔀 3 | 🌳 statusline-flow ↑3 ↓1 +2 | 🔗 #12 pending",
-            "no integration branch: the branch item keeps its own numbers"
+            "🧠 Sonnet 5.5 high·t | 🅱️ v2026.11.0(🏷️ b3ba2b3) | 🌳 spec/ready-mutant-line-20261123"
+        );
+        status.git = Some(GitStatus::default());
+        assert_eq!(
+            plain(&status, None),
+            "🧠 Sonnet 5.5 high·t | 🅱️ v2026.11.0(🏷️ b3ba2b3)"
         );
         assert_eq!(plain(&Status::default(), None), "MoAI");
     }
 
-    /// A detached HEAD: its short commit in the branch item, no distance.
+    /// REQ-9: the integration name is written whole, however long a branch name may be.
     #[test]
-    fn a_detached_head_shows_its_short_commit_and_no_distance() {
-        let status = Status {
-            git: Some(GitStatus {
-                branch: String::new(),
-                head_sha: "0123456".into(),
-                untracked: 3,
-                ..Default::default()
-            }),
-            integration: Some("next".into()),
-            ..generic_project()
-        };
-        assert_eq!(
-            plain(&status, None),
-            "🧠 Sonnet 5.5 | 📡 acme/webapp | 🅱️ 0123456 +3 | 🔗 #88 approved"
+    fn the_integration_name_is_written_whole() {
+        let mut status = lane_session();
+        let name = "release/2026.11.0-candidate-with-a-long-name";
+        status.integration = Some(name.into());
+        let line = plain(&status, None);
+        assert!(
+            line.contains(&format!("🅱️ {name}(🏷️ b3ba2b3) | ")),
+            "{line}"
         );
     }
 
-    /// The integration branch name is cut with `…` over twelve characters, and written whole at
-    /// twelve.
-    #[test]
-    fn the_integration_name_is_cut_over_twelve_characters() {
-        let item = |name: &str| {
-            let mut status = worktree_session();
-            status.integration = Some(name.into());
-            let line = plain(&status, None);
-            let from = line.find("🧭 ").expect("the distance item") + "🧭 ".len();
-            let rest = &line[from..];
-            rest[..rest.find(" ↑").expect("its ahead count")].to_string()
-        };
-        assert_eq!(item("abcdefghijkl"), "abcdefghijkl", "12 characters");
-        let cut = item("abcdefghijklm");
-        assert!(cut.starts_with("abcdefghijk"), "{cut}");
-        assert!(cut.ends_with('…'), "{cut}");
-        assert!(!cut.contains('m'), "{cut}");
-    }
-
-    /// REQ-10, and REQ-5 of SPEC-20261122-statusline-limits-left: every icon of the first line
-    /// is followed by exactly one space, `⬇️` and `🅱️` too.
+    /// REQ-10 of SPEC-20261122-statusline-where, and REQ-5 of
+    /// SPEC-20261122-statusline-limits-left: every icon of the first line is followed by exactly
+    /// one space, `⬇️`, `🅱️` and `🏷️` too.
     #[test]
     fn every_icon_of_the_first_line_is_followed_by_one_space() {
-        for (status, expected) in [(worktree_session(), 7), (main_checkout(), 6)] {
+        for (status, expected) in [(lane_session(), 8), (detached_leader(), 6)] {
             let text = plain(&status, None);
             let mut seen = 0;
             for icon in width::ICONS {

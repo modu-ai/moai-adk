@@ -142,6 +142,10 @@ pub struct Status {
     /// SPEC-20261122-statusline-where: the integration branch of the project (`work_flow` of its
     /// profile, else the remote's default branch), `None` when neither names one.
     pub integration: Option<String>,
+    /// SPEC-20261123-statusline-order-bars REQ-9: the first seven characters of the commit that the
+    /// local ref `refs/heads/<integration>` names; empty when no integration branch is known or
+    /// its ref cannot be read.
+    pub integration_tip: String,
 }
 
 /// The `pr` fields the status line shows.

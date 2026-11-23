@@ -1,7 +1,8 @@
-//! The `🌳 <worktree>` item of the first line (SPEC-20261122-statusline-where, D-4). It shows the
-//! worktree name the host gave, as it is, before the branch item; the card number is not part of
-//! it any more (the label `WT-c<card>-<name>` of the user instruction of 2026-11-19 is gone, and
-//! the held card shows as `🎯` on the flow line). The main checkout has no item.
+//! The `🌳 <branch>` item of the first line (SPEC-20261123-statusline-order-bars REQ-10). It is
+//! the branch the checked-out `HEAD` file names, never the name of the working folder the host gave
+//! the worktree (the item of SPEC-20261122-statusline-where D-4 showed that name, and is replaced);
+//! the card number is not part of it (the held card shows as `🎯` on the flow line). The main
+//! checkout shows its own branch the same way.
 //!
 //! Every case runs the real binary through `TempHome` (a temporary HOME, nothing of the real
 //! environment but a PATH for git) against a ledger built in that HOME and a real linked
@@ -164,9 +165,9 @@ fn flow_held() -> String {
     format!("{} | 🟡 1 | 🎯 C-1 🟡", moai())
 }
 
-/// The first line of the worktree session: the host's name, then the branch of the worktree
-/// (the names differ here, so both items stand).
-const LINE_WORKTREE: &str = "🧠 Opus | 🌳 demo-1-work | 🅱️ spec/20260101-demo-work";
+/// The first line of the worktree session: the branch of the worktree, not the folder name
+/// `demo-1-work` the host gave it. The project names no integration branch, so no `🅱️` item.
+const LINE_WORKTREE: &str = "🧠 Opus | 🌳 spec/20260101-demo-work";
 
 #[test]
 fn a_held_card_does_not_name_the_worktree_item() {
@@ -175,7 +176,7 @@ fn a_held_card_does_not_name_the_worktree_item() {
     let card = f.reserve("active", "held", &wt.dir, "spec/20260101-demo-work");
     assert_eq!(card, 1);
     let out = f.plain(Some(&wt));
-    // The worktree item is the host's name; the card shows on the flow line, which stands under
+    // The checked-out item is the branch; the card shows on the flow line, which stands under
     // line 1, and the usage windows close the output.
     assert_eq!(line(&out, 0), LINE_WORKTREE, "{out}");
     assert!(!out.contains("WT-c"), "{out}");
@@ -208,11 +209,15 @@ fn only_the_flow_line_moves_when_a_card_is_held() {
 }
 
 #[test]
-fn no_reservation_shows_the_host_name() {
+fn no_reservation_shows_the_branch_and_never_the_host_name() {
     let f = fixture();
     let wt = f.worktree("demo-1-work", "spec/20260101-demo-work");
     let out = f.plain(Some(&wt));
-    assert!(line(&out, 0).contains(" | 🌳 demo-1-work | "), "{out}");
+    assert!(
+        line(&out, 0).ends_with(" | 🌳 spec/20260101-demo-work"),
+        "{out}"
+    );
+    assert!(!line(&out, 0).contains("demo-1-work"), "{out}");
 }
 
 #[test]
@@ -225,9 +230,9 @@ fn a_released_reservation_is_not_a_holder() {
     assert!(!out.contains('🎯'), "{out}");
 }
 
-/// The branch and the worktree have one name: the worktree item stands alone.
+/// The branch and the worktree have one name: the one `🌳` item shows it.
 #[test]
-fn a_branch_named_like_the_worktree_shows_the_worktree_item_alone() {
+fn a_branch_named_like_the_worktree_shows_the_branch_item_alone() {
     let f = fixture();
     let wt = f.worktree("demo-work", "demo-work");
     let out = f.plain(Some(&wt));
@@ -235,18 +240,18 @@ fn a_branch_named_like_the_worktree_shows_the_worktree_item_alone() {
 }
 
 #[test]
-fn the_main_checkout_has_no_worktree_item() {
+fn the_main_checkout_shows_its_own_branch_without_marks() {
     let f = fixture();
     let out = f.plain(None);
-    // `+1`: the project's untracked state folder.
-    assert_eq!(line(&out, 0), "🧠 Opus | 🅱️ main +1", "{out}");
+    // The project's untracked state folder is a change, and it is no mark on the line.
+    assert_eq!(line(&out, 0), "🧠 Opus | 🌳 main", "{out}");
     assert_eq!(
         line(&out, 1),
         moai(),
         "an empty ledger shows no flow: {out}"
     );
     assert!(is_windows(&line(&out, 2)), "{out}");
-    assert!(!out.contains('🌳'), "{out}");
+    assert!(!line(&out, 0).contains('+'), "{out}");
 }
 
 #[test]
@@ -258,11 +263,7 @@ fn the_worktree_option_off_hides_the_item_on_every_line() {
     std::fs::create_dir_all(config.parent().unwrap()).unwrap();
     std::fs::write(&config, "statusline:\n  segments:\n    worktree: false\n").unwrap();
     let out = f.plain(Some(&wt));
-    assert_eq!(
-        line(&out, 0),
-        "🧠 Opus | 🅱️ spec/20260101-demo-work",
-        "{out}"
-    );
+    assert_eq!(line(&out, 0), "🧠 Opus", "{out}");
     assert_eq!(line(&out, 1), flow_held(), "{out}");
     assert!(is_windows(&line(&out, 2)), "{out}");
     assert!(!out.contains('🌳'), "{out}");

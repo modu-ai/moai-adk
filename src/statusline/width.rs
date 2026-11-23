@@ -127,6 +127,19 @@ mod tests {
         assert_eq!(unique.len(), ICONS.len(), "an icon is listed twice");
     }
 
+    /// SPEC-20261123-statusline-order-bars REQ-9: the tag icon of the integration item is in the
+    /// table the one-space scans walk, and the distance icon, which no layout prints any more,
+    /// is not (a table entry nothing prints would be a scan that can never see its icon).
+    #[test]
+    fn the_table_holds_the_tag_icon_and_not_the_distance_icon() {
+        assert!(ICONS.contains(&"\u{1F3F7}\u{FE0F}"));
+        assert_eq!(
+            icon_text("\u{1F3F7}\u{FE0F}", "b3ba2b3"),
+            "\u{1F3F7}\u{FE0F} b3ba2b3"
+        );
+        assert!(!ICONS.contains(&"\u{1F9ED}"));
+    }
+
     /// SPEC-20261122-statusline-limits-left REQ-5: exactly one space follows every icon, the
     /// ones written with a variation selector (`🗂️`, `🅱️`, `⬇️`) too.
     #[test]
