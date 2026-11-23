@@ -105,9 +105,7 @@ fn code_view(src: &str) -> String {
             };
             match len {
                 Some(n) => {
-                    for _ in 0..n {
-                        out.push(' ');
-                    }
+                    out.extend(std::iter::repeat_n(' ', n));
                     i += n;
                 }
                 None => {
