@@ -466,7 +466,7 @@ fn sessions_dir(f: &Fixture) -> PathBuf {
 /// Writes the registry entry `leader` (mode leader) with `lease_until` and, when given, the
 /// host `session`.
 fn leader_entry(f: &Fixture, lease_until: i64, session: Option<&str>) {
-    let dir = sessions_dir(&f);
+    let dir = sessions_dir(f);
     fs::create_dir_all(&dir).unwrap();
     let mut entry = json!({
         "schema_version": 1,
