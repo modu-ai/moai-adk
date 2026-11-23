@@ -118,4 +118,9 @@ created: 2026-11-23
 - AC-9: met — `ledger_reservation`, `card_scope_widen_cli`, `card_cli`, `card_dispatch_cli`, `card_work_cli`, `ledger_workflow` pass inside the 3133 tests of `check affected` on the head
 - AC-10: met — `spec check SPEC-20261123-take-scope-stored` 0 errors 0 warnings
 - AC-11: met — `next_skips_a_fill_a_take_would_refuse` (pass; a mutant that removes the limit check in `take_scope::choose` fails it, which no test caught before it was added)
-- Check set on the head: `check affected` 93 targets, 3133 passed, 0 failed (diff-check, fmt, clippy 0).
+- AC-12: met — `a_spec_list_with_a_word_is_refused_not_stored` over five `## Scope` sections copied from real SPECs (code span, prose line, option span, spaced span, call span) and `a_clean_real_spec_list_still_fills` (pass; mutants that turn the shape check off, drop its white-space rule, accept any extension, or drop `card scope` from the refusal each fail it)
+- AC-13: met — `a_spec_list_that_repeats_a_path_is_merged` (pass; mutants that turn the merge off or drop the `merged` warning fail it)
+- AC-14: met — `a_comma_in_a_scope_value_is_refused` (pass; a mutant that removes the comma check fails it)
+- AC-15: met — `the_last_reservation_is_the_newest_one` (pass; a mutant that orders the reservations oldest first fails it)
+- AC-16: met — `next_skips_a_fill_that_overlaps_a_held_scope` (pass; a mutant that skips the overlap check for a filled scope fails it)
+- Repair of the first audit (B1 words stored as paths, B2 and B3 without a killing test, N1 stale help, N2 comma): D-4, D-5 and D-6 record the choices. The `check affected` receipt of the head is in the READY note of that head (a number in this file would name an earlier head).
