@@ -2,7 +2,7 @@
 id: SPEC-20261123-temp-home-e2e-regression
 title: "A temp-HOME regression runs the landed Claude Code redesign end to end through the real binary"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-23
 ---
 
@@ -40,7 +40,7 @@ Claude Code 재설계(R1-R5)가 조각마다 착지했어요: 공통 rules 설�
 - REQ-5: When the package changes and `moai update` runs again, the update shall write only the files whose package bytes changed, and a run of the same package after that leaves the HOME tree digest as it was. · failure: none — a changed byte on the second run is exactly what the test measures
 - REQ-6: When the user has edited a file MoAI manages or owns a file MoAI does not manage (a rules file of their own, an agent of their own, their own `CLAUDE.md` text, another tool's settings keys), the update shall keep those bytes and report the edited managed file as a conflict.
 - REQ-7 (REQ-6): IF a managed target is a link or a file that is not UTF-8, THEN the update shall keep it, write nothing through it and report a conflict.
-- REQ-8: When an applied layer is undone with its revert command or an interrupted apply is recovered with `recovery-plan` and `recovery-apply`, the command shall bring the HOME tree back to the digest it had before that apply. · failure: none — a digest that differs is what the test measures, and the layer's own tests hold the refusal paths
+- REQ-8: When an applied layer is undone with its revert command or an interrupted apply is recovered with `recovery-plan` and `recovery-apply`, the command shall return every file outside MoAI's own state folders to the bytes it had before that apply, leaving only records inside the state folder (the revert receipt and the layer's state files). · failure: none — a file that differs is what the test measures, and the layer's own tests hold the refusal paths
 - REQ-9 (REQ-8): IF the user edited an applied file after the apply, THEN the revert shall keep the user's edit and name the file in its answer.
 - REQ-10: When `moai hook session-context`, `bash-boundary` or `write-boundary` gets an event JSON on standard input in a temporary project, the entry point shall answer exit 0 with a standard output that is empty or one valid JSON document (always empty in a project without a MoAI profile) and with no file written into the project.
 - REQ-11 (REQ-10): IF the standard input is empty or is not JSON, THEN the entry point shall exit 0 and write no file into the project.
@@ -52,7 +52,7 @@ Claude Code 재설계(R1-R5)가 조각마다 착지했어요: 공통 rules 설�
 - AC-2 (REQ-3, REQ-4): a new install through preview and confirm writes the skill, the base agents (the installed agent files parse with this tree's `agent_defs` frontmatter rules), the routing and flow rules files and the style file into the temporary config folder, the written set equals the preview's list, a project folder next to it keeps its digest, and a wrong digest writes nothing · verify: `cargo test --locked --test e2e_temp_home_cli -- scenario_new_install`
 - AC-3 (REQ-5): a changed package writes only the changed files and the next run of the same package leaves a HOME digest of 0 diff · verify: `cargo test --locked --test e2e_temp_home_cli -- scenario_two_updates`
 - AC-4 (REQ-6, REQ-7): a hand-edited skill file, a hand-edited rules file, a linked managed target and a non-UTF-8 managed target are kept byte for byte with a conflict answer, and the user's own rules file, own agent, own `CLAUDE.md` text and another tool's settings keys keep their bytes · verify: `cargo test --locked --test e2e_temp_home_cli -- scenario_conflict_and_personal`
-- AC-5 (REQ-8, REQ-9): each of `home-routing-revert`, `agents-home-revert` and `home-style-revert` returns the HOME digest of before its apply, an interrupted apply (a read-only target folder) is recovered to the pre-apply digest, and an edit made after the apply survives its revert · verify: `cargo test --locked --test e2e_temp_home_cli -- scenario_rollback`
+- AC-5 (REQ-8, REQ-9): each of `home-routing-revert`, `agents-home-revert` and `home-style-revert` returns every file outside MoAI's state folders to what it was before its apply and leaves only files under the state folder, an interrupted apply (a read-only target folder) is recovered so the skill folder digest is the one before it, and an edit made after the apply survives its revert · verify: `cargo test --locked --test e2e_temp_home_cli -- scenario_rollback`
 - AC-6 (REQ-10, REQ-11): the three hook names exit 0 for a valid event in a MoAI project and in a plain project, print nothing in the plain project, write no file into either, and exit 0 for empty and non-JSON input · verify: `cargo test --locked --test e2e_temp_home_cli -- scenario_hook_entry`
 - AC-7 (REQ-12): a card goes through take, `card check`, a commit in its worktree, the ready note, the verdict note from a second session and `card land --by leader`; the integration branch tip read with `git rev-parse` equals the landed head, the card is `done`, and `card next` names the second card · verify: `cargo test --locked --test e2e_temp_home_cli -- scenario_card_cycle`
 - AC-8 (REQ-1 … REQ-12): the whole file passes and `moai check affected` selects it for its own diff · verify: `cargo test --locked --test e2e_temp_home_cli`
@@ -84,7 +84,7 @@ Claude Code 재설계(R1-R5)가 조각마다 착지했어요: 공통 rules 설�
 
 ## Result
 
-시험 파일 `tests/e2e_temp_home_cli.rs` 의 시나리오 10개를 구현했어요. 이 SPEC 은 사용자 승인을 받았고(카드 원장에 사용자 선택으로 적힘, 2026-11-23T12:39:01Z), 이 레인은 frontmatter 의 `approval` 을 쓰지 않았어요. 제품 코드(`src/**`)는 바꾸지 않았어요.
+시험 파일 `tests/e2e_temp_home_cli.rs` 의 시나리오 10개를 구현했어요. 판 1 은 사용자 선택으로 승인됐고(카드 원장 노트 7497, 2026-11-23T12:39:01Z), 판 2(REQ-8 과 AC-5 문구만 바꿈)도 사용자 선택이에요(노트 7527, 2026-11-23T13:15:47Z). 두 선택은 리더 세션이 사용자에게 물어 원장에 옮겨 적었고, 이 레인이 만든 승인이 아니에요. 제품 코드(`src/**`)는 바꾸지 않았어요. 범위를 넓힌 파일 `tests/repo_scans_table.rs` 에는 `EXEMPT` 줄 하나만 더했어요.
 
 ### 실행 기록 (2026-11-23, 이 워크트리)
 
@@ -106,7 +106,7 @@ Claude Code 재설계(R1-R5)가 조각마다 착지했어요: 공통 rules 설�
 - AC-2: met — `scenario_new_install_*` 와 `scenario_non_moai_project_*` 통과: 미리보기의 4층(스킬, 에이전트, 라우팅 rules·flow, 스타일 파일과 settings) 파일이 모두 쓰였고 그 밖에는 MoAI 상태 폴더(`.moai`, `.moai-cli`)뿐이며, 틀린 digest 는 아무것도 쓰지 않고, 옆 프로젝트와 안에서 시작한 git 프로젝트의 트리 digest 는 그대로예요. 설치된 에이전트 5개는 이 트리의 `agent_defs::render` 결과와 바이트가 같고 frontmatter 가 `name: moai-…` 로 시작해요.
 - AC-3: met — `scenario_two_updates_*`: 바뀐 세 파일만 쓰고, 같은 패키지의 다음 실행은 `nothing_to_apply` 와 digest 0 차이.
 - AC-4: met — `scenario_conflict_and_personal_files_are_kept`: 손으로 고친 스킬 파일과 라우팅 파일, UTF-8 이 아닌 flow 파일은 `conflict`, 링크로 바뀐 스타일 파일은 `blocked`(보고된 행동). 모두 바이트 그대로이고 링크 너머 파일에도 쓰지 않았어요. 사용자 자신의 rules, agents, skills, `CLAUDE.md` 와 다른 도구의 settings 키도 그대로예요.
-- AC-5: not met as written — 세 층의 되돌리기는 사용자가 볼 수 있는 파일(MoAI 상태 폴더 밖)을 적용 전 그대로 돌리고, 적용 뒤 사용자가 고친 파일은 지키며 답에 파일 이름이 나와요. 끊긴 갱신은 `recovery-plan`·`recovery-apply` 로 스킬 폴더 digest 가 이전과 같아졌어요. 그러나 REQ-8/AC-5 가 적은 "HOME 트리 전체 digest 가 같다"는 거짓이에요: 되돌린 뒤에도 MoAI 상태 폴더에 영수증이 남아요(`.moai/home-routing/receipts/...`, `.moai/agents/receipts/...`, `.moai/home-style/receipts/...` 와 층 상태 파일). 이 레인은 REQ 를 약하게 바꾸지 않았어요. 문구를 "MoAI 상태 폴더 밖 파일" 로 고치는 판 2 와 새 승인은 사용자 몫이에요(리더 노트 참조).
+- AC-5: met (판 2 문구) — 세 층의 되돌리기는 MoAI 상태 폴더 밖 파일을 적용 전 바이트 그대로 돌리고, 남는 파일은 모두 상태 폴더 안이에요(시험이 단언). 한 실행에서 남은 것: `.moai/home-routing/receipts/…/receipt.json`·`rules-….json`, `.moai/agents/claude.json`·`receipts/…/receipt.json`, `.moai/home-style/claude.json`·`receipts/…/receipt.json`·`claude-setting.before`. 영수증뿐이 아니라 층 상태 파일도 남아서 문구에 "(되돌리기 영수증과 층 상태 파일)" 을 적었어요(사용자가 고른 문구보다 한 구절 더 정확해요, 리더 확인 요청). 적용 뒤 사용자가 고친 파일은 지켜지고 답에 파일 이름이 나와요. 끊긴 갱신은 `recovery-plan`·`recovery-apply` 로 스킬 폴더 digest 가 이전과 같아졌어요. 판 1 의 "HOME 트리 전체 digest 가 같다"는 거짓이었어요(되돌린 뒤 상태 폴더 기록이 남아 HOME 전체 digest 는 같지 않아요, 매 층에서 관찰).
 - AC-6: met — `scenario_hook_entry_*`: 세 이름 × MoAI/일반 프로젝트 × 5가지 입력(이벤트, 빈 입력, JSON 아님, 객체 아님, UTF-8 아님)이 exit 0, 출력은 비었거나 JSON 한 문서이고 프로젝트 digest 는 그대로예요(변수 `CLAUDE_PROJECT_DIR` 경로도). 참고: MoAI 프로젝트 판별은 `.moai/project.yaml`(훅 진입점)이고 카드·장부 쪽 프로필은 `.moai-cli/project.yaml`(`PROJECT_STATE_DIR`)이에요. 이 시나리오는 훅 쪽 파일만 써요.
 - AC-7: met — `scenario_card_cycle_*`: 받기, `card check`(범위 안 true, 밖 not true), 레인 워크트리 커밋, 준비 노트, `review`, 다른 세션의 PASS(영수증 포함), 세 번째 세션의 `card land --by leader` 가 통합 브랜치를 착지 head 로 옮기고 카드를 `done` 으로 닫았으며 `card next` 가 두 번째 카드를 `ready` 로 답했어요.
 - AC-8: met for the file run — 시험 파일 전체 10 passed (exit 0). `moai check affected --list 1e8114aba0..HEAD` 가 `e2e_temp_home_cli` 를 고른 것을 봤어요. `check affected` 본 실행의 영수증은 READY 노트에 있어요.
