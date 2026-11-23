@@ -1,10 +1,11 @@
 ---
 id: SPEC-20261122-claude-md-project-picks
 title: "moai update offers move and leave for a project's AGENTS.md and AGENTS.local.md, and removing the originals as its own pick"
-status: draft
+status: approved
 revision: 5
 created: 2026-11-22
 parent: SPEC-20261122-claude-md-layout
+approval: {by: leader, at: 2026-11-23, basis: "card note 7813 (leader judgment under the user's delegation of 2026-11-23T13:57Z, not a direct user pick): picks SPEC revision 5", digest: "sha256:173a86f115cd1a8d564ef6f338175e40db750f5fb7b5245387c8e1b641e7df35"}
 ---
 
 # Project picks: moving a project's AGENTS files
@@ -57,6 +58,10 @@ parent: SPEC-20261122-claude-md-layout
 - write: `src/project_update.rs`, `src/agents.rs`, `src/agents_local_merge.rs`, `src/agents_local_merge/picks.rs`, `src/ops/agents_merge_*.rs`, `src/agents_local_merge/originals.rs`, `schemas/protocol/v1/agents-request.schema.json`, `tests/claude_md_picks_cli.rs`, `tests/claude_md_engine_cli.rs`, `tests/claude_md_layout_cli.rs`, `tests/agents_choices_step_cli.rs`, `tests/project_update_plan_cli.rs`, `skills/moai/workflows/update.md`, `skills/moai/references/source-manifest.json`, `.moai/specs/SPEC-20261122-claude-md-project-picks/**`
 - read-only: `src/update.rs`, `src/go_state.rs`, `src/apply.rs`
 - forbidden: the real HOME, the network, `.claude/` of this checkout; this repository's own `AGENTS.md` and `AGENTS.local.md` belong to the repository slice of the layout SPEC (Plan 5), not to this one
+
+## Interview
+
+- Q1: Shall revision 5 of this SPEC (the clarifications of the revert side, the found rule, the offer when only `remove-originals` applies, the all-or-nothing deletion and the wider scope) stand together with `SPEC-20261124-claude-md-product-next`? → A: Approved by the leader on card note 7813 under the user's delegation of 2026-11-23T13:57Z (a leader judgment, not a direct user pick).
 
 ## Plan
 

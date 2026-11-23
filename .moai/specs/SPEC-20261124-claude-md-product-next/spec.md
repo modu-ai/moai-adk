@@ -1,10 +1,11 @@
 ---
 id: SPEC-20261124-claude-md-product-next
 title: "The project picks drop import and gain remove-originals: the code follows the user decision that moai uses only CLAUDE.md and CLAUDE.local.md"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-24
 parent: SPEC-20261122-claude-md-layout
+approval: {by: leader, at: 2026-11-23, basis: "card note 7813 (leader judgment under the user's delegation of 2026-11-23T13:57Z, not a direct user pick): next slice A and decisions D-1..D-9 at the proposed defaults, with three conditions", digest: "sha256:aaf914a10bc35b90ce3db4300d917502bc10df23132024c7b86d17d0ba5a6165"}
 ---
 
 # Project picks: retire import, add remove-originals
@@ -31,7 +32,7 @@ parent: SPEC-20261122-claude-md-layout
 
 - REQ-1: The updater shall refuse the pick `import` as an unknown pick in the project picks, in the `picks` list of a generation request and in the request schema, and write nothing. · failure: none — the refusal writes nothing
 - REQ-2: When the project holds `AGENTS.md` or `AGENTS.local.md` and the text of an original that holds user text is not yet in its CLAUDE file, the update preview shall list `move` (recommended) and `leave` and no `remove-originals`. · failure: none — a preview writes nothing
-- REQ-3: When every original that holds user text has that text in its CLAUDE file and at least one original exists, the update preview shall list the pick `remove-originals` alone, with one command, one plan digest and the list of originals it would delete. · failure: none — a preview writes nothing; a project with no original or with nothing it may delete is offered no pick
+- REQ-3: When every original that holds user text has that text in its CLAUDE file and at least one original exists, the update preview shall list the pick `remove-originals` alone, with one command, one plan digest, the list of originals it would delete and the name and line count of each text of an original that no CLAUDE file receives. · failure: none — a preview writes nothing; a project with no original or with nothing it may delete is offered no pick
 - REQ-4: When the pick is `remove-originals`, the updater shall delete each original and keep its bytes, mode and sha256 in a private folder of the receipt of that pick. · failure: none — the refusals are REQ-5
 - REQ-5 (REQ-4): IF an original is a link, lies below a link folder, is not valid UTF-8, is larger than 128 KiB or changed after the preview, THEN the updater shall delete no original and write nothing.
 - REQ-6: The updater shall count the text of an original as found only when its CLAUDE file holds that text whole, `CLAUDE.md` for `AGENTS.md` and `CLAUDE.local.md` for `AGENTS.local.md`. · failure: none — a text that is not found makes the pick unavailable; a text that an earlier generation merged into `AGENTS.md`, a blank file and a text moai generated are settled by D-3 and D-5
@@ -47,7 +48,7 @@ parent: SPEC-20261122-claude-md-layout
 - AC-1 (REQ-1, REQ-2): in a temporary project with `AGENTS.md` and `AGENTS.local.md` the preview lists `move` (recommended) then `leave` with one digest each, writes nothing, and `import` is refused as unknown by the project picks, by a generation request and by the schema, with no file written.
   verify: `cargo test --locked --offline --test claude_md_picks_cli picks_`
   verify: `cargo test --locked --offline --test agents_choices_step_cli schema_`
-- AC-2 (REQ-3, REQ-6, REQ-7): after `move` the preview lists `remove-originals` alone with the originals it would delete; a project whose text sits only in the `moai:merged-local` block of `AGENTS.md`, whose `CLAUDE.md` imports `@AGENTS.md` or links to it, or whose text is not found gets no pick; a blank or generated `AGENTS.local.md` does not hold the pick back.
+- AC-2 (REQ-3, REQ-6, REQ-7): after `move` the preview lists `remove-originals` alone with the originals it would delete; a project whose text sits only in the `moai:merged-local` block of `AGENTS.md`, whose `CLAUDE.md` imports `@AGENTS.md` or links to it, or whose text is not found gets no pick; a blank or generated `AGENTS.local.md` does not hold the pick back; the preview names the old managed section of `AGENTS.md` (its marker id `moai-workflow` and its line count) as text that no CLAUDE file receives.
   verify: `cargo test --locked --offline --test claude_md_picks_cli settled_`
 - AC-3 (REQ-4, REQ-5, REQ-10): the apply deletes both originals and nothing else, keeps their bytes and modes in an owner-only folder of the receipt, adds the receipts ignore rule, and a link original, a link folder, a file that is not UTF-8, a file above 128 KiB and a file changed after the preview each leave both originals and every other file byte-identical.
   verify: `cargo test --locked --offline --test claude_md_picks_cli remove_`
@@ -67,6 +68,10 @@ parent: SPEC-20261122-claude-md-layout
 - write: `src/agents_local_merge.rs`, `src/agents_local_merge/picks.rs`, `src/agents_local_merge/originals.rs` (new), `src/agents.rs`, `src/project_update.rs`, `src/ops/agents_merge_plan.rs`, `src/ops/agents_merge_apply.rs`, `src/ops/agents_merge_revert.rs`, `schemas/protocol/v1/agents-request.schema.json`, `tests/claude_md_picks_cli.rs`, `tests/claude_md_engine_cli.rs`, `tests/claude_md_layout_cli.rs`, `tests/agents_choices_step_cli.rs`, `tests/project_update_plan_cli.rs`, `skills/moai/workflows/update.md`, `skills/moai/references/source-manifest.json`, `.moai/specs/SPEC-20261124-claude-md-product-next/**`, `.moai/specs/SPEC-20261122-claude-md-project-picks/**`, `.moai/specs/SPEC-20261122-claude-md-layout/**`
 - read-only: `src/apply.rs`, `src/claude.rs`, `src/update.rs`, `tests/next_flow_skill_scan.rs`
 - forbidden: the real HOME, the network, `.claude/` of this checkout, `src/update.rs`, `src/help.rs`, `tools/repo_scans.json` (the next slice asks for it in turn)
+
+## Interview
+
+- Q1: Shall the next slice be this one (retire `import`, add `remove-originals`), with the decisions D-1 to D-9 at their proposed defaults and the SPEC changes of the picks and layout SPECs, and shall the card widen its write scope to the files named under Scope after approval? → A: Approved by the leader on card note 7813 under the user's delegation of 2026-11-23T13:57Z (a leader judgment, not a direct user pick), with three conditions: the receipt restores the bytes and the mode of a deleted original in a temporary-project test; a text that is not whole in its CLAUDE file keeps `remove-originals` from being offered, shown by a test and a mutant (D-3); the warning of D-6 names the text that is not copied.
 
 ## Plan
 
@@ -97,7 +102,7 @@ parent: SPEC-20261122-claude-md-layout
 | D-3 | "Found" means a text that sits in a CLAUDE file, whole: the marked block with a matching sha256, or the same lines pasted by hand. A plan action `unchanged` is not "found". When `AGENTS.md` holds a `moai:merged-local` block, that block's text must also be in `CLAUDE.local.md`, else the pick is unavailable. | `merged_into_agents_md` answers `unchanged` for text that is in no CLAUDE file (`src/agents_local_merge.rs:1209-1249`). | Count `unchanged` as found. |
 | D-4 | When only `remove-originals` is offered the step reads `optional`: it prints the choice and the command, and `all_unchanged` counts it as nothing to do. `leave` is not listed there. | `needs_decision` would keep the preview from ever reading up to date for a user who keeps the originals; `leave` says Claude Code keeps reading `AGENTS.md`, which is false once `CLAUDE.md` exists. | Use `needs_decision`, or list `leave` too. |
 | D-5 | A blank or moai-generated `AGENTS.local.md`, and an `AGENTS.md` that holds only the old managed block, hold no text to find; the first needs no `CLAUDE.local.md`, the second needs the managed block in `CLAUDE.md`. | The first-creation text is never copied (layout D-4); the old block is not copied (layout D-5). | Require a copy for every original. |
-| D-6 | The preview warns that text a person wrote inside the old managed section of `AGENTS.md` is not copied and survives only in the receipt. It does not refuse. | Whether the manifest still carries a baseline for that section is not verified; a refusal would block every project that never edited it. | Refuse when no baseline matches. |
+| D-6 | The preview warns, naming the old managed section of `AGENTS.md` (marker id `moai-workflow`, with its line count), that text a person wrote inside it is not copied and survives only in the receipt. It does not refuse. | Whether the manifest still carries a baseline for that section is not verified; a refusal would block every project that never edited it. | Refuse when no baseline matches. |
 | D-7 | The private copies live in `originals/<name>` of the pick's own receipt folder with owner-only bits, never through `apply::save_before_bytes`; the apply adds the receipts ignore line. | `AGENTS.local.md` may hold secrets; the engines already create `before/` and `source/` that way. | Reuse the generic before-bytes store. |
 | D-8 | `import` leaves `agents::PICKS` and the schema enum. A request that holds it is invalid input. | The writer pick and the project pick share the id; the user decision removes both. | Keep it in the schema only. |
 | D-9 | The two readers of "imports AGENTS.md" (`agents_local_merge::imports_agents_md` and `claude::imports_agents`) stay as they are in this slice; the removal check uses the first, which is word-exact and honours `~~~` fences. | The second is shared with `claude-doctor`; unifying them is a change to that command. | Unify them in the text slice. |

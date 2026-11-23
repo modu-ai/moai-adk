@@ -1,10 +1,11 @@
 ---
 id: SPEC-20261122-claude-md-layout
 title: "CLAUDE.md and CLAUDE.local.md replace AGENTS.md and AGENTS.local.md in the files moai owns, and the flow rule is global"
-status: draft
+status: approved
 revision: 5
 created: 2026-11-22
 parent: null
+approval: {by: leader, at: 2026-11-23, basis: "card note 7813 (leader judgment under the user's delegation of 2026-11-23T13:57Z, not a direct user pick): layout SPEC revision 5", digest: "sha256:11bee5ffe930c3c22720baa61400d5d4b7602e9972b6237877fc2ec4a9a50fd9"}
 ---
 
 # CLAUDE.md layout: the files moai owns in a project
@@ -97,6 +98,10 @@ moai 가 사용자 프로젝트에서 관리하는 지침 파일을 Claude Code 
 - this slice, write: `.moai/specs/SPEC-20261122-claude-md-layout/**`, `.moai/specs/SPEC-20261122-claude-md-project-picks/**`, `.moai/specs/SPEC-20261122-claude-md-project-layer/**`, `.moai/specs/SPEC-20261122-claude-md-home-routing/**`, `.moai/specs/SPEC-20261122-claude-md-text-and-ignore/**`
 - later slices, write: `src/agents.rs`, `src/agents_local_merge.rs`, `src/ops/agents_*.rs`, `src/update.rs`, `src/project_update.rs`, `src/generation.rs`, `src/launcher_init.rs`, `src/home_routing.rs`, `src/language.rs`, `src/claude.rs`, `skills/moai/**` (with `references/source-manifest.json`), `tests/**` that pin the names, `.gitignore`, `schemas/protocol/v1/agents-*.schema.json`
 - forbidden in every slice before the last: `AGENTS.md`, `AGENTS.local.md`, `docs/agents-md-maintenance.md` of this repository, the real HOME, `~/.moai-cli`, `.claude/` of this checkout (Go-generation installed state)
+
+## Interview
+
+- Q1: Shall revision 5 of this SPEC (the picks `move`, `leave` and `remove-originals`, `import` out of the writer and the schema, the revert side of old import receipts) stand together with `SPEC-20261124-claude-md-product-next`? → A: Approved by the leader on card note 7813 under the user's delegation of 2026-11-23T13:57Z (a leader judgment, not a direct user pick).
 
 ## Plan
 
