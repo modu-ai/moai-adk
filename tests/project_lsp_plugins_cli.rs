@@ -57,7 +57,8 @@ fn detect_with_path(root: &Path, path: Option<&OsStr>) -> Value {
 /// A fake server: an executable file whose body leaves a marker when it is run. The marker is
 /// written with the shell's own `:` and redirection, never an external program: the PATH the
 /// binary sees holds only a temporary folder, so a `touch` there would exit 127 and leave no marker
-/// even when the server did run (`a_fake_server_leaves_its_marker_without_a_path` pins this).
+/// even when the server did run (`a_fake_server_leaves_its_marker_with_only_its_own_folder_on_the_path`
+/// pins this with that same one-folder `PATH`).
 #[cfg(unix)]
 fn fake_server(dir: &Path, name: &str, marker: &Path) {
     use std::os::unix::fs::PermissionsExt;
@@ -217,16 +218,20 @@ fn an_unreadable_or_missing_path_reads_as_not_installed() {
     }
 }
 
-/// The guard of AC-5 can fail: the fake server leaves its marker when run with no PATH at all.
+/// The guard of AC-5 can fail: the fake server leaves its marker when run exactly as the real
+/// check sees it, with a `PATH` that holds only the server's own temporary folder. A cleared
+/// environment with no `PATH` at all is not the same: `/bin/sh` then searches its default path and
+/// finds `/usr/bin/touch`, so a server that still called `touch` would pass.
 #[cfg(unix)]
 #[test]
-fn a_fake_server_leaves_its_marker_without_a_path() {
+fn a_fake_server_leaves_its_marker_with_only_its_own_folder_on_the_path() {
     let bin = TempDir::new().unwrap();
     let marker_dir = TempDir::new().unwrap();
     let marker = marker_dir.path().join("started");
     fake_server(bin.path(), "rust-analyzer", &marker);
     let status = std::process::Command::new(bin.path().join("rust-analyzer"))
         .clean_env()
+        .env("PATH", bin.path())
         .stdin(Stdio::null())
         .status()
         .unwrap();
