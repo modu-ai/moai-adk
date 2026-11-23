@@ -101,4 +101,23 @@ created: 2026-11-23
 
 ## Result
 
-Status: draft; no code yet.
+Status: implemented on the code slice; the SPEC front matter is not changed here (approval is recorded by the user's pick, not by a lane). `branch-gc-plan` and `branch-gc-apply` are in `src/branch_gc.rs` (the logic) and `src/ops/branch_gc_plan.rs`, `src/ops/branch_gc_apply.rs`. U-1 stays open: nothing here ran `branch-gc-apply` on this clone's branches.
+
+- AC-1: met — `branch_gc_cli` tests `ac1_only_a_merged_unused_branch_is_a_delete_row`, `ac1_the_branch_checked_out_in_the_primary_checkout_is_kept`, `ac1_a_reservation_that_was_released_does_not_keep_its_branch`
+- AC-2: met — `branch_gc_cli` tests `ac2_the_preserved_refs_are_kept_though_merged_and_unused`, `ac2_the_local_branch_the_integration_ref_names_is_preserved`; `ac2_an_integration_ref_that_looks_like_an_option_is_refused` covers the input check added beside it
+- AC-3: met — `branch_gc_cli` tests `ac3_an_unreadable_profile_or_ledger_keeps_every_would_be_delete`, `ac3_a_project_without_a_profile_has_no_reservations`
+- AC-4: met — `branch_gc_cli` tests `ac4_the_plan_writes_nothing_and_names_itself_read_only`, `ac4_the_digest_follows_the_integration_tip_and_the_delete_rows_only`
+- AC-5: met — `branch_gc_cli` test `ac5_apply_deletes_exactly_the_delete_rows` (the symbolic ref `alias` stays; git stops listing it once its target is gone)
+- AC-6: met — `branch_gc_cli` test `ac6_a_wrong_or_stale_digest_or_no_permission_refuses_and_deletes_nothing`
+- AC-7: met — `branch_gc_cli` tests `ac7_a_branch_that_moved_or_was_checked_out_after_the_digest_check_is_refused` (the moved tip is a merged one, so only the re-check keeps the branch; the checkout refusal carries this command's own words) and `ac7_a_card_or_a_checkout_after_the_plan_changes_the_digest_and_refuses_the_run`
+- AC-8: met — `branch_gc_cli` test `ac8_a_branch_git_refuses_to_delete_stays_and_the_rest_go_on` (HEAD on `main`; `-D` in place of `-d` fails it)
+- AC-9: met — `branch_gc_cli` test `ac9_apply_leaves_the_remote_and_the_remote_tracking_refs_alone`
+- AC-10: not met at this head for the golden files only — `ac10_both_commands_are_in_the_help_listing_with_a_summary` passes, but `tests/fixtures/help/{all,all-dumb,all-60,all-80}.txt` still lack the two new lines and `help_layout` `help_matches_its_goldens` fails until they are rewritten with `MOAI_HELP_GOLDEN_WRITE=1`; a card that reserves `tests/fixtures/help/**` holds those files, so this slice did not write them. The diff against the real output is the two lines `branch-gc-plan` and `branch-gc-apply` and nothing else.
+
+Verification at head `d7eb281cf368` (base `0dfdfb31dc74`): `moai check affected 0dfdfb31dc..d7eb281cf3` ran 49 targets with every cheap step 0 (`diff_check`, `fmt`, `ops_rustfmt`, `clippy`) and the test step 2398 passed, 1 failed (`help_matches_its_goldens`, above). The new tests failed 16 of 16 against the stub before the code (commit `3c93173c84`).
+
+Mutants (each removes one guard from `src/branch_gc.rs`, run on the committed code): merged check, checked-out check, card-reserved check, preserved check, archive prefix, integration-branch preserved, symbolic-ref check, unavailable-ledger keep, digest check, permission check, tip re-check, checkout re-check, `-d` to `-D`, option-like ref guard — 14 of 14 killed. Two (tip re-check, checkout re-check) survived the first test file because git refused the same cases itself; the test was sharpened and both are killed. Not covered by a mutant: the read-back after `git branch -d` (REQ-11 `failed`), which cannot be reached while git deletes the ref.
+
+Dangerous path, run with the real binary in a throwaway HOME and repository (hostile branch names `feat/$(touch${IFS}PWNED)`, `feat/;touch${IFS}PWNED2`, a backtick name and a non-ASCII name; a linked worktree; a reserved card; a remote): the plan listed 5 delete rows and 6 keep rows with the right reasons; a wrong digest refused with `stale_plan` and 11 branches stayed; the plan's digest deleted the 5 branches, no `PWNED` file was created, the remote and the remote-tracking refs were byte-identical, and a second plan found 0 to delete.
+
+A read-only `branch-gc-plan` on this clone (`--integration-ref v2026.11.0`): 1862 branches, 1226 `delete`, 636 `keep` (418 `not_merged`, 94 `checked_out`, 85 `checked_out` and `not_merged`, 36 with a card reservation, 3 `preserved`); the branch count was 1862 before and after.
