@@ -437,6 +437,39 @@ fn conversation_line(home: Option<&Path>) -> Option<String> {
     ))
 }
 
+/// The one sentence that names the flow and the integration branch the project profile records
+/// (SPEC-20261123-work-flow-readers REQ-1), with `(absent locally)` when this clone has no
+/// local branch of that name (REQ-3). `None` — and so the text session-check always had —
+/// when the profile is missing, unreadable or names no `work_flow` (REQ-2). Both values were
+/// validated by the profile reader, so neither carries a space or a control character.
+fn work_flow_line(cwd: &Path) -> Option<String> {
+    let (profile, _) = crate::profile::read_profile(cwd).ok()?;
+    let work_flow = profile.work_flow?;
+    let mut line = format!("Work flow `{}`", work_flow.flow);
+    if let Some(branch) = work_flow.integration_branch.as_deref() {
+        line.push_str(&format!(", integration branch `{branch}`"));
+        if local_branch_absent(cwd, branch) {
+            line.push_str(" (absent locally)");
+        }
+    }
+    line.push('.');
+    Some(line)
+}
+
+/// Whether git says this clone has no local branch `branch`: exit code 1 of
+/// `rev-parse --verify --quiet`. A lookup that cannot run, or fails any other way, is not
+/// "absent" and adds no note.
+fn local_branch_absent(cwd: &Path, branch: &str) -> bool {
+    let mut cmd = std::process::Command::new("git");
+    crate::identity::scrub_git_env(&mut cmd);
+    cmd.arg("-C")
+        .arg(cwd)
+        .args(["rev-parse", "--verify", "--quiet"])
+        .arg(format!("refs/heads/{branch}"))
+        .output()
+        .is_ok_and(|out| out.status.code() == Some(1))
+}
+
 /// session-check: a short, fixed-vocabulary state summary for the model. Never blocks. After a
 /// compaction (`source: "compact"`, exactly that string) it adds [`COMPACTED`] and, if the work
 /// has a card, points at its newest `moai-resume:` comment; any other `source`, or none, gives
@@ -470,6 +503,10 @@ fn session_check(input: &Value, cwd: &Path) -> Verdict {
         env!("CARGO_PKG_VERSION"),
         crate::state_root::dir(cwd),
     );
+    if let Some(line) = work_flow_line(cwd) {
+        text.push(' ');
+        text.push_str(&line);
+    }
     // On every start, resume and compaction, so a compacted session keeps the
     // conversation language the user chose.
     if let Some(line) = conversation_line(std::env::var_os("HOME").as_deref().map(Path::new)) {
@@ -1512,6 +1549,111 @@ mod tests {
             target_path(&json!({"tool_input": {}}), &real),
             Value::Null,
             "no path"
+        );
+    }
+
+    /// A temporary git repository with one commit whose only local branch is `branch`.
+    fn repo_on(branch: &str) -> tempfile::TempDir {
+        let dir = tempfile::TempDir::new().unwrap();
+        for args in [
+            vec!["init", "-q", "-b", branch],
+            vec![
+                "-c",
+                "user.name=fixture",
+                "-c",
+                "user.email=fixture@example.invalid",
+                "-c",
+                "commit.gpgsign=false",
+                "commit",
+                "-q",
+                "--allow-empty",
+                "-m",
+                "fixture",
+            ],
+        ] {
+            let mut cmd = std::process::Command::new("git");
+            crate::identity::scrub_git_env(&mut cmd);
+            let out = cmd.arg("-C").arg(dir.path()).args(&args).output().unwrap();
+            assert!(
+                out.status.success(),
+                "git {args:?}: {}",
+                String::from_utf8_lossy(&out.stderr)
+            );
+        }
+        dir
+    }
+
+    /// Writes `bytes` as the project profile of `dir`, in the folder `session_check` reads.
+    fn write_profile_bytes(dir: &Path, bytes: &[u8]) {
+        std::fs::create_dir_all(crate::state_root::path(dir, "")).unwrap();
+        std::fs::write(crate::state_root::path(dir, "project.yaml"), bytes).unwrap();
+    }
+
+    /// A valid profile; `work_flow` is added when given.
+    fn write_profile(dir: &Path, work_flow: Option<Value>) {
+        let mut profile = json!({
+            "schema_version": 2, "project_id": "demo", "purpose": "Fixture",
+            "tools": ["Rust"], "development_methods": ["TDD"], "hosts": ["claude"],
+            "decisions": [{"id": "d1", "topic": "tools", "value": "Rust",
+                "source": "user", "scope": "project"}],
+        });
+        if let Some(wf) = work_flow {
+            profile["work_flow"] = wf;
+        }
+        write_profile_bytes(dir, profile.to_string().as_bytes());
+    }
+
+    fn session_text(dir: &Path) -> String {
+        match session_check(&json!({}), dir) {
+            Verdict::Context(text) => text,
+            other => panic!("session-check answered {other:?}"),
+        }
+    }
+
+    /// SPEC-20261123-work-flow-readers AC-1: the profile's flow and integration branch are named.
+    #[test]
+    fn session_check_names_the_profile_work_flow() {
+        let repo = repo_on("NeXT");
+        write_profile(
+            repo.path(),
+            Some(json!({"flow": "m-flow", "integration_branch": "NeXT"})),
+        );
+        let text = session_text(repo.path());
+        assert!(
+            text.contains("Work flow `m-flow`, integration branch `NeXT`."),
+            "{text}"
+        );
+        assert!(!text.contains("absent locally"), "{text}");
+    }
+
+    /// AC-2: no profile, a profile that does not parse and a profile without `work_flow` all
+    /// answer exactly as before, so the three answers are one text without the new sentence.
+    #[test]
+    fn session_check_without_work_flow_is_unchanged() {
+        let none = repo_on("NeXT");
+        std::fs::create_dir_all(crate::state_root::path(none.path(), "")).unwrap();
+        let broken = repo_on("NeXT");
+        write_profile_bytes(broken.path(), b"{ not a profile");
+        let plain = repo_on("NeXT");
+        write_profile(plain.path(), None);
+        let base = session_text(none.path());
+        assert!(!base.contains("Work flow"), "{base}");
+        assert_eq!(session_text(broken.path()), base);
+        assert_eq!(session_text(plain.path()), base);
+    }
+
+    /// AC-3: a recorded integration branch this clone lacks is named in the same sentence.
+    #[test]
+    fn session_check_flags_a_missing_integration_branch() {
+        let repo = repo_on("main");
+        write_profile(
+            repo.path(),
+            Some(json!({"flow": "m-flow", "integration_branch": "NeXT"})),
+        );
+        let text = session_text(repo.path());
+        assert!(
+            text.contains("Work flow `m-flow`, integration branch `NeXT` (absent locally)."),
+            "{text}"
         );
     }
 }

@@ -306,8 +306,8 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("cc", &["cc -l", "cc -a"]),
     ("glm", &["glm -a"]),
     ("project-detect", &["project-detect ."]),
-    ("project-plan", &["project-plan . < request.json", "project-apply --plan-digest <digest> --permission-reference <ref> . < request.json"]),
-    ("project-apply", &["project-apply --plan-digest <digest> --permission-reference <ref> . < request.json"]),
+    ("project-plan", &["project-plan . < request.json", "project-apply --plan-digest <digest> --permission-reference <ref> . < plan.json"]),
+    ("project-apply", &["project-apply --plan-digest <digest> --permission-reference <ref> . < plan.json"]),
     ("project-update-plan", &["project-update-plan ."]),
     ("work-flow-plan", &["work-flow-plan --project ."]),
     ("language-setup", &["language-setup . < request.json"]),
@@ -2703,5 +2703,25 @@ mod tests {
         let all = render(true, Lang::Ko);
         assert!(all.contains(&format!("\n{OPTIONS_KO}\n")), "{all}");
         assert!(!all.contains("\nOptions:\n"), "{all}");
+    }
+
+    /// SPEC-20261123-work-flow-readers REQ-5 and REQ-6: `project-apply` reads the plan that
+    /// `project-plan` printed (`plan_input`), not a request, so every example of it, the one
+    /// shown under `project-plan` included, ends with `< plan.json`.
+    #[test]
+    fn project_apply_examples_read_the_plan_file() {
+        assert!(
+            include_str!("ops/project_apply.rs").contains("plan_input::<"),
+            "project-apply no longer reads a plan from standard input: update this pin"
+        );
+        let shown: Vec<&str> = EXAMPLES
+            .iter()
+            .flat_map(|(_, examples)| examples.iter().copied())
+            .filter(|example| example.starts_with("project-apply "))
+            .collect();
+        assert_eq!(shown.len(), 2, "{shown:?}");
+        for example in shown {
+            assert!(example.ends_with(" < plan.json"), "{example}");
+        }
     }
 }
