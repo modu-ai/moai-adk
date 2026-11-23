@@ -1,14 +1,9 @@
 ---
 id: SPEC-20261124-reclaim-keeps-worktree
 title: "card reclaim lets a lane take over a card in the same worktree when it holds committed, unlanded commits, and still refuses uncommitted changes"
-status: approved
-revision: 1
+status: draft
+revision: 2
 created: 2026-11-24
-approval:
-  by: leader
-  at: 2026-11-23
-  basis: "리더 결정 노트 7826 (2026-11-23T19:35:06Z, 사용자 위임 2026-11-23T13:57Z, 리더 판단, 사용자 직접 선택 아님, 노트 7824 에 답함): 선택지 (A) 승인, 임대가 끝난 회수만 완화(REQ-1~4), 조기 회수(REQ-5)는 그대로, 미커밋 변경 거절은 약하게 하지 않아요; 조건: AC-2 의 미커밋+커밋 꼴을 guard-mutant 로 핀, 새 테스트 파일이면 areas.toml·allow.tsv 등록을 무거운 실행 전에 확인; 레인은 그 노트를 인용만 해요"
-  digest: "sha256:60f400b3cff8e2e2d70656828aa6831a264c52b29231209593e7fbb529b82a68"
 ---
 
 # card reclaim lets a lane take over a card in the same worktree when it holds committed, unlanded commits, and still refuses uncommitted changes
@@ -45,6 +40,8 @@ Readers: lanes that continue a card after the holder's session ended, the leader
 - REQ-3: When `card reclaim` takes over a worktree that holds unpushed commits, the `card.reclaim` event and the command's answer shall name them, as their count and the ids of up to twenty of them, newest first.
 - REQ-4 (REQ-3): IF git cannot count the unpushed commits of the recorded worktree, THEN `card reclaim` shall refuse as unreadable and write nothing.
 - REQ-5: The early reclaim of a reservation whose lease has not ended shall keep refusing a worktree that holds unpushed commits, with the refusal text it has today.
+- REQ-6: While the lease of the reservation has not ended, `card reclaim` shall judge the recorded worktree with the strict gate and nothing else, so that a worktree with unpushed commits is refused with `card conflict in worktree dirty: <path> holds N uncommitted change(s) and M unpushed commit(s); a reclaim would orphan them`, before the lease or any proof of a gone holder is judged.
+- REQ-7: When `card reclaim` takes over a worktree that holds twenty or twenty-one unpushed commits, `kept_commits` shall list twenty ids and count every unpushed commit. · failure: none
 
 ## Acceptance
 
@@ -53,12 +50,14 @@ Readers: lanes that continue a card after the holder's session ended, the leader
 - AC-3 (REQ-3): the `card.reclaim` event of the takeover in AC-1 holds `kept_commits` with `count` 2 and the two commit ids newest first, the command's answer holds the same object, and a worktree with twenty-five unpushed commits lists twenty ids and counts twenty-five · verify: `cargo nextest run --locked --offline --test card_reclaim_cli the_reclaim_event_names_the_kept_commits`
 - AC-4 (REQ-4): a worktree whose git cannot count its commits (a repository with no commit yet) and a folder that is no checkout are each refused with `could not be read` and every ledger row as it was · verify: `cargo nextest run --locked --offline --test card_reclaim_cli reclaim_refuses_a_worktree_whose_unpushed_commits_cannot_be_counted reclaim_gates_refuse_when_git_cannot_be_read`
 - AC-5 (REQ-5): a live lease with a proof of a gone holder and a worktree that holds one unpushed commit stays refused, and the refusal names `1 unpushed` · verify: `cargo nextest run --locked --offline --test card_reclaim_early_cli refused_without_the_worktree_proof one_commit_outside_the_integration_branch_still_stops_an_early_reclaim`
+- AC-7 (REQ-6): a card whose lease is live and whose worktree holds one committed, unpushed commit and no uncommitted change is refused by `card reclaim` with kind `conflict` and a message that starts with `card conflict in worktree dirty` and holds `holds 0 uncommitted change(s) and 1 unpushed commit(s); a reclaim would orphan them`, with every ledger row as it was; the same card taken over after its lease ended is reclaimed · verify: `cargo nextest run --locked --offline --test card_reclaim_cli a_live_lease_keeps_the_strict_gate_and_its_refusal_text`
+- AC-8 (REQ-7): worktrees with twenty and with twenty-one commits answer `count` 20 with twenty ids and `count` 21 with twenty ids, newest first · verify: `cargo nextest run --locked --offline --test card_reclaim_cli the_kept_commit_list_is_capped_at_twenty_ids`
 - AC-6 (REQ-1): a commit inside the local integration branch is not counted as kept, and a commit outside it is, for a profile that names the integration branch and for one that does not · verify: `cargo nextest run --locked --offline --test card_reclaim_cli commits_inside_the_integration_branch_do_not_stop_a_takeover one_commit_outside_the_integration_branch_is_kept_by_a_takeover without_a_usable_integration_branch_the_takeover_keeps_every_unpushed_commit`
 
 ## Scope
 
-- write: `.moai/specs/SPEC-20261124-reclaim-keeps-worktree/spec.md`, `src/card/dispatch.rs`, `src/ledger/reservation.rs`, `src/ops/card.rs`, `tests/card_reclaim_cli.rs`
-- read-only: `CLAUDE.md`, `src/card/early_reclaim.rs`, `tests/card_reclaim_early_cli.rs`, `tests/ledger_reservation.rs`, `tests/prop_reservation.rs`
+- write: `.moai/specs/SPEC-20261124-reclaim-keeps-worktree/spec.md`, `src/card/dispatch.rs`, `src/ledger/reservation.rs`, `tests/card_reclaim_cli.rs`, `docs/design-review/appendix/operations/card.md` (one clause: the `kept_commits` key of the `card.reclaim` event, leader note 7893 N3)
+- read-only: `CLAUDE.md`, `src/ops/card.rs` (revision 1 wrote its help sentence; card C-420 holds the file on 2026-11-24, so revision 2 leaves it as it is), `src/card/early_reclaim.rs`, `tests/card_reclaim_early_cli.rs`, `tests/ledger_reservation.rs`, `tests/prop_reservation.rs`
 - forbidden: `tools/repo_scans.json`
 
 `src/card/early_reclaim.rs` stays as it is: the early proof calls the unchanged strict gate (D-1). The public `reservation::reclaim` and `reservation::reclaim_early` keep their signatures, so no other caller changes.
@@ -71,6 +70,12 @@ Readers: lanes that continue a card after the holder's session ended, the leader
 4. The answer of `card reclaim` carries `kept_commits` when the worktree exists; the help text in `src/ops/card.rs` says that unpushed commits do not stop a takeover and that uncommitted changes do.
 5. Guard mutants: remove the uncommitted refusal, count uncommitted as zero, drop the kept object from the payload, truncate the list wrongly, make an unreadable count pass, and send the early proof through the lenient gate; each must fail a named test.
 6. SYNC: Result with each AC met or not met; READY note with the `check affected` receipt.
+7. Revision 2, RED: add `a_live_lease_keeps_the_strict_gate_and_its_refusal_text` (AC-7) and `the_kept_commit_list_is_capped_at_twenty_ids` (AC-8) to `tests/card_reclaim_cli.rs`; AC-7 fails on the revision 1 code.
+8. Revision 2, GREEN: in `takeover_gates` choose the gate by the lease state (D-6). Guard mutant: the lenient gate again for every reservation, which must fail AC-7 (exit 100). Then the `kept_commits` clause in `docs/design-review/appendix/operations/card.md`, the Result rewrite, and the READY note with a new `check affected` receipt.
+
+### Revision 2 (repair after the audit of head 31c0cdf0d5, note 7893)
+
+The audit found that `reclaim` runs `takeover_gates` for every reservation, whatever the lease state, and revision 1 pointed `takeover_gates` at the lenient gate. A live lease with an unpushed commit therefore stopped refusing with `card conflict in worktree dirty: …` and refused with `reservation conflict in card: the lease runs until …` instead (and not at all about the commit when the launcher is alive). REQ-5 says the text stays. The repair: `takeover_gates` reads the reservation and the ledger clock it already has open, uses the lenient takeover gate only when the reservation is `held` and `lease_ended(lease_until, now)` is true, and otherwise the strict `worktree_gate` as before, returning no `kept_commits`. A clock that cannot be read, or a reservation that is not `held`, takes the strict path. The audit's other points (N1 uncounted drafts beside commits, N2 `kept_commits` reads `HEAD`, not the reserved branch) stay as they are; N3 is the one clause of `operations/card.md`; N5 is AC-8.
 
 ## Risks
 
@@ -88,10 +93,11 @@ Readers: lanes that continue a card after the holder's session ended, the leader
 | D-3 | An unreadable commit count refuses, as before | the count feeds the event; an unreadable answer is never read as "none" | none needed |
 | D-4 | The event key is `kept_commits` with `count` and `ids` (up to twenty, newest first); it is present only when the recorded worktree exists and was read | the card asks that the event names the kept commits; twenty keeps the event small | rename the key in a later SPEC |
 | D-5 | The ledger gets one new public function; `reclaim` and `reclaim_early` keep their signatures | other callers and tests use them as they are | fold the argument into them later |
+| D-6 | The gate is chosen by the lease state read from the ledger clock (`unixepoch()` on the read-only handle `takeover_gates` already holds, the same read `early_reclaim::assess` makes): lenient only for a `held` reservation whose lease ended, strict for everything else, also when the clock cannot be read | the audit (note 7893 B1): REQ-5 keeps the live-lease refusal text; strict is the older, safe default; a lease that ends between the gate and the write only means a refusal that was stricter than needed | route every takeover through the lenient gate again |
 
 ## Result
 
-Status: SPEC approved by the leader (revision 1, note 7826, a leader judgment and not the user's own pick); the slice is built.
+Status: revision 1 was approved by the leader (note 7826, a leader judgment and not the user's own pick) and built; the audit of head 31c0cdf0d5 failed it (note 7893). Revision 2 is a draft; this Result is rewritten when its repair is built, and the sentence "Every other refusal … early reclaim of a live lease … is as before" below was wrong for revision 1 and is replaced then.
 
 As built:
 - `src/card/dispatch.rs`: `worktree_gate` keeps its text and counts for the early proof; both gates share one read (`read_worktree`). The new `takeover_worktree_gate` refuses an uncommitted change only (the message keeps the prefix `holds N uncommitted change(s) and M unpushed commit(s)` and ends `a reclaim would orphan the uncommitted changes`), refuses as unreadable when git cannot count or list the commits, and returns `kept_commits` (`count`, up to twenty `ids`, newest first). `reclaim` passes it to the ledger and into the answer.
