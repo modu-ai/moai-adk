@@ -134,6 +134,11 @@ impl TempHome {
         fn walk(root: &Path, dir: &Path, out: &mut Vec<Entry>) {
             for e in fs::read_dir(dir).unwrap() {
                 let p = e.unwrap().path();
+                // The Spotlight marker `TempHome::new` writes at the HOME root is the helper's
+                // own file, not an entry the command under test made.
+                if dir == root && p.file_name().is_some_and(|n| n == ".metadata_never_index") {
+                    continue;
+                }
                 let m = fs::symlink_metadata(&p).unwrap();
                 let mtime_ns = m
                     .modified()
@@ -175,6 +180,9 @@ impl TempHome {
         let mut names: Vec<String> = fs::read_dir(dir)
             .unwrap()
             .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+            // The Spotlight marker `TempHome::new` writes is the helper's own, not something the
+            // command under test wrote into the HOME.
+            .filter(|n| n != ".metadata_never_index")
             .collect();
         names.sort();
         names
