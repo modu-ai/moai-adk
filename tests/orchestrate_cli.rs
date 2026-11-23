@@ -124,7 +124,8 @@ impl World {
     fn card(&self, id: i64, kind: &str, state: &str, priority: &str, scope: &[&str]) {
         self.sql(
             "INSERT INTO card (card_id, title, kind, state, priority, write_scope, created_by, \
-             created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, 'tester', 1, 2)",
+             created_at, updated_at, closed_at) \
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, 'tester', 1, 2, CASE WHEN ?4 = 'done' THEN 3 END)",
             rusqlite::params![
                 id,
                 format!("card {id}"),
@@ -643,6 +644,7 @@ fn keys_two_plans_of_one_ledger_are_equal_and_every_action_has_a_key() {
 fn keys_a_new_note_changes_only_the_keys_it_answers() {
     let w = world();
     w.lane("agent-1", S_ONE);
+    w.lane("agent-2", S_TWO);
     w.card(1, "research", "review", "p1", &["docs/a.md"]);
     w.reserve(1, 1, S_ONE, "held_for_review");
     w.ready_note(1, HEAD_A);
