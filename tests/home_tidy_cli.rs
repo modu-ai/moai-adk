@@ -21,6 +21,8 @@ use std::{
 use tempfile::TempDir;
 
 const BIN: &str = crate::common::MOAI_BIN;
+/// The folder under HOME the operations tidy, named once through the product's constant.
+const MOAI: &str = moai_cli::home_root::MOAI_DIR;
 const DAY: u64 = 86_400;
 const LIMIT: Duration = Duration::from_secs(60);
 
@@ -32,8 +34,12 @@ struct Out {
 
 /// Runs `moai ARGS` with a clean environment and an optional PATH; kills it after `LIMIT`.
 fn run_with(path: Option<&Path>, args: &[&str]) -> Out {
+    // The operations take their home as an argument; HOME is a throwaway folder of its own, so
+    // nothing the binary might resolve reaches the real one.
+    let own_home = TempDir::new().unwrap();
     let mut cmd = Command::new(BIN);
     cmd.clean_env()
+        .env("HOME", own_home.path())
         .args(args)
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
@@ -128,7 +134,7 @@ impl Drop for Fx {
 fn fixture() -> Fx {
     let tmp = TempDir::new().unwrap();
     let home = fs::canonicalize(tmp.path()).unwrap().join("home");
-    let moai = home.join(".moai");
+    let moai = home.join(MOAI);
     fs::create_dir_all(&moai).unwrap();
     // owned, live: a report changed 5 days ago next to two old ones.
     put(&moai.join("reports/projA/new.md"), 1024);
@@ -319,11 +325,11 @@ fn inventory_walk_over_the_entry_limit_keeps_its_group_with_over_limit() {
     let tmp = TempDir::new().unwrap();
     let home = fs::canonicalize(tmp.path()).unwrap().join("home");
     for i in 0..12 {
-        put(&home.join(format!(".moai/reports/p/f{i}.md")), 100);
+        put(&home.join(format!("{MOAI}/reports/p/f{i}.md")), 100);
     }
     let fx = Fx {
         _tmp: tmp,
-        moai: home.join(".moai"),
+        moai: home.join(MOAI),
         home,
     };
     let inv = inventory(&fx, &["--entry-limit", "5"]);
@@ -373,10 +379,10 @@ fn kinds_rows_carry_count_size_oldest_newest_and_the_passed_thresholds() {
 fn kinds_a_kind_whose_folder_is_absent_has_no_row() {
     let tmp = TempDir::new().unwrap();
     let home = fs::canonicalize(tmp.path()).unwrap().join("home");
-    put(&home.join(".moai/reports/p/a.md"), 10);
+    put(&home.join(MOAI).join("reports/p/a.md"), 10);
     let fx = Fx {
         _tmp: tmp,
-        moai: home.join(".moai"),
+        moai: home.join(MOAI),
         home,
     };
     let inv = inventory(&fx, &[]);
@@ -814,7 +820,8 @@ fn readonly_both_operations_leave_the_home_the_memory_index_and_the_path_command
 // -------------------------------------------------------------------- help_
 
 #[test]
-fn help_the_operations_say_they_write_nothing_and_their_documents_exist() {
+fn help_the_operations_say_they_write_nothing() {
+    // The operations document fragments are checked by `operations_doc` in the binary's tests.
     for op in ["tidy-inventory", "tidy-plan"] {
         let out = run(&[op, "--help"]);
         assert!(out.ok, "{op}: {}", out.stderr);
@@ -823,9 +830,5 @@ fn help_the_operations_say_they_write_nothing_and_their_documents_exist() {
             "{op}: {}",
             out.stdout
         );
-        let doc = Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("docs/design-review/appendix/operations")
-            .join(format!("{}.md", op.replace('-', "_")));
-        assert!(doc.is_file(), "{}", doc.display());
     }
 }

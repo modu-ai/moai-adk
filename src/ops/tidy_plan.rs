@@ -3,7 +3,7 @@
 
 use std::path::PathBuf;
 
-/// Preview what could be archived or deleted in the home moai folder
+/// Preview the tidy of the home moai folder
 ///
 /// Preview the tidy of `<HOME>/.moai`: each candidate has an action (`archive`, `delete` or
 /// `keep`), the rule that made it a candidate and the reason it is kept. A folder kind over a

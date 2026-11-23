@@ -46,7 +46,7 @@ impl Options {
 }
 
 fn scan(home: &Path, opts: &Options) -> Result<inventory::Scan, String> {
-    let moai = home.join(".moai");
+    let moai = home.join(crate::home_root::MOAI_DIR);
     if !moai.is_dir() {
         return Err(format!("no `.moai` folder under `{}`", home.display()));
     }

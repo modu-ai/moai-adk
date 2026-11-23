@@ -239,7 +239,7 @@ pub struct Measure {
 
 /// A whole number as an integer, anything else as a float.
 pub fn number(v: f64) -> Value {
-    if v.fract() == 0.0 && v >= 0.0 && v < 9.0e15 {
+    if v.fract() == 0.0 && (0.0..9.0e15).contains(&v) {
         json!(v as u64)
     } else {
         json!(v)
