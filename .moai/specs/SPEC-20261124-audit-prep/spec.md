@@ -1,35 +1,40 @@
 ---
 id: SPEC-20261124-audit-prep
-title: "An audit prepares its slot from the head with one incremental build and finishes clean, addressed by card"
-status: draft
+title: "감사가 카드 이름으로 자리를 잡고 head 에서 증분 빌드 한 번 하고 깨끗하게 끝나요"
+status: approved
 revision: 1
 created: 2026-11-24
+approval: {by: leader, at: 2026-11-23, basis: "leader decision note 7966 of card C-364 (2026-11-23T22:50:08Z, delegation of the user 2026-11-23T13:57Z, the leader's judgement and not a selection by the user) answering request note 7965 with option (b) for draft commit 4346f1ab65bfa2befcfeeee56fed4379f70cea1e", digest: "sha256:582e2926c358192d90956bca1a03d6abc62b1637a4c3af3599109488af831ae2"}
 ---
 
-# An audit prepares its slot from the head with one incremental build and finishes clean, addressed by card
+# 감사가 카드 이름으로 자리를 잡고 head 에서 증분 빌드 한 번 하고 깨끗하게 끝나요
+
+## Interview
+
+- none: 리더 배차(카드 C-364 와 리더 결정 노트 7953)가 요구사항을 전달했어요. 초안에 대한 리더 답이 노트 7966 이고(선택지 (b)), 별도 사용자 인터뷰는 없었어요.
 
 ## Intent
 
-Card C-364 and the leader decision of 2026-11-23T22:22Z (user delegation 2026-11-23T13:57Z). The user pointed at the cost again: each audit built the tree from nothing in an empty build folder, although the lane had already built the same head. The sources are the redesign `~/.moai/reports/moai-adk/agentic-redesign-2026-11-22.md` §3D and the review `audit-landing-process-review-2026-11-22.md` A1, A2, A4 and "감사가 레인 빌드를 이어받는 방법".
+카드 C-364 와 리더 결정(2026-11-23T22:22Z, 사용자 위임 2026-11-23T13:57Z)이에요. 사용자가 감사 비용을 다시 짚었어요. 레인이 같은 head 를 이미 빌드했는데도 감사마다 빈 빌드 폴더에서 처음부터 다시 빌드했어요. 근거는 재설계 `~/.moai/reports/moai-adk/agentic-redesign-2026-11-22.md` §3D 와 점검 `audit-landing-process-review-2026-11-22.md` 의 A1, A2, A4, "감사가 레인 빌드를 이어받는 방법" 이에요.
 
-Today the leader does this by hand: make an audit worktree at the head, clone the lane's `target/` with `cp -c -R`, run the changed targets incrementally from that one `target/`, and never build the merged tree. This SPEC turns that hand rule into two commands that a leader or an auditor types with the card name:
+지금은 리더가 손으로 해요. 감사 자리를 head 로 만들고, 레인 `target/` 을 `cp -c -R` 로 복제하고, 바뀐 대상만 그 `target/` 하나에서 증분 빌드하고, 합친 트리는 빌드하지 않아요. 이 SPEC 은 그 손 규칙을 카드 이름으로 부르는 명령 둘로 만들어요.
 
-- `moai audit-prep <card> --head <40hex>` takes an audit slot for the card, switches it detached to the head, places the lane's (or the seed's) build in it, and runs one incremental build of the named test targets.
-- `moai audit-done <card>` finishes the card's slot: it releases it only when it is clean, and it never discards or forces.
+- `moai audit-prep <card> --head <40hex>` 는 카드를 위한 감사 자리를 잡고, head 로 detach 하고, 레인(또는 seed)의 빌드를 이어받고, 이름 붙인 테스트 대상을 증분 빌드 한 번 해요.
+- `moai audit-done <card>` 는 카드의 자리를 마쳐요. 깨끗할 때만 풀고, 버리거나 강제하지 않아요.
 
-What already exists (read at tip `b21063a45d`): `moai audit-slot prep|done` landed as `178fde8beb` (SPEC-20261123-audit-slot, audit PASS 7045). It already does the slot switch, the lane clone with `cp -c -R -p`, the touch of tracked sources (so a mutant build in the lane cannot pass as the head), one holder per slot, the link and own-worktree refusals, and the clean-up with `--discard`. It does not run the build, it is addressed by slot and holder instead of by card, and its tests do not show that a built test executable reads the audit folder's paths instead of the lane's. This SPEC adds exactly those, on top of it; it does not copy its safety code.
+이미 있는 것(NeXT `b21063a45d` 에서 읽음): `moai audit-slot prep|done` 이 `178fde8beb` 로 합쳐졌어요(SPEC-20261123-audit-slot, 감사 PASS 노트 7045). 자리 전환, `cp -c -R -p` 로 레인 `target/` 복제, 추적 소스 touch(레인의 뮤턴트 빌드가 head 로 통과하는 일을 막음), 자리당 holder 한 명, 링크·자기 작업트리 거부, `--discard` 정리를 이미 해요. 없는 것은 셋이에요. 빌드를 돌리지 않고, 자리와 holder 로 부르지 카드로 부르지 않고, 빌드한 테스트 실행 파일이 레인 경로가 아니라 감사 자리 경로를 읽는다는 것을 시험이 보이지 않아요. 이 SPEC 은 그 셋을 `audit-slot` 위에 더하고, 안전 코드를 복사하지 않아요.
 
-Readers: the leader who dispatches an audit, the auditor who runs it, the lane whose READY worktree is the build source.
+읽는 사람: 감사를 배차하는 리더, 감사를 돌리는 감사자, 빌드의 원본이 되는 READY 작업트리의 레인이에요.
 
 ## Non-goals
 
-- A per-card audit worktree `.claude/worktrees/audit-<card>` that is removed at the end. The user-approved redesign §3A fixes `audit-1`..`audit-3` and reuses them (D-1). If the leader picks that shape, this SPEC is revised before any code.
-- Fixing the compile-time `env!` paths. Today 163 files under `tests/` read `env!("CARGO_MANIFEST_DIR")` or `env!("CARGO_BIN_EXE_*")` (measured with `grep -lE` in this worktree at `df2cffd593`; the card says 135). They stay as they are. This slice only shows that a rebuilt test executable reads the audit slot, not the lane (REQ-9), and that nothing is shared that would not be.
-- Sharing a nextest archive between the lane and the audit. It needs those paths read at run time first.
-- Copying evidence logs at the verdict, and removing a slot. Slots are fixed.
-- Running the audit's tests or mutants. `audit-prep` only builds; the auditor runs.
-- Running `check affected` again for the head. The auditor cites the lane's receipt.
-- Any host change outside this repository: no `~/.claude`, no `~/.moai` data.
+- 카드마다 `.claude/worktrees/audit-<card>` 를 만들고 끝에 지우는 형태예요. 사용자가 승인한 재설계 §3A 는 `audit-1`..`audit-3` 을 고정해 다시 써요(D-1). 리더가 다른 형태를 고르면 코드 전에 이 SPEC 을 고쳐요.
+- 컴파일 때 박히는 `env!` 경로를 고치는 일이에요. 지금 `tests/` 의 163개 파일이 `env!("CARGO_MANIFEST_DIR")` 또는 `env!("CARGO_BIN_EXE_*")` 를 읽어요(`df2cffd593` 의 이 워크트리에서 `grep -lE` 로 잰 값이고, 카드 본문은 135개라고 적었어요; 리더 노트 7966 이 163 을 기록해요). 그대로 두고, 다시 빌드한 테스트 실행 파일이 레인이 아니라 감사 자리를 읽는다는 것만 REQ-9 로 보여요.
+- 레인과 감사가 nextest 아카이브를 공유하는 일이에요. 그 경로를 실행 시점에 읽게 바꾼 뒤에 해요.
+- 판정 때 증거 로그를 복사하는 일, 자리를 지우는 일이에요. 자리는 고정이에요.
+- 감사의 테스트나 뮤턴트를 돌리는 일이에요. `audit-prep` 은 빌드만 하고 돌리는 쪽은 감사자예요.
+- head 의 `check affected` 를 다시 돌리는 일이에요. 감사자는 레인의 영수증을 인용해요.
+- 이 저장소 밖의 호스트 변경이에요. `~/.claude` 와 `~/.moai` 의 실제 데이터는 건드리지 않아요.
 
 ## Requirements
 
@@ -72,32 +77,32 @@ Readers: the leader who dispatches an audit, the auditor who runs it, the lane w
 
 ## Plan
 
-1. This SPEC, then the leader's approval (a `LANE-BLOCKED kind=decision` note; no self-approval).
-2. `SCOPE-REQUEST` for the code paths above.
-3. Tests first (RED): `tests/audit_prep_cli.rs` on temporary repositories and a temporary HOME, AC-1 to AC-6.
-4. `src/audit_prep.rs` and `src/ops/audit_prep.rs`; the help rows and goldens; the operation document.
-5. Guard mutants, one line per new guard test in the READY.
-6. One bare `moai check affected` at READY, then READY with head and base.
+1. 이 SPEC 과 리더 승인(노트 7966). 끝났어요.
+2. 코드 경로를 `SCOPE-REQUEST` 로 알려요. 공유 파일 `src/lib.rs`(C-322 가 쥠)와 `src/help.rs` 의 한 줄은 `card line-lease` 로 해요.
+3. 테스트 먼저(RED): 임시 저장소와 임시 HOME 에서 `tests/audit_prep_cli.rs` 로 AC-1 ~ AC-6 을 써요.
+4. `src/audit_prep.rs` 와 `src/ops/audit_prep.rs`, 도움말 행과 골든, 운영 문서를 써요.
+5. 가드 뮤턴트를 돌려요. 새 가드 테스트마다 READY 에 한 줄씩 남겨요.
+6. READY 에서 `moai check affected` 를 맨몸으로 한 번 돌리고, head 와 base 를 적어 READY 를 내요.
 
 ## Risks
 
-- The new pair and `audit-slot` are two command surfaces for one job. The new one only calls the old one's functions, and the operation document names `audit-slot` for slot-level work (the leader's `--discard`).
-- A build that fails leaves the slot held. The auditor still has to run `audit-done`, and a mutant left behind refuses it by design (REQ-10, REQ-12). A leader repairing a stuck slot uses `audit-slot done --discard`.
-- Cargo may recompile the workspace crate more than once if a sibling crate is also dirty. AC-2 and AC-6 count compiled units from Cargo's JSON messages, so a regression shows as a number, not as a time.
-- The heavy slot can make `audit-prep` wait. The answer names the wait, as `check affected` does.
-- `RUSTC_WRAPPER` with incremental builds made `sccache` refuse (exit 101) in 2026-11-22 audits. The build runs without `RUSTC_WRAPPER` and `CARGO_BUILD_RUSTC_WRAPPER` (D-3).
+- 새 명령 둘과 `audit-slot` 이 한 일에 대한 명령 면이 둘이 돼요. 새 쪽은 옛 쪽의 함수만 부르고, 운영 문서가 자리 단위 일(리더의 `--discard`)은 `audit-slot` 이라고 알려요.
+- 빌드가 실패하면 자리가 잡힌 채로 남아요. 감사자는 그래도 `audit-done` 을 돌려야 하고, 남은 뮤턴트는 일부러 `audit-done` 을 거부해요(REQ-10, REQ-12). 막힌 자리를 고치는 리더는 `audit-slot done --discard` 를 써요.
+- 형제 크레이트도 더러우면 Cargo 가 워크스페이스 크레이트를 한 번 넘게 컴파일할 수 있어요. AC-2 와 AC-6 이 Cargo 의 JSON 메시지로 컴파일한 단위 수를 세니, 퇴행은 시간이 아니라 숫자로 보여요.
+- 무거운 자리 때문에 `audit-prep` 이 기다릴 수 있어요. 답에 기다림을 적어요(`check affected` 처럼).
+- 2026-11-22 감사에서 `RUSTC_WRAPPER` 와 증분 빌드가 같이 켜져 `sccache` 가 거부했어요(exit 101). 빌드는 `RUSTC_WRAPPER` 와 `CARGO_BUILD_RUSTC_WRAPPER` 없이 돌려요(D-3).
 
 ## Decisions
 
 | Id | Decision | Basis | Undo |
 | --- | --- | --- | --- |
-| D-1 | The commands are the card-addressed front of the fixed slots `audit-1`..`audit-3` and call the code of `audit-slot`; they do not make `audit-<card>` worktrees. | The user-approved redesign §3A fixes the audit slots and reuses them; SPEC-20261123-audit-slot is landed and audited; a second worktree family would copy its link, own-worktree and holder safety code. The dispatch names `.claude/worktrees/audit-<card>`; that part is the leader's to confirm. | Leader picks another shape in the decision note; this SPEC is revised before code. |
-| D-2 | The card name is the holder (`C-364` passes the holder-name rule), and the slot is chosen by `auto`. | One card, one audit, one slot; the holder record of audit-slot already refuses a second live holder and takes over a dead one. | Add a `--holder` option later. |
-| D-3 | The build is `cargo test --no-run --locked --offline --message-format json` with `--test NAME` at most twice, or `--lib` alone, run in the slot with `RUSTC_WRAPPER` unset, in one heavy slot. `target/` is the slot's own; `CARGO_TARGET_DIR` stays unset. | Card C-364 (mutants build only 1-2 targets), review A2, the sccache-incremental clash of 2026-11-22; Cargo's JSON `compiler-artifact` carries `fresh`. | Change the argument list in one place. |
-| D-4 | The cap is two named test targets. | Review A2: 1 to 2 targets per mutant. | Raise the constant. |
-| D-5 | `audit-done` has no discard and no force; a left mutant refuses it. | The dispatch: no `--force`; the redesign's removal conditions (clean tree, no process, no claim). | The leader's repair path stays `audit-slot done --discard`. |
-| D-6 | The compile-time `env!` paths are not fixed here; a test shows the rebuilt executables read the slot (REQ-9). The touch of tracked sources that `audit-slot prep` already does is what forces the workspace units to recompile in the slot. | Dispatch scope; measured count 163 files, not 135. | A later card moves the paths to run time and then shares nextest archives. |
+| D-1 | 두 명령은 고정 자리 `audit-1`..`audit-3` 의 카드 이름 앞문이고 `audit-slot` 의 코드를 불러요. `audit-<card>` 작업트리는 만들지 않아요. | 사용자가 승인한 재설계 §3A 가 감사 자리를 고정해 다시 쓰고, SPEC-20261123-audit-slot 이 합쳐져 감사를 통과했고, 작업트리 가족이 하나 더 생기면 링크·자기 작업트리·holder 안전 코드를 복사해야 해요. 배차의 `.claude/worktrees/audit-<card>` 는 리더 결정 노트 7966 이 이 결정으로 바꿔요. | 리더가 다른 형태를 고르면 코드 전에 SPEC 을 고쳐요. |
+| D-2 | 카드 이름이 holder 이고(`C-364` 는 holder 이름 규칙을 통과해요), 자리는 `auto` 로 골라요. | 카드 하나, 감사 하나, 자리 하나예요. audit-slot 의 holder 기록이 이미 두 번째 살아 있는 holder 를 거부하고 죽은 holder 를 넘겨받아요. | 나중에 `--holder` 옵션을 더해요. |
+| D-3 | 빌드는 `cargo test --no-run --locked --offline --message-format json` 이고 `--test NAME` 은 최대 둘, 없으면 `--lib` 하나예요. `RUSTC_WRAPPER` 를 지우고 무거운 자리 하나 안에서 자리의 `target/` 으로 돌려요. `CARGO_TARGET_DIR` 는 비워 둬요. | 카드 C-364(뮤턴트는 대상 1~2개만), 점검 A2, 2026-11-22 의 sccache·증분 충돌이에요. Cargo 의 JSON `compiler-artifact` 가 `fresh` 를 실어 줘요. | 인자 목록을 한 곳에서 바꿔요. |
+| D-4 | 이름 붙이는 테스트 대상의 상한은 둘이에요. | 점검 A2: 뮤턴트당 대상 1~2개. | 상수를 올려요. |
+| D-5 | `audit-done` 에는 버리기도 강제도 없고, 남은 뮤턴트는 `audit-done` 을 거부해요. | 배차: `--force` 없음. 재설계의 정리 조건(깨끗한 트리, 프로세스·클레임 없음). | 리더의 고침 길은 `audit-slot done --discard` 로 남아요. |
+| D-6 | 컴파일 때 박히는 `env!` 경로는 여기서 고치지 않아요. 다시 빌드한 실행 파일이 감사 자리를 읽는다는 시험(REQ-9)을 둬요. `audit-slot prep` 이 이미 하는 추적 소스 touch 가 자리의 워크스페이스 단위를 다시 컴파일하게 해요. | 배차 범위. 잰 파일 수는 135가 아니라 163이고 리더 노트 7966 이 기록해요. | 나중 카드가 경로를 실행 시점으로 옮기고 그다음 nextest 아카이브를 공유해요. |
 
 ## Result
 
-- Draft: no code yet. Waiting for the leader's approval of this SPEC.
+- 리더가 판 1 을 승인했어요(노트 7966, 요청 노트 7965 의 선택지 (b)). 아직 코드는 없어요. 코드 경로의 범위 요청이 다음이에요.
